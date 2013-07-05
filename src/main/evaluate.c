@@ -84,49 +84,64 @@ static int all_digits(const char *string)
 	return (*p == '\0');
 }
 
-static char *radius_expand_tmpl(REQUEST *request, value_pair_tmpl_t const *vpt)
+/** Expand the RHS of a template
+ *
+ * @note Length of expanded string can be found with talloc_array_length(*out) - 1 	
+ *
+ * @param out where to write a pointer to the newly allocated buffer.
+ * @param request Current request.
+ * @param vpt to evaluate.
+ * @return -1 on error, else 0.
+ */
+static int radius_expand_tmpl(char **out, REQUEST *request, value_pair_tmpl_t const *vpt)
 {
-	char *buffer = NULL;
 	VALUE_PAIR *vp;
-
+	*out = NULL;
+	
 	rad_assert(vpt->type != VPT_TYPE_LIST);
 
 	switch (vpt->type) {
 	case VPT_TYPE_LITERAL:
 		EVAL_DEBUG("TMPL LITERAL");
-		buffer = talloc_strdup(request, vpt->name);
+		*out = talloc_strdup(request, vpt->name);
 		break;
 
 	case VPT_TYPE_EXEC:
 		EVAL_DEBUG("TMPL EXEC");
-		buffer = talloc_array(request, char, 1024);
-		if (radius_exec_program(request, vpt->name, true, false, buffer, 1024, NULL, NULL) != 0) {
-			talloc_free(buffer);
-			return NULL;
+		*out = talloc_array(request, char, 1024);
+		if (radius_exec_program(request, vpt->name, true, false, *out, 1024, NULL, NULL) != 0) {
+			TALLOC_FREE(*out);
+			return -1;
 		}
 		break;
 
 	case VPT_TYPE_REGEX:
 		EVAL_DEBUG("TMPL REGEX");
 		if (strchr(vpt->name, '%') == NULL) {
-			buffer = talloc_strdup(request, vpt->name);
+			*out = talloc_strdup(request, vpt->name);
 			break;
 		}
 		/* FALL-THROUGH */
 
 	case VPT_TYPE_XLAT:
 		EVAL_DEBUG("TMPL XLAT");
-		buffer = NULL;
-		if (radius_axlat(&buffer, request, vpt->name, NULL, NULL) == 0) {
-			return NULL;
+		/* Error in expansion, this is distinct from zero length expansion */
+		if (radius_axlat(out, request, vpt->name, NULL, NULL) < 0) {
+			rad_assert(!*out);
+			return -1;
 		}
 		break;
 
 	case VPT_TYPE_ATTR:
 		EVAL_DEBUG("TMPL ATTR");
 		vp = radius_vpt_get_vp(request, vpt);
-		if (!vp) return NULL;
-		buffer = vp_aprint(request, vp);
+		if (!vp) {
+			return -1;
+		}
+		*out = vp_aprint(request, vp);
+		if (!*out) {
+			return -1;
+		}
 		break;
 
 	case VPT_TYPE_DATA:
@@ -134,12 +149,11 @@ static char *radius_expand_tmpl(REQUEST *request, value_pair_tmpl_t const *vpt)
 		/* FALL-THROUGH */
 
 	default:
-		buffer = NULL;
 		break;
 	}
 
-	EVAL_DEBUG("Expand tmpl --> %s", buffer);
-	return buffer;
+	EVAL_DEBUG("Expand tmpl --> %s", *out);
+	return 0;
 }
 
 /** Evaluate a template
@@ -193,8 +207,8 @@ int radius_evaluate_tmpl(REQUEST *request, int modreturn, UNUSED int depth,
 	case VPT_TYPE_XLAT:
 	case VPT_TYPE_EXEC:
 		if (!*vpt->name) return false;
-		buffer = radius_expand_tmpl(request, vpt);
-		if (!buffer) {
+		rcode = radius_expand_tmpl(&buffer, request, vpt);
+		if (rcode < 0) {
 			EVAL_DEBUG("FAIL %d", __LINE__);
 			return -1;
 		}
@@ -282,6 +296,7 @@ static int do_regex(REQUEST *request, const char *lhs, const char *rhs, int ifla
  */
 static VALUE_PAIR *get_cast_vp(REQUEST *request, value_pair_tmpl_t const *vpt, DICT_ATTR const *cast)
 {
+	int rcode;
 	VALUE_PAIR *vp;
 	char *str;
 
@@ -295,8 +310,8 @@ static VALUE_PAIR *get_cast_vp(REQUEST *request, value_pair_tmpl_t const *vpt, D
 		return vp;
 	}
 
-	str = radius_expand_tmpl(request, vpt);
-	if (!str) {
+	rcode = radius_expand_tmpl(&str, request, vpt);
+	if (rcode < 0) {
 		pairfree(&vp);
 		return NULL;
 	}
@@ -422,8 +437,8 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 	/*
 	 *	The RHS now needs to be expanded into a string.
 	 */
-	rhs = radius_expand_tmpl(request, map->src);
-	if (!rhs) {
+	rcode = radius_expand_tmpl(&rhs, request, map->src);
+	if (rcode < 0) {
 		EVAL_DEBUG("FAIL %d", __LINE__);
 		return -1;
 	}
@@ -492,9 +507,8 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 	/*
 	 *	The LHS is a string.  Expand it.
 	 */
-	lhs = radius_expand_tmpl(request, map->dst);
-	if (!lhs) {
-		talloc_free(rhs);
+	rcode = radius_expand_tmpl(&lhs, request, map->dst);
+	if (rcode < 0) {
 		EVAL_DEBUG("FAIL %d", __LINE__);
 		return -1;
 	}
