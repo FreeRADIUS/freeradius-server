@@ -80,7 +80,8 @@ as word delimiters.
 Please update your module configuration to use the new syntax.
 
 In most cases the server will tell you the replacement config item to
-use.
+use.  As always, run the server in debugging mode to see these
+messages.
 
 rlm_sql
 -------
@@ -218,8 +219,8 @@ rlm_ldap
 --------
 
 The LDAP module configuration has been substantially changed.  Please
-read raddb/mods-available/ldap.  It now uses a connection pool, just
-like the SQL module.
+read ``raddb/mods-available/ldap``.  It now uses a connection pool,
+just like the SQL module.
 
 Many of the configuration items remain the same, but they have been
 moved into subsections.  This change is largely cosmetic, but it makes
@@ -231,8 +232,8 @@ manually to the new configuration.  Simply copying the old
 configuration WILL NOT WORK.
 
 Users upgrading from 2.x.x who used to call the ldap module in
-post-auth should now set ``edir_autz = yes``, and remove the ``ldap``
-module from the post-auth section.
+``post-auth`` should now set ``edir_autz = yes``, and remove the ``ldap``
+module from the ``post-auth`` section.
 
 rlm_ldap/LDAP-Group
 -------------------
@@ -330,6 +331,8 @@ attribute::
   }
 
 However, this should only be seen as a temporary, not permanent, fix.
+It is better to fix your databases to contain the correct
+configuration.
 
 Deleted Modules
 ===============
@@ -337,7 +340,7 @@ Deleted Modules
 The following modules have been deleted, and are no longer supported
 in Version 3.  If you are using one of these modules, your
 configuration can probably be changed to not need it.  Otherwise email
-the freeradius-devel list, and ask.
+the freeradius-devel list, and ask about the module.
 
 rlm_acct_unique
 ---------------
