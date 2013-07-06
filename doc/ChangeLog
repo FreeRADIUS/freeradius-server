@@ -11,8 +11,8 @@ FreeRADIUS 3.0.0 Mon 01 Jan 8:00:00 CEST 2010, urgency=medium
 	* Added provisions for raddb/dictionary.local, for local changes.
 	  See raddb/dictionary for more details.
 	* Added packet/s tracking. See max_pps in the "listen" section.
-	* The %{} expansions and "unlang" conditions are now parsed at server start.
-	  Descriptive errors are produced for syntax and format errors.
+	* The %{} expansions and "unlang" conditions are now parsed at server
+	  start. Descriptive errors are produced for syntax and format errors.
 	* Casting is now supported for "unlang" comparisons.  See "man unlang"
 	  e.g. <ipaddr>127.0.0.1 == Framed-IP-Address.
 	* Direct comparison of attribute references is now supported.
@@ -22,12 +22,16 @@ FreeRADIUS 3.0.0 Mon 01 Jan 8:00:00 CEST 2010, urgency=medium
 	* Comparisons of IPv4 and IPv6 prefixes are now supported.
 	  The "<" operator means "within the prefix" for comparisons.
 	* New sha1 xlat expansion (thanks to Alan Buxey)
-	* Colourised log messages when logging to stdout.  Look for yellow warnings
-	  and red errors.  Doing this will save you a LOT of grief.
+	* Colourised log messages when logging to stdout.  Look for yellow
+	  warnings and red errors.  Doing this will save you a LOT of grief.
 
 	Module Changes
-	* Moved raddb/modules/ to raddb/mods-available, and raddb/mods-enabled,
+	* Moved raddb/modules/ to raddb/mods-available/, and raddb/mods-enabled/,
 	  following the examples of other projects.
+	* Module "extra" configuration files are now in raddb/mods-config/
+	  Each module has a subdirectory where it will place its files.
+	* Moved "users" to raddb/mods-config/files/authorize
+	* Moved "hints" and "huntgroups" to raddb/mods-config/preprocess/
 	* Moved eap.conf to mods-available/eap
 	* Moved sql.conf to mods-available/sql
 	* Moved TLS configuration for EAP into a common subsection.
@@ -57,23 +61,25 @@ FreeRADIUS 3.0.0 Mon 01 Jan 8:00:00 CEST 2010, urgency=medium
 	* Removed "addport" functionality.
 	* Removed many unused or duplicate modules.  See raddb/README.rst.
 
-	Internal changes:
+	Internal / API changes:
 	* All traces of the old build system have been removed.
 	* clang is fully supported.
 	* We now use "talloc" for memory management.  A number of new
 	  features required this change.
 	* Many internal APIs have been updated to use talloc.
 	* Removed all limitations on 253 octet attributes.
-	* New API for iterating over VALUE_PAIRs, in preparation for nested attributes.
+	* New API for iterating over VALUE_PAIRs, in preparation for nested
+	  attributes.
 	* No new code should directly modify the contents of a VALUE_PAIR.
 	* VALUE_PAIRs contain pointers to DICT_ATTR instead of containing
-	  attribute and vendor fields.  This is in preparation for nested attributes.
+	  attribute and vendor fields.  This is in preparation for nested
+	  attributes.
 	* Some protocol specific code has been moved out into proto_* modules.
 	  More will come in subsequent versions.
 	* Standardised internal logging macros.  radlog() should not be used.
 	* Use OpenSSL hashing functions when available.
 	* Server now builds with no warnings on most platforms.
 	* New RADIUS encoder/decoder.
-	* Added RFC 6929 "extended attributes" in the new encoder/decoder.
-	* Added full WiMAX support, in the new encoder/decoder.  The old
+	* Added RFC 6929 "extended attributes", via the new encoder/decoder.
+	* Added full WiMAX support, via the new encoder/decoder.  The old
 	  code could not handle some unusual corner cases.
