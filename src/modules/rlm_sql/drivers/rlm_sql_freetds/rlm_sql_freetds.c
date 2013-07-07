@@ -654,9 +654,9 @@ static int sql_socket_destructor(void *c)
 	if (conn->command) {
 		ct_cancel(NULL, conn->command, CS_CANCEL_ALL);
 		if (ct_cmd_drop(conn->command) != CS_SUCCEED) {
-			ERROR("rlm_sql_freetds: freeing command structure failed");
-		
-			return RLM_SQL_ERROR;
+			ERROR("rlm_sql_freetds: Freeing command structure failed");
+		} else {
+			conn->command = NULL;
 		}
 	}
 
@@ -673,15 +673,23 @@ static int sql_socket_destructor(void *c)
 			ct_close(conn->db, CS_FORCE_CLOSE);
 		}
 		
-		ct_con_drop(conn->db);
+		if (ct_con_drop(conn->db) != CS_SUCCEED) {
+			ERROR("rlm_sql_freetds: Freeing database connection failed");
+		} else {
+			conn->db = NULL;
+		}
 	}
 	
 	if (conn->context) {
 		ct_exit(conn->context, CS_UNUSED);
-		cs_ctx_drop(conn->context);
+		if (cs_ctx_drop(conn->context) != CS_SUCCEED) {
+			ERROR("rlm_sql_freetds: Freeing database context failed (we may leak memory)");
+		} else {
+			conn->context = NULL;
+		}
 	}
 	
-	return RLM_SQL_OK;
+	return 0;
 }
 
 /*************************************************************************
