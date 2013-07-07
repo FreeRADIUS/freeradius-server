@@ -91,7 +91,6 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 	err_handle = SQLSetEnvAttr(conn->env, SQL_ATTR_ODBC_VERSION, (void*)SQL_OV_ODBC3, 0);
 	if (sql_state(err_handle, handle, config)) {
 		ERROR("rlm_sql_unixodbc: Can't register ODBC version\n");
-		SQLFreeHandle(SQL_HANDLE_ENV, conn->env);
 		return -1;
 	}
 	
@@ -99,7 +98,6 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 	err_handle = SQLAllocHandle(SQL_HANDLE_DBC, conn->env, &conn->dbc);
 	if (sql_state(err_handle, handle, config)) {
 		ERROR("rlm_sql_unixodbc: Can't allocate connection handle\n");
-		SQLFreeHandle(SQL_HANDLE_ENV, conn->env);
 		return -1;
     	}
 
@@ -118,11 +116,6 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 	
 	if (sql_state(err_handle, handle, config)) {
 		ERROR("rlm_sql_unixodbc: Connection failed\n");
-		SQLFreeHandle(SQL_HANDLE_DBC, conn->dbc);
-		conn->dbc = NULL;
-		SQLFreeHandle(SQL_HANDLE_ENV, conn->env);
-		conn->env = NULL;
-		
 		return -1;
 	}
 
@@ -298,6 +291,8 @@ static sql_rcode_t sql_finish_select_query(rlm_sql_handle_t * handle, rlm_sql_co
 
 	sql_free_result(handle, config);
 	SQLFreeStmt(conn->statement, SQL_CLOSE);
+	conn->statement = NULL;
+	
 	return 0;
 }
 
@@ -312,6 +307,8 @@ static sql_rcode_t sql_finish_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_con
 	rlm_sql_unixodbc_conn_t *conn = handle->conn;
 
 	SQLFreeStmt(conn->statement, SQL_CLOSE);
+	conn->statement = NULL;
+	
 	return 0;
 }
 
