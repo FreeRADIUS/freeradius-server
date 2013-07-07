@@ -209,6 +209,7 @@ static sql_rcode_t sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *
 
 	if (ct_send(conn->command) != CS_SUCCEED) {
 		ERROR("rlm_sql_freetds: unable to send command (ct_send())");
+		
 		return RLM_SQL_ERROR;
 	}
 
@@ -620,7 +621,6 @@ static sql_rcode_t sql_finish_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_con
 	rlm_sql_freetds_conn_t *conn = handle->conn;
 
 	ct_cancel(NULL, conn->command, CS_CANCEL_ALL);
-
 	if (ct_cmd_drop(conn->command) != CS_SUCCEED) {
 		ERROR("rlm_sql_freetds: freeing command structure failed");
 		
@@ -653,7 +653,11 @@ static int sql_socket_destructor(void *c)
 
 	if (conn->command) {
 		ct_cancel(NULL, conn->command, CS_CANCEL_ALL);
-		ct_cmd_drop(conn->command);
+		if (ct_cmd_drop(conn->command) != CS_SUCCEED) {
+			ERROR("rlm_sql_freetds: freeing command structure failed");
+		
+			return RLM_SQL_ERROR;
+		}
 	}
 
 	if (conn->db) {
@@ -661,7 +665,7 @@ static int sql_socket_destructor(void *c)
 		 *	We first try gracefully closing the connection (which informs the server)
 		 *	Then if that fails we force the connection closure.
 		 *
-		 *	Sybase docs says this usually fails because of pending results, but we 
+		 *	Sybase docs says this may fail because of pending results, but we 
 		 *	should not have any pending results at this point, so something else must
 		 *	of gone wrong.
 		 */
@@ -801,17 +805,11 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 	error:
 	if (conn->context) {
 		char const *error;
-		
-		ct_exit(conn->context, CS_FORCE_EXIT);
-		cs_ctx_drop(conn->context);
-		
 		error = sql_error(handle, config);
 		if (error) {
 			ERROR("rlm_sql_freetds: %s", error);
 		}
 	}
-	
-	conn->established = true;
 
 	return RLM_SQL_ERROR;
 }
