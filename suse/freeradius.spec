@@ -157,8 +157,6 @@ make install R=$RPM_BUILD_ROOT
 RADDB=$RPM_BUILD_ROOT%{_sysconfdir}/raddb
 perl -i -pe 's/^#user =.*$/user = radiusd/'   $RADDB/radiusd.conf
 perl -i -pe 's/^#group =.*$/group = radiusd/' $RADDB/radiusd.conf
-perl -i -pe 's/^#user =.*$/user = radiusd/'   $RADDB/radrelay.conf
-perl -i -pe 's/^#group =.*$/group = radiusd/' $RADDB/radrelay.conf
 /sbin/ldconfig -n $RPM_BUILD_ROOT%{_libdir}/freeradius
 # logs
 touch $RPM_BUILD_ROOT%{_localstatedir}/log/radius/radutmp
@@ -171,9 +169,6 @@ install -m 644 suse/radiusd-logrotate $RPM_BUILD_ROOT%{_sysconfdir}/logrotate.d/
 install -d -m 755 $RPM_BUILD_ROOT%{_sysconfdir}/init.d
 install    -m 744 suse/rcradiusd $RPM_BUILD_ROOT%{_sysconfdir}/init.d/freeradius
 ln -sf ../..%{_sysconfdir}/init.d/freeradius $RPM_BUILD_ROOT%{_sbindir}/rcfreeradius
-cp $RPM_BUILD_ROOT%{_sbindir}/radiusd $RPM_BUILD_ROOT%{_sbindir}/radrelay
-install    -m 744 suse/rcradius-relayd $RPM_BUILD_ROOT%{_sysconfdir}/init.d/freeradius-relay
-ln -sf ../../etc/init.d/freeradius-relay $RPM_BUILD_ROOT%{_sbindir}/rcfreeradius-relay
 install -d %{buildroot}%{_sysconfdir}/tmpfiles.d
 install -m 0644 %{SOURCE104} %{buildroot}%{_sysconfdir}/tmpfiles.d/radiusd.conf
 # remove unneeded stuff
@@ -217,10 +212,8 @@ rm -rf $RPM_BUILD_ROOT
 # doc
 %doc suse/README.SuSE
 %doc doc/* LICENSE COPYRIGHT CREDITS README.rst
-%doc doc/examples/*
 # SuSE
 %{_sysconfdir}/init.d/freeradius
-%{_sysconfdir}/init.d/freeradius-relay
 %config %{_sysconfdir}/pam.d/radiusd
 %config %{_sysconfdir}/logrotate.d/freeradius-server
 %config %{_sysconfdir}/tmpfiles.d/radiusd.conf
