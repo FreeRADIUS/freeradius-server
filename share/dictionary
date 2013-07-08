@@ -154,6 +154,7 @@ $INCLUDE dictionary.cisco.bbsm
 $INCLUDE dictionary.clavister
 $INCLUDE dictionary.colubris
 $INCLUDE dictionary.cosine
+$INCLUDE dictionary.dante
 $INCLUDE dictionary.dlink
 $INCLUDE dictionary.digium
 $INCLUDE dictionary.eltex
