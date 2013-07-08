@@ -1674,7 +1674,6 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 	case XLAT_MODULE:
 		rad_assert(node->child != NULL);
 		if (xlat_process(&child, request, node->child, node->xlat->escape, node->xlat->instance) == 0) {
-			rad_assert(child == NULL);
 			return NULL;
 		}
 
