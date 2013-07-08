@@ -12,6 +12,11 @@ sqlippool {
 	#  If you have multiple sql instances, such as "sql sql1 {...}",
 	#  use the *instance* name here: sql1.
 	sql_instance_name = "sql"
+	
+	#  This is duplicative of info available in the SQL module, but
+	#  we have to list it here as we do not yet support nested 
+	#  reference expansions.
+	dialect = "mysql"
 
 	# SQL table to use for ippool range and lease info
 	ippool_table = "radippool"
@@ -56,8 +61,5 @@ sqlippool {
 		nopool = "No Pool-Name defined (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} user %{User-Name})"
 	}
 	
-	#  Use the same database as configured in the "sql" module, "database"
-	#  configuration item.
-	#
-	$INCLUDE ${modconfdir}/sql/ippool/${modules.${sql-instance-name}.dialect}/queries.conf
+	$INCLUDE ${modconfdir}/sql/ippool/${dialect}/queries.conf
 }
