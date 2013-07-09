@@ -1483,8 +1483,6 @@ edit radiusd.conf::
     port = 0
     hostname_lookups = no
     allow_core_dumps = no
-    regular_expressions	= yes
-    extended_expressions	= yes
     log_stripped_names = no
     log_auth = no
     log_auth_badpass = no
