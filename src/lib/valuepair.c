@@ -502,6 +502,88 @@ void pairreplace(VALUE_PAIR **first, VALUE_PAIR *replace)
 	*prev = replace;
 }
 
+static void pairsort_split(VALUE_PAIR *source, VALUE_PAIR **front, VALUE_PAIR **back)
+{
+	VALUE_PAIR *fast;
+	VALUE_PAIR *slow;
+	
+	/*
+	 *	Stopping condition - no more elements left to split
+	 */
+	if (!source || !source->next) {
+    		*front = source;
+    		*back = NULL;
+  	
+  		return;
+  	}
+  	
+	/*
+	 *	Fast advances twice as fast as slow, so when it gets to the end,
+	 *	slow will point to the middle of the linked list.
+	 */
+	slow = source;
+	fast = source->next;
+	
+	while (fast) {
+		fast = fast->next;
+		if (fast) {
+			slow = slow->next;
+			fast = fast->next;
+		}
+	}
+
+	*front = source;
+	*back = slow->next;
+	slow->next = NULL;
+}
+
+static VALUE_PAIR *pairsort_merge(VALUE_PAIR *a, VALUE_PAIR *b, bool with_tag)
+{
+	VALUE_PAIR *result = NULL;
+ 
+	if (!a) return b;
+	if (!b) return a;
+ 	
+ 	/*
+ 	 *	Compare the DICT_ATTRs and tags
+ 	 */
+	if ((with_tag && (a->tag < b->tag)) || (a->da <= b->da)) {
+		result = a;
+     		result->next = pairsort_merge(a->next, b, with_tag);
+  	} else {
+		result = b;
+		result->next = pairsort_merge(a, b->next, with_tag);
+	}
+	
+	return result;
+}
+
+/** Sort a linked list of VALUE_PAIRs using merge sort
+ *
+ * @param vps List of VALUE_PAIRs to sort.
+ */
+void pairsort(VALUE_PAIR **vps, bool with_tag)
+{
+	VALUE_PAIR *head = *vps;
+	VALUE_PAIR *a;
+	VALUE_PAIR *b;
+ 
+	/*
+	 *	If there's 0-1 elements it must already be sorted.
+	 */
+	if (!head || !head->next) {
+		return;
+	}
+ 
+	pairsort_split(head, &a, &b);	/* Split into sublists */
+	pairsort(&a, with_tag);		/* Traverse left */
+	pairsort(&b, with_tag);		/* Traverse right */
+ 
+  	/*
+  	 *	merge the two sorted lists together
+  	 */
+  	*vps = pairsort_merge(a, b, with_tag);
+}
 
 /** Copy a single valuepair
  *
