@@ -381,6 +381,8 @@ int main(int argc, char **argv)
 	char *commands[MAX_COMMANDS];
 	int num_commands = -1;
 
+	talloc_set_log_stderr();
+
 	outputfp = stdout;	/* stdout is not a constant value... */
 
 	if ((progname = strrchr(argv[0], FR_DIR_SEP)) == NULL)

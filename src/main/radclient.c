@@ -926,6 +926,8 @@ int main(int argc, char **argv)
 	int force_af = AF_UNSPEC;
 
 	fr_debug_flag = 0;
+	
+	talloc_set_log_stderr();
 
 	filename_tree = rbtree_create(filename_cmp, NULL, 0);
 	if (!filename_tree) {

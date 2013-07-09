@@ -423,6 +423,8 @@ int main(int argc, char *argv[])
 	fr_debug_flag = 2;
 	log_dst = stdout;
 
+	talloc_set_log_stderr();
+	
 	/*
 	 *  Get options
 	 */
