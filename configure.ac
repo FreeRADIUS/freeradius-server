@@ -745,19 +745,66 @@ AC_CHECK_HEADERS(net/if.h, [], [],
 #  endif
 ])
 
+dnl #
+dnl #  Check for regular expression support
+dnl #
+dnl extra argument: --with-pcre-lib-dir
+pcre_lib_dir=
+AC_ARG_WITH(rlm-ldap-lib-dir,
+[  --with-pcre-lib-dir=DIR       directory for PCRE library files []],
+[ case "$withval" in
+    no)
+	AC_MSG_ERROR(Need rlm-pcre-lib-dir)
+	;;
+    yes)
+	;;
+    *)
+	pcre_lib_dir="$withval"
+	;;
+  esac ]
+)
+
+dnl extra argument: --with-pcre-include--dir
+pcre_include_dir=
+AC_ARG_WITH(rlm-pcre-include-dir,
+[  --with-pcre-include-dir=DIR   directory for PCRE include files []],
+[ case "$withval" in
+    no)
+	AC_MSG_ERROR(Need rlm-pcre-include-dir)
+	;;
+    yes)
+	;;
+    *)
+	pcre_include_dir="$withval"
+	;;
+  esac ]
+)
+
 REGEX=no
-AC_CHECK_HEADER(pcreposix.h, AC_DEFINE(HAVE_PCREPOSIX_H, [], [define this if we have the <pcreposix.h> header file]))
+REGEX_EXTENDED=no
+REGEX_PCRE=no
+
+dnl #
+dnl #  First look for PCRE
+dnl #
+smart_try_dir=$pcre_include_dir
+FR_SMART_CHECK_INCLUDE(pcreposix.h)
 if test "x$ac_cv_header_pcreposix_h" = "xyes"; then
-  AC_DEFINE(HAVE_REGEX_H, [], [define if we have any regex])
+  AC_DEFINE(HAVE_REGEX_H, [1], [define if we have any regex])
+  AC_DEFINE(HAVE_PCREPOSIX_H, [1], [define this if we have the <pcreposix.h> header file])
+  REGEX=yes
   REGEX_EXTENDED=yes
   REGEX_PCRE=yes
-  REGEX=yes
   LIBS="$LIBS -lpcreposix"
+  
+dnl #
+dnl #  Then fallback to POSIX regular expressions
+dnl #
 else
-  AC_CHECK_HEADER(regex.h, AC_DEFINE(HAVE_REGEX_H, [], [define this if we have the <regex.h> header file]))
+  smart_try_dir=
+  FR_SMART_CHECK_INCLUDE(regex.h)
   if test "x$ac_cv_header_regex_h" = "xyes"; then
-    REGEX_EXTENDED=no
-    REGEX_PCRE=no
+    AC_DEFINE(HAVE_REGEX_H, [1], [define if we have any regex])
     REGEX=yes
     AC_EGREP_CPP(yes,
       [
@@ -766,7 +813,7 @@ else
         yes
         #endif
        ],
-    [AC_DEFINE(HAVE_REG_EXTENDED, [], [define this if we have REG_EXTENDED (from <regex.h>)]) REGEX_EXTENDED=yes]
+    [AC_DEFINE(HAVE_REG_EXTENDED, [1], [define this if we have REG_EXTENDED (from <regex.h>)]) REGEX_EXTENDED=yes]
     )
   fi
 fi

@@ -233,7 +233,7 @@ if test "x$smart_include" = "x"; then
 		  #include <$1>],
 		 [int a = 1;],
 		 [
-		   smart_include=" "
+		   smart_include=
 		   AC_MSG_RESULT(yes)
 		   break
 		 ],

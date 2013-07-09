@@ -224,7 +224,7 @@
 /* Define to 1 if you have the <readline/readline.h> header file. */
 #undef HAVE_READLINE_READLINE_H
 
-/* define this if we have the <regex.h> header file */
+/* define if we have any regex */
 #undef HAVE_REGEX_H
 
 /* define this if we have REG_EXTENDED (from <regex.h>) */

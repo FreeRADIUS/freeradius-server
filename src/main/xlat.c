@@ -1237,12 +1237,12 @@ size_t xlat_sprint(char *buffer, size_t bufsize, xlat_exp_t const *node)
 			}
 			*(p++) = '}';
 			break;
-
+#ifdef HAVE_REGEX_H
 		case XLAT_REGEX:
 			snprintf(p, end - p, "%%{%u}", node->num);
 			p += strlen(p);
 			break;
-
+#endif
 		case XLAT_VIRTUAL:
 			*(p++) = '%';
 			*(p++) = '{';
@@ -1279,6 +1279,7 @@ size_t xlat_sprint(char *buffer, size_t bufsize, xlat_exp_t const *node)
 			*(p++) = '}';
 			break;
 		}
+
 
 		if (p == end) break;
 
