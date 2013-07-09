@@ -484,6 +484,7 @@ VALUE_PAIR	*pairnext(vp_cursor_t *cursor);
 VALUE_PAIR	*pairlast(vp_cursor_t *cursor);
 VALUE_PAIR	*paircurrent(vp_cursor_t *cursor);
 void		pairinsert(vp_cursor_t *cursor, VALUE_PAIR *vp);
+VALUE_PAIR	*pairremove(vp_cursor_t *cursor);
 void		pairdelete(VALUE_PAIR **, unsigned int attr, unsigned int vendor, int8_t tag);
 void		pairadd(VALUE_PAIR **, VALUE_PAIR *);
 void		pairreplace(VALUE_PAIR **first, VALUE_PAIR *add);

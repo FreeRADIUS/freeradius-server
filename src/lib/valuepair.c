@@ -357,6 +357,35 @@ void pairinsert(vp_cursor_t *cursor, VALUE_PAIR *add)
 	cursor->last->next = add;
 }
 
+/** Remove the current pair
+ *
+ * @todo this is really inefficient and should be fixed...
+ *
+ * @param cursor to remove the current pair from.
+ * @return NULL on error, else the VALUE_PAIR we just removed.
+ */
+VALUE_PAIR *pairremove(vp_cursor_t *cursor)
+{
+	VALUE_PAIR *vp, *last;
+	
+	vp = paircurrent(cursor);
+	if (!vp) {
+		return NULL;
+	}
+	
+	last = *cursor->first;
+	while (last && (last->next != vp)) {
+		last = last->next;
+	}
+	
+	pairnext(cursor);	/* Advance the cursor past the one were about to delete */
+	
+	last->next = vp->next;	/* re-link the list */
+	vp->next = NULL;
+	
+	return vp;
+}
+
 /** Delete matching pairs
  *
  * Delete matching pairs from the attribute list.
