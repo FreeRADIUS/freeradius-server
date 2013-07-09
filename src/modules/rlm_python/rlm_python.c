@@ -342,7 +342,7 @@ static int mod_populate_vptuple(PyObject *pPair, VALUE_PAIR *vp)
 	
 	PyTuple_SET_ITEM(pPair, 0, pStr);
 	
-	vp_prints_value(buf, sizeof(buf), vp, 1);
+	vp_prints_value(buf, sizeof(buf), vp, '"');
 	
 	if ((pStr = PyString_FromString(buf)) == NULL)
 		goto failed;

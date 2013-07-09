@@ -338,8 +338,7 @@ typedef struct radius_packet {
 int		fr_utf8_char(uint8_t const *str);
 size_t		fr_print_string(char const *in, size_t inlen,
 				 char *out, size_t outlen);
-int     	vp_prints_value(char *out, size_t outlen,
-				VALUE_PAIR const *vp, int delimitst);
+size_t   	vp_prints_value(char *out, size_t outlen, VALUE_PAIR const *vp, int8_t quote);
 char		*vp_aprinttype(TALLOC_CTX *ctx, PW_TYPE type);
 char     	*vp_aprint(TALLOC_CTX *ctx, VALUE_PAIR const *vp);
 int     	vp_prints_value_json(char *out, size_t outlen,
@@ -566,7 +565,7 @@ int fr_sockaddr2ipaddr(struct sockaddr_storage const *sa, socklen_t salen,
 #ifdef WITH_ASCEND_BINARY
 /* filters.c */
 int		ascend_parse_filter(VALUE_PAIR *pair);
-void		print_abinary(VALUE_PAIR const *vp, char *buffer, size_t len, int delimitst);
+void		print_abinary(VALUE_PAIR const *vp, char *buffer, size_t len, int8_t quote);
 #endif /*WITH_ASCEND_BINARY*/
 
 /* random numbers in isaac.c */

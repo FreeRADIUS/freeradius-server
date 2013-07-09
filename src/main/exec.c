@@ -175,7 +175,7 @@ pid_t radius_start_program(char const *cmd, REQUEST *request,
 			}
 
 			n = strlen(buffer);
-			vp_prints_value(buffer+n, sizeof(buffer) - n, vp, shell_escape);
+			vp_prints_value(buffer+n, sizeof(buffer) - n, vp, shell_escape ? '"' : 0);
 
 			envp[envlen++] = strdup(buffer);
 

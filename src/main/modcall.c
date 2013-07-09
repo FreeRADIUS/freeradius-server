@@ -564,7 +564,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 					if (fr_debug_flag >= 2) {
 						char buffer[1024];
 
-						vp_prints_value(buffer, sizeof(buffer), vp, 1);
+						vp_prints_value(buffer, sizeof(buffer), vp, '"');
 						RDEBUG2("%.*s #  Foreach-Variable-%d = %s", stack.pointer + 1,
 							modcall_spaces, depth, buffer);
 					}

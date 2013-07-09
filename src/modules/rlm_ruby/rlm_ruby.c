@@ -236,8 +236,7 @@ static rlm_rcode_t do_ruby(REQUEST *request, unsigned long func,
 				strlcpy(buf, vp->da->name, sizeof(buf));
 			}
 			rbString1 = rb_str_new2(buf);
-			/* The value. Use delimiter - don't know what that means */
-			vp_prints_value(buf, sizeof (buf), vp, 1);
+			vp_prints_value(buf, sizeof (buf), vp, '"');
 			rbString2 = rb_str_new2(buf);
 
 			rb_ary_push(tmp, rbString1);

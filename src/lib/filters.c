@@ -1122,7 +1122,7 @@ ascend_parse_filter(VALUE_PAIR *pair)
  *	Note we don't bother checking 'len' after the snprintf's.
  *	This function should ONLY be called with a large (~1k) buffer.
  */
-void print_abinary(VALUE_PAIR const *vp, char *buffer, size_t len, int delimitst)
+void print_abinary(VALUE_PAIR const *vp, char *buffer, size_t len, int8_t quote)
 {
   size_t 		i;
   char			*p;
@@ -1148,8 +1148,8 @@ void print_abinary(VALUE_PAIR const *vp, char *buffer, size_t len, int delimitst
 	  return;
   }
 
-  if (delimitst) {
-  	*(p++) = '"';
+  if (quote > 0) {
+  	*(p++) = (char) quote;
   	len -= 3;			/* account for leading & trailing quotes */
   }
 
@@ -1295,7 +1295,7 @@ void print_abinary(VALUE_PAIR const *vp, char *buffer, size_t len, int delimitst
     }
   }
 
-  if (delimitst) *(p++) = '"';
+  if (quote > 0) *(p++) = (char) quote;
   *p = '\0';
 }
 #endif

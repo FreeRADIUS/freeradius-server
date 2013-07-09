@@ -1008,7 +1008,7 @@ int radius_map2request(REQUEST *request, value_pair_map_t const *map,
 {
 	vp_cursor_t cursor;
 	VALUE_PAIR **list, *vp, *head;
-	char buffer[MAX_STRING_LEN];
+	char buffer[1024];
 	
 	if (radius_request(&request, map->dst->request) < 0) {
 		RWDEBUG("Mapping \"%s\" -> \"%s\" "
@@ -1033,13 +1033,45 @@ int radius_map2request(REQUEST *request, value_pair_map_t const *map,
 	}
 
 	if (debug_flag) for (vp = paircursor(&cursor, &head); vp; vp = pairnext(&cursor)) {
-		 rad_assert(vp->op == map->op);
+		char *value;
+		rad_assert(vp->op == map->op);
 
-		 vp_prints_value(buffer, sizeof(buffer), vp, 1);
+		switch (map->src->type) {
+			/*
+			 *	Just print the value being assigned
+			 */
+			default:
 
-		 RDEBUG("\t\t%s %s %s", map->dst->name,
-			fr_int2str(fr_tokens, vp->op, "?unknown?"),
-			buffer);
+			case VPT_TYPE_LITERAL:
+				vp_prints_value(buffer, sizeof(buffer), vp, '\'');
+				value = buffer;
+				break;
+			case VPT_TYPE_XLAT:
+				vp_prints_value(buffer, sizeof(buffer), vp, '"');
+				value = buffer;
+				break;
+			case VPT_TYPE_DATA:
+				vp_prints_value(buffer, sizeof(buffer), vp, 0);
+				value = buffer;
+				break;
+			/*
+			 *	Just printing the value doesn't make sense, but we still
+			 *	want to know what it was...
+			 */
+			case VPT_TYPE_LIST:
+				vp_prints_value(buffer, sizeof(buffer), vp, '\'');
+				value = talloc_asprintf(request, "&%s%s -> %s", map->src->name, vp->da->name, buffer);
+				break;
+			case VPT_TYPE_ATTR:
+				vp_prints_value(buffer, sizeof(buffer), vp, '\'');
+				value = talloc_asprintf(request, "&%s -> %s", map->src->name, buffer);
+				break;
+		}
+
+
+		RDEBUG("\t\t%s %s %s", map->dst->name, fr_int2str(fr_tokens, vp->op, "?unknown?"), value);
+		
+		if (value != buffer) talloc_free(value);
 	}
 	
 	/*

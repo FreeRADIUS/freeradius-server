@@ -199,11 +199,16 @@ size_t fr_print_string(char const *in, size_t inlen, char *out, size_t outlen)
 }
 
 
-/*
- *  Print one value into a string.
- *  delimitst will define if strings and dates will be delimited by '"'
+/** Print the value of an attribute to a string
+ *  
+ * @param[out] out Where to write the string.
+ * @param[in] outlen Size of outlen.
+ * @param[in] vp to print.
+ * @param[in] quote Char to add before and after printed value, if 0 no char will be added, if < 0 raw string will be
+ *	added.
+ * @return length of data written to out or 0 on error.
  */
-int vp_prints_value(char * out, size_t outlen, VALUE_PAIR const *vp, int delimitst)
+size_t vp_prints_value(char *out, size_t outlen, VALUE_PAIR const *vp, int8_t quote)
 {
 	DICT_VALUE  *v;
 	char	buf[1024];
@@ -217,28 +222,26 @@ int vp_prints_value(char * out, size_t outlen, VALUE_PAIR const *vp, int delimit
 
 	switch (vp->da->type) {
 		case PW_TYPE_STRING:
-			if ((delimitst == 1) && vp->da->flags.has_tag) {
+			if ((quote > 0) && vp->da->flags.has_tag) {
 				/* Tagged attribute: print delimter and ignore tag */
-				buf[0] = '"';
-				fr_print_string(vp->vp_strvalue,
-						vp->length, buf + 1,
-						sizeof(buf) - 2);
-				strcat(buf, "\"");
-			} else if (delimitst == 1) {
+				buf[0] = (char) quote;
+				len = fr_print_string(vp->vp_strvalue, vp->length, buf + 1, sizeof(buf) - 2);
+				buf[len + 1] = (char) quote;
+				buf[len + 2] = '\0';
+			} else if (quote > 0) {
 				/* Non-tagged attribute: print delimter */
-				buf[0] = '"';
-				fr_print_string(vp->vp_strvalue,
-						 vp->length, buf + 1, sizeof(buf) - 2);
-				strcat(buf, "\"");
+				buf[0] = (char) quote;
+				len = fr_print_string(vp->vp_strvalue, vp->length, buf + 1, sizeof(buf) - 2);
+				buf[len + 1] = (char) quote;
+				buf[len + 2] = '\0';
 
-			} else if (delimitst < 0) { /* xlat.c */
+			} else if (quote < 0) { /* xlat.c */
 				strlcpy(out, vp->vp_strvalue, outlen);
 				return strlen(out);
 
 			} else {
 				/* Non-tagged attribute: no delimiter */
-				fr_print_string(vp->vp_strvalue,
-						 vp->length, buf, sizeof(buf));
+				fr_print_string(vp->vp_strvalue, vp->length, buf, sizeof(buf));
 			}
 			a = buf;
 			break;
@@ -271,12 +274,15 @@ int vp_prints_value(char * out, size_t outlen, VALUE_PAIR const *vp, int delimit
 			break;
 		case PW_TYPE_DATE:
 			t = vp->vp_date;
-			if (delimitst == 1) {
-			  len = strftime(buf, sizeof(buf), "\"%b %e %Y %H:%M:%S %Z\"",
-					 localtime_r(&t, &s_tm));
+			if (quote > 0) {
+				len = strftime(buf, sizeof(buf) - 1, "%%%b %e %Y %H:%M:%S %Z%%",
+					       localtime_r(&t, &s_tm));
+				buf[0] = (char) quote;
+				buf[len - 1] = (char) quote;
+				buf[len] = '\0';
 			} else {
-			  len = strftime(buf, sizeof(buf), "%b %e %Y %H:%M:%S %Z",
-					 localtime_r(&t, &s_tm));
+				len = strftime(buf, sizeof(buf), "%b %e %Y %H:%M:%S %Z",
+					       localtime_r(&t, &s_tm));
 			}
 			if (len > 0) a = buf;
 			break;
@@ -291,7 +297,7 @@ int vp_prints_value(char * out, size_t outlen, VALUE_PAIR const *vp, int delimit
 		case PW_TYPE_ABINARY:
 #ifdef WITH_ASCEND_BINARY
 			a = buf;
-			print_abinary(vp, buf, sizeof(buf), delimitst);
+			print_abinary(vp, buf, sizeof(buf), quote);
 			break;
 #else
 		  /* FALL THROUGH */
@@ -797,12 +803,12 @@ int vp_prints(char *out, size_t outlen, VALUE_PAIR const *vp)
 			 vp->da->name, vp->tag, token);
 
 		len = strlen(out);
-		vp_prints_value(out + len, outlen - len, vp, 1);
+		vp_prints_value(out + len, outlen - len, vp, '\'');
 
 	} else {
 		snprintf(out, outlen, "%s %s ", vp->da->name, token);
 		len = strlen(out);
-		vp_prints_value(out + len, outlen - len, vp, 1);
+		vp_prints_value(out + len, outlen - len, vp, '\'');
 
 	}
 

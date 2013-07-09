@@ -527,7 +527,7 @@ static void perl_store_vps(TALLOC_CTX *ctx, VALUE_PAIR *vps, HV *rad_hv)
 			for (vp = pairfirst(&cursor);
 			     vp;
 			     vp = pairnext(&cursor)) {
-				len = vp_prints_value(buffer, sizeof(buffer), vp, false);
+				len = vp_prints_value(buffer, sizeof(buffer), vp, 0);
 				av_push(av, newSVpv(buffer, len));
 			}
 			(void)hv_store(rad_hv, name, strlen(name), newRV_noinc((SV *)av), 0);
@@ -537,7 +537,7 @@ static void perl_store_vps(TALLOC_CTX *ctx, VALUE_PAIR *vps, HV *rad_hv)
 			 *	added to the hash.
 			 */
 		} else {
-			len = vp_prints_value(buffer, sizeof(buffer), sublist, false);
+			len = vp_prints_value(buffer, sizeof(buffer), sublist, 0);
 			(void)hv_store(rad_hv, name, strlen(name), newSVpv(buffer, len), 0);
 		}
 
