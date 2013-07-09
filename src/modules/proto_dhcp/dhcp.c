@@ -553,6 +553,7 @@ static int fr_dhcp_attr2vp(RADIUS_PACKET *packet, VALUE_PAIR *vp, uint8_t const 
 
 	case PW_TYPE_STRING:
 		vp->vp_strvalue = q = talloc_array(vp, char, alen + 1);
+		vp->type = VT_DATA;
 		memcpy(q, p , alen);
 		q[alen] = '\0';
 		break;
@@ -767,6 +768,7 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 
 		case PW_TYPE_STRING:
 			vp->vp_strvalue = q = talloc_array(vp, char, dhcp_header_sizes[i] + 1);
+			vp->type = VT_DATA;
 			memcpy(q, p, dhcp_header_sizes[i]);
 			q[dhcp_header_sizes[i]] = '\0';
 			vp->length = strlen(vp->vp_strvalue);
@@ -1286,6 +1288,7 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 
 			case PW_TYPE_STRING:
 				vp->vp_strvalue = q = talloc_array(vp, char, dhcp_header_sizes[i]);
+				vp->type = VT_DATA;
 				memcpy(q, p, dhcp_header_sizes[i]);
 				q[dhcp_header_sizes[i]] = '\0';
 				vp->length = strlen(vp->vp_strvalue);

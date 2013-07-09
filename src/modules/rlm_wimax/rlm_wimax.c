@@ -72,6 +72,7 @@ static rlm_rcode_t mod_authorize(UNUSED void *instance, UNUSED REQUEST *request)
 		memcpy(buffer, vp->vp_strvalue, 6);
 		vp->length = (5*3)+2;
 		vp->vp_strvalue = p = talloc_array(vp, char, vp->length + 1);
+		vp->type = VT_DATA;
 
 		/*
 		 *	RFC 3580 Section 3.20 says this is the preferred

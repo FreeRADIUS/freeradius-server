@@ -212,6 +212,7 @@ static int mod_authenticate(void *instance, eap_handler_t *handler)
 		}
 		vp->length = eap_ds->response->type.length;
 		vp->vp_strvalue = p = talloc_array(vp, char, vp->length + 1);
+		vp->type = VT_DATA;
 		memcpy(p, eap_ds->response->type.data, vp->length);
 		p[vp->length] = 0;
 

@@ -350,6 +350,7 @@ leap_packet_t *eapleap_stage6(leap_packet_t *packet, REQUEST *request,
 	vp->length = 17 + i;
 //	talloc_free(vp->vp_strvalue);
 	vp->vp_strvalue = q;
+	vp->type = VT_DATA;
 
 	return reply;
 }

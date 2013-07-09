@@ -248,6 +248,7 @@ static int eapsoh_mstlv(REQUEST *request, uint8_t const *p, unsigned int data_le
 				if (!vp) return 0;
 
 				vp->vp_strvalue = q = talloc_array(vp, char, t);
+				vp->type = VT_DATA;
 
 				memcpy(q, p, t);
 				q[t] = 0;

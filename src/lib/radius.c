@@ -3797,7 +3797,7 @@ static ssize_t data2vp(RADIUS_PACKET *packet,
 		fr_strerror_printf("Internal sanity check %d", __LINE__);
 		return -1;
 	}
-
+	vp->type = VT_DATA;
 	*pvp = vp;
 
 	return attrlen;

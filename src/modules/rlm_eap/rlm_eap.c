@@ -695,6 +695,7 @@ static rlm_rcode_t mod_post_proxy(void *inst, REQUEST *request)
 			    request->packet->vector);
 //	talloc_free(vp->vp_strvalue);
 	vp->vp_strvalue = p;
+	vp->type = VT_DATA;
 
 	return RLM_MODULE_UPDATED;
 }

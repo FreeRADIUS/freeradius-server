@@ -513,6 +513,7 @@ int vqp_decode(RADIUS_PACKET *packet)
 		case PW_TYPE_STRING:
 			vp->length = length;
 			vp->vp_strvalue = p = talloc_array(vp, char, vp->length + 1);
+			vp->type = VT_DATA;
 			memcpy(p, ptr, vp->length);
 			p[vp->length] = '\0';
 			break;

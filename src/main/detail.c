@@ -562,6 +562,7 @@ int detail_recv(rad_listen_t *listener)
 			vp = paircreate(data, PW_PACKET_ORIGINAL_TIMESTAMP, 0);
 			if (vp) {
 				vp->vp_date = (uint32_t) data->timestamp;
+				vp->type = VT_DATA;
 		    		pairinsert(&cursor, vp);
 			}
 			continue;

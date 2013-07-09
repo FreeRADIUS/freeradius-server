@@ -1939,6 +1939,7 @@ static VALUE_PAIR *pairmake_any(TALLOC_CTX *ctx,
 	}
 
 	vp->vp_octets = data;
+	vp->type = VT_DATA;
 	return vp;
 }
 
@@ -2821,6 +2822,7 @@ void pairstrcpy(VALUE_PAIR *vp, char const *src)
 	talloc_free(q);
 
 	vp->vp_strvalue = p;
+	vp->type = VT_DATA;
 	vp->length = strlen(vp->vp_strvalue);
 }
 
@@ -2847,6 +2849,7 @@ void pairsprintf(VALUE_PAIR *vp, char const *fmt, ...)
 	talloc_free(q);
 
 	vp->vp_strvalue = p;
+	vp->type = VT_DATA;
 
 	/*
 	 *	vsnprintf returns random things on different platforms

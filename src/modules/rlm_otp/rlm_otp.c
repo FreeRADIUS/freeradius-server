@@ -279,6 +279,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 		vp->vp_strvalue = expanded;
 		vp->length = len;
 		vp->op = T_OP_SET;
+		vp->type = VT_DATA;
 		
 		pairadd(&request->reply->vps, vp);
 	}

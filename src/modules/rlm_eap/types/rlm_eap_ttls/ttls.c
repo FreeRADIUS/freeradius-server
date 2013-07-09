@@ -352,6 +352,7 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, REQUEST *fake, SSL *ssl,
 			 */
 		case PW_TYPE_STRING:
 			vp->vp_strvalue = p = talloc_array(vp, char, size + 1);
+			vp->type = VT_DATA;
 			memcpy(p, data, size);
 			p[size] = '\0';
 			vp->length = strlen(p);
