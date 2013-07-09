@@ -873,7 +873,7 @@ VALUE_PAIR *paircopy2(TALLOC_CTX *ctx, VALUE_PAIR *from,
  *
  * @param[in] ctx for new VALUE_PAIRs to be allocated in.
  * @param[in] from whence to copy VALUE_PAIRs.
- * @rturn the head of the new VALUE_PAIR list or NULL on error.
+ * @return the head of the new VALUE_PAIR list or NULL on error.
  */
 VALUE_PAIR *paircopy(TALLOC_CTX *ctx, VALUE_PAIR *from)
 {
