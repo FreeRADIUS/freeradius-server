@@ -1056,21 +1056,56 @@ int radius_map2request(REQUEST *request, value_pair_map_t const *map,
  * @param[in] ctx unused
  * @return the newly allocated VALUE_PAIR
  */
-VALUE_PAIR *radius_map2vp(REQUEST *request, value_pair_map_t const *map,
-			  UNUSED void *ctx)
+VALUE_PAIR *radius_map2vp(REQUEST *request, value_pair_map_t const *map, UNUSED void *ctx)
 {
 	VALUE_PAIR *vp, *found, **from = NULL;
+	DICT_ATTR const *da;
 	REQUEST *context;
 
 	rad_assert(request != NULL);
 	rad_assert(map != NULL);
-	rad_assert(map->dst->type == VPT_TYPE_ATTR);
-	rad_assert(map->dst->da != NULL);
+	
+	/*
+	 *	List to list copy, this is a special case because we don't need
+	 *	to allocate any attributes, just copy the current list, and change
+	 *	the op.
+	 */
+	if ((map->dst->type == VPT_TYPE_LIST) && (map->src->type == VPT_TYPE_LIST)) {
+		vp_cursor_t cursor;
+		VALUE_PAIR *copy;
+		
+		from = radius_list(request, map->src->list);
+		if (!from) return NULL;
+		
+		copy = paircopy(request, *from);
+		if (!copy) return NULL;
+		
+		for (vp = paircursor(&cursor, &copy);
+		     vp;
+		     vp = pairnext(&cursor)) {
+		 	vp->op = T_OP_ADD;   
+		} 
+		
+		return copy;
+	}
+	
+	/*
+	 *	Deal with all non-list copying operations.
+	 */
+	da = map->dst->da ? map->dst->da : map->src->da;
+	
+	switch (map->src->type) {
+	case VPT_TYPE_XLAT:
+	case VPT_TYPE_LITERAL:
+	case VPT_TYPE_DATA:
+		vp = pairalloc(request, da);
+		if (!vp) return NULL;
+		vp->op = map->op;
+		break;
+	default:
+		break;
+	}
 
-	vp = pairalloc(request, map->dst->da);
-	if (!vp) return NULL;
-
-	vp->op = map->op;
 
 	/*
 	 *	And parse the RHS
@@ -1100,7 +1135,8 @@ VALUE_PAIR *radius_map2vp(REQUEST *request, value_pair_map_t const *map,
 		break;
 
 	case VPT_TYPE_ATTR:
-		rad_assert((map->src->da->type == map->dst->da->type) ||
+		rad_assert(!map->dst->da ||
+			   (map->src->da->type == map->dst->da->type) ||
 			   (map->src->da->type == PW_TYPE_OCTETS) ||
 			   (map->dst->da->type == PW_TYPE_OCTETS));
 		context = request;
@@ -1120,8 +1156,7 @@ VALUE_PAIR *radius_map2vp(REQUEST *request, value_pair_map_t const *map,
 		 */
 		found = pairfind(*from, map->src->da->attr, map->src->da->vendor, TAG_ANY);
 		if (!found) {
-			RWDEBUG("\"%s\" not found, skipping",
-				map->src->name);
+			RWDEBUG("\"%s\" not found, skipping", map->src->name);
 			goto error;
 		}
 
@@ -1129,9 +1164,8 @@ VALUE_PAIR *radius_map2vp(REQUEST *request, value_pair_map_t const *map,
 		 *	Copy the data over verbatim, assuming it's
 		 *	actually data.
 		 */
-		rad_assert(found->type == VT_DATA);
-		pairfree(&vp);	/* ugh */
-		vp = paircopyvpdata(request, map->dst->da, found);
+//		rad_assert(found->type == VT_DATA);
+		vp = paircopyvpdata(request, da, found);
 		if (!vp) return NULL;
 		vp->op = map->op;
 		break;
