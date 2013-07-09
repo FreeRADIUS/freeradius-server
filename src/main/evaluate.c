@@ -233,7 +233,7 @@ int radius_evaluate_tmpl(REQUEST *request, int modreturn, UNUSED int depth,
 }
 
 
-static int do_regex(REQUEST *request, const char *lhs, const char *rhs, int iflag)
+static int do_regex(REQUEST *request, const char *lhs, const char *rhs, bool iflag)
 {
 	int i, compare;
 	int cflags = REG_EXTENDED;

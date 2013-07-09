@@ -1667,8 +1667,7 @@ static int realm_add(realm_config_t *rc, CONF_SECTION *cs)
 		/*
 		 *	Include substring matches.
 		 */
-		rcode = regcomp(&reg, name2 + 1,
-				REG_EXTENDED | REG_NOSUB | REG_ICASE);
+		rcode = regcomp(&reg, name2 + 1, REG_EXTENDED | REG_NOSUB | REG_ICASE);
 		if (rcode != 0) {
 			char buffer[256];
 
@@ -2038,8 +2037,7 @@ REALM *realm_find(char const *name)
 			/*
 			 *	Include substring matches.
 			 */
-			if (regcomp(&reg, this->realm->name + 1,
-				    REG_EXTENDED | REG_NOSUB | REG_ICASE) != 0) {
+			if (regcomp(&reg, this->realm->name + 1, REG_EXTENDED | REG_NOSUB | REG_ICASE) != 0) {
 				continue;
 			}
 

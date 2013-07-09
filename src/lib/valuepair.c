@@ -2626,8 +2626,7 @@ int paircmp(VALUE_PAIR *one, VALUE_PAIR *two)
 			regex_t reg;
 			char buffer[MAX_STRING_LEN * 4 + 1];
 
-			compare = regcomp(&reg, one->vp_strvalue,
-					  REG_EXTENDED);
+			compare = regcomp(&reg, one->vp_strvalue, REG_EXTENDED);
 			if (compare != 0) {
 				regerror(compare, &reg, buffer, sizeof(buffer));
 				fr_strerror_printf("Illegal regular expression in attribute: %s: %s",
