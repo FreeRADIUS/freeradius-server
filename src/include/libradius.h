@@ -494,8 +494,8 @@ void		pairsort(VALUE_PAIR **vps, bool with_tag);
 bool		pairvalidate(VALUE_PAIR *filter, VALUE_PAIR *list);
 VALUE_PAIR	*paircopyvp(TALLOC_CTX *ctx, VALUE_PAIR const *vp);
 VALUE_PAIR	*paircopyvpdata(TALLOC_CTX *ctx, DICT_ATTR const *da, VALUE_PAIR const *vp);
-VALUE_PAIR	*paircopy(TALLOC_CTX *ctx, VALUE_PAIR *vp);
-VALUE_PAIR	*paircopy2(TALLOC_CTX *ctx, VALUE_PAIR *vp, unsigned int attr, unsigned int vendor, int8_t tag);
+VALUE_PAIR	*paircopy(TALLOC_CTX *ctx, VALUE_PAIR *from);
+VALUE_PAIR	*paircopy2(TALLOC_CTX *ctx, VALUE_PAIR *from, unsigned int attr, unsigned int vendor, int8_t tag);
 void		pairmemcpy(VALUE_PAIR *vp, uint8_t const * src, size_t len);
 void		pairstrcpy(VALUE_PAIR *vp, char const * src);
 void		pairsprintf(VALUE_PAIR *vp, char const * fmt, ...)

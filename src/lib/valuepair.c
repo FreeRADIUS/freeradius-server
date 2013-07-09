@@ -562,7 +562,8 @@ static VALUE_PAIR *pairsort_merge(VALUE_PAIR *a, VALUE_PAIR *b, bool with_tag)
 
 /** Sort a linked list of VALUE_PAIRs using merge sort
  *
- * @param vps List of VALUE_PAIRs to sort.
+ * @param[in,out] vps List of VALUE_PAIRs to sort.
+ * @param[in] with_tag sort by tag then by DICT_ATTR
  */
 void pairsort(VALUE_PAIR **vps, bool with_tag)
 {
@@ -827,52 +828,73 @@ VALUE_PAIR *paircopyvpdata(TALLOC_CTX *ctx, DICT_ATTR const *da, VALUE_PAIR cons
  * the input list to a new list, and returns the head of this list.
  *
  * @param[in] ctx for talloc
- * @param[in] vp which is head of the input list.
+ * @param[in] from whence to copy VALUE_PAIRs.
  * @param[in] attr to match, if 0 input list will not be filtered by attr.
  * @param[in] vendor to match.
  * @param[in] tag to match, TAG_ANY matches any tag, TAG_UNUSED matches tagless VPs.
- * @return the head of the new VALUE_PAIR list.
+ * @return the head of the new VALUE_PAIR list or NULL on error.
  */
-VALUE_PAIR *paircopy2(TALLOC_CTX *ctx, VALUE_PAIR *vp,
+VALUE_PAIR *paircopy2(TALLOC_CTX *ctx, VALUE_PAIR *from,
 		      unsigned int attr, unsigned int vendor, int8_t tag)
 {
-	VALUE_PAIR *first, *n, **last;
+	vp_cursor_t src, dst;
+	
+	VALUE_PAIR *out = NULL, *vp;
+	
+	paircursor(&dst, &out);
+	for (vp = paircursor(&src, &from);
+	     vp;
+	     vp = pairnext(&src)) {
+	     	VERIFY_VP(vp);
 
-	first = NULL;
-	last = &first;
-
-	while (vp) {
-		VERIFY_VP(vp);
-
-		if ((attr > 0) &&
-		    ((vp->da->attr != attr) || (vp->da->vendor != vendor)))
-			goto skip;
+		if ((attr > 0) && ((vp->da->attr != attr) || (vp->da->vendor != vendor))) {
+			continue;
+		}
 			
-		if ((tag != TAG_ANY) && vp->da->flags.has_tag &&
-		    (vp->tag != tag)) {
-			goto skip;
+		if ((tag != TAG_ANY) && vp->da->flags.has_tag && (vp->tag != tag)) {
+			continue;
 		}
 
-		n = paircopyvp(ctx, vp);
-		if (!n) return first;
-		
-		*last = n;
-		last = &n->next;
-
-	skip:
-		vp = vp->next;
+		vp = paircopyvp(ctx, vp);
+		if (!vp) {
+			pairfree(&out);
+			return NULL;
+		}
+		pairinsert(&dst, vp);
 	}
 	
-	return first;
+	return out;
 }
 
 
-/*
- *	Copy a pairlist.
+/** Copy a pairlist.
+ *
+ * Copy all pairs from 'from' regardless of tag, attribute or vendor.
+ *
+ * @param[in] ctx for new VALUE_PAIRs to be allocated in.
+ * @param[in] from whence to copy VALUE_PAIRs.
+ * @rturn the head of the new VALUE_PAIR list or NULL on error.
  */
-VALUE_PAIR *paircopy(TALLOC_CTX *ctx, VALUE_PAIR *vp)
+VALUE_PAIR *paircopy(TALLOC_CTX *ctx, VALUE_PAIR *from)
 {
-	return paircopy2(ctx, vp, 0, 0, TAG_ANY);
+	vp_cursor_t src, dst;
+	
+	VALUE_PAIR *out = NULL, *vp;
+	
+	paircursor(&dst, &out);
+	for (vp = paircursor(&src, &from);
+	     vp;
+	     vp = pairnext(&src)) {
+	     	VERIFY_VP(vp);
+	     	vp = paircopyvp(ctx, vp);
+	     	if (!vp) {
+	     		pairfree(&out);
+	     		return NULL;
+	     	}
+		pairinsert(&dst, vp); /* paircopy sets next pointer to NULL */
+	}
+	
+	return out;
 }
 
 /** Move pairs from source list to destination list respecting operator
