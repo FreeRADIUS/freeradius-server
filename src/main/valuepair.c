@@ -1365,7 +1365,12 @@ void module_failure_msg(REQUEST *request, char const *fmt, ...)
 	}
 
 	p = talloc_vasprintf(vp, fmt, ap);
-	pairsprintf(vp, "%s: %s", request->module, p);
+	
+	if (request->module && *request->module) {
+		pairsprintf(vp, "%s: %s", request->module, p);
+	} else {
+		pairsprintf(vp, "%s", p);
+	}
 	talloc_free(p);
 	pairadd(&request->packet->vps, vp);
 }
