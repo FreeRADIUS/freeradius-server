@@ -241,6 +241,7 @@ static sql_rcode_t sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *
 
 				return RLM_SQL_RECONNECT;
 			}
+			conn->command = NULL;
 			
 			return RLM_SQL_ERROR;
 		default:
@@ -269,6 +270,7 @@ static sql_rcode_t sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *
 				
 				return RLM_SQL_RECONNECT;
 			}
+			conn->command = NULL;
 			return RLM_SQL_ERROR;
 			
 		default:
@@ -290,6 +292,8 @@ static sql_rcode_t sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *
 	
 			return RLM_SQL_RECONNECT;
 		}
+		conn->command = NULL;
+		
 		return RLM_SQL_ERROR;
 
 	case CS_END_RESULTS:  /* This is where we want to end up */
@@ -362,6 +366,7 @@ static sql_rcode_t sql_finish_select_query(rlm_sql_handle_t *handle, UNUSED rlm_
 		
 		return RLM_SQL_ERROR;
 	}
+	conn->command = NULL;
 
 	TALLOC_FREE(conn->results);
 
@@ -489,6 +494,7 @@ static sql_rcode_t sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *
 
 			return RLM_SQL_RECONNECT;
 		}
+		conn->command = NULL;
 		
 		return RLM_SQL_ERROR;
 
@@ -566,6 +572,8 @@ static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle, UNUSED rlm_sql_config
 		ERROR("rlm_sql_freetds: failure fetching row data");
 		if ((ret = ct_cancel(NULL, conn->command, CS_CANCEL_ALL)) == CS_FAIL) {
 			ERROR("rlm_sql_freetds: cleaning up.");
+		} else {
+			conn->command = NULL;
 		}
 		
 		return RLM_SQL_RECONNECT;
