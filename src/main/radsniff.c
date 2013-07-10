@@ -593,9 +593,9 @@ int main(int argc, char *argv[])
 	 */
 	if (fr_debug_flag > 2) {
 				DEBUG1(log_dst, "Sniffing with options:\n");
-		if (from_dev)	DEBUG1(log_dst, "  Device		   : [%s]\n", from_dev);
+		if (from_dev)	DEBUG1(log_dst, "  Device                   : [%s]\n", from_dev);
 		if (limit > 0)	DEBUG1(log_dst, "  Capture limit (packets)  : [%d]\n", limit);
-				DEBUG1(log_dst, "  PCAP filter	      : [%s]\n", pcap_filter);
+				DEBUG1(log_dst, "  PCAP filter              : [%s]\n", pcap_filter);
 				DEBUG1(log_dst, "  RADIUS secret	    : [%s]\n", radius_secret);
 		if (filter_vps){DEBUG1(log_dst, "  RADIUS filter	    :\n");
 			vp_printlist(log_dst, filter_vps);
