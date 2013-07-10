@@ -1051,7 +1051,7 @@ static int rest_decode_post(rlm_rest_t *instance,
 			goto skip;
 		}
 
-		vp = pairalloc(NULL, da);
+		vp = pairalloc(request, da);
 		if (!vp) {
 			ERROR("rlm_rest (%s): Failed creating"
 			       " valuepair", instance->xlat_name);
