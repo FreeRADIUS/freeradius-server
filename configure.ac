@@ -750,7 +750,7 @@ dnl #  Check for regular expression support
 dnl #
 dnl extra argument: --with-pcre-lib-dir
 pcre_lib_dir=
-AC_ARG_WITH(rlm-ldap-lib-dir,
+AC_ARG_WITH(rlm-pcre-lib-dir,
 [  --with-pcre-lib-dir=DIR       directory for PCRE library files []],
 [ case "$withval" in
     no)

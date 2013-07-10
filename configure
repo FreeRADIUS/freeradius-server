@@ -748,7 +748,7 @@ with_openssl_libraries
 with_rlm_FOO_lib_dir
 with_rlm_FOO_include_dir
 with_udpfromto
-with_rlm_ldap_lib_dir
+with_rlm_pcre_lib_dir
 with_rlm_pcre_include_dir
 with_talloc_include_dir
 '
@@ -6694,9 +6694,9 @@ done
 
 pcre_lib_dir=
 
-# Check whether --with-rlm-ldap-lib-dir was given.
-if test "${with_rlm_ldap_lib_dir+set}" = set; then :
-  withval=$with_rlm_ldap_lib_dir;  case "$withval" in
+# Check whether --with-rlm-pcre-lib-dir was given.
+if test "${with_rlm_pcre_lib_dir+set}" = set; then :
+  withval=$with_rlm_pcre_lib_dir;  case "$withval" in
     no)
 	as_fn_error $? "Need rlm-pcre-lib-dir" "$LINENO" 5
 	;;
