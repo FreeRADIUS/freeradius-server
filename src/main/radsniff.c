@@ -145,46 +145,6 @@ static int filter_packet(RADIUS_PACKET *packet)
 	return 1;
 }
 
-/*
- *	Bubble goodness
- */
-static void sort(RADIUS_PACKET *packet)
-{
-	int i, j, size;
-	vp_cursor_t cursor;
-	VALUE_PAIR *vp, *tmp;
-	VALUE_PAIR *array[1024]; /* way more than necessary */
-
-	size = 0;
-	for (vp = paircursor(&cursor, &packet->vps);
-	     vp;
-	     vp = pairnext(&cursor)) {
-		array[size++] = vp;
-	}
-
-	if (size == 0) return;
-
-	for (i = 0; i < size - 1; i++)  {
-		for (j = 0; j < size - 1 - i; j++) {
-			if (array[j + 1]->da->attr < array[j]->da->attr)  {
-				tmp = array[j];
-				array[j] = array[j + 1];
-				array[j + 1] = tmp;
-			}
-		}
-	}
-
-	/*
-	 *	And put them back again.
-	 */
-	vp = packet->vps = array[0];
-	for (i = 1; i < size; i++) {
-		vp->next = array[i];
-		vp = array[i];
-	}
-	vp->next = NULL;
-}
-
 #define USEC 1000000
 static void tv_sub(struct timeval const *end, struct timeval const *start,
 		   struct timeval *elapsed)
@@ -342,8 +302,9 @@ static void got_packet(UNUSED uint8_t *args, struct pcap_pkthdr const*header, ui
 	if (fr_debug_flag > 1) {
 		DEBUG(log_dst, "\n");
 		if (packet->vps) {
-			if (do_sort) sort(packet);
-	
+			if (do_sort) {
+				pairsort(&packet->vps, true);
+			}
 			vp_printlist(log_dst, packet->vps);
 			pairfree(&packet->vps);
 		}
