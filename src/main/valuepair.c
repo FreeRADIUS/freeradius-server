@@ -1037,8 +1037,7 @@ int radius_map2request(REQUEST *request, value_pair_map_t const *map,
 
 	if (debug_flag) for (vp = paircursor(&cursor, &head); vp; vp = pairnext(&cursor)) {
 		char *value;
-		rad_assert(vp->op == map->op);
-
+		
 		switch (map->src->type) {
 			/*
 			 *	Just print the value being assigned
