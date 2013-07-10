@@ -1164,36 +1164,34 @@ VALUE_PAIR *radius_map2vp(REQUEST *request, value_pair_map_t const *map, UNUSED 
 	VALUE_PAIR *vp = NULL, *found, **from = NULL;
 	DICT_ATTR const *da;
 	REQUEST *context;
+	vp_cursor_t cursor;
 
 	rad_assert(request != NULL);
 	rad_assert(map != NULL);
 	
 	/*
-	 *	List to list copy, this is a special case because we don't need
-	 *	to allocate any attributes, just copy the current list, and change
+	 *	List to list found, this is a special case because we don't need
+	 *	to allocate any attributes, just found the current list, and change
 	 *	the op.
 	 */
 	if ((map->dst->type == VPT_TYPE_LIST) && (map->src->type == VPT_TYPE_LIST)) {
-		vp_cursor_t cursor;
-		VALUE_PAIR *copy;
-		
 		from = radius_list(request, map->src->list);
 		if (!from) return NULL;
 		
-		copy = paircopy(request, *from);
-		if (!copy) return NULL;
+		found = paircopy(request, *from);
+		if (!found) return NULL;
 		
-		for (vp = paircursor(&cursor, &copy);
+		for (vp = paircursor(&cursor, &found);
 		     vp;
 		     vp = pairnext(&cursor)) {
 		 	vp->op = T_OP_ADD;   
 		} 
 		
-		return copy;
+		return found;
 	}
 	
 	/*
-	 *	Deal with all non-list copying operations.
+	 *	Deal with all non-list founding operations.
 	 */
 	da = map->dst->da ? map->dst->da : map->src->da;
 	
@@ -1255,7 +1253,7 @@ VALUE_PAIR *radius_map2vp(REQUEST *request, value_pair_map_t const *map, UNUSED 
 		if (!from) goto error;
 
 		/*
-		 *	Special case, destination is a list, copy all instance of an attribute.
+		 *	Special case, destination is a list, found all instance of an attribute.
 		 */
 		if (map->dst->type == VPT_TYPE_LIST) {
 			found = paircopy2(request, *from, map->src->da->attr, map->src->da->vendor, TAG_ANY);
@@ -1263,6 +1261,12 @@ VALUE_PAIR *radius_map2vp(REQUEST *request, value_pair_map_t const *map, UNUSED 
 				REDEBUG("\"%s\" not found", map->src->name);
 				goto error;		
 			}
+			
+			for (vp = paircursor(&cursor, &found);
+			     vp;
+			     vp = pairnext(&cursor)) {
+				vp->op = T_OP_ADD;   
+			} 
 			
 			return found;
 		}
