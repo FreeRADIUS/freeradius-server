@@ -120,7 +120,7 @@ if [ x"$dir_arg" != x ]; then
 		instcmd=:
 		chmodcmd=""
 	else
-		instcmd="mkdir -p"
+		instcmd=mkdir
 	fi
 else
 
