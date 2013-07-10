@@ -518,7 +518,7 @@ int radius_exec_program(REQUEST *request, char const *cmd, bool exec_wait, bool 
 	int n, done;
 	char answer[4096];
 #endif
-	RDEBUG2("Executing \"%s\"", cmd);
+	RDEBUG2("Executing: \"%s\"", cmd);
 
 	if (user_msg) *user_msg = '\0';
 
