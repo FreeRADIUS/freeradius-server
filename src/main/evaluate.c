@@ -208,7 +208,7 @@ int radius_evaluate_tmpl(REQUEST *request, int modreturn, UNUSED int depth,
 	case VPT_TYPE_EXEC:
 		if (!*vpt->name) return false;
 		rcode = radius_expand_tmpl(&buffer, request, vpt);
-		if (rcode < 0) {
+		if (rcode < 0 || !buffer) {
 			EVAL_DEBUG("FAIL %d", __LINE__);
 			return -1;
 		}
