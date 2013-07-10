@@ -1255,6 +1255,19 @@ VALUE_PAIR *radius_map2vp(REQUEST *request, value_pair_map_t const *map, UNUSED 
 		if (!from) goto error;
 
 		/*
+		 *	Special case, destination is a list, copy all instance of an attribute.
+		 */
+		if (map->dst->type == VPT_TYPE_LIST) {
+			found = paircopy2(request, *from, map->src->da->attr, map->src->da->vendor, TAG_ANY);
+			if (!found) {
+				REDEBUG("\"%s\" not found", map->src->name);
+				goto error;		
+			}
+			
+			return found;
+		}
+		
+		/*
 		 *	FIXME: allow tag references?
 		 */
 		found = pairfind(*from, map->src->da->attr, map->src->da->vendor, TAG_ANY);
@@ -1262,7 +1275,7 @@ VALUE_PAIR *radius_map2vp(REQUEST *request, value_pair_map_t const *map, UNUSED 
 			REDEBUG("\"%s\" not found", map->src->name);
 			goto error;
 		}
-
+		
 		/*
 		 *	Copy the data over verbatim, assuming it's
 		 *	actually data.
@@ -1270,7 +1283,8 @@ VALUE_PAIR *radius_map2vp(REQUEST *request, value_pair_map_t const *map, UNUSED 
 //		rad_assert(found->type == VT_DATA);
 		vp = paircopyvpdata(request, da, found);
 		if (!vp) return NULL;
-		vp->op = map->op;
+		vp->op = map->op;	
+
 		break;
 
 	case VPT_TYPE_DATA:
