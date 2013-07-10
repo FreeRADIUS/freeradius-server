@@ -691,8 +691,8 @@ static void request_process_timer(REQUEST *request)
 			    (pthread_equal(request->child_pid, NO_SUCH_CHILD_PID) == 0)) {
 				ERROR("Unresponsive child for request %u, in component %s module %s",
 				       request->number,
-				       request->component ? request->component : "<server core>",
-			       request->module ? request->module : "<server core>");
+				       request->component ? request->component : "<core>",
+			       request->module ? request->module : "<core>");
 				exec_trigger(request, NULL, "server.thread.unresponsive", true);
 			}
 #endif
