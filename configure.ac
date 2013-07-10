@@ -746,83 +746,6 @@ AC_CHECK_HEADERS(net/if.h, [], [],
 ])
 
 dnl #
-dnl #  Check for regular expression support
-dnl #
-dnl extra argument: --with-pcre-lib-dir
-pcre_lib_dir=
-AC_ARG_WITH(rlm-pcre-lib-dir,
-[  --with-pcre-lib-dir=DIR       directory for PCRE library files []],
-[ case "$withval" in
-    no)
-	AC_MSG_ERROR(Need rlm-pcre-lib-dir)
-	;;
-    yes)
-	;;
-    *)
-	pcre_lib_dir="$withval"
-	;;
-  esac ]
-)
-
-dnl extra argument: --with-pcre-include--dir
-pcre_include_dir=
-AC_ARG_WITH(rlm-pcre-include-dir,
-[  --with-pcre-include-dir=DIR   directory for PCRE include files []],
-[ case "$withval" in
-    no)
-	AC_MSG_ERROR(Need rlm-pcre-include-dir)
-	;;
-    yes)
-	;;
-    *)
-	pcre_include_dir="$withval"
-	;;
-  esac ]
-)
-
-REGEX=no
-REGEX_EXTENDED=no
-REGEX_PCRE=no
-
-dnl #
-dnl #  First look for PCRE
-dnl #
-smart_try_dir=$pcre_include_dir
-FR_SMART_CHECK_INCLUDE(pcreposix.h)
-if test "x$ac_cv_header_pcreposix_h" = "xyes"; then
-  AC_DEFINE(HAVE_REGEX_H, [1], [define if we have any regex])
-  AC_DEFINE(HAVE_PCREPOSIX_H, [1], [define this if we have the <pcreposix.h> header file])
-  REGEX=yes
-  REGEX_EXTENDED=yes
-  REGEX_PCRE=yes
-  LIBS="$LIBS -lpcre -lpcreposix"
-  
-dnl #
-dnl #  Then fallback to POSIX regular expressions
-dnl #
-else
-  smart_try_dir=
-  FR_SMART_CHECK_INCLUDE(regex.h)
-  if test "x$ac_cv_header_regex_h" = "xyes"; then
-    AC_DEFINE(HAVE_REGEX_H, [1], [define if we have any regex])
-    REGEX=yes
-    AC_EGREP_CPP(yes,
-      [
-        #include <regex.h>
-        #ifdef REG_EXTENDED
-        yes
-        #endif
-       ],
-    [AC_DEFINE(HAVE_REG_EXTENDED, [1], [define this if we have REG_EXTENDED (from <regex.h>)]) REGEX_EXTENDED=yes]
-    )
-  fi
-fi
-
-AC_SUBST(REGEX)
-AC_SUBST(REGEX_PCRE)
-AC_SUBST(REGEX_EXTENDED)
-
-dnl #
 dnl #  other checks which require headers
 dnl #
 if test "x$ac_cv_header_sys_security_h" = "xyes" && test "x$ac_cv_header_prot_h" = "xyes"
@@ -1303,6 +1226,88 @@ AC_CHECK_LIB(cipher, setkey,
    CRYPTLIB="${CRYPTLIB} -lcipher"
 )
 AC_SUBST(CRYPTLIB)
+
+
+dnl #
+dnl #  Check for regular expression support, if were using PCRE it MUST be included
+dnl #  before all others, else we seem to still pickup the posix symbols for regcomp 
+dnl #  and regexec, which results in crashes as soon as we call any posix regex 
+dnl #  functions.
+dnl #
+dnl extra argument: --with-pcre-lib-dir
+pcre_lib_dir=
+AC_ARG_WITH(rlm-pcre-lib-dir,
+[  --with-pcre-lib-dir=DIR       directory for PCRE library files []],
+[ case "$withval" in
+    no)
+	AC_MSG_ERROR(Need rlm-pcre-lib-dir)
+	;;
+    yes)
+	;;
+    *)
+	pcre_lib_dir="$withval"
+	;;
+  esac ]
+)
+
+dnl extra argument: --with-pcre-include--dir
+pcre_include_dir=
+AC_ARG_WITH(rlm-pcre-include-dir,
+[  --with-pcre-include-dir=DIR   directory for PCRE include files []],
+[ case "$withval" in
+    no)
+	AC_MSG_ERROR(Need rlm-pcre-include-dir)
+	;;
+    yes)
+	;;
+    *)
+	pcre_include_dir="$withval"
+	;;
+  esac ]
+)
+
+REGEX=no
+REGEX_EXTENDED=no
+REGEX_PCRE=no
+
+dnl #
+dnl #  First look for PCRE
+dnl #
+smart_try_dir=$pcre_include_dir
+FR_SMART_CHECK_INCLUDE(pcreposix.h)
+if test "x$ac_cv_header_pcreposix_h" = "xyes"; then
+  AC_DEFINE(HAVE_REGEX_H, [1], [define if we have any regex])
+  AC_DEFINE(HAVE_PCREPOSIX_H, [1], [define this if we have the <pcreposix.h> header file])
+  REGEX=yes
+  REGEX_EXTENDED=yes
+  REGEX_PCRE=yes
+  LIBS="-lpcre -lpcreposix $LIBS"
+  
+dnl #
+dnl #  Then fallback to POSIX regular expressions
+dnl #
+else
+  smart_try_dir=
+  FR_SMART_CHECK_INCLUDE(regex.h)
+  if test "x$ac_cv_header_regex_h" = "xyes"; then
+    AC_DEFINE(HAVE_REGEX_H, [1], [define if we have any regex])
+    REGEX=yes
+    AC_EGREP_CPP(yes,
+      [
+        #include <regex.h>
+        #ifdef REG_EXTENDED
+        yes
+        #endif
+       ],
+    [AC_DEFINE(HAVE_REG_EXTENDED, [1], [define this if we have REG_EXTENDED (from <regex.h>)]) REGEX_EXTENDED=yes]
+    )
+    LIBS="$LIBS -lregex"
+  fi
+fi
+
+AC_SUBST(REGEX)
+AC_SUBST(REGEX_PCRE)
+AC_SUBST(REGEX_EXTENDED)
 
 dnl #
 dnl #  Check the style of gethostbyaddr, in order of preference
