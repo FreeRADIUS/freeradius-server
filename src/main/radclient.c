@@ -296,6 +296,16 @@ static int radclient_init(char const *filename)
 		for (vp = paircursor(&cursor, &radclient->request->vps);
 		     vp;
 		     vp = pairnext(&cursor)) {
+		     	/*
+		     	 *	Double quoted strings get marked up as xlat expansions,
+		     	 *	but we don't support that in radclient.
+		     	 */
+			if (vp->type == VT_XLAT) {
+				vp->vp_strvalue = vp->value.xlat;
+				vp->value.xlat = NULL;
+				vp->type = VT_DATA;
+			}
+			
 			if (!vp->da->vendor) switch (vp->da->attr) {
 			default:
 				break;
