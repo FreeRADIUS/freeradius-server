@@ -26,14 +26,14 @@
 #include <freeradius-devel/rad_assert.h>
 #include "ldap.h"
 
-static VALUE_PAIR *rlm_ldap_map_getvalue(REQUEST *request, value_pair_map_t const *map, void *ctx)
+static int rlm_ldap_map_getvalue(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *map, void *ctx)
 {
 	rlm_ldap_result_t *self = ctx;
 	VALUE_PAIR *head = NULL, *vp;
-	vp_cursor_t out;
+	vp_cursor_t cursor;
 	int i;
 	
-	paircursor(&out, &head);
+	paircursor(&cursor, &head);
 	
 	/*
 	 *	Iterate over all the retrieved values,
@@ -52,10 +52,12 @@ static VALUE_PAIR *rlm_ldap_map_getvalue(REQUEST *request, value_pair_map_t cons
 		}
 		
 		vp->op = map->op;
-		pairinsert(&out, vp);
+		pairinsert(&cursor, vp);
 	}
 	
-	return head;		
+	*out = head;
+	
+	return 0;	
 }
 
 int rlm_ldap_map_verify(ldap_instance_t *inst, value_pair_map_t **head)
@@ -276,8 +278,8 @@ void rlm_ldap_map_do(UNUSED const ldap_instance_t *inst, REQUEST *request, LDAP 
 		 *	a case of the dst being incorrect for the current
 		 *	request context
 		 */
-		if (radius_map2request(request, map, name, rlm_ldap_map_getvalue, &result) < 0) {
-			goto next;
+		if (radius_map2request(request, map, name, rlm_ldap_map_getvalue, &result) == -1) {
+			return;	/* Fail */
 		}
 		
 		next:

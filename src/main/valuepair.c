@@ -1003,37 +1003,42 @@ VALUE_PAIR **radius_list(REQUEST *request, pair_lists_t list)
  *	VALUE_PAIRS.
  * @param ctx to be passed to func.
  * @param src name to be used in debugging if different from map value.
- * @return -1 if either attribute or qualifier weren't valid in this context
- *	or callback returned NULL pointer, else 0.
+ * @return -1 if the operation failed, -2 in the source attribute wasn't valid, 0 on success.
  */
 int radius_map2request(REQUEST *request, value_pair_map_t const *map,
 		       UNUSED char const *src, radius_tmpl_getvalue_t func, void *ctx)
 {
+	int rcode;
 	vp_cursor_t cursor;
-	VALUE_PAIR **list, *vp, *head;
+	VALUE_PAIR **list, *vp, *head = NULL;
 	char buffer[1024];
 	
 	if (radius_request(&request, map->dst->request) < 0) {
-		RWDEBUG("Mapping \"%s\" -> \"%s\" "
-		       "invalid in this context, skipping!",
-		       map->src->name, map->dst->name);
+		RWDEBUG("Mapping \"%s\" -> \"%s\" invalid in this context, skipping!", map->src->name, map->dst->name);
 		
-		return -1;
+		return -2;
 	}
 	
 	list = radius_list(request, map->dst->list);
 	if (!list) {
-		RWDEBUG("Mapping \"%s\" -> \"%s\" "
-		       "invalid in this context, skipping!",
-		       map->src->name, map->dst->name);
+		RWDEBUG("Mapping \"%s\" -> \"%s\" invalid in this context, skipping!", map->src->name, map->dst->name);
 		
-		return -1;
+		return -2;
 	}
 	
-	head = func(request, map, ctx);
-	if (head == NULL) {
-		return -1;
+	
+	/* 
+	 *	The callback should either return -1 to signify operations error, -2 when it can't find the
+	 *	attribute or list being referenced, or 0 to signify success.
+	 *	Only if it returned an error code should it not write anything to the head pointer.
+	 */
+	rcode = func(&head, request, map, ctx);
+	if (rcode < 0) {
+		rad_assert(!head);
+		
+		return rcode;
 	}
+	VERIFY_VP(head);
 
 	if (debug_flag) for (vp = paircursor(&cursor, &head); vp; vp = pairnext(&cursor)) {
 		char *value;
@@ -1087,18 +1092,21 @@ int radius_map2request(REQUEST *request, value_pair_map_t const *map,
  *
  * Evaluate maps which specify exec as a src. This may be used by various sorts of update sections, and so
  * has been broken out into it's own function.
- *
- * @param request structure (used only for talloc).
+ * 
+ * @param[out] out Where to write the VALUE_PAIR(s).
+ * @param[in] request structure (used only for talloc).
  * @param[in] map the map. The LHS (dst) must be VPT_TYPE_ATTR or VPT_TYPE_LIST. The RHS (src) must be VPT_TYPE_EXEC.
- * @return the newly allocated VALUE_PAIR(s)
+ * @return -1 on failure, 0 on success.
  */
-VALUE_PAIR *radius_mapexec(REQUEST *request, value_pair_map_t const *map)
+int radius_mapexec(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *map)
 {
 	int result;
 	char *expanded = NULL;
-	char out[1024];
+	char answer[1024];
 	VALUE_PAIR **input_pairs = NULL;
 	VALUE_PAIR **output_pairs = NULL;
+	
+	*out = NULL;
 	
 	rad_assert(map->src->type == VPT_TYPE_EXEC);
 	rad_assert((map->dst->type == VPT_TYPE_ATTR) || (map->dst->type == VPT_TYPE_LIST));
@@ -1116,50 +1124,57 @@ VALUE_PAIR *radius_mapexec(REQUEST *request, value_pair_map_t const *map)
 	 */
 	out[0] = '\0';
 	result = radius_exec_program(request, map->src->name, true, true,
-				     out, sizeof(out),
+				     answer, sizeof(answer),
 				     input_pairs ? *input_pairs : NULL,
 				     (map->dst->type == VPT_TYPE_LIST) ? output_pairs : NULL);
 	talloc_free(expanded);
 	if (result != 0) {
-		REDEBUG("%s", out);
+		REDEBUG("%s", answer);
 		talloc_free(output_pairs);
-		return NULL;
+		return -1;
 	}
 	
 	switch (map->dst->type) {
 	case VPT_TYPE_LIST:
-		return *output_pairs;
-		break;
+		if (!output_pairs) {
+			return -2;
+		}
+		*out = *output_pairs;
+		
+		return 0;
 	case VPT_TYPE_ATTR:
 		{
 			VALUE_PAIR *vp;
 			
 			vp = pairalloc(request, map->dst->da);
-			if (!vp) return NULL;
+			if (!vp) return -1;
 			vp->op = map->op;
-			if (!pairparsevalue(vp, out)) {
+			if (!pairparsevalue(vp, answer)) {
 				pairfree(&vp);
-				return NULL;
+				return -2;
 			}
-		
-			return vp;
+			*out = vp;
+			
+			return 0;
 		}
 	default:
 		rad_assert(0);
 	}
-	
-	return NULL;
+
+	return -1;
 }
 
 /** Convert a map to a VALUE_PAIR.
- *
+ * 
+ * @param[out] out Where to write the VALUE_PAIR(s).
  * @param[in] request structure (used only for talloc)
  * @param[in] map the map. The LHS (dst) has to be VPT_TYPE_ATTR or VPT_TYPE_LIST.
  * @param[in] ctx unused
- * @return the newly allocated VALUE_PAIR
+ * @return 0 on success, -1 on failure, -2 on attribute not found/equivalent
  */
-VALUE_PAIR *radius_map2vp(REQUEST *request, value_pair_map_t const *map, UNUSED void *ctx)
+int radius_map2vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *map, UNUSED void *ctx)
 {
+	int rcode = 0;
 	VALUE_PAIR *vp = NULL, *found, **from = NULL;
 	DICT_ATTR const *da;
 	REQUEST *context;
@@ -1168,6 +1183,8 @@ VALUE_PAIR *radius_map2vp(REQUEST *request, value_pair_map_t const *map, UNUSED 
 	rad_assert(request != NULL);
 	rad_assert(map != NULL);
 	
+	*out = NULL;
+	
 	/*
 	 *	List to list found, this is a special case because we don't need
 	 *	to allocate any attributes, just found the current list, and change
@@ -1175,10 +1192,10 @@ VALUE_PAIR *radius_map2vp(REQUEST *request, value_pair_map_t const *map, UNUSED 
 	 */
 	if ((map->dst->type == VPT_TYPE_LIST) && (map->src->type == VPT_TYPE_LIST)) {
 		from = radius_list(request, map->src->list);
-		if (!from) return NULL;
+		if (!from) return -2;
 		
 		found = paircopy(request, *from);
-		if (!found) return NULL;
+		if (!found) return -2;
 		
 		for (vp = paircursor(&cursor, &found);
 		     vp;
@@ -1186,7 +1203,9 @@ VALUE_PAIR *radius_map2vp(REQUEST *request, value_pair_map_t const *map, UNUSED 
 		 	vp->op = T_OP_ADD;   
 		} 
 		
-		return found;
+		*out = found;
+		
+		return 0;
 	}
 	
 	/*
@@ -1199,7 +1218,7 @@ VALUE_PAIR *radius_map2vp(REQUEST *request, value_pair_map_t const *map, UNUSED 
 	case VPT_TYPE_LITERAL:
 	case VPT_TYPE_DATA:
 		vp = pairalloc(request, da);
-		if (!vp) return NULL;
+		if (!vp) return -1;
 		vp->op = map->op;
 		break;
 	default:
@@ -1220,12 +1239,18 @@ VALUE_PAIR *radius_map2vp(REQUEST *request, value_pair_map_t const *map, UNUSED 
 			char *str = NULL;
 
 			slen = radius_axlat(&str, request, map->src->name, NULL, NULL);
-			if (slen < 0) goto error;
-			
-			if (!pairparsevalue(vp, str)) {
-				pairfree(&vp);
+			if (slen < 0) {
+				rcode = slen;
+				goto error;
 			}
+			rcode = pairparsevalue(vp, str);
 			talloc_free(str);
+			if (!rcode) {
+				pairfree(&vp);
+				rcode = -1;
+				goto error;
+			}
+			
 			break;
 		}
 		/* FALL-THROUGH */
@@ -1249,15 +1274,19 @@ VALUE_PAIR *radius_map2vp(REQUEST *request, value_pair_map_t const *map, UNUSED 
 		 *	Can't add the attribute if the list isn't
 		 *	valid.
 		 */
-		if (!from) goto error;
-
+		if (!from) {
+			rcode = -2;
+			goto error;
+		}
+		
 		/*
 		 *	Special case, destination is a list, found all instance of an attribute.
 		 */
 		if (map->dst->type == VPT_TYPE_LIST) {
 			found = paircopy2(request, *from, map->src->da->attr, map->src->da->vendor, TAG_ANY);
 			if (!found) {
-				REDEBUG("\"%s\" not found", map->src->name);
+				REDEBUG("Attribute \"%s\" not found in request", map->src->name);
+				rcode = -2;
 				goto error;		
 			}
 			
@@ -1267,7 +1296,8 @@ VALUE_PAIR *radius_map2vp(REQUEST *request, value_pair_map_t const *map, UNUSED 
 				vp->op = T_OP_ADD;   
 			} 
 			
-			return found;
+			*out = found;
+			return 0;
 		}
 		
 		/*
@@ -1275,7 +1305,8 @@ VALUE_PAIR *radius_map2vp(REQUEST *request, value_pair_map_t const *map, UNUSED 
 		 */
 		found = pairfind(*from, map->src->da->attr, map->src->da->vendor, TAG_ANY);
 		if (!found) {
-			REDEBUG("\"%s\" not found", map->src->name);
+			REDEBUG("Attribute \"%s\" not found in request", map->src->name);
+			rcode = -2;
 			goto error;
 		}
 		
@@ -1285,7 +1316,9 @@ VALUE_PAIR *radius_map2vp(REQUEST *request, value_pair_map_t const *map, UNUSED 
 		 */
 //		rad_assert(found->type == VT_DATA);
 		vp = paircopyvpdata(request, da, found);
-		if (!vp) return NULL;
+		if (!vp) {
+			return -1;
+		}
 		vp->op = map->op;	
 
 		break;
@@ -1304,15 +1337,16 @@ VALUE_PAIR *radius_map2vp(REQUEST *request, value_pair_map_t const *map, UNUSED 
 	 *	exec string is xlat expanded and arguments are shell escaped.
 	 */
 	case VPT_TYPE_EXEC:
-		return radius_mapexec(request, map);
+		return radius_mapexec(out, request, map);
 	default:
 		rad_assert(0);	/* Should of been caught at parse time */
 	error:
 		pairfree(&vp);
-		break;
+		return rcode;
 	}
 
-	return vp;
+	*out = vp;
+	return 0;
 }
 
 

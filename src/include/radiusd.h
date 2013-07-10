@@ -685,6 +685,8 @@ void mark_home_server_dead(home_server *home, struct timeval *when);
 
 /* evaluate.c */
 typedef struct fr_cond_t fr_cond_t;
+typedef int (*radius_tmpl_getvalue_t)(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *map, void *ctx);
+
 int radius_evaluate_tmpl(REQUEST *request, int modreturn, int depth,
 			 value_pair_tmpl_t const *vpt);
 int radius_evaluate_map(REQUEST *request, int modreturn, int depth,
@@ -698,11 +700,9 @@ VALUE_PAIR **radius_list(REQUEST *request, pair_lists_t list);
 pair_lists_t radius_list_name(char const **name, pair_lists_t unknown);
 int radius_request(REQUEST **request, request_refs_t name);
 request_refs_t radius_request_name(char const **name, request_refs_t unknown);
-typedef VALUE_PAIR *(*radius_tmpl_getvalue_t)(REQUEST *request,
-					      value_pair_map_t const *map,
-					      void *ctx);
-VALUE_PAIR *radius_mapexec(REQUEST *request, value_pair_map_t const *map);
-VALUE_PAIR *radius_map2vp(REQUEST *request, value_pair_map_t const *map, void *ctx);
+
+int radius_mapexec(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *map);
+int radius_map2vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *map, void *ctx);
 int radius_map2request(REQUEST *request, value_pair_map_t const *map,
 		       char const *src, radius_tmpl_getvalue_t func, void *ctx);
 

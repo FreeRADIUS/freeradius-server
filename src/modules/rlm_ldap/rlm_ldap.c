@@ -806,7 +806,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 	ldap_handle_t	*conn;
 	LDAPMessage	*result, *entry;
 	char const 	*dn = NULL;
-	rlm_ldap_map_xlat_t	expanded; /* faster that mallocing every time */
+	rlm_ldap_map_xlat_t	expanded; /* faster than mallocing every time */
 	
 	if (!request->username) {
 		RDEBUG2("Attribute \"User-Name\" is required for authorization.");
