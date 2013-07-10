@@ -1259,7 +1259,7 @@ VALUE_PAIR *radius_map2vp(REQUEST *request, value_pair_map_t const *map, UNUSED 
 		 */
 		found = pairfind(*from, map->src->da->attr, map->src->da->vendor, TAG_ANY);
 		if (!found) {
-			RWDEBUG("\"%s\" not found, skipping", map->src->name);
+			REDEBUG("\"%s\" not found", map->src->name);
 			goto error;
 		}
 
