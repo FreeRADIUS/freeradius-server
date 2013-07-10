@@ -1241,7 +1241,7 @@ static VALUE_PAIR *json_pairmake_leaf(UNUSED rlm_rest_t *instance,
 static VALUE_PAIR *json_pairmake(rlm_rest_t *instance,
 				 UNUSED rlm_rest_section_t *section,
 				 REQUEST *request, json_object *object,
-				 int level, int *max_attrs)
+				 UNUSED int level, int *max_attrs)
 {
 	char const *p;
 	char *q;
@@ -1431,10 +1431,14 @@ static VALUE_PAIR *json_pairmake(rlm_rest_t *instance,
 			if (!flags.is_json &&
 			    json_object_is_type(value, json_type_object)) {
 				/* TODO: Insert nested VP into VP structure...*/
-				RDEBUG("Found nested VP", value);
+				REDEBUG("Found nested VP, these are not yet supported", value);
+				
+				return NULL;
+				
+				/*
 				vp = json_pairmake(instance, section,
 						   request, value,
-						   level + 1, max_attrs);
+						   level + 1, max_attrs);*/
 			} else {
 				vp = json_pairmake_leaf(instance, section,
 							request, da, &flags,
