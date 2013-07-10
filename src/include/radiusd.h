@@ -701,8 +701,8 @@ request_refs_t radius_request_name(char const **name, request_refs_t unknown);
 typedef VALUE_PAIR *(*radius_tmpl_getvalue_t)(REQUEST *request,
 					      value_pair_map_t const *map,
 					      void *ctx);
-VALUE_PAIR *radius_map2vp(REQUEST *request, value_pair_map_t const *map,
-			  void *ctx);
+VALUE_PAIR *radius_mapexec(REQUEST *request, value_pair_map_t const *map);
+VALUE_PAIR *radius_map2vp(REQUEST *request, value_pair_map_t const *map, void *ctx);
 int radius_map2request(REQUEST *request, value_pair_map_t const *map,
 		       char const *src, radius_tmpl_getvalue_t func, void *ctx);
 

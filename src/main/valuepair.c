@@ -1084,16 +1084,84 @@ int radius_map2request(REQUEST *request, value_pair_map_t const *map,
 	return 0;
 }
 
+/** Process map which has exec as a src
+ *
+ * Evaluate maps which specify exec as a src. This may be used by various sorts of update sections, and so
+ * has been broken out into it's own function.
+ *
+ * @param request structure (used only for talloc).
+ * @param[in] map the map. The LHS (dst) must be VPT_TYPE_ATTR or VPT_TYPE_LIST. The RHS (src) must be VPT_TYPE_EXEC.
+ * @return the newly allocated VALUE_PAIR(s)
+ */
+VALUE_PAIR *radius_mapexec(REQUEST *request, value_pair_map_t const *map)
+{
+	int result;
+	char *expanded = NULL;
+	char out[1024];
+	VALUE_PAIR **input_pairs = NULL;
+	VALUE_PAIR **output_pairs = NULL;
+	
+	rad_assert(map->src->type == VPT_TYPE_EXEC);
+	rad_assert((map->dst->type == VPT_TYPE_ATTR) || (map->dst->type == VPT_TYPE_LIST));
+
+	/*
+	 *	We always put the request pairs into the environment
+	 */
+	input_pairs = radius_list(request, PAIR_LIST_REQUEST);
+	
+	/*
+	 *	Automagically switch output type depending on our destination
+	 *	If dst is a list, then we create attributes from the output of the program
+	 *	if dst is an attribute, then we create an attribute of that type and then
+	 *	call pairparsevalue on the output of the script.
+	 */
+	out[0] = '\0';
+	result = radius_exec_program(request, map->src->name, true, true,
+				     out, sizeof(out),
+				     input_pairs ? *input_pairs : NULL,
+				     (map->dst->type == VPT_TYPE_LIST) ? output_pairs : NULL);
+	talloc_free(expanded);
+	if (result != 0) {
+		REDEBUG("%s", out);
+		talloc_free(output_pairs);
+		return NULL;
+	}
+	
+	switch (map->dst->type) {
+	case VPT_TYPE_LIST:
+		return *output_pairs;
+		break;
+	case VPT_TYPE_ATTR:
+		{
+			VALUE_PAIR *vp;
+			
+			vp = pairalloc(request, map->dst->da);
+			if (!vp) return NULL;
+			vp->op = map->op;
+			if (!pairparsevalue(vp, out)) {
+				pairfree(&vp);
+				return NULL;
+			}
+		
+			return vp;
+		}
+	default:
+		rad_assert(0);
+	}
+	
+	return NULL;
+}
+
 /** Convert a map to a VALUE_PAIR.
  *
  * @param[in] request structure (used only for talloc)
- * @param[in] map the map.  The LHS has to be VPT_TYPE_ATTR.
+ * @param[in] map the map. The LHS (dst) has to be VPT_TYPE_ATTR or VPT_TYPE_LIST.
  * @param[in] ctx unused
  * @return the newly allocated VALUE_PAIR
  */
 VALUE_PAIR *radius_map2vp(REQUEST *request, value_pair_map_t const *map, UNUSED void *ctx)
 {
-	VALUE_PAIR *vp, *found, **from = NULL;
+	VALUE_PAIR *vp = NULL, *found, **from = NULL;
 	DICT_ATTR const *da;
 	REQUEST *context;
 
@@ -1210,9 +1278,18 @@ VALUE_PAIR *radius_map2vp(REQUEST *request, value_pair_map_t const *map, UNUSED 
 		memcpy(&vp->data, map->src->vpd, sizeof(vp->data));
 		vp->length = map->src->length;
 		break;
-
+	
+	/*
+	 *	This essentially does the same as rlm_exec xlat, except it's non-configurable.
+	 *	It's only really here as a convenience for people who expect the contents of
+	 *	backticks to be executed in a shell.
+	 *
+	 *	exec string is xlat expanded and arguments are shell escaped.
+	 */
+	case VPT_TYPE_EXEC:
+		return radius_mapexec(request, map);
 	default:
-		rad_assert(0 == 1);
+		rad_assert(0);	/* Should of been caught at parse time */
 	error:
 		pairfree(&vp);
 		break;
