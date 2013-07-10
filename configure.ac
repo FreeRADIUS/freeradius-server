@@ -795,7 +795,7 @@ if test "x$ac_cv_header_pcreposix_h" = "xyes"; then
   REGEX=yes
   REGEX_EXTENDED=yes
   REGEX_PCRE=yes
-  LIBS="$LIBS -lpcreposix"
+  LIBS="$LIBS -lpcre -lpcreposix"
   
 dnl #
 dnl #  Then fallback to POSIX regular expressions

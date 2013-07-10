@@ -6887,7 +6887,7 @@ $as_echo "#define HAVE_PCREPOSIX_H 1" >>confdefs.h
   REGEX=yes
   REGEX_EXTENDED=yes
   REGEX_PCRE=yes
-  LIBS="$LIBS -lpcreposix"
+  LIBS="$LIBS -lpcre -lpcreposix"
 
 else
   smart_try_dir=
