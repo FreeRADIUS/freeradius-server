@@ -1981,7 +1981,7 @@ static int proxy_to_virtual_server(REQUEST *request)
 	fake->server = request->home_server->server;
 
 	if (request->proxy->code == PW_AUTHENTICATION_REQUEST) {
-		fun = rad_authenticate;
+		fun = rad_virtual_server;
 
 #ifdef WITH_ACCOUNTING
 	} else if (request->proxy->code == PW_ACCOUNTING_REQUEST) {
