@@ -606,7 +606,11 @@ int radius_callback_compare(REQUEST *req, VALUE_PAIR *request,
 int radius_find_compare(unsigned int attribute);
 VALUE_PAIR	*radius_paircreate(REQUEST *request, VALUE_PAIR **vps,
 				   unsigned int attribute, unsigned int vendor);
-void module_failure_msg(REQUEST *request, char const *fmt, ...);
+void module_failure_msg(REQUEST *request, char const *fmt, ...)
+#ifdef __GNUC__
+		__attribute__ ((format (printf, 2, 3)))
+#endif
+;
 
 /*
  *	Less code == less bugs

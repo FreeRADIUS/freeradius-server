@@ -1474,7 +1474,6 @@ int radius_get_vp(REQUEST *request, char const *name, VALUE_PAIR **vp_p)
 
 /** Add a module failure message VALUE_PAIR to the request
  */
-DIAG_OFF(format-nonliteral)
 void module_failure_msg(REQUEST *request, char const *fmt, ...)
 {
 	va_list ap;
@@ -1502,4 +1501,3 @@ void module_failure_msg(REQUEST *request, char const *fmt, ...)
 	talloc_free(p);
 	pairadd(&request->packet->vps, vp);
 }
-DIAG_ON(format-nonliteral)
