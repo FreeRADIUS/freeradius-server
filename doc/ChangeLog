@@ -24,6 +24,10 @@ FreeRADIUS 3.0.0 Mon 01 Jan 8:00:00 CEST 2010, urgency=medium
 	* New sha1 xlat expansion (thanks to Alan Buxey)
 	* Colourised log messages when logging to stdout.  Look for yellow
 	  warnings and red errors.  Doing this will save you a LOT of grief.
+	* If the PCRE library is available, use it (insted of the POSIX 
+	  functions) to process regular expressions (thanks to Phil Mayers).
+	* -xv now displays all the features the server was built with, and
+	  the versions of the core libraries (libtalloc, libssl).
 
 	Module Changes
 	* Moved raddb/modules/ to raddb/mods-available/, and raddb/mods-enabled/,
@@ -57,7 +61,7 @@ FreeRADIUS 3.0.0 Mon 01 Jan 8:00:00 CEST 2010, urgency=medium
 	* New rlm_yubikey module to validate yubikey OTP tokens.
 
 	Bug fixes
-	* All known bug fixes from 2.1.x are included.
+	* All known bug fixes from 2.2.x are included.
 	* Removed "addport" functionality.
 	* Removed many unused or duplicate modules.  See raddb/README.rst.
 
@@ -70,7 +74,7 @@ FreeRADIUS 3.0.0 Mon 01 Jan 8:00:00 CEST 2010, urgency=medium
 	* Removed all limitations on 253 octet attributes.
 	* New API for iterating over VALUE_PAIRs, in preparation for nested
 	  attributes.
-	* No new code should directly modify the contents of a VALUE_PAIR.
+	* No new code should directly modify fields of a VALUE_PAIR.
 	* VALUE_PAIRs contain pointers to DICT_ATTR instead of containing
 	  attribute and vendor fields.  This is in preparation for nested
 	  attributes.
