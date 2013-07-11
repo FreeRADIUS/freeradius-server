@@ -136,8 +136,8 @@ int rlm_ldap_map_verify(ldap_instance_t *inst, value_pair_map_t **head)
 		
 			default:
 				cf_log_err(map->ci, "Operator \"%s\" not allowed for %s values",
-					   fr_int2str(fr_tokens, map->op, "¿unknown?"),
-					   fr_int2str(vpt_types, map->src->type, "¿unknown?"));
+					   fr_int2str(fr_tokens, map->op, "<INVALID>"),
+					   fr_int2str(vpt_types, map->src->type, "<INVALID>"));
 				return -1;
 			}
 		default:

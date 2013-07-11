@@ -345,8 +345,8 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 		 *	it contains a da.
 		 */
 		RDEBUG4(":: dst is \"%s\" src is \"%s\"",
-			fr_int2str(vpt_types, map->dst->type, "¿unknown?"),
-			fr_int2str(vpt_types, map->src->type, "¿unknown?"));
+			fr_int2str(vpt_types, map->dst->type, "<INVALID>"),
+			fr_int2str(vpt_types, map->src->type, "<INVALID>"));
 			
 		switch (map->src->type) {
 		case VPT_TYPE_ATTR:
@@ -371,7 +371,7 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 			}
 			
 			RDEBUG("\t%s %s %s", map->dst->name,
-			       fr_int2str(fr_tokens, map->op, "¿unknown?"),
+			       fr_int2str(fr_tokens, map->op, "<INVALID>"),
 			       map->src->name);
 			
 			switch (map->op) {
@@ -442,7 +442,7 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 				     i != NULL;
 				     i = pairnext(&cursor)) {
 					RDEBUG("\t%s %s %s (%s)", map->dst->name,
-					       fr_int2str(fr_tokens, map->op, "¿unknown?"),
+					       fr_int2str(fr_tokens, map->op, "<INVALID>"),
 					       map->src->name, i->da->name);
 					i->op = map->op;
 				}
@@ -466,7 +466,7 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 			}
 
 			RDEBUG("\t%s %s \"%s\"", map->dst->name,
-			       fr_int2str(fr_tokens, map->op, "¿unknown?"),
+			       fr_int2str(fr_tokens, map->op, "<INVALID>"),
 			       buffer);
 
 			vp = pairalloc(NULL, map->dst->da);
@@ -491,7 +491,7 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 		 */
 		case VPT_TYPE_LITERAL:
 			RDEBUG("\t%s %s '%s'", map->dst->name,
-			       fr_int2str(fr_tokens, map->op, "¿unknown?"),
+			       fr_int2str(fr_tokens, map->op, "<INVALID>"),
 			       map->src->name);
 			
 			vp = pairalloc(NULL, map->dst->da);
@@ -584,9 +584,9 @@ static int cache_verify(rlm_cache_t *inst, value_pair_map_t **head)
 				cf_log_err(map->ci, "Operator \"%s\" not "
 					   "allowed for %s values",
 					   fr_int2str(fr_tokens, map->op,
-						      "¿unknown?"),
+						      "<INVALID>"),
 					   fr_int2str(vpt_types, map->src->type,
-						      "¿unknown?"));
+						      "<INVALID>"));
 				return -1;
 			}
 		default:

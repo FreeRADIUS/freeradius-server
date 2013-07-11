@@ -1175,7 +1175,7 @@ static rlm_rcode_t user_modify(ldap_instance_t *inst, REQUEST *request, ldap_acc
 #endif
 		default:
 			REDEBUG("Operator '%s' is not supported for LDAP modify operations",
-			        fr_int2str(fr_tokens, op, "¿unknown?"));
+			        fr_int2str(fr_tokens, op, "<INVALID>"));
 			       
 			goto error;
 		}

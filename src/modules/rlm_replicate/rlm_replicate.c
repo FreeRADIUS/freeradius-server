@@ -137,7 +137,7 @@ static int replicate_packet(UNUSED void *instance, REQUEST *request,
 			if (!vps) {
 				RWDEBUG("List '%s' doesn't exist for "
 				       "this packet", fr_int2str(pair_lists,
-				       list, "?unknown?"));
+				       list, "<INVALID>"));
 				rcode = RLM_MODULE_INVALID;
 				goto done;
 			}
@@ -196,7 +196,7 @@ static int replicate_packet(UNUSED void *instance, REQUEST *request,
 		 *	Encode, sign and then send the packet.
 		 */
 		RDEBUG("Replicating list '%s' to Realm '%s'",
-		       fr_int2str(pair_lists, list, "¿unknown?"),realm->name);
+		       fr_int2str(pair_lists, list, "<INVALID>"),realm->name);
 		if (rad_send(packet, NULL, home->secret) < 0) {
 			REDEBUG("Failed replicating packet: %s",
 			       fr_strerror());

@@ -416,8 +416,7 @@ value_pair_map_t *radius_cp2map(TALLOC_CTX *ctx, CONF_PAIR *cp,
 			default:
 				cf_log_err(ci, "Operator \"%s\" not allowed "
 					   "for list copy",
-					   fr_int2str(fr_tokens, map->op,
-						      "?unknown?"));
+					   fr_int2str(fr_tokens, map->op, "<INVALID>"));
 				goto error;
 			}
 		break;
