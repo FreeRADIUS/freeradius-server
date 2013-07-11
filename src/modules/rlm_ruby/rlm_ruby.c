@@ -18,6 +18,13 @@
  * @file rlm_ruby.c
  * @brief Translates requests between the server an a ruby interpreter.
  *
+ * @note Maintainers note
+ * @note Please don't use this module, Matz ruby was never designed for embedding.
+ * @note This module leaks memory, and the ruby code installs signal handlers
+ * @note which interfere with normal operation of the server. It's all bad...
+ * @note mruby shows some promise, feel free to rewrite the module to use that.
+ * @note https://github.com/mruby/mruby
+ *
  * @copyright 2008 Andriy Dmytrenko aka Antti, BuzhNET
  */
 
