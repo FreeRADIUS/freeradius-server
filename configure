@@ -8442,7 +8442,6 @@ $as_echo "#define HAVE_REG_EXTENDED 1" >>confdefs.h
 fi
 rm -f conftest*
 
-    LIBS="$LIBS -lregex"
   fi
 fi
 

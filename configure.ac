@@ -1301,7 +1301,11 @@ else
        ],
     [AC_DEFINE(HAVE_REG_EXTENDED, [1], [define this if we have REG_EXTENDED (from <regex.h>)]) REGEX_EXTENDED=yes]
     )
-    LIBS="$LIBS -lregex"
+dnl #
+dnl # Fixme, this is needed for mingw builds, but not available on some Linux systems 
+dnl # despite the presence of regex.h
+dnl #
+dnl # LIBS="$LIBS -lregex"
   fi
 fi
 
