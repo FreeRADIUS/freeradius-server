@@ -141,7 +141,7 @@ static rlm_rcode_t rlm_exec_status2rcode(REQUEST *request, char *answer, size_t 
 				*p-- = '\0';
 			}
 	
-			module_failure_msg(request, answer);
+			module_failure_msg(request, "%s", answer);
 		}
 
 		return RLM_MODULE_FAIL;

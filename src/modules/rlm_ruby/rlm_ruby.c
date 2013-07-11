@@ -131,8 +131,8 @@ static void add_vp_tuple(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vpp, VA
 			long tuplesize;
 
 			if ((tuplesize = RARRAY_LEN(pTupleElement)) != 2) {
-				REDEBUG("%s: tuple element %d is a tuple "
-					" of size %d. must be 2\n", function_name,
+				REDEBUG("%s: tuple element %i is a tuple "
+					" of size %li. must be 2\n", function_name,
 					i, tuplesize);
 			} else {
 				VALUE pString1, pString2;

@@ -113,7 +113,7 @@ static rlm_rcode_t rlm_ldap_group_name2dn(ldap_instance_t const *inst, REQUEST *
 	}
 	
 	if (entry_cnt > (outlen - 1)) {
-		REDEBUG("Number of DNs exceeds limit (%i)", outlen - 1);
+		REDEBUG("Number of DNs exceeds limit (%zu)", outlen - 1);
 		rcode = RLM_MODULE_INVALID;
 		
 		goto finish;
@@ -196,7 +196,7 @@ static rlm_rcode_t rlm_ldap_group_dn2name(ldap_instance_t const *inst, REQUEST *
 		case LDAP_PROC_SUCCESS:
 			break;
 		case LDAP_PROC_NO_RESULT:
-			REDEBUG("DN \"%s\" did not resolve to an object");
+			REDEBUG("DN \"%s\" did not resolve to an object", dn);
 			
 			return RLM_MODULE_INVALID;
 		default:

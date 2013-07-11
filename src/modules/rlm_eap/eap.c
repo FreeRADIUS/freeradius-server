@@ -365,7 +365,7 @@ eap_rcode_t eap_method_select(rlm_eap_t *inst, eap_handler_t *handler)
 	 *	Don't trust anyone.
 	 */
 	if ((type->num == 0) || (type->num >= PW_EAP_MAX_TYPES)) {
-		REDEBUG("Peer sent type (%d), which is outside known range");
+		REDEBUG("Peer sent type (%d), which is outside known range", type->num);
 		
 		return EAP_INVALID;
 	}
