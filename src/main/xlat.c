@@ -804,7 +804,7 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 			node->type = XLAT_VIRTUAL;
 			node->fmt = attrname;
 
-			XLAT_DEBUG("VIRTUAL: %s --> %s", node->fmt);
+			XLAT_DEBUG("VIRTUAL: %s", node->fmt);
 			*head = node;
 			rad_assert(node->next == NULL);
 			brace++;
@@ -1368,7 +1368,7 @@ static ssize_t xlat_tokenize_request(REQUEST *request, char const *fmt, xlat_exp
 
 
 static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, pair_lists_t list, DICT_ATTR const *da, int8_t tag,
-			bool return_null)
+			int num, bool return_null)
 {
 	VALUE_PAIR *vp, *vps = NULL;
 	RADIUS_PACKET *packet = NULL;
@@ -1536,10 +1536,90 @@ static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, pair_lists_t list, DI
 	}
 
 do_print:
+	/*
+	 *	Hack up the virtual attributes.
+	 */
+	if (num && (vp == &myvp)) {
+		char *p, *q;
+
+		/*
+		 *	[*] means only one.
+		 */
+		if (num == 65537) num = 0;
+
+		/*
+		 *	[n] means NULL, as there's only one.
+		 */
+		if ((num > 0) && (num < 65536)) {
+			vp = NULL;
+		}
+
+		p = vp_aprint(ctx, vp);
+		rad_assert(p != NULL);
+
+		/*
+		 *	Get the length of it.
+		 */
+		if (num == 65536) {
+			q = talloc_asprintf(ctx, "%d", (int) strlen(p));
+			talloc_free(p);
+			return q;
+		}
+
+		return p;
+	}
+
+	/*
+	 *	We want the N'th VP.
+	 */
+	if (num) {
+		int count = 0;
+		vp_cursor_t cursor;
+
+		/*
+		 *	Return a count of the VPs.
+		 */
+		if (num == 65536) {
+			vp = paircursor(&cursor, &vp);
+			while ((vp = pairfindnext(&cursor, da->attr, da->vendor, tag)) != NULL) {
+				count++;
+			}
+
+			return talloc_asprintf(ctx, "%d", count);
+		}
+
+		/*
+		 *	Ugly, but working.
+		 */
+		if (num == 65537) {
+			char *p, *q;
+
+			vp = paircursor(&cursor, &vp);
+			vp = pairfindnext(&cursor, da->attr, da->vendor, tag);
+			p = vp_aprint(ctx, vp);
+			while ((vp = pairfindnext(&cursor, da->attr, da->vendor, tag)) != NULL) {
+				q = vp_aprint(ctx, vp);
+				p = talloc_strdup_append(p, ",");
+				p = talloc_strdup_append(p, q);
+			}
+
+			return p;
+		}
+
+		vp = paircursor(&cursor, &vp);
+		while ((vp = pairfindnext(&cursor, da->attr, da->vendor, tag)) != NULL) {
+			if (count == num) {
+				break;
+			}
+			count++;
+		}
+	}
+
 	if (!vp) {
 		if (return_null) return NULL;
 		return vp_aprinttype(ctx, da->type);
 	}
+
 	return vp_aprint(ctx, vp);
 }
 
@@ -1656,7 +1736,7 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 		/*
 		 *	Some attributes are virtual <sigh>
 		 */
-		str = xlat_getvp(ctx, ref, node->list, node->da, node->tag, true);
+		str = xlat_getvp(ctx, ref, node->list, node->da, node->tag, node->num, true);
 		if (!str) {
 			str = talloc_zero_array(ctx, char, 1);
 		}
@@ -1714,7 +1794,7 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 			ref = request;
 
 			if (radius_request(&ref, node->child->ref) >= 0) {
-				str = xlat_getvp(ctx, ref, node->child->list, node->child->da, node->child->tag, true);
+				str = xlat_getvp(ctx, ref, node->child->list, node->child->da, node->child->tag, node->child->tag, true);
 			}
 		} else {
 			str = xlat_aprint(ctx, request, node->child, escape, escape_ctx, lvl);
