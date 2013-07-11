@@ -2236,7 +2236,7 @@ void modcallable_free(modcallable **pc)
 	if (c->type != MOD_SINGLE) {
 		modgroup *g = mod_callabletogroup(c);
 
-		for(loop = g->children;
+		if (g->children) for(loop = g->children;
 		    loop ;
 		    loop = next) {
 			next = loop->next;
