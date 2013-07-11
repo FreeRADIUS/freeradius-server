@@ -19,6 +19,7 @@ default_crl_days	= 30
 default_md		= sha1
 preserve		= no
 policy			= policy_match
+crlDistributionPoints	= URI:http://www.example.com/example_ca.crl
 
 [ policy_match ]
 countryName		= match
@@ -57,3 +58,5 @@ commonName		= "Example Certificate Authority"
 subjectKeyIdentifier	= hash
 authorityKeyIdentifier	= keyid:always,issuer:always
 basicConstraints	= CA:true
+crlDistributionPoints	= URI:http://www.example.com/example_ca.crl
+
