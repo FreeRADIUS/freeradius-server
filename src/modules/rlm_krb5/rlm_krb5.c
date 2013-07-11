@@ -432,7 +432,7 @@ static rlm_rcode_t krb5_auth(void *instance, REQUEST *request)
 	 */
 	ret = krb5_copy_context(inst->context, &context);
 	if (ret) {
-		REDEBUG("Error cloning krb5 context: %s", inst->xlat_name, error_message(ret));
+		REDEBUG("Error cloning krb5 context: %s", error_message(ret));
 		
 		return RLM_MODULE_FAIL;
 	}
@@ -462,7 +462,7 @@ static rlm_rcode_t krb5_auth(void *instance, REQUEST *request)
 		krb5_kt_resolve(context, inst->keytabname, &keytab) :
 		krb5_kt_default(context, &keytab);
 	if (ret) {
-		REDEBUG("Resolving keytab failed: %s", inst->xlat_name, error_message(ret));
+		REDEBUG("Resolving keytab failed: %s", error_message(ret));
 		
 		goto cleanup;
 	}
