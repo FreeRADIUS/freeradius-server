@@ -212,7 +212,7 @@ int radius_evaluate_tmpl(REQUEST *request, int modreturn, UNUSED int depth,
 			EVAL_DEBUG("FAIL %d", __LINE__);
 			return -1;
 		}
-		rcode = (*buffer != '\0');
+		rcode = (buffer && (*buffer != '\0'));
 		talloc_free(buffer);
 		break;
 
