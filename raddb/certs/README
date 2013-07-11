@@ -13,6 +13,16 @@ EAP-TTLS.
 server certificate.  Without those extensions Windows clients will
 refuse to authenticate to FreeRADIUS.
 
+  The root CA and the "XP Extensions" file also contain a crlDistributionPoints
+attribute. The latest release of Windows Phone needs this to be present
+for the handset to validate the RADIUS server certificate. The RADIUS
+server must have the URI defined but the CA need not have...however it
+is best practice for a CA to have a recovation URI. Note that whilst
+the Windows Mobile client cannot actually use the CRL when doing 802.1X
+it is recommended that the URI be an actual working URL and contain a
+recovation format file as there may be other OS behaviour at play and 
+future OSes that may do something with that URI.
+
   In general, you should use self-signed certificates for 802.1x (EAP)
 authentication.  When you list root CAs from other organizations in
 the "CA_file", you permit them to masquerade as you, to authenticate
