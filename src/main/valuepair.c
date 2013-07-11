@@ -1014,14 +1014,14 @@ int radius_map2request(REQUEST *request, value_pair_map_t const *map,
 	char buffer[1024];
 	
 	if (radius_request(&request, map->dst->request) < 0) {
-		RWDEBUG("Mapping \"%s\" -> \"%s\" invalid in this context, skipping!", map->src->name, map->dst->name);
+		REDEBUG("Mapping \"%s\" -> \"%s\" invalid in this context", map->src->name, map->dst->name);
 		
 		return -2;
 	}
 	
 	list = radius_list(request, map->dst->list);
 	if (!list) {
-		RWDEBUG("Mapping \"%s\" -> \"%s\" invalid in this context, skipping!", map->src->name, map->dst->name);
+		REDEBUG("Mapping \"%s\" -> \"%s\" invalid in this context", map->src->name, map->dst->name);
 		
 		return -2;
 	}
