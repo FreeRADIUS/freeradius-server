@@ -1431,7 +1431,7 @@ static VALUE_PAIR *json_pairmake(rlm_rest_t *instance,
 			if (!flags.is_json &&
 			    json_object_is_type(value, json_type_object)) {
 				/* TODO: Insert nested VP into VP structure...*/
-				REDEBUG("Found nested VP, these are not yet supported", value);
+				REDEBUG("Found nested VP, these are not yet supported");
 				
 				return NULL;
 				
