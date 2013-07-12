@@ -28,6 +28,7 @@ case "$1" in
           /etc/freeradius/sites-enabled \
           /etc/freeradius/mods-available \
           /etc/freeradius/mods-enabled \
+          /etc/freeradius/mods-config/attr_filter \
           /etc/freeradius/mods-config \
           /etc/freeradius/policy.d \
           /var/run/freeradius \
