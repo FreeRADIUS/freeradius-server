@@ -1735,6 +1735,7 @@ int realms_init(CONF_SECTION *config)
 	     cs != NULL;
 	     cs = cf_subsection_find_next(config, cs, "home_server")) {
 		if (!home_server_add(rc, cs)) {
+			cf_log_err(cf_sectiontoitem(cs), "unable to add home_server");
 			free(rc);
 			realms_free();
 			return 0;
@@ -1745,6 +1746,7 @@ int realms_init(CONF_SECTION *config)
 	     cs != NULL;
 	     cs = cf_subsection_find_next(config, cs, "realm")) {
 		if (!realm_add(rc, cs)) {
+			cf_log_err(cf_sectiontoitem(cs), "unable to add realm (check for mismatched \"type\" entry with home servers)");
 			free(rc);
 			realms_free();
 			return 0;
