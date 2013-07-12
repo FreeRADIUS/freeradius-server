@@ -363,10 +363,10 @@ static rlm_rcode_t do_python(REQUEST *request, PyObject *pFunc, char const *func
 	int		ret;
 	
 	PyGILState_STATE gstate;
-	
-	/* Return with "OK, continue" if the function is not defined. */
+
+	/* Return with "noop" if the function is not defined. */
 	if (!pFunc)
-		return RLM_MODULE_OK;
+		return RLM_MODULE_NOOP;
 	
 	/* Default return value is "OK, continue" */
 	ret = RLM_MODULE_OK;
