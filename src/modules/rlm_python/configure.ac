@@ -8,7 +8,7 @@ if test x$with_[]modname != xno; then
 	AC_PROG_CC
 	AC_PROG_CPP
 
-	AC_CHECK_PROGS(PYTHONBIN, [ python2.3 python2.2 python2.1 python1.5 python ], not-found, [${PATH}:/usr/bin:/usr/local/bin])
+	AC_CHECK_PROGS(PYTHONBIN, [ python3.3 python3.2 python3.1 python3.0 python2.7 python2.6 python2.5 python2.4 python ], not-found, [${PATH}:/usr/bin:/usr/local/bin])
 
 	if test x$PYTHONBIN = xnot-found; then
 		fail="python-binary"
