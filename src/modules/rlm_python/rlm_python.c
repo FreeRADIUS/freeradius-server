@@ -354,8 +354,7 @@ failed:
 	return -1;
 }
 
-static int do_python(REQUEST *request, PyObject *pFunc,
-		     char const *funcname)
+static rlm_rcode_t do_python(REQUEST *request, PyObject *pFunc, char const *funcname)
 {
 	vp_cursor_t	cursor;
 	VALUE_PAIR      *vp;
@@ -489,7 +488,7 @@ failed:
 	Py_XDECREF(pRet);
 	PyGILState_Release(gstate);
 	
-	return -1;
+	return RLM_MODULE_FAIL;
 }
 
 /*
