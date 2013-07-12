@@ -217,13 +217,15 @@ ldap {
 		#    * require_message_authenticator - Whether we require the Message-Authenticator
 		#      attribute to be present in requests from the client.
 		#
+		#  Schemas are available in doc/schemas/ldap for openldap
+		#
 		attribute {
-			identifier = 'frClientIdentifier'
-			secret = 'frClientSecret'
-#			shortname = 'frClientShortname'
-#			nas_type = 'frClientType'
-#			virtual_server = 'frClientVirtualServer'
-#			require_message_authenticator = 'frClientRequireMa'
+			identifier = 'radiusClientIdentifier'
+			secret = 'radiusClientSecret'
+#			shortname = 'radiusClientShortname'
+#			nas_type = 'radiusClientType'
+#			virtual_server = 'radiusClientVirtualServer'
+#			require_message_authenticator = 'radiusClientRequireMa'
 		}
 	}
 
