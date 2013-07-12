@@ -7777,14 +7777,21 @@ _ACEOF
 fi
 
 
-    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for TLS" >&5
-$as_echo_n "checking for TLS... " >&6; }
-    if test "$cross_compiling" = yes; then :
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for __thread support in compiler" >&5
+$as_echo_n "checking for __thread support in compiler... " >&6; }
+  if test "$cross_compiling" = yes; then :
   have_tls=no
 else
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
- static __thread int val; int main(int argc, char *argv[]) { return val = argc; }
+
+        static __thread int val;
+        int main(int argc, char **argv) {
+          val = 0;
+          return val;
+        }
+
+
 _ACEOF
 if ac_fn_c_try_run "$LINENO"; then :
   have_tls=yes
@@ -7795,13 +7802,13 @@ rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
   conftest.$ac_objext conftest.beam conftest.$ac_ext
 fi
 
-    { $as_echo "$as_me:${as_lineno-$LINENO}: result: $have_tls" >&5
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $have_tls" >&5
 $as_echo "$have_tls" >&6; }
-    if test "$have_tls" = "yes"; then
+  if test "x$have_tls" = "xyes"; then
 
 $as_echo "#define HAVE_THREAD_TLS 1" >>confdefs.h
 
-    fi
+  fi
 
 
 

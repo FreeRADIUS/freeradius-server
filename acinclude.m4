@@ -330,12 +330,21 @@ m4_pushdef([AC_OUTPUT],
 #
 AC_DEFUN([FR_TLS],
 [
-    AC_MSG_CHECKING(for TLS)
-    AC_RUN_IFELSE([AC_LANG_SOURCE([[ static __thread int val; int main(int argc, char *argv[]) { return val = argc; } ]])],[have_tls=yes],[have_tls=no],[have_tls=no ])
-    AC_MSG_RESULT($have_tls)
-    if test "$have_tls" = "yes"; then
-        AC_DEFINE([HAVE_THREAD_TLS],[1],[Define if the compiler supports __thread])
-    fi
+  AC_MSG_CHECKING(for __thread support in compiler)
+  AC_RUN_IFELSE(
+    [AC_LANG_SOURCE(
+      [[
+        static __thread int val;
+        int main(int argc, char **argv) {
+          val = 0;
+          return val;
+        }
+      ]])
+    ],[have_tls=yes],[have_tls=no],[have_tls=no])
+  AC_MSG_RESULT($have_tls)
+  if test "x$have_tls" = "xyes"; then
+    AC_DEFINE([HAVE_THREAD_TLS],[1],[Define if the compiler supports __thread])
+  fi
 ])
 
 
