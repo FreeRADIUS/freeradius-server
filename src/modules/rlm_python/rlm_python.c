@@ -542,20 +542,10 @@ static void mod_objclear(PyObject **ob)
 	}
 }
 
-static void free_and_null(char **p)
-{
-	if (*p != NULL) {
-		free(*p);
-		*p = NULL;
-	}
-}
-
 static void mod_funcdef_clear(struct py_function_def *def)
 {
 	mod_objclear(&def->function);
 	mod_objclear(&def->module);
-	free_and_null(&def->function_name);
-	free_and_null(&def->module_name);
 }
 
 static void mod_instance_clear(rlm_python_t *inst)
