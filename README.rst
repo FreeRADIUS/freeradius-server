@@ -28,9 +28,9 @@ Version 3.0 of the server is largely compatible with version 2.x, but
 we highly recommend that you recreate your configuration, rather than
 trying to get the older configuration to work.
 
-For a list of changes in version 3.0, please see doc/ChangeLog.
+For a list of changes in version 3.0, please see ``doc/ChangeLog``.
 
-See raddb/README.rst for information on what to do to update your
+See ``raddb/README.rst`` for information on what to do to update your
 configuration.
 
 Administrators upgrading from a previous version should install this
