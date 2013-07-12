@@ -24,52 +24,20 @@ Directory, OpenLDAP, and many more.  It is used daily to authenticate
 the Internet access for hundreds of millions of people, in sites
 ranging from 10 users, to 10 million and more users.
 
-Version 2.0 of the server is intended to be backwards compatible
-with previous versions, but also to have many new features, such as:
+Version 3.0 of the server is largely compatible with version 2.x, but
+we highly recommend that you recreate your configuration, rather than
+trying to get the older configuration to work.
 
-* simple policy language (see ``man unlang``)
-* virtual servers (raddb/sites-available/README)
-* IPv6 support
-* better proxy support (raddb/proxy.conf)
-* More EAP types
-* Debugging output should be MUCH easier to understand
-* VMPS support
-* More modules are marked "stable" (python, etc.)
-* SQL configuration has been cleaned up (see raddb/sql/*)
-* limited support for HUP
-* check configuration and exit (``radiusd -C``)
-* Server core is now event based (simpler, more powerful)
+For a list of changes in version 3.0, please see doc/ChangeLog.
+
+See raddb/README.rst for information on what to do to update your
+configuration.
 
 Administrators upgrading from a previous version should install this
 version in a different location from their existing systems.  Any
 existing configuration should be carefully migrated to the new
 version, in order to take advantage of the new features which can
 greatly simply configuration.
-
-While every attempt has been made to ensure that this version is
-backwards compatible with previous versions, there may be cases where
-it is not backwards compatible.  In most cases, incompatibilities are
-a side-effect of fixing bugs, or of adding new features.  Some
-configuration differences are noted below:
-
-* The recommended format for clients has changed.  See "clients.conf".
-  The old format should still work, but should be changed to use the
-  new format.
-
-* The recommended formant for realms has changed.  See "proxy.conf"
-  The old format should still work, but should be changed to use the
-  new format.  In addition, the new format has much more flexibility.
-
-* Any configuration using TTLS or PEAP should be updated to use
-  virtual servers. See "virtual_server" in "eap.conf", and
-  "raddb/sites-available/inner-tunnel".  In most cases, using an
-  "inner-tunnel" virtual server will make the configuration MUCH
-  simpler.
-
-* A number of deprecated command-line options have been removed.
-  (``-y -z -A -l -g``) See "man radiusd".  These configurations can be
-  controlled in "radiusd.conf", so it is not necessary to have them
-  as command-line options.
 
 Please see http://freeradius.org and http://wiki.freeradius.org for
 more information.
