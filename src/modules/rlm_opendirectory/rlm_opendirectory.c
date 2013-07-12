@@ -421,20 +421,19 @@ static rlm_rcode_t mod_authorize(UNUSED void *instance, REQUEST *request)
 	}
 	
 	if (uuid_is_null(uuid)) {
-		REDEBUG("Could not get the user's uuid",
-				   T_OP_EQ);
+		REDEBUG("Could not get the user's uuid");
 		return RLM_MODULE_NOTFOUND;
 	}
 	
 	if (!uuid_is_null(guid_sacl)) {
 		err = mbr_check_service_membership(uuid, kRadiusServiceName, &ismember);
 		if (err != 0) {
-			REDEBUG("Failed to check group membership", T_OP_EQ);
+			REDEBUG("Failed to check group membership");
 			return RLM_MODULE_FAIL;
 		}
 		
 		if (ismember == 0) {
-			REDEBUG("User is not authorized", T_OP_EQ);
+			REDEBUG("User is not authorized");
 			return RLM_MODULE_USERLOCK;
 		}
 	}
@@ -442,12 +441,12 @@ static rlm_rcode_t mod_authorize(UNUSED void *instance, REQUEST *request)
 	if (!uuid_is_null(guid_nasgroup)) {
 		err = mbr_check_membership_refresh(uuid, guid_nasgroup, &ismember);
 		if (err != 0) {
-			REDEBUG("Failed to check group membership", T_OP_EQ);
+			REDEBUG("Failed to check group membership");
 			return RLM_MODULE_FAIL;
 		}
 		
 		if (ismember == 0) {
-			REDEBUG("User is not authorized", T_OP_EQ);
+			REDEBUG("User is not authorized");
 			return RLM_MODULE_USERLOCK;
 		}
 	}
