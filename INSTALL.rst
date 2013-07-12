@@ -10,7 +10,7 @@ FreeRADIUS, you should read ALL of this file, especially the section
 on "UPGRADING" below which gives information on how to update your
 configuration.
 
-  Whether you are installing from source or a pre-built binary
+Whether you are installing from source or a pre-built binary
 package, you should read the section below "RUNNING THE SERVER".
 
 
@@ -31,7 +31,7 @@ the following steps to build and install the server::
 FreeRADIUS has autoconf support. This means you have to run
 ``./configure``, and then run make.  To see which configuration options
 are supported, run ``./configure --help``, and read it's output.  The
-following list is a selection from the available flags:"
+following list is a selection from the available flags::
 
   --enable-shared[=PKGS]  build shared libraries [default=yes]
   --enable-static[=PKGS]  build static libraries [default=yes]
@@ -46,7 +46,7 @@ following list is a selection from the available flags:"
   --enable-developer      Turns on super-duper-extra-compile-warnings
                           when using gcc, as well as experimental modules.
 
-The "make install" stage will install the binaries, the 'man' pages,
+The ``make install`` stage will install the binaries, the 'man' pages,
 and MAY install the configuration files.  If you have not installed a
 RADIUS server before, then the configuration files for FreeRADIUS will
 be installed.  If you already have a RADIUS server installed, then
@@ -86,7 +86,7 @@ For users upgrading from any older version to 3.0, it is *NOT*
 possible to use the older configuration as-is. However, the version
 2.x configuration is largely compatible, so upgrading the
 configuration should not be too difficult.  For details on what has
-changed, see raddb/README.rst
+changed, see ``raddb/README.rst``.
 
 We STRONGLY recommend that 3.0 be installed in a different location
 than any existing 1.x or 2.x installation.  Any local policies can
@@ -119,7 +119,7 @@ server prints out a lot of information in this mode, including
 suggestions for fixes to common problems.  Look especially for
 "WARNING" in the output, and read the related messages.
 
- Since the main developers of FreeRADIUS use debugging mode to track
+Since the main developers of FreeRADIUS use debugging mode to track
 down their configuration problems with the server, it's a good idea
 for you to use it, too.  If you don't, there is little hope for you to
 solve ANY configuration problem related to the server.
@@ -128,12 +128,12 @@ To start the server in debugging mode, do::
 
   $ radiusd -X
 
-  You should see a lot of text printed on the screen as it starts up.
+You should see a lot of text printed on the screen as it starts up.
 If you don't, or if you see error messages, please read the FAQ:
 
   http://www.freeradius.org/faq/
 
-  If the server says "Ready to process requests.", then it is running
+If the server says "Ready to process requests.", then it is running
 properly.  From another shell (or another window), type::
 
   $ radtest test test localhost 0 testing123
@@ -145,8 +145,9 @@ authentication request is accepted or rejected, what matters is that
 the server received the request, and responded to it.
 
 You can now edit the configuration files for your local system. You
-will usually want to start with sites-enabled/default. To set which
-NASes (clients) can communicate with this server, edit clients.conf.
+will usually want to start with ``sites-enabled/default``. To set 
+which NASes (clients) can communicate with this server, 
+edit ``clients.conf``.
 Please read the configuration files carefully, as many configuration
 options are only documented in comments in the file.
 
@@ -158,7 +159,8 @@ server to stop working, you will be able to easily step back and find
 out what update broke the configuraiton.
 
 Configuring and running the server MAY be complicated.  Many modules
-have "man" pages.  See "man rlm_pap", or "man rlm_*" for information.
+have ``man`` pages.  See ``man rlm_pap``, or ``man rlm_*`` for 
+information.
 Please read the documentation in the doc/ directory.  The comments in
 the configuration files also contain a lot of documentation.
 
