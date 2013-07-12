@@ -24,56 +24,9 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/libradius.h>
-
-
 #define FR_STRERROR_BUFSIZE (1024)
 
-#ifdef HAVE_THREAD_TLS
-/*
- *	GCC on most Linux systems
- */
-#define THREAD_TLS __thread
-
-#elif defined(HAVE_DECLSPEC_THREAD)
-/*
- *	Visual C++, Borland
- */
-#define THREAD_TLS __declspec(thread)
-#else
-
-/*
- *	We don't have thread-local storage.  Ensure we don't
- *	ask for it.
- */
-#define THREAD_TLS
-
-/*
- *	Use pthread keys if we have pthreads.  For MAC, which should
- *	be very fast.
- */
-#ifdef HAVE_PTHREAD_H
-#define USE_PTHREAD_FOR_TLS (1)
-#endif
-#endif
-
-#ifndef USE_PTHREAD_FOR_TLS
-/*
- *	Try to create a thread-local-storage version of this buffer.
- */
-static THREAD_TLS char fr_strerror_buffer[FR_STRERROR_BUFSIZE];
-
-#else
-#include <pthread.h>
-
-static pthread_key_t  fr_strerror_key;
-static pthread_once_t fr_strerror_once = PTHREAD_ONCE_INIT;
-
-/* Create Key */
-static void fr_strerror_make_key(void)
-{
-	pthread_key_create(&fr_strerror_key, NULL);
-}
-#endif
+fr_thread_local_init(char *, fr_strerror_buffer);	/* macro */
 
 /*
  *	Log to a buffer, trying to be thread-safe.
@@ -82,53 +35,31 @@ void fr_strerror_printf(char const *fmt, ...)
 {
 	va_list ap;
 
-#ifdef USE_PTHREAD_FOR_TLS
 	char *buffer;
 
-	pthread_once(&fr_strerror_once, fr_strerror_make_key);
-
-	buffer = pthread_getspecific(fr_strerror_key);
+	buffer = fr_thread_local_get(fr_strerror_buffer);	/* Will be NULL only on initialisation */
 	if (!buffer) {
 		int ret;
 
-		buffer = malloc(FR_STRERROR_BUFSIZE);
-		if (!buffer) return; /* panic and die! */
-
-		ret = pthread_setspecific(fr_strerror_key, buffer);
-		if (ret != 0) {
-			fr_perror("Failed recording thread error: %s",
-				  strerror(ret));
-
+		buffer = malloc(sizeof(char) * FR_STRERROR_BUFSIZE);
+		if (!buffer) {
 			return;
+		}
+
+		ret = fr_thread_local_set(fr_strerror_buffer, buffer);
+		if (ret != 0) {
+			fr_perror("Failed recording thread error: %s", strerror(ret));
 		}
 	}
 
 	va_start(ap, fmt);
 	vsnprintf(buffer, FR_STRERROR_BUFSIZE, fmt, ap);
-
-#else
-	va_start(ap, fmt);
-	vsnprintf(fr_strerror_buffer, sizeof(fr_strerror_buffer), fmt, ap);
-#endif
-
 	va_end(ap);
 }
 
 char const *fr_strerror(void)
 {
-#ifndef USE_PTHREAD_FOR_TLS
-	return fr_strerror_buffer;
-
-#else
-	char const *msg;
-
-	pthread_once(&fr_strerror_once, fr_strerror_make_key);
-
-	msg = pthread_getspecific(fr_strerror_key);
-	if (msg) return msg;
-
-	return "(unknown error)"; /* DON'T return NULL! */
-#endif
+	return fr_thread_local_get(fr_strerror_buffer);
 }
 
 void fr_perror(char const *fmt, ...)
