@@ -77,10 +77,10 @@ discussions about common problems and solution.
 4. ADDITIONAL INFORMATION
 -------------------------
 
-See 'doc/README' for more information about FreeRADIUS.
+See ``doc/README`` for more information about FreeRADIUS.
 
 There is an O'Reilly book available.  It serves as a good
-introduction for anyone new to RADIUS.  However, it is almost 5 years
+introduction for anyone new to RADIUS.  However, it is almost 11 years
 old, and is not much more than a basic introduction to the subject.
 
 http://www.amazon.com/exec/obidos/ASIN/0596003226/freeradiusorg-20/
