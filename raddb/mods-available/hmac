@@ -1,0 +1,12 @@
+# -*- text -*-
+#
+#  $Id$
+
+#
+#  The 'hmac' module currently has no configuration.
+#
+#  "HMAC" authentication, typically for STUN/TURN but generic
+#  enough for other purposes potentially
+#
+hmac {
+}

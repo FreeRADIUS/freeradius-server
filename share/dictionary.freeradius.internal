@@ -240,6 +240,14 @@ ATTRIBUTE	FreeRADIUS-Client-Src-IPv6-Address	1144	ipv6addr
 
 ATTRIBUTE	OTP-Challenge				1145	string
 ATTRIBUTE	EAP-Session-Id				1146	octets
+
+
+ATTRIBUTE	HMAC-Realm				1147	string
+ATTRIBUTE	HMAC-Nonce				1148	string
+ATTRIBUTE	HMAC-Algorithm				1149	string
+ATTRIBUTE	HMAC-User-Name				1150	string
+ATTRIBUTE	HMAC-Body				1151	string
+
 #
 #	Range:	1200-1279
 #		EAP-SIM (and other EAP type) weirdness.
@@ -555,6 +563,7 @@ VALUE	Auth-Type			NS-MTA-MD5		1031
 VALUE	Auth-Type			SMB			1033
 VALUE	Auth-Type			MS-CHAP-V2		1034
 
+VALUE	Auth-Type			HMAC			1035
 #
 #	Authorization type, too.
 #
