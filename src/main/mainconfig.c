@@ -929,11 +929,13 @@ int read_mainconfig(int reload)
 
 	DEBUG2("%s: #### Loading Realms and Home Servers ####", mainconfig.name);
 	if (!realms_init(cs)) {
+		DEBUG2("Failed to load realms and home servers\n");
 		return -1;
 	}
 
 	DEBUG2("%s: #### Loading Clients ####", mainconfig.name);
 	if (!clients_parse_section(cs)) {
+		DEBUG2("Failed to load clients\n");
 		return -1;
 	}
 
