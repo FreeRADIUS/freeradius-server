@@ -50,8 +50,6 @@ following list is a selection from the available flags:
   --enable-developer      Turns on super-duper-extra-compile-warnings
                               when using gcc, as well as
                               experimental modules.
-  --with-edir             Compile with support for Novell eDirectory
-                              integration.
 
   The "make install" stage will install the binaries, the 'man' pages,
 and MAY install the configuration files.  If you have not installed a
