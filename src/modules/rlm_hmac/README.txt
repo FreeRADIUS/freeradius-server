@@ -3,7 +3,8 @@
 rlm_hmac works a bit like rlm_digest
 
 It can use either a Cleartext-Password or a Digest-HA1 value.  It
-looks for both of them.
+looks for both of them.  It will use the Digest-HA1 if both
+exist for the given user.
 
 It is biased for STUN/TURN.  Specifically, this means that
 
@@ -12,8 +13,43 @@ It is biased for STUN/TURN.  Specifically, this means that
 - the HMAC variant is HMAC-SHA1
 
 It should be fairly trivial to generalise this module to
-support other HMAC variants or key variants.  Digest-HA1
-is convenient because it is used by SIP too.
+support other HMAC variants or key variants.  It is convenient to
+store Digest-HA1 in a RADIUS server because it is used by SIP too.
+
+To do - essential
+-----------------
+
+Before the code can be part of any proper RADIUS server release,
+the whole concept needs to be formalised and at the very minimum,
+the IANA must reserve a code number for the HMAC-Code attribute.
+
+http://www.ietf.org/assignments/radius-types/radius-types.xml
+
+The maximum length of an attribute's value in RADIUS is 253
+bytes.  It is theoretically possible for STUN/TURN packets to
+exceed this length.  In this case, it is necessary to send the
+message body to the RADIUS server by repeating the
+HMAC-Body attribute multiple times and splitting the body across
+the repeated attributes.  The issue is discussed here:
+
+http://tools.ietf.org/html/draft-perez-radext-radius-fragmentation-06#section-1
+
+To do - optional
+----------------
+
+Implementing other HMAC variants (e.g. HMAC-MD5)
+
+Implementing other key variants (e.g. just using the cleartext password rather
+than the H(A1) value)
+
+Identify other network protocols that may benefit from HMAC in RADIUS
+
+- Dynamic DNS updates can be authenticated with TSIG, HMAC can be used:
+  http://tools.ietf.org/html/rfc4635
+  This appears to be an interesting use case
+
+- IPsec uses HMAC, but it is only used with transient keys, no need
+  to integrated with RADIUS for HMAC
 
 Testing
 -------
