@@ -18,9 +18,9 @@ DECLARE
         v_groupname varchar;
 
 BEGIN
-        SELECT INTO v_groupname groupname FROM radusergroup WHERE calledstationid = NEW.calledstationid AND username = NEW.username;
+        SELECT INTO v_groupname GroupName FROM radusergroup WHERE CalledStationId = NEW.CalledStationId AND UserName = NEW.UserName;
         IF FOUND THEN
-                UPDATE radacct SET groupname = v_groupname WHERE radacctid = NEW.radacctid;
+                UPDATE radacct SET GroupName = v_groupname WHERE RadAcctId = NEW.RadAcctId;
         END IF;
 
         RETURN NEW;
