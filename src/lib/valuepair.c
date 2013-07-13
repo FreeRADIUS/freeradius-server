@@ -2383,16 +2383,21 @@ FR_TOKEN userparse(TALLOC_CTX *ctx, char const *buffer, VALUE_PAIR **list)
 		last_token = pairread(&p, &raw);
 		if (last_token == T_OP_INVALID) break;
 		
-		vp = pairmake(ctx, NULL, raw.l_opand, raw.r_opand, raw.op);
-		if (!vp) {
-			last_token = T_OP_INVALID;
-			break;
-		}
-		
-		if (raw.quote == T_DOUBLE_QUOTED_STRING) {
+		if (raw.quote == T_DOUBLE_QUOTED_STRING) {		
+			vp = pairmake(ctx, NULL, raw.l_opand, NULL, raw.op);
+			if (!vp) {
+				last_token = T_OP_INVALID;
+				break;
+			}
 			if (pairmark_xlat(vp, raw.r_opand) < 0) {
 				pairbasicfree(vp);
 				
+				break;
+			}
+		} else {
+			vp = pairmake(ctx, NULL, raw.l_opand, raw.r_opand, raw.op);
+			if (!vp) {
+				last_token = T_OP_INVALID;
 				break;
 			}
 		}
