@@ -16,6 +16,31 @@ It should be fairly trivial to generalise this module to
 support other HMAC variants or key variants.  It is convenient to
 store Digest-HA1 in a RADIUS server because it is used by SIP too.
 
+Design considerations
+---------------------
+
+RADIUS only supports a limited number of attribute names.  On the wire,
+the attribute is represented by a single byte.  Consequently, many protocols
+use special schemes to embed extended attribute/value pairs in
+a single attribute.
+
+STUN/TURN servers don't just need to verify a HMAC from a client.  They
+also need to sign the outgoing messages to clients.  For this purpose,
+they need to receive the HMAC calculated by the RADIUS server,
+a yes/no response is not sufficient.
+
+TURN servers may require optional attributes in future, for example,
+to specify user bandwidth limits.  These should be part of the design
+even if they are not implemented now.
+
+For SIP with RADIUS, RFC 5090 suggests that the RADIUS server should be
+able to specify a nonce for a client (rather than the SIP server creating
+and validating the nonce).  It may be desirable to implement such a
+requirement for STUN/TURN with RADIUS.  The easiest implementation
+(and the way SIP servers work with rlm_digest) simply involves the
+NAS generating and validating nonces itself while the RADIUS server
+only validates the hashes.
+
 To do - essential
 -----------------
 
