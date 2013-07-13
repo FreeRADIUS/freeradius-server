@@ -527,7 +527,7 @@ void xlat_free(void)
 	rbtree_free(xlat_root);
 }
 
-#if 0
+#if 1
 #define XLAT_DEBUG(fmt, ...) printf(fmt, ## __VA_ARGS__);printf("\n")
 #endif
 
@@ -1741,7 +1741,9 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 		 *	Some attributes are virtual <sigh>
 		 */
 		str = xlat_getvp(ctx, ref, node->list, node->da, node->tag, node->num, true);
-		if (str) XLAT_DEBUG("expand attr %s --> '%s'", node->da->name, str);
+		if (str) {
+			XLAT_DEBUG("expand attr %s --> '%s'", node->da->name, str);
+		}
 		break;
 
 	case XLAT_VIRTUAL:
