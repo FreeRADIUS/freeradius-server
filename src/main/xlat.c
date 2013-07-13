@@ -1637,6 +1637,7 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 		 *	Don't escape this.
 		 */
 	case XLAT_LITERAL:
+		XLAT_DEBUG("xlat_aprint LITERAL");
 		return talloc_strdup(ctx, node->fmt);
 
 		/*
@@ -1648,6 +1649,8 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 		size_t freespace = 256;
 		struct tm *TM, s_TM;
 		time_t when;
+
+		XLAT_DEBUG("xlat_aprint PERCENT");
 
 		str = talloc_array(ctx, char, freespace); /* @todo do better allocation */
 		p = node->fmt;
@@ -1728,6 +1731,7 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 		break;
 
 	case XLAT_ATTRIBUTE:
+		XLAT_DEBUG("xlat_aprint ATTRIBUTE");
 		ref = request;
 		if (radius_request(&ref, node->ref) < 0) {
 			return NULL;
@@ -1737,13 +1741,11 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 		 *	Some attributes are virtual <sigh>
 		 */
 		str = xlat_getvp(ctx, ref, node->list, node->da, node->tag, node->num, true);
-		if (!str) {
-			str = talloc_zero_array(ctx, char, 1);
-		}
-		XLAT_DEBUG("expand attr %s --> '%s'", node->da->name, str);
+		if (str) XLAT_DEBUG("expand attr %s --> '%s'", node->da->name, str);
 		break;
 
 	case XLAT_VIRTUAL:
+		XLAT_DEBUG("xlat_aprint VIRTUAL");
 		str = talloc_array(ctx, char, 1024); /* FIXME: have the module call talloc_asprintf */
 		rcode = node->xlat->func(node->xlat->instance, request, NULL, str, 1024);
 		if (rcode < 0) {
@@ -1753,6 +1755,7 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 		break;
 
 	case XLAT_MODULE:
+		XLAT_DEBUG("xlat_aprint MODULE");
 		rad_assert(node->child != NULL);
 		if (xlat_process(&child, request, node->child, node->xlat->escape, node->xlat->instance) == 0) {
 			return NULL;
@@ -1773,6 +1776,7 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 
 #ifdef HAVE_REGEX_H
 	case XLAT_REGEX:
+		XLAT_DEBUG("xlat_aprint REGEX");
 		child = request_data_reference(request, request,
 					       REQUEST_DATA_REGEX | node->num);
 		if (!child) return NULL;
@@ -1782,23 +1786,11 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 #endif
 
 	case XLAT_ALTERNATE:
+		XLAT_DEBUG("xlat_aprint ALTERNATE");
 		rad_assert(node->child != NULL);
 		rad_assert(node->alternate != NULL);
 
-		/*
-		 *	Special-case first situation being an
-		 *	attribute.
-		 */
-		if (node->child->type == XLAT_ATTRIBUTE) {
-			str = NULL;
-			ref = request;
-
-			if (radius_request(&ref, node->child->ref) >= 0) {
-				str = xlat_getvp(ctx, ref, node->child->list, node->child->da, node->child->tag, node->child->tag, true);
-			}
-		} else {
-			str = xlat_aprint(ctx, request, node->child, escape, escape_ctx, lvl);
-		}
+		str = xlat_aprint(ctx, request, node->child, escape, escape_ctx, lvl);
 		if (str) break;
 
 		str = xlat_aprint(ctx, request, node->alternate, escape, escape_ctx, lvl);
