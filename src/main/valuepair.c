@@ -1038,7 +1038,9 @@ int radius_map2request(REQUEST *request, value_pair_map_t const *map,
 		
 		return rcode;
 	}
-	VERIFY_VP(head);
+	if (head) {
+		VERIFY_VP(head);
+	}
 
 	if (debug_flag) for (vp = paircursor(&cursor, &head); vp; vp = pairnext(&cursor)) {
 		char *value;
