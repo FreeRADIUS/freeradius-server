@@ -1,0 +1,26 @@
+# Site specific configuration example
+
+example_conf {
+
+	# Define the radius shared secret here, and reference it with ${example_conf.radius_secret}
+   # in your clients.conf, proxy.conf and virtual servers
+
+#	radius_secret = "testing123"
+
+	# Define a subsection
+#	cisco_nas {
+
+		# You can refer to this regular expression in unlang by using
+		# if(Called-Station-Id =~ /${example_conf.cisco_nas.CSI_regex}/)
+#		CSI_regex = "^([0-9a-f]{2})[^0-9a-f]?([0-9a-f]{2})[^0-9a-f]?([0-9a-f]{2})[^0-9a-f]?([0-9a-f]{2})[^0-9a-f]?([0-9a-f]{2})[^0-9a-f]?([0-9a-f]{2})$"
+#	}
+
+
+	# You can even define a condition and call it in unlang
+	# if (${example_conf.ip_condition}) {
+	#    do something
+	# }
+#	ip_condition = "Framed-IP-Address < 192.168.0.0/16"
+
+}		
+

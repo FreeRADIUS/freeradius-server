@@ -307,6 +307,8 @@ fi
 %dir %attr(750,root,radiusd) /etc/raddb/mods-enabled
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/mods-enabled/*
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/*
+%dir %attr(750,root,radiusd) /etc/raddb/local.d
+%attr(640,root,radiusd) %config(noreplace) /etc/raddb/local.d/*
 %dir %attr(755,radiusd,radiusd) /var/run/radiusd/
 # binaries
 %defattr(-,root,root)

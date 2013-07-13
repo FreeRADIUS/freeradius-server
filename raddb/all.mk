@@ -24,7 +24,7 @@ LOCAL_CERT_PRODUCTS :=	$(addprefix $(R)$(raddbdir)/certs/,ca.key ca.pem \
 LEGACY_LINKS :=		$(addprefix $(R)$(raddbdir)/,users huntgroups hints)
 
 RADDB_DIRS :=		certs mods-available mods-enabled policy.d \
-			sites-available sites-enabled \
+			sites-available sites-enabled local.d \
 			$(patsubst raddb/%,%,$(shell find raddb/mods-config -type d -print))
 
 # Installed directories
@@ -36,7 +36,8 @@ INSTALL_FILES := 	$(wildcard raddb/sites-available/* raddb/mods-available/*) \
 		 	$(addprefix raddb/,$(LOCAL_FILES)) \
 		 	$(addprefix raddb/certs/,$(LOCAL_CERT_FILES)) \
 		 	$(shell find raddb/mods-config -type f -print) \
-		 	$(shell find raddb/policy.d -type f -print)
+		 	$(shell find raddb/policy.d -type f -print) \
+		 	$(shell find raddb/local.d -type f -print)
 
 # Re-write local files to installed files, filtering out editor backups
 INSTALL_RADDB :=	$(patsubst raddb/%,$(R)$(raddbdir)/%,\
