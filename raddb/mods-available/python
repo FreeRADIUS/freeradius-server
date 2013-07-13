@@ -6,6 +6,9 @@
 # rlm_python is called for a section which does not have
 # a function defined, it will return NOOP.
 #
+# threading.local() may be used store thread specific data such
+# as connection handles.
+#
 python {
 	module = example
 
