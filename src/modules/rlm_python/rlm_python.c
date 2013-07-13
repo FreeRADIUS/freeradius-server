@@ -177,18 +177,7 @@ static PyMethodDef radiusd_methods[] = {
 
 static void mod_error(void)
 {
-<<<<<<< HEAD
-	PyObject
-		*pType = NULL,
-		*pValue = NULL,
-		*pTraceback = NULL,
-		*pStr1 = NULL,
-		*pStr2 = NULL;
-
-	Pyx_BLOCK_THREADS
-=======
 	PyObject *pType = NULL, *pValue = NULL, *pTraceback = NULL, *pStr1 = NULL, *pStr2 = NULL;
->>>>>>> Fix thread local storage in python Closes #291
 
 	/* This will be called with the GIL lock held */
 
@@ -207,14 +196,7 @@ failed:
 	Py_XDECREF(pType);
 	Py_XDECREF(pValue);
 	Py_XDECREF(pTraceback);
-<<<<<<< HEAD
-
-	Pyx_UNBLOCK_THREADS
-		}
-=======
-
 }
->>>>>>> Fix thread local storage in python Closes #291
 
 static int mod_init(rlm_python_t *inst)
 {
@@ -240,14 +222,9 @@ static int mod_init(rlm_python_t *inst)
 		}
 	}
 
-<<<<<<< HEAD
-	PyEval_ReleaseLock(); /* Drop lock grabbed by InitThreads */
-
-=======
 #ifdef HAVE_PTHREAD_H
 	PyEval_ReleaseLock(); /* Drop lock grabbed by InitThreads */
 #endif
->>>>>>> Fix thread local storage in python Closes #291
 	DEBUG("mod_init done");
 	return 0;
 
@@ -415,16 +392,16 @@ static rlm_rcode_t do_python(rlm_python_t *inst, REQUEST *request, PyObject *pFu
 	int		tuplelen;
 	int		ret;
 
+	PyGILState_STATE gstate;
 	PyThreadState	*prev_thread_state;
 
 	/* Return with "OK, continue" if the function is not defined. */
 	if (!pFunc)
 		return RLM_MODULE_NOOP;
 
-	Pyx_BLOCK_THREADS
-
 #ifdef HAVE_PTHREAD_H
 	if (worker) {
+		gstate = PyGILState_Ensure();
 		PyThreadState *my_thread_state = fr_thread_local_get(local_thread_state);
 		if (!my_thread_state) {
 			pthread_key_t tls_destructor;
@@ -586,9 +563,9 @@ finish:
 #ifdef HAVE_PTHREAD_H
 	if (worker) {
 		PyThreadState_Swap(prev_thread_state);
+		PyGILState_Release(gstate);
 	}
 #endif
-	Pyx_UNBLOCK_THREADS
 
 	return ret;
 }
