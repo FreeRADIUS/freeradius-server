@@ -1199,6 +1199,9 @@ int radius_map2vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *ma
 		if (!from) return -2;
 		
 		found = paircopy(request, *from);
+		/*
+		 *	List to list copy is invalid if the src list has no attributes.
+		 */
 		if (!found) return -2;
 		
 		for (vp = paircursor(&cursor, &found);
@@ -1260,7 +1263,10 @@ int radius_map2vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *ma
 		/* FALL-THROUGH */
 
 	case VPT_TYPE_LITERAL:
-		if (!pairparsevalue(vp, map->src->name)) goto error;
+		if (!pairparsevalue(vp, map->src->name)) {
+			rcode = -2;
+			goto error;
+		}
 		break;
 
 	case VPT_TYPE_ATTR:
