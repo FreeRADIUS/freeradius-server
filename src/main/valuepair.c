@@ -1030,6 +1030,7 @@ int radius_map2request(REQUEST *request, value_pair_map_t const *map,
 	/* 
 	 *	The callback should either return -1 to signify operations error, -2 when it can't find the
 	 *	attribute or list being referenced, or 0 to signify success.
+	 *	It may return "sucess", but still have no VPs to work with.
 	 *	Only if it returned an error code should it not write anything to the head pointer.
 	 */
 	rcode = func(&head, request, map, ctx);
@@ -1038,9 +1039,10 @@ int radius_map2request(REQUEST *request, value_pair_map_t const *map,
 		
 		return rcode;
 	}
-	if (head) {
-		VERIFY_VP(head);
-	}
+
+	if (!head) return 0;
+
+	VERIFY_VP(head);
 
 	if (debug_flag) for (vp = paircursor(&cursor, &head); vp; vp = pairnext(&cursor)) {
 		char *value;
