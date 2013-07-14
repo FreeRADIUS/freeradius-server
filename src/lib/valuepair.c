@@ -22,20 +22,32 @@
 
 RCSID("$Id$")
 
-#include	<freeradius-devel/libradius.h>
+#include <freeradius-devel/libradius.h>
 
-#include	<ctype.h>
-#include	<inttypes.h>
+#include <ctype.h>
+#include <inttypes.h>
 
 #ifdef HAVE_PCREPOSIX_H
-#define WITH_REGEX
-#  include	<pcreposix.h>
-#else
-#ifdef HAVE_REGEX_H
-#define WITH_REGEX
-#  include	<regex.h>
+#  define WITH_REGEX
+#  include <pcreposix.h>
+#elif defined(HAVE_REGEX_H)
+#  include <regex.h>
+#  define WITH_REGEX
+
+/*
+ *  For POSIX Regular expressions.
+ *  (0) Means no extended regular expressions.
+ *  REG_EXTENDED means use extended regular expressions.
+ */
+#  ifndef REG_EXTENDED
+#    define REG_EXTENDED (0)
+#  endif
+
+#  ifndef REG_NOSUB
+#    define REG_NOSUB (0)
+#  endif
 #endif
-#endif
+
 
 static char const *months[] = {
 	"jan", "feb", "mar", "apr", "may", "jun",
