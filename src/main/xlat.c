@@ -527,7 +527,7 @@ void xlat_free(void)
 	rbtree_free(xlat_root);
 }
 
-#if 1
+#if 0
 #define XLAT_DEBUG(fmt, ...) printf(fmt, ## __VA_ARGS__);printf("\n")
 #endif
 
@@ -1803,7 +1803,7 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 	/*
 	 *	Escape the non-literals we found above.
 	 */
-	if (escape) {
+	if (str && escape) {
 		char *escaped;
 
 		escaped = talloc_array(ctx, char, 1024); /* FIXME: do something intelligent */
@@ -1812,7 +1812,6 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 		str = escaped;
 	}
 
-	rad_assert(str != NULL);
 	return str;
 }
 
