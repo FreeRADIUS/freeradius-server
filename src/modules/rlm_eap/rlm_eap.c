@@ -149,7 +149,7 @@ static int mod_instantiate(CONF_SECTION *cs, void *instance)
 			cf_log_err_cs(cs, "Unknown EAP method %s", name);
 			return -1;
 		}
-		
+
 		if ((method < PW_EAP_MD5) || (method >= PW_EAP_MAX_TYPES)) {
 			cf_log_err_cs(cs, "Invalid EAP method %s (unsupported)", name);
 			return -1;
@@ -181,9 +181,9 @@ static int mod_instantiate(CONF_SECTION *cs, void *instance)
 		 *	Load the type.
 		 */
 		ret = eap_module_load(inst, &inst->methods[method], method, scs);
-		
+
 		(void) talloc_get_type_abort(inst->methods[method], eap_module_t);
-		
+
 		if (ret < 0) {
 			(void) talloc_steal(inst, inst->methods[method]);
 			return -1;
@@ -607,7 +607,7 @@ static rlm_rcode_t mod_post_proxy(void *inst, REQUEST *request)
 				eap_handler_free(inst, handler);
 				return RLM_MODULE_FAIL;
 			}
-			
+
 		} else {	/* couldn't have been LEAP, there's no tunnel */
 			RDEBUG2("Freeing handler");
 			/* handler is not required any more, free it now */
@@ -707,24 +707,24 @@ static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
 	VALUE_PAIR	*vp;
 	eap_handler_t	*handler;
 	eap_packet_raw_t	*eap_packet;
-	
+
 	/*
 	 * Only build a failure message if something previously rejected the request
 	 */
 	vp = pairfind(request->config_items, PW_POSTAUTHTYPE, 0, TAG_ANY);
 
 	if (!vp || (vp->vp_integer != PW_POSTAUTHTYPE_REJECT)) return RLM_MODULE_NOOP;
-	
+
 	if (!pairfind(request->packet->vps, PW_EAP_MESSAGE, 0, TAG_ANY)) {
 		RDEBUG2("Request didn't contain an EAP-Message, not inserting EAP-Failure");
 		return RLM_MODULE_NOOP;
 	}
-	
+
 	if (pairfind(request->reply->vps, PW_EAP_MESSAGE, 0, TAG_ANY)) {
 		RDEBUG2("Reply already contained an EAP-Message, not inserting EAP-Failure");
 		return RLM_MODULE_NOOP;
 	}
-	
+
 	eap_packet = eap_vp2packet(request, request->packet->vps);
 	if (!eap_packet) {
 		RERROR("Malformed EAP Message");
@@ -740,7 +740,7 @@ static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
 	RDEBUG2("Request was previously rejected, inserting EAP-Failure");
 	eap_fail(handler);
 	eap_handler_free(inst, handler);
-	
+
 	/*
 	 * Make sure there's a message authenticator attribute in the response
 	 * RADIUS protocol code will calculate the correct value later...

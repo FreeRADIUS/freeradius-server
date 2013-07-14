@@ -48,13 +48,13 @@ typedef struct rlm_krb5_t {
 	char const	*keytabname;	//!< The keytab to resolve the service in.
 	char const	*service_princ;	//!< The service name provided by the
 					//!< config parser.
-	
+
 	char		*hostname;	//!< The hostname component of
 					//!< service_princ, or NULL.
 	char		*service;	//!< The service component of service_princ, or NULL.
-	
+
 	krb5_context context;		//!< The kerberos context (cloned once per request).
-	
+
 #ifndef HEIMDAL_KRB5
 	krb5_get_init_creds_opt		*gic_options;	//!< Options to pass to the get_initial_credentials
 							//!< function.
@@ -64,7 +64,7 @@ typedef struct rlm_krb5_t {
 	krb5_principal server;		//!< A structure representing the parsed
 					//!< service_princ.
 #endif
-	
+
 } rlm_krb5_t;
 
 static const CONF_PARSER module_config[] = {
@@ -76,7 +76,7 @@ static const CONF_PARSER module_config[] = {
 static int krb5_detach(void *instance)
 {
 	rlm_krb5_t *inst = instance;
-		
+
 #ifndef HEIMDAL_KRB5
 	talloc_free(inst->vic_options);
 
@@ -87,7 +87,7 @@ static int krb5_detach(void *instance)
 
 	/* Don't free hostname, it's just a pointer into service_princ */
 	talloc_free(inst->service);
-		
+
 	if (inst->context) {
 		krb5_free_context(inst->context);
 	}
@@ -123,14 +123,14 @@ static int krb5_instantiate(CONF_SECTION *conf, void *instance)
 	if (!inst->xlat_name) {
 		inst->xlat_name = cf_section_name1(conf);
 	}
-	
+
 	ret = krb5_init_context(&inst->context);
 	if (ret) {
 		EDEBUG("rlm_krb5 (%s): Context initialisation failed: %s", inst->xlat_name, error_message(ret));
 
 		return -1;
 	}
-	
+
 	DEBUG("rlm_krb5 (%s): Context initialised successfully", inst->xlat_name);
 
 	/*
@@ -142,19 +142,19 @@ static int krb5_instantiate(CONF_SECTION *conf, void *instance)
 		size_t len;
 		/* Service principal appears to contain a host component */
 		inst->hostname = strchr(inst->service_princ, '/');
-		if (inst->hostname) {	
-			len = (inst->hostname - inst->service_princ);			
+		if (inst->hostname) {
+			len = (inst->hostname - inst->service_princ);
 			inst->hostname++;
 		} else {
 			len = strlen(inst->service_princ);
 		}
-		
+
 		if (len) {
 			inst->service = talloc_array(inst, char, (len + 1));
 			strlcpy(inst->service, inst->service_princ, len + 1);
 		}
 	}
-	
+
 #ifdef HEIMDAL_KRB5
 	if (inst->hostname) {
 		DEBUG("rlm_krb5 (%s): Ignoring hostname component of service principal \"%s\", not "
@@ -171,7 +171,7 @@ static int krb5_instantiate(CONF_SECTION *conf, void *instance)
 
 		return -1;
 	}
-	
+
 	ret = krb5_unparse_name(inst->context, inst->server, &princ_name);
 	if (ret) {
 		/* Uh? */
@@ -180,24 +180,24 @@ static int krb5_instantiate(CONF_SECTION *conf, void *instance)
 
 		return -1;
 	}
-	
+
 	/*
 	 *	Not necessarily the same as the config item
 	 */
 	DEBUG("rlm_krb5 (%s): Using service principal \"%s\"", inst->xlat_name, princ_name);
-	
+
 	krb5_free_unparsed_name(inst->context, princ_name);
-	
+
 	/*
 	 *	Setup options for getting credentials and verifying them
 	 */
-	
+
 	/* For some reason the 'init' version of this function is deprecated */
 	ret = krb5_get_init_creds_opt_alloc(inst->context, &(inst->gic_options));
 	if (ret) {
 		EDEBUG("rlm_krb5 (%s): Couldn't allocated inital credential options: %s", inst->xlat_name,
 		       error_message(ret));
-		
+
 		return -1;
 	}
 
@@ -209,27 +209,27 @@ static int krb5_instantiate(CONF_SECTION *conf, void *instance)
 		krb5_kt_default(inst->context, &keytab);
 	if (ret) {
 		EDEBUG("rlm_krb5 (%s): Resolving keytab failed: %s", inst->xlat_name, error_message(ret));
-		
+
 		return -1;
 	}
 
 	ret = krb5_kt_get_name(inst->context, keytab, keytab_name, sizeof(keytab_name));
 	krb5_kt_close(inst->context, keytab);
 	if (ret) {
-		EDEBUG("rlm_krb5 (%s): Can't retrieve keytab name: %s", inst->xlat_name, error_message(ret)); 
-	
+		EDEBUG("rlm_krb5 (%s): Can't retrieve keytab name: %s", inst->xlat_name, error_message(ret));
+
 		return -1;
 	}
-	
+
 	DEBUG("rlm_krb5 (%s): Using keytab \"%s\"", inst->xlat_name, keytab_name);
-	
+
 	MEM(inst->vic_options = talloc_zero(inst, krb5_verify_init_creds_opt));
-	
+
 	krb5_verify_init_creds_opt_init(inst->vic_options);
 	krb5_verify_init_creds_opt_set_ap_req_nofail(inst->vic_options, true);
-	
+
 #endif
-	
+
 	return 0;
 }
 
@@ -237,14 +237,14 @@ static rlm_rcode_t krb5_parse_user(REQUEST *request, krb5_context context, krb5_
 {
 	krb5_error_code ret;
 	char *princ_name;
-	
+
 	/*
 	 * 	We can only authenticate user requests which HAVE
 	 * 	a User-Name attribute.
 	 */
 	if (!request->username) {
 		REDEBUG("Attribute \"User-Name\" is required for authentication");
-		
+
 		return RLM_MODULE_INVALID;
 	}
 
@@ -254,7 +254,7 @@ static rlm_rcode_t krb5_parse_user(REQUEST *request, krb5_context context, krb5_
 	 */
 	if (!request->password) {
 		REDEBUG("Attribute \"User-Password\" is required for authentication");
-		
+
 		return RLM_MODULE_INVALID;
 	}
 
@@ -265,14 +265,14 @@ static rlm_rcode_t krb5_parse_user(REQUEST *request, krb5_context context, krb5_
 	if (request->password->da->attr != PW_USER_PASSWORD) {
 		REDEBUG("Attribute \"User-Password\" is required for authentication.  Cannot use \"%s\".",
 		       request->password->da->name);
-		
+
 		return RLM_MODULE_INVALID;
 	}
-	
+
 	ret = krb5_parse_name(context, request->username->vp_strvalue, client);
 	if (ret) {
 		REDEBUG("Failed parsing username as principal: %s", error_message(ret));
-		
+
 		return RLM_MODULE_FAIL;
 	}
 
@@ -292,15 +292,15 @@ static rlm_rcode_t krb5_auth(void *instance, REQUEST *request)
 {
 	rlm_krb5_t *inst = instance;
 	rlm_rcode_t rcode;
-	
+
 	krb5_error_code ret;
-	
+
 	krb5_principal client;
 	krb5_ccache ccache;
 	krb5_keytab keytab;
 	krb5_verify_opt options;
 	krb5_context context;
-	
+
 	rad_assert(inst->context);
 
 #ifdef KRB5_IS_THREAD_SAFE
@@ -310,7 +310,7 @@ static rlm_rcode_t krb5_auth(void *instance, REQUEST *request)
 	ret = krb5_copy_context(inst->context, &context);
 	if (ret) {
 		REDEBUG("Error cloning krb5 context: %s", error_message(ret));
-		
+
 		return RLM_MODULE_FAIL;
 	}
 #else
@@ -323,7 +323,7 @@ static rlm_rcode_t krb5_auth(void *instance, REQUEST *request)
 	memset(&keytab, 0, sizeof(keytab));
 	memset(&client, 0, sizeof(client));
 	memset(&init_creds, 0, sizeof(init_creds));
-	
+
 	/*
 	 *	Setup krb5_verify_user options
 	 *
@@ -332,7 +332,7 @@ static rlm_rcode_t krb5_auth(void *instance, REQUEST *request)
 	 *	the cloned context.
 	 */
 	krb5_cc_default(context, &ccache);
-	
+
 	krb5_verify_opt_init(&options);
 	krb5_verify_opt_set_ccache(&options, ccache);
 	ret = inst->keytabname ?
@@ -340,17 +340,17 @@ static rlm_rcode_t krb5_auth(void *instance, REQUEST *request)
 		krb5_kt_default(context, &keytab);
 	if (ret) {
 		REDEBUG("Resolving keytab failed: %s", error_message(ret));
-		
+
 		goto cleanup;
 	}
-	
+
 	krb5_verify_opt_set_keytab(&options, keytab);
 	krb5_verify_opt_set_secure(&options, true);
 
 	if (inst->service) {
 		krb5_verify_opt_set_service(&options, inst->service);
 	}
-	
+
 	rcode = krb5_parse_user(request, context, &client);
 	if (rcode != RLM_MODULE_OK) goto cleanup;
 
@@ -364,29 +364,29 @@ static rlm_rcode_t krb5_auth(void *instance, REQUEST *request)
 		case KRB5KRB_AP_ERR_BAD_INTEGRITY:
 			REDEBUG("Provided password was incorrect (%i): %s", ret, error_message(ret));
 			rcode = RLM_MODULE_REJECT;
-		
+
 			break;
 		case KRB5KDC_ERR_KEY_EXP:
 		case KRB5KDC_ERR_CLIENT_REVOKED:
 		case KRB5KDC_ERR_SERVICE_REVOKED:
 			REDEBUG("Account has been locked out (%i): %s", ret, error_message(ret));
 			rcode = RLM_MODULE_USERLOCK;
-		
+
 			break;
 		case KRB5KDC_ERR_C_PRINCIPAL_UNKNOWN:
 			RDEBUG("User not found: %s (%i)", ret, error_message(ret));
 			rcode = RLM_MODULE_NOTFOUND;
-					
+
 		default:
 			REDEBUG("Error verifying credentials (%i): %s", ret, error_message(ret));
 			rcode = RLM_MODULE_FAIL;
-		
+
 			break;
 		}
 
 		goto cleanup;
 	}
-	
+
 	cleanup:
 	if (client) {
 		krb5_free_principal(context, client);
@@ -408,7 +408,7 @@ static rlm_rcode_t krb5_auth(void *instance, REQUEST *request)
 static rlm_rcode_t krb5_auth(void *instance, REQUEST *request)
 {
 	rlm_krb5_t *inst = instance;
-	rlm_rcode_t rcode;	
+	rlm_rcode_t rcode;
 	krb5_error_code ret;
 
 	krb5_principal client;
@@ -416,10 +416,10 @@ static rlm_rcode_t krb5_auth(void *instance, REQUEST *request)
 	krb5_keytab keytab;	/* ktid */
 	krb5_context context;
 	char *password;		/* compiler warnings */
-	
+
 	rad_assert(inst->context);
 
-#ifdef KRB5_IS_THREAD_SAFE	
+#ifdef KRB5_IS_THREAD_SAFE
 	/*
 	 *	All the snippets on threadsafety say that individual threads
 	 *	must each use their own copy of context.
@@ -433,7 +433,7 @@ static rlm_rcode_t krb5_auth(void *instance, REQUEST *request)
 	ret = krb5_copy_context(inst->context, &context);
 	if (ret) {
 		REDEBUG("Error cloning krb5 context: %s", error_message(ret));
-		
+
 		return RLM_MODULE_FAIL;
 	}
 	rad_assert(context != NULL); /* tell coverity copy context copies it */
@@ -463,10 +463,10 @@ static rlm_rcode_t krb5_auth(void *instance, REQUEST *request)
 		krb5_kt_default(context, &keytab);
 	if (ret) {
 		REDEBUG("Resolving keytab failed: %s", error_message(ret));
-		
+
 		goto cleanup;
 	}
-	
+
 	/*
 	 * 	Retrieve the TGT from the TGS/KDC and check we can decrypt it.
 	 */
@@ -482,19 +482,19 @@ static rlm_rcode_t krb5_auth(void *instance, REQUEST *request)
 			REDEBUG("Provided password was incorrect (%i): %s", ret, error_message(ret));
 			rcode = RLM_MODULE_REJECT;
 			break;
-			
+
 		case KRB5KDC_ERR_KEY_EXP:
 		case KRB5KDC_ERR_CLIENT_REVOKED:
 		case KRB5KDC_ERR_SERVICE_REVOKED:
 			REDEBUG("Account has been locked out (%i): %s", ret, error_message(ret));
 			rcode = RLM_MODULE_USERLOCK;
 			break;
-			
+
 		case KRB5KDC_ERR_C_PRINCIPAL_UNKNOWN:
 			RDEBUG("User not found (%i): %s", ret,  error_message(ret));
 			rcode = RLM_MODULE_NOTFOUND;
 			break;
-			
+
 		default:
 			REDEBUG("Error retrieving or verifying credentials (%i): %s", ret, error_message(ret));
 			rcode = RLM_MODULE_FAIL;
@@ -503,7 +503,7 @@ static rlm_rcode_t krb5_auth(void *instance, REQUEST *request)
 
 		goto cleanup;
 	}
-	
+
 	RDEBUG("Successfully retrieved and decrypted TGT");
 
 	ret = krb5_verify_init_creds(context, &init_creds, inst->server, keytab, NULL, inst->vic_options);
@@ -518,14 +518,14 @@ static rlm_rcode_t krb5_auth(void *instance, REQUEST *request)
 		if (keytab) {
 			krb5_kt_close(context, keytab);
 		}
-		
+
 		krb5_free_cred_contents(context, &init_creds);
 
 #ifdef KRB5_IS_THREAD_SAFE
 		krb5_free_context(context);
 #endif
 	}
-	
+
 	return rcode;
 }
 

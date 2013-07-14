@@ -12,7 +12,7 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
- 
+
 /**
  * $Id$
  * @file edir.c
@@ -53,7 +53,7 @@ RCSID("$Id$")
 #define NMASLDAP_GET_PASSWORD_RESPONSE    "2.16.840.1.113719.1.39.42.100.14"
 
 #define NMAS_LDAP_EXT_VERSION 1
- 
+
 /** Takes the object DN and BER encodes the data into the BER value which is used as part of the request
  *
  @verbatim
@@ -141,7 +141,7 @@ static int ber_decode_login_data(struct berval *reply_bv, int *server_version, v
 		err = NMAS_E_FRAG_FAILURE;
 		goto finish;
 	}
-	
+
 finish:
 
 	if(reply_ber) ber_free(reply_ber, 1);
@@ -223,16 +223,16 @@ finish:
 	if (reply_bv) {
 		ber_bvfree(reply_bv);
 	}
-	
+
 	/* Free the return OID string if one was returned. */
 	if (reply_oid) {
 		ldap_memfree(reply_oid);
 	}
-	
+
 	/* Free memory allocated while building the request ber and berval. */
 	if (request_bv) {
 		ber_bvfree(request_bv);
 	}
-	
+
 	return err;
 }

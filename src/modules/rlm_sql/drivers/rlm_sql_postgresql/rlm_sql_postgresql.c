@@ -129,9 +129,9 @@ static int check_fatal_error (char *errorcode)
 static int sql_socket_destructor(void *c)
 {
 	rlm_sql_postgres_conn_t  *conn = c;
-	
+
 	DEBUG2("rlm_sql_postgresql: Socket destructor called, closing socket");
-	
+
 	if (!conn->db) {
 		return 0;
 	}
@@ -141,7 +141,7 @@ static int sql_socket_destructor(void *c)
 
 	return 0;
 }
-	
+
 /*************************************************************************
  *
  *	Function: sql_create_socket

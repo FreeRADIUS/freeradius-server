@@ -48,7 +48,7 @@ static CONF_PARSER tls_config[] = {
 	  offsetof(rlm_rest_section_t, tls_check_cert), NULL, "yes" },
 	{ "check_cert_cn", PW_TYPE_BOOLEAN,
 	  offsetof(rlm_rest_section_t, tls_check_cert_cn), NULL, "yes" },
-	
+
 	{ NULL, -1, 0, NULL, NULL }
 };
 
@@ -68,7 +68,7 @@ static const CONF_PARSER section_config[] = {
 	 offsetof(rlm_rest_section_t, method_str), NULL, "GET" },
 	{ "body", PW_TYPE_STRING_PTR,
 	 offsetof(rlm_rest_section_t, body_str),   NULL, "post" },
-	
+
 	/* User authentication */
 	{ "auth", PW_TYPE_STRING_PTR,
 	 offsetof(rlm_rest_section_t, auth_str),   NULL, "none" },
@@ -104,9 +104,9 @@ static int rlm_rest_perform(rlm_rest_t *instance, rlm_rest_section_t *section,
 {
 	size_t uri_len;
 	char *uri = NULL;
-	
+
 	int ret;
-	
+
 	RDEBUG("Expanding URI components");
 
 	/*
@@ -156,7 +156,7 @@ static int parse_sub_section(CONF_SECTION *parent,
 		/* TODO: Should really setup section with default values */
 		return 0;
 	}
-	
+
 	if (cf_section_parse(cs, config, section_config) < 0) {
 		return -1;
 	}
@@ -165,13 +165,13 @@ static int parse_sub_section(CONF_SECTION *parent,
 	 *	Add section name (Maybe add to headers later?).
 	 */
 	config->name = name;
-	
+
 	/*
 	 *	Sanity check
 	 */
 	 if ((config->username && !config->password) || (!config->username && config->password)) {
 	 	cf_log_err_cs(cs, "'username' and 'password' must both be set or both be absent");
-	 	
+
 	 	return -1;
 	 }
 
@@ -179,17 +179,17 @@ static int parse_sub_section(CONF_SECTION *parent,
 	 *	Convert HTTP method auth and body type strings into their
 	 *	integer equivalents.
 	 */
-	config->auth = fr_str2int(http_auth_table, config->auth_str, HTTP_AUTH_UNKNOWN);			
+	config->auth = fr_str2int(http_auth_table, config->auth_str, HTTP_AUTH_UNKNOWN);
 	if (config->auth == HTTP_AUTH_UNKNOWN) {
 		cf_log_err_cs(cs, "Unknown HTTP auth type '%s'", config->auth_str);
-		return -1;	
+		return -1;
 	} else if ((config->auth != HTTP_AUTH_NONE) && !http_curl_auth[config->auth]) {
 		cf_log_err_cs(cs, "Unsupported HTTP auth type \"%s\", check libcurl version, OpenSSL build "
 			      "configuration, then recompile this module", config->auth_str);
-			      
+
 		return -1;
 	}
-				
+
 	config->method = fr_str2int(http_method_table, config->method_str,
 				    HTTP_METHOD_CUSTOM);
 
@@ -354,21 +354,21 @@ static rlm_rcode_t mod_authenticate(void *instance, UNUSED REQUEST *request)
 	int hcode;
 	int rcode = RLM_MODULE_OK;
 	int ret;
-	
+
 	VALUE_PAIR const *username;
 	VALUE_PAIR const *password;
-	
+
 	username = pairfind(request->packet->vps, PW_USER_NAME, 0, TAG_ANY);
 	if (!username) {
 		REDEBUG("Can't perform authentication, 'User-Name' attribute not found in the request");
-		
+
 		return RLM_MODULE_INVALID;
 	}
-	
+
 	password = pairfind(request->config_items, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY);
 	if (!password) {
 		REDEBUG("Can't perform authentication, 'Cleartext-Password' attribute not found in the control list");
-		
+
 		return RLM_MODULE_INVALID;
 	}
 
@@ -438,7 +438,7 @@ static rlm_rcode_t mod_accounting(void *instance, UNUSED REQUEST *request)
 {
 	rlm_rest_t *inst = instance;
 	rlm_rest_section_t *section = &inst->accounting;
-	
+
 	void *handle;
 	int hcode;
 	int rcode = RLM_MODULE_OK;
@@ -462,7 +462,7 @@ static rlm_rcode_t mod_accounting(void *instance, UNUSED REQUEST *request)
 		ret = rest_request_decode(inst, section, request, handle);
 		if (ret < 0) 	   rcode = RLM_MODULE_FAIL;
 		else if (ret == 0) rcode = RLM_MODULE_OK;
-		else		   rcode = RLM_MODULE_UPDATED;	
+		else		   rcode = RLM_MODULE_UPDATED;
 	} else {
 		rcode = RLM_MODULE_INVALID;
 	}

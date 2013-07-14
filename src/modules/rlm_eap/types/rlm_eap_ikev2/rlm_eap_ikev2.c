@@ -220,7 +220,7 @@ static int ikev2_attach(CONF_SECTION *conf, void **instance)
 		ERROR(IKEv2_LOG_PREFIX "Can not open 'private_key_file' %s",i2->pkfile);
 		return -1;
 	    }
-	
+
 	    break;
     }
     if(!i2->trusted) {
@@ -487,7 +487,7 @@ static int ikev2_authenticate(void *instance, eap_handler_t *handler)
 			GenEapKeys(session,EAP_IKEv2_KEY_LEN);
 			set_mppe_keys(handler);
 		}
-		
+
 		// keep sessions in memory, only reference cleared
 		ikev2_data->session=NULL;
 	}

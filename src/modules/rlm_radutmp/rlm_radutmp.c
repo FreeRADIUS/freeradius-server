@@ -121,7 +121,7 @@ static rlm_rcode_t radutmp_zap(REQUEST *request, char const *filename, uint32_t 
 
 		if (write(fd, &u, sizeof(u)) < 0) {
 			REDEBUG("Failed writing: %s", strerror(errno));
-	
+
 			close(fd);
 			return RLM_MODULE_FAIL;
 		}
@@ -143,7 +143,7 @@ static NAS_PORT *nas_port_find(NAS_PORT *nas_port_list, uint32_t nasaddr, unsign
 			port == cl->port)
 			break;
 	}
-	
+
 	return cl;
 }
 
@@ -169,7 +169,7 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 	char const	*nas;
 	NAS_PORT	*cache;
 	int		r;
-	
+
 	char		*filename = NULL;
 	char		*expanded = NULL;
 
@@ -311,7 +311,7 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 	} else {
 		ut.proto = 'T';
 	}
-	
+
 	ut.time = t - ut.delay;
 
 	/*
@@ -331,14 +331,14 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 	if (status == PW_STATUS_ACCOUNTING_ON && (ut.nas_address != htonl(INADDR_NONE))) {
 		RIDEBUG("NAS %s restarted (Accounting-On packet seen)", nas);
 		rcode = radutmp_zap(request, filename, ut.nas_address, ut.time);
-		
+
 		goto finish;
 	}
 
 	if (status == PW_STATUS_ACCOUNTING_OFF && (ut.nas_address != htonl(INADDR_NONE))) {
-		RIDEBUG("NAS %s rebooted (Accounting-Off packet seen)", nas);	
+		RIDEBUG("NAS %s rebooted (Accounting-Off packet seen)", nas);
 		rcode = radutmp_zap(request, filename, ut.nas_address, ut.time);
-		
+
 		goto finish;
 	}
 
@@ -348,7 +348,7 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 	if (status != PW_STATUS_START && status != PW_STATUS_STOP && status != PW_STATUS_ALIVE) {
 		REDEBUG("NAS %s port %u unknown packet type %d)", nas, ut.nas_port, status);
 		rcode = RLM_MODULE_NOOP;
-		
+
 		goto finish;
 	}
 
@@ -357,7 +357,7 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 	 */
 	if (radius_axlat(&expanded, request, inst->username, NULL, NULL) < 0) {
 		rcode = RLM_MODULE_FAIL;
-		
+
 		goto finish;
 	}
 	strlcpy(ut.login, expanded, RUT_NAMESIZE);
@@ -373,14 +373,14 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 	if (!port_seen) {
 		RWDEBUG2("No NAS-Port seen.  Cannot do anything. Checkrad will probably not work!");
 		rcode = RLM_MODULE_NOOP;
-		
+
 		goto finish;
 	}
 
 	if (strncmp(ut.login, "!root", RUT_NAMESIZE) == 0) {
 		RDEBUG2("Not recording administrative user");
 		rcode = RLM_MODULE_NOOP;
-		
+
 		goto finish;
 	}
 
@@ -391,7 +391,7 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 	if (fd < 0) {
 		REDEBUG("Error accessing file %s: %s", filename, strerror(errno));
 		rcode = RLM_MODULE_FAIL;
-	
+
 		goto finish;
 	}
 
@@ -431,7 +431,7 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 			if (u.type == P_LOGIN) {
 				RWDEBUG("Logout entry for NAS %s port %u has wrong ID", nas, u.nas_port);
 			}
-			
+
 			r = -1;
 			break;
 		}
@@ -444,7 +444,7 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 				r = -1;
 				break;
 			}
-			
+
 			RWDEBUG("Login entry for NAS %s port %u wrong order", nas, u.nas_port);
 			r = -1;
 			break;
@@ -469,7 +469,7 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 		} else {
 			off -= sizeof(u);
 		}
-		
+
 		r = 1;
 		break;
 	} /* read the file until we find a match */
@@ -497,7 +497,7 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 		ut.type = P_LOGIN;
 		if (write(fd, &ut, sizeof(u)) < 0) {
 			REDEBUG("Failed writing: %s", strerror(errno));
-			
+
 			rcode = RLM_MODULE_FAIL;
 			goto finish;
 		}
@@ -514,7 +514,7 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 			u.delay = ut.delay;
 			if (write(fd, &u, sizeof(u)) < 0) {
 				REDEBUG("Failed writing: %s", strerror(errno));
-			
+
 				rcode = RLM_MODULE_FAIL;
 				goto finish;
 			}
@@ -524,13 +524,13 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 	}
 
 	finish:
-	
+
 	talloc_free(filename);
-	
+
 	if (fd > -1) {
 		close(fd);	/* and implicitely release the locks */
 	}
-	
+
 	return rcode;
 }
 #endif
@@ -555,7 +555,7 @@ static rlm_rcode_t mod_checksimul(void *instance, REQUEST *request)
 	uint32_t	ipno = 0;
 	char const     	*call_num = NULL;
 	rlm_radutmp_t	*inst = instance;
-	
+
 	char		*expanded = NULL;
 	ssize_t		len;
 
@@ -581,21 +581,21 @@ static rlm_rcode_t mod_checksimul(void *instance, REQUEST *request)
 		 *	Error accessing the file.
 		 */
 		ERROR("rlm_radumtp: Error accessing file %s: %s", expanded, strerror(errno));
-		
+
 		rcode = RLM_MODULE_FAIL;
-		
+
 		goto finish;
 	}
-	
+
 	TALLOC_FREE(expanded);
 
 	len = radius_axlat(&expanded, request, inst->username, NULL, NULL);
 	if (len < 0) {
 		rcode = RLM_MODULE_FAIL;
-		
+
 		goto finish;
 	}
-	
+
 	if (!len) {
 		rcode = RLM_MODULE_NOOP;
 
@@ -613,7 +613,7 @@ static rlm_rcode_t mod_checksimul(void *instance, REQUEST *request)
 	 *	Loop over utmp, counting how many people MAY be logged in.
 	 */
 	while (read(fd, &u, sizeof(u)) == sizeof(u)) {
-		if (((strncmp(expanded, u.login, RUT_NAMESIZE) == 0) || 
+		if (((strncmp(expanded, u.login, RUT_NAMESIZE) == 0) ||
 		    (!inst->case_sensitive && (strncasecmp(expanded, u.login, RUT_NAMESIZE) == 0))) &&
 		     (u.type == P_LOGIN)) {
 			++request->simul_count;
@@ -626,7 +626,7 @@ static rlm_rcode_t mod_checksimul(void *instance, REQUEST *request)
 	 */
 	if ((request->simul_count < request->simul_max) || !inst->check_nas) {
 		rcode = RLM_MODULE_OK;
-		
+
 		goto finish;
 	}
 	lseek(fd, (off_t)0, SEEK_SET);
@@ -637,7 +637,7 @@ static rlm_rcode_t mod_checksimul(void *instance, REQUEST *request)
 	if ((vp = pairfind(request->packet->vps, PW_FRAMED_IP_ADDRESS, 0, TAG_ANY)) != NULL) {
 		ipno = vp->vp_ipaddr;
 	}
-	
+
 	if ((vp = pairfind(request->packet->vps, PW_CALLING_STATION_ID, 0, TAG_ANY)) != NULL) {
 		call_num = vp->vp_strvalue;
 	}
@@ -714,19 +714,19 @@ static rlm_rcode_t mod_checksimul(void *instance, REQUEST *request)
 			} else {
 				RWDEBUG("Failed to check the terminal server for user '%s'.", utmp_login);
 				rcode = RLM_MODULE_FAIL;
-				
+
 				goto finish;
 			}
 		}
 	}
 	finish:
-	
+
 	talloc_free(expanded);
-	
+
 	if (fd > -1) {
 		close(fd);		/* and implicitely release the locks */
 	}
-	
+
 	return rcode;
 }
 #endif

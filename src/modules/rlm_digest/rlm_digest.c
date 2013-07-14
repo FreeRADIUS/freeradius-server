@@ -30,7 +30,7 @@ static int digest_fix(REQUEST *request)
 {
 	VALUE_PAIR *first, *i;
 	vp_cursor_t cursor;
-	
+
 	/*
 	 *	We need both of these attributes to do the authentication.
 	 */
@@ -50,12 +50,12 @@ static int digest_fix(REQUEST *request)
 	 *	Check for proper format of the Digest-Attributes
 	 */
 	RDEBUG("Checking for correctly formatted Digest-Attributes");
-	
+
 	first = pairfind(request->packet->vps, PW_DIGEST_ATTRIBUTES, 0, TAG_ANY);
 	if (!first) {
 		return RLM_MODULE_NOOP;
 	}
-	
+
 	paircursor(&cursor, &first);
 	while ((i = pairfindnext(&cursor, PW_DIGEST_ATTRIBUTES, 0, TAG_ANY))) {
 		int length = i->length;
@@ -175,7 +175,7 @@ static rlm_rcode_t mod_authorize(UNUSED void *instance, REQUEST *request)
 
 	/*
 	 *	Double-check and fix the attributes.
-	 */	
+	 */
 	rcode = digest_fix(request);
 	if (rcode != RLM_MODULE_OK) return rcode;
 

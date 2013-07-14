@@ -628,7 +628,7 @@ int dict_addattr(char const *name, int attr, unsigned int vendor, int type,
 	const uint8_t	*p;
 	const DICT_ATTR	*da;
 	DICT_ATTR *n;
-	
+
 	namelen = strlen(name);
 	if (namelen >= DICT_ATTR_MAX_NAME_LEN) {
 		fr_strerror_printf("dict_addattr: attribute name too long");
@@ -1080,7 +1080,7 @@ int dict_addvalue(char const *namestr, char const *attrstr, int value)
 	{
 		DICT_ATTR *tmp;
 		memcpy(&tmp, &dval, sizeof(tmp));
-		
+
 		if (!fr_hash_table_insert(values_byname, tmp)) {
 			if (dattr) {
 				DICT_VALUE *old;
@@ -1184,7 +1184,7 @@ int dict_str2oid(char const *ptr, unsigned int *pvalue, unsigned int *pvendor,
 			fr_strerror_printf("Parent attribute is undefined.");
 			return -1;
 		}
-		
+
 		if (!da->flags.has_tlv && !da->flags.extended) {
 			fr_strerror_printf("Parent attribute %s cannot have sub-attributes",
 					   da->name);
@@ -1221,7 +1221,7 @@ int dict_str2oid(char const *ptr, unsigned int *pvalue, unsigned int *pvendor,
 
 		if (*pvendor >= FR_MAX_VENDOR) {
 			fr_strerror_printf("Cannot handle vendor ID larger than 2^24");
-			
+
 			return -1;
 		}
 
@@ -1350,7 +1350,7 @@ static int process_attribute(char const* fn, int const line,
 			char buffer[256];
 
 			strlcpy(buffer, fr_strerror(), sizeof(buffer));
-			
+
 			fr_strerror_printf("dict_init: %s[%d]: Invalid attribute identifier: %s", fn, line, buffer);
 			return -1;
 		}
@@ -1384,7 +1384,7 @@ static int process_attribute(char const* fn, int const line,
 
 	} else {
 		type = PW_TYPE_OCTETS;
-		
+
 		p = strchr(argv[2] + 7, ']');
 		if (!p) {
 			fr_strerror_printf("dict_init: %s[%d]: Invalid format for octets", fn, line);
@@ -1502,7 +1502,7 @@ static int process_attribute(char const* fn, int const line,
 				/* Boolean flag, means this is a
 				   tagged attribute */
 				flags.has_tag = 1;
-				
+
 			} else if (strncmp(key, "encrypt=", 8) == 0) {
 				/* Encryption method, defaults to 0 (none).
 				   Currently valid is just type 2,
@@ -1521,10 +1521,10 @@ static int process_attribute(char const* fn, int const line,
 							    fn, line);
 					return -1;
 				}
-				
+
 			} else if (strncmp(key, "array", 6) == 0) {
 				flags.array = 1;
-				
+
 				switch (type) {
 					case PW_TYPE_IPADDR:
 					case PW_TYPE_BYTE:
@@ -1622,7 +1622,7 @@ static int process_attribute(char const* fn, int const line,
 		}
 		flags.has_tlv = 1;
 	}
-	
+
 	if (block_tlv) {
 		/*
 		 *	TLV's can be only one octet.
@@ -1634,7 +1634,7 @@ static int process_attribute(char const* fn, int const line,
 		}
 
 		/*
-		 *	
+		 *
 		 */
 		value <<= fr_attr_shift[tlv_depth];
 		value |= block_tlv->attr;
@@ -2276,7 +2276,7 @@ static int my_dict_init(char const *parent, char const *filename,
 					fclose(fp);
 					return -1;
 				}
-				
+
 				p = argv[2] + 7;
 				da = dict_attrbyname(p);
 				if (!da) {
@@ -2292,7 +2292,7 @@ static int my_dict_init(char const *parent, char const *filename,
 					fclose(fp);
 					return -1;
 				}
-				
+
 				/*
 				 *	Pack the encapsulating
 				 *	attribute into the upper 8
@@ -2567,18 +2567,18 @@ static size_t print_attr_oid(char *buffer, size_t size, unsigned int attr,
 void dict_attr_free(DICT_ATTR const **da)
 {
 	DICT_ATTR **tmp;
-	
+
 	if (!da || !*da) return;
-	
+
 	/* Don't free real DAs */
 	if (!(*da)->flags.is_unknown) {
 		return;
 	}
-	
+
 	memcpy(&tmp, &da, sizeof(*tmp));
 	free(*tmp);
-	
-	*tmp = NULL;	
+
+	*tmp = NULL;
 }
 
 /** Copies a dictionary attr
@@ -2596,22 +2596,22 @@ void dict_attr_free(DICT_ATTR const **da)
 const DICT_ATTR *dict_attr_copy(DICT_ATTR const *da, int vp_free)
 {
 	DICT_ATTR *copy;
-	
+
 	if (!da) return NULL;
-	
+
 	if (!da->flags.is_unknown) {
 		return da;
 	}
-	
+
 	copy = malloc(DICT_ATTR_SIZE);
 	if (!copy) {
 		fr_strerror_printf("Out of memory");
 		return NULL;
 	}
-	
+
 	memcpy(copy, da, DICT_ATTR_SIZE);
 	copy->flags.vp_free = (vp_free != 0);
-	
+
 	return copy;
 }
 
@@ -2636,22 +2636,22 @@ const DICT_ATTR *dict_attrunknown(unsigned int attr, unsigned int vendor,
 	int dv_type = 1;
 	size_t len = 0;
 	size_t bufsize = DICT_ATTR_MAX_NAME_LEN;
-	
+
 	da = malloc(DICT_ATTR_SIZE);
 	if (!da) {
 		fr_strerror_printf("Out of memory");
 		return NULL;
 	}
 	memset(da, 0, DICT_ATTR_SIZE);
-	
+
 	da->attr = attr;
 	da->vendor = vendor;
 	da->type = PW_TYPE_OCTETS;
 	da->flags.is_unknown = true;
 	da->flags.vp_free = (vp_free != 0);
-	
+
 	p = da->name;
-	
+
 	len = snprintf(p, bufsize, "Attr-");
 	p += len;
 	bufsize -= len;
@@ -2676,13 +2676,13 @@ const DICT_ATTR *dict_attrunknown(unsigned int attr, unsigned int vendor,
 			dv_type = dv->type;
 		}
 		len = snprintf(p, bufsize, "26.%u.", vendor);
-		
+
 		p += len;
 		bufsize -= len;
 	}
 
 	p += print_attr_oid(p, bufsize , attr, dv_type);
-	
+
 	return da;
 }
 
@@ -2707,7 +2707,7 @@ const DICT_ATTR *dict_attrunknownbyname(char const *attribute, int vp_free)
 
 	char const	*p = attribute;
 	char		*q;
-	
+
 	DICT_VENDOR	*dv;
 	const DICT_ATTR	*da;
 
@@ -2768,7 +2768,7 @@ const DICT_ATTR *dict_attrunknownbyname(char const *attribute, int vp_free)
 		}
 		p++;
 	}
-	
+
 	/*
 	 *	Attr-%d
 	 */
@@ -2790,7 +2790,7 @@ const DICT_ATTR *dict_attrunknownbyname(char const *attribute, int vp_free)
 	}
 
 	p = q;
-	
+
 	/*
 	 *	Vendor-%d-Attr-%d
 	 *	VendorName-Attr-%d
@@ -2805,7 +2805,7 @@ const DICT_ATTR *dict_attrunknownbyname(char const *attribute, int vp_free)
 		fr_strerror_printf("Invalid OID");
 		return NULL;
 	}
-	
+
 	/*
 	 *	Look for OIDs.  Require the "Attr-26.Vendor-Id.type"
 	 *	format, and disallow "Vendor-%d-Attr-%d" and
@@ -2821,8 +2821,8 @@ const DICT_ATTR *dict_attrunknownbyname(char const *attribute, int vp_free)
 			fr_strerror_printf("Cannot parse attributes without "
 					   "dictionaries");
 			return NULL;
-		}		
-		
+		}
+
 		if ((attr != PW_VENDOR_SPECIFIC) &&
 		    !(da->flags.extended || da->flags.long_extended)) {
 			fr_strerror_printf("Standard attributes cannot use "
@@ -2858,7 +2858,7 @@ const DICT_ATTR *dict_attrunknownbyname(char const *attribute, int vp_free)
 			if (dv_type > 3) dv_type = 3; /* hack */
 		}
 	}
-	
+
 	/*
 	 *	Parse the next number.  It could be a Vendor-Type
 	 *	of 1..2^24, or it could be a TLV.
@@ -2874,7 +2874,7 @@ const DICT_ATTR *dict_attrunknownbyname(char const *attribute, int vp_free)
 			if (*q != '.') {
 				goto invalid;
 			}
-			
+
 			if (dv_type != 1) {
 				goto invalid;
 			}

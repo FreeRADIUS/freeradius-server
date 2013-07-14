@@ -97,7 +97,7 @@ static int filter_packet(RADIUS_PACKET *packet)
 		if ((packet->code == PW_AUTHENTICATION_REQUEST) ||
 		    (packet->code == PW_ACCOUNTING_REQUEST)) {
 			rbtree_deletebydata(filter_tree, packet);
-			
+
 			if (!rbtree_insert(filter_tree, packet)) {
 			oom:
 				fprintf(stderr, "radsniff: Out of memory\n");
@@ -115,7 +115,7 @@ static int filter_packet(RADIUS_PACKET *packet)
 		rbtree_deletebydata(filter_tree, packet);
 		return 1;
 	}
-	
+
 	/*
 	 *	Else see if a previous Access-Request
 	 *	matched.  If so, also print out the
@@ -132,16 +132,16 @@ static int filter_packet(RADIUS_PACKET *packet)
 		 */
 		reply = rad_alloc_reply(NULL, packet);
 		if (!reply) goto oom;
-		
+
 		compare = 1;
 		if (rbtree_finddata(filter_tree, reply)) {
 			compare = 0;
 		}
-		
+
 		rad_free(&reply);
 		return compare;
 	}
-	
+
 	return 1;
 }
 
@@ -158,7 +158,7 @@ static void tv_sub(struct timeval const *end, struct timeval const *start,
 	}
 	elapsed->tv_usec += end->tv_usec;
 	elapsed->tv_usec -= start->tv_usec;
-	
+
 	if (elapsed->tv_usec >= USEC) {
 		elapsed->tv_usec -= USEC;
 		elapsed->tv_sec++;
@@ -169,21 +169,21 @@ static void got_packet(UNUSED uint8_t *args, struct pcap_pkthdr const*header, ui
 {
 
 	static int count = 1;			/* Packets seen */
-	
+
 	/*
 	 *  Define pointers for packet's attributes
 	 */
 	const struct ip_header *ip;		/* The IP header */
 	const struct udp_header *udp;		/* The UDP header */
 	const uint8_t *payload;			/* Packet payload */
-	
+
 	/*
 	 *  And define the size of the structures we're using
 	 */
 	int size_ethernet = sizeof(struct ethernet_header);
 	int size_ip = sizeof(struct ip_header);
 	int size_udp = sizeof(struct udp_header);
-	
+
 	/*
 	 *  For FreeRADIUS
 	 */
@@ -201,7 +201,7 @@ static void got_packet(UNUSED uint8_t *args, struct pcap_pkthdr const*header, ui
 	} else {
 		ip = (struct ip_header const *)(data + size_ethernet);
 	}
-	
+
 	udp = (struct udp_header const *)(((uint8_t const *) ip) + size_ip);
 	payload = (uint8_t const *)(((uint8_t const *) udp) + size_udp);
 
@@ -223,7 +223,7 @@ static void got_packet(UNUSED uint8_t *args, struct pcap_pkthdr const*header, ui
 
 	if (!rad_packet_ok(packet, 0)) {
 		DEBUG(log_dst, "Packet: %s\n", fr_strerror());
-		
+
 		DEBUG(log_dst, "  From     %s:%d\n", inet_ntoa(ip->ip_src), ntohs(udp->udp_sport));
 		DEBUG(log_dst, "  To:      %s:%d\n", inet_ntoa(ip->ip_dst), ntohs(udp->udp_dport));
 		DEBUG(log_dst, "  Type:    %s\n", fr_packet_codes[packet->code]);
@@ -231,7 +231,7 @@ static void got_packet(UNUSED uint8_t *args, struct pcap_pkthdr const*header, ui
 		rad_free(&packet);
 		return;
 	}
-	
+
 	switch (packet->code) {
 	case PW_COA_REQUEST:
 		/* we need a 16 x 0 byte vector for decrypting encrypted VSAs */
@@ -287,9 +287,9 @@ static void got_packet(UNUSED uint8_t *args, struct pcap_pkthdr const*header, ui
 	 */
 	INFO(log_dst, "%s:%d -> ", inet_ntoa(ip->ip_src), ntohs(udp->udp_sport));
 	INFO(log_dst, "%s:%d", inet_ntoa(ip->ip_dst), ntohs(udp->udp_dport));
-	
+
 	DEBUG1(log_dst, "\t(%d packets)", count++);
-	
+
 	if (!start_pcap.tv_sec) {
 		start_pcap = header->ts;
 	}
@@ -298,7 +298,7 @@ static void got_packet(UNUSED uint8_t *args, struct pcap_pkthdr const*header, ui
 
 	INFO(log_dst, "\t+%u.%03u", (unsigned int) elapsed.tv_sec,
 	       (unsigned int) elapsed.tv_usec / 1000);
-	
+
 	if (fr_debug_flag > 1) {
 		DEBUG(log_dst, "\n");
 		if (packet->vps) {
@@ -309,13 +309,13 @@ static void got_packet(UNUSED uint8_t *args, struct pcap_pkthdr const*header, ui
 			pairfree(&packet->vps);
 		}
 	}
-	
+
 	INFO(log_dst, "\n");
-	
+
 	if (!to_stdout && (fr_debug_flag > 4)) {
 		rad_print_hex(packet);
 	}
-	
+
 	fflush(log_dst);
 
  check_filter:
@@ -358,34 +358,34 @@ int main(int argc, char *argv[])
 	char const *from_dev = NULL;			/* Capture from device */
 	char const *from_file = NULL;			/* Read from pcap file */
 	int from_stdin = 0;				/* Read from stdin */
-	
+
 	pcap_t *in = NULL;				/* PCAP input handle */
-	
+
 	int limit = -1;					/* How many packets to sniff */
-	
+
 	char errbuf[PCAP_ERRBUF_SIZE];			/* Error buffer */
 
 	char *to_file = NULL;				/* PCAP output file */
-	
+
 	char *pcap_filter = NULL;			/* PCAP filter string */
 	char *radius_filter = NULL;
 	int port = 1812;
-	
+
 	struct bpf_program fp;				/* Holds compiled filter */
 	bpf_u_int32 ip_mask = PCAP_NETMASK_UNKNOWN;	/* Device Subnet mask */
 	bpf_u_int32 ip_addr = 0;			/* Device IP */
-	
+
 	char buffer[1024];
 
 	int opt;
 	FR_TOKEN parsecode;
 	char const *radius_dir = RADIUS_DIR;
-	
+
 	fr_debug_flag = 2;
 	log_dst = stdout;
 
 	talloc_set_log_stderr();
-	
+
 	/*
 	 *  Get options
 	 */
@@ -449,27 +449,27 @@ int main(int argc, char *argv[])
 			usage(64);
 		}
 	}
-	
+
 	/* What's the point in specifying -F ?! */
 	if (from_stdin && from_file && to_file) {
 		usage(64);
 	}
-	
+
 	/* Can't read from both... */
 	if (from_file && from_dev) {
 		usage(64);
 	}
-	
+
 	/* Reading from file overrides stdin */
 	if (from_stdin && (from_file || from_dev)) {
 		from_stdin = 0;
 	}
-	
+
 	/* Writing to file overrides stdout */
 	if (to_file && to_stdout) {
 		to_stdout = 0;
 	}
-	
+
 	/*
 	 *  If were writing pcap data stdout we *really* don't want to send
 	 *  logging there as well.
@@ -488,7 +488,7 @@ int main(int argc, char *argv[])
 		snprintf(buffer, sizeof(buffer), "udp port %d or %d or %d",
 			 port, port + 1, 3799);
 	}
-	
+
 	/*
 	 *  There are times when we don't need the dictionaries.
 	 */
@@ -505,7 +505,7 @@ int main(int argc, char *argv[])
 			fprintf(stderr, "radsniff: Invalid RADIUS filter \"%s\" (%s)\n", radius_filter, fr_strerror());
 			exit(64);
 		}
-		
+
 		if (!filter_vps) {
 			fprintf(stderr, "radsniff: Empty RADIUS filter \"%s\"\n", radius_filter);
 			exit(64);
@@ -548,7 +548,7 @@ int main(int argc, char *argv[])
 
 		INFO(log_dst, "Capturing from interface \"%s\"\n", from_dev);
 	}
-	
+
 	/*
 	 *  Print captures values which will be used
 	 */
@@ -579,7 +579,7 @@ int main(int argc, char *argv[])
 	} else {
 		fprintf(stderr, "radsniff: No capture devices available\n");
 	}
-	
+
 	if (!in) {
 		fprintf(stderr, "radsniff: Failed opening input (%s)\n", errbuf);
 		exit(1);
@@ -608,7 +608,7 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "radsniff: Failed compiling PCAP filter (%s)\n", pcap_geterr(in));
 		exit(1);
 	}
-	
+
 	if (pcap_setfilter(in, &fp) < 0) {
 		fprintf(stderr, "radsniff: Failed applying PCAP filter (%s)\n", pcap_geterr(in));
 		exit(1);
@@ -618,7 +618,7 @@ int main(int argc, char *argv[])
 	 *  Enter the main capture loop...
 	 */
 	pcap_loop(in, limit, got_packet, NULL);
-	
+
 	/*
 	 *  ...were done capturing.
 	 */
@@ -626,12 +626,12 @@ int main(int argc, char *argv[])
 	if (out) {
 		pcap_dump_close(out);
 	}
-	
+
 	if (filter_tree) {
 		rbtree_free(filter_tree);
 	}
-	
+
 	INFO(log_dst, "Done sniffing\n");
-	
+
 	return 0;
 }

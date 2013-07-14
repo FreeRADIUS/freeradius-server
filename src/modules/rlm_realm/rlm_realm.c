@@ -83,7 +83,7 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 	    || (request->proxy != NULL)
 #endif
 	    ) {
-	
+
 		RDEBUG2("Proxy reply, or no User-Name.  Ignoring.");
 		return RLM_MODULE_OK;
 	}
@@ -436,7 +436,7 @@ static rlm_rcode_t realm_recv_coa(UNUSED void *instance, REQUEST *request)
 
 	vp = pairfind(request->packet->vps, PW_OPERATOR_NAME, 0, TAG_ANY);
 	if (!vp) return RLM_MODULE_NOOP;
-	
+
 	/*
 	 *	Catch the case of broken dictionaries.
 	 */

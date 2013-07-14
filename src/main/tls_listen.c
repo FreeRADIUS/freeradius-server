@@ -74,7 +74,7 @@ static void tls_socket_close(rad_listen_t *listener)
 
 	listener->status = RAD_LISTEN_STATUS_REMOVE_FD;
 	listener->tls = NULL; /* parent owns this! */
-	
+
 	if (sock->parent) {
 		/*
 		 *	Decrement the number of connections.
@@ -86,13 +86,13 @@ static void tls_socket_close(rad_listen_t *listener)
 			sock->client->limit.num_connections--;
 		}
 	}
-	
+
 	/*
 	 *	Tell the event handler that an FD has disappeared.
 	 */
 	DEBUG("Client has closed connection");
 	event_new_fd(listener);
-	
+
 	/*
 	 *	Do NOT free the listener here.  It's in use by
 	 *	a request, and will need to hang around until
@@ -109,14 +109,14 @@ static int tls_socket_write(rad_listen_t *listener, REQUEST *request)
 	listen_socket_t *sock = listener->data;
 
 	p = sock->ssn->dirty_out.data;
-	
+
 	while (p < (sock->ssn->dirty_out.data + sock->ssn->dirty_out.used)) {
 		RDEBUG3("Writing to socket %d", request->packet->sockfd);
 		rcode = write(request->packet->sockfd, p,
 			      (sock->ssn->dirty_out.data + sock->ssn->dirty_out.used) - p);
 		if (rcode <= 0) {
 			RDEBUG("Error writing to TLS socket: %s", strerror(errno));
-			
+
 			tls_socket_close(listener);
 			return 0;
 		}
@@ -124,7 +124,7 @@ static int tls_socket_write(rad_listen_t *listener, REQUEST *request)
 	}
 
 	sock->ssn->dirty_out.used = 0;
-	
+
 	return 1;
 }
 
@@ -215,7 +215,7 @@ static int tls_socket_recv(rad_listen_t *listener)
 		tls_socket_close(listener);
 		return 0;
 	}
-	
+
 	if (rcode < 0) {
 		RDEBUG("Error reading TLS socket: %s", strerror(errno));
 		goto do_close;
@@ -225,7 +225,7 @@ static int tls_socket_recv(rad_listen_t *listener)
 	 *	Normal socket close.
 	 */
 	if (rcode == 0) goto do_close;
-	
+
 	sock->ssn->dirty_in.used = rcode;
 
 	dump_hex("READ FROM SSL", sock->ssn->dirty_in.data, sock->ssn->dirty_in.used);
@@ -237,7 +237,7 @@ static int tls_socket_recv(rad_listen_t *listener)
 		RDEBUG("Non-TLS data sent to TLS socket: closing");
 		goto do_close;
 	}
-	
+
 	/*
 	 *	Skip ahead to reading application data.
 	 */
@@ -247,7 +247,7 @@ static int tls_socket_recv(rad_listen_t *listener)
 		RDEBUG("FAILED in TLS handshake receive");
 		goto do_close;
 	}
-	
+
 	if (sock->ssn->dirty_out.used > 0) {
 		tls_socket_write(listener, request);
 		PTHREAD_MUTEX_UNLOCK(&sock->mutex);
@@ -439,7 +439,7 @@ int dual_tls_send(rad_listen_t *listener, REQUEST *request)
 		RDEBUG("Failed signing packet: %s", fr_strerror());
 		return 0;
 	}
-	
+
 	PTHREAD_MUTEX_LOCK(&sock->mutex);
 	/*
 	 *	Write the packet to the SSL buffers.
@@ -508,7 +508,7 @@ redo:
 				DEBUG("proxy recv says %s",
 				      ERR_error_string(err, NULL));
 			}
-			
+
 			goto do_close;
 		}
 	}
@@ -522,7 +522,7 @@ redo:
 		       (data[2] << 8) | data[3]);
 		goto do_close;
 	}
-	
+
 	rcode = SSL_read(sock->ssn->ssl, data + 4, length);
 	if (rcode <= 0) {
 		switch (SSL_get_error(sock->ssn->ssl, rcode)) {

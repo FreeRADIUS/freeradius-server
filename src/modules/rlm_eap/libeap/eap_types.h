@@ -72,7 +72,7 @@ typedef enum eap_method {
 	PW_EAP_TTLS,			/* 21 */
 	PW_EAP_REMOTE_ACCESS_SERVICE,	/* 22 */
 	PW_EAP_AKA,			/* 23 */
-	PW_EAP_3COM,			/* 24 - should this be EAP-HP now? */	
+	PW_EAP_3COM,			/* 24 - should this be EAP-HP now? */
 	PW_EAP_PEAP,			/* 25 */
 	PW_EAP_MSCHAPV2,		/* 26 */
 	PW_EAP_MAKE,			/* 27 */

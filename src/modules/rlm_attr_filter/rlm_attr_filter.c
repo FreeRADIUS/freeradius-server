@@ -316,7 +316,7 @@ static rlm_rcode_t attr_filter_common(void *instance, REQUEST *request, RADIUS_P
 	}
 
 	return RLM_MODULE_UPDATED;
-	
+
 	error:
 	pairfree(&output);
 	return RLM_MODULE_FAIL;

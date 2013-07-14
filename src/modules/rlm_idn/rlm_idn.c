@@ -36,7 +36,7 @@ typedef struct rlm_idn_t {
         int allow_unassigned;
 } rlm_idn_t;
 
-/* 
+/*
  *	The primary use case for this module is DNS-safe encoding of realms
  *	appearing in requests for a DDDS scheme.  Some notes on that usage
  *	scenario:
@@ -64,7 +64,7 @@ typedef struct rlm_idn_t {
  *      A mapping of configuration file names to internal variables.
  */
 static const CONF_PARSER mod_config[] = {
-	/* 
+	/*
 	 *	If a STRINGPREP profile other than NAMEPREP is ever desired,
          *	we can implement an option, and it will default to NAMEPREP settings.
          *	...and if we want raw punycode or to tweak Bootstring parameters,
@@ -83,7 +83,7 @@ static const CONF_PARSER mod_config[] = {
 
 	{"allow_unassigned", PW_TYPE_BOOLEAN, offsetof(rlm_idn_t, allow_unassigned), NULL, "no" },
 	{"use_std3_ascii_rules", PW_TYPE_BOOLEAN, offsetof(rlm_idn_t, use_std3_ascii_rules), NULL, "yes" },
-	
+
 	{ NULL, -1, 0, NULL, NULL }
 };
 
@@ -101,10 +101,10 @@ static ssize_t xlat_idna(void *instance, UNUSED REQUEST *request, char const *fm
         if (inst->allow_unassigned) {
         	flags |= IDNA_ALLOW_UNASSIGNED;
 	}
-	
+
         res = idna_to_ascii_8z(fmt, &idna, flags);
 	if (res) {
-		if (idna) { 
+		if (idna) {
 			free (idna); /* Docs unclear, be safe. */
 		}
 
@@ -118,7 +118,7 @@ static ssize_t xlat_idna(void *instance, UNUSED REQUEST *request, char const *fm
         if (!((len < (freespace - 1)) && (len <= 253))) {
 	        /* Never provide a truncated result, as it may be queried. */
 		REDEBUG("Conversion was truncated");
-		
+
 		free(idna);
 		return -1;
 
@@ -126,7 +126,7 @@ static ssize_t xlat_idna(void *instance, UNUSED REQUEST *request, char const *fm
 
 	strlcpy(out, idna, freespace);
 	free(idna);
-	
+
 	return len;
 }
 

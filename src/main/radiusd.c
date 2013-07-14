@@ -200,7 +200,7 @@ int main(int argc, char *argv[])
 					exit(EXIT_FAILURE);
 				}
 				fr_log_fp = fdopen(default_log.fd, "a");
-				break;		
+				break;
 
 			case 'i':
 				if (ip_hton(optarg, AF_UNSPEC, &mainconfig.myip) < 0) {
@@ -232,7 +232,7 @@ int main(int argc, char *argv[])
 				}
 				flag |= 2;
 				break;
-				
+
 			case 'P':
 				/* Force the PID to be written, even in -f mode */
 				write_pid = true;
@@ -253,7 +253,7 @@ int main(int argc, char *argv[])
 				fr_log_fp = stdout;
 				default_log.dest = L_DST_STDOUT;
 				default_log.fd = STDOUT_FILENO;
-				
+
 				version();
 				exit(EXIT_SUCCESS);
 			case 'X':
@@ -373,7 +373,7 @@ int main(int argc, char *argv[])
 	} else {
 		setlinebuf(stdout); /* unbuffered output */
 	}
-	
+
 	/*
 	 *	Now we have logging check that the OpenSSL
 	 */
@@ -425,12 +425,12 @@ int main(int argc, char *argv[])
 	 */
 	if (check_config) {
 		DEBUG("Configuration appears to be OK.");
-		
+
 		/* for -C -m|-M */
 		if (mainconfig.debug_memory) {
 			goto cleanup;
 		}
-		
+
 		exit(EXIT_SUCCESS);
 	}
 
@@ -492,7 +492,7 @@ int main(int argc, char *argv[])
 	 *	about to die.
 	 */
 	signal(SIGTERM, SIG_IGN);
-	
+
 	/*
 	 *	Send a TERM signal to all
 	 *	associated processes
@@ -502,7 +502,7 @@ int main(int argc, char *argv[])
 #ifndef __MINGW32__
 	if (spawn_flag) kill(-radius_pid, SIGTERM);
 #endif
-	
+
 	/*
 	 *	We're exiting, so we can delete the PID
 	 *	file.  (If it doesn't exist, we can ignore
@@ -511,7 +511,7 @@ int main(int argc, char *argv[])
 	if (dont_fork == false) {
 		unlink(mainconfig.pid_file);
 	}
-	
+
 	radius_event_free();
 
 cleanup:
@@ -519,16 +519,16 @@ cleanup:
 	 *	Detach any modules.
 	 */
 	detach_modules();
-	
+
 	xlat_free();		/* modules may have xlat's */
 
 	/*
 	 *	Free the configuration items.
 	 */
 	free_mainconfig();
-	
+
 	rad_const_free(radius_dir);
-		
+
 #ifdef WIN32
 	WSACleanup();
 #endif

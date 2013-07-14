@@ -12,7 +12,7 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
- 
+
 /**
  * $Id$
  * @file rlm_ldap.c
@@ -43,7 +43,7 @@ const FR_NAME_NUMBER ldap_scope[] = {
 	{ "one",	LDAP_SCOPE_ONE	},
 	{ "base",	LDAP_SCOPE_BASE },
 	{ "children",	LDAP_SCOPE_CHILDREN },
-	
+
 	{  NULL , -1 }
 };
 
@@ -54,7 +54,7 @@ const FR_NAME_NUMBER ldap_tls_require_cert[] = {
 	{ "allow",	LDAP_OPT_X_TLS_ALLOW	},
 	{ "try",	LDAP_OPT_X_TLS_TRY	},
 	{ "hard",	LDAP_OPT_X_TLS_HARD	},	/* oh yes, just like that */
-	
+
 	{  NULL , -1 }
 };
 #endif
@@ -68,32 +68,32 @@ static CONF_PARSER tls_config[] = {
 	 */
 	{"cacertfile", PW_TYPE_FILE_INPUT | PW_TYPE_DEPRECATED, offsetof(ldap_instance_t, tls_ca_file), NULL, NULL},
 	{"ca_file", PW_TYPE_FILE_INPUT, offsetof(ldap_instance_t, tls_ca_file), NULL, NULL},
-	
+
 	{"cacertdir", PW_TYPE_FILE_INPUT | PW_TYPE_DEPRECATED, offsetof(ldap_instance_t, tls_ca_path), NULL, NULL},
 	{"ca_path", PW_TYPE_FILE_INPUT, offsetof(ldap_instance_t, tls_ca_path), NULL, NULL},
-	
+
 	{"certfile", PW_TYPE_FILE_INPUT | PW_TYPE_DEPRECATED, offsetof(ldap_instance_t, tls_certificate_file), NULL, NULL},
 	{"certificate_file", PW_TYPE_FILE_INPUT, offsetof(ldap_instance_t, tls_certificate_file), NULL, NULL},
-	
+
 	{"keyfile", PW_TYPE_FILE_INPUT | PW_TYPE_DEPRECATED, offsetof(ldap_instance_t, tls_private_key_file), NULL, NULL}, // OK if it changes on HUP
 	{"private_key_file", PW_TYPE_FILE_INPUT, offsetof(ldap_instance_t, tls_private_key_file), NULL, NULL}, // OK if it changes on HUP
-	
+
 	{"randfile", PW_TYPE_FILE_INPUT | PW_TYPE_DEPRECATED, offsetof(ldap_instance_t, tls_random_file), NULL, NULL},
-	{"random_file", PW_TYPE_FILE_INPUT, offsetof(ldap_instance_t, tls_random_file), NULL, NULL},	
-	
+	{"random_file", PW_TYPE_FILE_INPUT, offsetof(ldap_instance_t, tls_random_file), NULL, NULL},
+
 	/*
 	 *	LDAP Specific TLS attributes
 	 */
 	{"start_tls", PW_TYPE_BOOLEAN, offsetof(ldap_instance_t, start_tls), NULL, "no"},
 	{"require_cert", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, tls_require_cert_str), NULL, NULL},
-	
+
 	{ NULL, -1, 0, NULL, NULL }
 };
 
 
 static CONF_PARSER profile_config[] = {
 	{"filter", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, profile_filter), NULL, "(&)"},	//!< Correct filter for
-												//!< when the DN is 
+												//!< when the DN is
 												//!< known.
 	{"attribute", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, profile_attr), NULL, NULL},
 	{"default", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, default_profile), NULL, NULL},
@@ -108,7 +108,7 @@ static CONF_PARSER user_config[] = {
 	{"filter", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, userobj_filter), NULL, "(uid=%u)"},
 	{"scope", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, userobj_scope_str), NULL, "sub"},
 	{"base_dn", PW_TYPE_STRING_PTR | PW_TYPE_REQUIRED, offsetof(ldap_instance_t,userobj_base_dn), NULL, NULL},
-	
+
 	{"access_attribute", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, userobj_access_attr), NULL, NULL},
 	{"access_positive", PW_TYPE_BOOLEAN, offsetof(ldap_instance_t, access_positive), NULL, "yes"},
 
@@ -122,7 +122,7 @@ static CONF_PARSER group_config[] = {
 	{"filter", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, groupobj_filter), NULL, NULL},
 	{"scope", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, groupobj_scope_str), NULL, "sub"},
 	{"base_dn", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, groupobj_base_dn), NULL, NULL},
-	
+
 	{"name_attribute", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, groupobj_name_attr), NULL, "cn"},
 	{"membership_attribute", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, userobj_membership_attr), NULL, NULL},
 	{"membership_filter", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, groupobj_membership_filter), NULL, NULL},
@@ -134,7 +134,7 @@ static CONF_PARSER group_config[] = {
 
 /*
  *	Client configuration
- */    
+ */
 static CONF_PARSER client_attribute[] = {
 	{"identifier", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, clientobj_identifier), NULL, "host"},
 	{"shortname", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, clientobj_shortname), NULL, "cn"},
@@ -143,7 +143,7 @@ static CONF_PARSER client_attribute[] = {
 	{"virtual_server", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, clientobj_server), NULL, NULL},
 	{"require_message_authenticator", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, clientobj_require_ma),
 	 NULL, NULL},
-	
+
 	{ NULL, -1, 0, NULL, NULL }
 };
 
@@ -228,9 +228,9 @@ static const CONF_PARSER module_config[] = {
 	{ "user", PW_TYPE_SUBSECTION, 0, NULL, (void const *) user_config },
 
 	{ "group", PW_TYPE_SUBSECTION, 0, NULL, (void const *) group_config },
-	
+
 	{ "client", PW_TYPE_SUBSECTION, 0, NULL, (void const *) client_config },
-	
+
 	{ "profile", PW_TYPE_SUBSECTION, 0, NULL, (void const *) profile_config },
 
 	{ "options", PW_TYPE_SUBSECTION, 0, NULL, (void const *) option_config },
@@ -277,15 +277,15 @@ static ssize_t ldap_xlat(void *instance, REQUEST *request, char const *fmt, char
 	    (strcmp(ldap_url->lud_attrs[0], "*") == 0) ||
 	    ldap_url->lud_attrs[1]) {
 		REDEBUG("Bad attributes list in LDAP URL. URL must specify exactly one attribute to retrieve");
-		       
+
 		goto free_urldesc;
 	}
 
-	if (ldap_url->lud_host && 
+	if (ldap_url->lud_host &&
 	    ((strncmp(inst->server, ldap_url->lud_host, strlen(inst->server)) != 0) ||
 	     (ldap_url->lud_port != inst->port))) {
 		RDEBUG("Requested server/port is \"%s:%i\"", ldap_url->lud_host, inst->port);
-		
+
 		goto free_urldesc;
 	}
 
@@ -293,7 +293,7 @@ static ssize_t ldap_xlat(void *instance, REQUEST *request, char const *fmt, char
 	if (!conn) goto free_urldesc;
 
 	memcpy(&attrs, &ldap_url->lud_attrs, sizeof(attrs));
-	
+
 	status = rlm_ldap_search(inst, request, &conn, ldap_url->lud_dn, ldap_url->lud_scope, ldap_url->lud_filter,
 				 attrs, &result);
 	switch (status) {
@@ -358,7 +358,7 @@ static int rlm_ldap_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR
 {
 	ldap_instance_t	*inst = instance;
 	rlm_rcode_t	rcode;
-	
+
 	int		found = false;
 	int		check_is_dn;
 
@@ -367,10 +367,10 @@ static int rlm_ldap_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR
 
 	if (!inst->groupobj_base_dn) {
 		REDEBUG("Directive 'group.base_dn' must be set'");
-			
+
 		return 1;
 	}
-	
+
 	RDEBUG("Searching for user in group \"%s\"", check->vp_strvalue);
 
 	if (check->length == 0) {
@@ -420,7 +420,7 @@ static int rlm_ldap_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR
 				goto finish;
 		}
 	}
-	
+
 	rad_assert(conn);
 
 	/*
@@ -436,17 +436,17 @@ static int rlm_ldap_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR
 				goto finish;
 		}
 	}
-	
+
 	rad_assert(conn);
-	
+
 	finish:
 	if (conn) {
 		rlm_ldap_release_socket(inst, conn);
 	}
-	
+
 	if (!found) {
 		RDEBUG("User is not a member of specified group");
-		
+
 		return 1;
 	}
 
@@ -459,7 +459,7 @@ static int rlm_ldap_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR
 static int mod_detach(void *instance)
 {
 	ldap_instance_t *inst = instance;
-	
+
 	fr_connection_pool_delete(inst->pool);
 
 	if (inst->user_map) {
@@ -485,29 +485,29 @@ static int parse_sub_section(ldap_instance_t *inst, CONF_SECTION *parent, ldap_a
 	CONF_SECTION *cs;
 
 	char const *name = section_type_value[comp].section;
-	
+
 	cs = cf_section_sub_find(parent, name);
 	if (!cs) {
 		INFO("rlm_ldap (%s): Couldn't find configuration for %s, will return NOOP for calls "
 		       "from this section", inst->xlat_name, name);
-		
+
 		return 0;
 	}
-	
+
 	*config = talloc_zero(inst, ldap_acct_section_t);
 	if (cf_section_parse(cs, *config, acct_section_config) < 0) {
 		LDAP_ERR("Failed parsing configuration for section %s", name);
-		
+
 		return -1;
 	}
-		
+
 	(*config)->cs = cs;
 
 	return 0;
 }
 
 /** Instantiate the module
- * 
+ *
  * Creates a new instance of the module reading parameters from a configuration section.
  *
  * @param conf to parse.
@@ -522,7 +522,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 	inst->chase_referrals = 2; /* use OpenLDAP defaults */
 	inst->rebind = 2;
-	
+
 	inst->xlat_name = cf_section_name2(conf);
 	if (!inst->xlat_name) {
 		inst->xlat_name = cf_section_name1(conf);
@@ -534,7 +534,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	if ((parse_sub_section(inst, conf, &inst->accounting, RLM_COMPONENT_ACCT) < 0) ||
 	    (parse_sub_section(inst, conf, &inst->postauth, RLM_COMPONENT_POST_AUTH) < 0)) {
 		LDAP_ERR("Failed parsing configuration");
-		
+
 		goto error;
 	}
 
@@ -544,17 +544,17 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	if (inst->cacheable_group_name && inst->groupobj_membership_filter) {
 		if (!inst->groupobj_name_attr) {
 			LDAP_ERR("Directive 'group.name_attribute' must be set if cacheable group names are enabled");
-			
+
 			goto error;
 		}
 
 		if (!inst->groupobj_base_dn) {
 			LDAP_ERR("Directive 'group.base_dn' must be set if cacheable group names are enabled");
-			
+
 			goto error;
 		}
 	}
-	
+
 	/*
 	 *	Check for URLs.  If they're used and the library doesn't support them, then complain.
 	 */
@@ -586,7 +586,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	if (inst->rebind == true) {
 		LDAP_ERR("Cannot use 'rebind' directive as this version of libldap does not support the API "
 			 "that we need");
-			 
+
 		goto error;
 	}
 #endif
@@ -600,14 +600,14 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 			 inst->userobj_scope_str);
 		goto error;
 	}
-	
+
 	inst->groupobj_scope = fr_str2int(ldap_scope, inst->groupobj_scope_str, -1);
 	if (inst->groupobj_scope < 0) {
 		LDAP_ERR("Invalid 'group.scope' value \"%s\", expected 'sub', 'one', 'base' or 'children'",
 			 inst->groupobj_scope_str);
 		goto error;
 	}
-	
+
 	inst->clientobj_scope = fr_str2int(ldap_scope, inst->clientobj_scope_str, -1);
 	if (inst->clientobj_scope < 0) {
 		LDAP_ERR("Invalid 'client.scope' value \"%s\", expected 'sub', 'one', 'base' or 'children'",
@@ -655,10 +655,10 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		inst->group_da = dict_attrbyname(buffer);
 		if (!inst->group_da) {
 			LDAP_ERR("Failed creating attribute %s", buffer);
-			
+
 			goto error;
 		}
-		
+
 		paircompare_register(inst->group_da->attr, PW_USER_NAME, rlm_ldap_groupcmp, inst);
 	/*
 	 *	Were the default instance
@@ -666,7 +666,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	} else {
 		inst->group_da = dict_attrbyvalue(PW_LDAP_GROUP, 0);
 		paircompare_register(PW_LDAP_GROUP, PW_USER_NAME, rlm_ldap_groupcmp, inst);
-	}	
+	}
 
 	xlat_register(inst->xlat_name, ldap_xlat, rlm_ldap_escape_func, inst);
 
@@ -677,16 +677,16 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	if (!inst->pool) {
 		return -1;
 	}
-	
+
 	/*
 	 *	Bulk load dynamic clients.
 	 */
 	if (inst->do_clients) {
 		if (rlm_ldap_load_clients(inst) < 0) {
 			LDAP_ERR("Error loading clients");
-			
+
 			return -1;
-		}		
+		}
 	}
 
 	return 0;
@@ -696,7 +696,7 @@ error:
 }
 
 /** Check the user's password against ldap directory
- * 
+ *
  * @param instance rlm_ldap configuration.
  * @param request Current request.
  * @return one of the RLM_MODULE_* values.
@@ -727,15 +727,15 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 		RWDEBUG("* THAT CONFIGURATION IS WRONG.  DELETE IT.   ");
 		RWDEBUG("* YOU ARE PREVENTING THE SERVER FROM WORKING.");
 		RWDEBUG("*********************************************");
-		
+
 		REDEBUG("Attribute \"User-Password\" is required for authentication.");
-		
+
 		return RLM_MODULE_INVALID;
 	}
 
 	if (request->password->length == 0) {
 		REDEBUG("Empty password supplied");
-		
+
 		return RLM_MODULE_INVALID;
 	}
 
@@ -750,7 +750,7 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 	dn = rlm_ldap_find_user(inst, request, &conn, NULL, false, NULL, &rcode);
 	if (!dn) {
 		rlm_ldap_release_socket(inst, conn);
-		
+
 		return rcode;
 	}
 
@@ -763,23 +763,23 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 	case LDAP_PROC_SUCCESS:
 		rcode = RLM_MODULE_OK;
 		RDEBUG("Bind as user \"%s\" was successful", dn);
-		
+
 		break;
 	case LDAP_PROC_NOT_PERMITTED:
 		rcode = RLM_MODULE_USERLOCK;
-		
+
 		break;
 	case LDAP_PROC_REJECT:
 		rcode = RLM_MODULE_REJECT;
-		
+
 		break;
 	case LDAP_PROC_BAD_DN:
 		rcode = RLM_MODULE_INVALID;
-		
+
 		break;
 	case LDAP_PROC_NO_RESULT:
 		rcode = RLM_MODULE_NOTFOUND;
-		
+
 		break;
 	default:
 		rcode = RLM_MODULE_FAIL;
@@ -787,7 +787,7 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 	};
 
 	rlm_ldap_release_socket(inst, conn);
-	
+
 	return rcode;
 }
 
@@ -807,10 +807,10 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 	LDAPMessage	*result, *entry;
 	char const 	*dn = NULL;
 	rlm_ldap_map_xlat_t	expanded; /* faster than mallocing every time */
-	
+
 	if (!request->username) {
 		RDEBUG2("Attribute \"User-Name\" is required for authorization.");
-		
+
 		return RLM_MODULE_NOOP;
 	}
 
@@ -819,17 +819,17 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 	 */
 	if (request->username->length == 0) {
 		RDEBUG2("Zero length username not permitted");
-		
+
 		return RLM_MODULE_INVALID;
 	}
 
 	if (rlm_ldap_map_xlat(request, inst->user_map, &expanded) < 0) {
 		return RLM_MODULE_FAIL;
 	}
-	
+
 	conn = rlm_ldap_get_socket(inst, request);
 	if (!conn) return RLM_MODULE_FAIL;
-	
+
 	/*
 	 *	Add any additional attributes we need for checking access, memberships, and profiles
 	 */
@@ -840,27 +840,27 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 	if (inst->userobj_membership_attr && (inst->cacheable_group_dn || inst->cacheable_group_name)) {
 		expanded.attrs[expanded.count++] = inst->userobj_membership_attr;
 	}
-	
+
 	if (inst->profile_attr) {
 		expanded.attrs[expanded.count++] = inst->profile_attr;
 	}
-	
+
 	if (inst->valuepair_attr) {
 		expanded.attrs[expanded.count++] = inst->valuepair_attr;
 	}
-	
+
 	expanded.attrs[expanded.count] = NULL;
-	
+
 	dn = rlm_ldap_find_user(inst, request, &conn, expanded.attrs, true, &result, &rcode);
 	if (!dn) {
-		goto finish;			
+		goto finish;
 	}
 
 	entry = ldap_first_entry(conn->handle, result);
 	if (!entry) {
 		ldap_get_option(conn->handle, LDAP_OPT_RESULT_CODE, &ldap_errno);
 		REDEBUG("Failed retrieving entry: %s", ldap_err2string(ldap_errno));
-			 
+
 		goto finish;
 	}
 
@@ -873,7 +873,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 			goto finish;
 		}
 	}
-	
+
 	/*
 	 *	Check if we need to cache group memberships
 	 */
@@ -882,7 +882,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 		if (rcode != RLM_MODULE_OK) {
 			goto finish;
 		}
-		
+
 		rcode = rlm_ldap_cacheable_groupobj(inst, request, &conn);
 		if (rcode != RLM_MODULE_OK) {
 			goto finish;
@@ -922,9 +922,9 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 		vp = radius_paircreate(request, &request->config_items, PW_CLEARTEXT_PASSWORD, 0);
 		pairstrcpy(vp, password);
 		vp->length = pass_size;
-		
+
 		RDEBUG2("Added eDirectory password in check items as %s = %s", vp->da->name, vp->vp_strvalue);
-			
+
 		if (inst->edir_autz) {
 			RDEBUG2("Binding as user for eDirectory authorization checks");
 			/*
@@ -936,27 +936,27 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 			case LDAP_PROC_SUCCESS:
 				rcode = RLM_MODULE_OK;
 				RDEBUG("Bind as user \"%s\" was successful", dn);
-				
+
 				break;
 			case LDAP_PROC_NOT_PERMITTED:
 				rcode = RLM_MODULE_USERLOCK;
-				
+
 				goto finish;
 			case LDAP_PROC_REJECT:
 				rcode = RLM_MODULE_REJECT;
-				
+
 				goto finish;
 			case LDAP_PROC_BAD_DN:
 				rcode = RLM_MODULE_INVALID;
-				
+
 				goto finish;
 			case LDAP_PROC_NO_RESULT:
 				rcode = RLM_MODULE_NOTFOUND;
-				
+
 				goto finish;
 			default:
 				rcode = RLM_MODULE_FAIL;
-				
+
 				goto finish;
 			};
 		}
@@ -984,7 +984,7 @@ skip_edir:
 			for (i = 0; vals[i] != NULL; i++) {
 				rlm_ldap_map_profile(inst, request, &conn, vals[i], &expanded);
 			}
-	
+
 			ldap_value_free(vals);
 		}
 	}
@@ -993,7 +993,7 @@ skip_edir:
 		rlm_ldap_map_do(inst, request, conn->handle, &expanded, entry);
 		rlm_ldap_check_reply(inst, request);
 	}
-	
+
 finish:
 	rlm_ldap_map_xlat_free(&expanded);
 	if (result) {
@@ -1016,21 +1016,21 @@ finish:
 static rlm_rcode_t user_modify(ldap_instance_t *inst, REQUEST *request, ldap_acct_section_t *section)
 {
 	rlm_rcode_t	rcode = RLM_MODULE_OK;
-	
+
 	ldap_handle_t	*conn = NULL;
-	
+
 	LDAPMod		*mod_p[LDAP_MAX_ATTRMAP + 1], mod_s[LDAP_MAX_ATTRMAP];
 	LDAPMod		**modify = mod_p;
-	
+
 	char		*passed[LDAP_MAX_ATTRMAP * 2];
 	int		i, total = 0, last_pass = 0;
-	
+
 	char 		*expanded[LDAP_MAX_ATTRMAP];
 	int		last_exp = 0;
-	
+
 	char const	*attr;
 	char const	*value;
-	
+
 	char const	*dn;
 	/*
 	 *	Build our set of modifications using the update sections in
@@ -1041,58 +1041,58 @@ static rlm_rcode_t user_modify(ldap_instance_t *inst, REQUEST *request, ldap_acc
 	CONF_SECTION 	*cs;
 	FR_TOKEN	op;
 	char		path[MAX_STRING_LEN];
-	
+
 	char		*p = path;
 
 	rad_assert(section);
-	
+
 	/*
 	 *	Locate the update section were going to be using
 	 */
 	if (section->reference[0] != '.') {
 		*p++ = '.';
 	}
-	
+
 	if (radius_xlat(p, (sizeof(path) - (p - path)) - 1, request, section->reference, NULL, NULL) < 0) {
-		goto error;	
+		goto error;
 	}
 
 	ci = cf_reference_item(NULL, section->cs, path);
 	if (!ci) {
-		goto error;	
+		goto error;
 	}
-	
+
 	if (!cf_item_is_section(ci)){
 		REDEBUG("Reference must resolve to a section");
-		
-		goto error;	
+
+		goto error;
 	}
-	
+
 	cs = cf_section_sub_find(cf_itemtosection(ci), "update");
 	if (!cs) {
 		REDEBUG("Section must contain 'update' subsection");
-		
+
 		goto error;
 	}
-	
+
 	/*
 	 *	Iterate over all the pairs, building our mods array
 	 */
 	for (ci = cf_item_find_next(cs, NULL); ci != NULL; ci = cf_item_find_next(cs, ci)) {
 	     	int do_xlat = false;
-	     	
+
 	     	if (total == LDAP_MAX_ATTRMAP) {
 	     		REDEBUG("Modify map size exceeded");
-	
+
 	     		goto error;
 	     	}
-	     	
+
 		if (!cf_item_is_pair(ci)) {
 			REDEBUG("Entry is not in \"ldap-attribute = value\" format");
-			       
+
 			goto error;
 		}
-	
+
 		/*
 		 *	Retrieve all the information we need about the pair
 		 */
@@ -1100,10 +1100,10 @@ static rlm_rcode_t user_modify(ldap_instance_t *inst, REQUEST *request, ldap_acc
 		value = cf_pair_value(cp);
 		attr = cf_pair_attr(cp);
 		op = cf_pair_operator(cp);
-		
+
 		if (!value || (*value == '\0')) {
 			RDEBUG("Empty value string, skipping attribute \"%s\"", attr);
-			
+
 			continue;
 		}
 
@@ -1114,41 +1114,41 @@ static rlm_rcode_t user_modify(ldap_instance_t *inst, REQUEST *request, ldap_acc
 			break;
 			case T_BACK_QUOTED_STRING:
 			case T_DOUBLE_QUOTED_STRING:
-				do_xlat = true;		
+				do_xlat = true;
 			break;
 			default:
 				rad_assert(0);
 				goto error;
 		}
-		
+
 		if (op == T_OP_CMP_FALSE) {
 			passed[last_pass] = NULL;
 		} else if (do_xlat) {
 			char *exp = NULL;
-			
+
 			if (radius_xlat(exp, 0, request, value, NULL, NULL) <= 0) {
 				RDEBUG("Skipping attribute \"%s\"", attr);
-			       	       
+
 				talloc_free(exp);
-				
+
 				continue;
 			}
-			
+
 			expanded[last_exp++] = exp;
 			passed[last_pass] = exp;
-		/* 
+		/*
 		 *	Static strings
 		 */
 		} else {
 			memcpy(&(passed[last_pass]), &value, sizeof(passed[last_pass]));
 		}
-		
+
 		passed[last_pass + 1] = NULL;
-		
+
 		mod_s[total].mod_values = &(passed[last_pass]);
-					
+
 		last_pass += 2;
-		
+
 		switch (op)
 		{
 		/*
@@ -1176,27 +1176,27 @@ static rlm_rcode_t user_modify(ldap_instance_t *inst, REQUEST *request, ldap_acc
 		default:
 			REDEBUG("Operator '%s' is not supported for LDAP modify operations",
 			        fr_int2str(fr_tokens, op, "<INVALID>"));
-			       
+
 			goto error;
 		}
-		
+
 		/*
 		 *	Now we know the value is ok, copy the pointers into
 		 *	the ldapmod struct.
 		 */
 		memcpy(&(mod_s[total].mod_type), &(attr), sizeof(mod_s[total].mod_type));
-		
+
 		mod_p[total] = &(mod_s[total]);
 		total++;
 	}
-	
+
 	if (total == 0) {
 		rcode = RLM_MODULE_NOOP;
 		goto release;
 	}
-	
+
 	mod_p[total] = NULL;
-	
+
 	conn = rlm_ldap_get_socket(inst, request);
 	if (!conn) return RLM_MODULE_FAIL;
 
@@ -1205,30 +1205,30 @@ static rlm_rcode_t user_modify(ldap_instance_t *inst, REQUEST *request, ldap_acc
 	if (!dn || (rcode != RLM_MODULE_OK)) {
 		goto error;
 	}
-	
+
 	rcode = rlm_ldap_modify(inst, request, &conn, dn, modify);
-	
+
 	release:
 	error:
 	/*
 	 *	Free up any buffers we allocated for xlat expansion
-	 */	
+	 */
 	for (i = 0; i < last_exp; i++) {
 		talloc_free(expanded[i]);
 	}
 
 	rlm_ldap_release_socket(inst, conn);
-	
+
 	return rcode;
 }
 
 static rlm_rcode_t mod_accounting(void *instance, REQUEST * request) {
-	ldap_instance_t *inst = instance;		
+	ldap_instance_t *inst = instance;
 
 	if (inst->accounting) {
-		return user_modify(inst, request, inst->accounting); 
+		return user_modify(inst, request, inst->accounting);
 	}
-	
+
 	return RLM_MODULE_NOOP;
 }
 
@@ -1237,7 +1237,7 @@ static rlm_rcode_t mod_post_auth(void *instance, REQUEST * request)
 	ldap_instance_t	*inst = instance;
 
 	if (inst->postauth) {
-		return user_modify(inst, request, inst->postauth); 
+		return user_modify(inst, request, inst->postauth);
 	}
 
 	return RLM_MODULE_NOOP;

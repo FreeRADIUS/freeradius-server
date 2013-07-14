@@ -39,15 +39,15 @@ void otp_get_random(uint8_t *rnd_data, size_t len)
 	size_t bytes_read = 0;
 	size_t bytes_left;
 	int n;
-	
+
 	while (bytes_read < len) {
 		bytes_left = len - bytes_read;
 		uint32_t r = fr_rand();
 
 		n = sizeof(r) < bytes_left ? sizeof(r) : bytes_left;
-		
+
 		memcpy(rnd_data + bytes_read, &r, n);
-		
+
 		bytes_read += n;
 	}
 }
@@ -87,7 +87,7 @@ void _otp_pthread_mutex_init(pthread_mutex_t *mutexp, pthread_mutexattr_t const 
 	if (rc) {
 		ERROR("rlm_otp: %s: pthread_mutex_init: %s",
 		       caller, strerror(rc));
-		
+
 		exit(1);
 	}
 }
@@ -103,7 +103,7 @@ void _otp_pthread_mutex_lock(pthread_mutex_t *mutexp, char const *caller)
 	if (rc) {
 		ERROR("rlm_otp: %s: pthread_mutex_lock: %s",
 		       caller, strerror(rc));
-		
+
 		exit(1);
 	}
 }
@@ -119,7 +119,7 @@ int _otp_pthread_mutex_trylock(pthread_mutex_t *mutexp, char const *caller)
 	if (rc && rc != EBUSY) {
 		ERROR("rlm_otp: %s: pthread_mutex_trylock: %s",
 		       caller, strerror(rc));
-		
+
 		exit(1);
 	}
 
@@ -137,7 +137,7 @@ void _otp_pthread_mutex_unlock(pthread_mutex_t *mutexp, char const *caller)
   	if (rc) {
 		ERROR("rlm_otp: %s: pthread_mutex_unlock: %s",
 		       caller, strerror(rc));
-		
+
 		exit(1);
   	}
 }

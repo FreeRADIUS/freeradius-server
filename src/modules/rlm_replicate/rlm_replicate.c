@@ -73,7 +73,7 @@ static int replicate_packet(UNUSED void *instance, REQUEST *request,
 			REDEBUG2("Cannot Replicate to unknown realm \"%s\"", realm->name);
 			continue;
 		}
-		
+
 		/*
 		 *	We shouldn't really do this on every loop.
 		 */
@@ -83,18 +83,18 @@ static int replicate_packet(UNUSED void *instance, REQUEST *request,
 				request->packet->code);
 			cleanup(packet);
 			return RLM_MODULE_FAIL;
-		
+
 		case PW_AUTHENTICATION_REQUEST:
 			pool = realm->auth_pool;
 			break;
-			
+
 #ifdef WITH_ACCOUNTING
-			
+
 		case PW_ACCOUNTING_REQUEST:
 			pool = realm->acct_pool;
 			break;
 #endif
-			
+
 #ifdef WITH_COA
 		case PW_COA_REQUEST:
 		case PW_DISCONNECT_REQUEST:
@@ -102,19 +102,19 @@ static int replicate_packet(UNUSED void *instance, REQUEST *request,
 			break;
 #endif
 		}
-		
+
 		if (!pool) {
 			RWDEBUG2("Cancelling replication to Realm %s, as the realm is local.", realm->name);
 			continue;
 		}
-		
+
 		home = home_server_ldb(realm->name, pool, request);
 		if (!home) {
 			REDEBUG2("Failed to find live home server for realm %s",
 				realm->name);
 			continue;
 		}
-		
+
 		/*
 		 *	For replication to multiple servers we re-use the packet
 		 *	we built here.
@@ -132,7 +132,7 @@ static int replicate_packet(UNUSED void *instance, REQUEST *request,
 				rcode = RLM_MODULE_FAIL;
 				goto done;
 			}
-			
+
 			vps = radius_list(request, list);
 			if (!vps) {
 				RWDEBUG("List '%s' doesn't exist for "
@@ -141,7 +141,7 @@ static int replicate_packet(UNUSED void *instance, REQUEST *request,
 				rcode = RLM_MODULE_INVALID;
 				goto done;
 			}
-			
+
 			/*
 			 *	Don't assume the list actually contains any
 			 *	attributes.
@@ -153,7 +153,7 @@ static int replicate_packet(UNUSED void *instance, REQUEST *request,
 					goto done;
 				}
 			}
-			
+
 
 
 			/*
@@ -191,7 +191,7 @@ static int replicate_packet(UNUSED void *instance, REQUEST *request,
 		packet->dst_port = home->port;
 		memset(&packet->src_ipaddr, 0, sizeof(packet->src_ipaddr));
 		packet->src_port = 0;
-		
+
 		/*
 		 *	Encode, sign and then send the packet.
 		 */
@@ -209,9 +209,9 @@ static int replicate_packet(UNUSED void *instance, REQUEST *request,
 		 */
 		rcode = RLM_MODULE_OK;
 	}
-	
+
 	done:
-	
+
 	cleanup(packet);
 	return rcode;
 }

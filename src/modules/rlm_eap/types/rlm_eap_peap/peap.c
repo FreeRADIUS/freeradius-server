@@ -150,7 +150,7 @@ static int eappeap_soh(eap_handler_t *handler, tls_session_t *tls_session)
 	tlv_packet[17] = 2;
 	tlv_packet[18] = 0;
 	tlv_packet[19] = 0;
-	
+
 	(tls_session->record_plus)(&tls_session->clean_in, tlv_packet, 20);
 	tls_handshake_send(handler->request, tls_session);
 	return 1;
@@ -308,7 +308,7 @@ static VALUE_PAIR *eap2vp(REQUEST *request, RADIUS_PACKET *packet,
 		}
 
 		pairmemcpy(vp, data + total, (data_len - total));
-		
+
 		total += vp->length;
 
 		pairinsert(&cursor, vp);
@@ -341,19 +341,19 @@ static int vp2eap(REQUEST *request, tls_session_t *tls_session, VALUE_PAIR *vp)
 			for (i = start; i < vp->length; i++) {
 				if ((total & 0x0f) == 0) {
 					fprintf(fr_log_fp, "  PEAP tunnel data out %04x: ", (int) total);
-				}		
+				}
 				fprintf(fr_log_fp, "%02x ", vp->vp_octets[i]);
-				
+
 				if ((total & 0x0f) == 0x0f) {
 					fprintf(fr_log_fp, "\n");
 				}
-				
+
 				total++;
 			}
-			
+
 			start = 0;
 		}
-		
+
 		if ((total & 0x0f) != 0) {
 			fprintf(fr_log_fp, "\n");
 		}
@@ -364,7 +364,7 @@ static int vp2eap(REQUEST *request, tls_session_t *tls_session, VALUE_PAIR *vp)
 	 *	Send the EAP data, WITHOUT the header.
 	 */
 	(tls_session->record_plus)(&tls_session->clean_in, vp->vp_octets + EAP_HEADER_LEN, vp->length - EAP_HEADER_LEN);
-	
+
 	/*
 	 *	Send the rest of the EAP data.
 	 */
@@ -597,10 +597,10 @@ static int eappeap_postproxy(eap_handler_t *handler, void *data)
 
 		if ((debug_flag > 0) && fr_log_fp) {
 			fprintf(fr_log_fp, "} # server %s\n", fake->server);
-			
+
 			RDEBUG("Final reply from tunneled session code %d",
 			       fake->reply->code);
-		
+
 			debug_pair_list(fake->reply->vps);
 		}
 
@@ -720,9 +720,9 @@ static void print_tunneled_data(uint8_t const *data, size_t data_len)
 	if ((debug_flag > 2) && fr_log_fp) {
 		for (i = 0; i < data_len; i++) {
 		  if ((i & 0x0f) == 0) fprintf(fr_log_fp, "  PEAP tunnel data in %02x: ", (int) i);
-			
+
 			fprintf(fr_log_fp, "%02x ", data[i]);
-			
+
 			if ((i & 0x0f) == 0x0f) fprintf(fr_log_fp, "\n");
 		}
 		if ((data_len & 0x0f) != 0) fprintf(fr_log_fp, "\n");
@@ -768,7 +768,7 @@ int eappeap_process(eap_handler_t *handler, tls_session_t *tls_session)
 	switch (t->status) {
 	case PEAP_STATUS_TUNNEL_ESTABLISHED:
 		/* FIXME: should be no data in the buffer here, check & assert? */
-		
+
 		if (SSL_session_reused(tls_session->ssl)) {
 			RDEBUG2("Skipping Phase2 because of session resumption");
 			t->session_resumption_state = PEAP_RESUMPTION_YES;
@@ -781,7 +781,7 @@ int eappeap_process(eap_handler_t *handler, tls_session_t *tls_session)
 			/* we're good, send success TLV */
 			t->status = PEAP_STATUS_SENT_TLV_SUCCESS;
 			eappeap_success(handler, tls_session);
-			
+
 		} else {
 			/* send an identity request */
 			t->session_resumption_state = PEAP_RESUMPTION_NO;
@@ -802,7 +802,7 @@ int eappeap_process(eap_handler_t *handler, tls_session_t *tls_session)
 		 */
 		t->username = pairmake(t, NULL, "User-Name", NULL, T_OP_EQ);
 		rad_assert(t->username != NULL);
-		
+
 		t->username->vp_strvalue = p = talloc_array(t->username, char, data_len);
 		memcpy(p, data + 1, data_len - 1);
 		t->username->length = data_len - 1;
@@ -878,13 +878,13 @@ int eappeap_process(eap_handler_t *handler, tls_session_t *tls_session)
 		 */
 		if (t->session_resumption_state == PEAP_RESUMPTION_YES) {
 			RDEBUG2("Client rejected session resumption.  Re-starting full authentication");
-			
+
 			/*
 			 *	Mark session resumption status.
 			 */
 			t->status = PEAP_STATUS_INNER_IDENTITY_REQ_SENT;
 			t->session_resumption_state = PEAP_RESUMPTION_NO;
-			
+
 			eappeap_identity(handler, tls_session);
 			return RLM_MODULE_HANDLED;
 		}
@@ -925,7 +925,7 @@ int eappeap_process(eap_handler_t *handler, tls_session_t *tls_session)
 		 *	sent an Identity packet yet; do so from the stored
 		 *	username and this will kick off the phase2 eap method
 		 */
-		
+
 	case PEAP_STATUS_PHASE2_INIT: {
 		size_t len = t->username->length + EAP_HEADER_LEN + 1;
 		uint8_t *q;
@@ -971,7 +971,7 @@ int eappeap_process(eap_handler_t *handler, tls_session_t *tls_session)
 
 	if ((debug_flag > 0) && fr_log_fp) {
 		RDEBUG("Got tunneled request");
-		
+
 		debug_pair_list(fake->packet->vps);
 
 		fprintf(fr_log_fp, "server %s {\n",
@@ -1043,7 +1043,7 @@ int eappeap_process(eap_handler_t *handler, tls_session_t *tls_session)
 			(!fake->server) ? "" : fake->server);
 
 		RDEBUG("Got tunneled reply code %d", fake->reply->code);
-		
+
 		debug_pair_list(fake->reply->vps);
 	}
 

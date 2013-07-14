@@ -194,7 +194,7 @@ int vradlog(log_type_t type, char const *fmt, va_list ap)
 			       sizeof(buffer) - len) ;
 		if (len == 0) colourise = false;
 	}
-	
+
 	/*
 	 *	Mark the point where we treat the buffer as unsanitized.
 	 */
@@ -213,7 +213,7 @@ int vradlog(log_type_t type, char const *fmt, va_list ap)
 
 		timeval = time(NULL);
 		CTIME_R(&timeval, buffer + len, sizeof(buffer) - len - 1);
-		
+
 		len = strlen(buffer);
 
 		len += strlcpy(buffer + len,
@@ -237,7 +237,7 @@ int vradlog(log_type_t type, char const *fmt, va_list ap)
 	if (len < sizeof(buffer)) {
 		len += vsnprintf(buffer + len, sizeof(buffer) - len - 1, fmt, ap);
 	}
-	
+
 	/*
 	 *	Filter out characters not in Latin-1.
 	 */
@@ -252,7 +252,7 @@ int vradlog(log_type_t type, char const *fmt, va_list ap)
 	if (colourise && (len < sizeof(buffer))) {
 		len += strlcpy(buffer + len, VTC_RESET, sizeof(buffer) - len);
 	}
-	
+
 	if (len < (sizeof(buffer) - 2)) {
 		buffer[len]	= '\n';
 		buffer[len + 1] = '\0';
@@ -260,7 +260,7 @@ int vradlog(log_type_t type, char const *fmt, va_list ap)
 		buffer[sizeof(buffer) - 2] = '\n';
 		buffer[sizeof(buffer) - 1] = '\0';
 	}
-	
+
 	switch (default_log.dest) {
 
 #ifdef HAVE_SYSLOG_H
@@ -380,14 +380,14 @@ void radlog_request(log_type_t type, log_debug_t lvl, REQUEST *request, char con
 		 *	This is SLOW!  Doing it for every log message
 		 *	in every request is NOT recommended!
 		 */
-		
+
 		 /* FIXME: escape chars! */
 		if (radius_xlat(buffer, sizeof(buffer), request, filename, NULL, NULL) < 0) {
 			va_end(ap);
 			return;
 		}
 		request->radlog = rl;
-		
+
 		p = strrchr(buffer, FR_DIR_SEP);
 		if (p) {
 			*p = '\0';
@@ -418,30 +418,30 @@ void radlog_request(log_type_t type, log_debug_t lvl, REQUEST *request, char con
 		} else
 #endif
 			CTIME_R(&timeval, buffer, sizeof(buffer) - 1);
-		
+
 		len = strlen(buffer);
 		p = strrchr(buffer, '\n');
 		if (p) {
 			p[0] = ' ';
 			p[1] = '\0';
 		}
-		
+
 		len += strlcpy(buffer + len,
 			       fr_int2str(levels, type, ": "),
 		 	       sizeof(buffer) - len);
-		 	
+
 		if (len >= sizeof(buffer)) goto finish;
 	}
-	
+
 	if (request && request->module[0]) {
 		len = snprintf(buffer + len, sizeof(buffer) - len, "%s : ",
 			       request->module);
-			
+
 		if (len >= sizeof(buffer)) goto finish;
 	}
-	
+
 	vsnprintf(buffer + len, sizeof(buffer) - len, msg, ap);
-	
+
 	finish:
 	switch (type) {
 	case L_DBG_WARN:
@@ -494,16 +494,16 @@ void log_talloc_report(TALLOC_CTX *ctx)
 
 		return;
 	}
-	
+
 	if (!ctx) {
 		talloc_report_full(NULL, fd);
 	} else {
 		do {
 			INFO("Context level %i", i++);
-		
+
 			talloc_report_full(ctx, fd);
 		} while ((ctx = talloc_parent(ctx)) && (talloc_get_name(ctx) != null_ctx));  /* Stop before we hit NULL ctx */
 	}
-	
+
 	fclose(fd);
 }

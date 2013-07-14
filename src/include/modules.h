@@ -163,7 +163,7 @@ typedef struct module_t {
 				//!< various section functions, ordering
 				//!< determines which function is mapped to
 				//!< which section.
-						
+
 } module_t;
 
 int setup_modules(int, CONF_SECTION *);

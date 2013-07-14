@@ -57,13 +57,13 @@ static sql_rcode_t sql_free_result(rlm_sql_handle_t*, rlm_sql_config_t*);
 static int sql_socket_destructor(void *c)
 {
 	rlm_sql_mysql_conn_t *conn = c;
-	
+
 	DEBUG2("rlm_sql_mysql: Socket destructor called, closing socket");
-	
+
 	if (conn->sock){
 		mysql_close(conn->sock);
 	}
-	
+
 	return 0;
 }
 
@@ -130,9 +130,9 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 		       config->sql_db);
 		ERROR("rlm_sql_mysql: Mysql error '%s'",
 		       mysql_error(&conn->db));
-		
+
 		conn->sock = NULL;
-		
+
 		return -1;
 	}
 

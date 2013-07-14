@@ -37,9 +37,9 @@ RCSID("$Id$")
  */
 
 #ifdef HAVE_YKCLIENT
-static const CONF_PARSER validation_config[] = { 
+static const CONF_PARSER validation_config[] = {
 	{ "client_id", PW_TYPE_INTEGER, offsetof(rlm_yubikey_t, client_id), NULL, 0},
-	{ "api_key", PW_TYPE_STRING_PTR, offsetof(rlm_yubikey_t, api_key), NULL, NULL},	
+	{ "api_key", PW_TYPE_STRING_PTR, offsetof(rlm_yubikey_t, api_key), NULL, NULL},
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
 #endif
@@ -47,7 +47,7 @@ static const CONF_PARSER validation_config[] = {
 static const CONF_PARSER module_config[] = {
 	{ "id_length", PW_TYPE_INTEGER, offsetof(rlm_yubikey_t, id_len), NULL, "12" },
 	{ "decrypt", PW_TYPE_BOOLEAN, offsetof(rlm_yubikey_t, decrypt), NULL, "no" },
-	{ "validate", PW_TYPE_BOOLEAN, offsetof(rlm_yubikey_t, validate), NULL, "no" },	
+	{ "validate", PW_TYPE_BOOLEAN, offsetof(rlm_yubikey_t, validate), NULL, "no" },
 #ifdef HAVE_YKCLIENT
 	{ "validation", PW_TYPE_SUBSECTION, 0, NULL, (void const *) validation_config },
 #endif
@@ -79,17 +79,17 @@ static ssize_t modhex2hex(char const *modhex, uint8_t *hex, size_t len)
 		if (modhex[i << 1] == '\0') {
 			break;
 		}
-		
+
 		/*
 		 *	We only deal with whole bytes
-		 */	
+		 */
 		if (modhex[(i << 1) + 1] == '\0')
 			return -1;
-		
+
 		if (!(c1 = memchr(modhextab, tolower((int) modhex[i << 1]), 16)) ||
 		    !(c2 = memchr(modhextab, tolower((int) modhex[(i << 1) + 1]), 16)))
 			return -1;
-		
+
 		hex[i] = hextab[c1 - modhextab];
 		hex[i + 1] = hextab[c2 - modhextab];
 	}
@@ -103,7 +103,7 @@ static ssize_t modhex2hex(char const *modhex, uint8_t *hex, size_t len)
  * Example: "%{modhextohex:vvrbuctetdhc}" == "ffc1e0d3d260"
  */
 static ssize_t modhex_to_hex_xlat(UNUSED void *instance, REQUEST *request, char const *fmt, char *out, size_t outlen)
-{	
+{
 	ssize_t len;
 
 	if (outlen < strlen(fmt)) {
@@ -118,10 +118,10 @@ static ssize_t modhex_to_hex_xlat(UNUSED void *instance, REQUEST *request, char 
 	if (len <= 0) {
 		*out = '\0';
 		REDEBUG("Modhex string invalid");
-		
+
 		return -1;
 	}
-	
+
 	return len;
 }
 
@@ -137,7 +137,7 @@ static ssize_t modhex_to_hex_xlat(UNUSED void *instance, REQUEST *request, char 
  */
 static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
-	rlm_yubikey_t *inst = instance;	
+	rlm_yubikey_t *inst = instance;
 
 	inst->name = cf_section_name2(conf);
 	if (!inst->name) {
@@ -151,16 +151,16 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	}
 #endif
 
-	if (inst->validate) {	
+	if (inst->validate) {
 #ifdef HAVE_YKCLIENT
 		CONF_SECTION *cs;
-			
+
 		cs = cf_section_sub_find(conf, "validation");
 		if (!cs) {
 			EDEBUG("rlm_yubikey (%s): Missing validation section", inst->name);
 			return -1;
 		}
-		
+
 		if (rlm_yubikey_ykclient_init(cs, inst) < 0) {
 			return -1;
 		}
@@ -201,7 +201,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 	char const *passcode;
 	size_t i, len;
 	VALUE_PAIR *vp;
-	
+
 	/*
 	 *	Can't do yubikey auth if there's no password.
 	 */
@@ -215,7 +215,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 		}
 
 		RDEBUG2("No Clear-Text password in the request. Can't do Yubikey authentication.");
-			
+
 		return RLM_MODULE_NOOP;
 	}
 
@@ -226,18 +226,18 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 	 *	modhex encoded form).
 	 *
 	 *	<public_id (6-16 bytes)> + <aes-block (32 bytes)>
-	 *	
+	 *
 	 */
 	if (len != (inst->id_len + 32)) {
 		RDEBUG2("User-Password value is not the correct length, expected %u, got %zu", inst->id_len + 32, len);
-		return RLM_MODULE_NOOP;	
+		return RLM_MODULE_NOOP;
 	}
 
 	for (i = inst->id_len; i < len; i++) {
 		if (!is_modhex(*passcode)) {
 			RDEBUG2("User-Password (aes-block) value contains non modhex chars");
-			
-			return RLM_MODULE_NOOP;	
+
+			return RLM_MODULE_NOOP;
 		}
 	}
 
@@ -246,7 +246,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 		vp = radius_paircreate(request, &request->config_items, PW_AUTH_TYPE, 0);
 		vp->vp_integer = dval->value;
 	}
-	
+
 	/*
 	 *	Split out the Public ID in case another module in authorize
 	 *	needs to verify it's associated with the user.
@@ -260,10 +260,10 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 		vp = pairmake(request, &request->packet->vps, "Yubikey-Public-ID", NULL, T_OP_SET);
 		if (!vp) {
 			REDEBUG("Failed creating Yubikey-Public-ID");
-			
+
 			return RLM_MODULE_FAIL;
 		}
-		
+
 		pairstrcpy(vp, passcode);
 	}
 
@@ -281,7 +281,7 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 	rlm_yubikey_t *inst = instance;
 	char const *passcode;
 	size_t i, len;
-	
+
 	/*
 	 *	Can't do yubikey auth if there's no password.
 	 */
@@ -289,7 +289,7 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 		REDEBUG("No Clear-Text password in the request. Can't do Yubikey authentication.");
 		return RLM_MODULE_INVALID;
 	}
-	
+
 	passcode = request->password->vp_strvalue;
 	len = request->password->length;
 	/*
@@ -300,16 +300,16 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 	 */
 	if (len != (inst->id_len + 32)) {
 		REDEBUG("User-Password value is not the correct length, expected %u, got %zu", inst->id_len + 32, len);
-		return RLM_MODULE_INVALID;	
+		return RLM_MODULE_INVALID;
 	}
 
 	for (i = inst->id_len; i < len; i++) {
 		if (!is_modhex(*passcode)) {
 			RDEBUG2("User-Password (aes-block) value contains non modhex chars");
-			return RLM_MODULE_INVALID;	
+			return RLM_MODULE_INVALID;
 		}
 	}
-	
+
 #ifdef HAVE_YUBIKEY
 	if (inst->decrypt) {
 		rcode = rlm_yubikey_decrypt(inst, request, request->password);

@@ -64,7 +64,7 @@ extern "C" {
 /*
  *	Requires typeof(), which is in most modern C compilers.
  */
- 
+
 /*
 #define VERIFY_VP(_x) do { (void) talloc_get_type_abort(_x, VALUE_PAIR); \
 			if (_x->da) { \
@@ -113,10 +113,10 @@ extern "C" {
 #endif
 
 typedef struct attr_flags {
-	unsigned int 	is_unknown : 1;				//!< Attribute number or vendor is unknown.				
+	unsigned int 	is_unknown : 1;				//!< Attribute number or vendor is unknown.
 	unsigned int	is_tlv : 1;				//!< Is a sub attribute.
 	unsigned int	vp_free : 1;				//!< Should be freed when VALUE_PAIR is freed.
-						
+
 	unsigned int	has_tag : 1;				//!< Tagged attribute.
 	unsigned int	array : 1; 				//!< Pack multiples into 1 attr.
 	unsigned int	has_value : 1;				//!< Has a value.
@@ -146,7 +146,7 @@ typedef struct attr_flags {
 extern const FR_NAME_NUMBER dict_attr_types[];
 extern const size_t dict_attr_sizes[PW_TYPE_MAX][2];
 
-/** dictionary attribute 
+/** dictionary attribute
  *
  */
 typedef struct dict_attr {
@@ -180,7 +180,7 @@ typedef struct dict_vendor {
 
 /** Union containing all data types supported by the server
  *
- * This union contains all data types that can be represented with VALUE_PAIRs. It may also be used in other parts 
+ * This union contains all data types that can be represented with VALUE_PAIRs. It may also be used in other parts
  * of the server where values of different types need to be stored.
  *
  * PW_TYPE should be an enumeration of the values in this union.
@@ -220,7 +220,7 @@ typedef enum value_type {
 
 /** Stores an attribute, a value and various bits of other data
  *
- * VALUE_PAIRs are the main data structure used in the server, they specify an attribute, it's children and 
+ * VALUE_PAIRs are the main data structure used in the server, they specify an attribute, it's children and
  * it's siblings.
  *
  * They also specify what behaviour should be used when the attribute is merged into a new list/tree.
@@ -241,19 +241,19 @@ typedef struct value_pair {
 	//	VALUE_LIST	*list;				//!< List of values for
 								//!< multivalued attribute.
 	//	value_data_t	*data;				//!< Value data for this attribute.
-	
+
 		char const 	*xlat;				//!< Source string for xlat expansion.
 	} value;
-	
+
 	value_type_t		type;				//!< Type of pointer in value union.
-						
+
 	size_t			length;				//!< of Data field.
 	value_data_t		data;
 } VALUE_PAIR;
 
 /** Abstraction to allow iterating over different configurations of VALUE_PAIRs
  *
- * This allows functions which do not care about the structure of collections of VALUE_PAIRs 
+ * This allows functions which do not care about the structure of collections of VALUE_PAIRs
  * to iterate over all members in a collection.
  *
  * Field within a vp_cursor should not be accessed directly, and vp_cursors should only be
@@ -274,9 +274,9 @@ typedef struct vp_cursor {
 typedef struct value_pair_raw {
 	char l_opand[64];					//!< Left hand side of the pair.
 	char r_opand[1024];					//!< Right hand side of the pair.
-	
+
 	FR_TOKEN quote;						//!< Type of quoting around the r_opand.
-	
+
 	FR_TOKEN op;						//!< Operator.
 } VALUE_PAIR_RAW;
 

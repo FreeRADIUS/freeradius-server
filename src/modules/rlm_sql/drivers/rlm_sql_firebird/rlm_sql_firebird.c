@@ -35,20 +35,20 @@ static int sql_socket_destructor(void *c)
 {
 	rlm_sql_firebird_conn_t *conn = c;
 	int i;
-	
+
 	DEBUG2("rlm_sql_firebird: socket destructor called, closing socket");
-	
+
 	fb_commit(conn);
 	if (conn->dbh) {
 		fb_free_statement(conn);
 		isc_detach_database(conn->status, &(conn->dbh));
-		
+
 		if (fb_error(conn)) {
 			WDEBUG("rlm_sql_firebird: Got error "
 			       "when closing socket: %s", conn->error);
 		}
 	}
-	
+
 #ifdef _PTHREAD_H
 	pthread_mutex_destroy (&conn->mut);
 #endif
@@ -56,11 +56,11 @@ static int sql_socket_destructor(void *c)
 	for (i=0; i < conn->row_fcount; i++) {
 		free(conn->row[i]);
 	}
-	
+
 	free(conn->row);
 	free(conn->row_sizes);
 	fb_free_sqlda(conn->sqlda_out);
-	
+
 	free(conn->sqlda_out);
 	free(conn->tpb);
 	free(conn->dpb);
@@ -73,7 +73,7 @@ static int sql_socket_destructor(void *c)
  */
 static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
 	rlm_sql_firebird_conn_t	*conn;
-	
+
 	long res;
 
 	MEM(conn = handle->conn = talloc_zero(handle, rlm_sql_firebird_conn_t));
@@ -83,10 +83,10 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 	if (res) {
 		return -1;
 	}
-	
+
 	if (fb_connect(conn, config)) {
 		ERROR("rlm_sql_firebird: Connection failed: %s", conn->error);
-		
+
 		return RLM_SQL_RECONNECT;
 	}
 
@@ -98,7 +98,7 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
  */
 static sql_rcode_t sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config, char const *query) {
 	rlm_sql_firebird_conn_t *conn = handle->conn;
-	
+
 	int deadlock = 0;
 
 #ifdef _PTHREAD_H
@@ -115,7 +115,7 @@ static sql_rcode_t sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *
    		if ((conn->sql_code == DEADLOCK_SQL_CODE) &&
    		    !deadlock) {
 	  		DEBUG("conn_id deadlock. Retry query %s", query);
-	  		
+
 			/*
 			 *	@todo For non READ_COMMITED transactions put
 			 *	rollback here
@@ -124,7 +124,7 @@ static sql_rcode_t sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *
 	  		deadlock = 1;
 	  		goto try_again;
 	  	}
-  	
+
 		ERROR("conn_id rlm_sql_firebird,sql_query error: sql_code=%li, error='%s', query=%s",
 		      (long int) conn->sql_code, conn->error, query);
 
@@ -135,12 +135,12 @@ static sql_rcode_t sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *
 
 			return RLM_SQL_RECONNECT;
 		}
-	
+
 		/* Free problem query */
 		if (fb_rollback(conn)) {
 			//assume the network is down if rollback had failed
 			ERROR("Fail to rollback transaction after previous error: %s", conn->error);
-		
+
 			return RLM_SQL_RECONNECT;
 		}
 		//   conn->in_use=0;
@@ -193,28 +193,28 @@ static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle, UNUSED rlm_sql_config
 {
 	rlm_sql_firebird_conn_t *conn = handle->conn;
 	int res;
-	
+
 	handle->row = NULL;
-	
+
 	if (conn->statement_type != isc_info_sql_stmt_exec_procedure) {
 		res = fb_fetch(conn);
 		if (res == 100) {
 			return 0;
 	 	}
-	 	
+
 	 	if (res) {
 	  		ERROR("rlm_sql_firebird. Fetch problem: %s", conn->error);
-	  		
+
 	   		return -1;
 	 	}
 	} else {
 		conn->statement_type=0;
 	}
-	
+
 	fb_store_row(conn);
 
 	handle->row = conn->row;
-	
+
 	return 0;
 }
 
@@ -223,12 +223,12 @@ static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle, UNUSED rlm_sql_config
  */
 static sql_rcode_t sql_finish_select_query(rlm_sql_handle_t *handle,
 				   UNUSED rlm_sql_config_t *config) {
-				
+
 	rlm_sql_firebird_conn_t *conn = (rlm_sql_firebird_conn_t *) handle->conn;
-	
+
 	fb_commit(conn);
 	fb_close_cursor(conn);
-	
+
 	return 0;
 }
 
@@ -238,7 +238,7 @@ static sql_rcode_t sql_finish_select_query(rlm_sql_handle_t *handle,
 static sql_rcode_t sql_finish_query(rlm_sql_handle_t *handle,
 			    rlm_sql_config_t *config) {
 	sql_free_result(handle, config);
-	
+
 	return 0;
 }
 
@@ -255,7 +255,7 @@ static sql_rcode_t sql_free_result(UNUSED rlm_sql_handle_t *handle,
  */
 static char const *sql_error(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config) {
 	rlm_sql_firebird_conn_t *conn = handle->conn;
-	
+
 	return conn->error;
 }
 
@@ -264,11 +264,11 @@ static char const *sql_error(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *
  */
 static int sql_affected_rows(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
 	int affected_rows=fb_affected_rows(handle->conn);
-	
+
 	if (affected_rows < 0) {
 		ERROR("sql_affected_rows, rlm_sql_firebird. error:%s", sql_error(handle, config));
 	}
-	
+
 	return affected_rows;
 }
 

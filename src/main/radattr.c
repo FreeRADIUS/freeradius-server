@@ -91,7 +91,7 @@ static int encode_data_string(char *buffer,
 {
 	int length = 0;
 	char *p;
-	
+
 	p = buffer + 1;
 
 	while (*p && (outlen > 0)) {
@@ -156,13 +156,13 @@ static int encode_data_tlv(char *buffer, char **endptr,
 
 	*endptr = p + 1;
 	*p = '\0';
-	
+
 	p = buffer + 1;
 	while (isspace((int) *p)) p++;
-	
+
 	length = encode_tlv(p, output, outlen);
 	if (length == 0) return 0;
-	
+
 	return length;
 }
 
@@ -401,7 +401,7 @@ static int encode_extended(char *buffer,
 	int attr;
 	int length;
 	char *p;
-	
+
 	attr = decode_attr(buffer, &p);
 	if (attr == 0) return 0;
 
@@ -427,7 +427,7 @@ static int encode_long_extended(char *buffer,
 	int attr;
 	int length, total;
 	char *p;
-	
+
 	attr = decode_attr(buffer, &p);
 	if (attr == 0) return 0;
 
@@ -683,7 +683,7 @@ static void process_file(char const *filename)
 				attr += len;
 				if (len == 0) break;
 			}
-			
+
 			pairfree(&head);
 			outlen = len;
 			goto print_hex;
@@ -723,10 +723,10 @@ static void process_file(char const *filename)
 				while (vp) {
 					tail = &(vp->next);
 					vp = vp->next;
-				}				
+				}
 
 				attr += my_len;
-				len -= my_len;				
+				len -= my_len;
 			}
 
 			/*
@@ -741,12 +741,12 @@ static void process_file(char const *filename)
 				     vp = pairnext(&cursor)) {
 					vp_prints(p, sizeof(output) - (p - output), vp);
 					p += strlen(p);
-					
+
 					if (vp->next) {strcpy(p, ", ");
 						p += 2;
 					}
 				}
-				
+
 				pairfree(&head);
 			} else if (my_len < 0) {
 				strlcpy(output, fr_strerror(), sizeof(output));
@@ -768,13 +768,13 @@ static void process_file(char const *filename)
 		if (strncmp(p, "condition ", 10) == 0) {
 			p += 10;
 			parse_condition(p, output, sizeof(output));
-			continue;		     
+			continue;
 		}
 
 		if (strncmp(p, "xlat ", 5) == 0) {
 			p += 5;
 			parse_xlat(p, output, sizeof(output));
-			continue;		     
+			continue;
 		}
 
 		fprintf(stderr, "Unknown input at line %d of %s\n",

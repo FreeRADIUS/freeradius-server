@@ -59,7 +59,7 @@ static void tv_sub(struct timeval *end, struct timeval *start,
 	}
 	elapsed->tv_usec += end->tv_usec;
 	elapsed->tv_usec -= start->tv_usec;
-	
+
 	if (elapsed->tv_usec >= USEC) {
 		elapsed->tv_usec -= USEC;
 		elapsed->tv_sec++;
@@ -103,7 +103,7 @@ pid_t radius_start_program(char const *cmd, REQUEST *request,
 	char argv_buf[4096];
 #define MAX_ENVP 1024
 	char *envp[MAX_ENVP];
-	
+
 	argc = rad_expand_xlat(request, cmd, MAX_ARGV, argv, true, sizeof(argv_buf), argv_buf);
 	if (argc <= 0) {
 		RDEBUG("invalid command line '%s'.", cmd);
@@ -141,7 +141,7 @@ pid_t radius_start_program(char const *cmd, REQUEST *request,
 			}
 		}
 	}
-	
+
 	envp[0] = NULL;
 
 	if (input_pairs) {
@@ -209,14 +209,14 @@ pid_t radius_start_program(char const *cmd, REQUEST *request,
 		devnull = open("/dev/null", O_RDWR);
 		if (devnull < 0) {
 			RDEBUG("Failed opening /dev/null: %s\n", strerror(errno));
-	
-			/* 
+
+			/*
 			 *	Where the status code is interpreted as a module rcode
 			 * 	one is subtracted from it, to allow 0 to equal success
 			 *
 			 *	2 is RLM_MODULE_FAIL + 1
 			 */
-			exit(2);	
+			exit(2);
 		}
 
 		/*
@@ -269,8 +269,8 @@ pid_t radius_start_program(char const *cmd, REQUEST *request,
 		 */
 		execve(argv[0], argv, envp);
 		printf("Failed to execute \"%s\": %s", argv[0], strerror(errno)); /* fork output will be captured */
-		
-		/* 
+
+		/*
 		 *	Where the status code is interpreted as a module rcode
 		 * 	one is subtracted from it, to allow 0 to equal success
 		 *
@@ -326,7 +326,7 @@ pid_t radius_start_program(char const *cmd, REQUEST *request,
 		RDEBUG("Wait is not supported");
 		return -1;
 	}
-	
+
 	{
 		/*
 		 *	The _spawn and _exec families of functions are
@@ -341,7 +341,7 @@ pid_t radius_start_program(char const *cmd, REQUEST *request,
 		 *	to close your program (_P_OVERLAY), to wait
 		 *	until the new process is finished (_P_WAIT) or
 		 *	for the two to run concurrently (_P_NOWAIT).
-		
+
 		 *	_spawn and _exec are useful for instances in
 		 *	which you have simple requirements for running
 		 *	the program, don't want the overhead of the
@@ -386,12 +386,12 @@ int radius_readfrom_program(REQUEST *request, int fd, pid_t pid, int timeout,
 	 */
 	do {
 		int flags;
-		
+
 		if ((flags = fcntl(fd, F_GETFL, NULL)) < 0)  {
 			nonblock = false;
 			break;
 		}
-		
+
 		flags |= O_NONBLOCK;
 		if( fcntl(fd, F_SETFL, flags) < 0) {
 			nonblock = false;
@@ -417,7 +417,7 @@ int radius_readfrom_program(REQUEST *request, int fd, pid_t pid, int timeout,
 		gettimeofday(&when, NULL);
 		tv_sub(&when, &start, &elapsed);
 		if (elapsed.tv_sec >= timeout) goto too_long;
-		
+
 		when.tv_sec = timeout;
 		when.tv_usec = 0;
 		tv_sub(&when, &elapsed, &wake);
@@ -498,7 +498,7 @@ int radius_readfrom_program(REQUEST *request, int fd, pid_t pid, int timeout,
  * @param[in] user_msg buffer to append plaintext (non valuepair) output.
  * @param[in] msg_len length of user_msg buffer.
  * @param[in] input_pairs list of value pairs - these will be available in the environment of the child.
- * @param[out] output_pairs list of value pairs - child stdout will be parsed and added into this list 
+ * @param[out] output_pairs list of value pairs - child stdout will be parsed and added into this list
  *	of value pairs.
  * @return 0 if exec_wait==0, exit code if exec_wait!=0, -1 on error.
  */
@@ -530,7 +530,7 @@ int radius_exec_program(REQUEST *request, char const *cmd, bool exec_wait, bool 
 	if (!exec_wait) {
 		return 0;
 	}
-	
+
 #ifndef __MINGW32__
 	done = radius_readfrom_program(request, from_child, pid, 10, answer, sizeof(answer));
 	if (done < 0) {
@@ -596,7 +596,7 @@ int radius_exec_program(REQUEST *request, char const *cmd, bool exec_wait, bool 
 
 			if (userparse(request, answer, &vp) == T_OP_INVALID) {
 				REDEBUG("Unparsable reply from '%s'", cmd);
-				
+
 				return -1;
 			} else {
 				/*
@@ -615,14 +615,14 @@ int radius_exec_program(REQUEST *request, char const *cmd, bool exec_wait, bool 
 	child_pid = rad_waitpid(pid, &status);
 	if (child_pid == 0) {
 		REDEBUG("Timeout waiting for child");
-		
+
 		return -2;
 	}
 
 	if (child_pid == pid) {
 		if (WIFEXITED(status)) {
 			status = WEXITSTATUS(status);
-			
+
 			RDEBUG("Program returned code (%d): %s", status, answer);
 
 			return status;

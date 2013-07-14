@@ -150,10 +150,10 @@ int detail_send(rad_listen_t *listener, REQUEST *request)
 	 *	handle this, then it's very broken.
 	 */
 	if (data->delay_time > (USEC / 4)) data->delay_time= USEC / 4;
-	
+
 	RDEBUG3("Received response for request %d.  Will read the next packet in %d seconds",
 		request->number, data->delay_time / USEC);
-	
+
 	data->last_packet = now;
 	data->signal = 1;
 	data->state = STATE_REPLIED;
@@ -293,9 +293,9 @@ static int detail_open(rad_listen_t *this)
  *
  *	t_rtt		the packet has been processed successfully,
  *			wait for t_delay to enforce load factor.
- *			
+ *
  *	t_rtt + t_delay wait for signal that the server is idle.
- *	
+ *
  */
 int detail_recv(rad_listen_t *listener)
 {
@@ -316,7 +316,7 @@ int detail_recv(rad_listen_t *listener)
 		case STATE_UNOPENED:
 	open_file:
 			rad_assert(listener->fd < 0);
-			
+
 			if (!detail_open(listener)) return 0;
 
 			rad_assert(data->state == STATE_UNLOCKED);
@@ -380,13 +380,13 @@ int detail_recv(rad_listen_t *listener)
 
 			{
 				struct stat buf;
-				
+
 				if (fstat(listener->fd, &buf) < 0) {
 					ERROR("Failed to stat "
 					       "detail file %s: %s",
 				       		data->filename,
 				       		strerror(errno));
-				       		
+
 				       	goto cleanup;
 				}
 				if (((off_t) ftell(data->fp)) == buf.st_size) {
@@ -458,7 +458,7 @@ int detail_recv(rad_listen_t *listener)
 		case STATE_NO_REPLY:
 			data->state = STATE_QUEUED;
 			goto alloc_packet;
-				
+
 			/*
 			 *	We have a reply.  Clean up the old
 			 *	request, and go read another one.
@@ -468,7 +468,7 @@ int detail_recv(rad_listen_t *listener)
 			data->state = STATE_HEADER;
 			goto do_header;
 	}
-	
+
 	paircursor(&cursor, &data->vps);
 
 	/*
@@ -544,7 +544,7 @@ int detail_recv(rad_listen_t *listener)
 			data->client_ip.af = AF_INET;
 			if (ip_hton(value, AF_INET, &data->client_ip) < 0) {
 				ERROR("Failed parsing Client-IP-Address");
-				
+
 				pairfree(&data->vps);
 				goto cleanup;
 			}
@@ -597,7 +597,7 @@ int detail_recv(rad_listen_t *listener)
 	 */
  alloc_packet:
 	data->tries++;
-	
+
 	/*
 	 *	The writer doesn't check that the record was
 	 *	completely written.  If the disk is full, this can
@@ -606,7 +606,7 @@ int detail_recv(rad_listen_t *listener)
 	 */
 	if (data->state != STATE_QUEUED) {
 		ERROR("Truncated record: treating it as EOF for detail file %s", data->filename_work);
-		goto cleanup;	
+		goto cleanup;
 	}
 
 	/*
@@ -807,7 +807,7 @@ int detail_encode(rad_listen_t *this, UNUSED REQUEST *request)
 	}
 
 	data->signal = 0;
-	
+
 	DEBUG2("Detail listener %s state %s signalled %d waiting %d.%06d sec",
 	       data->filename, fr_int2str(state_names, data->state, "?"),
 	       data->signal,
@@ -892,7 +892,7 @@ int detail_parse(CONF_SECTION *cs, rad_listen_t *this)
 	}
 
 	if (data->max_outstanding == 0) data->max_outstanding = 1;
-	
+
 	/*
 	 *	If the filename is a glob, use "detail.work" as the
 	 *	work file name.
@@ -914,7 +914,7 @@ int detail_parse(CONF_SECTION *cs, rad_listen_t *this)
 		}
 		strlcat(buffer, "detail.work",
 			sizeof(buffer) - strlen(buffer));
-			
+
 	} else {
 		snprintf(buffer, sizeof(buffer), "%s.work", data->filename);
 	}

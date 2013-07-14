@@ -103,7 +103,7 @@ extern const FR_NAME_NUMBER http_content_header_table[];
 typedef struct rlm_rest_section_t {
 	char const *name;
 	char *uri;
-	
+
 	char *method_str;
 	http_method_t method;
 
@@ -115,7 +115,7 @@ typedef struct rlm_rest_section_t {
 	char *auth_str;
 	http_auth_type_t auth;
 	int require_auth;
-	
+
 	char *tls_certificate_file;
 	char *tls_private_key_file;
 	char *tls_private_key_password;
@@ -124,7 +124,7 @@ typedef struct rlm_rest_section_t {
 	char *tls_random_file;
 	int tls_check_cert;
 	int tls_check_cert_cn;
-	
+
 	int timeout;
 	unsigned int chunk;
 } rlm_rest_section_t;
@@ -244,7 +244,7 @@ int rest_request_config(rlm_rest_t *instance,
 			http_body_type_t type, char const *uri,
 			char const *username, char const *password);
 
-int rest_request_perform(rlm_rest_t *instance, 
+int rest_request_perform(rlm_rest_t *instance,
 			 rlm_rest_section_t *section, REQUEST *request,
 			 void *handle);
 

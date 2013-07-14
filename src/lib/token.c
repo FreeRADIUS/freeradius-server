@@ -239,7 +239,7 @@ FR_TOKEN getstring(char const **ptr, char *buf, int buflen)
 	char const *p;
 
 	if (!ptr || !*ptr || !buf) return T_OP_INVALID;
-	
+
 	p = *ptr;
 
 	while (*p && (isspace((int)*p))) p++;
@@ -263,7 +263,7 @@ int fr_str2int(FR_NAME_NUMBER const *table, char const *name, int def)
 	if (!name) {
 		return def;
 	}
-	
+
 	for (this = table; this->name != NULL; this++) {
 		if (strcasecmp(this->name, name) == 0) {
 			return this->number;
@@ -299,7 +299,7 @@ int fr_substr2int(FR_NAME_NUMBER const *table, char const *name, int def, int le
 		 *	Match up to the length of the table entry if len is < 0.
 		 */
 		max = (len < 0) ? tlen : (unsigned)len;
-		
+
 		if (strncasecmp(this->name, name, max) == 0) {
 			return this->number;
 		}

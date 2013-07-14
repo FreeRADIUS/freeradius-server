@@ -400,7 +400,7 @@ static int dhcp_process(REQUEST *request)
 		uint32_t attr = attrnums[i];
 
 		if (pairfind(request->reply->vps, attr, DHCP_MAGIC_VENDOR, TAG_ANY)) continue;
-		
+
 		vp = pairfind(request->packet->vps, attr, DHCP_MAGIC_VENDOR, TAG_ANY);
 		if (vp) {
 			pairadd(&request->reply->vps, paircopyvp(request->reply, vp));
@@ -486,10 +486,10 @@ static int dhcp_process(REQUEST *request)
 		DEBUG("DHCP: Failed to find DHCP-Your-IP-Address for request.");
 		return -1;
 	}
-	
+
 	RDEBUG("DHCP: Reply will be sent unicast to your-ip-address");
 	request->reply->dst_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
-	
+
 	/*
 	 *	When sending a DHCP_OFFER, make sure our ARP table
 	 *	contains an entry for the client IP address.
@@ -501,9 +501,9 @@ static int dhcp_process(REQUEST *request)
 	 */
 	if (request->reply->code == PW_DHCP_OFFER) {
 		VALUE_PAIR *hwvp = pairfind(request->reply->vps, 267, DHCP_MAGIC_VENDOR, TAG_ANY); /* DHCP-Client-Hardware-Address */
-		
+
 		if (!hwvp) return -1;
-		
+
 		if (fr_dhcp_add_arp_entry(request->reply->sockfd, sock->src_interface, hwvp, vp) < 0) {
 			return -1;
 		}
@@ -566,7 +566,7 @@ static int dhcp_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 		cf_item_parse(cs, "suppress_responses", PW_TYPE_BOOLEAN,
 			      &sock->suppress_responses, NULL);
 	}
-	
+
 	cp = cf_pair_find(cs, "src_interface");
 	if (cp) {
 		cf_item_parse(cs, "src_interface", PW_TYPE_STRING_PTR,

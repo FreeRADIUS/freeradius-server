@@ -95,7 +95,7 @@ typedef struct _eap_handler {
 	struct _eap_handler *prev, *next;
 	uint8_t		state[EAP_STATE_LEN];
 	fr_ipaddr_t	src_ipaddr;
-	
+
 	uint8_t		eap_id;		//!< EAP Identifier used to match
 					//!< requests and responses.
 	eap_type_t	type;		//!< EAP type number.

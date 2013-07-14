@@ -129,7 +129,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	/* set the instance name (for use with authorize()) */
 	inst->name = cf_section_name2(conf);
 	if (!inst->name) inst->name = cf_section_name1(conf);
-    	
+
 	return 0;
 }
 
@@ -153,14 +153,14 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
       			auth_type_found = 1;
       			if (strcmp(vp->vp_strvalue, inst->name)) {
 				return RLM_MODULE_NOOP;
-    			}	
+    			}
   		}
   	}
 
 	/* The State attribute will be present if this is a response. */
 	if (pairfind(request->packet->vps, PW_STATE, 0, TAG_ANY) != NULL) {
 		DEBUG("rlm_otp: autz: Found response to Access-Challenge");
-		
+
 		return RLM_MODULE_OK;
 	}
 
@@ -168,7 +168,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 	if (!request->username) {
 		RWDEBUG("Attribute \"User-Name\" "
 		       "required for authentication.");
-		
+
 		return RLM_MODULE_INVALID;
 	}
 
@@ -176,7 +176,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 		RWDEBUG("Attribute "
 			"\"User-Password\" or equivalent required "
 			"for authentication.");
-		
+
 		return RLM_MODULE_INVALID;
 	}
 
@@ -226,7 +226,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 
 		len = otp_gen_state(gen_state, challenge, inst->challenge_len,
 				    0, now, inst->hmac_key);
-		
+
 		vp = paircreate(request->reply, PW_STATE, 0);
 		if (!vp) {
 			return RLM_MODULE_FAIL;
@@ -253,34 +253,34 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 		if (!vp) {
 			return RLM_MODULE_FAIL;
 		}
-		
+
 		pairstrcpy(vp, challenge);
 		vp->op = T_OP_SET;
-	
+
 		pairadd(&request->reply->vps, vp);
-		
+
 		/*
 		 *	Then add the message to the user to they known
 		 *	what the challenge value is.
 		 */
-		
+
 		len = radius_axlat(&expanded, request, inst->chal_prompt, NULL, NULL);
 		if (len < 0) {
 			return RLM_MODULE_FAIL;
 		}
-		
+
 		vp = paircreate(request->reply, PW_REPLY_MESSAGE, 0);
 		if (!vp) {
 			talloc_free(expanded);
 			return RLM_MODULE_FAIL;
 		}
-		
+
 		(void) talloc_steal(vp, expanded);
 		vp->vp_strvalue = expanded;
 		vp->length = len;
 		vp->op = T_OP_SET;
 		vp->type = VT_DATA;
-		
+
 		pairadd(&request->reply->vps, vp);
 	}
 
@@ -289,13 +289,13 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 	 * 	The server will take care of sending it to the user.
 	 */
 	request->reply->code = PW_ACCESS_CHALLENGE;
-	
+
 	DEBUG("rlm_otp: Sending Access-Challenge.");
 
 	if (!auth_type_found) {
 		pairmake_config("Auth-Type", inst->name, T_OP_EQ);
 	}
-	
+
 	return RLM_MODULE_HANDLED;
 }
 
@@ -311,7 +311,7 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 	int rc;
 	otp_pwe_t pwe;
 	VALUE_PAIR *vp;
-	
+
 	char challenge[OTP_MAX_CHALLENGE_LEN];	/* cf. authorize() */
 	char passcode[OTP_MAX_PASSCODE_LEN + 1];
 
@@ -321,17 +321,17 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 	if (!request->username) {
 		RWDEBUG("Attribute \"User-Name\" required "
 			"for authentication.");
-	  	
+
 		return RLM_MODULE_INVALID;
 	}
-	
+
 	username = request->username->vp_strvalue;
-	
+
 	pwe = otp_pwe_present(request);
 	if (pwe == 0) {
 		RWDEBUG("Attribute \"User-Password\" "
 			"or equivalent required for authentication.");
-		
+
 		return RLM_MODULE_INVALID;
 	}
 
@@ -342,7 +342,7 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 	if (vp) {
 		char	gen_state[OTP_MAX_RADSTATE_LEN]; //!< State as hexits
 		uint8_t	bin_state[OTP_MAX_RADSTATE_LEN];
-	
+
 		int32_t	then;		//!< State timestamp.
 		size_t	elen;		//!< Expected State length.
 		size_t	len;
@@ -371,7 +371,7 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 		len = fr_hex2bin(vp->vp_strvalue, bin_state, vp->length);
 		if (len != (vp->length / 2)) {
 			REDEBUG("bad radstate for [%s]: not hex", username);
-		
+
 			return RLM_MODULE_INVALID;
 		}
 
@@ -398,7 +398,7 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 		 */
 		if (memcmp(gen_state, vp->vp_octets, vp->length)) {
 			REDEBUG("bad radstate for [%s]: hmac", username);
-	
+
 			return RLM_MODULE_REJECT;
 		}
 
@@ -412,7 +412,7 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 			return RLM_MODULE_REJECT;
 		}
 	}
-	
+
 	/* do it */
 	rc = otp_pw_valid(request, pwe, challenge, inst, passcode);
 

@@ -66,7 +66,7 @@ int pairlist_read(TALLOC_CTX *ctx, char const *file, PAIR_LIST **list, int compl
 	char newfile[8192];
 
 	DEBUG2("reading pairlist file %s", file);
-	
+
 	/*
 	 *	Open the file.  The error message should be a little
 	 *	more useful...
@@ -154,7 +154,7 @@ parse_again:
 				}
 
 				t = NULL;
-				
+
 				if (pairlist_read(ctx, newfile, &t, 0) != 0) {
 					pairlist_free(&pl);
 					ERROR("%s[%d]: Could not open included file %s: %s",

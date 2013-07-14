@@ -26,7 +26,7 @@ typedef struct rlm_yubikey_t {
 	int			decrypt;		//!< Decrypt the OTP string using the yubikey library.
 	int			validate;		//!< Validate the OTP string using the ykclient library.
 	char const		**uris;			//!< Yubicloud URLs to validate the token against.
-	
+
 #ifdef HAVE_YKCLIENT
 	unsigned int		client_id;		//!< Validation API client ID.
 	char			*api_key;		//!< Validation API signing key.

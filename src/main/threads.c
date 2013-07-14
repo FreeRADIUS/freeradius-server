@@ -397,7 +397,7 @@ int request_enqueue(REQUEST *request)
 		}
 
 		gettimeofday(&now, NULL);
-		
+
 		/*
 		 *	Calculate the instantaneous arrival rate into
 		 *	the queue.
@@ -406,7 +406,7 @@ int request_enqueue(REQUEST *request)
 						 &thread_pool.pps_in.pps_now,
 						 &thread_pool.pps_in.time_old,
 						 &now);
-		
+
 		thread_pool.pps_in.pps_now++;
 	}
 #endif	/* WITH_ACCOUNTING */
@@ -424,7 +424,7 @@ int request_enqueue(REQUEST *request)
 			last_complained = now;
 			complain = true;
 		}
-		
+
 		pthread_mutex_unlock(&thread_pool.queue_mutex);
 
 		/*
@@ -484,7 +484,7 @@ static int request_dequeue(REQUEST **prequest)
 		struct timeval now;
 
 		gettimeofday(&now, NULL);
-		
+
 		/*
 		 *	Calculate the instantaneous departure rate
 		 *	from the queue.
@@ -672,7 +672,7 @@ static void *request_handler_thread(void *arg)
 			vp = radius_paircreate(request, &request->config_items,
 					       182, VENDORPEC_FREERADIUS);
 			if (vp) vp->vp_integer = thread_pool.pps_in.pps;
-			
+
 			vp = radius_paircreate(request, &request->config_items,
 					       183, VENDORPEC_FREERADIUS);
 			if (vp) {
@@ -895,13 +895,13 @@ int thread_pool_init(UNUSED CONF_SECTION *cs, int *spawn_flag)
 	thread_pool.stop_flag = 0;
 #endif
 	thread_pool.spawn_flag = *spawn_flag;
-	
+
 	/*
 	 *	Don't bother initializing the mutexes or
 	 *	creating the hash tables.  They won't be used.
 	 */
 	if (!*spawn_flag) return 0;
-	
+
 #ifdef WNOHANG
 	if ((pthread_mutex_init(&thread_pool.wait_mutex,NULL) != 0)) {
 		ERROR("FATAL: Failed to initialize wait mutex: %s",

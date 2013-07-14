@@ -125,11 +125,11 @@ static void cisco_vsa_hack(REQUEST *request)
 		if (!((vendorcode == 9) || (vendorcode == 6618))) {
 			continue; /* not a Cisco or Quintum VSA, continue */
 		}
-		
+
 		if (vp->da->type != PW_TYPE_STRING) {
 			continue;
 		}
-		
+
 		/*
 		 *  No weird packing.  Ignore it.
 		 */
@@ -137,7 +137,7 @@ static void cisco_vsa_hack(REQUEST *request)
 		if (!ptr) {
 			continue;
 		}
-		
+
 		/*
 		 *	Cisco-AVPair's get packed as:
 		 *
@@ -177,7 +177,7 @@ static void alvarion_vsa_hack(VALUE_PAIR *vp)
 {
 	int number = 1;
 	vp_cursor_t cursor;
-	
+
 	for (vp = paircursor(&cursor, &vp);
 	     vp;
 	     vp = pairnext(&cursor)) {
@@ -186,16 +186,16 @@ static void alvarion_vsa_hack(VALUE_PAIR *vp)
 		if (vp->da->vendor != 12394) {
 			continue;
 		}
-		
+
 		if (vp->da->type != PW_TYPE_STRING) {
 			continue;
 		}
-		
+
 		da = dict_attrbyvalue(number, 12394);
 		if (!da) {
 			continue;
 		}
-		
+
 		vp->da = da;
 
 		number++;
@@ -255,7 +255,7 @@ static void cablelabs_vsa_hack(VALUE_PAIR **list)
 	if (!ev) {
 		return;
 	}
-	
+
 	/*
 	 *	FIXME: write 100's of lines of code to decode
 	 *	each data structure above.
@@ -332,11 +332,11 @@ static void rad_mangle(rlm_preprocess_t *inst, REQUEST *request)
 		if (tmp->da->vendor != 0) {
 			continue;
 		}
-		
+
 		if (tmp->da->attr != PW_PROXY_STATE) {
 			continue;
 		}
-		
+
 		num_proxy_state++;
 	}
 
@@ -402,7 +402,7 @@ static int hints_setup(PAIR_LIST *hints, REQUEST *request)
 		 */
 		return RLM_MODULE_NOOP;
 	}
-	
+
 	for (i = hints; i; i = i->next) {
 		/*
 		 *	Use "paircompare", which is a little more general...
@@ -417,11 +417,11 @@ static int hints_setup(PAIR_LIST *hints, REQUEST *request)
 			 */
 			add = paircopy(request->packet, i->reply);
 			ft = fallthrough(add);
-			
+
 			pairdelete(&add, PW_STRIP_USER_NAME, 0, TAG_ANY);
 			pairdelete(&add, PW_FALL_THROUGH, 0, TAG_ANY);
 			radius_xlat_move(request, &request->packet->vps, &add);
-			
+
 			pairfree(&add);
 			updated = 1;
 			if (!ft) {
@@ -433,7 +433,7 @@ static int hints_setup(PAIR_LIST *hints, REQUEST *request)
 	if (updated == 0) {
 		return RLM_MODULE_NOOP;
 	}
-	
+
 	return RLM_MODULE_UPDATED;
 }
 
@@ -453,7 +453,7 @@ static int huntgroup_access(REQUEST *request, PAIR_LIST *huntgroups)
 	if (!huntgroups) {
 		return RLM_MODULE_OK;
 	}
-	
+
 	for (i = huntgroups; i; i = i->next) {
 		/*
 		 *	See if this entry matches.
@@ -461,7 +461,7 @@ static int huntgroup_access(REQUEST *request, PAIR_LIST *huntgroups)
 		if (paircompare(request, request_pairs, i->check, NULL) != 0) {
 			continue;
 		}
-		
+
 		/*
 		 *	Now check for access.
 		 */
@@ -536,7 +536,7 @@ static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
 		ret = pairlist_read(inst, inst->huntgroup_file, &(inst->huntgroups), 0);
 		if (ret < 0) {
 			ERROR("rlm_preprocess: Error reading %s", inst->huntgroup_file);
-			
+
 			return -1;
 		}
 	}
@@ -548,7 +548,7 @@ static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
 		ret = pairlist_read(inst, inst->hints_file, &(inst->hints), 0);
 		if (ret < 0) {
 			ERROR("rlm_preprocess: Error reading %s", inst->hints_file);
-			
+
 			return -1;
 		}
 	}
@@ -629,7 +629,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 		vp = radius_paircreate(request, &request->packet->vps, PW_CHAP_CHALLENGE, 0);
 		vp->length = AUTH_VECTOR_LEN;
 		vp->vp_octets = p = talloc_array(vp, uint8_t, vp->length);
-		
+
 		memcpy(p, request->packet->vector, AUTH_VECTOR_LEN);
 	}
 
@@ -638,7 +638,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 		RIDEBUG("No huntgroup access: [%s] (%s)",
 			request->username ? request->username->vp_strvalue : "<NO User-Name>",
 			auth_name(buf, sizeof(buf), request, 1));
-		
+
 		return r;
 	}
 
@@ -704,7 +704,7 @@ static rlm_rcode_t preprocess_preaccounting(void *instance, REQUEST *request)
 
 		vp = radius_paircreate(request, &request->packet->vps, PW_EVENT_TIMESTAMP, 0);
 		vp->vp_date = request->packet->timestamp.tv_sec;
-		
+
 		delay = pairfind(request->packet->vps, PW_ACCT_DELAY_TIME, 0, TAG_ANY);
 		if (delay) {
 			vp->vp_date -= delay->vp_integer;

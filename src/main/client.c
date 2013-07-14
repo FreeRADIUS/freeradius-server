@@ -519,7 +519,7 @@ static const CONF_PARSER client_config[] = {
 
 	{ "src_ipaddr",  PW_TYPE_STRING_PTR,
 	  0, &cl_srcipaddr,  NULL },
-	
+
 	{ "require_message_authenticator",  PW_TYPE_BOOLEAN,
 	  offsetof(RADCLIENT, message_authenticator), 0, "no" },
 
@@ -628,7 +628,7 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int in_server)
 			/* Replace '/' with '\0' */
 			*prefix_ptr = '\0';
 		}
-			
+
 		/*
 		 *	Always get the numeric representation of IP
 		 */
@@ -656,14 +656,14 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int in_server)
 
 			if ((c->prefix < -1) || (c->prefix > 32)) {
 				cf_log_err_cs(cs, "Netmask must be between 0 and 32");
-				
+
 				goto error;
 			}
-				
+
 		} else if (cf_pair_find(cs, "ipv6addr")) {
 			c->ipaddr.af = AF_INET6;
 			c->ipaddr.ipaddr.ip6addr = cl_ip6addr;
-				
+
 			if ((c->prefix < -1) || (c->prefix > 128)) {
 				cf_log_err_cs(cs,
 					   "Netmask must be between 0 and 128");
@@ -688,15 +688,15 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int in_server)
 		if (hs_proto) {
 			if (strcmp(hs_proto, "udp") == 0) {
 				hs_proto = NULL;
-				
+
 			} else if (strcmp(hs_proto, "tcp") == 0) {
 				hs_proto = NULL;
 				c->proto = IPPROTO_TCP;
-				
+
 			} else if (strcmp(hs_proto, "*") == 0) {
 				hs_proto = NULL;
 				c->proto = IPPROTO_IP; /* fake for dual */
-				
+
 			} else {
 				cf_log_err_cs(cs,
 					   "Unknown proto \"%s\".", hs_proto);
@@ -720,10 +720,10 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int in_server)
 #else
 		WDEBUG("Server not build with udpfromto, ignoring client src_ipaddr");
 #endif
-		
+
 		cl_srcipaddr = NULL;
 	}
-	
+
 	if (c->prefix < 0) switch (c->ipaddr.af) {
 	case AF_INET:
 		c->prefix = 32;
@@ -870,7 +870,7 @@ RADCLIENT_LIST *clients_parse_section(CONF_SECTION *section)
 			 */
 			cp = cf_pair_find(cs, "directory");
 			if (!cp) goto add_client;
-			
+
 			value = cf_pair_value(cp);
 			if (!value) {
 				cf_log_err_cs(cs,
@@ -880,14 +880,14 @@ RADCLIENT_LIST *clients_parse_section(CONF_SECTION *section)
 			}
 
 			DEBUG("including dynamic clients in %s", value);
-			
+
 			dir = opendir(value);
 			if (!dir) {
 				cf_log_err_cs(cs, "Error reading directory %s: %s", value, strerror(errno));
 				client_free(c);
 				return NULL;
 			}
-			
+
 			/*
 			 *	Read the directory, ignoring "." files.
 			 */
@@ -928,7 +928,7 @@ RADCLIENT_LIST *clients_parse_section(CONF_SECTION *section)
 				 *	Validate, and add to the list.
 				 */
 				if (!client_validate(clients, c, dc)) {
-					
+
 					client_free(c);
 					closedir(dir);
 					return NULL;
@@ -1059,10 +1059,10 @@ RADCLIENT *client_from_query(TALLOC_CTX *ctx, char const *identifier, char const
 	RADCLIENT *c;
 	char *id;
 	char *prefix;
-	
+
 	rad_assert(identifier);
 	rad_assert(secret);
-	
+
 	c = talloc_zero(ctx, RADCLIENT);
 
 #ifdef WITH_DYNAMIC_CLIENTS
@@ -1079,12 +1079,12 @@ RADCLIENT *client_from_query(TALLOC_CTX *ctx, char const *identifier, char const
 	if (prefix) {
 		c->prefix = atoi(prefix + 1);
 		if ((c->prefix < 0) || (c->prefix > 128)) {
-			ERROR("Invalid Prefix value '%s' for IP.", prefix + 1);	
+			ERROR("Invalid Prefix value '%s' for IP.", prefix + 1);
 			talloc_free(c);
-			
+
 			return NULL;
 		}
-		
+
 		/* Replace '/' with '\0' */
 		*prefix = '\0';
 	}
@@ -1095,10 +1095,10 @@ RADCLIENT *client_from_query(TALLOC_CTX *ctx, char const *identifier, char const
 	if (ip_hton(id, AF_UNSPEC, &c->ipaddr) < 0) {
 		ERROR("Failed to look up hostname %s: %s", id, fr_strerror());
 		talloc_free(c);
-		
+
 		return NULL;
 	}
-	
+
 	{
 		char buffer[256];
 		ip_ntoh(&c->ipaddr, buffer, sizeof(buffer));
@@ -1120,19 +1120,19 @@ RADCLIENT *client_from_query(TALLOC_CTX *ctx, char const *identifier, char const
 	 *	Other values (secret, shortname, nas_type, virtual_server)
 	 */
 	c->secret = talloc_strdup(c, secret);
-	
-	if (shortname) { 
+
+	if (shortname) {
 		c->shortname = talloc_strdup(c, shortname);
 	}
-	
+
 	if (type) {
 		c->nas_type = talloc_strdup(c, type);
 	}
-	
+
 	if (server) {
 		c->server = talloc_strdup(c, server);
 	}
-	
+
 	c->message_authenticator = require_ma;
 
 	return c;
@@ -1151,7 +1151,7 @@ RADCLIENT *client_from_request(RADCLIENT_LIST *clients, REQUEST *request)
 	c->cs = request->client->cs;
 	c->ipaddr.af = AF_UNSPEC;
 	c->src_ipaddr.af = AF_UNSPEC;
-	
+
 	for (i = 0; dynamic_config[i].name != NULL; i++) {
 		const DICT_ATTR *da;
 		VALUE_PAIR *vp;
@@ -1173,8 +1173,8 @@ RADCLIENT *client_from_request(RADCLIENT_LIST *clients, REQUEST *request)
 			 *	Not required.  Skip it.
 			 */
 			if (!dynamic_config[i].dflt) continue;
-			
-			DEBUG("- Cannot add client %s: Required attribute \"%s\" is missing.",	
+
+			DEBUG("- Cannot add client %s: Required attribute \"%s\" is missing.",
 			      ip_ntoh(&request->packet->src_ipaddr,
 				      buffer, sizeof(buffer)),
 			      dynamic_config[i].name);
@@ -1195,7 +1195,7 @@ RADCLIENT *client_from_request(RADCLIENT_LIST *clients, REQUEST *request)
 				WDEBUG("Server not build with udpfromto, ignoring FreeRADIUS-Client-Src-IP-Address.");
 #endif
 			}
-			
+
 			break;
 
 		case PW_TYPE_IPV6ADDR:
@@ -1211,7 +1211,7 @@ RADCLIENT *client_from_request(RADCLIENT_LIST *clients, REQUEST *request)
 				WDEBUG("Server not build with udpfromto, ignoring FreeRADIUS-Client-Src-IPv6-Address.");
 #endif
 			}
-			
+
 			break;
 
 		case PW_TYPE_STRING_PTR:
@@ -1249,7 +1249,7 @@ RADCLIENT *client_from_request(RADCLIENT_LIST *clients, REQUEST *request)
 		      ip_ntoh(&request->packet->src_ipaddr,
 			      buffer, sizeof(buffer)),
 		      ip_ntoh(&c->ipaddr,
-			      buf2, sizeof(buf2)));		
+			      buf2, sizeof(buf2)));
 		goto error;
 	}
 
@@ -1263,12 +1263,12 @@ RADCLIENT *client_from_request(RADCLIENT_LIST *clients, REQUEST *request)
 	if (!client_validate(clients, request->client, c)) {
 		return NULL;
 	}
-	
+
 	if ((c->src_ipaddr.af != AF_UNSPEC) && (c->src_ipaddr.af != c->ipaddr.af)) {
 		DEBUG("- Cannot add client %s: Client IP and src address are different IP version.",
 		      ip_ntoh(&request->packet->src_ipaddr,
 			      buffer, sizeof(buffer)));
-		
+
 		goto error;
 	}
 
@@ -1289,7 +1289,7 @@ RADCLIENT *client_read(char const *filename, int in_server, int flag)
 
 	cs = cf_file_read(filename);
 	if (!cs) return NULL;
-	
+
 	cs = cf_section_sub_find(cs, "client");
 	if (!cs) {
 		ERROR("No \"client\" section found in client file");

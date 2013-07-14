@@ -67,7 +67,7 @@ static rlm_rcode_t getUserNodeRef(REQUEST *request, char* inUserName, char **out
 	tAttributeValueEntry    *pValueEntry	= NULL;
 	tDataList	       *pUserNode	= NULL;
 	rlm_rcode_t		result		= RLM_MODULE_FAIL;
-	
+
 	if (!inUserName) {
 		ERROR("rlm_mschap: getUserNodeRef(): no username");
 		return RLM_MODULE_FAIL;
@@ -78,7 +78,7 @@ static rlm_rcode_t getUserNodeRef(REQUEST *request, char* inUserName, char **out
 		ERROR("rlm_mschap: getUserNodeRef(): dsDataBufferAllocate() status = %ld", status);
 		return RLM_MODULE_FAIL;
 	}
-	
+
 	do {
 		/* find on search node */
 		status = dsFindDirNodes(dsRef, tDataBuff, NULL,
@@ -94,32 +94,32 @@ static rlm_rcode_t getUserNodeRef(REQUEST *request, char* inUserName, char **out
 			result = RLM_MODULE_FAIL;
 			break;
 		}
-		
+
 		status = dsGetDirNodeName(dsRef, tDataBuff, 1, &nodeName);
 		if (status != eDSNoErr) {
 			ERROR("rlm_mschap: getUserNodeRef(): dsGetDirNodeName() status = %ld", status);
 			result = RLM_MODULE_FAIL;
 			break;
 		}
-		
+
 		status = dsOpenDirNode(dsRef, nodeName, &nodeRef);
 		dsDataListDeallocate(dsRef, nodeName);
 		free(nodeName);
 		nodeName = NULL;
-		
+
 		if (status != eDSNoErr) {
 			ERROR("rlm_mschap: getUserNodeRef(): dsOpenDirNode() status = %ld", status);
 			result = RLM_MODULE_FAIL;
 			break;
 		}
-		
+
 		pRecName = dsBuildListFromStrings(dsRef, inUserName, NULL);
 		pRecType = dsBuildListFromStrings(dsRef, kDSStdRecordTypeUsers,
 						  NULL);
 		pAttrType = dsBuildListFromStrings(dsRef,
 						   kDSNAttrMetaNodeLocation,
 						   kDSNAttrRecordName, NULL);
-		
+
 		recCount = 1;
 		status = dsGetRecordList(nodeRef, tDataBuff, pRecName,
 					 eDSExact, pRecType, pAttrType, 0,
@@ -129,15 +129,15 @@ static rlm_rcode_t getUserNodeRef(REQUEST *request, char* inUserName, char **out
 			result = RLM_MODULE_FAIL;
 			break;
 		}
-		
+
 		status = dsGetRecordEntry(nodeRef, tDataBuff, 1,
 					  &attrListRef, &pRecEntry);
 		if (status != eDSNoErr) {
 			ERROR("rlm_mschap: getUserNodeRef(): dsGetRecordEntry() status = %ld", status);
 			result = RLM_MODULE_FAIL;
-			break;	
+			break;
 		}
-		
+
 		for (attrIndex = 1; (attrIndex <= pRecEntry->fRecordAttributeCount) && (status == eDSNoErr); attrIndex++) {
 			status = dsGetAttributeEntry(nodeRef, tDataBuff, attrListRef, attrIndex, &valueRef, &pAttrEntry);
 			if (status == eDSNoErr && pAttrEntry != NULL) {
@@ -154,19 +154,19 @@ static rlm_rcode_t getUserNodeRef(REQUEST *request, char* inUserName, char **out
 						memcpy(*outUserName, pValueEntry->fAttributeValueData.fBufferData, pValueEntry->fAttributeValueData.fBufferLength);
 					}
 				}
-				
+
 				if (pValueEntry != NULL) {
 					dsDeallocAttributeValueEntry(dsRef, pValueEntry);
 					pValueEntry = NULL;
 				}
-				
+
 				dsDeallocAttributeEntry(dsRef, pAttrEntry);
 				pAttrEntry = NULL;
 				dsCloseAttributeValueList(valueRef);
 				valueRef = 0;
 			}
 		}
-		
+
 		/* OpenDirectory doesn't support mschapv2 authentication against
 		 * Active Directory.  AD users need to be authenticated using the
 		 * normal freeradius AD path (i.e. ntlm_auth).
@@ -183,7 +183,7 @@ static rlm_rcode_t getUserNodeRef(REQUEST *request, char* inUserName, char **out
 			result = RLM_MODULE_FAIL;
 			break;
 		}
-		
+
 		status = dsOpenDirNode(dsRef, pUserNode, userNodeRef);
 		dsDataListDeallocate(dsRef, pUserNode);
 		free(pUserNode);
@@ -193,20 +193,20 @@ static rlm_rcode_t getUserNodeRef(REQUEST *request, char* inUserName, char **out
 			result = RLM_MODULE_FAIL;
 			break;
 		}
-		
+
 		result = RLM_MODULE_OK;
 	}
 	while (0);
-	
+
 	if (pRecEntry != NULL)
 		dsDeallocRecordEntry(dsRef, pRecEntry);
 
 	if (tDataBuff != NULL)
 		dsDataBufferDeAllocate(dsRef, tDataBuff);
-		
+
 	if (pUserLocation != NULL)
 		free(pUserLocation);
-		
+
 	if (pRecName != NULL) {
 		dsDataListDeallocate(dsRef, pRecName);
 		free(pRecName);
@@ -221,7 +221,7 @@ static rlm_rcode_t getUserNodeRef(REQUEST *request, char* inUserName, char **out
 	}
 	if (nodeRef != 0)
 		dsCloseDirNode(nodeRef);
-	
+
 	return  result;
 }
 
@@ -242,14 +242,14 @@ rlm_rcode_t od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR *
 #ifndef NDEBUG
 	unsigned int t;
 #endif
-	
+
 	username_string = talloc_array(request, char, usernamepair->length + 1);
 	if (!username_string)
 		return RLM_MODULE_FAIL;
-	
+
 	strlcpy(username_string, usernamepair->vp_strvalue,
 		usernamepair->length + 1);
-	
+
 	status = dsOpenDirService(&dsRef);
 	if (status != eDSNoErr) {
 		talloc_free(username_string);
@@ -268,7 +268,7 @@ rlm_rcode_t od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR *
 			dsCloseDirService(dsRef);
 		return rcode;
 	}
-	
+
 	/* We got a node; fill the stepBuffer
 	   kDSStdAuthMSCHAP2
 	   MS-CHAPv2 authentication method. The Open Directory plug-in generates the reply data for the client.
@@ -284,7 +284,7 @@ rlm_rcode_t od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR *
 	   strlen(peerchal), peerchal,					// client challenge
 	   strlen(p24), p24,							// P24 NT-Response
 	   4, "User");									// must match the username that was used for the hash
-		
+
 	   inName		= 	username_string
 	   schal		=   challenge->vp_strvalue
 	   peerchal	=   response->vp_strvalue + 2 (16 octets)
@@ -295,9 +295,9 @@ rlm_rcode_t od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR *
 	tDataBuff = dsDataBufferAllocate(dsRef, 4096);
 	pAuthType = dsDataNodeAllocateString(dsRef, kDSStdAuthMSCHAP2);
 	uiCurr = 0;
-	
+
 	RDEBUG2("OD username_string = %s, OD shortUserName=%s (length = %lu)\n", username_string, shortUserName, strlen(shortUserName));
-	
+
 	/* User name length + username */
 	uiLen = (uint32_t)strlen(shortUserName);
 	memcpy(&(tDataBuff->fBufferData[uiCurr]), &uiLen, sizeof(uiLen));
@@ -311,7 +311,7 @@ rlm_rcode_t od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR *
 	}
 	fprintf(stderr, "\n");
 #endif
-	
+
 	/* server challenge (ie. my (freeRADIUS) challenge) */
 	uiLen = 16;
 	memcpy(&(tDataBuff->fBufferData[uiCurr]), &uiLen, sizeof(uiLen));
@@ -319,7 +319,7 @@ rlm_rcode_t od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR *
 	memcpy(&(tDataBuff->fBufferData[uiCurr]), &(challenge->vp_strvalue[0]),
 	       uiLen);
 	uiCurr += uiLen;
-	
+
 #ifndef NDEBUG
 	RDEBUG2("	stepbuf peer challenge:\t\t");
 	for (t = 2; t < 18; t++) {
@@ -327,15 +327,15 @@ rlm_rcode_t od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR *
 	}
 	fprintf(stderr, "\n");
 #endif
-	
+
 	/* peer challenge (ie. the client-generated response) */
 	uiLen = 16;
 	memcpy(&(tDataBuff->fBufferData[uiCurr]), &uiLen, sizeof(uiLen));
 	uiCurr += sizeof(uiLen);
 	memcpy(&(tDataBuff->fBufferData[uiCurr]), &(response->vp_strvalue[2]),
 	       uiLen);
-	uiCurr += uiLen;	
-	
+	uiCurr += uiLen;
+
 #ifndef NDEBUG
 	RDEBUG2("	stepbuf p24:\t\t");
 	for (t = 26; t < 50; t++) {
@@ -343,7 +343,7 @@ rlm_rcode_t od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR *
 	}
 	fprintf(stderr, "\n");
 #endif
-	
+
 	/* p24 (ie. second part of client-generated response) */
 	uiLen =  24; /* strlen(&(response->vp_strvalue[26])); may contain NULL byte in the middle. */
 	memcpy(&(tDataBuff->fBufferData[uiCurr]), &uiLen, sizeof(uiLen));
@@ -351,7 +351,7 @@ rlm_rcode_t od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR *
 	memcpy(&(tDataBuff->fBufferData[uiCurr]), &(response->vp_strvalue[26]),
 	       uiLen);
 	uiCurr += uiLen;
-	
+
 	/* Client generated use name (short name?) */
 	uiLen =  (uint32_t)strlen(username_string);
 	memcpy(&(tDataBuff->fBufferData[uiCurr]), &uiLen, sizeof(uiLen));
@@ -360,13 +360,13 @@ rlm_rcode_t od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR *
 	uiCurr += uiLen;
 
 	tDataBuff->fBufferLength = uiCurr;
-	
+
 	status = dsDoDirNodeAuth(userNodeRef, pAuthType, 1, tDataBuff,
 				 pStepBuff, NULL);
 	if (status == eDSNoErr) {
 		if (pStepBuff->fBufferLength > 4) {
 			uint32_t len;
-			
+
 			memcpy(&len, pStepBuff->fBufferData, sizeof(len));
 			if (len == 40) {
 				char mschap_reply[42] = { '\0' };
@@ -399,13 +399,13 @@ rlm_rcode_t od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR *
 		dsCloseDirNode(userNodeRef);
 	if (dsRef != 0)
 		dsCloseDirService(dsRef);
-	
+
 	if (status != eDSNoErr) {
 		errno = EACCES;
 		ERROR("rlm_mschap: authentication failed %d", status); /* <-- returns -14091 (eDSAuthMethodNotSupported) -14090 */
 		return RLM_MODULE_REJECT;
 	}
-	
+
 	return RLM_MODULE_OK;
 }
 

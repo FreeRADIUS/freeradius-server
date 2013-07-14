@@ -54,11 +54,11 @@ size_t fr_base64_encode(uint8_t const *in, size_t inlen, char *out, size_t outle
 		*out = '\0';
 		return -1;
 	}
-	
+
 	while (inlen) {
 		*p++ = b64str[(in[0] >> 2) & 0x3f];
 		*p++ = b64str[((in[0] << 4) + (--inlen ? in[1] >> 4 : 0)) & 0x3f];
-		*p++ = (inlen ? b64str[((in[1] << 2) + (--inlen ? in[2] >> 6 : 0)) & 0x3f] : '=');	
+		*p++ = (inlen ? b64str[((in[1] << 2) + (--inlen ? in[2] >> 6 : 0)) & 0x3f] : '=');
 		*p++ = inlen ? b64str[in[2] & 0x3f] : '=';
 
 		if (inlen) inlen--;
@@ -66,7 +66,7 @@ size_t fr_base64_encode(uint8_t const *in, size_t inlen, char *out, size_t outle
 	}
 
 	p[0] = '\0';
-	
+
 	return p - out;
 }
 
@@ -111,7 +111,7 @@ ssize_t fr_base64_encode_alloc(uint8_t const *in, size_t inlen, char **out)
 	if (!*out) {
 		return -1;
 	}
-	
+
 	return fr_base64_encode(in, inlen, *out, outlen);
 }
 
@@ -298,7 +298,7 @@ ssize_t fr_base64_decode(char const *in, size_t inlen, uint8_t *out,
 			 size_t outlen)
 {
 	uint8_t *p = out;
-	
+
 	if (outlen <  FR_BASE64_DEC_LENGTH(inlen)) {
 		return -1;
 	}
@@ -316,9 +316,9 @@ ssize_t fr_base64_decode(char const *in, size_t inlen, uint8_t *out,
 			if ((inlen != 4) || (in[3] != '=')) break;
 		} else {
 			if (!fr_isbase64(in[2])) break;
-			
+
 			*p++ = ((b64[us(in[1])] << 4) & 0xf0) | (b64[us(in[2])] >> 2);
-			
+
 			if (inlen == 3) break;
 
 			if (in[3] == '=') {
@@ -329,7 +329,7 @@ ssize_t fr_base64_decode(char const *in, size_t inlen, uint8_t *out,
 				*p++ = ((b64[us(in[2])] << 6) & 0xc0) | b64[us(in[3])];
 	    		}
 		}
-		
+
 		in += 4;
 		inlen -= 4;
     	}
@@ -337,7 +337,7 @@ ssize_t fr_base64_decode(char const *in, size_t inlen, uint8_t *out,
 	if (inlen != 0) {
 		return -1;
 	}
-	
+
   	return p - out;
 }
 
@@ -384,9 +384,9 @@ ssize_t fr_base64_decode_alloc(char const *in, size_t inlen, uint8_t **out)
 	if (ret < 0) {
 		talloc_free(*out);
 		*out = '\0';
-		
+
 		return -1;
 	}
-    	
+
 	return ret;
 }

@@ -58,7 +58,7 @@ static CONF_PARSER module_config[] = {
 	  offsetof(rlm_rediswho_t, trim_count), NULL, NULL},
 	{ "trim_count", PW_TYPE_INTEGER,
 	  offsetof(rlm_rediswho_t, trim_count), NULL, "-1"},
-	  
+
 	{ NULL, -1, 0, NULL, NULL}
 };
 

@@ -235,7 +235,7 @@ static ssize_t xlat_home_server(UNUSED void *instance, REQUEST *request,
 
 	if (!request || !request->home_server) {
 		RWDEBUG("No home_server associated with this request");
-		
+
 		*out = '\0';
 		return 0;
 	}
@@ -254,7 +254,7 @@ static ssize_t xlat_server_pool(UNUSED void *instance, REQUEST *request,
 
 	if (!request || !request->home_pool) {
 		RWDEBUG("No home_pool associated with this request");
-		
+
 		*out = '\0';
 		return 0;
 	}
@@ -471,7 +471,7 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 		}
 
 		if (!cf_section_sub_find_name2(rc->cs, "server", home->server)) {
-		
+
 			cf_log_err_cs(cs,
 				   "No such server %s", home->server);
 			goto error;
@@ -607,11 +607,11 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 	if (hs_proto) {
 		if (strcmp(hs_proto, "udp") == 0) {
 			hs_proto = NULL;
-			
+
 		} else if (strcmp(hs_proto, "tcp") == 0) {
 			hs_proto = NULL;
 			home->proto = IPPROTO_TCP;
-			
+
 			if (home->ping_check != HOME_PING_CHECK_NONE) {
 				cf_log_err_cs(cs,
 					   "Only 'status_check = none' is allowed for home servers with 'proto = tcp'");
@@ -652,7 +652,7 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 				cf_log_err_cs(cs, "Failed parsing src_ipaddr");
 				goto error;
 			}
-			
+
 		} else {
 			/*
 			 *	Source isn't specified: Source is
@@ -821,7 +821,7 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 			free(home2);
 			return 0;
 		}
-		
+
 		if (!home->server &&
 		    !rbtree_insert(home_servers_byaddr, home2)) {
 			rbtree_deletebydata(home_servers_byname, home2);
@@ -865,7 +865,7 @@ static home_pool_t *server_pool_alloc(char const *name, home_pool_type_t type,
 	pool = rad_malloc(sizeof(*pool) + (sizeof(pool->servers[0]) *
 					   num_home_servers));
 	if (!pool) return NULL;	/* just for pairanoia */
-	
+
 	memset(pool, 0, sizeof(*pool) + (sizeof(pool->servers[0]) *
 					 num_home_servers));
 
@@ -974,7 +974,7 @@ static int server_pool_add(realm_config_t *rc,
 
 		if (!pool_check_home_server(rc, cp, cf_pair_value(cp),
 					    server_type, &pool->fallback)) {
-			
+
 			goto error;
 		}
 
@@ -990,10 +990,10 @@ static int server_pool_add(realm_config_t *rc,
 	if (cp) {
 		static FR_NAME_NUMBER pool_types[] = {
 			{ "load-balance", HOME_POOL_LOAD_BALANCE },
-			
+
 			{ "fail-over", HOME_POOL_FAIL_OVER },
 			{ "fail_over", HOME_POOL_FAIL_OVER },
-			
+
 			{ "round-robin", HOME_POOL_LOAD_BALANCE },
 			{ "round_robin", HOME_POOL_LOAD_BALANCE },
 
@@ -1023,7 +1023,7 @@ static int server_pool_add(realm_config_t *rc,
 
 	cp = cf_pair_find(cs, "virtual_server");
 	if (cp) {
-		pool->virtual_server = cf_pair_value(cp);		
+		pool->virtual_server = cf_pair_value(cp);
 		if (!pool->virtual_server) {
 			cf_log_err_cp(cp, "No value given for virtual_server");
 			goto error;
@@ -1373,11 +1373,11 @@ static int old_realm_config(realm_config_t *rc, CONF_SECTION *cs, REALM *r)
 
 		if (strcasecmp(host, "fail_over") == 0) {
 			cf_log_info(cs, "\tldflag = fail_over");
-			
+
 		} else if (strcasecmp(host, "round_robin") == 0) {
 			ldflag = HOME_POOL_LOAD_BALANCE;
 			cf_log_info(cs, "\tldflag = round_robin");
-			
+
 		} else {
 			cf_log_err_cs(cs, "Unknown value \"%s\" for ldflag", host);
 			return 0;
@@ -1409,7 +1409,7 @@ static int old_realm_config(realm_config_t *rc, CONF_SECTION *cs, REALM *r)
 				return 0;
 			}
 		}
-			
+
 		cf_log_info(cs, "\tauthhost = %s",  host);
 
 		if (!old_server_add(rc, cs, r->name, host, secret, ldflag,
@@ -1436,14 +1436,14 @@ static int old_realm_config(realm_config_t *rc, CONF_SECTION *cs, REALM *r)
 				cf_log_err_cs(cs, "No shared secret supplied for realm: %s", r->name);
 				return 0;
 			}
-			
+
 			secret = cf_pair_value(cp);
 			if (!secret) {
 				cf_log_err_cp(cp, "No value specified for secret");
 				return 0;
 			}
 		}
-		
+
 		cf_log_info(cs, "\taccthost = %s", host);
 
 		if (!old_server_add(rc, cs, r->name, host, secret, ldflag,
@@ -1663,7 +1663,7 @@ static int realm_add(realm_config_t *rc, CONF_SECTION *cs)
 	if (name2[0] == '~') {
 		int rcode;
 		regex_t reg;
-		
+
 		/*
 		 *	Include substring matches.
 		 */
@@ -1742,7 +1742,7 @@ static int realm_add(realm_config_t *rc, CONF_SECTION *cs)
 		realm_regex_t *rr, **last;
 
 		rr = rad_malloc(sizeof(*rr));
-		
+
 		last = &realms_regex;
 		while (*last) last = &((*last)->next);  /* O(N^2)... sue me. */
 
@@ -1881,7 +1881,7 @@ int realms_init(CONF_SECTION *config)
 	if (cs) {
 		if (cf_section_parse(cs, rc, proxy_config) < 0) {
 			ERROR("Failed parsing proxy section");
-			
+
 			free(rc);
 			realms_free();
 			return 0;
@@ -1985,7 +1985,7 @@ REALM *realm_find2(char const *name)
 {
 	REALM myrealm;
 	REALM *realm;
-	
+
 	if (!name) name = "NULL";
 
 	myrealm.name = name;
@@ -2019,7 +2019,7 @@ REALM *realm_find(char const *name)
 {
 	REALM myrealm;
 	REALM *realm;
-	
+
 	if (!name) name = "NULL";
 
 	myrealm.name = name;
@@ -2097,7 +2097,7 @@ void home_server_update_request(home_server *home, REQUEST *request)
 			ERROR("no memory");
 			exit(1);
 		}
-		
+
 		/*
 		 *	Copy the request, then look up name
 		 *	and plain-text password in the copy.
@@ -2199,7 +2199,7 @@ home_server *home_server_ldb(char const *realmname,
 			break;
 		}
 		/* FALL-THROUGH */
-				
+
 	case HOME_POOL_LOAD_BALANCE:
 	case HOME_POOL_FAIL_OVER:
 		start = 0;
@@ -2358,7 +2358,7 @@ home_server *home_server_ldb(char const *realmname,
 		if (pool->in_fallback) goto update_and_return;
 
 		pool->in_fallback = true;
-		
+
 		/*
 		 *      Run the trigger once an hour saying that
 		 *      they're all dead.
@@ -2482,7 +2482,7 @@ home_server *home_server_bynumber(int number)
 home_pool_t *home_pool_byname(char const *name, int type)
 {
 	home_pool_t mypool;
-	
+
 	memset(&mypool, 0, sizeof(mypool));
 	mypool.name = name;
 	mypool.server_type = type;

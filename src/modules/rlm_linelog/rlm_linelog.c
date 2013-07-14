@@ -209,12 +209,12 @@ static rlm_rcode_t do_linelog(void *instance, REQUEST *request)
 		CONF_PAIR *cp;
 
 		p = line + 1;
-		
+
 		if (radius_xlat(p, sizeof(line) - 2, request, inst->reference, linelog_escape_func,
 		    NULL) < 0) {
 			return RLM_MODULE_FAIL;
 		}
-		
+
 		line[0] = '.';	/* force to be in current section */
 
 		/*
@@ -254,7 +254,7 @@ static rlm_rcode_t do_linelog(void *instance, REQUEST *request)
 		if (radius_xlat(buffer, sizeof(buffer), request, inst->filename, NULL, NULL) < 0) {
 			return RLM_MODULE_FAIL;
 		}
-		
+
 		/* check path and eventually create subdirs */
 		p = strrchr(buffer,'/');
 		if (p) {
@@ -284,7 +284,7 @@ static rlm_rcode_t do_linelog(void *instance, REQUEST *request)
 				}
 				gid = grp->gr_gid;
 			}
-	
+
 			if (chown(buffer, -1, gid) == -1) {
 				RDEBUG2("Unable to change system group of \"%s\"", buffer);
 			}
@@ -301,19 +301,19 @@ static rlm_rcode_t do_linelog(void *instance, REQUEST *request)
 		if (fd > -1) {
 			close(fd);
 		}
-		
+
 		return RLM_MODULE_FAIL;
 	}
 
 	if (fd >= 0) {
 		strcat(line, "\n");
-		
+
 		if (write(fd, line, strlen(line)) < 0) {
 			EDEBUG("rlm_linelog: Failed writing: %s", strerror(errno));
 			close(fd);
 			return RLM_MODULE_FAIL;
 		}
-		
+
 		close(fd);
 
 #ifdef HAVE_SYSLOG_H

@@ -45,7 +45,7 @@ typedef struct rlm_otp_t {
 				//!< must have %s.
 
 	uint8_t hmac_key[16];   //!< because it doesn't track State
-				
+
 	int challenge_len;	//!< Challenge length, min 5 digits.
 	int challenge_delay;	//!< Max delay time for response, in seconds.
 	int allow_sync;		//!< Useful to override pwdfile

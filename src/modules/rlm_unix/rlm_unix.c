@@ -95,7 +95,7 @@ static int groupcmp(UNUSED void *instance, REQUEST *req, UNUSED VALUE_PAIR *requ
 	grp = getgrnam(check->vp_strvalue);
 	if (!grp)
 		return -1;
-	
+
 	retval = (pwd->pw_gid == grp->gr_gid) ? 0 : -1;
 	if (retval < 0) {
 		for (member = grp->gr_mem; *member && retval; member++) {

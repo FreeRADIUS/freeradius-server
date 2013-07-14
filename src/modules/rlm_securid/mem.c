@@ -120,7 +120,7 @@ int securid_sessionlist_add(rlm_securid_t *inst,REQUEST *request,
 		securid_sessionlist_clean_expired(inst, request, session->timestamp);
 		goto done;
 	}
-	
+
 	if (session->session_id == 0) {
 		/* this is a NEW session (we are not inserting an updated session) */
 		inst->last_session_id++;
@@ -187,7 +187,7 @@ SECURID_SESSION *securid_sessionlist_find(rlm_securid_t *inst, REQUEST *request)
 	VALUE_PAIR	*state;
 	SECURID_SESSION* session;
 	SECURID_SESSION mySession;
-	
+
 	/* clean expired sessions if any */
 	pthread_mutex_lock(&(inst->session_mutex));
 	securid_sessionlist_clean_expired(inst, request, request->timestamp);
@@ -253,7 +253,7 @@ static SECURID_SESSION *securid_sessionlist_delete(rlm_securid_t *inst, SECURID_
 	 *	Delete old session from the tree.
 	 */
 	rbtree_delete(inst->session_tree, node);
-	
+
 	/*
 	 *	And unsplice it from the linked list.
 	 */

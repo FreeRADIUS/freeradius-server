@@ -68,16 +68,16 @@ typedef struct rlm_counter_t {
 	char const *check_name;		/* Daily-Max-Session */
 	char const *reply_name;		/* Session-Timeout */
 	char const *service_type;	/* Service-Type to search for */
-	
+
 	int cache_size;
 	uint32_t service_val;
-	
+
 	int key_attr;
 	int count_attr;
 	int check_attr;
 	int reply_attr;
 	int dict_attr;		/* attribute number for the counter. */
-	
+
 	time_t reset_time;	/* The time of the next reset. */
 	time_t last_reset;	/* The time of the last reset. */
 
@@ -119,9 +119,9 @@ static const CONF_PARSER module_config[] = {
 	  offsetof(rlm_counter_t,key_name), NULL, NULL },
 	{ "reset", PW_TYPE_STRING_PTR | PW_TYPE_REQUIRED,
 	  offsetof(rlm_counter_t,reset), NULL, NULL },
-	  
+
   	{ "count-attribute", PW_TYPE_STRING_PTR | PW_TYPE_DEPRECATED,
-  	  offsetof(rlm_counter_t,count_attribute), NULL, NULL },  
+  	  offsetof(rlm_counter_t,count_attribute), NULL, NULL },
   	{ "count_attribute", PW_TYPE_STRING_PTR | PW_TYPE_ATTRIBUTE,
   	  offsetof(rlm_counter_t,count_attribute), NULL, NULL },
 
@@ -139,12 +139,12 @@ static const CONF_PARSER module_config[] = {
 	  offsetof(rlm_counter_t,reply_name), NULL, NULL },
 	{ "reply_name", PW_TYPE_STRING_PTR | PW_TYPE_ATTRIBUTE,
 	  offsetof(rlm_counter_t,reply_name), NULL, NULL},
-	
+
 	{ "allowed-servicetype", PW_TYPE_STRING_PTR | PW_TYPE_DEPRECATED,
 	  offsetof(rlm_counter_t,service_type), NULL, NULL },
 	{ "allowed_service_type", PW_TYPE_STRING_PTR,
 	  offsetof(rlm_counter_t,service_type), NULL, NULL },
-	
+
 	{ "cache-size", PW_TYPE_INTEGER | PW_TYPE_DEPRECATED,
 	  offsetof(rlm_counter_t,cache_size), NULL, NULL },
 	{ "cache_size", PW_TYPE_INTEGER,
@@ -246,7 +246,7 @@ static rlm_rcode_t reset_db(rlm_counter_t *inst)
 	 */
 	{
 		char *filename;
-		
+
 		memcpy(&filename, &inst->filename, sizeof(filename));
 		inst->gdbm = gdbm_open(filename, sizeof(int), GDBM_NEWDB | GDBM_COUNTER_OPTS, 0600, NULL);
 	}
@@ -259,7 +259,7 @@ static rlm_rcode_t reset_db(rlm_counter_t *inst)
 			sizeof(cache_size)) == -1) {
 		ERROR("rlm_counter: Failed to set cache size");
 	}
-	
+
 	DEBUG2("rlm_counter: reset_db: Opened new database");
 
 	/*
@@ -468,10 +468,10 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		ERROR("rlm_counter: find_next_reset() returned -1. Exiting.");
 		return -1;
 	}
-	
+
 	{
 		char *filename;
-		
+
 		memcpy(&filename, &inst->filename, sizeof(filename));
 		inst->gdbm = gdbm_open(filename, sizeof(int), GDBM_NEWDB | GDBM_COUNTER_OPTS, 0600, NULL);
 	}
@@ -519,7 +519,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		} else {
 			inst->reset_time = next_reset;
 		}
-		
+
 		memcpy(&key_datum.dptr, &default2, sizeof(key_datum.dptr));
 		key_datum.dsize = strlen(key_datum.dptr);
 
@@ -885,7 +885,7 @@ static int mod_detach(void *instance)
 	if (inst->gdbm) {
 		gdbm_close(inst->gdbm);
 	}
-	
+
 	pthread_mutex_destroy(&inst->mutex);
 
 	return 0;

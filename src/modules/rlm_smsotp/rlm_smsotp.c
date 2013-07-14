@@ -43,7 +43,7 @@ static const CONF_PARSER module_config[] = {
 	{ "challenge_type", PW_TYPE_STRING_PTR,
 	  offsetof(rlm_smsotp_t, authtype),
 	  NULL, "smsotp-reply" },
-	
+
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
 
@@ -96,7 +96,7 @@ static size_t read_all(int *fdp, char *buf, size_t len)
 {
 	ssize_t n;
 	size_t total = 0;
-	
+
 	fd_set fds;
 	struct timeval tv;
 	int retval;
@@ -105,7 +105,7 @@ static size_t read_all(int *fdp, char *buf, size_t len)
 	FD_SET(*fdp, &fds);
 	tv.tv_sec = 0;
 	tv.tv_usec = 0;
-	
+
 	while (total < len) {
 		n = read(*fdp, &buf[total], len - total);
 		if (n < 0) {
@@ -131,7 +131,7 @@ static size_t read_all(int *fdp, char *buf, size_t len)
 			break;
 		}
 	}
-	
+
 	return total;
 }
 
@@ -207,7 +207,7 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 		REDEBUG("Failed to get handle from connection pool");
 		return RLM_MODULE_FAIL;
 	}
-	
+
 	/* Get greeting */
 	bufsize = read_all(fdp, buffer, sizeof(buffer));
 	if (bufsize <= 0) {
@@ -222,33 +222,33 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 	state = pairfind(request->packet->vps, PW_STATE, 0, TAG_ANY);
 	if (!state) {
 		RDEBUG("Found reply to access challenge");
-		
+
 		/* send username */
 		snprintf(output, sizeof(output), "check otp for %s\n",
 			 request->username->vp_strvalue);
 		WRITE_ALL(fdp, output, strlen(output));
 
 		bufsize = read_all(fdp, buffer, sizeof(buffer));
-		
+
 		/* send password */
 		snprintf(output, sizeof(output), "user otp is %s\n",
 			 request->password->vp_strvalue);
 		WRITE_ALL(fdp, output, strlen(output));
 
 		bufsize = read_all(fdp, buffer, sizeof(buffer));
-		
+
 		/* set uuid */
 		snprintf(output, sizeof(output), "otp id is %s\n",
 			 state->vp_strvalue);
 		WRITE_ALL(fdp, output, strlen(output));
 
 		bufsize = read_all(fdp, buffer, sizeof(buffer));
-		
+
 		/* now check the otp */
 		WRITE_ALL(fdp, "get check result\n", 17);
 
 		bufsize = read_all(fdp, buffer, sizeof(buffer));
-		
+
 		/* end the sesssion */
 		WRITE_ALL(fdp, "quit\n", 5);
 
@@ -282,10 +282,10 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 	/*
 	 *	Create the challenge, and add it to the reply.
 	 */
-		
+
 	pairmake_reply("Reply-Message", inst->challenge, T_OP_EQ);
 	pairmake_reply("State", buffer, T_OP_EQ);
-	
+
 	/*
 	 *  Mark the packet as an Access-Challenge packet.
 	 *
@@ -293,7 +293,7 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 	 */
 	request->reply->code = PW_ACCESS_CHALLENGE;
 	DEBUG("rlm_smsotp: Sending Access-Challenge.");
-	
+
 	rcode = RLM_MODULE_HANDLED;
 
 done:
@@ -318,7 +318,7 @@ static rlm_rcode_t mod_authorize(UNUSED void *instance, UNUSED REQUEST *request)
 	state = pairfind(request->packet->vps, PW_STATE, 0, TAG_ANY);
 	if (state != NULL) {
 		DEBUG("rlm_smsotp: Found reply to access challenge (AUTZ), Adding Auth-Type '%s'",inst->authtype);
-		
+
 		pairdelete(&request->config_items, PW_AUTH_TYPE, 0, TAG_ANY); /* delete old auth-type */
 		pairmake_config("Auth-Type", inst->authtype, T_OP_SET);
 	}

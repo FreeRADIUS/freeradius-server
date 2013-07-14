@@ -47,7 +47,7 @@ static rlm_rcode_t mod_authorize(UNUSED void *instance, REQUEST *request)
 		RDEBUG("Checking Expiration time: '%s'",check_item->vp_strvalue);
 		if (((time_t) check_item->vp_date) <= request->timestamp) {
 			REDEBUG("Account has expired [Expiration %s]", check_item->vp_strvalue);
-			
+
 			return RLM_MODULE_USERLOCK;
 		}
 		/*
@@ -64,7 +64,7 @@ static rlm_rcode_t mod_authorize(UNUSED void *instance, REQUEST *request)
 	} else {
 		return RLM_MODULE_NOOP;
 	}
-	
+
 	return RLM_MODULE_OK;
 }
 

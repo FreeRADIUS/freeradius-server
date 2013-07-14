@@ -75,7 +75,7 @@ static int tnc_attach(CONF_SECTION *cs, void **instance)
 {
 	rlm_eap_tnc_t *inst;
 	TNC_Result result;
-		
+
 	*instance = inst = talloc_zero(cs, rlm_eap_tnc_t);
 	if (!inst) return -1;
 
@@ -85,12 +85,12 @@ static int tnc_attach(CONF_SECTION *cs, void **instance)
 	if (cf_section_parse(cs, inst, module_config) < 0) {
 		return -1;
 	}
-	
+
 	result = initializeDefault();
 	if (result != TNC_RESULT_SUCCESS) {
 		ERROR("rlm_eap_tnc: NAA-EAP initializeDefault returned an "
 		      "error code");
-		
+
 		return -1;
 	}
 
@@ -100,9 +100,9 @@ static int tnc_attach(CONF_SECTION *cs, void **instance)
 static int mod_detach(void *instance)
 {
 	TNC_Result result;
-	
+
 	talloc_free(instance);
-	
+
 	result = terminate();
 	if (result != TNC_RESULT_SUCCESS) {
 		ERROR("rlm_eap_tnc: NAA-EAP terminate returned an "
@@ -142,16 +142,16 @@ static int tnc_initiate(void *instance, eap_handler_t *handler)
 {
 	rlm_eap_tnc_t *inst = instance;
 	REQUEST *request = NULL;
-	
+
 	char buff[71];
 	ssize_t len = 0;
-	
+
 	TNC_Result result;
 	TNC_ConnectionID conn_id;
 
 	TNC_BufferReference eap_tnc_request;
 	TNC_BufferReference eap_tnc_user;
-	
+
 	VALUE_PAIR *username;
 
 	/*
@@ -162,10 +162,10 @@ static int tnc_initiate(void *instance, eap_handler_t *handler)
 		ERROR("rlm_eap_tnc: EAP_TNC must only be used as an "
 		      "inner method within a protected tunneled EAP created "
 		      "by an outer EAP method");
-		
+
 		return 0;
 	}
-	
+
 	request = handler->request->parent;
 
 	/*
@@ -207,7 +207,7 @@ static int tnc_initiate(void *instance, eap_handler_t *handler)
 	 *	so not safe to use talloc.
 	 */
 	MEM(eap_tnc_user = (TNC_BufferReference) strdup(username->vp_strvalue));
-	
+
 	result = storeUsername(conn_id, eap_tnc_user, username->length);
 	if (result != TNC_RESULT_SUCCESS) {
 		ERROR("rlm_eap_tnc: NAA-EAP storeUsername returned an "
@@ -232,12 +232,12 @@ static int tnc_initiate(void *instance, eap_handler_t *handler)
 
 	handler->eap_ds->request->code = PW_EAP_REQUEST;
 	handler->eap_ds->request->type.num = PW_EAP_TNC;
-	
+
 	handler->eap_ds->request->type.length = 1;
-	
+
 	talloc_free(handler->eap_ds->request->type.data);
 	handler->eap_ds->request->type.data = eap_tnc_request;
-	
+
 	/*
 	 *	We don't need to authorize the user at this point.
 	 *
@@ -264,14 +264,14 @@ static int mod_authenticate(UNUSED void *instance, eap_handler_t *handler)
 {
 	TNC_ConnectionID conn_id;
 	TNC_Result result;
-	
+
 	TNC_BufferReference data = NULL;
 	TNC_UInt32 datalen = 0;
-	
+
 	TNC_ConnectionState connection_state;
 	uint8_t code = 0;
 	REQUEST *request = handler->request;
-	
+
 	if (handler->eap_ds->response->type.num != PW_EAP_TNC) {
 		ERROR("rlm_eap_tnc: Incorrect response type");
 
@@ -309,27 +309,27 @@ static int mod_authenticate(UNUSED void *instance, eap_handler_t *handler)
 	switch (connection_state) {
 	case TNC_CONNECTION_STATE_HANDSHAKE:
 		code = PW_EAP_REQUEST;
-		
+
 		break;
 	case TNC_CONNECTION_STATE_ACCESS_NONE:
 		code = PW_EAP_FAILURE;
 		pairmake_config("TNC-Status", "None", T_OP_SET);
-					
+
 		break;
-		
+
 	case TNC_CONNECTION_STATE_ACCESS_ALLOWED:
 		code = PW_EAP_SUCCESS;
 		pairmake_config("TNC-Status", "Access", T_OP_SET);
 		break;
-		
+
 	case TNC_CONNECTION_STATE_ACCESS_ISOLATED:
 		code = PW_EAP_SUCCESS;
 		pairmake_config("TNC-Status", "Isolate", T_OP_SET);
-			
+
 		break;
 	default:
 		ERROR("rlm_eap_tnc: Invalid connection state");
-		
+
 		return 0;
 	}
 
@@ -338,9 +338,9 @@ static int mod_authenticate(UNUSED void *instance, eap_handler_t *handler)
 	 */
 	handler->eap_ds->request->code = code;
 	handler->eap_ds->request->type.num = PW_EAP_TNC;
-	
+
 	handler->eap_ds->request->type.length = datalen;
-	
+
 	talloc_free(handler->eap_ds->request->type.data);
 
 	/*

@@ -220,7 +220,7 @@ static rlm_rcode_t do_ruby(REQUEST *request, unsigned long func,
 		for (vp = paircursor(&cursor, &request->packet->vps);
 		     vp;
 		     vp = pairnext(&cursor)) {
-		 	 n_tuple++;    
+		 	 n_tuple++;
 		}
 	}
 
@@ -277,7 +277,7 @@ static rlm_rcode_t do_ruby(REQUEST *request, unsigned long func,
 		if (request) {
 			rb_reply_items = rb_ary_entry(rb_result, 1);
 			rb_config_items = rb_ary_entry(rb_result, 2);
-	
+
 			add_vp_tuple(request->reply, request, &request->reply->vps,
 				     rb_reply_items, function_name);
 			add_vp_tuple(request, request, &request->config_items,
@@ -346,7 +346,7 @@ static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
 {
 	rlm_ruby_t *inst = instance;
 	VALUE module;
-	
+
 	int idx;
 	int status;
 
@@ -366,17 +366,17 @@ static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
 	module = inst->module = rb_define_module(inst->module_name);
 	if (!module) {
 		EDEBUG("Ruby rb_define_module failed");
-		
+
 		return -1;
 	}
-	
+
 	/*
 	 *	Load constants into module
 	 */
 	for (idx = 0; constants[idx].name; idx++) {
 		rb_define_const(module, constants[idx].name, INT2NUM(constants[idx].value));
 	}
-	
+
 	/*
 	 *	Expose some FreeRADIUS API functions as ruby functions
 	 */
@@ -386,7 +386,7 @@ static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
 	rb_load_protect(rb_str_new2(inst->filename), 0, &status);
 	if (status) {
 		EDEBUG("Error loading file %s status: %d", inst->filename, status);
-		
+
 		return -1;
 	}
 	DEBUG("Loaded file %s", inst->filename);

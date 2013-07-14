@@ -238,7 +238,7 @@ static void rlm_perl_make_key(pthread_key_t *key)
 static PerlInterpreter *rlm_perl_clone(PerlInterpreter *perl, pthread_key_t *key)
 {
 	int ret;
-	
+
 	PerlInterpreter *interp;
 	UV clone_flags = 0;
 
@@ -263,7 +263,7 @@ static PerlInterpreter *rlm_perl_clone(PerlInterpreter *perl, pthread_key_t *key
 	ret = pthread_setspecific(*key, interp);
 	if (ret != 0) {
 		DEBUG("rlm_perl: Failed associating interpretor with thread %s", strerror(ret));
-		
+
 		rlm_perl_destruct(interp);
 		return NULL;
 	}
@@ -338,14 +338,14 @@ static ssize_t perl_xlat(void *instance, REQUEST *request, char const *fmt, char
 		ENTER;SAVETMPS;
 
 		PUSHMARK(SP);
-		
+
 		p = fmt;
 		while ((q = strchr(p, ' '))) {
 			XPUSHs(sv_2mortal(newSVpv(p, p - q)));
-			
+
 			p = q + 1;
 		}
-		
+
 		PUTBACK;
 
 		count = call_pv(inst->func_xlat, G_SCALAR | G_EVAL);
@@ -367,7 +367,7 @@ static ssize_t perl_xlat(void *instance, REQUEST *request, char const *fmt, char
 		LEAVE ;
 
 	}
-	
+
 	return ret;
 }
 /*
@@ -406,12 +406,12 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 	inst->thread_key = rad_malloc(sizeof(*inst->thread_key));
 	memset(inst->thread_key,0,sizeof(*inst->thread_key));
-	
+
 	rlm_perl_make_key(inst->thread_key);
 #endif
 
 	char arg[] = "0";
-	
+
 	embed[0] = NULL;
 	if (inst->perl_flags) {
 		embed[1] = inst->perl_flags;
@@ -486,7 +486,7 @@ static void perl_store_vps(TALLOC_CTX *ctx, VALUE_PAIR *vps, HV *rad_hv)
 	int len;
 
 	hv_undef(rad_hv);
-	
+
 	/*
 	 *	Copy the valuepair list so we can remove attributes
 	 *	we've already processed.  This is a horrible hack to
@@ -531,7 +531,7 @@ static void perl_store_vps(TALLOC_CTX *ctx, VALUE_PAIR *vps, HV *rad_hv)
 				av_push(av, newSVpv(buffer, len));
 			}
 			(void)hv_store(rad_hv, name, strlen(name), newRV_noinc((SV *)av), 0);
-		
+
 			/*
 			 *	Attribute has a single value, so its value just gets
 			 *	added to the hash.
@@ -620,7 +620,7 @@ static int do_perl(void *instance, REQUEST *request, char *function_name)
 	HV		*rad_request_proxy_hv;
 	HV		*rad_request_proxy_reply_hv;
 #endif
-	
+
 	/*
 	 *	Radius has told us to call this function, but none
 	 *	is defined.
@@ -637,7 +637,7 @@ static int do_perl(void *instance, REQUEST *request, char *function_name)
 		dTHXa(interp);
 		PERL_SET_CONTEXT(interp);
 	}
-	
+
 	pthread_mutex_unlock(&inst->clone_mutex);
 #else
 	PERL_SET_CONTEXT(inst->perl);

@@ -707,7 +707,7 @@ static int do_mschap_cpw(rlm_mschap_t *inst,
 			if (len < 0) {
 				goto ntlm_auth_err;
 			}
-			
+
 			buf[len++] = '\n';
 			buf[len] = '\0';
 
@@ -724,7 +724,7 @@ static int do_mschap_cpw(rlm_mschap_t *inst,
 			if (len < 0) {
 				goto ntlm_auth_err;
 			}
-			
+
 			buf[len++] = '\n';
 			buf[len] = '\0';
 
@@ -1459,7 +1459,7 @@ static rlm_rcode_t mod_authenticate(void * instance, REQUEST *request)
 		for (seq = 1; seq < 4; seq++) {
 			vp_cursor_t cursor;
 			int found = 0;
-			
+
 			for (nt_enc = paircursor(&cursor, &request->packet->vps);
 			     nt_enc;
 			     nt_enc = pairnext(&cursor)) {
@@ -1662,7 +1662,7 @@ static rlm_rcode_t mod_authenticate(void * instance, REQUEST *request)
 		} else {
 			name_attr = username;
 		}
-		
+
 		/*
 		 *	with_ntdomain_hack moved here, too.
 		 */
@@ -1676,7 +1676,7 @@ static rlm_rcode_t mod_authenticate(void * instance, REQUEST *request)
 		} else {
 			username_string = name_attr->vp_strvalue;
 		}
-		
+
 		if (response_name &&
 		    ((username->length != response_name->length) ||
 		     (strncasecmp(username->vp_strvalue, response_name->vp_strvalue, username->length) != 0))) {

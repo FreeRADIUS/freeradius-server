@@ -344,7 +344,7 @@ RADIUS_PACKET *fr_dhcp_recv(int sockfd)
 	if (getsockname(sockfd, (struct sockaddr *) &dst, &sizeof_dst) < 0) {
 		fr_strerror_printf("getsockname failed: %s", strerror(errno));
 		rad_free(&packet);
-		return NULL;	
+		return NULL;
 	}
 #endif
 
@@ -474,7 +474,7 @@ static int decode_tlv(RADIUS_PACKET *packet, VALUE_PAIR *tlv, uint8_t const *dat
 	 */
 	head = NULL;
 	paircursor(&cursor, &head);
-	
+
 	p = data;
 	while (p < (data + data_len)) {
 		vp = paircreate(packet, tlv->da->attr | (p[0] << 8), DHCP_MAGIC_VENDOR);
@@ -557,14 +557,14 @@ static int fr_dhcp_attr2vp(RADIUS_PACKET *packet, VALUE_PAIR *vp, uint8_t const 
 		memcpy(q, p , alen);
 		q[alen] = '\0';
 		break;
-	
+
 	/*
 	 *	Value doesn't match up with attribute type, overwrite the
 	 *	vp's original DICT_ATTR with an unknown one.
 	 */
 	raw:
 		if (pair2unknown(vp) < 0) return -1;
-		
+
 	case PW_TYPE_OCTETS:
 		if (alen > 253) return -1;
 		pairmemcpy(vp, p, alen);
@@ -601,7 +601,7 @@ ssize_t fr_dhcp_decode_options(RADIUS_PACKET *packet,
 	while (next < (data + len)) {
 		int num_entries, alen;
 		const DICT_ATTR *da;
-		
+
 		p = next;
 
 		if (*p == 0) break;
@@ -615,7 +615,7 @@ ssize_t fr_dhcp_decode_options(RADIUS_PACKET *packet,
 					   p[0], p[1]);
 			continue;
 		}
-				
+
 		da = dict_attrbyvalue(p[0], DHCP_MAGIC_VENDOR);
 		if (!da) {
 			fr_strerror_printf("Attribute not in our dictionary: %u",
@@ -667,7 +667,7 @@ ssize_t fr_dhcp_decode_options(RADIUS_PACKET *packet,
 				pairfree(head);
 				return -1;
 			}
-			
+
 			/*
 			 *	Hack for ease of use.
 			 */
@@ -683,7 +683,7 @@ ssize_t fr_dhcp_decode_options(RADIUS_PACKET *packet,
 			}
 
 			pairinsert(&cursor, vp);
-			
+
 			for (vp = paircurrent(&cursor);
 			     vp;
 			     vp = pairnext(&cursor)) {
@@ -692,7 +692,7 @@ ssize_t fr_dhcp_decode_options(RADIUS_PACKET *packet,
 			p += alen;
 		} /* loop over array entries */
 	} /* loop over the entire packet */
-	
+
 	return next - data;
 }
 
@@ -802,20 +802,20 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 	/*
 	 *	Loop over the options.
 	 */
-	
+
 	/*
 	 * 	Nothing uses tail after this call, if it does in the future
 	 *	it'll need to find the new tail...
 	 */
 	{
 		VALUE_PAIR *options = NULL;
-		
+
 		if (fr_dhcp_decode_options(packet,
 					   packet->data + 240, packet->data_len - 240,
 					   &options) < 0) {
 			return -1;
 		}
-		
+
 		if (options) {
 			pairinsert(&cursor, options);
 		}
@@ -1073,7 +1073,7 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 	} else {
 		name = "?Unknown?";
 	}
-	
+
 	DEBUG(
 #ifdef WITH_UDPFROMTO
 	      "Encoding %s of id %08x from %s:%d to %s:%d\n",
@@ -1117,7 +1117,7 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 	} else {
 		*p++ = 1;	/* client message */
 	}
-	
+
 	/* DHCP-Hardware-Type */
 	if ((vp = pairfind(packet->vps, 257, DHCP_MAGIC_VENDOR, TAG_ANY))) {
 		*p++ = vp->vp_integer & 0xFF;
@@ -1229,7 +1229,7 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 	 *	instead of being placed verbatim in the filename field.
 	 */
 
-	/* DHCP-Boot-Filename */	
+	/* DHCP-Boot-Filename */
 	if ((vp = pairfind(packet->vps, 269, DHCP_MAGIC_VENDOR, TAG_ANY))) {
 		if (vp->length > DHCP_FILE_LEN) {
 			memcpy(p, vp->vp_strvalue, DHCP_FILE_LEN);
@@ -1263,7 +1263,7 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 				fr_strerror_printf("Cannot decode packet due to internal error: %s", buffer);
 				return -1;
 			}
-			
+
 			switch (vp->da->type) {
 			case PW_TYPE_BYTE:
 				vp->vp_integer = p[0];

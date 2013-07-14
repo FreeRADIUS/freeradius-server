@@ -148,9 +148,9 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, REQUEST *fake, SSL *ssl,
 	VALUE_PAIR	*vp;
 	RADIUS_PACKET	*packet = fake->packet; /* FIXME: api issues */
 	vp_cursor_t	out;
-	
+
 	paircursor(&out, &first);
-	
+
 	while (data_left > 0) {
 		rad_assert(data_left <= data_len);
 		memcpy(&attr, data, sizeof(attr));
@@ -183,7 +183,7 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, REQUEST *fake, SSL *ssl,
 		 *	some other module takes care of any attribute
 		 *	with the M bit set.
 		 */
-		
+
 		/*
 		 *	Get the length.
 		 */
@@ -403,7 +403,7 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, REQUEST *fake, SSL *ssl,
 
 			eapttls_gen_challenge(ssl, challenge,
 					      sizeof(challenge));
-			
+
 			if (memcmp(challenge, vp->vp_octets,
 				   vp->length) != 0) {
 				RDEBUG("Tunneled challenge is incorrect");
@@ -837,7 +837,7 @@ static int eapttls_postproxy(eap_handler_t *handler, void *data)
 		if ((debug_flag > 0) && fr_log_fp) {
 			fprintf(fr_log_fp, "} # server %s\n",
 				(!fake->server) ? "" : fake->server);
-			
+
 			RDEBUG("Final reply from tunneled session code %d",
 			       fake->reply->code);
 			debug_pair_list(fake->reply->vps);
@@ -1096,7 +1096,7 @@ int eapttls_process(eap_handler_t *handler, tls_session_t *tls_session)
 	if (t->copy_request_to_tunnel) {
 		VALUE_PAIR *copy;
 		vp_cursor_t cursor;
-		
+
 		for (vp = paircursor(&cursor, &request->packet->vps); vp; vp = pairnext(&cursor)) {
 			/*
 			 *	The attribute is a server-side thingy,
@@ -1189,7 +1189,7 @@ int eapttls_process(eap_handler_t *handler, tls_session_t *tls_session)
 			(!fake->server) ? "" : fake->server);
 
 		RDEBUG("Got tunneled reply code %d", fake->reply->code);
-		
+
 		debug_pair_list(fake->reply->vps);
 	}
 

@@ -86,7 +86,7 @@ static int all_digits(const char *string)
 
 /** Expand the RHS of a template
  *
- * @note Length of expanded string can be found with talloc_array_length(*out) - 1 	
+ * @note Length of expanded string can be found with talloc_array_length(*out) - 1
  *
  * @param out where to write a pointer to the newly allocated buffer.
  * @param request Current request.
@@ -97,7 +97,7 @@ static int radius_expand_tmpl(char **out, REQUEST *request, value_pair_tmpl_t co
 {
 	VALUE_PAIR *vp;
 	*out = NULL;
-	
+
 	rad_assert(vpt->type != VPT_TYPE_LIST);
 
 	switch (vpt->type) {
@@ -256,7 +256,7 @@ static int do_regex(REQUEST *request, const char *lhs, const char *rhs, bool ifl
 		EVAL_DEBUG("FAIL %d", __LINE__);
 		return -1;
 	}
-	
+
 	compare = regexec(&reg, lhs, REQUEST_MAX_REGEX + 1, rxmatch, 0);
 	regfree(&reg);
 
@@ -265,16 +265,16 @@ static int do_regex(REQUEST *request, const char *lhs, const char *rhs, bool ifl
 	 */
 	if (compare == 0) for (i = 0; i <= REQUEST_MAX_REGEX; i++) {
 		char *r;
-			
+
 		free(request_data_get(request, request,
 				      REQUEST_DATA_REGEX | i));
-		
+
 		/*
 		 *	No %{i}, skip it.
 		 *	We MAY have %{2} without %{1}.
 		 */
 		if (rxmatch[i].rm_so == -1) continue;
-		
+
 		/*
 		 *	Copy substring into allocated buffer
 		 */
@@ -321,7 +321,7 @@ static VALUE_PAIR *get_cast_vp(REQUEST *request, value_pair_tmpl_t const *vpt, D
 		pairfree(&vp);
 		return NULL;
 	}
-	
+
 	return vp;
 }
 
@@ -644,7 +644,7 @@ int radius_evaluate_cond(REQUEST *request, int modreturn, int depth,
 		 *	TRUE || ... = TRUE
 		 */
 		if (rcode && (c->next_op == COND_OR)) return true;
-		
+
 		c = c->next;
 	}
 
@@ -919,7 +919,7 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from)
 
 	for (i = 0; i < tailto; i++) {
 		if (!to_list[i]) continue;
-		
+
 		vp = to_list[i];
 		RDEBUG4("::: to[%d] = %s", i, vp->da->name);
 

@@ -49,10 +49,10 @@ typedef struct rlm_sql_firebird_conn {
 	isc_db_handle dbh;
 	isc_stmt_handle stmt;
 	isc_tr_handle trh;
-	
+
 	ISC_STATUS status[20];		//!< Magic interbase status code array (holds multiple error codes used
 					//!< to construct more detailed error messages.
-					
+
 	ISC_LONG sql_code;
 	XSQLDA *sqlda_out;
 	int sql_dialect;

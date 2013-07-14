@@ -192,21 +192,21 @@ struct request {
 	fr_request_process_t	process;	//!< The function to call to
 						//!< move the request through
 						//!< the state machine.
-						
+
 	RAD_REQUEST_FUNP	handle;		//!< The function to call to
 						//!< move the request through
 						//!< the various server
 						//!< configuration sections.
-						
+
 	struct main_config_t	*root;		//!< Pointer to the main config
 						//!< hack to try and deal with
 						//!< hup.
 
 	request_data_t		*data;		//!< Request metadata.
-	
+
 	RADCLIENT		*client;	//!< The client that originally
 						//!< sent us the request.
-						
+
 #ifdef HAVE_PTHREAD_H
 	pthread_t    		child_pid;	//!< Current thread handling
 						//!< the request.
@@ -238,10 +238,10 @@ struct request {
 	log_debug_t		options;	//!< Request options, currently
 						//!< just holds the debug level
 						//!< for the request.
-						
+
 	char const		*module;	//!< Module the request is
 						//!< currently being processed
-						//!< by.	
+						//!< by.
 	char const		*component; 	//!< Section the request is
 						//!< in.
 
@@ -359,7 +359,7 @@ typedef struct listen_socket_t {
 	int		rate_pps_old;
 	int		rate_pps_now;
 	int		max_rate;
-	
+
 	/* for outgoing sockets */
 	home_server	*home;
 	fr_ipaddr_t	other_ipaddr;
@@ -546,7 +546,7 @@ void		client_free(RADCLIENT *client);
 int		client_add(RADCLIENT_LIST *clients, RADCLIENT *client);
 #ifdef WITH_DYNAMIC_CLIENTS
 void		client_delete(RADCLIENT_LIST *clients, RADCLIENT *client);
-RADCLIENT	*client_from_query(TALLOC_CTX *ctx, char const *identifier, char const *secret, char const *shortname, 
+RADCLIENT	*client_from_query(TALLOC_CTX *ctx, char const *identifier, char const *secret, char const *shortname,
 				   char const *type, char const *server, bool require_ma);
 RADCLIENT	*client_from_request(RADCLIENT_LIST *clients, REQUEST *request);
 #endif
@@ -625,10 +625,10 @@ typedef size_t (*RADIUS_ESCAPE_STRING)(REQUEST *, char *out, size_t outlen, char
 
 ssize_t radius_xlat(char *out, size_t outlen, REQUEST *request, char const *fmt, RADIUS_ESCAPE_STRING escape,
 		    void *escape_ctx);
-		    
+
 ssize_t radius_axlat(char **out, REQUEST *request, char const *fmt, RADIUS_ESCAPE_STRING escape,
 		    	  void *escape_ctx);
-		    
+
 typedef ssize_t (*RAD_XLAT_FUNC)(void *instance, REQUEST *, char const *, char *, size_t);
 int		xlat_register(char const *module, RAD_XLAT_FUNC func, RADIUS_ESCAPE_STRING escape,
 			      void *instance);

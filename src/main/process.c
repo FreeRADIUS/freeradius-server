@@ -305,7 +305,7 @@ static void debug_packet(REQUEST *request, RADIUS_PACKET *packet, int direction)
 		ip = &packet->dst_ipaddr;
 		port = packet->dst_port;
 	}
-	
+
 	/*
 	 *	Client-specific debugging re-prints the input
 	 *	packet into the client log.
@@ -326,7 +326,7 @@ static void debug_packet(REQUEST *request, RADIUS_PACKET *packet, int direction)
 	}
 
 	for (vp = paircursor(&cursor, &packet->vps);
-	     vp; 
+	     vp;
 	     vp = pairnext(&cursor)) {
 		vp_prints(buffer, sizeof(buffer), vp);
 		RDEBUG("\t%s", buffer);
@@ -467,7 +467,7 @@ STATE_MACHINE_DECL(request_done)
 		 */
 	case FR_ACTION_TIMER:
 		break;
-		
+
 #ifdef WITH_PROXY
 		/*
 		 *	Child is still alive, and we're receiving more
@@ -477,7 +477,7 @@ STATE_MACHINE_DECL(request_done)
 		request_common(request, action);
 		break;
 #endif
-		
+
 	default:
 		RDEBUG3("%s: Ignoring action %s", __FUNCTION__, action_codes[action]);
 		break;
@@ -489,17 +489,17 @@ STATE_MACHINE_DECL(request_done)
 	if (request->in_request_hash) {
 		fr_packet_list_yank(pl, request->packet);
 		request->in_request_hash = false;
-		
+
 		/*
 		 *	@todo: do final states for TCP sockets, too?
 		 */
 		request_stats_final(request);
-		
+
 #ifdef WITH_TCP
 		request->listener->count--;
 #endif
 	}
-	
+
 #ifdef WITH_PROXY
 	/*
 	 *	Wait for the proxy ID to expire.  This allows us to
@@ -549,7 +549,7 @@ STATE_MACHINE_DECL(request_done)
 			rad_assert("Internal sanity check failed");
 			exit(2);
 		}
-		
+
 		gettimeofday(&now, NULL);
 #ifdef WITH_PROXY
 	wait_some_more:
@@ -655,7 +655,7 @@ static void request_process_timer(REQUEST *request)
 #endif
 	{
 		rad_assert(request->listener != NULL);
-		
+
 		/*
 		 *	The socket was closed.  Tell the request that
 		 *	there is no point in continuing.
@@ -677,7 +677,7 @@ static void request_process_timer(REQUEST *request)
 	    (request->master_state != REQUEST_STOP_PROCESSING)) {
 		when = request->packet->timestamp;
 		when.tv_sec += request->root->max_request_time;
-		
+
 		/*
 		 *	Taking too long: tell it to die.
 		 */
@@ -762,7 +762,7 @@ static void request_process_timer(REQUEST *request)
 			 *	delay time.
 			 */
 			request->reply->timestamp = now;
-			
+
 			RDEBUG2("Sending delayed reject");
 			DEBUG_PACKET(request, request->reply, 1);
 			request->process = request_cleanup_delay;
@@ -1002,7 +1002,7 @@ static int request_pre_handler(REQUEST *request, UNUSED int action)
 #endif
 	if (request->packet->vps == NULL) {
 		rcode = request->listener->decode(request->listener, request);
-		
+
 #ifdef WITH_UNLANG
 		if (debug_condition) {
 			/*
@@ -1014,7 +1014,7 @@ static int request_pre_handler(REQUEST *request, UNUSED int action)
 			}
 		}
 #endif
-		
+
 		DEBUG_PACKET(request, request->packet, 0);
 	} else {
 		rcode = 0;
@@ -1075,16 +1075,16 @@ STATE_MACHINE_DECL(request_finish)
 			}
 		} else if (request->reply->code == 0) {
 			vp = pairfind(request->config_items, PW_AUTH_TYPE, 0, TAG_ANY);
-			
+
 			if (!vp || (vp->vp_integer != PW_AUTHENTICATION_REJECT)) {
 				RDEBUG2("There was no response configured: "
 					"rejecting request");
 			}
-			
+
 			request->reply->code = PW_AUTHENTICATION_REJECT;
 		}
 	}
-	
+
 	/*
 	 *	Copy Proxy-State from the request to the reply.
 	 */
@@ -1139,7 +1139,7 @@ STATE_MACHINE_DECL(request_finish)
 	pairfree(&request->packet->vps);
 	request->username = NULL;
 	request->password = NULL;
-	
+
 #ifdef WITH_PROXY
 	if (request->proxy) {
 		pairfree(&request->proxy->vps);
@@ -1148,7 +1148,7 @@ STATE_MACHINE_DECL(request_finish)
 		pairfree(&request->proxy_reply->vps);
 	}
 #endif
-	
+
 	RDEBUG2("Finished request %u.", request->number);
 }
 
@@ -1227,7 +1227,7 @@ STATE_MACHINE_DECL(request_running)
 
 #ifdef HAVE_PTHREAD_H
 			request->child_pid = NO_SUCH_CHILD_PID;
-#endif	
+#endif
 			request->child_state = REQUEST_DONE;
 		}
 		break;
@@ -1281,7 +1281,7 @@ int request_receive(rad_listen_t *listener, RADIUS_PACKET *packet,
 			case PW_ACCOUNTING_REQUEST:
 				FR_STATS_INC(acct, total_dup_requests);
 				break;
-#endif					
+#endif
 #ifdef WITH_COA
 			case PW_COA_REQUEST:
 				FR_STATS_INC(coa, total_dup_requests);
@@ -1520,9 +1520,9 @@ static void tcp_socket_timer(void *ctx)
 		if (timercmp(&end, &now, <=)) {
 			listener->print(listener, buffer, sizeof(buffer));
 			DEBUG("Reached maximum lifetime on socket %s", buffer);
-			
+
 		do_close:
-			
+
 			listener->status = RAD_LISTEN_STATUS_CLOSED;
 			event_new_fd(listener);
 			return;
@@ -1594,7 +1594,7 @@ static int disconnect_all_proxied_requests(void *ctx, void *data)
 	rad_listen_t *this = ctx;
 	RADIUS_PACKET **proxy_p = data;
 	REQUEST *request;
-	
+
 	request = fr_packet2myptr(REQUEST, proxy, proxy_p);
 	if (request->proxy->sockfd != this->fd) return 0;
 
@@ -1622,7 +1622,7 @@ static int remove_all_requests(void *ctx, void *data)
 	rad_listen_t *this = ctx;
 	RADIUS_PACKET **packet_p = data;
 	REQUEST *request;
-	
+
 	request = fr_packet2myptr(REQUEST, packet, packet_p);
 	if (request->packet->sockfd != this->fd) return 0;
 
@@ -1769,7 +1769,7 @@ static int insert_into_proxy_hash(REQUEST *request)
 	}
 
 	rad_assert(request->proxy->id >= 0);
-	
+
 	request->proxy_listener = proxy_listener;
 	if (!fr_packet_list_insert(proxy_list, &request->proxy)) {
 		fr_packet_list_id_free(proxy_list, request->proxy);
@@ -1808,18 +1808,18 @@ static int process_proxy_reply(REQUEST *request)
 	int rcode;
 	int post_proxy_type = 0;
 	VALUE_PAIR *vp;
-	
+
 	/*
 	 *	Delete any reply we had accumulated until now.
 	 */
 	pairfree(&request->reply->vps);
-	
+
 	/*
 	 *	Run the packet through the post-proxy stage,
 	 *	BEFORE playing games with the attributes.
 	 */
 	vp = pairfind(request->config_items, PW_POST_PROXY_TYPE, 0, TAG_ANY);
-	
+
 	/*
 	 *	If we have a proxy_reply, and it was a reject, setup
 	 *	post-proxy-type Reject
@@ -1836,18 +1836,18 @@ static int process_proxy_reply(REQUEST *request)
 			vp->vp_integer = dval->value;
 		}
 	}
-	
+
 	if (vp) {
 		post_proxy_type = vp->vp_integer;
-		
+
 		RDEBUG2("  Found Post-Proxy-Type %s",
 			dict_valnamebyattr(PW_POST_PROXY_TYPE, 0,
 					   post_proxy_type));
 	}
-	
+
 	if (request->home_pool && request->home_pool->virtual_server) {
 		char const *old_server = request->server;
-		
+
 		request->server = request->home_pool->virtual_server;
 		RDEBUG2(" server %s {", request->server);
 		rcode = process_post_proxy(post_proxy_type, request);
@@ -1877,26 +1877,26 @@ static int process_proxy_reply(REQUEST *request)
 		 *	attributes from us and remote server.
 		 */
 		pairdelete(&request->proxy_reply->vps, PW_PROXY_STATE, 0, TAG_ANY);
-		
+
 		/*
 		 *	Add the attributes left in the proxy
 		 *	reply to the reply list.
 		 */
 		pairfilter(request->reply, &request->reply->vps,
 			  &request->proxy_reply->vps, 0, 0, TAG_ANY);
-		
+
 		/*
 		 *	Free proxy request pairs.
 		 */
 		pairfree(&request->proxy->vps);
 	}
-	
+
 	switch (rcode) {
 	default:  /* Don't do anything */
 		break;
 	case RLM_MODULE_FAIL:
 		return 0;
-		
+
 	case RLM_MODULE_HANDLED:
 		return 0;
 	}
@@ -2024,7 +2024,7 @@ int request_proxy_reply(RADIUS_PACKET *packet)
 #endif
 
 	request->process(request, FR_ACTION_PROXY_REPLY);
-	
+
 	return 1;
 }
 
@@ -2037,7 +2037,7 @@ static int setup_post_proxy_fail(REQUEST *request)
 	if (request->proxy->code == PW_AUTHENTICATION_REQUEST) {
 		dval = dict_valbyname(PW_POST_PROXY_TYPE, 0,
 				      "Fail-Authentication");
-		
+
 	} else if (request->proxy->code == PW_ACCOUNTING_REQUEST) {
 		dval = dict_valbyname(PW_POST_PROXY_TYPE, 0,
 				      "Fail-Accounting");
@@ -2053,16 +2053,16 @@ static int setup_post_proxy_fail(REQUEST *request)
 		request_cleanup_delay_init(request, NULL);
 		return 0;
 	}
-	
+
 	if (!dval) dval = dict_valbyname(PW_POST_PROXY_TYPE, 0, "Fail");
-	
+
 	if (!dval) {
 		DEBUG("No Post-Proxy-Type Fail: ignoring");
 		pairdelete(&request->config_items, PW_POST_PROXY_TYPE, 0, TAG_ANY);
 		request_cleanup_delay_init(request, NULL);
 		return 0;
 	}
-	
+
 	vp = pairfind(request->config_items, PW_POST_PROXY_TYPE, 0, TAG_ANY);
 	if (!vp) vp = radius_paircreate(request, &request->config_items,
 					PW_POST_PROXY_TYPE, 0);
@@ -2151,7 +2151,7 @@ static int request_will_proxy(REQUEST *request)
 		 */
 		if (request->packet->code == PW_AUTHENTICATION_REQUEST) {
 			pool = realm->auth_pool;
-			
+
 #ifdef WITH_ACCOUNTING
 		} else if (request->packet->code == PW_ACCOUNTING_REQUEST) {
 			pool = realm->acct_pool;
@@ -2177,7 +2177,7 @@ static int request_will_proxy(REQUEST *request)
 		case PW_AUTHENTICATION_REQUEST:
 			pool_type = HOME_TYPE_AUTH;
 			break;
-			
+
 #ifdef WITH_ACCOUNTING
 		case PW_ACCOUNTING_REQUEST:
 			pool_type = HOME_TYPE_ACCT;
@@ -2197,7 +2197,7 @@ static int request_will_proxy(REQUEST *request)
 
 		pool = home_pool_byname(vp->vp_strvalue, pool_type);
 	}
-	
+
 	if (!pool) {
 		RWDEBUG2("Cancelling proxy as no home pool exists");
 		return 0;
@@ -2316,7 +2316,7 @@ static int request_will_proxy(REQUEST *request)
 
 	if (request->home_pool->virtual_server) {
 		char const *old_server = request->server;
-		
+
 		request->server = request->home_pool->virtual_server;
 		RDEBUG2(" server %s {", request->server);
 		rcode = process_pre_proxy(pre_proxy_type, request);
@@ -2443,7 +2443,7 @@ static int request_proxy_anew(REQUEST *request)
 #endif
 
 	rad_assert(old_home != NULL);
-	
+
 	/*
 	 *	Find a live home server for the request.
 	 */
@@ -2456,7 +2456,7 @@ static int request_proxy_anew(REQUEST *request)
 		if (!setup_post_proxy_fail(request)) {
 			return 0;
 		}
-		
+
 		request_queue_or_run(request, proxy_running);
 		return 0;
 	}
@@ -2505,7 +2505,7 @@ static int request_proxy_anew(REQUEST *request)
 						PW_ACCT_DELAY_TIME, 0);
 		if (vp) {
 			struct timeval now;
-			
+
 			gettimeofday(&now, NULL);
 			vp->vp_integer += now.tv_sec - request->proxy_retransmit.tv_sec;
 		}
@@ -2555,7 +2555,7 @@ STATE_MACHINE_DECL(request_ping)
 		 *	work.
 		 */
 		if (home->state == HOME_STATE_ALIVE) break;
-		
+
 		/*
 		 *	We haven't received enough ping responses to mark it
 		 *	"alive".  Wait a bit.
@@ -2574,7 +2574,7 @@ STATE_MACHINE_DECL(request_ping)
 		home->num_sent_pings = 0;
 		home->num_received_pings = 0;
 		gettimeofday(&home->revive_time, NULL);
-		
+
 		fr_event_delete(el, &home->ev);
 
 		RPROXY("Marking home server %s port %d alive",
@@ -2657,7 +2657,7 @@ static void ping_home_server(void *ctx)
 	} else {
 #ifdef WITH_ACCOUNTING
 		request->proxy->code = PW_ACCOUNTING_REQUEST;
-		
+
 		pairmake(request->proxy, &request->proxy->vps,
 			 "User-Name", home->ping_user_name, T_OP_SET);
 		pairmake(request->proxy, &request->proxy->vps,
@@ -2778,11 +2778,11 @@ static void mark_home_server_zombie(home_server *home)
 		home->zombie_period_start.tv_sec = home->last_packet_sent;
 		home->zombie_period_start.tv_usec = 0;
 	}
-	
+
 	fr_event_delete(el, &home->ev);
 	home->num_sent_pings = 0;
 	home->num_received_pings = 0;
-	
+
 	PROXY( "Marking home server %s port %d as zombie (it has not responded in %d seconds).",
 	       inet_ntop(home->ipaddr.af, &home->ipaddr.ipaddr,
 			 buffer, sizeof(buffer)),
@@ -3087,7 +3087,7 @@ static void request_coa_originate(REQUEST *request)
 	} else if ((vp = pairfind(coa->proxy->vps, PW_PACKET_DST_IPV6_ADDRESS, 0, TAG_ANY)) != NULL) {
 		ipaddr.af = AF_INET6;
 		ipaddr.ipaddr.ip6addr = vp->vp_ipv6addr;
-		
+
 	} else if ((vp = pairfind(coa->proxy->vps, PW_HOME_SERVER_POOL, 0, TAG_ANY)) != NULL) {
 		coa->home_pool = home_pool_byname(vp->vp_strvalue,
 						  HOME_TYPE_COA);
@@ -3147,7 +3147,7 @@ static void request_coa_originate(REQUEST *request)
 		case PW_DISCONNECT_REQUEST:
 			coa->proxy->code = vp->vp_integer;
 			break;
-			
+
 		default:
 			DEBUG("Cannot set CoA Packet-Type to code %d",
 			      vp->vp_integer);
@@ -3188,7 +3188,7 @@ static void request_coa_originate(REQUEST *request)
 
 	if (coa->home_pool && coa->home_pool->virtual_server) {
 		char const *old_server = coa->server;
-		
+
 		coa->server = coa->home_pool->virtual_server;
 		RDEBUG2(" server %s {", coa->server);
 		rcode = process_pre_proxy(pre_proxy_type, coa);
@@ -3301,7 +3301,7 @@ static void request_coa_timer(REQUEST *request)
 		delay -= delay / 10;
 		delay += request->delay;
 		request->delay = delay;
-		
+
 		when = request->proxy->timestamp;
 		tv_add(&when, delay);
 
@@ -3323,7 +3323,7 @@ static void request_coa_timer(REQUEST *request)
 		if (!setup_post_proxy_fail(request)) {
 			return;
 		}
-		
+
 		request_queue_or_run(request, proxy_running);
 		return;
 	}
@@ -3396,7 +3396,7 @@ STATE_MACHINE_DECL(coa_running)
 	case FR_ACTION_TIMER:
 		request_coa_timer(request);
 		break;
-	
+
 	case FR_ACTION_PROXY_REPLY:
 		request_common(request, action);
 		break;
@@ -3424,7 +3424,7 @@ STATE_MACHINE_DECL(request_coa_process)
 	case FR_ACTION_TIMER:
 		request_coa_timer(request);
 		break;
-		
+
 	case FR_ACTION_PROXY_REPLY:
 		rad_assert(request->parent == NULL);
 #ifdef HAVE_PTHREAD_H
@@ -3442,7 +3442,7 @@ STATE_MACHINE_DECL(request_coa_process)
 	case FR_ACTION_RUN:
 		request_running(request, action);
 		break;
-		
+
 	default:
 		RDEBUG3("%s: Ignoring action %s", __FUNCTION__, action_codes[action]);
 		break;
@@ -3478,11 +3478,11 @@ static void event_socket_handler(UNUSED fr_event_list_t *xel, UNUSED int fd, voi
 		listener->print(listener, buffer, sizeof(buffer));
 		ERROR("FATAL: Asked to read from closed socket: %s",
 		       buffer);
-	
+
 		rad_panic("Socket was closed on us!");
 		_exit(1);
 	}
-	
+
 	listener->recv(listener);
 }
 
@@ -3615,7 +3615,7 @@ int event_new_fd(rad_listen_t *this)
 
 			if (sock->home) {
 				sock->home->limit.num_connections++;
-				
+
 #ifdef HAVE_PTHREAD_H
 				/*
 				 *	If necessary, add it to the list of
@@ -3642,7 +3642,7 @@ int event_new_fd(rad_listen_t *this)
 				}
 			}
 		}
-#endif		
+#endif
 
 #ifdef WITH_DETAIL
 		/*
@@ -3651,7 +3651,7 @@ int event_new_fd(rad_listen_t *this)
 		 */
 		if (this->type == RAD_LISTEN_DETAIL) {
 			this->status = RAD_LISTEN_STATUS_KNOWN;
-			
+
 			/*
 			 *	Set up the first poll interval.
 			 */
@@ -3687,7 +3687,7 @@ int event_new_fd(rad_listen_t *this)
 			exit(1);
 		}
 		FD_MUTEX_UNLOCK(&fd_mutex);
-		
+
 		this->status = RAD_LISTEN_STATUS_KNOWN;
 		return 1;
 	}
@@ -3724,7 +3724,7 @@ int event_new_fd(rad_listen_t *this)
 				this->status = RAD_LISTEN_STATUS_FINISH;
 				goto finish;
 			}
-		}		
+		}
 #ifdef WITH_PROXY
 		else {
 			int count;
@@ -3846,13 +3846,13 @@ int event_new_fd(rad_listen_t *this)
 			 */
 			gettimeofday(&when, NULL);
 			when.tv_sec += 30;
-			
+
 			if (!fr_event_insert(el,
 					     (fr_event_callback_t) event_new_fd,
 					     this, &when, &sock->ev)) {
 				rad_panic("Failed to insert event");
 			}
-		
+
 			return 1;
 		}
 
@@ -3862,7 +3862,7 @@ int event_new_fd(rad_listen_t *this)
 		 */
 		this->status = RAD_LISTEN_STATUS_FINISH;
 	}
-	
+
 finish:
 	if (this->status == RAD_LISTEN_STATUS_FINISH) {
 		listen_socket_t *sock = this->data;
@@ -3881,7 +3881,7 @@ finish:
 		FD_MUTEX_LOCK(&fd_mutex);
 		fr_event_fd_delete(el, 0, this->fd);
 		FD_MUTEX_UNLOCK(&fd_mutex);
-		
+
 #ifdef WITH_PROXY
 		/*
 		 *	Remove it from the list of sockets to be used
@@ -3960,7 +3960,7 @@ static void handle_signal_self(int flag)
 #ifdef WITH_DETAIL
 	if ((flag & RADIUS_SIGNAL_SELF_DETAIL) != 0) {
 		rad_listen_t *this;
-		
+
 		/*
 		 *	FIXME: O(N) loops suck.
 		 */
@@ -4011,7 +4011,7 @@ static void handle_signal_self(int flag)
 			/*
 			 *	Sockets should only be added to the
 			 *	proxy_listener_list if they have limits.
-			 *	
+			 *
 			 */
 			rad_assert(sock->home->limit.lifetime || sock->home->limit.idle_timeout);
 
@@ -4201,7 +4201,7 @@ int radius_event_init(CONF_SECTION *cs, int have_children)
        if (listen_init(cs, &head, spawn_flag) < 0) {
 		_exit(1);
 	}
-	
+
 	mainconfig.listen = head;
 
 	/*

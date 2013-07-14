@@ -45,7 +45,7 @@ void fr_hmac_md5(uint8_t const *text, size_t text_len, uint8_t const *key, size_
 	uint8_t k_opad[65];    /* outer padding - key XORd with opad */
 	uint8_t tk[16];
 	int i;
-	
+
 	/* if key is longer than 64 bytes reset it to key=MD5(key) */
 	if (key_len > 64) {
 		FR_MD5_CTX tctx;

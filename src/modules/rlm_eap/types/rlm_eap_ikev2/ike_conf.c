@@ -47,9 +47,9 @@ enum {
 	OPT_ENCRYPTION	= 0x04,
 	OPT_DHGROUP	= 0x08,
 	OPT_NEEDED	= OPT_INTEGRITY | OPT_PRF | OPT_ENCRYPTION | OPT_DHGROUP
-	
+
 };
-	
+
 
 
 static struct config_transform config_transforms[] =
@@ -255,17 +255,17 @@ static int rad_load_transforms(struct Protocol *prot, CONF_SECTION *cf)
 	CONF_PAIR *cp;
 	int option_exists = 0;
 	int i = 0;
-	
+
 	rad_assert(prot);
 	rad_assert(cf);
-	
+
 	DEBUG(IKEv2_LOG_PREFIX "Begin load transforms");
-	
+
 	while(config_transforms[i].name)
 	{
 		uint8_t id;
 		uint16_t keylen;
-		
+
 		for(cp = cf_pair_find(cf,config_transforms[i].name);
 		    cp;
 		    cp = cf_pair_find_next(cf,cp,config_transforms[i].name)) {
@@ -274,7 +274,7 @@ static int rad_load_transforms(struct Protocol *prot, CONF_SECTION *cf)
 				      config_transforms[i].name,cf_pair_value(cp));
 				return -1;
 			}
-		
+
 			if (!AddTransform(prot,config_transforms[i].type,id,keylen)) {
 				ERROR(IKEv2_LOG_PREFIX "Problem with transform %s:%s",
 				      config_transforms[i].name,cf_pair_value(cp));
@@ -295,7 +295,7 @@ static int rad_load_transforms(struct Protocol *prot, CONF_SECTION *cf)
 }
 
 
-void rad_update_shared_seclist(struct sharedSecList **list, char const *id, VALUE_PAIR *items, 
+void rad_update_shared_seclist(struct sharedSecList **list, char const *id, VALUE_PAIR *items,
 				   int default_client_authtype)
 {
 	rad_assert(list && id);
@@ -307,10 +307,10 @@ void rad_update_shared_seclist(struct sharedSecList **list, char const *id, VALU
 	VALUE_PAIR *vp;
 
 	memcpy(&ike_id, &id, sizeof(id));
-	
+
 	if (!items) {
 		AddSharedSec(list, 0, ike_id, NULL, default_client_authtype);
-		
+
 		return;
 	}
 
@@ -324,7 +324,7 @@ void rad_update_shared_seclist(struct sharedSecList **list, char const *id, VALU
 			DEBUG(IKEv2_LOG_PREFIX "[%s] -- Not valid id type", id);
 		}
 	}
-	
+
 	//secret
 	vp = pairfind(items, RAD_EAP_IKEV2_SECRET, 0, TAG_ANY);
 	if (!vp || !vp->length) {
@@ -332,20 +332,20 @@ void rad_update_shared_seclist(struct sharedSecList **list, char const *id, VALU
 	} else {
 		secret = vp->vp_strvalue;
 	}
-	
+
 	//authtype
 	vp = pairfind(items, RAD_EAP_IKEV2_AUTHTYPE, 0, TAG_ANY);
 	if (vp && vp->length) {
 		authtype = AuthtypeFromName(vp->vp_strvalue);
-	
+
 		if (authtype == -1) {
-			ERROR(IKEv2_LOG_PREFIX "Unsupported 'EAP-IKEv2-AuthType' value (%s),using 'both'", 
+			ERROR(IKEv2_LOG_PREFIX "Unsupported 'EAP-IKEv2-AuthType' value (%s),using 'both'",
 			      vp->vp_strvalue);
 			authtype = IKEv2_AUTH_BOTH;
 		}
 
 	}
-	
+
 	AddSharedSec(list, id_type, ike_id, secret, authtype);
 }
 

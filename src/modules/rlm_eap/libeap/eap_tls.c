@@ -669,14 +669,14 @@ static fr_tls_status_t eaptls_operation(fr_tls_status_t status,
 		eaptls_request(handler->eap_ds, tls_session);
 		return FR_TLS_HANDLED;
 	}
-		
+
 	/*
 	 *	If there is no data to send i.e
 	 *	dirty_out.used <=0 and if the SSL
 	 *	handshake is finished, then return a
 	 *	EPTLS_SUCCESS
 	 */
-	
+
 	if (SSL_is_init_finished(tls_session->ssl)) {
 		/*
 		 *	Init is finished.  The rest is
@@ -685,7 +685,7 @@ static fr_tls_status_t eaptls_operation(fr_tls_status_t status,
 		tls_session->info.content_type = application_data;
 		return FR_TLS_SUCCESS;
 	}
-	
+
 	/*
 	 *	Who knows what happened...
 	 */
@@ -824,7 +824,7 @@ fr_tls_status_t eaptls_process(eap_handler_t *handler)
 		 *	there more fragments coming, then send ACK,
 		 *	and get the caller to continue the
 		 *	conversation.
-		 */	
+		 */
 		if ((status == FR_TLS_MORE_FRAGMENTS) ||
 		    (status == FR_TLS_MORE_FRAGMENTS_WITH_LENGTH) ||
 	    	    (status == FR_TLS_FIRST_FRAGMENT)) {

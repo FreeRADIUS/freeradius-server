@@ -54,7 +54,7 @@ typedef struct rlm_logintime_t {
 static const CONF_PARSER module_config[] = {
   { "minimum-timeout", PW_TYPE_INTEGER | PW_TYPE_DEPRECATED, offsetof(rlm_logintime_t,min_time), NULL, NULL},
   { "minimum_timeout", PW_TYPE_INTEGER, offsetof(rlm_logintime_t,min_time), NULL, "60" },
-  
+
   { NULL, -1, 0, NULL, NULL }
 };
 
@@ -153,13 +153,13 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 	if (!ends) {
 		return RLM_MODULE_NOOP;
 	}
-	
+
 	/*
 	 *      Authentication is OK. Now see if this user may login at this time of the day.
 	 */
-	RDEBUG("Checking Login-Time");	
+	RDEBUG("Checking Login-Time");
 
-	/* 
+	/*
 	 *	Compare the time the request was received with the current Login-Time value
 	 */
 	left = timestr_match(ends->vp_strvalue, request->timestamp);
@@ -170,40 +170,40 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 	if (left == 0) {
 		return RLM_MODULE_OK;
 	}
-	
+
 	/*
 	 *      The min_time setting is to deal with NAS that won't allow Session-Timeout values below a certain value
 	 *	For example some Alcatel Lucent products won't allow a Session-Timeout < 300 (5 minutes).
 	 *
 	 *	We don't know were going to get another chance to lock out the user, so we need to do it now.
-	 */	
+	 */
 	if (left < inst->min_time) {
 		REDEBUG("Login outside of allowed time-slot (session end %s, with lockout %i seconds before)",
 			ends->vp_strvalue, inst->min_time);
-		
+
 		return RLM_MODULE_USERLOCK;
 	}
-	
+
 	/* else left > inst->min_time */
-	
+
 	/*
-	 *	There's time left in the users session, inform the NAS by including a Session-Timeout 
+	 *	There's time left in the users session, inform the NAS by including a Session-Timeout
 	 *	attribute in the reply, or modifying the existing one.
 	 */
 	RDEBUG("Login within allowed time-slot, %i seconds left in this session", left);
-	
+
 	timeout = pairfind(request->reply->vps, PW_SESSION_TIMEOUT, 0, TAG_ANY);
 	if (timeout) {	/* just update... */
 		if (timeout->vp_integer > (unsigned int) left) {
 			timeout->vp_integer = left;
 		}
-	} else {	
+	} else {
 		timeout = radius_paircreate(request, &request->reply->vps, PW_SESSION_TIMEOUT, 0);
 		timeout->vp_integer = left;
 	}
-	
+
 	RDEBUG("reply:Session-Timeout set to %i", left);
-		
+
 	return RLM_MODULE_OK;
 }
 

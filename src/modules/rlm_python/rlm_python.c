@@ -42,7 +42,7 @@ RCSID("$Id$")
 struct py_function_def {
 	PyObject *module;
 	PyObject *function;
-	
+
 	char     *module_name;
 	char     *function_name;
 };
@@ -144,14 +144,14 @@ static PyObject *mod_radlog(UNUSED PyObject *module, PyObject *args)
 {
 	int status;
 	char *msg;
-	
+
 	if (!PyArg_ParseTuple(args, "is", &status, &msg)) {
 		return NULL;
 	}
 
 	radlog(status, "%s", msg);
 	Py_INCREF(Py_None);
-	
+
 	return Py_None;
 }
 
@@ -173,7 +173,7 @@ static void mod_error(void)
 		*pTraceback = NULL,
 		*pStr1 = NULL,
 		*pStr2 = NULL;
-	
+
 	Pyx_BLOCK_THREADS
 
 		PyErr_Fetch(&pType, &pValue, &pTraceback);
@@ -184,14 +184,14 @@ static void mod_error(void)
 		goto failed;
 
 	ERROR("rlm_python:EXCEPT:%s: %s", PyString_AsString(pStr1), PyString_AsString(pStr2));
-	
+
 failed:
 	Py_XDECREF(pStr1);
 	Py_XDECREF(pStr2);
 	Py_XDECREF(pType);
 	Py_XDECREF(pValue);
 	Py_XDECREF(pTraceback);
-	
+
 	Pyx_UNBLOCK_THREADS
 		}
 
@@ -201,26 +201,26 @@ static int mod_init(void)
 	static char name[] = "radiusd";
 
 	if (radiusd_module) return 0;
-	
+
 	Py_SetProgramName(name);
 	Py_InitializeEx(0);				/* Don't override signal handlers */
 	PyEval_InitThreads(); 				/* This also grabs a lock */
 	if ((radiusd_module = Py_InitModule3("radiusd", radiusd_methods,
 					     "FreeRADIUS Module.")) == NULL)
 		goto failed;
-	
+
 	for (i = 0; radiusd_constants[i].name; i++) {
 		if ((PyModule_AddIntConstant(radiusd_module, radiusd_constants[i].name,
 					     radiusd_constants[i].value)) < 0) {
 			goto failed;
 		}
 	}
-	
+
 	PyEval_ReleaseLock(); /* Drop lock grabbed by InitThreads */
-	
+
 	DEBUG("mod_init done");
 	return 0;
-	
+
 failed:
 	mod_error();
 	Py_XDECREF(radiusd_module);
@@ -328,27 +328,27 @@ static int mod_populate_vptuple(PyObject *pPair, VALUE_PAIR *vp)
 {
 	PyObject *pStr = NULL;
 	char buf[1024];
-	
+
 	/* Look at the vp_print_name? */
-	
+
 	if (vp->da->flags.has_tag)
 		pStr = PyString_FromFormat("%s:%d", vp->da->name, vp->tag);
 	else
 		pStr = PyString_FromString(vp->da->name);
-	
+
 	if (!pStr)
 		goto failed;
-	
+
 	PyTuple_SET_ITEM(pPair, 0, pStr);
-	
+
 	vp_prints_value(buf, sizeof(buf), vp, '"');
-	
+
 	if ((pStr = PyString_FromString(buf)) == NULL)
 		goto failed;
 	PyTuple_SET_ITEM(pPair, 1, pStr);
-	
+
 	return 0;
-	
+
 failed:
 	return -1;
 }
@@ -361,16 +361,16 @@ static rlm_rcode_t do_python(REQUEST *request, PyObject *pFunc, char const *func
 	PyObject	*pArgs = NULL;
 	int		tuplelen;
 	int		ret;
-	
+
 	PyGILState_STATE gstate;
 
 	/* Return with "noop" if the function is not defined. */
 	if (!pFunc)
 		return RLM_MODULE_NOOP;
-	
+
 	/* Default return value is "OK, continue" */
 	ret = RLM_MODULE_OK;
-	
+
 	/*
 	 *	We will pass a tuple containing (name, value) tuples
 	 *	We can safely use the Python function to build up a
@@ -389,7 +389,7 @@ static rlm_rcode_t do_python(REQUEST *request, PyObject *pFunc, char const *func
 	}
 
 	gstate = PyGILState_Ensure();
-	
+
 	if (tuplelen == 0) {
 		Py_INCREF(Py_None);
 		pArgs = Py_None;
@@ -402,11 +402,11 @@ static rlm_rcode_t do_python(REQUEST *request, PyObject *pFunc, char const *func
 		     vp;
 		     vp = pairnext(&cursor), i++) {
 			PyObject *pPair;
-			
+
 			/* The inside tuple has two only: */
 			if ((pPair = PyTuple_New(2)) == NULL)
 				goto failed;
-			
+
 			if (mod_populate_vptuple(pPair, vp) == 0) {
 				/* Put the tuple inside the container */
 				PyTuple_SET_ITEM(pArgs, i, pPair);
@@ -417,13 +417,13 @@ static rlm_rcode_t do_python(REQUEST *request, PyObject *pFunc, char const *func
 			}
 		}
 	}
-	
+
 	/* Call Python function. */
 	pRet = PyObject_CallFunctionObjArgs(pFunc, pArgs, NULL);
-	
+
 	if (!pRet)
 		goto failed;
-	
+
 	if (!request)
 		goto okay;
 
@@ -442,12 +442,12 @@ static rlm_rcode_t do_python(REQUEST *request, PyObject *pFunc, char const *func
 	 */
 	if (PyTuple_CheckExact(pRet)) {
 		PyObject *pTupleInt;
-		
+
 		if (PyTuple_GET_SIZE(pRet) != 3) {
 			ERROR("rlm_python:%s: tuple must be (return, replyTuple, configTuple)", funcname);
 			goto failed;
 		}
-		
+
 		pTupleInt = PyTuple_GET_ITEM(pRet, 0);
 		if (!PyInt_CheckExact(pTupleInt)) {
 			ERROR("rlm_python:%s: first tuple element not an integer", funcname);
@@ -480,13 +480,13 @@ okay:
 	Py_DECREF(pRet);
 	PyGILState_Release(gstate);
 	return ret;
-	
+
 failed:
 	mod_error();
 	Py_XDECREF(pArgs);
 	Py_XDECREF(pRet);
 	PyGILState_Release(gstate);
-	
+
 	return RLM_MODULE_FAIL;
 }
 
@@ -498,20 +498,20 @@ static int mod_load_function(struct py_function_def *def)
 {
 	char const *funcname = "mod_load_function";
 	PyGILState_STATE gstate;
-	
+
 	gstate = PyGILState_Ensure();
-	
+
 	if (def->module_name != NULL && def->function_name != NULL) {
 		if ((def->module = PyImport_ImportModule(def->module_name)) == NULL) {
 			ERROR("rlm_python:%s: module '%s' is not found", funcname, def->module_name);
 			goto failed;
 		}
-		
+
 		if ((def->function = PyObject_GetAttrString(def->module, def->function_name)) == NULL) {
 			ERROR("rlm_python:%s: function '%s.%s' is not found", funcname, def->module_name, def->function_name);
 			goto failed;
 		}
-		
+
 		if (!PyCallable_Check(def->function)) {
 			ERROR("rlm_python:%s: function '%s.%s' is not callable", funcname, def->module_name, def->function_name);
 			goto failed;
@@ -519,7 +519,7 @@ static int mod_load_function(struct py_function_def *def)
 	}
 	PyGILState_Release(gstate);
 	return 0;
-	
+
 failed:
 	mod_error();
 	ERROR("rlm_python:%s: failed to import python function '%s.%s'", funcname, def->module_name, def->function_name);
@@ -551,7 +551,7 @@ static void mod_funcdef_clear(struct py_function_def *def)
 static void mod_instance_clear(rlm_python_t *inst)
 {
 #define A(x) mod_funcdef_clear(&inst->x)
-	
+
 	A(instantiate);
 	A(authorize);
 	A(authenticate);
@@ -617,9 +617,9 @@ static int mod_detach(void *instance)
 {
 	rlm_python_t *inst = instance;
 	int	     ret;
-	
+
 	ret = do_python(NULL, inst->detach.function, "detach");
-	
+
 	mod_instance_clear(inst);
 	return ret;
 }

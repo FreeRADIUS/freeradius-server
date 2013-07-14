@@ -73,7 +73,7 @@ static void tv_sub(struct timeval *end, struct timeval *start,
 	}
 	elapsed->tv_usec += end->tv_usec;
 	elapsed->tv_usec -= start->tv_usec;
-	
+
 	if (elapsed->tv_usec >= USEC) {
 		elapsed->tv_usec -= USEC;
 		elapsed->tv_sec++;
@@ -457,7 +457,7 @@ void request_stats_reply(REQUEST *request)
 	 */
 	rad_assert(request->packet->code == PW_STATUS_SERVER);
 	rad_assert(request->listener->type == RAD_LISTEN_NONE);
-		
+
 	flag = pairfind(request->packet->vps, 127, VENDORPEC_FREERADIUS, TAG_ANY);
 	if (!flag || (flag->vp_integer == 0)) return;
 
@@ -468,7 +468,7 @@ void request_stats_reply(REQUEST *request)
 	    ((flag->vp_integer & 0xc0) == 0)) {
 		request_stats_addvp(request, authvp, &radius_auth_stats);
 	}
-		
+
 #ifdef WITH_ACCOUNTING
 	/*
 	 *	Accounting
@@ -509,7 +509,7 @@ void request_stats_reply(REQUEST *request)
 		vp = radius_paircreate(request, &request->reply->vps,
 				       177, VENDORPEC_FREERADIUS);
 		if (vp) vp->vp_date = hup_time.tv_sec;
-		
+
 #ifdef HAVE_PTHREAD_H
 		int i, array[RAD_LISTEN_MAX], pps[2];
 
@@ -518,7 +518,7 @@ void request_stats_reply(REQUEST *request)
 		for (i = 0; i <= 4; i++) {
 			vp = radius_paircreate(request, &request->reply->vps,
 					       162 + i, VENDORPEC_FREERADIUS);
-			
+
 			if (!vp) continue;
 			vp->vp_integer = array[i];
 		}
@@ -526,7 +526,7 @@ void request_stats_reply(REQUEST *request)
 		for (i = 0; i < 2; i++) {
 			vp = radius_paircreate(request, &request->reply->vps,
 					       181 + i, VENDORPEC_FREERADIUS);
-			
+
 			if (!vp) continue;
 			vp->vp_integer = pps[i];
 		}
@@ -554,7 +554,7 @@ void request_stats_reply(REQUEST *request)
 				ipaddr.af = AF_INET;
 				ipaddr.ipaddr.ip4addr.s_addr = server_ip->vp_ipaddr;
 				cl = listener_find_client_list(&ipaddr, server_port->vp_integer);
-							
+
 				/*
 				 *	Not found: don't do anything
 				 */
@@ -611,7 +611,7 @@ void request_stats_reply(REQUEST *request)
 					}
 				}
 			}
-			
+
 			if (server_ip) {
 				pairadd(&request->reply->vps,
 					paircopyvp(request->reply, server_ip));
@@ -652,18 +652,18 @@ void request_stats_reply(REQUEST *request)
 
 		server_port = pairfind(request->packet->vps, 171, VENDORPEC_FREERADIUS, TAG_ANY);
 		if (!server_port) return;
-		
+
 		ipaddr.af = AF_INET;
 		ipaddr.ipaddr.ip4addr.s_addr = server_ip->vp_ipaddr;
 		this = listener_find_byipaddr(&ipaddr,
 					      server_port->vp_integer,
 					      IPPROTO_UDP);
-		
+
 		/*
 		 *	Not found: don't do anything
 		 */
 		if (!this) return;
-		
+
 		pairadd(&request->reply->vps,
 			paircopyvp(request->reply, server_ip));
 		pairadd(&request->reply->vps,
@@ -674,7 +674,7 @@ void request_stats_reply(REQUEST *request)
 		     (request->listener->type == RAD_LISTEN_NONE))) {
 			request_stats_addvp(request, authvp, &this->stats);
 		}
-		
+
 #ifdef WITH_ACCOUNTING
 		if (((flag->vp_integer & 0x02) != 0) &&
 		    ((request->listener->type == RAD_LISTEN_ACCT) ||
@@ -703,7 +703,7 @@ void request_stats_reply(REQUEST *request)
 
 		server_port = pairfind(request->packet->vps, 171, VENDORPEC_FREERADIUS, TAG_ANY);
 		if (!server_port) return;
-		
+
 #ifndef NDEBUG
 		memset(&ipaddr, 0, sizeof(ipaddr));
 #endif
@@ -716,7 +716,7 @@ void request_stats_reply(REQUEST *request)
 		 *	Not found: don't do anything
 		 */
 		if (!home) return;
-		
+
 		pairadd(&request->reply->vps,
 			paircopyvp(request->reply, server_ip));
 		pairadd(&request->reply->vps,
@@ -817,7 +817,7 @@ void radius_stats_ema(fr_stats_ema_t *ema,
 	 */
 	if (ema->f1 == 0) {
 		if (ema->window > 10000) ema->window = 10000;
-		
+
 		ema->f1 =  (2 * F_EMA_SCALE) / (ema->window + 1);
 		ema->f10 = (2 * F_EMA_SCALE) / ((10 * ema->window) + 1);
 	}
@@ -825,13 +825,13 @@ void radius_stats_ema(fr_stats_ema_t *ema,
 
 	tdiff = start->tv_sec;
 	tdiff -= end->tv_sec;
-	
+
 	micro = (int) tdiff;
 	if (micro > 40) micro = 40; /* don't overflow 32-bit ints */
 	micro *= USEC;
 	micro += start->tv_usec;
 	micro -= end->tv_usec;
-	
+
 	micro *= EMA_SCALE;
 
 	if (ema->ema1 == 0) {
@@ -839,22 +839,22 @@ void radius_stats_ema(fr_stats_ema_t *ema,
 		ema->ema10 = micro;
 	} else {
 		int diff;
-		
+
 		diff = ema->f1 * (micro - ema->ema1);
 		ema->ema1 += (diff / 1000000);
-		
+
 		diff = ema->f10 * (micro - ema->ema10);
 		ema->ema10 += (diff / 1000000);
 	}
-	
-	
+
+
 #ifdef WITH_STATS_DEBUG
 	DEBUG("time %d %d.%06d\t%d.%06d\t%d.%06d\n",
 	      n, micro / PREC, (micro / EMA_SCALE) % USEC,
 	      ema->ema1 / PREC, (ema->ema1 / EMA_SCALE) % USEC,
 	      ema->ema10 / PREC, (ema->ema10 / EMA_SCALE) % USEC);
 	n++;
-#endif	
+#endif
 }
 
 #endif /* WITH_STATS */

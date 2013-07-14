@@ -626,7 +626,7 @@ static size_t rest_encode_json(void *ptr, size_t size, size_t nmemb,
 	if ((ctx->chunk) && (ctx->chunk <= s)) {
 		s = (ctx->chunk - 1);
 	}
-	
+
 	if (ctx->state == READ_STATE_END) return 0;
 
 	if (ctx->state == READ_STATE_INIT) {
@@ -873,15 +873,15 @@ static void rest_read_ctx_init(REQUEST *request,
 
 	ctx->first = current = rad_malloc((sizeof(tmp) * (count + 1)));
 	ctx->next = ctx->first;
-	
+
 	current[0] = NULL;
 
 	for (tmp = paircursor(&cursor, &request->packet->vps);
 	     tmp;
 	     tmp = pairnext(&cursor)) {
-		*current++ = tmp;    
+		*current++ = tmp;
 	}
-	     
+
 	current = ctx->first;
 
 	if (!sort || (count < 2)) return;
@@ -950,7 +950,7 @@ static int rest_decode_post(rlm_rest_t *instance,
 	char const *attribute;
 	char *name  = NULL;
 	char *value = NULL;
-	
+
 	char *expanded = NULL;
 
 	const DICT_ATTR *da;
@@ -986,7 +986,7 @@ static int rest_decode_post(rlm_rest_t *instance,
 		p = (q + 1);
 
 		RDEBUG("Decoding attribute \"%s\"", name);
-		
+
 		request_name = radius_request_name(&attribute, REQUEST_CURRENT);
 		if (request_name == REQUEST_UNKNOWN) {
 			RWDEBUG("Invalid request qualifier, skipping");
@@ -1044,9 +1044,9 @@ static int rest_decode_post(rlm_rest_t *instance,
 
 		RDEBUG2("\tLength : %i", curl_len);
 		RDEBUG2("\tValue  : \"%s\"", value);
-		
+
 		RDEBUG("Performing xlat expansion of response value");
-		
+
 		if (!radius_axlat(&expanded, request, value, NULL, NULL)) {
 			goto skip;
 		}
@@ -1056,7 +1056,7 @@ static int rest_decode_post(rlm_rest_t *instance,
 			ERROR("rlm_rest (%s): Failed creating"
 			       " valuepair", instance->xlat_name);
 			talloc_free(expanded);
-			
+
 			goto error;
 		}
 
@@ -1074,7 +1074,7 @@ static int rest_decode_post(rlm_rest_t *instance,
 				break;
 			}
 		}
-		
+
 		if (vp->op != T_OP_ADD) {
 			current[0] = da;
 			current[1] = NULL;
@@ -1141,7 +1141,7 @@ static VALUE_PAIR *json_pairmake_leaf(UNUSED rlm_rest_t *instance,
 	char const *value, *to_parse;
 	char *expanded = NULL;
 	int ret;
-	
+
 	VALUE_PAIR *vp;
 
 	/*
@@ -1160,7 +1160,7 @@ static VALUE_PAIR *json_pairmake_leaf(UNUSED rlm_rest_t *instance,
 		if (radius_axlat(&expanded, request, value, NULL, NULL) < 0) {
 			return NULL;
 		}
-		
+
 		to_parse = expanded;
 	} else {
 		to_parse = value;
@@ -1170,18 +1170,18 @@ static VALUE_PAIR *json_pairmake_leaf(UNUSED rlm_rest_t *instance,
 	if (!vp) {
 		REDEBUG("Failed creating valuepair");
 		talloc_free(expanded);
-		
+
 		return NULL;
 	}
 
 	vp->op = flags->op;
-	
+
 	ret = pairparsevalue(vp, to_parse);
 	talloc_free(expanded);
 	if (!ret) {
 		RDEBUG("Incompatible value assignment, skipping");
 		pairbasicfree(vp);
-		
+
 		return NULL;
 	}
 
@@ -1245,7 +1245,7 @@ static VALUE_PAIR *json_pairmake(rlm_rest_t *instance,
 {
 	char const *p;
 	char *q;
-	
+
 	char const *name, *attribute;
 
 	struct json_object *value, *idx, *tmp;
@@ -1254,7 +1254,7 @@ static VALUE_PAIR *json_pairmake(rlm_rest_t *instance,
 
 	const DICT_ATTR *da;
 	VALUE_PAIR *vp = NULL;
-	
+
 	request_refs_t request_name;
 	pair_lists_t list_name;
 	REQUEST *reference = request;
@@ -1296,13 +1296,13 @@ static VALUE_PAIR *json_pairmake(rlm_rest_t *instance,
 
 		attribute = name;
 		reference = request;
-   	
+
 		/*
 		 *	Resolve attribute name to a dictionary entry and
 		 *	pairlist.
 		 */
 		RDEBUG2("Decoding attribute \"%s\"", name);
-		
+
 		request_name = radius_request_name(&attribute, REQUEST_CURRENT);
 		if (request_name == REQUEST_UNKNOWN) {
 			RWDEBUG("Request qualifier unknown, skipping");
@@ -1432,9 +1432,9 @@ static VALUE_PAIR *json_pairmake(rlm_rest_t *instance,
 			    json_object_is_type(value, json_type_object)) {
 				/* TODO: Insert nested VP into VP structure...*/
 				REDEBUG("Found nested VP, these are not yet supported");
-				
+
 				return NULL;
-				
+
 				/*
 				vp = json_pairmake(instance, section,
 						   request, value,
@@ -1475,9 +1475,9 @@ static int rest_decode_json(rlm_rest_t *instance,
 			    char *raw, UNUSED size_t rawlen)
 {
 	char const *p = raw;
-	
+
 	struct json_object *json;
-	
+
 	int max = REST_BODY_MAX_ATTRS;
 
 	/*
@@ -1524,7 +1524,7 @@ static size_t rest_write_header(void *ptr, size_t size, size_t nmemb,
 {
 	rlm_rest_write_t *ctx  = userdata;
 	REQUEST *request       = ctx->request; /* Used by RDEBUG */
-	
+
 	char const *p = ptr, *q;
 	char *tmp;
 
@@ -1674,7 +1674,7 @@ static size_t rest_write_header(void *ptr, size_t size, size_t nmemb,
 			}
 		}
 		break;
-		
+
 	default:
 		break;
 	}
@@ -1704,7 +1704,7 @@ static size_t rest_write_body(void *ptr, size_t size, size_t nmemb,
 {
 	rlm_rest_write_t *ctx  = userdata;
 	REQUEST *request       = ctx->request; /* Used by RDEBUG */
-	
+
 	char const *p = ptr;
 	char *tmp;
 
@@ -1901,17 +1901,17 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 		 fr_int2str(http_content_type_table, type, "¿Unknown?"));
 	ctx->headers = curl_slist_append(ctx->headers, buffer);
 	if (!ctx->headers) goto error_header;
-	
+
 	if (section->timeout) {
 		ret = curl_easy_setopt(candle, CURLOPT_TIMEOUT,
 				       section->timeout);
 		if (ret != CURLE_OK) goto error;
 	}
-	
+
 	ret = curl_easy_setopt(candle, CURLOPT_PROTOCOLS,
 			       (CURLPROTO_HTTP | CURLPROTO_HTTPS));
 	if (ret != CURLE_OK) goto error;
-	
+
 	/*
 	 *	FreeRADIUS custom headers
 	 */
@@ -1985,13 +1985,13 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 	    	    (auth <= HTTP_AUTH_ANY_SAFE)) {
 			ret = curl_easy_setopt(candle, CURLOPT_HTTPAUTH, http_curl_auth[auth]);
 			if (ret != CURLE_OK) goto error;
-			
+
 			if (username) {
 				ret = curl_easy_setopt(candle, CURLOPT_USERNAME, username);
 				if (ret != CURLE_OK) {
 					goto error;
 				}
-			} else if (section->username) {			
+			} else if (section->username) {
 				if (radius_xlat(buffer, sizeof(buffer), request, section->username, NULL, NULL) < 0) {
 					goto error;
 				}
@@ -2000,7 +2000,7 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 					goto error;
 				}
 			}
-			
+
 			if (password) {
 				ret = curl_easy_setopt(candle, CURLOPT_PASSWORD, password);
 				if (ret != CURLE_OK) {
@@ -2014,7 +2014,7 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 				if (ret != CURLE_OK) {
 					goto error;
 				}
-			} 
+			}
 #ifdef CURLOPT_TLSAUTH_USERNAME
 		} else if (type == HTTP_AUTH_TLS_SRP) {
 			ret = curl_easy_setopt(candle, CURLOPT_TLSAUTH_TYPE, http_curl_auth[auth]);
@@ -2024,7 +2024,7 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 				if (ret != CURLE_OK) {
 					goto error;
 				}
-			} else if (section->username) {			
+			} else if (section->username) {
 				if (radius_xlat(buffer, sizeof(buffer), request, section->username, NULL, NULL) < 0) {
 					goto error;
 				}
@@ -2033,7 +2033,7 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 					goto error;
 				}
 			}
-			
+
 			if (password) {
 				ret = curl_easy_setopt(candle, CURLOPT_TLSAUTH_PASSWORD, password);
 				if (ret != CURLE_OK) {
@@ -2047,11 +2047,11 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 				if (ret != CURLE_OK) {
 					goto error;
 				}
-			} 
+			}
 #endif
 		}
 	}
-	
+
 	/*
 	 *	Set SSL/TLS authentication parameters
 	 */
@@ -2061,7 +2061,7 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 				       section->tls_certificate_file);
 		if (ret != CURLE_OK) goto error;
 	}
-	
+
 	if (section->tls_private_key_file) {
 		ret = curl_easy_setopt(candle,
 			       	       CURLOPT_SSLKEY,
@@ -2075,28 +2075,28 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 				       section->tls_private_key_password);
 		if (ret != CURLE_OK) goto error;
 	}
-	
+
 	if (section->tls_ca_file) {
 		ret = curl_easy_setopt(candle,
 			       	       CURLOPT_ISSUERCERT,
 				       section->tls_ca_file);
 		if (ret != CURLE_OK) goto error;
 	}
-	
+
 	if (section->tls_ca_path) {
 		ret = curl_easy_setopt(candle,
 			       	       CURLOPT_CAPATH,
 				       section->tls_ca_path);
 		if (ret != CURLE_OK) goto error;
 	}
-	
+
 	if (section->tls_random_file) {
 		ret = curl_easy_setopt(candle,
 			       	       CURLOPT_RANDOM_FILE,
 				       section->tls_random_file);
 		if (ret != CURLE_OK) goto error;
 	}
-	
+
 	if (section->tls_check_cert) {
 		ret = curl_easy_setopt(candle,
 				       CURLOPT_SSL_VERIFYHOST,
@@ -2109,7 +2109,7 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 		       0);
 		if (ret != CURLE_OK) goto error;
 	}
-		
+
 	/*
 	 *	Tell CURL how to get HTTP body content, and how to process
 	 *	incoming data.
@@ -2136,7 +2136,7 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 	case HTTP_METHOD_GET :
 	case HTTP_METHOD_DELETE :
 		return 0;
-		
+
 	case HTTP_METHOD_POST :
 	case HTTP_METHOD_PUT :
 	case HTTP_METHOD_CUSTOM :
@@ -2214,7 +2214,7 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
  * @return 0 on success or -1 on error.
  */
 int rest_request_perform(UNUSED rlm_rest_t *instance,
-			 UNUSED rlm_rest_section_t *section, 
+			 UNUSED rlm_rest_section_t *section,
 			 REQUEST *request, void *handle)
 {
 	rlm_rest_handle_t *randle = handle;
@@ -2224,7 +2224,7 @@ int rest_request_perform(UNUSED rlm_rest_t *instance,
 	ret = curl_easy_perform(candle);
 	if (ret != CURLE_OK) {
 		RERROR("Request failed: %i - %s", ret, curl_easy_strerror(ret));
-		
+
 		return -1;
 	}
 
@@ -2368,7 +2368,7 @@ ssize_t rest_uri_build(char **out, UNUSED rlm_rest_t *instance, rlm_rest_section
 {
 	char const *p;
 	char *path_exp = NULL;
-	
+
 	char *scheme;
 	char const *path;
 
@@ -2404,7 +2404,7 @@ ssize_t rest_uri_build(char **out, UNUSED rlm_rest_t *instance, rlm_rest_section
 	talloc_free(scheme);
 	if (len < 0) {
 		TALLOC_FREE(*out);
-		
+
 		return 0;
 	}
 
@@ -2413,12 +2413,12 @@ ssize_t rest_uri_build(char **out, UNUSED rlm_rest_t *instance, rlm_rest_section
 	len = radius_axlat(&path_exp, request, path, rest_uri_escape, NULL);
 	if (len < 0) {
 		TALLOC_FREE(*out);
-		
+
 		return 0;
 	}
 
 	*out = talloc_strdup_append(*out, path_exp);
 	talloc_free(path_exp);
-	
+
 	return outlen += len;
 }

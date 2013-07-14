@@ -110,7 +110,7 @@ static const CONF_PARSER module_config[] = {
 	  offsetof(rlm_sqlcounter_t,reply_name), NULL, NULL },
 	{ "reply_name", PW_TYPE_STRING_PTR | PW_TYPE_ATTRIBUTE,
 	  offsetof(rlm_sqlcounter_t,reply_name), NULL, "Session-Timeout" },
-	
+
 	{ NULL, -1, 0, NULL, NULL }
 };
 
@@ -339,34 +339,34 @@ static int sqlcounter_cmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR *r
 	char *p;
 	char query[MAX_QUERY_LEN];
 	char *expanded = NULL;
-	
+
 	size_t len;
 
 	len = snprintf(query, sizeof(query), "%%{%s:%s}", inst->sqlmod_inst, query);
 	if (len >= sizeof(query) - 1) {
 		REDEBUG("Insufficient query buffer space");
-		
+
 		return RLM_MODULE_FAIL;
 	}
-	
+
 	p = query + len;
-	
+
 	/* first, expand %k, %b and %e in query */
 	len = sqlcounter_expand(p, p - query, inst->query, inst);
 	if (len <= 0) {
 		REDEBUG("Insufficient query buffer space");
-		
+
 		return RLM_MODULE_FAIL;
 	}
-	
+
 	p += len;
-	
+
 	if ((p - query) < 2) {
 		REDEBUG("Insufficient query buffer space");
-		
+
 		return RLM_MODULE_FAIL;
 	}
-	
+
 	p[0] = '}';
 	p[1] = '\0';
 
@@ -493,11 +493,11 @@ static rlm_rcode_t mod_authorize(UNUSED void *instance, UNUSED REQUEST *request)
 	VALUE_PAIR *key_vp, *check_vp;
 	VALUE_PAIR *reply_item;
 	char msg[128];
-	
+
 	char *p;
 	char query[MAX_QUERY_LEN];
 	char *expanded = NULL;
-	
+
 	size_t len;
 
 	/*
@@ -540,28 +540,28 @@ static rlm_rcode_t mod_authorize(UNUSED void *instance, UNUSED REQUEST *request)
 	len = snprintf(query, sizeof(query), "%%{%s:%s}", inst->sqlmod_inst, query);
 	if (len >= sizeof(query) - 1) {
 		REDEBUG("Insufficient query buffer space");
-		
+
 		return RLM_MODULE_FAIL;
 	}
-	
+
 	p = query + len;
-	
+
 	/* first, expand %k, %b and %e in query */
 	len = sqlcounter_expand(p, p - query, inst->query, inst);
 	if (len <= 0) {
 		REDEBUG("Insufficient query buffer space");
-		
+
 		return RLM_MODULE_FAIL;
 	}
-	
+
 	p += len;
-	
+
 	if ((p - query) < 2) {
 		REDEBUG("Insufficient query buffer space");
-		
+
 		return RLM_MODULE_FAIL;
 	}
-	
+
 	p[0] = '}';
 	p[1] = '\0';
 
@@ -621,7 +621,7 @@ static rlm_rcode_t mod_authorize(UNUSED void *instance, UNUSED REQUEST *request)
 
 		RDEBUG2("Authorized user %s, check_item=%u, counter=%u", key_vp->vp_strvalue, check_vp->vp_integer,
 			counter);
-		RDEBUG2("Sent Reply-Item for user %s, Type=%s, value=%u", key_vp->vp_strvalue, inst->reply_name, 
+		RDEBUG2("Sent Reply-Item for user %s, Type=%s, value=%u", key_vp->vp_strvalue, inst->reply_name,
 			reply_item->vp_integer);
 	}
 	else{
@@ -637,7 +637,7 @@ static rlm_rcode_t mod_authorize(UNUSED void *instance, UNUSED REQUEST *request)
 				   inst->reset);
 		rcode = RLM_MODULE_REJECT;
 
-		RDEBUG2("Rejected user %s, check_item=%u, counter=%u", key_vp->vp_strvalue, 
+		RDEBUG2("Rejected user %s, check_item=%u, counter=%u", key_vp->vp_strvalue,
 		        check_vp->vp_integer,counter);
 	}
 

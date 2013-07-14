@@ -48,18 +48,18 @@ typedef struct rlm_sql_conn {
 static int sql_socket_destructor(void *c)
 {
 	rlm_sql_db2_conn_t *conn = c;
-	
+
 	DEBUG2("rlm_sql_db2: Socket destructor called, closing socket");
-	
+
 	if (conn->hdbc) {
 		SQLDisconnect(conn->hdbc);
 		SQLFreeHandle(SQL_HANDLE_DBC, conn->hdbc);
 	}
-	
+
 	if (conn->henv) {
 		SQLFreeHandle(SQL_HANDLE_ENV, conn->henv);
 	}
-	
+
 	return RLM_SQL_OK;
 }
 
@@ -77,7 +77,7 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 
 	MEM(conn = handle->conn = talloc_zero(handle, rlm_sql_db2_conn_t));
 	talloc_set_destructor((void *) conn, sql_socket_destructor);
-	
+
 	/* allocate handles */
 	SQLAllocHandle(SQL_HANDLE_ENV, SQL_NULL_HANDLE, &(conn->henv));
 	SQLAllocHandle(SQL_HANDLE_DBC, conn->henv, &(conn->hdbc));
@@ -87,21 +87,21 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 	 */
 	{
 		SQLCHAR *server, *login, *password;
-		
+
 		memcpy(&server, &config->sql_server, sizeof(server));
 		memcpy(&login, &config->sql_login, sizeof(login));
 		memcpy(&password, &config->sql_password, sizeof(password));
-		
+
 		retval = SQLConnect(conn->hdbc,
 				    server, SQL_NTS,
 				    login,  SQL_NTS,
 				    password, SQL_NTS);
 	}
 
-	
+
 	if(retval != SQL_SUCCESS) {
 		ERROR("could not connect to DB2 server %s", config->sql_server);
-		
+
 		return RLM_SQL_ERROR;
 	}
 
@@ -205,9 +205,9 @@ static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t *con
 	for(i = 0; i < c; i++) {
 		/* get column length */
 		SQLColAttribute(conn->stmt, i+1, SQL_DESC_DISPLAY_SIZE, NULL, 0, NULL, &len);
-		
+
 		retval[i] = rad_malloc(len+1);
-		
+
 		/* get the actual column */
 		SQLGetData(conn->stmt, i + 1, SQL_C_CHAR, retval[i], len+1, &slen);
 		if(slen == SQL_NULL_DATA) {
@@ -223,7 +223,7 @@ error:
 		free(retval[i]);
 	}
 	free(retval);
-	
+
 	return RLM_SQL_ERROR;
 }
 
@@ -240,7 +240,7 @@ static sql_rcode_t sql_free_result(rlm_sql_handle_t *handle, UNUSED rlm_sql_conf
 	rlm_sql_db2_conn_t *conn;
 	conn = handle->conn;
 	SQLFreeHandle(SQL_HANDLE_STMT, conn->stmt);
-	
+
 	return RLM_SQL_OK;
 }
 
@@ -266,7 +266,7 @@ static char const *sql_error(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *
 	TALLOC_FREE(conn->error);
 	SQLGetDiagRec(SQL_HANDLE_STMT, conn->stmt, 1, (SQLCHAR *) sqlstate, &err, (SQLCHAR *) msg, sizeof(msg), &rl);
 	conn->error = talloc_asprintf(conn, "sqlstate %s: %s", sqlstate, msg);
-	
+
 	return conn->error;
 }
 
@@ -311,7 +311,7 @@ static int sql_affected_rows(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *
 	rlm_sql_db2_conn_t *conn = handle->conn;
 
 	SQLRowCount(conn->stmt, &c);
-	
+
 	return c;
 }
 

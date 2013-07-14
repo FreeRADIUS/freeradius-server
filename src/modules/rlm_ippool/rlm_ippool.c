@@ -112,7 +112,7 @@ static const CONF_PARSER module_config[] = {
 
 	{ "range-start", PW_TYPE_IPADDR | PW_TYPE_DEPRECATED, offsetof(rlm_ippool_t,range_start), NULL, NULL },
 	{ "range_start", PW_TYPE_IPADDR, offsetof(rlm_ippool_t,range_start), NULL, "0" },
-	
+
 	{ "range-stop", PW_TYPE_IPADDR | PW_TYPE_DEPRECATED, offsetof(rlm_ippool_t,range_stop), NULL, NULL },
 	{ "range_stop", PW_TYPE_IPADDR, offsetof(rlm_ippool_t,range_stop), NULL, "0" },
 
@@ -125,7 +125,7 @@ static const CONF_PARSER module_config[] = {
 
 	{ "maximum-timeout", PW_TYPE_INTEGER | PW_TYPE_DEPRECATED, offsetof(rlm_ippool_t,max_timeout), NULL, NULL },
 	{ "maximum_timeout", PW_TYPE_INTEGER, offsetof(rlm_ippool_t,max_timeout), NULL, "0" },
-  
+
 	{ NULL, -1, 0, NULL, NULL }
 };
 
@@ -407,7 +407,7 @@ static rlm_rcode_t mod_post_auth(UNUSED void *instance, UNUSED REQUEST *request)
 	int attr_ipaddr = PW_FRAMED_IP_ADDRESS;
 	int attr_ipmask = PW_FRAMED_IP_NETMASK;
 	int vendor_ipaddr = 0;
-	
+
 	/* Check if Pool-Name attribute exists. If it exists check our name and
 	 * run only if they match
 	 */
@@ -438,7 +438,7 @@ static rlm_rcode_t mod_post_auth(UNUSED void *instance, UNUSED REQUEST *request)
 	if (radius_xlat(xlat_str, sizeof(xlat_str), request, inst->key, NULL, NULL) < 0){
 		return RLM_MODULE_NOOP;
 	}
-	
+
 	fr_MD5Init(&md5_context);
 	fr_MD5Update(&md5_context, (uint8_t *)xlat_str, strlen(xlat_str));
 	fr_MD5Final(key_str, &md5_context);

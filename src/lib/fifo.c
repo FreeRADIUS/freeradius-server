@@ -145,13 +145,13 @@ int main(int argc, char **argv)
 #define COUNT ((j * SPLIT) + i)
 		for (i = 0; i < SPLIT; i++) {
 			array[COUNT % MAX] = COUNT;
-			
+
 			if (!fr_fifo_push(fi, &array[COUNT % MAX])) {
 				fprintf(stderr, "%d %d\tfailed pushing %d\n",
 					j, i, COUNT);
 				exit(2);
 			}
-			
+
 			if (fr_fifo_num_elements(fi) != (i + 1)) {
 				fprintf(stderr, "%d %d\tgot size %d expected %d\n",
 					j, i, i + 1, fr_fifo_num_elements(fi));
@@ -167,19 +167,19 @@ int main(int argc, char **argv)
 
 		for (i = 0; i < SPLIT; i++) {
 			int *p;
-			
+
 			p = fr_fifo_pop(fi);
 			if (!p) {
 				fprintf(stderr, "No pop at %d\n", i);
 				exit(3);
 			}
-			
+
 			if (*p != COUNT) {
 				fprintf(stderr, "%d %d\tgot %d expected %d\n",
 					j, i, *p, COUNT);
 				exit(4);
 			}
-			
+
 			if (fr_fifo_num_elements(fi) != SPLIT - (i + 1)) {
 				fprintf(stderr, "%d %d\tgot size %d expected %d\n",
 					j, i, SPLIT - (i + 1), fr_fifo_num_elements(fi));
@@ -195,7 +195,7 @@ int main(int argc, char **argv)
 	}
 
 	fr_fifo_free(fi);
-	
+
 	exit(0);
 }
 #endif

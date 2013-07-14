@@ -29,16 +29,16 @@ static void fb_set_tpb(rlm_sql_firebird_conn_t *conn, int count, ...)
 {
 	int i;
 	va_list arg;
-	
+
 	va_start(arg, count);
 	conn->tpb = malloc(count);
-	
+
 	for (i = 0; i < count; i++) {
 		conn->tpb[i] = (char) va_arg(arg, int);
 	}
-	
+
 	conn->tpb_len = count;
-	
+
 	va_end(arg);
 }
 
@@ -46,31 +46,31 @@ static void fb_set_tpb(rlm_sql_firebird_conn_t *conn, int count, ...)
 static void fb_dpb_add_str(char **dpb, char name, char const *value)
 {
 	int l;
-	
+
 	if (!value) {
 		return;
 	}
-	
+
 	l = strlen(value);
 
 	*(*dpb)++= name;
 	*(*dpb)++= (char) l;
-	
+
 	memmove(*dpb, value, l);
-	
+
 	*dpb += l;
 }
 
 static void fb_set_sqlda(XSQLDA *sqlda) {
 	int i;
-	
+
 	for (i = 0; i < sqlda->sqld; i++) {
 		if ((sqlda->sqlvar[i].sqltype & ~1) == SQL_VARYING) {
 			sqlda->sqlvar[i].sqldata = (char*)malloc(sqlda->sqlvar[i].sqllen + sizeof(short));
 		} else {
 			sqlda->sqlvar[i].sqldata = (char*)malloc(sqlda->sqlvar[i].sqllen);
 		}
-		
+
 		if (sqlda->sqlvar[i].sqltype & 1) {
 			sqlda->sqlvar[i].sqlind = (short*)calloc(sizeof(short), 1);
 		} else {
@@ -84,7 +84,7 @@ int fb_error(rlm_sql_firebird_conn_t *conn)
 {
 	ISC_SCHAR error[2048];	/* Only 1024 bytes should be written to this, but were playing it extra safe */
 	ISC_STATUS *pstatus;
-	
+
 	conn->sql_code = 0;
 
 	/*
@@ -97,14 +97,14 @@ int fb_error(rlm_sql_firebird_conn_t *conn)
 	 */
 	if (IS_ISC_ERROR(conn->status)) {
 		conn->sql_code = isc_sqlcode(conn->status);
-		
+
 		/*
 		 *	pstatus is a pointer into the status array which is
 		 *	advanced by isc_interprete. It's initialised to the
 		 *	first element of the status array.
 		 */
 		pstatus = &conn->status[0];
-	
+
 		/*
 		 *	It's deprecated because the size of the buffer isn't
 		 *	passed and this isn't safe. But as were passing a very
@@ -118,10 +118,10 @@ int fb_error(rlm_sql_firebird_conn_t *conn)
 		while (isc_interprete(&error[0], &pstatus)) {
 			conn->error = talloc_asprintf_append(conn->error, "%s. ", &error[0]);
 		}
-		
+
 		memset(&conn->status, 0, sizeof(conn->status));
 	}
-	
+
 	return conn->sql_code;
 }
 DIAG_ON(deprecated-declarations)
@@ -163,7 +163,7 @@ void fb_store_row(rlm_sql_firebird_conn_t *conn)
 		conn->row_fcount = conn->sqlda_out->sqld;
 		conn->row = (char **) realloc(conn->row, conn->row_fcount * sizeof(char *));
 		conn->row_sizes = (int *) realloc(conn->row_sizes, conn->row_fcount * sizeof(int));
-		
+
 		while( i <conn->row_fcount) {
 			conn->row[i] = 0;
 			conn->row_sizes[i++] = 0;
@@ -183,9 +183,9 @@ void fb_store_row(rlm_sql_firebird_conn_t *conn)
 			strcpy(conn->row[i], "NULL");
 			continue;
 		}
-		
+
 		dtype = var->sqltype & ~1;
-		
+
 		switch (dtype) {
 		case SQL_TEXT:
 			if (conn->row_sizes[i]<= var->sqllen) {
@@ -193,7 +193,7 @@ void fb_store_row(rlm_sql_firebird_conn_t *conn)
 				conn->row[i] = realloc(conn->row[i],
 						       conn->row_sizes[i]);
 			}
-			
+
 			memmove(conn->row[i], var->sqldata, var->sqllen);
 			conn->row[i][var->sqllen] = 0;
 
@@ -207,7 +207,7 @@ void fb_store_row(rlm_sql_firebird_conn_t *conn)
 		   	}
 			memmove(conn->row[i], vary->vary_string, vary->vary_length);
 			conn->row[i][vary->vary_length] = 0;
-			
+
 			break;
 
 		case SQL_FLOAT:
@@ -223,7 +223,7 @@ void fb_store_row(rlm_sql_firebird_conn_t *conn)
 				short dscale = 0;
 				char *p;
 				p = conn->row[i];
-				
+
 				switch (dtype) {
 				case SQL_SHORT:
 					value = (ISC_INT64) *(short *)var->sqldata;
@@ -239,7 +239,7 @@ void fb_store_row(rlm_sql_firebird_conn_t *conn)
 					break;
 				}
 				dscale = var->sqlscale;
-				
+
 				if (dscale < 0) {
 					ISC_INT64 tens;
 					short j;
@@ -248,7 +248,7 @@ void fb_store_row(rlm_sql_firebird_conn_t *conn)
 					for (j = 0; j > dscale; j--) {
 						tens *= 10;
 					}
-					
+
 					if (value >= 0) {
 						sprintf(p, "%*lld.%0*lld",
 							field_width - 1 + dscale,
@@ -342,7 +342,7 @@ int fb_init_socket(rlm_sql_firebird_conn_t *conn)
 	if (!conn->tpb) {
 		return -1;
 	}
-	
+
 	return 0;
 }
 
@@ -355,11 +355,11 @@ int fb_connect(rlm_sql_firebird_conn_t * conn, rlm_sql_config_t *config)
 	if (config->sql_login) {
 		conn->dpb_len+= strlen(config->sql_login) + 2;
 	}
-	
+
 	if (config->sql_password) {
 		conn->dpb_len += strlen(config->sql_password) + 2;
 	}
-	
+
 	conn->dpb = (char *) malloc(conn->dpb_len);
 	p = conn->dpb;
 
@@ -372,7 +372,7 @@ int fb_connect(rlm_sql_firebird_conn_t * conn, rlm_sql_config_t *config)
 	fb_dpb_add_str(&conn->dpb, isc_dpb_password, config->sql_password);
 
 	conn->dpb = p;
-	
+
 	/*
 	 *	Check if database and server in the form of server:database.
 	 *	If config->sql_server contains ':', then config->sql_db
@@ -395,7 +395,7 @@ int fb_connect(rlm_sql_firebird_conn_t * conn, rlm_sql_config_t *config)
 	isc_attach_database(conn->status, 0, database, &conn->dbh,
 			    conn->dpb_len, conn->dpb);
 	free(database);
-	
+
 	return fb_error(conn);
 }
 
@@ -406,7 +406,7 @@ int fb_fetch(rlm_sql_firebird_conn_t *conn)
 	if (conn->statement_type!= isc_info_sql_stmt_select) {
 		return 100;
 	}
-	
+
 	fetch_stat = isc_dsql_fetch(conn->status, &conn->stmt,
 				    SQL_DIALECT_V6, conn->sqlda_out);
 	if (fetch_stat) {
@@ -416,7 +416,7 @@ int fb_fetch(rlm_sql_firebird_conn_t *conn)
 			conn->sql_code = 0;
 		}
 	}
-	
+
 	return fetch_stat;
 }
 
@@ -449,14 +449,14 @@ static int fb_prepare(rlm_sql_firebird_conn_t *conn, char const *query)
 	if (IS_ISC_ERROR(conn->status)) {
 		return -2;
 	}
-	
+
 	if (conn->sqlda_out->sqln<conn->sqlda_out->sqld) {
 		conn->sqlda_out->sqln = conn->sqlda_out->sqld;
 		conn->sqlda_out = (XSQLDA ISC_FAR *) realloc(conn->sqlda_out,
 							     XSQLDA_LENGTH(conn->sqlda_out->sqld));
 		isc_dsql_describe(conn->status, &conn->stmt, SQL_DIALECT_V6,
 				  conn->sqlda_out);
-		
+
 		if (IS_ISC_ERROR(conn->status)) {
 			return -3;
 		}
@@ -475,7 +475,7 @@ static int fb_prepare(rlm_sql_firebird_conn_t *conn, char const *query)
 	if (conn->sqlda_out->sqld) {
 		fb_set_sqlda(conn->sqlda_out); //set out sqlda
 	}
-	
+
 	return 0;
 }
 
@@ -484,7 +484,7 @@ int fb_sql_query(rlm_sql_firebird_conn_t *conn, char const *query) {
 	if (fb_prepare(conn, query)) {
 		return fb_error(conn);
 	}
-	
+
 	switch (conn->statement_type) {
 		case isc_info_sql_stmt_exec_procedure:
 			isc_dsql_execute2(conn->status, &conn->trh, &conn->stmt,
@@ -509,17 +509,17 @@ int fb_affected_rows(rlm_sql_firebird_conn_t *conn) {
 	isc_dsql_sql_info(conn->status, &conn->stmt,
 			  sizeof (count_info), count_info,
 			  sizeof (info_buffer), info_buffer);
-			
+
 	if (IS_ISC_ERROR(conn->status)) {
 		return fb_error(conn);
 	}
-	
+
 	p = info_buffer + 3;
 	while (*p != isc_info_end) {
 		p++;
 		short len = (short)isc_vax_integer(p, 2);
 		p += 2;
-		
+
 		affected_rows = isc_vax_integer(p, len);
 		if (affected_rows > 0) {
 			break;
@@ -531,7 +531,7 @@ int fb_affected_rows(rlm_sql_firebird_conn_t *conn) {
 
 int fb_close_cursor(rlm_sql_firebird_conn_t *conn) {
 	isc_dsql_free_statement(conn->status, &conn->stmt, DSQL_close);
-	
+
 	return fb_error(conn);
 }
 

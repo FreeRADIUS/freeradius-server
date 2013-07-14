@@ -217,7 +217,7 @@ int main(int argc, char **argv)
 	int zap = 0;
 
 	raddb_dir = RADIUS_DIR;
-	
+
 	talloc_set_log_stderr();
 
 	while((c = getopt(argc, argv, "d:fF:nN:sSipP:crRu:U:Z")) != EOF) switch(c) {
@@ -356,7 +356,7 @@ int main(int argc, char **argv)
 		char name[sizeof(rt.login) + 1];
 
 		if (rt.type != P_LOGIN) continue; /* hide logout sessions */
-		
+
 		/*
 		 *	We don't show shell users if we are
 		 *	fingerd, as we have done that above.

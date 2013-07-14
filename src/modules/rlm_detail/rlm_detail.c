@@ -53,12 +53,12 @@ typedef struct detail_instance {
 	char	*filename;	//!< File/path to write to.
 	int	perm;		//!< Permissions to use for new files.
 	char	*group;		//!< Group to use for new files.
-	
+
 	int	dirperm;	//!< Directory permissions to use for new files.
-	
+
 	char	*header;	//!< Header format.
 	int	locking;	//!< Whether the file should be locked.
-	
+
 	int	log_srcdst;	//!< Add IP src/dst attributes to entries.
 
 	fr_hash_table_t *ht;	//!< Holds suppressed attributes.
@@ -129,7 +129,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		CONF_ITEM	*ci;
 
 		inst->ht = fr_hash_table_create(detail_hash, detail_cmp, NULL);
-		
+
 		for (ci = cf_item_find_next(cs, NULL);
 		     ci != NULL;
 		     ci = cf_item_find_next(cs, ci)) {
@@ -245,7 +245,7 @@ static rlm_rcode_t do_detail(void *instance, REQUEST *request, RADIUS_PACKET *pa
 			RERROR("rlm_detail: Failed to create directory %s: %s", buffer, strerror(errno));
 			return RLM_MODULE_FAIL;
 		}
-		
+
 		*p = '/';
 	} /* else there was no directory delimiter. */
 

@@ -162,7 +162,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 	int found_pw = false;
 	VALUE_PAIR *vp;
 	vp_cursor_t cursor;
-	
+
 	for (vp = paircursor(&cursor, &request->config_items);
 	     vp;
 	     vp = pairnext(&cursor)) {
@@ -234,7 +234,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 			new_vp = radius_paircreate(request,
 						   &request->config_items,
 						   attr, 0);
-			
+
 			/*
 			 *	The data after the '}' may be binary,
 			 *	so we copy it via memcpy.
@@ -624,7 +624,7 @@ static rlm_rcode_t mod_authenticate(UNUSED void *instance, REQUEST *request)
 	rlm_rcode_t rc = RLM_MODULE_INVALID;
 	vp_cursor_t cursor;
 	int (*auth_func)(REQUEST *, VALUE_PAIR *) = NULL;
-	
+
 
 	if (!request->password ||
 	    (request->password->da->attr != PW_USER_PASSWORD)) {

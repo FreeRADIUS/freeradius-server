@@ -184,13 +184,13 @@ static ssize_t redis_xlat(void *instance, REQUEST *request, char const *fmt, cha
 		ret = -1;
 		goto release;
 	}
-	
+
 	strlcpy(out, buffer_ptr, freespace);
 
 release:
 	rlm_redis_finish_query(dissocket);
 	fr_connection_release(inst->pool, dissocket);
-	
+
 	return ret;
 }
 

@@ -131,16 +131,16 @@ size_t otp_gen_state(char state[OTP_MAX_RADSTATE_LEN],
 	 *	Generate the state.
 	 */
 	p = state;
-	
+
 	/*
 	 *	Add the challenge (which is already ASCII encoded)
 	 */
 	p += fr_bin2hex((uint8_t const *) challenge, p, clen);
-	
+
 	/* Add the flags and time. */
 	p += fr_bin2hex((uint8_t *) &flags, p, 4);
 	p += fr_bin2hex((uint8_t *) &when, p, 4);
-	
+
 	/* Add the hmac. */
 	p += fr_bin2hex(hmac, p, 16);
 

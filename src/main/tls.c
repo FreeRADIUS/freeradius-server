@@ -110,7 +110,7 @@ tls_session_t *tls_new_client_session(fr_tls_server_conf_t *conf, int fd)
 {
 	int verify_mode;
 	tls_session_t *ssn = NULL;
-	
+
 	ssn = talloc_zero(conf, tls_session_t);
 	if (!ssn) return NULL;
 
@@ -262,7 +262,7 @@ tls_session_t *tls_new_session(fr_tls_server_conf_t *conf, REQUEST *request,
 	if (conf->session_cache_enable) {
 		state->allow_session_resumption = 1; /* otherwise it's zero */
 	}
-	
+
 	RDEBUG2("Initiate");
 
 	return state;
@@ -470,7 +470,7 @@ void session_init(tls_session_t *ssn)
 }
 
 void session_close(tls_session_t *ssn)
-{	
+{
 	SSL_set_quiet_shutdown(ssn->ssl, 1);
 	SSL_shutdown(ssn->ssl);
 
@@ -1268,7 +1268,7 @@ static int ocsp_check(X509_STORE *store, X509 *issuer_cert, X509 *client_cert,
 		ocsp_ok = 2;
 		goto ocsp_skip;
 	}
-	
+
 	DEBUG2("[ocsp] --> Responder URL = http://%s:%s%s", host, port, path);
 
 	/* Setup BIO socket to OCSP responder */
@@ -1680,14 +1680,14 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 			for (p = subject + 16; *p != '\0'; p++) {
 				if (*p == ' ') *p = '-';
 			}
-				
+
 			vp = pairmake(NULL, certs, subject, issuer, T_OP_ADD);
 			if (vp) debug_pair_list(vp);
 		}
 
 		BIO_free_all(out);
 	}
-	
+
 	switch (ctx->error) {
 
 	case X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT:
@@ -2033,14 +2033,14 @@ static SSL_CTX *init_tls_ctx(fr_tls_server_conf_t *conf, int client)
 		if (strlen(conf->psk_password) > (2 * PSK_MAX_PSK_LEN)) {
 			ERROR("psk_hexphrase is too long (max %d)",
 			       PSK_MAX_PSK_LEN);
-			return NULL;			
+			return NULL;
 		}
 
 		hex_len = fr_hex2bin(conf->psk_password,
 				     (uint8_t *) buffer, psk_len);
 		if (psk_len != (2 * hex_len)) {
 			ERROR("psk_hexphrase is not all hex");
-			return NULL;			
+			return NULL;
 		}
 
 		goto post_ca;
@@ -2093,7 +2093,7 @@ load_ca:
 			       ERR_error_string(ERR_get_error(), NULL));
 			return NULL;
 		}
-		
+
 		/*
 		 * Check if the loaded private key is the right one
 		 */
@@ -2167,7 +2167,7 @@ post_ca:
 
 	/*
 	 *	Callbacks, etc. for session resumption.
-	 */						
+	 */
 	if (conf->session_cache_enable) {
 		SSL_CTX_sess_set_new_cb(ctx, cbtls_new_session);
 		SSL_CTX_sess_set_get_cb(ctx, cbtls_get_session);
@@ -2462,7 +2462,7 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 			RDEBUG("FAIL: Forcibly stopping session resumption as it is not allowed.");
 			return -1;
 		}
-		
+
 		/*
 		 *	Else resumption IS allowed, so we store the
 		 *	user data in the cache.
@@ -2479,10 +2479,10 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 
 		vp = paircopy2(NULL, request->reply->vps, PW_USER_NAME, 0, TAG_ANY);
 		if (vp) pairadd(&vps, vp);
-		
+
 		vp = paircopy2(NULL, request->packet->vps, PW_STRIPPED_USER_NAME, 0, TAG_ANY);
 		if (vp) pairadd(&vps, vp);
-		
+
 		vp = paircopy2(NULL, request->reply->vps, PW_CACHED_SESSION_POLICY, 0, TAG_ANY);
 		if (vp) pairadd(&vps, vp);
 
@@ -2555,7 +2555,7 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 
 		} else {
 			vp_cursor_t cursor;
-			
+
 			RDEBUG("Adding cached attributes for session %s:", buffer);
 			debug_pair_list(vps);
 
@@ -2612,11 +2612,11 @@ void tls_fail(tls_session_t *ssn)
 
 fr_tls_status_t tls_application_data(tls_session_t *ssn,
 				     REQUEST *request)
-				
+
 {
 	int err;
 
-	/*	
+	/*
 	 *	Decrypt the complete record.
 	 */
 	err = BIO_write(ssn->into_ssl, ssn->dirty_in.data,
@@ -2627,14 +2627,14 @@ fr_tls_status_t tls_application_data(tls_session_t *ssn,
 		       ssn->dirty_in.used, err);
 		return FR_TLS_FAIL;
 	}
-	
+
 	/*
 	 *      Clear the dirty buffer now that we are done with it
 	 *      and init the clean_out buffer to store decrypted data
 	 */
 	record_init(&ssn->dirty_in);
 	record_init(&ssn->clean_out);
-	
+
 	/*
 	 *      Read (and decrypt) the tunneled data from the
 	 *      SSL session, and put it into the decrypted
@@ -2642,12 +2642,12 @@ fr_tls_status_t tls_application_data(tls_session_t *ssn,
 	 */
 	err = SSL_read(ssn->ssl, ssn->clean_out.data,
 		       sizeof(ssn->clean_out.data));
-	
+
 	if (err < 0) {
 		int code;
 
 		RDEBUG("SSL_read Error");
-		
+
 		code = SSL_get_error(ssn->ssl, err);
 		switch (code) {
 		case SSL_ERROR_WANT_READ:
@@ -2668,16 +2668,16 @@ fr_tls_status_t tls_application_data(tls_session_t *ssn,
 		}
 		return FR_TLS_FAIL;
 	}
-	
+
 	if (err == 0) {
 		RWDEBUG("No data inside of the tunnel.");
 	}
-	
+
 	/*
 	 *	Passed all checks, successfully decrypted data
 	 */
 	ssn->clean_out.used = err;
-	
+
 	return FR_TLS_OK;
 }
 
@@ -2732,7 +2732,7 @@ fr_tls_status_t tls_ack_handler(tls_session_t *ssn, REQUEST *request)
 	case application_data:
 		RDEBUG2("ACK handshake fragment handler in application data");
 		return FR_TLS_REQUEST;
-						
+
 		/*
 		 *	For the rest of the conditions, switch over
 		 *	to the default section below.

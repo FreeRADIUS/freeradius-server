@@ -137,7 +137,7 @@ size_t fr_print_string(char const *in, size_t inlen, char *out, size_t outlen)
 	if (inlen == 0) inlen = strlen(in);
 
 	/*
-	 *	
+	 *
 	 */
 	while ((inlen > 0) && (outlen > 4)) {
 		/*
@@ -200,7 +200,7 @@ size_t fr_print_string(char const *in, size_t inlen, char *out, size_t outlen)
 
 
 /** Print the value of an attribute to a string
- *  
+ *
  * @param[out] out Where to write the string.
  * @param[in] outlen Size of outlen.
  * @param[in] vp to print.
@@ -607,7 +607,7 @@ int vp_prints_value_json(char *buffer, size_t bufsize, VALUE_PAIR const *vp)
 			for (q = vp->vp_strvalue; q < vp->vp_strvalue + vp->length; q++) {
 				s = bufsize - (p - buffer);
 				if (s < 4) return -1;
-				
+
 				if (*q == '"') {
 					*p++ = '\\';
 					*p++ = '"';
@@ -621,7 +621,7 @@ int vp_prints_value_json(char *buffer, size_t bufsize, VALUE_PAIR const *vp)
 					*p++ = *q;
 				} else {
 					*p++ = '\\';
-					
+
 					if (*q == '\b') {
 						*p++ = 'b';
 					} else if (*q == '\f') {
@@ -643,10 +643,10 @@ int vp_prints_value_json(char *buffer, size_t bufsize, VALUE_PAIR const *vp)
 		default:
 			/* -1 to account for trailing double quote */
 			s = bufsize - ((p - buffer) - 1);
-			
+
 			len = vp_prints_value(p, s, vp, 0);
 			if (len >= (s - 1)) return -1;
-			
+
 			p += len;
 			break;
 	}
@@ -746,7 +746,7 @@ size_t vp_print_name(char *buffer, size_t bufsize,
 	size_t len = 0;
 
 	if (!buffer) return 0;
-	
+
 	len = snprintf(p, bufsize, "Attr-");
 	p += len;
 	bufsize -= len;
@@ -767,7 +767,7 @@ size_t vp_print_name(char *buffer, size_t bufsize,
 			dv_type = dv->type;
 		}
 		len = snprintf(p, bufsize, "26.%u.", vendor);
-		
+
 		p += len;
 		bufsize -= len;
 	}
@@ -790,7 +790,7 @@ int vp_prints(char *out, size_t outlen, VALUE_PAIR const *vp)
 	if (!vp || !vp->da) return 0;
 
 	VERIFY_VP(vp);
-	
+
 	if ((vp->op > T_OP_INVALID) &&
 	    (vp->op < T_TOKEN_LAST)) {
 		token = vp_tokens[vp->op];

@@ -67,7 +67,7 @@ static int presufcmp(UNUSED void *instance,
 	if (!request) {
 		return -1;
 	}
-	
+
 	name = request->vp_strvalue;
 
 #if 0 /* DEBUG */
@@ -95,7 +95,7 @@ static int presufcmp(UNUSED void *instance,
 	if (ret != 0) {
 		return ret;
 	}
-	
+
 	/*
 	 *	If Strip-User-Name == No, then don't do any more.
 	 */

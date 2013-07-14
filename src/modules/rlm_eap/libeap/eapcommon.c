@@ -90,7 +90,7 @@ eap_type_t eap_name2type(char const *name)
 	if (dv) {
 		return dv->value;
 	}
-	
+
 	return PW_EAP_INVALID;
 }
 
@@ -106,7 +106,7 @@ char const *eap_type2name(eap_type_t method)
 	if (dv) {
 		return dv->name;
 	}
-	
+
 	return "unknown";
 }
 
@@ -153,7 +153,7 @@ int eap_wireformat(eap_packet_t *reply)
 
 	header->code = (reply->code & 0xFF);
 	header->id = (reply->id & 0xFF);
-	
+
 	total_length = htons(total_length);
 	memcpy(header->length, &total_length, sizeof(total_length));
 

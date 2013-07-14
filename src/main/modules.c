@@ -137,9 +137,9 @@ lt_dlhandle lt_dlopenext(char const *name)
 	 *	Prefer loading our libraries by absolute path.
 	 */
 	snprintf(buffer, sizeof(buffer), "%s/%s%s", radlib_dir, name, LT_SHREXT);
-	
+
 	check_lib_access(buffer);
-	
+
 	handle = dlopen(buffer, flags);
 	if (handle) return handle;
 
@@ -177,7 +177,7 @@ static int virtual_server_idx(char const *name)
 	if (!name) return 0;
 
 	hash = fr_hash_string(name);
-		
+
 	return hash & (VIRTUAL_SERVER_HASH_SIZE - 1);
 }
 
@@ -212,7 +212,7 @@ void virtual_servers_free(time_t when)
 {
 	int i;
 	virtual_server_t **last;
-	
+
 	for (i = 0; i < VIRTUAL_SERVER_HASH_SIZE; i++) {
 		virtual_server_t *server, *next;
 
@@ -479,7 +479,7 @@ static module_entry_t *linkto_module(char const *module_name,
 static int module_conf_parse(module_instance_t *node, void **handle)
 {
 	*handle = NULL;
-	
+
 	/*
 	 *	If there is supposed to be instance data, allocate it now.
 	 *	Also parse the configuration data, if required.
@@ -499,10 +499,10 @@ static int module_conf_parse(module_instance_t *node, void **handle)
 		    (cf_section_parse(node->cs, *handle, node->entry->module->config) < 0)) {
 			cf_log_err_cs(node->cs,"Invalid configuration for module \"%s\"", node->name);
 			talloc_free(*handle);
-			
+
 			return -1;
 		}
-		
+
 		/*
 		 *	Set the destructor.
 		 */
@@ -510,7 +510,7 @@ static int module_conf_parse(module_instance_t *node, void **handle)
 			talloc_set_destructor((void *) *handle, node->entry->module->detach);
 		}
 	}
-	
+
 	return 0;
 }
 
@@ -537,7 +537,7 @@ module_instance_t *find_module_instance(CONF_SECTION *modules,
 	if (instname[0] == '-') {
 		instname++;
 	}
-	
+
 	/*
 	 *	Module instances are declared in the modules{} block
 	 *	and referenced later by their name, which is the
@@ -554,7 +554,7 @@ module_instance_t *find_module_instance(CONF_SECTION *modules,
 	 *	If there's already a module instance, return it.
 	 */
 	strlcpy(myNode.name, instname, sizeof(myNode.name));
-	
+
 	node = rbtree_finddata(instance_tree, &myNode);
 	if (node) {
 		return node;
@@ -563,7 +563,7 @@ module_instance_t *find_module_instance(CONF_SECTION *modules,
 	if (!do_link) {
 		return NULL;
 	}
-	
+
 	name1 = cf_section_name1(cs);
 
 	/*
@@ -599,7 +599,7 @@ module_instance_t *find_module_instance(CONF_SECTION *modules,
 		if (cp) {
 			value = cf_pair_value(cp);
 		}
-		
+
 		if (value && (strcmp(value, "yes") == 0)) goto print_inst;
 
 		cf_log_module(cs, "Skipping instantiation of %s", instname);
@@ -609,7 +609,7 @@ module_instance_t *find_module_instance(CONF_SECTION *modules,
 		cf_log_module(cs, "Instantiating module \"%s\" from file %s", instname,
 			      cf_section_filename(cs));
 	}
-	
+
 	strlcpy(node->name, instname, sizeof(node->name));
 
 	/*
@@ -619,7 +619,7 @@ module_instance_t *find_module_instance(CONF_SECTION *modules,
 	 */
 	if (module_conf_parse(node, &node->insthandle) < 0) {
 		talloc_free(node);
-	
+
 		return NULL;
 	}
 
@@ -631,7 +631,7 @@ module_instance_t *find_module_instance(CONF_SECTION *modules,
 	    ((node->entry->module->instantiate)(cs, node->insthandle) < 0)) {
 		cf_log_err_cs(cs, "Instantiation failed for module \"%s\"", node->name);
 		talloc_free(node);
-		
+
 		return NULL;
 	}
 
@@ -665,7 +665,7 @@ static indexed_modcallable *lookup_by_index(rbtree_t *components,
 					    int comp, int idx)
 {
 	indexed_modcallable myc;
-	
+
 	myc.comp = comp;
 	myc.idx = idx;
 
@@ -742,7 +742,7 @@ rlm_rcode_t indexed_modcall(int comp, int idx, REQUEST *request)
 				section_type_value[comp].typename);
 		}
 	}
-	
+
 	if (server->subcs[comp]) {
 		if (idx == 0) {
 			RDEBUG("# Executing section %s from file %s",
@@ -920,7 +920,7 @@ static int load_component_section(CONF_SECTION *cs,
 				if (next_ci && cf_item_is_section(next_ci)) {
 					char const *next_name;
 					CONF_SECTION *next_cs;
-					
+
 					next_cs = cf_itemtosection(next_ci);
 					next_name = cf_section_name1(next_cs);
 					if ((strcmp(next_name, "else") == 0) ||
@@ -1115,7 +1115,7 @@ static int load_byserver(CONF_SECTION *cs)
 			}
 
 			if (!cf_item_is_section(modref)) continue;
-			
+
 			subsubcs = cf_itemtosection(modref);
 			name1 = cf_section_name1(subsubcs);
 
@@ -1139,9 +1139,9 @@ static int load_byserver(CONF_SECTION *cs)
 		subcs = cf_section_sub_find(cs,
 					    section_type_value[comp].section);
 		if (!subcs) continue;
-			
+
 		if (cf_item_find_next(subcs, NULL) == NULL) continue;
-			
+
 		cf_log_module(cs, "Loading %s {...}",
 			      section_type_value[comp].section);
 
@@ -1196,7 +1196,7 @@ static int load_byserver(CONF_SECTION *cs)
 
 		subcs = cf_section_sub_find(cs, "vmps");
 		if (subcs) {
-			cf_log_module(cs, "Checking vmps {...} for more modules to load");		
+			cf_log_module(cs, "Checking vmps {...} for more modules to load");
 			if (load_component_section(subcs, components,
 						   RLM_COMPONENT_POST_AUTH) < 0) {
 				goto error;
@@ -1235,7 +1235,7 @@ static int load_byserver(CONF_SECTION *cs)
 					    RLM_COMPONENT_POST_AUTH, 0);
 			if (c) server->mc[RLM_COMPONENT_POST_AUTH] = c->modulelist;
 			found = 1;
-		
+
 			subcs = cf_subsection_find_next(cs, subcs, "dhcp");
 		}
 #endif
@@ -1375,14 +1375,14 @@ int module_hup_module(CONF_SECTION *cs, module_instance_t *node, time_t when)
 	if (module_conf_parse(node, &insthandle) < 0) {
 		cf_log_err_cs(cs, "HUP failed for module \"%s\" (parsing config failed). "
 			      "Using old configuration", node->name);
-	
+
 		return 0;
 	}
-	
+
 	if ((node->entry->module->instantiate)(cs, insthandle) < 0) {
 		cf_log_err_cs(cs, "HUP failed for module \"%s\".  Using old configuration.", node->name);
 		talloc_free(insthandle);
-		
+
 		return 0;
 	}
 
@@ -1401,7 +1401,7 @@ int module_hup_module(CONF_SECTION *cs, module_instance_t *node, time_t when)
 	node->mh = mh;
 
 	node->insthandle = insthandle;
-	
+
 	/*
 	 *	FIXME: Set a timeout to come back in 60s, so that
 	 *	we can pro-actively clean up the old instances.

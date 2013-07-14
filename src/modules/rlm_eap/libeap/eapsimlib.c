@@ -83,10 +83,10 @@ int map_eapsim_basictypes(RADIUS_PACKET *r, eap_packet_t *ep)
 	 */
 	subtype = (vp = pairfind(r->vps, ATTRIBUTE_EAP_SIM_SUBTYPE, 0, TAG_ANY)) ?
 		vp->vp_integer : eapsim_start;
-		
+
 	id = (vp = pairfind(r->vps, ATTRIBUTE_EAP_ID, 0, TAG_ANY)) ?
 		vp->vp_integer : ((int)getpid() & 0xff);
-		
+
 	eapcode = (vp = pairfind(r->vps, ATTRIBUTE_EAP_CODE, 0, TAG_ANY)) ?
 		vp->vp_integer : PW_EAP_REQUEST;
 
@@ -128,7 +128,7 @@ int map_eapsim_basictypes(RADIUS_PACKET *r, eap_packet_t *ep)
 	if (ep->code != PW_EAP_SUCCESS) {
 		ep->code = eapcode;
 	}
-	
+
 	ep->id = (id & 0xff);
 	ep->type.num = PW_EAP_SIM;
 
@@ -267,7 +267,7 @@ int map_eapsim_basictypes(RADIUS_PACKET *r, eap_packet_t *ep)
 		if (encodedmsg != NULL) {
 			talloc_free(encodedmsg);
 		}
-		
+
 		return 0;
 	}
 
@@ -301,7 +301,7 @@ int unmap_eapsim_basictypes(RADIUS_PACKET *r,
 	if (!newvp) {
 		return 0;
 	}
-	
+
 	newvp->vp_integer = attr[0];
 	newvp->length = 1;
 	pairadd(&(r->vps), newvp);
@@ -381,7 +381,7 @@ int eapsim_checkmac(TALLOC_CTX *ctx, VALUE_PAIR *rvps, uint8_t key[EAPSIM_AUTH_S
 	if (!e) {
 		return 0;
 	}
-	
+
 	/* make copy big enough for everything */
 	elen = (e->length[0] * 256) + e->length[1];
 	len = elen + extralen;
@@ -448,7 +448,7 @@ char const *sim_state2name(enum eapsim_clientstates state,
 		snprintf(statenamebuf, statenamebuflen, "eapstate:%d", state);
 		return statenamebuf;
 	}
-	
+
 	return simstates[state];
 }
 
@@ -466,9 +466,9 @@ char const *sim_subtype2name(enum eapsim_subtype subtype, char *subtypenamebuf, 
 {
 	if (subtype >= eapsim_max_subtype) {
 		snprintf(subtypenamebuf, subtypenamebuflen, "illegal-subtype:%d", subtype);
-		
+
 		return subtypenamebuf;
 	}
-	
+
 	return subtypes[subtype];
 }

@@ -73,7 +73,7 @@ otp_pwe_init(void)
 	da = dict_attrbyname("CHAP-Challenge");
 	if (da) {
 		pwattr[2] = da;
-		
+
 		da = dict_attrbyname("CHAP-Password");
 		if (da) {
 			pwattr[3] = da;
@@ -87,7 +87,7 @@ otp_pwe_init(void)
 	da = dict_attrbyname("MS-CHAP-Challenge");
 	if (da) {
 		pwattr[4] = da;
-		
+
 		da = dict_attrbyname("MS-CHAP-Response");
 		if (da) {
 			pwattr[5] = da;
@@ -101,7 +101,7 @@ otp_pwe_init(void)
 	da = dict_attrbyname("MS-CHAP-Challenge");
 	if (da) {
     		pwattr[6] = da;
-    		
+
     		da = dict_attrbyname("MS-CHAP2-Response");
     		if (da) {
 			pwattr[7] = da;
@@ -125,14 +125,14 @@ otp_pwe_t otp_pwe_present(REQUEST const *request)
 		if (!pwattr[i]) {
 			continue;
 		}
-		
+
 		if (pairfind(request->packet->vps, pwattr[i]->attr,
 			     pwattr[i]->vendor, TAG_ANY) &&
 		    pairfind(request->packet->vps, pwattr[i + 1]->attr,
 			     pwattr[i + 1]->vendor, TAG_ANY)) {
 			DEBUG("rlm_otp: %s: password attributes %s, %s",
 			      __func__, pwattr[i]->name, pwattr[i + 1]->name);
-			
+
 			return i + 1; /* Can't return 0 (indicates failure) */
 		}
 	}

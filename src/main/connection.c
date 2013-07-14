@@ -45,11 +45,11 @@ static int fr_connection_pool_check(fr_connection_pool_t *pool);
 struct fr_connection {
 	fr_connection_t	*prev;		//!< Previous connection in list.
 	fr_connection_t	*next;		//!< Next connection in list.
-	
+
 	time_t		created;	//!< Time connection was created.
 	time_t		last_used;	//!< Last time the connection was
 					//!< reserved.
-					
+
 	uint64_t	num_uses;	//!< Number of times the connection
 					//!< has been reserved.
 	int		in_use;		//!< Whether the connection is currently
@@ -71,7 +71,7 @@ struct fr_connection {
  *
  * @see fr_connection
  */
-struct fr_connection_pool_t {	
+struct fr_connection_pool_t {
 	int		start;		//!< Number of initial connections
 	int		min;		//!< Minimum number of concurrent
 					//!< connections to keep open.
@@ -90,12 +90,12 @@ struct fr_connection_pool_t {
 					//!< of whether it's idle or not).
 	int		idle_timeout;	//!< How long a connection can be idle
 					//!< before being closed.
-					
+
 	int		trigger;	//!< If true execute connection triggers
 					//!< associated with the connection
 					//!< pool.
-					
-	int		spread;		//!< If true requests will be spread 
+
+	int		spread;		//!< If true requests will be spread
 					//!< across all connections, instead of
 					//!< re-using the most recently used
 					//!< connections first.
@@ -113,7 +113,7 @@ struct fr_connection_pool_t {
 					//!< already spawning a connection.
 	time_t		last_at_max;	//!< Last time we hit the maximum number
 					//!< of allowed connections.
-					
+
 	uint64_t	count;		//!< Number of connections spawned over
 					//!< the lifetime of the pool.
 	int		num;		//!< Number of connections in the pool.
@@ -122,7 +122,7 @@ struct fr_connection_pool_t {
 
 	fr_connection_t	*head;		//!< Start of the connection list.
 	fr_connection_t *tail;		//!< End of the connection list.
-					
+
 	bool		spawning;	//!< Whether we are currently attempting
 					//!< to spawn a new connection.
 
@@ -137,7 +137,7 @@ struct fr_connection_pool_t {
 					//!< that relates to this pool.
 	void		*ctx;		//!< Pointer to context data that will
 					//!< be passed to callbacks.
-	
+
 	char  		*log_prefix;	//!< Log prefix to prepend to all log
 					//!< messages created by the connection
 					//!< pool code.
@@ -224,7 +224,7 @@ static void fr_connection_link_head(fr_connection_pool_t *pool,
 	if (pool->head) {
 		pool->head->prev = this;
 	}
-	
+
 	this->next = pool->head;
 	this->prev = NULL;
 	pool->head = this;
@@ -283,7 +283,7 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool,
 {
 	fr_connection_t *this;
 	void *conn;
-	
+
 	rad_assert(pool != NULL);
 
 	/*
@@ -299,15 +299,15 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool,
 
 	if ((pool->last_failed == now) || pool->spawning) {
 		int complain = false;
-		
+
 		if (pool->last_throttled != now) {
 			complain = true;
-			
+
 			pool->last_throttled = now;
 		}
 
 		pthread_mutex_unlock(&pool->mutex);
-		
+
 		if (complain) {
 			if (pool->spawning) {
 				ERROR("%s: Cannot open new connection, "
@@ -319,7 +319,7 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool,
 				       pool->log_prefix);
 			}
 		}
-		
+
 		return NULL;
 	}
 
@@ -335,7 +335,7 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool,
 	pthread_mutex_unlock(&pool->mutex);
 
 	INFO("%s: Opening additional connection (%" PRIu64 ")", pool->log_prefix, pool->count);
-	
+
 	this = rad_malloc(sizeof(*this));
 	memset(this, 0, sizeof(*this));
 
@@ -348,15 +348,15 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool,
 	conn = pool->create(pool->ctx);
 	if (!conn) {
 		ERROR("%s: Opening connection failed (%" PRIu64 ")", pool->log_prefix, pool->count);
-		
+
 		pool->last_failed = now;
 		free(this);
 		pool->spawning = false; /* atomic, so no lock is needed */
 		return NULL;
 	}
-	
+
 	this->created = now;
-	this->connection = conn;	
+	this->connection = conn;
 
 	/*
 	 *	And lock the mutex again while we link the new
@@ -404,7 +404,7 @@ int fr_connection_add(fr_connection_pool_t *pool, void *conn)
 			pthread_mutex_unlock(&pool->mutex);
 			return 0;
 		}
-		
+
 		INFO("%s: Opening connection successful (%" PRIu64 ")", pool->log_prefix, pool->count);
 	}
 
@@ -519,7 +519,7 @@ int fr_connection_del(fr_connection_pool_t *pool, void *conn)
 	if (this->in_use) {
 		rad_assert(this->in_use == true);
 		this->in_use = false;
-		
+
 		rad_assert(pool->active > 0);
 		pool->active--;
 	}
@@ -553,9 +553,9 @@ void fr_connection_pool_delete(fr_connection_pool_t *pool)
 
 	for (this = pool->head; this != NULL; this = next) {
 		next = this->next;
-		
+
 		INFO("%s: Closing connection (%" PRIu64 ")", pool->log_prefix, this->number);
-		
+
 		fr_connection_close(pool, this);
 	}
 
@@ -564,7 +564,7 @@ void fr_connection_pool_delete(fr_connection_pool_t *pool)
 	rad_assert(pool->head == NULL);
 	rad_assert(pool->tail == NULL);
 	rad_assert(pool->num == 0);
-	
+
 	free(pool->log_prefix);
 	free(pool);
 }
@@ -585,7 +585,7 @@ void fr_connection_pool_delete(fr_connection_pool_t *pool)
  * @param[in] a Callback to check the status of connections.
  * @param[in] d Callback to delete connections.
  * @param[in] prefix to prepend to all log message, if NULL will create prefix
- *	from parent conf section names. 
+ *	from parent conf section names.
  * @return A new connection pool or NULL on error.
  */
 fr_connection_pool_t *fr_connection_pool_init(CONF_SECTION *parent,
@@ -616,7 +616,7 @@ fr_connection_pool_t *fr_connection_pool_init(CONF_SECTION *parent,
 	pool->create = c;
 	pool->alive = a;
 	pool->delete = d;
-	
+
 	pool->head = pool->tail = NULL;
 
 #ifdef HAVE_PTHREAD_H
@@ -647,7 +647,7 @@ fr_connection_pool_t *fr_connection_pool_init(CONF_SECTION *parent,
 	} else {
 		pool->log_prefix = strdup(prefix);
 	}
-	
+
 	DEBUG("%s: Initialising connection pool", pool->log_prefix);
 
 	if (cs) {
@@ -682,7 +682,7 @@ fr_connection_pool_t *fr_connection_pool_init(CONF_SECTION *parent,
 	 *	not to.
 	 */
 	for (i = 0; i < pool->start; i++) {
-		this = fr_connection_spawn(pool, now);	
+		this = fr_connection_spawn(pool, now);
 		if (!this) {
 		error:
 			fr_connection_pool_delete(pool);
@@ -715,7 +715,7 @@ static int fr_connection_manage(fr_connection_pool_t *pool,
 {
 	rad_assert(pool != NULL);
 	rad_assert(this != NULL);
-	
+
 	/*
 	 *	Don't terminated in-use connections
 	 */
@@ -729,7 +729,7 @@ static int fr_connection_manage(fr_connection_pool_t *pool,
 		if ((pool->num <= pool->min) &&
 		    (pool->last_complained < now)) {
 			WARN("%s: You probably need to lower \"min\"", pool->log_prefix);
-			
+
 			pool->last_complained = now;
 		}
 		fr_connection_close(pool, this);
@@ -748,7 +748,7 @@ static int fr_connection_manage(fr_connection_pool_t *pool,
 		     pool->log_prefix, this->number, (int) (now - this->last_used));
 		goto do_delete;
 	}
-	
+
 	return 1;
 }
 
@@ -815,7 +815,7 @@ static int fr_connection_pool_check(fr_connection_pool_t *pool)
 		}
 
 		rad_assert(idle != NULL);
-		
+
 		INFO("%s: Closing connection (%" PRIu64 "): Too many free connections (%d > %d)", pool->log_prefix,
 		     idle->number, spare, pool->spare);
 		fr_connection_close(pool, idle);
@@ -854,7 +854,7 @@ int fr_connection_check(fr_connection_pool_t *pool, void *conn)
 	fr_connection_t *this;
 	time_t now;
 	int ret = 1;
-	
+
 	if (!pool) return 1;
 
 	now = time(NULL);
@@ -917,13 +917,13 @@ void *fr_connection_get(fr_connection_pool_t *pool)
 			complain = true;
 			pool->last_at_max = now;
 		}
-		
+
 		pthread_mutex_unlock(&pool->mutex);
-		
+
 		if (complain) {
 			ERROR("%s: No connections available and at max connection limit", pool->log_prefix);
 		}
-		
+
 		return NULL;
 	}
 
@@ -939,9 +939,9 @@ do_return:
 	this->in_use = true;
 
 	pthread_mutex_unlock(&pool->mutex);
-	
+
 	DEBUG("%s: Reserved connection (%" PRIu64 ")", pool->log_prefix, this->number);
-	
+
 	return this->connection;
 }
 
@@ -963,7 +963,7 @@ void fr_connection_release(fr_connection_pool_t *pool, void *conn)
 
 	rad_assert(this->in_use == true);
 	this->in_use = false;
-	
+
 	/*
 	 *	Determines whether the last used connection gets
 	 *	re-used first.
@@ -1037,46 +1037,46 @@ void *fr_connection_reconnect(fr_connection_pool_t *pool, void *conn)
 
 	this = fr_connection_find(pool, conn);
 	if (!this) return NULL;
-	
+
 	conn_number = this->number;
 
 	rad_assert(this->in_use == true);
-	
+
 	DEBUG("%s: Reconnecting (%" PRIu64 ")", pool->log_prefix, conn_number);
-	
+
 	new_conn = pool->create(pool->ctx);
 	if (!new_conn) {
 		time_t now = time(NULL);
-		
+
 		if (pool->last_complained == now) {
 			now = 0;
 		} else {
 			pool->last_complained = now;
 		}
-	
+
 		this->in_use = false;
 
 		rad_assert(pool->active > 0);
 		pool->active--;
-	
+
 		fr_connection_close(pool, this);
 		pthread_mutex_unlock(&pool->mutex);
-		
+
 		/*
 		 *	Can't create a new socket.
 		 *	Try grabbing a pre-existing one.
 		 */
 		new_conn = fr_connection_get(pool);
 		if (new_conn) return new_conn;
-		
+
 		if (!now) return NULL;
-		
+
 		ERROR("%s: Failed to reconnect (%" PRIu64 "), and no other connections available", pool->log_prefix,
 		      conn_number);
-		
+
 		return NULL;
 	}
-	
+
 	pool->delete(pool->ctx, conn);
 	this->connection = new_conn;
 	pthread_mutex_unlock(&pool->mutex);

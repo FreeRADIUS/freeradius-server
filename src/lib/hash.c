@@ -467,7 +467,7 @@ int fr_hash_table_replace(fr_hash_table_t *ht, void const *data)
 	if (!node) {
 		return fr_hash_table_insert(ht, data);
 	}
-	
+
 	if (ht->free) {
 		memcpy(&tofree, &node->data, sizeof(tofree));
 		ht->free(tofree);
@@ -571,7 +571,7 @@ void fr_hash_table_free(fr_hash_table_t *ht)
 				memcpy(&tofree, &node->data, sizeof(tofree));
 				ht->free(tofree);
 			}
-			
+
 			free(node);
 		}
 	}
@@ -613,12 +613,12 @@ int fr_hash_table_walk(fr_hash_table_t *ht,
 
 		for (node = ht->buckets[i]; node != &ht->null; node = next) {
 			void *arg;
-			
+
 			next = node->next;
 
 			memcpy(&arg, node->data, sizeof(arg));
 			rcode = callback(context, arg);
-			
+
 			if (rcode != 0) return rcode;
 		}
 	}

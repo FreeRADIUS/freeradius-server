@@ -66,7 +66,7 @@ void otp_mppe(REQUEST *request, otp_pwe_t pwe, rlm_otp_t const *opt, char const 
 		if (!opt->mschap_mppe_policy) {
 			return;
 		}
-		
+
 		/*
 		 * Generate the MS-CHAP-MPPE-Keys attribute.	This is not specified
 		 * anywhere -- RFC 2548, par. 2.4.1 is the authority but it has
@@ -82,7 +82,7 @@ void otp_mppe(REQUEST *request, otp_pwe_t pwe, rlm_otp_t const *opt, char const 
 			uint8_t password_unicode[2 * OTP_MAX_PASSCODE_LEN];
 			uint8_t password_md[MD4_DIGEST_LENGTH];
 			uint8_t mppe_keys[32];
-			
+
 			/* 0x ASCII(mppe_keys)	'\0' */
 			char mppe_keys_string[2 + (2 * sizeof(mppe_keys)) + 1];
 
@@ -102,7 +102,7 @@ void otp_mppe(REQUEST *request, otp_pwe_t pwe, rlm_otp_t const *opt, char const 
 				password_unicode[i * 2] = *passcode++;
 				password_unicode[i * 2 + 1] = 0;
 			}
-			
+
 			/* first md4 */
 			(void) MD4(password_unicode, 2 * passcode_len, password_md);
 			/* second md4 */
@@ -111,11 +111,11 @@ void otp_mppe(REQUEST *request, otp_pwe_t pwe, rlm_otp_t const *opt, char const 
 			/* Whew. Now stringify it for pairmake(). */
 			mppe_keys_string[0] = '0';
 			mppe_keys_string[1] = 'x';
-			
+
 			for (i = 0; i < 32; ++i) {
 				(void) sprintf(&mppe_keys_string[i*2+2], "%02X", mppe_keys[i]);
 			}
-			
+
 			pairmake_reply("MS-CHAP-MPPE-Keys", mppe_keys_string, T_OP_EQ);
 		} /* (doing mppe) */
 	break; /* PWE_MSCHAP */
@@ -226,7 +226,7 @@ void otp_mppe(REQUEST *request, otp_pwe_t pwe, rlm_otp_t const *opt, char const 
 			for (i = 0; i < sizeof(auth_md_string) - 1; ++i) {
 				(void) sprintf(&auth_octet_string[i * 2 +4], "%02X", auth_md_string[i]);
 			}
-			
+
 			pairmake_reply("MS-CHAP2-Success", auth_octet_string, T_OP_EQ);
 		} /* Generate mutual auth info. */
 
@@ -240,7 +240,7 @@ void otp_mppe(REQUEST *request, otp_pwe_t pwe, rlm_otp_t const *opt, char const 
 		if (!opt->mschapv2_mppe_policy) {
 			return;
 		}
-		
+
 		/*
 		 * Generate the MPPE initial session key, per RFC 3079.
 		 * (Although, RFC 2548 leaves us guessing at how to generate this.)
@@ -300,7 +300,7 @@ void otp_mppe(REQUEST *request, otp_pwe_t pwe, rlm_otp_t const *opt, char const 
 				0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 				0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 			};
-			
+
 			uint8_t SHSpad2[40] = {
 				0xf2, 0xf2, 0xf2, 0xf2, 0xf2, 0xf2, 0xf2, 0xf2, 0xf2, 0xf2,
 				0xf2, 0xf2, 0xf2, 0xf2, 0xf2, 0xf2, 0xf2, 0xf2, 0xf2, 0xf2,
@@ -351,7 +351,7 @@ void otp_mppe(REQUEST *request, otp_pwe_t pwe, rlm_otp_t const *opt, char const 
 			for (i = 0; i < sizeof(MasterSendKey); ++i) {
 				(void) sprintf(&mppe_key_string[i*2+2], "%02X", MasterSendKey[i]);
 			}
-			
+
 			pairmake_reply("MS-MPPE-Send-Key", mppe_key_string, T_OP_EQ);
 
 			/*
@@ -364,7 +364,7 @@ void otp_mppe(REQUEST *request, otp_pwe_t pwe, rlm_otp_t const *opt, char const 
 			}
 			pairmake_reply("MS-MPPE-Recv-Key", mppe_key_string, T_OP_EQ);
 		} /* (doing mppe) */
-		
+
 		break; /* PWE_MSCHAP2 */
 	} /* PWE_MSCHAP2 */
 

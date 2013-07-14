@@ -43,11 +43,11 @@ static int sql_conn_destructor(void *conn)
 {
 	rlm_sql_handle_t *handle = conn;
 	rlm_sql_t *inst = handle->inst;
-	
+
 	rad_assert(inst);
-	
+
 	exec_trigger(NULL, inst->cs, "modules.sql.close", false);
-	
+
 	return 0;
 }
 
@@ -58,13 +58,13 @@ static void *mod_conn_create(void *instance)
 	rlm_sql_handle_t *handle;
 
 	handle = talloc_zero(instance, rlm_sql_handle_t);
-	
+
 	/*
 	 *	Handle requires a pointer to the SQL inst so the
 	 *	destructor has access to the module configuration.
 	 */
 	handle->inst = inst;
-	
+
 	/*
 	 *	When something frees this handle the destructor set by
 	 *	the driver will be called first, closing any open sockets.
@@ -76,7 +76,7 @@ static void *mod_conn_create(void *instance)
 	rcode = (inst->module->sql_socket_init)(handle, inst->config);
 	if (rcode == 0) {
 		exec_trigger(NULL, inst->cs, "modules.sql.open", false);
-		
+
 		return handle;
 	}
 
@@ -93,7 +93,7 @@ static void *mod_conn_create(void *instance)
  *	@todo Calls to this should eventually go away.
  */
 static int mod_conn_delete(UNUSED void *instance, void *handle)
-{	
+{
 	return talloc_free(handle);
 }
 
@@ -245,18 +245,18 @@ int sql_userparse(TALLOC_CTX *ctx, VALUE_PAIR **head, rlm_sql_row_t row)
 		       fr_strerror());
 		return -1;
 	}
-	
+
 	if (do_xlat) {
 		if (pairmark_xlat(vp, value) < 0) {
 			ERROR("rlm_sql: Error marking pair for xlat");
-			
+
 			pairbasicfree(vp);
 			return -1;
 		}
 	} else {
 		if (pairparsevalue(vp, value) < 0) {
 			ERROR("rlm_sql: Error parsing value");
-			
+
 			pairbasicfree(vp);
 			return -1;
 		}
@@ -284,14 +284,14 @@ int rlm_sql_fetch_row(rlm_sql_handle_t **handle, rlm_sql_t *inst)
 	if (!*handle || !(*handle)->conn) {
 		return -1;
 	}
-	
+
 	/*
 	 * We can't implement reconnect logic here, because the caller may require
 	 * the original connection to free up queries or result sets associated with
 	 * that connection.
 	 */
 	ret = (inst->module->sql_fetch_row)(*handle, inst->config);
-	
+
 	if (ret < 0) {
 		char const *error = (inst->module->sql_error)(*handle, inst->config);
 		EDEBUG("rlm_sql (%s): Error fetching row: %s",
@@ -323,7 +323,7 @@ int rlm_sql_query(rlm_sql_handle_t **handle, rlm_sql_t *inst, char const *query)
 		ret = -1;
 		goto sql_down;
 	}
-	
+
 	while (1) {
 		DEBUG("rlm_sql (%s): Executing query: '%s'",
 		      inst->config->xlat_name, query);
@@ -337,16 +337,16 @@ int rlm_sql_query(rlm_sql_handle_t **handle, rlm_sql_t *inst, char const *query)
 			sql_down:
 			*handle = fr_connection_reconnect(inst->pool, *handle);
 			if (!*handle) return RLM_SQL_RECONNECT;
-			
+
 			continue;
 		}
-		
+
 		if (ret < 0) {
 			char const *error = (inst->module->sql_error)(*handle, inst->config);
 			ERROR("rlm_sql (%s): Database query error: %s",
 			      inst->config->xlat_name, error ? error : "<UNKNOWN>");
 		}
-		
+
 		return ret;
 	}
 }
@@ -373,7 +373,7 @@ int rlm_sql_select_query(rlm_sql_handle_t **handle, rlm_sql_t *inst, char const 
 		ret = -1;
 		goto sql_down;
 	}
-	
+
 	while (1) {
 		DEBUG("rlm_sql (%s): Executing query: '%s'",
 		      inst->config->xlat_name, query);
@@ -387,16 +387,16 @@ int rlm_sql_select_query(rlm_sql_handle_t **handle, rlm_sql_t *inst, char const 
 			sql_down:
 			*handle = fr_connection_reconnect(inst->pool, *handle);
 			if (!*handle) return RLM_SQL_RECONNECT;
-			
+
 			continue;
 		}
-		
+
 		if (ret < 0) {
 			char const *error = (inst->module->sql_error)(*handle, inst->config);
 			ERROR("rlm_sql (%s): Database query error '%s'",
 			      inst->config->xlat_name, error ? error : "<UNKNOWN>");
 		}
-		
+
 		return ret;
 	}
 }
@@ -425,9 +425,9 @@ int sql_getvpdata(rlm_sql_t * inst, rlm_sql_handle_t **handle,
 			break;
 		if (sql_userparse(ctx, pair, row) != 0) {
 			ERROR("rlm_sql (%s): Error getting data from database", inst->config->xlat_name);
-			
+
 			(inst->module->sql_finish_select_query)(*handle, inst->config);
-			
+
 			return -1;
 		}
 		rows++;
@@ -450,15 +450,15 @@ void rlm_sql_query_log(rlm_sql_t *inst, REQUEST *request,
 	if (section) {
 		filename = section->logfile;
 	}
-	
+
 	if (!filename) {
 		filename = inst->config->logfile;
-		
+
 		if (!filename) {
 			return;
 		}
 	}
-	
+
 	if (radius_axlat(&expanded, request, filename, NULL, NULL) < 0) {
 		return;
 	}
@@ -467,7 +467,7 @@ void rlm_sql_query_log(rlm_sql_t *inst, REQUEST *request,
 	if (fd < 0) {
 		ERROR("rlm_sql (%s): Couldn't open logfile '%s': %s", inst->config->xlat_name,
 		       expanded, strerror(errno));
-		       
+
 		talloc_free(expanded);
 		return;
 	}
@@ -476,7 +476,7 @@ void rlm_sql_query_log(rlm_sql_t *inst, REQUEST *request,
 		ERROR("rlm_sql (%s): Failed writing to logfile '%s': %s", inst->config->xlat_name, expanded,
 		       strerror(errno));
 	}
-	
+
 	talloc_free(expanded);
 	close(fd);		/* and release the lock */
 }

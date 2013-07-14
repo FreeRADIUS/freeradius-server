@@ -97,7 +97,7 @@ static int vqp_sendto(int sockfd, void *data, size_t data_len, int flags,
 	socklen_t		sizeof_src;
 
 	if (!fr_ipaddr2sockaddr(src_ipaddr, 0, &src, &sizeof_src)) {
-		return -1;   /* Unknown address family, Die Die Die! */	
+		return -1;   /* Unknown address family, Die Die Die! */
 	}
 #endif
 
@@ -173,7 +173,7 @@ static ssize_t vqp_recvfrom(int sockfd, RADIUS_PACKET *packet, int flags,
 	 */
 	if (data_len < 4) {
 		rad_recv_discard(sockfd);
-		
+
 		return 0;
 
 	/*
@@ -185,7 +185,7 @@ static ssize_t vqp_recvfrom(int sockfd, RADIUS_PACKET *packet, int flags,
 		   (header[1] > 4) ||
 		   (header[3] > VQP_MAX_ATTRIBUTES)) {
 		rad_recv_discard(sockfd);
-			
+
 		return 0;
 
 	} else {		/* we got 4 bytes of data. */
@@ -201,7 +201,7 @@ static ssize_t vqp_recvfrom(int sockfd, RADIUS_PACKET *packet, int flags,
 		if ((header[1] == 1) || (header[1] == 3)) {
 			if (len != VQP_MAX_ATTRIBUTES) {
 				rad_recv_discard(sockfd);
-				
+
 				return 0;
 			}
 			/*
@@ -212,7 +212,7 @@ static ssize_t vqp_recvfrom(int sockfd, RADIUS_PACKET *packet, int flags,
 		} else {
 			if (len != 2) {
 				rad_recv_discard(sockfd);
-				
+
 				return 0;
 			}
 			/*
@@ -320,7 +320,7 @@ RADIUS_PACKET *vqp_recv(int sockfd)
 			fprintf(stderr, "%02x ", ptr[i]);
 			if ((i & 0x0f) == 0x0f) fprintf(stderr, "\n");
 		}
-	
+
 	}
 
 	if (ptr[3] > VQP_MAX_ATTRIBUTES) {
@@ -451,7 +451,7 @@ int vqp_decode(RADIUS_PACKET *packet)
 	vp->vp_integer = packet->data[2];
 	debug_pair(vp);
 	pairinsert(&cursor, vp);
-	
+
 	vp = paircreate(packet, PW_VQP_SEQUENCE_NUMBER, 0);
 	if (!vp) {
 		fr_strerror_printf("No memory");
@@ -495,7 +495,7 @@ int vqp_decode(RADIUS_PACKET *packet)
 				vp->length = 4;
 				break;
 			}
-			
+
 			/*
 			 *	Value doesn't match the type we have for the
 			 *	valuepair so we must change it's da to an

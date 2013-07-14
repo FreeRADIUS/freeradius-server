@@ -98,42 +98,42 @@ void log_talloc_report(TALLOC_CTX *ctx);
  *
  *	For server code, do not call radlog, vradlog et al directly, use one of the logging macros instead.
  *
- *	R*			- Macros prefixed with an R will automatically prepend request information to the 
+ *	R*			- Macros prefixed with an R will automatically prepend request information to the
  *				  log messages.
  *	INFO | WARN | ERROR	- Macros containing these words will be displayed at all log levels.
- *	*DEBUG* 		- Macros with the word DEBUG, will only be displayed if the server or request debug 
+ *	*DEBUG* 		- Macros with the word DEBUG, will only be displayed if the server or request debug
  *				  level is above 0.
  *	*[IWE]DEBUG[0-9]?	- Macros with I, W, E as (or just after) the prefix, will log with the priority
  *				  specified by the integer if the server or request log level at or above that integer.
- *				  If there is no integer the level is 1. The I|W|E prefix determines the type 
+ *				  If there is no integer the level is 1. The I|W|E prefix determines the type
  *				  (INFO, WARN, ERROR), if there is no I|W|E prefix the DEBUG type will be used.
  */
- 
+
 /*
  *	Log server driven messages like threadpool exhaustion and connection failures
  */
 #define _SL(_l, _p, _f, ...)	if (debug_flag >= _p) radlog(_l, _f, ## __VA_ARGS__)
- 
+
 #define AUTH(fmt, ...)		_SL(L_AUTH, L_DBG_LVL_OFF, fmt, ## __VA_ARGS__)
 #define ACCT(fmt, ...)		_SL(L_ACCT, L_DBG_LVL_OFF, fmt, ## __VA_ARGS__)
 #define PROXY(fmt, ...)		_SL(L_PROXY, L_DBG_LVL_OFF, fmt, ## __VA_ARGS__)
- 
+
 #define DEBUG(fmt, ...)		_SL(L_DBG, L_DBG_LVL_1, fmt, ## __VA_ARGS__)
 #define DEBUG2(fmt, ...)	_SL(L_DBG, L_DBG_LVL_2, fmt, ## __VA_ARGS__)
 #define DEBUG3(fmt, ...)	_SL(L_DBG, L_DBG_LVL_3, fmt, ## __VA_ARGS__)
 #define DEBUG4(fmt, ...)	_SL(L_DBG, L_DBG_LVL_MAX, fmt, ## __VA_ARGS__)
- 
+
 #define INFO(fmt, ...)		_SL(L_INFO, L_DBG_LVL_OFF, fmt, ## __VA_ARGS__)
 #define DEBUGI(fmt, ...)	_SL(L_INFO, L_DBG_LVL_1, fmt, ## __VA_ARGS__)
- 
+
 #define WARN(fmt, ...)		_SL(L_WARN, L_DBG_LVL_OFF, fmt, ## __VA_ARGS__)
 #define WDEBUG(fmt, ...)	_SL(L_DBG_WARN, L_DBG_LVL_1, fmt, ## __VA_ARGS__)
 #define WDEBUG2(fmt, ...)	_SL(L_DBG_WARN, L_DBG_LVL_2, fmt, ## __VA_ARGS__)
- 
+
 #define ERROR(fmt, ...)		_SL(L_ERR, L_DBG_LVL_OFF, fmt, ## __VA_ARGS__)
 #define EDEBUG(fmt, ...)	_SL(L_DBG_ERR, L_DBG_LVL_1, fmt, ## __VA_ARGS__)
 #define EDEBUG2(fmt, ...)	_SL(L_DBG_ERR, L_DBG_LVL_2, fmt, ## __VA_ARGS__)
- 
+
 /*
  *	Log request driven messages which including elements from the current request, like section and module
  *
@@ -146,23 +146,23 @@ void log_talloc_report(TALLOC_CTX *ctx);
 						_RL(_l, _p, _f, ## __VA_ARGS__); \
 					} \
 				} while(0)
-				
+
 #define RAUTH(fmt, ...)		_RL(L_AUTH, L_DBG_LVL_OFF, fmt, ## __VA_ARGS__)
 #define RACCT(fmt, ...)		_RL(L_ACCT, L_DBG_LVL_OFF, fmt, ## __VA_ARGS__)
 #define RPROXY(fmt, ...)	_RL(L_PROXY, L_DBG_LVL_OFF, fmt, ## __VA_ARGS__)
- 
+
 #define RDEBUG(fmt, ...)	_RL(L_DBG, L_DBG_LVL_1, fmt, ## __VA_ARGS__)
 #define RDEBUG2(fmt, ...)	_RL(L_DBG, L_DBG_LVL_2, fmt, ## __VA_ARGS__)
 #define RDEBUG3(fmt, ...)	_RL(L_DBG, L_DBG_LVL_3, fmt, ## __VA_ARGS__)
 #define RDEBUG4(fmt, ...)	_RL(L_DBG, L_DBG_LVL_MAX, fmt, ## __VA_ARGS__)
- 
+
 #define RINFO(fmt, ...)		_RL(L_INFO, L_DBG_LVL_OFF, fmt, ## __VA_ARGS__)
 #define RIDEBUG(fmt, ...)	_RL(L_INFO, L_DBG_LVL_1, fmt, ## __VA_ARGS__)
- 
+
 #define RWARN(fmt, ...)		_RL(L_DBG_WARN, L_DBG_LVL_OFF, fmt, ## __VA_ARGS__)
 #define RWDEBUG(fmt, ...)	_RL(L_DBG_WARN, L_DBG_LVL_1, fmt, ## __VA_ARGS__)
 #define RWDEBUG2(fmt, ...)	_RL(L_DBG_WARN, L_DBG_LVL_2, fmt, ## __VA_ARGS__)
- 
+
 #define RERROR(fmt, ...)	_RM(L_DBG_ERR, L_DBG_LVL_OFF, fmt, ## __VA_ARGS__)
 #define REDEBUG(fmt, ...)	_RM(L_DBG_ERR, L_DBG_LVL_1, fmt, ## __VA_ARGS__)
 #define REDEBUG2(fmt, ...)	_RM(L_DBG_ERR, L_DBG_LVL_2, fmt, ## __VA_ARGS__)

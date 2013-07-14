@@ -92,16 +92,16 @@ fr_heap_t *fr_heap_create(fr_heap_cmp_t cmp, size_t offset)
 int fr_heap_insert(fr_heap_t *hp, void *data)
 {
 	int child = hp->num_elements;
-	
+
 	/*
 	 *	Heap is full.  Double it's size.
 	 */
 	if (child == hp->size) {
 		void **p;
-		
+
 		p = malloc(2 * hp->size * sizeof(*p));
 		if (!p) return 0;
-		
+
 		memcpy(p, hp->p, sizeof(*p) * hp->size);
 		free(hp->p);
 		hp->p = p;
@@ -110,7 +110,7 @@ int fr_heap_insert(fr_heap_t *hp, void *data)
 
 	hp->p[child] = data;
 	hp->num_elements++;
-	
+
 	return fr_heap_bubble(hp, child);
 }
 
@@ -122,12 +122,12 @@ static int fr_heap_bubble(fr_heap_t *hp, int child)
 	 */
 	while (child > 0) {
 		int parent = HEAP_PARENT(child);
-		
+
 		/*
 		 *	Parent is smaller than the child.  We're done.
 		 */
 		if (hp->cmp(hp->p[parent], hp->p[child]) < 0) break;
-		
+
 		/*
 		 *	Child is smaller than the parent, repeat.
 		 */
@@ -150,9 +150,9 @@ int fr_heap_extract(fr_heap_t *hp, void *data)
 	int max;
 
 	if (!hp || (hp->num_elements == 0)) return 0;
-	
+
 	max = hp->num_elements - 1;
-	
+
 	/*
 	 *	Extract element.  Default is the first one.
 	 */
@@ -276,7 +276,7 @@ int main(int argc, char **arg)
 	}
 
 	fr_heap_delete(hp);
-	
+
 	return 0;
 }
 #endif

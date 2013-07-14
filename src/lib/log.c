@@ -86,19 +86,19 @@ void fr_strerror_printf(char const *fmt, ...)
 	char *buffer;
 
 	pthread_once(&fr_strerror_once, fr_strerror_make_key);
-	
+
 	buffer = pthread_getspecific(fr_strerror_key);
 	if (!buffer) {
 		int ret;
-		
+
 		buffer = malloc(FR_STRERROR_BUFSIZE);
 		if (!buffer) return; /* panic and die! */
-	
+
 		ret = pthread_setspecific(fr_strerror_key, buffer);
 		if (ret != 0) {
 			fr_perror("Failed recording thread error: %s",
 				  strerror(ret));
-			
+
 			return;
 		}
 	}

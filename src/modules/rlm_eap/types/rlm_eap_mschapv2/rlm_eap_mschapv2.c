@@ -591,7 +591,7 @@ static int mschapv2_authenticate(void *arg, eap_handler_t *handler)
 	if (!name) {
 		return 0;
 	}
-	
+
 	/*
 	 *	MS-Length - MS-Value - 5.
 	 */

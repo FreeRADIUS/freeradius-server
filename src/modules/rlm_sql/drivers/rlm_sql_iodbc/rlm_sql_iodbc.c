@@ -41,11 +41,11 @@ typedef struct rlm_sql_iodbc_conn {
 	HDBC    dbc_handle;
 	HSTMT   stmt_handle;
 	int	id;
-	
+
 	rlm_sql_row_t row;
 
 	struct sql_socket *next;
-	
+
 	SQLCHAR error[IODBC_MAX_ERROR_LEN];
 	void	*conn;
 } rlm_sql_iodbc_conn_t;
@@ -56,22 +56,22 @@ static int sql_num_fields(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
 static int sql_socket_destructor(void *c)
 {
 	rlm_sql_iodbc_conn_t *conn = c;
-	
+
 	DEBUG2("rlm_sql_iodbc: Socket destructor called, closing socket");
-	
+
 	if (conn->stmt_handle) {
 		SQLFreeStmt(conn->stmt_handle, SQL_DROP);
 	}
-	
+
 	if (conn->dbc_handle) {
 		SQLDisconnect(conn->dbc_handle);
 		SQLFreeConnect(conn->dbc_handle);
 	}
-	
+
 	if (conn->env_handle) {
 		SQLFreeEnv(conn->env_handle);
 	}
-	
+
 	return 0;
 }
 
@@ -110,11 +110,11 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 	 */
 	{
 		SQLCHAR *server, *login, *password;
-		
+
 		memcpy(&server, &config->sql_server, sizeof(server));
 		memcpy(&login, &config->sql_login, sizeof(login));
 		memcpy(&password, &config->sql_password, sizeof(password));
-		
+
 		rcode = SQLConnect(conn->dbc_handle, server, SQL_NTS, login, SQL_NTS, password, SQL_NTS);
 	}
 	if (!SQL_SUCCEEDED(rcode)) {
@@ -154,11 +154,11 @@ static sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config,
 
 	{
 		SQLCHAR *statement;
-		
+
 		memcpy(&statement, &query, sizeof(statement));
 		rcode = SQLExecDirect(conn->stmt_handle, statement, SQL_NTS);
 	}
-	
+
 	if (!SQL_SUCCEEDED(rcode)) {
 		ERROR("sql_query: failed:  %s",
 				sql_error(handle, config));
@@ -338,7 +338,7 @@ static char const *sql_error(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *
 	rlm_sql_iodbc_conn_t *conn = handle->conn;
 
 	conn->error[0] = '\0';
-	
+
 	SQLError(conn->env_handle, conn->dbc_handle, conn->stmt_handle,
 		state, &errornum, conn->error, IODBC_MAX_ERROR_LEN, &length);
 	return (char const *) &conn->error;

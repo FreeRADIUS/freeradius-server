@@ -305,7 +305,7 @@ static int radclient_init(char const *filename)
 				vp->value.xlat = NULL;
 				vp->type = VT_DATA;
 			}
-			
+
 			if (!vp->da->vendor) switch (vp->da->attr) {
 			default:
 				break;
@@ -369,15 +369,15 @@ static int radclient_init(char const *filename)
 					p[1] = vp->length;
 //					talloc_free(vp->vp_octets);
 					vp->vp_octets = p;
-					
+
 					da = dict_attrbyvalue(PW_DIGEST_ATTRIBUTES, 0);
 					if (!da) {
 						goto oom;
 					}
-					
+
 					vp->da = da;
 				}
-				
+
 				break;
 			}
 		} /* loop over the VP's we read in */
@@ -405,12 +405,12 @@ static int radclient_init(char const *filename)
 	 *	And we're done.
 	 */
 	return 1;
-	
+
 	oom:
 	fprintf(stderr, "radclient: Out of memory\n");
 	free(radclient);
 	if (fp != stdin) fclose(fp);
-	return 0;	
+	return 0;
 }
 
 
@@ -897,7 +897,7 @@ static int recv_one_packet(int wait_time)
 	} else {
 		totaldeny++;
 	}
-	
+
 	if (radclient->resend == resend_count) {
 		radclient->done = 1;
 	}
@@ -936,7 +936,7 @@ int main(int argc, char **argv)
 	int force_af = AF_UNSPEC;
 
 	fr_debug_flag = 0;
-	
+
 	talloc_set_log_stderr();
 
 	filename_tree = rbtree_create(filename_cmp, NULL, 0);

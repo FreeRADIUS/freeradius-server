@@ -502,7 +502,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 				rcode = radius_map2request(request, map, "update", radius_map2vp, NULL);
 				if (rcode < 0) {
 					myresult = (rcode == -2) ? RLM_MODULE_INVALID : RLM_MODULE_FAIL;
-					
+
 					MOD_LOG_CLOSE_BRACE();
 					goto handle_priority;
 				}
@@ -604,7 +604,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 			goto handle_result;
 		}
 #endif
-	
+
 		if (child->type == MOD_REFERENCE) {
 			modref *mr = mod_callabletoref(child);
 			char const *server = request->server;
@@ -614,7 +614,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 				myresult = RLM_MODULE_NOOP;
 				goto handle_priority;
 			}
-			
+
 			request->server = mr->ref_name;
 			RDEBUG("server %s { # nested call", mr->ref_name);
 			myresult = indexed_modcall(component, 0, request);
@@ -634,7 +634,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 				radius_exec_program(request, mx->xlat_name, false, true,
 						    NULL, 0, request->packet->vps, NULL);
 			}
-					    
+
 			goto skip; /* don't change anything on the stack */
 		}
 
@@ -1430,7 +1430,7 @@ static modcallable *do_compile_modupdate(modcallable *parent, UNUSED int compone
 	g = rad_malloc(sizeof(*g)); /* never fails */
 	memset(g, 0, sizeof(*g));
 	csingle = mod_grouptocallable(g);
-	
+
 	csingle->parent = parent;
 	csingle->next = NULL;
 
@@ -1441,7 +1441,7 @@ static modcallable *do_compile_modupdate(modcallable *parent, UNUSED int compone
 	}
 	csingle->type = MOD_UPDATE;
 	csingle->method = component;
-	
+
 	g->grouptype = GROUPTYPE_SIMPLE;
 	g->children = NULL;
 	g->cs = cs;
@@ -1578,7 +1578,7 @@ static modcallable *do_compile_modserver(modcallable *parent,
 
 	memcpy(csingle->actions, defaultactions[component][GROUPTYPE_SIMPLE],
 	       sizeof(csingle->actions));
-	
+
 	mr->ref_name = strdup(server);
 	mr->ref_cs = cs;
 
@@ -1603,7 +1603,7 @@ static modcallable *do_compile_modxlat(modcallable *parent,
 
 	memcpy(csingle->actions, defaultactions[component][GROUPTYPE_SIMPLE],
 	       sizeof(csingle->actions));
-	
+
 	mx->xlat_name = strdup(fmt);
 	if (fmt[0] != '%') {
 		char *p;
@@ -1915,7 +1915,7 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 		if (!subcs &&
 		    (cs = cf_section_find("policy")) != NULL) {
 			char buffer[256];
-			
+
 			snprintf(buffer, sizeof(buffer), "%s.%s",
 				 modrefname, comp2str[component]);
 
@@ -2013,7 +2013,7 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 	if (!this) do {
 		int i;
 		char *p;
-	  
+
 		/*
 		 *	Maybe it's module.method
 		 */
@@ -2027,7 +2027,7 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 				strlcpy(buffer, modrefname, sizeof(buffer));
 				buffer[p - modrefname] = '\0';
 				component = i;
-				
+
 				this = find_module_instance(modules, buffer, 1);
 				if (this &&
 				    !this->entry->module->methods[i]) {
@@ -2059,7 +2059,7 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 				cf_log_err(ci, "No such server \"%s\".", buffer);
 				return NULL;
 			}
-			
+
 			return do_compile_modserver(parent, component, ci,
 						    modrefname, cs, buffer);
 		}
@@ -2098,7 +2098,7 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 	 */
 	if (cf_item_is_section(ci)) {
 		CONF_ITEM *csi;
-		
+
 		cs = cf_itemtosection(ci);
 		for (csi=cf_item_find_next(cs, NULL);
 		     csi != NULL;

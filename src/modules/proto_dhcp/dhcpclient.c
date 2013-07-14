@@ -126,7 +126,7 @@ static int request_init(char const *filename)
 		switch (vp->da->attr) {
 		default:
 			break;
-			
+
 			/*
 			 *	Allow it to set the packet type in
 			 *	the attributes read from the file.
@@ -134,36 +134,36 @@ static int request_init(char const *filename)
 		case PW_PACKET_TYPE:
 			request->code = vp->vp_integer;
 			break;
-			
+
 		case PW_PACKET_DST_PORT:
 			request->dst_port = (vp->vp_integer & 0xffff);
 			break;
-			
+
 		case PW_PACKET_DST_IP_ADDRESS:
 			request->dst_ipaddr.af = AF_INET;
 			request->dst_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
 			break;
-			
+
 		case PW_PACKET_DST_IPV6_ADDRESS:
 			request->dst_ipaddr.af = AF_INET6;
 			request->dst_ipaddr.ipaddr.ip6addr = vp->vp_ipv6addr;
 			break;
-			
+
 		case PW_PACKET_SRC_PORT:
 			request->src_port = (vp->vp_integer & 0xffff);
 			break;
-			
+
 		case PW_PACKET_SRC_IP_ADDRESS:
 			request->src_ipaddr.af = AF_INET;
 			request->src_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
 			break;
-			
+
 		case PW_PACKET_SRC_IPV6_ADDRESS:
 			request->src_ipaddr.af = AF_INET6;
 			request->src_ipaddr.ipaddr.ip6addr = vp->vp_ipv6addr;
 			break;
 		} /* switch over the attribute */
-			
+
 	} /* loop over the VP's we read in */
 
 	if (fp != stdin) fclose(fp);
@@ -223,7 +223,7 @@ static void print_hex(RADIUS_PACKET *packet)
 		printf("%s = 0x", dhcp_header_names[i]);
 		for (j = 0; j < dhcp_header_sizes[i]; j++) {
 			printf("%02x", p[j]);
-			
+
 		}
 		printf("\n");
 		p += dhcp_header_sizes[i];
@@ -244,16 +244,16 @@ static void print_hex(RADIUS_PACKET *packet)
 
 		printf("%02x  %02x  ", p[0], p[1]);
 		a = p + 2;
-		
+
 		for (i = 0; i < p[1]; i++) {
 			if ((i > 0) && ((i & 0x0f) == 0x00))
 				printf("\t\t");
 			printf("%02x ", a[i]);
 			if ((i & 0x0f) == 0x0f) printf("\n");
 		}
-		
+
 		if ((p[1] & 0x0f) != 0x00) printf("\n");
-		
+
 		p += p[1] + 2;
 	}
 	printf("\n----------------------------------------------------------------------\n");
@@ -422,7 +422,7 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 	if (fr_debug_flag) print_hex(request);
-	
+
 	if (fr_dhcp_send(request) < 0) {
 		fprintf(stderr, "dhcpclient: failed sending: %s\n",
 			strerror(errno));

@@ -248,7 +248,7 @@ static eap_handler_t *eaplist_delete(rlm_eap_t *inst, REQUEST *request,
 	 *	Delete old handler from the tree.
 	 */
 	rbtree_delete(inst->session_tree, node);
-	
+
 	/*
 	 *	And unsplice it from the linked list.
 	 */
@@ -283,7 +283,7 @@ static void eaplist_expire(rlm_eap_t *inst, REQUEST *request, time_t timestamp)
 	for (i = 0; i < 3; i++) {
 		handler = inst->session_head;
 		if (!handler) break;
-		
+
 		RDEBUG("Expiring EAP session with state "
 		       "0x%02x%02x%02x%02x%02x%02x%02x%02x",
 		       handler->state[0], handler->state[1],
@@ -380,7 +380,7 @@ int eaplist_add(rlm_eap_t *inst, eap_handler_t *handler)
 
 			memcpy(handler->state + i * 4, &lvalue,
 			       sizeof(lvalue));
-		}		
+		}
 	}
 
 	/*
@@ -447,7 +447,7 @@ int eaplist_add(rlm_eap_t *inst, eap_handler_t *handler)
 				last_logged = handler->timestamp;
 				ERROR("rlm_eap (%s): Too many open sessions. Try increasing \"max_sessions\" "
 				      "in the EAP module configuration", inst->xlat_name);
-			}				
+			}
 		} else {
 			ERROR("rlm_eap (%s): Failed to store handler", inst->xlat_name);
 		}
@@ -525,8 +525,8 @@ eap_handler_t *eaplist_find(rlm_eap_t *inst, REQUEST *request,
 		       state->vp_octets[2], state->vp_octets[3],
 		       state->vp_octets[4], state->vp_octets[5],
 		       state->vp_octets[6], state->vp_octets[7]);
-		
-		
+
+
 		eap_handler_free(inst, handler);
 		return NULL;
 	}

@@ -57,17 +57,17 @@ int rad_lockfd(int fd, int lock_len)
 {
 #ifdef F_WRLCK
 	struct flock fl;
-	
+
 	fl.l_start = 0;
 	fl.l_len = lock_len;
 	fl.l_pid = getpid();
 	fl.l_type = F_WRLCK;
 	fl.l_whence = SEEK_CUR;
-	
+
 	return fcntl(fd, F_SETLKW, (void *)&fl);
 #else
 #error "missing definition for F_WRLCK, all file locks will fail"
-	
+
 	return -1;
 #endif
 }
@@ -82,13 +82,13 @@ int rad_lockfd_nonblock(int fd, int lock_len)
 {
 #ifdef F_WRLCK
 	struct flock fl;
-	
+
 	fl.l_start = 0;
 	fl.l_len = lock_len;
 	fl.l_pid = getpid();
 	fl.l_type = F_WRLCK;
 	fl.l_whence = SEEK_CUR;
-	
+
 	return fcntl(fd, F_SETLK, (void *)&fl);
 #else
 #error "missing definition for F_WRLCK, all file locks will fail"
@@ -107,7 +107,7 @@ int rad_unlockfd(int fd, int lock_len)
 {
 #ifdef F_WRLCK
 	struct flock fl;
-	
+
 	fl.l_start = 0;
 	fl.l_len = lock_len;
 	fl.l_pid = getpid();
@@ -509,7 +509,7 @@ size_t fr_bin2hex(uint8_t const *bin, char *hex, size_t len)
 		hex += 2;
 		bin++;
 	}
-	
+
 	*hex = '\0';
 	return len * 2;
 }
@@ -623,21 +623,21 @@ int fr_sockaddr2ipaddr(struct sockaddr_storage const *sa, socklen_t salen,
 			fr_strerror_printf("IPv4 address is too small");
 			return 0;
 		}
-		
+
 		memcpy(&s4, sa, sizeof(s4));
 		ipaddr->af = AF_INET;
 		ipaddr->ipaddr.ip4addr = s4.sin_addr;
 		if (port) *port = ntohs(s4.sin_port);
-		
+
 #ifdef HAVE_STRUCT_SOCKADDR_IN6
 	} else if (sa->ss_family == AF_INET6) {
 		struct sockaddr_in6	s6;
-		
+
 		if (salen < sizeof(s6)) {
 			fr_strerror_printf("IPv6 address is too small");
 			return 0;
 		}
-		
+
 		memcpy(&s6, sa, sizeof(s6));
 		ipaddr->af = AF_INET6;
 		ipaddr->ipaddr.ip6addr = s6.sin6_addr;

@@ -76,7 +76,7 @@ static int eap_module_free(void *ctx)
 	inst = talloc_get_type_abort(ctx, eap_module_t);
 
 	/*
-	 *	We have to check inst->type as it's only allocated 
+	 *	We have to check inst->type as it's only allocated
 	 *	if we loaded the eap method.
 	 */
 	if (inst->type && inst->type->detach) (inst->type->detach)(inst->instance);
@@ -95,7 +95,7 @@ static int eap_module_free(void *ctx)
 }
 
 /** Load required EAP sub-modules (methods)
- * 
+ *
  */
 int eap_module_load(rlm_eap_t *inst, eap_module_t **m_inst, eap_type_t num, CONF_SECTION *cs)
 {
@@ -111,7 +111,7 @@ int eap_module_load(rlm_eap_t *inst, eap_module_t **m_inst, eap_type_t num, CONF
 	/* fill in the structure */
 	method->cs = cs;
 	method->name = eap_type2name(num);
-	
+
 	/*
 	 *	The name of the module were trying to load
 	 */
@@ -145,7 +145,7 @@ int eap_module_load(rlm_eap_t *inst, eap_module_t **m_inst, eap_type_t num, CONF
 	if (!method->type) {
 		ERROR("rlm_eap (%s): Failed linking to structure in %s: %s", inst->xlat_name,
 		       method->name, dlerror());
-		
+
 		return -1;
 	}
 
@@ -153,24 +153,24 @@ int eap_module_load(rlm_eap_t *inst, eap_module_t **m_inst, eap_type_t num, CONF
 open_self:
 #endif
 	cf_log_module(cs, "Linked to sub-module %s", mod_name);
-	
+
 	/*
 	 *	Call the attach num in the EAP num module
 	 */
 	if ((method->type->attach) && ((method->type->attach)(method->cs, &(method->instance)) < 0)) {
 		ERROR("rlm_eap (%s): Failed to initialise %s", inst->xlat_name, mod_name);
-		
+
 		if (method->instance) {
 			(void) talloc_steal(method, method->instance);
 		}
-		
+
 		return -1;
 	}
 
 	if (method->instance) {
 		(void) talloc_steal(method, method->instance);
 	}
-	
+
 	return 0;
 }
 
@@ -181,11 +181,11 @@ static int eap_module_call(eap_module_t *module, eap_handler_t *handler)
 {
 	int rcode = 1;
 	REQUEST *request = handler->request;
-	
+
 	char const *caller = request->module;
 
 	RDEBUG2("Calling %s to process EAP data", module->type->name);
-	
+
 	request->module = module->type->name;
 
 	rad_assert(module != NULL);
@@ -195,7 +195,7 @@ static int eap_module_call(eap_module_t *module, eap_handler_t *handler)
 		if (!module->type->initiate(module->instance, handler)) {
 			rcode = 0;
 		}
-		
+
 		break;
 
 	case AUTHORIZE:
@@ -206,7 +206,7 @@ static int eap_module_call(eap_module_t *module, eap_handler_t *handler)
 		    !module->type->authorize(module->instance, handler)) {
 			rcode = 0;
 		}
-		
+
 		break;
 
 	case AUTHENTICATE:
@@ -217,7 +217,7 @@ static int eap_module_call(eap_module_t *module, eap_handler_t *handler)
 		    !module->type->authenticate(module->instance, handler)) {
 			rcode = 0;
 		}
-		
+
 		break;
 
 	default:
@@ -241,7 +241,7 @@ static eap_type_t eap_process_nak(rlm_eap_t *inst, REQUEST *request,
 	unsigned int i;
 	VALUE_PAIR *vp;
 	eap_type_t method = PW_EAP_INVALID;
-	
+
 	/*
 	 *	The NAK data is the preferred EAP type(s) of
 	 *	the client.
@@ -270,10 +270,10 @@ static eap_type_t eap_process_nak(rlm_eap_t *inst, REQUEST *request,
 		if (nak->data[i] == 0) {
 			RDEBUG("Peer NAK'd indicating it is not willing to "
 			       "continue ");
-			
+
 			return PW_EAP_INVALID;
 		}
-		
+
 		/*
 		 *	It is invalid to request identity,
 		 *	notification & nak in nak.
@@ -283,7 +283,7 @@ static eap_type_t eap_process_nak(rlm_eap_t *inst, REQUEST *request,
 				"type %s (%d)",
 				eap_type2name(nak->data[i]),
 				nak->data[i]);
-			
+
 			return PW_EAP_INVALID;
 		}
 
@@ -293,7 +293,7 @@ static eap_type_t eap_process_nak(rlm_eap_t *inst, REQUEST *request,
 				"unsupported type %s (%d), skipping...",
 				eap_type2name(nak->data[i]),
 				nak->data[i]);
-			
+
 			continue;
 		}
 
@@ -308,7 +308,7 @@ static eap_type_t eap_process_nak(rlm_eap_t *inst, REQUEST *request,
 				nak->data[i],
 				eap_type2name(nak->data[i]),
 				nak->data[i]);
-				
+
 			continue;
 		}
 
@@ -326,19 +326,19 @@ static eap_type_t eap_process_nak(rlm_eap_t *inst, REQUEST *request,
 
 			continue;
 		}
-		
+
 		RDEBUG("Found mutually acceptable type %s (%d)",
 		       eap_type2name(nak->data[i]), nak->data[i]);
-		
+
 		method = nak->data[i];
 
 		break;
 	}
-	
+
 	if (method == PW_EAP_INVALID) {
 		REDEBUG("No mutually acceptable types found");
 	}
-	
+
 	return method;
 }
 
@@ -357,16 +357,16 @@ eap_rcode_t eap_method_select(rlm_eap_t *inst, eap_handler_t *handler)
 {
 	eap_type_data_t		*type = &handler->eap_ds->response->type;
 	REQUEST			*request = handler->request;
-	
+
 	eap_type_t		next = inst->default_method;
 	VALUE_PAIR		*vp;
-	
+
 	/*
 	 *	Don't trust anyone.
 	 */
 	if ((type->num == 0) || (type->num >= PW_EAP_MAX_TYPES)) {
 		REDEBUG("Peer sent type (%d), which is outside known range", type->num);
-		
+
 		return EAP_INVALID;
 	}
 
@@ -391,7 +391,7 @@ eap_rcode_t eap_method_select(rlm_eap_t *inst, eap_handler_t *handler)
 		vp = pairfind(handler->request->config_items, PW_EAP_TYPE, 0,
 			      TAG_ANY);
 		if (vp) next = vp->vp_integer;
-		
+
 		/*
 		 *	Ensure it's valid.
 		 */
@@ -400,7 +400,7 @@ eap_rcode_t eap_method_select(rlm_eap_t *inst, eap_handler_t *handler)
 		    (!inst->methods[next])) {
 			REDEBUG2("Tried to start unsupported method (%d)",
 				 next);
-			
+
 			return EAP_INVALID;
 		}
 
@@ -419,8 +419,8 @@ eap_rcode_t eap_method_select(rlm_eap_t *inst, eap_handler_t *handler)
 			REDEBUG2("Failed starting EAP %s (%d) session. "
 				 "EAP sub-module failed",
 				 eap_type2name(next),
-				 next);	
-			
+				 next);
+
 			return EAP_INVALID;
 		}
 		break;
@@ -434,7 +434,7 @@ eap_rcode_t eap_method_select(rlm_eap_t *inst, eap_handler_t *handler)
 			handler->free_opaque = NULL;
 			handler->opaque = NULL;
 		}
-		
+
 		next = eap_process_nak(inst, handler->request,
 				       handler->type, type);
 
@@ -464,7 +464,7 @@ eap_rcode_t eap_method_select(rlm_eap_t *inst, eap_handler_t *handler)
 					 "type %s (%d)",
 					 eap_type2name(type->num),
 					 type->num);
-					
+
 				return EAP_INVALID;
 			}
 

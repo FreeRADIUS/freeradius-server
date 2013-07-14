@@ -97,7 +97,7 @@ static ssize_t xlat_listen(UNUSED void *instance, REQUEST *request,
 		*out = '\0';
 		return 0;
 	}
-	
+
 	strlcpy(out, value, outlen);
 
 	return strlen(out);
@@ -133,7 +133,7 @@ RADCLIENT *client_listener_find(rad_listen_t *listener,
 	client = client_find(clients, ipaddr,sock->proto);
 	if (!client) {
 		char name[256], buffer[128];
-					
+
 #ifdef WITH_DYNAMIC_CLIENTS
 	unknown:		/* used only for dynamic clients */
 #endif
@@ -148,7 +148,7 @@ RADCLIENT *client_listener_find(rad_listen_t *listener,
 
 			now = time(NULL);
 			if (last_printed == now) return NULL;
-			
+
 			last_printed = now;
 		}
 
@@ -177,7 +177,7 @@ RADCLIENT *client_listener_find(rad_listen_t *listener,
 	if (!client->client_server && !client->dynamic) return client;
 
 	now = time(NULL);
-	
+
 	/*
 	 *	It's a dynamically generated client, check it.
 	 */
@@ -186,7 +186,7 @@ RADCLIENT *client_listener_find(rad_listen_t *listener,
 		 *	Lives forever.  Return it.
 		 */
 		if (client->lifetime == 0) return client;
-		
+
 		/*
 		 *	Rate-limit the deletion of known clients.
 		 *	This makes them last a little longer, but
@@ -199,7 +199,7 @@ RADCLIENT *client_listener_find(rad_listen_t *listener,
 		 *	It's not dead yet.  Return it.
 		 */
 		if ((client->created + client->lifetime) > now) return client;
-		
+
 		/*
 		 *	This really puts them onto a queue for later
 		 *	deletion.
@@ -433,7 +433,7 @@ static int dual_tcp_recv(rad_listen_t *listener)
 		sock->packet->dst_ipaddr = sock->my_ipaddr;
 		sock->packet->dst_port = sock->my_port;
 	}
-	
+
 	/*
 	 *	Grab the packet currently being processed.
 	 */
@@ -543,11 +543,11 @@ static int dual_tcp_accept(rad_listen_t *listener)
 	listen_socket_t *sock;
 	fr_ipaddr_t src_ipaddr;
 	RADCLIENT *client = NULL;
-	
+
 	salen = sizeof(src);
 
 	DEBUG2(" ... new connection request on TCP socket.");
-	
+
 	newfd = accept(listener->fd, (struct sockaddr *) &src, &salen);
 	if (newfd < 0) {
 		/*
@@ -661,7 +661,7 @@ static int dual_tcp_accept(rad_listen_t *listener)
 	{
 
 		this->recv = dual_tcp_recv;
-		
+
 #ifdef WITH_TLS
 		if (this->tls) {
 			this->recv = dual_tls_recv;
@@ -733,7 +733,7 @@ int common_socket_print(rad_listen_t const *this, char *buffer, size_t bufsize)
 			ip_ntoh(&sock->my_ipaddr, buffer, bufsize);
 		}
 		FORWARD;
-		
+
 		ADDSTRING(", ");
 		snprintf(buffer, bufsize, "%d", sock->my_port);
 		FORWARD;
@@ -770,7 +770,7 @@ int common_socket_print(rad_listen_t const *this, char *buffer, size_t bufsize)
 			ip_ntoh(&sock->other_ipaddr, buffer, bufsize);
 		}
 		FORWARD;
-		
+
 		ADDSTRING(", ");
 		snprintf(buffer, bufsize, "%d", sock->other_port);
 		FORWARD;
@@ -783,7 +783,7 @@ int common_socket_print(rad_listen_t const *this, char *buffer, size_t bufsize)
 #endif	/* WITH_TCP */
 
 	ADDSTRING(" address ");
-	
+
 	if ((sock->my_ipaddr.af == AF_INET) &&
 	    (sock->my_ipaddr.ipaddr.ip4addr.s_addr == htonl(INADDR_ANY))) {
 		strlcpy(buffer, "*", bufsize);
@@ -970,7 +970,7 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 			}
 #endif
 
-		}		
+		}
 #else  /* WITH_TLS */
 		/*
 		 *	Built without TLS.  Disallow it.
@@ -1062,7 +1062,7 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	if (check_config) {
 		if (home_server_find(&sock->my_ipaddr, sock->my_port, sock->proto)) {
 				char buffer[128];
-				
+
 				EDEBUG("We have been asked to listen on %s port %d, which is also listed as a home server.  This can create a proxy loop.",
 				      ip_ntoh(&sock->my_ipaddr, buffer, sizeof(buffer)),
 				      sock->my_port);
@@ -1109,7 +1109,7 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 				   "Broadcast can only be set for DHCP listeners.  Delete this line from the configuration file.");
 			return -1;
 		}
-		
+
 		rad_assert(cp != NULL);
 		value = cf_pair_value(cp);
 		if (!value) {
@@ -1144,7 +1144,7 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	 */
 	if (this->type == RAD_LISTEN_PROXY) return 0;
 #endif
-	
+
 	/*
 	 *	The more specific configurations are preferred to more
 	 *	generic ones.
@@ -1232,7 +1232,7 @@ static int auth_socket_send(rad_listen_t *listener, REQUEST *request)
 		request->reply->src_ipaddr = request->client->src_ipaddr;
 	}
 #endif
-	
+
 	if (rad_send(request->reply, request->packet,
 		     request->client->secret) < 0) {
 		RERROR("Failed sending reply: %s",
@@ -1272,7 +1272,7 @@ static int acct_socket_send(rad_listen_t *listener, REQUEST *request)
 		request->reply->src_ipaddr = request->client->src_ipaddr;
 	}
 #endif
-	
+
 	if (rad_send(request->reply, request->packet,
 		     request->client->secret) < 0) {
 		RERROR("Failed sending reply: %s",
@@ -1553,7 +1553,7 @@ static int do_proxy(REQUEST *request)
 
 	vp = pairfind(request->config_items, PW_HOME_SERVER_POOL, 0, TAG_ANY);
 	if (!vp) return 0;
-	
+
 	if (!home_pool_byname(vp->vp_strvalue, HOME_TYPE_COA)) {
 		REDEBUG2("Cannot proxy to unknown pool %s",
 			vp->vp_strvalue);
@@ -1630,10 +1630,10 @@ static int rad_coa_recv(REQUEST *request)
 		default:
 			request->reply->code = nak;
 			break;
-			
+
 		case RLM_MODULE_HANDLED:
 			return rcode;
-			
+
 		case RLM_MODULE_NOOP:
 		case RLM_MODULE_NOTFOUND:
 		case RLM_MODULE_OK:
@@ -1679,10 +1679,10 @@ static int rad_coa_recv(REQUEST *request)
 			 */
 			request->reply->code = nak;
 			break;
-			
+
 		case RLM_MODULE_HANDLED:
 			return rcode;
-			
+
 		case RLM_MODULE_NOOP:
 		case RLM_MODULE_NOTFOUND:
 		case RLM_MODULE_OK:
@@ -2062,7 +2062,7 @@ static int listen_bind(rad_listen_t *this)
 #else
 	char const *proto_for_port = "udp";
 	int sock_type = SOCK_DGRAM;
-	
+
 	if (sock->proto == IPPROTO_TCP) {
 #ifdef WITH_VMPS
 		if (this->type == RAD_LISTEN_VQP) {
@@ -2072,7 +2072,7 @@ static int listen_bind(rad_listen_t *this)
 #endif
 
 		proto_for_port = "tcp";
-		sock_type = SOCK_STREAM;	
+		sock_type = SOCK_STREAM;
 	}
 #endif
 
@@ -2174,7 +2174,7 @@ static int listen_bind(rad_listen_t *this)
 		}
 	}
 #endif
-		
+
 	/*
 	 *	Bind to a device BEFORE touching IP addresses.
 	 */
@@ -2268,7 +2268,7 @@ static int listen_bind(rad_listen_t *this)
 		close(this->fd);
 		return -1;
 	}
-		
+
 #ifdef HAVE_STRUCT_SOCKADDR_IN6
 	if (sock->my_ipaddr.af == AF_INET6) {
 		/*
@@ -2278,15 +2278,15 @@ static int listen_bind(rad_listen_t *this)
 		 *	design a little simpler.
 		 */
 #ifdef IPV6_V6ONLY
-		
+
 		if (IN6_IS_ADDR_UNSPECIFIED(&sock->my_ipaddr.ipaddr.ip6addr)) {
 			int on = 1;
-			
+
 			if (setsockopt(this->fd, IPPROTO_IPV6, IPV6_V6ONLY,
 				       (char *)&on, sizeof(on)) < 0) {
 				ERROR("Failed setting socket to IPv6 "
-				       "only: %s", strerror(errno));	
-		       		
+				       "only: %s", strerror(errno));
+
 		       		close(this->fd);
 				return -1;
 			}
@@ -2297,7 +2297,7 @@ static int listen_bind(rad_listen_t *this)
 
 	if (sock->my_ipaddr.af == AF_INET) {
 		UNUSED int flag;
-		
+
 #if defined(IP_MTU_DISCOVER) && defined(IP_PMTUDISC_DONT)
 		/*
 		 *	Disable PMTU discovery.  On Linux, this
@@ -2309,9 +2309,9 @@ static int listen_bind(rad_listen_t *this)
 			       &flag, sizeof(flag)) < 0) {
 			ERROR("Failed disabling PMTU discovery: %s",
 			       strerror(errno));
-			
+
 			close(this->fd);
-			return -1;    		
+			return -1;
 		}
 #endif
 
@@ -2323,8 +2323,8 @@ static int listen_bind(rad_listen_t *this)
 		if (setsockopt(this->fd, IPPROTO_IP, IP_DONTFRAG,
 			       &flag, sizeof(flag)) < 0) {
 			ERROR("Failed setting don't fragment flag: %s",
-			       strerror(errno));	
-			
+			       strerror(errno));
+
 			close(this->fd);
 			return -1;
 		}
@@ -2335,7 +2335,7 @@ static int listen_bind(rad_listen_t *this)
 #ifdef SO_BROADCAST
 	if (sock->broadcast) {
 		int on = 1;
-		
+
 		if (setsockopt(this->fd, SOL_SOCKET, SO_BROADCAST, &on, sizeof(on)) < 0) {
 			ERROR("Can't set broadcast option: %s",
 			       strerror(errno));
@@ -2365,13 +2365,13 @@ static int listen_bind(rad_listen_t *this)
 		if (rcode < 0) {
 			char buffer[256];
 			close(this->fd);
-			
+
 			this->print(this, buffer, sizeof(buffer));
 			ERROR("Failed binding to %s: %s\n",
 			       buffer, strerror(errno));
 			return -1;
 		}
-	
+
 		/*
 		 *	FreeBSD jail issues.  We bind to 0.0.0.0, but the
 		 *	kernel instead binds us to a 1.2.3.4.  If this
@@ -2380,7 +2380,7 @@ static int listen_bind(rad_listen_t *this)
 		{
 			struct sockaddr_storage	src;
 			socklen_t		sizeof_src = sizeof(src);
-			
+
 			memset(&src, 0, sizeof_src);
 			if (getsockname(this->fd, (struct sockaddr *) &src,
 					&sizeof_src) < 0) {
@@ -2388,7 +2388,7 @@ static int listen_bind(rad_listen_t *this)
 				       strerror(errno));
 				return -1;
 			}
-			
+
 			if (!fr_sockaddr2ipaddr(&src, sizeof_src,
 						&sock->my_ipaddr, &sock->my_port)) {
 				ERROR("Socket has unsupported address family");
@@ -2583,7 +2583,7 @@ rad_listen_t *proxy_new_listener(home_server *home, int src_port)
 	if (sock->my_port == 0) {
 		struct sockaddr_storage	src;
 		socklen_t		sizeof_src = sizeof(src);
-		
+
 		memset(&src, 0, sizeof_src);
 		if (getsockname(this->fd, (struct sockaddr *) &src,
 				&sizeof_src) < 0) {
@@ -2592,7 +2592,7 @@ rad_listen_t *proxy_new_listener(home_server *home, int src_port)
 			listen_free(&this);
 			return NULL;
 		}
-		
+
 		if (!fr_sockaddr2ipaddr(&src, sizeof_src,
 					&sock->my_ipaddr, &sock->my_port)) {
 			ERROR("Socket has unsupported address family");
@@ -2767,7 +2767,7 @@ static int is_loopback(fr_ipaddr_t const *ipaddr)
 	    (ipaddr->ipaddr.ip4addr.s_addr == htonl(INADDR_LOOPBACK))) {
 		return 1;
 	}
-	
+
 #ifdef HAVE_STRUCT_SOCKADDR_IN6
 	if ((ipaddr->af == AF_INET6) &&
 	    (IN6_IS_ADDR_LINKLOCAL(&ipaddr->ipaddr.ip6addr))) {
@@ -3006,7 +3006,7 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head,
 	     cs = cf_subsection_find_next(config, cs, "server")) {
 		CONF_SECTION *subcs;
 		char const *name2 = cf_section_name2(cs);
-		
+
 		for (subcs = cf_subsection_find_next(cs, NULL, "listen");
 		     subcs != NULL;
 		     subcs = cf_subsection_find_next(cs, subcs, "listen")) {
@@ -3015,7 +3015,7 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head,
 				listen_free(head);
 				return -1;
 			}
-			
+
 			*last = this;
 			last = &(this->next);
 		} /* loop over "listen" directives in virtual servers */
@@ -3103,7 +3103,7 @@ add_sockets:
 		memset(&home, 0, sizeof(home));
 
 		/*
-		 *	
+		 *
 		 */
 		home.proto = IPPROTO_UDP;
 		home.src_ipaddr = server_ipaddr;
@@ -3207,7 +3207,7 @@ RADCLIENT_LIST *listener_find_client_list(fr_ipaddr_t const *ipaddr,
 		    && (this->type != RAD_LISTEN_ACCT)
 #endif
 		    ) continue;
-		
+
 		sock = this->data;
 
 		if ((sock->my_port == port) &&

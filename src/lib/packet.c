@@ -66,14 +66,14 @@ int fr_inaddr_any(fr_ipaddr_t *ipaddr)
 		if (ipaddr->ipaddr.ip4addr.s_addr == INADDR_ANY) {
 			return 1;
 		}
-		
+
 #ifdef HAVE_STRUCT_SOCKADDR_IN6
 	} else if (ipaddr->af == AF_INET6) {
 		if (IN6_IS_ADDR_UNSPECIFIED(&(ipaddr->ipaddr.ip6addr))) {
 			return 1;
 		}
 #endif
-		
+
 	} else {
 		fr_strerror_printf("Unknown address family");
 		return -1;
@@ -181,7 +181,7 @@ int fr_socket(fr_ipaddr_t *ipaddr, int port)
 
 	if (ipaddr->af == AF_INET) {
 		UNUSED int flag;
-		
+
 #if defined(IP_MTU_DISCOVER) && defined(IP_PMTUDISC_DONT)
 		/*
 		 *	Disable PMTU discovery.  On Linux, this
@@ -195,7 +195,7 @@ int fr_socket(fr_ipaddr_t *ipaddr, int port)
 			fr_strerror_printf("Failed setting sockopt "
 					   "IPPROTO_IP - IP_MTU_DISCOVER: %s",
 					   strerror(errno));
-			return -1;   	
+			return -1;
 		}
 #endif
 
@@ -713,7 +713,7 @@ int fr_packet_list_id_alloc(fr_packet_list_t *pl, int proto,
 		if (!ps->dst_any &&
 		    (fr_ipaddr_cmp(&request->dst_ipaddr,
 				   &ps->dst_ipaddr) != 0)) continue;
-		
+
 		/*
 		 *	Otherwise, this socket is OK to use.
 		 */

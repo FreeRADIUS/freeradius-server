@@ -188,7 +188,7 @@ static int rad_check_password(REQUEST *request)
 		RDEBUG2("Found Auth-Type = %s", dict_valnamebyattr(PW_AUTH_TYPE, 0, auth_type));
 		if (auth_type == PW_AUTHTYPE_REJECT) {
 			RDEBUG2("Auth-Type = Reject, rejecting user");
-			
+
 			return -2;
 		}
 	}

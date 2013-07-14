@@ -66,7 +66,7 @@ static const CONF_PARSER module_config[] = {
 static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
 	rlm_example_t *inst = instance;
-  
+
 	/*
 	 *	Do more work here
 	 */

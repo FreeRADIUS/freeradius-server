@@ -219,11 +219,11 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, fr_hash_table_t *
 							(vp->da->attr != PW_HINT) &&
 							(vp->da->attr != PW_HUNTGROUP_NAME)) {
 						DEBUG("\tChanging '%s =' to '%s +='", vp->da->name, vp->da->name);
-						
+
 						vp->op = T_OP_ADD;
 					} else {
 						DEBUG("\tChanging '%s =' to '%s =='", vp->da->name, vp->da->name);
-						
+
 						vp->op = T_OP_CMP_EQ;
 					}
 				}
@@ -392,7 +392,7 @@ static rlm_rcode_t file_common(rlm_files_t *inst, REQUEST *request,
 		if (len < 0) {
 			return RLM_MODULE_FAIL;
 		}
-		
+
 		name = len ? buffer : "NONE";
 	}
 
@@ -477,7 +477,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 {
 	rlm_files_t *inst = instance;
 
-	return file_common(inst, request, "users", 
+	return file_common(inst, request, "users",
 			   inst->users ? inst->users : inst->common,
 			   request->packet->vps, &request->reply->vps);
 }
@@ -492,7 +492,7 @@ static rlm_rcode_t mod_preacct(void *instance, REQUEST *request)
 {
 	rlm_files_t *inst = instance;
 
-	return file_common(inst, request, "acct_users", 
+	return file_common(inst, request, "acct_users",
 			   inst->acctusers ? inst->acctusers : inst->common,
 			   request->packet->vps, &request->reply->vps);
 }

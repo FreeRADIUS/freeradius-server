@@ -36,9 +36,9 @@ typedef char **rlm_sql_row_t;
  */
 typedef struct sql_acct_section {
 	CONF_SECTION	*cs;
-	
+
 	char const	*reference;
-	
+
 	char const	*logfile;
 } sql_acct_section_t;
 
@@ -54,7 +54,7 @@ typedef struct sql_config {
 
 	char const	*query_user;
 	char const	*default_profile;
-	
+
 	char const	*client_query;
 	char const	*authorize_check_query;
 	char const 	*authorize_reply_query;
@@ -63,7 +63,7 @@ typedef struct sql_config {
 	char const	*simul_count_query;
 	char const	*simul_verify_query;
 	char const 	*groupmemb_query;
-	
+
 	int const	do_clients;
 	int const	read_groups;
 	char const	*logfile;
@@ -71,15 +71,15 @@ typedef struct sql_config {
 	int const	deletestalesessions;
 	char const	*allowed_chars;
 	int const	query_timeout;
-	
+
 	void		*driver;	//!< Where drivers should write a
 					//!< pointer to their configurations.
-	
+
 	/*
 	 *	@todo The rest of the queries should also be moved into
 	 *	their own sections.
 	 */
-	
+
 	/*
 	 *	Section configurations
 	 */
@@ -98,7 +98,7 @@ typedef struct rlm_sql_handle {
 typedef struct rlm_sql_module_t {
 	char const *name;
 
-	sql_rcode_t (*mod_instantiate)(CONF_SECTION *conf, rlm_sql_config_t *config);	
+	sql_rcode_t (*mod_instantiate)(CONF_SECTION *conf, rlm_sql_config_t *config);
 	sql_rcode_t (*sql_socket_init)(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
 	sql_rcode_t (*sql_query)(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char const *query);
 	sql_rcode_t (*sql_select_query)(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char const *query);
@@ -121,7 +121,7 @@ struct sql_inst {
 
 	const DICT_ATTR		*sql_user;	//!< Cached pointer to SQL-User-Name
 						//!< dictionary attribute.
-					
+
 	void *handle;
 	rlm_sql_module_t *module;
 

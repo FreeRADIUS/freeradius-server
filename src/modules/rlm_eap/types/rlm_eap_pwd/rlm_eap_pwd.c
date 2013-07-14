@@ -433,27 +433,27 @@ mod_authenticate (void *arg, eap_handler_t *handler)
 
 	    if ((vp = pairfind(request->config_items, PW_VIRTUAL_SERVER, 0, TAG_ANY)) != NULL) {
 		    fake->server = vp->vp_strvalue;
-		
+
 	    } else if (inst->conf->virtual_server) {
 		    fake->server = inst->conf->virtual_server;
-		
+
 	    } /* else fake->server == request->server */
-	
+
 	    if ((debug_flag > 0) && fr_log_fp) {
 		    RDEBUG("Sending tunneled request");
-		
+
 		    debug_pair_list(fake->packet->vps);
-		
+
 		    fprintf(fr_log_fp, "server %s {\n",
 			    (!fake->server) ? "" : fake->server);
 	    }
-	
+
 	    /*
 	     *	Call authorization recursively, which will
 	     *	get the password.
 	     */
 	    process_authorize(0, fake);
-	
+
 	    /*
 	     *	Note that we don't do *anything* with the reply
 	     *	attributes.
@@ -461,9 +461,9 @@ mod_authenticate (void *arg, eap_handler_t *handler)
 	    if ((debug_flag > 0) && fr_log_fp) {
 		    fprintf(fr_log_fp, "} # server %s\n",
 			    (!fake->server) ? "" : fake->server);
-		
+
 		    RDEBUG("Got tunneled reply code %d", fake->reply->code);
-		
+
 		    debug_pair_list(fake->reply->vps);
 	    }
 

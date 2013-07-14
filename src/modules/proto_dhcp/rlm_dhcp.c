@@ -51,22 +51,22 @@ static ssize_t dhcp_options_xlat(UNUSED void *instance, REQUEST *request,
 	vp_cursor_t cursor;
 	VALUE_PAIR *vp, *head = NULL;
 	int decoded = 0;
-	
+
 	while (isspace((int) *fmt)) fmt++;
-	
-	
+
+
 	if ((radius_get_vp(request, fmt, &vp) < 0) || !vp) {
 		 *out = '\0';
 		 return 0;
 	}
-	
+
 	if ((fr_dhcp_decode_options(request->packet,
 				    vp->vp_octets, vp->length, &head) < 0) || (!head)) {
 		RWDEBUG("DHCP option decoding failed");
 		*out = '\0';
 		return -1;
 	}
-	
+
 
 	for (vp = paircursor(&cursor, &head);
 	     vp;
@@ -75,12 +75,12 @@ static ssize_t dhcp_options_xlat(UNUSED void *instance, REQUEST *request,
 	}
 
 	pairmove(request->packet, &(request->packet->vps), &head);
-	
+
 	/* Free any unmoved pairs */
 	pairfree(&head);
-	
+
 	snprintf(out, freespace, "%i", decoded);
-			
+
 	return strlen(out);
 }
 
@@ -102,7 +102,7 @@ static int mod_detach(void *instance)
 static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
 {
 	rlm_dhcp_t *inst = instance;
-	
+
 	xlat_register("dhcp_options", dhcp_options_xlat, NULL, inst);
 
 	return 0;

@@ -12,7 +12,7 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
- 
+
 /**
  * $Id$
  * @file clients.c
@@ -37,14 +37,14 @@ int rlm_ldap_load_clients(ldap_instance_t const *inst)
 	int 			ret = 0;
 	ldap_rcode_t		status;
 	ldap_handle_t		*conn = NULL;
-	
+
 	/* This needs to be updated if additional attributes need to be retrieved */
 	char const		*attrs[7];
 	char const		**attrs_p;
-	
+
 	LDAPMessage		*result = NULL;
 	LDAPMessage		*entry;
-	
+
 	RADCLIENT		*c;
 
 	LDAP_DBG("Loading dynamic clients");
@@ -54,25 +54,25 @@ int rlm_ldap_load_clients(ldap_instance_t const *inst)
 	 */
 	if (!inst->clientobj_identifier) {
 		LDAP_ERR("Told to load clients but 'client.identifier_attribute' not specified");
-	
+
 		return -1;
 	}
-	
+
 	if (!inst->clientobj_secret) {
 		LDAP_ERR("Told to load clients but 'client.secret_attribute' not specified");
-		
+
 		return -1;
 	}
-	
+
 	if (!inst->clientobj_base_dn) {
 		LDAP_ERR("Told to load clients but 'client.base_dn' not specified");
-		
+
 		return -1;
 	}
-	
+
 	if (!inst->clientobj_filter) {
 		LDAP_ERR("Told to load clients but 'client.filter' not specified");
-		
+
 		return -1;
 	}
 
@@ -82,28 +82,28 @@ int rlm_ldap_load_clients(ldap_instance_t const *inst)
 	attrs[0] = inst->clientobj_identifier;
 	attrs[1] = inst->clientobj_secret;
 	attrs_p  = attrs + 2;
-	
+
 	if (inst->clientobj_shortname) { /* 2 */
 		*attrs_p++ = inst->clientobj_shortname;
 	}
-	
+
 	if (inst->clientobj_type) { /* 3 */
 		*attrs_p++ = inst->clientobj_type;
 	}
-	
+
 	if (inst->clientobj_server) { /* 4 */
 		*attrs_p++ = inst->clientobj_server;
 	}
-	
+
 	if (inst->clientobj_require_ma) { /* 5 */
 		*attrs_p++ = inst->clientobj_require_ma;
 	}
-	
+
 	*attrs_p = NULL;	/* 6 - array needs to be NULL terminated */
 
 	conn = rlm_ldap_get_socket(inst, NULL);
 	if (!conn) return -1;
-	
+
 	/*
 	 *	Perform all searches as the admin user.
 	 */
@@ -114,7 +114,7 @@ int rlm_ldap_load_clients(ldap_instance_t const *inst)
 		}
 
 		rad_assert(conn);
-		
+
 		conn->rebound = false;
 	}
 
@@ -129,20 +129,20 @@ int rlm_ldap_load_clients(ldap_instance_t const *inst)
 		default:
 			return -1;
 	}
-	
+
 	rad_assert(conn);
 
 	entry = ldap_first_entry(conn->handle, result);
 	if (!entry) {
 		int ldap_errno;
-		
+
 		ldap_get_option(conn->handle, LDAP_OPT_RESULT_CODE, &ldap_errno);
 		LDAP_ERR("Failed retrieving entry: %s", ldap_err2string(ldap_errno));
-		
-		ret = -1;	 
+
+		ret = -1;
 		goto finish;
 	}
-	
+
 	do {
 		char *dn;
 		char **identifier	= NULL;
@@ -151,9 +151,9 @@ int rlm_ldap_load_clients(ldap_instance_t const *inst)
 		char **type		= NULL;
 		char **server		= NULL;
 		char **require_ma	= NULL;
-		
+
 		dn = ldap_get_dn(conn->handle, entry);
-		
+
 		/*
 		 *	Check for the required attributes first
 		 */
@@ -162,41 +162,41 @@ int rlm_ldap_load_clients(ldap_instance_t const *inst)
 			LDAP_WARN("Client \"%s\" missing required attribute 'identifier', skipping...", dn);
 			goto next;
 		}
-		
+
 		secret = ldap_get_values(conn->handle, entry, inst->clientobj_secret);
 		if (!secret) {
 			LDAP_WARN("Client \"%s\" missing required attribute 'secret', skipping...", dn);
 			goto next;
 		}
-		
+
 		if (inst->clientobj_shortname) {
 			shortname = ldap_get_values(conn->handle, entry, inst->clientobj_shortname);
 			if (!shortname) {
 				LDAP_DBG("Client \"%s\" missing optional attribute 'shortname'", dn);
 			}
 		}
-		
+
 		if (inst->clientobj_type) {
 			type = ldap_get_values(conn->handle, entry, inst->clientobj_type);
 			if (!type) {
 				LDAP_DBG("Client \"%s\" missing optional attribute 'type'", dn);
 			}
 		}
-		
+
 		if (inst->clientobj_server) {
 			server = ldap_get_values(conn->handle, entry, inst->clientobj_server);
 			if (!server) {
 				LDAP_DBG("Client \"%s\" missing optional attribute 'server'", dn);
 			}
 		}
-		
+
 		if (inst->clientobj_require_ma) {
 			require_ma = ldap_get_values(conn->handle, entry, inst->clientobj_require_ma);
 			if (!require_ma) {
 				LDAP_DBG("Client \"%s\" missing optional attribute 'require_ma'", dn);
 			}
 		}
-		
+
 		/* FIXME: We should really pass a proper ctx */
 		c = client_from_query(NULL,
 				      identifier[0],
@@ -208,16 +208,16 @@ int rlm_ldap_load_clients(ldap_instance_t const *inst)
 		if (!c) {
 			goto next;
 		}
-		
+
 		if (!client_add(NULL, c)) {
 			WARN("Failed to add client, possible duplicate?");
 
 			client_free(c);
 			goto next;
 		}
-		
+
 		LDAP_DBG("Client \"%s\" added", dn);
-		
+
 		next:
 		ldap_memfree(dn);
 		if (identifier)	ldap_value_free(identifier);
@@ -226,7 +226,7 @@ int rlm_ldap_load_clients(ldap_instance_t const *inst)
 		if (type)	ldap_value_free(type);
 		if (server)	ldap_value_free(server);
 	} while((entry = ldap_next_entry(conn->handle, entry)));
-	
+
 	finish:
 	if (result) {
 		ldap_msgfree(result);

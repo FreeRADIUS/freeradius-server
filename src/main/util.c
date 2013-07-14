@@ -266,7 +266,7 @@ int rad_file_exists(char const *filename)
 {
 	int des;
 	int ret = 1;
-	
+
 	if ((des = open(filename, O_RDONLY)) == -1) {
 		if (errno == ENOENT) {
 			ret = 0;
@@ -276,7 +276,7 @@ int rad_file_exists(char const *filename)
 	} else {
 		close(des);
 	}
-	
+
 	return ret;
 }
 
@@ -335,7 +335,7 @@ int rad_mkdir(char *directory, mode_t mode)
 	if (rcode < 0) {
 		return rcode;
 	}
-	
+
 	/*
 	 *	Set things like sticky bits that aren't supported by
 	 *	mkdir.
@@ -343,7 +343,7 @@ int rad_mkdir(char *directory, mode_t mode)
 	if (mode & ~0777) {
 		rcode = chmod(directory, mode);
 	}
-	
+
 	return rcode;
 }
 
@@ -911,13 +911,13 @@ pair_lists_t radius_list_name(char const **name, pair_lists_t unknown)
 	char const *p = *name;
 	char const *q;
 	pair_lists_t output;
-	
+
 	/* This should never be a NULL pointer or zero length string */
 	rad_assert(name && *name);
 
 	/*
 	 *	We couldn't determine the list if:
-	 *	
+	 *
 	 * 	A colon delimiter was found, but the next char was a
 	 *	number, indicating a tag, not a list qualifier.
 	 *
@@ -930,7 +930,7 @@ pair_lists_t radius_list_name(char const **name, pair_lists_t unknown)
 	    (!q && isupper((int) *p))) {
 		return unknown;
 	}
-	
+
 	if (q) {
 		*name = (q + 1);	/* Consume the list and delimiter */
 		return fr_substr2int(pair_lists, p, PAIR_LIST_UNKNOWN, (q - p));
@@ -971,7 +971,7 @@ request_refs_t radius_request_name(char const **name, request_refs_t def)
 	if (!p) {
 		return REQUEST_CURRENT;
 	}
-	
+
 	/*
 	 *	We may get passed "127.0.0.1".
 	 */
@@ -1005,11 +1005,11 @@ request_refs_t radius_request_name(char const **name, request_refs_t def)
 int radius_request(REQUEST **context, request_refs_t name)
 {
 	REQUEST *request = *context;
-	
+
 	switch (name) {
 		case REQUEST_CURRENT:
 			return 0;
-		
+
 		case REQUEST_PARENT:	/* for future use in request chaining */
 		case REQUEST_OUTER:
 			if (!request->parent) {
@@ -1017,17 +1017,17 @@ int radius_request(REQUEST **context, request_refs_t name)
 				        fr_int2str(request_refs, name, "<INVALID>"));
 				return -1;
 			}
-			
+
 			*context = request->parent;
-			
+
 			break;
-	
+
 		case REQUEST_UNKNOWN:
 		default:
 			rad_assert(0);
 			return -1;
 	}
-	
+
 	return 0;
 }
 
