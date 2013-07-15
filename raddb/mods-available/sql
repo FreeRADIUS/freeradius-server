@@ -77,9 +77,9 @@ sql {
 	# Remove stale session if checkrad does not see a double login
 	delete_stale_sessions = yes
 
-	# Print all SQL statements when in debug mode (-x)
-	sqltrace = no
-	sqltracefile = ${logdir}/sqltrace.sql
+	# Write SQL queries to a logfile. This is potentially useful for tracing
+	# issues with authorization queries.
+#	logfile = ${logdir}/sqllog.sql
 
 	#  As of version 3.0, the "pool" section has replaced the
 	#  following configuration items:

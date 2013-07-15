@@ -33,8 +33,8 @@ sql cuisql {
 		bootstrap = ${modconfdir}/${..:name}/cui/sqlite/schema.sql
 	}
 
-#	sqltrace = yes
-#	sqltracefile = ${logdir}/cuitrace.sql
+	# Write CUI queries to a logfile. Useful for debugging.
+#	logfile = ${logdir}/cuilog.sql
 
 	pool {
 		start = 5

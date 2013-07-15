@@ -72,11 +72,10 @@ This option is set to 'yes' or 'no'.  If you are doing
 Simultaneous-Use checking, and this is set to yes, stale sessions (
 defined as sessions for which a Stop record was not received ) will be
 cleared.
-.IP sqltrace
-.IP sqltracefile
-These two options are useful for debugging sql problems.  If sqltrace
-is set to yes, then all sql queries being executed are written to the
-file listed in sqltracefile.  This is disabled in normal operation.
+.IP logfile
+This option is useful for debugging sql problems.  If logfile is set
+then all sql queries for the containing section are written to the
+file specified.  This is useful for debugging and bulk inserts.
 .IP num_sql_socks
 The number of sql connections to make to the database.
 .IP connect_failure_retry_delay

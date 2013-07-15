@@ -50,7 +50,7 @@
     create
 }
 
-/var/log/radius/sqltrace.sql {
+/var/log/radius/sqllog.sql {
     compress
     dateext
     maxage 365

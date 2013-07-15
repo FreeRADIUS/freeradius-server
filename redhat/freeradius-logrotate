@@ -39,7 +39,7 @@
 	compress
 	missingok
 }
-/var/log/radius/sqltrace.sql {
+/var/log/radius/sqllog.sql {
         monthly
         rotate 4
         create
