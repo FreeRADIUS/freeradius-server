@@ -217,7 +217,7 @@ ldap {
 		#    * require_message_authenticator - Whether we require the Message-Authenticator
 		#      attribute to be present in requests from the client.
 		#
-		#  Schemas are available in doc/schemas/ldap for openldap
+		#  Schemas are available in doc/schemas/ldap for openldap and eDirectory
 		#
 		attribute {
 			identifier = 'radiusClientIdentifier'
