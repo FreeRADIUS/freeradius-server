@@ -749,6 +749,7 @@ with_rlm_FOO_lib_dir
 with_rlm_FOO_include_dir
 with_udpfromto
 with_talloc_include_dir
+with_talloc_lib_dir
 with_rlm_pcre_lib_dir
 with_rlm_pcre_include_dir
 '
@@ -1406,6 +1407,8 @@ Optional Packages:
   --with-udpfromto        Compile in UDPFROMTO support. (default=no)
   --with-talloc-include-dir=DIR
                           Directory where the talloc includes may be found
+  --with-talloc-lib-dir=DIR
+                          Directory where the talloc libs may be found
   --with-pcre-lib-dir=DIR       directory for PCRE library files
   --with-pcre-include-dir=DIR   directory for PCRE include files
 
@@ -7829,6 +7832,23 @@ if test "${with_talloc_include_dir+set}" = set; then :
 fi
 
 
+talloc_lib_dir=
+
+# Check whether --with-talloc-lib-dir was given.
+if test "${with_talloc_lib_dir+set}" = set; then :
+  withval=$with_talloc_lib_dir; case "$withval" in
+    no)
+      as_fn_error $? "Need talloc-lib-dir" "$LINENO" 5
+      ;;
+    yes)
+      ;;
+    *)
+      talloc_lib_dir="$withval"
+      ;;
+  esac
+fi
+
+
 smart_try_dir="$talloc_include_dir"
 
 
@@ -7978,9 +7998,179 @@ if test "x$ac_cv_header_talloc_h" != "xyes"; then
   { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: talloc headers not found. Use --with-talloc-include-dir=<path>." >&5
 $as_echo "$as_me: WARNING: talloc headers not found. Use --with-talloc-include-dir=<path>." >&2;}
   as_fn_error $? "FreeRADIUS requires libtalloc" "$LINENO" 5
+fi
+
+smart_try_dir="$talloc_lib_dir"
+
+
+sm_lib_safe=`echo "talloc" | sed 'y%./+-%__p_%'`
+sm_func_safe=`echo "_talloc" | sed 'y%./+-%__p_%'`
+
+old_LIBS="$LIBS"
+smart_lib=
+smart_lib_dir=
+
+if test "x$smart_try_dir" != "x"; then
+  for try in $smart_try_dir; do
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for _talloc in -ltalloc in $try" >&5
+$as_echo_n "checking for _talloc in -ltalloc in $try... " >&6; }
+    LIBS="-L$try -ltalloc $old_LIBS -Wl,-rpath,$try"
+    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+extern char _talloc();
+int
+main ()
+{
+_talloc()
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+
+		 smart_lib="-L$try -ltalloc -Wl,-rpath,$try"
+		 { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+		 break
+
 else
-  INCLUDE="${SMART_CFLAGS} ${INCLUDE}"
-  LIBS="-ltalloc ${LIBS}"
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+  done
+  LIBS="$old_LIBS"
+fi
+
+if test "x$smart_lib" = "x"; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for _talloc in -ltalloc" >&5
+$as_echo_n "checking for _talloc in -ltalloc... " >&6; }
+  LIBS="-ltalloc $old_LIBS"
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+extern char _talloc();
+int
+main ()
+{
+_talloc()
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+
+	        smart_lib="-ltalloc"
+	        { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+  LIBS="$old_LIBS"
+fi
+
+if test "x$smart_lib" = "x"; then
+
+
+if test "x$LOCATE" != "x"; then
+        DIRS=
+  file=libtalloc${libltdl_cv_shlibext}
+
+  for x in `${LOCATE} $file 2>/dev/null`; do
+                                        base=`echo $x | sed "s%/${file}%%"`
+    if test "x$x" = "x$base"; then
+      continue;
+    fi
+
+    dir=`${DIRNAME} $x 2>/dev/null`
+                exclude=`echo ${dir} | ${GREP} /home`
+    if test "x$exclude" != "x"; then
+      continue
+    fi
+
+                    already=`echo \$smart_lib_dir ${DIRS} | ${GREP} ${dir}`
+    if test "x$already" = "x"; then
+      DIRS="$DIRS $dir"
+    fi
+  done
+fi
+
+eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
+
+
+
+if test "x$LOCATE" != "x"; then
+        DIRS=
+  file=libtalloc.a
+
+  for x in `${LOCATE} $file 2>/dev/null`; do
+                                        base=`echo $x | sed "s%/${file}%%"`
+    if test "x$x" = "x$base"; then
+      continue;
+    fi
+
+    dir=`${DIRNAME} $x 2>/dev/null`
+                exclude=`echo ${dir} | ${GREP} /home`
+    if test "x$exclude" != "x"; then
+      continue
+    fi
+
+                    already=`echo \$smart_lib_dir ${DIRS} | ${GREP} ${dir}`
+    if test "x$already" = "x"; then
+      DIRS="$DIRS $dir"
+    fi
+  done
+fi
+
+eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
+
+
+  for try in $smart_lib_dir /usr/local/lib /opt/lib; do
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for _talloc in -ltalloc in $try" >&5
+$as_echo_n "checking for _talloc in -ltalloc in $try... " >&6; }
+    LIBS="-L$try -ltalloc $old_LIBS -Wl,-rpath,$try"
+    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+extern char _talloc();
+int
+main ()
+{
+_talloc()
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+
+		  smart_lib="-L$try -ltalloc -Wl,-rpath,$try"
+		  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+		  break
+
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+  done
+  LIBS="$old_LIBS"
+fi
+
+if test "x$smart_lib" != "x"; then
+  eval "ac_cv_lib_${sm_lib_safe}_${sm_func_safe}=yes"
+  LIBS="$smart_lib $old_LIBS"
+  SMART_LIBS="$smart_lib $SMART_LIBS"
+fi
+
+if test "x$ac_cv_lib_talloc__talloc" != "xyes"; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: talloc library not found. Use --with-talloc-lib-dir=<path>." >&5
+$as_echo "$as_me: WARNING: talloc library not found. Use --with-talloc-lib-dir=<path>." >&2;}
+  as_fn_error $? "FreeRADIUS requires libtalloc" "$LINENO" 5
 fi
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for crypt in -lcrypt" >&5

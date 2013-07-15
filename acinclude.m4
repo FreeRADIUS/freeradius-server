@@ -164,7 +164,7 @@ if test "x$smart_lib" = "x"; then
 
   for try in $smart_lib_dir /usr/local/lib /opt/lib; do
     AC_MSG_CHECKING([for $2 in -l$1 in $try])
-    LIBS="-L$try -rpath$try -l$1 $old_LIBS -Wl,-rpath,$try"
+    LIBS="-L$try -l$1 $old_LIBS -Wl,-rpath,$try"
     AC_TRY_LINK([extern char $2();],
 		[$2()],
 		[
@@ -310,7 +310,7 @@ $1
     AC_MSG_RESULT(yes)
     eval "ac_cv_type_${ac_safe_type}_has_$3=yes"
   else
-    AC_MSG_RESULT(no) 
+    AC_MSG_RESULT(no)
     eval "ac_cv_type_${ac_safe_type}_has_$3="
  fi
 ])
@@ -374,7 +374,7 @@ AC_DEFUN([VL_LIB_READLINE], [
       LIBS="$ORIG_LIBS"
     fi
   ])
-  
+
   if test "$vl_cv_lib_readline" != "no"; then
     LIBREADLINE="$vl_cv_lib_readline"
     AC_DEFINE(HAVE_LIBREADLINE, 1,
