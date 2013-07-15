@@ -94,7 +94,7 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 	 */
 
 	if (pairfind(request->packet->vps, PW_REALM, 0, TAG_ANY) != NULL ) {
-		RDEBUG2("Request already proxied.  Ignoring.");
+		RDEBUG2("Request already has destination realm set.  Ignoring.");
 		return RLM_MODULE_OK;
 	}
 
@@ -430,7 +430,7 @@ static rlm_rcode_t realm_recv_coa(UNUSED void *instance, REQUEST *request)
 	REALM *realm;
 
 	if (pairfind(request->packet->vps, PW_REALM, 0, TAG_ANY) != NULL) {
-		RDEBUG2("Request already proxied.  Ignoring.");
+		RDEBUG2("Request already has destination realm set.  Ignoring.");
 		return RLM_MODULE_OK;
 	}
 
