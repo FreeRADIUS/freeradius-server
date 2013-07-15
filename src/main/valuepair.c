@@ -1238,6 +1238,7 @@ int radius_map2vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *ma
 	 */
 	switch (map->src->type) {
 	case VPT_TYPE_XLAT:
+		rad_assert(map->dst->da);	/* Need to know where were going to write the new attribute */
 		/*
 		 *	Don't call unnecessary expansions
 		 */

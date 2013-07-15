@@ -384,6 +384,17 @@ value_pair_map_t *radius_cp2map(TALLOC_CTX *ctx, CONF_PAIR *cp,
 		cf_log_err(ci, "Can't copy list into an attribute");
 		goto error;
 	}
+	
+	/*
+	 *	Can't copy an xlat expansion or literal into a list,
+	 *	we don't know what type of attribute we'd need
+	 *	to create
+	 */
+	if ((map->dst->type == VPT_TYPE_LIST) &&
+	    ((map->src->type == VPT_TYPE_XLAT) || (map->src->type == VPT_TYPE_LITERAL))) {
+		cf_log_err(ci, "Can't copy value into list (we don't know which attribute to create)");
+		goto error;
+	}
 
 	/*
 	 *	Depending on the attribute type, some operators are

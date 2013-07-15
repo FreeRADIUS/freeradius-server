@@ -1423,7 +1423,7 @@ static modcallable *do_compile_modupdate(modcallable *parent, UNUSED int compone
 	if (rcode < 0) return NULL; /* message already printed */
 
 	if (!map) {
-		cf_log_err_cs(cs, "update sections cannot be empty");
+		cf_log_err_cs(cs, "'update' sections cannot be empty");
 		return NULL;
 	}
 
