@@ -472,8 +472,19 @@ int modcall(int component, modcallable *c, REQUEST *request)
 
 			condition = radius_evaluate_cond(request, myresult, 0, g->cond);
 			if (condition < 0) {
+				switch (condition) {
+					case -2:
+						REDEBUG("Condition evaluation failed because a referenced attribute "
+							"was not found in the request");
+						break;
+					default:
+					case -1:
+						REDEBUG("Condition evluation failed because the value of an operand "
+							"could not be determined");
+						break;
+				}
+
 				condition = false;
-				REDEBUG("Evaluation of condition failed for some reason.");
 			} else {
 				RDEBUG2("%.*s? %s %s -> %s", stack.pointer + 1, modcall_spaces,
 					(child->type == MOD_IF) ? "if" : "elsif",

@@ -136,7 +136,7 @@ static int radius_expand_tmpl(char **out, REQUEST *request, value_pair_tmpl_t co
 		EVAL_DEBUG("TMPL ATTR");
 		vp = radius_vpt_get_vp(request, vpt);
 		if (!vp) {
-			return -1;
+			return -2;
 		}
 		*out = vp_aprint(request, vp);
 		if (!*out) {
@@ -294,35 +294,41 @@ static int do_regex(REQUEST *request, const char *lhs, const char *rhs, bool ifl
  *	Expand a template to a string, parse it as type of "cast", and
  *	create a VP from the data.
  */
-static VALUE_PAIR *get_cast_vp(REQUEST *request, value_pair_tmpl_t const *vpt, DICT_ATTR const *cast)
+static int get_cast_vp(VALUE_PAIR **out, REQUEST *request, value_pair_tmpl_t const *vpt, DICT_ATTR const *cast)
 {
 	int rcode;
 	VALUE_PAIR *vp;
 	char *str;
 
+	*out = NULL;
+
 	vp = pairalloc(request, cast);
-	if (!vp) return NULL;
+	if (!vp) {
+		return -1;
+	}
 
 	if (vpt->type == VPT_TYPE_DATA) {
 		rad_assert(vp->da->type == vpt->da->type);
 		memcpy(&vp->data, vpt->vpd, sizeof(vp->data));
 		vp->length = vpt->length;
-		return vp;
+		goto finish;
 	}
 
 	rcode = radius_expand_tmpl(&str, request, vpt);
 	if (rcode < 0) {
 		pairfree(&vp);
-		return NULL;
+		return rcode;
 	}
 
 	if (!pairparsevalue(vp, str)) {
 		talloc_free(str);
 		pairfree(&vp);
-		return NULL;
+		return -1;
 	}
 
-	return vp;
+	finish:
+	*out = vp;
+	return 0;
 }
 
 /** Evaluate a map
@@ -368,7 +374,7 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 		lhs_vp = radius_vpt_get_vp(request, map->dst);
 		rhs_vp = radius_vpt_get_vp(request, map->src);
 
-		if (!lhs_vp || !rhs_vp) return false;
+		if (!lhs_vp || !rhs_vp) return -2;
 
 		return paircmp_op(lhs_vp, map->op, rhs_vp);
 	}
@@ -380,8 +386,11 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 	if (cast) {
 		VALUE_PAIR *lhs_vp, *rhs_vp;
 
-		lhs_vp = get_cast_vp(request, map->dst, cast);
-		if (!lhs_vp) return false;
+		rcode = get_cast_vp(&lhs_vp, request, map->dst, cast);
+		if (rcode < 0) {
+			return rcode;
+		}
+		rad_assert(lhs_vp);
 
 		/*
 		 *	Get either a real VP, or parse the RHS into a
@@ -390,10 +399,13 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 		if (map->src->type == VPT_TYPE_ATTR) {
 			rhs_vp = radius_vpt_get_vp(request, map->src);
 		} else {
-			rhs_vp = get_cast_vp(request, map->src, cast);
+			rcode = get_cast_vp(&rhs_vp, request, map->src, cast);
+			if (rcode < 0) {
+				return rcode;
+			}
+			rad_assert(rhs_vp);
 		}
-
-		if (!rhs_vp) return false;
+		if (!rhs_vp) return -2;
 
 		EVAL_DEBUG("CAST to ...");
 
@@ -416,10 +428,13 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 		EVAL_DEBUG("ATTR to DATA");
 
 		lhs_vp = radius_vpt_get_vp(request, map->dst);
-		if (!lhs_vp) return false;
+		if (!lhs_vp) return -2;
 
-		rhs_vp = get_cast_vp(request, map->src, map->dst->da);
-		if (!rhs_vp) return false;
+		rcode = get_cast_vp(&rhs_vp, request, map->src, map->dst->da);
+		if (rcode < 0) {
+			return rcode;
+		}
+		rad_assert(rhs_vp);
 
 #ifdef WITH_EVAL_DEBUG
 		debug_pair(lhs_vp);
@@ -440,7 +455,7 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 	rcode = radius_expand_tmpl(&rhs, request, map->src);
 	if (rcode < 0) {
 		EVAL_DEBUG("FAIL %d", __LINE__);
-		return -1;
+		return rcode;
 	}
 
 	/*
@@ -483,7 +498,7 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 				return rcode;
 			}
 
-			return false;
+			return -2;
 		}
 
 		/*
@@ -510,7 +525,7 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 	rcode = radius_expand_tmpl(&lhs, request, map->dst);
 	if (rcode < 0) {
 		EVAL_DEBUG("FAIL %d", __LINE__);
-		return -1;
+		return rcode;
 	}
 
 	EVAL_DEBUG("LHS is %s", lhs);
@@ -596,7 +611,7 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
  * @param[in] modreturn the previous module return code
  * @param[in] depth of the recursion (only used for debugging)
  * @param[in] c the condition to evaluate
- * @return -1 on error, 0 for "no match", 1 for "match".
+ * @return -1 on failure, -2 on attribute not found, 0 for "no match", 1 for "match".
  */
 int radius_evaluate_cond(REQUEST *request, int modreturn, int depth,
 			 fr_cond_t const *c)
@@ -607,6 +622,8 @@ int radius_evaluate_cond(REQUEST *request, int modreturn, int depth,
 		switch (c->type) {
 		case COND_TYPE_EXISTS:
 			rcode = radius_evaluate_tmpl(request, modreturn, depth, c->data.vpt);
+			/* Existence checks are special, because we expect them to fail */
+			if (rcode < 0) rcode = false;
 			break;
 
 		case COND_TYPE_MAP:
