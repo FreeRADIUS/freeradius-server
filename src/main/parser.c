@@ -145,8 +145,6 @@ static int cast_vpt(value_pair_tmpl_t *vpt, DICT_ATTR const *da)
 	vpt->type = VPT_TYPE_DATA;
 	vpt->da = da;
 
-	debug_pair(vp);
-
 	if (vp->da->flags.is_pointer) {
 		data->ptr = talloc_steal(vpt, vp->data.ptr);
 		vp->data.ptr = NULL;
