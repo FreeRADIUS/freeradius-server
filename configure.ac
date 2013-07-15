@@ -90,7 +90,7 @@ if test -d $srcdir/.git; then
   if test "x$developer" != "xno"; then
     AC_MSG_NOTICE([found .git directory, enabling developer build implicitly, disable with --disable-developer])
     developer="yes"
-  fi  
+  fi
 fi
 
 dnl #
@@ -149,7 +149,7 @@ AX_CC_QUNUSED_ARGUMENTS_FLAG
 if test "x$ax_cv_cc_qunused_arguments_flag" = "xyes"; then
   CFLAGS="$CFLAGS -Qunused-arguments"
   LDFLAGS="$LDFLAGS -Qunused-arguments"
-fi 
+fi
 
 dnl #
 dnl #  Compile in large (2G+) file support.
@@ -176,8 +176,8 @@ if test -z "$makever"; then
   AC_MSG_ERROR([GNU Make is not installed.  Please download and install it from ftp://prep.ai.mit.edu/pub/gnu/make/ before continuing.])
 fi
 
-dnl #  
-dnl #  autoconf explicitly sets MAKEFLAGS and MFLAGS to '' even though we 
+dnl #
+dnl #  autoconf explicitly sets MAKEFLAGS and MFLAGS to '' even though we
 dnl #  didn't tell it to, so we have to use FR_MAKEFLAGS.
 dnl #
 dnl #  determine the number of cores available and set the number of build
@@ -507,7 +507,7 @@ AC_ARG_WITH(rlm-FOO-include-dir,
   esac ]
 )
 
-dnl # 
+dnl #
 dnl #  extra argument: --with-udpfromto
 dnl #
 WITH_UDPFROMTO=no
@@ -764,7 +764,7 @@ dnl #
 if test "x$WITH_OPENSSL" = xyes; then
   old_LIBS=$LIBS
   old_LDFLAGS="$LDFLAGS"
-  
+
   OPENSSL_INCLUDE="-DNO_OPENSSL"
   OPENSSL_LIBS=
   if test "x$OPENSSL_LIB_DIR" != "x"; then
@@ -801,8 +801,8 @@ if test "x$WITH_OPENSSL" = xyes; then
   if test "x$OPENSSL_INCLUDE_DIR" != "x"; then
     CPPFLAGS="$CPPFLAGS -I$OPENSSL_INCLUDE_DIR"
   fi
- 
-  dnl # 
+
+  dnl #
   dnl #  Stupid RedHat shit
   dnl #
   CPPFLAGS="$CPPFLAGS -DOPENSSL_NO_KRB5"
@@ -821,7 +821,7 @@ if test "x$WITH_OPENSSL" = xyes; then
       AC_MSG_FAILURE([failed locating OpenSSL headers])
     ]
   )
-  
+
   AC_MSG_CHECKING([for OpenSSL version >= 0.9.7])
   AC_EGREP_CPP(yes,
     [#include <openssl/crypto.h>
@@ -872,8 +872,8 @@ if test "x$WITH_OPENSSL" = xyes; then
       AC_MSG_FAILURE([OpenSSL library version does not match header version])
     ]
   )
-  
-  CPPFLAGS=$old_CPPFLAGS 
+
+  CPPFLAGS=$old_CPPFLAGS
   LIBS=$old_LIBS
   LDFLAGS="$old_LDFLAGS"
 fi
@@ -891,13 +891,13 @@ else
   AC_CHECK_HEADER(pcap.h,
     [
       AC_DEFINE(HAVE_PCAP_H, 1, [Define to 1 if you have the <pcap.h> header file.])
-      
+
       AC_CHECK_LIB(pcap, pcap_fopen_offline,
         [
           AC_DEFINE(HAVE_PCAP_FOPEN_OFFLINE, 1, [Define to 1 if you have the function pcap_fopen_offline.])
         ]
       )
-      
+
       AC_CHECK_LIB(pcap, pcap_dump_fopen,
         [
           AC_DEFINE(HAVE_PCAP_DUMP_FOPEN, 1, [Define to 1 if you have the function pcap_dump_fopen.])
@@ -934,7 +934,7 @@ FR_CHECK_TYPE_INCLUDE(
     #ifdef HAVE_SYS_TYPES_H
     #  include <sys/types.h>
     #endif
-    
+
     #ifdef HAVE_SYS_SOCKET_H
     #  include <sys/socket.h>
     #endif
@@ -950,7 +950,7 @@ FR_CHECK_TYPE_INCLUDE(
     #ifdef HAVE_INTTYPES_H
     #  include <inttypes.h>
     #endif
-  
+
     #ifdef HAVE_STDINT_H
     #  include <stdint.h>
     #endif
@@ -1128,7 +1128,7 @@ AC_SUBST(LIBPREFIX)
 
 if test "x$developer" = "xyes"; then
   AC_MSG_NOTICE([Setting additional developer CFLAGS])
-  
+
   dnl #
   dnl #  Tell the compiler to parse doxygen documentation and verify it against function and variable declarations
   dnl #
@@ -1141,9 +1141,9 @@ if test "x$developer" = "xyes"; then
     devflags="$devflags -Wshadow -Wpointer-arith -Wcast-qual -Wcast-align -Wwrite-strings -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations -Wnested-externs -W -Wredundant-decls -Wundef -Wformat-y2k -Wno-format-extra-args -Wno-format-zero-length -Wno-cast-align -Wformat-nonliteral -Wformat-security -Wformat=2 -DWITH_VERIFY_PTR=1"
     INSTALLSTRIP=""
   fi
-  
+
   AC_MSG_NOTICE([Developer CFLAGS are "$devflags"])
-  
+
   CFLAGS="$CFLAGS $devflags"
   dnl #
   dnl #  Enable experimental modules (we want to know if code changes breaks one of them)
@@ -1194,6 +1194,23 @@ AC_ARG_WITH(talloc-include-dir,
       ;;
   esac])
 
+dnl Check for talloc
+dnl extra argument: --with-talloc-lib-dir=DIR
+talloc_lib_dir=
+AC_ARG_WITH(talloc-lib-dir,
+  [AS_HELP_STRING([--with-talloc-lib-dir=DIR],
+  [Directory where the talloc libs may be found])],
+  [case "$withval" in
+    no)
+      AC_MSG_ERROR([Need talloc-lib-dir])
+      ;;
+    yes)
+      ;;
+    *)
+      talloc_lib_dir="$withval"
+      ;;
+  esac])
+
 dnl #
 dnl # Check for talloc header files
 dnl #
@@ -1202,9 +1219,13 @@ FR_SMART_CHECK_INCLUDE([talloc.h])
 if test "x$ac_cv_header_talloc_h" != "xyes"; then
   AC_MSG_WARN([talloc headers not found. Use --with-talloc-include-dir=<path>.])
   AC_MSG_ERROR([FreeRADIUS requires libtalloc])
-else
-  INCLUDE="${SMART_CFLAGS} ${INCLUDE}"
-  LIBS="-ltalloc ${LIBS}"
+fi
+
+smart_try_dir="$talloc_lib_dir"
+FR_SMART_CHECK_LIB(talloc, _talloc)
+if test "x$ac_cv_lib_talloc__talloc" != "xyes"; then
+  AC_MSG_WARN([talloc library not found. Use --with-talloc-lib-dir=<path>.])
+  AC_MSG_ERROR([FreeRADIUS requires libtalloc])
 fi
 
 dnl #
@@ -1230,8 +1251,8 @@ AC_SUBST(CRYPTLIB)
 
 dnl #
 dnl #  Check for regular expression support, if were using PCRE it MUST be included
-dnl #  before all others, else we seem to still pickup the posix symbols for regcomp 
-dnl #  and regexec, which results in crashes as soon as we call any posix regex 
+dnl #  before all others, else we seem to still pickup the posix symbols for regcomp
+dnl #  and regexec, which results in crashes as soon as we call any posix regex
 dnl #  functions.
 dnl #
 dnl extra argument: --with-pcre-lib-dir
@@ -1282,7 +1303,7 @@ if test "x$ac_cv_header_pcreposix_h" = "xyes"; then
   REGEX_EXTENDED=yes
   REGEX_PCRE=yes
   LIBS="-lpcre -lpcreposix $LIBS"
-  
+
 dnl #
 dnl #  Then fallback to POSIX regular expressions
 dnl #
@@ -1302,7 +1323,7 @@ else
     [AC_DEFINE(HAVE_REG_EXTENDED, [1], [define this if we have REG_EXTENDED (from <regex.h>)]) REGEX_EXTENDED=yes]
     )
 dnl #
-dnl # Fixme, this is needed for mingw builds, but not available on some Linux systems 
+dnl # Fixme, this is needed for mingw builds, but not available on some Linux systems
 dnl # despite the presence of regex.h
 dnl #
 dnl # LIBS="$LIBS -lregex"
@@ -1350,7 +1371,7 @@ case "$host" in
           [style of gethostbyaddr_r functions ])
         gethostbyaddrrstyle=BSD
         AC_MSG_WARN([FreeBSD overridden to BSD-style])
-      ], 
+      ],
       [
         #ifdef HAVE_NETDB_H
         #include <netdb.h>
@@ -1583,7 +1604,7 @@ dnl #
 dnl #############################################################
 if test "x$werror" == "xyes"; then
   CFLAGS="-Werror $CFLAGS"
-fi  
+fi
 
 dnl #############################################################
 dnl #
