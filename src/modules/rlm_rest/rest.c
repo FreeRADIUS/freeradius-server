@@ -1047,7 +1047,7 @@ static int rest_decode_post(rlm_rest_t *instance,
 
 		RDEBUG("Performing xlat expansion of response value");
 
-		if (!radius_axlat(&expanded, request, value, NULL, NULL)) {
+		if (radius_axlat(&expanded, request, value, NULL, NULL) < 0) {
 			goto skip;
 		}
 
