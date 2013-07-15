@@ -30,8 +30,9 @@
 #	ifid       - 8 octets in network byte order
 #	ipv6addr   - 16 octets in network byte order
 #	ipv6prefix - 1 octet reserved, one octet prefix, 16 octets ipv6addr
+#	tlv	   - type-length-value
 #
-#	FreeRADIUS includes extended data types which are not defined
+#	FreeRADIUS includes data types which are not defined
 #	in the RFC's.  These data types are:
 #
 #	abinary - Ascend's binary filter format.
@@ -42,7 +43,10 @@
 #	signed  - 32-bit signed integer in network byte order
 #	octets  - raw octets, printed and input as hex strings.
 #		  e.g.: 0x123456789abcdef
-#	tlv	- type-length-value (only for certain WiMAX attributes)
+#
+# 	FreeRADIUS uses a number of data types which are defined in
+#	RFC 6929.  These data types should NEVER be used in any other
+#	dictionary.  We won't even list them here.
 #
 #
 #	Enumerated values are stored in the user file with dictionary
@@ -105,6 +109,7 @@ $INCLUDE dictionary.rfc6519
 $INCLUDE dictionary.rfc6572
 $INCLUDE dictionary.rfc6677
 $INCLUDE dictionary.rfc6911
+$INCLUDE dictionary.rfc6929
 $INCLUDE dictionary.rfc6930
 
 #
@@ -112,11 +117,6 @@ $INCLUDE dictionary.rfc6930
 #	"expert review", but which don't have an RFC associated with them.
 #
 $INCLUDE dictionary.iana
-
-#
-#	This is a prelimanary dictionary until the RFC is published.
-#
-$INCLUDE dictionary.extended
 
 #
 #	Vendor dictionaries are listed after the standard ones.
