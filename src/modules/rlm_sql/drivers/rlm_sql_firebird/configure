@@ -2764,7 +2764,7 @@ eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
   for try in $smart_lib_dir /usr/local/lib /opt/lib; do
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for isc_attach_database in -lfbclient in $try" >&5
 $as_echo_n "checking for isc_attach_database in -lfbclient in $try... " >&6; }
-    LIBS="-L$try -rpath$try -lfbclient $old_LIBS -Wl,-rpath,$try"
+    LIBS="-L$try -lfbclient $old_LIBS -Wl,-rpath,$try"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 extern char isc_attach_database();

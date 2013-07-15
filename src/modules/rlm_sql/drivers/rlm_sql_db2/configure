@@ -2765,7 +2765,7 @@ eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
   for try in $smart_lib_dir /usr/local/lib /opt/lib; do
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for SQLConnect in -ldb2 in $try" >&5
 $as_echo_n "checking for SQLConnect in -ldb2 in $try... " >&6; }
-    LIBS="-L$try -rpath$try -ldb2 $old_LIBS -Wl,-rpath,$try"
+    LIBS="-L$try -ldb2 $old_LIBS -Wl,-rpath,$try"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 extern char SQLConnect();
