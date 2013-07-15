@@ -56,7 +56,7 @@ if test x$with_[]modname != xno; then
         if test "$ac_cv_header_et_com_err_h" != "yes"; then
             fail="$fail com_err.h"
 	    else
-	        krb5mod_cflags+="-DET_COMM_ERR "
+	        krb5mod_cflags="$krb5mod_cflags -DET_COMM_ERR "
 	    fi
 	fi
 
@@ -86,7 +86,7 @@ if test x$with_[]modname != xno; then
 	dnl Only the heimdal version of the library has this function
 	FR_SMART_CHECK_LIB(krb5, krb5_verify_user_opt)
 	if test "x$ac_cv_lib_krb5_krb5_verify_user_opt" == xyes; then
-        krb5mod_cflags+="-DHEIMDAL_KRB5 "
+        krb5mod_cflags="$krb5mod_cflags -DHEIMDAL_KRB5"
 	else
 	    FR_SMART_CHECK_LIB(krb5, krb5_get_init_creds_password)
 	    if test "x$ac_cv_lib_krb5_krb5_get_init_creds_password" != xyes; then

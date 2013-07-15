@@ -99,9 +99,11 @@ static int krb5_instantiate(CONF_SECTION *conf, void *instance)
 {
 	rlm_krb5_t *inst = instance;
 	krb5_error_code ret;
+#ifndef HEIMDAL_KRB5
 	krb5_keytab keytab;
 	char keytab_name[200];
 	char *princ_name;
+#endif
 
 #ifdef HEIMDAL_KRB5
 	DEBUG("Using Heimdal Kerberos library");
@@ -278,8 +280,11 @@ static rlm_rcode_t krb5_parse_user(REQUEST *request, krb5_context context, krb5_
 
 	krb5_unparse_name(context, *client, &princ_name);
 	RDEBUG("Using client principal \"%s\"", princ_name);
+#ifdef HEIMDAL_KRB5
+	free(princ_name);
+#else
 	krb5_free_unparsed_name(context, princ_name);
-
+#endif
 	return RLM_MODULE_OK;
 }
 
@@ -322,7 +327,6 @@ static rlm_rcode_t krb5_auth(void *instance, REQUEST *request)
 	 */
 	memset(&keytab, 0, sizeof(keytab));
 	memset(&client, 0, sizeof(client));
-	memset(&init_creds, 0, sizeof(init_creds));
 
 	/*
 	 *	Setup krb5_verify_user options
