@@ -561,7 +561,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 				goto handle_result;
 			}
 
-			if (!(radius_get_vp(request, child->name, &vp) < 0)) {
+			if (!(radius_get_vp(&vp, request, child->name) < 0)) {
 				MOD_LOG_OPEN_BRACE("foreach");
 				if (vp) {
 					paircursor(&cursor, &vp);
@@ -727,7 +727,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 				if (!strchr(child->name, '%')) {
 					VALUE_PAIR *vp = NULL;
 
-					if ((radius_get_vp(request, child->name, &vp) < 0) || !vp) {
+					if ((radius_get_vp(&vp, request, child->name) < 0) || !vp) {
 						*buffer = '\0';
 					} else {
 						vp_prints_value(buffer, sizeof(buffer), vp, 0);

@@ -1462,24 +1462,23 @@ VALUE_PAIR *radius_vpt_get_vp(REQUEST *request, value_pair_tmpl_t const *vpt)
 
 /** Return a VP from the specified request.
  *
+ * @param out where to write the pointer to the resolved VP.
+ *	Will be NULL if the attribute couldn't be resolved.
  * @param request current request.
  * @param name attribute name including qualifiers.
- * @param vp_p where to write the pointer to the resolved VP.
- *	Will be NULL if the attribute couldn't be resolved.
  * @return -1 if either the attribute or qualifier were invalid, else 0
  */
-int radius_get_vp(REQUEST *request, char const *name, VALUE_PAIR **vp_p)
+int radius_get_vp(VALUE_PAIR **out, REQUEST *request, char const *name)
 {
 	value_pair_tmpl_t vpt;
 
-	*vp_p = NULL;
+	*out = NULL;
 
-	if (radius_parse_attr(name, &vpt, REQUEST_CURRENT,
-	    PAIR_LIST_REQUEST) < 0) {
+	if (radius_parse_attr(name, &vpt, REQUEST_CURRENT, PAIR_LIST_REQUEST) < 0) {
 		return -1;
 	}
 
-	*vp_p = radius_vpt_get_vp(request, &vpt);
+	*out = radius_vpt_get_vp(request, &vpt);
 	return 0;
 }
 
