@@ -1246,7 +1246,8 @@ int cf_section_parse(CONF_SECTION *cs, void *base,
 			/*
 			 *	Be nice, and print the name of the new config item.
 			 */
-			if ((ret == -2) && (variables[i + 1].offset == variables[i].offset)) {
+			if ((ret == -2) && (variables[i + 1].offset == variables[i].offset) &&
+			    (variables[i + 1].data == variables[i].data)) {
 				cf_log_err(&(cs->item), "Replace \"%s\" with \"%s\"", variables[i].name,
 					   variables[i + 1].name);
 			}
