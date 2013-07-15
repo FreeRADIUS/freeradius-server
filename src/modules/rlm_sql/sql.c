@@ -449,14 +449,12 @@ void rlm_sql_query_log(rlm_sql_t *inst, REQUEST *request,
 
 	if (section) {
 		filename = section->logfile;
-	}
-
-	if (!filename) {
+	} else {
 		filename = inst->config->logfile;
-
-		if (!filename) {
-			return;
-		}
+	}
+	
+	if (!filename) {
+		return;
 	}
 
 	if (radius_axlat(&expanded, request, filename, NULL, NULL) < 0) {
