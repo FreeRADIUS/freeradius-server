@@ -568,7 +568,7 @@ static rlm_rcode_t mod_post_proxy(void *instance, REQUEST *request)
 
 		rcode = mod_accounting(instance, request);
 		if (rcode == RLM_MODULE_OK) {
-			request->reply->code = PW_ACCOUNTING_RESPONSE;
+			request->reply->code = PW_CODE_ACCOUNTING_RESPONSE;
 		}
 		return rcode;
 	}

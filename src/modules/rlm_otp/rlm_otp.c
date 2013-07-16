@@ -288,8 +288,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 	 *	Mark the packet as an Access-Challenge packet.
 	 * 	The server will take care of sending it to the user.
 	 */
-	request->reply->code = PW_ACCESS_CHALLENGE;
-
+	request->reply->code = PW_CODE_ACCESS_CHALLENGE;
 	DEBUG("rlm_otp: Sending Access-Challenge.");
 
 	if (!auth_type_found) {

@@ -950,9 +950,9 @@ static ssize_t vp2data_any(RADIUS_PACKET const *packet,
 		if (room < (18 + lvalue)) return 0;
 
 		switch (packet->code) {
-		case PW_AUTHENTICATION_ACK:
-		case PW_AUTHENTICATION_REJECT:
-		case PW_ACCESS_CHALLENGE:
+		case PW_CODE_AUTHENTICATION_ACK:
+		case PW_CODE_AUTHENTICATION_REJECT:
+		case PW_CODE_ACCESS_CHALLENGE:
 		default:
 			if (!original) {
 				fr_strerror_printf("ERROR: No request packet, cannot encrypt %s attribute in the vp.", vp->da->name);
@@ -964,9 +964,9 @@ static ssize_t vp2data_any(RADIUS_PACKET const *packet,
 					   room - lvalue,
 					   secret, original->vector);
 			break;
-		case PW_ACCOUNTING_REQUEST:
-		case PW_DISCONNECT_REQUEST:
-		case PW_COA_REQUEST:
+		case PW_CODE_ACCOUNTING_REQUEST:
+		case PW_CODE_DISCONNECT_REQUEST:
+		case PW_CODE_COA_REQUEST:
 			ptr[0] = vp->tag;
 			make_tunnel_passwd(ptr + 1, &len, data, len - 1, room,
 					   secret, packet->vector);
@@ -1727,9 +1727,9 @@ int rad_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 	 *	Double-check some things based on packet code.
 	 */
 	switch (packet->code) {
-	case PW_AUTHENTICATION_ACK:
-	case PW_AUTHENTICATION_REJECT:
-	case PW_ACCESS_CHALLENGE:
+	case PW_CODE_AUTHENTICATION_ACK:
+	case PW_CODE_AUTHENTICATION_REJECT:
+	case PW_CODE_ACCESS_CHALLENGE:
 		if (!original) {
 			fr_strerror_printf("ERROR: Cannot sign response packet without a request packet.");
 			return -1;
@@ -1739,9 +1739,9 @@ int rad_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 		/*
 		 *	These packet vectors start off as all zero.
 		 */
-	case PW_ACCOUNTING_REQUEST:
-	case PW_DISCONNECT_REQUEST:
-	case PW_COA_REQUEST:
+	case PW_CODE_ACCOUNTING_REQUEST:
+	case PW_CODE_DISCONNECT_REQUEST:
+	case PW_CODE_COA_REQUEST:
 		memset(packet->vector, 0, sizeof(packet->vector));
 		break;
 
@@ -1907,25 +1907,24 @@ int rad_sign(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 		uint8_t calc_auth_vector[AUTH_VECTOR_LEN];
 
 		switch (packet->code) {
-		case PW_ACCOUNTING_RESPONSE:
-			if (original && original->code == PW_STATUS_SERVER) {
+		case PW_CODE_ACCOUNTING_RESPONSE:
+			if (original && original->code == PW_CODE_STATUS_SERVER) {
 				goto do_ack;
 			}
 
-		case PW_ACCOUNTING_REQUEST:
-		case PW_DISCONNECT_REQUEST:
-		case PW_DISCONNECT_ACK:
-		case PW_DISCONNECT_NAK:
-		case PW_COA_REQUEST:
-		case PW_COA_ACK:
-		case PW_COA_NAK:
+		case PW_CODE_ACCOUNTING_REQUEST:
+		case PW_CODE_DISCONNECT_REQUEST:
+		case PW_CODE_DISCONNECT_ACK:
+		case PW_CODE_DISCONNECT_NAK:
+		case PW_CODE_COA_REQUEST:
+		case PW_CODE_COA_ACK:
 			memset(hdr->vector, 0, AUTH_VECTOR_LEN);
 			break;
 
 		do_ack:
-		case PW_AUTHENTICATION_ACK:
-		case PW_AUTHENTICATION_REJECT:
-		case PW_ACCESS_CHALLENGE:
+		case PW_CODE_AUTHENTICATION_ACK:
+		case PW_CODE_AUTHENTICATION_REJECT:
+		case PW_CODE_ACCESS_CHALLENGE:
 			if (!original) {
 				fr_strerror_printf("ERROR: Cannot sign response packet without a request packet.");
 				return -1;
@@ -1967,8 +1966,8 @@ int rad_sign(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 		 *	Request packets are not signed, bur
 		 *	have a random authentication vector.
 		 */
-	case PW_AUTHENTICATION_REQUEST:
-	case PW_STATUS_SERVER:
+	case PW_CODE_AUTHENTICATION_REQUEST:
+	case PW_CODE_STATUS_SERVER:
 		break;
 
 		/*
@@ -2320,7 +2319,7 @@ int rad_packet_ok(RADIUS_PACKET *packet, int flags)
 	 *	Message-Authenticator is required in Status-Server
 	 *	packets, otherwise they can be trivially forged.
 	 */
-	if (hdr->code == PW_STATUS_SERVER) require_ma = 1;
+	if (hdr->code == PW_CODE_STATUS_SERVER) require_ma = 1;
 
 	/*
 	 *	It's also required if the caller asks for it.
@@ -2715,26 +2714,26 @@ int rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 			default:
 				break;
 
-			case PW_ACCOUNTING_RESPONSE:
+			case PW_CODE_ACCOUNTING_RESPONSE:
 				if (original &&
-				    (original->code == PW_STATUS_SERVER)) {
+				    (original->code == PW_CODE_STATUS_SERVER)) {
 					goto do_ack;
 				}
 
-			case PW_ACCOUNTING_REQUEST:
-			case PW_DISCONNECT_REQUEST:
-			case PW_DISCONNECT_ACK:
-			case PW_DISCONNECT_NAK:
-			case PW_COA_REQUEST:
-			case PW_COA_ACK:
-			case PW_COA_NAK:
+			case PW_CODE_ACCOUNTING_REQUEST:
+			case PW_CODE_DISCONNECT_REQUEST:
+			case PW_CODE_DISCONNECT_ACK:
+			case PW_CODE_DISCONNECT_NAK:
+			case PW_CODE_COA_REQUEST:
+			case PW_CODE_COA_ACK:
+			case PW_CODE_COA_NAK:
 			  	memset(packet->data + 4, 0, AUTH_VECTOR_LEN);
 				break;
 
 			do_ack:
-			case PW_AUTHENTICATION_ACK:
-			case PW_AUTHENTICATION_REJECT:
-			case PW_ACCESS_CHALLENGE:
+			case PW_CODE_AUTHENTICATION_ACK:
+			case PW_CODE_AUTHENTICATION_REJECT:
+			case PW_CODE_ACCESS_CHALLENGE:
 				if (!original) {
 					fr_strerror_printf("ERROR: Cannot validate Message-Authenticator in response packet without a request packet.");
 					return -1;
@@ -2792,17 +2791,17 @@ int rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 		int rcode;
 		char buffer[32];
 
-		case PW_AUTHENTICATION_REQUEST:
-		case PW_STATUS_SERVER:
+		case PW_CODE_AUTHENTICATION_REQUEST:
+		case PW_CODE_STATUS_SERVER:
 			/*
 			 *	The authentication vector is random
 			 *	nonsense, invented by the client.
 			 */
 			break;
 
-		case PW_COA_REQUEST:
-		case PW_DISCONNECT_REQUEST:
-		case PW_ACCOUNTING_REQUEST:
+		case PW_CODE_COA_REQUEST:
+		case PW_CODE_DISCONNECT_REQUEST:
+		case PW_CODE_ACCOUNTING_REQUEST:
 			if (calc_acctdigest(packet, secret) > 1) {
 				fr_strerror_printf("Received %s packet "
 					   "from client %s with invalid Request Authenticator!  (Shared secret is incorrect.)",
@@ -2815,14 +2814,14 @@ int rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 			break;
 
 			/* Verify the reply digest */
-		case PW_AUTHENTICATION_ACK:
-		case PW_AUTHENTICATION_REJECT:
-		case PW_ACCESS_CHALLENGE:
-		case PW_ACCOUNTING_RESPONSE:
-		case PW_DISCONNECT_ACK:
-		case PW_DISCONNECT_NAK:
-		case PW_COA_ACK:
-		case PW_COA_NAK:
+		case PW_CODE_AUTHENTICATION_ACK:
+		case PW_CODE_AUTHENTICATION_REJECT:
+		case PW_CODE_ACCESS_CHALLENGE:
+		case PW_CODE_ACCOUNTING_RESPONSE:
+		case PW_CODE_DISCONNECT_ACK:
+		case PW_CODE_DISCONNECT_NAK:
+		case PW_CODE_COA_ACK:
+		case PW_CODE_COA_NAK:
 			rcode = calc_replydigest(packet, original, secret);
 			if (rcode > 1) {
 				fr_strerror_printf("Received %s packet "

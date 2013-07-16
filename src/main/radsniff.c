@@ -94,8 +94,8 @@ static int filter_packet(RADIUS_PACKET *packet)
 		 *	Cache authentication requests, as the replies
 		 *	may not match the RADIUS filter.
 		 */
-		if ((packet->code == PW_AUTHENTICATION_REQUEST) ||
-		    (packet->code == PW_ACCOUNTING_REQUEST)) {
+		if ((packet->code == PW_CODE_AUTHENTICATION_REQUEST) ||
+		    (packet->code == PW_CODE_ACCOUNTING_REQUEST)) {
 			rbtree_deletebydata(filter_tree, packet);
 
 			if (!rbtree_insert(filter_tree, packet)) {
@@ -110,8 +110,8 @@ static int filter_packet(RADIUS_PACKET *packet)
 	/*
 	 *	Don't create erroneous matches.
 	 */
-	if ((packet->code == PW_AUTHENTICATION_REQUEST) ||
-	    (packet->code == PW_ACCOUNTING_REQUEST)) {
+	if ((packet->code == PW_CODE_AUTHENTICATION_REQUEST) ||
+	    (packet->code == PW_CODE_ACCOUNTING_REQUEST)) {
 		rbtree_deletebydata(filter_tree, packet);
 		return 1;
 	}
@@ -121,10 +121,10 @@ static int filter_packet(RADIUS_PACKET *packet)
 	 *	matched.  If so, also print out the
 	 *	matching accept, reject, or challenge.
 	 */
-	if ((packet->code == PW_AUTHENTICATION_ACK) ||
-	    (packet->code == PW_AUTHENTICATION_REJECT) ||
-	    (packet->code == PW_ACCESS_CHALLENGE) ||
-	    (packet->code == PW_ACCOUNTING_RESPONSE)) {
+	if ((packet->code == PW_CODE_AUTHENTICATION_ACK) ||
+	    (packet->code == PW_CODE_AUTHENTICATION_REJECT) ||
+	    (packet->code == PW_CODE_ACCESS_CHALLENGE) ||
+	    (packet->code == PW_CODE_ACCOUNTING_RESPONSE)) {
 		RADIUS_PACKET *reply;
 
 		/*
@@ -233,15 +233,15 @@ static void got_packet(UNUSED uint8_t *args, struct pcap_pkthdr const*header, ui
 	}
 
 	switch (packet->code) {
-	case PW_COA_REQUEST:
+	case PW_CODE_COA_REQUEST:
 		/* we need a 16 x 0 byte vector for decrypting encrypted VSAs */
 		original = nullpacket;
 		break;
-	case PW_AUTHENTICATION_ACK:
+	case PW_CODE_AUTHENTICATION_ACK:
 		/* look for a matching request and use it for decoding */
 		original = rbtree_finddata(request_tree, packet);
 		break;
-	case PW_AUTHENTICATION_REQUEST:
+	case PW_CODE_AUTHENTICATION_REQUEST:
 		/* save the request for later matching */
 		original = rad_alloc_reply(NULL, packet);
 		if (original) { /* just ignore allocation failures */
@@ -324,8 +324,8 @@ static void got_packet(UNUSED uint8_t *args, struct pcap_pkthdr const*header, ui
 	 *  filter tree.
 	 */
 	if (!filter_vps ||
-	    ((packet->code != PW_AUTHENTICATION_REQUEST) &&
-	     (packet->code != PW_ACCOUNTING_REQUEST))) {
+	    ((packet->code != PW_CODE_AUTHENTICATION_REQUEST) &&
+	     (packet->code != PW_CODE_ACCOUNTING_REQUEST))) {
 		rad_free(&packet);
 	}
 }

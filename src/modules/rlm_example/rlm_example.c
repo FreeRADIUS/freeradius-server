@@ -108,7 +108,7 @@ static rlm_rcode_t mod_authorize(UNUSED void *instance, UNUSED REQUEST *request)
 	 *
 	 *  The server will take care of sending it to the user.
 	 */
-	request->reply->code = PW_ACCESS_CHALLENGE;
+	request->reply->code = PW_CODE_ACCESS_CHALLENGE;
 	RDEBUG("Sending Access-Challenge.");
 
 	return RLM_MODULE_HANDLED;

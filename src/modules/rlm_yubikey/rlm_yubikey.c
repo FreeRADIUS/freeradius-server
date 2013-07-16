@@ -210,7 +210,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 		 *	Don't print out debugging messages if we know
 		 *	they're useless.
 		 */
-		if (request->packet->code == PW_ACCESS_CHALLENGE) {
+		if (request->packet->code == PW_CODE_ACCESS_CHALLENGE) {
 			return RLM_MODULE_NOOP;
 		}
 

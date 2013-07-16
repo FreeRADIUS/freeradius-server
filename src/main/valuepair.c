@@ -954,14 +954,14 @@ VALUE_PAIR **radius_list(REQUEST *request, pair_lists_t list)
 #ifdef WITH_COA
 		case PAIR_LIST_COA:
 			if (request->coa &&
-			    (request->coa->proxy->code == PW_COA_REQUEST)) {
+			    (request->coa->proxy->code == PW_CODE_COA_REQUEST)) {
 				return &request->coa->proxy->vps;
 			}
 			break;
 
 		case PAIR_LIST_COA_REPLY:
 			if (request->coa && /* match reply with request */
-			    (request->coa->proxy->code == PW_COA_REQUEST) &&
+			    (request->coa->proxy->code == PW_CODE_COA_REQUEST) &&
 			    request->coa->proxy_reply) {
 				return &request->coa->proxy_reply->vps;
 			}
@@ -969,14 +969,14 @@ VALUE_PAIR **radius_list(REQUEST *request, pair_lists_t list)
 
 		case PAIR_LIST_DM:
 			if (request->coa &&
-			    (request->coa->proxy->code == PW_DISCONNECT_REQUEST)) {
+			    (request->coa->proxy->code == PW_CODE_DISCONNECT_REQUEST)) {
 				return &request->coa->proxy->vps;
 			}
 			break;
 
 		case PAIR_LIST_DM_REPLY:
 			if (request->coa && /* match reply with request */
-			    (request->coa->proxy->code == PW_DISCONNECT_REQUEST) &&
+			    (request->coa->proxy->code == PW_CODE_DISCONNECT_REQUEST) &&
 			    request->coa->proxy_reply) {
 			   	return &request->coa->proxy->vps;
 			}

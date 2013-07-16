@@ -2125,7 +2125,7 @@ void home_server_update_request(home_server *home, REQUEST *request)
 	 *	Access-Requests have a Message-Authenticator added,
 	 *	unless one already exists.
 	 */
-	if ((request->packet->code == PW_AUTHENTICATION_REQUEST) &&
+	if ((request->packet->code == PW_CODE_AUTHENTICATION_REQUEST) &&
 	    !pairfind(request->proxy->vps, PW_MESSAGE_AUTHENTICATOR, 0, TAG_ANY)) {
 		pairmake(request->proxy, &request->proxy->vps,
 			 "Message-Authenticator", "0x00",
@@ -2247,7 +2247,7 @@ home_server *home_server_ldb(char const *realmname,
 		 *	there.
 		 */
 		if ((request->listener->type == RAD_LISTEN_DETAIL) &&
-		    (request->packet->code == PW_ACCOUNTING_REQUEST) &&
+		    (request->packet->code == PW_CODE_ACCOUNTING_REQUEST) &&
 		    (fr_ipaddr_cmp(&home->ipaddr, &request->packet->src_ipaddr) == 0)) {
 			continue;
 		}
@@ -2416,10 +2416,10 @@ home_server *home_server_ldb(char const *realmname,
 		if (!rd) return NULL;
 
 		pool = NULL;
-		if (request->packet->code == PW_AUTHENTICATION_REQUEST) {
+		if (request->packet->code == PW_CODE_AUTHENTICATION_REQUEST) {
 			pool = rd->auth_pool;
 
-		} else if (request->packet->code == PW_ACCOUNTING_REQUEST) {
+		} else if (request->packet->code == PW_CODE_ACCOUNTING_REQUEST) {
 			pool = rd->acct_pool;
 		}
 		if (!pool) return NULL;

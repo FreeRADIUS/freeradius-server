@@ -512,8 +512,8 @@ STATE_MACHINE_DECL(request_done)
 		when = request->proxy->timestamp;
 
 #ifdef WITH_COA
-		if (((request->proxy->code == PW_COA_REQUEST) ||
-		     (request->proxy->code == PW_DISCONNECT_REQUEST)) &&
+		if (((request->proxy->code == PW_CODE_COA_REQUEST) ||
+		     (request->proxy->code == PW_CODE_DISCONNECT_REQUEST)) &&
 		    (request->packet->code != request->proxy->code)) {
 			when.tv_sec += request->home_server->coa_mrd;
 		} else
@@ -591,7 +591,7 @@ static void request_cleanup_delay_init(REQUEST *request, struct timeval const *p
 {
 	struct timeval now, when;
 
-	if (request->packet->code == PW_ACCOUNTING_REQUEST) goto done;
+	if (request->packet->code == PW_CODE_ACCOUNTING_REQUEST) goto done;
 	if (!request->root->cleanup_delay) goto done;
 
 	if (pnow) {
@@ -727,7 +727,7 @@ static void request_process_timer(REQUEST *request)
 	}
 
 #ifdef WITH_ACCOUNTING
-	if (request->reply->code == PW_ACCOUNTING_RESPONSE) {
+	if (request->reply->code == PW_CODE_ACCOUNTING_RESPONSE) {
 	done:
 		request_done(request, FR_ACTION_DONE);
 		return;
@@ -738,7 +738,7 @@ static void request_process_timer(REQUEST *request)
 	if (!request->proxy || (request->packet->code == request->proxy->code))
 #endif
 
-	if ((request->reply->code == PW_AUTHENTICATION_REJECT) &&
+	if ((request->reply->code == PW_CODE_AUTHENTICATION_REJECT) &&
 	    (request->root->reject_delay)) {
 		when = request->reply->timestamp;
 		when.tv_sec += request->root->reject_delay;
@@ -1059,7 +1059,7 @@ STATE_MACHINE_DECL(request_finish)
 	/*
 	 *	Catch Auth-Type := Reject BEFORE proxying the packet.
 	 */
-	if (request->packet->code == PW_AUTHENTICATION_REQUEST) {
+	if (request->packet->code == PW_CODE_AUTHENTICATION_REQUEST) {
 		/*
 		 *	Override the response code if a
 		 *	control:Response-Packet-Type attribute is present.
@@ -1075,13 +1075,12 @@ STATE_MACHINE_DECL(request_finish)
 			}
 		} else if (request->reply->code == 0) {
 			vp = pairfind(request->config_items, PW_AUTH_TYPE, 0, TAG_ANY);
-
-			if (!vp || (vp->vp_integer != PW_AUTHENTICATION_REJECT)) {
+			if (!vp || (vp->vp_integer != PW_CODE_AUTHENTICATION_REJECT)) {
 				RDEBUG2("There was no response configured: "
 					"rejecting request");
 			}
 
-			request->reply->code = PW_AUTHENTICATION_REJECT;
+			request->reply->code = PW_CODE_AUTHENTICATION_REJECT;
 		}
 	}
 
@@ -1093,10 +1092,10 @@ STATE_MACHINE_DECL(request_finish)
 	if (vp) pairadd(&request->reply->vps, vp);
 
 	switch (request->reply->code) {
-	case PW_AUTHENTICATION_ACK:
+	case PW_CODE_AUTHENTICATION_ACK:
 		rad_postauth(request);
 		break;
-	case PW_ACCESS_CHALLENGE:
+	case PW_CODE_ACCESS_CHALLENGE:
 		pairdelete(&request->config_items, PW_POST_AUTH_TYPE, 0,
 			   TAG_ANY);
 		vp = pairmake_config("Post-Auth-Type", "Challenge", T_OP_SET);
@@ -1114,7 +1113,7 @@ STATE_MACHINE_DECL(request_finish)
 	 *	We do this separately so ACK and challenge can change the code
 	 *	to reject if a module returns reject.
 	 */
-	if (request->reply->code == PW_AUTHENTICATION_REJECT) {
+	if (request->reply->code == PW_CODE_AUTHENTICATION_REJECT) {
 		pairdelete(&request->config_items, PW_POST_AUTH_TYPE, 0, TAG_ANY);
 		vp = pairmake_config("Post-Auth-Type", "Reject", T_OP_SET);
 		if (vp) rad_postauth(request);
@@ -1123,7 +1122,7 @@ STATE_MACHINE_DECL(request_finish)
 	/*
 	 *	Send the reply here.
 	 */
-	if ((request->reply->code != PW_AUTHENTICATION_REJECT) ||
+	if ((request->reply->code != PW_CODE_AUTHENTICATION_REJECT) ||
 	    (request->root->reject_delay == 0)) {
 		DEBUG_PACKET(request, request->reply, 1);
 		request->listener->send(request->listener,
@@ -1273,21 +1272,21 @@ int request_receive(rad_listen_t *listener, RADIUS_PACKET *packet,
 
 #ifdef WITH_STATS
 			switch (packet->code) {
-			case PW_AUTHENTICATION_REQUEST:
+			case PW_CODE_AUTHENTICATION_REQUEST:
 				FR_STATS_INC(auth, total_dup_requests);
 				break;
 
 #ifdef WITH_ACCOUNTING
-			case PW_ACCOUNTING_REQUEST:
+			case PW_CODE_ACCOUNTING_REQUEST:
 				FR_STATS_INC(acct, total_dup_requests);
 				break;
 #endif
 #ifdef WITH_COA
-			case PW_COA_REQUEST:
+			case PW_CODE_COA_REQUEST:
 				FR_STATS_INC(coa, total_dup_requests);
 				break;
 
-			case PW_DISCONNECT_REQUEST:
+			case PW_CODE_DISCONNECT_REQUEST:
 				FR_STATS_INC(dsc, total_dup_requests);
 				break;
 #endif
@@ -1416,11 +1415,11 @@ static REQUEST *request_setup(rad_listen_t *listener, RADIUS_PACKET *packet,
 
 #ifdef WITH_STATS
 	request->listener->stats.last_packet = request->packet->timestamp.tv_sec;
-	if (packet->code == PW_AUTHENTICATION_REQUEST) {
+	if (packet->code == PW_CODE_AUTHENTICATION_REQUEST) {
 		request->client->auth.last_packet = request->packet->timestamp.tv_sec;
 		radius_auth_stats.last_packet = request->packet->timestamp.tv_sec;
 #ifdef WITH_ACCOUNTING
-	} else if (packet->code == PW_ACCOUNTING_REQUEST) {
+	} else if (packet->code == PW_CODE_ACCOUNTING_REQUEST) {
 		request->client->acct.last_packet = request->packet->timestamp.tv_sec;
 		radius_acct_stats.last_packet = request->packet->timestamp.tv_sec;
 #endif
@@ -1430,7 +1429,7 @@ static REQUEST *request_setup(rad_listen_t *listener, RADIUS_PACKET *packet,
 	/*
 	 *	Status-Server packets go to the head of the queue.
 	 */
-	if (request->packet->code == PW_STATUS_SERVER) request->priority = 0;
+	if (request->packet->code == PW_CODE_STATUS_SERVER) request->priority = 0;
 
 	/*
 	 *	Set virtual server identity
@@ -1825,7 +1824,7 @@ static int process_proxy_reply(REQUEST *request)
 	 *	post-proxy-type Reject
 	 */
 	if (!vp && request->proxy_reply &&
-	    request->proxy_reply->code == PW_AUTHENTICATION_REJECT) {
+	    request->proxy_reply->code == PW_CODE_AUTHENTICATION_REJECT) {
 	    	DICT_VALUE	*dval;
 
 		dval = dict_valbyname(PW_POST_PROXY_TYPE, 0, "Reject");
@@ -1959,7 +1958,7 @@ int request_proxy_reply(RADIUS_PACKET *packet)
 	/*
 	 *	Status-Server packets don't count as real packets.
 	 */
-	if (request->proxy->code != PW_STATUS_SERVER) {
+	if (request->proxy->code != PW_CODE_STATUS_SERVER) {
 		listen_socket_t *sock = request->proxy_listener->data;
 
 		request->home_server->last_packet_recv = now.tv_sec;
@@ -1999,10 +1998,10 @@ int request_proxy_reply(RADIUS_PACKET *packet)
 	request->home_server->stats.last_packet = packet->timestamp.tv_sec;
 	request->proxy_listener->stats.last_packet = packet->timestamp.tv_sec;
 
-	if (request->proxy->code == PW_AUTHENTICATION_REQUEST) {
+	if (request->proxy->code == PW_CODE_AUTHENTICATION_REQUEST) {
 		proxy_auth_stats.last_packet = packet->timestamp.tv_sec;
 #ifdef WITH_ACCOUNTING
-	} else if (request->proxy->code == PW_ACCOUNTING_REQUEST) {
+	} else if (request->proxy->code == PW_CODE_ACCOUNTING_REQUEST) {
 		proxy_acct_stats.last_packet = packet->timestamp.tv_sec;
 #endif
 	}
@@ -2016,8 +2015,8 @@ int request_proxy_reply(RADIUS_PACKET *packet)
 	 */
 	if (request->parent) {
 		rad_assert(request->parent->coa == request);
-		rad_assert((request->proxy->code == PW_COA_REQUEST) ||
-			   (request->proxy->code == PW_DISCONNECT_REQUEST));
+		rad_assert((request->proxy->code == PW_CODE_COA_REQUEST) ||
+			   (request->proxy->code == PW_CODE_DISCONNECT_REQUEST));
 		rad_assert(request->process != NULL);
 		request_coa_separate(request);
 	}
@@ -2034,18 +2033,17 @@ static int setup_post_proxy_fail(REQUEST *request)
 	const DICT_VALUE *dval = NULL;
 	VALUE_PAIR *vp;
 
-	if (request->proxy->code == PW_AUTHENTICATION_REQUEST) {
+	if (request->proxy->code == PW_CODE_AUTHENTICATION_REQUEST) {
 		dval = dict_valbyname(PW_POST_PROXY_TYPE, 0,
 				      "Fail-Authentication");
-
-	} else if (request->proxy->code == PW_ACCOUNTING_REQUEST) {
+	} else if (request->proxy->code == PW_CODE_ACCOUNTING_REQUEST) {
 		dval = dict_valbyname(PW_POST_PROXY_TYPE, 0,
 				      "Fail-Accounting");
 #ifdef WITH_COA
-	} else if (request->proxy->code == PW_COA_REQUEST) {
+	} else if (request->proxy->code == PW_CODE_COA_REQUEST) {
 		dval = dict_valbyname(PW_POST_PROXY_TYPE, 0, "Fail-CoA");
 
-	} else if (request->proxy->code == PW_DISCONNECT_REQUEST) {
+	} else if (request->proxy->code == PW_CODE_DISCONNECT_REQUEST) {
 		dval = dict_valbyname(PW_POST_PROXY_TYPE, 0, "Fail-Disconnect");
 #endif
 	} else {
@@ -2127,7 +2125,7 @@ static int request_will_proxy(REQUEST *request)
 
 	if (!request->root->proxy_requests) return 0;
 	if (request->packet->dst_port == 0) return 0;
-	if (request->packet->code == PW_STATUS_SERVER) return 0;
+	if (request->packet->code == PW_CODE_STATUS_SERVER) return 0;
 	if (request->in_proxy_hash) return 0;
 
 	/*
@@ -2149,17 +2147,17 @@ static int request_will_proxy(REQUEST *request)
 		/*
 		 *	Figure out which pool to use.
 		 */
-		if (request->packet->code == PW_AUTHENTICATION_REQUEST) {
+		if (request->packet->code == PW_CODE_AUTHENTICATION_REQUEST) {
 			pool = realm->auth_pool;
 
 #ifdef WITH_ACCOUNTING
-		} else if (request->packet->code == PW_ACCOUNTING_REQUEST) {
+		} else if (request->packet->code == PW_CODE_ACCOUNTING_REQUEST) {
 			pool = realm->acct_pool;
 #endif
 
 #ifdef WITH_COA
-		} else if ((request->packet->code == PW_COA_REQUEST) ||
-			   (request->packet->code == PW_DISCONNECT_REQUEST)) {
+		} else if ((request->packet->code == PW_CODE_COA_REQUEST) ||
+			   (request->packet->code == PW_CODE_DISCONNECT_REQUEST)) {
 			pool = realm->coa_pool;
 #endif
 
@@ -2174,19 +2172,19 @@ static int request_will_proxy(REQUEST *request)
 		if (!vp) return 0;
 
 		switch (request->packet->code) {
-		case PW_AUTHENTICATION_REQUEST:
+		case PW_CODE_AUTHENTICATION_REQUEST:
 			pool_type = HOME_TYPE_AUTH;
 			break;
 
 #ifdef WITH_ACCOUNTING
-		case PW_ACCOUNTING_REQUEST:
+		case PW_CODE_ACCOUNTING_REQUEST:
 			pool_type = HOME_TYPE_ACCT;
 			break;
 #endif
 
 #ifdef WITH_COA
-		case PW_COA_REQUEST:
-		case PW_DISCONNECT_REQUEST:
+		case PW_CODE_COA_REQUEST:
+		case PW_CODE_DISCONNECT_REQUEST:
 			pool_type = HOME_TYPE_COA;
 			break;
 #endif
@@ -2276,7 +2274,7 @@ static int request_will_proxy(REQUEST *request)
 	 *	since we can't use the request authenticator
 	 *	anymore - we changed it.
 	 */
-	if ((request->packet->code == PW_AUTHENTICATION_REQUEST) &&
+	if ((request->packet->code == PW_CODE_AUTHENTICATION_REQUEST) &&
 	    pairfind(request->proxy->vps, PW_CHAP_PASSWORD, 0, TAG_ANY) &&
 	    pairfind(request->proxy->vps, PW_CHAP_CHALLENGE, 0, TAG_ANY) == NULL) {
 		uint8_t *p;
@@ -2496,7 +2494,7 @@ static int request_proxy_anew(REQUEST *request)
 	/*
 	 *	Update the Acct-Delay-Time attribute.
 	 */
-	if (request->packet->code == PW_ACCOUNTING_REQUEST) {
+	if (request->packet->code == PW_CODE_ACCOUNTING_REQUEST) {
 		VALUE_PAIR *vp;
 
 		vp = pairfind(request->proxy->vps, PW_ACCT_DELAY_TIME, 0, TAG_ANY);
@@ -2637,13 +2635,13 @@ static void ping_home_server(void *ctx)
 	rad_assert(request->proxy != NULL);
 
 	if (home->ping_check == HOME_PING_CHECK_STATUS_SERVER) {
-		request->proxy->code = PW_STATUS_SERVER;
+		request->proxy->code = PW_CODE_STATUS_SERVER;
 
 		pairmake(request->proxy, &request->proxy->vps,
 			 "Message-Authenticator", "0x00", T_OP_SET);
 
 	} else if (home->type == HOME_TYPE_AUTH) {
-		request->proxy->code = PW_AUTHENTICATION_REQUEST;
+		request->proxy->code = PW_CODE_AUTHENTICATION_REQUEST;
 
 		pairmake(request->proxy, &request->proxy->vps,
 			 "User-Name", home->ping_user_name, T_OP_SET);
@@ -2656,8 +2654,7 @@ static void ping_home_server(void *ctx)
 
 	} else {
 #ifdef WITH_ACCOUNTING
-		request->proxy->code = PW_ACCOUNTING_REQUEST;
-
+		request->proxy->code = PW_CODE_ACCOUNTING_REQUEST;
 		pairmake(request->proxy, &request->proxy->vps,
 			 "User-Name", home->ping_user_name, T_OP_SET);
 		pairmake(request->proxy, &request->proxy->vps,
@@ -2872,7 +2869,7 @@ STATE_MACHINE_DECL(proxy_wait_for_reply)
 
 	TRACE_STATE_MACHINE;
 
-	rad_assert(request->packet->code != PW_STATUS_SERVER);
+	rad_assert(request->packet->code != PW_CODE_STATUS_SERVER);
 	rad_assert(request->home_server != NULL);
 
 	gettimeofday(&now, NULL);
@@ -2912,7 +2909,7 @@ STATE_MACHINE_DECL(proxy_wait_for_reply)
 		 *	If we update the Acct-Delay-Time, we need to
 		 *	get a new ID.
 		 */
-		if ((request->packet->code == PW_ACCOUNTING_REQUEST) &&
+		if ((request->packet->code == PW_CODE_ACCOUNTING_REQUEST) &&
 		    pairfind(request->proxy->vps, PW_ACCT_DELAY_TIME, 0, TAG_ANY)) {
 			request_proxy_anew(request);
 			return;
@@ -3143,8 +3140,8 @@ static void request_coa_originate(REQUEST *request)
 	vp = pairfind(coa->proxy->vps, PW_PACKET_TYPE, 0, TAG_ANY);
 	if (vp) {
 		switch (vp->vp_integer) {
-		case PW_COA_REQUEST:
-		case PW_DISCONNECT_REQUEST:
+		case PW_CODE_COA_REQUEST:
+		case PW_CODE_DISCONNECT_REQUEST:
 			coa->proxy->code = vp->vp_integer;
 			break;
 
@@ -3155,7 +3152,7 @@ static void request_coa_originate(REQUEST *request)
 		}
 	}
 
-	if (!coa->proxy->code) coa->proxy->code = PW_COA_REQUEST;
+	if (!coa->proxy->code) coa->proxy->code = PW_CODE_COA_REQUEST;
 
 	/*
 	 *	The rest of the server code assumes that

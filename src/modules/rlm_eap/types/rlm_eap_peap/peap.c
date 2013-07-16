@@ -429,7 +429,7 @@ static int process_reply(eap_handler_t *handler, tls_session_t *tls_session,
 	}
 
 	switch (reply->code) {
-	case PW_AUTHENTICATION_ACK:
+	case PW_CODE_AUTHENTICATION_ACK:
 		RDEBUG2("Tunneled authentication was successful.");
 		t->status = PEAP_STATUS_SENT_TLV_SUCCESS;
 		eappeap_success(handler, tls_session);
@@ -467,14 +467,14 @@ static int process_reply(eap_handler_t *handler, tls_session_t *tls_session,
 		}
 		break;
 
-	case PW_AUTHENTICATION_REJECT:
+	case PW_CODE_AUTHENTICATION_REJECT:
 		RDEBUG2("Tunneled authentication was rejected.");
 		t->status = PEAP_STATUS_SENT_TLV_FAILURE;
 		eappeap_failure(handler, tls_session);
 		rcode = RLM_MODULE_HANDLED;
 		break;
 
-	case PW_ACCESS_CHALLENGE:
+	case PW_CODE_ACCESS_CHALLENGE:
 		RDEBUG2("Got tunneled Access-Challenge");
 
 		/*
@@ -560,7 +560,7 @@ static int eappeap_postproxy(eap_handler_t *handler, void *data)
 	/*
 	 *	Do the callback, if it exists, and if it was a success.
 	 */
-	if (fake && (handler->request->proxy_reply->code == PW_AUTHENTICATION_ACK)) {
+	if (fake && (handler->request->proxy_reply->code == PW_CODE_AUTHENTICATION_ACK)) {
 		peap_tunnel_t *t = tls_session->opaque;
 
 		t->home_access_accept = true;
@@ -834,7 +834,7 @@ int eappeap_process(eap_handler_t *handler, tls_session_t *tls_session)
 		RDEBUG("Got SoH reply");
 		debug_pair_list(fake->reply->vps);
 
-		if (fake->reply->code != PW_AUTHENTICATION_ACK) {
+		if (fake->reply->code != PW_CODE_AUTHENTICATION_ACK) {
 			RDEBUG2("SoH was rejected");
 			request_free(&fake);
 			t->status = PEAP_STATUS_SENT_TLV_FAILURE;
@@ -960,13 +960,13 @@ int eappeap_process(eap_handler_t *handler, tls_session_t *tls_session)
 		if (!fake->packet->vps) {
 			request_free(&fake);
 			RDEBUG2("Unable to convert tunneled EAP packet to internal server data structures");
-			return PW_AUTHENTICATION_REJECT;
+			return PW_CODE_AUTHENTICATION_REJECT;
 		}
 		break;
 
 	default:
 		RDEBUG("Invalid state change in PEAP.");
-		return PW_AUTHENTICATION_REJECT;
+		return PW_CODE_AUTHENTICATION_REJECT;
 	}
 
 	if ((debug_flag > 0) && fr_log_fp) {
@@ -1091,7 +1091,7 @@ int eappeap_process(eap_handler_t *handler, tls_session_t *tls_session)
 					/*
 					 *	Authentication succeeded! Rah!
 					 */
-					fake->reply->code = PW_AUTHENTICATION_ACK;
+					fake->reply->code = PW_CODE_AUTHENTICATION_ACK;
 					goto do_process;
 				}
 

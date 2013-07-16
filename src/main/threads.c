@@ -368,7 +368,7 @@ int request_enqueue(REQUEST *request)
 		 *	A probabilistic approach allows us to process
 		 *	SOME of the new accounting packets.
 		 */
-		if ((request->packet->code == PW_ACCOUNTING_REQUEST) &&
+		if ((request->packet->code == PW_CODE_ACCOUNTING_REQUEST) &&
 		    (thread_pool.num_queued > (thread_pool.max_queue_size / 2)) &&
 		    (thread_pool.pps_in.pps_now > thread_pool.pps_out.pps_now)) {
 			uint32_t prob;
@@ -660,7 +660,7 @@ static void *request_handler_thread(void *arg)
 		       self->thread_num, self->request->number,
 		       self->request_count);
 
-		if ((self->request->packet->code == PW_ACCOUNTING_REQUEST) &&
+		if ((self->request->packet->code == PW_CODE_ACCOUNTING_REQUEST) &&
 		    thread_pool.auto_limit_acct) {
 			VALUE_PAIR *vp;
 			REQUEST *request = self->request;

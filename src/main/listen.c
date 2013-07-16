@@ -330,7 +330,7 @@ int rad_status_server(REQUEST *request)
 		switch (rcode) {
 		case RLM_MODULE_OK:
 		case RLM_MODULE_UPDATED:
-			request->reply->code = PW_AUTHENTICATION_ACK;
+			request->reply->code = PW_CODE_AUTHENTICATION_ACK;
 			break;
 
 		case RLM_MODULE_FAIL:
@@ -340,7 +340,7 @@ int rad_status_server(REQUEST *request)
 
 		default:
 		case RLM_MODULE_REJECT:
-			request->reply->code = PW_AUTHENTICATION_REJECT;
+			request->reply->code = PW_CODE_AUTHENTICATION_REJECT;
 			break;
 		}
 		break;
@@ -357,7 +357,7 @@ int rad_status_server(REQUEST *request)
 		switch (rcode) {
 		case RLM_MODULE_OK:
 		case RLM_MODULE_UPDATED:
-			request->reply->code = PW_ACCOUNTING_RESPONSE;
+			request->reply->code = PW_CODE_ACCOUNTING_RESPONSE;
 			break;
 
 		default:
@@ -384,7 +384,7 @@ int rad_status_server(REQUEST *request)
 		switch (rcode) {
 		case RLM_MODULE_OK:
 		case RLM_MODULE_UPDATED:
-			request->reply->code = PW_COA_ACK;
+			request->reply->code = PW_CODE_COA_ACK;
 			break;
 
 		default:
@@ -490,21 +490,21 @@ static int dual_tcp_recv(rad_listen_t *listener)
 	 *	Some sanity checks, based on the packet code.
 	 */
 	switch(packet->code) {
-	case PW_AUTHENTICATION_REQUEST:
+	case PW_CODE_AUTHENTICATION_REQUEST:
 		if (listener->type != RAD_LISTEN_AUTH) goto bad_packet;
 		FR_STATS_INC(auth, total_requests);
 		fun = rad_authenticate;
 		break;
 
 #ifdef WITH_ACCOUNTING
-	case PW_ACCOUNTING_REQUEST:
+	case PW_CODE_ACCOUNTING_REQUEST:
 		if (listener->type != RAD_LISTEN_ACCT) goto bad_packet;
 		FR_STATS_INC(acct, total_requests);
 		fun = rad_accounting;
 		break;
 #endif
 
-	case PW_STATUS_SERVER:
+	case PW_CODE_STATUS_SERVER:
 		if (!mainconfig.status_server) {
 			FR_STATS_INC(auth, total_unknown_types);
 			WDEBUG("Ignoring Status-Server request due to security configuration");
@@ -1343,7 +1343,7 @@ static int stats_socket_recv(rad_listen_t *listener)
 	/*
 	 *	We only understand Status-Server on this socket.
 	 */
-	if (code != PW_STATUS_SERVER) {
+	if (code != PW_CODE_STATUS_SERVER) {
 		DEBUG("Ignoring packet code %d sent to Status-Server port",
 		      code);
 		rad_recv_discard(listener->fd);
@@ -1411,11 +1411,11 @@ static int auth_socket_recv(rad_listen_t *listener)
 	 *	Some sanity checks, based on the packet code.
 	 */
 	switch(code) {
-	case PW_AUTHENTICATION_REQUEST:
+	case PW_CODE_AUTHENTICATION_REQUEST:
 		fun = rad_authenticate;
 		break;
 
-	case PW_STATUS_SERVER:
+	case PW_CODE_STATUS_SERVER:
 		if (!mainconfig.status_server) {
 			rad_recv_discard(listener->fd);
 			FR_STATS_INC(auth, total_unknown_types);
@@ -1492,11 +1492,11 @@ static int acct_socket_recv(rad_listen_t *listener)
 	 *	Some sanity checks, based on the packet code.
 	 */
 	switch(code) {
-	case PW_ACCOUNTING_REQUEST:
+	case PW_CODE_ACCOUNTING_REQUEST:
 		fun = rad_accounting;
 		break;
 
-	case PW_STATUS_SERVER:
+	case PW_CODE_STATUS_SERVER:
 		if (!mainconfig.status_server) {
 			rad_recv_discard(listener->fd);
 			FR_STATS_INC(acct, total_unknown_types);
@@ -1576,14 +1576,14 @@ static int rad_coa_recv(REQUEST *request)
 	 *	Get the correct response
 	 */
 	switch (request->packet->code) {
-	case PW_COA_REQUEST:
-		ack = PW_COA_ACK;
-		nak = PW_COA_NAK;
+	case PW_CODE_COA_REQUEST:
+		ack = PW_CODE_COA_ACK;
+		nak = PW_CODE_COA_NAK;
 		break;
 
-	case PW_DISCONNECT_REQUEST:
-		ack = PW_DISCONNECT_ACK;
-		nak = PW_DISCONNECT_NAK;
+	case PW_CODE_DISCONNECT_REQUEST:
+		ack = PW_CODE_DISCONNECT_ACK;
+		nak = PW_CODE_DISCONNECT_NAK;
 		break;
 
 	default:		/* shouldn't happen */
@@ -1603,12 +1603,12 @@ static int rad_coa_recv(REQUEST *request)
 		 *	have a State attribute in it.
 		 */
 		vp = pairfind(request->packet->vps, PW_SERVICE_TYPE, 0, TAG_ANY);
-		if (request->packet->code == PW_COA_REQUEST) {
+		if (request->packet->code == PW_CODE_COA_REQUEST) {
 			if (vp && (vp->vp_integer == 17)) {
 				vp = pairfind(request->packet->vps, PW_STATE, 0, TAG_ANY);
 				if (!vp || (vp->length == 0)) {
 					REDEBUG("CoA-Request with Service-Type = Authorize-Only MUST contain a State attribute");
-					request->reply->code = PW_COA_NAK;
+					request->reply->code = PW_CODE_COA_NAK;
 					return RLM_MODULE_FAIL;
 				}
 			}
@@ -1617,7 +1617,7 @@ static int rad_coa_recv(REQUEST *request)
 			 *	RFC 5176, Section 3.2.
 			 */
 			REDEBUG("Disconnect-Request MUST NOT contain a Service-Type attribute");
-			request->reply->code = PW_DISCONNECT_NAK;
+			request->reply->code = PW_CODE_DISCONNECT_NAK;
 			return RLM_MODULE_FAIL;
 		}
 
@@ -1739,12 +1739,12 @@ static int coa_socket_recv(rad_listen_t *listener)
 	 *	Some sanity checks, based on the packet code.
 	 */
 	switch(code) {
-	case PW_COA_REQUEST:
+	case PW_CODE_COA_REQUEST:
 		FR_STATS_INC(coa, total_requests);
 		fun = rad_coa_recv;
 		break;
 
-	case PW_DISCONNECT_REQUEST:
+	case PW_CODE_DISCONNECT_REQUEST:
 		FR_STATS_INC(dsc, total_requests);
 		fun = rad_coa_recv;
 		break;
@@ -1797,21 +1797,21 @@ static int proxy_socket_recv(rad_listen_t *listener)
 	 *	FIXME: Client MIB updates?
 	 */
 	switch(packet->code) {
-	case PW_AUTHENTICATION_ACK:
-	case PW_ACCESS_CHALLENGE:
-	case PW_AUTHENTICATION_REJECT:
+	case PW_CODE_AUTHENTICATION_ACK:
+	case PW_CODE_ACCESS_CHALLENGE:
+	case PW_CODE_AUTHENTICATION_REJECT:
 		break;
 
 #ifdef WITH_ACCOUNTING
-	case PW_ACCOUNTING_RESPONSE:
+	case PW_CODE_ACCOUNTING_RESPONSE:
 		break;
 #endif
 
 #ifdef WITH_COA
-	case PW_DISCONNECT_ACK:
-	case PW_DISCONNECT_NAK:
-	case PW_COA_ACK:
-	case PW_COA_NAK:
+	case PW_CODE_DISCONNECT_ACK:
+	case PW_CODE_DISCONNECT_NAK:
+	case PW_CODE_COA_ACK:
+	case PW_CODE_COA_NAK:
 		break;
 #endif
 
@@ -1857,13 +1857,13 @@ static int proxy_socket_tcp_recv(rad_listen_t *listener)
 	 *	FIXME: Client MIB updates?
 	 */
 	switch(packet->code) {
-	case PW_AUTHENTICATION_ACK:
-	case PW_ACCESS_CHALLENGE:
-	case PW_AUTHENTICATION_REJECT:
+	case PW_CODE_AUTHENTICATION_ACK:
+	case PW_CODE_ACCESS_CHALLENGE:
+	case PW_CODE_AUTHENTICATION_REJECT:
 		break;
 
 #ifdef WITH_ACCOUNTING
-	case PW_ACCOUNTING_RESPONSE:
+	case PW_CODE_ACCOUNTING_RESPONSE:
 		break;
 #endif
 

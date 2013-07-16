@@ -520,7 +520,7 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 		pairadd(&request->reply->vps, vp);
 
 		/* Mark the packet as a Acceess-Challenge Packet */
-		request->reply->code = PW_ACCESS_CHALLENGE;
+		request->reply->code = PW_CODE_ACCESS_CHALLENGE;
 		RDEBUG("Sending Access-Challenge.");
 		rcode = RLM_MODULE_HANDLED;
 		break;
