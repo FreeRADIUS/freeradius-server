@@ -30,15 +30,15 @@ RCSID("$Id$")
  *	Compare a Connect-Info and a Connect-Rate
  */
 static int connectcmp(UNUSED void *instance,
-		      REQUEST *req UNUSED,
-		      VALUE_PAIR *request,
+		      REQUEST *request UNUSED,
+		      VALUE_PAIR *req,
 		      VALUE_PAIR *check,
 		      UNUSED VALUE_PAIR *check_pairs,
 		      UNUSED VALUE_PAIR **reply_pairs)
 {
 	int rate;
 
-	rate = atoi(request->vp_strvalue);
+	rate = atoi(req->vp_strvalue);
 	return rate - check->vp_integer;
 }
 
@@ -52,8 +52,8 @@ static int connectcmp(UNUSED void *instance,
  *	  add a PW_STRIPPED_USER_NAME to the request.
  */
 static int presufcmp(UNUSED void *instance,
-		     REQUEST *req,
-		     VALUE_PAIR *request,
+		     REQUEST *request,
+		     VALUE_PAIR *req,
 		     VALUE_PAIR *check,
 		     VALUE_PAIR *check_pairs,
 		     UNUSED VALUE_PAIR **reply_pairs)
@@ -68,11 +68,9 @@ static int presufcmp(UNUSED void *instance,
 		return -1;
 	}
 
-	name = request->vp_strvalue;
+	name = req->vp_strvalue;
 
-#if 0 /* DEBUG */
-	printf("Comparing %s and %s, check->attr is %d\n", name, check->vp_strvalue, check->attribute);
-#endif
+	RDEBUG3("Comparing name \"%s\" and check value \"%s\"", name, check->vp_strvalue);
 
 	len = strlen(check->vp_strvalue);
 	if (check->da->vendor == 0) switch (check->da->attr) {
@@ -111,9 +109,9 @@ static int presufcmp(UNUSED void *instance,
 		 *	If "request" is NULL, then the memory will be
 		 *	lost!
 		 */
-		vp = radius_paircreate(req, &request, PW_STRIPPED_USER_NAME, 0);
+		vp = radius_paircreate(request, &req, PW_STRIPPED_USER_NAME, 0);
 		if (!vp) return ret;
-		req->username = vp;
+		request->username = vp;
 	}
 
 	pairstrcpy(vp, rest);
