@@ -38,6 +38,9 @@ static int connectcmp(UNUSED void *instance,
 {
 	int rate;
 
+	VERIFY_VP(req);
+	VERIFY_VP(check);
+
 	rate = atoi(req->vp_strvalue);
 	return rate - check->vp_integer;
 }
@@ -67,6 +70,9 @@ static int presufcmp(UNUSED void *instance,
 	if (!request) {
 		return -1;
 	}
+
+	VERIFY_VP(req);
+	VERIFY_VP(check);
 
 	name = req->vp_strvalue;
 
@@ -130,6 +136,8 @@ static int packetcmp(UNUSED void *instance,
 		     UNUSED VALUE_PAIR *check_pairs,
 		     UNUSED VALUE_PAIR **reply_pairs)
 {
+	VERIFY_VP(check);
+
 	if (request->packet->code == check->vp_integer) {
 		return 0;
 	}
@@ -147,6 +155,8 @@ static int responsecmp(UNUSED void *instance,
 		       UNUSED VALUE_PAIR *check_pairs,
 		       UNUSED VALUE_PAIR **reply_pairs)
 {
+	VERIFY_VP(check);
+
 	if (request->reply->code == check->vp_integer) {
 		return 0;
 	}
@@ -164,6 +174,8 @@ static int genericcmp(UNUSED void *instance,
 		      UNUSED VALUE_PAIR *check_pairs,
 		      UNUSED VALUE_PAIR **reply_pairs)
 {
+	VERIFY_VP(check);
+
 	if ((check->op != T_OP_REG_EQ) &&
 	    (check->op != T_OP_REG_NE)) {
 		int rcode;
