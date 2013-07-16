@@ -7,8 +7,6 @@ if test x$with_[]modname != xno; then
 	AC_PROG_CC
 	AC_PROG_CPP
 
-	mod_ldflags="${mod_ldflags} -lidn"
-
 	FR_SMART_CHECK_LIB(idn, idna_to_ascii_8z)
         if test "x$ac_cv_lib_idn_idna_to_ascii_8z" != "xyes"; then
 		fail="$fail libidn"
@@ -29,10 +27,13 @@ if test x"$fail" != x""; then
 		AC_MSG_ERROR([set --without-]modname[ to disable it explicitly.])
 	else
 		AC_MSG_WARN([silently not building ]modname[.])
-		AC_MSG_WARN([FAILURE: ]modname[ requires: $fail.]); 
+		AC_MSG_WARN([FAILURE: ]modname[ requires: $fail.]);
 		targetname=""
 	fi
 fi
+
+mod_ldflags="${SMART_LIBS}"
+mod_cflags="${SMART_CFLAGS}"
 
 AC_SUBST(mod_ldflags)
 AC_SUBST(mod_cflags)

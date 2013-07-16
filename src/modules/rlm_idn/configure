@@ -2744,8 +2744,6 @@ ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $
 ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
-	mod_ldflags="${mod_ldflags} -lidn"
-
 
 
 
@@ -3081,6 +3079,9 @@ $as_echo "$as_me: WARNING: FAILURE: rlm_idn requires: $fail." >&2;};
 		targetname=""
 	fi
 fi
+
+mod_ldflags="${SMART_LIBS}"
+mod_cflags="${SMART_CFLAGS}"
 
 
 
