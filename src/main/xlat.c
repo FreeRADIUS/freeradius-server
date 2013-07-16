@@ -134,6 +134,16 @@ static int valuepair2str(char * out,int outlen,VALUE_PAIR * pair, int type)
 	return strlen(out);
 }
 
+/** Print length of its RHS.
+ *
+ */
+static ssize_t xlat_strlen(UNUSED void *instance, UNUSED REQUEST *request,
+			   char const *fmt, char *out, size_t outlen)
+{
+	snprintf(out, outlen, "%u", (unsigned int) strlen(fmt));
+	return strlen(out);
+}
+
 /** Print data as integer, not as VALUE.
  *
  */
@@ -445,6 +455,7 @@ int xlat_register(char const *name, RAD_XLAT_FUNC func, RADIUS_ESCAPE_STRING esc
 		c->internal = true
 
 		XLAT_REGISTER(integer);
+		XLAT_REGISTER(strlen);
 		XLAT_REGISTER(hex);
 		XLAT_REGISTER(base64);
 		XLAT_REGISTER(string);
