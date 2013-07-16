@@ -4,33 +4,27 @@ AC_REVISION($Revision$)
 AC_DEFUN(modname,[rlm_example])
 
 if test x$with_[]modname != xno; then
-
 	AC_PROG_CC
 	AC_PROG_CPP
 
 	dnl put configuration checks here.
 	dnl set $fail to what's missing, on fatal errors.
 	dnl use AC_MSG_WARN() on important messages.
-	AC_CHECK_LIB(c, printf,
-		[ mod_ldflags="$mod_ldflags -lc" ],
-		[ fail=$fail" printf" ]
-	)
+	FR_SMART_CHECK_LIB(c, printf)
+        if test "x$ac_cv_lib_c_printf" != "xyes"; then
+		fail="$fail libc"
+	fi
 
-	AC_CHECK_HEADER(stdio.h,
-		[ mod_cflags="$mod_cflags -I/usr/include" ],
-		[ fail=$fail" stdio.h" ]
-	)
-
-	AC_CHECK_HEADERS(stdio.h stdlib.h)
-	AC_CHECK_FUNCS(printf)
-
+	FR_SMART_CHECK_INCLUDE(stdio.h)
+	if test "$ac_cv_header_stdio_h" != "yes"; then
+		fail="$fail stdio.h"
+	fi
 	targetname=modname
 else
 	targetname=
 	echo \*\*\* module modname is disabled.
 fi
 
-dnl  Don't change this section.
 if test x"$fail" != x""; then
 	if test x"${enable_strict_dependencies}" = x"yes"; then
 		AC_MSG_ERROR([set --without-]modname[ to disable it explicitly.])
@@ -41,6 +35,8 @@ if test x"$fail" != x""; then
 	fi
 fi
 
+mod_ldflags="${SMART_LIBS}"
+mod_cflags="${SMART_CFLAGS}"
 
 AC_SUBST(mod_cflags)
 AC_SUBST(mod_ldflags)
