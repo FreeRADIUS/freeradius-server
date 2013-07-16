@@ -19,4 +19,9 @@
 #  http://www.openldap.org/faq/data/cache/347.html
 pap {
 	auto_header = no
+
+	#  By default the server will use heuristics to try and automatically
+	#  handle base64 or hex encoded passwords. This behaviour can be
+	#  stopped by disabling the following option.
+	#normalize = yes
 }
