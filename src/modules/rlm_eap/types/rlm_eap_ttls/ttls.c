@@ -610,10 +610,10 @@ static int vp2diameter(REQUEST *request, tls_session_t *tls_session, VALUE_PAIR 
 /*
  *	Use a reply packet to determine what to do.
  */
-static int process_reply(UNUSED eap_handler_t *handler, tls_session_t *tls_session,
-			 REQUEST *request, RADIUS_PACKET *reply)
+static rlm_rcode_t process_reply(UNUSED eap_handler_t *handler, tls_session_t *tls_session,
+				 REQUEST *request, RADIUS_PACKET *reply)
 {
-	int rcode = RLM_MODULE_REJECT;
+	rlm_rcode_t rcode = RLM_MODULE_REJECT;
 	VALUE_PAIR *vp;
 	ttls_tunnel_t *t = tls_session->opaque;
 
@@ -925,9 +925,10 @@ static void my_request_free(void *data)
 /*
  *	Process the "diameter" contents of the tunneled data.
  */
-int eapttls_process(eap_handler_t *handler, tls_session_t *tls_session)
+PW_CODE eapttls_process(eap_handler_t *handler, tls_session_t *tls_session)
 {
-	int rcode = PW_CODE_AUTHENTICATION_REJECT;
+	PW_CODE code = PW_CODE_AUTHENTICATION_REJECT;
+	rlm_rcode_t rcode;
 	REQUEST *fake;
 	VALUE_PAIR *vp;
 	ttls_tunnel_t *t;
@@ -1238,11 +1239,9 @@ int eapttls_process(eap_handler_t *handler, tls_session_t *tls_session)
 			/*
 			 *	Associate the callback with the request.
 			 */
-			rcode = request_data_add(request,
-						 request->proxy,
-						 REQUEST_DATA_EAP_TUNNEL_CALLBACK,
-						 tunnel, NULL);
-			rad_assert(rcode == 0);
+			code = request_data_add(request, request->proxy, REQUEST_DATA_EAP_TUNNEL_CALLBACK,
+						   tunnel, NULL);
+			rad_assert(code == 0);
 
 			/*
 			 *	rlm_eap.c has taken care of associating
@@ -1251,50 +1250,46 @@ int eapttls_process(eap_handler_t *handler, tls_session_t *tls_session)
 			 *	So we associate the fake request with
 			 *	this request.
 			 */
-			rcode = request_data_add(request,
-						 request->proxy,
-						 REQUEST_DATA_EAP_MSCHAP_TUNNEL_CALLBACK,
-						 fake, my_request_free);
-			rad_assert(rcode == 0);
+			code = request_data_add(request, request->proxy, REQUEST_DATA_EAP_MSCHAP_TUNNEL_CALLBACK,
+						   fake, my_request_free);
+			rad_assert(code == 0);
 			fake = NULL;
 
 			/*
 			 *	Didn't authenticate the packet, but
 			 *	we're proxying it.
 			 */
-			rcode = PW_CODE_STATUS_CLIENT;
+			code = PW_CODE_STATUS_CLIENT;
 
 		} else
 #endif	/* WITH_PROXY */
 		  {
 			RDEBUG("No tunneled reply was found for request %d , and the request was not proxied: rejecting the user.",
 			       request->number);
-			rcode = PW_CODE_AUTHENTICATION_REJECT;
+			code = PW_CODE_AUTHENTICATION_REJECT;
 		}
 		break;
 
 	default:
 		/*
-		 *	Returns RLM_MODULE_FOO, and we want to return
-		 *	PW_FOO
+		 *	Returns RLM_MODULE_FOO, and we want to return PW_FOO
 		 */
-		rcode = process_reply(handler, tls_session, request,
-				      fake->reply);
+		rcode = process_reply(handler, tls_session, request, fake->reply);
 		switch (rcode) {
 		case RLM_MODULE_REJECT:
-			rcode = PW_CODE_AUTHENTICATION_REJECT;
+			code = PW_CODE_AUTHENTICATION_REJECT;
 			break;
 
 		case RLM_MODULE_HANDLED:
-			rcode = PW_CODE_ACCESS_CHALLENGE;
+			code = PW_CODE_ACCESS_CHALLENGE;
 			break;
 
 		case RLM_MODULE_OK:
-			rcode = PW_CODE_AUTHENTICATION_ACK;
+			code = PW_CODE_AUTHENTICATION_ACK;
 			break;
 
 		default:
-			rcode = PW_CODE_AUTHENTICATION_REJECT;
+			code = PW_CODE_AUTHENTICATION_REJECT;
 			break;
 		}
 		break;
@@ -1302,5 +1297,5 @@ int eapttls_process(eap_handler_t *handler, tls_session_t *tls_session)
 
 	request_free(&fake);
 
-	return rcode;
+	return code;
 }
