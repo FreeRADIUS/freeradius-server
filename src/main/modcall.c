@@ -652,7 +652,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 		/*
 		 *	Child is a group that has children of it's own.
 		 */
-		if (child->type != MOD_SINGLE) {
+		if ((child->type > MOD_SINGLE) && (child->type <= MOD_POLICY)) {
 			int count = 1;
 			modcallable *p, *q;
 #ifdef WITH_UNLANG
@@ -989,14 +989,14 @@ static void dump_mc(modcallable *c, int indent)
 		modsingle *single = mod_callabletosingle(c);
 		DEBUG("%.*s%s {", indent, "\t\t\t\t\t\t\t\t\t\t\t",
 			single->modinst->name);
-	} else {
+	} else if ((c->type > MOD_SINGLE) && (c->type <= MOD_POLICY)) {
 		modgroup *g = mod_callabletogroup(c);
 		modcallable *p;
 		DEBUG("%.*s%s {", indent, "\t\t\t\t\t\t\t\t\t\t\t",
 		      group_name[c->type]);
 		for(p = g->children;p;p = p->next)
 			dump_mc(p, indent+1);
-	}
+	} /* else ignore it for now */
 
 	for(i = 0; i<RLM_MODULE_NUMCODES; ++i) {
 		DEBUG("%.*s%s = %s", indent+1, "\t\t\t\t\t\t\t\t\t\t\t",
