@@ -481,7 +481,7 @@ void log_talloc(char const *msg)
 void log_talloc_report(TALLOC_CTX *ctx)
 {
 	FILE *fd;
-	char const *null_ctx;
+	char const *null_ctx = NULL;
 	int i = 0;
 
 	if (ctx) {
