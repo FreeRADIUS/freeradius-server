@@ -828,6 +828,7 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 /*
  * Detach a instance give a chance to a module to make some internal setup ...
  */
+DIAG_OFF(nested-externs)
 static int mod_detach(void *instance)
 {
 	rlm_perl_t	*inst = (rlm_perl_t *) instance;
@@ -895,7 +896,7 @@ static int mod_detach(void *instance)
 	PERL_SYS_TERM();
 	return exitstatus;
 }
-
+DIAG_ON(nested-externs)
 
 /*
  *	The module name should be the only globally exported symbol.
