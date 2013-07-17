@@ -3085,6 +3085,7 @@ static ssize_t data2vp_extended(RADIUS_PACKET *packet,
 	uint8_t *head, *tail;
 	const uint8_t *frag, *end;
 	uint8_t const *attr;
+	int fragments;
 
 	if (attrlen < 3) return -1;
 
@@ -3097,6 +3098,7 @@ static ssize_t data2vp_extended(RADIUS_PACKET *packet,
 	fraglen = attrlen - 2;
 	frag = data + attrlen;
 	end = data + packetlen;
+	fragments = 0;
 
 	while (frag < end) {
 		int last_frag = false;
@@ -3114,6 +3116,7 @@ static ssize_t data2vp_extended(RADIUS_PACKET *packet,
 
 		fraglen += frag[1] - 4;
 		frag += frag[1];
+		fragments++;
 	}
 
 	head = tail = malloc(fraglen);
@@ -3127,10 +3130,11 @@ static ssize_t data2vp_extended(RADIUS_PACKET *packet,
 	 */
 	frag = attr;
 
-	while (frag < end) {
+	while (fragments > 0) {
 		memcpy(tail, frag + 4, frag[1] - 4);
 		tail += frag[1] - 4;
 		frag += frag[1];
+		fragments--;
 	}
 
 	VP_HEXDUMP("long-extended fragments", head, fraglen);
