@@ -344,6 +344,7 @@ static rlm_rcode_t krb5_auth(void *instance, REQUEST *request)
 		krb5_kt_default(context, &keytab);
 	if (ret) {
 		REDEBUG("Resolving keytab failed: %s", error_message(ret));
+		rcode = RLM_MODULE_FAIL;
 
 		goto cleanup;
 	}

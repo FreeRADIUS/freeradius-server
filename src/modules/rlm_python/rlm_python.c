@@ -393,7 +393,8 @@ static rlm_rcode_t do_python(rlm_python_t *inst, REQUEST *request, PyObject *pFu
 	int		ret;
 
 	PyGILState_STATE gstate;
-	PyThreadState	*prev_thread_state;
+	PyThreadState	*prev_thread_state = NULL;	/* -Wuninitialized */
+	memset(&gstate, 0, sizeof(gstate));		/* -Wuninitialized */
 
 	/* Return with "OK, continue" if the function is not defined. */
 	if (!pFunc)
