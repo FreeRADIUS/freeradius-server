@@ -334,7 +334,7 @@ size_t vp_prints_value(char *out, size_t outlen, VALUE_PAIR const *vp, int8_t qu
 			if (a) {
 				char *p = buf + strlen(buf);
 				snprintf(p, buf + sizeof(buf) - p - 1, "/%u",
-					 (unsigned int) vp->vp_octets[1]);
+					 (unsigned int) vp->vp_ipv6prefix[1]);
 			}
 		}
 			break;
@@ -352,7 +352,7 @@ size_t vp_prints_value(char *out, size_t outlen, VALUE_PAIR const *vp, int8_t qu
 			if (a) {
 				char *p = buf + strlen(buf);
 				snprintf(p, buf + sizeof(buf) - p - 1, "/%u",
-					 (unsigned int) (vp->vp_octets[1] & 0x3f));
+					 (unsigned int) (vp->vp_ipv4prefix[1] & 0x3f));
 			}
 		}
 			break;
