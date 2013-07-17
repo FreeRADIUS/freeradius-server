@@ -335,8 +335,8 @@ static int find_next_reset(rlm_counter_t *inst, time_t timeval)
 
 	len = strftime(sNextTime, sizeof(sNextTime), "%Y-%m-%d %H:%M:%S", tm);
 	if (len == 0) *sNextTime = '\0';
-	DEBUG2("rlm_counter: Current Time: %li [%s], Next reset %li [%s]",
-		timeval, sCurrentTime, inst->reset_time, sNextTime);
+	DEBUG2("rlm_counter: Current Time: %" PRId64 " [%s], Next reset %" PRId64 " [%s]",
+	       (int64_t) timeval, sCurrentTime, (int64_t) inst->reset_time, sNextTime);
 
 	return ret;
 }

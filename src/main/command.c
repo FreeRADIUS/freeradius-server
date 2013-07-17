@@ -1692,7 +1692,7 @@ static int command_print_stats(rad_listen_t *listener, fr_stats_t *stats,
 		cprintf(listener, "\ttimeouts\t" PU "\n", stats->total_timeouts);
 	}
 
-	cprintf(listener, "\tlast_packet\t%lu\n", stats->last_packet);
+	cprintf(listener, "\tlast_packet\t%" PRId64 "\n", (int64_t) stats->last_packet);
 	for (i = 0; i < 8; i++) {
 		cprintf(listener, "\telapsed.%s\t%u\n",
 			elapsed_names[i], stats->elapsed[i]);
