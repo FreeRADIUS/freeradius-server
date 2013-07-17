@@ -2332,12 +2332,15 @@ void add_to_modcallable(modcallable **parent, modcallable *this,
 void modcallable_free(modcallable **pc)
 {
 	modcallable *c, *loop, *next;
+
+	if (!pc || !*pc) return;
+
 	c = *pc;
 
-	if (c->type != MOD_SINGLE) {
+	if ((c->type > MOD_SINGLE) && (c->type <= MOD_POLICY)) {
 		modgroup *g = mod_callabletogroup(c);
 
-		for(loop = g->children;
+		if (g->children) for (loop = g->children;
 		    loop ;
 		    loop = next) {
 			next = loop->next;
