@@ -351,7 +351,7 @@ static ssize_t xlat_debug_attr(UNUSED void *instance, REQUEST *request, char con
 			uint8_t *data = NULL;
 			vpc = NULL;
 
-			if (type->number == vp->da->type) {
+			if ((PW_TYPE) type->number == vp->da->type) {
 				goto next_type;
 			}
 
