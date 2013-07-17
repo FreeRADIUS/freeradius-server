@@ -330,7 +330,7 @@ static ssize_t xlat_debug_attr(UNUSED void *instance, REQUEST *request, char con
 
 		if (vp->da->vendor) {
 			dv = dict_vendorbyvalue(vp->da->vendor);
-			RDEBUG3("\t\tvendor        : %i (%s)", vp->da->vendor, dv ? "unknown" : dv->name);
+			RDEBUG3("\t\tvendor        : %i (%s)", vp->da->vendor, dv ? dv->name : "unknown");
 		}
 		RDEBUG3("\t\ttype          : %s", fr_int2str(dict_attr_types, vp->da->type, "<INVALID>"));
 		RDEBUG3("\t\tlength        : %zu", vp->length);
