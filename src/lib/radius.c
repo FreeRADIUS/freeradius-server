@@ -2850,13 +2850,6 @@ int rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 }
 
 
-static ssize_t data2vp(RADIUS_PACKET *packet,
-		       RADIUS_PACKET const *original,
-		       char const *secret,
-		       DICT_ATTR const *da, uint8_t const *start,
-		       size_t const attrlen, size_t const packetlen,
-		       VALUE_PAIR **pvp);
-
 /**
  * @brief convert a "concatenated" attribute to one long VP.
  */
@@ -3332,12 +3325,12 @@ static ssize_t data2vp_vsas(RADIUS_PACKET *packet,
  *
  * @return -1 on error, or "length".
  */
-static ssize_t data2vp(RADIUS_PACKET *packet,
-		       RADIUS_PACKET const *original,
-		       char const *secret,
-		       DICT_ATTR const *da, uint8_t const *start,
-		       size_t const attrlen, size_t const packetlen,
-		       VALUE_PAIR **pvp)
+ssize_t data2vp(RADIUS_PACKET *packet,
+		RADIUS_PACKET const *original,
+		char const *secret,
+		DICT_ATTR const *da, uint8_t const *start,
+		size_t const attrlen, size_t const packetlen,
+		VALUE_PAIR **pvp)
 {
 	int tag = 0;
 	size_t datalen;

@@ -255,6 +255,169 @@ static ssize_t xlat_base64(UNUSED void *instance, REQUEST *request,
 	return fr_base64_encode(buffer, (size_t) ret, out, outlen);
 }
 
+
+/** Print out attribute info
+ *
+ * Prints out all instances of a current attribute, or all attributes in a list.
+ *
+ * At higher debugging levels, also prints out alternative decodings of the same
+ * value. This is helpful to determine types for unknown attributes of long
+ * passed vendors, or just crazy/broken NAS.
+ *
+ * It's also useful for exposing issues in the packet decoding functions, as in
+ * some cases they get fed random garbage data.
+ *
+ * This expands to a zero length string.
+ */
+static ssize_t xlat_debug_attr(UNUSED void *instance, REQUEST *request, char const *fmt,
+			       char *out, UNUSED size_t outlen)
+{
+	VALUE_PAIR *vp, **vps;
+	value_pair_tmpl_t vpt;
+	vp_cursor_t cursor;
+	char buffer[1024];
+
+	if (!RDEBUG_ENABLED(L_DBG_LVL_2)) {
+		*out = '\0';
+		return -1;
+	}
+
+	while (isspace((int) *fmt)) fmt++;
+
+	if (*fmt == '&') fmt++;
+
+	if (radius_parse_attr(fmt, &vpt, REQUEST_CURRENT, PAIR_LIST_REQUEST) < 0) {
+		return -1;
+	}
+
+	vps = radius_list(request, vpt.list);
+	if (!vps) {
+		return -2;
+	}
+
+	RIDEBUG("Attributes matching \"%s\"", fmt);
+	vp = paircursor(&cursor, vps);
+
+	if (vpt.da) {
+		vp = pairfindnext(&cursor, vpt.da->attr, vpt.da->vendor, TAG_ANY);
+	}
+	while (vp) {
+		DICT_ATTR *dac = NULL;
+		DICT_VENDOR *dv;
+		VALUE_PAIR *vpc = NULL;
+		FR_NAME_NUMBER const *type;
+
+		vp_prints_value(buffer, sizeof(buffer), vp, '\'');
+
+		if (vp->da->flags.has_tag) {
+			RIDEBUG2("\t%s:%s:%i %s %s",
+				fr_int2str(pair_lists, vpt.list, "<INVALID>"),
+				vp->da->name,
+				vp->tag,
+				fr_int2str(fr_tokens, vp->op, "<INVALID>"),
+				buffer);
+		} else {
+			RIDEBUG2("\t%s:%s %s %s",
+				fr_int2str(pair_lists, vpt.list, "<INVALID>"),
+				vp->da->name,
+				fr_int2str(fr_tokens, vp->op, "<INVALID>"),
+				buffer);
+		}
+
+		if (!RDEBUG_ENABLED(L_DBG_LVL_3)) {
+			goto next_vp;
+		}
+
+		if (vp->da->vendor) {
+			dv = dict_vendorbyvalue(vp->da->vendor);
+			RDEBUG3("\t\tvendor        : %i (%s)", vp->da->vendor, dv ? "unknown" : dv->name);
+		}
+		RDEBUG3("\t\ttype          : %s", fr_int2str(dict_attr_types, vp->da->type, "<INVALID>"));
+		RDEBUG3("\t\tlength        : %zu", vp->length);
+
+		dac = talloc_memdup(request, vp->da, sizeof(DICT_ATTR));
+		if (!dac) {
+			return -1;
+		}
+
+		if (!RDEBUG_ENABLED(L_DBG_LVL_MAX)) {
+			goto next_vp;
+		}
+
+		type = dict_attr_types;
+		while (type->name) {
+			int pad;
+			ssize_t len;
+			uint8_t *data = NULL;
+
+			if (type->number == vp->da->type) {
+				goto next_type;
+			}
+
+			switch (type->number) {
+				case PW_TYPE_INVALID:		/* Not real type */
+				case PW_TYPE_MAX:		/* Not real type */
+				case PW_TYPE_ABINARY:		/* @fixme Currently causes SEGVs */
+				case PW_TYPE_EXTENDED:		/* @fixme Currently causes SEGVs */
+				case PW_TYPE_LONG_EXTENDED:	/* @fixme Currently causes SEGVs */
+				case PW_TYPE_VSA:		/* @fixme We need special behaviour for these */
+					goto next_type;
+				default:
+					break;
+			}
+
+			dac->type = type->number;
+			data = talloc_array(request, uint8_t , vp->length);
+			len = rad_vp2data(vp, data, vp->length);
+			if (data2vp(NULL, NULL, NULL, dac, data, len, len, &vpc) < 0) {
+				goto next_type;
+			}
+
+			/*
+			 *	data2vp has knowledge of expected format lengths, if the length
+			 *	from rad_vp2data doesn't match, it encodes the attribute
+			 *	as raw octets. This results in many useless debug lines with
+			 *	the same hex string.
+			 */
+			if ((type->number != PW_TYPE_OCTETS) && (vpc->da->type == PW_TYPE_OCTETS)) {
+				goto next_type;
+			}
+
+			if (!vp_prints_value(buffer, sizeof(buffer), vpc, '\'')) {
+				goto next_type;
+			}
+
+			if ((pad = (11 - strlen(type->name))) < 0) {
+				pad = 0;
+			}
+
+			/*
+			 *	@fixme: if the value happens to decode as a VSA
+			 *	(someone put a VSA into a VSA?), we probably to print
+			 *	extended info for that/reparse
+			 */
+			RDEBUG4("\t\tas %s%*s: %s", type->name, pad, " ", buffer);
+
+			next_type:
+			talloc_free(data);
+			pairbasicfree(vpc);
+			type++;
+		}
+		next_vp:
+
+		talloc_free(dac);
+
+		if (vpt.da) {
+			vp = pairfindnext(&cursor, vpt.da->attr, vpt.da->vendor, TAG_ANY);
+		} else {
+			vp = pairnext(&cursor);
+		}
+	}
+
+	*out = '\0';
+	return 0;
+}
+
 /** Prints the current module processing the request
  *
  */
@@ -461,6 +624,7 @@ int xlat_register(char const *name, RAD_XLAT_FUNC func, RADIUS_ESCAPE_STRING esc
 		XLAT_REGISTER(string);
 		XLAT_REGISTER(xlat);
 		XLAT_REGISTER(module);
+		XLAT_REGISTER(debug_attr);
 
 		xlat_register("debug", xlat_debug, NULL, &xlat_inst[0]);
 		c = xlat_find("debug");
