@@ -1137,11 +1137,13 @@ void print_abinary(VALUE_PAIR const *vp, char *buffer, size_t len, int8_t quote)
 	*  Just for paranoia: wrong size filters get printed as octets
 	*/
 	if (vp->length != sizeof(*filter)) {
+		uint8_t *f = (uint8_t *) &vp->vp_filter;
+
 		strcpy(p, "0x");
 		p += 2;
 		len -= 2;
 		for (i = 0; i < vp->length; i++) {
-			snprintf(p, len, "%02x", vp->vp_octets[i]);
+			snprintf(p, len, "%02x", f[i]);
 			p += 2;
 			len -= 2;
 		}
