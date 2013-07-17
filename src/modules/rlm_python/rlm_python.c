@@ -30,9 +30,13 @@ RCSID("$Id$")
 
 #include <Python.h>
 
+#ifdef HAVE_PTHREAD_H
 #define Pyx_BLOCK_THREADS    {PyGILState_STATE __gstate = PyGILState_Ensure();
 #define Pyx_UNBLOCK_THREADS   PyGILState_Release(__gstate);}
-
+#else
+#define Pyx_BLOCK_THREADS
+#define Pyx_UNBLOCK_THREADS
+#endif
 /*
  *	TODO: The only needed thing here is function. Anything else is
  *	required for initialization only. I will remove it, putting a
@@ -41,28 +45,29 @@ RCSID("$Id$")
 struct py_function_def {
 	PyObject *module;
 	PyObject *function;
-	
+
 	char     *module_name;
 	char     *function_name;
-}; 
-
-struct rlm_python_t {
-	struct py_function_def 
-		instantiate,
-		authorize,
-		authenticate,
-		preacct,
-		accounting,
-		checksimul,
-		pre_proxy,
-		post_proxy,
-		post_auth,
-#ifdef WITH_COA
-		recv_coa,
-		send_coa,
-#endif
-		detach;
 };
+
+typedef struct rlm_python_t {
+	PyThreadState *main_thread_state;
+	struct py_function_def
+	instantiate,
+	authorize,
+	authenticate,
+	preacct,
+	accounting,
+	checksimul,
+	pre_proxy,
+	post_proxy,
+	post_auth,
+#ifdef WITH_COA
+	recv_coa,
+	send_coa,
+#endif
+	detach;
+} rlm_python_t;
 
 /*
  *	A mapping of configuration file names to internal variables.
@@ -75,8 +80,8 @@ struct rlm_python_t {
  */
 static CONF_PARSER module_config[] = {
 
-#define A(x) { "mod_" #x, PW_TYPE_STRING_PTR, offsetof(struct rlm_python_t, x.module_name), NULL, NULL }, \
-  { "func_" #x, PW_TYPE_STRING_PTR, offsetof(struct rlm_python_t, x.function_name), NULL, NULL },
+#define A(x) { "mod_" #x, PW_TYPE_STRING_PTR, offsetof(rlm_python_t, x.module_name), NULL, NULL }, \
+	{ "func_" #x, PW_TYPE_STRING_PTR, offsetof(rlm_python_t, x.function_name), NULL, NULL },
 
   A(instantiate)
   A(authorize)
@@ -127,6 +132,11 @@ static struct {
   { NULL, 0 },
 };
 
+/*
+ *	This allows us to initialise PyThreadState on a per thread basis
+ */
+fr_thread_local_init(PyThreadState *, local_thread_state);	/* macro */
+
 
 /*
  *	Let assume that radiusd module is only one since we have only
@@ -144,19 +154,19 @@ static PyObject *python_radlog(UNUSED PyObject *module, PyObject *args)
 {
 	int status;
 	char *msg;
-	
+
 	if (!PyArg_ParseTuple(args, "is", &status, &msg)) {
 		return NULL;
 	}
 
 	radlog(status, "%s", msg);
 	Py_INCREF(Py_None);
-	
+
 	return Py_None;
 }
 
 static PyMethodDef radiusd_methods[] = {
-	{ "radlog", &python_radlog, METH_VARARGS, 
+	{ "radlog", &python_radlog, METH_VARARGS,
 	  "radiusd.radlog(level, msg)\n\n" \
 	  "Print a message using radiusd logging system. level should be one of the\n" \
 	  "constants L_DBG, L_AUTH, L_INFO, L_ERR, L_PROXY, L_CONS\n"
@@ -167,14 +177,14 @@ static PyMethodDef radiusd_methods[] = {
 
 static void python_error(void)
 {
-	PyObject 
+	PyObject
 		*pType = NULL,
 		*pValue = NULL,
 		*pTraceback = NULL,
 		*pStr1 = NULL,
 		*pStr2 = NULL;
-	
-	Pyx_BLOCK_THREADS
+
+	/* This will be called with the GIL lock held */
 
 	PyErr_Fetch(&pType, &pValue, &pTraceback);
 	if (pType == NULL || pValue == NULL)
@@ -184,44 +194,45 @@ static void python_error(void)
 		goto failed;
 
 	radlog(L_ERR, "rlm_python:EXCEPT:%s: %s", PyString_AsString(pStr1), PyString_AsString(pStr2));
-	
+
  failed:
 	Py_XDECREF(pStr1);
 	Py_XDECREF(pStr2);
 	Py_XDECREF(pType);
 	Py_XDECREF(pValue);
 	Py_XDECREF(pTraceback);
-	
-	Pyx_UNBLOCK_THREADS
 }
 
-static int python_init(void)
+static int python_init(rlm_python_t *inst)
 {
 	int i;
 	static char name[] = "radiusd";
 
 	if (radiusd_module) return 0;
-	
+
 	Py_SetProgramName(name);
-	Py_Initialize();
-	PyEval_InitThreads(); /* This also grabs a lock */
-	
-	if ((radiusd_module = Py_InitModule3("radiusd", radiusd_methods, 
+#ifdef HAVE_PTHREAD_H
+	Py_InitializeEx(0);				/* Don't override signal handlers */
+	PyEval_InitThreads(); 				/* This also grabs a lock */
+	inst->main_thread_state = PyThreadState_Get();	/* We need this for setting up thread local stuff */
+#endif
+	if ((radiusd_module = Py_InitModule3("radiusd", radiusd_methods,
 					     "FreeRADIUS Module.")) == NULL)
 		goto failed;
-	
+
 	for (i = 0; radiusd_constants[i].name; i++)
 		if ((PyModule_AddIntConstant(radiusd_module,
-					     radiusd_constants[i].name, 
+					     radiusd_constants[i].name,
 					     radiusd_constants[i].value)) < 0)
 			goto failed;
-	
+
+#ifdef HAVE_PTHREAD_H
 	PyEval_ReleaseLock(); /* Drop lock grabbed by InitThreads */
-	
+#endif
 	radlog(L_DBG, "python_init done");
 	return 0;
-	
- failed:
+
+failed:
 	python_error();
 	Py_XDECREF(radiusd_module);
 	radiusd_module = NULL;
@@ -329,49 +340,111 @@ static int python_populate_vptuple(PyObject *pPair, VALUE_PAIR *vp)
 {
 	PyObject *pStr = NULL;
 	char buf[1024];
-	
+
 	/* Look at the vp_print_name? */
-	
+
 	if (vp->flags.has_tag)
 		pStr = PyString_FromFormat("%s:%d", vp->name, vp->flags.tag);
 	else
 		pStr = PyString_FromString(vp->name);
-	
+
 	if (pStr == NULL)
 		goto failed;
-	
+
 	PyTuple_SET_ITEM(pPair, 0, pStr);
-	
+
 	vp_prints_value(buf, sizeof(buf), vp, 1);
-	
+
 	if ((pStr = PyString_FromString(buf)) == NULL)
 		goto failed;
 	PyTuple_SET_ITEM(pPair, 1, pStr);
-	
+
 	return 0;
-	
+
  failed:
 	return -1;
 }
 
-static int python_function(REQUEST *request, PyObject *pFunc,
-			   const char *funcname)
+#ifdef HAVE_PTHREAD_H
+/** Cleanup any thread local storage on pthread_exit()
+ *
+ * Callback for pthread_cleanup_push
+ */
+static void do_python_cleanup(UNUSED void *arg)
+{
+	PyThreadState	*my_thread_state;
+
+	my_thread_state = fr_thread_local_get(local_thread_state);
+	if (!my_thread_state) {
+		return;
+	}
+
+	PyEval_AcquireLock();
+	PyThreadState_Swap(NULL);	/* Not entirely sure this is needed */
+	PyThreadState_Clear(my_thread_state);
+	PyThreadState_Delete(my_thread_state);
+	PyEval_ReleaseLock();
+}
+#endif
+
+static int do_python(rlm_python_t *inst, REQUEST *request, PyObject *pFunc, char const *funcname, int worker)
 {
 	VALUE_PAIR      *vp;
 	PyObject	*pRet = NULL;
 	PyObject	*pArgs = NULL;
 	int		tuplelen;
 	int		ret;
-	
+
 	PyGILState_STATE gstate;
-	
+	PyThreadState	*prev_thread_state = NULL;	/* -Wuninitialized */
+	memset(&gstate, 0, sizeof(gstate));		/* -Wuninitialized */
+
 	/* Return with "OK, continue" if the function is not defined. */
-	if (pFunc == NULL)
-		return RLM_MODULE_OK;
-	
+	if (!pFunc)
+		return RLM_MODULE_NOOP;
+
+#ifdef HAVE_PTHREAD_H
+	if (worker) {
+		gstate = PyGILState_Ensure();
+		PyThreadState *my_thread_state = fr_thread_local_get(local_thread_state);
+		if (!my_thread_state) {
+			pthread_key_t tls_destructor;
+
+			my_thread_state = PyThreadState_New(inst->main_thread_state->interp);
+			if (!my_thread_state) {
+				radlog(L_ERR, "Failed initialising local PyThreadState on first run");
+				return RLM_MODULE_FAIL;
+			}
+
+			ret = fr_thread_local_set(local_thread_state, my_thread_state);
+			if (ret != 0) {
+				radlog(L_ERR, "Failed storing PyThreadState in TLS: %s", strerror(ret));
+
+				goto tls_fail;
+			}
+
+			/*
+			 *	This should ensure do_python_cleanup gets called when the
+			 *	thread exits.
+			 */
+			ret = pthread_key_create(&tls_destructor, do_python_cleanup);
+			if (ret != 0) {
+				radlog(L_ERR, "Failed setting PyThreadState destructor: %s", strerror(ret));
+
+				tls_fail:
+				PyThreadState_Clear(my_thread_state);
+				PyThreadState_Delete(my_thread_state);
+
+				return RLM_MODULE_FAIL;
+			}
+		}
+		prev_thread_state = PyThreadState_Swap(my_thread_state);	/* Swap in our local thread state */
+	}
+#endif
+
 	/* Default return value is "OK, continue" */
 	ret = RLM_MODULE_OK;
-	
+
 	/*
 	 *	We will pass a tuple containing (name, value) tuples
 	 *	We can safely use the Python function to build up a
@@ -386,25 +459,27 @@ static int python_function(REQUEST *request, PyObject *pFunc,
 			tuplelen++;
 	}
 
-	gstate = PyGILState_Ensure();
-	
 	if (tuplelen == 0) {
 		Py_INCREF(Py_None);
 		pArgs = Py_None;
 	} else {
 		int i = 0;
-		if ((pArgs = PyTuple_New(tuplelen)) == NULL)
-			goto failed;
+		if ((pArgs = PyTuple_New(tuplelen)) == NULL) {
+			ret = RLM_MODULE_FAIL;
+			goto finish;
+		}
 
 		for (vp = request->packet->vps;
 		     vp != NULL;
 		     vp = vp->next, i++) {
 			PyObject *pPair;
-			
+
 			/* The inside tuple has two only: */
-			if ((pPair = PyTuple_New(2)) == NULL)
-				goto failed;
-			
+			if ((pPair = PyTuple_New(2)) == NULL) {
+				ret = RLM_MODULE_FAIL;
+				goto finish;
+			}
+
 			if (python_populate_vptuple(pPair, vp) == 0) {
 				/* Put the tuple inside the container */
 				PyTuple_SET_ITEM(pArgs, i, pPair);
@@ -415,16 +490,19 @@ static int python_function(REQUEST *request, PyObject *pFunc,
 			}
 		}
 	}
-	
+
 	/* Call Python function. */
 	pRet = PyObject_CallFunctionObjArgs(pFunc, pArgs, NULL);
-	
-	if (pRet == NULL)
-		goto failed;
-	
-	if (request == NULL)
-		goto okay;
 
+	if (!pRet) {
+		ret = RLM_MODULE_FAIL;
+		goto finish;
+	}
+
+	if (!request) {
+		ret = RLM_MODULE_FAIL;
+		goto finish;
+	}
 	/*
 	 *	The function returns either:
 	 *  1. (returnvalue, replyTuple, configTuple), where
@@ -440,16 +518,18 @@ static int python_function(REQUEST *request, PyObject *pFunc,
 	 */
 	if (PyTuple_CheckExact(pRet)) {
 		PyObject *pTupleInt;
-		
+
 		if (PyTuple_GET_SIZE(pRet) != 3) {
 			radlog(L_ERR, "rlm_python:%s: tuple must be (return, replyTuple, configTuple)", funcname);
-			goto failed;
+			ret = RLM_MODULE_FAIL;
+			goto finish;
 		}
-		
+
 		pTupleInt = PyTuple_GET_ITEM(pRet, 0);
 		if (!PyInt_CheckExact(pTupleInt)) {
 			radlog(L_ERR, "rlm_python:%s: first tuple element not an integer", funcname);
-			goto failed;
+			ret = RLM_MODULE_FAIL;
+			goto finish;
 		}
 		/* Now have the return value */
 		ret = PyInt_AsLong(pTupleInt);
@@ -470,22 +550,22 @@ static int python_function(REQUEST *request, PyObject *pFunc,
 	} else {
 		/* Not tuple or None */
 		radlog(L_ERR, "rlm_python:%s: function did not return a tuple or None", funcname);
-		goto failed;
+		ret = RLM_MODULE_FAIL;
+		goto finish;
 	}
 
- okay:
+finish:
 	Py_DECREF(pArgs);
 	Py_DECREF(pRet);
-	PyGILState_Release(gstate);
+
+#ifdef HAVE_PTHREAD_H
+	if (worker) {
+		PyThreadState_Swap(prev_thread_state);
+		PyGILState_Release(gstate);
+	}
+#endif
+
 	return ret;
-	
- failed:
-	python_error();
-	Py_XDECREF(pArgs);
-	Py_XDECREF(pRet);
-	PyGILState_Release(gstate);
-	
-	return -1;
 }
 
 /*
@@ -496,20 +576,20 @@ static int python_load_function(struct py_function_def *def)
 {
 	const char *funcname = "python_load_function";
 	PyGILState_STATE gstate;
-	
+
 	gstate = PyGILState_Ensure();
-	
+
 	if (def->module_name != NULL && def->function_name != NULL) {
 		if ((def->module = PyImport_ImportModule(def->module_name)) == NULL) {
 			radlog(L_ERR, "rlm_python:%s: module '%s' is not found", funcname, def->module_name);
 			goto failed;
 		}
-		
+
 		if ((def->function = PyObject_GetAttrString(def->module, def->function_name)) == NULL) {
 			radlog(L_ERR, "rlm_python:%s: function '%s.%s' is not found", funcname, def->module_name, def->function_name);
 			goto failed;
 		}
-		
+
 		if (!PyCallable_Check(def->function)) {
 			radlog(L_ERR, "rlm_python:%s: function '%s.%s' is not callable", funcname, def->module_name, def->function_name);
 			goto failed;
@@ -517,7 +597,7 @@ static int python_load_function(struct py_function_def *def)
 	}
 	PyGILState_Release(gstate);
 	return 0;
-	
+
  failed:
 	python_error();
 	radlog(L_ERR, "rlm_python:%s: failed to import python function '%s.%s'", funcname, def->module_name, def->function_name);
@@ -559,7 +639,7 @@ static void python_funcdef_clear(struct py_function_def *def)
 static void python_instance_clear(struct rlm_python_t *data)
 {
 #define A(x) python_funcdef_clear(&data->x)
-	
+
 	A(instantiate);
 	A(authorize);
 	A(authenticate);
@@ -593,7 +673,7 @@ static int python_instantiate(CONF_SECTION *conf, void **instance)
 		return -1;
 	memset(data, 0, sizeof(*data));
 
-	if (python_init() != 0) {
+	if (python_init(data) != 0) {
 		free(data);
 		return -1;
 	}
@@ -632,8 +712,7 @@ static int python_instantiate(CONF_SECTION *conf, void **instance)
 	 *	Call the instantiate function.  No request.  Use the
 	 *	return value.
 	 */
-	return python_function(NULL, data->instantiate.function,
-			       "instantiate");
+	return do_python(data, NULL, data->instantiate.function, "instantiate", 0);
  failed:
 	python_error();
 	python_instance_clear(data);
@@ -645,17 +724,17 @@ static int python_detach(void *instance)
 {
 	struct rlm_python_t    *data = (struct rlm_python_t *) instance;
 	int	     ret;
-	
-	ret = python_function(NULL, data->detach.function, "detach");
-	
+
+	ret = do_python(data, NULL, data->detach.function, "detach", 0);
+
 	python_instance_clear(data);
-	
+
 	free(data);
 	return ret;
 }
 
 #define A(x) static int python_##x(void *instance, REQUEST *request) { \
-  return python_function(request, ((struct rlm_python_t *)instance)->x.function, #x); \
+  return do_python((rlm_python_t *)instance, request, ((struct rlm_python_t *)instance)->x.function, #x, 1); \
 }
 
 A(authenticate)
