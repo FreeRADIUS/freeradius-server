@@ -358,9 +358,10 @@ static ssize_t xlat_debug_attr(UNUSED void *instance, REQUEST *request, char con
 			switch (type->number) {
 				case PW_TYPE_INVALID:		/* Not real type */
 				case PW_TYPE_MAX:		/* Not real type */
-				case PW_TYPE_ABINARY:		/* @fixme Currently causes SEGVs */
-				case PW_TYPE_EXTENDED:		/* @fixme Currently causes SEGVs */
-				case PW_TYPE_LONG_EXTENDED:	/* @fixme Currently causes SEGVs */
+				case PW_TYPE_ABINARY:		/* Not safe/appropriate */
+				case PW_TYPE_EXTENDED:		/* Not safe/appropriate */
+				case PW_TYPE_LONG_EXTENDED:	/* Not safe/appropriate */
+				case PW_TYPE_TLV:		/* Not safe/appropriate */
 				case PW_TYPE_VSA:		/* @fixme We need special behaviour for these */
 					goto next_type;
 				default:
