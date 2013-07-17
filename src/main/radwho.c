@@ -447,8 +447,7 @@ int main(int argc, char **argv)
 			 */
 			if ((rt.time <= now) &&
 			    (now - rt.time) <= (86400 * 365)) {
-				printf("Acct-Session-Time = %ld\n",
-				       now - rt.time);
+				printf("Acct-Session-Time = %" PRId64 "\n", (int64_t) (now - rt.time));
 			}
 
 			if (rt.caller_id[0] != '\0') {

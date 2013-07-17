@@ -173,8 +173,8 @@ static int find_next_reset(rlm_sqlcounter_t *inst, time_t timeval)
 
 	len = strftime(sNextTime, sizeof(sNextTime),"%Y-%m-%d %H:%M:%S",tm);
 	if (len == 0) *sNextTime = '\0';
-	DEBUG2("rlm_sqlcounter: Current Time: %li [%s], Next reset %li [%s]",
-		timeval, sCurrentTime, inst->reset_time, sNextTime);
+	DEBUG2("rlm_sqlcounter: Current Time: %" PRId64 " [%s], Next reset %" PRId64 " [%s]",
+	       (int64_t) timeval, sCurrentTime, (int64_t) inst->reset_time, sNextTime);
 
 	return ret;
 }
@@ -242,8 +242,8 @@ static int find_prev_reset(rlm_sqlcounter_t *inst, time_t timeval)
 	}
 	len = strftime(sPrevTime, sizeof(sPrevTime), "%Y-%m-%d %H:%M:%S", tm);
 	if (len == 0) *sPrevTime = '\0';
-	DEBUG2("rlm_sqlcounter: Current Time: %li [%s], Prev reset %li [%s]",
-	       timeval, sCurrentTime, inst->last_reset, sPrevTime);
+	DEBUG2("rlm_sqlcounter: Current Time: %" PRId64 " [%s], Prev reset %" PRId64 " [%s]",
+	       (int64_t) timeval, sCurrentTime, (int64_t) inst->last_reset, sPrevTime);
 
 	return ret;
 }
@@ -299,12 +299,12 @@ static size_t sqlcounter_expand(char *out, int outlen, char const *fmt, rlm_sqlc
 				*q++ = *p;
 				break;
 			case 'b': /* last_reset */
-				snprintf(tmpdt, sizeof(tmpdt), "%lu", inst->last_reset);
+				snprintf(tmpdt, sizeof(tmpdt), "%" PRId64, (int64_t) inst->last_reset);
 				strlcpy(q, tmpdt, freespace);
 				q += strlen(q);
 				break;
 			case 'e': /* reset_time */
-				snprintf(tmpdt, sizeof(tmpdt), "%lu", inst->reset_time);
+				snprintf(tmpdt, sizeof(tmpdt), "%" PRId64, (int64_t) inst->reset_time);
 				strlcpy(q, tmpdt, freespace);
 				q += strlen(q);
 				break;
