@@ -55,19 +55,19 @@ typedef struct rlm_python_t {
 	PyThreadState *main_thread_state;
 	struct py_function_def
 	instantiate,
-		authorize,
-		authenticate,
-		preacct,
-		accounting,
-		checksimul,
-		pre_proxy,
-		post_proxy,
-		post_auth,
+	authorize,
+	authenticate,
+	preacct,
+	accounting,
+	checksimul,
+	pre_proxy,
+	post_proxy,
+	post_auth,
 #ifdef WITH_COA
-		recv_coa,
-		send_coa,
+	recv_coa,
+	send_coa,
 #endif
-		detach;
+	detach;
 } rlm_python_t;
 
 /*
@@ -617,9 +617,9 @@ static void mod_objclear(PyObject **ob)
 {
 	if (*ob != NULL) {
 		Pyx_BLOCK_THREADS
-			Py_DECREF(*ob);
+		Py_DECREF(*ob);
 		Pyx_UNBLOCK_THREADS
-			*ob = NULL;
+		*ob = NULL;
 	}
 }
 
