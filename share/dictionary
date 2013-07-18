@@ -96,6 +96,12 @@ $INCLUDE dictionary.rfc6911
 $INCLUDE dictionary.rfc6930
 
 #
+#  Mostly values which have been allocated by IANA under
+#	"expert review", but which don't have an RFC associated with them.
+#
+$INCLUDE dictionary.iana
+
+#
 #	Include vendor dictionaries after the standard ones.
 #
 $INCLUDE dictionary.3com
