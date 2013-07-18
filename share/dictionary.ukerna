@@ -10,10 +10,13 @@ VENDOR	UKERNA				25622
 
 BEGIN-VENDOR UKERNA
 
+#	These attributes should no longer be used. IANA has assigned new IDs
 ATTRIBUTE	GSS-Acceptor-Service-Name	128	string
 ATTRIBUTE	GSS-Acceptor-Host-Name		129	string
 ATTRIBUTE	GSS-Acceptor-Service-Specific	130	string
 ATTRIBUTE	GSS-Acceptor-Realm-Name		131	string
+
+#	This attribute is still valid?
 ATTRIBUTE	SAML-AAA-Assertion		132	string
 
 END-VENDOR UKERNA
