@@ -16,7 +16,7 @@ python {
 #	func_instantiate = instantiate
 
 	mod_detach = ${.module}
-#	func_detach = instantiate
+#	func_detach = detach
 
 	mod_authorize = ${.module}
 #	func_authorize = authorize
