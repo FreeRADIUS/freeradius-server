@@ -135,7 +135,7 @@ static struct {
 /*
  *	This allows us to initialise PyThreadState on a per thread basis
  */
-fr_thread_local_init(PyThreadState *, local_thread_state);	/* macro */
+fr_thread_local_setup(PyThreadState *, local_thread_state);	/* macro */
 
 
 /*
@@ -402,11 +402,10 @@ static rlm_rcode_t do_python(rlm_python_t *inst, REQUEST *request, PyObject *pFu
 
 #ifdef HAVE_PTHREAD_H
 	if (worker) {
+		PyThreadState *my_thread_state;
 		gstate = PyGILState_Ensure();
-		PyThreadState *my_thread_state = fr_thread_local_get(local_thread_state);
+		my_thread_state = fr_thread_local_init(local_thread_state, do_python_cleanup);
 		if (!my_thread_state) {
-			pthread_key_t tls_destructor;
-
 			/*
 			 *	The double lock/release may be inefficient, but we should
 			 *	only have to do it once, and the manual recommends calling
@@ -422,21 +421,8 @@ static rlm_rcode_t do_python(rlm_python_t *inst, REQUEST *request, PyObject *pFu
 			if (ret != 0) {
 				REDEBUG("Failed storing PyThreadState in TLS: %s", strerror(ret));
 
-				goto tls_fail;
-			}
-
-			/*
-			 *	This should ensure do_python_cleanup gets called when the
-			 *	thread exits.
-			 */
-			ret = pthread_key_create(&tls_destructor, do_python_cleanup);
-			if (ret != 0) {
-				REDEBUG("Failed setting PyThreadState destructor: %s", strerror(ret));
-
-				tls_fail:
 				PyThreadState_Clear(my_thread_state);
 				PyThreadState_Delete(my_thread_state);
-
 				return RLM_MODULE_FAIL;
 			}
 		}
