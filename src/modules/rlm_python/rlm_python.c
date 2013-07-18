@@ -223,7 +223,8 @@ static int mod_init(rlm_python_t *inst)
 	}
 
 #ifdef HAVE_PTHREAD_H
-	PyEval_ReleaseLock(); /* Drop lock grabbed by InitThreads */
+	PyThreadState_Swap(NULL);	/* We have to swap out the current thread else we get deadlocks */
+	PyEval_ReleaseLock();		/* Drop lock grabbed by InitThreads */
 #endif
 	DEBUG("mod_init done");
 	return 0;
@@ -232,6 +233,7 @@ failed:
 	mod_error();
 	Py_XDECREF(radiusd_module);
 	radiusd_module = NULL;
+	PyEval_ReleaseLock();
 	Py_Finalize();
 	return -1;
 }
@@ -363,17 +365,10 @@ failed:
 
 #ifdef HAVE_PTHREAD_H
 /** Cleanup any thread local storage on pthread_exit()
- *
- * Callback for pthread_cleanup_push
  */
-static void do_python_cleanup(UNUSED void *arg)
+static void do_python_cleanup(void *arg)
 {
-	PyThreadState	*my_thread_state;
-
-	my_thread_state = fr_thread_local_get(local_thread_state);
-	if (!my_thread_state) {
-		return;
-	}
+	PyThreadState	*my_thread_state = arg;
 
 	PyEval_AcquireLock();
 	PyThreadState_Swap(NULL);	/* Not entirely sure this is needed */
@@ -401,28 +396,24 @@ static rlm_rcode_t do_python(rlm_python_t *inst, REQUEST *request, PyObject *pFu
 		return RLM_MODULE_NOOP;
 
 #ifdef HAVE_PTHREAD_H
+	gstate = PyGILState_Ensure();
 	if (worker) {
 		PyThreadState *my_thread_state;
-		gstate = PyGILState_Ensure();
 		my_thread_state = fr_thread_local_init(local_thread_state, do_python_cleanup);
 		if (!my_thread_state) {
-			/*
-			 *	The double lock/release may be inefficient, but we should
-			 *	only have to do it once, and the manual recommends calling
-			 *	PyEval_AcquireThread for swapping in the new thread state.
-			 */
 			my_thread_state = PyThreadState_New(inst->main_thread_state->interp);
 			if (!my_thread_state) {
 				REDEBUG("Failed initialising local PyThreadState on first run");
+				PyGILState_Release(gstate);
 				return RLM_MODULE_FAIL;
 			}
 
 			ret = fr_thread_local_set(local_thread_state, my_thread_state);
 			if (ret != 0) {
 				REDEBUG("Failed storing PyThreadState in TLS: %s", strerror(ret));
-
 				PyThreadState_Clear(my_thread_state);
 				PyThreadState_Delete(my_thread_state);
+				PyGILState_Release(gstate);
 				return RLM_MODULE_FAIL;
 			}
 		}
@@ -550,8 +541,8 @@ finish:
 #ifdef HAVE_PTHREAD_H
 	if (worker) {
 		PyThreadState_Swap(prev_thread_state);
-		PyGILState_Release(gstate);
 	}
+	PyGILState_Release(gstate);
 #endif
 
 	return ret;
