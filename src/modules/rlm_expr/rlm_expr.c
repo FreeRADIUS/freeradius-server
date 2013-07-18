@@ -324,7 +324,7 @@ static size_t randstr_xlat(UNUSED void *instance, REQUEST *request,
 	unsigned int	result;
 	size_t		freespace = outlen;
 	size_t		len;
-	
+
 	if (outlen <= 1) return 0;
 
 	/*
@@ -336,7 +336,7 @@ static size_t randstr_xlat(UNUSED void *instance, REQUEST *request,
 		*out = '\0';
 		return 0;
 	}
-	
+
 	p = buffer;
 	while ((len-- > 0) && (--freespace > 0)) {
 		result = fr_rand();
@@ -347,83 +347,83 @@ static size_t randstr_xlat(UNUSED void *instance, REQUEST *request,
 			case 'c':
 				*out++ = 'a' + (result % 26);
 			break;
-			
+
 			/*
 			 *  Uppercase letters
 			 */
 			case 'C':
 				*out++ = 'A' + (result % 26);
 			break;
-			
+
 			/*
 			 *  Numbers
 			 */
 			case 'n':
 				*out++ = '0' + (result % 10);
 			break;
-			
+
 			/*
 			 *  Alpha numeric
 			 */
 			case 'a':
 				*out++ = randstr_salt[result % (sizeof(randstr_salt) - 3)];
 			break;
-			
+
 			/*
 			 *  Punctuation
 			 */
 			case '!':
 				*out++ = randstr_punc[result % (sizeof(randstr_punc) - 1)];
 			break;
-			
+
 			/*
 			 *  Alpa numeric + punctuation
 			 */
 			case '.':
 				*out++ = '!' + (result % 95);
 			break;
-			
+
 			/*
 			 *  Alpha numeric + salt chars './'
-			 */	
+			 */
 			case 's':
 				*out++ = randstr_salt[result % (sizeof(randstr_salt) - 1)];
 			break;
-			
+
 			/*
-			 *  Binary data as hexits (we don't really support 
+			 *  Binary data as hexits (we don't really support
 			 *  non printable chars).
 			 */
 			case 'h':
 				if (freespace < 2)
 					break;
-				
+
 				snprintf(out, 3, "%02x", result % 256);
-				
+
 				/* Already decremented */
 				freespace -= 1;
 				out += 2;
 			break;
-			
+
 			default:
 				radlog(L_ERR,
 				       "rlm_expr: invalid character class '%c'",
 				       *p);
-				       
+
 				return 0;
 			break;
 		}
-	
+
 		p++;
 	}
-	
+
 	*out++ = '\0';
-	
+
 	return outlen - freespace;
 }
 
 /**
- * @brief URLencode special characters 
+ * @brief URLencode special characters
  *
  * Example: "%{urlquote:http://example.org/}" == "http%3A%47%47example.org%47"
  */
@@ -435,7 +435,7 @@ static size_t urlquote_xlat(UNUSED void *instance, REQUEST *request,
 	char 	buffer[1024];
 	size_t	freespace = outlen;
 	size_t	len;
-	
+
 	if (outlen <= 1) return 0;
 
 	len = radius_xlat(buffer, sizeof(buffer), fmt, request, func);
@@ -462,9 +462,9 @@ static size_t urlquote_xlat(UNUSED void *instance, REQUEST *request,
 			default:
 				if (freespace < 3)
 					break;
-				
+
 				snprintf(out, 4, "%%%02x", *p++); /* %xx */
-				
+
 				/* Already decremented */
 				freespace -= 2;
 				out += 3;
@@ -623,8 +623,8 @@ static size_t base64_xlat(UNUSED void *instance, REQUEST *request,
 	char buffer[1024];
 
 	len = radius_xlat(buffer, sizeof(buffer), fmt, request, func);
-	
-	/* 
+
+	/*
 	 *  We can accurately calculate the length of the output string
 	 *  if it's larger than outlen, the output would be useless so abort.
 	 */
@@ -633,7 +633,7 @@ static size_t base64_xlat(UNUSED void *instance, REQUEST *request,
 		*out = '\0';
 		return 0;
 	}
-	
+
 	fr_base64_encode((uint8_t *) buffer, len, out, outlen);
 
 	return strlen(out);
@@ -647,37 +647,39 @@ static size_t base64_xlat(UNUSED void *instance, REQUEST *request,
 static size_t base64_to_hex_xlat(UNUSED void *instance, REQUEST *request,
 				 char *fmt, char *out, size_t outlen,
 				 UNUSED RADIUS_ESCAPE_STRING func)
-{	
+{
 	char *p;
-	
+
 	char buffer[1024];
 	char decbuf[1024];
-	
+
 	size_t declen = sizeof(decbuf);
 	size_t freespace = outlen;
 	size_t len;
 
+	while (isspace((int) *fmt)) fmt++;
+
 	len = radius_xlat(buffer, sizeof(buffer), fmt, request, func);
-	
+
 	if (!len) {
 		radlog(L_ERR, "rlm_expr: xlat failed.");
 		*out = '\0';
 		return 0;
 	}
-	
+
 	if (!fr_base64_decode(buffer, len, decbuf, &declen)) {
 		radlog(L_ERR, "rlm_expr: base64 string invalid");
 		*out = '\0';
 		return 0;
 	}
-	
+
 	p = decbuf;
 	while ((declen-- > 0) && (--freespace > 0)) {
 		if (freespace < 3)
 			break;
 
 		snprintf(out, 3, "%02x", *p++);
-		
+
 		/* Already decremented */
 		freespace -= 1;
 		out += 2;
