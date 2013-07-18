@@ -227,7 +227,8 @@ static int python_init(rlm_python_t *inst)
 			goto failed;
 
 #ifdef HAVE_PTHREAD_H
-	PyEval_ReleaseLock(); /* Drop lock grabbed by InitThreads */
+	PyThreadState_Swap(NULL);	/* We have to swap out the current thread else we get deadlocks */
+	PyEval_ReleaseLock();		/* Drop lock grabbed by InitThreads */
 #endif
 	radlog(L_DBG, "python_init done");
 	return 0;
@@ -236,6 +237,7 @@ failed:
 	python_error();
 	Py_XDECREF(radiusd_module);
 	radiusd_module = NULL;
+	PyEval_ReleaseLock();
 	Py_Finalize();
 	return -1;
 }
@@ -367,17 +369,10 @@ static int python_populate_vptuple(PyObject *pPair, VALUE_PAIR *vp)
 
 #ifdef HAVE_PTHREAD_H
 /** Cleanup any thread local storage on pthread_exit()
- *
- * Callback for pthread_cleanup_push
  */
-static void do_python_cleanup(UNUSED void *arg)
+static void do_python_cleanup(void *arg)
 {
-	PyThreadState	*my_thread_state;
-
-	my_thread_state = fr_thread_local_get(local_thread_state);
-	if (!my_thread_state) {
-		return;
-	}
+	PyThreadState	*my_thread_state = arg;
 
 	PyEval_AcquireLock();
 	PyThreadState_Swap(NULL);	/* Not entirely sure this is needed */
@@ -404,23 +399,24 @@ static int do_python(rlm_python_t *inst, REQUEST *request, PyObject *pFunc, char
 		return RLM_MODULE_NOOP;
 
 #ifdef HAVE_PTHREAD_H
+	gstate = PyGILState_Ensure();
 	if (worker) {
 		PyThreadState *my_thread_state;
-		gstate = PyGILState_Ensure();
 		my_thread_state = fr_thread_local_init(local_thread_state, do_python_cleanup);
 		if (!my_thread_state) {
 			my_thread_state = PyThreadState_New(inst->main_thread_state->interp);
 			if (!my_thread_state) {
 				radlog(L_ERR, "Failed initialising local PyThreadState on first run");
+				PyGILState_Release(gstate);
 				return RLM_MODULE_FAIL;
 			}
 
 			ret = fr_thread_local_set(local_thread_state, my_thread_state);
 			if (ret != 0) {
 				radlog(L_ERR, "Failed storing PyThreadState in TLS: %s", strerror(ret));
-
 				PyThreadState_Clear(my_thread_state);
 				PyThreadState_Delete(my_thread_state);
+				PyGILState_Release(gstate);
 				return RLM_MODULE_FAIL;
 			}
 		}
@@ -547,8 +543,8 @@ finish:
 #ifdef HAVE_PTHREAD_H
 	if (worker) {
 		PyThreadState_Swap(prev_thread_state);
-		PyGILState_Release(gstate);
 	}
+	PyGILState_Release(gstate);
 #endif
 
 	return ret;
@@ -737,7 +733,6 @@ A(send_coa)
 #endif
 
 #undef A
-
 /*
  *	The module name should be the only globally exported symbol.
  *	That is, everything else should be 'static'.
