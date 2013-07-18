@@ -234,10 +234,18 @@ static int python_init(rlm_python_t *inst)
 	return 0;
 
 failed:
-	python_error();
 	Py_XDECREF(radiusd_module);
-	radiusd_module = NULL;
+
+#ifdef HAVE_PTHREAD_H
 	PyEval_ReleaseLock();
+#endif
+
+	Pyx_BLOCK_THREADS
+	python_error();
+	Pyx_UNBLOCK_THREADS
+
+	radiusd_module = NULL;
+
 	Py_Finalize();
 	return -1;
 }
@@ -696,7 +704,9 @@ static int python_instantiate(CONF_SECTION *conf, void **instance)
 	 */
 	return do_python(data, NULL, data->instantiate.function, "instantiate", 0);
  failed:
+ 	Pyx_BLOCK_THREADS
 	python_error();
+	Pyx_UNBLOCK_THREADS
 	python_instance_clear(data);
 	free(data);
 	return -1;
