@@ -44,15 +44,17 @@ RCSID("$Id$")
  *	symbolic constant here instead.
  */
 struct py_function_def {
-	PyObject *module;
-	PyObject *function;
+	PyObject	*module;
+	PyObject	*function;
 
-	char     *module_name;
-	char     *function_name;
+	char const	*module_name;
+	char const	*function_name;
 };
 
 typedef struct rlm_python_t {
-	PyThreadState *main_thread_state;
+	PyThreadState	*main_thread_state;
+	char		*python_path;
+
 	struct py_function_def
 	instantiate,
 	authorize,
@@ -100,6 +102,8 @@ static CONF_PARSER module_config[] = {
 	A(detach)
 
 #undef A
+
+	{ "python_path", PW_TYPE_STRING_PTR, offsetof(rlm_python_t, python_path), NULL, NULL },
 
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
@@ -204,6 +208,10 @@ static int mod_init(rlm_python_t *inst)
 	static char name[] = "radiusd";
 
 	if (radiusd_module) return 0;
+
+	if (inst->python_path) {
+		PySys_SetPath(inst->python_path);
+	}
 
 	Py_SetProgramName(name);
 #ifdef HAVE_PTHREAD_H

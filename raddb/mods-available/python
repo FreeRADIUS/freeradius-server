@@ -1,6 +1,7 @@
 #
-# Make sure the PYTHONPATH environmental variable contains the 
-# directory(s) for the modules listed below.
+# Make sure the PYTHONPATH environmental variable contains the
+# directory(s) for the modules listed below, or set the
+# python_path configuration item.
 #
 # Uncomment any func_* which are included in your module. If
 # rlm_python is called for a section which does not have
@@ -11,6 +12,8 @@
 #
 python {
 	module = example
+
+#	python_path = ${modconfdir}/${.:name}
 
 	mod_instantiate = ${.module}
 #	func_instantiate = instantiate
@@ -44,7 +47,7 @@ python {
 
 	mod_recv_coa = ${.module}
 #	func_recv_coa = recv_coa
-		
+
 	mod_send_coa = ${.module}
 #	func_send_coa = send_coa
 }
