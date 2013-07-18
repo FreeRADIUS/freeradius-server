@@ -10,6 +10,13 @@
 #	RFC 4005
 ATTRIBUTE	Originating-Line-Info			94	string
 
+#	draft-ietf-abfab-gss-eap-09
+#
+ATTRIBUTE	GSS-Acceptor-Service-Name	164    string
+ATTRIBUTE	GSS-Acceptor-Host-Name		165    string
+ATTRIBUTE	GSS-Acceptor-Service-Specific	166    string
+ATTRIBUTE	GSS-Acceptor-Realm-Name		167    string
+
 #	draft-sterman-aaa-sip-00.txt
 #
 #	This is bad... at some point the IETF will allocate these.
