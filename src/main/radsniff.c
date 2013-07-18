@@ -44,11 +44,13 @@ static FILE *log_dst;
 #endif
 
 #undef DEBUG1
-#define DEBUG1 if (fr_debug_flag > 2) fprintf
+#define DEBUG1(fmt, ...) if (fr_debug_flag > 2) fprintf(log_dst , fmt, ## __VA_ARGS__)
 #undef DEBUG
-#define DEBUG if (fr_debug_flag > 1) fprintf
+#define DEBUG(fmt, ...) if (fr_debug_flag > 1) fprintf(log_dst , fmt, ## __VA_ARGS__)
 #undef INFO
-#define INFO if (fr_debug_flag > 0) fprintf
+#define INFO(fmt, ...) if (fr_debug_flag > 0) fprintf(log_dst , fmt, ## __VA_ARGS__)
+
+#define ERROR(fmt, ...) fprintf(stderr, "radsniff: " fmt , ## __VA_ARGS__)
 
 struct timeval start_pcap = {0, 0};
 static rbtree_t *filter_tree = NULL;
@@ -222,11 +224,11 @@ static void got_packet(UNUSED uint8_t *args, struct pcap_pkthdr const*header, ui
 	packet->data_len = header->len - (payload - data);
 
 	if (!rad_packet_ok(packet, 0)) {
-		DEBUG(log_dst, "Packet: %s\n", fr_strerror());
+		DEBUG("Packet: %s\n", fr_strerror());
 
-		DEBUG(log_dst, "  From     %s:%d\n", inet_ntoa(ip->ip_src), ntohs(udp->udp_sport));
-		DEBUG(log_dst, "  To:      %s:%d\n", inet_ntoa(ip->ip_dst), ntohs(udp->udp_dport));
-		DEBUG(log_dst, "  Type:    %s\n", fr_packet_codes[packet->code]);
+		DEBUG("  From     %s:%d\n", inet_ntoa(ip->ip_src), ntohs(udp->udp_sport));
+		DEBUG("  To:      %s:%d\n", inet_ntoa(ip->ip_dst), ntohs(udp->udp_dport));
+		DEBUG("  Type:    %s\n", fr_packet_codes[packet->code]);
 
 		rad_free(&packet);
 		return;
@@ -271,7 +273,7 @@ static void got_packet(UNUSED uint8_t *args, struct pcap_pkthdr const*header, ui
 
 	if (filter_vps && filter_packet(packet)) {
 		rad_free(&packet);
-		DEBUG(log_dst, "Packet number %d doesn't match\n", count++);
+		DEBUG("Packet number %d doesn't match\n", count++);
 		return;
 	}
 
@@ -280,15 +282,15 @@ static void got_packet(UNUSED uint8_t *args, struct pcap_pkthdr const*header, ui
 		goto check_filter;
 	}
 
-	INFO(log_dst, "%s Id %d\t", fr_packet_codes[packet->code], packet->id);
+	INFO("%s Id %d\t", fr_packet_codes[packet->code], packet->id);
 
 	/*
 	 *  Print the RADIUS packet
 	 */
-	INFO(log_dst, "%s:%d -> ", inet_ntoa(ip->ip_src), ntohs(udp->udp_sport));
-	INFO(log_dst, "%s:%d", inet_ntoa(ip->ip_dst), ntohs(udp->udp_dport));
+	INFO("%s:%d -> %s:%d", inet_ntoa(ip->ip_src), ntohs(udp->udp_sport),
+	     inet_ntoa(ip->ip_dst), ntohs(udp->udp_dport));
 
-	DEBUG1(log_dst, "\t(%d packets)", count++);
+	DEBUG1("\t(%d packets)", count++);
 
 	if (!start_pcap.tv_sec) {
 		start_pcap = header->ts;
@@ -296,11 +298,11 @@ static void got_packet(UNUSED uint8_t *args, struct pcap_pkthdr const*header, ui
 
 	tv_sub(&header->ts, &start_pcap, &elapsed);
 
-	INFO(log_dst, "\t+%u.%03u", (unsigned int) elapsed.tv_sec,
+	INFO("\t+%u.%03u", (unsigned int) elapsed.tv_sec,
 	       (unsigned int) elapsed.tv_usec / 1000);
 
 	if (fr_debug_flag > 1) {
-		DEBUG(log_dst, "\n");
+		DEBUG("\n");
 		if (packet->vps) {
 			if (do_sort) {
 				pairsort(&packet->vps, true);
@@ -310,7 +312,7 @@ static void got_packet(UNUSED uint8_t *args, struct pcap_pkthdr const*header, ui
 		}
 	}
 
-	INFO(log_dst, "\n");
+	INFO("\n");
 
 	if (!to_stdout && (fr_debug_flag > 4)) {
 		rad_print_hex(packet);
@@ -435,7 +437,7 @@ int main(int argc, char *argv[])
 			do_sort = 1;
 			break;
 		case 'v':
-			INFO(log_dst, "%s %s\n", radsniff_version, pcap_lib_version());
+			INFO("%s %s\n", radsniff_version, pcap_lib_version());
 			exit(0);
 			break;
 		case 'w':
@@ -478,7 +480,7 @@ int main(int argc, char *argv[])
 
 #if !defined(HAVE_PCAP_FOPEN_OFFLINE) || !defined(HAVE_PCAP_DUMP_FOPEN)
 	if (from_stdin || to_stdout) {
-		fprintf(stderr, "radsniff: PCAP streams not supported.\n");
+		ERROR("PCAP streams not supported.\n");
 		exit(64);
 	}
 #endif
@@ -502,18 +504,18 @@ int main(int argc, char *argv[])
 	if (radius_filter) {
 		parsecode = userparse(NULL, radius_filter, &filter_vps);
 		if (parsecode == T_OP_INVALID) {
-			fprintf(stderr, "radsniff: Invalid RADIUS filter \"%s\" (%s)\n", radius_filter, fr_strerror());
+			ERROR("Invalid RADIUS filter \"%s\" (%s)\n", radius_filter, fr_strerror());
 			exit(64);
 		}
 
 		if (!filter_vps) {
-			fprintf(stderr, "radsniff: Empty RADIUS filter \"%s\"\n", radius_filter);
+			ERROR("Empty RADIUS filter \"%s\"\n", radius_filter);
 			exit(64);
 		}
 
 		filter_tree = rbtree_create((rbcmp) fr_packet_cmp, free, 0);
 		if (!filter_tree) {
-			fprintf(stderr, "radsniff: Failed creating filter tree\n");
+			ERROR("Failed creating filter tree\n");
 			exit(1);
 		}
 	}
@@ -523,7 +525,7 @@ int main(int argc, char *argv[])
 	 */
 	request_tree = rbtree_create((rbcmp) fr_packet_cmp, free, 0);
 	if (!request_tree) {
-		fprintf(stderr, "radsniff: Failed creating request tree\n");
+		ERROR("Failed creating request tree\n");
 		exit(1);
 	}
 
@@ -532,7 +534,7 @@ int main(int argc, char *argv[])
 	 */
 	nullpacket = rad_alloc(NULL, 0);
 	if (!nullpacket) {
-		fprintf(stderr, "radsniff: Out of memory\n");
+		ERROR("Out of memory\n");
 		exit(1);
 	}
 
@@ -546,19 +548,19 @@ int main(int argc, char *argv[])
 			exit(1);
 		}
 
-		INFO(log_dst, "Capturing from interface \"%s\"\n", from_dev);
+		INFO("Capturing from interface \"%s\"\n", from_dev);
 	}
 
 	/*
 	 *  Print captures values which will be used
 	 */
 	if (fr_debug_flag > 2) {
-				DEBUG1(log_dst, "Sniffing with options:\n");
-		if (from_dev)	DEBUG1(log_dst, "  Device                   : [%s]\n", from_dev);
-		if (limit > 0)	DEBUG1(log_dst, "  Capture limit (packets)  : [%d]\n", limit);
-				DEBUG1(log_dst, "  PCAP filter              : [%s]\n", pcap_filter);
-				DEBUG1(log_dst, "  RADIUS secret	    : [%s]\n", radius_secret);
-		if (filter_vps){DEBUG1(log_dst, "  RADIUS filter	    :\n");
+				DEBUG1("Sniffing with options:\n");
+		if (from_dev)	DEBUG1("  Device                   : [%s]\n", from_dev);
+		if (limit > 0)	DEBUG1("  Capture limit (packets)  : [%d]\n", limit);
+				DEBUG1("  PCAP filter              : [%s]\n", pcap_filter);
+				DEBUG1("  RADIUS secret	    : [%s]\n", radius_secret);
+		if (filter_vps){DEBUG1("  RADIUS filter	    :\n");
 			vp_printlist(log_dst, filter_vps);
 		}
 	}
@@ -577,25 +579,25 @@ int main(int argc, char *argv[])
 		pcap_lookupnet(from_dev, &ip_addr, &ip_mask, errbuf);
 		in = pcap_open_live(from_dev, 65536, 1, 1, errbuf);
 	} else {
-		fprintf(stderr, "radsniff: No capture devices available\n");
+		ERROR("No capture devices available\n");
 	}
 
 	if (!in) {
-		fprintf(stderr, "radsniff: Failed opening input (%s)\n", errbuf);
+		ERROR("Failed opening input (%s)\n", errbuf);
 		exit(1);
 	}
 
 	if (to_file) {
 		out = pcap_dump_open(in, to_file);
 		if (!out) {
-			fprintf(stderr, "radsniff: Failed opening output file (%s)\n", pcap_geterr(in));
+			ERROR("Failed opening output file (%s)\n", pcap_geterr(in));
 			exit(1);
 		}
 #ifdef HAVE_PCAP_DUMP_FOPEN
 	} else if (to_stdout) {
 		out = pcap_dump_fopen(in, stdout);
 		if (!out) {
-			fprintf(stderr, "radsniff: Failed opening stdout (%s)\n", pcap_geterr(in));
+			ERROR("Failed opening stdout (%s)\n", pcap_geterr(in));
 			exit(1);
 		}
 #endif
@@ -605,12 +607,12 @@ int main(int argc, char *argv[])
 	 *  Apply the rules
 	 */
 	if (pcap_compile(in, &fp, pcap_filter, 0, ip_mask) < 0) {
-		fprintf(stderr, "radsniff: Failed compiling PCAP filter (%s)\n", pcap_geterr(in));
+		ERROR("Failed compiling PCAP filter (%s)\n", pcap_geterr(in));
 		exit(1);
 	}
 
 	if (pcap_setfilter(in, &fp) < 0) {
-		fprintf(stderr, "radsniff: Failed applying PCAP filter (%s)\n", pcap_geterr(in));
+		ERROR("Failed applying PCAP filter (%s)\n", pcap_geterr(in));
 		exit(1);
 	}
 
@@ -631,7 +633,7 @@ int main(int argc, char *argv[])
 		rbtree_free(filter_tree);
 	}
 
-	INFO(log_dst, "Done sniffing\n");
+	INFO("Done sniffing\n");
 
 	return 0;
 }
