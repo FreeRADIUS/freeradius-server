@@ -74,12 +74,6 @@ typedef struct rlm_python_t {
 
 /*
  *	A mapping of configuration file names to internal variables.
- *
- *	Note that the string is dynamically allocated, so it MUST
- *	be freed.  When the configuration file parse re-reads the string,
- *	it free's the old one, and strdup's the new one, placing the pointer
- *	to the strdup'd string into 'config.string'.  This gets around
- *	buffer over-flows.
  */
 static CONF_PARSER module_config[] = {
 
