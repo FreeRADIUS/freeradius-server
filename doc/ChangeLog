@@ -83,6 +83,8 @@ FreeRADIUS 2.2.1 Mon 10 Sep 2012 12:00:00 CEST, urgency=medium
 	* Allow two consecutive WiMAX TLVs of the same number.
 	* Remove requirement that User-Name has to match MS-CHAP-User-Name.
 	  I18n issues means that the character sets could be different.
+	* Don't use ephemeral thread states from PyGILState_Ensure(), use 
+	  our own, generated one per thread and stored in TLS.
 
 FreeRADIUS 2.2.0 Mon 10 Sep 2012 12:00:00 CEST, urgency=medium
 	Feature improvements
