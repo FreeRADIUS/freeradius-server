@@ -24,12 +24,28 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/libradius.h>
-#define FR_STRERROR_BUFSIZE (1024)
+#define FR_STRERROR_BUFSIZE (2048)
 
-fr_thread_local_init(char *, fr_strerror_buffer);	/* macro */
+fr_thread_local_setup(char *, fr_strerror_buffer)	/* macro */
 
 /*
- *	Log to a buffer, trying to be thread-safe.
+ *	Explicitly cleanup the memory allocated to the error buffer,
+ *	just in case valgrind complains about it.
+ */
+static void fr_logging_free(UNUSED void *arg)
+{
+	char *buffer;
+
+	buffer = fr_thread_local_get(fr_strerror_buffer);
+	if (!buffer) {
+		return;
+	}
+
+	free(buffer);
+}
+
+/*
+ *	Log to thread local error buffer
  */
 void fr_strerror_printf(char const *fmt, ...)
 {
@@ -37,18 +53,23 @@ void fr_strerror_printf(char const *fmt, ...)
 
 	char *buffer;
 
-	buffer = fr_thread_local_get(fr_strerror_buffer);	/* Will be NULL only on initialisation */
+	buffer = fr_thread_local_init(fr_strerror_buffer, fr_logging_free);
 	if (!buffer) {
 		int ret;
 
+		/*
+		 *	malloc is thread safe, talloc is not
+		 */
 		buffer = malloc(sizeof(char) * FR_STRERROR_BUFSIZE);
 		if (!buffer) {
+			fr_perror("Failed allocating memory for libradius error buffer");
 			return;
 		}
 
 		ret = fr_thread_local_set(fr_strerror_buffer, buffer);
 		if (ret != 0) {
-			fr_perror("Failed recording thread error: %s", strerror(ret));
+			fr_perror("Failed setting up TLS for libradius error buffer: %s", strerror(ret));
+			return;
 		}
 	}
 
