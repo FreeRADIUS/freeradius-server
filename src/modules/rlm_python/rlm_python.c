@@ -230,10 +230,18 @@ static int mod_init(rlm_python_t *inst)
 	return 0;
 
 failed:
-	mod_error();
 	Py_XDECREF(radiusd_module);
-	radiusd_module = NULL;
+
+#ifdef HAVE_PTHREAD_H
 	PyEval_ReleaseLock();
+#endif
+
+	Pyx_BLOCK_THREADS
+	mod_error();
+	Pyx_UNBLOCK_THREADS
+
+	radiusd_module = NULL;
+
 	Py_Finalize();
 	return -1;
 }
@@ -665,7 +673,9 @@ static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
 	 */
 	return do_python(inst, NULL, inst->instantiate.function, "instantiate", false);
 failed:
+	Pyx_BLOCK_THREADS
 	mod_error();
+	Pyx_UNBLOCK_THREADS
 	mod_instance_clear(inst);
 	return -1;
 }
@@ -675,6 +685,9 @@ static int mod_detach(void *instance)
 	rlm_python_t *inst = instance;
 	int	     ret;
 
+	/*
+	 *	Master should still have no thread state
+	 */
 	ret = do_python(inst, NULL, inst->detach.function, "detach", false);
 
 	mod_instance_clear(inst);
