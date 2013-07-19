@@ -85,7 +85,7 @@ static inline void __fr_thread_local_key_init_##_n(void)\
 }\
 static inline _t __fr_thread_local_init_##_n(pthread_destructor_t func)\
 {\
-	__fr_thread_local_destructor_##_n = func;
+	__fr_thread_local_destructor_##_n = func;\
 	(void) pthread_once(&__fr_thread_local_once_##_n, __fr_thread_local_key_init_##_n);\
 	return pthread_getspecific(__fr_thread_local_key_##_n);\
 }\
