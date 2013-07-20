@@ -107,7 +107,7 @@ listen {
 	       #  If check_cert_issuer is set, the value will
 	       #  be checked against the DN of the issuer in
 	       #  the client certificate.  If the values do not
-	       #  match, the cerficate verification will fail,
+	       #  match, the certificate verification will fail,
 	       #  rejecting the user.
 	       #
 	       #  In 2.1.10 and later, this check can be done
@@ -384,7 +384,7 @@ home_server tls {
 	       #  If check_cert_issuer is set, the value will
 	       #  be checked against the DN of the issuer in
 	       #  the client certificate.  If the values do not
-	       #  match, the cerficate verification will fail,
+	       #  match, the certificate verification will fail,
 	       #  rejecting the user.
 	       #
 	       #  In 2.1.10 and later, this check can be done

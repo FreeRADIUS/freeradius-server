@@ -14,7 +14,7 @@ sql cuisql {
 	# the driver below.
 	#
 	# If you're using rlm_sql_null, then it should be the type of
-	# database the logged queries are going to be exected against.
+	# database the logged queries are going to be executed against.
 	dialect = "sqlite"
 	
 	# The submodule to use to execute queries. This should match

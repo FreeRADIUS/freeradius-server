@@ -3,7 +3,7 @@
 #		huntgroup is defined by specifying the IP address of
 #		the NAS and possibly a port range. Port can be identified
 #		as just one port, or a range (from-to), and multiple ports
-#		or ranges of ports must be seperated by a comma. For
+#		or ranges of ports must be separated by a comma. For
 #		example: 1,2,3-8
 #
 #		Matching is done while RADIUS scans the user file; if it

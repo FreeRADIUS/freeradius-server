@@ -5,7 +5,7 @@
 # Realm module, for proxying.
 #
 #  You can have multiple instances of the realm module to
-#  support multiple realm syntaxs at the same time.  The
+#  support multiple realm syntaxes at the same time.  The
 #  search order is defined by the order that the modules are listed
 #  in the authorize and preacct sections.
 #
