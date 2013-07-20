@@ -8,7 +8,7 @@
 #	directory to these files.  This is done in a normal installation.
 #
 #	If you are using 802.1X (EAP) authentication, please see also
-#	the "inner-tunnel" virtual server.  You wll likely have to edit
+#	the "inner-tunnel" virtual server.  You will likely have to edit
 #	that, too, for authentication to work.
 #
 #	$Id$
@@ -47,7 +47,7 @@
 server default {
 #
 #  If you want the server to listen on additional addresses, or on
-#  additionnal ports, you can use multiple "listen" sections.
+#  additional ports, you can use multiple "listen" sections.
 #
 #  Each section make the server listen for only one type of packet,
 #  therefore authentication and accounting have to be configured in
@@ -244,8 +244,8 @@ authorize {
 
 	#
 	#  If you want to generate CUI for some clients that do not
-	#  send proper CUI requiests, then uncomment the
-	#  cui below and set "add-cui = yes" for these clients in clients.conf
+	#  send proper CUI requests, then uncomment the
+	#  cui below and set "add_cui = yes" for these clients in clients.conf
 #       cui
 
 	#
@@ -387,7 +387,7 @@ authorize {
 #  Note that it does NOT mean 'try each module in order'.  It means
 #  that a module from the 'authorize' section adds a configuration
 #  attribute 'Auth-Type := FOO'.  That authentication type is then
-#  used to pick the apropriate module from the list below.
+#  used to pick the appropriate module from the list below.
 #
 
 #  In general, you SHOULD NOT set the Auth-Type attribute.  The server
