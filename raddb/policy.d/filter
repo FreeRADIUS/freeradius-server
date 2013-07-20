@@ -105,7 +105,7 @@ filter_username {
 	#
 	if ((User-Name =~ /@/) && (User-Name !~ /@(.+)\\.(.+)$/))  {
 		update reply {
-			Reply-Message += "Rejected: Realm does not have at least one dot seperator"
+			Reply-Message += "Rejected: Realm does not have at least one dot separator"
 		}
 		reject
 	}

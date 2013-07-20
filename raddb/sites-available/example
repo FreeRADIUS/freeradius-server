@@ -34,7 +34,7 @@
 #	  secrets
 #
 #	FYI: We use an address in the 192.0.2.* space for this example,
-#	as RFC 3330 says that that /24 range is used for documenation
+#	as RFC 3330 says that that /24 range is used for documentation
 #	and examples, and should not appear on the net.  You shouldn't
 #	use it for anything, either.
 #

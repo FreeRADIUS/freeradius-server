@@ -439,7 +439,7 @@ static rlm_rcode_t do_detail(void *instance, REQUEST *request, RADIUS_PACKET *pa
 	}
 
 	/*
-	 *	Add non-protocol attibutes.
+	 *	Add non-protocol attributes.
 	 */
 	if (compat) {
 #ifdef WITH_PROXY

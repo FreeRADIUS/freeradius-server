@@ -20,7 +20,7 @@ ldap {
 #	identity = "cn=admin,dc=example,dc=org"
 #	password = mypass
 
-	#  Unless overridden in another section, the dn from whilch all 
+	#  Unless overridden in another section, the dn from which all 
 	#  searches will start from.
 #	base_dn = "dc=example,dc=org"
 
@@ -168,8 +168,8 @@ ldap {
 	
 	#
 	#  User profiles. RADIUS profile objects contain sets of attributes
-	#  to insert into the request. These attribtues are mapped using
-	#  the same mapping scheme appled to user objects.
+	#  to insert into the request. These attributes are mapped using
+	#  the same mapping scheme applied to user objects.
 	#
 	profile {
 		#  Filter for RAIDUS profile objects
@@ -363,7 +363,7 @@ ldap {
 
 		#  Certificate Verification requirements.  Can be:
 		#    "never" (don't even bother trying)
-		#    "allow" (try, but don't fail if the cerificate
+		#    "allow" (try, but don't fail if the certificate
 		#		can't be verified)
 		#    "demand" (fail if the certificate doesn't verify.)
 		#

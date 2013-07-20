@@ -147,7 +147,7 @@ max_request_time = 30
 #  cached reply.
 #
 #  If this value is set too low, then duplicate requests from the NAS
-#  MAY NOT be detected, and will instead be handled as seperate requests.
+#  MAY NOT be detected, and will instead be handled as separate requests.
 #
 #  If this value is set too high, then the server will cache too many
 #  requests, and some new requests may get blocked.  (See 'max_requests'.)
@@ -296,7 +296,7 @@ log {
 	auth_goodpass = no
 
 	#  Log additional text at the end of the "Login OK" messages.
-	#  for these to work, the "auth" and "auth_goopass" or "auth_badpass"
+	#  for these to work, the "auth" and "auth_goodpass" or "auth_badpass"
 	#  configurations above have to be set to "yes".
 	#
 	#  The strings below are dynamically expanded, which means that
@@ -353,7 +353,7 @@ security {
 	#   If these are commented out, the server will run as the
 	#   user/group that started it.  In order to change to a
 	#   different user/group, you MUST be root ( or have root
-	#   privleges ) to start the server.
+	#   privileges ) to start the server.
 	#
 	#   We STRONGLY recommend that you run the server with as few
 	#   permissions as possible.  That is, if you're not using
@@ -570,7 +570,7 @@ thread pool {
 
 	#  If the received PPS is larger than the processed PPS, *and*
 	#  the queue is more than half full, then new accounting
-	#  requests are probabalistically discarded.  This lowers the
+	#  requests are probabilistically discarded.  This lowers the
 	#  number of packets that the server needs to process.  Over
 	#  time, the server will "catch up" with the traffic.
 	#
@@ -634,7 +634,7 @@ modules {
 #  of the following sections, so they can be listed here.
 #
 #  Also, listing modules here ensures that you have control over
-#  the order in which they are initalized.  If one module needs
+#  the order in which they are initialized.  If one module needs
 #  something defined by another module, you can list them in order
 #  here, and ensure that the configuration will be OK.
 #
@@ -668,7 +668,7 @@ instantiate {
 ######################################################################
 #
 #  Policies are virtual modules, similar to those defined in the
-#  "instantate" section above.
+#  "instantiate" section above.
 #
 #  Defining a policy in one of the policy.d files means that it can be
 #  referenced in multiple places as a *name*, rather than as a series of

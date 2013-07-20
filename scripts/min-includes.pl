@@ -5,7 +5,7 @@
 #  from C source files, and (at your command) removes the duplicates.
 #
 #  It is meant to be run ONLY by FreeRADUS developers, and has nothing
-#  whatsoever to do with RADIUS, FreeRADIUS, or confguring a RADIUS server.
+#  whatsoever to do with RADIUS, FreeRADIUS, or configuring a RADIUS server.
 #
 ######################################################################
 #

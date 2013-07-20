@@ -151,7 +151,7 @@ eap {
 	#  built, the "tls", "ttls", and "peap" sections will
 	#  be ignored.
 	#
-	#  If you do not currently have certifictes signed by
+	#  If you do not currently have certificates signed by
 	#  a trusted CA you may use the 'snakeoil' certificates.
 	#  Included with the server in raddb/certs.
 	#
@@ -251,7 +251,7 @@ eap {
 		#
 		#  This can never exceed the size of a RADIUS
 		#  packet (4096 bytes), and is preferably half
-		#  that, to accomodate other attributes in
+		#  that, to accommodate other attributes in
 		#  RADIUS packet.  On most APs the MAX packet
 		#  length is configured between 1500 - 1600
 		#  In these cases, fragment size should be
@@ -283,7 +283,7 @@ eap {
 	       #  If check_cert_issuer is set, the value will
 	       #  be checked against the DN of the issuer in
 	       #  the client certificate.  If the values do not
-	       #  match, the cerficate verification will fail,
+	       #  match, the certificate verification will fail,
 	       #  rejecting the user.
 	       #
 	       #  In 2.1.10 and later, this check can be done
@@ -457,7 +457,7 @@ eap {
 		#  Certificates can be verified against an OCSP
 		#  Responder. This makes it possible to immediately
 		#  revoke certificates without the distribution of
-		#  new Certificate Revokation Lists (CRLs).
+		#  new Certificate Revocation Lists (CRLs).
 		#
 		ocsp {
 		      #

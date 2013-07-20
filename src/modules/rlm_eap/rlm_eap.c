@@ -467,7 +467,7 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 
 /*
  * EAP authorization DEPENDS on other rlm authorizations,
- * to check for user existance & get their configured values.
+ * to check for user existence & get their configured values.
  * It Handles EAP-START Messages, User-Name initilization.
  */
 static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
