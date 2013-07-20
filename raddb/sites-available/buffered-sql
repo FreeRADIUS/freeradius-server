@@ -15,7 +15,7 @@
 #	needed by the RADIUS server as it is running. 
 #
 #	The benefit of this approach is that for a busy server, the
-#	overhead of performing SQL qeuries may be significant.  Also,
+#	overhead of performing SQL queries may be significant.  Also,
 #	if the SQL databases are large (as is typical for ones storing
 #	months of data), the INSERTs and UPDATEs may take a relatively
 #	long time.  Rather than slowing down the RADIUS server by

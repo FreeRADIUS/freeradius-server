@@ -8,8 +8,8 @@
 #  There are no configuration entries for this module.  Instead, it
 #  relies on the "client" configuration.  You must:
 #
-#	1) link raddb/sites-enabled/dyanmic_clients to
-#	   raddb/sites-available/dyanmic_clients
+#	1) link raddb/sites-enabled/dynamic_clients to
+#	   raddb/sites-available/dynamic_clients
 #
 #	2) Define a client network/mask (see top of the above file)
 #

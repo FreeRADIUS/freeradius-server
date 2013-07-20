@@ -122,7 +122,7 @@ pidfile = ${run_dir}/vmpsd.pid
 #
 #   If these are commented out, the server will run as the user/group
 #   that started it.  In order to change to a different user/group, you
-#   MUST be root ( or have root privleges ) to start the server.
+#   MUST be root ( or have root privileges ) to start the server.
 #
 #   We STRONGLY recommend that you run the server with as few permissions
 #   as possible.  That is, if you're not using shadow passwords, the
@@ -170,7 +170,7 @@ max_request_time = 30
 #  cached reply.
 #
 #  If this value is set too low, then duplicate requests from the NAS
-#  MAY NOT be detected, and will instead be handled as seperate requests.
+#  MAY NOT be detected, and will instead be handled as separate requests.
 #
 #  If this value is set too high, then the server will cache too many
 #  requests, and some new requests may get blocked.  (See 'max_requests'.)
@@ -184,7 +184,7 @@ cleanup_delay = 5
 #  hosts with multiple IP addresses on one interface.
 #
 #  If you want the server to listen on additional addresses, or on
-#  additionnal ports, you can use multiple "listen" sections.
+#  additional ports, you can use multiple "listen" sections.
 #
 #  Each section make the server listen for only one type of packet,
 #  therefore authentication and accounting have to be configured in
@@ -377,7 +377,7 @@ modules {
 #  of the following sections, so they can be listed here.
 #
 #  Also, listing modules here ensures that you have control over
-#  the order in which they are initalized.  If one module needs
+#  the order in which they are initialized.  If one module needs
 #  something defined by another module, you can list them in order
 #  here, and ensure that the configuration will be OK.
 #

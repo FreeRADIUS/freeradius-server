@@ -70,7 +70,7 @@ If an external host is referenced in the context of a module the
 
 Unless the config item is a well recognised portmanteau 
 (as ``filename`` is for example), it must be written as multiple
-distinct words seperated by underscores ``_``.
+distinct words separated by underscores ``_``.
     
 The configuration items ``file``, ``script_file``, ``module``,
 ``detail``, ``detailfile``, ``attrsfile``, ``perm``, ``dirperm``,
@@ -160,7 +160,7 @@ SQL module will now expand the 'reference' configuration item in the
 appropriate sub-section, and resolve this to a configuration
 item. This behaviour is similar to rlm_linelog.  This dynamic
 expansion allows for a dynamic mapping between accounting types and
-SQL qeuries.  Previously, the mapping was fixed.  Any "new" accounting
+SQL queries.  Previously, the mapping was fixed.  Any "new" accounting
 type was ignored by the module.  Now, support for any accounting type
 can be added by just adding a new target, as below.
 
@@ -314,7 +314,7 @@ PAP and User-Password
 
 From version 3.0 onwards the server no longer supports authenticating
 against a cleartext password in the 'User-Password' attribute. Any
-occurances of this (for instance, in the users file) should now be changed
+occurences of this (for instance, in the users file) should now be changed
 to 'Cleartext-Password' instead.
 
 If this is not done, authentication will likely fail.  The server will
@@ -374,7 +374,7 @@ A sample configuration in "unlang" is::
     }
   }
 
-We suggest updating all uses of attr_write to use unlang instead.
+We suggest updating all uses of attr_rewrite to use unlang instead.
 
 rlm_checkval
 ------------

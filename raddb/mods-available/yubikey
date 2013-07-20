@@ -20,11 +20,11 @@ yubikey {
 	#  retrieved from persistent storage:
 	#    * Yubikey-Key     - The AES key used to decrypt the OTP data.
 	#                        The Yubikey-Public-Id and/or User-Name 
-	#                        attrubutes may be used to retrieve the key.
+	#                        attributes may be used to retrieve the key.
 	#    * Yubikey-Counter - This is compared with the counter in the OTP
 	#                        data and used to prevent replay attacks.
 	#                        This attribute will also be available in 
-	#                        the request list after successfull
+	#                        the request list after successful
 	#                        decryption.                    
 	#
 	#  Yubikey-Counter isn't strictly required, but the server will
