@@ -23,7 +23,7 @@
 #  It can also be user defined. It should be of the form:
 #  num[hdwm] where:
 #  h: hours, d: days, w: weeks, m: months
-#  If the letter is ommited days will be assumed. In example:
+#  If the letter is omitted days will be assumed. In example:
 #  reset = 10h (reset every 10 hours)
 #  reset = 12  (reset every 12 days)
 #

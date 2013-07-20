@@ -1,5 +1,5 @@
 #
-#	Cache EAP responses for resiliency on intermediary proxy failover
+#	Cache EAP responses for resiliency on intermediary proxy fail-over
 #
 cache cache_eap {
 	key = "%{%{control:State}:-%{%{reply:State}:-%{State}}}"

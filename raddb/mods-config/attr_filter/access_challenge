@@ -5,7 +5,7 @@
 #	$Id$
 #
 #	This configuration file is used to remove almost all of the
-#	attributes From an Access-Challenge message.  The RFC's say
+#	attributes From an Access-Challenge message.  The RFCs say
 #	that an Access-Challenge packet can contain only a few
 #	attributes.  We enforce that here.
 #

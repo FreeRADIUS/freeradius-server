@@ -17,7 +17,7 @@ sql cuisql {
 	# database the logged queries are going to be executed against.
 	dialect = "sqlite"
 	
-	# The submodule to use to execute queries. This should match
+	# The sub-module to use to execute queries. This should match
 	# the database you're attempting to connect to.
 	#
 	# There are CUI queries available for:

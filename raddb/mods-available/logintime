@@ -16,7 +16,7 @@
 logintime {
 	# The minimum timeout (in seconds) a user is allowed
 	# to have. If the calculated timeout is lower we don't
-	# allow the logon. Some NASes do not handle values
+	# allow the login. Some NAS do not handle values
 	# lower than 60 seconds well.
 	minimum_timeout = 60
 }
