@@ -5,7 +5,7 @@
 #	$Id$
 #
 #	This configuration file is used to remove almost all of the attributes
-#	From an Access-Reject message.  The RFC's say that an Access-Reject
+#	From an Access-Reject message.  The RFCs say that an Access-Reject
 #	packet can contain only a few attributes.  We enforce that here.
 #
 DEFAULT

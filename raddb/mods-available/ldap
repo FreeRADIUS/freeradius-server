@@ -110,9 +110,9 @@ ldap {
 		#  "access_attribute" not existing means "allow access"
 #		positive_access = yes
 
-		#  If this is undefined, anyone is authorized.
+		#  If this is undefined, anyone is authorised.
 		#  If it is defined, the contents of this attribute
-		#  determine whether or not the user is authorized
+		#  determine whether or not the user is authorised
 #		access_attribute = "dialupAccess"
 	}
 
@@ -172,7 +172,7 @@ ldap {
 	#  the same mapping scheme applied to user objects.
 	#
 	profile {
-		#  Filter for RAIDUS profile objects
+		#  Filter for RADIUS profile objects
 #		filter = "(objectclass=radiusprofile)"
 
 		#  The default profile applied to all users.
@@ -250,7 +250,7 @@ ldap {
 	#			Note: '=' is *not* supported.
 	#  	<value>:	The value to add modify or delete.
 	#
-	#  WARNING: If using the ':=' operator with a multivalued LDAP 
+	#  WARNING: If using the ':=' operator with a multi-valued LDAP 
 	#  attribute, all instances of the attribute will be removed and
 	#  replaced with a single attribute.
 	# 
@@ -289,7 +289,7 @@ ldap {
 
 	#  LDAP connection-specific options.
 	#
-	#  These options set timeouts, keepalives, etc. for the connections.
+	#  These options set timeouts, keep-alives, etc. for the connections.
 	#
 	options {
 		#

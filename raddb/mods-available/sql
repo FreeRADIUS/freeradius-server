@@ -17,7 +17,7 @@
 #
 
 sql {
-	# The submodule to use to execute queries. This should match
+	# The sub-module to use to execute queries. This should match
 	# the database you're attempting to connect to.
 	#
 	#    * rlm_sql_mysql
@@ -33,7 +33,7 @@ sql {
 	# the driver you selected above.
 	#
 	# If you're using rlm_sql_null, then it should be the type of
-	# database the logged queries are going to be exected against.
+	# database the logged queries are going to be executed against.
 	dialect = "mysql"
 	
 	# Connection info:

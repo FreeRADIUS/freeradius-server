@@ -4,7 +4,7 @@
 #
 yubikey {
 	#
-	#  The length (number of ascii bytes) of the Public-ID portion
+	#  The length (number of ASCII bytes) of the Public-ID portion
 	#  of the OTP string.
 	#
 	#  Yubikey defaults to a 6 byte ID (2 * 6 = 12)
@@ -34,7 +34,7 @@ yubikey {
 	#  These attributes are available after authorization:
 	#    * Yubikey-Public-ID  - The public portion of the OTP string
 	#
-	#  These attributes are available after authentication (if successfull):
+	#  These attributes are available after authentication (if successful):
 	#    * Yubikey-Private-ID - The encrypted ID included in OTP data,
 	#                           must be verified if tokens share keys.
 	#    * Yubikey-Counter    - The last counter value (should be recorded).

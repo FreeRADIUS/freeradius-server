@@ -41,7 +41,7 @@ redis {
 		# start deleting them
 		cleanup_delay = 300
 
-		# connections last no more than "lifeime" seconds.
+		# connections last no more than "lifetime" seconds.
 		lifetime = 86400
 
 		# close idle connections are "idle_timeout" seconds

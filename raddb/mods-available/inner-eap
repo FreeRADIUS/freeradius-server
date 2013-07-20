@@ -4,7 +4,7 @@
 
 #
 #  Sample configuration for an EAP module that occurs *inside*
-#  of a tunneled method.  It is used to limit the EAP types that
+#  of a tunnelled method.  It is used to limit the EAP types that
 #  can occur inside of the inner tunnel.
 #
 #  See also raddb/sites-available/inner-tunnel
@@ -87,7 +87,7 @@ eap inner-eap {
 	#	ca_path = /path/to/directory/with/ca_certs/and/crls/
 
 		#
-		#  The session resumption / fast reauthentication
+		#  The session resumption / fast re-authentication
 		#  cache CANNOT be used for inner sessions.
 		#
 	}

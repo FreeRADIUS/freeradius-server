@@ -3,7 +3,7 @@
 #  $Id$
 
 #
-# Internationalized domain names.
+# Internationalised domain names.
 #
 
 #  The expansion string: %{idn: example.com} results in an ASCII

@@ -39,10 +39,10 @@ otp {
 	# Whether or not to allow asynchronous ("pure" challenge/
 	# response) mode authentication.  Since sync mode is much more
 	# usable, and all reasonable tokens support it, the typical
-	# use of async mode is to allow resync of event based tokens.
+	# use of async mode is to allow re-sync of event based tokens.
 	# But because of the vulnerability of async mode with some tokens,
 	# you probably want to disable this and require that out-of-sync
-	# users resync from specifically secured terminals.
+	# users re-sync from specifically secured terminals.
 	# See the otpd docs for more info.
 	# (default: no)
 	#allow_async = no
@@ -56,13 +56,13 @@ otp {
 	# on all your RADIUS servers would allow replay attacks!
 	# Also, for event based tokens, the user will be out of sync
 	# on the "other" servers.  In order to use "yes" on all your
-	# servers, you must either use gsmd, which synchronizes state
-	# globally, or implement your own state synchronization method.
+	# servers, you must either use gsmd, which synchronises state
+	# globally, or implement your own state synchronisation method.
 	# (default: yes)
 	#allow_sync = yes
 
 	# If both allow_async and allow_sync are "yes", a challenge is
-	# always presented to the user.  This is incompatible with NAS's
+	# always presented to the user.  This is incompatible with NAS
 	# that can't present or don't handle Access-Challenge's, e.g.
 	# PPTP servers.  Even though a challenge is presented, the user
 	# can still enter their synchronous passcode.
