@@ -24,7 +24,6 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/radpaths.h>
 
 #ifdef HAVE_SYS_SOCKET_H
 #include <sys/socket.h>

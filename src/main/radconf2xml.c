@@ -24,7 +24,6 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/radpaths.h>
 
 #ifdef HAVE_GETOPT_H
 #include <getopt.h>

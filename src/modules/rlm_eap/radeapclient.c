@@ -33,7 +33,6 @@ RCSID("$Id$")
 #endif
 
 #include <freeradius-devel/conf.h>
-#include <freeradius-devel/radpaths.h>
 #include <freeradius-devel/md5.h>
 
 #include "eap_types.h"

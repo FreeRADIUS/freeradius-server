@@ -1031,3 +1031,62 @@ int radius_request(REQUEST **context, request_refs_t name)
 	return 0;
 }
 
+/** Return the default log dir
+ *
+ * This is set at build time from --prefix
+ * @return the value of LOGDIR
+ */
+char const *fr_default_log_dir(void)
+{
+	return LOGDIR;
+}
+
+/** Return the default lib dir
+ *
+ * This is set at build time from --prefix
+ * @return the value of LIBDIR
+ */
+char const *fr_default_lib_dir(void)
+{
+	return LIBDIR;
+}
+
+/** Return the default raddb dir
+ *
+ * This is set at build time from --prefix
+ * @return the value of RADDBDIR
+ */
+char const *fr_default_raddb_dir(void)
+{
+	return RADDBDIR;
+}
+
+/** Return the default run dir
+ *
+ * This is set at build time from --prefix
+ * @return the value of RUNDIR
+ */
+char const *fr_default_run_dir(void)
+{
+	return RUNDIR;
+}
+
+/** Return the default sbin dir
+ *
+ * This is set at build time from --prefix
+ * @return the value of SBINDIR
+ */
+char const *fr_default_sbin_dir(void)
+{
+	return SBINDIR;
+}
+
+/** Return the default radacct dir
+ *
+ * This is set at build time from --prefix
+ * @return the value of RADIR
+ */
+char const *fr_radacct_dir(void)
+{
+	return RADIR;
+}

@@ -34,7 +34,12 @@ MAKEFLAGS	= @FR_MAKEFLAGS@
 
 CC		= @CC@
 RANLIB		= @RANLIB@
-IMACROS		= -imacros ${top_srcdir}/src/freeradius-devel/build.h -imacros ${top_srcdir}/src/freeradius-devel/autoconf.h -imacros ${top_srcdir}/src/freeradius-devel/features.h
+IMACROS		= \
+-imacros ${top_srcdir}/src/freeradius-devel/build.h \
+-imacros ${top_srcdir}/src/freeradius-devel/autoconf.h \
+-imacros ${top_srcdir}/src/freeradius-devel/features.h \
+-imacros ${top_srcdir}/src/freeradius-devel/radpaths.h
+
 INCLUDE		= -I${top_srcdir} -I${top_srcdir}/src
 CFLAGS		= $(IMACROS) $(INCLUDE) -std=c99 -fno-strict-aliasing @CFLAGS@
 CPPFLAGS	= @CPPFLAGS@

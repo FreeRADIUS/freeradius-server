@@ -27,7 +27,6 @@
 RCSIDH(radiusd_h, "$Id$")
 
 #include <freeradius-devel/libradius.h>
-#include <freeradius-devel/radpaths.h>
 #include <freeradius-devel/conf.h>
 #include <freeradius-devel/conffile.h>
 #include <freeradius-devel/event.h>
@@ -537,6 +536,12 @@ int		rad_pps(int *past, int *present, time_t *then,
 int		rad_expand_xlat(REQUEST *request, char const *cmd,
 				int max_argc, char *argv[], bool can_fail,
 				size_t argv_buflen, char *argv_buf);
+char const *fr_default_log_dir(void);
+char const *fr_default_lib_dir(void);
+char const *fr_default_raddb_dir(void);
+char const *fr_default_run_dir(void);
+char const *fr_default_sbin_dir(void);
+char const *fr_radacct_dir(void);
 
 /* client.c */
 RADCLIENT_LIST	*clients_init(CONF_SECTION *cs);
