@@ -537,21 +537,24 @@ autz_redo:
 			rad_authlog("Login incorrect", request, 0);
 		}
 
-		/* double check: maybe the secret is wrong? */
-		if ((debug_flag > 1) && (auth_item != NULL) &&
-				(auth_item->da->attr == PW_USER_PASSWORD)) {
-			uint8_t const *p;
+		if (auth_item) {
+			VERIFY_VP(auth_item);
+			/* double check: maybe the secret is wrong? */
+			if ((debug_flag > 1) && (auth_item->da->attr == PW_USER_PASSWORD)) {
+				uint8_t const *p;
 
-			p = (uint8_t const *) auth_item->vp_strvalue;
-			while (*p) {
-				int size;
+				p = (uint8_t const *) auth_item->vp_strvalue;
+				while (*p) {
+					int size;
 
-				size = fr_utf8_char(p);
-				if (!size) {
-					RWDEBUG("Unprintable characters in the password.  Double-check the shared secret on the server and the NAS!");
-					break;
+					size = fr_utf8_char(p);
+					if (!size) {
+						RWDEBUG("Unprintable characters in the password.  Double-check the "
+							"shared secret on the server and the NAS!");
+						break;
+					}
+					p += size;
 				}
-				p += size;
 			}
 		}
 	}
