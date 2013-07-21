@@ -295,7 +295,7 @@ static ssize_t xlat_debug_attr(UNUSED void *instance, REQUEST *request, char con
 	vp_cursor_t cursor;
 	char buffer[1024];
 
-	if (!RDEBUG_ENABLED(L_DBG_LVL_2)) {
+	if (!RDEBUG_ENABLED2) {
 		*out = '\0';
 		return -1;
 	}
@@ -342,7 +342,7 @@ static ssize_t xlat_debug_attr(UNUSED void *instance, REQUEST *request, char con
 				buffer);
 		}
 
-		if (!RDEBUG_ENABLED(L_DBG_LVL_3)) {
+		if (!RDEBUG_ENABLED3) {
 			goto next_vp;
 		}
 
@@ -358,7 +358,7 @@ static ssize_t xlat_debug_attr(UNUSED void *instance, REQUEST *request, char con
 			return -1;
 		}
 
-		if (!RDEBUG_ENABLED(L_DBG_LVL_MAX)) {
+		if (!RDEBUG_ENABLED4) {
 			goto next_vp;
 		}
 
