@@ -253,7 +253,7 @@ static ssize_t mschap_xlat(void *instance, REQUEST *request,
 				if (inst->with_ntdomain_hack) {
 					username_string++;
 				} else {
-					RDEBUG2("NT Domain delimeter found, should we have enabled with_ntdomain_hack?");
+					RDEBUG2("NT Domain delimiter found, should we have enabled with_ntdomain_hack?");
 					username_string = name_attr->vp_strvalue;
 				}
 			} else {
@@ -1798,7 +1798,7 @@ static rlm_rcode_t mod_authenticate(void * instance, REQUEST *request)
 		 */
 		if (((smb_ctrl->vp_integer & ACB_DISABLED) != 0) ||
 		    ((smb_ctrl->vp_integer & (ACB_NORMAL|ACB_WSTRUST)) == 0)) {
-			RDEBUG2("SMB-Account-Ctrl says that the account is disabled, or is not a normal or workstatin trust account.");
+			RDEBUG2("SMB-Account-Ctrl says that the account is disabled, or is not a normal or workstation trust account.");
 			mschap_add_reply(request,
 					  *response->vp_octets,
 					  "MS-CHAP-Error", "E=691 R=1", 9);

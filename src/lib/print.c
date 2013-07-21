@@ -223,13 +223,13 @@ size_t vp_prints_value(char *out, size_t outlen, VALUE_PAIR const *vp, int8_t qu
 	switch (vp->da->type) {
 		case PW_TYPE_STRING:
 			if ((quote > 0) && vp->da->flags.has_tag) {
-				/* Tagged attribute: print delimter and ignore tag */
+				/* Tagged attribute: print delimiter and ignore tag */
 				buf[0] = (char) quote;
 				len = fr_print_string(vp->vp_strvalue, vp->length, buf + 1, sizeof(buf) - 2);
 				buf[len + 1] = (char) quote;
 				buf[len + 2] = '\0';
 			} else if (quote > 0) {
-				/* Non-tagged attribute: print delimter */
+				/* Non-tagged attribute: print delimiter */
 				buf[0] = (char) quote;
 				len = fr_print_string(vp->vp_strvalue, vp->length, buf + 1, sizeof(buf) - 2);
 				buf[len + 1] = (char) quote;

@@ -170,7 +170,7 @@ authorize {
 #  Note that it does NOT mean 'try each module in order'.  It means
 #  that a module from the 'authorize' section adds a configuration
 #  attribute 'Auth-Type := FOO'.  That authentication type is then
-#  used to pick the apropriate module from the list below.
+#  used to pick the appropriate module from the list below.
 #
 
 #  In general, you SHOULD NOT set the Auth-Type attribute.  The server

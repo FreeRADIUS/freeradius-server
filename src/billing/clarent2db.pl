@@ -170,7 +170,7 @@ sub record_match($) {
         	if ($verbose > 1) { print "DEBUG: Clean Record: @callrecord\n"; }
 		$recordno++; %working_record = ();
 		$working_record{local_setuptime} = clarent2normaltime($callrecord[0]);
-                $working_record{start_time} = $callrecord[3];	# This is in Unix timetamp format, relative to the originating gateway.
+                $working_record{start_time} = $callrecord[3];	# This is in Unix timestamp format, relative to the originating gateway.
 								# It is therefore useless unless ALL gateways are set with the same timezone,
 								# so I don't bother to convert it to datetime format.
                 $working_record{duration} = $callrecord[4];
