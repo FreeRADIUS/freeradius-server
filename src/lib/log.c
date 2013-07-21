@@ -95,10 +95,10 @@ void fr_perror(char const *fmt, ...)
 	va_end(ap);
 }
 
-bool fr_error_condition(bool cond, char *file, int line)
+bool fr_error_condition(bool cond, char const *file, int line)
 {
 	if (!cond) {
-		fr_perror("FILE: %s, LINE: %s.  Soft assertion failed");
+		fr_perror("FILE: %s, LINE: %d.  Soft assertion failed", file, line);
 		return false;
 	}
 
