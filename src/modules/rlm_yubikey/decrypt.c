@@ -61,7 +61,7 @@ rlm_rcode_t rlm_yubikey_decrypt(rlm_yubikey_t *inst, REQUEST *request, VALUE_PAI
 		RDEBUG2("Private ID	: 0x%s", private_id);
 		RDEBUG2("Session counter   : %u", yubikey_counter(token.ctr));
 		RDEBUG2("# used in session : %u", token.use);
-		RDEBUG2("Token timetamp    : %u",
+		RDEBUG2("Token timestamp    : %u",
 			(token.tstph << 16) | token.tstpl);
 		RDEBUG2("Random data       : %u", token.rnd);
 		RDEBUG2("CRC data          : 0x%x", token.crc);

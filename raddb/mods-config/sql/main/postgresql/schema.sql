@@ -41,7 +41,7 @@ CREATE TABLE radacct (
 	AcctStartDelay		INTEGER,
 	AcctStopDelay		INTEGER	
 );
--- This index may be usefull..
+-- This index may be useful..
 -- CREATE UNIQUE INDEX radacct_whoson on radacct (AcctStartTime, nasipaddress);
 
 -- For use by onoff-, update-, stop- and simul_* queries

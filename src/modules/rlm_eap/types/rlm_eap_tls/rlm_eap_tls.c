@@ -185,7 +185,7 @@ static int mod_authenticate(void *type_arg, eap_handler_t *handler)
 
 			/* reject if virtual server didn't return accept */
 			if (fake->reply->code != PW_CODE_AUTHENTICATION_ACK) {
-				RDEBUG2("Certifictes were rejected by the virtual server");
+				RDEBUG2("Certificates were rejected by the virtual server");
 				request_free(&fake);
 				eaptls_fail(handler, 0);
 				return 0;

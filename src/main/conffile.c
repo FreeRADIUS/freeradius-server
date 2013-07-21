@@ -1569,7 +1569,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 					    S_ISDIR(stat_buf.st_mode)) continue;
 					/*
 					 *	Read the file into the current
-					 *	configuration sectoin.
+					 *	configuration section.
 					 */
 					if (cf_file_include(this, buf2) < 0) {
 						closedir(dir);
