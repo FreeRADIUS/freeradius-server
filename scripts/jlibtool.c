@@ -91,8 +91,8 @@
 #  define RPATH				"-rpath"
 #  define SHARED_OPTS			"-shared"
 #  define MODULE_OPTS			"-shared"
-#  define DYNAMIC_LINK_OPTS		"-export-dynamic"
 #  define LINKER_FLAG_PREFIX		"-Wl,"
+#  define DYNAMIC_LINK_OPTS		LINKER_FLAG_PREFIX "-export-dynamic"
 #  define ADD_MINUS_L
 #  define LD_RUN_PATH			"LD_RUN_PATH"
 #  define LD_LIBRARY_PATH		"LD_LIBRARY_PATH"
@@ -146,8 +146,9 @@
 #  define RPATH				"-Brpath"
 #  define SHARED_OPTS			"-G"
 #  define MODULE_OPTS			"-G"
-#  define DYNAMIC_LINK_OPTS		"-Wl,-Blargedynsym"
 #  define LINKER_FLAG_PREFIX		"-Wl,"
+#  define DYNAMIC_LINK_OPTS		LINKER_FLAG_PREFIX "-Blargedynsym"
+
 #  define NEED_SNPRINTF
 #  define LD_RUN_PATH			"LD_RUN_PATH"
 #  define LD_LIBRARY_PATH		"LD_LIBRARY_PATH"
