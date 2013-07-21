@@ -115,6 +115,11 @@ void log_talloc_report(TALLOC_CTX *ctx);
  */
 #define _SL(_l, _p, _f, ...)	if (debug_flag >= _p) radlog(_l, _f, ## __VA_ARGS__)
 
+#define DEBUG_ENABLED		radlog_debug_enabled(L_DBG, L_DBG_LVL_1, NULL)
+#define DEBUG_ENABLED2		radlog_debug_enabled(L_DBG, L_DBG_LVL_2, NULL)
+#define DEBUG_ENABLED3		radlog_debug_enabled(L_DBG, L_DBG_LVL_3, NULL)
+#define DEBUG_ENABLED4		radlog_debug_enabled(L_DBG, L_DBG_LVL_MAX, NULL)
+
 #define AUTH(fmt, ...)		_SL(L_AUTH, L_DBG_LVL_OFF, fmt, ## __VA_ARGS__)
 #define ACCT(fmt, ...)		_SL(L_ACCT, L_DBG_LVL_OFF, fmt, ## __VA_ARGS__)
 #define PROXY(fmt, ...)		_SL(L_PROXY, L_DBG_LVL_OFF, fmt, ## __VA_ARGS__)

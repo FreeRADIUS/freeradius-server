@@ -333,10 +333,6 @@ void vp_listdebug(VALUE_PAIR *vp)
 
 inline bool radlog_debug_enabled(log_type_t type, log_debug_t lvl, REQUEST *request)
 {
-	if (!request || !request->radlog) {
-		return false;
-	}
-
 	/*
 	 *	It's a debug class message, not this doesn't mean it's a debug type message.
 	 *
