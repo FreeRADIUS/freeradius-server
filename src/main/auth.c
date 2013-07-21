@@ -342,7 +342,6 @@ int rad_authenticate(REQUEST *request)
 #ifdef WITH_SESSION_MGMT
 	VALUE_PAIR	*check_item;
 #endif
-	VALUE_PAIR	*auth_item = NULL;
 	VALUE_PAIR	*module_msg;
 	VALUE_PAIR	*tmp = NULL;
 	int		result;
@@ -409,15 +408,9 @@ int rad_authenticate(REQUEST *request)
 	if (!request->password) {
 		request->password = pairfind(request->packet->vps, PW_USER_PASSWORD, 0, TAG_ANY);
 	}
-
-	/*
-	 *	Discover which password we want to use.
-	 */
-	auth_item = request->password;
-	if (!auth_item) {
-		auth_item = pairfind(request->packet->vps, PW_CHAP_PASSWORD, 0, TAG_ANY);
+	if (!request->password) {
+		request->password = pairfind(request->packet->vps, PW_CHAP_PASSWORD, 0, TAG_ANY);
 	}
-	request->password = auth_item;
 
 	/*
 	 *	Get the user's authorization information from the database
@@ -537,13 +530,13 @@ autz_redo:
 			rad_authlog("Login incorrect", request, 0);
 		}
 
-		if (auth_item) {
-			VERIFY_VP(auth_item);
+		if (request->password) {
+			VERIFY_VP(request->password);
 			/* double check: maybe the secret is wrong? */
-			if ((debug_flag > 1) && (auth_item->da->attr == PW_USER_PASSWORD)) {
+			if ((debug_flag > 1) && (request->password->da->attr == PW_USER_PASSWORD)) {
 				uint8_t const *p;
 
-				p = (uint8_t const *) auth_item->vp_strvalue;
+				p = (uint8_t const *) request->password->vp_strvalue;
 				while (*p) {
 					int size;
 
