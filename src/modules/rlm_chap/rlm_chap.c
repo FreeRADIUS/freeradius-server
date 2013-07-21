@@ -111,7 +111,7 @@ static rlm_rcode_t mod_authenticate(UNUSED void *instance,
 		return RLM_MODULE_REJECT;
 	}
 
-	RDEBUG("CHAP user \"%s\" authenticated succesfully",
+	RDEBUG("CHAP user \"%s\" authenticated successfully",
 	      request->username->vp_strvalue);
 
 	return RLM_MODULE_OK;

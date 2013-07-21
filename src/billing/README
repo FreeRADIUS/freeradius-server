@@ -28,13 +28,13 @@ stamps time as a valid "datetime". (While Oracle and possibly some
 other high end DBs should support Cisco time format they have not
 been tested at this time). MySQL could possibly be supported in
 future but it would require extra pre-processing by a FreeRADIUS
-module to do so and there is no plan currently to impliment this,
-although working code that impliments this would be happily accepted.
+module to do so and there is no plan currently to implement this,
+although working code that implements this would be happily accepted.
 
 This reliance on VSA records REQUIRES that all cisco devices be
 configured to send VSA attributes. This system is not known to work
 with any non-cisco equipment, although it is theoretically possible
-for non-cisco equipment to impliment Cisco VSA attributes...
+for non-cisco equipment to implement Cisco VSA attributes...
 
 This is required as the default FreeRadius SQL configuration (where
 RADIUS "Start" records are INSERTed into the database, and then

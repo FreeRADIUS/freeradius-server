@@ -8,7 +8,7 @@
 #  WORD is one of:
 #
 #	raw - read the grammar defined below, and encode an attribute.
-#	      The grammer supports a trivial way of describing RADIUS
+#	      The grammar supports a trivial way of describing RADIUS
 #	      attributes, without reference to dictionaries or fancy
 #	      parsers
 #

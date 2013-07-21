@@ -1342,7 +1342,7 @@ authorize {
 #  Note that it does NOT mean 'try each module in order'.  It means
 #  that you have to have a module from the 'authorize' section add
 #  a configuration attribute 'Auth-Type := FOO'.  That authentication type
-#  is then used to pick the apropriate module from the list below.
+#  is then used to pick the appropriate module from the list below.
 #
 #  The default Auth-Type is Local.  That is, whatever is not included inside
 # an authtype section will be called only if Auth-Type is set to Local.

@@ -264,7 +264,7 @@ static void got_packet(UNUSED uint8_t *args, struct pcap_pkthdr const*header, ui
 	}
 
 	/*
-	 *  We've seen a successfull reply to this, so delete it now
+	 *  We've seen a successful reply to this, so delete it now
 	 */
 	if (original)
 		rbtree_deletebydata(request_tree, original);
