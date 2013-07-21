@@ -810,8 +810,8 @@ int main(int argc, char *argv[])
 
 	if (report) {
 		talloc_enable_null_tracking();
-		talloc_set_log_fn(log_talloc);
 	}
+	talloc_set_log_fn(log_talloc);
 
 	if (dict_init(radius_dir, RADIUS_DICTIONARY) < 0) {
 		fr_perror("radattr");

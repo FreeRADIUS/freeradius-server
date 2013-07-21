@@ -281,12 +281,11 @@ int main(int argc, char *argv[])
 
 	if (memory_report) {
 		talloc_enable_null_tracking();
-		talloc_set_log_fn(log_talloc);
 #ifdef WITH_VERIFY_PTR
 		talloc_set_abort_fn(die_horribly);
 #endif
-
 	}
+	talloc_set_log_fn(log_talloc);
 
 	/*
 	 *	Mismatch between build time OpenSSL and linked SSL,
