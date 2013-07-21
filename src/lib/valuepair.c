@@ -1909,6 +1909,62 @@ int pairparsevalue(VALUE_PAIR *vp, char const *value)
 	return true;
 }
 
+/** Use simple heuristics to create an VALUE_PAIR from an unknown address string
+ *
+ * If a DICT_ATTR is not provided for the address type, parsing will fail with
+ * and error.
+ *
+ * @param ctx to allocate VP in.
+ * @param value IPv4/IPv6 address/prefix string.
+ * @param ipv4 dictionary attribute to use for an IPv4 address.
+ * @param ipv6 dictionary attribute to use for an IPv6 address.
+ * @param ipv4_prefix dictionary attribute to use for an IPv4 prefix.
+ * @param ipv6_prefix dictionary attribute to use for an IPv6 prefix.
+ * @return NULL on error, or new VALUE_PAIR.
+ */
+VALUE_PAIR *pairmake_ip(TALLOC_CTX *ctx, char const *value, DICT_ATTR *ipv4, DICT_ATTR *ipv6,
+			DICT_ATTR *ipv4_prefix, DICT_ATTR *ipv6_prefix)
+{
+	VALUE_PAIR *vp;
+	DICT_ATTR *da;
+
+	if (!fr_assert(ipv4 || ipv6 || ipv4_prefix || ipv6_prefix)) {
+		return NULL;
+	}
+
+	/* No point in repeating the work of pairparsevalue */
+	if (strchr(value, ':')) {
+		if (strchr(value, '/')) {
+			da = ipv6_prefix;
+			goto finish;
+		}
+
+		da = ipv6;
+		goto finish;
+	}
+
+	if (strchr(value, '/')) {
+		da = ipv4_prefix;
+		goto finish;
+	}
+	da = ipv4;
+
+	if (!da) {
+		fr_strerror_printf("Invalid IP value specified, allowed types are %s%s%s%s",
+				   ipv4 ? "ipaddr " : "", ipv6 ? "ipv6addr " : "",
+				   ipv4_prefix ? "ipv4prefix " : "", ipv6_prefix ? "ipv6prefix" : "");
+	}
+	finish:
+	vp = pairalloc(ctx, da);
+	if (pairparsevalue(vp, value) < 0) {
+		pairbasicfree(vp);
+		return NULL;
+	}
+
+	return vp;
+}
+
+
 /** Create a valuepair from an ASCII attribute and value
  *
  * Where the attribute name is in the form:
