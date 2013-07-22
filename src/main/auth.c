@@ -338,7 +338,6 @@ int rad_postauth(REQUEST *request)
  */
 int rad_authenticate(REQUEST *request)
 {
-	VALUE_PAIR	*namepair;
 #ifdef WITH_SESSION_MGMT
 	VALUE_PAIR	*check_item;
 #endif
@@ -393,15 +392,6 @@ int rad_authenticate(REQUEST *request)
 		}
 	}
 #endif
-
-	/*
-	 *	Get the username from the request.
-	 *
-	 *	Note that namepair MAY be NULL, in which case there
-	 *	is no User-Name attribute in the request.
-	 */
-	namepair = request->username;
-
 	/*
 	 *	Look for, and cache, passwords.
 	 */
@@ -494,11 +484,6 @@ autz_redo:
 #endif
 
 	/*
-	 *	Perhaps there is a Stripped-User-Name now.
-	 */
-	namepair = request->username;
-
-	/*
 	 *	Validate the user
 	 */
 	do {
@@ -571,7 +556,7 @@ autz_redo:
 		 *	User authenticated O.K. Now we have to check
 		 *	for the Simultaneous-Use parameter.
 		 */
-		if (namepair &&
+		if (request->username &&
 		    (r = process_checksimul(session_type, request, check_item->vp_integer)) != 0) {
 			char mpp_ok = 0;
 
