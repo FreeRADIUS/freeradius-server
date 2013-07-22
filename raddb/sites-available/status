@@ -84,11 +84,11 @@ server status {
 #
 #	All packets for a particular client (globally defined)
 #		FreeRADIUS-Statistics-Type = 35
-#		FreeRADIUS-Stats-Client-IP-Address = 192.168.1.1
+#		FreeRADIUS-Stats-Client-IP-Address = 192.0.2.1
 #
 #	All packets for a client attached to a "listen" ip/port
 #		FreeRADIUS-Statistics-Type = 35
-#		FreeRADIUS-Stats-Client-IP-Address = 192.168.1.1
+#		FreeRADIUS-Stats-Client-IP-Address = 192.0.2.1
 #		FreeRADIUS-Stats-Server-IP-Address = 127.0.0.1
 #		FreeRADIUS-Stats-Server-Port = 1812
 #
@@ -99,7 +99,7 @@ server status {
 #
 #	All packets for a home server IP / port
 #		FreeRADIUS-Statistics-Type = 131
-#		FreeRADIUS-Stats-Server-IP-Address = 192.168.1.2
+#		FreeRADIUS-Stats-Server-IP-Address = 192.0.2.2
 #		FreeRADIUS-Stats-Server-Port = 1812
 
 #

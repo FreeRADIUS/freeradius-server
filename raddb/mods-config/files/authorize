@@ -116,7 +116,7 @@
 # the following DEFAULT entries
 #
 #swilson	Service-Type == Framed-User, Huntgroup-Name == "alphen"
-#		Framed-IP-Address = 192.168.1.65,
+#		Framed-IP-Address = 192.0.2.65,
 #		Fall-Through = Yes
 
 #
@@ -144,11 +144,11 @@
 # IP address. The Port-Id (S0, S1 etc) will be added to it.
 #
 #DEFAULT	Service-Type == Framed-User, Huntgroup-Name == "alphen"
-#		Framed-IP-Address = 192.168.1.32+,
+#		Framed-IP-Address = 192.0.2.32+,
 #		Fall-Through = Yes
 
 #DEFAULT	Service-Type == Framed-User, Huntgroup-Name == "delft"
-#		Framed-IP-Address = 192.168.2.32+,
+#		Framed-IP-Address = 198.51.100.32+,
 #		Fall-Through = Yes
 
 #

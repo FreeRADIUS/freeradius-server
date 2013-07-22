@@ -58,14 +58,14 @@
 # These rules allow:
 #       o Only Login-User Service-Type ( no framed/ppp sessions )
 #       o Telnet sessions only ( no rlogin, tcp-clear )
-#       o Login hosts of either 192.168.1.1 or 192.168.1.2
+#       o Login hosts of either 192.0.2.1 or 192.0.2.2
 #
 #tisp
 #	Service-Type == Login-User,
 #	Login-Service == Telnet,
 #	Login-TCP-Port == 23,
-#	Login-IP-Host == 192.168.1.1,
-#	Login-IP-Host == 192.168.1.2
+#	Login-IP-Host == 192.0.2.1,
+#	Login-IP-Host == 192.0.2.2
 
 #
 # The following example can be used for a home server which is only

@@ -1736,7 +1736,7 @@ int pairparsevalue(VALUE_PAIR *vp, char const *value)
 		p = strchr(value, '/');
 
 		/*
-		 *	192.168.1.2 is parsed as if it was /32
+		 *	192.0.2.2 is parsed as if it was /32
 		 */
 		if (!p) {
 			vp->vp_ipv4prefix[1] = 32;
