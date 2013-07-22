@@ -80,7 +80,7 @@ static rlm_rcode_t mod_authorize(UNUSED void *instance, UNUSED REQUEST *request)
 		 *	so we fix it here.
 		 */
 		for (i = 0; i < 6; i++) {
-			fr_bin2hex(&buffer[i], &p[i * 3], 1);
+			fr_bin2hex(&p[i * 3], &buffer[i], 1);
 			p[(i * 3) + 2] = '-';
 		}
 
@@ -198,7 +198,7 @@ static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
 
 		if (len > 128) len = 128; /* buffer size */
 
-		fr_bin2hex(mip_rk, buffer, len);
+		fr_bin2hex(buffer, mip_rk, len);
 		RDEBUG("MIP-RK = 0x%s", buffer);
 		RDEBUG("MIP-SPI = %08x", ntohl(mip_spi));
 	}

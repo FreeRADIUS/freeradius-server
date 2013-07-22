@@ -1665,8 +1665,7 @@ int pairparsevalue(VALUE_PAIR *vp, char const *value)
 				return false;
 			}
 
-			if (fr_hex2bin(cp, us,
-				       vp->length) != vp->length) {
+			if (fr_hex2bin(us, cp, vp->length) != vp->length) {
 				fr_strerror_printf("Invalid hex data");
 				return false;
 			}
@@ -1889,8 +1888,7 @@ int pairparsevalue(VALUE_PAIR *vp, char const *value)
 			fr_strerror_printf("No memory");
 			return false;
 		}
-		if (fr_hex2bin(value + 2, vp->vp_tlv,
-			       length) != length) {
+		if (fr_hex2bin(vp->vp_tlv, value + 2, length) != length) {
 			fr_strerror_printf("Invalid hex data in TLV");
 			return false;
 		}
@@ -2022,7 +2020,7 @@ static VALUE_PAIR *pairmake_any(TALLOC_CTX *ctx,
 	vp->length = size >> 1;
 	data = talloc_array(vp, uint8_t, vp->length);
 
-	if (fr_hex2bin(value + 2, data, size) != vp->length) {
+	if (fr_hex2bin(data, value + 2, size) != vp->length) {
 		fr_strerror_printf("Invalid hex string");
 		talloc_free(vp);
 		return NULL;

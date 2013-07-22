@@ -307,7 +307,7 @@ size_t vp_prints_value(char *out, size_t outlen, VALUE_PAIR const *vp, int8_t qu
 
 			strcpy(buf, "0x");
 
-			fr_bin2hex(vp->vp_octets, buf + 2, vp->length);
+			fr_bin2hex(buf + 2, vp->vp_octets, vp->length);
 			a = buf;
 		  break;
 
@@ -370,7 +370,7 @@ size_t vp_prints_value(char *out, size_t outlen, VALUE_PAIR const *vp, int8_t qu
 
 			strcpy(buf, "0x");
 
-			fr_bin2hex(vp->vp_tlv, buf + 2, vp->length);
+			fr_bin2hex(buf + 2, vp->vp_tlv, vp->length);
 			a = buf;
 		  break;
 
@@ -489,7 +489,7 @@ char *vp_aprint(TALLOC_CTX *ctx, VALUE_PAIR const *vp)
 		p = talloc_array(ctx, char, 3 + vp->length * 2);
 		if (!p) return NULL;
 		memcpy(p, "0x", 2);
-		fr_bin2hex(vp->vp_octets, p + 2, vp->length);
+		fr_bin2hex(p + 2, vp->vp_octets, vp->length);
 		break;
 
 	case PW_TYPE_DATE:

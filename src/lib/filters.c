@@ -390,7 +390,7 @@ static int ascend_parse_ipx_net(int argc, char **argv,
 	/*
 	 *	Node must be 6 octets long.
 	 */
-	token = fr_hex2bin(p, net->node, IPX_NODE_ADDR_LEN);
+	token = fr_hex2bin(net->node, p, IPX_NODE_ADDR_LEN);
 	if (token != IPX_NODE_ADDR_LEN) return -1;
 
 	/*
@@ -889,10 +889,10 @@ static int ascend_parse_generic(int argc, char **argv,
 	filter->offset = rcode;
 	filter->offset = htons(filter->offset);
 
-	rcode = fr_hex2bin(argv[1], filter->mask, sizeof(filter->mask));
+	rcode = fr_hex2bin(filter->mask, argv[1], sizeof(filter->mask));
 	if (rcode != sizeof(filter->mask)) return -1;
 
-	token = fr_hex2bin(argv[2], filter->value, sizeof(filter->value));
+	token = fr_hex2bin(filter->value, argv[2], sizeof(filter->value));
 	if (token != sizeof(filter->value)) return -1;
 
 	/*

@@ -120,8 +120,7 @@ static void normify(REQUEST *request, VALUE_PAIR *vp, size_t min_length)
 	 */
 	if (vp->length >= (2 * min_length)) {
 		size_t decoded;
-		decoded = fr_hex2bin(vp->vp_strvalue, buffer,
-				     vp->length >> 1);
+		decoded = fr_hex2bin(buffer, vp->vp_strvalue, vp->length >> 1);
 		if (decoded == (vp->length >> 1)) {
 			RDEBUG2("Normalizing %s from hex encoding", vp->da->name);
 			pairmemcpy(vp, buffer, decoded);
@@ -527,7 +526,7 @@ static int pap_auth_nt(rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
 		return RLM_MODULE_REJECT;
 	}
 
-	if ((fr_hex2bin(charbuf, binbuf, sizeof(binbuf)) != vp->length) ||
+	if ((fr_hex2bin(binbuf, charbuf, sizeof(binbuf)) != vp->length) ||
 	    (rad_digest_cmp(binbuf, vp->vp_octets, vp->length) != 0)) {
 		REDEBUG("NT password check failed");
 		return RLM_MODULE_REJECT;
@@ -555,7 +554,7 @@ static int pap_auth_lm(rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
 		return RLM_MODULE_REJECT;
 	}
 
-	if ((fr_hex2bin(charbuf, binbuf, sizeof(binbuf)) != vp->length) ||
+	if ((fr_hex2bin(binbuf, charbuf, sizeof(binbuf)) != vp->length) ||
 	    (rad_digest_cmp(binbuf, vp->vp_octets, vp->length) != 0)) {
 		REDEBUG("LM password check failed");
 		return RLM_MODULE_REJECT;
@@ -581,7 +580,7 @@ static int pap_auth_ns_mta_md5(UNUSED rlm_pap_t *inst, REQUEST *request, VALUE_P
 	/*
 	 *	Sanity check the value of NS-MTA-MD5-Password
 	 */
-	if (fr_hex2bin(vp->vp_strvalue, binbuf, 32) != 16) {
+	if (fr_hex2bin(binbuf, vp->vp_strvalue, 32) != 16) {
 		REDEBUG("Configured NS-MTA-MD5-Password has invalid value");
 		return RLM_MODULE_REJECT;
 	}

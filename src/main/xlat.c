@@ -1148,7 +1148,7 @@ static ssize_t xlat_tokenize_literal(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **he
 					return -(p - fmt);
 				}
 
-				if (!fr_hex2bin(p, (uint8_t *) q, 2)) {
+				if (!fr_hex2bin((uint8_t *) q, p, 2)) {
 					talloc_free(node);
 					*error = "Invalid hex characters";
 					return -(p - fmt);

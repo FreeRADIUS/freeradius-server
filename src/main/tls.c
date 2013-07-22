@@ -82,7 +82,7 @@ static unsigned int psk_server_callback(SSL *ssl, char const *identity,
 	psk_len = strlen(conf->psk_password);
 	if (psk_len > (2 * max_psk_len)) return 0;
 
-	return fr_hex2bin(conf->psk_password, psk, psk_len);
+	return fr_hex2bin(psk, conf->psk_password, psk_len);
 }
 
 static unsigned int psk_client_callback(SSL *ssl, UNUSED char const *hint,
@@ -101,7 +101,7 @@ static unsigned int psk_client_callback(SSL *ssl, UNUSED char const *hint,
 
 	strlcpy(identity, conf->psk_identity, max_identity_len);
 
-	return fr_hex2bin(conf->psk_password, psk, psk_len);
+	return fr_hex2bin(psk, conf->psk_password, psk_len);
 }
 
 #endif
@@ -984,7 +984,7 @@ static void cbtls_remove_session(SSL_CTX *ctx, SSL_SESSION *sess)
 	size = sess->session_id_length;
 	if (size > MAX_SESSION_SIZE) size = MAX_SESSION_SIZE;
 
-	fr_bin2hex(sess->session_id, buffer, size);
+	fr_bin2hex(buffer, sess->session_id, size);
 
 	DEBUG2("  SSL: Removing session %s from the cache", buffer);
 	conf = (fr_tls_server_conf_t *)SSL_CTX_get_app_data(ctx);
@@ -1020,7 +1020,7 @@ static int cbtls_new_session(SSL *ssl, SSL_SESSION *sess)
 	size = sess->session_id_length;
 	if (size > MAX_SESSION_SIZE) size = MAX_SESSION_SIZE;
 
-	fr_bin2hex(sess->session_id, buffer, size);
+	fr_bin2hex(buffer, sess->session_id, size);
 
 	DEBUG2("  SSL: adding session %s to cache", buffer);
 
@@ -1098,7 +1098,7 @@ static SSL_SESSION *cbtls_get_session(SSL *ssl,
 	size = len;
 	if (size > MAX_SESSION_SIZE) size = MAX_SESSION_SIZE;
 
-	fr_bin2hex(data, buffer, size);
+	fr_bin2hex(buffer, data, size);
 
 	DEBUG2("  SSL: Client requested cached session %s", buffer);
 
@@ -2036,8 +2036,7 @@ static SSL_CTX *init_tls_ctx(fr_tls_server_conf_t *conf, int client)
 			return NULL;
 		}
 
-		hex_len = fr_hex2bin(conf->psk_password,
-				     (uint8_t *) buffer, psk_len);
+		hex_len = fr_hex2bin((uint8_t *) buffer, conf->psk_password, psk_len);
 		if (psk_len != (2 * hex_len)) {
 			ERROR("psk_hexphrase is not all hex");
 			return NULL;
@@ -2475,7 +2474,7 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 		size = ssn->ssl->session->session_id_length;
 		if (size > MAX_SESSION_SIZE) size = MAX_SESSION_SIZE;
 
-		fr_bin2hex(ssn->ssl->session->session_id, buffer, size);
+		fr_bin2hex(buffer, ssn->ssl->session->session_id, size);
 
 		vp = paircopy2(NULL, request->reply->vps, PW_USER_NAME, 0, TAG_ANY);
 		if (vp) pairadd(&vps, vp);
@@ -2545,7 +2544,7 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 		size = ssn->ssl->session->session_id_length;
 		if (size > MAX_SESSION_SIZE) size = MAX_SESSION_SIZE;
 
-		fr_bin2hex(ssn->ssl->session->session_id, buffer, size);
+		fr_bin2hex(buffer, ssn->ssl->session->session_id, size);
 
 		vps = SSL_SESSION_get_ex_data(ssn->ssl->session,
 					     FR_TLS_EX_INDEX_VPS);

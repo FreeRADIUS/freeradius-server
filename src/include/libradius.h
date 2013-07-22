@@ -562,8 +562,8 @@ uint8_t		*ifid_aton(char const *ifid_str, uint8_t *ifid);
 int		rad_lockfd(int fd, int lock_len);
 int		rad_lockfd_nonblock(int fd, int lock_len);
 int		rad_unlockfd(int fd, int lock_len);
-size_t		fr_bin2hex(uint8_t const *bin, char *hex, size_t len);
-size_t		fr_hex2bin(char const *hex, uint8_t *bin, size_t len);
+size_t		fr_bin2hex(char *hex, uint8_t const *bin, size_t inlen);
+size_t		fr_hex2bin(uint8_t *bin, char const *hex, size_t outlen);
 int fr_ipaddr_cmp(fr_ipaddr_t const *a, fr_ipaddr_t const *b);
 
 int		ip_hton(char const *src, int af, fr_ipaddr_t *dst);

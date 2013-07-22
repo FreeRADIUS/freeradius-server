@@ -291,7 +291,7 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 			 strlen(xlat_str));
 			fr_MD5Final(key_str, &md5_context);
 			key_str[16] = '\0';
-			fr_bin2hex(key_str,hex_str,16);
+			fr_bin2hex(hex_str, key_str, 16);
 			hex_str[32] = '\0';
 			RDEBUG("MD5 on 'key' directive maps to: %s",hex_str);
 			memcpy(key.key,key_str,16);
@@ -443,7 +443,7 @@ static rlm_rcode_t mod_post_auth(UNUSED void *instance, UNUSED REQUEST *request)
 	fr_MD5Update(&md5_context, (uint8_t *)xlat_str, strlen(xlat_str));
 	fr_MD5Final(key_str, &md5_context);
 	key_str[16] = '\0';
-	fr_bin2hex(key_str,hex_str,16);
+	fr_bin2hex(hex_str, key_str, 16);
 	hex_str[32] = '\0';
 	RDEBUG("MD5 on 'key' directive maps to: %s",hex_str);
 	memcpy(key.key,key_str,16);
