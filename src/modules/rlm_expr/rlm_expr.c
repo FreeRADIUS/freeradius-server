@@ -642,10 +642,9 @@ static ssize_t base64_xlat(UNUSED void *instance, UNUSED REQUEST *request,
 static ssize_t base64_to_hex_xlat(UNUSED void *instance, UNUSED REQUEST *request,
 				  char const *fmt, char *out, size_t outlen)
 {
-	uint8_t decbuf[1024], *p;
+	uint8_t decbuf[1024];
 
 	ssize_t declen;
-	size_t freespace = outlen;
 	ssize_t len = strlen(fmt);
 
 	*out = '\0';
@@ -656,20 +655,12 @@ static ssize_t base64_to_hex_xlat(UNUSED void *instance, UNUSED REQUEST *request
 		return -1;
 	}
 
-	p = decbuf;
-	while ((declen-- > 0) && (--freespace > 0)) {
-		if (freespace < 3) {
-			break;
-		}
-
-		snprintf(out, 3, "%02x", *p++);
-
-		/* Already decremented */
-		freespace -= 1;
-		out += 2;
+	if ((size_t)((declen * 2) + 1) > outlen) {
+		REDEBUG("Base64 conversion failed, output buffer exhausted, needed %zd bytes, have %zd bytes",
+			(declen * 2) + 1, outlen);
 	}
 
-	return outlen - freespace;
+	return fr_bin2hex(out, decbuf, declen);
 }
 
 
