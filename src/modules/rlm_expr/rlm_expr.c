@@ -673,19 +673,17 @@ static size_t base64_to_hex_xlat(UNUSED void *instance, REQUEST *request,
 		return 0;
 	}
 
+
 	p = decbuf;
-	while ((declen-- > 0) && (--freespace > 0)) {
-		if (freespace < 3)
-			break;
-
-		snprintf(out, 3, "%02x", *p++);
-
-		/* Already decremented */
-		freespace -= 1;
-		out += 2;
+	if (((declen * 2) + 1) > outlen) {
+		radlog(L_ERR, "rlm_expr: Base64 conversion failed, "
+		       "output buffer exhausted, needed %zd bytes, "
+		       "have %zd bytes", (declen * 2) + 1, outlen);
 	}
 
-	return outlen - freespace;
+	fr_bin2hex(decbuf, out, declen);
+
+	return declen * 2;
 }
 
 
