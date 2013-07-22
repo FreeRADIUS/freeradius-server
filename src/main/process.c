@@ -2050,7 +2050,6 @@ static int setup_post_proxy_fail(REQUEST *request)
 #endif
 	} else {
 		WDEBUG("Unknown packet type in Post-Proxy-Type Fail: ignoring");
-		request_cleanup_delay_init(request, NULL);
 		return 0;
 	}
 
@@ -2059,7 +2058,6 @@ static int setup_post_proxy_fail(REQUEST *request)
 	if (!dval) {
 		DEBUG("No Post-Proxy-Type Fail: ignoring");
 		pairdelete(&request->config_items, PW_POST_PROXY_TYPE, 0, TAG_ANY);
-		request_cleanup_delay_init(request, NULL);
 		return 0;
 	}
 
@@ -2453,11 +2451,12 @@ static int request_proxy_anew(REQUEST *request)
 	post_proxy_fail:
 		remove_from_proxy_hash(request);
 
-		if (!setup_post_proxy_fail(request)) {
-			return 0;
+		if (setup_post_proxy_fail(request)) {
+			request_queue_or_run(request, proxy_running);
+		} else {
+			gettimeofday(&request->reply->timestamp, NULL);
+			request_cleanup_delay_init(request, NULL);
 		}
-
-		request_queue_or_run(request, proxy_running);
 		return 0;
 	}
 	home_server_update_request(home, request);
@@ -3005,6 +3004,8 @@ STATE_MACHINE_DECL(proxy_wait_for_reply)
 			       request->proxy->dst_port);
 
 		if (!setup_post_proxy_fail(request)) {
+			gettimeofday(&request->reply->timestamp, NULL);
+			request_cleanup_delay_init(request, NULL);
 			return;
 		}
 		/* FALL-THROUGH */
