@@ -81,34 +81,35 @@ static int fr_event_list_time_cmp(void const *one, void const *two)
 }
 
 
-void fr_event_list_free(fr_event_list_t *el)
+static int _event_list_free(void *el)
 {
+	fr_event_list_t *this = el;
 	fr_event_t *ev;
 
-	if (!el) return;
-
-	while ((ev = fr_heap_peek(el->times)) != NULL) {
-		fr_event_delete(el, &ev);
+	while ((ev = fr_heap_peek(this->times)) != NULL) {
+		fr_event_delete(this, &ev);
 	}
 
-	fr_heap_delete(el->times);
-	free(el);
+	fr_heap_delete(this->times);
+
+	return 0;
 }
 
 
-fr_event_list_t *fr_event_list_create(fr_event_status_t status)
+fr_event_list_t *fr_event_list_create(TALLOC_CTX *ctx, fr_event_status_t status)
 {
 	int i;
 	fr_event_list_t *el;
 
-	el = malloc(sizeof(*el));
-	if (!el) return NULL;
-	memset(el, 0, sizeof(*el));
+	el = talloc_zero(ctx, fr_event_list_t);
+	if (!fr_assert(el)) {
+		return NULL;
+	}
+	talloc_set_destructor(el, _event_list_free);
 
-	el->times = fr_heap_create(fr_event_list_time_cmp,
-				   offsetof(fr_event_t, heap));
+	el->times = fr_heap_create(fr_event_list_time_cmp, offsetof(fr_event_t, heap));
 	if (!el->times) {
-		fr_event_list_free(el);
+		talloc_free(el);
 		return NULL;
 	}
 
@@ -471,7 +472,7 @@ int main(int argc, char **argv)
 	struct timeval now, when;
 	fr_event_list_t *el;
 
-	el = fr_event_list_create();
+	el = fr_event_list_create(NULL, NULL);
 	if (!el) exit(1);
 
 	memset(&rand_pool, 0, sizeof(rand_pool));
@@ -506,7 +507,7 @@ int main(int argc, char **argv)
 		}
 	}
 
-	fr_event_list_free(el);
+	talloc_free(el);
 
 	return 0;
 }
