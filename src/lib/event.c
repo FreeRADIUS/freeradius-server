@@ -81,16 +81,15 @@ static int fr_event_list_time_cmp(void const *one, void const *two)
 }
 
 
-static int _event_list_free(void *el)
+static int _event_list_free(fr_event_list_t *el)
 {
-	fr_event_list_t *this = el;
 	fr_event_t *ev;
 
-	while ((ev = fr_heap_peek(this->times)) != NULL) {
-		fr_event_delete(this, &ev);
+	while ((ev = fr_heap_peek(el->times)) != NULL) {
+		fr_event_delete(el, &ev);
 	}
 
-	fr_heap_delete(this->times);
+	fr_heap_delete(el->times);
 
 	return 0;
 }
