@@ -4,7 +4,7 @@
 #	Sample configuration file for dynamically updating the list
 #	of RADIUS clients at run time.
 #
-#	Everything is keyed off of a client "network".  (e.g. 192.168/16)
+#	Everything is keyed off of a client "network".  (e.g. 192.0.2/24)
 #	This configuration lets the server know that clients within
 #	that network are defined dynamically.
 #
@@ -34,12 +34,12 @@
 #
 #  Define a network where clients may be dynamically defined.
 client dynamic {
-	ipaddr = 192.168.0.0
+	ipaddr = 192.0.2.0
 
 	#
 	#  You MUST specify a netmask!
 	#  IPv4 /32 or IPv6 /128 are NOT allowed!
-	netmask = 16
+	netmask = 24
 
 	#
 	#  Any other configuration normally found in a "client"

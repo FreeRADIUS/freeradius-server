@@ -29,8 +29,8 @@ ippool main_pool {
 
 	#  range-start,range-stop:
 	#	The start and end ip addresses for this pool.
-	range_start = 192.168.1.1
-	range_stop = 192.168.3.254
+	range_start = 192.0.2.1
+	range_stop = 192.0.2.254
 
 	#  netmask:
 	#	The network mask used for this pool.

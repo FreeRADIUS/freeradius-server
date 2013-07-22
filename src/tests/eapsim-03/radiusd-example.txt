@@ -1204,8 +1204,8 @@ modules {
 
 		#  range-start,range-stop: The start and end ip
 		#  addresses for the ip pool
-		range-start = 192.168.1.1
-		range-stop = 192.168.3.254
+		range-start = 192.0.2.1
+		range-stop = 192.0.2.254
 
 		#  netmask: The network mask used for the ip's
 		netmask = 255.255.255.0
