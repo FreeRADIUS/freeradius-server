@@ -34,7 +34,7 @@
 #
 #  Define a network where clients may be dynamically defined.
 client dynamic {
-	ipaddr = 192.168.0.0
+	ipaddr = 192.0.2.0
 
 	#
 	#  You MUST specify a netmask!
