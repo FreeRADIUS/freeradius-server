@@ -648,19 +648,15 @@ static size_t base64_to_hex_xlat(UNUSED void *instance, REQUEST *request,
 				 char *fmt, char *out, size_t outlen,
 				 UNUSED RADIUS_ESCAPE_STRING func)
 {
-	char *p;
-
 	char buffer[1024];
 	char decbuf[1024];
 
 	size_t declen = sizeof(decbuf);
-	size_t freespace = outlen;
 	size_t len;
 
 	while (isspace((int) *fmt)) fmt++;
 
 	len = radius_xlat(buffer, sizeof(buffer), fmt, request, func);
-
 	if (!len) {
 		radlog(L_ERR, "rlm_expr: xlat failed.");
 		*out = '\0';
@@ -673,9 +669,7 @@ static size_t base64_to_hex_xlat(UNUSED void *instance, REQUEST *request,
 		return 0;
 	}
 
-
-	p = decbuf;
-	if (((declen * 2) + 1) > outlen) {
+	if ((size_t)((declen * 2) + 1) > outlen) {
 		radlog(L_ERR, "rlm_expr: Base64 conversion failed, "
 		       "output buffer exhausted, needed %zd bytes, "
 		       "have %zd bytes", (declen * 2) + 1, outlen);
