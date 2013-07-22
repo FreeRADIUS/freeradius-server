@@ -467,17 +467,17 @@ static char const *hextab = "0123456789abcdef";
 
 /** Convert hex strings to binary data
  *
- * @param hex input string.
  * @param bin Buffer to write output to.
- * @param len length of input string.
+ * @param hex input string.
+ * @param outlen length of output buffer (or length of input string / 2).
  * @return length of data written to buffer.
  */
-size_t fr_hex2bin(char const *hex, uint8_t *bin, size_t len)
+size_t fr_hex2bin(uint8_t *bin, char const *hex, size_t outlen)
 {
 	size_t i;
 	char *c1, *c2;
 
-	for (i = 0; i < len; i++) {
+	for (i = 0; i < outlen; i++) {
 		if(!(c1 = memchr(hextab, tolower((int) hex[i << 1]), 16)) ||
 		   !(c2 = memchr(hextab, tolower((int) hex[(i << 1) + 1]), 16)))
 			break;
@@ -494,16 +494,16 @@ size_t fr_hex2bin(char const *hex, uint8_t *bin, size_t len)
  *
  * @warning If the output buffer isn't long enough, we have a buffer overflow.
  *
- * @param[in] bin input.
  * @param[out] hex Buffer to write hex output.
- * @param[in] len of bin input.
+ * @param[in] bin input.
+ * @param[in] inlen of bin input.
  * @return length of data written to buffer.
  */
-size_t fr_bin2hex(uint8_t const *bin, char *hex, size_t len)
+size_t fr_bin2hex(char *hex, uint8_t const *bin, size_t inlen)
 {
 	size_t i;
 
-	for (i = 0; i < len; i++) {
+	for (i = 0; i < inlen; i++) {
 		hex[0] = hextab[((*bin) >> 4) & 0x0f];
 		hex[1] = hextab[*bin & 0x0f];
 		hex += 2;
@@ -511,7 +511,7 @@ size_t fr_bin2hex(uint8_t const *bin, char *hex, size_t len)
 	}
 
 	*hex = '\0';
-	return len * 2;
+	return inlen * 2;
 }
 
 

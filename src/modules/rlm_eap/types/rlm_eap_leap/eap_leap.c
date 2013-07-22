@@ -190,9 +190,7 @@ static int eapleap_ntpwdhash(unsigned char *ntpwdhash, VALUE_PAIR *password)
 
 		if (password->length == 32) {
 			p = talloc_array(password, uint8_t, 16);
-			password->length = fr_hex2bin(password->vp_strvalue,
-						      p,
-						      16);
+			password->length = fr_hex2bin(p, password->vp_strvalue, 16);
 		}
 		if (password->length != 16) {
 			ERROR("rlm_eap_leap: Bad NT-Password");

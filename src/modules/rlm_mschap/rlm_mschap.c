@@ -462,7 +462,7 @@ static ssize_t mschap_xlat(void *instance, REQUEST *request,
 
 		mschap_ntpwdhash(buffer,buf2);
 
-		fr_bin2hex(buffer, out, 16);
+		fr_bin2hex(out, buffer, 16);
 		out[32] = '\0';
 		RDEBUG("NT-Hash of %s = %s", buf2, out);
 		return 32;
@@ -486,7 +486,7 @@ static ssize_t mschap_xlat(void *instance, REQUEST *request,
 		}
 
 		smbdes_lmpwdhash(buf2, buffer);
-		fr_bin2hex(buffer, out, 16);
+		fr_bin2hex(out, buffer, 16);
 		out[32] = '\0';
 		RDEBUG("LM-Hash of %s = %s", buf2, out);
 		return 32;
@@ -738,7 +738,7 @@ static int do_mschap_cpw(rlm_mschap_t *inst,
 
 		/* now the password blobs */
 		len = sprintf(buf, "new-nt-password-blob: ");
-		fr_bin2hex(new_nt_password, buf+len, 516);
+		fr_bin2hex(buf+len, new_nt_password, 516);
 		buf[len+1032] = '\n';
 		buf[len+1033] = '\0';
 		len = strlen(buf);
@@ -748,7 +748,7 @@ static int do_mschap_cpw(rlm_mschap_t *inst,
 		}
 
 		len = sprintf(buf, "old-nt-hash-blob: ");
-		fr_bin2hex(old_nt_hash, buf+len, 16);
+		fr_bin2hex(buf+len, old_nt_hash, 16);
 		buf[len+32] = '\n';
 		buf[len+33] = '\0';
 		len = strlen(buf);
@@ -1101,7 +1101,7 @@ static int do_mschap(rlm_mschap_t *inst,
 		/*
 		 *	Update the NT hash hash, from the NT key.
 		 */
-		if (fr_hex2bin(buffer + 8, nthashhash, 16) != 16) {
+		if (fr_hex2bin(nthashhash, buffer + 8, 16) != 16) {
 			RDEBUG2("Invalid output from ntlm_auth: NT_KEY has non-hex values");
 			return -1;
 		}
@@ -1365,8 +1365,7 @@ static rlm_rcode_t mod_authenticate(void * instance, REQUEST *request)
 		 */
 		if ((lm_password->length == 16) ||
 		    ((lm_password->length == 32) &&
-		     (fr_hex2bin(lm_password->vp_strvalue,
-				 p, 16) == 16))) {
+		     (fr_hex2bin(p, lm_password->vp_strvalue, 16) == 16))) {
 			RDEBUG2("Found LM-Password");
 			lm_password->length = 16;
 			lm_password->vp_octets = p;
@@ -1400,8 +1399,7 @@ static rlm_rcode_t mod_authenticate(void * instance, REQUEST *request)
 
 		if ((nt_password->length == 16) ||
 		    ((nt_password->length == 32) &&
-		     (fr_hex2bin(nt_password->vp_strvalue,
-				 p, 16) == 16))) {
+		     (fr_hex2bin(p, nt_password->vp_strvalue, 16) == 16))) {
 			RDEBUG2("Found NT-Password");
 			nt_password->length = 16;
 			nt_password->vp_octets = p;
