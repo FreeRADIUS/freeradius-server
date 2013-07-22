@@ -145,7 +145,7 @@ and configure the loopback interface on your router as follows:
 ::
 
   interface Loopback0
-   ip address 192.168.0.250 255.255.255.255
+   ip address 192.0.2.250 255.255.255.255
 
 Use a real world IP address and check the Cisco documentation for why
 it is a good idea to have working loopback interface configured on
