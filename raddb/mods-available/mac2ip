@@ -9,9 +9,9 @@
 #
 #  The file is in the format <mac>,<ip>
 #
-#	00:01:02:03:04:05,192.168.1.100
-#	01:01:02:03:04:05,192.168.1.101
-#	02:01:02:03:04:05,192.168.1.102
+#	00:01:02:03:04:05,192.0.2.100
+#	01:01:02:03:04:05,192.0.2.101
+#	02:01:02:03:04:05,192.0.2.102
 #
 #  This lets you perform simple static IP assignments from a flat-text
 #  file.  You will have to define lease times yourself.

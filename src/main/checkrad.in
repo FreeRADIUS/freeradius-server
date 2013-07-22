@@ -1150,13 +1150,13 @@ sub versanet_snmp {
 # Check Bay8000 NAS (aka: Annex) using finger.
 # Returns from "finger @bay" like:
 #   Port  What User         Location         When          Idle  Address
-#   asy2  PPP  bill         ---              9:33am         :08  192.168.1.194
-#   asy4  PPP  hillary      ---              9:36am         :04  192.168.1.195
+#   asy2  PPP  bill         ---              9:33am         :08  192.0.2.194
+#   asy4  PPP  hillary      ---              9:36am         :04  192.0.2.195
 #   [...]
 # But also returns partial-match users if you say like "finger g@bay":
 #   Port  What User         Location         When          Idle  Address
-#   asy2  PPP  gore         ---              9:33am         :09  192.168.1.194
-#   asy22 PPP  gwbush       ---              Mon  9:19am    :07  192.168.1.80
+#   asy2  PPP  gore         ---              9:33am         :09  192.0.2.194
+#   asy22 PPP  gwbush       ---              Mon  9:19am    :07  192.0.2.80
 # So check exact match of username!
 
 sub bay_finger {		# ARGV: 1=nas_ip, 2=nas_port, 3=login, 4=sessid

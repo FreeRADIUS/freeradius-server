@@ -103,7 +103,7 @@ home_server home1 {
 	#  This directive replaces the "-r" command-line option
 	#  in radrelay
 	#
-	ipaddr = 192.168.10.20
+	ipaddr = 192.0.2.20
 
 	port = 1812
 
@@ -111,7 +111,7 @@ home_server home1 {
 	#  This directive replaces the "-i" command-line option
 	#  in radrelay
 	#
-#	src_ipaddr = 192.168.1.1
+#	src_ipaddr = 192.0.2.1
 
 	#
 	#  This directive replaces the "-s", "-S", and "-n" command-line
