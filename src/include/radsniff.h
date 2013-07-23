@@ -27,76 +27,8 @@ RCSIDH(radsniff_h, "$Id$")
 #include <netinet/in.h>
 
 /*
- *	The number of bytes in an ethernet (MAC) address.
+ *	Logging macros
  */
-#define ETHER_ADDR_LEN		6
-
-/*
- *	Structure of a DEC/Intel/Xerox or 802.3 Ethernet header.
- */
-struct  ethernet_header {
-	uint8_t	ethernet_dhost[ETHER_ADDR_LEN];
-	uint8_t	ethernet_shost[ETHER_ADDR_LEN];
-	uint16_t	ethernet_type;
-};
-
-/*
- *	Length of a DEC/Intel/Xerox or 802.3 Ethernet header.
- *	Note that some compilers may pad "struct ether_header" to
- *	a multiple of 4 *bytes, for example, so "sizeof (struct
- *	ether_header)" may not give the right answer.
- */
-#define ETHER_HDRLEN		14
-
-/*
- *	Structure of an internet header, naked of options.
- */
-struct ip_header {
-	uint8_t	ip_vhl;	 /* header length, version */
-#define IP_V(ip)	(((ip)->ip_vhl & 0xf0) >> 4)
-#define IP_HL(ip)       ((ip)->ip_vhl & 0x0f)
-	uint8_t	ip_tos;	 /* type of service */
-	uint16_t       ip_len;	 /* total length */
-	uint16_t       ip_id;	  /* identification */
-	uint16_t       ip_off;	 /* fragment offset field */
-#define I_DF 0x4000		    /* dont fragment flag */
-#define IP_MF 0x2000		    /* more fragments flag */
-#define IP_OFFMASK 0x1fff	       /* mask for fragmenting bits */
-	uint8_t	ip_ttl;	 /* time to live */
-	uint8_t	ip_p;	   /* protocol */
-	uint16_t       ip_sum;	 /* checksum */
-	struct in_addr  ip_src,ip_dst;  /* source and dest address */
-};
-
-/*
- *	UDP protocol header.
- *	Per RFC 768, September, 1981.
- */
-struct udp_header {
-	uint16_t       udp_sport;	       /* source port */
-	uint16_t       udp_dport;	       /* destination port */
-	uint16_t       udp_ulen;		/* udp length */
-	uint16_t       udp_sum;		 /* udp checksum */
-};
-
-/*
- *	RADIUS packet length.
- *	RFC 2865, Section 3., subsection 'length' says:
- *	" ... and maximum length is 4096."
- */
-#define MAX_RADIUS_LEN 4096
-#define MIN_RADIUS_LEN 20
-#define SNAPLEN (sizeof(struct ethernet_header) + sizeof(struct ip_header) + sizeof(struct udp_header) + MAX_RADIUS_LEN)
-
-typedef struct radius_packet_t {
-	uint8_t       code;
-	uint8_t       id;
-	uint8_t       length[2];
-	uint8_t       vector[AUTH_VECTOR_LEN];
-	uint8_t       data[1];
-} radius_packet_t;
-
-#define AUTH_HDR_LEN 20
 #undef DEBUG1
 #define DEBUG1(fmt, ...)	if (fr_debug_flag > 2) fprintf(log_dst , fmt "\n", ## __VA_ARGS__)
 #undef DEBUG
@@ -106,3 +38,24 @@ typedef struct radius_packet_t {
 
 #define ERROR(fmt, ...)		fr_perror("radsniff: " fmt "\n", ## __VA_ARGS__)
 
+typedef struct radsniff {
+	bool		from_file;		//!< Were reading pcap data from files.
+	bool		from_dev;		//!< Were reading pcap data from devices.
+	bool		from_stdin;		//!< Were reading pcap data from stdin.
+	bool		to_file;		//!< Were writing pcap data to files.
+	bool		to_stdout;		//!< Were writing pcap data to stdout.
+
+	bool		from_auto;		//!< From list was auto-generated.
+
+	bool		do_sort;		//!< Whether we sort attributes in the packet
+	char const	*radius_secret;
+
+	char		*pcap_filter;		//!< PCAP filter string applied to live capture devices.
+	char		*radius_filter;		//!< RADIUS filter string.
+} radsniff_t;
+
+typedef struct radsniff_event {
+	radsniff_t	*conf;			//!< radsniff configuration.
+	fr_pcap_t	*in;			//!< PCAP handle event occurred on.
+	fr_pcap_t	*out;			//!< Where to write output.
+} radsniff_event_t;
