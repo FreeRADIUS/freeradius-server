@@ -721,7 +721,6 @@ retry:
 	if (!result) {
 		if (our_result) {
 			ldap_msgfree(our_result);
-			*result = NULL;
 		}
 	} else {
 		*result = our_result;
