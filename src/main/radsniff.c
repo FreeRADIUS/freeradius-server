@@ -88,7 +88,7 @@ static int filter_packet(RADIUS_PACKET *packet)
 
 			if (!rbtree_insert(filter_tree, packet)) {
 			oom:
-				fprintf(stderr, "radsniff: Out of memory\n");
+				ERROR("Out of memory");
 				exit(1);
 			}
 		}
@@ -195,7 +195,7 @@ static void got_packet(UNUSED uint8_t *args, struct pcap_pkthdr const*header, ui
 
 	packet = rad_alloc(NULL, 0);
 	if (!packet) {
-		fprintf(stderr, "Out of memory\n");
+		ERROR("Out of memory");
 		return;
 	}
 
@@ -210,11 +210,11 @@ static void got_packet(UNUSED uint8_t *args, struct pcap_pkthdr const*header, ui
 	packet->data_len = header->len - (payload - data);
 
 	if (!rad_packet_ok(packet, 0)) {
-		DEBUG("Packet: %s\n", fr_strerror());
+		DEBUG("Packet: %s", fr_strerror());
 
-		DEBUG("  From     %s:%d\n", inet_ntoa(ip->ip_src), ntohs(udp->udp_sport));
-		DEBUG("  To:      %s:%d\n", inet_ntoa(ip->ip_dst), ntohs(udp->udp_dport));
-		DEBUG("  Type:    %s\n", fr_packet_codes[packet->code]);
+		DEBUG("  From     %s:%d", inet_ntoa(ip->ip_src), ntohs(udp->udp_sport));
+		DEBUG("  To:      %s:%d", inet_ntoa(ip->ip_dst), ntohs(udp->udp_dport));
+		DEBUG("  Type:    %s", fr_packet_codes[packet->code]);
 
 		rad_free(&packet);
 		return;
@@ -259,7 +259,7 @@ static void got_packet(UNUSED uint8_t *args, struct pcap_pkthdr const*header, ui
 
 	if (filter_vps && filter_packet(packet)) {
 		rad_free(&packet);
-		DEBUG("Packet number %d doesn't match\n", count++);
+		DEBUG("Packet number %d doesn't match", count++);
 		return;
 	}
 
@@ -288,7 +288,6 @@ static void got_packet(UNUSED uint8_t *args, struct pcap_pkthdr const*header, ui
 	       (unsigned int) elapsed.tv_usec / 1000);
 
 	if (fr_debug_flag > 1) {
-		DEBUG("\n");
 		if (packet->vps) {
 			if (do_sort) {
 				pairsort(&packet->vps, true);
@@ -297,8 +296,6 @@ static void got_packet(UNUSED uint8_t *args, struct pcap_pkthdr const*header, ui
 			pairfree(&packet->vps);
 		}
 	}
-
-	INFO("\n");
 
 	if (!to_stdout && (fr_debug_flag > 4)) {
 		rad_print_hex(packet);
@@ -331,23 +328,23 @@ static void _rb_rad_free(void *packet)
 static void NEVER_RETURNS usage(int status)
 {
 	FILE *output = status ? stderr : stdout;
-	fprintf(output, "Usage: radsniff [options]\n");
-	fprintf(output, "options:\n");
-	fprintf(output, "  -c <count>      Number of packets to capture.\n");
-	fprintf(output, "  -d <directory>  Set dictionary directory.\n");
-	fprintf(output, "  -F              Filter PCAP file from stdin to stdout.\n");
-	fprintf(output, "  -f <filter>     PCAP filter (default is 'udp port <port> or <port + 1> or 3799')\n");
-	fprintf(output, "  -h              This help message.\n");
-	fprintf(output, "  -i <interface>  Capture packets from interface (defaults to any if supported).\n");
-	fprintf(output, "  -I <file>       Read packets from file (overrides input of -F).\n");
-	fprintf(output, "  -p <port>       Filter packets by port (default is 1812).\n");
-	fprintf(output, "  -q              Print less debugging information.\n");
-	fprintf(output, "  -r <filter>     RADIUS attribute filter.\n");
-	fprintf(output, "  -s <secret>     RADIUS secret.\n");
-	fprintf(output, "  -S              Sort attributes in the packet (useful for diffing responses).\n");
-	fprintf(output, "  -v              Show program version information.\n");
-	fprintf(output, "  -w <file>       Write output packets to file (overrides output of -F).\n");
-	fprintf(output, "  -x              Print more debugging information (defaults to -xx).\n");
+	fprintf(output, "Usage: radsniff [options]");
+	fprintf(output, "options:");
+	fprintf(output, "  -c <count>      Number of packets to capture.");
+	fprintf(output, "  -d <directory>  Set dictionary directory.");
+	fprintf(output, "  -F              Filter PCAP file from stdin to stdout.");
+	fprintf(output, "  -f <filter>     PCAP filter (default is 'udp port <port> or <port + 1> or 3799')");
+	fprintf(output, "  -h              This help message.");
+	fprintf(output, "  -i <interface>  Capture packets from interface (defaults to any if supported).");
+	fprintf(output, "  -I <file>       Read packets from file (overrides input of -F).");
+	fprintf(output, "  -p <port>       Filter packets by port (default is 1812).");
+	fprintf(output, "  -q              Print less debugging information.");
+	fprintf(output, "  -r <filter>     RADIUS attribute filter.");
+	fprintf(output, "  -s <secret>     RADIUS secret.");
+	fprintf(output, "  -S              Sort attributes in the packet (useful for diffing responses).");
+	fprintf(output, "  -v              Show program version information.");
+	fprintf(output, "  -w <file>       Write output packets to file (overrides output of -F).");
+	fprintf(output, "  -x              Print more debugging information (defaults to -xx).");
 	exit(status);
 }
 
@@ -530,8 +527,8 @@ int main(int argc, char *argv[])
 	 */
 	nullpacket = rad_alloc(NULL, 0);
 	if (!nullpacket) {
-		ERROR("Out of memory\n");
 		exit(1);
+		ERROR("Out of memory");
 	}
 
 	/*
@@ -629,7 +626,7 @@ int main(int argc, char *argv[])
 		rbtree_free(filter_tree);
 	}
 
-	INFO("Done sniffing\n");
+	INFO("Done sniffing");
 
 	return 0;
 }
