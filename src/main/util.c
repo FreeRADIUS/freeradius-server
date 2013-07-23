@@ -402,7 +402,7 @@ char *rad_ajoin(TALLOC_CTX *ctx, char const **array, char c)
 	}
 
 	left = len + 1;
-	buff = p = buff = talloc_zero_array(ctx, char, left);
+	buff = p = talloc_zero_array(ctx, char, left);
 	for (array_p = array; *array_p; array_p++) {
 		wrote = snprintf(p, left, "%s%c", *array_p, c);
 		left -= wrote;
