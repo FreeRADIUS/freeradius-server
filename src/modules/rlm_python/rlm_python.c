@@ -545,8 +545,8 @@ static rlm_rcode_t do_python(rlm_python_t *inst, REQUEST *request, PyObject *pFu
 	}
 
 finish:
-	Py_DECREF(pArgs);
-	Py_DECREF(pRet);
+	if (pArgs) Py_DECREF(pArgs);
+	if (pRet) Py_DECREF(pRet);
 
 #ifdef HAVE_PTHREAD_H
 	if (worker) {
