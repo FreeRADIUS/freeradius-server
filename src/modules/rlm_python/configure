@@ -2753,7 +2753,7 @@ ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $
 ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
-	for ac_prog in  python3.3 python3.2 python3.1 python3.0 python2.7 python2.6 python2.5 python2.4 python
+	for ac_prog in  python2.7 python2.6 python2.5 python2.4 python
 do
   # Extract the first word of "$ac_prog", so it can be a program name with args.
 set dummy $ac_prog; ac_word=$2
@@ -2840,9 +2840,9 @@ fi
 
 	if test x$fail = x; then
 
-		PY_PREFIX=`${PYTHONBIN} -c 'import sys ; print sys.prefix'`
-		PY_EXEC_PREFIX=`${PYTHONBIN} -c 'import sys ; print sys.exec_prefix'`
-				PY_VERSION=`${PYTHONBIN} -c 'import sys ; print sys.version[0:3]'`
+		PY_PREFIX=`${PYTHONBIN} -c 'import sys ; print(sys.prefix)'`
+		PY_EXEC_PREFIX=`${PYTHONBIN} -c 'import sys ; print(sys.exec_prefix)'`
+				PY_VERSION=`${PYTHONBIN} -c 'import sys ; print(sys.version[0:3])'`
 				PY_LIBS="-lpython$PY_VERSION"
 		PY_LIB_DIR="$PY_EXEC_PREFIX/lib/python$PY_VERSION/config"
 		PY_LIB_LOC="-L$PY_EXEC_PREFIX/lib/python$PY_VERSION/config"
@@ -3006,7 +3006,7 @@ fi
 		CFLAGS=$old_CFLAGS
 
 		if test "x$ac_cv_header_Python_h" = "xyes"; then
-			mod_cflags=$smart_include
+			mod_cflags=${SMART_CFLAGS}
 		else
 			fail="$fail Python.h"
 			targetname=
@@ -3185,14 +3185,185 @@ fi
 
 		eval t=\${ac_cv_lib_${sm_lib_safe}_${sm_func_safe}}
 		if test "x$t" = "xyes"; then
-			mod_ldflags="$PY_LIB_LOC $PY_EXTRA_LIBS -lpython${PY_VERSION} -lm"
+			mod_ldflags="$PY_LIB_LOC $PY_EXTRA_LIBS $SMART_LIBS -lm"
 			targetname=rlm_python
 		else
-			targetname=
-			fail="$fail libpython$PY_VERSION"
+
+
+sm_lib_safe=`echo "python${PY_VERSION}m" | sed 'y%./+-%__p_%'`
+sm_func_safe=`echo "Py_Initialize" | sed 'y%./+-%__p_%'`
+
+old_LIBS="$LIBS"
+smart_lib=
+smart_lib_dir=
+
+if test "x$smart_try_dir" != "x"; then
+  for try in $smart_try_dir; do
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for Py_Initialize in -lpython${PY_VERSION}m in $try" >&5
+$as_echo_n "checking for Py_Initialize in -lpython${PY_VERSION}m in $try... " >&6; }
+    LIBS="-L$try -lpython${PY_VERSION}m $old_LIBS -Wl,-rpath,$try"
+    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+extern char Py_Initialize();
+int
+main ()
+{
+Py_Initialize()
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+
+		 smart_lib="-L$try -lpython${PY_VERSION}m -Wl,-rpath,$try"
+		 { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+		 break
+
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+  done
+  LIBS="$old_LIBS"
+fi
+
+if test "x$smart_lib" = "x"; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for Py_Initialize in -lpython${PY_VERSION}m" >&5
+$as_echo_n "checking for Py_Initialize in -lpython${PY_VERSION}m... " >&6; }
+  LIBS="-lpython${PY_VERSION}m $old_LIBS"
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+extern char Py_Initialize();
+int
+main ()
+{
+Py_Initialize()
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+
+	        smart_lib="-lpython${PY_VERSION}m"
+	        { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+  LIBS="$old_LIBS"
+fi
+
+if test "x$smart_lib" = "x"; then
+
+
+if test "x$LOCATE" != "x"; then
+        DIRS=
+  file=libpython${PY_VERSION}m${libltdl_cv_shlibext}
+
+  for x in `${LOCATE} $file 2>/dev/null`; do
+                                        base=`echo $x | sed "s%/${file}%%"`
+    if test "x$x" = "x$base"; then
+      continue;
+    fi
+
+    dir=`${DIRNAME} $x 2>/dev/null`
+                exclude=`echo ${dir} | ${GREP} /home`
+    if test "x$exclude" != "x"; then
+      continue
+    fi
+
+                    already=`echo \$smart_lib_dir ${DIRS} | ${GREP} ${dir}`
+    if test "x$already" = "x"; then
+      DIRS="$DIRS $dir"
+    fi
+  done
+fi
+
+eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
+
+
+
+if test "x$LOCATE" != "x"; then
+        DIRS=
+  file=libpython${PY_VERSION}m.a
+
+  for x in `${LOCATE} $file 2>/dev/null`; do
+                                        base=`echo $x | sed "s%/${file}%%"`
+    if test "x$x" = "x$base"; then
+      continue;
+    fi
+
+    dir=`${DIRNAME} $x 2>/dev/null`
+                exclude=`echo ${dir} | ${GREP} /home`
+    if test "x$exclude" != "x"; then
+      continue
+    fi
+
+                    already=`echo \$smart_lib_dir ${DIRS} | ${GREP} ${dir}`
+    if test "x$already" = "x"; then
+      DIRS="$DIRS $dir"
+    fi
+  done
+fi
+
+eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
+
+
+  for try in $smart_lib_dir /usr/local/lib /opt/lib; do
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for Py_Initialize in -lpython${PY_VERSION}m in $try" >&5
+$as_echo_n "checking for Py_Initialize in -lpython${PY_VERSION}m in $try... " >&6; }
+    LIBS="-L$try -lpython${PY_VERSION}m $old_LIBS -Wl,-rpath,$try"
+    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+extern char Py_Initialize();
+int
+main ()
+{
+Py_Initialize()
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+
+		  smart_lib="-L$try -lpython${PY_VERSION}m -Wl,-rpath,$try"
+		  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+		  break
+
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+  done
+  LIBS="$old_LIBS"
+fi
+
+if test "x$smart_lib" != "x"; then
+  eval "ac_cv_lib_${sm_lib_safe}_${sm_func_safe}=yes"
+  LIBS="$smart_lib $old_LIBS"
+  SMART_LIBS="$smart_lib $SMART_LIBS"
+fi
+
+			eval t=\${ac_cv_lib_${sm_lib_safe}_${sm_func_safe}}
+			if test "x$t" = "xyes"; then
+				mod_ldflags="$PY_LIB_LOC $PY_EXTRA_LIBS $SMART_LIBS -lm"
+				targetname=rlm_python
+			else
+				targetname=
+				fail="$fail libpython$PY_VERSION"
+			fi
 		fi
 	fi
-
 else
 	targetname=
 	echo \*\*\* module rlm_python is disabled.

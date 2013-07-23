@@ -8,7 +8,7 @@ if test x$with_[]modname != xno; then
 	AC_PROG_CC
 	AC_PROG_CPP
 
-	AC_CHECK_PROGS(PYTHONBIN, [ python3.3 python3.2 python3.1 python3.0 python2.7 python2.6 python2.5 python2.4 python ], not-found, [${PATH}:/usr/bin:/usr/local/bin])
+	AC_CHECK_PROGS(PYTHONBIN, [ python2.7 python2.6 python2.5 python2.4 python ], not-found, [${PATH}:/usr/bin:/usr/local/bin])
 
 	if test x$PYTHONBIN = xnot-found; then
 		fail="python-binary"
@@ -48,10 +48,10 @@ if test x$with_[]modname != xno; then
 
 	if test x$fail = x; then
 
-		PY_PREFIX=`${PYTHONBIN} -c 'import sys ; print sys.prefix'`
-		PY_EXEC_PREFIX=`${PYTHONBIN} -c 'import sys ; print sys.exec_prefix'`
+		PY_PREFIX=`${PYTHONBIN} -c 'import sys ; print(sys.prefix)'`
+		PY_EXEC_PREFIX=`${PYTHONBIN} -c 'import sys ; print(sys.exec_prefix)'`
 		changequote(<<, >>)dnl
-		PY_VERSION=`${PYTHONBIN} -c 'import sys ; print sys.version[0:3]'`
+		PY_VERSION=`${PYTHONBIN} -c 'import sys ; print(sys.version[0:3])'`
 		changequote([, ])dnl
 		PY_LIBS="-lpython$PY_VERSION"
 		PY_LIB_DIR="$PY_EXEC_PREFIX/lib/python$PY_VERSION/config"
@@ -72,7 +72,7 @@ if test x$with_[]modname != xno; then
 		CFLAGS=$old_CFLAGS
 
 		if test "x$ac_cv_header_Python_h" = "xyes"; then
-			mod_cflags=$smart_include
+			mod_cflags=${SMART_CFLAGS}
 		else
 			fail="$fail Python.h"
 			targetname=
@@ -86,14 +86,20 @@ if test x$with_[]modname != xno; then
 
 		eval t=\${ac_cv_lib_${sm_lib_safe}_${sm_func_safe}}
 		if test "x$t" = "xyes"; then
-			mod_ldflags="$PY_LIB_LOC $PY_EXTRA_LIBS -lpython${PY_VERSION} -lm"
+			mod_ldflags="$PY_LIB_LOC $PY_EXTRA_LIBS $SMART_LIBS -lm"
 			targetname=modname
 		else
-			targetname=
-			fail="$fail libpython$PY_VERSION"
+			FR_SMART_CHECK_LIB(python${PY_VERSION}m, Py_Initialize)
+			eval t=\${ac_cv_lib_${sm_lib_safe}_${sm_func_safe}}
+			if test "x$t" = "xyes"; then
+				mod_ldflags="$PY_LIB_LOC $PY_EXTRA_LIBS $SMART_LIBS -lm"
+				targetname=modname
+			else	
+				targetname=
+				fail="$fail libpython$PY_VERSION"
+			fi		
 		fi
 	fi
-
 else
 	targetname=
 	echo \*\*\* module modname is disabled.
