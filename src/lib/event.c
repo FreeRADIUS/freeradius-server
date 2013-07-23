@@ -81,8 +81,9 @@ static int fr_event_list_time_cmp(void const *one, void const *two)
 }
 
 
-static int _event_list_free(fr_event_list_t *el)
+static int _event_list_free(void *list)
 {
+	fr_event_list_t *el = list;
 	fr_event_t *ev;
 
 	while ((ev = fr_heap_peek(el->times)) != NULL) {
@@ -104,7 +105,7 @@ fr_event_list_t *fr_event_list_create(TALLOC_CTX *ctx, fr_event_status_t status)
 	if (!fr_assert(el)) {
 		return NULL;
 	}
-	talloc_set_destructor((void *) el, _event_list_free);
+	talloc_set_destructor((void *)el, _event_list_free);
 
 	el->times = fr_heap_create(fr_event_list_time_cmp, offsetof(fr_event_t, heap));
 	if (!el->times) {
