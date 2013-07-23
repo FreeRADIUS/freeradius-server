@@ -260,6 +260,8 @@ rlm_rcode_t rlm_ldap_cacheable_userobj(ldap_instance_t const *inst, REQUEST *req
 
 	int is_dn, i;
 
+	rad_assert(entry);
+
 	/*
 	 *	Parse the membership information we got in the initial user query.
 	 */
