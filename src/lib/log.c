@@ -85,13 +85,19 @@ char const *fr_strerror(void)
 
 void fr_perror(char const *fmt, ...)
 {
+	char const *error;
 	va_list ap;
 
 	va_start(ap, fmt);
 	vfprintf(stderr, fmt, ap);
 	if (strchr(fmt, ':') == NULL)
 		fprintf(stderr, ": ");
-	fprintf(stderr, "%s\n", fr_strerror());
+
+	error = fr_strerror();
+	if (error) {
+		fprintf(stderr, "%s\n", error);
+	}
+
 	va_end(ap);
 }
 
