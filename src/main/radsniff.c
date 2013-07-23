@@ -656,11 +656,11 @@ int main(int argc, char *argv[])
 	 *	This actually opens the capture interfaces/files (we just allocated the memory earlier)
 	 */
 	{
-		fr_pcap_t *prev = in;
+		fr_pcap_t *prev = NULL;
 
 		for (in_p = in;
 		     in_p;
-		     prev = in_p, in_p = in_p->next) {
+		     in_p = in_p->next) {
 			if (fr_pcap_open(in_p) < 0) {
 				if (!conf->from_auto) {
 					ERROR("Failed opening pcap handle for %s", in_p->name);
@@ -671,11 +671,17 @@ int main(int argc, char *argv[])
 
 
 				/* Unlink it from the list */
-				prev->next = in_p->next;
-				talloc_free(in_p);
-				in_p = prev;
+				if (prev) {
+					prev->next = in_p->next;
+					talloc_free(in_p);
+					in_p = prev;
+				} else {
+					in = in_p->next;
+					talloc_free(in_p);
+					in_p = in;
+				}
 
-				continue;
+				goto next;
 			}
 
 			if (conf->pcap_filter) {
@@ -684,6 +690,9 @@ int main(int argc, char *argv[])
 					goto finish;
 				}
 			}
+
+			next:
+			prev = in_p;
 		}
 	}
 

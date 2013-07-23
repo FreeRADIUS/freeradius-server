@@ -222,23 +222,37 @@ int fr_pcap_apply_filter(fr_pcap_t *pcap, char *expression)
 	return 0;
 }
 
-char *fr_pcap_device_names(TALLOC_CTX *ctx, fr_pcap_t *handle, char c)
+char *fr_pcap_device_names(TALLOC_CTX *ctx, fr_pcap_t *pcap, char c)
 {
-	fr_pcap_t *handle_p;
-	char *buff;
+	fr_pcap_t *pcap_p;
+	char *buff, *p;
+	size_t len = 0, left = 0, wrote;
 
-	if (!handle) {
+	if (!pcap) {
+		goto null;
+	}
+
+	for (pcap_p = pcap;
+	     pcap_p;
+	     pcap_p = pcap_p->next) {
+		len += talloc_array_length(pcap_p->name);	// Talloc array length includes the \0
+	}
+
+	if (!len) {
+		null:
 		return talloc_zero_array(ctx, char, 1);
 	}
 
-	buff = talloc_zero_array(ctx, char, 0);
-	for (handle_p = handle;
-	     handle_p;
-	     handle_p = handle_p->next) {
-		buff = talloc_asprintf_append(buff, "%s%c", handle_p->name, c);
+	left = len + 1;
+	buff = p = talloc_zero_array(ctx, char, left);
+	for (pcap_p = pcap;
+	     pcap_p;
+	     pcap_p = pcap_p->next) {
+		wrote = snprintf(p, left, "%s%c", pcap_p->name, c);
+		left -= wrote;
+		p += wrote;
 	}
-
-	buff[talloc_array_length(buff) - 2] = '\0';
+	buff[len - 1] = '\0';
 
 	return buff;
 }
