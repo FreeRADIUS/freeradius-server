@@ -518,6 +518,7 @@ int		rad_file_exists(char const *filename);
 void		*rad_malloc(size_t size); /* calls exit(1) on error! */
 void		*rad_calloc(size_t size); /* calls exit(1) on error! */
 void		rad_const_free(void const *ptr);
+char		*rad_ajoin(TALLOC_CTX *ctx, char const **array, char c);
 REQUEST		*request_alloc(TALLOC_CTX *ctx);
 REQUEST		*request_alloc_fake(REQUEST *oldreq);
 REQUEST		*request_alloc_coa(REQUEST *request);

@@ -382,6 +382,31 @@ void rad_const_free(void const *ptr)
 	talloc_free(tmp);
 }
 
+char *rad_ajoin(TALLOC_CTX *ctx, char const **array, char c)
+{
+	char const **p;
+	char *buff;
+	size_t len = 0, wrote;
+
+	if (!*array) {
+		return talloc_zero_array(ctx, char, 1);
+	}
+
+	for (p = array; *p; p++) {
+		len += (strlen(*p) + 1);
+	}
+	len++;
+
+	buff = talloc_zero_array(ctx, char, len);
+	for (p = array; *p; p++) {
+		wrote = sprintf(buff, len, "%s%c", *p, c);
+		len -= wrote;
+		buff += wrote;
+	}
+	buff[talloc_array_length(buff) - 2] = '\0';
+
+	return buff;
+}
 
 /*
  *	Logs an error message and aborts the program
