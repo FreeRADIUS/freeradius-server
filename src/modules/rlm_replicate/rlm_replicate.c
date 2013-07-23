@@ -70,7 +70,8 @@ static int replicate_packet(UNUSED void *instance, REQUEST *request,
 
 		realm = realm_find2(vp->vp_strvalue);
 		if (!realm) {
-			REDEBUG2("Cannot Replicate to unknown realm \"%s\"", realm->name);
+			REDEBUG2("Cannot Replicate to unknown realm \"%s\"",
+				vp->vp_strvalue);
 			continue;
 		}
 
