@@ -237,11 +237,9 @@ static virtual_server_t *virtual_server_find(char const *name)
 	return server;
 }
 
-static int virtual_server_free(void *ctx)
+static int _virtual_server_free(virtual_server_t *server)
 {
-	virtual_server_t *server;
-
-	server = talloc_get_type_abort(ctx, virtual_server_t);
+	server = talloc_get_type_abort(server, virtual_server_t);
 	if (server->components) rbtree_free(server->components);
 	return 0;
 }
@@ -280,11 +278,9 @@ void virtual_servers_free(time_t when)
 	}
 }
 
-static int indexed_modcallable_free(void *ctx)
+static int _indexed_modcallable_free(indexed_modcallable *this)
 {
-	indexed_modcallable *this;
-
-	this = talloc_get_type_abort(ctx, indexed_modcallable);
+	this = talloc_get_type_abort(this, indexed_modcallable);
 
 	modcallable_free(&this->modulelist);
 	return 0;
@@ -391,11 +387,9 @@ static int module_entry_cmp(void const *one, void const *two)
 /*
  *	Free a module entry.
  */
-static int module_entry_free(void *ctx)
+static int _module_entry_free(module_entry_t *this)
 {
-	module_entry_t *this;
-
-	this = talloc_get_type_abort(ctx, module_entry_t);
+	this = talloc_get_type_abort(this, module_entry_t);
 
 #ifndef NDEBUG
 	/*
@@ -490,7 +484,7 @@ static module_entry_t *linkto_module(char const *module_name,
 
 	/* make room for the module type */
 	node = talloc_zero(cs, module_entry_t);
-	talloc_set_destructor((void *) node, module_entry_free);
+	talloc_set_destructor(node, _module_entry_free);
 	strlcpy(node->name, module_name, sizeof(node->name));
 	node->module = module;
 	node->handle = handle;
@@ -745,7 +739,7 @@ static indexed_modcallable *new_sublist(CONF_SECTION *cs,
 		return NULL;
 	}
 
-	talloc_set_destructor((void *) c, indexed_modcallable_free);
+	talloc_set_destructor(c, _indexed_modcallable_free);
 
 	return c;
 }
@@ -1094,7 +1088,7 @@ static int load_byserver(CONF_SECTION *cs)
 	server->created = time(NULL);
 	server->cs = cs;
 	server->components = components;
-	talloc_set_destructor((void *) server, virtual_server_free);
+	talloc_set_destructor(server, _virtual_server_free);
 
 	/*
 	 *	Define types first.

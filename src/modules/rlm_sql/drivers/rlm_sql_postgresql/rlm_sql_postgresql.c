@@ -126,10 +126,8 @@ static int check_fatal_error (char *errorcode)
 	return -1;
 }
 
-static int sql_socket_destructor(void *c)
+static int _sql_socket_destructor(rlm_sql_postgres_conn_t *conn)
 {
-	rlm_sql_postgres_conn_t  *conn = c;
-
 	DEBUG2("rlm_sql_postgresql: Socket destructor called, closing socket");
 
 	if (!conn->db) {
@@ -177,7 +175,7 @@ static int sql_init_socket(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
 	}
 
 	MEM(conn = handle->conn = talloc_zero(handle, rlm_sql_postgres_conn_t));
-	talloc_set_destructor((void *) conn, sql_socket_destructor);
+	talloc_set_destructor(conn, _sql_socket_destructor);
 
 	snprintf(dbstring, sizeof(dbstring),
 			"dbname=%s%s%s%s%s user=%s password=%s",

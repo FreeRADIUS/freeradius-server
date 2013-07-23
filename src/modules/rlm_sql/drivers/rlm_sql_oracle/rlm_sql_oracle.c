@@ -104,10 +104,8 @@ static int sql_check_error(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 	}
 }
 
-static int sql_socket_destructor(void *c)
+static int _sql_socket_destructor(rlm_sql_oracle_conn_t *conn)
 {
-	rlm_sql_oracle_conn_t *conn = c;
-
 	if (conn->ctx) {
 		OCILogoff(conn->ctx, conn->error);
 	}
@@ -140,7 +138,7 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 	rlm_sql_oracle_conn_t *conn;
 
 	MEM(conn = handle->conn = talloc_zero(handle, rlm_sql_oracle_conn_t));
-	talloc_set_destructor((void *) conn, sql_socket_destructor);
+	talloc_set_destructor(conn, _sql_socket_destructor);
 
 	/*
 	 *	Initialises the oracle environment

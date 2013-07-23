@@ -653,10 +653,8 @@ static int sql_affected_rows(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 }
 
 
-static int sql_socket_destructor(void *c)
+static int _sql_socket_destructor(rlm_sql_freetds_conn_t *conn)
 {
-	rlm_sql_freetds_conn_t *conn = c;
-
 	DEBUG2("rlm_sql_freetds: socket destructor called, closing socket");
 
 	if (conn->command) {
@@ -704,7 +702,7 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 	rlm_sql_freetds_conn_t *conn;
 
 	MEM(conn = handle->conn = talloc_zero(handle, rlm_sql_freetds_conn_t));
-	talloc_set_destructor((void *) conn, sql_socket_destructor);
+	talloc_set_destructor(conn, _sql_socket_destructor);
 
 	/*
 	 *	Allocate a CS context structure. This should really only be done once, but because of

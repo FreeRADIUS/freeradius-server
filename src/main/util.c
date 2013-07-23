@@ -86,11 +86,9 @@ struct request_data_t {
 	void		(*free_opaque)(void *);
 };
 
-static int request_data_free_opaque(void *ctx)
+static int _request_data_free_opaque(request_data_t *this)
 {
-	request_data_t *this;
-
-	this = talloc_get_type_abort(ctx, request_data_t);
+	this = talloc_get_type_abort(this, request_data_t);
 	this->free_opaque(this->opaque);
 
 	return 0;
@@ -139,7 +137,7 @@ int request_data_add(REQUEST *request,
 
 	if (free_opaque) {
 		this->free_opaque = free_opaque;
-		talloc_set_destructor((void *) this, request_data_free_opaque);
+		talloc_set_destructor(this, _request_data_free_opaque);
 	}
 
 	*last = this;

@@ -53,10 +53,8 @@ typedef struct rlm_sql_iodbc_conn {
 static char const *sql_error(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
 static int sql_num_fields(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
 
-static int sql_socket_destructor(void *c)
+static int _sql_socket_destructor(rlm_sql_iodbc_conn_t *conn)
 {
-	rlm_sql_iodbc_conn_t *conn = c;
-
 	DEBUG2("rlm_sql_iodbc: Socket destructor called, closing socket");
 
 	if (conn->stmt_handle) {
@@ -88,7 +86,7 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 	SQLRETURN rcode;
 
 	MEM(conn = handle->conn = talloc_zero(handle, rlm_sql_iodbc_conn_t));
-	talloc_set_destructor((void *) conn, sql_socket_destructor);
+	talloc_set_destructor(conn, _sql_socket_destructor);
 
 	rcode = SQLAllocEnv(&conn->env_handle);
 	if (!SQL_SUCCEEDED(rcode)) {
