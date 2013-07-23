@@ -1775,8 +1775,8 @@ do_print:
 		 *	Return a count of the VPs.
 		 */
 		if (num == 65536) {
-			vp = paircursor(&cursor, &vp);
-			while ((vp = pairfindnext(&cursor, da->attr, da->vendor, tag)) != NULL) {
+			paircursor(&cursor, &vp);
+			while (pairfindnext(&cursor, da->attr, da->vendor, tag) != NULL) {
 				count++;
 			}
 
