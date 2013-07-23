@@ -399,7 +399,7 @@ char *rad_ajoin(TALLOC_CTX *ctx, char const **array, char c)
 
 	buff = talloc_zero_array(ctx, char, len);
 	for (p = array; *p; p++) {
-		wrote = sprintf(buff, len, "%s%c", *p, c);
+		wrote = snprintf(buff, len, "%s%c", *p, c);
 		len -= wrote;
 		buff += wrote;
 	}
