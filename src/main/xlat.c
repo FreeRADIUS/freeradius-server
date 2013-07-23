@@ -1443,6 +1443,9 @@ static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, pair_lists_t list, DI
 	if ((da->vendor != 0) || (da->attr < 256) || (list == PAIR_LIST_CONTROL)) {
 	print_vp:
 		vp = pairfind(vps, da->attr, da->vendor, tag);
+		if (!vp) {
+			return NULL;
+		}
 		goto do_print;
 	}
 
