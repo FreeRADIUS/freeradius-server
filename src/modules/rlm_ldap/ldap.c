@@ -718,9 +718,11 @@ retry:
 	 *	may not of requested one. If that's the case, free it, else write
 	 *	it to where our caller said.
 	 */
-	if (!result && our_result) {
-		ldap_msgfree(our_result);
-		*result = NULL;
+	if (!result) {
+		if (our_result) {
+			ldap_msgfree(our_result);
+			*result = NULL;
+		}
 	} else {
 		*result = our_result;
 	}
