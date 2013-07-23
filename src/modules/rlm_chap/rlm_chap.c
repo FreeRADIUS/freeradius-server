@@ -86,13 +86,13 @@ static rlm_rcode_t mod_authenticate(UNUSED void *instance,
 
 	if ((passwd_item = pairfind(request->config_items, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY)) == NULL){
 		if (pairfind(request->config_items, PW_USER_PASSWORD, 0, TAG_ANY) != NULL){
-			REDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+			REDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 			REDEBUG("!!! Please update your configuration so that the \"known !!!");
 			REDEBUG("!!! good\" clear text password is in Cleartext-Password, !!!");
-			REDEBUG("!!! and NOT in User-Password.			   !!!");
-			REDEBUG("!!!						     !!!");
-			REDEBUG("!!! Authentication will fail because of this.	   !!!");
-			REDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+			REDEBUG("!!! and NOT in User-Password.                            !!!");
+			REDEBUG("!!!						          !!!");
+			REDEBUG("!!! Authentication will fail because of this.	          !!!");
+			REDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 		}
 
 		REDEBUG("Clear-Text password is required for authentication");

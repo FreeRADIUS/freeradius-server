@@ -169,11 +169,11 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 	     vp = pairnext(&cursor)) {
 		switch (vp->da->attr) {
 		case PW_USER_PASSWORD: /* deprecated */
-			RDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+			RDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 			RDEBUG("!!! Please update your configuration so that the \"known !!!");
 			RDEBUG("!!! good\" clear text password is in Cleartext-Password, !!!");
-			RDEBUG("!!! and NOT in User-Password.			   !!!");
-			RDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+			RDEBUG("!!! and NOT in User-Password.			         !!!");
+			RDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 			break;
 
 		case PW_PASSWORD_WITH_HEADER: /* preferred */
