@@ -384,26 +384,31 @@ void rad_const_free(void const *ptr)
 
 char *rad_ajoin(TALLOC_CTX *ctx, char const **array, char c)
 {
-	char const **p;
-	char *buff;
-	size_t len = 0, wrote;
+	char const **array_p;
+	char *buff, *p;
+	size_t len = 0, left, wrote;
 
 	if (!*array) {
+		goto null;
+	}
+
+	for (array_p = array; *array_p; array_p++) {
+		len += (strlen(*array_p) + 1);
+	}
+
+	if (!len) {
+		null:
 		return talloc_zero_array(ctx, char, 1);
 	}
 
-	for (p = array; *p; p++) {
-		len += (strlen(*p) + 1);
+	left = len + 1;
+	buff = p = buff = talloc_zero_array(ctx, char, left);
+	for (array_p = array; *array_p; array_p++) {
+		wrote = snprintf(p, left, "%s%c", *array_p, c);
+		left -= wrote;
+		p += wrote;
 	}
-	len++;
-
-	buff = talloc_zero_array(ctx, char, len);
-	for (p = array; *p; p++) {
-		wrote = snprintf(buff, len, "%s%c", *p, c);
-		len -= wrote;
-		buff += wrote;
-	}
-	buff[talloc_array_length(buff) - 2] = '\0';
+	buff[len - 1] = '\0';
 
 	return buff;
 }
