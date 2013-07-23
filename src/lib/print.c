@@ -436,6 +436,10 @@ char *vp_aprint(TALLOC_CTX *ctx, VALUE_PAIR const *vp)
 {
 	char *p;
 
+	if (!fr_assert(vp)) {
+		return NULL;
+	}
+
 	switch (vp->da->type) {
 	case PW_TYPE_STRING:
 		/*
