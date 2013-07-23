@@ -331,6 +331,16 @@ static void got_packet(UNUSED uint8_t *args, struct pcap_pkthdr const*header, ui
 	}
 }
 
+
+/** Wrapper function to allow rad_free to be called as an rbtree destructor callback
+ *
+ * @param packet to free.
+ */
+static void _rb_rad_free(void *packet)
+{
+	rad_free((RADIUS_PACKET **) &packet);
+}
+
 static void NEVER_RETURNS usage(int status)
 {
 	FILE *output = status ? stderr : stdout;
@@ -512,7 +522,7 @@ int main(int argc, char *argv[])
 			exit(64);
 		}
 
-		filter_tree = rbtree_create((rbcmp) fr_packet_cmp, free, 0);
+		filter_tree = rbtree_create((rbcmp) fr_packet_cmp, _rb_rad_free, 0);
 		if (!filter_tree) {
 			ERROR("Failed creating filter tree\n");
 			exit(1);
@@ -522,7 +532,7 @@ int main(int argc, char *argv[])
 	/*
 	 *  Setup the request tree
 	 */
-	request_tree = rbtree_create((rbcmp) fr_packet_cmp, free, 0);
+	request_tree = rbtree_create((rbcmp) fr_packet_cmp, _rb_rad_free, 0);
 	if (!request_tree) {
 		ERROR("Failed creating request tree\n");
 		exit(1);
