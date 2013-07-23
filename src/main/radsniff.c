@@ -38,19 +38,6 @@ static int do_sort = 0;
 static int to_stdout = 0;
 static FILE *log_dst;
 
-#ifndef PCAP_NETMASK_UNKNOWN
-#  define PCAP_NETMASK_UNKNOWN 0
-#endif
-
-#undef DEBUG1
-#define DEBUG1(fmt, ...) if (fr_debug_flag > 2) fprintf(log_dst , fmt, ## __VA_ARGS__)
-#undef DEBUG
-#define DEBUG(fmt, ...) if (fr_debug_flag > 1) fprintf(log_dst , fmt, ## __VA_ARGS__)
-#undef INFO
-#define INFO(fmt, ...) if (fr_debug_flag > 0) fprintf(log_dst , fmt, ## __VA_ARGS__)
-
-#define ERROR(fmt, ...) fprintf(stderr, "radsniff: " fmt , ## __VA_ARGS__)
-
 struct timeval start_pcap = {0, 0};
 static rbtree_t *filter_tree = NULL;
 static rbtree_t *request_tree = NULL;

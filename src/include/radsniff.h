@@ -97,3 +97,12 @@ typedef struct radius_packet_t {
 } radius_packet_t;
 
 #define AUTH_HDR_LEN 20
+#undef DEBUG1
+#define DEBUG1(fmt, ...)	if (fr_debug_flag > 2) fprintf(log_dst , fmt "\n", ## __VA_ARGS__)
+#undef DEBUG
+#define DEBUG(fmt, ...)		if (fr_debug_flag > 1) fprintf(log_dst , fmt "\n", ## __VA_ARGS__)
+#undef INFO
+#define INFO(fmt, ...)		if (fr_debug_flag > 0) fprintf(log_dst , fmt "\n", ## __VA_ARGS__)
+
+#define ERROR(fmt, ...)		fr_perror("radsniff: " fmt "\n", ## __VA_ARGS__)
+
