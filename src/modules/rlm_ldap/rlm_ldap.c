@@ -878,9 +878,11 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 	 *	Check if we need to cache group memberships
 	 */
 	if (inst->cacheable_group_dn || inst->cacheable_group_name) {
-		rcode = rlm_ldap_cacheable_userobj(inst, request, &conn, entry);
-		if (rcode != RLM_MODULE_OK) {
-			goto finish;
+		if (inst->userobj_membership_attr) {
+			rcode = rlm_ldap_cacheable_userobj(inst, request, &conn, entry, inst->userobj_membership_attr);
+			if (rcode != RLM_MODULE_OK) {
+				goto finish;
+			}
 		}
 
 		rcode = rlm_ldap_cacheable_groupobj(inst, request, &conn);
