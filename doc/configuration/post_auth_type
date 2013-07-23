@@ -19,7 +19,7 @@ O.INTRODUCTION
 
 2.EXAMPLES
 
-  In the example below, when a request has been rejected, the 
+  In the example below, when a request has been rejected, the
   module my_ippool will not be run, only the module my_detail
   will be run.
   If the request is not rejected, the my_ippool module will be

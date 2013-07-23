@@ -40,7 +40,7 @@
     # Uncomment this if you want to use PAM (Auth-Type = PAM)
         pam
 	...
-  
+
 
    In your /etc/pam.d/ directory create a file called radiusd with the
    following contents (or whatever you want for your pam configuration,

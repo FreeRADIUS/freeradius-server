@@ -106,7 +106,7 @@ server dhcp {
       # SoH policy
     }
     # other DHCP config
-  }    
+  }
 }
 
 == soh module ==

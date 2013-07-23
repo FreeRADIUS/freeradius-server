@@ -8,9 +8,9 @@
 attributetype
    ( 1.3.6.1.4.1.11344.1.100.2.1
      NAME 'radiusClientIdentifier'
-     DESC 'Client Identifier' 
-     EQUALITY caseIgnoreMatch 
-     SUBSTR caseIgnoreSubstringsMatch 
+     DESC 'Client Identifier'
+     EQUALITY caseIgnoreMatch
+     SUBSTR caseIgnoreSubstringsMatch
      SYNTAX '1.3.6.1.4.1.1466.115.121.1.15'
      SINGLE-VALUE
    )
@@ -38,7 +38,7 @@ attributetype
 attributetype
    ( 1.3.6.1.4.1.11344.1.100.2.4
      NAME 'radiusClientVirtualServer'
-     DESC 'VirtualServer' 
+     DESC 'VirtualServer'
      EQUALITY caseIgnoreMatch
      SUBSTR caseIgnoreSubstringsMatch
      SYNTAX '1.3.6.1.4.1.1466.115.121.1.15'

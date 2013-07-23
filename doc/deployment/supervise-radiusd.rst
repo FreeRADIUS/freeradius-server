@@ -41,7 +41,7 @@ started::
 
   #!/bin/sh
   # Save as /var/svc/radiusd/run
-  exec /usr/local/sbin/radiusd -s -f 
+  exec /usr/local/sbin/radiusd -s -f
 
 Of course you'll want to make that 'run' file executable::
 
@@ -65,13 +65,13 @@ Maintenance With Daemontools
 
   Shutdown radiusd:
   $ svc -d /var/svc/radiusd
-  
+
   Start it back up:
   $ svc -u /var/svc/radiusd
-  
+
   Send HUP to radiusd:
-  $ svc -h /var/svc/radiusd 
-  
+  $ svc -h /var/svc/radiusd
+
   Shutdown and stop supervising radiusd:
   $ svc -dx /var/svc/radiusd
 
@@ -82,7 +82,7 @@ This is really pretty easy, but it is system dependent.  I strongly
 suggest you read the man pages for your 'init' before playing with
 this.  You can seriously hose your system if you screw up your
 inittab.
-    
+
 Add this line (or something similar to it) to your inittab::
 
    fr:23:respawn:/usr/local/sbin/radiusd -f -s &> /dev/null
@@ -119,7 +119,7 @@ docs for daemontools.
 
 Daemontools Instructions
 ------------------------
-    
+
 I am running radiusd under supervise from daemontools without
 problems. The only thing I am missing right now is an option to force
 radiusd to send log to stderr so I can manage logs better with
@@ -133,7 +133,7 @@ I've been following (for Cistron RADIUS)::
    $ mkdir /etc/radiusd/log/main
    $ chmod +t+s /etc/radiusd /etc/radiusd/log
    $ chown log.log /etc/radiusd/log/main
-    
+
 Here are the contents of run files from '/etc/radiusd' and '/etc/radiusd/log'::
 
   $ cd /etc/radiusd
@@ -145,19 +145,19 @@ Here are the contents of run files from '/etc/radiusd' and '/etc/radiusd/log'::
   $ cat run
   #!/bin/sh
   exec setuidgid log multilog t ./main
-    
+
  To make service wake-up do::
- 
+
   $ ln -sf /etc/radiusd /service
-    
+
  Hang-up (to reload config) it using::
 
   $ svc -h /service/radiusd
-    
+
 Disable (down) it using::
 
   $ svc -d /service/radiusd
-    
+
 Reenable (up) it using::
 
   $ svc -u /service/radiusd

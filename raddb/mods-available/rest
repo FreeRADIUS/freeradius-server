@@ -2,7 +2,7 @@ rest {
 	#
 	#  This subsection configures the tls related items
 	#  that control how FreeRADIUS connects to a HTTPS
-	#  server. 
+	#  server.
 	#
 	tls {
 #		ca_file	= ${certdir}/cacert.pem
@@ -37,7 +37,7 @@ rest {
 	# If you wish to disable this pre-caching and reachability check,
 	# comment out the configuration item below.
 	connect_uri = "http://127.0.0.1/"
-	
+
 	authorize {
 		uri = "${..connect_uri}/user/%{User-Name}/mac/%{Called-Station-ID}?section=authorize"
 		method = "get"

@@ -24,7 +24,7 @@ FreeRADIUS 3.0.0 Mon 01 Jan 8:00:00 CEST 2010, urgency=medium
 	* New sha1 xlat expansion (thanks to Alan Buxey)
 	* Colourised log messages when logging to stdout.  Look for yellow
 	  warnings and red errors.  Doing this will save you a LOT of grief.
-	* If the PCRE library is available, use it (insted of the POSIX 
+	* If the PCRE library is available, use it (insted of the POSIX
 	  functions) to process regular expressions (thanks to Phil Mayers).
 	* -xv now displays all the features the server was built with, and
 	  the versions of the core libraries (libtalloc, libssl).

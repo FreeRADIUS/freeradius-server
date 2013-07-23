@@ -43,7 +43,7 @@ listen {
 #  The order of the realm modules will determine the order that
 #  we try to find a matching realm.
 #
-#  Make *sure* that 'preprocess' comes before any realm if you 
+#  Make *sure* that 'preprocess' comes before any realm if you
 #  need to setup hints for the remote radius server
 authorize {
 	#
@@ -238,7 +238,7 @@ authenticate {
 ######################################################################
 
 
-#  Session database, used for checking Simultaneous-Use. Either the radutmp 
+#  Session database, used for checking Simultaneous-Use. Either the radutmp
 #  or rlm_sql module can handle this.
 #  The rlm_sql module is *much* faster
 session {
@@ -288,7 +288,7 @@ post-auth {
 	#  Access-Reject packets are sent through the REJECT sub-section of the
 	#  post-auth section.
 	#
-	#  Add the ldap module name (or instance) if you have set 
+	#  Add the ldap module name (or instance) if you have set
 	#  'edir_account_policy_check = yes' in the ldap module configuration
 	#
 	Post-Auth-Type REJECT {

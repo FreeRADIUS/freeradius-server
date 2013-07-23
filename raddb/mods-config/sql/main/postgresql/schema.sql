@@ -39,7 +39,7 @@ CREATE TABLE radacct (
 	FramedProtocol		VARCHAR(32),
 	FramedIPAddress		INET,
 	AcctStartDelay		INTEGER,
-	AcctStopDelay		INTEGER	
+	AcctStopDelay		INTEGER
 );
 -- This index may be useful..
 -- CREATE UNIQUE INDEX radacct_whoson on radacct (AcctStartTime, nasipaddress);

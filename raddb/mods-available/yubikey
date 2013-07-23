@@ -9,23 +9,23 @@ yubikey {
 	#
 	#  Yubikey defaults to a 6 byte ID (2 * 6 = 12)
 #	id_length = 12
-	
+
 	#
 	#  Decrypt mode - Tokens will be decrypted and processed locally
 	#
 	#  The module itself does not provide persistent storage as this
 	#  would be duplicative of functionality already in the server.
 	#
-	#  Yubikey authentication needs two control attributes 
+	#  Yubikey authentication needs two control attributes
 	#  retrieved from persistent storage:
 	#    * Yubikey-Key     - The AES key used to decrypt the OTP data.
-	#                        The Yubikey-Public-Id and/or User-Name 
+	#                        The Yubikey-Public-Id and/or User-Name
 	#                        attributes may be used to retrieve the key.
 	#    * Yubikey-Counter - This is compared with the counter in the OTP
 	#                        data and used to prevent replay attacks.
-	#                        This attribute will also be available in 
+	#                        This attribute will also be available in
 	#                        the request list after successful
-	#                        decryption.                    
+	#                        decryption.
 	#
 	#  Yubikey-Counter isn't strictly required, but the server will
 	#  generate warnings if it's not present when yubikey.authenticate
@@ -42,12 +42,12 @@ yubikey {
 	#    * Yubikey-Random     - Randomly generated value from the token.
 	#
 	decrypt = no
-	
+
 	#
 	#  Validation mode - Tokens will be validated against a Yubicloud server
 	#
 	validate = no
-	
+
 	#
 	#  Settings for validation mode.
 	#
@@ -59,27 +59,27 @@ yubikey {
 		# - %d is a placeholder for public ID of the token
 		# - %s is a placeholder for the token string itself
 		#
-		#  If no URLs are listed, will default to the default URLs in the 
+		#  If no URLs are listed, will default to the default URLs in the
 		#  ykclient library, which point to the yubico validation servers.
 		servers {
 #			uri = 'http://api.yubico.com/wsapi/2.0/verify?id=%d&otp=%s'
 #			uri = 'http://api2.yubico.com/wsapi/2.0/verify?id=%d&otp=%s'
 		}
-		
+
 		#
 		#  API Client ID
 		#
 		#  Must be set to your client id for the validation server.
 		#
 #		client_id = 00000
-		
+
 		#
 		#  API Secret key (Base64 encoded)
 		#
 		#  Must be set to your API key for the validation server.
 		#
 #		api_key = '000000000000000000000000'
-		
+
 		#
 		#  Connection pool parameters
 		#
@@ -113,7 +113,7 @@ yubikey {
 			# idle timeout (in seconds).  A connection which is
 			# unused for this length of time will be closed.
 			idle_timeout = 60
-			
+
 			# Cycle over all connections in a pool instead of concentrating
 			# connection use on a few connections.
 			spread = yes

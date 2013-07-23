@@ -13,14 +13,14 @@
 #  of the program which is executed.  Due to RADIUS protocol
 #  limitations, any output over 253 bytes will be ignored.
 #
-#  The module also registers a few paircompare functions, and 
+#  The module also registers a few paircompare functions, and
 #  many string manipulation functions.
 #
 
-expr {  
+expr {
 	#
 	# Characters that will not be encoded by the %{encode}
 	# xlat function.
-	# 
+	#
 	safe_characters = "@abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_: /"
 }

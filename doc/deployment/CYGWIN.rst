@@ -223,7 +223,7 @@ Configuring FreeRADIUS for EAP under CygWin.
    ::
 
     src/main/Makefile.in
-   
+
     145,148c145,148
     <       $(LIBTOOL) --mode=install $(INSTALL) -m 755 $(INSTALLSTRIP)
     radiusd.exe        $(R)$(sbindir)
@@ -250,7 +250,7 @@ Configuring FreeRADIUS for EAP under CygWin.
     >       $(INSTALL) -m 755    radrelay           $(R)$(bindir)
 
     src/modules/rlm_dbm/Makefile.in
-  
+
     22,23c22,23
     <       $(INSTALL) -m 755 $(INSTALLSTRIP) rlm_dbm_parser.exe
     $(R)$(bindir)

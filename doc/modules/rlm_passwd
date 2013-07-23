@@ -11,7 +11,7 @@ A: Yes, but you need RADIUS running as root. Hint: use Crypt-Password
    against alternate file.
 
 Q: Can I use rlm_passwd to authenticate user against SAMBA smbpasswd?
-A: Yes, you can. Hint: use LM-Password/NT-Password attribute, set 
+A: Yes, you can. Hint: use LM-Password/NT-Password attribute, set
    authtype = MS-CHAP.
 
 Q: Can I use rlm_password to authenticate user against BLA-BLA-BLApasswd?

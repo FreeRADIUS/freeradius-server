@@ -43,7 +43,7 @@ radutmp {
 	#  If we want to believe the 'utmp' file, then this
 	#  configuration entry can be set to 'no'.
 	#
-	check_with_nas = yes		
+	check_with_nas = yes
 
 	# Set the file permissions, as the contents of this file
 	# are usually private.

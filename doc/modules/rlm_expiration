@@ -9,9 +9,9 @@ list for the user we wish to perform expiration checks.
 
 Expiration attribute format:
 
-You can use Expiration := "23 Sep 2004" and the user will 
-no longer be able to connect at 00:00 (midnight) on September 23rd, 
-2004.  If you want a certain time (other than midnight) you can do 
+You can use Expiration := "23 Sep 2004" and the user will
+no longer be able to connect at 00:00 (midnight) on September 23rd,
+2004.  If you want a certain time (other than midnight) you can do
 use  Expiration := "23 Sep 2004 12:00".
 The nas will receive a Session-Timeout attribute calculated to kick
 the user off when the Expiration time occurs.

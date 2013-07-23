@@ -20,14 +20,14 @@ perl {
 	#  %RAD_CHECK		Check items
 	#  %RAD_REQUEST		Attributes from the request
 	#  %RAD_REPLY		Attributes for the reply
-	# 
+	#
 	#  The return codes from functions in the perl_script
 	#  are passed directly back to the server.  These
 	#  codes are defined in doc/configurable_failover,
 	#  src/include/modules.h (RLM_MODULE_REJECT, etc),
 	#  and are pre-defined in the 'example.pl' program
 	#  which is included.
-	#		
+	#
 
 	#
 	#  List of functions in the module to call.
@@ -50,7 +50,7 @@ perl {
 	#
 	#  Uncomment the following lines if you wish
 	#  to use separate functions for Start and Stop
-	#  accounting packets. In that case, the 
+	#  accounting packets. In that case, the
 	#  func_accounting function is not called.
 	#
 	#func_start_accounting = accounting_start

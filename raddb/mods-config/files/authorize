@@ -40,7 +40,7 @@
 #	see: http://www.freeradius.org/rfc/attributes.html
 #
 #	Entries below this point are examples included in the server for
-#	educational purposes. They may be deleted from the deployed 
+#	educational purposes. They may be deleted from the deployed
 #	configuration without impacting the operation of the server.
 #
 

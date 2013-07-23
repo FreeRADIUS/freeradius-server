@@ -40,7 +40,7 @@ listen {
 	#  The following two parameters perform authentication and
 	#  authorization of connections to the control socket.
 	#
-	#  If not set, then ANYONE can connect to the control socket,	
+	#  If not set, then ANYONE can connect to the control socket,
 	#  and have complete control over the server.  This is likely
 	#  not what you want.
 	#

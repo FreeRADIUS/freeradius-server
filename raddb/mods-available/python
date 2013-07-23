@@ -1,5 +1,5 @@
 #
-# Make sure the PYTHONPATH environmental variable contains the 
+# Make sure the PYTHONPATH environmental variable contains the
 # directory(s) for the modules listed below.
 #
 # Uncomment any func_* which are included in your module. If
@@ -41,7 +41,7 @@ python {
 
 	mod_recv_coa = ${.module}
 #	func_recv_coa = recv_coa
-		
+
 	mod_send_coa = ${.module}
 #	func_send_coa = send_coa
 }

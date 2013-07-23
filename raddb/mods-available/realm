@@ -43,4 +43,4 @@ realm realmpercent {
 realm ntdomain {
 	format = prefix
 	delimiter = "\\"
-}	
+}

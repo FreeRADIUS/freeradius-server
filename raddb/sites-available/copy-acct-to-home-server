@@ -77,7 +77,7 @@ server copy-acct-to-home-server {
 		#  allows databases to "catch up", and gives the
 		#  server time to notice that other packets may have
 		#  arrived.
-		#		
+		#
 		#  The pause is calculated dynamically, to ensure that
 		#  the load due to reading the detail files is limited
 		#  to a small percentage of CPU time.  The
@@ -89,7 +89,7 @@ server copy-acct-to-home-server {
 		#  If the "load_factor" is set to 100, then the server
 		#  will read packets as fast as it can, usually
 		#  causing databases to go into overload.
-		#  
+		#
 		load_factor = 10
 	}
 
@@ -98,7 +98,7 @@ server copy-acct-to-home-server {
 	#
 	preacct {
 		preprocess
-	
+
 		# Since we're just proxying, we don't need acct_unique.
 
 		#
@@ -111,13 +111,13 @@ server copy-acct-to-home-server {
 	#	IPASS
 		suffix
 	#	ntdomain
-	
+
 		#
 		#  Read the 'acct_users' file.  This isn't always
 		#  necessary, and can be deleted if you do not use it.
 		files
 	}
-	
+
 	#
 	#  Accounting.  Log the accounting data.
 	#
@@ -126,10 +126,10 @@ server copy-acct-to-home-server {
 		   # Since we're proxying, we don't log anything
 		   # locally.  Ensure that the accounting section
 		   # "succeeds" by forcing an "ok" return.
-		   ok	
+		   ok
 	}
-	
-	
+
+
 	#
 	#  When the server decides to proxy a request to a home server,
 	#  the proxied request is first passed through the pre-proxy
@@ -139,13 +139,13 @@ server copy-acct-to-home-server {
 	#  Only a few modules currently have this method.
 	#
 	pre-proxy {
-	
+
 		#  If you want to have a log of packets proxied to a home
 		#  server, un-comment the following line, and the
 		#  'detail pre_proxy_log' section in radiusd.conf.
 	#	pre_proxy_log
 	}
-	
+
 	#
 	#  When the server receives a reply to a request it proxied
 	#  to a home server, the request may be massaged here, in the
@@ -153,17 +153,17 @@ server copy-acct-to-home-server {
 	#
 	post-proxy {
 		#
-	
+
 		#  If you want to have a log of replies from a home
 		#  server, un-comment the following line, and the
 		#  'detail post_proxy_log' section in radiusd.conf.
 	#	post_proxy_log
-	
-	
+
+
 		#  Uncomment the following line if you want to filter
 		#  replies from remote proxies based on the rules
 		#  defined in the 'attrs' file.
-	
+
 	#	attr_filter
 	}
 }

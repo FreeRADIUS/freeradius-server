@@ -21,7 +21,7 @@ otp {
 
 	# Text to use for the challenge.
 	# Default "Challenge: %{reply:OTP-Challenge}\n Response: "
-	
+
 	challenge_prompt = "Challenge: %{reply:OTP-Challenge} \n Response: "
 
 	# Length of the challenge.  Most tokens probably support a

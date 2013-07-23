@@ -132,7 +132,7 @@ Modules normally return on of the following codes as their result:
 +-----------+-----------------------------------------------------+
 |handled    | the module has done everything to handle the request|
 +-----------+-----------------------------------------------------+
-	
+
 In a configurable fail-over section, each of these codes may be
 listed, with a value.  If the code is not listed, or a configurable
 fail-over section is not defined, then values that make sense for the

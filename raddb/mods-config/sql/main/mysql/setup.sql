@@ -19,6 +19,6 @@ GRANT SELECT ON radius.* TO 'radius'@'localhost';
 
 # The server can write to the accounting and post-auth logging table.
 #
-#  i.e. 
+#  i.e.
 GRANT ALL on radius.radacct TO 'radius'@'localhost';
 GRANT ALL on radius.radpostauth TO 'radius'@'localhost';

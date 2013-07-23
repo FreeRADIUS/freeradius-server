@@ -58,20 +58,20 @@ versions of the server.  These names have been unified in version 3.0.
 
 If a file is being referenced or created the config item ``filename``
 is used.
-    
+
 If a file is being created, the initial permissions are set by the
 ``permissions`` config item.
-    
+
 If a directory hierarchy needs to be created, the permissions are set
 by ``dir_permissions``.
-    
+
 If an external host is referenced in the context of a module the
 ``server`` config item is used.
 
-Unless the config item is a well recognised portmanteau 
+Unless the config item is a well recognised portmanteau
 (as ``filename`` is for example), it must be written as multiple
 distinct words separated by underscores ``_``.
-    
+
 The configuration items ``file``, ``script_file``, ``module``,
 ``detail``, ``detailfile``, ``attrsfile``, ``perm``, ``dirperm``,
 ``detailperm``, and ``hostname`` are deprecated. As well as any
@@ -146,10 +146,10 @@ The ``rlm_sql_sybase`` module has been renamed to ``rlm_sql_freetds``
 and the old ``rlm_sql_freetds`` module has been removed.
 
 ``rlm_sql_sybase`` used the newer ct-lib API, and ``rlm_sql_freetds``
-used and older API and was incomplete. 
+used and older API and was incomplete.
 
-The new ``rlm_sql_freetds`` module now also supports database 
-selection on connection startup so ``use`` statements no longer 
+The new ``rlm_sql_freetds`` module now also supports database
+selection on connection startup so ``use`` statements no longer
 have to be included in queries.
 
 sql/dialup.conf
@@ -166,8 +166,8 @@ can be added by just adding a new target, as below.
 
 Queries from v2.x.x may be manually copied to the new v3.0
 ``dialup.conf`` file (``raddb/sql/main/<dialect>/queries.conf``).
-When doing this you may also need to update references to the 
-accounting tables, as their definitions will now be outside of 
+When doing this you may also need to update references to the
+accounting tables, as their definitions will now be outside of
 the subsection containing the query.
 
 The mapping from old "fixed" query to new "dynamic" query is as follows::
@@ -192,7 +192,7 @@ Alternatively a 2.x.x config may be patched to work with the
   		}
   		accounting-off {
   			query = "${....accounting_onoff_query}"
-  		}	
+  		}
    		start {
   			query = "${....accounting_start_query}"
   			query = "${....accounting_start_query_alt}"
@@ -239,8 +239,8 @@ rlm_ldap/LDAP-Group
 -------------------
 
 In 2.x.x the registration of the ``LDAP-Group`` pair comparison was done
-by the last instance of rlm_ldap to be instantiated. In 3.0 this has 
-changed so that only the default ``ldap {}`` instance registers 
+by the last instance of rlm_ldap to be instantiated. In 3.0 this has
+changed so that only the default ``ldap {}`` instance registers
 ``LDAP-Group``.
 
 If ``<instance>-LDAP-Group`` is already used throughout your configuration
@@ -257,7 +257,7 @@ rlm_expiration & rlm_logintime
 -------------------------------
 
 The rlm_expiration and rlm_logintime modules no longer add a ``Reply-Message``,
-the same behaviour can be achieved checking the return code of the module and 
+the same behaviour can be achieved checking the return code of the module and
 adding the ``Reply-Message`` with unlang::
 
   expiration

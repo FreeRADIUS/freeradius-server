@@ -215,12 +215,12 @@ listen {
 #  The order of the realm modules will determine the order that
 #  we try to find a matching realm.
 #
-#  Make *sure* that 'preprocess' comes before any realm if you 
+#  Make *sure* that 'preprocess' comes before any realm if you
 #  need to setup hints for the remote radius server
 authorize {
 	#
 	#  Take a User-Name, and perform some checks on it, for spaces and other
-	#  invalid characters.  If the User-Name appears invalid, reject the 
+	#  invalid characters.  If the User-Name appears invalid, reject the
 	#  request.
 	#
 	#  See policy.d/filter for the definition of the filter_username policy.
@@ -467,7 +467,7 @@ authenticate {
 	#
 #	Auth-Type eap {
 #		eap {
-#			handled = 1  
+#			handled = 1
 #		}
 #		if (handled && (Response-Packet-Type == Access-Challenge)) {
 #			attr_filter.access_challenge.post-auth
@@ -599,7 +599,7 @@ accounting {
 }
 
 
-#  Session database, used for checking Simultaneous-Use. Either the radutmp 
+#  Session database, used for checking Simultaneous-Use. Either the radutmp
 #  or rlm_sql module can handle this.
 #  The rlm_sql module is *much* faster
 session {
@@ -731,7 +731,7 @@ post-auth {
 	#  Access-Reject packets are sent through the REJECT sub-section of the
 	#  post-auth section.
 	#
-	#  Add the ldap module name (or instance) if you have set 
+	#  Add the ldap module name (or instance) if you have set
 	#  'edir_account_policy_check = yes' in the ldap module configuration
 	#
 	Post-Auth-Type REJECT {

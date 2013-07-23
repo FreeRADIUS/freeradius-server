@@ -60,14 +60,14 @@ Unique Acct-Session-Id's
 
 From: http://isp-lists.isp-planet.com/isp-australia/0201/msg05143.html
 
-Just a note to all cisco ISPs out there who want RFC2866 compliance need to 
+Just a note to all cisco ISPs out there who want RFC2866 compliance need to
 enable the hidden command ``radius-server unique-ident <n>``
 
 Minimum IOS: 12.1(4.1)T.
 
 Acct-Session-Id should be unique and wrap after every 256 reboots.
 
-You must reboot after entering this command to take effect. If not, you 
+You must reboot after entering this command to take effect. If not, you
 will observe after 10 minutes
 of entering this command, the following message.
 
@@ -101,7 +101,7 @@ If you want the IP address of the user to show up in the radutmp file
 
 This is because with IOS 11.3, the Cisco first sends a "Start" accounting
 packet without the IP address included. By setting "update newinfo" it
-will send an account "Alive" packet which updates the information. 
+will send an account "Alive" packet which updates the information.
 
 Also you might see a lot of "duplicates" in the logfile. That can be
 fixed by:

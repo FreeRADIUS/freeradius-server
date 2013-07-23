@@ -11,10 +11,10 @@
 #  is a little more standard.
 #
 preprocess {
-	# Search for files in a subdirectory of mods-config which 
+	# Search for files in a subdirectory of mods-config which
 	# matches this instance of the preprocess module.
 	moddir = ${modconfdir}/${.:instance}
-	
+
 	huntgroups = ${moddir}/huntgroups
 	hints = ${moddir}/hints
 
