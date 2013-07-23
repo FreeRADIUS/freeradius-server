@@ -316,7 +316,7 @@ void rlm_ldap_release_socket(ldap_instance_t const *inst, ldap_handle_t *conn);
  */
 
 rlm_rcode_t rlm_ldap_cacheable_userobj(ldap_instance_t const *inst, REQUEST *request, ldap_handle_t **pconn,
-				       LDAPMessage *entry);
+				       LDAPMessage *entry, char const *attr);
 
 rlm_rcode_t rlm_ldap_cacheable_groupobj(ldap_instance_t const *inst, REQUEST *request, ldap_handle_t **pconn);
 

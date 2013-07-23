@@ -241,10 +241,11 @@ static rlm_rcode_t rlm_ldap_group_dn2name(ldap_instance_t const *inst, REQUEST *
  * @param[in] request Current request.
  * @param[in,out] pconn to use. May change as this function calls functions which auto re-connect.
  * @param[in] entry retrieved by rlm_ldap_find_user or rlm_ldap_search.
+ * @param[in] attr membership attribute to look for in the entry.
  * @return One of the RLM_MODULE_* values.
  */
 rlm_rcode_t rlm_ldap_cacheable_userobj(ldap_instance_t const *inst, REQUEST *request, ldap_handle_t **pconn,
-				       LDAPMessage *entry)
+				       LDAPMessage *entry, char const *attr)
 {
 	rlm_rcode_t rcode = RLM_MODULE_OK;
 
@@ -261,11 +262,12 @@ rlm_rcode_t rlm_ldap_cacheable_userobj(ldap_instance_t const *inst, REQUEST *req
 	int is_dn, i;
 
 	rad_assert(entry);
+	rad_assert(attr);
 
 	/*
 	 *	Parse the membership information we got in the initial user query.
 	 */
-	vals = ldap_get_values((*pconn)->handle, entry, inst->userobj_membership_attr);
+	vals = ldap_get_values((*pconn)->handle, entry, attr);
 	if (!vals) {
 		RDEBUG2("No cacheable group memberships found in user object");
 

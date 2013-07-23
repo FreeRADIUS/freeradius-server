@@ -110,6 +110,14 @@ ldap {
 		#  "access_attribute" not existing means "allow access"
 #		positive_access = yes
 
+		#  The attribute in user objects which contain the names
+		#  or DNs of groups a user is a member of.
+		#
+		#  Unless a conversion between group name and group DN is
+		#  needed, there's no requirement for the group objects
+		#  referenced to actually exist.
+		membership_attribute = "memberOf"
+
 		#  If this is undefined, anyone is authorised.
 		#  If it is defined, the contents of this attribute
 		#  determine whether or not the user is authorised
@@ -135,6 +143,11 @@ ldap {
 		#  names.
 #		name_attribute = cn
 
+		#  Filter to find group objects a user is a member of.
+		#  That is, group objects with attributes that 
+		#  identify members (the inverse of membership_attribute).
+#		membership_filter = "(|(member=%{control:Ldap-UserDn})(memberUid=%{%{Stripped-User-Name}:-%{User-Name}}))"
+
 		#  The attribute in user objects which contain the names
 		#  or DNs of groups a user is a member of.
 		#
@@ -142,11 +155,6 @@ ldap {
 		#  needed, there's no requirement for the group objects
 		#  referenced to actually exist.
 		membership_attribute = "memberOf"
-
-		#  Filter to find group objects a user is a member of.
-		#  That is, group objects with attributes that 
-		#  identify members (the inverse of membership_attribute).
-#		membership_filter = "(|(member=%{control:Ldap-UserDn})(memberUid=%{%{Stripped-User-Name}:-%{User-Name}}))"
 
 		#  If cacheable_name or cacheable_dn are enabled,
 		#  all group information for the user will be 
