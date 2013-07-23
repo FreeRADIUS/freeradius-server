@@ -625,6 +625,7 @@ int main(int argc, char *argv[])
 			in_head = &(*in_head)->next;
 		}
 		conf->from_auto = true;
+		conf->from_dev = true;
 		INFO("Defaulting to capture on all interfaces");
 	}
 
@@ -667,7 +668,7 @@ int main(int argc, char *argv[])
 					goto finish;
 				}
 
-				DEBUG("Couldn't open handle: %s", fr_strerror());
+				DEBUG("Failed opening pcap handle: %s", fr_strerror());
 
 
 				/* Unlink it from the list */
