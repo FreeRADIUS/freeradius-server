@@ -105,7 +105,7 @@ fr_event_list_t *fr_event_list_create(TALLOC_CTX *ctx, fr_event_status_t status)
 	if (!fr_assert(el)) {
 		return NULL;
 	}
-	talloc_set_destructor(el, _event_list_free);
+	talloc_set_destructor((void *) el, _event_list_free);
 
 	el->times = fr_heap_create(fr_event_list_time_cmp, offsetof(fr_event_t, heap));
 	if (!el->times) {
