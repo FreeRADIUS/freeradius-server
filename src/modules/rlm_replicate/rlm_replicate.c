@@ -64,7 +64,8 @@ static int replicate_packet(void *instance, REQUEST *request)
 
 		realm = realm_find2(vp->vp_strvalue);
 		if (!realm) {
-			RDEBUG2("ERROR: Cannot Replicate to unknown realm %s", realm);
+			RDEBUG2("ERROR: Cannot Replicate to unknown realm %s",
+				vp->vp_strvalue);
 			continue;
 		}
 		
