@@ -219,6 +219,22 @@ ssize_t rlm_ldap_xlat_filter(REQUEST *request, char const **sub, size_t sublen, 
 	return len;
 }
 
+/** Return the error string associated with a handle
+ *
+ * @param conn to retrieve error from.
+ * @return error string.
+ */
+char const *rlm_ldap_error_str(ldap_handle_t const *conn)
+{
+	int lib_errno;
+	ldap_get_option(conn->handle, LDAP_OPT_ERROR_NUMBER, &lib_errno);
+	if (lib_errno == LDAP_SUCCESS) {
+		return "unknown";
+	}
+
+	return ldap_err2string(lib_errno);
+}
+
 /** Parse response from LDAP server dealing with any errors
  *
  * Should be called after an LDAP operation. Will check result of operation and if it was successful, then attempt
@@ -605,6 +621,7 @@ ldap_rcode_t rlm_ldap_search(ldap_instance_t const *inst, REQUEST *request, ldap
 			     LDAPMessage **result)
 {
 	ldap_rcode_t	status;
+	LDAPMessage	*our_result = NULL;
 
 	int		msgid;		// Message id returned by
 					// ldap_search_ext.
@@ -652,7 +669,7 @@ retry:
 	(void) ldap_search_ext((*pconn)->handle, dn, scope, filter, search_attrs, 0, NULL, NULL, &tv, 0, &msgid);
 
 	LDAP_DBG_REQ("Waiting for search result...");
-	status = rlm_ldap_result(inst, *pconn, msgid, dn, result, &error, &extra);
+	status = rlm_ldap_result(inst, *pconn, msgid, dn, &our_result, &error, &extra);
 	switch (status) {
 		case LDAP_PROC_SUCCESS:
 			break;
@@ -676,21 +693,36 @@ retry:
 			goto finish;
 	}
 
-	if (result) {
-		count = ldap_count_entries((*pconn)->handle, *result);
-		if (count == 0) {
-			ldap_msgfree(*result);
-			*result = NULL;
+	count = ldap_count_entries((*pconn)->handle, our_result);
+	if (count < 0) {
+		LDAP_ERR_REQ("Error counting results: %s", rlm_ldap_error_str(*pconn));
+		status = LDAP_PROC_ERROR;
 
-			LDAP_DBG_REQ("Search returned no results");
+		ldap_msgfree(our_result);
+		our_result = NULL;
+	} else if (count == 0) {
+		LDAP_DBG_REQ("Search returned no results");
+		status = LDAP_PROC_NO_RESULT;
 
-			status = LDAP_PROC_NO_RESULT;
-		}
+		ldap_msgfree(our_result);
+		our_result = NULL;
 	}
 
 	finish:
 	if (extra) {
 		talloc_free(extra);
+	}
+
+	/*
+	 *	We always need to get the result to count entries, but the caller
+	 *	may not of requested one. If that's the case, free it, else write
+	 *	it to where our caller said.
+	 */
+	if (!result && our_result) {
+		ldap_msgfree(our_result);
+		*result = NULL;
+	} else {
+		*result = our_result;
 	}
 
 	return status;
