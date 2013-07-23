@@ -15,4 +15,4 @@ SRC_CFLAGS	:= -D_LIBRADIUS -I$(top_builddir)/src
 
 # System libraries discovered by our top level configure script, links things
 # like pthread and the regexp libraries.
-TGT_LDLIBS	:= $(LIBS)
+TGT_LDLIBS	:= $(LIBS) $(PCAP_LIBS)
