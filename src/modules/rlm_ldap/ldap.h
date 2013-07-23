@@ -283,6 +283,8 @@ ssize_t rlm_ldap_xlat_filter(REQUEST *request, char const **sub, size_t sublen, 
 ldap_rcode_t rlm_ldap_bind(ldap_instance_t const *inst, REQUEST *request, ldap_handle_t **pconn, char const *dn,
 			  char const *password, int retry);
 
+char const *rlm_ldap_error_str(ldap_handle_t const *conn);
+
 ldap_rcode_t rlm_ldap_search(ldap_instance_t const *inst, REQUEST *request, ldap_handle_t **pconn,
 			     char const *dn, int scope, char const *filter, char const * const *attrs,
 			     LDAPMessage **result);
