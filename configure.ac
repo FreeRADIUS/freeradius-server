@@ -21,7 +21,7 @@ dnl #
 dnl #############################################################
 
 AC_PREREQ([2.59])
-export CFLAGS LIBS LDFLAGS CPPFLAGS
+export CFLAGS LIBS PCAP_LIBS LDFLAGS CPPFLAGS
 
 AC_INIT([freeradius],[$]Id[$],[http://bugs.freeradius.org],,[http://www.freeradius.org])
 AC_CONFIG_SRCDIR([src/main/radiusd.c])
