@@ -459,7 +459,7 @@ $INCLUDE proxy.conf
 
 # CLIENTS CONFIGURATION
 #
-#  Client configuration is defined in "clients.conf".  
+#  Client configuration is defined in "clients.conf".
 #
 
 #  The 'clients.conf' file contains all of the information from the old

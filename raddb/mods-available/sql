@@ -26,7 +26,7 @@ sql {
 	#    * rlm_sql_postgresql
 	#    * rlm_sql_sqlite
 	#    * rlm_sql_null (log queries to disk)
-	#	
+	#
 	driver = "rlm_sql_null"
 
 	# The dialect of SQL you want to use, this should usually match
@@ -35,7 +35,7 @@ sql {
 	# If you're using rlm_sql_null, then it should be the type of
 	# database the logged queries are going to be executed against.
 	dialect = "mysql"
-	
+
 	# Connection info:
 	#
 	# server = "localhost"

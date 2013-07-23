@@ -1,8 +1,8 @@
                         Cisco LEAP protocol description
 
 		CLEAP = Cisco LEAP
-			LEAP = Lightweight EAP 
-				EAP = Extensible Authentication Protocol                                       
+			LEAP = Lightweight EAP
+				EAP = Extensible Authentication Protocol
 
      _________________________________________________________________
 
@@ -25,7 +25,7 @@ Alan DeKok <aland@freeradius.org>
        and contains additional specifics not found in the original post.
 
      _________________________________________________________________
-   
+
 
 This document describes the LEAP authentication protocol as used by Cisco
 Aironet wireless routers etc. It was deduced by analysis of packets passed
@@ -33,10 +33,10 @@ between an Aironet and Cisco ACS.
 
 Relevant RFCs are: 2284, 2716, 2433.
 
-LEAP is a type of Radius EAP protocol (see RFC draft-ietf-radius-eap-05.txt 
-"Extensible Authentication Protocol Support in RADIUS"). The EAP type for 
-LEAP is 17 (0x11). It is used to authenticate access by a wireless client 
-(typically a laptop or pc) to a wireless router, typically a Cisco Aironet 
+LEAP is a type of Radius EAP protocol (see RFC draft-ietf-radius-eap-05.txt
+"Extensible Authentication Protocol Support in RADIUS"). The EAP type for
+LEAP is 17 (0x11). It is used to authenticate access by a wireless client
+(typically a laptop or pc) to a wireless router, typically a Cisco Aironet
 base station.
 
 Definitions
@@ -153,4 +153,4 @@ user name at the end of the EAP-MEssage in the Peer Challenge packet.
    Radius Access-Reject/EAP Failure
 
      _________________________________________________________________
-   
+

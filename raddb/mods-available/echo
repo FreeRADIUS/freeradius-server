@@ -12,7 +12,7 @@
 #  If you wish to execute an external program in more than
 #  one section (e.g. 'authorize', 'pre_proxy', etc), then it
 #  is probably best to define a different instance of the
-#  'exec' module for every section.	
+#  'exec' module for every section.
 #
 #  The return value of the program run determines the result
 #  of the exec instance call as follows:
@@ -99,7 +99,7 @@ exec echo {
 
 	#
 	#  Should we escape the environment variables?
-	#  
+	#
 	#  If this is set, all the RADIUS attributes
 	#  are capitalised and dashes replaced with
 	#  underscores. Also, RADIUS values are surrounded

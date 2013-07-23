@@ -87,7 +87,7 @@ filter_username {
 		}
 		reject
 	}
-	
+
 	#
 	#  reject double dots
 	#  e.g. "user@site..com"
@@ -98,9 +98,9 @@ filter_username {
 		}
 		reject
 	}
-	
+
 	#
-	#  must have at least 1 string-dot-string after @ 
+	#  must have at least 1 string-dot-string after @
 	#  e.g. "user@site.com"
 	#
 	if ((User-Name =~ /@/) && (User-Name !~ /@(.+)\\.(.+)$/))  {

@@ -25,7 +25,7 @@
 #
 #  For more documentation, see the file:
 #
-#	raddb/sites-available/dynamic-clients 
+#	raddb/sites-available/dynamic-clients
 #
 dynamic_clients {
 

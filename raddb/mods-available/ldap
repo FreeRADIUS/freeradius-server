@@ -20,20 +20,20 @@ ldap {
 #	identity = "cn=admin,dc=example,dc=org"
 #	password = mypass
 
-	#  Unless overridden in another section, the dn from which all 
+	#  Unless overridden in another section, the dn from which all
 	#  searches will start from.
 #	base_dn = "dc=example,dc=org"
 
 	#
 	#  Mapping of LDAP directory attributes to RADIUS dictionary attributes.
 	#
-	#  WARNING: Although this format is almost identical to the unlang 
+	#  WARNING: Although this format is almost identical to the unlang
 	#  update section format, it does *NOT* mean that you can use other
 	#  unlang constructs in module configuration files.
 	#
 	#  Configuration items are in the format:
 	# 	<radius attr> <op> <ldap attr>
-	# 
+	#
 	#  Where:
 	#  	<radius attr>:	Is the destination RADIUS attribute
 	# 			with any valid list and request qualifiers.
@@ -42,8 +42,8 @@ ldap {
 	#			profile objects in the LDAP directory.
 	# 			If the attribute name is wrapped in double
 	# 			quotes it will be xlat expanded.
-	# 
-	#  Request and list qualifiers may also be placed after the 'update' 
+	#
+	#  Request and list qualifiers may also be placed after the 'update'
 	#  section name to set defaults destination requests/lists
 	#  for unqualified RADIUS attributes.
 	#
@@ -58,12 +58,12 @@ ldap {
 #		reply:Tunnel-Medium-Type	:= 'radiusTunnelMediumType'
 #		reply:Tunnel-Private-Group-ID	:= 'radiusTunnelPrivategroupId'
 	}
-	
+
 	#
 	#  Generic valuepair attribute
-	#  If set, this will attribute will be retrieved in addition to any 
+	#  If set, this will attribute will be retrieved in addition to any
 	#  mapped attributes.
-	# 
+	#
 	#  Values should be in the format:
 	#  	<radius attr> <op> <value>
 	#
@@ -89,17 +89,17 @@ ldap {
 	#
 	#  User object identification.
 	#
-	user {	
+	user {
 		#   Where to start searching in the tree for users
 		base_dn = "${..base_dn}"
-		
+
 		#  Filter for user objects, should be specific enough
 		#  to identify a single user object.
 		filter = "(uid=%{%{Stripped-User-Name}:-%{User-Name}})"
-		
+
 		# Search scope, may be 'base', 'one', sub' or 'children'
 #		scope = 'sub'
-		
+
 		#  Control whether or not "access_attribute" is used to
 		#  determine authorization.  If set to "yes", then
 		#  "access_attribute" existing means "allow access".
@@ -130,11 +130,11 @@ ldap {
 	group {
 		#   Where to start searching in the tree for groups
 		base_dn = "${..base_dn}"
-		
+
 		#  Filter for group objects, should match all available
 		#  group objects a user might be a member of.
 		filter = "(objectClass=posixGroup)"
-		
+
 		# Search scope, may be 'base', 'one', sub' or 'children'
 #		scope = 'sub'
 
@@ -144,7 +144,7 @@ ldap {
 #		name_attribute = cn
 
 		#  Filter to find group objects a user is a member of.
-		#  That is, group objects with attributes that 
+		#  That is, group objects with attributes that
 		#  identify members (the inverse of membership_attribute).
 #		membership_filter = "(|(member=%{control:Ldap-UserDn})(memberUid=%{%{Stripped-User-Name}:-%{User-Name}}))"
 
@@ -157,7 +157,7 @@ ldap {
 		membership_attribute = "memberOf"
 
 		#  If cacheable_name or cacheable_dn are enabled,
-		#  all group information for the user will be 
+		#  all group information for the user will be
 		#  retrieved from the directory and written to LDAP-Group
 		#  attributes appropriate for the instance of rlm_ldap.
 		#
@@ -166,7 +166,7 @@ ldap {
 		#
 		#  This feature is intended to be used with rlm_cache.
 		#
-		#  If you with to use this feature, you should enable 
+		#  If you with to use this feature, you should enable
 		#  the type that matches the format of your check items
 		#  i.e. if your groups are specified as DNs then enable
 		#  cacheable_dn else enable cacheable_name.
@@ -178,7 +178,7 @@ ldap {
 		#  module instances are used in fail-over.
 #		cache_attribute = "LDAP-Cached-Membership"
 	}
-	
+
 	#
 	#  User profiles. RADIUS profile objects contain sets of attributes
 	#  to insert into the request. These attributes are mapped using
@@ -197,19 +197,19 @@ ldap {
 		#  will override this setting at run-time.
 #		attribute = "radiusProfileDn"
 	}
-	
+
 	#
 	#  Bulk load clients from the directory
 	#
 	client {
 		#   Where to start searching in the tree for clients
 		base_dn = "${..base_dn}"
-		
+
 		#
 		#  Filter to match client objects
 		#
 		filter = '(objectClass=frClient)'
-		
+
 		# Search scope, may be 'base', 'one', 'sub' or 'children'
 #		scope = 'sub'
 
@@ -255,7 +255,7 @@ ldap {
 	#
 	#  LDAP modification items are in the format:
 	# 	<ldap attr> <op> <value>
-	# 
+	#
 	#  Where:
 	#  	<ldap attr>:	The LDAP attribute to add modify or delete.
 	#  	<op>: 		One of the assignment operators:
@@ -263,26 +263,26 @@ ldap {
 	#			Note: '=' is *not* supported.
 	#  	<value>:	The value to add modify or delete.
 	#
-	#  WARNING: If using the ':=' operator with a multi-valued LDAP 
+	#  WARNING: If using the ':=' operator with a multi-valued LDAP
 	#  attribute, all instances of the attribute will be removed and
 	#  replaced with a single attribute.
-	# 
+	#
 	accounting {
 		reference = "%{tolower:type.%{Acct-Status-Type}}"
-		
+
 		type {
 			start {
 				update {
 					description := "Online at %S"
 				}
 			}
-			
+
 			interim-update {
 				update {
 					description := "Last seen at %S"
 				}
 			}
-			
+
 			stop {
 				update {
 					description := "Offline at %S"
@@ -290,7 +290,7 @@ ldap {
 			}
 		}
 	}
-	
+
 	#
 	#  Post-Auth can modify LDAP objects too
 	#
@@ -361,7 +361,7 @@ ldap {
 		# Set this to 'yes' to use TLS encrypted connections
 		# to the LDAP database by using the StartTLS extended
 		# operation.
-		#			
+		#
 		# The StartTLS operation is supposed to be
 		# used with normal ldap connections instead of
 		# using ldaps (port 636) connections

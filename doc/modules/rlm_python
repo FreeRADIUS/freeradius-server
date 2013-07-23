@@ -3,7 +3,7 @@ Copyright 2002 Miguel A Paraz <mparaz@mparaz.com>
 Copyright 2002 Imperium Technology, Inc.
 
 PURPOSE:
-To allow module writers to write modules in a high-level language, 
+To allow module writers to write modules in a high-level language,
 for implementation or for prototyping.
 
 REQUIRES:
@@ -65,7 +65,7 @@ TODO:
 1. Do we need to support other pair operations beyond set (:=) ?
 2. Should we pass the value pair info as a dict and not a tuple? Faster?
 2. Give access to more radiusd variables like the dictionary.
-3. Give access to other C functions.  
+3. Give access to other C functions.
    Let the Python module deal with the structures directly, instead of
    letting our C code do it afterwards.
    What's a good way to represent this?

@@ -75,7 +75,7 @@ eap {
 	md5 {
 	}
 
-	# 
+	#
 	# EAP-pwd -- secure password-based authentication
 	#
 #	pwd {
@@ -87,7 +87,7 @@ eap {
 		#  This has the same meaning as for TLS.
 #		fragment_size = 1020
 
-		# The virtual server which determines the 
+		# The virtual server which determines the
 		# "known good" password for the user.
 		# Note that unlike TLS, only the "authorize"
 		# section is processed.  EAP-PWD requests can be
@@ -471,7 +471,7 @@ eap {
 		      #  The OCSP Responder URL can be automatically
 		      #  extracted from the certificate in question.
 		      #  To override the OCSP Responder URL set
-		      #  "override_cert_url = yes". 
+		      #  "override_cert_url = yes".
 		      #
 		      override_cert_url = yes
 
@@ -520,7 +520,7 @@ eap {
 		      # To treat these errors as 'soft' failures and
 		      # still accept the certificate, enable this
 		      # option.
-		      # 
+		      #
 		      # Warning: this may enable clients with revoked
 		      # certificates to connect if the OCSP responder
 		      # is not available. Use with caution.
@@ -565,7 +565,7 @@ eap {
 		#  section may also appear instead in the 'tls' section
 		#  above. If that is done, the tls= option here (and in
 		#  tls above) MUST be commented out.
-		# 
+		#
 		tls = tls-common
 
 		#  The tunneled EAP session needs a default EAP type
@@ -689,7 +689,7 @@ eap {
 		#  section may also appear instead in the 'tls' section
 		#  above. If that is done, the tls= option here (and in
 		#  tls above) MUST be commented out.
-		# 
+		#
 		tls = tls-common
 
 		#  The tunneled EAP session needs a default

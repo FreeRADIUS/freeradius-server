@@ -88,7 +88,7 @@ authorize {
 	# base_filter = "(objectClass=computer)"
 	# groupname_attribute = cn
 	# groupmembership_filter = "(&(objectClass=group)(member=%{control:Ldap-UserDn}))"
-	
+
 #	ldap
 
 	# Now let's test membership of an LDAP group (the ldap bind user will

@@ -7,7 +7,7 @@ open FILE, "<refs" || die "Error opening refs: $!\n";
 while (<FILE>) {
     chop;
     split;
-    
+
     $refs{$_[1]} = $_[0];
     $defs{$_[0]}{$_[1]}++;
 }
@@ -54,7 +54,7 @@ EOF
       print OUTPUT "\n<H3>$letter</H3>\n\n";
       print OUTPUT "<UL>\n";
     }
-    
+
     print OUTPUT "<A HREF=\"$refs{$key}.html#$key\">$key</A><BR />\n";
 
   }

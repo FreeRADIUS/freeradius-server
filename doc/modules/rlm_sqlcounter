@@ -119,7 +119,7 @@ monthlycounter
 }
 
 noresetcounter: the counter that never resets, can be used
-for real session-time cumulation 
+for real session-time cumulation
 
 dailycounter: the counter that resets everyday, can be used
 for limiting daily access time (eg. 3 hours a day)
@@ -140,12 +140,12 @@ table appropriately for sql. For users file just follow the
 example below.
 
 Note: The users in the example below must be able to login
-normally as the example will only show how to apply sqlcounter 
+normally as the example will only show how to apply sqlcounter
 counters.
 
 Scenarios
 [1] username test0001 have total time limit of 15 hours
-(user can login as many times as needed but can be online for 
+(user can login as many times as needed but can be online for
 total time of 15 hours which is 54000 seconds)
 If using normal users file authentication the entry can look like:
 
@@ -179,5 +179,5 @@ Note that Max-All-Session, Max-Daily-Session and Max-Monthly-Session are
 definied in sqlcounter.conf
 
 VERY IMPORTANT:
-Accounting must be done via sql or this will not work. 
+Accounting must be done via sql or this will not work.
 

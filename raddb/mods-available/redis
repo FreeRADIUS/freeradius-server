@@ -14,7 +14,7 @@ redis {
 
 	#  The default port.
 	port = 6379
-	
+
 	#  The password used to authenticate to the server.
 	#  We recommend using a strong password.
 #	password = thisisreallysecretandhardtoguess

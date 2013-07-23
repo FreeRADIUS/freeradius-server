@@ -37,7 +37,7 @@
 #  preacct, etc.), EXCEPT for pre-proxy and post-proxy.  The CoA
 #  packets CANNOT be sent if the original request has been proxied.
 #
-#  The CoA functionality works best when the RADIUS server and 
+#  The CoA functionality works best when the RADIUS server and
 #  the NAS receiving CoA packets are on the same network.
 #
 #  If "update coa { ... " is used, and then later it becomes necessary

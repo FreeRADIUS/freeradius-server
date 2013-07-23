@@ -7,7 +7,7 @@ open FILE, "<refs" || die "Error opening refs: $!\n";
 while (<FILE>) {
     chop;
     split;
-    
+
     $refs{$_[1]} = $_[0];
 }
 close FILE;
@@ -23,7 +23,7 @@ foreach $file (@ARGV) {
     # get the current reference
     $ref = $file;
     $ref =~ s/\..*//g;
-	
+
     open OUTPUT, ">$ref.html" || die "Error creating $ref.html: $!\n";
 
     #
@@ -48,19 +48,19 @@ EOF
 	s/&/&amp;/g;
 	s/</&lt;/g;
 	s/>/&gt;/g;
-	
+
 	if (/\[Page/) {
 	    print OUTPUT;
 	    next;
 	}
-	
+
 	if (/^RFC \d+/) {
 	    print OUTPUT;
 	    next;
 	}
-	
+
 	chop;
-	
+
 	#
 	#  Attribute name header.
 	#
@@ -69,9 +69,9 @@ EOF
 
 	    if ($refs{$_[1]} ne "") {
 		$attribute = $_[1];
-		
+
 		print OUTPUT "<A NAME=\"$attribute\"><H2>$_</H2></a>\n";
-		
+
 	    } else {
 		print OUTPUT "<H2>$_</H2>\n";
 		$attribute = "zzzz";
@@ -89,7 +89,7 @@ EOF
 	    print OUTPUT "<B>$_</B>\n";
 	    next;
 	}
-	
+
 	# Make the current attribute name bold
 	s/$attribute/<B>$attribute<\/B>/g;
 
@@ -149,7 +149,7 @@ foreach $key (sort keys %refs) {
 	print OUTPUT "\n<H3>$letter</H3>\n\n";
         print OUTPUT "<UL>\n";
     }
-    
+
     print OUTPUT "<A HREF=\"$refs{$key}.html#$key\">$key</A><BR>\n";
 }
 

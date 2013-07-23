@@ -43,7 +43,7 @@ cache {
 	#
 	#  You should never set the "epoch" configuration item in
 	#  this file.
-	
+
 	#  The module can also operate in status-only mode where it will
 	#  not add new cache entries, or merge existing ones.
 	#
@@ -68,7 +68,7 @@ cache {
 	#  you to update multiple lists with one configuration.
 	#
 	#  If no list is specified the default list will be updated.
-	#  
+	#
 	#  The default list is specified in the same way as unlang update
 	#  stanzas. If no default list is set, it will default to the
 	#  request list.

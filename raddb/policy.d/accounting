@@ -31,12 +31,12 @@ acct_unique {
 	#  roams to a different 'port' whilst maintaining its
 	#  initial authentication session (Common in a
 	#  wireless environment).
-	#	 
+	#
 	if("%{string:Class}" =~ /${policy.class_value_prefix}([0-9a-f]{32})/i) {
 		update request {
 			Acct-Unique-Session-Id := "%{md5:%{1},%{Acct-Session-ID}}"
 		}
-	}	 
+	}
 
 	#
 	#  Not All devices respect RFC 2865 when dealing with
@@ -47,15 +47,15 @@ acct_unique {
 	else {
 		update request {
 			Acct-Unique-Session-Id := "%{md5:%{User-Name},%{Acct-Session-ID},%{NAS-IP-Address},%{NAS-Identifier},%{NAS-Port-ID},%{NAS-Port}}"
-		 }	 
-	}	 
-}	 
+		 }
+	}
+}
 
 #
 #	Insert a (hopefully unique) value into class
 #
 insert_acct_class {
-	update reply { 
+	update reply {
 		Class = "${policy.class_value_prefix}%{md5:%t,%I,%{Packet-Src-Port},%{Packet-Src-IP-Address},%{NAS-IP-Address},%{Calling-Station-ID},%{User-Name}}"
 	}
 }

@@ -133,7 +133,7 @@ server dynamic_client_server {
 			#  If the network client definition does have a
 			#  virtual_server defined, then that is used,
 			#  and there is no need to define this attribute.
-			#  
+			#
 			FreeRADIUS-Client-Virtual-Server = "something"
 
 		}

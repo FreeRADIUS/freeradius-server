@@ -141,7 +141,7 @@ $ valgrind --tool=memcheck --leak-check=full radiusd -Xm
  * open a screen session (http://blogamundo.net/code/screen/)
    $ screen bash
  * make sure FreeRADIUS is not running
- * make sure you have all the debug symbols about, or a debugable 
+ * make sure you have all the debug symbols about, or a debugable
    version of the server installed
  * configure screen to log to a file; 'Ctrl-A H'
  * type 'gdb /path/to/radius'  (or /path/to/freeradius on Debian)

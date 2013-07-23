@@ -30,7 +30,7 @@ If one is found it is called.  The users file should look something
 like this::
 
   DEFAULT        Called-Station-Id == "123456789", Autz-Type := Ldap
-  
+
   DEFAULT Realm == "other.company.com", Autz-Type := SQL
 
 Autz-Type could also be used to select between multiple instances of
@@ -41,7 +41,7 @@ could do both Authentication and Authorization with the user databases
 belonging to other companies.  In detail:
 
 radiusd.conf::
-  
+
   authenticate{
          Auth-Type customer1{
                  ldap1
@@ -50,7 +50,7 @@ radiusd.conf::
                  ldap2
          }
   }
-  
+
   authorize{
          preprocess
          suffix

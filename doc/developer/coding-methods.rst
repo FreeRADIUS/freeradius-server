@@ -29,12 +29,12 @@ by the programmer to write code.
    Variables and functions should have names.  Calling them 'x',
    'xx', and 'xxx' makes your life hell.  Even 'foo' and 'i' are
    problematic.
-   
+
    Avoid smurfs. Don't re-use struct names in field names i.e.
    struct smurf {
-   	char *smurf_pappa_smurf;  
+   	char *smurf_pappa_smurf;
    }
-   
+
    If your code reads as full english sentences, you're doing it
    right.
 
@@ -89,7 +89,7 @@ by the programmer to write code.
 
 7. Initialize your variables.
 
-   memset() (talloc_zero()) is your friend.  'ptr = NULL' is 
+   memset() (talloc_zero()) is your friend.  'ptr = NULL' is
    nice, too.
 
    Having variables containing garbage values makes it easy for the
@@ -172,14 +172,14 @@ by the programmer to write code.
     will be easily testable.  As a result, it will look better, and be
     easier to debug.
 
-Hints, Tips, and Tricks 
+Hints, Tips, and Tricks
 -----------------------
 
 This section lists many of the common "rules" associated with code
 submitted to the project. There are always exceptions... but you must
 have a really good reason for doing so.
 
-   1. Read the Documentation and follow the CodingStyle 
+   1. Read the Documentation and follow the CodingStyle
 
       The FreeRADIUS server has a common coding style.  Use real tabs
       to indent.  There is whitespace in variable assignments.
@@ -190,7 +190,7 @@ have a really good reason for doing so.
       style, it is likely to be rejected without further review, and
       without comment.
 
-   2. #ifdefs are ugly 
+   2. #ifdefs are ugly
 
       Code cluttered with ifdefs is difficult to read and
       maintain. Don't do it. Instead, put your ifdefs in a header, and
@@ -198,25 +198,25 @@ have a really good reason for doing so.
       are used in the code. Let the compiler optimize away the "no-op"
       case.
 
-      Simple example, of poor code:: 
+      Simple example, of poor code::
 
-           #ifdef CONFIG_MY_FUNKINESS 
+           #ifdef CONFIG_MY_FUNKINESS
                  init_my_stuff(foo);
-           #endif 
+           #endif
 
-      Cleaned-up example: 
+      Cleaned-up example:
 
-      (in header):: 
+      (in header)::
 
            #ifndef CONFIG_MY_FUNKINESS
            static inline void init_my_stuff(char *foo) {}
-           #endif 
+           #endif
 
-      (in the code itself):: 
+      (in the code itself)::
 
-           init_my_stuff(dev); 
+           init_my_stuff(dev);
 
-   3. 'static inline' is better than a macro 
+   3. 'static inline' is better than a macro
 
       Static inline functions are greatly preferred over macros. They
       provide type safety, have no length limitations, no formatting
@@ -230,7 +230,7 @@ have a really good reason for doing so.
       'static inline' is preferred over 'static __inline__', 'extern
       inline', and 'extern __inline__'.
 
-   4. Don't over-design. 
+   4. Don't over-design.
 
       Don't try to anticipate nebulous future cases which may or may
       not be useful: "Make it as simple as you can, and no simpler"
