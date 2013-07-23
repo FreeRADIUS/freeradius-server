@@ -309,7 +309,7 @@ check_filter:
 	}
 }
 
-static void got_packet(UNUSED fr_event_list_t *events, UNUSED int socket, void *ctx)
+static void got_packet(UNUSED fr_event_list_t *events, UNUSED int fd, void *ctx)
 {
 	radsniff_event_t *event = ctx;
 	pcap_t *handle = event->in->handle;
