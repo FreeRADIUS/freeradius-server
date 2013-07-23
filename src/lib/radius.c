@@ -4589,8 +4589,6 @@ void rad_free(RADIUS_PACKET **radius_packet_ptr)
 	if (!radius_packet_ptr || !*radius_packet_ptr) return;
 	radius_packet = *radius_packet_ptr;
 
-	talloc_free(radius_packet->data); /* not really necessary... */
-
 	pairfree(&radius_packet->vps);
 
 	talloc_free(radius_packet);
