@@ -1746,7 +1746,7 @@ do_print:
 		 *	[n] means NULL, as there's only one.
 		 */
 		if ((num > 0) && (num < 65536)) {
-			vp = NULL;
+			return NULL;
 		}
 
 		p = vp_aprint(ctx, vp);
@@ -1791,6 +1791,7 @@ do_print:
 
 			vp = paircursor(&cursor, &vp);
 			vp = pairfindnext(&cursor, da->attr, da->vendor, tag);
+			if (!vp) return NULL;
 			p = vp_aprint(ctx, vp);
 			while ((vp = pairfindnext(&cursor, da->attr, da->vendor, tag)) != NULL) {
 				q = vp_aprint(ctx, vp);
