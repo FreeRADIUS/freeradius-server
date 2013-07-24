@@ -407,6 +407,8 @@ static rlm_rcode_t file_common(rlm_files_t *inst, REQUEST *request,
 	 *	Find the entry for the user.
 	 */
 	while (user_pl || default_pl) {
+		vp_cursor_t cursor;
+		VALUE_PAIR *vp;
 		const PAIR_LIST *pl;
 
 		if (!default_pl && user_pl) {
@@ -430,11 +432,16 @@ static rlm_rcode_t file_common(rlm_files_t *inst, REQUEST *request,
 			default_pl = default_pl->next;
 		}
 
+		check_tmp = paircopy(request, pl->check);
+		for (vp = paircursor(&cursor, &check_tmp);
+		     vp;
+		     vp = pairnext(&cursor)) {
+			radius_xlat_do(request, vp);
+		}
+
 		if (paircompare(request, request_pairs, pl->check, reply_pairs) == 0) {
-			RDEBUG2("%s: Matched entry %s at line %d",
-			       filename, match, pl->lineno);
+			RDEBUG2("%s: Matched entry %s at line %d", filename, match, pl->lineno);
 			found = 1;
-			check_tmp = paircopy(request, pl->check);
 
 			/* ctx may be reply or proxy */
 			reply_tmp = paircopy(request, pl->reply);
