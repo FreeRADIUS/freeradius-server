@@ -41,6 +41,27 @@ typedef struct request REQUEST;
 #include	<pthread.h>
 #endif
 
+#ifdef HAVE_PCREPOSIX_H
+#include <pcreposix.h>
+#else
+#ifdef HAVE_REGEX_H
+#	include <regex.h>
+
+/*
+ *  For POSIX Regular expressions.
+ *  (0) Means no extended regular expressions.
+ *  REG_EXTENDED means use extended regular expressions.
+ */
+#ifndef REG_EXTENDED
+#define REG_EXTENDED (0)
+#endif
+
+#ifndef REG_NOSUB
+#define REG_NOSUB (0)
+#endif
+#endif
+#endif
+
 #ifndef NDEBUG
 #define REQUEST_MAGIC (0xdeadbeef)
 #endif
@@ -537,6 +558,8 @@ int		rad_pps(int *past, int *present, time_t *then,
 int		rad_expand_xlat(REQUEST *request, char const *cmd,
 				int max_argc, char *argv[], bool can_fail,
 				size_t argv_buflen, char *argv_buf);
+void		rad_regcapture(REQUEST *request, int compare, char const *value,
+			       regmatch_t rxmatch[]);
 char const *fr_default_log_dir(void);
 char const *fr_default_lib_dir(void);
 char const *fr_default_raddb_dir(void);

@@ -34,27 +34,6 @@ RCSID("$Id$")
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/rad_assert.h>
 
-#ifdef HAVE_PCREPOSIX_H
-#include <pcreposix.h>
-#else
-#ifdef HAVE_REGEX_H
-#	include <regex.h>
-
-/*
- *  For POSIX Regular expressions.
- *  (0) Means no extended regular expressions.
- *  REG_EXTENDED means use extended regular expressions.
- */
-#ifndef REG_EXTENDED
-#define REG_EXTENDED (0)
-#endif
-
-#ifndef REG_NOSUB
-#define REG_NOSUB (0)
-#endif
-#endif
-#endif
-
 const FR_NAME_NUMBER vpt_types[] = {
 	{"unknown",		VPT_TYPE_UNKNOWN },
 	{"literal",		VPT_TYPE_LITERAL },
@@ -74,13 +53,6 @@ struct cmp {
 };
 static struct cmp *cmp;
 
-/** Callback to free subcapture data
- *
- * @param ptr data to free.
- */
-static void subcapture_free(void *ptr) {
-	talloc_free(ptr);
-}
 /** Compares check and vp by value.
  *
  * Does not call any per-attribute comparison function, but does honour
@@ -108,7 +80,7 @@ int radius_compare_vps(REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *vp)
 
 #ifdef HAVE_REGEX_H
 	if (check->op == T_OP_REG_EQ) {
-		int i, compare;
+		int compare;
 		regex_t reg;
 		char value[1024];
 		regmatch_t rxmatch[REQUEST_MAX_REGEX + 1];
@@ -127,50 +99,10 @@ int radius_compare_vps(REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *vp)
 			       check->vp_strvalue, buffer);
 			return -1;
 		}
-		compare = regexec(&reg, value,  REQUEST_MAX_REGEX + 1,
-				  rxmatch, 0);
+		compare = regexec(&reg, value, REQUEST_MAX_REGEX + 1, rxmatch, 0);
 		regfree(&reg);
+		rad_regcapture(request, compare, value, rxmatch);
 
-		/*
-		 *	Add %{0}, %{1}, etc.
-		 */
-		for (i = 0; i <= REQUEST_MAX_REGEX; i++) {
-			size_t len;
-			char *p;
-
-			/*
-			 *	Didn't match: delete old match, if it existed.
-			 */
-			if ((compare != 0) ||
-			    (rxmatch[i].rm_so == -1)) {
-				p = request_data_get(request, request, REQUEST_DATA_REGEX | i);
-				if (p) {
-					subcapture_free(p);
-					continue;
-				}
-
-				/*
-				 *	No previous match
-				 *	to delete, stop.
-				 */
-				break;
-			}
-
-			len = rxmatch[i].rm_eo - rxmatch[i].rm_so;
-			p = talloc_array(request, char, len + 1);
-			memcpy(p, value + rxmatch[i].rm_so, len);
-			p[len] = '\0';
-
-			/*
-			 *	Copy substring, and add it to
-			 *	the request.
-			 *
-			 *	Note that we don't check
-			 *	for out of memory, which is
-			 *	the only error we can get...
-			 */
-			request_data_add(request, request, REQUEST_DATA_REGEX | i, p, subcapture_free);
-		}
 		if (compare == 0) return 0;
 		return -1;
 	}
