@@ -74,6 +74,13 @@ struct cmp {
 };
 static struct cmp *cmp;
 
+/** Callback to free subcapture data
+ *
+ * @param ptr data to free.
+ */
+static void subcapture_free(void *ptr) {
+	talloc_free(ptr);
+}
 /** Compares check and vp by value.
  *
  * Does not call any per-attribute comparison function, but does honour
@@ -88,7 +95,7 @@ static struct cmp *cmp;
 #ifdef HAVE_REGEX_H
 int radius_compare_vps(REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *vp)
 #else
-int radius_compare_vps(UNUSED REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *vp)
+int radius_compare_vps(REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *vp)
 #endif
 {
 	int ret = -2;
@@ -128,19 +135,18 @@ int radius_compare_vps(UNUSED REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *v
 		 *	Add %{0}, %{1}, etc.
 		 */
 		for (i = 0; i <= REQUEST_MAX_REGEX; i++) {
+			size_t len;
 			char *p;
-			char buffer[sizeof(check->vp_strvalue)];
+			char buffer[1024];
 
 			/*
-			 *	Didn't match: delete old
-			 *	match, if it existed.
+			 *	Didn't match: delete old match, if it existed.
 			 */
 			if ((compare != 0) ||
 			    (rxmatch[i].rm_so == -1)) {
-				p = request_data_get(request, request,
-						     REQUEST_DATA_REGEX | i);
+				p = request_data_get(request, request, REQUEST_DATA_REGEX | i);
 				if (p) {
-					free(p);
+					subcapture_free(p);
 					continue;
 				}
 
@@ -151,12 +157,10 @@ int radius_compare_vps(UNUSED REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *v
 				break;
 			}
 
-			/*
-			 *	Copy substring into buffer.
-			 */
-			memcpy(buffer, value + rxmatch[i].rm_so,
-			       rxmatch[i].rm_eo - rxmatch[i].rm_so);
-			buffer[rxmatch[i].rm_eo - rxmatch[i].rm_so] = '\0';
+			len = rxmatch[i].rm_eo - rxmatch[i].rm_so;
+			p = talloc_array(request, char, len + 1);
+			memcpy(p, value + rxmatch[i].rm_so, len);
+			buffer[len] = '\0';
 
 			/*
 			 *	Copy substring, and add it to
@@ -166,10 +170,7 @@ int radius_compare_vps(UNUSED REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *v
 			 *	for out of memory, which is
 			 *	the only error we can get...
 			 */
-			p = strdup(buffer);
-			request_data_add(request, request,
-					 REQUEST_DATA_REGEX | i,
-					 p, free);
+			request_data_add(request, request, REQUEST_DATA_REGEX | i, p, subcapture_free);
 		}
 		if (compare == 0) return 0;
 		return -1;
