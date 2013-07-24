@@ -1430,6 +1430,14 @@ bool pairparsevalue(VALUE_PAIR *vp, char const *value)
 	if (!value) return false;
 	VERIFY_VP(vp);
 
+	/*
+	 *	It's a comparison, not a real VALUE_PAIR, copy the string over verbatim
+	 */
+	if ((vp->op == T_OP_REG_EQ) || (vp->op == T_OP_REG_NE)) {
+		pairstrcpy(vp, value);	/* Icky hacky ewww */
+		goto finish;
+	}
+
 	switch(vp->da->type) {
 	case PW_TYPE_STRING:
 		/*
@@ -1497,14 +1505,6 @@ bool pairparsevalue(VALUE_PAIR *vp, char const *value)
 		break;
 
 	case PW_TYPE_IPADDR:
-		/*
-		 *	It's a comparison, not a real IP.
-		 */
-		if ((vp->op == T_OP_REG_EQ) ||
-		    (vp->op == T_OP_REG_NE)) {
-			break;
-		}
-
 		/*
 		 *	FIXME: complain if hostname
 		 *	cannot be resolved, or resolve later!
@@ -1903,6 +1903,7 @@ bool pairparsevalue(VALUE_PAIR *vp, char const *value)
 		return false;
 	}
 
+	finish:
 	vp->type = VT_DATA;
 	return true;
 }
