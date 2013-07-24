@@ -833,19 +833,24 @@ static int sendrecv_eap(RADIUS_PACKET *rep)
 	VALUE_PAIR *vp, *vpnext;
 	int tried_eap_md5 = 0;
 
+	if (vp->length > sizeof(password)) {
+		fprintf(stderr, "radeapclient: Password buffer too small have %zu bytes need %zu bytes\n",
+			sizeof(password), vp->length);
+		return 0;
+	}
 	/*
 	 *	Keep a copy of the the User-Password attribute.
 	 */
 	if ((vp = pairfind(rep->vps, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY)) != NULL) {
-		strlcpy(password, (char *)vp->vp_strvalue, sizeof(vp->vp_strvalue));
+		strlcpy(password, (char *)vp->vp_strvalue, sizeof(password));
 
 	} else 	if ((vp = pairfind(rep->vps, PW_USER_PASSWORD, 0, TAG_ANY)) != NULL) {
-		strlcpy(password, (char *)vp->vp_strvalue, sizeof(vp->vp_strvalue));
+		strlcpy(password, (char *)vp->vp_strvalue, sizeof(password));
 		/*
 		 *	Otherwise keep a copy of the CHAP-Password attribute.
 		 */
 	} else if ((vp = pairfind(rep->vps, PW_CHAP_PASSWORD, 0, TAG_ANY)) != NULL) {
-		strlcpy(password, (char *)vp->vp_strvalue, sizeof(vp->vp_strvalue));
+		strlcpy(password, (char *)vp->vp_strvalue, sizeof(password));
 	} else {
 		*password = '\0';
 	}

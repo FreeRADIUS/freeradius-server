@@ -450,15 +450,16 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 		/*
 		 *	Cisco AP1230 has a bug and needs a zero
 		 *	terminated string in Access-Accept.
-		 *
-		 *	@todo: fix this
 		 */
-		if ((inst->mod_accounting_username_bug) &&
-		    (vp->length < (int) sizeof(vp->vp_strvalue))) {
-#if 0
-			vp->vp_strvalue[vp->length] = '\0';
-			vp->length++;
-#endif
+		if (inst->mod_accounting_username_bug) {
+		    	char const *old = vp->vp_strvalue;
+		    	char *new = talloc_zero_array(vp, char, vp->length + 1);
+
+		    	memcpy(new, old, vp->length);
+		    	vp->vp_strvalue = new;
+		    	vp->length++;
+
+		    	rad_const_free(old);
 		}
 	}
 
