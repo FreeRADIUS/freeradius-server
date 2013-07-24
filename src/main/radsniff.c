@@ -174,6 +174,7 @@ static void process_packet(radsniff_event_t *event, struct pcap_pkthdr const *he
 	 */
 	RADIUS_PACKET *packet, *original;
 	struct timeval elapsed;
+	struct timeval latency;
 
 	/*
 	 *	Define our packet's attributes
@@ -195,12 +196,16 @@ static void process_packet(radsniff_event_t *event, struct pcap_pkthdr const *he
 		return;
 	}
 
+	/*
+	 *	Populate various fields from our PCAP data
+	 */
 	packet->src_ipaddr.af = AF_INET;
 	packet->src_ipaddr.ipaddr.ip4addr.s_addr = ip->ip_src.s_addr;
 	packet->src_port = ntohs(udp->udp_sport);
 	packet->dst_ipaddr.af = AF_INET;
 	packet->dst_ipaddr.ipaddr.ip4addr.s_addr = ip->ip_dst.s_addr;
 	packet->dst_port = ntohs(udp->udp_dport);
+	packet->timestamp = header->ts;
 
 	memcpy(&packet->data, &payload, sizeof(packet->data));
 	packet->data_len = header->len - (payload - data);
@@ -221,13 +226,17 @@ static void process_packet(radsniff_event_t *event, struct pcap_pkthdr const *he
 		/* we need a 16 x 0 byte vector for decrypting encrypted VSAs */
 		original = nullpacket;
 		break;
+	case PW_CODE_ACCOUNTING_RESPONSE:
+	case PW_CODE_AUTHENTICATION_REJECT:
 	case PW_CODE_AUTHENTICATION_ACK:
 		/* look for a matching request and use it for decoding */
 		original = rbtree_finddata(request_tree, packet);
 		break;
+	case PW_CODE_ACCOUNTING_REQUEST:
 	case PW_CODE_AUTHENTICATION_REQUEST:
 		/* save the request for later matching */
-		original = rad_alloc_reply(NULL, packet);
+		original = rad_alloc_reply(event->conf, packet);
+		original->timestamp = header->ts;
 		if (original) { /* just ignore allocation failures */
 			rbtree_deletebydata(request_tree, original);
 			rbtree_insert(request_tree, original);
@@ -246,12 +255,6 @@ static void process_packet(radsniff_event_t *event, struct pcap_pkthdr const *he
 		fr_perror("decode");
 		return;
 	}
-
-	/*
-	 *  We've seen a successful reply to this, so delete it now
-	 */
-	if (original)
-		rbtree_deletebydata(request_tree, original);
 
 	if (filter_vps && filter_packet(packet)) {
 		rad_free(&packet);
@@ -273,12 +276,26 @@ static void process_packet(radsniff_event_t *event, struct pcap_pkthdr const *he
 	/*
 	 *  Print the RADIUS packet
 	 */
-	INFO("(%i) %s Id %i %s:%s:%d -> %s:%d\t+%u.%03u", count++,
-	     fr_packet_codes[packet->code], packet->id,
-	     event->in->name,
-	     inet_ntoa(ip->ip_src), ntohs(udp->udp_sport),
-	     inet_ntoa(ip->ip_dst), ntohs(udp->udp_dport),
-	     (unsigned int) elapsed.tv_sec, ((unsigned int) elapsed.tv_usec / 1000));
+	if (original) {
+		tv_sub(&packet->timestamp, &original->timestamp, &latency);
+
+		INFO("(%i) %s Id %i %s:%s:%d <- %s:%d\t+%u.%03u\t+%u.%03u", count++,
+		     fr_packet_codes[packet->code], packet->id,
+		     event->in->name,
+		     inet_ntoa(ip->ip_src), ntohs(udp->udp_sport),
+		     inet_ntoa(ip->ip_dst), ntohs(udp->udp_dport),
+		     (unsigned int) elapsed.tv_sec, ((unsigned int) elapsed.tv_usec / 1000),
+		     (unsigned int) latency.tv_sec, ((unsigned int) latency.tv_usec / 1000));
+	} else {
+		memset(&latency, 0, sizeof(latency));
+
+		INFO("(%i) %s Id %i %s:%s:%d -> %s:%d\t+%u.%03u", count++,
+		     fr_packet_codes[packet->code], packet->id,
+		     event->in->name,
+		     inet_ntoa(ip->ip_src), ntohs(udp->udp_sport),
+		     inet_ntoa(ip->ip_dst), ntohs(udp->udp_dport),
+		     (unsigned int) elapsed.tv_sec, ((unsigned int) elapsed.tv_usec / 1000));
+	}
 
 	if (fr_debug_flag > 1) {
 		if (packet->vps) {
@@ -288,6 +305,13 @@ static void process_packet(radsniff_event_t *event, struct pcap_pkthdr const *he
 			vp_printlist(log_dst, packet->vps);
 			pairfree(&packet->vps);
 		}
+	}
+
+	/*
+	 *  We've seen a successful reply to this, so delete it now
+	 */
+	if (original) {
+		rbtree_deletebydata(request_tree, original);
 	}
 
 	if (!event->conf->to_stdout && (fr_debug_flag > 4)) {
