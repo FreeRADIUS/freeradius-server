@@ -560,12 +560,12 @@ int		rad_expand_xlat(REQUEST *request, char const *cmd,
 				size_t argv_buflen, char *argv_buf);
 void		rad_regcapture(REQUEST *request, int compare, char const *value,
 			       regmatch_t rxmatch[]);
-char const *fr_default_log_dir(void);
-char const *fr_default_lib_dir(void);
-char const *fr_default_raddb_dir(void);
-char const *fr_default_run_dir(void);
-char const *fr_default_sbin_dir(void);
-char const *fr_radacct_dir(void);
+char const	*rad_default_log_dir(void);
+char const	*rad_default_lib_dir(void);
+char const	*rad_default_raddb_dir(void);
+char const	*rad_default_run_dir(void);
+char const	*rad_default_sbin_dir(void);
+char const	*rad_radacct_dir(void);
 
 /* client.c */
 RADCLIENT_LIST	*clients_init(CONF_SECTION *cs);

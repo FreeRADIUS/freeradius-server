@@ -1086,8 +1086,6 @@ void rad_regcapture(REQUEST *request, int compare, char const *value, regmatch_t
 	 *	Add new %{0}, %{1}, etc.
 	 */
 	for (i = 0; i <= REQUEST_MAX_REGEX; i++) {
-
-
 		/*
 		 *	Didn't match: delete old match, if it existed.
 		 */
@@ -1122,7 +1120,7 @@ void rad_regcapture(REQUEST *request, int compare, char const *value, regmatch_t
  * This is set at build time from --prefix
  * @return the value of LOGDIR
  */
-char const *fr_default_log_dir(void)
+char const *rad_default_log_dir(void)
 {
 	return LOGDIR;
 }
@@ -1132,7 +1130,7 @@ char const *fr_default_log_dir(void)
  * This is set at build time from --prefix
  * @return the value of LIBDIR
  */
-char const *fr_default_lib_dir(void)
+char const *rad_default_lib_dir(void)
 {
 	return LIBDIR;
 }
@@ -1142,7 +1140,7 @@ char const *fr_default_lib_dir(void)
  * This is set at build time from --prefix
  * @return the value of RADDBDIR
  */
-char const *fr_default_raddb_dir(void)
+char const *rad_default_raddb_dir(void)
 {
 	return RADDBDIR;
 }
@@ -1152,7 +1150,7 @@ char const *fr_default_raddb_dir(void)
  * This is set at build time from --prefix
  * @return the value of RUNDIR
  */
-char const *fr_default_run_dir(void)
+char const *rad_default_run_dir(void)
 {
 	return RUNDIR;
 }
@@ -1162,7 +1160,7 @@ char const *fr_default_run_dir(void)
  * This is set at build time from --prefix
  * @return the value of SBINDIR
  */
-char const *fr_default_sbin_dir(void)
+char const *rad_default_sbin_dir(void)
 {
 	return SBINDIR;
 }
