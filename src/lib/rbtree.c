@@ -486,15 +486,15 @@ void rbtree_delete(rbtree_t *tree, rbnode_t *Z)
  *	Delete a node from the tree, based on given data, which MUST
  *	have come from rbtree_finddata().
  */
-int rbtree_deletebydata(rbtree_t *tree, void const *data)
+bool rbtree_deletebydata(rbtree_t *tree, void const *data)
 {
 	rbnode_t *node = rbtree_find(tree, data);
 
-	if (!node) return 0;	/* false */
+	if (!node) return false;	/* false */
 
 	rbtree_delete(tree, node);
 
-	return 1;
+	return true;
 }
 
 

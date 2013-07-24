@@ -614,7 +614,7 @@ void		rbtree_free(rbtree_t *tree);
 int		rbtree_insert(rbtree_t *tree, void *Data);
 rbnode_t	*rbtree_insertnode(rbtree_t *tree, void *Data);
 void		rbtree_delete(rbtree_t *tree, rbnode_t *Z);
-int		rbtree_deletebydata(rbtree_t *tree, void const *data);
+bool		rbtree_deletebydata(rbtree_t *tree, void const *data);
 rbnode_t       *rbtree_find(rbtree_t *tree, void const *Data);
 void	       *rbtree_finddata(rbtree_t *tree, void const *Data);
 int		rbtree_num_elements(rbtree_t *tree);
