@@ -436,7 +436,11 @@ static rlm_rcode_t file_common(rlm_files_t *inst, REQUEST *request,
 		for (vp = paircursor(&cursor, &check_tmp);
 		     vp;
 		     vp = pairnext(&cursor)) {
-			radius_xlat_do(request, vp);
+			if (radius_xlat_do(request, vp) < 0) {
+				RWARN("Failed parsing expanded value for check item, skipping entry: %s", fr_strerror());
+				pairfree(&check_tmp);
+				continue;
+			}
 		}
 
 		if (paircompare(request, request_pairs, pl->check, reply_pairs) == 0) {
@@ -447,6 +451,8 @@ static rlm_rcode_t file_common(rlm_files_t *inst, REQUEST *request,
 			reply_tmp = paircopy(request, pl->reply);
 			radius_xlat_move(request, reply_pairs, &reply_tmp);
 			pairmove(request, &request->config_items, &check_tmp);
+
+			/* Cleanup any unmoved valuepairs */
 			pairfree(&reply_tmp);
 			pairfree(&check_tmp);
 
