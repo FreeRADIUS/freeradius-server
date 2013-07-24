@@ -156,29 +156,28 @@ static void process_packet(radsniff_event_t *event, struct pcap_pkthdr const *he
 	static int count = 1;			/* Packets seen */
 
 	/*
-	 *  Define pointers for packet's attributes
+	 *	Define pointers for packet's attributes
 	 */
 	const struct ip_header *ip;		/* The IP header */
 	const struct udp_header *udp;		/* The UDP header */
 	const uint8_t *payload;			/* Packet payload */
 
 	/*
-	 *  And define the size of the structures we're using
+	 *	And define the size of the structures we're using
 	 */
 	int size_ethernet = sizeof(struct ethernet_header);
 	int size_ip = sizeof(struct ip_header);
 	int size_udp = sizeof(struct udp_header);
 
 	/*
-	 *  For FreeRADIUS
+	 *	For FreeRADIUS
 	 */
 	RADIUS_PACKET *packet, *original;
 	struct timeval elapsed;
 
 	/*
-	 * Define our packet's attributes
+	 *	Define our packet's attributes
 	 */
-
 	if ((data[0] == 2) && (data[1] == 0) &&
 	    (data[2] == 0) && (data[3] == 0)) {
 		ip = (struct ip_header const *) (data + 4);
@@ -303,8 +302,7 @@ check_filter:
 	 *  filter tree.
 	 */
 	if (!filter_vps ||
-	    ((packet->code != PW_CODE_AUTHENTICATION_REQUEST) &&
-	     (packet->code != PW_CODE_ACCOUNTING_REQUEST))) {
+	    ((packet->code != PW_CODE_AUTHENTICATION_REQUEST) && (packet->code != PW_CODE_ACCOUNTING_REQUEST))) {
 		rad_free(&packet);
 	}
 }
