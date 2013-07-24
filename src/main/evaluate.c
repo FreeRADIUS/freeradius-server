@@ -30,27 +30,6 @@ RCSID("$Id$")
 
 #include <ctype.h>
 
-#ifdef HAVE_PCREPOSIX_H
-#include <pcreposix.h>
-#else
-#ifdef HAVE_REGEX_H
-#include <regex.h>
-
-/*
- *  For POSIX Regular expressions.
- *  (0) Means no extended regular expressions.
- *  REG_EXTENDED means use extended regular expressions.
- */
-#ifndef REG_EXTENDED
-#define REG_EXTENDED (0)
-#endif
-
-#ifndef REG_NOSUB
-#define REG_NOSUB (0)
-#endif
-#endif
-#endif
-
 #ifdef WITH_UNLANG
 
 #ifdef WITH_EVAL_DEBUG
@@ -235,7 +214,7 @@ int radius_evaluate_tmpl(REQUEST *request, int modreturn, UNUSED int depth,
 
 static int do_regex(REQUEST *request, const char *lhs, const char *rhs, bool iflag)
 {
-	int i, compare;
+	int compare;
 	int cflags = REG_EXTENDED;
 	regex_t reg;
 	regmatch_t rxmatch[REQUEST_MAX_REGEX + 1];
@@ -259,34 +238,8 @@ static int do_regex(REQUEST *request, const char *lhs, const char *rhs, bool ifl
 
 	compare = regexec(&reg, lhs, REQUEST_MAX_REGEX + 1, rxmatch, 0);
 	regfree(&reg);
+	rad_regcapture(request, compare, lhs, rxmatch);
 
-	/*
-	 *	Add new %{0}, %{1}, etc.
-	 */
-	if (compare == 0) for (i = 0; i <= REQUEST_MAX_REGEX; i++) {
-		char *r;
-
-		free(request_data_get(request, request,
-				      REQUEST_DATA_REGEX | i));
-
-		/*
-		 *	No %{i}, skip it.
-		 *	We MAY have %{2} without %{1}.
-		 */
-		if (rxmatch[i].rm_so == -1) continue;
-
-		/*
-		 *	Copy substring into allocated buffer
-		 */
-		r = rad_malloc(rxmatch[i].rm_eo -rxmatch[i].rm_so + 1);
-		memcpy(r, lhs + rxmatch[i].rm_so,
-		       rxmatch[i].rm_eo - rxmatch[i].rm_so);
-		r[rxmatch[i].rm_eo - rxmatch[i].rm_so] = '\0';
-
-		request_data_add(request, request,
-				 REQUEST_DATA_REGEX | i,
-				 r, free);
-		}
 	return (compare == 0);
 }
 
