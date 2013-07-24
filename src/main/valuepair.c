@@ -137,7 +137,6 @@ int radius_compare_vps(REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *vp)
 		for (i = 0; i <= REQUEST_MAX_REGEX; i++) {
 			size_t len;
 			char *p;
-			char buffer[1024];
 
 			/*
 			 *	Didn't match: delete old match, if it existed.
@@ -160,7 +159,7 @@ int radius_compare_vps(REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *vp)
 			len = rxmatch[i].rm_eo - rxmatch[i].rm_so;
 			p = talloc_array(request, char, len + 1);
 			memcpy(p, value + rxmatch[i].rm_so, len);
-			buffer[len] = '\0';
+			p[len] = '\0';
 
 			/*
 			 *	Copy substring, and add it to
