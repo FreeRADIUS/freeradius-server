@@ -1418,7 +1418,7 @@ static int check_for_whitespace(char const *value)
 }
 
 
-int pairparsevalue(VALUE_PAIR *vp, char const *value)
+bool pairparsevalue(VALUE_PAIR *vp, char const *value)
 {
 	char		*p;
 	char const	*cp, *cs;
