@@ -1418,7 +1418,7 @@ static int check_for_whitespace(char const *value)
 }
 
 
-int pairparsevalue(VALUE_PAIR *vp, char const *value)
+bool pairparsevalue(VALUE_PAIR *vp, char const *value)
 {
 	char		*p;
 	char const	*cp, *cs;
@@ -1954,7 +1954,7 @@ VALUE_PAIR *pairmake_ip(TALLOC_CTX *ctx, char const *value, DICT_ATTR *ipv4, DIC
 	}
 	finish:
 	vp = pairalloc(ctx, da);
-	if (pairparsevalue(vp, value) < 0) {
+	if (!pairparsevalue(vp, value)) {
 		pairbasicfree(vp);
 		return NULL;
 	}
