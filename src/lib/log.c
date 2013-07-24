@@ -101,7 +101,7 @@ void fr_perror(char const *fmt, ...)
 	va_end(ap);
 }
 
-inline bool fr_assert_cond(char const *file, int line, char const *expr, bool cond)
+bool fr_assert_cond(char const *file, int line, char const *expr, bool cond)
 {
 	if (!cond) {
 		fr_perror("SOFT ASSERT FAILED %s[%u]: %s\n", file, line, expr);

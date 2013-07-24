@@ -538,7 +538,7 @@ void		fr_perror(char const *, ...)
 #endif
 ;
 #define fr_assert(_x) fr_assert_cond(__FILE__,  __LINE__, #_x, (_x))
-extern inline bool fr_assert_cond(char const *file, int line, char const *expr, bool cond);
+extern bool fr_assert_cond(char const *file, int line, char const *expr, bool cond);
 extern char const *fr_strerror(void);
 extern int	fr_dns_lookups;	/* 0 = no dns lookups */
 extern int	fr_debug_flag;	/* 0 = no debugging information */
