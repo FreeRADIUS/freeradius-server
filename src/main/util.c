@@ -1170,7 +1170,7 @@ char const *rad_default_sbin_dir(void)
  * This is set at build time from --prefix
  * @return the value of RADIR
  */
-char const *fr_radacct_dir(void)
+char const *rad_radacct_dir(void)
 {
 	return RADIR;
 }
