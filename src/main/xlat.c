@@ -1957,7 +1957,6 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 
 	case XLAT_MODULE:
 		XLAT_DEBUG("xlat_aprint MODULE");
-		rad_assert(node->child != NULL);
 		if (xlat_process(&child, request, node->child, node->xlat->escape, node->xlat->instance) == 0) {
 			return NULL;
 		}
@@ -2024,6 +2023,15 @@ static size_t xlat_process(char **out, REQUEST *request, xlat_exp_t const * cons
 	const xlat_exp_t *node;
 
 	*out = NULL;
+
+	/*
+	 *	There are no nodes to process, so the result is a zero
+	 *	length string.
+	 */
+	if (!head) {
+		*out = talloc_zero_array(request, char, 1);
+		return 0;
+	}
 
 	/*
 	 *	Hack for speed.  If it's one expansion, just allocate
