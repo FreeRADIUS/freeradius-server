@@ -32,7 +32,6 @@ INSTALL_RADDB_DIRS :=	$(R)$(raddbdir)/ $(addprefix $(R)$(raddbdir)/, $(RADDB_DIR
 
 # Grab files from the various subdirectories
 INSTALL_FILES := 	$(wildcard raddb/sites-available/* raddb/mods-available/*) \
-		 	$(LOCAL_SITES) $(LOCAL_MODULES) \
 		 	$(addprefix raddb/,$(LOCAL_FILES)) \
 		 	$(addprefix raddb/certs/,$(LOCAL_CERT_FILES)) \
 		 	$(shell find raddb/mods-config -type f -print) \
@@ -78,12 +77,18 @@ $(INSTALL_RADDB_DIRS):
 #  system, hopefully without breaking anything.
 
 ifeq "$(wildcard $(R)$(raddbdir)/mods-available/)" ""
+INSTALL_RADDB +=	$(patsubst raddb/%,$(R)$(raddbdir)/%,\
+			$(filter-out %~,$(LOCAL_MODULES)))
+
 # Installation rules for mods-enabled.  Note ORDER dependencies
 $(R)$(raddbdir)/mods-enabled/%: | $(R)$(raddbdir)/mods-available/%
 	@cd $(dir $@) && ln -sf ../mods-available/$(notdir $@)
 endif
 
 ifeq "$(wildcard $(R)$(raddbdir)/sites-available/)" ""
+INSTALL_RADDB +=	$(patsubst raddb/%,$(R)$(raddbdir)/%,\
+			$(filter-out %~,$(LOCAL_SITES)))
+
 # Installation rules for sites-enabled.  Note ORDER dependencies
 $(R)$(raddbdir)/sites-enabled/%: | $(R)$(raddbdir)/sites-available/%
 	@cd $(dir $@) && ln -sf ../sites-available/$(notdir $@)
