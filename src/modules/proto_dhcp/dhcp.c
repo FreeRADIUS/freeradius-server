@@ -558,6 +558,11 @@ static int fr_dhcp_attr2vp(RADIUS_PACKET *packet, VALUE_PAIR *vp, uint8_t const 
 		q[alen] = '\0';
 		break;
 
+	case PW_TYPE_ETHERNET:
+		memcpy(vp->vp_ether, p, sizeof(vp->vp_ether));
+		vp->length = sizeof(vp->vp_ether);
+		break;
+
 	/*
 	 *	Value doesn't match up with attribute type, overwrite the
 	 *	vp's original DICT_ATTR with an unknown one.
