@@ -39,23 +39,57 @@ RCSIDH(radsniff_h, "$Id$")
 #define ERROR(fmt, ...)		fr_perror("radsniff: " fmt "\n", ## __VA_ARGS__)
 
 typedef struct radsniff {
-	bool		from_file;		//!< Were reading pcap data from files.
-	bool		from_dev;		//!< Were reading pcap data from devices.
-	bool		from_stdin;		//!< Were reading pcap data from stdin.
-	bool		to_file;		//!< Were writing pcap data to files.
-	bool		to_stdout;		//!< Were writing pcap data to stdout.
+	bool			from_file;		//!< Were reading pcap data from files.
+	bool			from_dev;		//!< Were reading pcap data from devices.
+	bool			from_stdin;		//!< Were reading pcap data from stdin.
+	bool			to_file;		//!< Were writing pcap data to files.
+	bool			to_stdout;		//!< Were writing pcap data to stdout.
 
-	bool		from_auto;		//!< From list was auto-generated.
+	bool			from_auto;		//!< From list was auto-generated.
 
-	bool		do_sort;		//!< Whether we sort attributes in the packet
-	char const	*radius_secret;
+	int			stats_interval;		//!< Time between stats updates in seconds.
+	bool			do_sort;		//!< Whether we sort attributes in the packet.
+	char const		*radius_secret;		//!< Secret to decode encrypted attributes.
 
-	char		*pcap_filter;		//!< PCAP filter string applied to live capture devices.
-	char		*radius_filter;		//!< RADIUS filter string.
+	char			*pcap_filter;		//!< PCAP filter string applied to live capture devices.
+	char			*radius_filter;		//!< RADIUS filter string.
+
+
 } radsniff_t;
 
+/** Stats for a single interval
+ *
+ * And interval is defined as the time between a call to the stats output function.
+ */
+typedef struct radsniff_stats_t {
+	int			intervals;		//!< Number of stats intervals.
+
+	double			latency_cma;		//!< Cumulative moving average.
+	int			latency_cma_count;	//!< Number of CMA datapoints processed.
+
+	struct {
+		uint64_t		requests;		//!< Number of requests we've seen.
+		uint64_t		responses;		//!< Number of responses we've seen.
+		uint64_t		forwarded;		//!< Number of forwarded requests
+		uint64_t		linked;			//!< Number of request/response pairs.
+		long double		latency_total;		//!< Total latency between requests/responses in the
+								//!< interval.
+		double			latency_average;	//!< Average latency (this iteration).
+
+		double			latency_high;		//!< Latency high water mark.
+		double			latency_low;		//!< Latency low water mark.
+	} interval;
+} radsniff_stats_t;
+
 typedef struct radsniff_event {
-	radsniff_t	*conf;			//!< radsniff configuration.
-	fr_pcap_t	*in;			//!< PCAP handle event occurred on.
-	fr_pcap_t	*out;			//!< Where to write output.
+	radsniff_t		*conf;			//!< radsniff configuration.
+	fr_pcap_t		*in;			//!< PCAP handle event occurred on.
+	fr_pcap_t		*out;			//!< Where to write output.
+	radsniff_stats_t	*stats;			//!< Where to write stats.
 } radsniff_event_t;
+
+typedef struct radsniff_update {
+	fr_event_list_t		*list;			//!< List to insert new event into.
+	radsniff_t		*conf;			//!< radsniff configuration.
+	radsniff_stats_t	*stats;			//!< stats to process.
+} radsniff_update_t;

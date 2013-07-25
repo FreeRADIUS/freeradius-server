@@ -49,6 +49,56 @@ static char const *radsniff_version = "radsniff version " RADIUSD_VERSION_STRING
 #endif
 ", built on " __DATE__ " at " __TIME__;
 
+
+/** Process stats for a single interval
+ *
+ */
+static void stats_process(void *ctx)
+{
+	radsniff_update_t	*this = ctx;
+	radsniff_stats_t	*stats = this->stats;
+	radsniff_t		*conf = this->conf;
+
+	stats->intervals++;
+
+	if (stats->interval.linked && stats->interval.latency_total) {
+		stats->interval.latency_average = (stats->interval.latency_total / stats->interval.linked);
+	}
+
+	if (stats->interval.latency_average > 0) {
+		stats->latency_cma_count++;
+		stats->latency_cma += ((stats->interval.latency_average - stats->latency_cma) / stats->latency_cma_count);
+	}
+
+	INFO("Stats interval #%i", stats->intervals);
+	INFO("Counters:");
+	INFO("\tLinked    : %" PRIu64, stats->interval.linked);
+	INFO("\tRequests  : %" PRIu64, stats->interval.requests);
+	INFO("\tResponses : %" PRIu64, stats->interval.responses);
+	INFO("\tTotal     : %" PRIu64, stats->interval.requests + stats->interval.responses);
+	INFO("Latency:");
+	INFO("\tHigh      : %lf", stats->interval.latency_high);
+	INFO("\tLow       : %lf", stats->interval.latency_low);
+	INFO("\tAverage   : %lf", stats->interval.latency_average);
+	INFO("\tCMA       : %lf", stats->latency_cma);
+
+	/*
+	 *	Zero out the stats for the next interval
+	 */
+	memset(&stats->interval, 0, sizeof(stats->interval));
+
+	/*
+	 *	Rearm the stats timer
+	 */
+	{
+		struct timeval now;
+
+		gettimeofday(&now, NULL);
+		now.tv_sec += conf->stats_interval;
+		fr_event_insert(this->list, stats_process, ctx, &now, NULL);
+	}
+}
+
 static int filter_packet(RADIUS_PACKET *packet)
 {
 	vp_cursor_t cursor, check_cursor;
@@ -154,6 +204,7 @@ static void process_packet(radsniff_event_t *event, struct pcap_pkthdr const *he
 {
 
 	static int count = 1;			/* Packets seen */
+	radsniff_stats_t *stats = event->stats;
 
 	/*
 	 *	Define pointers for packet's attributes
@@ -229,11 +280,15 @@ static void process_packet(radsniff_event_t *event, struct pcap_pkthdr const *he
 	case PW_CODE_ACCOUNTING_RESPONSE:
 	case PW_CODE_AUTHENTICATION_REJECT:
 	case PW_CODE_AUTHENTICATION_ACK:
+		stats->interval.responses++;
+
 		/* look for a matching request and use it for decoding */
 		original = rbtree_finddata(request_tree, packet);
 		break;
 	case PW_CODE_ACCOUNTING_REQUEST:
 	case PW_CODE_AUTHENTICATION_REQUEST:
+		stats->interval.requests++;
+
 		/* save the request for later matching */
 		original = rad_alloc_reply(event->conf, packet);
 		original->timestamp = header->ts;
@@ -246,6 +301,8 @@ static void process_packet(radsniff_event_t *event, struct pcap_pkthdr const *he
 		/* don't attempt to decode any encrypted attributes */
 		original = NULL;
 	}
+
+
 
 	/*
 	 *  Decode the data without bothering to check the signatures.
@@ -277,7 +334,19 @@ static void process_packet(radsniff_event_t *event, struct pcap_pkthdr const *he
 	 *  Print the RADIUS packet
 	 */
 	if (original) {
+		double lint;
+		stats->interval.linked++;
+
 		tv_sub(&packet->timestamp, &original->timestamp, &latency);
+
+		lint = latency.tv_sec + (latency.tv_usec / 1000000.0);
+		if (lint > stats->interval.latency_high) {
+			stats->interval.latency_high = lint;
+		}
+		if (!stats->interval.latency_low || (lint < stats->interval.latency_low)) {
+			stats->interval.latency_low = lint;
+		}
+		stats->interval.latency_total += lint;
 
 		INFO("(%i) %s Id %i %s:%s:%d <- %s:%d\t+%u.%03u\t+%u.%03u", count++,
 		     fr_packet_codes[packet->code], packet->id,
@@ -288,7 +357,6 @@ static void process_packet(radsniff_event_t *event, struct pcap_pkthdr const *he
 		     (unsigned int) latency.tv_sec, ((unsigned int) latency.tv_usec / 1000));
 	} else {
 		memset(&latency, 0, sizeof(latency));
-
 		INFO("(%i) %s Id %i %s:%s:%d -> %s:%d\t+%u.%03u", count++,
 		     fr_packet_codes[packet->code], packet->id,
 		     event->in->name,
@@ -384,6 +452,7 @@ static void NEVER_RETURNS usage(int status)
 	fprintf(output, "  -S              Sort attributes in the packet (useful for diffing responses).\n");
 	fprintf(output, "  -v              Show program version information.\n");
 	fprintf(output, "  -w <file>       Write output packets to file (overrides output of -F).\n");
+	fprintf(output, "  -W <interval>    Periodically write out statistics every x seconds.\n");
 	fprintf(output, "  -x              Print more debugging information (defaults to -xx).\n");
 	exit(status);
 }
@@ -421,7 +490,7 @@ int main(int argc, char *argv[])
 	/*
 	 *  Get options
 	 */
-	while ((opt = getopt(argc, argv, "c:d:DFf:hi:I:p:qr:s:Svw:xX")) != EOF) {
+	while ((opt = getopt(argc, argv, "c:d:DFf:hi:I:p:qr:s:Svw:W:xX")) != EOF) {
 		switch (opt) {
 		case 'c':
 			limit = atoi(optarg);
@@ -507,6 +576,14 @@ int main(int argc, char *argv[])
 		case 'w':
 			out = fr_pcap_init(conf, optarg, PCAP_FILE_OUT);
 			conf->to_file = true;
+			break;
+
+		case 'W':
+			conf->stats_interval = atoi(optarg);
+			if (conf->stats_interval <= 0) {
+				ERROR("Stats interval must be > 0");
+				usage(64);
+			}
 			break;
 
 		case 'x':
@@ -737,8 +814,14 @@ int main(int argc, char *argv[])
 	 *	Setup and enter the main event loop. Who needs libev when you can roll your own...
 	 */
 	 {
-	 	fr_event_list_t *events;
+	 	fr_event_list_t		*events;
+	 	radsniff_stats_t	stats;
+	 	radsniff_update_t	update;
+
 	 	char *buff;
+
+		memset(&stats, 0, sizeof(stats));
+		memset(&update, 0, sizeof(update));
 
 	 	events = fr_event_list_create(conf, _event_status);
 	 	if (!events) {
@@ -755,6 +838,7 @@ int main(int argc, char *argv[])
 	     	     	event->conf = conf;
 	     	     	event->in = in_p;
 	     	     	event->out = out;
+	     	     	event->stats = &stats;
 
 			if (!fr_event_fd_insert(events, 0, in_p->fd, got_packet, event)) {
 				ERROR("Failed inserting file descriptor");
@@ -765,6 +849,21 @@ int main(int argc, char *argv[])
 		buff = fr_pcap_device_names(conf, in, ' ');
 		INFO("Sniffing on (%s)", buff);
 		talloc_free(buff);
+
+		/*
+		 *	Insert our stats processor
+		 */
+		if (conf->stats_interval) {
+			struct timeval now;
+			update.list = events;
+			update.conf = conf;
+			update.stats = &stats;
+
+			gettimeofday(&now, NULL);
+			now.tv_sec += conf->stats_interval;
+			fr_event_insert(events, stats_process, (void *) &update, &now, NULL);
+		}
+
 		ret = fr_event_loop(events);	/* Enter the main event loop */
 	 }
 
