@@ -81,7 +81,9 @@ ifeq "$(wildcard $(R)$(raddbdir)/mods-available/)" ""
 # Installation rules for mods-enabled.  Note ORDER dependencies
 $(R)$(raddbdir)/mods-enabled/%: | $(R)$(raddbdir)/mods-available/%
 	@cd $(dir $@) && ln -sf ../mods-available/$(notdir $@)
+endif
 
+ifeq "$(wildcard $(R)$(raddbdir)/sites-available/)" ""
 # Installation rules for sites-enabled.  Note ORDER dependencies
 $(R)$(raddbdir)/sites-enabled/%: | $(R)$(raddbdir)/sites-available/%
 	@cd $(dir $@) && ln -sf ../sites-available/$(notdir $@)
