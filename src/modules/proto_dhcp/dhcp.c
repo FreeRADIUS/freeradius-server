@@ -572,6 +572,12 @@ static int fr_dhcp_attr2vp(RADIUS_PACKET *packet, VALUE_PAIR *vp, uint8_t const 
 
 	case PW_TYPE_TLV:
 		return decode_tlv(packet, vp, p, alen);
+		break;
+
+	case PW_TYPE_ETHERNET:
+		memcpy(vp->vp_ether, p, sizeof(vp->vp_ether));
+		vp->length = sizeof(vp->vp_ether);
+		break;
 
 	default:
 		fr_strerror_printf("Internal sanity check %d %d", vp->da->type, __LINE__);
