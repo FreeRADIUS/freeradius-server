@@ -910,16 +910,6 @@ static int eapttls_postproxy(eap_handler_t *handler, void *data)
 	return 0;
 }
 
-
-/*
- *	Free a request.
- */
-static void my_request_free(void *data)
-{
-	REQUEST *request = (REQUEST *)data;
-
-	request_free(&request);
-}
 #endif	/* WITH_PROXY */
 
 /*
@@ -1240,7 +1230,7 @@ PW_CODE eapttls_process(eap_handler_t *handler, tls_session_t *tls_session)
 			 *	Associate the callback with the request.
 			 */
 			code = request_data_add(request, request->proxy, REQUEST_DATA_EAP_TUNNEL_CALLBACK,
-						   tunnel, NULL);
+						tunnel, false);
 			rad_assert(code == 0);
 
 			/*
@@ -1250,8 +1240,9 @@ PW_CODE eapttls_process(eap_handler_t *handler, tls_session_t *tls_session)
 			 *	So we associate the fake request with
 			 *	this request.
 			 */
+			talloc_set_destructor(fake, request_opaque_free);
 			code = request_data_add(request, request->proxy, REQUEST_DATA_EAP_MSCHAP_TUNNEL_CALLBACK,
-						   fake, my_request_free);
+						fake, true);
 			rad_assert(code == 0);
 			fake = NULL;
 

@@ -677,16 +677,6 @@ static int eappeap_postproxy(eap_handler_t *handler, void *data)
 	eaptls_fail(handler, 0);
 	return 0;
 }
-
-/*
- *	Free a request.
- */
-static void my_request_free(void *data)
-{
-	REQUEST *request = (REQUEST *)data;
-
-	request_free(&request);
-}
 #endif
 
 
@@ -1158,7 +1148,7 @@ int eappeap_process(eap_handler_t *handler, tls_session_t *tls_session)
 			rcode = request_data_add(request,
 						 request->proxy,
 						 REQUEST_DATA_EAP_TUNNEL_CALLBACK,
-						 tunnel, NULL);
+						 tunnel, false);
 			rad_assert(rcode == 0);
 
 			/*
@@ -1175,10 +1165,10 @@ int eappeap_process(eap_handler_t *handler, tls_session_t *tls_session)
 				 *	So we associate the fake request with
 				 *	this request.
 				 */
-				rcode = request_data_add(request,
-							 request->proxy,
+				talloc_set_destructor(fake, request_opaque_free);
+				rcode = request_data_add(request, request->proxy,
 							 REQUEST_DATA_EAP_MSCHAP_TUNNEL_CALLBACK,
-							 fake, my_request_free);
+							 fake, true);
 				rad_assert(rcode == 0);
 
 				/*

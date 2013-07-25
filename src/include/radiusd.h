@@ -533,6 +533,7 @@ int		log_err (char *);
 #define MEM(x) if (!(x)) { ERROR("Out of memory"); exit(1); }
 void (*reset_signal(int signo, void (*func)(int)))(int);
 void		request_free(REQUEST **request);
+int			request_opaque_free(REQUEST *request);
 int		rad_mkdir(char *directory, mode_t mode);
 int		rad_checkfilename(char const *filename);
 int		rad_file_exists(char const *filename);
@@ -545,7 +546,7 @@ REQUEST		*request_alloc_fake(REQUEST *oldreq);
 REQUEST		*request_alloc_coa(REQUEST *request);
 int		request_data_add(REQUEST *request,
 				 void *unique_ptr, int unique_int,
-				 void *opaque, void (*free_opaque)(void *));
+				 void *opaque, bool free_opaque);
 void		*request_data_get(REQUEST *request,
 				  void *unique_ptr, int unique_int);
 void		*request_data_reference(REQUEST *request,
