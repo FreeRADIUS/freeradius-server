@@ -83,18 +83,8 @@ struct request_data_t {
 	void		*unique_ptr;
 	int		unique_int;
 	void		*opaque;
-	void		(*free_opaque)(void *);
+	bool		free_opaque;
 };
-
-static int request_data_free_opaque(void *ctx)
-{
-	request_data_t *this;
-
-	this = talloc_get_type_abort(ctx, request_data_t);
-	this->free_opaque(this->opaque);
-
-	return 0;
-}
 
 /*
  *	Add opaque data (with a "free" function) to a REQUEST.
@@ -105,7 +95,7 @@ static int request_data_free_opaque(void *ctx)
  */
 int request_data_add(REQUEST *request,
 		     void *unique_ptr, int unique_int,
-		     void *opaque, void (*free_opaque)(void *))
+		     void *opaque, bool free_opaque)
 {
 	request_data_t *this, **last, *next;
 
@@ -122,11 +112,14 @@ int request_data_add(REQUEST *request,
 
 			next = this->next;
 
-			if (this->opaque && /* free it, if necessary */
-			    this->free_opaque) {
-				this->free_opaque(this->opaque);
+			/*
+			 *	If caller requires custom behaviour on free
+			 *	they must set a destructor.
+			 */
+			if (this->opaque && this->free_opaque) {
+				talloc_free(this->opaque);
 			}
-			break;	/* replace the existing entry */
+			break;				/* replace the existing entry */
 		}
 	}
 
@@ -136,10 +129,8 @@ int request_data_add(REQUEST *request,
 	this->unique_ptr = unique_ptr;
 	this->unique_int = unique_int;
 	this->opaque = opaque;
-
 	if (free_opaque) {
 		this->free_opaque = free_opaque;
-		talloc_set_destructor((void *) this, request_data_free_opaque);
 	}
 
 	*last = this;
@@ -168,9 +159,8 @@ void *request_data_get(REQUEST *request,
 			 *	Remove the entry from the list, and free it.
 			 */
 			*last = this->next;
-			talloc_set_destructor((void *) this, NULL);
 			talloc_free(this);
-			return ptr; /* don't free it, the caller does that */
+			return ptr; 		/* don't free it, the caller does that */
 		}
 	}
 
@@ -239,6 +229,16 @@ void request_free(REQUEST **request_ptr)
 #endif
 	talloc_free(request);
 	*request_ptr = NULL;
+}
+
+/*
+ *	Free a request.
+ */
+int request_opaque_free(REQUEST *request)
+{
+	request_free(&request);
+
+	return 0;
 }
 
 /*
@@ -1031,14 +1031,6 @@ int radius_request(REQUEST **context, request_refs_t name)
 	return 0;
 }
 
-/** Free subcapture string
- *
- * @param ptr to free.
- */
-static void _rad_regcapture_free(void *ptr) {
-	talloc_free(ptr);
-}
-
 /** Adds subcapture values to request data
  *
  * Allows use of %{n} expansions.
@@ -1066,7 +1058,7 @@ void rad_regcapture(REQUEST *request, int compare, char const *value, regmatch_t
 		if ((compare != 0) || (rxmatch[i].rm_so == -1)) {
 			p = request_data_get(request, request, REQUEST_DATA_REGEX | i);
 			if (p) {
-				_rad_regcapture_free(p);
+				talloc_free(p);
 			}
 
 			continue;
@@ -1085,7 +1077,7 @@ void rad_regcapture(REQUEST *request, int compare, char const *value, regmatch_t
 		 *	for out of memory, which is
 		 *	the only error we can get...
 		 */
-		request_data_add(request, request, REQUEST_DATA_REGEX | i, p, _rad_regcapture_free);
+		request_data_add(request, request, REQUEST_DATA_REGEX | i, p, true);
 	}
 }
 

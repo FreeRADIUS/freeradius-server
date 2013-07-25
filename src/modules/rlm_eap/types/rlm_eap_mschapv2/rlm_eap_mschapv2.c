@@ -637,7 +637,7 @@ packet_ready:
 		rcode = request_data_add(request,
 					 request->proxy,
 					 REQUEST_DATA_EAP_TUNNEL_CALLBACK,
-					 tunnel, NULL);
+					 tunnel, false);
 		rad_assert(rcode == 0);
 
 		/*

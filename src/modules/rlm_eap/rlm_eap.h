@@ -105,7 +105,7 @@ eap_handler_t 	*eap_handler(rlm_eap_t *inst, eap_packet_raw_t **eap_msg, REQUEST
 EAP_DS      	*eap_ds_alloc(eap_handler_t *handler);
 eap_handler_t 	*eap_handler_alloc(rlm_eap_t *inst);
 void	    	eap_ds_free(EAP_DS **eap_ds);
-void	    	eap_opaque_free(eap_handler_t *handler);
+int	    	eap_opaque_free(eap_handler_t *handler);
 void	    	eap_handler_free(rlm_eap_t *inst, eap_handler_t *handler);
 
 int 	    	eaplist_add(rlm_eap_t *inst, eap_handler_t *handler);

@@ -1320,7 +1320,7 @@ static int command_inject_file(rad_listen_t *listener, int argc, char *argv[])
 		return 0;
 	}
 
-	fake = rad_malloc(sizeof(*fake));
+	fake = talloc(NULL, rad_listen_t);
 	memcpy(fake, sock->inject_listener, sizeof(*fake));
 
 	/*
@@ -1385,8 +1385,8 @@ static int command_inject_file(rad_listen_t *listener, int argc, char *argv[])
 	 *	Remember what the output file is, and remember to
 	 *	delete the fake listener when done.
 	 */
-	request_data_add(request, null_socket_send, 0, strdup(buffer), free);
-	request_data_add(request, null_socket_send, 1, fake, free);
+	request_data_add(request, null_socket_send, 0, talloc_strdup(NULL, buffer), true);
+	request_data_add(request, null_socket_send, 1, fake, true);
 
 #endif
 

@@ -90,12 +90,11 @@ eap_handler_t *eap_handler_alloc(rlm_eap_t *inst)
 	return handler;
 }
 
-void eap_opaque_free(eap_handler_t *handler)
+int eap_opaque_free(eap_handler_t *handler)
 {
-	if (!handler)
-		return;
-
 	eap_handler_free(handler->inst_holder, handler);
+
+	return 0;
 }
 
 void eap_handler_free(rlm_eap_t *inst, eap_handler_t *handler)
@@ -136,17 +135,13 @@ typedef struct check_handler_t {
 	int		trips;
 } check_handler_t;
 
-static void check_handler(void *data)
+static int check_opaque_free(check_handler_t *check)
 {
 	int do_warning = false;
 	uint8_t state[8];
-	check_handler_t *check = data;
-
-	if (!check) return;
 
 	if (!check->inst || !check->handler) {
-		free(check);
-		return;
+		return 0;
 	}
 
 	if (!check->inst->handler_tree) goto done;
@@ -184,7 +179,6 @@ static void check_handler(void *data)
 
 done:
 	PTHREAD_MUTEX_UNLOCK(&(check->inst->handler_mutex));
-	free(check);
 
 	if (do_warning) {
 		WDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
@@ -197,6 +191,8 @@ done:
 		WDEBUG("!! Please read http://wiki.freeradius.org/guide/Certificate_Compatibility     !!");
 		WDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 	}
+
+	return 0;
 }
 
 void eaplist_free(rlm_eap_t *inst)
@@ -401,12 +397,14 @@ int eaplist_add(rlm_eap_t *inst, eap_handler_t *handler)
 	 *	Catch Access-Challenge without response.
 	 */
 	if (inst->handler_tree) {
-		check_handler_t *check = rad_malloc(sizeof(*check));
+		check_handler_t *check = talloc(handler, check_handler_t);
 
 		check->inst = inst;
 		check->handler = handler;
 		check->trips = handler->trips;
-		request_data_add(request, inst, 0, check, check_handler);
+
+		talloc_set_destructor(check, check_opaque_free);
+		request_data_add(request, inst, 0, check, true);
 	}
 
 	if (status) {

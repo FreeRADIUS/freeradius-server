@@ -386,15 +386,6 @@ typedef struct modcall_stack {
 	modcallable *start[MODCALL_STACK_MAX];
 } modcall_stack;
 
-
-#ifdef WITH_UNLANG
-static void pairfree_wrapper(void *data)
-{
-	VALUE_PAIR **vp = (VALUE_PAIR **) data;
-	pairfree(vp);
-}
-#endif
-
 /**
  * @brief Call a module, iteratively, with a local stack, rather than
  *	recursively.  What did Paul Graham say about Lisp...?
@@ -573,9 +564,15 @@ int modcall(int component, modcallable *c, REQUEST *request)
 					copy = paircopy(request, vp);
 					copy_p = &copy;
 
+					/*
+					 *	@fixme: The old code freed copy on request_data_add or
+					 *	request_data_get.  There's no way to easily do that now.
+					 *	The foreach code should be audited for possible memory leaks,
+					 *	though it's not a huge priority as any leaked memory will
+					 *	be freed on request free.
+					 */
 					request_data_add(request, radius_get_vp,
-							 depth, copy_p,
-							 pairfree_wrapper);
+							 depth, copy_p, false);
 
 				 	myresult = modcall(component,
 							   g->children,

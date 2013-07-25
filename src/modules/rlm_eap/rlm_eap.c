@@ -323,9 +323,10 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 		 *	send a response.
 		 */
 		handler->inst_holder = inst;
-		status = request_data_add(request,
-					  inst, REQUEST_DATA_EAP_HANDLER,
-					  handler, (void *) eap_opaque_free);
+
+		talloc_set_destructor(handler, eap_opaque_free);
+		status = request_data_add(request, inst, REQUEST_DATA_EAP_HANDLER, handler, true);
+
 		rad_assert(status == 0);
 		return RLM_MODULE_HANDLED;
 	}
@@ -347,10 +348,10 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 		 *	send a response.
 		 */
 		handler->inst_holder = inst;
-		status = request_data_add(request,
-					  inst, REQUEST_DATA_EAP_HANDLER,
-					  handler,
-					  (void *) eap_opaque_free);
+
+		talloc_set_destructor(handler, eap_opaque_free);
+		status = request_data_add(request, inst, REQUEST_DATA_EAP_HANDLER, handler, true);
+
 		rad_assert(status == 0);
 
 		/*
