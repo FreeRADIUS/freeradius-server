@@ -740,6 +740,8 @@ static void request_process_timer(REQUEST *request)
 
 	if ((request->reply->code == PW_AUTHENTICATION_REJECT) &&
 	    (request->root->reject_delay)) {
+		rad_assert(request->reply->timestamp.tv_sec != 0);
+
 		when = request->reply->timestamp;
 		when.tv_sec += request->root->reject_delay;
 
@@ -1021,7 +1023,7 @@ static int request_pre_handler(REQUEST *request, UNUSED int action)
 	}
 
 	if (rcode < 0) {
-		RDEBUG("Dropping packet without response because of error %s", fr_strerror());
+		RDEBUG("Dropping packet without response because of error: %s", fr_strerror());
 		request->reply->offset = -2; /* bad authenticator */
 		return 0;
 	}
@@ -1046,8 +1048,6 @@ STATE_MACHINE_DECL(request_finish)
 	TRACE_STATE_MACHINE;
 
 	(void) action;	/* -Wunused */
-
-	gettimeofday(&request->reply->timestamp, NULL);
 
 	if (request->master_state == REQUEST_STOP_PROCESSING) return;
 
@@ -1221,6 +1221,12 @@ STATE_MACHINE_DECL(request_running)
 			request_finish(request, action);
 
 		done:
+			/*
+			 *	Get the time of the reply, which is
+			 *	when we're done.
+			 */
+			gettimeofday(&request->reply->timestamp, NULL);
+
 #ifdef DEBUG_STATE_MACHINE
 			if (debug_flag) printf("(%u) ********\tSTATE %s C%u -> C%u\t********\n", request->number, __FUNCTION__, request->child_state, REQUEST_DONE);
 #endif
