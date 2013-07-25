@@ -1128,7 +1128,7 @@ eap_handler_t *eap_handler(rlm_eap_t *inst, eap_packet_raw_t **eap_packet_p,
 		if (!handler->identity) {
 			RDEBUG("Identity Unknown, authentication failed");
 		error2:
-			eap_handler_free(inst, handler);
+			talloc_free(handler);
 			goto error;
 		}
 

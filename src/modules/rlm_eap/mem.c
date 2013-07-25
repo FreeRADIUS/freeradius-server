@@ -72,35 +72,9 @@ void eap_ds_free(EAP_DS **eap_ds_p)
 	*eap_ds_p = NULL;
 }
 
-/*
- * Allocate a new eap_handler_t
- */
-eap_handler_t *eap_handler_alloc(rlm_eap_t *inst)
+static int _eap_handler_free(eap_handler_t *handler)
 {
-	eap_handler_t	*handler;
-
-	PTHREAD_MUTEX_LOCK(&(inst->handler_mutex));
-	handler = talloc_zero(inst, eap_handler_t);
-
-	if (inst->handler_tree) {
-		rbtree_insert(inst->handler_tree, handler);
-	}
-	PTHREAD_MUTEX_UNLOCK(&(inst->handler_mutex));
-
-	return handler;
-}
-
-int eap_opaque_free(eap_handler_t *handler)
-{
-	eap_handler_free(handler->inst_holder, handler);
-
-	return 0;
-}
-
-void eap_handler_free(rlm_eap_t *inst, eap_handler_t *handler)
-{
-	if (!handler)
-		return;
+	rlm_eap_t *inst = handler->inst_holder;
 
 	if (handler->identity) {
 		talloc_free(handler->identity);
@@ -124,10 +98,31 @@ void eap_handler_free(rlm_eap_t *inst, eap_handler_t *handler)
 	if (inst->handler_tree) {
 		rbtree_deletebydata(inst->handler_tree, handler);
 	}
-	talloc_free(handler);
 	PTHREAD_MUTEX_UNLOCK(&(inst->handler_mutex));
+
+	return 0;
 }
 
+/*
+ * Allocate a new eap_handler_t
+ */
+eap_handler_t *eap_handler_alloc(rlm_eap_t *inst)
+{
+	eap_handler_t	*handler;
+
+	PTHREAD_MUTEX_LOCK(&(inst->handler_mutex));
+	handler = talloc_zero(inst, eap_handler_t);
+
+	if (inst->handler_tree) {
+		rbtree_insert(inst->handler_tree, handler);
+	}
+
+	handler->inst_holder = inst;
+	talloc_set_destructor(handler, _eap_handler_free);
+	PTHREAD_MUTEX_UNLOCK(&(inst->handler_mutex));
+
+	return handler;
+}
 
 typedef struct check_handler_t {
 	rlm_eap_t	*inst;
@@ -201,7 +196,7 @@ void eaplist_free(rlm_eap_t *inst)
 
        	for (node = inst->session_head; node != NULL; node = next) {
 		next = node->next;
-		eap_handler_free(inst, node);
+		talloc_free(node);
 	}
 
 	inst->session_head = inst->session_tail = NULL;
@@ -307,7 +302,7 @@ static void eaplist_expire(rlm_eap_t *inst, REQUEST *request, time_t timestamp)
 				inst->session_head = NULL;
 				inst->session_tail = NULL;
 			}
-			eap_handler_free(inst, handler);
+			talloc_free(handler);
 		} else {
 			break;
 		}
@@ -525,7 +520,7 @@ eap_handler_t *eaplist_find(rlm_eap_t *inst, REQUEST *request,
 		       state->vp_octets[6], state->vp_octets[7]);
 
 
-		eap_handler_free(inst, handler);
+		talloc_free(handler);
 		return NULL;
 	}
 	handler->trips++;

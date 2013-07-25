@@ -306,7 +306,7 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 	 */
 	if (status == EAP_INVALID) {
 		eap_fail(handler);
-		eap_handler_free(inst, handler);
+		talloc_free(handler);
 		RDEBUG2("Failed in EAP select");
 		return RLM_MODULE_INVALID;
 	}
@@ -323,8 +323,6 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 		 *	send a response.
 		 */
 		handler->inst_holder = inst;
-
-		talloc_set_destructor(handler, eap_opaque_free);
 		status = request_data_add(request, inst, REQUEST_DATA_EAP_HANDLER, handler, true);
 
 		rad_assert(status == 0);
@@ -349,7 +347,6 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 		 */
 		handler->inst_holder = inst;
 
-		talloc_set_destructor(handler, eap_opaque_free);
 		status = request_data_add(request, inst, REQUEST_DATA_EAP_HANDLER, handler, true);
 
 		rad_assert(status == 0);
@@ -420,14 +417,14 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 		if (!eaplist_add(inst, handler)) {
 			RDEBUG("Failed adding handler to the list");
 			eap_fail(handler);
-			eap_handler_free(inst, handler);
+			talloc_free(handler);
 			return RLM_MODULE_FAIL;
 		}
 
 	} else {
 		RDEBUG2("Freeing handler");
 		/* handler is not required any more, free it now */
-		eap_handler_free(inst, handler);
+		talloc_free(handler);
 	}
 
 	/*
@@ -575,7 +572,7 @@ static rlm_rcode_t mod_post_proxy(void *inst, REQUEST *request)
 							      REQUEST_DATA_EAP_TUNNEL_CALLBACK);
 		if (!data) {
 			RERROR("Failed to retrieve callback for tunneled session!");
-			eap_handler_free(inst, handler);
+			talloc_free(handler);
 			return RLM_MODULE_FAIL;
 		}
 
@@ -588,7 +585,7 @@ static rlm_rcode_t mod_post_proxy(void *inst, REQUEST *request)
 		if (rcode == 0) {
 			RDEBUG2("Failed in post-proxy callback");
 			eap_fail(handler);
-			eap_handler_free(inst, handler);
+			talloc_free(handler);
 			return RLM_MODULE_REJECT;
 		}
 
@@ -606,14 +603,14 @@ static rlm_rcode_t mod_post_proxy(void *inst, REQUEST *request)
 		    (handler->eap_ds->request->type.num >= PW_EAP_MD5)) {
 			if (!eaplist_add(inst, handler)) {
 				eap_fail(handler);
-				eap_handler_free(inst, handler);
+				talloc_free(handler);
 				return RLM_MODULE_FAIL;
 			}
 
 		} else {	/* couldn't have been LEAP, there's no tunnel */
 			RDEBUG2("Freeing handler");
 			/* handler is not required any more, free it now */
-			eap_handler_free(inst, handler);
+			talloc_free(handler);
 		}
 
 		/*
@@ -741,7 +738,7 @@ static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
 
 	RDEBUG2("Request was previously rejected, inserting EAP-Failure");
 	eap_fail(handler);
-	eap_handler_free(inst, handler);
+	talloc_free(handler);
 
 	/*
 	 * Make sure there's a message authenticator attribute in the response
