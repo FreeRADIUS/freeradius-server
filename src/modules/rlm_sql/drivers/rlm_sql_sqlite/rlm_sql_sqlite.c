@@ -115,14 +115,14 @@ static int sql_loadfile(TALLOC_CTX *ctx, sqlite3 *db, char const *filename)
 	f = fopen(filename, "r");
 	if (!f) {
 		ERROR("rlm_sql_sqlite: Failed opening SQL file \"%s\": %s", filename,
-		       strerror(errno));
+		       fr_syserror(errno));
 
 		return -1;
 	}
 
 	if (fstat(fileno(f), &finfo) < 0) {
 		ERROR("rlm_sql_sqlite: Failed stating SQL file \"%s\": %s", filename,
-		       strerror(errno));
+		       fr_syserror(errno));
 
 		fclose(f);
 
@@ -148,7 +148,7 @@ static int sql_loadfile(TALLOC_CTX *ctx, sqlite3 *db, char const *filename)
 
 	if (!len) {
 		if (ferror(f)) {
-			ERROR("rlm_sql_sqlite: Error reading SQL file: %s", strerror(errno));
+			ERROR("rlm_sql_sqlite: Error reading SQL file: %s", fr_syserror(errno));
 
 			fclose(f);
 			talloc_free(buffer);
@@ -245,7 +245,7 @@ static int mod_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
 
 	exists = rad_file_exists(driver->filename);
 	if (exists < 0) {
-		ERROR("rlm_sql_sqlite: Database exists, but couldn't be opened: %s", strerror(errno));
+		ERROR("rlm_sql_sqlite: Database exists, but couldn't be opened: %s", fr_syserror(errno));
 
 		return -1;
 	}
@@ -306,7 +306,7 @@ static int mod_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
 			unlink:
 			if (unlink(driver->filename) < 0) {
 				ERROR("rlm_sql_sqlite: Error removing partially initialised database: %s",
-				       strerror(errno));
+				       fr_syserror(errno));
 			}
 			return -1;
 		}

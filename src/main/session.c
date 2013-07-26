@@ -207,7 +207,7 @@ int rad_check_ts(uint32_t nasaddr, unsigned int portnum, char const *user,
 	execl(mainconfig.checkrad, "checkrad", cl->nas_type, address, port,
 		user, session_id, NULL);
 #endif
-	ERROR("Check-TS: exec %s: %s", mainconfig.checkrad, strerror(errno));
+	ERROR("Check-TS: exec %s: %s", mainconfig.checkrad, fr_syserror(errno));
 
 	/*
 	 *	Exit - 2 means "some error occured".

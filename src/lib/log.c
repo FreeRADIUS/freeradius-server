@@ -27,21 +27,16 @@ RCSID("$Id$")
 #define FR_STRERROR_BUFSIZE (2048)
 
 fr_thread_local_setup(char *, fr_strerror_buffer)	/* macro */
+fr_thread_local_setup(char *, fr_syserror_buffer)	/* macro */
+
 
 /*
  *	Explicitly cleanup the memory allocated to the error buffer,
  *	just in case valgrind complains about it.
  */
-static void fr_logging_free(UNUSED void *arg)
+static void fr_logging_free(void *arg)
 {
-	char *buffer;
-
-	buffer = fr_thread_local_get(fr_strerror_buffer);
-	if (!buffer) {
-		return;
-	}
-
-	free(buffer);
+	free(arg);
 }
 
 /*
@@ -68,7 +63,8 @@ void fr_strerror_printf(char const *fmt, ...)
 
 		ret = fr_thread_local_set(fr_strerror_buffer, buffer);
 		if (ret != 0) {
-			fr_perror("Failed setting up TLS for libradius error buffer: %s", strerror(ret));
+			fr_perror("Failed setting up TLS for libradius error buffer: %s", fr_syserror(ret));
+			free(buffer);
 			return;
 		}
 	}
@@ -81,6 +77,38 @@ void fr_strerror_printf(char const *fmt, ...)
 char const *fr_strerror(void)
 {
 	return fr_thread_local_get(fr_strerror_buffer);
+}
+
+char const *fr_syserror(int num)
+{
+	char *buffer;
+
+	buffer = fr_thread_local_init(fr_syserror_buffer, fr_logging_free);
+	if (!buffer) {
+		int ret;
+
+		/*
+		 *	malloc is thread safe, talloc is not
+		 */
+		buffer = malloc(sizeof(char) * FR_STRERROR_BUFSIZE);
+		if (!buffer) {
+			fr_perror("Failed allocating memory for system error buffer");
+			return NULL;
+		}
+
+		ret = fr_thread_local_set(fr_syserror_buffer, buffer);
+		if (ret != 0) {
+			fr_perror("Failed setting up TLS for system error buffer: %s", fr_syserror(ret));
+			free(buffer);
+			return NULL;
+		}
+	}
+
+	if (!num || (strerror_r(num, buffer, FR_STRERROR_BUFSIZE) != 0)) {
+		buffer[0] = '\0';
+	}
+
+	return buffer;
 }
 
 void fr_perror(char const *fmt, ...)

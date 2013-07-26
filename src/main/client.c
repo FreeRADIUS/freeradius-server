@@ -883,7 +883,7 @@ RADCLIENT_LIST *clients_parse_section(CONF_SECTION *section)
 
 			dir = opendir(value);
 			if (!dir) {
-				cf_log_err_cs(cs, "Error reading directory %s: %s", value, strerror(errno));
+				cf_log_err_cs(cs, "Error reading directory %s: %s", value, fr_syserror(errno));
 				client_free(c);
 				return NULL;
 			}

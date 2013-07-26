@@ -252,7 +252,7 @@ static rlm_rcode_t reset_db(rlm_counter_t *inst)
 	}
 	if (!inst->gdbm) {
 		ERROR("rlm_counter: Failed to open file %s: %s",
-				inst->filename, strerror(errno));
+				inst->filename, fr_syserror(errno));
 		return RLM_MODULE_FAIL;
 	}
 	if (gdbm_setopt(inst->gdbm, GDBM_CACHESIZE, &cache_size,
@@ -477,7 +477,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	}
 	if (!inst->gdbm) {
 		ERROR("rlm_counter: Failed to open file %s: %s",
-				inst->filename, strerror(errno));
+				inst->filename, fr_syserror(errno));
 		return -1;
 	}
 	if (gdbm_setopt(inst->gdbm, GDBM_CACHESIZE, &cache_size,

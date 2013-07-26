@@ -626,7 +626,7 @@ static void *request_handler_thread(void *arg)
 				goto re_wait;
 			}
 			ERROR("Thread %d failed waiting for semaphore: %s: Exiting\n",
-			       self->thread_num, strerror(errno));
+			       self->thread_num, fr_syserror(errno));
 			break;
 		}
 
@@ -803,7 +803,7 @@ static THREAD_HANDLE *spawn_thread(time_t now, int do_trigger)
 			request_handler_thread, handle);
 	if (rcode != 0) {
 		ERROR("Thread create failed: %s",
-		       strerror(rcode));
+		       fr_syserror(rcode));
 		return NULL;
 	}
 
@@ -905,7 +905,7 @@ int thread_pool_init(UNUSED CONF_SECTION *cs, int *spawn_flag)
 #ifdef WNOHANG
 	if ((pthread_mutex_init(&thread_pool.wait_mutex,NULL) != 0)) {
 		ERROR("FATAL: Failed to initialize wait mutex: %s",
-		       strerror(errno));
+		       fr_syserror(errno));
 		return -1;
 	}
 
@@ -959,14 +959,14 @@ int thread_pool_init(UNUSED CONF_SECTION *cs, int *spawn_flag)
 	rcode = sem_init(&thread_pool.semaphore, 0, SEMAPHORE_LOCKED);
 	if (rcode != 0) {
 		ERROR("FATAL: Failed to initialize semaphore: %s",
-		       strerror(errno));
+		       fr_syserror(errno));
 		return -1;
 	}
 
 	rcode = pthread_mutex_init(&thread_pool.queue_mutex,NULL);
 	if (rcode != 0) {
 		ERROR("FATAL: Failed to initialize queue mutex: %s",
-		       strerror(errno));
+		       fr_syserror(errno));
 		return -1;
 	}
 
@@ -1009,7 +1009,7 @@ int thread_pool_init(UNUSED CONF_SECTION *cs, int *spawn_flag)
 	thread_pool.queue = dispatch_queue_create("org.freeradius.threads", NULL);
 	if (!thread_pool.queue) {
 		ERROR("Failed creating dispatch queue: %s\n",
-		       strerror(errno));
+		       fr_syserror(errno));
 		exit(1);
 	}
 #endif

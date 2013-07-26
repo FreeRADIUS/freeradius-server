@@ -129,7 +129,7 @@ int fr_socket(fr_ipaddr_t *ipaddr, int port)
 
 	sockfd = socket(ipaddr->af, SOCK_DGRAM, 0);
 	if (sockfd < 0) {
-		fr_strerror_printf("cannot open socket: %s", strerror(errno));
+		fr_strerror_printf("cannot open socket: %s", fr_syserror(errno));
 		return sockfd;
 	}
 
@@ -139,7 +139,7 @@ int fr_socket(fr_ipaddr_t *ipaddr, int port)
 	 */
 	if (udpfromto_init(sockfd) != 0) {
 		close(sockfd);
-		fr_strerror_printf("cannot initialize udpfromto: %s", strerror(errno));
+		fr_strerror_printf("cannot initialize udpfromto: %s", fr_syserror(errno));
 		return -1;
 	}
 #endif
@@ -171,7 +171,7 @@ int fr_socket(fr_ipaddr_t *ipaddr, int port)
 				close(sockfd);
 				fr_strerror_printf("Failed setting sockopt "
 						   "IPPROTO_IPV6 - IPV6_V6ONLY"
-						   ": %s", strerror(errno));
+						   ": %s", fr_syserror(errno));
 				return -1;
 			}
 		}
@@ -194,7 +194,7 @@ int fr_socket(fr_ipaddr_t *ipaddr, int port)
 			close(sockfd);
 			fr_strerror_printf("Failed setting sockopt "
 					   "IPPROTO_IP - IP_MTU_DISCOVER: %s",
-					   strerror(errno));
+					   fr_syserror(errno));
 			return -1;
 		}
 #endif
@@ -209,7 +209,7 @@ int fr_socket(fr_ipaddr_t *ipaddr, int port)
 			close(sockfd);
 			fr_strerror_printf("Failed setting sockopt "
 					   "IPPROTO_IP - IP_DONTFRAG: %s",
-					   strerror(errno));
+					   fr_syserror(errno));
 			return -1;
 		}
 #endif
@@ -217,7 +217,7 @@ int fr_socket(fr_ipaddr_t *ipaddr, int port)
 
 	if (bind(sockfd, (struct sockaddr *) &salocal, salen) < 0) {
 		close(sockfd);
-		fr_strerror_printf("cannot bind socket: %s", strerror(errno));
+		fr_strerror_printf("cannot bind socket: %s", fr_syserror(errno));
 		return -1;
 	}
 
@@ -408,7 +408,7 @@ int fr_packet_list_socket_add(fr_packet_list_t *pl, int sockfd, int proto,
 	memset(&src, 0, sizeof_src);
 	if (getsockname(sockfd, (struct sockaddr *) &src,
 			&sizeof_src) < 0) {
-		fr_strerror_printf("%s", strerror(errno));
+		fr_strerror_printf("%s", fr_syserror(errno));
 		return 0;
 	}
 

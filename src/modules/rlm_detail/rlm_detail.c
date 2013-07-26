@@ -242,7 +242,7 @@ static rlm_rcode_t do_detail(void *instance, REQUEST *request, RADIUS_PACKET *pa
 		 *	a directory that the server was using.
 		 */
 		if (rad_mkdir(buffer, inst->dirperm) < 0) {
-			RERROR("rlm_detail: Failed to create directory %s: %s", buffer, strerror(errno));
+			RERROR("rlm_detail: Failed to create directory %s: %s", buffer, fr_syserror(errno));
 			return RLM_MODULE_FAIL;
 		}
 
@@ -259,7 +259,7 @@ static rlm_rcode_t do_detail(void *instance, REQUEST *request, RADIUS_PACKET *pa
 		if ((outfd = open(buffer, O_WRONLY | O_APPEND | O_CREAT,
 				  inst->perm)) < 0) {
 			RERROR("rlm_detail: Couldn't open file %s: %s",
-			       buffer, strerror(errno));
+			       buffer, fr_syserror(errno));
 			return RLM_MODULE_FAIL;
 		}
 
@@ -285,7 +285,7 @@ static rlm_rcode_t do_detail(void *instance, REQUEST *request, RADIUS_PACKET *pa
 			 */
 			if (fstat(outfd, &st) != 0) {
 				RERROR("rlm_detail: Couldn't stat file %s: %s",
-				       buffer, strerror(errno));
+				       buffer, fr_syserror(errno));
 				close(outfd);
 				return RLM_MODULE_FAIL;
 			}
@@ -352,7 +352,7 @@ static rlm_rcode_t do_detail(void *instance, REQUEST *request, RADIUS_PACKET *pa
 	 */
 	if ((fp = fdopen(outfd, "a")) == NULL) {
 		RERROR("rlm_detail: Couldn't open file %s: %s",
-			       buffer, strerror(errno));
+			       buffer, fr_syserror(errno));
 		close(outfd);
 		return RLM_MODULE_FAIL;
 	}
@@ -470,7 +470,7 @@ static rlm_rcode_t do_detail(void *instance, REQUEST *request, RADIUS_PACKET *pa
 		int ret;
 		ret = ftruncate(outfd, fsize);
 		if (ret) {
-			REDEBUG4("Failed truncating detail file: %s", strerror(ret));
+			REDEBUG4("Failed truncating detail file: %s", fr_syserror(ret));
 		}
 
 		fclose(fp);

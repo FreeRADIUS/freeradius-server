@@ -2041,10 +2041,10 @@ static int my_dict_init(char const *parent, char const *filename,
 	if ((fp = fopen(fn, "r")) == NULL) {
 		if (!src_file) {
 			fr_strerror_printf("dict_init: Couldn't open dictionary \"%s\": %s",
-				   fn, strerror(errno));
+				   fn, fr_syserror(errno));
 		} else {
 			fr_strerror_printf("dict_init: %s[%d]: Couldn't open dictionary \"%s\": %s",
-				   src_file, src_line, fn, strerror(errno));
+				   src_file, src_line, fn, fr_syserror(errno));
 		}
 		return -2;
 	}

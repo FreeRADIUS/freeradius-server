@@ -2156,7 +2156,7 @@ static int listen_bind(rad_listen_t *this)
 
 		this->print(this, buffer, sizeof(buffer));
 
-		ERROR("Failed opening %s: %s", buffer, strerror(errno));
+		ERROR("Failed opening %s: %s", buffer, fr_syserror(errno));
 		return -1;
 	}
 
@@ -2169,7 +2169,7 @@ static int listen_bind(rad_listen_t *this)
 	if (rcode >= 0) {
 		if (fcntl(this->fd, F_SETFD, rcode | FD_CLOEXEC) < 0) {
 			close(this->fd);
-			ERROR("Failed setting close on exec: %s", strerror(errno));
+			ERROR("Failed setting close on exec: %s", fr_syserror(errno));
 			return -1;
 		}
 	}
@@ -2192,7 +2192,7 @@ static int listen_bind(rad_listen_t *this)
 		if (rcode < 0) {
 			close(this->fd);
 			ERROR("Failed binding to interface %s: %s",
-			       sock->interface, strerror(errno));
+			       sock->interface, fr_syserror(errno));
 			return -1;
 		} /* else it worked. */
 #else
@@ -2213,8 +2213,7 @@ static int listen_bind(rad_listen_t *this)
 				sock->my_ipaddr.scope = if_nametoindex(sock->interface);
 				if (sock->my_ipaddr.scope == 0) {
 					close(this->fd);
-					ERROR("Failed finding interface %s: %s",
-					       sock->interface, strerror(errno));
+					ERROR("Failed finding interface %s: %s", sock->interface, fr_syserror(errno));
 					return -1;
 				}
 			} /* else scope was defined: we're OK. */
@@ -2239,7 +2238,7 @@ static int listen_bind(rad_listen_t *this)
 
 		if (setsockopt(this->fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) < 0) {
 			close(this->fd);
-			ERROR("Failed to reuse address: %s", strerror(errno));
+			ERROR("Failed to reuse address: %s", fr_syserror(errno));
 			return -1;
 		}
 	}
@@ -2254,8 +2253,7 @@ static int listen_bind(rad_listen_t *this)
 	 *	Initialize udpfromto for all sockets.
 	 */
 	if (udpfromto_init(this->fd) != 0) {
-		ERROR("Failed initializing udpfromto: %s",
-		       strerror(errno));
+		ERROR("Failed initializing udpfromto: %s", fr_syserror(errno));
 		close(this->fd);
 		return -1;
 	}
@@ -2284,8 +2282,7 @@ static int listen_bind(rad_listen_t *this)
 
 			if (setsockopt(this->fd, IPPROTO_IPV6, IPV6_V6ONLY,
 				       (char *)&on, sizeof(on)) < 0) {
-				ERROR("Failed setting socket to IPv6 "
-				       "only: %s", strerror(errno));
+				ERROR("Failed setting socket to IPv6 only: %s", fr_syserror(errno));
 
 		       		close(this->fd);
 				return -1;
@@ -2307,8 +2304,7 @@ static int listen_bind(rad_listen_t *this)
 		flag = IP_PMTUDISC_DONT;
 		if (setsockopt(this->fd, IPPROTO_IP, IP_MTU_DISCOVER,
 			       &flag, sizeof(flag)) < 0) {
-			ERROR("Failed disabling PMTU discovery: %s",
-			       strerror(errno));
+			ERROR("Failed disabling PMTU discovery: %s", fr_syserror(errno));
 
 			close(this->fd);
 			return -1;
@@ -2322,8 +2318,7 @@ static int listen_bind(rad_listen_t *this)
 		flag = 0;
 		if (setsockopt(this->fd, IPPROTO_IP, IP_DONTFRAG,
 			       &flag, sizeof(flag)) < 0) {
-			ERROR("Failed setting don't fragment flag: %s",
-			       strerror(errno));
+			ERROR("Failed setting don't fragment flag: %s", fr_syserror(errno));
 
 			close(this->fd);
 			return -1;
@@ -2337,8 +2332,7 @@ static int listen_bind(rad_listen_t *this)
 		int on = 1;
 
 		if (setsockopt(this->fd, SOL_SOCKET, SO_BROADCAST, &on, sizeof(on)) < 0) {
-			ERROR("Can't set broadcast option: %s",
-			       strerror(errno));
+			ERROR("Can't set broadcast option: %s", fr_syserror(errno));
 			return -1;
 		}
 	}
@@ -2353,8 +2347,7 @@ static int listen_bind(rad_listen_t *this)
 		int on = 1;
 
 		if (setsockopt(this->fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) < 0) {
-			ERROR("Can't set re-use address option: %s",
-			       strerror(errno));
+			ERROR("Can't set re-use address option: %s", fr_syserror(errno));
 			return -1;
 		}
 #endif
@@ -2367,8 +2360,7 @@ static int listen_bind(rad_listen_t *this)
 			close(this->fd);
 
 			this->print(this, buffer, sizeof(buffer));
-			ERROR("Failed binding to %s: %s\n",
-			       buffer, strerror(errno));
+			ERROR("Failed binding to %s: %s", buffer, fr_syserror(errno));
 			return -1;
 		}
 
@@ -2384,8 +2376,7 @@ static int listen_bind(rad_listen_t *this)
 			memset(&src, 0, sizeof_src);
 			if (getsockname(this->fd, (struct sockaddr *) &src,
 					&sizeof_src) < 0) {
-				ERROR("Failed getting socket name: %s",
-				       strerror(errno));
+				ERROR("Failed getting socket name: %s", fr_syserror(errno));
 				return -1;
 			}
 
@@ -2401,7 +2392,7 @@ static int listen_bind(rad_listen_t *this)
 	if (sock->proto == IPPROTO_TCP) {
 		if (listen(this->fd, 8) < 0) {
 			close(this->fd);
-			ERROR("Failed in listen(): %s", strerror(errno));
+			ERROR("Failed in listen(): %s", fr_syserror(errno));
 			return -1;
 		}
 	} else
@@ -2409,8 +2400,7 @@ static int listen_bind(rad_listen_t *this)
 
 	  if (!this->workers && fr_nonblock(this->fd) < 0) {
 		  close(this->fd);
-		  ERROR("Failed setting non-blocking on socket: %s",
-			 strerror(errno));
+		  ERROR("Failed setting non-blocking on socket: %s", fr_syserror(errno));
 		  return -1;
 	  }
 
@@ -2585,8 +2575,7 @@ rad_listen_t *proxy_new_listener(home_server *home, int src_port)
 		memset(&src, 0, sizeof_src);
 		if (getsockname(this->fd, (struct sockaddr *) &src,
 				&sizeof_src) < 0) {
-			ERROR("Failed getting socket name: %s",
-			       strerror(errno));
+			ERROR("Failed getting socket name: %s", fr_syserror(errno));
 			listen_free(&this);
 			return NULL;
 		}
@@ -3072,8 +3061,7 @@ add_sockets:
 					 */
 					rcode = pthread_create(&id, 0, recv_thread, this);
 					if (rcode != 0) {
-						ERROR("Thread create failed: %s",
-						      strerror(rcode));
+						ERROR("Thread create failed: %s", fr_syserror(rcode));
 						exit(1);
 					}
 

@@ -168,14 +168,14 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 			GDBM_WRCREAT | GDBM_IPPOOL_OPTS, 0600, NULL);
 	if (!inst->gdbm) {
 		ERROR("rlm_ippool: Failed to open file %s: %s",
-				inst->filename, strerror(errno));
+				inst->filename, fr_syserror(errno));
 		return -1;
 	}
 	inst->ip = gdbm_open(inst->ip_index, sizeof(int),
 			GDBM_WRCREAT | GDBM_IPPOOL_OPTS, 0600, NULL);
 	if (!inst->ip) {
 		ERROR("rlm_ippool: Failed to open file %s: %s",
-				inst->ip_index, strerror(errno));
+				inst->ip_index, fr_syserror(errno));
 		return -1;
 	}
 	if (gdbm_setopt(inst->gdbm, GDBM_CACHESIZE, &cache_size, sizeof(int)) == -1)

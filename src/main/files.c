@@ -74,8 +74,7 @@ int pairlist_read(TALLOC_CTX *ctx, char const *file, PAIR_LIST **list, int compl
 	if ((fp = fopen(file, "r")) == NULL) {
 		if (!complain)
 			return -1;
-		ERROR("Couldn't open %s for reading: %s",
-				file, strerror(errno));
+		ERROR("Couldn't open %s for reading: %s", file, fr_syserror(errno));
 		return -1;
 	}
 
@@ -158,7 +157,7 @@ parse_again:
 				if (pairlist_read(ctx, newfile, &t, 0) != 0) {
 					pairlist_free(&pl);
 					ERROR("%s[%d]: Could not open included file %s: %s",
-					       file, lineno, newfile, strerror(errno));
+					      file, lineno, newfile, fr_syserror(errno));
 					fclose(fp);
 					return -1;
 				}

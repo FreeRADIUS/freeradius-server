@@ -296,7 +296,7 @@ static int rad_sendto(int sockfd, void *data, size_t data_len, int flags,
 done:
 #endif
 	if (rcode < 0) {
-		DEBUG("rad_send() failed: %s\n", strerror(errno));
+		DEBUG("rad_send() failed: %s\n", fr_syserror(errno));
 	}
 
 	return rcode;
@@ -2588,7 +2588,7 @@ RADIUS_PACKET *rad_recv(int fd, int flags)
 	 *	Check for socket errors.
 	 */
 	if (data_len < 0) {
-		fr_strerror_printf("Error receiving packet: %s", strerror(errno));
+		fr_strerror_printf("Error receiving packet: %s", fr_syserror(errno));
 		/* packet->data is NULL */
 		rad_free(&packet);
 		return NULL;

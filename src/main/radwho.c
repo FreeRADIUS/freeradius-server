@@ -337,7 +337,7 @@ int main(int argc, char **argv)
 	 */
 	if ((fp = fopen(radutmp_file, "r")) == NULL) {
 		fprintf(stderr, "%s: Error reading %s: %s\n",
-			progname, radutmp_file, strerror(errno));
+			progname, radutmp_file, fr_syserror(errno));
 		return 0;
 	}
 

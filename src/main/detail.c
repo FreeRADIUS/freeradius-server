@@ -249,7 +249,7 @@ static int detail_open(rad_listen_t *this)
 		this->fd = open(filename, O_RDWR);
 		if (this->fd < 0) {
 			ERROR("Detail - Failed to open %s: %s",
-			       filename, strerror(errno));
+			       filename, fr_syserror(errno));
 			if (filename != data->filename) free(filename);
 			return 0;
 		}
@@ -357,7 +357,7 @@ int detail_recv(rad_listen_t *listener)
 			data->fp = fdopen(listener->fd, "r");
 			if (!data->fp) {
 				ERROR("FATAL: Failed to re-open detail file %s: %s",
-				       data->filename, strerror(errno));
+				       data->filename, fr_syserror(errno));
 				exit(1);
 			}
 
@@ -385,7 +385,7 @@ int detail_recv(rad_listen_t *listener)
 					ERROR("Failed to stat "
 					       "detail file %s: %s",
 				       		data->filename,
-				       		strerror(errno));
+				       		fr_syserror(errno));
 
 				       	goto cleanup;
 				}

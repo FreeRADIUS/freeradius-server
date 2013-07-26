@@ -463,7 +463,7 @@ void rlm_sql_query_log(rlm_sql_t *inst, REQUEST *request,
 	fd = open(filename, O_WRONLY | O_APPEND | O_CREAT, 0666);
 	if (fd < 0) {
 		ERROR("rlm_sql (%s): Couldn't open logfile '%s': %s", inst->config->xlat_name,
-		       expanded, strerror(errno));
+		       expanded, fr_syserror(errno));
 
 		talloc_free(expanded);
 		return;
@@ -471,7 +471,7 @@ void rlm_sql_query_log(rlm_sql_t *inst, REQUEST *request,
 
 	if ((rad_lockfd(fd, MAX_QUERY_LEN) < 0) || (write(fd, query, strlen(query)) < 0) || (write(fd, ";\n", 2) < 0)) {
 		ERROR("rlm_sql (%s): Failed writing to logfile '%s': %s", inst->config->xlat_name, expanded,
-		       strerror(errno));
+		       fr_syserror(errno));
 	}
 
 	talloc_free(expanded);

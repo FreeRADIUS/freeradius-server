@@ -127,13 +127,13 @@ pid_t radius_start_program(char const *cmd, REQUEST *request,
 	if (exec_wait) {
 		if (input_fd) {
 			if (pipe(to_child) != 0) {
-				RDEBUG("Couldn't open pipe to child: %s", strerror(errno));
+				RDEBUG("Couldn't open pipe to child: %s", fr_syserror(errno));
 				return -1;
 			}
 		}
 		if (output_fd) {
 			if (pipe(from_child) != 0) {
-				RDEBUG("Couldn't open pipe from child: %s", strerror(errno));
+				RDEBUG("Couldn't open pipe from child: %s", fr_syserror(errno));
 				/* safe because these either need closing or are == -1 */
 				close(to_child[0]);
 				close(to_child[1]);
@@ -208,7 +208,7 @@ pid_t radius_start_program(char const *cmd, REQUEST *request,
 		 */
 		devnull = open("/dev/null", O_RDWR);
 		if (devnull < 0) {
-			RDEBUG("Failed opening /dev/null: %s\n", strerror(errno));
+			RDEBUG("Failed opening /dev/null: %s\n", fr_syserror(errno));
 
 			/*
 			 *	Where the status code is interpreted as a module rcode
@@ -268,7 +268,7 @@ pid_t radius_start_program(char const *cmd, REQUEST *request,
 		 *	I swear the signature for execve is wrong and should take 'char const * const argv[]'.
 		 */
 		execve(argv[0], argv, envp);
-		printf("Failed to execute \"%s\": %s", argv[0], strerror(errno)); /* fork output will be captured */
+		printf("Failed to execute \"%s\": %s", argv[0], fr_syserror(errno)); /* fork output will be captured */
 
 		/*
 		 *	Where the status code is interpreted as a module rcode
@@ -290,7 +290,7 @@ pid_t radius_start_program(char const *cmd, REQUEST *request,
 	 *	Parent process.
 	 */
 	if (pid < 0) {
-		RDEBUG("Couldn't fork %s: %s", argv[0], strerror(errno));
+		RDEBUG("Couldn't fork %s: %s", argv[0], fr_syserror(errno));
 		if (exec_wait) {
 			/* safe because these either need closing or are == -1 */
 			close(to_child[0]);
@@ -629,7 +629,7 @@ int radius_exec_program(REQUEST *request, char const *cmd, bool exec_wait, bool 
 		}
 	}
 
-	REDEBUG("Abnormal child exit: %s", strerror(errno));
+	REDEBUG("Abnormal child exit: %s", fr_syserror(errno));
 #endif	/* __MINGW32__ */
 
 	return -1;

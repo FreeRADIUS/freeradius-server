@@ -120,7 +120,7 @@ int fr_pcap_open(fr_pcap_t *pcap)
 			{
 				int value = 1;
 				if (ioctl(pcap->fd, BIOCIMMEDIATE, &value) < 0) {
-					fr_strerror_printf("Failed setting BIOCIMMEDIATE: %s", strerror(errno));
+					fr_strerror_printf("Failed setting BIOCIMMEDIATE: %s", fr_syserror(errno));
 				}
 			}
 #endif

@@ -293,7 +293,7 @@ RADIUS_PACKET *vqp_recv(int sockfd)
 	 *	Check for socket errors.
 	 */
 	if (length < 0) {
-		fr_strerror_printf("Error receiving packet: %s", strerror(errno));
+		fr_strerror_printf("Error receiving packet: %s", fr_syserror(errno));
 		/* packet->data is NULL */
 		rad_free(&packet);
 		return NULL;

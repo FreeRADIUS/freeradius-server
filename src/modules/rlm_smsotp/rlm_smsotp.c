@@ -62,13 +62,13 @@ static void *mod_conn_create(void *instance)
 	fd = socket(PF_UNIX, SOCK_STREAM, 0);
 	if (fd < 0) {
 		ERROR("Failed opening SMSOTP file %s: %s",
-		       inst->socket, strerror(errno));
+		       inst->socket, fr_syserror(errno));
 		return NULL;
 	}
 
 	if (connect(fd, (struct sockaddr *) &sa, socklen) < -1) {
 		ERROR("Failed connecting to SMSOTP file %s: %s",
-		       inst->socket, strerror(errno));
+		       inst->socket, fr_syserror(errno));
 		return NULL;
 	}
 

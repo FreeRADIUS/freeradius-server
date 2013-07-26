@@ -115,7 +115,7 @@ static void check_lib_access(char const *name)
 			DEBUG4("Library not found at path \"%s\"", name);
 			break;
 		default:
-			DEBUG4("Possible issue accessing Library \"%s\": %s", name, strerror(errno));
+			DEBUG4("Possible issue accessing Library \"%s\": %s", name, fr_syserror(errno));
 			break;
 	}
 }

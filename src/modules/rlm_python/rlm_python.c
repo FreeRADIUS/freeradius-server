@@ -420,7 +420,7 @@ static rlm_rcode_t do_python(rlm_python_t *inst, REQUEST *request, PyObject *pFu
 
 			ret = fr_thread_local_set(local_thread_state, my_thread_state);
 			if (ret != 0) {
-				REDEBUG("Failed storing PyThreadState in TLS: %s", strerror(ret));
+				REDEBUG("Failed storing PyThreadState in TLS: %s", fr_syserror(ret));
 				PyThreadState_Clear(my_thread_state);
 				PyThreadState_Delete(my_thread_state);
 				PyGILState_Release(gstate);

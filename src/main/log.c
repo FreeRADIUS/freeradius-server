@@ -407,8 +407,7 @@ void radlog_request(log_type_t type, log_debug_t lvl, REQUEST *request, char con
 		if (p) {
 			*p = '\0';
 			if (rad_mkdir(buffer, S_IRWXU) < 0) {
-				ERROR("Failed creating %s: %s",
-				       buffer,strerror(errno));
+				ERROR("Failed creating %s: %s", buffer, fr_syserror(errno));
 				va_end(ap);
 				return;
 			}
@@ -505,7 +504,7 @@ void log_talloc_report(TALLOC_CTX *ctx)
 
 	fd = fdopen(default_log.fd, "w");
 	if (!fd) {
-		ERROR("Couldn't write memory report, fdopen failed: %s", strerror(errno));
+		ERROR("Couldn't write memory report, fdopen failed: %s", fr_syserror(errno));
 
 		return;
 	}

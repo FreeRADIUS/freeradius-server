@@ -583,7 +583,7 @@ static void process_file(char const *filename)
 		fp = fopen(filename, "r");
 		if (!fp) {
 			fprintf(stderr, "Error opening %s: %s\n",
-				filename, strerror(errno));
+				filename, fr_syserror(errno));
 			exit(1);
 		}
 	}

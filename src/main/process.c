@@ -3782,12 +3782,12 @@ int event_new_fd(rad_listen_t *this)
 		devnull = open("/dev/null", O_RDWR);
 		if (devnull < 0) {
 			ERROR("FATAL failure opening /dev/null: %s",
-			       strerror(errno));
+			       fr_syserror(errno));
 			exit(1);
 		}
 		if (dup2(devnull, this->fd) < 0) {
 			ERROR("FATAL failure closing socket: %s",
-			       strerror(errno));
+			       fr_syserror(errno));
 			exit(1);
 		}
 		close(devnull);
@@ -4123,7 +4123,7 @@ int radius_event_init(CONF_SECTION *cs, int have_children)
 #ifdef HAVE_PTHREAD_H
 		if (pthread_mutex_init(&proxy_mutex, NULL) != 0) {
 			ERROR("FATAL: Failed to initialize proxy mutex: %s",
-			       strerror(errno));
+			       fr_syserror(errno));
 			exit(1);
 		}
 #endif
@@ -4167,19 +4167,19 @@ int radius_event_init(CONF_SECTION *cs, int have_children)
 	 */
 	if (pipe(self_pipe) < 0) {
 		ERROR("radiusd: Error opening internal pipe: %s",
-		       strerror(errno));
+		       fr_syserror(errno));
 		exit(1);
 	}
 	if ((fcntl(self_pipe[0], F_SETFL, O_NONBLOCK) < 0) ||
 	    (fcntl(self_pipe[0], F_SETFD, FD_CLOEXEC) < 0)) {
 		ERROR("radiusd: Error setting internal flags: %s",
-		       strerror(errno));
+		       fr_syserror(errno));
 		exit(1);
 	}
 	if ((fcntl(self_pipe[1], F_SETFL, O_NONBLOCK) < 0) ||
 	    (fcntl(self_pipe[1], F_SETFD, FD_CLOEXEC) < 0)) {
 		ERROR("radiusd: Error setting internal flags: %s",
-		       strerror(errno));
+		       fr_syserror(errno));
 		exit(1);
 	}
 
