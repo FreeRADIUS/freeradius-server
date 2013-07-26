@@ -624,7 +624,7 @@ int		paircompare(REQUEST *request, VALUE_PAIR *req_list,
 int		radius_xlat_do(REQUEST *request, VALUE_PAIR *vp);
 void		radius_xlat_move(REQUEST *, VALUE_PAIR **to, VALUE_PAIR **from);
 int radius_compare_vps(REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *vp);
-int radius_callback_compare(REQUEST *req, VALUE_PAIR *request,
+int radius_callback_compare(REQUEST *request, VALUE_PAIR *req,
 			    VALUE_PAIR *check, VALUE_PAIR *check_pairs,
 			    VALUE_PAIR **reply_pairs);
 int radius_find_compare(unsigned int attribute);

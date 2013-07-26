@@ -236,15 +236,15 @@ int radius_compare_vps(REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *vp)
  * Unlike radius_compare_vps() this function will call any attribute-specific
  * comparison functions registered.
  *
- * @param req Current request.
- * @param request list pairs.
+ * @param request Current request.
+ * @param req list pairs.
  * @param check item to compare.
  * @param check_pairs list.
  * @param reply_pairs list.
  * @return 0 if check and vp are equal, -1 if vp value is less than check value, 1 is vp value is more than check
  *	value.
  */
-int radius_callback_compare(REQUEST *req, VALUE_PAIR *request,
+int radius_callback_compare(REQUEST *request, VALUE_PAIR *req,
 			    VALUE_PAIR *check, VALUE_PAIR *check_pairs,
 			    VALUE_PAIR **reply_pairs)
 {
@@ -263,14 +263,14 @@ int radius_callback_compare(REQUEST *req, VALUE_PAIR *request,
 	 */
 	for (c = cmp; c; c = c->next) {
 		if (!check->da->vendor && (c->attribute == check->da->attr)) {
-			return (c->compare)(c->instance, req, request, check,
+			return (c->compare)(c->instance, request, req, check,
 				check_pairs, reply_pairs);
 		}
 	}
 
-	if (!request) return -1; /* doesn't exist, don't compare it */
+	if (!req) return -1; /* doesn't exist, don't compare it */
 
-	return radius_compare_vps(req, check, request);
+	return radius_compare_vps(request, check, req);
 }
 
 
