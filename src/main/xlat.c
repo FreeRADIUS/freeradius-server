@@ -1658,11 +1658,12 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 		/*
 		 *	Do a one-character expansion.
 		 */
-	case XLAT_PERCENT: {
+	case XLAT_PERCENT:
+	{
 		char const *p;
 		char *nl;
 		size_t freespace = 256;
-		struct tm *TM, s_TM;
+		struct tm ts;
 		time_t when;
 
 		XLAT_DEBUG("xlat_aprint PERCENT");
@@ -1682,8 +1683,8 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 			break;
 
 		case 'd': /* request day */
-			TM = localtime_r(&when, &s_TM);
-			strftime(str, freespace, "%d", TM);
+			(void) localtime_r(&when, &ts);
+			strftime(str, freespace, "%d", &ts);
 			break;
 
 		case 'l': /* request timestamp */
@@ -1692,8 +1693,8 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 			break;
 
 		case 'm': /* request month */
-			TM = localtime_r(&when, &s_TM);
-			strftime(str, freespace, "%m", TM);
+			(void) localtime_r(&when, &ts);
+			strftime(str, freespace, "%m", &ts);
 			break;
 
 		case 't': /* request timestamp */
@@ -1703,18 +1704,18 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 			break;
 
 		case 'D': /* request date */
-			TM = localtime_r(&when, &s_TM);
-			strftime(str, freespace, "%Y%m%d", TM);
+			(void) localtime_r(&when, &ts);
+			strftime(str, freespace, "%Y%m%d", &ts);
 			break;
 
 		case 'G': /* request minute */
-			TM = localtime_r(&when, &s_TM);
-			strftime(str, freespace, "%M", TM);
+			(void) localtime_r(&when, &ts);
+			strftime(str, freespace, "%M", &ts);
 			break;
 
 		case 'H': /* request hour */
-			TM = localtime_r(&when, &s_TM);
-			strftime(str, freespace, "%H", TM);
+			(void) localtime_r(&when, &ts);
+			strftime(str, freespace, "%H", &ts);
 			break;
 
 		case 'I': /* Request ID */
@@ -1724,18 +1725,18 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 			break;
 
 		case 'S': /* request timestamp in SQL format*/
-			TM = localtime_r(&when, &s_TM);
-			strftime(str, freespace, "%Y-%m-%d %H:%M:%S", TM);
+			(void) localtime_r(&when, &ts);
+			strftime(str, freespace, "%Y-%m-%d %H:%M:%S", &ts);
 			break;
 
 		case 'T': /* request timestamp */
-			TM = localtime_r(&when, &s_TM);
-			strftime(str, freespace, "%Y-%m-%d-%H.%M.%S.000000", TM);
+			(void) localtime_r(&when, &ts);
+			strftime(str, freespace, "%Y-%m-%d-%H.%M.%S.000000", &ts);
 			break;
 
 		case 'Y': /* request year */
-			TM = localtime_r(&when, &s_TM);
-			strftime(str, freespace, "%Y", TM);
+			(void) localtime_r(&when, &ts);
+			strftime(str, freespace, "%Y", &ts);
 			break;
 
 		default:
