@@ -476,7 +476,8 @@ int paircompare(REQUEST *request, VALUE_PAIR *req_list, VALUE_PAIR *check,
 	try_again:
 		if (other >= 0) {
 			while (auth_item != NULL) {
-				if ((auth_item->da->attr == (unsigned int) other) || (other == 0)) {
+				if (!auth_item->da->vendor
+				    && ((auth_item->da->attr == (unsigned int) other) || (other == 0))) {
 					break;
 				}
 				auth_item = auth_item->next;
