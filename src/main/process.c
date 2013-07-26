@@ -215,8 +215,7 @@ static int insert_into_proxy_hash(REQUEST *request);
 #endif
 
 static REQUEST *request_setup(rad_listen_t *listener, RADIUS_PACKET *packet,
-			      RADCLIENT *client, RAD_REQUEST_FUNP fun,
-			      struct timeval *pnow);
+			      RADCLIENT *client, RAD_REQUEST_FUNP fun);
 
 STATE_MACHINE_DECL(request_common);
 
@@ -1258,6 +1257,7 @@ int request_receive(rad_listen_t *listener, RADIUS_PACKET *packet,
 	 */
 	gettimeofday(&now, NULL);
 	sock->last_packet = now.tv_sec;
+	packet->timestamp = now;
 
 	/*
 	 *	Skip everything if required.
@@ -1347,7 +1347,7 @@ skip_dup:
 		sock->rate_pps_now++;
 	}
 
-	request = request_setup(listener, packet, client, fun, &now);
+	request = request_setup(listener, packet, client, fun);
 	if (!request) return 1;
 
 	/*
@@ -1388,8 +1388,7 @@ skip_dup:
 
 
 static REQUEST *request_setup(rad_listen_t *listener, RADIUS_PACKET *packet,
-			      RADCLIENT *client, RAD_REQUEST_FUNP fun,
-			      struct timeval *pnow)
+			      RADCLIENT *client, RAD_REQUEST_FUNP fun)
 {
 	REQUEST *request;
 
@@ -1407,7 +1406,6 @@ static REQUEST *request_setup(rad_listen_t *listener, RADIUS_PACKET *packet,
 	request->listener = listener;
 	request->client = client;
 	request->packet = talloc_steal(request, packet);
-	request->packet->timestamp = *pnow;
 	request->number = request_num_counter++;
 	request->priority = listener->type;
 	request->master_state = REQUEST_ACTIVE;
