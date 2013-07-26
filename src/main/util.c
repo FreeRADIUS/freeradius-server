@@ -489,6 +489,7 @@ REQUEST *request_alloc_fake(REQUEST *request)
 	fake->packet->id = fake->number & 0xff;
 	fake->packet->code = request->packet->code;
 	fake->timestamp = request->timestamp;
+	fake->packet->timestamp = request->packet->timestamp;
 
 	/*
 	 *	Required for new identity support
