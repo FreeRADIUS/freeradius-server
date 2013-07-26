@@ -567,6 +567,30 @@ dnl #  2. Checks for libraries
 dnl #
 dnl #############################################################
 
+dnl Check for talloc
+dnl extra argument: --with-talloc-lib-dir=DIR
+talloc_lib_dir=
+AC_ARG_WITH(talloc-lib-dir,
+  [AS_HELP_STRING([--with-talloc-lib-dir=DIR],
+  [Directory where the talloc libs may be found])],
+  [case "$withval" in
+    no)
+      AC_MSG_ERROR([Need talloc-lib-dir])
+      ;;
+    yes)
+      ;;
+    *)
+      talloc_lib_dir="$withval"
+      ;;
+  esac])
+
+smart_try_dir="$talloc_lib_dir"
+FR_SMART_CHECK_LIB(talloc, _talloc)
+if test "x$ac_cv_lib_talloc__talloc" != "xyes"; then
+  AC_MSG_WARN([talloc library not found. Use --with-talloc-lib-dir=<path>.])
+  AC_MSG_ERROR([FreeRADIUS requires libtalloc])
+fi
+
 dnl #
 dnl #  If using pthreads, check for -lpthread (posix) or -lc_r (*BSD)
 dnl #
@@ -673,6 +697,33 @@ dnl #
 dnl #  3. Checks for header files
 dnl #
 dnl #############################################################
+
+dnl Check for talloc
+dnl extra argument: --with-talloc-include-dir=DIR
+talloc_include_dir=
+AC_ARG_WITH(talloc-include-dir,
+  [AS_HELP_STRING([--with-talloc-include-dir=DIR],
+  [Directory where the talloc includes may be found])],
+  [case "$withval" in
+    no)
+      AC_MSG_ERROR([Need talloc-include-dir])
+      ;;
+    yes)
+      ;;
+    *)
+      talloc_include_dir="$withval"
+      ;;
+  esac])
+
+dnl #
+dnl # Check for talloc header files
+dnl #
+smart_try_dir="$talloc_include_dir"
+FR_SMART_CHECK_INCLUDE([talloc.h])
+if test "x$ac_cv_header_talloc_h" != "xyes"; then
+  AC_MSG_WARN([talloc headers not found. Use --with-talloc-include-dir=<path>.])
+  AC_MSG_ERROR([FreeRADIUS requires libtalloc])
+fi
 
 dnl #
 dnl #  Interix requires us to set -D_ALL_SOURCE, otherwise
@@ -1176,57 +1227,6 @@ dnl #
 dnl #  7. Checks for library functions
 dnl #
 dnl #############################################################
-
-dnl Check for talloc
-dnl extra argument: --with-talloc-include-dir=DIR
-talloc_include_dir=
-AC_ARG_WITH(talloc-include-dir,
-  [AS_HELP_STRING([--with-talloc-include-dir=DIR],
-  [Directory where the talloc includes may be found])],
-  [case "$withval" in
-    no)
-      AC_MSG_ERROR([Need talloc-include-dir])
-      ;;
-    yes)
-      ;;
-    *)
-      talloc_include_dir="$withval"
-      ;;
-  esac])
-
-dnl Check for talloc
-dnl extra argument: --with-talloc-lib-dir=DIR
-talloc_lib_dir=
-AC_ARG_WITH(talloc-lib-dir,
-  [AS_HELP_STRING([--with-talloc-lib-dir=DIR],
-  [Directory where the talloc libs may be found])],
-  [case "$withval" in
-    no)
-      AC_MSG_ERROR([Need talloc-lib-dir])
-      ;;
-    yes)
-      ;;
-    *)
-      talloc_lib_dir="$withval"
-      ;;
-  esac])
-
-dnl #
-dnl # Check for talloc header files
-dnl #
-smart_try_dir="$talloc_include_dir"
-FR_SMART_CHECK_INCLUDE([talloc.h])
-if test "x$ac_cv_header_talloc_h" != "xyes"; then
-  AC_MSG_WARN([talloc headers not found. Use --with-talloc-include-dir=<path>.])
-  AC_MSG_ERROR([FreeRADIUS requires libtalloc])
-fi
-
-smart_try_dir="$talloc_lib_dir"
-FR_SMART_CHECK_LIB(talloc, _talloc)
-if test "x$ac_cv_lib_talloc__talloc" != "xyes"; then
-  AC_MSG_WARN([talloc library not found. Use --with-talloc-lib-dir=<path>.])
-  AC_MSG_ERROR([FreeRADIUS requires libtalloc])
-fi
 
 dnl #
 dnl # Check for libcrypt
