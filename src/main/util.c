@@ -1076,6 +1076,10 @@ void rad_regcapture(REQUEST *request, int compare, char const *value, regmatch_t
 	char *p;
 	size_t len;
 
+	if (compare == REG_NOMATCH) {
+		return;
+	}
+
 	/*
 	 *	Add new %{0}, %{1}, etc.
 	 */
@@ -1083,10 +1087,13 @@ void rad_regcapture(REQUEST *request, int compare, char const *value, regmatch_t
 		/*
 		 *	Didn't match: delete old match, if it existed.
 		 */
-		if ((compare != 0) || (rxmatch[i].rm_so == -1)) {
+		if (rxmatch[i].rm_so == -1) {
 			p = request_data_get(request, request, REQUEST_DATA_REGEX | i);
 			if (p) {
+				RDEBUG4("%%{%i}: Clearing old value \"%s\"", i, p);
 				talloc_free(p);
+			} else {
+				RDEBUG4("%%{%i}: Was empty", i);
 			}
 
 			continue;
@@ -1097,6 +1104,7 @@ void rad_regcapture(REQUEST *request, int compare, char const *value, regmatch_t
 		memcpy(p, value + rxmatch[i].rm_so, len);
 		p[len] = '\0';
 
+		RDEBUG4("%%{%i}: Inserting new value \"%s\"", i, p);
 		/*
 		 *	Copy substring, and add it to
 		 *	the request.
