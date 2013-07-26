@@ -261,10 +261,12 @@ int radius_callback_compare(REQUEST *request, VALUE_PAIR *req,
 	 *
 	 *	FIXME: use new RB-Tree code.
 	 */
-	for (c = cmp; c; c = c->next) {
-		if (!check->da->vendor && (c->attribute == check->da->attr)) {
-			return (c->compare)(c->instance, request, req, check,
-				check_pairs, reply_pairs);
+	if (!check->da->vendor && !req->da->vendor) {
+		for (c = cmp; c; c = c->next) {
+			if (c->attribute == check->da->attr) {
+				return (c->compare)(c->instance, request, req, check,
+					check_pairs, reply_pairs);
+			}
 		}
 	}
 
@@ -476,8 +478,7 @@ int paircompare(REQUEST *request, VALUE_PAIR *req_list, VALUE_PAIR *check,
 	try_again:
 		if (other >= 0) {
 			while (auth_item != NULL) {
-				if (!auth_item->da->vendor
-				    && ((auth_item->da->attr == (unsigned int) other) || (other == 0))) {
+				if ((auth_item->da->attr == (unsigned int) other) || (other == 0)) {
 					break;
 				}
 				auth_item = auth_item->next;
