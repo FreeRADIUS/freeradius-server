@@ -2045,7 +2045,10 @@ static size_t xlat_process(char **out, REQUEST *request, xlat_exp_t const * cons
 		 *	functions.
 		 */
 		answer = xlat_aprint(request, request, head, escape, escape_ctx, 0);
-		if (!answer) return 0;
+		if (!answer) {
+			*out = talloc_zero_array(request, char, 1);
+			return 0;
+		}
 		*out = answer;
 		return strlen(answer);
 	}
