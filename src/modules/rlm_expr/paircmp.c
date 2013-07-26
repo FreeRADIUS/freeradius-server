@@ -24,6 +24,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/rad_assert.h>
 #include "rlm_expr.h"
 
 /*
@@ -73,6 +74,7 @@ static int presufcmp(UNUSED void *instance,
 
 	VERIFY_VP(req);
 	VERIFY_VP(check);
+	rad_assert(req->da->type == PW_TYPE_STRING);
 
 	name = req->vp_strvalue;
 
