@@ -467,7 +467,12 @@ static rlm_rcode_t do_detail(void *instance, REQUEST *request, RADIUS_PACKET *pa
 	 *	return an error.
 	 */
 	if (fflush(fp) != 0) {
-		(void) ftruncate(outfd, fsize); /* ignore errors! */
+		int ret;
+		ret = ftruncate(outfd, fsize);
+		if (ret) {
+			REDEBUG4("Failed truncating detail file: %s", strerror(ret));
+		}
+
 		fclose(fp);
 		return RLM_MODULE_FAIL;
 	}

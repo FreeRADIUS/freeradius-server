@@ -166,6 +166,8 @@ void log_talloc_report(TALLOC_CTX *ctx);
 #define RERROR(fmt, ...)	_RM(L_DBG_ERR, L_DBG_LVL_OFF, fmt, ## __VA_ARGS__)
 #define REDEBUG(fmt, ...)	_RM(L_DBG_ERR, L_DBG_LVL_1, fmt, ## __VA_ARGS__)
 #define REDEBUG2(fmt, ...)	_RM(L_DBG_ERR, L_DBG_LVL_2, fmt, ## __VA_ARGS__)
+#define REDEBUG3(fmt, ...)	_RM(L_DBG_ERR, L_DBG_LVL_3, fmt, ## __VA_ARGS__)
+#define REDEBUG4(fmt, ...)	_RM(L_DBG_ERR, L_DBG_LVL_MAX, fmt, ## __VA_ARGS__)
 
 #ifdef __cplusplus
 }
