@@ -38,7 +38,7 @@ RCSIDH(radsniff_h, "$Id$")
 
 #define ERROR(fmt, ...)		fr_perror("radsniff: " fmt "\n", ## __VA_ARGS__)
 
-typedef struct radsniff {
+typedef struct rs {
 	bool			from_file;		//!< Were reading pcap data from files.
 	bool			from_dev;		//!< Were reading pcap data from devices.
 	bool			from_stdin;		//!< Were reading pcap data from stdin.
@@ -53,15 +53,13 @@ typedef struct radsniff {
 
 	char			*pcap_filter;		//!< PCAP filter string applied to live capture devices.
 	char			*radius_filter;		//!< RADIUS filter string.
-
-
-} radsniff_t;
+} rs_t;
 
 /** Stats for a single interval
  *
  * And interval is defined as the time between a call to the stats output function.
  */
-typedef struct radsniff_stats_t {
+typedef struct rs_stats_t {
 	int			intervals;		//!< Number of stats intervals.
 
 	double			latency_cma;		//!< Cumulative moving average.
@@ -79,17 +77,17 @@ typedef struct radsniff_stats_t {
 		double			latency_high;		//!< Latency high water mark.
 		double			latency_low;		//!< Latency low water mark.
 	} interval;
-} radsniff_stats_t;
+} rs_stats_t;
 
-typedef struct radsniff_event {
-	radsniff_t		*conf;			//!< radsniff configuration.
+typedef struct rs_event {
+	rs_t			*conf;			//!< rs configuration.
 	fr_pcap_t		*in;			//!< PCAP handle event occurred on.
 	fr_pcap_t		*out;			//!< Where to write output.
-	radsniff_stats_t	*stats;			//!< Where to write stats.
-} radsniff_event_t;
+	rs_stats_t		*stats;			//!< Where to write stats.
+} rs_event_t;
 
-typedef struct radsniff_update {
+typedef struct rs_update {
 	fr_event_list_t		*list;			//!< List to insert new event into.
-	radsniff_t		*conf;			//!< radsniff configuration.
-	radsniff_stats_t	*stats;			//!< stats to process.
-} radsniff_update_t;
+	rs_t			*conf;			//!< radsniff configuration.
+	rs_stats_t		*stats;			//!< stats to process.
+} rs_update_t;

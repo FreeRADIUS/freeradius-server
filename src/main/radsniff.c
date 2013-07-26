@@ -55,9 +55,9 @@ static char const *radsniff_version = "radsniff version " RADIUSD_VERSION_STRING
  */
 static void stats_process(void *ctx)
 {
-	radsniff_update_t	*this = ctx;
-	radsniff_stats_t	*stats = this->stats;
-	radsniff_t		*conf = this->conf;
+	rs_update_t	*this = ctx;
+	rs_stats_t	*stats = this->stats;
+	rs_t		*conf = this->conf;
 
 	stats->intervals++;
 
@@ -200,11 +200,11 @@ static void tv_sub(struct timeval const *end, struct timeval const *start,
 	}
 }
 
-static void process_packet(radsniff_event_t *event, struct pcap_pkthdr const *header, uint8_t const *data)
+static void process_packet(rs_event_t *event, struct pcap_pkthdr const *header, uint8_t const *data)
 {
 
 	static int count = 1;			/* Packets seen */
-	radsniff_stats_t *stats = event->stats;
+	rs_stats_t *stats = event->stats;
 
 	/*
 	 *	Define pointers for packet's attributes
@@ -401,7 +401,7 @@ check_filter:
 
 static void got_packet(UNUSED fr_event_list_t *events, UNUSED int fd, void *ctx)
 {
-	radsniff_event_t *event = ctx;
+	rs_event_t *event = ctx;
 	pcap_t *handle = event->in->handle;
 
 	int ret;
@@ -459,7 +459,7 @@ static void NEVER_RETURNS usage(int status)
 
 int main(int argc, char *argv[])
 {
-	radsniff_t *conf;
+	rs_t *conf;
 
 	fr_pcap_t *in = NULL, *in_p;
 	fr_pcap_t **in_head = &in;
@@ -482,7 +482,7 @@ int main(int argc, char *argv[])
 
 	talloc_set_log_stderr();
 
-	conf = talloc_zero(NULL, radsniff_t);
+	conf = talloc_zero(NULL, rs_t);
 	if (!fr_assert(conf)) {
 		exit (1);
 	}
@@ -815,8 +815,8 @@ int main(int argc, char *argv[])
 	 */
 	 {
 	 	fr_event_list_t		*events;
-	 	radsniff_stats_t	stats;
-	 	radsniff_update_t	update;
+	 	rs_stats_t	stats;
+	 	rs_update_t	update;
 
 	 	char *buff;
 
@@ -832,9 +832,9 @@ int main(int argc, char *argv[])
 		for (in_p = in;
 	     	     in_p;
 	     	     in_p = in_p->next) {
-	     	     	radsniff_event_t *event;
+	     	     	rs_event_t *event;
 
-	     	     	event = talloc(events, radsniff_event_t);
+	     	     	event = talloc(events, rs_event_t);
 	     	     	event->conf = conf;
 	     	     	event->in = in_p;
 	     	     	event->out = out;
