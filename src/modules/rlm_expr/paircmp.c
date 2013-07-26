@@ -69,11 +69,11 @@ static int presufcmp(UNUSED void *instance,
 		return -1;
 	}
 
-	VERIFY_VP(req);
+	VERIFY_VP(request);
 	VERIFY_VP(check);
-	rad_assert(req->da->type == PW_TYPE_STRING);
+	rad_assert(request->da->type == PW_TYPE_STRING);
 
-	name = req->vp_strvalue;
+	name = request->vp_strvalue;
 
 #if 0 /* DEBUG */
 	printf("Comparing %s and %s, check->attr is %d\n", name, check->vp_strvalue, check->attribute);
