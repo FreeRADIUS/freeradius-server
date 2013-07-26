@@ -24,6 +24,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/rad_assert.h>
 #include "rlm_expr.h"
 
 /*
@@ -68,7 +69,11 @@ static int presufcmp(UNUSED void *instance,
 		return -1;
 	}
 
-	name = request->vp_strvalue;
+	VERIFY_VP(req);
+	VERIFY_VP(check);
+	rad_assert(req->da->type == PW_TYPE_STRING);
+
+	name = req->vp_strvalue;
 
 #if 0 /* DEBUG */
 	printf("Comparing %s and %s, check->attr is %d\n", name, check->vp_strvalue, check->attribute);
