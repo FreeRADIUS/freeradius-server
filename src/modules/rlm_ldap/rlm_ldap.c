@@ -547,7 +547,9 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 			goto error;
 		}
+	}
 
+	if (inst->cacheable_group_name || inst->cacheable_group_dn) {
 		if (!inst->groupobj_base_dn) {
 			LDAP_ERR("Directive 'group.base_dn' must be set if cacheable group names are enabled");
 

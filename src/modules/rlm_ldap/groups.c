@@ -370,6 +370,8 @@ rlm_rcode_t rlm_ldap_cacheable_groupobj(ldap_instance_t const *inst, REQUEST *re
 
 	char *dn;
 
+	rad_assert(inst->groupobj_base_dn);
+
 	if (!inst->groupobj_membership_filter) {
 		RDEBUG2("Skipping caching group objects as directive 'group.membership_filter' is not set");
 
@@ -454,6 +456,8 @@ rlm_rcode_t rlm_ldap_check_groupobj_dynamic(ldap_instance_t const *inst, REQUEST
 	char const	*dn = base_dn;
 
 	char const     	*name = check->vp_strvalue;
+
+	rad_assert(inst->groupobj_base_dn);
 
 	RDEBUG2("Checking for user in group objects");
 
