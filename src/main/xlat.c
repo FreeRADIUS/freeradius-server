@@ -1867,7 +1867,7 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 			break;
 
 		case 'd': /* request day */
-			(void) localtime_r(&when, &ts);
+			if (!localtime_r(&when, &ts)) goto error;
 			strftime(str, freespace, "%d", &ts);
 			break;
 
@@ -1877,7 +1877,7 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 			break;
 
 		case 'm': /* request month */
-			(void) localtime_r(&when, &ts);
+			if (!localtime_r(&when, &ts)) goto error;
 			strftime(str, freespace, "%m", &ts);
 			break;
 
@@ -1888,17 +1888,17 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 			break;
 
 		case 'D': /* request date */
-			(void) localtime_r(&when, &ts);
+			if (!localtime_r(&when, &ts)) goto error;
 			strftime(str, freespace, "%Y%m%d", &ts);
 			break;
 
 		case 'G': /* request minute */
-			(void) localtime_r(&when, &ts);
+			if (!localtime_r(&when, &ts)) goto error;
 			strftime(str, freespace, "%M", &ts);
 			break;
 
 		case 'H': /* request hour */
-			(void) localtime_r(&when, &ts);
+			if (!localtime_r(&when, &ts)) goto error;
 			strftime(str, freespace, "%H", &ts);
 			break;
 
@@ -1909,17 +1909,22 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 			break;
 
 		case 'S': /* request timestamp in SQL format*/
-			(void) localtime_r(&when, &ts);
+			if (!localtime_r(&when, &ts)) goto error;
 			strftime(str, freespace, "%Y-%m-%d %H:%M:%S", &ts);
 			break;
 
 		case 'T': /* request timestamp */
-			(void) localtime_r(&when, &ts);
+			if (!localtime_r(&when, &ts)) goto error;
 			strftime(str, freespace, "%Y-%m-%d-%H.%M.%S.000000", &ts);
 			break;
 
 		case 'Y': /* request year */
-			(void) localtime_r(&when, &ts);
+			if (!localtime_r(&when, &ts)) {
+				error:
+				REDEBUG("Failed converting packet timestamp to localtime: %s", fr_syserror(errno));
+				talloc_free(str);
+				return NULL;
+			}
 			strftime(str, freespace, "%Y", &ts);
 			break;
 
