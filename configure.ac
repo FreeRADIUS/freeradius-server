@@ -784,7 +784,8 @@ AC_CHECK_HEADERS( \
   stddef.h \
   fnmatch.h \
   sia.h \
-  siad.h
+  siad.h \
+  features.h
 )
 
 dnl #

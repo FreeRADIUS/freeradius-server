@@ -24,6 +24,14 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/libradius.h>
+
+/*
+ *	Are we using glibc or a close relative?
+ */
+#ifdef HAVE_FEATURES_H
+#  include <features.h>
+#endif
+
 #define FR_STRERROR_BUFSIZE (2048)
 
 fr_thread_local_setup(char *, fr_strerror_buffer)	/* macro */
@@ -79,6 +87,11 @@ char const *fr_strerror(void)
 	return fr_thread_local_get(fr_strerror_buffer);
 }
 
+/** Guaranteed to be thread-safe version of strerror
+ *
+ * @param num errno as returned by function or from global errno.
+ * @return local specific error string relating to errno.
+ */
 char const *fr_syserror(int num)
 {
 	char *buffer;
@@ -104,11 +117,32 @@ char const *fr_syserror(int num)
 		}
 	}
 
+	/*
+	 *	XSI-Compliant version
+	 */
+#if !defined(HAVE_FEATURES_H) || ((_POSIX_C_SOURCE >= 200112L || _XOPEN_SOURCE >= 500) && ! _GNU_SOURCE)
 	if (!num || (strerror_r(num, buffer, FR_STRERROR_BUFSIZE) != 0)) {
 		buffer[0] = '\0';
 	}
-
 	return buffer;
+	/*
+	 *	GNU Specific version
+	 *
+	 *	The GNU Specific version returns a char pointer. That pointer may point
+	 *	the buffer you just passed in, or to an immutable static string.
+	 */
+#else
+	{
+		char const *p;
+		p = strerror_r(num, buffer, FR_STRERROR_BUFSIZE);
+		if (!num || !p) {
+			buffer[0] = '\0';
+			return buffer;
+		}
+		return p;
+	}
+#endif
+
 }
 
 void fr_perror(char const *fmt, ...)
