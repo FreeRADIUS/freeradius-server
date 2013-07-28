@@ -465,7 +465,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	inst->last_reset = now;
 
 	if (find_next_reset(inst,now) == -1){
-		ERROR("rlm_counter: find_next_reset() returned -1. Exiting.");
+		ERROR("rlm_counter: find_next_reset() returned -1. Exiting");
 		return -1;
 	}
 
@@ -569,11 +569,11 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 	if ((key_vp = pairfind(request->packet->vps, PW_ACCT_STATUS_TYPE, 0, TAG_ANY)) != NULL)
 		acctstatustype = key_vp->vp_integer;
 	else {
-		DEBUG("rlm_counter: Could not find account status type in packet.");
+		DEBUG("rlm_counter: Could not find account status type in packet");
 		return RLM_MODULE_NOOP;
 	}
 	if (acctstatustype != PW_STATUS_STOP){
-		DEBUG("rlm_counter: We only run on Accounting-Stop packets.");
+		DEBUG("rlm_counter: We only run on Accounting-Stop packets");
 		return RLM_MODULE_NOOP;
 	}
 	uniqueid_vp = pairfind(request->packet->vps, PW_ACCT_UNIQUE_SESSION_ID, 0, TAG_ANY);
@@ -585,7 +585,7 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 	 *	the counters.
 	 */
 	if (inst->reset_time && (inst->reset_time <= request->timestamp)) {
-		DEBUG("rlm_counter: Time to reset the database.");
+		DEBUG("rlm_counter: Time to reset the database");
 		inst->last_reset = inst->reset_time;
 		find_next_reset(inst,request->timestamp);
 		pthread_mutex_lock(&inst->mutex);
@@ -599,11 +599,11 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 	 */
 	if (inst->service_type != NULL) {
 		if ((proto_vp = pairfind(request->packet->vps, PW_SERVICE_TYPE, 0, TAG_ANY)) == NULL){
-			DEBUG("rlm_counter: Could not find Service-Type attribute in the request. Returning NOOP.");
+			DEBUG("rlm_counter: Could not find Service-Type attribute in the request. Returning NOOP");
 			return RLM_MODULE_NOOP;
 		}
 		if ((unsigned)proto_vp->vp_integer != inst->service_val){
-			DEBUG("rlm_counter: This Service-Type is not allowed. Returning NOOP.");
+			DEBUG("rlm_counter: This Service-Type is not allowed. Returning NOOP");
 			return RLM_MODULE_NOOP;
 		}
 	}
@@ -615,7 +615,7 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 	if (key_vp != NULL){
 		if (key_vp->vp_integer != 0 &&
 		    (request->timestamp - key_vp->vp_integer) < inst->last_reset){
-			DEBUG("rlm_counter: This packet is too old. Returning NOOP.");
+			DEBUG("rlm_counter: This packet is too old. Returning NOOP");
 			return RLM_MODULE_NOOP;
 		}
 	}
@@ -628,7 +628,7 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 	 */
 	key_vp = (inst->key_attr == PW_USER_NAME) ? request->username : pairfind(request->packet->vps, inst->key_attr, 0, TAG_ANY);
 	if (!key_vp){
-		DEBUG("rlm_counter: Could not find the key-attribute in the request. Returning NOOP.");
+		DEBUG("rlm_counter: Could not find the key-attribute in the request. Returning NOOP");
 		return RLM_MODULE_NOOP;
 	}
 
@@ -637,7 +637,7 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 	 */
 	count_vp = pairfind(request->packet->vps, inst->count_attr, 0, TAG_ANY);
 	if (!count_vp){
-		DEBUG("rlm_counter: Could not find the count_attribute in the request.");
+		DEBUG("rlm_counter: Could not find the count_attribute in the request");
 		return RLM_MODULE_NOOP;
 	}
 
@@ -649,7 +649,7 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 	count_datum = gdbm_fetch(inst->gdbm, key_datum);
 	pthread_mutex_unlock(&inst->mutex);
 	if (!count_datum.dptr){
-		DEBUG("rlm_counter: Could not find the requested key in the database.");
+		DEBUG("rlm_counter: Could not find the requested key in the database");
 		counter.user_counter = 0;
 		if (uniqueid_vp != NULL)
 			strlcpy(counter.uniqueid,uniqueid_vp->vp_strvalue,
@@ -658,13 +658,13 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 			memset((char *)counter.uniqueid,0,UNIQUEID_MAX_LEN);
 	}
 	else{
-		DEBUG("rlm_counter: Key found.");
+		DEBUG("rlm_counter: Key found");
 		memcpy(&counter, count_datum.dptr, sizeof(rad_counter));
 		free(count_datum.dptr);
 		DEBUG("rlm_counter: Counter Unique ID = '%s'",counter.uniqueid);
 		if (uniqueid_vp != NULL){
 			if (strncmp(uniqueid_vp->vp_strvalue,counter.uniqueid, UNIQUEID_MAX_LEN - 1) == 0){
-				DEBUG("rlm_counter: Unique IDs for user match. Droping the request.");
+				DEBUG("rlm_counter: Unique IDs for user match. Droping the request");
 				return RLM_MODULE_NOOP;
 			}
 			strlcpy(counter.uniqueid,uniqueid_vp->vp_strvalue,
@@ -706,7 +706,7 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 	count_datum.dptr = (char *) &counter;
 	count_datum.dsize = sizeof(rad_counter);
 
-	DEBUG("rlm_counter: Storing new value in database.");
+	DEBUG("rlm_counter: Storing new value in database");
 	pthread_mutex_lock(&inst->mutex);
 	ret = gdbm_store(inst->gdbm, key_datum, count_datum, GDBM_REPLACE);
 	pthread_mutex_unlock(&inst->mutex);
@@ -715,7 +715,7 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 				inst->filename, gdbm_strerror(gdbm_errno));
 		return RLM_MODULE_FAIL;
 	}
-	DEBUG("rlm_counter: New value stored successfully.");
+	DEBUG("rlm_counter: New value stored successfully");
 
 	return RLM_MODULE_OK;
 }
@@ -789,12 +789,12 @@ static rlm_rcode_t mod_authorize(UNUSED void *instance, UNUSED REQUEST *request)
 	count_datum = gdbm_fetch(inst->gdbm, key_datum);
 	pthread_mutex_unlock(&inst->mutex);
 	if (count_datum.dptr != NULL){
-		DEBUG("rlm_counter: Key Found.");
+		DEBUG("rlm_counter: Key Found");
 		memcpy(&counter, count_datum.dptr, sizeof(rad_counter));
 		free(count_datum.dptr);
 	}
 	else
-		DEBUG("rlm_counter: Could not find the requested key in the database.");
+		DEBUG("rlm_counter: Could not find the requested key in the database");
 
 	/*
 	 * Check if check item > counter

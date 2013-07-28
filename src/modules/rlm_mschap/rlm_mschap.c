@@ -182,7 +182,7 @@ static ssize_t mschap_xlat(void *instance, REQUEST *request,
 	if (strncasecmp(fmt, "Challenge", 9) == 0) {
 		chap_challenge = pairfind(request->packet->vps, PW_MSCHAP_CHALLENGE, VENDORPEC_MICROSOFT, TAG_ANY);
 		if (!chap_challenge) {
-			RDEBUG2("No MS-CHAP-Challenge in the request.");
+			RDEBUG2("No MS-CHAP-Challenge in the request");
 			return 0;
 		}
 
@@ -206,7 +206,7 @@ static ssize_t mschap_xlat(void *instance, REQUEST *request,
 
 			response = pairfind(request->packet->vps, PW_MSCHAP2_RESPONSE, VENDORPEC_MICROSOFT, TAG_ANY);
 			if (!response) {
-				RDEBUG2("MS-CHAP2-Response is required to calculate MS-CHAPv1 challenge.");
+				RDEBUG2("MS-CHAP2-Response is required to calculate MS-CHAPv1 challenge");
 				return 0;
 			}
 
@@ -220,13 +220,13 @@ static ssize_t mschap_xlat(void *instance, REQUEST *request,
 			 *	Responses are 50 octets.
 			 */
 			if (response->length < 50) {
-				RAUTH("MS-CHAP-Response has the wrong format.");
+				RAUTH("MS-CHAP-Response has the wrong format");
 				return 0;
 			}
 
 			user_name = pairfind(request->packet->vps, PW_USER_NAME, 0, TAG_ANY);
 			if (!user_name) {
-				RDEBUG2("User-Name is required to calculate MS-CHAPv1 Challenge.");
+				RDEBUG2("User-Name is required to calculate MS-CHAPv1 Challenge");
 				return 0;
 			}
 
@@ -291,7 +291,7 @@ static ssize_t mschap_xlat(void *instance, REQUEST *request,
 		response = pairfind(request->packet->vps, PW_MSCHAP_RESPONSE, VENDORPEC_MICROSOFT, TAG_ANY);
 		if (!response) response = pairfind(request->packet->vps, PW_MSCHAP2_RESPONSE, VENDORPEC_MICROSOFT, TAG_ANY);
 		if (!response) {
-			RDEBUG2("No MS-CHAP-Response or MS-CHAP2-Response was found in the request.");
+			RDEBUG2("No MS-CHAP-Response or MS-CHAP2-Response was found in the request");
 			return 0;
 		}
 
@@ -321,7 +321,7 @@ static ssize_t mschap_xlat(void *instance, REQUEST *request,
 	} else if (strncasecmp(fmt, "LM-Response", 11) == 0) {
 		response = pairfind(request->packet->vps, PW_MSCHAP_RESPONSE, VENDORPEC_MICROSOFT, TAG_ANY);
 		if (!response) {
-			RDEBUG2("No MS-CHAP-Response was found in the request.");
+			RDEBUG2("No MS-CHAP-Response was found in the request");
 			return 0;
 		}
 
@@ -344,7 +344,7 @@ static ssize_t mschap_xlat(void *instance, REQUEST *request,
 
 		user_name = pairfind(request->packet->vps, PW_USER_NAME, 0, TAG_ANY);
 		if (!user_name) {
-			RDEBUG2("No User-Name was found in the request.");
+			RDEBUG2("No User-Name was found in the request");
 			return 0;
 		}
 
@@ -377,7 +377,7 @@ static ssize_t mschap_xlat(void *instance, REQUEST *request,
 		} else {
 			p = strchr(user_name->vp_strvalue, '\\');
 			if (!p) {
-				RDEBUG2("No NT-Domain was found in the User-Name.");
+				RDEBUG2("No NT-Domain was found in the User-Name");
 				return 0;
 			}
 
@@ -399,7 +399,7 @@ static ssize_t mschap_xlat(void *instance, REQUEST *request,
 
 		user_name = pairfind(request->packet->vps, PW_USER_NAME, 0, TAG_ANY);
 		if (!user_name) {
-			RDEBUG2("No User-Name was found in the request.");
+			RDEBUG2("No User-Name was found in the request");
 			return 0;
 		}
 
@@ -1024,7 +1024,7 @@ static int do_mschap(rlm_mschap_t *inst,
 		 *	No password: can't do authentication.
 		 */
 		if (!password) {
-			RDEBUG2("FAILED: No NT/LM-Password.  Cannot perform authentication.");
+			RDEBUG2("FAILED: No NT/LM-Password.  Cannot perform authentication");
 			return -1;
 		}
 
@@ -1069,7 +1069,7 @@ static int do_mschap(rlm_mschap_t *inst,
 				return -648;
 			}
 
-			RDEBUG2("External script failed.");
+			RDEBUG2("External script failed");
 			p = strchr(buffer, '\n');
 			if (p) *p = '\0';
 
@@ -1343,7 +1343,7 @@ static rlm_rcode_t mod_authenticate(void * instance, REQUEST *request)
 		 *	Password is not required.
 		 */
 		if ((smb_ctrl->vp_integer & ACB_PWNOTREQ) != 0) {
-			RDEBUG2("SMB-Account-Ctrl says no password is required.");
+			RDEBUG2("SMB-Account-Ctrl says no password is required");
 			return RLM_MODULE_OK;
 		}
 	}
@@ -1376,7 +1376,7 @@ static rlm_rcode_t mod_authenticate(void * instance, REQUEST *request)
 		}
 
 	} else if (!password) {
-		if (!do_ntlm_auth) RDEBUG2("No Cleartext-Password configured.  Cannot create LM-Password.");
+		if (!do_ntlm_auth) RDEBUG2("No Cleartext-Password configured.  Cannot create LM-Password");
 
 	} else {		/* there is a configured Cleartext-Password */
 		lm_password = pairmake_config("LM-Password", NULL, T_OP_EQ);
@@ -1409,7 +1409,7 @@ static rlm_rcode_t mod_authenticate(void * instance, REQUEST *request)
 			nt_password = NULL;
 		}
 	} else if (!password) {
-		if (!do_ntlm_auth) RDEBUG2("No Cleartext-Password configured.  Cannot create NT-Password.");
+		if (!do_ntlm_auth) RDEBUG2("No Cleartext-Password configured.  Cannot create NT-Password");
 
 	} else {		/* there is a configured Cleartext-Password */
 		nt_password = pairmake_config("NT-Password", NULL, T_OP_EQ);
@@ -1577,7 +1577,7 @@ static rlm_rcode_t mod_authenticate(void * instance, REQUEST *request)
 		 *	MS-CHAPv1 challenges are 8 octets.
 		 */
 		if (challenge->length < 8) {
-			RAUTH("MS-CHAP-Challenge has the wrong format.");
+			RAUTH("MS-CHAP-Challenge has the wrong format");
 			return RLM_MODULE_INVALID;
 		}
 
@@ -1585,7 +1585,7 @@ static rlm_rcode_t mod_authenticate(void * instance, REQUEST *request)
 		 *	Responses are 50 octets.
 		 */
 		if (response->length < 50) {
-			RAUTH("MS-CHAP-Response has the wrong format.");
+			RAUTH("MS-CHAP-Response has the wrong format");
 			return RLM_MODULE_INVALID;
 		}
 
@@ -1609,7 +1609,7 @@ static rlm_rcode_t mod_authenticate(void * instance, REQUEST *request)
 		if (do_mschap(inst, request, password, challenge->vp_octets,
 			      response->vp_octets + offset, nthashhash,
 			      do_ntlm_auth) < 0) {
-			RDEBUG2("MS-CHAP-Response is incorrect.");
+			RDEBUG2("MS-CHAP-Response is incorrect");
 			goto do_error;
 		}
 
@@ -1624,7 +1624,7 @@ static rlm_rcode_t mod_authenticate(void * instance, REQUEST *request)
 		 *	MS-CHAPv2 challenges are 16 octets.
 		 */
 		if (challenge->length < 16) {
-			RAUTH("MS-CHAP-Challenge has the wrong format.");
+			RAUTH("MS-CHAP-Challenge has the wrong format");
 			return RLM_MODULE_INVALID;
 		}
 
@@ -1632,7 +1632,7 @@ static rlm_rcode_t mod_authenticate(void * instance, REQUEST *request)
 		 *	Responses are 50 octets.
 		 */
 		if (response->length < 50) {
-			RAUTH("MS-CHAP-Response has the wrong format.");
+			RAUTH("MS-CHAP-Response has the wrong format");
 			return RLM_MODULE_INVALID;
 		}
 
@@ -1691,7 +1691,7 @@ static rlm_rcode_t mod_authenticate(void * instance, REQUEST *request)
 		 *  Otherwise OD will determine auth success/fail.
 		 */
 		if (!nt_password && inst->open_directory) {
-			RDEBUG2("No NT-Password configured. Trying OpenDirectory Authentication.");
+			RDEBUG2("No NT-Password configured. Trying OpenDirectory Authentication");
 			int odStatus = od_mschap_auth(request, challenge, username);
 			if (odStatus != RLM_MODULE_NOOP) {
 				return odStatus;
@@ -1796,7 +1796,7 @@ static rlm_rcode_t mod_authenticate(void * instance, REQUEST *request)
 		 */
 		if (((smb_ctrl->vp_integer & ACB_DISABLED) != 0) ||
 		    ((smb_ctrl->vp_integer & (ACB_NORMAL|ACB_WSTRUST)) == 0)) {
-			RDEBUG2("SMB-Account-Ctrl says that the account is disabled, or is not a normal or workstation trust account.");
+			RDEBUG2("SMB-Account-Ctrl says that the account is disabled, or is not a normal or workstation trust account");
 			mschap_add_reply(request,
 					  *response->vp_octets,
 					  "MS-CHAP-Error", "E=691 R=1", 9);
@@ -1807,7 +1807,7 @@ static rlm_rcode_t mod_authenticate(void * instance, REQUEST *request)
 		 *	User is locked out.
 		 */
 		if ((smb_ctrl->vp_integer & ACB_AUTOLOCK) != 0) {
-			RDEBUG2("SMB-Account-Ctrl says that the account is locked out.");
+			RDEBUG2("SMB-Account-Ctrl says that the account is locked out");
 			mschap_add_reply(request,
 					  *response->vp_octets,
 					  "MS-CHAP-Error", "E=647 R=0", 9);

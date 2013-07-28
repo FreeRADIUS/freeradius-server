@@ -906,7 +906,7 @@ STATE_MACHINE_DECL(request_cleanup_delay)
 		if (request->reply->code != 0) {
 			request->listener->send(request->listener, request);
 		} else {
-			RDEBUG("No reply.  Ignoring retransmit.");
+			RDEBUG("No reply.  Ignoring retransmit");
 		}
 
 		/*
@@ -1777,7 +1777,7 @@ static int insert_into_proxy_hash(REQUEST *request)
 	if (!fr_packet_list_insert(proxy_list, &request->proxy)) {
 		fr_packet_list_id_free(proxy_list, request->proxy);
 		PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
-		RPROXY("Failed to insert entry into proxy list.");
+		RPROXY("Failed to insert entry into proxy list");
 		return 0;
 	}
 
@@ -2392,7 +2392,7 @@ static int request_proxy(REQUEST *request, int retransmit)
 	 *	We're actually sending a proxied packet.  Do that now.
 	 */
 	if (!request->in_proxy_hash && !insert_into_proxy_hash(request)) {
-		RPROXY("Failed to insert initial packet into the proxy list.");
+		RPROXY("Failed to insert initial packet into the proxy list");
 		return -1;
 	}
 
@@ -2467,7 +2467,7 @@ static int request_proxy_anew(REQUEST *request)
 	 *	Don't free the old Id (if any) on error.
 	 */
 	if (!insert_into_proxy_hash(request)) {
-		RPROXY("Failed to insert retransmission into the proxy list.");
+		RPROXY("Failed to insert retransmission into the proxy list");
 		goto post_proxy_fail;
 	}
 
@@ -3220,7 +3220,7 @@ static void request_coa_originate(REQUEST *request)
 	coa->proxy->dst_port = coa->home_server->port;
 
 	if (!insert_into_proxy_hash(coa)) {
-		radlog_request(L_PROXY, 0, coa, "Failed to insert CoA request into proxy list.");
+		radlog_request(L_PROXY, 0, coa, "Failed to insert CoA request into proxy list");
 		goto fail;
 	}
 
@@ -3533,14 +3533,14 @@ static void event_status(struct timeval *wake)
 
 	if (debug_flag == 0) {
 		if (just_started) {
-			INFO("Ready to process requests.");
+			INFO("Ready to process requests");
 			just_started = false;
 		}
 		return;
 	}
 
 	if (!wake) {
-		INFO("Ready to process requests.");
+		INFO("Ready to process requests");
 
 	} else if ((wake->tv_sec != 0) ||
 		   (wake->tv_usec >= 100000)) {
@@ -3951,7 +3951,7 @@ static void handle_signal_self(int flag)
 			return;
 		}
 
-		INFO("Received HUP signal.");
+		INFO("Received HUP signal");
 
 		last_hup = when;
 

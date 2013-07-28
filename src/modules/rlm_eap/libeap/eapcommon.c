@@ -315,7 +315,7 @@ eap_packet_raw_t *eap_vp2packet(TALLOC_CTX *ctx, VALUE_PAIR *vps)
 	 *	Sanity check the length before doing anything.
 	 */
 	if (first->length < 4) {
-		DEBUG("rlm_eap: EAP packet is too short.");
+		DEBUG("rlm_eap: EAP packet is too short");
 		return NULL;
 	}
 
@@ -330,7 +330,7 @@ eap_packet_raw_t *eap_vp2packet(TALLOC_CTX *ctx, VALUE_PAIR *vps)
 	 *	Take out even more weird things.
 	 */
 	if (len < 4) {
-		DEBUG("rlm_eap: EAP packet has invalid length.");
+		DEBUG("rlm_eap: EAP packet has invalid length");
 		return NULL;
 	}
 

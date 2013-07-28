@@ -307,7 +307,7 @@ static int mschap_postproxy(eap_handler_t *handler, UNUSED void *tunnel_data)
 	 */
 	switch (request->reply->code) {
 	case PW_CODE_AUTHENTICATION_ACK:
-		RDEBUG2("Proxied authentication succeeded.");
+		RDEBUG2("Proxied authentication succeeded");
 
 		/*
 		 *	Move the attribute, so it doesn't go into
@@ -320,7 +320,7 @@ static int mschap_postproxy(eap_handler_t *handler, UNUSED void *tunnel_data)
 
 	default:
 	case PW_CODE_AUTHENTICATION_REJECT:
-		RDEBUG("Proxied authentication did not succeed.");
+		RDEBUG("Proxied authentication did not succeed");
 		return 0;
 	}
 
@@ -733,7 +733,7 @@ packet_ready:
 	 *	No response, die.
 	 */
 	if (!response) {
-		REDEBUG("No MS-CHAP-Success or MS-CHAP-Error was found.");
+		REDEBUG("No MS-CHAP-Success or MS-CHAP-Error was found");
 		return 0;
 	}
 

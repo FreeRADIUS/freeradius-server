@@ -442,7 +442,7 @@ static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
 	 */
 	inst->session_tree = rbtree_create(securid_session_cmp, NULL, 0);
 	if (!inst->session_tree) {
-		ERROR("rlm_securid: Cannot initialize session tree.");
+		ERROR("rlm_securid: Cannot initialize session tree");
 		return -1;
 	}
 
@@ -467,12 +467,12 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 	 *	a User-Name attribute.
 	 */
 	if (!request->username) {
-		AUTH("rlm_securid: Attribute \"User-Name\" is required for authentication.");
+		AUTH("rlm_securid: Attribute \"User-Name\" is required for authentication");
 		return RLM_MODULE_INVALID;
 	}
 
 	if (!request->password) {
-		RAUTH("Attribute \"Password\" is required for authentication.");
+		RAUTH("Attribute \"Password\" is required for authentication");
 		return RLM_MODULE_INVALID;
 	}
 
@@ -521,7 +521,7 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 
 		/* Mark the packet as a Acceess-Challenge Packet */
 		request->reply->code = PW_CODE_ACCESS_CHALLENGE;
-		RDEBUG("Sending Access-Challenge.");
+		RDEBUG("Sending Access-Challenge");
 		rcode = RLM_MODULE_HANDLED;
 		break;
 

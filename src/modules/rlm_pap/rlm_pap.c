@@ -325,8 +325,8 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 			return RLM_MODULE_NOOP;
 		}
 
-		RWDEBUG("No \"known good\" password found for the user.  Not setting Auth-Type.");
-		RWDEBUG("Authentication will fail unless a \"known good\" password is available.");
+		RWDEBUG("No \"known good\" password found for the user.  Not setting Auth-Type");
+		RWDEBUG("Authentication will fail unless a \"known good\" password is available");
 		return RLM_MODULE_NOOP;
 	}
 
@@ -351,7 +351,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 			return RLM_MODULE_NOOP;
 		}
 
-		RDEBUG2("No clear-text password in the request.  Not performing PAP.");
+		RDEBUG2("No clear-text password in the request.  Not performing PAP");
 		return RLM_MODULE_NOOP;
 	}
 
@@ -399,7 +399,7 @@ static int pap_auth_md5(rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
 	FR_MD5_CTX md5_context;
 	uint8_t binbuf[128];
 
-	RDEBUG("Using MD5 encryption.");
+	RDEBUG("Using MD5 encryption");
 
 	if (inst->normify)
 		normify(request, vp, 16);
@@ -427,7 +427,7 @@ static int pap_auth_smd5(rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
 	FR_MD5_CTX md5_context;
 	uint8_t binbuf[128];
 
-	RDEBUG("Using SMD5 encryption.");
+	RDEBUG("Using SMD5 encryption");
 
 	if (inst->normify)
 		normify(request, vp, 16);
@@ -458,7 +458,7 @@ static int pap_auth_sha(rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
 	fr_SHA1_CTX sha1_context;
 	uint8_t binbuf[128];
 
-	RDEBUG("Using SHA1 encryption.");
+	RDEBUG("Using SHA1 encryption");
 
 	if (inst->normify)
 		normify(request, vp, 20);
@@ -485,7 +485,7 @@ static int pap_auth_ssha(rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
 	fr_SHA1_CTX sha1_context;
 	uint8_t binbuf[128];
 
-	RDEBUG("Using SSHA encryption.");
+	RDEBUG("Using SSHA encryption");
 
 	if (inst->normify)
 		normify(request, vp, 20);
@@ -513,7 +513,7 @@ static int pap_auth_nt(rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
 	uint8_t binbuf[16];
 	char charbuf[32 + 1];
 
-	RDEBUG("Using NT encryption.");
+	RDEBUG("Using NT encryption");
 
 	if (inst->normify)
 		normify(request, vp, 16);
@@ -541,7 +541,7 @@ static int pap_auth_lm(rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
 	uint8_t binbuf[16];
 	char charbuf[32 + 1];
 
-	RDEBUG("Using LM encryption.");
+	RDEBUG("Using LM encryption");
 
 	if (inst->normify)
 		normify(request, vp, 16);

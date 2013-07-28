@@ -461,7 +461,7 @@ int paircompare(REQUEST *request, VALUE_PAIR *req_list, VALUE_PAIR *check,
 				if (check_item->op == T_OP_CMP_EQ) {
 					WDEBUG("Found User-Password == \"...\".");
 					WDEBUG("Are you sure you don't mean Cleartext-Password?");
-					WDEBUG("See \"man rlm_pap\" for more information.");
+					WDEBUG("See \"man rlm_pap\" for more information");
 				}
 				if (pairfind(req_list, PW_USER_PASSWORD, 0, TAG_ANY) == NULL) {
 					continue;

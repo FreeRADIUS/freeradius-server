@@ -127,7 +127,7 @@ static rlm_rcode_t mod_authenticate(UNUSED void * instance, REQUEST *request)
 
 	password = pairfind(request->config_items, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY);
 	if(!password) {
-		AUTH("rlm_cram: Cleartext-Password is required for authentication.");
+		AUTH("rlm_cram: Cleartext-Password is required for authentication");
 		return RLM_MODULE_INVALID;
 	}
 	authtype = pairfind(request->packet->vps, SM_AUTHTYPE, VENDORPEC_SM, TAG_ANY);

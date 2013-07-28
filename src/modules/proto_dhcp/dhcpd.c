@@ -209,7 +209,7 @@ static int dhcprelay_process_server_reply(REQUEST *request)
 		} else {
 			vp = pairfind(request->packet->vps, 264, DHCP_MAGIC_VENDOR, TAG_ANY); /* DHCP-Your-IP-Address */
 			if (!vp) {
-				DEBUG("DHCP: Failed to find IP Address for request.");
+				DEBUG("DHCP: Failed to find IP Address for request");
 				return -1;
 			}
 
@@ -483,7 +483,7 @@ static int dhcp_process(REQUEST *request)
 
 	vp = pairfind(request->reply->vps, 264, DHCP_MAGIC_VENDOR, TAG_ANY); /* DHCP-Your-IP-Address */
 	if (!vp) {
-		DEBUG("DHCP: Failed to find DHCP-Your-IP-Address for request.");
+		DEBUG("DHCP: Failed to find DHCP-Your-IP-Address for request");
 		return -1;
 	}
 
@@ -528,7 +528,7 @@ static int dhcp_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	sock = this->data;
 
 	if (!sock->interface) {
-		WDEBUG("No \"interface\" setting is defined.  Only unicast DHCP will work.");
+		WDEBUG("No \"interface\" setting is defined.  Only unicast DHCP will work");
 	}
 
 	/*

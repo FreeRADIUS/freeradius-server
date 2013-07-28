@@ -278,7 +278,7 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 	if ((vp = pairfind(request->packet->vps, PW_ACCT_STATUS_TYPE, 0, TAG_ANY)) != NULL)
 		acctstatustype = vp->vp_integer;
 	else {
-		RDEBUG("Could not find account status type in packet. Return NOOP.");
+		RDEBUG("Could not find account status type in packet. Return NOOP");
 		return RLM_MODULE_NOOP;
 	}
 	switch(acctstatustype){
@@ -298,7 +298,7 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 			break;
 		default:
 			/* We don't care about any other accounting packet */
-			RDEBUG("This is not an Accounting-Stop. Return NOOP.");
+			RDEBUG("This is not an Accounting-Stop. Return NOOP");
 
 			return RLM_MODULE_NOOP;
 	}
@@ -415,7 +415,7 @@ static rlm_rcode_t mod_post_auth(UNUSED void *instance, UNUSED REQUEST *request)
 		if (!inst->name || (strcmp(inst->name,vp->vp_strvalue) && strcmp(vp->vp_strvalue,"DEFAULT")))
 			return RLM_MODULE_NOOP;
 	} else {
-		RDEBUG("Could not find Pool-Name attribute.");
+		RDEBUG("Could not find Pool-Name attribute");
 		return RLM_MODULE_NOOP;
 	}
 
@@ -524,14 +524,14 @@ static rlm_rcode_t mod_post_auth(UNUSED void *instance, UNUSED REQUEST *request)
 	 * attribute in the reply, check for override
 	 */
 	if (pairfind(request->reply->vps, attr_ipaddr, vendor_ipaddr, TAG_ANY) != NULL) {
-		RDEBUG("Found IP address attribute in reply attribute list.");
+		RDEBUG("Found IP address attribute in reply attribute list");
 		if (inst->override)
 		{
 			RDEBUG("Override supplied IP address");
 			pairdelete(&request->reply->vps, attr_ipaddr, vendor_ipaddr, TAG_ANY);
 		} else {
 			/* Abort */
-			RDEBUG("override is set to no. Return NOOP.");
+			RDEBUG("override is set to no. Return NOOP");
 			return RLM_MODULE_NOOP;
 		}
 	}
@@ -682,7 +682,7 @@ static rlm_rcode_t mod_post_auth(UNUSED void *instance, UNUSED REQUEST *request)
 				if (mppp)
 					extra = 1;
 				if (!mppp)
-					ERROR("rlm_ippool: mppp is not one. Please report this behaviour.");
+					ERROR("rlm_ippool: mppp is not one. Please report this behaviour");
 			}
 		}
 		free(key_datum.dptr);
@@ -759,7 +759,7 @@ static rlm_rcode_t mod_post_auth(UNUSED void *instance, UNUSED REQUEST *request)
 	}
 	else{
 		pthread_mutex_unlock(&inst->op_mutex);
-		RDEBUG("No available ip addresses in pool.");
+		RDEBUG("No available ip addresses in pool");
 		return RLM_MODULE_NOTFOUND;
 	}
 

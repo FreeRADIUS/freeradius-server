@@ -626,7 +626,7 @@ static ssize_t base64_xlat(UNUSED void *instance, UNUSED REQUEST *request,
 	 *  if it's larger than outlen, the output would be useless so abort.
 	 */
 	if ((len < 0) || ((FR_BASE64_ENC_LENGTH(len) + 1) > (ssize_t) outlen)) {
-		REDEBUG("xlat failed.");
+		REDEBUG("xlat failed");
 		*out = '\0';
 		return -1;
 	}

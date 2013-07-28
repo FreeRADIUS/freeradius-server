@@ -225,11 +225,11 @@ static int rad_check_password(REQUEST *request)
 	if (auth_type < 0) {
 		if (pairfind(request->config_items, PW_CRYPT_PASSWORD, 0, TAG_ANY) != NULL) {
 			RWDEBUG2("Please update your configuration, and remove 'Auth-Type = Crypt'");
-			RWDEBUG2("Use the PAP module instead.");
+			RWDEBUG2("Use the PAP module instead");
 		}
 		else if (pairfind(request->config_items, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY) != NULL) {
 			RWDEBUG2("Please update your configuration, and remove 'Auth-Type = Local'");
-			RWDEBUG2("Use the PAP or CHAP modules instead.");
+			RWDEBUG2("Use the PAP or CHAP modules instead");
 		}
 
 		/*
@@ -502,7 +502,7 @@ autz_redo:
 	 *	wants to send back.
 	 */
 	if (result < 0) {
-		RDEBUG2("Failed to authenticate the user.");
+		RDEBUG2("Failed to authenticate the user");
 		request->reply->code = PW_CODE_AUTHENTICATION_REJECT;
 
 		if ((module_msg = pairfind(request->packet->vps, PW_MODULE_FAILURE_MESSAGE, 0, TAG_ANY)) != NULL){

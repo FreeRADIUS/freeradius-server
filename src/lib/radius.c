@@ -1731,7 +1731,7 @@ int rad_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 	case PW_CODE_AUTHENTICATION_REJECT:
 	case PW_CODE_ACCESS_CHALLENGE:
 		if (!original) {
-			fr_strerror_printf("ERROR: Cannot sign response packet without a request packet.");
+			fr_strerror_printf("ERROR: Cannot sign response packet without a request packet");
 			return -1;
 		}
 		break;
@@ -1889,7 +1889,7 @@ int rad_sign(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 	 *	It wasn't assigned an Id, this is bad!
 	 */
 	if (packet->id < 0) {
-		fr_strerror_printf("ERROR: RADIUS packets must be assigned an Id.");
+		fr_strerror_printf("ERROR: RADIUS packets must be assigned an Id");
 		return -1;
 	}
 
@@ -1926,7 +1926,7 @@ int rad_sign(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 		case PW_CODE_AUTHENTICATION_REJECT:
 		case PW_CODE_ACCESS_CHALLENGE:
 			if (!original) {
-				fr_strerror_printf("ERROR: Cannot sign response packet without a request packet.");
+				fr_strerror_printf("ERROR: Cannot sign response packet without a request packet");
 				return -1;
 			}
 			memcpy(hdr->vector, original->vector,
@@ -2601,7 +2601,7 @@ RADIUS_PACKET *rad_recv(int fd, int flags)
 	 *	packet.
 	 */
 	if (packet->data_len > MAX_PACKET_LEN) {
-		fr_strerror_printf("Discarding packet: Larger than RFC limitation of 4096 bytes.");
+		fr_strerror_printf("Discarding packet: Larger than RFC limitation of 4096 bytes");
 		/* packet->data is NULL */
 		rad_free(&packet);
 		return NULL;
@@ -2614,7 +2614,7 @@ RADIUS_PACKET *rad_recv(int fd, int flags)
 	 *	packet->data == NULL
 	 */
 	if ((packet->data_len == 0) || !packet->data) {
-		fr_strerror_printf("Empty packet: Socket is not ready.");
+		fr_strerror_printf("Empty packet: Socket is not ready");
 		rad_free(&packet);
 		return NULL;
 	}
@@ -2735,7 +2735,7 @@ int rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 			case PW_CODE_AUTHENTICATION_REJECT:
 			case PW_CODE_ACCESS_CHALLENGE:
 				if (!original) {
-					fr_strerror_printf("ERROR: Cannot validate Message-Authenticator in response packet without a request packet.");
+					fr_strerror_printf("ERROR: Cannot validate Message-Authenticator in response packet without a request packet");
 					return -1;
 				}
 				memcpy(packet->data + 4, original->vector, AUTH_VECTOR_LEN);

@@ -373,7 +373,7 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 		 */
 		pairdelete(&request->proxy->vps, PW_FREERADIUS_PROXIED_TO, VENDORPEC_FREERADIUS, TAG_ANY);
 
-		RDEBUG2("  Tunneled session will be proxied.  Not doing EAP.");
+		RDEBUG2("  Tunneled session will be proxied.  Not doing EAP");
 		return RLM_MODULE_HANDLED;
 	}
 #endif

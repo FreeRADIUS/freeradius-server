@@ -209,7 +209,7 @@ static int mod_authenticate(void *type_arg, eap_handler_t *handler)
 		 *	data.
 		 */
 	case FR_TLS_OK:
-		RDEBUG2("Received unexpected tunneled data after successful handshake.");
+		RDEBUG2("Received unexpected tunneled data after successful handshake");
 #ifndef NDEBUG
 		if ((debug_flag > 2) && fr_log_fp) {
 			unsigned int i;

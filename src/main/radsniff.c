@@ -642,7 +642,7 @@ int main(int argc, char *argv[])
 
 #if !defined(HAVE_PCAP_FOPEN_OFFLINE) || !defined(HAVE_PCAP_DUMP_FOPEN)
 	if (conf->from_stdin || conf->to_stdout) {
-		ERROR("PCAP streams not supported.");
+		ERROR("PCAP streams not supported");
 		goto finish;
 	}
 #endif

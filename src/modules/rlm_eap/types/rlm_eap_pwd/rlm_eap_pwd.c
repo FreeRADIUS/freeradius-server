@@ -341,7 +341,7 @@ mod_authenticate (void *arg, eap_handler_t *handler)
     if (EAP_PWD_GET_MORE_BIT(hdr)) {
 	rad_assert(pwd_session->in_buf != NULL);
 	if ((pwd_session->in_buf_pos + len) > pwd_session->in_buf_len) {
-	    RDEBUG2("pwd will not overflow a fragment buffer. Nope, not prudent.");
+	    RDEBUG2("pwd will not overflow a fragment buffer. Nope, not prudent");
 	    return 0;
 	}
 	memcpy(pwd_session->in_buf + pwd_session->in_buf_pos, buf, len);
@@ -369,7 +369,7 @@ mod_authenticate (void *arg, eap_handler_t *handler)
 	 * the last fragment...
 	 */
 	if ((pwd_session->in_buf_pos + len) > pwd_session->in_buf_len) {
-	    RDEBUG2("pwd will not overflow a fragment buffer. Nope, not prudent.");
+	    RDEBUG2("pwd will not overflow a fragment buffer. Nope, not prudent");
 	    return 0;
 	}
 	memcpy(pwd_session->in_buf + pwd_session->in_buf_pos, buf, len);

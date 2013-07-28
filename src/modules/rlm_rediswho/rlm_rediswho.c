@@ -177,7 +177,7 @@ static rlm_rcode_t mod_accounting(void * instance, REQUEST * request)
 
 	vp = pairfind(request->packet->vps, PW_ACCT_STATUS_TYPE, 0, TAG_ANY);
 	if (!vp) {
-		RDEBUG("Could not find account status type in packet.");
+		RDEBUG("Could not find account status type in packet");
 		return RLM_MODULE_NOOP;
 	}
 

@@ -313,7 +313,7 @@ leap_packet_t *eapleap_stage6(leap_packet_t *packet, REQUEST *request,
 	 */
 	vp = pairmake_reply("Cisco-AVPair", NULL, T_OP_ADD);
 	if (!vp) {
-		ERROR("rlm_eap_leap: Failed to create Cisco-AVPair attribute.  LEAP cancelled.");
+		ERROR("rlm_eap_leap: Failed to create Cisco-AVPair attribute.  LEAP cancelled");
 		talloc_free(reply);
 		return NULL;
 	}

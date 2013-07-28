@@ -220,7 +220,7 @@ static int replicate_packet(UNUSED void *instance, REQUEST *request,
 static rlm_rcode_t replicate_packet(void *instance, REQUEST *request,
 			    pair_lists_t list, unsigned int code)
 {
-	RDEBUG("Replication is unsupported in this build.");
+	RDEBUG("Replication is unsupported in this build");
 	return RLM_MODULE_FAIL;
 }
 #endif

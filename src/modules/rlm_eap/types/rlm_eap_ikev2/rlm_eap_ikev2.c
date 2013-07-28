@@ -292,7 +292,7 @@ static int ikev2_initiate(void *instance, eap_handler_t *handler)
     session = FindSessionByFastid(i2, (char const *)eap_username);
     if(!session) {
 	if(IKEv2BeginSession( i2, &session, IKEv2_STY_INITIATOR ) != IKEv2_RET_OK) {
-	    ERROR(IKEv2_LOG_PREFIX "Can't initialize IKEv2 session.");
+	    ERROR(IKEv2_LOG_PREFIX "Can't initialize IKEv2 session");
 	    return 1;
 	}
     } else {

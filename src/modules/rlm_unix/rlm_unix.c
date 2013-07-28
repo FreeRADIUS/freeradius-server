@@ -329,7 +329,7 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 	 *	No radwtmp.  Don't do anything.
 	 */
 	if (!inst->radwtmp) {
-		RDEBUG2("No radwtmp file configured.  Ignoring accounting request.");
+		RDEBUG2("No radwtmp file configured.  Ignoring accounting request");
 		return RLM_MODULE_NOOP;
 	}
 
@@ -342,7 +342,7 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 	 *	Which type is this.
 	 */
 	if ((vp = pairfind(request->packet->vps, PW_ACCT_STATUS_TYPE, 0, TAG_ANY))==NULL) {
-		RDEBUG("no Accounting-Status-Type attribute in request.");
+		RDEBUG("no Accounting-Status-Type attribute in request");
 		return RLM_MODULE_NOOP;
 	}
 	status = vp->vp_integer;

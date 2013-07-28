@@ -435,7 +435,7 @@ static int process_eap_sim_start(eap_handler_t *handler, VALUE_PAIR *vps)
 	 * okay, good got stuff that we need. Check the version we found.
 	 */
 	if(selectedversion_vp->length < 2) {
-		DEBUG2("   EAP-Sim version field is too short.");
+		DEBUG2("   EAP-Sim version field is too short");
 		return 0;
 	}
 	memcpy(&simversion, selectedversion_vp->vp_strvalue, sizeof(simversion));

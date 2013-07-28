@@ -658,7 +658,7 @@ static rlm_rcode_t process_reply(UNUSED eap_handler_t *handler, tls_session_t *t
 		vp = NULL;
 		pairfilter(tls_session, &vp, &reply->vps, PW_MSCHAP2_SUCCESS, VENDORPEC_MICROSOFT, TAG_ANY);
 		if (vp) {
-			RDEBUG("Got MS-CHAP2-Success, tunneling it to the client in a challenge.");
+			RDEBUG("Got MS-CHAP2-Success, tunneling it to the client in a challenge");
 			rcode = RLM_MODULE_HANDLED;
 			t->authenticated = true;
 
@@ -793,7 +793,7 @@ static int eapttls_postproxy(eap_handler_t *handler, void *data)
 	REQUEST *fake, *request = handler->request;
 
 	rad_assert(request != NULL);
-	RDEBUG("Passing reply from proxy back into the tunnel.");
+	RDEBUG("Passing reply from proxy back into the tunnel");
 
 	/*
 	 *	If there was a fake request associated with the proxied
@@ -902,7 +902,7 @@ static int eapttls_postproxy(eap_handler_t *handler, void *data)
 		return eaptls_success(handler, 0);
 
 	default:
-		RDEBUG("Reply was unknown.");
+		RDEBUG("Reply was unknown");
 		break;
 	}
 
@@ -944,7 +944,7 @@ PW_CODE eapttls_process(eap_handler_t *handler, tls_session_t *tls_session)
 	 */
 	if (data_len == 0) {
 		if (t->authenticated) {
-			RDEBUG("Got ACK, and the user was already authenticated.");
+			RDEBUG("Got ACK, and the user was already authenticated");
 			return PW_CODE_AUTHENTICATION_ACK;
 		} /* else no session, no data, die. */
 
@@ -1045,7 +1045,7 @@ PW_CODE eapttls_process(eap_handler_t *handler, tls_session_t *tls_session)
 				 *	set it here.
 				 */
 				if (t->default_method != 0) {
-					RDEBUG("Setting default EAP type for tunneled EAP session.");
+					RDEBUG("Setting default EAP type for tunneled EAP session");
 					vp = paircreate(fake, PW_EAP_TYPE, 0);
 					rad_assert(vp != NULL);
 					vp->vp_integer = t->default_method;
@@ -1058,7 +1058,7 @@ PW_CODE eapttls_process(eap_handler_t *handler, tls_session_t *tls_session)
 				 *	as it's permitted to do EAP without
 				 *	user-name.
 				 */
-				RWDEBUG2("No EAP-Identity found to start EAP conversation.");
+				RWDEBUG2("No EAP-Identity found to start EAP conversation");
 			}
 		} /* else there WAS a t->username */
 

@@ -662,7 +662,7 @@ static int switch_users(CONF_SECTION *cs)
 	fr_set_dumpable();
 
 	if (allow_core_dumps) {
-		INFO("Core dumps are enabled.");
+		INFO("Core dumps are enabled");
 	}
 
 	return 1;

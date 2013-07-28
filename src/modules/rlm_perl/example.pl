@@ -191,7 +191,7 @@ sub detach {
 #	&log_request_attributes;
 
 	# Do some logging.
-	&radiusd::radlog(L_DBG,"rlm_perl::Detaching. Reloading. Done.");
+	&radiusd::radlog(L_DBG,"rlm_perl::Detaching. Reloading. Done");
 }
 
 #

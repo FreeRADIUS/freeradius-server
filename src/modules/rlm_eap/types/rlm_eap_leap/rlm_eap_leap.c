@@ -48,7 +48,7 @@ static int leap_initiate(UNUSED void *instance, eap_handler_t *handler)
 	 *	LEAP requires a User-Name attribute
 	 */
 	if (!handler->request->username) {
-		DEBUG2("  rlm_eap_leap: User-Name is required for EAP-LEAP authentication.");
+		DEBUG2("  rlm_eap_leap: User-Name is required for EAP-LEAP authentication");
 		return 0;
 	}
 
