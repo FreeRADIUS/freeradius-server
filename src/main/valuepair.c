@@ -138,6 +138,11 @@ int radius_compare_vps(REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *vp)
 #endif
 
 	/*
+	 *	Attributes must be of the same type.
+	 */
+	rad_assert(vp->da->type == check->da->type);
+
+	/*
 	 *	Tagged attributes are equal if and only if both the
 	 *	tag AND value match.
 	 */
