@@ -762,8 +762,8 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		    inst->config->groupmemb_query[0]) {
 			DEBUG("rlm_sql (%s): Registering sql_groupcmp for %s",
 			      inst->config->xlat_name, group_name);
-			paircompare_register(dattr->attr, PW_USER_NAME,
-					     sql_groupcmp, inst);
+			paircompare_register(dattr, dict_attrbyvalue(PW_USER_NAME, 0),
+					     false, sql_groupcmp, inst);
 		}
 	}
 
@@ -879,7 +879,8 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 	if (inst->config->groupmemb_query &&
 	    inst->config->groupmemb_query[0]) {
-		paircompare_register(PW_SQL_GROUP, PW_USER_NAME, sql_groupcmp, inst);
+		paircompare_register(dict_attrbyvalue(PW_SQL_GROUP, 0),
+				dict_attrbyvalue(PW_USER_NAME, 0), false, sql_groupcmp, inst);
 	}
 
 	if (inst->config->do_clients) {

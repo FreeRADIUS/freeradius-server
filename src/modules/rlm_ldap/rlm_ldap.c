@@ -666,13 +666,14 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 			goto error;
 		}
 
-		paircompare_register(inst->group_da->attr, PW_USER_NAME, rlm_ldap_groupcmp, inst);
+		paircompare_register(inst->group_da, dict_attrbyvalue(PW_USER_NAME, 0), false, rlm_ldap_groupcmp, inst);
 	/*
 	 *	Were the default instance
 	 */
 	} else {
 		inst->group_da = dict_attrbyvalue(PW_LDAP_GROUP, 0);
-		paircompare_register(PW_LDAP_GROUP, PW_USER_NAME, rlm_ldap_groupcmp, inst);
+		paircompare_register(dict_attrbyvalue(PW_LDAP_GROUP, 0), dict_attrbyvalue(PW_USER_NAME, 0),
+				false, rlm_ldap_groupcmp, inst);
 	}
 
 	xlat_register(inst->xlat_name, ldap_xlat, rlm_ldap_escape_func, inst);
