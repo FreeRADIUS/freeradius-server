@@ -45,8 +45,9 @@ const FR_NAME_NUMBER vpt_types[] = {
 };
 
 struct cmp {
-	unsigned int attribute;
-	unsigned int otherattr;
+	DICT_ATTR const *attribute;
+	DICT_ATTR const *from;
+	bool	first_only;
 	void *instance; /* module instance */
 	RAD_COMPARE_FUNC compare;
 	struct cmp *next;
@@ -266,12 +267,10 @@ int radius_callback_compare(REQUEST *request, VALUE_PAIR *req,
 	 *
 	 *	FIXME: use new RB-Tree code.
 	 */
-	if (!check->da->vendor && !req->da->vendor) {
-		for (c = cmp; c; c = c->next) {
-			if (c->attribute == check->da->attr) {
-				return (c->compare)(c->instance, request, req, check,
-					check_pairs, reply_pairs);
-			}
+	for (c = cmp; c; c = c->next) {
+		if (c->attribute == check->da) {
+			return (c->compare)(c->instance, request, req, check,
+				check_pairs, reply_pairs);
 		}
 	}
 
@@ -287,7 +286,7 @@ int radius_callback_compare(REQUEST *request, VALUE_PAIR *req,
  * @param attribute to find comparison function for.
  * @return true if a comparison function was found, else false.
  */
-int radius_find_compare(unsigned int attribute)
+int radius_find_compare(DICT_ATTR const *attribute)
 {
 	struct cmp *c;
 
@@ -303,41 +302,41 @@ int radius_find_compare(unsigned int attribute)
 
 /** See what attribute we want to compare with.
  *
- * @todo this should probably take DA's.
  * @param attribute to find comparison function for.
- * @return true if a comparison function was found, else false.
+ * @param from reference to compare with
+ * @return true if the comparison callback require a matching attribue in the request, else false.
  */
-static int otherattr(unsigned int attribute)
+static bool otherattr(DICT_ATTR const *attribute, DICT_ATTR const **from)
 {
 	struct cmp *c;
 
 	for (c = cmp; c; c = c->next) {
 		if (c->attribute == attribute) {
-			return c->otherattr;
+			*from = c->from;
+			return c->first_only;
 		}
 	}
-
-	return attribute;
+	
+	*from = attribute;
+	return true;
 }
 
 /** Register a function as compare function.
  *
- * @param attribute number to register comparison function for.
- * @param other_attr we want to compare with. Normally this is the
- *	same as attribute.
- * You can set this to:
- *	- -1	The same as attribute.
- *	- 0	Always call compare function, not tied to request attribute.
- *	- >0	Attribute to compare with. For example, PW_GROUP in a check
- *		item needs to be compared with PW_USER_NAME in the incoming request.
+ * @param attribute to register comparison function for.
+ * @param from the attribute we want to compare with. Normally this is the same as attribute.
+ *  If null call the comparison function on every attributes in the request if first_only is false
+ * @param first_only will decide if we loop over the request attributes or stop on the first one
  * @param func comparison function
  * @param instance argument to comparison function
  * @return 0
  */
-int paircompare_register(unsigned int attribute, int other_attr,
-			 RAD_COMPARE_FUNC func, void *instance)
+int paircompare_register(DICT_ATTR const *attribute, DICT_ATTR const *from,
+			 bool first_only, RAD_COMPARE_FUNC func, void *instance)
 {
 	struct cmp *c;
+
+	rad_assert(attribute != NULL);
 
 	paircompare_unregister(attribute, func);
 
@@ -345,7 +344,8 @@ int paircompare_register(unsigned int attribute, int other_attr,
 
 	c->compare   = func;
 	c->attribute = attribute;
-	c->otherattr = other_attr;
+	c->from = from;
+	c->first_only = first_only;
 	c->instance  = instance;
 	c->next      = cmp;
 	cmp = c;
@@ -355,10 +355,10 @@ int paircompare_register(unsigned int attribute, int other_attr,
 
 /** Unregister comparison function for an attribute
  *
- * @param attribute attribute to unregister for.
+ * @param attribute dict reference to unregister for.
  * @param func comparison function to remove.
  */
-void paircompare_unregister(unsigned int attribute, RAD_COMPARE_FUNC func)
+void paircompare_unregister(DICT_ATTR const *attribute, RAD_COMPARE_FUNC func)
 {
 	struct cmp *c, *last;
 
@@ -421,10 +421,11 @@ int paircompare(REQUEST *request, VALUE_PAIR *req_list, VALUE_PAIR *check,
 	vp_cursor_t cursor;
 	VALUE_PAIR *check_item;
 	VALUE_PAIR *auth_item;
+	DICT_ATTR const *from;
 
 	int result = 0;
 	int compare;
-	int other;
+	bool first_only;
 
 	for (check_item = paircursor(&cursor, &check);
 	     check_item;
@@ -477,13 +478,13 @@ int paircompare(REQUEST *request, VALUE_PAIR *req_list, VALUE_PAIR *check,
 		/*
 		 *	See if this item is present in the request.
 		 */
-		other = otherattr(check_item->da->attr);
+		first_only = otherattr(check_item->da, &from);
 
 		auth_item = req_list;
 	try_again:
-		if (other >= 0) {
+		if (!first_only) {
 			while (auth_item != NULL) {
-				if ((auth_item->da->attr == (unsigned int) other) || (other == 0)) {
+				if ((auth_item->da == from) || (!from)) {
 					break;
 				}
 				auth_item = auth_item->next;
@@ -570,7 +571,7 @@ int paircompare(REQUEST *request, VALUE_PAIR *req_list, VALUE_PAIR *check,
 		 *	This attribute didn't match, but maybe there's
 		 *	another of the same attribute, which DOES match.
 		 */
-		if ((result != 0) && (other >= 0)) {
+		if ((result != 0) && (!first_only)) {
 			auth_item = auth_item->next;
 			result = 0;
 			goto try_again;

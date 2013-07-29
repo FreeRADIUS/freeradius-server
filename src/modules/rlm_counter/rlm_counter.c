@@ -540,8 +540,9 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 	/*
 	 *	Register the counter comparison operation.
+	 * FIXME: move all attributes to DA
 	 */
-	paircompare_register(inst->dict_attr, 0, counter_cmp, inst);
+	paircompare_register(dict_attrbyvalue(inst->dict_attr, 0), NULL, true, counter_cmp, inst);
 
 	/*
 	 * Init the mutex
