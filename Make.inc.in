@@ -59,6 +59,7 @@ INSTALLSTRIP	= @INSTALLSTRIP@
 LCRYPT		= @CRYPTLIB@
 LIBS		= @LIBS@
 PCAP_LIBS	= @PCAP_LIBS@
+COLLECTDC_LIBS	= @COLLECTDC_LIBS@
 LDFLAGS		= @LDFLAGS@
 
 LOGDIR		= ${logdir}
@@ -125,11 +126,11 @@ endif
 
 #  http://clang.llvm.org/StaticAnalysis.html
 #
-#  $ make SCAN=/path/to/checker/ 
+#  $ make SCAN=/path/to/checker/
 #
 ifneq ($(SCAN),)
 CC		:= $(SCAN)/scan-build gcc -DFR_SCAN_BUILD
-LIBTOOL		:= 
+LIBTOOL		:=
 endif
 
 #
@@ -144,7 +145,7 @@ LINK_MODE.exe	= -static
 endif
 
 ifneq "$(LIBTOOL)" ""
-COMPILE.c	:= $(LIBTOOL) --quiet --mode=compile $(CC) 
+COMPILE.c	:= $(LIBTOOL) --quiet --mode=compile $(CC)
 LINK.lib	:= $(LIBTOOL) --quiet --mode=link $(CC) -rpath $(libdir) -o
 LO		:= lo
 LA		:= la

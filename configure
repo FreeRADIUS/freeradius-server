@@ -637,6 +637,7 @@ REGEX_PCRE
 REGEX
 CRYPTLIB
 LIBPREFIX
+COLLECTDC_LIBS
 PCAP_LIBS
 OPENSSL_LIBS
 OPENSSL_INCLUDE
@@ -750,7 +751,9 @@ with_rlm_FOO_lib_dir
 with_rlm_FOO_include_dir
 with_udpfromto
 with_talloc_lib_dir
+with_collectdclient_lib_dir
 with_talloc_include_dir
+with_collectdclient_include_dir
 with_rlm_pcre_lib_dir
 with_rlm_pcre_include_dir
 '
@@ -1409,8 +1412,13 @@ Optional Packages:
   --with-udpfromto        Compile in UDPFROMTO support. (default=no)
   --with-talloc-lib-dir=DIR
                           Directory where the talloc libs may be found
+  --with-collectdclient-lib-dir=DIR
+                          Directory where the collectdclient libs may be found
   --with-talloc-include-dir=DIR
                           Directory where the talloc includes may be found
+  --with-collectdclient-include-dir=DIR
+                          Directory where the collectdclient includes may be
+                          found
   --with-pcre-lib-dir=DIR       directory for PCRE library files
   --with-pcre-include-dir=DIR   directory for PCRE include files
 
@@ -6342,6 +6350,200 @@ $as_echo "$as_me: WARNING: pcap library not found, silently disabling the RADIUS
 fi
 
 
+collectdclient_lib_dir=
+
+# Check whether --with-collectdclient-lib-dir was given.
+if test "${with_collectdclient_lib_dir+set}" = set; then :
+  withval=$with_collectdclient_lib_dir; case "$withval" in
+    no)
+      as_fn_error $? "Need collectdclient-lib-dir" "$LINENO" 5
+      ;;
+    yes)
+      ;;
+    *)
+      collectdclient_lib_dir="$withval"
+      ;;
+  esac
+fi
+
+
+LIBS_OLD="${LIBS}"
+smart_try_dir="$collectdclient_lib_dir"
+
+
+sm_lib_safe=`echo "collectdclient" | sed 'y%./+-%__p_%'`
+sm_func_safe=`echo "lcc_connect" | sed 'y%./+-%__p_%'`
+
+old_LIBS="$LIBS"
+smart_lib=
+smart_lib_dir=
+
+if test "x$smart_try_dir" != "x"; then
+  for try in $smart_try_dir; do
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for lcc_connect in -lcollectdclient in $try" >&5
+$as_echo_n "checking for lcc_connect in -lcollectdclient in $try... " >&6; }
+    LIBS="-L$try -lcollectdclient $old_LIBS -Wl,-rpath,$try"
+    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+extern char lcc_connect();
+int
+main ()
+{
+lcc_connect()
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+
+		 smart_lib="-L$try -lcollectdclient -Wl,-rpath,$try"
+		 { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+		 break
+
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+  done
+  LIBS="$old_LIBS"
+fi
+
+if test "x$smart_lib" = "x"; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for lcc_connect in -lcollectdclient" >&5
+$as_echo_n "checking for lcc_connect in -lcollectdclient... " >&6; }
+  LIBS="-lcollectdclient $old_LIBS"
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+extern char lcc_connect();
+int
+main ()
+{
+lcc_connect()
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+
+	        smart_lib="-lcollectdclient"
+	        { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+  LIBS="$old_LIBS"
+fi
+
+if test "x$smart_lib" = "x"; then
+
+
+if test "x$LOCATE" != "x"; then
+        DIRS=
+  file=libcollectdclient${libltdl_cv_shlibext}
+
+  for x in `${LOCATE} $file 2>/dev/null`; do
+                                        base=`echo $x | sed "s%/${file}%%"`
+    if test "x$x" = "x$base"; then
+      continue;
+    fi
+
+    dir=`${DIRNAME} $x 2>/dev/null`
+                exclude=`echo ${dir} | ${GREP} /home`
+    if test "x$exclude" != "x"; then
+      continue
+    fi
+
+                    already=`echo \$smart_lib_dir ${DIRS} | ${GREP} ${dir}`
+    if test "x$already" = "x"; then
+      DIRS="$DIRS $dir"
+    fi
+  done
+fi
+
+eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
+
+
+
+if test "x$LOCATE" != "x"; then
+        DIRS=
+  file=libcollectdclient.a
+
+  for x in `${LOCATE} $file 2>/dev/null`; do
+                                        base=`echo $x | sed "s%/${file}%%"`
+    if test "x$x" = "x$base"; then
+      continue;
+    fi
+
+    dir=`${DIRNAME} $x 2>/dev/null`
+                exclude=`echo ${dir} | ${GREP} /home`
+    if test "x$exclude" != "x"; then
+      continue
+    fi
+
+                    already=`echo \$smart_lib_dir ${DIRS} | ${GREP} ${dir}`
+    if test "x$already" = "x"; then
+      DIRS="$DIRS $dir"
+    fi
+  done
+fi
+
+eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
+
+
+  for try in $smart_lib_dir /usr/local/lib /opt/lib; do
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for lcc_connect in -lcollectdclient in $try" >&5
+$as_echo_n "checking for lcc_connect in -lcollectdclient in $try... " >&6; }
+    LIBS="-L$try -lcollectdclient $old_LIBS -Wl,-rpath,$try"
+    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+extern char lcc_connect();
+int
+main ()
+{
+lcc_connect()
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+
+		  smart_lib="-L$try -lcollectdclient -Wl,-rpath,$try"
+		  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+		  break
+
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+  done
+  LIBS="$old_LIBS"
+fi
+
+if test "x$smart_lib" != "x"; then
+  eval "ac_cv_lib_${sm_lib_safe}_${sm_func_safe}=yes"
+  LIBS="$smart_lib $old_LIBS"
+  SMART_LIBS="$smart_lib $SMART_LIBS"
+fi
+
+if test "x$ac_cv_lib_collectdclient_lcc_connect" != "xyes"; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: collectdclient library not found. Use --with-collectdclient-lib-dir=<path>." >&5
+$as_echo "$as_me: WARNING: collectdclient library not found. Use --with-collectdclient-lib-dir=<path>." >&2;}
+else
+  COLLECTDC_LIBS="${smart_lib}"
+fi
+
+LIBS="${LIBS_OLD}"
+
 
   { $as_echo "$as_me:${as_lineno-$LINENO}: checking for a readline compatible library" >&5
 $as_echo_n "checking for a readline compatible library... " >&6; }
@@ -7445,6 +7647,183 @@ fi
 
 fi
 
+
+collectdclient_include_dir=
+
+# Check whether --with-collectdclient-include-dir was given.
+if test "${with_collectdclient_include_dir+set}" = set; then :
+  withval=$with_collectdclient_include_dir; case "$withval" in
+    no)
+      as_fn_error $? "Need collectdclient-include-dir" "$LINENO" 5
+      ;;
+    yes)
+      ;;
+    *)
+      collectdclient_include_dir="$withval"
+      ;;
+  esac
+fi
+
+
+if test "x$COLLECTDC_LIBS" = x; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: skipping test for collectd/client.h." >&5
+$as_echo "$as_me: skipping test for collectd/client.h." >&6;}
+else
+        smart_try_dir="$collectdclient_include_dir"
+
+
+ac_safe=`echo "collectd/client.h" | sed 'y%./+-%__pm%'`
+old_CFLAGS="$CFLAGS"
+smart_include=
+smart_include_dir=
+
+if test "x$smart_try_dir" != "x"; then
+  for try in $smart_try_dir; do
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for collectd/client.h in $try" >&5
+$as_echo_n "checking for collectd/client.h in $try... " >&6; }
+    CFLAGS="$old_CFLAGS -isystem $try"
+    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+		    #include <collectd/client.h>
+int
+main ()
+{
+int a = 1;
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+
+		     smart_include="-isystem $try"
+		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+		     break
+
+else
+
+		     smart_include=
+		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+  done
+  CFLAGS="$old_CFLAGS"
+fi
+
+if test "x$smart_include" = "x"; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for collectd/client.h" >&5
+$as_echo_n "checking for collectd/client.h... " >&6; }
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+		  #include <collectd/client.h>
+int
+main ()
+{
+int a = 1;
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+
+		   smart_include=" "
+		   { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+		   break
+
+else
+
+		   smart_include=
+		   { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+
+if test "x$smart_include" = "x"; then
+
+
+if test "x$LOCATE" != "x"; then
+        DIRS=
+  file=collectd/client.h
+
+  for x in `${LOCATE} $file 2>/dev/null`; do
+                                        base=`echo $x | sed "s%/${file}%%"`
+    if test "x$x" = "x$base"; then
+      continue;
+    fi
+
+    dir=`${DIRNAME} $x 2>/dev/null`
+                exclude=`echo ${dir} | ${GREP} /home`
+    if test "x$exclude" != "x"; then
+      continue
+    fi
+
+                    already=`echo \$smart_include_dir ${DIRS} | ${GREP} ${dir}`
+    if test "x$already" = "x"; then
+      DIRS="$DIRS $dir"
+    fi
+  done
+fi
+
+eval "smart_include_dir=\"\$smart_include_dir $DIRS\""
+
+  for try in $smart_include_dir /usr/local/include /opt/include; do
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for collectd/client.h in $try" >&5
+$as_echo_n "checking for collectd/client.h in $try... " >&6; }
+    CFLAGS="$old_CFLAGS -isystem $try"
+    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+		    #include <collectd/client.h>
+int
+main ()
+{
+int a = 1;
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+
+		     smart_include="-isystem $try"
+		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+		     break
+
+else
+
+		     smart_include=
+		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+  done
+  CFLAGS="$old_CFLAGS"
+fi
+
+if test "x$smart_include" != "x"; then
+  eval "ac_cv_header_$ac_safe=yes"
+  CFLAGS="$old_CFLAGS $smart_include"
+  SMART_CFLAGS="$SMART_CFLAGS $smart_include"
+fi
+
+  if test "x$ac_cv_header_collectd_client_h" == "xyes"; then
+
+$as_echo "#define HAVE_COLLECTDC_H 1" >>confdefs.h
+
+
+  else
+    { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: collectdclient headers not found. Use --with-collectdclient-include-dir=<path>." >&5
+$as_echo "$as_me: WARNING: collectdclient headers not found. Use --with-collectdclient-include-dir=<path>." >&2;}
+  fi
+fi
 
 
 ac_fn_c_check_type "$LINENO" "off_t" "ac_cv_type_off_t" "$ac_includes_default"

@@ -1,3 +1,5 @@
+#ifndef FR_PCAP_H
+#define FR_PCAP_H
 /*
  *   This program is is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License, version 2 if the
@@ -156,3 +158,6 @@ fr_pcap_t *fr_pcap_init(TALLOC_CTX *ctx, char const *name, fr_pcap_type_t type);
 int fr_pcap_open(fr_pcap_t *handle);
 int fr_pcap_apply_filter(fr_pcap_t *handle, char *expression);
 char *fr_pcap_device_names(TALLOC_CTX *ctx, fr_pcap_t *handle, char c);
+
+#endif
+

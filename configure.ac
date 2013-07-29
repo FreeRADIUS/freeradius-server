@@ -701,6 +701,37 @@ AC_CHECK_LIB(pcap, pcap_open_live,
   ]
 )
 
+dnl Check for collectdclient
+dnl extra argument: --with-collectdclient-lib-dir=DIR
+collectdclient_lib_dir=
+AC_ARG_WITH(collectdclient-lib-dir,
+  [AS_HELP_STRING([--with-collectdclient-lib-dir=DIR],
+  [Directory where the collectdclient libs may be found])],
+  [case "$withval" in
+    no)
+      AC_MSG_ERROR([Need collectdclient-lib-dir])
+      ;;
+    yes)
+      ;;
+    *)
+      collectdclient_lib_dir="$withval"
+      ;;
+  esac])
+
+LIBS_OLD="${LIBS}"
+smart_try_dir="$collectdclient_lib_dir"
+FR_SMART_CHECK_LIB(collectdclient, lcc_connect)
+if test "x$ac_cv_lib_collectdclient_lcc_connect" != "xyes"; then
+  AC_MSG_WARN([collectdclient library not found. Use --with-collectdclient-lib-dir=<path>.])
+else
+  COLLECTDC_LIBS="${smart_lib}"
+fi
+
+dnl #
+dnl # We really don't want to end up linking everything against collectdclient
+dnl #
+LIBS="${LIBS_OLD}"
+
 VL_LIB_READLINE
 
 dnl #############################################################
@@ -974,6 +1005,39 @@ else
   )
 fi
 AC_SUBST(PCAP_LIBS)
+
+dnl Check for collectd-client
+dnl extra argument: --with-collectdclient-include-dir=DIR
+collectdclient_include_dir=
+AC_ARG_WITH(collectdclient-include-dir,
+  [AS_HELP_STRING([--with-collectdclient-include-dir=DIR],
+  [Directory where the collectdclient includes may be found])],
+  [case "$withval" in
+    no)
+      AC_MSG_ERROR([Need collectdclient-include-dir])
+      ;;
+    yes)
+      ;;
+    *)
+      collectdclient_include_dir="$withval"
+      ;;
+  esac])
+
+if test "x$COLLECTDC_LIBS" = x; then
+  AC_MSG_NOTICE([skipping test for collectd/client.h.])
+else
+  dnl #
+  dnl # Check for collectd-client header files
+  dnl #
+  smart_try_dir="$collectdclient_include_dir"
+  FR_SMART_CHECK_INCLUDE([collectd/client.h])
+  if test "x$ac_cv_header_collectd_client_h" == "xyes"; then
+    AC_DEFINE(HAVE_COLLECTDC_H, 1, [Define to 1 if you have the `collectdclient' library (-lcollectdclient).])
+    AC_SUBST(COLLECTDC_LIBS)
+  else
+    AC_MSG_WARN([collectdclient headers not found. Use --with-collectdclient-include-dir=<path>.])
+  fi
+fi
 
 dnl #############################################################
 dnl #

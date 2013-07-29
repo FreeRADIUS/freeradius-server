@@ -1,29 +1,32 @@
 /*
- *  radsniff.c	Display the RADIUS traffic on the network.
+ *   This program is is free software; you can redistribute it and/or modify
+ *   it under the terms of the GNU General Public License, version 2 if the
+ *   License as published by the Free Software Foundation.
  *
- *  Version:    $Id$
+ *   This program is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *   GNU General Public License for more details.
  *
- *  This program is free software; you can redistribute it and/or
- *  modify it under the terms of the GNU General Public License
- *  as published by the Free Software Foundation; either version 2
- *  of the License, or (at your option) any later version.
+ *   You should have received a copy of the GNU General Public License
+ *   along with this program; if not, write to the Free Software
+ *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
+ */
+
+/**
+ * $Id$
+ * @file radsniff.c
+ * @brief Capture, filter, and generate statistics for RADIUS traffic
  *
- *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with this program; if not, write to the Free Software
- *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
- *
- *  Copyright 2006  The FreeRADIUS server project
- *  Copyright 2006  Nicolas Baradakis <nicolas.baradakis@cegetel.net>
+ * @copyright 2013 Arran Cudbard-Bell <arran.cudbardb@freeradius.org>
+ * @copyright 2006 The FreeRADIUS server project
+ * @copyright 2006 Nicolas Baradakis <nicolas.baradakis@cegetel.net>
  */
 
 RCSID("$Id$")
 
 #define _LIBRADIUS 1
+#include <assert.h>
 #include <freeradius-devel/libradius.h>
 #include <freeradius-devel/event.h>
 
@@ -31,10 +34,14 @@ RCSID("$Id$")
 #include <freeradius-devel/pcap.h>
 #include <freeradius-devel/radsniff.h>
 
+#ifdef HAVE_COLLECTDC_H
+#  include <collectd/client.h>
+#endif
+
 static char const *radius_secret = "testing123";
 static VALUE_PAIR *filter_vps = NULL;
 
-static FILE *log_dst;
+FILE *log_dst;
 
 struct timeval start_pcap = {0, 0};
 static rbtree_t *filter_tree = NULL;
@@ -49,16 +56,28 @@ static char const *radsniff_version = "radsniff version " RADIUSD_VERSION_STRING
 #endif
 ", built on " __DATE__ " at " __TIME__;
 
+static int rs_useful_codes[] = {
+	PW_CODE_AUTHENTICATION_REQUEST,		//!< RFC2865 - Authentication request
+	PW_CODE_AUTHENTICATION_ACK,		//!< RFC2865 - Access-Accept
+	PW_CODE_AUTHENTICATION_REJECT,		//!< RFC2865 - Access-Reject
+	PW_CODE_ACCOUNTING_REQUEST,		//!< RFC2866 - Accounting-Request
+	PW_CODE_ACCOUNTING_RESPONSE,		//!< RFC2866 - Accounting-Response
+	PW_CODE_ACCESS_CHALLENGE,		//!< RFC2865 - Access-Challenge
+	PW_CODE_STATUS_SERVER,			//!< RFC2865/RFC5997 - Status Server (request)
+	PW_CODE_STATUS_CLIENT,			//!< RFC2865/RFC5997 - Status Server (response)
+	PW_CODE_DISCONNECT_REQUEST,		//!< RFC3575/RFC5176 - Disconnect-Request
+	PW_CODE_DISCONNECT_ACK,			//!< RFC3575/RFC5176 - Disconnect-Ack (positive)
+	PW_CODE_DISCONNECT_NAK,			//!< RFC3575/RFC5176 - Disconnect-Nak (not willing to perform)
+	PW_CODE_COA_REQUEST,			//!< RFC3575/RFC5176 - CoA-Request
+	PW_CODE_COA_ACK,			//!< RFC3575/RFC5176 - CoA-Ack (positive)
+	PW_CODE_COA_NAK,			//!< RFC3575/RFC5176 - CoA-Nak (not willing to perform)
+};
 
-/** Process stats for a single interval
+/** Update cumulative moving average
  *
  */
-static void stats_process(void *ctx)
+static void rs_stats_process_latency(rs_latency_t *stats, PW_CODE code)
 {
-	rs_update_t	*this = ctx;
-	rs_stats_t	*stats = this->stats;
-	rs_t		*conf = this->conf;
-
 	stats->intervals++;
 
 	if (stats->interval.linked && stats->interval.latency_total) {
@@ -67,39 +86,99 @@ static void stats_process(void *ctx)
 
 	if (stats->interval.latency_average > 0) {
 		stats->latency_cma_count++;
-		stats->latency_cma += ((stats->interval.latency_average - stats->latency_cma) / stats->latency_cma_count);
-	}
+		stats->latency_cma += ((stats->interval.latency_average - stats->latency_cma) /
+					stats->latency_cma_count);
 
-	INFO("Stats interval #%i", stats->intervals);
-	INFO("Counters:");
-	INFO("\tLinked    : %" PRIu64, stats->interval.linked);
-	INFO("\tRequests  : %" PRIu64, stats->interval.requests);
-	INFO("\tResponses : %" PRIu64, stats->interval.responses);
-	INFO("\tTotal     : %" PRIu64, stats->interval.requests + stats->interval.responses);
-	INFO("Latency:");
-	INFO("\tHigh      : %lf", stats->interval.latency_high);
-	INFO("\tLow       : %lf", stats->interval.latency_low);
-	INFO("\tAverage   : %lf", stats->interval.latency_average);
-	INFO("\tCMA       : %lf", stats->latency_cma);
-
-	/*
-	 *	Zero out the stats for the next interval
-	 */
-	memset(&stats->interval, 0, sizeof(stats->interval));
-
-	/*
-	 *	Rearm the stats timer
-	 */
-	{
-		struct timeval now;
-
-		gettimeofday(&now, NULL);
-		now.tv_sec += conf->stats_interval;
-		fr_event_insert(this->list, stats_process, ctx, &now, NULL);
+		DEBUG1("Stats interval #%i", stats->intervals);
+		DEBUG1("%s counters:", fr_packet_codes[code]);
+		DEBUG1("\tLinked    : %" PRIu64, stats->interval.linked);
+		DEBUG1("\tCMA DP   : %" PRIu64, stats->latency_cma_count);
+		DEBUG1("%s latency:", fr_packet_codes[code]);
+		DEBUG1("\tHigh      : %lf", stats->interval.latency_high);
+		DEBUG1("\tLow       : %lf", stats->interval.latency_low);
+		DEBUG1("\tAverage   : %lf", stats->interval.latency_average);
+		DEBUG1("\tCMA       : %lf", stats->latency_cma);
 	}
 }
 
-static int filter_packet(RADIUS_PACKET *packet)
+/** Process stats for a single interval
+ *
+ */
+static void rs_stats_process(void *ctx)
+{
+	size_t i;
+	size_t rs_codes_len = (sizeof(rs_useful_codes) / sizeof(*rs_useful_codes));
+	rs_update_t	*this = ctx;
+	rs_stats_t	*stats = this->stats;
+	rs_t		*conf = this->conf;
+
+	struct timeval now;
+
+	gettimeofday(&now, NULL);
+	/*
+	 *	Latency stats need a bit more work to calculate the CMA.
+	 *
+	 *	No further work is required for codes.
+	 */
+	for (i = 0; i < rs_codes_len; i++) {
+		rs_stats_process_latency(&stats->exchange[rs_useful_codes[i]], rs_useful_codes[i]);
+//		rs_stats_process_latency(&stats->forward[rs_useful_codes[i]]);
+	}
+
+#ifdef HAVE_COLLECTDC_H
+	/*
+	 *	Update stats in collectd using the complex structures we
+	 *	initialised earlier.
+	 */
+	if (conf->stats.out == RS_STATS_OUT_COLLECTD) {
+		rs_stats_collectd_do_stats(conf, conf->stats.tmpl, &now);
+	}
+#endif
+
+	/*
+	 *	Rinse and repeat...
+	 */
+	for (i = 0; i < rs_codes_len; i++) {
+		memset(&stats->exchange[rs_useful_codes[i]].interval, 0,
+		       sizeof(stats->exchange[rs_useful_codes[i]].interval));
+	}
+
+	memset(&stats->count.type, 0, sizeof(stats->count.type));
+
+	{
+		now.tv_sec += conf->stats.interval;
+		fr_event_insert(this->list, rs_stats_process, ctx, &now, NULL);
+	}
+}
+
+/** Update counters
+ *
+ */
+static void rs_stats_update_count(rs_counters_t *counter, RADIUS_PACKET *current)
+{
+	counter->type[current->code]++;
+}
+
+
+/** Update latency statistics for request/response and forwarded packets
+ *
+ */
+static void rs_stats_update_latency(rs_latency_t *stats, struct timeval *latency)
+{
+	double lint;
+
+	stats->interval.linked++;
+	lint = latency->tv_sec + (latency->tv_usec / 1000000.0);
+	if (lint > stats->interval.latency_high) {
+		stats->interval.latency_high = lint;
+	}
+	if (!stats->interval.latency_low || (lint < stats->interval.latency_low)) {
+		stats->interval.latency_low = lint;
+	}
+	stats->interval.latency_total += lint;
+}
+
+static int rs_filter_packet(RADIUS_PACKET *packet)
 {
 	vp_cursor_t cursor, check_cursor;
 	VALUE_PAIR *check_item;
@@ -124,7 +203,7 @@ static int filter_packet(RADIUS_PACKET *packet)
 			}
 	}
 
-	if (fail == 0 && pass != 0) {
+	if ((fail == 0) && (pass != 0)) {
 		/*
 		 *	Cache authentication requests, as the replies
 		 *	may not match the RADIUS filter.
@@ -181,8 +260,7 @@ static int filter_packet(RADIUS_PACKET *packet)
 }
 
 #define USEC 1000000
-static void tv_sub(struct timeval const *end, struct timeval const *start,
-		   struct timeval *elapsed)
+static void rs_tv_sub(struct timeval const *end, struct timeval const *start, struct timeval *elapsed)
 {
 	elapsed->tv_sec = end->tv_sec - start->tv_sec;
 	if (elapsed->tv_sec > 0) {
@@ -200,14 +278,14 @@ static void tv_sub(struct timeval const *end, struct timeval const *start,
 	}
 }
 
-static void process_packet(rs_event_t *event, struct pcap_pkthdr const *header, uint8_t const *data)
+static void rs_process_packet(rs_event_t *event, struct pcap_pkthdr const *header, uint8_t const *data)
 {
 
 	static int count = 1;			/* Packets seen */
 	rs_stats_t *stats = event->stats;
 
 	/*
-	 *	Define pointers for packet's attributes
+	 *	Define pointers for current's attributes
 	 */
 	const struct ip_header *ip;		/* The IP header */
 	const struct udp_header *udp;		/* The UDP header */
@@ -223,12 +301,12 @@ static void process_packet(rs_event_t *event, struct pcap_pkthdr const *header, 
 	/*
 	 *	For FreeRADIUS
 	 */
-	RADIUS_PACKET *packet, *original;
+	RADIUS_PACKET *current, *original;
 	struct timeval elapsed;
 	struct timeval latency;
 
 	/*
-	 *	Define our packet's attributes
+	 *	Define our current's attributes
 	 */
 	if ((data[0] == 2) && (data[1] == 0) &&
 	    (data[2] == 0) && (data[3] == 0)) {
@@ -241,8 +319,8 @@ static void process_packet(rs_event_t *event, struct pcap_pkthdr const *header, 
 	udp = (struct udp_header const *)(((uint8_t const *) ip) + size_ip);
 	payload = (uint8_t const *)(((uint8_t const *) udp) + size_udp);
 
-	packet = rad_alloc(event->conf, 0);
-	if (!packet) {
+	current = rad_alloc(event->conf, 0);
+	if (!current) {
 		ERROR("Out of memory");
 		return;
 	}
@@ -250,29 +328,29 @@ static void process_packet(rs_event_t *event, struct pcap_pkthdr const *header, 
 	/*
 	 *	Populate various fields from our PCAP data
 	 */
-	packet->src_ipaddr.af = AF_INET;
-	packet->src_ipaddr.ipaddr.ip4addr.s_addr = ip->ip_src.s_addr;
-	packet->src_port = ntohs(udp->udp_sport);
-	packet->dst_ipaddr.af = AF_INET;
-	packet->dst_ipaddr.ipaddr.ip4addr.s_addr = ip->ip_dst.s_addr;
-	packet->dst_port = ntohs(udp->udp_dport);
-	packet->timestamp = header->ts;
+	current->src_ipaddr.af = AF_INET;
+	current->src_ipaddr.ipaddr.ip4addr.s_addr = ip->ip_src.s_addr;
+	current->src_port = ntohs(udp->udp_sport);
+	current->dst_ipaddr.af = AF_INET;
+	current->dst_ipaddr.ipaddr.ip4addr.s_addr = ip->ip_dst.s_addr;
+	current->dst_port = ntohs(udp->udp_dport);
+	current->timestamp = header->ts;
 
-	memcpy(&packet->data, &payload, sizeof(packet->data));
-	packet->data_len = header->len - (payload - data);
+	memcpy(&current->data, &payload, sizeof(current->data));
+	current->data_len = header->len - (payload - data);
 
-	if (!rad_packet_ok(packet, 0)) {
+	if (!rad_packet_ok(current, 0)) {
 		DEBUG("Packet: %s", fr_strerror());
 
 		DEBUG("  From     %s:%d", inet_ntoa(ip->ip_src), ntohs(udp->udp_sport));
 		DEBUG("  To:      %s:%d", inet_ntoa(ip->ip_dst), ntohs(udp->udp_dport));
-		DEBUG("  Type:    %s", fr_packet_codes[packet->code]);
+		DEBUG("  Type:    %s", fr_packet_codes[current->code]);
 
-		rad_free(&packet);
+		rad_free(&current);
 		return;
 	}
 
-	switch (packet->code) {
+	switch (current->code) {
 	case PW_CODE_COA_REQUEST:
 		/* we need a 16 x 0 byte vector for decrypting encrypted VSAs */
 		original = nullpacket;
@@ -280,17 +358,13 @@ static void process_packet(rs_event_t *event, struct pcap_pkthdr const *header, 
 	case PW_CODE_ACCOUNTING_RESPONSE:
 	case PW_CODE_AUTHENTICATION_REJECT:
 	case PW_CODE_AUTHENTICATION_ACK:
-		stats->interval.responses++;
-
 		/* look for a matching request and use it for decoding */
-		original = rbtree_finddata(request_tree, packet);
+		original = rbtree_finddata(request_tree, current);
 		break;
 	case PW_CODE_ACCOUNTING_REQUEST:
 	case PW_CODE_AUTHENTICATION_REQUEST:
-		stats->interval.requests++;
-
 		/* save the request for later matching */
-		original = rad_alloc_reply(event->conf, packet);
+		original = rad_alloc_reply(event->conf, current);
 		original->timestamp = header->ts;
 		if (original) { /* just ignore allocation failures */
 			rbtree_deletebydata(request_tree, original);
@@ -302,19 +376,17 @@ static void process_packet(rs_event_t *event, struct pcap_pkthdr const *header, 
 		original = NULL;
 	}
 
-
-
 	/*
 	 *  Decode the data without bothering to check the signatures.
 	 */
-	if (rad_decode(packet, original, event->conf->radius_secret) != 0) {
-		rad_free(&packet);
+	if (rad_decode(current, original, event->conf->radius_secret) != 0) {
+		rad_free(&current);
 		fr_perror("decode");
 		return;
 	}
 
-	if (filter_vps && filter_packet(packet)) {
-		rad_free(&packet);
+	if (filter_vps && rs_filter_packet(current)) {
+		rad_free(&current);
 		DEBUG("Packet number %d doesn't match", count++);
 		return;
 	}
@@ -328,50 +400,54 @@ static void process_packet(rs_event_t *event, struct pcap_pkthdr const *header, 
 		start_pcap = header->ts;
 	}
 
-	tv_sub(&header->ts, &start_pcap, &elapsed);
+	rs_tv_sub(&header->ts, &start_pcap, &elapsed);
 
-	/*
-	 *  Print the RADIUS packet
-	 */
+	rs_stats_update_count(&stats->count, current);
 	if (original) {
-		double lint;
-		stats->interval.linked++;
+		rs_tv_sub(&current->timestamp, &original->timestamp, &latency);
 
-		tv_sub(&packet->timestamp, &original->timestamp, &latency);
+		/*
+		 *	Update stats for both the request and response types.
+		 *
+		 *	This isn't useful for things like Access-Requests, but will be useful for
+		 *	CoA and Disconnect Messages, as we get the average latency across both
+		 *	response types.
+		 *
+		 *	It also justifies allocating 255 instances rs_latency_t.
+		 */
+		rs_stats_update_latency(&stats->exchange[current->code], &latency);
+		rs_stats_update_latency(&stats->exchange[original->code], &latency);
 
-		lint = latency.tv_sec + (latency.tv_usec / 1000000.0);
-		if (lint > stats->interval.latency_high) {
-			stats->interval.latency_high = lint;
-		}
-		if (!stats->interval.latency_low || (lint < stats->interval.latency_low)) {
-			stats->interval.latency_low = lint;
-		}
-		stats->interval.latency_total += lint;
+		/*
+		 *	Print info about the response.
+		 */
+		DEBUG("(%i) %s Id %i %s:%s:%d <- %s:%d\t+%u.%03u\t+%u.%03u", count++,
+		      fr_packet_codes[current->code], current->id,
+		      event->in->name,
+		      inet_ntoa(ip->ip_src), ntohs(udp->udp_sport),
+		      inet_ntoa(ip->ip_dst), ntohs(udp->udp_dport),
+		      (unsigned int) elapsed.tv_sec, ((unsigned int) elapsed.tv_usec / 1000),
+		      (unsigned int) latency.tv_sec, ((unsigned int) latency.tv_usec / 1000));
 
-		INFO("(%i) %s Id %i %s:%s:%d <- %s:%d\t+%u.%03u\t+%u.%03u", count++,
-		     fr_packet_codes[packet->code], packet->id,
-		     event->in->name,
-		     inet_ntoa(ip->ip_src), ntohs(udp->udp_sport),
-		     inet_ntoa(ip->ip_dst), ntohs(udp->udp_dport),
-		     (unsigned int) elapsed.tv_sec, ((unsigned int) elapsed.tv_usec / 1000),
-		     (unsigned int) latency.tv_sec, ((unsigned int) latency.tv_usec / 1000));
 	} else {
-		memset(&latency, 0, sizeof(latency));
-		INFO("(%i) %s Id %i %s:%s:%d -> %s:%d\t+%u.%03u", count++,
-		     fr_packet_codes[packet->code], packet->id,
-		     event->in->name,
-		     inet_ntoa(ip->ip_src), ntohs(udp->udp_sport),
-		     inet_ntoa(ip->ip_dst), ntohs(udp->udp_dport),
-		     (unsigned int) elapsed.tv_sec, ((unsigned int) elapsed.tv_usec / 1000));
+		/*
+		 *	Print info about the request
+		 */
+		DEBUG("(%i) %s Id %i %s:%s:%d -> %s:%d\t+%u.%03u", count++,
+		      fr_packet_codes[current->code], current->id,
+		      event->in->name,
+		      inet_ntoa(ip->ip_src), ntohs(udp->udp_sport),
+		      inet_ntoa(ip->ip_dst), ntohs(udp->udp_dport),
+		      (unsigned int) elapsed.tv_sec, ((unsigned int) elapsed.tv_usec / 1000));
 	}
 
 	if (fr_debug_flag > 1) {
-		if (packet->vps) {
+		if (current->vps) {
 			if (event->conf->do_sort) {
-				pairsort(&packet->vps, true);
+				pairsort(&current->vps, true);
 			}
-			vp_printlist(log_dst, packet->vps);
-			pairfree(&packet->vps);
+			vp_printlist(log_dst, current->vps);
+			pairfree(&current->vps);
 		}
 	}
 
@@ -383,7 +459,7 @@ static void process_packet(rs_event_t *event, struct pcap_pkthdr const *header, 
 	}
 
 	if (!event->conf->to_stdout && (fr_debug_flag > 4)) {
-		rad_print_hex(packet);
+		rad_print_hex(current);
 	}
 
 	fflush(log_dst);
@@ -394,12 +470,12 @@ check_filter:
 	 *  filter tree.
 	 */
 	if (!filter_vps ||
-	    ((packet->code != PW_CODE_AUTHENTICATION_REQUEST) && (packet->code != PW_CODE_ACCOUNTING_REQUEST))) {
-		rad_free(&packet);
+	    ((current->code != PW_CODE_AUTHENTICATION_REQUEST) && (current->code != PW_CODE_ACCOUNTING_REQUEST))) {
+		rad_free(&current);
 	}
 }
 
-static void got_packet(UNUSED fr_event_list_t *events, UNUSED int fd, void *ctx)
+static void rs_got_packet(UNUSED fr_event_list_t *events, UNUSED int fd, void *ctx)
 {
 	rs_event_t *event = ctx;
 	pcap_t *handle = event->in->handle;
@@ -414,10 +490,10 @@ static void got_packet(UNUSED fr_event_list_t *events, UNUSED int fd, void *ctx)
 		return;
 	}
 
-	process_packet(event, header, data);
+	rs_process_packet(event, header, data);
 }
 
-static void _event_status(struct timeval *wake)
+static void _rs_event_status(struct timeval *wake)
 {
 	if (wake && ((wake->tv_sec != 0) || (wake->tv_usec >= 100000))) {
 		DEBUG("Waking up in %d.%01u seconds.", (int) wake->tv_sec, (unsigned int) wake->tv_usec / 100000);
@@ -436,7 +512,7 @@ static void _rb_rad_free(void *packet)
 static void NEVER_RETURNS usage(int status)
 {
 	FILE *output = status ? stderr : stdout;
-	fprintf(output, "Usage: radsniff [options]");
+	fprintf(output, "Usage: radsniff [options][stats options]\n");
 	fprintf(output, "options:\n");
 	fprintf(output, "  -c <count>      Number of packets to capture.\n");
 	fprintf(output, "  -d <directory>  Set dictionary directory.\n");
@@ -452,8 +528,13 @@ static void NEVER_RETURNS usage(int status)
 	fprintf(output, "  -S              Sort attributes in the packet (useful for diffing responses).\n");
 	fprintf(output, "  -v              Show program version information.\n");
 	fprintf(output, "  -w <file>       Write output packets to file (overrides output of -F).\n");
-	fprintf(output, "  -W <interval>    Periodically write out statistics every x seconds.\n");
 	fprintf(output, "  -x              Print more debugging information (defaults to -xx).\n");
+	fprintf(output, "stats options:\n");
+	fprintf(output, "  -W <interval>   Periodically write out statistics every <interval> seconds.\n");
+#ifdef HAVE_COLLECTDC_H
+	fprintf(output, "  -P <prefix>     Prefix counters with this value.\n");
+	fprintf(output, "  -O <server>     Write statistics to this collectd server.\n");
+#endif
 	exit(status);
 }
 
@@ -477,6 +558,8 @@ int main(int argc, char *argv[])
 	FR_TOKEN parsecode;
 	char const *radius_dir = RADIUS_DIR;
 
+	 rs_stats_t stats;
+
 	fr_debug_flag = 2;
 	log_dst = stdout;
 
@@ -487,10 +570,12 @@ int main(int argc, char *argv[])
 		exit (1);
 	}
 
+	talloc_set_memlimit(conf, 52428800);		/* 50 MB */
+
 	/*
 	 *  Get options
 	 */
-	while ((opt = getopt(argc, argv, "c:d:DFf:hi:I:p:qr:s:Svw:W:xX")) != EOF) {
+	while ((opt = getopt(argc, argv, "c:d:DFf:hi:I:p:qr:s:Svw:xXW:P:O:")) != EOF) {
 		switch (opt) {
 		case 'c':
 			limit = atoi(optarg);
@@ -569,7 +654,12 @@ int main(int argc, char *argv[])
 			break;
 
 		case 'v':
+#ifdef HAVE_COLLECTDC_H
+			INFO("%s, %s, collectdclient version %s", radsniff_version, pcap_lib_version(),
+			     lcc_version_string());
+#else
 			INFO("%s %s", radsniff_version, pcap_lib_version());
+#endif
 			exit(0);
 			break;
 
@@ -578,18 +668,29 @@ int main(int argc, char *argv[])
 			conf->to_file = true;
 			break;
 
+		case 'x':
+		case 'X':
+		  	fr_debug_flag++;
+			break;
+
 		case 'W':
-			conf->stats_interval = atoi(optarg);
-			if (conf->stats_interval <= 0) {
+			conf->stats.interval = atoi(optarg);
+			if (conf->stats.interval <= 0) {
 				ERROR("Stats interval must be > 0");
 				usage(64);
 			}
 			break;
 
-		case 'x':
-		case 'X':
-		  	fr_debug_flag++;
+#ifdef HAVE_COLLECTDC_H
+		case 'P':
+			conf->stats.prefix = optarg;
 			break;
+
+		case 'O':
+			conf->stats.collectd = optarg;
+			conf->stats.out = RS_STATS_OUT_COLLECTD;
+			break;
+#endif
 		default:
 			usage(64);
 		}
@@ -632,6 +733,10 @@ int main(int argc, char *argv[])
 
 	if (!conf->radius_secret) {
 		conf->radius_secret = radius_secret;
+	}
+
+	if (conf->stats.interval && !conf->stats.out) {
+		conf->stats.out = RS_STATS_OUT_STDIO;
 	}
 
 	/*
@@ -753,6 +858,43 @@ int main(int argc, char *argv[])
 	}
 
 	/*
+	 *	Open our interface to collectd
+	 */
+#ifdef HAVE_COLLECTDC_H
+	if (conf->stats.out == RS_STATS_OUT_COLLECTD) {
+		if (rs_stats_collectd_open(conf) < 0) {
+			exit(1);
+		}
+
+		if (conf->stats.out == RS_STATS_OUT_COLLECTD) {
+			size_t i;
+			rs_stats_tmpl_t *tmpl, **next;
+
+			next = &conf->stats.tmpl;
+
+			for (i = 0; i < (sizeof(rs_useful_codes) / sizeof(*rs_useful_codes)); i++) {
+				tmpl = rs_stats_collectd_init_latency(conf, next, conf, "radius_exchange",
+								      &stats.exchange[rs_useful_codes[i]],
+								      rs_useful_codes[i]);
+				if (!tmpl) {
+					goto tmpl_error;
+				}
+				next = &(tmpl->next);
+				tmpl = rs_stats_collectd_init_counter(conf, next, conf, "radius_code",
+								      &stats.count.type[rs_useful_codes[i]],
+								      rs_useful_codes[i]);
+				if (!tmpl) {
+					tmpl_error:
+					ERROR("Error allocating memory for stats template");
+					goto finish;
+				}
+				next = &(tmpl->next);
+			}
+		}
+	}
+#endif
+
+	/*
 	 *	This actually opens the capture interfaces/files (we just allocated the memory earlier)
 	 */
 	{
@@ -768,8 +910,6 @@ int main(int argc, char *argv[])
 				}
 
 				DEBUG("Failed opening pcap handle: %s", fr_strerror());
-
-
 				/* Unlink it from the list */
 				if (prev) {
 					prev->next = in_p->next;
@@ -815,15 +955,14 @@ int main(int argc, char *argv[])
 	 */
 	 {
 	 	fr_event_list_t		*events;
-	 	rs_stats_t	stats;
-	 	rs_update_t	update;
+	 	rs_update_t		update;
 
 	 	char *buff;
 
 		memset(&stats, 0, sizeof(stats));
 		memset(&update, 0, sizeof(update));
 
-	 	events = fr_event_list_create(conf, _event_status);
+	 	events = fr_event_list_create(conf, _rs_event_status);
 	 	if (!events) {
 	 		ERROR();
 	 		goto finish;
@@ -840,7 +979,7 @@ int main(int argc, char *argv[])
 	     	     	event->out = out;
 	     	     	event->stats = &stats;
 
-			if (!fr_event_fd_insert(events, 0, in_p->fd, got_packet, event)) {
+			if (!fr_event_fd_insert(events, 0, in_p->fd, rs_got_packet, event)) {
 				ERROR("Failed inserting file descriptor");
 				goto finish;
 			}
@@ -853,20 +992,19 @@ int main(int argc, char *argv[])
 		/*
 		 *	Insert our stats processor
 		 */
-		if (conf->stats_interval) {
+		if (conf->stats.interval) {
 			struct timeval now;
 			update.list = events;
 			update.conf = conf;
 			update.stats = &stats;
 
 			gettimeofday(&now, NULL);
-			now.tv_sec += conf->stats_interval;
-			fr_event_insert(events, stats_process, (void *) &update, &now, NULL);
+			now.tv_sec += conf->stats.interval;
+			fr_event_insert(events, rs_stats_process, (void *) &update, &now, NULL);
 		}
 
 		ret = fr_event_loop(events);	/* Enter the main event loop */
 	 }
-
 
 	INFO("Done sniffing");
 
