@@ -620,10 +620,9 @@ int radius_exec_program(REQUEST *request, char const *cmd, bool exec_wait, bool 
 void exec_trigger(REQUEST *request, CONF_SECTION *cs, char const *name, int quench);
 
 /* valuepair.c */
-int		paircompare_register(unsigned int attr, int otherattr,
-				     RAD_COMPARE_FUNC func,
-				     void *instance);
-void		paircompare_unregister(unsigned int attr, RAD_COMPARE_FUNC func);
+int paircompare_register(DICT_ATTR const *attribute, DICT_ATTR const *from,
+          bool first_only, RAD_COMPARE_FUNC func, void *instance);
+void		paircompare_unregister(DICT_ATTR const *attr, RAD_COMPARE_FUNC func);
 void		paircompare_unregister_instance(void *instance);
 int		paircompare(REQUEST *request, VALUE_PAIR *req_list,
 			    VALUE_PAIR *check, VALUE_PAIR **rep_list);
@@ -633,7 +632,7 @@ int radius_compare_vps(REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *vp);
 int radius_callback_compare(REQUEST *request, VALUE_PAIR *req,
 			    VALUE_PAIR *check, VALUE_PAIR *check_pairs,
 			    VALUE_PAIR **reply_pairs);
-int radius_find_compare(unsigned int attribute);
+int radius_find_compare(DICT_ATTR const *attribute);
 VALUE_PAIR	*radius_paircreate(REQUEST *request, VALUE_PAIR **vps,
 				   unsigned int attribute, unsigned int vendor);
 void module_failure_msg(REQUEST *request, char const *fmt, ...)

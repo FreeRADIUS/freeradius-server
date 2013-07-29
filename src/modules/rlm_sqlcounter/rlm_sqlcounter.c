@@ -473,7 +473,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	/*
 	 *	Register the counter comparison operation.
 	 */
-	paircompare_register(inst->dict_attr->attr, 0, sqlcounter_cmp, inst);
+	paircompare_register(inst->dict_attr, NULL, true, sqlcounter_cmp, inst);
 
 	return 0;
 }

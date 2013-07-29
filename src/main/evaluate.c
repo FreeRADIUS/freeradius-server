@@ -436,7 +436,7 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 			 */
 			if ((map->dst->type == VPT_TYPE_ATTR) &&
 			    (map->dst->da->vendor == 0) &&
-			    radius_find_compare(map->dst->da->attr)) {
+			    radius_find_compare(map->dst->da)) {
 				rhs_vp = pairalloc(request, map->dst->da);
 
 				if (!pairparsevalue(rhs_vp, rhs)) {

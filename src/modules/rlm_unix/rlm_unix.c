@@ -116,9 +116,10 @@ static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
 
 	/* FIXME - delay these until a group file has been read so we know
 	 * groupcmp can actually do something */
-	paircompare_register(PW_GROUP, PW_USER_NAME, groupcmp, inst);
+	paircompare_register(dict_attrbyvalue(PW_GROUP, 0), dict_attrbyvalue(PW_USER_NAME, 0), false, groupcmp, inst);
 #ifdef PW_GROUP_NAME /* compat */
-	paircompare_register(PW_GROUP_NAME, PW_USER_NAME, groupcmp, inst);
+	paircompare_register(dict_attrbyvalue(PW_GROUP_NAME, 0), dict_attrbyvalue(PW_USER_NAME, 0),
+			true, groupcmp, inst);
 #endif
 
 	return 0;

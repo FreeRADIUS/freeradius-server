@@ -230,16 +230,16 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	/*
 	 * Register a Current-Time comparison function
 	 */
-	paircompare_register(PW_CURRENT_TIME, 0, timecmp, inst);
-	paircompare_register(PW_TIME_OF_DAY, 0, time_of_day, inst);
+	paircompare_register(dict_attrbyvalue(PW_CURRENT_TIME, 0), NULL, true, timecmp, inst);
+	paircompare_register(dict_attrbyvalue(PW_TIME_OF_DAY, 0), NULL, true, time_of_day, inst);
 
 	return 0;
 }
 
 static int mod_detach(UNUSED void *instance)
 {
-	paircompare_unregister(PW_CURRENT_TIME, timecmp);
-	paircompare_unregister(PW_TIME_OF_DAY, time_of_day);
+	paircompare_unregister(dict_attrbyvalue(PW_CURRENT_TIME, 0), timecmp);
+	paircompare_unregister(dict_attrbyvalue(PW_TIME_OF_DAY, 0), time_of_day);
 	return 0;
 }
 
