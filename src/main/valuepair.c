@@ -140,8 +140,12 @@ int radius_compare_vps(REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *vp)
 
 	/*
 	 *	Attributes must be of the same type.
+	 * FIXME: deal with type mismatch properly if one side contain
+	 * ABINARY, OCTETS or STRING by converting the other side to
+	 * a string
+	 * 
 	 */
-	rad_assert(vp->da->type == check->da->type);
+	if(vp->da->type != check->da->type) return -1;
 
 	/*
 	 *	Tagged attributes are equal if and only if both the
