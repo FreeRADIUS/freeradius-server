@@ -72,11 +72,11 @@ typedef struct rlm_counter_t {
 	int cache_size;
 	uint32_t service_val;
 
-	int key_attr;
-	int count_attr;
-	int check_attr;
-	int reply_attr;
-	int dict_attr;		/* attribute number for the counter. */
+	DICT_ATTR const *key_attr;
+	DICT_ATTR const *count_attr;
+	DICT_ATTR const *check_attr;
+	DICT_ATTR const *reply_attr;
+	DICT_ATTR const *dict_attr;		/* attribute number for the counter. */
 
 	time_t reset_time;	/* The time of the next reset. */
 	time_t last_reset;	/* The time of the last reset. */
@@ -160,7 +160,7 @@ static int counter_cmp(void *instance, UNUSED REQUEST *req, VALUE_PAIR *request,
 	/*
 	 *	Find the key attribute.
 	 */
-	key_vp = pairfind(request, inst->key_attr, 0, TAG_ANY);
+	key_vp = pairfind_da(request, inst->key_attr, TAG_ANY);
 	if (!key_vp) {
 		return RLM_MODULE_NOOP;
 	}
@@ -351,22 +351,14 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 	dattr = dict_attrbyname(inst->key_name);
 	rad_assert(dattr != NULL);
-	if (dattr->vendor != 0) {
-		cf_log_err_cs(conf, "Configuration item 'key' cannot be a VSA");
-		return -1;
-	}
-	inst->key_attr = dattr->attr;
+	inst->key_attr = dattr;
 
 	/*
 	 *	Discover the attribute number of the counter.
 	 */
 	dattr = dict_attrbyname(inst->count_attribute);
 	rad_assert(dattr != NULL);
-	if (dattr->vendor != 0) {
-		cf_log_err_cs(conf, "Configuration item 'count_attribute' cannot be a VSA");
-		return -1;
-	}
-	inst->count_attr = dattr->attr;
+	inst->count_attr = dattr;
 
 	/*
 	 * Discover the attribute number of the reply attribute.
@@ -418,7 +410,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		ERROR("rlm_counter: Failed to find check attribute %s", inst->counter_name);
 		return -1;
 	}
-	inst->check_attr = dattr->attr;
+	inst->check_attr = dattr;
 
 	/*
 	 * Find the attribute for the allowed protocol
@@ -514,7 +506,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 *	Register the counter comparison operation.
 	 * FIXME: move all attributes to DA
 	 */
-	paircompare_register(dict_attrbyvalue(inst->dict_attr, 0), NULL, true, counter_cmp, inst);
+	paircompare_register(inst->dict_attr, NULL, true, counter_cmp, inst);
 
 	/*
 	 * Init the mutex
@@ -598,8 +590,9 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 	 *	Look for the key.  User-Name is special.  It means
 	 *	The REAL username, after stripping.
 	 */
-	key_vp = (inst->key_attr == PW_USER_NAME) ? request->username : pairfind(request->packet->vps, inst->key_attr, 0, TAG_ANY);
-	if (!key_vp){
+	key_vp = (inst->key_attr->attr == PW_USER_NAME) ? request->username :
+					pairfind_da(request->packet->vps, inst->key_attr, TAG_ANY);
+	if (!key_vp) {
 		DEBUG("rlm_counter: Could not find the key-attribute in the request. Returning NOOP");
 		return RLM_MODULE_NOOP;
 	}
@@ -607,8 +600,8 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 	/*
 	 *	Look for the attribute to use as a counter.
 	 */
-	count_vp = pairfind(request->packet->vps, inst->count_attr, 0, TAG_ANY);
-	if (!count_vp){
+	count_vp = pairfind_da(request->packet->vps, inst->count_attr, TAG_ANY);
+	if (!count_vp) {
 		DEBUG("rlm_counter: Could not find the count_attribute in the request");
 		return RLM_MODULE_NOOP;
 	}
@@ -642,7 +635,7 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 		DEBUG("rlm_counter: User=%s, Counter=%d.",request->username->vp_strvalue,counter.user_counter);
 	}
 
-	if (inst->count_attr == PW_ACCT_SESSION_TIME) {
+	if (inst->count_attr->attr == PW_ACCT_SESSION_TIME) {
 		/*
 		 *	If session time < diff then the user got in after the
 		 *	last reset. So add his session time, otherwise add the
@@ -728,7 +721,8 @@ static rlm_rcode_t mod_authorize(UNUSED void *instance, UNUSED REQUEST *request)
 	 *      The REAL username, after stripping.
 	 */
 	DEBUG2("rlm_counter: Entering module authorize code");
-	key_vp = (inst->key_attr == PW_USER_NAME) ? request->username : pairfind(request->packet->vps, inst->key_attr, 0, TAG_ANY);
+	key_vp = (inst->key_attr->attr == PW_USER_NAME) ? request->username :
+					pairfind_da(request->packet->vps, inst->key_attr, TAG_ANY);
 	if (!key_vp) {
 		DEBUG2("rlm_counter: Could not find Key value pair");
 		return rcode;
@@ -737,7 +731,7 @@ static rlm_rcode_t mod_authorize(UNUSED void *instance, UNUSED REQUEST *request)
 	/*
 	 *      Look for the check item
 	 */
-	if ((check_vp= pairfind(request->config_items, inst->check_attr, 0, TAG_ANY)) == NULL) {
+	if ((check_vp=pairfind_da(request->config_items, inst->check_attr, TAG_ANY)) == NULL) {
 		DEBUG2("rlm_counter: Could not find Check item value pair");
 		return rcode;
 	}
@@ -771,7 +765,7 @@ static rlm_rcode_t mod_authorize(UNUSED void *instance, UNUSED REQUEST *request)
 	res=check_vp->vp_integer - counter.user_counter;
 	if (res > 0) {
 		DEBUG("rlm_counter: res is greater than zero");
-		if (inst->count_attr == PW_ACCT_SESSION_TIME) {
+		if (inst->count_attr->attr == PW_ACCT_SESSION_TIME) {
 			/*
 			 * Do the following only if the count attribute is
 			 * AcctSessionTime
@@ -808,13 +802,13 @@ static rlm_rcode_t mod_authorize(UNUSED void *instance, UNUSED REQUEST *request)
 				reply_item = radius_paircreate(request, &request->reply->vps, PW_SESSION_TIMEOUT, 0);
 				reply_item->vp_integer = res;
 			}
-		}
-		else if (inst->reply_attr) {
-			reply_item = pairfind(request->reply->vps, inst->reply_attr, 0, TAG_ANY);
+		} else if (inst->reply_attr) {
+			reply_item = pairfind_da(request->reply->vps, inst->reply_attr, TAG_ANY);
 			if (reply_item && (reply_item->vp_integer > res)) {
 				reply_item->vp_integer = res;
 			} else {
-				reply_item = radius_paircreate(request, &request->reply->vps, inst->reply_attr, 0);
+				reply_item = radius_paircreate(request, &request->reply->vps, inst->reply_attr->attr,
+										inst->reply_attr->vendor);
 				reply_item->vp_integer = res;
 			}
 		}
