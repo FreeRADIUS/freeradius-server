@@ -213,8 +213,8 @@ static uint32_t dict_attr_name_hash(void const *data)
 
 static int dict_attr_name_cmp(void const *one, void const *two)
 {
-	const DICT_ATTR *a = one;
-	const DICT_ATTR *b = two;
+	DICT_ATTR const *a = one;
+	DICT_ATTR const *b = two;
 
 	return strcasecmp(a->name, b->name);
 }
@@ -222,7 +222,7 @@ static int dict_attr_name_cmp(void const *one, void const *two)
 static uint32_t dict_attr_value_hash(void const *data)
 {
 	uint32_t hash;
-	const DICT_ATTR *attr = data;
+	DICT_ATTR const *attr = data;
 
 	hash = fr_hash(&attr->vendor, sizeof(attr->vendor));
 	return fr_hash_update(&attr->attr, sizeof(attr->attr), hash);
@@ -230,8 +230,8 @@ static uint32_t dict_attr_value_hash(void const *data)
 
 static int dict_attr_value_cmp(void const *one, void const *two)
 {
-	const DICT_ATTR *a = one;
-	const DICT_ATTR *b = two;
+	DICT_ATTR const *a = one;
+	DICT_ATTR const *b = two;
 
 	if (a->vendor < b->vendor) return -1;
 	if (a->vendor > b->vendor) return +1;
@@ -242,7 +242,7 @@ static int dict_attr_value_cmp(void const *one, void const *two)
 static uint32_t dict_attr_combo_hash(void const *data)
 {
 	uint32_t hash;
-	const DICT_ATTR *attr = data;
+	DICT_ATTR const *attr = data;
 
 	hash = fr_hash(&attr->vendor, sizeof(attr->vendor));
 	hash = fr_hash_update(&attr->type, sizeof(attr->type), hash);
@@ -251,8 +251,8 @@ static uint32_t dict_attr_combo_hash(void const *data)
 
 static int dict_attr_combo_cmp(void const *one, void const *two)
 {
-	const DICT_ATTR *a = one;
-	const DICT_ATTR *b = two;
+	DICT_ATTR const *a = one;
+	DICT_ATTR const *b = two;
 
 	if (a->type < b->type) return -1;
 	if (a->type > b->type) return +1;
@@ -626,7 +626,7 @@ int dict_addattr(char const *name, int attr, unsigned int vendor, int type,
 	size_t namelen;
 	static int      max_attr = 0;
 	const uint8_t	*p;
-	const DICT_ATTR	*da;
+	DICT_ATTR const	*da;
 	DICT_ATTR *n;
 
 	namelen = strlen(name);
@@ -965,10 +965,10 @@ int dict_addattr(char const *name, int attr, unsigned int vendor, int type,
 int dict_addvalue(char const *namestr, char const *attrstr, int value)
 {
 	size_t		length;
-	const DICT_ATTR	*dattr;
+	DICT_ATTR const	*dattr;
 	DICT_VALUE	*dval;
 
-	static const DICT_ATTR *last_attr = NULL;
+	static DICT_ATTR const *last_attr = NULL;
 
 	if (!*namestr) {
 		fr_strerror_printf("dict_addvalue: empty names are not permitted");
@@ -1167,7 +1167,7 @@ int dict_str2oid(char const *ptr, unsigned int *pvalue, unsigned int *pvendor,
 {
 	char const *p;
 	unsigned int value;
-	const DICT_ATTR *da = NULL;
+	DICT_ATTR const *da = NULL;
 
 	if (tlv_depth > fr_attr_max_tlv) {
 		fr_strerror_printf("Too many sub-attributes");
@@ -1277,7 +1277,7 @@ int dict_str2oid(char const *ptr, unsigned int *pvalue, unsigned int *pvendor,
 /*
  *	Bamboo skewers under the fingernails in 5, 4, 3, 2, ...
  */
-static const DICT_ATTR *dict_parent(unsigned int attr, unsigned int vendor)
+static DICT_ATTR const *dict_parent(unsigned int attr, unsigned int vendor)
 {
 	if (vendor < FR_MAX_VENDOR) {
 		return dict_attrbyvalue(attr & 0xff, vendor);
@@ -1339,7 +1339,7 @@ static int process_attribute(char const* fn, int const line,
 	}
 
 	if (oid) {
-		const DICT_ATTR *da;
+		DICT_ATTR const *da;
 
 		vendor = block_vendor;
 
@@ -1721,7 +1721,7 @@ static int process_value(char const* fn, int const line, char **argv,
 static int process_value_alias(char const* fn, int const line, char **argv,
 			       int argc)
 {
-	const DICT_ATTR *my_da, *da;
+	DICT_ATTR const *my_da, *da;
 	DICT_VALUE *dval;
 
 	if (argc != 2) {
@@ -1983,7 +1983,7 @@ static int my_dict_init(char const *parent, char const *filename,
 	struct stat statbuf;
 	char	*argv[MAX_ARGV];
 	int	argc;
-	const DICT_ATTR *da, *block_tlv[MAX_TLV_NEST + 1];
+	DICT_ATTR const *da, *block_tlv[MAX_TLV_NEST + 1];
 	int	which_block_tlv = 0;
 
 	block_tlv[0] = NULL;
@@ -2456,7 +2456,7 @@ int dict_init(char const *dir, char const *fn)
 		return -1;
 
 	if (value_fixup) {
-		const DICT_ATTR *a;
+		DICT_ATTR const *a;
 		value_fixup_t *this, *next;
 
 		for (this = value_fixup; this != NULL; this = next) {
@@ -2593,7 +2593,7 @@ void dict_attr_free(DICT_ATTR const **da)
  *	VALUE_PAIR which contains it.
  * @return return a copy of the da.
  */
-const DICT_ATTR *dict_attr_copy(DICT_ATTR const *da, int vp_free)
+DICT_ATTR const *dict_attr_copy(DICT_ATTR const *da, int vp_free)
 {
 	DICT_ATTR *copy;
 
@@ -2628,7 +2628,7 @@ const DICT_ATTR *dict_attr_copy(DICT_ATTR const *da, int vp_free)
  * @param[in] vp_free if > 0 DICT_ATTR will be freed on VALUE_PAIR free.
  * @return new dictionary attribute.
  */
-const DICT_ATTR *dict_attrunknown(unsigned int attr, unsigned int vendor,
+DICT_ATTR const *dict_attrunknown(unsigned int attr, unsigned int vendor,
 				  int vp_free)
 {
 	DICT_ATTR *da;
@@ -2700,7 +2700,7 @@ const DICT_ATTR *dict_attrunknown(unsigned int attr, unsigned int vendor,
  * @param[in] vp_free if > 0 DICT_ATTR will be freed on VALUE_PAIR free.
  * @return new da or NULL on error.
  */
-const DICT_ATTR *dict_attrunknownbyname(char const *attribute, int vp_free)
+DICT_ATTR const *dict_attrunknownbyname(char const *attribute, int vp_free)
 {
 	unsigned int   	attr, vendor = 0;
 	unsigned int    dv_type = 1;	/* The type of vendor field */
@@ -2709,7 +2709,7 @@ const DICT_ATTR *dict_attrunknownbyname(char const *attribute, int vp_free)
 	char		*q;
 
 	DICT_VENDOR	*dv;
-	const DICT_ATTR	*da;
+	DICT_ATTR const	*da;
 
 	/*
 	 *	Pull off vendor prefix first.
@@ -2900,7 +2900,7 @@ const DICT_ATTR *dict_attrunknownbyname(char const *attribute, int vp_free)
 /*
  *	Get an attribute by its numerical value.
  */
-const DICT_ATTR *dict_attrbyvalue(unsigned int attr, unsigned int vendor)
+DICT_ATTR const *dict_attrbyvalue(unsigned int attr, unsigned int vendor)
 {
 	DICT_ATTR dattr;
 
@@ -2920,7 +2920,7 @@ const DICT_ATTR *dict_attrbyvalue(unsigned int attr, unsigned int vendor)
  *
  * @return The attribute, or NULL if not found
  */
-const DICT_ATTR *dict_attrbytype(unsigned int attr, unsigned int vendor,
+DICT_ATTR const *dict_attrbytype(unsigned int attr, unsigned int vendor,
 				 PW_TYPE type)
 {
 	DICT_ATTR dattr;
@@ -3018,7 +3018,7 @@ find:
 /*
  *	Get an attribute by it's numerical value, and the parent
  */
-const DICT_ATTR *dict_attrbyparent(DICT_ATTR const *parent, unsigned int attr, unsigned int vendor)
+DICT_ATTR const *dict_attrbyparent(DICT_ATTR const *parent, unsigned int attr, unsigned int vendor)
 {
 	unsigned int my_attr, my_vendor;
 	DICT_ATTR dattr;
@@ -3038,7 +3038,7 @@ const DICT_ATTR *dict_attrbyparent(DICT_ATTR const *parent, unsigned int attr, u
 /*
  *	Get an attribute by its name.
  */
-const DICT_ATTR *dict_attrbyname(char const *name)
+DICT_ATTR const *dict_attrbyname(char const *name)
 {
 	DICT_ATTR *da;
 	uint32_t buffer[(sizeof(*da) + DICT_ATTR_MAX_NAME_LEN + 3)/4];

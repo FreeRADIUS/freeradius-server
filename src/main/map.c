@@ -68,7 +68,7 @@ int radius_parse_attr(char const *name, value_pair_tmpl_t *vpt,
 		      request_refs_t request_def,
 		      pair_lists_t list_def)
 {
-	const DICT_ATTR *da;
+	DICT_ATTR const *da;
 	char const *p;
 	size_t len;
 
@@ -169,7 +169,7 @@ value_pair_tmpl_t *radius_str2tmpl(TALLOC_CTX *ctx, char const *name, FR_TOKEN t
 				vpt->type = VPT_TYPE_LIST;
 
 			} else {
-				const DICT_ATTR *da;
+				DICT_ATTR const *da;
 				da = dict_attrbyname(p);
 				if (!da) {
 					vpt->type = VPT_TYPE_LITERAL;
@@ -384,7 +384,7 @@ value_pair_map_t *radius_cp2map(TALLOC_CTX *ctx, CONF_PAIR *cp,
 		cf_log_err(ci, "Can't copy list into an attribute");
 		goto error;
 	}
-	
+
 	/*
 	 *	Can't copy an xlat expansion or literal into a list,
 	 *	we don't know what type of attribute we'd need

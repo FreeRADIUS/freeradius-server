@@ -733,7 +733,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		inst->config->xlat_name = cf_section_name1(conf);
 	} else {
 		char *group_name;
-		const DICT_ATTR *dattr;
+		DICT_ATTR const *dattr;
 		ATTR_FLAGS flags;
 
 		/*

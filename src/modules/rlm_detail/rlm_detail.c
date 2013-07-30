@@ -100,14 +100,14 @@ static int mod_detach(void *instance)
 
 static uint32_t detail_hash(void const *data)
 {
-	const DICT_ATTR *da = data;
+	DICT_ATTR const *da = data;
 	return fr_hash(&da, sizeof(da));
 }
 
 static int detail_cmp(void const *a, void const *b)
 {
-	const DICT_ATTR *one = a;
-	const DICT_ATTR *two = b;
+	DICT_ATTR const *one = a;
+	DICT_ATTR const *two = b;
 
 	return one - two;
 }
@@ -134,7 +134,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		     ci != NULL;
 		     ci = cf_item_find_next(cs, ci)) {
 			char const	*attr;
-			const DICT_ATTR	*da;
+			DICT_ATTR const	*da;
 
 			if (!cf_item_is_pair(ci)) continue;
 

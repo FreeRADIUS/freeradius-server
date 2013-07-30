@@ -605,7 +605,7 @@ ssize_t fr_dhcp_decode_options(RADIUS_PACKET *packet,
 	 */
 	while (next < (data + len)) {
 		int num_entries, alen;
-		const DICT_ATTR *da;
+		DICT_ATTR const *da;
 
 		p = next;
 

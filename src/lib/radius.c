@@ -790,7 +790,7 @@ static ssize_t vp2data_tlvs(RADIUS_PACKET const *packet,
 
 #ifndef NDEBUG
 	if ((fr_debug_flag > 3) && fr_log_fp) {
-		const DICT_ATTR *da;
+		DICT_ATTR const *da;
 
 		da = dict_attrbyvalue(svp->da->attr & ((1 << fr_attr_shift[nest ]) - 1), svp->da->vendor);
 		if (da) fprintf(fr_log_fp, "\t%s = ...\n", da->name);
@@ -2924,7 +2924,7 @@ static ssize_t data2vp_tlvs(RADIUS_PACKET *packet,
 			    VALUE_PAIR **pvp)
 {
 	const uint8_t *data = start;
-	const DICT_ATTR *child;
+	DICT_ATTR const *child;
 	VALUE_PAIR *head, **tail;
 
 	if (length < 3) return -1; /* type, length, value */
@@ -2992,7 +2992,7 @@ static ssize_t data2vp_vsa(RADIUS_PACKET *packet,
 {
 	unsigned int attribute;
 	ssize_t attrlen, my_len;
-	const DICT_ATTR *da;
+	DICT_ATTR const *da;
 
 #ifndef NDEBUG
 	if (length <= (dv->type + dv->length)) {
@@ -3348,7 +3348,7 @@ static ssize_t data2vp(RADIUS_PACKET *packet,
 	size_t datalen;
 	ssize_t rcode;
 	uint32_t vendor;
-	const DICT_ATTR *child;
+	DICT_ATTR const *child;
 	DICT_VENDOR *dv;
 	VALUE_PAIR *vp;
 	const uint8_t *data = start;
@@ -3819,7 +3819,7 @@ ssize_t rad_attr2vp(RADIUS_PACKET *packet,
 {
 	ssize_t rcode;
 
-	const DICT_ATTR *da;
+	DICT_ATTR const *da;
 
 	if ((length < 2) || (data[1] < 2) || (data[1] > length)) {
 		fr_strerror_printf("rad_attr2vp: Insufficient data");
@@ -3858,7 +3858,7 @@ ssize_t  rad_data2vp(unsigned int attribute, unsigned int vendor,
 		     uint8_t const *data, size_t length,
 		     VALUE_PAIR **pvp)
 {
-	const DICT_ATTR *da;
+	DICT_ATTR const *da;
 
 	if (!data || (length == 0) || !pvp) return -1;
 

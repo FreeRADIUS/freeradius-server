@@ -244,7 +244,7 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 {
 	int ttl;
 	VALUE_PAIR *vp, *found, **to_req, **to_cache, **from;
-	const DICT_ATTR *da;
+	DICT_ATTR const *da;
 
 	int merge = true;
 	REQUEST *context;
@@ -606,7 +606,7 @@ static ssize_t cache_xlat(void *instance, REQUEST *request,
 	rlm_cache_t *inst = instance;
 	VALUE_PAIR *vp, *vps;
 	pair_lists_t list;
-	const DICT_ATTR *target;
+	DICT_ATTR const *target;
 	char const *p = fmt;
 	int ret = 0;
 

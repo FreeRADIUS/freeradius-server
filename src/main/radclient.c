@@ -358,7 +358,7 @@ static int radclient_init(char const *filename)
 			case PW_DIGEST_USER_NAME:
 				/* overlapping! */
 				{
-					const DICT_ATTR *da;
+					DICT_ATTR const *da;
 					uint8_t *p;
 
 					p = talloc_array(vp, uint8_t, vp->length + 2);

@@ -181,7 +181,7 @@ static void alvarion_vsa_hack(VALUE_PAIR *vp)
 	for (vp = paircursor(&cursor, &vp);
 	     vp;
 	     vp = pairnext(&cursor)) {
-		const DICT_ATTR *da;
+		DICT_ATTR const *da;
 
 		if (vp->da->vendor != 12394) {
 			continue;

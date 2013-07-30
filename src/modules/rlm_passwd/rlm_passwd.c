@@ -381,7 +381,7 @@ struct passwd_instance {
 	int			nfields;
 	int			keyfield;
 	int			listable;
-	const DICT_ATTR		*keyattr;
+	DICT_ATTR const		*keyattr;
 	int			ignore_empty;
 };
 
@@ -423,7 +423,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	char *lf=NULL; /* destination list flags temporary */
 	size_t len;
 	int i;
-	const DICT_ATTR * da;
+	DICT_ATTR const * da;
 	struct passwd_instance *inst = instance;
 
 	rad_assert(inst->filename && *inst->filename);

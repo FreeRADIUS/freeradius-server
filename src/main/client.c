@@ -1153,7 +1153,7 @@ RADCLIENT *client_from_request(RADCLIENT_LIST *clients, REQUEST *request)
 	c->src_ipaddr.af = AF_UNSPEC;
 
 	for (i = 0; dynamic_config[i].name != NULL; i++) {
-		const DICT_ATTR *da;
+		DICT_ATTR const *da;
 		VALUE_PAIR *vp;
 
 		da = dict_attrbyname(dynamic_config[i].name);

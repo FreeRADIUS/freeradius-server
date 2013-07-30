@@ -355,7 +355,7 @@ static int find_next_reset(rlm_counter_t *inst, time_t timeval)
 static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
 	rlm_counter_t *inst = instance;
-	const DICT_ATTR *dattr;
+	DICT_ATTR const *dattr;
 	DICT_VALUE *dval;
 	ATTR_FLAGS flags;
 	time_t now;

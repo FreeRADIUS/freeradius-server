@@ -119,7 +119,7 @@ struct sql_inst {
 	rlm_sql_config_t	*config;
 	CONF_SECTION		*cs;
 
-	const DICT_ATTR		*sql_user;	//!< Cached pointer to SQL-User-Name
+	DICT_ATTR const		*sql_user;	//!< Cached pointer to SQL-User-Name
 						//!< dictionary attribute.
 
 	void *handle;

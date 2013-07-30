@@ -226,7 +226,7 @@ typedef enum value_type {
  * They also specify what behaviour should be used when the attribute is merged into a new list/tree.
  */
 typedef struct value_pair {
-	const DICT_ATTR		*da;				//!< Dictionary attribute defines the attribute
+	DICT_ATTR const		*da;				//!< Dictionary attribute defines the attribute
 								//!< number, vendor and type of the attribute.
 
 	struct value_pair	*next;
@@ -364,14 +364,14 @@ int		dict_init(char const *dir, char const *fn);
 void		dict_free(void);
 int		dict_read(char const *dir, char const *filename);
 void 		dict_attr_free(DICT_ATTR const **da);
-const DICT_ATTR	*dict_attr_copy(DICT_ATTR const *da, int vp_free);
-const DICT_ATTR	*dict_attrunknown(unsigned int attr, unsigned int vendor, int vp_free);
-const DICT_ATTR	*dict_attrunknownbyname(char const *attribute, int vp_free);
-const DICT_ATTR	*dict_attrbyvalue(unsigned int attr, unsigned int vendor);
-const DICT_ATTR	*dict_attrbyname(char const *attr);
-const DICT_ATTR	*dict_attrbytype(unsigned int attr, unsigned int vendor,
+DICT_ATTR const	*dict_attr_copy(DICT_ATTR const *da, int vp_free);
+DICT_ATTR const	*dict_attrunknown(unsigned int attr, unsigned int vendor, int vp_free);
+DICT_ATTR const	*dict_attrunknownbyname(char const *attribute, int vp_free);
+DICT_ATTR const	*dict_attrbyvalue(unsigned int attr, unsigned int vendor);
+DICT_ATTR const	*dict_attrbyname(char const *attr);
+DICT_ATTR const	*dict_attrbytype(unsigned int attr, unsigned int vendor,
 				 PW_TYPE type);
-const DICT_ATTR	*dict_attrbyparent(DICT_ATTR const *parent, unsigned int attr,
+DICT_ATTR const	*dict_attrbyparent(DICT_ATTR const *parent, unsigned int attr,
 					   unsigned int vendor);
 int		dict_attr_child(DICT_ATTR const *parent,
 				unsigned int *pattr, unsigned int *pvendor);

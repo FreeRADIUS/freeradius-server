@@ -36,7 +36,7 @@ typedef struct rlm_sometimes_t {
 	int			start;
 	int			end;
 	char			*key;
-	const DICT_ATTR		*da;
+	DICT_ATTR const		*da;
 } rlm_sometimes_t;
 
 /*

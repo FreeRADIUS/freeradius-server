@@ -104,7 +104,7 @@ VALUE_PAIR *pairalloc(TALLOC_CTX *ctx, DICT_ATTR const *da)
  */
 VALUE_PAIR *paircreate(TALLOC_CTX *ctx, unsigned int attr, unsigned int vendor)
 {
-	const DICT_ATTR *da;
+	DICT_ATTR const *da;
 
 	da = dict_attrbyvalue(attr, vendor);
 	if (!da) {
@@ -177,7 +177,7 @@ void pairfree(VALUE_PAIR **vps)
  */
 int pair2unknown(VALUE_PAIR *vp)
 {
-	const DICT_ATTR *da;
+	DICT_ATTR const *da;
 
 	VERIFY_VP(vp);
 	if (vp->da->flags.is_unknown) {
@@ -1837,7 +1837,7 @@ bool pairparsevalue(VALUE_PAIR *vp, char const *value)
 	 */
 	case PW_TYPE_COMBO_IP:
 		{
-			const DICT_ATTR *da;
+			DICT_ATTR const *da;
 
 			if (inet_pton(AF_INET6, value, &vp->vp_ipv6addr) > 0) {
 				da = dict_attrbytype(vp->da->attr, vp->da->vendor,
@@ -1927,7 +1927,7 @@ static VALUE_PAIR *pairmake_any(TALLOC_CTX *ctx,
 				FR_TOKEN op)
 {
 	VALUE_PAIR	*vp;
-	const DICT_ATTR *da;
+	DICT_ATTR const *da;
 
 	uint8_t 	*data;
 	size_t		size;
@@ -1994,7 +1994,7 @@ static VALUE_PAIR *pairmake_any(TALLOC_CTX *ctx,
 VALUE_PAIR *pairmake(TALLOC_CTX *ctx, VALUE_PAIR **vps,
 		     char const *attribute, char const *value, FR_TOKEN op)
 {
-	const DICT_ATTR *da;
+	DICT_ATTR const *da;
 	VALUE_PAIR	*vp;
 	char		*tc, *ts;
 	int8_t		tag;
