@@ -196,7 +196,7 @@ void rad_print_hex(RADIUS_PACKET *packet)
 
 	if (packet->data_len > 20) {
 		int total;
-		const uint8_t *ptr;
+		uint8_t const *ptr;
 		fprintf(fr_log_fp, "  Data:");
 
 		total = packet->data_len - 20;
@@ -2178,7 +2178,7 @@ static int calc_replydigest(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 int rad_tlv_ok(uint8_t const *data, size_t length,
 	       size_t dv_type, size_t dv_length)
 {
-	const uint8_t *end = data + length;
+	uint8_t const *end = data + length;
 
 	if ((dv_length > 2) || (dv_type == 0) || (dv_type > 4)) {
 		fr_strerror_printf("rad_tlv_ok: Invalid arguments");
@@ -2915,7 +2915,7 @@ static ssize_t data2vp_tlvs(RADIUS_PACKET *packet,
 			    uint8_t const *start, size_t length,
 			    VALUE_PAIR **pvp)
 {
-	const uint8_t *data = start;
+	uint8_t const *data = start;
 	DICT_ATTR const *child;
 	VALUE_PAIR *head, **tail;
 
@@ -3083,7 +3083,7 @@ static ssize_t data2vp_extended(RADIUS_PACKET *packet,
 	ssize_t rcode;
 	size_t fraglen;
 	uint8_t *head, *tail;
-	const uint8_t *frag, *end;
+	uint8_t const *frag, *end;
 	uint8_t const *attr;
 	int fragments;
 
@@ -3162,7 +3162,7 @@ static ssize_t data2vp_wimax(RADIUS_PACKET *packet,
 	ssize_t rcode;
 	size_t fraglen;
 	uint8_t *head, *tail;
-	const uint8_t *frag, *end;
+	uint8_t const *frag, *end;
 	DICT_ATTR const *child;
 
 	if (attrlen < 8) return -1;
@@ -3343,7 +3343,7 @@ ssize_t data2vp(RADIUS_PACKET *packet,
 	DICT_ATTR const *child;
 	DICT_VENDOR *dv;
 	VALUE_PAIR *vp;
-	const uint8_t *data = start;
+	uint8_t const *data = start;
 	char *p;
 	uint8_t buffer[256];
 

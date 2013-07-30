@@ -2291,7 +2291,7 @@ FR_TOKEN pairread(char const **ptr, VALUE_PAIR_RAW *raw)
 	q = raw->l_opand;
 	*q = '\0';
 	while (*p) {
-		const uint8_t *t = (uint8_t const *) p;
+		uint8_t const *t = (uint8_t const *) p;
 
 		if (q >= (raw->l_opand + sizeof(raw->l_opand))) {
 		too_long:

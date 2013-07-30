@@ -454,7 +454,7 @@ static int fr_dhcp_attr2vp(RADIUS_PACKET *packet, VALUE_PAIR *vp, uint8_t const 
 
 static int decode_tlv(RADIUS_PACKET *packet, VALUE_PAIR *tlv, uint8_t const *data, size_t data_len)
 {
-	const uint8_t *p;
+	uint8_t const *p;
 	VALUE_PAIR *head, *vp;
 	vp_cursor_t cursor;
 

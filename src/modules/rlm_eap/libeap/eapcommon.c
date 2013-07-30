@@ -250,7 +250,7 @@ int eap_basic_compose(RADIUS_PACKET *packet, eap_packet_t *reply)
 VALUE_PAIR *eap_packet2vp(RADIUS_PACKET *packet, eap_packet_raw_t const *eap)
 {
 	int		total, size;
-	const uint8_t	*ptr;
+	uint8_t const *ptr;
 	VALUE_PAIR	*head = NULL;
 	VALUE_PAIR	*vp;
 	vp_cursor_t	out;

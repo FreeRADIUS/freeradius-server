@@ -1528,7 +1528,7 @@ static size_t rest_write_header(void *ptr, size_t size, size_t nmemb,
 	char const *p = ptr, *q;
 	char *tmp;
 
-	const size_t t = (size * nmemb);
+	size_t const t = (size * nmemb);
 	size_t s = t;
 	size_t len;
 
@@ -1708,7 +1708,7 @@ static size_t rest_write_body(void *ptr, size_t size, size_t nmemb,
 	char const *p = ptr;
 	char *tmp;
 
-	const size_t t = (size * nmemb);
+	size_t const t = (size * nmemb);
 
 	/*
 	 *	Any post processing of headers should go here...

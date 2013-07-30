@@ -285,7 +285,7 @@ static void debug_packet(REQUEST *request, RADIUS_PACKET *packet, int direction)
 	VALUE_PAIR *vp;
 	char buffer[1024];
 	char const *received, *from;
-	const fr_ipaddr_t *ip;
+	fr_ipaddr_t const *ip;
 	int port;
 
 	if (!packet) return;
@@ -2034,7 +2034,7 @@ int request_proxy_reply(RADIUS_PACKET *packet)
 
 static int setup_post_proxy_fail(REQUEST *request)
 {
-	const DICT_VALUE *dval = NULL;
+	DICT_VALUE const *dval = NULL;
 	VALUE_PAIR *vp;
 
 	if (request->proxy->code == PW_CODE_AUTHENTICATION_REQUEST) {

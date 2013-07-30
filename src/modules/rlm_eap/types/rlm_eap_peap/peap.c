@@ -209,7 +209,7 @@ static void eapsoh_verify(REQUEST *request, RADIUS_PACKET *packet,
 static int eapmessage_verify(REQUEST *request,
 			     uint8_t const *data, unsigned int data_len)
 {
-	const eap_packet_raw_t *eap_packet = (eap_packet_raw_t const *) data;
+	eap_packet_raw_t const *eap_packet = (eap_packet_raw_t const *) data;
 	eap_type_t eap_method;
 
 	/*
@@ -386,7 +386,7 @@ static int vp2eap(REQUEST *request, tls_session_t *tls_session, VALUE_PAIR *vp)
 static int eappeap_check_tlv(REQUEST *request, uint8_t const *data,
 			     size_t data_len)
 {
-	const eap_packet_raw_t *eap_packet = (eap_packet_raw_t const *) data;
+	eap_packet_raw_t const *eap_packet = (eap_packet_raw_t const *) data;
 
 	if (data_len < 11) return 0;
 
@@ -723,14 +723,14 @@ static void print_tunneled_data(uint8_t const *data, size_t data_len)
 /*
  *	Process the pseudo-EAP contents of the tunneled data.
  */
-int eappeap_process(eap_handler_t *handler, tls_session_t *tls_session)
+rlm_rcode_t eappeap_process(eap_handler_t *handler, tls_session_t *tls_session)
 {
-	peap_tunnel_t *t = tls_session->opaque;
-	REQUEST *fake;
-	VALUE_PAIR *vp;
-	int rcode = RLM_MODULE_REJECT;
-	const uint8_t	*data;
-	unsigned int data_len;
+	peap_tunnel_t	*t = tls_session->opaque;
+	REQUEST		*fake;
+	VALUE_PAIR	*vp;
+	rlm_rcode_t	rcode = RLM_MODULE_REJECT;
+	uint8_t const	*data;
+	unsigned int	data_len;
 	char *p;
 
 	REQUEST *request = handler->request;
@@ -950,13 +950,13 @@ int eappeap_process(eap_handler_t *handler, tls_session_t *tls_session)
 		if (!fake->packet->vps) {
 			request_free(&fake);
 			RDEBUG2("Unable to convert tunneled EAP packet to internal server data structures");
-			return PW_CODE_AUTHENTICATION_REJECT;
+			return RLM_MODULE_REJECT;
 		}
 		break;
 
 	default:
 		RDEBUG("Invalid state change in PEAP");
-		return PW_CODE_AUTHENTICATION_REJECT;
+		return RLM_MODULE_REJECT;
 	}
 
 	if ((debug_flag > 0) && fr_log_fp) {

@@ -205,7 +205,7 @@ static int dhcp_header_sizes[] = {
 static void print_hex(RADIUS_PACKET *packet)
 {
 	int i, j;
-	const uint8_t *p, *a;
+	uint8_t const *p, *a;
 
 	if (!packet->data) return;
 

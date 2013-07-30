@@ -130,7 +130,7 @@ int fr_utf8_char(uint8_t const *str)
 size_t fr_print_string(char const *in, size_t inlen, char *out, size_t outlen)
 {
 	char const	*start = out;
-	const uint8_t	*str = (uint8_t const *) in;
+	uint8_t const	*str = (uint8_t const *) in;
 	int		sp = 0;
 	int		utf8 = 0;
 

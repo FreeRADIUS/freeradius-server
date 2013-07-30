@@ -508,7 +508,7 @@ static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t *con
 
 		case SQLITE_BLOB:
 			{
-				const uint8_t *p;
+				uint8_t const *p;
 				size_t len;
 
 				p = sqlite3_column_blob(conn->statement, i);

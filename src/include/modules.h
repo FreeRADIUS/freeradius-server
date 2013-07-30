@@ -151,18 +151,16 @@ typedef int (*detach_t)(void *instance);
  * within the module to different sections.
  */
 typedef struct module_t {
-	uint32_t 	magic;	//!< Used to validate module struct.
-	char const	*name;	//!< The name of the module (without rlm_
-				//!< prefix).
-	int		type;	//!< One or more of the RLM_TYPE_* constants.
-	size_t		inst_size;	//!< Size of the instance data
-	const CONF_PARSER *config;	//!< Configuration information
-	instantiate_t	instantiate;	//!< Function to use for instantiation.
-	detach_t	detach;	//!< Function to use to free module instance.
-	packetmethod	methods[RLM_COMPONENT_COUNT]; //!< Pointers to the
-				//!< various section functions, ordering
-				//!< determines which function is mapped to
-				//!< which section.
+	uint32_t 		magic;				//!< Used to validate module struct.
+	char const		*name;				//!< The name of the module (without rlm_ prefix).
+	int			type;				//!< One or more of the RLM_TYPE_* constants.
+	size_t			inst_size;			//!< Size of the instance data
+	CONF_PARSER const	*config;			//!< Configuration information
+	instantiate_t		instantiate;			//!< Function to use for instantiation.
+	detach_t		detach;				//!< Function to use to free module instance.
+	packetmethod		methods[RLM_COMPONENT_COUNT];	//!< Pointers to the various section functions, ordering
+								//!< determines which function is mapped to
+								//!< which section.
 
 } module_t;
 

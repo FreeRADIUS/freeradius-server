@@ -68,8 +68,8 @@ struct fr_event_t {
 
 static int fr_event_list_time_cmp(void const *one, void const *two)
 {
-	const fr_event_t *a = one;
-	const fr_event_t *b = two;
+	fr_event_t const *a = one;
+	fr_event_t const *b = two;
 
 	if (a->when.tv_sec < b->when.tv_sec) return -1;
 	if (a->when.tv_sec > b->when.tv_sec) return +1;

@@ -52,9 +52,9 @@ static const FR_NAME_NUMBER modreturn_table[] = {
 };
 
 
-static int all_digits(const char *string)
+static int all_digits(char const *string)
 {
-	const char *p = string;
+	char const *p = string;
 
 	if (*p == '-') p++;
 
@@ -212,7 +212,7 @@ int radius_evaluate_tmpl(REQUEST *request, int modreturn, UNUSED int depth,
 }
 
 
-static int do_regex(REQUEST *request, const char *lhs, const char *rhs, bool iflag)
+static int do_regex(REQUEST *request, char const *lhs, char const *rhs, bool iflag)
 {
 	int compare;
 	int cflags = REG_EXTENDED;

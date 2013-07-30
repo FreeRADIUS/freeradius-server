@@ -402,10 +402,10 @@ static void cprint_conf_parser(rad_listen_t *listener, int indent, CONF_SECTION 
 
 {
 	int i;
-	const void *data;
+	void const *data;
 	char const *name1 = cf_section_name1(cs);
 	char const *name2 = cf_section_name2(cs);
-	const CONF_PARSER *variables = cf_section_parse_table(cs);
+	CONF_PARSER const *variables = cf_section_parse_table(cs);
 	char buffer[256];
 
 	if (name2) {
@@ -527,8 +527,8 @@ static int command_show_module_methods(rad_listen_t *listener, int argc, char *a
 {
 	int i;
 	CONF_SECTION *cs;
-	const module_instance_t *mi;
-	const module_t *mod;
+	module_instance_t const *mi;
+	module_t const *mod;
 
 	if (argc != 1) {
 		cprintf(listener, "ERROR: No module name was given\n");
@@ -557,8 +557,8 @@ static int command_show_module_methods(rad_listen_t *listener, int argc, char *a
 static int command_show_module_flags(rad_listen_t *listener, int argc, char *argv[])
 {
 	CONF_SECTION *cs;
-	const module_instance_t *mi;
-	const module_t *mod;
+	module_instance_t const *mi;
+	module_t const *mod;
 
 	if (argc != 1) {
 		cprintf(listener, "ERROR: No module name was given\n");
@@ -1518,7 +1518,7 @@ static int command_set_module_config(rad_listen_t *listener, int argc, char *arg
 	CONF_PAIR *cp;
 	CONF_SECTION *cs;
 	module_instance_t *mi;
-	const CONF_PARSER *variables;
+	CONF_PARSER const *variables;
 	void *data;
 
 	if (argc < 3) {
@@ -2212,7 +2212,7 @@ static int command_socket_parse_unix(CONF_SECTION *cs, rad_listen_t *this)
 static int command_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 {
 	int rcode;
-	const CONF_PAIR *cp;
+	CONF_PAIR const *cp;
 	listen_socket_t *sock;
 
 	cp = cf_pair_find(cs, "socket");

@@ -119,8 +119,8 @@ static const CONF_PARSER proxy_config[] = {
 
 static int realm_name_cmp(void const *one, void const *two)
 {
-	const REALM *a = one;
-	const REALM *b = two;
+	REALM const *a = one;
+	REALM const *b = two;
 
 	return strcasecmp(a->name, b->name);
 }
@@ -136,8 +136,8 @@ static void home_server_free(void *data)
 
 static int home_server_name_cmp(void const *one, void const *two)
 {
-	const home_server *a = one;
-	const home_server *b = two;
+	home_server const *a = one;
+	home_server const *b = two;
 
 	if (a->type < b->type) return -1;
 	if (a->type > b->type) return +1;
@@ -148,8 +148,8 @@ static int home_server_name_cmp(void const *one, void const *two)
 static int home_server_addr_cmp(void const *one, void const *two)
 {
 	int rcode;
-	const home_server *a = one;
-	const home_server *b = two;
+	home_server const *a = one;
+	home_server const *b = two;
 
 	if (a->server && !b->server) return -1;
 	if (!a->server && b->server) return +1;
@@ -176,8 +176,8 @@ static int home_server_addr_cmp(void const *one, void const *two)
 #ifdef WITH_STATS
 static int home_server_number_cmp(void const *one, void const *two)
 {
-	const home_server *a = one;
-	const home_server *b = two;
+	home_server const *a = one;
+	home_server const *b = two;
 
 	return (a->number - b->number);
 }
@@ -185,8 +185,8 @@ static int home_server_number_cmp(void const *one, void const *two)
 
 static int home_pool_name_cmp(void const *one, void const *two)
 {
-	const home_pool_t *a = one;
-	const home_pool_t *b = two;
+	home_pool_t const *a = one;
+	home_pool_t const *b = two;
 
 	if (a->server_type < b->server_type) return -1;
 	if (a->server_type > b->server_type) return +1;

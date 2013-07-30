@@ -152,7 +152,7 @@ int rlm_ldap_map_verify(ldap_instance_t *inst, value_pair_map_t **head)
  */
 void rlm_ldap_map_xlat_free(rlm_ldap_map_xlat_t const *expanded)
 {
-	const value_pair_map_t *map;
+	value_pair_map_t const *map;
 	unsigned int total = 0;
 
 	char const *name;
@@ -177,7 +177,7 @@ void rlm_ldap_map_xlat_free(rlm_ldap_map_xlat_t const *expanded)
  */
 int rlm_ldap_map_xlat(REQUEST *request, value_pair_map_t const *maps, rlm_ldap_map_xlat_t *expanded)
 {
-	const value_pair_map_t *map;
+	value_pair_map_t const *map;
 	unsigned int total = 0;
 	size_t len;
 
@@ -250,7 +250,7 @@ int rlm_ldap_map_xlat(REQUEST *request, value_pair_map_t const *maps, rlm_ldap_m
 void rlm_ldap_map_do(UNUSED const ldap_instance_t *inst, REQUEST *request, LDAP *handle,
 		     rlm_ldap_map_xlat_t const *expanded, LDAPMessage *entry)
 {
-	const value_pair_map_t 	*map;
+	value_pair_map_t const 	*map;
 	unsigned int		total = 0;
 
 	rlm_ldap_result_t	result;

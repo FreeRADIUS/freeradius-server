@@ -30,7 +30,7 @@ char const *lt_dlerror(void);
  */
 typedef struct module_entry_t {
 	char			name[MAX_STRING_LEN];
-	const module_t		*module;
+	module_t const		*module;
 	lt_dlhandle		handle;
 } module_entry_t;
 

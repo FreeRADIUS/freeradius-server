@@ -843,15 +843,15 @@ static THREAD_HANDLE *spawn_thread(time_t now, int do_trigger)
 #ifdef WNOHANG
 static uint32_t pid_hash(void const *data)
 {
-	const thread_fork_t *tf = data;
+	thread_fork_t const *tf = data;
 
 	return fr_hash(&tf->pid, sizeof(tf->pid));
 }
 
 static int pid_cmp(void const *one, void const *two)
 {
-	const thread_fork_t *a = one;
-	const thread_fork_t *b = two;
+	thread_fork_t const *a = one;
+	thread_fork_t const *b = two;
 
 	return (a->pid - b->pid);
 }

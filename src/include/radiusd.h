@@ -106,7 +106,7 @@ typedef struct radclient {
 	char			*password;
 	char			*server;
 	int			number;	/* internal use only */
-	const CONF_SECTION	*cs;
+	CONF_SECTION const 	*cs;
 #ifdef WITH_STATS
 	fr_stats_t		auth;
 #ifdef WITH_ACCOUNTING
@@ -353,7 +353,7 @@ struct rad_listen_t {
 	rad_listen_decode_t decode;
 	rad_listen_print_t print;
 
-	const CONF_SECTION *cs;
+	CONF_SECTION const *cs;
 	void		*data;
 
 #ifdef WITH_STATS

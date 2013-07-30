@@ -514,7 +514,7 @@ static void print_hex(RADIUS_PACKET *packet)
 
 	if (packet->data_len > 20) {
 		int total;
-		const uint8_t *ptr;
+		uint8_t const *ptr;
 		printf("  Data:");
 
 		total = packet->data_len - 20;
