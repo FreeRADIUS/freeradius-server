@@ -745,8 +745,8 @@ static ssize_t vp2data_tlvs(RADIUS_PACKET const *packet,
 	ssize_t len;
 	size_t my_room;
 	uint8_t *ptr = start;
-	const VALUE_PAIR *vp = *pvp;
-	const VALUE_PAIR *svp = vp;
+	VALUE_PAIR const *vp = *pvp;
+	VALUE_PAIR const *svp = vp;
 
 	if (!svp) return 0;
 
@@ -816,7 +816,7 @@ static ssize_t vp2data_any(RADIUS_PACKET const *packet,
 	uint8_t *ptr = start;
 	uint8_t	array[4];
 	uint64_t lvalue64;
-	const VALUE_PAIR *vp = *pvp;
+	VALUE_PAIR const *vp = *pvp;
 
 	/*
 	 *	See if we need to encode a TLV.  The low portion of
@@ -1074,7 +1074,7 @@ int rad_vp2extended(RADIUS_PACKET const *packet,
 	int len;
 	int hdr_len;
 	uint8_t *start = ptr;
-	const VALUE_PAIR *vp = *pvp;
+	VALUE_PAIR const *vp = *pvp;
 
 	if (!vp->da->flags.extended) {
 		fr_strerror_printf("rad_vp2extended called for non-extended attribute");
@@ -1189,7 +1189,7 @@ int rad_vp2wimax(RADIUS_PACKET const *packet,
 	uint32_t lvalue;
 	int hdr_len;
 	uint8_t *start = ptr;
-	const VALUE_PAIR *vp = *pvp;
+	VALUE_PAIR const *vp = *pvp;
 
 	/*
 	 *	Double-check for WiMAX format.
@@ -1354,7 +1354,7 @@ static ssize_t vp2attr_vsa(RADIUS_PACKET const *packet,
 {
 	ssize_t len;
 	DICT_VENDOR *dv;
-	const VALUE_PAIR *vp = *pvp;
+	VALUE_PAIR const *vp = *pvp;
 
 	/*
 	 *	Unknown vendor: RFC format.
@@ -1480,7 +1480,7 @@ int rad_vp2vsa(RADIUS_PACKET const *packet, RADIUS_PACKET const *original,
 {
 	ssize_t len;
 	uint32_t lvalue;
-	const VALUE_PAIR *vp = *pvp;
+	VALUE_PAIR const *vp = *pvp;
 
 	/*
 	 *	Double-check for WiMAX format.
@@ -1540,7 +1540,7 @@ int rad_vp2rfc(RADIUS_PACKET const *packet,
 	       char const *secret, VALUE_PAIR const **pvp,
 	       uint8_t *ptr, size_t room)
 {
-	const VALUE_PAIR *vp = *pvp;
+	VALUE_PAIR const *vp = *pvp;
 
 	if (vp->da->vendor != 0) {
 		fr_strerror_printf("rad_vp2rfc called with VSA");
@@ -1603,7 +1603,7 @@ static ssize_t rad_vp2rfctlv(RADIUS_PACKET const *packet,
 			     uint8_t *start, size_t room)
 {
 	ssize_t len;
-	const VALUE_PAIR *vp = *pvp;
+	VALUE_PAIR const *vp = *pvp;
 
 	if (!vp->da->flags.is_tlv) {
 		fr_strerror_printf("rad_vp2rfctlv: attr is not a TLV");
@@ -1646,7 +1646,7 @@ int rad_vp2attr(RADIUS_PACKET const *packet, RADIUS_PACKET const *original,
 		char const *secret, VALUE_PAIR const **pvp, uint8_t *start,
 		size_t room)
 {
-	const VALUE_PAIR *vp;
+	VALUE_PAIR const *vp;
 
 	if (!pvp || !*pvp || !start || (room <= 2)) return -1;
 
@@ -1696,7 +1696,7 @@ int rad_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 	uint8_t			*ptr;
 	uint16_t		total_length;
 	int			len;
-	const VALUE_PAIR	*reply;
+	VALUE_PAIR const	*reply;
 	char const		*what;
 	char			ip_src_buffer[128];
 	char			ip_dst_buffer[128];
