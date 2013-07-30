@@ -74,7 +74,7 @@ typedef struct {
 	modcallable *children;
 	CONF_SECTION *cs;
 	value_pair_map_t *map;	/* update */
-	const fr_cond_t *cond;	/* if/elsif */
+	fr_cond_t const *cond;	/* if/elsif */
 } modgroup;
 
 typedef struct {

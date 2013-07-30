@@ -37,7 +37,7 @@ RCSID("$Id$")
  *	Define a structure for our module configuration.
  */
 typedef struct rlm_expr_t {
-	const char *xlat_name;
+	char const *xlat_name;
 	char *allowed_chars;
 } rlm_expr_t;
 

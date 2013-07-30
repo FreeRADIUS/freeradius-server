@@ -1966,7 +1966,7 @@ static SSL_CTX *init_tls_ctx(fr_tls_server_conf_t *conf, int client)
 					strlen(special_string)) == 0)
 		{
 			char cmd[256];
-			const long max_password_len = 128;
+			long const max_password_len = 128;
 			snprintf(cmd, sizeof(cmd) - 1,
 					 "/usr/sbin/certadmin --get-private-key-passphrase \"%s\"",
 					 conf->private_key_file);

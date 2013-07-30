@@ -45,7 +45,7 @@ typedef struct fr_hash_entry_t {
 	struct fr_hash_entry_t *next;
 	uint32_t	reversed;
 	uint32_t	key;
- 	const void	*data;
+ 	void const 	*data;
 } fr_hash_entry_t;
 
 
@@ -715,8 +715,8 @@ int fr_hash_table_info(fr_hash_table_t *ht)
  */
 uint32_t fr_hash(void const *data, size_t size)
 {
-	const uint8_t *p = data;
-	const uint8_t *q = p + size;
+	uint8_t const *p = data;
+	uint8_t const *q = p + size;
 	uint32_t      hash = FNV_MAGIC_INIT;
 
 	/*
@@ -749,8 +749,8 @@ uint32_t fr_hash(void const *data, size_t size)
  */
 uint32_t fr_hash_update(void const *data, size_t size, uint32_t hash)
 {
-	const uint8_t *p = data;
-	const uint8_t *q = p + size;
+	uint8_t const *p = data;
+	uint8_t const *q = p + size;
 
 	while (p != q) {
 		hash *= FNV_MAGIC_PRIME;

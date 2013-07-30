@@ -438,8 +438,8 @@ int fr_packet_list_socket_add(fr_packet_list_t *pl, int sockfd, int proto,
 
 static int packet_entry_cmp(void const *one, void const *two)
 {
-	const RADIUS_PACKET * const *a = one;
-	const RADIUS_PACKET * const *b = two;
+	RADIUS_PACKET const * const *a = one;
+	RADIUS_PACKET const * const *b = two;
 
 	return fr_packet_cmp(*a, *b);
 }

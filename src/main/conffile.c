@@ -89,7 +89,7 @@ struct conf_part {
 	rbtree_t	*data_tree;
 	void		*base;
 	int depth;
-	const CONF_PARSER *variables;
+	CONF_PARSER const *variables;
 };
 
 CONF_SECTION *root_config = NULL;
@@ -231,8 +231,8 @@ static int cf_data_free(void *ctx)
  */
 static int pair_cmp(void const *a, void const *b)
 {
-	const CONF_PAIR *one = a;
-	const CONF_PAIR *two = b;
+	CONF_PAIR const *one = a;
+	CONF_PAIR const *two = b;
 
 	return strcmp(one->attr, two->attr);
 }
@@ -243,8 +243,8 @@ static int pair_cmp(void const *a, void const *b)
  */
 static int section_cmp(void const *a, void const *b)
 {
-	const CONF_SECTION *one = a;
-	const CONF_SECTION *two = b;
+	CONF_SECTION const *one = a;
+	CONF_SECTION const *two = b;
 
 	return strcmp(one->name1, two->name1);
 }
@@ -255,8 +255,8 @@ static int section_cmp(void const *a, void const *b)
  */
 static int name2_cmp(void const *a, void const *b)
 {
-	const CONF_SECTION *one = a;
-	const CONF_SECTION *two = b;
+	CONF_SECTION const *one = a;
+	CONF_SECTION const *two = b;
 
 	rad_assert(strcmp(one->name1, two->name1) == 0);
 
@@ -275,8 +275,8 @@ static int data_cmp(void const *a, void const *b)
 {
 	int rcode;
 
-	const CONF_DATA *one = a;
-	const CONF_DATA *two = b;
+	CONF_DATA const *one = a;
+	CONF_DATA const *two = b;
 
 	rcode = one->flag - two->flag;
 	if (rcode != 0) return rcode;
@@ -505,7 +505,7 @@ CONF_ITEM *cf_reference_item(CONF_SECTION const *parentcs,
 {
 	CONF_PAIR *cp;
 	CONF_SECTION *next;
-	const CONF_SECTION *cs = outercs;
+	CONF_SECTION const *cs = outercs;
 	char name[8192];
 	char *p;
 
@@ -652,7 +652,7 @@ static char const *cf_expand_variables(char const *cf, int *lineno,
 {
 	char *p;
 	char const *end, *ptr;
-	const CONF_SECTION *parentcs;
+	CONF_SECTION const *parentcs;
 	char name[8192];
 
 	/*
@@ -873,7 +873,7 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, int type, void *data, char
 	char **q;
 	char const *value;
 	fr_ipaddr_t ipaddr;
-	const CONF_PAIR *cp = NULL;
+	CONF_PAIR const *cp = NULL;
 	char ipbuf[128];
 
 	if (!cs) return -1;
@@ -2135,7 +2135,7 @@ CONF_SECTION *cf_section_find_name2(CONF_SECTION const *cs,
 				    char const *name1, char const *name2)
 {
 	char const	*their2;
-	const CONF_ITEM	*ci;
+	CONF_ITEM const *ci;
 
 	if (!cs || !name1) return NULL;
 
@@ -2956,7 +2956,7 @@ int cf_pair2file(FILE *fp, CONF_PAIR const *cp)
 
 int cf_section2file(FILE *fp, CONF_SECTION const *cs)
 {
-	const CONF_ITEM *ci, *next;
+	CONF_ITEM const *ci, *next;
 
 	/*
 	 *	Section header

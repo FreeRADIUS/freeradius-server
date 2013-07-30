@@ -270,8 +270,8 @@ static uint32_t dict_vendor_name_hash(void const *data)
 
 static int dict_vendor_name_cmp(void const *one, void const *two)
 {
-	const DICT_VENDOR *a = one;
-	const DICT_VENDOR *b = two;
+	DICT_VENDOR const *a = one;
+	DICT_VENDOR const *b = two;
 
 	return strcasecmp(a->name, b->name);
 }
@@ -284,8 +284,8 @@ static uint32_t dict_vendor_value_hash(void const *data)
 
 static int dict_vendor_value_cmp(void const *one, void const *two)
 {
-	const DICT_VENDOR *a = one;
-	const DICT_VENDOR *b = two;
+	DICT_VENDOR const *a = one;
+	DICT_VENDOR const *b = two;
 
 	return a->vendorpec - b->vendorpec;
 }
@@ -293,7 +293,7 @@ static int dict_vendor_value_cmp(void const *one, void const *two)
 static uint32_t dict_value_name_hash(void const *data)
 {
 	uint32_t hash;
-	const DICT_VALUE *dval = data;
+	DICT_VALUE const *dval = data;
 
 	hash = dict_hashname(dval->name);
 	hash = fr_hash_update(&dval->vendor, sizeof(dval->vendor), hash);
@@ -303,8 +303,8 @@ static uint32_t dict_value_name_hash(void const *data)
 static int dict_value_name_cmp(void const *one, void const *two)
 {
 	int rcode;
-	const DICT_VALUE *a = one;
-	const DICT_VALUE *b = two;
+	DICT_VALUE const *a = one;
+	DICT_VALUE const *b = two;
 
 	rcode = a->attr - b->attr;
 	if (rcode != 0) return rcode;
@@ -318,7 +318,7 @@ static int dict_value_name_cmp(void const *one, void const *two)
 static uint32_t dict_value_value_hash(void const *data)
 {
 	uint32_t hash;
-	const DICT_VALUE *dval = data;
+	DICT_VALUE const *dval = data;
 
 	hash = fr_hash(&dval->attr, sizeof(dval->attr));
 	hash = fr_hash_update(&dval->vendor, sizeof(dval->vendor), hash);
@@ -328,8 +328,8 @@ static uint32_t dict_value_value_hash(void const *data)
 static int dict_value_value_cmp(void const *one, void const *two)
 {
 	int rcode;
-	const DICT_VALUE *a = one;
-	const DICT_VALUE *b = two;
+	DICT_VALUE const *a = one;
+	DICT_VALUE const *b = two;
 
 	if (a->vendor < b->vendor) return -1;
 	if (a->vendor > b->vendor) return +1;
@@ -625,7 +625,7 @@ int dict_addattr(char const *name, int attr, unsigned int vendor, int type,
 {
 	size_t namelen;
 	static int      max_attr = 0;
-	const uint8_t	*p;
+	uint8_t const *p;
 	DICT_ATTR const	*da;
 	DICT_ATTR *n;
 
@@ -1207,7 +1207,7 @@ int dict_str2oid(char const *ptr, unsigned int *pvalue, unsigned int *pvendor,
 	 *	If we find it, re-write the parameters, and recurse.
 	 */
 	if (!*pvendor && (tlv_depth == 0) && (*pvalue == PW_VENDOR_SPECIFIC)) {
-		const DICT_VENDOR *dv;
+		DICT_VENDOR const *dv;
 
 		if (!p) {
 			fr_strerror_printf("VSA needs to have sub-attribute");
@@ -1789,9 +1789,9 @@ static int process_value_alias(char const* fn, int const line, char **argv,
 static int process_vendor(char const* fn, int const line, char **argv,
 			  int argc)
 {
-	int	value;
-	int	continuation = 0;
-	const	char *format = NULL;
+	int		value;
+	int		continuation = 0;
+	char const	*format = NULL;
 
 	if ((argc < 2) || (argc > 3)) {
 		fr_strerror_printf( "dict_init: %s[%d] invalid VENDOR entry",

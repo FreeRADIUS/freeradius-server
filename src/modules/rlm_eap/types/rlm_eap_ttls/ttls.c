@@ -922,7 +922,7 @@ int eapttls_process(eap_handler_t *handler, tls_session_t *tls_session)
 	REQUEST *fake;
 	VALUE_PAIR *vp;
 	ttls_tunnel_t *t;
-	const uint8_t *data;
+	uint8_t const *data;
 	size_t data_len;
 	REQUEST *request = handler->request;
 

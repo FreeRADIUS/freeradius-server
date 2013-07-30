@@ -57,8 +57,8 @@ static SD_CHAR empty_pin[] = "";
 static int securid_session_cmp(void const *a, void const *b)
 {
 	int rcode;
-	const SECURID_SESSION *one = a;
-	const SECURID_SESSION *two = b;
+	SECURID_SESSION const *one = a;
+	SECURID_SESSION const *two = b;
 
 	rad_assert(one != NULL);
 	rad_assert(two != NULL);

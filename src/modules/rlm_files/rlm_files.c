@@ -375,7 +375,7 @@ static rlm_rcode_t file_common(rlm_files_t *inst, REQUEST *request,
 	char const	*name, *match;
 	VALUE_PAIR	*check_tmp;
 	VALUE_PAIR	*reply_tmp;
-	const PAIR_LIST	*user_pl, *default_pl;
+	PAIR_LIST const *user_pl, *default_pl;
 	int		found = 0;
 	PAIR_LIST	my_pl;
 	char		buffer[256];
@@ -409,7 +409,7 @@ static rlm_rcode_t file_common(rlm_files_t *inst, REQUEST *request,
 	while (user_pl || default_pl) {
 		vp_cursor_t cursor;
 		VALUE_PAIR *vp;
-		const PAIR_LIST *pl;
+		PAIR_LIST const *pl;
 
 		if (!default_pl && user_pl) {
 			pl = user_pl;

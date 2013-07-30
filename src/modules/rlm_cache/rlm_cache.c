@@ -84,8 +84,8 @@ typedef struct rlm_cache_entry_t {
  */
 static int cache_entry_cmp(void const *one, void const *two)
 {
-	const rlm_cache_entry_t *a = one;
-	const rlm_cache_entry_t *b = two;
+	rlm_cache_entry_t const *a = one;
+	rlm_cache_entry_t const *b = two;
 
 	return strcmp(a->key, b->key);
 }
@@ -107,8 +107,8 @@ static void cache_entry_free(void *data)
  */
 static int cache_heap_cmp(void const *one, void const *two)
 {
-	const rlm_cache_entry_t *a = one;
-	const rlm_cache_entry_t *b = two;
+	rlm_cache_entry_t const *a = one;
+	rlm_cache_entry_t const *b = two;
 
 	if (a->expires < b->expires) return -1;
 	if (a->expires > b->expires) return +1;
@@ -249,7 +249,7 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 	int merge = true;
 	REQUEST *context;
 
-	const value_pair_map_t *map;
+	value_pair_map_t const *map;
 
 	rlm_cache_entry_t *c;
 	char buffer[1024];

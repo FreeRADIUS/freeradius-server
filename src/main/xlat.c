@@ -71,7 +71,7 @@ struct xlat_exp {
 	xlat_exp_t *child;	//!< Nested expansion.
 	xlat_exp_t *alternate;	//!< Alternative expansion if this one expanded to a zero length string.
 
-	const xlat_t *xlat;	//!< The xlat expansion to expand format with.
+	xlat_t const *xlat;	//!< The xlat expansion to expand format with.
 };
 
 typedef struct xlat_out {
@@ -381,8 +381,8 @@ static ssize_t xlat_debug(UNUSED void *instance, REQUEST *request,
  */
 static int xlat_cmp(void const *one, void const *two)
 {
-	const xlat_t *a = one;
-	const xlat_t *b = two;
+	xlat_t const *a = one;
+	xlat_t const *b = two;
 
 	if (a->length != b->length) {
 		return a->length - b->length;
@@ -1837,7 +1837,7 @@ static size_t xlat_process(char **out, REQUEST *request, xlat_exp_t const * cons
 	int i, list;
 	size_t total;
 	char **array, *answer;
-	const xlat_exp_t *node;
+	xlat_exp_t const *node;
 
 	*out = NULL;
 

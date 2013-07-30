@@ -160,7 +160,7 @@ value_pair_tmpl_t *radius_str2tmpl(TALLOC_CTX *ctx, char const *name, FR_TOKEN t
 		if (!isdigit((int) *name)) {
 			request_refs_t ref;
 			pair_lists_t list;
-			const char *p = name;
+			char const *p = name;
 
 			ref = radius_request_name(&p, REQUEST_CURRENT);
 			list = radius_list_name(&p, PAIR_LIST_REQUEST);
@@ -231,8 +231,8 @@ value_pair_tmpl_t *radius_str2tmpl(TALLOC_CTX *ctx, char const *name, FR_TOKEN t
  *	in.
  * @return value_pair_map_t if successful or NULL on error.
  */
-value_pair_map_t *radius_str2map(TALLOC_CTX *ctx, const char *lhs, FR_TOKEN lhs_type,
-				 FR_TOKEN op, const char *rhs, FR_TOKEN rhs_type,
+value_pair_map_t *radius_str2map(TALLOC_CTX *ctx, char const *lhs, FR_TOKEN lhs_type,
+				 FR_TOKEN op, char const *rhs, FR_TOKEN rhs_type,
 				 request_refs_t dst_request_def,
 				 pair_lists_t dst_list_def,
 				 request_refs_t src_request_def,
@@ -550,7 +550,7 @@ error:
 size_t radius_tmpl2str(char *buffer, size_t bufsize, value_pair_tmpl_t const *vpt)
 {
 	char c;
-	const char *p;
+	char const *p;
 	char *q = buffer;
 	char *end;
 

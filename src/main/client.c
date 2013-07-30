@@ -103,8 +103,8 @@ void client_free(RADCLIENT *client)
  */
 static int client_ipaddr_cmp(void const *one, void const *two)
 {
-	const RADCLIENT *a = one;
-	const RADCLIENT *b = two;
+	RADCLIENT const *a = one;
+	RADCLIENT const *b = two;
 #ifndef WITH_TCP
 
 	return fr_ipaddr_cmp(&a->ipaddr, &b->ipaddr);
@@ -127,8 +127,8 @@ static int client_ipaddr_cmp(void const *one, void const *two)
 #ifdef WITH_STATS
 static int client_num_cmp(void const *one, void const *two)
 {
-	const RADCLIENT *a = one;
-	const RADCLIENT *b = two;
+	RADCLIENT const *a = one;
+	RADCLIENT const *b = two;
 
 	return (a->number - b->number);
 }

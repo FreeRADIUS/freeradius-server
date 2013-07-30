@@ -255,7 +255,7 @@ void
 fr_MD4Transform(uint32_t buf[4], unsigned char const inc[MD4_BLOCK_LENGTH])
 {
 	uint32_t a, b, c, d;
-	const uint32_t *in = (uint32_t const *)inc;
+	uint32_t const *in = (uint32_t const *)inc;
 
 	a = buf[0];
 	b = buf[1];

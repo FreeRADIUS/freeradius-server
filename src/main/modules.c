@@ -254,8 +254,8 @@ static int indexed_modcallable_free(void *ctx)
 
 static int indexed_modcallable_cmp(void const *one, void const *two)
 {
-	const indexed_modcallable *a = one;
-	const indexed_modcallable *b = two;
+	indexed_modcallable const *a = one;
+	indexed_modcallable const *b = two;
 
 	if (a->comp < b->comp) return -1;
 	if (a->comp >  b->comp) return +1;
@@ -269,8 +269,8 @@ static int indexed_modcallable_cmp(void const *one, void const *two)
  */
 static int module_instance_cmp(void const *one, void const *two)
 {
-	const module_instance_t *a = one;
-	const module_instance_t *b = two;
+	module_instance_t const *a = one;
+	module_instance_t const *b = two;
 
 	return strcmp(a->name, b->name);
 }
@@ -344,8 +344,8 @@ static void module_instance_free(void *data)
  */
 static int module_entry_cmp(void const *one, void const *two)
 {
-	const module_entry_t *a = one;
-	const module_entry_t *b = two;
+	module_entry_t const *a = one;
+	module_entry_t const *b = two;
 
 	return strcmp(a->name, b->name);
 }
@@ -393,7 +393,7 @@ static module_entry_t *linkto_module(char const *module_name,
 	module_entry_t myentry;
 	module_entry_t *node;
 	void *handle = NULL;
-	const module_t *module;
+	module_t const *module;
 
 	strlcpy(myentry.name, module_name, sizeof(myentry.name));
 	node = rbtree_finddata(module_tree, &myentry);

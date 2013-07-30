@@ -314,7 +314,7 @@ inet_pton6(char const *src, unsigned char *dst)
 		 * Since some memmove()'s erroneously fail to handle
 		 * overlapping regions, we'll do the shift by hand.
 		 */
-		const int n = tp - colonp;
+		int const n = tp - colonp;
 		int i;
 
 		for (i = 1; i <= n; i++) {
@@ -360,7 +360,7 @@ int inet_pton(int af, char const *src, void *dst)
 char const *inet_ntop(int af, void const *src, char *dst, size_t cnt)
 {
 	if (af == AF_INET) {
-		const uint8_t *ipaddr = src;
+		uint8_t const *ipaddr = src;
 
 		if (cnt <= INET_ADDRSTRLEN) return NULL;
 
@@ -375,7 +375,7 @@ char const *inet_ntop(int af, void const *src, char *dst, size_t cnt)
 	 *	in missing.h
 	 */
 	if (af == AF_INET6) {
-		const struct in6_addr *ipaddr = src;
+		struct const in6_addr *ipaddr = src;
 
 		if (cnt <= INET6_ADDRSTRLEN) return NULL;
 

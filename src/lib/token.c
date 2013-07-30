@@ -72,11 +72,11 @@ const FR_NAME_NUMBER fr_tokens[] = {
 static FR_TOKEN getthing(char const **ptr, char *buf, int buflen, int tok,
 			 FR_NAME_NUMBER const *tokenlist)
 {
-	char *s;
-	char const *p;
-	int	quote, end = 0;
-	unsigned int	x;
-	const FR_NAME_NUMBER*t;
+	char			*s;
+	char const		*p;
+	int			quote, end = 0;
+	unsigned int		x;
+	FR_NAME_NUMBER const	*t;
 	FR_TOKEN rcode;
 
 	buf[0] = 0;
@@ -258,7 +258,7 @@ FR_TOKEN getstring(char const **ptr, char *buf, int buflen)
  */
 int fr_str2int(FR_NAME_NUMBER const *table, char const *name, int def)
 {
-	const FR_NAME_NUMBER *this;
+	FR_NAME_NUMBER const *this;
 
 	if (!name) {
 		return def;
@@ -278,7 +278,7 @@ int fr_str2int(FR_NAME_NUMBER const *table, char const *name, int def)
  */
 int fr_substr2int(FR_NAME_NUMBER const *table, char const *name, int def, int len)
 {
-	const FR_NAME_NUMBER *this;
+	FR_NAME_NUMBER const *this;
 	size_t max;
 
 	if (!name) {
@@ -314,7 +314,7 @@ int fr_substr2int(FR_NAME_NUMBER const *table, char const *name, int def, int le
 char const *fr_int2str(FR_NAME_NUMBER const *table, int number,
 			 char const *def)
 {
-	const FR_NAME_NUMBER *this;
+	FR_NAME_NUMBER const *this;
 
 	for (this = table; this->name != NULL; this++) {
 		if (this->number == number) {

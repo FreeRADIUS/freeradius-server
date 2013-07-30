@@ -221,7 +221,7 @@ typedef struct ldap_handle {
 } ldap_handle_t;
 
 typedef struct rlm_ldap_map_xlat {
-	const value_pair_map_t *maps;
+	value_pair_map_t const *maps;
 	char const *attrs[LDAP_MAX_ATTRMAP + LDAP_MAP_RESERVED + 1]; //!< Reserve some space for access attributes
 								     //!< and NULL termination.
 	int count;

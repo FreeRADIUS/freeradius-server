@@ -39,7 +39,7 @@ RCSIDH(extern_h, "$Id$")
 #define OTP_CHALLENGE_PROMPT "Challenge: %{reply:OTP-Challenge}\n Response: "
 
 typedef struct rlm_otp_t {
-	const char *name;	//!< Instance name for mod_authorize().
+	char const *name;	//!< Instance name for mod_authorize().
 	char *otpd_rp;		//!< Otpd rendezvous point.
 	char *chal_prompt;	//!< Text to present challenge to user
 				//!< must have %s.

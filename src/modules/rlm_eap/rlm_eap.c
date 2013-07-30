@@ -73,8 +73,8 @@ static int mod_detach(void *instance)
 static int eap_handler_cmp(void const *a, void const *b)
 {
 	int rcode;
-	const eap_handler_t *one = a;
-	const eap_handler_t *two = b;
+	eap_handler_t const *one = a;
+	eap_handler_t const *two = b;
 
 	if (one->eap_id < two->eap_id) return -1;
 	if (one->eap_id > two->eap_id) return +1;

@@ -143,7 +143,7 @@ static void debug_packet(RADIUS_PACKET *packet, int direction)
 	VALUE_PAIR *vp;
 	char buffer[1024];
 	char const *received, *from;
-	const fr_ipaddr_t *ip;
+	fr_ipaddr_t const *ip;
 	int port;
 
 	if (!packet) return;

@@ -160,7 +160,7 @@ static int cast_vpt(value_pair_tmpl_t *vpt, DICT_ATTR const *da)
 static ssize_t condition_tokenize_string(TALLOC_CTX *ctx, char const *start, char **out,
 					 FR_TOKEN *op, char const **error)
 {
-	const char *p = start;
+	char const *p = start;
 	char *q;
 
 	switch (*p++) {
@@ -343,8 +343,8 @@ static ssize_t condition_tokenize_cast(char const *start, DICT_ATTR const **pda,
 static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace, fr_cond_t **pcond, char const **error)
 {
 	ssize_t slen;
-	const char *p = start;
-	const char *lhs_p, *rhs_p;
+	char const *p = start;
+	char const *lhs_p, *rhs_p;
 	fr_cond_t *c;
 	char *lhs, *rhs;
 	FR_TOKEN op, lhs_type, rhs_type;

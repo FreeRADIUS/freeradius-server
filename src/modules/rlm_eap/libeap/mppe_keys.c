@@ -86,8 +86,8 @@ static void PRF(unsigned char const *secret, unsigned int secret_len,
 {
 	unsigned int i;
 	unsigned int len = (secret_len + 1) / 2;
-	const unsigned char *s1 = secret;
-	const unsigned char *s2 = secret + (secret_len - len);
+	uint8_t const *s1 = secret;
+	uint8_t const *s2 = secret + (secret_len - len);
 
 	P_hash(EVP_md5(),  s1, len, seed, seed_len, out, out_len);
 	P_hash(EVP_sha1(), s2, len, seed, seed_len, buf, out_len);
