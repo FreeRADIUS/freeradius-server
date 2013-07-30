@@ -62,11 +62,11 @@ SBINDIR		= ${sbindir}
 RADIR		= ${radacctdir}
 LIBRADIUS	= $(top_builddir)/src/lib/$(LIBPREFIX)freeradius-radius.la -l talloc
 
-#USE_SHARED_LIBS = @USE_SHARED_LIBS@
-#USE_STATIC_LIBS = @USE_STATIC_LIBS@
+USE_SHARED_LIBS = @USE_SHARED_LIBS@
+bm_shared_libs  = @USE_SHARED_LIBS@
+USE_STATIC_LIBS = @USE_STATIC_LIBS@
+bm_static_libs  = @USE_STATIC_LIBS@
 
-USE_SHARED_LIBS = yes
-USE_STATIC_LIBS = yes
 STATIC_MODULES	= @STATIC_MODULES@
 
 OPENSSL_LIBS	= @OPENSSL_LIBS@

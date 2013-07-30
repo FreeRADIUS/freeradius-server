@@ -414,6 +414,17 @@ AC_ARG_WITH(static_modules,
   done
 ])
 
+USE_SHARED_LIBS=yes
+AC_ARG_WITH(static,
+[  --with-shared-libs             Build dynamic libraries and link against them. (default=yes)],
+[ case "$withval" in
+  no)
+    USE_SHARED_LIBS=no
+    ;;
+  *)
+  esac
+])
+
 MODULES=
 AC_ARG_WITH(modules,
 [  --with-modules=QUOTED-MODULE-LIST],[
@@ -1622,9 +1633,8 @@ dnl #
 AC_SUBST(LIBS)
 AC_SUBST(INSTALLSTRIP)
 
-USE_SHARED_LIBS=$enable_shared
 AC_SUBST(USE_SHARED_LIBS)
-USE_STATIC_LIBS=$enable_static
+USE_STATIC_LIBS="yes"
 AC_SUBST(USE_STATIC_LIBS)
 AC_SUBST(STATIC_MODULES)
 
