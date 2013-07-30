@@ -570,7 +570,12 @@ int main(int argc, char *argv[])
 		exit (1);
 	}
 
+	/*
+	 *  We don't really want probes taking down machines
+	 */
+#ifdef HAVE_TALLOC_SET_MEMLIMIT
 	talloc_set_memlimit(conf, 52428800);		/* 50 MB */
+#endif
 
 	/*
 	 *  Get options

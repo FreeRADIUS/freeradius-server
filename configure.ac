@@ -1305,6 +1305,16 @@ dnl #
 dnl #############################################################
 
 dnl #
+dnl # Check for talloc_set_memlimit
+dnl # This was only included in version 2.0.8
+dnl #
+AC_CHECK_LIB(talloc, talloc_set_memlimit,
+  [
+    AC_DEFINE(HAVE_TALLOC_SET_MEMLIMIT, 1, [Define to 1 if you have the function talloc_set_memlimit.])
+  ]
+)
+
+dnl #
 dnl # Check for libcrypt
 dnl # We use crypt(3) which may be in libc, or in libcrypt (eg FreeBSD)
 dnl #
