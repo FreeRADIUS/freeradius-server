@@ -893,8 +893,8 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 
 static int attr_cmp(void const *one, void const *two)
 {
-	const VALUE_PAIR * const *a = one;
-	const VALUE_PAIR * const *b = two;
+	VALUE_PAIR const * const *a = one;
+	VALUE_PAIR const * const *b = two;
 
 	/*
 	 *	DHCP-Message-Type is first, for simplicity.
