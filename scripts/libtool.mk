@@ -129,7 +129,7 @@ endef
 # By default, if libdir is defined, we build shared libraries.
 # However, we can disable shared libraries if explicitly told to.
 ifneq "${libdir}" ""
-    ifneq "bm_shared_libs" "no"
+    ifneq "${bm_shared_libs}" "no"
         bm_shared_libs := yes
     endif
 endif
