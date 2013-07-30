@@ -21,7 +21,7 @@ rlm_rcode_t rlm_yubikey_decrypt(rlm_yubikey_t *inst, REQUEST *request, VALUE_PAI
 	uint32_t counter;
 	yubikey_token_st token;
 
-	const DICT_ATTR *da;
+	DICT_ATTR const *da;
 
 	char private_id[(YUBIKEY_UID_SIZE * 2) + 1];
 	VALUE_PAIR *key, *vp;

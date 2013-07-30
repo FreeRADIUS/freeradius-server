@@ -69,9 +69,9 @@ typedef struct rlm_sqlcounter_t {
 					//!< never or user defined.
 	time_t		reset_time;
 	time_t		last_reset;
-	const DICT_ATTR	*key_attr;	//!< Attribute number for key field.
-	const DICT_ATTR	*dict_attr;	//!< Attribute number for the counter.
-	const DICT_ATTR	*reply_attr;	//!< Attribute number for the reply.
+	DICT_ATTR const	*key_attr;	//!< Attribute number for key field.
+	DICT_ATTR const	*dict_attr;	//!< Attribute number for the counter.
+	DICT_ATTR const	*reply_attr;	//!< Attribute number for the reply.
 } rlm_sqlcounter_t;
 
 /*
@@ -395,7 +395,7 @@ static int sqlcounter_cmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR *r
 static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
 	rlm_sqlcounter_t *inst = instance;
-	const DICT_ATTR *dattr;
+	DICT_ATTR const *dattr;
 	ATTR_FLAGS flags;
 	time_t now;
 
@@ -489,7 +489,7 @@ static rlm_rcode_t mod_authorize(UNUSED void *instance, UNUSED REQUEST *request)
 	rlm_sqlcounter_t *inst = instance;
 	int rcode = RLM_MODULE_NOOP;
 	unsigned int counter;
-	const DICT_ATTR *dattr;
+	DICT_ATTR const *dattr;
 	VALUE_PAIR *key_vp, *check_vp;
 	VALUE_PAIR *reply_item;
 	char msg[128];

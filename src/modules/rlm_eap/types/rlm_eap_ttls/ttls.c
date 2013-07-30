@@ -274,7 +274,7 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, REQUEST *fake, SSL *ssl,
 		case PW_TYPE_INTEGER:
 		case PW_TYPE_DATE:
 			if (size != vp->length) {
-				const DICT_ATTR *da;
+				DICT_ATTR const *da;
 
 				/*
 				 *	Bad format.  Create a "raw"

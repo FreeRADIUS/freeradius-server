@@ -59,7 +59,7 @@ struct xlat_exp {
 	char const *fmt;	//!< The format string.
 	size_t len;		//!< Length of the format string.
 
-	const DICT_ATTR *da;	//!< the name of the dictionary attribute
+	DICT_ATTR const *da;	//!< the name of the dictionary attribute
 	int num;		//!< attribute number
 	int tag;		//!< attribute tag
 	pair_lists_t list;	//!< list of which attribute

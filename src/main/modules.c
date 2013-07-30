@@ -894,7 +894,7 @@ static int load_component_section(CONF_SECTION *cs,
 	indexed_modcallable *subcomp;
 	char const *modname;
 	char const *visiblename;
-	const DICT_ATTR *dattr;
+	DICT_ATTR const *dattr;
 
 	/*
 	 *	Find the attribute used to store VALUEs for this section.
@@ -1096,7 +1096,7 @@ static int load_byserver(CONF_SECTION *cs)
 	for (comp = 0; comp < RLM_COMPONENT_COUNT; ++comp) {
 		CONF_SECTION *subcs;
 		CONF_ITEM *modref;
-		const DICT_ATTR *dattr;
+		DICT_ATTR const *dattr;
 
 		subcs = cf_section_sub_find(cs,
 					    section_type_value[comp].section);
@@ -1223,7 +1223,7 @@ static int load_byserver(CONF_SECTION *cs)
 	if (!found) do {
 		CONF_SECTION *subcs;
 #ifdef WITH_DHCP
-		const DICT_ATTR *dattr;
+		DICT_ATTR const *dattr;
 #endif
 
 		subcs = cf_section_sub_find(cs, "vmps");

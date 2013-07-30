@@ -953,10 +953,10 @@ static int rest_decode_post(rlm_rest_t *instance,
 
 	char *expanded = NULL;
 
-	const DICT_ATTR *da;
+	DICT_ATTR const *da;
 	VALUE_PAIR *vp;
 
-	const DICT_ATTR **current, *processed[REST_BODY_MAX_ATTRS + 1];
+	DICT_ATTR const **current, *processed[REST_BODY_MAX_ATTRS + 1];
 
 	pair_lists_t list_name;
 	request_refs_t request_name;
@@ -1252,7 +1252,7 @@ static VALUE_PAIR *json_pairmake(rlm_rest_t *instance,
 	struct lh_entry *entry;
 	json_flags_t flags;
 
-	const DICT_ATTR *da;
+	DICT_ATTR const *da;
 	VALUE_PAIR *vp = NULL;
 
 	request_refs_t request_name;

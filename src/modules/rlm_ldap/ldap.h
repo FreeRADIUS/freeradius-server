@@ -113,10 +113,10 @@ typedef struct ldap_instance {
 	char const	*cache_attribute;		//!< Sets the attribute we use when creating and retrieving
 							//!< cached group memberships.
 
-	const DICT_ATTR	*cache_da;			//!< The DA associated with this specific version of the
+	DICT_ATTR const	*cache_da;			//!< The DA associated with this specific version of the
 							//!< rlm_ldap module.
 
-	const DICT_ATTR	*group_da;			//!< The DA associated with this specific version of the
+	DICT_ATTR const	*group_da;			//!< The DA associated with this specific version of the
 							//!< rlm_ldap module.
 
 	/*
