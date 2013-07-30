@@ -740,6 +740,7 @@ with_tcp
 with_vmps
 with_dhcp
 with_static_modules
+with_static
 with_modules
 with_experimental_modules
 with_openssl
@@ -1397,6 +1398,7 @@ Optional Packages:
   --with-vmps             Compile in VMPS support. (default=yes)
   --with-dhcp             Compile in DHCP support. (default=yes)
   --with-static-modules=QUOTED-MODULE-LIST
+  --with-shared-libs             Build dynamic libraries and link against them. (default=yes)
   --with-modules=QUOTED-MODULE-LIST
   --with-experimental-modules      Use experimental and unstable modules. (default=no, unless --enable-developer=yes)
   --with-openssl                   Use OpenSSL. (default=yes)
@@ -5223,6 +5225,20 @@ if test "${with_static_modules+set}" = set; then :
 fi
 
 
+USE_SHARED_LIBS=yes
+
+# Check whether --with-static was given.
+if test "${with_static+set}" = set; then :
+  withval=$with_static;  case "$withval" in
+  no)
+    USE_SHARED_LIBS=no
+    ;;
+  *)
+  esac
+
+fi
+
+
 MODULES=
 
 # Check whether --with-modules was given.
@@ -9011,9 +9027,8 @@ ac_config_commands="$ac_config_commands scripts-chmod"
 
 
 
-USE_SHARED_LIBS=$enable_shared
 
-USE_STATIC_LIBS=$enable_static
+USE_STATIC_LIBS="yes"
 
 
 
