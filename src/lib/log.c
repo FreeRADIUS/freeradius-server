@@ -63,7 +63,7 @@ void fr_strerror_printf(char const *fmt, ...)
 		/*
 		 *	malloc is thread safe, talloc is not
 		 */
-		buffer = malloc(sizeof(char) * FR_STRERROR_BUFSIZE);
+		buffer = malloc(sizeof(char) * (FR_STRERROR_BUFSIZE + 1));	/* One byte extra for status */
 		if (!buffer) {
 			fr_perror("Failed allocating memory for libradius error buffer");
 			return;
@@ -79,12 +79,27 @@ void fr_strerror_printf(char const *fmt, ...)
 
 	va_start(ap, fmt);
 	vsnprintf(buffer, FR_STRERROR_BUFSIZE, fmt, ap);
+	buffer[FR_STRERROR_BUFSIZE] = '\1';			/* Flip the 'new' byte to true */
 	va_end(ap);
 }
 
+/** Get the last library error
+ *
+ * Will only return the last library error once, after which it will return a zero length string.
+ *
+ * @return library error or zero length string
+ */
 char const *fr_strerror(void)
 {
-	return fr_thread_local_get(fr_strerror_buffer);
+	char *buffer;
+
+	buffer = fr_thread_local_get(fr_strerror_buffer);
+	if (buffer[FR_STRERROR_BUFSIZE]) {
+		buffer[FR_STRERROR_BUFSIZE] = '\0';		/* Flip the 'new' byte to false */
+		return buffer;
+	}
+
+	return "";
 }
 
 /** Guaranteed to be thread-safe version of strerror
