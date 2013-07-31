@@ -38,6 +38,8 @@ RCSID("$Id$")
 #  include <collectd/client.h>
 #endif
 
+#define PCAP_DROP_CHECK_INTERVAL 5
+
 static char const *radius_secret = "testing123";
 static VALUE_PAIR *filter_vps = NULL;
 
@@ -76,10 +78,8 @@ static int rs_useful_codes[] = {
 /** Update cumulative moving average
  *
  */
-static void rs_stats_process_latency(rs_latency_t *stats, PW_CODE code)
+static void rs_stats_process_latency(rs_latency_t *stats, PW_CODE code, uint64_t interval)
 {
-	stats->intervals++;
-
 	if (stats->interval.linked && stats->interval.latency_total) {
 		stats->interval.latency_average = (stats->interval.latency_total / stats->interval.linked);
 	}
@@ -89,15 +89,14 @@ static void rs_stats_process_latency(rs_latency_t *stats, PW_CODE code)
 		stats->latency_cma += ((stats->interval.latency_average - stats->latency_cma) /
 					stats->latency_cma_count);
 
-		DEBUG1("Stats interval #%i", stats->intervals);
-		DEBUG1("%s counters:", fr_packet_codes[code]);
-		DEBUG1("\tLinked    : %" PRIu64, stats->interval.linked);
-		DEBUG1("\tCMA DP   : %" PRIu64, stats->latency_cma_count);
-		DEBUG1("%s latency:", fr_packet_codes[code]);
-		DEBUG1("\tHigh      : %lf", stats->interval.latency_high);
-		DEBUG1("\tLow       : %lf", stats->interval.latency_low);
-		DEBUG1("\tAverage   : %lf", stats->interval.latency_average);
-		DEBUG1("\tCMA       : %lf", stats->latency_cma);
+		INFO("Stats interval #%" PRIu64, interval);
+		INFO("%s counters:", fr_packet_codes[code]);
+		INFO("\tLinked    : %" PRIu64, stats->interval.linked);
+		INFO("%s latency:", fr_packet_codes[code]);
+		INFO("\tHigh      : %lf", stats->interval.latency_high);
+		INFO("\tLow       : %lf", stats->interval.latency_low);
+		INFO("\tAverage   : %lf", stats->interval.latency_average);
+		INFO("\tCMA       : %lf", stats->latency_cma);
 	}
 }
 
@@ -108,20 +107,22 @@ static void rs_stats_process(void *ctx)
 {
 	size_t i;
 	size_t rs_codes_len = (sizeof(rs_useful_codes) / sizeof(*rs_useful_codes));
-	rs_update_t	*this = ctx;
-	rs_stats_t	*stats = this->stats;
-	rs_t		*conf = this->conf;
-
-	struct timeval now;
+	rs_update_t		*this = ctx;
+	rs_stats_t		*stats = this->stats;
+	rs_t			*conf = this->conf;
+	struct timeval		now;
 
 	gettimeofday(&now, NULL);
+
+	stats->intervals++;
+
 	/*
 	 *	Latency stats need a bit more work to calculate the CMA.
 	 *
 	 *	No further work is required for codes.
 	 */
 	for (i = 0; i < rs_codes_len; i++) {
-		rs_stats_process_latency(&stats->exchange[rs_useful_codes[i]], rs_useful_codes[i]);
+		rs_stats_process_latency(&stats->exchange[rs_useful_codes[i]], rs_useful_codes[i], stats->intervals);
 //		rs_stats_process_latency(&stats->forward[rs_useful_codes[i]]);
 	}
 
@@ -143,7 +144,7 @@ static void rs_stats_process(void *ctx)
 		       sizeof(stats->exchange[rs_useful_codes[i]].interval));
 	}
 
-	memset(&stats->count.type, 0, sizeof(stats->count.type));
+	memset(&stats->gauge.type, 0, sizeof(stats->gauge.type));
 
 	{
 		now.tv_sec += conf->stats.interval;
@@ -278,6 +279,35 @@ static void rs_tv_sub(struct timeval const *end, struct timeval const *start, st
 	}
 }
 
+static int rs_check_pcap_drop(rs_event_t *event, struct timeval const *now) {
+	struct timeval diff;
+	struct pcap_stat pstats;
+
+	rs_tv_sub(now, &event->pstats_time, &diff);
+
+	if (diff.tv_sec >= PCAP_DROP_CHECK_INTERVAL)  {
+		if (pcap_stats(event->in->handle, &pstats) != 0) {
+			ERROR("Failed retrieving pcap stats: %s", pcap_geterr(event->in->handle));
+		}
+
+		INFO("%s capturing %i packet(s)/s", event->in->name,
+		     (pstats.ps_recv - event->pstats.ps_recv) / PCAP_DROP_CHECK_INTERVAL);
+
+		if (pstats.ps_drop - event->pstats.ps_drop) {
+			ERROR("Dropped %i packets: Buffer exhaustion", pstats.ps_drop - event->pstats.ps_drop);
+		}
+
+		if (pstats.ps_ifdrop - event->pstats.ps_ifdrop) {
+			ERROR("Dropped %i packets: Buffer interface", pstats.ps_ifdrop - event->pstats.ps_ifdrop);
+		}
+
+		event->pstats = pstats;
+		event->pstats_time = *now;
+	}
+
+	return 0;
+}
+
 static void rs_process_packet(rs_event_t *event, struct pcap_pkthdr const *header, uint8_t const *data)
 {
 
@@ -304,6 +334,8 @@ static void rs_process_packet(rs_event_t *event, struct pcap_pkthdr const *heade
 	RADIUS_PACKET *current, *original;
 	struct timeval elapsed;
 	struct timeval latency;
+
+	rs_check_pcap_drop(event, &header->ts);
 
 	/*
 	 *	Define our current's attributes
@@ -340,11 +372,12 @@ static void rs_process_packet(rs_event_t *event, struct pcap_pkthdr const *heade
 	current->data_len = header->len - (payload - data);
 
 	if (!rad_packet_ok(current, 0)) {
-		DEBUG("Packet: %s", fr_strerror());
+		DEBUG("(%i) %s", count++, fr_strerror());
 
-		DEBUG("  From     %s:%d", inet_ntoa(ip->ip_src), ntohs(udp->udp_sport));
-		DEBUG("  To:      %s:%d", inet_ntoa(ip->ip_dst), ntohs(udp->udp_dport));
-		DEBUG("  Type:    %s", fr_packet_codes[current->code]);
+		DEBUG("\tInterface : %s", event->in->name);
+		DEBUG("\tFrom      : %s:%d", inet_ntoa(ip->ip_src), ntohs(udp->udp_sport));
+		DEBUG("\tTo        : %s:%d", inet_ntoa(ip->ip_dst), ntohs(udp->udp_dport));
+		DEBUG("\tType      : %s", fr_packet_codes[current->code]);
 
 		rad_free(&current);
 		return;
@@ -402,7 +435,7 @@ static void rs_process_packet(rs_event_t *event, struct pcap_pkthdr const *heade
 
 	rs_tv_sub(&header->ts, &start_pcap, &elapsed);
 
-	rs_stats_update_count(&stats->count, current);
+	rs_stats_update_count(&stats->gauge, current);
 	if (original) {
 		rs_tv_sub(&current->timestamp, &original->timestamp, &latency);
 
@@ -558,7 +591,7 @@ int main(int argc, char *argv[])
 	FR_TOKEN parsecode;
 	char const *radius_dir = RADIUS_DIR;
 
-	 rs_stats_t stats;
+	rs_stats_t stats;
 
 	fr_debug_flag = 2;
 	log_dst = stdout;
@@ -768,6 +801,7 @@ int main(int argc, char *argv[])
 		ret = 64;
 		goto finish;
 	}
+	fr_strerror();	/* Clear out any non-fatal errors */
 
 	if (conf->radius_filter) {
 		parsecode = userparse(NULL, conf->radius_filter, &filter_vps);
@@ -830,6 +864,8 @@ int main(int argc, char *argv[])
 		for (dev_p = all_devices;
 		     dev_p;
 		     dev_p = dev_p->next) {
+		     	/* Don't use the any devices, it's horribly broken */
+		     	if (!strcmp(dev_p->name, "any")) continue;
 			*in_head = fr_pcap_init(conf, dev_p->name, PCAP_INTERFACE_IN);
 			in_head = &(*in_head)->next;
 		}
@@ -867,34 +903,32 @@ int main(int argc, char *argv[])
 	 */
 #ifdef HAVE_COLLECTDC_H
 	if (conf->stats.out == RS_STATS_OUT_COLLECTD) {
+		size_t i;
+		rs_stats_tmpl_t *tmpl, **next;
+
 		if (rs_stats_collectd_open(conf) < 0) {
 			exit(1);
 		}
 
-		if (conf->stats.out == RS_STATS_OUT_COLLECTD) {
-			size_t i;
-			rs_stats_tmpl_t *tmpl, **next;
+		next = &conf->stats.tmpl;
 
-			next = &conf->stats.tmpl;
-
-			for (i = 0; i < (sizeof(rs_useful_codes) / sizeof(*rs_useful_codes)); i++) {
-				tmpl = rs_stats_collectd_init_latency(conf, next, conf, "radius_exchange",
-								      &stats.exchange[rs_useful_codes[i]],
-								      rs_useful_codes[i]);
-				if (!tmpl) {
-					goto tmpl_error;
-				}
-				next = &(tmpl->next);
-				tmpl = rs_stats_collectd_init_counter(conf, next, conf, "radius_code",
-								      &stats.count.type[rs_useful_codes[i]],
-								      rs_useful_codes[i]);
-				if (!tmpl) {
-					tmpl_error:
-					ERROR("Error allocating memory for stats template");
-					goto finish;
-				}
-				next = &(tmpl->next);
+		for (i = 0; i < (sizeof(rs_useful_codes) / sizeof(*rs_useful_codes)); i++) {
+			tmpl = rs_stats_collectd_init_latency(conf, next, conf, "radius_pkt_ex",
+							      &stats.exchange[rs_useful_codes[i]],
+							      rs_useful_codes[i]);
+			if (!tmpl) {
+				goto tmpl_error;
 			}
+			next = &(tmpl->next);
+			tmpl = rs_stats_collectd_init_counter(conf, next, conf, "radius_pkt",
+							      &stats.gauge.type[rs_useful_codes[i]],
+							      rs_useful_codes[i]);
+			if (!tmpl) {
+				tmpl_error:
+				ERROR("Error allocating memory for stats template");
+				goto finish;
+			}
+			next = &(tmpl->next);
 		}
 	}
 #endif
@@ -978,7 +1012,7 @@ int main(int argc, char *argv[])
 	     	     in_p = in_p->next) {
 	     	     	rs_event_t *event;
 
-	     	     	event = talloc(events, rs_event_t);
+	     	     	event = talloc_zero(events, rs_event_t);
 	     	     	event->conf = conf;
 	     	     	event->in = in_p;
 	     	     	event->out = out;

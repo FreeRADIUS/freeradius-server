@@ -28,6 +28,7 @@ RCSIDH(radsniff_h, "$Id$")
 #include <sys/types.h>
 #include <netinet/in.h>
 
+#include <pcap/pcap.h>
 #include <freeradius-devel/libradius.h>
 #include <freeradius-devel/pcap.h>
 #include <freeradius-devel/event.h>
@@ -83,14 +84,37 @@ typedef struct rs_latency {
 
 		double			latency_high;		//!< Latency high water mark.
 		double			latency_low;		//!< Latency low water mark.
+
+		uint64_t		lost_total;		//!< Total packets lost in this interval
+		double			lost_percent;		//!< Percentage of packets lost
+		uint64_t		retransmitted;		//!< Number of times we saw the same packet multiple
+								//!< times.
 	} interval;
 } rs_latency_t;
+
+/** Stats for a single interval
+ *
+ * And interval is defined as the time between a call to the stats output function.
+ */
+typedef struct rs_loss {
+
+
+	double			latency_cma;		//!< Cumulative moving average.
+	uint64_t		latency_cma_count;	//!< Number of CMA datapoints processed.
+
+	struct {
+
+	} interval;
+} rs_loss_t;
+
 
 /** One set of statistics
  *
  */
 typedef struct rs_stats {
-	rs_counters_t		count;			//!< Packet type counters
+	int			intervals;		//!< Number of stats intervals.
+
+	rs_counters_t		gauge;			//!< Packet type gauges
 	rs_latency_t		exchange[PW_CODE_MAX];  //!< We end up allocating ~16K, but memory is cheap so
 							//!< what the hell.  This is required because instances of
 							//!< FreeRADIUS delay Access-Rejects, which would artificially
@@ -108,6 +132,8 @@ typedef struct rs_event {
 	fr_pcap_t		*out;			//!< Where to write output.
 
 	rs_stats_t		*stats;			//!< Where to write stats.
+	struct timeval		pstats_time;		//!< Last time we checked pcap stats.
+	struct pcap_stat	pstats;			//!< The last set of pcap stats for this handle.
 } rs_event_t;
 
 /** FD data which gets passed to callbacks

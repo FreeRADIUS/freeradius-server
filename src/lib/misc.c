@@ -375,7 +375,7 @@ char const *inet_ntop(int af, void const *src, char *dst, size_t cnt)
 	 *	in missing.h
 	 */
 	if (af == AF_INET6) {
-		struct const in6_addr *ipaddr = src;
+		struct in6_addr const *ipaddr = src;
 
 		if (cnt <= INET6_ADDRSTRLEN) return NULL;
 
