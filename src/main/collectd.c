@@ -73,6 +73,7 @@ static rs_stats_tmpl_t *rs_stats_collectd_init(TALLOC_CTX *ctx, rs_t *conf, int 
 					       char const *type, char const *type_instance,
 					       void *stats, void *src, rs_stats_cb_t cb)
 {
+	char *p;
 	static char hostname[LCC_NAME_LEN];
 	rs_stats_tmpl_t *tmpl;
 	lcc_value_list_t *value;
@@ -130,11 +131,37 @@ static rs_stats_tmpl_t *rs_stats_collectd_init(TALLOC_CTX *ctx, rs_t *conf, int 
 			break;
 	}
 
+	/*
+	 *	These should be OK as is
+	 */
 	strlcpy(value->identifier.host, hostname, sizeof(value->identifier.host));
 	strlcpy(value->identifier.plugin, "radsniff", sizeof(value->identifier.plugin));
-	strlcpy(value->identifier.plugin_instance, conf->stats.prefix, sizeof(value->identifier.plugin_instance));
-	strlcpy(value->identifier.type, type, sizeof(value->identifier.type));
-	strlcpy(value->identifier.type_instance, type_instance, sizeof(value->identifier.type_instance));
+
+
+	/*
+	 *	Plugin instance is ASCII only (assuming printable only) and no '/'
+	 */
+	fr_print_string(conf->stats.prefix, strlen(conf->stats.prefix),
+			value->identifier.plugin_instance, sizeof(value->identifier.plugin_instance));
+	for (p = value->identifier.plugin_instance; *p; ++p) {
+		if (*p == '/') *p = '_';
+	}
+
+	/*
+	 *	Type is ASCII only (assuming printable only) and no '/' or '-'
+	 */
+	fr_print_string(type, strlen(type),
+			value->identifier.type, sizeof(value->identifier.type));
+	for (p = value->identifier.type; *p; ++p) {
+		if ((*p == '-') || (*p == '/')) *p = '_';
+	}
+
+	fr_print_string(type_instance, strlen(type_instance),
+			value->identifier.type_instance, sizeof(value->identifier.type_instance));
+	for (p = value->identifier.type_instance; *p; ++p) {
+		if ((*p == '-') || (*p == '/')) *p = '_';
+	}
+
 	tmpl->value = value;
 
 	return tmpl;
@@ -152,13 +179,13 @@ rs_stats_tmpl_t *rs_stats_collectd_init_latency(TALLOC_CTX *ctx, rs_stats_tmpl_t
 {
 	rs_stats_tmpl_t **tmpl, *last;
 	char *p;
-	char extended_instance[512];
+	char extended_type[512];
 	tmpl = out;
 
 #define INIT_LATENCY(_vt, _ti, _src, _cb) do {\
-		snprintf(extended_instance, sizeof(extended_instance), "%s_%s", fr_packet_codes[code], _ti);\
-		for (p = extended_instance; *p; ++p) *p = tolower(*p);\
-		last = *tmpl = rs_stats_collectd_init(ctx, conf, _vt, type, extended_instance, stats, _src, _cb);\
+		snprintf(extended_type, sizeof(extended_type), "%s_%s", type, fr_packet_codes[code]);\
+		for (p = extended_type; *p; ++p) *p = tolower(*p);\
+		last = *tmpl = rs_stats_collectd_init(ctx, conf, _vt, extended_type, _ti, stats, _src, _cb);\
 		if (!*tmpl) {\
 			TALLOC_FREE(*out);\
 			return NULL;\

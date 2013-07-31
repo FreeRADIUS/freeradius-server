@@ -83,7 +83,7 @@ static int _free_pcap(fr_pcap_t *pcap) {
  */
 fr_pcap_t *fr_pcap_init(TALLOC_CTX *ctx, char const *name, fr_pcap_type_t type)
 {
-	fr_pcap_t *this = talloc(ctx, fr_pcap_t);
+	fr_pcap_t *this = talloc_zero(ctx, fr_pcap_t);
 	if (!this) {
 		return NULL;
 	}
@@ -177,6 +177,7 @@ int fr_pcap_open(fr_pcap_t *pcap)
 		case PCAP_INVALID:
 		default:
 			fr_assert(0);
+			fr_strerror_printf("Bad handle type (%i)", pcap->type);
 			return -1;
 	}
 
