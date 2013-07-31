@@ -51,9 +51,14 @@ extern fr_cond_t *debug_condition;
 
 static int spawn_flag = 0;
 static int just_started = true;
-time_t				fr_start_time;
+time_t fr_start_time = (time_t)-1;
 static fr_packet_list_t *pl = NULL;
 static fr_event_list_t *el = NULL;
+
+fr_event_list_t *radius_event_list_corral(UNUSED event_corral_t hint) {
+	/* Currently we do not run a second event loop for modules. */
+	return el;
+}
 
 static char const *action_codes[] = {
 	"INVALID",
@@ -4093,16 +4098,22 @@ static void event_signal_handler(UNUSED fr_event_list_t *xel,
 /*
  *	Externally-visibly functions.
  */
-int radius_event_init(CONF_SECTION *cs, int have_children)
+int radius_event_init(UNUSED int have_children, UNUSED int aux_loops) {
+	el = fr_event_list_create(NULL, event_status);
+	if (!el) return 0;
+	return 1;
+	/* If have_children/threaded we could init an auxiliary loop */
+}
+
+int radius_event_start(CONF_SECTION *cs, int have_children)
 {
 	rad_listen_t *head = NULL;
 
-	if (el) return 0;
+	if (fr_start_time != (time_t)-1) return 0;
 
 	time(&fr_start_time);
 
-	el = fr_event_list_create(NULL, event_status);
-	if (!el) return 0;
+	if (fr_start_time == (time_t)-1) return 0;
 
 	pl = fr_packet_list_create(0);
 	if (!pl) return 0;	/* leak el */
