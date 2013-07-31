@@ -714,7 +714,14 @@ rad_listen_t *listener_find_byipaddr(fr_ipaddr_t const *ipaddr, int port,
 int rad_status_server(REQUEST *request);
 
 /* event.c */
-int radius_event_init(CONF_SECTION *cs, bool spawn_flag);
+typedef enum event_corral_t {
+	EVENT_CORRAL_MAIN = 0,	//!< Always main thread event list
+	EVENT_CORRAL_AUX	//!< Maybe main thread or one shared by modules
+} event_corral_t;
+
+fr_event_list_t *radius_event_list_corral(event_corral_t hint);
+int radius_event_init(bool spawn_flag, bool aux_loops);
+int radius_event_start(CONF_SECTION *cs, bool spawn_flag);
 void radius_event_free(void);
 int radius_event_process(void);
 int event_new_fd(rad_listen_t *listener);
