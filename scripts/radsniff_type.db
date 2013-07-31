@@ -1,0 +1,27 @@
+#
+# Collectd type definitions for radsniff probes
+#
+# $Id$
+#
+# Copyright 2013 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
+#
+radius_pkt_ex_access_request		linked:GAUGE:0:U, latency_cma:GAUGE:0:U, latency_avg:GAUGE:0:U, latency_high:GAUGE:0:U, latency_low:GAUGE:0:U, cma_datapoints:COUNTER:0:U
+radius_pkt_ex_access_accept		linked:GAUGE:0:U, latency_cma:GAUGE:0:U, latency_avg:GAUGE:0:U, latency_high:GAUGE:0:U, latency_low:GAUGE:0:U, cma_datapoints:COUNTER:0:U
+radius_pkt_ex_access_reject		linked:GAUGE:0:U, latency_cma:GAUGE:0:U, latency_avg:GAUGE:0:U, latency_high:GAUGE:0:U, latency_low:GAUGE:0:U, cma_datapoints:COUNTER:0:U
+radius_pkt_ex_access_challenge		linked:GAUGE:0:U, latency_cma:GAUGE:0:U, latency_avg:GAUGE:0:U, latency_high:GAUGE:0:U, latency_low:GAUGE:0:U, cma_datapoints:COUNTER:0:U
+radius_pkt_ex_accounting_request	linked:GAUGE:0:U, latency_cma:GAUGE:0:U, latency_avg:GAUGE:0:U, latency_high:GAUGE:0:U, latency_low:GAUGE:0:U, cma_datapoints:COUNTER:0:U
+radius_pkt_ex_accounting_response	linked:GAUGE:0:U, latency_cma:GAUGE:0:U, latency_avg:GAUGE:0:U, latency_high:GAUGE:0:U, latency_low:GAUGE:0:U, cma_datapoints:COUNTER:0:U
+radius_pkt_ex_status_server		linked:GAUGE:0:U, latency_cma:GAUGE:0:U, latency_avg:GAUGE:0:U, latency_high:GAUGE:0:U, latency_low:GAUGE:0:U, cma_datapoints:COUNTER:0:U
+radius_pkt_ex_status_client		linked:GAUGE:0:U, latency_cma:GAUGE:0:U, latency_avg:GAUGE:0:U, latency_high:GAUGE:0:U, latency_low:GAUGE:0:U, cma_datapoints:COUNTER:0:U
+radius_pkt_ex_coa_request		linked:GAUGE:0:U, latency_cma:GAUGE:0:U, latency_avg:GAUGE:0:U, latency_high:GAUGE:0:U, latency_low:GAUGE:0:U, cma_datapoints:COUNTER:0:U
+radius_pkt_ex_coa_ack			linked:GAUGE:0:U, latency_cma:GAUGE:0:U, latency_avg:GAUGE:0:U, latency_high:GAUGE:0:U, latency_low:GAUGE:0:U, cma_datapoints:COUNTER:0:U
+radius_pkt_ex_coa_nak			linked:GAUGE:0:U, latency_cma:GAUGE:0:U, latency_avg:GAUGE:0:U, latency_high:GAUGE:0:U, latency_low:GAUGE:0:U, cma_datapoints:COUNTER:0:U
+radius_pkt_ex_disconnect_request	linked:GAUGE:0:U, latency_cma:GAUGE:0:U, latency_avg:GAUGE:0:U, latency_high:GAUGE:0:U, latency_low:GAUGE:0:U, cma_datapoints:COUNTER:0:U
+radius_pkt_ex_disconnect_ack		linked:GAUGE:0:U, latency_cma:GAUGE:0:U, latency_avg:GAUGE:0:U, latency_high:GAUGE:0:U, latency_low:GAUGE:0:U, cma_datapoints:COUNTER:0:U
+radius_pkt_ex_disconnect_nak		linked:GAUGE:0:U, latency_cma:GAUGE:0:U, latency_avg:GAUGE:0:U, latency_high:GAUGE:0:U, latency_low:GAUGE:0:U, cma_datapoints:COUNTER:0:U
+
+radius_pkt	access_request:GAUGE:0:U, access_accept:GAUGE:0:U, access_reject:GAUGE:0:U, access_challenge:GAUGE:0:U, \
+		accounting_request:GAUGE:0:U, accounting_response:GAUGE:0:U, \
+		status_server:GAUGE:0:U, status_client:GAUGE:0:U, \
+		coa_request:GAUGE:0:U, coa_ack:GAUGE:0:U, coa_nak:GAUGE:0:U, \
+		disconnect_request:GAUGE:0:U, disconnect_ack:GAUGE:0:U, disconnect_nak:GAUGE:0:U
