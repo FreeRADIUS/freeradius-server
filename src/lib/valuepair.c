@@ -193,13 +193,36 @@ int pair2unknown(VALUE_PAIR *vp)
 
 	return 0;
 }
+/** Find the pair with the matching DAs
+ *
+ */
+VALUE_PAIR *pairfind_da(VALUE_PAIR *vp, DICT_ATTR const *dattr, int8_t tag)
+{
+	vp_cursor_t 	cursor;
+	VALUE_PAIR	*i;
+	
+	if(!fr_assert(dattr)) {
+		 return NULL;
+	}
+
+	for (i = paircursor(&cursor, &vp);
+	     i;
+	     i = pairnext(&cursor)) {
+		VERIFY_VP(i);
+		if ((i->da == dattr) && ((tag == TAG_ANY) || (i->da->flags.has_tag && (i->tag == tag)))) {
+			return i;
+		}
+	}
+
+	return NULL;
+}
+
 
 /** Find the pair with the matching attribute
  *
  * @todo should take DAs and do a pointer comparison.
  */
-VALUE_PAIR *pairfind(VALUE_PAIR *vp, unsigned int attr, unsigned int vendor,
-		     int8_t tag)
+VALUE_PAIR *pairfind(VALUE_PAIR *vp, unsigned int attr, unsigned int vendor, int8_t tag)
 {
 	vp_cursor_t 	cursor;
 	VALUE_PAIR	*i;
@@ -254,6 +277,29 @@ VALUE_PAIR *pairfirst(vp_cursor_t *cursor)
 	}
 
 	return cursor->current;
+}
+
+/** Iterate over attributes of a given DA in the pairlist
+ *
+ *
+ */
+VALUE_PAIR *pairfindnext_da(vp_cursor_t *cursor, DICT_ATTR const *dattr, int8_t tag)
+{
+	VALUE_PAIR *i;
+
+	i = pairfind_da(!cursor->found ? cursor->current : cursor->found->next, dattr, tag);
+	if (!i) {
+		cursor->next = NULL;
+		cursor->current = NULL;
+
+		return NULL;
+	}
+
+	cursor->next = i->next;
+	cursor->current = i;
+	cursor->found = i;
+
+	return i;
 }
 
 /** Iterate over attributes of a given type in the pairlist
