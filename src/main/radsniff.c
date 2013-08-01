@@ -371,7 +371,7 @@ static void rs_process_packet(rs_event_t *event, struct pcap_pkthdr const *heade
 	memcpy(&current->data, &payload, sizeof(current->data));
 	current->data_len = header->len - (payload - data);
 
-	if (!rad_packet_ok(current, 0)) {
+	if (!rad_packet_ok(current, 0, &reason)) {
 		DEBUG("(%i) %s", count++, fr_strerror());
 
 		DEBUG("\tInterface : %s", event->in->name);
