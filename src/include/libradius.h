@@ -333,6 +333,23 @@ typedef struct radius_packet {
 #endif
 } RADIUS_PACKET;
 
+typedef enum {
+	DECODE_FAIL_NONE = 0,
+	DECODE_FAIL_MIN_LENGTH_PACKET,
+	DECODE_FAIL_MIN_LENGTH_FIELD,
+	DECODE_FAIL_MIN_LENGTH_MISMATCH,
+	DECODE_FAIL_HEADER_OVERFLOW,
+	DECODE_FAIL_UNKNOWN_PACKET_CODE,
+	DECODE_FAIL_INVALID_ATTRIBUTE,
+	DECODE_FAIL_ATTRIBUTE_TOO_SHORT,
+	DECODE_FAIL_ATTRIBUTE_OVERFLOW,
+	DECODE_FAIL_MA_INVALID_LENGTH,
+	DECODE_FAIL_ATTRIBUTE_UNDERFLOW,
+	DECODE_FAIL_TOO_MANY_ATTRIBUTES,
+	DECODE_FAIL_MA_MISSING,
+	DECODE_FAIL_MAX
+} decode_fail_t;
+
 /*
  *	Printing functions.
  */
@@ -403,7 +420,7 @@ void fr_hmac_sha1(uint8_t const *text, size_t text_len, uint8_t const *key, size
 
 /* radius.c */
 int		rad_send(RADIUS_PACKET *, RADIUS_PACKET const *, char const *secret);
-int		rad_packet_ok(RADIUS_PACKET *packet, int flags);
+bool		rad_packet_ok(RADIUS_PACKET *packet, int flags, decode_fail_t *reason);
 RADIUS_PACKET	*rad_recv(int fd, int flags);
 ssize_t rad_recv_header(int sockfd, fr_ipaddr_t *src_ipaddr, int *src_port,
 			int *code);

@@ -2265,7 +2265,7 @@ int rad_tlv_ok(uint8_t const *data, size_t length,
  *	packet is not 'const * const' because we may update data_len,
  *	if there's more data in the UDP packet than in the RADIUS packet.
  */
-int rad_packet_ok(RADIUS_PACKET *packet, int flags)
+bool rad_packet_ok(RADIUS_PACKET *packet, int flags, decode_fail_t *reason)
 {
 	uint8_t			*attr;
 	size_t			totallen;
@@ -2275,6 +2275,7 @@ int rad_packet_ok(RADIUS_PACKET *packet, int flags)
 	int			require_ma = 0;
 	int			seen_ma = 0;
 	int			num_attributes;
+	decode_fail_t		failure = DECODE_FAIL_NONE;
 
 	/*
 	 *	Check for packets smaller than the packet header.
@@ -2289,7 +2290,8 @@ int rad_packet_ok(RADIUS_PACKET *packet, int flags)
 				     &packet->src_ipaddr.ipaddr,
 				     host_ipaddr, sizeof(host_ipaddr)),
 				     packet->data_len, AUTH_HDR_LEN);
-		return 0;
+		failure = DECODE_FAIL_MIN_LENGTH_PACKET;
+		goto finish;
 	}
 
 
@@ -2312,7 +2314,8 @@ int rad_packet_ok(RADIUS_PACKET *packet, int flags)
 				     &packet->src_ipaddr.ipaddr,
 				     host_ipaddr, sizeof(host_ipaddr)),
 			   hdr->code);
-		return 0;
+		failure = DECODE_FAIL_UNKNOWN_PACKET_CODE;
+		goto finish;
 	}
 
 	/*
@@ -2343,7 +2346,8 @@ int rad_packet_ok(RADIUS_PACKET *packet, int flags)
 				     &packet->src_ipaddr.ipaddr,
 				     host_ipaddr, sizeof(host_ipaddr)),
 				     totallen, AUTH_HDR_LEN);
-		return 0;
+		failure = DECODE_FAIL_MIN_LENGTH_FIELD;
+		goto finish;
 	}
 
 	/*
@@ -2375,7 +2379,8 @@ int rad_packet_ok(RADIUS_PACKET *packet, int flags)
 				     &packet->src_ipaddr.ipaddr,
 				     host_ipaddr, sizeof(host_ipaddr)),
 				     packet->data_len, totallen);
-		return 0;
+		failure = DECODE_FAIL_MIN_LENGTH_MISMATCH;
+		goto finish;
 	}
 
 	/*
@@ -2419,7 +2424,8 @@ int rad_packet_ok(RADIUS_PACKET *packet, int flags)
 				   inet_ntop(packet->src_ipaddr.af,
 					     &packet->src_ipaddr.ipaddr,
 					     host_ipaddr, sizeof(host_ipaddr)));
-			return 0;
+			failure = DECODE_FAIL_HEADER_OVERFLOW;
+			goto finish;
 		}
 
 		/*
@@ -2430,7 +2436,8 @@ int rad_packet_ok(RADIUS_PACKET *packet, int flags)
 				   inet_ntop(packet->src_ipaddr.af,
 					     &packet->src_ipaddr.ipaddr,
 					     host_ipaddr, sizeof(host_ipaddr)));
-			return 0;
+			failure = DECODE_FAIL_INVALID_ATTRIBUTE;
+			goto finish;
 		}
 
 		/*
@@ -2443,7 +2450,8 @@ int rad_packet_ok(RADIUS_PACKET *packet, int flags)
 					     &packet->src_ipaddr.ipaddr,
 					     host_ipaddr, sizeof(host_ipaddr)),
 				   attr[0]);
-			return 0;
+			failure = DECODE_FAIL_ATTRIBUTE_TOO_SHORT;
+			goto finish;
 		}
 
 		/*
@@ -2456,7 +2464,8 @@ int rad_packet_ok(RADIUS_PACKET *packet, int flags)
 					     &packet->src_ipaddr.ipaddr,
 					     host_ipaddr, sizeof(host_ipaddr)),
 					   attr[0]);
-			return 0;
+			failure = DECODE_FAIL_ATTRIBUTE_OVERFLOW;
+			goto finish;
 		}
 
 		/*
@@ -2481,7 +2490,8 @@ int rad_packet_ok(RADIUS_PACKET *packet, int flags)
 						     &packet->src_ipaddr.ipaddr,
 						     host_ipaddr, sizeof(host_ipaddr)),
 					   attr[1] - 2);
-				return 0;
+				failure = DECODE_FAIL_MA_INVALID_LENGTH;
+				goto finish;
 			}
 			seen_ma = 1;
 			break;
@@ -2508,7 +2518,8 @@ int rad_packet_ok(RADIUS_PACKET *packet, int flags)
 			   inet_ntop(packet->src_ipaddr.af,
 				     &packet->src_ipaddr.ipaddr,
 				     host_ipaddr, sizeof(host_ipaddr)));
-		return 0;
+		failure = DECODE_FAIL_ATTRIBUTE_UNDERFLOW;
+		goto finish;
 	}
 
 	/*
@@ -2523,7 +2534,8 @@ int rad_packet_ok(RADIUS_PACKET *packet, int flags)
 				     &packet->src_ipaddr.ipaddr,
 				     host_ipaddr, sizeof(host_ipaddr)),
 			   num_attributes, fr_max_attributes);
-		return 0;
+		failure = DECODE_FAIL_TOO_MANY_ATTRIBUTES;
+		goto finish;
 	}
 
 	/*
@@ -2537,12 +2549,13 @@ int rad_packet_ok(RADIUS_PACKET *packet, int flags)
 	 *	Similarly, Status-Server packets MUST contain
 	 *	Message-Authenticator attributes.
 	 */
-	if (require_ma && ! seen_ma) {
+	if (require_ma && !seen_ma) {
 		fr_strerror_printf("WARNING: Insecure packet from host %s:  Packet does not contain required Message-Authenticator attribute",
 			   inet_ntop(packet->src_ipaddr.af,
 				     &packet->src_ipaddr.ipaddr,
 				     host_ipaddr, sizeof(host_ipaddr)));
-		return 0;
+		failure = DECODE_FAIL_MA_MISSING;
+		goto finish;
 	}
 
 	/*
@@ -2552,7 +2565,13 @@ int rad_packet_ok(RADIUS_PACKET *packet, int flags)
 	packet->id = hdr->id;
 	memcpy(packet->vector, hdr->vector, AUTH_VECTOR_LEN);
 
-	return 1;
+
+	finish:
+
+	if (reason) {
+		*reason = failure;
+	}
+	return (failure == DECODE_FAIL_NONE);
 }
 
 
@@ -2622,7 +2641,7 @@ RADIUS_PACKET *rad_recv(int fd, int flags)
 	/*
 	 *	See if it's a well-formed RADIUS packet.
 	 */
-	if (!rad_packet_ok(packet, flags)) {
+	if (!rad_packet_ok(packet, flags, NULL)) {
 		rad_free(&packet);
 		return NULL;
 	}
