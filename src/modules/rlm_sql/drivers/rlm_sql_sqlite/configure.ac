@@ -81,9 +81,15 @@ if test x$with_[]modname != xno; then
         FR_SMART_CHECK_LIB(sqlite3, sqlite3_open_v2)
         if test "x$ac_cv_lib_sqlite3_sqlite3_open_v2" == "xyes"
 	then
-            AC_DEFINE(HAVE_SQLITE_V2_API, [1], [Define if the SQLite library has v2 API functions])   
+            AC_DEFINE(HAVE_SQLITE_V2_API, [1], [Define if the SQLite library has v2 API functions])
         fi
     fi
+    AC_CHECK_LIB([sqlite3], [sqlite3_errstr],
+        [
+            AC_DEFINE(HAVE_SQLITE_SQLITE3_ERRSTR, 1, [Define to 1 if you have the sqlite3_errstr function.])
+        ],
+        []
+    )
 
     dnl ############################################################
     dnl # Check for header files
