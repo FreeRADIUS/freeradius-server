@@ -313,6 +313,7 @@ static void rs_process_packet(rs_event_t *event, struct pcap_pkthdr const *heade
 
 	static int count = 1;			/* Packets seen */
 	rs_stats_t *stats = event->stats;
+	decode_fail_t reason;
 
 	/*
 	 *	Define pointers for current's attributes
