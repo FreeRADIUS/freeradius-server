@@ -367,6 +367,9 @@
 /* Define to 1 if you have the <sys/wait.h> header file. */
 #undef HAVE_SYS_WAIT_H
 
+/* Define to 1 if you have the function talloc_set_memlimit. */
+#undef HAVE_TALLOC_SET_MEMLIMIT
+
 /* Define if the compiler supports __thread */
 #undef HAVE_THREAD_TLS
 

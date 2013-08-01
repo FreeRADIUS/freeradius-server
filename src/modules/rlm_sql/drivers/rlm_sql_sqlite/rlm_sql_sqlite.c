@@ -282,8 +282,13 @@ static int mod_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
 
 		status = sqlite3_open_v2(driver->filename, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL);
 		if (!db) {
-			ERROR("rlm_sql_sqlite: Failed creating opening/creating SQLite database, error "
-			       "code (%u)", status);
+#ifdef HAVE_SQLITE_SQLITE3_ERRSTR
+			ERROR("rlm_sql_sqlite: Failed creating opening/creating SQLite database: %s",
+			      sqlite3_errstr(status));
+#else
+			ERROR("rlm_sql_sqlite: Failed creating opening/creating SQLite database, got code (%i)",
+			      status);
+#endif
 
 			goto unlink;
 		}
@@ -298,7 +303,7 @@ static int mod_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
 
 		status = sqlite3_close(db);
 		if (status != SQLITE_OK) {
-			ERROR("rlm_sql_sqlite: Error closing SQLite handle, error code (%u)", status);
+			ERROR("rlm_sql_sqlite: Error closing SQLite handle: %s", sqlite3_errmsg(db));
 			goto unlink;
 		}
 
@@ -328,7 +333,7 @@ static int _sql_socket_destructor(rlm_sql_sqlite_conn_t *conn)
 	if (conn->db) {
 		status = sqlite3_close(conn->db);
 		if (status != SQLITE_OK) {
-			WDEBUG("rlm_sql_sqlite: Got SQLite error code (%u) when closing socket", status);
+			WDEBUG("rlm_sql_sqlite: Got SQLite error when closing socket: %s", sqlite3_errmsg(conn->db));
 		}
 	}
 
@@ -353,8 +358,12 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 	status = sqlite3_open(driver->filename, &(conn->db));
 #endif
 	if (!conn->db) {
-		ERROR("rlm_sql_sqlite: Failed creating opening/creating SQLite database error code (%u)",
-		       status);
+#ifdef HAVE_SQLITE_SQLITE3_ERRSTR
+		ERROR("rlm_sql_sqlite: Failed creating opening/creating SQLite: %s", sqlite3_errstr(status));
+#else
+		ERROR("rlm_sql_sqlite: Failed creating opening/creating SQLite database error code (%i)",
+		      status);
+#endif
 
 		return -1;
 	}

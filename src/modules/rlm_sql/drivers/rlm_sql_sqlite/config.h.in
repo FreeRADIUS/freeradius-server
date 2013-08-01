@@ -1,5 +1,8 @@
 /* config.h.in.  Generated from configure.ac by autoheader.  */
 
+/* Define to 1 if you have the sqlite3_errstr function. */
+#undef HAVE_SQLITE_SQLITE3_ERRSTR
+
 /* Define if the SQLite library has v2 API functions */
 #undef HAVE_SQLITE_V2_API
 
