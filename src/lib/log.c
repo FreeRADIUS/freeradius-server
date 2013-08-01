@@ -94,7 +94,7 @@ char const *fr_strerror(void)
 	char *buffer;
 
 	buffer = fr_thread_local_get(fr_strerror_buffer);
-	if (buffer[FR_STRERROR_BUFSIZE]) {
+	if (buffer && buffer[FR_STRERROR_BUFSIZE]) {
 		buffer[FR_STRERROR_BUFSIZE] = '\0';		/* Flip the 'new' byte to false */
 		return buffer;
 	}
