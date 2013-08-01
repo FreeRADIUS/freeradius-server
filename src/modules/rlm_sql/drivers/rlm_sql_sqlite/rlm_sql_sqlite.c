@@ -271,7 +271,7 @@ static int mod_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
 		}
 
 		if (rad_mkdir(buff, 0700) < 0) {
-			ERROR("rlm_sql_sqlite: Failed creating directory for SQLite database");
+			ERROR("rlm_sql_sqlite: Failed creating directory for SQLite database: %s", fr_syserror(errno));
 
 			talloc_free(buff);
 
