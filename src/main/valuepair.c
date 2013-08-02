@@ -65,11 +65,7 @@ static struct cmp *cmp;
  * @return 0 if check and vp are equal, -1 if vp value is less than check value, 1 is vp value is more than check
  *	value.
  */
-#ifdef HAVE_REGEX_H
 int radius_compare_vps(REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *vp)
-#else
-int radius_compare_vps(REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *vp)
-#endif
 {
 	int ret = -2;
 
@@ -140,12 +136,13 @@ int radius_compare_vps(REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *vp)
 
 	/*
 	 *	Attributes must be of the same type.
-	 * FIXME: deal with type mismatch properly if one side contain
-	 * ABINARY, OCTETS or STRING by converting the other side to
-	 * a string
-	 * 
+	 *
+	 *	FIXME: deal with type mismatch properly if one side contain
+	 *	ABINARY, OCTETS or STRING by converting the other side to
+	 *	a string
+	 *
 	 */
-	if(vp->da->type != check->da->type) return -1;
+	if (vp->da->type != check->da->type) return -1;
 
 	/*
 	 *	Tagged attributes are equal if and only if both the
@@ -320,9 +317,9 @@ static bool otherattr(DICT_ATTR const *attribute, DICT_ATTR const **from)
 			return c->first_only;
 		}
 	}
-	
+
 	*from = attribute;
-	return true;
+	return false;
 }
 
 /** Register a function as compare function.
