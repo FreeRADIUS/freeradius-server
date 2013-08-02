@@ -1621,8 +1621,8 @@ do_print:
 			return p;
 		}
 
-		vp = paircursor(&cursor, &vp);
-		while ((vp = pairfindnext(&cursor, da->attr, da->vendor, tag)) != NULL) {
+		paircursor(&cursor, &vp);
+		while (pairfindnext(&cursor, da->attr, da->vendor, tag) != NULL) {
 			if (count == num) {
 				break;
 			}
