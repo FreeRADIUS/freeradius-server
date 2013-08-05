@@ -148,10 +148,8 @@ int fr_event_delete(fr_event_list_t *el, fr_event_t **ev_p)
 }
 
 
-int fr_event_insert(fr_event_list_t *el,
-		      fr_event_callback_t callback,
-		      void *ctx, struct timeval *when,
-		      fr_event_t **ev_p)
+int fr_event_insert(fr_event_list_t *el, fr_event_callback_t callback, void *ctx, struct timeval *when,
+		    fr_event_t **ev_p)
 {
 	fr_event_t *ev;
 
