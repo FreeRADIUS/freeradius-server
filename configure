@@ -8563,8 +8563,77 @@ fi
 $as_echo "$have_tls" >&6; }
   if test "x$have_tls" = "xyes"; then
 
-$as_echo "#define HAVE_THREAD_TLS 1" >>confdefs.h
+$as_echo "#define TLS_STORAGE_CLASS __thread" >>confdefs.h
 
+  fi
+
+  if test "x$have_tls" = "xno"; then
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for __declspec(thread) support in compiler" >&5
+$as_echo_n "checking for __declspec(thread) support in compiler... " >&6; }
+    if test "$cross_compiling" = yes; then :
+  have_tls=no
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+          static _Thread_local int val;
+          int main(int argc, char **argv) {
+            val = 0;
+            return val;
+          }
+
+
+_ACEOF
+if ac_fn_c_try_run "$LINENO"; then :
+  have_tls=yes
+else
+  have_tls=no
+fi
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+  conftest.$ac_objext conftest.beam conftest.$ac_ext
+fi
+
+    { $as_echo "$as_me:${as_lineno-$LINENO}: result: $have_tls" >&5
+$as_echo "$have_tls" >&6; }
+    if test "x$have_tls" = "xyes"; then
+
+$as_echo "#define TLS_STORAGE_CLASS __declspec(thread)" >>confdefs.h
+
+    fi
+  fi
+  if test "x$have_tls" = "xno"; then
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for _Thread_local support in compiler" >&5
+$as_echo_n "checking for _Thread_local support in compiler... " >&6; }
+    if test "$cross_compiling" = yes; then :
+  have_tls=no
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+          static _Thread_local int val;
+          int main(int argc, char **argv) {
+            val = 0;
+            return val;
+          }
+
+
+_ACEOF
+if ac_fn_c_try_run "$LINENO"; then :
+  have_tls=yes
+else
+  have_tls=no
+fi
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+  conftest.$ac_objext conftest.beam conftest.$ac_ext
+fi
+
+    { $as_echo "$as_me:${as_lineno-$LINENO}: result: $have_tls" >&5
+$as_echo "$have_tls" >&6; }
+    if test "x$have_tls" = "xyes"; then
+
+$as_echo "#define TLS_STORAGE_CLASS _Thread_local" >>confdefs.h
+
+    fi
   fi
 
 
@@ -8607,7 +8676,8 @@ fi
 $as_echo "$ac_cv_lib_talloc_talloc_set_memlimit" >&6; }
 if test "x$ac_cv_lib_talloc_talloc_set_memlimit" = xyes; then :
 
-    $as_echo "#define HAVE_TALLOC_SET_MEMLIMIT 1 Define to 1 if you have the function talloc_set_memlimit." >>confdefs.h
+
+$as_echo "#define HAVE_TALLOC_SET_MEMLIMIT 1" >>confdefs.h
 
 
 

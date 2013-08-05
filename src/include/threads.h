@@ -28,17 +28,8 @@ typedef void (*pthread_destructor_t)(void*);
  *	First figure whether we have compiler support this is usually the case except on OSX,
  *	where we need to use pthreads.
  */
-#ifdef HAVE_THREAD_TLS
-/*
- *	GCC on most Linux systems
- */
-#  define __THREAD __thread
-
-#elif defined(HAVE_DECLSPEC_THREAD)
-/*
- *	Visual C++, Borland (microsoft)
- */
-#  define __THREAD __declspec(thread)
+#ifdef TLS_STORAGE_CLASS
+#  define __THREAD TLS_STORAGE_CLASS
 #endif
 
 /*

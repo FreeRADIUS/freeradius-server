@@ -370,9 +370,6 @@
 /* Define to 1 if you have the function talloc_set_memlimit. */
 #undef HAVE_TALLOC_SET_MEMLIMIT
 
-/* Define if the compiler supports __thread */
-#undef HAVE_THREAD_TLS
-
 /* Define to 1 if you have the <unistd.h> header file. */
 #undef HAVE_UNISTD_H
 
@@ -438,6 +435,9 @@
 
 /* SYSV-Style get*byaddr_r */
 #undef SYSVSTYLE
+
+/* Define if the compiler supports a thread local storage class */
+#undef TLS_STORAGE_CLASS
 
 /* Define to 1 if you can safely include both <sys/time.h> and <time.h>. */
 #undef TIME_WITH_SYS_TIME
