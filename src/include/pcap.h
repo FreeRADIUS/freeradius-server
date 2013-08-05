@@ -101,7 +101,17 @@ struct ip_header {
 	uint8_t		ip_ttl;		//!< Time To Live.
 	uint8_t		ip_p;		//!< Protocol.
 	uint16_t	ip_sum;		//!< Checksum.
-	struct in_addr	ip_src,ip_dst;  //!< Src and Dst address
+	struct in_addr	ip_src, ip_dst;	//!< Src and Dst address
+};
+
+struct ip_header6 {
+	uint32_t	ip_vtcfl;	//!< Version, traffic class, flow label.
+	uint16_t	ip_len;		//!< Payload length
+
+	uint8_t		ip_next;	//!< Next header (protocol)
+	uint8_t		ip_hopl;	//!< IP Hop Limit
+
+	struct in6_addr ip_src, ip_dst;	//!< Src and Dst address
 };
 
 /*
