@@ -104,8 +104,9 @@ fr_pcap_t *fr_pcap_init(TALLOC_CTX *ctx, char const *name, fr_pcap_type_t type)
 int fr_pcap_open(fr_pcap_t *pcap)
 {
 	switch (pcap->type) {
-		case PCAP_INTERFACE_OUT:
-		case PCAP_INTERFACE_IN:
+	case PCAP_INTERFACE_OUT:
+	case PCAP_INTERFACE_IN:
+		{
 			pcap->handle = pcap_open_live(pcap->name, SNAPLEN, true, PCAP_NONBLOCK_TIMEOUT,
 						      pcap->errbuf);
 			if (!pcap->handle) {
@@ -124,61 +125,61 @@ int fr_pcap_open(fr_pcap_t *pcap)
 				}
 			}
 #endif
-
+		}
 			break;
-		case PCAP_FILE_IN:
-			pcap->handle = pcap_open_offline(pcap->name, pcap->errbuf);
-			if (!pcap->handle) {
-				fr_strerror_printf("%s", pcap->errbuf);
-
-				return -1;
-			}
-			break;
-		case PCAP_FILE_OUT:
-			pcap->handle = pcap_open_dead(DLT_EN10MB, SNAPLEN);
-			pcap->dumper = pcap_dump_open(pcap->handle, pcap->name);
-			if (!pcap->dumper) {
-				fr_strerror_printf("%s", pcap->errbuf);
-
-				return -1;
-			}
-			break;
-#ifdef HAVE_PCAP_FOPEN_OFFLINE
-		case PCAP_STDIO_IN:
-			pcap->handle = pcap_fopen_offline(stdin, pcap->errbuf);
-			if (!pcap->handle) {
-				fr_strerror_printf("%s", pcap->errbuf);
-
-				return -1;
-			}
-			break;
-#else
-		case PCAP_STDIO_IN:
-			fr_strerror_printf("This version of libpcap does not support reading pcap data from streams");
+	case PCAP_FILE_IN:
+		pcap->handle = pcap_open_offline(pcap->name, pcap->errbuf);
+		if (!pcap->handle) {
+			fr_strerror_printf("%s", pcap->errbuf);
 
 			return -1;
+		}
+		break;
+	case PCAP_FILE_OUT:
+		pcap->handle = pcap_open_dead(DLT_EN10MB, SNAPLEN);
+		pcap->dumper = pcap_dump_open(pcap->handle, pcap->name);
+		if (!pcap->dumper) {
+			fr_strerror_printf("%s", pcap->errbuf);
+
+			return -1;
+		}
+		break;
+#ifdef HAVE_PCAP_FOPEN_OFFLINE
+	case PCAP_STDIO_IN:
+		pcap->handle = pcap_fopen_offline(stdin, pcap->errbuf);
+		if (!pcap->handle) {
+			fr_strerror_printf("%s", pcap->errbuf);
+
+			return -1;
+		}
+		break;
+#else
+	case PCAP_STDIO_IN:
+		fr_strerror_printf("This version of libpcap does not support reading pcap data from streams");
+
+		return -1;
 #endif
 #ifdef HAVE_PCAP_DUMP_FOPEN
-		case PCAP_STDIO_OUT:
-			pcap->handle = pcap_open_dead(DLT_EN10MB, SNAPLEN);
-			pcap->dumper = pcap_dump_fopen(pcap->handle, stdout);
-			if (!pcap->dumper) {
-				fr_strerror_printf("%s", pcap_geterr(pcap->handle));
-
-				return -1;
-			}
-			break;
-#else
-		case PCAP_STDIO_OUT:
-			fr_strerror_printf("This version of libpcap does not support writing pcap data to streams");
+	case PCAP_STDIO_OUT:
+		pcap->handle = pcap_open_dead(DLT_EN10MB, SNAPLEN);
+		pcap->dumper = pcap_dump_fopen(pcap->handle, stdout);
+		if (!pcap->dumper) {
+			fr_strerror_printf("%s", pcap_geterr(pcap->handle));
 
 			return -1;
+		}
+		break;
+#else
+	case PCAP_STDIO_OUT:
+		fr_strerror_printf("This version of libpcap does not support writing pcap data to streams");
+
+		return -1;
 #endif
 		case PCAP_INVALID:
-		default:
-			fr_assert(0);
-			fr_strerror_printf("Bad handle type (%i)", pcap->type);
-			return -1;
+	default:
+		fr_assert(0);
+		fr_strerror_printf("Bad handle type (%i)", pcap->type);
+		return -1;
 	}
 
 	return 0;
