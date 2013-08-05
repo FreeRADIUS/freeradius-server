@@ -42,7 +42,7 @@ fr_thread_local_setup(char *, fr_syserror_buffer)	/* macro */
  *	Explicitly cleanup the memory allocated to the error buffer,
  *	just in case valgrind complains about it.
  */
-static void fr_logging_free(void *arg)
+static void _fr_logging_free(void *arg)
 {
 	free(arg);
 }
@@ -56,7 +56,7 @@ void fr_strerror_printf(char const *fmt, ...)
 
 	char *buffer;
 
-	buffer = fr_thread_local_init(fr_strerror_buffer, fr_logging_free);
+	buffer = fr_thread_local_init(fr_strerror_buffer, _fr_logging_free);
 	if (!buffer) {
 		int ret;
 
@@ -111,7 +111,7 @@ char const *fr_syserror(int num)
 {
 	char *buffer;
 
-	buffer = fr_thread_local_init(fr_syserror_buffer, fr_logging_free);
+	buffer = fr_thread_local_init(fr_syserror_buffer, _fr_logging_free);
 	if (!buffer) {
 		int ret;
 
