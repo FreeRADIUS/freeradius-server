@@ -574,6 +574,7 @@ void		fr_printf_log(char const *, ...)
 /*
  *	Several handy miscellaneous functions.
  */
+char const	*fr_inet_ntop(int af, void const *src);
 char const 	*ip_ntoa(char *, uint32_t);
 char		*ifid_ntoa(char *buffer, size_t size, uint8_t const *ifid);
 uint8_t		*ifid_aton(char const *ifid_str, uint8_t *ifid);

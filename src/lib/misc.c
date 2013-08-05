@@ -31,6 +31,63 @@ RCSID("$Id$")
 int		fr_dns_lookups = 0;
 int		fr_debug_flag = 0;
 
+fr_thread_local_setup(char *, fr_inet_ntop_buffer);	/* macro */
+
+/*
+ *	Explicitly cleanup the memory allocated to the error inet_ntop
+ *	buffer.
+ */
+static void _fr_inet_ntop_free(void *arg)
+{
+	free(arg);
+}
+
+/** Wrapper around inet_ntop, prints IPv4/IPv6 addresses
+ *
+ * inet_ntop requires the caller pass in a buffer for the address.
+ * This would be annoying and cumbersome, seeing as quite often the ASCII
+ * address is only used for logging output.
+ *
+ * So as with lib/log.c use TLS to allocate thread specific buffers, and
+ * write the IP address there instead.
+ *
+ * @param af address family, either AF_INET or AF_INET6.
+ * @param src pointer to network address structure.
+ * @return NULL on error, else pointer to ASCII buffer containing text version of address.
+ */
+char const *fr_inet_ntop(int af, void const *src)
+{
+	char *buffer;
+
+	if (!src) {
+		return NULL;
+	}
+
+	buffer = fr_thread_local_init(fr_inet_ntop_buffer, _fr_inet_ntop_free);
+	if (!buffer) {
+		int ret;
+
+		/*
+		 *	malloc is thread safe, talloc is not
+		 */
+		buffer = malloc(sizeof(char) * INET6_ADDRSTRLEN);
+		if (!buffer) {
+			fr_perror("Failed allocating memory for inet_ntop buffer");
+			return NULL;
+		}
+
+		ret = fr_thread_local_set(fr_inet_ntop_buffer, buffer);
+		if (ret != 0) {
+			fr_perror("Failed setting up TLS for inet_ntop buffer: %s", fr_syserror(ret));
+			free(buffer);
+			return NULL;
+		}
+	}
+	buffer[0] = '\0';
+
+	return inet_ntop(af, src, buffer, INET6_ADDRSTRLEN);
+}
+
 /*
  *	Return an IP address in standard dot notation
  *
