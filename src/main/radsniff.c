@@ -1026,10 +1026,6 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	if (filter_tree) {
-		rbtree_free(filter_tree);
-	}
-
 	/*
 	 *	Setup and enter the main event loop. Who needs libev when you can roll your own...
 	 */
@@ -1090,6 +1086,10 @@ int main(int argc, char *argv[])
 	INFO("Done sniffing");
 
 	finish:
+
+	if (filter_tree) {
+		rbtree_free(filter_tree);
+	}
 
 	INFO("Exiting...");
 	/*
