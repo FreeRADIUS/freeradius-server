@@ -100,6 +100,11 @@ ldap {
 		# Search scope, may be 'base', 'one', sub' or 'children'
 #		scope = 'sub'
 
+		#  If this is undefined, anyone is authorised.
+		#  If it is defined, the contents of this attribute
+		#  determine whether or not the user is authorised
+#		access_attribute = "dialupAccess"
+
 		#  Control whether or not "access_attribute" is used to
 		#  determine authorization.  If set to "yes", then
 		#  "access_attribute" existing means "allow access".
@@ -108,7 +113,7 @@ ldap {
 		#   If set to "no", then
 		#  "access_attribute" existing means "deny access".
 		#  "access_attribute" not existing means "allow access"
-#		positive_access = yes
+#		access_positive = yes
 
 		#  The attribute in user objects which contain the names
 		#  or DNs of groups a user is a member of.
@@ -118,10 +123,6 @@ ldap {
 		#  referenced to actually exist.
 		membership_attribute = "memberOf"
 
-		#  If this is undefined, anyone is authorised.
-		#  If it is defined, the contents of this attribute
-		#  determine whether or not the user is authorised
-#		access_attribute = "dialupAccess"
 	}
 
 	#
