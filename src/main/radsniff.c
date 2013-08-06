@@ -18,7 +18,7 @@
  * @file radsniff.c
  * @brief Capture, filter, and generate statistics for RADIUS traffic
  *
- * @copyright 2013 Arran Cudbard-Bell <arran.cudbardb@freeradius.org>
+ * @copyright 2013 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  * @copyright 2006 The FreeRADIUS server project
  * @copyright 2006 Nicolas Baradakis <nicolas.baradakis@cegetel.net>
  */
