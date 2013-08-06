@@ -37,6 +37,8 @@ RCSIDH(radsniff_h, "$Id$")
 #  include <collectd/client.h>
 #endif
 
+#define RS_RETRANSMIT_MAX	5		//!< Maximum number of times we expect to see a packet retransmitted
+
 /*
  *	Logging macros
  */
@@ -77,35 +79,21 @@ typedef struct rs_latency {
 	uint64_t		latency_cma_count;	//!< Number of CMA datapoints processed.
 
 	struct {
-		uint64_t		linked;			//!< Number of request/response pairs.
+		uint64_t		linked;			//!< Number of request/response pairs
+		uint64_t		unlinked;		//!< Response with no request.
+		uint64_t		reused;			//!< ID re-used too quickly.
+		uint64_t		rt[RS_RETRANSMIT_MAX + 1];	//!< Number of times we saw the same
+									//!< request packet.
+		uint64_t		lost;			//!< Total packets definitely lost in this interval.
+
 		long double		latency_total;		//!< Total latency between requests/responses in the
 								//!< interval.
 		double			latency_average;	//!< Average latency (this iteration).
 
 		double			latency_high;		//!< Latency high water mark.
 		double			latency_low;		//!< Latency low water mark.
-
-		uint64_t		lost_total;		//!< Total packets lost in this interval
-		double			lost_percent;		//!< Percentage of packets lost
-		uint64_t		retransmitted;		//!< Number of times we saw the same packet multiple
-								//!< times.
 	} interval;
 } rs_latency_t;
-
-/** Stats for a single interval
- *
- * And interval is defined as the time between a call to the stats output function.
- */
-typedef struct rs_loss {
-
-
-	double			latency_cma;		//!< Cumulative moving average.
-	uint64_t		latency_cma_count;	//!< Number of CMA datapoints processed.
-
-	struct {
-
-	} interval;
-} rs_loss_t;
 
 
 /** One set of statistics
