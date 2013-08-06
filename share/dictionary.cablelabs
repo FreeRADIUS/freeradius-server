@@ -12,7 +12,7 @@ VENDOR		CableLabs			4491
 
 BEGIN-VENDOR	CableLabs
 
-#ATTRIBUTE	CableLabs-Reserved			0	octets
+ATTRIBUTE	CableLabs-Reserved			0	octets
 ATTRIBUTE	CableLabs-Event-Message			1	octets
 ATTRIBUTE	CableLabs-MTA-Endpoint-Name		3	string
 ATTRIBUTE	CableLabs-Calling-Party-Number		4	string
