@@ -38,8 +38,6 @@ RCSID("$Id$")
 #  include <collectd/client.h>
 #endif
 
-#define PCAP_DROP_CHECK_INTERVAL 5
-
 static char const *radius_secret = "testing123";
 static VALUE_PAIR *filter_vps = NULL;
 
@@ -100,6 +98,41 @@ static void rs_stats_process_latency(rs_latency_t *stats, PW_CODE code, uint64_t
 	}
 }
 
+/** Query libpcap to see if it dropped any packets
+ *
+ * We need to check to see if libpcap dropped any packets and if it did, we need to stop stats output for long
+ * enough for inaccurate statistics to be cleared out.
+ *
+ * @param in pcap handle to check.
+ * @param interval time between checks (used for debug output)
+ * @return 0, no drops, -1 we couldn't check, -2 dropped because of buffer exhaustion, -3 dropped because of NIC.
+ */
+static int rs_check_pcap_drop(fr_pcap_t *in, int interval) {
+	int ret = 0;
+	struct pcap_stat pstats;
+
+	if (pcap_stats(in->handle, &pstats) != 0) {
+		ERROR("%s failed retrieving pcap stats: %s", in->name, pcap_geterr(in->handle));
+		return -1;
+	}
+
+	INFO("\t%s%*s: %.3lf/s", in->name, (int) (10 - strlen(in->name)), "",
+	     ((double) (pstats.ps_recv - in->pstats.ps_recv)) / interval);
+
+	if (pstats.ps_drop - in->pstats.ps_drop > 0) {
+		ERROR("%s dropped %i packets: Buffer exhaustion", in->name, pstats.ps_drop - in->pstats.ps_drop);
+		ret = -2;
+	}
+
+	if (pstats.ps_ifdrop - in->pstats.ps_ifdrop > 0) {
+		ERROR("%s dropped %i packets: Interface", in->name, pstats.ps_ifdrop - in->pstats.ps_ifdrop);
+		ret = -3;
+	}
+
+	in->pstats = pstats;
+
+	return ret;
+}
 /** Process stats for a single interval
  *
  */
@@ -107,6 +140,7 @@ static void rs_stats_process(void *ctx)
 {
 	size_t i;
 	size_t rs_codes_len = (sizeof(rs_useful_codes) / sizeof(*rs_useful_codes));
+	fr_pcap_t		*in_p;
 	rs_update_t		*this = ctx;
 	rs_stats_t		*stats = this->stats;
 	rs_t			*conf = this->conf;
@@ -115,6 +149,30 @@ static void rs_stats_process(void *ctx)
 	gettimeofday(&now, NULL);
 
 	stats->intervals++;
+
+
+	/*
+	 *	Verify that none of the pcap handles have dropped packets.
+	 */
+	INFO("Interface capture rate:");
+	for (in_p = this->in;
+	     in_p;
+	     in_p = in_p->next) {
+		if (rs_check_pcap_drop(in_p, conf->stats.interval) < 0) {
+			ERROR("Muting stats for the next %i seconds", conf->stats.timeout);
+
+			stats->quiet = now;
+			stats->quiet.tv_sec += conf->stats.timeout;
+
+			goto clear;
+		}
+	}
+
+	if ((stats->quiet.tv_sec + (stats->quiet.tv_usec / 1000000.0)) -
+	    (now.tv_sec + (now.tv_usec / 1000000.0)) > 0) {
+		INFO("Stats still muted because of previous error");
+		goto clear;
+	}
 
 	/*
 	 *	Latency stats need a bit more work to calculate the CMA.
@@ -136,6 +194,7 @@ static void rs_stats_process(void *ctx)
 	}
 #endif
 
+	clear:
 	/*
 	 *	Rinse and repeat...
 	 */
@@ -279,35 +338,6 @@ static void rs_tv_sub(struct timeval const *end, struct timeval const *start, st
 	}
 }
 
-static int rs_check_pcap_drop(rs_event_t *event, struct timeval const *now) {
-	struct timeval diff;
-	struct pcap_stat pstats;
-
-	rs_tv_sub(now, &event->pstats_time, &diff);
-
-	if (diff.tv_sec >= PCAP_DROP_CHECK_INTERVAL)  {
-		if (pcap_stats(event->in->handle, &pstats) != 0) {
-			ERROR("Failed retrieving pcap stats: %s", pcap_geterr(event->in->handle));
-		}
-
-		INFO("%s capturing %i packet(s)/s", event->in->name,
-		     (pstats.ps_recv - event->pstats.ps_recv) / PCAP_DROP_CHECK_INTERVAL);
-
-		if (pstats.ps_drop - event->pstats.ps_drop) {
-			ERROR("Dropped %i packets: Buffer exhaustion", pstats.ps_drop - event->pstats.ps_drop);
-		}
-
-		if (pstats.ps_ifdrop - event->pstats.ps_ifdrop) {
-			ERROR("Dropped %i packets: Buffer interface", pstats.ps_ifdrop - event->pstats.ps_ifdrop);
-		}
-
-		event->pstats = pstats;
-		event->pstats_time = *now;
-	}
-
-	return 0;
-}
-
 static void rs_process_packet(rs_event_t *event, struct pcap_pkthdr const *header, uint8_t const *data)
 {
 
@@ -336,7 +366,6 @@ static void rs_process_packet(rs_event_t *event, struct pcap_pkthdr const *heade
 	struct timeval elapsed;
 	struct timeval latency;
 
-	rs_check_pcap_drop(event, &header->ts);
 
 	/*
 	 *	Define our current's attributes
@@ -565,6 +594,8 @@ static void NEVER_RETURNS usage(int status)
 	fprintf(output, "  -x              Print more debugging information (defaults to -xx).\n");
 	fprintf(output, "stats options:\n");
 	fprintf(output, "  -W <interval>   Periodically write out statistics every <interval> seconds.\n");
+	fprintf(output, "  -T <timeout>    How many seconds before the request is counted as lost (defaults to %i).\n",
+		RS_DEFAULT_TIMEOUT);
 #ifdef HAVE_COLLECTDC_H
 	fprintf(output, "  -P <prefix>     Prefix counters with this value.\n");
 	fprintf(output, "  -O <server>     Write statistics to this collectd server.\n");
@@ -719,6 +750,12 @@ int main(int argc, char *argv[])
 				usage(64);
 			}
 			break;
+		case 'T':
+			conf->stats.timeout = atoi(optarg);
+			if (conf->stats.timeout <= 0) {
+				ERROR("Timeout value must be > 0");
+				usage(64);
+			}
 
 #ifdef HAVE_COLLECTDC_H
 		case 'P':
@@ -776,6 +813,10 @@ int main(int argc, char *argv[])
 
 	if (conf->stats.interval && !conf->stats.out) {
 		conf->stats.out = RS_STATS_OUT_STDIO;
+	}
+
+	if (conf->stats.timeout == 0) {
+		conf->stats.timeout = RS_DEFAULT_TIMEOUT;
 	}
 
 	/*
@@ -1037,6 +1078,7 @@ int main(int argc, char *argv[])
 			update.list = events;
 			update.conf = conf;
 			update.stats = &stats;
+			update.in    = in;
 
 			gettimeofday(&now, NULL);
 			now.tv_sec += conf->stats.interval;

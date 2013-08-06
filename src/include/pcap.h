@@ -161,6 +161,8 @@ struct fr_pcap {
 
 	int			fd;				//!< Selectable file descriptor we feed to select.
 	fr_pcap_t		*next;				//!< Next handle in collection.
+
+	struct pcap_stat	pstats;				//!< The last set of pcap stats for this handle.
 };
 
 

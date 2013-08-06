@@ -37,6 +37,7 @@ RCSIDH(radsniff_h, "$Id$")
 #  include <collectd/client.h>
 #endif
 
+#define RS_DEFAULT_TIMEOUT	6		//!< Standard timeout of 5 + 1 to cover network latency
 #define RS_RETRANSMIT_MAX	5		//!< Maximum number of times we expect to see a packet retransmitted
 
 /*
@@ -109,6 +110,9 @@ typedef struct rs_stats {
 							//!< increase latency stats for Access-Requests.
 	rs_latency_t		forward[PW_CODE_MAX];	//!< How long it took for a packet to pass through whatever
 							//!< were looking at.
+
+	struct timeval		quiet;			//!< We may need to 'mute' the stats if libpcap starts
+							//!< dropping packets, or we run out of memory.
 } rs_stats_t;
 
 /** Statistic write/print event
@@ -120,8 +124,6 @@ typedef struct rs_event {
 	fr_pcap_t		*out;			//!< Where to write output.
 
 	rs_stats_t		*stats;			//!< Where to write stats.
-	struct timeval		pstats_time;		//!< Last time we checked pcap stats.
-	struct pcap_stat	pstats;			//!< The last set of pcap stats for this handle.
 } rs_event_t;
 
 /** FD data which gets passed to callbacks
@@ -131,6 +133,7 @@ typedef struct rs_update {
 	fr_event_list_t		*list;			//!< List to insert new event into.
 	rs_t			*conf;			//!< radsniff configuration.
 
+	fr_pcap_t		*in;			//!< Linked list of PCAP handles to check for drops.
 	rs_stats_t		*stats;			//!< Stats to process.
 } rs_update_t;
 
@@ -153,6 +156,7 @@ struct rs {
 	struct {
 		int			interval;		//!< Time between stats updates in seconds.
 		stats_out_t		out;			//!< Where to write stats.
+		int			timeout;		//!< Maximum length of time we wait for a response.
 
 #ifdef HAVE_COLLECTDC_H
 		char const		*collectd;		//!< Collectd server/port/unixsocket
