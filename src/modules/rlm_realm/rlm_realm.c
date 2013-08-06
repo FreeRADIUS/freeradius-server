@@ -393,12 +393,11 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 static rlm_rcode_t mod_preacct(void *instance, REQUEST *request)
 {
 	int rcode;
-	char const *name = request->username->vp_strvalue;
 	REALM *realm;
 
-	if (!name)
-	  return RLM_MODULE_OK;
-
+	if (!request->username) {
+		return RLM_MODULE_OK;
+	}
 
 	/*
 	 *	Check if we've got to proxy the request.
