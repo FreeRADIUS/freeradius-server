@@ -8,7 +8,7 @@ VENDOR		BroadSoft			6431
 #
 BEGIN-VENDOR	BroadSoft
 
-ATTRIBUTE	BWAS-Call-Detail-Record-Version		0	string
+#ATTRIBUTE	BWAS-Call-Detail-Record-Version		0	string
 ATTRIBUTE	BWAS-Record-id				1	string
 ATTRIBUTE	BWAS-Service-provider			2	string
 ATTRIBUTE	BWAS-Type				3	string
