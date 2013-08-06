@@ -629,11 +629,6 @@ int dict_addattr(char const *name, int attr, unsigned int vendor, int type,
 	DICT_ATTR const	*da;
 	DICT_ATTR *n;
 
-	if (attr == 0) {
-		fr_strerror_printf("dict_addattr: Attribute code must not be zero");
-		return -1;
-	}
-
 	namelen = strlen(name);
 	if (namelen >= DICT_ATTR_MAX_NAME_LEN) {
 		fr_strerror_printf("dict_addattr: attribute name too long");
