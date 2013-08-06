@@ -37,6 +37,7 @@ RCSIDH(radsniff_h, "$Id$")
 #  include <collectd/client.h>
 #endif
 
+#define RS_DEFAULT_SECRET	"testing123"	//!< Default secret
 #define RS_DEFAULT_TIMEOUT	6		//!< Standard timeout of 5 + 1 to cover network latency
 #define RS_RETRANSMIT_MAX	5		//!< Maximum number of times we expect to see a packet retransmitted
 

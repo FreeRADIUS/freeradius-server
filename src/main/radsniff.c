@@ -38,7 +38,6 @@ RCSID("$Id$")
 #  include <collectd/client.h>
 #endif
 
-static char const *radius_secret = "testing123";
 static VALUE_PAIR *filter_vps = NULL;
 
 FILE *log_dst;
@@ -808,7 +807,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (!conf->radius_secret) {
-		conf->radius_secret = radius_secret;
+		conf->radius_secret = RS_DEFAULT_SECRET;
 	}
 
 	if (conf->stats.interval && !conf->stats.out) {
