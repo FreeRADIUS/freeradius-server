@@ -2259,11 +2259,15 @@ int rad_tlv_ok(uint8_t const *data, size_t length,
 }
 
 
-/**
- * @brief See if the data pointed to by PTR is a valid RADIUS packet.
+/** See if the data pointed to by PTR is a valid RADIUS packet.
  *
- *	packet is not 'const * const' because we may update data_len,
- *	if there's more data in the UDP packet than in the RADIUS packet.
+ * Packet is not 'const * const' because we may update data_len, if there's more data
+ * in the UDP packet than in the RADIUS packet.
+ *
+ * @param packet to check
+ * @param flags to control decoding
+ * @param reason if not NULL, will have the failure reason written to where it points.
+ * @return bool, true on success, false on failure.
  */
 bool rad_packet_ok(RADIUS_PACKET *packet, int flags, decode_fail_t *reason)
 {
