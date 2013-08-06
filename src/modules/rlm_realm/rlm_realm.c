@@ -396,7 +396,7 @@ static rlm_rcode_t mod_preacct(void *instance, REQUEST *request)
 	REALM *realm;
 
 	if (!request->username) {
-		return RLM_MODULE_OK;
+		return RLM_MODULE_NOOP;
 	}
 
 	/*
