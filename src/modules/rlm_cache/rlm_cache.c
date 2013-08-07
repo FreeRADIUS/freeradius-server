@@ -350,55 +350,54 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 
 		switch (map->src->type) {
 		case VPT_TYPE_ATTR:
-			from = NULL;
-			da = map->src->da;
-			context = request;
-			if (radius_request(&context, map->src->request) == 0) {
-				from = radius_list(context, map->src->list);
-			}
+			{
+				vp_cursor_t cursor;
 
-			/*
-			 *	Can't add the attribute if the list isn't
-			 *	valid.
-			 */
-			if (!from) continue;
-
-			found = pairfind(*from, da->attr, da->vendor, TAG_ANY);
-			if (!found) {
-				RWDEBUG("\"%s\" not found, skipping",
-				       map->src->name);
-				continue;
-			}
-
-			RDEBUG("\t%s %s %s", map->dst->name,
-			       fr_int2str(fr_tokens, map->op, "<INVALID>"),
-			       map->src->name);
-
-			switch (map->op) {
-			case T_OP_SET:
-			case T_OP_EQ:
-			case T_OP_SUB:
-				vp = map->dst->type == VPT_TYPE_LIST ?
-					paircopyvp(c, found) :
-					paircopyvpdata(c, map->dst->da, found);
-
-				if (!vp) continue;
-
-				pairadd(to_cache, vp);
-
-				if (to_req) {
-					vp = paircopyvp(request, vp);
-					radius_pairmove(request, to_req, vp);
+				from = NULL;
+				da = map->src->da;
+				context = request;
+				if (radius_request(&context, map->src->request) == 0) {
+					from = radius_list(context, map->src->list);
 				}
 
-				break;
-			case T_OP_ADD:
-				{
-					vp_cursor_t cursor;
+				/*
+				 *	Can't add the attribute if the list isn't
+				 *	valid.
+				 */
+				if (!from) continue;
 
-					for (found = paircursor(&cursor, &found);
-					     found;
-					     found = pairfindnext(&cursor, da->attr, da->vendor, TAG_ANY)) {
+				paircursor(&cursor, from);
+				found = pairfindnext(&cursor, da->attr, da->vendor, TAG_ANY);
+				if (!found) {
+					RWDEBUG("\"%s\" not found, skipping",
+					       map->src->name);
+					continue;
+				}
+
+				RDEBUG("\t%s %s %s", map->dst->name,
+				       fr_int2str(fr_tokens, map->op, "<INVALID>"),
+				       map->src->name);
+
+				switch (map->op) {
+				case T_OP_SET:
+				case T_OP_EQ:
+				case T_OP_SUB:
+					vp = map->dst->type == VPT_TYPE_LIST ?
+						paircopyvp(c, found) :
+						paircopyvpdata(c, map->dst->da, found);
+
+					if (!vp) continue;
+
+					pairadd(to_cache, vp);
+
+					if (to_req) {
+						vp = paircopyvp(request, vp);
+						radius_pairmove(request, to_req, vp);
+					}
+
+					break;
+				case T_OP_ADD:
+					do {
 						vp = map->dst->type == VPT_TYPE_LIST ?
 							paircopyvp(c, found) :
 							paircopyvpdata(c, map->dst->da, found);
@@ -412,15 +411,15 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 							radius_pairmove(request, to_req, vp);
 
 						}
-					}
+					} while ((found = pairfindnext(&cursor, da->attr, da->vendor, TAG_ANY)));
 					break;
-				}
 
-			default:
-				rad_assert(0);
-				return NULL;
+				default:
+					rad_assert(0);
+					return NULL;
+				}
+				break;
 			}
-			break;
 		case VPT_TYPE_LIST:
 			{
 				vp_cursor_t cursor;
