@@ -499,11 +499,13 @@ int		pair2unknown(VALUE_PAIR *vp);
 void		pairfree(VALUE_PAIR **);
 void		pairbasicfree(VALUE_PAIR *pair);
 VALUE_PAIR	*pairfind(VALUE_PAIR *, unsigned int attr, unsigned int vendor, int8_t tag);
+VALUE_PAIR	*pairfind_da(VALUE_PAIR *, DICT_ATTR const *dattr, int8_t tag);
 
 #define		paircursor(_x, _y)	paircursorc(_x,(VALUE_PAIR const * const *) _y)
 VALUE_PAIR	*paircursorc(vp_cursor_t *cursor, VALUE_PAIR const * const *node);
 VALUE_PAIR	*pairfirst(vp_cursor_t *cursor);
 VALUE_PAIR	*pairfindnext(vp_cursor_t *cursor, unsigned int attr, unsigned int vendor, int8_t tag);
+VALUE_PAIR	*pairfindnext_da(vp_cursor_t *cursor, DICT_ATTR const *dattr, int8_t tag);
 VALUE_PAIR	*pairnext(vp_cursor_t *cursor);
 VALUE_PAIR	*pairlast(vp_cursor_t *cursor);
 VALUE_PAIR	*paircurrent(vp_cursor_t *cursor);
