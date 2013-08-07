@@ -399,6 +399,7 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 					for (found = paircursor(&cursor, &found);
 					     found;
 					     found = pairfindnext(&cursor, da->attr, da->vendor, TAG_ANY)) {
+						if(!cursor.found) cursor.found = found;
 						vp = map->dst->type == VPT_TYPE_LIST ?
 							paircopyvp(c, found) :
 							paircopyvpdata(c, map->dst->da, found);
