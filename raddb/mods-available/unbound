@@ -1,0 +1,4 @@
+unbound dns {
+	# filename = "${raddbdir}/mods-config/unbound/default.conf"
+	# xlat_timeout = 3000
+}
