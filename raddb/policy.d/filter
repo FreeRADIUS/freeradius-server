@@ -45,7 +45,7 @@ remove_reply_message_if_eap {
 #	realms.
 #
 deny_realms {
-	if (User-Name =~ /@|\\/) {
+	if (User-Name && (User-Name =~ /@|\\/)) {
 		reject
 	}
 }
@@ -62,6 +62,11 @@ filter_username {
 	#  reject mixed case
 	#  e.g. "UseRNaMe"
 	#
+
+	if (!User-Name) {
+		noop
+	}
+
 	if (User-Name != "%{tolower:%{User-Name}}") {
 		reject
 	}
