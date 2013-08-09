@@ -419,7 +419,10 @@ static int insert_into_proxy_hash(REQUEST *request, int retransmit)
 	request->proxy_listener = proxy_listeners[proxy];
 
 	if (!fr_packet_list_insert(proxy_list, &request->proxy)) {
+		fr_packet_list_yank(proxy_list, request->proxy);
 		fr_packet_list_id_free(proxy_list, request->proxy);
+		request->proxy_listener = NULL;
+		request->in_proxy_hash = FALSE;
 		PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
 		RDEBUG2("ERROR: Failed to insert entry into proxy list.");
 		return 0;
