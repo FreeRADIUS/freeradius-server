@@ -1358,20 +1358,10 @@ static rlm_rcode_t mod_authenticate(void * instance, REQUEST *request)
 	 */
 	lm_password = pairfind(request->config_items, PW_LM_PASSWORD, 0, TAG_ANY);
 	if (lm_password) {
-		p = talloc_array(lm_password, uint8_t, 16);
-
-		/*
-		 *	Allow raw octets.
-		 */
-		if ((lm_password->length == 16) ||
-		    ((lm_password->length == 32) &&
-		     (fr_hex2bin(p, lm_password->vp_strvalue, 16) == 16))) {
+		if (lm_password->length == 16) {
 			RDEBUG2("Found LM-Password");
-			lm_password->length = 16;
-			lm_password->vp_octets = p;
-
 		} else {
-			RERROR("Invalid LM-Password");
+			RERROR("LM-Password has not been normalized by the \"pap\" module.  Authentication will fail.");
 			lm_password = NULL;
 		}
 
@@ -1395,17 +1385,10 @@ static rlm_rcode_t mod_authenticate(void * instance, REQUEST *request)
 	 */
 	nt_password = pairfind(request->config_items, PW_NT_PASSWORD, 0, TAG_ANY);
 	if (nt_password) {
-		p = talloc_array(nt_password, uint8_t, 16);
-
-		if ((nt_password->length == 16) ||
-		    ((nt_password->length == 32) &&
-		     (fr_hex2bin(p, nt_password->vp_strvalue, 16) == 16))) {
+		if (nt_password->length == 16) {
 			RDEBUG2("Found NT-Password");
-			nt_password->length = 16;
-			nt_password->vp_octets = p;
-
 		} else {
-			RERROR("Invalid NT-Password");
+			RERROR("NT-Password has not been normalized by the \"pap\" module.  Authentication will fail.");
 			nt_password = NULL;
 		}
 	} else if (!password) {
@@ -1419,8 +1402,7 @@ static rlm_rcode_t mod_authenticate(void * instance, REQUEST *request)
 		} else {
 			nt_password->length = 16;
 			nt_password->vp_octets = p = talloc_array(nt_password, uint8_t, nt_password->length);
-				mschap_ntpwdhash(p,
-						 password->vp_strvalue);
+			mschap_ntpwdhash(p, password->vp_strvalue);
 		}
 	}
 
