@@ -1644,6 +1644,8 @@ static int remove_all_requests(void *ctx, void *data)
 
 static void remove_from_proxy_hash_nl(REQUEST *request)
 {
+	if (!request->in_proxy_hash) return;
+
 	fr_packet_list_yank(proxy_list, request->proxy);
 	fr_packet_list_id_free(proxy_list, request->proxy);
 
@@ -1775,7 +1777,10 @@ static int insert_into_proxy_hash(REQUEST *request)
 
 	request->proxy_listener = proxy_listener;
 	if (!fr_packet_list_insert(proxy_list, &request->proxy)) {
+		fr_packet_list_yank(proxy_list, request->proxy);
 		fr_packet_list_id_free(proxy_list, request->proxy);
+		request->proxy_listener = NULL;
+		request->in_proxy_hash = false;
 		PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
 		RPROXY("Failed to insert entry into proxy list");
 		return 0;
