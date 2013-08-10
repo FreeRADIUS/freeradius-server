@@ -1076,10 +1076,23 @@ static int decode_attribute(const char **from, char **to, int freespace,
 				goto do_xlat;
 			}
 
-			if (isdigit(l[1])) break;
-
 			module_name = p; /* start of name */
 			*l = '\0';
+
+			/*
+			 *	%{Tunnel-Password:0}
+			 *
+			 *		OR
+			 *
+			 *	%{expr:0 + 1}
+			 */
+			if (isdigit(l[1]) &&
+			    (dict_attrbyname(module_name) != NULL)) {
+				module_name = NULL;
+				*l = ':';
+				break;
+			}
+
 			p = l + 1;
 			break;
 		}
