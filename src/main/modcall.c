@@ -605,11 +605,10 @@ int modcall(int component, modcallable *c, REQUEST *request)
 						break;
 					}
 				} /* loop over VPs */
-				MOD_LOG_CLOSE_BRACE();
 			}  /* if the VP exists */
 
 			myresult = RLM_MODULE_OK;
-			goto handle_result;
+			goto handle_result; /* prints close brace */
 		}
 #endif
 
