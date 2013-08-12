@@ -90,7 +90,7 @@ static void rs_tv_sub(struct timeval const *end, struct timeval const *start, st
 	}
 }
 
-static void rs_stats_print(rs_latency_t *stats, uint64_t counter, PW_CODE code)
+static void rs_stats_print(rs_latency_t *stats, PW_CODE code)
 {
 	int i;
 	bool have_rt = false;
@@ -101,20 +101,20 @@ static void rs_stats_print(rs_latency_t *stats, uint64_t counter, PW_CODE code)
 		}
 	}
 
-	if (!counter && !have_rt && !stats->interval.reused) {
+	if (!stats->interval.received && !have_rt && !stats->interval.reused) {
 		return;
 	}
 
-	if (counter || stats->interval.linked) {
+	if (stats->interval.received || stats->interval.linked) {
 		INFO("%s counters:", fr_packet_codes[code]);
-		if (counter > 0) {
-			INFO("\tTotal     : %" PRIu64, counter);
+		if (stats->interval.received > 0) {
+			INFO("\tTotal     : %.3lf/s" , stats->interval.received);
 		}
 	}
 
 	if (stats->interval.linked > 0) {
-		INFO("\tLinked    : %" PRIu64, stats->interval.linked);
-		INFO("\tUnlinked  : %" PRIu64, stats->interval.unlinked);
+		INFO("\tLinked    : %.3lf/s", stats->interval.linked);
+		INFO("\tUnlinked  : %.3lf/s", stats->interval.unlinked);
 		INFO("%s latency:", fr_packet_codes[code]);
 		INFO("\tHigh      : %lf", stats->interval.latency_high);
 		INFO("\tLow       : %lf", stats->interval.latency_low);
@@ -126,11 +126,11 @@ static void rs_stats_print(rs_latency_t *stats, uint64_t counter, PW_CODE code)
 		INFO("%s retransmits & loss:",  fr_packet_codes[code]);
 
 		if (stats->interval.lost) {
-			INFO("\tLost      : %" PRIu64, stats->interval.lost);
+			INFO("\tLost      : %.3lf/s", stats->interval.lost);
 		}
 
 		if (stats->interval.reused) {
-			INFO("\tID Reused : %" PRIu64, stats->interval.reused);
+			INFO("\tID Reused : %.3lf/s", stats->interval.reused);
 		}
 
 		for (i = 0; i <= RS_RETRANSMIT_MAX; i++) {
@@ -139,9 +139,9 @@ static void rs_stats_print(rs_latency_t *stats, uint64_t counter, PW_CODE code)
 			}
 
 			if (i != RS_RETRANSMIT_MAX) {
-				INFO("\tRT (%i)    : %" PRIu64, i, stats->interval.rt[i]);
+				INFO("\tRT (%i)    : %.3lf/s", i, stats->interval.rt[i]);
 			} else {
-				INFO("\tRT (%i+)   : %" PRIu64, i, stats->interval.rt[i]);
+				INFO("\tRT (%i+)   : %.3lf/s", i, stats->interval.rt[i]);
 			}
 		}
 	}
@@ -188,14 +188,29 @@ static int rs_check_pcap_drop(fr_pcap_t *in, int interval) {
  */
 static void rs_stats_process_latency(rs_latency_t *stats)
 {
-	if (stats->interval.linked && stats->interval.latency_total) {
-		stats->interval.latency_average = (stats->interval.latency_total / stats->interval.linked);
+	if (stats->interval.linked_total && stats->interval.latency_total) {
+		stats->interval.latency_average = (stats->interval.latency_total / stats->interval.linked_total);
 	}
 
 	if (stats->interval.latency_average > 0) {
 		stats->latency_cma_count++;
 		stats->latency_cma += ((stats->interval.latency_average - stats->latency_cma) /
 					stats->latency_cma_count);
+	}
+}
+
+static void rs_stats_process_counters(rs_t *conf, rs_latency_t *stats)
+{
+	int i;
+
+	stats->interval.received = ((long double) stats->interval.received_total) / conf->stats.interval;
+	stats->interval.linked = ((long double) stats->interval.linked_total) / conf->stats.interval;
+	stats->interval.unlinked = ((long double) stats->interval.unlinked_total) / conf->stats.interval;
+	stats->interval.reused = ((long double) stats->interval.reused_total) / conf->stats.interval;
+	stats->interval.lost = ((long double) stats->interval.lost_total) / conf->stats.interval;
+
+	for (i = 0; i < RS_RETRANSMIT_MAX; i++) {
+		stats->interval.rt[i] = ((long double) stats->interval.rt_total[i]) / conf->stats.interval;
 	}
 }
 
@@ -249,10 +264,9 @@ static void rs_stats_process(void *ctx)
 	 */
 	for (i = 0; i < rs_codes_len; i++) {
 		rs_stats_process_latency(&stats->exchange[rs_useful_codes[i]]);
+		rs_stats_process_counters(conf, &stats->exchange[rs_useful_codes[i]]);
 		if (fr_debug_flag > 0) {
-			rs_stats_print(&stats->exchange[rs_useful_codes[i]],
-				       stats->gauge.type[rs_useful_codes[i]],
-				       rs_useful_codes[i]);
+			rs_stats_print(&stats->exchange[rs_useful_codes[i]], rs_useful_codes[i]);
 		}
 	}
 
@@ -275,21 +289,11 @@ static void rs_stats_process(void *ctx)
 		       sizeof(stats->exchange[rs_useful_codes[i]].interval));
 	}
 
-	memset(&stats->gauge.type, 0, sizeof(stats->gauge.type));
-
 	{
 		now.tv_sec += conf->stats.interval;
 		now.tv_usec = 0;
 		fr_event_insert(this->list, rs_stats_process, ctx, &now, NULL);
 	}
-}
-
-/** Update counters
- *
- */
-static void rs_stats_update_count(rs_counters_t *counter, RADIUS_PACKET *current)
-{
-	counter->type[current->code]++;
 }
 
 
@@ -300,7 +304,7 @@ static void rs_stats_update_latency(rs_latency_t *stats, struct timeval *latency
 {
 	double lint;
 
-	stats->interval.linked++;
+	stats->interval.linked_total++;
 	lint = latency->tv_sec + (latency->tv_usec / 1000000.0);
 	if (lint > stats->interval.latency_high) {
 		stats->interval.latency_high = lint;
@@ -309,6 +313,7 @@ static void rs_stats_update_latency(rs_latency_t *stats, struct timeval *latency
 		stats->interval.latency_low = lint;
 	}
 	stats->interval.latency_total += lint;
+
 }
 
 static int rs_filter_packet(RADIUS_PACKET *packet)
@@ -406,7 +411,7 @@ static void rs_packet_cleanup(void *ctx)
 	 *	We now count it as lost.
 	 */
 	if (!request->linked && !request->forced_cleanup) {
-		request->stats_req->interval.lost++;
+		request->stats_req->interval.lost_total++;
 
 		DEBUG("(%i) ** LOST **", request->id);
 		DEBUG("(%i) %s Id %i %s:%s:%d -> %s:%d", request->id,
@@ -420,16 +425,16 @@ static void rs_packet_cleanup(void *ctx)
 	 *	Now the request is done, we can update the retransmission stats
 	 */
 	if (request->rt_req > RS_RETRANSMIT_MAX) {
-		request->stats_req->interval.rt[RS_RETRANSMIT_MAX]++;
+		request->stats_req->interval.rt_total[RS_RETRANSMIT_MAX]++;
 	} else {
-		request->stats_req->interval.rt[request->rt_req]++;
+		request->stats_req->interval.rt_total[request->rt_req]++;
 	}
 
 	if (request->rt_rsp) {
 		if (request->rt_rsp > RS_RETRANSMIT_MAX) {
-			request->stats_rsp->interval.rt[RS_RETRANSMIT_MAX]++;
+			request->stats_rsp->interval.rt_total[RS_RETRANSMIT_MAX]++;
 		} else {
-			request->stats_rsp->interval.rt[request->rt_rsp]++;
+			request->stats_rsp->interval.rt_total[request->rt_rsp]++;
 		}
 	}
 
@@ -452,16 +457,9 @@ static int _request_free(rs_request_t *request)
 	return 0;
 }
 
-/** Wrapper around fr_packet_cmp to strip off the outer request struct
- *
- */
-static int rs_packet_cmp(rs_request_t const *a, rs_request_t const *b)
+static void rs_packet_process(rs_event_t *event, struct pcap_pkthdr const *header, uint8_t const *data)
 {
-	return fr_packet_cmp(a->packet, b->packet);
-}
 
-static void rs_process_packet(rs_event_t *event, struct pcap_pkthdr const *header, uint8_t const *data)
-{
 	static int		count = 0;	/* Packets seen */
 
 	rs_stats_t		*stats = event->stats;
@@ -668,7 +666,7 @@ static void rs_process_packet(rs_event_t *event, struct pcap_pkthdr const *heade
 				}
 
 				DEBUG("(%i) ** UNLINKED **", count);
-				stats->exchange[current->code].interval.unlinked++;
+				stats->exchange[current->code].interval.unlinked_total++;
 			}
 
 			response = true;
@@ -726,7 +724,7 @@ static void rs_process_packet(rs_event_t *event, struct pcap_pkthdr const *heade
 			if (original && memcmp(original->packet->vector, current->vector,
 					       sizeof(original->packet->vector) != 0)) {
 				DEBUG("(%i) ** PREMATURE ID RE-USE **", count);
-				stats->exchange[current->code].interval.reused++;
+				stats->exchange[current->code].interval.reused_total++;
 				original->forced_cleanup = true;
 
 				fr_event_delete(event->list, &original->event);
@@ -781,7 +779,10 @@ static void rs_process_packet(rs_event_t *event, struct pcap_pkthdr const *heade
 
 	rs_tv_sub(&header->ts, &start_pcap, &elapsed);
 
-	rs_stats_update_count(&stats->gauge, current);
+	/*
+	 *	Increase received count
+	 */
+	stats->exchange[current->code].interval.received_total++;
 
 	/*
 	 *	It's a linked response
@@ -872,7 +873,8 @@ static void rs_got_packet(UNUSED fr_event_list_t *events, UNUSED int fd, void *c
 			ERROR("Error requesting next packet, got (%i): %s", ret, pcap_geterr(handle));
 			return;
 		}
-		rs_process_packet(event, header, data);
+
+		rs_packet_process(event, header, data);
 	}
 }
 
@@ -885,11 +887,19 @@ static void _rs_event_status(struct timeval *wake)
 
 /** Wrapper function to allow rad_free to be called as an rbtree destructor callback
  *
- * @param packet to free.
+ * @param request to free.
  */
-static void _rb_rad_free(void *packet)
+static void _rb_rad_free(void *request)
 {
-	rad_free((RADIUS_PACKET **) &packet);
+	talloc_free(request);
+}
+
+/** Wrapper around fr_packet_cmp to strip off the outer request struct
+ *
+ */
+static int rs_packet_cmp(rs_request_t const *a, rs_request_t const *b)
+{
+	return fr_packet_cmp(a->packet, b->packet);
 }
 
 static void NEVER_RETURNS usage(int status)
@@ -1281,14 +1291,6 @@ int main(int argc, char *argv[])
 							      &stats.exchange[rs_useful_codes[i]],
 							      rs_useful_codes[i]);
 			if (!tmpl) {
-				goto tmpl_error;
-			}
-			next = &(tmpl->next);
-			tmpl = rs_stats_collectd_init_counter(conf, next, conf, "exchanged",
-							      &stats.gauge.type[rs_useful_codes[i]],
-							      rs_useful_codes[i]);
-			if (!tmpl) {
-				tmpl_error:
 				ERROR("Error allocating memory for stats template");
 				goto finish;
 			}

@@ -30,7 +30,7 @@
 /** Copy a 64bit unsigned integer into a double
  *
  */
-static void _copy_uint64_to_double(UNUSED rs_t *conf, rs_stats_tmpl_t *tmpl)
+static void _copy_uint64_to_double(UNUSED rs_t *conf, rs_stats_value_tmpl_t *tmpl)
 {
 	assert(tmpl->src);
 	assert(tmpl->dst);
@@ -38,7 +38,17 @@ static void _copy_uint64_to_double(UNUSED rs_t *conf, rs_stats_tmpl_t *tmpl)
 	*((double *) tmpl->dst) = *((uint64_t *) tmpl->src);
 }
 
-static void _copy_uint64_to_uint64(UNUSED rs_t *conf, rs_stats_tmpl_t *tmpl)
+/*
+static void _copy_uint64_to_uint64(UNUSED rs_t *conf, rs_stats_value_tmpl_t *tmpl)
+{
+	assert(tmpl->src);
+	assert(tmpl->dst);
+
+	*((uint64_t *) tmpl->dst) = *((uint64_t *) tmpl->src);
+}
+*/
+
+static void _copy_double_to_double(UNUSED rs_t *conf, rs_stats_value_tmpl_t *tmpl)
 {
 	assert(tmpl->src);
 	assert(tmpl->dst);
@@ -46,13 +56,6 @@ static void _copy_uint64_to_uint64(UNUSED rs_t *conf, rs_stats_tmpl_t *tmpl)
 	*((uint64_t *) tmpl->dst) = *((uint64_t *) tmpl->src);
 }
 
-static void _copy_double_to_double(UNUSED rs_t *conf, rs_stats_tmpl_t *tmpl)
-{
-	assert(tmpl->src);
-	assert(tmpl->dst);
-
-	*((uint64_t *) tmpl->dst) = *((uint64_t *) tmpl->src);
-}
 
 /** Allocates a stats template which describes a single guage/counter
  *
@@ -61,19 +64,18 @@ static void _copy_double_to_double(UNUSED rs_t *conf, rs_stats_tmpl_t *tmpl)
  *
  * @param ctx Context to allocate collectd struct in.
  * @param conf Radsniff configuration.
- * @param value_type one of the LCC_TYPE_* macros.
  * @param plugin_instance usually the type of packet (in our case).
  * @param type string, the name of a collection of stats e.g. exchange
  * @param type_instance the name of the counter/guage within the collection e.g. latency.
  * @param stats structure to derive statistics from.
- * @param src pointer into stats (where to retrieve the value from).
- * @param cb to process the latest statistics from the stats structure.
+ * @param values Value templates used to populate lcc_value_list.
  * @return a new rs_stats_tmpl_t on success or NULL on failure.
  */
-static rs_stats_tmpl_t *rs_stats_collectd_init(TALLOC_CTX *ctx, rs_t *conf, int value_type,
+static rs_stats_tmpl_t *rs_stats_collectd_init(TALLOC_CTX *ctx, rs_t *conf,
 					       char const *plugin_instance,
 					       char const *type, char const *type_instance,
-					       void *stats, void *src, rs_stats_cb_t cb)
+					       void *stats,
+					       rs_stats_value_tmpl_t const *values)
 {
 	static char hostname[255];
 	static char fqdn[LCC_NAME_LEN];
@@ -81,14 +83,16 @@ static rs_stats_tmpl_t *rs_stats_collectd_init(TALLOC_CTX *ctx, rs_t *conf, int 
 	size_t len;
 	int i;
 	char *p;
-	static char hostname[LCC_NAME_LEN];
+
 	rs_stats_tmpl_t *tmpl;
 	lcc_value_list_t *value;
 
 	assert(conf);
 	assert(type);
 	assert(type_instance);
-	assert(cb);
+
+	for (len = 0; values[len].src; len++) {} ;
+	assert(len > 0);
 
 	/*
 	 *	Initialise hostname once so we don't call gethostname every time
@@ -119,40 +123,59 @@ static rs_stats_tmpl_t *rs_stats_collectd_init(TALLOC_CTX *ctx, rs_t *conf, int 
 	}
 
 	tmpl = talloc_zero(ctx, rs_stats_tmpl_t);
-	if (!tmpl) return NULL;
+	if (!tmpl) {
+		return NULL;
+	}
 
-	tmpl->cb = cb;
-	tmpl->src = src;
+	tmpl->value_tmpl = talloc_zero_array(tmpl, rs_stats_value_tmpl_t, len);
+	if (!tmpl->value_tmpl) {
+		goto error;
+	}
+
 	tmpl->stats = stats;
 
 	value = talloc_zero(tmpl, lcc_value_list_t);
-	if (!value) goto error;
+	if (!value) {
+		goto error;
+	}
+	tmpl->value = value;
+
 	value->interval = conf->stats.interval;
-	value->values_len = 1;
+	value->values_len = len;
 
-	value->values_types = talloc_array(value, int, 1);
-	if (!value->values_types) goto error;
-	*(value->values_types) = value_type;
+	value->values_types = talloc_zero_array(value, int, len);
+	if (!value->values_types) {
+		goto error;
+	}
 
-	value->values = talloc_zero_array(value, value_t, 1);
-	if (!value->values) goto error;
+	value->values = talloc_zero_array(value, value_t, len);
+	if (!value->values) {
+		goto error;
+	}
 
-	switch (value_type) {
-		case LCC_TYPE_COUNTER:
-			tmpl->dst = &value->values->counter;
-			break;
+	for (i = 0; i < (int) len; i++) {
+		assert(values[i].src);
+		assert(values[i].cb);
 
-		case LCC_TYPE_GAUGE:
-			tmpl->dst = &value->values->gauge;
-			break;
+		tmpl->value_tmpl[i] = values[i];
+		switch (tmpl->value_tmpl[i].type) {
+			case LCC_TYPE_COUNTER:
+				tmpl->value_tmpl[i].dst = &value->values[i].counter;
+				break;
 
-		case LCC_TYPE_DERIVE:
-			tmpl->dst = &value->values->derive;
-			break;
+			case LCC_TYPE_GAUGE:
+				tmpl->value_tmpl[i].dst = &value->values[i].gauge;
+				break;
 
-		case LCC_TYPE_ABSOLUTE:
-			tmpl->dst = &value->values->absolute;
-			break;
+			case LCC_TYPE_DERIVE:
+				tmpl->value_tmpl[i].dst = &value->values[i].derive;
+				break;
+
+			case LCC_TYPE_ABSOLUTE:
+				tmpl->value_tmpl[i].dst = &value->values[i].absolute;
+				break;
+		}
+		value->values_types[i] = tmpl->value_tmpl[i].type;
 	}
 
 	/*
@@ -193,7 +216,6 @@ static rs_stats_tmpl_t *rs_stats_collectd_init(TALLOC_CTX *ctx, rs_t *conf, int 
 		if ((*p == '-') || (*p == '/')) *p = '_';
 	}
 
-	tmpl->value = value;
 
 	return tmpl;
 
@@ -201,6 +223,7 @@ static rs_stats_tmpl_t *rs_stats_collectd_init(TALLOC_CTX *ctx, rs_t *conf, int 
 	talloc_free(tmpl);
 	return NULL;
 }
+
 
 /** Setup stats templates for latency
  *
@@ -212,12 +235,32 @@ rs_stats_tmpl_t *rs_stats_collectd_init_latency(TALLOC_CTX *ctx, rs_stats_tmpl_t
 	char *p;
 	char buffer[LCC_NAME_LEN];
 	tmpl = out;
+
+	rs_stats_value_tmpl_t rtx[RS_RETRANSMIT_MAX + 2];
 	int i;
 
-#define INIT_LATENCY(_vt, _ti, _src, _cb) do {\
+	/* not static so were thread safe */
+	rs_stats_value_tmpl_t const _packet_count[] = {
+		{ &stats->interval.received, LCC_TYPE_GAUGE, _copy_uint64_to_double, NULL },
+		{ &stats->interval.linked, LCC_TYPE_GAUGE, _copy_uint64_to_double, NULL },
+		{ &stats->interval.unlinked, LCC_TYPE_GAUGE, _copy_uint64_to_double, NULL },
+		{ &stats->interval.lost, LCC_TYPE_GAUGE, _copy_uint64_to_double, NULL },
+		{ &stats->interval.reused, LCC_TYPE_GAUGE, _copy_uint64_to_double, NULL },
+		{ NULL, 0, NULL, NULL }
+	};
+
+	rs_stats_value_tmpl_t const _latency[] = {
+		{ &stats->latency_cma, LCC_TYPE_GAUGE, _copy_double_to_double, NULL },
+		{ &stats->interval.latency_average, LCC_TYPE_GAUGE, _copy_double_to_double, NULL },
+		{ &stats->interval.latency_high, LCC_TYPE_GAUGE, _copy_double_to_double, NULL },
+		{ &stats->interval.latency_low, LCC_TYPE_GAUGE, _copy_double_to_double, NULL },
+		{ NULL, 0, NULL, NULL }
+	};
+
+#define INIT_STATS(_ti, _v) do {\
 		strlcpy(buffer, fr_packet_codes[code], sizeof(buffer)); \
 		for (p = buffer; *p; ++p) *p = tolower(*p);\
-		last = *tmpl = rs_stats_collectd_init(ctx, conf, _vt, buffer, type, _ti, stats, _src, _cb);\
+		last = *tmpl = rs_stats_collectd_init(ctx, conf, type, _ti, buffer, stats, _v);\
 		if (!*tmpl) {\
 			TALLOC_FREE(*out);\
 			return NULL;\
@@ -226,50 +269,21 @@ rs_stats_tmpl_t *rs_stats_collectd_init_latency(TALLOC_CTX *ctx, rs_stats_tmpl_t
 		ctx = *tmpl;\
 		} while (0)
 
-	INIT_LATENCY(LCC_TYPE_GAUGE, "linked", &stats->interval.linked, _copy_uint64_to_double);
-	INIT_LATENCY(LCC_TYPE_GAUGE, "unlinked", &stats->interval.unlinked, _copy_uint64_to_double);
-	INIT_LATENCY(LCC_TYPE_GAUGE, "reused", &stats->interval.reused, _copy_uint64_to_double);
 
-	for (i = 0; i <= RS_RETRANSMIT_MAX; i++) {
-		char type_instance[LCC_NAME_LEN];
-		if (i != RS_RETRANSMIT_MAX) {
-			snprintf(type_instance, sizeof(type_instance), "retry_%i", i);
-		} else {
-			snprintf(type_instance, sizeof(type_instance), "retry_%i+", i);
-		}
+	INIT_STATS("radius_count", _packet_count);
+	INIT_STATS("radius_latency", _latency);
 
-		INIT_LATENCY(LCC_TYPE_GAUGE, type_instance, &stats->interval.rt[i], _copy_uint64_to_double);
+	for (i = 0; i < (int) (sizeof(rtx) / sizeof(rs_stats_value_tmpl_t)); i++) {
+		rtx[i].src = &stats->interval.rt[i];
+		rtx[i].type = LCC_TYPE_GAUGE;
+		rtx[i].cb = _copy_uint64_to_double;
+		rtx[i].dst = NULL;
 	}
+	memset(&rtx[RS_RETRANSMIT_MAX + 1], 0, sizeof(rs_stats_value_tmpl_t));
 
-	INIT_LATENCY(LCC_TYPE_GAUGE, "lost", &stats->interval.lost, _copy_uint64_to_double);
-
-	INIT_LATENCY(LCC_TYPE_GAUGE, "latency_avg", &stats->interval.latency_average, _copy_double_to_double);
-	INIT_LATENCY(LCC_TYPE_GAUGE, "latency_high", &stats->interval.latency_high, _copy_double_to_double);
-	INIT_LATENCY(LCC_TYPE_GAUGE, "latency_low", &stats->interval.latency_low, _copy_double_to_double);
-	INIT_LATENCY(LCC_TYPE_GAUGE, "latency_cma", &stats->latency_cma, _copy_double_to_double);
-	INIT_LATENCY(LCC_TYPE_COUNTER, "cma_datapoints", &stats->latency_cma_count, _copy_double_to_double);
+	INIT_STATS("radius_rtx", rtx);
 
 	return last;
-}
-
-rs_stats_tmpl_t *rs_stats_collectd_init_counter(TALLOC_CTX *ctx, rs_stats_tmpl_t **out, rs_t *conf,
-						char const *type, uint64_t *counter, PW_CODE code)
-{
-	char *p;
-	char buffer[LCC_NAME_LEN];
-
-	strlcpy(buffer, fr_packet_codes[code], sizeof(buffer));
-	for (p = buffer; *p; ++p) {
-		*p = tolower(*p);
-	}
-
-	*out = rs_stats_collectd_init(ctx, conf, LCC_TYPE_COUNTER, buffer, type, "received", counter,
-				      counter, _copy_uint64_to_uint64);
-	if (!*out) {
-		return NULL;
-	}
-
-	return *out;
 }
 
 /** Refresh and send the stats to the collectd server
@@ -278,61 +292,30 @@ rs_stats_tmpl_t *rs_stats_collectd_init_counter(TALLOC_CTX *ctx, rs_stats_tmpl_t
 void rs_stats_collectd_do_stats(rs_t *conf, rs_stats_tmpl_t *tmpls, struct timeval *now)
 {
 	rs_stats_tmpl_t *tmpl = tmpls;
+	char identifier[6 * LCC_NAME_LEN];
+	int i;
 
 	while (tmpl) {
 		/*
 		 *	Refresh the value of whatever were sending
 		 */
-		tmpl->cb(conf, tmpl);
-		tmpl->value->time = now->tv_sec + (now->tv_usec / 1000000.0);
+		for (i = 0; i < (int) tmpl->value->values_len; i++) {
+			tmpl->value_tmpl[i].cb(conf, &tmpl->value_tmpl[i]);
+		}
 
-		if (lcc_putval(conf->stats.handle, tmpl->value) < 0) switch (tmpl->value->values_types[0]) {
-		case LCC_TYPE_COUNTER:
-		case LCC_TYPE_DERIVE:
-		case LCC_TYPE_ABSOLUTE:
-			ERROR("Failed PUTVAL %s/%s/%s-%s interval=%i %i:%" PRIu64 ": %s",
-			       tmpl->value->identifier.plugin,
-			       tmpl->value->identifier.plugin_instance,
-			       tmpl->value->identifier.type,
-			       tmpl->value->identifier.type_instance,
-			       tmpl->value->interval,
-			       tmpl->value->time,
-			       tmpl->value->values[0].counter,
-			       lcc_strerror(conf->stats.handle));
-			break;
-		case LCC_TYPE_GAUGE:
-			ERROR("Failed PUTVAL %s/%s/%s-%s interval=%i %i:%lf: %s",
-			       tmpl->value->identifier.plugin,
-			       tmpl->value->identifier.plugin_instance,
-			       tmpl->value->identifier.type,
-			       tmpl->value->identifier.type_instance,
-			       tmpl->value->interval,
-			       tmpl->value->time,
-			       tmpl->value->values[0].gauge,
-			       lcc_strerror(conf->stats.handle));
-		} else switch (tmpl->value->values_types[0]) {
-		case LCC_TYPE_COUNTER:
-		case LCC_TYPE_DERIVE:
-		case LCC_TYPE_ABSOLUTE:
-			DEBUG1("Successful PUTVAL %s/%s/%s-%s interval=%i %i:%" PRIu64,
-			       tmpl->value->identifier.plugin,
-			       tmpl->value->identifier.plugin_instance,
-			       tmpl->value->identifier.type,
-			       tmpl->value->identifier.type_instance,
-			       tmpl->value->interval,
-			       tmpl->value->time,
-			       tmpl->value->values[0].counter);
-			break;
-		case LCC_TYPE_GAUGE:
-			DEBUG1("Successful PUTVAL %s/%s/%s-%s interval=%i %i:%lf",
-			       tmpl->value->identifier.plugin,
-			       tmpl->value->identifier.plugin_instance,
-			       tmpl->value->identifier.type,
-			       tmpl->value->identifier.type_instance,
-			       tmpl->value->interval,
-			       tmpl->value->time,
-			       tmpl->value->values[0].gauge);
-			break;
+		tmpl->value->time = now->tv_sec;
+
+		lcc_identifier_to_string(conf->stats.handle, identifier, sizeof(identifier), &tmpl->value->identifier);
+
+		if (lcc_putval(conf->stats.handle, tmpl->value) < 0) {
+			char const *error;
+
+			error = lcc_strerror(conf->stats.handle);
+			ERROR("Failed PUTVAL \"%s\" interval=%i %" PRIu64 " : %s",
+			      identifier,
+			      (int) tmpl->value->interval,
+			      (uint64_t) tmpl->value->time,
+			      error ? error : "unknown error");
 		}
 
 		tmpl = tmpl->next;

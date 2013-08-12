@@ -65,6 +65,7 @@ typedef struct rs rs_t;
 
 #ifdef HAVE_COLLECTDC_H
 typedef struct rs_stats_tmpl rs_stats_tmpl_t;
+typedef struct rs_stats_value_tmpl rs_stats_value_tmpl_t;
 #endif
 
 typedef struct rs_counters {
@@ -82,12 +83,22 @@ typedef struct rs_latency {
 	uint64_t		latency_cma_count;	//!< Number of CMA datapoints processed.
 
 	struct {
-		uint64_t		linked;			//!< Number of request/response pairs
-		uint64_t		unlinked;		//!< Response with no request.
-		uint64_t		reused;			//!< ID re-used too quickly.
-		uint64_t		rt[RS_RETRANSMIT_MAX + 1];	//!< Number of times we saw the same
+		uint64_t		received_total;		//!< Total received over interval.
+		uint64_t		linked_total;		//!< Total request/response pairs over interval.
+		uint64_t		unlinked_total;		//!< Total unlinked over interval.
+		uint64_t		reused_total;		//!< Total reused over interval.
+		uint64_t		lost_total;		//!< Total packets definitely lost in this interval.
+		uint64_t		rt_total[RS_RETRANSMIT_MAX + 1];	//!< Number of RTX until complete
+										//!< over interval.
+
+
+		double			received;		//!< Number of this type of packet we've received.
+		double			linked;			//!< Number of request/response pairs
+		double			unlinked;		//!< Response with no request.
+		double			reused;			//!< ID re-used too quickly.
+		double			lost;			//!< Never got a response to a request.
+		double			rt[RS_RETRANSMIT_MAX + 1];	//!< Number of times we saw the same
 									//!< request packet.
-		uint64_t		lost;			//!< Total packets definitely lost in this interval.
 
 		long double		latency_total;		//!< Total latency between requests/responses in the
 								//!< interval.
@@ -118,13 +129,10 @@ typedef struct rs_malformed {
 typedef struct rs_stats {
 	int			intervals;		//!< Number of stats intervals.
 
-	rs_counters_t		gauge;			//!< Packet type gauges
 	rs_latency_t		exchange[PW_CODE_MAX];  //!< We end up allocating ~16K, but memory is cheap so
 							//!< what the hell.  This is required because instances of
 							//!< FreeRADIUS delay Access-Rejects, which would artificially
 							//!< increase latency stats for Access-Requests.
-	rs_latency_t		forward[PW_CODE_MAX];	//!< How long it took for a packet to pass through whatever
-							//!< were looking at.
 
 	struct timeval		quiet;			//!< We may need to 'mute' the stats if libpcap starts
 							//!< dropping packets, or we run out of memory.
@@ -218,7 +226,15 @@ extern FILE *log_dst;
 /** Callback for processing stats values.
  *
  */
-typedef void (*rs_stats_cb_t)(rs_t *conf, rs_stats_tmpl_t *tmpl);
+typedef void (*rs_stats_cb_t)(rs_t *conf, rs_stats_value_tmpl_t *tmpl);
+struct rs_stats_value_tmpl {
+	void			*src;			//!< Pointer to source field in struct. Must be set by
+							//!< stats_collectdc_init caller.
+	int			type;			//!< Stats type.
+	rs_stats_cb_t		cb;			//!< Callback used to process stats
+	void			*dst;			//!< Pointer to dst field in value struct. Must be set
+							//!< by stats_collectdc_init caller.
+};
 
 /** Stats templates
  *
@@ -226,14 +242,9 @@ typedef void (*rs_stats_cb_t)(rs_t *conf, rs_stats_tmpl_t *tmpl);
  */
 struct rs_stats_tmpl
 {
-	void			*src;			//!< Pointer to source field in struct. Must be set by
-							//!< stats_collectdc_init caller.
-	void			*dst;			//!< Pointer to dst field in value struct. Must be set
-							//!< by stats_collectdc_init caller.
-
+	rs_stats_value_tmpl_t	*value_tmpl;		//!< Value template
 	void			*stats;			//!< Struct containing the raw stats to process
 	lcc_value_list_t	*value;			//!< Collectd stats struct to populate
-	rs_stats_cb_t		cb;			//!< Callback used to process stats
 
 	rs_stats_tmpl_t		*next;			//!< Next...
 };
@@ -243,8 +254,6 @@ struct rs_stats_tmpl
  */
 rs_stats_tmpl_t *rs_stats_collectd_init_latency(TALLOC_CTX *ctx, rs_stats_tmpl_t **out, rs_t *conf,
 						char const *type, rs_latency_t *stats, PW_CODE code);
-rs_stats_tmpl_t *rs_stats_collectd_init_counter(TALLOC_CTX *ctx, rs_stats_tmpl_t **out, rs_t *conf,
-						char const *type, uint64_t *counter, PW_CODE code);
 void rs_stats_collectd_do_stats(rs_t *conf, rs_stats_tmpl_t *tmpls, struct timeval *now);
 int rs_stats_collectd_open(rs_t *conf);
 
