@@ -75,6 +75,11 @@ static rs_stats_tmpl_t *rs_stats_collectd_init(TALLOC_CTX *ctx, rs_t *conf, int 
 					       char const *type, char const *type_instance,
 					       void *stats, void *src, rs_stats_cb_t cb)
 {
+	static char hostname[255];
+	static char fqdn[LCC_NAME_LEN];
+
+	size_t len;
+	int i;
 	char *p;
 	static char hostname[LCC_NAME_LEN];
 	rs_stats_tmpl_t *tmpl;
@@ -88,12 +93,29 @@ static rs_stats_tmpl_t *rs_stats_collectd_init(TALLOC_CTX *ctx, rs_t *conf, int 
 	/*
 	 *	Initialise hostname once so we don't call gethostname every time
 	 */
-	if (*hostname == '\0') {
+	if (*fqdn == '\0') {
+		int ret;
+		struct addrinfo hints, *info = NULL;
+
 		if (gethostname(hostname, sizeof(hostname)) < 0) {
 			ERROR("Error getting hostname: %s", fr_syserror(errno));
 
 			return NULL;
 		}
+
+		memset(&hints, 0, sizeof hints);
+		hints.ai_family = AF_UNSPEC; /*either IPV4 or IPV6*/
+		hints.ai_socktype = SOCK_STREAM;
+		hints.ai_flags = AI_CANONNAME;
+
+		if ((ret = getaddrinfo(hostname, "radius", &hints, &info)) != 0) {
+			ERROR("Error getting hostname: %s", gai_strerror(ret));
+		    	return NULL;
+		}
+
+		strlcpy(fqdn, info->ai_canonname, sizeof(fqdn));
+
+		freeaddrinfo(info);
 	}
 
 	tmpl = talloc_zero(ctx, rs_stats_tmpl_t);
@@ -136,7 +158,7 @@ static rs_stats_tmpl_t *rs_stats_collectd_init(TALLOC_CTX *ctx, rs_t *conf, int 
 	/*
 	 *	These should be OK as is
 	 */
-	strlcpy(value->identifier.host, hostname, sizeof(value->identifier.host));
+	strlcpy(value->identifier.host, fqdn, sizeof(value->identifier.host));
 
 	/*
 	 *	Plugin is ASCII only and no '/'
