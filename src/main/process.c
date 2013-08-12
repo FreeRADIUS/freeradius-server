@@ -2102,6 +2102,8 @@ STATE_MACHINE_DECL(proxy_running)
 
 STATE_MACHINE_DECL(request_virtual_server)
 {
+	char const *old;
+
 	TRACE_STATE_MACHINE;
 
 	switch (action) {
@@ -2113,7 +2115,10 @@ STATE_MACHINE_DECL(request_virtual_server)
 		break;
 
 	case FR_ACTION_RUN:
+		old = request->server;
+		request->server = request->home_server->server;
 		request_running(request, action);
+		request->server = old;
 		break;
 
 	default:
