@@ -581,7 +581,7 @@ static rlm_rcode_t mod_post_proxy(void *inst, REQUEST *request)
 		 */
 		RDEBUG2("Doing post-proxy callback");
 		rcode = data->callback(handler, data->tls_session);
-		free(data);
+		talloc_free(data);
 		if (rcode == 0) {
 			RDEBUG2("Failed in post-proxy callback");
 			eap_fail(handler);
