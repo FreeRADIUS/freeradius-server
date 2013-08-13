@@ -810,7 +810,7 @@ int main(int argc, char *argv[])
 				ERROR("Timeout value must be > 0");
 				usage(64);
 			}
-
+			break;
 #ifdef HAVE_COLLECTDC_H
 		case 'P':
 			conf->stats.prefix = optarg;
