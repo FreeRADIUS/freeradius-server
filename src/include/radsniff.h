@@ -98,6 +98,19 @@ typedef struct rs_latency {
 	} interval;
 } rs_latency_t;
 
+typedef struct rs_malformed {
+	uint64_t		min_length_packet;
+	uint64_t		min_length_field;
+	uint64_t		min_length_mismatch;
+	uint64_t		header_overflow;
+	uint64_t		invalid_attribute;
+	uint64_t		attribute_too_short;
+	uint64_t		attribute_overflow;
+	uint64_t		ma_invalid_length;
+	uint64_t		attribute_underflow;
+	uint64_t		too_many_attributes;
+	uint64_t		ma_missing;
+} rs_malformed_t;
 
 /** One set of statistics
  *
