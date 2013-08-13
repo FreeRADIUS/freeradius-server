@@ -708,9 +708,11 @@ int main(int argc, char *argv[])
 				exit(1);
 			}
 			break;
+
 		case 'd':
 			radius_dir = optarg;
 			break;
+
 		case 'D':
 			{
 				pcap_if_t *all_devices = NULL;
@@ -730,16 +732,20 @@ int main(int argc, char *argv[])
 				ret = 0;
 				goto finish;
 			}
+
 		case 'F':
 			conf->from_stdin = true;
 			conf->to_stdout = true;
 			break;
+
 		case 'f':
 			conf->pcap_filter = optarg;
 			break;
+
 		case 'h':
 			usage(0);
 			break;
+
 		case 'i':
 			*in_head = fr_pcap_init(conf, optarg, PCAP_INTERFACE_IN);
 			if (!*in_head) {
@@ -757,14 +763,17 @@ int main(int argc, char *argv[])
 			in_head = &(*in_head)->next;
 			conf->from_file = true;
 			break;
+
 		case 'p':
 			port = atoi(optarg);
 			break;
+
 		case 'q':
 			if (fr_debug_flag > 0) {
 				fr_debug_flag--;
 			}
 			break;
+
 		case 'r':
 			conf->radius_filter = optarg;
 			break;
@@ -804,6 +813,7 @@ int main(int argc, char *argv[])
 				usage(64);
 			}
 			break;
+
 		case 'T':
 			conf->stats.timeout = atoi(optarg);
 			if (conf->stats.timeout <= 0) {
@@ -811,6 +821,7 @@ int main(int argc, char *argv[])
 				usage(64);
 			}
 			break;
+
 #ifdef HAVE_COLLECTDC_H
 		case 'P':
 			conf->stats.prefix = optarg;
