@@ -179,13 +179,14 @@ rs_stats_tmpl_t *rs_stats_collectd_init_latency(TALLOC_CTX *ctx, rs_stats_tmpl_t
 {
 	rs_stats_tmpl_t **tmpl, *last;
 	char *p;
-	char extended_type[512];
+	char buffer[512];
 	tmpl = out;
+	int i;
 
 #define INIT_LATENCY(_vt, _ti, _src, _cb) do {\
-		snprintf(extended_type, sizeof(extended_type), "%s_%s", type, fr_packet_codes[code]);\
-		for (p = extended_type; *p; ++p) *p = tolower(*p);\
-		last = *tmpl = rs_stats_collectd_init(ctx, conf, _vt, extended_type, _ti, stats, _src, _cb);\
+		snprintf(buffer, sizeof(buffer), "%s_%s", type, fr_packet_codes[code]);\
+		for (p = buffer; *p; ++p) *p = tolower(*p);\
+		last = *tmpl = rs_stats_collectd_init(ctx, conf, _vt, buffer, _ti, stats, _src, _cb);\
 		if (!*tmpl) {\
 			TALLOC_FREE(*out);\
 			return NULL;\
@@ -195,10 +196,20 @@ rs_stats_tmpl_t *rs_stats_collectd_init_latency(TALLOC_CTX *ctx, rs_stats_tmpl_t
 		} while (0)
 
 	INIT_LATENCY(LCC_TYPE_GAUGE, "linked", &stats->interval.linked, _copy_uint64_to_double);
-	INIT_LATENCY(LCC_TYPE_GAUGE, "latency_cma", &stats->latency_cma, _copy_double_to_double);
+	INIT_LATENCY(LCC_TYPE_GAUGE, "unlinked", &stats->interval.unlinked, _copy_uint64_to_double);
+	INIT_LATENCY(LCC_TYPE_GAUGE, "id_reused", &stats->interval.reused, _copy_uint64_to_double);
+
+	for (i = 0; i <= RS_RETRANSMIT_MAX; i++) {
+		snprintf(buffer, sizeof(buffer), "retransmitted_%i", i);
+		INIT_LATENCY(LCC_TYPE_GAUGE, buffer, &stats->interval.rt[i], _copy_uint64_to_double);
+	}
+
+	INIT_LATENCY(LCC_TYPE_GAUGE, "lost", &stats->interval.lost, _copy_uint64_to_double);
+
 	INIT_LATENCY(LCC_TYPE_GAUGE, "latency_avg", &stats->interval.latency_average, _copy_double_to_double);
 	INIT_LATENCY(LCC_TYPE_GAUGE, "latency_high", &stats->interval.latency_high, _copy_double_to_double);
 	INIT_LATENCY(LCC_TYPE_GAUGE, "latency_low", &stats->interval.latency_low, _copy_double_to_double);
+	INIT_LATENCY(LCC_TYPE_GAUGE, "latency_cma", &stats->latency_cma, _copy_double_to_double);
 	INIT_LATENCY(LCC_TYPE_COUNTER, "cma_datapoints", &stats->latency_cma_count, _copy_double_to_double);
 
 	return last;

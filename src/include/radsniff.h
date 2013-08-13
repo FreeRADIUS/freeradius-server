@@ -117,11 +117,37 @@ typedef struct rs_stats {
 							//!< dropping packets, or we run out of memory.
 } rs_stats_t;
 
+/** Wrapper for RADIUS_PACKET
+ *
+ * Allows an event to be associated with a request packet.  This is required because we need to disarm
+ * the event timer when a response is received, so we don't erroneously log the response as lost.
+ */
+typedef struct rs_request {
+	int			id;			//!< Monotonically increasing packet counter.
+	fr_event_t		*event;			//!< Event created when we received the original request.
+
+	fr_pcap_t		*in;			//!< PCAP handle the original request was received on.
+	RADIUS_PACKET		*packet;		//!< Request/response.
+	RADIUS_PACKET		*linked;		//!< The subsequent response or forwarded request the packet
+							//!< was linked against.
+
+	uint64_t		rt_req;			//!< Number of times we saw the same request packet.
+	uint64_t		rt_rsp;			//!< Number of times we saw a retransmitted response
+							//!< packet.
+	rs_latency_t		*stats_req;		//!< Latency entry for the request type.
+	rs_latency_t		*stats_rsp;		//!< Latency entry for the request type.
+
+	bool			forced_cleanup;		//!< Cleanup was forced before normal expiry period,
+							//!< ignore stats about packet loss.
+} rs_request_t;
+
 /** Statistic write/print event
  *
  */
 typedef struct rs_event {
+	fr_event_list_t		*list;			//!< The event list.
 	rs_t			*conf;			//!< RadSniff configuration.
+
 	fr_pcap_t		*in;			//!< PCAP handle event occurred on.
 	fr_pcap_t		*out;			//!< Where to write output.
 
@@ -150,6 +176,8 @@ struct rs {
 	bool			from_auto;		//!< From list was auto-generated.
 
 	bool			do_sort;		//!< Whether we sort attributes in the packet.
+	bool			dequeue_on_rsp[PW_CODE_MAX];	//!< Remove requests immediately from the queue
+								//!< when a matching response is received.
 	char const		*radius_secret;		//!< Secret to decode encrypted attributes.
 
 	char			*pcap_filter;		//!< PCAP filter string applied to live capture devices.

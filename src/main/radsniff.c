@@ -45,7 +45,6 @@ FILE *log_dst;
 struct timeval start_pcap = {0, 0};
 static rbtree_t *filter_tree = NULL;
 static rbtree_t *request_tree = NULL;
-static RADIUS_PACKET *nullpacket = NULL;
 
 typedef int (*rbcmp)(void const *, void const *);
 
@@ -72,28 +71,79 @@ static int rs_useful_codes[] = {
 	PW_CODE_COA_NAK,			//!< RFC3575/RFC5176 - CoA-Nak (not willing to perform)
 };
 
-/** Update cumulative moving average
- *
- */
-static void rs_stats_process_latency(rs_latency_t *stats, PW_CODE code, uint64_t interval)
+#define USEC 1000000
+static void rs_tv_sub(struct timeval const *end, struct timeval const *start, struct timeval *elapsed)
 {
-	if (stats->interval.linked && stats->interval.latency_total) {
-		stats->interval.latency_average = (stats->interval.latency_total / stats->interval.linked);
+	elapsed->tv_sec = end->tv_sec - start->tv_sec;
+	if (elapsed->tv_sec > 0) {
+		elapsed->tv_sec--;
+		elapsed->tv_usec = USEC;
+	} else {
+		elapsed->tv_usec = 0;
+	}
+	elapsed->tv_usec += end->tv_usec;
+	elapsed->tv_usec -= start->tv_usec;
+
+	if (elapsed->tv_usec >= USEC) {
+		elapsed->tv_usec -= USEC;
+		elapsed->tv_sec++;
+	}
+}
+
+static void rs_stats_print(rs_latency_t *stats, uint64_t counter, PW_CODE code)
+{
+	int i;
+	bool have_rt = false;
+
+	for (i = 0; i <= RS_RETRANSMIT_MAX; i++) {
+		if (stats->interval.rt[i]) {
+			have_rt = true;
+		}
 	}
 
-	if (stats->interval.latency_average > 0) {
-		stats->latency_cma_count++;
-		stats->latency_cma += ((stats->interval.latency_average - stats->latency_cma) /
-					stats->latency_cma_count);
+	if (!counter && !have_rt && !stats->interval.reused) {
+		return;
+	}
 
-		INFO("Stats interval #%" PRIu64, interval);
+	if (counter || stats->interval.linked) {
 		INFO("%s counters:", fr_packet_codes[code]);
+		if (counter > 0) {
+			INFO("\tTotal     : %" PRIu64, counter);
+		}
+	}
+
+	if (stats->interval.linked > 0) {
 		INFO("\tLinked    : %" PRIu64, stats->interval.linked);
+		INFO("\tUnlinked  : %" PRIu64, stats->interval.unlinked);
 		INFO("%s latency:", fr_packet_codes[code]);
 		INFO("\tHigh      : %lf", stats->interval.latency_high);
 		INFO("\tLow       : %lf", stats->interval.latency_low);
 		INFO("\tAverage   : %lf", stats->interval.latency_average);
 		INFO("\tCMA       : %lf", stats->latency_cma);
+	}
+
+	if (have_rt || stats->interval.lost || stats->interval.reused) {
+		INFO("%s retransmits & loss:",  fr_packet_codes[code]);
+
+		if (stats->interval.lost) {
+			INFO("\tLost      : %" PRIu64, stats->interval.lost);
+		}
+
+		if (stats->interval.reused) {
+			INFO("\tID Reused : %" PRIu64, stats->interval.reused);
+		}
+
+		for (i = 0; i <= RS_RETRANSMIT_MAX; i++) {
+			if (!stats->interval.rt[i]) {
+				continue;
+			}
+
+			if (i != RS_RETRANSMIT_MAX) {
+				INFO("\tRT (%i)    : %" PRIu64, i, stats->interval.rt[i]);
+			} else {
+				INFO("\tRT (%i+)   : %" PRIu64, i, stats->interval.rt[i]);
+			}
+		}
 	}
 }
 
@@ -132,6 +182,24 @@ static int rs_check_pcap_drop(fr_pcap_t *in, int interval) {
 
 	return ret;
 }
+
+/** Update cumulative moving average and other stats
+ *
+ */
+static void rs_stats_process_latency(rs_latency_t *stats)
+{
+	if (stats->interval.linked && stats->interval.latency_total) {
+		stats->interval.latency_average = (stats->interval.latency_total / stats->interval.linked);
+	}
+
+	if (stats->interval.latency_average > 0) {
+		stats->latency_cma_count++;
+		stats->latency_cma += ((stats->interval.latency_average - stats->latency_cma) /
+					stats->latency_cma_count);
+	}
+}
+
+
 /** Process stats for a single interval
  *
  */
@@ -149,6 +217,7 @@ static void rs_stats_process(void *ctx)
 
 	stats->intervals++;
 
+	INFO("######### Stats Iteration %i #########", stats->intervals);
 
 	/*
 	 *	Verify that none of the pcap handles have dropped packets.
@@ -179,8 +248,12 @@ static void rs_stats_process(void *ctx)
 	 *	No further work is required for codes.
 	 */
 	for (i = 0; i < rs_codes_len; i++) {
-		rs_stats_process_latency(&stats->exchange[rs_useful_codes[i]], rs_useful_codes[i], stats->intervals);
-//		rs_stats_process_latency(&stats->forward[rs_useful_codes[i]]);
+		rs_stats_process_latency(&stats->exchange[rs_useful_codes[i]]);
+		if (fr_debug_flag > 0) {
+			rs_stats_print(&stats->exchange[rs_useful_codes[i]],
+				       stats->gauge.type[rs_useful_codes[i]],
+				       rs_useful_codes[i]);
+		}
 	}
 
 #ifdef HAVE_COLLECTDC_H
@@ -206,6 +279,7 @@ static void rs_stats_process(void *ctx)
 
 	{
 		now.tv_sec += conf->stats.interval;
+		now.tv_usec = 0;
 		fr_event_insert(this->list, rs_stats_process, ctx, &now, NULL);
 	}
 }
@@ -318,31 +392,82 @@ static int rs_filter_packet(RADIUS_PACKET *packet)
 	return 1;
 }
 
-#define USEC 1000000
-static void rs_tv_sub(struct timeval const *end, struct timeval const *start, struct timeval *elapsed)
+static void rs_packet_cleanup(void *ctx)
 {
-	elapsed->tv_sec = end->tv_sec - start->tv_sec;
-	if (elapsed->tv_sec > 0) {
-		elapsed->tv_sec--;
-		elapsed->tv_usec = USEC;
-	} else {
-		elapsed->tv_usec = 0;
-	}
-	elapsed->tv_usec += end->tv_usec;
-	elapsed->tv_usec -= start->tv_usec;
+	rs_request_t *request = ctx;
+	RADIUS_PACKET *packet = request->packet;
 
-	if (elapsed->tv_usec >= USEC) {
-		elapsed->tv_usec -= USEC;
-		elapsed->tv_sec++;
+	assert(request->stats_req);
+	assert(!request->rt_rsp || request->stats_rsp);
+	/*
+	 *	Were at packet cleanup time which is when the packet was received + timeout
+	 *	and it's not been linked with a forwarded packet or a response.
+	 *
+	 *	We now count it as lost.
+	 */
+	if (!request->linked && !request->forced_cleanup) {
+		request->stats_req->interval.lost++;
+
+		DEBUG("(%i) ** LOST **", request->id);
+		DEBUG("(%i) %s Id %i %s:%s:%d -> %s:%d", request->id,
+		      fr_packet_codes[packet->code], packet->id,
+		      request->in->name,
+		      fr_inet_ntop(packet->dst_ipaddr.af, &packet->dst_ipaddr.ipaddr), packet->dst_port,
+		      fr_inet_ntop(packet->src_ipaddr.af, &packet->src_ipaddr.ipaddr), packet->src_port);
 	}
+
+	/*
+	 *	Now the request is done, we can update the retransmission stats
+	 */
+	if (request->rt_req > RS_RETRANSMIT_MAX) {
+		request->stats_req->interval.rt[RS_RETRANSMIT_MAX]++;
+	} else {
+		request->stats_req->interval.rt[request->rt_req]++;
+	}
+
+	if (request->rt_rsp) {
+		if (request->rt_rsp > RS_RETRANSMIT_MAX) {
+			request->stats_rsp->interval.rt[RS_RETRANSMIT_MAX]++;
+		} else {
+			request->stats_rsp->interval.rt[request->rt_rsp]++;
+		}
+	}
+
+	/*
+	 *	If were attempting to cleanup the request, and it's no longer in the request_tree
+	 *	something has gone very badly wrong.
+	 */
+	assert(rbtree_deletebydata(request_tree, request));
+}
+
+/*
+ *	@fixme: This can be removed once packet destructors are set by rad_alloc
+ */
+static int _request_free(rs_request_t *request)
+{
+	DEBUG("(%i) Cleaning up request packet ID %i", request->id, request->packet->id);
+	rad_free(&request->packet);
+	rad_free(&request->linked);
+
+	return 0;
+}
+
+/** Wrapper around fr_packet_cmp to strip off the outer request struct
+ *
+ */
+static int rs_packet_cmp(rs_request_t const *a, rs_request_t const *b)
+{
+	return fr_packet_cmp(a->packet, b->packet);
 }
 
 static void rs_process_packet(rs_event_t *event, struct pcap_pkthdr const *header, uint8_t const *data)
 {
+	static int		count = 0;	/* Packets seen */
 
-	static int count = 0;			/* Packets seen */
-	rs_stats_t *stats = event->stats;
-	decode_fail_t reason;
+	rs_stats_t		*stats = event->stats;
+	rs_t			*conf = event->conf;
+	struct timeval		elapsed;
+	struct timeval		latency;
 
 	/*
 	 *	Pointers into the packet data we just received
@@ -353,11 +478,12 @@ static void rs_process_packet(rs_event_t *event, struct pcap_pkthdr const *heade
 	struct ip_header6 const	*ip6 = NULL;	/* The IPv6 header */
 	struct udp_header const	*udp;		/* The UDP header */
 	uint8_t			version;	/* IP header version */
-	bool			response = false;	/* Was it a response code */
+	bool			response;	/* Was it a response code */
 
-	RADIUS_PACKET *current, *original;
-	struct timeval elapsed;
-	struct timeval latency;
+	decode_fail_t		reason;		/* Why we failed decoding the packet */
+
+	RADIUS_PACKET *current;			/* Current packet were processing */
+	rs_request_t *original;
 
 	count++;
 
@@ -415,9 +541,11 @@ static void rs_process_packet(rs_event_t *event, struct pcap_pkthdr const *heade
 	 *	recover once some requests timeout, so make an effort to deal
 	 *	with allocation failures gracefully.
 	 */
-	current = rad_alloc(NULL, 0);
+	current = rad_alloc(conf, 0);
 	if (!current) {
 		ERROR("Failed allocating memory to hold decoded packet");
+		stats->quiet = header->ts;
+		stats->quiet.tv_sec += conf->stats.timeout;
 		return;
 	}
 	current->timestamp = header->ts;
@@ -461,57 +589,205 @@ static void rs_process_packet(rs_event_t *event, struct pcap_pkthdr const *heade
 	}
 
 	switch (current->code) {
-	case PW_CODE_COA_REQUEST:
-		/* we need a 16 x 0 byte vector for decrypting encrypted VSAs */
-		original = nullpacket;
-		break;
 	case PW_CODE_ACCOUNTING_RESPONSE:
 	case PW_CODE_AUTHENTICATION_REJECT:
 	case PW_CODE_AUTHENTICATION_ACK:
-		response = true;
-		/* look for a matching request and use it for decoding */
-		original = rbtree_finddata(request_tree, current);
-		break;
+	case PW_CODE_COA_NAK:
+	case PW_CODE_COA_ACK:
+	case PW_CODE_DISCONNECT_NAK:
+	case PW_CODE_DISCONNECT_ACK:
+	case PW_CODE_STATUS_CLIENT:
+		{
+			rs_request_t search;
+			struct timeval when;
+
+			when = header->ts;
+			when.tv_sec += conf->stats.timeout;
+
+			/* look for a matching request and use it for decoding */
+			search.packet = current;
+			original = rbtree_finddata(request_tree, &search);
+
+			/*
+			 *	In all cases we need to decode the attributes
+			 */
+			if (rad_decode(current, original ? original->packet : NULL,
+				       conf->radius_secret) != 0) {
+				rad_free(&current);
+				fr_perror("decode");
+				return;
+			}
+
+			/*
+			 *	Check if we've managed to link it to a request
+			 */
+			if (original) {
+				/*
+				 *	Is this a retransmit?
+				 */
+				if (!original->linked) {
+					original->stats_rsp = &stats->exchange[current->code];
+				} else {
+					DEBUG("(%i) ** RETRANSMISSION **", count);
+					original->rt_rsp++;
+
+					rad_free(&original->linked);
+					fr_event_delete(event->list, &original->event);
+				}
+
+				original->linked = talloc_steal(original, search.packet);
+
+				/*
+				 *	Some RADIUS servers and proxy servers may not cache
+				 *	Accounting-Responses (and possibly other code),
+				 *	and may immediately re-use a RADIUS packet src
+				 *	port/id combination on receipt of a response.
+				 */
+				if (conf->dequeue[current->code]) {
+					fr_event_delete(event->list, &original->event);
+					rbtree_deletebydata(request_tree, original);
+				} else {
+					if (!fr_event_insert(event->list, rs_packet_cleanup, original, &when,
+						    	     &original->event)) {
+						ERROR("Failed inserting new event");
+						rbtree_deletebydata(request_tree, original);
+
+						return;
+					}
+				}
+			/*
+			 *	If it was a response to a request (we saw, and allowed), it's
+			 *	automatically permitted through the filter.  If it wasn't
+			 *	we may still want to filter it.
+			 */
+			} else {
+				if (filter_vps && rs_filter_packet(current)) {
+					rad_free(&current);
+					DEBUG("(%i) Dropped by attribute filter", count);
+					return;
+				}
+
+				DEBUG("(%i) ** UNLINKED **", count);
+				stats->exchange[current->code].interval.unlinked++;
+			}
+
+			response = true;
+		}
+			break;
 	case PW_CODE_ACCOUNTING_REQUEST:
 	case PW_CODE_AUTHENTICATION_REQUEST:
-		/* save the request for later matching */
-		original = rad_alloc_reply(event->conf, current);
-		original->timestamp = header->ts;
-		if (original) { /* just ignore allocation failures */
-			rbtree_deletebydata(request_tree, original);
-			rbtree_insert(request_tree, original);
+	case PW_CODE_COA_REQUEST:
+	case PW_CODE_DISCONNECT_REQUEST:
+	case PW_CODE_STATUS_SERVER:
+		{
+			rs_request_t search;
+			struct timeval when;
+
+			/*
+			 *	In all cases we need to decode the attributes
+			 */
+			if (rad_decode(current, NULL, conf->radius_secret) != 0) {
+				rad_free(&current);
+				fr_perror("decode");
+				return;
+			}
+
+			/*
+			 *	Now verify the packet passes the attribute filter
+			 */
+			if (filter_vps && rs_filter_packet(current)) {
+				rad_free(&current);
+				DEBUG("(%i) Dropped by attribute filter", count);
+				return;
+			}
+
+			/*
+			 *	save the request for later matching
+			 */
+			search.packet = rad_alloc_reply(conf, current);
+			if (!search.packet) {
+				ERROR("Failed allocating memory to hold expected reply");
+				stats->quiet = header->ts;
+				stats->quiet.tv_sec += conf->stats.timeout;
+				rad_free(&current);
+				return;
+			}
+			search.packet->code = current->code;
+
+			when = header->ts;
+			when.tv_sec += conf->stats.timeout;
+
+			original = rbtree_finddata(request_tree, &search);
+
+			/*
+			 *	Upstream device re-used src/dst ip/port id without waiting
+			 *	for the timeout period to expire, or a response.
+			 */
+			if (original && memcmp(original->packet->vector, current->vector,
+					       sizeof(original->packet->vector) != 0)) {
+				DEBUG("(%i) ** PREMATURE ID RE-USE **", count);
+				stats->exchange[current->code].interval.reused++;
+				original->forced_cleanup = true;
+
+				fr_event_delete(event->list, &original->event);
+				rbtree_deletebydata(request_tree, original);
+				original = NULL;
+			}
+
+			if (original) {
+				DEBUG("(%i) ** RETRANSMISSION **", count);
+				original->rt_req++;
+
+				rad_free(&original->packet);
+				original->packet = talloc_steal(original, search.packet);
+
+				/* We may of seen the response, but it may of been lost upstream */
+				rad_free(&original->linked);
+				fr_event_delete(event->list, &original->event);
+			} else {
+				original = talloc_zero(conf, rs_request_t);
+				talloc_set_destructor(original, _request_free);
+
+				original->id = count;
+				original->in = event->in;
+				original->stats_req = &stats->exchange[current->code];
+				original->packet = talloc_steal(original, search.packet);
+
+				rbtree_insert(request_tree, original);
+			}
+
+			/* update the timestamp in either case */
+			original->packet->timestamp = header->ts;
+
+			if (!fr_event_insert(event->list, rs_packet_cleanup, original, &when, &original->event)) {
+				ERROR("Failed inserting new event");
+				rbtree_deletebydata(request_tree, original);
+
+				return;
+			}
+			response = false;
 		}
-		/* fallthrough */
-	default:
-		/* don't attempt to decode any encrypted attributes */
-		original = NULL;
-	}
+			break;
+		default:
+			ERROR("** Unsupported code %i **", current->code);
+			rad_free(&current);
 
-	/*
-	 *  Decode the data without bothering to check the signatures.
-	 */
-	if (rad_decode(current, original, event->conf->radius_secret) != 0) {
-		rad_free(&current);
-		fr_perror("decode");
-		return;
-	}
-
-	if (filter_vps && rs_filter_packet(current)) {
-		rad_free(&current);
-		DEBUG("Packet number %d doesn't match", count++);
-		return;
+			return;
 	}
 
 	if (event->out) {
 		pcap_dump((void *) (event->out->dumper), header, data);
-		goto check_filter;
 	}
 
 	rs_tv_sub(&header->ts, &start_pcap, &elapsed);
 
 	rs_stats_update_count(&stats->gauge, current);
-	if (original) {
-		rs_tv_sub(&current->timestamp, &original->timestamp, &latency);
+
+	/*
+	 *	It's a linked response
+	 */
+	if (original && original->linked) {
+		rs_tv_sub(&current->timestamp, &original->packet->timestamp, &latency);
 
 		/*
 		 *	Update stats for both the request and response types.
@@ -523,10 +799,10 @@ static void rs_process_packet(rs_event_t *event, struct pcap_pkthdr const *heade
 		 *	It also justifies allocating 255 instances rs_latency_t.
 		 */
 		rs_stats_update_latency(&stats->exchange[current->code], &latency);
-		rs_stats_update_latency(&stats->exchange[original->code], &latency);
+		rs_stats_update_latency(&stats->exchange[original->packet->code], &latency);
 
 		/*
-		 *	Print info about the response.
+		 *	Print info about the request/response.
 		 */
 		DEBUG("(%i) %s Id %i %s:%s:%d %s %s:%d\t+%u.%03u\t+%u.%03u", count,
 		      fr_packet_codes[current->code], current->id,
@@ -552,36 +828,26 @@ static void rs_process_packet(rs_event_t *event, struct pcap_pkthdr const *heade
 		      (unsigned int) elapsed.tv_sec, ((unsigned int) elapsed.tv_usec / 1000));
 	}
 
-	if (fr_debug_flag > 1) {
-		if (current->vps) {
-			if (event->conf->do_sort) {
-				pairsort(&current->vps, true);
-			}
-			vp_printlist(log_dst, current->vps);
-			pairfree(&current->vps);
+	if ((fr_debug_flag > 1) && current->vps) {
+		if (conf->do_sort) {
+			pairsort(&current->vps, true);
 		}
+		vp_printlist(log_dst, current->vps);
+		pairfree(&current->vps);
 	}
 
-	/*
-	 *  We've seen a successful reply to this, so delete it now
-	 */
-	if (original) {
-		rbtree_deletebydata(request_tree, original);
-	}
-
-	if (!event->conf->to_stdout && (fr_debug_flag > 4)) {
+	if (!conf->to_stdout && (fr_debug_flag > 4)) {
 		rad_print_hex(current);
 	}
 
 	fflush(log_dst);
 
-check_filter:
 	/*
-	 *  If we're doing filtering, Access-Requests are cached in the
-	 *  filter tree.
+	 *	If it's a request, a duplicate of the packet will of already been stored.
+	 *	If it's a unlinked response, we need to free it explicitly, as it will
+	 *	not be done by the event queue.
 	 */
-	if (!filter_vps ||
-	    ((current->code != PW_CODE_AUTHENTICATION_REQUEST) && (current->code != PW_CODE_ACCOUNTING_REQUEST))) {
+	if (!response || !original) {
 		rad_free(&current);
 	}
 }
@@ -924,7 +1190,7 @@ int main(int argc, char *argv[])
 			goto finish;
 		}
 
-		filter_tree = rbtree_create((rbcmp) fr_packet_cmp, _rb_rad_free, 0);
+		filter_tree = rbtree_create((rbcmp) rs_packet_cmp, _rb_rad_free, 0);
 		if (!filter_tree) {
 			ERROR("Failed creating filter tree");
 			ret = 64;
@@ -935,18 +1201,9 @@ int main(int argc, char *argv[])
 	/*
 	 *	Setup the request tree
 	 */
-	request_tree = rbtree_create((rbcmp) fr_packet_cmp, _rb_rad_free, 0);
+	request_tree = rbtree_create((rbcmp) rs_packet_cmp, _rb_rad_free, 0);
 	if (!request_tree) {
 		ERROR("Failed creating request tree");
-		goto finish;
-	}
-
-	/*
-	 *	Allocate a null packet for decrypting attributes in CoA requests
-	 */
-	nullpacket = rad_alloc(conf, 0);
-	if (!nullpacket) {
-		ERROR("Out of memory");
 		goto finish;
 	}
 
@@ -1020,14 +1277,14 @@ int main(int argc, char *argv[])
 		next = &conf->stats.tmpl;
 
 		for (i = 0; i < (sizeof(rs_useful_codes) / sizeof(*rs_useful_codes)); i++) {
-			tmpl = rs_stats_collectd_init_latency(conf, next, conf, "radius_pkt_ex",
+			tmpl = rs_stats_collectd_init_latency(conf, next, conf, "exchanged",
 							      &stats.exchange[rs_useful_codes[i]],
 							      rs_useful_codes[i]);
 			if (!tmpl) {
 				goto tmpl_error;
 			}
 			next = &(tmpl->next);
-			tmpl = rs_stats_collectd_init_counter(conf, next, conf, "radius_pkt",
+			tmpl = rs_stats_collectd_init_counter(conf, next, conf, "exchanged",
 							      &stats.gauge.type[rs_useful_codes[i]],
 							      rs_useful_codes[i]);
 			if (!tmpl) {
@@ -1044,7 +1301,8 @@ int main(int argc, char *argv[])
 	 *	This actually opens the capture interfaces/files (we just allocated the memory earlier)
 	 */
 	{
-		fr_pcap_t *prev = NULL;
+		fr_pcap_t *tmp;
+		fr_pcap_t **tmp_p = &tmp;
 
 		for (in_p = in;
 		     in_p;
@@ -1056,18 +1314,7 @@ int main(int argc, char *argv[])
 				}
 
 				DEBUG("Failed opening pcap handle: %s", fr_strerror());
-				/* Unlink it from the list */
-				if (prev) {
-					prev->next = in_p->next;
-					talloc_free(in_p);
-					in_p = prev;
-				} else {
-					in = in_p->next;
-					talloc_free(in_p);
-					in_p = in;
-				}
-
-				goto next;
+				continue;
 			}
 
 			if (conf->pcap_filter) {
@@ -1077,9 +1324,11 @@ int main(int argc, char *argv[])
 				}
 			}
 
-			next:
-			prev = in_p;
+			*tmp_p = in_p;
+			tmp_p = &(in_p->next);
 		}
+		*tmp_p = NULL;
+		in = tmp;
 	}
 
 	/*
@@ -1117,6 +1366,7 @@ int main(int argc, char *argv[])
 	     	     	rs_event_t *event;
 
 	     	     	event = talloc_zero(events, rs_event_t);
+	     	     	event->list = events;
 	     	     	event->conf = conf;
 	     	     	event->in = in_p;
 	     	     	event->out = out;
