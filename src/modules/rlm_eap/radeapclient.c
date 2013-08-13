@@ -50,7 +50,7 @@ static int filedone = 0;
 static int totalapp = 0;
 static int totaldeny = 0;
 static char filesecret[256];
-char *radius_dir = NULL;
+char const *radius_dir = NULL;
 char const *progname = "radeapclient";
 /* fr_randctx randctx; */
 
@@ -98,22 +98,22 @@ static void NEVER_RETURNS usage(void)
 	exit(1);
 }
 
-int radlog(int lvl, char const *msg, ...)
+int radlog(log_type_t lvl, char const *fmt, ...)
 {
 	va_list ap;
 	int r;
 
 	r = lvl; /* shut up compiler */
 
-	va_start(ap, msg);
-	r = vfprintf(stderr, msg, ap);
+	va_start(ap, fmt);
+	r = vfprintf(stderr, fmt, ap);
 	va_end(ap);
 	fputc('\n', stderr);
 
 	return r;
 }
 
-void radlog_request(UNUSED int lvl, UNUSED int priority,
+void radlog_request(UNUSED log_type_t lvl, UNUSED log_debug_t priority,
 		    UNUSED REQUEST *request, char const *msg, ...)
 {
 	va_list ap;
@@ -294,10 +294,10 @@ static void cleanresp(RADIUS_PACKET *resp)
 	{
 		vpnext = vp->next;
 
-		if((vp->da->attribute > ATTRIBUTE_EAP_BASE &&
-		    vp->da->attribute <= ATTRIBUTE_EAP_BASE+256) ||
-		   (vp->da->attribute > ATTRIBUTE_EAP_SIM_BASE &&
-		    vp->da->attribute <= ATTRIBUTE_EAP_SIM_BASE+256))
+		if((vp->da->attr > ATTRIBUTE_EAP_BASE &&
+		    vp->da->attr <= ATTRIBUTE_EAP_BASE+256) ||
+		   (vp->da->attr > ATTRIBUTE_EAP_SIM_BASE &&
+		    vp->da->attr <= ATTRIBUTE_EAP_SIM_BASE+256))
 		{
 			*last = vpnext;
 			pairbasicfree(vp);
@@ -317,7 +317,8 @@ static int process_eap_start(RADIUS_PACKET *req,
 {
 	VALUE_PAIR *vp, *newvp;
 	VALUE_PAIR *anyidreq_vp, *fullauthidreq_vp, *permanentidreq_vp;
-	uint16_t *versions, selectedversion;
+	uint16_t const *versions;
+	uint16_t selectedversion;
 	unsigned int i,versioncount;
 
 	/* form new response clear of any EAP stuff */
@@ -328,7 +329,7 @@ static int process_eap_start(RADIUS_PACKET *req,
 		return 0;
 	}
 
-	versions = (uint16_t *)vp->vp_strvalue;
+	versions = (uint16_t const *) vp->vp_strvalue;
 
 	/* verify that the attribute length is big enough for a length field */
 	if(vp->length < 4)
@@ -351,7 +352,7 @@ static int process_eap_start(RADIUS_PACKET *req,
 	 * record the versionlist for the MK calculation.
 	 */
 	eapsim_mk.versionlistlen = versioncount*2;
-	memcpy(eapsim_mk.versionlist, (unsigned char *)(versions+1),
+	memcpy(eapsim_mk.versionlist, (unsigned char const *)(versions+1),
 	       eapsim_mk.versionlistlen);
 
 	/* walk the version list, and pick the one we support, which
@@ -405,13 +406,13 @@ static int process_eap_start(RADIUS_PACKET *req,
 
 	/* insert selected version into response. */
 	newvp = paircreate(rep, ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_SELECTED_VERSION, 0);
-	versions = (uint16_t *)newvp->vp_strvalue;
+	versions = (uint16_t const *)newvp->vp_strvalue;
 	versions[0] = htons(selectedversion);
 	newvp->length = 2;
 	pairreplace(&(rep->vps), newvp);
 
 	/* record the selected version */
-	memcpy(eapsim_mk.versionselect, (unsigned char *)versions, 2);
+	memcpy(eapsim_mk.versionselect, (unsigned char const *)versions, 2);
 
 	vp = newvp = NULL;
 
@@ -757,8 +758,8 @@ static int respond_eap_md5(RADIUS_PACKET *req,
 	VALUE_PAIR *vp, *id, *state;
 	size_t valuesize, namesize;
 	uint8_t identifier;
-	uint8_t *value;
-	uint8_t *name;
+	uint8_t const *value;
+	uint8_t const *name;
 	FR_MD5_CTX	context;
 	uint8_t    response[16];
 
@@ -839,15 +840,15 @@ static int sendrecv_eap(RADIUS_PACKET *rep)
 	 *	Keep a copy of the the User-Password attribute.
 	 */
 	if ((vp = pairfind(rep->vps, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY)) != NULL) {
-		strlcpy(password, (char *)vp->vp_strvalue, sizeof(password));
+		strlcpy(password, vp->vp_strvalue, sizeof(password));
 
 	} else 	if ((vp = pairfind(rep->vps, PW_USER_PASSWORD, 0, TAG_ANY)) != NULL) {
-		strlcpy(password, (char *)vp->vp_strvalue, sizeof(password));
+		strlcpy(password, vp->vp_strvalue, sizeof(password));
 		/*
 		 *	Otherwise keep a copy of the CHAP-Password attribute.
 		 */
 	} else if ((vp = pairfind(rep->vps, PW_CHAP_PASSWORD, 0, TAG_ANY)) != NULL) {
-		strlcpy(password, (char *)vp->vp_strvalue, sizeof(password));
+		strlcpy(password, vp->vp_strvalue, sizeof(password));
 	} else {
 		*password = '\0';
 	}
@@ -865,7 +866,7 @@ static int sendrecv_eap(RADIUS_PACKET *rep)
 	 *  Fix up Digest-Attributes issues
 	 */
 	for (vp = rep->vps; vp != NULL; vp = vp->next) {
-		switch (vp->da->attribute) {
+		switch (vp->da->attr) {
 		default:
 			break;
 
@@ -881,10 +882,10 @@ static int sendrecv_eap(RADIUS_PACKET *rep)
 		case PW_DIGEST_USER_NAME:
 			/* overlapping! */
 			memmove(&vp->vp_strvalue[2], &vp->vp_octets[0], vp->length);
-			vp->vp_octets[0] = vp->da->attribute - PW_DIGEST_REALM + 1;
+			vp->vp_octets[0] = vp->da->attr - PW_DIGEST_REALM + 1;
 			vp->length += 2;
 			vp->vp_octets[1] = vp->length;
-			vp->da->attribute = PW_DIGEST_ATTRIBUTES;
+			vp->da->attr = PW_DIGEST_ATTRIBUTES;
 			break;
 		}
 	}
@@ -929,7 +930,7 @@ static int sendrecv_eap(RADIUS_PACKET *rep)
 	for (vp = req->vps; vp != NULL; vp = vpnext) {
 		vpnext = vp->next;
 
-		switch (vp->da->attribute) {
+		switch (vp->da->attr) {
 		default:
 			break;
 
@@ -1210,7 +1211,7 @@ int main(int argc, char **argv)
 	while(!filedone) {
 		if(req->vps) pairfree(&req->vps);
 
-		if ((req->vps = readvp2(fp, &filedone, "radeapclient:"))
+		if ((req->vps = readvp2(NULL, fp, &filedone, "radeapclient:"))
 		    == NULL) {
 			break;
 		}
@@ -1264,8 +1265,8 @@ static void map_eap_methods(RADIUS_PACKET *req)
 		/* save it in case it changes! */
 		vpnext = vp->next;
 
-		if(vp->da->attribute >= ATTRIBUTE_EAP_BASE &&
-		   vp->da->attribute < ATTRIBUTE_EAP_BASE+256) {
+		if(vp->da->attr >= ATTRIBUTE_EAP_BASE &&
+		   vp->da->attr < ATTRIBUTE_EAP_BASE+256) {
 			break;
 		}
 	}
@@ -1274,7 +1275,7 @@ static void map_eap_methods(RADIUS_PACKET *req)
 		return;
 	}
 
-	eap_method = vp->da->attribute - ATTRIBUTE_EAP_BASE;
+	eap_method = vp->da->attr - ATTRIBUTE_EAP_BASE;
 
 	switch(eap_method) {
 	case PW_EAP_IDENTITY:
@@ -1324,11 +1325,11 @@ static void unmap_eap_methods(RADIUS_PACKET *rep)
 	if(!e) return;
 
 	/* create EAP-ID and EAP-CODE attributes to start */
-	eap1 = paircreate(rep, ATTRIBUTE_EAP_ID, 0, PW_TYPE_INTEGER);
+	eap1 = paircreate(rep, ATTRIBUTE_EAP_ID, 0);
 	eap1->vp_integer = e->id;
 	pairadd(&(rep->vps), eap1);
 
-	eap1 = paircreate(rep, ATTRIBUTE_EAP_CODE, 0, PW_TYPE_INTEGER);
+	eap1 = paircreate(rep, ATTRIBUTE_EAP_CODE, 0);
 	eap1->vp_integer = e->code;
 	pairadd(&(rep->vps), eap1);
 
@@ -1460,7 +1461,7 @@ main(int argc, char *argv[])
 		if(req->vps) pairfree(&req->vps);
 		if(req2->vps) pairfree(&req2->vps);
 
-		if ((req->vps = readvp2(stdin, &filedone, "eapsimlib:")) == NULL) {
+		if ((req->vps = readvp2(NULL, stdin, &filedone, "eapsimlib:")) == NULL) {
 			break;
 		}
 
