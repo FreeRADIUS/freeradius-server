@@ -591,17 +591,23 @@ static void rs_got_packet(UNUSED fr_event_list_t *events, UNUSED int fd, void *c
 	rs_event_t *event = ctx;
 	pcap_t *handle = event->in->handle;
 
+	int i;
 	int ret;
 	const uint8_t *data;
 	struct pcap_pkthdr *header;
 
-	ret = pcap_next_ex(handle, &header, &data);
-	if (ret < 0) {
-		ERROR("Error requesting next packet, got (%i): %s", ret, pcap_geterr(handle));
-		return;
+	for (i = 0; i < RS_FORCE_YIELD; i++) {
+		ret = pcap_next_ex(handle, &header, &data);
+		if (ret == 0) {
+			/* No more packets available at this time */
+			return;
+		}
+		if (ret < 0) {
+			ERROR("Error requesting next packet, got (%i): %s", ret, pcap_geterr(handle));
+			return;
+		}
+		rs_process_packet(event, header, data);
 	}
-
-	rs_process_packet(event, header, data);
 }
 
 static void _rs_event_status(struct timeval *wake)
