@@ -606,13 +606,16 @@ static void rs_packet_process(rs_event_t *event, struct pcap_pkthdr const *heade
 			original = rbtree_finddata(request_tree, &search);
 
 			/*
-			 *	Decode the attributes if required
+			 *	Only decode attributes if we want to print them or filter on them
+			 *	rad_packet_ok does checks to verify the packet is actually valid.
 			 */
-			if (rad_decode(current, original ? original->packet : NULL,
-				       conf->radius_secret) != 0) {
-				rad_free(&current);
-				fr_perror("decode");
-				return;
+			if (filter_vps || conf->print_packet) {
+				if (rad_decode(current, original ? original->packet : NULL,
+					       conf->radius_secret) != 0) {
+					rad_free(&current);
+					fr_perror("decode");
+					return;
+				}
 			}
 
 			/*
@@ -681,12 +684,15 @@ static void rs_packet_process(rs_event_t *event, struct pcap_pkthdr const *heade
 			struct timeval when;
 
 			/*
-			 *	In all cases we need to decode the attributes
+			 *	Only decode attributes if we want to print them or filter on them
+			 *	rad_packet_ok does checks to verify the packet is actually valid.
 			 */
-			if (rad_decode(current, NULL, conf->radius_secret) != 0) {
-				rad_free(&current);
-				fr_perror("decode");
-				return;
+			if (filter_vps || conf->print_packet) {
+				if (rad_decode(current, NULL, conf->radius_secret) != 0) {
+					rad_free(&current);
+					fr_perror("decode");
+					return;
+				}
 			}
 
 			/*
