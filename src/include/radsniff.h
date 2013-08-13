@@ -51,6 +51,7 @@ RCSIDH(radsniff_h, "$Id$")
 #define DEBUG(fmt, ...)		if (fr_debug_flag > 1) fprintf(log_dst , fmt "\n", ## __VA_ARGS__)
 #undef INFO
 #define INFO(fmt, ...)		if (fr_debug_flag > 0) fprintf(log_dst , fmt "\n", ## __VA_ARGS__)
+#define PACKET(fmt, ...)	if (conf->print_packet && (fr_debug_flag > 0)) fprintf(log_dst , fmt "\n", ## __VA_ARGS__)
 
 #define ERROR(fmt, ...)		fr_perror("radsniff: " fmt "\n", ## __VA_ARGS__)
 
@@ -167,7 +168,6 @@ typedef struct rs_request {
  */
 typedef struct rs_event {
 	fr_event_list_t		*list;			//!< The event list.
-	rs_t			*conf;			//!< RadSniff configuration.
 
 	fr_pcap_t		*in;			//!< PCAP handle event occurred on.
 	fr_pcap_t		*out;			//!< Where to write output.
@@ -180,7 +180,6 @@ typedef struct rs_event {
  */
 typedef struct rs_update {
 	fr_event_list_t		*list;			//!< List to insert new event into.
-	rs_t			*conf;			//!< radsniff configuration.
 
 	fr_pcap_t		*in;			//!< Linked list of PCAP handles to check for drops.
 	rs_stats_t		*stats;			//!< Stats to process.
@@ -195,6 +194,7 @@ struct rs {
 	bool			to_stdout;		//!< Were writing pcap data to stdout.
 
 	bool			from_auto;		//!< From list was auto-generated.
+	bool			print_packet;		//!< Print packet info, disabled with -W
 
 	bool			do_sort;		//!< Whether we sort attributes in the packet.
 	bool			dequeue[PW_CODE_MAX];	//!< Remove requests immediately from the queue

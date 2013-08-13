@@ -42,6 +42,7 @@ static VALUE_PAIR *filter_vps = NULL;
 
 FILE *log_dst;
 
+static rs_t *conf;
 struct timeval start_pcap = {0, 0};
 static rbtree_t *filter_tree = NULL;
 static rbtree_t *request_tree = NULL;
@@ -199,7 +200,7 @@ static void rs_stats_process_latency(rs_latency_t *stats)
 	}
 }
 
-static void rs_stats_process_counters(rs_t *conf, rs_latency_t *stats)
+static void rs_stats_process_counters(rs_latency_t *stats)
 {
 	int i;
 
@@ -225,7 +226,6 @@ static void rs_stats_process(void *ctx)
 	fr_pcap_t		*in_p;
 	rs_update_t		*this = ctx;
 	rs_stats_t		*stats = this->stats;
-	rs_t			*conf = this->conf;
 	struct timeval		now;
 
 	gettimeofday(&now, NULL);
@@ -264,7 +264,7 @@ static void rs_stats_process(void *ctx)
 	 */
 	for (i = 0; i < rs_codes_len; i++) {
 		rs_stats_process_latency(&stats->exchange[rs_useful_codes[i]]);
-		rs_stats_process_counters(conf, &stats->exchange[rs_useful_codes[i]]);
+		rs_stats_process_counters(&stats->exchange[rs_useful_codes[i]]);
 		if (fr_debug_flag > 0) {
 			rs_stats_print(&stats->exchange[rs_useful_codes[i]], rs_useful_codes[i]);
 		}
@@ -413,12 +413,12 @@ static void rs_packet_cleanup(void *ctx)
 	if (!request->linked && !request->forced_cleanup) {
 		request->stats_req->interval.lost_total++;
 
-		DEBUG("(%i) ** LOST **", request->id);
-		DEBUG("(%i) %s Id %i %s:%s:%d -> %s:%d", request->id,
-		      fr_packet_codes[packet->code], packet->id,
-		      request->in->name,
-		      fr_inet_ntop(packet->dst_ipaddr.af, &packet->dst_ipaddr.ipaddr), packet->dst_port,
-		      fr_inet_ntop(packet->src_ipaddr.af, &packet->src_ipaddr.ipaddr), packet->src_port);
+		PACKET("(%i) ** LOST **", request->id);
+		PACKET("(%i) %s Id %i %s:%s:%d -> %s:%d", request->id,
+		       fr_packet_codes[packet->code], packet->id,
+		       request->in->name,
+		       fr_inet_ntop(packet->dst_ipaddr.af, &packet->dst_ipaddr.ipaddr), packet->dst_port,
+		       fr_inet_ntop(packet->src_ipaddr.af, &packet->src_ipaddr.ipaddr), packet->src_port);
 	}
 
 	/*
@@ -463,7 +463,6 @@ static void rs_packet_process(rs_event_t *event, struct pcap_pkthdr const *heade
 	static int		count = 0;	/* Packets seen */
 
 	rs_stats_t		*stats = event->stats;
-	rs_t			*conf = event->conf;
 	struct timeval		elapsed;
 	struct timeval		latency;
 
@@ -573,14 +572,14 @@ static void rs_packet_process(rs_event_t *event, struct pcap_pkthdr const *heade
 	current->dst_port = ntohs(udp->udp_dport);
 
 	if (!rad_packet_ok(current, 0, &reason)) {
-		DEBUG("(%i) ** %s **", count, fr_strerror());
+		PACKET("(%i) ** %s **", count, fr_strerror());
 
-		DEBUG("(%i) %s Id %i %s:%s:%d -> %s:%d\t+%u.%03u", count,
-		      fr_packet_codes[current->code], current->id,
-		      event->in->name,
-		      fr_inet_ntop(current->src_ipaddr.af, &current->src_ipaddr.ipaddr), current->src_port,
-		      fr_inet_ntop(current->dst_ipaddr.af, &current->dst_ipaddr.ipaddr), current->dst_port,
-		      (unsigned int) elapsed.tv_sec, ((unsigned int) elapsed.tv_usec / 1000));
+		PACKET("(%i) %s Id %i %s:%s:%d -> %s:%d\t+%u.%03u", count,
+		       fr_packet_codes[current->code], current->id,
+		       event->in->name,
+		       fr_inet_ntop(current->src_ipaddr.af, &current->src_ipaddr.ipaddr), current->src_port,
+		       fr_inet_ntop(current->dst_ipaddr.af, &current->dst_ipaddr.ipaddr), current->dst_port,
+		       (unsigned int) elapsed.tv_sec, ((unsigned int) elapsed.tv_usec / 1000));
 
 		rad_free(&current);
 		return;
@@ -607,7 +606,7 @@ static void rs_packet_process(rs_event_t *event, struct pcap_pkthdr const *heade
 			original = rbtree_finddata(request_tree, &search);
 
 			/*
-			 *	In all cases we need to decode the attributes
+			 *	Decode the attributes if required
 			 */
 			if (rad_decode(current, original ? original->packet : NULL,
 				       conf->radius_secret) != 0) {
@@ -626,7 +625,7 @@ static void rs_packet_process(rs_event_t *event, struct pcap_pkthdr const *heade
 				if (!original->linked) {
 					original->stats_rsp = &stats->exchange[current->code];
 				} else {
-					DEBUG("(%i) ** RETRANSMISSION **", count);
+					PACKET("(%i) ** RETRANSMISSION **", count);
 					original->rt_rsp++;
 
 					rad_free(&original->linked);
@@ -661,11 +660,11 @@ static void rs_packet_process(rs_event_t *event, struct pcap_pkthdr const *heade
 			} else {
 				if (filter_vps && rs_filter_packet(current)) {
 					rad_free(&current);
-					DEBUG("(%i) Dropped by attribute filter", count);
+					PACKET("(%i) Dropped by attribute filter", count);
 					return;
 				}
 
-				DEBUG("(%i) ** UNLINKED **", count);
+				PACKET("(%i) ** UNLINKED **", count);
 				stats->exchange[current->code].interval.unlinked_total++;
 			}
 
@@ -695,7 +694,7 @@ static void rs_packet_process(rs_event_t *event, struct pcap_pkthdr const *heade
 			 */
 			if (filter_vps && rs_filter_packet(current)) {
 				rad_free(&current);
-				DEBUG("(%i) Dropped by attribute filter", count);
+				PACKET("(%i) Dropped by attribute filter", count);
 				return;
 			}
 
@@ -723,7 +722,7 @@ static void rs_packet_process(rs_event_t *event, struct pcap_pkthdr const *heade
 			 */
 			if (original && memcmp(original->packet->vector, current->vector,
 					       sizeof(original->packet->vector) != 0)) {
-				DEBUG("(%i) ** PREMATURE ID RE-USE **", count);
+				PACKET("(%i) ** PREMATURE ID RE-USE **", count);
 				stats->exchange[current->code].interval.reused_total++;
 				original->forced_cleanup = true;
 
@@ -733,7 +732,7 @@ static void rs_packet_process(rs_event_t *event, struct pcap_pkthdr const *heade
 			}
 
 			if (original) {
-				DEBUG("(%i) ** RETRANSMISSION **", count);
+				PACKET("(%i) ** RETRANSMISSION **", count);
 				original->rt_req++;
 
 				rad_free(&original->packet);
@@ -767,7 +766,7 @@ static void rs_packet_process(rs_event_t *event, struct pcap_pkthdr const *heade
 		}
 			break;
 		default:
-			ERROR("** Unsupported code %i **", current->code);
+			PACKET("** Unsupported code %i **", current->code);
 			rad_free(&current);
 
 			return;
@@ -802,17 +801,18 @@ static void rs_packet_process(rs_event_t *event, struct pcap_pkthdr const *heade
 		rs_stats_update_latency(&stats->exchange[current->code], &latency);
 		rs_stats_update_latency(&stats->exchange[original->packet->code], &latency);
 
+
 		/*
 		 *	Print info about the request/response.
 		 */
-		DEBUG("(%i) %s Id %i %s:%s:%d %s %s:%d\t+%u.%03u\t+%u.%03u", count,
-		      fr_packet_codes[current->code], current->id,
-		      event->in->name,
-		      fr_inet_ntop(current->src_ipaddr.af, &current->src_ipaddr.ipaddr), current->src_port,
-		      response ? "<-" : "->",
-		      fr_inet_ntop(current->dst_ipaddr.af, &current->dst_ipaddr.ipaddr), current->dst_port,
-		      (unsigned int) elapsed.tv_sec, ((unsigned int) elapsed.tv_usec / 1000),
-		      (unsigned int) latency.tv_sec, ((unsigned int) latency.tv_usec / 1000));
+		PACKET("(%i) %s Id %i %s:%s:%d %s %s:%d\t+%u.%03u\t+%u.%03u", count,
+		       fr_packet_codes[current->code], current->id,
+		       event->in->name,
+		       fr_inet_ntop(current->src_ipaddr.af, &current->src_ipaddr.ipaddr), current->src_port,
+		       response ? "<-" : "->",
+		       fr_inet_ntop(current->dst_ipaddr.af, &current->dst_ipaddr.ipaddr), current->dst_port,
+		       (unsigned int) elapsed.tv_sec, ((unsigned int) elapsed.tv_usec / 1000),
+		       (unsigned int) latency.tv_sec, ((unsigned int) latency.tv_usec / 1000));
 	/*
 	 *	It's the original request
 	 */
@@ -820,13 +820,13 @@ static void rs_packet_process(rs_event_t *event, struct pcap_pkthdr const *heade
 		/*
 		 *	Print info about the request
 		 */
-		DEBUG("(%i) %s Id %i %s:%s:%d %s %s:%d\t+%u.%03u", count,
-		      fr_packet_codes[current->code], current->id,
-		      event->in->name,
-		      fr_inet_ntop(current->src_ipaddr.af, &current->src_ipaddr.ipaddr), current->src_port,
-		      response ? "<-" : "->",
-		      fr_inet_ntop(current->dst_ipaddr.af, &current->dst_ipaddr.ipaddr), current->dst_port,
-		      (unsigned int) elapsed.tv_sec, ((unsigned int) elapsed.tv_usec / 1000));
+		PACKET("(%i) %s Id %i %s:%s:%d %s %s:%d\t+%u.%03u", count,
+		       fr_packet_codes[current->code], current->id,
+		       event->in->name,
+		       fr_inet_ntop(current->src_ipaddr.af, &current->src_ipaddr.ipaddr), current->src_port,
+		       response ? "<-" : "->",
+		       fr_inet_ntop(current->dst_ipaddr.af, &current->dst_ipaddr.ipaddr), current->dst_port,
+		       (unsigned int) elapsed.tv_sec, ((unsigned int) elapsed.tv_usec / 1000));
 	}
 
 	if ((fr_debug_flag > 1) && current->vps) {
@@ -935,8 +935,6 @@ static void NEVER_RETURNS usage(int status)
 
 int main(int argc, char *argv[])
 {
-	rs_t *conf;
-
 	fr_pcap_t *in = NULL, *in_p;
 	fr_pcap_t **in_head = &in;
 	fr_pcap_t *out = NULL;
@@ -971,6 +969,11 @@ int main(int argc, char *argv[])
 #ifdef HAVE_TALLOC_SET_MEMLIMIT
 	talloc_set_memlimit(conf, 52428800);		/* 50 MB */
 #endif
+
+	/*
+	 *	Set some defaults
+	 */
+	conf->print_packet = true;
 
 	/*
 	 *  Get options
@@ -1084,6 +1087,7 @@ int main(int argc, char *argv[])
 
 		case 'W':
 			conf->stats.interval = atoi(optarg);
+			conf->print_packet = false;
 			if (conf->stats.interval <= 0) {
 				ERROR("Stats interval must be > 0");
 				usage(64);
@@ -1369,7 +1373,6 @@ int main(int argc, char *argv[])
 
 	     	     	event = talloc_zero(events, rs_event_t);
 	     	     	event->list = events;
-	     	     	event->conf = conf;
 	     	     	event->in = in_p;
 	     	     	event->out = out;
 	     	     	event->stats = &stats;
@@ -1392,7 +1395,6 @@ int main(int argc, char *argv[])
 		 */
 		if (conf->stats.interval) {
 			update.list = events;
-			update.conf = conf;
 			update.stats = &stats;
 			update.in    = in;
 
