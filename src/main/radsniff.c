@@ -636,7 +636,7 @@ static void NEVER_RETURNS usage(int status)
 	fprintf(output, "  -F              Filter PCAP file from stdin to stdout.\n");
 	fprintf(output, "  -f <filter>     PCAP filter (default is 'udp port <port> or <port + 1> or 3799')\n");
 	fprintf(output, "  -h              This help message.\n");
-	fprintf(output, "  -i <interface>  Capture packets from interface (defaults to any if supported).\n");
+	fprintf(output, "  -i <interface>  Capture packets from interface (defaults to all if supported).\n");
 	fprintf(output, "  -I <file>       Read packets from file (overrides input of -F).\n");
 	fprintf(output, "  -p <port>       Filter packets by port (default is 1812).\n");
 	fprintf(output, "  -q              Print less debugging information.\n");
@@ -651,7 +651,7 @@ static void NEVER_RETURNS usage(int status)
 	fprintf(output, "  -T <timeout>    How many seconds before the request is counted as lost (defaults to %i).\n",
 		RS_DEFAULT_TIMEOUT);
 #ifdef HAVE_COLLECTDC_H
-	fprintf(output, "  -P <prefix>     Prefix counters with this value.\n");
+	fprintf(output, "  -P <prefix>     collectd plugin instance name.\n");
 	fprintf(output, "  -O <server>     Write statistics to this collectd server.\n");
 #endif
 	exit(status);
