@@ -340,73 +340,121 @@ static void rs_tv_sub(struct timeval const *end, struct timeval const *start, st
 static void rs_process_packet(rs_event_t *event, struct pcap_pkthdr const *header, uint8_t const *data)
 {
 
-	static int count = 1;			/* Packets seen */
+	static int count = 0;			/* Packets seen */
 	rs_stats_t *stats = event->stats;
 	decode_fail_t reason;
 
 	/*
-	 *	Define pointers for current's attributes
+	 *	Pointers into the packet data we just received
 	 */
-	const struct ip_header *ip;		/* The IP header */
-	const struct udp_header *udp;		/* The UDP header */
-	const uint8_t *payload;			/* Packet payload */
+	size_t len;
+	uint8_t const		*p = data;
+	struct ip_header const	*ip = NULL;	/* The IP header */
+	struct ip_header6 const	*ip6 = NULL;	/* The IPv6 header */
+	struct udp_header const	*udp;		/* The UDP header */
+	uint8_t			version;	/* IP header version */
+	bool			response = false;	/* Was it a response code */
 
-	/*
-	 *	And define the size of the structures we're using
-	 */
-	int size_ethernet = sizeof(struct ethernet_header);
-	int size_ip = sizeof(struct ip_header);
-	int size_udp = sizeof(struct udp_header);
-
-	/*
-	 *	For FreeRADIUS
-	 */
 	RADIUS_PACKET *current, *original;
 	struct timeval elapsed;
 	struct timeval latency;
 
+	count++;
 
-	/*
-	 *	Define our current's attributes
-	 */
-	if ((data[0] == 2) && (data[1] == 0) &&
-	    (data[2] == 0) && (data[3] == 0)) {
-		ip = (struct ip_header const *) (data + 4);
-
-	} else {
-		ip = (struct ip_header const *)(data + size_ethernet);
-	}
-
-	udp = (struct udp_header const *)(((uint8_t const *) ip) + size_ip);
-	payload = (uint8_t const *)(((uint8_t const *) udp) + size_udp);
-
-	current = rad_alloc(event->conf, 0);
-	if (!current) {
-		ERROR("Out of memory");
+	if (header->caplen <= 5) {
+		INFO("Packet too small, captured %i bytes", header->caplen);
 		return;
 	}
 
 	/*
-	 *	Populate various fields from our PCAP data
+	 *	Loopback header
 	 */
-	current->src_ipaddr.af = AF_INET;
-	current->src_ipaddr.ipaddr.ip4addr.s_addr = ip->ip_src.s_addr;
-	current->src_port = ntohs(udp->udp_sport);
-	current->dst_ipaddr.af = AF_INET;
-	current->dst_ipaddr.ipaddr.ip4addr.s_addr = ip->ip_dst.s_addr;
-	current->dst_port = ntohs(udp->udp_dport);
-	current->timestamp = header->ts;
+	if ((p[0] == 2) && (p[1] == 0) && (p[2] == 0) && (p[3] == 0)) {
+		p += 4;
+	/*
+	 *	Ethernet header
+	 */
+	} else {
+		p += sizeof(struct ethernet_header);
+	}
 
-	memcpy(&current->data, &payload, sizeof(current->data));
-	current->data_len = header->len - (payload - data);
+	version = (p[0] & 0xf0) >> 4;
+	switch (version) {
+	case 4:
+		ip = (struct ip_header const *)p;
+		len = (0x0f & ip->ip_vhl) * 4;	/* ip_hl specifies length in 32bit words */
+		p += len;
+		break;
+
+	case 6:
+		ip6 = (struct ip_header6 const *)p;
+		p += sizeof(struct ip_header6);
+
+		break;
+
+	default:
+		DEBUG("IP version invalid %i", version);
+		return;
+	}
+
+	/*
+	 *	End of variable length bits, do basic check now to see if packet looks long enough
+	 */
+	len = (p - data) + sizeof(struct udp_header) + (sizeof(radius_packet_t) - 1);	/* length value */
+	if (len > header->caplen) {
+		DEBUG("Packet too small, we require at least %zu bytes, captured %i bytes",
+		      (size_t) len, header->caplen);
+		return;
+	}
+
+	udp = (struct udp_header const *)p;
+	p += sizeof(struct udp_header);
+
+	/*
+	 *	With artificial talloc memory limits there's a good chance we can
+	 *	recover once some requests timeout, so make an effort to deal
+	 *	with allocation failures gracefully.
+	 */
+	current = rad_alloc(NULL, 0);
+	if (!current) {
+		ERROR("Failed allocating memory to hold decoded packet");
+		return;
+	}
+	current->timestamp = header->ts;
+	current->data_len = header->caplen - (data - p);
+	memcpy(&current->data, &p, sizeof(current->data));
+
+	/*
+	 *	Populate IP/UDP fields from PCAP data
+	 */
+	if (ip) {
+		current->src_ipaddr.af = AF_INET;
+		current->src_ipaddr.ipaddr.ip4addr.s_addr = ip->ip_src.s_addr;
+
+		current->dst_ipaddr.af = AF_INET;
+		current->dst_ipaddr.ipaddr.ip4addr.s_addr = ip->ip_dst.s_addr;
+	} else {
+		current->src_ipaddr.af = AF_INET6;
+		memcpy(&current->src_ipaddr.ipaddr.ip6addr.s6_addr, &ip6->ip_src.s6_addr,
+		       sizeof(current->src_ipaddr.ipaddr.ip6addr.s6_addr));
+
+		current->dst_ipaddr.af = AF_INET6;
+		memcpy(&current->dst_ipaddr.ipaddr.ip6addr.s6_addr, &ip6->ip_dst.s6_addr,
+		       sizeof(current->dst_ipaddr.ipaddr.ip6addr.s6_addr));
+	}
+
+	current->src_port = ntohs(udp->udp_sport);
+	current->dst_port = ntohs(udp->udp_dport);
 
 	if (!rad_packet_ok(current, 0, &reason)) {
-		DEBUG("(%i) %s", count++, fr_strerror());
+		DEBUG("(%i) ** %s **", count, fr_strerror());
 
-		DEBUG("\tInterface : %s", event->in->name);
-		DEBUG("\tFrom      : %s:%d", inet_ntoa(ip->ip_src), ntohs(udp->udp_sport));
-		DEBUG("\tTo        : %s:%d", inet_ntoa(ip->ip_dst), ntohs(udp->udp_dport));
-		DEBUG("\tType      : %s", fr_packet_codes[current->code]);
+		DEBUG("(%i) %s Id %i %s:%s:%d -> %s:%d\t+%u.%03u", count,
+		      fr_packet_codes[current->code], current->id,
+		      event->in->name,
+		      fr_inet_ntop(current->src_ipaddr.af, &current->src_ipaddr.ipaddr), current->src_port,
+		      fr_inet_ntop(current->dst_ipaddr.af, &current->dst_ipaddr.ipaddr), current->dst_port,
+		      (unsigned int) elapsed.tv_sec, ((unsigned int) elapsed.tv_usec / 1000));
 
 		rad_free(&current);
 		return;
@@ -420,6 +468,7 @@ static void rs_process_packet(rs_event_t *event, struct pcap_pkthdr const *heade
 	case PW_CODE_ACCOUNTING_RESPONSE:
 	case PW_CODE_AUTHENTICATION_REJECT:
 	case PW_CODE_AUTHENTICATION_ACK:
+		response = true;
 		/* look for a matching request and use it for decoding */
 		original = rbtree_finddata(request_tree, current);
 		break;
@@ -483,23 +532,27 @@ static void rs_process_packet(rs_event_t *event, struct pcap_pkthdr const *heade
 		/*
 		 *	Print info about the response.
 		 */
-		DEBUG("(%i) %s Id %i %s:%s:%d <- %s:%d\t+%u.%03u\t+%u.%03u", count++,
+		DEBUG("(%i) %s Id %i %s:%s:%d %s %s:%d\t+%u.%03u\t+%u.%03u", count,
 		      fr_packet_codes[current->code], current->id,
 		      event->in->name,
-		      inet_ntoa(ip->ip_src), ntohs(udp->udp_sport),
-		      inet_ntoa(ip->ip_dst), ntohs(udp->udp_dport),
+		      fr_inet_ntop(current->src_ipaddr.af, &current->src_ipaddr.ipaddr), current->src_port,
+		      response ? "<-" : "->",
+		      fr_inet_ntop(current->dst_ipaddr.af, &current->dst_ipaddr.ipaddr), current->dst_port,
 		      (unsigned int) elapsed.tv_sec, ((unsigned int) elapsed.tv_usec / 1000),
 		      (unsigned int) latency.tv_sec, ((unsigned int) latency.tv_usec / 1000));
-
+	/*
+	 *	It's the original request
+	 */
 	} else {
 		/*
 		 *	Print info about the request
 		 */
-		DEBUG("(%i) %s Id %i %s:%s:%d -> %s:%d\t+%u.%03u", count++,
+		DEBUG("(%i) %s Id %i %s:%s:%d %s %s:%d\t+%u.%03u", count,
 		      fr_packet_codes[current->code], current->id,
 		      event->in->name,
-		      inet_ntoa(ip->ip_src), ntohs(udp->udp_sport),
-		      inet_ntoa(ip->ip_dst), ntohs(udp->udp_dport),
+		      fr_inet_ntop(current->src_ipaddr.af, &current->src_ipaddr.ipaddr), current->src_port,
+		      response ? "<-" : "->",
+		      fr_inet_ntop(current->dst_ipaddr.af, &current->dst_ipaddr.ipaddr), current->dst_port,
 		      (unsigned int) elapsed.tv_sec, ((unsigned int) elapsed.tv_usec / 1000));
 	}
 
