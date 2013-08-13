@@ -399,13 +399,12 @@ static int process_eap_start(RADIUS_PACKET *req,
 	/* okay, we have just any_id_req there, so fill in response */
 
 	/* mark the subtype as being EAP-SIM/Response/Start */
-	newvp = paircreate(ATTRIBUTE_EAP_SIM_SUBTYPE, 0, PW_TYPE_INTEGER);
+	newvp = paircreate(rep, ATTRIBUTE_EAP_SIM_SUBTYPE, 0);
 	newvp->vp_integer = eapsim_start;
 	pairreplace(&(rep->vps), newvp);
 
 	/* insert selected version into response. */
-	newvp = paircreate(ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_SELECTED_VERSION,
-			   0, PW_TYPE_OCTETS);
+	newvp = paircreate(rep, ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_SELECTED_VERSION, 0);
 	versions = (uint16_t *)newvp->vp_strvalue;
 	versions[0] = htons(selectedversion);
 	newvp->length = 2;
@@ -421,8 +420,7 @@ static int process_eap_start(RADIUS_PACKET *req,
 		/*
 		 * insert a nonce_mt that we make up.
 		 */
-		newvp = paircreate(ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_NONCE_MT,
-				   0, PW_TYPE_OCTETS);
+		newvp = paircreate(rep, ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_NONCE_MT, 0);
 		newvp->vp_octets[0]=0;
 		newvp->vp_octets[1]=0;
 		newvp->length = 18;  /* 16 bytes of nonce + padding */
@@ -450,8 +448,7 @@ static int process_eap_start(RADIUS_PACKET *req,
 			fprintf(stderr, "eap-sim: We need to have a User-Name attribute!\n");
 			return 0;
 		}
-		newvp = paircreate(ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_IDENTITY,
-				   0, PW_TYPE_OCTETS);
+		newvp = paircreate(rep, ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_IDENTITY, 0);
 		idlen = strlen(vp->vp_strvalue);
 		pidlen = (uint16_t *)newvp->vp_strvalue;
 		*pidlen = htons(idlen);
@@ -621,7 +618,7 @@ static int process_eap_challenge(RADIUS_PACKET *req,
 	cleanresp(rep);
 
 	/* mark the subtype as being EAP-SIM/Response/Start */
-	newvp = paircreate(ATTRIBUTE_EAP_SIM_SUBTYPE, 0, PW_TYPE_INTEGER);
+	newvp = paircreate(rep, ATTRIBUTE_EAP_SIM_SUBTYPE, 0);
 	newvp->vp_integer = eapsim_challenge;
 	pairreplace(&(rep->vps), newvp);
 
@@ -629,15 +626,14 @@ static int process_eap_challenge(RADIUS_PACKET *req,
 	 * fill the SIM_MAC with a field that will in fact get appended
 	 * to the packet before the MAC is calculated
 	 */
-	newvp = paircreate(ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_MAC, 0,
-			   PW_TYPE_OCTETS);
+	newvp = paircreate(rep, ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_MAC, 0);
 	memcpy(newvp->vp_strvalue+EAPSIM_SRES_SIZE*0, sres1->vp_strvalue, EAPSIM_SRES_SIZE);
 	memcpy(newvp->vp_strvalue+EAPSIM_SRES_SIZE*1, sres2->vp_strvalue, EAPSIM_SRES_SIZE);
 	memcpy(newvp->vp_strvalue+EAPSIM_SRES_SIZE*2, sres3->vp_strvalue, EAPSIM_SRES_SIZE);
 	newvp->length = EAPSIM_SRES_SIZE*3;
 	pairreplace(&(rep->vps), newvp);
 
-	newvp = paircreate(ATTRIBUTE_EAP_SIM_KEY, 0, PW_TYPE_OCTETS);
+	newvp = paircreate(rep, ATTRIBUTE_EAP_SIM_KEY, 0);
 	memcpy(newvp->vp_strvalue,    eapsim_mk.K_aut, EAPSIM_AUTH_SIZE);
 	newvp->length = EAPSIM_AUTH_SIZE;
 	pairreplace(&(rep->vps), newvp);
@@ -676,7 +672,7 @@ static int respond_eap_sim(RADIUS_PACKET *req,
 	if((statevp = pairfind(resp->vps, ATTRIBUTE_EAP_SIM_STATE, 0, TAG_ANY)) == NULL)
 	{
 		/* must be initial request */
-		statevp = paircreate(ATTRIBUTE_EAP_SIM_STATE, 0, PW_TYPE_INTEGER);
+		statevp = paircreate(resp, ATTRIBUTE_EAP_SIM_STATE, 0);
 		statevp->vp_integer = eapsim_client_init;
 		pairreplace(&(resp->vps), statevp);
 	}
@@ -811,7 +807,7 @@ static int respond_eap_md5(RADIUS_PACKET *req,
 	fr_MD5Update(&context, value, valuesize);
 	fr_MD5Final(response, &context);
 
-	vp = paircreate(ATTRIBUTE_EAP_BASE+PW_EAP_MD5, 0, PW_TYPE_OCTETS);
+	vp = paircreate(rep, ATTRIBUTE_EAP_BASE+PW_EAP_MD5, 0);
 	vp->vp_octets[0]=16;
 	memcpy(&vp->vp_strvalue[1], response, 16);
 	vp->length = 17;
