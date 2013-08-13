@@ -107,16 +107,39 @@ int fr_pcap_open(fr_pcap_t *pcap)
 	case PCAP_INTERFACE_OUT:
 	case PCAP_INTERFACE_IN:
 		{
-			pcap->handle = pcap_open_live(pcap->name, SNAPLEN, true, PCAP_NONBLOCK_TIMEOUT,
-						      pcap->errbuf);
+			pcap->handle = pcap_create(pcap->name, pcap->errbuf);
 			if (!pcap->handle) {
 				fr_strerror_printf("%s", pcap->errbuf);
 
 				return -1;
 			}
+			if (pcap_set_snaplen(pcap->handle, SNAPLEN) != 0) {
+				goto error;
+			}
+			if (pcap_set_timeout(pcap->handle, PCAP_NONBLOCK_TIMEOUT) != 0) {
+				goto error;
+			}
+			if (pcap_set_promisc(pcap->handle, true) != 0) {
+				goto error;
+			}
+			if (pcap_set_buffer_size(pcap->handle, SNAPLEN * 10000) != 0) {
+				error:
+				fr_strerror_printf("%s", pcap_geterr(pcap->handle));
+				pcap_close(pcap->handle);
+				pcap->handle = NULL;
+				return -1;
+			}
+			if (pcap_activate(pcap->handle) != 0) {
+				goto error;
+			}
+			if (pcap_setnonblock(pcap->handle, true, pcap->errbuf) != 0) {
+				fr_strerror_printf("%s", pcap->errbuf);
+				pcap_close(pcap->handle);
+				pcap->handle = NULL;
+				return -1;
+			}
 
 			pcap->fd = pcap_get_selectable_fd(pcap->handle);
-
 #ifndef __linux__
 			{
 				int value = 1;
