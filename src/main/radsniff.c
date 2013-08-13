@@ -507,10 +507,6 @@ static void rs_process_packet(rs_event_t *event, struct pcap_pkthdr const *heade
 		goto check_filter;
 	}
 
-	if (!start_pcap.tv_sec) {
-		start_pcap = header->ts;
-	}
-
 	rs_tv_sub(&header->ts, &start_pcap, &elapsed);
 
 	rs_stats_update_count(&stats->gauge, current);
@@ -1083,6 +1079,7 @@ int main(int argc, char *argv[])
 	 *	Setup and enter the main event loop. Who needs libev when you can roll your own...
 	 */
 	 {
+	 	struct timeval now;
 	 	fr_event_list_t		*events;
 	 	rs_update_t		update;
 
@@ -1118,18 +1115,20 @@ int main(int argc, char *argv[])
 		INFO("Sniffing on (%s)", buff);
 		talloc_free(buff);
 
+		gettimeofday(&now, NULL);
+		start_pcap = now;
+
 		/*
 		 *	Insert our stats processor
 		 */
 		if (conf->stats.interval) {
-			struct timeval now;
 			update.list = events;
 			update.conf = conf;
 			update.stats = &stats;
 			update.in    = in;
 
-			gettimeofday(&now, NULL);
 			now.tv_sec += conf->stats.interval;
+			now.tv_usec = 0;
 			fr_event_insert(events, rs_stats_process, (void *) &update, &now, NULL);
 		}
 
