@@ -176,8 +176,8 @@ struct rs {
 	bool			from_auto;		//!< From list was auto-generated.
 
 	bool			do_sort;		//!< Whether we sort attributes in the packet.
-	bool			dequeue_on_rsp[PW_CODE_MAX];	//!< Remove requests immediately from the queue
-								//!< when a matching response is received.
+	bool			dequeue[PW_CODE_MAX];	//!< Remove requests immediately from the queue
+							//!< when a matching response is received.
 	char const		*radius_secret;		//!< Secret to decode encrypted attributes.
 
 	char			*pcap_filter;		//!< PCAP filter string applied to live capture devices.
