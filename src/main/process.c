@@ -486,7 +486,10 @@ STATE_MACHINE_DECL(request_done)
 	 *	Remove it from the request hash.
 	 */
 	if (request->in_request_hash) {
-		fr_packet_list_yank(pl, request->packet);
+		ASSERT_MASTER;
+		if (!fr_packet_list_yank(pl, request->packet)) {
+			rad_assert(0 == 1);
+		}
 		request->in_request_hash = false;
 
 		/*
@@ -1647,8 +1650,11 @@ static void remove_from_proxy_hash_nl(REQUEST *request)
 {
 	if (!request->in_proxy_hash) return;
 
-	fr_packet_list_yank(proxy_list, request->proxy);
+	if (!fr_packet_list_yank(proxy_list, request->proxy)) {
+		rad_assert(0 == 1);
+	}
 	fr_packet_list_id_free(proxy_list, request->proxy);
+	request->in_proxy_hash = false;
 
 	/*
 	 *	On the FIRST reply, decrement the count of outstanding
@@ -1683,7 +1689,6 @@ static void remove_from_proxy_hash_nl(REQUEST *request)
 	 *	grabs the mutex, the "not in hash" flag is correct.
 	 */
 	RDEBUG3("proxy: request is no longer in proxy hash");
-	request->in_proxy_hash = false;
 }
 
 static void remove_from_proxy_hash(REQUEST *request)
@@ -1778,7 +1783,9 @@ static int insert_into_proxy_hash(REQUEST *request)
 
 	request->proxy_listener = proxy_listener;
 	if (!fr_packet_list_insert(proxy_list, &request->proxy)) {
-		fr_packet_list_yank(proxy_list, request->proxy);
+		if (!fr_packet_list_yank(proxy_list, request->proxy)) {
+			rad_assert(0 == 1);
+		}
 		fr_packet_list_id_free(proxy_list, request->proxy);
 		request->proxy_listener = NULL;
 		request->in_proxy_hash = false;
@@ -2489,7 +2496,9 @@ static int request_proxy_anew(REQUEST *request)
 	 */
 	PTHREAD_MUTEX_LOCK(&proxy_mutex);
 	if (old_hash) {
-		fr_packet_list_yank(proxy_list, &old);
+		if (!fr_packet_list_yank(proxy_list, &old)) {
+			rad_assert(0 == 1);
+		}
 		fr_packet_list_id_free(proxy_list, &old);
 		old_home->currently_outstanding--;
 #ifdef WITH_TCP
