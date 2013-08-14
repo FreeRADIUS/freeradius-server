@@ -27,6 +27,7 @@ RCSID("$Id$")
 
 #define _LIBRADIUS 1
 #include <assert.h>
+#include <signal.h>
 #include <freeradius-devel/libradius.h>
 #include <freeradius-devel/event.h>
 
@@ -45,6 +46,7 @@ FILE *log_dst;
 static rs_t *conf;
 struct timeval start_pcap = {0, 0};
 static rbtree_t *request_tree = NULL;
+static fr_event_list_t	*events = NULL;
 
 typedef int (*rbcmp)(void const *, void const *);
 
@@ -780,7 +782,7 @@ static void rs_packet_process(rs_event_t *event, struct pcap_pkthdr const *heade
 	}
 }
 
-static void rs_got_packet(UNUSED fr_event_list_t *events, UNUSED int fd, void *ctx)
+static void rs_got_packet(UNUSED fr_event_list_t *el, UNUSED int fd, void *ctx)
 {
 	rs_event_t *event = ctx;
 	pcap_t *handle = event->in->handle;
@@ -869,6 +871,12 @@ static void NEVER_RETURNS usage(int status)
 	fprintf(output, "  -O <server>     Write statistics to this collectd server.\n");
 #endif
 	exit(status);
+}
+
+static void rs_cleanup(UNUSED int sig)
+{
+	DEBUG2("Signalling event loop to exit");
+	fr_event_loop_exit(events, 1);
 }
 
 int main(int argc, char *argv[])
@@ -1288,11 +1296,28 @@ int main(int argc, char *argv[])
 	}
 
 	/*
+	 *	Setup signal handlers so we always exit gracefully, ensuring output buffers are always
+	 *	flushed.
+	 */
+	{
+#ifdef HAVE_SIGACTION
+		struct sigaction action;
+		action.sa_handler = rs_cleanup;
+		sigaction(SIGINT, &action, NULL);
+		sigaction(SIGQUIT, &action, NULL);
+#else
+		signal(SIGINT, rs_cleanup);
+#  ifdef SIGQUIT
+		signal(SIGQUIT, rs_cleanup);
+#  endif
+#endif
+	}
+
+	/*
 	 *	Setup and enter the main event loop. Who needs libev when you can roll your own...
 	 */
 	 {
 	 	struct timeval now;
-	 	fr_event_list_t		*events;
 	 	rs_update_t		update;
 
 	 	char *buff;
@@ -1350,7 +1375,6 @@ int main(int argc, char *argv[])
 
 	finish:
 
-	INFO("Exiting...");
 	/*
 	 *	Free all the things! This also closes all the sockets and file descriptors
 	 */
