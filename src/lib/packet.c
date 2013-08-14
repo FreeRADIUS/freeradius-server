@@ -41,9 +41,6 @@ int fr_packet_cmp(RADIUS_PACKET const *a, RADIUS_PACKET const *b)
 {
 	int rcode;
 
-	VERIFY_PACKET(a);
-	VERIFY_PACKET(b);
-
 	rcode = a->id - b->id;
 	if (rcode != 0) return rcode;
 
@@ -92,9 +89,6 @@ int fr_inaddr_any(fr_ipaddr_t *ipaddr)
 void fr_request_from_reply(RADIUS_PACKET *request,
 			   RADIUS_PACKET const *reply)
 {
-	VERIFY_PACKET(request);
-	VERIFY_PACKET(reply);
-
 	request->sockfd = reply->sockfd;
 	request->id = reply->id;
 	request->src_port = reply->dst_port;
