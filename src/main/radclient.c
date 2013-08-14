@@ -481,7 +481,6 @@ static void deallocate_id(radclient_t *radclient)
 	 *	One more unused RADIUS ID.
 	 */
 	fr_packet_list_id_free(pl, radclient->request);
-	radclient->request->id = -1;
 
 	/*
 	 *	If we've already sent a packet, free up the old one,
@@ -591,7 +590,7 @@ static int send_one_packet(radclient_t *radclient)
 	retry:
 		radclient->request->src_ipaddr.af = server_ipaddr.af;
 		rcode = fr_packet_list_id_alloc(pl, ipproto,
-						radclient->request, NULL);
+						&radclient->request, NULL);
 		if (!rcode) {
 			int mysockfd;
 
@@ -684,13 +683,6 @@ static int send_one_packet(radclient_t *radclient)
 		radclient->timestamp = time(NULL);
 		radclient->tries = 1;
 		radclient->resend++;
-
-		/*
-		 *	Duplicate found.  Serious error!
-		 */
-		if (!fr_packet_list_insert(pl, &radclient->request)) {
-			assert(0 == 1);
-		}
 
 #ifdef WITH_TCP
 		/*
@@ -857,7 +849,6 @@ static int recv_one_packet(int wait_time)
 		goto packet_done; /* shared secret is incorrect */
 	}
 
-	fr_packet_list_yank(pl, radclient->request);
 	if (print_filename) printf("%s:%d %d\n",
 				   radclient->filename,
 				   radclient->packet_number,

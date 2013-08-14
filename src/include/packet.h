@@ -52,7 +52,7 @@ bool fr_packet_list_yank(fr_packet_list_t *pl,
 			 RADIUS_PACKET *request);
 int fr_packet_list_num_elements(fr_packet_list_t *pl);
 bool fr_packet_list_id_alloc(fr_packet_list_t *pl, int proto,
-			    RADIUS_PACKET *request, void **pctx);
+			    RADIUS_PACKET **request_p, void **pctx);
 bool fr_packet_list_id_free(fr_packet_list_t *pl,
 			     RADIUS_PACKET *request);
 bool fr_packet_list_socket_add(fr_packet_list_t *pl, int sockfd, int proto,

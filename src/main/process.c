@@ -1650,9 +1650,6 @@ static void remove_from_proxy_hash_nl(REQUEST *request)
 {
 	if (!request->in_proxy_hash) return;
 
-	if (!fr_packet_list_yank(proxy_list, request->proxy)) {
-		rad_assert(0 == 1);
-	}
 	fr_packet_list_id_free(proxy_list, request->proxy);
 	request->in_proxy_hash = false;
 
@@ -1738,7 +1735,7 @@ static int insert_into_proxy_hash(REQUEST *request)
 		RDEBUG3("proxy: Trying to allocate ID (%d/2)", tries);
 		rcode = fr_packet_list_id_alloc(proxy_list,
 						request->home_server->proto,
-						request->proxy, &proxy_listener);
+						&request->proxy, &proxy_listener);
 		if ((debug_flag > 2) && (rcode == 0)) {
 			RDEBUG("proxy: Failed allocating ID: %s", fr_strerror());
 		}
@@ -1775,6 +1772,8 @@ static int insert_into_proxy_hash(REQUEST *request)
 
 	if (!proxy_listener || (rcode == 0)) {
 		REDEBUG2("proxy: Failed allocating Id for proxied request");
+		rad_assert(request->proxy_listener == NULL);
+		rad_assert(!request->in_proxy_hash);
 		PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
 		return 0;
 	}
@@ -1782,18 +1781,6 @@ static int insert_into_proxy_hash(REQUEST *request)
 	rad_assert(request->proxy->id >= 0);
 
 	request->proxy_listener = proxy_listener;
-	if (!fr_packet_list_insert(proxy_list, &request->proxy)) {
-		if (!fr_packet_list_yank(proxy_list, request->proxy)) {
-			rad_assert(0 == 1);
-		}
-		fr_packet_list_id_free(proxy_list, request->proxy);
-		request->proxy_listener = NULL;
-		request->in_proxy_hash = false;
-		PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
-		RPROXY("Failed to insert entry into proxy list.");
-		return 0;
-	}
-
 	request->in_proxy_hash = true;
 	RDEBUG3("proxy: request is now in proxy hash");
 
@@ -2496,9 +2483,6 @@ static int request_proxy_anew(REQUEST *request)
 	 */
 	PTHREAD_MUTEX_LOCK(&proxy_mutex);
 	if (old_hash) {
-		if (!fr_packet_list_yank(proxy_list, &old)) {
-			rad_assert(0 == 1);
-		}
 		fr_packet_list_id_free(proxy_list, &old);
 		old_home->currently_outstanding--;
 #ifdef WITH_TCP
