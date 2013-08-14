@@ -339,7 +339,7 @@ int rs_stats_collectd_open(rs_t *conf)
 		ERROR("Failed opening collectd socket: %s", fr_syserror(errno));
 		return -1;
 	}
-	DEBUG1("Connected to \"%s\"", conf->stats.collectd);
+	DEBUG2("Connected to \"%s\"", conf->stats.collectd);
 
 	assert(conf->stats.handle);
 	return 0;

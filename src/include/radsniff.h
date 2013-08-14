@@ -45,15 +45,17 @@ RCSIDH(radsniff_h, "$Id$")
 /*
  *	Logging macros
  */
-#undef DEBUG1
-#define DEBUG1(fmt, ...)	if (fr_debug_flag > 2) fprintf(log_dst , fmt "\n", ## __VA_ARGS__)
+#undef DEBUG2
+#define DEBUG2(fmt, ...)	if (fr_debug_flag > 2) fprintf(log_dst , fmt "\n", ## __VA_ARGS__)
 #undef DEBUG
 #define DEBUG(fmt, ...)		if (fr_debug_flag > 1) fprintf(log_dst , fmt "\n", ## __VA_ARGS__)
 #undef INFO
 #define INFO(fmt, ...)		if (fr_debug_flag > 0) fprintf(log_dst , fmt "\n", ## __VA_ARGS__)
-#define PACKET(fmt, ...)	if (conf->print_packet && (fr_debug_flag > 0)) fprintf(log_dst , fmt "\n", ## __VA_ARGS__)
-
 #define ERROR(fmt, ...)		fr_perror("radsniff: " fmt "\n", ## __VA_ARGS__)
+
+#define IPACKET(fmt, ...)	if (conf->print_packet && (fr_debug_flag > 0)) fprintf(log_dst , fmt "\n", ## __VA_ARGS__)
+#define DPACKET(fmt, ...)	if (conf->print_packet && (fr_debug_flag > 1)) fprintf(log_dst , fmt "\n", ## __VA_ARGS__)
+#define DPACKET2(fmt, ...)	if (conf->print_packet && (fr_debug_flag > 2)) fprintf(log_dst , fmt "\n", ## __VA_ARGS__)
 
 typedef enum {
 #ifdef HAVE_COLLECTDC_H
