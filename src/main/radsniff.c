@@ -44,7 +44,6 @@ FILE *log_dst;
 
 static rs_t *conf;
 struct timeval start_pcap = {0, 0};
-static rbtree_t *filter_tree = NULL;
 static rbtree_t *request_tree = NULL;
 
 typedef int (*rbcmp)(void const *, void const *);
@@ -316,87 +315,6 @@ static void rs_stats_update_latency(rs_latency_t *stats, struct timeval *latency
 
 }
 
-static int rs_filter_packet(RADIUS_PACKET *packet)
-{
-	vp_cursor_t cursor, check_cursor;
-	VALUE_PAIR *check_item;
-	VALUE_PAIR *vp;
-	unsigned int pass, fail;
-	int compare;
-
-	pass = fail = 0;
-	for (vp = paircursor(&cursor, &packet->vps);
-	     vp;
-	     vp = pairnext(&cursor)) {
-		for (check_item = paircursor(&check_cursor, &filter_vps);
-		     check_item;
-		     check_item = pairnext(&check_cursor))
-			if ((check_item->da == vp->da)
-			 && (check_item->op != T_OP_SET)) {
-				compare = paircmp(check_item, vp);
-				if (compare == 1)
-					pass++;
-				else
-					fail++;
-			}
-	}
-
-	if ((fail == 0) && (pass != 0)) {
-		/*
-		 *	Cache authentication requests, as the replies
-		 *	may not match the RADIUS filter.
-		 */
-		if ((packet->code == PW_CODE_AUTHENTICATION_REQUEST) ||
-		    (packet->code == PW_CODE_ACCOUNTING_REQUEST)) {
-			rbtree_deletebydata(filter_tree, packet);
-
-			if (!rbtree_insert(filter_tree, packet)) {
-			oom:
-				ERROR("Out of memory");
-				exit(1);
-			}
-		}
-		return 0;	/* matched */
-	}
-
-	/*
-	 *	Don't create erroneous matches.
-	 */
-	if ((packet->code == PW_CODE_AUTHENTICATION_REQUEST) ||
-	    (packet->code == PW_CODE_ACCOUNTING_REQUEST)) {
-		rbtree_deletebydata(filter_tree, packet);
-		return 1;
-	}
-
-	/*
-	 *	Else see if a previous Access-Request
-	 *	matched.  If so, also print out the
-	 *	matching accept, reject, or challenge.
-	 */
-	if ((packet->code == PW_CODE_AUTHENTICATION_ACK) ||
-	    (packet->code == PW_CODE_AUTHENTICATION_REJECT) ||
-	    (packet->code == PW_CODE_ACCESS_CHALLENGE) ||
-	    (packet->code == PW_CODE_ACCOUNTING_RESPONSE)) {
-		RADIUS_PACKET *reply;
-
-		/*
-		 *	This swaps the various fields.
-		 */
-		reply = rad_alloc_reply(NULL, packet);
-		if (!reply) goto oom;
-
-		compare = 1;
-		if (rbtree_finddata(filter_tree, reply)) {
-			compare = 0;
-		}
-
-		rad_free(&reply);
-		return compare;
-	}
-
-	return 1;
-}
-
 static void rs_packet_cleanup(void *ctx)
 {
 	rs_request_t *request = ctx;
@@ -656,12 +574,15 @@ static void rs_packet_process(rs_event_t *event, struct pcap_pkthdr const *heade
 					}
 				}
 			/*
-			 *	If it was a response to a request (we saw, and allowed), it's
-			 *	automatically permitted through the filter.  If it wasn't
-			 *	we may still want to filter it.
+			 *	No request seen, or request was dropped by attribute filter
 			 */
 			} else {
-				if (filter_vps && rs_filter_packet(current)) {
+				/*
+				 *	If filter_vps are set assume the original request was dropped,
+				 *	the alternative is maintaining another 'filter', but that adds
+				 *	complexity, reduces max capture rate, and is generally a PITA.
+				 */
+				if (filter_vps) {
 					rad_free(&current);
 					PACKET("(%i) Dropped by attribute filter", count);
 					return;
@@ -698,7 +619,7 @@ static void rs_packet_process(rs_event_t *event, struct pcap_pkthdr const *heade
 			/*
 			 *	Now verify the packet passes the attribute filter
 			 */
-			if (filter_vps && rs_filter_packet(current)) {
+			if (filter_vps && !pairvalidate_relaxed(filter_vps, current->vps)) {
 				rad_free(&current);
 				PACKET("(%i) Dropped by attribute filter", count);
 				return;
@@ -1215,13 +1136,6 @@ int main(int argc, char *argv[])
 			ret = 64;
 			goto finish;
 		}
-
-		filter_tree = rbtree_create((rbcmp) rs_packet_cmp, _rb_rad_free, 0);
-		if (!filter_tree) {
-			ERROR("Failed creating filter tree");
-			ret = 64;
-			goto finish;
-		}
 	}
 
 	/*
@@ -1422,10 +1336,6 @@ int main(int argc, char *argv[])
 	INFO("Done sniffing");
 
 	finish:
-
-	if (filter_tree) {
-		rbtree_free(filter_tree);
-	}
 
 	INFO("Exiting...");
 	/*
