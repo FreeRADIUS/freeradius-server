@@ -801,7 +801,17 @@ static void rs_got_packet(UNUSED fr_event_list_t *events, UNUSED int fd, void *c
 			return;
 		}
 
-		rs_packet_process(event, header, data);
+		count++;
+		rs_packet_process(count, event, header, data);
+
+		/*
+		 *	We've hit our capture limit, break out of the event loop
+		 */
+		if ((conf->limit > 0) && (count >= conf->limit)) {
+			INFO("Captured %i packets, exiting...", count);
+			fr_event_loop_exit(events, 1);
+			return;
+		}
 	}
 }
 
