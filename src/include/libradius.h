@@ -74,8 +74,10 @@ extern "C" {
 */
 
 #define VERIFY_VP(_x) (void) talloc_get_type_abort(_x, VALUE_PAIR)
+#define VERIFY_PACKET(_x) (void) talloc_get_type_abort(_x, RADIUS_PACKET)
 #else
 #define VERIFY_VP(_x)
+#define VERIFY_PACKET(_x)
 #endif
 
 #define AUTH_VECTOR_LEN		16

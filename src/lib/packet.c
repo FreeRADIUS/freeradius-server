@@ -41,6 +41,9 @@ int fr_packet_cmp(RADIUS_PACKET const *a, RADIUS_PACKET const *b)
 {
 	int rcode;
 
+	VERIFY_PACKET(a);
+	VERIFY_PACKET(b);
+
 	rcode = a->id - b->id;
 	if (rcode != 0) return rcode;
 
@@ -87,8 +90,11 @@ int fr_inaddr_any(fr_ipaddr_t *ipaddr)
  *	Create a fake "request" from a reply, for later lookup.
  */
 void fr_request_from_reply(RADIUS_PACKET *request,
-			     RADIUS_PACKET const *reply)
+			   RADIUS_PACKET const *reply)
 {
+	VERIFY_PACKET(request);
+	VERIFY_PACKET(reply);
+
 	request->sockfd = reply->sockfd;
 	request->id = reply->id;
 	request->src_port = reply->dst_port;
@@ -490,6 +496,8 @@ int fr_packet_list_insert(fr_packet_list_t *pl,
 {
 	if (!pl || !request_p || !*request_p) return 0;
 
+	VERIFY_PACKET(*request_p);
+
 	return rbtree_insert(pl->tree, request_p);
 }
 
@@ -497,6 +505,8 @@ RADIUS_PACKET **fr_packet_list_find(fr_packet_list_t *pl,
 				      RADIUS_PACKET *request)
 {
 	if (!pl || !request) return 0;
+
+	VERIFY_PACKET(request);
 
 	return rbtree_finddata(pl->tree, &request);
 }
@@ -513,6 +523,8 @@ RADIUS_PACKET **fr_packet_list_find_byreply(fr_packet_list_t *pl,
 	fr_packet_socket_t *ps;
 
 	if (!pl || !reply) return NULL;
+
+	VERIFY_PACKET(reply);
 
 	ps = fr_socket_find(pl, reply->sockfd);
 	if (!ps) return NULL;
@@ -547,6 +559,8 @@ void fr_packet_list_yank(fr_packet_list_t *pl, RADIUS_PACKET *request)
 	rbnode_t *node;
 
 	if (!pl || !request) return;
+
+	VERIFY_PACKET(request);
 
 	node = rbtree_find(pl->tree, &request);
 	if (!node) return;
@@ -587,6 +601,8 @@ int fr_packet_list_id_alloc(fr_packet_list_t *pl, int proto,
 	int i, j, k, fd, id, start_i, start_j, start_k;
 	int src_any = 0;
 	fr_packet_socket_t *ps;
+
+	VERIFY_PACKET(request);
 
 	if ((request->dst_ipaddr.af == AF_UNSPEC) ||
 	    (request->dst_port == 0)) {
@@ -781,6 +797,8 @@ int fr_packet_list_id_free(fr_packet_list_t *pl,
 	fr_packet_socket_t *ps;
 
 	if (!pl || !request) return 0;
+
+	VERIFY_PACKET(request);
 
 	ps = fr_socket_find(pl, request->sockfd);
 	if (!ps) return 0;
