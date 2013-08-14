@@ -3910,8 +3910,8 @@ finish:
 		 */
 		if (this->type == RAD_LISTEN_PROXY) {
 			PTHREAD_MUTEX_LOCK(&proxy_mutex);
-			if (!fr_packet_list_socket_remove(proxy_list,
-							  this->fd, NULL)) {
+			if (!fr_packet_list_socket_del(proxy_list,
+						       this->fd, NULL)) {
 				ERROR("Fatal error removing socket: %s",
 				       fr_strerror());
 				exit(1);
