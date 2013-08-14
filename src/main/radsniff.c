@@ -920,6 +920,7 @@ static void NEVER_RETURNS usage(int status)
 	fprintf(output, "  -h              This help message.\n");
 	fprintf(output, "  -i <interface>  Capture packets from interface (defaults to all if supported).\n");
 	fprintf(output, "  -I <file>       Read packets from file (overrides input of -F).\n");
+	fprintf(output, "  -m              Don't put interface(s) into promiscuous mode.\n");
 	fprintf(output, "  -p <port>       Filter packets by port (default is 1812).\n");
 	fprintf(output, "  -q              Print less debugging information.\n");
 	fprintf(output, "  -r <filter>     RADIUS attribute filter.\n");
@@ -980,11 +981,13 @@ int main(int argc, char *argv[])
 	 *	Set some defaults
 	 */
 	conf->print_packet = true;
+	conf->limit = -1;
+	conf->promiscuous = true;
 
 	/*
 	 *  Get options
 	 */
-	while ((opt = getopt(argc, argv, "c:d:DFf:hi:I:p:qr:s:Svw:xXW:P:O:")) != EOF) {
+	while ((opt = getopt(argc, argv, "c:d:DFf:hi:I:mp:qr:s:Svw:xXW:P:O:")) != EOF) {
 		switch (opt) {
 		case 'c':
 			limit = atoi(optarg);
@@ -1047,6 +1050,9 @@ int main(int argc, char *argv[])
 			}
 			in_head = &(*in_head)->next;
 			conf->from_file = true;
+			break;
+		case 'm':
+			conf->promiscuous = false;
 			break;
 
 		case 'p':
@@ -1319,6 +1325,7 @@ int main(int argc, char *argv[])
 		for (in_p = in;
 		     in_p;
 		     in_p = in_p->next) {
+		     	in_p->promiscuous = conf->promiscuous;
 			if (fr_pcap_open(in_p) < 0) {
 				if (!conf->from_auto) {
 					ERROR("Failed opening pcap handle for %s", in_p->name);

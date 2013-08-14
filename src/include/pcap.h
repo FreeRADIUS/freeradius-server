@@ -155,6 +155,8 @@ struct fr_pcap {
 	char			errbuf[PCAP_ERRBUF_SIZE];	//!< Last error on this interface.
 	fr_pcap_type_t		type;				//!< What type of handle this is.
 	char			*name;				//!< Name of file or interface.
+	bool			promiscuous;			//!< Whether the interface is in promiscuous mode
+								//!< only valid for live capture handles.
 
 	pcap_t			*handle;			//!< libpcap handle.
 	pcap_dumper_t		*dumper;			//!< libpcap dumper handle.

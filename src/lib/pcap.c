@@ -119,7 +119,7 @@ int fr_pcap_open(fr_pcap_t *pcap)
 			if (pcap_set_timeout(pcap->handle, PCAP_NONBLOCK_TIMEOUT) != 0) {
 				goto error;
 			}
-			if (pcap_set_promisc(pcap->handle, true) != 0) {
+			if (pcap_set_promisc(pcap->handle, pcap->promiscuous) != 0) {
 				goto error;
 			}
 			if (pcap_set_buffer_size(pcap->handle, SNAPLEN * 10000) != 0) {

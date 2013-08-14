@@ -194,6 +194,7 @@ struct rs {
 	bool			to_stdout;		//!< Were writing pcap data to stdout.
 
 	bool			from_auto;		//!< From list was auto-generated.
+	bool			promiscuous;		//!< Capture in promiscuous mode.
 	bool			print_packet;		//!< Print packet info, disabled with -W
 
 	bool			do_sort;		//!< Whether we sort attributes in the packet.
