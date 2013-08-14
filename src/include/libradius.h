@@ -632,7 +632,7 @@ rbtree_t       *rbtree_create(int (*Compare)(void const *, void const *),
 			      void (*freeNode)(void *),
 			      int flags);
 void		rbtree_free(rbtree_t *tree);
-int		rbtree_insert(rbtree_t *tree, void *Data);
+bool		rbtree_insert(rbtree_t *tree, void *Data);
 rbnode_t	*rbtree_insertnode(rbtree_t *tree, void *Data);
 void		rbtree_delete(rbtree_t *tree, rbnode_t *Z);
 bool		rbtree_deletebydata(rbtree_t *tree, void const *data);

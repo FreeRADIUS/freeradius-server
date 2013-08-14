@@ -325,10 +325,10 @@ rbnode_t *rbtree_insertnode(rbtree_t *tree, void *Data)
 	return X;
 }
 
-int rbtree_insert(rbtree_t *tree, void *Data)
+bool rbtree_insert(rbtree_t *tree, void *Data)
 {
-	if (rbtree_insertnode(tree, Data)) return 1;
-	return 0;
+	if (rbtree_insertnode(tree, Data)) return true;
+	return false;
 }
 
 static void DeleteFixup(rbtree_t *tree, rbnode_t *X, rbnode_t *Parent)
@@ -490,7 +490,7 @@ bool rbtree_deletebydata(rbtree_t *tree, void const *data)
 {
 	rbnode_t *node = rbtree_find(tree, data);
 
-	if (!node) return false;	/* false */
+	if (!node) return false;
 
 	rbtree_delete(tree, node);
 
