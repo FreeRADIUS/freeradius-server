@@ -48,7 +48,7 @@ RADIUS_PACKET **fr_packet_list_find(fr_packet_list_t *pl,
 				      RADIUS_PACKET *request);
 RADIUS_PACKET **fr_packet_list_find_byreply(fr_packet_list_t *pl,
 					      RADIUS_PACKET *reply);
-void fr_packet_list_yank(fr_packet_list_t *pl,
+bool fr_packet_list_yank(fr_packet_list_t *pl,
 			 RADIUS_PACKET *request);
 int fr_packet_list_num_elements(fr_packet_list_t *pl);
 int fr_packet_list_id_alloc(fr_packet_list_t *pl, int proto,
