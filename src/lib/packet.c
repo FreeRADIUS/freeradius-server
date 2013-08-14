@@ -583,11 +583,12 @@ int fr_packet_list_num_elements(fr_packet_list_t *pl)
  *	should be used.
  */
 bool fr_packet_list_id_alloc(fr_packet_list_t *pl, int proto,
-			    RADIUS_PACKET *request, void **pctx)
+			    RADIUS_PACKET **request_p, void **pctx)
 {
 	int i, j, k, fd, id, start_i, start_j, start_k;
 	int src_any = 0;
 	fr_packet_socket_t *ps;
+	RADIUS_PACKET *request = *request_p;
 
 	if ((request->dst_ipaddr.af == AF_UNSPEC) ||
 	    (request->dst_port == 0)) {
@@ -755,9 +756,6 @@ bool fr_packet_list_id_alloc(fr_packet_list_t *pl, int proto,
 		return false;
 	}
 
-	ps->num_outgoing++;
-	pl->num_outgoing++;
-
 	/*
 	 *	Set the ID, source IP, and source port.
 	 */
@@ -767,9 +765,31 @@ bool fr_packet_list_id_alloc(fr_packet_list_t *pl, int proto,
 	request->src_ipaddr = ps->src_ipaddr;
 	request->src_port = ps->src_port;
 
-	if (pctx) *pctx = ps->ctx;
+	/*
+	 *	If we managed to insert it, we're done.
+	 */
+	if (fr_packet_list_insert(pl, request_p)) {
+		if (pctx) *pctx = ps->ctx;
+		ps->num_outgoing++;
+		pl->num_outgoing++;		
+		return true;
+	}
 
-	return true;
+	/*
+	 *	Mark the ID as free.  This is the one line from
+	 *	id_free() that we care about here.
+	 */
+	ps->id[(request->id >> 3) & 0x1f] &= ~(1 << (request->id & 0x07));
+
+	/*
+	 *	Undo the work we did above.
+	 */
+	request->id = -1;
+	request->sockfd = -1;
+	request->src_ipaddr.af = AF_UNSPEC;
+	request->src_port = 0;
+
+	return false;
 }
 
 /*
@@ -782,6 +802,8 @@ bool fr_packet_list_id_free(fr_packet_list_t *pl,
 	fr_packet_socket_t *ps;
 
 	if (!pl || !request) return false;
+
+	if (!fr_packet_list_yank(pl, request)) return false;
 
 	ps = fr_socket_find(pl, request->sockfd);
 	if (!ps) return false;
@@ -796,6 +818,8 @@ bool fr_packet_list_id_free(fr_packet_list_t *pl,
 
 	ps->num_outgoing--;
 	pl->num_outgoing--;
+
+	request->id = -1;
 
 	return true;
 }
