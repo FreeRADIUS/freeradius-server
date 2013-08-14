@@ -294,61 +294,61 @@ static fr_packet_socket_t *fr_socket_find(fr_packet_list_t *pl,
 	return NULL;
 }
 
-int fr_packet_list_socket_freeze(fr_packet_list_t *pl, int sockfd)
+bool fr_packet_list_socket_freeze(fr_packet_list_t *pl, int sockfd)
 {
 	fr_packet_socket_t *ps;
 
 	if (!pl) {
 		fr_strerror_printf("Invalid argument");
-		return 0;
+		return false;
 	}
 
 	ps = fr_socket_find(pl, sockfd);
 	if (!ps) {
 		fr_strerror_printf("No such socket");
-		return 0;
+		return false;
 	}
 
 	ps->dont_use = 1;
-	return 1;
+	return true;
 }
 
-int fr_packet_list_socket_thaw(fr_packet_list_t *pl, int sockfd)
+bool fr_packet_list_socket_thaw(fr_packet_list_t *pl, int sockfd)
 {
 	fr_packet_socket_t *ps;
 
-	if (!pl) return 0;
+	if (!pl) return false;
 
 	ps = fr_socket_find(pl, sockfd);
-	if (!ps) return 0;
+	if (!ps) return false;
 
 	ps->dont_use = 0;
-	return 1;
+	return true;
 }
 
-int fr_packet_list_socket_remove(fr_packet_list_t *pl, int sockfd,
+bool fr_packet_list_socket_del(fr_packet_list_t *pl, int sockfd,
 				 void **pctx)
 {
 	fr_packet_socket_t *ps;
 
-	if (!pl) return 0;
+	if (!pl) return false;
 
 	ps = fr_socket_find(pl, sockfd);
-	if (!ps) return 0;
+	if (!ps) return false;
 
 	/*
 	 *	FIXME: Allow the caller forcibly discard these?
 	 */
-	if (ps->num_outgoing != 0) return 0;
+	if (ps->num_outgoing != 0) return false;
 
 	ps->sockfd = -1;
 	pl->num_sockets--;
 	if (pctx) *pctx = ps->ctx;
 
-	return 1;
+	return true;
 }
 
-int fr_packet_list_socket_add(fr_packet_list_t *pl, int sockfd, int proto,
+bool fr_packet_list_socket_add(fr_packet_list_t *pl, int sockfd, int proto,
 			      fr_ipaddr_t *dst_ipaddr, int dst_port,
 			      void *ctx)
 {
@@ -359,18 +359,18 @@ int fr_packet_list_socket_add(fr_packet_list_t *pl, int sockfd, int proto,
 
 	if (!pl || !dst_ipaddr || (dst_ipaddr->af == AF_UNSPEC)) {
 		fr_strerror_printf("Invalid argument");
-		return 0;
+		return false;
 	}
 
 	if (pl->num_sockets >= MAX_SOCKETS) {
 		fr_strerror_printf("Too many open sockets");
-		return 0;
+		return false;
 	}
 
 #ifndef WITH_TCP
 	if (proto != IPPROTO_UDP) {
 		fr_strerror_printf("only UDP is supported");
-		return 0;
+		return false;
 	}
 #endif
 
@@ -388,7 +388,7 @@ int fr_packet_list_socket_add(fr_packet_list_t *pl, int sockfd, int proto,
 
 	if (!ps) {
 		fr_strerror_printf("All socket entries are full");
-		return 0;
+		return false;
 	}
 
 	memset(ps, 0, sizeof(*ps));
@@ -409,23 +409,23 @@ int fr_packet_list_socket_add(fr_packet_list_t *pl, int sockfd, int proto,
 	if (getsockname(sockfd, (struct sockaddr *) &src,
 			&sizeof_src) < 0) {
 		fr_strerror_printf("%s", strerror(errno));
-		return 0;
+		return false;
 	}
 
 	if (!fr_sockaddr2ipaddr(&src, sizeof_src, &ps->src_ipaddr,
 				&ps->src_port)) {
 		fr_strerror_printf("Failed to get IP");
-		return 0;
+		return false;
 	}
 
 	ps->dst_ipaddr = *dst_ipaddr;
 	ps->dst_port = dst_port;
 
 	ps->src_any = fr_inaddr_any(&ps->src_ipaddr);
-	if (ps->src_any < 0) return 0;
+	if (ps->src_any < 0) return false;
 
 	ps->dst_any = fr_inaddr_any(&ps->dst_ipaddr);
-	if (ps->dst_any < 0) return 0;
+	if (ps->dst_any < 0) return false;
 
 	/*
 	 *	As the last step before returning.
@@ -433,7 +433,7 @@ int fr_packet_list_socket_add(fr_packet_list_t *pl, int sockfd, int proto,
 	ps->sockfd = sockfd;
 	pl->num_sockets++;
 
-	return 1;
+	return true;
 }
 
 static int packet_entry_cmp(void const *one, void const *two)
@@ -485,7 +485,7 @@ fr_packet_list_t *fr_packet_list_create(int alloc_id)
  *	If pl->alloc_id is set, then fr_packet_list_id_alloc() MUST
  *	be called before inserting the packet into the list!
  */
-int fr_packet_list_insert(fr_packet_list_t *pl,
+bool fr_packet_list_insert(fr_packet_list_t *pl,
 			    RADIUS_PACKET **request_p)
 {
 	if (!pl || !request_p || !*request_p) return 0;
@@ -590,7 +590,7 @@ int fr_packet_list_num_elements(fr_packet_list_t *pl)
  *	We also assume that the sender doesn't care which protocol
  *	should be used.
  */
-int fr_packet_list_id_alloc(fr_packet_list_t *pl, int proto,
+bool fr_packet_list_id_alloc(fr_packet_list_t *pl, int proto,
 			    RADIUS_PACKET *request, void **pctx)
 {
 	int i, j, k, fd, id, start_i, start_j, start_k;
@@ -602,13 +602,13 @@ int fr_packet_list_id_alloc(fr_packet_list_t *pl, int proto,
 	if ((request->dst_ipaddr.af == AF_UNSPEC) ||
 	    (request->dst_port == 0)) {
 		fr_strerror_printf("No destination address/port specified");
-		return 0;
+		return false;
 	}
 
 #ifndef WITH_TCP
 	if ((proto != 0) && (proto != IPPROTO_UDP)) {
 		fr_strerror_printf("Invalid destination protocol");
-		return 0;
+		return false;
 	}
 #endif
 
@@ -623,7 +623,7 @@ int fr_packet_list_id_alloc(fr_packet_list_t *pl, int proto,
 	src_any = fr_inaddr_any(&request->src_ipaddr);
 	if (src_any < 0) {
 		fr_strerror_printf("Can't check src_ipaddr");
-		return 0;
+		return false;
 	}
 
 	/*
@@ -631,7 +631,7 @@ int fr_packet_list_id_alloc(fr_packet_list_t *pl, int proto,
 	 */
 	if (fr_inaddr_any(&request->dst_ipaddr) != 0) {
 		fr_strerror_printf("Must specify a dst_ipaddr");
-		return 0;
+		return false;
 	}
 
 	/*
@@ -762,7 +762,7 @@ int fr_packet_list_id_alloc(fr_packet_list_t *pl, int proto,
 	 */
 	if (fd < 0) {
 		fr_strerror_printf("Failed finding socket, caller must allocate a new one");
-		return 0;
+		return false;
 	}
 
 	ps->num_outgoing++;
@@ -779,24 +779,24 @@ int fr_packet_list_id_alloc(fr_packet_list_t *pl, int proto,
 
 	if (pctx) *pctx = ps->ctx;
 
-	return 1;
+	return true;
 }
 
 /*
  *	Should be called AFTER yanking it from the list, so that
  *	any newly inserted entries don't collide with this one.
  */
-int fr_packet_list_id_free(fr_packet_list_t *pl,
+bool fr_packet_list_id_free(fr_packet_list_t *pl,
 			     RADIUS_PACKET *request)
 {
 	fr_packet_socket_t *ps;
 
-	if (!pl || !request) return 0;
+	if (!pl || !request) return false;
 
 	VERIFY_PACKET(request);
 
 	ps = fr_socket_find(pl, request->sockfd);
-	if (!ps) return 0;
+	if (!ps) return false;
 
 #if 0
 	if (!ps->id[(request->id >> 3) & 0x1f] & (1 << (request->id & 0x07))) {
@@ -809,7 +809,7 @@ int fr_packet_list_id_free(fr_packet_list_t *pl,
 	ps->num_outgoing--;
 	pl->num_outgoing--;
 
-	return 1;
+	return true;
 }
 
 int fr_packet_list_walk(fr_packet_list_t *pl, void *ctx,

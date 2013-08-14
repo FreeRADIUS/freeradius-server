@@ -41,7 +41,7 @@ typedef struct fr_packet_list_t fr_packet_list_t;
 
 fr_packet_list_t *fr_packet_list_create(int alloc_id);
 void fr_packet_list_free(fr_packet_list_t *pl);
-int fr_packet_list_insert(fr_packet_list_t *pl,
+bool fr_packet_list_insert(fr_packet_list_t *pl,
 			    RADIUS_PACKET **request_p);
 
 RADIUS_PACKET **fr_packet_list_find(fr_packet_list_t *pl,
@@ -51,17 +51,17 @@ RADIUS_PACKET **fr_packet_list_find_byreply(fr_packet_list_t *pl,
 bool fr_packet_list_yank(fr_packet_list_t *pl,
 			 RADIUS_PACKET *request);
 int fr_packet_list_num_elements(fr_packet_list_t *pl);
-int fr_packet_list_id_alloc(fr_packet_list_t *pl, int proto,
+bool fr_packet_list_id_alloc(fr_packet_list_t *pl, int proto,
 			    RADIUS_PACKET *request, void **pctx);
-int fr_packet_list_id_free(fr_packet_list_t *pl,
+bool fr_packet_list_id_free(fr_packet_list_t *pl,
 			     RADIUS_PACKET *request);
-int fr_packet_list_socket_add(fr_packet_list_t *pl, int sockfd, int proto,
+bool fr_packet_list_socket_add(fr_packet_list_t *pl, int sockfd, int proto,
 			      fr_ipaddr_t *dst_ipaddr, int dst_port,
 			      void *ctx);
-int fr_packet_list_socket_remove(fr_packet_list_t *pl, int sockfd,
+bool fr_packet_list_socket_del(fr_packet_list_t *pl, int sockfd,
 				 void **pctx);
-int fr_packet_list_socket_freeze(fr_packet_list_t *pl, int sockfd);
-int fr_packet_list_socket_thaw(fr_packet_list_t *pl, int sockfd);
+bool fr_packet_list_socket_freeze(fr_packet_list_t *pl, int sockfd);
+bool fr_packet_list_socket_thaw(fr_packet_list_t *pl, int sockfd);
 int fr_packet_list_walk(fr_packet_list_t *pl, void *ctx,
 			  fr_hash_table_walk_t callback);
 int fr_packet_list_fd_set(fr_packet_list_t *pl, fd_set *set);

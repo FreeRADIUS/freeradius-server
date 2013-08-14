@@ -578,7 +578,8 @@ static int send_one_packet(radclient_t *radclient)
 	 *	Haven't sent the packet yet.  Initialize it.
 	 */
 	if (radclient->request->id == -1) {
-		int i, rcode;
+		int i;
+		bool rcode;
 
 		assert(radclient->reply == NULL);
 
@@ -591,7 +592,7 @@ static int send_one_packet(radclient_t *radclient)
 		radclient->request->src_ipaddr.af = server_ipaddr.af;
 		rcode = fr_packet_list_id_alloc(pl, ipproto,
 						radclient->request, NULL);
-		if (rcode < 0) {
+		if (!rcode) {
 			int mysockfd;
 
 #ifdef WITH_TCP
@@ -613,12 +614,6 @@ static int send_one_packet(radclient_t *radclient)
 				exit(1);
 			}
 			goto retry;
-		}
-
-		if (rcode == 0) {
-			done = 0;
-			sleep_time = 0;
-			return 0;
 		}
 
 		assert(radclient->request->id != -1);
