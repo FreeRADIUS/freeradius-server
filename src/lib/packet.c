@@ -554,18 +554,19 @@ RADIUS_PACKET **fr_packet_list_find_byreply(fr_packet_list_t *pl,
 }
 
 
-void fr_packet_list_yank(fr_packet_list_t *pl, RADIUS_PACKET *request)
+bool fr_packet_list_yank(fr_packet_list_t *pl, RADIUS_PACKET *request)
 {
 	rbnode_t *node;
 
-	if (!pl || !request) return;
+	if (!pl || !request) return false;
 
 	VERIFY_PACKET(request);
 
 	node = rbtree_find(pl->tree, &request);
-	if (!node) return;
+	if (!node) return false;
 
 	rbtree_delete(pl->tree, node);
+	return true;
 }
 
 int fr_packet_list_num_elements(fr_packet_list_t *pl)
