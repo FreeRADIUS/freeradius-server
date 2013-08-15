@@ -25,7 +25,6 @@ RCSID("$Id$")
 #include <freeradius-devel/libradius.h>
 
 #include <ctype.h>
-#include <inttypes.h>
 
 #ifdef HAVE_PCREPOSIX_H
 #  define WITH_REGEX

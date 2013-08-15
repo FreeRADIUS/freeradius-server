@@ -23,7 +23,6 @@
 RCSID("$Id$")
 
 #include	<freeradius-devel/libradius.h>
-#include	<freeradius-devel/tcp.h>
 
 #ifdef WITH_TCP
 
