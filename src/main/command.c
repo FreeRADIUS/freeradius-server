@@ -24,11 +24,7 @@
 #ifdef WITH_COMMAND_SOCKET
 
 #include <freeradius-devel/modpriv.h>
-#include <freeradius-devel/conffile.h>
-#include <freeradius-devel/stats.h>
-#include <freeradius-devel/realms.h>
 #include <freeradius-devel/parser.h>
-#include <freeradius-devel/log.h>
 
 #ifdef HAVE_INTTYPES_H
 #include <inttypes.h>
