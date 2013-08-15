@@ -311,7 +311,7 @@ size_t vp_prints_value(char *out, size_t outlen, VALUE_PAIR const *vp, int8_t qu
 		  break;
 
 		case PW_TYPE_IFID:
-			a = ifid_ntoa(buf, sizeof(buf), vp->vp_octets);
+			a = ifid_ntoa(buf, sizeof(buf), vp->vp_ifid);
 			break;
 
 		case PW_TYPE_IPV6ADDR:
