@@ -26,9 +26,6 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
-
-#include <freeradius-devel/connection.h>
-
 #include <freeradius-devel/rad_assert.h>
 
 typedef struct fr_connection fr_connection_t;

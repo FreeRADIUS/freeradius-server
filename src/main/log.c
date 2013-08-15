@@ -26,7 +26,6 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/log.h>
 
 #ifdef HAVE_SYS_STAT_H
 #include <sys/stat.h>

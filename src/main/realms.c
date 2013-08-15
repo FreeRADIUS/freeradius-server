@@ -31,31 +31,6 @@ RCSID("$Id$")
 #include <ctype.h>
 #include <fcntl.h>
 
-#ifdef HAVE_PCREPOSIX_H
-#include <pcreposix.h>
-#else
-#ifdef HAVE_REGEX_H
-#include <regex.h>
-
-/*
- *  For POSIX Regular expressions.
- *  (0) Means no extended regular expressions.
- *  REG_EXTENDED means use extended regular expressions.
- */
-#ifndef REG_EXTENDED
-#define REG_EXTENDED (0)
-#endif
-
-#ifndef REG_NOSUB
-#define REG_NOSUB (0)
-#endif
-
-#ifndef REG_ICASE
-#define REG_ICASE (0)
-#endif
-#endif
-#endif
-
 static rbtree_t *realms_byname = NULL;
 
 #ifdef HAVE_REGEX_H
