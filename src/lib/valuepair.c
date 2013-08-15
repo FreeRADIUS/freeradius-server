@@ -196,12 +196,12 @@ int pair2unknown(VALUE_PAIR *vp)
 /** Find the pair with the matching DAs
  *
  */
-VALUE_PAIR *pairfind_da(VALUE_PAIR *vp, DICT_ATTR const *dattr, int8_t tag)
+VALUE_PAIR *pairfind_da(VALUE_PAIR *vp, DICT_ATTR const *da, int8_t tag)
 {
 	vp_cursor_t 	cursor;
 	VALUE_PAIR	*i;
-	
-	if(!fr_assert(dattr)) {
+
+	if(!fr_assert(da)) {
 		 return NULL;
 	}
 
@@ -209,7 +209,7 @@ VALUE_PAIR *pairfind_da(VALUE_PAIR *vp, DICT_ATTR const *dattr, int8_t tag)
 	     i;
 	     i = pairnext(&cursor)) {
 		VERIFY_VP(i);
-		if ((i->da == dattr) && ((tag == TAG_ANY) || (i->da->flags.has_tag && (i->tag == tag)))) {
+		if ((i->da == da) && (!i->da->flags.has_tag || (tag == TAG_ANY) || (i->tag == tag))) {
 			return i;
 		}
 	}
@@ -231,9 +231,8 @@ VALUE_PAIR *pairfind(VALUE_PAIR *vp, unsigned int attr, unsigned int vendor, int
 	     i;
 	     i = pairnext(&cursor)) {
 		VERIFY_VP(i);
-		if ((i->da->attr == attr) && (i->da->vendor == vendor)
-		    && ((tag == TAG_ANY) || (i->da->flags.has_tag &&
-			(i->tag == tag)))) {
+		if ((i->da->attr == attr) && (i->da->vendor == vendor) && \
+		    (!i->da->flags.has_tag || (tag == TAG_ANY) || (i->tag == tag))) {
 			return i;
 		}
 	}
@@ -283,11 +282,11 @@ VALUE_PAIR *pairfirst(vp_cursor_t *cursor)
  *
  *
  */
-VALUE_PAIR *pairfindnext_da(vp_cursor_t *cursor, DICT_ATTR const *dattr, int8_t tag)
+VALUE_PAIR *pairfindnext_da(vp_cursor_t *cursor, DICT_ATTR const *da, int8_t tag)
 {
 	VALUE_PAIR *i;
 
-	i = pairfind_da(!cursor->found ? cursor->current : cursor->found->next, dattr, tag);
+	i = pairfind_da(!cursor->found ? cursor->current : cursor->found->next, da, tag);
 	if (!i) {
 		cursor->next = NULL;
 		cursor->current = NULL;
