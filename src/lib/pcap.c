@@ -157,6 +157,15 @@ int fr_pcap_open(fr_pcap_t *pcap)
 
 			return -1;
 		}
+
+		if (pcap_setnonblock(pcap->handle, true, pcap->errbuf) != 0) {
+			fr_strerror_printf("%s", pcap->errbuf);
+			pcap_close(pcap->handle);
+			pcap->handle = NULL;
+			return -1;
+		}
+
+		pcap->fd = pcap_get_selectable_fd(pcap->handle);
 		break;
 	case PCAP_FILE_OUT:
 		pcap->handle = pcap_open_dead(DLT_EN10MB, SNAPLEN);
