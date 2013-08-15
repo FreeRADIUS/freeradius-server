@@ -680,12 +680,15 @@ bool pairvalidate(VALUE_PAIR *filter, VALUE_PAIR *list)
 	     	/*
 	     	 *	Were processing check attributes of a new type.
 	     	 */
-	     	if (attribute_eq(last_check, check)) {
+	     	if (!attribute_eq(last_check, check)) {
 	     		/*
 	     		 *	The lists have gone out of sync so we know the sets
 	     		 *	of list and filter are not equal.
 	     		 */
 	     		if (!attribute_eq(paircurrent(&list_cursor), paircurrent(&filter_cursor))) {
+				if (check->op == T_OP_CMP_FALSE) {
+	     				continue;
+	     			}
 	     			return false;
 	     		}
 
@@ -711,6 +714,76 @@ bool pairvalidate(VALUE_PAIR *filter, VALUE_PAIR *list)
 	 */
 	if (paircurrent(&list_cursor)) {
 		return false;
+	}
+
+	return true;
+}
+
+/** Uses paircmp to verify all VALUE_PAIRs in list match the filter defined by check
+ *
+ * @param filter attributes to check list against.
+ * @param list attributes, probably a request or reply
+ */
+bool pairvalidate_relaxed(VALUE_PAIR *filter, VALUE_PAIR *list)
+{
+	vp_cursor_t filter_cursor;
+	vp_cursor_t list_cursor;
+
+	VALUE_PAIR *check, *match, *last_check = NULL, *last_match;
+
+	if (!filter && !list) {
+		return true;
+	}
+	if (!filter || !list) {
+		return false;
+	}
+
+	/*
+	 *	This allows us to verify the sets of validate and reply are equal
+	 *	i.e. we have a validate rule which matches every reply attribute.
+	 *
+	 *	@todo this should be removed one we have sets and lists
+	 */
+	pairsort(&filter, true);
+	pairsort(&list, true);
+
+	paircursor(&list_cursor, &list);
+	for (check = paircursor(&filter_cursor, &filter);
+	     check;
+	     check = pairnext(&filter_cursor)) {
+	     	/*
+	     	 *	Were processing check attributes of a new type.
+	     	 */
+	     	if (!attribute_eq(last_check, check)) {
+			/*
+			 *	Record the start of the matching attributes in the pair list
+			 *	For every other operator we require the match to be present
+			 */
+	     		last_match = pairfindnext_da(&list_cursor, check->da, check->tag);
+	     		if (!last_match) {
+	     			if (check->op == T_OP_CMP_FALSE) {
+	     				continue;
+	     			}
+	     			return false;
+	     		}
+
+	     		paircursor(&list_cursor, &last_match);
+	     		last_check = check;
+	     	}
+
+		/*
+		 *	Now iterate over all attributes of the same type.
+		 */
+		for (match = pairfirst(&list_cursor);
+	     	     attribute_eq(match, check);
+	             match = pairnext(&list_cursor)) {
+	             	/*
+	             	 *	This attribute passed the filter
+	             	 */
+	             	if (!paircmp(check, match)) {
+	             		return false;
+	             	}
+	        }
 	}
 
 	return true;
