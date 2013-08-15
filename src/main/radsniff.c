@@ -406,7 +406,9 @@ static void rs_packet_process(rs_event_t *event, struct pcap_pkthdr const *heade
 	RADIUS_PACKET *current;			/* Current packet were processing */
 	rs_request_t *original;
 
-	count++;
+	if (!start_pcap.tv_sec) {
+		start_pcap = header->ts;
+	}
 
 	if (header->caplen <= 5) {
 		INFO("Packet too small, captured %i bytes", header->caplen);
@@ -1377,7 +1379,6 @@ int main(int argc, char *argv[])
 		talloc_free(buff);
 
 		gettimeofday(&now, NULL);
-		start_pcap = now;
 
 		/*
 		 *	Insert our stats processor
