@@ -1145,6 +1145,9 @@ int main(int argc, char *argv[])
 	fr_strerror();	/* Clear out any non-fatal errors */
 
 	if (conf->radius_filter) {
+		vp_cursor_t cursor;
+		VALUE_PAIR *vp;
+
 		parsecode = userparse(NULL, conf->radius_filter, &filter_vps);
 		if (parsecode == T_OP_INVALID) {
 			ERROR("Invalid RADIUS filter \"%s\" (%s)", conf->radius_filter, fr_strerror());
@@ -1156,6 +1159,18 @@ int main(int argc, char *argv[])
 			ERROR("Empty RADIUS filter \"%s\"", conf->radius_filter);
 			ret = 64;
 			goto finish;
+		}
+
+		for (vp = paircursor(&cursor, &filter_vps);
+		     vp;
+		     vp = pairnext(&cursor)) {
+		     	/*
+		     	 *	xlat expansion isn't support hered
+		     	 */
+		     	if (vp->type == VT_XLAT) {
+		     		vp->type = VT_DATA;
+		     		vp->vp_strvalue = vp->value.xlat;
+		     	}
 		}
 	}
 
