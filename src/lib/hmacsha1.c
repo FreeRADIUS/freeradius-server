@@ -11,7 +11,6 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/libradius.h>
-#include <freeradius-devel/sha1.h>
 
 #ifdef HMAC_SHA1_DATA_PROBLEMS
 unsigned int sha1_data_problems = 0;
@@ -172,9 +171,6 @@ Test Vectors (Trailing '\0' of a character string not included in test):
  *
  *  ./hmac Jefe "what do ya want for nothing?"
  */
-
-#include <stdlib.h>
-
 int main(int argc, char **argv)
 {
   uint8_t digest[20];

@@ -33,7 +33,6 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/libradius.h>
-#include <freeradius-devel/hash.h>
 
 /*
  *	A reasonable number of buckets to start off with.
@@ -65,8 +64,6 @@ struct fr_hash_table_t {
 };
 
 #ifdef TESTING
-#include <stdio.h>
-
 static int grow = 0;
 #endif
 
@@ -810,10 +807,6 @@ uint32_t fr_hash_string(char const *p)
  *
  *  ./hash
  */
-
-#include <stdio.h>
-#include <stdlib.h>
-
 static uint32_t hash_int(void const *data)
 {
 	return fr_hash((int *) data, sizeof(int));

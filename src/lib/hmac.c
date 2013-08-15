@@ -132,9 +132,6 @@ Test Vectors (Trailing '\0' of a character string not included in test):
  *
  *  ./hmac Jefe "what do ya want for nothing?"
  */
-
-#include <stdlib.h>
-
 int main(int argc, char **argv)
 {
   uint8_t digest[16];

@@ -25,7 +25,6 @@ RCSID("$Id$")
 #include	<freeradius-devel/libradius.h>
 
 #include	<ctype.h>
-#include	<inttypes.h>
 
 /*
  *	Checks for utf-8, taken from:

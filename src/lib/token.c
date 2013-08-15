@@ -24,7 +24,6 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/libradius.h>
-#include <freeradius-devel/token.h>
 
 #include <ctype.h>
 

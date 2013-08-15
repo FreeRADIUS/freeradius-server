@@ -410,11 +410,6 @@ int sendfromto(int s, void *buf, size_t len, int flags,
  *	reply packet should originate from virtual IP and not
  *	from the default interface the alias is bound to
  */
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <arpa/inet.h>
-#include <sys/types.h>
 #include <sys/wait.h>
 
 #define DEF_PORT 20000		/* default port to listen on */
