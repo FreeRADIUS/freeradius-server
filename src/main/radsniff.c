@@ -46,7 +46,7 @@ FILE *log_dst;
 static rs_t *conf;
 struct timeval start_pcap = {0, 0};
 static rbtree_t *request_tree = NULL;
-static fr_event_list_t	*events = NULL;
+static fr_event_list_t *events;
 
 typedef int (*rbcmp)(void const *, void const *);
 
@@ -363,6 +363,10 @@ static void rs_packet_cleanup(void *ctx)
 	 *	something has gone very badly wrong.
 	 */
 	assert(rbtree_deletebydata(request_tree, request));
+
+	if (fr_event_list_num_elements(events) == 0) {
+		fr_event_loop_exit(events, 1);
+	}
 }
 
 /*
@@ -782,7 +786,7 @@ static void rs_packet_process(rs_event_t *event, struct pcap_pkthdr const *heade
 	}
 }
 
-static void rs_got_packet(UNUSED fr_event_list_t *el, UNUSED int fd, void *ctx)
+static void rs_got_packet(UNUSED fr_event_list_t *el, int fd, void *ctx)
 {
 	rs_event_t *event = ctx;
 	pcap_t *handle = event->in->handle;
@@ -792,10 +796,15 @@ static void rs_got_packet(UNUSED fr_event_list_t *el, UNUSED int fd, void *ctx)
 	const uint8_t *data;
 	struct pcap_pkthdr *header;
 
-	for (i = 0; i < RS_FORCE_YIELD; i++) {
+	for (i = 0; (event->in->type == PCAP_FILE_IN) || (i < RS_FORCE_YIELD); i++) {
 		ret = pcap_next_ex(handle, &header, &data);
 		if (ret == 0) {
 			/* No more packets available at this time */
+			return;
+		}
+		if (ret == -2 && (event->in->type == PCAP_FILE_IN)) {
+			INFO("Done reading packets (%s)", event->in->name);
+			fr_event_fd_delete(events, 0, fd);
 			return;
 		}
 		if (ret < 0) {
