@@ -598,6 +598,12 @@ static void rs_packet_process(rs_event_t *event, struct pcap_pkthdr const *heade
 					if (!fr_event_insert(event->list, rs_packet_cleanup, original, &when,
 						    	     &original->event)) {
 						ERROR("Failed inserting new event");
+						/*
+						 *	Delete the original request/event, it's no longer valid
+						 *	for statistics.
+						 */
+						original->forced_cleanup = true;
+						fr_event_delete(event->list, &original->event);
 						rbtree_deletebydata(request_tree, original);
 
 						return;
