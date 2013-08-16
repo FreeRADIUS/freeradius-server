@@ -968,7 +968,7 @@ int main(int argc, char *argv[])
 	/*
 	 *  Get options
 	 */
-	while ((opt = getopt(argc, argv, "c:d:DFf:hi:I:mp:qr:s:Svw:xXW:P:O:")) != EOF) {
+	while ((opt = getopt(argc, argv, "c:d:DFf:hi:I:mp:qr:s:Svw:xXW:T:P:O:")) != EOF) {
 		switch (opt) {
 		case 'c':
 			limit = atoi(optarg);
