@@ -329,7 +329,7 @@ static void rs_stats_update_latency(rs_latency_t *stats, struct timeval *latency
 
 static void rs_packet_cleanup(void *ctx)
 {
-	rs_request_t *request = ctx;
+	rs_request_t *request = talloc_get_type_abort(ctx, rs_request_t);
 	RADIUS_PACKET *packet = request->packet;
 
 	assert(request->stats_req);
