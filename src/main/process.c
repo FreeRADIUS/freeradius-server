@@ -1677,6 +1677,7 @@ static void remove_from_proxy_hash_nl(REQUEST *request)
 	request->proxy_listener->count--;
 #endif
 	request->proxy_listener = NULL;
+	request->home_server = NULL;
 
 	/*
 	 *	Got from YES in hash, to NO, not in hash while we hold
@@ -2431,23 +2432,18 @@ static int request_proxy(REQUEST *request, int retransmit)
  */
 static int request_proxy_anew(REQUEST *request)
 {
-	/*
-	 *	Keep a copy of the old Id so that the
-	 *	re-transmitted request doesn't re-use the old
-	 *	Id.  Note that in certain cases (socket crash)
-	 *	there is no Id as they have been purged from
-	 *	proxy_list, but there should still be a leftover
-	 *	packet hung off this request.
-	 */
-	RADIUS_PACKET old = *request->proxy;
-	int old_hash = request->in_proxy_hash;
 	home_server *home;
-	home_server *old_home = request->home_server;
-#ifdef WITH_TCP
-	rad_listen_t *listener = request->proxy_listener;
-#endif
 
-	rad_assert(old_home != NULL);
+	/*
+	 *	Delete the request from the proxy list.
+	 *
+	 *	The packet list code takes care of ensuring that IDs
+	 *	aren't reused until all 256 IDs have been used.  So
+	 *	there's a 1/256 chance of re-using the same ID when
+	 *	we're sending to the same home server.  Which is
+	 *	acceptable.
+	 */
+	remove_from_proxy_hash(request);
 
 	/*
 	 *	Find a live home server for the request.
@@ -2456,8 +2452,6 @@ static int request_proxy_anew(REQUEST *request)
 	if (!home) {
 		REDEBUG2("Failed to find live home server for request");
 	post_proxy_fail:
-		remove_from_proxy_hash(request);
-
 		if (setup_post_proxy_fail(request)) {
 			request_queue_or_run(request, proxy_running);
 		} else {
@@ -2468,27 +2462,10 @@ static int request_proxy_anew(REQUEST *request)
 	}
 	home_server_update_request(home, request);
 
-	/*
-	 *	Don't free the old Id (if any) on error.
-	 */
 	if (!insert_into_proxy_hash(request)) {
 		RPROXY("Failed to insert retransmission into the proxy list.");
 		goto post_proxy_fail;
 	}
-
-	/*
-	 *	Now that we have a new Id, free the old one (if any)
-	 *	and update the various statistics.
-	 */
-	PTHREAD_MUTEX_LOCK(&proxy_mutex);
-	if (old_hash) {
-		fr_packet_list_id_free(proxy_list, &old);
-		old_home->currently_outstanding--;
-#ifdef WITH_TCP
-		if (listener) listener->count--;
-#endif
-	}
-	PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
 
 	/*
 	 *	Free the old packet, to force re-encoding
