@@ -12,4 +12,4 @@ src/freeradius-devel:
 src/%c src/%h src/%mk: | src/freeradius-devel/ \
 			${BUILD_DIR}/make/include/freeradius-devel
 
-SUBMAKEFILES := include/all.mk lib/all.mk modules/all.mk main/all.mk
+SUBMAKEFILES := include/all.mk lib/all.mk tests/all.mk modules/all.mk main/all.mk
