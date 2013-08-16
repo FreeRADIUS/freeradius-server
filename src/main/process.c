@@ -1748,7 +1748,7 @@ static int insert_into_proxy_hash(REQUEST *request)
 		if (!this) {
 			PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
 			ERROR("proxy: Failed to create a new outbound socket");
-			return 0;
+			goto fail;
 		}
 
 		request->proxy->src_port = 0; /* Use any new socket */
@@ -1762,16 +1762,17 @@ static int insert_into_proxy_hash(REQUEST *request)
 		if (!event_new_fd(this)) {
 			RDEBUG3("proxy: Failed inserting new socket into event loop");
 			listen_free(&this);
-			return 0;
+			goto fail;
 		}
 		PTHREAD_MUTEX_LOCK(&proxy_mutex);
 	}
 
 	if (!proxy_listener || (rcode == 0)) {
-		REDEBUG2("proxy: Failed allocating Id for proxied request");
-		rad_assert(request->proxy_listener == NULL);
-		rad_assert(!request->in_proxy_hash);
 		PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
+		REDEBUG2("proxy: Failed allocating Id for proxied request");
+	fail:
+		request->proxy_listener = NULL;
+		request->in_proxy_hash = false;
 		return 0;
 	}
 
