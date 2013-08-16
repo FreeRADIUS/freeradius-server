@@ -133,7 +133,17 @@ size_t fr_print_string(char const *in, size_t inlen, char *out, size_t outlen)
 	int		sp = 0;
 	int		utf8 = 0;
 
-	if (inlen == 0) inlen = strlen(in);
+	if (!in) {
+		if (outlen) {
+			*out = '\0';
+		}
+
+		return 0;
+	}
+
+	if (inlen == 0) {
+		inlen = strlen(in);
+	}
 
 	/*
 	 *
@@ -192,7 +202,7 @@ size_t fr_print_string(char const *in, size_t inlen, char *out, size_t outlen)
 			inlen--;
 		} while (--utf8 > 0);
 	}
-	*out = 0;
+	*out = '\0';
 
 	return out - start;
 }
