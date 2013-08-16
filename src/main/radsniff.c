@@ -937,6 +937,8 @@ int main(int argc, char *argv[])
 	conf->print_packet = true;
 	conf->limit = -1;
 	conf->promiscuous = true;
+	conf->stats.prefix = RS_DEFAULT_PREFIX;
+	conf->radius_secret = RS_DEFAULT_SECRET;
 
 	/*
 	 *  Get options
@@ -1116,10 +1118,6 @@ int main(int argc, char *argv[])
 			goto finish;
 		}
 		in_head = &(*in_head)->next;
-	}
-
-	if (!conf->radius_secret) {
-		conf->radius_secret = RS_DEFAULT_SECRET;
 	}
 
 	if (conf->stats.interval && !conf->stats.out) {

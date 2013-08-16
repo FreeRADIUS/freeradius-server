@@ -37,6 +37,7 @@ RCSIDH(radsniff_h, "$Id$")
 #  include <collectd/client.h>
 #endif
 
+#define RS_DEFAULT_PREFIX	""		//!< Default instance
 #define RS_DEFAULT_SECRET	"testing123"	//!< Default secret
 #define RS_DEFAULT_TIMEOUT	6		//!< Standard timeout of 5 + 1 to cover network latency
 #define RS_FORCE_YIELD		1000		//!< Service another descriptor every X number of packets
