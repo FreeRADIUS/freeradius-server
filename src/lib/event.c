@@ -51,6 +51,7 @@ struct fr_event_list_t {
 	int		dispatch;
 
 	int		max_readers;
+	int		num_readers;
 	fr_event_fd_t	readers[FR_EV_MAX_FDS];
 };
 
@@ -121,6 +122,13 @@ fr_event_list_t *fr_event_list_create(TALLOC_CTX *ctx, fr_event_status_t status)
 	el->changed = 1;	/* force re-set of fds's */
 
 	return el;
+}
+
+int fr_event_list_num_fds(fr_event_list_t *el)
+{
+	if (!el) return 0;
+
+	return el->num_readers;
 }
 
 int fr_event_list_num_elements(fr_event_list_t *el)
@@ -265,6 +273,7 @@ int fr_event_fd_insert(fr_event_list_t *el, int type, int fd,
 
 		if (el->readers[i].fd < 0) {
 			ef = &el->readers[i];
+			el->num_readers++;
 
 			if (i == el->max_readers) el->max_readers = i + 1;
 			break;
@@ -293,6 +302,8 @@ int fr_event_fd_delete(fr_event_list_t *el, int type, int fd)
 	for (i = 0; i < el->max_readers; i++) {
 		if (el->readers[i].fd == fd) {
 			el->readers[i].fd = -1;
+			el->num_readers--;
+
 			if ((i + 1) == el->max_readers) el->max_readers = i;
 			el->changed = 1;
 			return 1;
