@@ -92,6 +92,16 @@ static void rs_tv_sub(struct timeval const *end, struct timeval const *start, st
 	}
 }
 
+static void rs_tv_add_ms(struct timeval const *start, unsigned long interval, struct timeval *result) {
+    result->tv_sec = start->tv_sec + (interval / 1000);
+    result->tv_usec = start->tv_usec + ((interval % 1000) * 1000);
+
+    if (result->tv_usec > USEC) {
+        result->tv_usec -= USEC;
+        result->tv_sec++;
+    }
+}
+
 static void rs_stats_print(rs_latency_t *stats, PW_CODE code)
 {
 	int i;
@@ -243,11 +253,9 @@ static void rs_stats_process(void *ctx)
 	     in_p;
 	     in_p = in_p->next) {
 		if (rs_check_pcap_drop(in_p, conf->stats.interval) < 0) {
-			ERROR("Muting stats for the next %i seconds", conf->stats.timeout);
+			ERROR("Muting stats for the next %i milliseconds", conf->stats.timeout);
 
-			stats->quiet = now;
-			stats->quiet.tv_sec += conf->stats.timeout;
-
+			rs_tv_add_ms(&now, conf->stats.timeout, &stats->quiet);
 			goto clear;
 		}
 	}
@@ -468,8 +476,7 @@ static void rs_packet_process(rs_event_t *event, struct pcap_pkthdr const *heade
 	current = rad_alloc(conf, 0);
 	if (!current) {
 		ERROR("Failed allocating memory to hold decoded packet");
-		stats->quiet = header->ts;
-		stats->quiet.tv_sec += conf->stats.timeout;
+		rs_tv_add_ms(&header->ts, conf->stats.timeout, &stats->quiet);
 		return;
 	}
 	current->timestamp = header->ts;
@@ -525,8 +532,7 @@ static void rs_packet_process(rs_event_t *event, struct pcap_pkthdr const *heade
 			rs_request_t search;
 			struct timeval when;
 
-			when = header->ts;
-			when.tv_sec += conf->stats.timeout;
+			rs_tv_add_ms(&header->ts, conf->stats.timeout, &when);
 
 			/* look for a matching request and use it for decoding */
 			search.packet = current;
@@ -640,15 +646,12 @@ static void rs_packet_process(rs_event_t *event, struct pcap_pkthdr const *heade
 			search.packet = rad_alloc_reply(conf, current);
 			if (!search.packet) {
 				ERROR("Failed allocating memory to hold expected reply");
-				stats->quiet = header->ts;
-				stats->quiet.tv_sec += conf->stats.timeout;
+				rs_tv_add_ms(&header->ts, conf->stats.timeout, &stats->quiet);
 				rad_free(&current);
 				return;
 			}
 			search.packet->code = current->code;
-
-			when = header->ts;
-			when.tv_sec += conf->stats.timeout;
+			rs_tv_add_ms(&header->ts, conf->stats.timeout, &when);
 
 			original = rbtree_finddata(request_tree, &search);
 
@@ -876,8 +879,8 @@ static void NEVER_RETURNS usage(int status)
 	fprintf(output, "  -x              Print more debugging information (defaults to -xx).\n");
 	fprintf(output, "stats options:\n");
 	fprintf(output, "  -W <interval>   Periodically write out statistics every <interval> seconds.\n");
-	fprintf(output, "  -T <timeout>    How many seconds before the request is counted as lost (defaults to %i).\n",
-		RS_DEFAULT_TIMEOUT);
+	fprintf(output, "  -T <timeout>    How many milliseconds before the request is counted as lost "
+		"(defaults to %i).\n", RS_DEFAULT_TIMEOUT);
 #ifdef HAVE_COLLECTDC_H
 	fprintf(output, "  -P <prefix>     collectd plugin instance name.\n");
 	fprintf(output, "  -O <server>     Write statistics to this collectd server.\n");
