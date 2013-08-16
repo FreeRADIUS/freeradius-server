@@ -118,10 +118,10 @@ static void rs_stats_print(rs_latency_t *stats, PW_CODE code)
 		INFO("\tLinked    : %.3lf/s", stats->interval.linked);
 		INFO("\tUnlinked  : %.3lf/s", stats->interval.unlinked);
 		INFO("%s latency:", fr_packet_codes[code]);
-		INFO("\tHigh      : %lf", stats->interval.latency_high);
-		INFO("\tLow       : %lf", stats->interval.latency_low);
-		INFO("\tAverage   : %lf", stats->interval.latency_average);
-		INFO("\tCMA       : %lf", stats->latency_cma);
+		INFO("\tHigh      : %.3lfms", stats->interval.latency_high);
+		INFO("\tLow       : %.3lfms", stats->interval.latency_low);
+		INFO("\tAverage   : %.3lfms", stats->interval.latency_average);
+		INFO("\tCMA       : %.3lfms", stats->latency_cma);
 	}
 
 	if (have_rt || stats->interval.lost || stats->interval.reused) {
@@ -306,7 +306,8 @@ static void rs_stats_update_latency(rs_latency_t *stats, struct timeval *latency
 	double lint;
 
 	stats->interval.linked_total++;
-	lint = latency->tv_sec + (latency->tv_usec / 1000000.0);
+	/* More useful is this is in milliseconds */
+	lint = (latency->tv_sec + (latency->tv_usec / 1000000.0)) * 1000;
 	if (lint > stats->interval.latency_high) {
 		stats->interval.latency_high = lint;
 	}
