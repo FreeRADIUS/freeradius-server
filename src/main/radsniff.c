@@ -47,6 +47,7 @@ static rs_t *conf;
 struct timeval start_pcap = {0, 0};
 static rbtree_t *request_tree = NULL;
 static fr_event_list_t *events;
+static bool cleanup;
 
 typedef int (*rbcmp)(void const *, void const *);
 
@@ -333,6 +334,14 @@ static void rs_packet_cleanup(void *ctx)
 
 	assert(request->stats_req);
 	assert(!request->rt_rsp || request->stats_rsp);
+
+	/*
+	 *	Don't pollute stats or print spurious messages as radsniff closes.
+	 */
+	if (cleanup) {
+		goto skip;
+	}
+
 	/*
 	 *	Were at packet cleanup time which is when the packet was received + timeout
 	 *	and it's not been linked with a forwarded packet or a response.
@@ -367,6 +376,8 @@ static void rs_packet_cleanup(void *ctx)
 		}
 	}
 
+	skip:
+
 	/*
 	 *	If were attempting to cleanup the request, and it's no longer in the request_tree
 	 *	something has gone very badly wrong.
@@ -383,7 +394,10 @@ static void rs_packet_cleanup(void *ctx)
  */
 static int _request_free(rs_request_t *request)
 {
-	DEBUG("(%i) Cleaning up request packet ID %i", request->id, request->packet->id);
+	if (!cleanup) {
+		RDEBUG("(%i) Cleaning up request packet ID %i", request->id, request->packet->id);
+	}
+
 	rad_free(&request->packet);
 	rad_free(&request->linked);
 
@@ -835,7 +849,7 @@ static void rs_got_packet(UNUSED fr_event_list_t *el, int fd, void *ctx)
 static void _rs_event_status(struct timeval *wake)
 {
 	if (wake && ((wake->tv_sec != 0) || (wake->tv_usec >= 100000))) {
-		DEBUG("Waking up in %d.%01u seconds.", (int) wake->tv_sec, (unsigned int) wake->tv_usec / 100000);
+		DEBUG2("Waking up in %d.%01u seconds.", (int) wake->tv_sec, (unsigned int) wake->tv_usec / 100000);
 	}
 }
 
@@ -1402,6 +1416,7 @@ int main(int argc, char *argv[])
 
 	finish:
 
+	cleanup = true;
 	/*
 	 *	Free all the things! This also closes all the sockets and file descriptors
 	 */
