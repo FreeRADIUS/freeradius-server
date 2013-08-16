@@ -342,8 +342,8 @@ static void rs_packet_cleanup(void *ctx)
 	if (!request->linked && !request->forced_cleanup) {
 		request->stats_req->interval.lost_total++;
 
-		DPACKET("(%i) ** LOST **", request->id);
-		IPACKET("(%i) %s Id %i %s:%s:%d -> %s:%d", request->id,
+		RDEBUG("(%i) ** LOST **", request->id);
+		RIDEBUG("(%i) %s Id %i %s:%s:%d -> %s:%d", request->id,
 			fr_packet_codes[packet->code], packet->id,
 			request->in->name,
 			fr_inet_ntop(packet->dst_ipaddr.af, &packet->dst_ipaddr.ipaddr), packet->dst_port,
@@ -506,9 +506,9 @@ static void rs_packet_process(rs_event_t *event, struct pcap_pkthdr const *heade
 	current->dst_port = ntohs(udp->udp_dport);
 
 	if (!rad_packet_ok(current, 0, &reason)) {
-		IPACKET("(%i) ** %s **", count, fr_strerror());
+		RIDEBUG("(%i) ** %s **", count, fr_strerror());
 
-		IPACKET("(%i) %s Id %i %s:%s:%d -> %s:%d\t+%u.%03u", count,
+		RIDEBUG("(%i) %s Id %i %s:%s:%d -> %s:%d\t+%u.%03u", count,
 			fr_packet_codes[current->code], current->id,
 			event->in->name,
 			fr_inet_ntop(current->src_ipaddr.af, &current->src_ipaddr.ipaddr), current->src_port,
@@ -561,7 +561,7 @@ static void rs_packet_process(rs_event_t *event, struct pcap_pkthdr const *heade
 				if (!original->linked) {
 					original->stats_rsp = &stats->exchange[current->code];
 				} else {
-					DPACKET("(%i) ** RETRANSMISSION **", count);
+					RDEBUG("(%i) ** RETRANSMISSION **", count);
 					original->rt_rsp++;
 
 					rad_free(&original->linked);
@@ -599,11 +599,11 @@ static void rs_packet_process(rs_event_t *event, struct pcap_pkthdr const *heade
 				 */
 				if (filter_vps) {
 					rad_free(&current);
-					DPACKET2("(%i) Dropped by attribute filter", count);
+					RDEBUG2("(%i) Dropped by attribute filter", count);
 					return;
 				}
 
-				DPACKET("(%i) ** UNLINKED **", count);
+				RDEBUG("(%i) ** UNLINKED **", count);
 				stats->exchange[current->code].interval.unlinked_total++;
 			}
 
@@ -636,7 +636,7 @@ static void rs_packet_process(rs_event_t *event, struct pcap_pkthdr const *heade
 			 */
 			if (filter_vps && !pairvalidate_relaxed(filter_vps, current->vps)) {
 				rad_free(&current);
-				DPACKET2("(%i) Dropped by attribute filter", count);
+				RDEBUG2("(%i) Dropped by attribute filter", count);
 				return;
 			}
 
@@ -661,7 +661,7 @@ static void rs_packet_process(rs_event_t *event, struct pcap_pkthdr const *heade
 			 */
 			if (original && memcmp(original->packet->vector, current->vector,
 					       sizeof(original->packet->vector) != 0)) {
-				DPACKET2("(%i) ** PREMATURE ID RE-USE **", count);
+				RDEBUG2("(%i) ** PREMATURE ID RE-USE **", count);
 				stats->exchange[current->code].interval.reused_total++;
 				original->forced_cleanup = true;
 
@@ -671,7 +671,7 @@ static void rs_packet_process(rs_event_t *event, struct pcap_pkthdr const *heade
 			}
 
 			if (original) {
-				DPACKET("(%i) ** RETRANSMISSION **", count);
+				RDEBUG("(%i) ** RETRANSMISSION **", count);
 				original->rt_req++;
 
 				rad_free(&original->packet);
@@ -705,7 +705,7 @@ static void rs_packet_process(rs_event_t *event, struct pcap_pkthdr const *heade
 		}
 			break;
 		default:
-			DPACKET("** Unsupported code %i **", current->code);
+			RDEBUG("** Unsupported code %i **", current->code);
 			rad_free(&current);
 
 			return;
@@ -744,7 +744,7 @@ static void rs_packet_process(rs_event_t *event, struct pcap_pkthdr const *heade
 		/*
 		 *	Print info about the request/response.
 		 */
-		IPACKET("(%i) %s Id %i %s:%s:%d %s %s:%d\t+%u.%03u\t+%u.%03u", count,
+		RIDEBUG("(%i) %s Id %i %s:%s:%d %s %s:%d\t+%u.%03u\t+%u.%03u", count,
 			fr_packet_codes[current->code], current->id,
 			event->in->name,
 			fr_inet_ntop(current->src_ipaddr.af, &current->src_ipaddr.ipaddr), current->src_port,
@@ -759,7 +759,7 @@ static void rs_packet_process(rs_event_t *event, struct pcap_pkthdr const *heade
 		/*
 		 *	Print info about the request
 		 */
-		IPACKET("(%i) %s Id %i %s:%s:%d %s %s:%d\t+%u.%03u", count,
+		RIDEBUG("(%i) %s Id %i %s:%s:%d %s %s:%d\t+%u.%03u", count,
 			fr_packet_codes[current->code], current->id,
 			event->in->name,
 			fr_inet_ntop(current->src_ipaddr.af, &current->src_ipaddr.ipaddr), current->src_port,
