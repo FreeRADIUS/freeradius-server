@@ -45,6 +45,22 @@ address.  Only the first AAAA record in the RRSET will be returned.
 .IP %{dns-ptr:<owner>}
 Performs a PTR lookup for the owner.
 .PP
+.SH CAVEATS
+Logging from rlm_unbound can be problematic, especialy if more than one
+instantiation of the module is used.  This is due to the need for additional
+features in the underlying libunbound which hopefully will be enhanced over
+time.
+.PP
+There is a potential for a FreeRADIUS server using rlm_unbound to either
+fail to terminate cleanly (leaving zombie processes, failing to clean up
+other modules, and hanging after a SIGTERM until a SIGKILL is sent) or
+to fail valgrind checks during termination when run with -m.  Likewise this
+problem will rely on upstream enhancements before it can be fixed, and the
+exact behavior may change in interim releases until then.
+.PP
+The logging behavior of rlm_unbound may vary depending on whether
+FreeRADIUS is compiled with support for threads.
+.PP
 .SH FILES
 .I /etc/raddb/modules-available/rlm_unbound
 .I /etc/raddb/modules-config/unbound/

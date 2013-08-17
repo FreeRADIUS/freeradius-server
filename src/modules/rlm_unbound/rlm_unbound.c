@@ -339,26 +339,43 @@ static void ub_fd_handler(UNUSED fr_event_list_t *el, UNUSED int sock, void *ctx
 	}
 }
 
-/* If we have to use a pipe to redirect logging, this does the work */
+#ifndef HAVE_PTHREAD_H
+
+/* If we have to use a pipe to redirect logging, this does the work. */
 static void log_spew(UNUSED fr_event_list_t *el, UNUSED int sock, void *ctx)
 {
 	rlm_unbound_t *inst = ctx;
 	char line[1024];
+
+	/*
+	 * This works for pipes from processes, but not from threads
+	 * right now.  The latter is hinky and will require some fancy
+	 * blocking/nonblocking trickery which is not figured out yet,
+	 * since selecting on a pipe from a thread in the same process
+	 * seems to behave differently.  It will likely preclude the use
+	 * of fgets and streams.  Left for now since some unbound logging
+	 * infrastructure is still global across multiple contexts.  Maybe
+	 * we can get unbound folks to provide a ub_ctx_debugout_async that
+	 * takes a function hook instead to just bypass the piping when
+	 * used in threaded mode.
+	 */
 
 	while (fgets(line, 1024, inst->logstream[0])) {
 		DEBUG("rlm_unbound (%s): %s", inst->name, line);
 	}
 }
 
+#endif
+
 static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
 	rlm_unbound_t *inst = instance;
 	int res, dlevel;
 	int debug_method;
-	//	CONF_SECTION *log_cs;
 	char *optval;
 	int debug_fd;
 	FILE *debug_stream;
+	char k[64]; /* To silence const warns until newer unbound in distros */
 
 	inst->el = radius_event_list_corral(EVENT_CORRAL_AUX);
 	inst->logstream[0] = NULL;
@@ -383,14 +400,16 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		return -1;
         }
 
-#ifndef HAVE_PTHREAD_H
+#ifdef HAVE_PTHREAD_H
 	/*
 	 *	Note unbound threads WILL happen with -s option, if it matters.
 	 *	We cannot tell from here whether that option is in effect.
 	 */
 	res = ub_ctx_async(inst->ub, 1);
 #else
-	/* Uses forked process instead.  Needs testing. */
+	/*
+	 *	Uses forked subprocesses instead.
+	 */
 	res = ub_ctx_async(inst->ub, 0);
 #endif
         if(res) {
@@ -399,6 +418,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 	/*	Glean some default settings to match the main server.	*/
 	/*	TODO: debug_level can be changed at runtime. */
+	/*	TODO: log until fork when stdout or stderr and !debug_flag. */
 	dlevel = 0;
 	if (debug_flag > 0) {
 		dlevel = debug_flag;
@@ -435,33 +455,38 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 	switch(default_log.dest) {
 	case L_DST_STDOUT:
-			debug_method = 1;
-			debug_fd = dup(STDOUT_FILENO);
-			break;
-	case L_DST_STDERR:
-			debug_method = 1;
-		  	debug_fd = dup(STDERR_FILENO);
-			break;
-	case L_DST_FILES:
-			if (mainconfig.log_file) {
-				char k[9]; /* Silence gcc const warning */
-
-				strcpy(k, "logfile:");
-				res = ub_ctx_set_option(inst->ub, k,
-							mainconfig.log_file);
-				if (res) {
-					goto bail;
-				}
-				debug_method = 2;
-				break;
-			}
-			/* fallthrough */
-	case L_DST_NULL:
+		if (!debug_flag) {
 			debug_method = 3;
 			break;
-	default:
-			debug_method = 4;
+		}
+		debug_method = 1;
+		debug_fd = dup(STDOUT_FILENO);
+		break;
+	case L_DST_STDERR:
+		if (!debug_flag) {
+			debug_method = 3;
 			break;
+		}
+		debug_method = 1;
+		debug_fd = dup(STDERR_FILENO);
+		break;
+	case L_DST_FILES:
+		if (mainconfig.log_file) {
+			strcpy(k, "logfile:");
+			res = ub_ctx_set_option(inst->ub, k,
+						mainconfig.log_file);
+			if (res) {
+				goto bail;
+			}
+			debug_method = 2;
+			break;
+		}
+	case L_DST_NULL:
+		debug_method = 3;
+		break;
+	default:
+		debug_method = 4;
+		break;
 	}
 
 	/* Now load the config file, which can override gleaned settings. */
@@ -471,23 +496,29 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	}
 
 	/*
-	 *	Check if the config file tried to use syslog.
+	 *	Check if the config file tried to use syslog.  Unbound
+	 *	does not share syslog gracefully.
 	 */
-	res = ub_ctx_get_option(inst->ub, "use-syslog", &optval);
+	strcpy(k, "use-syslog");
+	res = ub_ctx_get_option(inst->ub, k, &optval);
 	if (res || !optval) {
 		goto bail;
 	}
 
 	if (!strcmp(optval, "yes")) {
+		char v[3];
+
+		free(optval);
+
 		WDEBUG("rlm_unbound (%s): Overriding syslog settings.",
 		       inst->name);
-		res = ub_ctx_set_option(inst->ub, "use-syslog:", "no");
+		strcpy(k, "use-syslog:");
+		strcpy(v, "no");
+		res = ub_ctx_set_option(inst->ub, k, v);
 		if (res) {
 			goto bail;
 		}
 		if (debug_method == 2) {
-			char k[9]; /* Silence gcc const warning */
-
 			/* Reinstate the log file name JIC */
 			strcpy(k, "logfile:");
 			res = ub_ctx_set_option(inst->ub, k,
@@ -497,13 +528,17 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 			}
 		}
 	} else {
-		free(optval);
-		res = ub_ctx_get_option(inst->ub, "logfile", &optval);
+		if (optval) free(optval);
+		strcpy(k, "logfile");
+		res = ub_ctx_get_option(inst->ub, k, &optval);
 		if (res) {
 			goto bail;
 		}
 		if (optval && strlen(optval)) {
 			debug_method = 2;
+		}
+		else if (!debug_flag) {
+			debug_method = 3;
 		}
 		if (optval) free(optval);
 	}
@@ -522,7 +557,9 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		debug_stream = fdopen(debug_fd, "w");
 		if (!debug_stream) {
 			close(debug_fd);
-			goto bail_stream;
+			EDEBUG("rlm_unbound (%s): error setting up log stream",
+			       inst->name);
+			goto bail_nores;
 		}
 		res = ub_ctx_debugout(inst->ub, debug_stream);
 		if (res) {
@@ -540,25 +577,44 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		}
 		break;
 	case 4:
+#ifdef HAVE_PTHREAD_H
+	  /*
+	   * Currently this wreaks havoc when running threaded, so just
+	   * turn logging off until that gets figured out.
+	   */
+		res = ub_ctx_debugout(inst->ub, NULL);
+		if (res) {
+			goto bail;
+		}
+		break;
+#else
 		/*
 		 * We need to create a pipe, because libunbound does not
 		 * share syslog nicely.  Or the core added some new logsink.
 		 */
-		if (pipe2(inst->logfd, O_NONBLOCK)) {
+		if (pipe(inst->logfd)) {
+		bail_pipe:
 			EDEBUG("rlm_unbound (%s): error setting up log pipes",
 			       inst->name);
 			goto bail_nores;
 		}
+		if ((fcntl(inst->logfd[0], F_SETFL, O_NONBLOCK) < 0) ||
+		    (fcntl(inst->logfd[0], F_SETFD, FD_CLOEXEC) < 0)) {
+			goto bail_pipe;
+		}
+		/* Opaque to us when this can be closed, so we do not. */
+		if (fcntl(inst->logfd[1], F_SETFL, O_NONBLOCK) < 0) {
+			goto bail_pipe;
+		}
 		inst->logstream[0] = fdopen(inst->logfd[0], "r");
 		inst->logstream[1] = fdopen(inst->logfd[1], "w");
-		if (!inst->logstream[1] || !inst->logstream[1]) {
+		if (!inst->logstream[0] || !inst->logstream[1]) {
 			if (!inst->logstream[1]) {
 				close(inst->logfd[1]);
 			}
 			if (!inst->logstream[0]) {
 				close(inst->logfd[0]);
 			}
-		bail_stream:
 			EDEBUG("rlm_unbound (%s): error setting up log stream",
 			       inst->name);
 			goto bail_nores;
@@ -574,6 +630,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 			goto bail_nores;
 		}
 		inst->pipe_inuse = 1;
+#endif
 	default:
 		break;
 	}
@@ -586,7 +643,8 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 * which as it happens fails quickly and quietly even though the
 	 * data did not exist.
 	 */
-	ub_ctx_data_remove(inst->ub, "notar33lsite.foo123.nottld A 127.0.0.1");
+	strcpy(k, "notar33lsite.foo123.nottld A 127.0.0.1");
+	ub_ctx_data_remove(inst->ub, k);
 
 	inst->fd = ub_fd(inst->ub);
 	if (inst->fd >= 0) {
@@ -621,9 +679,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		xlat_unregister(inst->xlat_ptr_name, xlat_ptr, inst);
 		goto bail_nores;
 	}
-
 	return 0;
-
  bail:
 	EDEBUG("rlm_unbound (%s): %s", inst->name, ub_strerror(res));
  bail_nores:
@@ -640,8 +696,13 @@ static int mod_detach(UNUSED void *instance)
 		fr_event_fd_delete(inst->el, 0, inst->fd);
 		if (inst->ub) {
 			ub_process(inst->ub);
-			/* TODO: hangs with -m on the 2nd instance deleted */
+			/* This can hang/leave zombies currently
+			 * see upstream bug #519
+			 * ...so expect valgrind to complain with -m
+			 */
+#if 0
 			ub_ctx_delete(inst->ub);
+#endif
 		}
 	}
 	if (inst->logstream[1]) {
