@@ -265,7 +265,7 @@ static int fr_server_domain_socket(char const *path)
 
 static void command_close_socket(rad_listen_t *this)
 {
-	this->status = RAD_LISTEN_STATUS_CLOSED;
+	this->status = RAD_LISTEN_STATUS_EOL;
 
 	/*
 	 *	This removes the socket from the event fd, so no one
@@ -285,7 +285,7 @@ static ssize_t cprintf(rad_listen_t *listener, char const *fmt, ...)
 	len = vsnprintf(buffer, sizeof(buffer), fmt, ap);
 	va_end(ap);
 
-	if (listener->status == RAD_LISTEN_STATUS_CLOSED) return 0;
+	if (listener->status == RAD_LISTEN_STATUS_EOL) return 0;
 
 	len = write(listener->fd, buffer, len);
 	if (len <= 0) command_close_socket(listener);

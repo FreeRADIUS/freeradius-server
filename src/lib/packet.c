@@ -327,8 +327,8 @@ bool fr_packet_list_socket_thaw(fr_packet_list_t *pl, int sockfd)
 	return true;
 }
 
-bool fr_packet_list_socket_del(fr_packet_list_t *pl, int sockfd,
-				 void **pctx)
+
+bool fr_packet_list_socket_del(fr_packet_list_t *pl, int sockfd)
 {
 	fr_packet_socket_t *ps;
 
@@ -337,14 +337,10 @@ bool fr_packet_list_socket_del(fr_packet_list_t *pl, int sockfd,
 	ps = fr_socket_find(pl, sockfd);
 	if (!ps) return false;
 
-	/*
-	 *	FIXME: Allow the caller forcibly discard these?
-	 */
 	if (ps->num_outgoing != 0) return false;
 
 	ps->sockfd = -1;
 	pl->num_sockets--;
-	if (pctx) *pctx = ps->ctx;
 
 	return true;
 }
@@ -774,13 +770,13 @@ bool fr_packet_list_id_alloc(fr_packet_list_t *pl, int proto,
  *	any newly inserted entries don't collide with this one.
  */
 bool fr_packet_list_id_free(fr_packet_list_t *pl,
-			     RADIUS_PACKET *request)
+			    RADIUS_PACKET *request, bool yank)
 {
 	fr_packet_socket_t *ps;
 
 	if (!pl || !request) return false;
 
-	if (!fr_packet_list_yank(pl, request)) return false;
+	if (yank && !fr_packet_list_yank(pl, request)) return false;
 
 	ps = fr_socket_find(pl, request->sockfd);
 	if (!ps) return false;
@@ -797,12 +793,19 @@ bool fr_packet_list_id_free(fr_packet_list_t *pl,
 	return true;
 }
 
+/*
+ *	We always walk DeleteOrder, which is like InOrder, except that
+ *	<0 means error, stop
+ *	0  means OK, continue
+ *	1  means delete current node and stop
+ *	2  means delete current node and continue
+ */
 int fr_packet_list_walk(fr_packet_list_t *pl, void *ctx,
-			  fr_hash_table_walk_t callback)
+			fr_hash_table_walk_t callback)
 {
 	if (!pl || !callback) return 0;
 
-	return rbtree_walk(pl->tree, InOrder, callback, ctx);
+	return rbtree_walk(pl->tree, DeleteOrder, callback, ctx);
 }
 
 int fr_packet_list_fd_set(fr_packet_list_t *pl, fd_set *set)

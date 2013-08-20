@@ -458,7 +458,7 @@ static int dual_tcp_recv(rad_listen_t *listener)
 	}
 
 	if (rcode < 0) {	/* error or connection reset */
-		listener->status = RAD_LISTEN_STATUS_REMOVE_FD;
+		listener->status = RAD_LISTEN_STATUS_REMOVE_NOW;
 
 		/*
 		 *	Decrement the number of connections.
@@ -1848,7 +1848,7 @@ static int proxy_socket_tcp_recv(rad_listen_t *listener)
 
 	packet = fr_tcp_recv(listener->fd, 0);
 	if (!packet) {
-		listener->status = RAD_LISTEN_STATUS_REMOVE_FD;
+		listener->status = RAD_LISTEN_STATUS_REMOVE_NOW;
 		event_new_fd(listener);
 		return 0;
 	}

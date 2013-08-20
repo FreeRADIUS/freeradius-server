@@ -479,7 +479,7 @@ static void deallocate_id(radclient_t *radclient)
 	/*
 	 *	One more unused RADIUS ID.
 	 */
-	fr_packet_list_id_free(pl, radclient->request);
+	fr_packet_list_id_free(pl, radclient->request, true);
 
 	/*
 	 *	If we've already sent a packet, free up the old one,

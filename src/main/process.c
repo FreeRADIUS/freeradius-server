@@ -208,7 +208,7 @@ STATE_MACHINE_DECL(proxy_wait_for_reply);
 STATE_MACHINE_DECL(proxy_running);
 static int process_proxy_reply(REQUEST *request);
 static void remove_from_proxy_hash(REQUEST *request);
-static void remove_from_proxy_hash_nl(REQUEST *request);
+static void remove_from_proxy_hash_nl(REQUEST *request, bool yank);
 static int insert_into_proxy_hash(REQUEST *request);
 #endif
 
@@ -1527,7 +1527,7 @@ static void tcp_socket_timer(void *ctx)
 
 		do_close:
 
-			listener->status = RAD_LISTEN_STATUS_CLOSED;
+			listener->status = RAD_LISTEN_STATUS_EOL;
 			event_new_fd(listener);
 			return;
 		}
@@ -1592,15 +1592,17 @@ static void add_jitter(struct timeval *when)
 	tv_add(when, jitter);
 }
 
-
-static int disconnect_all_proxied_requests(void *ctx, void *data)
+/*
+ *	Called by socket_del to remove requests with this socket
+ */
+static int eol_proxy_listener(void *ctx, void *data)
 {
 	rad_listen_t *this = ctx;
 	RADIUS_PACKET **proxy_p = data;
 	REQUEST *request;
 
 	request = fr_packet2myptr(REQUEST, proxy, proxy_p);
-	if (request->proxy->sockfd != this->fd) return 0;
+	if (request->proxy_listener != this) return 0;
 
 	/*
 	 *	The normal "remove_from_proxy_hash" tries to grab the
@@ -1608,27 +1610,28 @@ static int disconnect_all_proxied_requests(void *ctx, void *data)
 	 *	again will cause a deadlock.  Instead, call the "no
 	 *	lock" version of the function.
 	 */
-	if (request->in_proxy_hash) {
-		remove_from_proxy_hash_nl(request);
-	}
-	request->proxy_listener = NULL;
+	rad_assert(request->in_proxy_hash == true);
+	remove_from_proxy_hash_nl(request, false);
 
 	/*
 	 *	Don't mark it as DONE.  The client can retransmit, and
 	 *	the packet SHOULD be re-proxied somewhere else.
+	 *
+	 *	Return "2" means that the rbtree code will remove it
+	 *	from the tree, and we don't need to do it ourselves.
 	 */
-	return 0;
+	return 2;
 }
 #endif	/* WITH_PROXY */
 
-static int remove_all_requests(void *ctx, void *data)
+static int eol_listener(void *ctx, void *data)
 {
 	rad_listen_t *this = ctx;
 	RADIUS_PACKET **packet_p = data;
 	REQUEST *request;
 
 	request = fr_packet2myptr(REQUEST, packet, packet_p);
-	if (request->packet->sockfd != this->fd) return 0;
+	if (request->listener != this) return 0;
 
 	request->master_state = REQUEST_STOP_PROCESSING;
 
@@ -1643,11 +1646,11 @@ static int remove_all_requests(void *ctx, void *data)
  *
  ***********************************************************************/
 
-static void remove_from_proxy_hash_nl(REQUEST *request)
+static void remove_from_proxy_hash_nl(REQUEST *request, bool yank)
 {
 	if (!request->in_proxy_hash) return;
 
-	fr_packet_list_id_free(proxy_list, request->proxy);
+	fr_packet_list_id_free(proxy_list, request->proxy, yank);
 	request->in_proxy_hash = false;
 
 	/*
@@ -1706,7 +1709,7 @@ static void remove_from_proxy_hash(REQUEST *request)
 		return;
 	}
 
-	remove_from_proxy_hash_nl(request);
+	remove_from_proxy_hash_nl(request, true);
 
   	PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
 }
@@ -3671,144 +3674,28 @@ int event_new_fd(rad_listen_t *this)
 
 		this->status = RAD_LISTEN_STATUS_KNOWN;
 		return 1;
-	}
-
-	/*
-	 *	Something went wrong with the socket: make it harmless.
-	 */
-	if (this->status == RAD_LISTEN_STATUS_REMOVE_FD) {
-		int devnull;
-
-		/*
-		 *	Remove it from the list of live FD's.
-		 */
-		FD_MUTEX_LOCK(&fd_mutex);
-		fr_event_fd_delete(el, 0, this->fd);
-		FD_MUTEX_UNLOCK(&fd_mutex);
-
-#ifdef WITH_TCP
-		/*
-		 *	We track requests using this socket only for
-		 *	TCP.  For UDP, we don't currently close
-		 *	sockets.
-		 */
-#ifdef WITH_PROXY
-		if (this->type != RAD_LISTEN_PROXY)
-#endif
-		{
-			if (this->count != 0) {
-				fr_packet_list_walk(pl, this,
-						    remove_all_requests);
-			}
-
-			if (this->count == 0) {
-				this->status = RAD_LISTEN_STATUS_FINISH;
-				goto finish;
-			}
-		}
-#ifdef WITH_PROXY
-		else {
-			int count;
-
-			/*
-			 *	Duplicate code
-			 */
-			PTHREAD_MUTEX_LOCK(&proxy_mutex);
-			if (!fr_packet_list_socket_freeze(proxy_list,
-							  this->fd)) {
-				ERROR("Fatal error freezing socket: %s",
-				       fr_strerror());
-				exit(1);
-			}
-
-			/*
-			 *	Doing this with the proxy mutex held
-			 *	is a Bad Thing.  We should move to
-			 *	finer-grained mutexes.
-			 */
-			count = this->count;
-			if (count > 0) {
-				fr_packet_list_walk(proxy_list, this,
-						    disconnect_all_proxied_requests);
-			}
-			count = this->count; /* protected by mutex */
-			PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
-
-			if (count == 0) {
-				this->status = RAD_LISTEN_STATUS_FINISH;
-				goto finish;
-			}
-		}
-#endif	/* WITH_PROXY */
-#endif	/* WITH_TCP */
-
-		/*
-		 *      Re-open the socket, pointing it to /dev/null.
-		 *      This means that all writes proceed without
-		 *      blocking, and all reads return "no data".
-		 *
-		 *      This leaves the socket active, so any child
-		 *      threads won't go insane.  But it means that
-		 *      they cannot send or receive any packets.
-		 *
-		 *	This is EXTRA work in the normal case, when
-		 *	sockets are closed without error.  But it lets
-		 *	us have one simple processing method for all
-		 *	sockets.
-		 */
-		devnull = open("/dev/null", O_RDWR);
-		if (devnull < 0) {
-			ERROR("FATAL failure opening /dev/null: %s",
-			       fr_syserror(errno));
-			exit(1);
-		}
-		if (dup2(devnull, this->fd) < 0) {
-			ERROR("FATAL failure closing socket: %s",
-			       fr_syserror(errno));
-			exit(1);
-		}
-		close(devnull);
-
-		this->status = RAD_LISTEN_STATUS_CLOSED;
-
-		/*
-		 *	Fall through to the next section.
-		 */
-	}
+	} /* end of INIT */
 
 #ifdef WITH_TCP
 	/*
-	 *	Called ONLY from the main thread.  On the following
-	 *	conditions:
-	 *
-	 *	idle timeout
-	 *	max lifetime
-	 *
-	 *	(and falling through from "forcibly close FD" above)
-	 *	client closed connection on us
-	 *	client sent us a bad packet.
+	 *	Stop using this socket, if at all possible.
 	 */
-	if (this->status == RAD_LISTEN_STATUS_CLOSED) {
-		int count = this->count;
-
-#ifdef WITH_DETAIL
-		rad_assert(this->type != RAD_LISTEN_DETAIL);
-#endif
-
+	if (this->status == RAD_LISTEN_STATUS_EOL) {
 #ifdef WITH_PROXY
 		/*
-		 *	Remove it from the list of active sockets, so
-		 *	that it isn't used when proxying new packets.
+		 *	Proxy sockets get frozen, so that we don't use
+		 *	them for new requests.  But we do keep them
+		 *	open to listen for replies to requests we had
+		 *	previously sent.
 		 */
 		if (this->type == RAD_LISTEN_PROXY) {
 			PTHREAD_MUTEX_LOCK(&proxy_mutex);
 			if (!fr_packet_list_socket_freeze(proxy_list,
 							  this->fd)) {
-				ERROR("Fatal error freezing socket: %s",
+				radlog(L_ERR, "Fatal error freezing socket: %s",
 				       fr_strerror());
 				exit(1);
 			}
-			count = this->count; /* protected by mutex */
 			PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
 		}
 #endif
@@ -3817,7 +3704,7 @@ int event_new_fd(rad_listen_t *this)
 		 *	Requests are still using the socket.  Wait for
 		 *	them to finish.
 		 */
-		if (count != 0) {
+		if (this->count > 0) {
 			struct timeval when;
 			listen_socket_t *sock = this->data;
 
@@ -3838,48 +3725,91 @@ int event_new_fd(rad_listen_t *this)
 		}
 
 		/*
-		 *	No one is using this socket: we can delete it
-		 *	immediately.
+		 *	No one is using the socket.  We can remove it now.
 		 */
-		this->status = RAD_LISTEN_STATUS_FINISH;
-	}
+		this->status = RAD_LISTEN_STATUS_REMOVE_NOW;
+	} /* socket is at EOL */
+#endif
 
-finish:
-	if (this->status == RAD_LISTEN_STATUS_FINISH) {
+	/*
+	 *	Nuke the socket.
+	 */
+	if (this->status == RAD_LISTEN_STATUS_REMOVE_NOW) {
+		int devnull;
+#ifdef WITH_TCP
 		listen_socket_t *sock = this->data;
-
-		rad_assert(this->count == 0);
-		INFO(" ... closing socket %s", buffer);
+#endif
 
 		/*
-		 *	Remove it from the list of live FD's.  Note
-		 *	that it MAY also have been removed above.  We
-		 *	do it again here, to catch the case of sockets
-		 *	closing on idle timeout, or max
-		 *	lifetime... AFTER all requests have finished
-		 *	using it.
+		 *	Remove it from the list of live FD's.
 		 */
 		FD_MUTEX_LOCK(&fd_mutex);
 		fr_event_fd_delete(el, 0, this->fd);
 		FD_MUTEX_UNLOCK(&fd_mutex);
 
+		/*
+		 *      Re-open the socket, pointing it to /dev/null.
+		 *      This means that all writes proceed without
+		 *      blocking, and all reads return "no data".
+		 *
+		 *      This leaves the socket active, so any child
+		 *      threads won't go insane.  But it means that
+		 *      they cannot send or receive any packets.
+		 *
+		 *	This is EXTRA work in the normal case, when
+		 *	sockets are closed without error.  But it lets
+		 *	us have one simple processing method for all
+		 *	sockets.
+		 */
+		devnull = open("/dev/null", O_RDWR);
+		if (devnull < 0) {
+			ERROR("FATAL failure opening /dev/null: %s",
+			       strerror(errno));
+			exit(1);
+		}
+		if (dup2(devnull, this->fd) < 0) {
+			ERROR("FATAL failure closing socket: %s",
+			       strerror(errno));
+			exit(1);
+		}
+		close(devnull);
+
+#ifdef WITH_DETAIL
+		rad_assert(this->type != RAD_LISTEN_DETAIL);
+#endif
+
+#ifdef WITH_TCP
+		INFO(" ... closing socket %s", buffer);
+
 #ifdef WITH_PROXY
 		/*
-		 *	Remove it from the list of sockets to be used
-		 *	when proxying.
+		 *	The socket is dead.  Force all proxied packets
+		 *	to stop using it.  And then remove it from the
+		 *	list of outgoing sockets.
 		 */
 		if (this->type == RAD_LISTEN_PROXY) {
 			PTHREAD_MUTEX_LOCK(&proxy_mutex);
-			if (!fr_packet_list_socket_del(proxy_list,
-						       this->fd, NULL)) {
+			fr_packet_list_walk(proxy_list, this,
+					    eol_proxy_listener);
+
+			if (!fr_packet_list_socket_del(proxy_list, this->fd)) {
 				ERROR("Fatal error removing socket: %s",
-				       fr_strerror());
+				      fr_strerror());
 				exit(1);
 			}
-			if (sock->home) sock->home->limit.num_connections--;
+			if (sock->home &&  sock->home->limit.num_connections) {
+				sock->home->limit.num_connections--;
+			}
 			PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
-		}
+		} else
 #endif
+		{
+			/*
+			 *	EOL all requests using this socket.
+			 */
+			fr_packet_list_walk(proxy_list, this,
+					    eol_listener);
+		}
 
 		/*
 		 *	Remove any pending cleanups.

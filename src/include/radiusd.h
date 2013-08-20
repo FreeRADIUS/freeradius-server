@@ -412,11 +412,10 @@ typedef struct listen_socket_t {
 	RADCLIENT_LIST	*clients;
 } listen_socket_t;
 
-#define RAD_LISTEN_STATUS_INIT   (0)
-#define RAD_LISTEN_STATUS_KNOWN  (1)
-#define RAD_LISTEN_STATUS_REMOVE_FD (2)
-#define RAD_LISTEN_STATUS_CLOSED (3)
-#define RAD_LISTEN_STATUS_FINISH (4)
+#define RAD_LISTEN_STATUS_INIT       (0)
+#define RAD_LISTEN_STATUS_KNOWN      (1)
+#define RAD_LISTEN_STATUS_EOL 	     (2)
+#define RAD_LISTEN_STATUS_REMOVE_NOW (3)
 
 typedef struct main_config_t {
 	struct main_config *next;

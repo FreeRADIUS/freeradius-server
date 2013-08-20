@@ -54,12 +54,11 @@ int fr_packet_list_num_elements(fr_packet_list_t *pl);
 bool fr_packet_list_id_alloc(fr_packet_list_t *pl, int proto,
 			    RADIUS_PACKET **request_p, void **pctx);
 bool fr_packet_list_id_free(fr_packet_list_t *pl,
-			     RADIUS_PACKET *request);
+			    RADIUS_PACKET *request, bool yank);
 bool fr_packet_list_socket_add(fr_packet_list_t *pl, int sockfd, int proto,
 			      fr_ipaddr_t *dst_ipaddr, int dst_port,
 			      void *ctx);
-bool fr_packet_list_socket_del(fr_packet_list_t *pl, int sockfd,
-				 void **pctx);
+bool fr_packet_list_socket_del(fr_packet_list_t *pl, int sockfd);
 bool fr_packet_list_socket_freeze(fr_packet_list_t *pl, int sockfd);
 bool fr_packet_list_socket_thaw(fr_packet_list_t *pl, int sockfd);
 int fr_packet_list_walk(fr_packet_list_t *pl, void *ctx,
