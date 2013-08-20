@@ -486,9 +486,10 @@ static rlm_rcode_t do_python(rlm_python_t *inst, REQUEST *request, PyObject *pFu
 	/* Call Python function. */
 	pRet = PyObject_CallFunctionObjArgs(pFunc, pArgs, NULL);
 
-	if (!pRet)
+	if (!pRet) {
 		ret = RLM_MODULE_FAIL;
 		goto finish;
+	}
 
 	if (!request)
 		goto finish;
