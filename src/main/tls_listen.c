@@ -72,7 +72,7 @@ static void tls_socket_close(rad_listen_t *listener)
 {
 	listen_socket_t *sock = listener->data;
 
-	listener->status = RAD_LISTEN_STATUS_REMOVE_FD;
+	listener->status = RAD_LISTEN_STATUS_REMOVE_NOW;
 	listener->tls = NULL; /* parent owns this! */
 
 	if (sock->parent) {
