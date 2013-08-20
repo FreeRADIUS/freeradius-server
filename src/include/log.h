@@ -84,6 +84,7 @@ int		radlog(log_type_t lvl, char const *fmt, ...)
 #endif
 ;
 void 		vp_listdebug(VALUE_PAIR *vp);
+bool		radlog_debug_enabled(log_type_t type, log_debug_t lvl, REQUEST *request);
 void		radlog_request(log_type_t lvl, log_debug_t priority, REQUEST *request, char const *msg, ...)
 #ifdef __GNUC__
 		__attribute__ ((format (printf, 4, 5)))
@@ -113,6 +114,11 @@ void log_talloc_report(TALLOC_CTX *ctx);
  *	Log server driven messages like threadpool exhaustion and connection failures
  */
 #define _SL(_l, _p, _f, ...)	if (debug_flag >= _p) radlog(_l, _f, ## __VA_ARGS__)
+
+#define DEBUG_ENABLED		radlog_debug_enabled(L_DBG, L_DBG_LVL_1, NULL)
+#define DEBUG_ENABLED2		radlog_debug_enabled(L_DBG, L_DBG_LVL_2, NULL)
+#define DEBUG_ENABLED3		radlog_debug_enabled(L_DBG, L_DBG_LVL_3, NULL)
+#define DEBUG_ENABLED4		radlog_debug_enabled(L_DBG, L_DBG_LVL_MAX, NULL)
 
 #define AUTH(fmt, ...)		_SL(L_AUTH, L_DBG_LVL_OFF, fmt, ## __VA_ARGS__)
 #define ACCT(fmt, ...)		_SL(L_ACCT, L_DBG_LVL_OFF, fmt, ## __VA_ARGS__)
@@ -147,6 +153,11 @@ void log_talloc_report(TALLOC_CTX *ctx);
 					} \
 				} while(0)
 
+#define RDEBUG_ENABLED		radlog_debug_enabled(L_DBG, L_DBG_LVL_1, request)
+#define RDEBUG_ENABLED2		radlog_debug_enabled(L_DBG, L_DBG_LVL_2, request)
+#define RDEBUG_ENABLED3		radlog_debug_enabled(L_DBG, L_DBG_LVL_3, request)
+#define RDEBUG_ENABLED4		radlog_debug_enabled(L_DBG, L_DBG_LVL_MAX, request)
+
 #define RAUTH(fmt, ...)		_RL(L_AUTH, L_DBG_LVL_OFF, fmt, ## __VA_ARGS__)
 #define RACCT(fmt, ...)		_RL(L_ACCT, L_DBG_LVL_OFF, fmt, ## __VA_ARGS__)
 #define RPROXY(fmt, ...)	_RL(L_PROXY, L_DBG_LVL_OFF, fmt, ## __VA_ARGS__)
@@ -158,6 +169,7 @@ void log_talloc_report(TALLOC_CTX *ctx);
 
 #define RINFO(fmt, ...)		_RL(L_INFO, L_DBG_LVL_OFF, fmt, ## __VA_ARGS__)
 #define RIDEBUG(fmt, ...)	_RL(L_INFO, L_DBG_LVL_1, fmt, ## __VA_ARGS__)
+#define RIDEBUG2(fmt, ...)	_RL(L_INFO, L_DBG_LVL_2, fmt, ## __VA_ARGS__)
 
 #define RWARN(fmt, ...)		_RL(L_DBG_WARN, L_DBG_LVL_OFF, fmt, ## __VA_ARGS__)
 #define RWDEBUG(fmt, ...)	_RL(L_DBG_WARN, L_DBG_LVL_1, fmt, ## __VA_ARGS__)

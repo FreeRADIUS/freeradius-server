@@ -330,6 +330,27 @@ void vp_listdebug(VALUE_PAIR *vp)
 	}
 }
 
+inline bool radlog_debug_enabled(log_type_t type, log_debug_t lvl, REQUEST *request)
+{
+	/*
+	 *	It's a debug class message, not this doesn't mean it's a debug type message.
+	 *
+	 *	For example it could be a RIDEBUG message, which would be an informational message,
+	 *	instead of an RDEBUG message which would be a debug debug message.
+	 *
+	 *	There is log function, but the request debug level isn't high enough.
+	 *	OR, we're in debug mode, and the global debug level isn't high enough,
+	 *	then don't log the message.
+	 */
+	if ((type & L_DBG) &&
+	    ((request && request->radlog && (lvl > request->options)) ||
+	     ((debug_flag != 0) && (lvl > debug_flag)))) {
+	 	return false;
+	}
+
+	return true;
+}
+
 void radlog_request(log_type_t type, log_debug_t lvl, REQUEST *request, char const *msg, ...)
 {
 	size_t len = 0;
@@ -346,14 +367,8 @@ void radlog_request(log_type_t type, log_debug_t lvl, REQUEST *request, char con
 	 *	Debug messages get treated specially.
 	 */
 	if ((type & L_DBG) != 0) {
-		/*
-		 *	There is log function, but the debug level
-		 *	isn't high enough.  OR, we're in debug mode,
-		 *	and the debug level isn't high enough.  Return.
-		 */
-		if ((request && request->radlog &&
-		     (lvl > request->options)) ||
-		    ((debug_flag != 0) && (lvl > debug_flag))) {
+
+		if (!radlog_debug_enabled(type, lvl, request)) {
 			va_end(ap);
 			return;
 		}
@@ -391,8 +406,7 @@ void radlog_request(log_type_t type, log_debug_t lvl, REQUEST *request, char con
 		if (p) {
 			*p = '\0';
 			if (rad_mkdir(buffer, S_IRWXU) < 0) {
-				ERROR("Failed creating %s: %s",
-				       buffer,strerror(errno));
+				ERROR("Failed creating %s: %s", buffer, strerror(errno));
 				va_end(ap);
 				return;
 			}
@@ -506,3 +520,4 @@ void log_talloc_report(TALLOC_CTX *ctx)
 
 	fclose(fd);
 }
+
