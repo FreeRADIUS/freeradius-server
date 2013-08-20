@@ -203,16 +203,16 @@ static int mod_init(rlm_python_t *inst)
 
 	if (radiusd_module) return 0;
 
-	if (inst->python_path) {
-		PySys_SetPath(inst->python_path);
-	}
-
 	Py_SetProgramName(name);
 #ifdef HAVE_PTHREAD_H
 	Py_InitializeEx(0);				/* Don't override signal handlers */
 	PyEval_InitThreads(); 				/* This also grabs a lock */
 	inst->main_thread_state = PyThreadState_Get();	/* We need this for setting up thread local stuff */
 #endif
+	if (inst->python_path) {
+		PySys_SetPath(inst->python_path);
+	}
+	
 	if ((radiusd_module = Py_InitModule3("radiusd", radiusd_methods,
 					     "FreeRADIUS Module.")) == NULL)
 		goto failed;
