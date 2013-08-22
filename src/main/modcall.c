@@ -470,7 +470,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 						break;
 					default:
 					case -1:
-						REDEBUG("Condition evluation failed because the value of an operand "
+						REDEBUG("Condition evaluation failed because the value of an operand "
 							"could not be determined");
 						break;
 				}
