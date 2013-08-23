@@ -58,10 +58,10 @@ struct modcallable {
 	int actions[RLM_MODULE_NUMCODES];
 };
 
-#define MOD_LOG_OPEN_BRACE(_name) RDEBUG2("%.*s%s %s {", stack.pointer + 1, modcall_spaces, _name, child->name)
-#define MOD_LOG_CLOSE_BRACE() RDEBUG2("%.*s} # %s %s = %s", stack.pointer + 1, modcall_spaces, \
-				      group_name[child->type], child->name ? child->name : "", \
-				      fr_int2str(mod_rcode_table, myresult, "<invalid>"))
+#define MOD_LOG_OPEN_BRACE(_name) RDEBUG2("%.*s%s %s {", depth + 1, modcall_spaces, _name, c->name)
+#define MOD_LOG_CLOSE_BRACE() RDEBUG2("%.*s} # %s %s = %s", depth + 1, modcall_spaces, \
+				      group_name[c->type], c->name ? c->name : "", \
+				      fr_int2str(mod_rcode_table, result, "<invalid>"))
 
 #define GROUPTYPE_SIMPLE	0
 #define GROUPTYPE_REDUNDANT	1
@@ -377,14 +377,570 @@ static char const *modcall_spaces = "                                           
  *	Don't call the modules recursively.  Instead, do them
  *	iteratively, and manage the call stack ourselves.
  */
-typedef struct modcall_stack {
-	int pointer;
+typedef struct modcall_stack_entry_t {
+	int result;
+	int priority;
+	modcallable *c;
+} modcall_stack_entry_t;
 
-	int priority[MODCALL_STACK_MAX];
-	int result[MODCALL_STACK_MAX];
-	modcallable *children[MODCALL_STACK_MAX];
-	modcallable *start[MODCALL_STACK_MAX];
-} modcall_stack;
+
+static bool modcall_recurse(REQUEST *request, int component, int depth,
+			    modcall_stack_entry_t *entry);
+
+/*
+ *	Call a child of a block.
+ */
+static int modcall_child(REQUEST *request, int component, int depth,
+			 modcall_stack_entry_t *entry, modcallable *c)
+{
+	modcall_stack_entry_t *next;
+
+	if (depth >= MODCALL_STACK_MAX) {
+		ERROR("Internal sanity check failed: module stack is too deep");
+		exit(1);
+	}
+
+	/*
+	 *	Initialize the childs stack frame.
+	 */
+	next = entry + 1;
+	next->c = c;
+	next->result = entry->result;
+	next->priority = 0;
+
+	if (!modcall_recurse(request, component,
+			     depth, next)) {
+
+		 return RLM_MODULE_FAIL;
+	}
+
+	return next->result;
+}
+
+/*
+ *	Interpret the various types of blocks.
+ */
+static bool modcall_recurse(REQUEST *request, int component, int depth,
+			    modcall_stack_entry_t *entry)
+{
+	bool if_taken, was_if;
+	modcallable *c;
+	int result, priority;
+
+	was_if = if_taken = false;
+	result = RLM_MODULE_UNKNOWN;
+	priority = -1;
+
+redo:
+	c = entry->c;
+
+	/*
+	 *	Nothing more to do.  Return the code and priority
+	 *	which was set by the caller.
+	 */
+	if (!c) return true;
+
+	/*
+	 *	We've been asked to stop.  Do so.
+	 */
+	if ((request->master_state == REQUEST_STOP_PROCESSING) ||
+	    (request->parent &&
+	     (request->parent->master_state == REQUEST_STOP_PROCESSING))) {
+		entry->result = RLM_MODULE_FAIL;
+		entry->priority = 9999;
+		return true;
+	}
+
+	/*
+	 *	Handle "if" conditions.
+	 */
+	if (c->type == MOD_IF) {
+		int condition;
+		modgroup *g;
+
+	mod_if:
+		g = mod_callabletogroup(c);
+		rad_assert(g->cond != NULL);
+
+		RDEBUG2("%.*s? %s %s", depth + 1, modcall_spaces,
+			(c->type == MOD_IF) ? "if" : "elsif", c->name);
+
+		condition = radius_evaluate_cond(request, entry->result, 0, g->cond);
+		if (condition < 0) {
+			switch (condition) {
+			case -2:
+				REDEBUG("Condition evaluation failed because a referenced attribute "
+					"was not found in the request");
+				break;
+			default:
+			case -1:
+				REDEBUG("Condition evaluation failed because the value of an operand "
+					"could not be determined");
+				break;
+			}
+			condition = 0;
+		} else {
+			RDEBUG2("%.*s? %s %s -> %s", depth + 1, modcall_spaces,
+				(c->type == MOD_IF) ? "if" : "elsif",
+				c->name, condition ? "TRUE" : "FALSE");
+		}
+
+		/*
+		 *	Didn't pass.  Remember that.
+		 */
+		if (!condition) {
+			was_if = true;
+			if_taken = false;
+			goto next_sibling;
+		}
+
+		/*
+		 *	We took the "if".  Go recurse into its' children.
+		 */
+		was_if = true;
+		if_taken = true;
+		goto do_children;
+	} /* MOD_IF */
+
+	/*
+	 *	"else" if the previous "if" was taken.
+	 *	"if" if the previous if wasn't taken.
+	 */
+	if (c->type == MOD_ELSIF) {
+		if (!was_if) goto elsif_error;
+
+		if (!if_taken) goto mod_if; /* check the next if */
+
+		/*
+		 *	Treat it like an "else", but allow for a later "else".
+		 */
+		was_if = true;
+		if_taken = false;
+		goto do_children;
+	} /* MOD_ELSIF */
+
+	/*
+	 *	"else" for a preceding "if".
+	 */
+	if (c->type == MOD_ELSE) {
+		if (!was_if) { /* error */
+		elsif_error:
+			RDEBUG2("%.*s ... skipping %s for request %d: No preceding \"if\"",
+				depth + 1, modcall_spaces,
+				group_name[c->type], request->number);
+			goto next_sibling;
+		}
+
+		if (if_taken) {
+			RDEBUG2("%.*s ... skipping %s for request %d: Preceding \"if\" was taken",
+				depth + 1, modcall_spaces,
+				group_name[c->type], request->number);
+			was_if = false;
+			if_taken = false;
+			goto next_sibling;
+		}
+
+		/*
+		 *	We need to process it.  Go do that.
+		 */
+		was_if = false;
+		if_taken = false;
+		goto do_children;
+	} /* MOD_ELSE */
+
+	/*
+	 *	We're no longer processing if/else/elsif.  Reset the
+	 *	trackers for those conditions.
+	 */
+	was_if = false;
+	if_taken = false;
+
+	if (c->type == MOD_SINGLE) {
+		modsingle *sp;
+
+		/*
+		 *	Process a stand-alone child, and fall through
+		 *	to dealing with it's parent.
+		 */
+		sp = mod_callabletosingle(c);
+
+		result = call_modsingle(c->method, sp, request);
+		RDEBUG2("%.*s[%s] = %s", depth + 1, modcall_spaces, c->name ? c->name : "",
+			fr_int2str(mod_rcode_table, result, "<invalid>"));
+		goto calculate_result;
+	} /* MOD_SINGLE */
+
+	/*
+	 *	Update attribute(s)
+	 */
+	if (c->type == MOD_UPDATE) {
+		int rcode;
+		modgroup *g = mod_callabletogroup(c);
+		value_pair_map_t *map;
+
+
+		for (map = g->map; map != NULL; map = map->next) {
+			rcode = radius_map2request(request, map, "update", radius_map2vp, NULL);
+			if (rcode < 0) {
+				result = (rcode == -2) ? RLM_MODULE_INVALID : RLM_MODULE_FAIL;
+				goto calculate_result;
+			}
+		}
+
+		result = RLM_MODULE_NOOP;
+		MOD_LOG_CLOSE_BRACE();
+		goto next_sibling;
+	} /* MOD_IF */
+
+	/*
+	 *	Loop over a set of attributes.
+	 */
+	if (c->type == MOD_FOREACH) {
+		int i, foreach_depth = -1;
+		VALUE_PAIR *vp;
+		modcall_stack_entry_t *next;
+		vp_cursor_t cursor;
+		modgroup *g = mod_callabletogroup(c);
+
+		if (depth >= MODCALL_STACK_MAX) {
+			ERROR("Internal sanity check failed: module stack is too deep");
+			exit(1);
+		}
+
+		for (i = 0; i < 8; i++) {
+			if (!request_data_reference(request,
+						    radius_get_vp, i)) {
+				foreach_depth = i;
+				break;
+			}
+		}
+
+		if (foreach_depth < 0) {
+			REDEBUG("foreach Nesting too deep!");
+			result = RLM_MODULE_FAIL;
+			goto calculate_result;
+		}
+
+		if (radius_get_vp(&vp, request, c->name) < 0) {
+			RDEBUG("Unknown Attribute \"%s\"", c->name);
+			result = RLM_MODULE_FAIL;
+			goto calculate_result;
+		}
+
+		if (!vp) {	/* nothing to loop over */
+			MOD_LOG_OPEN_BRACE("foreach");
+			result = RLM_MODULE_NOOP;
+			MOD_LOG_CLOSE_BRACE();
+			goto calculate_result;
+		}
+
+		paircursor(&cursor, &vp);
+		/* Prime the cursor. */
+		cursor.found = cursor.current;
+		while (vp) {
+			VALUE_PAIR *copy = NULL, **copy_p;
+
+#ifndef NDEBUG
+			if (fr_debug_flag >= 2) {
+				char buffer[1024];
+
+				vp_prints_value(buffer, sizeof(buffer), vp, '"');
+				RDEBUG2("%.*s #  Foreach-Variable-%d = %s", depth + 1,
+					modcall_spaces, foreach_depth, buffer);
+			}
+#endif
+
+			copy = paircopy(request, vp);
+			copy_p = &copy;
+
+			/*
+			 *	@fixme: The old code freed copy on
+			 *	request_data_add or request_data_get.
+			 *	There's no way to easily do that now.
+			 *	The foreach code should be audited for
+			 *	possible memory leaks, though it's not
+			 *	a huge priority as any leaked memory
+			 *	will be freed on request free.
+			 */
+			request_data_add(request, radius_get_vp,
+					 depth, copy_p, false);
+
+			/*
+			 *	Initialize the childs stack frame.
+			 */
+			next = entry++;
+			next->c = g->children;
+			next->result = entry->result;
+			next->priority = 0;
+
+			if (!modcall_recurse(request, component,
+					     depth + 1,
+					     next)) {
+				request_data_get(request,
+						 radius_get_vp,
+						 depth);
+				pairfree(&copy);
+				break;
+			}
+
+			vp = pairfindnext(&cursor, vp->da->attr, vp->da->vendor, TAG_ANY);
+
+			/*
+			 *	Delete the cached attribute,
+			 *	if it exists.
+			 */
+			if (copy) {
+				request_data_get(request,
+						 radius_get_vp,
+						 depth);
+				pairfree(&copy);
+			} else {
+				break;
+			}
+		} /* loop over VPs */
+
+		result = next->result;
+		MOD_LOG_CLOSE_BRACE();
+		goto calculate_result;
+	} /* MOD_FOREACH */
+
+	/*
+	 *	Break out of a "foreach" loop.
+	 */
+	if (c->type == MOD_BREAK) {
+		int i;
+		VALUE_PAIR **copy_p;
+
+		for (i = 8; i >= 0; i--) {
+			copy_p = request_data_get(request,
+						  radius_get_vp, i);
+			if (copy_p) {
+				RDEBUG2("%.*s #  BREAK Foreach-Variable-%d", depth + 1,
+					modcall_spaces, i);
+				pairfree(copy_p);
+				break;
+			}
+		}
+
+		/*
+		 *	Leave result / priority on the stack, and stop processing the section.
+		 */
+		return true;
+	} /* MOD_BREAK */
+
+	/*
+	 *	Child is a group that has children of it's own.
+	 */
+	if ((c->type == MOD_GROUP) || (c->type == MOD_POLICY)) {
+		modgroup *g;
+
+	do_children:
+		g = mod_callabletogroup(c);
+
+		MOD_LOG_OPEN_BRACE(group_name[c->type]);
+		result = modcall_child(request, component,
+				       depth + 1, entry, g->children);
+		MOD_LOG_CLOSE_BRACE();
+		goto calculate_result;
+	} /* MOD_GROUP */
+
+	if (c->type == MOD_SWITCH) {
+		modcallable *this, *found, *null_case;
+		modgroup *g;
+		char buffer[1024];
+
+		MOD_LOG_OPEN_BRACE("switch");
+
+		/*
+		 *	If there's no %, it refers to an attribute.
+		 *	Otherwise, expand it.
+		 */
+		if (!strchr(c->name, '%')) {
+			VALUE_PAIR *vp = NULL;
+
+			radius_get_vp(&vp, request, c->name);
+			if (vp) {
+				vp_prints_value(buffer,
+						sizeof(buffer),
+						vp, 0);
+			} else {
+				*buffer = '\0';
+			}
+		} else {
+			radius_xlat(buffer, sizeof(buffer),
+				    request, c->name, NULL, NULL);
+		}
+
+		/*
+		 *	Find either the exact matching name, or the
+		 *	"case {...}" statement.
+		 */
+		g = mod_callabletogroup(c);
+		null_case = found = NULL;
+		for (this = g->children; this; this = this->next) {
+			if (!this->name) {
+				if (!null_case) null_case = this;
+				continue;
+			}
+			if (strcmp(buffer, this->name) == 0) {
+				found = this;
+				break;
+			}
+		}
+
+		if (!found) found = null_case;
+
+		MOD_LOG_OPEN_BRACE(group_name[c->type]);
+		result = modcall_child(request, component,
+				       depth + 1, entry, found);
+		MOD_LOG_CLOSE_BRACE();
+		goto calculate_result;
+	} /* MOD_SWITCH */
+
+	if ((c->type == MOD_LOAD_BALANCE) ||
+	    (c->type == MOD_REDUNDANT_LOAD_BALANCE)) {
+		int count;
+		modcallable *this, *found;
+		modgroup *g;
+
+		MOD_LOG_OPEN_BRACE("load-balance");
+
+		g = mod_callabletogroup(c);
+		for (this = g->children; this; this = this->next) {
+			if (!found) {
+				found = this;
+				count = 1;
+				continue;
+			}
+			count++;
+
+			if ((count * (fr_rand() & 0xffff)) < (uint32_t) 0x10000) {
+				found = this;
+			}
+		}
+
+		MOD_LOG_OPEN_BRACE(group_name[c->type]);
+
+		if (c->type == MOD_LOAD_BALANCE) {
+			result = modcall_child(request, component,
+					       depth + 1, entry, found);
+
+		} else {
+			int i;
+
+			/*
+			 *	Loop over all children in this
+			 *	section.  If we get FAIL, then
+			 *	continue.  Otherwise, stop.
+			 */
+			for (i = 1; i < count; i++) {
+				result = modcall_child(request, component,
+						       depth + 1, entry, found);
+				if (c->actions[result] == MOD_ACTION_RETURN) {
+					break;
+				}
+			}
+		}
+		MOD_LOG_CLOSE_BRACE();
+		goto calculate_result;
+	} /* MOD_LOAD_BALANCE */
+
+	/*
+	 *	Reference another virtual server.
+	 *
+	 *	This should really be deleted, and replaced with a
+	 *	more abstracted / functional version.
+	 */
+	if (c->type == MOD_REFERENCE) {
+		modref *mr = mod_callabletoref(c);
+		char const *server = request->server;
+
+		if (server == mr->ref_name) {
+			RWDEBUG("Suppressing recursive call to server %s", server);
+			goto next_sibling;
+		}
+
+		request->server = mr->ref_name;
+		RDEBUG("server %s { # nested call", mr->ref_name);
+		result = indexed_modcall(component, 0, request);
+		RDEBUG("} # server %s with nested call", mr->ref_name);
+		request->server = server;
+		goto calculate_result;
+	} /* MOD_REFERENCE */
+
+	/*
+	 *	xlat a string without doing anything else
+	 *
+	 *	This should really be deleted, and replaced with a
+	 *	more abstracted / functional version.
+	 */
+	if (c->type == MOD_XLAT) {
+		modxlat *mx = mod_callabletoxlat(c);
+		char buffer[128];
+
+		if (!mx->exec) {
+			radius_xlat(buffer, sizeof(buffer), request, mx->xlat_name, NULL, NULL);
+		} else {
+			RDEBUG("`%s`", mx->xlat_name);
+			radius_exec_program(request, mx->xlat_name, false, true,
+					    NULL, 0, request->packet->vps, NULL);
+		}
+
+		goto next_sibling;
+	} /* MOD_XLAT */
+
+	/*
+	 *	Add new module types here.
+	 */
+
+calculate_result:
+	rad_assert(result != RLM_MODULE_UNKNOWN);
+
+	/*
+	 *	The child's action says return.  Do so.
+	 */
+	if ((c->actions[result] == MOD_ACTION_RETURN) &&
+	    (priority <= 0)) {
+		entry->result = result;
+		return true;
+	}
+
+	/*
+	 *	If "reject", break out of the loop and return
+	 *	reject.
+	 */
+	if (c->actions[result] == MOD_ACTION_REJECT) {
+		entry->result = RLM_MODULE_REJECT;
+		return true;
+	}
+
+	/*
+	 *	The array holds a default priority for this return
+	 *	code.  Grab it in preference to any unset priority.
+	 */
+	if (priority < 0) priority = c->actions[result];
+
+	/*
+	 *	We're higher than any previous priority, remember this
+	 *	return code and priority.
+	 */
+	if ((priority >= entry->priority) &&
+	    (result != entry->result)) {
+		entry->result = result;
+		entry->priority = priority;
+	}
+
+next_sibling:
+	entry->c = entry->c->next;
+
+	if (entry->c) goto redo;
+
+	/*
+	 *	And we're done!
+	 */
+	return true;
+}
+
 
 /**
  * @brief Call a module, iteratively, with a local stack, rather than
@@ -392,573 +948,30 @@ typedef struct modcall_stack {
  */
 int modcall(int component, modcallable *c, REQUEST *request)
 {
-	vp_cursor_t cursor;
-	int myresult, mypriority;
-	modcall_stack stack;
-	modcallable *parent, *child;
-	modsingle *sp;
-	int if_taken, was_if;
+	modcall_stack_entry_t stack[MODCALL_STACK_MAX];
 
 	if ((component < 0) || (component >= RLM_COMPONENT_COUNT)) {
 		return RLM_MODULE_FAIL;
 	}
 
-	stack.pointer = 0;
-	stack.priority[0] = 0;
-	stack.children[0] = c;
-	stack.start[0] = NULL;
-	myresult = stack.result[0] = default_component_results[component];
-	mypriority = 0;
-	was_if = if_taken = false;
-
-	while (1) {
-		/*
-		 *	A module has taken too long to process the request,
-		 *	and we've been told to stop processing it.
-		 */
-		if ((request->master_state == REQUEST_STOP_PROCESSING) ||
-		    (request->parent &&
-		     (request->parent->master_state == REQUEST_STOP_PROCESSING))) {
-			myresult = RLM_MODULE_FAIL;
-			break;
-		}
-
-		child = stack.children[stack.pointer];
-		if (!child) {
-			myresult = stack.result[stack.pointer];
-			break;
-		}
-		parent = child->parent;
-
-#ifdef WITH_UNLANG
-		if ((child->type == MOD_ELSE) || (child->type == MOD_ELSIF)) {
-			myresult = stack.result[stack.pointer];
-
-			if (!was_if) { /* error */
-				RDEBUG2("%.*s ... skipping %s for request %d: No preceding \"if\"",
-					stack.pointer + 1, modcall_spaces,
-					group_name[child->type], request->number);
-				goto unroll;
-			}
-			if (if_taken) {
-				RDEBUG2("%.*s ... skipping %s for request %d: Preceding \"if\" was taken",
-					stack.pointer + 1, modcall_spaces,
-					group_name[child->type], request->number);
-				goto unroll;
-			}
-		}
-
-		/*
-		 *	"if" or "elsif".  Evaluate the condition.
-		 */
-		if ((child->type == MOD_IF) || (child->type == MOD_ELSIF)) {
-			int condition;
-			modgroup *g;
-
-			g = mod_callabletogroup(child);
-			rad_assert(g->cond != NULL);
-
-			RDEBUG2("%.*s? %s %s", stack.pointer + 1, modcall_spaces,
-				(child->type == MOD_IF) ? "if" : "elsif", child->name);
-
-			condition = radius_evaluate_cond(request, myresult, 0, g->cond);
-			if (condition < 0) {
-				switch (condition) {
-					case -2:
-						REDEBUG("Condition evaluation failed because a referenced attribute "
-							"was not found in the request");
-						break;
-					default:
-					case -1:
-						REDEBUG("Condition evaluation failed because the value of an operand "
-							"could not be determined");
-						break;
-				}
-
-				condition = false;
-			} else {
-				RDEBUG2("%.*s? %s %s -> %s", stack.pointer + 1, modcall_spaces,
-					(child->type == MOD_IF) ? "if" : "elsif",
-					child->name, condition ? "TRUE" : "FALSE");
-			}
-
-			/*
-			 *	If the condition fails to match, go
-			 *	immediately to the next entry in the
-			 *	list.
-			 */
-			if (!condition) {
-				was_if = true;
-				if_taken = false;
-				goto next_section;
-			} /* else process it as a simple group */
-		}
-
-		if (child->type == MOD_UPDATE) {
-			int rcode;
-			modgroup *g = mod_callabletogroup(child);
-			value_pair_map_t *map;
-
-			MOD_LOG_OPEN_BRACE("update");
-			for (map = g->map; map != NULL; map = map->next) {
-				rcode = radius_map2request(request, map, "update", radius_map2vp, NULL);
-				if (rcode < 0) {
-					myresult = (rcode == -2) ? RLM_MODULE_INVALID : RLM_MODULE_FAIL;
-
-					MOD_LOG_CLOSE_BRACE();
-					goto handle_priority;
-				}
-			}
-
-			/* else leave myresult && mypriority alone */
-			goto handle_result;
-		}
-
-		if (child->type == MOD_BREAK) {
-			int i;
-			VALUE_PAIR **copy_p;
-
-			for (i = 8; i >= 0; i--) {
-				copy_p = request_data_get(request,
-							  radius_get_vp, i);
-				if (copy_p) {
-					RDEBUG2("%.*s #  BREAK Foreach-Variable-%d", stack.pointer + 1,
-						modcall_spaces, i);
-					pairfree(copy_p);
-					break;
-				}
-			}
-
-			myresult = RLM_MODULE_NOOP;
-			goto handle_result;
-		}
-
-		if (child->type == MOD_FOREACH) {
-			int i, depth = -1;
-			VALUE_PAIR *vp;
-			modgroup *g = mod_callabletogroup(child);
-
-			for (i = 0; i < 8; i++) {
-				if (!request_data_reference(request,
-							    radius_get_vp, i)) {
-					depth = i;
-					break;
-				}
-			}
-
-			if (depth < 0) {
-				REDEBUG("foreach Nesting too deep!");
-				myresult = RLM_MODULE_FAIL;
-				goto handle_result;
-			}
-
-			if (!(radius_get_vp(&vp, request, child->name) < 0)) {
-				MOD_LOG_OPEN_BRACE("foreach");
-				if (vp) {
-					paircursor(&cursor, &vp);
-					/* Prime the cursor. */
-					cursor.found = cursor.current;
-				}
-				while (vp) {
-					VALUE_PAIR *copy = NULL, **copy_p;
-
-#ifndef NDEBUG
-					if (fr_debug_flag >= 2) {
-						char buffer[1024];
-
-						vp_prints_value(buffer, sizeof(buffer), vp, '"');
-						RDEBUG2("%.*s #  Foreach-Variable-%d = %s", stack.pointer + 1,
-							modcall_spaces, depth, buffer);
-					}
-#endif
-
-					copy = paircopy(request, vp);
-					copy_p = &copy;
-
-					/*
-					 *	@fixme: The old code freed copy on request_data_add or
-					 *	request_data_get.  There's no way to easily do that now.
-					 *	The foreach code should be audited for possible memory leaks,
-					 *	though it's not a huge priority as any leaked memory will
-					 *	be freed on request free.
-					 */
-					request_data_add(request, radius_get_vp,
-							 depth, copy_p, false);
-
-				 	myresult = modcall(component,
-							   g->children,
-							   request);
-					if (myresult == MOD_ACTION_RETURN) {
-						break;
-					}
-					vp = pairfindnext(&cursor, vp->da->attr, vp->da->vendor, TAG_ANY);
-					/*
-					 *	Delete the cached attribute,
-					 *	if it exists.
-					 */
-					if (copy) {
-						request_data_get(request,
-								 radius_get_vp,
-								 depth);
-						pairfree(&copy);
-					} else {
-						break;
-					}
-				} /* loop over VPs */
-			}  /* if the VP exists */
-
-			myresult = RLM_MODULE_OK;
-			goto handle_result; /* prints close brace */
-		}
-#endif
-
-		if (child->type == MOD_REFERENCE) {
-			modref *mr = mod_callabletoref(child);
-			char const *server = request->server;
-
-			if (server == mr->ref_name) {
-				RWDEBUG("Suppressing recursive call to server %s", server);
-				myresult = RLM_MODULE_NOOP;
-				goto handle_priority;
-			}
-
-			request->server = mr->ref_name;
-			RDEBUG("server %s { # nested call", mr->ref_name);
-			myresult = indexed_modcall(component, 0, request);
-			RDEBUG("} # server %s with nested call", mr->ref_name);
-			request->server = server;
-			goto handle_priority;
-		}
-
-		if (child->type == MOD_XLAT) {
-			modxlat *mx = mod_callabletoxlat(child);
-			char buffer[128];
-
-			if (!mx->exec) {
-				radius_xlat(buffer, sizeof(buffer), request, mx->xlat_name, NULL, NULL);
-			} else {
-				RDEBUG("`%s`", mx->xlat_name);
-				radius_exec_program(request, mx->xlat_name, false, true,
-						    NULL, 0, request->packet->vps, NULL);
-			}
-
-			goto skip; /* don't change anything on the stack */
-		}
-
-		/*
-		 *	Child is a group that has children of it's own.
-		 */
-		if ((child->type > MOD_SINGLE) && (child->type <= MOD_POLICY)) {
-			int count = 1;
-			modcallable *p, *q;
-#ifdef WITH_UNLANG
-			modcallable *null_case;
-#endif
-			modgroup *g = mod_callabletogroup(child);
-
-			stack.pointer++;
-
-			/*
-			 *	Catastrophic error.  This SHOULD have
-			 *	been caught when we were reading in the
-			 *	conf files.
-			 *
-			 *	FIXME: Do so.
-			 */
-			if (stack.pointer >= MODCALL_STACK_MAX) {
-				ERROR("Internal sanity check failed: module stack is too deep");
-				exit(1);
-			}
-
-			stack.priority[stack.pointer] = stack.priority[stack.pointer - 1];
-			stack.result[stack.pointer] = stack.result[stack.pointer - 1];
-
-			MOD_LOG_OPEN_BRACE(group_name[child->type]);
-
-			switch (child->type) {
-#ifdef WITH_UNLANG
-				char buffer[1024];
-
-			case MOD_IF:
-			case MOD_ELSE:
-			case MOD_ELSIF:
-			case MOD_CASE:
-			case MOD_FOREACH:
-#endif
-			case MOD_GROUP:
-			case MOD_POLICY: /* same as MOD_GROUP */
-				stack.children[stack.pointer] = g->children;
-				break;
-
-				/*
-				 *	See the "camel book" for why
-				 *	this works.
-				 *
-				 *	If (rand(0..n) < 1), pick the
-				 *	current realm.  We add a scale
-				 *	factor of 65536, to avoid
-				 *	floating point.
-				 */
-			case MOD_LOAD_BALANCE:
-			case MOD_REDUNDANT_LOAD_BALANCE:
-				q = NULL;
-				for(p = g->children; p; p = p->next) {
-					if (!q) {
-						q = p;
-						count = 1;
-						continue;
-					}
-
-					count++;
-
-					if ((count * (fr_rand() & 0xffff)) < (uint32_t) 0x10000) {
-						q = p;
-					}
-				}
-				stack.children[stack.pointer] = q;
-				break;
-
-#ifdef WITH_UNLANG
-			case MOD_SWITCH:
-				if (!strchr(child->name, '%')) {
-					VALUE_PAIR *vp = NULL;
-
-					if ((radius_get_vp(&vp, request, child->name) < 0) || !vp) {
-						*buffer = '\0';
-					} else {
-						vp_prints_value(buffer, sizeof(buffer), vp, 0);
-					}
-				} else {
-					if (radius_xlat(buffer, sizeof(buffer), request, child->name, NULL, NULL) < 0) {
-						*buffer = '\0';
-					}
-				}
-				null_case = q = NULL;
-				for(p = g->children; p; p = p->next) {
-					if (!p->name) {
-						if (!null_case) null_case = p;
-						continue;
-					}
-					if (strcmp(buffer, p->name) == 0) {
-						q = p;
-						break;
-					}
-				}
-
-				if (!q) q = null_case;
-
-				stack.children[stack.pointer] = q;
-				break;
-#endif
-
-			default:
-				RERROR("FATA: Internal sanity check failed in modcall %d", child->type);
-				exit(1); /* internal sanity check failure */
-			}
-
-
-			stack.start[stack.pointer] = stack.children[stack.pointer];
-
-			RDEBUG2("%.*s- entering %s %s {...}", stack.pointer, modcall_spaces, group_name[child->type],
-			        child->name ? child->name : "");
-
-			/*
-			 *	Catch the special case of a NULL group.
-			 */
-			if (!stack.children[stack.pointer]) {
-				/*
-				 *	Print message for NULL group
-				 */
-				RDEBUG2("%.*s- %s %s = %s", stack.pointer + 1, modcall_spaces, group_name[child->type],
-					child->name ? child->name : "",
-					fr_int2str(mod_rcode_table, stack.result[stack.pointer], "<invalid>"));
-				goto do_return;
-			}
-
-			/*
-			 *	The child may be a group, so we want to
-			 *	recurse into it's children, rather than
-			 *	falling through to the code below.
-			 */
-			continue;
-		}
-
-		/*
-		 *	Process a stand-alone child, and fall through
-		 *	to dealing with it's parent.
-		 */
-		sp = mod_callabletosingle(child);
-
-		myresult = call_modsingle(child->method, sp, request);
-		RDEBUG2("%.*s[%s] = %s", stack.pointer + 1, modcall_spaces, child->name ? child->name : "",
-			fr_int2str(mod_rcode_table, myresult, "<invalid>"));
-
-	handle_priority:
-		mypriority = child->actions[myresult];
-
-#ifdef WITH_UNLANG
-		if (0) {
-		handle_result:
-			if (child->type != MOD_BREAK) {
-				MOD_LOG_CLOSE_BRACE();
-			}
-		}
-#else
-		handle_result:
-#endif
-
-		/*
-		 *	This is a bit of a hack...
-		 */
-		if (component != RLM_COMPONENT_SESS) request->simul_max = myresult;
-
-		/*
-		 *	FIXME: Allow modules to push a modcallable
-		 *	onto this stack.  This should simplify
-		 *	configuration a LOT!
-		 *
-		 *	Once we do that, we can't do load-time
-		 *	checking of the maximum stack depth, and we've
-		 *	got to cache the stack pointer before storing
-		 *	myresult.
-		 *
-		 *	Also, if the stack changed, we need to set
-		 *	children[ptr] to NULL, and process the next
-		 *	entry on the stack, rather than falling
-		 *	through to finalize the processing of this
-		 *	entry.
-		 *
-		 *	Don't put "myresult" on the stack here,
-		 *	we have to do so with priority.
-		 */
-
-		/*
-		 *	We roll back up the stack at this point.
-		 */
-	unroll:
-		/*
-		 *	The child's action says return.  Do so.
-		 */
-		if ((child->actions[myresult] == MOD_ACTION_RETURN) &&
-		    (mypriority <= 0)) {
-			stack.result[stack.pointer] = myresult;
-			stack.children[stack.pointer] = NULL;
-			goto do_return;
-		}
-
-		/*
-		 *	If "reject", break out of the loop and return
-		 *	reject.
-		 */
-		if (child->actions[myresult] == MOD_ACTION_REJECT) {
-			stack.children[stack.pointer] = NULL;
-			stack.result[stack.pointer] = RLM_MODULE_REJECT;
-			goto do_return;
-		}
-
-		/*
-		 *	Otherwise, the action is a number, the
-		 *	preference level of this return code. If no
-		 *	higher preference has been seen yet, remember
-		 *	this one.
-		 */
-		if (mypriority >= stack.priority[stack.pointer]) {
-#ifdef WITH_UNLANG
-		next_section:
-#endif
-			stack.result[stack.pointer] = myresult;
-			stack.priority[stack.pointer] = mypriority;
-		}
-
-		/*
-		 *	No parent, we must be done.
-		 */
-	skip:
-		if (!parent) {
- 			rad_assert(stack.pointer == 0);
-			myresult = stack.result[0];
-			break;
-		}
-
-		rad_assert(child != NULL);
-
-		/*
-		 *	Go to the "next" child, whatever that is.
-		 */
-		switch (parent->type) {
-#ifdef WITH_UNLANG
-			case MOD_IF:
-			case MOD_ELSE:
-			case MOD_ELSIF:
-			case MOD_CASE:
-			case MOD_FOREACH:
-#endif
-			case MOD_GROUP:
-			case MOD_POLICY: /* same as MOD_GROUP */
-				stack.children[stack.pointer] = child->next;
-				break;
-
-#ifdef WITH_UNLANG
-			case MOD_SWITCH:
-#endif
-			case MOD_LOAD_BALANCE:
-				stack.children[stack.pointer] = NULL;
-				break;
-
-			case MOD_REDUNDANT_LOAD_BALANCE:
-				if (child->next) {
-					stack.children[stack.pointer] = child->next;
-				} else {
-					modgroup *g = mod_callabletogroup(parent);
-
-					stack.children[stack.pointer] = g->children;
-				}
-				if (stack.children[stack.pointer] == stack.start[stack.pointer]) {
-					stack.children[stack.pointer] = NULL;
-				}
-				break;
-			default:
-				RERROR("FATAL: Internal sanity check failed in modcall next %d", child->type);
-				exit(1);
-		}
-
-		/*
-		 *	No child, we're done this group, and we return
-		 *	"myresult" to the caller by pushing it back up
-		 *	the stack.
-		 */
-		if (!stack.children[stack.pointer]) {
-		do_return:
-			myresult = stack.result[stack.pointer];
-			mypriority = 0; /* reset for the next result */
-			if (stack.pointer == 0) break;
-			stack.pointer--;
-			if (stack.pointer == 0) break;
-
-			RDEBUG2("%.*s- %s %s returns %s", stack.pointer + 1, modcall_spaces,
-				group_name[parent->type], parent->name ? parent->name : "",
-				fr_int2str(mod_rcode_table, myresult, "<invalid>"));
-
-#ifdef WITH_UNLANG
-			if ((parent->type == MOD_IF) ||
-			    (parent->type == MOD_ELSIF)) {
-				if_taken = was_if = true;
-			} else {
-				if_taken = was_if = false;
-			}
-#endif
-
-			/*
-			 *	Unroll the stack.
-			 */
-			child = stack.children[stack.pointer];
-			parent = child->parent;
-			goto unroll;
-		}
-
-	} /* loop until done */
-
-	return myresult;
+	/*
+	 *	Set up the initial stack frame.
+	 */
+	stack[0].c = c;
+	stack[0].result = default_component_results[component];
+	stack[0].priority = 0;
+
+	/*
+	 *	Call the main handler.
+	 */
+	if (!modcall_recurse(request, component, 0, &stack[0])) {
+		return RLM_MODULE_FAIL;
+	}
+
+	/*
+	 *	Return the result.
+	 */
+	return stack[0].result;
 }
 
 
