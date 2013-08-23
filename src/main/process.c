@@ -1680,7 +1680,6 @@ static void remove_from_proxy_hash_nl(REQUEST *request, bool yank)
 	request->proxy_listener->count--;
 #endif
 	request->proxy_listener = NULL;
-	request->home_server = NULL;
 
 	/*
 	 *	Got from YES in hash, to NO, not in hash while we hold
