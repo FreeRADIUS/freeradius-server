@@ -668,7 +668,7 @@ redo:
 			/*
 			 *	Initialize the childs stack frame.
 			 */
-			next = entry++;
+			next = entry + 1;
 			next->c = g->children;
 			next->result = entry->result;
 			next->priority = 0;
