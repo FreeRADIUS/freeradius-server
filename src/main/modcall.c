@@ -731,7 +731,8 @@ redo:
 	/*
 	 *	Child is a group that has children of it's own.
 	 */
-	if ((c->type == MOD_GROUP) || (c->type == MOD_POLICY)) {
+	if ((c->type == MOD_GROUP) || (c->type == MOD_POLICY) ||
+	    (c->type == MOD_CASE)) {
 		modgroup *g;
 
 	do_children:
