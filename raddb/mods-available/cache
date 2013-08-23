@@ -30,6 +30,7 @@ cache {
 	#  You can set the TTL per cache entry, but adding a control
 	#  variable "Cache-TTL".  The value there will over-ride this one.
 	#  Setting a Cache-TTL of 0 means "delete this entry".
+	#  Setting a Cache-TTL < 0 means "delete this entry and create a new one".
 	#
 	#  This value should be between 10 and 86400.
 	ttl = 10
