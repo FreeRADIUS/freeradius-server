@@ -30,6 +30,7 @@ RCSID("$Id$")
 #include <freeradius-devel/modules.h>
 
 #include <Python.h>
+#include <dlfcn.h>
 
 #ifdef HAVE_PTHREAD_H
 #define Pyx_BLOCK_THREADS    {PyGILState_STATE __gstate = PyGILState_Ensure();
@@ -202,6 +203,13 @@ static int mod_init(rlm_python_t *inst)
 	static char name[] = "radiusd";
 
 	if (radiusd_module) return 0;
+
+	// Explicitly load libpython, so symbols will be available to lib-dynload modules
+	#define STR(c) #c
+	#define XSTR(c) STR(c)
+	dlopen("libpython" XSTR(PY_MAJOR_VERSION) "." XSTR(PY_MINOR_VERSION) ".so", RTLD_NOW | RTLD_GLOBAL);
+	#undef STR
+	#undef XSTR
 
 	Py_SetProgramName(name);
 #ifdef HAVE_PTHREAD_H
