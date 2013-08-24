@@ -449,8 +449,8 @@ int xlat_register(char const *name, RAD_XLAT_FUNC func, RADIUS_ESCAPE_STRING esc
 		}
 #endif
 
-#define XLAT_REGISTER(_x) xlat_register(Stringify(_x), xlat_ ## _x, NULL, NULL); \
-		c = xlat_find(Stringify(_x)); \
+#define XLAT_REGISTER(_x) xlat_register(STRINGIFY(_x), xlat_ ## _x, NULL, NULL); \
+		c = xlat_find(STRINGIFY(_x)); \
 		rad_assert(c != NULL); \
 		c->internal = true
 

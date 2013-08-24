@@ -102,8 +102,8 @@ static int do_colourise = false;
  *  Security configuration for the server.
  */
 static const CONF_PARSER security_config[] = {
-	{ "max_attributes",  PW_TYPE_INTEGER, 0, &fr_max_attributes, Stringify(0) },
-	{ "reject_delay",  PW_TYPE_INTEGER, 0, &mainconfig.reject_delay, Stringify(0) },
+	{ "max_attributes",  PW_TYPE_INTEGER, 0, &fr_max_attributes, STRINGIFY(0) },
+	{ "reject_delay",  PW_TYPE_INTEGER, 0, &mainconfig.reject_delay, STRINGIFY(0) },
 	{ "status_server", PW_TYPE_BOOLEAN, 0, &mainconfig.status_server, "no"},
 	{ NULL, -1, 0, NULL, NULL }
 };
@@ -114,7 +114,7 @@ static const CONF_PARSER security_config[] = {
  */
 static const CONF_PARSER logdest_config[] = {
 	{ "destination",  PW_TYPE_STRING_PTR, 0, &radlog_dest, "files" },
-	{ "syslog_facility",  PW_TYPE_STRING_PTR, 0, &syslog_facility, Stringify(0) },
+	{ "syslog_facility",  PW_TYPE_STRING_PTR, 0, &syslog_facility, STRINGIFY(0) },
 
 	{ "file", PW_TYPE_STRING_PTR, 0, &mainconfig.log_file, "${logdir}/radius.log" },
 	{ "requests", PW_TYPE_STRING_PTR, 0, &default_log.file, NULL },
@@ -165,11 +165,11 @@ static const CONF_PARSER server_config[] = {
 	{ "libdir",	     PW_TYPE_STRING_PTR, 0, &radlib_dir,	"${prefix}/lib"},
 	{ "radacctdir",	 PW_TYPE_STRING_PTR, 0, &radacct_dir,       "${logdir}/radacct" },
 	{ "hostname_lookups",   PW_TYPE_BOOLEAN,    0, &fr_dns_lookups,      "no" },
-	{ "max_request_time", PW_TYPE_INTEGER, 0, &mainconfig.max_request_time, Stringify(MAX_REQUEST_TIME) },
-	{ "cleanup_delay", PW_TYPE_INTEGER, 0, &mainconfig.cleanup_delay, Stringify(CLEANUP_DELAY) },
-	{ "max_requests", PW_TYPE_INTEGER, 0, &mainconfig.max_requests, Stringify(MAX_REQUESTS) },
+	{ "max_request_time", PW_TYPE_INTEGER, 0, &mainconfig.max_request_time, STRINGIFY(MAX_REQUEST_TIME) },
+	{ "cleanup_delay", PW_TYPE_INTEGER, 0, &mainconfig.cleanup_delay, STRINGIFY(CLEANUP_DELAY) },
+	{ "max_requests", PW_TYPE_INTEGER, 0, &mainconfig.max_requests, STRINGIFY(MAX_REQUESTS) },
 #ifdef DELETE_BLOCKED_REQUESTS
-	{ "delete_blocked_requests", PW_TYPE_INTEGER, 0, &mainconfig.kill_unresponsive_children, Stringify(false) },
+	{ "delete_blocked_requests", PW_TYPE_INTEGER, 0, &mainconfig.kill_unresponsive_children, STRINGIFY(false) },
 #endif
 	{ "pidfile", PW_TYPE_STRING_PTR, 0, &mainconfig.pid_file, "${run_dir}/radiusd.pid"},
 	{ "checkrad", PW_TYPE_STRING_PTR, 0, &mainconfig.checkrad, "${sbindir}/checkrad" },

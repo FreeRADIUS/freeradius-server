@@ -80,8 +80,8 @@ typedef struct rlm_perl_t {
 /*
  *	A mapping of configuration file names to internal variables.
  */
-#define RLM_PERL_CONF(_x) { "func_" Stringify(_x), PW_TYPE_STRING_PTR, \
-			offsetof(rlm_perl_t,func_##_x), NULL, Stringify(_x)}
+#define RLM_PERL_CONF(_x) { "func_" STRINGIFY(_x), PW_TYPE_STRING_PTR, \
+			offsetof(rlm_perl_t,func_##_x), NULL, STRINGIFY(_x)}
 
 static const CONF_PARSER module_config[] = {
 	{ "module",  PW_TYPE_FILE_INPUT | PW_TYPE_DEPRECATED,
