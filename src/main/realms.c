@@ -70,11 +70,11 @@ static rbtree_t	*home_pools_byname = NULL;
 static const CONF_PARSER proxy_config[] = {
 	{ "retry_delay",  PW_TYPE_INTEGER,
 	  offsetof(realm_config_t, retry_delay),
-	  NULL, Stringify(RETRY_DELAY) },
+	  NULL, STRINGIFY(RETRY_DELAY) },
 
 	{ "retry_count",  PW_TYPE_INTEGER,
 	  offsetof(realm_config_t, retry_count),
-	  NULL, Stringify(RETRY_COUNT) },
+	  NULL, STRINGIFY(RETRY_COUNT) },
 
 	{ "default_fallback", PW_TYPE_BOOLEAN,
 	  offsetof(realm_config_t, fallback),
@@ -82,7 +82,7 @@ static const CONF_PARSER proxy_config[] = {
 
 	{ "dead_time",    PW_TYPE_INTEGER,
 	  offsetof(realm_config_t, dead_time),
-	  NULL, Stringify(DEAD_TIME) },
+	  NULL, STRINGIFY(DEAD_TIME) },
 
 	{ "wake_all_if_all_dead", PW_TYPE_BOOLEAN,
 	  offsetof(realm_config_t, wake_all_if_all_dead),
@@ -307,13 +307,13 @@ static char *hs_proto = NULL;
 #ifdef WITH_COA
 static CONF_PARSER home_server_coa[] = {
 	{ "irt",  PW_TYPE_INTEGER,
-	  offsetof(home_server, coa_irt), 0, Stringify(2) },
+	  offsetof(home_server, coa_irt), 0, STRINGIFY(2) },
 	{ "mrt",  PW_TYPE_INTEGER,
-	  offsetof(home_server, coa_mrt), 0, Stringify(16) },
+	  offsetof(home_server, coa_mrt), 0, STRINGIFY(16) },
 	{ "mrc",  PW_TYPE_INTEGER,
-	  offsetof(home_server, coa_mrc), 0, Stringify(5) },
+	  offsetof(home_server, coa_mrc), 0, STRINGIFY(5) },
 	{ "mrd",  PW_TYPE_INTEGER,
-	  offsetof(home_server, coa_mrd), 0, Stringify(30) },
+	  offsetof(home_server, coa_mrd), 0, STRINGIFY(30) },
 
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };

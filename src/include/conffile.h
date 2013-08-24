@@ -47,10 +47,6 @@ typedef struct CONF_PARSER {
   const void *dflt;		/* default as it would appear in radiusd.conf */
 } CONF_PARSER;
 
-/* This preprocessor trick will be useful in initializing CONF_PARSER struct */
-#define XStringify(x) #x
-#define Stringify(x) XStringify(x)
-
 CONF_SECTION	*cf_section_alloc(CONF_SECTION *parent, char const *name1,
 				  char const *name2);
 int		cf_pair_replace(CONF_SECTION *cs, CONF_PAIR *cp,

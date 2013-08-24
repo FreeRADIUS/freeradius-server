@@ -10,10 +10,15 @@ extern "C" {
 #endif
 
 /*
+ *	The ubiquitous stringify macros
+ */
+#define XSTRINGIFY(x) #x
+#define STRINGIFY(x) XSTRINGIFY(x)
+
+/*
  *	Macros for controlling warnings in GCC >= 4.2 and clang >= 2.8
  */
-#define DIAG_STR(s) #s
-#define DIAG_JOINSTR(x,y) DIAG_STR(x ## y)
+#define DIAG_JOINSTR(x,y) XSTRINGIFY(x ## y)
 #define DIAG_DO_PRAGMA(x) _Pragma (#x)
 
 #if defined(__GNUC__) && ((__GNUC__ * 100) + __GNUC_MINOR__) >= 402
