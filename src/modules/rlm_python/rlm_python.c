@@ -30,6 +30,7 @@ RCSID("$Id$")
 #include <freeradius-devel/modules.h>
 
 #include <Python.h>
+#include <dlfcn.h>
 
 #define Pyx_BLOCK_THREADS    {PyGILState_STATE __gstate = PyGILState_Ensure();
 #define Pyx_UNBLOCK_THREADS   PyGILState_Release(__gstate);}
@@ -201,6 +202,14 @@ static int mod_init(void)
 	static char name[] = "radiusd";
 
 	if (radiusd_module) return 0;
+
+	/*
+	 *	Explicitly load libpython, so symbols will be available to lib-dynload modules
+	 */
+	if (!dlopen("libpython" STRINGIFY(PY_MAJOR_VERSION) "." STRINGIFY(PY_MINOR_VERSION) ".so",
+		    RTLD_NOW | RTLD_GLOBAL)) {
+	 	WARN("Failed loading libpython symbols into global symbol table: %s", dlerror());
+	}
 
 	Py_SetProgramName(name);
 	Py_InitializeEx(0);				/* Don't override signal handlers */
