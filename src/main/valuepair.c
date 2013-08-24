@@ -1431,7 +1431,9 @@ void module_failure_msg(REQUEST *request, char const *fmt, ...)
 	char *p;
 	VALUE_PAIR *vp;
 
-	if (!fmt) {
+	if (!fmt || !request->packet) {
+		va_start(ap, fmt);
+		va_end(ap);
 		return;
 	}
 
