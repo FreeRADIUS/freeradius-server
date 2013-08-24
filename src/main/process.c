@@ -2858,8 +2858,6 @@ STATE_MACHINE_DECL(proxy_wait_for_reply)
 
 	gettimeofday(&now, NULL);
 
-	rad_assert(request->child_state != REQUEST_DONE);
-
 	if (request->master_state == REQUEST_STOP_PROCESSING) {
 		request_done(request, FR_ACTION_DONE);
 		return;
