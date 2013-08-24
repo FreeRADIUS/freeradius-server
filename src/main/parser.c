@@ -617,7 +617,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 						     REQUEST_CURRENT, PAIR_LIST_REQUEST,
 						     REQUEST_CURRENT, PAIR_LIST_REQUEST);
 			if (!c->data.map) {
-				return_P("Failed creating check");
+				return_0("Cannot parsing condition");
 			}
 
 			/*
