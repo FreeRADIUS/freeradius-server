@@ -409,7 +409,7 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 	    (map->src->type != VPT_TYPE_REGEX)) {
 		VALUE_PAIR *lhs_vp, *rhs_vp;
 
-		EVAL_DEBUG("ATTR to REGEX");
+		EVAL_DEBUG("ATTR to non-REGEX");
 
 		/*
 		 *	No LHS means no match
