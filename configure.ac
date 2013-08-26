@@ -688,18 +688,43 @@ AC_CHECK_LIB(ws2_32, htonl)
 dnl #
 dnl #  Check the pcap library for the RADIUS sniffer.
 dnl #
-PCAP_LIBS=
-AC_CHECK_LIB(pcap, pcap_open_live,
-  [
-    PCAP_LIBS="-lpcap"
-    AC_DEFINE(HAVE_LIBPCAP, 1,
-      [Define to 1 if you have the `pcap' library (-lpcap).]
-    )
-  ],
-  [
-    AC_MSG_WARN([pcap library not found, silently disabling the RADIUS sniffer.])
-  ]
-)
+dnl extra argument: --with-pcap-lib-dir=DIR
+pcap_lib_dir=
+AC_ARG_WITH(pcap-lib-dir,
+  [AS_HELP_STRING([--with-pcap-lib-dir=DIR],
+  [Directory where the pcap libs may be found])],
+  [case "$withval" in
+    no)
+      AC_MSG_ERROR([Need pcap-lib-dir])
+      ;;
+    yes)
+      ;;
+    *)
+      pcap_lib_dir="$withval"
+      ;;
+  esac])
+
+LIBS_OLD="${LIBS}"
+smart_try_dir="$pcap_lib_dir"
+FR_SMART_CHECK_LIB(pcap, pcap_open_live)
+if test "x$ac_cv_lib_pcap_pcap_open_live" != "xyes"; then
+  AC_MSG_WARN([pcap library not found, silently disabling the RADIUS sniffer.  Use --with-pcap-lib-dir=<path>.])
+else
+  AC_DEFINE(HAVE_LIBPCAP, 1,
+    [Define to 1 if you have the `pcap' library (-lpcap).]
+  )
+
+  AC_CHECK_LIB(pcap, pcap_fopen_offline,
+    [ AC_DEFINE(HAVE_PCAP_FOPEN_OFFLINE, 1, [Define to 1 if you have the function pcap_fopen_offline.]) ]
+  )
+
+  AC_CHECK_LIB(pcap, pcap_dump_fopen,
+    [ AC_DEFINE(HAVE_PCAP_DUMP_FOPEN, 1, [Define to 1 if you have the function pcap_dump_fopen.]) ]
+  )
+
+  PCAP_LIBS="${smart_lib}"
+fi
+LIBS="${LIBS_OLD}"
 
 dnl Check for collectdclient
 dnl extra argument: --with-collectdclient-lib-dir=DIR
@@ -726,10 +751,6 @@ if test "x$ac_cv_lib_collectdclient_lcc_connect" != "xyes"; then
 else
   COLLECTDC_LIBS="${smart_lib}"
 fi
-
-dnl #
-dnl # We really don't want to end up linking everything against collectdclient
-dnl #
 LIBS="${LIBS_OLD}"
 
 VL_LIB_READLINE
@@ -979,32 +1000,38 @@ export OPENSSL_LIBS
 dnl #
 dnl #  Check the pcap includes for the RADIUS sniffer.
 dnl #
+dnl Check for collectd-client
+dnl extra argument: --with-pcap-include-dir=DIR
+pcap_include_dir=
+AC_ARG_WITH(pcap-include-dir,
+  [AS_HELP_STRING([--with-pcap-include-dir=DIR],
+  [Directory where the pcap includes may be found])],
+  [case "$withval" in
+    no)
+      AC_MSG_ERROR([Need pcap-include-dir])
+      ;;
+    yes)
+      ;;
+    *)
+      pcap_include_dir="$withval"
+      ;;
+  esac])
+
 if test "x$PCAP_LIBS" = x; then
   AC_MSG_NOTICE([skipping test for pcap.h.])
 else
-  AC_CHECK_HEADER(pcap.h,
-    [
-      AC_DEFINE(HAVE_PCAP_H, 1, [Define to 1 if you have the <pcap.h> header file.])
-
-      AC_CHECK_LIB(pcap, pcap_fopen_offline,
-        [
-          AC_DEFINE(HAVE_PCAP_FOPEN_OFFLINE, 1, [Define to 1 if you have the function pcap_fopen_offline.])
-        ]
-      )
-
-      AC_CHECK_LIB(pcap, pcap_dump_fopen,
-        [
-          AC_DEFINE(HAVE_PCAP_DUMP_FOPEN, 1, [Define to 1 if you have the function pcap_dump_fopen.])
-        ]
-      )
-    ],
-    [
-      PCAP_LIBS=
-      AC_MSG_WARN([pcap.h not found, silently disabling the RADIUS sniffer.])
-    ]
-  )
+  dnl #
+  dnl # Check for pcap header files
+  dnl #
+  smart_try_dir="$pcap_include_dir"
+  FR_SMART_CHECK_INCLUDE([pcap.h])
+  if test "x$ac_cv_header_pcap_h" == "xyes"; then
+    AC_DEFINE(HAVE_PCAP_H, 1, [Define to 1 if you have the `pcap' library (-lpcap).])
+    AC_SUBST(PCAP_LIBS)
+  else
+    AC_MSG_WARN([pcap headers not found, silently disabling the RADIUS sniffer. Use --with-pcap-include-dir=<path>.])
+  fi
 fi
-AC_SUBST(PCAP_LIBS)
 
 dnl Check for collectd-client
 dnl extra argument: --with-collectdclient-include-dir=DIR
