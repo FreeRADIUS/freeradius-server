@@ -509,14 +509,22 @@ redo:
 	if (c->type == MOD_ELSIF) {
 		if (!was_if) goto elsif_error;
 
-		if (!if_taken) goto mod_if; /* check the next if */
+		/*
+		 *	Like MOD_ELSE, but allow for a later "else"
+		 */
+		if (if_taken) {
+			RDEBUG2("%.*s ... skipping %s for request %d: Preceding \"if\" was taken",
+				depth + 1, modcall_spaces,
+				group_name[c->type], request->number);
+			was_if = true;
+			if_taken = true;
+			goto next_sibling;
+		}
 
 		/*
-		 *	Treat it like an "else", but allow for a later "else".
+		 *	Check the "if" condition.
 		 */
-		was_if = true;
-		if_taken = false;
-		goto do_children;
+		goto mod_if;
 	} /* MOD_ELSIF */
 
 	/*
