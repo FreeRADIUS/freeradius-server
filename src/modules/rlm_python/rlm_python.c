@@ -39,6 +39,7 @@ RCSID("$Id$")
 #define Pyx_BLOCK_THREADS
 #define Pyx_UNBLOCK_THREADS
 #endif
+
 /*
  *	TODO: The only needed thing here is function. Anything else is
  *	required for initialization only. I will remove it, putting a
@@ -53,6 +54,7 @@ struct py_function_def {
 };
 
 typedef struct rlm_python_t {
+	void		*libpython;
 	PyThreadState	*main_thread_state;
 	char		*python_path;
 
@@ -207,8 +209,9 @@ static int mod_init(rlm_python_t *inst)
 	/*
 	 *	Explicitly load libpython, so symbols will be available to lib-dynload modules
 	 */
-	if (!dlopen("libpython" STRINGIFY(PY_MAJOR_VERSION) "." STRINGIFY(PY_MINOR_VERSION) ".so",
-		    RTLD_NOW | RTLD_GLOBAL)) {
+	inst->libpython = dlopen("libpython" STRINGIFY(PY_MAJOR_VERSION) "." STRINGIFY(PY_MINOR_VERSION) ".so",
+				 RTLD_NOW | RTLD_GLOBAL);
+	if (!inst->libpython) {
 	 	WARN("Failed loading libpython symbols into global symbol table: %s", dlerror());
 	}
 
@@ -707,6 +710,8 @@ static int mod_detach(void *instance)
 	ret = do_python(inst, NULL, inst->detach.function, "detach", false);
 
 	mod_instance_clear(inst);
+	dlclose(inst->libpython);
+
 	return ret;
 }
 
