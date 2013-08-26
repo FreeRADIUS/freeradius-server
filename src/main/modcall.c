@@ -807,6 +807,7 @@ redo:
 		MOD_LOG_OPEN_BRACE("load-balance");
 
 		g = mod_callabletogroup(c);
+		found = NULL;
 		for (this = g->children; this; this = this->next) {
 			if (!found) {
 				found = this;
