@@ -463,7 +463,7 @@ redo:
 		rad_assert(g->cond != NULL);
 
 		RDEBUG2("%.*s? %s %s", depth + 1, modcall_spaces,
-			(c->type == MOD_IF) ? "if" : "elsif", c->name);
+			group_name[c->type], c->name);
 
 		condition = radius_evaluate_cond(request, entry->result, 0, g->cond);
 		if (condition < 0) {
@@ -481,7 +481,7 @@ redo:
 			condition = 0;
 		} else {
 			RDEBUG2("%.*s? %s %s -> %s", depth + 1, modcall_spaces,
-				(c->type == MOD_IF) ? "if" : "elsif",
+				group_name[c->type],
 				c->name, condition ? "TRUE" : "FALSE");
 		}
 
@@ -579,6 +579,7 @@ redo:
 		value_pair_map_t *map;
 
 
+		MOD_LOG_OPEN_BRACE("update");
 		for (map = g->map; map != NULL; map = map->next) {
 			rcode = radius_map2request(request, map, "update", radius_map2vp, NULL);
 			if (rcode < 0) {
