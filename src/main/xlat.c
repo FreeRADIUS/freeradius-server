@@ -462,8 +462,7 @@ static ssize_t xlat_foreach(void *instance, REQUEST *request,
 	/*
 	 *	See modcall, "FOREACH" for how this works.
 	 */
-	pvp = (VALUE_PAIR **) request_data_reference(request, radius_get_vp,
-						     *(int*) instance);
+	pvp = (VALUE_PAIR **) request_data_reference(request, radius_get_vp, *(int*) instance);
 	if (!pvp || !*pvp) {
 		*out = '\0';
 		return 0;

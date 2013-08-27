@@ -616,6 +616,10 @@ redo:
 			exit(1);
 		}
 
+		/*
+		 *	Figure out how deep we are in nesting by looking at request_data
+		 *	stored previously.
+		 */
 		for (i = 0; i < 8; i++) {
 			if (!request_data_reference(request,
 						    radius_get_vp, i)) {
@@ -671,8 +675,7 @@ redo:
 			 *	a huge priority as any leaked memory
 			 *	will be freed on request free.
 			 */
-			request_data_add(request, radius_get_vp,
-					 depth, copy_p, false);
+			request_data_add(request, radius_get_vp, foreach_depth, copy_p, false);
 
 			/*
 			 *	Initialize the childs stack frame.
@@ -682,26 +685,20 @@ redo:
 			next->result = entry->result;
 			next->priority = 0;
 
-			if (!modcall_recurse(request, component,
-					     depth + 1,
-					     next)) {
-				request_data_get(request,
-						 radius_get_vp,
-						 depth);
+			if (!modcall_recurse(request, component, depth + 1, next)) {
+				request_data_get(request, radius_get_vp, foreach_depth);
 				pairfree(&copy);
+
 				break;
 			}
 
 			vp = pairfindnext(&cursor, vp->da->attr, vp->da->vendor, TAG_ANY);
 
 			/*
-			 *	Delete the cached attribute,
-			 *	if it exists.
+			 *	Delete the cached attribute, if it exists.
 			 */
 			if (copy) {
-				request_data_get(request,
-						 radius_get_vp,
-						 depth);
+				request_data_get(request, radius_get_vp, foreach_depth);
 				pairfree(&copy);
 			} else {
 				break;
