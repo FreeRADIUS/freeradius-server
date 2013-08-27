@@ -354,6 +354,7 @@ static ssize_t xlat_debug_attr(UNUSED void *instance, REQUEST *request, char con
 		RDEBUG3("\t\tlength        : %zu", vp->length);
 
 		dac = talloc_memdup(request, vp->da, sizeof(DICT_ATTR));
+		dac->flags.vp_free = 0;
 		if (!dac) {
 			return -1;
 		}
