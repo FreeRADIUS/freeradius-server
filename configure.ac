@@ -415,7 +415,7 @@ AC_ARG_WITH(static_modules,
 ])
 
 USE_SHARED_LIBS=yes
-AC_ARG_WITH(static,
+AC_ARG_WITH(shared-libs,
 [  --with-shared-libs             Build dynamic libraries and link against them. (default=yes)],
 [ case "$withval" in
   no)
