@@ -1,0 +1,10 @@
+# -*- text -*-
+# Copyright (C) 2013 The FreeRADIUS Server project and contributors
+#
+VENDOR		Brocade				1588
+BEGIN-VENDOR	Brocade
+
+ATTRIBUTE	Brocade-Auth-Role			1	string
+
+END-VENDOR      Brocade
+

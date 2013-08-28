@@ -115,6 +115,7 @@ $INCLUDE dictionary.ascend
 $INCLUDE dictionary.bay
 $INCLUDE dictionary.bintec
 $INCLUDE dictionary.broadsoft
+$INCLUDE dictionary.brocade
 $INCLUDE dictionary.bskyb
 $INCLUDE dictionary.bt
 $INCLUDE dictionary.cablelabs
