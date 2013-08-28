@@ -125,15 +125,15 @@ ATTRIBUTE	Huawei-Product-ID			255	string
 # Integer translations
 #
 
-VALUE		Huawei-User-Priority		Common		0
-VALUE		Huawei-User-Priority		Copper		1
-VALUE		Huawei-User-Priority		Silver		2
-VALUE		Huawei-User-Priority		Gold		3
+VALUE	Huawei-User-Priority		Common			0
+VALUE	Huawei-User-Priority		Copper			1
+VALUE	Huawei-User-Priority		Silver			2
+VALUE	Huawei-User-Priority		Gold			3
 
-VALUE		Huawei-Application-Type		Fixed		1
-VALUE		Huawei-Application-Type		Nomadic		2
-VALUE		Huawei-Application-Type		Portable	3
-VALUE		Huawei-Application-Type		Simple-Mobile	4
-VALUE		Huawei-Application-Type		Full-Mobile	5
+VALUE	Huawei-Application-Type		Fixed			1
+VALUE	Huawei-Application-Type		Nomadic			2
+VALUE	Huawei-Application-Type		Portable		3
+VALUE	Huawei-Application-Type		Simple-Mobile		4
+VALUE	Huawei-Application-Type		Full-Mobile		5
 
 END-VENDOR	Huawei

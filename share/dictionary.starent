@@ -956,9 +956,9 @@ VALUE	SN-GGSN-MIP-Required		Enabled			1
 VALUE	SN-Gratuitous-ARP-Aggressive	Disabled		0
 VALUE	SN-Gratuitous-ARP-Aggressive	Enabled			1
 
-VALUE	SN-GTP-Version			GTP_VERSION_0			0
-VALUE	SN-GTP-Version			GTP_VERSION_1			1
-VALUE	SN-GTP-Version			GTP_VERSION_2			2
+VALUE	SN-GTP-Version			GTP_VERSION_0		0
+VALUE	SN-GTP-Version			GTP_VERSION_1		1
+VALUE	SN-GTP-Version			GTP_VERSION_2		2
 
 VALUE	SN-HA-Send-DNS-ADDRESS		Disabled		0
 VALUE	SN-HA-Send-DNS-ADDRESS		Enabled			1

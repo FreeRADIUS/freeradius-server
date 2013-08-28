@@ -431,9 +431,9 @@ ATTRIBUTE	TLS-Client-Cert-Common-Name		1924	string
 ATTRIBUTE	TLS-Client-Cert-Filename		1925	string
 ATTRIBUTE	TLS-Client-Cert-Subject-Alt-Name-Email	1926	string
 ATTRIBUTE	TLS-Client-Cert-X509v3-Extended-Key-Usage 1927	string
-ATTRIBUTE	TLS-Client-Cert-X509v3-Subject-Key-Identifier 1928 string
-ATTRIBUTE	TLS-Client-Cert-X509v3-Authority-Key-Identifier 1929 string
-ATTRIBUTE	TLS-Client-Cert-X509v3-Basic-Constraints 1930 string
+ATTRIBUTE	TLS-Client-Cert-X509v3-Subject-Key-Identifier 1928	string
+ATTRIBUTE	TLS-Client-Cert-X509v3-Authority-Key-Identifier 1929	string
+ATTRIBUTE	TLS-Client-Cert-X509v3-Basic-Constraints 1930	string
 
 # 1931 - 1939: reserved for future cert attributes
 
@@ -446,7 +446,7 @@ ATTRIBUTE	TLS-Client-Cert-X509v3-Basic-Constraints 1930 string
 #	vendor? Sigh...
 #
 ATTRIBUTE	SoH-MS-Machine-OS-vendor		2100	integer
-VALUE		SoH-MS-Machine-OS-vendor	Microsoft	311
+VALUE	SoH-MS-Machine-OS-vendor	Microsoft		311
 
 ATTRIBUTE	SoH-MS-Machine-OS-version		2101	integer
 ATTRIBUTE	SoH-MS-Machine-OS-release		2102	integer
@@ -455,21 +455,20 @@ ATTRIBUTE	SoH-MS-Machine-SP-version		2104	integer
 ATTRIBUTE	SoH-MS-Machine-SP-release		2105	integer
 
 ATTRIBUTE	SoH-MS-Machine-Processor		2106	integer
-VALUE		SoH-MS-Machine-Processor	x86	0
-VALUE		SoH-MS-Machine-Processor	i64	6
-VALUE		SoH-MS-Machine-Processor	x86_64	9
+VALUE	SoH-MS-Machine-Processor	x86			0
+VALUE	SoH-MS-Machine-Processor	i64			6
+VALUE	SoH-MS-Machine-Processor	x86_64			9
 
 ATTRIBUTE	SoH-MS-Machine-Name			2107	string
 ATTRIBUTE	SoH-MS-Correlation-Id			2108	octets
 ATTRIBUTE	SoH-MS-Machine-Role			2109	integer
-VALUE		SoH-MS-Machine-Role		client	1
-VALUE		SoH-MS-Machine-Role		dc	2
-VALUE		SoH-MS-Machine-Role		server	3
-
+VALUE	SoH-MS-Machine-Role		client			1
+VALUE	SoH-MS-Machine-Role		dc			2
+VALUE	SoH-MS-Machine-Role		server			3
 
 ATTRIBUTE	SoH-Supported				2119	integer
-VALUE		SoH-Supported			no	0
-VALUE		SoH-Supported			yes	1
+VALUE	SoH-Supported			no			0
+VALUE	SoH-Supported			yes			1
 
 ATTRIBUTE	SoH-MS-Windows-Health-Status		2120	string
 ATTRIBUTE	SoH-MS-Health-Other			2129	string

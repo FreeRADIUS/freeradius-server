@@ -5,4 +5,4 @@
 #	http://www.ietf.org/rfc/rfc6677.txt
 #
 
-ATTRIBUTE	EAP-Lower-Layer		163	integer
+ATTRIBUTE	EAP-Lower-Layer				163	integer

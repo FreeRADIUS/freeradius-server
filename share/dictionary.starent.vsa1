@@ -824,9 +824,9 @@ VALUE	SN1-GGSN1-MIP-Required		Enabled			1
 VALUE	SN1-Gratuitous-ARP-Aggressive	Disabled		0
 VALUE	SN1-Gratuitous-ARP-Aggressive	Enabled			1
 
-VALUE	SN1-GTP-Version			GTP_VERSION_0			0
-VALUE	SN1-GTP-Version			GTP_VERSION_1			1
-VALUE	SN1-GTP-Version			GTP_VERSION_2			2
+VALUE	SN1-GTP-Version			GTP_VERSION_0		0
+VALUE	SN1-GTP-Version			GTP_VERSION_1		1
+VALUE	SN1-GTP-Version			GTP_VERSION_2		2
 
 VALUE	SN1-HA-Send-DNS-ADDRESS		Disabled		0
 VALUE	SN1-HA-Send-DNS-ADDRESS		Enabled			1
