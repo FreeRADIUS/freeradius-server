@@ -758,6 +758,8 @@ static ssize_t vp2data_tlvs(RADIUS_PACKET const *packet,
 #endif
 
 	while (vp) {
+		VERIFY_VP(vp);
+
 		if (room <= 2) return ptr - start;
 
 		ptr[0] = (vp->da->attr >> fr_attr_shift[nest]) & fr_attr_mask[nest];
@@ -817,6 +819,8 @@ static ssize_t vp2data_any(RADIUS_PACKET const *packet,
 	uint8_t	array[4];
 	uint64_t lvalue64;
 	VALUE_PAIR const *vp = *pvp;
+
+	VERIFY_VP(vp);
 
 	/*
 	 *	See if we need to encode a TLV.  The low portion of
@@ -1076,6 +1080,8 @@ int rad_vp2extended(RADIUS_PACKET const *packet,
 	uint8_t *start = ptr;
 	VALUE_PAIR const *vp = *pvp;
 
+	VERIFY_VP(vp);
+
 	if (!vp->da->flags.extended) {
 		fr_strerror_printf("rad_vp2extended called for non-extended attribute");
 		return -1;
@@ -1191,6 +1197,8 @@ int rad_vp2wimax(RADIUS_PACKET const *packet,
 	uint8_t *start = ptr;
 	VALUE_PAIR const *vp = *pvp;
 
+	VERIFY_VP(vp);
+
 	/*
 	 *	Double-check for WiMAX format.
 	 */
@@ -1265,6 +1273,8 @@ static ssize_t vp2attr_concat(UNUSED RADIUS_PACKET const *packet,
 	uint8_t const *p;
 	size_t len, left;
 	VALUE_PAIR const *vp = *pvp;
+
+	VERIFY_VP(vp);
 
 	debug_pair(vp);
 
@@ -1356,6 +1366,7 @@ static ssize_t vp2attr_vsa(RADIUS_PACKET const *packet,
 	DICT_VENDOR *dv;
 	VALUE_PAIR const *vp = *pvp;
 
+	VERIFY_VP(vp);
 	/*
 	 *	Unknown vendor: RFC format.
 	 *	Known vendor and RFC format: go do that.
@@ -1482,6 +1493,7 @@ int rad_vp2vsa(RADIUS_PACKET const *packet, RADIUS_PACKET const *original,
 	uint32_t lvalue;
 	VALUE_PAIR const *vp = *pvp;
 
+	VERIFY_VP(vp);
 	/*
 	 *	Double-check for WiMAX format.
 	 */
@@ -1541,6 +1553,8 @@ int rad_vp2rfc(RADIUS_PACKET const *packet,
 	       uint8_t *ptr, size_t room)
 {
 	VALUE_PAIR const *vp = *pvp;
+
+	VERIFY_VP(vp);
 
 	if (vp->da->vendor != 0) {
 		fr_strerror_printf("rad_vp2rfc called with VSA");
@@ -1605,6 +1619,8 @@ static ssize_t rad_vp2rfctlv(RADIUS_PACKET const *packet,
 	ssize_t len;
 	VALUE_PAIR const *vp = *pvp;
 
+	VERIFY_VP(vp);
+
 	if (!vp->da->flags.is_tlv) {
 		fr_strerror_printf("rad_vp2rfctlv: attr is not a TLV");
 		return -1;
@@ -1651,6 +1667,8 @@ int rad_vp2attr(RADIUS_PACKET const *packet, RADIUS_PACKET const *original,
 	if (!pvp || !*pvp || !start || (room <= 2)) return -1;
 
 	vp = *pvp;
+
+	VERIFY_VP(vp);
 
 	/*
 	 *	RFC format attributes take the fast path.
@@ -3894,6 +3912,8 @@ ssize_t rad_vp2data(VALUE_PAIR const *vp, uint8_t *out, size_t outlen)
 	size_t		len = 0;
 	uint32_t	lvalue;
 	uint64_t	lvalue64;
+
+	VERIFY_VP(vp);
 
 	len = vp->length;
 	if (outlen < len) {
