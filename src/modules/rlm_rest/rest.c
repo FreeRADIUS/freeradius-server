@@ -2250,11 +2250,11 @@ int rest_request_decode(rlm_rest_t *instance,
 	rlm_rest_handle_t *randle	= handle;
 	rlm_rest_curl_context_t *ctx	= randle->ctx;
 
-	int ret;
+	int ret = -1;	/* -Wsometimes-uninitialized */
 
 	if (!ctx->write.buffer) {
 		RDEBUG("Skipping attribute processing, no body data received");
-		return -1;
+		return ret;
 	}
 
 	RDEBUG("Processing body");
