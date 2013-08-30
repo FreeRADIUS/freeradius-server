@@ -951,6 +951,36 @@ VALUE_PAIR *paircopyvpdata(TALLOC_CTX *ctx, DICT_ATTR const *da, VALUE_PAIR cons
 }
 
 
+/** Copy a pairlist.
+ *
+ * Copy all pairs from 'from' regardless of tag, attribute or vendor.
+ *
+ * @param[in] ctx for new VALUE_PAIRs to be allocated in.
+ * @param[in] from whence to copy VALUE_PAIRs.
+ * @return the head of the new VALUE_PAIR list or NULL on error.
+ */
+VALUE_PAIR *paircopy(TALLOC_CTX *ctx, VALUE_PAIR *from)
+{
+	vp_cursor_t src, dst;
+
+	VALUE_PAIR *out = NULL, *vp;
+
+	paircursor(&dst, &out);
+	for (vp = paircursor(&src, &from);
+	     vp;
+	     vp = pairnext(&src)) {
+	     	VERIFY_VP(vp);
+	     	vp = paircopyvp(ctx, vp);
+	     	if (!vp) {
+	     		pairfree(&out);
+	     		return NULL;
+	     	}
+		pairinsert(&dst, vp); /* paircopy sets next pointer to NULL */
+	}
+
+	return out;
+}
+
 /** Copy matching pairs
  *
  * Copy pairs of a matching attribute number, vendor number and tag from the
@@ -995,35 +1025,23 @@ VALUE_PAIR *paircopy2(TALLOC_CTX *ctx, VALUE_PAIR *from,
 	return out;
 }
 
-
-/** Copy a pairlist.
+/** Steal all members of a VALUE_PAIR list
  *
- * Copy all pairs from 'from' regardless of tag, attribute or vendor.
- *
- * @param[in] ctx for new VALUE_PAIRs to be allocated in.
- * @param[in] from whence to copy VALUE_PAIRs.
- * @return the head of the new VALUE_PAIR list or NULL on error.
+ * @param[in] ctx to move VALUE_PAIRs into
+ * @param[in] from VALUE_PAIRs to move into the new context.
  */
-VALUE_PAIR *paircopy(TALLOC_CTX *ctx, VALUE_PAIR *from)
+VALUE_PAIR *pairsteal(TALLOC_CTX *ctx, VALUE_PAIR *from)
 {
-	vp_cursor_t src, dst;
+	vp_cursor_t cursor;
+	VALUE_PAIR *vp;
 
-	VALUE_PAIR *out = NULL, *vp;
-
-	paircursor(&dst, &out);
-	for (vp = paircursor(&src, &from);
+	for (vp = paircursor(&cursor, &from);
 	     vp;
-	     vp = pairnext(&src)) {
-	     	VERIFY_VP(vp);
-	     	vp = paircopyvp(ctx, vp);
-	     	if (!vp) {
-	     		pairfree(&out);
-	     		return NULL;
-	     	}
-		pairinsert(&dst, vp); /* paircopy sets next pointer to NULL */
+	     vp = pairnext(&cursor)) {
+		vp = talloc_steal(ctx, vp);
 	}
 
-	return out;
+	return from;
 }
 
 /** Move pairs from source list to destination list respecting operator
@@ -1208,10 +1226,11 @@ void pairmove(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from)
 				break;
 			}
 		}
-		if (tailfrom)
+		if (tailfrom) {
 			tailfrom->next = next;
-		else
+		} else {
 			*from = next;
+		}
 
 		/*
 		 *	If ALL of the 'to' attributes have been deleted,

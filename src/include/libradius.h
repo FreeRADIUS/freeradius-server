@@ -523,6 +523,7 @@ VALUE_PAIR	*paircopyvp(TALLOC_CTX *ctx, VALUE_PAIR const *vp);
 VALUE_PAIR	*paircopyvpdata(TALLOC_CTX *ctx, DICT_ATTR const *da, VALUE_PAIR const *vp);
 VALUE_PAIR	*paircopy(TALLOC_CTX *ctx, VALUE_PAIR *from);
 VALUE_PAIR	*paircopy2(TALLOC_CTX *ctx, VALUE_PAIR *from, unsigned int attr, unsigned int vendor, int8_t tag);
+VALUE_PAIR	*pairsteal(TALLOC_CTX *ctx, VALUE_PAIR *from);
 void		pairmemcpy(VALUE_PAIR *vp, uint8_t const * src, size_t len);
 void		pairstrcpy(VALUE_PAIR *vp, char const * src);
 void		pairsprintf(VALUE_PAIR *vp, char const * fmt, ...)
@@ -532,7 +533,7 @@ void		pairsprintf(VALUE_PAIR *vp, char const * fmt, ...)
 ;
 void		pairmove(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from);
 void		pairfilter(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from,
-					   unsigned int attr, unsigned int vendor, int8_t tag);
+			   unsigned int attr, unsigned int vendor, int8_t tag);
 VALUE_PAIR  *pairmake_ip(TALLOC_CTX *ctx, char const *value,
 						 DICT_ATTR *ipv4, DICT_ATTR *ipv6, DICT_ATTR *ipv4_prefix, DICT_ATTR *ipv6_prefix);
 bool		pairparsevalue(VALUE_PAIR *vp, char const *value);
