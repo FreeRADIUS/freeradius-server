@@ -200,7 +200,7 @@
 /* Define to 1 if you have the function pcap_fopen_offline. */
 #undef HAVE_PCAP_FOPEN_OFFLINE
 
-/* Define to 1 if you have the <pcap.h> header file. */
+/* Define to 1 if you have the `pcap' library (-lpcap). */
 #undef HAVE_PCAP_H
 
 /* define this if we have the <pcreposix.h> header file */
@@ -436,11 +436,11 @@
 /* SYSV-Style get*byaddr_r */
 #undef SYSVSTYLE
 
-/* Define if the compiler supports a thread local storage class */
-#undef TLS_STORAGE_CLASS
-
 /* Define to 1 if you can safely include both <sys/time.h> and <time.h>. */
 #undef TIME_WITH_SYS_TIME
+
+/* Define if the compiler supports a thread local storage class */
+#undef TLS_STORAGE_CLASS
 
 /* Enable extensions on AIX 3, Interix.  */
 #ifndef _ALL_SOURCE
@@ -469,6 +469,9 @@
 
 /* define if you want DHCP support */
 #undef WITH_DHCP
+
+/* define if the server was built with -DNDEBUG */
+#undef WITH_NDEBUG
 
 /* define if you want TCP support (For RADSec et al) */
 #undef WITH_TCP

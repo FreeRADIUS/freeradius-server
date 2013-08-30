@@ -1310,7 +1310,17 @@ else
   devflags=""
   CFLAGS="$CFLAGS -DNDEBUG"
   INSTALLSTRIP=""
-  AC_MSG_RESULT([no.])
+fi
+
+dnl #
+dnl #  May of been set outside of this configure script
+dnl #
+AC_MSG_CHECKING([if building with -DNDEBUG])
+if echo "$CFLAGS" | grep '\-DNDEBUG' > /dev/null; then
+  AC_MSG_RESULT([yes])
+  AC_DEFINE([WITH_NDEBUG], [1], [define if the server was built with -DNDEBUG])
+else
+  AC_MSG_RESULT([no])
 fi
 
 export EXPERIMENTAL
