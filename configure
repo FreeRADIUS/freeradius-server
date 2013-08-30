@@ -7780,8 +7780,19 @@ else
   devflags=""
   CFLAGS="$CFLAGS -DNDEBUG"
   INSTALLSTRIP=""
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no." >&5
-$as_echo "no." >&6; }
+fi
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking if building with -DNDEBUG" >&5
+$as_echo_n "checking if building with -DNDEBUG... " >&6; }
+if echo "$CFLAGS" | grep '\-DNDEBUG' > /dev/null; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+
+$as_echo "#define WITH_NDEBUG 1" >>confdefs.h
+
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
 fi
 
 export EXPERIMENTAL
