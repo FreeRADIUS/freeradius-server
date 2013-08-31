@@ -1084,7 +1084,7 @@ static int rest_decode_post(rlm_rest_t *instance,
 		talloc_free(expanded);
 		if (!ret) {
 			RDEBUG("Incompatible value assignment, skipping");
-			pairbasicfree(vp);
+			talloc_free(vp);
 			goto skip;
 		}
 
@@ -1180,7 +1180,7 @@ static VALUE_PAIR *json_pairmake_leaf(UNUSED rlm_rest_t *instance,
 	talloc_free(expanded);
 	if (!ret) {
 		RDEBUG("Incompatible value assignment, skipping");
-		pairbasicfree(vp);
+		talloc_free(vp);
 
 		return NULL;
 	}

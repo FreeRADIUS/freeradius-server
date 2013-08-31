@@ -420,7 +420,7 @@ static ssize_t xlat_debug_attr(UNUSED void *instance, REQUEST *request, char con
 
 			next_type:
 			talloc_free(data);
-			pairbasicfree(vpc);
+			talloc_free(vpc);
 			type++;
 		}
 		next_vp:

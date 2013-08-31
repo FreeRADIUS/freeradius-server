@@ -249,14 +249,14 @@ int sql_userparse(TALLOC_CTX *ctx, VALUE_PAIR **head, rlm_sql_row_t row)
 		if (pairmark_xlat(vp, value) < 0) {
 			ERROR("rlm_sql: Error marking pair for xlat");
 
-			pairbasicfree(vp);
+			talloc_free(vp);
 			return -1;
 		}
 	} else {
 		if (!pairparsevalue(vp, value)) {
 			ERROR("rlm_sql: Error parsing value");
 
-			pairbasicfree(vp);
+			talloc_free(vp);
 			return -1;
 		}
 	}

@@ -47,12 +47,41 @@ RCSID("$Id$")
 #  endif
 #endif
 
-
 static char const *months[] = {
 	"jan", "feb", "mar", "apr", "may", "jun",
 	"jul", "aug", "sep", "oct", "nov", "dec" };
 
 #define attribute_eq(_x, _y) ((_x && _y) && (_x->da == _y->da) && (_x->tag == _y->tag))
+
+/** Free a VALUE_PAIR
+ *
+ * @note Do not call directly, use talloc_free instead.
+ *
+ * @param vp to free.
+ * @return 0
+ */
+static int _pairfree(VALUE_PAIR *vp) {
+	/*
+	 *	The lack of DA means something has gone wrong
+	 */
+	if (!vp->da) {
+		fr_strerror_printf("VALUE_PAIR has NULL DICT_ATTR pointer (probably already freed)");
+	/*
+	 *	Only free the DICT_ATTR if it was dynamically allocated
+	 *	and was marked for free when the VALUE_PAIR is freed.
+	 *
+	 *	@fixme This is an awful hack and needs to be removed once DICT_ATTRs are allocated by talloc.
+	 */
+	} else if (vp->da->flags.vp_free) {
+		dict_attr_free(&(vp->da));
+	}
+
+#ifndef NDEBUG
+	vp->vp_integer = FREE_MAGIC;
+#endif
+
+	return 0;
+}
 
 /** Dynamically allocate a new attribute
  *
@@ -67,8 +96,7 @@ VALUE_PAIR *pairalloc(TALLOC_CTX *ctx, DICT_ATTR const *da)
 	VALUE_PAIR *vp;
 
 	/*
-	 *	Caller must specify a da else we don't know what the attribute
-	 *	type is.
+	 *	Caller must specify a da else we don't know what the attribute type is.
 	 */
 	if (!da) return NULL;
 
@@ -81,6 +109,8 @@ VALUE_PAIR *pairalloc(TALLOC_CTX *ctx, DICT_ATTR const *da)
 	vp->da = da;
 	vp->op = T_OP_EQ;
 	vp->type = VT_NONE;
+
+	talloc_set_destructor(vp, _pairfree);
 
 	return vp;
 }
@@ -116,36 +146,6 @@ VALUE_PAIR *paircreate(TALLOC_CTX *ctx, unsigned int attr, unsigned int vendor)
 	return pairalloc(ctx, da);
 }
 
-/** Free memory used by a single valuepair.
- *
- * @todo TLV: needs to die in fire.
- */
-void pairbasicfree(VALUE_PAIR *vp)
-{
-	if (!vp) return;
-
-	VERIFY_VP(vp);
-
-	/*
-	 *	The lack of DA means something has gone wrong
-	 */
-	if (!vp->da) {
-		fr_strerror_printf("VALUE_PAIR has NULL DICT_ATTR pointer (probably already freed)");
-	/*
-	 *	Only free the DICT_ATTR if it was dynamically allocated
-	 *	and was marked for free when the VALUE_PAIR is freed.
-	 */
-	} else if (vp->da->flags.vp_free) {
-		dict_attr_free(&(vp->da));
-	}
-
-	/* clear the memory here */
-#ifndef NDEBUG
-	memset(vp, 0, sizeof(*vp));
-#endif
-	talloc_free(vp);
-}
-
 /** Free memory used by a valuepair list.
  *
  * @todo TLV: needs to free all dependents of each VP freed.
@@ -163,7 +163,7 @@ void pairfree(VALUE_PAIR **vps)
 	     vp;
 	     vp = pairnext(&cursor)) {
 		VERIFY_VP(vp);
-		pairbasicfree(vp);
+		talloc_free(vp);
 	}
 
 	*vps = NULL;
@@ -468,7 +468,7 @@ void pairdelete(VALUE_PAIR **first, unsigned int attr, unsigned int vendor,
 		    ((tag == TAG_ANY) ||
 		     (i->da->flags.has_tag && (i->tag == tag)))) {
 			*last = next;
-			pairbasicfree(i);
+			talloc_free(i);
 		} else {
 			last = &i->next;
 		}
@@ -543,7 +543,7 @@ void pairreplace(VALUE_PAIR **first, VALUE_PAIR *replace)
 			 *	Should really assert that replace->next == NULL
 			 */
 			replace->next = next;
-			pairbasicfree(i);
+			talloc_free(i);
 			return;
 		}
 
@@ -821,7 +821,7 @@ VALUE_PAIR *paircopyvp(TALLOC_CTX *ctx, VALUE_PAIR const *vp)
 
 	n->da = dict_attr_copy(vp->da, true);
 	if (!n->da) {
-		pairbasicfree(n);
+		talloc_free(n);
 		return NULL;
 	}
 
@@ -2092,7 +2092,7 @@ VALUE_PAIR *pairmake_ip(TALLOC_CTX *ctx, char const *value, DICT_ATTR *ipv4, DIC
 	finish:
 	vp = pairalloc(ctx, da);
 	if (!pairparsevalue(vp, value)) {
-		pairbasicfree(vp);
+		talloc_free(vp);
 		return NULL;
 	}
 
@@ -2306,7 +2306,7 @@ VALUE_PAIR *pairmake(TALLOC_CTX *ctx, VALUE_PAIR **vps,
 		 */
 		if (!value) break;
 
-		pairbasicfree(vp);
+		talloc_free(vp);
 
 		if (1) {
 			int compare;
@@ -2325,7 +2325,7 @@ VALUE_PAIR *pairmake(TALLOC_CTX *ctx, VALUE_PAIR **vps,
 		if (!vp) return NULL;
 
 		if (pairmark_xlat(vp, value) < 0) {
-			pairbasicfree(vp);
+			talloc_free(vp);
 			return NULL;
 		}
 
@@ -2343,7 +2343,7 @@ VALUE_PAIR *pairmake(TALLOC_CTX *ctx, VALUE_PAIR **vps,
 	 *	octets as values for any attribute.
 	 */
 	if (value && !pairparsevalue(vp, value)) {
-		pairbasicfree(vp);
+		talloc_free(vp);
 		return NULL;
 	}
 
@@ -2593,7 +2593,7 @@ FR_TOKEN userparse(TALLOC_CTX *ctx, char const *buffer, VALUE_PAIR **list)
 				break;
 			}
 			if (pairmark_xlat(vp, raw.r_opand) < 0) {
-				pairbasicfree(vp);
+				talloc_free(vp);
 
 				break;
 			}
@@ -3085,3 +3085,4 @@ void pairsprintf(VALUE_PAIR *vp, char const *fmt, ...)
 	 */
 	vp->length = strlen(vp->vp_strvalue);
 }
+
