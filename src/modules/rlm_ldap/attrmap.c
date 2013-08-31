@@ -47,7 +47,7 @@ static int rlm_ldap_map_getvalue(VALUE_PAIR **out, REQUEST *request, value_pair_
 		if (!pairparsevalue(vp, self->values[i])) {
 			RDEBUG("Failed parsing value for \"%s\"", map->dst->da->name);
 
-			pairbasicfree(vp);
+			talloc_free(vp);
 			continue;
 		}
 

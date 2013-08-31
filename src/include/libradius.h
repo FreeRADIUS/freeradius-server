@@ -72,6 +72,7 @@ extern "C" {
 			} \
 		      } while (0)
 */
+#define FREE_MAGIC (0xF4EEF4EE)
 
 #define VERIFY_VP(_x) (void) talloc_get_type_abort(_x, VALUE_PAIR)
 #define VERIFY_PACKET(_x) (void) talloc_get_type_abort(_x, RADIUS_PACKET)
@@ -474,7 +475,6 @@ VALUE_PAIR	*pairalloc(TALLOC_CTX *ctx, DICT_ATTR const *da);
 VALUE_PAIR	*paircreate(TALLOC_CTX *ctx, unsigned int attr, unsigned int vendor);
 int		pair2unknown(VALUE_PAIR *vp);
 void		pairfree(VALUE_PAIR **);
-void		pairbasicfree(VALUE_PAIR *pair);
 VALUE_PAIR	*pairfind(VALUE_PAIR *, unsigned int attr, unsigned int vendor, int8_t tag);
 
 #define		paircursor(_x, _y)	paircursorc(_x,(VALUE_PAIR const * const *) _y)

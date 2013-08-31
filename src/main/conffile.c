@@ -2089,7 +2089,7 @@ VALUE_PAIR *cf_pairtovp(CONF_PAIR *pair)
 		}
 
 		if (pairmark_xlat(vp, pair->value) < 0) {
-			pairbasicfree(vp);
+			talloc_free(vp);
 
 			return NULL;
 		}

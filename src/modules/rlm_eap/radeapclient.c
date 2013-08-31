@@ -300,7 +300,7 @@ static void cleanresp(RADIUS_PACKET *resp)
 		    vp->da->attr <= ATTRIBUTE_EAP_SIM_BASE+256))
 		{
 			*last = vpnext;
-			pairbasicfree(vp);
+			talloc_free(vp);
 		} else {
 			last = &vp->next;
 		}
