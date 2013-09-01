@@ -114,15 +114,6 @@ ldap {
 		#  "access_attribute" existing means "deny access".
 		#  "access_attribute" not existing means "allow access"
 #		access_positive = yes
-
-		#  The attribute in user objects which contain the names
-		#  or DNs of groups a user is a member of.
-		#
-		#  Unless a conversion between group name and group DN is
-		#  needed, there's no requirement for the group objects
-		#  referenced to actually exist.
-		membership_attribute = "memberOf"
-
 	}
 
 	#
