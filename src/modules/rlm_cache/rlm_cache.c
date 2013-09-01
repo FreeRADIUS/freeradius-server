@@ -565,6 +565,11 @@ static int cache_verify(rlm_cache_t *inst, value_pair_map_t **head)
 		}
 
 		switch (map->src->type) {
+		case VPT_TYPE_EXEC:
+			cf_log_err(map->ci, "Exec values are not allowed");
+
+			return -1;
+
 		/*
 		 *	Only =, :=, += and -= operators are supported for
 		 *	cache entries.

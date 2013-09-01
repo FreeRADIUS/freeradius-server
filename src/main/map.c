@@ -432,13 +432,6 @@ value_pair_map_t *radius_cp2map(TALLOC_CTX *ctx, CONF_PAIR *cp,
 			}
 		break;
 
-		/*
-		 *	@todo add support for exec expansion.
-		 */
-		case VPT_TYPE_EXEC:
-			cf_log_err(ci, "Exec values are not allowed");
-			break;
-
 		default:
 			break;
 	}
