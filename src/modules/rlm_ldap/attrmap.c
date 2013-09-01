@@ -86,6 +86,12 @@ int rlm_ldap_map_verify(ldap_instance_t *inst, value_pair_map_t **head)
 			return -1;
 		}
 
+		if (map->src->type == VPT_TYPE_EXEC) {
+			cf_log_err(map->ci, "Exec values are not allowed");
+
+			return -1;
+		}
+
 		/*
 		 *	Be smart about whether we warn the user about missing passwords.
 		 *	If there are no password attributes in the mapping, then the user's either an idiot
