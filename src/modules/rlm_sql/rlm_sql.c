@@ -416,7 +416,7 @@ int sql_set_user(rlm_sql_t *inst, REQUEST *request, char const *username)
 
 	if (username != NULL) {
 		sqluser = username;
-	} else if (*inst->config->query_user) {
+	} else if (inst->config->query_user[0] != '\0') {
 		sqluser = inst->config->query_user;
 	} else {
 		return 0;
@@ -428,14 +428,15 @@ int sql_set_user(rlm_sql_t *inst, REQUEST *request, char const *username)
 	}
 
 	vp = pairalloc(request->packet, inst->sql_user);
+	if (!vp) {
+		talloc_free(expanded);
+		return -1;
+	}
+	pairstrsteal(vp, expanded);
 	vp->op = T_OP_SET;
-
-	pairstrcpy(vp, expanded); /* FIXME: pairsteal */
 	pairadd(&request->packet->vps, vp);
 
-	talloc_free(expanded);
-
-	RDEBUG2("SQL-User-Name updated");
+	RDEBUG2("SQL-User-Name set to \"%s\"", vp->vp_strvalue);
 
 	return 0;
 }
