@@ -628,7 +628,7 @@ rlm_rcode_t rlm_ldap_check_userobj_dynamic(ldap_instance_t const *inst, REQUEST 
 			}
 
 			eq = strcmp(vals[i], name_dn);
-			ldap_memfree(name_dn);
+			talloc_free(name_dn);
 			if (eq == 0){
 				RDEBUG("User found. Comparison between membership: name, check: name "
 				       "(resolved from DN)");
@@ -654,7 +654,7 @@ rlm_rcode_t rlm_ldap_check_userobj_dynamic(ldap_instance_t const *inst, REQUEST 
 			}
 
 			eq = strcmp(vals[i], value_dn);
-			ldap_memfree(value_dn);
+			talloc_free(value_dn);
 			if (eq == 0){
 				RDEBUG("User found. Comparison between membership: name (resolved from DN), "
 				       "check: name");
