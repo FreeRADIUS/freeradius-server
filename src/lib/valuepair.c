@@ -3032,6 +3032,14 @@ void pairmemcpy(VALUE_PAIR *vp, uint8_t const *src, size_t size)
 	vp->length = size;
 }
 
+void pairstrsteal(VALUE_PAIR *vp, char *src)
+{
+	VERIFY_VP(vp);
+
+	vp->vp_strvalue = talloc_steal(vp, src);
+	vp->type = VT_DATA;
+	vp->length = talloc_array_length(vp->vp_strvalue) - 1;
+}
 
 /** Copy data into an "string" data type.
  *
