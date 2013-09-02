@@ -1131,6 +1131,19 @@ int radius_map2vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *ma
 	*out = NULL;
 
 	/*
+	 *	Special case for !*, we don't need to parse the value, just allocate an attribute with
+	 *	the right operator.
+	 */
+	if (map->op == T_OP_CMP_FALSE) {
+		vp = pairalloc(request, map->dst->da);
+		if (!vp) return -1;
+		vp->op = map->op;
+		*out = vp;
+
+		return 0;
+	}
+
+	/*
 	 *	List to list found, this is a special case because we don't need
 	 *	to allocate any attributes, just found the current list, and change
 	 *	the op.
