@@ -2919,6 +2919,8 @@ int paircmp_op(VALUE_PAIR const *one, FR_TOKEN op, VALUE_PAIR const *two)
 		break;
 
 	case PW_TYPE_STRING:
+		fr_assert(one->vp_strvalue);
+		fr_assert(two->vp_strvalue);
 		compare = strcmp(one->vp_strvalue, two->vp_strvalue);
 		break;
 
