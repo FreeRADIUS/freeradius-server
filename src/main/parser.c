@@ -1037,3 +1037,47 @@ ssize_t fr_condition_tokenize(TALLOC_CTX *ctx, char const *start, fr_cond_t **he
 {
 	return condition_tokenize(ctx, start, false, head, error);
 }
+
+/*
+ *	Walk in order.
+ */
+bool fr_condition_walk(fr_cond_t *c, bool (*callback)(void *, fr_cond_t *), void *ctx)
+{
+	while (c) {
+		/*
+		 *	Process this one, exit on error.
+		 */
+		if (!callback(ctx, c)) return false;
+
+		switch (c->type) {
+		case COND_TYPE_INVALID:
+			return false;
+
+		case COND_TYPE_EXISTS:
+		case COND_TYPE_MAP:
+		case COND_TYPE_TRUE:
+		case COND_TYPE_FALSE:
+			break;
+
+		case COND_TYPE_CHILD:
+			/*
+			 *	Walk over the child.
+			 */
+			if (!fr_condition_walk(c->data.child, callback, ctx)) {
+				return false;
+			}
+		}
+
+		/*
+		 *	No sibling, stop.
+		 */
+		if (c->next_op == COND_NONE) break;
+
+		/*
+		 *	process the next sibling
+		 */
+		c = c->next;
+	}
+
+	return true;
+}
