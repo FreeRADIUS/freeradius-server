@@ -946,8 +946,8 @@ VALUE_PAIR *paircopyvpdata(TALLOC_CTX *ctx, DICT_ATTR const *da, VALUE_PAIR cons
 			break;
 
 		case PW_TYPE_STRING:
-			if (n->vp_string != NULL) {
-				n->vp_string = talloc_memdup(n, vp->vp_string, n->length + 1);	/* NULL byte */
+			if (n->vp_strvalue != NULL) {
+				n->vp_strvalue = talloc_memdup(n, vp->vp_strvalue, n->length + 1);	/* NULL byte */
 			}
 			break;
 		default:
