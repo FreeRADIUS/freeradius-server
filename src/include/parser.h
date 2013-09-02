@@ -82,6 +82,8 @@ struct fr_cond_t {
 ssize_t fr_condition_tokenize(TALLOC_CTX *ctx, char const *start, fr_cond_t **head, char const **error);
 size_t fr_cond_sprint(char *buffer, size_t bufsize, fr_cond_t const *c);
 
+bool fr_condition_walk(fr_cond_t *head, bool (*callback)(void *, fr_cond_t *), void *ctx);
+
 /*
  *	In xlat.c for now
  */
