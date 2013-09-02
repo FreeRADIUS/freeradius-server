@@ -819,12 +819,22 @@ VALUE_PAIR *paircopyvpdata(TALLOC_CTX *ctx, DICT_ATTR const *da, VALUE_PAIR cons
 		n->value.xlat = talloc_strdup(n, n->value.xlat);
 	}
 
-	if ((n->da->type == PW_TYPE_TLV) ||
-	    (n->da->type == PW_TYPE_OCTETS) ||
-	    (n->da->type == PW_TYPE_STRING)) {
-		if (n->vp_octets != NULL) {
-			n->vp_octets = talloc_memdup(n, vp->vp_octets, n->length);
-		}
+	switch (n->da->type) {
+		case PW_TYPE_TLV:
+		case PW_TYPE_OCTETS:
+			if (n->vp_octets != NULL) {
+				n->vp_octets = talloc_memdup(n, vp->vp_octets, n->length);
+			}
+			break;
+
+		case PW_TYPE_STRING:
+			if (n->vp_string != NULL) {
+				n->vp_string = talloc_memdup(n, vp->vp_string, n->length + 1);	/* NULL byte */
+			}
+			break;
+		default:
+			fr_assert(0);
+			return NULL;
 	}
 
 	n->next = NULL;
