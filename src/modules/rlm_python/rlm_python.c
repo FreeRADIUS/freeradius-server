@@ -424,6 +424,7 @@ static rlm_rcode_t do_python(rlm_python_t *inst, REQUEST *request, PyObject *pFu
 		my_thread_state = fr_thread_local_init(local_thread_state, do_python_cleanup);
 		if (!my_thread_state) {
 			my_thread_state = PyThreadState_New(inst->main_thread_state->interp);
+			RDEBUG3("Initialised new thread state %p", my_thread_state);
 			if (!my_thread_state) {
 				REDEBUG("Failed initialising local PyThreadState on first run");
 				PyGILState_Release(gstate);
@@ -439,6 +440,7 @@ static rlm_rcode_t do_python(rlm_python_t *inst, REQUEST *request, PyObject *pFu
 				return RLM_MODULE_FAIL;
 			}
 		}
+		RDEBUG3("Using thread state %p", my_thread_state);
 		prev_thread_state = PyThreadState_Swap(my_thread_state);	/* Swap in our local thread state */
 	}
 #endif
