@@ -71,15 +71,29 @@ struct fr_cond_t {
 		value_pair_tmpl_t *vpt;
 		fr_cond_t  	*child;
 	} data;
+
 	int		regex_i;
+	int		negate;
+	int		pass2_fixup;
+
 	DICT_ATTR const *cast;
 
 	cond_op_t	next_op;
 	fr_cond_t	*next;
-	int		negate;
 };
 
-ssize_t fr_condition_tokenize(TALLOC_CTX *ctx, char const *start, fr_cond_t **head, char const **error);
+
+/*
+ *	One pass over the conditions means that all references must
+ *	exist at parse time.
+ *
+ *	Two pass means "soft fail", that some invalid references are
+ *	left for pass 2.
+ */
+#define FR_COND_ONE_PASS (0)
+#define FR_COND_TWO_PASS (1)
+
+ssize_t fr_condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *start, fr_cond_t **head, char const **error, int flag);
 size_t fr_cond_sprint(char *buffer, size_t bufsize, fr_cond_t const *c);
 
 bool fr_condition_walk(fr_cond_t *head, bool (*callback)(void *, fr_cond_t *), void *ctx);

@@ -854,7 +854,7 @@ static int command_debug_condition(rad_listen_t *listener, int argc, char *argv[
 		return 0;
 	}
 
-	if (fr_condition_tokenize(listener, argv[0], &debug_condition, &error) < 0) {
+	if (fr_condition_tokenize(listener, NULL, argv[0], &debug_condition, &error, FR_COND_ONE_PASS) < 0) {
 		ERROR("Failed parsing condition '%s': %s", argv[0], error);
 	}
 
