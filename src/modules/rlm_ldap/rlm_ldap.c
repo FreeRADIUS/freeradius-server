@@ -386,11 +386,18 @@ static int rlm_ldap_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR
 	if ((check_is_dn && inst->cacheable_group_dn) || (!check_is_dn && inst->cacheable_group_name)) {
 		switch(rlm_ldap_check_cached(inst, request, check)) {
 			case RLM_MODULE_NOTFOUND:
-				break;
+				found = false;
+				goto finish;
 			case RLM_MODULE_OK:
 				found = true;
-			default:
 				goto finish;
+			/*
+			 *	Fallback to dynamic search on failure
+			 */
+			case RLM_MODULE_FAIL:
+			case RLM_MODULE_INVALID:
+			default:
+				break;
 		}
 	}
 
