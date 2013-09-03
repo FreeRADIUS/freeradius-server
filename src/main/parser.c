@@ -619,11 +619,15 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 						     REQUEST_CURRENT, PAIR_LIST_REQUEST,
 						     REQUEST_CURRENT, PAIR_LIST_REQUEST);
 
+			if (!c->data.map) {
+				return_0("Syntax error");
+			}
+
 			/*
 			 *	Could have been a reference to an attribute which is registered later.
 			 *	Mark it as being checked in pass2.
 			 */
-			if (c->data.map && (lhs_type == T_BARE_WORD) &&
+			if ((lhs_type == T_BARE_WORD) &&
 			    (c->data.map->dst->type == VPT_TYPE_LITERAL)) {
 				c->pass2_fixup = PASS2_FIXUP_ATTR;
 			}
