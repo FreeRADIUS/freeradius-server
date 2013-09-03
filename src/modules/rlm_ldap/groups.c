@@ -710,7 +710,7 @@ rlm_rcode_t rlm_ldap_check_cached(ldap_instance_t const *inst, REQUEST *request,
 			return RLM_MODULE_OK;
 		}
 
-		if (ret < 0) {
+		if (ret < -1) {
 			return RLM_MODULE_FAIL;
 		}
 	}
