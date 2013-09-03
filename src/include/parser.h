@@ -83,6 +83,10 @@ struct fr_cond_t {
 };
 
 
+#define PASS2_FIXUP_NONE (0)
+#define PASS2_FIXUP_ATTR (1)
+#define PASS2_FIXUP_TYPE (2)
+
 /*
  *	One pass over the conditions means that all references must
  *	exist at parse time.

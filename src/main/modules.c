@@ -1275,6 +1275,7 @@ static int load_byserver(CONF_SECTION *cs)
 int virtual_servers_load(CONF_SECTION *config)
 {
 	CONF_SECTION *cs;
+	virtual_server_t *server;
 	static int first_time = true;
 
 	DEBUG2("%s: #### Loading Virtual Servers ####", mainconfig.name);
@@ -1307,7 +1308,6 @@ int virtual_servers_load(CONF_SECTION *config)
 	     cs != NULL;
 	     cs = cf_subsection_find_next(config, cs, "server")) {
 		char const *name2;
-		virtual_server_t *server;
 
 		name2 = cf_section_name2(cs);
 		if (!name2) continue; /* handled above */
@@ -1332,6 +1332,26 @@ int virtual_servers_load(CONF_SECTION *config)
 			 */
 			if (!first_time) continue;
 			return -1;
+		}
+	}
+
+	/*
+	 *	Now that we've loaded everything, run pass 2 over the
+	 *	conditions and xlats.
+	 */
+	for (cs = cf_subsection_find_next(config, NULL, "server");
+	     cs != NULL;
+	     cs = cf_subsection_find_next(config, cs, "server")) {
+		int i;
+		char const *name2;
+
+		name2 = cf_section_name2(cs);
+
+		server = virtual_server_find(name2);
+		if (!server) continue;
+
+		for (i = RLM_COMPONENT_AUTH; i < RLM_COMPONENT_COUNT; i++) {
+			if (!modcall_pass2(server->mc[i])) return -1;
 		}
 	}
 

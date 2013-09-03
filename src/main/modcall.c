@@ -74,7 +74,7 @@ typedef struct {
 	modcallable *children;
 	CONF_SECTION *cs;
 	value_pair_map_t *map;	/* update */
-	fr_cond_t const *cond;	/* if/elsif */
+	fr_cond_t *cond;	/* if/elsif */
 } modgroup;
 
 typedef struct {
@@ -2368,4 +2368,120 @@ void modcallable_free(modcallable **pc)
 	}
 	free(c);
 	*pc = NULL;
+}
+
+
+static bool pass2_callback(UNUSED void *ctx, fr_cond_t *c)
+{
+	value_pair_map_t *map;
+
+	if (c->pass2_fixup == PASS2_FIXUP_NONE) return true;
+
+	map = c->data.map;	/* shorter */
+
+	/*
+	 *	Auth-Type := foo
+	 *
+	 *	Where "foo" is dynamically defined.
+	 */
+	if (c->pass2_fixup == PASS2_FIXUP_TYPE) {
+		if (!dict_valbyname(map->dst->da->attr,
+				    map->dst->da->vendor,
+				    map->src->name)) {
+			cf_log_err(map->ci, "Invalid reference to non-existent %s %s { ... }",
+				   map->dst->da->name,
+				   map->src->name);
+			return false;
+		}
+
+		c->pass2_fixup = 0;
+		return true;
+	}
+
+	if (c->pass2_fixup == PASS2_FIXUP_ATTR) {
+		value_pair_map_t *old;
+		value_pair_tmpl_t vpt;
+
+		/*
+		 *	It's still not an attribute.  Ignore it.
+		 */
+		if (radius_parse_attr(map->dst->name, &vpt, REQUEST_CURRENT, PAIR_LIST_REQUEST) < 0) {
+			c->pass2_fixup = 0;
+			return true;
+		}
+
+		/*
+		 *	Re-parse the LHS as an attribute.
+		 */
+		old = c->data.map;
+		map = radius_str2map(c, old->dst->name, T_BARE_WORD, old->op,
+				     old->src->name, T_BARE_WORD,
+				     REQUEST_CURRENT, PAIR_LIST_REQUEST,
+				     REQUEST_CURRENT, PAIR_LIST_REQUEST);
+		if (!map) {
+			cf_log_err(map->ci, "Failed parsing condition");
+			return false;
+		}
+		map->ci = old->ci;
+		talloc_free(old);
+		c->data.map = map;
+		return true;
+	}
+
+	cf_log_err(map->ci, "Internal sanity check failed in pass2 fixup");
+
+	return false;
+}
+
+/*
+ *	Do a second-stage pass on compiling the modules.
+ */
+bool modcall_pass2(modcallable *mc)
+{
+	modcallable *this;
+	modgroup *g;
+
+	for (this = mc; this != NULL; this = this->next) {
+		switch (this->type) {
+		default:
+			rad_assert(0 == 1);
+			break;
+
+		case MOD_SINGLE:
+#ifdef WITH_UNLANG
+		case MOD_UPDATE: /* @todo: pre-parse xlat's */
+		case MOD_XLAT:   /* @todo: pre-parse xlat's */
+		case MOD_BREAK:
+		case MOD_REFERENCE:
+#endif
+			break;	/* do nothing */
+
+#ifdef WITH_UNLANG
+		case MOD_IF:
+		case MOD_ELSIF:
+			g = mod_callabletogroup(this);
+			if (!fr_condition_walk(g->cond, pass2_callback, NULL)) {
+				return false;
+			}
+			/* FALL-THROUGH */
+#endif
+
+		case MOD_GROUP:
+		case MOD_LOAD_BALANCE:
+		case MOD_REDUNDANT_LOAD_BALANCE:
+
+#ifdef WITH_UNLANG
+		case MOD_ELSE:
+		case MOD_SWITCH:
+		case MOD_CASE:
+		case MOD_FOREACH:
+		case MOD_POLICY:
+#endif
+			g = mod_callabletogroup(this);
+			if (!modcall_pass2(g->children)) return false;
+			break;
+		}
+	}
+
+	return true;
 }
