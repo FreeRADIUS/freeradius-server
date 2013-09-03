@@ -516,7 +516,7 @@ static void parse_condition(char const *input, char *output, size_t outlen)
 	char const *error = NULL;
 	fr_cond_t *cond;
 
-	slen = fr_condition_tokenize(NULL, input, &cond, &error);
+	slen = fr_condition_tokenize(NULL, NULL, input, &cond, &error, FR_COND_ONE_PASS);
 	if (slen <= 0) {
 		snprintf(output, outlen, "ERROR offset %d %s", (int) -slen, error);
 		return;

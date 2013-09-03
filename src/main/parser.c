@@ -30,6 +30,10 @@ RCSID("$Id$")
 
 #define PW_CAST_BASE (1850)
 
+#define PASS2_FIXUP_NONE (0)
+#define PASS2_FIXUP_ATTR (1)
+#define PASS2_FIXUP_TYPE (2)
+
 /*
  *	This file shouldn't use any functions from the server core.
  */
@@ -334,13 +338,15 @@ static ssize_t condition_tokenize_cast(char const *start, DICT_ATTR const **pda,
 /** Tokenize a conditional check
  *
  *  @param[in] ctx for talloc
+ *  @param[in] ci for CONF_ITEM
  *  @param[in] start the start of the string to process.  Should be "(..."
  *  @param[in] brace look for a closing brace
+ *  @param[in] flags do one/two pass
  *  @param[out] pcond pointer to the returned condition structure
  *  @param[out] error the parse error (if any)
  *  @return length of the string skipped, or when negative, the offset to the offending error
  */
-static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace, fr_cond_t **pcond, char const **error)
+static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *start, int brace, fr_cond_t **pcond, char const **error, int flags)
 {
 	ssize_t slen;
 	char const *p = start;
@@ -387,7 +393,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 		 *	brackets.  Go recurse to get more.
 		 */
 		c->type = COND_TYPE_CHILD;
-		slen = condition_tokenize(c, p, true, &c->data.child, error);
+		slen = condition_tokenize(c, ci, p, true, &c->data.child, error, flags);
 		if (slen <= 0) {
 			return_SLEN;
 		}
@@ -616,9 +622,20 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 			c->data.map = radius_str2map(c, lhs, lhs_type, op, rhs, rhs_type,
 						     REQUEST_CURRENT, PAIR_LIST_REQUEST,
 						     REQUEST_CURRENT, PAIR_LIST_REQUEST);
-			if (!c->data.map) {
-				return_0("Cannot parsing condition");
+
+			/*
+			 *	Could have been a reference to an attribute which is registered later.
+			 *	Mark it as being checked in pass2.
+			 */
+			if (c->data.map && (lhs_type == T_BARE_WORD) &&
+			    (c->data.map->dst->type == VPT_TYPE_LITERAL)) {
+				c->pass2_fixup = PASS2_FIXUP_ATTR;
 			}
+
+			/*
+			 *	Save the CONF_ITEM for later.
+			 */
+			c->data.map->ci = ci;
 
 			/*
 			 *	foo =* bar is just (foo)
@@ -675,7 +692,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 				 */
 				if ((c->data.map->dst->type == VPT_TYPE_LITERAL) &&
 				    !cast_vpt(c->data.map->dst, c->cast)) {
-					*error = "Failed to parse data";
+					*error = "Failed to parse field";
 					if (lhs) talloc_free(lhs);
 					if (rhs) talloc_free(rhs);
 					talloc_free(c);
@@ -689,7 +706,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 				if ((c->data.map->dst->type == VPT_TYPE_DATA) &&
 				    (c->data.map->src->type == VPT_TYPE_LITERAL) &&
 				    !cast_vpt(c->data.map->src, c->data.map->dst->da)) {
-					return_rhs("Failed to parse data");
+					return_rhs("Failed to parse field");
 				}
 
 				/*
@@ -764,7 +781,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 				 */
 				if (c->cast && (c->data.map->src->type == VPT_TYPE_LITERAL) &&
 				    !cast_vpt(c->data.map->src, c->cast)) {
-					return_rhs("Failed to parse data");
+					return_rhs("Failed to parse field");
 				}
 
 				/*
@@ -774,7 +791,28 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 				if ((c->data.map->dst->type == VPT_TYPE_ATTR) &&
 				    (c->data.map->src->type == VPT_TYPE_LITERAL) &&
 				    !cast_vpt(c->data.map->src, c->data.map->dst->da)) {
-					return_rhs("Failed to parse data");
+					DICT_ATTR const *da = c->data.map->dst->da;
+
+					if ((da->vendor == 0) &&
+					    ((da->attr == PW_AUTH_TYPE) ||
+					     (da->attr == PW_AUTZ_TYPE) ||
+					     (da->attr == PW_ACCT_TYPE) ||
+					     (da->attr == PW_SESSION_TYPE) ||
+					     (da->attr == PW_POST_AUTH_TYPE) ||
+					     (da->attr == PW_PRE_PROXY_TYPE) ||
+					     (da->attr == PW_POST_PROXY_TYPE) ||
+					     (da->attr == PW_PRE_ACCT_TYPE) ||
+					     (da->attr == PW_RECV_COA_TYPE) ||
+					     (da->attr == PW_SEND_COA_TYPE))) {
+						/*
+						 *	The types for these attributes are dynamically allocated
+						 *	by modules.c, so we can't enforce strictness here.
+						 */
+						c->pass2_fixup = PASS2_FIXUP_TYPE;
+
+					} else {
+						return_rhs("Failed to parse value for attribute");
+					}
 				}
 			}
 
@@ -829,7 +867,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 	/*
 	 *	May still be looking for a closing brace.
 	 */
-	slen = condition_tokenize(c, p, brace, &c->next, error);
+	slen = condition_tokenize(c, ci, p, brace, &c->next, error, flags);
 	if (slen <= 0) {
 	return_slen:
 		if (lhs) talloc_free(lhs);
@@ -1028,14 +1066,16 @@ done:
 /** Tokenize a conditional check
  *
  *  @param[in] ctx for talloc
+ *  @param[in] ci for CONF_ITEM
  *  @param[in] start the start of the string to process.  Should be "(..."
  *  @param[out] head the parsed condition structure
  *  @param[out] error the parse error (if any)
+ *  @param[in] flags do one/two pass
  *  @return length of the string skipped, or when negative, the offset to the offending error
  */
-ssize_t fr_condition_tokenize(TALLOC_CTX *ctx, char const *start, fr_cond_t **head, char const **error)
+ssize_t fr_condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *start, fr_cond_t **head, char const **error, int flags)
 {
-	return condition_tokenize(ctx, start, false, head, error);
+	return condition_tokenize(ctx, ci, start, false, head, error, flags);
 }
 
 /*

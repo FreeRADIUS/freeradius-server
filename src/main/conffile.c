@@ -1685,7 +1685,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 				if (!server) goto invalid_location;
 			}
 
-			slen = fr_condition_tokenize(this, ptr, &cond, &error);
+			slen = fr_condition_tokenize(this, cf_sectiontoitem(this), ptr, &cond, &error, FR_COND_TWO_PASS);
 			if (p) *p = '{';
 
 			if (slen < 0) {
