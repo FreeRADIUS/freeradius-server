@@ -533,7 +533,7 @@ rlm_rcode_t rlm_ldap_check_groupobj_dynamic(ldap_instance_t const *inst, REQUEST
 rlm_rcode_t rlm_ldap_check_userobj_dynamic(ldap_instance_t const *inst, REQUEST *request, ldap_handle_t **pconn,
 					   char const *dn, VALUE_PAIR *check)
 {
-	rlm_rcode_t	rcode = RLM_MODULE_NOTFOUND;
+	rlm_rcode_t	rcode = RLM_MODULE_NOTFOUND, ret;
 	ldap_rcode_t	status;
 	int		name_is_dn = false, value_is_dn = false;
 
@@ -623,16 +623,17 @@ rlm_rcode_t rlm_ldap_check_userobj_dynamic(ldap_instance_t const *inst, REQUEST 
 		 *	convert the value to a DN and do a comparison.
 		 */
 		if (!value_is_dn && name_is_dn) {
-			char *name_dn;
+			char *resolved;
 			int eq;
 
-			rcode = rlm_ldap_group_dn2name(inst, request, pconn, name, &name_dn);
-			if (rcode != RLM_MODULE_OK) {
+			ret = rlm_ldap_group_dn2name(inst, request, pconn, name, &resolved);
+			if (ret != RLM_MODULE_OK) {
+				rcode = ret;
 				goto finish;
 			}
 
-			eq = strcmp(vals[i], name_dn);
-			talloc_free(name_dn);
+			eq = strcmp(vals[i], resolved);
+			talloc_free(resolved);
 			if (eq == 0){
 				RDEBUG("User found. Comparison between membership: name, check: name "
 				       "(resolved from DN)");
@@ -649,16 +650,17 @@ rlm_rcode_t rlm_ldap_check_userobj_dynamic(ldap_instance_t const *inst, REQUEST 
 		 *	convert the value to a name so we can do a comparison.
 		 */
 		if (value_is_dn && !name_is_dn) {
-			char *value_dn;
+			char *resolved;
 			int eq;
 
-			rcode = rlm_ldap_group_dn2name(inst, request, pconn, vals[i], &value_dn);
-			if (rcode != RLM_MODULE_OK) {
+			ret = rlm_ldap_group_dn2name(inst, request, pconn, vals[i], &resolved);
+			if (ret != RLM_MODULE_OK) {
+				rcode = ret;
 				goto finish;
 			}
 
-			eq = strcmp(vals[i], value_dn);
-			talloc_free(value_dn);
+			eq = strcmp(resolved, name);
+			talloc_free(resolved);
 			if (eq == 0){
 				RDEBUG("User found. Comparison between membership: name (resolved from DN), "
 				       "check: name");
