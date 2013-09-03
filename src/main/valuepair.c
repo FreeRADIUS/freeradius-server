@@ -63,11 +63,11 @@ static struct cmp *cmp;
  * @param check rvalue, and operator.
  * @param vp lvalue.
  * @return 0 if check and vp are equal, -1 if vp value is less than check value, 1 is vp value is more than check
- *	value.
+ *	value, -2 on error.
  */
 int radius_compare_vps(REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *vp)
 {
-	int ret = -2;
+	int ret = 0;
 
 	/*
 	 *      Check for =* and !* and return appropriately
@@ -92,16 +92,15 @@ int radius_compare_vps(REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *vp)
 			char buffer[256];
 			regerror(compare, &reg, buffer, sizeof(buffer));
 
-			RDEBUG("Invalid regular expression %s: %s",
-			       check->vp_strvalue, buffer);
-			return -1;
+			RDEBUG("Invalid regular expression %s: %s", check->vp_strvalue, buffer);
+			return -2;
 		}
 		compare = regexec(&reg, value, REQUEST_MAX_REGEX + 1, rxmatch, 0);
 		regfree(&reg);
 		rad_regcapture(request, compare, value, rxmatch);
 
-		if (compare == 0) return 0;
-		return -1;
+		ret = (compare == 0) ? 0 : -1;
+		goto finish;
 	}
 
 	if (check->op == T_OP_REG_NE) {
@@ -120,17 +119,13 @@ int radius_compare_vps(REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *vp)
 			char buffer[256];
 			regerror(compare, &reg, buffer, sizeof(buffer));
 
-			RDEBUG("Invalid regular expression %s: %s",
-			       check->vp_strvalue, buffer);
-			return -1;
+			RDEBUG("Invalid regular expression %s: %s", check->vp_strvalue, buffer);
+			return -2;
 		}
-		compare = regexec(&reg, value,  REQUEST_MAX_REGEX + 1,
-				  rxmatch, 0);
+		compare = regexec(&reg, value,  REQUEST_MAX_REGEX + 1, rxmatch, 0);
 		regfree(&reg);
 
-		if (compare != 0) return 0;
-		return -1;
-
+		ret = (compare != 0) ? 0 : -1;
 	}
 #endif
 
@@ -150,7 +145,7 @@ int radius_compare_vps(REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *vp)
 	 */
 	if (check->da->flags.has_tag) {
 		ret = ((int) vp->tag) - ((int) check->tag);
-		if (ret != 0) return ret;
+		goto finish;
 	}
 
 	/*
@@ -234,7 +229,14 @@ int radius_compare_vps(REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *vp)
 			break;
 	}
 
-	return ret;
+	finish:
+	if (ret > 0) {
+		return 1;
+	}
+	if (ret < 0) {
+		return -1;
+	}
+	return 0;
 }
 
 
