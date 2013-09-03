@@ -1781,16 +1781,21 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			/*
 			 *	Handle variable substitution via ${foo}
 			 */
-			if ((t3 == T_BARE_WORD) ||
-			    (t3 == T_DOUBLE_QUOTED_STRING)) {
-				value = cf_expand_variables(filename, lineno, this,
-							    buf, sizeof(buf), buf3);
-				if (!value) return -1;
-			} else if ((t3 == T_EOL) ||
-				   (t3 == T_HASH)) {
-				value = NULL;
-			} else {
-				value = buf3;
+			switch (t3) {
+				case T_BARE_WORD:
+				case T_DOUBLE_QUOTED_STRING:
+				case T_BACK_QUOTED_STRING:
+					value = cf_expand_variables(filename, lineno, this, buf, sizeof(buf), buf3);
+					if (!value) return -1;
+					break;
+
+				case T_EOL:
+				case T_HASH:
+					value = NULL;
+					break;
+
+				default:
+					value = buf3;
 			}
 
 			/*
