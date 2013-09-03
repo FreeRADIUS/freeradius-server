@@ -703,7 +703,12 @@ rlm_rcode_t rlm_ldap_check_cached(ldap_instance_t const *inst, REQUEST *request,
 	vp_cursor_t	cursor;
 
 	paircursor(&cursor, &request->config_items);
-	while ((vp = pairfindnext(&cursor, inst->group_da->attr, inst->group_da->vendor, TAG_ANY))) {
+	vp = pairfindnext(&cursor, inst->group_da->attr, inst->group_da->vendor, TAG_ANY);
+	if (!vp) {
+		return RLM_MODULE_INVALID;
+	}
+
+	for (; vp; vp = pairfindnext(&cursor, inst->group_da->attr, inst->group_da->vendor, TAG_ANY)) {
 		ret = radius_compare_vps(request, check, vp);
 		if (ret == 0) {
 			RDEBUG2("User found. Matched cached membership");
