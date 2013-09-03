@@ -30,10 +30,6 @@ RCSID("$Id$")
 
 #define PW_CAST_BASE (1850)
 
-#define PASS2_FIXUP_NONE (0)
-#define PASS2_FIXUP_ATTR (1)
-#define PASS2_FIXUP_TYPE (2)
-
 /*
  *	This file shouldn't use any functions from the server core.
  */

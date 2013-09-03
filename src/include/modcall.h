@@ -33,6 +33,11 @@ modcallable *compile_modgroup(modcallable *parent,
 modcallable *compile_modsingle(modcallable *parent, int component, CONF_ITEM *ci,
 			       char const **modname);
 
+/*
+ *	Do the second pass on compiling the modules.
+ */
+bool modcall_pass2(modcallable *mc);
+
 /* Add an entry to the end of a modgroup, creating it first if necessary */
 void add_to_modcallable(modcallable **parent, modcallable *this,
 			int component, char const *name);
