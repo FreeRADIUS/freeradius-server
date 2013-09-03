@@ -833,7 +833,6 @@ VALUE_PAIR *paircopyvpdata(TALLOC_CTX *ctx, DICT_ATTR const *da, VALUE_PAIR cons
 			}
 			break;
 		default:
-			fr_assert(0);
 			return NULL;
 	}
 
