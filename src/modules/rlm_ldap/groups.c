@@ -71,7 +71,7 @@ static rlm_rcode_t rlm_ldap_group_name2dn(ldap_instance_t const *inst, REQUEST *
 		return RLM_MODULE_INVALID;
 	}
 
-	RDEBUG("Converting group name(s) to group DN(s)", dn);
+	RDEBUG("Converting group name(s) to group DN(s)");
 
 	/*
 	 *	It'll probably only save a few ms in network latency, but it means we can send a query
@@ -134,7 +134,9 @@ static rlm_rcode_t rlm_ldap_group_name2dn(ldap_instance_t const *inst, REQUEST *
 	}
 
 	do {
-		*dn++ = ldap_get_dn((*pconn)->handle, entry);
+		*dn = ldap_get_dn((*pconn)->handle, entry);
+		RDEBUG("Got group DN \"%s\"", *dn);
+		dn++;
 	} while((entry = ldap_next_entry((*pconn)->handle, entry)));
 
 	*dn = NULL;
@@ -220,6 +222,8 @@ static rlm_rcode_t rlm_ldap_group_dn2name(ldap_instance_t const *inst, REQUEST *
 
 		goto finish;
 	}
+
+	RDEBUG("Group name is \"%s\"", vals[0]);
 
 	*out = talloc_strdup(request, vals[0]);
 
