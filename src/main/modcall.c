@@ -63,18 +63,18 @@ struct modcallable {
 				      group_name[c->type], c->name ? c->name : "", \
 				      fr_int2str(mod_rcode_table, result, "<invalid>"))
 
-#define GROUPTYPE_SIMPLE	0
-#define GROUPTYPE_REDUNDANT	1
-#define GROUPTYPE_APPEND	2
-#define GROUPTYPE_COUNT		3
-
 typedef struct {
-	modcallable mc;		/* self */
-	int grouptype;	/* after mc */
-	modcallable *children;
-	CONF_SECTION *cs;
-	value_pair_map_t *map;	/* update */
-	fr_cond_t *cond;	/* if/elsif */
+	modcallable		mc;		/* self */
+	enum {
+		GROUPTYPE_SIMPLE = 0,
+		GROUPTYPE_REDUNDANT,
+		GROUPTYPE_APPEND,
+		GROUPTYPE_COUNT
+	} grouptype;				/* after mc */
+	modcallable		*children;
+	CONF_SECTION		*cs;
+	value_pair_map_t	*map;		/* update */
+	fr_cond_t		*cond;		/* if/elsif */
 } modgroup;
 
 typedef struct {
