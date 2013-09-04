@@ -157,13 +157,18 @@ value_pair_tmpl_t *radius_str2tmpl(TALLOC_CTX *ctx, char const *name, FR_TOKEN t
 
 	switch (type) {
 	case T_BARE_WORD:
+		if (*name == '&') name++;
+
 		if (!isdigit((int) *name)) {
 			request_refs_t ref;
 			pair_lists_t list;
 			char const *p = name;
 
 			ref = radius_request_name(&p, REQUEST_CURRENT);
+			if (ref == REQUEST_UNKNOWN) goto literal;
+
 			list = radius_list_name(&p, PAIR_LIST_REQUEST);
+			if (list == PAIR_LIST_UNKNOWN) goto literal;
 
 			if ((p != name) && !*p) {
 				vpt->type = VPT_TYPE_LIST;
@@ -186,6 +191,7 @@ value_pair_tmpl_t *radius_str2tmpl(TALLOC_CTX *ctx, char const *name, FR_TOKEN t
 		/* FALL-THROUGH */
 
 	case T_SINGLE_QUOTED_STRING:
+	literal:
 		vpt->type = VPT_TYPE_LITERAL;
 		break;
 	case T_DOUBLE_QUOTED_STRING:
