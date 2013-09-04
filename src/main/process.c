@@ -253,6 +253,9 @@ static void NEVER_RETURNS _rad_panic(char const *file, unsigned int line,
 				    char const *msg)
 {
 	ERROR("[%s:%d] %s", file, line, msg);
+#ifndef NDEBUG
+	rad_assert(0 == 1);
+#endif
 	_exit(1);
 }
 
