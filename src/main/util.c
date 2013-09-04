@@ -1000,7 +1000,7 @@ request_refs_t radius_request_name(char const **name, request_refs_t def)
 
 	p = strchr(*name, '.');
 	if (!p) {
-		return REQUEST_CURRENT;
+		return def;
 	}
 
 	/*
@@ -1010,7 +1010,7 @@ request_refs_t radius_request_name(char const **name, request_refs_t def)
 				p - *name);
 
 	/*
-	 *	If we get a VALID LIST, skip it.
+	 *	If we get a valid name, skip it.
 	 */
 	if (request != REQUEST_UNKNOWN) {
 		*name = p + 1;
