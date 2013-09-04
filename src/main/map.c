@@ -492,7 +492,7 @@ int radius_attrmap(CONF_SECTION *cs, value_pair_map_t **head,
 
 	cs_list = p = cf_section_name2(cs);
 	if (cs_list) {
-		request_def = radius_request_name(&p, REQUEST_UNKNOWN);
+		request_def = radius_request_name(&p, REQUEST_CURRENT);
 		if (request_def == REQUEST_UNKNOWN) {
 			cf_log_err(ci, "Default request specified "
 				   "in mapping section is invalid");
