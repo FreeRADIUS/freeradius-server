@@ -45,7 +45,7 @@ const FR_NAME_NUMBER vpt_types[] = {
 };
 
 struct cmp {
-	DICT_ATTR const *attribute;
+	DICT_ATTR const *da;
 	DICT_ATTR const *from;
 	bool	first_only;
 	void *instance; /* module instance */
@@ -271,7 +271,7 @@ int radius_callback_compare(REQUEST *request, VALUE_PAIR *req,
 	 *	FIXME: use new RB-Tree code.
 	 */
 	for (c = cmp; c; c = c->next) {
-		if (c->attribute == check->da) {
+		if (c->da == check->da) {
 			return (c->compare)(c->instance, request, req, check,
 				check_pairs, reply_pairs);
 		}
@@ -289,12 +289,12 @@ int radius_callback_compare(REQUEST *request, VALUE_PAIR *req,
  * @param attribute to find comparison function for.
  * @return true if a comparison function was found, else false.
  */
-int radius_find_compare(DICT_ATTR const *attribute)
+int radius_find_compare(DICT_ATTR const *da)
 {
 	struct cmp *c;
 
 	for (c = cmp; c; c = c->next) {
-		if (c->attribute == attribute) {
+		if (c->da == da) {
 			return true;
 		}
 	}
@@ -309,18 +309,18 @@ int radius_find_compare(DICT_ATTR const *attribute)
  * @param from reference to compare with
  * @return true if the comparison callback require a matching attribue in the request, else false.
  */
-static bool otherattr(DICT_ATTR const *attribute, DICT_ATTR const **from)
+static bool otherattr(DICT_ATTR const *da, DICT_ATTR const **from)
 {
 	struct cmp *c;
 
 	for (c = cmp; c; c = c->next) {
-		if (c->attribute == attribute) {
+		if (c->da == da) {
 			*from = c->from;
 			return c->first_only;
 		}
 	}
 
-	*from = attribute;
+	*from = da;
 	return false;
 }
 
@@ -334,19 +334,19 @@ static bool otherattr(DICT_ATTR const *attribute, DICT_ATTR const **from)
  * @param instance argument to comparison function
  * @return 0
  */
-int paircompare_register(DICT_ATTR const *attribute, DICT_ATTR const *from,
+int paircompare_register(DICT_ATTR const *da, DICT_ATTR const *from,
 			 bool first_only, RAD_COMPARE_FUNC func, void *instance)
 {
 	struct cmp *c;
 
-	rad_assert(attribute != NULL);
+	rad_assert(da != NULL);
 
-	paircompare_unregister(attribute, func);
+	paircompare_unregister(da, func);
 
 	c = rad_malloc(sizeof(struct cmp));
 
 	c->compare   = func;
-	c->attribute = attribute;
+	c->da = da;
 	c->from = from;
 	c->first_only = first_only;
 	c->instance  = instance;
@@ -361,13 +361,13 @@ int paircompare_register(DICT_ATTR const *attribute, DICT_ATTR const *from,
  * @param attribute dict reference to unregister for.
  * @param func comparison function to remove.
  */
-void paircompare_unregister(DICT_ATTR const *attribute, RAD_COMPARE_FUNC func)
+void paircompare_unregister(DICT_ATTR const *da, RAD_COMPARE_FUNC func)
 {
 	struct cmp *c, *last;
 
 	last = NULL;
 	for (c = cmp; c; c = c->next) {
-		if (c->attribute == attribute && c->compare == func) {
+		if (c->da == da && c->compare == func) {
 			break;
 		}
 		last = c;
