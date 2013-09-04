@@ -819,10 +819,17 @@ static void request_queue_or_run(UNUSED REQUEST *request,
 
 #ifdef HAVE_PTHREAD_H
 	if (spawn_flag) {
-		if (!request_enqueue(request)) {
-			request_done(request, FR_ACTION_DONE);
-			return;
-		}
+		/*
+		 *	A child thread will eventually pick it up.
+		 */
+		if (request_enqueue(request)) return;
+
+		/*
+		 *	Otherwise we're not going to do anything with
+		 *	it...
+		 */
+		request_done(request, FR_ACTION_DONE);
+		return;
 
 	} else
 #endif
@@ -2859,12 +2866,12 @@ STATE_MACHINE_DECL(proxy_wait_for_reply)
 	rad_assert(request->packet->code != PW_STATUS_SERVER);
 	rad_assert(request->home_server != NULL);
 
-	gettimeofday(&now, NULL);
-
 	if (request->master_state == REQUEST_STOP_PROCESSING) {
-		request_done(request, FR_ACTION_DONE);
+		request->child_state = REQUEST_DONE;
 		return;
 	}
+
+	gettimeofday(&now, NULL);
 
 	switch (action) {
 	case FR_ACTION_DUP:
@@ -4157,6 +4164,7 @@ void radius_event_free(void)
 	 */
 #ifdef HAVE_PTHREAD_H
 	thread_pool_stop();
+	ASSERT_MASTER;
 #endif
 
 #ifdef WITH_PROXY
