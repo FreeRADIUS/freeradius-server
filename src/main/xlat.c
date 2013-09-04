@@ -291,7 +291,7 @@ static ssize_t xlat_debug_attr(UNUSED void *instance, REQUEST *request, char con
 			       char *out, UNUSED size_t outlen)
 {
 	VALUE_PAIR *vp, **vps;
-	RADIUS_REQUEST *current;
+	REQUEST *current;
 	value_pair_tmpl_t vpt;
 	vp_cursor_t cursor;
 	char buffer[1024];
