@@ -390,8 +390,9 @@ static bool modcall_recurse(REQUEST *request, int component, int depth,
 /*
  *	Call a child of a block.
  */
-static int modcall_child(REQUEST *request, int component, int depth,
-			 modcall_stack_entry_t *entry, modcallable *c)
+static void modcall_child(REQUEST *request, int component, int depth,
+			  modcall_stack_entry_t *entry, modcallable *c,
+			  int *result, int *priority)
 {
 	modcall_stack_entry_t *next;
 
@@ -410,11 +411,14 @@ static int modcall_child(REQUEST *request, int component, int depth,
 
 	if (!modcall_recurse(request, component,
 			     depth, next)) {
-
-		 return RLM_MODULE_FAIL;
+		*result = RLM_MODULE_FAIL;
+		 return;
 	}
 
-	return next->result;
+	*result = next->result;
+	*priority = next->priority;
+
+	return;
 }
 
 /*
@@ -706,6 +710,7 @@ redo:
 		} /* loop over VPs */
 
 		result = next->result;
+		priority = next->priority;
 		MOD_LOG_CLOSE_BRACE();
 		goto calculate_result;
 	} /* MOD_FOREACH */
@@ -745,8 +750,9 @@ redo:
 		g = mod_callabletogroup(c);
 
 		MOD_LOG_OPEN_BRACE(group_name[c->type]);
-		result = modcall_child(request, component,
-				       depth + 1, entry, g->children);
+		modcall_child(request, component,
+			      depth + 1, entry, g->children,
+			      &result, &priority);
 		MOD_LOG_CLOSE_BRACE();
 		goto calculate_result;
 	} /* MOD_GROUP */
@@ -798,8 +804,9 @@ redo:
 		if (!found) found = null_case;
 
 		MOD_LOG_OPEN_BRACE(group_name[c->type]);
-		result = modcall_child(request, component,
-				       depth + 1, entry, found);
+		modcall_child(request, component,
+			      depth + 1, entry, found,
+			      &result, &priority);
 		MOD_LOG_CLOSE_BRACE();
 		goto calculate_result;
 	} /* MOD_SWITCH */
@@ -830,9 +837,9 @@ redo:
 		MOD_LOG_OPEN_BRACE(group_name[c->type]);
 
 		if (c->type == MOD_LOAD_BALANCE) {
-			result = modcall_child(request, component,
-					       depth + 1, entry, found);
-
+			modcall_child(request, component,
+				      depth + 1, entry, found,
+				      &result, &priority);
 		} else {
 			int i;
 
@@ -842,9 +849,11 @@ redo:
 			 *	continue.  Otherwise, stop.
 			 */
 			for (i = 1; i < count; i++) {
-				result = modcall_child(request, component,
-						       depth + 1, entry, found);
+				modcall_child(request, component,
+					      depth + 1, entry, found,
+					      &result, &priority);
 				if (c->actions[result] == MOD_ACTION_RETURN) {
+					priority = -1;
 					break;
 				}
 			}
