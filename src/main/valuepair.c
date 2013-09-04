@@ -286,7 +286,7 @@ int radius_callback_compare(REQUEST *request, VALUE_PAIR *req,
 /** Find a comparison function for two attributes.
  *
  * @todo this should probably take DA's.
- * @param attribute to find comparison function for.
+ * @param da to find comparison function for.
  * @return true if a comparison function was found, else false.
  */
 int radius_find_compare(DICT_ATTR const *da)
@@ -305,7 +305,7 @@ int radius_find_compare(DICT_ATTR const *da)
 
 /** See what attribute we want to compare with.
  *
- * @param attribute to find comparison function for.
+ * @param da to find comparison function for.
  * @param from reference to compare with
  * @return true if the comparison callback require a matching attribue in the request, else false.
  */
@@ -326,7 +326,7 @@ static bool otherattr(DICT_ATTR const *da, DICT_ATTR const **from)
 
 /** Register a function as compare function.
  *
- * @param attribute to register comparison function for.
+ * @param da to register comparison function for.
  * @param from the attribute we want to compare with. Normally this is the same as attribute.
  *  If null call the comparison function on every attributes in the request if first_only is false
  * @param first_only will decide if we loop over the request attributes or stop on the first one
@@ -358,7 +358,7 @@ int paircompare_register(DICT_ATTR const *da, DICT_ATTR const *from,
 
 /** Unregister comparison function for an attribute
  *
- * @param attribute dict reference to unregister for.
+ * @param da dict reference to unregister for.
  * @param func comparison function to remove.
  */
 void paircompare_unregister(DICT_ATTR const *da, RAD_COMPARE_FUNC func)
