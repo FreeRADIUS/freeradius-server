@@ -291,6 +291,7 @@ static ssize_t xlat_debug_attr(UNUSED void *instance, REQUEST *request, char con
 			       char *out, UNUSED size_t outlen)
 {
 	VALUE_PAIR *vp, **vps;
+	RADIUS_REQUEST *current;
 	value_pair_tmpl_t vpt;
 	vp_cursor_t cursor;
 	char buffer[1024];
@@ -308,7 +309,10 @@ static ssize_t xlat_debug_attr(UNUSED void *instance, REQUEST *request, char con
 		return -1;
 	}
 
-	vps = radius_list(request, vpt.list);
+	current = request;
+	if (radius_request(&current, vpt.request) < 0) return -2;
+
+	vps = radius_list(current, vpt.list);
 	if (!vps) {
 		return -2;
 	}
