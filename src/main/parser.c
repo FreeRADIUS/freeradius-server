@@ -977,9 +977,7 @@ done:
 
 			rad_assert(c->cast != NULL);
 
-			rcode = radius_evaluate_map(NULL, 0, 0, c->data.map,
-						    c->regex_i,
-						    c->cast);
+			rcode = radius_evaluate_map(NULL, 0, 0, c);
 			talloc_free(c->data.map);
 			c->data.map = NULL;
 			c->cast = NULL;
