@@ -1841,6 +1841,12 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			css->item.lineno = *lineno;
 
 			if (cond) {
+				/*
+				 *	FIXME: talloc_steal cond to css
+				 *	set "ci" in all of "cond" to css
+				 *
+				 *	<sigh>
+				 */
 				cf_data_add_internal(css, "if", cond, NULL, false);
 				cond = NULL; /* eaten by the above line */
 			}

@@ -289,10 +289,14 @@ static VALUE_PAIR *get_cast_vp(REQUEST *request, value_pair_tmpl_t const *vpt, D
  * @return -1 on error, 0 for "no match", 1 for "match".
  */
 int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth,
-			value_pair_map_t const *map, int iflag, DICT_ATTR const *cast)
+			fr_cond_t const *c)
 {
 	int rcode;
 	char *lhs, *rhs;
+	value_pair_map_t *map;
+
+	rad_assert(c->type == COND_TYPE_MAP);
+	map = c->data.map;
 
 	rad_assert(map->dst->type != VPT_TYPE_UNKNOWN);
 	rad_assert(map->src->type != VPT_TYPE_UNKNOWN);
@@ -314,7 +318,7 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 	 *
 	 *	LHS is DST.  RHS is SRC <sigh>
 	 */
-	if (!cast && (map->src->type == VPT_TYPE_ATTR) && (map->dst->type == VPT_TYPE_ATTR)) {
+	if (!c->cast && (map->src->type == VPT_TYPE_ATTR) && (map->dst->type == VPT_TYPE_ATTR)) {
 		VALUE_PAIR *lhs_vp, *rhs_vp;
 
 		EVAL_DEBUG("ATTR to ATTR");
@@ -330,10 +334,10 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 	 *	LHS is a cast.  Do type-specific comparisons, as if
 	 *	the LHS was a real attribute.
 	 */
-	if (cast) {
+	if (c->cast) {
 		VALUE_PAIR *lhs_vp, *rhs_vp;
 
-		lhs_vp = get_cast_vp(request, map->dst, cast);
+		lhs_vp = get_cast_vp(request, map->dst, c->cast);
 		if (!lhs_vp) return false;
 
 		/*
@@ -343,7 +347,7 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 		if (map->src->type == VPT_TYPE_ATTR) {
 			rhs_vp = radius_vpt_get_vp(request, map->src);
 		} else {
-			rhs_vp = get_cast_vp(request, map->src, cast);
+			rhs_vp = get_cast_vp(request, map->src, c->cast);
 		}
 
 		if (!rhs_vp) return false;
@@ -357,6 +361,26 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 		}
 		return rcode;
 	}
+
+	/*
+	 *	Might be a virtual comparison
+	 */
+	if ((map->dst->type == VPT_TYPE_ATTR) &&
+	    (map->src->type != VPT_TYPE_REGEX) &&
+	    (c->pass2_fixup == PASS2_PAIRCOMPARE)) {
+		VALUE_PAIR *rhs_vp;
+
+		EVAL_DEBUG("virtual ATTR to DATA");
+
+		rhs_vp = get_cast_vp(request, map->src, map->dst->da);
+		if (!rhs_vp) return false;
+
+		if (paircompare(request, request->packet->vps, rhs_vp, NULL) == 0) {
+			return true;
+		}
+		return false;
+	}
+	rad_assert(c->pass2_fixup != PASS2_PAIRCOMPARE);
 
 	/*
 	 *	RHS has been pre-parsed into binary data.  Go check
@@ -472,7 +496,7 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 	 *	Compile  the RHS to a regex, and do regex stuff
 	 */
 	if (map->src->type == VPT_TYPE_REGEX) {
-		return do_regex(request, lhs, rhs, iflag);
+		return do_regex(request, lhs, rhs, c->regex_i);
 	}
 
 	/*
@@ -563,7 +587,7 @@ int radius_evaluate_cond(REQUEST *request, int modreturn, int depth,
 			break;
 
 		case COND_TYPE_MAP:
-			rcode = radius_evaluate_map(request, modreturn, depth, c->data.map, c->regex_i, c->cast);
+			rcode = radius_evaluate_map(request, modreturn, depth, c);
 			break;
 
 		case COND_TYPE_CHILD:

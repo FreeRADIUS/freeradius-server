@@ -2385,7 +2385,17 @@ static bool pass2_callback(UNUSED void *ctx, fr_cond_t *c)
 {
 	value_pair_map_t *map;
 
-	if (c->pass2_fixup == PASS2_FIXUP_NONE) return true;
+	/*
+	 *	Maps have a paircompare fixup applied to them.
+	 *	Others get ignored.
+	 */
+	if (c->pass2_fixup == PASS2_FIXUP_NONE) {
+		if (c->type == COND_TYPE_MAP) {
+			map = c->data.map;
+			goto check_paircmp;
+		}
+		return true;
+	}
 
 	map = c->data.map;	/* shorter */
 
@@ -2404,7 +2414,10 @@ static bool pass2_callback(UNUSED void *ctx, fr_cond_t *c)
 			return false;
 		}
 
-		c->pass2_fixup = 0;
+		/*
+		 *	These guys can't have a paircompare fixup applied.
+		 */
+		c->pass2_fixup = PASS2_FIXUP_NONE;
 		return true;
 	}
 
@@ -2416,7 +2429,7 @@ static bool pass2_callback(UNUSED void *ctx, fr_cond_t *c)
 		 *	It's still not an attribute.  Ignore it.
 		 */
 		if (radius_parse_attr(map->dst->name, &vpt, REQUEST_CURRENT, PAIR_LIST_REQUEST) < 0) {
-			c->pass2_fixup = 0;
+			c->pass2_fixup = PASS2_FIXUP_NONE;
 			return true;
 		}
 
@@ -2435,12 +2448,59 @@ static bool pass2_callback(UNUSED void *ctx, fr_cond_t *c)
 		map->ci = old->ci;
 		talloc_free(old);
 		c->data.map = map;
+		c->pass2_fixup = PASS2_FIXUP_NONE;
+	}
+
+check_paircmp:
+	/*
+	 *	Just in case someone adds a new fixup later.
+	 */
+	rad_assert(c->pass2_fixup == PASS2_FIXUP_NONE);
+
+	/*
+	 *	Only attributes can have a paircompare registered, and
+	 *	they can only be with the current REQUEST, and only
+	 *	with the request pairs.
+	 */
+	if ((map->dst->type != VPT_TYPE_ATTR) ||
+	    (map->dst->request != REQUEST_CURRENT) ||
+	    (map->dst->list != PAIR_LIST_REQUEST)) {
 		return true;
 	}
 
-	cf_log_err(map->ci, "Internal sanity check failed in pass2 fixup");
+	if (!radius_find_compare(map->dst->da)) return true;
 
-	return false;
+	if (map->src->type == VPT_TYPE_ATTR) {
+		cf_log_err(map->ci, "Cannot compare virtual attribute %s to another attribute",
+			   map->dst->name);
+		return false;
+	}
+
+	if (map->src->type == VPT_TYPE_REGEX) {
+		cf_log_err(map->ci, "Cannot compare virtual attribute %s via a regex",
+			   map->dst->name);
+		return false;
+	}
+
+	if (c->cast) {
+		cf_log_err(map->ci, "Cannot cast virtual attribute %s",
+			   map->dst->name);
+		return false;
+	}
+
+	if (map->op != T_OP_CMP_EQ) {
+		cf_log_err(map->ci, "Must use '==' for comparisons with virtual attribute %s",
+			   map->dst->name);
+		return false;
+	}
+
+	/*
+	 *	Mark it as requiring a paircompare() call, instead of
+	 *	paircmp().
+	 */
+	c->pass2_fixup = PASS2_PAIRCOMPARE;
+
+	return true;
 }
 
 /*

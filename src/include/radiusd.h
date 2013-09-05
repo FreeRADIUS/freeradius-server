@@ -716,8 +716,7 @@ typedef int (*radius_tmpl_getvalue_t)(VALUE_PAIR **out, REQUEST *request, value_
 int radius_evaluate_tmpl(REQUEST *request, int modreturn, int depth,
 			 value_pair_tmpl_t const *vpt);
 int radius_evaluate_map(REQUEST *request, int modreturn, int depth,
-			value_pair_map_t const *map, int iflag,
-			DICT_ATTR const *cast);
+			fr_cond_t const *c);
 int radius_evaluate_cond(REQUEST *request, int modreturn, int depth,
 			 fr_cond_t const *c);
 void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from);
