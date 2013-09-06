@@ -820,12 +820,7 @@ static int load_subcomponent_section(modcallable *parent, CONF_SECTION *cs,
 	/*
 	 *	Compile the group.
 	 */
-	if (comp != RLM_COMPONENT_AUTH) {
-		ml = compile_modgroup(parent, comp, cs);
-	} else {
-		ml = compile_modgroup(parent, RLM_COMPONENT_AUTZ, cs);
-		DEBUG("COMPILE Auth-Type %s", cf_section_name2(cs));
-	}
+	ml = compile_modgroup(parent, comp, cs);
 	if (!ml) {
 		return 0;
 	}
