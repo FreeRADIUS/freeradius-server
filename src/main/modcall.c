@@ -60,7 +60,7 @@ struct modcallable {
 
 #define MOD_LOG_OPEN_BRACE(_name) RDEBUG2("%.*s%s %s {", depth + 1, modcall_spaces, _name, c->name)
 #define MOD_LOG_CLOSE_BRACE() RDEBUG2("%.*s} # %s %s = %s", depth + 1, modcall_spaces, \
-				      group_name[c->type], c->name ? c->name : "", \
+				      cf_section_name1(g->cs), c->name ? c->name : "", \
 				      fr_int2str(mod_rcode_table, result, "<invalid>"))
 
 typedef struct {
@@ -749,7 +749,7 @@ redo:
 	do_children:
 		g = mod_callabletogroup(c);
 
-		MOD_LOG_OPEN_BRACE(group_name[c->type]);
+		MOD_LOG_OPEN_BRACE(cf_section_name1(g->cs));
 		modcall_child(request, component,
 			      depth + 1, entry, g->children,
 			      &result, &priority);
