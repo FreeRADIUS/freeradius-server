@@ -289,9 +289,7 @@ static int get_cast_vp(VALUE_PAIR **out, REQUEST *request, value_pair_tmpl_t con
  * @param[in] request the REQUEST
  * @param[in] modreturn the previous module return code
  * @param[in] depth of the recursion (only used for debugging)
- * @param[in] map the map to evaluate
- * @param[in] iflag for regex case-insensitive comparisons
- * @param[in] cast of the data type to use for evaluations.
+ * @param[in] c the condition to evaluate
  * @return -1 on error, 0 for "no match", 1 for "match".
  */
 int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth,
