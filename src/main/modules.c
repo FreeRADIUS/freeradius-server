@@ -33,9 +33,9 @@ RCSID("$Id$")
 extern int check_config;
 
 typedef struct indexed_modcallable {
-	int		comp;
-	int		idx;
-	modcallable	*modulelist;
+	rlm_components_t	comp;
+	int			idx;
+	modcallable		*modulelist;
 } indexed_modcallable;
 
 typedef struct virtual_server_t {
@@ -651,7 +651,7 @@ module_instance_t *find_module_instance(CONF_SECTION *modules,
 }
 
 static indexed_modcallable *lookup_by_index(rbtree_t *components,
-					    int comp, int idx)
+					    rlm_components_t comp, int idx)
 {
 	indexed_modcallable myc;
 
@@ -665,7 +665,7 @@ static indexed_modcallable *lookup_by_index(rbtree_t *components,
  *	Create a new sublist.
  */
 static indexed_modcallable *new_sublist(CONF_SECTION *cs,
-					rbtree_t *components, int comp, int idx)
+					rbtree_t *components, rlm_components_t comp, int idx)
 {
 	indexed_modcallable *c;
 
@@ -701,7 +701,7 @@ static indexed_modcallable *new_sublist(CONF_SECTION *cs,
 	return c;
 }
 
-rlm_rcode_t indexed_modcall(int comp, int idx, REQUEST *request)
+rlm_rcode_t indexed_modcall(rlm_components_t comp, int idx, REQUEST *request)
 {
 	rlm_rcode_t rcode;
 	modcallable *list = NULL;
@@ -757,15 +757,12 @@ rlm_rcode_t indexed_modcall(int comp, int idx, REQUEST *request)
  */
 static int load_subcomponent_section(modcallable *parent, CONF_SECTION *cs,
 				     rbtree_t *components,
-				     DICT_ATTR const *dattr, int comp)
+				     DICT_ATTR const *dattr, rlm_components_t comp)
 {
 	indexed_modcallable *subcomp;
 	modcallable *ml;
 	DICT_VALUE *dval;
 	char const *name2 = cf_section_name2(cs);
-
-	rad_assert(comp >= RLM_COMPONENT_AUTH);
-	rad_assert(comp < RLM_COMPONENT_COUNT);
 
 	/*
 	 *	Sanity check.
@@ -843,7 +840,7 @@ static int define_type(CONF_SECTION *cs, DICT_ATTR const *dattr, char const *nam
 }
 
 static int load_component_section(CONF_SECTION *cs,
-				  rbtree_t *components, int comp)
+				  rbtree_t *components, rlm_components_t comp)
 {
 	modcallable *this;
 	CONF_ITEM *modref;
@@ -1020,7 +1017,7 @@ static int load_component_section(CONF_SECTION *cs,
 
 static int load_byserver(CONF_SECTION *cs)
 {
-	int comp, found;
+	rlm_components_t comp, found;
 	char const *name = cf_section_name2(cs);
 	rbtree_t *components;
 	virtual_server_t *server = NULL;

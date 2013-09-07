@@ -31,7 +31,7 @@ RCSID("$Id$")
 
 /* mutually-recursive static functions need a prototype up front */
 static modcallable *do_compile_modgroup(modcallable *,
-					int, CONF_SECTION *,
+					rlm_components_t, CONF_SECTION *,
 					int, int);
 
 /* Actions may be a positive integer (the highest one returned in the group
@@ -54,7 +54,7 @@ struct modcallable {
 	       MOD_FOREACH, MOD_BREAK,
 #endif
 	       MOD_POLICY, MOD_REFERENCE, MOD_XLAT } type;
-	int method;
+	rlm_components_t method;
 	int actions[RLM_MODULE_NUMCODES];
 };
 
@@ -279,7 +279,7 @@ static void safe_unlock(module_instance_t *instance)
 #define safe_unlock(foo)
 #endif
 
-static int call_modsingle(int component, modsingle *sp, REQUEST *request)
+static int call_modsingle(rlm_components_t component, modsingle *sp, REQUEST *request)
 {
 	int myresult;
 	int blocked;
@@ -384,13 +384,13 @@ typedef struct modcall_stack_entry_t {
 } modcall_stack_entry_t;
 
 
-static bool modcall_recurse(REQUEST *request, int component, int depth,
+static bool modcall_recurse(REQUEST *request, rlm_components_t component, int depth,
 			    modcall_stack_entry_t *entry);
 
 /*
  *	Call a child of a block.
  */
-static void modcall_child(REQUEST *request, int component, int depth,
+static void modcall_child(REQUEST *request, rlm_components_t component, int depth,
 			  modcall_stack_entry_t *entry, modcallable *c,
 			  int *result, int *priority)
 {
@@ -424,7 +424,7 @@ static void modcall_child(REQUEST *request, int component, int depth,
 /*
  *	Interpret the various types of blocks.
  */
-static bool modcall_recurse(REQUEST *request, int component, int depth,
+static bool modcall_recurse(REQUEST *request, rlm_components_t component, int depth,
 			    modcall_stack_entry_t *entry)
 {
 	bool if_taken, was_if;
@@ -954,13 +954,9 @@ next_sibling:
  * @brief Call a module, iteratively, with a local stack, rather than
  *	recursively.  What did Paul Graham say about Lisp...?
  */
-int modcall(int component, modcallable *c, REQUEST *request)
+int modcall(rlm_components_t component, modcallable *c, REQUEST *request)
 {
 	modcall_stack_entry_t stack[MODCALL_STACK_MAX];
-
-	if ((component < 0) || (component >= RLM_COMPONENT_COUNT)) {
-		return RLM_MODULE_FAIL;
-	}
 
 	/*
 	 *	Set up the initial stack frame.
@@ -1024,7 +1020,7 @@ static void dump_mc(modcallable *c, int indent)
 	DEBUG("%.*s}", indent, "\t\t\t\t\t\t\t\t\t\t\t");
 }
 
-static void dump_tree(int comp, modcallable *c)
+static void dump_tree(rlm_components_t comp, modcallable *c)
 {
 	DEBUG("[%s]", comp2str[comp]);
 	dump_mc(c, 0);
@@ -1436,7 +1432,7 @@ defaultactions[RLM_COMPONENT_COUNT][GROUPTYPE_COUNT][RLM_MODULE_NUMCODES] =
 
 
 #ifdef WITH_UNLANG
-static modcallable *do_compile_modupdate(modcallable *parent, UNUSED int component,
+static modcallable *do_compile_modupdate(modcallable *parent, UNUSED rlm_components_t component,
 					 CONF_SECTION *cs, char const *name2)
 {
 	int rcode;
@@ -1479,7 +1475,7 @@ static modcallable *do_compile_modupdate(modcallable *parent, UNUSED int compone
 }
 
 
-static modcallable *do_compile_modswitch(modcallable *parent, UNUSED int component, CONF_SECTION *cs)
+static modcallable *do_compile_modswitch(modcallable *parent, UNUSED rlm_components_t component, CONF_SECTION *cs)
 {
 	modcallable *csingle;
 	CONF_ITEM *ci;
@@ -1540,7 +1536,7 @@ static modcallable *do_compile_modswitch(modcallable *parent, UNUSED int compone
 }
 
 static modcallable *do_compile_modforeach(modcallable *parent,
-					  UNUSED int component, CONF_SECTION *cs,
+					  UNUSED rlm_components_t component, CONF_SECTION *cs,
 					  char const *name2)
 {
 	modcallable *csingle;
@@ -1564,7 +1560,7 @@ static modcallable *do_compile_modforeach(modcallable *parent,
 	return csingle;
 }
 
-static modcallable *do_compile_modbreak(modcallable *parent, UNUSED int component)
+static modcallable *do_compile_modbreak(modcallable *parent, UNUSED rlm_components_t component)
 {
 	modcallable *csingle;
 
@@ -1578,7 +1574,7 @@ static modcallable *do_compile_modbreak(modcallable *parent, UNUSED int componen
 #endif
 
 static modcallable *do_compile_modserver(modcallable *parent,
-					 int component, CONF_ITEM *ci,
+					 rlm_components_t component, CONF_ITEM *ci,
 					 char const *name,
 					 CONF_SECTION *cs,
 					 char const *server)
@@ -1614,7 +1610,7 @@ static modcallable *do_compile_modserver(modcallable *parent,
 }
 
 static modcallable *do_compile_modxlat(modcallable *parent,
-				       int component, char const *fmt)
+				       rlm_components_t component, char const *fmt)
 {
 	modcallable *csingle;
 	modxlat *mx;
@@ -1697,7 +1693,7 @@ static int all_children_are_modules(CONF_SECTION *cs, char const *name)
  *	Compile one entry of a module call.
  */
 static modcallable *do_compile_modsingle(modcallable *parent,
-					 int component, CONF_ITEM *ci,
+					 rlm_components_t component, CONF_ITEM *ci,
 					 int grouptype,
 					 char const **modname)
 {
@@ -2164,7 +2160,7 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 }
 
 modcallable *compile_modsingle(modcallable *parent,
-			       int component, CONF_ITEM *ci,
+			       rlm_components_t component, CONF_ITEM *ci,
 			       char const **modname)
 {
 	modcallable *ret = do_compile_modsingle(parent, component, ci,
@@ -2179,7 +2175,7 @@ modcallable *compile_modsingle(modcallable *parent,
  *	Internal compile group code.
  */
 static modcallable *do_compile_modgroup(modcallable *parent,
-					int component, CONF_SECTION *cs,
+					rlm_components_t component, CONF_SECTION *cs,
 					int grouptype, int parentgrouptype)
 {
 	int i;
@@ -2316,7 +2312,7 @@ set_codes:
 }
 
 modcallable *compile_modgroup(modcallable *parent,
-			      int component, CONF_SECTION *cs)
+			      rlm_components_t component, CONF_SECTION *cs)
 {
 	modcallable *ret = do_compile_modgroup(parent, component, cs,
 					       GROUPTYPE_SIMPLE,
@@ -2326,7 +2322,7 @@ modcallable *compile_modgroup(modcallable *parent,
 }
 
 void add_to_modcallable(modcallable **parent, modcallable *this,
-			int component, char const *name)
+			rlm_components_t component, char const *name)
 {
 	modgroup *g;
 
