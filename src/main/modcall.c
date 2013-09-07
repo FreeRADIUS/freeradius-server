@@ -941,8 +941,7 @@ calculate_result:
 	 *	We're higher than any previous priority, remember this
 	 *	return code and priority.
 	 */
-	if ((priority >= entry->priority) &&
-	    (result != entry->result)) {
+	if (priority >= entry->priority) {
 		entry->result = result;
 		entry->priority = priority;
 	}
