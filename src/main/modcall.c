@@ -58,9 +58,9 @@ struct modcallable {
 	int actions[RLM_MODULE_NUMCODES];
 };
 
-#define MOD_LOG_OPEN_BRACE(_name) RDEBUG2("%.*s%s %s {", depth + 1, modcall_spaces, _name, c->name)
+#define MOD_LOG_OPEN_BRACE(_name) RDEBUG2("%.*s%s %s {", depth + 1, modcall_spaces, _name ? _name : "", c->name)
 #define MOD_LOG_CLOSE_BRACE() RDEBUG2("%.*s} # %s %s = %s", depth + 1, modcall_spaces, \
-				      cf_section_name1(g->cs), c->name ? c->name : "", \
+				      cf_section_name1(g->cs) ? cf_section_name1(g->cs) : "", c->name ? c->name : "", \
 				      fr_int2str(mod_rcode_table, result, "<invalid>"))
 
 typedef struct {
