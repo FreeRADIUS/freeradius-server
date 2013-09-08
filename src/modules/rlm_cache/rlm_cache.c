@@ -423,7 +423,7 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 			}
 		case VPT_TYPE_LIST:
 			{
-				vp_cursor_t cursor;
+				vp_cursor_t in, out;
 				VALUE_PAIR *i;
 
 				rad_assert(map->src->type == VPT_TYPE_LIST);
@@ -435,20 +435,38 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 				}
 				if (!from) continue;
 
-				found = paircopy(c, *from);
-				if (!found) continue;
-
-				for (i = paircursor(&cursor, &vp);
+				found = NULL;
+				paircursor(&out, &found);
+				for (i = paircursor(&in, from);
 				     i != NULL;
-				     i = pairnext(&cursor)) {
+				     i = pairnext(&in)) {
+				     	/*
+				     	 *	Prevent cache control attributes being added to the cache.
+				     	 */
+				     	switch (i->da->attr) {
+					case PW_CACHE_TTL:
+					case PW_CACHE_STATUS_ONLY:
+					case PW_CACHE_MERGE:
+					case PW_CACHE_ENTRY_HITS:
+						RDEBUG("\tskipping %s", i->da->name);
+						continue;
+					default:
+						break;
+				     	}
+
+				     	vp = paircopyvp(c, i);
+				     	if (!vp) {
+				     		pairfree(&found);
+				     		return NULL;
+				     	}
 					RDEBUG("\t%s %s %s (%s)", map->dst->name,
 					       fr_int2str(fr_tokens, map->op, "<INVALID>"),
-					       map->src->name, i->da->name);
-					i->op = map->op;
+					       map->src->name, vp->da->name);
+					vp->op = map->op;
+					pairinsert(&out, vp);
 				}
 
 				pairadd(to_cache, found);
-
 				if (to_req) {
 					vp = paircopy(request, found);
 					radius_pairmove(request, to_req, vp);
