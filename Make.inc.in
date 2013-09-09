@@ -18,7 +18,20 @@ datadir		= @datadir@
 dictdir		= $(datadir)/freeradius
 logdir		= @logdir@
 includedir	= @includedir@
+
+#
+#  In some systems, we don't want to over-write ANY configuration.
+#  So we do:
+#
+#	$./configure
+#	$ make
+#	$ make -Draddbdir=/tmp/garbage install
+#
+#  and all of the configuration files go into /tmp/garbage
+#
+ifneq "${raddbdir}" ""
 raddbdir	= @raddbdir@
+endif
 modconfdir	= @modconfdir@
 radacctdir	= @radacctdir@
 top_builddir	= @abs_top_builddir@
