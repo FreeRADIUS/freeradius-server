@@ -4,7 +4,7 @@
 /*
  * missing.h	Replacements for functions that are or can be
  *		missing on some platforms.
- *		HAVE_* and WITH_* defines are substituted at 
+ *		HAVE_* and WITH_* defines are substituted at
  *		build time by make with values from autoconf.h.
  *
  * Version:	$Id$
@@ -359,14 +359,12 @@ int gettimeofday (struct timeval *tv, void *tz);
 /*
  *	Work around diffrent ctime_r styles
  */
-#ifdef CTIMERSTYLE
-#  if CTIMERSTYLE == SOLARISSTYLE
-#    define CTIME_R(a,b,c) ctime_r(a,b,c)
-#  else
-#    define CTIME_R(a,b,c) ctime_r(a,b)
-#  endif
+#if defined(CTIMERSTYLE) && (CTIMERSTYLE == SOLARISSTYLE)
+#define CTIME_R(a,b,c) ctime_r(a,b,c)
+#define ASCTIME_R(a,b,c) asctime_r(a,b,c)
 #else
-#  define CTIME_R(a,b,c) ctime_r(a,b)
+#define CTIME_R(a,b,c) ctime_r(a,b)
+#define ASCTIME_R(a,b,c) asctime_r(a,b)
 #endif
 
 #ifdef WIN32
