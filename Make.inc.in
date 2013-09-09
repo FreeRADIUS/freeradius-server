@@ -29,7 +29,7 @@ includedir	= @includedir@
 #
 #  and all of the configuration files go into /tmp/garbage
 #
-ifneq "${raddbdir}" ""
+ifeq "${raddbdir}" ""
 raddbdir	= @raddbdir@
 endif
 modconfdir	= @modconfdir@
