@@ -427,11 +427,12 @@ void radlog_request(log_type_t type, log_debug_t lvl, REQUEST *request, char con
 		if (log_dates_utc) {
 			struct tm utc;
 			gmtime_r(&timeval, &utc);
-			asctime_r(&utc, buffer);
+			ASCTIME_R(&utc, buffer, sizeof(buffer) - 1);
 		} else
 #endif
+		{
 			CTIME_R(&timeval, buffer, sizeof(buffer) - 1);
-
+		}
 		len = strlen(buffer);
 		p = strrchr(buffer, '\n');
 		if (p) {
