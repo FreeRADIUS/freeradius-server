@@ -287,14 +287,12 @@ DICT_VENDOR	*dict_vendorbyvalue(int vendor);
 #endif
 
 /* get around diffrent ctime_r styles */
-#ifdef CTIMERSTYLE
-#if CTIMERSTYLE == SOLARISSTYLE
+#if defined(CTIMERSTYLE) && ( CTIMERSTYLE == SOLARISSTYLE)
 #define CTIME_R(a,b,c) ctime_r(a,b,c)
+#define ASCTIME_R(a,b,c) asctime_r(a,b,c)
 #else
 #define CTIME_R(a,b,c) ctime_r(a,b)
-#endif
-#else
-#define CTIME_R(a,b,c) ctime_r(a,b)
+#define ASCTIME_R(a,b,c) asctime_r(a,b)
 #endif
 
 /* md5.c */
