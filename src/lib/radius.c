@@ -1716,8 +1716,8 @@ int rad_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 	int			len;
 	VALUE_PAIR const	*reply;
 	char const		*what;
-	char			ip_src_buffer[128];
-	char			ip_dst_buffer[128];
+	char			ip_src_buffer[INET6_ADDRSTRLEN];
+	char			ip_dst_buffer[INET6_ADDRSTRLEN];
 
 	/*
 	 *	A 4K packet, aligned on 64-bits.
@@ -2064,12 +2064,10 @@ int rad_send(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 	} else if (fr_debug_flag) {
 	  	DEBUG("Sending %s of id %d from %s port %u to %s port %u\n", what,
 	  	      packet->id,
-	  	      inet_ntop(packet->src_ipaddr.af,
-				&packet->src_ipaddr.ipaddr,
-				ip_src_buffer, sizeof(ip_src_buffer)),
+	  	      inet_ntop(packet->src_ipaddr.af, &packet->src_ipaddr.ipaddr,
+	  	      		ip_src_buffer, sizeof(ip_src_buffer)),
 		      packet->src_port,
-		      inet_ntop(packet->dst_ipaddr.af,
-				&packet->dst_ipaddr.ipaddr,
+		      inet_ntop(packet->dst_ipaddr.af, &packet->dst_ipaddr.ipaddr,
 				ip_dst_buffer, sizeof(ip_dst_buffer)),
 		      packet->dst_port);
 
