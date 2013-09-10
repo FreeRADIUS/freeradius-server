@@ -1409,7 +1409,7 @@ Optional Packages:
   --with-experimental-modules
                           use experimental and unstable modules. (default=no,
                           unless --enable-developer=yes)
-  --with-udpfromto        compile in UDPFROMTO support. (default=no)
+  --with-udpfromto        compile in UDPFROMTO support. (default=yes)
   --with-openssl          use OpenSSL. (default=yes)
   --with-openssl-includes=DIR
                           directory to look for OpenSSL include files
@@ -5292,7 +5292,7 @@ if test "${with_experimental_modules+set}" = set; then :
 fi
 
 
-WITH_UDPFROMTO=no
+WITH_UDPFROMTO=yes
 
 # Check whether --with-udpfromto was given.
 if test "${with_udpfromto+set}" = set; then :

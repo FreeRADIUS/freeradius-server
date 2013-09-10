@@ -455,9 +455,9 @@ AC_ARG_WITH(experimental-modules,
 dnl #
 dnl #  extra argument: --with-udpfromto
 dnl #
-WITH_UDPFROMTO=no
+WITH_UDPFROMTO=yes
 AC_ARG_WITH(udpfromto,
-[  --with-udpfromto        compile in UDPFROMTO support. (default=no)],
+[  --with-udpfromto        compile in UDPFROMTO support. (default=yes)],
 [ case "$withval" in
   yes)
     WITH_UDPFROMTO=yes
