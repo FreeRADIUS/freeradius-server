@@ -342,7 +342,7 @@ dnl #  extra argument: --with-threads
 dnl #
 WITH_THREADS=yes
 AC_ARG_WITH(threads,
-[  --with-threads          Use threads, if available.  (default=yes) ],
+[  --with-threads          use threads, if available.  (default=yes) ],
 [ case "$withval" in
   yes)
     ;;
@@ -356,7 +356,7 @@ dnl #  extra argument: --with-tcp
 dnl #
 WITH_TCP=yes
 AC_ARG_WITH(tcp,
-[  --with-tcp              Compile in TCP support. (default=yes)],
+[  --with-tcp              compile in TCP support. (default=yes)],
 [ case "$withval" in
   yes)
     ;;
@@ -373,7 +373,7 @@ dnl #  extra argument: --with-vmps
 dnl #
 WITH_VMPS=yes
 AC_ARG_WITH(vmps,
-[  --with-vmps             Compile in VMPS support. (default=yes)],
+[  --with-vmps             compile in VMPS support. (default=yes)],
 [ case "$withval" in
   yes)
     ;;
@@ -390,7 +390,7 @@ dnl #  extra argument: --with-dhcp
 dnl #
 WITH_DHCP=yes
 AC_ARG_WITH(dhcp,
-[  --with-dhcp             Compile in DHCP support. (default=yes)],
+[  --with-dhcp             compile in DHCP support. (default=yes)],
 [ case "$withval" in
   yes)
     ;;
@@ -416,7 +416,7 @@ AC_ARG_WITH(static_modules,
 
 USE_SHARED_LIBS=yes
 AC_ARG_WITH(shared-libs,
-[  --with-shared-libs             Build dynamic libraries and link against them. (default=yes)],
+[  --with-shared-libs               build dynamic libraries and link against them. (default=yes)],
 [ case "$withval" in
   no)
     USE_SHARED_LIBS=no
@@ -438,7 +438,7 @@ dnl #  extra argument: --with-experimental-modules
 dnl #
 EXPERIMENTAL=
 AC_ARG_WITH(experimental-modules,
-[  --with-experimental-modules      Use experimental and unstable modules. (default=no, unless --enable-developer=yes) ],
+[  --with-experimental-modules      use experimental and unstable modules. (default=no, unless --enable-developer=yes) ],
 [ case "$withval" in
   yes)
     EXPERIMENTAL=yes
@@ -451,11 +451,30 @@ AC_ARG_WITH(experimental-modules,
 )
 
 dnl #
+dnl #  extra argument: --with-udpfromto
+dnl #
+WITH_UDPFROMTO=no
+AC_ARG_WITH(udpfromto,
+[  --with-udpfromto                 compile in UDPFROMTO support. (default=no)],
+[ case "$withval" in
+  yes)
+    WITH_UDPFROMTO=yes
+    ;;
+  *)
+    WITH_UDPFROMTO=no
+  esac ]
+)
+
+if test "x$WITH_UDPFROMTO" = "xyes"; then
+  AC_DEFINE(WITH_UDPFROMTO, [], [define if you want udpfromto])
+fi
+
+dnl #
 dnl #  extra argument: --with-openssl
 dnl #
 WITH_OPENSSL=yes
 AC_ARG_WITH(openssl,
-[  --with-openssl                   Use OpenSSL. (default=yes)],
+[  --with-openssl                   use OpenSSL. (default=yes)],
 [ case "$withval" in
   no)
     WITH_OPENSSL=no
@@ -471,7 +490,7 @@ dnl #  extra argument: --with-openssl-includes=dir
 dnl #
 OPENSSL_INCLUDE_DIR=
 AC_ARG_WITH(openssl-includes,
-[  --with-openssl-includes=DIR      Directory to look for OpenSSL include files],
+[  --with-openssl-includes=DIR      directory to look for OpenSSL include files in],
 [ case "$withval" in
   *) OPENSSL_INCLUDE_DIR="$withval"
     ;;
@@ -483,7 +502,7 @@ dnl #  extra argument: --with-openssl-libraries=dir
 dnl #
 OPENSSL_LIB_DIR=
 AC_ARG_WITH(openssl-libraries,
-[  --with-openssl-libraries=DIR     Directory to look for OpenSSL library files],
+[  --with-openssl-libraries=DIR     directory to look for OpenSSL library files in],
 [ case "$withval" in
   *) OPENSSL_LIB_DIR="$withval"
     ;;
@@ -500,7 +519,7 @@ dnl #
 dnl #  extra argument: --with-rlm-FOO-lib-dir
 dnl #
 AC_ARG_WITH(rlm-FOO-lib-dir,
-[  --with-rlm-FOO-lib-dir=DIR       Directory to look for library files used by module FOO],
+[  --with-rlm-FOO-lib-dir=DIR       directory to look for library files used by module FOO in],
 [ case "$withval" in
   *)
     ;;
@@ -511,31 +530,12 @@ dnl #
 dnl #  extra argument: --with-rlm-FOO-include-dir
 dnl #
 AC_ARG_WITH(rlm-FOO-include-dir,
-[  --with-rlm-FOO-include-dir=DIR   Directory to look for include files used by module FOO],
+[  --with-rlm-FOO-include-dir=DIR   directory to look for include files used by module FOO in],
 [ case "$withval" in
   *)
     ;;
   esac ]
 )
-
-dnl #
-dnl #  extra argument: --with-udpfromto
-dnl #
-WITH_UDPFROMTO=no
-AC_ARG_WITH(udpfromto,
-[  --with-udpfromto        Compile in UDPFROMTO support. (default=no)],
-[ case "$withval" in
-  yes)
-    WITH_UDPFROMTO=yes
-    ;;
-  *)
-    WITH_UDPFROMTO=no
-  esac ]
-)
-
-if test "x$WITH_UDPFROMTO" = "xyes"; then
-  AC_DEFINE(WITH_UDPFROMTO, [], [define if you want udpfromto])
-fi
 
 dnl #############################################################
 dnl #
@@ -1202,8 +1202,7 @@ dnl Check for talloc
 dnl extra argument: --with-talloc-include-dir=DIR
 talloc_include_dir=
 AC_ARG_WITH(talloc-include-dir,
-  [AS_HELP_STRING([--with-talloc-include-dir=DIR],
-  [Directory where the talloc includes may be found])],
+  [  --with-talloc-include-dir=DIR    directory to look for talloc include files in],
   [case "$withval" in
     no)
       AC_MSG_ERROR([Need talloc-include-dir])
@@ -1219,8 +1218,7 @@ dnl Check for talloc
 dnl extra argument: --with-talloc-lib-dir=DIR
 talloc_lib_dir=
 AC_ARG_WITH(talloc-lib-dir,
-  [AS_HELP_STRING([--with-talloc-lib-dir=DIR],
-  [Directory where the talloc libs may be found])],
+  [  --with-talloc-lib-dir=DIR        directory to look for talloc library files in],
   [case "$withval" in
     no)
       AC_MSG_ERROR([Need talloc-lib-dir])
@@ -1279,7 +1277,7 @@ dnl #
 dnl extra argument: --with-pcre-lib-dir
 pcre_lib_dir=
 AC_ARG_WITH(rlm-pcre-lib-dir,
-[  --with-pcre-lib-dir=DIR       directory for PCRE library files []],
+[  --with-pcre-lib-dir=DIR          directory to look for PCRE library files in],
 [ case "$withval" in
     no)
 	AC_MSG_ERROR(Need rlm-pcre-lib-dir)
@@ -1295,7 +1293,7 @@ AC_ARG_WITH(rlm-pcre-lib-dir,
 dnl extra argument: --with-pcre-include--dir
 pcre_include_dir=
 AC_ARG_WITH(rlm-pcre-include-dir,
-[  --with-pcre-include-dir=DIR   directory for PCRE include files []],
+[  --with-pcre-include-dir=DIR      directory to look for PCRE include files in],
 [ case "$withval" in
     no)
 	AC_MSG_ERROR(Need rlm-pcre-include-dir)

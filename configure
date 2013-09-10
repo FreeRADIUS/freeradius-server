@@ -743,12 +743,12 @@ with_static_modules
 with_shared_libs
 with_modules
 with_experimental_modules
+with_udpfromto
 with_openssl
 with_openssl_includes
 with_openssl_libraries
 with_rlm_FOO_lib_dir
 with_rlm_FOO_include_dir
-with_udpfromto
 with_talloc_include_dir
 with_talloc_lib_dir
 with_rlm_pcre_lib_dir
@@ -1393,26 +1393,24 @@ Optional Packages:
   --with-radacctdir=DIR   directory for detail files LOGDIR/radacct
   --with-raddbdir=DIR     directory for config files SYSCONFDIR/raddb
   --with-ascend-binary    include support for Ascend binary filter attributes (default=yes)
-  --with-threads          Use threads, if available.  (default=yes)
-  --with-tcp              Compile in TCP support. (default=yes)
-  --with-vmps             Compile in VMPS support. (default=yes)
-  --with-dhcp             Compile in DHCP support. (default=yes)
+  --with-threads          use threads, if available.  (default=yes)
+  --with-tcp              compile in TCP support. (default=yes)
+  --with-vmps             compile in VMPS support. (default=yes)
+  --with-dhcp             compile in DHCP support. (default=yes)
   --with-static-modules=QUOTED-MODULE-LIST
-  --with-shared-libs             Build dynamic libraries and link against them. (default=yes)
+  --with-shared-libs               build dynamic libraries and link against them. (default=yes)
   --with-modules=QUOTED-MODULE-LIST
-  --with-experimental-modules      Use experimental and unstable modules. (default=no, unless --enable-developer=yes)
-  --with-openssl                   Use OpenSSL. (default=yes)
-  --with-openssl-includes=DIR      Directory to look for OpenSSL include files
-  --with-openssl-libraries=DIR     Directory to look for OpenSSL library files
-  --with-rlm-FOO-lib-dir=DIR       Directory to look for library files used by module FOO
-  --with-rlm-FOO-include-dir=DIR   Directory to look for include files used by module FOO
-  --with-udpfromto        Compile in UDPFROMTO support. (default=no)
-  --with-talloc-include-dir=DIR
-                          Directory where the talloc includes may be found
-  --with-talloc-lib-dir=DIR
-                          Directory where the talloc libs may be found
-  --with-pcre-lib-dir=DIR       directory for PCRE library files
-  --with-pcre-include-dir=DIR   directory for PCRE include files
+  --with-experimental-modules      use experimental and unstable modules. (default=no, unless --enable-developer=yes)
+  --with-udpfromto                 compile in UDPFROMTO support. (default=no)
+  --with-openssl                   use OpenSSL. (default=yes)
+  --with-openssl-includes=DIR      directory to look for OpenSSL include files in
+  --with-openssl-libraries=DIR     directory to look for OpenSSL library files in
+  --with-rlm-FOO-lib-dir=DIR       directory to look for library files used by module FOO in
+  --with-rlm-FOO-include-dir=DIR   directory to look for include files used by module FOO in
+  --with-talloc-include-dir=DIR    directory to look for talloc include files in
+  --with-talloc-lib-dir=DIR        directory to look for talloc library files in
+  --with-pcre-lib-dir=DIR          directory to look for PCRE library files in
+  --with-pcre-include-dir=DIR      directory to look for PCRE include files in
 
 Some influential environment variables:
   CC          C compiler command
@@ -5268,6 +5266,27 @@ if test "${with_experimental_modules+set}" = set; then :
 fi
 
 
+WITH_UDPFROMTO=no
+
+# Check whether --with-udpfromto was given.
+if test "${with_udpfromto+set}" = set; then :
+  withval=$with_udpfromto;  case "$withval" in
+  yes)
+    WITH_UDPFROMTO=yes
+    ;;
+  *)
+    WITH_UDPFROMTO=no
+  esac
+
+fi
+
+
+if test "x$WITH_UDPFROMTO" = "xyes"; then
+
+$as_echo "#define WITH_UDPFROMTO /**/" >>confdefs.h
+
+fi
+
 WITH_OPENSSL=yes
 
 # Check whether --with-openssl was given.
@@ -5330,27 +5349,6 @@ if test "${with_rlm_FOO_include_dir+set}" = set; then :
 
 fi
 
-
-WITH_UDPFROMTO=no
-
-# Check whether --with-udpfromto was given.
-if test "${with_udpfromto+set}" = set; then :
-  withval=$with_udpfromto;  case "$withval" in
-  yes)
-    WITH_UDPFROMTO=yes
-    ;;
-  *)
-    WITH_UDPFROMTO=no
-  esac
-
-fi
-
-
-if test "x$WITH_UDPFROMTO" = "xyes"; then
-
-$as_echo "#define WITH_UDPFROMTO /**/" >>confdefs.h
-
-fi
 
 
 CHECKRAD=checkrad
