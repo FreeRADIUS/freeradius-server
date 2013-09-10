@@ -786,10 +786,8 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			(unsigned int) elapsed.tv_sec, ((unsigned int) elapsed.tv_usec / 1000));
 	}
 
-	if ((fr_debug_flag > 1) && current->vps) {
-		if (conf->do_sort) {
-			pairsort(&current->vps, true);
-		}
+	if (conf->print_packet && (fr_debug_flag > 1) && current->vps) {
+		pairsort(&current->vps, true);
 		vp_printlist(log_dst, current->vps);
 		pairfree(&current->vps);
 	}
