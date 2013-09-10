@@ -1401,7 +1401,7 @@ Optional Packages:
   --with-shared-libs               build dynamic libraries and link against them. (default=yes)
   --with-modules=QUOTED-MODULE-LIST
   --with-experimental-modules      use experimental and unstable modules. (default=no, unless --enable-developer=yes)
-  --with-udpfromto                 compile in UDPFROMTO support. (default=no)
+  --with-udpfromto                 compile in UDPFROMTO support. (default=yes)
   --with-openssl                   use OpenSSL. (default=yes)
   --with-openssl-includes=DIR      directory to look for OpenSSL include files in
   --with-openssl-libraries=DIR     directory to look for OpenSSL library files in
@@ -5266,7 +5266,7 @@ if test "${with_experimental_modules+set}" = set; then :
 fi
 
 
-WITH_UDPFROMTO=no
+WITH_UDPFROMTO=yes
 
 # Check whether --with-udpfromto was given.
 if test "${with_udpfromto+set}" = set; then :
