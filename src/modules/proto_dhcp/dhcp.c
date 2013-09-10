@@ -405,9 +405,9 @@ int fr_dhcp_send(RADIUS_PACKET *packet)
 		char type_buf[64];
 		char const *name = type_buf;
 #ifdef WITH_UDPFROMTO
-		char src_ip_buf[256];
+		char src_ip_buf[INET6_ADDRSTRLEN];
 #endif
-		char dst_ip_buf[256];
+		char dst_ip_buf[INET6_ADDRSTRLEN];
 
 		if ((packet->code >= PW_DHCP_DISCOVER) &&
 		    (packet->code <= PW_DHCP_INFORM)) {
@@ -425,14 +425,10 @@ int fr_dhcp_send(RADIUS_PACKET *packet)
 #endif
 		   name, (unsigned int) packet->id,
 #ifdef WITH_UDPFROMTO
-		   inet_ntop(packet->src_ipaddr.af,
-		     &packet->src_ipaddr.ipaddr,
-		     src_ip_buf, sizeof(src_ip_buf)),
+		   inet_ntop(packet->src_ipaddr.af, &packet->src_ipaddr.ipaddr, src_ip_buf, sizeof(src_ip_buf)),
 		   packet->src_port,
 #endif
-		   inet_ntop(packet->dst_ipaddr.af,
-		     &packet->dst_ipaddr.ipaddr,
-		     dst_ip_buf, sizeof(dst_ip_buf)),
+		   inet_ntop(packet->dst_ipaddr.af, &packet->dst_ipaddr.ipaddr, dst_ip_buf, sizeof(dst_ip_buf)),
 		   packet->dst_port);
 	}
 
