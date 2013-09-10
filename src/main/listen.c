@@ -2827,6 +2827,8 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head,
 	 */
 	rad_assert(head && (*head == NULL));
 
+	memset(&server_ipaddr, 0, sizeof(server_ipaddr));
+
 	last = head;
 	server_ipaddr.af = AF_UNSPEC;
 
@@ -3113,7 +3115,8 @@ add_sockets:
 		 *	and use it
 		 */
 		for (this = *head; this != NULL; this = this->next) {
-			if (this->type == RAD_LISTEN_AUTH) {
+			switch (this->type) {
+			case RAD_LISTEN_AUTH:
 				sock = this->data;
 
 				if (is_loopback(&sock->my_ipaddr)) continue;
@@ -3123,9 +3126,8 @@ add_sockets:
 				}
 				port = sock->my_port + 2;
 				break;
-			}
 #ifdef WITH_ACCT
-			if (this->type == RAD_LISTEN_ACCT) {
+			case RAD_LISTEN_ACCT:
 				sock = this->data;
 
 				if (is_loopback(&sock->my_ipaddr)) continue;
@@ -3135,8 +3137,10 @@ add_sockets:
 				}
 				port = sock->my_port + 1;
 				break;
-			}
 #endif
+			default:
+				break;
+			}
 		}
 
 		/*
