@@ -4,7 +4,7 @@
 # copyright 2013 Olivier Beytrison <olivier@heliosnet.org>
 #
 
-dn: cn=radiusClients,cn=schema,cn=config
+dn: cn=radiusClient,cn=schema,cn=config
 objectClass: olcSchemaConfig
 cn: radiusClients
 olcAttributeTypes: ( 1.3.6.1.4.1.11344.1.100.2.1 NAME 'radiusClientIdentifier' SINGLE-VALUE DESC 'Client Identifier' EQUALITY caseIgnoreMatch SUBSTR caseIgnoreSubstringsMatch SYNTAX '1.3.6.1.4.1.1466.115.121.1.15' )
