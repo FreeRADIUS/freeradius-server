@@ -345,6 +345,36 @@ bool fr_packet_list_socket_del(fr_packet_list_t *pl, int sockfd)
 	return true;
 }
 
+
+static void fill_ids_array(fr_packet_socket_t *ps)
+{
+	int i;
+
+	ps->ids_index = 0;
+
+	/*
+	 *	initialize the array with 256 IDs
+	 */
+	for (i = 0; i < 256; i++) {
+		ps->ids[i] = i;
+	}
+
+	/*
+	 *	Swap this one with a random other one from later in
+	 *	the list.
+	 */
+	for (i = 0; i < 256; i++) {
+		int tmp;
+		int k = fr_rand() % (256 - i);
+
+		tmp = ps->ids[i];
+		ps->ids[i] = ps->ids[i + k];
+		ps->ids[i + k] = tmp;
+	}
+
+	printf("\n");
+}
+
 bool fr_packet_list_socket_add(fr_packet_list_t *pl, int sockfd, int proto,
 			      fr_ipaddr_t *dst_ipaddr, int dst_port,
 			      void *ctx)
@@ -433,11 +463,7 @@ bool fr_packet_list_socket_add(fr_packet_list_t *pl, int sockfd, int proto,
 	/*
 	 *	Populate the ID array with a random list of IDs.
 	 */
-	ps->ids_index = 0;
-
-	for (i = 0; i < 256; i++) {
-		ps->ids[fr_rand() & 0xff] = i;
-	}
+	fill_ids_array(ps);
 
 	return true;
 }
@@ -756,10 +782,7 @@ bool fr_packet_list_id_alloc(fr_packet_list_t *pl, int proto,
 	 *	Refill the ID array with random IDs.
 	 */
 	if (ps->ids_index == 256) {
-		for (i = 0; i < 256; i++) {
-			ps->ids[fr_rand() & 0xff] = i;
-		}
-		ps->ids_index = 0;
+		fill_ids_array(ps);
 	}
 
 	return true;
