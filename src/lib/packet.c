@@ -371,8 +371,6 @@ static void fill_ids_array(fr_packet_socket_t *ps)
 		ps->ids[i] = ps->ids[i + k];
 		ps->ids[i + k] = tmp;
 	}
-
-	printf("\n");
 }
 
 bool fr_packet_list_socket_add(fr_packet_list_t *pl, int sockfd, int proto,
