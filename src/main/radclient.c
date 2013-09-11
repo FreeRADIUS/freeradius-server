@@ -168,7 +168,6 @@ static int mschapv1_encode(RADIUS_PACKET *packet, VALUE_PAIR **request,
 
 	challenge = paircreate(packet, PW_MSCHAP_CHALLENGE, VENDORPEC_MICROSOFT);
 	if (!challenge) {
-		fprintf(stderr, "GOT IT %d!\n", __LINE__);
 		return 0;
 	}
 
@@ -181,7 +180,6 @@ static int mschapv1_encode(RADIUS_PACKET *packet, VALUE_PAIR **request,
 
 	response = paircreate(packet, PW_MSCHAP_RESPONSE, VENDORPEC_MICROSOFT);
 	if (!response) {
-		fprintf(stderr, "GOT IT %d!\n", __LINE__);
 		return 0;
 	}
 
