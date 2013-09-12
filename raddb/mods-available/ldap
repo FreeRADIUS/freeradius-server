@@ -9,6 +9,14 @@ ldap {
 	#
 	#  Note that this needs to match the name in the LDAP
 	#  server certificate, if you're using ldaps.
+	#
+	#  The ldap client libraries can do fail-over from one
+	#  server to another.  Enable this by specifying
+	#  multiple host names, separated by commas.
+	#
+	#	e.g. server = "ldap1.example.org,ldap2.example.org"
+	#
+	#  Otherwise, it will use just one server.
 	server = "ldap.example.org"
 
 	#  Port to connect on, defaults to 389. Setting this to
