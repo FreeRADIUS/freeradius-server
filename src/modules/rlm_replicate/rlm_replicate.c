@@ -121,7 +121,7 @@ static int replicate_packet(UNUSED void *instance, REQUEST *request,
 		 *	we built here.
 		 */
 		if (!packet) {
-			packet = rad_alloc(NULL, 1);
+			packet = rad_alloc(request, 1);
 			if (!packet) return RLM_MODULE_FAIL;
 			packet->sockfd = -1;
 			packet->code = code;
@@ -154,8 +154,6 @@ static int replicate_packet(UNUSED void *instance, REQUEST *request,
 					goto done;
 				}
 			}
-
-
 
 			/*
 			 *	For CHAP, create the CHAP-Challenge if
