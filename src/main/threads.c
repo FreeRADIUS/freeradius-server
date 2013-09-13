@@ -597,9 +597,6 @@ static int request_dequeue(REQUEST **prequest)
 	return 1;
 }
 
-#undef DEBUG2
-#define DEBUG2(fmt, ...)	radlog(L_INFO, fmt, ## __VA_ARGS__)
-
 
 /*
  *	The main thread handler for requests.
