@@ -29,7 +29,10 @@ RCSID("$Id$")
 static void cleanup(RADIUS_PACKET *packet)
 {
 	if (!packet) return;
-	if (packet->sockfd >= 0) close(packet->sockfd);
+	if (packet->sockfd >= 0) {
+		close(packet->sockfd);
+	}
+
 	rad_free(&packet);
 }
 
@@ -47,11 +50,9 @@ static void cleanup(RADIUS_PACKET *packet)
  * @param[in] request 	The current request.
  * @param[in] list	of attributes to copy to the duplicate packet.
  * @param[in] code	to write into the code field of the duplicate packet.
- * @return RCODE fail on error, invalid if list does not exist, noop if no
- * 	   replications succeeded, else ok.
+ * @return RCODE fail on error, invalid if list does not exist, noop if no replications succeeded, else ok.
  */
-static int replicate_packet(UNUSED void *instance, REQUEST *request,
-			    pair_lists_t list, unsigned int code)
+static int replicate_packet(UNUSED void *instance, REQUEST *request, pair_lists_t list, unsigned int code)
 {
 	int rcode = RLM_MODULE_NOOP;
 	VALUE_PAIR *vp, **vps;
@@ -67,11 +68,9 @@ static int replicate_packet(UNUSED void *instance, REQUEST *request,
 	 */
 	paircursor(&cursor, &request->config_items);
 	while ((vp = pairfindnext(&cursor, PW_REPLICATE_TO_REALM, 0, TAG_ANY))) {
-
 		realm = realm_find2(vp->vp_strvalue);
 		if (!realm) {
-			REDEBUG2("Cannot Replicate to unknown realm \"%s\"",
-				vp->vp_strvalue);
+			REDEBUG2("Cannot Replicate to unknown realm \"%s\"", vp->vp_strvalue);
 			continue;
 		}
 
@@ -80,8 +79,7 @@ static int replicate_packet(UNUSED void *instance, REQUEST *request,
 		 */
 		switch (request->packet->code) {
 		default:
-			REDEBUG2("Cannot replicate unknown packet code %d",
-				request->packet->code);
+			REDEBUG2("Cannot replicate unknown packet code %d", request->packet->code);
 			cleanup(packet);
 			return RLM_MODULE_FAIL;
 
@@ -105,14 +103,13 @@ static int replicate_packet(UNUSED void *instance, REQUEST *request,
 		}
 
 		if (!pool) {
-			RWDEBUG2("Cancelling replication to Realm %s, as the realm is local.", realm->name);
+			RWDEBUG2("Cancelling replication to Realm %s, as the realm is local", realm->name);
 			continue;
 		}
 
 		home = home_server_ldb(realm->name, pool, request);
 		if (!home) {
-			REDEBUG2("Failed to find live home server for realm %s",
-				realm->name);
+			REDEBUG2("Failed to find live home server for realm %s", realm->name);
 			continue;
 		}
 
@@ -122,11 +119,12 @@ static int replicate_packet(UNUSED void *instance, REQUEST *request,
 		 */
 		if (!packet) {
 			packet = rad_alloc(request, 1);
-			if (!packet) return RLM_MODULE_FAIL;
-			packet->sockfd = -1;
+			if (!packet) {
+				return RLM_MODULE_FAIL;
+			}
+
 			packet->code = code;
 			packet->id = fr_rand() & 0xff;
-
 			packet->sockfd = fr_socket(&home->src_ipaddr, 0);
 			if (packet->sockfd < 0) {
 				REDEBUG("Failed opening socket: %s", fr_strerror());
@@ -136,9 +134,8 @@ static int replicate_packet(UNUSED void *instance, REQUEST *request,
 
 			vps = radius_list(request, list);
 			if (!vps) {
-				RWDEBUG("List '%s' doesn't exist for "
-				       "this packet", fr_int2str(pair_lists,
-				       list, "<INVALID>"));
+				RWDEBUG("List '%s' doesn't exist for this packet",
+					fr_int2str(pair_lists, list, "<INVALID>"));
 				rcode = RLM_MODULE_INVALID;
 				goto done;
 			}
@@ -163,12 +160,10 @@ static int replicate_packet(UNUSED void *instance, REQUEST *request,
 			    (pairfind(request->packet->vps, PW_CHAP_PASSWORD, 0, TAG_ANY) != NULL) &&
 			    (pairfind(request->packet->vps, PW_CHAP_CHALLENGE, 0, TAG_ANY) == NULL)) {
 				uint8_t *p;
-				vp = radius_paircreate(request, &packet->vps,
-						       PW_CHAP_CHALLENGE, 0);
+				vp = radius_paircreate(request, &packet->vps, PW_CHAP_CHALLENGE, 0);
 				vp->length = AUTH_VECTOR_LEN;
 				vp->vp_octets = p = talloc_array(vp, uint8_t, vp->length);
-				memcpy(p, request->packet->vector,
-				       AUTH_VECTOR_LEN);
+				memcpy(p, request->packet->vector, AUTH_VECTOR_LEN);
 			}
 		} else {
 			size_t i;
@@ -194,11 +189,10 @@ static int replicate_packet(UNUSED void *instance, REQUEST *request,
 		/*
 		 *	Encode, sign and then send the packet.
 		 */
-		RDEBUG("Replicating list '%s' to Realm '%s'",
-		       fr_int2str(pair_lists, list, "<INVALID>"),realm->name);
+		RDEBUG("Replicating list '%s' to Realm '%s'", fr_int2str(pair_lists, list, "<INVALID>"),
+		       realm->name);
 		if (rad_send(packet, NULL, home->secret) < 0) {
-			REDEBUG("Failed replicating packet: %s",
-			       fr_strerror());
+			REDEBUG("Failed replicating packet: %s", fr_strerror());
 			rcode = RLM_MODULE_FAIL;
 			goto done;
 		}
@@ -215,54 +209,46 @@ static int replicate_packet(UNUSED void *instance, REQUEST *request,
 	return rcode;
 }
 #else
-static rlm_rcode_t replicate_packet(void *instance, REQUEST *request,
-			    pair_lists_t list, unsigned int code)
+static rlm_rcode_t replicate_packet(void *instance, REQUEST *request, pair_lists_t list, unsigned int code)
 {
-	RDEBUG("Replication is unsupported in this build.");
+	RDEBUG("Replication is unsupported in this build");
 	return RLM_MODULE_FAIL;
 }
 #endif
 
 static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 {
-	return replicate_packet(instance, request, PAIR_LIST_REQUEST,
-				request->packet->code);
+	return replicate_packet(instance, request, PAIR_LIST_REQUEST, request->packet->code);
 }
 
 static rlm_rcode_t mod_preaccounting(void *instance, REQUEST *request)
 {
-	return replicate_packet(instance, request, PAIR_LIST_REQUEST,
-				request->packet->code);
+	return replicate_packet(instance, request, PAIR_LIST_REQUEST, request->packet->code);
 }
 
 static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 {
-	return replicate_packet(instance, request, PAIR_LIST_REPLY,
-				request->reply->code);
+	return replicate_packet(instance, request, PAIR_LIST_REPLY, request->reply->code);
 }
 
 static rlm_rcode_t mod_pre_proxy(void *instance, REQUEST *request)
 {
-	return replicate_packet(instance, request, PAIR_LIST_PROXY_REQUEST,
-				request->proxy->code);
+	return replicate_packet(instance, request, PAIR_LIST_PROXY_REQUEST, request->proxy->code);
 }
 
 static rlm_rcode_t mod_post_proxy(void *instance, REQUEST *request)
 {
-	return replicate_packet(instance, request, PAIR_LIST_PROXY_REPLY,
-				request->proxy_reply->code);
+	return replicate_packet(instance, request, PAIR_LIST_PROXY_REPLY, request->proxy_reply->code);
 }
 
 static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
 {
-	return replicate_packet(instance, request, PAIR_LIST_REPLY,
-				request->reply->code);
+	return replicate_packet(instance, request, PAIR_LIST_REPLY, request->reply->code);
 }
 
 static rlm_rcode_t mod_recv_coa(void *instance, REQUEST *request)
 {
-	return replicate_packet(instance, request, PAIR_LIST_REQUEST,
-				request->packet->code);
+	return replicate_packet(instance, request, PAIR_LIST_REQUEST, request->packet->code);
 }
 
 /*
@@ -284,15 +270,15 @@ module_t rlm_replicate = {
 	NULL,				/* detach */
 	{
 		NULL,			/* authentication */
-		mod_authorize,	/* authorization */
-		mod_preaccounting,/* preaccounting */
-		mod_accounting,	/* accounting */
+		mod_authorize,		/* authorization */
+		mod_preaccounting,	/* preaccounting */
+		mod_accounting,		/* accounting */
 		NULL,			/* checksimul */
-		mod_pre_proxy,	/* pre-proxy */
-		mod_post_proxy,	/* post-proxy */
-		mod_post_auth	/* post-auth */
+		mod_pre_proxy,		/* pre-proxy */
+		mod_post_proxy,		/* post-proxy */
+		mod_post_auth		/* post-auth */
 #ifdef WITH_COA
-		, mod_recv_coa, /* coa-request */
+		, mod_recv_coa,		/* coa-request */
 		NULL
 #endif
 	},
