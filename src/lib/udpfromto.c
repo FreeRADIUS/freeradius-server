@@ -12,29 +12,16 @@
  *   You should have received a copy of the GNU Lesser General Public
  *   License along with this library; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
- *
- *  Helper functions to get/set addresses of UDP packets
- *  based on recvfromto by Miquel van Smoorenburg
- *
- * recvfromto	Like recvfrom, but also stores the destination
- *		IP address. Useful on multihomed hosts.
- *
- *		Should work on Linux and BSD.
- *
- *		Copyright (C) 2002 Miquel van Smoorenburg.
- *
- *		This program is free software; you can redistribute it and/or
- *		modify it under the terms of the GNU Lesser General Public
- *		License as published by the Free Software Foundation; either
- *		version 2 of the License, or (at your option) any later version.
- *	Copyright (C) 2007 Alan DeKok <aland@deployingradius.com>
- *
- * sendfromto	added 18/08/2003, Jan Berkel <jan@sitadelle.com>
- *		Works on Linux and FreeBSD (5.x)
- *
- * Version: $Id$
  */
 
+/**
+ * $Id$
+ * @file udpfromto.c
+ * @brief Like recvfrom, but also stores the destination IP address. Useful on multihomed hosts.
+ *
+ * @copyright 2007 Alan DeKok <aland@deployingradius.com>
+ * @copyright 2002 Miquel van Smoorenburg
+ */
 RCSID("$Id$")
 
 #include <freeradius-devel/udpfromto.h>
@@ -42,7 +29,7 @@ RCSID("$Id$")
 #ifdef WITH_UDPFROMTO
 
 #ifdef HAVE_SYS_UIO_H
-#include <sys/uio.h>
+#  include <sys/uio.h>
 #endif
 
 #include <fcntl.h>
@@ -52,7 +39,7 @@ RCSID("$Id$")
  *	Mac OSX Lion doesn't define SOL_IP.  But IPPROTO_IP works.
  */
 #ifndef SOL_IP
-#define SOL_IP IPPROTO_IP
+#  define SOL_IP IPPROTO_IP
 #endif
 
 /*
@@ -70,10 +57,10 @@ RCSID("$Id$")
 #    include <linux/version.h>
 #    if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,14)
 #      if defined IPV6_2292PKTINFO
-#	undef IPV6_RECVPKTINFO
-#	undef IPV6_PKTINFO
-#	define IPV6_RECVPKTINFO IPV6_2292PKTINFO
-#	define IPV6_PKTINFO IPV6_2292PKTINFO
+#        undef IPV6_RECVPKTINFO
+#        undef IPV6_PKTINFO
+#        define IPV6_RECVPKTINFO IPV6_2292PKTINFO
+#        define IPV6_PKTINFO IPV6_2292PKTINFO
 #      endif
 #    endif
 #  endif
@@ -87,11 +74,11 @@ RCSID("$Id$")
  *	for all three calls.
  */
 #ifdef IPV6_PKTINFO
-#ifdef __linux__
-#define FR_IPV6_RECVPKTINFO IPV6_RECVPKTINFO
-#else
-#define FR_IPV6_RECVPKTINFO IPV6_PKTINFO
-#endif
+#  ifdef __linux__
+#    define FR_IPV6_RECVPKTINFO IPV6_RECVPKTINFO
+#  else
+#    define FR_IPV6_RECVPKTINFO IPV6_PKTINFO
+#  endif
 #endif
 
 int udpfromto_init(int s)
@@ -128,7 +115,7 @@ int udpfromto_init(int s)
 
 #ifdef AF_INET6
 	} else if (si.ss_family == AF_INET6) {
-#ifdef IPV6_PKTINFO
+#  ifdef IPV6_PKTINFO
 		/*
 		 *	This should actually be standard IPv6
 		 */
@@ -138,7 +125,7 @@ int udpfromto_init(int s)
 		 *	Work around Linux-specific hackery.
 		 */
 		flag = FR_IPV6_RECVPKTINFO;
-#endif
+#  endif
 #endif
 	} else {
 		/*
@@ -332,7 +319,7 @@ int sendfromto(int s, void *buf, size_t len, int flags,
 #else
 		struct sockaddr_in *s4 = (struct sockaddr_in *) from;
 
-#ifdef IP_PKTINFO
+#  ifdef IP_PKTINFO
 		struct in_pktinfo *pkt;
 
 		msgh.msg_control = cbuf;
@@ -346,9 +333,9 @@ int sendfromto(int s, void *buf, size_t len, int flags,
 		pkt = (struct in_pktinfo *) CMSG_DATA(cmsg);
 		memset(pkt, 0, sizeof(*pkt));
 		pkt->ipi_spec_dst = s4->sin_addr;
-#endif
+#  endif
 
-#ifdef IP_SENDSRCADDR
+#  ifdef IP_SENDSRCADDR
 		struct in_addr *in;
 
 		msgh.msg_control = cbuf;
@@ -361,15 +348,15 @@ int sendfromto(int s, void *buf, size_t len, int flags,
 
 		in = (struct in_addr *) CMSG_DATA(cmsg);
 		*in = s4->sin_addr;
-#endif
+#  endif
 #endif	/* IP_PKTINFO or IP_SENDSRCADDR */
 	}
 
 #ifdef AF_INET6
 	else if (from->sa_family == AF_INET6) {
-#if !defined(IPV6_PKTINFO)
+#  if !defined(IPV6_PKTINFO)
 		return sendto(s, buf, len, flags, to, tolen);
-#else
+#  else
 		struct sockaddr_in6 *s6 = (struct sockaddr_in6 *) from;
 
 		struct in6_pktinfo *pkt;
@@ -385,7 +372,7 @@ int sendfromto(int s, void *buf, size_t len, int flags,
 		pkt = (struct in6_pktinfo *) CMSG_DATA(cmsg);
 		memset(pkt, 0, sizeof(*pkt));
 		pkt->ipi6_addr = s6->sin6_addr;
-#endif	/* IPV6_PKTINFO */
+#  endif	/* IPV6_PKTINFO */
 	}
 #endif
 
@@ -410,12 +397,12 @@ int sendfromto(int s, void *buf, size_t len, int flags,
  *	reply packet should originate from virtual IP and not
  *	from the default interface the alias is bound to
  */
-#include <sys/wait.h>
+#  include <sys/wait.h>
 
-#define DEF_PORT 20000		/* default port to listen on */
-#define DESTIP "127.0.0.1"	/* send packet to localhost per default */
-#define TESTSTRING "foo"	/* what to send */
-#define TESTLEN 4			/* 4 bytes */
+#  define DEF_PORT 20000		/* default port to listen on */
+#  define DESTIP "127.0.0.1"	/* send packet to localhost per default */
+#  define TESTSTRING "foo"	/* what to send */
+#  define TESTLEN 4			/* 4 bytes */
 
 int main(int argc, char **argv)
 {
