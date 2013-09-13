@@ -248,8 +248,7 @@ typedef struct fr_packet_socket_t {
 	int		proto;
 #endif
 
-	int		ids_index;
-	uint8_t		ids[256];
+	uint8_t		id[32];
 } fr_packet_socket_t;
 
 
@@ -346,33 +345,6 @@ bool fr_packet_list_socket_del(fr_packet_list_t *pl, int sockfd)
 }
 
 
-static void fill_ids_array(fr_packet_socket_t *ps)
-{
-	int i;
-
-	ps->ids_index = 0;
-
-	/*
-	 *	initialize the array with 256 IDs
-	 */
-	for (i = 0; i < 256; i++) {
-		ps->ids[i] = i;
-	}
-
-	/*
-	 *	Swap this one with a random other one from later in
-	 *	the list.
-	 */
-	for (i = 0; i < 256; i++) {
-		int tmp;
-		int k = fr_rand() % (256 - i);
-
-		tmp = ps->ids[i];
-		ps->ids[i] = ps->ids[i + k];
-		ps->ids[i + k] = tmp;
-	}
-}
-
 bool fr_packet_list_socket_add(fr_packet_list_t *pl, int sockfd, int proto,
 			      fr_ipaddr_t *dst_ipaddr, int dst_port,
 			      void *ctx)
@@ -457,11 +429,6 @@ bool fr_packet_list_socket_add(fr_packet_list_t *pl, int sockfd, int proto,
 	 */
 	ps->sockfd = sockfd;
 	pl->num_sockets++;
-
-	/*
-	 *	Populate the ID array with a random list of IDs.
-	 */
-	fill_ids_array(ps);
 
 	return true;
 }
@@ -623,7 +590,7 @@ int fr_packet_list_num_elements(fr_packet_list_t *pl)
 bool fr_packet_list_id_alloc(fr_packet_list_t *pl, int proto,
 			    RADIUS_PACKET **request_p, void **pctx)
 {
-	int i, fd, start_i;
+	int i, j, k, fd, id, start_i, start_j, start_k;
 	int src_any = 0;
 	fr_packet_socket_t *ps;
 	RADIUS_PACKET *request = *request_p;
@@ -665,12 +632,29 @@ bool fr_packet_list_id_alloc(fr_packet_list_t *pl, int proto,
 		return false;
 	}
 
-	fd = -1;
+	/*
+	 *	FIXME: Go to an LRU system.  This prevents ID re-use
+	 *	for as long as possible.  The main problem with that
+	 *	approach is that it requires us to populate the
+	 *	LRU/FIFO when we add a new socket, or a new destination,
+	 *	which can be expensive.
+	 *
+	 *	The LRU can be avoided if the caller takes care to free
+	 *	Id's only when all responses have been received, OR after
+	 *	a timeout.
+	 *
+	 *	Right now, the random approach is almost OK... it's
+	 *	brute-force over all of the available ID's, BUT using
+	 *	random numbers for everything spreads the load a bit.
+	 *
+	 *	The old method had a hash lookup on allocation AND
+	 *	on free.  The new method has brute-force on allocation,
+	 *	and near-zero cost on free.
+	 */
+
+	id = fd = -1;
 	start_i = fr_rand() & SOCKOFFSET_MASK;
 
-	/*
-	 *	Pick a random socket which has a free ID
-	 */
 #define ID_i ((i + start_i) & SOCKOFFSET_MASK)
 	for (i = 0; i < MAX_SOCKETS; i++) {
 		if (pl->sockets[ID_i].sockfd == -1) continue; /* paranoia */
@@ -739,12 +723,35 @@ bool fr_packet_list_id_alloc(fr_packet_list_t *pl, int proto,
 		    (fr_ipaddr_cmp(&request->dst_ipaddr,
 				   &ps->dst_ipaddr) != 0)) continue;
 
+		/*
+		 *	Otherwise, this socket is OK to use.
+		 */
 
 		/*
-		 *	We have a socket with less than 256 outgoing
-		 *	connections.  There MUST be an ID free.
+		 *	Look for a free Id, starting from a random number.
 		 */
-		fd = i;
+		start_j = fr_rand() & 0x1f;
+#define ID_j ((j + start_j) & 0x1f)
+		for (j = 0; j < 32; j++) {
+			if (ps->id[ID_j] == 0xff) continue;
+
+
+			start_k = fr_rand() & 0x07;
+#define ID_k ((k + start_k) & 0x07)
+			for (k = 0; k < 8; k++) {
+				if ((ps->id[ID_j] & (1 << ID_k)) != 0) continue;
+
+				ps->id[ID_j] |= (1 << ID_k);
+				id = (ID_j * 8) + ID_k;
+				fd = i;
+				break;
+			}
+			if (fd >= 0) break;
+		}
+#undef ID_i
+#undef ID_j
+#undef ID_k
+		if (fd >= 0) break;
 		break;
 	}
 
@@ -759,41 +766,34 @@ bool fr_packet_list_id_alloc(fr_packet_list_t *pl, int proto,
 	/*
 	 *	Set the ID, source IP, and source port.
 	 */
-	request->id = ps->ids[ps->ids_index];
+	request->id = id;
 
 	request->sockfd = ps->sockfd;
 	request->src_ipaddr = ps->src_ipaddr;
 	request->src_port = ps->src_port;
 
 	/*
-	 *	If we managed didn't insert it, undo the work above.
+	 *	If we managed to insert it, we're done.
 	 */
-	if (!fr_packet_list_insert(pl, request_p)) {
-		request->id = -1;
-		request->sockfd = -1;
-		request->src_ipaddr.af = AF_UNSPEC;
-		request->src_port = 0;
-
-		return false;
+	if (fr_packet_list_insert(pl, request_p)) {
+		if (pctx) *pctx = ps->ctx;
+		ps->num_outgoing++;
+		pl->num_outgoing++;		
+		return true;
 	}
 
 	/*
-	 *	We did insert it.  Update the counters.
+	 *	Mark the ID as free.  This is the one line from
+	 *	id_free() that we care about here.
 	 */
-	if (pctx) *pctx = ps->ctx;
-	ps->num_outgoing++;
-	pl->num_outgoing++;
+	ps->id[(request->id >> 3) & 0x1f] &= ~(1 << (request->id & 0x07));
 
-	ps->ids_index++;
+	request->id = -1;
+	request->sockfd = -1;
+	request->src_ipaddr.af = AF_UNSPEC;
+	request->src_port = 0;
 
-	/*
-	 *	Refill the ID array with random IDs.
-	 */
-	if (ps->ids_index == 256) {
-		fill_ids_array(ps);
-	}
-
-	return true;
+	return false;
 }
 
 /*
@@ -814,10 +814,14 @@ bool fr_packet_list_id_free(fr_packet_list_t *pl,
 	ps = fr_socket_find(pl, request->sockfd);
 	if (!ps) return false;
 
-	/*
-	 *	Don't mark the ID as free.  We just won't use it until
-	 *	we've cycled through all 256 IDs.
-	 */
+#if 0
+	if (!ps->id[(request->id >> 3) & 0x1f] & (1 << (request->id & 0x07))) {
+		exit(1);
+	}
+#endif
+
+	ps->id[(request->id >> 3) & 0x1f] &= ~(1 << (request->id & 0x07));
+
 	ps->num_outgoing--;
 	pl->num_outgoing--;
 
