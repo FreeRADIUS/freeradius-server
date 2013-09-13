@@ -120,8 +120,9 @@ typedef struct THREAD_POOL {
 	THREAD_HANDLE *head;
 	THREAD_HANDLE *tail;
 
-	int total_threads;
 	int active_threads;	/* protected by queue_mutex */
+	int exited_threads;
+	int total_threads;
 	int max_thread_num;
 	int start_threads;
 	int max_threads;
@@ -292,6 +293,17 @@ static void reap_children(void)
 static int request_enqueue(REQUEST *request, RAD_REQUEST_FUNP fun)
 {
 	request_queue_t *entry;
+
+	/*
+	 *	If we haven't checked the number of child threads
+	 *	in a while, OR if the thread pool appears to be full,
+	 *	go manage it.
+	 */
+	if ((last_cleaned < request->timestamp) ||
+	    (thread_pool.active_threads == thread_pool.total_threads) ||
+	    (thread_pool.exited_threads > 0)) {
+		thread_pool_manage(request->timestamp);
+	}
 
 	pthread_mutex_lock(&thread_pool.queue_mutex);
 
@@ -475,7 +487,6 @@ static int request_dequeue(REQUEST **request, RAD_REQUEST_FUNP *fun)
 	return 1;
 }
 
-
 /*
  *	The main thread handler for requests.
  *
@@ -551,6 +562,17 @@ static void *request_handler_thread(void *arg)
 		rad_assert(thread_pool.active_threads > 0);
 		thread_pool.active_threads--;
 		pthread_mutex_unlock(&thread_pool.queue_mutex);
+
+		/*
+		 *	If the thread has handled too many requests, then make it
+		 *	exit.
+		 */
+		if ((thread_pool.max_requests_per_thread > 0) &&
+		    (self->request_count >= thread_pool.max_requests_per_thread)) {
+			DEBUG2("Thread %d handled too many requests",
+			       self->thread_num);
+			break;
+		}
 	} while (self->status != THREAD_CANCELLED);
 
 	DEBUG2("Thread %d exiting...", self->thread_num);
@@ -563,6 +585,10 @@ static void *request_handler_thread(void *arg)
 	 */
 	ERR_remove_state(0);
 #endif
+
+	pthread_mutex_lock(&thread_pool.queue_mutex);
+	thread_pool.exited_threads++;
+	pthread_mutex_unlock(&thread_pool.queue_mutex);
 
 	/*
 	 *  Do this as the LAST thing before exiting.
@@ -963,6 +989,25 @@ static void thread_pool_manage(time_t now)
 	int active_threads;
 
 	/*
+	 *	Loop over the thread pool, deleting exited threads.
+	 */
+	for (handle = thread_pool.head; handle; handle = next) {
+		next = handle->next;
+
+		/*
+		 *	Maybe we've asked the thread to exit, and it
+		 *	has agreed.
+		 */
+		if (handle->status == THREAD_EXITED) {
+			pthread_join(handle->pthread_id, NULL);
+			delete_thread(handle);
+			pthread_mutex_lock(&thread_pool.queue_mutex);
+			thread_pool.exited_threads--;
+			pthread_mutex_unlock(&thread_pool.queue_mutex);
+		}
+	}
+
+	/*
 	 *	We don't need a mutex lock here, as we're reading
 	 *	active_threads, and not modifying it.  We want a close
 	 *	approximation of the number of active threads, and this
@@ -1019,22 +1064,6 @@ static void thread_pool_manage(time_t now)
 	last_cleaned = now;
 
 	/*
-	 *	Loop over the thread pool, deleting exited threads.
-	 */
-	for (handle = thread_pool.head; handle; handle = next) {
-		next = handle->next;
-
-		/*
-		 *	Maybe we've asked the thread to exit, and it
-		 *	has agreed.
-		 */
-		if (handle->status == THREAD_EXITED) {
-			pthread_join(handle->pthread_id, NULL);
-			delete_thread(handle);
-		}
-	}
-
-	/*
 	 *	Only delete the spare threads if sufficient time has
 	 *	passed since we last created one.  This helps to minimize
 	 *	the amount of create/delete cycles.
@@ -1081,27 +1110,6 @@ static void thread_pool_manage(time_t now)
 				sem_post(&thread_pool.semaphore);
 				spare--;
 				break;
-			}
-		}
-	}
-
-	/*
-	 *	If the thread has handled too many requests, then make it
-	 *	exit.
-	 */
-	if (thread_pool.max_requests_per_thread > 0) {
-		for (handle = thread_pool.head; handle; handle = next) {
-			next = handle->next;
-
-			/*
-			 *	Not handling a request, but otherwise
-			 *	live, we can kill it.
-			 */
-			if ((handle->request == NULL) &&
-			    (handle->status == THREAD_RUNNING) &&
-			    (handle->request_count > thread_pool.max_requests_per_thread)) {
-				handle->status = THREAD_CANCELLED;
-				sem_post(&thread_pool.semaphore);
 			}
 		}
 	}
