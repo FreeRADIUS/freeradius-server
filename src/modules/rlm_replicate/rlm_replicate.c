@@ -26,14 +26,65 @@ RCSID("$Id$")
 #include <freeradius-devel/modules.h>
 
 #ifdef WITH_PROXY
-static void cleanup(RADIUS_PACKET *packet)
+
+/** Allocate a request packet
+ *
+ * This is done once per request with the same packet being sent to multiple realms.
+ */
+static rlm_rcode_t rlm_replicate_alloc(RADIUS_PACKET **out, REQUEST *request, pair_lists_t list, PW_CODE code)
 {
-	if (!packet) return;
-	if (packet->sockfd >= 0) {
-		close(packet->sockfd);
+	rlm_rcode_t rcode = RLM_MODULE_OK;
+	RADIUS_PACKET *packet = NULL;
+	VALUE_PAIR *vp, **vps;
+
+	*out = NULL;
+
+	packet = rad_alloc(request, 1);
+	if (!packet) {
+		return RLM_MODULE_FAIL;
+	}
+	packet->code = code;
+
+	/*
+	 *	Figure out which list in the request were replicating
+	 */
+	vps = radius_list(request, list);
+	if (!vps) {
+		RWDEBUG("List '%s' doesn't exist for this packet", fr_int2str(pair_lists, list, "<INVALID>"));
+		rcode = RLM_MODULE_INVALID;
+		goto error;
 	}
 
-	rad_free(&packet);
+	/*
+	 *	Don't assume the list actually contains any attributes.
+	 */
+	if (*vps) {
+		packet->vps = paircopy(packet, *vps);
+		if (!packet->vps) {
+			rcode = RLM_MODULE_FAIL;
+			goto error;
+		}
+	}
+
+	/*
+	 *	For CHAP, create the CHAP-Challenge if it doesn't exist.
+	 */
+	if ((code == PW_CODE_AUTHENTICATION_REQUEST) &&
+	    (pairfind(request->packet->vps, PW_CHAP_PASSWORD, 0, TAG_ANY) != NULL) &&
+	    (pairfind(request->packet->vps, PW_CHAP_CHALLENGE, 0, TAG_ANY) == NULL)) {
+		uint8_t *p;
+		vp = radius_paircreate(packet, &packet->vps, PW_CHAP_CHALLENGE, 0);
+		vp->length = AUTH_VECTOR_LEN;
+		vp->vp_octets = p = talloc_array(vp, uint8_t, vp->length);
+		memcpy(p, request->packet->vector, AUTH_VECTOR_LEN);
+	}
+
+	*out = packet;
+	return rcode;
+
+error:
+	talloc_free(packet);
+	return rcode;
 }
 
 /** Copy packet to multiple servers
@@ -52,22 +103,29 @@ static void cleanup(RADIUS_PACKET *packet)
  * @param[in] code	to write into the code field of the duplicate packet.
  * @return RCODE fail on error, invalid if list does not exist, noop if no replications succeeded, else ok.
  */
-static int replicate_packet(UNUSED void *instance, REQUEST *request, pair_lists_t list, unsigned int code)
+static rlm_rcode_t replicate_packet(UNUSED void *instance, REQUEST *request, pair_lists_t list, PW_CODE code)
 {
 	int rcode = RLM_MODULE_NOOP;
-	VALUE_PAIR *vp, **vps;
+
 	vp_cursor_t cursor;
-	home_server *home;
-	REALM *realm;
-	home_pool_t *pool;
+	VALUE_PAIR *vp;
+
 	RADIUS_PACKET *packet = NULL;
 
+	rcode = rlm_replicate_alloc(&packet, request, list, code);
+	if (rcode != RLM_MODULE_OK) {
+		return rcode;
+	}
+
 	/*
-	 *	Send as many packets as necessary to different
-	 *	destinations.
+	 *	Send as many packets as necessary to different destinations.
 	 */
 	paircursor(&cursor, &request->config_items);
 	while ((vp = pairfindnext(&cursor, PW_REPLICATE_TO_REALM, 0, TAG_ANY))) {
+		home_server *home;
+		REALM *realm;
+		home_pool_t *pool;
+
 		realm = realm_find2(vp->vp_strvalue);
 		if (!realm) {
 			REDEBUG2("Cannot Replicate to unknown realm \"%s\"", vp->vp_strvalue);
@@ -80,8 +138,8 @@ static int replicate_packet(UNUSED void *instance, REQUEST *request, pair_lists_
 		switch (request->packet->code) {
 		default:
 			REDEBUG2("Cannot replicate unknown packet code %d", request->packet->code);
-			cleanup(packet);
-			return RLM_MODULE_FAIL;
+			rcode = RLM_MODULE_FAIL;
+			goto done;
 
 		case PW_CODE_AUTHENTICATION_REQUEST:
 			pool = realm->auth_pool;
@@ -118,52 +176,12 @@ static int replicate_packet(UNUSED void *instance, REQUEST *request, pair_lists_
 		 *	we built here.
 		 */
 		if (!packet) {
-			packet = rad_alloc(request, 1);
-			if (!packet) {
-				return RLM_MODULE_FAIL;
-			}
-
-			packet->code = code;
 			packet->id = fr_rand() & 0xff;
 			packet->sockfd = fr_socket(&home->src_ipaddr, 0);
 			if (packet->sockfd < 0) {
 				REDEBUG("Failed opening socket: %s", fr_strerror());
 				rcode = RLM_MODULE_FAIL;
 				goto done;
-			}
-
-			vps = radius_list(request, list);
-			if (!vps) {
-				RWDEBUG("List '%s' doesn't exist for this packet",
-					fr_int2str(pair_lists, list, "<INVALID>"));
-				rcode = RLM_MODULE_INVALID;
-				goto done;
-			}
-
-			/*
-			 *	Don't assume the list actually contains any
-			 *	attributes.
-			 */
-			if (*vps) {
-				packet->vps = paircopy(packet, *vps);
-				if (!packet->vps) {
-					rcode = RLM_MODULE_FAIL;
-					goto done;
-				}
-			}
-
-			/*
-			 *	For CHAP, create the CHAP-Challenge if
-			 *	it doesn't exist.
-			 */
-			if ((code == PW_CODE_AUTHENTICATION_REQUEST) &&
-			    (pairfind(request->packet->vps, PW_CHAP_PASSWORD, 0, TAG_ANY) != NULL) &&
-			    (pairfind(request->packet->vps, PW_CHAP_CHALLENGE, 0, TAG_ANY) == NULL)) {
-				uint8_t *p;
-				vp = radius_paircreate(request, &packet->vps, PW_CHAP_CHALLENGE, 0);
-				vp->length = AUTH_VECTOR_LEN;
-				vp->vp_octets = p = talloc_array(vp, uint8_t, vp->length);
-				memcpy(p, request->packet->vector, AUTH_VECTOR_LEN);
 			}
 		} else {
 			size_t i;
@@ -173,8 +191,7 @@ static int replicate_packet(UNUSED void *instance, REQUEST *request, pair_lists_
 			}
 
 			packet->id++;
-			talloc_free(packet->data);
-			packet->data = NULL;
+			TALLOC_FREE(packet->data);
 			packet->data_len = 0;
 		}
 
@@ -189,8 +206,7 @@ static int replicate_packet(UNUSED void *instance, REQUEST *request, pair_lists_
 		/*
 		 *	Encode, sign and then send the packet.
 		 */
-		RDEBUG("Replicating list '%s' to Realm '%s'", fr_int2str(pair_lists, list, "<INVALID>"),
-		       realm->name);
+		RDEBUG("Replicating list '%s' to Realm '%s'", fr_int2str(pair_lists, list, "<INVALID>"), realm->name);
 		if (rad_send(packet, NULL, home->secret) < 0) {
 			REDEBUG("Failed replicating packet: %s", fr_strerror());
 			rcode = RLM_MODULE_FAIL;
@@ -205,11 +221,12 @@ static int replicate_packet(UNUSED void *instance, REQUEST *request, pair_lists_
 
 	done:
 
-	cleanup(packet);
+	talloc_free(packet);
 	return rcode;
 }
 #else
-static rlm_rcode_t replicate_packet(void *instance, REQUEST *request, pair_lists_t list, unsigned int code)
+static rlm_rcode_t replicate_packet(UNUSED void *instance, REQUEST *request, UNUSED pair_lists_t list,
+				    UNUSED PW_CODE code)
 {
 	RDEBUG("Replication is unsupported in this build");
 	return RLM_MODULE_FAIL;

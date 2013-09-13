@@ -761,22 +761,19 @@ void radius_xlat_move(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR **from)
  * @note This function ALWAYS returns. If we're OOM, then it causes the
  * @note server to exit, so you don't need to check the return value.
  *
- * @param[in] request Current request.
+ * @param[in] ctx Context to allocate VALUE_PAIRs in.
  * @param[out] vps List to add new VALUE_PAIR to, if NULL will just
  *	return VALUE_PAIR.
  * @param[in] attribute number.
  * @param[in] vendor number.
  * @return a new VLAUE_PAIR or causes server to exit on error.
  */
-VALUE_PAIR *radius_paircreate(REQUEST *request, VALUE_PAIR **vps,
+VALUE_PAIR *radius_paircreate(TALLOC_CTX *ctx, VALUE_PAIR **vps,
 			      unsigned int attribute, unsigned int vendor)
 {
 	VALUE_PAIR *vp;
 
-	/*
-	 *	FIXME: the context should ideally be the packet...
-	 */
-	vp = paircreate(request, attribute, vendor);
+	vp = paircreate(ctx, attribute, vendor);
 	if (!vp) {
 		ERROR("No memory!");
 		rad_assert("No memory" == NULL);

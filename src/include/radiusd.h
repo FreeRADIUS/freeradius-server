@@ -632,7 +632,7 @@ int radius_callback_compare(REQUEST *request, VALUE_PAIR *req,
 			    VALUE_PAIR *check, VALUE_PAIR *check_pairs,
 			    VALUE_PAIR **reply_pairs);
 int radius_find_compare(DICT_ATTR const *attribute);
-VALUE_PAIR	*radius_paircreate(REQUEST *request, VALUE_PAIR **vps,
+VALUE_PAIR	*radius_paircreate(TALLOC_CTX *ctx, VALUE_PAIR **vps,
 				   unsigned int attribute, unsigned int vendor);
 void module_failure_msg(REQUEST *request, char const *fmt, ...)
 #ifdef __GNUC__
