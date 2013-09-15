@@ -1079,7 +1079,7 @@ int request_enqueue(REQUEST *request)
 	dispatch_block_t block;
 
 	block = ^{
-		request->process(request, fun);
+		request->process(request, FR_ACTION_RUN);
 	};
 
 	dispatch_async(thread_pool.queue, block);
