@@ -364,7 +364,7 @@ int     	vp_prints_value_json(char *out, size_t outlen,
 				     VALUE_PAIR const *vp);
 size_t		vp_print_name(char *buffer, size_t bufsize,
 			      unsigned int attr, unsigned int vendor);
-int     	vp_prints(char *out, size_t outlen, VALUE_PAIR const *vp);
+size_t		vp_prints(char *out, size_t outlen, VALUE_PAIR const *vp);
 void		vp_print(FILE *, VALUE_PAIR const *);
 void		vp_printlist(FILE *, VALUE_PAIR const *);
 #define		fprint_attr_val vp_print
