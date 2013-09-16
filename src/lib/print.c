@@ -831,7 +831,7 @@ size_t vp_prints(char *out, size_t outlen, VALUE_PAIR const *vp)
 
 /** Print one attribute and value.
  *
- * Complete string with '\t' and '\n' is written to buffer before printing to
+ * Complete string with '\\t' and '\\n' is written to buffer before printing to
  * avoid issues when running with multiple threads.
  *
  * @param fp to output to.
