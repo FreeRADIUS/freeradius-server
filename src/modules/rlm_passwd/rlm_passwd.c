@@ -506,7 +506,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	inst->nfields = nfields;
 	inst->keyfield = keyfield;
 	inst->listable = listable;
-	DEBUG("rlm_passwd: nfields: %d keyfield %d(%s) listable: %s", nfields, keyfield, inst->pwdfmt->field[keyfield], listable?"yes":"no");
+	DEBUG2("rlm_passwd: nfields: %d keyfield %d(%s) listable: %s", nfields, keyfield, inst->pwdfmt->field[keyfield], listable?"yes":"no");
 	return 0;
 
 #undef inst
