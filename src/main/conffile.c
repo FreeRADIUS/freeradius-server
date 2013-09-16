@@ -449,7 +449,7 @@ static void cf_item_add(CONF_SECTION *cs, CONF_ITEM *ci)
 					cs->section_tree = rbtree_create(section_cmp, NULL, 0);
 					if (!cs->section_tree) {
 						ERROR("Out of memory");
-						_exit(1);
+						fr_exit_now(1);
 					}
 				}
 

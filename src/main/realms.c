@@ -2070,7 +2070,7 @@ void home_server_update_request(home_server *home, REQUEST *request)
 		request->proxy = rad_alloc(request, true);
 		if (!request->proxy) {
 			ERROR("no memory");
-			exit(1);
+			fr_exit(1);
 		}
 
 		/*

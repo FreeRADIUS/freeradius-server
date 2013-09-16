@@ -27,9 +27,41 @@ RCSID("$Id$")
 #include	<ctype.h>
 #include	<sys/file.h>
 #include	<fcntl.h>
+#include	<signal.h>
 
 int		fr_dns_lookups = 0;
 int		fr_debug_flag = 0;
+
+
+static int	fr_debugger_present = -1;
+
+/** Stub callback to see if the SIGTRAP handler is overriden
+ *
+ * @param signum signal raised.
+ */
+static void _sigtrap_handler(UNUSED int signum)
+{
+    fr_debugger_present = 0;
+    signal(SIGTRAP, SIG_DFL);
+}
+
+/** Break in GDB (if were running under GDB)
+ *
+ * If the server is running under GDB this will raise a SIGTRAP which
+ * will pause the running process.
+ *
+ * If the server is not running under GDB then this will do nothing.
+ */
+void fr_debug_break(void)
+{
+    if (fr_debugger_present == -1) {
+    	fr_debugger_present = 0;
+        signal(SIGTRAP, _sigtrap_handler);
+        raise(SIGTRAP);
+    } else if (fr_debugger_present == 1) {
+    	raise(SIGTRAP);
+    }
+}
 
 /*
  *	Return an IP address in standard dot notation

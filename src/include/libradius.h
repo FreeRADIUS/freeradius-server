@@ -528,6 +528,15 @@ void		fr_perror(char const *, ...)
 		__attribute__ ((format (printf, 1, 2)))
 #endif
 ;
+extern bool fr_assert_cond(char const *file, int line, char const *expr, bool cond);
+#define fr_assert(_x) fr_assert_cond(__FILE__,  __LINE__, #_x, (_x))
+
+extern void _fr_exit(char const *file, int line, int status);
+#define fr_exit(_x) _fr_exit(__FILE__,  __LINE__, (_x))
+
+extern void _fr_exit_now(char const *file, int line, int status);
+#define fr_exit_now(_x) _fr_exit_now(__FILE__,  __LINE__, (_x))
+
 extern char const *fr_strerror(void);
 extern int	fr_dns_lookups;	/* 0 = no dns lookups */
 extern int	fr_debug_flag;	/* 0 = no debugging information */
@@ -545,6 +554,7 @@ void		fr_printf_log(char const *, ...)
 /*
  *	Several handy miscellaneous functions.
  */
+void		fr_debug_break(void);
 char const 	*ip_ntoa(char *, uint32_t);
 char		*ifid_ntoa(char *buffer, size_t size, uint8_t const *ifid);
 uint8_t		*ifid_aton(char const *ifid_str, uint8_t *ifid);

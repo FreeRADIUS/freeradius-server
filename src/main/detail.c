@@ -358,7 +358,7 @@ int detail_recv(rad_listen_t *listener)
 			if (!data->fp) {
 				ERROR("FATAL: Failed to re-open detail file %s: %s",
 				       data->filename, strerror(errno));
-				exit(1);
+				fr_exit(1);
 			}
 
 			/*
@@ -626,7 +626,7 @@ int detail_recv(rad_listen_t *listener)
 	packet = rad_alloc(NULL, 1);
 	if (!packet) {
 		ERROR("FATAL: Failed allocating memory for detail");
-		exit(1);
+		fr_exit(1);
 	}
 
 	memset(packet, 0, sizeof(*packet));

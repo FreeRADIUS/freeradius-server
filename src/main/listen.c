@@ -3078,7 +3078,7 @@ add_sockets:
 					if (rcode != 0) {
 						ERROR("Thread create failed: %s",
 						      strerror(rcode));
-						exit(1);
+						fr_exit(1);
 					}
 
 					DEBUG("Thread %d for %s\n", i, buffer);

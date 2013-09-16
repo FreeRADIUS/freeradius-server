@@ -243,14 +243,14 @@ int main(int argc, char **arg)
 	hp = fr_heap_create(heap_cmp, 0);
 	if (!hp) {
 		fprintf(stderr, "Failed creating heap!\n");
-		exit(1);
+		fr_exit(1);
 	}
 
 	for (i = 0; i < 1024; i++) {
 		array[i] = (i * 257) % 65537;
 		if (!fr_heap_insert(hp, &array[i])) {
 			fprintf(stderr, "Failed inserting %d\n", i);
-			exit(1);
+			fr_exit(1);
 		}
 	}
 
@@ -259,14 +259,14 @@ int main(int argc, char **arg)
 
 		if (!p) {
 			fprintf(stderr, "Failed peeking %d\n", i);
-			exit(1);
+			fr_exit(1);
 		}
 
 		printf("%d\t%d\n", i, *p);
 
 		if (!fr_heap_extract(hp, NULL)) {
 			fprintf(stderr, "Failed extracting %d\n", i);
-			exit(1);
+			fr_exit(1);
 		}
 	}
 

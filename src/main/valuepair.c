@@ -780,7 +780,7 @@ VALUE_PAIR *radius_paircreate(REQUEST *request, VALUE_PAIR **vps,
 	if (!vp) {
 		ERROR("No memory!");
 		rad_assert("No memory" == NULL);
-		_exit(1);
+		fr_exit_now(1);
 	}
 
 	if (vps) pairadd(vps, vp);
