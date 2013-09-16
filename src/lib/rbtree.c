@@ -298,7 +298,7 @@ rbnode_t *rbtree_insertnode(rbtree_t *tree, void *Data)
 
 	/* setup new node */
 	if ((X = malloc (sizeof(*X))) == NULL) {
-		exit(1);	/* FIXME! */
+		fr_exit(1);	/* FIXME! */
 	}
 
 	X->Data = Data;

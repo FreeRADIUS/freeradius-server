@@ -477,13 +477,13 @@ client:
 	client_socket = socket(PF_INET, SOCK_DGRAM, 0);
 	if (udpfromto_init(client_socket) != 0) {
 		perror("udpfromto_init");
-		_exit(0);
+		fr_exit_now(0);
 	}
 	/* bind client on different port */
 	in.sin_port = htons(port+1);
 	if (bind(client_socket, (struct sockaddr *)&in, sizeof(in)) < 0) {
 		perror("client: bind");
-		_exit(0);
+		fr_exit_now(0);
 	}
 
 	in.sin_port = htons(port);
@@ -493,7 +493,7 @@ client:
 	if (sendto(client_socket, TESTSTRING, TESTLEN, 0,
 			(struct sockaddr *)&in, sizeof(in)) < 0) {
 		perror("client: sendto");
-		_exit(0);
+		fr_exit_now(0);
 	}
 
 	printf("client: waiting for reply from server on INADDR_ANY:%d\n", port+1);
@@ -502,7 +502,7 @@ client:
 	    (struct sockaddr *)&from, &fl,
 	    (struct sockaddr *)&to, &tl)) < 0) {
 		perror("client: recvfromto");
-		_exit(0);
+		fr_exit_now(0);
 	}
 
 	printf("client: received a packet of %d bytes [%s] ", n, buf);
@@ -511,7 +511,7 @@ client:
 	printf(" dst ip:port %s:%d)\n",
 		inet_ntoa(to.sin_addr), ntohs(to.sin_port));
 
-	_exit(0);
+	fr_exit_now(0);
 }
 
 #endif /* TESTING */

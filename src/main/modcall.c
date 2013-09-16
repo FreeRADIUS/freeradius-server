@@ -398,7 +398,7 @@ static void modcall_child(REQUEST *request, rlm_components_t component, int dept
 
 	if (depth >= MODCALL_STACK_MAX) {
 		ERROR("Internal sanity check failed: module stack is too deep");
-		exit(1);
+		fr_exit(1);
 	}
 
 	/*
@@ -617,7 +617,7 @@ redo:
 
 		if (depth >= MODCALL_STACK_MAX) {
 			ERROR("Internal sanity check failed: module stack is too deep");
-			exit(1);
+			fr_exit(1);
 		}
 
 		/*

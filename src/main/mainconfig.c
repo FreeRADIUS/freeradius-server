@@ -420,17 +420,17 @@ void fr_suid_up(void)
 
 	if (getresuid(&ruid, &euid, &suid) < 0) {
 		ERROR("Failed getting saved UID's");
-		_exit(1);
+		fr_exit_now(1);
 	}
 
 	if (setresuid(-1, suid, -1) < 0) {
 		ERROR("Failed switching to privileged user");
-		_exit(1);
+		fr_exit_now(1);
 	}
 
 	if (geteuid() != suid) {
 		ERROR("Switched to unknown UID");
-		_exit(1);
+		fr_exit_now(1);
 	}
 }
 
@@ -441,13 +441,13 @@ void fr_suid_down(void)
 	if (setresuid(-1, server_uid, geteuid()) < 0) {
 		fprintf(stderr, "%s: Failed switching to uid %s: %s\n",
 			progname, uid_name, fr_syserror(errno));
-		_exit(1);
+		fr_exit_now(1);
 	}
 
 	if (geteuid() != server_uid) {
 		fprintf(stderr, "%s: Failed switching uid: UID is incorrect\n",
 			progname);
-		_exit(1);
+		fr_exit_now(1);
 	}
 
 	fr_set_dumpable();
@@ -460,12 +460,12 @@ void fr_suid_down_permanent(void)
 	if (setresuid(server_uid, server_uid, server_uid) < 0) {
 		ERROR("Failed in permanent switch to uid %s: %s",
 		       uid_name, fr_syserror(errno));
-		_exit(1);
+		fr_exit_now(1);
 	}
 
 	if (geteuid() != server_uid) {
 		ERROR("Switched to unknown uid");
-		_exit(1);
+		fr_exit_now(1);
 	}
 
 	fr_set_dumpable();
@@ -484,7 +484,7 @@ void fr_suid_down(void)
 	if (setuid(server_uid) < 0) {
 		fprintf(stderr, "%s: Failed switching to uid %s: %s\n",
 			progname, uid_name, fr_syserror(errno));
-		_exit(1);
+		fr_exit_now(1);
 	}
 
 	fr_set_dumpable();
@@ -792,7 +792,7 @@ int read_mainconfig(int reload)
 	/*
 	 *	Switch users as early as possible.
 	 */
-	if (!switch_users(cs)) exit(1);
+	if (!switch_users(cs)) fr_exit(1);
 #endif
 
 	/*

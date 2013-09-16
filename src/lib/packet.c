@@ -804,7 +804,7 @@ bool fr_packet_list_id_free(fr_packet_list_t *pl,
 
 #if 0
 	if (!ps->id[(request->id >> 3) & 0x1f] & (1 << (request->id & 0x07))) {
-		exit(1);
+		fr_exit(1);
 	}
 #endif
 

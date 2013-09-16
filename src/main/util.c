@@ -359,7 +359,7 @@ void *rad_malloc(size_t size)
 
 	if (ptr == NULL) {
 		ERROR("no memory");
-		exit(1);
+		fr_exit(1);
 	}
 
 	return ptr;

@@ -822,11 +822,11 @@ int main(int argc, char **argv)
 	ht = fr_hash_table_create(hash_int, NULL, NULL);
 	if (!ht) {
 		fprintf(stderr, "Hash create failed\n");
-		exit(1);
+		fr_exit(1);
 	}
 
 	array = malloc(sizeof(int) * MAX);
-	if (!array) exit(1);
+	if (!array) fr_exit(1);
 
 	for (i = 0; i < MAX; i++) {
 		p = array + i;
@@ -834,13 +834,13 @@ int main(int argc, char **argv)
 
 		if (!fr_hash_table_insert(ht, p)) {
 			fprintf(stderr, "Failed insert %08x\n", i);
-			exit(1);
+			fr_exit(1);
 		}
 #ifdef TEST_INSERT
 		q = fr_hash_table_finddata(ht, p);
 		if (q != p) {
 			fprintf(stderr, "Bad data %d\n", i);
-			exit(1);
+			fr_exit(1);
 		}
 #endif
 	}
@@ -856,18 +856,18 @@ int main(int argc, char **argv)
 			q = fr_hash_table_finddata(ht, &i);
 			if (!q || *q != i) {
 				fprintf(stderr, "Failed finding %d\n", i);
-				exit(1);
+				fr_exit(1);
 			}
 
 #if 0
 			if (!fr_hash_table_delete(ht, &i)) {
 				fprintf(stderr, "Failed deleting %d\n", i);
-				exit(1);
+				fr_exit(1);
 			}
 			q = fr_hash_table_finddata(ht, &i);
 			if (q) {
 				fprintf(stderr, "Failed to delete %08x\n", i);
-				exit(1);
+				fr_exit(1);
 			}
 #endif
 		}
@@ -878,6 +878,6 @@ int main(int argc, char **argv)
 	fr_hash_table_free(ht);
 	free(array);
 
-	exit(0);
+	fr_exit(0);
 }
 #endif

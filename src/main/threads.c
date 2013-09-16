@@ -1027,7 +1027,7 @@ int thread_pool_init(UNUSED CONF_SECTION *cs, int *spawn_flag)
 	if (!thread_pool.queue) {
 		ERROR("Failed creating dispatch queue: %s\n",
 		       fr_syserror(errno));
-		exit(1);
+		fr_exit(1);
 	}
 #endif
 

@@ -187,3 +187,23 @@ bool fr_assert_cond(char const *file, int line, char const *expr, bool cond)
 
 	return cond;
 }
+
+void NEVER_RETURNS _fr_exit(char const *file, int line, int status)
+{
+	fr_perror("EXIT CALLED %s[%u]: %i\n", file, line, status);
+	fflush(stderr);
+
+	fr_debug_break();	/* If running under GDB we'll break here */
+
+	exit(status);
+}
+
+void NEVER_RETURNS _fr_exit_now(char const *file, int line, int status)
+{
+	fr_perror("_EXIT CALLED %s[%u]: %i\n", file, line, status);
+	fflush(stderr);
+
+	fr_debug_break();	/* If running under GDB we'll break here */
+
+	_exit(status);
+}

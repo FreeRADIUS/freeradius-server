@@ -249,11 +249,10 @@ static void request_coa_separate(REQUEST *coa);
 
 #define INSERT_EVENT(_function, _ctx) if (!fr_event_insert(el, _function, _ctx, &((_ctx)->when), &((_ctx)->ev))) { _rad_panic(__FILE__, __LINE__, "Failed to insert event"); }
 
-static void NEVER_RETURNS _rad_panic(char const *file, unsigned int line,
-				    char const *msg)
+static void _rad_panic(char const *file, unsigned int line, char const *msg)
 {
-	ERROR("[%s:%d] %s", file, line, msg);
-	_exit(1);
+	ERROR("%s[%u]: %s", file, line, msg);
+	fr_exit_now(1);
 }
 
 #define rad_panic(x) _rad_panic(__FILE__, __LINE__, x)
@@ -547,7 +546,7 @@ STATE_MACHINE_DECL(request_done)
 #endif
 		{
 			rad_assert("Internal sanity check failed");
-			exit(2);
+			fr_exit(2);
 		}
 
 		gettimeofday(&now, NULL);
@@ -3461,7 +3460,7 @@ static void event_socket_handler(UNUSED fr_event_list_t *xel, UNUSED int fd, voi
 		       buffer);
 
 		rad_panic("Socket was closed on us!");
-		_exit(1);
+		fr_exit_now(1);
 	}
 
 	listener->recv(listener);
@@ -3499,7 +3498,7 @@ static void event_poll_detail(void *ctx)
 	if (!fr_event_insert(el, event_poll_detail, this,
 			     &when, &detail->ev)) {
 		ERROR("Failed creating handler");
-		exit(1);
+		fr_exit(1);
 	}
 }
 #endif
@@ -3665,7 +3664,7 @@ int event_new_fd(rad_listen_t *this)
 		if (!fr_event_fd_insert(el, 0, this->fd,
 					event_socket_handler, this)) {
 			ERROR("Failed adding event handler for socket!");
-			exit(1);
+			fr_exit(1);
 		}
 		FD_MUTEX_UNLOCK(&fd_mutex);
 
@@ -3691,7 +3690,7 @@ int event_new_fd(rad_listen_t *this)
 							  this->fd)) {
 				radlog(L_ERR, "Fatal error freezing socket: %s",
 				       fr_strerror());
-				exit(1);
+				fr_exit(1);
 			}
 			PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
 		}
@@ -3762,12 +3761,12 @@ int event_new_fd(rad_listen_t *this)
 		if (devnull < 0) {
 			ERROR("FATAL failure opening /dev/null: %s",
 			       strerror(errno));
-			exit(1);
+			fr_exit(1);
 		}
 		if (dup2(devnull, this->fd) < 0) {
 			ERROR("FATAL failure closing socket: %s",
 			       strerror(errno));
-			exit(1);
+			fr_exit(1);
 		}
 		close(devnull);
 
@@ -3792,7 +3791,7 @@ int event_new_fd(rad_listen_t *this)
 			if (!fr_packet_list_socket_del(proxy_list, this->fd)) {
 				ERROR("Fatal error removing socket: %s",
 				      fr_strerror());
-				exit(1);
+				fr_exit(1);
 			}
 			if (sock->home &&  sock->home->limit.num_connections) {
 				sock->home->limit.num_connections--;
@@ -4028,7 +4027,7 @@ int radius_event_init(CONF_SECTION *cs, int have_children)
 		if (pthread_mutex_init(&proxy_mutex, NULL) != 0) {
 			ERROR("FATAL: Failed to initialize proxy mutex: %s",
 			       fr_syserror(errno));
-			exit(1);
+			fr_exit(1);
 		}
 #endif
 	}
@@ -4043,7 +4042,7 @@ int radius_event_init(CONF_SECTION *cs, int have_children)
 	 */
 	if (have_children && !check_config &&
 	    (thread_pool_init(cs, &have_children) < 0)) {
-		exit(1);
+		fr_exit(1);
 	}
 #endif
 
@@ -4059,7 +4058,7 @@ int radius_event_init(CONF_SECTION *cs, int have_children)
 		       mainconfig.name);
 		if (listen_init(cs, &head, spawn_flag) < 0) {
 			fflush(NULL);
-			exit(1);
+			fr_exit(1);
 		}
 		return 1;
 	}
@@ -4072,25 +4071,25 @@ int radius_event_init(CONF_SECTION *cs, int have_children)
 	if (pipe(self_pipe) < 0) {
 		ERROR("radiusd: Error opening internal pipe: %s",
 		       fr_syserror(errno));
-		exit(1);
+		fr_exit(1);
 	}
 	if ((fcntl(self_pipe[0], F_SETFL, O_NONBLOCK) < 0) ||
 	    (fcntl(self_pipe[0], F_SETFD, FD_CLOEXEC) < 0)) {
 		ERROR("radiusd: Error setting internal flags: %s",
 		       fr_syserror(errno));
-		exit(1);
+		fr_exit(1);
 	}
 	if ((fcntl(self_pipe[1], F_SETFL, O_NONBLOCK) < 0) ||
 	    (fcntl(self_pipe[1], F_SETFD, FD_CLOEXEC) < 0)) {
 		ERROR("radiusd: Error setting internal flags: %s",
 		       fr_syserror(errno));
-		exit(1);
+		fr_exit(1);
 	}
 
 	if (!fr_event_fd_insert(el, 0, self_pipe[0],
 				  event_signal_handler, el)) {
 		ERROR("Failed creating handler for signals");
-		exit(1);
+		fr_exit(1);
 	}
 #endif	/* WITH_SELF_PIPE */
 
@@ -4107,7 +4106,7 @@ int radius_event_init(CONF_SECTION *cs, int have_children)
 	*	uid.
 	*/
        if (listen_init(cs, &head, spawn_flag) < 0) {
-		_exit(1);
+		fr_exit_now(1);
 	}
 
 	mainconfig.listen = head;

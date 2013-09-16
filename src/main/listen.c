@@ -3064,7 +3064,7 @@ add_sockets:
 					rcode = pthread_create(&id, 0, recv_thread, this);
 					if (rcode != 0) {
 						ERROR("Thread create failed: %s", fr_syserror(rcode));
-						exit(1);
+						fr_exit(1);
 					}
 
 					DEBUG("Thread %d for %s\n", i, buffer);
