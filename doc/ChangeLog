@@ -1,4 +1,4 @@
-FreeRADIUS 2.2.1 Mon 10 Sep 2012 12:00:00 CEST, urgency=medium
+FreeRADIUS 2.2.1 Tuesday 17 Sep 2013 12:00:00 CEST, urgency=medium
 	Feature improvements
 	* Updated dictionaries for alcatel, broadsoft, bskyb, dlink, meru,
 	  telkom, trapeze, proxim, zeus, rfc6677, 6911, and rfc6930.
@@ -89,6 +89,9 @@ FreeRADIUS 2.2.1 Mon 10 Sep 2012 12:00:00 CEST, urgency=medium
 	  our own, generated one per thread and stored in TLS.
 	* Port module processing fixes from v3.  The code is simpler,
 	  and one or two esoteric bugs are now gone.
+	* update code handling max_requests_per_server.  It should now
+	  work correctly.
+	* wrap ASCTIME_R for systems not supporting the standard API.
 
 FreeRADIUS 2.2.0 Mon 10 Sep 2012 12:00:00 CEST, urgency=medium
 	Feature improvements
