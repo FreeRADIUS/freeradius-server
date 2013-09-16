@@ -790,7 +790,7 @@ size_t vp_print_name(char *buffer, size_t bufsize,
 /*
  *	Print one attribute and value into a string.
  */
-int vp_prints(char *out, size_t outlen, VALUE_PAIR const *vp)
+size_t vp_prints(char *out, size_t outlen, VALUE_PAIR const *vp)
 {
 	size_t		len;
 	char const	*token = NULL;
@@ -825,23 +825,45 @@ int vp_prints(char *out, size_t outlen, VALUE_PAIR const *vp)
 }
 
 
-/*
- *	Print one attribute and value.
+/** Print one attribute and value.
+ *
+ * Complete string with '\n' and '\r' is written to buffer before printing to
+ * avoid issues when running with multiple threads.
+ *
+ * @param fp to output to.
+ * @param vp to print.
  */
 void vp_print(FILE *fp, VALUE_PAIR const *vp)
 {
 	char	buf[1024];
+	char	*p = buf;
+	size_t	ret;
 
-	vp_prints(buf, sizeof(buf), vp);
-	fputc('\t', fp);
+	*p++ = '\t';
+	ret = vp_prints(p, sizeof(buf) - 1, vp);
+	if (!ret) {
+		return;
+	}
+	p += ret;
+
+	/*
+	 *	Deal with truncation gracefully
+	 */
+	if (((size_t) (p - buf)) >= sizeof(buf)) {
+		p = buf + (sizeof(buf) - 2);
+	}
+
+	*p++ = '\n';
+	*p = '\0';
+
 	fputs(buf, fp);
-	fputc('\n', fp);
 }
 
 
-/*
- *	Print a whole list of attributes, indented by a TAB
- *	and with a newline at the end.
+/** Print a list of attributes and values
+ *
+ * @param fp to output to.
+ * @param vp to print.
  */
 void vp_printlist(FILE *fp, VALUE_PAIR const *vp)
 {
