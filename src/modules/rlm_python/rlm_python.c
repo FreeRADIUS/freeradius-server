@@ -755,7 +755,7 @@ A(send_coa)
 module_t rlm_python = {
 	RLM_MODULE_INIT,
 	"python",
-	RLM_TYPE_THREAD_SAFE,		/* type */
+	RLM_TYPE_THREAD_UNSAFE,		/* type */
 	python_instantiate,		/* instantiation */
 	python_detach,
 	{
