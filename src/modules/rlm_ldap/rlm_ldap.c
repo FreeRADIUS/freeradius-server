@@ -980,9 +980,15 @@ skip_edir:
 	/*
 	 *	Apply ONE user profile, or a default user profile.
 	 */
-	vp = pairfind(request->config_items, PW_USER_PROFILE, 0, TAG_ANY);
-	if (vp || inst->default_profile) {
-		char const *profile = vp ? vp->vp_strvalue : inst->default_profile;
+	if (inst->default_profile) {
+		char profile[1024];
+
+		if (radius_xlat(profile, sizeof(profile), request, inst->default_profile, NULL, NULL) < 0) {
+			REDEBUG("Failed creating default profile string");
+
+			rcode = RLM_MODULE_INVALID;
+			goto finish;
+		}
 
 		rlm_ldap_map_profile(inst, request, &conn, profile, &expanded);
 	}
