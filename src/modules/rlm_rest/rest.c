@@ -680,9 +680,7 @@ static size_t rest_encode_json(void *ptr, size_t size, size_t nmemb,
 		 */
 		while (true) {
 			len = vp_prints_value_json(p , s, current[0]);
-			assert((s - len) >= 0);
-
-			if (len < 0) goto no_space;
+			if (len >= s) goto no_space;
 
 			/*
 			 *	Show actual value length minus quotes
