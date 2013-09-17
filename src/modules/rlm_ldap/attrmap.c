@@ -342,7 +342,12 @@ rlm_rcode_t rlm_ldap_map_profile(ldap_instance_t const *inst, REQUEST *request, 
 	if (!dn || !*dn) {
 		return RLM_MODULE_OK;
 	}
-	strlcpy(filter, inst->profile_filter, sizeof(filter));
+
+	if (radius_xlat(filter, sizeof(filter), request, inst->profile_filter, rlm_ldap_escape_func, NULL) < 0) {
+		REDEBUG("Failed creating profile filter");
+
+		return RLM_MODULE_INVALID;
+	}
 
 	status = rlm_ldap_search(inst, request, pconn, dn, LDAP_SCOPE_BASE, filter, expanded->attrs, &result);
 	switch (status) {
