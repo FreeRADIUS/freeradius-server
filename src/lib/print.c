@@ -580,6 +580,7 @@ char *vp_aprint(TALLOC_CTX *ctx, VALUE_PAIR const *vp)
  *
  * @param out Where to write the string.
  * @param outlen Lenth of output buffer.
+ * @param vp to print.
  * @return the length of data written to out, or a value >= outlen on truncation.
  */
 size_t vp_prints_value_json(char *out, size_t outlen, VALUE_PAIR const *vp)
