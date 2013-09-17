@@ -586,12 +586,11 @@ char *vp_aprint(TALLOC_CTX *ctx, VALUE_PAIR const *vp)
  *
  * @todo must check to see if the attribute has a dictionary value
  */
-int vp_prints_value_json(char *buffer, size_t bufsize, VALUE_PAIR const *vp)
+size_t vp_prints_value_json(char *out, size_t outlen, VALUE_PAIR const *vp)
 {
-	int s = 0;
-	int len;
-	char *p = buffer;
-	char const *q;
+	char		*start = out;
+	char const	*q;
+	size_t		len, freespace = outlen;
 
 	if (!vp->da->flags.has_tag) {
 		switch (vp->da->type) {
@@ -600,74 +599,94 @@ int vp_prints_value_json(char *buffer, size_t bufsize, VALUE_PAIR const *vp)
 			case PW_TYPE_SHORT:
 				if (vp->da->flags.has_value) break;
 
-				len = snprintf(buffer, bufsize, "%u", vp->vp_integer);
-				return ((unsigned) len >= (bufsize - 1)) ? -1 : len;
+				len = snprintf(out, freespace, "%u", vp->vp_integer);
+				return len >= freespace ? -1 : len;
 
 			case PW_TYPE_SIGNED:
-				len = snprintf(buffer, bufsize, "%d", vp->vp_signed);
-				return ((unsigned) len >= (bufsize - 1)) ? -1 : len;
+				len = snprintf(out, freespace, "%d", vp->vp_signed);
+				return len >= freespace ? -1 : len;
 
 			default:
 				break;
 		}
 	}
 
-	if(bufsize < 3) return -1;
-	*p++ = '"';
+	if (freespace < 2) return -1;
+	*out++ = '"';
+	freespace--;
 
 	switch (vp->da->type) {
 		case PW_TYPE_STRING:
 			for (q = vp->vp_strvalue; q < vp->vp_strvalue + vp->length; q++) {
-				s = bufsize - (p - buffer);
-				if (s < 4) return -1;
+				if (freespace < 3) return -1;
 
 				if (*q == '"') {
-					*p++ = '\\';
-					*p++ = '"';
+					*out++ = '\\';
+					*out++ = '"';
+					freespace -= 2;
 				} else if (*q == '\\') {
-					*p++ = '\\';
-					*p++ = '\\';
+					*out++ = '\\';
+					*out++ = '\\';
+					freespace -= 2;
 				} else if (*q == '/') {
-					*p++ = '\\';
-					*p++ = '/';
+					*out++ = '\\';
+					*out++ = '/';
+					freespace -= 2;
 				} else if (*q >= ' ') {
-					*p++ = *q;
+					*out++ = *q;
+					freespace--;
 				} else {
-					*p++ = '\\';
+					*out++ = '\\';
+					freespace--;
 
-					if (*q == '\b') {
-						*p++ = 'b';
-					} else if (*q == '\f') {
-						*p++ = 'f';
-					} else if (*q == '\n') {
-						*p++ = 'n';
-					} else if (*q == '\r') {
-						*p++ = 'r';
-					} else if (*q == '\t'){
-						*p++ = 't';
-					} else {
-						if(s < 8) return -1;
-						p += sprintf(p, "u%04X", *q);
+					switch (*q) {
+					case '\b':
+						*out++ = 'b';
+						freespace--;
+						break;
+
+					case '\f':
+						*out++ = 'f';
+						freespace--;
+						break;
+
+					case '\n':
+						*out++ = 'b';
+						freespace--;
+						break;
+
+					case '\r':
+						*out++ = 'r';
+						freespace--;
+						break;
+
+					case '\t':
+						*out++ = 't';
+						freespace--;
+						break;
+					default:
+						len = snprintf(out, freespace, "u%04X", *q);
+						if (len >= freespace) return -1;
+						out += len;
+						freespace -= len;
 					}
 				}
 			}
 			break;
 
 		default:
-			/* -1 to account for trailing double quote */
-			s = bufsize - ((p - buffer) - 1);
-
-			len = vp_prints_value(p, s, vp, 0);
-			if (len >= (s - 1)) return -1;
-
-			p += len;
+			len = vp_prints_value(out, freespace, vp, 0);
+			if (len >= freespace) return -1;
+			out += len;
+			freespace -= len;
 			break;
 	}
 
-	*p++ = '"';
-	*p = '\0';
+	if (freespace < 2) return -1;
+	*out++ = '"';
+	*out++ = '\0';
 
-	return p - buffer;
+	return out - start;
 }
 
 /*
@@ -708,67 +727,83 @@ extern int fr_attr_max_tlv;
 extern int fr_attr_shift[];
 extern int fr_attr_mask[];
 
-static size_t vp_print_attr_oid(char *buffer, size_t size, unsigned int attr,
-				int dv_type)
+/** Print an attribute OID (does not include vendor)
+ *
+ * @param out Where to write the string.
+ * @param outlen Lenth of output buffer.
+ * @param attr id.
+ * @param dv_type Type of dictionary value.
+ * @return the length of data written to out, or a value >= outlen on truncation.
+ */
+static size_t vp_print_attr_oid(char *out, size_t outlen, unsigned int attr, int dv_type)
 {
-	int nest;
-	size_t outlen;
-	size_t len;
+	int		nest;
+	char		*start = out;
+	size_t		len, freespace = outlen;
 
 	switch (dv_type) {
 	case 4:
-		return snprintf(buffer, size, "%u", attr);
+		return snprintf(out, freespace, "%u", attr);
 
 	case 2:
-		return snprintf(buffer, size, "%u", attr & 0xffff);
+		return snprintf(out, freespace, "%u", attr & 0xffff);
 
 	default:
 	case 1:
-		len = snprintf(buffer, size, "%u", attr & 0xff);
+		len = snprintf(out, freespace, "%u", attr & 0xff);
+		if (len >= freespace) return outlen;
+		out += len;
+		freespace -= len;
 		break;
 	}
 
-	if ((attr >> 8) == 0) return len;
-
-	outlen = len;
-	buffer += len;
-	size -= len;
+	if ((attr >> 8) == 0) return out - start;
 
 	for (nest = 1; nest <= fr_attr_max_tlv; nest++) {
 		if (((attr >> fr_attr_shift[nest]) & fr_attr_mask[nest]) == 0) break;
 
-		len = snprintf(buffer, size, ".%u",
-			       (attr >> fr_attr_shift[nest]) & fr_attr_mask[nest]);
-
-		outlen = len;
-		buffer += len;
-		size -= len;
+		len = snprintf(out, freespace, ".%u", (attr >> fr_attr_shift[nest]) & fr_attr_mask[nest]);
+		if (len >= freespace) return outlen;
+		out += freespace;
+		freespace -= len;
 	}
 
-	return outlen;
+	return out - start;
 }
 
-/*
- *	Handle attributes which are not in the dictionaries.
+/** Print the names of attributes which are not in the dictionaries
+ *
+ * Print name for an unknown attribute in the format:
+@verbatim
+	Attr-<vendor id>-<attribute oid>
+@endverbatim
+ * to a string.
+ *
+ * @param out Where to write the string.
+ * @param outlen Lenth of output buffer.
+ * @param attr id.
+ * @param vendor id.
+ * @return the length of data written to out, or a value >= outlen on truncation.
  */
-size_t vp_print_name(char *buffer, size_t bufsize,
-		     unsigned int attr, unsigned int vendor)
+size_t vp_print_name(char *out, size_t outlen, unsigned int attr, unsigned int vendor)
 {
-	char *p = buffer;
-	int dv_type = 1;
-	size_t len = 0;
+	int 		dv_type = 1;
+	char		*start = out;
+	size_t		len, freespace = outlen;
 
-	if (!buffer) return 0;
+	if (!out) return 0;
 
-	len = snprintf(p, bufsize, "Attr-");
-	p += len;
-	bufsize -= len;
+	len = snprintf(out, freespace, "Attr-");
+	if (len >= freespace) return outlen;
+	out += len;
+	freespace -= len;
 
 	if (vendor > FR_MAX_VENDOR) {
-		len = snprintf(p, bufsize, "%u.",
-			       vendor / FR_MAX_VENDOR);
-		p += len;
-		bufsize -= len;
+		len = snprintf(out, freespace, "%u.", vendor / FR_MAX_VENDOR);
+		if (len >= freespace) return outlen;
+		out += len;
+		freespace -= len;
+
 		vendor &= (FR_MAX_VENDOR) - 1;
 	}
 
@@ -779,57 +814,71 @@ size_t vp_print_name(char *buffer, size_t bufsize,
 		if (dv) {
 			dv_type = dv->type;
 		}
-		len = snprintf(p, bufsize, "26.%u.", vendor);
 
-		p += len;
-		bufsize -= len;
+		len = snprintf(out, freespace, "26.%u.", vendor);
+		if (len >= freespace) return outlen;
+		out += len;
+		freespace -= len;
 	}
 
-	p += vp_print_attr_oid(p, bufsize , attr, dv_type);
+	len = vp_print_attr_oid(out, freespace, attr, dv_type);
+	if (len >= freespace) return outlen;
+	out += len;
 
-	return p - buffer;
+	return out - start;
 }
 
 
-/*
- *	Print one attribute and value into a string.
+/** Print one attribute and value to a string
+ *
+ * Print a VALUE_PAIR in the format:
+@verbatim
+	<attribute_name>[:tag] <op> <value>
+@endverbatim
+ * to a string.
+ *
+ * @param out Where to write the string.
+ * @param outlen Lenth of output buffer.
+ * @param vp to print.
+ * @return the length of data written to out, or a value >= outlen on truncation.
  */
 size_t vp_prints(char *out, size_t outlen, VALUE_PAIR const *vp)
 {
-	size_t		len;
 	char const	*token = NULL;
+	char		*start = out;
+	size_t		len, freespace = outlen;
 
-	out[0] = '\0';
+	if (!out) return 0;
+
+	*out = '\0';
 	if (!vp || !vp->da) return 0;
 
 	VERIFY_VP(vp);
 
-	if ((vp->op > T_OP_INVALID) &&
-	    (vp->op < T_TOKEN_LAST)) {
+	if ((vp->op > T_OP_INVALID) && (vp->op < T_TOKEN_LAST)) {
 		token = vp_tokens[vp->op];
 	} else {
 		token = "<INVALID-TOKEN>";
 	}
 
 	if(vp->da->flags.has_tag) {
-		snprintf(out, outlen, "%s:%d %s ",
-			 vp->da->name, vp->tag, token);
-
-		len = strlen(out);
-		vp_prints_value(out + len, outlen - len, vp, '\'');
-
+		len = snprintf(out, freespace, "%s:%d %s ", vp->da->name, vp->tag, token);
 	} else {
-		snprintf(out, outlen, "%s %s ", vp->da->name, token);
-		len = strlen(out);
-		vp_prints_value(out + len, outlen - len, vp, '\'');
-
+		len = snprintf(out, freespace, "%s %s ", vp->da->name, token);
 	}
+	if (len >= freespace) return outlen;
+	out += len;
+	freespace -= len;
 
-	return len + strlen(out + len);
+	len = vp_prints_value(out, freespace, vp, '\'');
+	if (len >= freespace) return outlen;
+	out += len;
+
+	return out - start;
 }
 
 
-/** Print one attribute and value.
+/** Print one attribute and value to FP
  *
  * Complete string with '\\t' and '\\n' is written to buffer before printing to
  * avoid issues when running with multiple threads.
@@ -841,14 +890,14 @@ void vp_print(FILE *fp, VALUE_PAIR const *vp)
 {
 	char	buf[1024];
 	char	*p = buf;
-	size_t	ret;
+	size_t	len;
 
 	*p++ = '\t';
-	ret = vp_prints(p, sizeof(buf) - 1, vp);
-	if (!ret) {
+	len = vp_prints(p, sizeof(buf) - 1, vp);
+	if (!len) {
 		return;
 	}
-	p += ret;
+	p += len;
 
 	/*
 	 *	Deal with truncation gracefully

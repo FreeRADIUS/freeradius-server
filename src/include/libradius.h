@@ -360,10 +360,8 @@ size_t		fr_print_string(char const *in, size_t inlen,
 size_t   	vp_prints_value(char *out, size_t outlen, VALUE_PAIR const *vp, int8_t quote);
 char		*vp_aprinttype(TALLOC_CTX *ctx, PW_TYPE type);
 char     	*vp_aprint(TALLOC_CTX *ctx, VALUE_PAIR const *vp);
-int     	vp_prints_value_json(char *out, size_t outlen,
-				     VALUE_PAIR const *vp);
-size_t		vp_print_name(char *buffer, size_t bufsize,
-			      unsigned int attr, unsigned int vendor);
+size_t    	vp_prints_value_json(char *out, size_t outlen, VALUE_PAIR const *vp);
+size_t		vp_print_name(char *out, size_t outlen, unsigned int attr, unsigned int vendor);
 size_t		vp_prints(char *out, size_t outlen, VALUE_PAIR const *vp);
 void		vp_print(FILE *, VALUE_PAIR const *);
 void		vp_printlist(FILE *, VALUE_PAIR const *);
