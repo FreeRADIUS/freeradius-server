@@ -10,7 +10,7 @@ FreeRADIUS 2.2.1 Tuesday 17 Sep 2013 12:00:00 CEST, urgency=medium
 	* Added %{base64:...} for raw attribute data (e.g. 32-bit IP addr),
 	  and %{tobase64:...} for the printable string form (e.g. 1.2.3.4),
 	  and %{base64tohex:...} to convert a base64 string to a hex string.
-	* rlm_expr is now responsible for registering many of the xlat 
+	* rlm_expr is now responsible for registering many of the xlat
 	  expansions. This is cleaner than bundling them all in the server
 	  core. You should ensure 'expr' is listed in instantiate to ensure
 	  correct operation of xlat expansions.
