@@ -573,14 +573,14 @@ char *vp_aprint(TALLOC_CTX *ctx, VALUE_PAIR const *vp)
 }
 
 
-/**
- *  Almost identical to vp_prints_value, but escapes certain chars so the string
- *  may be used as a JSON value.
+/**  Prints attribute values escaped suitably for use as JSON values
  *
  *  Returns < 0 if the buffer may be (or have been) too small to write the encoded
  *  JSON value to.
  *
- * @todo must check to see if the attribute has a dictionary value
+ * @param out Where to write the string.
+ * @param outlen Lenth of output buffer.
+ * @return the length of data written to out, or a value >= outlen on truncation.
  */
 size_t vp_prints_value_json(char *out, size_t outlen, VALUE_PAIR const *vp)
 {
@@ -596,11 +596,11 @@ size_t vp_prints_value_json(char *out, size_t outlen, VALUE_PAIR const *vp)
 				if (vp->da->flags.has_value) break;
 
 				len = snprintf(out, freespace, "%u", vp->vp_integer);
-				return len >= freespace ? -1 : len;
+				return len;
 
 			case PW_TYPE_SIGNED:
 				len = snprintf(out, freespace, "%d", vp->vp_signed);
-				return len >= freespace ? -1 : len;
+				return len;
 
 			default:
 				break;
@@ -662,7 +662,7 @@ size_t vp_prints_value_json(char *out, size_t outlen, VALUE_PAIR const *vp)
 						break;
 					default:
 						len = snprintf(out, freespace, "u%04X", *q);
-						if (len >= freespace) return -1;
+						if (len >= freespace) return outlen;
 						out += len;
 						freespace -= len;
 					}
@@ -672,13 +672,13 @@ size_t vp_prints_value_json(char *out, size_t outlen, VALUE_PAIR const *vp)
 
 		default:
 			len = vp_prints_value(out, freespace, vp, 0);
-			if (len >= freespace) return -1;
+			if (len >= freespace) return outlen;
 			out += len;
 			freespace -= len;
 			break;
 	}
 
-	if (freespace < 2) return -1;
+	if (freespace < 2) return outlen;
 	*out++ = '"';
 	*out++ = '\0';
 
