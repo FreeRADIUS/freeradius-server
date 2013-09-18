@@ -811,9 +811,6 @@ static int load_subcomponent_section(modcallable *parent, CONF_SECTION *cs,
 	 *	Sanity check.
 	 */
 	if (!name2) {
-		cf_log_err_cs(cs,
-			   "No name specified for %s block",
-			   section_type_value[comp].typename);
 		return 1;
 	}
 
