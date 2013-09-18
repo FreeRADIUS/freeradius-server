@@ -187,6 +187,12 @@ typedef		int (*RAD_REQUEST_FUNP)(REQUEST *);
 #define REQUEST_DATA_REGEX (0xadbeef00)
 #define REQUEST_MAX_REGEX (8)
 
+#if defined(WITH_VERIFY_PTR)
+#define VERIFY_REQUEST(_x) (void) talloc_get_type_abort(_x, REQUEST)
+#else
+#define VERIFY_REQUEST(_x)
+#endif
+
 struct request {
 #ifndef NDEBUG
 	uint32_t		magic; 		//!< Magic number used to

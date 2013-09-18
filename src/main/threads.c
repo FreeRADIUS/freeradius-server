@@ -512,7 +512,7 @@ static int request_dequeue(REQUEST **prequest)
 		request = fr_fifo_peek(thread_pool.fifo[i]);
 		if (!request) continue;
 
-		rad_assert(request->magic == REQUEST_MAGIC);
+		VERIFY_REQUEST(request);
 
 		if (request->master_state != REQUEST_STOP_PROCESSING) {
 			continue;
@@ -523,6 +523,7 @@ static int request_dequeue(REQUEST **prequest)
 		 */
 		request = fr_fifo_pop(thread_pool.fifo[i]);
 		rad_assert(request != NULL);
+		VERIFY_REQUEST(request);
 		request->child_state = REQUEST_DONE;
 		thread_pool.num_queued--;
 	}
@@ -535,6 +536,7 @@ static int request_dequeue(REQUEST **prequest)
 	for (i = start; i < RAD_LISTEN_MAX; i++) {
 		request = fr_fifo_pop(thread_pool.fifo[i]);
 		if (request) {
+			VERIFY_REQUEST(request);
 			start = i;
 			break;
 		}
