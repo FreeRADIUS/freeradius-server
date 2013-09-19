@@ -816,7 +816,7 @@ calculate_result:
 	 *	If we're processing a "case" statement, we return once
 	 *	it's done, rather than going to the next "case" statement.
 	 */
-	if (c->type == MOD_CASE) return true;	
+	if (c->type == MOD_CASE) return TRUE;
 
 next_sibling:
 	entry->c = entry->c->next;
