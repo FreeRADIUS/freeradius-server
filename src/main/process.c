@@ -370,17 +370,20 @@ STATE_MACHINE_DECL(request_done)
 		rad_assert(!request->in_proxy_hash);
 		rad_assert(action == FR_ACTION_DONE);
 		rad_assert(request->ev == NULL);
-	} else
+	}
 #endif
-	  {
-		  ASSERT_MASTER;
-	  }
 
+#ifdef HAVE_PTHREAD_H
 	/*
-	 *	Mark ourselves as handling the request.
+	 *	If called from a child thread, mark ourselves as done,
+	 *	and wait for the master thread timer to clean us up.
 	 */
-	request->process = request_done;
-	request->master_state = REQUEST_STOP_PROCESSING;
+	if (!we_are_master()) {
+		request->child_state = REQUEST_DONE;
+		request->child_pid = NO_SUCH_CHILD_PID;;
+		return;
+	}
+#endif
 
 #ifdef WITH_COA
 	/*
@@ -441,6 +444,13 @@ STATE_MACHINE_DECL(request_done)
 		 */
 	case FR_ACTION_DONE:
 #ifdef HAVE_PTHREAD_H
+		/*
+		 *	Do NOT set child_state to DONE if it's still in the queue.
+		 */
+		if (we_are_master() && (request->child_state == REQUEST_QUEUED)) {
+			break;
+		}
+
 		/*
 		 *	If we have child threads and we're NOT the
 		 *	thread handling the request, don't do anything.
