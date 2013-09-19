@@ -474,6 +474,8 @@ static int request_dequeue(REQUEST **prequest)
 {
 	time_t blocked;
 	static time_t last_complained = 0;
+	static time_t total_blocked = 0;
+	int num_blocked;
 	RAD_LISTEN_TYPE i, start;
 	REQUEST *request;
 	reap_children();
@@ -579,21 +581,24 @@ static int request_dequeue(REQUEST **prequest)
 
 	blocked = time(NULL);
 	if ((blocked - request->timestamp) > 5) {
+		total_blocked++;
 		if (last_complained < blocked) {
 			last_complained = blocked;
 			blocked -= request->timestamp;
+			num_blocked = total_blocked;
 		} else {
 			blocked = 0;
 		}
 	} else {
+		total_blocked = 0;
 		blocked = 0;
 	}
 
 	pthread_mutex_unlock(&thread_pool.queue_mutex);
 
 	if (blocked) {
-		ERROR("(%u) %s has been waiting in the processing queue for %d seconds.  Check that all databases are running properly!",
-		       request->number, fr_packet_codes[request->packet->code], (int) blocked);
+		ERROR("%d requests have been waiting in the processing queue for %d seconds.  Check that all databases are running properly!",
+		      num_blocked, (int) blocked);
 	}
 
 	return 1;
