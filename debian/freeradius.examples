@@ -1,4 +1,3 @@
-src/billing/
 scripts/clients.pl
 scripts/create-users.pl
 scripts/cryptpasswd
