@@ -15,7 +15,7 @@
  */
 
 /**
- * @file ring.c
+ * @file cbuff.c
  * @brief Implementation of a ring buffer
  *
  * @copyright 2013  The FreeRADIUS server project
