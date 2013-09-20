@@ -546,6 +546,8 @@ static int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 {
 	char subject[1024]; /* Used for the subject name */
 	char issuer[1024]; /* Used for the issuer name */
+	char attribute[1024];
+	char value[1024];
 	char common_name[1024];
 	char cn_str[1024];
 	char buf[64];
@@ -726,7 +728,7 @@ static int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 		BIO *out;
 
 		out = BIO_new(BIO_s_mem());
-		strlcpy(subject, "TLS-Client-Cert-", sizeof(subject));
+		strlcpy(attribute, "TLS-Client-Cert-", sizeof(attribute));
 
 		for (i = 0; i < sk_X509_EXTENSION_num(ext_list); i++) {
 			ASN1_OBJECT *obj;
@@ -737,26 +739,26 @@ static int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 
 			obj = X509_EXTENSION_get_object(ext);
 			i2a_ASN1_OBJECT(out, obj);
-			len = BIO_read(out, subject + 16 , sizeof(subject) - 16 - 1);
+			len = BIO_read(out, attribute + 16 , sizeof(attribute) - 16 - 1);
 			if (len <= 0) continue;
 
-			subject[16 + len] = '\0';
+			attribute[16 + len] = '\0';
 
 			X509V3_EXT_print(out, ext, 0, 0);
-			len = BIO_read(out, issuer , sizeof(issuer) - 1);
+			len = BIO_read(out, value, sizeof(value) - 1);
 			if (len <= 0) continue;
 
-			issuer[len] = '\0';
+			value[len] = '\0';
 
 			/*
 			 *	Mash the OpenSSL name to our name, and
 			 *	create the attribute.
 			 */
-			for (p = subject + 16; *p != '\0'; p++) {
+			for (p = attribute + 16; *p != '\0'; p++) {
 				if (*p == ' ') *p = '-';
 			}
 
-			vp = pairmake(subject, issuer, T_OP_ADD);
+			vp = pairmake(attribute, issuer, T_OP_ADD);
 			if (vp) {
 				pairadd(&handler->certs, vp);
 				debug_pair_list(vp);
