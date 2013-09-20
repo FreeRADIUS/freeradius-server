@@ -558,8 +558,7 @@ STATE_MACHINE_DECL(request_done)
 		if (!spawn_flag)
 #endif
 		{
-			rad_assert("Internal sanity check failed");
-			fr_exit(2);
+			rad_panic("Request should have been marked done");
 		}
 
 		gettimeofday(&now, NULL);
@@ -626,6 +625,7 @@ static void request_cleanup_delay_init(REQUEST *request, struct timeval const *p
 		if (debug_flag) printf("(%u) ********\tNEXT-STATE %s -> %s\n", request->number, __FUNCTION__, "request_cleanup_delay");
 #endif
 		request->process = request_cleanup_delay;
+		request->child_state = REQUEST_DONE;
 		STATE_MACHINE_TIMER(FR_ACTION_TIMER);
 		return;
 	}
