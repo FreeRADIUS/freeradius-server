@@ -995,6 +995,11 @@ static int request_pre_handler(REQUEST *request, UNUSED int action)
 	 *	Put the decoded packet into it's proper place.
 	 */
 	if (request->proxy_reply != NULL) {
+		/*
+		 *	There may be a proxy reply, but it may be too late.
+		 */
+		if (!request->proxy_listener) return 0;
+
 		rcode = request->proxy_listener->decode(request->proxy_listener, request);
 		DEBUG_PACKET(request, request->proxy_reply, 0);
 
