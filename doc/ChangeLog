@@ -1,5 +1,11 @@
 FreeRADIUS 2.2.1 Tuesday 17 Sep 2013 12:00:00 CEST, urgency=medium
 	Feature improvements
+
+	Bug fixes
+	* Fix erroneous fall-through in "case" statements
+
+FreeRADIUS 2.2.1 Tuesday 17 Sep 2013 12:00:00 CEST, urgency=medium
+	Feature improvements
 	* Updated dictionaries for alcatel, broadsoft, bskyb, dlink, meru,
 	  telkom, trapeze, proxim, zeus, rfc6677, 6911, and rfc6930.
 	* Added %{randstr:..} support. Creates random strings in a
