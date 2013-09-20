@@ -462,7 +462,7 @@ void fr_suid_down_permanent(void)
 	if (setresuid(server_uid, server_uid, server_uid) < 0) {
 		ERROR("Failed in permanent switch to uid %s: %s",
 		       uid_name, strerror(errno));
-		fr_exit_exit(1);
+		fr_exit_now(1);
 	}
 
 	if (geteuid() != server_uid) {
