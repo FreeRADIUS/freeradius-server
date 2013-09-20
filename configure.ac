@@ -819,6 +819,7 @@ AC_CHECK_HEADERS( \
   unistd.h \
   crypt.h \
   errno.h \
+  execinfo.h \
   resource.h \
   sys/resource.h \
   getopt.h \
@@ -1355,6 +1356,13 @@ AC_CHECK_LIB(talloc, talloc_set_memlimit,
   [
     AC_DEFINE(HAVE_TALLOC_SET_MEMLIMIT, 1, [Define to 1 if you have the function talloc_set_memlimit.])
   ]
+)
+
+dnl #
+dnl # This is required for FreeBSD where execinfo is distinct from libc
+dnl #
+AC_CHECK_LIB(execinfo, backtrace_symbols,
+  LIBS="-lexecinfo $LIBS"
 )
 
 dnl #

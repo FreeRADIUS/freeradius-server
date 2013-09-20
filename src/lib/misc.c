@@ -27,41 +27,40 @@ RCSID("$Id$")
 #include	<ctype.h>
 #include	<sys/file.h>
 #include	<fcntl.h>
-#include	<signal.h>
 
 int		fr_dns_lookups = 0;
 int		fr_debug_flag = 0;
 
 fr_thread_local_setup(char *, fr_inet_ntop_buffer);	/* macro */
 
-static int	fr_debugger_present = -1;
+#ifdef HAVE_PTHREAD_H
+static pthread_mutex_t autofree_context = PTHREAD_MUTEX_INITIALIZER;
+#  define PTHREAD_MUTEX_LOCK pthread_mutex_lock
+#  define PTHREAD_MUTEX_UNLOCK pthread_mutex_unlock
+#else
+#  define PTHREAD_MUTEX_LOCK(_x)
+#  define PTHREAD_MUTEX_UNLOCK(_x)
+#endif
 
-/** Stub callback to see if the SIGTRAP handler is overriden
+/** Allocates a new talloc context from the root autofree context
  *
- * @param signum signal raised.
+ * This function is threadsafe, whereas using the NULL context is not.
+ *
+ * @note The returned context, must be freed by the caller.
+ * @returns a new talloc context parented by the root autofree context.
  */
-static void _sigtrap_handler(UNUSED int signum)
+TALLOC_CTX *fr_autofree_ctx(void)
 {
-    fr_debugger_present = 0;
-    signal(SIGTRAP, SIG_DFL);
-}
+	static TALLOC_CTX *ctx = NULL, *child;
+	PTHREAD_MUTEX_LOCK(&autofree_context);
+	if (!ctx) {
+		ctx = talloc_autofree_context();
+	}
 
-/** Break in GDB (if were running under GDB)
- *
- * If the server is running under GDB this will raise a SIGTRAP which
- * will pause the running process.
- *
- * If the server is not running under GDB then this will do nothing.
- */
-void fr_debug_break(void)
-{
-    if (fr_debugger_present == -1) {
-    	fr_debugger_present = 0;
-        signal(SIGTRAP, _sigtrap_handler);
-        raise(SIGTRAP);
-    } else if (fr_debugger_present == 1) {
-    	raise(SIGTRAP);
-    }
+	child = talloc_new(ctx);
+	PTHREAD_MUTEX_UNLOCK(&autofree_context);
+
+	return child;
 }
 
 /*
