@@ -1446,6 +1446,31 @@ static int auth_socket_recv(rad_listen_t *listener)
 		return 0;
 	}
 
+#ifdef __APPLE__
+#ifdef WITH_UDPFROMTO
+	/*
+	 *	This is a NICE Mac OSX bug.  Create an interface with
+	 *	two IP address, and then configure one listener for
+	 *	each IP address.  Send thousands of packets to one
+	 *	address, and some will show up on the OTHER socket.
+	 *
+	 *	This hack works ONLY if the clients are global.  If
+	 *	each listener has the same client IP, but with
+	 *	different secrets, then it will fail the rad_recv()
+	 *	check above, and there's nothing you can do.
+	 */
+	{
+		listen_socket_t *sock = listener->data;
+		rad_listen_t *other;
+		
+		other = listener_find_byipaddr(&packet->dst_ipaddr,
+					       packet->dst_port, sock->proto);
+		if (other) listener = other;
+	}
+#endif
+#endif
+	
+
 	if (!request_receive(listener, packet, client, fun)) {
 		FR_STATS_INC(auth, total_packets_dropped);
 		rad_free(&packet);
