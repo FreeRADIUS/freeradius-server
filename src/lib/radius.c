@@ -403,16 +403,6 @@ static ssize_t rad_recvfrom(int sockfd, RADIUS_PACKET *packet, int flags,
 	memset(&dst, 0, sizeof_dst);
 
 	/*
-	 *	Get address family, etc. first, so we know if we
-	 *	need to do udpfromto.
-	 *
-	 *	FIXME: udpfromto also does this, but it's not
-	 *	a critical problem.
-	 */
-	if (getsockname(sockfd, (struct sockaddr *)&dst,
-			&sizeof_dst) < 0) return -1;
-
-	/*
 	 *	Read the length of the packet, from the packet.
 	 *	This lets us allocate the buffer to use for
 	 *	reading the rest of the packet.
@@ -466,17 +456,19 @@ static ssize_t rad_recvfrom(int sockfd, RADIUS_PACKET *packet, int flags,
 	 *	packet after "len" bytes.
 	 */
 #ifdef WITH_UDPFROMTO
-	if ((dst.ss_family == AF_INET) || (dst.ss_family == AF_INET6)) {
-		data_len = recvfromto(sockfd, packet->data, len, flags,
-				      (struct sockaddr *)&src, &sizeof_src,
-				      (struct sockaddr *)&dst, &sizeof_dst);
-	} else
+	data_len = recvfromto(sockfd, packet->data, len, flags,
+			      (struct sockaddr *)&src, &sizeof_src,
+			      (struct sockaddr *)&dst, &sizeof_dst);
+#else
+	data_len = recvfrom(sockfd, packet->data, len, flags,
+			    (struct sockaddr *)&src, &sizeof_src);
+
+	/*
+	 *	Get the destination address, too.
+	 */
+	if (getsockname(sockfd, (struct sockaddr *)&dst,
+			&sizeof_dst) < 0) return -1;
 #endif
-		/*
-		 *	No udpfromto, fail gracefully.
-		 */
-		data_len = recvfrom(sockfd, packet->data, len, flags,
-				    (struct sockaddr *)&src, &sizeof_src);
 	if (data_len < 0) {
 		return data_len;
 	}
