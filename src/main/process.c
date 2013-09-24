@@ -2496,7 +2496,7 @@ static int request_proxy_anew(REQUEST *request)
 	/*
 	 *	Free the old packet, to force re-encoding
 	 */
-	free(request->proxy->data);
+	talloc_free(request->proxy->data);
 	request->proxy->data = NULL;
 	request->proxy->data_len = 0;
 
