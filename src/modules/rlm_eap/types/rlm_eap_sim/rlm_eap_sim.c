@@ -444,11 +444,7 @@ static int eap_sim_initiate(UNUSED void *instance, eap_handler_t *handler)
 {
 	REQUEST *request = handler->request;
 	eap_sim_state_t *ess;
-	VALUE_PAIR *vp;
-	VALUE_PAIR *outvps;
 	time_t n;
-
-	outvps = handler->request->reply->vps;
 
 	ess = talloc_zero(handler, eap_sim_state_t);
 	if (!ess) {
@@ -462,9 +458,9 @@ static int eap_sim_initiate(UNUSED void *instance, eap_handler_t *handler)
 	/*
 	 *	Save the keying material, because it could change on a subsequent retrival.
 	 */
-	if ((eap_sim_get_challenge(handler, outvps, 0, ess) +
-	     eap_sim_get_challenge(handler, outvps, 1, ess) +
-	     eap_sim_get_challenge(handler, outvps, 2, ess)) != 3) {
+	if (!eap_sim_get_challenge(handler, request->config_items, 0, ess) ||
+	    !eap_sim_get_challenge(handler, request->config_items, 1, ess) ||
+	    !eap_sim_get_challenge(handler, request->config_items, 2, ess)) {
 		return 0;
 	}
 
