@@ -444,7 +444,6 @@ static int eap_sim_initiate(UNUSED void *instance, eap_handler_t *handler)
 {
 	REQUEST *request = handler->request;
 	eap_sim_state_t *ess;
-	VALUE_PAIR *vp;
 	time_t n;
 
 	ess = talloc_zero(handler, eap_sim_state_t);
