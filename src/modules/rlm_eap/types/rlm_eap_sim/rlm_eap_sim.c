@@ -450,12 +450,6 @@ static int eap_sim_initiate(UNUSED void *instance, eap_handler_t *handler)
 
 	outvps = handler->request->reply->vps;
 
-	vp = pairfind(outvps, ATTRIBUTE_EAP_SIM_RAND1, 0, TAG_ANY);
-	if (!vp) {
-		RDEBUG2("Can't initiate EAP-SIM, no RAND1 attribute");
-		return 0;
-	}
-
 	ess = talloc_zero(handler, eap_sim_state_t);
 	if (!ess) {
 		RDEBUG2("No space for EAP-SIM state");
@@ -471,7 +465,6 @@ static int eap_sim_initiate(UNUSED void *instance, eap_handler_t *handler)
 	if ((eap_sim_get_challenge(handler, outvps, 0, ess) +
 	     eap_sim_get_challenge(handler, outvps, 1, ess) +
 	     eap_sim_get_challenge(handler, outvps, 2, ess)) != 3) {
-		RDEBUG2("Can't initiate EAP-SIM, missing attributes");
 		return 0;
 	}
 
