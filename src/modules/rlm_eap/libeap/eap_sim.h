@@ -52,6 +52,9 @@ RCSIDH(eap_sim_h, "$Id$")
 #define ATTRIBUTE_EAP_SIM_KC2		1213
 #define ATTRIBUTE_EAP_SIM_KC3		1214
 
+#define ATTRIBUTE_EAP_SIM_KI		1215
+#define ATTRIBUTE_EAP_SIM_ALGO_VERSION	1216
+
 enum eapsim_subtype {
   eapsim_start       = 10,
   eapsim_challenge   = 11,

@@ -117,10 +117,87 @@ static int eap_sim_sendstart(eap_handler_t *handler)
 static int eap_sim_get_challenge(eap_handler_t *handler, VALUE_PAIR *vps, int idx, eap_sim_state_t *ess)
 {
 	REQUEST *request = handler->request;
-	VALUE_PAIR *vp;
+	VALUE_PAIR *vp, *ki, *version;
 
 	rad_assert(idx >= 0 && idx < 3);
 
+	/*
+	 *	Generate a new RAND value, and derive Kc and SRES from Ki
+	 */
+	ki = pairfind(vps, ATTRIBUTE_EAP_SIM_KI, 0, TAG_ANY);
+	if (ki) {
+		int i;
+
+		/*
+		 *	Check to see if have a Ki for the IMSI, this allows us to generate the rest
+		 *	of the triplets.
+		 */
+		version = pairfind(vps, ATTRIBUTE_EAP_SIM_ALGO_VERSION, 0, TAG_ANY);
+		if (!version) {
+			REDEBUG("Found Ki, but missing EAP-Sim-Algo-Version");
+			return 0;
+		}
+
+		for (i = 0; i < EAPSIM_RAND_SIZE; i++) {
+			ess->keys.rand[idx][i] = fr_rand();
+		}
+
+		switch (version->vp_integer) {
+			case 1:
+				comp128v1(ess->keys.sres[idx], ess->keys.Kc[idx], ki->vp_octets, ess->keys.rand[idx]);
+				break;
+
+			case 2:
+				comp128v23(ess->keys.sres[idx], ess->keys.Kc[idx], ki->vp_octets, ess->keys.rand[idx],
+					   true);
+				break;
+
+			case 3:
+				comp128v23(ess->keys.sres[idx], ess->keys.Kc[idx], ki->vp_octets, ess->keys.rand[idx],
+					   false);
+				break;
+
+			case 4:
+				REDEBUG("Comp128-4 algorithm is not supported as details have not yet been published. "
+					"If you have details of this algorithm please contact the FreeRADIUS "
+					"maintainers");
+				return 0;
+
+			default:
+				REDEBUG("Unknown/unsupported algorithm Comp128-%i", version->vp_integer);
+		}
+
+		if (RDEBUG_ENABLED2) {
+			char buffer[33];	/* 32 hexits (16 bytes) + 1 */
+			char *p;
+
+			RDEBUG2("Generated following triplets for round %i:", idx);
+
+			p = buffer;
+			for (i = 0; i < EAPSIM_RAND_SIZE; i++) {
+				p += sprintf(p, "%02x", ess->keys.rand[idx][i]);
+			}
+			RDEBUG2("\tRAND : 0x%s", buffer);
+
+			p = buffer;
+			for (i = 0; i < EAPSIM_SRES_SIZE; i++) {
+				p += sprintf(p, "%02x", ess->keys.sres[idx][i]);
+			}
+			RDEBUG2("\tSRES : 0x%s", buffer);
+
+			p = buffer;
+			for (i = 0; i < EAPSIM_Kc_SIZE; i++) {
+				p += sprintf(p, "%02x", ess->keys.Kc[idx][i]);
+			}
+			RDEBUG2("\tKc   : 0x%s", buffer);
+		}
+		return 1;
+	}
+
+	/*
+	 *	Use known RAND, SRES, and Kc values, these may of been pulled in from an AuC,
+	 *	or created by sending challenges to the SIM directly.
+	 */
 	vp = pairfind(vps, ATTRIBUTE_EAP_SIM_RAND1 + idx, 0, TAG_ANY);
 	if (!vp) {
 		/* bad, we can't find stuff! */

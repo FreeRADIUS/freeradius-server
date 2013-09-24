@@ -273,6 +273,9 @@ ATTRIBUTE	EAP-Sim-Kc1				1212	octets
 ATTRIBUTE	EAP-Sim-Kc2				1213	octets
 ATTRIBUTE	EAP-Sim-Kc3				1214	octets
 
+ATTRIBUTE	EAP-Sim-Ki				1215	octets
+ATTRIBUTE	EAP-Sim-Algo-Version			1216	integer
+
 #
 #	Range:	1280 - 1535
 #		EAP-type specific attributes
