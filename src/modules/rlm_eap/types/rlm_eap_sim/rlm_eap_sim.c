@@ -117,7 +117,7 @@ static int eap_sim_sendstart(eap_handler_t *handler)
 static int eap_sim_get_challenge(eap_handler_t *handler, VALUE_PAIR *vps, int idx, eap_sim_state_t *ess)
 {
 	REQUEST *request = handler->request;
-	VALUE_PAIR *vp, *ki, *version;
+	VALUE_PAIR *vp, *ki, *algo_version;
 
 	rad_assert(idx >= 0 && idx < 3);
 
@@ -132,8 +132,8 @@ static int eap_sim_get_challenge(eap_handler_t *handler, VALUE_PAIR *vps, int id
 		 *	Check to see if have a Ki for the IMSI, this allows us to generate the rest
 		 *	of the triplets.
 		 */
-		version = pairfind(vps, ATTRIBUTE_EAP_SIM_ALGO_VERSION, 0, TAG_ANY);
-		if (!version) {
+		algo_version = pairfind(vps, ATTRIBUTE_EAP_SIM_ALGO_VERSION, 0, TAG_ANY);
+		if (!algo_version) {
 			REDEBUG("Found Ki, but missing EAP-Sim-Algo-Version");
 			return 0;
 		}
@@ -142,7 +142,7 @@ static int eap_sim_get_challenge(eap_handler_t *handler, VALUE_PAIR *vps, int id
 			ess->keys.rand[idx][i] = fr_rand();
 		}
 
-		switch (version->vp_integer) {
+		switch (algo_version->vp_integer) {
 			case 1:
 				comp128v1(ess->keys.sres[idx], ess->keys.Kc[idx], ki->vp_octets, ess->keys.rand[idx]);
 				break;
@@ -164,7 +164,7 @@ static int eap_sim_get_challenge(eap_handler_t *handler, VALUE_PAIR *vps, int id
 				return 0;
 
 			default:
-				REDEBUG("Unknown/unsupported algorithm Comp128-%i", version->vp_integer);
+				REDEBUG("Unknown/unsupported algorithm Comp128-%i", algo_version->vp_integer);
 		}
 
 		if (RDEBUG_ENABLED2) {
