@@ -34,23 +34,23 @@ RCSIDH(eap_sim_h, "$Id$")
 #define ATTRIBUTE_EAP_SIM_BASE      (6*256)
 
 #define ATTRIBUTE_EAP_SIM_SUBTYPE   	1200
-#define ATTRIBUTE_EAP_SIM_RAND1	 1201
-#define ATTRIBUTE_EAP_SIM_RAND2	 1202
-#define ATTRIBUTE_EAP_SIM_RAND3	 1203
+#define ATTRIBUTE_EAP_SIM_RAND1		1201
+#define ATTRIBUTE_EAP_SIM_RAND2		1202
+#define ATTRIBUTE_EAP_SIM_RAND3		1203
 
-#define ATTRIBUTE_EAP_SIM_SRES1	 1204
-#define ATTRIBUTE_EAP_SIM_SRES2	 1205
-#define ATTRIBUTE_EAP_SIM_SRES3	 1206
+#define ATTRIBUTE_EAP_SIM_SRES1		1204
+#define ATTRIBUTE_EAP_SIM_SRES2		1205
+#define ATTRIBUTE_EAP_SIM_SRES3		1206
 
-#define ATTRIBUTE_EAP_SIM_STATE	 1207
-#define ATTRIBUTE_EAP_SIM_IMSI	  1208
-#define ATTRIBUTE_EAP_SIM_HMAC	  1209
-#define ATTRIBUTE_EAP_SIM_KEY	   1210
-#define ATTRIBUTE_EAP_SIM_EXTRA	 1211
+#define ATTRIBUTE_EAP_SIM_STATE		1207
+#define ATTRIBUTE_EAP_SIM_IMSI		1208
+#define ATTRIBUTE_EAP_SIM_HMAC		1209
+#define ATTRIBUTE_EAP_SIM_KEY		1210
+#define ATTRIBUTE_EAP_SIM_EXTRA		1211
 
-#define ATTRIBUTE_EAP_SIM_KC1	   1212
-#define ATTRIBUTE_EAP_SIM_KC2	   1213
-#define ATTRIBUTE_EAP_SIM_KC3	   1214
+#define ATTRIBUTE_EAP_SIM_KC1		1212
+#define ATTRIBUTE_EAP_SIM_KC2		1213
+#define ATTRIBUTE_EAP_SIM_KC3		1214
 
 enum eapsim_subtype {
   eapsim_start       = 10,
@@ -127,22 +127,22 @@ extern int unmap_eapsim_basictypes(RADIUS_PACKET *r,
 
 struct eapsim_keys {
   /* inputs */
-  unsigned char identity[MAX_STRING_LEN];
+  uint8_t identity[MAX_STRING_LEN];
   unsigned int  identitylen;
-  unsigned char nonce_mt[EAPSIM_NONCEMT_SIZE];
-  unsigned char rand[3][EAPSIM_RAND_SIZE];
-  unsigned char sres[3][EAPSIM_SRES_SIZE];
-  unsigned char Kc[3][EAPSIM_Kc_SIZE];
-  unsigned char versionlist[MAX_STRING_LEN];
-  unsigned char versionlistlen;
-  unsigned char versionselect[2];
+  uint8_t nonce_mt[EAPSIM_NONCEMT_SIZE];
+  uint8_t rand[3][EAPSIM_RAND_SIZE];
+  uint8_t sres[3][EAPSIM_SRES_SIZE];
+  uint8_t Kc[3][EAPSIM_Kc_SIZE];
+  uint8_t versionlist[MAX_STRING_LEN];
+  uint8_t versionlistlen;
+  uint8_t versionselect[2];
 
   /* outputs */
-  unsigned char master_key[20];
-  unsigned char K_aut[EAPSIM_AUTH_SIZE];
-  unsigned char K_encr[16];
-  unsigned char msk[64];
-  unsigned char emsk[64];
+  uint8_t master_key[20];
+  uint8_t K_aut[EAPSIM_AUTH_SIZE];
+  uint8_t K_encr[16];
+  uint8_t msk[64];
+  uint8_t emsk[64];
 };
 
 
