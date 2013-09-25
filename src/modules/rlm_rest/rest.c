@@ -47,6 +47,7 @@ RCSID("$Id$")
 const http_body_type_t http_body_type_supported[HTTP_BODY_NUM_ENTRIES] = {
 	HTTP_BODY_UNSUPPORTED,	// HTTP_BODY_UNKOWN
 	HTTP_BODY_UNSUPPORTED,	// HTTP_BODY_UNSUPPORTED
+	HTTP_BODY_UNSUPPORTED,  // HTTP_BODY_UNAVAILABLE
 	HTTP_BODY_UNSUPPORTED,	// HTTP_BODY_INVALID
 	HTTP_BODY_POST,		// HTTP_BODY_POST
 #ifdef HAVE_JSON
@@ -1261,9 +1262,8 @@ static VALUE_PAIR *json_pairmake(rlm_rest_t *instance,
 	int i, len;
 
 	if (!json_object_is_type(object, json_type_object)) {
-		RDEBUG("Can't process VP container, expected JSON object,"
-		       " got \"%s\", skipping",
-      	       	       json_object_get_type(object));
+		RDEBUG("Can't process VP container, expected JSON object, got \"%s\", skipping",
+      	       	       json_type_to_name(json_object_get_type(object)));
 		return NULL;
    	}
 
