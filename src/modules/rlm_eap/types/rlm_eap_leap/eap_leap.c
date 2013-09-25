@@ -165,25 +165,23 @@ static int eapleap_ntpwdhash(unsigned char *ntpwdhash, VALUE_PAIR *password)
 {
 	if ((password->da->attr == PW_USER_PASSWORD) ||
 	    (password->da->attr == PW_CLEARTEXT_PASSWORD)) {
-		size_t i;
 		unsigned char unicode[512];
 
 		/*
 		 *	Convert the password to NT's weird Unicode format.
 		 */
-		memset(unicode, 0, sizeof(unicode));
-		for (i = 0; i < password->length; i++) {
-			/*
-			 *  Yes, the *even* bytes have the values,
-			 *  and the *odd* bytes are zero.
-			 */
-			unicode[(i << 1)] = password->vp_strvalue[i];
+		size_t len;
+		if (utf8_to_ucs2(password->vp_strvalue, password->length, unicode, sizeof(unicode), &len) < 0)
+		{
+			ERROR("rlm_eap_leap: Error converting password to UCS2");
+			return 0;
 		}
 
+		len *= 2;
 		/*
 		 *  Get the NT Password hash.
 		 */
-		fr_md4_calc(ntpwdhash, unicode, password->length * 2);
+		fr_md4_calc(ntpwdhash, unicode, len);
 
 	} else {		/* MUST be NT-Password */
 		uint8_t *p = NULL;

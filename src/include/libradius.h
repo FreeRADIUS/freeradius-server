@@ -603,6 +603,9 @@ int fr_ipaddr2sockaddr(fr_ipaddr_t const *ipaddr, int port,
 		       struct sockaddr_storage *sa, socklen_t *salen);
 int fr_sockaddr2ipaddr(struct sockaddr_storage const *sa, socklen_t salen,
 		       fr_ipaddr_t *ipaddr, int * port);
+int utf8_to_ucs2(const uint8_t *utf8_string, size_t utf8_string_len,
+				 uint8_t *ucs2_buffer, size_t ucs2_buffer_size,
+				size_t *ucs2_string_size);
 
 
 #ifdef WITH_ASCEND_BINARY

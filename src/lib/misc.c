@@ -33,6 +33,12 @@ int		fr_debug_flag = 0;
 
 fr_thread_local_setup(char *, fr_inet_ntop_buffer);	/* macro */
 
+#define WPA_PUT_LE16(a, val)			\
+	do {					\
+		(a)[1] = ((uint16_t) (val)) >> 8;	\
+		(a)[0] = ((uint16_t) (val)) & 0xff;	\
+	} while (0)
+
 #ifdef HAVE_PTHREAD_H
 static pthread_mutex_t autofree_context = PTHREAD_MUTEX_INITIALIZER;
 #  define PTHREAD_MUTEX_LOCK pthread_mutex_lock
@@ -740,3 +746,61 @@ int fr_sockaddr2ipaddr(struct sockaddr_storage const *sa, socklen_t salen,
 
 	return 1;
 }
+
+/**
+ * utf8_to_ucs2 - Convert UTF-8 string to UCS-2 encoding
+ * @utf8_string: UTF-8 string (IN)
+ * @utf8_string_len: Length of utf8_string (IN)
+ * @ucs2_buffer: UCS-2 buffer (OUT)
+ * @ucs2_buffer_size: Length of UCS-2 buffer (IN)
+ * @ucs2_string_size: Number of 2-byte words in the resulting UCS-2 string
+ * Returns: 0 on success, -1 on failure
+ *
+ * borrowed from src/crypto/ms_funcs.c of wpa_supplicant project 
+ *(http://hostap.epitest.fi/wpa_supplicant/)
+ */
+int utf8_to_ucs2(const uint8_t *utf8_string, size_t utf8_string_len,
+				 uint8_t *ucs2_buffer, size_t ucs2_buffer_size,
+				size_t *ucs2_string_size)
+{
+	size_t i, j;
+
+	for (i = 0, j = 0; i < utf8_string_len; i++) {
+		uint8_t c = utf8_string[i];
+		if (j >= ucs2_buffer_size) {
+			/* input too long */
+			return -1;
+		}
+		if (c <= 0x7F) {
+			WPA_PUT_LE16(ucs2_buffer + j, c);
+			j += 2;
+		} else if (i == utf8_string_len - 1 ||
+			   j >= ucs2_buffer_size - 1) {
+			/* incomplete surrogate */
+			return -1;
+		} else {
+			uint8_t c2 = utf8_string[++i];
+			if ((c & 0xE0) == 0xC0) {
+				/* two-byte encoding */
+				WPA_PUT_LE16(ucs2_buffer + j,
+					     ((c & 0x1F) << 6) | (c2 & 0x3F));
+				j += 2;
+			} else if (i == utf8_string_len ||
+				   j >= ucs2_buffer_size - 1) {
+				/* incomplete surrogate */
+				return -1;
+			} else {
+				/* three-byte encoding */
+				uint8_t c3 = utf8_string[++i];
+				WPA_PUT_LE16(ucs2_buffer + j,
+					     ((c & 0xF) << 12) |
+					     ((c2 & 0x3F) << 6) | (c3 & 0x3F));
+			}
+		}
+	}
+
+	if (ucs2_string_size)
+		*ucs2_string_size = j / 2;
+	return 0;
+}
+

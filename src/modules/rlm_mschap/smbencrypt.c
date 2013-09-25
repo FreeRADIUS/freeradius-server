@@ -48,22 +48,13 @@ static void tohex (unsigned char const  *src, size_t len, char *dst)
 
 static void ntpwdhash (uint8_t *szHash, char const *szPassword)
 {
-	char szUnicodePass[513];
-	char nPasswordLen;
-	int i;
-
-	/*
-	 *	NT passwords are unicode.  Convert plain text password
-	 *	to unicode by inserting a zero every other byte
-	 */
-	nPasswordLen = strlen(szPassword);
-	for (i = 0; i < nPasswordLen; i++) {
-		szUnicodePass[i << 1] = szPassword[i];
-		szUnicodePass[(i << 1) + 1] = 0;
-	}
+	unsigned char unicodePass[512];
+    size_t nPasswordLen;
+    utf8_to_ucs2(szPassword, strlen(szPassword), unicodePass, sizeof(unicodePass), &nPasswordLen);
 
 	/* Encrypt Unicode password to a 16-byte MD4 hash */
-	fr_md4_calc(szHash, (uint8_t *) szUnicodePass, (nPasswordLen<<1) );
+    nPasswordLen *= 2;
+	fr_md4_calc(szHash, (uint8_t *) unicodePass, nPasswordLen);
 }
 
 
