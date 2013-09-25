@@ -288,7 +288,7 @@ static void _comp128v23(uint8_t *rand, uint8_t const *kxor)
 	uint8_t temp[16];
 	uint8_t km_rm[32];
 
-	int j, i, k, z;
+	int i, j, k, z;
 
 	memset(&temp, 0, sizeof(temp));
 	memcpy(km_rm, rand, 16);
@@ -329,7 +329,6 @@ static void _comp128v23(uint8_t *rand, uint8_t const *kxor)
  * @param[in] ki known only by the SIM and AuC (us in this case).
  * @param[in] rand 16 bytes of randomness.
  * @param[in] v2 if true we use version comp128-2 else we use comp128-3.
-
  */
 void comp128v23(uint8_t *sres, uint8_t *kc, uint8_t const *ki, uint8_t const *rand, bool v2)
 {
@@ -425,14 +424,17 @@ int main(int argc, char **argv)
 		case 3:
 			comp128v23(sres, kc, key, rand, false);
 			break;
+
 		case 2:
 			comp128v23(sres, kc, key, rand, true);
 			break;
+
 		case 1:
 			comp128v1(sres, kc, key, rand);
 			break;
+
 		default:
-			fprintf(stderr, "Invalid version, must be 1,2 or 3");
+			fprintf(stderr, "Invalid version, must be 1, 2 or 3");
 			goto error;
 	}
 
