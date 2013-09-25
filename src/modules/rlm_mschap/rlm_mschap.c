@@ -460,7 +460,11 @@ static ssize_t mschap_xlat(void *instance, REQUEST *request,
 			return 0;
 		}
 
-		mschap_ntpwdhash(buffer,buf2);
+		if (mschap_ntpwdhash(buffer, buf2) < 0) {
+			RERROR("Failed generating NT-Password");
+			*buffer = '\0';
+			return 0;
+		}
 
 		fr_bin2hex(out, buffer, 16);
 		out[32] = '\0';
@@ -1402,7 +1406,11 @@ static rlm_rcode_t mod_authenticate(void * instance, REQUEST *request)
 		} else {
 			nt_password->length = 16;
 			nt_password->vp_octets = p = talloc_array(nt_password, uint8_t, nt_password->length);
-			mschap_ntpwdhash(p, password->vp_strvalue);
+
+			if (mschap_ntpwdhash(p, password->vp_strvalue) < 0) {
+				RERROR("Failed generating NT-Password");
+				return RLM_MODULE_FAIL;
+			}
 		}
 	}
 

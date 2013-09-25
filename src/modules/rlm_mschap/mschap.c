@@ -41,30 +41,26 @@ RCSID("$Id$")
 #include	"smbdes.h"
 #include	"mschap.h"
 
-/*
- *	ntpwdhash converts Unicode password to 16-byte NT hash
- *	with MD4
+/** Converts Unicode password to 16-byte NT hash with MD4
+ *
+ * @param[out] out Pointer to 16 byte output buffer.
+ * @param[in] password to encode.
+ * @return 0 on success else -1 on failure.
  */
-void mschap_ntpwdhash (uint8_t *szHash, char const *szPassword)
+int mschap_ntpwdhash(uint8_t *out, char const *password)
 {
-	char szUnicodePass[513];
-	int nPasswordLen;
-	int i;
+	ssize_t len;
+	uint8_t ucs2_password[512];
 
-	/*
-	 *	NT passwords are unicode.  Convert plain text password
-	 *	to unicode by inserting a zero every other byte
-	 */
-	nPasswordLen = strlen(szPassword);
-	for (i = 0; i < nPasswordLen; i++) {
-		szUnicodePass[i << 1] = szPassword[i];
-		szUnicodePass[(i << 1) + 1] = 0;
+    	len = fr_utf8_to_ucs2(ucs2_password, sizeof(ucs2_password), password, strlen(password));
+	if (len < 0) {
+		*out = '\0';
+		return -1;
 	}
+	fr_md4_calc(out, (uint8_t *) ucs2_password, len);
 
-	/* Encrypt Unicode password to a 16-byte MD4 hash */
-	fr_md4_calc(szHash, (uint8_t *) szUnicodePass, (nPasswordLen<<1) );
+	return 0;
 }
-
 
 /*
  *	challenge_hash() is used by mschap2() and auth_response()

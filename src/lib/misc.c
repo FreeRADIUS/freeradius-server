@@ -29,13 +29,20 @@ RCSID("$Id$")
 #include	<fcntl.h>
 #include	<signal.h>
 
-int		fr_dns_lookups = 0;
-int		fr_debug_flag = 0;
-
+#define FR_PUT_LE16(a, val)\
+	do {\
+		a[1] = ((uint16_t) (val)) >> 8;\
+		a[0] = ((uint16_t) (val)) & 0xff;\
+	} while (0)
 
 static int	fr_debugger_present = -1;
 
-/** Stub callback to see if the SIGTRAP handler is overriden
+int	fr_dns_lookups = 0;
+int	fr_debug_flag = 0;
+
+fr_thread_local_setup(char *, fr_inet_ntop_buffer);	/* macro */
+
+/** Allocates a new talloc context from the root autofree context
  *
  * @param signum signal raised.
  */
@@ -685,3 +692,59 @@ int fr_sockaddr2ipaddr(struct sockaddr_storage const *sa, socklen_t salen,
 
 	return 1;
 }
+
+/** Convert UTF8 string to UCS2 encoding
+ *
+ * @note Borrowed from src/crypto/ms_funcs.c of wpa_supplicant project (http://hostap.epitest.fi/wpa_supplicant/)
+ *
+ * @param[out] out Where to write the ucs2 string.
+ * @param[in] outlen Size of output buffer.
+ * @param[in] in UTF8 string to convert.
+ * @param[in] inlen length of UTF8 string.
+ * @return the size of the UCS2 string written to the output buffer (in bytes).
+ */
+ssize_t fr_utf8_to_ucs2(uint8_t *out, size_t outlen, char const *in, size_t inlen)
+{
+	size_t i;
+	uint8_t *start = out;
+
+	for (i = 0; i < inlen; i++) {
+		uint8_t c, c2, c3;
+
+		c = in[i];
+		if ((size_t)(out - start) >= outlen) {
+			/* input too long */
+			return -1;
+		}
+
+		/* One-byte encoding */
+		if (c <= 0x7f) {
+			FR_PUT_LE16(out, c);
+			out += 2;
+			continue;
+		} else if ((i == (inlen - 1)) || ((size_t)(out - start) >= (outlen - 1))) {
+			/* Incomplete surrogate */
+			return -1;
+		}
+
+		c2 = in[++i];
+		/* Two-byte encoding */
+		if ((c & 0xe0) == 0xc0) {
+			FR_PUT_LE16(out, ((c & 0x1f) << 6) | (c2 & 0x3f));
+			out += 2;
+			continue;
+		}
+		if ((i == inlen) || ((size_t)(out - start) >= (outlen - 1))) {
+			/* Incomplete surrogate */
+			return -1;
+		}
+
+		/* Three-byte encoding */
+		c3 = in[++i];
+		FR_PUT_LE16(out, ((c & 0xf) << 12) | ((c2 & 0x3f) << 6) | (c3 & 0x3f));
+		out += 2;
+	}
+
+	return out - start;
+}
+

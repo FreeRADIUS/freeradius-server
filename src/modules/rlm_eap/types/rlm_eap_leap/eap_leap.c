@@ -161,30 +161,26 @@ leap_packet_t *eapleap_extract(EAP_DS *eap_ds)
 /*
  *  Get the NT-Password hash.
  */
-static int eapleap_ntpwdhash(unsigned char *ntpwdhash, VALUE_PAIR *password)
+static int eapleap_ntpwdhash(uint8_t *out, VALUE_PAIR *password)
 {
 	if ((password->da->attr == PW_USER_PASSWORD) ||
 	    (password->da->attr == PW_CLEARTEXT_PASSWORD)) {
-		size_t i;
-		unsigned char unicode[512];
+		ssize_t len;
+		uint8_t ucs2_password[512];
 
 		/*
 		 *	Convert the password to NT's weird Unicode format.
 		 */
-		memset(unicode, 0, sizeof(unicode));
-		for (i = 0; i < password->length; i++) {
-			/*
-			 *  Yes, the *even* bytes have the values,
-			 *  and the *odd* bytes are zero.
-			 */
-			unicode[(i << 1)] = password->vp_strvalue[i];
+		len = fr_utf8_to_ucs2(ucs2_password, sizeof(ucs2_password), password->vp_strvalue, password->length);
+		if (len < 0) {
+			ERROR("rlm_eap_leap: Error converting password to UCS2");
+			return 0;
 		}
 
 		/*
 		 *  Get the NT Password hash.
 		 */
-		fr_md4_calc(ntpwdhash, unicode, password->length * 2);
-
+		fr_md4_calc(out, ucs2_password, len);
 	} else {		/* MUST be NT-Password */
 		uint8_t *p = NULL;
 
@@ -202,7 +198,7 @@ static int eapleap_ntpwdhash(unsigned char *ntpwdhash, VALUE_PAIR *password)
 			talloc_free(p);
 		}
 
-		memcpy(ntpwdhash, password->vp_octets, 16);
+		memcpy(out, password->vp_octets, 16);
 	}
 	return 1;
 }
@@ -214,7 +210,7 @@ static int eapleap_ntpwdhash(unsigned char *ntpwdhash, VALUE_PAIR *password)
 int eapleap_stage4(leap_packet_t *packet, VALUE_PAIR* password,
 		   leap_session_t *session)
 {
-	unsigned char ntpwdhash[16];
+	unsigned char out[16];
 	unsigned char response[24];
 
 
@@ -225,14 +221,14 @@ int eapleap_stage4(leap_packet_t *packet, VALUE_PAIR* password,
 		return 0;
 	}
 
-	if (!eapleap_ntpwdhash(ntpwdhash, password)) {
+	if (!eapleap_ntpwdhash(out, password)) {
 		return 0;
 	}
 
 	/*
 	 *	Calculate and verify the CHAP challenge.
 	 */
-	eapleap_mschap(ntpwdhash, session->peer_challenge, response);
+	eapleap_mschap(out, session->peer_challenge, response);
 	if (memcmp(response, packet->challenge, 24) == 0) {
 		DEBUG2("  rlm_eap_leap: NtChallengeResponse from AP is valid");
 		memcpy(session->peer_response, response, sizeof(response));
@@ -246,12 +242,11 @@ int eapleap_stage4(leap_packet_t *packet, VALUE_PAIR* password,
 /*
  *	Verify ourselves to the AP
  */
-leap_packet_t *eapleap_stage6(leap_packet_t *packet, REQUEST *request,
-			    VALUE_PAIR *user_name, VALUE_PAIR* password,
-			    leap_session_t *session)
+leap_packet_t *eapleap_stage6(leap_packet_t *packet, REQUEST *request, VALUE_PAIR *user_name, VALUE_PAIR *password,
+			      leap_session_t *session)
 {
 	size_t i;
-	uint8_t ntpwdhash[16], ntpwdhashhash[16];
+	uint8_t out[16], outhash[16];
 	uint8_t *p, buffer[256];
 	leap_packet_t *reply;
 	char *q;
@@ -296,20 +291,19 @@ leap_packet_t *eapleap_stage6(leap_packet_t *packet, REQUEST *request,
 	/*
 	 *  MPPE hash = ntpwdhash(ntpwdhash(unicode(pw)))
 	 */
-	if (!eapleap_ntpwdhash(ntpwdhash, password)) {
+	if (!eapleap_ntpwdhash(out, password)) {
 		talloc_free(reply);
 		return NULL;
 	}
-	fr_md4_calc(ntpwdhashhash, ntpwdhash, 16);
+	fr_md4_calc(outhash, out, 16);
 
 	/*
-	 *	Calculate our response, to authenticate ourselves
-	 *	to the AP.
+	 *	Calculate our response, to authenticate ourselves to the AP.
 	 */
-	eapleap_mschap(ntpwdhashhash, packet->challenge, reply->challenge);
+	eapleap_mschap(outhash, packet->challenge, reply->challenge);
 
 	/*
-	 *  Calculate the leap:session-key attribute
+	 *	Calculate the leap:session-key attribute
 	 */
 	vp = pairmake_reply("Cisco-AVPair", NULL, T_OP_ADD);
 	if (!vp) {
@@ -322,7 +316,7 @@ leap_packet_t *eapleap_stage6(leap_packet_t *packet, REQUEST *request,
 	 *	And calculate the MPPE session key.
 	 */
 	p = buffer;
-	memcpy(p, ntpwdhashhash, 16); /* MPPEHASH */
+	memcpy(p, outhash, 16); /* MPPEHASH */
 	p += 16;
 	memcpy(p, packet->challenge, 8); /* APC */
 	p += 8;
@@ -335,12 +329,12 @@ leap_packet_t *eapleap_stage6(leap_packet_t *packet, REQUEST *request,
 	/*
 	 *	These 16 bytes are the session key to use.
 	 */
-	fr_md5_calc(ntpwdhash, buffer, 16 + 8 + 24 + 8 + 24);
+	fr_md5_calc(out, buffer, 16 + 8 + 24 + 8 + 24);
 
 	q = talloc_array(vp, char, 16 + sizeof("leap:session-key="));
 	strcpy(q, "leap:session-key=");
 
-	memcpy(q + 17, ntpwdhash, 16);
+	memcpy(q + 17, out, 16);
 
 	i = 16;
 	rad_tunnel_pwencode(q + 17, &i,
