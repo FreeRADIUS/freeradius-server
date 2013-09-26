@@ -685,7 +685,7 @@ size_t vp_prints_value_json(char *out, size_t outlen, VALUE_PAIR const *vp)
 
 	if (freespace < 2) return outlen;
 	*out++ = '"';
-	*out++ = '\0';
+	*out = '\0'; // We don't increment out, because the nul byte should not be included in the length
 
 	return out - start;
 }
