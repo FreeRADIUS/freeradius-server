@@ -667,7 +667,7 @@ static rlm_rcode_t mod_post_proxy(void *inst, REQUEST *request)
 	/*
 	 *	The format is very specific.
 	 */
-	if (vp->length != 17 + 34) {
+	if (vp->length != (17 + 34)) {
 		RDEBUG2("Cisco-AVPair with leap:session-key has incorrect length %d: Expected %d",
 		       vp->length, 17 + 34);
 		return RLM_MODULE_NOOP;
@@ -692,9 +692,7 @@ static rlm_rcode_t mod_post_proxy(void *inst, REQUEST *request)
 	rad_tunnel_pwencode(p + 17, &len,
 			    request->client->secret,
 			    request->packet->vector);
-//	talloc_free(vp->vp_strvalue);
-	vp->vp_strvalue = p;
-	vp->type = VT_DATA;
+	pairstrsteal(vp, p);
 
 	return RLM_MODULE_UPDATED;
 }
