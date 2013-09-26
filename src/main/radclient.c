@@ -365,8 +365,8 @@ static int radclient_init(char const *filename)
 					p[0] = vp->da->attr - PW_DIGEST_REALM + 1;
 					vp->length += 2;
 					p[1] = vp->length;
-//					talloc_free(vp->vp_octets);
-					vp->vp_octets = p;
+
+					pairmemsteal(vp, p);
 
 					da = dict_attrbyvalue(PW_DIGEST_ATTRIBUTES, 0);
 					if (!da) {

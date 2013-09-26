@@ -331,10 +331,8 @@ leap_packet_t *eapleap_stage6(REQUEST *request, leap_packet_t *packet, VALUE_PAI
 
 	i = 16;
 	rad_tunnel_pwencode(q + 17, &i, request->client->secret, request->packet->vector);
+	pairstrsteal(vp, q);
 	vp->length = 17 + i;
-//	talloc_free(vp->vp_strvalue);
-	vp->vp_strvalue = q;
-	vp->type = VT_DATA;
 
 	return reply;
 }

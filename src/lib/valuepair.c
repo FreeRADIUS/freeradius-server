@@ -3044,9 +3044,36 @@ void pairmemcpy(VALUE_PAIR *vp, uint8_t const *src, size_t size)
 	vp->length = size;
 }
 
+/** Reparent an allocated octet buffer to a VALUE_PAIR
+ *
+ * @param[in,out] vp to update
+ * @param[in] src buffer to steal.
+ */
+void pairmemsteal(VALUE_PAIR *vp, uint8_t *src)
+{
+	uint8_t *q;
+	VERIFY_VP(vp);
+
+	memcpy(&q, &vp->vp_octets, sizeof(q));
+	talloc_free(q);
+
+	vp->vp_octets = talloc_steal(vp, src);
+	vp->type = VT_DATA;
+	vp->length = talloc_array_length(vp->vp_strvalue);
+}
+
+/** Reparent an allocated char buffer to a VALUE_PAIR
+ *
+ * @param[in,out] vp to update
+ * @param[in] src buffer to steal.
+ */
 void pairstrsteal(VALUE_PAIR *vp, char *src)
 {
+	uint8_t *q;
 	VERIFY_VP(vp);
+
+	memcpy(&q, &vp->vp_octets, sizeof(q));
+	talloc_free(q);
 
 	vp->vp_strvalue = talloc_steal(vp, src);
 	vp->type = VT_DATA;
