@@ -40,8 +40,6 @@ static int	fr_debugger_present = -1;
 int	fr_dns_lookups = 0;
 int	fr_debug_flag = 0;
 
-fr_thread_local_setup(char *, fr_inet_ntop_buffer);	/* macro */
-
 /** Allocates a new talloc context from the root autofree context
  *
  * @param signum signal raised.

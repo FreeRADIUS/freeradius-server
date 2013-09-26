@@ -60,13 +60,11 @@ typedef struct leap_session_t {
 
 /* function declarations here */
 
-int 		eapleap_compose(EAP_DS *auth, leap_packet_t *reply);
-leap_packet_t 	*eapleap_extract(EAP_DS *auth);
-leap_packet_t 	*eapleap_initiate(EAP_DS *eap_ds, VALUE_PAIR *user_name);
-int		eapleap_stage4(leap_packet_t *packet, VALUE_PAIR* password,
-			       leap_session_t *session);
-leap_packet_t	*eapleap_stage6(leap_packet_t *packet, REQUEST *request,
-				VALUE_PAIR *user_name, VALUE_PAIR* password,
+int 		eapleap_compose(REQUEST *request, EAP_DS *auth, leap_packet_t *reply);
+leap_packet_t 	*eapleap_extract(REQUEST *request, EAP_DS *eap_ds);
+leap_packet_t 	*eapleap_initiate(REQUEST *request, EAP_DS *eap_ds, VALUE_PAIR *user_name);
+int		eapleap_stage4(REQUEST *request, leap_packet_t *packet, VALUE_PAIR* password, leap_session_t *session);
+leap_packet_t	*eapleap_stage6(REQUEST *request, leap_packet_t *packet, VALUE_PAIR *user_name, VALUE_PAIR* password,
 				leap_session_t *session);
 
 void eapleap_lmpwdhash(unsigned char const *password,unsigned char *lmhash);
