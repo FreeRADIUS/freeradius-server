@@ -663,6 +663,7 @@ static size_t rest_encode_json(void *ptr, size_t size, size_t nmemb,
 
 			len = sprintf(p, "\"%s\":{\"type\":\"%s\",\"value\":[" ,
 				      current[0]->da->name, type);
+
 			p += len;
 			s -= len;
 
@@ -695,7 +696,7 @@ static size_t rest_encode_json(void *ptr, size_t size, size_t nmemb,
 			/*
 			 *	Multivalued attribute
 			 */
-			if (current[1] &&
+			if (current[0]->next && current[1] &&
 			    (current[0]->da == current[1]->da)) {
 				*p++ = ',';
 				current++;
@@ -715,7 +716,12 @@ static size_t rest_encode_json(void *ptr, size_t size, size_t nmemb,
 		*p++ = ']';
 		*p++ = '}';
 
-		if (*++current) {
+		if (current[0]->next)  // FIXME - possibly not the right fix, but fixes a segfault due to running off this list
+			++current;
+		else
+			*current = NULL;
+
+		if (*current) {
 			if (!--s) goto no_space;
 			*p++ = ',';
 		}
