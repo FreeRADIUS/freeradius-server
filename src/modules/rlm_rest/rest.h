@@ -174,8 +174,7 @@ typedef struct rlm_rest_read_t {
 	REQUEST 	*request;
 	read_state_t 	state;
 
-	VALUE_PAIR 	**first;
-	VALUE_PAIR 	**next;
+	vp_cursor_t 	cursor;
 
 	unsigned int	chunk;
 } rlm_rest_read_t;
