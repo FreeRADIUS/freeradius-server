@@ -283,14 +283,12 @@ void *mod_conn_create(void *instance)
 	CURLcode ret;
 
 	if (!candle) {
-		ERROR("rlm_rest (%s): Failed to create CURL handle",
-		       inst->xlat_name);
+		ERROR("rlm_rest (%s): Failed to create CURL handle", inst->xlat_name);
 		return NULL;
 	}
 
 	if (!*inst->connect_uri) {
-		ERROR("rlm_rest (%s): Skipping pre-connect,"
-		       " connect_uri not specified", inst->xlat_name);
+		ERROR("rlm_rest (%s): Skipping pre-connect, connect_uri not specified", inst->xlat_name);
 		return candle;
 	}
 
@@ -306,15 +304,11 @@ void *mod_conn_create(void *instance)
 			       inst->connect_uri);
 	if (ret != CURLE_OK) goto error;
 
-	DEBUG("rlm_rest (%s): Connecting to \"%s\"",
-	       inst->xlat_name,
-	       inst->connect_uri);
+	DEBUG("rlm_rest (%s): Connecting to \"%s\"", inst->xlat_name, inst->connect_uri);
 
 	ret = curl_easy_perform(candle);
 	if (ret != CURLE_OK) {
-		ERROR("rlm_rest (%s): Connection failed: %i - %s",
-			inst->xlat_name,
-			ret, curl_easy_strerror(ret));
+		ERROR("rlm_rest (%s): Connection failed: %i - %s", inst->xlat_name, ret, curl_easy_strerror(ret));
 
 		goto connection_error;
 	}
@@ -343,9 +337,7 @@ void *mod_conn_create(void *instance)
 	 */
 	error:
 
-	ERROR("rlm_rest (%s): Failed setting curl option: %i - %s",
-			inst->xlat_name,
-			ret, curl_easy_strerror(ret));
+	ERROR("rlm_rest (%s): Failed setting curl option: %i - %s", inst->xlat_name, ret, curl_easy_strerror(ret));
 
 	/*
 	 *	So we don't leak CURL handles.
@@ -379,9 +371,8 @@ int mod_conn_alive(void *instance, void *handle)
 
 	ret = curl_easy_getinfo(candle, CURLINFO_LASTSOCKET, &last_socket);
 	if (ret != CURLE_OK) {
-		ERROR("rlm_rest (%s): Couldn't determine socket"
-		       " state: %i - %s", inst->xlat_name, ret,
-		       curl_easy_strerror(ret));
+		ERROR("rlm_rest (%s): Couldn't determine socket state: %i - %s", inst->xlat_name, ret,
+		      curl_easy_strerror(ret));
 
 		return false;
 	}
@@ -559,7 +550,7 @@ static size_t rest_encode_post(void *ptr, size_t size, size_t nmemb,
 	 *	The buffer wasn't big enough to encode a single attribute chunk.
 	 */
 	if (!len) {
-		ERROR("rlm_rest (%s): AVP exceeds buffer length or chunk", ctx->instance->xlat_name);
+		REDEBUG("AVP exceeds buffer length or chunk");
 	} else {
 		RDEBUG2("Returning %i bytes of POST data (buffer full or chunk exceeded)", len);
 	}
@@ -749,7 +740,7 @@ static size_t rest_encode_json(void *ptr, size_t size, size_t nmemb,
 	 *	The buffer wasn't big enough to encode a single attribute chunk.
 	 */
 	if (!len) {
-		ERROR("rlm_rest (%s): AVP exceeds buffer length or chunk", ctx->instance->xlat_name);
+		REDEBUG("AVP exceeds buffer length or chunk");
 	} else {
 		RDEBUG2("Returning %i bytes of JSON data (buffer full or chunk exceeded)", len);
 	}
@@ -978,8 +969,7 @@ static int rest_decode_post(rlm_rest_t *instance,
 
 		vp = pairalloc(request, da);
 		if (!vp) {
-			ERROR("rlm_rest (%s): Failed creating"
-			       " valuepair", instance->xlat_name);
+			REDEBUG("Failed creating valuepair");
 			talloc_free(expanded);
 
 			goto error;
@@ -1008,14 +998,13 @@ static int rest_decode_post(rlm_rest_t *instance,
 		ret = pairparsevalue(vp, expanded);
 		talloc_free(expanded);
 		if (!ret) {
-			RDEBUG("Incompatible value assignment, skipping");
+			RWDEBUG("Incompatible value assignment, skipping");
 			talloc_free(vp);
 			goto skip;
 		}
 
 		if (++count == REST_BODY_MAX_ATTRS) {
-			ERROR("rlm_rest (%s): At maximum"
-			       " attribute limit", instance->xlat_name);
+			REDEBUG("At maximum attribute limit");
 			return count;
 		}
 
@@ -1035,8 +1024,7 @@ static int rest_decode_post(rlm_rest_t *instance,
 	}
 
 	if (!count) {
-		ERROR("rlm_rest (%s): Malformed POST data \"%s\"",
-		       instance->xlat_name, raw);
+		REDEBUG("Malformed POST data \"%s\"", raw);
 	}
 
 	return count;
@@ -1337,9 +1325,7 @@ static VALUE_PAIR *json_pairmake(rlm_rest_t *instance,
 		i = 0;
 		do {
 			if (!(*max_attrs)--) {
-					ERROR("rlm_rest (%s): At "
-					       "maximum attribute limit",
-					       instance->xlat_name);
+					REDEBUG("At maximum attribute limit");
 					return NULL;
 			}
 
@@ -1352,8 +1338,7 @@ static VALUE_PAIR *json_pairmake(rlm_rest_t *instance,
 				flags.op = T_OP_ADD;
 			}
 
-			if (!flags.is_json &&
-			    json_object_is_type(value, json_type_object)) {
+			if (!flags.is_json && json_object_is_type(value, json_type_object)) {
 				/* TODO: Insert nested VP into VP structure...*/
 				REDEBUG("Found nested VP, these are not yet supported");
 
@@ -1412,8 +1397,7 @@ static int rest_decode_json(rlm_rest_t *instance,
 
 	json = json_tokener_parse(p);
 	if (!json) {
-		ERROR("rlm_rest (%s): Malformed JSON data \"%s\"",
-			instance->xlat_name, raw);
+		RDEBUG("Malformed JSON data \"%s\"", raw);
 		return -1;
 	}
 
@@ -1751,7 +1735,7 @@ static int rest_request_config_body(UNUSED rlm_rest_t *instance,
 		len = rest_read_wrapper(&ctx->body, func, REST_BODY_MAX_LEN,
 					&ctx->read);
 		if (len <= 0) {
-			RERROR("Failed creating HTTP body content");
+			REDEBUG("Failed creating HTTP body content");
 		}
 
 		ret = curl_easy_setopt(candle, CURLOPT_POSTFIELDS, ctx->body);
@@ -1764,7 +1748,7 @@ static int rest_request_config_body(UNUSED rlm_rest_t *instance,
 	return 0;
 
 	error:
-	RERROR("Failed setting curl option: %i - %s", ret, curl_easy_strerror(ret));
+	REDEBUG("Failed setting curl option: %i - %s", ret, curl_easy_strerror(ret));
 
 	return -1;
 }
@@ -2116,13 +2100,11 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 	return 0;
 
 	error:
-	ERROR("rlm_rest (%s): Failed setting curl option: %i - %s",
-	       instance->xlat_name, ret, curl_easy_strerror(ret));
+	RDEBUG("Failed setting curl option: %i - %s", ret, curl_easy_strerror(ret));
 	return -1;
 
 	error_header:
-	ERROR("rlm_rest (%s): Failed creating header",
-	       instance->xlat_name);
+	RDEBUG("Failed creating header", instance->xlat_name);
 	return -1;
 }
 
@@ -2147,7 +2129,7 @@ int rest_request_perform(UNUSED rlm_rest_t *instance,
 
 	ret = curl_easy_perform(candle);
 	if (ret != CURLE_OK) {
-		RERROR("Request failed: %i - %s", ret, curl_easy_strerror(ret));
+		REDEBUG("Request failed: %i - %s", ret, curl_easy_strerror(ret));
 
 		return -1;
 	}
@@ -2305,7 +2287,7 @@ ssize_t rest_uri_build(char **out, UNUSED rlm_rest_t *instance, rlm_rest_section
 	p = strchr(p, ':');
 	if (!p || (*++p != '/') || (*++p != '/')) {
 		malformed:
-		RERROR("Error URI is malformed, can't find start of path");
+		REDEBUG("Error URI is malformed, can't find start of path");
 		return -1;
 	}
 	p = strchr(p + 1, '/');
