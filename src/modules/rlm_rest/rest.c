@@ -853,7 +853,7 @@ static void rest_read_ctx_init(REQUEST *request, rlm_rest_read_t *ctx, bool sort
  * @param[in] rawlen Length of data in raw buffer.
  * @return the number of VALUE_PAIRs processed or -1 on unrecoverable error.
  */
-static int rest_decode_post(rlm_rest_t *instance,
+static int rest_decode_post(UNUSED rlm_rest_t *instance,
 			    UNUSED rlm_rest_section_t *section,
 			    REQUEST *request, void *handle, char *raw,
 			    UNUSED size_t rawlen)
