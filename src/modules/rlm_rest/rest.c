@@ -838,7 +838,7 @@ static void rest_read_ctx_init(REQUEST *request, rlm_rest_read_t *ctx, bool sort
 	if (sort) {
 		pairsort(&request->packet->vps, true);
 	}
-	paircursor(&ctx->cursor, request->packet->vps);
+	paircursor(&ctx->cursor, &request->packet->vps);
 }
 
 /** Converts POST response into VALUE_PAIRs and adds them to the request
