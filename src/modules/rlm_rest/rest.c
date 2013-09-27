@@ -444,7 +444,7 @@ static size_t rest_encode_post(void *ptr, size_t size, size_t nmemb,
 {
 	rlm_rest_read_t *ctx	= userdata;
 	REQUEST *request	= ctx->request; /* Used by RDEBUG */
-	VALUE_PAIR **current	= ctx->next;
+	VALUE_PAIR *vp;
 
 	char *p = ptr;	/* Position in buffer */
 	char *f = ptr;	/* Position in buffer of last fully encoded attribute or value */
@@ -466,17 +466,17 @@ static size_t rest_encode_post(void *ptr, size_t size, size_t nmemb,
 	}
 
 	while (s > 0) {
-		if (!*current) {
+		vp = paircurrent(&ctx->cursor);
+		if (!vp) {
 			ctx->state = READ_STATE_END;
 
 			goto end_chunk;
 		}
 
-		RDEBUG2("Encoding attribute \"%s\"", current[0]->da->name);
+		RDEBUG2("Encoding attribute \"%s\"", vp->da->name);
 
 		if (ctx->state == READ_STATE_ATTR_BEGIN) {
-			escaped = curl_escape(current[0]->da->name,
-					      strlen(current[0]->da->name));
+			escaped = curl_escape(vp->da->name, strlen(vp->da->name));
 			len = strlen(escaped);
 
 			if (s < (1 + len)) {
@@ -501,7 +501,7 @@ static size_t rest_encode_post(void *ptr, size_t size, size_t nmemb,
 		/*
 		 *	Write out single attribute string.
 		 */
-		len = vp_prints_value(p , s, current[0], 0);
+		len = vp_prints_value(p , s, vp, 0);
 		escaped = curl_escape(p, len);
 		len = strlen(escaped);
 
@@ -520,7 +520,7 @@ static size_t rest_encode_post(void *ptr, size_t size, size_t nmemb,
 		p += len;
 		s -= len;
 
-		if (*++current) {
+		if (!vp) {
 			if (!--s) goto no_space;
 			*p++ = '&';
 		}
@@ -529,7 +529,7 @@ static size_t rest_encode_post(void *ptr, size_t size, size_t nmemb,
 		 *	We wrote one full attribute value pair, record progress.
 		 */
 		f = p;
-		ctx->next = current;
+		pairnext(&ctx->cursor);
 		ctx->state = READ_STATE_ATTR_BEGIN;
 	}
 
@@ -559,11 +559,9 @@ static size_t rest_encode_post(void *ptr, size_t size, size_t nmemb,
 	 *	The buffer wasn't big enough to encode a single attribute chunk.
 	 */
 	if (!len) {
-		ERROR("rlm_rest (%s): AVP exceeds buffer length"
-		       " or chunk", ctx->instance->xlat_name);
+		ERROR("rlm_rest (%s): AVP exceeds buffer length or chunk", ctx->instance->xlat_name);
 	} else {
-		RDEBUG2("Returning %i bytes of POST data"
-			" (buffer full or chunk exceeded)", len);
+		RDEBUG2("Returning %i bytes of POST data (buffer full or chunk exceeded)", len);
 	}
 
 	return len;
@@ -611,7 +609,7 @@ static size_t rest_encode_json(void *ptr, size_t size, size_t nmemb,
 {
 	rlm_rest_read_t *ctx	= userdata;
 	REQUEST *request	= ctx->request; /* Used by RDEBUG */
-	VALUE_PAIR **current	= ctx->next;
+	VALUE_PAIR *vp, *next;
 
 	char *p = ptr;	/* Position in buffer */
 	char *f = ptr;	/* Position in buffer of last fully encoded attribute or value */
@@ -638,7 +636,12 @@ static size_t rest_encode_json(void *ptr, size_t size, size_t nmemb,
 	}
 
 	while (s > 0) {
-		if (!*current) {
+		vp = paircurrent(&ctx->cursor);
+
+		/*
+		 *	We've encoded all the VPs
+		 */
+		if (!vp) {
 			ctx->state = READ_STATE_END;
 
 			if (!--s) goto no_space;
@@ -651,18 +654,16 @@ static size_t rest_encode_json(void *ptr, size_t size, size_t nmemb,
 		 *	New attribute, write name, type, and beginning of
 		 *	value array.
 		 */
-		RDEBUG2("Encoding attribute \"%s\"", current[0]->da->name);
+		RDEBUG2("Encoding attribute \"%s\"", vp->da->name);
 		if (ctx->state == READ_STATE_ATTR_BEGIN) {
-			type = fr_int2str(dict_attr_types, current[0]->da->type,
-					  "¿Unknown?");
+			type = fr_int2str(dict_attr_types, vp->da->type, "¿Unknown?");
 
 			len  = strlen(type);
-			len += strlen(current[0]->da->name);
+			len += strlen(vp->da->name);
 
 			if (s < (23 + len)) goto no_space;
 
-			len = sprintf(p, "\"%s\":{\"type\":\"%s\",\"value\":[" ,
-				      current[0]->da->name, type);
+			len = sprintf(p, "\"%s\":{\"type\":\"%s\",\"value\":[" , vp->da->name, type);
 			p += len;
 			s -= len;
 
@@ -675,12 +676,8 @@ static size_t rest_encode_json(void *ptr, size_t size, size_t nmemb,
 			ctx->state = READ_STATE_ATTR_CONT;
 		}
 
-		/*
-		 *	Put all attribute values in an array for easier remote
-		 *	parsing whether they're multivalued or not.
-		 */
-		while (true) {
-			len = vp_prints_value_json(p , s, current[0]);
+		for (;;) {
+			len = vp_prints_value_json(p, s, vp);
 			if (len >= s) goto no_space;
 
 			/*
@@ -693,29 +690,28 @@ static size_t rest_encode_json(void *ptr, size_t size, size_t nmemb,
 			s -= len;
 
 			/*
-			 *	Multivalued attribute
+			 *	Multivalued attribute, we sorted all the attributes earlier, so multiple
+			 *	instances should occur in a contiguous block.
 			 */
-			if (current[1] &&
-			    (current[0]->da == current[1]->da)) {
+			if ((next = pairnext(&ctx->cursor)) && (vp->da == next->da)) {
 				*p++ = ',';
-				current++;
 
 				/*
 				 *	We wrote one attribute value, record
 				 *	progress.
 				 */
 				f = p;
-				ctx->next = current;
-			} else {
-				break;
+				vp = next;
+				continue;
 			}
+			break;
 		}
 
 		if (!(s -= 2)) goto no_space;
 		*p++ = ']';
 		*p++ = '}';
 
-		if (*++current) {
+		if (next) {
 			if (!--s) goto no_space;
 			*p++ = ',';
 		}
@@ -724,7 +720,6 @@ static size_t rest_encode_json(void *ptr, size_t size, size_t nmemb,
 		 *	We wrote one full attribute value pair, record progress.
 		 */
 		f = p;
-		ctx->next = current;
 		ctx->state = READ_STATE_ATTR_BEGIN;
 	}
 
@@ -754,11 +749,9 @@ static size_t rest_encode_json(void *ptr, size_t size, size_t nmemb,
 	 *	The buffer wasn't big enough to encode a single attribute chunk.
 	 */
 	if (!len) {
-		ERROR("rlm_rest (%s): AVP exceeds buffer length"
-		       " or chunk", ctx->instance->xlat_name);
+		ERROR("rlm_rest (%s): AVP exceeds buffer length or chunk", ctx->instance->xlat_name);
 	} else {
-		RDEBUG2("Returning %i bytes of JSON data"
-			" (buffer full or chunk exceeded)", len);
+		RDEBUG2("Returning %i bytes of JSON data (buffer full or chunk exceeded)", len);
 	}
 
 	return len;
@@ -826,93 +819,26 @@ static ssize_t rest_read_wrapper(char **buffer, rest_read_t func,
  *
  * Resets the values of a rlm_rest_read_t to their defaults.
  *
- * Must be called between encoding sessions.
- *
- * As part of initialisation all VALUE_PAIR pointers in the REQUEST packet are
- * written to an array.
- *
- * If sort is true, this array of VALUE_PAIR pointers will be sorted by vendor
- * and then by attribute. This is for stream encoders which may concatenate
- * multiple attribute values together into an array.
- *
- * After the encoding session has completed this array must be freed by calling
- * rest_read_ctx_free .
- *
- * @see rest_read_ctx_free
- *
  * @param[in] request Current request.
  * @param[in] ctx to initialise.
  * @param[in] sort If true VALUE_PAIRs will be sorted within the VALUE_PAIR
  *	pointer array.
  */
-static void rest_read_ctx_init(REQUEST *request,
-			       rlm_rest_read_t *ctx,
-			       int sort)
+static void rest_read_ctx_init(REQUEST *request, rlm_rest_read_t *ctx, bool sort)
 {
-	unsigned short count = 0, i;
-	unsigned short swap;
-
-	vp_cursor_t cursor;
-	VALUE_PAIR **current, *tmp;
-
 	/*
-	 * Setup stream read data
+	 * 	Setup stream read data
 	 */
 	ctx->request = request;
-	ctx->state   = READ_STATE_INIT;
+	ctx->state = READ_STATE_INIT;
 
 	/*
-	 * Create sorted array of VP pointers
+	 *	Sorts pairs in place, oh well...
 	 */
-	for (tmp = paircursor(&cursor, &request->packet->vps);
-	     tmp;
-	     tmp = pairnext(&cursor)) {
-		count++;
+	if (sort) {
+		pairsort(&request->packet->vps, true);
 	}
-
-	ctx->first = current = rad_malloc((sizeof(tmp) * (count + 1)));
-	ctx->next = ctx->first;
-
-	current[0] = NULL;
-
-	for (tmp = paircursor(&cursor, &request->packet->vps);
-	     tmp;
-	     tmp = pairnext(&cursor)) {
-		*current++ = tmp;
-	}
-
-	current = ctx->first;
-
-	if (!sort || (count < 2)) return;
-
-	/* TODO: Quicksort would be faster... */
-	do {
-		for(i = 1; i < count; i++) {
-			swap = 0;
-			if (current[i-1]->da > current[i]->da) {
-				tmp	     = current[i];
-				current[i]   = current[i-1];
-				current[i-1] = tmp;
-				swap = 1;
-			}
-		}
-	} while (swap);
-}
-
-/** Frees the VALUE_PAIR array created by rest_read_ctx_init.
- *
- * Must be called between encoding sessions else module will leak VALUE_PAIR
- * pointers.
- *
- * @see rest_read_ctx_init
- *
- * @param[in] ctx to free.
- */
-static void rest_read_ctx_free(rlm_rest_read_t *ctx)
-{
-	if (ctx->first != NULL) {
-		free(ctx->first);
-	}
+	paircursor(&ctx->cursor, request->packet->vps);
 }
 
 /** Converts POST response into VALUE_PAIRs and adds them to the request
@@ -2322,7 +2248,6 @@ void rest_request_cleanup(UNUSED rlm_rest_t *instance,
   	/*
    	 * Free other context info
    	 */
-  	rest_read_ctx_free(&ctx->read);
   	rest_write_free(&ctx->write);
 }
 
