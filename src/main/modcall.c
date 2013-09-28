@@ -433,9 +433,9 @@ static bool modcall_recurse(REQUEST *request, rlm_components_t component, int de
 
 	was_if = if_taken = false;
 	result = RLM_MODULE_UNKNOWN;
-	priority = -1;
 
 redo:
+	priority = -1;
 	c = entry->c;
 
 	/*
@@ -911,6 +911,15 @@ redo:
 	 */
 
 calculate_result:
+#if 0
+	RDEBUG("(%s, %d) ? (%s, %d)",
+	       fr_int2str(mod_rcode_table, result, "<invalid>"),
+	       priority,
+	       fr_int2str(mod_rcode_table, entry->result, "<invalid>"),
+	       entry->priority);
+#endif
+	       
+
 	rad_assert(result != RLM_MODULE_UNKNOWN);
 
 	/*
@@ -935,13 +944,15 @@ calculate_result:
 	 *	The array holds a default priority for this return
 	 *	code.  Grab it in preference to any unset priority.
 	 */
-	if (priority < 0) priority = c->actions[result];
+	if (priority < 0) {
+		priority = c->actions[result];
+	}
 
 	/*
 	 *	We're higher than any previous priority, remember this
 	 *	return code and priority.
 	 */
-	if (priority >= entry->priority) {
+	if (priority > entry->priority) {
 		entry->result = result;
 		entry->priority = priority;
 	}
