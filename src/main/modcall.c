@@ -444,9 +444,9 @@ static int modcall_recurse(REQUEST *request, int component, int depth,
 
 	was_if = if_taken = FALSE;
 	result = RLM_MODULE_FAIL;
-	priority = -1;
 
 redo:
+	priority = -1;
 	c = entry->c;
 
 	/*
@@ -807,7 +807,7 @@ calculate_result:
 	 *	We're higher than any previous priority, remember this
 	 *	return code and priority.
 	 */
-	if (priority >= entry->priority) {
+	if (priority > entry->priority) {
 		entry->result = result;
 		entry->priority = priority;
 	}
