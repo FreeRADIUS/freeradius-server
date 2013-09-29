@@ -933,51 +933,51 @@ static int perl_detach(void *instance)
 	/*
 	 *	FIXME: Call this in the destruct function?
 	 */
-		{
+	{
 		dTHXa(handle->clone);
 		PERL_SET_CONTEXT(handle->clone);
 		{
-		dSP; ENTER; SAVETMPS; PUSHMARK(SP);
-		count = call_pv(inst->func_detach, G_SCALAR | G_EVAL );
-		SPAGAIN;
+			dSP; ENTER; SAVETMPS; PUSHMARK(SP);
+			count = call_pv(inst->func_detach, G_SCALAR | G_EVAL );
+			SPAGAIN;
 
-		if (count == 1) {
-			exitstatus = POPi;
-			/*
-			 * FIXME: bug in perl
-			 *
-			 */
-			if (exitstatus >= 100 || exitstatus < 0) {
-				exitstatus = RLM_MODULE_FAIL;
+			if (count == 1) {
+				exitstatus = POPi;
+				/*
+				 * FIXME: bug in perl
+				 *
+				 */
+				if (exitstatus >= 100 || exitstatus < 0) {
+					exitstatus = RLM_MODULE_FAIL;
+				}
 			}
+			PUTBACK;
+			FREETMPS;
+			LEAVE;
 		}
-		PUTBACK;
-		FREETMPS;
-		LEAVE;
-		}
-		}
+	}
 #endif
 
-		if (inst->func_detach) {
-	dTHXa(inst->perl);
-	PERL_SET_CONTEXT(inst->perl);
-	{
-	dSP; ENTER; SAVETMPS;
-	PUSHMARK(SP);
+	if (inst->func_detach) {
+		dTHXa(inst->perl);
+		PERL_SET_CONTEXT(inst->perl);
+		{
+			dSP; ENTER; SAVETMPS;
+			PUSHMARK(SP);
 
-	count = call_pv(inst->func_detach, G_SCALAR | G_EVAL );
-	SPAGAIN;
+			count = call_pv(inst->func_detach, G_SCALAR | G_EVAL );
+			SPAGAIN;
 
-	if (count == 1) {
-		exitstatus = POPi;
-		if (exitstatus >= 100 || exitstatus < 0) {
-			exitstatus = RLM_MODULE_FAIL;
+			if (count == 1) {
+				exitstatus = POPi;
+				if (exitstatus >= 100 || exitstatus < 0) {
+					exitstatus = RLM_MODULE_FAIL;
+				}
+			}
+			PUTBACK;
+			FREETMPS;
+			LEAVE;
 		}
-	}
-	PUTBACK;
-	FREETMPS;
-	LEAVE;
-	}
 	}
 
 	xlat_unregister(inst->xlat_name, perl_xlat, instance);
