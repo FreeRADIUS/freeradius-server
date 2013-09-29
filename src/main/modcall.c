@@ -595,13 +595,11 @@ redo:
 					       g->vps, c->name);
 		if (rcode != RLM_MODULE_UPDATED) {
 			result = rcode;
-			MOD_LOG_CLOSE_BRACE();
-			goto calculate_result;
+		} else {
+			result = RLM_MODULE_NOOP;
 		}
-
-		result = RLM_MODULE_NOOP;
 		MOD_LOG_CLOSE_BRACE();
-		goto next_sibling;
+		goto calculate_result;
 	} /* MOD_IF */
 
 	/*
@@ -780,6 +778,14 @@ redo:
 	 */
 
 calculate_result:
+#if 0
+	RDEBUG("(%s, %d) ? (%s, %d)",
+	       fr_int2str(mod_rcode_table, result, "<invalid>"),
+	       priority,
+	       fr_int2str(mod_rcode_table, entry->result, "<invalid>"),
+	       entry->priority);
+#endif
+
 	/*
 	 *	The child's action says return.  Do so.
 	 */
@@ -802,7 +808,9 @@ calculate_result:
 	 *	The array holds a default priority for this return
 	 *	code.  Grab it in preference to any unset priority.
 	 */
-	if (priority < 0) priority = c->actions[result];
+	if (priority < 0) {
+		priority = c->actions[result];
+	}
 
 	/*
 	 *	We're higher than any previous priority, remember this
@@ -1443,7 +1451,7 @@ static modcallable *do_compile_modupdate(modcallable *parent,
 	
 	memcpy(csingle->actions, defaultactions[component][GROUPTYPE_SIMPLE],
 	       sizeof(csingle->actions));
-
+	
 	g->grouptype = GROUPTYPE_SIMPLE;
 	g->children = NULL;
 	g->cs = cs;
