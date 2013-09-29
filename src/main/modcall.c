@@ -586,13 +586,14 @@ redo:
 			rcode = radius_map2request(request, map, "update", radius_map2vp, NULL);
 			if (rcode < 0) {
 				result = (rcode == -2) ? RLM_MODULE_INVALID : RLM_MODULE_FAIL;
+				MOD_LOG_CLOSE_BRACE();
 				goto calculate_result;
 			}
 		}
 		
 		result = RLM_MODULE_NOOP;
 		MOD_LOG_CLOSE_BRACE();
-		goto next_sibling;
+		goto calculate_result;
 	} /* MOD_IF */
 
 	/*
@@ -1481,6 +1482,9 @@ static modcallable *do_compile_modupdate(modcallable *parent, UNUSED rlm_compone
 	}
 	csingle->type = MOD_UPDATE;
 	csingle->method = component;
+
+	memcpy(csingle->actions, defaultactions[component][GROUPTYPE_SIMPLE],
+	       sizeof(csingle->actions));
 
 	g->grouptype = GROUPTYPE_SIMPLE;
 	g->children = NULL;
