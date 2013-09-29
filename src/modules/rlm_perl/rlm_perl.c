@@ -332,15 +332,22 @@ static size_t perl_xlat(void *instance, REQUEST *request, char *fmt, char *out,
 		return 0;
 	}
 
-#ifndef WITH_ITHREADS
-	perl = inst->perl;
-#else
-	perl = rlm_perl_clone(inst->perl,inst->thread_key);
+#ifdef USE_ITHREADS
+	pthread_mutex_lock(&inst->clone_mutex);
+
+	PerlInterpreter *interp;
+
+	interp = rlm_perl_clone(inst->perl,inst->thread_key);
 	{
-	  dTHXa(perl);
+	  dTHXa(interp);
+	  PERL_SET_CONTEXT(interp);
 	}
+
+	pthread_mutex_unlock(&inst->clone_mutex);
+#else
+	PERL_SET_CONTEXT(inst->perl);
 #endif
-	PERL_SET_CONTEXT(perl);
+
 	{
 	dSP;
 	ENTER;SAVETMPS;
