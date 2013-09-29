@@ -317,22 +317,25 @@ static ssize_t perl_xlat(void *instance, REQUEST *request, char const *fmt, char
 {
 
 	rlm_perl_t	*inst= (rlm_perl_t *) instance;
-	PerlInterpreter *perl;
 	char		*tmp;
 	char const	*p, *q;
 	int		count;
 	size_t		ret = 0;
 	STRLEN		n_a;
 
-#ifndef WITH_ITHREADS
-	perl = inst->perl;
-#else
-	perl = rlm_perl_clone(inst->perl,inst->thread_key);
+#ifdef USE_ITHREADS
+	PerlInterpreter *interp;
+
+	pthread_mutex_lock(&inst->clone_mutex);
+	interp = rlm_perl_clone(inst->perl, inst->thread_key);
 	{
-		dTHXa(perl);
+		dTHXa(interp);
+		PERL_SET_CONTEXT(interp);
 	}
+	pthread_mutex_unlock(&inst->clone_mutex);
+#else
+	PERL_SET_CONTEXT(inst->perl);
 #endif
-	PERL_SET_CONTEXT(perl);
 	{
 		dSP;
 		ENTER;SAVETMPS;
