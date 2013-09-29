@@ -595,6 +595,7 @@ redo:
 					       g->vps, c->name);
 		if (rcode != RLM_MODULE_UPDATED) {
 			result = rcode;
+			MOD_LOG_CLOSE_BRACE();
 			goto calculate_result;
 		}
 
