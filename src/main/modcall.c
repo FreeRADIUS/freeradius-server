@@ -1441,6 +1441,9 @@ static modcallable *do_compile_modupdate(modcallable *parent,
 	csingle->type = MOD_UPDATE;
 	csingle->method = component;
 	
+	memcpy(csingle->actions, defaultactions[component][GROUPTYPE_SIMPLE],
+	       sizeof(csingle->actions));
+
 	g->grouptype = GROUPTYPE_SIMPLE;
 	g->children = NULL;
 	g->cs = cs;
