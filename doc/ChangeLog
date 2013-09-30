@@ -1,8 +1,13 @@
 FreeRADIUS 2.2.1 Tuesday 17 Sep 2013 12:00:00 CEST, urgency=medium
 	Feature improvements
+	* None.
 
 	Bug fixes
 	* Fix erroneous fall-through in "case" statements
+	* Fix priority handling in new module handling code
+	* Fix threading issue with Perl.  Closes #436
+	* Fiex EAP-TLS check_cert_issuer when X509v2 extensions
+	  existed.  Patch from David Wood.
 
 FreeRADIUS 2.2.1 Tuesday 17 Sep 2013 12:00:00 CEST, urgency=medium
 	Feature improvements
