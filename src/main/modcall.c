@@ -611,6 +611,19 @@ redo:
 	do_children:
 		g = mod_callabletogroup(c);
 
+		/*
+		 *	This should really have been caught in the
+		 *	compiler, and the node never generated.  But
+		 *	doing that requires changing it's API so that
+		 *	it returns a flag instead of the compiled
+		 *	MOD_GROUP.
+		 */
+		if (!g->children) {
+			RDEBUG2("%.*s%s %s { ... } # empty sub-section is ignored",
+				depth + 1, modcall_spaces, group_name[c->type], c->name);
+			goto next_sibling;
+		}
+
 		MOD_LOG_OPEN_BRACE(group_name[c->type]);
 		modcall_child(request, component,
 			      depth + 1, entry, g->children,
