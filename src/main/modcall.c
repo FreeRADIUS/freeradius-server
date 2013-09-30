@@ -392,7 +392,7 @@ static bool modcall_recurse(REQUEST *request, rlm_components_t component, int de
  */
 static void modcall_child(REQUEST *request, rlm_components_t component, int depth,
 			  modcall_stack_entry_t *entry, modcallable *c,
-			  int *result, int *priority)
+			  int *result)
 {
 	modcall_stack_entry_t *next;
 
@@ -416,7 +416,6 @@ static void modcall_child(REQUEST *request, rlm_components_t component, int dept
 	}
 
 	*result = next->result;
-	*priority = next->priority;
 
 	return;
 }
@@ -743,7 +742,7 @@ redo:
 		MOD_LOG_OPEN_BRACE(cf_section_name1(g->cs));
 		modcall_child(request, component,
 			      depth + 1, entry, g->children,
-			      &result, &priority);
+			      &result);
 		MOD_LOG_CLOSE_BRACE();
 		goto calculate_result;
 	} /* MOD_GROUP */
@@ -797,7 +796,7 @@ redo:
 		MOD_LOG_OPEN_BRACE(group_name[c->type]);
 		modcall_child(request, component,
 			      depth + 1, entry, found,
-			      &result, &priority);
+			      &result);
 		MOD_LOG_CLOSE_BRACE();
 		goto calculate_result;
 	} /* MOD_SWITCH */
@@ -830,7 +829,7 @@ redo:
 		if (c->type == MOD_LOAD_BALANCE) {
 			modcall_child(request, component,
 				      depth + 1, entry, found,
-				      &result, &priority);
+				      &result);
 					       
 		} else {
 			int i;
@@ -843,7 +842,7 @@ redo:
 			for (i = 1; i < count; i++) {
 				modcall_child(request, component,
 					      depth + 1, entry, found,
-					      &result, &priority);
+					      &result);
 				if (c->actions[result] == MOD_ACTION_RETURN) {
 					priority = -1;
 					break;
