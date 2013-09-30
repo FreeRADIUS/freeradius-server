@@ -1891,11 +1891,8 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 
 			*modname = name2;
 
-			/*
-			 *	FIXME: How to tell that the parent can only
-			 *	be a "switch" statement?
-			 */
-			if (!parent) {
+			if (!parent ||
+			    (parent->type != MOD_SWITCH)) {
 				cf_log_err(ci, "\"case\" statements may only appear within a \"switch\" section");
 				return NULL;
 			}
