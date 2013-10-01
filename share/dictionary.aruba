@@ -42,4 +42,6 @@ ATTRIBUTE	Aruba-WorkSpace-App-Name		31	string
 ATTRIBUTE	Aruba-Mdps-Provisioning-Settings	32	string
 ATTRIBUTE	Aruba-Mdps-Device-Profile		33	string
 
+ATTRIBUTE	Aruba-AP-IP-Address			34	ipaddr
+
 END-VENDOR Aruba
