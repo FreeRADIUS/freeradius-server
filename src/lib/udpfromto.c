@@ -53,16 +53,19 @@ RCSID("$Id$")
  * old kernel interface.
  */
 #ifdef __linux__
-#  if defined IPV6_RECVPKTINFO
+#  ifdef IPV6_RECVPKTINFO
 #    include <linux/version.h>
 #    if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,14)
-#      if defined IPV6_2292PKTINFO
+#      ifdef IPV6_2292PKTINFO
 #        undef IPV6_RECVPKTINFO
 #        undef IPV6_PKTINFO
 #        define IPV6_RECVPKTINFO IPV6_2292PKTINFO
 #        define IPV6_PKTINFO IPV6_2292PKTINFO
 #      endif
 #    endif
+/* Fall back to the legacy socket option if IPV6_RECVPKTINFO isn't defined */
+#  elif defined(IPV6_2292PKTINFO)
+#      define IPV6_RECVPKTINFO IPV6_2292PKTINFO
 #  endif
 #endif
 
