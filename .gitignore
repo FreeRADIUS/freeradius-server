@@ -26,6 +26,12 @@
 *.patch
 .pc
 
+# Editor projects
+*.kdev4
+*.cproject
+*.project
+*.bbprojectd
+
 # OS specific cruft
 .DS_Store
 
