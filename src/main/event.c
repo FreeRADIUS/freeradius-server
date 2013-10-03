@@ -1868,6 +1868,9 @@ static int request_pre_handler(REQUEST *request)
 		RDEBUG("%s Dropping packet without response.", fr_strerror());
 		request->reply->offset = -2; /* bad authenticator */
 		request->child_state = REQUEST_DONE;
+#ifdef HAVE_PTHREAD_H
+		request->child_pid = NO_SUCH_CHILD_PID;
+#endif
 		return 0;
 	}
 
