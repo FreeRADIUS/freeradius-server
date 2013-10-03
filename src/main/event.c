@@ -1795,13 +1795,12 @@ static int process_proxy_reply(REQUEST *request)
 	default:  /* Don't do anything */
 		break;
 	case RLM_MODULE_FAIL:
-		/* FIXME: debug print stuff */
-		request->child_state = REQUEST_DONE;
-		return 0;
-		
 	case RLM_MODULE_HANDLED:
 		/* FIXME: debug print stuff */
 		request->child_state = REQUEST_DONE;
+#ifdef HAVE_PTHREAD_H
+		request->child_pid = NO_SUCH_CHILD_PID;
+#endif
 		return 0;
 	}
 
@@ -2013,7 +2012,9 @@ static int proxy_to_virtual_server(REQUEST *request)
 
 	ev_request_free(&fake);
 
-	process_proxy_reply(request);
+	if (!process_proxy_reply(request)) {
+		return 0;
+	}
 
 	/*
 	 *	Process it through the normal section again, but ONLY
