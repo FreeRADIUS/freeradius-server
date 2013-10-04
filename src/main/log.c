@@ -320,8 +320,10 @@ void radlog_request(int lvl, int priority, REQUEST *request, const char *msg, ..
 	if (!fp) {
 		radlog(lvl, "%s", buffer);
 	} else {
+		if (strlcat(buffer, "\n", sizeof(buffer)) >= sizeof(buffer)) {
+			buffer[sizeof(buffer) - 1] = '\n';
+		}
 		fputs(buffer, fp);
-		fputc('\n', fp);
 		fclose(fp);
 	}
 
