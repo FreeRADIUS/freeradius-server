@@ -552,6 +552,7 @@ static void *request_handler_thread(void *arg)
 		       self->thread_num, self->request->number,
 		       self->request_count);
 
+		self->request->module = "";
 		radius_handle_request(self->request, fun);
 		self->request = NULL;
 
