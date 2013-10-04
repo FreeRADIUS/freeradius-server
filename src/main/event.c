@@ -1689,15 +1689,16 @@ static int originated_coa_request(REQUEST *request)
 	 */
 	request->num_proxied_requests = 1;
 	request->num_proxied_responses = 0;
-#ifdef HAVE_PTHREAD_H
-	request->child_pid = NO_SUCH_CHILD_PID;
-#endif
 
 	update_event_timestamp(request->proxy, request->proxy_when.tv_sec);
 
 	request->child_state = REQUEST_PROXIED;
 
 	DEBUG_PACKET(request, request->proxy, 1);
+
+#ifdef HAVE_PTHREAD_H
+	request->child_pid = NO_SUCH_CHILD_PID;
+#endif
 
 	request->proxy_listener->send(request->proxy_listener,
 				      request);
@@ -2309,9 +2310,6 @@ static void request_post_handler(REQUEST *request)
 	    (request->parent &&
 	     (request->parent->master_state == REQUEST_STOP_PROCESSING))) {
 		RDEBUG2("request %u was cancelled.", request->number);
-#ifdef HAVE_PTHREAD_H
-		request->child_pid = NO_SUCH_CHILD_PID;
-#endif
 		child_state = REQUEST_DONE;
 		goto cleanup;
 	}
@@ -2353,7 +2351,7 @@ static void request_post_handler(REQUEST *request)
 	    (request->packet->code != PW_STATUS_SERVER)) {
 		int rcode = successfully_proxied_request(request);
 
-		if (rcode == 1) return; /* request is invalid */
+		if (rcode == 1) return; /* "request" is now untouchable */
 
 		/*
 		 *	Failed proxying it (dead home servers, etc.)
@@ -2405,8 +2403,6 @@ static void request_post_handler(REQUEST *request)
 	vp = paircopy2(request->packet->vps, PW_PROXY_STATE);
 	if (vp) pairadd(&request->reply->vps, vp);
 #endif
-
-
 	
 	/*
 	 *	Access-Requests get delayed or cached.
@@ -2435,11 +2431,11 @@ static void request_post_handler(REQUEST *request)
 				request->next_when.tv_sec += request->root->max_request_time;
 				request->next_callback = cleanup_delay;
 				child_state = REQUEST_CLEANUP_DELAY;
-				
 				break;	
 			}
 			
 			request->reply->code = vp->vp_integer;
+
 		} else if (request->reply->code == 0) {
 			RDEBUG2("There was no response configured: rejecting "
 				"request %u", request->number);
@@ -2590,10 +2586,16 @@ static void request_post_handler(REQUEST *request)
 	rad_assert(child_state >= 0);
 	request->child_state = child_state;
 
-	/*
-	 *	Single threaded mode: update timers now.
-	 */
-	if (!have_children) wait_a_bit(request);
+	if (have_children) {
+#ifdef HAVE_PTHREAD_H
+		request->child_pid = NO_SUCH_CHILD_PID;
+#endif
+	} else {
+		/*
+		 *	Single threaded mode: update timers now.
+		 */
+		wait_a_bit(request);
+	}
 }
 
 
