@@ -1903,8 +1903,7 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 
 			*modname = name2;
 
-			if (!parent ||
-			    (parent->type != MOD_SWITCH)) {
+			if (!parent) {
 				cf_log_err(ci, "\"case\" statements may only appear within a \"switch\" section");
 				return NULL;
 			}
