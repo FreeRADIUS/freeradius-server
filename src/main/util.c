@@ -414,7 +414,7 @@ REQUEST *request_alloc_fake(REQUEST *request)
 
   fake->number = request->number;
 #ifdef HAVE_PTHREAD_H
-  fake->child_pid = request->child_pid;
+  fake->thread_id = request->thread_id;
 #endif
   fake->parent = request;
   fake->root = request->root;

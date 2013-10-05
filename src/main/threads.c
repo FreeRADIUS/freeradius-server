@@ -79,7 +79,7 @@ RCSID("$Id$")
  *  the current thread.
  *
  *  pthread_id     pthread id
- *  thread_num     server thread number, 1...number of threads
+ *  thread_id     server thread number, 1...number of threads
  *  semaphore     used to block the thread until a request comes in
  *  status        is the thread running or exited?
  *  request_count the number of requests that this thread has handled
@@ -89,7 +89,7 @@ typedef struct THREAD_HANDLE {
 	struct THREAD_HANDLE *prev;
 	struct THREAD_HANDLE *next;
 	pthread_t            pthread_id;
-	int                  thread_num;
+	int                  thread_id;
 	int                  status;
 	unsigned int         request_count;
 	time_t               timestamp;
@@ -123,7 +123,7 @@ typedef struct THREAD_POOL {
 	int active_threads;	/* protected by queue_mutex */
 	int exited_threads;
 	int total_threads;
-	int max_thread_num;
+	int max_thread_id;
 	int start_threads;
 	int max_threads;
 	int min_spare_threads;
@@ -505,7 +505,7 @@ static void *request_handler_thread(void *arg)
 		 *	Wait to be signalled.
 		 */
 		DEBUG2("Thread %d waiting to be assigned a request",
-		       self->thread_num);
+		       self->thread_id);
 	re_wait:
 		if (sem_wait(&thread_pool.semaphore) != 0) {
 			/*
@@ -514,15 +514,15 @@ static void *request_handler_thread(void *arg)
 			 *	text.
 			 */
 			if (errno == EINTR) {
-				DEBUG2("Re-wait %d", self->thread_num);
+				DEBUG2("Re-wait %d", self->thread_id);
 				goto re_wait;
 			}
 			radlog(L_ERR, "Thread %d failed waiting for semaphore: %s: Exiting\n",
-			       self->thread_num, strerror(errno));
+			       self->thread_id, strerror(errno));
 			break;
 		}
 
-		DEBUG2("Thread %d got semaphore", self->thread_num);
+		DEBUG2("Thread %d got semaphore", self->thread_id);
 
 #ifdef HAVE_OPENSSL_ERR_H
  		/*
@@ -545,11 +545,11 @@ static void *request_handler_thread(void *arg)
 		 */
 		if (!request_dequeue(&self->request, &fun)) continue;
 
-		self->request->child_pid = self->pthread_id;
+		self->request->thread_id = self->thread_id;
 		self->request_count++;
 
 		DEBUG2("Thread %d handling request %d, (%d handled so far)",
-		       self->thread_num, self->request->number,
+		       self->thread_id, self->request->number,
 		       self->request_count);
 
 		self->request->module = "";
@@ -571,12 +571,12 @@ static void *request_handler_thread(void *arg)
 		if ((thread_pool.max_requests_per_thread > 0) &&
 		    (self->request_count >= thread_pool.max_requests_per_thread)) {
 			DEBUG2("Thread %d handled too many requests",
-			       self->thread_num);
+			       self->thread_id);
 			break;
 		}
 	} while (self->status != THREAD_CANCELLED);
 
-	DEBUG2("Thread %d exiting...", self->thread_num);
+	DEBUG2("Thread %d exiting...", self->thread_id);
 
 #ifdef HAVE_OPENSSL_ERR_H
 	/*
@@ -614,7 +614,7 @@ static void delete_thread(THREAD_HANDLE *handle)
 
 	rad_assert(handle->request == NULL);
 
-	DEBUG2("Deleting thread %d", handle->thread_num);
+	DEBUG2("Deleting thread %d", handle->thread_id);
 
 	prev = handle->prev;
 	next = handle->next;
@@ -671,7 +671,7 @@ static THREAD_HANDLE *spawn_thread(time_t now)
 	memset(handle, 0, sizeof(THREAD_HANDLE));
 	handle->prev = NULL;
 	handle->next = NULL;
-	handle->thread_num = thread_pool.max_thread_num++;
+	handle->thread_id = thread_pool.max_thread_id++;
 	handle->request_count = 0;
 	handle->status = THREAD_RUNNING;
 	handle->timestamp = time(NULL);
@@ -696,7 +696,7 @@ static THREAD_HANDLE *spawn_thread(time_t now)
 	 */
 	thread_pool.total_threads++;
 	DEBUG2("Thread spawned new child %d. Total threads in pool: %d",
-			handle->thread_num, thread_pool.total_threads);
+			handle->thread_id, thread_pool.total_threads);
 
 	/*
 	 *	Add the thread handle to the tail of the thread pool list.
@@ -783,7 +783,7 @@ int thread_pool_init(CONF_SECTION *cs, int *spawn_flag)
 	thread_pool.head = NULL;
 	thread_pool.tail = NULL;
 	thread_pool.total_threads = 0;
-	thread_pool.max_thread_num = 1;
+	thread_pool.max_thread_id = 1;
 	thread_pool.cleanup_delay = 5;
 	thread_pool.stop_flag = 0;
 	thread_pool.spawn_flag = *spawn_flag;

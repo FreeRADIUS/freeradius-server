@@ -74,7 +74,7 @@ static pthread_mutex_t	proxy_mutex;
 #define PTHREAD_MUTEX_LOCK if (have_children) pthread_mutex_lock
 #define PTHREAD_MUTEX_UNLOCK if (have_children) pthread_mutex_unlock
 
-static pthread_t NO_SUCH_CHILD_PID;
+#define NO_CHILD_THREAD (0)
 #else
 /*
  *	This is easier than ifdef's throughout the code.
@@ -499,7 +499,7 @@ static void wait_for_child_to_die(void *ctx)
 	 */
 	if ((request->child_state == REQUEST_QUEUED) ||
 	    ((request->child_state == REQUEST_RUNNING) &&
-	     (pthread_equal(request->child_pid, NO_SUCH_CHILD_PID) == 0))) {
+	     (request->thread_id == NO_CHILD_THREAD))) {
 
 		/*
 		 *	Cap delay at max_request_time
@@ -1237,9 +1237,9 @@ static void wait_a_bit(void *ctx)
 		 *	the request.
 		 */
 		if (have_children &&
-		    (pthread_equal(request->child_pid, NO_SUCH_CHILD_PID) == 0)) {
-			radlog(L_ERR, "WARNING: Unresponsive child for request %u, in component %s module %s",
-			       request->number,
+		    (request->thread_id == NO_CHILD_THREAD)) {
+			radlog(L_ERR, "WARNING: Unresponsive thread %d for request %u, in component %s module %s",
+			       request->number, request->thread_id,
 			       request->component ? request->component : "<server core>",
 			       request->module ? request->module : "<server core>");
 
@@ -1258,7 +1258,7 @@ static void wait_a_bit(void *ctx)
 	case REQUEST_DONE:
 	done:
 #ifdef HAVE_PTHREAD_H
-		request->child_pid = NO_SUCH_CHILD_PID;
+		request->thread_id = NO_CHILD_THREAD;
 #endif
 
 #ifdef WITH_COA
@@ -1285,7 +1285,7 @@ static void wait_a_bit(void *ctx)
 	case REQUEST_REJECT_DELAY:
 	case REQUEST_CLEANUP_DELAY:
 #ifdef HAVE_PTHREAD_H
-		request->child_pid = NO_SUCH_CHILD_PID;
+		request->thread_id = NO_CHILD_THREAD;
 #endif
 		request_stats_final(request);
 		/* FALL-THROUGH */
@@ -1697,7 +1697,7 @@ static int originated_coa_request(REQUEST *request)
 	DEBUG_PACKET(request, request->proxy, 1);
 
 #ifdef HAVE_PTHREAD_H
-	request->child_pid = NO_SUCH_CHILD_PID;
+	request->thread_id = NO_CHILD_THREAD;
 #endif
 
 	request->proxy_listener->send(request->proxy_listener,
@@ -1800,7 +1800,7 @@ static int process_proxy_reply(REQUEST *request)
 		/* FIXME: debug print stuff */
 		request->child_state = REQUEST_DONE;
 #ifdef HAVE_PTHREAD_H
-		request->child_pid = NO_SUCH_CHILD_PID;
+		request->thread_id = NO_CHILD_THREAD;
 #endif
 		return 0;
 	}
@@ -1870,7 +1870,7 @@ static int request_pre_handler(REQUEST *request)
 		request->reply->offset = -2; /* bad authenticator */
 		request->child_state = REQUEST_DONE;
 #ifdef HAVE_PTHREAD_H
-		request->child_pid = NO_SUCH_CHILD_PID;
+		request->thread_id = NO_CHILD_THREAD;
 #endif
 		return 0;
 	}
@@ -1950,7 +1950,7 @@ static int proxy_request(REQUEST *request)
 	request->num_proxied_requests = 1;
 	request->num_proxied_responses = 0;
 #ifdef HAVE_PTHREAD_H
-	request->child_pid = NO_SUCH_CHILD_PID;
+	request->thread_id = NO_CHILD_THREAD;
 #endif
 	request->child_state = REQUEST_PROXIED;
 
@@ -2390,7 +2390,7 @@ static void request_post_handler(REQUEST *request)
 	if (request->packet->dst_port == 0) {
 		/* FIXME: RDEBUG going to the next request */
 #ifdef HAVE_PTHREAD_H
-		request->child_pid = NO_SUCH_CHILD_PID;
+		request->thread_id = NO_CHILD_THREAD;
 #endif
 		request->child_state = REQUEST_DONE;
 		return;
@@ -2471,7 +2471,7 @@ static void request_post_handler(REQUEST *request)
 				request->next_when = when;
 				request->next_callback = reject_delay;
 #ifdef HAVE_PTHREAD_H
-				request->child_pid = NO_SUCH_CHILD_PID;
+				request->thread_id = NO_CHILD_THREAD;
 #endif
 				request->child_state = REQUEST_REJECT_DELAY;
 				return;
@@ -2588,7 +2588,7 @@ static void request_post_handler(REQUEST *request)
 
 	if (have_children) {
 #ifdef HAVE_PTHREAD_H
-		request->child_pid = NO_SUCH_CHILD_PID;
+		request->thread_id = NO_CHILD_THREAD;
 #endif
 	} else {
 		/*
@@ -2971,7 +2971,7 @@ int received_request(rad_listen_t *listener,
 	request->number = request_num_counter++;
 	request->priority = listener->type;
 #ifdef HAVE_PTHREAD_H
-	request->child_pid = NO_SUCH_CHILD_PID;
+	request->thread_id = NO_CHILD_THREAD;
 #endif
 
 	/*
@@ -3598,11 +3598,6 @@ int radius_event_init(CONF_SECTION *cs, int spawn_flag)
 #endif
 
 #ifdef HAVE_PTHREAD_H
-#ifndef __MINGW32__
-	NO_SUCH_CHILD_PID = (pthread_t ) (0);
-#else
-	NO_SUCH_CHILD_PID = pthread_self(); /* not a child thread */
-#endif
 	/*
 	 *	Initialize the threads ONLY if we're spawning, AND
 	 *	we're running normally.

@@ -212,7 +212,7 @@ struct auth_req {
 	request_data_t		*data;
 	RADCLIENT		*client;
 #ifdef HAVE_PTHREAD_H
-	pthread_t    		child_pid;
+	int			thread_id;
 #endif
 	time_t			timestamp;
 	unsigned int	       	number; /* internal server number */
