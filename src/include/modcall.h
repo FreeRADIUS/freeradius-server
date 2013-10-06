@@ -40,11 +40,8 @@ modcallable *compile_modsingle(modcallable *parent, rlm_components_t component, 
 bool modcall_pass2(modcallable *mc);
 
 /* Add an entry to the end of a modgroup, creating it first if necessary */
-void add_to_modcallable(modcallable **parent, modcallable *this,
+void add_to_modcallable(TALLOC_CTX *ctx, modcallable **parent, modcallable *this,
 			rlm_components_t component, char const *name);
-
-/* Free a tree returned by compile_modgroup or compile_modsingle */
-void modcallable_free(modcallable **pc);
 
 #ifdef __cplusplus
 }

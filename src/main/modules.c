@@ -278,14 +278,6 @@ void virtual_servers_free(time_t when)
 	}
 }
 
-static int _indexed_modcallable_free(indexed_modcallable *this)
-{
-	this = talloc_get_type_abort(this, indexed_modcallable);
-
-	modcallable_free(&this->modulelist);
-	return 0;
-}
-
 static int indexed_modcallable_cmp(void const *one, void const *two)
 {
 	indexed_modcallable const *a = one;
@@ -739,8 +731,6 @@ static indexed_modcallable *new_sublist(CONF_SECTION *cs,
 		return NULL;
 	}
 
-	talloc_set_destructor(c, _indexed_modcallable_free);
-
 	return c;
 }
 
@@ -833,17 +823,17 @@ static int load_subcomponent_section(modcallable *parent, CONF_SECTION *cs,
 		cf_log_err_cs(cs,
 			   "%s %s Not previously configured",
 			   section_type_value[comp].typename, name2);
-		modcallable_free(&ml);
+		talloc_free(ml);
 		return 0;
 	}
 
 	subcomp = new_sublist(cs, components, comp, dval->value);
 	if (!subcomp) {
-		modcallable_free(&ml);
+		talloc_free(ml);
 		return 1;
 	}
 
-	subcomp->modulelist = ml;
+	subcomp->modulelist = talloc_steal(subcomp, ml);
 	return 1;		/* OK */
 }
 
@@ -1010,7 +1000,7 @@ static int load_component_section(CONF_SECTION *cs,
 			} else {
 				modrefname = cf_section_name2(scs);
 				if (!modrefname) {
-					modcallable_free(&this);
+					talloc_free(this);
 					cf_log_err_cs(cs,
 						   "Errors parsing %s sub-section.\n",
 						   cf_section_name1(scs));
@@ -1024,7 +1014,7 @@ static int load_component_section(CONF_SECTION *cs,
 				 *	It's a section, but nothing we
 				 *	recognize.  Die!
 				 */
-				modcallable_free(&this);
+				talloc_free(this);
 				cf_log_err_cs(cs,
 					   "Unknown Auth-Type \"%s\" in %s sub-section.",
 					   modrefname, section_type_value[comp].section);
@@ -1039,7 +1029,7 @@ static int load_component_section(CONF_SECTION *cs,
 
 		subcomp = new_sublist(cs, components, comp, idx);
 		if (subcomp == NULL) {
-			modcallable_free(&this);
+			talloc_free(this);
 			continue;
 		}
 
@@ -1048,7 +1038,7 @@ static int load_component_section(CONF_SECTION *cs,
 		visiblename = cf_section_name2(cs);
 		if (visiblename == NULL)
 			visiblename = cf_section_name1(cs);
-		add_to_modcallable(&subcomp->modulelist, this,
+		add_to_modcallable(subcomp, &subcomp->modulelist, this,
 				   comp, visiblename);
 	}
 
