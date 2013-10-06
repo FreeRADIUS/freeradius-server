@@ -322,6 +322,12 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool,
 
 	pool->spawning = true;
 
+	this = talloc_zero(pool, fr_connection_t);
+	if (!this) {
+		pthread_mutex_unlock(&pool->mutex);
+		return NULL;
+	}
+
 	/*
 	 *	Unlock the mutex while we try to open a new
 	 *	connection.  If there are issues with the back-end,
@@ -332,9 +338,6 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool,
 	pthread_mutex_unlock(&pool->mutex);
 
 	INFO("%s: Opening additional connection (%" PRIu64 ")", pool->log_prefix, pool->count);
-
-	this = rad_malloc(sizeof(*this));
-	memset(this, 0, sizeof(*this));
 
 	/*
 	 *	This may take a long time, which prevents other
@@ -347,8 +350,10 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool,
 		ERROR("%s: Opening connection failed (%" PRIu64 ")", pool->log_prefix, pool->count);
 
 		pool->last_failed = now;
-		free(this);
-		pool->spawning = false; /* atomic, so no lock is needed */
+		pthread_mutex_lock(&pool->mutex);
+		talloc_free(this);
+		pool->spawning = false;
+		pthread_mutex_unlock(&pool->mutex);
 		return NULL;
 	}
 
@@ -413,14 +418,16 @@ int fr_connection_add(fr_connection_pool_t *pool, void *conn)
 		return 0;
 	}
 
-	this = rad_malloc(sizeof(*this));
-	memset(this, 0, sizeof(*this));
+	this = talloc_zero(pool, fr_connection_t);
+	if (!this) {
+		pthread_mutex_unlock(&pool->mutex);
+		return 0;
+	}
 
-	this->created = time(NULL);
+	this->created = this->last_used = time(NULL);
 	this->connection = conn;
 
 	this->number = pool->count++;
-	this->last_used = time(NULL);
 	fr_connection_link_head(pool, this);
 	pool->num++;
 
@@ -454,7 +461,7 @@ static void fr_connection_close(fr_connection_pool_t *pool,
 	pool->delete(pool->ctx, this->connection);
 	rad_assert(pool->num > 0);
 	pool->num--;
-	free(this);
+	talloc_free(this);
 }
 
 /** Find a connection handle in the connection list
@@ -562,8 +569,7 @@ void fr_connection_pool_delete(fr_connection_pool_t *pool)
 	rad_assert(pool->tail == NULL);
 	rad_assert(pool->num == 0);
 
-	free(pool->log_prefix);
-	free(pool);
+	talloc_free(pool);
 }
 
 /** Create a new connection pool
@@ -592,7 +598,7 @@ fr_connection_pool_t *fr_connection_pool_init(CONF_SECTION *parent,
 					      fr_connection_delete_t d,
 					      char *prefix)
 {
-	int i, lp_len;
+	int i;
 	fr_connection_pool_t *pool;
 	fr_connection_t *this;
 	CONF_SECTION *modules;
@@ -605,8 +611,12 @@ fr_connection_pool_t *fr_connection_pool_init(CONF_SECTION *parent,
 	cs = cf_section_sub_find(parent, "pool");
 	if (!cs) cs = cf_section_sub_find(parent, "limit");
 
-	pool = rad_malloc(sizeof(*pool));
-	memset(pool, 0, sizeof(*pool));
+	if (cs) {
+		pool = talloc_zero(cs, fr_connection_pool_t);
+	} else {
+		pool = talloc_zero(parent, fr_connection_pool_t);
+	}
+	if (!pool) return NULL;
 
 	pool->cs = cs;
 	pool->ctx = ctx;
@@ -631,18 +641,16 @@ fr_connection_pool_t *fr_connection_pool_init(CONF_SECTION *parent,
 					cs_name2 = cs_name1;
 				}
 
-				lp_len = (sizeof(LOG_PREFIX) - 4) + strlen(cs_name1) + strlen(cs_name2);
-				pool->log_prefix = rad_malloc(lp_len);
-				snprintf(pool->log_prefix, lp_len, LOG_PREFIX, cs_name1,
-					 cs_name2);
+				pool->log_prefix = talloc_asprintf(pool, LOG_PREFIX, cs_name1,
+								   cs_name2);
 			}
 		} else {		/* not a module configuration */
 			cs_name1 = cf_section_name1(parent);
 
-			pool->log_prefix = strdup(cs_name1);
+			pool->log_prefix = talloc_strdup(pool, cs_name1);
 		}
 	} else {
-		pool->log_prefix = strdup(prefix);
+		pool->log_prefix = talloc_strdup(pool, prefix);
 	}
 
 	DEBUG("%s: Initialising connection pool", pool->log_prefix);
