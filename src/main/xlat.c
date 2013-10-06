@@ -604,6 +604,7 @@ int xlat_register(char const *name, RAD_XLAT_FUNC func, RADIUS_ESCAPE_STRING esc
 {
 	xlat_t	*c;
 	xlat_t	my_xlat;
+	rbnode_t *node;
 
 	if (!name || !*name) {
 		DEBUG("xlat_register: Invalid xlat name");
@@ -619,7 +620,7 @@ int xlat_register(char const *name, RAD_XLAT_FUNC func, RADIUS_ESCAPE_STRING esc
 	if (!xlat_root) {
 		int i;
 
-		xlat_root = rbtree_create(xlat_cmp, free, 0);
+		xlat_root = rbtree_create(xlat_cmp, NULL, 0);
 		if (!xlat_root) {
 			DEBUG("xlat_register: Failed to create tree");
 			return -1;
@@ -677,8 +678,7 @@ int xlat_register(char const *name, RAD_XLAT_FUNC func, RADIUS_ESCAPE_STRING esc
 	/*
 	 *	Doesn't exist.  Create it.
 	 */
-	c = rad_malloc(sizeof(*c));
-	memset(c, 0, sizeof(*c));
+	c = talloc_zero(xlat_root, xlat_t);
 
 	c->func = func;
 	c->escape = escape;
@@ -686,8 +686,21 @@ int xlat_register(char const *name, RAD_XLAT_FUNC func, RADIUS_ESCAPE_STRING esc
 	c->length = strlen(c->name);
 	c->instance = instance;
 
-	rbtree_insert(xlat_root, c);
+	node = rbtree_insertnode(xlat_root, c);
+	if (!node) {
+		talloc_free(c);
+		return -1;
+	}
 
+	/*
+	 *	Ensure that the data is deleted when the node is
+	 *	deleted.
+	 *
+	 *	@todo: Maybe this should be the other way around...
+	 *	when a thing IN the tree is deleted, it's automatically
+	 *	removed from the tree.  But for now, this works.
+	 */
+	(void) talloc_steal(node, c);
 	return 0;
 }
 
