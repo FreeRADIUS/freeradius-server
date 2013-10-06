@@ -74,7 +74,7 @@ static void FreeWalker(rbtree_t *tree, rbnode_t *X)
 	if (X->Right != NIL) FreeWalker(tree, X->Right);
 
 	if (tree->freeNode) tree->freeNode(X->Data);
-	free(X);
+	talloc_free(X);
 }
 
 void rbtree_free(rbtree_t *tree)
@@ -97,7 +97,7 @@ void rbtree_free(rbtree_t *tree)
 	if (tree->lock) pthread_mutex_destroy(&tree->mutex);
 #endif
 
-	free(tree);
+	talloc_free(tree);
 }
 
 /*
@@ -111,10 +111,9 @@ rbtree_t *rbtree_create(int (*Compare)(void const *, void const *),
 
 	if (!Compare) return NULL;
 
-	tree = malloc(sizeof(*tree));
+	tree = talloc_zero(NULL, rbtree_t);
 	if (!tree) return NULL;
 
-	memset(tree, 0, sizeof(*tree));
 #ifndef NDEBUG
 	tree->magic = RBTREE_MAGIC;
 #endif
@@ -297,9 +296,8 @@ rbnode_t *rbtree_insertnode(rbtree_t *tree, void *Data)
 	}
 
 	/* setup new node */
-	if ((X = malloc (sizeof(*X))) == NULL) {
-		fr_exit(1);	/* FIXME! */
-	}
+	X = talloc_zero(tree, rbnode_t);
+	if (!X) return NULL;
 
 	X->Data = Data;
 	X->Parent = Parent;
@@ -469,7 +467,7 @@ static void rbtree_delete_internal(rbtree_t *tree, rbnode_t *Z, int skiplock)
 		if (Y->Left->Parent == Z) Y->Left->Parent = Y;
 		if (Y->Right->Parent == Z) Y->Right->Parent = Y;
 
-		free(Z);
+		talloc_free(Z);
 
 	} else {
 		if (tree->freeNode) tree->freeNode(Y->Data);
@@ -477,7 +475,7 @@ static void rbtree_delete_internal(rbtree_t *tree, rbnode_t *Z, int skiplock)
 		if (Y->Color == Black)
 			DeleteFixup(tree, X, Parent);
 
-		free(Y);
+		talloc_free(Y);
 	}
 
 	tree->num_elements--;
