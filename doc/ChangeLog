@@ -1,4 +1,4 @@
-FreeRADIUS 3.0.0 Mon 01 Jan 8:00:00 CEST 2010, urgency=medium
+FreeRADIUS 3.0.0 Mon  7 Oct 2013 15:48:14 EDT urgency=medium
 	Feature improvements
 	* Documentation for upgrading from 2.x is in raddb/README.rst
 	  Please follow it.  It will make the upgrade easier.
@@ -32,14 +32,14 @@ FreeRADIUS 3.0.0 Mon 01 Jan 8:00:00 CEST 2010, urgency=medium
 	Module Changes
 	* Moved raddb/modules/ to raddb/mods-available/, and raddb/mods-enabled/,
 	  following the examples of other projects.
-	* Module "extra" configuration files are now in raddb/mods-config/
-	  Each module has a subdirectory where it will place its files.
+	* Additional files for each module are now in raddb/mods-config/.
+	  See raddb/mods-config/README.rst for documentation.
 	* Moved "users" to raddb/mods-config/files/authorize
 	* Moved "hints" and "huntgroups" to raddb/mods-config/preprocess/
 	* Moved eap.conf to mods-available/eap
 	* Moved sql.conf to mods-available/sql
 	* Moved TLS configuration for EAP into a common subsection.
-	  See raddb/mods-available/eap, tls-config section.
+	  See raddb/mods-available/eap, "tls-config" section.
 	* Added for MS-CHAP Change Password from Phil Mayers.
 	  See raddb/mods-available/mschap, "passchange" subsection.
 	* Added EAP-PWD implementation from Dan Harkins
@@ -53,12 +53,14 @@ FreeRADIUS 3.0.0 Mon 01 Jan 8:00:00 CEST 2010, urgency=medium
 	  bootstrapping purposes.
 	* LDAP now uses the connection pool.  The LDAP module has been
 	  completely re-written for performance and simplicity.
-	* LDAP now caches groups.  This makes the server much faster for multiple
-	  group checking.
-	* Removed all limitations on 253 octet attributes.
+	* LDAP now caches groups.  This makes multiple group checks MUCH
+	  faster.
+	* Removed all limitations on 253 octet attributes.  RFC 6929 allows
+	  for attributes up to 4K in length.
 	* New rlm_idn module providing an expansion for performing IDNA encoding
-	of internationalized domain names. (thanks to 'skids').
+	of internationalized domain names.  Thanks to 'skids'.
 	* New rlm_yubikey module to validate yubikey OTP tokens.
+	  See raddb/modules/yubikey
 
 	Bug fixes
 	* All known bug fixes from 2.2.x are included.
@@ -67,23 +69,23 @@ FreeRADIUS 3.0.0 Mon 01 Jan 8:00:00 CEST 2010, urgency=medium
 
 	Internal / API changes:
 	* All traces of the old build system have been removed.
+	  The new build system is faster and simpler.
 	* clang is fully supported.
 	* We now use "talloc" for memory management.  A number of new
-	  features required this change.
+	  features required this change.  Thanks to the Samba people!
 	* Many internal APIs have been updated to use talloc.
-	* Removed all limitations on 253 octet attributes.
-	* New API for iterating over VALUE_PAIRs, in preparation for nested
-	  attributes.
-	* No new code should directly modify fields of a VALUE_PAIR.
+	* New API for iterating over VALUE_PAIRs.  This is in preparation
+	  for attributes, in version 3.1.
+	* No new code should directly modify any field of a VALUE_PAIR.
 	* VALUE_PAIRs contain pointers to DICT_ATTR instead of containing
-	  attribute and vendor fields.  This is in preparation for nested
-	  attributes.
+	  attribute and vendor fields.  This will allow nested attributes.
 	* Some protocol specific code has been moved out into proto_* modules.
-	  More will come in subsequent versions.
+	  More will come in subsequent versions.  See proto_dhcp and proto_vmps.
 	* Standardised internal logging macros.  radlog() should not be used.
+	  See src/include/log.h
 	* Use OpenSSL hashing functions when available.
-	* Server now builds with no warnings on most platforms.
-	* New RADIUS encoder/decoder.
+	* The server now builds with no warnings on most platforms.
+	* New RADIUS encoder/decoder, to support new formats.
 	* Added RFC 6929 "extended attributes", via the new encoder/decoder.
 	* Added full WiMAX support, via the new encoder/decoder.  The old
 	  code could not handle some unusual corner cases.
