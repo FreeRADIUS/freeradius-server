@@ -852,6 +852,7 @@ static ssize_t vp2data_any(RADIUS_PACKET const *packet,
 	case PW_TYPE_IPV6PREFIX:
 	case PW_TYPE_IPV4PREFIX:
 	case PW_TYPE_ABINARY:
+	case PW_TYPE_ETHERNET:	/* just in case */
 		data = (uint8_t const *) &vp->data;
 		break;
 
@@ -902,8 +903,7 @@ static ssize_t vp2data_any(RADIUS_PACKET const *packet,
 	}
 
 	default:		/* unknown type: ignore it */
-		fr_strerror_printf("ERROR: Unknown attribute type %d",
-				   vp->da->type);
+		fr_strerror_printf("ERROR: Unknown attribute type %d", vp->da->type);
 		return -1;
 	}
 
@@ -3928,6 +3928,7 @@ ssize_t rad_vp2data(VALUE_PAIR const *vp, uint8_t *out, size_t outlen)
 		case PW_TYPE_IPV6PREFIX:
 		case PW_TYPE_IPV4PREFIX:
 		case PW_TYPE_ABINARY:
+		case PW_TYPE_ETHERNET:
 			memcpy(out, &vp->data, len);
 			break;
 
