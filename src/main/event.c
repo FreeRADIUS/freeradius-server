@@ -2315,7 +2315,9 @@ static void request_post_handler(REQUEST *request)
 	}
 
 	if (request->child_state != REQUEST_RUNNING) {
-		rad_panic("Internal sanity check failed");
+		radlog(L_ERR, "Request %d is unexpectedly in state %d.  Stopping it.",
+		       request->number, request->child_state);
+		return;
 	}
 
 #ifdef WITH_COA
