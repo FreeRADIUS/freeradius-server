@@ -5,7 +5,7 @@ The FreeRADIUS server
 ---------------
 |BuildStatus|_
 
-.. |BuildStatus| image:: https://travis-ci.org/FreeRADIUS/freeradius-server.png
+.. |BuildStatus| image:: https://travis-ci.org/FreeRADIUS/freeradius-server.png?branch=v3.0.x
 .. _BuildStatus: https://travis-ci.org/FreeRADIUS/freeradius-server
 
 1. INTRODUCTION
