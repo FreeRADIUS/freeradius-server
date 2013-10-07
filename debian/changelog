@@ -1,7 +1,6 @@
-freeradius (3.0.0git+dfsg-1) unstable; urgency=medium
+freeradius (3.0.0+git) unstable; urgency=medium
 
   * New upstream version.
-    + git version
 
  -- Adrien Demarez <adrien.demarez@bolloretelecom.eu>  Tue, 01 Feb 2011 20:22:47 +0100
 
