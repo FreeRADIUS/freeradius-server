@@ -334,7 +334,7 @@ static int sqlcounter_cmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR *r
 			  UNUSED VALUE_PAIR *check_pairs, UNUSED VALUE_PAIR **reply_pairs)
 {
 	rlm_sqlcounter_t *inst = instance;
-	int counter;
+	uint64_t counter;
 
 	char *p;
 	char query[MAX_QUERY_LEN];
@@ -375,10 +375,16 @@ static int sqlcounter_cmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR *r
 		return RLM_MODULE_FAIL;
 	}
 
-	counter = atoi(expanded);
+	counter = strtoull(expanded, NULL, 10);
 	talloc_free(expanded);
 
-	return counter - check->vp_integer;
+	if (counter < check->vp_integer64) {
+		return -1;
+	}
+	if (counter > check->vp_integer64) {
+		return 1;
+	}
+	return 0;
 }
 
 
@@ -488,7 +494,7 @@ static rlm_rcode_t mod_authorize(UNUSED void *instance, UNUSED REQUEST *request)
 {
 	rlm_sqlcounter_t *inst = instance;
 	int rcode = RLM_MODULE_NOOP;
-	unsigned int counter;
+	uint64_t counter, res;
 	DICT_ATTR const *dattr;
 	VALUE_PAIR *key_vp, *check_vp;
 	VALUE_PAIR *reply_item;
@@ -570,7 +576,7 @@ static rlm_rcode_t mod_authorize(UNUSED void *instance, UNUSED REQUEST *request)
 		return RLM_MODULE_FAIL;
 	}
 
-	if (sscanf(expanded, "%u", &counter) != 1) {
+	if (sscanf(expanded, "%" PRIu64, &counter) != 1) {
 		RDEBUG2("No integer found in string \"%s\"", expanded);
 		return RLM_MODULE_NOOP;
 	}
@@ -578,53 +584,9 @@ static rlm_rcode_t mod_authorize(UNUSED void *instance, UNUSED REQUEST *request)
 	talloc_free(expanded);
 
 	/*
-	 * Check if check item > counter
+	 *	Check if check item > counter
 	 */
-	if (check_vp->vp_integer > counter) {
-		unsigned int res = check_vp->vp_integer - counter;
-
-		RDEBUG2("Check item is greater than query result");
-		/*
-		 *	We are assuming that simultaneous-use=1. But
-		 *	even if that does not happen then our user
-		 *	could login at max for 2*max-usage-time Is
-		 *	that acceptable?
-		 */
-
-		/*
-		 *	If we are near a reset then add the next
-		 *	limit, so that the user will not need to login
-		 *	again.  Do this only for Session-Timeout.
-		 */
-		if ((inst->reply_attr->attr == PW_SESSION_TIMEOUT) && inst->reset_time &&
-		    (res >= (inst->reset_time - request->timestamp))) {
-			res = inst->reset_time - request->timestamp;
-			res += check_vp->vp_integer;
-		}
-
-		/*
-		 *	Limit the reply attribute to the minimum of
-		 *	the existing value, or this new one.
-		 */
-		reply_item = pairfind(request->reply->vps, inst->reply_attr->attr, inst->reply_attr->vendor, TAG_ANY);
-		if (reply_item) {
-			if (reply_item->vp_integer > res) {
-				reply_item->vp_integer = res;
-			}
-		} else {
-			reply_item = radius_paircreate(request, &request->reply->vps, inst->reply_attr->attr,
-						       inst->reply_attr->vendor);
-			reply_item->vp_integer = res;
-		}
-
-		rcode = RLM_MODULE_OK;
-
-		RDEBUG2("Authorized user %s, check_item=%u, counter=%u", key_vp->vp_strvalue, check_vp->vp_integer,
-			counter);
-		RDEBUG2("Sent Reply-Item for user %s, Type=%s, value=%u", key_vp->vp_strvalue, inst->reply_name,
-			reply_item->vp_integer);
-	}
-	else{
+	if (check_vp->vp_integer64 <= counter) {
 		RDEBUG2("(Check item - counter) is less than zero");
 
 		/*
@@ -633,15 +595,57 @@ static rlm_rcode_t mod_authorize(UNUSED void *instance, UNUSED REQUEST *request)
 		snprintf(msg, sizeof(msg), "Your maximum %s usage time has been reached", inst->reset);
 		pairmake_reply("Reply-Message", msg, T_OP_EQ);
 
-		REDEBUG("Maximum %s usage time reached",
-				   inst->reset);
+		REDEBUG("Maximum %s usage time reached", inst->reset);
 		rcode = RLM_MODULE_REJECT;
 
-		RDEBUG2("Rejected user %s, check_item=%u, counter=%u", key_vp->vp_strvalue,
-		        check_vp->vp_integer,counter);
+		RDEBUG2("Rejected user %s, check_item=%" PRIu64 ", counter=%" PRIu64,
+			key_vp->vp_strvalue, check_vp->vp_integer64, counter);
+
+		return RLM_MODULE_REJECT;
+
 	}
 
-	return rcode;
+	res = check_vp->vp_integer64 - counter;
+	RDEBUG2("Check item is greater than query result");
+	/*
+	 *	We are assuming that simultaneous-use=1. But
+	 *	even if that does not happen then our user
+	 *	could login at max for 2*max-usage-time Is
+	 *	that acceptable?
+	 */
+
+	/*
+	 *	If we are near a reset then add the next
+	 *	limit, so that the user will not need to login
+	 *	again.  Do this only for Session-Timeout.
+	 */
+	if ((inst->reply_attr->attr == PW_SESSION_TIMEOUT) &&
+	    inst->reset_time && ((int) res >= (inst->reset_time - request->timestamp))) {
+		res = inst->reset_time - request->timestamp;
+		res += check_vp->vp_integer;
+	}
+
+	/*
+	 *	Limit the reply attribute to the minimum of
+	 *	the existing value, or this new one.
+	 */
+	reply_item = pairfind(request->reply->vps, inst->reply_attr->attr, inst->reply_attr->vendor, TAG_ANY);
+	if (reply_item) {
+		if (reply_item->vp_integer64 > res) {
+			reply_item->vp_integer64 = res;
+		}
+	} else {
+		reply_item = radius_paircreate(request, &request->reply->vps, inst->reply_attr->attr,
+					       inst->reply_attr->vendor);
+		reply_item->vp_integer64 = res;
+	}
+
+	RDEBUG2("Authorized user %s, check_item=%" PRIu64 ", counter=%" PRIu64 ,
+		key_vp->vp_strvalue, check_vp->vp_integer64, counter);
+	RDEBUG2("Sent Reply-Item for user %s, Type=%s, value=%" PRIu64,
+		key_vp->vp_strvalue, inst->reply_name, reply_item->vp_integer64);
+
+	return RLM_MODULE_OK;
 }
 
 /*
