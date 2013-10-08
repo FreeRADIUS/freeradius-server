@@ -132,8 +132,13 @@ int fr_pcap_open(fr_pcap_t *pcap)
 			if (pcap_activate(pcap->handle) != 0) {
 				goto error;
 			}
+			/*
+			 *	Despite accepting an errbuff, pcap_setnonblock doesn't seem to write
+			 *	error message there in newer versions.
+			 */
 			if (pcap_setnonblock(pcap->handle, true, pcap->errbuf) != 0) {
-				fr_strerror_printf("%s", pcap->errbuf);
+				fr_strerror_printf("%s", *pcap->errbuf != '\0' ?
+						   pcap->errbuf : pcap_geterr(pcap->handle));
 				pcap_close(pcap->handle);
 				pcap->handle = NULL;
 				return -1;
@@ -155,13 +160,6 @@ int fr_pcap_open(fr_pcap_t *pcap)
 		if (!pcap->handle) {
 			fr_strerror_printf("%s", pcap->errbuf);
 
-			return -1;
-		}
-
-		if (pcap_setnonblock(pcap->handle, true, pcap->errbuf) != 0) {
-			fr_strerror_printf("%s", pcap->errbuf);
-			pcap_close(pcap->handle);
-			pcap->handle = NULL;
 			return -1;
 		}
 
