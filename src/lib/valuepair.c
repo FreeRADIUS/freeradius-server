@@ -393,7 +393,11 @@ VALUE_PAIR *pairremove(vp_cursor_t *cursor)
 
 	pairnext(cursor);	/* Advance the cursor past the one were about to delete */
 
-	last->next = vp->next;	/* re-link the list */
+	if (last) {
+		last->next = vp->next;		/* re-link the list */
+	} else {
+		*cursor->first = vp->next;	/* or fixup the head */
+	}
 	vp->next = NULL;
 
 	return vp;
