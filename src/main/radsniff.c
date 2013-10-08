@@ -838,7 +838,44 @@ static void rs_got_packet(UNUSED fr_event_list_t *el, int fd, void *ctx)
 	const uint8_t *data;
 	struct pcap_pkthdr *header;
 
-	for (i = 0; (event->in->type == PCAP_FILE_IN) || (i < RS_FORCE_YIELD); i++) {
+	/*
+	 *	Consume entire capture, interleaving not current possible
+	 */
+	if (event->in->type == PCAP_FILE_IN) {
+		while (!fr_event_loop_exiting(el)) {
+			struct timeval now;
+
+			ret = pcap_next_ex(handle, &header, &data);
+			if ((ret == -2) || (ret == 0)) {
+				DEBUG("Done reading packets (%s)", event->in->name);
+				fr_event_fd_delete(events, 0, fd);
+
+				if (fr_event_list_num_fds(events) == 0) {
+					fr_event_loop_exit(events, 1);
+				}
+
+				return;
+			}
+			if (ret < 0) {
+				ERROR("Error requesting next packet, got (%i): %s", ret, pcap_geterr(handle));
+				return;
+			}
+
+			do {
+				now = header->ts;
+			} while (fr_event_run(el, &now) == 1);
+			count++;
+
+			rs_packet_process(count, event, header, data);
+		}
+		return;
+	}
+
+	/*
+	 *	Consume multiple packets from the capture buffer.
+	 *	We occasionally need to yield to allow events to run.
+	 */
+	for (i = 0; i < RS_FORCE_YIELD; i++) {
 		ret = pcap_next_ex(handle, &header, &data);
 		if (ret == 0) {
 			/* No more packets available at this time */
