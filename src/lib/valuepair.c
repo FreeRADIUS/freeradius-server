@@ -663,9 +663,6 @@ bool pairvalidate(VALUE_PAIR *filter, VALUE_PAIR *list)
 	if (!filter && !list) {
 		return true;
 	}
-	if (!filter || !list) {
-		return false;
-	}
 
 	/*
 	 *	This allows us to verify the sets of validate and reply are equal
@@ -736,9 +733,6 @@ bool pairvalidate_relaxed(VALUE_PAIR *filter, VALUE_PAIR *list)
 
 	if (!filter && !list) {
 		return true;
-	}
-	if (!filter || !list) {
-		return false;
 	}
 
 	/*
