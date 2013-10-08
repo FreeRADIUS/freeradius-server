@@ -383,10 +383,6 @@ static void rs_packet_cleanup(void *ctx)
 	 *	something has gone very badly wrong.
 	 */
 	assert(rbtree_deletebydata(request_tree, request));
-
-	if (fr_event_list_num_elements(events) == 0) {
-		fr_event_loop_exit(events, 1);
-	}
 }
 
 /*
@@ -834,9 +830,14 @@ static void rs_got_packet(UNUSED fr_event_list_t *el, int fd, void *ctx)
 			/* No more packets available at this time */
 			return;
 		}
-		if (ret == -2 && (event->in->type == PCAP_FILE_IN)) {
+		if ((ret == -2) && (event->in->type == PCAP_FILE_IN)) {
 			INFO("Done reading packets (%s)", event->in->name);
 			fr_event_fd_delete(events, 0, fd);
+
+			if (fr_event_list_num_fds(events) == 0) {
+				fr_event_loop_exit(events, 1);
+			}
+
 			return;
 		}
 		if (ret < 0) {
