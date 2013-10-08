@@ -225,20 +225,15 @@ int fr_pcap_open(fr_pcap_t *pcap)
  */
 int fr_pcap_apply_filter(fr_pcap_t *pcap, char *expression)
 {
-	bpf_u_int32 mask;				/* Our netmask */
+	bpf_u_int32 mask = 0;				/* Our netmask */
 	bpf_u_int32 net = 0;				/* Our IP */
 	struct bpf_program fp;
 
-	/*
-	 *	We can only apply filters to live interfaces
-	 */
-	if (pcap->type != PCAP_INTERFACE_IN) {
-		return 1;
-	}
-
-	if (pcap_lookupnet(pcap->name, &net, &mask, pcap->errbuf) < 0) {
-		DEBUG("Failed getting IP for interface \"%s\", using defaults: %s",
-		      pcap->name, pcap->errbuf);
+	if (pcap->type == PCAP_INTERFACE_IN) {
+		if (pcap_lookupnet(pcap->name, &net, &mask, pcap->errbuf) < 0) {
+			fr_strerror_printf("Failed getting IP for interface \"%s\", using defaults: %s",
+					   pcap->name, pcap->errbuf);
+		}
 	}
 
 	if (pcap_compile(pcap->handle, &fp, expression, 0, net) < 0) {
