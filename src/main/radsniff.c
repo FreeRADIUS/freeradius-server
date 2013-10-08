@@ -328,8 +328,11 @@ static void rs_stats_update_latency(rs_latency_t *stats, struct timeval *latency
 
 static void rs_packet_cleanup(void *ctx)
 {
-	rs_request_t *request = talloc_get_type_abort(ctx, rs_request_t);
-	RADIUS_PACKET *packet = request->packet;
+	rs_request_t	*request = talloc_get_type_abort(ctx, rs_request_t);
+	RADIUS_PACKET	*packet = request->packet;
+
+	char		src[INET6_ADDRSTRLEN];
+	char		dst[INET6_ADDRSTRLEN];
 
 	assert(request->stats_req);
 	assert(!request->rt_rsp || request->stats_rsp);
@@ -355,8 +358,10 @@ static void rs_packet_cleanup(void *ctx)
 		RIDEBUG("(%i) %s Id %i %s:%s:%d -> %s:%d", request->id,
 			fr_packet_codes[packet->code], packet->id,
 			request->in->name,
-			fr_inet_ntop(packet->dst_ipaddr.af, &packet->dst_ipaddr.ipaddr), packet->dst_port,
-			fr_inet_ntop(packet->src_ipaddr.af, &packet->src_ipaddr.ipaddr), packet->src_port);
+			inet_ntop(packet->src_ipaddr.af, &packet->src_ipaddr.ipaddr, src, sizeof(src)),
+			packet->src_port,
+			inet_ntop(packet->dst_ipaddr.af, &packet->dst_ipaddr.ipaddr, dst, sizeof(dst)),
+			packet->dst_port);
 	}
 
 	/*
@@ -416,6 +421,9 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 	struct udp_header const	*udp;		/* The UDP header */
 	uint8_t			version;	/* IP header version */
 	bool			response;	/* Was it a response code */
+
+	char			src[INET6_ADDRSTRLEN];
+	char			dst[INET6_ADDRSTRLEN];
 
 	decode_fail_t		reason;		/* Why we failed decoding the packet */
 	static uint64_t		captured = 0;
@@ -518,8 +526,10 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 		RIDEBUG("(%" PRIu64 ") %s Id %i %s:%s:%d -> %s:%d\t+%u.%03u", count,
 			fr_packet_codes[current->code], current->id,
 			event->in->name,
-			fr_inet_ntop(current->src_ipaddr.af, &current->src_ipaddr.ipaddr), current->src_port,
-			fr_inet_ntop(current->dst_ipaddr.af, &current->dst_ipaddr.ipaddr), current->dst_port,
+			inet_ntop(current->src_ipaddr.af, &current->src_ipaddr.ipaddr, src, sizeof(src)),
+			current->src_port,
+			inet_ntop(current->dst_ipaddr.af, &current->dst_ipaddr.ipaddr, dst, sizeof(dst)),
+			current->dst_port,
 			(unsigned int) elapsed.tv_sec, ((unsigned int) elapsed.tv_usec / 1000));
 
 		rad_free(&current);
@@ -761,9 +771,11 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 		RIDEBUG("(%" PRIu64 ") %s Id %i %s:%s:%d %s %s:%d\t+%u.%03u\t+%u.%03u", count,
 			fr_packet_codes[current->code], current->id,
 			event->in->name,
-			fr_inet_ntop(current->src_ipaddr.af, &current->src_ipaddr.ipaddr), current->src_port,
+			inet_ntop(current->src_ipaddr.af, &current->src_ipaddr.ipaddr, src, sizeof(src)),
+			current->src_port,
 			response ? "<-" : "->",
-			fr_inet_ntop(current->dst_ipaddr.af, &current->dst_ipaddr.ipaddr), current->dst_port,
+			inet_ntop(current->dst_ipaddr.af, &current->dst_ipaddr.ipaddr, dst, sizeof(dst)),
+			current->dst_port,
 			(unsigned int) elapsed.tv_sec, ((unsigned int) elapsed.tv_usec / 1000),
 			(unsigned int) latency.tv_sec, ((unsigned int) latency.tv_usec / 1000));
 	/*
@@ -776,9 +788,11 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 		RIDEBUG("(%" PRIu64 ") %s Id %i %s:%s:%d %s %s:%d\t+%u.%03u", count,
 			fr_packet_codes[current->code], current->id,
 			event->in->name,
-			fr_inet_ntop(current->src_ipaddr.af, &current->src_ipaddr.ipaddr), current->src_port,
+			inet_ntop(current->src_ipaddr.af, &current->src_ipaddr.ipaddr, src, sizeof(src)),
+			current->src_port,
 			response ? "<-" : "->",
-			fr_inet_ntop(current->dst_ipaddr.af, &current->dst_ipaddr.ipaddr), current->dst_port,
+			inet_ntop(current->dst_ipaddr.af, &current->dst_ipaddr.ipaddr, dst, sizeof(dst)),
+			current->dst_port,
 			(unsigned int) elapsed.tv_sec, ((unsigned int) elapsed.tv_usec / 1000));
 	}
 
