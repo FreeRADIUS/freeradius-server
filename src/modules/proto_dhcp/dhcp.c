@@ -1506,8 +1506,9 @@ int fr_dhcp_add_arp_entry(int fd, char const *interface,
 	struct sockaddr_in *sin;
 	struct arpreq req;
 
-	rad_assert(macaddr);
-	rad_assert(macaddr->da->type == PW_TYPE_ETHERNET);
+	if (!fr_assert(macaddr) || !fr_assert(macaddr->da->type == PW_TYPE_ETHERNET)) {
+		return -1;
+	}
 
 	if (macaddr->length > sizeof (req.arp_ha.sa_data)) {
 		fr_strerror_printf("ERROR: DHCP only supports up to %zu octets "
