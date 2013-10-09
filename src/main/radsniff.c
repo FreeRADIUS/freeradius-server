@@ -970,7 +970,6 @@ int main(int argc, char *argv[])
 	fr_pcap_t *out = NULL;
 
 	int ret = 1;					/* Exit status */
-	int limit = -1;					/* How many packets to sniff */
 
 	char errbuf[PCAP_ERRBUF_SIZE];			/* Error buffer */
 	int port = 1812;
@@ -1007,7 +1006,7 @@ int main(int argc, char *argv[])
 	 *	Set some defaults
 	 */
 	conf->print_packet = true;
-	conf->limit = -1;
+	conf->limit = 0;
 	conf->promiscuous = true;
 #ifdef HAVE_COLLECTDC_H
 	conf->stats.prefix = RS_DEFAULT_PREFIX;
@@ -1020,9 +1019,9 @@ int main(int argc, char *argv[])
 	while ((opt = getopt(argc, argv, "c:d:DFf:hi:I:mp:qr:s:Svw:xXW:T:P:O:")) != EOF) {
 		switch (opt) {
 		case 'c':
-			limit = atoi(optarg);
-			if (limit <= 0) {
-				fprintf(stderr, "radsniff: Invalid number of packets \"%s\"", optarg);
+			conf->limit = atoi(optarg);
+			if (conf->limit == 0) {
+				ERROR("Invalid number of packets \"%s\"", optarg);
 				exit(1);
 			}
 			break;
