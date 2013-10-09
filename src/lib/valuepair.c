@@ -379,25 +379,21 @@ void pairinsert(vp_cursor_t *cursor, VALUE_PAIR *add)
  */
 VALUE_PAIR *pairremove(vp_cursor_t *cursor)
 {
-	VALUE_PAIR *vp, *last;
+	VALUE_PAIR *vp, **last;
 
 	vp = paircurrent(cursor);
 	if (!vp) {
-		return NULL;
+	    return NULL;
 	}
 
-	last = *cursor->first;
-	while (last && (last->next != vp)) {
-		last = last->next;
+	last = cursor->first;
+	while (*last != vp) {
+	    last = &(*last)->next;
 	}
 
-	pairnext(cursor);	/* Advance the cursor past the one were about to delete */
+	pairnext(cursor);   /* Advance the cursor past the one were about to delete */
 
-	if (last) {
-		last->next = vp->next;		/* re-link the list */
-	} else {
-		*cursor->first = vp->next;	/* or fixup the head */
-	}
+	*last = vp->next;
 	vp->next = NULL;
 
 	return vp;
