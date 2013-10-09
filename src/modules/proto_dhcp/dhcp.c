@@ -1506,6 +1506,9 @@ int fr_dhcp_add_arp_entry(int fd, char const *interface,
 	struct sockaddr_in *sin;
 	struct arpreq req;
 
+	rad_assert(macaddr);
+	rad_assert(macaddr->da->type == PW_TYPE_ETHERNET);
+
 	if (macaddr->length > sizeof (req.arp_ha.sa_data)) {
 		fr_strerror_printf("ERROR: DHCP only supports up to %zu octets "
 				   "for Client Hardware Address "
@@ -1520,7 +1523,7 @@ int fr_dhcp_add_arp_entry(int fd, char const *interface,
 	sin->sin_family = AF_INET;
 	sin->sin_addr.s_addr = ip->vp_ipaddr;
 	strlcpy(req.arp_dev, interface, sizeof(req.arp_dev));
-	memcpy(&req.arp_ha.sa_data, macaddr->vp_octets, macaddr->length);
+	memcpy(&req.arp_ha.sa_data, &macaddr->vp_ether, macaddr->length);
 
 	req.arp_flags = ATF_COM;
 	if (ioctl(fd, SIOCSARP, &req) < 0) {
