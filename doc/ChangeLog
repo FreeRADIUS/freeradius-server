@@ -1,3 +1,10 @@
+FreeRADIUS 3.0.1 Mon  7 Oct 2013 15:48:14 EDT urgency=medium
+	Feature improvements
+	*
+
+	Bug fixes
+	* Use correct field for ARP setting in DHCP.
+
 FreeRADIUS 3.0.0 Mon  7 Oct 2013 15:48:14 EDT urgency=medium
 	Feature improvements
 	* Documentation for upgrading from 2.x is in raddb/README.rst
