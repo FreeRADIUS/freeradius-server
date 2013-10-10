@@ -390,29 +390,33 @@ static int sqlippool_query1(char *out, int outlen, char const *fmt,
 
 	if (retval != 0){
 		REDEBUG("database query error on '%s'", query);
-
 		return 0;
 	}
 
-	if (!data->sql_inst->sql_fetch_row(&handle, data->sql_inst)) {
-		if (handle->row) {
-			if (handle->row[0]) {
-				if ((rlen = strlen(handle->row[0])) < outlen) {
-					strcpy(out, handle->row[0]);
-					retval = rlen;
-				} else {
-					RDEBUG("insufficient string space");
-				}
-			} else {
-				RDEBUG("row[0] returned NULL");
-			}
-		} else {
-			RDEBUG("SQL query did not return any results");
-		}
-	} else {
-		RDEBUG("SQL query did not succeed");
+	if (data->sql_inst->sql_fetch_row(&handle, data->sql_inst) < 0) {
+		REDEBUG("Failed fetching query result");
+		goto finish;
 	}
 
+	if (!handle->row) {
+		REDEBUG("SQL query did not return any results");
+		goto finish;
+	}
+
+	if (!handle->row[0]) {
+		REDEBUG("The first column of the result was NULL");
+		goto finish;
+	}
+
+	rlen = strlen(handle->row[0]);
+	if (rlen >= outlen) {
+		RDEBUG("insufficient string space");
+		goto finish;
+	}
+
+	strcpy(out, handle->row[0]);
+	retval = rlen;
+finish:
 	(data->sql_inst->module->sql_finish_select_query)(handle, data->sql_inst->config);
 
 	return retval;
