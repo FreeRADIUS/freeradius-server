@@ -306,11 +306,21 @@ static int sqlippool_expand(char * out, int outlen, char const * fmt,
 	return strlen(out);
 }
 
-/*
- * Query the database executing a command with no result rows
+/** Perform a single sqlippool query
+ *
+ * Mostly wrapper around sql_query which does some special sqlippool sequence substitutions and expands
+ * the format string.
+ *
+ * @param fmt sql query to expand.
+ * @param handle sql connection handle.
+ * @param data Instance of rlm_sqlippool.
+ * @param request Current request.
+ * @param param ip address string.
+ * @param param_len ip address string len.
+ * @return 0 on success or < 0 on error.
  */
-static int sqlippool_command(char const * fmt, rlm_sql_handle_t * handle, rlm_sqlippool_t *data, REQUEST * request,
-			     char * param, int param_len)
+static int sqlippool_command(char const * fmt, rlm_sql_handle_t * handle, rlm_sqlippool_t *data, REQUEST *request,
+			     char *param, int param_len)
 {
 	char query[MAX_QUERY_LEN];
 	char *expanded = NULL;
@@ -328,15 +338,13 @@ static int sqlippool_command(char const * fmt, rlm_sql_handle_t * handle, rlm_sq
 	sqlippool_expand(query, sizeof(query), fmt, data, param, param_len);
 
 	if (radius_axlat(&expanded, request, query, data->sql_inst->sql_escape_func, data->sql_inst) < 0) {
-		return 0;
+		return -1;
 	}
 
 	ret = data->sql_inst->sql_query(&handle, data->sql_inst, expanded);
-	if (!ret){
-		REDEBUG("database query error in: '%s'", expanded);
+	if (ret < 0){
 		talloc_free(expanded);
-
-		return 0;
+		return -1;
 	}
 	talloc_free(expanded);
 
