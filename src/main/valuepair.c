@@ -1374,24 +1374,26 @@ int radius_str2vp(REQUEST *request, char const *raw, request_refs_t request_def,
 	return 0;
 }
 
-
 /** Return a VP from a value_pair_tmpl_t
  *
+ * @param out where to write the retrieved vp.
  * @param request current request.
  * @param vpt the value pair template
- * @return NULL if not found, or the VPs.
+ * @return -1 if VP could not be found, -2 if list could not be found, -3 if context could not be found.
  */
-VALUE_PAIR *radius_vpt_get_vp(REQUEST *request, value_pair_tmpl_t const *vpt)
+int radius_vpt_get_vp(VALUE_PAIR **out, REQUEST *request, value_pair_tmpl_t const *vpt)
 {
-	VALUE_PAIR **vps;
+	VALUE_PAIR **vps, *vp;
+
+	if (out) *out = NULL;
 
 	if (radius_request(&request, vpt->request) < 0) {
-		return NULL;
+		return -3;
 	}
 
 	vps = radius_list(request, vpt->list);
 	if (!vps) {
-		return NULL;
+		return -2;
 	}
 
 	switch (vpt->type) {
@@ -1399,16 +1401,23 @@ VALUE_PAIR *radius_vpt_get_vp(REQUEST *request, value_pair_tmpl_t const *vpt)
 	 *	May not may not be found, but it *is* a known name.
 	 */
 	case VPT_TYPE_ATTR:
-		return pairfind(*vps, vpt->da->attr, vpt->da->vendor, TAG_ANY);
+		vp = pairfind(*vps, vpt->da->attr, vpt->da->vendor, TAG_ANY);
+		if (!vp) {
+			return -1;
+		}
+		break;
 
 	case VPT_TYPE_LIST:
-		return *vps;
-
+		vp = *vps;
 	default:
 		break;
 	}
 
-	return NULL;
+	if (out) {
+		*out = vp;
+	}
+
+	return 0;
 }
 
 
@@ -1419,7 +1428,8 @@ VALUE_PAIR *radius_vpt_get_vp(REQUEST *request, value_pair_tmpl_t const *vpt)
  *	Will be NULL if the attribute couldn't be resolved.
  * @param request current request.
  * @param name attribute name including qualifiers.
- * @return -1 if either the attribute or qualifier were invalid, else 0
+ * @return -4 if either the attribute or qualifier were invalid, and the same error codes as radius_vpt_get_vp for other
+ *	error conditions.
  */
 int radius_get_vp(VALUE_PAIR **out, REQUEST *request, char const *name)
 {
@@ -1428,11 +1438,10 @@ int radius_get_vp(VALUE_PAIR **out, REQUEST *request, char const *name)
 	*out = NULL;
 
 	if (radius_parse_attr(name, &vpt, REQUEST_CURRENT, PAIR_LIST_REQUEST) < 0) {
-		return -1;
+		return -4;
 	}
 
-	*out = radius_vpt_get_vp(request, &vpt);
-	return 0;
+	return radius_vpt_get_vp(out, request, &vpt);
 }
 
 /** Add a module failure message VALUE_PAIR to the request
