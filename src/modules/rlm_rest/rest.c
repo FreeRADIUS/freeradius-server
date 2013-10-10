@@ -511,10 +511,8 @@ static size_t rest_encode_post(void *ptr, size_t size, size_t nmemb,
 		p += len;
 		s -= len;
 
-		if (!vp) {
-			if (!--s) goto no_space;
-			*p++ = '&';
-		}
+		if (!--s) goto no_space;
+		*p++ = '&';
 
 		/*
 		 *	We wrote one full attribute value pair, record progress.
