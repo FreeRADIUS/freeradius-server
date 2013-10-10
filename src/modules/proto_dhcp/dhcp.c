@@ -739,10 +739,16 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 			return -1;
 		}
 
-		if ((i == 11) &&
-		    (packet->data[1] == 1) &&
-		    (packet->data[2] != 6)) {
-		    	fr_strerror_printf("chaddr of incorrect length for ethernet");
+		/*
+		 *	If chaddr does != 6 bytes it's probably not ethernet, and we should store
+		 *	it as an opaque type (octets).
+		 */
+		if ((i == 11) && (packet->data[1] == 1) && (packet->data[2] != sizeof(vp->vp_ether))) {
+			DICT_ATTR const *da = dict_attrunknown(vp->da->attr, vp->da->vendor, true);
+			if (!da) {
+				return -1;
+			}
+			vp->da = da;
 		}
 
 		switch (vp->da->type) {
@@ -1506,16 +1512,16 @@ int fr_dhcp_add_arp_entry(int fd, char const *interface,
 	struct sockaddr_in *sin;
 	struct arpreq req;
 
-	if (!fr_assert(macaddr) || !fr_assert(macaddr->da->type == PW_TYPE_ETHERNET)) {
+	if (!fr_assert(macaddr) ||
+	    !fr_assert((macaddr->da->type == PW_TYPE_ETHERNET) || (macaddr->da->type == PW_TYPE_OCTETS))) {
+	    	fr_strerror_printf("Wrong VP type (%s) for chaddr",
+	    			   fr_int2str(dict_attr_types, macaddr->da->type, "<invalid>"));
 		return -1;
 	}
 
-	if (macaddr->length > sizeof (req.arp_ha.sa_data)) {
-		fr_strerror_printf("ERROR: DHCP only supports up to %zu octets "
-				   "for Client Hardware Address "
-				   "(got %zu octets)\n",
-				   sizeof(req.arp_ha.sa_data),
-				   macaddr->length);
+	if (macaddr->length > sizeof(req.arp_ha.sa_data)) {
+		fr_strerror_printf("arp sa_data field too small (%zu octets) to contain chaddr (%zu octets)",
+				   sizeof(req.arp_ha.sa_data), macaddr->length);
 		return -1;
 	}
 
@@ -1524,12 +1530,16 @@ int fr_dhcp_add_arp_entry(int fd, char const *interface,
 	sin->sin_family = AF_INET;
 	sin->sin_addr.s_addr = ip->vp_ipaddr;
 	strlcpy(req.arp_dev, interface, sizeof(req.arp_dev));
-	memcpy(&req.arp_ha.sa_data, &macaddr->vp_ether, macaddr->length);
+
+	if (macaddr->da->type == PW_TYPE_ETHERNET) {
+		memcpy(&req.arp_ha.sa_data, &macaddr->vp_ether, sizeof(macaddr->vp_ether));
+	} else {
+		memcpy(&req.arp_ha.sa_data, macaddr->vp_octets, macaddr->length);
+	}
 
 	req.arp_flags = ATF_COM;
 	if (ioctl(fd, SIOCSARP, &req) < 0) {
-		fr_strerror_printf("DHCP: Failed to add entry in ARP cache: %s (%d)",
-				   fr_syserror(errno), errno);
+		fr_strerror_printf("Failed to add entry in ARP cache: %s (%d)", fr_syserror(errno), errno);
 		return -1;
 	}
 
