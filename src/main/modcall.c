@@ -471,7 +471,7 @@ redo:
 		condition = radius_evaluate_cond(request, entry->result, 0, g->cond);
 		if (condition < 0) {
 			condition = false;
-			REDEBUG("Conditional evaluation failed due to internal sanity check.");
+			REDEBUG("Failed retrieving values required to evaluate condition");
 		} else {
 			RDEBUG2("%.*s? %s %s -> %s", depth + 1, modcall_spaces,
 				group_name[c->type],
