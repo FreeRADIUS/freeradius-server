@@ -528,7 +528,7 @@ redo:
 		elsif_error:
 			RDEBUG2("%.*s ... skipping %s for request %d: No preceding \"if\"",
 				depth + 1, modcall_spaces,
-				group_name[c->type], request->number);			
+				group_name[c->type], request->number);
 			goto next_sibling;
 		}
 
@@ -564,7 +564,7 @@ redo:
 		 *	to dealing with it's parent.
 		 */
 		sp = mod_callabletosingle(c);
-	
+
 		result = call_modsingle(c->method, sp, request);
 		RDEBUG2("%.*s[%s] = %s", depth + 1, modcall_spaces, c->name ? c->name : "",
 			fr_int2str(mod_rcode_table, result, "<invalid>"));
@@ -589,7 +589,7 @@ redo:
 				goto calculate_result;
 			}
 		}
-		
+
 		result = RLM_MODULE_NOOP;
 		MOD_LOG_CLOSE_BRACE();
 		goto calculate_result;
@@ -650,7 +650,7 @@ redo:
 #ifndef NDEBUG
 			if (fr_debug_flag >= 2) {
 				char buffer[1024];
-				
+
 				vp_prints_value(buffer, sizeof(buffer), vp, '"');
 				RDEBUG2("%.*s #  Foreach-Variable-%d = %s", depth + 1,
 					modcall_spaces, foreach_depth, buffer);
@@ -803,9 +803,9 @@ redo:
 				break;
 			}
 		}
-		
+
 		if (!found) found = null_case;
-		
+
 		MOD_LOG_OPEN_BRACE(group_name[c->type]);
 		modcall_child(request, component,
 			      depth + 1, entry, found,
@@ -838,12 +838,12 @@ redo:
 		}
 
 		MOD_LOG_OPEN_BRACE(group_name[c->type]);
-		
+
 		if (c->type == MOD_LOAD_BALANCE) {
 			modcall_child(request, component,
 				      depth + 1, entry, found,
 				      &result);
-					       
+
 		} else {
 			int i;
 
@@ -909,7 +909,7 @@ redo:
 
 		goto next_sibling;
 	} /* MOD_XLAT */
-	
+
 	/*
 	 *	Add new module types here.
 	 */
@@ -922,7 +922,7 @@ calculate_result:
 	       fr_int2str(mod_rcode_table, entry->result, "<invalid>"),
 	       entry->priority);
 #endif
-	       
+
 
 	rad_assert(result != RLM_MODULE_UNKNOWN);
 
@@ -965,7 +965,7 @@ calculate_result:
 	 *	If we're processing a "case" statement, we return once
 	 *	it's done, rather than going to the next "case" statement.
 	 */
-	if (c->type == MOD_CASE) return true;	
+	if (c->type == MOD_CASE) return true;
 
 next_sibling:
 	entry->c = entry->c->next;
