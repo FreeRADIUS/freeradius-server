@@ -607,6 +607,7 @@ static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
 	vp = radius_paircreate(request, &request->reply->vps,
 			       PW_FRAMED_IP_ADDRESS, 0);
 	vp->vp_ipaddr = ip_allocation;
+	vp->length = 4;
 
 	DO(allocate_commit);
 
