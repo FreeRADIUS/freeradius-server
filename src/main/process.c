@@ -431,7 +431,7 @@ STATE_MACHINE_DECL(request_done)
 		if (request->reply->data) break;
 
 		RERROR("Received conflicting packet from "
-			       "client %s port %d - ID: %d due to "
+			       "client %s port %d - ID: %u due to "
 			       "unfinished request.  Giving up on old request.",
 			       request->client->shortname,
 			       request->packet->src_port, request->packet->id);
@@ -584,7 +584,7 @@ STATE_MACHINE_DECL(request_done)
 #endif
 
 	if (request->packet) {
-		RDEBUG2("Cleaning up request packet ID %d with timestamp +%d",
+		RDEBUG2("Cleaning up request packet ID %u with timestamp +%d",
 			request->packet->id,
 			(unsigned int) (request->timestamp - fr_start_time));
 	} /* else don't print anything */
@@ -1934,7 +1934,7 @@ int request_proxy_reply(RADIUS_PACKET *packet)
 
 	if (!proxy_p) {
 		PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
-		PROXY( "No outstanding request was found for reply from host %s port %d - ID %d",
+		PROXY( "No outstanding request was found for reply from host %s port %d - ID %u",
 		       inet_ntop(packet->src_ipaddr.af,
 				 &packet->src_ipaddr.ipaddr,
 				 buffer, sizeof(buffer)),
@@ -2315,7 +2315,7 @@ static int request_will_proxy(REQUEST *request)
 	 */
 	vp = radius_paircreate(request, &request->proxy->vps,
 			       PW_PROXY_STATE, 0);
-	pairsprintf(vp, "%d", request->packet->id);
+	pairsprintf(vp, "%u", request->packet->id);
 
 	/*
 	 *	Should be done BEFORE inserting into proxy hash, as
