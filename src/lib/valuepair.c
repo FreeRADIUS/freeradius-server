@@ -2903,7 +2903,7 @@ void pairstrcpy(VALUE_PAIR *vp, char const *src)
 
 	vp->vp_strvalue = p;
 	vp->type = VT_DATA;
-	vp->length = strlen(vp->vp_strvalue);
+	vp->length = talloc_array_length(vp->vp_strvalue) - 1;
 }
 
 
@@ -2931,9 +2931,6 @@ void pairsprintf(VALUE_PAIR *vp, char const *fmt, ...)
 	vp->vp_strvalue = p;
 	vp->type = VT_DATA;
 
-	/*
-	 *	vsnprintf returns random things on different platforms
-	 */
-	vp->length = strlen(vp->vp_strvalue);
+	vp->length = talloc_array_length(vp->vp_strvalue) - 1;
 }
 
