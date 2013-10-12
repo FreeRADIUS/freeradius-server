@@ -24,6 +24,10 @@
  */
 typedef void (*pthread_destructor_t)(void*);
 
+#if !defined(HAVE_PTHREAD_H) && defined(WITH_THREADS)
+#  error WITH_THREADS defined, but pthreads not available
+#endif
+
 /*
  *	First figure whether we have compiler support this is usually the case except on OSX,
  *	where we need to use pthreads.
@@ -43,8 +47,6 @@ typedef void (*pthread_destructor_t)(void*);
 #  define fr_thread_local_init(_n, _f) _n
 #  define fr_thread_local_set(_n, _v) ((int)!((_n = _v) || 1))
 #  define fr_thread_local_get(_n) _n
-#elif !defined(HAVE_PTHREAD_H)
-#error WITH_THREADS defined, but pthreads not available
 #elif defined(__THREAD)
 #  include <pthread.h>
 #  define fr_thread_local_setup(_t, _n) static __THREAD _t _n;\

@@ -617,7 +617,11 @@ if test "x$WITH_THREADS" = "xyes"; then
     CFLAGS="$CFLAGS -mt"
   fi
 
-  AC_CHECK_HEADERS(pthread.h, [], [ WITH_THREADS="no" ])
+  AC_CHECK_HEADERS(pthread.h, [],
+    [
+      WITH_THREADS="no"
+      fail=[pthread.h]
+    ])
 
   dnl #
   dnl #  pthread stuff is usually in -lpthread
@@ -632,12 +636,26 @@ if test "x$WITH_THREADS" = "xyes"; then
       LIBS="-lpthread $LIBS"
     ],
     [
+      dnl #
+      dnl # -pthread is not a typo, it's a GCC option which sets additional flags required
+      dnl # for multithreading with the pthreads library.
+      dnl #
       AC_CHECK_LIB(c_r, pthread_create,
         [ CFLAGS="$CFLAGS -pthread -D_THREAD_SAFE" ],
-        [ WITH_THREADS="no" ]
+        [
+          WITH_THREADS="no"
+          fail=[-lpthread]
+        ]
       )
     ]
   )
+
+  if test "x$WITH_THREADS" != "xyes"; then
+    AC_MSG_WARN([silently not building with thread support.])
+    AC_MSG_WARN([FAILURE: thread support requires: $fail.])
+  else
+    AC_DEFINE(WITH_THREADS, [1], [define if you want thread support])
+  fi
 fi
 
 dnl #
@@ -662,10 +680,6 @@ else
     [],
     [AC_MSG_ERROR([[-lsem not found.  You may want to download it from ftp://ftp.to.gd-es.com/pub/BSDI/libsem.tar.bz2 or ftp://ftp.freeradius.org/pub/radius/contrib/libsem.tar.gz]])]
   )
-fi
-
-if test "x$WITH_THREADS" = "xyes"; then
-  AC_DEFINE(WITH_THREADS, [1], [define if you want thread support])
 fi
 
 dnl #
