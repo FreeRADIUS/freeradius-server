@@ -666,7 +666,7 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from)
 	vp_cursor_t cursor;
 	VALUE_PAIR *vp, *next, **last;
 	VALUE_PAIR **from_list, **to_list;
-	int *edited = NULL;
+	bool *edited = NULL;
 	REQUEST *fixup = NULL;
 
 	/*
@@ -692,10 +692,10 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from)
 	 */
 	count = 0;
 	for (vp = paircursor(&cursor, &from); vp; vp = pairnext(&cursor)) count++;
-	from_list = rad_malloc(sizeof(*from_list) * count);
+	from_list = talloc_array(request, VALUE_PAIR *, count);
 
 	for (vp = paircursor(&cursor, to); vp; vp = pairnext(&cursor)) count++;
-	to_list = rad_malloc(sizeof(*to_list) * count);
+	to_list = talloc_array(request, VALUE_PAIR *, count);
 
 	/*
 	 *	Move the lists to the arrays, and break the list
@@ -715,8 +715,7 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from)
 		vp->next = NULL;
 	}
 	tailto = to_count;
-	edited = rad_malloc(sizeof(*edited) * to_count);
-	memset(edited, 0, sizeof(*edited) * to_count);
+	edited = talloc_zero_array(request, bool, to_count);
 
 	RDEBUG4("::: FROM %d TO %d MAX %d", from_count, to_count, count);
 
@@ -893,7 +892,7 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from)
 
 		pairfree(&from_list[i]);
 	}
-	free(from_list);
+	talloc_free(from_list);
 
 	RDEBUG4("::: TO in %d out %d", to_count, tailto);
 
@@ -952,6 +951,6 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from)
 	rad_assert(request != NULL);
 	rad_assert(request->packet != NULL);
 
-	free(to_list);
-	free(edited);
+	talloc_free(to_list);
+	talloc_free(edited);
 }
