@@ -4,6 +4,5 @@ SOURCES		:= smbencrypt.c smbdes.c
 TGT_PREREQS	:= libfreeradius-radius.a
 
 SRC_CFLAGS	:=
-TGT_LDLIBS	:= $(LIBS)
-
+TGT_LDLIBS	:= $(LIBS) $(OPENSSL)
 
