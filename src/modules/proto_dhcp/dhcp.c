@@ -1529,7 +1529,10 @@ int fr_dhcp_add_arp_entry(int fd, char const *interface,
 	sin = (struct sockaddr_in *) &req.arp_pa;
 	sin->sin_family = AF_INET;
 	sin->sin_addr.s_addr = ip->vp_ipaddr;
-	strlcpy(req.arp_dev, interface, sizeof(req.arp_dev));
+
+	if (interface) {
+		strlcpy(req.arp_dev, interface, sizeof(req.arp_dev));
+	}
 
 	if (macaddr->da->type == PW_TYPE_ETHERNET) {
 		memcpy(&req.arp_ha.sa_data, &macaddr->vp_ether, sizeof(macaddr->vp_ether));
