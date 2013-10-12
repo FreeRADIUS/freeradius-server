@@ -2863,7 +2863,7 @@ void pairmemsteal(VALUE_PAIR *vp, uint8_t *src)
 
 	vp->vp_octets = talloc_steal(vp, src);
 	vp->type = VT_DATA;
-	vp->length = talloc_array_length(vp->vp_strvalue);
+	vp->length = talloc_array_length(vp->vp_octets);
 }
 
 /** Reparent an allocated char buffer to a VALUE_PAIR
