@@ -132,6 +132,11 @@ ${FILTER_DEPENDS}
 endef
 endif
 
+define ADD_ANALYZE_RULE
+$${BUILD_DIR}/plist/%.plist: ${1} ${JLIBTOOL}
+	${2}
+endef
+
 # ADD_TARGET_DIR - Parameterized "function" that makes a link from
 #   TARGET_DIR to the executable or library in the BUILD_DIR directory.
 #
@@ -243,6 +248,15 @@ define COMPILE_C_CMDS
 	@$(ECHO) CC $<
 	@$(strip ${COMPILE.c} -o $@ -c -MD ${CFLAGS} ${SRC_CFLAGS} ${INCDIRS} \
 	    ${SRC_INCDIRS} ${SRC_DEFS} ${DEFS} $<)
+endef
+
+# ANALYZE_C_CMDS - Commands for analyzing C source code with clang.
+define ANALYZE_C_CMDS
+	@mkdir -p $(dir $@)
+	@$(ECHO) SCAN $<
+	@$(strip ${COMPILE.c} --analyze -c $< ${CFLAGS} ${SRC_CFLAGS} ${INCDIRS} \
+	    ${SRC_INCDIRS} ${SRC_DEFS} ${DEFS}) || (rm -f $@ && false)
+	@touch $@
 endef
 
 # COMPILE_CXX_CMDS - Commands for compiling C++ source code.
@@ -375,6 +389,10 @@ define INCLUDE_SUBMAKEFILE
         OBJS := $$(addprefix $${BUILD_DIR}/objs/,\
                    $$(addsuffix .${OBJ_EXT},$$(basename $${SOURCES})))
 
+	PLISTS := $$(addprefix $${BUILD_DIR}/plist/,\
+                   $$(addsuffix .plist,$$(basename $${SOURCES})))
+	ALL_PLISTS += ${PLISTS}
+
         # Add the objects to the current target's list of objects, and create
         # target-specific variables for the objects based on any source
         # variables that were defined.
@@ -390,6 +408,12 @@ define INCLUDE_SUBMAKEFILE
         $${OBJS}: SRC_DEFS := $$(addprefix -D,$${SRC_DEFS})
         $${OBJS}: SRC_INCDIRS := $$(addprefix -I,$${SRC_INCDIRS})
         $${OBJS}: ${1}
+
+        $${PLISTS}: SRC_CFLAGS := $${SRC_CFLAGS}
+        $${PLISTS}: SRC_CXXFLAGS := $${SRC_CXXFLAGS}
+        $${PLISTS}: SRC_DEFS := $$(addprefix -D,$${SRC_DEFS})
+        $${PLISTS}: SRC_INCDIRS := $$(addprefix -I,$${SRC_INCDIRS})
+        $${PLISTS}: ${1}
     endif
     endif
 
@@ -567,6 +591,11 @@ INCDIRS := $(addprefix -I,$(call CANONICAL_PATH,${INCDIRS}))
 $(foreach EXT,${C_SRC_EXTS},\
   $(eval $(call ADD_OBJECT_RULE,${EXT},$${COMPILE_C_CMDS})))
 
+ifeq "$(CC)" "clang"
+$(foreach EXT,${C_SRC_EXTS},\
+  $(eval $(call ADD_ANALYZE_RULE,${EXT},$${ANALYZE_C_CMDS})))
+endif
+
 # Add pattern rule(s) for creating compiled object code from C++ source.
 $(foreach EXT,${CXX_SRC_EXTS},\
   $(eval $(call ADD_OBJECT_RULE,${EXT},$${COMPILE_CXX_CMDS})))
@@ -578,3 +607,5 @@ ifneq "$(MAKECMDGOALS)" "clean"
     $(foreach TGT,${ALL_TGTS},\
       $(eval -include ${${TGT}_DEPS}))
 endif
+
+scan: ${ALL_PLISTS}
