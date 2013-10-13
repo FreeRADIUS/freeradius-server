@@ -2681,7 +2681,7 @@ DICT_ATTR const *dict_attrunknown(unsigned int attr, unsigned int vendor,
 		bufsize -= len;
 	}
 
-	p += print_attr_oid(p, bufsize , attr, dv_type);
+	print_attr_oid(p, bufsize , attr, dv_type);
 
 	return da;
 }
