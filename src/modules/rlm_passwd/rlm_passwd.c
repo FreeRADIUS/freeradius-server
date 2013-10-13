@@ -260,8 +260,6 @@ static struct mypasswd * get_next(char *name, struct hashtable *ht,
 	int len;
 	char *list, *nextlist;
 
-	passwd = (struct mypasswd *) ht->buffer;
-
 	if (ht->tablesize > 0) {
 		/* get saved address of next item to check from buffer */
 		hashentry = *last_found;
