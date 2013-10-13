@@ -140,6 +140,8 @@ static int mod_authenticate(void *type_arg, eap_handler_t *handler)
 
 	inst = type_arg;
 
+	rad_assert(request != NULL);
+
 	RDEBUG2("Authenticate");
 
 	status = eaptls_process(handler);
