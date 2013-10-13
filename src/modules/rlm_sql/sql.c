@@ -309,7 +309,7 @@ int rlm_sql_fetch_row(rlm_sql_handle_t **handle, rlm_sql_t *inst)
  *************************************************************************/
 int rlm_sql_query(rlm_sql_handle_t **handle, rlm_sql_t *inst, char const *query)
 {
-	int ret;
+	int ret = -1;
 
 	/*
 	 *	If there's no query, return an error.
@@ -319,7 +319,6 @@ int rlm_sql_query(rlm_sql_handle_t **handle, rlm_sql_t *inst, char const *query)
 	}
 
 	if (!*handle || !(*handle)->conn) {
-		ret = -1;
 		goto sql_down;
 	}
 
@@ -359,7 +358,7 @@ int rlm_sql_query(rlm_sql_handle_t **handle, rlm_sql_t *inst, char const *query)
  *************************************************************************/
 int rlm_sql_select_query(rlm_sql_handle_t **handle, rlm_sql_t *inst, char const *query)
 {
-	int ret;
+	int ret = -1;
 
 	/*
 	 *	If there's no query, return an error.
@@ -369,7 +368,6 @@ int rlm_sql_select_query(rlm_sql_handle_t **handle, rlm_sql_t *inst, char const 
 	}
 
 	if (!*handle || !(*handle)->conn) {
-		ret = -1;
 		goto sql_down;
 	}
 
