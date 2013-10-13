@@ -1212,7 +1212,6 @@ void print_abinary(VALUE_PAIR const *vp, char *buffer, size_t len, int8_t quote)
 		if (filter->u.ip.established) {
 			i = snprintf(p, len, " est");
 			p += i;
-			len -= i;
 		}
 
 		/*
@@ -1253,7 +1252,6 @@ void print_abinary(VALUE_PAIR const *vp, char *buffer, size_t len, int8_t quote)
 					     fr_int2str(filterCompare, filter->u.ipx.dstSocComp, "??"),
 					     ntohs(filter->u.ipx.dst.socket));
 				p += i;
-				len -= i;
 			}
 		}
 	} else if (filter->type == RAD_FILTER_GENERIC) {
@@ -1261,7 +1259,6 @@ void print_abinary(VALUE_PAIR const *vp, char *buffer, size_t len, int8_t quote)
 
 		i = snprintf(p, len, " %u ", (unsigned int) ntohs(filter->u.generic.offset));
 		p += i;
-		i -= len;
 
 		/* show the mask */
 		for (count = 0; count < ntohs(filter->u.generic.len); count++) {
@@ -1288,7 +1285,6 @@ void print_abinary(VALUE_PAIR const *vp, char *buffer, size_t len, int8_t quote)
 		if (filter->u.generic.more != 0) {
 			i = snprintf(p, len, " more");
 			p += i;
-			len -= i;
 		}
 	}
 
