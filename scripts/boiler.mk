@@ -609,3 +609,9 @@ ifneq "$(MAKECMDGOALS)" "clean"
 endif
 
 scan: ${ALL_PLISTS}
+
+.PHONY: clean.scan
+clean.scan:
+	@rm -f ${ALL_PLISTS}
+
+clean: clean.scan
