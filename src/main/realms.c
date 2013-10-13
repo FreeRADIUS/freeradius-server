@@ -272,7 +272,7 @@ void realms_free(void)
 	}
 #endif
 
-	free(realm_config);
+	talloc_free(realm_config);
 	realm_config = NULL;
 }
 
@@ -408,8 +408,7 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 		return 0;
 	}
 
-	home = rad_malloc(sizeof(*home));
-	memset(home, 0, sizeof(*home));
+	home = talloc_zero(rc, home_server);
 
 	home->name = name2;
 	home->cs = cs;
@@ -779,7 +778,7 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 	}
 
 	if (dual) {
-		home_server *home2 = rad_malloc(sizeof(*home2));
+		home_server *home2 = talloc(rc, home_server);
 
 		memcpy(home2, home, sizeof(*home2));
 
@@ -1847,8 +1846,7 @@ int realms_init(CONF_SECTION *config)
 	}
 #endif
 
-	rc = rad_malloc(sizeof(*rc));
-	memset(rc, 0, sizeof(*rc));
+	rc = talloc_zero(NULL, realm_config_t);
 	rc->cs = config;
 
 #ifdef WITH_PROXY
