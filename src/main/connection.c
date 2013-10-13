@@ -777,7 +777,6 @@ static int fr_connection_pool_check(fr_connection_pool_t *pool)
 
 	spare = pool->num - pool->active;
 
-	spawn = 0;
 	if ((pool->num < pool->max) && (spare < pool->spare)) {
 		spawn = pool->spare - spare;
 		if ((spawn + pool->num) > pool->max) {
