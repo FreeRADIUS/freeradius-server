@@ -1042,7 +1042,7 @@ VALUE_PAIR *pairsteal(TALLOC_CTX *ctx, VALUE_PAIR *from)
 	for (vp = paircursor(&cursor, &from);
 	     vp;
 	     vp = pairnext(&cursor)) {
-		vp = talloc_steal(ctx, vp);
+		(void) talloc_steal(ctx, vp);
 	}
 
 	return from;
