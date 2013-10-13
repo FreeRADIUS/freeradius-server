@@ -298,6 +298,7 @@ static int mschap_postproxy(eap_handler_t *handler, UNUSED void *tunnel_data)
 
 	data = (mschapv2_opaque_t *) handler->opaque;
 	rad_assert(data != NULL);
+	rad_assert(request != NULL);
 
 	RDEBUG2("Passing reply from proxy back into the tunnel %d.",
 		request->reply->code);
