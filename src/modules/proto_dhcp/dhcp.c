@@ -149,7 +149,7 @@ static uint8_t *dhcp_get_option(dhcp_packet_t *packet, size_t packet_size,
 	int overload = 0;
 	int field = DHCP_OPTION_FIELD;
 	size_t where, size;
-	uint8_t *data = packet->options;
+	uint8_t *data;
 
 	where = 0;
 	size = packet_size - offsetof(dhcp_packet_t, options);
@@ -1055,7 +1055,7 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 	uint8_t *p;
 	vp_cursor_t cursor;
 	VALUE_PAIR *vp;
-	uint32_t lvalue, mms;
+	uint32_t lvalue;
 	size_t dhcp_size, length;
 #ifndef NDEBUG
 	char const *name;
@@ -1102,6 +1102,10 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 
 	p = packet->data;
 
+	/*
+	 *	@todo: Make this work again.
+	 */
+#if 0
 	mms = DEFAULT_PACKET_SIZE; /* maximum message size */
 
 	/*
@@ -1117,6 +1121,7 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 
 		if (mms > MAX_PACKET_SIZE) mms = MAX_PACKET_SIZE;
 	}
+#endif
 
 	vp = pairfind(packet->vps, 256, DHCP_MAGIC_VENDOR, TAG_ANY);
 	if (vp) {
@@ -1384,8 +1389,6 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 
 		debug_pair(vp);
 		if (vp->da->flags.extended) goto next;
-
-		length = vp->length;
 
 		for (same = paircursor(&cursor, &vp->next);
 		     same;
