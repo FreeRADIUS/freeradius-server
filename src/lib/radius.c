@@ -3117,6 +3117,7 @@ static ssize_t data2vp_extended(RADIUS_PACKET *packet,
 	uint8_t const *frag, *end;
 	uint8_t const *attr;
 	int fragments;
+	bool last_frag;
 
 	if (attrlen < 3) return -1;
 
@@ -3130,10 +3131,9 @@ static ssize_t data2vp_extended(RADIUS_PACKET *packet,
 	frag = data + attrlen;
 	end = data + packetlen;
 	fragments = 0;
+	last_frag = false;
 
 	while (frag < end) {
-		int last_frag = false;
-
 		if (last_frag ||
 		    (frag[0] != attr[0]) ||
 		    (frag[1] < 4) ||		       /* too short for long-extended */
@@ -3192,6 +3192,7 @@ static ssize_t data2vp_wimax(RADIUS_PACKET *packet,
 {
 	ssize_t rcode;
 	size_t fraglen;
+	bool last_frag;
 	uint8_t *head, *tail;
 	uint8_t const *frag, *end;
 	DICT_ATTR const *child;
@@ -3222,10 +3223,9 @@ static ssize_t data2vp_wimax(RADIUS_PACKET *packet,
 	fraglen = data[5] - 3;
 	frag = data + attrlen;
 	end = data + packetlen;
+	last_frag = false;
 
 	while (frag < end) {
-		int last_frag = false;
-
 		if (last_frag ||
 		    (frag[0] != PW_VENDOR_SPECIFIC) ||
 		    (frag[1] < 9) ||		       /* too short for wimax */
