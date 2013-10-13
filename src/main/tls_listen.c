@@ -348,6 +348,7 @@ int dual_tls_recv(rad_listen_t *listener)
 	rad_assert(sock->request->packet != NULL);
 	rad_assert(sock->packet != NULL);
 	rad_assert(sock->ssn != NULL);
+	rad_assert(client != NULL);
 
 	request = sock->request;
 	packet = sock->packet;
