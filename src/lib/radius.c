@@ -3752,6 +3752,9 @@ static ssize_t data2vp(RADIUS_PACKET *packet,
 		vp->vp_date = ntohl(vp->vp_date);
 		break;
 
+	case PW_TYPE_ETHERNET:
+		memcpy(&vp->vp_ether, data, 6);
+		break;
 
 	case PW_TYPE_IPADDR:
 		memcpy(&vp->vp_ipaddr, data, 4);
