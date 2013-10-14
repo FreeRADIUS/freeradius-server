@@ -684,18 +684,31 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int in_server)
 		if (!c->shortname) c->shortname = talloc_strdup(c, name2);
 
 		c->proto = IPPROTO_UDP;
-#ifdef WITH_TCP
 		if (hs_proto) {
 			if (strcmp(hs_proto, "udp") == 0) {
 				hs_proto = NULL;
 
+#ifdef WITH_TCP
 			} else if (strcmp(hs_proto, "tcp") == 0) {
 				hs_proto = NULL;
 				c->proto = IPPROTO_TCP;
 
+#ifdef WITH_TLS
+			} else if (strcmp(hs_proto, "tls") == 0) {
+				hs_proto = NULL;
+				c->proto = IPPROTO_TCP;
+				c->tls_required = true;
+
+			} else if (strcmp(hs_proto, "radsec") == 0) {
+				hs_proto = NULL;
+				c->proto = IPPROTO_TCP;
+				c->tls_required = true;
+#endif
+
 			} else if (strcmp(hs_proto, "*") == 0) {
 				hs_proto = NULL;
 				c->proto = IPPROTO_IP; /* fake for dual */
+#endif
 
 			} else {
 				cf_log_err_cs(cs,
@@ -703,7 +716,6 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int in_server)
 				goto error;
 			}
 		}
-#endif
 	}
 
 	/*
@@ -765,9 +777,23 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int in_server)
 		if (value && (strcmp(value, "yes") == 0)) return c;
 
 #endif
-		cf_log_err_cs(cs,
-			   "secret must be at least 1 character long");
-		goto error;
+
+#ifdef WITH_TLS
+		/*
+		 *	If the client is TLS only, the secret can be
+		 *	omitted.  When omitted, it's hard-coded to
+		 *	"radsec".  See RFC 6614.
+		 */
+		if (c->tls_required) {
+			c->secret = talloc_strdup(cs, "radsec");
+		} else
+#endif
+
+		{
+			cf_log_err_cs(cs,
+				      "secret must be at least 1 character long");
+			goto error;
+		}
 	}
 
 #ifdef WITH_COA
@@ -809,7 +835,7 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int in_server)
  *	type.  This way we don't have to change too much in the other
  *	source-files.
  */
-RADCLIENT_LIST *clients_parse_section(CONF_SECTION *section)
+RADCLIENT_LIST *clients_parse_section(CONF_SECTION *section, bool tls_required)
 {
 	int		global = false, in_server = false;
 	CONF_SECTION	*cs;
@@ -848,6 +874,16 @@ RADCLIENT_LIST *clients_parse_section(CONF_SECTION *section)
 		if (!c) {
 			return NULL;
 		}
+
+#ifdef WITH_TLS
+		/*
+		 *	TLS clients CANNOT use non-TLS listeners.
+		 *	non-TLS clients CANNOT use TLS listeners.
+		 */
+		if (tls_required != c->tls_required) {
+			WARN("Security mismatch (TLS / non-TLS) between client and socket.");
+		}
+#endif
 
 		/*
 		 *	FIXME: Add the client as data via cf_data_add,

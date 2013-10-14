@@ -122,6 +122,9 @@ typedef struct radclient {
 #ifdef WITH_TCP
 	fr_socket_limit_t	limit;
 #endif
+#ifdef WITH_TLS
+	bool			tls_required;
+#endif
 
 #ifdef WITH_DYNAMIC_CLIENTS
 	int			lifetime;
@@ -573,7 +576,7 @@ char const	*rad_radacct_dir(void);
 /* client.c */
 RADCLIENT_LIST	*clients_init(CONF_SECTION *cs);
 void		clients_free(RADCLIENT_LIST *clients);
-RADCLIENT_LIST	*clients_parse_section(CONF_SECTION *section);
+RADCLIENT_LIST	*clients_parse_section(CONF_SECTION *section, bool tls_required);
 void		client_free(RADCLIENT *client);
 int		client_add(RADCLIENT_LIST *clients, RADCLIENT *client);
 #ifdef WITH_DYNAMIC_CLIENTS

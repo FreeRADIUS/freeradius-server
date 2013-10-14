@@ -580,6 +580,23 @@ static int dual_tcp_accept(rad_listen_t *listener)
 		return 0;
 	}
 
+#ifdef WITH_TLS
+	/*
+	 *	Enforce security restrictions.
+	 *
+	 *	This shouldn't be necessary in practice.  However, it
+	 *	serves as a double-check on configurations.  Marking a
+	 *	client as "tls required" means that any accidental
+	 *	exposure of the client to non-TLS traffic is
+	 *	prevented.
+	 */
+	if (client->tls_required && !listener->tls) {
+		INFO("Ignoring connection to TLS socket from non-TLS client");
+		close(newfd);
+		return 0;
+	}
+#endif
+
 	/*
 	 *	Enforce max_connections on client && listen section.
 	 */
@@ -665,7 +682,7 @@ static int dual_tcp_accept(rad_listen_t *listener)
 #ifdef WITH_TLS
 		if (this->tls) {
 			this->recv = dual_tls_recv;
-		this->send = dual_tls_send;
+			this->send = dual_tls_send;
 		}
 #endif
 	}
@@ -1193,7 +1210,8 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	 */
 	if (!client_cs) client_cs = parentcs;
 
-	sock->clients = clients_parse_section(client_cs);
+	sock->clients = clients_parse_section(client_cs,
+					      (this->tls != NULL));
 	if (!sock->clients) {
 		cf_log_err_cs(cs,
 			   "Failed to load clients for this listen section");
@@ -2888,7 +2906,7 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head,
 		sock->my_ipaddr = server_ipaddr;
 		sock->my_port = auth_port;
 
-		sock->clients = clients_parse_section(config);
+		sock->clients = clients_parse_section(config, false);
 		if (!sock->clients) {
 			cf_log_err_cs(config,
 				   "Failed to find any clients for this listen section");
@@ -2938,7 +2956,7 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head,
 		sock->my_ipaddr = server_ipaddr;
 		sock->my_port = auth_port + 1;
 
-		sock->clients = clients_parse_section(config);
+		sock->clients = clients_parse_section(config, false);
 		if (!sock->clients) {
 			cf_log_err_cs(config,
 				   "Failed to find any clients for this listen section");
