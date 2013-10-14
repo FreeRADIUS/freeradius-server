@@ -658,6 +658,7 @@ GIT
 FR_MAKEFLAGS
 MAKE
 GMAKE
+clang_path
 RANLIB
 EGREP
 GREP
@@ -4251,6 +4252,14 @@ rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 fi
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ax_cv_cc_clang" >&5
 $as_echo "$ax_cv_cc_clang" >&6; }
+
+if test "x$ax_cv_cc_clang" = "xyes"; then
+  clang_path="$CC"
+
+else
+  clang_path=""
+
+fi
 
 
 if test "x$GCC" = "xyes"; then

@@ -174,3 +174,14 @@ ifneq "$(findstring Darwin,$(shell uname -a))" ""
 LA		:= dylib
 endif
 endif
+
+# Path to clang, setting this enables the 'scan.*' build targets
+# which perform static analysis on various server components.
+ANALYZE.c       := @clang_path@
+
+ifeq "${CC}" "clang"
+    ifeq "${ANALYZE.c}" ""
+        ANALYZE.c := "${CC}"
+    endif
+endif
+

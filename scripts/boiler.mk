@@ -188,10 +188,9 @@ define ADD_TARGET_RULE.exe
                 $${LDLIBS} $${${1}_LDLIBS}
 	    @$${${1}_POSTMAKE}
 
-ifeq "${CC}" "clang"
-    scan.${1}: $${${1}_PLISTS}
-endif
-
+    ifneq "${ANALYZE.c}" ""
+        scan.${1}: $${${1}_PLISTS}
+    endif
 endef
 
 # ADD_TARGET_RULE.a - Build a static library target.
@@ -210,10 +209,9 @@ define ADD_TARGET_RULE.a
 	    @$${AR} $${ARFLAGS} $${${1}_BUILD}/${1} $${${1}_OBJS}
 	    @$${${1}_POSTMAKE}
 
-ifeq "${CC}" "clang"
-    scan.${1}: $${${1}_PLISTS}
-endif
-
+    ifneq "${ANALYZE.c}" ""
+        scan.${1}: $${${1}_PLISTS}
+    endif
 endef
 
 # ADD_TARGET_RULE.so - Build a ".so" target.
@@ -262,7 +260,7 @@ endef
 define ANALYZE_C_CMDS
 	@mkdir -p $(dir $@)
 	@$(ECHO) SCAN $<
-	@$(strip ${COMPILE.c} --analyze -c $< ${CFLAGS} ${SRC_CFLAGS} ${INCDIRS} \
+	@$(strip ${ANALYZE.c} --analyze -c $< ${CFLAGS} ${SRC_CFLAGS} ${INCDIRS} \
 	    ${SRC_INCDIRS} ${SRC_DEFS} ${DEFS}) || (rm -f $@ && false)
 	@touch $@
 endef
@@ -592,7 +590,7 @@ INCDIRS := $(addprefix -I,$(call CANONICAL_PATH,${INCDIRS}))
 $(foreach EXT,${C_SRC_EXTS},\
   $(eval $(call ADD_OBJECT_RULE,${EXT},$${COMPILE_C_CMDS})))
 
-ifeq "$(CC)" "clang"
+ifneq "${ANALYZE.c}" ""
 $(foreach EXT,${C_SRC_EXTS},\
   $(eval $(call ADD_ANALYZE_RULE,${EXT},$${ANALYZE_C_CMDS})))
 endif

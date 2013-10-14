@@ -134,6 +134,12 @@ dnl #
 dnl #  Definitive check for whether the compiler is clang
 dnl #
 AX_CC_IS_CLANG
+if test "x$ax_cv_cc_clang" = "xyes"; then
+  AC_SUBST(clang_path, "$CC")
+else
+  AC_SUBST(clang_path, "")
+fi
+
 
 dnl #
 dnl #  Set Default CFLAGS for GCC compatible compilers
