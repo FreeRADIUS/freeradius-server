@@ -454,9 +454,6 @@ typedef struct main_config_t {
 	char const	*name;
 	char const	*auth_badpass_msg;
 	char const	*auth_goodpass_msg;
-	int		colourise;	//!< Messages output to stderr and
-					//!< stdout may be formatted using
-					//!< VT100 escape sequences.
 	int		debug_memory;
 } MAIN_CONFIG_T;
 
