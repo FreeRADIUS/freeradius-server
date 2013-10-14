@@ -90,6 +90,10 @@ define ADD_TARGET_RULE.la
 		$${${1}_PRLIBS}
 	    @$${${1}_POSTMAKE}
 
+ifeq "${CC}" "clang"
+    scan.${1}: $${${1}_PLISTS}
+endif
+
 endef
 
 # ADD_RELINK_RULE.exe - Parametric "function" that adds a rule to relink
