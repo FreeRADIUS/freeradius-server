@@ -64,6 +64,7 @@ static const FR_NAME_NUMBER colours[] = {
 	{ VTC_BOLD,		L_INFO		},
 	{ VTC_BOLD,		L_ACCT		},
 	{ VTC_RED,		L_ERR		},
+	{ VTC_BOLD VTC_YELLOW,	L_WARN		},
 	{ VTC_BOLD VTC_RED,	L_DBG_ERR	},
 	{ VTC_BOLD VTC_YELLOW,	L_DBG_WARN	},
 	{ VTC_BOLD VTC_RED,	L_DBG_ERR2	},
