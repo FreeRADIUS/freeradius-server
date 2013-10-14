@@ -930,6 +930,10 @@ static int server_pool_add(realm_config_t *rc,
 
 	pool = server_pool_alloc(name2, HOME_POOL_FAIL_OVER, server_type,
 				 num_home_servers);
+	if (!pool) {
+		cf_log_err_cs(cs, "Failed allocating memory for pool");
+		goto error;
+	}
 	pool->cs = cs;
 
 
@@ -2067,8 +2071,9 @@ void home_server_update_request(home_server *home, REQUEST *request)
 	if (!request->proxy) {
 		request->proxy = rad_alloc(request, true);
 		if (!request->proxy) {
-			ERROR("no memory");
+			ERROR("no memory");			
 			fr_exit(1);
+			_exit(1);
 		}
 
 		/*
