@@ -80,8 +80,11 @@ void fr_SHA1Transform(uint32_t state[5], uint8_t const buffer[64])
     state[2] += c;
     state[3] += d;
     state[4] += e;
+
+#ifndef __clang_analyzer__
     /* Wipe variables */
     a = b = c = d = e = 0;
+#endif
 }
 
 
@@ -141,12 +144,16 @@ uint8_t finalcount[8];
 	digest[i] = (uint8_t)
 	 ((context->state[i>>2] >> ((3-(i & 3)) * 8) ) & 255);
     }
+
+#ifndef __clang_analyzer__
     /* Wipe variables */
     i = j = 0;
     memset(context->buffer, 0, 64);
     memset(context->state, 0, 20);
     memset(context->count, 0, 8);
     memset(&finalcount, 0, 8);
+#endif
+
 #ifdef SHA1HANDSOFF  /* make fr_SHA1Transform overwrite it's own static vars */
     fr_SHA1Transform(context->state, context->buffer);
 #endif
@@ -161,11 +168,13 @@ void fr_SHA1FinalNoLen(uint8_t digest[20], fr_SHA1_CTX* context)
 	 ((context->state[i>>2] >> ((3-(i & 3)) * 8) ) & 255);
     }
 
+#ifndef __clang_analyzer__
     /* Wipe variables */
     i = j = 0;
     memset(context->buffer, 0, 64);
     memset(context->state, 0, 20);
     memset(context->count, 0, 8);
+#endif
 
 #ifdef SHA1HANDSOFF  /* make fr_SHA1Transform overwrite it's own static vars */
     fr_SHA1Transform(context->state, context->buffer);
