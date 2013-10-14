@@ -106,7 +106,7 @@ static void home_server_free(void *data)
 {
 	home_server *home = data;
 
-	free(home);
+	talloc_free(home);
 }
 
 static int home_server_name_cmp(void const *one, void const *two)
