@@ -188,6 +188,10 @@ define ADD_TARGET_RULE.exe
                 $${LDLIBS} $${${1}_LDLIBS}
 	    @$${${1}_POSTMAKE}
 
+ifeq "${CC}" "clang"
+    scan.${1}: $${${1}_PLISTS}
+endif
+
 endef
 
 # ADD_TARGET_RULE.a - Build a static library target.
@@ -205,6 +209,10 @@ define ADD_TARGET_RULE.a
 	    @$(ECHO) LINK $${${1}_BUILD}/${1}
 	    @$${AR} $${ARFLAGS} $${${1}_BUILD}/${1} $${${1}_OBJS}
 	    @$${${1}_POSTMAKE}
+
+ifeq "${CC}" "clang"
+    scan.${1}: $${${1}_PLISTS}
+endif
 
 endef
 
@@ -397,6 +405,7 @@ define INCLUDE_SUBMAKEFILE
         # target-specific variables for the objects based on any source
         # variables that were defined.
         $${TGT}_OBJS += $${OBJS}
+        $${TGT}_PLISTS += $${PLISTS}
         $${TGT}_DEPS += $$(addprefix $${BUILD_DIR}/make/src/,\
                    $$(addsuffix .mk,$$(basename $${SOURCES})))
 
