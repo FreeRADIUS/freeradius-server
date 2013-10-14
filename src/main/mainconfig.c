@@ -823,15 +823,11 @@ int read_mainconfig(int reload)
 	 *	We ignore colourization of output until after the
 	 *	configuration files have been parsed.
 	 */
-	if (do_colourise) {
-		p = getenv("TERM");
-		if (!p || !isatty(default_log.fd) ||
-		    (strstr(p, "xterm") == 0)) {
-			mainconfig.colourise = false;
-		} else {
-			mainconfig.colourise = true;
-		}
-		p = NULL;
+	p = getenv("TERM");
+	if (do_colourise && p && isatty(default_log.fd) && strstr(p, "xterm")) {
+		default_log.colourise = true;
+	} else {
+		default_log.colourise = false;
 	}
 
 	if (mainconfig.max_request_time == 0) mainconfig.max_request_time = 100;
