@@ -95,6 +95,8 @@ int radius_compare_vps(REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *vp)
 			RDEBUG("Invalid regular expression %s: %s", check->vp_strvalue, buffer);
 			return -2;
 		}
+
+		memset(&rxmatch, 0, sizeof(rxmatch));	/* regexec does not seem to initialise unused elements */
 		compare = regexec(&reg, value, REQUEST_MAX_REGEX + 1, rxmatch, 0);
 		regfree(&reg);
 		rad_regcapture(request, compare, value, rxmatch);

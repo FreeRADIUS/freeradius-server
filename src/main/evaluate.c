@@ -236,6 +236,7 @@ static int do_regex(REQUEST *request, char const *lhs, char const *rhs, bool ifl
 		return -1;
 	}
 
+	memset(&rxmatch, 0, sizeof(rxmatch));	/* regexec does not seem to initialise unused elements */
 	compare = regexec(&reg, lhs, REQUEST_MAX_REGEX + 1, rxmatch, 0);
 	regfree(&reg);
 	rad_regcapture(request, compare, lhs, rxmatch);
