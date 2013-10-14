@@ -852,7 +852,7 @@ int read_mainconfig(int reload)
 	}
 
 	DEBUG2("%s: #### Loading Clients ####", mainconfig.name);
-	if (!clients_parse_section(cs)) {
+	if (!clients_parse_section(cs, false)) {
 		return -1;
 	}
 

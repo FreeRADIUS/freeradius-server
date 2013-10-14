@@ -292,13 +292,19 @@ listen {
 clients radsec {
 	client 127.0.0.1 {
 		ipaddr = 127.0.0.1
-		proto = tcp
+
+		#
+		#  Ensure that this client is TLS *only*.
+		#
+		proto = tls
 
 		#
 		#  TCP clients can have any shared secret.
 		#
 		#  TLS clients MUST have the shared secret
-		#  set to "radsec"
+		#  set to "radsec".  Or, for "proto = tls",
+		#  you can omit the secret, and it will
+		#  automatically be set to "radsec".
 		#
 		secret = radsec
 	}
