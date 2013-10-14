@@ -293,7 +293,14 @@ clients radsec {
 	client 127.0.0.1 {
 		ipaddr = 127.0.0.1
 		proto = tcp
-		secret = testing123
+
+		#
+		#  TCP clients can have any shared secret.
+		#
+		#  TLS clients MUST have the shared secret
+		#  set to "radsec"
+		#
+		secret = radsec
 	}
 }
 
