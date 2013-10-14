@@ -1098,6 +1098,11 @@ void rad_regcapture(REQUEST *request, int compare, char const *value, regmatch_t
 
 		len = rxmatch[i].rm_eo - rxmatch[i].rm_so;
 		p = talloc_array(request, char, len + 1);
+		if (!p) {
+			ERROR("Out of memory");
+			return;
+		}
+
 		memcpy(p, value + rxmatch[i].rm_so, len);
 		p[len] = '\0';
 
