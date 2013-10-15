@@ -160,6 +160,8 @@ tls_session_t *tls_new_session(fr_tls_server_conf_t *conf, REQUEST *request,
 	int		verify_mode = 0;
 	VALUE_PAIR	*vp;
 
+	rad_assert(request != NULL);
+
 	/*
 	 *	Manually flush the sessions every so often.  If HALF
 	 *	of the session lifetime has passed since we last
@@ -993,18 +995,16 @@ static void cbtls_remove_session(SSL_CTX *ctx, SSL_SESSION *sess)
 		char filename[256];
 
 		/* remove session and any cached VPs */
-		rv = snprintf(filename, sizeof(filename), "%s%c%s.asn1",
-			conf->session_cache_path, FR_DIR_SEP, buffer
-			);
+		snprintf(filename, sizeof(filename), "%s%c%s.asn1",
+			 conf->session_cache_path, FR_DIR_SEP, buffer);
 		rv = unlink(filename);
 		if (rv != 0) {
 			DEBUG2("  SSL: could not remove persisted session file %s: %s", filename, strerror(errno));
 		}
 		/* VPs might be absent; might not have been written to disk yet */
-		rv = snprintf(filename, sizeof(filename), "%s%c%s.vps",
-			conf->session_cache_path, FR_DIR_SEP, buffer
-			);
-		rv = unlink(filename);
+		snprintf(filename, sizeof(filename), "%s%c%s.vps",
+			 conf->session_cache_path, FR_DIR_SEP, buffer);
+		unlink(filename);
 	}
 
 	return;
@@ -1053,8 +1053,8 @@ static int cbtls_new_session(SSL *ssl, SSL_SESSION *sess)
 		}
 
 		/* open output file */
-		rv = snprintf(filename, sizeof(filename), "%s%c%s.asn1",
-			      conf->session_cache_path, FR_DIR_SEP, buffer);
+		snprintf(filename, sizeof(filename), "%s%c%s.asn1",
+			 conf->session_cache_path, FR_DIR_SEP, buffer);
 		fd = open(filename, O_RDWR|O_CREAT|O_EXCL, 0600);
 		if (fd < 0) {
 			DEBUG2("  SSL: could not open session file %s: %s", filename, strerror(errno));
@@ -1111,9 +1111,8 @@ static SSL_SESSION *cbtls_get_session(SSL *ssl,
 		VALUE_PAIR *vp;
 
 		/* read in the cached VPs from the .vps file */
-		rv = snprintf(filename, sizeof(filename), "%s%c%s.vps",
-			conf->session_cache_path, FR_DIR_SEP, buffer
-			);
+		snprintf(filename, sizeof(filename), "%s%c%s.vps",
+			 conf->session_cache_path, FR_DIR_SEP, buffer);
 		rv = pairlist_read(NULL, filename, &pairlist, 1);
 		if (rv < 0) {
 			/* not safe to un-persist a session w/o VPs */
@@ -1122,17 +1121,16 @@ static SSL_SESSION *cbtls_get_session(SSL *ssl,
 		}
 
 		/* load the actual SSL session */
-		rv = snprintf(filename, sizeof(filename), "%s%c%s.asn1",
-			conf->session_cache_path, FR_DIR_SEP, buffer
-			);
+		snprintf(filename, sizeof(filename), "%s%c%s.asn1",
+			 conf->session_cache_path, FR_DIR_SEP, buffer);
 		fd = open(filename, O_RDONLY);
-		if (fd == -1) {
+		if (fd < 0) {
 			DEBUG2("  SSL: could not find persisted session file %s: %s", filename, strerror(errno));
 			goto err;
 		}
 
 		rv = fstat(fd, &st);
-		if (rv == -1) {
+		if (rv < 0) {
 			DEBUG2("  SSL: could not stat persisted session file %s: %s", filename, strerror(errno));
 			close(fd);
 			goto err;
