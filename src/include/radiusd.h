@@ -467,6 +467,7 @@ typedef struct main_config_t {
 #define RETRY_DELAY	     5
 #define RETRY_COUNT	     3
 #define DEAD_TIME	       120
+#define EXEC_TIMEOUT	       10
 
 /* for paircompare_register */
 typedef int (*RAD_COMPARE_FUNC)(void *instance, REQUEST *,VALUE_PAIR *, VALUE_PAIR *, VALUE_PAIR *, VALUE_PAIR **);
@@ -614,7 +615,7 @@ pid_t radius_start_program(char const *cmd, REQUEST *request,
 int radius_readfrom_program(REQUEST *request, int fd, pid_t pid, int timeout,
 			    char *answer, int left);
 int radius_exec_program(REQUEST *request, char const *cmd, bool exec_wait, bool shell_escape,
-			char *user_msg, size_t msg_len,
+			char *user_msg, size_t msg_len, int timeout,
 			VALUE_PAIR *input_pairs, VALUE_PAIR **output_pairs);
 void exec_trigger(REQUEST *request, CONF_SECTION *cs, char const *name, int quench);
 

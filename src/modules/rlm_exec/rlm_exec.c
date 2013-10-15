@@ -179,7 +179,8 @@ static ssize_t exec_xlat(void *instance, REQUEST *request, char const *fmt, char
 	 *	FIXME: Do xlat of program name?
 	 */
 	result = radius_exec_program(request, fmt, inst->wait, inst->shell_escape,
-				     out, outlen, input_pairs ? *input_pairs : NULL, NULL);
+				     out, outlen, EXEC_TIMEOUT,
+				     input_pairs ? *input_pairs : NULL, NULL);
 	if (result != 0) {
 		out[0] = '\0';
 		return -1;
@@ -333,7 +334,7 @@ static rlm_rcode_t exec_dispatch(void *instance, REQUEST *request)
 	 *	into something else.
 	 */
 	status = radius_exec_program(request, inst->program, inst->wait, inst->shell_escape,
-				     out, sizeof(out),
+				     out, sizeof(out), EXEC_TIMEOUT,
 				     input_pairs ? *input_pairs : NULL, &answer);
 	rcode = rlm_exec_status2rcode(request, out, strlen(out), status);
 
@@ -383,7 +384,7 @@ static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
 
 	tmp = NULL;
 	status = radius_exec_program(request, vp->vp_strvalue, we_wait, inst->shell_escape,
-				     out, sizeof(out),
+				     out, sizeof(out), EXEC_TIMEOUT,
 				     request->packet->vps, &tmp);
 	rcode = rlm_exec_status2rcode(request, out, strlen(out), status);
 
@@ -440,7 +441,7 @@ static  rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 	}
 
 	status = radius_exec_program(request, vp->vp_strvalue, we_wait, inst->shell_escape,
-				     out, sizeof(out),
+				     out, sizeof(out), EXEC_TIMEOUT,
 				     request->packet->vps, NULL);
 	return rlm_exec_status2rcode(request, out, strlen(out), status);
 }
