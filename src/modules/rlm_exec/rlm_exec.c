@@ -42,6 +42,7 @@ typedef struct rlm_exec_t {
 	char		*packet_type;
 	unsigned int	packet_code;
 	int		shell_escape;
+	int		timeout;
 } rlm_exec_t;
 
 /*
@@ -60,6 +61,7 @@ static const CONF_PARSER module_config[] = {
 	{ "output_pairs",  PW_TYPE_STRING_PTR, offsetof(rlm_exec_t,output), NULL, NULL },
 	{ "packet_type", PW_TYPE_STRING_PTR, offsetof(rlm_exec_t,packet_type), NULL, NULL },
 	{ "shell_escape", PW_TYPE_BOOLEAN,  offsetof(rlm_exec_t,shell_escape), NULL, "yes" },
+	{ "timeout", PW_TYPE_INTEGER,  offsetof(rlm_exec_t,timeout), NULL, NULL },
 
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
@@ -179,7 +181,7 @@ static ssize_t exec_xlat(void *instance, REQUEST *request, char const *fmt, char
 	 *	FIXME: Do xlat of program name?
 	 */
 	result = radius_exec_program(request, fmt, inst->wait, inst->shell_escape,
-				     out, outlen, EXEC_TIMEOUT,
+				     out, outlen, inst->timeout,
 				     input_pairs ? *input_pairs : NULL, NULL);
 	if (result != 0) {
 		out[0] = '\0';
@@ -265,6 +267,24 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		inst->packet_code = dval->value;
 	}
 
+	/*
+	 *	Get the time to wait before killing the child
+	 */
+	if (!inst->timeout) {
+		inst->timeout = EXEC_TIMEOUT;
+	}
+	if (inst->timeout < 1) {
+		cf_log_err_cs(conf, "Timeout '%d' is too small (minimum: 1)", inst->timeout);
+		return -1;
+	}
+	/*
+	 *	Blocking a request longer than 30 seconds isn't going to help anyone.
+	 */
+	if (inst->timeout > 30) {
+		cf_log_err_cs(conf, "Timeout '%d' is too large (maximum: 30)", inst->timeout);
+		return -1;
+	}
+
 	return 0;
 }
 
@@ -334,7 +354,7 @@ static rlm_rcode_t exec_dispatch(void *instance, REQUEST *request)
 	 *	into something else.
 	 */
 	status = radius_exec_program(request, inst->program, inst->wait, inst->shell_escape,
-				     out, sizeof(out), EXEC_TIMEOUT,
+				     out, sizeof(out), inst->timeout,
 				     input_pairs ? *input_pairs : NULL, &answer);
 	rcode = rlm_exec_status2rcode(request, out, strlen(out), status);
 
@@ -384,7 +404,7 @@ static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
 
 	tmp = NULL;
 	status = radius_exec_program(request, vp->vp_strvalue, we_wait, inst->shell_escape,
-				     out, sizeof(out), EXEC_TIMEOUT,
+				     out, sizeof(out), inst->timeout,
 				     request->packet->vps, &tmp);
 	rcode = rlm_exec_status2rcode(request, out, strlen(out), status);
 
@@ -441,7 +461,7 @@ static  rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 	}
 
 	status = radius_exec_program(request, vp->vp_strvalue, we_wait, inst->shell_escape,
-				     out, sizeof(out), EXEC_TIMEOUT,
+				     out, sizeof(out), inst->timeout,
 				     request->packet->vps, NULL);
 	return rlm_exec_status2rcode(request, out, strlen(out), status);
 }
