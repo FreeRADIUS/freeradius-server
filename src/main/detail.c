@@ -174,7 +174,6 @@ static int detail_open(rad_listen_t *this)
 {
 	struct stat st;
 	listen_detail_t *data = this->data;
-	char *filename = data->filename;
 
 	rad_assert(data->state == STATE_UNOPENED);
 	data->delay_time = USEC;
@@ -195,6 +194,9 @@ static int detail_open(rad_listen_t *this)
 	 */
 	this->fd = open(data->filename_work, O_RDWR);
 	if (this->fd < 0) {
+		bool free_filename = false;
+		char *filename = data->filename;
+
 		DEBUG2("Polling for detail file %s", filename);
 
 		/*
@@ -206,7 +208,9 @@ static int detail_open(rad_listen_t *this)
 		 *	to read it.
 		 */
 		if (stat(filename, &st) < 0) {
-#ifdef HAVE_GLOB_H
+#ifndef HAVE_GLOB_H
+			return 0;
+#else
 			unsigned int i;
 			int found;
 			time_t chtime;
@@ -236,9 +240,8 @@ static int detail_open(rad_listen_t *this)
 			}
 
 			filename = strdup(files.gl_pathv[found]);
+			free_filename = true;
 			globfree(&files);
-#else
-			return 0;
 #endif
 		}
 
@@ -250,7 +253,7 @@ static int detail_open(rad_listen_t *this)
 		if (this->fd < 0) {
 			ERROR("Detail - Failed to open %s: %s",
 			       filename, strerror(errno));
-			if (filename != data->filename) free(filename);
+			if (free_filename) free(filename);
 			return 0;
 		}
 
@@ -259,12 +262,18 @@ static int detail_open(rad_listen_t *this)
 		 */
 		DEBUG("Detail - Renaming %s -> %s", filename, data->filename_work);
 		if (rename(filename, data->filename_work) < 0) {
-			if (filename != data->filename) free(filename);
+			ERROR("Detail - Failed renaming %s to %s: %s",
+			      filename, data->filename_work, strerror(errno));
+			if (free_filename) free(filename);
 			close(this->fd);
 			this->fd = -1;
 			return 0;
 		}
-		if (filename != data->filename) free(filename);
+
+		/*
+		 *	Ensure we don't leak memory.
+		 */
+		if (free_filename) free(filename);
 	} /* else detail.work existed, and we opened it */
 
 	rad_assert(data->vps == NULL);
@@ -627,6 +636,7 @@ int detail_recv(rad_listen_t *listener)
 	if (!packet) {
 		ERROR("FATAL: Failed allocating memory for detail");
 		fr_exit(1);
+		_exit(1);
 	}
 
 	memset(packet, 0, sizeof(*packet));
