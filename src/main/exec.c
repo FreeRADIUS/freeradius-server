@@ -497,13 +497,14 @@ int radius_readfrom_program(REQUEST *request, int fd, pid_t pid, int timeout,
  * @param[in] shell_escape values before passing them as arguments.
  * @param[in] user_msg buffer to append plaintext (non valuepair) output.
  * @param[in] msg_len length of user_msg buffer.
+ * @param[in] timeout amount of time to wait, in seconds.
  * @param[in] input_pairs list of value pairs - these will be available in the environment of the child.
  * @param[out] output_pairs list of value pairs - child stdout will be parsed and added into this list
  *	of value pairs.
  * @return 0 if exec_wait==0, exit code if exec_wait!=0, -1 on error.
  */
 int radius_exec_program(REQUEST *request, char const *cmd, bool exec_wait, bool shell_escape,
-			char *user_msg, size_t msg_len,
+			char *user_msg, size_t msg_len, int timeout,
 			VALUE_PAIR *input_pairs, VALUE_PAIR **output_pairs)
 
 {
@@ -532,7 +533,7 @@ int radius_exec_program(REQUEST *request, char const *cmd, bool exec_wait, bool 
 	}
 
 #ifndef __MINGW32__
-	done = radius_readfrom_program(request, from_child, pid, 10, answer, sizeof(answer));
+	done = radius_readfrom_program(request, from_child, pid, timeout, answer, sizeof(answer));
 	if (done < 0) {
 		/*
 		 * failure - radius_readfrom_program will

@@ -1792,7 +1792,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 
 			RDEBUG("Verifying client certificate: %s", conf->verify_client_cert_cmd);
 			if (radius_exec_program(request, conf->verify_client_cert_cmd, true, true, NULL, 0,
-						request->packet->vps, NULL) != 0) {
+						EXEC_TIMEOUT, request->packet->vps, NULL) != 0) {
 				AUTH("rlm_eap_tls: Certificate CN (%s) fails external verification!", common_name);
 				my_ok = 0;
 			} else {

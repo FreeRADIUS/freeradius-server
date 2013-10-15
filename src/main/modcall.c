@@ -914,8 +914,8 @@ redo:
 			radius_xlat(buffer, sizeof(buffer), request, mx->xlat_name, NULL, NULL);
 		} else {
 			RDEBUG("`%s`", mx->xlat_name);
-			radius_exec_program(request, mx->xlat_name, false, true,
-					    NULL, 0, request->packet->vps, NULL);
+			radius_exec_program(request, mx->xlat_name, false, true, NULL, 0,
+					    EXEC_TIMEOUT, request->packet->vps, NULL);
 		}
 
 		goto next_sibling;

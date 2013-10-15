@@ -1070,7 +1070,7 @@ int radius_mapexec(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *m
 	 */
 	out[0] = '\0';
 	result = radius_exec_program(request, map->src->name, true, true,
-				     answer, sizeof(answer),
+				     answer, sizeof(answer), EXEC_TIMEOUT,
 				     input_pairs ? *input_pairs : NULL,
 				     (map->dst->type == VPT_TYPE_LIST) ? output_pairs : NULL);
 	talloc_free(expanded);
