@@ -29,6 +29,7 @@ RCSID("$Id$")
 #include <assert.h>
 #include <signal.h>
 #include <time.h>
+#include <math.h>
 #include <freeradius-devel/libradius.h>
 #include <freeradius-devel/event.h>
 
@@ -584,10 +585,37 @@ static int rs_check_pcap_drop(fr_pcap_t *in, int interval) {
  */
 static void rs_stats_process_latency(rs_latency_t *stats)
 {
+	/*
+	 *	If we didn't link any packets during this interval, we don't have a value to return.
+	 *	returning 0 is misleading as it would be like saying the latency had dropped to 0.
+	 *	We instead set NaN which libcollectd converts to a 'U' or unknown value.
+	 *
+	 *	This will cause gaps in graphs, but is completely legitimate as we are missing data.
+	 *	This is unfortunately an effect of being just a passive observer.
+	 */
+	if (stats->interval.linked_total == 0) {
+		double unk = strtod("NAN()", (char **) NULL);
+
+		stats->interval.latency_average = unk;
+		stats->interval.latency_high = unk;
+		stats->interval.latency_low = unk;
+
+		/*
+		 *	We've not yet been able to determine latency, so latency_smoothed is also NaN
+		 */
+		if (stats->latency_smoothed_count == 0) {
+			stats->latency_smoothed = unk;
+		}
+		return;
+	}
+
 	if (stats->interval.linked_total && stats->interval.latency_total) {
 		stats->interval.latency_average = (stats->interval.latency_total / stats->interval.linked_total);
 	}
 
+	if (isnan(stats->latency_smoothed)) {
+		stats->latency_smoothed = 0;
+	}
 	if (stats->interval.latency_average > 0) {
 		stats->latency_smoothed_count++;
 		stats->latency_smoothed += ((stats->interval.latency_average - stats->latency_smoothed) /
