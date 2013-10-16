@@ -407,6 +407,7 @@ typedef struct main_config_t {
 #define RETRY_DELAY             5
 #define RETRY_COUNT             3
 #define DEAD_TIME               120
+#define EXEC_TIMEOUT	       10
 
 #define L_DBG			1
 #define L_AUTH			2
@@ -561,9 +562,10 @@ int		rad_virtual_server(REQUEST *);
 /* exec.c */
 int		radius_exec_program(const char *,  REQUEST *, int,
 				    char *user_msg, int msg_len,
+				    int timeout,
 				    VALUE_PAIR *input_pairs,
 				    VALUE_PAIR **output_pairs,
-					int shell_escape);
+				    int shell_escape);
 
 /* timestr.c */
 int		timestr_match(char *, time_t);

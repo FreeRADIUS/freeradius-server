@@ -875,6 +875,7 @@ static int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 			       conf->verify_client_cert_cmd);
 			if (radius_exec_program(conf->verify_client_cert_cmd,
 						request, 1, NULL, 0,
+						EXEC_TIMEOUT,
 						request->packet->vps,
 						NULL, 1) != 0) {
 				radlog(L_AUTH, "rlm_eap_tls: Certificate CN (%s) fails external verification!", common_name);
@@ -1410,7 +1411,8 @@ static int eaptls_attach(CONF_SECTION *cs, void **instance)
 		    (stat(conf->certificate_file, &buf) < 0) &&
 		    (errno == ENOENT) &&
 		    (radius_exec_program(conf->make_cert_command, NULL, 1,
-					 NULL, 0, NULL, NULL, 0) != 0)) {
+					 NULL, 0, EXEC_TIMEOUT,
+					 NULL, NULL, 0) != 0)) {
 			eaptls_detach(inst);
 			return -1;
 		}

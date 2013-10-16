@@ -74,6 +74,7 @@ static void tv_sub(struct timeval *end, struct timeval *start,
 int radius_exec_program(const char *cmd, REQUEST *request,
 			int exec_wait,
 			char *user_msg, int msg_len,
+			int timeout,
 			VALUE_PAIR *input_pairs,
 			VALUE_PAIR **output_pairs,
 			int shell_escape)
@@ -327,9 +328,9 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 
 		gettimeofday(&when, NULL);
 		tv_sub(&when, &start, &elapsed);
-		if (elapsed.tv_sec >= 10) goto too_long;
+		if (elapsed.tv_sec >= timeout) goto too_long;
 		
-		when.tv_sec = 10;
+		when.tv_sec = timeout;
 		when.tv_usec = 0;
 		tv_sub(&when, &elapsed, &wake);
 

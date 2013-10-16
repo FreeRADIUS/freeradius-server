@@ -704,6 +704,7 @@ static int do_mschap(rlm_mschap_t *inst,
 		result = radius_exec_program(inst->ntlm_auth, request,
 					     TRUE, /* wait */
 					     buffer, sizeof(buffer),
+					     EXEC_TIMEOUT,
 					     NULL, NULL, 1);
 		if (result != 0) {
 			char *p;

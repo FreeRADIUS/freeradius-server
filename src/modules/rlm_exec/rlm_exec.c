@@ -143,7 +143,8 @@ static size_t exec_xlat(void *instance, REQUEST *request,
 	 */
 	RDEBUG2("Executing %s", fmt);
 	result = radius_exec_program(fmt, request, inst->wait,
-				     out, outlen, *input_pairs, NULL, inst->shell_escape);
+				     out, outlen, EXEC_TIMEOUT,
+				     *input_pairs, NULL, inst->shell_escape);
 	RDEBUG2("result %d", result);
 	if (result != 0) {
 		out[0] = '\0';
@@ -329,6 +330,7 @@ static int exec_dispatch(void *instance, REQUEST *request)
 	 */
 	result = radius_exec_program(inst->program, request,
 				     inst->wait, NULL, 0,
+				     EXEC_TIMEOUT,
 				     *input_pairs, &answer, inst->shell_escape);
 	if (result < 0) {
 		radlog(L_ERR, "rlm_exec (%s): External script failed",
@@ -382,7 +384,8 @@ static int exec_postauth(void *instance, REQUEST *request)
 
 	tmp = NULL;
 	result = radius_exec_program(vp->vp_strvalue, request, exec_wait,
-				     NULL, 0, request->packet->vps, &tmp,
+				     NULL, 0, EXEC_TIMEOUT,
+				     request->packet->vps, &tmp,
 				     inst->shell_escape);
 
 	/*
@@ -446,7 +449,8 @@ static int exec_accounting(void *instance, REQUEST *request)
 	if (!vp) return RLM_MODULE_NOOP;
 
 	result = radius_exec_program(vp->vp_strvalue, request, exec_wait,
-				     NULL, 0, request->packet->vps, NULL,
+				     NULL, 0, EXEC_TIMEOUT,
+				     request->packet->vps, NULL,
 				     inst->shell_escape);
 	if (result != 0) {
 		return RLM_MODULE_REJECT;

@@ -778,6 +778,7 @@ redo:
 			RDEBUG("`%s`", mx->xlat_name);
 				radius_exec_program(mx->xlat_name, request,
 						    0, NULL, 0,
+						    EXEC_TIMEOUT,
 						    request->packet->vps,
 						    NULL, 1);
 		}

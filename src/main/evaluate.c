@@ -77,8 +77,9 @@ static const char *expand_string(char *buffer, size_t sizeof_buffer,
 
 	case T_BACK_QUOTED_STRING:
 		result = radius_exec_program(value, request, 1,
-					     buffer, sizeof_buffer, NULL,
-					     NULL, 0);
+					     buffer, sizeof_buffer,
+					     EXEC_TIMEOUT,
+					     NULL, NULL, 0);
 		if (result != 0) {
 			radlog(L_ERR, "Failed to execute program in string expansion: %s",
 			       value);
