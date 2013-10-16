@@ -81,8 +81,20 @@
 #	Framed-Compression = Van-Jacobsen-TCP-IP
 
 #
+# The canonical testing user which is in most of the
+# examples.
+#
+#bob	Cleartext-Password := "hello"
+#	Reply-Message := "Hello, %{User-Name}"
+#
+
+#
 # This is an entry for a user with a space in their name.
-# Note the double quotes surrounding the name.
+# Note the double quotes surrounding the name.  If you have
+# users with spaces in their names, you must also change
+# the "filter_username" policy to allow spaces.
+#
+# See raddb/policy.d/filter, filter_username {} section.
 #
 #"John Doe"	Cleartext-Password := "hello"
 #		Reply-Message = "Hello, %{User-Name}"
