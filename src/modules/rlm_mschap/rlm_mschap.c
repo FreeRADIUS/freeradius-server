@@ -144,6 +144,7 @@ typedef struct rlm_mschap_t {
 	int with_ntdomain_hack;	/* this should be in another module */
 	char const *xlat_name;
 	char *ntlm_auth;
+	int ntlm_auth_timeout;
 	char *ntlm_cpw;
 	char *ntlm_cpw_username;
 	char *ntlm_cpw_domain;
@@ -554,6 +555,8 @@ static const CONF_PARSER module_config[] = {
 	  offsetof(rlm_mschap_t,with_ntdomain_hack), NULL, "yes" },
 	{ "ntlm_auth",   PW_TYPE_STRING_PTR,
 	  offsetof(rlm_mschap_t, ntlm_auth), NULL,  NULL },
+	{ "ntlm_auth_timeout",   PW_TYPE_INTEGER,
+	  offsetof(rlm_mschap_t, ntlm_auth_timeout), NULL,  NULL },
 	{ "passchange", PW_TYPE_SUBSECTION, 0, NULL, (void const *) passchange_config },
 	{ "allow_retry",   PW_TYPE_BOOLEAN,
 	  offsetof(rlm_mschap_t, allow_retry), NULL,  "yes" },
@@ -592,6 +595,23 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		inst->auth_type = "MS-CHAP";
 	} else {
 		inst->auth_type = inst->xlat_name;
+	}
+
+	/*
+	 *	Check ntlm_auth_timeout is sane
+	 */
+	if (!inst->ntlm_auth_timeout) {
+		inst->ntlm_auth_timeout = EXEC_TIMEOUT;
+	}
+	if (inst->ntlm_auth_timeout < 1) {
+		cf_log_err_cs(conf, "ntml_auth_timeout '%d' is too small (minimum: 1)",
+			      inst->ntlm_auth_timeout);
+		return -1;
+	}
+	if (inst->ntlm_auth_timeout > 10) {
+		cf_log_err_cs(conf, "ntlm_auth_timeout '%d' is too large (maximum: 10)",
+			      inst->ntlm_auth_timeout);
+		return -1;
 	}
 
 	return 0;
@@ -1058,7 +1078,7 @@ static int do_mschap(rlm_mschap_t *inst,
 		 *	Run the program, and expect that we get 16
 		 */
 		result = radius_exec_program(request, inst->ntlm_auth, true, true,
-					     buffer, sizeof(buffer),
+					     buffer, sizeof(buffer), inst->ntlm_auth_timeout,
 					     NULL, NULL);
 		if (result != 0) {
 			char *p;
