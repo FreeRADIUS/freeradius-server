@@ -40,6 +40,7 @@ typedef struct rlm_exec_t {
 	char	*packet_type;
 	unsigned int	packet_code;
 	int	shell_escape;
+	int	timeout;
 } rlm_exec_t;
 
 /*
@@ -62,6 +63,7 @@ static const CONF_PARSER module_config[] = {
 	{ "packet_type", PW_TYPE_STRING_PTR,
 	  offsetof(rlm_exec_t,packet_type), NULL, NULL },
 	{ "shell_escape", PW_TYPE_BOOLEAN,  offsetof(rlm_exec_t,shell_escape), NULL, "yes" },
+	{ "timeout", PW_TYPE_INTEGER,  offsetof(rlm_exec_t,timeout), NULL, NULL },
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
 
@@ -143,7 +145,7 @@ static size_t exec_xlat(void *instance, REQUEST *request,
 	 */
 	RDEBUG2("Executing %s", fmt);
 	result = radius_exec_program(fmt, request, inst->wait,
-				     out, outlen, EXEC_TIMEOUT,
+				     out, outlen, inst->timeout,
 				     *input_pairs, NULL, inst->shell_escape);
 	RDEBUG2("result %d", result);
 	if (result != 0) {
@@ -257,6 +259,24 @@ static int exec_instantiate(CONF_SECTION *conf, void **instance)
 		xlat_register(xlat_name, exec_xlat, inst);
 	}
 
+	/*
+	 *	Get the time to wait before killing the child
+	 */
+	if (!inst->timeout) {
+		inst->timeout = EXEC_TIMEOUT;
+	}
+	if (inst->timeout < 1) {
+		radlog(L_ERR, "rlm_exec: Timeout '%d' is too small (minimum: 1)", inst->timeout);
+		return -1;
+	}
+	/*
+	 *	Blocking a request longer than 30 seconds isn't going to help anyone.
+	 */
+	if (inst->timeout > 30) {
+		radlog(L_ERR, "rlm_exec: Timeout '%d' is too large (maximum: 30)", inst->timeout);
+		return -1;
+	}
+
 	*instance = inst;
 
 	return 0;
@@ -330,7 +350,7 @@ static int exec_dispatch(void *instance, REQUEST *request)
 	 */
 	result = radius_exec_program(inst->program, request,
 				     inst->wait, NULL, 0,
-				     EXEC_TIMEOUT,
+				     inst->timeout,
 				     *input_pairs, &answer, inst->shell_escape);
 	if (result < 0) {
 		radlog(L_ERR, "rlm_exec (%s): External script failed",
@@ -384,7 +404,7 @@ static int exec_postauth(void *instance, REQUEST *request)
 
 	tmp = NULL;
 	result = radius_exec_program(vp->vp_strvalue, request, exec_wait,
-				     NULL, 0, EXEC_TIMEOUT,
+				     NULL, 0, inst->timeout,
 				     request->packet->vps, &tmp,
 				     inst->shell_escape);
 
@@ -449,7 +469,7 @@ static int exec_accounting(void *instance, REQUEST *request)
 	if (!vp) return RLM_MODULE_NOOP;
 
 	result = radius_exec_program(vp->vp_strvalue, request, exec_wait,
-				     NULL, 0, EXEC_TIMEOUT,
+				     NULL, 0, inst->timeout,
 				     request->packet->vps, NULL,
 				     inst->shell_escape);
 	if (result != 0) {

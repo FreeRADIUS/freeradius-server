@@ -108,4 +108,16 @@ exec echo {
 	#  That is to say: User-Name=BobUser => USER_NAME="BobUser"
 	shell_escape = yes
 
+
+	#
+	#  How long should we wait for the program to finish?
+	#
+	#  Default is 10 seconds, which should be plenty for nearly
+	#  anything. Range is 1 to 30 seconds. You are strongly
+	#  encouraged to NOT increase this value. Decreasing can
+	#  be used to cause authentication to fail sooner when you
+	#  know it's going to fail anyway due to the time taken,
+	#  thereby saving resources.
+	#
+	#timeout = 10
 }
