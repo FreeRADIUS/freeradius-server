@@ -64,6 +64,15 @@ mschap {
 	#
 #	ntlm_auth = "/path/to/ntlm_auth --request-nt-key --username=%{%{Stripped-User-Name}:-%{%{User-Name}:-None}} --challenge=%{%{mschap:Challenge}:-00} --nt-response=%{%{mschap:NT-Response}:-00}"
 
+	# The default is to wait 10 seconds for ntlm_auth to
+	# complete.  This is a long time, and if it's taking that
+	# long then you likely have other problems in your domain.
+	# The length of time can be decreased with the following
+	# option, which can save clients waiting if your ntlm_auth
+	# usually finishes quicker. Range 1 to 10 seconds.
+	#
+#	ntlm_auth_timeout = 10
+
 	# For Apple Server, when running on the same machine as
 	# Open Directory.  It has no effect on other systems.
 	#

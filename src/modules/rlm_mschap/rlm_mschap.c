@@ -136,6 +136,7 @@ typedef struct rlm_mschap_t {
 	char *passwd_file;
 	const char *xlat_name;
 	char *ntlm_auth;
+	int ntlm_auth_timeout;
 	const char *auth_type;
 	int allow_retry;
 	char *retry_msg;
@@ -535,6 +536,8 @@ static const CONF_PARSER module_config[] = {
 	  offsetof(rlm_mschap_t, passwd_file), NULL,  NULL },
 	{ "ntlm_auth",   PW_TYPE_STRING_PTR,
 	  offsetof(rlm_mschap_t, ntlm_auth), NULL,  NULL },
+	{ "ntlm_auth_timeout",   PW_TYPE_INTEGER,
+	  offsetof(rlm_mschap_t, ntlm_auth_timeout), NULL,  NULL },
 	{ "allow_retry",   PW_TYPE_BOOLEAN,
 	  offsetof(rlm_mschap_t, allow_retry), NULL,  "yes" },
 	{ "retry_msg",   PW_TYPE_STRING_PTR,
@@ -608,6 +611,23 @@ static int mschap_instantiate(CONF_SECTION *conf, void **instance)
 		inst->auth_type = "MS-CHAP";
 	} else {
 		inst->auth_type = inst->xlat_name;
+	}
+
+	/*
+	 *	Check ntlm_auth_timeout is sane
+	 */
+	if (!inst->ntlm_auth_timeout) {
+		inst->ntlm_auth_timeout = EXEC_TIMEOUT;
+	}
+	if (inst->ntlm_auth_timeout < 1) {
+		radlog(L_ERR, "rlm_mschap: ntml_auth_timeout '%d' is too small (minimum: 1)",
+			      inst->ntlm_auth_timeout);
+		return -1;
+	}
+	if (inst->ntlm_auth_timeout > 10) {
+		radlog(L_ERR, "rlm_mschap: ntlm_auth_timeout '%d' is too large (maximum: 10)",
+			      inst->ntlm_auth_timeout);
+		return -1;
 	}
 
 	return 0;
@@ -704,7 +724,7 @@ static int do_mschap(rlm_mschap_t *inst,
 		result = radius_exec_program(inst->ntlm_auth, request,
 					     TRUE, /* wait */
 					     buffer, sizeof(buffer),
-					     EXEC_TIMEOUT,
+					     inst->ntlm_auth_timeout,
 					     NULL, NULL, 1);
 		if (result != 0) {
 			char *p;
