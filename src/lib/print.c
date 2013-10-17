@@ -211,7 +211,7 @@ size_t fr_print_string(char const *in, size_t inlen, char *out, size_t outlen)
 /** Print the value of an attribute to a string
  *
  * @param[out] out Where to write the string.
- * @param[in] outlen Size of outlen.
+ * @param[in] outlen Size of outlen (must be at least 3 bytes).
  * @param[in] vp to print.
  * @param[in] quote Char to add before and after printed value, if 0 no char will be added, if < 0 raw string will be
  *	added.
@@ -219,41 +219,54 @@ size_t fr_print_string(char const *in, size_t inlen, char *out, size_t outlen)
  */
 size_t vp_prints_value(char *out, size_t outlen, VALUE_PAIR const *vp, int8_t quote)
 {
-	DICT_VALUE  *v;
-	char	buf[1024];
-	char const  *a = NULL;
-	size_t      len;
-	time_t      t;
-	struct tm   s_tm;
+	DICT_VALUE	*v;
+	char		buf[1024];
+	char const	*a = NULL;
+	time_t		t;
+	struct tm	s_tm;
 
-	out[0] = '\0';
+	char		*start = out;
+	size_t		len, freespace = outlen;
+
+	*out = '\0';
+
 	if (!vp) return 0;
 
 	switch (vp->da->type) {
 	case PW_TYPE_STRING:
-		if ((quote > 0) && vp->da->flags.has_tag) {
-			/* Tagged attribute: print delimiter and ignore tag */
-			buf[0] = (char) quote;
-			len = fr_print_string(vp->vp_strvalue, vp->length, buf + 1, sizeof(buf) - 2);
-			buf[len + 1] = (char) quote;
-			buf[len + 2] = '\0';
-		} else if (quote > 0) {
-			/* Non-tagged attribute: print delimiter */
-			buf[0] = (char) quote;
-			len = fr_print_string(vp->vp_strvalue, vp->length, buf + 1, sizeof(buf) - 2);
-			buf[len + 1] = (char) quote;
-			buf[len + 2] = '\0';
+		/* need to copy the escaped value, but quoted */
+		if (quote > 0) {
+			if (freespace < 3) {
+				return 0;
+			}
 
-		} else if (quote < 0) { /* xlat.c */
+			*out++ = (char) quote;
+			freespace--;
+
+			len = fr_print_string(vp->vp_strvalue, vp->length, out, freespace);
+			/* always terminate the quoted string with another quote */
+			if (len >= (freespace - 1)) {
+				out[outlen - 2] = (char) quote;
+				out[outlen - 1] = '\0';
+				return outlen - 1;
+			}
+			out += len;
+			freespace -= len;
+
+			*out++ = (char) quote;
+			freespace--;
+			*out = '\0';
+
+			return out - start;
+		}
+
+		/* xlat.c - need to copy raw value verbatim */
+		if (quote < 0) {
 			strlcpy(out, vp->vp_strvalue, outlen);
 			return strlen(out);
-
-		} else {
-			/* Non-tagged attribute: no delimiter */
-			fr_print_string(vp->vp_strvalue, vp->length, buf, sizeof(buf));
 		}
-		a = buf;
-		break;
+
+		return fr_print_string(vp->vp_strvalue, vp->length, out, sizeof(out));
 
 	case PW_TYPE_INTEGER:
 		if (vp->da->flags.has_tag) {
@@ -281,8 +294,7 @@ size_t vp_prints_value(char *out, size_t outlen, VALUE_PAIR const *vp, int8_t qu
 
 	case PW_TYPE_INTEGER64:
 		snprintf(buf, sizeof(buf), "%" PRIu64, vp->vp_integer64);
-		a = buf;
-		break;
+		return strlen(buf);
 
 	case PW_TYPE_DATE:
 		t = vp->vp_date;
