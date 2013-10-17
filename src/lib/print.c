@@ -230,162 +230,165 @@ size_t vp_prints_value(char *out, size_t outlen, VALUE_PAIR const *vp, int8_t qu
 	if (!vp) return 0;
 
 	switch (vp->da->type) {
-		case PW_TYPE_STRING:
-			if ((quote > 0) && vp->da->flags.has_tag) {
-				/* Tagged attribute: print delimiter and ignore tag */
-				buf[0] = (char) quote;
-				len = fr_print_string(vp->vp_strvalue, vp->length, buf + 1, sizeof(buf) - 2);
-				buf[len + 1] = (char) quote;
-				buf[len + 2] = '\0';
-			} else if (quote > 0) {
-				/* Non-tagged attribute: print delimiter */
-				buf[0] = (char) quote;
-				len = fr_print_string(vp->vp_strvalue, vp->length, buf + 1, sizeof(buf) - 2);
-				buf[len + 1] = (char) quote;
-				buf[len + 2] = '\0';
+	case PW_TYPE_STRING:
+		if ((quote > 0) && vp->da->flags.has_tag) {
+			/* Tagged attribute: print delimiter and ignore tag */
+			buf[0] = (char) quote;
+			len = fr_print_string(vp->vp_strvalue, vp->length, buf + 1, sizeof(buf) - 2);
+			buf[len + 1] = (char) quote;
+			buf[len + 2] = '\0';
+		} else if (quote > 0) {
+			/* Non-tagged attribute: print delimiter */
+			buf[0] = (char) quote;
+			len = fr_print_string(vp->vp_strvalue, vp->length, buf + 1, sizeof(buf) - 2);
+			buf[len + 1] = (char) quote;
+			buf[len + 2] = '\0';
 
-			} else if (quote < 0) { /* xlat.c */
-				strlcpy(out, vp->vp_strvalue, outlen);
-				return strlen(out);
+		} else if (quote < 0) { /* xlat.c */
+			strlcpy(out, vp->vp_strvalue, outlen);
+			return strlen(out);
 
-			} else {
-				/* Non-tagged attribute: no delimiter */
-				fr_print_string(vp->vp_strvalue, vp->length, buf, sizeof(buf));
+		} else {
+			/* Non-tagged attribute: no delimiter */
+			fr_print_string(vp->vp_strvalue, vp->length, buf, sizeof(buf));
+		}
+		a = buf;
+		break;
+
+	case PW_TYPE_INTEGER:
+		if (vp->da->flags.has_tag) {
+			/* Attribute value has a tag, need to ignore it */
+			if ((v = dict_valbyattr(vp->da->attr, vp->da->vendor, (vp->vp_integer & 0xffffff)))
+			    != NULL)
+				a = v->name;
+			else {
+				snprintf(buf, sizeof(buf), "%u", (vp->vp_integer & 0xffffff));
+				a = buf;
 			}
-			a = buf;
-			break;
-		case PW_TYPE_INTEGER:
-			if (vp->da->flags.has_tag) {
-				/* Attribute value has a tag, need to ignore it */
-				if ((v = dict_valbyattr(vp->da->attr, vp->da->vendor, (vp->vp_integer & 0xffffff)))
-				    != NULL)
-					a = v->name;
-				else {
-					snprintf(buf, sizeof(buf), "%u", (vp->vp_integer & 0xffffff));
-					a = buf;
-				}
-			} else {
-		case PW_TYPE_BYTE:
-		case PW_TYPE_SHORT:
-				/* Normal, non-tagged attribute */
-				if ((v = dict_valbyattr(vp->da->attr, vp->da->vendor, vp->vp_integer))
-				    != NULL)
-					a = v->name;
-				else {
-					snprintf(buf, sizeof(buf), "%u", vp->vp_integer);
-					a = buf;
-				}
+		} else {
+	case PW_TYPE_BYTE:
+	case PW_TYPE_SHORT:
+			/* Normal, non-tagged attribute */
+			if ((v = dict_valbyattr(vp->da->attr, vp->da->vendor, vp->vp_integer))
+			    != NULL)
+				a = v->name;
+			else {
+				snprintf(buf, sizeof(buf), "%u", vp->vp_integer);
+				a = buf;
 			}
-			break;
-		case PW_TYPE_INTEGER64:
-			snprintf(buf, sizeof(buf), "%" PRIu64, vp->vp_integer64);
-			a = buf;
-			break;
-		case PW_TYPE_DATE:
-			t = vp->vp_date;
-			if (quote > 0) {
-				len = strftime(buf, sizeof(buf) - 1, "%%%b %e %Y %H:%M:%S %Z%%",
-					       localtime_r(&t, &s_tm));
-				buf[0] = (char) quote;
-				buf[len - 1] = (char) quote;
-				buf[len] = '\0';
-			} else {
-				len = strftime(buf, sizeof(buf), "%b %e %Y %H:%M:%S %Z",
-					       localtime_r(&t, &s_tm));
-			}
-			if (len > 0) a = buf;
-			break;
-		case PW_TYPE_SIGNED: /* Damned code for 1 WiMAX attribute */
-			snprintf(buf, sizeof(buf), "%d", vp->vp_signed);
-			a = buf;
-			break;
-		case PW_TYPE_IPADDR:
-			a = inet_ntop(AF_INET, &(vp->vp_ipaddr),
-				      buf, sizeof(buf));
-			break;
-		case PW_TYPE_ABINARY:
+		}
+		break;
+
+	case PW_TYPE_INTEGER64:
+		snprintf(buf, sizeof(buf), "%" PRIu64, vp->vp_integer64);
+		a = buf;
+		break;
+
+	case PW_TYPE_DATE:
+		t = vp->vp_date;
+		if (quote > 0) {
+			len = strftime(buf, sizeof(buf) - 1, "%%%b %e %Y %H:%M:%S %Z%%",
+				       localtime_r(&t, &s_tm));
+			buf[0] = (char) quote;
+			buf[len - 1] = (char) quote;
+			buf[len] = '\0';
+		} else {
+			len = strftime(buf, sizeof(buf), "%b %e %Y %H:%M:%S %Z",
+				       localtime_r(&t, &s_tm));
+		}
+		if (len > 0) a = buf;
+		break;
+
+	case PW_TYPE_SIGNED: /* Damned code for 1 WiMAX attribute */
+		snprintf(buf, sizeof(buf), "%d", vp->vp_signed);
+		a = buf;
+		break;
+
+	case PW_TYPE_IPADDR:
+		a = inet_ntop(AF_INET, &(vp->vp_ipaddr), buf, sizeof(buf));
+		break;
+
+	case PW_TYPE_ABINARY:
 #ifdef WITH_ASCEND_BINARY
-			a = buf;
-			print_abinary(vp, buf, sizeof(buf), quote);
-			break;
+		a = buf;
+		print_abinary(vp, buf, sizeof(buf), quote);
+		break;
 #else
-		  /* FALL THROUGH */
+	/* FALL THROUGH */
 #endif
-		case PW_TYPE_OCTETS:
-			if (outlen <= (2 * (vp->length + 1))) return 0;
+	case PW_TYPE_OCTETS:
+		if (outlen <= (2 * (vp->length + 1))) return 0;
 
-			strcpy(buf, "0x");
+		strcpy(buf, "0x");
 
-			fr_bin2hex(buf + 2, vp->vp_octets, vp->length);
-			a = buf;
-		  break;
+		fr_bin2hex(buf + 2, vp->vp_octets, vp->length);
+		a = buf;
+		break;
 
-		case PW_TYPE_IFID:
-			a = ifid_ntoa(buf, sizeof(buf), vp->vp_ifid);
-			break;
+	case PW_TYPE_IFID:
+		a = ifid_ntoa(buf, sizeof(buf), vp->vp_ifid);
+		break;
 
-		case PW_TYPE_IPV6ADDR:
-			a = inet_ntop(AF_INET6,
-				      &vp->vp_ipv6addr,
-				      buf, sizeof(buf));
-			break;
+	case PW_TYPE_IPV6ADDR:
+		a = inet_ntop(AF_INET6, &vp->vp_ipv6addr, buf, sizeof(buf));
+		break;
 
-		case PW_TYPE_IPV6PREFIX:
-		{
-			struct in6_addr addr;
+	case PW_TYPE_IPV6PREFIX:
+	{
+		struct in6_addr addr;
 
-			/*
-			 *	Alignment issues.
-			 */
-			memcpy(&addr, &(vp->vp_ipv6prefix[2]), sizeof(addr));
+		/*
+		 *	Alignment issues.
+		 */
+		memcpy(&addr, &(vp->vp_ipv6prefix[2]), sizeof(addr));
 
-			a = inet_ntop(AF_INET6, &addr, buf, sizeof(buf));
-			if (a) {
-				char *p = buf + strlen(buf);
-				snprintf(p, buf + sizeof(buf) - p - 1, "/%u",
-					 (unsigned int) vp->vp_ipv6prefix[1]);
-			}
+		a = inet_ntop(AF_INET6, &addr, buf, sizeof(buf));
+		if (a) {
+			char *p = buf + strlen(buf);
+			snprintf(p, buf + sizeof(buf) - p - 1, "/%u",
+				 (unsigned int) vp->vp_ipv6prefix[1]);
 		}
-			break;
+	}
+		break;
 
-		case PW_TYPE_IPV4PREFIX:
-		{
-			struct in_addr addr;
+	case PW_TYPE_IPV4PREFIX:
+	{
+		struct in_addr addr;
 
-			/*
-			 *	Alignment issues.
-			 */
-			memcpy(&addr, &(vp->vp_ipv4prefix[2]), sizeof(addr));
+		/*
+		 *	Alignment issues.
+		 */
+		memcpy(&addr, &(vp->vp_ipv4prefix[2]), sizeof(addr));
 
-			a = inet_ntop(AF_INET, &addr, buf, sizeof(buf));
-			if (a) {
-				char *p = buf + strlen(buf);
-				snprintf(p, buf + sizeof(buf) - p - 1, "/%u",
-					 (unsigned int) (vp->vp_ipv4prefix[1] & 0x3f));
-			}
+		a = inet_ntop(AF_INET, &addr, buf, sizeof(buf));
+		if (a) {
+			char *p = buf + strlen(buf);
+			snprintf(p, buf + sizeof(buf) - p - 1, "/%u",
+				 (unsigned int) (vp->vp_ipv4prefix[1] & 0x3f));
 		}
-			break;
+	}
+		break;
 
-		case PW_TYPE_ETHERNET:
-			snprintf(buf, sizeof(buf), "%02x:%02x:%02x:%02x:%02x:%02x",
-				 vp->vp_ether[0], vp->vp_ether[1],
-				 vp->vp_ether[2], vp->vp_ether[3],
-				 vp->vp_ether[4], vp->vp_ether[5]);
-			a = buf;
-			break;
+	case PW_TYPE_ETHERNET:
+		snprintf(buf, sizeof(buf), "%02x:%02x:%02x:%02x:%02x:%02x",
+			 vp->vp_ether[0], vp->vp_ether[1],
+			 vp->vp_ether[2], vp->vp_ether[3],
+			 vp->vp_ether[4], vp->vp_ether[5]);
+		a = buf;
+		break;
 
-		case PW_TYPE_TLV:
-			if (outlen <= (2 * (vp->length + 1))) return 0;
+	case PW_TYPE_TLV:
+		if (outlen <= (2 * (vp->length + 1))) return 0;
 
-			strcpy(buf, "0x");
+		strcpy(buf, "0x");
 
-			fr_bin2hex(buf + 2, vp->vp_tlv, vp->length);
-			a = buf;
-		  break;
+		fr_bin2hex(buf + 2, vp->vp_tlv, vp->length);
+		a = buf;
+		break;
 
-		default:
-			a = "UNKNOWN-TYPE";
-			break;
+	default:
+		a = "UNKNOWN-TYPE";
+		break;
 	}
 
 	if (a != NULL) strlcpy(out, a, outlen);
