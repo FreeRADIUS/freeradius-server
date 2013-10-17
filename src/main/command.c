@@ -834,7 +834,7 @@ static int command_debug_file(rad_listen_t *listener, int argc, char *argv[])
 }
 
 extern fr_cond_t *debug_condition;
-static int command_debug_condition(rad_listen_t *listener, int argc, char *argv[])
+static int command_debug_condition(UNUSED rad_listen_t *listener, int argc, char *argv[])
 {
 	char const *error;
 
@@ -842,7 +842,7 @@ static int command_debug_condition(rad_listen_t *listener, int argc, char *argv[
 	 *	Delete old condition.
 	 *
 	 *	This is thread-safe because the condition is evaluated
-	 *	in the main server thread, as is this code.
+	 *	in the main server thread, along with code.
 	 */
 	talloc_free(debug_condition);
 	debug_condition = NULL;
@@ -854,7 +854,7 @@ static int command_debug_condition(rad_listen_t *listener, int argc, char *argv[
 		return 0;
 	}
 
-	if (fr_condition_tokenize(listener, NULL, argv[0], &debug_condition, &error, FR_COND_ONE_PASS) < 0) {
+	if (fr_condition_tokenize(NULL, NULL, argv[0], &debug_condition, &error, FR_COND_ONE_PASS) < 0) {
 		ERROR("Failed parsing condition '%s': %s", argv[0], error);
 	}
 
