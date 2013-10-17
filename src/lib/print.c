@@ -293,7 +293,7 @@ size_t vp_prints_value(char *out, size_t outlen, VALUE_PAIR const *vp, int8_t qu
 		break;
 
 	case PW_TYPE_INTEGER64:
-		snprintf(out, sizeof(out), "%" PRIu64, vp->vp_integer64);
+		snprintf(out, outlen, "%" PRIu64, vp->vp_integer64);
 		return strlen(out);
 
 	case PW_TYPE_DATE:
