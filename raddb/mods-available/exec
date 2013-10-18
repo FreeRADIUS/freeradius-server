@@ -26,4 +26,5 @@ exec {
 	input_pairs = request
 	shell_escape = yes
 	output = none
+	timeout = 10
 }
