@@ -1,9 +1,25 @@
 FreeRADIUS 3.0.1 Mon  7 Oct 2013 15:48:14 EDT urgency=medium
 	Feature improvements
-	*
+	* Add "timeout" to exec, and "ntlm_auth_timeout" to mschap.
+	  So that run-away child processes are caught earlier.
+	* Allow TLS clients to use "proto = tls", in which case
+	  TLS is required.  The shared secret is then set to "radsec".
 
 	Bug fixes
 	* Use correct field for ARP setting in DHCP.
+	* Fix crash on debug condition (#454)
+	* Fix a number of minor issues caught by the clang
+	  analyzer.
+	* Set WARNING messages to yellow instead of normal text
+	* Correct debug colorise logic.  Patch from Phil Mayers
+	* Encode attributes of type "ethernet".  No one uses them,
+	  but it makes sense.
+	* Work around regex initialization issues
+	* Fix build when linking against OpenSSL.
+	* Print IDs as positive numbers, which helps for large DHCP
+	  XIDs.
+	* Fix issue with sql_ippool.
+	* sqlcounter now uses 64-bit counters, to deal with 4G overflow.
 
 FreeRADIUS 3.0.0 Mon  7 Oct 2013 15:48:14 EDT urgency=medium
 	Feature improvements
