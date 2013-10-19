@@ -305,6 +305,14 @@ int main(int argc, char *argv[])
 		version();
 	}
 
+	/*
+	 *  Initialize any event loops just enough so module instantiations
+	 *  can add fd/event to them, but do not start them yet.
+	 */
+	if (!radius_event_init(spawn_flag, 0)) {
+		exit(EXIT_FAILURE);
+	}
+
 	/*  Read the configuration files, BEFORE doing anything else.  */
 	if (read_mainconfig(0) < 0) {
 		exit(EXIT_FAILURE);
@@ -377,9 +385,9 @@ int main(int argc, char *argv[])
 	 */
 
 	/*
-	 *	Initialize the event pool, including threads.
+	 *	Start the event loop(s) and threads.
 	 */
-	radius_event_init(mainconfig.config, spawn_flag);
+	radius_event_start(mainconfig.config, spawn_flag);
 
 	/*
 	 *	Now that we've set everything up, we can install the signal
