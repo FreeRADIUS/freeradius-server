@@ -377,6 +377,35 @@ static int radclient_init(char const *filename)
 				}
 
 				break;
+
+			case PW_HMAC_REALM:
+			case PW_HMAC_NONCE:
+			case PW_HMAC_ALGORITHM:
+			case PW_HMAC_BODY:
+			case PW_HMAC_USER_NAME:
+				/* overlapping! */
+				{
+					const DICT_ATTR *da;
+					uint8_t *p;
+
+					p = talloc_array(vp, uint8_t, vp->length + 2);
+
+					memcpy(p + 2, vp->vp_octets, vp->length);
+					p[0] = vp->da->attr - PW_HMAC_REALM + 1;
+					vp->length += 2;
+					p[1] = vp->length;
+//					talloc_free(vp->vp_octets);
+					vp->vp_octets = p;
+
+					da = dict_attrbyvalue(PW_HMAC_ATTRIBUTES, 0);
+					if (!da) {
+						goto oom;
+					}
+
+					vp->da = da;
+				}
+
+				break;
 			}
 		} /* loop over the VP's we read in */
 

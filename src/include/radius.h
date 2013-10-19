@@ -143,6 +143,9 @@ typedef enum {
 #define PW_DIGEST_RESPONSE		206
 #define PW_DIGEST_ATTRIBUTES		207
 
+#define PW_HMAC_CODE                    210
+#define PW_HMAC_ATTRIBUTES              211
+
 #define PW_FALL_THROUGH			500
 #define PW_RELAX_FILTER			501
 #define PW_EXEC_PROGRAM			502
@@ -255,6 +258,13 @@ typedef enum {
 
 #define PW_OTP_CHALLENGE		1145
 #define PW_EAP_SESSION_ID		1146
+
+#define PW_HMAC_REALM                 1147
+#define PW_HMAC_NONCE                 1148
+#define PW_HMAC_ALGORITHM             1149
+#define PW_HMAC_USER_NAME             1150
+#define PW_HMAC_BODY                  1151
+
 
 /*
  *	Integer Translations

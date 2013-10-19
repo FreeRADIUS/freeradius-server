@@ -1,0 +1,7 @@
+User-Name = "test",
+HMAC-Realm = "example.org",
+HMAC-User-Name = "test",
+HMAC-Nonce = "01234567890123456789012345678901",
+HMAC-Algorithm = "HMAC-SHA1",
+HMAC-Body = "unimportant message",
+Message-Authenticator = ""

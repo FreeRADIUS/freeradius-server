@@ -17,6 +17,9 @@ ATTRIBUTE	Originating-Line-Info			94	string
 ATTRIBUTE	Digest-Response				206	string
 ATTRIBUTE	Digest-Attributes			207	octets	# stupid format
 
+ATTRIBUTE	HMAC-Code				210	string
+ATTRIBUTE	HMAC-Attributes				211	octets
+
 #
 #	Integer Translations
 #
