@@ -480,7 +480,7 @@ redo:
 		RDEBUG2("%.*s? %s %s", depth + 1, modcall_spaces,
 			group_name[c->type], c->name);
 
-		if (radius_evaluate_condition(request, entry->result,
+		if (radius_evaluate_condition(request, result,
 					      0, &p, TRUE, &condition)) {
 			RDEBUG2("%.*s? %s %s -> %s", depth + 1, modcall_spaces,
 				group_name[c->type],
