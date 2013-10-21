@@ -470,7 +470,7 @@ redo:
 		RDEBUG2("%.*s? %s %s", depth + 1, modcall_spaces,
 			group_name[c->type], c->name);
 
-		condition = radius_evaluate_cond(request, entry->result, 0, g->cond);
+		condition = radius_evaluate_cond(request, result, 0, g->cond);
 		if (condition < 0) {
 			switch (condition) {
 			case -2:
