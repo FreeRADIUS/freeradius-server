@@ -219,9 +219,6 @@ size_t fr_print_string(char const *in, size_t inlen, char *out, size_t outlen)
  */
 size_t vp_prints_value(char *out, size_t outlen, VALUE_PAIR const *vp, int8_t quote)
 {
-	DICT_VALUE	*v;
-	char		buf[1024];
-	char const	*a = NULL;
 	time_t		t;
 	struct tm	s_tm;
 
@@ -262,88 +259,102 @@ size_t vp_prints_value(char *out, size_t outlen, VALUE_PAIR const *vp, int8_t qu
 
 		/* xlat.c - need to copy raw value verbatim */
 		if (quote < 0) {
-			strlcpy(out, vp->vp_strvalue, outlen);
+			strlcpy(out, vp->vp_strvalue, freespace);
 			return strlen(out);
 		}
-
-		return fr_print_string(vp->vp_strvalue, vp->length, out, sizeof(out));
+		return fr_print_string(vp->vp_strvalue, vp->length, out, freespace);
 
 	case PW_TYPE_INTEGER:
-		if (vp->da->flags.has_tag) {
-			/* Attribute value has a tag, need to ignore it */
-			if ((v = dict_valbyattr(vp->da->attr, vp->da->vendor, (vp->vp_integer & 0xffffff)))
-			    != NULL)
-				a = v->name;
-			else {
-				snprintf(buf, sizeof(buf), "%u", (vp->vp_integer & 0xffffff));
-				a = buf;
-			}
-		} else {
 	case PW_TYPE_BYTE:
 	case PW_TYPE_SHORT:
-			/* Normal, non-tagged attribute */
-			if ((v = dict_valbyattr(vp->da->attr, vp->da->vendor, vp->vp_integer))
-			    != NULL)
-				a = v->name;
-			else {
-				snprintf(buf, sizeof(buf), "%u", vp->vp_integer);
-				a = buf;
-			}
+	{
+		DICT_VALUE *v = dict_valbyattr(vp->da->attr, vp->da->vendor, vp->vp_integer);
+		len = v ? strlcpy(out, v->name, freespace) :
+			  (size_t) snprintf(out, freespace, "%u", vp->vp_integer);
+		if (len >= freespace) {
+			return outlen - 1;
 		}
-		break;
+		return len;
+	}
 
 	case PW_TYPE_INTEGER64:
-		snprintf(out, outlen, "%" PRIu64, vp->vp_integer64);
-		return strlen(out);
+		len = snprintf(out, freespace, "%" PRIu64, vp->vp_integer64);
+		if (len >= freespace) {
+			return outlen - 1;
+		}
+		return len;
 
 	case PW_TYPE_DATE:
 		t = vp->vp_date;
 		if (quote > 0) {
-			len = strftime(buf, sizeof(buf) - 1, "%%%b %e %Y %H:%M:%S %Z%%",
-				       localtime_r(&t, &s_tm));
-			buf[0] = (char) quote;
-			buf[len - 1] = (char) quote;
-			buf[len] = '\0';
-		} else {
-			len = strftime(buf, sizeof(buf), "%b %e %Y %H:%M:%S %Z",
-				       localtime_r(&t, &s_tm));
+			if (freespace < 3) {
+				return 0;
+			}
+
+			*out++ = (char) quote;
+			freespace--;
+
+			len = strftime(out, freespace, "%%%b %e %Y %H:%M:%S %Z%%", localtime_r(&t, &s_tm));
+			/* always terminate the quoted string with another quote */
+			if (len >= (freespace - 1)) {
+				out[outlen - 2] = (char) quote;
+				out[outlen - 1] = '\0';
+				return outlen - 1;
+			}
+
+			out += len;
+			freespace -= len;
+
+			*out++ = (char) quote;
+			freespace--;
+			*out = '\0';
+
+			return out - start;
 		}
-		if (len > 0) a = buf;
-		break;
+
+		len = strftime(out, freespace, "%b %e %Y %H:%M:%S %Z", localtime_r(&t, &s_tm));
+		if (len >= freespace) {
+			return outlen - 1;
+		}
+		return len;
 
 	case PW_TYPE_SIGNED: /* Damned code for 1 WiMAX attribute */
-		snprintf(buf, sizeof(buf), "%d", vp->vp_signed);
-		a = buf;
-		break;
+		len = snprintf(out, freespace, "%d", vp->vp_signed);
+		if (len >= freespace) {
+			return outlen - 1;
+		}
+		return len;
 
 	case PW_TYPE_IPADDR:
-		a = inet_ntop(AF_INET, &(vp->vp_ipaddr), buf, sizeof(buf));
-		break;
+		inet_ntop(AF_INET, &(vp->vp_ipaddr), out, freespace);
+		return strlen(out);
 
 	case PW_TYPE_ABINARY:
 #ifdef WITH_ASCEND_BINARY
-		a = buf;
-		print_abinary(vp, buf, sizeof(buf), quote);
-		break;
+		print_abinary(out, freespace, vp, quote);
+		return strlen(out);
 #else
 	/* FALL THROUGH */
 #endif
+	case PW_TYPE_TLV:
 	case PW_TYPE_OCTETS:
-		if (outlen <= (2 * (vp->length + 1))) return 0;
+		if (outlen <= (2 * (vp->length + 1))) {
+			return 0;
+		}
 
-		strcpy(buf, "0x");
+		strcpy(out, "0x");
+		out += 2;
+		out += fr_bin2hex(out, vp->vp_octets, vp->length);
 
-		fr_bin2hex(buf + 2, vp->vp_octets, vp->length);
-		a = buf;
-		break;
+		return out - start;
 
 	case PW_TYPE_IFID:
-		a = ifid_ntoa(buf, sizeof(buf), vp->vp_ifid);
-		break;
+		ifid_ntoa(out, freespace, vp->vp_ifid);
+		return strlen(out);
 
 	case PW_TYPE_IPV6ADDR:
-		a = inet_ntop(AF_INET6, &vp->vp_ipv6addr, buf, sizeof(buf));
-		break;
+		inet_ntop(AF_INET6, &vp->vp_ipv6addr, out, freespace);
+		return strlen(out);
 
 	case PW_TYPE_IPV6PREFIX:
 	{
@@ -353,15 +364,19 @@ size_t vp_prints_value(char *out, size_t outlen, VALUE_PAIR const *vp, int8_t qu
 		 *	Alignment issues.
 		 */
 		memcpy(&addr, &(vp->vp_ipv6prefix[2]), sizeof(addr));
+		if (inet_ntop(AF_INET6, &addr, out, freespace)) {
+			len = strlen(out);
+			out += len;
+			freespace -= len;
 
-		a = inet_ntop(AF_INET6, &addr, buf, sizeof(buf));
-		if (a) {
-			char *p = buf + strlen(buf);
-			snprintf(p, buf + sizeof(buf) - p - 1, "/%u",
-				 (unsigned int) vp->vp_ipv6prefix[1]);
+			len = snprintf(out, freespace, "/%u", (unsigned int) vp->vp_ipv6prefix[1]);
+			if (len >= freespace) {
+				return outlen - 1;
+			}
+			out += len;
 		}
+		return out - start;
 	}
-		break;
 
 	case PW_TYPE_IPV4PREFIX:
 	{
@@ -371,41 +386,40 @@ size_t vp_prints_value(char *out, size_t outlen, VALUE_PAIR const *vp, int8_t qu
 		 *	Alignment issues.
 		 */
 		memcpy(&addr, &(vp->vp_ipv4prefix[2]), sizeof(addr));
+		if (inet_ntop(AF_INET, &addr, out, freespace)) {
+			len = strlen(out);
+			out += len;
+			freespace -= len;
 
-		a = inet_ntop(AF_INET, &addr, buf, sizeof(buf));
-		if (a) {
-			char *p = buf + strlen(buf);
-			snprintf(p, buf + sizeof(buf) - p - 1, "/%u",
-				 (unsigned int) (vp->vp_ipv4prefix[1] & 0x3f));
+			len = snprintf(out, freespace, "/%u", (unsigned int) vp->vp_ipv4prefix[1]);
+			if (len >= freespace) {
+				return outlen - 1;
+			}
+			out += len;
+
 		}
+		return out - start;
 	}
-		break;
 
 	case PW_TYPE_ETHERNET:
-		snprintf(buf, sizeof(buf), "%02x:%02x:%02x:%02x:%02x:%02x",
-			 vp->vp_ether[0], vp->vp_ether[1],
-			 vp->vp_ether[2], vp->vp_ether[3],
-			 vp->vp_ether[4], vp->vp_ether[5]);
-		a = buf;
-		break;
-
-	case PW_TYPE_TLV:
-		if (outlen <= (2 * (vp->length + 1))) return 0;
-
-		strcpy(buf, "0x");
-
-		fr_bin2hex(buf + 2, vp->vp_tlv, vp->length);
-		a = buf;
-		break;
+		len = snprintf(out, freespace, "%02x:%02x:%02x:%02x:%02x:%02x",
+			       vp->vp_ether[0], vp->vp_ether[1],
+			       vp->vp_ether[2], vp->vp_ether[3],
+			       vp->vp_ether[4], vp->vp_ether[5]);
+		if (len >= freespace) {
+			return outlen - 1;
+		}
+		return len;
 
 	default:
-		a = "UNKNOWN-TYPE";
-		break;
+		len = strlcpy(out, "UNKNOWN-TYPE", freespace);
+		if (len >= freespace) {
+			return outlen - 1;
+		}
+		return len;
 	}
 
-	if (a != NULL) strlcpy(out, a, outlen);
-
-	return strlen(out);
+	return 0;
 }
 
 
@@ -507,7 +521,7 @@ char *vp_aprint(TALLOC_CTX *ctx, VALUE_PAIR const *vp)
 #ifdef WITH_ASCEND_BINARY
 		p = talloc_array(ctx, char, 128);
 		if (!p) return NULL;
-		print_abinary(vp, p, 128, 0);
+		print_abinary(p, 128, vp, '\0');
 		break;
 #else
 		  /* FALL THROUGH */

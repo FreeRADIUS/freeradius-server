@@ -610,7 +610,7 @@ ssize_t fr_utf8_to_ucs2(uint8_t *out, size_t outlen, char const *in, size_t inle
 #ifdef WITH_ASCEND_BINARY
 /* filters.c */
 int		ascend_parse_filter(VALUE_PAIR *pair);
-void		print_abinary(VALUE_PAIR const *vp, char *buffer, size_t len, int8_t quote);
+void		print_abinary(char *out, size_t outlen, VALUE_PAIR const *vp,  int8_t quote);
 #endif /*WITH_ASCEND_BINARY*/
 
 /* random numbers in isaac.c */
