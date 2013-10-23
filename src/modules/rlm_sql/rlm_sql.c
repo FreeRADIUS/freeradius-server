@@ -564,7 +564,7 @@ static int sql_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR *req
 }
 
 static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t *inst, REQUEST *request, rlm_sql_handle_t *handle,
-					  int *dofallthrough)
+					  bool *dofallthrough)
 {
 	rlm_rcode_t		rcode = RLM_MODULE_NOOP;
 	VALUE_PAIR		*check_tmp = NULL, *reply_tmp = NULL, *sql_group = NULL;
@@ -576,13 +576,20 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t *inst, REQUEST *request, rlm
 	/*
 	 *	Get the list of groups this user is a member of
 	 */
-	if (sql_get_grouplist(inst, handle, request, &head) < 0) {
+	rows = sql_get_grouplist(inst, handle, request, &head);
+	if (rows < 0) {
 		REDEBUG("Error retrieving group list");
 
 		return RLM_MODULE_FAIL;
 	}
+	if (rows == 0) {
+		rcode = RLM_MODULE_NOTFOUND;
+		goto finish;
+	}
 
-	for (entry = head; entry != NULL && *dofallthrough != 0; entry = entry->next) {
+	RDEBUG2("User found in the group table");
+
+	for (entry = head; entry != NULL && (*dofallthrough != 0); entry = entry->next) {
 		/*
 		 *	Add the Sql-Group attribute to the request list so we know
 		 *	which group we're retrieving attributes for
@@ -591,78 +598,81 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t *inst, REQUEST *request, rlm
 		if (!sql_group) {
 			REDEBUG("Error creating Sql-Group attribute");
 			rcode = RLM_MODULE_FAIL;
-
 			goto finish;
 		}
 
-		/*
-		 *	Expand the group query
-		 */
-		if (radius_axlat(&expanded, request, inst->config->authorize_group_check_query, sql_escape_func,
-				inst) < 0) {
-			REDEBUG("Error generating query");
-			rcode = RLM_MODULE_FAIL;
+		if (inst->config->authorize_group_check_query && (inst->config->authorize_group_check_query != '\0')) {
+			/*
+			 *	Expand the group query
+			 */
+			if (radius_axlat(&expanded, request, inst->config->authorize_group_check_query,
+					 sql_escape_func, inst) < 0) {
+				REDEBUG("Error generating query");
+				rcode = RLM_MODULE_FAIL;
+				goto finish;
+			}
 
-			goto finish;
+			rows = sql_getvpdata(inst, &handle, request, &check_tmp, expanded);
+			TALLOC_FREE(expanded);
+			if (rows < 0) {
+				REDEBUG("Error retrieving check pairs for group %s", entry->name);
+				rcode = RLM_MODULE_FAIL;
+				goto finish;
+			}
+
+			/*
+			 *	If we got check rows we need to process them before we decide to process the reply rows
+			 */
+			if ((rows > 0) &&
+			    (paircompare(request, request->packet->vps, check_tmp, &request->reply->vps) != 0)) {
+				pairfree(&check_tmp);
+				pairdelete(&request->packet->vps, PW_SQL_GROUP, 0, TAG_ANY);
+
+				continue;
+			}
+
+			RDEBUG2("Group \"%s\" check items matched", entry->name);
+			rcode = RLM_MODULE_OK;
+
+			radius_xlat_move(request, &request->config_items, &check_tmp);
+			check_tmp = NULL;
 		}
 
-		rows = sql_getvpdata(inst, &handle, request, &check_tmp, expanded);
-		TALLOC_FREE(expanded);
-		if (rows < 0) {
-			REDEBUG("Error retrieving check pairs for group %s", entry->name);
-			rcode = RLM_MODULE_FAIL;
+		if (inst->config->authorize_group_reply_query && (inst->config->authorize_group_reply_query != '\0')) {
+			/*
+			 *	Now get the reply pairs since the paircompare matched
+			 */
+			if (radius_axlat(&expanded, request, inst->config->authorize_group_reply_query,
+					 sql_escape_func, inst) < 0) {
+				REDEBUG("Error generating query");
+				rcode = RLM_MODULE_FAIL;
+				goto finish;
+			}
 
-			goto finish;
+			rows = sql_getvpdata(inst, &handle, request->reply, &reply_tmp, expanded);
+			TALLOC_FREE(expanded);
+			if (rows < 0) {
+				REDEBUG("Error retrieving reply pairs for group %s", entry->name);
+				rcode = RLM_MODULE_FAIL;
+				goto finish;
+			}
+
+			*dofallthrough = fallthrough(reply_tmp);
+
+			RDEBUG2("Group \"%s\" reply items processed", entry->name);
+			rcode = RLM_MODULE_OK;
+
+			radius_xlat_move(request, &request->reply->vps, &reply_tmp);
+			reply_tmp = NULL;
 		}
-
-		/*
-		 *	If we got check rows we need to process them before we decide to process the reply rows
-		 */
-		if ((rows > 0) && (paircompare(request, request->packet->vps, check_tmp, &request->reply->vps) != 0)) {
-			pairfree(&check_tmp);
-			pairdelete(&request->packet->vps, PW_SQL_GROUP, 0, TAG_ANY);
-
-			continue;
-		}
-
-		RDEBUG2("User found in= RLM_MODULE_OK; group %s", entry->name);
-
-		/*
-		 *	Now get the reply pairs since the paircompare matched
-		 */
-		if (radius_axlat(&expanded, request, inst->config->authorize_group_reply_query, sql_escape_func,
-				inst) < 0) {
-			REDEBUG("Error generating query");
-			rcode = RLM_MODULE_FAIL;
-
-			goto finish;
-		}
-
-		if (sql_getvpdata(inst, &handle, request->reply, &reply_tmp, expanded) < 0) {
-			REDEBUG("Error retrieving reply pairs for group %s", entry->name);
-			rcode = RLM_MODULE_FAIL;
-
-			goto finish;
-		}
-
-		*dofallthrough = fallthrough(reply_tmp);
 
 		pairdelete(&request->packet->vps, PW_SQL_GROUP, 0, TAG_ANY);
-
-		radius_xlat_move(request, &request->reply->vps, &reply_tmp);
-		reply_tmp = NULL;
-
-		radius_xlat_move(request, &request->config_items, &check_tmp);
-		check_tmp = NULL;
 	}
 
 	finish:
 
-	talloc_free(expanded);
 	talloc_free(head);
-
 	pairdelete(&request->packet->vps, PW_SQL_GROUP, 0, TAG_ANY);
-	pairfree(&check_tmp);
 
 	return rcode;
 }
@@ -897,7 +907,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 static rlm_rcode_t mod_authorize(void *instance, REQUEST * request)
 {
-	int rcode = RLM_MODULE_NOTFOUND;
+	rlm_rcode_t rcode = RLM_MODULE_NOOP;
 
 	rlm_sql_t *inst = instance;
 	rlm_sql_handle_t  *handle;
@@ -906,7 +916,8 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST * request)
 	VALUE_PAIR *reply_tmp = NULL;
 	VALUE_PAIR *user_profile = NULL;
 
-	int	dofallthrough = 1;
+	bool	user_found = false;
+	bool	dofallthrough = true;
 	int	rows;
 
 	char	*expanded = NULL;
@@ -925,78 +936,79 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST * request)
 	 *	temporary attributes.
 	 */
 	handle = sql_get_socket(inst);
-	if (!handle)
+	if (!handle) {
+		rcode = RLM_MODULE_FAIL;
 		goto error;
+	}
 
 	/*
 	 *	Query the check table to find any conditions associated with this user/realm/whatever...
 	 */
-	if (inst->config->authorize_check_query && *inst->config->authorize_check_query) {
+	if (inst->config->authorize_check_query && (inst->config->authorize_check_query[0] != '\0')) {
 		if (radius_axlat(&expanded, request, inst->config->authorize_check_query,
 				sql_escape_func, inst) < 0) {
 			REDEBUG("Error generating query");
-
+			rcode = RLM_MODULE_FAIL;
 			goto error;
 		}
 
 		rows = sql_getvpdata(inst, &handle, request, &check_tmp, expanded);
+		TALLOC_FREE(expanded);
 		if (rows < 0) {
 			REDEBUG("SQL query error");
-
+			rcode = RLM_MODULE_FAIL;
 			goto error;
 		}
-		TALLOC_FREE(expanded);
+
+		if (rows == 0) {
+			goto skipreply;
+		}
 
 		/*
 		 *	Only do this if *some* check pairs were returned
 		 */
-		if ((rows > 0) &&
-		    (paircompare(request, request->packet->vps, check_tmp, &request->reply->vps) == 0)) {
-			RDEBUG2("User found in radcheck table");
-
-			radius_xlat_move(request, &request->config_items, &check_tmp);
-
-			rcode = RLM_MODULE_OK;
-		}
-
-		/*
-		 *	We only process reply table items if check conditions were verified
-		 */
-		else {
+		RDEBUG2("User found in radcheck table");
+		user_found = true;
+		if (paircompare(request, request->packet->vps, check_tmp, &request->reply->vps) != 0) {
 			goto skipreply;
 		}
+
+		RDEBUG2("Check items matched");
+		radius_xlat_move(request, &request->config_items, &check_tmp);
+		rcode = RLM_MODULE_OK;
 	}
 
-	if (inst->config->authorize_reply_query && *inst->config->authorize_reply_query) {
+	if (inst->config->authorize_reply_query && (inst->config->authorize_reply_query[0] != '\0')) {
 		/*
 		 *	Now get the reply pairs since the paircompare matched
 		 */
 		if (radius_axlat(&expanded, request, inst->config->authorize_reply_query,
 				sql_escape_func, inst) < 0) {
 			REDEBUG("Error generating query");
-
+			rcode = RLM_MODULE_FAIL;
 			goto error;
 		}
 
 		rows = sql_getvpdata(inst, &handle, request->reply, &reply_tmp, expanded);
+		TALLOC_FREE(expanded);
 		if (rows < 0) {
 			REDEBUG("SQL query error");
-
+			rcode = RLM_MODULE_FAIL;
 			goto error;
 		}
-		TALLOC_FREE(expanded);
 
-		if (rows > 0) {
-			if (!inst->config->read_groups) {
-				dofallthrough = fallthrough(reply_tmp);
-			}
-
-			RDEBUG2("User found in radreply table");
-
-			radius_xlat_move(request, &request->reply->vps, &reply_tmp);
-
-			rcode = RLM_MODULE_OK;
+		if (rows == 0) {
+			goto skipreply;
 		}
+
+		if (!inst->config->read_groups) {
+			dofallthrough = fallthrough(reply_tmp);
+		}
+
+		RDEBUG2("User found in radreply table");
+		user_found = true;
+		radius_xlat_move(request, &request->reply->vps, &reply_tmp);
+		rcode = RLM_MODULE_OK;
 	}
 
 	skipreply:
@@ -1014,19 +1026,42 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST * request)
 	 *	the groups as well.
 	 */
 	if (dofallthrough) {
-		rcode = rlm_sql_process_groups(inst, request, handle, &dofallthrough);
-		if (rcode != RLM_MODULE_OK) {
-			goto release;
+		rlm_rcode_t ret;
+
+		RDEBUG3("... falling-through to group processing");
+		ret = rlm_sql_process_groups(inst, request, handle, &dofallthrough);
+		switch (ret) {
+			/*
+			 *	Nothing bad happened, continue...
+			 */
+			case RLM_MODULE_UPDATED:
+				rcode = RLM_MODULE_UPDATED;
+				/* FALL-THROUGH */
+			case RLM_MODULE_OK:
+				if (rcode != RLM_MODULE_UPDATED) {
+					rcode = RLM_MODULE_OK;
+				}
+				/* FALL-THROUGH */
+			case RLM_MODULE_NOOP:
+				user_found = true;
+				break;
+
+			default:
+				rcode = ret;
+				goto release;
 		}
 	}
 
 	/*
-	 *  Repeat the above process with the default profile or User-Profile
+	 *	Repeat the above process with the default profile or User-Profile
 	 */
 	if (dofallthrough) {
+		rlm_rcode_t ret;
+
 		/*
 	 	 *  Check for a default_profile or for a User-Profile.
 		 */
+		RDEBUG3("... falling-through to profile processing");
 		user_profile = pairfind(request->config_items, PW_USER_PROFILE, 0, TAG_ANY);
 
 		char const *profile = user_profile ?
@@ -1037,30 +1072,47 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST * request)
 			goto release;
 		}
 
-		RDEBUG("Checking profile %s", profile);
+		RDEBUG2("Checking profile %s", profile);
 
 		if (sql_set_user(inst, request, profile) < 0) {
 			REDEBUG("Error setting profile");
-
+			rcode = RLM_MODULE_FAIL;
 			goto error;
 		}
 
-		rcode = rlm_sql_process_groups(inst, request, handle, &dofallthrough);
-		if (rcode != RLM_MODULE_OK) {
-			REDEBUG("Error processing profile groups");
+		ret = rlm_sql_process_groups(inst, request, handle, &dofallthrough);
+		switch (ret) {
+			/*
+			 *	Nothing bad happened, continue...
+			 */
+			case RLM_MODULE_UPDATED:
+				rcode = RLM_MODULE_UPDATED;
+				/* FALL-THROUGH */
+			case RLM_MODULE_OK:
+				if (rcode != RLM_MODULE_UPDATED) {
+					rcode = RLM_MODULE_OK;
+				}
+				/* FALL-THROUGH */
+			case RLM_MODULE_NOOP:
+				user_found = true;
+				break;
 
-			goto release;
+			default:
+				rcode = ret;
+				goto release;
 		}
 	}
 
-	goto release;
+	/*
+	 *	At this point the key (user) hasn't be found in the check table, the reply table
+	 *	or the group mapping table, and there was no matching profile.
+	 */
+	release:
+	if (!user_found) {
+		rcode = RLM_MODULE_NOTFOUND;
+	}
 
 	error:
-	rcode = RLM_MODULE_FAIL;
-
-	release:
-	TALLOC_FREE(expanded);
-
 	sql_release_socket(inst, handle);
 
 	pairfree(&check_tmp);
@@ -1203,7 +1255,6 @@ static int acct_redundant(rlm_sql_t *inst, REQUEST *request, sql_acct_section_t 
 
 		if (!pair) {
 			RDEBUG("No additional queries configured");
-
 			rcode = RLM_MODULE_NOOP;
 
 			goto finish;
