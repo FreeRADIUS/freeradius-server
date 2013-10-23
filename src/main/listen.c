@@ -2442,20 +2442,28 @@ static int listen_bind(rad_listen_t *this)
 
 #ifdef WITH_TCP
 	if (sock->proto == IPPROTO_TCP) {
+		/*
+		 *	Allow a backlog of 8 listeners
+		 */
 		if (listen(this->fd, 8) < 0) {
 			close(this->fd);
 			ERROR("Failed in listen(): %s", strerror(errno));
 			return -1;
 		}
-	} else
-#endif
 
-	  if (!this->workers && fr_nonblock(this->fd) < 0) {
-		  close(this->fd);
-		  ERROR("Failed setting non-blocking on socket: %s",
-			 strerror(errno));
-		  return -1;
-	  }
+		/*
+		 *	If there are hard-coded worker threads, they're blocking.
+		 *
+		 *	Otherwise, they're non-blocking.
+		 */
+		if (!this->workers && fr_nonblock(this->fd) < 0) {
+			close(this->fd);
+			ERROR("Failed setting non-blocking on socket: %s",
+			      strerror(errno));
+			return -1;
+		}
+	}
+#endif
 
 	/*
 	 *	Mostly for proxy sockets.
