@@ -3602,6 +3602,7 @@ $as_echo "$as_me: Sanitized cflags are \"${mod_cflags}\"" >&6;}
 		targetname=
 	fi
 else
+	targetname=
 	echo \*\*\* module rlm_ruby is disabled.
 fi
 
