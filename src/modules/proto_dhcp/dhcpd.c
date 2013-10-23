@@ -647,10 +647,11 @@ static int dhcp_socket_send(rad_listen_t *listener, REQUEST *request)
 
 	if (request->reply->code == 0) return 0; /* don't reply */
 
-	if (fr_dhcp_encode(request->packet) < 0) {
+	if (fr_dhcp_encode(request->reply) < 0) {
 		DEBUG("dhcp_socket_send: ERROR\n");
 		return -1;
 	}
+
 	sock = listener->data;
 	if (sock->suppress_responses) return 0;
 
