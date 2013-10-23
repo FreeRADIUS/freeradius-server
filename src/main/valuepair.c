@@ -691,7 +691,6 @@ void radius_xlat_move(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR **from)
 			}
 			tailfrom = i;
 			continue;
-			break;
 
 			/*
 			 *	Add it, if it's not already there.
