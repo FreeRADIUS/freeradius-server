@@ -38,6 +38,7 @@ if test x$with_[]modname != xno; then
 		targetname=
 	fi
 else
+	targetname=
 	echo \*\*\* module modname is disabled.
 fi
 
