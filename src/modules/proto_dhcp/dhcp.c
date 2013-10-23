@@ -401,6 +401,11 @@ int fr_dhcp_send(RADIUS_PACKET *packet)
 	fr_ipaddr2sockaddr(&packet->dst_ipaddr, packet->dst_port,
 			   &dst, &sizeof_dst);
 
+	if (packet->data_len == 0) {
+		fr_strerror_printf("No data to send");
+		return -1;
+	}
+
 	if (fr_debug_flag > 1) {
 		char type_buf[64];
 		char const *name = type_buf;
@@ -1214,9 +1219,9 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 	/* DHCP-Client-Hardware-Address */
 	if ((vp = pairfind(packet->vps, 267, DHCP_MAGIC_VENDOR, TAG_ANY))) {
 		if (vp->length > DHCP_CHADDR_LEN) {
-			memcpy(p, vp->vp_octets, DHCP_CHADDR_LEN);
+			memcpy(p, vp->vp_ether, DHCP_CHADDR_LEN);
 		} else {
-			memcpy(p, vp->vp_octets, vp->length);
+			memcpy(p, vp->vp_ether, vp->length);
 		}
 	}
 	p += DHCP_CHADDR_LEN;
@@ -1499,6 +1504,7 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 	}
 
 	if ((fr_debug_flag > 2) && fr_log_fp) {
+		fprintf(fr_log_fp, "DHCP Sending %zu bytes\n", packet->data_len);
 		for (i = 0; i < packet->data_len; i++) {
 			if ((i & 0x0f) == 0x00) fprintf(fr_log_fp, "%d: ", i);
 			fprintf(fr_log_fp, "%02x ", packet->data[i]);
