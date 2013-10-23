@@ -9,6 +9,7 @@ SOURCES		:= $(TARGETNAME).c
 SRC_CFLAGS	:= @mod_cflags@
 TGT_LDLIBS	:= @mod_ldflags@
 
+ifneq "$(TARGETNAME)" ""
 install: $(R)$(modconfdir)/python/example.py
 
 $(R)$(modconfdir)/python: | $(R)$(modconfdir)
@@ -18,3 +19,4 @@ $(R)$(modconfdir)/python: | $(R)$(modconfdir)
 $(R)$(modconfdir)/python/example.py: src/modules/rlm_python/example.py | $(R)$(modconfdir)/python
 	@$(ECHO) INSTALL $(notdir $<)
 	@$(INSTALL) -m 755 $< $(R)$(modconfdir)/python
+endif
