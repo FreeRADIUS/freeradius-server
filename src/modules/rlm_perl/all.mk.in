@@ -9,6 +9,7 @@ SOURCES		:= rlm_perl.c
 SRC_CFLAGS	:= @mod_cflags@
 TGT_LDLIBS	:= @mod_ldflags@
 
+ifneq "$(TARGETNAME)" ""
 install: $(R)$(modconfdir)/perl/example.pl
 
 $(R)$(modconfdir)/perl: | $(R)$(modconfdir)
@@ -18,3 +19,4 @@ $(R)$(modconfdir)/perl: | $(R)$(modconfdir)
 $(R)$(modconfdir)/perl/example.pl: src/modules/rlm_perl/example.pl | $(R)$(modconfdir)/perl
 	@$(ECHO) INSTALL $(notdir $<)
 	@$(INSTALL) -m 755 $< $(R)$(modconfdir)/perl
+endif
