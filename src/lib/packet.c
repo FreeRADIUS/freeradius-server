@@ -144,11 +144,6 @@ int fr_socket(fr_ipaddr_t *ipaddr, int port)
 	}
 #endif
 
-	if (fr_nonblock(sockfd) < 0) {
-		close(sockfd);
-		return -1;
-	}
-
 	if (!fr_ipaddr2sockaddr(ipaddr, port, &salocal, &salen)) {
 		return sockfd;
 	}
