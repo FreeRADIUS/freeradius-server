@@ -430,7 +430,7 @@ int main(int argc, char **argv)
 
 	reply = fr_dhcp_recv(sockfd);
 	if (!reply) {
-		fprintf(stderr, "dhcpclient: no reply\n");
+		fprintf(stderr, "dhcpclient: Error receiving reply %s\n", fr_strerror());
 		exit(1);
 	}
 	if (fr_debug_flag) print_hex(reply);
