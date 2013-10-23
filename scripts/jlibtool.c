@@ -30,6 +30,14 @@
 #include <errno.h>
 #include <assert.h>
 
+#if defined(__GNUC__)
+#  define NEVER_RETURNS __attribute__ ((noreturn))
+#  define UNUSED __attribute__ ((unused))
+#else
+#  define NEVER_RETURNS /* ignore */
+#  define UNUSED /* ignore */
+#endif
+
 #ifdef __EMX__
 #  define SHELL_CMD 			"sh"
 #  define GEN_EXPORTS			"emxexp"
@@ -416,14 +424,6 @@ static void *lt_malloc(size_t size)
 	return out;
 }
 
-static void lt_const_free(const void *ptr)
-{
-	void *tmp;
-
-	memcpy(&tmp, &ptr, sizeof(tmp));
-	free(tmp);
-}
-
 static void init_count_chars(count_chars *cc)
 {
 	cc->vals = (char const**) lt_malloc(PATH_MAX*sizeof(char*));
@@ -548,10 +548,8 @@ static char *shell_esc(char const *str)
 	return cmd;
 }
 
-static int external_spawn(command_t *cmd, char const *file, char const **argv)
+static int external_spawn(command_t *cmd, UNUSED char const *file, char const **argv)
 {
-	file = file;		/* -Wunused */
-
 	if (!cmd->options.silent) {
 		char const **argument = argv;
 		NOTICE("Executing: ");
@@ -866,7 +864,7 @@ static long safe_strtol(char const *nptr, char const **endptr, int base)
 
 	errno = 0;
 
-	rv = strtol(nptr, (char**)endptr, 10);
+	rv = strtol(nptr, (char**)endptr, base);
 
 	if (errno == ERANGE) {
 		return 0;
@@ -2207,21 +2205,24 @@ static int run_mode(command_t *cmd)
 
 		strcpy(libpath, cmd->arglist->vals[0]);
 		add_dotlibs(libpath);
-	l = strrchr(libpath, '/');
-	if (!l) l = strrchr(libpath, '\\');
-	if (l) {
-		*l = '\0';
-		l = libpath;
-	} else {
-		l = ".libs/";
-	}
+		l = strrchr(libpath, '/');
+		if (!l) {
+			l = strrchr(libpath, '\\');
+		}
 
-	l = "./build/lib/.libs";
-	setenv(LD_LIBRARY_PATH_LOCAL, l, 1);
-	rv = run_command(cmd, cmd->arglist);
+		if (l) {
+			*l = '\0';
+			l = libpath;
+		} else {
+			l = ".libs/";
+		}
+
+		l = "./build/lib/.libs";
+		setenv(LD_LIBRARY_PATH_LOCAL, l, 1);
+		rv = run_command(cmd, cmd->arglist);
 		if (rv) goto finish;
 	}
-	  break;
+		break;
 
 	default:
 		break;
