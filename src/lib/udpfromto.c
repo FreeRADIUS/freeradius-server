@@ -78,7 +78,12 @@ RCSID("$Id$")
  */
 #ifdef IPV6_PKTINFO
 #  ifdef __linux__
-#    define FR_IPV6_RECVPKTINFO IPV6_RECVPKTINFO
+#    ifdef IPV6_RECVPKTINFO
+#      define FR_IPV6_RECVPKTINFO IPV6_RECVPKTINFO
+/* Fallback to to using recvfrom */
+#    else
+#      undef IPV6_RECVPKTINFO
+#    endif
 #  else
 #    define FR_IPV6_RECVPKTINFO IPV6_PKTINFO
 #  endif
@@ -157,7 +162,7 @@ int recvfromto(int s, void *buf, size_t len, int flags,
 	struct sockaddr_storage si;
 	socklen_t si_len = sizeof(si);
 
-#if !defined(IP_PKTINFO) && !defined(IP_RECVDSTADDR) && !defined (IPV6_PKTINFO)
+#if !defined(IP_PKTINFO) && !defined(IP_RECVDSTADDR) && !defined(IPV6_PKTINFO)
 	/*
 	 *	If the recvmsg() flags aren't defined, fall back to
 	 *	using recvfrom().
