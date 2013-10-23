@@ -1361,9 +1361,11 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 		 */
 		qsort(array, (size_t) num_vps, sizeof(VALUE_PAIR *), attr_cmp);
 
+		packet->vps = NULL;
 		paircursor(&cursor, &packet->vps);
 		for (i = 0; i < num_vps; i++) {
-			pairinsert(&cursor, array[i]->next);
+			array[i]->next = NULL;
+			pairinsert(&cursor, array[i]);
 		}
 		talloc_free(array);
 	}
