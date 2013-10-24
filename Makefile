@@ -133,8 +133,8 @@ distclean: clean
 #
 ifeq "$(MAKECMDGOALS)" "reconfig"
 
-CONFIGURE_IN_FILES := $(shell find . -name configure.ac -print)
-CONFIGURE_FILES	   := $(patsubst %.in,%,$(CONFIGURE_IN_FILES))
+CONFIGURE_AC_FILES := $(shell find . -name configure.ac -print)
+CONFIGURE_FILES	   := $(patsubst %.ac,%,$(CONFIGURE_AC_FILES))
 
 #
 #  The GNU tools make autoconf=="missing autoconf", which then returns
