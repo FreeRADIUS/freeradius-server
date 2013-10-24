@@ -30,7 +30,7 @@ ifeq "${LIBTOOL}" "JLIBTOOL"
     # Note that we need to use a compilation rule that does NOT
     # include referencing ${LIBTOOL}, as we don't have a jlibtool
     # binary!
-    ${JLIBTOOL}: ${top_makedir}/jlibtool.c
+    ${JLIBTOOL}: ${top_makedir}/jlibtool.c | src/freeradius-devel
 	@mkdir -p $(dir $@)
 	@echo CC jlibtool.c
 	@${CC} $< -o $@ ${CFLAGS}
@@ -147,12 +147,12 @@ ifeq "${bm_shared_libs}" "yes"
     RELINK := local/
 
     # RPATH  : flags use to build executables that are installed,
-    #          with no dependency on the source. 
+    #          with no dependency on the source.
     # RELINL : flags use to build executables that can be run
     #          from the build directory / source tree.
     RPATH_FLAGS := -rpath ${libdir}
     RELINK_FLAGS := -rpath $(abspath ${BUILD_DIR})/lib/${RELINK}/.libs
-    
+
     RELINK_FLAGS_MIN := -rpath ${libdir}
 
     ifneq "${bm_static_libs}" "yes"
