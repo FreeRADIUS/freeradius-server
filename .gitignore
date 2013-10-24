@@ -11,6 +11,7 @@
 *.sig
 *.orig
 *.rej
+*.dSYM
 .libs
 .depends
 config.log
