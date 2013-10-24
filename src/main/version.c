@@ -44,18 +44,18 @@ static long ssl_built = OPENSSL_VERSION_NUMBER;
 int ssl_check_version(void)
 {
 	long ssl_linked;
-	
+
 	ssl_linked = SSLeay();
-	
+
 	if (ssl_linked != ssl_built) {
 		radlog(L_ERR, "libssl version mismatch."
 		       "  Built with: %lx\n  Linked: %lx",
 		       (unsigned long) ssl_built,
 		       (unsigned long) ssl_linked);
-	
+
 		return -1;
 	};
-	
+
 	return 0;
 }
 
@@ -65,10 +65,10 @@ int ssl_check_version(void)
  */
 const char *ssl_version(void)
 {
-	return SSLeay_version(SSLEAY_VERSION); 
+	return SSLeay_version(SSLEAY_VERSION);
 }
 #else
-int ssl_version_check(void) {
+int ssl_check_version(void) {
 	return 0;
 }
 
@@ -86,7 +86,7 @@ void version(void)
 
 	radlog(L_INFO, "%s: %s", progname, radiusd_version);
 	DEBUG3("Server was built with: ");
-		
+
 #ifdef WITH_ACCOUNTING
 	DEBUG3("  accounting");
 #endif
@@ -137,7 +137,7 @@ void version(void)
 	radlog(L_INFO, "You may redistribute copies of FreeRADIUS under the terms of the");
 	radlog(L_INFO, "GNU General Public License.");
 	radlog(L_INFO, "For more information about these matters, see the file named COPYRIGHT.");
-	
+
 	fflush(NULL);
 }
 
