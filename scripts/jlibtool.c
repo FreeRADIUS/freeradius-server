@@ -1213,7 +1213,7 @@ static void lt_const_free(const void *ptr)
         free(tmp);
 }
 
-static char load_install_path(char const *arg)
+static char *load_install_path(char const *arg)
 {
 	FILE *f;
 	char *path;
@@ -1667,7 +1667,6 @@ static int parse_output_file_name(char const *arg, command_t *cmd)
 	char const *name;
 	char const *ext;
 	char *newarg = NULL;
-	size_t pathlen;
 
 	cmd->fake_output_name = arg;
 
@@ -1696,7 +1695,6 @@ static int parse_output_file_name(char const *arg, command_t *cmd)
 	}
 
 	ext++;
-	pathlen = name - arg;
 
 	if (strcmp(ext, "la") == 0) {
 		assert(cmd->mode == MODE_LINK);
