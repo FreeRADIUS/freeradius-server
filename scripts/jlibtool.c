@@ -430,7 +430,7 @@ static void init_count_chars(count_chars *cc)
 	cc->num = 0;
 }
 
-static count_chars *alloc_countchars()
+static count_chars *alloc_countchars(void)
 {
 	count_chars *out;
 	out = lt_malloc(sizeof(count_chars));
@@ -570,7 +570,9 @@ static int external_spawn(command_t *cmd, UNUSED char const *file, char const **
 		pid_t pid;
 		pid = fork();
 		if (pid == 0) {
-			return execvp(argv[0], (char**)argv);
+			char **p;
+			memcpy(&p, &argv, sizeof(p));
+			return execvp(argv[0], p);	/* execvp doesn't always have the correctly consted signature */
 		}
 		else {
 			int statuscode;
@@ -858,21 +860,6 @@ static char *truncate_dll_name(char *path)
 }
 #endif
 
-static long safe_strtol(char const *nptr, char const **endptr, int base)
-{
-	long rv;
-
-	errno = 0;
-
-	rv = strtol(nptr, (char**)endptr, base);
-
-	if (errno == ERANGE) {
-		return 0;
-	}
-
-	return rv;
-}
-
 static void safe_mkdir(command_t *cmd, char const *path)
 {
 	int status;
@@ -943,47 +930,59 @@ static char const *file_name_stripped(char const *path)
 #endif
 
 /* version_info is in the form of MAJOR:MINOR:PATCH */
+#ifdef __APPLE__
+static long safe_strtol(char const *nptr, char **endptr, int base)
+{
+	long rv;
+
+	errno = 0;
+	rv = strtol(nptr, endptr, base);
+
+	if (errno == ERANGE) {
+		return 0;
+	}
+
+	return rv;
+}
+
 static char const *darwin_dynamic_link_function(char const *version_info)
 {
 	char *newarg;
-	long major, minor, patch;
+	long major, minor;
+	char *start, *p;
 
 	major = 0;
 	minor = 0;
-	patch = 0;
 
 	if (version_info) {
-		major = safe_strtol(version_info, &version_info, 10);
+		start = p = strdup(version_info);
+		major = safe_strtol(p, &p, 10);
 
-		if (version_info) {
-			if (version_info[0] == ':') {
-				version_info++;
-			}
+		if (p) {
+			if (p[0] == ':') p++;
 
-			minor = safe_strtol(version_info, &version_info, 10);
+			minor = safe_strtol(p, &p, 10);
+			if (p) {
+				if (p[0] == ':') p++;
 
-			if (version_info) {
-				if (version_info[0] == ':') {
-					version_info++;
-				}
-
-				patch = safe_strtol(version_info, &version_info, 10);
-
+				safe_strtol(p, &p, 10);
 			}
 		}
+
+		free(start);
 	}
 
 	/* Avoid -dylib_compatibility_version must be greater than zero errors. */
 	if (major == 0) {
 		major = 1;
 	}
-	newarg = (char*)lt_malloc(100);
-	snprintf(newarg, 99,
-			 "-compatibility_version %ld -current_version %ld.%ld",
-			 major, major, minor);
+	newarg = lt_malloc(100);
+
+	snprintf(newarg, 99, "-compatibility_version %ld -current_version %ld.%ld", major, major, minor);
 
 	return newarg;
 }
+#endif
 
 
 /*
@@ -1171,64 +1170,7 @@ static char *check_library_exists(command_t *cmd, char const *arg, int pathlen,
 	return NULL;
 }
 
-static char * load_install_path(char const *arg)
-{
-	FILE *f;
-	char *path;
 
-	f = fopen(arg,"r");
-	if (f == NULL) {
-		return NULL;
-	}
-
-	path = lt_malloc(PATH_MAX);
-
-	fgets(path, PATH_MAX, f);
-	fclose(f);
-
-	if (path[strlen(path)-1] == '\n') {
-		path[strlen(path)-1] = '\0';
-	}
-
-	/* Check that we have an absolute path.
-	 * Otherwise the file could be a GNU libtool file.
-	 */
-	if (path[0] != '/') {
-		free(path);
-
-		return NULL;
-	}
-	return path;
-}
-
-static char * load_noinstall_path(char const *arg, int pathlen)
-{
-	char *newarg, *expanded_path;
-	int newpathlen;
-
-	newarg = (char *)lt_malloc(strlen(arg) + 10);
-	strcpy(newarg, arg);
-	newarg[pathlen] = 0;
-
-	newpathlen = pathlen;
-	strcat(newarg, ".libs");
-	newpathlen += sizeof(".libs") - 1;
-	newarg[newpathlen] = 0;
-
-#ifdef HAS_REALPATH
-	expanded_path = lt_malloc(PATH_MAX);
-	expanded_path = realpath(newarg, expanded_path);
-	/* Uh, oh.  There was an error.  Fall back on our first guess. */
-	if (!expanded_path) {
-		expanded_path = newarg;
-	}
-#else
-	/* We might get ../ or something goofy.  Oh, well. */
-	expanded_path = newarg;
-#endif
-
-	return expanded_path;
-}
 
 static void add_dynamic_link_opts(command_t *cmd, count_chars *args)
 {
@@ -1263,6 +1205,73 @@ static void add_dynamic_link_opts(command_t *cmd, count_chars *args)
 
 /* Read the final install location and add it to runtime library search path. */
 #ifdef RPATH
+static void lt_const_free(const void *ptr)
+{
+        void *tmp;
+
+        memcpy(&tmp, &ptr, sizeof(tmp));
+        free(tmp);
+}
+
+static char load_install_path(char const *arg)
+{
+	FILE *f;
+	char *path;
+
+	f = fopen(arg,"r");
+	if (f == NULL) {
+		return NULL;
+	}
+
+	path = lt_malloc(PATH_MAX);
+
+	fgets(path, PATH_MAX, f);
+	fclose(f);
+
+	if (path[strlen(path)-1] == '\n') {
+		path[strlen(path)-1] = '\0';
+	}
+
+	/* Check that we have an absolute path.
+	 * Otherwise the file could be a GNU libtool file.
+	 */
+	if (path[0] != '/') {
+		free(path);
+
+		return NULL;
+	}
+	return path;
+}
+
+static char *load_noinstall_path(char const *arg, int pathlen)
+{
+	char *newarg, *expanded_path;
+	int newpathlen;
+
+	newarg = (char *)lt_malloc(strlen(arg) + 10);
+	strcpy(newarg, arg);
+	newarg[pathlen] = 0;
+
+	newpathlen = pathlen;
+	strcat(newarg, ".libs");
+	newpathlen += sizeof(".libs") - 1;
+	newarg[newpathlen] = 0;
+
+#ifdef HAS_REALPATH
+	expanded_path = lt_malloc(PATH_MAX);
+	expanded_path = realpath(newarg, expanded_path);
+	/* Uh, oh.  There was an error.  Fall back on our first guess. */
+	if (!expanded_path) {
+		expanded_path = newarg;
+	}
+#else
+	/* We might get ../ or something goofy.  Oh, well. */
+	expanded_path = newarg;
+#endif
+
+	return expanded_path;
+}
+
 static void add_rpath(count_chars *cc, char const *path)
 {
 	int size = 0;
@@ -1311,7 +1320,7 @@ static void add_rpath_noinstall(count_chars *cc, char const *arg, int pathlen)
 }
 #endif
 
-#ifdef DYNAMIC_LINK_NO_INSTALL
+#if 0
 static void add_dylink_noinstall(count_chars *cc, char const *arg, int pathlen,
 						  int extlen)
 {
@@ -1658,7 +1667,7 @@ static int parse_output_file_name(char const *arg, command_t *cmd)
 	char const *name;
 	char const *ext;
 	char *newarg = NULL;
-	int pathlen;
+	size_t pathlen;
 
 	cmd->fake_output_name = arg;
 
@@ -2212,13 +2221,11 @@ static int run_mode(command_t *cmd)
 
 		if (l) {
 			*l = '\0';
-			l = libpath;
 		} else {
-			l = ".libs/";
+			strcpy(libpath, ".libs/");
 		}
 
-		l = "./build/lib/.libs";
-		setenv(LD_LIBRARY_PATH_LOCAL, l, 1);
+		setenv(LD_LIBRARY_PATH_LOCAL, libpath, 1);
 		rv = run_command(cmd, cmd->arglist);
 		if (rv) goto finish;
 	}
