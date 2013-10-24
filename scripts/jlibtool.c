@@ -457,9 +457,12 @@ static void push_count_chars(count_chars *cc, char const *newval)
 	cc->vals[cc->num++] = newval;
 }
 
-static void pop_count_chars(count_chars *cc)
+static char const *pop_count_chars(count_chars *cc)
 {
-	cc->num--;
+	if (!cc->num) {
+		return NULL;
+	}
+	return cc->vals[--cc->num];
 }
 
 static void insert_count_chars(count_chars *cc, char const *newval, int position)
@@ -484,7 +487,7 @@ static void append_count_chars(count_chars *cc, count_chars *cctoadd)
 	}
 }
 
-static char const *flatten_count_chars(count_chars *cc, int space)
+static char const *flatten_count_chars(count_chars *cc, char delim)
 {
 	int i, size;
 	char *newval;
@@ -493,20 +496,22 @@ static char const *flatten_count_chars(count_chars *cc, int space)
 	for (i = 0; i < cc->num; i++) {
 		if (cc->vals[i]) {
 			size += strlen(cc->vals[i]) + 1;
-			if (space) {
-			  size++;
+			if (delim) {
+				size++;
 			}
 		}
 	}
 
 	newval = (char*)lt_malloc(size + 1);
-	newval[0] = 0;
+	newval[0] = '\0';
 
 	for (i = 0; i < cc->num; i++) {
 		if (cc->vals[i]) {
 			strcat(newval, cc->vals[i]);
-			if (space) {
-				strcat(newval, " ");
+			if (delim) {
+				size_t len = strlen(newval);
+				newval[len] = delim;
+				newval[len + 1] = '\0';
 			}
 		}
 	}
@@ -605,7 +610,7 @@ static int run_command(command_t *cmd, count_chars *cc)
 
 	append_count_chars(&tmpcc, cc);
 
-	raw = flatten_count_chars(&tmpcc, 1);
+	raw = flatten_count_chars(&tmpcc, ' ');
 	command = shell_esc(raw);
 
 	memcpy(&tmp, &raw, sizeof(tmp));
@@ -685,6 +690,7 @@ static void add_runtime_dir_lib(char const *arg, command_t *cmd)
 	(void) arg;			/* -Wunused */
 	(void) cmd;
 #endif
+	push_count_chars(cmd->rpaths, arg);
 }
 
 static int parse_long_opt(char const *arg, command_t *cmd)
@@ -696,13 +702,15 @@ static int parse_long_opt(char const *arg, command_t *cmd)
 	if (equal_pos) {
 		strncpy(var, arg, equal_pos - arg);
 		var[equal_pos - arg] = 0;
-	if (strlen(equal_pos + 1) >= sizeof(var)) return 0;
+		if (strlen(equal_pos + 1) >= sizeof(var)) {
+			return 0;
+		}
 		strcpy(value, equal_pos + 1);
 	} else {
 		strncpy(var, arg, sizeof(var) - 1);
 		var[sizeof(var) - 1] = '\0';
 
-	value[0] = '\0';
+		value[0] = '\0';
 	}
 
 	if (strcmp(var, "silent") == 0) {
@@ -1099,7 +1107,7 @@ static char const *check_object_exists(command_t *cmd, char const *arg, int argl
  * 1 - .libs suffix
  */
 static char *check_library_exists(command_t *cmd, char const *arg, int pathlen,
-				  int libdircheck, enum lib_type*libtype)
+				  int libdircheck, enum lib_type *libtype)
 {
 	char *newarg, *ext;
 	int pass, rv, newpathlen;
@@ -1432,7 +1440,7 @@ static int explode_static_lib(command_t *cmd, char const *lib)
 	push_count_chars(&tmpdir_cc, ".libs/");
 	push_count_chars(&tmpdir_cc, name);
 	push_count_chars(&tmpdir_cc, ".exploded/");
-	tmpdir = flatten_count_chars(&tmpdir_cc, 0);
+	tmpdir = flatten_count_chars(&tmpdir_cc, '\0');
 
 	NOTICE("Making: %s\n", tmpdir);
 
@@ -2201,7 +2209,9 @@ static int run_mode(command_t *cmd)
 		break;
 	case MODE_EXECUTE:
 	{
-		char *l, libpath[PATH_MAX];
+		char const *path;
+		char *p;
+		count_chars *libpath = alloc_countchars();
 
 		if (strlen(cmd->arglist->vals[0]) >= PATH_MAX) {
 			ERROR("Libpath too long no buffer space");
@@ -2210,20 +2220,25 @@ static int run_mode(command_t *cmd)
 			goto finish;
 		}
 
-		strcpy(libpath, cmd->arglist->vals[0]);
-		add_dotlibs(libpath);
-		l = strrchr(libpath, '/');
-		if (!l) {
-			l = strrchr(libpath, '\\');
+		push_count_chars(cmd->rpaths, cmd->arglist->vals[0]);
+
+		while ((path = pop_count_chars(cmd->rpaths))) {
+			char buffer[PATH_MAX];
+
+			strcpy(buffer, path);
+			add_dotlibs(buffer);
+			p = strrchr(buffer, '/');
+			if (!p) {
+				p = strrchr(buffer, '\\');	/* Presumably windows ? */
+			}
+			if (p) {
+				*p = '\0';
+			}
+
+			push_count_chars(libpath, buffer);
 		}
 
-		if (l) {
-			*l = '\0';
-		} else {
-			strcpy(libpath, ".libs/");
-		}
-
-		setenv(LD_LIBRARY_PATH_LOCAL, libpath, 1);
+		setenv(LD_LIBRARY_PATH_LOCAL, flatten_count_chars(libpath, ':'), 1);
 		rv = run_command(cmd, cmd->arglist);
 		if (rv) goto finish;
 	}

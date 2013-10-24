@@ -26,7 +26,7 @@ include scripts/boiler.mk
 
 test: build.raddb ${BUILD_DIR}/bin/radiusd ${BUILD_DIR}/bin/radclient
 	@$(MAKE) -C raddb/certs
-	@./build/make/jlibtool --mode=execute ./build/bin/radiusd -XxxCMd ./raddb -n debug -D ./share
+	@./build/make/jlibtool -R ./build/lib --mode=execute ./build/bin/radiusd -XxxCMd ./raddb -n debug -D ./share
 	@$(MAKE) -C src/tests tests
 
 #  Tests specifically for Travis.  We do a LOT more than just
