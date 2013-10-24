@@ -2935,7 +2935,7 @@ fi
       if test "x$SW_VERS" = "xyes" && test "x$XCODEBUILD" = "xyes"; then
         { $as_echo "$as_me:${as_lineno-$LINENO}: determining OSX SDK path" >&5
 $as_echo "$as_me: determining OSX SDK path" >&6;}
-        osx_sdk_path=$(xcodebuild -version -sdk macosx$(sw_vers -productVersion) Path)
+        osx_sdk_path=$(xcodebuild -version -sdk macosx$(sw_vers -productVersion |  egrep -o '^[0-9]+\.[0-9]+') Path)
         { $as_echo "$as_me:${as_lineno-$LINENO}: result: $osx_sdk_path" >&5
 $as_echo "$osx_sdk_path" >&6; }
 

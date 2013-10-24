@@ -72,7 +72,7 @@ case "$host" in
 
       if test "x$SW_VERS" = "xyes" && test "x$XCODEBUILD" = "xyes"; then
         AC_MSG_NOTICE([determining OSX SDK path])
-        osx_sdk_path=$(xcodebuild -version -sdk macosx$(sw_vers -productVersion) Path)
+        osx_sdk_path=$(xcodebuild -version -sdk macosx$(sw_vers -productVersion |  egrep -o '^[[0-9]]+\.[[0-9]]+') Path)
         AC_MSG_RESULT([$osx_sdk_path])
 
         dnl #
