@@ -20,6 +20,11 @@ FreeRADIUS 3.0.1 Mon  7 Oct 2013 15:48:14 EDT urgency=medium
 	  XIDs.
 	* Fix issue with sql_ippool.
 	* sqlcounter now uses 64-bit counters, to deal with 4G overflow.
+	* Fix issues with DHCP subsystem
+	* Don't build / install disabled modules, or their config
+	  files.
+	* Fix build for OSX Mavericks, which hid the header files
+	  in a magical place.
 
 FreeRADIUS 3.0.0 Mon  7 Oct 2013 15:48:14 EDT urgency=medium
 	Feature improvements
