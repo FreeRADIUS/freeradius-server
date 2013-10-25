@@ -183,7 +183,8 @@ CONFIGURE_ARGS	   := $(shell head -10 config.log | grep '^  \$$' | sed 's/^..../
 
 src/%all.mk: src/%all.mk.in src/%configure
 	@echo CONFIGURE $(dir $@)
-	@cd $(dir $<) && ./configure $(CONFIGURE_ARGS)
+	@rm -f ./config.cache $(dir $<)/config.cache
+	@cd $(dir $<) && CPPFLAGS=$(DARWIN_CFLAGS) CFLAGS=$(DARWIN_CFLAGS) ./configure $(CONFIGURE_ARGS)
 endif
 
 .PHONY: check-includes
