@@ -53,15 +53,18 @@ static int sql_socket_destructor(void *c)
 
 	if (conn->statement) {
 		SQLFreeStmt(conn->statement, SQL_DROP);
+		conn->statement = NULL;
 	}
 
 	if (conn->dbc) {
 		SQLDisconnect(conn->dbc);
 		SQLFreeConnect(conn->dbc);
+		conn->dbc = NULL;
 	}
 
 	if (conn->env) {
 		SQLFreeEnv(conn->env);
+		conn->env = NULL;
 	}
 
 	return 0;
@@ -82,22 +85,22 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 	talloc_set_destructor((void *) conn, sql_socket_destructor);
 
 	/* 1. Allocate environment handle and register version */
-	err_handle = SQLAllocHandle(SQL_HANDLE_ENV,SQL_NULL_HANDLE,&conn->env);
+	err_handle = SQLAllocHandle(SQL_HANDLE_ENV, SQL_NULL_HANDLE, &conn->env);
 	if (sql_state(err_handle, handle, config)) {
-		ERROR("rlm_sql_unixodbc: Can't allocate environment handle\n");
+		ERROR("rlm_sql_unixodbc: Can't allocate environment handle");
 		return -1;
 	}
 
 	err_handle = SQLSetEnvAttr(conn->env, SQL_ATTR_ODBC_VERSION, (void*)SQL_OV_ODBC3, 0);
 	if (sql_state(err_handle, handle, config)) {
-		ERROR("rlm_sql_unixodbc: Can't register ODBC version\n");
+		ERROR("rlm_sql_unixodbc: Can't register ODBC version");
 		return -1;
 	}
 
 	/* 2. Allocate connection handle */
 	err_handle = SQLAllocHandle(SQL_HANDLE_DBC, conn->env, &conn->dbc);
 	if (sql_state(err_handle, handle, config)) {
-		ERROR("rlm_sql_unixodbc: Can't allocate connection handle\n");
+		ERROR("rlm_sql_unixodbc: Can't allocate connection handle");
 		return -1;
     	}
 
@@ -115,14 +118,14 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 	}
 
 	if (sql_state(err_handle, handle, config)) {
-		ERROR("rlm_sql_unixodbc: Connection failed\n");
+		ERROR("rlm_sql_unixodbc: Connection failed");
 		return -1;
 	}
 
 	/* 4. Allocate the statement */
-	err_handle = SQLAllocStmt(conn->dbc, &conn->statement);
+	err_handle = SQLAllocHandle(SQL_HANDLE_STMT, conn->dbc, &conn->statement);
 	if (sql_state(err_handle, handle, config)) {
-		ERROR("rlm_sql_unixodbc: Can't allocate the statement\n");
+		ERROR("rlm_sql_unixodbc: Can't allocate the statement");
 		return -1;
 	}
 
@@ -151,7 +154,7 @@ static sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config,
 	}
 	if ((state = sql_state(err_handle, handle, config))) {
 		if(state == RLM_SQL_RECONNECT) {
-			DEBUG("rlm_sql_unixodbc: rlm_sql will attempt to reconnect\n");
+			DEBUG("rlm_sql_unixodbc: rlm_sql will attempt to reconnect");
 		}
 		return state;
 	}
@@ -168,9 +171,9 @@ static sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config,
  *************************************************************************/
 static sql_rcode_t sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char const *query) {
 	rlm_sql_unixodbc_conn_t *conn = handle->conn;
-	SQLINTEGER column;
+	SQLINTEGER i;
 	SQLLEN len;
-	int numfields;
+	int colcount;
 	int state;
 
 	/* Only state = 0 means success */
@@ -178,20 +181,20 @@ static sql_rcode_t sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *
 		return state;
 	}
 
-	numfields=sql_num_fields(handle, config);
-	if (numfields < 0) {
+	colcount = sql_num_fields(handle, config);
+	if (colcount < 0) {
 		return -1;
 	}
 
 	/* Reserving memory for result */
-	conn->row = (char **) rad_malloc((numfields+1)*sizeof(char *));
-	conn->row[numfields] = NULL;
+	conn->row = talloc_zero_array(conn, char *, colcount + 1); /* Space for pointers */
 
-	for(column = 1; column <= numfields; column++) {
-		SQLColAttributes(conn->statement,((SQLUSMALLINT) column),SQL_COLUMN_LENGTH,NULL,0,NULL,&len);
-		conn->row[column-1] = (char*)rad_malloc((int)++len);
-		SQLBindCol(conn->statement, column, SQL_C_CHAR, (SQLCHAR *)conn->row[column-1], len, NULL);
+	for (i = 1; i < colcount; i++) {
+		SQLColAttributes(conn->statement, ((SQLUSMALLINT) i), SQL_COLUMN_LENGTH, NULL, 0, NULL, &len);
+		conn->row[i - 1] = talloc_array(conn->row, char, ++len);
+		SQLBindCol(conn->statement, i, SQL_C_CHAR, (SQLCHAR *)conn->row[i - 1], len, NULL);
 	}
+
 	return 0;
 }
 
@@ -290,8 +293,20 @@ static sql_rcode_t sql_finish_select_query(rlm_sql_handle_t * handle, rlm_sql_co
 	rlm_sql_unixodbc_conn_t *conn = handle->conn;
 
 	sql_free_result(handle, config);
+
+	/*
+	 *	SQL_CLOSE - The cursor (if any) associated with the statement
+	 *	handle (StatementHandle) is closed and all pending results are
+	 *	discarded. The application can reopen the cursor by calling
+	 *	SQLExecute() with the same or different values in the
+	 *	application variables (if any) that are bound to StatementHandle.
+	 *	If no cursor has been associated with the statement handle,
+	 *	this option has no effect (no warning or error is generated).
+	 *
+	 *	So, this call does NOT free the statement at all, it merely
+	 *	resets it for the next call. This is terrible terrible naming.
+	 */
 	SQLFreeStmt(conn->statement, SQL_CLOSE);
-	conn->statement = NULL;
 
 	return 0;
 }
@@ -307,7 +322,6 @@ static sql_rcode_t sql_finish_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_con
 	rlm_sql_unixodbc_conn_t *conn = handle->conn;
 
 	SQLFreeStmt(conn->statement, SQL_CLOSE);
-	conn->statement = NULL;
 
 	return 0;
 }
@@ -320,22 +334,11 @@ static sql_rcode_t sql_finish_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_con
  *	       for a result set
  *
  *************************************************************************/
-static sql_rcode_t sql_free_result(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
+static sql_rcode_t sql_free_result(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config) {
 	rlm_sql_unixodbc_conn_t *conn = handle->conn;
-	int column, numfileds=sql_num_fields(handle, config);
 
-	/* Freeing reserved memory */
-	if(conn->row != NULL) {
-		for(column=0; column<numfileds; column++) {
-			if(conn->row[column] != NULL) {
-				free(conn->row[column]);
-				conn->row[column] = NULL;
-			}
-		}
+	TALLOC_FREE(conn->row);
 
-		free(conn->row);
-		conn->row = NULL;
-	}
 	return 0;
 }
 
@@ -396,7 +399,7 @@ static sql_rcode_t sql_state(long err_handle, rlm_sql_handle_t *handle, UNUSED r
 		switch(state[1]) {
 		/* SQLSTATE 01 class contains info and warning messages */
 		case '1':
-			INFO("rlm_sql_unixodbc: %s %s\n", state, error);
+			INFO("rlm_sql_unixodbc: %s %s", state, error);
 			/* FALL-THROUGH */
 		case '0':		/* SQLSTATE 00 class means success */
 			res = 0;
@@ -404,13 +407,13 @@ static sql_rcode_t sql_state(long err_handle, rlm_sql_handle_t *handle, UNUSED r
 
 		/* SQLSTATE 08 class describes various connection errors */
 		case '8':
-			ERROR("rlm_sql_unixodbc: SQL down %s %s\n", state, error);
+			ERROR("rlm_sql_unixodbc: SQL down %s %s", state, error);
 			res = RLM_SQL_RECONNECT;
 			break;
 
 		/* any other SQLSTATE means error */
 		default:
-			ERROR("rlm_sql_unixodbc: %s %s\n", state, error);
+			ERROR("rlm_sql_unixodbc: %s %s", state, error);
 			res = -1;
 		    	break;
 		}
