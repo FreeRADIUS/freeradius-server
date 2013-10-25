@@ -33,7 +33,7 @@ ifeq "${LIBTOOL}" "JLIBTOOL"
     ${JLIBTOOL}: ${top_makedir}/jlibtool.c
 	@mkdir -p $(dir $@)
 	@echo CC jlibtool.c
-	@${CC} $< -o $@
+	@${CC} $< -o $@ ${DARWIN_CFLAGS}
 
     clean: jlibtool_clean
 
