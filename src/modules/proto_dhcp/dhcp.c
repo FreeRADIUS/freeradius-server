@@ -537,13 +537,13 @@ static int fr_dhcp_attr2vp(RADIUS_PACKET *packet, VALUE_PAIR *vp, uint8_t const 
 	switch (vp->da->type) {
 	case PW_TYPE_BYTE:
 		if (alen != 1) goto raw;
-		vp->vp_integer = p[0];
+		vp->vp_byte = p[0];
 		break;
 
 	case PW_TYPE_SHORT:
 		if (alen != 2) goto raw;
-		memcpy(&vp->vp_integer, p, 2);
-		vp->vp_integer = ntohs(vp->vp_integer);
+		memcpy(&vp->vp_short, p, 2);
+		vp->vp_short = ntohs(vp->vp_short);
 		break;
 
 	case PW_TYPE_INTEGER:
@@ -767,12 +767,12 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 
 		switch (vp->da->type) {
 		case PW_TYPE_BYTE:
-			vp->vp_integer = p[0];
+			vp->vp_byte = p[0];
 			vp->length = 1;
 			break;
 
 		case PW_TYPE_SHORT:
-			vp->vp_integer = (p[0] << 8) | p[1];
+			vp->vp_short = (p[0] << 8) | p[1];
 			vp->length = 2;
 			break;
 
@@ -943,13 +943,13 @@ static size_t fr_dhcp_vp2attr(VALUE_PAIR *vp, uint8_t *p, UNUSED size_t room)
 	switch (vp->da->type) {
 	case PW_TYPE_BYTE:
 		length = 1;
-		*p = vp->vp_integer & 0xff;
+		*p = vp->vp_byte;
 		break;
 
 	case PW_TYPE_SHORT:
 		length = 2;
-		p[0] = (vp->vp_integer >> 8) & 0xff;
-		p[1] = vp->vp_integer & 0xff;
+		p[0] = (vp->vp_short >> 8) & 0xff;
+		p[1] = vp->vp_short & 0xff;
 		break;
 
 	case PW_TYPE_INTEGER:
@@ -1292,12 +1292,12 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 
 			switch (vp->da->type) {
 			case PW_TYPE_BYTE:
-				vp->vp_integer = p[0];
+				vp->vp_byte = p[0];
 				vp->length = 1;
 				break;
 
 			case PW_TYPE_SHORT:
-				vp->vp_integer = (p[0] << 8) | p[1];
+				vp->vp_short = (p[0] << 8) | p[1];
 				vp->length = 2;
 				break;
 

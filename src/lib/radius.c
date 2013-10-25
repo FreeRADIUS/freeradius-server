@@ -858,14 +858,14 @@ static ssize_t vp2data_any(RADIUS_PACKET const *packet,
 
 	case PW_TYPE_BYTE:
 		len = 1;	/* just in case */
-		array[0] = vp->vp_integer & 0xff;
+		array[0] = vp->vp_byte;
 		data = array;
 		break;
 
 	case PW_TYPE_SHORT:
 		len = 2;	/* just in case */
-		array[0] = (vp->vp_integer >> 8) & 0xff;
-		array[1] = vp->vp_integer & 0xff;
+		array[0] = (vp->vp_short >> 8) & 0xff;
+		array[1] = vp->vp_short & 0xff;
 		data = array;
 		break;
 
@@ -3745,11 +3745,11 @@ ssize_t data2vp(RADIUS_PACKET *packet,
 		break;
 
 	case PW_TYPE_BYTE:
-		vp->vp_integer = data[0];
+		vp->vp_byte = data[0];
 		break;
 
 	case PW_TYPE_SHORT:
-		vp->vp_integer = (data[0] << 8) | data[1];
+		vp->vp_short = (data[0] << 8) | data[1];
 		break;
 
 	case PW_TYPE_INTEGER:
@@ -3936,12 +3936,12 @@ ssize_t rad_vp2data(VALUE_PAIR const *vp, uint8_t *out, size_t outlen)
 			break;
 
 		case PW_TYPE_BYTE:
-			out[0] = vp->vp_integer & 0xff;
+			out[0] = vp->vp_byte;
 			break;
 
 		case PW_TYPE_SHORT:
-			out[0] = (vp->vp_integer >> 8) & 0xff;
-			out[1] = vp->vp_integer & 0xff;
+			out[0] = (vp->vp_short >> 8) & 0xff;
+			out[1] = vp->vp_short & 0xff;
 			break;
 
 		case PW_TYPE_INTEGER:
