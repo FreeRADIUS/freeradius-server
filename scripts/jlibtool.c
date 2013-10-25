@@ -430,7 +430,7 @@ static void init_count_chars(count_chars *cc)
 	cc->num = 0;
 }
 
-static count_chars *alloc_countchars()
+static count_chars *alloc_countchars(void)
 {
 	count_chars *out;
 	out = lt_malloc(sizeof(count_chars));
@@ -457,9 +457,12 @@ static void push_count_chars(count_chars *cc, char const *newval)
 	cc->vals[cc->num++] = newval;
 }
 
-static void pop_count_chars(count_chars *cc)
+static char const *pop_count_chars(count_chars *cc)
 {
-	cc->num--;
+	if (!cc->num) {
+		return NULL;
+	}
+	return cc->vals[--cc->num];
 }
 
 static void insert_count_chars(count_chars *cc, char const *newval, int position)
@@ -484,7 +487,7 @@ static void append_count_chars(count_chars *cc, count_chars *cctoadd)
 	}
 }
 
-static char const *flatten_count_chars(count_chars *cc, int space)
+static char const *flatten_count_chars(count_chars *cc, char delim)
 {
 	int i, size;
 	char *newval;
@@ -493,20 +496,22 @@ static char const *flatten_count_chars(count_chars *cc, int space)
 	for (i = 0; i < cc->num; i++) {
 		if (cc->vals[i]) {
 			size += strlen(cc->vals[i]) + 1;
-			if (space) {
-			  size++;
+			if (delim) {
+				size++;
 			}
 		}
 	}
 
 	newval = (char*)lt_malloc(size + 1);
-	newval[0] = 0;
+	newval[0] = '\0';
 
 	for (i = 0; i < cc->num; i++) {
 		if (cc->vals[i]) {
 			strcat(newval, cc->vals[i]);
-			if (space) {
-				strcat(newval, " ");
+			if (delim) {
+				size_t len = strlen(newval);
+				newval[len] = delim;
+				newval[len + 1] = '\0';
 			}
 		}
 	}
@@ -605,7 +610,7 @@ static int run_command(command_t *cmd, count_chars *cc)
 
 	append_count_chars(&tmpcc, cc);
 
-	raw = flatten_count_chars(&tmpcc, 1);
+	raw = flatten_count_chars(&tmpcc, ' ');
 	command = shell_esc(raw);
 
 	memcpy(&tmp, &raw, sizeof(tmp));
@@ -696,13 +701,15 @@ static int parse_long_opt(char const *arg, command_t *cmd)
 	if (equal_pos) {
 		strncpy(var, arg, equal_pos - arg);
 		var[equal_pos - arg] = 0;
-	if (strlen(equal_pos + 1) >= sizeof(var)) return 0;
+		if (strlen(equal_pos + 1) >= sizeof(var)) {
+			return 0;
+		}
 		strcpy(value, equal_pos + 1);
 	} else {
 		strncpy(var, arg, sizeof(var) - 1);
 		var[sizeof(var) - 1] = '\0';
 
-	value[0] = '\0';
+		value[0] = '\0';
 	}
 
 	if (strcmp(var, "silent") == 0) {
@@ -1102,7 +1109,7 @@ static char const *check_object_exists(command_t *cmd, char const *arg, int argl
  * 1 - .libs suffix
  */
 static char *check_library_exists(command_t *cmd, char const *arg, int pathlen,
-				  int libdircheck, enum lib_type*libtype)
+				  int libdircheck, enum lib_type *libtype)
 {
 	char *newarg, *ext;
 	int pass, rv, newpathlen;
@@ -1203,7 +1210,7 @@ static char * load_install_path(char const *arg)
 	return path;
 }
 
-static char * load_noinstall_path(char const *arg, int pathlen)
+static char *load_noinstall_path(char const *arg, int pathlen)
 {
 	char *newarg, *expanded_path;
 	int newpathlen;
@@ -1660,7 +1667,7 @@ static int parse_output_file_name(char const *arg, command_t *cmd)
 	char const *name;
 	char const *ext;
 	char *newarg = NULL;
-	int pathlen;
+	size_t pathlen;
 
 	cmd->fake_output_name = arg;
 
