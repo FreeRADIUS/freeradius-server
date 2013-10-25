@@ -79,9 +79,9 @@ case "$host" in
         dnl #  We need to export these, else the child configure scripts all fail
         dnl #  their compiler checks.
         dnl #
-        export CFLAGS="--sysroot=$osx_sdk_path $CFLAGS"
-        export CPPFLAGS="--sysroot=$osx_sdk_path $CPPFLAGS"
-        export LDFLAGS="-L$osx_sdk_path/usr/lib/ $LDFLAGS"
+        export CFLAGS="$CFLAGS --sysroot=$osx_sdk_path "
+        export CPPFLAGS="$CPPFLAGS --sysroot=$osx_sdk_path "
+        export LDFLAGS="$LDFLAGS -L$osx_sdk_path/usr/lib/ "
       fi
     else
       AC_MSG_RESULT(yes)
@@ -604,7 +604,7 @@ if test "x$WITH_OPENSSL" = xyes; then
   old_LIBS=$LIBS
   old_LDFLAGS="$LDFLAGS"
   if test "x$OPENSSL_LIB_DIR" != "x"; then
-    LDFLAGS="$LDFLAGS -L$OPENSSL_LIB_DIR"
+    LDFLAGS="-L$OPENSSL_LIB_DIR $LDFLAGS"
   fi
   AC_CHECK_LIB(crypto, DH_new,
     [
@@ -747,7 +747,7 @@ if test "x$WITH_OPENSSL" = xyes; then
   else
     old_CPPFLAGS=$CPPFLAGS
     if test "x$OPENSSL_INCLUDE_DIR" != "x"; then
-	CPPFLAGS="$CPPFLAGS -I$OPENSSL_INCLUDE_DIR"
+	CPPFLAGS="-I$OPENSSL_INCLUDE_DIR $CPPFLAGS"
     fi
     dnl # stupid RedHat shit
     CPPFLAGS="$CPPFLAGS -DOPENSSL_NO_KRB5"

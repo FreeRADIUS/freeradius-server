@@ -2939,9 +2939,9 @@ $as_echo "$as_me: determining OSX SDK path" >&6;}
         { $as_echo "$as_me:${as_lineno-$LINENO}: result: $osx_sdk_path" >&5
 $as_echo "$osx_sdk_path" >&6; }
 
-                                        export CFLAGS="--sysroot=$osx_sdk_path $CFLAGS"
-        export CPPFLAGS="--sysroot=$osx_sdk_path $CPPFLAGS"
-        export LDFLAGS="-L$osx_sdk_path/usr/lib/ $LDFLAGS"
+                                        export CFLAGS="$CFLAGS --sysroot=$osx_sdk_path "
+        export CPPFLAGS="$CPPFLAGS --sysroot=$osx_sdk_path "
+        export LDFLAGS="$LDFLAGS -L$osx_sdk_path/usr/lib/ "
       fi
     else
       { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
@@ -20549,7 +20549,7 @@ if test "x$WITH_OPENSSL" = xyes; then
   old_LIBS=$LIBS
   old_LDFLAGS="$LDFLAGS"
   if test "x$OPENSSL_LIB_DIR" != "x"; then
-    LDFLAGS="$LDFLAGS -L$OPENSSL_LIB_DIR"
+    LDFLAGS="-L$OPENSSL_LIB_DIR $LDFLAGS"
   fi
   { $as_echo "$as_me:${as_lineno-$LINENO}: checking for DH_new in -lcrypto" >&5
 $as_echo_n "checking for DH_new in -lcrypto... " >&6; }
@@ -21354,7 +21354,7 @@ $as_echo "$as_me: skipping test for openssl/ssl.h" >&6;}
   else
     old_CPPFLAGS=$CPPFLAGS
     if test "x$OPENSSL_INCLUDE_DIR" != "x"; then
-	CPPFLAGS="$CPPFLAGS -I$OPENSSL_INCLUDE_DIR"
+	CPPFLAGS="-I$OPENSSL_INCLUDE_DIR $CPPFLAGS"
     fi
         CPPFLAGS="$CPPFLAGS -DOPENSSL_NO_KRB5"
     for ac_header in \
