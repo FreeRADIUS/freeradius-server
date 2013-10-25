@@ -6739,7 +6739,7 @@ if test "x$WITH_OPENSSL" = xyes; then
   OPENSSL_INCLUDE="-DNO_OPENSSL"
   OPENSSL_LIBS=
   if test "x$OPENSSL_LIB_DIR" != "x"; then
-    LDFLAGS="$LDFLAGS -L$OPENSSL_LIB_DIR"
+    LDFLAGS="-L$OPENSSL_LIB_DIR $LDFLAGS"
   fi
 
         { $as_echo "$as_me:${as_lineno-$LINENO}: checking for DH_new in -lcrypto" >&5
@@ -6829,6 +6829,7 @@ $as_echo "#define HAVE_LIBSSL 1" >>confdefs.h
             OPENSSL_LIBS="-L$OPENSSL_LIB_DIR"
           fi
           OPENSSL_LIBS="$OPENSSL_LIBS -lcrypto -lssl -lcrypto"
+          LIBS="$OPENSSL_LIBS $LIBS"
 
 else
 
@@ -6845,8 +6846,10 @@ fi
 
 
         old_CPPFLAGS=$CPPFLAGS
+  old_CFLAGS=$CFLAGS
   if test "x$OPENSSL_INCLUDE_DIR" != "x"; then
-    CPPFLAGS="$CPPFLAGS -I$OPENSSL_INCLUDE_DIR"
+    CPPFLAGS="-I$OPENSSL_INCLUDE_DIR $CPPFLAGS"
+    CFLAGS="-I$OPENSSL_INCLUDE_DIR $CFLAGS"
   fi
 
         CPPFLAGS="$CPPFLAGS -DOPENSSL_NO_KRB5"
@@ -6969,9 +6972,14 @@ rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
 fi
 
 
-  CPPFLAGS=$old_CPPFLAGS
-  LIBS=$old_LIBS
-  LDFLAGS="$old_LDFLAGS"
+  if test "x$OPENSSL_LIBS" = x; then
+    LIBS=$old_LIBS
+    LDFLAGS="$old_LDFLAGS"
+  fi
+  if test "x$OPENSSL_INCLUDE" = x; then
+    CPPFLAGS=$old_CPPFLAGS
+    CFLAGS=$old_CFLAGS
+  fi
 fi
 
 

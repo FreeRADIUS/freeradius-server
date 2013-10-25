@@ -6,6 +6,6 @@ SOURCES += ${top_srcdir}/src/main/cb.c ${top_srcdir}/src/main/tls.c
 endif
 
 TGT_PREREQS := libfreeradius-radius.a libfreeradius-eap.a
-TGT_LDLIBS  := $(LIBS) $(OPENSSL_LIBS)
+TGT_LDLIBS  := $(LIBS)
 
 SRC_INCDIRS  := libeap
