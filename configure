@@ -5294,6 +5294,8 @@ fi
 
 
 
+LTCFLAGS=" "
+
 # Check whether --enable-shared was given.
 if test "${enable_shared+set}" = set; then :
   enableval=$enable_shared; p=${PACKAGE-default}
@@ -5854,7 +5856,7 @@ ia64-*-hpux*)
   ;;
 *-*-irix6*)
   # Find out which ABI we are using.
-  echo '#line 5857 "configure"' > conftest.$ac_ext
+  echo '#line 5859 "configure"' > conftest.$ac_ext
   if { { eval echo "\"\$as_me\":${as_lineno-$LINENO}: \"$ac_compile\""; } >&5
   (eval $ac_compile) 2>&5
   ac_status=$?
@@ -7620,11 +7622,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:7623: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:7625: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:7627: \$? = $ac_status" >&5
+   echo "$as_me:7629: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -7910,11 +7912,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:7913: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:7915: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:7917: \$? = $ac_status" >&5
+   echo "$as_me:7919: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -8014,11 +8016,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:8017: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:8019: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:8021: \$? = $ac_status" >&5
+   echo "$as_me:8023: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -10052,7 +10054,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<EOF
-#line 10055 "configure"
+#line 10057 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -10152,7 +10154,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<EOF
-#line 10155 "configure"
+#line 10157 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -12493,11 +12495,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:12496: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:12498: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:12500: \$? = $ac_status" >&5
+   echo "$as_me:12502: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -12597,11 +12599,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:12600: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:12602: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:12604: \$? = $ac_status" >&5
+   echo "$as_me:12606: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -14195,11 +14197,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:14198: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:14200: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:14202: \$? = $ac_status" >&5
+   echo "$as_me:14204: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -14299,11 +14301,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:14302: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:14304: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:14306: \$? = $ac_status" >&5
+   echo "$as_me:14308: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -16473,11 +16475,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:16476: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:16478: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:16480: \$? = $ac_status" >&5
+   echo "$as_me:16482: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -16763,11 +16765,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:16766: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:16768: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:16770: \$? = $ac_status" >&5
+   echo "$as_me:16772: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -16867,11 +16869,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:16870: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:16872: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:16874: \$? = $ac_status" >&5
+   echo "$as_me:16876: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -21346,24 +21348,137 @@ $as_echo "#define OSFSIA /**/" >>confdefs.h
 
 fi
 
-OPENSSL_INCLUDE="-DNO_OPENSSL"
 if test "x$WITH_OPENSSL" = xyes; then
-  if test "x$OPENSSL_LIBS" = "x"; then
-    { $as_echo "$as_me:${as_lineno-$LINENO}: skipping test for openssl/ssl.h" >&5
-$as_echo "$as_me: skipping test for openssl/ssl.h" >&6;}
-  else
-    old_CPPFLAGS=$CPPFLAGS
-    if test "x$OPENSSL_INCLUDE_DIR" != "x"; then
-	CPPFLAGS="-I$OPENSSL_INCLUDE_DIR $CPPFLAGS"
-    fi
+  old_LIBS=$LIBS
+  old_LDFLAGS="$LDFLAGS"
+
+  OPENSSL_INCLUDE="-DNO_OPENSSL"
+  OPENSSL_LIBS=
+  if test "x$OPENSSL_LIB_DIR" != "x"; then
+    LDFLAGS="-L$OPENSSL_LIB_DIR $LDFLAGS"
+  fi
+
+        { $as_echo "$as_me:${as_lineno-$LINENO}: checking for DH_new in -lcrypto" >&5
+$as_echo_n "checking for DH_new in -lcrypto... " >&6; }
+if ${ac_cv_lib_crypto_DH_new+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-lcrypto  $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char DH_new ();
+int
+main ()
+{
+return DH_new ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  ac_cv_lib_crypto_DH_new=yes
+else
+  ac_cv_lib_crypto_DH_new=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_crypto_DH_new" >&5
+$as_echo "$ac_cv_lib_crypto_DH_new" >&6; }
+if test "x$ac_cv_lib_crypto_DH_new" = xyes; then :
+
+      LIBS="-lcrypto $LIBS"
+
+$as_echo "#define HAVE_LIBCRYPTO 1" >>confdefs.h
+
+      { $as_echo "$as_me:${as_lineno-$LINENO}: checking for SSL_new in -lssl" >&5
+$as_echo_n "checking for SSL_new in -lssl... " >&6; }
+if ${ac_cv_lib_ssl_SSL_new+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-lssl  $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char SSL_new ();
+int
+main ()
+{
+return SSL_new ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  ac_cv_lib_ssl_SSL_new=yes
+else
+  ac_cv_lib_ssl_SSL_new=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_ssl_SSL_new" >&5
+$as_echo "$ac_cv_lib_ssl_SSL_new" >&6; }
+if test "x$ac_cv_lib_ssl_SSL_new" = xyes; then :
+
+
+$as_echo "#define HAVE_LIBSSL 1" >>confdefs.h
+
+          if test "x$OPENSSL_LIB_DIR" != "x"; then
+            OPENSSL_LIBS="-L$OPENSSL_LIB_DIR"
+          fi
+          OPENSSL_LIBS="$OPENSSL_LIBS -lcrypto -lssl -lcrypto"
+          LIBS="$OPENSSL_LIBS $LIBS"
+
+else
+
+          { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "failed linking to libssl
+See \`config.log' for more details" "$LINENO" 5; }
+
+
+fi
+
+
+fi
+
+
+        old_CPPFLAGS=$CPPFLAGS
+  old_CFLAGS=$CFLAGS
+  if test "x$OPENSSL_INCLUDE_DIR" != "x"; then
+    CPPFLAGS="-I$OPENSSL_INCLUDE_DIR $CPPFLAGS"
+    CFLAGS="-I$OPENSSL_INCLUDE_DIR $CFLAGS"
+  fi
+
         CPPFLAGS="$CPPFLAGS -DOPENSSL_NO_KRB5"
-    for ac_header in \
-	openssl/ssl.h \
-	openssl/crypto.h \
-	openssl/err.h \
-	openssl/evp.h \
-	openssl/ocsp.h \
-	openssl/engine.h
+  for ac_header in \
+    openssl/ssl.h \
+    openssl/crypto.h \
+    openssl/err.h \
+    openssl/evp.h \
+    openssl/md5.h \
+    openssl/md4.h \
+    openssl/sha.h \
+    openssl/ocsp.h \
+    openssl/engine.h
 do :
   as_ac_Header=`$as_echo "ac_cv_header_$ac_header" | $as_tr_sh`
 ac_fn_c_check_header_mongrel "$LINENO" "$ac_header" "$as_ac_Header" "$ac_includes_default"
@@ -21373,46 +21488,116 @@ if eval test \"x\$"$as_ac_Header"\" = x"yes"; then :
 _ACEOF
 
 else
-  OPENSSL_LIBS=
+
+      { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "failed locating OpenSSL headers
+See \`config.log' for more details" "$LINENO" 5; }
+
 
 fi
 
 done
 
-    if test "x$OPENSSL_LIBS" != "x"; then
-	{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for OpenSSL version >= 0.9.7" >&5
+
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for OpenSSL version >= 0.9.7" >&5
 $as_echo_n "checking for OpenSSL version >= 0.9.7... " >&6; }
-	cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 #include <openssl/crypto.h>
-	     #if (OPENSSL_VERSION_NUMBER >= 0x00907000L)
-	     yes
-	     #endif
+     #if (OPENSSL_VERSION_NUMBER >= 0x00907000L)
+     yes
+     #endif
 
 _ACEOF
 if (eval "$ac_cpp conftest.$ac_ext") 2>&5 |
   $EGREP "yes" >/dev/null 2>&1; then :
-  goodssl="yes"
+
+      { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+
+else
+
+      { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+      { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "OpenSSL version too old
+See \`config.log' for more details" "$LINENO" 5; }
+
+
 fi
 rm -f conftest*
 
-	if test "x$goodssl" != "xyes"; then
-	    { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
-$as_echo "no" >&6; }
-	    OPENSSL_LIBS=
-	else
-	    { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+
+  if test "x$OPENSSL_INCLUDE_DIR" != "x"; then
+    OPENSSL_INCLUDE="-I$OPENSSL_INCLUDE_DIR -DOPENSSL_NO_KRB5"
+  else
+    OPENSSL_INCLUDE="-DOPENSSL_NO_KRB5"
+  fi
+
+        { $as_echo "$as_me:${as_lineno-$LINENO}: checking OpenSSL library and header version consistency" >&5
+$as_echo_n "checking OpenSSL library and header version consistency... " >&6; }
+  if test "$cross_compiling" = yes; then :
+  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "cannot run test program while cross compiling
+See \`config.log' for more details" "$LINENO" 5; }
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+        #include <stdio.h>
+        #include <openssl/opensslv.h>
+        #include <openssl/crypto.h>
+
+int
+main ()
+{
+
+        if (SSLeay() == OPENSSL_VERSION_NUMBER) {
+          return 0;
+        } else {
+          printf("library: %lx header: %lx... ", (unsigned long) SSLeay(), (unsigned long) OPENSSL_VERSION_NUMBER);
+          return 1;
+        }
+
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_run "$LINENO"; then :
+
+      { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
-	    if test "x$OPENSSL_INCLUDE_DIR" != "x"; then
-		OPENSSL_INCLUDE="-I$OPENSSL_INCLUDE_DIR -DOPENSSL_NO_KRB5"
-	    else
-		OPENSSL_INCLUDE="-DOPENSSL_NO_KRB5"
-	    fi
-	fi
-    fi
+
+else
+
+      { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+      { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "OpenSSL library version does not match header version
+See \`config.log' for more details" "$LINENO" 5; }
+
+
+fi
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+  conftest.$ac_objext conftest.beam conftest.$ac_ext
+fi
+
+
+  if test "x$OPENSSL_LIBS" = x; then
+    LIBS=$old_LIBS
+    LDFLAGS="$old_LDFLAGS"
+  fi
+  if test "x$OPENSSL_INCLUDE" = x; then
     CPPFLAGS=$old_CPPFLAGS
+    CFLAGS=$old_CFLAGS
   fi
 fi
+
 
 
 export OPENSSL_LIBS

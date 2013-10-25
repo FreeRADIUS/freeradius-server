@@ -2,7 +2,7 @@ TARGET		= @targetname@
 SRCS		= rlm_wimax.c
 HEADERS		= 
 RLM_CFLAGS	=
-RLM_LIBS	= $(OPENSSL_LIBS)
+RLM_LIBS	=
 
 include ../rules.mak
 
