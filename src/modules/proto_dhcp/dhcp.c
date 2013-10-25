@@ -1227,11 +1227,9 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 
 	/* DHCP-Client-Hardware-Address */
 	if ((vp = pairfind(packet->vps, 267, DHCP_MAGIC_VENDOR, TAG_ANY))) {
-		if (vp->length > DHCP_CHADDR_LEN) {
-			memcpy(p, vp->vp_ether, DHCP_CHADDR_LEN);
-		} else {
+		if (vp->length == DHCP_CHADDR_LEN) {
 			memcpy(p, vp->vp_ether, vp->length);
-		}
+		} /* else ignore it */
 	}
 	p += DHCP_CHADDR_LEN;
 
