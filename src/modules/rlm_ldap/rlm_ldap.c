@@ -179,7 +179,7 @@ static CONF_PARSER option_config[] = {
 
 	{"chase_referrals", PW_TYPE_BOOLEAN, offsetof(ldap_instance_t,chase_referrals), NULL, NULL},
 
-	{"rebind", PW_TYPE_BOOLEAN,offsetof(ldap_instance_t,rebind), NULL, NULL},
+	{"rebind", PW_TYPE_BOOLEAN, offsetof(ldap_instance_t,rebind), NULL, NULL},
 
 	/* timeout on network activity */
 	{"net_timeout", PW_TYPE_INTEGER, offsetof(ldap_instance_t,net_timeout), NULL, "10"},
@@ -524,12 +524,20 @@ static int parse_sub_section(ldap_instance_t *inst, CONF_SECTION *parent, ldap_a
  */
 static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
+	CONF_SECTION *options;
 	ldap_instance_t *inst = instance;
 
 	inst->cs = conf;
 
-	inst->chase_referrals = 2; /* use OpenLDAP defaults */
-	inst->rebind = 2;
+	options = cf_section_sub_find(conf, "options");
+	if (options) {
+		if (!cf_pair_find(options, "chase_referrals")) {
+			inst->chase_referrals = 2; /* use OpenLDAP defaults */
+		}
+		if (!cf_pair_find(options, "rebind")) {
+			inst->rebind = 2;
+		}
+	}
 
 	inst->xlat_name = cf_section_name2(conf);
 	if (!inst->xlat_name) {
