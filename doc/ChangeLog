@@ -1,4 +1,4 @@
-FreeRADIUS 2.2.1 Tuesday 17 Sep 2013 12:00:00 CEST, urgency=medium
+FreeRADIUS 2.2.2 Tuesday 17 Sep 2013 12:00:00 CEST, urgency=medium
 	Feature improvements
 	* Add "timeout" to exec, and "ntlm_auth_timeout" to mschap.
 	  So that run-away child processes are caught earlier.
@@ -18,6 +18,8 @@ FreeRADIUS 2.2.1 Tuesday 17 Sep 2013 12:00:00 CEST, urgency=medium
 	  different threads isn't interspersed.
 	* Fix priority handling of return codes in unlang.
 	* Fix SEGV in rlm_perl when using dynamic expansions.
+	* Fix build for OSX Mavericks, which hid the header files
+	  in a magical place.
 
 FreeRADIUS 2.2.1 Tuesday 17 Sep 2013 12:00:00 CEST, urgency=medium
 	Feature improvements
