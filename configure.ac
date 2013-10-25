@@ -910,7 +910,7 @@ if test "x$WITH_OPENSSL" = xyes; then
   OPENSSL_INCLUDE="-DNO_OPENSSL"
   OPENSSL_LIBS=
   if test "x$OPENSSL_LIB_DIR" != "x"; then
-    LDFLAGS="$LDFLAGS -L$OPENSSL_LIB_DIR"
+    LDFLAGS="-L$OPENSSL_LIB_DIR $LDFLAGS"
   fi
 
   dnl #
@@ -927,6 +927,7 @@ if test "x$WITH_OPENSSL" = xyes; then
             OPENSSL_LIBS="-L$OPENSSL_LIB_DIR"
           fi
           OPENSSL_LIBS="$OPENSSL_LIBS -lcrypto -lssl -lcrypto"
+          LIBS="$OPENSSL_LIBS $LIBS"
         ],
         [
           AC_MSG_FAILURE([failed linking to libssl])
@@ -940,8 +941,10 @@ if test "x$WITH_OPENSSL" = xyes; then
   dnl #  Check we can find required headers
   dnl #
   old_CPPFLAGS=$CPPFLAGS
+  old_CFLAGS=$CFLAGS
   if test "x$OPENSSL_INCLUDE_DIR" != "x"; then
-    CPPFLAGS="$CPPFLAGS -I$OPENSSL_INCLUDE_DIR"
+    CPPFLAGS="-I$OPENSSL_INCLUDE_DIR $CPPFLAGS"
+    CFLAGS="-I$OPENSSL_INCLUDE_DIR $CFLAGS"
   fi
 
   dnl #
@@ -1015,9 +1018,14 @@ if test "x$WITH_OPENSSL" = xyes; then
     ]
   )
 
-  CPPFLAGS=$old_CPPFLAGS
-  LIBS=$old_LIBS
-  LDFLAGS="$old_LDFLAGS"
+  if test "x$OPENSSL_LIBS" = x; then
+    LIBS=$old_LIBS
+    LDFLAGS="$old_LDFLAGS"
+  fi
+  if test "x$OPENSSL_INCLUDE" = x; then
+    CPPFLAGS=$old_CPPFLAGS
+    CFLAGS=$old_CFLAGS
+  fi
 fi
 
 AC_SUBST(OPENSSL_INCLUDE)

@@ -2,4 +2,4 @@ TARGET		:= dhcpclient
 SOURCES		:= dhcpclient.c dhcp.c
 
 TGT_PREREQS	:= libfreeradius-radius.a
-TGT_LDLIBS	:= $(LIBS) $(OPENSSL_LIBS)
+TGT_LDLIBS	:= $(LIBS)

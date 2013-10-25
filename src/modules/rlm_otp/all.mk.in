@@ -10,5 +10,4 @@ SOURCES		+= otp_util.c otp_mppe.c
 SRC_CFLAGS	:= @mod_cflags@
 TGT_LDLIBS	:= @mod_ldflags@
 TGT_LDLIBS	+= $(LIBS)
-TGT_LDLIBS	+= $(OPENSSL_LIBS)
 TGT_LDLIBS	+= $(CARDOPS_LTLIBS)

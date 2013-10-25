@@ -8,7 +8,6 @@ SOURCES		:= $(TARGETNAME).c eap_pwd.c
 
 SRC_CFLAGS	:= @mod_cflags@
 TGT_LDLIBS	:= @mod_ldflags@
-TGT_LDLIBS	+= $(OPENSSL_LIBS)
 
 SRC_INCDIRS	:= ../../ ../../libeap/
 TGT_PREREQS	:= libfreeradius-eap.a
