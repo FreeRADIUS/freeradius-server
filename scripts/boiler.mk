@@ -27,6 +27,17 @@
 #       instances of "$" within them need to be escaped with a second "$" to
 #       accomodate the double expansion that occurs when eval is invoked.
 
+#
+#  You can watch what it's doing by:
+#
+#	$ VERBOSE=1 make ... args ...
+#
+ifeq "${VERBOSE}" ""
+    Q=@
+else
+    Q=
+endif
+
 # ADD_CLEAN_RULE - Parameterized "function" that adds a new rule and phony
 #   target for cleaning the specified target (removing its build-generated
 #   files).
@@ -37,7 +48,7 @@ define ADD_CLEAN_RULE
     clean: clean_$(notdir ${1})
     .PHONY: clean_$(notdir ${1})
     clean_$(notdir ${1}):
-	@$(strip rm -f ${${1}_BUILD}/${1} ${${1}_NOLIBTOOL} ${${1}_BUILD}/${${1}_RELINK} $${${1}_OBJS} $${${1}_DEPS} $${${1}_OBJS:%.${OBJ_EXT}=%.[do]}) $(if ${TARGET_DIR},$${TARGET_DIR}/$(notdir ${1}))
+	$(Q)$(strip rm -f ${${1}_BUILD}/${1} ${${1}_NOLIBTOOL} ${${1}_BUILD}/${${1}_RELINK} $${${1}_OBJS} $${${1}_DEPS} $${${1}_OBJS:%.${OBJ_EXT}=%.[do]}) $(if ${TARGET_DIR},$${TARGET_DIR}/$(notdir ${1}))
 	$${${1}_POSTCLEAN}
 
 endef
@@ -77,9 +88,9 @@ endef
 #	remove sequential duplicate lines
 #
 define FILTER_DEPENDS
-	@mkdir -p $$(dir $${BUILD_DIR}/make/src/$$*)
-	@mkdir -p $$(dir $${BUILD_DIR}/objs/$$*)
-	@sed  -e 's/#.*//' \
+	$(Q)mkdir -p $$(dir $${BUILD_DIR}/make/src/$$*)
+	$(Q)mkdir -p $$(dir $${BUILD_DIR}/objs/$$*)
+	$(Q)sed  -e 's/#.*//' \
 	  -e 's,^$${top_srcdir},$$$${top_srcdir},' \
 	  -e 's, $${top_srcdir}, $$$${top_srcdir},' \
 	  -e 's,^$${BUILD_DIR},$$$${BUILD_DIR},' \
@@ -92,7 +103,7 @@ define FILTER_DEPENDS
 	  -e '/^ *\\$$$$/ d' \
 	  < $${BUILD_DIR}/objs/$$*.d | sed -e '$$$$!N; /^\(.*\)\n\1$$$$/!P; D' \
 	  >  $${BUILD_DIR}/make/src/$$*.mk
-	@sed -e 's/#.*//' \
+	$(Q)sed -e 's/#.*//' \
 	  -e 's, $${BUILD_DIR}/make/include/[^ :]*,,' \
 	  -e 's, /[^: ]*,,g' \
 	  -e 's,^ *[^:]* *: *$$$$,,' \
@@ -181,12 +192,12 @@ define ADD_TARGET_RULE.exe
 
     # Create executable ${1}
     $${${1}_BUILD}/${1}: $${${1}_OBJS} $${${1}_PRBIN} $${${1}_PRLIBS}
-	    @$(strip mkdir -p $(dir $${${1}_BUILD}/${1}))
-	    @$(ECHO) LINK $${${1}_BUILD}/${1}
-	    @$${${1}_LINKER} -o $${${1}_BUILD}/${1} $${RPATH_FLAGS} $${LDFLAGS} \
+	    $(Q)$(strip mkdir -p $(dir $${${1}_BUILD}/${1}))
+	    $(Q)$(ECHO) LINK $${${1}_BUILD}/${1}
+	    $(Q)$${${1}_LINKER} -o $${${1}_BUILD}/${1} $${RPATH_FLAGS} $${LDFLAGS} \
                 $${${1}_LDFLAGS} $${${1}_OBJS} $${${1}_PRLIBS} \
                 $${LDLIBS} $${${1}_LDLIBS}
-	    @$${${1}_POSTMAKE}
+	    $(Q)$${${1}_POSTMAKE}
 
     ifneq "${ANALYZE.c}" ""
         scan.${1}: $${${1}_PLISTS}
@@ -204,10 +215,10 @@ define ADD_TARGET_RULE.a
 
     # Create static library ${1}
     $${${1}_BUILD}/${1}: $${${1}_OBJS} $${${1}_PRLIBS}
-	    @$(strip mkdir -p $(dir $${${1}_BUILD}/${1}))
-	    @$(ECHO) LINK $${${1}_BUILD}/${1}
-	    @$${AR} $${ARFLAGS} $${${1}_BUILD}/${1} $${${1}_OBJS}
-	    @$${${1}_POSTMAKE}
+	    $(Q)$(strip mkdir -p $(dir $${${1}_BUILD}/${1}))
+	    $(Q)$(ECHO) LINK $${${1}_BUILD}/${1}
+	    $(Q)$${AR} $${ARFLAGS} $${${1}_BUILD}/${1} $${${1}_OBJS}
+	    $(Q)$${${1}_POSTMAKE}
 
     ifneq "${ANALYZE.c}" ""
         scan.${1}: $${${1}_PLISTS}
@@ -250,25 +261,25 @@ endef
 
 # COMPILE_C_CMDS - Commands for compiling C source code.
 define COMPILE_C_CMDS
-	@mkdir -p $(dir $@)
-	@$(ECHO) CC $<
-	@$(strip ${COMPILE.c} -o $@ -c -MD ${CFLAGS} ${SRC_CFLAGS} ${INCDIRS} \
+	$(Q)mkdir -p $(dir $@)
+	$(Q)$(ECHO) CC $<
+	$(Q)$(strip ${COMPILE.c} -o $@ -c -MD ${CFLAGS} ${SRC_CFLAGS} ${INCDIRS} \
 	    ${SRC_INCDIRS} ${SRC_DEFS} ${DEFS} $<)
 endef
 
 # ANALYZE_C_CMDS - Commands for analyzing C source code with clang.
 define ANALYZE_C_CMDS
-	@mkdir -p $(dir $@)
-	@$(ECHO) SCAN $<
-	@$(strip ${ANALYZE.c} --analyze -c $< ${CFLAGS} ${SRC_CFLAGS} ${INCDIRS} \
+	$(Q)mkdir -p $(dir $@)
+	$(Q)$(ECHO) SCAN $<
+	$(Q)$(strip ${ANALYZE.c} --analyze -c $< ${CFLAGS} ${SRC_CFLAGS} ${INCDIRS} \
 	    ${SRC_INCDIRS} ${SRC_DEFS} ${DEFS}) || (rm -f $@ && false)
-	@touch $@
+	$(Q)touch $@
 endef
 
 # COMPILE_CXX_CMDS - Commands for compiling C++ source code.
 define COMPILE_CXX_CMDS
-	@mkdir -p $(dir $@)
-	@$(strip ${COMPILE.cxx} -o $@ -c -MD ${CXXFLAGS} ${SRC_CXXFLAGS} ${INCDIRS} \
+	$(Q)mkdir -p $(dir $@)
+	$(Q)$(strip ${COMPILE.cxx} -o $@ -c -MD ${CXXFLAGS} ${SRC_CXXFLAGS} ${INCDIRS} \
 	    ${SRC_INCDIRS} ${SRC_DEFS} ${DEFS} $<)
 endef
 
@@ -611,6 +622,6 @@ scan: ${ALL_PLISTS}
 
 .PHONY: clean.scan
 clean.scan:
-	@rm -f ${ALL_PLISTS}
+	$(Q)rm -f ${ALL_PLISTS}
 
 clean: clean.scan

@@ -31,15 +31,15 @@ ifeq "${LIBTOOL}" "JLIBTOOL"
     # include referencing ${LIBTOOL}, as we don't have a jlibtool
     # binary!
     ${JLIBTOOL}: ${top_makedir}/jlibtool.c
-	@mkdir -p $(dir $@)
-	@echo CC jlibtool.c
-	@${CC} $< -o $@ ${DARWIN_CFLAGS}
+	$(Q)mkdir -p $(dir $@)
+	$(Q)echo CC jlibtool.c
+	$(Q)${CC} $< -o $@ ${DARWIN_CFLAGS}
 
     clean: jlibtool_clean
 
     .PHONY: jlibtool_clean
     jlibtool_clean:
-	@rm -f ${JLIBTOOL}
+	$(Q)rm -f ${JLIBTOOL}
 
     # Tell GNU Make to use this value, rather than anything specified
     # on the command line.
@@ -53,7 +53,7 @@ clean: .libs_clean
 
 .PHONY: .libs_clean
 .libs_clean:
-	@rm -rf ${BUILD_DIR}/.libs/
+	$(Q)rm -rf ${BUILD_DIR}/.libs/
 
 # Re-define compilers and linkers
 #
