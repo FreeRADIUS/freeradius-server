@@ -189,7 +189,7 @@ static sql_rcode_t sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *
 	/* Reserving memory for result */
 	conn->row = talloc_zero_array(conn, char *, colcount + 1); /* Space for pointers */
 
-	for (i = 1; i < colcount; i++) {
+	for (i = 1; i <= colcount; i++) {
 		SQLColAttributes(conn->statement, ((SQLUSMALLINT) i), SQL_COLUMN_LENGTH, NULL, 0, NULL, &len);
 		conn->row[i - 1] = talloc_array(conn->row, char, ++len);
 		SQLBindCol(conn->statement, i, SQL_C_CHAR, (SQLCHAR *)conn->row[i - 1], len, NULL);
