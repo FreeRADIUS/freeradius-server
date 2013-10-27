@@ -142,11 +142,6 @@ int udpfromto_init(int s)
 		return -1;
 	}
 
-	/*
-	 *	Unsupported.  Don't worry about it.
-	 */
-	if (proto < 0) return 0;
-
 	return setsockopt(s, proto, flag, &opt, sizeof(opt));
 }
 
