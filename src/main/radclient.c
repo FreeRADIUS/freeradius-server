@@ -601,8 +601,9 @@ static int send_one_packet(radclient_t *radclient)
 			} else
 #endif
 			mysockfd = fr_socket(&client_ipaddr, 0);
-			if (!mysockfd) {
-				fprintf(stderr, "radclient: Can't open new socket\n");
+			if (mysockfd < 0) {
+				fprintf(stderr, "radclient: Can't open new socket: %s\n",
+					strerror(errno));
 				exit(1);
 			}
 			if (!fr_packet_list_socket_add(pl, mysockfd, ipproto,
