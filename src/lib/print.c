@@ -914,7 +914,7 @@ void vp_print(FILE *fp, VALUE_PAIR const *vp)
 	/*
 	 *	Deal with truncation gracefully
 	 */
-	if (((size_t) (p - buf)) >= sizeof(buf)) {
+	if (((size_t) (p - buf)) >= (sizeof(buf) - 2)) {
 		p = buf + (sizeof(buf) - 2);
 	}
 
