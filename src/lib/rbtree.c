@@ -449,7 +449,7 @@ static void rbtree_delete_internal(rbtree_t *tree, rbnode_t *Z, int skiplock)
 		Z->Data = Y->Data;
 		Y->Data = NULL;
 
-		if (Y->Color == Black)
+		if ((Y->Color == Black) && Parent)
 			DeleteFixup(tree, X, Parent);
 
 		/*
