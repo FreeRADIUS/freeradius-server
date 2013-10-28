@@ -59,6 +59,7 @@ typedef struct dhcp_socket_t {
 	/*
 	 *	DHCP-specific additions.
 	 */
+	int		broadcast;
 	int		suppress_responses;
 	RADCLIENT	dhcp_client;
 	const char	*src_interface;
@@ -491,8 +492,8 @@ static int dhcp_process(REQUEST *request)
 	 *	can't update the ARP table.  And we must send a
 	 *	broadcast response.
 	 */
-	if (sock->lsock.broadcast && !sock->src_interface) {
-		radlog(L_WARN, "You MUST set \"interface\" if you have \"broadcast = yes\"");
+	if (sock->broadcast && !sock->src_interface) {
+		radlog(L_INFO, "WARNING: You MUST set \"interface\" if you have \"broadcast = yes\"");
 		RDEBUG("DHCP: Reply will be broadcast as no interface was defined");
 		request->reply->dst_ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_BROADCAST);
 		return 1;
@@ -553,11 +554,11 @@ static int dhcp_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	if (cp) {
 		const char *value = cf_pair_value(cp);
 		if (value && (strcmp(value, "no") == 0)) {
-			broadcast = 0;
+			sock->broadcast = 0;
 		}
 	}
 
-	if (broadcast) {
+	if (sock->broadcast) {
 		if (setsockopt(this->fd, SOL_SOCKET, SO_BROADCAST, &on, sizeof(on)) < 0) {
 			radlog(L_ERR, "Can't set broadcast option: %s\n",
 			       strerror(errno));
