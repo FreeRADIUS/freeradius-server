@@ -52,6 +52,9 @@
 #include <freeradius-devel/dhcp.h>
 #include <freeradius-devel/rad_assert.h>
 
+#ifndef __MINGW32__
+#include <sys/ioctl.h>
+#endif
 
 extern int check_config;	/* @todo globals are bad, m'kay? */
 
@@ -59,13 +62,7 @@ extern int check_config;	/* @todo globals are bad, m'kay? */
  *	Same contents as listen_socket_t.
  */
 typedef struct dhcp_socket_t {
-	/*
-	 *	For normal sockets.
-	 */
-	fr_ipaddr_t	ipaddr;
-	int		port;
-	char const		*interface;
-	RADCLIENT_LIST	*clients;
+	listen_socket_t	lsock;
 
 	/*
 	 *	DHCP-specific additions.
@@ -127,7 +124,7 @@ static int dhcprelay_process_client_request(REQUEST *request)
 	/* set SRC ipaddr/port to the listener ipaddr/port */
 	request->packet->src_ipaddr.af = AF_INET;
 	request->packet->src_ipaddr.ipaddr.ip4addr.s_addr = giaddrvp->vp_ipaddr;
-	request->packet->src_port = sock->port;
+	request->packet->src_port = sock->lsock.my_port;
 
 	vp = pairfind(request->config_items, 270, DHCP_MAGIC_VENDOR, TAG_ANY); /* DHCP-Relay-To-IP-Address */
 	rad_assert(vp != NULL);
@@ -174,13 +171,14 @@ static int dhcprelay_process_server_reply(REQUEST *request)
 	/* set SRC ipaddr/port to the listener ipaddr/port */
 	request->packet->src_ipaddr.af = AF_INET;
 	request->packet->src_ipaddr.ipaddr.ip4addr.s_addr = giaddrvp->vp_ipaddr;
-	request->packet->src_port = sock->port;
+	request->packet->src_port = sock->lsock.my_port;
 
 	/* set DEST ipaddr/port to clientip/68 or broadcast in specific cases */
 	request->packet->dst_ipaddr.af = AF_INET;
 	request->packet->dst_port = request->packet->dst_port + 1; /* Port 68 */
 
 	if ((request->packet->code == PW_DHCP_NAK) ||
+	    !sock->src_interface ||
 	    ((vp = pairfind(request->packet->vps, 262, DHCP_MAGIC_VENDOR, TAG_ANY)) /* DHCP-Flags */ &&
 	     (vp->vp_integer & 0x8000) &&
 	     ((vp = pairfind(request->packet->vps, 263, DHCP_MAGIC_VENDOR, TAG_ANY)) /* DHCP-Client-IP-Address */ &&
@@ -488,6 +486,23 @@ static int dhcp_process(REQUEST *request)
 	}
 
 #ifdef SIOCSARP
+	/*
+	 *	The system is configured to listen for broadcast
+	 *	packets, which means we'll need to send unicast
+	 *	replies, to IPs which haven't yet been assigned.
+	 *	Therefore, we need to update the ARP table.
+	 *
+	 *	However, they haven't specified a interface.  So we
+	 *	can't update the ARP table.  And we must send a
+	 *	broadcast response.
+	 */
+	if (sock->lsock.broadcast && !sock->src_interface) {
+		WARN("You MUST set \"interface\" if you have \"broadcast = yes\"");
+		RDEBUG("DHCP: Reply will be broadcast as no interface was defined");
+		request->reply->dst_ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_BROADCAST);
+		return 1;
+	}
+
 	RDEBUG("DHCP: Reply will be unicast to your-ip-address");
 	request->reply->dst_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
 
@@ -533,7 +548,7 @@ static int dhcp_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 
 	sock = this->data;
 
-	if (!sock->interface) {
+	if (!sock->lsock.interface) {
 		WDEBUG("No \"interface\" setting is defined.  Only unicast DHCP will work.");
 	}
 
@@ -578,11 +593,11 @@ static int dhcp_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 		cf_item_parse(cs, "src_interface", PW_TYPE_STRING_PTR,
 			      &sock->src_interface, NULL);
 	} else {
-		sock->src_interface = sock->interface;
+		sock->src_interface = sock->lsock.interface;
 	}
 
-	if (!sock->src_interface && sock->interface) {
-		sock->src_interface = talloc_strdup(sock, sock->interface);
+	if (!sock->src_interface && sock->lsock.interface) {
+		sock->src_interface = talloc_strdup(sock, sock->lsock.interface);
 	}
 
 	cp = cf_pair_find(cs, "src_ipaddr");
@@ -595,7 +610,7 @@ static int dhcp_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 
 		sock->src_ipaddr.af = AF_INET;
 	} else {
-		memcpy(&sock->src_ipaddr, &sock->ipaddr, sizeof(sock->src_ipaddr));
+		memcpy(&sock->src_ipaddr, &sock->lsock.my_ipaddr, sizeof(sock->src_ipaddr));
 	}
 
 	/*
