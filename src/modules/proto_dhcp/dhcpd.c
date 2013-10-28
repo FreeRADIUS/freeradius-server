@@ -487,7 +487,8 @@ static int dhcp_process(REQUEST *request)
 		return -1;
 	}
 
-	RDEBUG("DHCP: Reply will be sent unicast to your-ip-address");
+#ifdef SIOCSARP
+	RDEBUG("DHCP: Reply will be unicast to your-ip-address");
 	request->reply->dst_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
 
 	/*
@@ -505,9 +506,14 @@ static int dhcp_process(REQUEST *request)
 		if (!hwvp) return -1;
 
 		if (fr_dhcp_add_arp_entry(request->reply->sockfd, sock->src_interface, hwvp, vp) < 0) {
+			RDEBUG("Failed adding arp entry: %s", fr_strerror());
 			return -1;
 		}
 	}
+#else
+	RDEBUG("DHCP: Reply will be broadcast as this system does not support ARP updates");
+	request->reply->dst_ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_BROADCAST);
+#endif
 
 	return 1;
 }
