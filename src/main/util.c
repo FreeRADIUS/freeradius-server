@@ -189,7 +189,6 @@ void *request_data_reference(REQUEST *request,
 	return NULL;		/* wasn't found, too bad... */
 }
 
-
 /*
  *	Free a REQUEST struct.
  */
@@ -229,6 +228,8 @@ void request_free(REQUEST **request_ptr)
 #endif
 	talloc_free(request);
 	*request_ptr = NULL;
+
+	VERIFY_ALL_TALLOC;
 }
 
 /*

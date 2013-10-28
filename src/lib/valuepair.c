@@ -80,6 +80,9 @@ static int _pairfree(VALUE_PAIR *vp) {
 	vp->vp_integer = FREE_MAGIC;
 #endif
 
+#ifdef TALLOC_DEBUG
+	talloc_report_depth_cb(NULL, 0, -1, fr_talloc_verify_cb, NULL);
+#endif
 	return 0;
 }
 
