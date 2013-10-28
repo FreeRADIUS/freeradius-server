@@ -96,11 +96,13 @@ static int mod_authenticate(UNUSED void *instance, eap_handler_t *handler)
 	leap_packet_t	*reply;
 	VALUE_PAIR	*password;
 
+	rad_assert(request);
+
 	if (!handler->opaque) {
 		REDEBUG("Cannot authenticate without LEAP history");
 		return 0;
 	}
-	session = (leap_session_t *) handler->opaque;
+	session = talloc_get_type_abort(handler->opaque, leap_session_t);
 	reply = NULL;
 
 	/*
