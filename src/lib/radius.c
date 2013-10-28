@@ -4619,7 +4619,7 @@ void rad_free(RADIUS_PACKET **radius_packet_ptr)
 	if (!radius_packet_ptr || !*radius_packet_ptr) return;
 	radius_packet = *radius_packet_ptr;
 
-	VERIFY_RP(radius_packet);
+	VERIFY_PACKET(radius_packet);
 
 	pairfree(&radius_packet->vps);
 
