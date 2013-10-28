@@ -503,6 +503,21 @@ int ip_hton(char const *src, int af, fr_ipaddr_t *dst)
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_family = af;
 
+#ifdef TALLOC_DEBUG
+	/*
+	 *	Avoid malloc for IP addresses.  This helps us debug
+	 *	memory errors when using talloc.
+	 */
+	if (af == AF_INET) {
+		/*
+		 *	If it's all numeric, avoid getaddrinfo()
+		 */
+		if (inet_pton(af, src, &dst->ipaddr.ip4addr) == 1) {
+			return 0;
+		}
+	}
+#endif
+
 	if ((rcode = getaddrinfo(src, NULL, &hints, &res)) != 0) {
 		fr_strerror_printf("ip_hton: %s", gai_strerror(rcode));
 		return -1;
@@ -802,3 +817,11 @@ ssize_t fr_utf8_to_ucs2(uint8_t *out, size_t outlen, char const *in, size_t inle
 	return out - start;
 }
 
+#ifdef TALLOC_DEBUG
+void fr_talloc_verify_cb(UNUSED const void *ptr, UNUSED int depth,
+			 UNUSED int max_depth, UNUSED int is_ref,
+			 UNUSED void *private_data)
+{
+	/* do nothing */
+}
+#endif

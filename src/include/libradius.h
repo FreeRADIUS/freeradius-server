@@ -619,6 +619,19 @@ int fr_sockaddr2ipaddr(struct sockaddr_storage const *sa, socklen_t salen,
 		       fr_ipaddr_t *ipaddr, int * port);
 ssize_t fr_utf8_to_ucs2(uint8_t *out, size_t outlen, char const *in, size_t inlen);
 
+/*
+ *	Define TALLOC_DEBUG to check overflows with talloc.
+ *	we can't use valgrind, because the memory used by
+ *	talloc is valid memory... just not for us.
+ */
+#ifdef TALLOC_DEBUG
+void fr_talloc_verify_cb(const void *ptr, int depth,
+			 int max_depth, int is_ref,
+			 void *private_data);
+#define VERIFY_ALL_TALLOC talloc_report_depth_cb(NULL, 0, -1, fr_talloc_verify_cb, NULL)
+#else
+#define VERIFY_ALL_TALLOC
+#endif
 
 #ifdef WITH_ASCEND_BINARY
 /* filters.c */
