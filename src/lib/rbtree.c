@@ -297,7 +297,10 @@ rbnode_t *rbtree_insertnode(rbtree_t *tree, void *Data)
 
 	/* setup new node */
 	X = talloc_zero(tree, rbnode_t);
-	if (!X) return NULL;
+	if (!X) {
+		PTHREAD_MUTEX_UNLOCK(tree);
+		return NULL;
+	}
 
 	X->Data = Data;
 	X->Parent = Parent;
