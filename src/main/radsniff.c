@@ -408,7 +408,7 @@ static int _request_free(rs_request_t *request)
 static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkthdr const *header, uint8_t const *data)
 {
 	rs_stats_t		*stats = event->stats;
-	struct timeval		elapsed;
+	struct timeval		elapsed = {0, 0};
 	struct timeval		latency;
 
 	/*
