@@ -1311,7 +1311,7 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 				break;
 
 			case PW_TYPE_STRING:
-				vp->vp_strvalue = q = talloc_array(vp, char, dhcp_header_sizes[i]);
+				vp->vp_strvalue = q = talloc_array(vp, char, dhcp_header_sizes[i] + 1);
 				vp->type = VT_DATA;
 				memcpy(q, p, dhcp_header_sizes[i]);
 				q[dhcp_header_sizes[i]] = '\0';
