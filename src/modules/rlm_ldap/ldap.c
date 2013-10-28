@@ -1062,6 +1062,8 @@ void *mod_conn_create(void *instance)
 	 *	Allocate memory for the handle.
 	 */
 	conn = talloc_zero(instance, ldap_handle_t);
+	if (conn) return NULL;
+
 	conn->inst = inst;
 	conn->rebound = false;
 	conn->referred = false;
@@ -1206,7 +1208,7 @@ void *mod_conn_create(void *instance)
 
 	error:
 	if (conn->handle) ldap_unbind_s(conn->handle);
-	if (conn) talloc_free(conn);
+	talloc_free(conn);
 
 	return NULL;
 }
