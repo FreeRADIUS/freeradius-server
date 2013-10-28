@@ -1056,7 +1056,6 @@ void *mod_conn_create(void *instance)
 	struct timeval tv;
 
 	ldap_instance_t *inst = instance;
-	LDAP *handle = NULL;
 	ldap_handle_t *conn;
 
 	/*
@@ -1064,7 +1063,6 @@ void *mod_conn_create(void *instance)
 	 */
 	conn = talloc_zero(instance, ldap_handle_t);
 	conn->inst = inst;
-	conn->handle = handle;
 	conn->rebound = false;
 	conn->referred = false;
 
@@ -1072,7 +1070,7 @@ void *mod_conn_create(void *instance)
 	if (inst->is_url) {
 		DEBUG("rlm_ldap (%s): Connecting to %s", inst->xlat_name, inst->server);
 
-		ldap_errno = ldap_initialize(&handle, inst->server);
+		ldap_errno = ldap_initialize(&conn->handle, inst->server);
 		if (ldap_errno != LDAP_SUCCESS) {
 			LDAP_ERR("ldap_initialize failed: %s", ldap_err2string(ldap_errno));
 			goto error;
@@ -1082,8 +1080,8 @@ void *mod_conn_create(void *instance)
 	{
 		DEBUG("rlm_ldap (%s): Connecting to %s:%d", inst->xlat_name, inst->server, inst->port);
 
-		handle = ldap_init(inst->server, inst->port);
-		if (!handle) {
+		conn->handle = ldap_init(inst->server, inst->port);
+		if (!conn->handle) {
 			LDAP_ERR("ldap_init() failed");
 			goto error;
 		}
@@ -1095,8 +1093,8 @@ void *mod_conn_create(void *instance)
 	 *	Set a bunch of LDAP options, using common code.
 	 */
 #define do_ldap_option(_option, _name, _value) \
-	if (ldap_set_option(handle, _option, _value) != LDAP_OPT_SUCCESS) { \
-		ldap_get_option(handle, LDAP_OPT_ERROR_NUMBER, &ldap_errno); \
+	if (ldap_set_option(conn->handle, _option, _value) != LDAP_OPT_SUCCESS) { \
+		ldap_get_option(conn->handle, LDAP_OPT_ERROR_NUMBER, &ldap_errno); \
 		LDAP_ERR("Could not set %s: %s", _name, ldap_err2string(ldap_errno)); \
 	}
 
@@ -1113,7 +1111,7 @@ void *mod_conn_create(void *instance)
 
 			if (inst->rebind == true) {
 #if LDAP_SET_REBIND_PROC_ARGS == 3
-				ldap_set_rebind_proc(handle, rlm_ldap_rebind, conn);
+				ldap_set_rebind_proc(conn->handle, rlm_ldap_rebind, conn);
 #endif
 			}
 		} else {
@@ -1190,8 +1188,8 @@ void *mod_conn_create(void *instance)
 			       "configuration");
 		}
 
-		if (ldap_start_tls_s(handle, NULL, NULL) != LDAP_SUCCESS) {
-			ldap_get_option(handle, LDAP_OPT_ERROR_NUMBER, &ldap_errno);
+		if (ldap_start_tls_s(conn->handle, NULL, NULL) != LDAP_SUCCESS) {
+			ldap_get_option(conn->handle, LDAP_OPT_ERROR_NUMBER, &ldap_errno);
 
 			LDAP_ERR("Could not start TLS: %s", ldap_err2string(ldap_errno));
 			goto error;
@@ -1207,7 +1205,7 @@ void *mod_conn_create(void *instance)
 	return conn;
 
 	error:
-	if (handle) ldap_unbind_s(handle);
+	if (conn->handle) ldap_unbind_s(conn->handle);
 	if (conn) talloc_free(conn);
 
 	return NULL;
