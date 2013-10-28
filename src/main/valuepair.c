@@ -1411,8 +1411,14 @@ int radius_vpt_get_vp(VALUE_PAIR **out, REQUEST *request, value_pair_tmpl_t cons
 
 	case VPT_TYPE_LIST:
 		vp = *vps;
-	default:
 		break;
+		
+	default:
+		/*
+		 *	literal, xlat, regex, exec, data.
+		 *	no attribute.
+		 */
+		return -1;
 	}
 
 	if (out) {
