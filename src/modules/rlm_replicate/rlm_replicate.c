@@ -106,6 +106,7 @@ error:
 static rlm_rcode_t replicate_packet(UNUSED void *instance, REQUEST *request, pair_lists_t list, PW_CODE code)
 {
 	int rcode = RLM_MODULE_NOOP;
+	bool pass1 = true;
 
 	vp_cursor_t cursor;
 	VALUE_PAIR *vp;
@@ -175,7 +176,7 @@ static rlm_rcode_t replicate_packet(UNUSED void *instance, REQUEST *request, pai
 		 *	For replication to multiple servers we re-use the packet
 		 *	we built here.
 		 */
-		if (!packet) {
+		if (pass1) {
 			packet->id = fr_rand() & 0xff;
 			packet->sockfd = fr_socket(&home->src_ipaddr, 0);
 			if (packet->sockfd < 0) {
@@ -183,6 +184,7 @@ static rlm_rcode_t replicate_packet(UNUSED void *instance, REQUEST *request, pai
 				rcode = RLM_MODULE_FAIL;
 				goto done;
 			}
+			pass1 = false;
 		} else {
 			size_t i;
 
