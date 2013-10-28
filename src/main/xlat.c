@@ -1193,10 +1193,8 @@ static ssize_t xlat_tokenize_literal(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **he
 	 */
 	if (node->len > 0) {
 		*head = node;
-
 	} else {
-		(void) talloc_steal(ctx, node->next);
-		*head = node->next;
+		*head = talloc_steal(ctx, node->next);
 		talloc_free(node);
 	}
 
