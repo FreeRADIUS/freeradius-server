@@ -1057,7 +1057,16 @@ void *mod_conn_create(void *instance)
 
 	ldap_instance_t *inst = instance;
 	LDAP *handle = NULL;
-	ldap_handle_t *conn = NULL;
+	ldap_handle_t *conn;
+
+	/*
+	 *	Allocate memory for the handle.
+	 */
+	conn = talloc_zero(instance, ldap_handle_t);
+	conn->inst = inst;
+	conn->handle = handle;
+	conn->rebound = false;
+	conn->referred = false;
 
 #ifdef HAVE_LDAP_INITIALIZE
 	if (inst->is_url) {
@@ -1104,7 +1113,7 @@ void *mod_conn_create(void *instance)
 
 			if (inst->rebind == true) {
 #if LDAP_SET_REBIND_PROC_ARGS == 3
-				ldap_set_rebind_proc(handle, rlm_ldap_rebind, inst);
+				ldap_set_rebind_proc(handle, rlm_ldap_rebind, conn);
 #endif
 			}
 		} else {
@@ -1189,15 +1198,6 @@ void *mod_conn_create(void *instance)
 		}
 	}
 #endif /* HAVE_LDAP_START_TLS */
-
-	/*
-	 *	Allocate memory for the handle.
-	 */
-	conn = talloc_zero(instance, ldap_handle_t);
-	conn->inst = inst;
-	conn->handle = handle;
-	conn->rebound = false;
-	conn->referred = false;
 
 	status = rlm_ldap_bind(inst, NULL, &conn, inst->admin_dn, inst->password, false);
 	if (status != LDAP_PROC_SUCCESS) {
