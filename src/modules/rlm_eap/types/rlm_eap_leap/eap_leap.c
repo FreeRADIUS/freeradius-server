@@ -395,6 +395,9 @@ int eapleap_compose(REQUEST *request, EAP_DS *eap_ds, leap_packet_t *reply)
 {
 	leap_packet_raw_t *data;
 
+	rad_assert(eap_ds->request);
+	rad_assert(reply);
+
 	/*
 	 *  We need the name and the challenge.
 	 */

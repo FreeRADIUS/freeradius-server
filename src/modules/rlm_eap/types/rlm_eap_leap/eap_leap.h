@@ -41,10 +41,10 @@ typedef struct leap_packet_raw_t {
 typedef struct leap_packet {
 	unsigned char	code;
 	unsigned char	id;
-	int		length;
+	size_t		length;
 	int		count;
 	unsigned char	*challenge;
-	int		name_len;
+	size_t		name_len;
 	char		*name;
 } leap_packet_t;
 
