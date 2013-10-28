@@ -88,7 +88,7 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 	int status;
 	int i;
 	int n, left, done;
-	const char *argv[MAX_ARGV];
+	char * const argv[MAX_ARGV];
 	char answer[4096];
 	char argv_buf[4096];
 #define MAX_ENVP 1024
