@@ -1019,7 +1019,7 @@ static int rlm_ldap_rebind(LDAP *handle, LDAP_CONST char *url, UNUSED ber_tag_t 
 			   void *ctx)
 {
 	ldap_rcode_t status;
-	ldap_handle_t *conn = ctx;
+	ldap_handle_t *conn = talloc_get_type_abort(ctx, ldap_handle_t);
 
 	int ldap_errno;
 
