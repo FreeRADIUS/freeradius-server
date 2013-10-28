@@ -1227,7 +1227,7 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 
 	/* DHCP-Client-Hardware-Address */
 	if ((vp = pairfind(packet->vps, 267, DHCP_MAGIC_VENDOR, TAG_ANY))) {
-		if (vp->length == DHCP_CHADDR_LEN) {
+		if (vp->length == sizeof(vp->vp_ether)) {
 			memcpy(p, vp->vp_ether, vp->length);
 		} /* else ignore it */
 	}
