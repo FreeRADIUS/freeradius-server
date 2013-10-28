@@ -1530,6 +1530,11 @@ int fr_dhcp_add_arp_entry(int fd, char const *interface,
 	struct sockaddr_in *sin;
 	struct arpreq req;
 
+	if (!interface) {
+		fr_strerror_printf("No interface specified.  Cannot update ARP table");
+		return -1;
+	}
+
 	if (!fr_assert(macaddr) ||
 	    !fr_assert((macaddr->da->type == PW_TYPE_ETHERNET) || (macaddr->da->type == PW_TYPE_OCTETS))) {
 	    	fr_strerror_printf("Wrong VP type (%s) for chaddr",
@@ -1548,9 +1553,7 @@ int fr_dhcp_add_arp_entry(int fd, char const *interface,
 	sin->sin_family = AF_INET;
 	sin->sin_addr.s_addr = ip->vp_ipaddr;
 
-	if (interface) {
-		strlcpy(req.arp_dev, interface, sizeof(req.arp_dev));
-	}
+	strlcpy(req.arp_dev, interface, sizeof(req.arp_dev));
 
 	if (macaddr->da->type == PW_TYPE_ETHERNET) {
 		memcpy(&req.arp_ha.sa_data, &macaddr->vp_ether, sizeof(macaddr->vp_ether));
