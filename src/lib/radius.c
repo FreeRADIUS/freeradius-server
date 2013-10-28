@@ -3854,6 +3854,7 @@ ssize_t rad_attr2vp(RADIUS_PACKET *packet,
 
 	da = dict_attrbyvalue(data[0], 0);
 	if (!da) da = dict_attrunknown(data[0], 0, true);
+	if (!da) return -1;
 
 	/*
 	 *	Pass the entire thing to the decoding function
