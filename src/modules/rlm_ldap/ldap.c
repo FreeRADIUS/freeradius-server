@@ -1062,7 +1062,7 @@ void *mod_conn_create(void *instance)
 	 *	Allocate memory for the handle.
 	 */
 	conn = talloc_zero(instance, ldap_handle_t);
-	if (conn) return NULL;
+	if (!conn) return NULL;
 
 	conn->inst = inst;
 	conn->rebound = false;
