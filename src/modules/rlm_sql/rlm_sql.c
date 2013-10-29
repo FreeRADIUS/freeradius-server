@@ -224,6 +224,7 @@ static ssize_t sql_xlat(void *instance, REQUEST *request, char const *query, cha
 	if (!row) {
 		RDEBUG("SQL query returned no results");
 		(inst->module->sql_finish_select_query)(handle, inst->config);
+		ret = -1;
 
 		goto finish;
 	}
@@ -231,6 +232,7 @@ static ssize_t sql_xlat(void *instance, REQUEST *request, char const *query, cha
 	if (!row[0]){
 		RDEBUG("Null value in first column");
 		(inst->module->sql_finish_select_query)(handle, inst->config);
+		ret = -1;
 
 		goto finish;
 	}
