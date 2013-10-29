@@ -653,6 +653,9 @@ redo:
 			goto calculate_result;
 		}
 
+		RDEBUG2("%.*s%s %s ", depth + 1, modcall_spaces,
+			foreach, c->name);
+
 		paircursor(&cursor, &vp);
 		/* Prime the cursor. */
 		cursor.found = cursor.current;
