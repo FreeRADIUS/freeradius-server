@@ -339,8 +339,7 @@ static int inet_pton4(char const *src, struct in_addr *dst)
  * author:
  *	Paul Vixie, 1996.
  */
-static int
-inet_pton6(char const *src, unsigned char *dst)
+static int inet_pton6(char const *src, unsigned char *dst)
 {
 	static char const xdigits_l[] = "0123456789abcdef",
 			  xdigits_u[] = "0123456789ABCDEF";
@@ -444,7 +443,6 @@ int inet_pton(int af, char const *src, void *dst)
 }
 #endif
 
-
 #ifndef HAVE_INET_NTOP
 /*
  *	Utility function, so that the rest of the server doesn't
@@ -488,6 +486,26 @@ char const *inet_ntop(int af, void const *src, char *dst, size_t cnt)
 }
 #endif
 
+
+/*
+ *	Try to convert the address to v4 then v6
+ */
+int ip_ptonx(char const *src, fr_ipaddr_t *dst)
+{
+	if (inet_pton(AF_INET, src, &dst->ipaddr.ip4addr) == 1) {
+		dst->af = AF_INET;
+		return 1;
+	}
+
+#ifdef HAVE_STRUCT_SOCKADDR_IN6
+	if (inet_pton(AF_INET6, src, &dst->ipaddr.ip6addr) == 1) {
+		dst->af = AF_INET6;
+		return 1;
+	}
+#endif
+
+	return 0;
+}
 
 /*
  *	Wrappers for IPv4/IPv6 host to IP address lookup.
