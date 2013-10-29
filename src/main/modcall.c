@@ -653,8 +653,8 @@ redo:
 			goto calculate_result;
 		}
 
-		RDEBUG2("%.*s%s %s ", depth + 1, modcall_spaces,
-			foreach, c->name);
+		RDEBUG2("%.*sforeach %s ", depth + 1, modcall_spaces,
+			c->name);
 
 		paircursor(&cursor, &vp);
 		/* Prime the cursor. */
