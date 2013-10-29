@@ -669,7 +669,10 @@ redo:
 			}
 #endif
 
-			copy = paircopy(request, vp);
+			/*
+			 *	Copy only the one VP we care about.
+			 */
+			copy = paircopyvp(request, vp);
 			copy_p = &copy;
 
 			/*
