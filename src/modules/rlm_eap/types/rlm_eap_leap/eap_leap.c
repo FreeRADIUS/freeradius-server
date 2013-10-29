@@ -324,7 +324,7 @@ leap_packet_t *eapleap_stage6(REQUEST *request, leap_packet_t *packet, VALUE_PAI
 	 */
 	fr_md5_calc(hash, buffer, 16 + 8 + 24 + 8 + 24);
 
-	q = talloc_array(vp, char, 16 + sizeof("leap:session-key="));
+	q = talloc_array(vp, char, 64 + sizeof("leap:session-key="));
 	strcpy(q, "leap:session-key=");
 
 	memcpy(q + 17, hash, 16);
