@@ -104,6 +104,8 @@ extern "C" {
 #define TAG_ANY			-128	/* minimum signed char */
 #define TAG_UNUSED		0
 
+#define PAD(_x, _y)		(_y - ((_x) % _y))
+
 #if defined(__GNUC__)
 # define PRINTF_LIKE(n) __attribute__ ((format(printf, n, n+1)))
 # define NEVER_RETURNS __attribute__ ((noreturn))
@@ -454,7 +456,7 @@ int		rad_pwencode(char *encpw, size_t *len, char const *secret,
 int		rad_pwdecode(char *encpw, size_t len, char const *secret,
 			     uint8_t const *vector);
 
-#define	FR_TUNNEL_PW_ENC_LENGTH(_x) (2 + 1 + _x + PAD(_x + 1, AUTH_PASS_LEN))
+#define	FR_TUNNEL_PW_ENC_LENGTH(_x) (2 + 1 + _x + PAD(_x + 1, 16))
 int		rad_tunnel_pwencode(char *encpw, size_t *len, char const *secret,
 				    uint8_t const *vector);
 int		rad_tunnel_pwdecode(uint8_t *encpw, size_t *len,
