@@ -308,7 +308,8 @@ int sendfromto(int s, void *buf, size_t len, int flags,
 	}
 
 	/* Set up iov and msgh structures. */
-	memset(&msgh, 0, sizeof(struct msghdr));
+	memset(&msgh, 0, sizeof(msgh));
+	memset(&iov, 0, sizeof(iov));
 	iov.iov_base = buf;
 	iov.iov_len = len;
 	msgh.msg_iov = &iov;
