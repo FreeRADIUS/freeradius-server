@@ -1257,7 +1257,11 @@ static int load_byserver(CONF_SECTION *cs)
 #endif
 	} while (0);
 
-	cf_log_info(cs, "} # server");
+	if (name) {
+		cf_log_info(cs, "} # server %s", name);
+	} else {
+		cf_log_info(cs, "} # server");
+	}
 
 	if (!found && name) {
 		WDEBUG("Server %s is empty, and will do nothing!",
