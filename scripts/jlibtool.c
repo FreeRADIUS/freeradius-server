@@ -2414,6 +2414,11 @@ static void parse_args(int argc, char *argv[], command_t *cmd)
 		arg = argv[a];
 		arg_used = 1;
 
+		if (cmd->mode == MODE_EXECUTE) {
+			push_count_chars(cmd->arglist, arg);
+			continue;
+		}
+
 		if (arg[0] == '-') {
 			/*
 			 *	Double dashed (long) single dash (short)
@@ -2423,6 +2428,11 @@ static void parse_args(int argc, char *argv[], command_t *cmd)
 				parse_short_opt(arg + 1, cmd);
 
 			if (arg_used) continue;
+
+			/*
+			 *	Ignore all options after the '--execute'
+			 */
+			if (cmd->mode == MODE_EXECUTE) continue;
 
 			/*
 			 *	We haven't done anything with it yet, but
