@@ -124,10 +124,10 @@ define ADD_INSTALL_TARGET
         endif
     endif
 
-    ${1}_INSTALLDIR := ${LL}$${DESTDIR}$${TGT_INSTALLDIR}
-
     # add rules to install the target
     ifneq "$${${1}_INSTALLDIR}" ""
+        ${1}_INSTALLDIR := ${LL}$${DESTDIR}$${TGT_INSTALLDIR}
+
         $$(eval $$(call ADD_INSTALL_RULE$${${1}_SUFFIX},${1}))
     endif
 
