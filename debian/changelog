@@ -1,9 +1,9 @@
-freeradius (2.2.1+git) unstable; urgency=medium
+freeradius (2.2.2+git) unstable; urgency=medium
 
   * New upstream version.
 
- -- Alan DeKok <aland@freeradius.org>  Thu, 19 Sep 2013 20:02:00 -0400
-  
+ -- Alan DeKok <aland@freeradius.org>  Wed, 30 Oct 2013 9:30:00 -0400
+
 freeradius (2.2.1+git) unstable; urgency=medium
 
   * New upstream version.
