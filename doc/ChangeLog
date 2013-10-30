@@ -16,7 +16,6 @@ FreeRADIUS 2.2.2 Wednesday 30 Oct 2013 9:30:00 DST, urgency=medium
 	  Fix ported from 3.0.0.
 	* Buffer debug output when threaded, so that text from
 	  different threads isn't interspersed.
-	* Fix priority handling of return codes in unlang.
 	* Fix SEGV in rlm_perl when using dynamic expansions.
 	* Fix build for OSX Mavericks, which hid the header files
 	  in a magical place.
