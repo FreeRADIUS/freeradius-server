@@ -10,7 +10,7 @@ SOURCES	+= cb.c tls.c
 endif
 
 SRC_CFLAGS	:= -DHOSTINFO=\"${HOSTINFO}\"
-TGT_INSTALLDIR  := /dev/null
+TGT_INSTALLDIR  := 
 TGT_LDLIBS	:= $(LIBS)
 TGT_PREREQS	:= libfreeradius-server.a libfreeradius-radius.a
 
