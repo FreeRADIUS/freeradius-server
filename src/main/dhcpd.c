@@ -117,7 +117,7 @@ static int dhcprelay_process_client_request(REQUEST *request)
 	/* set SRC ipaddr/port to the listener ipaddr/port */
 	request->packet->src_ipaddr.af = AF_INET;
 	request->packet->src_ipaddr.ipaddr.ip4addr.s_addr = giaddrvp->vp_ipaddr;
-	request->packet->src_port = sock->port;
+	request->packet->src_port = sock->lsock.port;
 
 	vp = pairfind(request->config_items, DHCP2ATTR(270)); /* DHCP-Relay-To-IP-Address */
 	rad_assert(vp != NULL);
@@ -165,7 +165,7 @@ static int dhcprelay_process_server_reply(REQUEST *request)
 	/* set SRC ipaddr/port to the listener ipaddr/port */
 	request->packet->src_ipaddr.af = AF_INET;
 	request->packet->src_ipaddr.ipaddr.ip4addr.s_addr = giaddrvp->vp_ipaddr;
-	request->packet->src_port = sock->port;
+	request->packet->src_port = sock->lsock.port;
 
 	/* set DEST ipaddr/port to clientip/68 or broadcast in specific cases */
 	request->packet->dst_ipaddr.af = AF_INET;
@@ -530,7 +530,7 @@ static int dhcp_process(REQUEST *request)
 
 static int dhcp_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 {
-	int rcode, broadcast = 1;
+	int rcode;
 	int on = 1;
 	dhcp_socket_t *sock;
 	RADCLIENT *client;
