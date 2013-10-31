@@ -948,7 +948,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST * request)
 	 */
 	if (inst->config->authorize_check_query && (inst->config->authorize_check_query[0] != '\0')) {
 		if (radius_axlat(&expanded, request, inst->config->authorize_check_query,
-				sql_escape_func, inst) < 0) {
+				 sql_escape_func, inst) < 0) {
 			REDEBUG("Error generating query");
 			rcode = RLM_MODULE_FAIL;
 			goto error;
@@ -1048,6 +1048,9 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST * request)
 				user_found = true;
 				break;
 
+			case RLM_MODULE_NOTFOUND:
+				break;
+
 			default:
 				rcode = ret;
 				goto release;
@@ -1097,6 +1100,9 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST * request)
 				/* FALL-THROUGH */
 			case RLM_MODULE_NOOP:
 				user_found = true;
+				break;
+
+			case RLM_MODULE_NOTFOUND:
 				break;
 
 			default:
