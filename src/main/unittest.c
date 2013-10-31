@@ -229,7 +229,6 @@ static void print_packet(FILE *fp, RADIUS_PACKET *packet)
 int main(int argc, char *argv[])
 {
 	int rcode = EXIT_SUCCESS;
-	int status;
 	int argval;
 	const char *input_file = NULL;
 	const char *output_file = NULL;
@@ -335,8 +334,6 @@ int main(int argc, char *argv[])
 	}
 
 	setlinebuf(stdout); /* unbuffered output */
-
-	status = 0;	
 
 	if (!input_file || (strcmp(input_file, "-") == 0)) {
 		fp = stdin;
