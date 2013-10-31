@@ -134,12 +134,9 @@ static void NEVER_RETURNS usage(void)
  *	Free a radclient struct, which may (or may not)
  *	already be in the list.
  */
-static void radclient_free(rc_request_t *request)
+static int _rc_request_free(rc_request_t *request)
 {
 	rc_request_t *prev, *next;
-
-	if (request->packet) rad_free(&request->packet);
-	if (request->reply) rad_free(&request->reply);
 
 	prev = request->prev;
 	next = request->next;
@@ -160,7 +157,7 @@ static void radclient_free(rc_request_t *request)
 		rc_request_tail = prev;
 	}
 
-	free(request);
+	return 0;
 }
 
 static int mschapv1_encode(RADIUS_PACKET *packet, VALUE_PAIR **request,
@@ -208,7 +205,7 @@ static int mschapv1_encode(RADIUS_PACKET *packet, VALUE_PAIR **request,
  *	Initialize a radclient data structure and add it to
  *	the global linked list.
  */
-static int radclient_init(char const *filename)
+static int radclient_init(TALLOC_CTX *ctx, char const *filename)
 {
 	FILE *fp;
 	vp_cursor_t cursor;
@@ -240,13 +237,13 @@ static int radclient_init(char const *filename)
 		/*
 		 *	Allocate it.
 		 */
-		request = malloc(sizeof(*request));
+		request = talloc_zero(ctx, rc_request_t);
 		if (!request) {
 			goto oom;
 		}
-		memset(request, 0, sizeof(*request));
+		talloc_set_destructor(request, _rc_request_free);
 
-		request->packet = rad_alloc(NULL, 1);
+		request->packet = rad_alloc(request, 1);
 		if (!request->packet) {
 			goto oom;
 		}
@@ -265,11 +262,13 @@ static int radclient_init(char const *filename)
 		/*
 		 *	Read the VP's.
 		 */
-		request->packet->vps = readvp2(NULL, fp, &filedone, "radclient:");
+		request->packet->vps = readvp2(request, fp, &filedone, "radclient:");
 		if (!request->packet->vps) {
-			rad_free(&request->packet);
-			free(request);
-			if (fp != stdin) fclose(fp);
+			talloc_free(request);
+
+			if (fp != stdin) {
+				fclose(fp);
+			}
 			return 1;
 		}
 
@@ -411,7 +410,8 @@ static int radclient_init(char const *filename)
 
 	oom:
 	fprintf(stderr, "radclient: Out of memory\n");
-	free(request);
+	talloc_free(request);
+
 	if (fp != stdin) fclose(fp);
 	return 0;
 }
@@ -462,7 +462,7 @@ static int filename_walk(UNUSED void *context, void *data)
 	/*
 	 *	Read request(s) from the file.
 	 */
-	if (!radclient_init(filename)) {
+	if (!radclient_init(NULL, filename)) {
 		return -1;	/* stop walking */
 	}
 
@@ -1168,7 +1168,9 @@ int main(int argc, char **argv)
 	 *	If no '-f' is specified, we're reading from stdin.
 	 */
 	if (rbtree_num_elements(filename_tree) == 0) {
-		if (!radclient_init("-")) exit(1);
+		if (!radclient_init(NULL, "-")) {
+			exit(1);
+		}
 	}
 
 	/*
@@ -1269,7 +1271,7 @@ int main(int argc, char **argv)
 			 *	This packet is done.  Delete it.
 			 */
 			if (this->done) {
-				radclient_free(this);
+				talloc_free(this);
 				continue;
 			}
 
@@ -1365,7 +1367,7 @@ int main(int argc, char **argv)
 
 	rbtree_free(filename_tree);
 	fr_packet_list_free(pl);
-	while (request_head) radclient_free(request_head);
+	while (request_head) talloc_free(request_head);
 	dict_free();
 
 	if (do_summary) {
