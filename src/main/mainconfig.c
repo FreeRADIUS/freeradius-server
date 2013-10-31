@@ -398,7 +398,6 @@ static ssize_t xlat_getclient(UNUSED void *instance, REQUEST *request, char cons
 		return 0;
 	}
 
-
 	cp = cf_pair_find(client->cs, fmt);
 	if (!cp || !(value = cf_pair_value(cp))) {
 		if (strcmp(fmt, "shortname") == 0) {
