@@ -234,6 +234,7 @@ VALUE_PAIR *fr_cursor_remove(vp_cursor_t *cursor)
  * @todo this is really inefficient and should be fixed...
  *
  * @param cursor to replace the current pair in.
+ * @param new VALUE_PAIR to insert.
  * @return NULL on error, else the VALUE_PAIR we just replaced.
  */
 VALUE_PAIR *fr_cursor_replace(vp_cursor_t *cursor, VALUE_PAIR *new)
