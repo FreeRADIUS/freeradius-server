@@ -232,8 +232,10 @@ int main(int argc, char *argv[])
 	int argval;
 	const char *input_file = NULL;
 	const char *output_file = NULL;
+	const char *filter_file = NULL;
 	FILE *fp;
 	REQUEST *request;
+	VALUE_PAIR *filter_vps = NULL;
 
 	if ((progname = strrchr(argv[0], FR_DIR_SEP)) == NULL)
 		progname = argv[0];
@@ -259,7 +261,7 @@ int main(int argc, char *argv[])
 	default_log.fd = STDOUT_FILENO;
 
 	/*  Process the options.  */
-	while ((argval = getopt(argc, argv, "d:D:hi:mMn:o:xX")) != EOF) {
+	while ((argval = getopt(argc, argv, "d:D:f:hi:mMn:o:xX")) != EOF) {
 
 		switch(argval) {
 			case 'd':
@@ -273,16 +275,16 @@ int main(int argc, char *argv[])
 				mainconfig.dictionary_dir = talloc_strdup(NULL, optarg);
 				break;
 
+			case 'f':
+				filter_file = optarg;
+				break;
+
 			case 'h':
 				usage(0);
 				break;
 
 			case 'i':
 				input_file = optarg;
-				break;
-
-			case 'n':
-				mainconfig.name = optarg;
 				break;
 
 			case 'm':
@@ -292,6 +294,10 @@ int main(int argc, char *argv[])
 			case 'M':
 				memory_report = 1;
 				mainconfig.debug_memory = 1;
+				break;
+
+			case 'n':
+				mainconfig.name = optarg;
 				break;
 
 			case 'o':
@@ -346,6 +352,9 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	/*
+	 *	Grab the VPs from stdin, or from the file.
+	 */
 	request = request_setup(fp);
 	if (!request) {
 		fprintf(stderr, "Failed reading input: %s\n", fr_strerror());
@@ -354,6 +363,28 @@ int main(int argc, char *argv[])
 
 	if (input_file) fclose(fp);
 
+	/*
+	 *	Maybe load a filter.
+	 */
+	if (filter_file) {
+		int done = false;
+
+		fp = fopen(filter_file, "r");
+		if (!fp) {
+			fprintf(stderr, "Failed reading %s: %s\n",
+				filter_file, strerror(errno));
+			exit(EXIT_FAILURE);
+		}
+
+		filter_vps = readvp2(request, fp, &done, "radiusd");
+		if (!filter_vps) {
+			fprintf(stderr, "Failed reading attributes from %s: %s\n",
+				filter_file, fr_strerror());
+			exit(EXIT_FAILURE);
+		}
+
+		fclose(fp);
+	}
 
 	rad_virtual_server(request);
 
@@ -371,6 +402,12 @@ int main(int argc, char *argv[])
 	print_packet(fp, request->reply);
 
 	if (output_file) fclose(fp);
+
+	if (filter_vps && !pairvalidate(filter_vps, request->reply->vps)) {
+		fprintf(stderr, "Output file %s does not match attributes in filter %s\n",
+			output_file, filter_file);
+		exit(EXIT_FAILURE);
+	}
 
 	talloc_free(request);
 
@@ -410,6 +447,7 @@ static void NEVER_RETURNS usage(int status)
 	fprintf(output, "Options:\n");
 	fprintf(output, "  -d raddb_dir  Configuration files are in \"raddb_dir/*\".\n");
 	fprintf(output, "  -D dict_dir   Dictionary files are in \"dict_dir/*\".\n");
+	fprintf(output, "  -f file       Filter reply against attributes in 'file'.\n");
 	fprintf(output, "  -h            Print this help message.\n");
 	fprintf(output, "  -m            On SIGINT or SIGQUIT exit cleanly instead of immediately.\n");
 	fprintf(output, "  -n name       Read raddb/name.conf instead of raddb/radiusd.conf.\n");
