@@ -297,8 +297,8 @@ static VALUE_PAIR *eap2vp(REQUEST *request, RADIUS_PACKET *packet,
 
 	memcpy(p + EAP_HEADER_LEN, data, total);
 
-	paircursor(&cursor, &head);
-	pairinsert(&cursor, vp);
+	fr_cursor_init(&cursor, &head);
+	fr_cursor_insert(&cursor, vp);
 	while (total < data_len) {
 		vp = paircreate(packet, PW_EAP_MESSAGE, 0);
 		if (!vp) {
@@ -311,7 +311,7 @@ static VALUE_PAIR *eap2vp(REQUEST *request, RADIUS_PACKET *packet,
 
 		total += vp->length;
 
-		pairinsert(&cursor, vp);
+		fr_cursor_insert(&cursor, vp);
 	}
 
 	return head;
@@ -337,7 +337,7 @@ static int vp2eap(REQUEST *request, tls_session_t *tls_session, VALUE_PAIR *vp)
 		size_t i, total, start = EAP_HEADER_LEN;
 		total = 0;
 
-		for (this = paircursor(&cursor, &vp); this; this = pairnext(&cursor)) {
+		for (this = fr_cursor_init(&cursor, &vp); this; this = fr_cursor_next(&cursor)) {
 			for (i = start; i < vp->length; i++) {
 				if ((total & 0x0f) == 0) {
 					fprintf(fr_log_fp, "  PEAP tunnel data out %04x: ", (int) total);
@@ -368,9 +368,9 @@ static int vp2eap(REQUEST *request, tls_session_t *tls_session, VALUE_PAIR *vp)
 	/*
 	 *	Send the rest of the EAP data.
 	 */
-	for (this = paircursor(&cursor, &vp);
+	for (this = fr_cursor_init(&cursor, &vp);
 	     this;
-	     this = pairnext(&cursor)) {
+	     this = fr_cursor_next(&cursor)) {
 		(tls_session->record_plus)(&tls_session->clean_in, this->vp_octets, this->length);
 	}
 
@@ -1244,9 +1244,9 @@ static int setup_fake_request(REQUEST *request, REQUEST *fake, peap_tunnel_t *t)
 		VALUE_PAIR *copy;
 		vp_cursor_t cursor;
 
-		for (vp = paircursor(&cursor, &request->packet->vps);
+		for (vp = fr_cursor_init(&cursor, &request->packet->vps);
 		     vp;
-		     vp = pairnext(&cursor)) {
+		     vp = fr_cursor_next(&cursor)) {
 			/*
 			 *	The attribute is a server-side thingy,
 			 *	don't copy it.

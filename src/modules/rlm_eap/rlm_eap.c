@@ -640,7 +640,7 @@ static rlm_rcode_t mod_post_proxy(void *inst, REQUEST *request)
 	 *	There may be more than one Cisco-AVPair.
 	 *	Ensure we find the one with the LEAP attribute.
 	 */
-	paircursor(&cursor, &request->proxy_reply->vps);
+	fr_cursor_init(&cursor, &request->proxy_reply->vps);
 	for (;;) {
 		/*
 		 *	Hmm... there's got to be a better way to
@@ -649,7 +649,7 @@ static rlm_rcode_t mod_post_proxy(void *inst, REQUEST *request)
 		 *	This is vendor Cisco (9), Cisco-AVPair
 		 *	attribute (1)
 		 */
-		vp = pairfindnext(&cursor, 1, 9, TAG_ANY);
+		vp = fr_cursor_next_by_num(&cursor, 1, 9, TAG_ANY);
 		if (!vp) {
 			return RLM_MODULE_NOOP;
 		}

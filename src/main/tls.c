@@ -2520,9 +2520,9 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 					/* generate a dummy user-style entry which is easy to read back */
 					fprintf(vp_file, "# SSL cached session\n");
 					fprintf(vp_file, "%s\n", buffer);
-					for (vp = paircursor(&cursor, &vps);
+					for (vp = fr_cursor_init(&cursor, &vps);
 					     vp;
-					     vp = pairnext(&cursor)) {
+					     vp = fr_cursor_next(&cursor)) {
 						vp_prints(buf, sizeof(buf), vp);
 						fprintf(vp_file, "\t%s%s\n", buf, ",");
 					}
@@ -2560,9 +2560,9 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 			RDEBUG("Adding cached attributes for session %s:", buffer);
 			debug_pair_list(vps);
 
-			for (vp = paircursor(&cursor, &vps);
+			for (vp = fr_cursor_init(&cursor, &vps);
 			     vp;
-			     vp = pairnext(&cursor)) {
+			     vp = fr_cursor_next(&cursor)) {
 				/*
 				 *	TLS-* attrs get added back to
 				 *	the request list.

@@ -229,9 +229,9 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 	/*
 	 *	First, find the interesting attributes.
 	 */
-	for (vp = paircursor(&cursor, &request->packet->vps);
+	for (vp = fr_cursor_init(&cursor, &request->packet->vps);
 	     vp;
-	     vp = pairnext(&cursor)) {
+	     vp = fr_cursor_next(&cursor)) {
 		if (!vp->da->vendor) switch (vp->da->attr) {
 			case PW_LOGIN_IP_HOST:
 			case PW_FRAMED_IP_ADDRESS:

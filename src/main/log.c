@@ -323,9 +323,9 @@ void vp_listdebug(VALUE_PAIR *vp)
 {
 	vp_cursor_t cursor;
 	char tmpPair[70];
-	for (vp = paircursor(&cursor, &vp);
+	for (vp = fr_cursor_init(&cursor, &vp);
 	     vp;
-	     vp = pairnext(&cursor)) {
+	     vp = fr_cursor_next(&cursor)) {
 		vp_prints(tmpPair, sizeof(tmpPair), vp);
 		DEBUG2("     %s", tmpPair);
 	}

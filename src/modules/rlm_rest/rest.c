@@ -457,7 +457,7 @@ static size_t rest_encode_post(void *ptr, size_t size, size_t nmemb,
 	}
 
 	while (s > 0) {
-		vp = paircurrent(&ctx->cursor);
+		vp = fr_cursor_current(&ctx->cursor);
 		if (!vp) {
 			ctx->state = READ_STATE_END;
 
@@ -518,7 +518,7 @@ static size_t rest_encode_post(void *ptr, size_t size, size_t nmemb,
 		 *	We wrote one full attribute value pair, record progress.
 		 */
 		f = p;
-		pairnext(&ctx->cursor);
+		fr_cursor_next(&ctx->cursor);
 		ctx->state = READ_STATE_ATTR_BEGIN;
 	}
 
@@ -625,7 +625,7 @@ static size_t rest_encode_json(void *ptr, size_t size, size_t nmemb,
 	}
 
 	while (s > 0) {
-		vp = paircurrent(&ctx->cursor);
+		vp = fr_cursor_current(&ctx->cursor);
 
 		/*
 		 *	We've encoded all the VPs
@@ -682,7 +682,7 @@ static size_t rest_encode_json(void *ptr, size_t size, size_t nmemb,
 			 *	Multivalued attribute, we sorted all the attributes earlier, so multiple
 			 *	instances should occur in a contiguous block.
 			 */
-			if ((next = pairnext(&ctx->cursor)) && (vp->da == next->da)) {
+			if ((next = fr_cursor_next(&ctx->cursor)) && (vp->da == next->da)) {
 				*p++ = ',';
 
 				/*
@@ -827,7 +827,7 @@ static void rest_read_ctx_init(REQUEST *request, rlm_rest_read_t *ctx, bool sort
 	if (sort) {
 		pairsort(&request->packet->vps, true);
 	}
-	paircursor(&ctx->cursor, &request->packet->vps);
+	fr_cursor_init(&ctx->cursor, &request->packet->vps);
 }
 
 /** Converts POST response into VALUE_PAIRs and adds them to the request

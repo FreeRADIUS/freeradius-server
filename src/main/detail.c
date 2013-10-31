@@ -478,7 +478,7 @@ int detail_recv(rad_listen_t *listener)
 			goto do_header;
 	}
 
-	paircursor(&cursor, &data->vps);
+	fr_cursor_init(&cursor, &data->vps);
 
 	/*
 	 *	Read a header, OR a value-pair.
@@ -572,7 +572,7 @@ int detail_recv(rad_listen_t *listener)
 			if (vp) {
 				vp->vp_date = (uint32_t) data->timestamp;
 				vp->type = VT_DATA;
-		    		pairinsert(&cursor, vp);
+		    		fr_cursor_insert(&cursor, vp);
 			}
 			continue;
 		}
@@ -586,7 +586,7 @@ int detail_recv(rad_listen_t *listener)
 		vp = NULL;
 		if ((userparse(data, buffer, &vp) > 0) &&
 		    (vp != NULL)) {
-		    	pairinsert(&cursor, vp);
+		    	fr_cursor_insert(&cursor, vp);
 		}
 	}
 
@@ -735,9 +735,9 @@ int detail_recv(rad_listen_t *listener)
 
 	if (debug_flag) {
 		fr_printf_log("detail_recv: Read packet from %s\n", data->filename_work);
-		for (vp = paircursor(&cursor, &packet->vps);
+		for (vp = fr_cursor_init(&cursor, &packet->vps);
 		     vp;
-		     vp = pairnext(&cursor)) {
+		     vp = fr_cursor_next(&cursor)) {
 			debug_pair(vp);
 		}
 	}

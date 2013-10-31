@@ -121,7 +121,7 @@ static int request_init(char const *filename)
 	/*
 	 *	Fix / set various options
 	 */
-	for (vp = paircursor(&cursor, &request->vps); vp; vp = pairnext(&cursor)) {
+	for (vp = fr_cursor_init(&cursor, &request->vps); vp; vp = fr_cursor_next(&cursor)) {
 		switch (vp->da->attr) {
 		default:
 			break;

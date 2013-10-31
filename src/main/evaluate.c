@@ -692,10 +692,10 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from)
 	 *	the matching attributes are deleted.
 	 */
 	count = 0;
-	for (vp = paircursor(&cursor, &from); vp; vp = pairnext(&cursor)) count++;
+	for (vp = fr_cursor_init(&cursor, &from); vp; vp = fr_cursor_next(&cursor)) count++;
 	from_list = talloc_array(request, VALUE_PAIR *, count);
 
-	for (vp = paircursor(&cursor, to); vp; vp = pairnext(&cursor)) count++;
+	for (vp = fr_cursor_init(&cursor, to); vp; vp = fr_cursor_next(&cursor)) count++;
 	to_list = talloc_array(request, VALUE_PAIR *, count);
 
 	/*

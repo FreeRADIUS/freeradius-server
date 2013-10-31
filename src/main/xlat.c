@@ -318,10 +318,10 @@ static ssize_t xlat_debug_attr(UNUSED void *instance, REQUEST *request, char con
 	}
 
 	RIDEBUG("Attributes matching \"%s\"", fmt);
-	vp = paircursor(&cursor, vps);
+	vp = fr_cursor_init(&cursor, vps);
 
 	if (vpt.da) {
-		vp = pairfindnext(&cursor, vpt.da->attr, vpt.da->vendor, TAG_ANY);
+		vp = fr_cursor_next_by_num(&cursor, vpt.da->attr, vpt.da->vendor, TAG_ANY);
 	}
 	while (vp) {
 		DICT_ATTR *dac = NULL;
@@ -432,9 +432,9 @@ static ssize_t xlat_debug_attr(UNUSED void *instance, REQUEST *request, char con
 		talloc_free(dac);
 
 		if (vpt.da) {
-			vp = pairfindnext(&cursor, vpt.da->attr, vpt.da->vendor, TAG_ANY);
+			vp = fr_cursor_next_by_num(&cursor, vpt.da->attr, vpt.da->vendor, TAG_ANY);
 		} else {
-			vp = pairnext(&cursor);
+			vp = fr_cursor_next(&cursor);
 		}
 	}
 
@@ -1795,8 +1795,8 @@ do_print:
 		 *	Return a count of the VPs.
 		 */
 		if (num == 65536) {
-			paircursor(&cursor, &vp);
-			while (pairfindnext(&cursor, da->attr, da->vendor, tag) != NULL) {
+			fr_cursor_init(&cursor, &vp);
+			while (fr_cursor_next_by_num(&cursor, da->attr, da->vendor, tag) != NULL) {
 				count++;
 			}
 
@@ -1809,11 +1809,11 @@ do_print:
 		if (num == 65537) {
 			char *p, *q;
 
-			vp = paircursor(&cursor, &vp);
-			vp = pairfindnext(&cursor, da->attr, da->vendor, tag);
+			vp = fr_cursor_init(&cursor, &vp);
+			vp = fr_cursor_next_by_num(&cursor, da->attr, da->vendor, tag);
 			if (!vp) return NULL;
 			p = vp_aprint(ctx, vp);
-			while ((vp = pairfindnext(&cursor, da->attr, da->vendor, tag)) != NULL) {
+			while ((vp = fr_cursor_next_by_num(&cursor, da->attr, da->vendor, tag)) != NULL) {
 				q = vp_aprint(ctx, vp);
 				p = talloc_strdup_append(p, ",");
 				p = talloc_strdup_append(p, q);
@@ -1822,8 +1822,8 @@ do_print:
 			return p;
 		}
 
-		(void) paircursor(&cursor, &vp);
-		while ((vp = pairfindnext(&cursor, da->attr, da->vendor, tag)) != NULL) {
+		(void) fr_cursor_init(&cursor, &vp);
+		while ((vp = fr_cursor_next_by_num(&cursor, da->attr, da->vendor, tag)) != NULL) {
 			if (count == num) {
 				break;
 			}

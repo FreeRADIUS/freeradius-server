@@ -170,7 +170,7 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, fr_hash_table_t *
 			 *	and probably ':=' for server
 			 *	configuration items.
 			 */
-			for (vp = paircursor(&cursor, &entry->check); vp; vp = pairnext(&cursor)) {
+			for (vp = fr_cursor_init(&cursor, &entry->check); vp; vp = fr_cursor_next(&cursor)) {
 				/*
 				 *	Ignore attributes which are set
 				 *	properly.
@@ -237,7 +237,7 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, fr_hash_table_t *
 			 *	It's a common enough mistake, that it's
 			 *	worth doing.
 			 */
-			for (vp = paircursor(&cursor, &entry->reply); vp; vp = pairnext(&cursor)) {
+			for (vp = fr_cursor_init(&cursor, &entry->reply); vp; vp = fr_cursor_next(&cursor)) {
 				/*
 				 *	If it's NOT a vendor attribute,
 				 *	and it's NOT a wire protocol
@@ -433,9 +433,9 @@ static rlm_rcode_t file_common(rlm_files_t *inst, REQUEST *request,
 		}
 
 		check_tmp = paircopy(request, pl->check);
-		for (vp = paircursor(&cursor, &check_tmp);
+		for (vp = fr_cursor_init(&cursor, &check_tmp);
 		     vp;
-		     vp = pairnext(&cursor)) {
+		     vp = fr_cursor_next(&cursor)) {
 			if (radius_xlat_do(request, vp) < 0) {
 				RWARN("Failed parsing expanded value for check item, skipping entry: %s", fr_strerror());
 				pairfree(&check_tmp);

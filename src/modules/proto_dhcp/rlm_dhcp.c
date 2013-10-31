@@ -68,9 +68,9 @@ static ssize_t dhcp_options_xlat(UNUSED void *instance, REQUEST *request,
 	}
 
 
-	for (vp = paircursor(&cursor, &head);
+	for (vp = fr_cursor_init(&cursor, &head);
 	     vp;
-	     vp = pairnext(&cursor)) {
+	     vp = fr_cursor_next(&cursor)) {
 		decoded++;
 	}
 

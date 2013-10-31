@@ -34,9 +34,9 @@ static rlm_rcode_t utf8_clean(UNUSED void *instance, REQUEST *request)
 	VALUE_PAIR *vp;
 	vp_cursor_t cursor;
 
-	for (vp = paircursor(&cursor, &request->packet->vps);
+	for (vp = fr_cursor_init(&cursor, &request->packet->vps);
 	     vp;
-	     vp = pairnext(&cursor)) {
+	     vp = fr_cursor_next(&cursor)) {
 		if (vp->da->type != PW_TYPE_STRING) continue;
 
 		for (i = 0; i < vp->length; i += len) {

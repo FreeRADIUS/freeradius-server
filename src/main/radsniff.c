@@ -1244,9 +1244,9 @@ int main(int argc, char *argv[])
 			goto finish;
 		}
 
-		for (vp = paircursor(&cursor, &filter_vps);
+		for (vp = fr_cursor_init(&cursor, &filter_vps);
 		     vp;
-		     vp = pairnext(&cursor)) {
+		     vp = fr_cursor_next(&cursor)) {
 		     	/*
 		     	 *	xlat expansion isn't support hered
 		     	 */

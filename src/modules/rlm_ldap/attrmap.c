@@ -33,7 +33,7 @@ static int rlm_ldap_map_getvalue(VALUE_PAIR **out, REQUEST *request, value_pair_
 	vp_cursor_t cursor;
 	int i;
 
-	paircursor(&cursor, &head);
+	fr_cursor_init(&cursor, &head);
 
 	/*
 	 *	Iterate over all the retrieved values,
@@ -52,7 +52,7 @@ static int rlm_ldap_map_getvalue(VALUE_PAIR **out, REQUEST *request, value_pair_
 		}
 
 		vp->op = map->op;
-		pairinsert(&cursor, vp);
+		fr_cursor_insert(&cursor, vp);
 	}
 
 	*out = head;

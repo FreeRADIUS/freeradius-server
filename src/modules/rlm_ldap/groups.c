@@ -702,13 +702,13 @@ rlm_rcode_t rlm_ldap_check_cached(ldap_instance_t const *inst, REQUEST *request,
 	int		ret;
 	vp_cursor_t	cursor;
 
-	paircursor(&cursor, &request->config_items);
-	vp = pairfindnext(&cursor, inst->cache_da->attr, inst->cache_da->vendor, TAG_ANY);
+	fr_cursor_init(&cursor, &request->config_items);
+	vp = fr_cursor_next_by_num(&cursor, inst->cache_da->attr, inst->cache_da->vendor, TAG_ANY);
 	if (!vp) {
 		return RLM_MODULE_INVALID;
 	}
 
-	for (; vp; vp = pairfindnext(&cursor, inst->cache_da->attr, inst->cache_da->vendor, TAG_ANY)) {
+	for (; vp; vp = fr_cursor_next_by_num(&cursor, inst->cache_da->attr, inst->cache_da->vendor, TAG_ANY)) {
 		ret = radius_compare_vps(request, check, vp);
 		if (ret == 0) {
 			RDEBUG2("User found. Matched cached membership");

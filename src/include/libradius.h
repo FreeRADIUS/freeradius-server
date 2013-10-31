@@ -277,7 +277,7 @@ typedef struct value_pair {
 typedef struct vp_cursor {
 	VALUE_PAIR	**first;
 	VALUE_PAIR	*found;					//!< pairfind marker.
-	VALUE_PAIR	*last;					//!< Temporary only used for pairinsert
+	VALUE_PAIR	*last;					//!< Temporary only used for fr_cursor_insert
 	VALUE_PAIR	*current;				//!< The current attribute.
 	VALUE_PAIR	*next;					//!< Next attribute to process.
 } vp_cursor_t;
@@ -516,16 +516,16 @@ void		pairfree(VALUE_PAIR **);
 VALUE_PAIR	*pairfind(VALUE_PAIR *, unsigned int attr, unsigned int vendor, int8_t tag);
 VALUE_PAIR	*pairfind_da(VALUE_PAIR *, DICT_ATTR const *dattr, int8_t tag);
 
-#define		paircursor(_x, _y)	paircursorc(_x,(VALUE_PAIR const * const *) _y)
-VALUE_PAIR	*paircursorc(vp_cursor_t *cursor, VALUE_PAIR const * const *node);
-VALUE_PAIR	*pairfirst(vp_cursor_t *cursor);
-VALUE_PAIR	*pairfindnext(vp_cursor_t *cursor, unsigned int attr, unsigned int vendor, int8_t tag);
-VALUE_PAIR	*pairfindnext_da(vp_cursor_t *cursor, DICT_ATTR const *dattr, int8_t tag);
-VALUE_PAIR	*pairnext(vp_cursor_t *cursor);
-VALUE_PAIR	*pairlast(vp_cursor_t *cursor);
-VALUE_PAIR	*paircurrent(vp_cursor_t *cursor);
-void		pairinsert(vp_cursor_t *cursor, VALUE_PAIR *vp);
-VALUE_PAIR	*pairremove(vp_cursor_t *cursor);
+#define		fr_cursor_init(_x, _y)	_fr_cursor_init(_x,(VALUE_PAIR const * const *) _y)
+VALUE_PAIR	*_fr_cursor_init(vp_cursor_t *cursor, VALUE_PAIR const * const *node);
+VALUE_PAIR	*fr_cursor_first(vp_cursor_t *cursor);
+VALUE_PAIR	*fr_cursor_next_by_num(vp_cursor_t *cursor, unsigned int attr, unsigned int vendor, int8_t tag);
+VALUE_PAIR	*fr_cursor_next_by_da(vp_cursor_t *cursor, DICT_ATTR const *dattr, int8_t tag);
+VALUE_PAIR	*fr_cursor_next(vp_cursor_t *cursor);
+VALUE_PAIR	*fr_cursor_current(vp_cursor_t *cursor);
+void		fr_cursor_insert(vp_cursor_t *cursor, VALUE_PAIR *vp);
+VALUE_PAIR	*fr_cursor_remove(vp_cursor_t *cursor);
+VALUE_PAIR	*fr_cursor_replace(vp_cursor_t *cursor, VALUE_PAIR *new);
 void		pairdelete(VALUE_PAIR **, unsigned int attr, unsigned int vendor, int8_t tag);
 void		pairadd(VALUE_PAIR **, VALUE_PAIR *);
 void		pairreplace(VALUE_PAIR **first, VALUE_PAIR *add);

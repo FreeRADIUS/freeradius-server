@@ -162,9 +162,9 @@ void pairfree(VALUE_PAIR **vps)
 		return;
 	}
 
-	for (vp = paircursor(&cursor, vps);
+	for (vp = fr_cursor_init(&cursor, vps);
 	     vp;
-	     vp = pairnext(&cursor)) {
+	     vp = fr_cursor_next(&cursor)) {
 		VERIFY_VP(vp);
 		talloc_free(vp);
 	}
@@ -207,9 +207,9 @@ VALUE_PAIR *pairfind_da(VALUE_PAIR *vp, DICT_ATTR const *da, int8_t tag)
 		 return NULL;
 	}
 
-	for (i = paircursor(&cursor, &vp);
+	for (i = fr_cursor_init(&cursor, &vp);
 	     i;
-	     i = pairnext(&cursor)) {
+	     i = fr_cursor_next(&cursor)) {
 		VERIFY_VP(i);
 		if ((i->da == da) && (!i->da->flags.has_tag || (tag == TAG_ANY) || (i->tag == tag))) {
 			return i;
@@ -229,9 +229,9 @@ VALUE_PAIR *pairfind(VALUE_PAIR *vp, unsigned int attr, unsigned int vendor, int
 	vp_cursor_t 	cursor;
 	VALUE_PAIR	*i;
 
-	for (i = paircursor(&cursor, &vp);
+	for (i = fr_cursor_init(&cursor, &vp);
 	     i;
-	     i = pairnext(&cursor)) {
+	     i = fr_cursor_next(&cursor)) {
 		VERIFY_VP(i);
 		if ((i->da->attr == attr) && (i->da->vendor == vendor) && \
 		    (!i->da->flags.has_tag || (tag == TAG_ANY) || (i->tag == tag))) {
@@ -240,211 +240,6 @@ VALUE_PAIR *pairfind(VALUE_PAIR *vp, unsigned int attr, unsigned int vendor, int
 	}
 
 	return NULL;
-}
-
-/** Setup a cursor to iterate over attribute pairs
- *
- * @param cursor Where to initialise the cursor (uses existing structure).
- * @param node to start from.
- */
-VALUE_PAIR *paircursorc(vp_cursor_t *cursor, VALUE_PAIR const * const *node)
-{
-	memset(cursor, 0, sizeof(*cursor));
-
-	if (!node || !cursor) {
-		return NULL;
-	}
-
-	memcpy(&cursor->first, &node, sizeof(cursor->first));
-	cursor->current = *cursor->first;
-
-	if (cursor->current) {
-		VERIFY_VP(cursor->current);
-		cursor->next = cursor->current->next;
-	}
-
-	return cursor->current;
-}
-
-VALUE_PAIR *pairfirst(vp_cursor_t *cursor)
-{
-	cursor->current = *cursor->first;
-
-	if (cursor->current) {
-		VERIFY_VP(cursor->current);
-		cursor->next = cursor->current->next;
-		if (cursor->next) VERIFY_VP(cursor->next);
-		cursor->found = NULL;
-	}
-
-	return cursor->current;
-}
-
-/** Iterate over attributes of a given DA in the pairlist
- *
- *
- */
-VALUE_PAIR *pairfindnext_da(vp_cursor_t *cursor, DICT_ATTR const *da, int8_t tag)
-{
-	VALUE_PAIR *i;
-
-	i = pairfind_da(!cursor->found ? cursor->current : cursor->found->next, da, tag);
-	if (!i) {
-		cursor->next = NULL;
-		cursor->current = NULL;
-
-		return NULL;
-	}
-
-	cursor->next = i->next;
-	cursor->current = i;
-	cursor->found = i;
-
-	return i;
-}
-
-/** Iterate over attributes of a given type in the pairlist
- *
- *
- */
-VALUE_PAIR *pairfindnext(vp_cursor_t *cursor, unsigned int attr, unsigned int vendor, int8_t tag)
-{
-	VALUE_PAIR *i;
-
-	i = pairfind(!cursor->found ? cursor->current : cursor->found->next, attr, vendor, tag);
-	if (!i) {
-		cursor->next = NULL;
-		cursor->current = NULL;
-
-		return NULL;
-	}
-
-	cursor->next = i->next;
-	cursor->current = i;
-	cursor->found = i;
-
-	return i;
-}
-
-/** Retrieve the next VALUE_PAIR
- *
- *
- */
-VALUE_PAIR *pairnext(vp_cursor_t *cursor)
-{
-	cursor->current = cursor->next;
-	if (cursor->current) {
-		VERIFY_VP(cursor->current);
-
-		/*
-		 *	Set this now in case 'current' gets freed before
-		 *	pairnext is called again.
-		 */
-		cursor->next = cursor->current->next;
-
-		/*
-		 *	Next call to pairfindnext will start from the current
-		 *	position in the list, not the last found instance.
-		 */
-		cursor->found = NULL;
-	}
-
-	return cursor->current;
-}
-
-VALUE_PAIR *paircurrent(vp_cursor_t *cursor)
-{
-	if (cursor->current) {
-		VERIFY_VP(cursor->current);
-	}
-
-	return cursor->current;
-}
-
-/** Insert a VP
- *
- * @todo don't use with pairdelete
- */
-void pairinsert(vp_cursor_t *cursor, VALUE_PAIR *add)
-{
-	VALUE_PAIR *i;
-
-	if (!add) {
-		return;
-	}
-
-	VERIFY_VP(add);
-
-	/*
-	 *	Cursor was initialised with a pointer to a NULL value_pair
-	 */
-	if (!*cursor->first) {
-		*cursor->first = add;
-		cursor->current = add;
-		cursor->next = cursor->current->next;
-
-		return;
-	}
-
-	/*
-	 *	We don't yet know where the last VALUE_PAIR is
-	 *
-	 *	Assume current is closer to the end of the list and use that if available.
-	 */
-	if (!cursor->last) {
-		cursor->last = cursor->current ? cursor->current : *cursor->first;
-	}
-
-	VERIFY_VP(cursor->last);
-
-	/*
-	 *	Something outside of the cursor added another VALUE_PAIR
-	 */
-	if (cursor->last->next) {
-		for (i = cursor->last; i; i = i->next) {
-			VERIFY_VP(i);
-			cursor->last = i;
-		}
-	}
-
-	/*
-	 *	Either current was never set, or something iterated to the end of the
-	 *	attribute list.
-	 */
-	if (!cursor->current) {
-		cursor->current = add;
-	}
-
-	cursor->last->next = add;
-}
-
-/** Remove the current pair
- *
- * @todo this is really inefficient and should be fixed...
- *
- * @param cursor to remove the current pair from.
- * @return NULL on error, else the VALUE_PAIR we just removed.
- */
-VALUE_PAIR *pairremove(vp_cursor_t *cursor)
-{
-	VALUE_PAIR *vp, **last;
-
-	vp = paircurrent(cursor);
-	if (!vp) {
-	    return NULL;
-	}
-
-	last = cursor->first;
-	while (*last != vp) {
-	    last = &(*last)->next;
-	}
-
-	pairnext(cursor);   /* Advance the cursor past the one were about to delete */
-
-	*last = vp->next;
-	vp->next = NULL;
-
-	return vp;
 }
 
 /** Delete matching pairs
@@ -672,10 +467,10 @@ bool pairvalidate(VALUE_PAIR *filter, VALUE_PAIR *list)
 	pairsort(&filter, true);
 	pairsort(&list, true);
 
-	paircursor(&list_cursor, &list);
-	for (check = paircursor(&filter_cursor, &filter);
+	fr_cursor_init(&list_cursor, &list);
+	for (check = fr_cursor_init(&filter_cursor, &filter);
 	     check;
-	     check = pairnext(&filter_cursor)) {
+	     check = fr_cursor_next(&filter_cursor)) {
 	     	/*
 	     	 *	Were processing check attributes of a new type.
 	     	 */
@@ -684,21 +479,21 @@ bool pairvalidate(VALUE_PAIR *filter, VALUE_PAIR *list)
 	     		 *	The lists have gone out of sync so we know the sets
 	     		 *	of list and filter are not equal.
 	     		 */
-	     		if (!attribute_eq(paircurrent(&list_cursor), paircurrent(&filter_cursor))) {
+	     		if (!attribute_eq(fr_cursor_current(&list_cursor), fr_cursor_current(&filter_cursor))) {
 				if (check->op == T_OP_CMP_FALSE) {
 	     				continue;
 	     			}
 	     			return false;
 	     		}
 
-	     		last_match = paircurrent(&list_cursor);
-	     		paircursor(&list_cursor, &last_match);	/* not strictly needed */
+	     		last_match = fr_cursor_current(&list_cursor);
+	     		fr_cursor_init(&list_cursor, &last_match);	/* not strictly needed */
 	     		last_check = check;
 	     	}
 
-		for (match = pairfirst(&list_cursor);
+		for (match = fr_cursor_first(&list_cursor);
 	     	     attribute_eq(match, check);
-	             match = pairnext(&list_cursor)) {
+	             match = fr_cursor_next(&list_cursor)) {
 	             	/*
 	             	 *	This attribute passed the filter
 	             	 */
@@ -711,7 +506,7 @@ bool pairvalidate(VALUE_PAIR *filter, VALUE_PAIR *list)
 	/*
 	 *	There were additional VALUE_PAIRS left in the list
 	 */
-	if (paircurrent(&list_cursor)) {
+	if (fr_cursor_current(&list_cursor)) {
 		return false;
 	}
 
@@ -743,10 +538,10 @@ bool pairvalidate_relaxed(VALUE_PAIR *filter, VALUE_PAIR *list)
 	pairsort(&filter, true);
 	pairsort(&list, true);
 
-	paircursor(&list_cursor, &list);
-	for (check = paircursor(&filter_cursor, &filter);
+	fr_cursor_init(&list_cursor, &list);
+	for (check = fr_cursor_init(&filter_cursor, &filter);
 	     check;
-	     check = pairnext(&filter_cursor)) {
+	     check = fr_cursor_next(&filter_cursor)) {
 	     	/*
 	     	 *	Were processing check attributes of a new type.
 	     	 */
@@ -755,7 +550,7 @@ bool pairvalidate_relaxed(VALUE_PAIR *filter, VALUE_PAIR *list)
 			 *	Record the start of the matching attributes in the pair list
 			 *	For every other operator we require the match to be present
 			 */
-	     		last_match = pairfindnext_da(&list_cursor, check->da, check->tag);
+	     		last_match = fr_cursor_next_by_da(&list_cursor, check->da, check->tag);
 	     		if (!last_match) {
 	     			if (check->op == T_OP_CMP_FALSE) {
 	     				continue;
@@ -763,16 +558,16 @@ bool pairvalidate_relaxed(VALUE_PAIR *filter, VALUE_PAIR *list)
 	     			return false;
 	     		}
 
-	     		paircursor(&list_cursor, &last_match);
+	     		fr_cursor_init(&list_cursor, &last_match);
 	     		last_check = check;
 	     	}
 
 		/*
 		 *	Now iterate over all attributes of the same type.
 		 */
-		for (match = pairfirst(&list_cursor);
+		for (match = fr_cursor_first(&list_cursor);
 	     	     attribute_eq(match, check);
-	             match = pairnext(&list_cursor)) {
+	             match = fr_cursor_next(&list_cursor)) {
 	             	/*
 	             	 *	This attribute passed the filter
 	             	 */
@@ -972,17 +767,17 @@ VALUE_PAIR *paircopy(TALLOC_CTX *ctx, VALUE_PAIR *from)
 
 	VALUE_PAIR *out = NULL, *vp;
 
-	paircursor(&dst, &out);
-	for (vp = paircursor(&src, &from);
+	fr_cursor_init(&dst, &out);
+	for (vp = fr_cursor_init(&src, &from);
 	     vp;
-	     vp = pairnext(&src)) {
+	     vp = fr_cursor_next(&src)) {
 	     	VERIFY_VP(vp);
 	     	vp = paircopyvp(ctx, vp);
 	     	if (!vp) {
 	     		pairfree(&out);
 	     		return NULL;
 	     	}
-		pairinsert(&dst, vp); /* paircopy sets next pointer to NULL */
+		fr_cursor_insert(&dst, vp); /* paircopy sets next pointer to NULL */
 	}
 
 	return out;
@@ -1007,10 +802,10 @@ VALUE_PAIR *paircopy2(TALLOC_CTX *ctx, VALUE_PAIR *from,
 
 	VALUE_PAIR *out = NULL, *vp;
 
-	paircursor(&dst, &out);
-	for (vp = paircursor(&src, &from);
+	fr_cursor_init(&dst, &out);
+	for (vp = fr_cursor_init(&src, &from);
 	     vp;
-	     vp = pairnext(&src)) {
+	     vp = fr_cursor_next(&src)) {
 	     	VERIFY_VP(vp);
 
 		if ((attr > 0) && ((vp->da->attr != attr) || (vp->da->vendor != vendor))) {
@@ -1026,7 +821,7 @@ VALUE_PAIR *paircopy2(TALLOC_CTX *ctx, VALUE_PAIR *from,
 			pairfree(&out);
 			return NULL;
 		}
-		pairinsert(&dst, vp);
+		fr_cursor_insert(&dst, vp);
 	}
 
 	return out;
@@ -1042,9 +837,9 @@ VALUE_PAIR *pairsteal(TALLOC_CTX *ctx, VALUE_PAIR *from)
 	vp_cursor_t cursor;
 	VALUE_PAIR *vp;
 
-	for (vp = paircursor(&cursor, &from);
+	for (vp = fr_cursor_init(&cursor, &from);
 	     vp;
-	     vp = pairnext(&cursor)) {
+	     vp = fr_cursor_next(&cursor)) {
 		(void) talloc_steal(ctx, vp);
 	}
 

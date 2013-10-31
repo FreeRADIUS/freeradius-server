@@ -483,7 +483,7 @@ static int decode_tlv(RADIUS_PACKET *packet, VALUE_PAIR *tlv, uint8_t const *dat
 	 *	Got here... must be well formed.
 	 */
 	head = NULL;
-	paircursor(&cursor, &head);
+	fr_cursor_init(&cursor, &head);
 
 	p = data;
 	while (p < (data + data_len)) {
@@ -498,7 +498,7 @@ static int decode_tlv(RADIUS_PACKET *packet, VALUE_PAIR *tlv, uint8_t const *dat
 			goto make_tlv;
 		}
 
-		pairinsert(&cursor, vp);
+		fr_cursor_insert(&cursor, vp);
 		p += 2 + p[1];
 	}
 
@@ -607,7 +607,7 @@ ssize_t fr_dhcp_decode_options(RADIUS_PACKET *packet,
 	next = data;
 
 	*head = NULL;
-	paircursor(&cursor, head);
+	fr_cursor_init(&cursor, head);
 
 	/*
 	 *	FIXME: This should also check sname && file fields.
@@ -697,11 +697,11 @@ ssize_t fr_dhcp_decode_options(RADIUS_PACKET *packet,
 				return -1;
 			}
 
-			pairinsert(&cursor, vp);
+			fr_cursor_insert(&cursor, vp);
 
-			for (vp = paircurrent(&cursor);
+			for (vp = fr_cursor_current(&cursor);
 			     vp;
-			     vp = pairnext(&cursor)) {
+			     vp = fr_cursor_next(&cursor)) {
 				debug_pair(vp);
 			}
 			p += alen;
@@ -720,7 +720,7 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 	VALUE_PAIR *head = NULL, *vp;
 	VALUE_PAIR *maxms, *mtu;
 
-	paircursor(&cursor, &head);
+	fr_cursor_init(&cursor, &head);
 	p = packet->data;
 
 	if ((fr_debug_flag > 2) && fr_log_fp) {
@@ -817,7 +817,7 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 		if (!vp) continue;
 
 		debug_pair(vp);
-		pairinsert(&cursor, vp);
+		fr_cursor_insert(&cursor, vp);
 	}
 
 	/*
@@ -838,7 +838,7 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 		}
 
 		if (options) {
-			pairinsert(&cursor, options);
+			fr_cursor_insert(&cursor, options);
 		}
 	}
 
@@ -1006,9 +1006,9 @@ static VALUE_PAIR *fr_dhcp_vp2suboption(RADIUS_PACKET *packet, VALUE_PAIR *vps)
 	if (!tlv) return NULL;
 
 	tlv->length = 0;
-	for (vp = paircursor(&cursor, &vps);
+	for (vp = fr_cursor_init(&cursor, &vps);
 	     vp;
-	     vp = pairnext(&cursor)) {
+	     vp = fr_cursor_next(&cursor)) {
 		/*
 		 *	Group the attributes ONLY until we see a
 		 *	non-TLV attribute.
@@ -1034,9 +1034,9 @@ static VALUE_PAIR *fr_dhcp_vp2suboption(RADIUS_PACKET *packet, VALUE_PAIR *vps)
 	}
 
 	ptr = tlv->vp_tlv;
-	for (vp = paircursor(&cursor, &vps);
+	for (vp = fr_cursor_init(&cursor, &vps);
 	     vp;
-	     vp = pairnext(&cursor)) {
+	     vp = fr_cursor_next(&cursor)) {
 		if (!vp->da->flags.is_tlv ||
 		    vp->da->flags.extended ||
 		    ((vp->da->attr & 0xffff00ff) != attribute)) {
@@ -1351,9 +1351,9 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 	 *	the later code.
 	 */
 	num_vps = 0;
-	for (vp = paircursor(&cursor, &packet->vps);
+	for (vp = fr_cursor_init(&cursor, &packet->vps);
 	     vp;
-	     vp = pairnext(&cursor)) {
+	     vp = fr_cursor_next(&cursor)) {
 		num_vps++;
 	}
 	if (num_vps > 1) {
@@ -1362,9 +1362,9 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 		array = talloc_array(packet, VALUE_PAIR*, num_vps);
 
 		i = 0;
-		for (vp = paircursor(&cursor, &packet->vps);
+		for (vp = fr_cursor_init(&cursor, &packet->vps);
 		     vp;
-		     vp = pairnext(&cursor)) {
+		     vp = fr_cursor_next(&cursor)) {
 			array[i++] = vp;
 		}
 
@@ -1374,10 +1374,10 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 		qsort(array, (size_t) num_vps, sizeof(VALUE_PAIR *), attr_cmp);
 
 		packet->vps = NULL;
-		paircursor(&cursor, &packet->vps);
+		fr_cursor_init(&cursor, &packet->vps);
 		for (i = 0; i < num_vps; i++) {
 			array[i]->next = NULL;
-			pairinsert(&cursor, array[i]);
+			fr_cursor_insert(&cursor, array[i]);
 		}
 		talloc_free(array);
 	}
@@ -1404,9 +1404,9 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 		debug_pair(vp);
 		if (vp->da->flags.extended) goto next;
 
-		for (same = paircursor(&cursor, &vp->next);
+		for (same = fr_cursor_init(&cursor, &vp->next);
 		     same;
-		     same = pairnext(&cursor)) {
+		     same = fr_cursor_next(&cursor)) {
 			if (same->da->attr != vp->da->attr) break;
 			num_entries++;
 		}

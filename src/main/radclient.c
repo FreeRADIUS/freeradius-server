@@ -291,9 +291,9 @@ static int radclient_init(char const *filename)
 		/*
 		 *	Fix up Digest-Attributes issues
 		 */
-		for (vp = paircursor(&cursor, &radclient->request->vps);
+		for (vp = fr_cursor_init(&cursor, &radclient->request->vps);
 		     vp;
-		     vp = pairnext(&cursor)) {
+		     vp = fr_cursor_next(&cursor)) {
 		     	/*
 		     	 *	Double quoted strings get marked up as xlat expansions,
 		     	 *	but we don't support that in radclient.

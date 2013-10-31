@@ -432,9 +432,9 @@ int paircompare(REQUEST *request, VALUE_PAIR *req_list, VALUE_PAIR *check,
 	int compare;
 	bool first_only;
 
-	for (check_item = paircursor(&cursor, &check);
+	for (check_item = fr_cursor_init(&cursor, &check);
 	     check_item;
-	     check_item = pairnext(&cursor)) {
+	     check_item = fr_cursor_next(&cursor)) {
 		/*
 		 *	If the user is setting a configuration value,
 		 *	then don't bother comparing it to any attributes
@@ -806,9 +806,9 @@ void debug_pair_list(VALUE_PAIR *vp)
 	vp_cursor_t cursor;
 	if (!vp || !debug_flag || !fr_log_fp) return;
 
-	for (vp = paircursor(&cursor, &vp);
+	for (vp = fr_cursor_init(&cursor, &vp);
 	     vp;
-	     vp = pairnext(&cursor)) {
+	     vp = fr_cursor_next(&cursor)) {
 		/*
 		 *	Take this opportunity to verify all the VALUE_PAIRs are still valid.
 		 */
@@ -836,9 +836,9 @@ void rdebug_pair_list(int level, REQUEST *request, VALUE_PAIR *vp)
 	char buffer[256];
 	if (!vp || !request || !request->radlog) return;
 
-	for (vp = paircursor(&cursor, &vp);
+	for (vp = fr_cursor_init(&cursor, &vp);
 	     vp;
-	     vp = pairnext(&cursor)) {
+	     vp = fr_cursor_next(&cursor)) {
 		/*
 		 *	Take this opportunity to verify all the VALUE_PAIRs are still valid.
 		 */
@@ -985,7 +985,7 @@ int radius_map2request(REQUEST *request, value_pair_map_t const *map,
 
 	VERIFY_VP(head);
 
-	if (debug_flag) for (vp = paircursor(&cursor, &head); vp; vp = pairnext(&cursor)) {
+	if (debug_flag) for (vp = fr_cursor_init(&cursor, &head); vp; vp = fr_cursor_next(&cursor)) {
 		char *value;
 
 		switch (map->src->type) {
@@ -1158,9 +1158,9 @@ int radius_map2vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *ma
 		 */
 		if (!found) return -2;
 
-		for (vp = paircursor(&cursor, &found);
+		for (vp = fr_cursor_init(&cursor, &found);
 		     vp;
-		     vp = pairnext(&cursor)) {
+		     vp = fr_cursor_next(&cursor)) {
 		 	vp->op = T_OP_ADD;
 		}
 
@@ -1255,9 +1255,9 @@ int radius_map2vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *ma
 				goto error;
 			}
 
-			for (vp = paircursor(&cursor, &found);
+			for (vp = fr_cursor_init(&cursor, &found);
 			     vp;
-			     vp = pairnext(&cursor)) {
+			     vp = fr_cursor_next(&cursor)) {
 				vp->op = T_OP_ADD;
 			}
 
@@ -1411,7 +1411,7 @@ int radius_vpt_get_vp(VALUE_PAIR **out, REQUEST *request, value_pair_tmpl_t cons
 	case VPT_TYPE_LIST:
 		vp = *vps;
 		break;
-		
+
 	default:
 		/*
 		 *	literal, xlat, regex, exec, data.

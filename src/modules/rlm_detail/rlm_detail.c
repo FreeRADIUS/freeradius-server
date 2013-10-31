@@ -420,9 +420,9 @@ static rlm_rcode_t do_detail(void *instance, REQUEST *request, RADIUS_PACKET *pa
 	{
 		vp_cursor_t cursor;
 		/* Write each attribute/value to the log file */
-		for (vp = paircursor(&cursor, &packet->vps);
+		for (vp = fr_cursor_init(&cursor, &packet->vps);
 		     vp;
-		     vp = pairnext(&cursor)) {
+		     vp = fr_cursor_next(&cursor)) {
 			if (inst->ht &&
 			    fr_hash_table_finddata(inst->ht, &vp->da)) continue;
 

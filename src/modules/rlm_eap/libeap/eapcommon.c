@@ -264,7 +264,7 @@ VALUE_PAIR *eap_packet2vp(RADIUS_PACKET *packet, eap_packet_raw_t const *eap)
 
 	ptr = (uint8_t const *) eap;
 
-	paircursor(&out, &head);
+	fr_cursor_init(&out, &head);
 	do {
 		size = total;
 		if (size > 253) size = 253;
@@ -276,7 +276,7 @@ VALUE_PAIR *eap_packet2vp(RADIUS_PACKET *packet, eap_packet_raw_t const *eap)
 		}
 		pairmemcpy(vp, ptr, size);
 
-		pairinsert(&out, vp);
+		fr_cursor_insert(&out, vp);
 
 		ptr += size;
 		total -= size;
@@ -338,8 +338,8 @@ eap_packet_raw_t *eap_vp2packet(TALLOC_CTX *ctx, VALUE_PAIR *vps)
 	 *	Sanity check the length, BEFORE allocating  memory.
 	 */
 	total_len = 0;
-	paircursor(&cursor, &first);
-	while ((i = pairfindnext(&cursor, PW_EAP_MESSAGE, 0, TAG_ANY))) {
+	fr_cursor_init(&cursor, &first);
+	while ((i = fr_cursor_next_by_num(&cursor, PW_EAP_MESSAGE, 0, TAG_ANY))) {
 		total_len += i->length;
 
 		if (total_len > len) {
@@ -370,8 +370,8 @@ eap_packet_raw_t *eap_vp2packet(TALLOC_CTX *ctx, VALUE_PAIR *vps)
 	ptr = (unsigned char *)eap_packet;
 
 	/* RADIUS ensures order of attrs, so just concatenate all */
-	pairfirst(&cursor);
-	while ((i = pairfindnext(&cursor, PW_EAP_MESSAGE, 0, TAG_ANY))) {
+	fr_cursor_first(&cursor);
+	while ((i = fr_cursor_next_by_num(&cursor, PW_EAP_MESSAGE, 0, TAG_ANY))) {
 		memcpy(ptr, i->vp_strvalue, i->length);
 		ptr += i->length;
 	}

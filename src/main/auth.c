@@ -180,8 +180,8 @@ static int rad_check_password(REQUEST *request)
 	 *	if the authentication type is PW_AUTHTYPE_ACCEPT or
 	 *	PW_AUTHTYPE_REJECT.
 	 */
-	paircursor(&cursor, &request->config_items);
-	while ((auth_type_pair = pairfindnext(&cursor, PW_AUTH_TYPE, 0, TAG_ANY))) {
+	fr_cursor_init(&cursor, &request->config_items);
+	while ((auth_type_pair = fr_cursor_next_by_num(&cursor, PW_AUTH_TYPE, 0, TAG_ANY))) {
 		auth_type = auth_type_pair->vp_integer;
 		auth_type_count++;
 

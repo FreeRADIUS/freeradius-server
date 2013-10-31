@@ -97,9 +97,9 @@ static int attr_filter_getfile(TALLOC_CTX *ctx, char const *filename, PAIR_LIST 
 		entry->check = entry->reply;
 		entry->reply = NULL;
 
-		for (vp = paircursor(&cursor, &entry->check);
+		for (vp = fr_cursor_init(&cursor, &entry->check);
 		     vp;
-		     vp = pairnext(&cursor)) {
+		     vp = fr_cursor_next(&cursor)) {
 		    /*
 		     * If it's NOT a vendor attribute,
 		     * and it's NOT a wire protocol
@@ -185,7 +185,7 @@ static rlm_rcode_t attr_filter_common(void *instance, REQUEST *request, RADIUS_P
 	 *	Head of the output list
 	 */
 	output = NULL;
-	paircursor(&out, &output);
+	fr_cursor_init(&out, &output);
 
 	/*
 	 *      Find the attr_filter profile entry for the entry.
@@ -207,9 +207,9 @@ static rlm_rcode_t attr_filter_common(void *instance, REQUEST *request, RADIUS_P
 		RDEBUG2("Matched entry %s at line %d", pl->name, pl->lineno);
 		found = 1;
 
-		for (check_item = paircursor(&check, &pl->check);
+		for (check_item = fr_cursor_init(&check, &pl->check);
 		     check_item;
-		     check_item = pairnext(&check)) {
+		     check_item = fr_cursor_next(&check)) {
 			if (!check_item->da->vendor &&
 			    (check_item->da->attr == PW_FALL_THROUGH) &&
 				(check_item->vp_integer == 1)) {
@@ -232,7 +232,7 @@ static rlm_rcode_t attr_filter_common(void *instance, REQUEST *request, RADIUS_P
 					goto error;
 				}
 				radius_xlat_do(request, vp);
-				pairinsert(&out, vp);
+				fr_cursor_insert(&out, vp);
 			}
 		}
 
@@ -244,9 +244,9 @@ static rlm_rcode_t attr_filter_common(void *instance, REQUEST *request, RADIUS_P
 		 *	only if it matches all rules that describe an
 		 *	Idle-Timeout.
 		 */
-		for (input_item = paircursor(&input, &packet->vps);
+		for (input_item = fr_cursor_init(&input, &packet->vps);
 		     input_item;
-		     input_item = pairnext(&input)) {
+		     input_item = fr_cursor_next(&input)) {
 			/* reset the pass,fail vars for each reply item */
 			pass = fail = 0;
 
@@ -254,9 +254,9 @@ static rlm_rcode_t attr_filter_common(void *instance, REQUEST *request, RADIUS_P
 			 *	reset the check_item pointer to
 			 *	beginning of the list
 			 */
-			for (check_item = pairfirst(&check);
+			for (check_item = fr_cursor_first(&check);
 			     check_item;
-			     check_item = pairnext(&check)) {
+			     check_item = fr_cursor_next(&check)) {
 				/*
 				 *	Vendor-Specific is special, and
 				 *	matches any VSA if the comparison
@@ -286,7 +286,7 @@ static rlm_rcode_t attr_filter_common(void *instance, REQUEST *request, RADIUS_P
 				if (!vp) {
 					goto error;
 				}
-				pairinsert(&out, vp);
+				fr_cursor_insert(&out, vp);
 			}
 		}
 
