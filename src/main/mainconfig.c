@@ -332,15 +332,12 @@ static ssize_t xlat_config(UNUSED void *instance, REQUEST *request, char const *
 
 
 /*
- *	Xlat for %{client:foo} and %{client:..<ipaddr>.foo}
+ *	Xlat for %{client:foo}
  */
 static ssize_t xlat_client(UNUSED void *instance, REQUEST *request, char const *fmt, char *out, size_t outlen)
 {
 	char const *value = NULL;
-	char buffer[INET6_ADDRSTRLEN], *p = buffer, *q;
-	fr_ipaddr_t ip;
 	CONF_PAIR *cp;
-	RADCLIENT *client = NULL;
 
 	if (!fmt || !out || (outlen < 1)) return 0;
 
@@ -350,30 +347,7 @@ static ssize_t xlat_client(UNUSED void *instance, REQUEST *request, char const *
 		return 0;
 	}
 
-	if ((fmt[0] == '.') && (fmt[1] == '.')) {
-		p += 2;
-		q = strchr(p, '.');
-		if (!q || (q == p) || (((size_t)(q - p)) > sizeof(buffer))) {
-			REDEBUG("Invalid client override string");
-			goto error;
-		}
-
-		strlcpy(buffer, p, q - p);
-		if (ip_ptonx(buffer, &ip) <= 0) {
-			REDEBUG("\"%s\" is not a valid IPv4 or IPv6 address", buffer);
-			goto error;
-		}
-
-		client = client_find(NULL, &ip, request->client->proto);
-
-		fmt = p + 1;
-	}
-
-	if (!client) {
-		client = request->client;
-	}
-
-	cp = cf_pair_find(client->cs, fmt);
+	cp = cf_pair_find(request->client->cs, fmt);
 	if (!cp || !(value = cf_pair_value(cp))) {
 		if (strcmp(fmt, "shortname") == 0) {
 			strlcpy(out, request->client->shortname, outlen);
@@ -387,12 +361,62 @@ static ssize_t xlat_client(UNUSED void *instance, REQUEST *request, char const *
 	strlcpy(out, value, outlen);
 
 	return strlen(out);
+}
+
+/*
+ *	Xlat for %{getclient:<ipaddr>.foo}
+ */
+static ssize_t xlat_getclient(UNUSED void *instance, REQUEST *request, char const *fmt, char *out, size_t outlen)
+{
+	char const *value = NULL;
+	char buffer[INET6_ADDRSTRLEN], *q;
+	char const *p = fmt;
+	fr_ipaddr_t ip;
+	CONF_PAIR *cp;
+	RADCLIENT *client = NULL;
+
+	if (!fmt || !out || (outlen < 1)) return 0;
+
+	q = strrchr(p, '.');
+	if (!q || (q == p) || (((size_t)(q - p)) > sizeof(buffer))) {
+		REDEBUG("Invalid client string");
+		goto error;
+	}
+
+	strlcpy(buffer, p, (q + 1) - p);
+	if (ip_ptonx(buffer, &ip) <= 0) {
+		REDEBUG("\"%s\" is not a valid IPv4 or IPv6 address", buffer);
+		goto error;
+	}
+
+	fmt = q + 1;
+
+	client = client_find(NULL, &ip, IPPROTO_IP);
+	if (!client) {
+		RDEBUG("No client found with IP \"%s\"", buffer);
+		*out = '\0';
+		return 0;
+	}
+
+
+	cp = cf_pair_find(client->cs, fmt);
+	if (!cp || !(value = cf_pair_value(cp))) {
+		if (strcmp(fmt, "shortname") == 0) {
+			strlcpy(out, request->client->shortname, outlen);
+			return strlen(out);
+		}
+		RDEBUG("Client does not contain config item \"%s\"", fmt);
+		*out = '\0';
+		return 0;
+	}
+
+	strlcpy(out, value, outlen);
+	return strlen(out);
 
 	error:
 	*out = '\0';
 	return -1;
 }
-
 
 #ifdef HAVE_SYS_RESOURCE_H
 static struct rlimit core_limits;
@@ -889,6 +913,7 @@ int read_mainconfig(int reload)
 	 */
 	xlat_register("config", xlat_config, NULL, NULL);
 	xlat_register("client", xlat_client, NULL, NULL);
+	xlat_register("getclient", xlat_getclient, NULL, NULL);
 
 	/*
 	 *	Starting the server, WITHOUT "-x" on the
