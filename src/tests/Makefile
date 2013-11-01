@@ -149,9 +149,3 @@ peap:
 
 leap:
 	$(EAPOL_TEST) -c leap.conf -s $(SECRET)
-
-ATTRS	:= rfc.txt errors.txt extended.txt lucent.txt wimax.txt \
-	condition.txt xlat.txt
-
-parse: $(ATTRS) $(BIN_PATH)/radattr
-	$(BIN_PATH)/radattr -d $(top_srcdir)/share $(ATTRS)
