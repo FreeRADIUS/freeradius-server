@@ -222,7 +222,7 @@ data &Event-Timestamp == "January 1, 2012"
 
 # This one is NOT an expansion, so it's parsed into normal form
 condition Event-Timestamp == 'January 1, 2012'
-data &Event-Timestamp == "Jan  1 2012 00:00:00 EST"
+#data &Event-Timestamp == "Jan  1 2012 00:00:00 EST"
 
 # literals are parsed when the conditions are parsed
 condition <integer>X == 1
