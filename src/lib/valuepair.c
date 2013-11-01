@@ -2039,7 +2039,7 @@ VALUE_PAIR *pairmake(TALLOC_CTX *ctx, VALUE_PAIR **vps,
 	da = dict_attrbyname(attrname);
 	if (!da) {
 		vp = pairmake_any(ctx, attrname, value, op);
-		if (vp) pairadd(vps, vp);
+		if (vp && vps) pairadd(vps, vp);
 		return vp;
 	}
 
