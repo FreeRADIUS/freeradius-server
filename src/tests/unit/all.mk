@@ -19,7 +19,7 @@ $(BUILD_DIR)/tests/unit:
 #
 #  Files in the output dir depend on the unit tests
 #
-$(BUILD_DIR)/tests/unit/%: $(DIR)/% ./$(BUILD_DIR)/bin/radattr
+$(BUILD_DIR)/tests/unit/%: $(DIR)/% ./$(BUILD_DIR)/bin/radattr | $(BUILD_DIR)/tests/unit
 	@echo UNIT-TEST $(notdir $@)
 	@$(JLIBTOOL) --quiet --mode=execute ./$(BUILD_DIR)/bin/radattr -d $(top_srcdir)/share $<
 	@touch $@
@@ -32,7 +32,7 @@ TESTS.UNIT_FILES := $(addprefix $(BUILD_DIR)/tests/unit/,$(FILES))
 #
 #  Depend on the output files, and create the directory first.
 #
-tests.unit: $(TESTS.UNIT_FILES) | $(BUILD_DIR)/tests/unit
+tests.unit: $(TESTS.UNIT_FILES)
 
 #
 #  And be a BASTARD about it.  If the unit tests fail,
