@@ -44,6 +44,8 @@ int memory_report = false;
 int check_config = false;
 int log_stripped_names = false;
 
+int filedone = 0;
+
 char const *radiusd_version = "FreeRADIUS Version " RADIUSD_VERSION_STRING
 #ifdef RADIUSD_VERSION_COMMIT
 " (git #" RADIUSD_VERSION_COMMIT ")"
@@ -107,8 +109,7 @@ static RADCLIENT *client_alloc(void *ctx)
 }
 
 static REQUEST *request_setup(FILE *fp)
-{
-	int filedone = 0;
+{	
 	REQUEST *request;
 
 	/*
@@ -361,34 +362,51 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	if (input_file) fclose(fp);
+	/*
+	 *	No filter file, OR there's no more input, OR we're
+	 *	reading from a file, and it's different from the
+	 *	filter file.
+	 */
+	if (!filter_file || filedone ||
+	    ((input_file != NULL) && (strcmp(filter_file, input_file) != 0))) {
+		if (output_file) {
+			fclose(fp);
+			fp = NULL;
+		}
+		filedone = 0;
+	}
 
 	/*
-	 *	Maybe load a filter.
+	 *	There is a filter file.  If necessary, open it.  If we
+	 *	already are reading it via "input_file", then we don't
+	 *	need to re-open it.
 	 */
 	if (filter_file) {
-		int done = false;
-
-		fp = fopen(filter_file, "r");
 		if (!fp) {
-			fprintf(stderr, "Failed reading %s: %s\n",
-				filter_file, strerror(errno));
-			exit(EXIT_FAILURE);
+			fp = fopen(filter_file, "r");
+			if (!fp) {
+				fprintf(stderr, "Failed reading %s: %s\n",
+					filter_file, strerror(errno));
+				exit(EXIT_FAILURE);
+			}
 		}
 
-		filter_vps = readvp2(request, fp, &done, "radiusd");
+		filter_vps = readvp2(request, fp, &filedone, "radiusd");
 		if (!filter_vps) {
 			fprintf(stderr, "Failed reading attributes from %s: %s\n",
 				filter_file, fr_strerror());
 			exit(EXIT_FAILURE);
 		}
 
+		/*
+		 *	FIXME: loop over input packets.
+		 */
 		fclose(fp);
 	}
 
 	rad_virtual_server(request);
 
-	if (!output_file|| (strcmp(output_file, "-") == 0)) {
+	if (!output_file || (strcmp(output_file, "-") == 0)) {
 		fp = stdout;
 	} else {
 		fp = fopen(output_file, "w");
