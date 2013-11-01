@@ -1733,12 +1733,11 @@ static int process_proxy_reply(REQUEST *request)
 	    	DICT_VALUE	*dval;
 	
 		dval = dict_valbyname(PW_POST_PROXY_TYPE, "Reject");
-		if (!dval) return 0;
-			
-		vp = radius_paircreate(request, &request->config_items,
-				       PW_POST_PROXY_TYPE, PW_TYPE_INTEGER);
-
-		vp->vp_integer = dval->value;
+		if (dval) {
+			vp = radius_paircreate(request, &request->config_items,
+					       PW_POST_PROXY_TYPE, PW_TYPE_INTEGER);
+			vp->vp_integer = dval->value;
+		}
 	}
 	
 	if (vp) {
