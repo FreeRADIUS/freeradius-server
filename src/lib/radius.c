@@ -3130,7 +3130,7 @@ static ssize_t data2vp_extended(RADIUS_PACKET *packet,
 	fraglen = attrlen - 2;
 	frag = data + attrlen;
 	end = data + packetlen;
-	fragments = 0;
+	fragments = 1;
 	last_frag = false;
 
 	while (frag < end) {
@@ -3153,6 +3153,8 @@ static ssize_t data2vp_extended(RADIUS_PACKET *packet,
 	head = tail = malloc(fraglen);
 	if (!head) return -1;
 
+	VP_TRACE("Fragments %d, total length %d\n", fragments, (int) fraglen);
+
 	/*
 	 *	And again, but faster and looser.
 	 *
@@ -3161,7 +3163,7 @@ static ssize_t data2vp_extended(RADIUS_PACKET *packet,
 	 */
 	frag = attr;
 
-	while (fragments > 0) {
+	while (fragments >  0) {
 		memcpy(tail, frag + 4, frag[1] - 4);
 		tail += frag[1] - 4;
 		frag += frag[1];
