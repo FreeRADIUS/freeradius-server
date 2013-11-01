@@ -1,1 +1,1 @@
-SUBMAKEFILES := rbmonkey.mk
+SUBMAKEFILES := rbmonkey.mk unit/all.mk
