@@ -2650,6 +2650,14 @@ DICT_ATTR const *dict_attrunknown(unsigned int attr, unsigned int vendor,
 	da->flags.is_unknown = true;
 	da->flags.vp_free = (vp_free != 0);
 
+	/*
+	 *	Unknown attributes of the "WiMAX" vendor get marked up
+	 *	as being for WiMAX.
+	 */
+	if (vendor == VENDORPEC_WIMAX) {
+		da->flags.wimax = 1;
+	}
+
 	p = da->name;
 
 	len = snprintf(p, bufsize, "Attr-");
