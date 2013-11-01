@@ -25,6 +25,9 @@ FreeRADIUS 3.0.1 Mon  7 Oct 2013 15:48:14 EDT urgency=medium
 	  files.
 	* Fix build for OSX Mavericks, which hid the header files
 	  in a magical place.
+	* Mark "unknown" WiMAX attributes as being WiMAX
+	* Fix typo in packet decoder for fragmented extended attrs
+	* Always run unit tests before building radiusd
 
 FreeRADIUS 3.0.0 Mon  7 Oct 2013 15:48:14 EDT urgency=medium
 	Feature improvements
