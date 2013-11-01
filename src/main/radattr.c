@@ -555,7 +555,7 @@ static void parse_xlat(char const *input, char *output, size_t outlen)
 	talloc_free(fmt);
 }
 
-static void process_file(char const *filename)
+static void process_file(const char *root_dir, char const *filename)
 {
 	int lineno;
 	size_t i, outlen;
@@ -563,17 +563,25 @@ static void process_file(char const *filename)
 	FILE *fp;
 	char input[8192], buffer[8192];
 	char output[8192];
+	char directory[8192];
 	uint8_t *attr, data[2048];
 
 	if (strcmp(filename, "-") == 0) {
 		fp = stdin;
 		filename = "<stdin>";
+		directory[0] = '\0';
 
 	} else {
-		fp = fopen(filename, "r");
+		if (root_dir && *root_dir) {
+			snprintf(directory, sizeof(directory), "%s/%s", root_dir, filename);
+		} else {
+			strlcpy(directory, filename, sizeof(directory));
+		}
+
+		fp = fopen(directory, "r");
 		if (!fp) {
 			fprintf(stderr, "Error opening %s: %s\n",
-				filename, fr_syserror(errno));
+				directory, fr_syserror(errno));
 			exit(1);
 		}
 	}
@@ -592,7 +600,7 @@ static void process_file(char const *filename)
 		if (!p) {
 			if (!feof(fp)) {
 				fprintf(stderr, "Line %d too long in %s\n",
-					lineno, filename);
+					lineno, directory);
 				exit(1);
 			}
 		} else {
@@ -616,7 +624,7 @@ static void process_file(char const *filename)
 			outlen = encode_rfc(p + 4, data, sizeof(data));
 			if (outlen == 0) {
 				fprintf(stderr, "Parse error in line %d of %s\n",
-					lineno, filename);
+					lineno, directory);
 				exit(1);
 			}
 
@@ -639,7 +647,7 @@ static void process_file(char const *filename)
 		if (strncmp(p, "data ", 5) == 0) {
 			if (strcmp(p + 5, output) != 0) {
 				fprintf(stderr, "Mismatch in line %d of %s, expected: %s\n",
-					lineno, filename, output);
+					lineno, directory, output);
 				exit(1);
 			}
 			continue;
@@ -688,7 +696,7 @@ static void process_file(char const *filename)
 				attr = data;
 				len = encode_hex(p + 7, data, sizeof(data));
 				if (len == 0) {
-					fprintf(stderr, "Failed decoding hex string at line %d of %s\n", lineno, filename);
+					fprintf(stderr, "Failed decoding hex string at line %d of %s\n", lineno, directory);
 					exit(1);
 				}
 			}
@@ -747,10 +755,19 @@ static void process_file(char const *filename)
 		}
 
 		if (strncmp(p, "$INCLUDE ", 9) == 0) {
+			char *q;
+
 			p += 9;
 			while (isspace((int) *p)) p++;
 
-			process_file(p);
+			q = strrchr(directory, '/');
+			if (q) {
+				*q = '\0';
+				process_file(directory, p);
+				*q = '/';
+			} else {
+				process_file(NULL, p);
+			}
 			continue;
 		}
 
@@ -767,7 +784,7 @@ static void process_file(char const *filename)
 		}
 
 		fprintf(stderr, "Unknown input at line %d of %s\n",
-			lineno, filename);
+			lineno, directory);
 		exit(1);
 	}
 
@@ -814,10 +831,10 @@ int main(int argc, char *argv[])
 	}
 
 	if (argc < 2) {
-		process_file("-");
+		process_file(NULL, "-");
 
 	} else {
-		process_file(argv[1]);
+		process_file(NULL, argv[1]);
 	}
 
 	if (report) {
