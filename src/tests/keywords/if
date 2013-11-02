@@ -1,0 +1,8 @@
+#
+#  Static if condition
+#
+if (1) {
+	update reply {
+		Filter-Id := "filter"
+	}
+}

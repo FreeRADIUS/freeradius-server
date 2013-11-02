@@ -1,0 +1,5 @@
+foreach Filter-Id {
+	update reply {
+	       Called-Station-Id += "%{Foreach-Variable-0}"
+	}
+}
