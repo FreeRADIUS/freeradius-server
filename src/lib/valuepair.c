@@ -612,7 +612,7 @@ bool pairvalidate(VALUE_PAIR *filter, VALUE_PAIR *list)
 	vp_cursor_t filter_cursor;
 	vp_cursor_t list_cursor;
 
-	VALUE_PAIR *check, *match, *last_check = NULL, *last_match;
+	VALUE_PAIR *check, *match;
 
 	if (!filter && !list) {
 		return true;
@@ -630,44 +630,42 @@ bool pairvalidate(VALUE_PAIR *filter, VALUE_PAIR *list)
 	pairsort(&filter, true);
 	pairsort(&list, true);
 
-	paircursor(&list_cursor, &list);
-	for (check = paircursor(&filter_cursor, &filter);
-	     check;
-	     check = pairnext(&filter_cursor)) {
-	     	/*
-	     	 *	Were processing check attributes of a new type.
-	     	 */
-	     	if (attribute_eq(last_check, check)) {
-	     		/*
-	     		 *	The lists have gone out of sync so we know the sets
-	     		 *	of list and filter are not equal.
-	     		 */
-	     		if (!attribute_eq(paircurrent(&list_cursor), paircurrent(&filter_cursor))) {
-	     			return false;
-	     		}
+	match = paircursor(&list_cursor, &list);
+	check = paircursor(&filter_cursor, &filter);
 
-	     		last_match = paircurrent(&list_cursor);
-	     		paircursor(&list_cursor, &last_match);	/* not strictly needed */
-	     		last_check = check;
-	     	}
+	while (true) {
+		/*
+		 *	The lists are sorted, so if the first
+		 *	attributes aren't of the same type, then we're
+		 *	done.
+		 */
+		if (!attribute_eq(check, match)) {
+			return false;
+		}
 
-		for (match = pairfirst(&list_cursor);
-	     	     attribute_eq(match, check);
-	             match = pairnext(&list_cursor)) {
-	             	/*
-	             	 *	This attribute passed the filter
-	             	 */
-	             	if (!paircmp(check, match)) {
-	             		return false;
-	             	}
-	        }
-	}
+		/*
+		 *	They're of the same type, but don't have the
+		 *	same values.  This is a problem.
+		 *
+		 *	Note that the RFCs say that for attributes of
+		 *	the same type, order is important.
+		 */
+		if (!paircmp(check, match)) {
+			return false;
+		}
 
-	/*
-	 *	There were additional VALUE_PAIRS left in the list
-	 */
-	if (paircurrent(&list_cursor)) {
-		return false;
+		match = pairnext(&list_cursor);
+		check = pairnext(&filter_cursor);
+
+		if (!match && !check) break;
+
+		/*
+		 *	One list ended earlier than the others, they
+		 *	didn't match.
+		 */
+		if (!match || !check) {
+			return false;
+		}
 	}
 
 	return true;
