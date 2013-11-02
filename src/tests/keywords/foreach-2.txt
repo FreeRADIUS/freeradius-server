@@ -1,0 +1,24 @@
+#
+#  Input packet
+#
+User-Name = "bob"
+User-Password = "hello"
+Filter-Id = "1"
+Filter-Id += "2"
+Filter-Id += "3"
+Filter-Id += "4"
+Calling-Station-Id = "foo"
+Calling-Station-Id += "bar"
+
+#
+#  Expected answer
+#
+Called-Station-Id == '1 foo'
+Called-Station-Id == '1 bar'
+Called-Station-Id == '2 foo'
+Called-Station-Id == '2 bar'
+Called-Station-Id == '3 foo'
+Called-Station-Id == '3 bar'
+Called-Station-Id == '4 foo'
+Called-Station-Id == '4 bar'
+
