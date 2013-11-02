@@ -23,10 +23,11 @@ $(BUILD_DIR)/tests/keywords:
 #	build/tests/keywords/FOO	updated if the test succeeds
 #	build/tests/keywords/FOO.log	debug output for the test
 #
-$(BUILD_DIR)/tests/keywords/%: $(DIR)/% $(DIR)/%.txt ./$(BUILD_DIR)/bin/unittest | $(BUILD_DIR)/tests/keywords
+$(BUILD_DIR)/tests/keywords/%: $(DIR)/% $(DIR)/%.txt ./$(BUILD_DIR)/bin/unittest | $(BUILD_DIR)/tests/keywords raddb/mods-enabled/pap raddb/mods-enabled/always
 	@echo UNIT-TEST $(notdir $@)
-	KEYWORD=$(notdir $@) $(JLIBTOOL) --quiet --mode=execute ./$(BUILD_DIR)/bin/unittest -D share -d src/tests/keywords/ -i $<.txt -f $<.txt -xx
+	@KEYWORD=$(notdir $@) $(JLIBTOOL) --quiet --mode=execute ./$(BUILD_DIR)/bin/unittest -D share -d src/tests/keywords/ -i $<.txt -f $<.txt -xx > $@.log 2>&1
 	@touch $@
+
 
 #
 #  Get all of the unit test output files
