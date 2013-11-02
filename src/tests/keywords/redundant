@@ -1,0 +1,16 @@
+#
+#  Redundant blocks.
+#
+#  The first one fails, so the second one is used
+#
+redundant {
+	group {
+		fail
+	}
+
+	group {
+		update reply {
+			Filter-Id := "filter"
+		}
+	}
+}
