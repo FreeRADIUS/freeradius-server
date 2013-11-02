@@ -6,7 +6,7 @@
 #  The files are put here in order.  Later tests need
 #  functionality from earlier tests.
 #
-FILES := update foreach foreach-2 if if-skip
+FILES := update foreach foreach-2 if if-skip if-bob if-else redundant switch switch-default
 
 #
 #  Create the output directory
@@ -16,6 +16,36 @@ $(BUILD_DIR)/tests/keywords:
 	@mkdir -p $@
 
 #
+#  Find which input files are needed by the tests
+#  strip out the ones which exist
+#  move the filenames to the build directory.
+#
+BOOTSTRAP_EXISTS := $(addprefix $(DIR)/,$(addsuffix .txt,$(FILES)))
+BOOTSTRAP_NEEDS	 := $(filter-out $(wildcard $(BOOTSTRAP_EXISTS)),$(BOOTSTRAP_EXISTS))
+BOOTSTRAP	 := $(subst $(DIR),$(BUILD_DIR)/tests/keywords,$(BOOTSTRAP_NEEDS))
+
+BOOTSTRAP_HAS	 := $(filter $(wildcard $(BOOTSTRAP_EXISTS)),$(BOOTSTRAP_EXISTS))
+BOOTSTRAP_COPY	 := $(subst $(DIR),$(BUILD_DIR)/tests/keywords,$(BOOTSTRAP_NEEDS))
+
+#
+#  These ones get copied over from the default input
+#
+$(BOOTSTRAP): $(DIR)/default-input.txt | $(BUILD_DIR)/tests/keywords
+	@cp $< $@
+
+#
+#  These ones get copied over from their original files
+#
+$(BUILD_DIR)/tests/keywords/%.txt: $(DIR)/%.txt | $(BUILD_DIR)/tests/keywords
+	@cp $< $@
+
+#
+#  Don't auto-remove the files copied by the rule just above.
+#  It's unnecessary, and it clutters the output with crap.
+#
+.PRECIOUS: $(BUILD_DIR)/tests/keywords/%.txt
+
+#
 #  Files in the output dir depend on the unit tests
 #
 #	src/tests/keywords/FOO		unlang for the test
@@ -23,9 +53,9 @@ $(BUILD_DIR)/tests/keywords:
 #	build/tests/keywords/FOO	updated if the test succeeds
 #	build/tests/keywords/FOO.log	debug output for the test
 #
-$(BUILD_DIR)/tests/keywords/%: $(DIR)/% $(DIR)/%.txt ./$(BUILD_DIR)/bin/unittest | $(BUILD_DIR)/tests/keywords raddb/mods-enabled/pap raddb/mods-enabled/always
+$(BUILD_DIR)/tests/keywords/%: $(DIR)/% $(BUILD_DIR)/tests/keywords/%.txt $(BUILD_DIR)/bin/unittest | $(BUILD_DIR)/tests/keywords raddb/mods-enabled/pap raddb/mods-enabled/always
 	@echo UNIT-TEST $(notdir $@)
-	@KEYWORD=$(notdir $@) $(JLIBTOOL) --quiet --mode=execute ./$(BUILD_DIR)/bin/unittest -D share -d src/tests/keywords/ -i $<.txt -f $<.txt -xx > $@.log 2>&1
+	@KEYWORD=$(notdir $@) $(JLIBTOOL) --quiet --mode=execute ./$(BUILD_DIR)/bin/unittest -D share -d src/tests/keywords/ -i $@.txt -f $@.txt -xx > $@.log 2>&1
 	@touch $@
 
 
@@ -47,4 +77,4 @@ $(BUILD_DIR)/bin/radiusd: $(TESTS.KEYWORDS_FILES)
 
 .PHONY: clean.tests.keywords
 clean.tests.keywords:
-	@rm -f $(TESTS.KEYWORDS_FILES)
+	@rm -rf $(BUILD_DIR)/tests/keywords/
