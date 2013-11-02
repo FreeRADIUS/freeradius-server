@@ -52,7 +52,7 @@ static rlm_rcode_t mod_authorize(UNUSED void *instance,
  *	the password, the rest is done here.
  */
 static rlm_rcode_t mod_authenticate(UNUSED void *instance,
-				     UNUSED REQUEST *request)
+				     REQUEST *request)
 {
 	VALUE_PAIR *passwd_item, *chap;
 	uint8_t pass_str[MAX_STRING_LEN];
@@ -117,6 +117,37 @@ static rlm_rcode_t mod_authenticate(UNUSED void *instance,
 	return RLM_MODULE_OK;
 }
 
+
+/*
+ *	Access-Requests can have the CHAP-Challenge implicitly taken
+ *	from the request authenticator.  If the NAS has done that,
+ *	then we need to copy the data to a real CHAP-Challenge
+ *	attribute when proxying.  Otherwise when we proxy the request,
+ *	the new authenticator is different, and the CHAP calculations
+ *	will fail.
+ */
+static rlm_rcode_t mod_pre_proxy(UNUSED void *instance,
+				 REQUEST *request)
+{
+	VALUE_PAIR *vp;
+
+	/*
+	 *	For Access-Requests, which have CHAP-Password,
+	 *	and no CHAP-Challenge, copy it over from the request.
+	 */
+	if (request->packet->code != PW_CODE_AUTHENTICATION_REQUEST) return RLM_MODULE_NOOP;
+
+	if (!pairfind(request->proxy->vps, PW_CHAP_PASSWORD, 0, TAG_ANY)) return RLM_MODULE_NOOP;
+
+	vp = radius_paircreate(request, &request->proxy->vps, PW_CHAP_CHALLENGE, 0);
+	if (!vp) return RLM_MODULE_FAIL;
+
+	pairmemcpy(vp, request->packet->vector, sizeof(request->packet->vector));
+
+	return RLM_MODULE_OK;
+}
+
+
 /*
  *	The module name should be the only globally exported symbol.
  *	That is, everything else should be 'static'.
@@ -140,7 +171,7 @@ module_t rlm_chap = {
 		NULL,			/* preaccounting */
 		NULL,			/* accounting */
 		NULL,			/* checksimul */
-		NULL,			/* pre-proxy */
+		mod_pre_proxy,	      	/* pre-proxy */
 		NULL,			/* post-proxy */
 		NULL			/* post-auth */
 	},
