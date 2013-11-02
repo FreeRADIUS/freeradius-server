@@ -43,3 +43,7 @@ tests.keywords: $(TESTS.KEYWORDS_FILES)
 #  then we can't run radiusd.
 #
 $(BUILD_DIR)/bin/radiusd: $(TESTS.KEYWORDS_FILES)
+
+.PHONY: clean.tests.keywords
+clean.tests.keywords:
+	@rm -f $(TESTS.KEYWORDS_FILES)
