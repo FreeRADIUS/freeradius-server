@@ -1,0 +1,19 @@
+See "update" and "update.txt" for examples.
+
+In short, the test framework assumes Access-Request with PAP
+authentication.  The password is hard-coded into the configuration,
+and can't be changed.
+
+The entire test suite consists of two files:
+
+FOO contains a short piece of "unlang".  The shorter the better.  The
+goal is to do something useful in unlang, and modify the input packet
+and/or the reply.
+
+FOO.txt contains the input packet and the filter for the reply.  There
+always has to be an output (for now).
+
+
+The input packet is passed into the unit test framework, through the
+FOO unlang snippet, and filtered through the reply filter.  If
+everything matches, then the test case passes.
