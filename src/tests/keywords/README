@@ -1,4 +1,4 @@
-See "update" and "update.txt" for examples.
+See "update" and "default-input.txt" for examples.
 
 In short, the test framework assumes Access-Request with PAP
 authentication.  The password is hard-coded into the configuration,
