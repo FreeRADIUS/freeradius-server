@@ -25,7 +25,7 @@ $(BUILD_DIR)/tests/keywords:
 #
 $(BUILD_DIR)/tests/keywords/%: $(DIR)/% $(DIR)/%.txt ./$(BUILD_DIR)/bin/unittest | $(BUILD_DIR)/tests/keywords
 	@echo UNIT-TEST $(notdir $@)
-	@KEYWORD=$(notdir $@) $(JLIBTOOL) --quiet --mode=execute ./$(BUILD_DIR)/bin/unittest -D share -d src/tests/keywords/ -i $<.txt -f $<.txt -xx > $@.log 2>&1
+	KEYWORD=$(notdir $@) $(JLIBTOOL) --quiet --mode=execute ./$(BUILD_DIR)/bin/unittest -D share -d src/tests/keywords/ -i $<.txt -f $<.txt -xx
 	@touch $@
 
 #
