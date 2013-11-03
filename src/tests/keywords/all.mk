@@ -20,7 +20,7 @@ $(BUILD_DIR)/tests/keywords:
 #  strip out the ones which exist
 #  move the filenames to the build directory.
 #
-BOOTSTRAP_EXISTS := $(addprefix $(DIR)/,$(addsuffix .txt,$(FILES)))
+BOOTSTRAP_EXISTS := $(addprefix $(DIR)/,$(addsuffix .attrs,$(FILES)))
 BOOTSTRAP_NEEDS	 := $(filter-out $(wildcard $(BOOTSTRAP_EXISTS)),$(BOOTSTRAP_EXISTS))
 BOOTSTRAP	 := $(subst $(DIR),$(BUILD_DIR)/tests/keywords,$(BOOTSTRAP_NEEDS))
 
@@ -30,32 +30,32 @@ BOOTSTRAP_COPY	 := $(subst $(DIR),$(BUILD_DIR)/tests/keywords,$(BOOTSTRAP_NEEDS)
 #
 #  These ones get copied over from the default input
 #
-$(BOOTSTRAP): $(DIR)/default-input.txt | $(BUILD_DIR)/tests/keywords
+$(BOOTSTRAP): $(DIR)/default-input.attrs | $(BUILD_DIR)/tests/keywords
 	@cp $< $@
 
 #
 #  These ones get copied over from their original files
 #
-$(BUILD_DIR)/tests/keywords/%.txt: $(DIR)/%.txt | $(BUILD_DIR)/tests/keywords
+$(BUILD_DIR)/tests/keywords/%.attrs: $(DIR)/%.attrs | $(BUILD_DIR)/tests/keywords
 	@cp $< $@
 
 #
 #  Don't auto-remove the files copied by the rule just above.
 #  It's unnecessary, and it clutters the output with crap.
 #
-.PRECIOUS: $(BUILD_DIR)/tests/keywords/%.txt
+.PRECIOUS: $(BUILD_DIR)/tests/keywords/%.attrs
 
 #
 #  Files in the output dir depend on the unit tests
 #
 #	src/tests/keywords/FOO		unlang for the test
-#	src/tests/keywords/FOO.txt	input RADIUS and output filter
+#	src/tests/keywords/FOO.attrs	input RADIUS and output filter
 #	build/tests/keywords/FOO	updated if the test succeeds
 #	build/tests/keywords/FOO.log	debug output for the test
 #
-$(BUILD_DIR)/tests/keywords/%: $(DIR)/% $(BUILD_DIR)/tests/keywords/%.txt $(BUILD_DIR)/bin/unittest | $(BUILD_DIR)/tests/keywords raddb/mods-enabled/pap raddb/mods-enabled/always
+$(BUILD_DIR)/tests/keywords/%: $(DIR)/% $(BUILD_DIR)/tests/keywords/%.attrs $(BUILD_DIR)/bin/unittest | $(BUILD_DIR)/tests/keywords raddb/mods-enabled/pap raddb/mods-enabled/always
 	@echo UNIT-TEST $(notdir $@)
-	@KEYWORD=$(notdir $@) $(JLIBTOOL) --quiet --mode=execute ./$(BUILD_DIR)/bin/unittest -D share -d src/tests/keywords/ -i $@.txt -f $@.txt -xx > $@.log 2>&1
+	@KEYWORD=$(notdir $@) $(JLIBTOOL) --quiet --mode=execute ./$(BUILD_DIR)/bin/unittest -D share -d src/tests/keywords/ -i $@.attrs -f $@.attrs -xx > $@.log 2>&1
 	@touch $@
 
 

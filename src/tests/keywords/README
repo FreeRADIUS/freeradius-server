@@ -1,4 +1,4 @@
-See "update" and "default-input.txt" for examples.
+See "update" and "default-input.attrs" for examples.
 
 In short, the test framework assumes Access-Request with PAP
 authentication.  The password is hard-coded into the configuration,
@@ -10,11 +10,11 @@ FOO contains a short piece of "unlang".  The shorter the better.  The
 goal is to do something useful in unlang, and modify the input packet
 and/or the reply.
 
-FOO.txt contains the input packet and the filter for the reply.  There
+FOO.attrs contains the input packet and the filter for the reply.  There
 always has to be attributes in the input, and filter attributes in the
 reply.
 
-If FOO.txt doesn't exist, then the "default-input.txt" file is used.
+If FOO.txt doesn't exist, then the "default-input.attrs" file is used.
 This allows many tests to be simplified, as all they need is a little
 bit of "unlang".
 
