@@ -59,6 +59,7 @@ case "$1" in
     restart)
         ## Stop the service and regardless of whether it was
         ## running or not, start it again.
+        $0 configtest "$@" || { rc_failed $?; rc_exit; }
 	$0 stop
 	$0 start
 	rc_status
@@ -67,7 +68,7 @@ case "$1" in
         ## Signal the daemon to reload its config. Most daemons
         ## do this on signal 1 (SIGHUP).
         ## If it does not support it, restart.
-
+        $0 configtest "$@" || { rc_failed $?; rc_exit; }
 	echo -n "Reload RADIUS daemon "
         killproc -HUP $RADIUSD_BIN
         rc_status -v
@@ -75,7 +76,7 @@ case "$1" in
     reload)
         ## Like force-reload, but if daemon does not support
         ## signalling, do nothing (!)
-
+        $0 configtest "$@" || { rc_failed $?; rc_exit; }
 	echo -n "Reload RADIUS daemon "
 	killproc -HUP $RADIUSD_BIN 
 	rc_status -v
@@ -85,18 +86,18 @@ case "$1" in
 	checkproc $RADIUSD_BIN
 	rc_status -v
 	;;
-   configtest)
+   configtest|testconfig)
    	echo -n "Checking config for radiusd "
    	$RADIUSD_BIN -C
    	rc_status -v
    	;;
-   configtestdebug)
+   debug)
    	echo -n "Checking config with debug for radiusd "
-   	$RADIUSD_BIN -XC
+   	$RADIUSD_BIN -X
    	rc_status -v
    	;;
     *)
-	echo "Usage: $0 {start|stop|status|try-restart|restart|force-reload|reload|configtest|configtestdebug}"
+	echo "Usage: $0 {start|stop|status|try-restart|restart|force-reload|reload|configtest|debug}"
 	exit 1
 	;;
 esac
