@@ -85,8 +85,18 @@ case "$1" in
 	checkproc $RADIUSD_BIN
 	rc_status -v
 	;;
+   configtest)
+   	echo -n "Checking config for radiusd "
+   	$RADIUSD_BIN -C
+   	rc_status -v
+   	;;
+   configtestdebug)
+   	echo -n "Checking config with debug for radiusd "
+   	$RADIUSD_BIN -XC
+   	rc_status -v
+   	;;
     *)
-	echo "Usage: $0 {start|stop|status|try-restart|restart|force-reload|reload}"
+	echo "Usage: $0 {start|stop|status|try-restart|restart|force-reload|reload|configtest|configtestdebug}"
 	exit 1
 	;;
 esac
