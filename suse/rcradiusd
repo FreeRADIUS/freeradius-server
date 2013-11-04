@@ -92,7 +92,6 @@ case "$1" in
    	rc_status -v
    	;;
    debug)
-   	echo -n "Checking config with debug for radiusd "
    	$RADIUSD_BIN -X
    	rc_status -v
    	;;
