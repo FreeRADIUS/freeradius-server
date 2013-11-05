@@ -444,12 +444,12 @@ static ssize_t bfd_parse_secret(CONF_SECTION *cs, uint8_t secret[20])
 		return fr_hex2bin(secret, value + 2, (len - 2) / 2);
 	}
 
-	if (len >= sizeof(secret)) {
+	if (len >= 20) {
 		cf_log_err(cf_sectiontoitem(cs), "Secret is too long");
 		return -1;
 	}
 
-	memset(secret, 0, sizeof(secret));
+	memset(secret, 0, 20);
 	memcpy(secret, value, len);
 	return len;
 }
