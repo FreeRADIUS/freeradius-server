@@ -4021,16 +4021,18 @@ int radius_event_init(CONF_SECTION *cs, int have_children)
 
 	time(&fr_start_time);
 
-	el = fr_event_list_create(NULL, event_status);
-	if (!el) return 0;
+	if (!check_config) {
+		el = fr_event_list_create(NULL, event_status);
+		if (!el) return 0;
 
-	pl = fr_packet_list_create(0);
-	if (!pl) return 0;	/* leak el */
+		pl = fr_packet_list_create(0);
+		if (!pl) return 0;	/* leak el */
+	}
 
 	request_num_counter = 0;
 
 #ifdef WITH_PROXY
-	if (mainconfig.proxy_requests) {
+	if (mainconfig.proxy_requests && !check_config) {
 		/*
 		 *	Create the tree for managing proxied requests and
 		 *	responses.
