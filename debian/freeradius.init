@@ -61,6 +61,10 @@ case "$1" in
                 log_end_msg $ret
                 ;;
 
+        status)
+                status_of_proc -p "$PIDFILE" "$PROG" "$DESCR"; ret=$?
+                ;;
+
         restart|force-reload)
                 test_freeradius_config || exit $?
 
@@ -88,9 +92,9 @@ case "$1" in
                 ;;
 
         *)
-                echo "Usage: $0 start|stop|restart|force-reload|reload|configtest|debug"
+                echo "Usage: $0 start|stop|status|restart|reload|configtest|debug"
                 exit 1
                 ;;
 esac
 
-exit 0
+exit $ret
