@@ -414,6 +414,16 @@ ATTRIBUTE	Tmp-Octets-7				1837	octets
 ATTRIBUTE	Tmp-Octets-8				1838	octets
 ATTRIBUTE	Tmp-Octets-9				1839	octets
 
+ATTRIBUTE	Tmp-Date-0				1840	date
+ATTRIBUTE	Tmp-Date-1				1841	date
+ATTRIBUTE	Tmp-Date-2				1842	date
+ATTRIBUTE	Tmp-Date-3				1843	date
+ATTRIBUTE	Tmp-Date-4				1844	date
+ATTRIBUTE	Tmp-Date-5				1845	date
+ATTRIBUTE	Tmp-Date-6				1846	date
+ATTRIBUTE	Tmp-Date-7				1847	date
+ATTRIBUTE	Tmp-Date-8				1848	date
+ATTRIBUTE	Tmp-Date-9				1849	date
 #
 #  These attributes shouldn't be used anywhere.  They are defined here
 #  only for casting of values in conditional expressions.

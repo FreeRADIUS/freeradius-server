@@ -1,0 +1,10 @@
+#
+#  Registers conversion xlat(s) to convert between
+#  time formats.
+#
+#  %{from<inst>: %{Tmp-String-0}}
+#  %{to<inst>: %{Tmp-Date-0}}
+#
+date {
+#	format = "%b %e %Y %H:%M:%S %Z"
+}
