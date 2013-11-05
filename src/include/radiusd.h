@@ -171,6 +171,9 @@ typedef enum RAD_LISTEN_TYPE {
 #ifdef WITH_COA
 	RAD_LISTEN_COA,
 #endif
+#ifdef WITH_BFD
+	RAD_LISTEN_BFD,
+#endif
 	RAD_LISTEN_MAX
 } RAD_LISTEN_TYPE;
 

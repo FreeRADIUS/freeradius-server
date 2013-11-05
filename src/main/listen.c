@@ -2086,6 +2086,10 @@ static fr_protocol_t master_listen[RAD_LISTEN_MAX] = {
 	  common_socket_print, client_socket_encode, client_socket_decode },
 #endif
 
+#ifdef WITH_BFD
+	/* bidirectional forwarding detection */
+	{ 0, "bfd", 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL },
+#endif
 };
 
 
@@ -2670,6 +2674,9 @@ static const FR_NAME_NUMBER listen_compare[] = {
 #endif
 #ifdef WITH_COA
 	{ "coa",	RAD_LISTEN_COA },
+#endif
+#ifdef WITH_BFD
+	{ "bfd",	RAD_LISTEN_BFD },
 #endif
 	{ NULL, 0 },
 };
