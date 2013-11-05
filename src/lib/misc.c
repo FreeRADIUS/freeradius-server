@@ -40,6 +40,10 @@ static int	fr_debugger_present = -1;
 int	fr_dns_lookups = 0;
 int	fr_debug_flag = 0;
 
+static char const *months[] = {
+	"jan", "feb", "mar", "apr", "may", "jun",
+	"jul", "aug", "sep", "oct", "nov", "dec" };
+
 /** Allocates a new talloc context from the root autofree context
  *
  * @param signum signal raised.
@@ -777,6 +781,174 @@ ssize_t fr_utf8_to_ucs2(uint8_t *out, size_t outlen, char const *in, size_t inle
 	}
 
 	return out - start;
+}
+
+/*
+ *	Sort of strtok/strsep function.
+ */
+static char *mystrtok(char **ptr, char const *sep)
+{
+	char	*res;
+
+	if (**ptr == 0) {
+		return NULL;
+	}
+
+	while (**ptr && strchr(sep, **ptr)) {
+		(*ptr)++;
+	}
+	if (**ptr == 0) {
+		return NULL;
+	}
+
+	res = *ptr;
+	while (**ptr && strchr(sep, **ptr) == NULL) {
+		(*ptr)++;
+	}
+
+	if (**ptr != 0) {
+		*(*ptr)++ = 0;
+	}
+	return res;
+}
+
+/** Convert string in various formats to a time_t
+ *
+ * @param date_str input date string.
+ * @param date time_t to write result to.
+ * @return 0 on success or -1 on error.
+ */
+int fr_get_time(char const *date_str, time_t *date)
+{
+	int		i;
+	time_t		t;
+	struct tm	*tm, s_tm;
+	char		buf[64];
+	char		*p;
+	char		*f[4];
+	char		*tail = '\0';
+
+	/*
+	 * Test for unix timestamp date
+	 */
+	*date = strtoul(date_str, &tail, 10);
+	if (*tail == '\0') {
+		return 0;
+	}
+
+	tm = &s_tm;
+	memset(tm, 0, sizeof(*tm));
+	tm->tm_isdst = -1;	/* don't know, and don't care about DST */
+
+	strlcpy(buf, date_str, sizeof(buf));
+
+	p = buf;
+	f[0] = mystrtok(&p, " \t");
+	f[1] = mystrtok(&p, " \t");
+	f[2] = mystrtok(&p, " \t");
+	f[3] = mystrtok(&p, " \t"); /* may, or may not, be present */
+	if (!f[0] || !f[1] || !f[2]) return -1;
+
+	/*
+	 *	The time has a colon, where nothing else does.
+	 *	So if we find it, bubble it to the back of the list.
+	 */
+	if (f[3]) {
+		for (i = 0; i < 3; i++) {
+			if (strchr(f[i], ':')) {
+				p = f[3];
+				f[3] = f[i];
+				f[i] = p;
+				break;
+			}
+		}
+	}
+
+	/*
+	 *  The month is text, which allows us to find it easily.
+	 */
+	tm->tm_mon = 12;
+	for (i = 0; i < 3; i++) {
+		if (isalpha( (int) *f[i])) {
+			/*
+			 *  Bubble the month to the front of the list
+			 */
+			p = f[0];
+			f[0] = f[i];
+			f[i] = p;
+
+			for (i = 0; i < 12; i++) {
+				if (strncasecmp(months[i], f[0], 3) == 0) {
+					tm->tm_mon = i;
+					break;
+				}
+			}
+		}
+	}
+
+	/* month not found? */
+	if (tm->tm_mon == 12) return -1;
+
+	/*
+	 *  The year may be in f[1], or in f[2]
+	 */
+	tm->tm_year = atoi(f[1]);
+	tm->tm_mday = atoi(f[2]);
+
+	if (tm->tm_year >= 1900) {
+		tm->tm_year -= 1900;
+
+	} else {
+		/*
+		 *  We can't use 2-digit years any more, they make it
+		 *  impossible to tell what's the day, and what's the year.
+		 */
+		if (tm->tm_mday < 1900) return -1;
+
+		/*
+		 *  Swap the year and the day.
+		 */
+		i = tm->tm_year;
+		tm->tm_year = tm->tm_mday - 1900;
+		tm->tm_mday = i;
+	}
+
+	/*
+	 *  If the day is out of range, die.
+	 */
+	if ((tm->tm_mday < 1) || (tm->tm_mday > 31)) {
+		return -1;
+	}
+
+	/*
+	 *	There may be %H:%M:%S.  Parse it in a hacky way.
+	 */
+	if (f[3]) {
+		f[0] = f[3];	/* HH */
+		f[1] = strchr(f[0], ':'); /* find : separator */
+		if (!f[1]) return -1;
+
+		*(f[1]++) = '\0'; /* nuke it, and point to MM:SS */
+
+		f[2] = strchr(f[1], ':'); /* find : separator */
+		if (f[2]) {
+		  *(f[2]++) = '\0';	/* nuke it, and point to SS */
+		  tm->tm_sec = atoi(f[2]);
+		}			/* else leave it as zero */
+
+		tm->tm_hour = atoi(f[0]);
+		tm->tm_min = atoi(f[1]);
+	}
+
+	/*
+	 *  Returns -1 on error.
+	 */
+	t = mktime(tm);
+	if (t == (time_t) -1) return -1;
+
+	*date = t;
+
+	return 0;
 }
 
 #ifdef TALLOC_DEBUG
