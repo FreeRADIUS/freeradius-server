@@ -2026,7 +2026,7 @@ static fr_protocol_t master_listen[RAD_LISTEN_MAX] = {
 	/*
 	 *	This always gets defined.
 	 */
-	{ RLM_MODULE_INIT, "status", 0, NULL,
+	{ 0, "status", 0, NULL,
 	  NULL, NULL, NULL, NULL, NULL, NULL, NULL},	/* RAD_LISTEN_NONE */
 #endif
 
@@ -2036,6 +2036,9 @@ static fr_protocol_t master_listen[RAD_LISTEN_MAX] = {
 	  common_socket_parse, NULL,
 	  proxy_socket_recv, proxy_socket_send,
 	  common_socket_print, proxy_socket_encode, proxy_socket_decode },
+#else
+	{ 0, "undefined", 0, NULL,
+	  NULL, NULL, NULL, NULL, NULL, NULL, NULL},
 #endif
 
 	/* authentication */
@@ -2050,6 +2053,9 @@ static fr_protocol_t master_listen[RAD_LISTEN_MAX] = {
 	  common_socket_parse, NULL,
 	  acct_socket_recv, acct_socket_send,
 	  common_socket_print, client_socket_encode, client_socket_decode},
+#else
+	{ 0, "undefined", 0, NULL,
+	  NULL, NULL, NULL, NULL, NULL, NULL, NULL},
 #endif
 
 #ifdef WITH_DETAIL
@@ -2058,16 +2064,25 @@ static fr_protocol_t master_listen[RAD_LISTEN_MAX] = {
 	  detail_parse, detail_free,
 	  detail_recv, detail_send,
 	  detail_print, detail_encode, detail_decode },
+#else
+	{ 0, "undefined", 0, NULL,
+	  NULL, NULL, NULL, NULL, NULL, NULL, NULL},
 #endif
 
 #ifdef WITH_VMPS
 	/* vlan query protocol */
 	{ 0, "vmps", 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL },
+#else
+	{ 0, "undefined", 0, NULL,
+	  NULL, NULL, NULL, NULL, NULL, NULL, NULL},
 #endif
 
 #ifdef WITH_DHCP
 	/* dhcp query protocol */
 	{ 0, "dhcp", 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL },
+#else
+	{ 0, "undefined", 0, NULL,
+	  NULL, NULL, NULL, NULL, NULL, NULL, NULL},
 #endif
 
 #ifdef WITH_COMMAND_SOCKET
@@ -2076,6 +2091,9 @@ static fr_protocol_t master_listen[RAD_LISTEN_MAX] = {
 	  command_socket_parse, command_socket_free,
 	  command_domain_accept, command_domain_send,
 	  command_socket_print, command_socket_encode, command_socket_decode },
+#else
+	{ 0, "undefined", 0, NULL,
+	  NULL, NULL, NULL, NULL, NULL, NULL, NULL},
 #endif
 
 #ifdef WITH_COA
@@ -2084,11 +2102,17 @@ static fr_protocol_t master_listen[RAD_LISTEN_MAX] = {
 	  common_socket_parse, NULL,
 	  coa_socket_recv, auth_socket_send, /* CoA packets are same as auth */
 	  common_socket_print, client_socket_encode, client_socket_decode },
+#else
+	{ 0, "undefined", 0, NULL,
+	  NULL, NULL, NULL, NULL, NULL, NULL, NULL},
 #endif
 
 #ifdef WITH_BFD
 	/* bidirectional forwarding detection */
 	{ 0, "bfd", 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL },
+#else
+	{ 0, "undefined", 0, NULL,
+	  NULL, NULL, NULL, NULL, NULL, NULL, NULL},
 #endif
 };
 
@@ -2648,40 +2672,6 @@ rad_listen_t *proxy_new_listener(home_server *home, int src_port)
 }
 #endif
 
-
-static const FR_NAME_NUMBER listen_compare[] = {
-#ifdef WITH_STATS
-	{ "status",	RAD_LISTEN_NONE },
-#endif
-	{ "auth",	RAD_LISTEN_AUTH },
-#ifdef WITH_ACCOUNTING
-	{ "acct",	RAD_LISTEN_ACCT },
-#endif
-#ifdef WITH_DETAIL
-	{ "detail",	RAD_LISTEN_DETAIL },
-#endif
-#ifdef WITH_PROXY
-	{ "proxy",	RAD_LISTEN_PROXY },
-#endif
-#ifdef WITH_VMPS
-	{ "vmps",	RAD_LISTEN_VQP },
-#endif
-#ifdef WITH_DHCP
-	{ "dhcp",	RAD_LISTEN_DHCP },
-#endif
-#ifdef WITH_COMMAND_SOCKET
-	{ "control",	RAD_LISTEN_COMMAND },
-#endif
-#ifdef WITH_COA
-	{ "coa",	RAD_LISTEN_COA },
-#endif
-#ifdef WITH_BFD
-	{ "bfd",	RAD_LISTEN_BFD },
-#endif
-	{ NULL, 0 },
-};
-
-
 static rad_listen_t *listen_parse(CONF_SECTION *cs, char const *server)
 {
 	int		type, rcode;
@@ -2690,6 +2680,7 @@ static rad_listen_t *listen_parse(CONF_SECTION *cs, char const *server)
 	CONF_PAIR	*cp;
 	char const	*value;
 	lt_dlhandle	handle;
+	DICT_VALUE	*dv;
 	char		buffer[32];
 
 	cp = cf_pair_find(cs, "type");
@@ -2720,9 +2711,22 @@ static rad_listen_t *listen_parse(CONF_SECTION *cs, char const *server)
 			return NULL;
 		}
 
-		type = fr_str2int(listen_compare, value, -1);
-		rad_assert(type >= 0); /* shouldn't be able to compile an invalid type */
+		/*
+		 *	We need numbers for internal use.
+		 */
+		dv = dict_valbyname(1147, 0, value);
+		if (!dv) {
+			cf_log_err_cs(cs, "No dictionary entry for protocol %s",
+				      value);
+			dlclose(handle);
+			return NULL;
+		}
 
+		type = dv->value;
+
+		/*
+		 *	FIXME: malloc this, or put it into a tree.
+		 */
 		memcpy(&master_listen[type], proto, sizeof(*proto));
 
 		/*
@@ -2749,11 +2753,28 @@ static rad_listen_t *listen_parse(CONF_SECTION *cs, char const *server)
 		return NULL;
 	}
 
-	type = fr_str2int(listen_compare, listen_type, -1);
-	if (type < 0) {
-		cf_log_err_cs(cs,
-			   "Invalid type \"%s\" in listen section.",
-			   listen_type);
+	/*
+	 *	Couldn't link to it.  It MUST be define in the
+	 *	dictionaries.
+	 */
+	dv = dict_valbyname(1147, 0, value);
+	if (!dv) {
+		cf_log_err_cs(cs, "No dictionary entry for protocol %s",
+			      value);
+		return NULL;
+	}
+
+	if ((dv->value == 0) || (dv->value >= RAD_LISTEN_MAX)) {
+		cf_log_err_cs(cs, "Failed finding plugin for protocol %s",
+			      value);
+		return NULL;
+	}
+
+	type = dv->value;
+
+	if (strcmp(master_listen[type].name, dv->name) != 0) {
+		cf_log_err_cs(cs, "Inconsistent dictionaries for protocol %s",
+			      value);
 		return NULL;
 	}
 

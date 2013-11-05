@@ -149,31 +149,15 @@ typedef struct radclient {
  */
 typedef enum RAD_LISTEN_TYPE {
 	RAD_LISTEN_NONE = 0,
-#ifdef WITH_PROXY
 	RAD_LISTEN_PROXY,
-#endif
 	RAD_LISTEN_AUTH,
-#ifdef WITH_ACCOUNTING
 	RAD_LISTEN_ACCT,
-#endif
-#ifdef WITH_DETAIL
 	RAD_LISTEN_DETAIL,
-#endif
-#ifdef WITH_VMPS
 	RAD_LISTEN_VQP,
-#endif
-#ifdef WITH_DHCP
 	RAD_LISTEN_DHCP,
-#endif
-#ifdef WITH_COMMAND_SOCKET
 	RAD_LISTEN_COMMAND,
-#endif
-#ifdef WITH_COA
 	RAD_LISTEN_COA,
-#endif
-#ifdef WITH_BFD
 	RAD_LISTEN_BFD,
-#endif
 	RAD_LISTEN_MAX
 } RAD_LISTEN_TYPE;
 
