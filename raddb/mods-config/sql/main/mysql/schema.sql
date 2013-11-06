@@ -22,6 +22,7 @@ CREATE TABLE radacct (
   groupname varchar(64) NOT NULL default '',
   realm varchar(64) default '',
   nasipaddress varchar(15) NOT NULL default '',
+  nasport int(6) default NULL,
   nasportid varchar(50) default NULL,
   nasporttype varchar(32) default NULL,
   acctstarttime datetime NULL default NULL,
