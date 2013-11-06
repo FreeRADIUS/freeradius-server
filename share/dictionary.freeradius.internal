@@ -251,7 +251,7 @@ VALUE		Listen-Socket-Type	proxy			1
 VALUE		Listen-Socket-Type	auth			2
 VALUE		Listen-Socket-Type	acct			3
 VALUE		Listen-Socket-Type	detail			4
-VALUE		Listen-Socket-Type	vqp			5
+VALUE		Listen-Socket-Type	vmps			5
 VALUE		Listen-Socket-Type	dhcp			6
 VALUE		Listen-Socket-Type	control			7
 VALUE		Listen-Socket-Type	coa			8
