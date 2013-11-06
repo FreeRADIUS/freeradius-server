@@ -255,7 +255,6 @@ VALUE		Listen-Socket-Type	vmps			5
 VALUE		Listen-Socket-Type	dhcp			6
 VALUE		Listen-Socket-Type	control			7
 VALUE		Listen-Socket-Type	coa			8
-VALUE		Listen-Socket-Type	bfd			9
 
 
 #

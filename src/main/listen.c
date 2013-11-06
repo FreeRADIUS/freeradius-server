@@ -71,7 +71,9 @@ static int command_tcp_send(rad_listen_t *listener, REQUEST *request);
 static int command_write_magic(int newfd, listen_socket_t *sock);
 #endif
 
-static fr_protocol_t master_listen[RAD_LISTEN_MAX];
+static int last_listener = RAD_LISTEN_MAX;
+#define MAX_LISTENER (256)
+static fr_protocol_t master_listen[MAX_LISTENER];
 
 /*
  *	Xlat for %{listen:foo}
@@ -2013,21 +2015,20 @@ static int proxy_socket_decode(UNUSED rad_listen_t *listener, REQUEST *request)
 
 #include "command.c"
 
+#define NO_LISTENER { 0, "undefined", 0, NULL, \
+	  NULL, NULL, NULL, NULL, NULL, NULL, NULL}
+
 /*
- *	Temporarily NOT const!
+ *	Handle up to 256 different protocols.
  */
-static fr_protocol_t master_listen[RAD_LISTEN_MAX] = {
+static fr_protocol_t master_listen[MAX_LISTENER] = {
 #ifdef WITH_STATS
 	{ RLM_MODULE_INIT, "status", sizeof(listen_socket_t), NULL,
 	  common_socket_parse, NULL,
 	  stats_socket_recv, auth_socket_send,
 	  common_socket_print, client_socket_encode, client_socket_decode },
 #else
-	/*
-	 *	This always gets defined.
-	 */
-	{ 0, "status", 0, NULL,
-	  NULL, NULL, NULL, NULL, NULL, NULL, NULL},	/* RAD_LISTEN_NONE */
+	NO_LISTENER,
 #endif
 
 #ifdef WITH_PROXY
@@ -2037,8 +2038,7 @@ static fr_protocol_t master_listen[RAD_LISTEN_MAX] = {
 	  proxy_socket_recv, proxy_socket_send,
 	  common_socket_print, proxy_socket_encode, proxy_socket_decode },
 #else
-	{ 0, "undefined", 0, NULL,
-	  NULL, NULL, NULL, NULL, NULL, NULL, NULL},
+	NO_LISTENER,
 #endif
 
 	/* authentication */
@@ -2054,8 +2054,7 @@ static fr_protocol_t master_listen[RAD_LISTEN_MAX] = {
 	  acct_socket_recv, acct_socket_send,
 	  common_socket_print, client_socket_encode, client_socket_decode},
 #else
-	{ 0, "undefined", 0, NULL,
-	  NULL, NULL, NULL, NULL, NULL, NULL, NULL},
+	NO_LISTENER,
 #endif
 
 #ifdef WITH_DETAIL
@@ -2065,25 +2064,12 @@ static fr_protocol_t master_listen[RAD_LISTEN_MAX] = {
 	  detail_recv, detail_send,
 	  detail_print, detail_encode, detail_decode },
 #else
-	{ 0, "undefined", 0, NULL,
-	  NULL, NULL, NULL, NULL, NULL, NULL, NULL},
+	NO_LISTENER,
 #endif
 
-#ifdef WITH_VMPS
-	/* vlan query protocol */
-	{ 0, "vmps", 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL },
-#else
-	{ 0, "undefined", 0, NULL,
-	  NULL, NULL, NULL, NULL, NULL, NULL, NULL},
-#endif
+	NO_LISTENER,		/* vmps */
 
-#ifdef WITH_DHCP
-	/* dhcp query protocol */
-	{ 0, "dhcp", 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL },
-#else
-	{ 0, "undefined", 0, NULL,
-	  NULL, NULL, NULL, NULL, NULL, NULL, NULL},
-#endif
+	NO_LISTENER,		/* dhcp */
 
 #ifdef WITH_COMMAND_SOCKET
 	/* TCP command socket */
@@ -2092,8 +2078,7 @@ static fr_protocol_t master_listen[RAD_LISTEN_MAX] = {
 	  command_domain_accept, command_domain_send,
 	  command_socket_print, command_socket_encode, command_socket_decode },
 #else
-	{ 0, "undefined", 0, NULL,
-	  NULL, NULL, NULL, NULL, NULL, NULL, NULL},
+	NO_LISTENER,
 #endif
 
 #ifdef WITH_COA
@@ -2103,19 +2088,11 @@ static fr_protocol_t master_listen[RAD_LISTEN_MAX] = {
 	  coa_socket_recv, auth_socket_send, /* CoA packets are same as auth */
 	  common_socket_print, client_socket_encode, client_socket_decode },
 #else
-	{ 0, "undefined", 0, NULL,
-	  NULL, NULL, NULL, NULL, NULL, NULL, NULL},
+	NO_LISTENER,
 #endif
 
-#ifdef WITH_BFD
-	/* bidirectional forwarding detection */
-	{ 0, "bfd", 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL },
-#else
-	{ 0, "undefined", 0, NULL,
-	  NULL, NULL, NULL, NULL, NULL, NULL, NULL},
-#endif
+	NO_LISTENER		/* bfd */
 };
-
 
 
 /*
@@ -2635,6 +2612,7 @@ rad_listen_t *proxy_new_listener(home_server *home, int src_port)
 #endif
 	} else
 #endif
+
 		this->fd = fr_socket(&home->src_ipaddr, src_port);
 
 	if (this->fd < 0) {
@@ -2716,10 +2694,29 @@ static rad_listen_t *listen_parse(CONF_SECTION *cs, char const *server)
 		 */
 		dv = dict_valbyname(1147, 0, value);
 		if (!dv) {
-			cf_log_err_cs(cs, "No dictionary entry for protocol %s",
-				      value);
-			dlclose(handle);
-			return NULL;
+			if (dict_addvalue(value, "Listen-Socket-Type",
+				    last_listener) < 0) {
+				cf_log_err_cs(cs,
+					      "Failed adding dictionary entry for protocol %s: %s",
+					      value, fr_strerror());
+				dlclose(handle);
+				return NULL;
+			}
+
+			dv = dict_valbyname(1147, 0, value);
+			if (!dv) {
+				cf_log_err_cs(cs, "Failed finding dictionary entry for protocol %s",
+					      value);
+				dlclose(handle);
+				return NULL;
+			}
+			last_listener++;
+			if (last_listener >= MAX_LISTENER) {
+				cf_log_err_cs(cs, "Too many listeners at protocol %s",
+					      value);
+				dlclose(handle);
+				return NULL;
+			}
 		}
 
 		type = dv->value;
@@ -2754,7 +2751,7 @@ static rad_listen_t *listen_parse(CONF_SECTION *cs, char const *server)
 	}
 
 	/*
-	 *	Couldn't link to it.  It MUST be define in the
+	 *	Couldn't link to it.  It MUST be defined in the
 	 *	dictionaries.
 	 */
 	dv = dict_valbyname(1147, 0, value);
@@ -2764,7 +2761,8 @@ static rad_listen_t *listen_parse(CONF_SECTION *cs, char const *server)
 		return NULL;
 	}
 
-	if ((dv->value == 0) || (dv->value >= RAD_LISTEN_MAX)) {
+	if ((dv->value == 0) || (dv->value >= MAX_LISTENER) ||
+	    (master_listen[dv->value].magic == 0)) {
 		cf_log_err_cs(cs, "Failed finding plugin for protocol %s",
 			      value);
 		return NULL;
