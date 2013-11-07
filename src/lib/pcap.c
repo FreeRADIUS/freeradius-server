@@ -221,7 +221,7 @@ int fr_pcap_open(fr_pcap_t *pcap)
  * @param expression PCAP expression to use as a filter.
  * @return 0 on success, 1 wrong interface type, -1 on error.
  */
-int fr_pcap_apply_filter(fr_pcap_t *pcap, char *expression)
+int fr_pcap_apply_filter(fr_pcap_t *pcap, char const *expression)
 {
 	bpf_u_int32 mask = 0;				/* Our netmask */
 	bpf_u_int32 net = 0;				/* Our IP */
