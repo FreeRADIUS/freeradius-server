@@ -339,6 +339,16 @@ clients radsec {
 		#  automatically be set to "radsec".
 		#
 		secret = radsec
+
+		#
+		#  You can also use a "limit" section here.
+		#  See raddb/clients.conf for examples.
+		#
+		#  Note that BOTH limits are applied.  You
+		#  should therefore set the "listen" limits
+		#  higher than the ones for each individual
+		#  client.
+		#
 	}
 }
 
