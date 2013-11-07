@@ -1509,6 +1509,9 @@ static int bfd_socket_recv(rad_listen_t *listener)
 
 #ifdef HAVE_PTHREAD_H
 	if (!el) {
+		uint8_t *p = (uint8_t *) &bfd;
+		size_t total = bfd.length;
+
 		/*
 		 *	A child has had a problem.  Do some cleanups.
 		 */
@@ -1523,10 +1526,18 @@ static int bfd_socket_recv(rad_listen_t *listener)
 			return 0;
 		}
 
-		/*
-		 *	FIXME: return conditions, etc.
-		 */
-		write(session->pipefd[1], &bfd, bfd.length);
+		do {
+			rcode = write(session->pipefd[1], p, total);
+			if ((rcode < 0) && (errno == EINTR)) continue;
+
+			if (rcode < 0) {
+				session->blocked = true;
+				return 0;
+			}
+
+			total -= rcode;
+			p += rcode;
+		} while (total > 0);
 		return 0;
 	}
 #endif
