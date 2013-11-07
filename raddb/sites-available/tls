@@ -17,6 +17,38 @@ listen {
 
 	clients = radsec
 
+	#
+	#  Connection limiting for sockets with "proto = tcp".
+	#
+	limit {
+	      #
+	      #  Limit the number of simultaneous TCP connections to the socket
+	      #
+	      #  The default is 16.
+	      #  Setting this to 0 means "no limit"
+	      max_connections = 16
+
+	      #  The per-socket "max_requests" option does not exist.
+
+	      #
+	      #  The lifetime, in seconds, of a TCP connection.  After
+	      #  this lifetime, the connection will be closed.
+	      #
+	      #  Setting this to 0 means "forever".
+	      lifetime = 0
+
+	      #
+	      #  The idle timeout, in seconds, of a TCP connection.
+	      #  If no packets have been received over the connection for
+	      #  this time, the connection will be closed.
+	      #
+	      #  Setting this to 0 means "no timeout".
+	      #
+	      #  We STRONGLY RECOMMEND that you set an idle timeout.
+	      #
+	      idle_timeout = 30
+	}
+
 	#  This is *exactly* the same configuration as used by the EAP-TLS
 	#  module.  It's OK for testing, but for production use it's a good
 	#  idea to use different server certificates for EAP and for RADIUS
