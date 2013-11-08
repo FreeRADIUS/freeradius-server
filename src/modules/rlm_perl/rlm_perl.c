@@ -75,7 +75,9 @@ typedef struct rlm_perl_t {
 	PerlInterpreter *perl;
 	pthread_key_t	*thread_key;
 
+#ifdef USE_ITHREADS
 	pthread_mutex_t clone_mutex;
+#endif
 } rlm_perl_t;
 /*
  *	A mapping of configuration file names to internal variables.
