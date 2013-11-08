@@ -1,5 +1,5 @@
 #
-#  Bidirectional Failover Detection.  RFC 5880
+#  Bidirectional Forwarding Detection.  RFC 5880
 #  http:/ietf.org/rfc/rfc5880.txt
 #
 #  The purpose of BFD is to quickly detect if a link is up or down.
