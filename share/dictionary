@@ -259,6 +259,9 @@ $INCLUDE dictionary.yubico
 $INCLUDE dictionary.zeus
 $INCLUDE dictionary.zyxel
 
+#	Address Resolution Protocol
+$INCLUDE dictionary.arp
+
 # 	DHCP dictionary for DHCP functionality and use of dhcp module
 $INCLUDE dictionary.dhcp
 

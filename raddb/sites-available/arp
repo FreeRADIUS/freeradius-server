@@ -1,0 +1,45 @@
+# -*- text -*-
+######################################################################
+#
+#	This is a virtual server that handles ARP.
+#
+#	It allows the administrator to log ARP packets on the
+#	local network.  The idea is that the ARP packets can be
+#	checked against a database (e.g. DHCP), or stored in
+#	an ARP-specific database.  If something funny is
+#	going on, it can produce syslog messages informing the
+#	administrator.
+#
+#	See "arpwatch" for examples of what it should do.   For now,
+#	this is just a toy example.
+#
+#	It NEVER sends an ARP packet.
+#
+######################################################################
+
+server arp {
+	listen {
+		#
+		#  ARP is type arp.
+		#
+		type = arp
+
+		#
+		#  The only configuration possible for ARP
+		#  is the name of the interface.
+		#
+		interface = en1
+	}
+
+
+	#
+	#  For now, ARP is processed through the "post-auth"
+	#  section.  As we make the server more protocol agnostic,
+	#  this will change.
+	#
+	#  If you need to know the interface, use %{listen:interface}
+	#
+	post-auth {
+		ok
+	}
+}

@@ -1,0 +1,41 @@
+# -*- text -*-
+# Copyright (C) 2013 The FreeRADIUS Server project and contributors
+##############################################################################
+#
+#	Dictionary for the ARP protocol.
+#
+#	$Id$
+#
+##############################################################################
+
+#
+#  We really need to make dictionaries protocol-specific.
+#  For now, this hack works.
+#
+VENDOR		ARP				55
+
+BEGIN-VENDOR	ARP
+
+ATTRIBUTE	ARP-Hardware-Format			1	short
+ATTRIBUTE	ARP-Protocol-Format			2	short
+ATTRIBUTE	ARP-Hardware-Address-Length		3	byte
+ATTRIBUTE	ARP-Protocol-Address-Length		4	byte
+ATTRIBUTE	ARP-Operation				5	short
+ATTRIBUTE	ARP-Sender-Hardware-Address		6	ether
+ATTRIBUTE	ARP-Sender-Protocol-Address		7	ipaddr
+ATTRIBUTE	ARP-Target-Hardware-Address		8	ether
+ATTRIBUTE	ARP-Target-Protocol-Address		9	ipaddr
+
+VALUE	ARP-Hardware-Format		Ethernet		1
+
+VALUE	ARP-Protocol-Format		IPv4			0x0800
+
+VALUE	ARP-Operation			Request			1
+VALUE	ARP-Operation			Reply			2
+VALUE	ARP-Operation			Rev-Request		3
+VALUE	ARP-Operation			Rev-Reply		4
+VALUE	ARP-Operation			Rev-Reply		4
+VALUE	ARP-Operation			Inv-Request		8
+VALUE	ARP-Operation			Inv-Reply		9
+
+END-VENDOR ARP
