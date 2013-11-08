@@ -445,7 +445,7 @@ static size_t rest_encode_post(void *ptr, size_t size, size_t nmemb,
 	ssize_t s = (size * nmemb) - 1;
 
 	/* Allow manual chunking */
-	if ((ctx->chunk) && (ctx->chunk <= s)) {
+	if ((ctx->chunk) && ((ssize_t)ctx->chunk <= s)) {
 		s = (ctx->chunk - 1);
 	}
 
@@ -611,7 +611,7 @@ static size_t rest_encode_json(void *ptr, size_t size, size_t nmemb,
 	assert(s > 0);
 
 	/* Allow manual chunking */
-	if ((ctx->chunk) && (ctx->chunk <= s)) {
+	if ((ctx->chunk) && ((ssize_t)ctx->chunk <= s)) {
 		s = (ctx->chunk - 1);
 	}
 
