@@ -2145,7 +2145,10 @@ static int my_dict_init(char const *parent, char const *filename,
 		if (strcasecmp(argv[0], "$INCLUDE-") == 0) {
 			int rcode = my_dict_init(dir, argv[1], fn, line);
 
-			if (rcode == -2) continue;
+			if (rcode == -2) {
+				fr_strerror_printf(""); /* reset error to nothing */
+				continue;
+			}
 
 			if (rcode < 0) {
 				fclose(fp);
