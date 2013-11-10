@@ -1422,6 +1422,10 @@ static REQUEST *request_setup(rad_listen_t *listener, RADIUS_PACKET *packet,
 	request->packet = talloc_steal(request, packet);
 	request->number = request_num_counter++;
 	request->priority = listener->type;
+	if (request->priority >= RAD_LISTEN_MAX) {
+		request->priority = RAD_LISTEN_AUTH;
+	}
+
 	request->master_state = REQUEST_ACTIVE;
 #ifdef DEBUG_STATE_MACHINE
 	if (debug_flag) printf("(%u) ********\tSTATE %s C%u -> C%u\t********\n", request->number, __FUNCTION__, request->child_state, REQUEST_ACTIVE);
