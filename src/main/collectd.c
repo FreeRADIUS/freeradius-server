@@ -176,6 +176,8 @@ static rs_stats_tmpl_t *rs_stats_collectd_init(TALLOC_CTX *ctx, rs_t *conf,
 			case LCC_TYPE_ABSOLUTE:
 				tmpl->value_tmpl[i].dst = &value->values[i].absolute;
 				break;
+			default:
+				assert(0);
 		}
 		value->values_types[i] = tmpl->value_tmpl[i].type;
 	}
@@ -238,7 +240,7 @@ rs_stats_tmpl_t *rs_stats_collectd_init_latency(TALLOC_CTX *ctx, rs_stats_tmpl_t
 	char buffer[LCC_NAME_LEN];
 	tmpl = out;
 
-	rs_stats_value_tmpl_t rtx[RS_RETRANSMIT_MAX + 2];
+	rs_stats_value_tmpl_t rtx[(RS_RETRANSMIT_MAX + 1) + 1 + 1];	// RTX bins + 0 bin + lost + NULL
 	int i;
 
 	/* not static so were thread safe */
@@ -246,7 +248,6 @@ rs_stats_tmpl_t *rs_stats_collectd_init_latency(TALLOC_CTX *ctx, rs_stats_tmpl_t
 		{ &stats->interval.received, LCC_TYPE_GAUGE,  _copy_double_to_double, NULL },
 		{ &stats->interval.linked, LCC_TYPE_GAUGE,  _copy_double_to_double, NULL },
 		{ &stats->interval.unlinked, LCC_TYPE_GAUGE,  _copy_double_to_double, NULL },
-		{ &stats->interval.lost, LCC_TYPE_GAUGE,  _copy_double_to_double, NULL },
 		{ &stats->interval.reused, LCC_TYPE_GAUGE,  _copy_double_to_double, NULL },
 		{ NULL, 0, NULL, NULL }
 	};
@@ -275,13 +276,19 @@ rs_stats_tmpl_t *rs_stats_collectd_init_latency(TALLOC_CTX *ctx, rs_stats_tmpl_t
 	INIT_STATS("radius_count", _packet_count);
 	INIT_STATS("radius_latency", _latency);
 
-	for (i = 0; i < (int) (sizeof(rtx) / sizeof(rs_stats_value_tmpl_t)); i++) {
+	for (i = 0; i < (RS_RETRANSMIT_MAX + 1); i++) {
 		rtx[i].src = &stats->interval.rt[i];
 		rtx[i].type = LCC_TYPE_GAUGE;
 		rtx[i].cb = _copy_double_to_double;
 		rtx[i].dst = NULL;
 	}
-	memset(&rtx[RS_RETRANSMIT_MAX + 1], 0, sizeof(rs_stats_value_tmpl_t));
+
+	rtx[i].src = &stats->interval.lost;
+	rtx[i].type = LCC_TYPE_GAUGE;
+	rtx[i].cb = _copy_double_to_double;
+	rtx[i].dst = NULL;
+
+	memset(&rtx[++i], 0, sizeof(rs_stats_value_tmpl_t));
 
 	INIT_STATS("radius_rtx", rtx);
 
