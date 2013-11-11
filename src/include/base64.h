@@ -33,10 +33,6 @@ int fr_isbase64(char c);
 
 size_t fr_base64_encode(uint8_t const *in, size_t inlen, char *out, size_t outlen);
 
-ssize_t fr_base64_encode_alloc(uint8_t const *in, size_t inlen, char **out);
-
 ssize_t fr_base64_decode(char const *in, size_t inlen, uint8_t *out, size_t outlen);
-
-ssize_t fr_base64_decode_alloc(char const *in, size_t inlen, uint8_t **out);
 
 #endif /* _FR_BASE64_H */
