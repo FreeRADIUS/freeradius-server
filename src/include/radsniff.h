@@ -83,8 +83,8 @@ typedef struct rs_counters {
 typedef struct rs_latency {
 	int			intervals;		//!< Number of stats intervals.
 
-	double			latency_cma;		//!< Cumulative moving average.
-	uint64_t		latency_cma_count;	//!< Number of CMA datapoints processed.
+	double			latency_smoothed;		//!< Smoothed moving average.
+	uint64_t		latency_smoothed_count;	//!< Number of CMA datapoints processed.
 
 	struct {
 		uint64_t		received_total;		//!< Total received over interval.
@@ -116,7 +116,7 @@ typedef struct rs_latency {
 typedef struct rs_malformed {
 	uint64_t		min_length_packet;
 	uint64_t		min_length_field;
-	uint64_t		min_length_mismatch;
+	uint64_t		min_length_mimatch;
 	uint64_t		header_overflow;
 	uint64_t		invalid_attribute;
 	uint64_t		attribute_too_short;

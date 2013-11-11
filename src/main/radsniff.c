@@ -132,7 +132,7 @@ static void rs_stats_print(rs_latency_t *stats, PW_CODE code)
 		INFO("\tHigh      : %.3lfms", stats->interval.latency_high);
 		INFO("\tLow       : %.3lfms", stats->interval.latency_low);
 		INFO("\tAverage   : %.3lfms", stats->interval.latency_average);
-		INFO("\tCMA       : %.3lfms", stats->latency_cma);
+		INFO("\tMA        : %.3lfms", stats->latency_smoothed);
 	}
 
 	if (have_rt || stats->interval.lost || stats->interval.reused) {
@@ -196,7 +196,7 @@ static int rs_check_pcap_drop(fr_pcap_t *in, int interval) {
 	return ret;
 }
 
-/** Update cumulative moving average and other stats
+/** Update smoothed average
  *
  */
 static void rs_stats_process_latency(rs_latency_t *stats)
@@ -206,9 +206,9 @@ static void rs_stats_process_latency(rs_latency_t *stats)
 	}
 
 	if (stats->interval.latency_average > 0) {
-		stats->latency_cma_count++;
-		stats->latency_cma += ((stats->interval.latency_average - stats->latency_cma) /
-					stats->latency_cma_count);
+		stats->latency_smoothed_count++;
+		stats->latency_smoothed += ((stats->interval.latency_average - stats->latency_smoothed) /
+				       ((stats->latency_smoothed_count < 100) ? stats->latency_smoothed_count : 100));
 	}
 }
 
@@ -267,7 +267,7 @@ static void rs_stats_process(void *ctx)
 	}
 
 	/*
-	 *	Latency stats need a bit more work to calculate the CMA.
+	 *	Latency stats need a bit more work to calculate the SMA.
 	 *
 	 *	No further work is required for codes.
 	 */

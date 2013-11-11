@@ -252,7 +252,7 @@ rs_stats_tmpl_t *rs_stats_collectd_init_latency(TALLOC_CTX *ctx, rs_stats_tmpl_t
 	};
 
 	rs_stats_value_tmpl_t const _latency[] = {
-		{ &stats->latency_cma, LCC_TYPE_GAUGE, _copy_double_to_double, NULL },
+		{ &stats->latency_smoothed, LCC_TYPE_GAUGE, _copy_double_to_double, NULL },
 		{ &stats->interval.latency_average, LCC_TYPE_GAUGE, _copy_double_to_double, NULL },
 		{ &stats->interval.latency_high, LCC_TYPE_GAUGE, _copy_double_to_double, NULL },
 		{ &stats->interval.latency_low, LCC_TYPE_GAUGE, _copy_double_to_double, NULL },
