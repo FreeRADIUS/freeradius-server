@@ -58,14 +58,6 @@ void fr_strerror_printf(char const *fmt, ...)
 
 	char *buffer;
 
-	/*
-	 *	NULL has a special meaning, setting the new byte to false.
-	 */
-	if (!fmt) {
-		buffer[FR_STRERROR_BUFSIZE] = '\0';
-		return;
-	}
-
 	buffer = fr_thread_local_init(fr_strerror_buffer, _fr_logging_free);
 	if (!buffer) {
 		int ret;
@@ -85,6 +77,14 @@ void fr_strerror_printf(char const *fmt, ...)
 			free(buffer);
 			return;
 		}
+	}
+
+	/*
+	 *	NULL has a special meaning, setting the new byte to false.
+	 */
+	if (!fmt) {
+		buffer[FR_STRERROR_BUFSIZE] = '\0';
+		return;
 	}
 
 	va_start(ap, fmt);
