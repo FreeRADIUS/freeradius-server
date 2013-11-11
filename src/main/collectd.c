@@ -30,6 +30,7 @@
 /** Copy a 64bit unsigned integer into a double
  *
  */
+/*
 static void _copy_uint64_to_double(UNUSED rs_t *conf, rs_stats_value_tmpl_t *tmpl)
 {
 	assert(tmpl->src);
@@ -37,6 +38,7 @@ static void _copy_uint64_to_double(UNUSED rs_t *conf, rs_stats_value_tmpl_t *tmp
 
 	*((double *) tmpl->dst) = *((uint64_t *) tmpl->src);
 }
+*/
 
 /*
 static void _copy_uint64_to_uint64(UNUSED rs_t *conf, rs_stats_value_tmpl_t *tmpl)
@@ -53,7 +55,7 @@ static void _copy_double_to_double(UNUSED rs_t *conf, rs_stats_value_tmpl_t *tmp
 	assert(tmpl->src);
 	assert(tmpl->dst);
 
-	*((uint64_t *) tmpl->dst) = *((uint64_t *) tmpl->src);
+	*((double *) tmpl->dst) = *((double*) tmpl->src);
 }
 
 
@@ -241,11 +243,11 @@ rs_stats_tmpl_t *rs_stats_collectd_init_latency(TALLOC_CTX *ctx, rs_stats_tmpl_t
 
 	/* not static so were thread safe */
 	rs_stats_value_tmpl_t const _packet_count[] = {
-		{ &stats->interval.received, LCC_TYPE_GAUGE, _copy_uint64_to_double, NULL },
-		{ &stats->interval.linked, LCC_TYPE_GAUGE, _copy_uint64_to_double, NULL },
-		{ &stats->interval.unlinked, LCC_TYPE_GAUGE, _copy_uint64_to_double, NULL },
-		{ &stats->interval.lost, LCC_TYPE_GAUGE, _copy_uint64_to_double, NULL },
-		{ &stats->interval.reused, LCC_TYPE_GAUGE, _copy_uint64_to_double, NULL },
+		{ &stats->interval.received, LCC_TYPE_GAUGE,  _copy_double_to_double, NULL },
+		{ &stats->interval.linked, LCC_TYPE_GAUGE,  _copy_double_to_double, NULL },
+		{ &stats->interval.unlinked, LCC_TYPE_GAUGE,  _copy_double_to_double, NULL },
+		{ &stats->interval.lost, LCC_TYPE_GAUGE,  _copy_double_to_double, NULL },
+		{ &stats->interval.reused, LCC_TYPE_GAUGE,  _copy_double_to_double, NULL },
 		{ NULL, 0, NULL, NULL }
 	};
 
@@ -276,7 +278,7 @@ rs_stats_tmpl_t *rs_stats_collectd_init_latency(TALLOC_CTX *ctx, rs_stats_tmpl_t
 	for (i = 0; i < (int) (sizeof(rtx) / sizeof(rs_stats_value_tmpl_t)); i++) {
 		rtx[i].src = &stats->interval.rt[i];
 		rtx[i].type = LCC_TYPE_GAUGE;
-		rtx[i].cb = _copy_uint64_to_double;
+		rtx[i].cb = _copy_double_to_double;
 		rtx[i].dst = NULL;
 	}
 	memset(&rtx[RS_RETRANSMIT_MAX + 1], 0, sizeof(rs_stats_value_tmpl_t));
