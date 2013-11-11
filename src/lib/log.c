@@ -47,14 +47,24 @@ static void _fr_logging_free(void *arg)
 	free(arg);
 }
 
-/*
- *	Log to thread local error buffer
+/** Log to thread local error buffer
+ *
+ * @param fmt printf style format string. If NULL sets the 'new' byte to false,
+ *	  effectively clearing the last message.
  */
 void fr_strerror_printf(char const *fmt, ...)
 {
 	va_list ap;
 
 	char *buffer;
+
+	/*
+	 *	NULL has a special meaning, setting the new byte to false.
+	 */
+	if (!fmt) {
+		buffer[FR_STRERROR_BUFSIZE] = '\0';
+		return;
+	}
 
 	buffer = fr_thread_local_init(fr_strerror_buffer, _fr_logging_free);
 	if (!buffer) {
@@ -94,7 +104,7 @@ char const *fr_strerror(void)
 	char *buffer;
 
 	buffer = fr_thread_local_get(fr_strerror_buffer);
-	if (buffer && buffer[FR_STRERROR_BUFSIZE]) {
+	if (buffer && (buffer[FR_STRERROR_BUFSIZE] != '\0')) {
 		buffer[FR_STRERROR_BUFSIZE] = '\0';		/* Flip the 'new' byte to false */
 		return buffer;
 	}
