@@ -24,7 +24,7 @@ attr_filter attr_filter.pre-proxy {
 # more details.
 #
 attr_filter attr_filter.access_reject {
-	key = %{User-Name}
+	key = "%{User-Name}"
 	filename = ${modconfdir}/${.:name}/access_reject
 }
 
@@ -33,7 +33,7 @@ attr_filter attr_filter.access_reject {
 # more details.
 #
 attr_filter attr_filter.access_challenge {
-	key = %{User-Name}
+	key = "%{User-Name}"
 	filename = ${modconfdir}/${.:name}/access_challenge
 }
 
@@ -43,6 +43,6 @@ attr_filter attr_filter.access_challenge {
 #  top of the file for more details.
 #
 attr_filter attr_filter.accounting_response {
-	key = %{User-Name}
+	key = "%{User-Name}"
 	filename = ${modconfdir}/${.:name}/accounting_response
 }
