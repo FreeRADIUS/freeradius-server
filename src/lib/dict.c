@@ -2146,7 +2146,7 @@ static int my_dict_init(char const *parent, char const *filename,
 			int rcode = my_dict_init(dir, argv[1], fn, line);
 
 			if (rcode == -2) {
-				fr_strerror_printf(""); /* reset error to nothing */
+				fr_strerror_printf(" "); /* reset error to nothing */
 				continue;
 			}
 
