@@ -587,29 +587,16 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 
 				original->linked = talloc_steal(original, current);
 
-				/*
-				 *	Some RADIUS servers and proxy servers may not cache
-				 *	Accounting-Responses (and possibly other code),
-				 *	and may immediately re-use a RADIUS packet src
-				 *	port/id combination on receipt of a response.
-				 */
-				if (conf->dequeue[current->code]) {
+				if (!fr_event_insert(event->list, rs_packet_cleanup, original, &when,
+						     &original->event)) {
+					ERROR("Failed inserting new event");
+					/*
+					 *	Delete the original request/event, it's no longer valid
+					 *	for statistics.
+					 */
 					fr_event_delete(event->list, &original->event);
 					rbtree_deletebydata(request_tree, original);
-				} else {
-					if (!fr_event_insert(event->list, rs_packet_cleanup, original, &when,
-						    	     &original->event)) {
-						ERROR("Failed inserting new event");
-						/*
-						 *	Delete the original request/event, it's no longer valid
-						 *	for statistics.
-						 */
-						original->forced_cleanup = true;
-						fr_event_delete(event->list, &original->event);
-						rbtree_deletebydata(request_tree, original);
-
-						return;
-					}
+					return;
 				}
 			/*
 			 *	No request seen, or request was dropped by attribute filter
@@ -680,17 +667,22 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			original = rbtree_finddata(request_tree, &search);
 
 			/*
-			 *	Upstream device re-used src/dst ip/port id without waiting
-			 *	for the timeout period to expire, or a response.
+			 *	Upstream device re-used src/dst ip/port id...
 			 */
 			if (original && memcmp(original->packet->vector, current->vector,
 					       sizeof(original->packet->vector) != 0)) {
-				RDEBUG2("(%" PRIu64 ") ** PREMATURE ID RE-USE **", count);
-				stats->exchange[current->code].interval.reused_total++;
-				original->forced_cleanup = true;
+				/*
+				 *	...before the request timed out (which may be an issue)
+				 *	and before we saw a response (which may be a bigger issue).
+				 */
+				if (!original->linked) {
+					RDEBUG2("(%" PRIu64 ") ** PREMATURE ID RE-USE **", count);
+					stats->exchange[current->code].interval.reused_total++;
+					original->forced_cleanup = true;
+				}
 
 				fr_event_delete(event->list, &original->event);
-				rbtree_deletebydata(request_tree, original);
+				rs_packet_cleanup(original);
 				original = NULL;
 			}
 
@@ -722,7 +714,6 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			if (!fr_event_insert(event->list, rs_packet_cleanup, original, &when, &original->event)) {
 				ERROR("Failed inserting new event");
 				rbtree_deletebydata(request_tree, original);
-
 				return;
 			}
 			response = false;

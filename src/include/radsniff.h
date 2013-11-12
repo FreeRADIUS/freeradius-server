@@ -201,8 +201,6 @@ struct rs {
 	bool			print_packet;		//!< Print packet info, disabled with -W
 
 	bool			do_sort;		//!< Whether we sort attributes in the packet.
-	bool			dequeue[PW_CODE_MAX];	//!< Remove requests immediately from the queue
-							//!< when a matching response is received.
 	char const		*radius_secret;		//!< Secret to decode encrypted attributes.
 
 	char			*pcap_filter;		//!< PCAP filter string applied to live capture devices.
