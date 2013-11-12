@@ -200,11 +200,12 @@ struct rs {
 	bool			promiscuous;		//!< Capture in promiscuous mode.
 	bool			print_packet;		//!< Print packet info, disabled with -W
 
-	bool			do_sort;		//!< Whether we sort attributes in the packet.
 	char const		*radius_secret;		//!< Secret to decode encrypted attributes.
 
 	char			*pcap_filter;		//!< PCAP filter string applied to live capture devices.
 	char			*radius_filter;		//!< RADIUS filter string.
+	VALUE_PAIR 		*filter_vps;		//!< Sorted filter vps.
+
 
 	int			buffer_pkts;		//!< Size of the ring buffer to setup for live capture.
 	uint64_t		limit;			//!< Maximum number of packets to capture

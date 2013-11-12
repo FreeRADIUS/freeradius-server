@@ -39,8 +39,6 @@ RCSID("$Id$")
 #  include <collectd/client.h>
 #endif
 
-static VALUE_PAIR *filter_vps = NULL;
-
 FILE *log_dst;
 
 static rs_t *conf;
@@ -559,7 +557,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			 *	Only decode attributes if we want to print them or filter on them
 			 *	rad_packet_ok does checks to verify the packet is actually valid.
 			 */
-			if (filter_vps || conf->print_packet) {
+			if (conf->filter_vps || conf->print_packet) {
 				if (rad_decode(current, original ? original->packet : NULL,
 					       conf->radius_secret) != 0) {
 					rad_free(&current);
@@ -603,11 +601,11 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			 */
 			} else {
 				/*
-				 *	If filter_vps are set assume the original request was dropped,
+				 *	If conf->filter_vps are set assume the original request was dropped,
 				 *	the alternative is maintaining another 'filter', but that adds
 				 *	complexity, reduces max capture rate, and is generally a PITA.
 				 */
-				if (filter_vps) {
+				if (conf->filter_vps) {
 					rad_free(&current);
 					RDEBUG2("(%" PRIu64 ") Dropped by attribute filter", count);
 					return;
@@ -633,7 +631,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			 *	Only decode attributes if we want to print them or filter on them
 			 *	rad_packet_ok does checks to verify the packet is actually valid.
 			 */
-			if (filter_vps || conf->print_packet) {
+			if (conf->filter_vps || conf->print_packet) {
 				if (rad_decode(current, NULL, conf->radius_secret) != 0) {
 					rad_free(&current);
 					fr_perror("decode");
@@ -644,10 +642,14 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			/*
 			 *	Now verify the packet passes the attribute filter
 			 */
-			if (filter_vps && !pairvalidate_relaxed(filter_vps, current->vps)) {
-				rad_free(&current);
-				RDEBUG2("(%" PRIu64 ") Dropped by attribute filter", count);
-				return;
+			if (conf->filter_vps) {
+				pairsort(&current->vps, true);
+
+				if (!pairvalidate_relaxed(conf->filter_vps, current->vps)) {
+					rad_free(&current);
+					RDEBUG2("(%" PRIu64 ") Dropped by attribute filter", count);
+					return;
+				}
 			}
 
 			/*
@@ -933,7 +935,6 @@ static void NEVER_RETURNS usage(int status)
 	fprintf(output, "  -q              Print less debugging information.\n");
 	fprintf(output, "  -r <filter>     RADIUS attribute filter.\n");
 	fprintf(output, "  -s <secret>     RADIUS secret.\n");
-	fprintf(output, "  -S              Sort attributes in the packet (useful for diffing responses).\n");
 	fprintf(output, "  -v              Show program version information.\n");
 	fprintf(output, "  -w <file>       Write output packets to file (overrides output of -F).\n");
 	fprintf(output, "  -x              Print more debugging information (defaults to -xx).\n");
@@ -1007,7 +1008,7 @@ int main(int argc, char *argv[])
 	/*
 	 *  Get options
 	 */
-	while ((opt = getopt(argc, argv, "b:c:d:DFf:hi:I:mp:qr:s:Svw:xXW:T:P:O:")) != EOF) {
+	while ((opt = getopt(argc, argv, "b:c:d:DFf:hi:I:mp:qr:s:vw:xXW:T:P:O:")) != EOF) {
 		switch (opt) {
 		/* super secret option */
 		case 'b':
@@ -1100,10 +1101,6 @@ int main(int argc, char *argv[])
 
 		case 's':
 			conf->radius_secret = optarg;
-			break;
-
-		case 'S':
-			conf->do_sort = true;
 			break;
 
 		case 'v':
@@ -1231,20 +1228,20 @@ int main(int argc, char *argv[])
 		vp_cursor_t cursor;
 		VALUE_PAIR *vp;
 
-		parsecode = userparse(NULL, conf->radius_filter, &filter_vps);
+		parsecode = userparse(NULL, conf->radius_filter, &conf->filter_vps);
 		if (parsecode == T_OP_INVALID) {
 			ERROR("Invalid RADIUS filter \"%s\" (%s)", conf->radius_filter, fr_strerror());
 			ret = 64;
 			goto finish;
 		}
 
-		if (!filter_vps) {
+		if (!conf->filter_vps) {
 			ERROR("Empty RADIUS filter \"%s\"", conf->radius_filter);
 			ret = 64;
 			goto finish;
 		}
 
-		for (vp = fr_cursor_init(&cursor, &filter_vps);
+		for (vp = fr_cursor_init(&cursor, &conf->filter_vps);
 		     vp;
 		     vp = fr_cursor_next(&cursor)) {
 		     	/*
@@ -1255,6 +1252,11 @@ int main(int argc, char *argv[])
 		     		vp->vp_strvalue = vp->value.xlat;
 		     	}
 		}
+
+		/*
+		 *	This allows efficient list comparisons later
+		 */
+		pairsort(&conf->filter_vps, true);
 	}
 
 	/*
@@ -1315,9 +1317,9 @@ int main(int argc, char *argv[])
 		}
 			DEBUG2("  PCAP filter              : [%s]", conf->pcap_filter);
 			DEBUG2("  RADIUS secret            : [%s]", conf->radius_secret);
-		if (filter_vps){
+		if (conf->filter_vps){
 			DEBUG2("  RADIUS filter            :");
-			vp_printlist(log_dst, filter_vps);
+			vp_printlist(log_dst, conf->filter_vps);
 		}
 	}
 
