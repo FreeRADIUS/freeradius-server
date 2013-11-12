@@ -29,13 +29,24 @@
 #include <pcap.h>
 
 /*
+ *	Length of a DEC/Intel/Xerox or 802.3 Ethernet header.
+ *	Note that some compilers may pad "struct ether_header" to
+ *	a multiple of 4 *bytes, for example, so "sizeof (struct
+ *	ether_header)" may not give the right answer.
+ *
+ *	6 Byte SRC, 6 Byte DST, 2 Byte Ether type, 4 Byte CVID, 4 Byte SVID
+ */
+#define ETHER_HDRLEN	22
+#define IP_HDRLEN	60
+
+/*
  *	RADIUS packet length.
  *	RFC 2865, Section 3., subsection 'length' says:
  *	" ... and maximum length is 4096."
  */
 #define MAX_RADIUS_LEN 4096
 #define MIN_RADIUS_LEN 20
-#define SNAPLEN (sizeof(struct ethernet_header) + sizeof(struct ip_header) + sizeof(struct udp_header) + MAX_RADIUS_LEN)
+#define SNAPLEN ETHER_HDRLEN + IP_HDRLEN + sizeof(struct udp_header) + MAX_RADIUS_LEN
 #define PCAP_BUFFER_DEFAULT (10000)
 /*
  *	It's unclear why this differs between platforms
@@ -66,18 +77,10 @@
  *	Structure of a DEC/Intel/Xerox or 802.3 Ethernet header.
  */
 struct  ethernet_header {
-	uint8_t	ethernet_dhost[ETHER_ADDR_LEN];
-	uint8_t	ethernet_shost[ETHER_ADDR_LEN];
-	uint16_t	ethernet_type;
+	uint8_t		ether_dst[ETHER_ADDR_LEN];
+	uint8_t		ether_src[ETHER_ADDR_LEN];
+	uint16_t	ether_type;
 };
-
-/*
- *	Length of a DEC/Intel/Xerox or 802.3 Ethernet header.
- *	Note that some compilers may pad "struct ether_header" to
- *	a multiple of 4 *bytes, for example, so "sizeof (struct
- *	ether_header)" may not give the right answer.
- */
-#define ETHER_HDRLEN		14
 
 /*
  *	Structure of an internet header, naked of options.
@@ -164,6 +167,8 @@ struct fr_pcap {
 	pcap_t			*handle;			//!< libpcap handle.
 	pcap_dumper_t		*dumper;			//!< libpcap dumper handle.
 
+	int			link_type;			//!< Link layer type.
+
 	int			fd;				//!< Selectable file descriptor we feed to select.
 	struct pcap_stat	pstats;				//!< The last set of pcap stats for this handle.
 
@@ -175,6 +180,7 @@ fr_pcap_t *fr_pcap_init(TALLOC_CTX *ctx, char const *name, fr_pcap_type_t type);
 int fr_pcap_open(fr_pcap_t *handle);
 int fr_pcap_apply_filter(fr_pcap_t *handle, char const *expression);
 char *fr_pcap_device_names(TALLOC_CTX *ctx, fr_pcap_t *handle, char c);
+ssize_t fr_pcap_link_layer_offset(uint8_t const *data, size_t len, int link_type);
 
 #endif
 

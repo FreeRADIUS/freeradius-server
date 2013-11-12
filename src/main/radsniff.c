@@ -412,8 +412,9 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 	/*
 	 *	Pointers into the packet data we just received
 	 */
-	size_t len;
+	ssize_t len;
 	uint8_t const		*p = data;
+
 	struct ip_header const	*ip = NULL;	/* The IP header */
 	struct ip_header6 const	*ip6 = NULL;	/* The IPv6 header */
 	struct udp_header const	*udp;		/* The UDP header */
@@ -433,22 +434,12 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 		start_pcap = header->ts;
 	}
 
-	if (header->caplen <= 5) {
-		INFO("Packet too small, captured %i bytes", header->caplen);
+	len = fr_pcap_link_layer_offset(data, header->caplen, event->in->link_type);
+	if (len < 0) {
+		INFO("Failed determining link layer header offset: %s", fr_strerror());
 		return;
 	}
-
-	/*
-	 *	Loopback header
-	 */
-	if ((p[0] == 2) && (p[1] == 0) && (p[2] == 0) && (p[3] == 0)) {
-		p += 4;
-	/*
-	 *	Ethernet header
-	 */
-	} else {
-		p += sizeof(struct ethernet_header);
-	}
+	p += len;
 
 	version = (p[0] & 0xf0) >> 4;
 	switch (version) {
@@ -1390,6 +1381,25 @@ int main(int argc, char *argv[])
 	 *	Open our output interface (if we have one);
 	 */
 	if (out) {
+		out->link_type = -1;	/* Infer output link type from input */
+
+		for (in_p = in;
+		     in_p;
+		     in_p = in_p->next) {
+			if (out->link_type < 0) {
+				out->link_type = in_p->link_type;
+				continue;
+			}
+
+			if (out->link_type != in_p->link_type) {
+				ERROR("Asked to write to output file, but inputs do not have the same link type");
+				ret = 64;
+				goto finish;
+			}
+		}
+
+		assert(out->link_type > 0);
+
 		if (fr_pcap_open(out) < 0) {
 			ERROR("Failed opening pcap output");
 			goto finish;

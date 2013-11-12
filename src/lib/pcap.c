@@ -91,6 +91,7 @@ fr_pcap_t *fr_pcap_init(TALLOC_CTX *ctx, char const *name, fr_pcap_type_t type)
 	talloc_set_destructor(this, _free_pcap);
 	this->name = talloc_strdup(this, name);
 	this->type = type;
+	this->link_type = -1;
 
 	return this;
 }
@@ -146,6 +147,7 @@ int fr_pcap_open(fr_pcap_t *pcap)
 			}
 
 			pcap->fd = pcap_get_selectable_fd(pcap->handle);
+			pcap->link_type = pcap_datalink(pcap->handle);
 #ifndef __linux__
 			{
 				int value = 1;
@@ -155,7 +157,8 @@ int fr_pcap_open(fr_pcap_t *pcap)
 			}
 #endif
 		}
-			break;
+		break;
+
 	case PCAP_FILE_IN:
 		pcap->handle = pcap_open_offline(pcap->name, pcap->errbuf);
 		if (!pcap->handle) {
@@ -165,16 +168,27 @@ int fr_pcap_open(fr_pcap_t *pcap)
 		}
 
 		pcap->fd = pcap_get_selectable_fd(pcap->handle);
+		pcap->link_type = pcap_datalink(pcap->handle);
 		break;
+
 	case PCAP_FILE_OUT:
-		pcap->handle = pcap_open_dead(DLT_EN10MB, SNAPLEN);
+		if (pcap->link_type < 0) {
+			pcap->link_type = DLT_EN10MB;
+		}
+		pcap->handle = pcap_open_dead(pcap->link_type, SNAPLEN);
+		if (!pcap->handle) {
+			fr_strerror_printf("Unknown error occurred opening dead PCAP handle");
+
+			return -1;
+		}
 		pcap->dumper = pcap_dump_open(pcap->handle, pcap->name);
 		if (!pcap->dumper) {
-			fr_strerror_printf("%s", pcap->errbuf);
+			fr_strerror_printf("%s", pcap_geterr(pcap->handle));
 
 			return -1;
 		}
 		break;
+
 #ifdef HAVE_PCAP_FOPEN_OFFLINE
 	case PCAP_STDIO_IN:
 		pcap->handle = pcap_fopen_offline(stdin, pcap->errbuf);
@@ -283,6 +297,110 @@ char *fr_pcap_device_names(TALLOC_CTX *ctx, fr_pcap_t *pcap, char c)
 	buff[len - 1] = '\0';
 
 	return buff;
+}
+
+/** Returns the length of the link layer header
+ *
+ * Libpcap does not include a decoding function to skip the L2 header, but it does
+ * at least inform us of the type.
+ *
+ * Unfortunately some headers are of variable length (like ethernet), so additional
+ * decoding logic is required.
+ *
+ * @note No header data is returned, this is only meant to be used to determine how
+ * data to consume before attempting to parse the IP header.
+ *
+ * @param data start of PCAP data.
+ * @param len caplen.
+ * @param link_type value returned from pcap_linktype.
+ * @return the length of the header, or -1 on error.
+ */
+ssize_t fr_pcap_link_layer_offset(uint8_t const *data, size_t len, int link_type)
+{
+	uint8_t const *p = data;
+
+	switch (link_type) {
+	case DLT_RAW:
+		break;
+
+	case DLT_NULL:
+	case DLT_LOOP:
+		p += 4;
+		if (((size_t)(p - data)) > len) {
+			goto ood;
+		}
+		break;
+
+	case DLT_EN10MB:
+		{
+			uint16_t ether_type;	/* Ethernet type */
+			int i;
+
+			p += 12;		/* SRC/DST Mac-Addresses */
+			if (((size_t)(p - data)) > len) {
+				goto ood;
+			}
+
+			for (i = 0; i < 3; i++) {
+				ether_type = ntohs(*((uint16_t const *) p));
+				switch (ether_type) {
+				case 0x0800:	/* IPv4 */
+				case 0x86dd:	/* IPv6 */
+					p += 2;
+					if (((size_t)(p - data)) > len) {
+						goto ood;
+					}
+					goto done;
+
+				/*
+				 *	There are a number of devices out there which
+				 *	double tag with 0x8100 *sigh*
+				 */
+				case 0x8100:	/* CVLAN */
+				case 0x9100:	/* SVLAN */
+				case 0x9200:	/* SVLAN */
+				case 0x9300:	/* SVLAN */
+					p += 4;
+					if (((size_t)(p - data)) > len) {
+						goto ood;
+					}
+					break;
+
+				default:
+					fr_strerror_printf("Invalid/Unsupported ether type 0x%04x, at offset %zu",
+					      		   ether_type, p - data);
+					return -1;
+				}
+			}
+			fr_strerror_printf("Exceeded maximum level of VLAN tag nesting (2)");
+			return -1;
+		}
+
+	case DLT_LINUX_SLL:
+		p += 16;
+		if (((size_t)(p - data)) > len) {
+			goto ood;
+		}
+		break;
+
+	case DLT_PFLOG:
+		p += 28;
+		if (((size_t)(p - data)) > len) {
+			goto ood;
+		}
+		break;
+
+	default:
+		fr_strerror_printf("Unsupported link layer type %i", link_type);
+	}
+
+	done:
+	return p - data;
+
+	ood:
+	fr_strerror_printf("Out of data, needed %zu bytes, have %zu bytes", (size_t)(p - data), len);
+
+	return -1;
 }
 
 #endif
