@@ -1700,6 +1700,18 @@ static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, pair_lists_t list, DI
 		if (dv) return talloc_strdup(ctx, dv->name);
 		return talloc_asprintf(ctx, "%d", packet->code);
 
+	case PW_RESPONSE_PACKET_TYPE:
+	{
+		int code = 0;
+
+		if (request->proxy_reply && (!request->reply || !request->reply->code)) {
+			code = request->proxy_reply->code;
+		} else if (request->reply) {
+			code = request->reply->code;
+		}
+		return talloc_strdup(ctx, fr_packet_codes[code]);
+	}
+
 	case PW_PACKET_AUTHENTICATION_VECTOR:
 		myvp.length = sizeof(packet->vector);
 		memcpy(&myvp.vp_octets, packet->vector, sizeof(packet->vector));
