@@ -122,7 +122,8 @@ int fr_pcap_open(fr_pcap_t *pcap)
 			if (pcap_set_promisc(pcap->handle, pcap->promiscuous) != 0) {
 				goto error;
 			}
-			if (pcap_set_buffer_size(pcap->handle, SNAPLEN * 10000) != 0) {
+			if (pcap_set_buffer_size(pcap->handle, SNAPLEN *
+						 (pcap->buffer_pkts ? pcap->buffer_pkts : PCAP_BUFFER_DEFAULT)) != 0) {
 				error:
 				fr_strerror_printf("%s", pcap_geterr(pcap->handle));
 				pcap_close(pcap->handle);

@@ -208,6 +208,7 @@ struct rs {
 	char			*pcap_filter;		//!< PCAP filter string applied to live capture devices.
 	char			*radius_filter;		//!< RADIUS filter string.
 
+	int			buffer_pkts;		//!< Size of the ring buffer to setup for live capture.
 	uint64_t		limit;			//!< Maximum number of packets to capture
 
 	struct {

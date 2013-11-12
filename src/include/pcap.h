@@ -36,7 +36,7 @@
 #define MAX_RADIUS_LEN 4096
 #define MIN_RADIUS_LEN 20
 #define SNAPLEN (sizeof(struct ethernet_header) + sizeof(struct ip_header) + sizeof(struct udp_header) + MAX_RADIUS_LEN)
-
+#define PCAP_BUFFER_DEFAULT (10000)
 /*
  *	It's unclear why this differs between platforms
  */
@@ -155,16 +155,19 @@ struct fr_pcap {
 	char			errbuf[PCAP_ERRBUF_SIZE];	//!< Last error on this interface.
 	fr_pcap_type_t		type;				//!< What type of handle this is.
 	char			*name;				//!< Name of file or interface.
-	bool			promiscuous;			//!< Whether the interface is in promiscuous mode
-								//!< only valid for live capture handles.
+	bool			promiscuous;			//!< Whether the interface is in promiscuous mode.
+								//!< Only valid for live capture handles.
+	int			buffer_pkts;			//!< How big to make the PCAP ring buffer.
+								//!< Actual buffer size is SNAPLEN * buffer.
+								//!< Only valid for live capture handles.
 
 	pcap_t			*handle;			//!< libpcap handle.
 	pcap_dumper_t		*dumper;			//!< libpcap dumper handle.
 
 	int			fd;				//!< Selectable file descriptor we feed to select.
-	fr_pcap_t		*next;				//!< Next handle in collection.
-
 	struct pcap_stat	pstats;				//!< The last set of pcap stats for this handle.
+
+	fr_pcap_t		*next;				//!< Next handle in collection.
 };
 
 

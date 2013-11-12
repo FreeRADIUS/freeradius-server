@@ -1016,13 +1016,22 @@ int main(int argc, char *argv[])
 	/*
 	 *  Get options
 	 */
-	while ((opt = getopt(argc, argv, "c:d:DFf:hi:I:mp:qr:s:Svw:xXW:T:P:O:")) != EOF) {
+	while ((opt = getopt(argc, argv, "b:c:d:DFf:hi:I:mp:qr:s:Svw:xXW:T:P:O:")) != EOF) {
 		switch (opt) {
+		/* super secret option */
+		case 'b':
+			conf->buffer_pkts = atoi(optarg);
+			if (conf->buffer_pkts == 0) {
+				ERROR("Invalid buffer length \"%s\"", optarg);
+				usage(1);
+			}
+			break;
+
 		case 'c':
 			conf->limit = atoi(optarg);
 			if (conf->limit == 0) {
 				ERROR("Invalid number of packets \"%s\"", optarg);
-				exit(1);
+				usage(1);
 			}
 			break;
 
@@ -1359,6 +1368,7 @@ int main(int argc, char *argv[])
 		     in_p;
 		     in_p = in_p->next) {
 		     	in_p->promiscuous = conf->promiscuous;
+		     	in_p->buffer_pkts = conf->buffer_pkts;
 			if (fr_pcap_open(in_p) < 0) {
 				if (!conf->from_auto) {
 					ERROR("Failed opening pcap handle for %s", in_p->name);
