@@ -262,7 +262,7 @@ static void rs_stats_process(void *ctx)
 
 	if ((stats->quiet.tv_sec + (stats->quiet.tv_usec / 1000000.0)) -
 	    (now.tv_sec + (now.tv_usec / 1000000.0)) > 0) {
-		INFO("Stats still muted because of previous error");
+		INFO("Stats muted because of warmup, or previous error");
 		goto clear;
 	}
 
@@ -1466,6 +1466,9 @@ int main(int argc, char *argv[])
 			now.tv_sec += conf->stats.interval;
 			now.tv_usec = 0;
 			fr_event_insert(events, rs_stats_process, (void *) &update, &now, NULL);
+
+			INFO("Muting stats for the next %i milliseconds (warmup)", conf->stats.timeout);
+			rs_tv_add_ms(&now, conf->stats.timeout, &stats.quiet);
 		}
 
 		ret = fr_event_loop(events);	/* Enter the main event loop */
