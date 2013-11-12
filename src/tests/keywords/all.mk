@@ -6,7 +6,7 @@
 #  The files are put here in order.  Later tests need
 #  functionality from earlier tests.
 #
-FILES := update foreach foreach-2 if if-skip if-bob if-else if-elsif redundant switch switch-default
+FILES := update foreach foreach-2 if if-skip if-bob if-else if-elsif if-regex-match redundant switch switch-default
 
 #
 #  Create the output directory
