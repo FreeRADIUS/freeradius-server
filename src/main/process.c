@@ -574,6 +574,7 @@ STATE_MACHINE_DECL(request_done)
 #endif
 
 		when = now;
+		if (request->delay < (USEC / 3)) request->delay = USEC / 3;
 		tv_add(&when, request->delay);
 		request->delay += request->delay >> 1;
 		if (request->delay > (10 * USEC)) request->delay = 10 * USEC;
