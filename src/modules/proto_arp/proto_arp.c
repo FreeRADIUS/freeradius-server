@@ -40,17 +40,17 @@ typedef struct arp_socket_t {
 /*
  *	ARP for ethernet && IPv4.
  */
-struct arphdr_ether_ipv4 {
-	uint16_t	ar_hrd;		/* format of hardware address */
-	uint16_t	ar_pro;		/* format of protocol address */
-	uint8_t		ar_hln;		/* length of hardware address */
-	uint8_t		ar_pln;		/* length of protocol address */
-	uint8_t		ar_op;		/* one of: */
-	uint8_t		ar_sha[ETHER_ADDR_LEN];	/* sender hardware address */
-	uint8_t		ar_spa[4];	/* sender protocol address */
-	uint8_t		ar_tha[ETHER_ADDR_LEN];	/* target hardware address */
-	uint8_t		ar_tpa[4];	/* target protocol address */
-};
+typedef struct arp_over_ether {
+	uint16_t	htype;			//!< Format of hardware address.
+	uint16_t	ptype;			//!< Format of protocol address.
+	uint8_t		hlen;			//!< Length of hardware address.
+	uint8_t		plen;			//!< Length of protocol address.
+	uint8_t		op;			//!< 1 - Request, 2 - Reply.
+	uint8_t		sha[ETHER_ADDR_LEN];	//!< sender hardware address.
+	uint8_t		spa[4];			//!< Sender protocol address.
+	uint8_t		tha[ETHER_ADDR_LEN];	//!< Target hardware address.
+	uint8_t		tpa[4];			//!< Target protocol address.
+} arp_over_ether_t;
 
 static int arp_process(REQUEST *request)
 {
@@ -107,7 +107,7 @@ static int arp_socket_recv(rad_listen_t *listener)
 	struct pcap_pkthdr *header;
 	ssize_t link_len;
 
-	struct arphdr_ether_ipv4 const *arp;
+	arp_over_ether_t const *arp;
 	RADIUS_PACKET *packet;
 
 	ret = pcap_next_ex(handle, &header, &data);
@@ -134,15 +134,15 @@ static int arp_socket_recv(rad_listen_t *listener)
 		return 0;
 	}
 
-	arp = (struct arphdr_ether_ipv4 const *) data + link_len;
+	arp = (arp_over_ether_t const *) data + link_len;
 
-	if (ntohs(arp->ar_hrd) != ARPHRD_ETHER) return 0;
+	if (ntohs(arp->htype) != ARPHRD_ETHER) return 0;
 
-	if (ntohs(arp->ar_pro) != 0x0800) return 0;
+	if (ntohs(arp->ptype) != 0x0800) return 0;
 
-	if (arp->ar_hln != ETHER_ADDR_LEN) return 0; /* FIXME: malformed error */
+	if (arp->hlen != ETHER_ADDR_LEN) return 0; /* FIXME: malformed error */
 
-	if (arp->ar_pln != 4) return 0; /* FIXME: malformed packet error */
+	if (arp->plen != 4) return 0; /* FIXME: malformed packet error */
 
 	packet = talloc_zero(listener, RADIUS_PACKET);
 	if (!packet) return 0;
@@ -195,10 +195,10 @@ static const arp_decode_t header_names[] = {
 static int arp_socket_decode(UNUSED rad_listen_t *listener, UNUSED REQUEST *request)
 {
 	int i;
-	struct arphdr_ether_ipv4 const *arp;
+	arp_over_ether_t const *arp;
 	uint8_t const *p;
 
-	arp = (struct arphdr_ether_ipv4 const *) (request->packet->data);
+	arp = (arp_over_ether_t const *) request->packet->data;
 	/*
 	 *	arp_socket_recv() takes care of validating it's really
 	 *	our kind of ARP.
@@ -255,16 +255,14 @@ static int arp_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 
 	value = cf_pair_value(cp);
 	if (!value) {
-		cf_log_err_cs(cs,
-			      "No interface name given");
+		cf_log_err_cs(cs, "No interface name given");
 		return -1;
 	}
 	sock->interface = value;
 
 	sock->pcap = fr_pcap_init(cs, sock->interface, PCAP_INTERFACE_IN);
 	if (!sock->pcap) {
-		cf_log_err_cs(cs, "Failed creating pcap for interface %s",
-			value);
+		cf_log_err_cs(cs, "Failed creating pcap for interface %s", value);
 		return -1;
 	}
 
@@ -272,8 +270,7 @@ static int arp_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 
 	fr_suid_up();
 	if (fr_pcap_open(sock->pcap) < 0) {
-		cf_log_err_cs(cs, "Failed opening interface %s: %s",
-			      value, fr_strerror());
+		cf_log_err_cs(cs, "Failed opening interface %s: %s", value, fr_strerror());
 		return -1;
 	}
 	fr_suid_down();
