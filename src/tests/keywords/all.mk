@@ -3,11 +3,11 @@
 #
 
 #
-#  The files are put here in order.  Later tests need
-#  functionality from earlier tests.
+#  The test files are files without extensions.
+#  The list is unordered.  The order is added in the next step by looking
+#  at precursors.
 #
-FILES := update update-all foreach foreach-2 if if-skip if-bob if-else if-elsif if-regex-match \
-	redundant switch switch-default
+FILES := $(filter-out %.conf %.md %.attrs %.mk %~,$(subst $(DIR)/,,$(wildcard $(DIR)/*)))
 
 #
 #  For each file, look for precursor test.
