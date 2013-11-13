@@ -1,0 +1,16 @@
+#
+#  PRE: update if
+#
+update control {
+       Cleartext-Password := 'hello'
+}
+
+update request {
+       Session-Timeout := "%{expr: 1 + 2 + 3 + 4}"
+}
+
+if (Session-Timeout == 10) {
+	update reply {
+		Filter-Id := "filter"
+	}
+}

@@ -1,4 +1,6 @@
 #
+#  PRE: update
+#
 #  Static if condition
 #
 if (1) {
