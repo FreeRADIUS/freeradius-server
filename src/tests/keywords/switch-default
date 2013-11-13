@@ -1,3 +1,5 @@
+# PRE: switch
+#
 switch User-Name {
 	case "harry" {
 		update reply {

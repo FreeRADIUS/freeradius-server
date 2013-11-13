@@ -1,4 +1,6 @@
 #
+# PRE: update
+#
 #  A more generic "update" mechanism
 #
 update {

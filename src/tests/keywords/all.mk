@@ -10,6 +10,12 @@ FILES := update update-all foreach foreach-2 if if-skip if-bob if-else if-elsif 
 	redundant switch switch-default
 
 #
+#  For each file, look for precursor test.
+#  Ensure that each test depends on its precursors.
+#
+$(foreach x,$(FILES),$(eval $(BUILD_DIR)/tests/keywords/$(x): $(shell grep 'PRE: ' $(DIR)/$(x) | sed 's/.*://;s/  / /g;s, , $(BUILD_DIR)/tests/keywords/,g')))
+
+#
 #  Create the output directory
 #
 .PHONY: $(BUILD_DIR)/tests/keywords
@@ -58,7 +64,6 @@ $(BUILD_DIR)/tests/keywords/%: $(DIR)/% $(BUILD_DIR)/tests/keywords/%.attrs $(BU
 	@echo UNIT-TEST $(notdir $@)
 	@KEYWORD=$(notdir $@) $(JLIBTOOL) --quiet --mode=execute ./$(BUILD_DIR)/bin/unittest -D share -d src/tests/keywords/ -i $@.attrs -f $@.attrs -xx > $@.log 2>&1
 	@touch $@
-
 
 #
 #  Get all of the unit test output files

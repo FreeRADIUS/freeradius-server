@@ -1,3 +1,5 @@
+# PRE: if
+#
 # May as well exercise the regular expression engine 
 if (User-Name =~ /^([0-9])_([0-9])?_([0-9]*)_([0-9]+)_([^_])_(6)_([7-8])/) {
 	update {
