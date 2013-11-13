@@ -1,0 +1,17 @@
+#
+# PRE: update if
+#
+update {
+       control:Cleartext-Password := 'hello'
+       request:Called-Station-Id := "%{sha1:This is a string\n}"
+}
+
+#
+#  Put "This is a string" into a file and call "sha1sum" on it.
+#  You should get this string.
+#
+if (Called-Station-Id == "cc7edf1ccc4bdf1e0ec8f72b95388b65218ecf0c") {
+	update reply {
+		Filter-Id := "filter"
+	}
+}

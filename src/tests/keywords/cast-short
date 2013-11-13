@@ -1,0 +1,25 @@
+#
+#  PRE: update if
+#
+update {
+       control:Cleartext-Password := 'hello'
+       request:Class := 0x0101
+}
+
+if (<short>Class == 257) {
+	update reply {
+		Filter-Id := "filter"
+	}
+}
+
+if (<short>Class < 256) {
+	update reply {
+		Filter-Id += "wrong"
+	}
+}
+
+if (<short>Class > 257) {
+	update reply {
+		Filter-Id += "wrong"
+	}
+}

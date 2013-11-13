@@ -1,0 +1,25 @@
+#
+#  PRE: update if
+#
+update {
+       control:Cleartext-Password := 'hello'
+       request:Class := 0xad
+}
+
+if (<byte>Class == 173) {
+	update reply {
+		Filter-Id := "filter"
+	}
+}
+
+if (<byte>Class < 173) {
+	update reply {
+		Filter-Id += "wrong"
+	}
+}
+
+if (<byte>Class > 173) {
+	update reply {
+		Filter-Id += "wrong"
+	}
+}

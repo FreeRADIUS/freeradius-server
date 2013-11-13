@@ -1,0 +1,18 @@
+#
+#  PRE: update if
+#
+update control {
+       Cleartext-Password := 'hello'
+}
+
+if (NAS-IP-Address == 127.0.0.1) {
+	update reply {
+		Filter-Id := "filter"
+	}
+}
+
+if (NAS-IP-Addr == 127.0.0.2) {
+	update reply {
+		Filter-Id += "wrong"
+	}
+}

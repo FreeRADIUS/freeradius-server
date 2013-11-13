@@ -1,0 +1,11 @@
+#
+#  Input packet
+#
+User-Name = "bob"
+User-Password = "hello"
+NAS-IP-Address = 127.0.0.1
+
+#
+#  Expected answer
+#
+Filter-Id == 'filter'

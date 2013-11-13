@@ -1,0 +1,17 @@
+#
+# PRE: update if
+#
+update {
+       control:Cleartext-Password := 'hello'
+       request:Called-Station-Id := "%{md5:This is a string\n}"
+}
+
+#
+#  Put "This is a string" into a file and call "md5sum" on it.
+#  You should get this string.
+#
+if (Called-Station-Id == "9ac4dbbc3c0ad2429e61d0df5dc28add") {
+	update reply {
+		Filter-Id := "filter"
+	}
+}
