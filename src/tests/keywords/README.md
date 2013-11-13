@@ -1,6 +1,6 @@
 # The Keyword test Framework
 
-See "update" and "default-input.attrs" for examples.
+See `update` and `default-input.attrs` for examples.
 
 In short, the test framework assumes Access-Request with PAP
 authentication.  The password is hard-coded into the configuration,
@@ -27,7 +27,7 @@ The entire test suite consists of two files:
   always has to be attributes in the input, and filter attributes in the
   reply.
 
-  If FOO.txt doesn't exist, then the "default-input.attrs" file is used.
+  If `FOO` doesn't exist, then the `default-input.attrs` file is used.
   This allows many tests to be simplified, as all they need is a little
   bit of "unlang".
 
