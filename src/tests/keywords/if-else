@@ -1,4 +1,6 @@
 #
+# PRE: if
+#
 #  Matching "if" conditions
 #
 if (User-Name != "bob") {
