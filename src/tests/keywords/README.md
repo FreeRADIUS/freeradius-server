@@ -8,7 +8,7 @@ and can't be changed.
 
 The entire test suite consists of two files:
 
-* FOO
+* foo
 
   Contains a short piece of "unlang".  The shorter the better.  The
   goal is to do something useful in unlang, and modify the input
@@ -21,18 +21,22 @@ The entire test suite consists of two files:
 
   `# PRE: if`
 
-* FOO.attrs
+* foo.attrs
 
   Contains the input packet and the filter for the reply.  There
   always has to be attributes in the input, and filter attributes in the
   reply.
 
-  If `FOO` doesn't exist, then the `default-input.attrs` file is used.
-  This allows many tests to be simplified, as all they need is a little
-  bit of "unlang".
+  If `foo` doesn't exist, then the `default-input.attrs` file is used.
+  This allows many tests to be simplified, as all they need is a
+  little bit of "unlang".
 
 ## How it works.
 
 The input packet is passed into the unit test framework, through the
-FOO unlang snippet, and filtered through the reply filter.  If
-everything matches, then the test case passes.
+unlang snippet in `foo`, and filtered through the reply filter in
+`foo.attrs`.  If everything matches, then the test case passes.
+
+To add a test, just put `foo` and (optionally) `foo.attrs` into this
+directory.  The build framework will pick them up and automatically
+run them.
