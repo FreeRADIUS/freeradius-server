@@ -160,7 +160,13 @@ condition <ipaddr>Filter-Id == &Framed-IP-Address
 data <ipaddr>&Filter-Id == &Framed-IP-Address
 
 condition <ipaddr>Filter-Id == <ipaddr>&Framed-IP-Address
-data ERROR offset 21 Unexpected cast
+data ERROR offset 21 Unnecessary cast
+
+condition <ipaddr>Filter-Id == <integer>&Framed-IP-Address
+data ERROR offset 21 Cannot cast to a different data type
+
+condition <ipaddr>Filter-Id == <blerg>&Framed-IP-Address
+data ERROR offset 22 Invalid data type in cast
 
 condition <ipaddr>Filter-Id == "127.0.0.1"
 data <ipaddr>&Filter-Id == "127.0.0.1"

@@ -580,10 +580,26 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 			}
 
 			/*
-			 *	Cannot have a cast on the RHS
+			 *	Cannot have a cast on the RHS.
+			 *	But produce good errors, too.
 			 */
 			if (*p == '<') {
-				return_P("Unexpected cast");
+				DICT_ATTR const *cast_da;
+
+				slen = condition_tokenize_cast(p, &cast_da, error);
+				if (slen < 0) {
+					return_SLEN;
+				}
+
+				if (!c->cast) {
+					return_P("Unexpected cast");
+				}
+
+				if (c->cast != cast_da) {
+					return_P("Cannot cast to a different data type");
+				}
+
+				return_P("Unnecessary cast");
 			}
 
 			/*
