@@ -344,14 +344,6 @@ ssize_t fr_pcap_link_layer_offset(uint8_t const *data, size_t len, int link_type
 			for (i = 0; i < 3; i++) {
 				ether_type = ntohs(*((uint16_t const *) p));
 				switch (ether_type) {
-				case 0x0800:	/* IPv4 */
-				case 0x86dd:	/* IPv6 */
-					p += 2;
-					if (((size_t)(p - data)) > len) {
-						goto ood;
-					}
-					goto done;
-
 				/*
 				 *	There are a number of devices out there which
 				 *	double tag with 0x8100 *sigh*
@@ -367,9 +359,11 @@ ssize_t fr_pcap_link_layer_offset(uint8_t const *data, size_t len, int link_type
 					break;
 
 				default:
-					fr_strerror_printf("Invalid/Unsupported ether type 0x%04x, at offset %zu",
-					      		   ether_type, p - data);
-					return -1;
+					p += 2;
+					if (((size_t)(p - data)) > len) {
+						goto ood;
+					}
+					goto done;
 				}
 			}
 			fr_strerror_printf("Exceeded maximum level of VLAN tag nesting (2)");

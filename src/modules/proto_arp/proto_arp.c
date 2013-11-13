@@ -37,7 +37,6 @@ typedef struct arp_socket_t {
 	RADCLIENT	client;
 } arp_socket_t;
 
-
 /*
  *	ARP for ethernet && IPv4.
  */
@@ -57,12 +56,10 @@ static int arp_process(REQUEST *request)
 {
 	size_t size;
 	RADIUS_PACKET *packet = request->packet;
-	struct ethernet_header const *ether;
 	struct arphdr const *arp;
 	uint8_t const *p;
 
-	ether = (struct ethernet_header *) request->packet->data;
-	arp = (struct arphdr *) (request->packet->data + sizeof(*ether));
+	arp = (struct arphdr *) request->packet->data;
 
 	p = (const uint8_t *) arp;
 	if (p > (packet->data + packet->data_len)) return 0;
@@ -102,32 +99,42 @@ static int arp_process(REQUEST *request)
  */
 static int arp_socket_recv(rad_listen_t *listener)
 {
-	int rcode;
+	int ret;
 	arp_socket_t *sock = listener->data;
 	pcap_t *handle = sock->pcap->handle;
+
 	const uint8_t *data;
 	struct pcap_pkthdr *header;
-	struct ethernet_header const *ether;
+	ssize_t link_len;
+
 	struct arphdr_ether_ipv4 const *arp;
 	RADIUS_PACKET *packet;
 
-	rcode = pcap_next_ex(handle, &header, &data);
-	if (rcode == 0) return 0; /* no packet */
+	ret = pcap_next_ex(handle, &header, &data);
+	if (ret == 0) return 0; /* no packet */
+	if (ret < 0) {
+		ERROR("Error requesting next packet, got (%i): %s", ret, pcap_geterr(handle));
+		return 0;
+	}
 
-	if (rcode < 0) {
-		ERROR("Error requesting next packet, got (%i): %s", rcode, pcap_geterr(handle));
+	link_len = fr_pcap_link_layer_offset(data, header->caplen, sock->pcap->link_type);
+	if (link_len < 0) {
+		ERROR("Failed determining link layer header offset: %s", fr_strerror());
 		return 0;
 	}
 
 	/*
-	 *	Silently ignore it.
+	 *	Silently ignore it if it's too small to be ARP.
+	 *
+	 *	This can happen when pcap gets overloaded and starts truncating packets.
 	 */
-	if (header->caplen < (sizeof(*ether) + sizeof(*arp))) {
+	if (header->caplen < (link_len + sizeof(*arp))) {
+		ERROR("Packet too small, we require at least %zu bytes, got %i bytes",
+		      link_len + sizeof(*arp), header->caplen);
 		return 0;
 	}
 
-	ether = (struct ethernet_header const *) data;
-	arp = (struct arphdr_ether_ipv4 const *) (data + sizeof(*ether));
+	arp = (struct arphdr_ether_ipv4 const *) data + link_len;
 
 	if (ntohs(arp->ar_hrd) != ARPHRD_ETHER) return 0;
 
@@ -141,8 +148,8 @@ static int arp_socket_recv(rad_listen_t *listener)
 	if (!packet) return 0;
 
 	packet->dst_port = 1;	/* so it's not a "fake" request */
-	packet->data_len = header->caplen;
-	packet->data = talloc_memdup(packet, data, packet->data_len);
+	packet->data_len = header->caplen - link_len;
+	packet->data = talloc_memdup(packet, data + link_len, packet->data_len);
 
 	DEBUG("ARP received on interface %s", sock->interface);
 
@@ -188,21 +195,17 @@ static const arp_decode_t header_names[] = {
 static int arp_socket_decode(UNUSED rad_listen_t *listener, UNUSED REQUEST *request)
 {
 	int i;
-	struct ethernet_header const *ether;
 	struct arphdr_ether_ipv4 const *arp;
 	uint8_t const *p;
 
-	ether = (struct ethernet_header const *) request->packet->data;
-	arp = (struct arphdr_ether_ipv4 const *) (request->packet->data + sizeof(*ether));
-
+	arp = (struct arphdr_ether_ipv4 const *) (request->packet->data);
 	/*
 	 *	arp_socket_recv() takes care of validating it's really
 	 *	our kind of ARP.
 	 */
 	for (i = 0, p = (uint8_t const *) arp;
 	     header_names[i].name != NULL;
-	     p += header_names[i].len,
-		     i++) {
+	     p += header_names[i].len, i++) {
 		ssize_t len;
 		DICT_ATTR const *da;
 		VALUE_PAIR *vp;
@@ -219,7 +222,7 @@ static int arp_socket_decode(UNUSED rad_listen_t *listener, UNUSED REQUEST *requ
 			       header_names[i].name, fr_strerror());
 			return 0;
 		}
-		
+
 		debug_pair(vp);
 		pairadd(&request->packet->vps, vp);
 	}
