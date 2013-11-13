@@ -19,8 +19,7 @@ The entire test suite consists of two files:
   on the `if` test.  This dependency is given by the following lines
   at the top of the `if-else` file:
 
-    # PRE: if
-    # ...
+  `# PRE: if`
 
 * FOO.attrs
 
