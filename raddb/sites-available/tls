@@ -53,6 +53,24 @@ listen {
 	#  module.  It's OK for testing, but for production use it's a good
 	#  idea to use different server certificates for EAP and for RADIUS
 	#  transport.
+	#
+	#  If you want only one TLS configuration for multiple sockets,
+	#  then we suggest putting "tls { ...}" into radiusd.conf.
+	#  The subsection below can then be changed into a reference:
+	#
+	#	tls = ${tls}
+	#
+	#  Which means "the tls sub-section is not here, but instead is in
+	#  the top-level section called 'tls'".
+	#
+	#  If you have multiple tls configurations, you can put them into
+	#  sub-sections of a top-level "tls" section.  There's no need to
+	#  call them all "tls".  You can then use:
+	#
+	#	tls = ${tls.site1}
+	#
+	#  to refer to the "site1" sub-section of the "tls" section.
+	#
 	tls {
 		private_key_password = whatever
 		private_key_file = ${certdir}/server.pem
