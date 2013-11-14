@@ -35,7 +35,7 @@ typedef struct rlm_always_t {
 	char		*rcode_str;
 	rlm_rcode_t	rcode;
 	int		simulcount;
-	int		mpp;
+	bool		mpp;
 } rlm_always_t;
 
 /*

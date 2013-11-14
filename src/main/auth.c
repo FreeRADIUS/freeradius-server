@@ -85,7 +85,7 @@ static int rad_authlog(char const *msg, REQUEST *request, int goodpass)
 	/*
 	 * Get the correct username based on the configured value
 	 */
-	if (log_stripped_names == 0) {
+	if (!log_stripped_names) {
 		username = pairfind(request->packet->vps, PW_USER_NAME, 0, TAG_ANY);
 	} else {
 		username = request->username;

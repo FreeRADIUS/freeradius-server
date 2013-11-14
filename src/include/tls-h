@@ -1,4 +1,4 @@
-/*  
+/*
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or
@@ -336,25 +336,25 @@ struct fr_tls_server_conf_t {
 	char		*ca_file;
 	char		*dh_file;
 	char		*rsa_file;
-	int		rsa_key;
-	int		dh_key;
+	bool		rsa_key;
+	bool		dh_key;
 	int		rsa_key_length;
 	int		dh_key_length;
 	int		verify_depth;
-	int		file_type;
-	int		include_length;
+	bool		file_type;
+	bool		include_length;
 
 	/*
 	 *	Always < 4096 (due to radius limit), 0 by default = 2048
 	 */
 	int		fragment_size;
-	int		check_crl;
-	int		allow_expired_crl;
+	bool		check_crl;
+	bool		allow_expired_crl;
 	char		*check_cert_cn;
 	char		*cipher_list;
 	char		*check_cert_issuer;
 
-	int     	session_cache_enable;
+	bool     	session_cache_enable;
 	int     	session_timeout;
 	int     	session_cache_size;
 	char		*session_id_name;
@@ -364,19 +364,19 @@ struct fr_tls_server_conf_t {
 
 	char		*verify_tmp_dir;
 	char		*verify_client_cert_cmd;
-	int		require_client_cert;
+	bool		require_client_cert;
 
 #ifdef HAVE_OPENSSL_OCSP_H
 	/*
 	 * OCSP Configuration
 	 */
-	int		ocsp_enable;
-	int		ocsp_override_url;
+	bool		ocsp_enable;
+	bool		ocsp_override_url;
 	char		*ocsp_url;
-	int		ocsp_use_nonce;
+	bool		ocsp_use_nonce;
 	X509_STORE	*ocsp_store;
 	int		ocsp_timeout;
-	int		ocsp_softfail;
+	bool		ocsp_softfail;
 #endif
 
 #if OPENSSL_VERSION_NUMBER >= 0x0090800fL

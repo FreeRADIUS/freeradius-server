@@ -48,8 +48,8 @@ typedef struct realm_config_t {
 	int		dead_time;
 	int		retry_count;
 	int		retry_delay;
-	int		fallback;
-	int		wake_all_if_all_dead;
+	bool		fallback;
+	bool		wake_all_if_all_dead;
 } realm_config_t;
 
 static realm_config_t *realm_config = NULL;

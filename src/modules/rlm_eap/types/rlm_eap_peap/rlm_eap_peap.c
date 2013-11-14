@@ -42,20 +42,20 @@ typedef struct rlm_eap_peap_t {
 	 *	Use the reply attributes from the tunneled session in
 	 *	the non-tunneled reply to the client.
 	 */
-	int	use_tunneled_reply;
+	bool	use_tunneled_reply;
 
 	/*
 	 *	Use SOME of the request attributes from outside of the
 	 *	tunneled session in the tunneled request
 	 */
-	int	copy_request_to_tunnel;
+	bool	copy_request_to_tunnel;
 
 #ifdef WITH_PROXY
 	/*
 	 *	Proxy tunneled session as EAP, or as de-capsulated
 	 *	protocol.
 	 */
-	int	proxy_tunneled_request_as_eap;
+	bool	proxy_tunneled_request_as_eap;
 #endif
 
 	/*
@@ -66,13 +66,13 @@ typedef struct rlm_eap_peap_t {
 	/*
 	 * 	Do we do SoH request?
 	 */
-	int	soh;
+	bool	soh;
   	char	*soh_virtual_server;
 
 	/*
 	 * 	Do we do require a client cert?
 	 */
-	int	req_client_cert;
+	bool	req_client_cert;
 } rlm_eap_peap_t;
 
 

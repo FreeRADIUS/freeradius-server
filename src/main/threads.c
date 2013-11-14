@@ -158,7 +158,7 @@ typedef struct THREAD_POOL {
 #ifdef WITH_STATS
 	fr_pps_t	pps_in, pps_out;
 #ifdef WITH_ACCOUNTING
-	int		auto_limit_acct;
+	bool		auto_limit_acct;
 #endif
 #endif
 

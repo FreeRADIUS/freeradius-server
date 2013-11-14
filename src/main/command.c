@@ -457,7 +457,7 @@ static void cprint_conf_parser(rad_listen_t *listener, int indent, CONF_SECTION 
 		case PW_TYPE_BOOLEAN:
 			cprintf(listener, "%.*s%s = %s\n", indent, tabs,
 				variables[i].name,
-				((*(int const *) data) == 0) ? "no" : "yes");
+				((*(bool const *) data) == false) ? "no" : "yes");
 			break;
 
 		case PW_TYPE_STRING_PTR:

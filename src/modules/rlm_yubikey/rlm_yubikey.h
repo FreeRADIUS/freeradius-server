@@ -23,8 +23,8 @@ typedef struct rlm_yubikey_t {
 	char const 		*name;			//!< Instance name.
 	int			auth_type;		//!< Our Auth-Type.
 	unsigned int		id_len;			//!< The length of the Public ID portion of the OTP string.
-	int			decrypt;		//!< Decrypt the OTP string using the yubikey library.
-	int			validate;		//!< Validate the OTP string using the ykclient library.
+	bool			decrypt;		//!< Decrypt the OTP string using the yubikey library.
+	bool			validate;		//!< Validate the OTP string using the ykclient library.
 	char const		**uris;			//!< Yubicloud URLs to validate the token against.
 
 #ifdef HAVE_YKCLIENT

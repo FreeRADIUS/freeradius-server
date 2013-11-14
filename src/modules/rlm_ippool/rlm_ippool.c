@@ -60,18 +60,18 @@ RCSID("$Id$")
  *	be used as the instance handle.
  */
 typedef struct rlm_ippool_t {
-	char *filename;
-	char *ip_index;
-	char *name;
-	char *key;
-	uint32_t range_start;
-	uint32_t range_stop;
-	uint32_t netmask;
-	time_t max_timeout;
-	int cache_size;
-	int override;
-	GDBM_FILE gdbm;
-	GDBM_FILE ip;
+	char		*filename;
+	char		*ip_index;
+	char		*name;
+	char		*key;
+	uint32_t	range_start;
+	uint32_t	range_stop;
+	uint32_t	netmask;
+	time_t		max_timeout;
+	int		cache_size;
+	bool		override;
+	GDBM_FILE	gdbm;
+	GDBM_FILE	ip;
 #ifdef HAVE_PTHREAD_H
 	pthread_mutex_t op_mutex;
 #endif

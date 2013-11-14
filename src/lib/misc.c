@@ -43,7 +43,7 @@ static pthread_mutex_t autofree_context = PTHREAD_MUTEX_INITIALIZER;
 #  define PTHREAD_MUTEX_UNLOCK(_x)
 #endif
 
-int	fr_dns_lookups = 0;
+bool	fr_dns_lookups = false;
 int	fr_debug_flag = 0;
 
 static char const *months[] = {

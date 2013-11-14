@@ -530,13 +530,8 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	inst->cs = conf;
 
 	options = cf_section_sub_find(conf, "options");
-	if (options) {
-		if (!cf_pair_find(options, "chase_referrals")) {
-			inst->chase_referrals = 2; /* use OpenLDAP defaults */
-		}
-		if (!cf_pair_find(options, "rebind")) {
-			inst->rebind = 2;
-		}
+	if (!options || !cf_pair_find(options, "chase_referrals")) {
+		inst->chase_referrals_unset = true;	 /* use OpenLDAP defaults */
 	}
 
 	inst->xlat_name = cf_section_name2(conf);

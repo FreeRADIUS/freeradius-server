@@ -83,19 +83,19 @@ static char const *uid_name = NULL;
 static char const *gid_name = NULL;
 #endif
 static char const *chroot_dir = NULL;
-static int allow_core_dumps = 0;
+static bool allow_core_dumps = false;
 static char const *radlog_dest = NULL;
 
 /*
  *	These are not used anywhere else..
  */
-static char const *localstatedir = NULL;
-static char const *prefix = NULL;
-static char const *my_name = NULL;
-static char const *sbindir = NULL;
-static char const *run_dir = NULL;
-static char *syslog_facility = NULL;
-static int do_colourise = false;
+static char const	*localstatedir = NULL;
+static char const	*prefix = NULL;
+static char		my_name;
+static char const	*sbindir = NULL;
+static char const	*run_dir = NULL;
+static char		*syslog_facility = NULL;
+static bool		do_colourise = false;
 
 
 /*

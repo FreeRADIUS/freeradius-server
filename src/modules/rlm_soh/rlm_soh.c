@@ -30,7 +30,7 @@ RCSID("$Id$")
 
 typedef struct rlm_soh_t {
 	char const *xlat_name;
-	int dhcp;
+	bool dhcp;
 } rlm_soh_t;
 
 

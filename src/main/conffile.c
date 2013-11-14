@@ -924,12 +924,12 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, int type, void *data, char
 		 */
 		if ((strcasecmp(value, "yes") == 0) ||
 		    (strcasecmp(value, "on") == 0)) {
-			*(int *)data = 1;
+			*(bool *)data = true;
 		} else if ((strcasecmp(value, "no") == 0) ||
 			   (strcasecmp(value, "off") == 0)) {
-			*(int *)data = 0;
+			*(bool *)data = false;
 		} else {
-			*(int *)data = 0;
+			*(bool *)data = false;
 			cf_log_err(&(cs->item), "Invalid value \"%s\" for boolean "
 			       "variable %s", value, name);
 			return -1;

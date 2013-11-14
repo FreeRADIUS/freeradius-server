@@ -50,18 +50,18 @@ RCSID("$Id$")
  * Holds the configuration and preparsed data for a instance of rlm_detail.
  */
 typedef struct detail_instance {
-	char	*filename;	//!< File/path to write to.
-	int	perm;		//!< Permissions to use for new files.
-	char	*group;		//!< Group to use for new files.
+	char		*filename;	//!< File/path to write to.
+	int		perm;		//!< Permissions to use for new files.
+	char		*group;		//!< Group to use for new files.
 
-	int	dirperm;	//!< Directory permissions to use for new files.
+	int		dirperm;	//!< Directory permissions to use for new files.
 
-	char	*header;	//!< Header format.
-	int	locking;	//!< Whether the file should be locked.
+	char		*header;	//!< Header format.
+	bool		locking;	//!< Whether the file should be locked.
 
-	int	log_srcdst;	//!< Add IP src/dst attributes to entries.
+	bool		log_srcdst;	//!< Add IP src/dst attributes to entries.
 
-	fr_hash_table_t *ht;	//!< Holds suppressed attributes.
+	fr_hash_table_t *ht;		//!< Holds suppressed attributes.
 } detail_instance_t;
 
 static const CONF_PARSER module_config[] = {

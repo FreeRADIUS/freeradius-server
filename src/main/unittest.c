@@ -40,9 +40,9 @@ char const *radacct_dir = NULL;
 char const *radlog_dir = NULL;
 char const *radlib_dir = NULL;
 log_debug_t debug_flag = 0;
-int memory_report = false;
-int check_config = false;
-int log_stripped_names = false;
+bool memory_report = false;
+bool check_config = false;
+bool log_stripped_names = false;
 
 int filedone = 0;
 
@@ -109,7 +109,7 @@ static RADCLIENT *client_alloc(void *ctx)
 }
 
 static REQUEST *request_setup(FILE *fp)
-{	
+{
 	REQUEST *request;
 
 	/*

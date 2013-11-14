@@ -100,7 +100,7 @@ typedef struct radclient {
 	char const		*longname;
 	char const		*secret;
 	char const		*shortname;
-	int			message_authenticator;
+	bool			message_authenticator;
 	char			*nas_type;
 	char			*login;
 	char			*password;
@@ -132,7 +132,7 @@ typedef struct radclient {
 	time_t			created;
 	time_t			last_new_client;
 	char			*client_server;
-	int			rate_limit;
+	bool			rate_limit;
 #endif
 
 #ifdef WITH_COA
@@ -334,8 +334,8 @@ struct rad_listen_t {
 #ifdef WITH_TCP
 	int		count;
 #endif
-	int		nodup;
-	int		synchronous;
+	bool		nodup;
+	bool		synchronous;
 	int		workers;
 
 #ifdef WITH_TLS
@@ -416,16 +416,16 @@ typedef struct main_config_t {
 	struct main_config *next;
 	fr_ipaddr_t	myip;	/* from the command-line only */
 	int		port;	/* from the command-line only */
-	int		log_auth;
-	int		log_auth_badpass;
-	int		log_auth_goodpass;
-	int		allow_core_dumps;
+	bool		log_auth;
+	bool		log_auth_badpass;
+	bool		log_auth_goodpass;
+	bool		allow_core_dumps;
 	int		debug_level;
 #ifdef WITH_PROXY
-	int		proxy_requests;
+	bool		proxy_requests;
 #endif
 	int		reject_delay;
-	int		status_server;
+	bool		status_server;
 	int		max_request_time;
 	int		cleanup_delay;
 	int		max_requests;
@@ -486,8 +486,8 @@ extern char const	*radlib_dir;
 extern char const	*radius_dir;
 extern char const	*radius_libdir;
 extern uint32_t		expiration_seconds;
-extern int		log_stripped_names;
-extern int		log_auth_detail;
+extern bool		log_stripped_names;
+extern bool		log_auth_detail;
 extern char const	*radiusd_version;
 void			radius_signal_self(int flag);
 

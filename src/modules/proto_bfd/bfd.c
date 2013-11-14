@@ -218,7 +218,7 @@ typedef struct bfd_socket_t {
 	int		min_tx_interval;
 	int		min_rx_interval;
 	int		max_timeouts;
-	int		demand;
+	bool		demand;
 
 	bfd_auth_type_t	auth_type;
 	uint8_t		secret[20];
@@ -808,13 +808,13 @@ static void bfd_control_packet_init(bfd_state_t *session,
 	if (session->demand_mode &&
 	    (session->session_state == BFD_STATE_UP) &&
 	    (session->remote_session_state == BFD_STATE_UP)) {
-		bfd->demand = 1;
+		bfd->demand = true;
 
 		DEBUG("BFD %d demand mode UP / UP, sending ACK and done.",
 		      session->number);
 		bfd_stop_control(session);
 	} else {
-		bfd->demand = 0;
+		bfd->demand = false;
 	}
 
 	bfd->multipoint = 0;

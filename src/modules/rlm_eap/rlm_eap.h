@@ -61,8 +61,8 @@ typedef struct rlm_eap {
 	char const	*default_method_name;
 	eap_type_t	default_method;
 
-	int		ignore_unknown_types;
-	int		mod_accounting_username_bug;
+	bool		ignore_unknown_types;
+	bool		mod_accounting_username_bug;
 
 	int		max_sessions;
 

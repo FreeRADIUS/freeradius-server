@@ -60,10 +60,10 @@ char const *radius_dir = NULL;
 char const *radacct_dir = NULL;
 char const *radlog_dir = NULL;
 char const *radlib_dir = NULL;
-int log_stripped_names;
+bool log_stripped_names;
 log_debug_t debug_flag = 0;
-int check_config = false;
-int memory_report = false;
+bool check_config = false;
+bool memory_report = false;
 
 char const *radiusd_version = "FreeRADIUS Version " RADIUSD_VERSION_STRING
 #ifdef RADIUSD_VERSION_COMMIT

@@ -41,7 +41,7 @@ typedef struct rlm_exec_t {
 	pair_lists_t	output_list;
 	char		*packet_type;
 	unsigned int	packet_code;
-	int		shell_escape;
+	bool		shell_escape;
 	int		timeout;
 } rlm_exec_t;
 

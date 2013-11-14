@@ -88,11 +88,11 @@ struct fr_connection_pool_t {
 	int		idle_timeout;	//!< How long a connection can be idle
 					//!< before being closed.
 
-	int		trigger;	//!< If true execute connection triggers
+	bool		trigger;	//!< If true execute connection triggers
 					//!< associated with the connection
 					//!< pool.
 
-	int		spread;		//!< If true requests will be spread
+	bool		spread;		//!< If true requests will be spread
 					//!< across all connections, instead of
 					//!< re-using the most recently used
 					//!< connections first.

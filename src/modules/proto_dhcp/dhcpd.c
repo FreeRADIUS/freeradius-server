@@ -67,7 +67,7 @@ typedef struct dhcp_socket_t {
 	/*
 	 *	DHCP-specific additions.
 	 */
-	int		suppress_responses;
+	bool		suppress_responses;
 	RADCLIENT	dhcp_client;
 	char const	*src_interface;
 	fr_ipaddr_t     src_ipaddr;

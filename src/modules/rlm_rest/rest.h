@@ -114,7 +114,7 @@ typedef struct rlm_rest_section_t {
 	char *password;
 	char *auth_str;
 	http_auth_type_t auth;
-	int require_auth;
+	bool require_auth;
 
 	char *tls_certificate_file;
 	char *tls_private_key_file;
@@ -122,8 +122,8 @@ typedef struct rlm_rest_section_t {
 	char *tls_ca_file;
 	char *tls_ca_path;
 	char *tls_random_file;
-	int tls_check_cert;
-	int tls_check_cert_cn;
+	bool tls_check_cert;
+	bool tls_check_cert_cn;
 
 	int timeout;
 	unsigned int chunk;

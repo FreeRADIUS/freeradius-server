@@ -49,11 +49,12 @@ typedef struct ldap_instance {
 							//!< directory.
 	char const	*password;			//!< Password used in administrative bind.
 
-	int		chase_referrals;		//!< If the LDAP server returns a referral to another server
+	bool		chase_referrals;		//!< If the LDAP server returns a referral to another server
 							//!< or point in the tree, follow it, establishing new
 							//!< connections and binding where necessary.
+	bool		chase_referrals_unset;		//!< If true, use the OpenLDAP defaults for chase_referrals.
 
-	int		rebind;				//!< Controls whether we set an ldad_rebind_proc function
+	bool		rebind;				//!< Controls whether we set an ldad_rebind_proc function
 							//!< and so determines if we can bind to other servers whilst
 							//!< chasing referrals. If this is false, we will still chase
 							//!< referrals on the same server, but won't bind to other
@@ -81,7 +82,7 @@ typedef struct ldap_instance {
 
 	char const	*userobj_membership_attr;	//!< Attribute that describes groups the user is a member of.
 	char		*userobj_access_attr;		//!< Attribute to check to see if the user should be locked out.
-	int		access_positive;		//!< If true the presence of the attribute will allow access,
+	bool		access_positive;		//!< If true the presence of the attribute will allow access,
 							//!< else it will deny access.
 
 	char const	*valuepair_attr;		//!< Generic dynamic mapping attribute, contains a RADIUS
@@ -100,12 +101,12 @@ typedef struct ldap_instance {
 	char const	*groupobj_membership_filter;	//!< Filter to only retrieve groups which contain
 							//!< the user as a member.
 
-	int		cacheable_group_name;		//!< If true the server will determine complete set of group
+	bool		cacheable_group_name;		//!< If true the server will determine complete set of group
 							//!< memberships for the current user object, and perform any
 							//!< resolution necessary to determine the names of those
 							//!< groups, then right them to the control list (LDAP-Group).
 
-	int		cacheable_group_dn;		//!< If true the server will determine complete set of group
+	bool		cacheable_group_dn;		//!< If true the server will determine complete set of group
 							//!< memberships for the current user object, and perform any
 							//!< resolution necessary to determine the DNs of those groups,
 							//!< then right them to the control list (LDAP-GroupDN).
@@ -158,7 +159,7 @@ typedef struct ldap_instance {
 	 *	TLS code in 3.0.
 	 */
 	int		tls_mode;
-	int		start_tls;			//!< Send the Start TLS message to the LDAP directory
+	bool		start_tls;			//!< Send the Start TLS message to the LDAP directory
 							//!< to start encrypted communications using the standard
 							//!< LDAP port.
 
@@ -195,7 +196,7 @@ typedef struct ldap_instance {
  	/*
 	 *	eDir support
 	 */
-	int		edir;				//!< If true attempt to retrieve the user's Cleartext password
+	bool		edir;				//!< If true attempt to retrieve the user's Cleartext password
 							//!< using the Universal Password feature of Novell eDirectory.
 	bool		edir_autz;			//!< If true, and we have the Universal Password, bind with it
 							//!< to perform additional authorisation checks.

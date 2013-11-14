@@ -30,8 +30,8 @@ RCSID("$Id$")
 #include <freeradius-devel/rad_assert.h>
 
 typedef struct rlm_eap_mschapv2_t {
-	int with_ntdomain_hack;
-	int send_error;
+	bool with_ntdomain_hack;
+	bool send_error;
 } rlm_eap_mschapv2_t;
 
 static CONF_PARSER module_config[] = {

@@ -41,10 +41,10 @@ RCSID("$Id$")
  *      be used as the instance handle.
  */
 typedef struct rlm_pap_t {
-	char const *name;	/* CONF_SECTION->name, not strdup'd */
-	bool auto_header;
-	int auth_type;
-	bool normify;
+	char const	*name;	/* CONF_SECTION->name, not strdup'd */
+	bool		auto_header;
+	int		auth_type;
+	bool		normify;
 } rlm_pap_t;
 
 /*
