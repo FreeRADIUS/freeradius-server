@@ -45,7 +45,7 @@ typedef struct rlm_cache_t {
 	int			ttl;
 	int			max_entries;
 	int			epoch;
-	int			stats;
+	bool			stats;
 	CONF_SECTION		*cs;
 	rbtree_t		*cache;
 	fr_heap_t		*heap;

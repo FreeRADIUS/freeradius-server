@@ -1107,7 +1107,7 @@ void *mod_conn_create(void *instance)
 	/*
 	 *	Leave "chase_referrals" unset to use the OpenLDAP default.
 	 */
-	if (inst->chase_referrals != 2) {
+	if (!inst->chase_referrals_unset) {
 		if (inst->chase_referrals) {
 			do_ldap_option(LDAP_OPT_REFERRALS, "chase_referrals", LDAP_OPT_ON);
 

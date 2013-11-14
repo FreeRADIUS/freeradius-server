@@ -43,13 +43,13 @@ typedef struct rlm_eap_ttls_t {
 	 *	Use the reply attributes from the tunneled session in
 	 *	the non-tunneled reply to the client.
 	 */
-	int	use_tunneled_reply;
+	bool	use_tunneled_reply;
 
 	/*
 	 *	Use SOME of the request attributes from outside of the
 	 *	tunneled session in the tunneled request
 	 */
-	int	copy_request_to_tunnel;
+	bool	copy_request_to_tunnel;
 
 	/*
 	 *	RFC 5281 (TTLS) says that the length field MUST NOT be
@@ -60,7 +60,7 @@ typedef struct rlm_eap_ttls_t {
 	 *	RFC, we add the option here.  If set to "no", it sends
 	 *	the length field in ONLY the first fragment.
 	 */
-	int	include_length;
+	bool	include_length;
 
 	/*
 	 *	Virtual server for inner tunnel session.
@@ -70,7 +70,7 @@ typedef struct rlm_eap_ttls_t {
 	/*
 	 * 	Do we do require a client cert?
 	 */
-	int	req_client_cert;
+	bool	req_client_cert;
 } rlm_eap_ttls_t;
 
 

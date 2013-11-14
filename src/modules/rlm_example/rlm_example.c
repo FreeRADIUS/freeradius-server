@@ -34,7 +34,7 @@ RCSID("$Id$")
  *	be used as the instance handle.
  */
 typedef struct rlm_example_t {
-	int		boolean;
+	bool		boolean;
 	int		value;
 	char		*string;
 	uint32_t	ipaddr;

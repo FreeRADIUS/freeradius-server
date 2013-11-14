@@ -51,10 +51,10 @@ typedef struct rlm_radutmp_t {
 	NAS_PORT	*nas_port_list;
 	char		*filename;
 	char		*username;
-	int		case_sensitive;
-	int		check_nas;
+	bool		case_sensitive;
+	bool		check_nas;
 	int		permission;
-	int		caller_id_ok;
+	bool		caller_id_ok;
 } rlm_radutmp_t;
 
 static const CONF_PARSER module_config[] = {

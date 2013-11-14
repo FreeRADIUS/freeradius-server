@@ -1062,7 +1062,7 @@ bool client_validate(RADCLIENT_LIST *clients, RADCLIENT *master, RADCLIENT *c)
 	/*
 	 *	Initialize the remaining fields.
 	 */
-	c->dynamic = true;
+	c->dynamic = 1;
 	c->lifetime = master->lifetime;
 	c->created = time(NULL);
 	c->longname = talloc_strdup(c, c->shortname);
@@ -1261,7 +1261,7 @@ RADCLIENT *client_from_request(RADCLIENT_LIST *clients, REQUEST *request)
 			break;
 
 		case PW_TYPE_BOOLEAN:
-			pi = (int *) ((char *) c + dynamic_config[i].offset);
+			pi = (int *) ((bool *) ((char *) c + dynamic_config[i].offset));
 			*pi = vp->vp_integer;
 			break;
 

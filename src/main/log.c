@@ -145,7 +145,7 @@ const FR_NAME_NUMBER log_str2dst[] = {
 	{ NULL,			L_DST_NUM_DEST	}
 };
 
-int log_dates_utc = 0;
+bool log_dates_utc = false;
 
 
 fr_log_t default_log = {

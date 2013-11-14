@@ -37,7 +37,7 @@ RCSID("$Id$")
 
 static int	fr_debugger_present = -1;
 
-int	fr_dns_lookups = 0;
+bool	fr_dns_lookups = false;
 int	fr_debug_flag = 0;
 
 static char const *months[] = {

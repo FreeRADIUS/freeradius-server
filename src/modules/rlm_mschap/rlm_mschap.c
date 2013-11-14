@@ -138,22 +138,22 @@ static int pdb_decode_acct_ctrl(char const *p)
 
 
 typedef struct rlm_mschap_t {
-	int use_mppe;
-	int require_encryption;
-	int require_strong;
-	int with_ntdomain_hack;	/* this should be in another module */
-	char const *xlat_name;
-	char *ntlm_auth;
-	int ntlm_auth_timeout;
-	char *ntlm_cpw;
-	char *ntlm_cpw_username;
-	char *ntlm_cpw_domain;
-	char *local_cpw;
-	char const *auth_type;
-	int allow_retry;
-	char *retry_msg;
+	bool		use_mppe;
+	bool		require_encryption;
+	bool		require_strong;
+	bool		with_ntdomain_hack;	/* this should be in another module */
+	char const	*xlat_name;
+	char		*ntlm_auth;
+	int		ntlm_auth_timeout;
+	char		*ntlm_cpw;
+	char		*ntlm_cpw_username;
+	char		*ntlm_cpw_domain;
+	char		*local_cpw;
+	char const	*auth_type;
+	bool		allow_retry;
+	char		*retry_msg;
 #ifdef WITH_OPEN_DIRECTORY
-	int  open_directory;
+	bool		open_directory;
 #endif
 } rlm_mschap_t;
 

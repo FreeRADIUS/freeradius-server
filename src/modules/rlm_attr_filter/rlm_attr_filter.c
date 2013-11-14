@@ -41,7 +41,7 @@ RCSID("$Id$")
 typedef struct rlm_attr_filter {
 	char		*filename;
 	char		*key;
-	int		relaxed;
+	bool		relaxed;
 	PAIR_LIST	*attrs;
 } rlm_attr_filter_t;
 

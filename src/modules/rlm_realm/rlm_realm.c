@@ -30,10 +30,10 @@ RCSID("$Id$")
 
 typedef struct realm_config_t {
 	int	format;
-	char       *formatstring;
-	char       *delim;
-	int	ignore_default;
-	int	ignore_null;
+	char	*formatstring;
+	char	*delim;
+	bool	ignore_default;
+	bool	ignore_null;
 } realm_config_t;
 
 static CONF_PARSER module_config[] = {

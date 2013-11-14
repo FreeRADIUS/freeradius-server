@@ -373,14 +373,14 @@ struct passwd_instance {
 	char			*filename;
 	char			*format;
 	char			*delimiter;
-	int			allow_multiple;
-	int			ignore_nislike;
+	bool			allow_multiple;
+	bool			ignore_nislike;
 	int			hash_size;
 	int			nfields;
 	int			keyfield;
 	int			listable;
 	DICT_ATTR const		*keyattr;
-	int			ignore_empty;
+	bool			ignore_empty;
 };
 
 static const CONF_PARSER module_config[] = {

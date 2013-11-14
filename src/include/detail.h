@@ -42,7 +42,7 @@ typedef struct listen_detail_t {
 	int		retry_interval;
 	int		packets;
 	int		tries;
-	int		one_shot;
+	bool		one_shot;
 	int		outstanding;
 	int		max_outstanding;
 	int		has_rtt;

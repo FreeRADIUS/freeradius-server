@@ -59,7 +59,7 @@ char const *raddb_dir = NULL;
 char const *radacct_dir = NULL;
 char const *radlib_dir = NULL;
 uint32_t myip = INADDR_ANY;
-int log_stripped_names;
+bool log_stripped_names;
 
 /*
  *	Global, for log.c to use.

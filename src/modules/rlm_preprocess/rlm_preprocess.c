@@ -34,13 +34,13 @@ typedef struct rlm_preprocess_t {
 	char		*hints_file;
 	PAIR_LIST	*huntgroups;
 	PAIR_LIST	*hints;
-	int		with_ascend_hack;
+	bool		with_ascend_hack;
 	int		ascend_channels_per_line;
-	int		with_ntdomain_hack;
-	int		with_specialix_jetstream_hack;
-	int		with_cisco_vsa_hack;
-	int		with_alvarion_vsa_hack;
-	int		with_cablelabs_vsa_hack;
+	bool		with_ntdomain_hack;
+	bool		with_specialix_jetstream_hack;
+	bool		with_cisco_vsa_hack;
+	bool		with_alvarion_vsa_hack;
+	bool		with_cablelabs_vsa_hack;
 } rlm_preprocess_t;
 
 static const CONF_PARSER module_config[] = {

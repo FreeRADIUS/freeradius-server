@@ -64,11 +64,11 @@ typedef struct sql_config {
 	char const	*simul_verify_query;
 	char const 	*groupmemb_query;
 
-	int const	do_clients;
-	int const	read_groups;
+	bool const	do_clients;
+	bool const	read_groups;
 	char const	*logfile;
 
-	int const	deletestalesessions;
+	bool const	deletestalesessions;
 	char const	*allowed_chars;
 	int const	query_timeout;
 
