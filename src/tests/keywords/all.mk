@@ -64,7 +64,7 @@ $(BUILD_DIR)/tests/keywords/%.attrs: $(DIR)/%.attrs | $(BUILD_DIR)/tests/keyword
 #
 $(BUILD_DIR)/tests/keywords/%: $(DIR)/% $(BUILD_DIR)/tests/keywords/%.attrs $(BUILD_DIR)/bin/unittest | $(BUILD_DIR)/tests/keywords raddb/mods-enabled/pap raddb/mods-enabled/always raddb/mods-enabled/expr
 	@echo UNIT-TEST $(notdir $@)
-	@if ! KEYWORD=$(notdir $@) $(JLIBTOOL) --quiet --mode=execute ./$(BUILD_DIR)/bin/unittest -D share -d src/tests/keywords/ -i $@.attrs -f $@.attrs -xx > $@.log 2>&1; then \
+	@if ! KEYWORD=$(notdir $@) $(JLIBTOOL) --quiet --mode=execute ./$(BUILD_DIR)/bin/local/unittest -D share -d src/tests/keywords/ -i $@.attrs -f $@.attrs -xx > $@.log 2>&1; then \
 		cat $@.log; exit 1; \
 	fi
 	@touch $@
