@@ -294,7 +294,7 @@ size_t vp_prints_value(char *out, size_t outlen, VALUE_PAIR const *vp, int8_t qu
 			*out++ = (char) quote;
 			freespace--;
 
-			len = strftime(out, freespace, "%%%b %e %Y %H:%M:%S %Z%%", localtime_r(&t, &s_tm));
+			len = strftime(out, freespace, "%b %e %Y %H:%M:%S %Z", localtime_r(&t, &s_tm));
 			/* always terminate the quoted string with another quote */
 			if (len >= (freespace - 1)) {
 				out[outlen - 2] = (char) quote;
