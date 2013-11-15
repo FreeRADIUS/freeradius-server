@@ -33,80 +33,83 @@ typedef struct rlm_date_t {
 } rlm_date_t;
 
 static const CONF_PARSER module_config[] = {
-	{"format", PW_TYPE_STRING_PTR, offsetof(rlm_date_t, fmt), NULL,
-	 "%b %e %Y %H:%M:%S %Z"},
+	{"format", PW_TYPE_STRING_PTR, offsetof(rlm_date_t, fmt), NULL, "%b %e %Y %H:%M:%S %Z"},
 	{NULL, -1, 0, NULL, NULL}
 };
 
 DIAG_OFF(format-nonliteral)
-static ssize_t from_str(void *instance, UNUSED REQUEST *request,
-			 char const *fmt, char *out, size_t outlen)
+static ssize_t xlat_date_convert(void *instance, UNUSED REQUEST *request, char const *fmt, char *out, size_t outlen)
 {
 	rlm_date_t *inst = instance;
-	time_t date;
+	time_t date = 0;
 	struct tm tminfo;
+	VALUE_PAIR *vp;
 
-	if (strptime(fmt, inst->fmt, &tminfo) == NULL) {
-		REDEBUG("Failed to parse time string \"%s\"", fmt);
+	if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) {
 		*out = '\0';
-		return -1;
+		return 0;
 	}
 
-	date = mktime(&tminfo);
-	if (date < 0) {
-		REDEBUG("Failed converting parsed time into unix time");
-		*out = '\0';
-		return -1;
-	}
-	
-	return snprintf(out, outlen, "%" PRIu64, (uint64_t) date);
-}
-DIAG_ON(format-nonliteral)
+	switch (vp->da->type) {
+	/*
+	 *	These are 'to' types, i.e. we'll convert the integers
+	 *	to a time structure, and then output it in the specified
+	 *	format as a string.
+	 */
+	case PW_TYPE_DATE:
+		date = vp->vp_date;
+		goto encode;
 
-DIAG_OFF(format-nonliteral)
-static ssize_t to_str(void *instance, UNUSED REQUEST *request,
-		      char const *fmt, char *out, size_t outlen)
-{
-	rlm_date_t *inst = instance;
-	time_t date;
-	struct tm tminfo;
-	
-	if (fr_get_time(fmt, &date) < 0) {
-		REDEBUG("Failed to parse time string \"%s\"", fmt);
-		*out = '\0';
-		return -1;
+	case PW_TYPE_INTEGER:
+	case PW_TYPE_INTEGER64:
+		date = (time_t) vp->vp_integer;
+
+	encode:
+		if (localtime_r(&date, &tminfo) == NULL) {
+			REDEBUG("Failed converting time string to localtime");
+			goto error;
+		}
+		return strftime(out, outlen, inst->fmt, &tminfo);
+
+	/*
+	 *	These are 'from' types, i.e. we'll convert the input string
+	 *	into a time structure, and then output it as an integer
+	 *	unix timestamp.
+	 */
+	case PW_TYPE_STRING:
+		if (strptime(vp->vp_strvalue, inst->fmt, &tminfo) == NULL) {
+			REDEBUG("Failed to parse time string \"%s\" as format '%s'", vp->vp_strvalue, inst->fmt);
+			goto error;
+		}
+
+		date = mktime(&tminfo);
+		if (date < 0) {
+			REDEBUG("Failed converting parsed time into unix time");
+
+		}
+		return snprintf(out, outlen, "%" PRIu64, (uint64_t) date);
+
+	default:
+		REDEBUG("Can't convert type %s into date", fr_int2str(dict_attr_types, vp->da->type, "<INVALID>"));
 	}
 
-	if (localtime_r(&date, &tminfo) == NULL) {
-		REDEBUG("Failed converting time string to localtime");
-		*out = '\0';
-		return -1;
-	}
-	
-	return strftime(out, outlen, inst->fmt, &tminfo);
+	error:
+	*out = '\0';
+	return -1;
 }
 DIAG_ON(format-nonliteral)
 
 static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
 	rlm_date_t *inst = instance;
-	char *p;
-	
+
 	inst->xlat_name = cf_section_name2(conf);
 	if (!inst->xlat_name) {
 		inst->xlat_name = cf_section_name1(conf);
 	}
 
-	p = talloc_asprintf(inst, "from%s", inst->xlat_name);
-	DEBUG("Registering xlat %s", p);
-	xlat_register(p, from_str, NULL, inst);
-	talloc_free(p);
+	xlat_register(inst->xlat_name, xlat_date_convert, NULL, inst);
 
-	p = talloc_asprintf(inst, "to%s", inst->xlat_name);
-	DEBUG("Registering xlat %s", p);
-	xlat_register(p, to_str, NULL, inst);
-	talloc_free(p);
-	
 	return 0;
 }
 
