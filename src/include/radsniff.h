@@ -209,9 +209,12 @@ struct rs {
 	char const		*radius_secret;		//!< Secret to decode encrypted attributes.
 
 	char			*pcap_filter;		//!< PCAP filter string applied to live capture devices.
-	char			*radius_filter;		//!< RADIUS filter string.
-	VALUE_PAIR 		*filter_vps;		//!< Sorted filter vps.
 
+	char const		*filter_request;	//!< Raw request filter string.
+	char const		*filter_response;	//!< Raw response filter string.
+
+	VALUE_PAIR 		*filter_vps_request;	//!< Sorted filter vps.
+	VALUE_PAIR 		*filter_vps_response;	//!< Sorted filter vps.
 
 	int			buffer_pkts;		//!< Size of the ring buffer to setup for live capture.
 	uint64_t		limit;			//!< Maximum number of packets to capture

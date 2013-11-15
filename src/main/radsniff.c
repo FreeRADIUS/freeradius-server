@@ -41,6 +41,7 @@ RCSID("$Id$")
 
 static rs_t *conf;
 struct timeval start_pcap = {0, 0};
+static char timestr[50];
 static rbtree_t *request_tree = NULL;
 static fr_event_list_t *events;
 static bool cleanup;
@@ -97,6 +98,94 @@ static void rs_tv_add_ms(struct timeval const *start, unsigned long interval, st
         result->tv_usec -= USEC;
         result->tv_sec++;
     }
+}
+
+static void rs_time_print(char *out, size_t len, struct timeval const *t)
+{
+	size_t ret;
+	struct timeval now;
+	uint32_t usec;
+
+	if (!t) {
+		gettimeofday(&now, NULL);
+		t = &now;
+	}
+
+	ret = strftime(out, len, "%Y-%m-%d %H:%M:%S", localtime(&t->tv_sec));
+	if (ret >= len) {
+		return;
+	}
+
+	usec = t->tv_usec;
+
+	if (usec) {
+		while (usec < 100000) usec *= 10;
+		snprintf(out + ret, len - ret, ".%i", usec);
+	} else {
+		snprintf(out + ret, len - ret, ".000000");
+	}
+}
+
+static void rs_packet_print_sig(uint64_t count, fr_pcap_t *handle, RADIUS_PACKET *packet,
+				struct timeval *elapsed, struct timeval *latency, bool response, bool body)
+{
+	char src[INET6_ADDRSTRLEN];
+	char dst[INET6_ADDRSTRLEN];
+
+	if (!RIDEBUG_ENABLED()) {
+		return;
+	}
+
+	inet_ntop(packet->src_ipaddr.af, &packet->src_ipaddr.ipaddr, src, sizeof(src));
+	inet_ntop(packet->dst_ipaddr.af, &packet->dst_ipaddr.ipaddr, dst, sizeof(dst));
+
+	if (latency) {
+		RIDEBUG("%s Id %i %s:%s:%d %s %s:%d\t+%u.%03u +%u.%03u",
+			fr_packet_codes[packet->code], packet->id,
+			handle->name,
+			response ? src : dst,
+			response ? packet->src_port : packet->dst_port,
+			response ? "<-" : "->",
+			response ? dst : src,
+			response ? packet->dst_port : packet->src_port,
+			(unsigned int) elapsed->tv_sec, ((unsigned int) elapsed->tv_usec / 1000),
+			(unsigned int) latency->tv_sec, ((unsigned int) latency->tv_usec / 1000));
+
+	} else if (elapsed) {
+		RIDEBUG("%s Id %i %s:%s:%d %s %s:%d\t+%u.%03u",
+			fr_packet_codes[packet->code], packet->id,
+			handle->name,
+			response ? src : dst,
+			response ? packet->src_port : packet->dst_port,
+			response ? "<-" : "->",
+			response ? dst : src,
+			response ? packet->dst_port : packet->src_port,
+			(unsigned int) elapsed->tv_sec, ((unsigned int) elapsed->tv_usec / 1000));
+
+	} else {
+		RIDEBUG("%s Id %i %s:%s:%d %s %s:%d",
+			fr_packet_codes[packet->code], packet->id,
+			handle->name,
+			response ? src : dst,
+			response ? packet->src_port : packet->dst_port,
+			response ? "<-" : "->",
+			response ? dst : src,
+			response ? packet->dst_port : packet->src_port);
+	}
+
+	if (body) {
+		/*
+		 *	Print out verbose HEX output
+		 */
+		if (conf->print_packet && (fr_debug_flag > 3)) {
+			rad_print_hex(packet);
+		}
+
+		if (conf->print_packet && (fr_debug_flag > 1) && packet->vps) {
+			pairsort(&packet->vps, true);
+			vp_printlist(fr_log_fp, packet->vps);
+		}
+	}
 }
 
 static void rs_stats_print(rs_latency_t *stats, PW_CODE code)
@@ -327,9 +416,6 @@ static void rs_packet_cleanup(void *ctx)
 	rs_request_t	*request = talloc_get_type_abort(ctx, rs_request_t);
 	RADIUS_PACKET	*packet = request->packet;
 
-	char		src[INET6_ADDRSTRLEN];
-	char		dst[INET6_ADDRSTRLEN];
-
 	uint64_t	count = request->id;
 
 	assert(request->stats_req);
@@ -352,14 +438,9 @@ static void rs_packet_cleanup(void *ctx)
 	if (!request->linked && !request->forced_cleanup) {
 		request->stats_req->interval.lost_total++;
 
-		RDEBUG("(** LOST **)");
-		RDEBUG("%s Id %i %s:%s:%d -> %s:%d",
-			fr_packet_codes[packet->code], packet->id,
-			request->in->name,
-			inet_ntop(packet->src_ipaddr.af, &packet->src_ipaddr.ipaddr, src, sizeof(src)),
-			packet->src_port,
-			inet_ntop(packet->dst_ipaddr.af, &packet->dst_ipaddr.ipaddr, dst, sizeof(dst)),
-			packet->dst_port);
+		RIDEBUG("** LOST **");
+		rs_packet_print_sig(request->id, request->in, packet,
+				    NULL, NULL, false, conf->filter_vps_response);
 	}
 
 	/*
@@ -423,9 +504,6 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 	uint8_t			version;	/* IP header version */
 	bool			response;	/* Was it a response code */
 
-	char			src[INET6_ADDRSTRLEN];
-	char			dst[INET6_ADDRSTRLEN];
-
 	decode_fail_t		reason;		/* Why we failed decoding the packet */
 	static uint64_t		captured = 0;
 
@@ -486,6 +564,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 		rs_tv_add_ms(&header->ts, conf->stats.timeout, &stats->quiet);
 		return;
 	}
+
 	current->timestamp = header->ts;
 	current->data_len = header->caplen - (p - data);
 	memcpy(&current->data, &p, sizeof(current->data));
@@ -514,16 +593,9 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 
 	if (!rad_packet_ok(current, 0, &reason)) {
 		REDEBUG("** %s **", fr_strerror());
-		RIDEBUG("%s Id %i %s:%s:%d -> %s:%d\t+%u.%03u",
-			fr_packet_codes[current->code], current->id,
-			event->in->name,
-			inet_ntop(current->src_ipaddr.af, &current->src_ipaddr.ipaddr, src, sizeof(src)),
-			current->src_port,
-			inet_ntop(current->dst_ipaddr.af, &current->dst_ipaddr.ipaddr, dst, sizeof(dst)),
-			current->dst_port,
-			(unsigned int) elapsed.tv_sec, ((unsigned int) elapsed.tv_usec / 1000));
-
+		rs_packet_print_sig(count, event->in, current, &elapsed, NULL, false, false);
 		rad_free(&current);
+
 		return;
 	}
 
@@ -550,7 +622,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			 *	Only decode attributes if we want to print them or filter on them
 			 *	rad_packet_ok does checks to verify the packet is actually valid.
 			 */
-			if (conf->filter_vps || conf->print_packet) {
+			if (conf->filter_vps_response || conf->print_packet) {
 				FILE *log_fp = fr_log_fp;
 
 				fr_log_fp = NULL;
@@ -568,12 +640,31 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			 */
 			if (original) {
 				/*
+				 *	Now verify the packet passes the attribute filter
+				 */
+				if (conf->filter_vps_response) {
+					pairsort(&current->vps, true);
+
+					if (!pairvalidate_relaxed(conf->filter_vps_response, current->vps)) {
+						rad_free(&current);
+						RDEBUG2("Dropped by attribute filter");
+
+						/* We now need to cleanup the original request too */
+						original->forced_cleanup = true;
+						fr_event_delete(event->list, &original->event);
+						rs_packet_cleanup(original);
+
+						return;
+					}
+				}
+
+				/*
 				 *	Is this a retransmit?
 				 */
 				if (!original->linked) {
 					original->stats_rsp = &stats->exchange[current->code];
 				} else {
-					RDEBUG("** RETRANSMISSION **");
+					RIDEBUG("** RETRANSMISSION **");
 					original->rt_rsp++;
 
 					rad_free(&original->linked);
@@ -598,16 +689,16 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			 */
 			} else {
 				/*
-				 *	If conf->filter_vps are set assume the original request was dropped,
+				 *	If conf->filter_vps_request are set assume the original request was dropped,
 				 *	the alternative is maintaining another 'filter', but that adds
 				 *	complexity, reduces max capture rate, and is generally a PITA.
 				 */
-				if (conf->filter_vps) {
+				if (conf->filter_vps_request) {
 					rad_free(&current);
 					RDEBUG2("Dropped by attribute filter");
 					return;
 				}
-				RDEBUG("** UNLINKED **");
+				RIDEBUG("** UNLINKED **");
 				stats->exchange[current->code].interval.unlinked_total++;
 			}
 
@@ -627,7 +718,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			 *	Only decode attributes if we want to print them or filter on them
 			 *	rad_packet_ok does checks to verify the packet is actually valid.
 			 */
-			if (conf->filter_vps || conf->print_packet) {
+			if (conf->filter_vps_request || conf->print_packet) {
 				FILE *log_fp = fr_log_fp;
 
 				fr_log_fp = NULL;
@@ -642,10 +733,10 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			/*
 			 *	Now verify the packet passes the attribute filter
 			 */
-			if (conf->filter_vps) {
+			if (conf->filter_vps_request) {
 				pairsort(&current->vps, true);
 
-				if (!pairvalidate_relaxed(conf->filter_vps, current->vps)) {
+				if (!pairvalidate_relaxed(conf->filter_vps_request, current->vps)) {
 					rad_free(&current);
 					RDEBUG2("Dropped by attribute filter");
 					return;
@@ -678,7 +769,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 				 *	and before we saw a response (which may be a bigger issue).
 				 */
 				if (!original->linked) {
-					RDEBUG2("** PREMATURE ID RE-USE **");
+					RIDEBUG("** PREMATURE ID RE-USE **");
 					stats->exchange[current->code].interval.reused_total++;
 					original->forced_cleanup = true;
 				}
@@ -689,11 +780,13 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			}
 
 			if (original) {
-				RDEBUG("** RETRANSMISSION **");
+				RIDEBUG("** RETRANSMISSION **");
 				original->rt_req++;
 
 				rad_free(&original->packet);
+
 				original->packet = talloc_steal(original, search.packet);
+				original->packet->vps = pairsteal(original->packet, current->vps);
 
 				/* We may of seen the response, but it may of been lost upstream */
 				rad_free(&original->linked);
@@ -705,7 +798,9 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 				original->id = count;
 				original->in = event->in;
 				original->stats_req = &stats->exchange[current->code];
+
 				original->packet = talloc_steal(original, search.packet);
+				original->packet->vps = pairsteal(original->packet, current->vps);
 
 				rbtree_insert(request_tree, original);
 			}
@@ -757,49 +852,23 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 		rs_stats_update_latency(&stats->exchange[current->code], &latency);
 		rs_stats_update_latency(&stats->exchange[original->packet->code], &latency);
 
-
 		/*
-		 *	Print info about the request/response.
+		 *	Were filtering on response, now print out the full data from the request
 		 */
-		RIDEBUG("%s Id %i %s:%s:%d %s %s:%d\t+%u.%03u\t+%u.%03u",
-			fr_packet_codes[current->code], current->id,
-			event->in->name,
-			inet_ntop(current->src_ipaddr.af, &current->src_ipaddr.ipaddr, src, sizeof(src)),
-			current->src_port,
-			response ? "<-" : "->",
-			inet_ntop(current->dst_ipaddr.af, &current->dst_ipaddr.ipaddr, dst, sizeof(dst)),
-			current->dst_port,
-			(unsigned int) elapsed.tv_sec, ((unsigned int) elapsed.tv_usec / 1000),
-			(unsigned int) latency.tv_sec, ((unsigned int) latency.tv_usec / 1000));
+		if (conf->filter_vps_response && RIDEBUG_ENABLED()) {
+			rs_time_print(timestr, sizeof(timestr), &original->packet->timestamp);
+			rs_tv_sub(&original->packet->timestamp, &start_pcap, &elapsed);
+			rs_packet_print_sig(original->id, original->in, original->packet, &elapsed, NULL, false, true);
+			rs_tv_sub(&header->ts, &start_pcap, &elapsed);
+			rs_time_print(timestr, sizeof(timestr), &header->ts);
+		}
+		rs_packet_print_sig(count, event->in, current, &elapsed, &latency, response, true);
 	/*
-	 *	It's the original request
+	 *	It's the original request - if were filtering on responses, print out the minimum data
 	 */
 	} else {
-		/*
-		 *	Print info about the request
-		 */
-		RIDEBUG("%s Id %i %s:%s:%d %s %s:%d\t+%u.%03u",
-			fr_packet_codes[current->code], current->id,
-			event->in->name,
-			inet_ntop(current->src_ipaddr.af, &current->src_ipaddr.ipaddr, src, sizeof(src)),
-			current->src_port,
-			response ? "<-" : "->",
-			inet_ntop(current->dst_ipaddr.af, &current->dst_ipaddr.ipaddr, dst, sizeof(dst)),
-			current->dst_port,
-			(unsigned int) elapsed.tv_sec, ((unsigned int) elapsed.tv_usec / 1000));
-	}
-
-	/*
-	 *	Print out verbose HEX output
-	 */
-	if (conf->print_packet && (fr_debug_flag > 3)) {
-		rad_print_hex(current);
-	}
-
-	if (conf->print_packet && (fr_debug_flag > 1) && current->vps) {
-		pairsort(&current->vps, true);
-		vp_printlist(fr_log_fp, current->vps);
-		pairfree(&current->vps);
+		rs_packet_print_sig(count, event->in, current, &elapsed, NULL,
+				    response, !conf->filter_vps_response);
 	}
 
 	fflush(fr_log_fp);
@@ -809,7 +878,11 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 	 *	If it's a unlinked response, we need to free it explicitly, as it will
 	 *	not be done by the event queue.
 	 */
-	if (!response || !original) {
+	if (!response) {
+		current->vps = NULL;
+		rad_free(&current);
+	}
+	if (response && !original) {
 		rad_free(&current);
 	}
 
@@ -921,6 +994,49 @@ static int rs_packet_cmp(rs_request_t const *a, rs_request_t const *b)
 	return fr_packet_cmp(a->packet, b->packet);
 }
 
+static int rs_build_filter(VALUE_PAIR **out, char const *filter)
+{
+	vp_cursor_t cursor;
+	VALUE_PAIR *vp;
+	FR_TOKEN code;
+
+	code = userparse(conf, filter, out);
+	if (code == T_OP_INVALID) {
+		ERROR("Invalid RADIUS filter \"%s\" (%s)", filter, fr_strerror());
+		return -1;
+	}
+
+	if (!*out) {
+		ERROR("Empty RADIUS filter \"%s\"", filter);
+		return -1;
+	}
+
+	for (vp = fr_cursor_init(&cursor, out);
+	     vp;
+	     vp = fr_cursor_next(&cursor)) {
+		/*
+		 *	xlat expansion isn't support hered
+		 */
+		if (vp->type == VT_XLAT) {
+			vp->type = VT_DATA;
+			vp->vp_strvalue = vp->value.xlat;
+		}
+	}
+
+	/*
+	 *	This allows efficient list comparisons later
+	 */
+	pairsort(out, true);
+
+	return 0;
+}
+
+static void rs_cleanup(UNUSED int sig)
+{
+	DEBUG2("Signalling event loop to exit");
+	fr_event_loop_exit(events, 1);
+}
+
 static void NEVER_RETURNS usage(int status)
 {
 	FILE *output = status ? stderr : stdout;
@@ -936,7 +1052,8 @@ static void NEVER_RETURNS usage(int status)
 	fprintf(output, "  -m              Don't put interface(s) into promiscuous mode.\n");
 	fprintf(output, "  -p <port>       Filter packets by port (default is 1812).\n");
 	fprintf(output, "  -q              Print less debugging information.\n");
-	fprintf(output, "  -r <filter>     RADIUS attribute filter.\n");
+	fprintf(output, "  -r <filter>     RADIUS attribute request filter.\n");
+	fprintf(output, "  -R <filter>     RADIUS attribute response filter.\n");
 	fprintf(output, "  -s <secret>     RADIUS secret.\n");
 	fprintf(output, "  -v              Show program version information.\n");
 	fprintf(output, "  -w <file>       Write output packets to file (overrides output of -F).\n");
@@ -972,7 +1089,6 @@ int main(int argc, char *argv[])
 	char buffer[1024];
 
 	int opt;
-	FR_TOKEN parsecode;
 	char const *radius_dir = RADIUS_DIR;
 
 	rs_stats_t stats;
@@ -1011,7 +1127,7 @@ int main(int argc, char *argv[])
 	/*
 	 *  Get options
 	 */
-	while ((opt = getopt(argc, argv, "b:c:d:DFf:hi:I:mp:qr:s:vw:xXW:T:P:O:")) != EOF) {
+	while ((opt = getopt(argc, argv, "b:c:d:DFf:hi:I:mp:qr:R:s:vw:xXW:T:P:O:")) != EOF) {
 		switch (opt) {
 		/* super secret option */
 		case 'b':
@@ -1099,7 +1215,11 @@ int main(int argc, char *argv[])
 			break;
 
 		case 'r':
-			conf->radius_filter = optarg;
+			conf->filter_request = optarg;
+			break;
+
+		case 'R':
+			conf->filter_response = optarg;
 			break;
 
 		case 's':
@@ -1227,39 +1347,16 @@ int main(int argc, char *argv[])
 	}
 	fr_strerror();	/* Clear out any non-fatal errors */
 
-	if (conf->radius_filter) {
-		vp_cursor_t cursor;
-		VALUE_PAIR *vp;
-
-		parsecode = userparse(NULL, conf->radius_filter, &conf->filter_vps);
-		if (parsecode == T_OP_INVALID) {
-			ERROR("Invalid RADIUS filter \"%s\" (%s)", conf->radius_filter, fr_strerror());
-			ret = 64;
-			goto finish;
+	if (conf->filter_request) {
+		if (rs_build_filter(&conf->filter_vps_request, conf->filter_request) < 0) {
+			usage(64);
 		}
+	}
 
-		if (!conf->filter_vps) {
-			ERROR("Empty RADIUS filter \"%s\"", conf->radius_filter);
-			ret = 64;
-			goto finish;
+	if (conf->filter_response) {
+		if (rs_build_filter(&conf->filter_vps_response, conf->filter_response) < 0) {
+			usage(64);
 		}
-
-		for (vp = fr_cursor_init(&cursor, &conf->filter_vps);
-		     vp;
-		     vp = fr_cursor_next(&cursor)) {
-		     	/*
-		     	 *	xlat expansion isn't support hered
-		     	 */
-		     	if (vp->type == VT_XLAT) {
-		     		vp->type = VT_DATA;
-		     		vp->vp_strvalue = vp->value.xlat;
-		     	}
-		}
-
-		/*
-		 *	This allows efficient list comparisons later
-		 */
-		pairsort(&conf->filter_vps, true);
 	}
 
 	/*
@@ -1320,9 +1417,9 @@ int main(int argc, char *argv[])
 		}
 			DEBUG2("  PCAP filter              : [%s]", conf->pcap_filter);
 			DEBUG2("  RADIUS secret            : [%s]", conf->radius_secret);
-		if (conf->filter_vps){
+		if (conf->filter_vps_request){
 			DEBUG2("  RADIUS filter            :");
-			vp_printlist(fr_log_fp, conf->filter_vps);
+			vp_printlist(fr_log_fp, conf->filter_vps_request);
 		}
 	}
 
