@@ -65,6 +65,15 @@ RCSIDH(radsniff_h, "$Id$")
 #define RDEBUG2(fmt, ...)	if (conf->print_packet && (fr_debug_flag > 2)) fprintf(fr_log_fp , "%s (%" PRIu64 ") " fmt "\n", timestr, count, ## __VA_ARGS__)
 
 typedef enum {
+	RS_NORMAL = 0,
+	RS_UNLINKED,
+	RS_RTX,
+	RS_REUSED,
+	RS_ERROR,
+	RS_LOST
+} rs_status_t;
+
+typedef enum {
 #ifdef HAVE_COLLECTDC_H
 	RS_STATS_OUT_COLLECTD = 1,
 #endif

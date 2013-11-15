@@ -71,6 +71,8 @@ static int rs_useful_codes[] = {
 	PW_CODE_COA_NAK,			//!< RFC3575/RFC5176 - CoA-Nak (not willing to perform)
 };
 
+static void NEVER_RETURNS usage(int status);
+
 #define USEC 1000000
 static void rs_tv_sub(struct timeval const *end, struct timeval const *start, struct timeval *elapsed)
 {
@@ -126,9 +128,10 @@ static void rs_time_print(char *out, size_t len, struct timeval const *t)
 	}
 }
 
-static void rs_packet_print_sig(uint64_t count, fr_pcap_t *handle, RADIUS_PACKET *packet,
+static void rs_packet_print_sig(uint64_t count, rs_status_t status, fr_pcap_t *handle, RADIUS_PACKET *packet,
 				struct timeval *elapsed, struct timeval *latency, bool response, bool body)
 {
+	char const *status_str;
 	char src[INET6_ADDRSTRLEN];
 	char dst[INET6_ADDRSTRLEN];
 
@@ -136,11 +139,37 @@ static void rs_packet_print_sig(uint64_t count, fr_pcap_t *handle, RADIUS_PACKET
 		return;
 	}
 
+	switch (status) {
+		case RS_NORMAL:
+			status_str = "";
+			break;
+		case RS_LOST:
+			status_str = "** LOST **";
+			break;
+
+		case RS_RTX:
+			status_str = "** RTX **";
+			break;
+
+		case RS_UNLINKED:
+			status_str = "** UNLINKED **";
+			break;
+
+		case RS_REUSED:
+			status_str = "** ID REUSED **";
+			break;
+
+		case RS_ERROR:
+			status_str = "** ERROR **";
+			break;
+	}
+
 	inet_ntop(packet->src_ipaddr.af, &packet->src_ipaddr.ipaddr, src, sizeof(src));
 	inet_ntop(packet->dst_ipaddr.af, &packet->dst_ipaddr.ipaddr, dst, sizeof(dst));
 
 	if (latency) {
-		RIDEBUG("%s Id %i %s:%s:%d %s %s:%d\t+%u.%03u +%u.%03u",
+		RIDEBUG("%s %s Id %i %s:%s:%d %s %s:%d\t+%u.%03u +%u.%03u",
+			status_str,
 			fr_packet_codes[packet->code], packet->id,
 			handle->name,
 			response ? src : dst,
@@ -152,7 +181,8 @@ static void rs_packet_print_sig(uint64_t count, fr_pcap_t *handle, RADIUS_PACKET
 			(unsigned int) latency->tv_sec, ((unsigned int) latency->tv_usec / 1000));
 
 	} else if (elapsed) {
-		RIDEBUG("%s Id %i %s:%s:%d %s %s:%d\t+%u.%03u",
+		RIDEBUG("%s %s Id %i %s:%s:%d %s %s:%d\t+%u.%03u",
+			status_str,
 			fr_packet_codes[packet->code], packet->id,
 			handle->name,
 			response ? src : dst,
@@ -163,7 +193,8 @@ static void rs_packet_print_sig(uint64_t count, fr_pcap_t *handle, RADIUS_PACKET
 			(unsigned int) elapsed->tv_sec, ((unsigned int) elapsed->tv_usec / 1000));
 
 	} else {
-		RIDEBUG("%s Id %i %s:%s:%d %s %s:%d",
+		RIDEBUG("%s %s Id %i %s:%s:%d %s %s:%d",
+			status_str,
 			fr_packet_codes[packet->code], packet->id,
 			handle->name,
 			response ? src : dst,
@@ -416,8 +447,6 @@ static void rs_packet_cleanup(void *ctx)
 	rs_request_t	*request = talloc_get_type_abort(ctx, rs_request_t);
 	RADIUS_PACKET	*packet = request->packet;
 
-	uint64_t	count = request->id;
-
 	assert(request->stats_req);
 	assert(!request->rt_rsp || request->stats_rsp);
 	assert(packet);
@@ -438,8 +467,7 @@ static void rs_packet_cleanup(void *ctx)
 	if (!request->linked && !request->forced_cleanup) {
 		request->stats_req->interval.lost_total++;
 
-		RIDEBUG("** LOST **");
-		rs_packet_print_sig(request->id, request->in, packet,
+		rs_packet_print_sig(request->id, RS_LOST, request->in, packet,
 				    NULL, NULL, false, conf->filter_vps_response);
 	}
 
@@ -507,6 +535,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 	decode_fail_t		reason;		/* Why we failed decoding the packet */
 	static uint64_t		captured = 0;
 
+	rs_status_t		status = RS_NORMAL;	/* Any special conditions (RTX, Unlinked, ID-Reused) */
 	RADIUS_PACKET *current;			/* Current packet were processing */
 	rs_request_t *original;
 
@@ -536,7 +565,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 		break;
 
 	default:
-		RIDEBUG("IP version invalid %i", version);
+		REDEBUG("IP version invalid %i", version);
 		return;
 	}
 
@@ -545,7 +574,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 	 */
 	len = (p - data) + sizeof(struct udp_header) + (sizeof(radius_packet_t) - 1);	/* length value */
 	if (len > header->caplen) {
-		RIDEBUG("Packet too small, we require at least %zu bytes, captured %i bytes",
+		REDEBUG("Packet too small, we require at least %zu bytes, captured %i bytes",
 			(size_t) len, header->caplen);
 		return;
 	}
@@ -592,8 +621,8 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 	current->dst_port = ntohs(udp->udp_dport);
 
 	if (!rad_packet_ok(current, 0, &reason)) {
-		REDEBUG("** %s **", fr_strerror());
-		rs_packet_print_sig(count, event->in, current, &elapsed, NULL, false, false);
+		REDEBUG("%s", fr_strerror());
+		rs_packet_print_sig(count, RS_ERROR, event->in, current, &elapsed, NULL, false, false);
 		rad_free(&current);
 
 		return;
@@ -664,7 +693,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 				if (!original->linked) {
 					original->stats_rsp = &stats->exchange[current->code];
 				} else {
-					RIDEBUG("** RETRANSMISSION **");
+					status = RS_RTX;
 					original->rt_rsp++;
 
 					rad_free(&original->linked);
@@ -698,7 +727,8 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 					RDEBUG2("Dropped by attribute filter");
 					return;
 				}
-				RIDEBUG("** UNLINKED **");
+
+				status = RS_UNLINKED;
 				stats->exchange[current->code].interval.unlinked_total++;
 			}
 
@@ -769,7 +799,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 				 *	and before we saw a response (which may be a bigger issue).
 				 */
 				if (!original->linked) {
-					RIDEBUG("** PREMATURE ID RE-USE **");
+					status = RS_REUSED;
 					stats->exchange[current->code].interval.reused_total++;
 					original->forced_cleanup = true;
 				}
@@ -780,7 +810,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			}
 
 			if (original) {
-				RIDEBUG("** RETRANSMISSION **");
+				status = RS_RTX;
 				original->rt_req++;
 
 				rad_free(&original->packet);
@@ -817,7 +847,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 		}
 			break;
 		default:
-			REDEBUG("** Unsupported code %i **", current->code);
+			REDEBUG("Unsupported code %i", current->code);
 			rad_free(&current);
 
 			return;
@@ -858,16 +888,17 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 		if (conf->filter_vps_response && RIDEBUG_ENABLED()) {
 			rs_time_print(timestr, sizeof(timestr), &original->packet->timestamp);
 			rs_tv_sub(&original->packet->timestamp, &start_pcap, &elapsed);
-			rs_packet_print_sig(original->id, original->in, original->packet, &elapsed, NULL, false, true);
+			rs_packet_print_sig(original->id, 0, original->in,
+					    original->packet, &elapsed, NULL, false, true);
 			rs_tv_sub(&header->ts, &start_pcap, &elapsed);
 			rs_time_print(timestr, sizeof(timestr), &header->ts);
 		}
-		rs_packet_print_sig(count, event->in, current, &elapsed, &latency, response, true);
+		rs_packet_print_sig(count, status, event->in, current, &elapsed, &latency, response, true);
 	/*
 	 *	It's the original request - if were filtering on responses, print out the minimum data
 	 */
 	} else {
-		rs_packet_print_sig(count, event->in, current, &elapsed, NULL,
+		rs_packet_print_sig(count, status, event->in, current, &elapsed, NULL,
 				    response, !conf->filter_vps_response);
 	}
 
@@ -1029,12 +1060,6 @@ static int rs_build_filter(VALUE_PAIR **out, char const *filter)
 	pairsort(out, true);
 
 	return 0;
-}
-
-static void rs_cleanup(UNUSED int sig)
-{
-	DEBUG2("Signalling event loop to exit");
-	fr_event_loop_exit(events, 1);
 }
 
 static void NEVER_RETURNS usage(int status)
@@ -1571,7 +1596,7 @@ int main(int argc, char *argv[])
 		}
 
 		buff = fr_pcap_device_names(conf, in, ' ');
-		INFO("Sniffing on (%s)", buff);
+		DEBUG("Sniffing on (%s)", buff);
 		talloc_free(buff);
 
 		gettimeofday(&now, NULL);
@@ -1595,7 +1620,7 @@ int main(int argc, char *argv[])
 		ret = fr_event_loop(events);	/* Enter the main event loop */
 	}
 
-	INFO("Done sniffing");
+	DEBUG("Done sniffing");
 
 	finish:
 
