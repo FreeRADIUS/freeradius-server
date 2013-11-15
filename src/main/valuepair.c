@@ -536,7 +536,7 @@ int paircompare(REQUEST *request, VALUE_PAIR *req_list, VALUE_PAIR *check,
 			case T_OP_EQ:
 			default:
 				INFO("Invalid operator %s for item %s: "
-				       "reverting to '=='", 
+				       "reverting to '=='",
 				     fr_int2str(fr_tokens, check_item->op, "<INVALID>"),
 				     check_item->da->name);
 				/* FALL-THROUGH */
@@ -1421,13 +1421,13 @@ VALUE_PAIR *radius_vpt_get_vp(REQUEST *request, value_pair_tmpl_t const *vpt)
 
 /** Return a VP from the specified request.
  *
- * @param request current request.
- * @param name attribute name including qualifiers.
  * @param vp_p where to write the pointer to the resolved VP.
  *	Will be NULL if the attribute couldn't be resolved.
+ * @param request current request.
+ * @param name attribute name including qualifiers.
  * @return -1 if either the attribute or qualifier were invalid, else 0
  */
-int radius_get_vp(REQUEST *request, char const *name, VALUE_PAIR **vp_p)
+int radius_get_vp(VALUE_PAIR **vp_p, REQUEST *request, char const *name)
 {
 	value_pair_tmpl_t vpt;
 

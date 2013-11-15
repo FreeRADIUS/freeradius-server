@@ -628,7 +628,7 @@ redo:
 			goto calculate_result;
 		}
 
-		if (radius_get_vp(request, c->name, &vp) < 0) {
+		if (radius_get_vp(&vp, request, c->name) < 0) {
 			RDEBUG("Unknown Attribute \"%s\"", c->name);
 			result = RLM_MODULE_FAIL;
 			goto calculate_result;
@@ -719,8 +719,7 @@ redo:
 		VALUE_PAIR **copy_p;
 
 		for (i = 8; i >= 0; i--) {
-			copy_p = request_data_get(request,
-						  radius_get_vp, i);
+			copy_p = request_data_get(request, radius_get_vp, i);
 			if (copy_p) {
 				RDEBUG2("%.*s #  BREAK Foreach-Variable-%d", depth + 1,
 					modcall_spaces, i);
@@ -780,7 +779,7 @@ redo:
 		if (!strchr(c->name, '%')) {
 			VALUE_PAIR *vp = NULL;
 
-			radius_get_vp(request, c->name, &vp);
+			radius_get_vp(&vp, request, c->name);
 			if (vp) {
 				vp_prints_value(buffer,
 						sizeof(buffer),

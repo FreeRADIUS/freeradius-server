@@ -156,7 +156,7 @@ static ssize_t xlat_integer(UNUSED void *instance, REQUEST *request,
 
 	while (isspace((int) *fmt)) fmt++;
 
-	if ((radius_get_vp(request, fmt, &vp) < 0) || !vp) {
+	if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) {
 		*out = '\0';
 		return 0;
 	}
@@ -206,7 +206,7 @@ static ssize_t xlat_hex(UNUSED void *instance, REQUEST *request,
 
 	while (isspace((int) *fmt)) fmt++;
 
-	if ((radius_get_vp(request, fmt, &vp) < 0) || !vp) {
+	if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) {
 		*out = '\0';
 		return -1;
 	}
@@ -241,7 +241,7 @@ static ssize_t xlat_base64(UNUSED void *instance, REQUEST *request,
 
 	while (isspace((int) *fmt)) fmt++;
 
-	if ((radius_get_vp(request, fmt, &vp) < 0) || !vp) {
+	if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) {
 		*out = '\0';
 		return 0;
 	}
@@ -411,7 +411,7 @@ static ssize_t xlat_string(UNUSED void *instance, REQUEST *request,
 		return 0;
 	}
 
-	if ((radius_get_vp(request, fmt, &vp) < 0) || !vp) goto nothing;
+	if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) goto nothing;
 
 	if (vp->da->type != PW_TYPE_OCTETS) goto nothing;
 
@@ -437,7 +437,7 @@ static ssize_t xlat_xlat(UNUSED void *instance, REQUEST *request,
 		return 0;
 	}
 
-	if ((radius_get_vp(request, fmt, &vp) < 0) || !vp) goto nothing;
+	if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) goto nothing;
 
 	return radius_xlat(out, outlen, request, vp->vp_strvalue, NULL, NULL);
 }

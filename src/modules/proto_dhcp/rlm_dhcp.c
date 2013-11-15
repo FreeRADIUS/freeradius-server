@@ -55,7 +55,7 @@ static ssize_t dhcp_options_xlat(UNUSED void *instance, REQUEST *request,
 	while (isspace((int) *fmt)) fmt++;
 
 
-	if ((radius_get_vp(request, fmt, &vp) < 0) || !vp) {
+	if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) {
 		 *out = '\0';
 		 return 0;
 	}
