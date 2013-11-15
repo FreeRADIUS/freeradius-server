@@ -365,6 +365,7 @@ static int hunt_paircmp(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check)
 	     check_item = fr_cursor_next(&cursor)) {
 	     	/* FIXME: paircopy should be removed once VALUE_PAIRs are no longer in linked lists */
 		tmp = paircopyvp(request, check_item);
+		tmp->op = check_item->op;
 		result = paircompare(req, request, check_item, NULL);
 		pairfree(&tmp);
 	}
