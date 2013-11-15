@@ -242,9 +242,6 @@ struct rs {
 	} stats;
 };
 
-
-extern FILE *fr_log_fp;
-
 #ifdef HAVE_COLLECTDC_H
 
 /** Callback for processing stats values.
