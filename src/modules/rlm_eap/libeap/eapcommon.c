@@ -87,11 +87,11 @@ eap_type_t eap_name2type(char const *name)
 	DICT_VALUE	*dv;
 
 	dv = dict_valbyname(PW_EAP_TYPE, 0, name);
-	if (dv) {
-		return dv->value;
-	}
+	if (!dv) return PW_EAP_INVALID;
 
-	return PW_EAP_INVALID;
+	if (dv->value >= PW_EAP_MAX_TYPES) return PW_EAP_INVALID;
+
+	return dv->value;
 }
 
 /** Return an EAP-name for a particular type
