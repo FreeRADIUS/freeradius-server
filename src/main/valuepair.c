@@ -535,8 +535,8 @@ int paircompare(REQUEST *request, VALUE_PAIR *req_list, VALUE_PAIR *check,
 		switch (check_item->op) {
 			case T_OP_EQ:
 			default:
-				INFO("Invalid operator for item %s: "
-				       "reverting to '=='", check_item->da->name);
+				RWDEBUG("Invalid operator '%s' for item %s: reverting to '=='",
+					fr_int2str(fr_tokens, check_item->op, "<INVALID>"), check_item->da->name);
 				/* FALL-THROUGH */
 			case T_OP_CMP_TRUE:
 			case T_OP_CMP_FALSE:
