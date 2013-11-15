@@ -47,16 +47,22 @@ RCSIDH(radsniff_h, "$Id$")
  *	Logging macros
  */
 #undef DEBUG2
-#define DEBUG2(fmt, ...)	if (fr_debug_flag > 2) fprintf(log_dst , fmt "\n", ## __VA_ARGS__)
+#define DEBUG2(fmt, ...)	if (fr_debug_flag > 2) fprintf(fr_log_fp , fmt "\n", ## __VA_ARGS__)
 #undef DEBUG
-#define DEBUG(fmt, ...)		if (fr_debug_flag > 1) fprintf(log_dst , fmt "\n", ## __VA_ARGS__)
+#define DEBUG(fmt, ...)		if (fr_debug_flag > 1) fprintf(fr_log_fp , fmt "\n", ## __VA_ARGS__)
 #undef INFO
-#define INFO(fmt, ...)		if (fr_debug_flag > 0) fprintf(log_dst , fmt "\n", ## __VA_ARGS__)
+#define INFO(fmt, ...)		if (fr_debug_flag > 0) fprintf(fr_log_fp , fmt "\n", ## __VA_ARGS__)
 
 #define ERROR(fmt, ...)		fr_perror("radsniff: " fmt "\n", ## __VA_ARGS__)
-#define RIDEBUG(fmt, ...)	if (conf->print_packet && (fr_debug_flag > 0)) fprintf(log_dst , fmt "\n", ## __VA_ARGS__)
-#define RDEBUG(fmt, ...)	if (conf->print_packet && (fr_debug_flag > 1)) fprintf(log_dst , fmt "\n", ## __VA_ARGS__)
-#define RDEBUG2(fmt, ...)	if (conf->print_packet && (fr_debug_flag > 2)) fprintf(log_dst , fmt "\n", ## __VA_ARGS__)
+
+#define RIDEBUG_ENABLED()	(conf->print_packet && (fr_debug_flag > 0))
+#define RDEBUG_ENABLED()	(conf->print_packet && (fr_debug_flag > 1))
+#define RDEBUG_ENABLED2()	(conf->print_packet && (fr_debug_flag > 2))
+
+#define REDEBUG(fmt, ...)	if (conf->print_packet) fprintf(fr_log_fp , "%s (%" PRIu64 ")  " fmt ": %s\n", timestr, count, ## __VA_ARGS__,  fr_strerror())
+#define RIDEBUG(fmt, ...)	if (conf->print_packet && (fr_debug_flag > 0)) fprintf(fr_log_fp , "%s (%" PRIu64 ") " fmt "\n", timestr, count, ## __VA_ARGS__)
+#define RDEBUG(fmt, ...)	if (conf->print_packet && (fr_debug_flag > 1)) fprintf(fr_log_fp , "%s (%" PRIu64 ") " fmt "\n", timestr, count, ## __VA_ARGS__)
+#define RDEBUG2(fmt, ...)	if (conf->print_packet && (fr_debug_flag > 2)) fprintf(fr_log_fp , "%s (%" PRIu64 ") " fmt "\n", timestr, count, ## __VA_ARGS__)
 
 typedef enum {
 #ifdef HAVE_COLLECTDC_H
@@ -225,7 +231,7 @@ struct rs {
 };
 
 
-extern FILE *log_dst;
+extern FILE *fr_log_fp;
 
 #ifdef HAVE_COLLECTDC_H
 
@@ -264,4 +270,3 @@ void rs_stats_collectd_do_stats(rs_t *conf, rs_stats_tmpl_t *tmpls, struct timev
 int rs_stats_collectd_open(rs_t *conf);
 
 #endif
-

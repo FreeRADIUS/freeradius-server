@@ -39,8 +39,6 @@ RCSID("$Id$")
 #  include <collectd/client.h>
 #endif
 
-FILE *log_dst;
-
 static rs_t *conf;
 struct timeval start_pcap = {0, 0};
 static rbtree_t *request_tree = NULL;
@@ -332,6 +330,8 @@ static void rs_packet_cleanup(void *ctx)
 	char		src[INET6_ADDRSTRLEN];
 	char		dst[INET6_ADDRSTRLEN];
 
+	uint64_t	count = request->id;
+
 	assert(request->stats_req);
 	assert(!request->rt_rsp || request->stats_rsp);
 	assert(packet);
@@ -352,8 +352,8 @@ static void rs_packet_cleanup(void *ctx)
 	if (!request->linked && !request->forced_cleanup) {
 		request->stats_req->interval.lost_total++;
 
-		RDEBUG("(%i) ** LOST **", request->id);
-		RIDEBUG("(%i) %s Id %i %s:%s:%d -> %s:%d", request->id,
+		RDEBUG("(** LOST **)");
+		RDEBUG("%s Id %i %s:%s:%d -> %s:%d",
 			fr_packet_codes[packet->code], packet->id,
 			request->in->name,
 			inet_ntop(packet->src_ipaddr.af, &packet->src_ipaddr.ipaddr, src, sizeof(src)),
@@ -393,8 +393,10 @@ static void rs_packet_cleanup(void *ctx)
  */
 static int _request_free(rs_request_t *request)
 {
-	if (!cleanup) {
-		RDEBUG("(%i) Cleaning up request packet ID %i", request->id, request->packet->id);
+	uint64_t count = request->id;
+
+	if (!cleanup && (request->in->type == PCAP_INTERFACE_IN)) {
+		RDEBUG("Cleaning up request packet ID %i", request->packet->id);
 	}
 
 	rad_free(&request->packet);
@@ -436,7 +438,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 
 	len = fr_pcap_link_layer_offset(data, header->caplen, event->in->link_type);
 	if (len < 0) {
-		INFO("Failed determining link layer header offset: %s", fr_strerror());
+		REDEBUG("Failed determining link layer header offset");
 		return;
 	}
 	p += len;
@@ -456,7 +458,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 		break;
 
 	default:
-		DEBUG("IP version invalid %i", version);
+		RIDEBUG("IP version invalid %i", version);
 		return;
 	}
 
@@ -465,8 +467,8 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 	 */
 	len = (p - data) + sizeof(struct udp_header) + (sizeof(radius_packet_t) - 1);	/* length value */
 	if (len > header->caplen) {
-		DEBUG("Packet too small, we require at least %zu bytes, captured %i bytes",
-		      (size_t) len, header->caplen);
+		RIDEBUG("Packet too small, we require at least %zu bytes, captured %i bytes",
+			(size_t) len, header->caplen);
 		return;
 	}
 
@@ -480,7 +482,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 	 */
 	current = rad_alloc(conf, 0);
 	if (!current) {
-		ERROR("Failed allocating memory to hold decoded packet");
+		REDEBUG("Failed allocating memory to hold decoded packet");
 		rs_tv_add_ms(&header->ts, conf->stats.timeout, &stats->quiet);
 		return;
 	}
@@ -511,8 +513,8 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 	current->dst_port = ntohs(udp->udp_dport);
 
 	if (!rad_packet_ok(current, 0, &reason)) {
-		RIDEBUG("(%" PRIu64 ") ** %s **", count, fr_strerror());
-		RIDEBUG("(%" PRIu64 ") %s Id %i %s:%s:%d -> %s:%d\t+%u.%03u", count,
+		REDEBUG("** %s **", fr_strerror());
+		RIDEBUG("%s Id %i %s:%s:%d -> %s:%d\t+%u.%03u",
 			fr_packet_codes[current->code], current->id,
 			event->in->name,
 			inet_ntop(current->src_ipaddr.af, &current->src_ipaddr.ipaddr, src, sizeof(src)),
@@ -549,12 +551,16 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			 *	rad_packet_ok does checks to verify the packet is actually valid.
 			 */
 			if (conf->filter_vps || conf->print_packet) {
+				FILE *log_fp = fr_log_fp;
+
+				fr_log_fp = NULL;
 				if (rad_decode(current, original ? original->packet : NULL,
 					       conf->radius_secret) != 0) {
 					rad_free(&current);
-					fr_perror("decode");
+					REDEBUG("Failed decoding");
 					return;
 				}
+				fr_log_fp = log_fp;
 			}
 
 			/*
@@ -567,7 +573,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 				if (!original->linked) {
 					original->stats_rsp = &stats->exchange[current->code];
 				} else {
-					RDEBUG("(%" PRIu64 ") ** RETRANSMISSION **", count);
+					RDEBUG("** RETRANSMISSION **");
 					original->rt_rsp++;
 
 					rad_free(&original->linked);
@@ -578,7 +584,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 
 				if (!fr_event_insert(event->list, rs_packet_cleanup, original, &when,
 						     &original->event)) {
-					ERROR("Failed inserting new event");
+					REDEBUG("Failed inserting new event");
 					/*
 					 *	Delete the original request/event, it's no longer valid
 					 *	for statistics.
@@ -598,11 +604,10 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 				 */
 				if (conf->filter_vps) {
 					rad_free(&current);
-					RDEBUG2("(%" PRIu64 ") Dropped by attribute filter", count);
+					RDEBUG2("Dropped by attribute filter");
 					return;
 				}
-
-				RDEBUG("(%" PRIu64 ") ** UNLINKED **", count);
+				RDEBUG("** UNLINKED **");
 				stats->exchange[current->code].interval.unlinked_total++;
 			}
 
@@ -623,11 +628,15 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			 *	rad_packet_ok does checks to verify the packet is actually valid.
 			 */
 			if (conf->filter_vps || conf->print_packet) {
+				FILE *log_fp = fr_log_fp;
+
+				fr_log_fp = NULL;
 				if (rad_decode(current, NULL, conf->radius_secret) != 0) {
 					rad_free(&current);
-					fr_perror("decode");
+					REDEBUG("Failed decoding");
 					return;
 				}
+				fr_log_fp = log_fp;
 			}
 
 			/*
@@ -638,7 +647,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 
 				if (!pairvalidate_relaxed(conf->filter_vps, current->vps)) {
 					rad_free(&current);
-					RDEBUG2("(%" PRIu64 ") Dropped by attribute filter", count);
+					RDEBUG2("Dropped by attribute filter");
 					return;
 				}
 			}
@@ -648,7 +657,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			 */
 			search.packet = rad_alloc_reply(conf, current);
 			if (!search.packet) {
-				ERROR("Failed allocating memory to hold expected reply");
+				REDEBUG("Failed allocating memory to hold expected reply");
 				rs_tv_add_ms(&header->ts, conf->stats.timeout, &stats->quiet);
 				rad_free(&current);
 				return;
@@ -669,7 +678,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 				 *	and before we saw a response (which may be a bigger issue).
 				 */
 				if (!original->linked) {
-					RDEBUG2("(%" PRIu64 ") ** PREMATURE ID RE-USE **", count);
+					RDEBUG2("** PREMATURE ID RE-USE **");
 					stats->exchange[current->code].interval.reused_total++;
 					original->forced_cleanup = true;
 				}
@@ -680,7 +689,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			}
 
 			if (original) {
-				RDEBUG("(%" PRIu64 ") ** RETRANSMISSION **", count);
+				RDEBUG("** RETRANSMISSION **");
 				original->rt_req++;
 
 				rad_free(&original->packet);
@@ -705,7 +714,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			original->packet->timestamp = header->ts;
 
 			if (!fr_event_insert(event->list, rs_packet_cleanup, original, &when, &original->event)) {
-				ERROR("Failed inserting new event");
+				REDEBUG("Failed inserting new event");
 				rbtree_deletebydata(request_tree, original);
 				return;
 			}
@@ -713,7 +722,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 		}
 			break;
 		default:
-			RDEBUG("** Unsupported code %i **", current->code);
+			REDEBUG("** Unsupported code %i **", current->code);
 			rad_free(&current);
 
 			return;
@@ -752,7 +761,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 		/*
 		 *	Print info about the request/response.
 		 */
-		RIDEBUG("(%" PRIu64 ") %s Id %i %s:%s:%d %s %s:%d\t+%u.%03u\t+%u.%03u", count,
+		RIDEBUG("%s Id %i %s:%s:%d %s %s:%d\t+%u.%03u\t+%u.%03u",
 			fr_packet_codes[current->code], current->id,
 			event->in->name,
 			inet_ntop(current->src_ipaddr.af, &current->src_ipaddr.ipaddr, src, sizeof(src)),
@@ -769,7 +778,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 		/*
 		 *	Print info about the request
 		 */
-		RIDEBUG("(%" PRIu64 ") %s Id %i %s:%s:%d %s %s:%d\t+%u.%03u", count,
+		RIDEBUG("%s Id %i %s:%s:%d %s %s:%d\t+%u.%03u",
 			fr_packet_codes[current->code], current->id,
 			event->in->name,
 			inet_ntop(current->src_ipaddr.af, &current->src_ipaddr.ipaddr, src, sizeof(src)),
@@ -780,17 +789,20 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			(unsigned int) elapsed.tv_sec, ((unsigned int) elapsed.tv_usec / 1000));
 	}
 
-	if (conf->print_packet && (fr_debug_flag > 1) && current->vps) {
-		pairsort(&current->vps, true);
-		vp_printlist(log_dst, current->vps);
-		pairfree(&current->vps);
-	}
-
-	if (!conf->to_stdout && (fr_debug_flag > 4)) {
+	/*
+	 *	Print out verbose HEX output
+	 */
+	if (conf->print_packet && (fr_debug_flag > 3)) {
 		rad_print_hex(current);
 	}
 
-	fflush(log_dst);
+	if (conf->print_packet && (fr_debug_flag > 1) && current->vps) {
+		pairsort(&current->vps, true);
+		vp_printlist(fr_log_fp, current->vps);
+		pairfree(&current->vps);
+	}
+
+	fflush(fr_log_fp);
 
 	/*
 	 *	If it's a request, a duplicate of the packet will of already been stored.
@@ -966,7 +978,7 @@ int main(int argc, char *argv[])
 	rs_stats_t stats;
 
 	fr_debug_flag = 1;
-	log_dst = stdout;
+	fr_log_fp = stdout;
 
 	talloc_set_log_stderr();
 
@@ -1193,7 +1205,7 @@ int main(int argc, char *argv[])
 	 *	If were writing pcap data stdout we *really* don't want to send
 	 *	logging there as well.
 	 */
- 	log_dst = conf->to_stdout ? stderr : stdout;
+ 	fr_log_fp = conf->to_stdout ? stderr : stdout;
 
 #if !defined(HAVE_PCAP_FOPEN_OFFLINE) || !defined(HAVE_PCAP_DUMP_FOPEN)
 	if (conf->from_stdin || conf->to_stdout) {
@@ -1310,7 +1322,7 @@ int main(int argc, char *argv[])
 			DEBUG2("  RADIUS secret            : [%s]", conf->radius_secret);
 		if (conf->filter_vps){
 			DEBUG2("  RADIUS filter            :");
-			vp_printlist(log_dst, conf->filter_vps);
+			vp_printlist(fr_log_fp, conf->filter_vps);
 		}
 	}
 
