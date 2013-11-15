@@ -42,6 +42,7 @@ RCSIDH(radsniff_h, "$Id$")
 #define RS_DEFAULT_TIMEOUT	5200		//!< Standard timeout of 5s + 300ms to cover network latency
 #define RS_FORCE_YIELD		1000		//!< Service another descriptor every X number of packets
 #define RS_RETRANSMIT_MAX	5		//!< Maximum number of times we expect to see a packet retransmitted
+#define RS_MAX_ATTRS		50		//!< Maximum number of attributes we can filter on.
 
 /*
  *	Logging macros
@@ -73,6 +74,8 @@ typedef enum {
 	RS_LOST
 } rs_status_t;
 
+typedef void (*rs_packet_logger_t)(uint64_t count, rs_status_t status, fr_pcap_t *handle, RADIUS_PACKET *packet,
+				   struct timeval *elapsed, struct timeval *latency, bool response, bool body);
 typedef enum {
 #ifdef HAVE_COLLECTDC_H
 	RS_STATS_OUT_COLLECTD = 1,
@@ -219,11 +222,17 @@ struct rs {
 
 	char			*pcap_filter;		//!< PCAP filter string applied to live capture devices.
 
+	char			*list_attributes;	//!< Raw attribute filter string.
+	DICT_ATTR const 	*list_da[RS_MAX_ATTRS]; //!< Output CSV with these attribute values.
+	int			list_da_num;
+
 	char const		*filter_request;	//!< Raw request filter string.
 	char const		*filter_response;	//!< Raw response filter string.
 
 	VALUE_PAIR 		*filter_vps_request;	//!< Sorted filter vps.
 	VALUE_PAIR 		*filter_vps_response;	//!< Sorted filter vps.
+
+	rs_packet_logger_t	logger;			//!< Packet logger
 
 	int			buffer_pkts;		//!< Size of the ring buffer to setup for live capture.
 	uint64_t		limit;			//!< Maximum number of packets to capture

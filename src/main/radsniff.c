@@ -128,16 +128,221 @@ static void rs_time_print(char *out, size_t len, struct timeval const *t)
 	}
 }
 
-static void rs_packet_print_sig(uint64_t count, rs_status_t status, fr_pcap_t *handle, RADIUS_PACKET *packet,
-				struct timeval *elapsed, struct timeval *latency, bool response, bool body)
+static void rs_packet_print_null(UNUSED uint64_t count, UNUSED rs_status_t status, UNUSED fr_pcap_t *handle,
+				 UNUSED RADIUS_PACKET *packet, UNUSED struct timeval *elapsed,
+				 UNUSED struct timeval *latency, UNUSED bool response, UNUSED bool body)
+{
+	return;
+}
+
+static size_t rs_prints_csv(char *out, size_t outlen, char const *in, size_t inlen)
+{
+	char const	*start = out;
+	uint8_t const	*str = (uint8_t const *) in;
+
+	if (!in) {
+		if (outlen) {
+			*out = '\0';
+		}
+
+		return 0;
+	}
+
+	if (inlen == 0) {
+		inlen = strlen(in);
+	}
+
+	while ((inlen > 0) && (outlen > 2)) {
+		/*
+		 *	Escape double quotes with... MORE DOUBLE QUOTES!
+		 */
+		if (*str == '"') {
+			*out++ = '"';
+			outlen--;
+		}
+
+		/*
+		 *	Safe chars which require no escaping
+		 */
+		if ((*str == '\r') || (*str == '\n') || ((*str >= '\x20') && (*str <= '\x7E'))) {
+			*out++ = *str++;
+			outlen--;
+			inlen--;
+
+			continue;
+		}
+
+		/*
+		 *	Everything else is dropped
+		 */
+		str++;
+		inlen--;
+	}
+	*out = '\0';
+
+	return out - start;
+}
+
+static void rs_packet_print_csv_header()
+{
+	char buffer[2048];
+	char *p = buffer;
+	int i;
+
+	ssize_t len, s = sizeof(buffer);
+
+	len = strlcpy(p, "\"Status\",\"Count\",\"Time\",\"Latency\",\"Type\",\"Interface\","
+		      "\"Src IP\",\"Src Port\",\"Dst IP\",\"Dst Port\",\"ID\",", s);
+	p += len;
+	s -= len;
+
+	if (s <= 0) return;
+
+	for (i = 0; i < conf->list_da_num; i++) {
+		char const *in;
+
+		*p++ = '"';
+		s += 1;
+		if (s <= 0) return;
+
+		for (in = conf->list_da[i]->name; *in; in++) {
+			*p++ = *in;
+			s -= len;
+			if (s <= 0) return;
+		}
+
+		*p++ = '"';
+		s += 1;
+		if (s <= 0) return;
+		*p++ = ',';
+		s += 1;
+		if (s <= 0) return;
+	}
+
+	*--p = '\0';
+
+	INFO("%s", buffer);
+}
+
+static void rs_packet_print_csv(uint64_t count, rs_status_t status, fr_pcap_t *handle, RADIUS_PACKET *packet,
+				UNUSED struct timeval *elapsed, struct timeval *latency, UNUSED bool response,
+				bool body)
+{
+	char const *status_str;
+	char buffer[2048];
+	char *p = buffer;
+
+	char src[INET6_ADDRSTRLEN];
+	char dst[INET6_ADDRSTRLEN];
+
+	ssize_t len, s = sizeof(buffer);
+
+	switch (status) {
+		case RS_NORMAL:
+			status_str = "received";
+			break;
+		case RS_LOST:
+			status_str = "lost";
+			break;
+
+		case RS_RTX:
+			status_str = "rtx";
+			break;
+
+		case RS_UNLINKED:
+			status_str = "noreq";
+			break;
+
+		case RS_REUSED:
+			status_str = "reused";
+			break;
+
+		case RS_ERROR:
+			status_str = "error";
+			break;
+	}
+
+	inet_ntop(packet->src_ipaddr.af, &packet->src_ipaddr.ipaddr, src, sizeof(src));
+	inet_ntop(packet->dst_ipaddr.af, &packet->dst_ipaddr.ipaddr, dst, sizeof(dst));
+
+	len = snprintf(p, s, "%s,%" PRIu64 ",%s,", status_str, count, timestr);
+	p += len;
+	s -= len;
+
+	if (s <= 0) return;
+
+	if (latency) {
+		len = snprintf(p, s, "%u.%03u,",
+			       (unsigned int) latency->tv_sec, ((unsigned int) latency->tv_usec / 1000));
+		p += len;
+		s -= len;
+	} else {
+		*p = ',';
+		p += 1;
+		s -= 1;
+	}
+
+	if (s <= 0) return;
+
+	/* Status, Type, Interface, Src, Src port, Dst, Dst port, ID */
+	len = snprintf(p, s, "%s,%s,%s,%i,%s,%i,%i,", fr_packet_codes[packet->code], handle->name,
+		       src, packet->src_port, dst, packet->dst_port, packet->id);
+	p += len;
+	s -= len;
+
+	if (s <= 0) return;
+
+	if (body) {
+		int i;
+		VALUE_PAIR *vp;
+
+		for (i = 0; i < conf->list_da_num; i++) {
+			vp = pairfind_da(packet->vps, conf->list_da[i], TAG_ANY);
+			if (vp && (vp->length > 0)) {
+				if (conf->list_da[i]->type == PW_TYPE_STRING) {
+					*p++ = '"';
+					s--;
+					if (s <= 0) return;
+
+					len = rs_prints_csv(p, s, vp->vp_strvalue, vp->length);
+					p += len;
+					s -= len;
+					if (s <= 0) return;
+
+					*p++ = '"';
+					s--;
+					if (s <= 0) return;
+				} else {
+					len = vp_prints_value(p, s, vp, 0);
+					p += len;
+					s -= len;
+					if (s <= 0) return;
+				}
+			}
+
+			*p++ = ',';
+			s -= 1;
+			if (s <= 0) return;
+		}
+	} else {
+		s -= conf->list_da_num;
+		if (s <= 0) return;
+
+		memset(p, ',', conf->list_da_num);
+		p += conf->list_da_num;
+	}
+
+	*--p = '\0';
+
+	INFO("%s", buffer);
+}
+
+static void rs_packet_print_fancy(uint64_t count, rs_status_t status, fr_pcap_t *handle, RADIUS_PACKET *packet,
+				  struct timeval *elapsed, struct timeval *latency, bool response, bool body)
 {
 	char const *status_str;
 	char src[INET6_ADDRSTRLEN];
 	char dst[INET6_ADDRSTRLEN];
-
-	if (!RIDEBUG_ENABLED()) {
-		return;
-	}
 
 	switch (status) {
 		case RS_NORMAL:
@@ -152,7 +357,7 @@ static void rs_packet_print_sig(uint64_t count, rs_status_t status, fr_pcap_t *h
 			break;
 
 		case RS_UNLINKED:
-			status_str = "** UNLINKED **";
+			status_str = "** NO REQUEST **";
 			break;
 
 		case RS_REUSED:
@@ -467,8 +672,7 @@ static void rs_packet_cleanup(void *ctx)
 	if (!request->linked && !request->forced_cleanup) {
 		request->stats_req->interval.lost_total++;
 
-		rs_packet_print_sig(request->id, RS_LOST, request->in, packet,
-				    NULL, NULL, false, conf->filter_vps_response);
+		conf->logger(request->id, RS_LOST, request->in, packet, NULL, NULL, false, conf->filter_vps_response);
 	}
 
 	/*
@@ -622,7 +826,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 
 	if (!rad_packet_ok(current, 0, &reason)) {
 		REDEBUG("%s", fr_strerror());
-		rs_packet_print_sig(count, RS_ERROR, event->in, current, &elapsed, NULL, false, false);
+		conf->logger(count, RS_ERROR, event->in, current, &elapsed, NULL, false, false);
 		rad_free(&current);
 
 		return;
@@ -888,18 +1092,16 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 		if (conf->filter_vps_response && RIDEBUG_ENABLED()) {
 			rs_time_print(timestr, sizeof(timestr), &original->packet->timestamp);
 			rs_tv_sub(&original->packet->timestamp, &start_pcap, &elapsed);
-			rs_packet_print_sig(original->id, 0, original->in,
-					    original->packet, &elapsed, NULL, false, true);
+			conf->logger(original->id, 0, original->in, original->packet, &elapsed, NULL, false, true);
 			rs_tv_sub(&header->ts, &start_pcap, &elapsed);
 			rs_time_print(timestr, sizeof(timestr), &header->ts);
 		}
-		rs_packet_print_sig(count, status, event->in, current, &elapsed, &latency, response, true);
+		conf->logger(count, status, event->in, current, &elapsed, &latency, response, true);
 	/*
 	 *	It's the original request - if were filtering on responses, print out the minimum data
 	 */
 	} else {
-		rs_packet_print_sig(count, status, event->in, current, &elapsed, NULL,
-				    response, !conf->filter_vps_response);
+		conf->logger(count, status, event->in, current, &elapsed, NULL, response, !conf->filter_vps_response);
 	}
 
 	fflush(fr_log_fp);
@@ -962,6 +1164,9 @@ static void rs_got_packet(UNUSED fr_event_list_t *el, int fd, void *ctx)
 			}
 
 			do {
+				if (RIDEBUG_ENABLED()) {
+					rs_time_print(timestr, sizeof(timestr), &header->ts);
+				}
 				now = header->ts;
 			} while (fr_event_run(el, &now) == 1);
 			count++;
@@ -1025,6 +1230,36 @@ static int rs_packet_cmp(rs_request_t const *a, rs_request_t const *b)
 	return fr_packet_cmp(a->packet, b->packet);
 }
 
+static int rs_build_dict_list(DICT_ATTR const **out, size_t len, char *list)
+{
+	size_t i = 0;
+	char *p, *tok;
+
+	p = list;
+	while ((tok = strsep(&p, "\t ,")) != NULL) {
+		DICT_ATTR const *da;
+		if ((*tok == '\t') || (*tok == ' ') || (*tok == '\0')) {
+			continue;
+		}
+
+		if (i == len) {
+			ERROR("Too many attributes, maximum allowed is %zu", len);
+			return -1;
+		}
+
+		da = dict_attrbyname(tok);
+		if (!da) {
+			ERROR("Error parsing attribute name \"%s\"", tok);
+			return -1;
+		}
+
+		out[i] = da;
+		i++;
+	}
+
+	return i;
+}
+
 static int rs_build_filter(VALUE_PAIR **out, char const *filter)
 {
 	vp_cursor_t cursor;
@@ -1067,29 +1302,30 @@ static void NEVER_RETURNS usage(int status)
 	FILE *output = status ? stderr : stdout;
 	fprintf(output, "Usage: radsniff [options][stats options]\n");
 	fprintf(output, "options:\n");
-	fprintf(output, "  -c <count>      Number of packets to capture.\n");
-	fprintf(output, "  -d <directory>  Set dictionary directory.\n");
-	fprintf(output, "  -F              Filter PCAP file from stdin to stdout.\n");
-	fprintf(output, "  -f <filter>     PCAP filter (default is 'udp port <port> or <port + 1> or 3799')\n");
-	fprintf(output, "  -h              This help message.\n");
-	fprintf(output, "  -i <interface>  Capture packets from interface (defaults to all if supported).\n");
-	fprintf(output, "  -I <file>       Read packets from file (overrides input of -F).\n");
-	fprintf(output, "  -m              Don't put interface(s) into promiscuous mode.\n");
-	fprintf(output, "  -p <port>       Filter packets by port (default is 1812).\n");
-	fprintf(output, "  -q              Print less debugging information.\n");
-	fprintf(output, "  -r <filter>     RADIUS attribute request filter.\n");
-	fprintf(output, "  -R <filter>     RADIUS attribute response filter.\n");
-	fprintf(output, "  -s <secret>     RADIUS secret.\n");
-	fprintf(output, "  -v              Show program version information.\n");
-	fprintf(output, "  -w <file>       Write output packets to file (overrides output of -F).\n");
-	fprintf(output, "  -x              Print more debugging information (defaults to -xx).\n");
+	fprintf(output, "  -c <count>         Number of packets to capture.\n");
+	fprintf(output, "  -d <directory>     Set dictionary directory.\n");
+	fprintf(output, "  -F                 Filter PCAP file from stdin to stdout.\n");
+	fprintf(output, "  -f <filter>        PCAP filter (default is 'udp port <port> or <port + 1> or 3799')\n");
+	fprintf(output, "  -h                 This help message.\n");
+	fprintf(output, "  -i <interface>     Capture packets from interface (defaults to all if supported).\n");
+	fprintf(output, "  -I <file>          Read packets from file (overrides input of -F).\n");
+	fprintf(output, "  -l <attr>,[<attr>] Output packet sig and a list of attributes.\n");
+	fprintf(output, "  -m                 Don't put interface(s) into promiscuous mode.\n");
+	fprintf(output, "  -p <port>          Filter packets by port (default is 1812).\n");
+	fprintf(output, "  -q                 Print less debugging information.\n");
+	fprintf(output, "  -r <filter>        RADIUS attribute request filter.\n");
+	fprintf(output, "  -R <filter>        RADIUS attribute response filter.\n");
+	fprintf(output, "  -s <secret>        RADIUS secret.\n");
+	fprintf(output, "  -v                 Show program version information.\n");
+	fprintf(output, "  -w <file>          Write output packets to file (overrides output of -F).\n");
+	fprintf(output, "  -x                 Print more debugging information (defaults to -xx).\n");
 	fprintf(output, "stats options:\n");
-	fprintf(output, "  -W <interval>   Periodically write out statistics every <interval> seconds.\n");
-	fprintf(output, "  -T <timeout>    How many milliseconds before the request is counted as lost "
+	fprintf(output, "  -W <interval>      Periodically write out statistics every <interval> seconds.\n");
+	fprintf(output, "  -T <timeout>       How many milliseconds before the request is counted as lost "
 		"(defaults to %i).\n", RS_DEFAULT_TIMEOUT);
 #ifdef HAVE_COLLECTDC_H
-	fprintf(output, "  -P <prefix>     collectd plugin instance name.\n");
-	fprintf(output, "  -O <server>     Write statistics to this collectd server.\n");
+	fprintf(output, "  -P <prefix>        collectd plugin instance name.\n");
+	fprintf(output, "  -O <server>        Write statistics to this collectd server.\n");
 #endif
 	exit(status);
 }
@@ -1148,11 +1384,12 @@ int main(int argc, char *argv[])
 	conf->stats.prefix = RS_DEFAULT_PREFIX;
 #endif
 	conf->radius_secret = RS_DEFAULT_SECRET;
+	conf->logger = rs_packet_print_null;
 
 	/*
 	 *  Get options
 	 */
-	while ((opt = getopt(argc, argv, "b:c:d:DFf:hi:I:mp:qr:R:s:vw:xXW:T:P:O:")) != EOF) {
+	while ((opt = getopt(argc, argv, "b:c:d:DFf:hi:I:l:mp:qr:R:s:vw:xXW:T:P:O:")) != EOF) {
 		switch (opt) {
 		/* super secret option */
 		case 'b':
@@ -1225,6 +1462,11 @@ int main(int argc, char *argv[])
 			in_head = &(*in_head)->next;
 			conf->from_file = true;
 			break;
+
+		case 'l':
+			conf->list_attributes = optarg;
+			break;
+
 		case 'm':
 			conf->promiscuous = false;
 			break;
@@ -1352,6 +1594,12 @@ int main(int argc, char *argv[])
 	 */
  	fr_log_fp = conf->to_stdout ? stderr : stdout;
 
+	if (conf->list_attributes) {
+		conf->logger = rs_packet_print_csv;
+	} else if (fr_debug_flag > 0) {
+		conf->logger = rs_packet_print_fancy;
+	}
+
 #if !defined(HAVE_PCAP_FOPEN_OFFLINE) || !defined(HAVE_PCAP_DUMP_FOPEN)
 	if (conf->from_stdin || conf->to_stdout) {
 		ERROR("PCAP streams not supported");
@@ -1371,6 +1619,15 @@ int main(int argc, char *argv[])
 		goto finish;
 	}
 	fr_strerror();	/* Clear out any non-fatal errors */
+
+	if (conf->list_attributes) {
+		conf->list_da_num = rs_build_dict_list(conf->list_da, sizeof(conf->list_da) / sizeof(*conf->list_da),
+				       		       conf->list_attributes);
+		if (conf->list_da_num < 0) {
+			usage(64);
+		}
+		rs_packet_print_csv_header();
+	}
 
 	if (conf->filter_request) {
 		if (rs_build_filter(&conf->filter_vps_request, conf->filter_request) < 0) {
