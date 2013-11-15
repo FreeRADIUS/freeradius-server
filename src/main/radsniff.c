@@ -183,7 +183,7 @@ static size_t rs_prints_csv(char *out, size_t outlen, char const *in, size_t inl
 	return out - start;
 }
 
-static void rs_packet_print_csv_header()
+static void rs_packet_print_csv_header(void)
 {
 	char buffer[2048];
 	char *p = buffer;
