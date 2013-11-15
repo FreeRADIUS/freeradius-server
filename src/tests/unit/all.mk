@@ -19,7 +19,7 @@ $(BUILD_DIR)/tests/unit:
 #
 #  Files in the output dir depend on the unit tests
 #
-$(BUILD_DIR)/tests/unit/%: $(DIR)/% ./$(BUILD_DIR)/bin/radattr | $(BUILD_DIR)/tests/unit
+$(BUILD_DIR)/tests/unit/%: $(DIR)/% ./$(BUILD_DIR)/bin/local/radattr | $(BUILD_DIR)/tests/unit
 	@echo UNIT-TEST $(notdir $@)
 	@$(JLIBTOOL) --quiet --mode=execute ./$(BUILD_DIR)/bin/local/radattr -d $(top_srcdir)/share $<
 	@touch $@
