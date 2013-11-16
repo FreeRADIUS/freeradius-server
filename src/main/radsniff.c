@@ -1386,6 +1386,10 @@ int main(int argc, char *argv[])
 	conf->radius_secret = RS_DEFAULT_SECRET;
 	conf->logger = rs_packet_print_null;
 
+#ifdef HAVE_COLLECTDC_H
+	conf->stats.prefix = RS_DEFAULT_PREFIX;
+#endif
+
 	/*
 	 *  Get options
 	 */
