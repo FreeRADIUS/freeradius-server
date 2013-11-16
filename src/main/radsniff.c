@@ -28,6 +28,7 @@ RCSID("$Id$")
 #define _LIBRADIUS 1
 #include <assert.h>
 #include <signal.h>
+#include <time.h>
 #include <freeradius-devel/libradius.h>
 #include <freeradius-devel/event.h>
 
@@ -42,6 +43,7 @@ RCSID("$Id$")
 static rs_t *conf;
 struct timeval start_pcap = {0, 0};
 static char timestr[50];
+
 static rbtree_t *request_tree = NULL;
 static fr_event_list_t *events;
 static bool cleanup;
@@ -341,12 +343,17 @@ static void rs_packet_print_fancy(uint64_t count, rs_status_t status, fr_pcap_t 
 				  struct timeval *elapsed, struct timeval *latency, bool response, bool body)
 {
 	char const *status_str;
+	char buffer[2048];
+	char *p = buffer;
+
 	char src[INET6_ADDRSTRLEN];
 	char dst[INET6_ADDRSTRLEN];
 
+	ssize_t len, s = sizeof(buffer);
+
 	switch (status) {
 		case RS_NORMAL:
-			status_str = "";
+			status_str = NULL;
 			break;
 		case RS_LOST:
 			status_str = "** LOST **";
@@ -372,42 +379,44 @@ static void rs_packet_print_fancy(uint64_t count, rs_status_t status, fr_pcap_t 
 	inet_ntop(packet->src_ipaddr.af, &packet->src_ipaddr.ipaddr, src, sizeof(src));
 	inet_ntop(packet->dst_ipaddr.af, &packet->dst_ipaddr.ipaddr, dst, sizeof(dst));
 
-	if (latency) {
-		RIDEBUG("%s %s Id %i %s:%s:%d %s %s:%d\t+%u.%03u +%u.%03u",
-			status_str,
-			fr_packet_codes[packet->code], packet->id,
-			handle->name,
-			response ? src : dst,
-			response ? packet->src_port : packet->dst_port,
-			response ? "<-" : "->",
-			response ? dst : src,
-			response ? packet->dst_port : packet->src_port,
-			(unsigned int) elapsed->tv_sec, ((unsigned int) elapsed->tv_usec / 1000),
-			(unsigned int) latency->tv_sec, ((unsigned int) latency->tv_usec / 1000));
-
-	} else if (elapsed) {
-		RIDEBUG("%s %s Id %i %s:%s:%d %s %s:%d\t+%u.%03u",
-			status_str,
-			fr_packet_codes[packet->code], packet->id,
-			handle->name,
-			response ? src : dst,
-			response ? packet->src_port : packet->dst_port,
-			response ? "<-" : "->",
-			response ? dst : src,
-			response ? packet->dst_port : packet->src_port,
-			(unsigned int) elapsed->tv_sec, ((unsigned int) elapsed->tv_usec / 1000));
-
-	} else {
-		RIDEBUG("%s %s Id %i %s:%s:%d %s %s:%d",
-			status_str,
-			fr_packet_codes[packet->code], packet->id,
-			handle->name,
-			response ? src : dst,
-			response ? packet->src_port : packet->dst_port,
-			response ? "<-" : "->",
-			response ? dst : src,
-			response ? packet->dst_port : packet->src_port);
+	if (status_str) {
+		len = snprintf(p, s, "%s ", status_str);
+		p += len;
+		s -= len;
+		if (s <= 0) return;
 	}
+
+	len = snprintf(p, s, "%s Id %i %s:%s:%d %s %s:%d ",
+   		       fr_packet_codes[packet->code], packet->id,
+		       handle->name,
+		       response ? src : dst,
+		       response ? packet->src_port : packet->dst_port,
+		       response ? "<-" : "->",
+		       response ? dst : src,
+		       response ? packet->dst_port : packet->src_port);
+	p += len;
+	s -= len;
+	if (s <= 0) return;
+
+	if (elapsed) {
+		len = snprintf(p, s, "+%u.%03u ",
+			       (unsigned int) elapsed->tv_sec, ((unsigned int) elapsed->tv_usec / 1000));
+		p += len;
+		s -= len;
+		if (s <= 0) return;
+	}
+
+	if (latency) {
+		len = snprintf(p, s, "+%u.%03u ",
+			       (unsigned int) latency->tv_sec, ((unsigned int) latency->tv_usec / 1000));
+		p += len;
+		s -= len;
+		if (s <= 0) return;
+	}
+
+	*--p = '\0';
+
+	RIDEBUG("%s", buffer);
 
 	if (body) {
 		/*
@@ -745,6 +754,10 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 
 	if (!start_pcap.tv_sec) {
 		start_pcap = header->ts;
+	}
+
+	if (RIDEBUG_ENABLED()) {
+		rs_time_print(timestr, sizeof(timestr), &header->ts);
 	}
 
 	len = fr_pcap_link_layer_offset(data, header->caplen, event->in->link_type);
@@ -1210,6 +1223,10 @@ static void _rs_event_status(struct timeval *wake)
 {
 	if (wake && ((wake->tv_sec != 0) || (wake->tv_usec >= 100000))) {
 		DEBUG2("Waking up in %d.%01u seconds.", (int) wake->tv_sec, (unsigned int) wake->tv_usec / 100000);
+
+		if (RIDEBUG_ENABLED()) {
+			rs_time_print(timestr, sizeof(timestr), wake);
+		}
 	}
 }
 
