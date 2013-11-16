@@ -380,17 +380,22 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 	if ((map->dst->type == VPT_TYPE_ATTR) &&
 	    (map->src->type != VPT_TYPE_REGEX) &&
 	    (c->pass2_fixup == PASS2_PAIRCOMPARE)) {
-		VALUE_PAIR *rhs_vp;
+		VALUE_PAIR *lhs_vp;
 
 		EVAL_DEBUG("virtual ATTR to DATA");
 
-		rcode = get_cast_vp(&rhs_vp, request, map->src, map->dst->da);
+		rcode = get_cast_vp(&lhs_vp, request, map->src, map->dst->da);
 		if (rcode < 0) {
 			return rcode;
 		}
-		rad_assert(rhs_vp);
+		rad_assert(lhs_vp);
 
-		if (paircompare(request, request->packet->vps, rhs_vp, NULL) == 0) {
+		/*
+		 *	paircompare requires the operator be set for the
+		 *	check attribute.
+		 */
+		lhs_vp->op = map->op;
+		if (paircompare(request, request->packet->vps, lhs_vp, NULL) == 0) {
 			return true;
 		}
 		return false;
