@@ -380,6 +380,7 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 	if ((map->dst->type == VPT_TYPE_ATTR) &&
 	    (map->src->type != VPT_TYPE_REGEX) &&
 	    (c->pass2_fixup == PASS2_PAIRCOMPARE)) {
+	    	int ret;
 		VALUE_PAIR *lhs_vp;
 
 		EVAL_DEBUG("virtual ATTR to DATA");
@@ -395,7 +396,9 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 		 *	check attribute.
 		 */
 		lhs_vp->op = map->op;
-		if (paircompare(request, request->packet->vps, lhs_vp, NULL) == 0) {
+		ret = paircompare(request, request->packet->vps, lhs_vp, NULL);
+		talloc_free(lhs_vp);
+		if (ret == 0) {
 			return true;
 		}
 		return false;
