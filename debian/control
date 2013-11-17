@@ -1,10 +1,11 @@
 Source: freeradius
-Build-Depends: debhelper (>= 6.0.7),
+Build-Depends: debhelper (>= 9),
  quilt,
  dpkg-dev (>= 1.13.19),
  autotools-dev,
  libpam0g-dev,
  libmysqlclient-dev,
+ libsqlite3-dev,
  libgdbm-dev,
  libldap2-dev,
  libsasl2-dev,
@@ -12,14 +13,12 @@ Build-Depends: debhelper (>= 6.0.7),
  libkrb5-dev,
  libperl-dev,
  libpcap-dev,
-  python-dev,
+ python-dev,
  libreadline-dev,
- libsnmp-dev,
  libpq-dev,
  libssl-dev,
  libtalloc-dev,
- libyubikey-dev,
- libsqlite3-dev
+ libyubikey-dev
 Section: net
 Priority: optional
 Maintainer: Josip Rodin <joy-packages@debian.org>
@@ -35,11 +34,11 @@ Recommends: freeradius-utils
 Suggests: freeradius-ldap, freeradius-postgresql, freeradius-mysql, freeradius-krb5
 Description: a high-performance and highly configurable RADIUS server
  FreeRADIUS is a high-performance RADIUS server with support for:
-  - many vendor-specific attributes
-  - proxying and replicating requests by any criteria
-  - authentication on system passwd, SQL, Kerberos, LDAP, users file, or PAM
-  - multiple DEFAULT configurations
-  - regexp matching in string attributes
+  - Many vendor-specific attributes.
+  - Proxying and replicating requests by any criteria.
+  - Authentication on system passwd, SQL, Kerberos, LDAP, users file, or PAM.
+  - Multiple DEFAULT configurations.
+  - Regexp matching in string attributes.
  and lots more.
 
 Package: freeradius-common
