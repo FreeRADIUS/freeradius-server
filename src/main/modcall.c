@@ -613,7 +613,7 @@ redo:
 	if (c->type == MOD_FOREACH) {
 		int i, foreach_depth = -1;
 		VALUE_PAIR *vp;
-		modcall_stack_entry_t *next;
+		modcall_stack_entry_t *next = NULL;
 		vp_cursor_t cursor;
 		modgroup *g = mod_callabletogroup(c);
 
@@ -939,7 +939,7 @@ calculate_result:
 	       fr_int2str(mod_rcode_table, entry->result, "<invalid>"),
 	       entry->priority);
 #endif
-	       
+
 
 	rad_assert(result != RLM_MODULE_UNKNOWN);
 
