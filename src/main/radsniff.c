@@ -352,6 +352,7 @@ static void rs_packet_print_fancy(uint64_t count, rs_status_t status, fr_pcap_t 
 	ssize_t len, s = sizeof(buffer);
 
 	switch (status) {
+		default:
 		case RS_NORMAL:
 			status_str = NULL;
 			break;
