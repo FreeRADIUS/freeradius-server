@@ -155,7 +155,7 @@ install-arch: build-arch-stamp
 	dh_strip -a --dbg-package=freeradius-dbg
 
 	dh_makeshlibs -a -n
-	dh_shlibdeps
+	dh_shlibdeps -l$(freeradius_dir)/usr/lib/freeradius
 
 binary-common:
 	dh_testdir
