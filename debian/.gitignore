@@ -1,0 +1,14 @@
+freeradius-common
+freeradius-config
+freeradius-dbg
+freeradius-iodbc
+freeradius-krb5
+freeradius-ldap
+freeradius-mysql
+freeradius-postgresql
+freeradius-utils
+freeradius
+libfreeradius-dev
+libfreeradius3
+stamp-patched
+tmp

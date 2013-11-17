@@ -89,6 +89,11 @@ endif
 		--without-rlm_sql_oracle \
 		--without-rlm_sql_unixodbc
 
+	rm config.guess
+	mv config.guess.dist config.guess
+	rm config.sub
+	mv config.sub.dist config.sub
+
 #Architecture 
 build: patch build-arch build-indep
 
