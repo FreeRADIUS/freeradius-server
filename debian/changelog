@@ -1,5 +1,5 @@
-freeradius (3.1.0+git) unstable; urgency=medium
+freeradius (3.1.0+git) UNRELEASED; urgency=low
 
-  * New upstream version.
+  * Development releases for FreeRADIUS master.
 
- -- Alan DeKok <aland@freeradius.org>  Mon, 07 Oct 2013 15:48:14 -0400
+ -- Arran Cudbard-Bell <a.cudbardb@freeradius.org>  Sun, 17 Nov 2013 11:30:15 +0000
