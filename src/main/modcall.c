@@ -601,7 +601,7 @@ redo:
 	if (c->type == MOD_FOREACH) {
 		int i, foreach_depth = -1;
 		VALUE_PAIR *vp;
-		modcall_stack_entry_t *next;
+		modcall_stack_entry_t *next = NULL;
 		vp_cursor_t cursor;
 		modgroup *g = mod_callabletogroup(c);
 
