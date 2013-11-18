@@ -920,20 +920,20 @@ static int load_dh_params(SSL_CTX *ctx, char *file)
 	BIO *bio;
 
 	if ((bio = BIO_new_file(file, "r")) == NULL) {
-		ERROR("rlm_eap_tls: Unable to open DH file - %s", file);
+		ERROR("tls: Unable to open DH file - %s", file);
 		return -1;
 	}
 
 	dh = PEM_read_bio_DHparams(bio, NULL, NULL, NULL);
 	BIO_free(bio);
 	if (!dh) {
-		WDEBUG2("rlm_eap_tls: Unable to set DH parameters.  DH cipher suites may not work!");
+		WDEBUG2("tls: Unable to set DH parameters.  DH cipher suites may not work!");
 		WDEBUG2("Fix this by running the OpenSSL command listed in eap.conf");
 		return 0;
 	}
 
 	if (SSL_CTX_set_tmp_dh(ctx, dh) < 0) {
-		ERROR("rlm_eap_tls: Unable to set DH parameters");
+		ERROR("tls: Unable to set DH parameters");
 		DH_free(dh);
 		return -1;
 	}
@@ -953,7 +953,7 @@ static int generate_eph_rsa_key(SSL_CTX *ctx)
 	rsa = RSA_generate_key(512, RSA_F4, NULL, NULL);
 
 	if (!SSL_CTX_set_tmp_rsa(ctx, rsa)) {
-		ERROR("rlm_eap_tls: Couldn't set ephemeral RSA key");
+		ERROR("tls: Couldn't set ephemeral RSA key");
 		return -1;
 	}
 
@@ -1723,7 +1723,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 		 */
 		if (conf->check_cert_issuer &&
 		    (strcmp(issuer, conf->check_cert_issuer) != 0)) {
-			AUTH("rlm_eap_tls: Certificate issuer (%s) does not match specified value (%s)!", issuer, conf->check_cert_issuer);
+			AUTH("tls: Certificate issuer (%s) does not match specified value (%s)!", issuer, conf->check_cert_issuer);
 			my_ok = 0;
 		}
 
@@ -1739,7 +1739,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 			} else {
 				RDEBUG2("checking certificate CN (%s) with xlat'ed value (%s)", common_name, cn_str);
 				if (strcmp(cn_str, common_name) != 0) {
-					AUTH("rlm_eap_tls: Certificate CN (%s) does not match specified value (%s)!", common_name, cn_str);
+					AUTH("tls: Certificate CN (%s) does not match specified value (%s)!", common_name, cn_str);
 					my_ok = 0;
 				}
 			}
@@ -1793,7 +1793,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 			RDEBUG("Verifying client certificate: %s", conf->verify_client_cert_cmd);
 			if (radius_exec_program(request, conf->verify_client_cert_cmd, true, true, NULL, 0,
 						EXEC_TIMEOUT, request->packet->vps, NULL) != 0) {
-				AUTH("rlm_eap_tls: Certificate CN (%s) fails external verification!", common_name);
+				AUTH("tls: Certificate CN (%s) fails external verification!", common_name);
 				my_ok = 0;
 			} else {
 				RDEBUG("Client certificate CN %s passed external validation", common_name);
@@ -1838,8 +1838,8 @@ static X509_STORE *init_revocation_store(fr_tls_server_conf_t *conf)
 	/* Load the CAs we trust */
 	if (conf->ca_file || conf->ca_path)
 		if(!X509_STORE_load_locations(store, conf->ca_file, conf->ca_path)) {
-			ERROR("rlm_eap: X509_STORE error %s", ERR_error_string(ERR_get_error(), NULL));
-			ERROR("rlm_eap_tls: Error reading Trusted root CA list %s",conf->ca_file );
+			ERROR("tls: X509_STORE error %s", ERR_error_string(ERR_get_error(), NULL));
+			ERROR("tls: Error reading Trusted root CA list %s",conf->ca_file );
 			return NULL;
 		}
 
@@ -1973,7 +1973,7 @@ static SSL_CTX *init_tls_ctx(fr_tls_server_conf_t *conf, int client)
 					 "/usr/sbin/certadmin --get-private-key-passphrase \"%s\"",
 					 conf->private_key_file);
 
-			DEBUG2("rlm_eap: Getting private key passphrase using command \"%s\"", cmd);
+			DEBUG2("tls: Getting private key passphrase using command \"%s\"", cmd);
 
 			FILE* cmd_pipe = popen(cmd, "r");
 			if (!cmd_pipe) {
@@ -1996,7 +1996,7 @@ static SSL_CTX *init_tls_ctx(fr_tls_server_conf_t *conf, int client)
 
 			/* Get rid of newline at end of password. */
 			conf->private_key_password[strlen(conf->private_key_password) - 1] = '\0';
-			DEBUG2("rlm_eap:  Password from command = \"%s\"", conf->private_key_password);
+			DEBUG2("tls:  Password from command = \"%s\"", conf->private_key_password);
 		}
 #endif
 		SSL_CTX_set_default_passwd_cb_userdata(ctx, conf->private_key_password);
@@ -2080,8 +2080,8 @@ static SSL_CTX *init_tls_ctx(fr_tls_server_conf_t *conf, int client)
 load_ca:
 	if (conf->ca_file || conf->ca_path) {
 		if (!SSL_CTX_load_verify_locations(ctx, conf->ca_file, conf->ca_path)) {
-			ERROR("rlm_eap: SSL error %s", ERR_error_string(ERR_get_error(), NULL));
-			ERROR("rlm_eap_tls: Error reading Trusted root CA list %s",conf->ca_file );
+			ERROR("tls: SSL error %s", ERR_error_string(ERR_get_error(), NULL));
+			ERROR("tls: Error reading Trusted root CA list %s",conf->ca_file );
 			return NULL;
 		}
 	}
@@ -2186,8 +2186,8 @@ post_ca:
 	if (conf->check_crl) {
 	  certstore = SSL_CTX_get_cert_store(ctx);
 	  if (certstore == NULL) {
-	    ERROR("rlm_eap: SSL error %s", ERR_error_string(ERR_get_error(), NULL));
-	    ERROR("rlm_eap_tls: Error reading Certificate Store");
+	    ERROR("tls: SSL error %s", ERR_error_string(ERR_get_error(), NULL));
+	    ERROR("tls: Error reading Certificate Store");
 	    return NULL;
 	  }
 	  X509_STORE_set_flags(certstore, X509_V_FLAG_CRL_CHECK);
@@ -2210,8 +2210,8 @@ post_ca:
 	/* Load randomness */
 	if (conf->random_file) {
 		if (!(RAND_load_file(conf->random_file, 1024*1024))) {
-			ERROR("rlm_eap: SSL error %s", ERR_error_string(ERR_get_error(), NULL));
-			ERROR("rlm_eap_tls: Error loading randomness");
+			ERROR("tls: SSL error %s", ERR_error_string(ERR_get_error(), NULL));
+			ERROR("tls: Error loading randomness");
 			return NULL;
 		}
 	}
@@ -2221,7 +2221,7 @@ post_ca:
 	 */
 	if (conf->cipher_list) {
 		if (!SSL_CTX_set_cipher_list(ctx, conf->cipher_list)) {
-			ERROR("rlm_eap_tls: Error setting cipher list");
+			ERROR("tls: Error setting cipher list");
 			return NULL;
 		}
 	}
