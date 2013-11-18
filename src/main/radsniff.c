@@ -719,10 +719,11 @@ static int _request_free(rs_request_t *request)
 	uint64_t count = request->id;
 
 	if (!cleanup && (request->in->type == PCAP_INTERFACE_IN)) {
-		RDEBUG("Cleaning up request packet ID %i", request->packet->id);
+		RDEBUG("Cleaning up request packet ID %i", request->expect->id);
 	}
 
 	rad_free(&request->packet);
+	rad_free(&request->expect);
 	rad_free(&request->linked);
 
 	return 0;
@@ -862,7 +863,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			rs_tv_add_ms(&header->ts, conf->stats.timeout, &when);
 
 			/* look for a matching request and use it for decoding */
-			search.packet = current;
+			search.expect = current;
 			original = rbtree_finddata(request_tree, &search);
 
 			/*
@@ -873,7 +874,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 				FILE *log_fp = fr_log_fp;
 
 				fr_log_fp = NULL;
-				if (rad_decode(current, original ? original->packet : NULL,
+				if (rad_decode(current, original ? original->expect : NULL,
 					       conf->radius_secret) != 0) {
 					rad_free(&current);
 					REDEBUG("Failed decoding");
@@ -994,14 +995,14 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			/*
 			 *	save the request for later matching
 			 */
-			search.packet = rad_alloc_reply(conf, current);
-			if (!search.packet) {
+			search.expect = rad_alloc_reply(conf, current);
+			if (!search.expect) {
 				REDEBUG("Failed allocating memory to hold expected reply");
 				rs_tv_add_ms(&header->ts, conf->stats.timeout, &stats->quiet);
 				rad_free(&current);
 				return;
 			}
-			search.packet->code = current->code;
+			search.expect->code = current->code;
 
 			rs_tv_add_ms(&header->ts, conf->stats.timeout, &when);
 
@@ -1010,8 +1011,8 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			/*
 			 *	Upstream device re-used src/dst ip/port id...
 			 */
-			if (original && memcmp(original->packet->vector, current->vector,
-					       sizeof(original->packet->vector) != 0)) {
+			if (original && memcmp(original->expect->vector, current->vector,
+					       sizeof(original->expect->vector) != 0)) {
 				/*
 				 *	...before the request timed out (which may be an issue)
 				 *	and before we saw a response (which may be a bigger issue).
@@ -1032,12 +1033,13 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 				original->rt_req++;
 
 				rad_free(&original->packet);
-
-				original->packet = talloc_steal(original, search.packet);
-				original->packet->vps = pairsteal(original->packet, current->vps);
-
+				rad_free(&original->expect);
 				/* We may of seen the response, but it may of been lost upstream */
 				rad_free(&original->linked);
+
+				original->packet = talloc_steal(original, current);
+				original->expect = talloc_steal(original, search.expect);
+
 				fr_event_delete(event->list, &original->event);
 			} else {
 				original = talloc_zero(conf, rs_request_t);
@@ -1047,14 +1049,14 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 				original->in = event->in;
 				original->stats_req = &stats->exchange[current->code];
 
-				original->packet = talloc_steal(original, search.packet);
-				original->packet->vps = pairsteal(original->packet, current->vps);
+				original->packet = talloc_steal(original, current);
+				original->expect = talloc_steal(original, search.expect);
 
 				rbtree_insert(request_tree, original);
 			}
 
 			/* update the timestamp in either case */
-			original->packet->timestamp = header->ts;
+			original->expect->timestamp = header->ts;
 
 			if (!fr_event_insert(event->list, rs_packet_cleanup, original, &when, &original->event)) {
 				REDEBUG("Failed inserting new event");
@@ -1086,7 +1088,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 	 *	It's a linked response
 	 */
 	if (original && original->linked) {
-		rs_tv_sub(&current->timestamp, &original->packet->timestamp, &latency);
+		rs_tv_sub(&current->timestamp, &original->expect->timestamp, &latency);
 
 		/*
 		 *	Update stats for both the request and response types.
@@ -1098,7 +1100,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 		 *	It also justifies allocating 255 instances rs_latency_t.
 		 */
 		rs_stats_update_latency(&stats->exchange[current->code], &latency);
-		rs_stats_update_latency(&stats->exchange[original->packet->code], &latency);
+		rs_stats_update_latency(&stats->exchange[original->expect->code], &latency);
 
 		/*
 		 *	Were filtering on response, now print out the full data from the request
@@ -1121,14 +1123,9 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 	fflush(fr_log_fp);
 
 	/*
-	 *	If it's a request, a duplicate of the packet will of already been stored.
 	 *	If it's a unlinked response, we need to free it explicitly, as it will
 	 *	not be done by the event queue.
 	 */
-	if (!response) {
-		current->vps = NULL;
-		rad_free(&current);
-	}
 	if (response && !original) {
 		rad_free(&current);
 	}
@@ -1245,7 +1242,7 @@ static void _rb_rad_free(void *request)
  */
 static int rs_packet_cmp(rs_request_t const *a, rs_request_t const *b)
 {
-	return fr_packet_cmp(a->packet, b->packet);
+	return fr_packet_cmp(a->expect, b->expect);
 }
 
 static int rs_build_dict_list(DICT_ATTR const **out, size_t len, char *list)

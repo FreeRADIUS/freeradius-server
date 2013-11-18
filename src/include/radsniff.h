@@ -170,7 +170,8 @@ typedef struct rs_request {
 	fr_event_t		*event;			//!< Event created when we received the original request.
 
 	fr_pcap_t		*in;			//!< PCAP handle the original request was received on.
-	RADIUS_PACKET		*packet;		//!< Request/response.
+	RADIUS_PACKET		*packet;		//!< The original packet.
+	RADIUS_PACKET		*expect;		//!< Request/response.
 	RADIUS_PACKET		*linked;		//!< The subsequent response or forwarded request the packet
 							//!< was linked against.
 
