@@ -972,11 +972,51 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			struct timeval when;
 
 			/*
+			 *	Save the request for later matching
+			 */
+			search.expect = rad_alloc_reply(conf, current);
+			if (!search.expect) {
+				REDEBUG("Failed allocating memory to hold expected reply");
+				rs_tv_add_ms(&header->ts, conf->stats.timeout, &stats->quiet);
+				rad_free(&current);
+				return;
+			}
+			search.expect->code = current->code;
+
+			/*
+			 *	Process requests before the filter, so that we can force expiry
+			 *	when we detect ID re-use, if we don't do this we get false RTX
+			 *	notifications for responses.
+			 */
+			original = rbtree_finddata(request_tree, &search);
+
+			/*
+			 *	Upstream device re-used src/dst ip/port id...
+			 */
+			if (original && memcmp(original->expect->vector, current->vector,
+					       sizeof(original->expect->vector) != 0)) {
+				/*
+				 *	...before the request timed out (which may be an issue)
+				 *	and before we saw a response (which may be a bigger issue).
+				 */
+				if (!original->linked) {
+					status = RS_REUSED;
+					stats->exchange[current->code].interval.reused_total++;
+					original->forced_cleanup = true;
+				}
+
+				fr_event_delete(event->list, &original->event);
+				rs_packet_cleanup(original);
+				original = NULL;
+			}
+
+			/*
 			 *	Verify this code is allowed
 			 */
 			if (conf->filter_request_code && (conf->filter_request_code != current->code)) {
 				drop_request:
 
+				rad_free(&search.expect);
 				rad_free(&current);
 				RDEBUG2("Dropped by attribute/packet filter");
 
@@ -1010,40 +1050,9 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			}
 
 			/*
-			 *	save the request for later matching
+			 *	Insert a callback to remove the request from the tree
 			 */
-			search.expect = rad_alloc_reply(conf, current);
-			if (!search.expect) {
-				REDEBUG("Failed allocating memory to hold expected reply");
-				rs_tv_add_ms(&header->ts, conf->stats.timeout, &stats->quiet);
-				rad_free(&current);
-				return;
-			}
-			search.expect->code = current->code;
-
 			rs_tv_add_ms(&header->ts, conf->stats.timeout, &when);
-
-			original = rbtree_finddata(request_tree, &search);
-
-			/*
-			 *	Upstream device re-used src/dst ip/port id...
-			 */
-			if (original && memcmp(original->expect->vector, current->vector,
-					       sizeof(original->expect->vector) != 0)) {
-				/*
-				 *	...before the request timed out (which may be an issue)
-				 *	and before we saw a response (which may be a bigger issue).
-				 */
-				if (!original->linked) {
-					status = RS_REUSED;
-					stats->exchange[current->code].interval.reused_total++;
-					original->forced_cleanup = true;
-				}
-
-				fr_event_delete(event->list, &original->event);
-				rs_packet_cleanup(original);
-				original = NULL;
-			}
 
 			if (original) {
 				status = RS_RTX;
