@@ -230,8 +230,10 @@ struct rs {
 	char const		*filter_request;	//!< Raw request filter string.
 	char const		*filter_response;	//!< Raw response filter string.
 
-	VALUE_PAIR 		*filter_vps_request;	//!< Sorted filter vps.
-	VALUE_PAIR 		*filter_vps_response;	//!< Sorted filter vps.
+	VALUE_PAIR 		*filter_request_vps;	//!< Sorted filter vps.
+	VALUE_PAIR 		*filter_response_vps;	//!< Sorted filter vps.
+	PW_CODE			filter_request_code;	//!< Filter request packets by code
+	PW_CODE			filter_response_code;	//!< Filter response packets by code
 
 	rs_packet_logger_t	logger;			//!< Packet logger
 

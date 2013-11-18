@@ -682,7 +682,7 @@ static void rs_packet_cleanup(void *ctx)
 	if (!request->linked && !request->forced_cleanup) {
 		request->stats_req->interval.lost_total++;
 
-		conf->logger(request->id, RS_LOST, request->in, packet, NULL, NULL, false, conf->filter_vps_response);
+		conf->logger(request->id, RS_LOST, request->in, packet, NULL, NULL, false, conf->filter_response_vps);
 	}
 
 	/*
@@ -870,7 +870,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			 *	Only decode attributes if we want to print them or filter on them
 			 *	rad_packet_ok does checks to verify the packet is actually valid.
 			 */
-			if (conf->filter_vps_response || conf->print_packet) {
+			if (conf->filter_response_vps || conf->print_packet) {
 				FILE *log_fp = fr_log_fp;
 
 				fr_log_fp = NULL;
@@ -888,21 +888,29 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			 */
 			if (original) {
 				/*
+				 *	Verify this code is allowed
+				 */
+				if (conf->filter_response_code && (conf->filter_response_code != current->code)) {
+					drop_response:
+
+					rad_free(&current);
+					RDEBUG2("Dropped by attribute/packet filter");
+
+					/* We now need to cleanup the original request too */
+					original->forced_cleanup = true;
+					fr_event_delete(event->list, &original->event);
+					rs_packet_cleanup(original);
+
+					return;
+				}
+
+				/*
 				 *	Now verify the packet passes the attribute filter
 				 */
-				if (conf->filter_vps_response) {
+				if (conf->filter_response_vps) {
 					pairsort(&current->vps, true);
-
-					if (!pairvalidate_relaxed(conf->filter_vps_response, current->vps)) {
-						rad_free(&current);
-						RDEBUG2("Dropped by attribute filter");
-
-						/* We now need to cleanup the original request too */
-						original->forced_cleanup = true;
-						fr_event_delete(event->list, &original->event);
-						rs_packet_cleanup(original);
-
-						return;
+					if (!pairvalidate_relaxed(conf->filter_response_vps, current->vps)) {
+						goto drop_response;
 					}
 				}
 
@@ -937,11 +945,11 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			 */
 			} else {
 				/*
-				 *	If conf->filter_vps_request are set assume the original request was dropped,
+				 *	If conf->filter_request_vps are set assume the original request was dropped,
 				 *	the alternative is maintaining another 'filter', but that adds
 				 *	complexity, reduces max capture rate, and is generally a PITA.
 				 */
-				if (conf->filter_vps_request) {
+				if (conf->filter_request) {
 					rad_free(&current);
 					RDEBUG2("Dropped by attribute filter");
 					return;
@@ -964,10 +972,22 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			struct timeval when;
 
 			/*
+			 *	Verify this code is allowed
+			 */
+			if (conf->filter_request_code && (conf->filter_request_code != current->code)) {
+				drop_request:
+
+				rad_free(&current);
+				RDEBUG2("Dropped by attribute/packet filter");
+
+				return;
+			}
+
+			/*
 			 *	Only decode attributes if we want to print them or filter on them
 			 *	rad_packet_ok does checks to verify the packet is actually valid.
 			 */
-			if (conf->filter_vps_request || conf->print_packet) {
+			if (conf->filter_request_vps || conf->print_packet) {
 				FILE *log_fp = fr_log_fp;
 
 				fr_log_fp = NULL;
@@ -982,13 +1002,10 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			/*
 			 *	Now verify the packet passes the attribute filter
 			 */
-			if (conf->filter_vps_request) {
+			if (conf->filter_request_vps) {
 				pairsort(&current->vps, true);
-
-				if (!pairvalidate_relaxed(conf->filter_vps_request, current->vps)) {
-					rad_free(&current);
-					RDEBUG2("Dropped by attribute filter");
-					return;
+				if (!pairvalidate_relaxed(conf->filter_request_vps, current->vps)) {
+					goto drop_request;
 				}
 			}
 
@@ -1105,7 +1122,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 		/*
 		 *	Were filtering on response, now print out the full data from the request
 		 */
-		if (conf->filter_vps_response && RIDEBUG_ENABLED()) {
+		if (conf->filter_response && RIDEBUG_ENABLED()) {
 			rs_time_print(timestr, sizeof(timestr), &original->packet->timestamp);
 			rs_tv_sub(&original->packet->timestamp, &start_pcap, &elapsed);
 			conf->logger(original->id, 0, original->in, original->packet, &elapsed, NULL, false, true);
@@ -1114,10 +1131,12 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 		}
 		conf->logger(count, status, event->in, current, &elapsed, &latency, response, true);
 	/*
-	 *	It's the original request - if were filtering on responses, print out the minimum data
+	 *	It's the original request
+	 *
+	 *	If were filtering on responses we can only indicate we received it on response, or timeout.
 	 */
-	} else {
-		conf->logger(count, status, event->in, current, &elapsed, NULL, response, !conf->filter_vps_response);
+	} else if (!conf->filter_response) {
+		conf->logger(count, status, event->in, current, &elapsed, NULL, response, true);
 	}
 
 	fflush(fr_log_fp);
@@ -1649,14 +1668,36 @@ int main(int argc, char *argv[])
 	}
 
 	if (conf->filter_request) {
-		if (rs_build_filter(&conf->filter_vps_request, conf->filter_request) < 0) {
+		vp_cursor_t cursor;
+		VALUE_PAIR *type;
+
+		if (rs_build_filter(&conf->filter_request_vps, conf->filter_request) < 0) {
 			usage(64);
+		}
+
+		fr_cursor_init(&cursor, &conf->filter_request_vps);
+		type = fr_cursor_next_by_num(&cursor, PW_PACKET_TYPE, 0, TAG_ANY);
+		if (type) {
+			fr_cursor_remove(&cursor);
+			conf->filter_request_code = type->vp_integer;
+			talloc_free(type);
 		}
 	}
 
 	if (conf->filter_response) {
-		if (rs_build_filter(&conf->filter_vps_response, conf->filter_response) < 0) {
+		vp_cursor_t cursor;
+		VALUE_PAIR *type;
+
+		if (rs_build_filter(&conf->filter_response_vps, conf->filter_response) < 0) {
 			usage(64);
+		}
+
+		fr_cursor_init(&cursor, &conf->filter_response_vps);
+		type = fr_cursor_next_by_num(&cursor, PW_PACKET_TYPE, 0, TAG_ANY);
+		if (type) {
+			fr_cursor_remove(&cursor);
+			conf->filter_response_code = type->vp_integer;
+			talloc_free(type);
 		}
 	}
 
@@ -1707,20 +1748,34 @@ int main(int argc, char *argv[])
 			DEBUG2("Sniffing with options:");
 		if (conf->from_dev)	{
 			char *buff = fr_pcap_device_names(conf, in, ' ');
-			DEBUG2("  Device(s)                : [%s]", buff);
+			DEBUG2("  Device(s)               : [%s]", buff);
 			talloc_free(buff);
 		}
 		if (conf->to_file || conf->to_stdout) {
-			DEBUG2("  Writing to               : [%s]", out->name);
+			DEBUG2("  Writing to              : [%s]", out->name);
 		}
 		if (conf->limit > 0)	{
-			DEBUG2("  Capture limit (packets)  : [%" PRIu64 "]", conf->limit);
+			DEBUG2("  Capture limit (packets) : [%" PRIu64 "]", conf->limit);
 		}
-			DEBUG2("  PCAP filter              : [%s]", conf->pcap_filter);
-			DEBUG2("  RADIUS secret            : [%s]", conf->radius_secret);
-		if (conf->filter_vps_request){
-			DEBUG2("  RADIUS filter            :");
-			vp_printlist(fr_log_fp, conf->filter_vps_request);
+			DEBUG2("  PCAP filter             : [%s]", conf->pcap_filter);
+			DEBUG2("  RADIUS secret           : [%s]", conf->radius_secret);
+
+		if (conf->filter_request_code) {
+			DEBUG2("  RADIUS request code     : [%s]", fr_packet_codes[conf->filter_request_code]);
+		}
+
+		if (conf->filter_request_vps){
+			DEBUG2("  RADIUS request filter   :");
+			vp_printlist(fr_log_fp, conf->filter_request_vps);
+		}
+
+		if (conf->filter_response_code) {
+			DEBUG2("  RADIUS response code    : [%s]", fr_packet_codes[conf->filter_response_code]);
+		}
+
+		if (conf->filter_request_vps){
+			DEBUG2("  RADIUS response filter  :");
+			vp_printlist(fr_log_fp, conf->filter_response_vps);
 		}
 	}
 
