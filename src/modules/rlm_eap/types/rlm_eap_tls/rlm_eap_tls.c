@@ -758,7 +758,7 @@ static int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 				if (*p == ' ') *p = '-';
 			}
 
-			vp = pairmake(attribute, issuer, T_OP_ADD);
+			vp = pairmake(attribute, value, T_OP_ADD);
 			if (vp) {
 				pairadd(&handler->certs, vp);
 				debug_pair_list(vp);
