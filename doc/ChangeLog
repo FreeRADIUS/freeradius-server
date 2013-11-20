@@ -4,6 +4,10 @@ FreeRADIUS 3.0.1 Mon  7 Oct 2013 15:48:14 EDT urgency=medium
 	  So that run-away child processes are caught earlier.
 	* Allow TLS clients to use "proto = tls", in which case
 	  TLS is required.  The shared secret is then set to "radsec".
+	* More documentation in the tls virtual server.
+	* Add "date" module for date formatting.
+	  See raddb/mods-available/date
+	* Added unit test suite for internal server functionality
 
 	Bug fixes
 	* Use correct field for ARP setting in DHCP.
@@ -25,9 +29,20 @@ FreeRADIUS 3.0.1 Mon  7 Oct 2013 15:48:14 EDT urgency=medium
 	  files.
 	* Fix build for OSX Mavericks, which hid the header files
 	  in a magical place.
+	* Fix LEAP buffer issue.  You should still avoid LEAP.
 	* Mark "unknown" WiMAX attributes as being WiMAX
 	* Fix typo in packet decoder for fragmented extended attrs
+	* RPM spec fixes
 	* Always run unit tests before building radiusd
+	* Fix rlm_perl build issues when not using threads
+	* Enable %{Response-Packet-Type} again
+	* Update configuration file parser to handle "bool"
+	  consistently.
+	* Make more messages debug instead of info, to avoid
+	  polluting the logs with messages that can't be fixed
+	* Set operator in internal unlang code to suppress spurious
+	  warning messages
+	* Fix debian packaging
 
 FreeRADIUS 3.0.0 Mon  7 Oct 2013 15:48:14 EDT urgency=medium
 	Feature improvements
