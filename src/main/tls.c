@@ -1670,7 +1670,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 			attribute[16 + len] = '\0';
 
 			X509V3_EXT_print(out, ext, 0, 0);
-			len = BIO_read(out, value , sizeof(issuer) - 1);
+			len = BIO_read(out, value , sizeof(value) - 1);
 			if (len <= 0) continue;
 
 			value[len] = '\0';
