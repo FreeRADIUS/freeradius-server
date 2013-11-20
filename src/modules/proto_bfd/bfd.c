@@ -29,7 +29,7 @@
 #include <freeradius-devel/sha1.h>
 
 #define USEC (1000000)
-extern int check_config;
+extern bool check_config;
 
 typedef enum bfd_session_state_t {
 	BFD_STATE_ADMIN_DOWN = 0,
@@ -110,8 +110,8 @@ typedef struct bfd_state_t {
 
 	uint32_t       	next_min_tx_interval;
 
-	int		demand_mode;
-	int		remote_demand_mode;
+	bool		demand_mode;
+	bool		remote_demand_mode;
 
 	int		detect_multi;
 
@@ -465,7 +465,9 @@ static bfd_state_t *bfd_new_session(bfd_socket_t *sock, int sockfd,
 				    CONF_SECTION *cs,
 				    const fr_ipaddr_t *ipaddr, int port)
 {
-	int rcode, flag;
+	int rcode;
+	bool flag;
+	int number;
 	bfd_state_t *session;
 
 	session = talloc_zero(sock, bfd_state_t);
@@ -484,7 +486,7 @@ static bfd_state_t *bfd_new_session(bfd_socket_t *sock, int sockfd,
 	session->required_min_rx_interval = sock->min_rx_interval * 1000;
 	session->remote_min_rx_interval = 1;
 	session->demand_mode = sock->demand;
-	session->remote_demand_mode = 0;
+	session->remote_demand_mode = false;
 	session->detect_multi = sock->max_timeouts;
 	session->auth_type = BFD_AUTH_RESERVED;
 	session->recv_auth_seq = 0;
@@ -500,28 +502,28 @@ static bfd_state_t *bfd_new_session(bfd_socket_t *sock, int sockfd,
 	}
 
 	rcode = cf_item_parse(cs, "min_transmit_interval", PW_TYPE_INTEGER,
-			      &flag, NULL);
+			      &number, NULL);
 	if (rcode == 0) {
-		if (flag < 100) flag = 100;
-		if (flag > 10000) flag = 10000;
+		if (number < 100) number = 100;
+		if (number > 10000) number = 10000;
 
-		session->desired_min_tx_interval = flag * 1000;
+		session->desired_min_tx_interval = number * 1000;
 	}
 	rcode = cf_item_parse(cs, "min_receive_interval", PW_TYPE_INTEGER,
-			      &flag, NULL);
+			      &number, NULL);
 	if (rcode == 0) {
-		if (flag < 100) flag = 100;
-		if (flag > 10000) flag = 10000;
+		if (number < 100) number = 100;
+		if (number > 10000) number = 10000;
 
-		session->required_min_rx_interval = flag * 1000;
+		session->required_min_rx_interval = number * 1000;
 	}
 	rcode = cf_item_parse(cs, "max_timeouts", PW_TYPE_INTEGER,
-			      &flag,NULL);
+			      &number,NULL);
 	if (rcode == 0) {
-		if (flag == 0) flag = 1;
-		if (flag > 10) flag = 10;
+		if (number == 0) number = 1;
+		if (number > 10) number = 10;
 
-		session->detect_multi = flag;
+		session->detect_multi = number;
 	}
 
 	session->auth_type = sock->auth_type;
@@ -1351,7 +1353,7 @@ static int bfd_process(bfd_state_t *session, bfd_packet_t *bfd)
 	}
 
 
-	if ((session->remote_demand_mode == 0) ||
+	if ((!session->remote_demand_mode) ||
 	    (session->session_state != BFD_STATE_UP) ||
 	    (session->remote_session_state != BFD_STATE_UP)) {
 		bfd_start_control(session);
