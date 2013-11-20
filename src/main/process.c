@@ -44,7 +44,7 @@ RCSID("$Id$")
 #endif
 
 extern pid_t radius_pid;
-extern int check_config;
+extern bool check_config;
 extern fr_cond_t *debug_condition;
 
 static int spawn_flag = 0;
