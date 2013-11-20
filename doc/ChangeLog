@@ -1,3 +1,12 @@
+FreeRADIUS 2.2.3 Friday 22 Nov 2013 10:00:00 EST, urgency=medium
+	Feature improvements
+	* Added dictionary.efficientip, dictionary.alcatel-lucent-aaa
+
+	Bug fixes
+	* Make the server build when DHCP is enabled
+	* Don't crash if there's no Post-Proxy-Type Reject.
+	* Use correct fields for X509 attributes in certificates
+
 FreeRADIUS 2.2.2 Wednesday 30 Oct 2013 9:30:00 DST, urgency=medium
 	Feature improvements
 	* Add "timeout" to exec, and "ntlm_auth_timeout" to mschap.
