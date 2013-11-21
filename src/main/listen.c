@@ -426,7 +426,7 @@ static int dual_tcp_recv(rad_listen_t *listener)
 	 *	Allocate a packet for partial reads.
 	 */
 	if (!sock->packet) {
-		sock->packet = rad_alloc(NULL, 0);
+		sock->packet = rad_alloc(sock, 0);
 		if (!sock->packet) return 0;
 
 		sock->packet->sockfd = listener->fd;
