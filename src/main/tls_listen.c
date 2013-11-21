@@ -140,7 +140,7 @@ static int tls_socket_recv(rad_listen_t *listener)
 	RADCLIENT *client = sock->client;
 
 	if (!sock->packet) {
-		sock->packet = rad_alloc(NULL, 0);
+		sock->packet = rad_alloc(sock, 0);
 		if (!sock->packet) return 0;
 
 		sock->packet->sockfd = listener->fd;
@@ -541,7 +541,7 @@ redo:
 	}
 	PTHREAD_MUTEX_UNLOCK(&sock->mutex);
 
-	packet = rad_alloc(NULL, 0);
+	packet = rad_alloc(sock, 0);
 	packet->sockfd = listener->fd;
 	packet->src_ipaddr = sock->other_ipaddr;
 	packet->src_port = sock->other_port;
