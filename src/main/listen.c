@@ -461,16 +461,6 @@ static int dual_tcp_recv(rad_listen_t *listener)
 		listener->status = RAD_LISTEN_STATUS_REMOVE_NOW;
 
 		/*
-		 *	Decrement the number of connections.
-		 */
-		if (sock->parent->limit.num_connections > 0) {
-			sock->parent->limit.num_connections--;
-		}
-		if (sock->client->limit.num_connections > 0) {
-			sock->client->limit.num_connections--;
-		}
-
-		/*
 		 *	Tell the event handler that an FD has disappeared.
 		 */
 		DEBUG("Client has closed connection");
@@ -702,6 +692,33 @@ static int dual_tcp_accept(rad_listen_t *listener)
 }
 #endif
 
+
+/*
+ *	Ensure that we always keep the correct counters.
+ */
+static void common_socket_free(rad_listen_t *this)
+#ifndef WITH_TLS
+{
+}
+#else
+{
+	listen_socket_t *sock = this->data;
+	
+	if (sock->proto != IPPROTO_TCP) return;
+
+	if (!sock->parent) return;
+	
+	/*
+	 *      Decrement the number of connections.
+	 */
+	if (sock->parent->limit.num_connections > 0) {
+		sock->parent->limit.num_connections--;
+	}
+	if (sock->client->limit.num_connections > 0) {
+		sock->client->limit.num_connections--;
+	}
+}
+#endif
 
 /*
  *	This function is stupid and complicated.
@@ -2040,14 +2057,14 @@ static fr_protocol_t master_listen[RAD_LISTEN_MAX] = {
 
 	/* authentication */
 	{ RLM_MODULE_INIT, "auth", sizeof(listen_socket_t), NULL,
-	  common_socket_parse, NULL,
+	  common_socket_parse, common_socket_free,
 	  auth_socket_recv, auth_socket_send,
 	  common_socket_print, client_socket_encode, client_socket_decode },
 
 #ifdef WITH_ACCOUNTING
 	/* accounting */
 	{ RLM_MODULE_INIT, "acct", sizeof(listen_socket_t), NULL,
-	  common_socket_parse, NULL,
+	  common_socket_parse, common_socket_free,
 	  acct_socket_recv, acct_socket_send,
 	  common_socket_print, client_socket_encode, client_socket_decode},
 #endif
