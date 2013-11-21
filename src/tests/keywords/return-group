@@ -1,0 +1,15 @@
+update {
+	control:Auth-Type = 'Accept'
+	reply:Reply-Message = 'pass'
+}
+
+# Section should exit after this statement
+group {
+	ok {
+		ok = return
+	}
+}
+
+update {
+	reply:Reply-Message := 'fail'
+}
