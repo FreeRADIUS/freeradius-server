@@ -9,7 +9,9 @@ before_install:
   - sudo apt-get install -qq build-essential autoconf dh-make debhelper devscripts fakeroot lintian pbuilder quilt
   - sudo apt-get install -qq -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" libmysqlclient-dev
   - sudo apt-get install -qq libkrb5-dev libgdbm-dev libhiredis-dev libldap2-dev libpam0g-dev libpcap-dev libpcre3-dev libperl-dev
-  - sudo apt-get install -qq libpq-dev libreadline-dev libsnmp-dev libiodbc2-dev libidn11-dev libyubikey-dev libykclient-dev
+  - sudo apt-get install -qq libpq-dev libreadline-dev libsnmp-dev 
+  - sudo apt-get install -qq libiodbc2 libiodbc2-dev
+  - sudo apt-get install -qq libidn11-dev libyubikey-dev libykclient-dev
   - sudo apt-get install -qq firebird-dev freetds-dev python-dev ruby-dev
   - sudo apt-get install -qq libpcap-dev libcollectdclient-dev
 before_script:
