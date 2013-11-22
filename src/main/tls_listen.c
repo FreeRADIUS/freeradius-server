@@ -178,8 +178,6 @@ static int tls_socket_recv(rad_listen_t *listener)
 		request->reply = rad_alloc(request, 0);
 		if (!request->reply) return 0;
 
-		request->options = RAD_REQUEST_OPTION_DEBUG2;
-
 		rad_assert(sock->ssn == NULL);
 
 		sock->ssn = tls_new_session(listener->tls, sock->request,
