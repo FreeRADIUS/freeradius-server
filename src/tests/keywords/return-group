@@ -1,15 +1,22 @@
+# PRE: return
+#
 update {
 	control:Auth-Type = 'Accept'
-	reply:Reply-Message = 'pass'
 }
 
-# Section should exit after this statement
 group {
+	# Section should exit after this statement
 	ok {
 		ok = return
 	}
+
+	# This entry should never be reached
+	update {
+		reply:Reply-Message := 'fail'
+	}
 }
 
+# We should continue processing after the previous group.
 update {
-	reply:Reply-Message := 'fail'
+	reply:Reply-Message += 'pass'	
 }
