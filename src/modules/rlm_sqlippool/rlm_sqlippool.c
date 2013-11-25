@@ -581,7 +581,7 @@ static int sqlippool_postauth(void *instance, REQUEST * request)
 	 *	we're only do 1 CLEAR per second.
 	 */
 	now = time(NULL);
-	if (data->last_clear != now) {
+	if (data->last_clear < now) {
 		data->last_clear = now;
 
 		/*
