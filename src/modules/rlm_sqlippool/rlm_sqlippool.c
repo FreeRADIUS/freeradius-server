@@ -526,6 +526,9 @@ static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
 
 	DO(allocate_begin);
 	DO(allocate_clear);
+	DO(allocate_commit);
+
+	DO(allocate_begin);
 
 	allocation_len = sqlippool_query1(allocation, sizeof(allocation),
 					  inst->allocate_find, handle,
