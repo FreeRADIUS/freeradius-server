@@ -534,7 +534,7 @@ static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
 	 *	we're only do 1 CLEAR per second.
 	 */
 	now = time(NULL);
-	if (inst->last_clear != now) {
+	if (inst->last_clear < now) {
 		inst->last_clear = now;
 
 		DO(allocate_begin);
