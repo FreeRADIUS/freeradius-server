@@ -49,6 +49,7 @@ typedef struct rlm_sqlippool_t {
 	   information in there
 	*/
 				/* Allocation sequence */
+	time_t last_clear;	/* so we only do it once a second */
 	char *allocate_begin;	/* SQL query to begin */
 	char *allocate_clear;	/* SQL query to clear an IP */
 	char *allocate_find;	/* SQL query to find an unused IP */
@@ -498,6 +499,7 @@ static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
 	VALUE_PAIR *vp;
 	rlm_sql_handle_t *handle;
 	fr_ipaddr_t ipaddr;
+	time_t now;
 
 	/*
 	 *	If there is a Framed-IP-Address attribute in the reply do nothing
@@ -524,9 +526,21 @@ static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
 		return RLM_MODULE_FAIL;
 	}
 
-	DO(allocate_begin);
-	DO(allocate_clear);
-	DO(allocate_commit);
+	/*
+	 *	Limit the number of clears we do.  There are minor
+	 *	race conditions for the check, but so what.  The
+	 *	actual work is protected by a transaction.  The idea
+	 *	here is that if we're allocating 100 IPs a second,
+	 *	we're only do 1 CLEAR per second.
+	 */
+	now = time(NULL);
+	if (inst->last_clear != now) {
+		inst->last_clear = now;
+
+		DO(allocate_begin);
+		DO(allocate_clear);
+		DO(allocate_commit);
+	}
 
 	DO(allocate_begin);
 
