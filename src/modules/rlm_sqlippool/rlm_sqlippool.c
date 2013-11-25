@@ -584,6 +584,18 @@ static int sqlippool_postauth(void *instance, REQUEST * request)
 			  (char *) NULL, 0);
 
 	/*
+	 * COMMIT
+	 */
+	sqlippool_command(data->allocate_commit, sqlsocket, data, request,
+			  (char *) NULL, 0);
+
+	/*
+	 * BEGIN
+	 */
+	sqlippool_command(data->allocate_begin, sqlsocket, data, request,
+			  (char *) NULL, 0);
+
+	/*
 	 * FIND
 	 */
 	allocation_len = sqlippool_query1(allocation, sizeof(allocation),
