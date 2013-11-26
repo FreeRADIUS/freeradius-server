@@ -76,7 +76,7 @@ $(BUILD_DIR)/tests/keywords/%: $(DIR)/% $(BUILD_DIR)/tests/keywords/%.attrs $(BU
 			echo "# $@.log"; \
 			exit 1; \
 		fi; \
-		FOUND=$$(grep ^$< $@.log | sed 's/:.*//;s/.*\[//;s/\].*//'); \
+		FOUND=$$(grep ^$< $@.log | head -1 | sed 's/:.*//;s/.*\[//;s/\].*//'); \
 		EXPECTED=$$(grep -n ERROR $< | sed 's/:.*//'); \
 		if [ "$$EXPECTED" != "$$FOUND" ]; then \
 			cat $@.log; \
