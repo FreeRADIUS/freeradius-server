@@ -1,0 +1,23 @@
+# PRE: foreach
+#
+
+#
+#  We DON'T want to see this one.
+#
+update request {
+       Filter-Id += "broken"
+}
+
+foreach Filter-Id {
+	#
+	#  If we see this one, "break" out of the
+	#  foreach loop.
+	#
+	if ("%{Foreach-Variable-0}" == "broken") {
+		break
+	}
+
+	update reply {
+	       Called-Station-Id += "%{Foreach-Variable-0}"
+	}
+}
