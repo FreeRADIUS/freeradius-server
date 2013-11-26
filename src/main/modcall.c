@@ -380,6 +380,7 @@ static char const *modcall_spaces = "                                           
 typedef struct modcall_stack_entry_t {
 	int result;
 	int priority;
+	int unwind;		/* unwind to this one if it exists */
 	modcallable *c;
 } modcall_stack_entry_t;
 
@@ -408,11 +409,19 @@ static void modcall_child(REQUEST *request, rlm_components_t component, int dept
 	next->c = c;
 	next->result = entry->result;
 	next->priority = 0;
+	next->unwind = 0;
 
 	if (!modcall_recurse(request, component,
 			     depth, next)) {
 		*result = RLM_MODULE_FAIL;
 		 return;
+	}
+
+	/*
+	 *	Unwind back up the stack
+	 */
+	if (next->unwind != 0) {
+		entry->unwind = next->unwind;
 	}
 
 	*result = next->result;
@@ -684,11 +693,11 @@ redo:
 			next->c = g->children;
 			next->result = entry->result;
 			next->priority = 0;
+			next->unwind = 0;
 
 			if (!modcall_recurse(request, component, depth + 1, next)) {
 				request_data_get(request, radius_get_vp, foreach_depth);
 				pairfree(&copy);
-
 				break;
 			}
 
@@ -701,6 +710,15 @@ redo:
 				request_data_get(request, radius_get_vp, foreach_depth);
 				pairfree(&copy);
 			} else {
+				break;
+			}
+
+			/*
+			 *	If we've been told to stop processing
+			 *	it, do so.
+			 */
+			if (entry->unwind == MOD_FOREACH) {
+				entry->unwind = 0;
 				break;
 			}
 		} /* loop over VPs */
@@ -721,7 +739,7 @@ redo:
 		for (i = 8; i >= 0; i--) {
 			copy_p = request_data_get(request, radius_get_vp, i);
 			if (copy_p) {
-				RDEBUG2("%.*s #  BREAK Foreach-Variable-%d", depth + 1,
+				RDEBUG2("%.*s # break Foreach-Variable-%d", depth + 1,
 					modcall_spaces, i);
 				pairfree(copy_p);
 				break;
@@ -731,6 +749,7 @@ redo:
 		/*
 		 *	Leave result / priority on the stack, and stop processing the section.
 		 */
+		entry->unwind = MOD_FOREACH;
 		return true;
 	} /* MOD_BREAK */
 
@@ -972,6 +991,17 @@ calculate_result:
 	 */
 	if (c->type == MOD_CASE) return true;
 
+	/*
+	 *	If we've been told to stop processing
+	 *	it, do so.
+	 */
+	if (entry->unwind != 0) {
+		RDEBUG2("%.*s # unwind to enclosing %s", depth + 1, modcall_spaces,
+			group_name[entry->unwind]);
+		entry->unwind = 0;
+		return true;
+	}
+
 next_sibling:
 	entry->c = entry->c->next;
 
@@ -998,6 +1028,7 @@ int modcall(rlm_components_t component, modcallable *c, REQUEST *request)
 	stack[0].c = c;
 	stack[0].result = default_component_results[component];
 	stack[0].priority = 0;
+	stack[0].unwind = 0;
 
 	/*
 	 *	Call the main handler.
