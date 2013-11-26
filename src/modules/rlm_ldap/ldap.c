@@ -961,7 +961,7 @@ rlm_rcode_t rlm_ldap_check_access(ldap_instance_t const *inst, REQUEST *request,
 				rcode = RLM_MODULE_USERLOCK;
 			}
 			/* RLM_MODULE_OK set above... */
-		} else {
+		} else if (strncmp(vals[0], "false", 5) != 0) {
 			RDEBUG("\"%s\" attribute exists - user locked out", inst->userobj_access_attr);
 			rcode = RLM_MODULE_USERLOCK;
 		}
