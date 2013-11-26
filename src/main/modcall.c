@@ -1628,9 +1628,24 @@ static modcallable *do_compile_modforeach(modcallable *parent,
 	return csingle;
 }
 
-static modcallable *do_compile_modbreak(modcallable *parent, UNUSED rlm_components_t component)
+static modcallable *do_compile_modbreak(modcallable *parent,
+					rlm_components_t component, CONF_ITEM const *ci)
 {
 	modcallable *csingle;
+	CONF_SECTION const *cs = NULL;
+
+	for (cs = cf_item_parent(ci);
+	     cs != NULL;
+	     cs = cf_item_parent(cf_sectiontoitem(cs))) {
+		if (strcmp(cf_section_name1(cs), "foreach") == 0) {
+			break;
+		}
+	}
+
+	if (!cs) {
+		cf_log_err(ci, "'break' can only be used in a 'foreach' section");
+		return NULL;
+	}
 
 	csingle = do_compile_modgroup(parent, component, NULL,
 				      GROUPTYPE_SIMPLE, GROUPTYPE_SIMPLE);
@@ -2059,7 +2074,7 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 
 #ifdef WITH_UNLANG
 	if (strcmp(modrefname, "break") == 0) {
-		return do_compile_modbreak(parent, component);
+		return do_compile_modbreak(parent, component, ci);
 	}
 #endif
 
