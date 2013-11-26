@@ -1813,7 +1813,7 @@ static VALUE_PAIR *pairmake_any(TALLOC_CTX *ctx,
  * @param[in] ctx for talloc
  * @param[in] vps list where the attribute will be added (optional)
  * @param[in] attribute name.
- * @param[in] value attribute value.
+ * @param[in] value attribute value (may be NULL if value will be set later).
  * @param[in] op to assign to new VALUE_PAIR.
  * @return a new VALUE_PAIR.
  */
