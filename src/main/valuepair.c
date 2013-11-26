@@ -1322,57 +1322,39 @@ int radius_map2vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *ma
  *
  * @param request Current request.
  * @param raw string to parse.
- * @param request_def to use if attribute isn't qualified.
- * @param list_def to use if attribute isn't qualified.
- * @return 0 on success, -1 on error.
+ * @param dst_request_def to use if attribute isn't qualified.
+ * @param dst_list_def to use if attribute isn't qualified.
+ * @param src_request_def to use if attribute isn't qualified.
+ * @param src_list_def to use if attribute isn't qualified.
+ * @return 0 on success, < 0 on error.
  */
-int radius_str2vp(REQUEST *request, char const *raw, request_refs_t request_def, pair_lists_t list_def)
+int radius_str2vp(REQUEST *request, char const *raw,
+		  request_refs_t dst_request_def, pair_lists_t dst_list_def,
+		  request_refs_t src_request_def, pair_lists_t src_list_def)
 {
-	char const *p;
-	size_t len;
-	request_refs_t req;
-	pair_lists_t list;
+	char const *p = raw;
+	FR_TOKEN ret;
+	int rcode;
 
-	VALUE_PAIR *vp = NULL;
-	VALUE_PAIR **vps;
+	VALUE_PAIR_RAW tokens;
+	value_pair_map_t *map;
 
-	p = raw;
-
-	req = radius_request_name(&p, request_def);
-	len = p - raw;
-	if (req == REQUEST_UNKNOWN) {
-		REDEBUG("Invalid request qualifier \"%.*s\"", (int) len, raw);
-
-		return -1;
-	}
-	raw += len;
-
-	list = radius_list_name(&p, list_def);
-	if (list == PAIR_LIST_UNKNOWN) {
-		len = p - raw;
-
-		REDEBUG("Invalid list qualifier \"%.*s\"", (int) len, raw);
-
-		return -1;
-	}
-	raw += len;
-
-	if (radius_request(&request, req) < 0) {
+	ret = pairread(&p, &tokens);
+	if (ret != T_EOL) {
+		REDEBUG("Failed tokenising attribute string: %s", fr_strerror());
 		return -1;
 	}
 
-	vps = radius_list(request, list);
-	if (!vps) {
+	map = radius_str2map(request, tokens.l_opand, T_BARE_WORD, tokens.op, tokens.r_opand, tokens.quote,
+		       	     dst_request_def, dst_list_def, src_request_def, src_list_def);
+	if (!map) {
+		REDEBUG("Failed parsing attribute string: %s", fr_strerror());
 		return -1;
 	}
 
-	if (userparse(request, raw, &vp) == T_OP_INVALID) {
-		return -1;
-	}
-
-	pairmove(request, vps, &vp);
-
-	return 0;
+	rcode = radius_map2request(request, map, NULL, radius_map2vp, NULL);
+	talloc_free(map);
+	return rcode;
 }
 
 /** Return a VP from a value_pair_tmpl_t
