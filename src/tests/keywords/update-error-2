@@ -1,0 +1,9 @@
+#
+# PRE: update-error
+#
+#  It's an error to update lists that don't exist.
+#
+update {
+       no-such-list:Cleartext-Password := 'hello'	# ERROR
+       reply:Filter-Id := "filter"
+}

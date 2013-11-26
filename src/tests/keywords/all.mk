@@ -62,10 +62,27 @@ $(BUILD_DIR)/tests/keywords/%.attrs: $(DIR)/%.attrs | $(BUILD_DIR)/tests/keyword
 #
 #  Auto-depend on modules via $(shell grep INCLUDE $(DIR)/radiusd.conf | grep mods-enabled | sed 's/.*}/raddb/'))
 #
+#  If the test fails, then look for ERROR in the input.  No error
+#  means it's unexpected, so we die.
+#
+#  Otherwise, check the log file for a parse error which matches the
+#  ERROR line in the input.
+#
 $(BUILD_DIR)/tests/keywords/%: $(DIR)/% $(BUILD_DIR)/tests/keywords/%.attrs $(BUILD_DIR)/bin/local/unittest | $(BUILD_DIR)/tests/keywords raddb/mods-enabled/pap raddb/mods-enabled/always raddb/mods-enabled/expr
 	@echo UNIT-TEST $(notdir $@)
 	@if ! KEYWORD=$(notdir $@) $(JLIBTOOL) --quiet --mode=execute ./$(BUILD_DIR)/bin/local/unittest -D share -d src/tests/keywords/ -i $@.attrs -f $@.attrs -xx > $@.log 2>&1; then \
-		cat $@.log; exit 1; \
+		if ! grep ERROR $< 2>&1 > /dev/null; then \
+			cat $@.log; \
+			echo "# $@.log"; \
+			exit 1; \
+		fi; \
+		FOUND=$$(grep ^$< $@.log | sed 's/:.*//;s/.*\[//;s/\].*//'); \
+		EXPECTED=$$(grep -n ERROR $< | sed 's/:.*//'); \
+		if [ "$$EXPECTED" != "$$FOUND" ]; then \
+			cat $@.log; \
+			echo "# $@.log"; \
+			exit 1; \
+		fi \
 	fi
 	@touch $@
 
