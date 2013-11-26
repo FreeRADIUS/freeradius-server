@@ -144,7 +144,7 @@ static int ber_decode_login_data(struct berval *reply_bv, int *server_version, v
 
 finish:
 
-	if(reply_ber) ber_free(reply_ber, 1);
+	if (reply_ber) ber_free(reply_ber, 1);
 
 	return err;
 }
