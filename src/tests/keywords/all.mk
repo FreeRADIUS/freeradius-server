@@ -96,12 +96,6 @@ TESTS.KEYWORDS_FILES := $(addprefix $(BUILD_DIR)/tests/keywords/,$(FILES))
 #
 tests.keywords: $(TESTS.KEYWORDS_FILES)
 
-#
-#  And be a BASTARD about it.  If the unit tests fail,
-#  then we can't run radiusd.
-#
-$(BUILD_DIR)/bin/radiusd: $(TESTS.KEYWORDS_FILES)
-
 .PHONY: clean.tests.keywords
 clean.tests.keywords:
 	@rm -rf $(BUILD_DIR)/tests/keywords/

@@ -33,9 +33,3 @@ TESTS.UNIT_FILES := $(addprefix $(BUILD_DIR)/tests/unit/,$(FILES))
 #  Depend on the output files, and create the directory first.
 #
 tests.unit: $(TESTS.UNIT_FILES)
-
-#
-#  And be a BASTARD about it.  If the unit tests fail,
-#  then we can't run radiusd.
-#
-$(BUILD_DIR)/bin/radiusd: $(TESTS.UNIT_FILES)
