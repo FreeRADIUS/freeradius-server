@@ -152,6 +152,28 @@ static REQUEST *request_setup(FILE *fp)
 		return NULL;
 	}
 
+	if (debug_flag) {
+		VALUE_PAIR *vp;
+		vp_cursor_t cursor;
+
+		for (vp = paircursor(&cursor, &request->packet->vps);
+		     vp;
+		     vp = pairnext(&cursor)) {
+			/*
+			 *	Take this opportunity to verify all the VALUE_PAIRs are still valid.
+			 */
+			if (!talloc_get_type(vp, VALUE_PAIR)) {
+				ERROR("Expected VALUE_PAIR pointer got \"%s\"", talloc_get_name(vp));
+				
+				log_talloc_report(vp);
+				rad_assert(0);
+			}
+			
+			vp_print(fr_log_fp, vp);
+		}
+		fflush(fr_log_fp);
+	}
+
 	/*
 	 *	FIXME: set IPs, etc.
 	 */
