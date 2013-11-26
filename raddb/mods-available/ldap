@@ -110,9 +110,12 @@ ldap {
 		#  "access_attribute" existing means "allow access".
 		#  "access_attribute" not existing means "deny access"
 		#
-		#   If set to "no", then
+		#  If set to "no", then
 		#  "access_attribute" existing means "deny access".
 		#  "access_attribute" not existing means "allow access"
+		#
+		#  In either case if the attribute is present but has
+		#  a value of 'false', the result is negated.
 #		access_positive = yes
 	}
 
