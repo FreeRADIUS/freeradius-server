@@ -955,15 +955,17 @@ int radius_map2request(REQUEST *request, value_pair_map_t const *map,
 	int rcode;
 	vp_cursor_t cursor;
 	VALUE_PAIR **list, *vp, *head = NULL;
+	REQUEST *context;
 	char buffer[1024];
 
-	if (radius_request(&request, map->dst->request) < 0) {
+	context = request;
+	if (radius_request(&context, map->dst->request) < 0) {
 		REDEBUG("Mapping \"%s\" -> \"%s\" invalid in this context", map->src->name, map->dst->name);
 
 		return -2;
 	}
 
-	list = radius_list(request, map->dst->list);
+	list = radius_list(context, map->dst->list);
 	if (!list) {
 		REDEBUG("Mapping \"%s\" -> \"%s\" invalid in this context", map->src->name, map->dst->name);
 
@@ -1032,7 +1034,7 @@ int radius_map2request(REQUEST *request, value_pair_map_t const *map,
 	/*
 	 *	Use pairmove so the operator is respected
 	 */
-	radius_pairmove(request, list, head);
+	radius_pairmove(context, list, head);
 	return 0;
 }
 
