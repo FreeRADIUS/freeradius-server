@@ -275,9 +275,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
  */
 static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 {
-#if defined(HAVE_YUBIKEY) || defined(HAVE_YKCLIENT)
 	rlm_rcode_t rcode = RLM_MODULE_NOOP;
-#endif
 	rlm_yubikey_t *inst = instance;
 	char const *passcode;
 	size_t i, len;
@@ -316,6 +314,7 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 		if (rcode != RLM_MODULE_OK) {
 			return rcode;
 		}
+		/* Fall-Through to doing ykclient auth in addition to local auth */
 	}
 #endif
 
@@ -324,7 +323,7 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 		return rlm_yubikey_validate(inst, request, request->password);
 	}
 #endif
-	return RLM_MODULE_NOOP;
+	return rcode;
 }
 
 /*
