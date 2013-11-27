@@ -105,17 +105,27 @@ ldap {
 		#  determine whether or not the user is authorised
 #		access_attribute = "dialupAccess"
 
-		#  Control whether or not "access_attribute" is used to
-		#  determine authorization.  If set to "yes", then
-		#  "access_attribute" existing means "allow access".
-		#  "access_attribute" not existing means "deny access"
+		#  Control whether the presence of "access_attribute"
+		#  allows access, or denys access.
 		#
-		#  If set to "no", then
-		#  "access_attribute" existing means "deny access".
-		#  "access_attribute" not existing means "allow access"
+		#  If "yes", and the access_attribute is present, or 
+		#  "no" and the access_attribute is absent then access 
+		#  will be allowed.
 		#
-		#  In either case if the attribute is present but has
-		#  a value of 'false', the result is negated.
+		#  If "yes", and the access_attribute is absent, or 
+		#  "no" and the access_attribute is present, then 
+		#  access will not be allowed.
+		#
+		#  If the value of the access_attribute is "false", it
+		#  will negate the result.
+		#
+		#  e.g. 
+		#    access_positive = yes
+		#    access_attribute = userAccessAllowed
+		#  
+		#    userAccessAllowed = false
+		#
+		#  Will result in the user being locked out.
 #		access_positive = yes
 	}
 
