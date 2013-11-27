@@ -87,8 +87,12 @@ case "$1" in
                 $PROGRAM -X $FREERADIUS_OPTIONS
                 ;;
 
+        status)
+                status_of_proc -p "$PIDFILE" "$PROGRAM" "$PROG" && exit 0 || exit $?
+                ;;
+
         *)
-                echo "Usage: $0 start|stop|restart|force-reload|reload|configtest|debug"
+                echo "Usage: $0 start|stop|restart|force-reload|reload|configtest|debug|status"
                 exit 1
                 ;;
 esac
