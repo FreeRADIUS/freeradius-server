@@ -1082,23 +1082,22 @@ STATE_MACHINE_DECL(request_finish)
 	if (!request->in_request_hash) return;
 
 	/*
+	 *	Override the response code if a control:Response-Packet-Type attribute is present.
+	 */
+	vp = pairfind(request->config_items, PW_RESPONSE_PACKET_TYPE, 0, TAG_ANY);
+	if (vp) {
+		if (vp->vp_integer == 256) {
+			RDEBUG2("Not responding to request");
+			request->reply->code = 0;
+		} else {
+			request->reply->code = vp->vp_integer;
+		}
+	}
+	/*
 	 *	Catch Auth-Type := Reject BEFORE proxying the packet.
 	 */
-	if (request->packet->code == PW_AUTHENTICATION_REQUEST) {
-		/*
-		 *	Override the response code if a
-		 *	control:Response-Packet-Type attribute is present.
-		 */
-		vp = pairfind(request->config_items, PW_RESPONSE_PACKET_TYPE, 0, TAG_ANY);
-		if (vp) {
-			if (vp->vp_integer == 256) {
-				RDEBUG2("Not responding to request");
-
-				request->reply->code = 0;
-			} else {
-				request->reply->code = vp->vp_integer;
-			}
-		} else if (request->reply->code == 0) {
+	else if (request->packet->code == PW_AUTHENTICATION_REQUEST) {
+		if (request->reply->code == 0) {
 			vp = pairfind(request->config_items, PW_AUTH_TYPE, 0, TAG_ANY);
 
 			if (!vp || (vp->vp_integer != PW_AUTHENTICATION_REJECT)) {
