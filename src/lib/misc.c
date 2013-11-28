@@ -589,6 +589,37 @@ size_t fr_bin2hex(char *hex, uint8_t const *bin, size_t inlen)
 }
 
 
+
+/** Consume the integer (or hex) portion of a value string
+ *
+ * @param value string to parse.
+ * @param end pointer to the first non numeric char.
+ * @return integer value.
+ */
+uint32_t fr_strtoul(char const *value, char **end)
+{
+	if ((value[0] == '0') && (value[1] == 'x')) {
+		return strtoul(value, end, 16);
+	}
+
+	return strtoul(value, end, 10);
+}
+
+/** Check whether the rest of the string is whitespace
+ *
+ * @return true if the entirety of the string is whitespace, else false.
+ */
+bool fr_whitespace_check(char const *value)
+{
+	while (*value) {
+		if (!isspace((int) *value)) return false;
+
+		value++;
+	}
+
+	return true;
+}
+
 /*
  *	So we don't have ifdef's in the rest of the code
  */
