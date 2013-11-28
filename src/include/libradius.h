@@ -613,7 +613,10 @@ int		rad_lockfd_nonblock(int fd, int lock_len);
 int		rad_unlockfd(int fd, int lock_len);
 size_t		fr_bin2hex(char *hex, uint8_t const *bin, size_t inlen);
 size_t		fr_hex2bin(uint8_t *bin, char const *hex, size_t outlen);
-int fr_ipaddr_cmp(fr_ipaddr_t const *a, fr_ipaddr_t const *b);
+uint32_t	fr_strtoul(char const *value, char **end);
+bool		fr_whitespace_check(char const *value);
+
+int		fr_ipaddr_cmp(fr_ipaddr_t const *a, fr_ipaddr_t const *b);
 
 int		ip_ptonx(char const *src, fr_ipaddr_t *dst);
 int		ip_hton(char const *src, int af, fr_ipaddr_t *dst);

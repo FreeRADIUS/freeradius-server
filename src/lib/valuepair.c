@@ -1159,35 +1159,6 @@ void pairfilter(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from, unsigned in
 
 static char const *hextab = "0123456789abcdef";
 
-/*
- *  Parse a string value into a given VALUE_PAIR
- *
- *  FIXME: we probably want to fix this function to accept
- *  octets as values for any type of attribute.  We should then
- *  double-check the parsed value, to be sure it's legal for that
- *  type (length, etc.)
- */
-static uint32_t getint(char const *value, char **end)
-{
-	if ((value[0] == '0') && (value[1] == 'x')) {
-		return strtoul(value, end, 16);
-	}
-
-	return strtoul(value, end, 10);
-}
-
-static int check_for_whitespace(char const *value)
-{
-	while (*value) {
-		if (!isspace((int) *value)) return 0;
-
-		value++;
-	}
-
-	return 1;
-}
-
-
 bool pairparsevalue(VALUE_PAIR *vp, char const *value)
 {
 	char		*p;
@@ -1301,7 +1272,7 @@ bool pairparsevalue(VALUE_PAIR *vp, char const *value)
 		/*
 		 *	Note that ALL integers are unsigned!
 		 */
-		vp->vp_integer = getint(value, &p);
+		vp->vp_integer = fr_strtoul(value, &p);
 		if (!*p) {
 			if (vp->vp_integer > 255) {
 				fr_strerror_printf("Byte value \"%s\" is larger than 255", value);
@@ -1309,14 +1280,14 @@ bool pairparsevalue(VALUE_PAIR *vp, char const *value)
 			}
 			break;
 		}
-		if (check_for_whitespace(p)) break;
+		if (fr_whitespace_check(p)) break;
 		goto check_for_value;
 
 	case PW_TYPE_SHORT:
 		/*
 		 *	Note that ALL integers are unsigned!
 		 */
-		vp->vp_integer = getint(value, &p);
+		vp->vp_integer = fr_strtoul(value, &p);
 		vp->length = 2;
 		if (!*p) {
 			if (vp->vp_integer > 65535) {
@@ -1325,17 +1296,17 @@ bool pairparsevalue(VALUE_PAIR *vp, char const *value)
 			}
 			break;
 		}
-		if (check_for_whitespace(p)) break;
+		if (fr_whitespace_check(p)) break;
 		goto check_for_value;
 
 	case PW_TYPE_INTEGER:
 		/*
 		 *	Note that ALL integers are unsigned!
 		 */
-		vp->vp_integer = getint(value, &p);
+		vp->vp_integer = fr_strtoul(value, &p);
 		vp->length = 4;
 		if (!*p) break;
-		if (check_for_whitespace(p)) break;
+		if (fr_whitespace_check(p)) break;
 
 	check_for_value:
 		/*
@@ -1355,14 +1326,14 @@ bool pairparsevalue(VALUE_PAIR *vp, char const *value)
 		 *	Note that ALL integers are unsigned!
 		 */
 		if (sscanf(value, "%" PRIu64, &y) != 1) {
-			fr_strerror_printf("Invalid value %s for attribute %s",
+			fr_strerror_printf("Invalid value '%s' for attribute '%s'",
 					   value, vp->da->name);
 			return false;
 		}
 		vp->vp_integer64 = y;
 		vp->length = 8;
 		length = strspn(value, "0123456789");
-		if (check_for_whitespace(value + length)) break;
+		if (fr_whitespace_check(value + length)) break;
 		break;
 
 	case PW_TYPE_DATE:
@@ -1395,7 +1366,7 @@ bool pairparsevalue(VALUE_PAIR *vp, char const *value)
 		if (ascend_parse_filter(vp) < 0 ) {
 			char buffer[256];
 
-			snprintf(buffer, sizeof(buffer), "failed to parse Ascend binary attribute: %s", fr_strerror());
+			snprintf(buffer, sizeof(buffer), "failed to parse Ascend binary attribute '%s'", fr_strerror());
 			fr_strerror_printf("%s", buffer);
 			return false;
 		}
