@@ -1419,8 +1419,7 @@ bool pairparsevalue(VALUE_PAIR *vp, char const *value)
 		 *	attribute.
 		 */
 		if ((dval = dict_valbyname(vp->da->attr, vp->da->vendor, value)) == NULL) {
-			fr_strerror_printf("Unknown value %s for attribute %s",
-				   value, vp->da->name);
+			fr_strerror_printf("Unknown value '%s' for attribute '%s'", value, vp->da->name);
 			return false;
 		}
 		vp->vp_integer = dval->value;

@@ -340,7 +340,6 @@ value_pair_map_t *radius_cp2map(TALLOC_CTX *ctx, CONF_PAIR *cp,
 	if (type == T_BARE_WORD) {
 		if (*value == '&') {
 			map->src = radius_attr2tmpl(map, value + 1, src_request_def, src_list_def);
-
 		} else {
 			if (!isdigit((int) *value) &&
 			    ((strchr(value, ':') != NULL) ||
@@ -437,6 +436,26 @@ value_pair_map_t *radius_cp2map(TALLOC_CTX *ctx, CONF_PAIR *cp,
 				goto error;
 			}
 		break;
+
+		case VPT_TYPE_LITERAL:
+		/*
+		 *	If LHS is an attribute, and RHS is a literal, we can
+		 *	check that the format is correct.
+		 */
+		if (map->dst->type == VPT_TYPE_ATTR) {
+			VALUE_PAIR *vp;
+			bool ret;
+
+			MEM(vp = pairalloc(NULL, map->dst->da));
+			vp->op = map->op;
+
+			ret = pairparsevalue(vp, map->src->name);
+			talloc_free(vp);
+			if (!ret) {
+				cf_log_err(ci, "%s", fr_strerror());
+				return NULL;
+			}
+		}
 
 		default:
 			break;
