@@ -284,7 +284,7 @@ static const CONF_PARSER module_config[] = {
 	 *	DN's and filters.
 	 */
 	{"basedn", PW_TYPE_STRING_PTR,
-	 offsetof(ldap_instance,basedn), NULL, "o=notexist"},
+	 offsetof(ldap_instance,basedn), NULL, NULL},
 	{"filter", PW_TYPE_STRING_PTR,
 	 offsetof(ldap_instance,filter), NULL, "(uid=%u)"},
 	{"base_filter", PW_TYPE_STRING_PTR,
@@ -1033,6 +1033,7 @@ static int ldap_groupcmp(void *instance, REQUEST *req,
 	VALUE_PAIR	*vp_user_dn;
 	VALUE_PAIR      **request_pairs;
 
+	basedn[0] = '\0';
 	request_pairs = &req->config_items;
 
 	DEBUG("  [%s] Entering ldap_groupcmp()", inst->xlat_name);
@@ -1047,7 +1048,7 @@ static int ldap_groupcmp(void *instance, REQUEST *req,
                 return 1;
         }
 
-        if (!radius_xlat(basedn, sizeof(basedn), inst->basedn, req, ldap_escape_func)) {
+        if (inst->basedn && !radius_xlat(basedn, sizeof(basedn), inst->basedn, req, ldap_escape_func)) {
                 DEBUG("rlm_ldap::ldap_groupcmp: unable to create basedn.");
                 return 1;
         }
@@ -1362,6 +1363,8 @@ static int ldap_authorize(void *instance, REQUEST * request)
 	int		conn_id = -1;
 	int		added_known_password = 0;
 
+	basedn[0] = '\0';
+
 	if (!request->username){
 		RDEBUG2("Attribute \"User-Name\" is required for authorization.\n");
 		return RLM_MODULE_NOOP;
@@ -1386,8 +1389,8 @@ static int ldap_authorize(void *instance, REQUEST * request)
 		return RLM_MODULE_INVALID;
 	}
 
-	if (!radius_xlat(basedn, sizeof(basedn), inst->basedn,
-			 request, ldap_escape_func)) {
+	if (inst->basedn && !radius_xlat(basedn, sizeof(basedn), inst->basedn,
+					 request, ldap_escape_func)) {
 		radlog(L_ERR, "  [%s] unable to create basedn.\n", inst->xlat_name);
 		return RLM_MODULE_INVALID;
 	}
@@ -1849,6 +1852,7 @@ static int ldap_authenticate(void *instance, REQUEST * request)
 #ifdef NOVELL
 	char		*err = NULL;
 #endif
+	basedn[0] = '\0';
 
 	/*
 	 * Ensure that we're being passed a plain-text password, and not
@@ -1903,8 +1907,8 @@ static int ldap_authenticate(void *instance, REQUEST * request)
 			return RLM_MODULE_INVALID;
 		}
 
-		if (!radius_xlat(basedn, sizeof(basedn), inst->basedn,
-		 		request, ldap_escape_func)) {
+		if (inst->basedn && !radius_xlat(basedn, sizeof(basedn), inst->basedn,
+						 request, ldap_escape_func)) {
 			radlog(L_ERR, "  [%s] unable to create basedn.\n", inst->xlat_name);
 			return RLM_MODULE_INVALID;
 		}
