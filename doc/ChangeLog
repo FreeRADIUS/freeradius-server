@@ -8,6 +8,12 @@ FreeRADIUS 3.0.1 Mon  7 Oct 2013 15:48:14 EDT urgency=medium
 	* Add "date" module for date formatting.
 	  See raddb/mods-available/date
 	* Added unit test suite for internal server functionality
+	* Do validation of RHS when loading "update" sections.
+	* Update LDAP module documentation and functionality.
+	  The generic attribute can now update lists.
+	* Updated dictionary.extreme
+	* Update sqlippool to do clears as a separate transaction,
+	  and at most once per second.  This should help MySQL.
 
 	Bug fixes
 	* Use correct field for ARP setting in DHCP.
@@ -43,6 +49,11 @@ FreeRADIUS 3.0.1 Mon  7 Oct 2013 15:48:14 EDT urgency=medium
 	* Set operator in internal unlang code to suppress spurious
 	  warning messages
 	* Fix debian packaging
+	* Added "status" to Debian init script.
+	* Fix "update outer.request" to update the outer request.
+	* Don't print TLS debugging messages when not in debug mode.
+	* Correctly manage counters for "limit" sections of TCP / TLS
+	  "listen" sockets.
 
 FreeRADIUS 3.0.0 Mon  7 Oct 2013 15:48:14 EDT urgency=medium
 	Feature improvements
