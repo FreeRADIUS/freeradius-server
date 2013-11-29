@@ -51,6 +51,34 @@ typedef struct rlm_sql_mysql_conn {
 	rlm_sql_row_t row;
 } rlm_sql_mysql_conn_t;
 
+typedef struct rlm_sql_mysql_config {
+	char const *tls_ca_file;
+	char const *tls_ca_path;
+	char const *tls_certificate_file;
+	char const *tls_private_key_file;
+	char const *tls_cipher;
+} rlm_sql_mysql_config_t;
+
+static CONF_PARSER tls_config[] = {
+	{"ca_file", PW_TYPE_FILE_INPUT, offsetof(rlm_sql_mysql_config_t, tls_ca_file), NULL, NULL},
+	{"ca_path", PW_TYPE_FILE_INPUT, offsetof(rlm_sql_mysql_config_t, tls_ca_path), NULL, NULL},
+	{"certificate_file", PW_TYPE_FILE_INPUT, offsetof(rlm_sql_mysql_config_t, tls_certificate_file), NULL, NULL},
+	{"private_key_file", PW_TYPE_FILE_INPUT, offsetof(rlm_sql_mysql_config_t, tls_private_key_file), NULL, NULL},
+
+	/*
+	 *	MySQL Specific TLS attributes
+	 */
+	{"cipher", PW_TYPE_STRING_PTR, offsetof(rlm_sql_mysql_config_t, tls_cipher), NULL, NULL},
+
+	{ NULL, -1, 0, NULL, NULL }
+};
+
+static const CONF_PARSER driver_config[] = {
+	{ "tls", PW_TYPE_SUBSECTION, 0, NULL, (void const *) tls_config },
+
+	{NULL, -1, 0, NULL, NULL}
+};
+
 /* Prototypes */
 static sql_rcode_t sql_free_result(rlm_sql_handle_t*, rlm_sql_config_t*);
 
@@ -60,6 +88,19 @@ static int _sql_socket_destructor(rlm_sql_mysql_conn_t *conn)
 
 	if (conn->sock){
 		mysql_close(conn->sock);
+	}
+
+	return 0;
+}
+
+static int mod_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
+{
+	rlm_sql_mysql_config_t *driver;
+
+	MEM(driver = config->driver = talloc_zero(config, rlm_sql_mysql_config_t));
+
+	if (cf_section_parse(conf, driver, driver_config) < 0) {
+		return -1;
 	}
 
 	return 0;
@@ -75,6 +116,7 @@ static int _sql_socket_destructor(rlm_sql_mysql_conn_t *conn)
 static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 {
 	rlm_sql_mysql_conn_t *conn;
+	rlm_sql_mysql_config_t *driver = config->driver;
 	unsigned long sql_flags;
 
 	MEM(conn = handle->conn = talloc_zero(handle, rlm_sql_mysql_conn_t));
@@ -83,6 +125,19 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 	DEBUG("rlm_sql_mysql: Starting connect to MySQL server");
 
 	mysql_init(&(conn->db));
+
+	/*
+	 *	If any of the TLS options are set, configure TLS
+	 *
+	 *	According to MySQL docs this function always returns 0, so we won't
+	 *	know if ssl setup succeeded until mysql_real_connect is called below.
+	 */
+	if (driver->tls_ca_file || driver->tls_ca_path ||
+	    driver->tls_certificate_file || driver->tls_private_key_file) {
+		mysql_ssl_set(&(conn->db), driver->tls_private_key_file, driver->tls_certificate_file,
+			      driver->tls_ca_file, driver->tls_ca_path, driver->tls_cipher);
+	}
+
 	mysql_options(&(conn->db), MYSQL_READ_DEFAULT_GROUP, "freeradius");
 
 #if (MYSQL_VERSION_ID >= 50000)
@@ -486,7 +541,7 @@ static int sql_affected_rows(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t 
 /* Exported to rlm_sql */
 rlm_sql_module_t rlm_sql_mysql = {
 	"rlm_sql_mysql",
-	NULL,
+	mod_instantiate,
 	sql_socket_init,
 	sql_query,
 	sql_select_query,

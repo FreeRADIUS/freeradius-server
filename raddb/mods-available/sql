@@ -15,6 +15,34 @@
 #
 #  Where "DB" is mysql, mssql, oracle, or postgresql.
 #
+#
+
+#
+#  Several drivers accept specific options, to set them a config section
+#  matching the name of the driver should be added to the sql instance.
+#
+#  Driver specific options are:
+#
+#  sqlite {
+#	# Path to the sqlite database
+#	filename = "/my/sqlite/database.db"
+#
+#	# If the file above does not exist and bootstrap is set
+#	# a new database file will be created, and the SQL statements
+#	# contained within the file will be executed.
+#	bootstrap = "/my/sqlite/schema.sql"
+#  }
+#
+#  mysql {
+#	# If any of the below files are set tls encryption is enabled
+#	tls {
+#		ca_file = "/etc/ssl/certs/my_ca.crt"
+#		ca_path = "/etc/ssl/certs/"
+#		certificate_file = "/etc/ssl/certs/private/client.crt"
+#		private_key_file = "/etc/ssl/certs/private/client.key"
+#		cipher = "DHE-RSA-AES256-SHA:AES128-SHA"
+#	}
+#  }
 
 sql {
 	# The sub-module to use to execute queries. This should match
