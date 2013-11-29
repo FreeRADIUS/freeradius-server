@@ -1147,16 +1147,6 @@ void *mod_conn_create(void *instance)
 	/*
 	 *	Set all of the TLS options
 	 */
-
-#  ifdef LDAP_OPT_X_TLS_NEWCTX
-	{
-		/* Always use the new TLS configuration context */
-		int is_server = 0;
-		do_ldap_option(LDAP_OPT_X_TLS_NEWCTX, "new TLS context", &is_server);
-
-	}
-#  endif
-
 	if (inst->tls_mode) {
 		do_ldap_option(LDAP_OPT_X_TLS, "tls_mode", &(inst->tls_mode));
 	}
@@ -1178,6 +1168,19 @@ void *mod_conn_create(void *instance)
 #  ifdef LDAP_OPT_X_TLS_NEVER
 	if (inst->tls_require_cert_str) {
 		do_ldap_option(LDAP_OPT_X_TLS_REQUIRE_CERT, "require_cert", &inst->tls_require_cert);
+	}
+#  endif
+
+	/*
+	 *	Counter intuitively the TLS context appears to need to be initialised
+	 *	after all the TLS options are set on the handle.
+	 */
+#  ifdef LDAP_OPT_X_TLS_NEWCTX
+	{
+		/* Always use the new TLS configuration context */
+		int is_server = 0;
+		do_ldap_option(LDAP_OPT_X_TLS_NEWCTX, "new TLS context", &is_server);
+
 	}
 #  endif
 
