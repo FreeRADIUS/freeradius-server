@@ -253,7 +253,7 @@ static const CONF_PARSER module_config[] = {
 	/* allow server unlimited time for search (server-side limit) */
 	{"timelimit", PW_TYPE_INTEGER,
 	 offsetof(ldap_instance,timelimit), NULL, "20"},
-	/* how many times the connection can be used before being re-established */	
+	/* how many times the connection can be used before being re-established */
 	{"max_uses", PW_TYPE_INTEGER,
 	 offsetof(ldap_instance,max_uses), NULL, "0"},
 
@@ -402,7 +402,7 @@ static inline int ldap_get_conn(LDAP_CONN *conns,LDAP_CONN **ret,
 }
 
 static inline void ldap_release_conn(int i, ldap_instance *inst)
-				     
+
 {
 	LDAP_CONN *conns = inst->conns;
 
@@ -411,7 +411,7 @@ static inline void ldap_release_conn(int i, ldap_instance *inst)
 		if (conns[i].ld){
 			DEBUG("  [%s] ldap_release_conn: Hit max usage limit, closing Id: %d", inst->xlat_name, i);
 			ldap_unbind_s(conns[i].ld);
-			
+
 			conns[i].ld = NULL;
 		}
 		conns[i].bound = 0;
@@ -423,7 +423,7 @@ static inline void ldap_release_conn(int i, ldap_instance *inst)
 
 #ifdef NOVELL
 static inline void ldap_release_apc_conn(int i, ldap_instance *inst)
-				     
+
 {
 	LDAP_CONN *conns = inst->apc_conns;
 
@@ -890,7 +890,7 @@ retry:
 
 	tv.tv_sec = inst->timeout;
 	tv.tv_usec = 0;
-	DEBUG2("  [%s] performing search in %s, with filter %s", inst->xlat_name, 
+	DEBUG2("  [%s] performing search in %s, with filter %s", inst->xlat_name,
 	       search_basedn ? search_basedn : "(null)" , filter);
 	switch (ldap_search_st(conn->ld, search_basedn, scope, filter,
 			       attrs, 0, &tv, result)) {
@@ -1786,7 +1786,7 @@ static int ldap_authorize(void *instance, REQUEST * request)
 
 		return RLM_MODULE_REJECT;
 	}
-       
+
        /*
 	*	More warning messages for people who can't be bothered
 	*	to read the documentation.
@@ -2317,7 +2317,7 @@ static LDAP *ldap_connect(void *instance, const char *dn, const char *password,
 		if (inst->chase_referrals) {
 			rc=ldap_set_option(ld, LDAP_OPT_REFERRALS,
 					   LDAP_OPT_ON);
-			
+
 #if LDAP_SET_REBIND_PROC_ARGS == 3
 			if (inst->rebind == 1) {
 				ldap_set_rebind_proc(ld, ldap_rebind,
@@ -2395,7 +2395,7 @@ static LDAP *ldap_connect(void *instance, const char *dn, const char *password,
 			ldap_get_option(ld, LDAP_OPT_ERROR_NUMBER, &ldap_errno);
 			radlog(L_ERR, "  [%s] could not set "
 			       "LDAP_OPT_X_TLS_CACERTFILE option to %s: %s",
-			       inst->xlat_name, 
+			       inst->xlat_name,
 			       inst->tls_cacertfile,
 			       ldap_err2string(ldap_errno));
 		}
@@ -2410,7 +2410,7 @@ static LDAP *ldap_connect(void *instance, const char *dn, const char *password,
 			ldap_get_option(ld, LDAP_OPT_ERROR_NUMBER, &ldap_errno);
 			radlog(L_ERR, "  [%s] could not set "
 			       "LDAP_OPT_X_TLS_CACERTDIR option to %s: %s",
-			       inst->xlat_name, 
+			       inst->xlat_name,
 			       inst->tls_cacertdir,
 			       ldap_err2string(ldap_errno));
 		}
@@ -2426,9 +2426,9 @@ static LDAP *ldap_connect(void *instance, const char *dn, const char *password,
 	if (ldap_int_tls_config(NULL, LDAP_OPT_X_TLS_REQUIRE_CERT,
 				(inst->tls_require_cert)) != LDAP_OPT_SUCCESS) {
 		ldap_get_option(ld, LDAP_OPT_ERROR_NUMBER, &ldap_errno);
-		radlog(L_ERR, "  [%s] could not set ", 
+		radlog(L_ERR, "  [%s] could not set ",
 		       "LDAP_OPT_X_TLS_REQUIRE_CERT option to %s: %s",
-		       inst->xlat_name, 
+		       inst->xlat_name,
 		       inst->tls_require_cert,
 		       ldap_err2string(ldap_errno));
 	}
@@ -2443,7 +2443,7 @@ static LDAP *ldap_connect(void *instance, const char *dn, const char *password,
 			ldap_get_option(ld, LDAP_OPT_ERROR_NUMBER, &ldap_errno);
 			radlog(L_ERR, "  [%s] could not set "
 			       "LDAP_OPT_X_TLS_CERTFILE option to %s: %s",
-			       inst->xlat_name, 
+			       inst->xlat_name,
 			       inst->tls_certfile,
 			       ldap_err2string(ldap_errno));
 		}
@@ -2459,7 +2459,7 @@ static LDAP *ldap_connect(void *instance, const char *dn, const char *password,
 			ldap_get_option(ld, LDAP_OPT_ERROR_NUMBER, &ldap_errno);
 			radlog(L_ERR, "  [%s] could not set "
 			       "LDAP_OPT_X_TLS_KEYFILE option to %s: %s",
-			       inst->xlat_name, 
+			       inst->xlat_name,
 			       inst->tls_keyfile, ldap_err2string(ldap_errno));
 		}
 	}
