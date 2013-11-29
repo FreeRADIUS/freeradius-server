@@ -1100,8 +1100,15 @@ void *mod_conn_create(void *instance)
 		LDAP_ERR("Could not set %s: %s", _name, ldap_err2string(ldap_errno)); \
 	}
 
+#define do_ldap_global_option(_option, _name, _value) \
+	if (ldap_set_option(NULL, _option, _value) != LDAP_OPT_SUCCESS) { \
+		ldap_get_option(conn->handle, LDAP_OPT_ERROR_NUMBER, &ldap_errno); \
+		LDAP_ERR("Could not set %s: %s", _name, ldap_err2string(ldap_errno)); \
+	}
+
+
 	if (inst->ldap_debug) {
-		do_ldap_option(LDAP_OPT_DEBUG_LEVEL, "ldap_debug", &(inst->ldap_debug));
+		do_ldap_global_option(LDAP_OPT_DEBUG_LEVEL, "ldap_debug", &(inst->ldap_debug));
 	}
 
 	/*
