@@ -2374,7 +2374,9 @@ static void request_post_handler(REQUEST *request)
 		 *	the post handler.
 		 */
 		if ((rcode < 0) && setup_post_proxy_fail(request)) {
-			request_pre_handler(request);
+			if (!request_pre_handler(request)) {
+				return;
+			}
 		}
 
 		/*
