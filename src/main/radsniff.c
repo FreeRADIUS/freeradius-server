@@ -911,16 +911,17 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			 *	rad_packet_ok does checks to verify the packet is actually valid.
 			 */
 			if (conf->decode_attrs) {
+				int ret;
 				FILE *log_fp = fr_log_fp;
 
 				fr_log_fp = NULL;
-				if (rad_decode(current, original ? original->expect : NULL,
-					       conf->radius_secret) != 0) {
+				ret = rad_decode(current, original ? original->expect : NULL, conf->radius_secret);
+				fr_log_fp = log_fp;
+				if (ret != 0) {
 					rad_free(&current);
 					REDEBUG("Failed decoding");
 					return;
 				}
-				fr_log_fp = log_fp;
 			}
 
 			/*
@@ -1013,15 +1014,18 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			 *	rad_packet_ok does checks to verify the packet is actually valid.
 			 */
 			if (conf->decode_attrs) {
+				int ret;
 				FILE *log_fp = fr_log_fp;
 
 				fr_log_fp = NULL;
-				if (rad_decode(current, NULL, conf->radius_secret) != 0) {
+				ret = rad_decode(current, NULL, conf->radius_secret);
+				fr_log_fp = log_fp;
+
+				if (ret != 0) {
 					rad_free(&current);
 					REDEBUG("Failed decoding");
 					return;
 				}
-				fr_log_fp = log_fp;
 
 				pairsort(&current->vps, true);
 			}
