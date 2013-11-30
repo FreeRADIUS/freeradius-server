@@ -1903,6 +1903,17 @@ static void sess_free_vps(UNUSED void *parent, void *data_ptr,
 	pairfree(&vp);
 }
 
+/*
+ *	Add all the default ciphers and message digests
+ *	Create our context.
+ *
+ *	This should be called exactly once from main.
+ */
+void tls_global_init(void)
+{
+	SSL_library_init();
+	SSL_load_error_strings();
+}
 
 /*
  *	Create Global context SSL and use it in every new session
@@ -1918,13 +1929,6 @@ static SSL_CTX *init_tls_ctx(fr_tls_server_conf_t *conf, int client)
 	int verify_mode = SSL_VERIFY_NONE;
 	int ctx_options = 0;
 	int type;
-
-	/*
-	 *	Add all the default ciphers and message digests
-	 *	Create our context.
-	 */
-	SSL_library_init();
-	SSL_load_error_strings();
 
 	/*
 	 *	SHA256 is in all versions of OpenSSL, but isn't
