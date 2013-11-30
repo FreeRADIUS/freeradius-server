@@ -18,6 +18,8 @@ FreeRADIUS 3.0.1 Mon  7 Oct 2013 15:48:14 EDT urgency=medium
 	* Respect control:Response-Packet-Type for all types of 
 	  requests.
 	* Add support for SSL encryption to the MySQL driver.
+	* Allow arbitrary connection parameters to be used with the
+	  PostgreSQL driver.
 
 	Bug fixes
 	* Use correct field for ARP setting in DHCP.
@@ -60,6 +62,8 @@ FreeRADIUS 3.0.1 Mon  7 Oct 2013 15:48:14 EDT urgency=medium
 	  "listen" sockets.
 	* Fix libldap debug output.
 	* Fix rlm_ldap tls functionality.
+	* Initialise OpenSSL globals early to avoid issues with the
+	  PostgreSQL library.
 
 FreeRADIUS 3.0.0 Mon  7 Oct 2013 15:48:14 EDT urgency=medium
 	Feature improvements
