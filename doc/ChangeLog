@@ -6,54 +6,60 @@ FreeRADIUS 3.0.1 Mon  7 Oct 2013 15:48:14 EDT urgency=medium
 	  TLS is required.  The shared secret is then set to "radsec".
 	* More documentation in the tls virtual server.
 	* Add "date" module for date formatting.
-	  See raddb/mods-available/date
+	  See raddb/mods-available/date.
 	* Added unit test suite for internal server functionality
-	* Do validation of RHS when loading "update" sections.
+	* Do validation of RHS when loading "update" sections and LHS
+	  it lieteral.
 	* Update LDAP module documentation and functionality.
 	  The generic attribute can now update lists.
-	* Updated dictionary.extreme
+	* Updated dictionary.extreme.
 	* Update sqlippool to do clears as a separate transaction,
 	  and at most once per second.  This should help MySQL.
+	* Respect control:Response-Packet-Type for all types of 
+	  requests.
+	* Add support for SSL encryption to the MySQL driver.
 
 	Bug fixes
 	* Use correct field for ARP setting in DHCP.
-	* Fix crash on debug condition (#454)
+	* Fix crash on debug condition (#454).
 	* Fix a number of minor issues caught by the clang
 	  analyzer.
-	* Set WARNING messages to yellow instead of normal text
-	* Correct debug colorise logic.  Patch from Phil Mayers
+	* Set WARNING messages to yellow instead of normal text.
+	* Correct debug colorise logic.  Patch from Phil Mayers.
 	* Encode attributes of type "ethernet".  No one uses them,
 	  but it makes sense.
-	* Work around regex initialization issues
+	* Work around regex initialization issues.
 	* Fix build when linking against OpenSSL.
 	* Print IDs as positive numbers, which helps for large DHCP
 	  XIDs.
 	* Fix issue with sql_ippool.
 	* sqlcounter now uses 64-bit counters, to deal with 4G overflow.
-	* Fix issues with DHCP subsystem
+	* Fix issues with DHCP subsystem.
 	* Don't build / install disabled modules, or their config
 	  files.
 	* Fix build for OSX Mavericks, which hid the header files
 	  in a magical place.
 	* Fix LEAP buffer issue.  You should still avoid LEAP.
-	* Mark "unknown" WiMAX attributes as being WiMAX
+	* Mark "unknown" WiMAX attributes as being WiMAX.
 	* Fix typo in packet decoder for fragmented extended attrs
-	* RPM spec fixes
-	* Always run unit tests before building radiusd
-	* Fix rlm_perl build issues when not using threads
-	* Enable %{Response-Packet-Type} again
+	* RPM spec fixes.
+	* Always run unit tests before building radiusd.
+	* Fix rlm_perl build issues when not using threads.
+	* Enable %{Response-Packet-Type} again.
 	* Update configuration file parser to handle "bool"
 	  consistently.
 	* Make more messages debug instead of info, to avoid
-	  polluting the logs with messages that can't be fixed
+	  polluting the logs with messages that can't be fixed.
 	* Set operator in internal unlang code to suppress spurious
-	  warning messages
-	* Fix debian packaging
+	  warning messages.
+	* Fix debian packaging.
 	* Added "status" to Debian init script.
 	* Fix "update outer.request" to update the outer request.
 	* Don't print TLS debugging messages when not in debug mode.
 	* Correctly manage counters for "limit" sections of TCP / TLS
 	  "listen" sockets.
+	* Fix libldap debug output.
+	* Fix rlm_ldap tls functionality.
 
 FreeRADIUS 3.0.0 Mon  7 Oct 2013 15:48:14 EDT urgency=medium
 	Feature improvements
