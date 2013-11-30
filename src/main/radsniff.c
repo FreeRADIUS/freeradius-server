@@ -223,7 +223,7 @@ static void rs_packet_print_csv_header(void)
 
 	*--p = '\0';
 
-	INFO("%s", buffer);
+	fprintf(stdout , "%s\n", buffer);
 }
 
 static void rs_packet_print_csv(uint64_t count, rs_status_t status, fr_pcap_t *handle, RADIUS_PACKET *packet,
@@ -244,7 +244,7 @@ static void rs_packet_print_csv(uint64_t count, rs_status_t status, fr_pcap_t *h
 			status_str = "received";
 			break;
 		case RS_LOST:
-			status_str = "lost";
+			status_str = "norsp";
 			break;
 
 		case RS_RTX:
@@ -335,8 +335,7 @@ static void rs_packet_print_csv(uint64_t count, rs_status_t status, fr_pcap_t *h
 	}
 
 	*--p = '\0';
-
-	INFO("%s", buffer);
+	fprintf(stdout , "%s\n", buffer);
 }
 
 static void rs_packet_print_fancy(uint64_t count, rs_status_t status, fr_pcap_t *handle, RADIUS_PACKET *packet,
@@ -357,7 +356,7 @@ static void rs_packet_print_fancy(uint64_t count, rs_status_t status, fr_pcap_t 
 			status_str = NULL;
 			break;
 		case RS_LOST:
-			status_str = "** LOST **";
+			status_str = "** NO RESPONSE **";
 			break;
 
 		case RS_RTX:
@@ -390,11 +389,11 @@ static void rs_packet_print_fancy(uint64_t count, rs_status_t status, fr_pcap_t 
 	len = snprintf(p, s, "%s Id %i %s:%s:%d %s %s:%d ",
    		       fr_packet_codes[packet->code], packet->id,
 		       handle->name,
-		       response ? src : dst,
-		       response ? packet->src_port : packet->dst_port,
-		       response ? "<-" : "->",
 		       response ? dst : src,
-		       response ? packet->dst_port : packet->src_port);
+		       response ? packet->dst_port : packet->src_port,
+		       response ? "<-" : "->",
+		       response ? src : dst ,
+		       response ? packet->src_port : packet->dst_port);
 	p += len;
 	s -= len;
 	if (s <= 0) return;
@@ -1343,7 +1342,7 @@ static int rs_build_filter(VALUE_PAIR **out, char const *filter)
 static void NEVER_RETURNS usage(int status)
 {
 	FILE *output = status ? stderr : stdout;
-	fprintf(output, "Usage: radsniff [options][stats options]\n");
+	fprintf(output, "Usage: radsniff [options][stats options] -- [pcap files]\n");
 	fprintf(output, "options:\n");
 	fprintf(output, "  -c <count>         Number of packets to capture.\n");
 	fprintf(output, "  -d <directory>     Set dictionary directory.\n");
@@ -1371,12 +1370,6 @@ static void NEVER_RETURNS usage(int status)
 	fprintf(output, "  -O <server>        Write statistics to this collectd server.\n");
 #endif
 	exit(status);
-}
-
-static void rs_cleanup(UNUSED int sig)
-{
-	DEBUG2("Signalling event loop to exit");
-	fr_event_loop_exit(events, 1);
 }
 
 int main(int argc, char *argv[])
@@ -1592,6 +1585,17 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	/* Useful for file globbing */
+	while (optind < argc) {
+		*in_head = fr_pcap_init(conf, argv[optind], PCAP_FILE_IN);
+		if (!*in_head) {
+			goto finish;
+		}
+		in_head = &(*in_head)->next;
+		conf->from_file = true;
+		optind++;
+	}
+
 	/* What's the point in specifying -F ?! */
 	if (conf->from_stdin && conf->from_file && conf->to_file) {
 		usage(64);
@@ -1636,10 +1640,12 @@ int main(int argc, char *argv[])
 	}
 
 	/*
-	 *	If were writing pcap data stdout we *really* don't want to send
+	 *	If were writing pcap data, or CSV to stdout we *really* don't want to send
 	 *	logging there as well.
 	 */
- 	fr_log_fp = conf->to_stdout ? stderr : stdout;
+	if (conf->to_stdout || conf->list_attributes) {
+ 		fr_log_fp = stderr;
+ 	}
 
 	if (conf->list_attributes) {
 		conf->logger = rs_packet_print_csv;
@@ -1828,13 +1834,12 @@ int main(int argc, char *argv[])
 		     	in_p->promiscuous = conf->promiscuous;
 		     	in_p->buffer_pkts = conf->buffer_pkts;
 			if (fr_pcap_open(in_p) < 0) {
-				if (!conf->from_auto) {
-					ERROR("Failed opening pcap handle for %s", in_p->name);
-					goto finish;
+				ERROR("Failed opening pcap handle: %s", fr_strerror());
+				if (conf->from_auto || (in_p->type == PCAP_FILE_IN)) {
+					continue;
 				}
 
-				DEBUG("Failed opening pcap handle: %s", fr_strerror());
-				continue;
+				goto finish;
 			}
 
 			if (conf->pcap_filter) {
@@ -1849,6 +1854,11 @@ int main(int argc, char *argv[])
 		}
 		*tmp_p = NULL;
 		in = tmp;
+
+		if (!in) {
+			ERROR("No PCAP sources available");
+			exit(1);
+		}
 	}
 
 	/*
