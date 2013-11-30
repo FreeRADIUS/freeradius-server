@@ -498,7 +498,10 @@ static void wait_for_child_to_die(void *ctx)
 	REQUEST *request = ctx;
 
 	rad_assert(request->magic == REQUEST_MAGIC);
-	remove_from_request_hash(request);
+
+	if (request->in_request_hash) {
+		remove_from_request_hash(request);
+	}
 
 	/*
 	 *	If it's still queued (waiting for a thread to pick it
@@ -506,6 +509,7 @@ static void wait_for_child_to_die(void *ctx)
 	 *	handling it, THEN delay some more.
 	 */
 	if ((request->child_state == REQUEST_QUEUED) ||
+	    (request->thread_id != NO_CHILD_THREAD) ||
 	    ((request->child_state == REQUEST_RUNNING) &&
 	     (request->thread_id == NO_CHILD_THREAD))) {
 
@@ -535,6 +539,9 @@ static void wait_for_child_to_die(void *ctx)
 		return;
 	}
 #endif
+
+	rad_assert(request->child_state == REQUEST_DONE);
+	rad_assert(request->thread_id == NO_CHILD_THREAD);
 
 	ev_request_free(&request);
 }
