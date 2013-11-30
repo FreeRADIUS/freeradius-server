@@ -1805,10 +1805,10 @@ static int process_proxy_reply(REQUEST *request)
 	case RLM_MODULE_FAIL:
 	case RLM_MODULE_HANDLED:
 		/* FIXME: debug print stuff */
-		request->child_state = REQUEST_DONE;
 #ifdef HAVE_PTHREAD_H
 		request->thread_id = NO_CHILD_THREAD;
 #endif
+		request->child_state = REQUEST_DONE;
 		return 0;
 	}
 
@@ -1875,10 +1875,10 @@ static int request_pre_handler(REQUEST *request)
 	if (rcode < 0) {
 		RDEBUG("%s Dropping packet without response.", fr_strerror());
 		request->reply->offset = -2; /* bad authenticator */
-		request->child_state = REQUEST_DONE;
 #ifdef HAVE_PTHREAD_H
 		request->thread_id = NO_CHILD_THREAD;
 #endif
+		request->child_state = REQUEST_DONE;
 		return 0;
 	}
 
@@ -2595,13 +2595,15 @@ static void request_post_handler(REQUEST *request)
 
 	RDEBUG2("Finished request %u.", request->number);
 	rad_assert(child_state >= 0);
-	request->child_state = child_state;
 
 	if (have_children) {
 #ifdef HAVE_PTHREAD_H
 		request->thread_id = NO_CHILD_THREAD;
 #endif
+		request->child_state = child_state;
 	} else {
+		request->child_state = child_state;
+
 		/*
 		 *	Single threaded mode: update timers now.
 		 */
