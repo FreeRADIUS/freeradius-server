@@ -48,12 +48,13 @@ RCSID("$Id$")
 #include "sql_postgresql.h"
 
 typedef struct rlm_sql_postgres_conn {
-   PGconn	  *db;
-   PGresult	*result;
-   int	     cur_row;
-   int	     num_fields;
-   int		   affected_rows;
-   char	    **row;
+	char const	*dbstring;	//!< String describing parameters for the connection
+	PGconn		*db;
+	PGresult	*result;
+	int		cur_row;
+	int		num_fields;
+	int		affected_rows;
+	char		**row;
 } rlm_sql_postgres_conn_t;
 
 /* Internal function. Return true if the postgresql status value
@@ -150,49 +151,51 @@ static int sql_socket_destructor(void *c)
  *
  *************************************************************************/
 static int sql_init_socket(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
-	char dbstring[2048];
-	char const *port, *host;
+	char *dbstring;
 	rlm_sql_postgres_conn_t *conn;
 
 #ifdef HAVE_OPENSSL_CRYPTO_H
-	static int ssl_init = 0;
+	static bool ssl_init = false;
 
 	if (!ssl_init) {
-		PQinitSSL(0);
-		ssl_init = 1;
+		PQinitOpenSSL(0, 0);
+		ssl_init = true;
 	}
-
 #endif
-
-	if (config->sql_server[0] != '\0') {
-		host = " host=";
-	} else {
-		host = "";
-	}
-
-	if (config->sql_port[0] != '\0') {
-		port = " port=";
-	} else {
-		port = "";
-	}
 
 	MEM(conn = handle->conn = talloc_zero(handle, rlm_sql_postgres_conn_t));
 	talloc_set_destructor((void *) conn, sql_socket_destructor);
 
-	snprintf(dbstring, sizeof(dbstring),
-			"dbname=%s%s%s%s%s user=%s password=%s",
-			config->sql_db, host, config->sql_server,
-			port, config->sql_port,
-			config->sql_login, config->sql_password);
+	dbstring = strchr(config->sql_db, '=') ?
+		talloc_strdup(conn, config->sql_db) :
+		talloc_asprintf(conn, "dbname='%s'", config->sql_db);
 
+	if (config->sql_server[0] != '\0') {
+		dbstring = talloc_asprintf_append(dbstring, " host='%s'", config->sql_server);
+	}
+
+	if (config->sql_port[0] != '\0') {
+		dbstring = talloc_asprintf_append(dbstring, " port=%s", config->sql_port);
+	}
+
+	if (config->sql_login[0] != '\0') {
+		dbstring = talloc_asprintf_append(dbstring, " user='%s'", config->sql_login);
+	}
+
+	if (config->sql_password[0] != '\0') {
+		dbstring = talloc_asprintf_append(dbstring, " password='%s'", config->sql_password);
+	}
+
+	conn->dbstring = dbstring;
 	conn->db = PQconnectdb(dbstring);
-
-	if (PQstatus(conn->db) != CONNECTION_OK) {
-		ERROR("rlm_sql_postgresql: Couldn't connect socket to "
-		       "PostgreSQL server %s@%s:%s", config->sql_login,
-		       config->sql_server, config->sql_db);
+	DEBUG2("rlm_sql_postgresql: Connecting using parameters: %s", dbstring);
+	if (!conn->db || (PQstatus(conn->db) != CONNECTION_OK)) {
+		ERROR("rlm_sql_postgresql: Connection failed: %s", PQerrorMessage(conn->db));
 		return -1;
 	}
+	DEBUG2("Connected to database '%s' on '%s' server version %i, protocol version %i, backend PID %i ",
+	       PQdb(conn->db), PQhost(conn->db), PQserverVersion(conn->db), PQprotocolVersion(conn->db),
+	       PQbackendPID(conn->db));
 
 	return 0;
 }
@@ -225,8 +228,7 @@ static sql_rcode_t sql_query(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t 
 		 * returned, it should be treated like a PGRES_FATAL_ERROR
 		 * result.
 		 */
-	if (!conn->result)
-	{
+	if (!conn->result) {
 		ERROR("rlm_sql_postgresql: PostgreSQL Query failed Error: %s",
 				PQerrorMessage(conn->db));
 		/* As this error COULD be a connection error OR an out-of-memory
