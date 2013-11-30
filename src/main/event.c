@@ -156,6 +156,14 @@ static void ev_request_free(REQUEST **prequest)
 
 	request = *prequest;
 
+#ifdef HAVE_PTHREAD_H
+	/*
+	 *	We can only free a request if there's no child thread
+	 *	using it.
+	 */
+	rad_assert(request->thread_id == NO_CHILD_THREAD);
+#endif
+
 #ifdef WITH_COA
 	if (request->coa) {
 		/*
