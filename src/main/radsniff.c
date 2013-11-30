@@ -1958,7 +1958,7 @@ int main(int argc, char *argv[])
 		     	in_p->promiscuous = conf->promiscuous;
 		     	in_p->buffer_pkts = conf->buffer_pkts;
 			if (fr_pcap_open(in_p) < 0) {
-				ERROR("Failed opening pcap handle: %s", fr_strerror());
+				ERROR("Failed opening pcap handle (%s): %s", in_p->name, fr_strerror());
 				if (conf->from_auto || (in_p->type == PCAP_FILE_IN)) {
 					continue;
 				}
@@ -2009,7 +2009,7 @@ int main(int argc, char *argv[])
 		assert(out->link_type > 0);
 
 		if (fr_pcap_open(out) < 0) {
-			ERROR("Failed opening pcap output");
+			ERROR("Failed opening pcap output (%s): %s", out->name, fr_strerror());
 			goto finish;
 		}
 	}
