@@ -54,7 +54,7 @@ RCSIDH(radsniff_h, "$Id$")
 #undef INFO
 #define INFO(fmt, ...)		if (fr_debug_flag > 0) fprintf(fr_log_fp , fmt "\n", ## __VA_ARGS__)
 
-#define ERROR(fmt, ...)		fr_perror("radsniff: " fmt "\n", ## __VA_ARGS__)
+#define ERROR(fmt, ...)		fr_perror("radsniff: " fmt, ## __VA_ARGS__)
 
 #define RIDEBUG_ENABLED()	(conf->print_packet && (fr_debug_flag > 0))
 #define RDEBUG_ENABLED()	(conf->print_packet && (fr_debug_flag > 1))
