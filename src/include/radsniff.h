@@ -183,6 +183,8 @@ typedef struct rs_request {
 
 	bool			forced_cleanup;		//!< Cleanup was forced before normal expiry period,
 							//!< ignore stats about packet loss.
+
+	VALUE_PAIR		*link_vps;		//!< VALUE_PAIRs used to link retransmissions.
 } rs_request_t;
 
 /** Statistic write/print event
@@ -218,6 +220,8 @@ struct rs {
 	bool			from_auto;		//!< From list was auto-generated.
 	bool			promiscuous;		//!< Capture in promiscuous mode.
 	bool			print_packet;		//!< Print packet info, disabled with -W
+	bool			decode_attrs;		//!< Whether we should decode attributes in the request
+							//!< and response.
 
 	char const		*radius_secret;		//!< Secret to decode encrypted attributes.
 
@@ -226,6 +230,10 @@ struct rs {
 	char			*list_attributes;	//!< Raw attribute filter string.
 	DICT_ATTR const 	*list_da[RS_MAX_ATTRS]; //!< Output CSV with these attribute values.
 	int			list_da_num;
+
+	char			*link_attributes;	//!< Names of DICT_ATTRs to use for rtx.
+	DICT_ATTR const		*link_da[RS_MAX_ATTRS];	//!< DICT_ATTRs to link on.
+	int			link_da_num;		//!< Number of rtx DICT_ATTRs.
 
 	char const		*filter_request;	//!< Raw request filter string.
 	char const		*filter_response;	//!< Raw response filter string.

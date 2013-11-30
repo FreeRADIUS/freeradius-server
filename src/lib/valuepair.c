@@ -2470,7 +2470,7 @@ int paircmp(VALUE_PAIR *one, VALUE_PAIR *two)
 /* Compare two attributes
  *
  * @param[in] one the first attribute
- * @param[in] op the operator for comparison
+ * @param[in] op the operator for comparison, if T_OP_EQ, the diff between the attributes is returned.
  * @param[in] two the second attribute
  * @return true if ONE OP TWO is true, else false.
  */
@@ -2507,8 +2507,7 @@ int paircmp_op(VALUE_PAIR const *one, FR_TOKEN op, VALUE_PAIR const *two)
 		}
 
 		if (length) {
-			compare = memcmp(one->vp_octets, two->vp_octets,
-					 length);
+			compare = memcmp(one->vp_octets, two->vp_octets, length);
 			if (compare != 0) break;
 		}
 
@@ -2591,6 +2590,9 @@ int paircmp_op(VALUE_PAIR const *one, FR_TOKEN op, VALUE_PAIR const *two)
 	 *	Now do the operator comparison.
 	 */
 	switch (op) {
+	case T_OP_EQ:
+		return compare;
+
 	case T_OP_CMP_EQ:
 		return (compare == 0);
 
@@ -2611,6 +2613,63 @@ int paircmp_op(VALUE_PAIR const *one, FR_TOKEN op, VALUE_PAIR const *two)
 
 	default:
 		return 0;
+	}
+
+	return 0;
+}
+
+/** Determine equality of two lists
+ *
+ * This is useful for comparing lists of attributes inserted into a binary tree.
+ *
+ * @param a first list of VALUE_PAIRs.
+ * @param b second list of VALUE_PAIRs.
+ * @return -1 if a < b, 0 if the two lists are equal, 1 if b > a.
+ */
+int8_t pairlistcmp(VALUE_PAIR *a, VALUE_PAIR *b)
+{
+	vp_cursor_t a_cursor, b_cursor;
+	VALUE_PAIR *a_p, *b_p;
+	int ret;
+
+	for (a_p = fr_cursor_init(&a_cursor, &a), b_p = fr_cursor_init(&b_cursor, &b);
+	     a_p && b_p;
+	     a_p = fr_cursor_next(&a_cursor), b_p = fr_cursor_next(&b_cursor)) {
+	     	/* Same VP, no point doing expensive checks */
+	     	if (a == b) {
+			continue;
+	     	}
+
+		if (a_p->da < b_p->da) {
+			return -1;
+		}
+		if (a_p->da > b_p->da) {
+			return 1;
+		}
+
+		if (a_p->tag < b_p->tag) {
+			return -1;
+		}
+		if (a_p->tag > b_p->tag) {
+			return 1;
+		}
+
+		ret = paircmp_op(a_p, T_OP_EQ, b_p);
+		if (ret) {
+			return ret;
+		}
+	}
+
+	if (!a_p && !b_p) {
+		return 0;
+	}
+
+	if (!a_p) {
+		return -1;
+	}
+
+	if (!b_p) {
+		return 1;
 	}
 
 	return 0;

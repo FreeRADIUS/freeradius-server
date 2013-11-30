@@ -531,6 +531,7 @@ void		pairadd(VALUE_PAIR **, VALUE_PAIR *);
 void		pairreplace(VALUE_PAIR **first, VALUE_PAIR *add);
 int		paircmp(VALUE_PAIR *check, VALUE_PAIR *data);
 int		paircmp_op(VALUE_PAIR const *one, FR_TOKEN op, VALUE_PAIR const *two);
+int8_t		pairlistcmp(VALUE_PAIR *a, VALUE_PAIR *b);
 void		pairsort(VALUE_PAIR **vps, bool with_tag);
 bool		pairvalidate(VALUE_PAIR *filter, VALUE_PAIR *list);
 bool 		pairvalidate_relaxed(VALUE_PAIR *filter, VALUE_PAIR *list);
