@@ -50,6 +50,7 @@ int ssl_check_version(void)
 	 *	functions.
 	 */
 	SSL_library_init();
+	SSL_load_error_strings();
 
 	ssl_linked = SSLeay();
 
