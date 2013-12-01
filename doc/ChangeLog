@@ -8,6 +8,8 @@ FreeRADIUS 2.2.3 Friday 22 Nov 2013 10:00:00 EST, urgency=medium
 	* Use correct fields for X509 attributes in certificates
 	* Install threads.h making it possible to link against the
 	  installed headers again.
+	* Initialize SSL once in "main", instead of rlm_eap_tls.
+	  Some client libraries may need SSL.
 
 FreeRADIUS 2.2.2 Wednesday 30 Oct 2013 9:30:00 DST, urgency=medium
 	Feature improvements
