@@ -76,6 +76,58 @@ static int rs_useful_codes[] = {
 
 static void NEVER_RETURNS usage(int status);
 
+/** Fork and kill the parent process, writing out our PID
+ *
+ * @param pidfile the PID file to write our PID to
+ */
+static void rs_daemonize(char const *pidfile)
+{
+	FILE *fp;
+	pid_t pid, sid;
+
+	pid = fork();
+	if (pid < 0) {
+		exit(EXIT_FAILURE);
+	}
+	/*
+	 *	Kill the parent...
+	 */
+	if (pid > 0) {
+		exit(EXIT_SUCCESS);
+	}
+
+	/*
+	 *	Continue as the child.
+	 */
+
+	/* Create a new SID for the child process */
+	sid = setsid();
+	if (sid < 0) {
+		exit(EXIT_FAILURE);
+	}
+
+	/*
+	 *	Change the current working directory. This prevents the current
+	 *	directory from being locked; hence not being able to remove it.
+	 */
+	if ((chdir("/")) < 0) {
+		exit(EXIT_FAILURE);
+	}
+
+	/*
+	 *	And write it AFTER we've forked, so that we write the
+	 *	correct PID.
+	 */
+	fp = fopen(pidfile, "w");
+	if (fp != NULL) {
+		fprintf(fp, "%d\n", (int) sid);
+		fclose(fp);
+	} else {
+		ERROR("Failed creating PID file %s: %s", pidfile, fr_syserror(errno));
+		exit(EXIT_FAILURE);
+	}
+}
+
 #define USEC 1000000
 static void rs_tv_sub(struct timeval const *end, struct timeval const *start, struct timeval *elapsed)
 {
@@ -1451,6 +1503,7 @@ static void NEVER_RETURNS usage(int status)
 	fprintf(output, "  -L <attr>[,<attr>] Detect retransmissions using these attributes to link requests.\n");
 	fprintf(output, "  -m                 Don't put interface(s) into promiscuous mode.\n");
 	fprintf(output, "  -p <port>          Filter packets by port (default is 1812).\n");
+	fprintf(output, "  -P <pidfile>       Daemonize and write out <pidfile>.\n");
 	fprintf(output, "  -q                 Print less debugging information.\n");
 	fprintf(output, "  -r <filter>        RADIUS attribute request filter.\n");
 	fprintf(output, "  -R <filter>        RADIUS attribute response filter.\n");
@@ -1463,7 +1516,7 @@ static void NEVER_RETURNS usage(int status)
 	fprintf(output, "  -T <timeout>       How many milliseconds before the request is counted as lost "
 		"(defaults to %i).\n", RS_DEFAULT_TIMEOUT);
 #ifdef HAVE_COLLECTDC_H
-	fprintf(output, "  -P <prefix>        collectd plugin instance name.\n");
+	fprintf(output, "  -N <prefix>        collectd plugin instance name.\n");
 	fprintf(output, "  -O <server>        Write statistics to this collectd server.\n");
 #endif
 	exit(status);
@@ -1532,7 +1585,7 @@ int main(int argc, char *argv[])
 	/*
 	 *  Get options
 	 */
-	while ((opt = getopt(argc, argv, "b:c:d:DFf:hi:I:l:L:mp:qr:R:s:vw:xXW:T:P:O:")) != EOF) {
+	while ((opt = getopt(argc, argv, "b:c:d:DFf:hi:I:l:L:mp:P:qr:R:s:vw:xXW:T:P:O:")) != EOF) {
 		switch (opt) {
 		/* super secret option */
 		case 'b':
@@ -1622,6 +1675,11 @@ int main(int argc, char *argv[])
 			port = atoi(optarg);
 			break;
 
+		case 'P':
+			conf->daemonize = true;
+			conf->pidfile = optarg;
+			break;
+
 		case 'q':
 			if (fr_debug_flag > 0) {
 				fr_debug_flag--;
@@ -1678,7 +1736,7 @@ int main(int argc, char *argv[])
 			break;
 
 #ifdef HAVE_COLLECTDC_H
-		case 'P':
+		case 'N':
 			conf->stats.prefix = optarg;
 			break;
 
@@ -2015,31 +2073,11 @@ int main(int argc, char *argv[])
 	}
 
 	/*
-	 *	Setup signal handlers so we always exit gracefully, ensuring output buffers are always
-	 *	flushed.
-	 */
-	{
-#ifdef HAVE_SIGACTION
-		struct sigaction action;
-		memset(&action, 0, sizeof(action));
-
-		action.sa_handler = rs_cleanup;
-		sigaction(SIGINT, &action, NULL);
-		sigaction(SIGQUIT, &action, NULL);
-#else
-		signal(SIGINT, rs_cleanup);
-#  ifdef SIGQUIT
-		signal(SIGQUIT, rs_cleanup);
-#  endif
-#endif
-	}
-
-	/*
 	 *	Setup and enter the main event loop. Who needs libev when you can roll your own...
 	 */
 	 {
 	 	struct timeval now;
-	 	rs_update_t		update;
+	 	rs_update_t update;
 
 	 	char *buff;
 
@@ -2090,19 +2128,52 @@ int main(int argc, char *argv[])
 			INFO("Muting stats for the next %i milliseconds (warmup)", conf->stats.timeout);
 			rs_tv_add_ms(&now, conf->stats.timeout, &stats.quiet);
 		}
-
-		ret = fr_event_loop(events);	/* Enter the main event loop */
 	}
+
+
+	/*
+	 *	Do this as late as possible so we can return an error code if something went wrong.
+	 */
+	if (conf->daemonize) {
+		rs_daemonize(conf->pidfile);
+	}
+
+	/*
+	 *	Setup signal handlers so we always exit gracefully, ensuring output buffers are always
+	 *	flushed.
+	 */
+	{
+#ifdef HAVE_SIGACTION
+		struct sigaction action;
+		memset(&action, 0, sizeof(action));
+
+		action.sa_handler = rs_cleanup;
+		sigaction(SIGINT, &action, NULL);
+		sigaction(SIGQUIT, &action, NULL);
+		sigaction(SIGTERM, &action, NULL);
+#else
+		signal(SIGINT, rs_cleanup);
+#  ifdef SIGQUIT
+		signal(SIGQUIT, rs_cleanup);
+#  endif
+#endif
+	}
+	fr_event_loop(events);	/* Enter the main event loop */
 
 	DEBUG("Done sniffing");
 
 	finish:
 
 	cleanup = true;
+
 	/*
 	 *	Free all the things! This also closes all the sockets and file descriptors
 	 */
 	talloc_free(conf);
+
+	if (conf->daemonize) {
+		unlink(conf->pidfile);
+	}
 
 	return ret;
 }
