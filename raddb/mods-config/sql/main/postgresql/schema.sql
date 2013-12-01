@@ -132,6 +132,7 @@ create index radreply_UserName on radreply (UserName,Attribute);
  * Table structure for table 'radusergroup'
  */
 CREATE TABLE radusergroup (
+	id		SERIAL PRIMARY KEY,
 	UserName	VARCHAR(64) NOT NULL DEFAULT '',
 	GroupName	VARCHAR(64) NOT NULL DEFAULT '',
 	priority	INTEGER NOT NULL DEFAULT 0
