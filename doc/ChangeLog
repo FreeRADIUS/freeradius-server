@@ -9,13 +9,13 @@ FreeRADIUS 3.0.1 Mon  7 Oct 2013 15:48:14 EDT urgency=medium
 	  See raddb/mods-available/date.
 	* Added unit test suite for internal server functionality
 	* Do validation of RHS when loading "update" sections and LHS
-	  it lieteral.
+	  if literal.
 	* Update LDAP module documentation and functionality.
 	  The generic attribute can now update lists.
 	* Updated dictionary.extreme.
 	* Update sqlippool to do clears as a separate transaction,
 	  and at most once per second.  This should help MySQL.
-	* Respect control:Response-Packet-Type for all types of 
+	* Respect control:Response-Packet-Type for all types of
 	  requests.
 	* Add support for SSL encryption to the MySQL driver.
 	* Allow arbitrary connection parameters to be used with the
