@@ -45,6 +45,12 @@ int ssl_check_version(void)
 {
 	long ssl_linked;
 
+	/*
+	 *	Initialize the library before calling any library
+	 *	functions.
+	 */
+	SSL_library_init();
+
 	ssl_linked = SSLeay();
 
 	if (ssl_linked != ssl_built) {
