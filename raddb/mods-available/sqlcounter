@@ -1,9 +1,3 @@
-# -*- text -*-
-##
-## counter.conf -- MySQL queries for rlm_sqlcounter
-##
-##	$Id$
-
 #  Rather than maintaining separate (GDBM) databases of
 #  accounting info for each counter, this module uses the data
 #  stored in the raddacct table by the sql modules. This
@@ -46,6 +40,7 @@
 #
 sqlcounter dailycounter {
 	sql_module_instance = sql
+	dialect = ${sql_module_instance}.dialect
 
 	counter_name = Daily-Session-Time
 	check_name = Max-Daily-Session
@@ -54,31 +49,12 @@ sqlcounter dailycounter {
 	key = User-Name
 	reset = daily
 
-	# This query properly handles calls that span from the
-	# previous reset period into the current period but
-	# involves more work for the SQL server than those
-	# below
-	query = "SELECT SUM(acctsessiontime - \
-                 GREATEST((%b - UNIX_TIMESTAMP(acctstarttime)), 0)) \
-                 FROM radacct WHERE username = '%{${key}}' AND \
-                 UNIX_TIMESTAMP(acctstarttime) + acctsessiontime > '%b'"
-
-	# This query ignores calls that started in a previous
-	# reset period and continue into into this one. But it
-	# is a little easier on the SQL server
-#	query = "SELECT SUM(acctsessiontime) FROM radacct WHERE \
-#                username = '%{${key}}' AND acctstarttime > FROM_UNIXTIME('%b')"
-
-	# This query is the same as above, but demonstrates an
-	# additional counter parameter '%e' which is the
-	# timestamp for the end of the period
-#	query = "SELECT SUM(acctsessiontime) FROM radacct \
-#                WHERE username = '%{${key}}' AND acctstarttime BETWEEN \
-#                FROM_UNIXTIME('%b') AND FROM_UNIXTIME('%e')"
+	$INCLUDE ${modconfdir}/sql/counter/${dialect}/${.:instance}.conf
 }
 
 sqlcounter monthlycounter {
 	sql_module_instance = sql
+	dialect = ${sql_module_instance}.dialect
 
 	counter_name = Monthly-Session-Time
 	check_name = Max-Monthly-Session
@@ -86,39 +62,19 @@ sqlcounter monthlycounter {
 	key = User-Name
 	reset = monthly
 
-	# This query properly handles calls that span from the
-	# previous reset period into the current period but
-	# involves more work for the SQL server than those
-	# below
-	query = "SELECT SUM(acctsessiontime - \
-                 GREATEST((%b - UNIX_TIMESTAMP(acctstarttime)), 0)) \
-                 FROM radacct WHERE username='%{${key}}' AND \
-                 UNIX_TIMESTAMP(acctstarttime) + acctsessiontime > '%b'"
-
-	# This query ignores calls that started in a previous
-	# reset period and continue into into this one. But it
-	# is a little easier on the SQL server
-#	query = "SELECT SUM(acctsessiontime) FROM radacct WHERE \
-#                username='%{${key}}' AND acctstarttime > FROM_UNIXTIME('%b')"
-
-	# This query is the same as above, but demonstrates an
-	# additional counter parameter '%e' which is the
-	# timestamp for the end of the period
-#	query = "SELECT SUM(acctsessiontime) FROM radacct \
-#                WHERE username='%{${key}}' AND acctstarttime BETWEEN \
-#                FROM_UNIXTIME('%b') AND FROM_UNIXTIME('%e')"
+	$INCLUDE ${modconfdir}/sql/counter/${dialect}/${.:instance}.conf
 }
 
 sqlcounter noresetcounter {
 	sql_module_instance = sql
+	dialect = ${sql_module_instance}.dialect
 
         counter_name = Max-All-Session-Time
 	check_name = Max-All-Session
 	key = User-Name
 	reset = never
-        query = "SELECT IFNULL(SUM(AcctSessionTime),0) \
-        	 FROM radacct \
-        	 WHERE UserName='%{${key}}'"
+
+	$INCLUDE ${modconfdir}/sql/counter/${dialect}/${.:instance}.conf
 }
 
 #
@@ -128,14 +84,12 @@ sqlcounter noresetcounter {
 #  attribute.
 sqlcounter expire_on_login {
 	sql_module_instance = sql
+	dialect = ${sql_module_instance}.dialect
 
         counter_name = Expire-After-Initial-Login
         check_name = Expire-After
         key = User-Name
         reset = never
-        query = "SELECT TIME_TO_SEC(TIMEDIFF(NOW(), acctstarttime)) \
-                 FROM radacct \
-                 WHERE UserName='%{${key}}' \
-                 ORDER BY acctstarttime \
-                 LIMIT 1;"
+
+	$INCLUDE ${modconfdir}/sql/counter/${dialect}/${.:instance}.conf
 }
