@@ -998,13 +998,6 @@ static SSL_CTX *init_tls_ctx(EAP_TLS_CONF *conf)
 	int type;
 
 	/*
-	 *	Add all the default ciphers and message digests
-	 *	Create our context.
-	 */
-	SSL_library_init();
-	SSL_load_error_strings();
-
-	/*
 	 *	Bug fix
 	 *	http://old.nabble.com/Backward-compatibility-of-private-key-files--td27937046.html
 	 */
