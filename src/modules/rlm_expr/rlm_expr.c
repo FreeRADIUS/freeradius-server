@@ -49,16 +49,17 @@ static const CONF_PARSER module_config[] = {
 };
 
 typedef enum expr_token_t {
-  TOKEN_NONE = 0,
-  TOKEN_INTEGER,
-  TOKEN_ADD,
-  TOKEN_SUBTRACT,
-  TOKEN_DIVIDE,
-  TOKEN_REMAINDER,
-  TOKEN_MULTIPLY,
-  TOKEN_AND,
-  TOKEN_OR,
-  TOKEN_LAST
+	TOKEN_NONE = 0,
+	TOKEN_INTEGER,
+	TOKEN_ADD,
+	TOKEN_SUBTRACT,
+	TOKEN_DIVIDE,
+	TOKEN_REMAINDER,
+	TOKEN_MULTIPLY,
+	TOKEN_AND,
+	TOKEN_OR,
+	TOKEN_POWER,
+	TOKEN_LAST
 } expr_token_t;
 
 typedef struct expr_map_t {
@@ -75,6 +76,7 @@ static expr_map_t map[] =
 	{'%',	TOKEN_REMAINDER },
 	{'&',	TOKEN_AND },
 	{'|',	TOKEN_OR },
+	{'^',	TOKEN_POWER },
 	{0,	TOKEN_LAST}
 };
 
@@ -225,6 +227,14 @@ static int get_number(REQUEST *request, char const **string, int64_t *answer)
 
 		case TOKEN_OR:
 			result |= x;
+			break;
+
+		case TOKEN_POWER:
+			if ((x > 255) || (x < 0)) {
+				REDEBUG("Exponent must be between 0-255");
+				return -1;
+			}
+			x = fr_pow((int32_t) result, (uint8_t) x);
 			break;
 		}
 
