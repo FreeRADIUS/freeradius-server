@@ -454,7 +454,7 @@ static ssize_t urlquote_xlat(UNUSED void *instance, UNUSED REQUEST *request,
 /**
  * @brief Equivalent to the old safe_characters functionality in rlm_sql
  *
- * @verbatim Example: "%{escape:<img>foo.jpg</img>}" == "=60img=62foo.jpg=60=/img=62" @endverbatim
+ * @verbatim Example: "%{escape:<img>foo.jpg</img>}" == "=60img=62foo.jpg=60/img=62" @endverbatim
  */
 static ssize_t escape_xlat(UNUSED void *instance, UNUSED REQUEST *request,
 			   char const *fmt, char *out, size_t outlen)
@@ -494,7 +494,7 @@ static ssize_t escape_xlat(UNUSED void *instance, UNUSED REQUEST *request,
 /**
  * @brief Convert a string to lowercase
  *
- * Example "%{lc:Bar}" == "bar"
+ * Example "%{tolower:Bar}" == "bar"
  *
  * Probably only works for ASCII
  */
@@ -520,7 +520,7 @@ static ssize_t lc_xlat(UNUSED void *instance, UNUSED REQUEST *request,
 /**
  * @brief Convert a string to uppercase
  *
- * Example: "%{uc:Foo}" == "FOO"
+ * Example: "%{toupper:Foo}" == "FOO"
  *
  * Probably only works for ASCII
  */
