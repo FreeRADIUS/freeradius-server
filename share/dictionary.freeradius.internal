@@ -240,6 +240,10 @@ ATTRIBUTE	FreeRADIUS-Client-Src-IPv6-Address	1144	ipv6addr
 
 ATTRIBUTE	OTP-Challenge				1145	string
 ATTRIBUTE	EAP-Session-Id				1146	octets
+
+ATTRIBUTE	Acct-Input-Octets64			1148	integer64
+ATTRIBUTE	Acct-Output-Octets64			1149	integer64
+
 #
 #	Range:	1200-1279
 #		EAP-SIM (and other EAP type) weirdness.

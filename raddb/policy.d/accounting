@@ -60,3 +60,13 @@ insert_acct_class {
 	}
 }
 
+#
+#	Merges Acct-[Input|Output]-Octets and Acct-[Input|Output]-Gigawords into Acct-[Input|Output]-Octets64
+#
+acct_counters64.preacct {
+	update request {
+		Acct-Input-Octets64 = "%{expr:(%{%{Acct-Input-Gigawords}:-0} * 4294967296) + %{%{Acct-Input-Octets}:-0}}"
+		Acct-Output-Octets64 = "%{expr:(%{%{Acct-Output-Gigawords}:-0} * 4294967296) + %{%{Acct-Output-Octets}:-0}}"
+	}
+}
+
