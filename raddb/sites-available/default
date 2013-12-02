@@ -484,6 +484,12 @@ preacct {
 	preprocess
 
 	#
+	#  Merge Acct-[Input|Output]-Gigawords and Acct-[Input-Output]-Octets
+	#  into a single 64bit counter Acct-[Input|Output]-Octets64.
+	#
+#	acct_counters64
+
+	#
 	#  Session start times are *implied* in RADIUS.
 	#  The NAS never sends a "start time".  Instead, it sends
 	#  a start packet, *possibly* with an Acct-Delay-Time.
