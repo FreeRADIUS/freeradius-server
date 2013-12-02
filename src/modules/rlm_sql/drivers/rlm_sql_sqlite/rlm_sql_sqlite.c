@@ -340,6 +340,21 @@ static int _sql_socket_destructor(rlm_sql_sqlite_conn_t *conn)
 	return 0;
 }
 
+static void _sql_greatest(sqlite3_context *ctx, int num_values, sqlite3_value **values)
+{
+	int i;
+	sqlite3_int64 value, max = 0;
+
+	for (i = 0; i < num_values; i++) {
+		value = sqlite3_value_int64(values[i]);
+		if (value < max) {
+			max = value;
+		}
+	}
+
+	sqlite3_result_int64(ctx, max);
+}
+
 static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 {
 	rlm_sql_sqlite_conn_t *conn;
@@ -379,6 +394,17 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 
 	if (sql_check_error(conn->db)) {
 		return -1;
+	}
+
+#ifdef HAVE_SQLITE_V2_API
+	status = sqlite3_create_function_v2(conn->db, "GREATEST", -1, SQLITE_ANY, NULL,
+					    _sql_greatest, NULL, NULL, NULL);
+#else
+	status = sqlite3_create_function(conn->db, "GREATEST", -1, SQLITE_ANY, NULL,
+					 _sql_greatest, NULL, NULL);
+#endif
+	if (status != SQLITE_OK) {
+		ERROR("rlm_sql_sqlite: Failed registering 'GREATEST' sql function: %s", sqlite3_errmsg(conn->db));
 	}
 
 	return 0;
