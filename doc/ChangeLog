@@ -1,6 +1,7 @@
 FreeRADIUS 2.2.3 Friday 22 Nov 2013 10:00:00 EST, urgency=medium
 	Feature improvements
 	* Added dictionary.efficientip, dictionary.alcatel-lucent-aaa
+	* Allow zero length DN strings in rlm_ldap.
 
 	Bug fixes
 	* Make the server build when DHCP is enabled
