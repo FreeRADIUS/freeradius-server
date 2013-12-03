@@ -347,7 +347,7 @@ static void _sql_greatest(sqlite3_context *ctx, int num_values, sqlite3_value **
 
 	for (i = 0; i < num_values; i++) {
 		value = sqlite3_value_int64(values[i]);
-		if (value < max) {
+		if (value > max) {
 			max = value;
 		}
 	}
