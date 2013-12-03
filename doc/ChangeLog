@@ -64,6 +64,7 @@ FreeRADIUS 3.0.1 Mon  7 Oct 2013 15:48:14 EDT urgency=medium
 	* Fix rlm_ldap tls functionality.
 	* Initialise OpenSSL globals early to avoid issues with the
 	  PostgreSQL library.
+	* Fix typo in sqlcounter expansion code.  Fixes #463
 
 FreeRADIUS 3.0.0 Mon  7 Oct 2013 15:48:14 EDT urgency=medium
 	Feature improvements
