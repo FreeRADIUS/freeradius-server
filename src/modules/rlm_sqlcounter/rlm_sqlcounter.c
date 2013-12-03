@@ -342,7 +342,7 @@ static int sqlcounter_cmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR *r
 
 	size_t len;
 
-	len = snprintf(query, sizeof(query), "%%{%s:%s}", inst->sqlmod_inst, query);
+	len = snprintf(query, sizeof(query), "%%{%s:%s}", inst->sqlmod_inst, inst->query);
 	if (len >= sizeof(query) - 1) {
 		REDEBUG("Insufficient query buffer space");
 
