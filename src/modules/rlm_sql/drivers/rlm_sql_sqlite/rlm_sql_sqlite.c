@@ -81,8 +81,6 @@ static int sql_check_error(sqlite3 *db)
 	case SQLITE_FULL:
 	case SQLITE_CONSTRAINT:
 	case SQLITE_MISMATCH:
-		ERROR("rlm_sql_sqlite: Error (%d): %s", error, sqlite3_errmsg(db));
-
 		return -1;
 		break;
 
@@ -295,13 +293,11 @@ static int mod_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
 		}
 
 		ret = sql_loadfile(conf, db, driver->bootstrap);
-
 		status = sqlite3_close(db);
 		if (status != SQLITE_OK) {
 			ERROR("rlm_sql_sqlite: Error closing SQLite handle, error code (%u)", status);
 			goto unlink;
 		}
-
 		if (ret < 0) {
 			unlink:
 			if (unlink(driver->filename) < 0) {
