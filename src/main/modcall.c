@@ -1543,6 +1543,7 @@ static modcallable *do_compile_modupdate(modcallable *parent, UNUSED rlm_compone
 			ret = pairparsevalue(vp, map->src->name);
 			talloc_free(vp);
 			if (!ret) {
+				talloc_free(head);
 				cf_log_err(map->ci, "%s", fr_strerror());
 				return NULL;
 			}
