@@ -36,7 +36,7 @@ olcAttributeTypes: {31}( 1.3.6.1.4.1.3317.4.3.1.27 NAME 'radiusLoginService' DES
 olcAttributeTypes: {32}( 1.3.6.1.4.1.3317.4.3.1.28 NAME 'radiusLoginTCPPort' DESC 'replyItem: Login-TCP-Port' EQUALITY caseIgnoreIA5Match SYNTAX 1.3.6.1.4.1.1466.115.121.1.26 SINGLE-VALUE )
 olcAttributeTypes: {33}( 1.3.6.1.4.1.3317.4.3.1.29 NAME 'radiusPasswordRetry' DESC '' EQUALITY caseIgnoreIA5Match SYNTAX 1.3.6.1.4.1.1466.115.121.1.26 SINGLE-VALUE )
 olcAttributeTypes: {34}( 1.3.6.1.4.1.3317.4.3.1.30 NAME 'radiusPortLimit' DESC 'replyItem: Port-Limit' EQUALITY caseIgnoreIA5Match SYNTAX 1.3.6.1.4.1.1466.115.121.1.26 SINGLE-VALUE )
-olcAttributeTypes: {35}( 1.3.6.1.4.1.3317.4.3.1.49 NAME 'radiusProfileDn' DESC '' EQUALITY distinguishedNameMatch SYNTAX 1.3.6.1.4.1.1466.115.121.1.12 SINGLE-VALUE )
+olcAttributeTypes: {35}( 1.3.6.1.4.1.3317.4.3.1.49 NAME 'radiusProfileDn' DESC '' EQUALITY distinguishedNameMatch SYNTAX 1.3.6.1.4.1.1466.115.121.1.12 )
 olcAttributeTypes: {36}( 1.3.6.1.4.1.3317.4.3.1.31 NAME 'radiusPrompt' DESC ''EQUALITY caseIgnoreIA5Match SYNTAX 1.3.6.1.4.1.1466.115.121.1.26 SINGLE-VALUE )
 olcAttributeTypes: {37}( 1.3.6.1.4.1.3317.4.3.1.50 NAME 'radiusProxyToRealm' DESC '' EQUALITY caseIgnoreIA5Match SYNTAX 1.3.6.1.4.1.1466.115.121.1.26 SINGLE-VALUE )
 olcAttributeTypes: {38}( 1.3.6.1.4.1.3317.4.3.1.51 NAME 'radiusReplicateToRealm' DESC '' EQUALITY caseIgnoreIA5Match SYNTAX 1.3.6.1.4.1.1466.115.121.1.26 SINGLE-VALUE )
