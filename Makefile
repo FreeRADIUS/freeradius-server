@@ -24,9 +24,20 @@ export DESTDIR := $(R)
 # And over-ride all of the other magic.
 include scripts/boiler.mk
 
-test: build.raddb ${BUILD_DIR}/bin/radiusd ${BUILD_DIR}/bin/radclient tests.unit tests.keywords
+#
+#  Run "radiusd -C", looking for errors.
+#
+$(BUILD_DIR)/tests/radiusd-c: ${BUILD_DIR}/bin/radiusd | build.raddb
 	@$(MAKE) -C raddb/certs
-	@./build/make/jlibtool --mode=execute ./build/bin/radiusd -XCMd ./raddb -n debug -D ./share
+	@if ! ./build/make/jlibtool --mode=execute ./build/bin/radiusd -XCMd ./raddb -n debug -D ./share > $(BUILD_DIR)/tests/radiusd.config.log 2>&1; then \
+		cat $(BUILD_DIR)/tests/radiusd.config.log; \
+		echo "FAIL: radiusd -C"; \
+		exit 1; \
+	fi
+	@echo "OK: radiusd -C"
+	@touch $@
+
+test: ${BUILD_DIR}/bin/radiusd ${BUILD_DIR}/bin/radclient tests.unit tests.keywords $(BUILD_DIR)/tests/radiusd-c | build.raddb
 	@$(MAKE) -C src/tests tests
 
 #  Tests specifically for Travis.  We do a LOT more than just
