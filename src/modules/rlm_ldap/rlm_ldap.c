@@ -107,7 +107,7 @@ static CONF_PARSER profile_config[] = {
 static CONF_PARSER user_config[] = {
 	{"filter", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, userobj_filter), NULL, "(uid=%u)"},
 	{"scope", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, userobj_scope_str), NULL, "sub"},
-	{"base_dn", PW_TYPE_STRING_PTR | PW_TYPE_REQUIRED, offsetof(ldap_instance_t,userobj_base_dn), NULL, NULL},
+	{"base_dn", PW_TYPE_STRING_PTR | PW_TYPE_REQUIRED, offsetof(ldap_instance_t,userobj_base_dn), NULL, ""},
 
 	{"access_attribute", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, userobj_access_attr), NULL, NULL},
 	{"access_positive", PW_TYPE_BOOLEAN, offsetof(ldap_instance_t, access_positive), NULL, "yes"},
@@ -121,7 +121,7 @@ static CONF_PARSER user_config[] = {
 static CONF_PARSER group_config[] = {
 	{"filter", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, groupobj_filter), NULL, NULL},
 	{"scope", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, groupobj_scope_str), NULL, "sub"},
-	{"base_dn", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, groupobj_base_dn), NULL, NULL},
+	{"base_dn", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, groupobj_base_dn), NULL, ""},
 
 	{"name_attribute", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, groupobj_name_attr), NULL, "cn"},
 	{"membership_attribute", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, userobj_membership_attr), NULL, NULL},
@@ -150,7 +150,7 @@ static CONF_PARSER client_attribute[] = {
 static CONF_PARSER client_config[] = {
 	{"filter", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, clientobj_filter), NULL, NULL},
 	{"scope", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, clientobj_scope_str), NULL, "sub"},
-	{"base_dn", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, clientobj_base_dn), NULL, NULL},
+	{"base_dn", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, clientobj_base_dn), NULL, ""},
 	{"attribute", PW_TYPE_SUBSECTION, 0, NULL, (void const *) client_attribute},
 
 	{ NULL, -1, 0, NULL, NULL }
@@ -365,11 +365,7 @@ static int rlm_ldap_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR
 	ldap_handle_t	*conn = NULL;
 	char const	*user_dn;
 
-	if (!inst->groupobj_base_dn) {
-		REDEBUG("Directive 'group.base_dn' must be set'");
-
-		return 1;
-	}
+	rad_assert(inst->groupobj_base_dn);
 
 	RDEBUG("Searching for user in group \"%s\"", check->vp_strvalue);
 
@@ -554,14 +550,6 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	if (inst->cacheable_group_name && inst->groupobj_membership_filter) {
 		if (!inst->groupobj_name_attr) {
 			LDAP_ERR("Directive 'group.name_attribute' must be set if cacheable group names are enabled");
-
-			goto error;
-		}
-	}
-
-	if (inst->cacheable_group_name || inst->cacheable_group_dn) {
-		if (!inst->groupobj_base_dn) {
-			LDAP_ERR("Directive 'group.base_dn' must be set if cacheable group names are enabled");
 
 			goto error;
 		}

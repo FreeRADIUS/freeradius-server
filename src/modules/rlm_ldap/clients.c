@@ -49,6 +49,8 @@ int rlm_ldap_load_clients(ldap_instance_t const *inst)
 
 	LDAP_DBG("Loading dynamic clients");
 
+	rad_assert(inst->clientobj_base_dn);
+
 	/*
 	 *	Basic sanity checks.
 	 */
@@ -60,12 +62,6 @@ int rlm_ldap_load_clients(ldap_instance_t const *inst)
 
 	if (!inst->clientobj_secret) {
 		LDAP_ERR("Told to load clients but 'client.secret_attribute' not specified");
-
-		return -1;
-	}
-
-	if (!inst->clientobj_base_dn) {
-		LDAP_ERR("Told to load clients but 'client.base_dn' not specified");
 
 		return -1;
 	}
