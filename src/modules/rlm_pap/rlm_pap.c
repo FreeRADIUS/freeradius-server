@@ -65,12 +65,14 @@ static const CONF_PARSER module_config[] = {
 
 /*
  *	For auto-header discovery.
+ *
+ *	@note Header comparison is case insensitive.
  */
 static const FR_NAME_NUMBER header_names[] = {
 	{ "{clear}",		PW_CLEARTEXT_PASSWORD },
 	{ "{cleartext}",	PW_CLEARTEXT_PASSWORD },
 	{ "{md5}",		PW_MD5_PASSWORD },
-	{ "{BASE64_MD5}",	PW_MD5_PASSWORD },
+	{ "{base64_md5}",	PW_MD5_PASSWORD },
 	{ "{smd5}",		PW_SMD5_PASSWORD },
 	{ "{crypt}",		PW_CRYPT_PASSWORD },
 	{ "{sha}",		PW_SHA_PASSWORD },
@@ -80,7 +82,7 @@ static const FR_NAME_NUMBER header_names[] = {
 	{ "{x-nthash}",		PW_NT_PASSWORD },
 	{ "{ns-mta-md5}",	PW_NS_MTA_MD5_PASSWORD },
 	{ "{x- orcllmv}",	PW_LM_PASSWORD },
-	{ "{X- ORCLNTV}",	PW_NT_PASSWORD },
+	{ "{X- orclntv}",	PW_NT_PASSWORD },
 	{ NULL, 0 }
 };
 
