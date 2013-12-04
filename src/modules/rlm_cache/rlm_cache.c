@@ -594,6 +594,25 @@ static int cache_verify(rlm_cache_t *inst, value_pair_map_t **head)
 		 *	cache entries.
 		 */
 		case VPT_TYPE_LITERAL:
+			/*
+			 *	@fixme: This should be moved into a common function
+			 *	with the check in do_compile_modupdate.
+			 */
+			if (map->dst->type == VPT_TYPE_ATTR) {
+				VALUE_PAIR *vp;
+				bool ret;
+
+				MEM(vp = pairalloc(NULL, map->dst->da));
+				vp->op = map->op;
+
+				ret = pairparsevalue(vp, map->src->name);
+				talloc_free(vp);
+				if (!ret) {
+					cf_log_err(map->ci, "%s", fr_strerror());
+					return -1;
+				}
+			}
+
 		case VPT_TYPE_XLAT:
 		case VPT_TYPE_ATTR:
 			switch (map->op) {
