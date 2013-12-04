@@ -1,0 +1,10 @@
+#
+#  PRE: update ipaddr
+#
+update control {
+       Cleartext-Password := 'hello'
+}
+
+update reply {
+	Framed-IP-Address := 256.1 # ERROR
+}
