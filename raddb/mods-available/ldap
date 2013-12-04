@@ -75,7 +75,7 @@ ldap {
 	# 			If the attribute name is wrapped in double
 	# 			quotes it will be xlat expanded.
 	#
-#	valuepair_attribute = "radiusValuePair"
+#	valuepair_attribute = "radiusAttribute"
 
 	# Set to yes if you have eDirectory and want to use the universal
 	# password mechanism.
@@ -108,21 +108,21 @@ ldap {
 		#  Control whether the presence of "access_attribute"
 		#  allows access, or denys access.
 		#
-		#  If "yes", and the access_attribute is present, or 
-		#  "no" and the access_attribute is absent then access 
+		#  If "yes", and the access_attribute is present, or
+		#  "no" and the access_attribute is absent then access
 		#  will be allowed.
 		#
-		#  If "yes", and the access_attribute is absent, or 
-		#  "no" and the access_attribute is present, then 
+		#  If "yes", and the access_attribute is absent, or
+		#  "no" and the access_attribute is present, then
 		#  access will not be allowed.
 		#
 		#  If the value of the access_attribute is "false", it
 		#  will negate the result.
 		#
-		#  e.g. 
+		#  e.g.
 		#    access_positive = yes
 		#    access_attribute = userAccessAllowed
-		#  
+		#
 		#    userAccessAllowed = false
 		#
 		#  Will result in the user being locked out.
