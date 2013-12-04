@@ -375,6 +375,7 @@ rlm_rcode_t rlm_ldap_map_profile(ldap_instance_t const *inst, REQUEST *request, 
 	 	goto free_result;
 	}
 
+	RDEBUG("Processing profile attributes");
 	rlm_ldap_map_do(inst, request, handle, expanded, entry);
 
 free_result:
