@@ -79,7 +79,7 @@ server.pem: server.p12
 
 .PHONY: server.vrfy
 server.vrfy: ca.pem
-	openssl verify -CAfile ca.pem server.pem
+	@openssl verify -CAfile ca.pem server.pem
 
 ######################################################################
 #
