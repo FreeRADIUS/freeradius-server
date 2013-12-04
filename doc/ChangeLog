@@ -65,6 +65,8 @@ FreeRADIUS 3.0.1 Mon  7 Oct 2013 15:48:14 EDT urgency=medium
 	* Initialise OpenSSL globals early to avoid issues with the
 	  PostgreSQL library.
 	* Fix typo in sqlcounter expansion code.  Fixes #463
+	* Overwrite previous instances of SQL-User-Name when adding
+	  it to the request.
 
 FreeRADIUS 3.0.0 Mon  7 Oct 2013 15:48:14 EDT urgency=medium
 	Feature improvements
