@@ -72,7 +72,7 @@ KEYWORD_LIBS	:= $(addsuffix .la,$(addprefix rlm_,$(KEYWORD_MODULES)))
 #  Otherwise, check the log file for a parse error which matches the
 #  ERROR line in the input.
 #
-$(BUILD_DIR)/tests/keywords/%: $(DIR)/% build.raddb $(BUILD_DIR)/tests/keywords/%.attrs $(BUILD_DIR)/bin/local/unittest | $(BUILD_DIR)/tests/keywords $(KEYWORD_RADDB) $(KEYWORD_LIBS)
+$(BUILD_DIR)/tests/keywords/%: $(DIR)/% $(BUILD_DIR)/tests/keywords/%.attrs $(BUILD_DIR)/bin/local/unittest | $(BUILD_DIR)/tests/keywords $(KEYWORD_RADDB) $(KEYWORD_LIBS) build.raddb 
 	@echo UNIT-TEST $(notdir $@)
 	@if ! KEYWORD=$(notdir $@) $(JLIBTOOL) --quiet --mode=execute ./$(BUILD_DIR)/bin/local/unittest -D share -d src/tests/keywords/ -i $@.attrs -f $@.attrs -xx > $@.log 2>&1; then \
 		if ! grep ERROR $< 2>&1 > /dev/null; then \
