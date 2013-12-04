@@ -20,6 +20,8 @@ FreeRADIUS 3.0.1 Mon  7 Oct 2013 15:48:14 EDT urgency=medium
 	* Add support for SSL encryption to the MySQL driver.
 	* Allow arbitrary connection parameters to be used with the
 	  PostgreSQL driver.
+	* Changes to the OpenLDAP schema to fully expose functionality
+	  of the new LDAP module.
 
 	Bug fixes
 	* Use correct field for ARP setting in DHCP.
