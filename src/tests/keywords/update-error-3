@@ -1,0 +1,10 @@
+#
+# PRE: update-error
+#
+#  It's an error to assign literal values which are not
+#  part of the set of enumerated values for an attribute
+#
+update {
+       Service-Type := 'hello'	# ERROR
+       reply:Filter-Id := "filter"
+}

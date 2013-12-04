@@ -1503,21 +1503,44 @@ static modcallable *do_compile_modupdate(modcallable *parent, UNUSED rlm_compone
 	int rcode;
 	modgroup *g;
 	modcallable *csingle;
-	value_pair_map_t *map;
+	value_pair_map_t *map, *head = NULL;
 
 	/*
 	 *	This looks at cs->name2 to determine which list to update
 	 */
-	rcode = radius_attrmap(cs, &map, PAIR_LIST_REQUEST, PAIR_LIST_REQUEST, 128);
+	rcode = radius_attrmap(cs, &head, PAIR_LIST_REQUEST, PAIR_LIST_REQUEST, 128);
 	if (rcode < 0) return NULL; /* message already printed */
 
-	if (!map) {
+	if (!head) {
 		cf_log_err_cs(cs, "'update' sections cannot be empty");
 		return NULL;
 	}
 
+	for (map = head; map != NULL; map = map->next) {
+		if ((map->dst->type == VPT_TYPE_ATTR) && (map->src->type == VPT_TYPE_LITERAL)) {
+			/*
+			 *	If LHS is an attribute, and RHS is a literal, we can
+			 *	check that the format is correct.
+			 */
+			VALUE_PAIR *vp;
+			bool ret;
+
+			MEM(vp = pairalloc(cs, map->dst->da));
+			vp->op = map->op;
+
+			ret = pairparsevalue(vp, map->src->name);
+			talloc_free(vp);
+			if (!ret) {
+				talloc_free(head);
+				cf_log_err(map->ci, "%s", fr_strerror());
+				return NULL;
+			}
+		}
+	}
+
 	g = rad_malloc(sizeof(*g)); /* never fails */
 	memset(g, 0, sizeof(*g));
+
 	csingle = mod_grouptocallable(g);
 
 	csingle->parent = parent;
@@ -1537,7 +1560,7 @@ static modcallable *do_compile_modupdate(modcallable *parent, UNUSED rlm_compone
 	g->grouptype = GROUPTYPE_SIMPLE;
 	g->children = NULL;
 	g->cs = cs;
-	g->map = map;
+	g->map = head;
 
 	return csingle;
 }
