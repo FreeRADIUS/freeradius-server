@@ -8,8 +8,8 @@ FreeRADIUS 3.0.1 Mon  7 Oct 2013 15:48:14 EDT urgency=medium
 	* Add "date" module for date formatting.
 	  See raddb/mods-available/date.
 	* Added unit test suite for internal server functionality
-	* Do validation of RHS when loading "update" sections and LHS
-	  if literal.
+	* When loading "update" sections, check if the RHS is a literal
+	  value.  If so, syntax check it immediately.
 	* Update LDAP module documentation and functionality.
 	  The generic attribute can now update lists.
 	* Updated dictionary.extreme.
