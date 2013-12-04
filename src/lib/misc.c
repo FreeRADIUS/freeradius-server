@@ -37,7 +37,8 @@ RCSID("$Id$")
 
 static int	fr_debugger_present = -1;
 
-bool	fr_dns_lookups = false;
+bool	fr_dns_lookups = false;	    /* IP -> hostname lookups? */
+bool    fr_hostname_lookups = true; /* hostname -> IP lookups? */
 int	fr_debug_flag = 0;
 
 static char const *months[] = {
@@ -465,6 +466,32 @@ int ip_hton(char const *src, int af, fr_ipaddr_t *dst)
 {
 	int rcode;
 	struct addrinfo hints, *ai = NULL, *res = NULL;
+
+	if (!fr_hostname_lookups) {
+#ifdef HAVE_STRUCT_SOCKADDR_IN6
+		if (af == AF_UNSPEC) {
+			char const *p;
+
+			for (p = src; *p != '\0'; p++) {
+				if ((*p == ':') ||
+				    (*p == '[') ||
+				    (*p == ']')) {
+					af = AF_INET6;
+					break;
+				}
+			}
+		}
+#endif
+
+		if (af == AF_UNSPEC) af = AF_INET;
+
+		if (!inet_pton(af, src, &(dst->ipaddr))) {
+			return -1;
+		}
+		
+		dst->af = af;
+		return 0;
+	}
 
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_family = af;

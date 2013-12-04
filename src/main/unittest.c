@@ -277,6 +277,11 @@ int main(int argc, char *argv[])
 	mainconfig.name = "radiusd";
 
 	/*
+	 *	The tests should have only IPs, not host names.
+	 */
+	fr_hostname_lookups = false;
+
+	/*
 	 *	We always log to stdout.
 	 */
 	fr_log_fp = stdout;

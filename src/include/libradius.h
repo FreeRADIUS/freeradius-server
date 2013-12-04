@@ -543,7 +543,8 @@ extern void _fr_exit_now(char const *file, int line, int status);
 #define fr_exit_now(_x) _fr_exit_now(__FILE__,  __LINE__, (_x))
 
 extern char const *fr_strerror(void);
-extern bool	fr_dns_lookups;	/* 0 = no dns lookups */
+extern bool	fr_dns_lookups;	/* do IP -> hostname lookups? */
+extern bool	fr_hostname_lookups; /* do hostname -> IP lookups? */
 extern int	fr_debug_flag;	/* 0 = no debugging information */
 extern int	fr_max_attributes; /* per incoming packet */
 #define	FR_MAX_PACKET_CODE (52)
