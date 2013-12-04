@@ -1011,6 +1011,7 @@ skip_edir:
 	}
 
 	if (inst->user_map || inst->valuepair_attr) {
+		RDEBUG("Processing user attributes");
 		rlm_ldap_map_do(inst, request, conn->handle, &expanded, entry);
 		rlm_ldap_check_reply(inst, request);
 	}
