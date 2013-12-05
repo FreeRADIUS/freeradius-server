@@ -300,7 +300,7 @@ void rlm_ldap_map_do(UNUSED const ldap_instance_t *inst, REQUEST *request, LDAP 
 		char 		**values;
 		int		count, i;
 
-	 	values = ldap_get_values(handle, entry, inst->valuepair_attr);
+		values = ldap_get_values(handle, entry, inst->valuepair_attr);
 		count = ldap_count_values(values);
 
 		for (i = 0; i < count; i++) {
