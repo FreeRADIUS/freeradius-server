@@ -717,7 +717,7 @@ VALUE_PAIR *paircopyvp(TALLOC_CTX *ctx, VALUE_PAIR const *vp)
 			/*
 			 *	Equivalent to, and faster than strdup.
 			 */
-			n->vp_strvalue = talloc_memdup(n, vp->vp_octets, n->length + 1);
+			n->vp_strvalue = talloc_memdup(n, vp->vp_strvalue, n->length + 1);
 		}
 	}
 
