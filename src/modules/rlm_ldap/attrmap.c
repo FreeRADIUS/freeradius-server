@@ -267,7 +267,7 @@ void rlm_ldap_map_do(UNUSED const ldap_instance_t *inst, REQUEST *request, LDAP 
 
 		result.values = ldap_get_values(handle, entry, name);
 		if (!result.values) {
-			RDEBUG2("Attribute \"%s\" not found in LDAP object", name);
+			RDEBUG3("Attribute \"%s\" not found in LDAP object", name);
 
 			goto next;
 		}
