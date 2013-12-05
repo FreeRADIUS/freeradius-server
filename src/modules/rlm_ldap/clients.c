@@ -168,28 +168,28 @@ int rlm_ldap_load_clients(ldap_instance_t const *inst)
 		if (inst->clientobj_shortname) {
 			shortname = ldap_get_values(conn->handle, entry, inst->clientobj_shortname);
 			if (!shortname) {
-				LDAP_DBG("Client \"%s\" missing optional attribute 'shortname'", dn);
+				LDAP_DBG3("Client \"%s\" missing optional attribute 'shortname'", dn);
 			}
 		}
 
 		if (inst->clientobj_type) {
 			type = ldap_get_values(conn->handle, entry, inst->clientobj_type);
 			if (!type) {
-				LDAP_DBG("Client \"%s\" missing optional attribute 'type'", dn);
+				LDAP_DBG3("Client \"%s\" missing optional attribute 'type'", dn);
 			}
 		}
 
 		if (inst->clientobj_server) {
 			server = ldap_get_values(conn->handle, entry, inst->clientobj_server);
 			if (!server) {
-				LDAP_DBG("Client \"%s\" missing optional attribute 'server'", dn);
+				LDAP_DBG3("Client \"%s\" missing optional attribute 'server'", dn);
 			}
 		}
 
 		if (inst->clientobj_require_ma) {
 			require_ma = ldap_get_values(conn->handle, entry, inst->clientobj_require_ma);
 			if (!require_ma) {
-				LDAP_DBG("Client \"%s\" missing optional attribute 'require_ma'", dn);
+				LDAP_DBG3("Client \"%s\" missing optional attribute 'require_ma'", dn);
 			}
 		}
 
