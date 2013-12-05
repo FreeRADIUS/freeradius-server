@@ -677,6 +677,9 @@ fi
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/mods-available/sql*
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/mods-available/cui
 %dir %attr(750,root,radiusd) /etc/raddb/mods-config/sql
+%dir %attr(750,root,radiusd) /etc/raddb/mods-config/sql/counter
+%dir %attr(750,root,radiusd) /etc/raddb/mods-config/sql/counter/sqlite
+%attr(640,root,radiusd) %config(noreplace) /etc/raddb/mods-config/sql/counter/sqlite/*
 %dir %attr(750,root,radiusd) /etc/raddb/mods-config/sql/cui
 %dir %attr(750,root,radiusd) /etc/raddb/mods-config/sql/cui/sqlite
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/mods-config/sql/cui/sqlite/*
