@@ -236,3 +236,29 @@ finish:
 
 	return err;
 }
+
+char const *edir_errstr(int code) {
+	switch (code) {
+	case NMAS_E_FRAG_FAILURE:
+		return "BER manipulation failed";
+
+	case NMAS_E_BUFFER_OVERFLOW:
+		return "Insufficient buffer space to write retrieved password";
+
+	case NMAS_E_SYSTEM_RESOURCES:
+	case NMAS_E_INSUFFICIENT_MEMORY:
+		return "Insufficient memory or system resources";
+
+	case NMAS_E_NOT_SUPPORTED:
+		return "Server response indicated Universal Password is not supported (missing password response OID)";
+
+	case NMAS_E_INVALID_PARAMETER:
+		return "Bad arguments passed to eDir functions";
+
+	case NMAS_E_INVALID_VERSION:
+		return "LDAP EXT version does not match expected version" STRINGIFY(NMAS_LDAP_EXT_VERSION);
+
+	default:
+		return ldap_err2string(code);
+	}
+}
