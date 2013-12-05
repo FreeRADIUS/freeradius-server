@@ -358,8 +358,8 @@ int  rlm_ldap_load_clients(ldap_instance_t const *inst);
 /*
  *	edir.c - Magic extensions for Novell
  */
-#ifdef WITH_EDIR
 int nmasldap_get_password(LDAP *ld, char const *dn, char *password, size_t *len);
-#endif
+
+char const *edir_errstr(int code);
 
 #endif
