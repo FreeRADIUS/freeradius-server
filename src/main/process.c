@@ -2235,8 +2235,8 @@ static int request_will_proxy(REQUEST *request)
 		return 0;
 	}
 
-	if (request->listener->nodup) {
-		WARN("Cannot proxy a request which is from a 'nodup' socket");
+	if (request->listener->synchronous) {
+		WARN("Cannot proxy a request which is from a 'synchronous' socket");
 		return 0;
 	}
 
