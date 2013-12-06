@@ -350,7 +350,10 @@ static int pap_authorize(void *instance, REQUEST *request)
 					goto redo;
 				}
 
-				RDEBUG("Failed to decode Password-With-Header = \"%s\"", vp->vp_strvalue);
+				RDEBUG("No {...} in Password-With-Header = \"%s\", re-writing to Cleartext-Password", vp->vp_strvalue);
+				radius_pairmake(request, &request->config_items,
+						"Cleartext-Password",
+						vp->vp_strvalue, T_OP_SET);
 				break;
 			}
 
