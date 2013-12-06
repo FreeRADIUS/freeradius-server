@@ -167,10 +167,10 @@ ATTRIBUTE	ERX-IGMP-No-Tracking-V2-Grps		103	integer
 ATTRIBUTE	ERX-MLD-Explicit-Tracking		104	integer
 ATTRIBUTE	ERX-MLD-No-Tracking-V1-Grps		105	integer
 
-ATTRIBUTE	ERX-IPv6-Ingress-Policy-Name		106	string
-ATTRIBUTE	ERX-IPv6-Egress-Policy-Name		107	string
-ATTRIBUTE	ERX-CoS-Shaping-Pmt-Type		108	string
-ATTRIBUTE	ERX-DHCP-Guided-Relay-Server		109	ipaddr
+ATTRIBUTE	Jnpr-IPv6-Ingress-Policy-Name		106	string
+ATTRIBUTE	Jnpr-IPv6-Egress-Policy-Name		107	string
+ATTRIBUTE	Jnpr-CoS-Shaping-Pmt-Type		108	string
+ATTRIBUTE	Jnpr-DHCP-Guided-Relay-Server		109	ipaddr
 
 ATTRIBUTE	ERX-Acc-Loop-Cir-Id			110	string
 ATTRIBUTE	ERX-Acc-Aggr-Cir-Id-Bin			111	octets
@@ -199,11 +199,11 @@ ATTRIBUTE	ERX-Service-Acct-Interval		140	integer has_tag
 
 ATTRIBUTE	ERX-DownStream-Calc-Rate		141	integer
 ATTRIBUTE	ERX-UpStream-Calc-Rate			142	integer
-ATTRIBUTE	ERX-Max-Clients-Per-Interface		143	integer
+ATTRIBUTE	Jnpr-Max-Clients-Per-Interface		143	integer
 
 ATTRIBUTE	ERX-PPP-Monitor-Ingress-Only		144	integer
 
-ATTRIBUTE	ERX-CoS-Scheduler-Pmt-Type		146	string
+ATTRIBUTE	Jnpr-CoS-Scheduler-Pmt-Type		146	string
 ATTRIBUTE	ERX-Backup-Address-Pool			147	string
 
 ATTRIBUTE	ERX-ICR-Partition-Id			150	string
@@ -213,18 +213,18 @@ ATTRIBUTE	ERX-IPv6-Acct-Input-Packets		153	integer
 ATTRIBUTE	ERX-IPv6-Acct-Output-Packets		154	integer
 ATTRIBUTE	ERX-IPv6-Acct-Input-Gigawords		155	integer
 ATTRIBUTE	ERX-IPv6-Acct-Output-Gigawords		156	integer
-ATTRIBUTE	ERX-IPv6-NdRa-Pool-Name			157	string
-ATTRIBUTE	ERX-PppoE-Padn				158	string
-ATTRIBUTE	ERX-Dhcp-Option-82			159	octets
-ATTRIBUTE	ERX-Vlan-Map-Id				160	integer
-ATTRIBUTE	ERX-IPv6-Delegated-Pool-Name		161	string
-ATTRIBUTE	Juniper-Tx-Connect-Speed		162	integer
-ATTRIBUTE	Juniper-Rx-Connect-Speed		163	integer
+ATTRIBUTE	Jnpr-IPv6-NdRa-Pool-Name			157	string
+ATTRIBUTE	Jnpr-PppoE-Padn				158	string
+ATTRIBUTE	Jnpr-Dhcp-Option-82			159	octets
+ATTRIBUTE	Jnpr-Vlan-Map-Id				160	integer
+ATTRIBUTE	Jnpr-IPv6-Delegated-Pool-Name		161	string
+ATTRIBUTE	Jnpr-Tx-Connect-Speed		162	integer
+ATTRIBUTE	Jnpr-Rx-Connect-Speed		163	integer
 
 # ATTRIBUTE 164 - 173 RESERVED
 ATTRIBUTE	Unisphere-Client-Profile-Name		174	string
-ATTRIBUTE	Juniper-Redirect-GW-Address		175	ipaddr
-ATTRIBUTE	Juniper-APN-Name			176	string
+ATTRIBUTE	Jnpr-Redirect-GW-Address		175	ipaddr
+ATTRIBUTE	Jnpr-APN-Name			176	string
 
 #
 #  Values	Attribute		Name			Number
