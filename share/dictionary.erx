@@ -218,13 +218,13 @@ ATTRIBUTE	Jnpr-PppoE-Padn				158	string
 ATTRIBUTE	Jnpr-Dhcp-Option-82			159	octets
 ATTRIBUTE	Jnpr-Vlan-Map-Id			160	integer
 ATTRIBUTE	Jnpr-IPv6-Delegated-Pool-Name		161	string
-ATTRIBUTE	Jnpr-Tx-Connect-Speed	    	162	integer
-ATTRIBUTE	Jnpr-Rx-Connect-Speed	   	163	integer
+ATTRIBUTE	Jnpr-Tx-Connect-Speed	      	162	integer
+ATTRIBUTE	Jnpr-Rx-Connect-Speed	    	163	integer
 
 # ATTRIBUTE 164 - 173 RESERVED
 ATTRIBUTE	Unisphere-Client-Profile-Name		174	string
 ATTRIBUTE	Jnpr-Redirect-GW-Address		175	ipaddr
-ATTRIBUTE	Jnpr-APN-Name		   	176	string
+ATTRIBUTE	Jnpr-APN-Name		    	176	string
 
 #
 #  Values	Attribute		Name			Number
