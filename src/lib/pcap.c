@@ -166,7 +166,6 @@ int fr_pcap_open(fr_pcap_t *pcap)
 
 			return -1;
 		}
-
 		pcap->fd = pcap_get_selectable_fd(pcap->handle);
 		pcap->link_type = pcap_datalink(pcap->handle);
 		break;
@@ -197,6 +196,8 @@ int fr_pcap_open(fr_pcap_t *pcap)
 
 			return -1;
 		}
+		pcap->fd = pcap_get_selectable_fd(pcap->handle);
+		pcap->link_type = pcap_datalink(pcap->handle);
 		break;
 #else
 	case PCAP_STDIO_IN:

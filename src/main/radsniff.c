@@ -1326,14 +1326,18 @@ static void rs_got_packet(UNUSED fr_event_list_t *el, int fd, void *ctx)
 	struct pcap_pkthdr *header;
 
 	/*
-	 *	Consume entire capture, interleaving not current possible
+	 *	Consume entire capture, interleaving not currently possible
 	 */
-	if (event->in->type == PCAP_FILE_IN) {
+	if ((event->in->type == PCAP_FILE_IN) || (event->in->type == PCAP_STDIO_IN)) {
 		while (!fr_event_loop_exiting(el)) {
 			struct timeval now;
 
 			ret = pcap_next_ex(handle, &header, &data);
-			if ((ret == -2) || (ret == 0)) {
+			if (ret == 0) {
+				/* No more packets available at this time */
+				return;
+			}
+			if (ret == -2) {
 				DEBUG("Done reading packets (%s)", event->in->name);
 				fr_event_fd_delete(events, 0, fd);
 
@@ -1366,16 +1370,6 @@ static void rs_got_packet(UNUSED fr_event_list_t *el, int fd, void *ctx)
 		ret = pcap_next_ex(handle, &header, &data);
 		if (ret == 0) {
 			/* No more packets available at this time */
-			return;
-		}
-		if ((ret == -2) && (event->in->type == PCAP_FILE_IN)) {
-			INFO("Done reading packets (%s)", event->in->name);
-			fr_event_fd_delete(events, 0, fd);
-
-			if (fr_event_list_num_fds(events) == 0) {
-				fr_event_loop_exit(events, 1);
-			}
-
 			return;
 		}
 		if (ret < 0) {
@@ -1515,7 +1509,6 @@ static void NEVER_RETURNS usage(int status)
 	fprintf(output, "options:\n");
 	fprintf(output, "  -c <count>         Number of packets to capture.\n");
 	fprintf(output, "  -d <directory>     Set dictionary directory.\n");
-	fprintf(output, "  -F                 Filter PCAP file from stdin to stdout.\n");
 	fprintf(output, "  -f <filter>        PCAP filter (default is 'udp port <port> or <port + 1> or 3799')\n");
 	fprintf(output, "  -h                 This help message.\n");
 	fprintf(output, "  -i <interface>     Capture packets from interface (defaults to all if supported).\n");
@@ -1529,6 +1522,7 @@ static void NEVER_RETURNS usage(int status)
 	fprintf(output, "  -r <filter>        RADIUS attribute request filter.\n");
 	fprintf(output, "  -R <filter>        RADIUS attribute response filter.\n");
 	fprintf(output, "  -s <secret>        RADIUS secret.\n");
+	fprintf(output, "  -S                 Write PCAP data to stdout.\n");
 	fprintf(output, "  -v                 Show program version information.\n");
 	fprintf(output, "  -w <file>          Write output packets to file (overrides output of -F).\n");
 	fprintf(output, "  -x                 Print more debugging information (defaults to -xx).\n");
@@ -1606,7 +1600,7 @@ int main(int argc, char *argv[])
 	/*
 	 *  Get options
 	 */
-	while ((opt = getopt(argc, argv, "b:c:d:DFf:hi:I:l:L:mp:P:qr:R:s:vw:xXW:T:P:O:")) != EOF) {
+	while ((opt = getopt(argc, argv, "b:c:d:DFf:hi:I:l:L:mp:P:qr:R:s:Svw:xXW:T:P:O:")) != EOF) {
 		switch (opt) {
 		/* super secret option */
 		case 'b':
@@ -1648,11 +1642,6 @@ int main(int argc, char *argv[])
 				ret = 0;
 				goto finish;
 			}
-
-		case 'F':
-			conf->from_stdin = true;
-			conf->to_stdout = true;
-			break;
 
 		case 'f':
 			conf->pcap_filter = optarg;
@@ -1719,6 +1708,10 @@ int main(int argc, char *argv[])
 			conf->radius_secret = optarg;
 			break;
 
+		case 'S':
+			conf->to_stdout = true;
+			break;
+
 		case 'v':
 #ifdef HAVE_COLLECTDC_H
 			INFO("%s, %s, collectdclient version %s", radsniff_version, pcap_lib_version(),
@@ -1780,6 +1773,11 @@ int main(int argc, char *argv[])
 		in_head = &(*in_head)->next;
 		conf->from_file = true;
 		optind++;
+	}
+
+	/* Is stdin not a tty? If so it's probably a pipe */
+	if (!isatty(fileno(stdin))) {
+		conf->from_stdin = true;
 	}
 
 	/* What's the point in specifying -F ?! */
