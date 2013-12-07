@@ -56,7 +56,6 @@ ATTRIBUTE	DHCP-Relay-IP-Address			272	ipaddr
 
 VALUE	DHCP-Flags			Broadcast		0x8000
 
-
 VALUE	DHCP-Hardware-Type		Ethernet		1
 VALUE	DHCP-Hardware-Type		Experiemental-Ethernet	2
 VALUE	DHCP-Hardware-Type		AX.25			3
@@ -215,7 +214,7 @@ ATTRIBUTE	DHCP-Relay-Remote-Id			82.2	octets
 
 # 3 is reserved and shouldn't be used for anything
 ATTRIBUTE	DHCP-Docsis-Device-Class		82.4	integer
-ATTRIBUTE	DHCP-Relay-Link-Selection		82.5	ipaddr	
+ATTRIBUTE	DHCP-Relay-Link-Selection		82.5	ipaddr
 ATTRIBUTE	DHCP-Subscriber-Id			82.6	string
 
 # AGH!  RADIUS inside of DHCP!
@@ -357,7 +356,7 @@ VALUE	DHCP-Parameter-Request-List	DHCP-ARP-Cache-Timeout	35
 VALUE	DHCP-Parameter-Request-List	DHCP-Ethernet-Encapsulation 36
 VALUE	DHCP-Parameter-Request-List	DHCP-Default-TCP-TTL	37
 VALUE	DHCP-Parameter-Request-List	DHCP-Keep-Alive-Interval 38
-VALUE	DHCP-Parameter-Request-List	DHCP-Keep-Alive-Garbage 39
+VALUE	DHCP-Parameter-Request-List	DHCP-Keep-Alive-Garbage	39
 VALUE	DHCP-Parameter-Request-List	DHCP-NIS-Domain-Name	40
 VALUE	DHCP-Parameter-Request-List	DHCP-NIS-Servers	41
 VALUE	DHCP-Parameter-Request-List	DHCP-NTP-Servers	42

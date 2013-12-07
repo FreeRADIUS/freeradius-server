@@ -39,5 +39,4 @@ VALUE	Prosoft-Auth-Role		Read-Write		2
 VALUE	Prosoft-Auth-Role		Admin			3
 VALUE	Prosoft-Auth-Role		Super-user		4
 
-
 END-VENDOR	Prosoft

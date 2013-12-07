@@ -8,11 +8,11 @@
 #
 ##############################################################################
 
-VENDOR	DANTE				27262
+VENDOR		DANTE				27262
 
-BEGIN-VENDOR DANTE
+BEGIN-VENDOR	DANTE
 
-ATTRIBUTE	Default-TTL			1	integer
+ATTRIBUTE	Default-TTL				1	integer
 
 END-VENDOR DANTE
 

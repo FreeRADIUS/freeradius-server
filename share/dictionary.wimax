@@ -160,7 +160,7 @@ ATTRIBUTE	WiMAX-Uplink-QOS-Id			28.7	byte
 ATTRIBUTE	WiMAX-Downlink-QOS-Id			28.8	byte
 ATTRIBUTE	WiMAX-Uplink-Classifier			28.9	string
 ATTRIBUTE	WiMAX-Downlink-Classifier		28.10	string
-ATTRIBUTE 	WiMAX-Classifier			28.11	tlv
+ATTRIBUTE	WiMAX-Classifier			28.11	tlv
 ATTRIBUTE	WiMAX-ClassifierID			28.11.1	integer
 ATTRIBUTE	WiMAX-Classifer-Priority		28.11.2	integer
 ATTRIBUTE	WiMAX-Classifer-Protocol		28.11.3	integer
@@ -429,28 +429,28 @@ ATTRIBUTE	WiMAX-PFDv2-Classifier-Protocol		84.9.3	byte
 ATTRIBUTE	WiMAX-PFDv2-Classifier-Direction	84.9.4	byte
 
 ATTRIBUTE	WiMAX-PFDv2-Classifier-Source-Spec	84.9.5	tlv
-ATTRIBUTE	WiMAX-PFDv2-Src-IP-Address		84.9.5.1  combo-ip
+ATTRIBUTE	WiMAX-PFDv2-Src-IP-Address		84.9.5.1	combo-ip
 # really two IPv4 OR IPv6 addresses
-ATTRIBUTE	WiMAX-PFDv2-Src-IP-Address-Range	84.9.5.2  octets
-ATTRIBUTE	WiMAX-PFDv2-Src-IP-Address-Mask		84.9.5.3  combo-ip
-ATTRIBUTE	WiMAX-PFDv2-Src-Port			84.9.5.4  short
+ATTRIBUTE	WiMAX-PFDv2-Src-IP-Address-Range	84.9.5.2	octets
+ATTRIBUTE	WiMAX-PFDv2-Src-IP-Address-Mask		84.9.5.3	combo-ip
+ATTRIBUTE	WiMAX-PFDv2-Src-Port			84.9.5.4	short
 # 2 shorts
-ATTRIBUTE	WiMAX-PFDv2-Src-Port-Range		84.9.5.5  integer
-ATTRIBUTE	WiMAX-PFDv2-Src-Inverted		84.9.5.6  byte
-ATTRIBUTE	WiMAX-PFDv2-Src-Assigned		84.9.5.7  byte
+ATTRIBUTE	WiMAX-PFDv2-Src-Port-Range		84.9.5.5	integer
+ATTRIBUTE	WiMAX-PFDv2-Src-Inverted		84.9.5.6	byte
+ATTRIBUTE	WiMAX-PFDv2-Src-Assigned		84.9.5.7	byte
 
 VALUE	WiMAX-PFDv2-Src-Assigned	Src-Assigned		1
 VALUE	WiMAX-PFDv2-Src-Assigned	Dst-Assigned		2
 VALUE	WiMAX-PFDv2-Src-Assigned	Src-Dst-Assigned	3
 
-ATTRIBUTE	WiMAX-PFDv2-Src-MAC-Address		84.9.5.8  ether
-ATTRIBUTE	WiMAX-PFDv2-Src-MAC-Mask		84.9.5.9  ether
+ATTRIBUTE	WiMAX-PFDv2-Src-MAC-Address		84.9.5.8	ether
+ATTRIBUTE	WiMAX-PFDv2-Src-MAC-Mask		84.9.5.9	ether
 
 ATTRIBUTE	WiMAX-PFDv2-Classifier-Dest-Spec	84.9.6	tlv
-ATTRIBUTE	WiMAX-PFDv2-Classifier-IP-ToS-DSCP	84.9.7  byte
-ATTRIBUTE	WiMAX-PFDv2-Classifier-Action		84.9.8  byte
+ATTRIBUTE	WiMAX-PFDv2-Classifier-IP-ToS-DSCP	84.9.7	byte
+ATTRIBUTE	WiMAX-PFDv2-Classifier-Action		84.9.8	byte
 
-ATTRIBUTE	WiMAX-PFDv2-Classifier-Eth-Option	84.9.9  tlv
+ATTRIBUTE	WiMAX-PFDv2-Classifier-Eth-Option	84.9.9	tlv
 
 ATTRIBUTE	WiMAX-PFDv2-Eth-Proto-Type		84.9.9.1	tlv
 ATTRIBUTE	WiMAX-PFDv2-Eth-Proto-Type-Ethertype	84.9.9.1.1	short
@@ -464,7 +464,7 @@ ATTRIBUTE	WiMAX-PFDv2-Eth-Priority-Range		84.9.9.3	tlv
 ATTRIBUTE	WiMAX-PFDv2-Eth-Priority-Range-Low	84.9.9.3.1	byte
 ATTRIBUTE	WiMAX-PFDv2-Eth-Priority-Range-High	84.9.9.3.2	byte
 
-ATTRIBUTE	WiMAX-XXX		84.9.9.4	byte
+ATTRIBUTE	WiMAX-XXX				84.9.9.4	byte
 
 ATTRIBUTE	WiMAX-PFDv2-Paging-Preference		84.9.10	byte
 ATTRIBUTE	WiMAX-PFDv2-VLAN-Tag-Rule-Id		84.9.11	short

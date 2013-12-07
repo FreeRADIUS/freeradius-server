@@ -9,10 +9,9 @@
 #
 ##############################################################################
 
-
-VALUE   NAS-Port-Type                   PPPoA                   30
-VALUE   NAS-Port-Type                   PPPoEoA                 31
-VALUE   NAS-Port-Type                   PPPoEoE                 32
-VALUE   NAS-Port-Type                   PPPoEoVLAN              33
-VALUE   NAS-Port-Type                   PPPoEoQinQ              34
+VALUE	NAS-Port-Type			PPPoA			30
+VALUE	NAS-Port-Type			PPPoEoA			31
+VALUE	NAS-Port-Type			PPPoEoE			32
+VALUE	NAS-Port-Type			PPPoEoVLAN		33
+VALUE	NAS-Port-Type			PPPoEoQinQ		34
 

@@ -8,7 +8,7 @@
 #
 ##############################################################################
 
-VENDOR Zyxel 890
+VENDOR		Zyxel				890
 BEGIN-VENDOR	Zyxel
 
 ATTRIBUTE	Zyxel-Privilege-AVPair			3	string

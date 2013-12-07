@@ -7,4 +7,4 @@
 #	$Id$
 #
 
-ATTRIBUTE	DS-Lite-Tunnel-Name	144	string
+ATTRIBUTE	DS-Lite-Tunnel-Name			144	string

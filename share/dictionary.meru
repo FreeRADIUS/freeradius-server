@@ -10,7 +10,7 @@ VENDOR		Meru				15983
 
 BEGIN-VENDOR	Meru
 
-ATTRIBUTE	Meru-Access-Point-Id				1	integer
+ATTRIBUTE	Meru-Access-Point-Id			1	integer
 ATTRIBUTE	Meru-Access-Point-Name			2	string
 
 END-VENDOR      Meru

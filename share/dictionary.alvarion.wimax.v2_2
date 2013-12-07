@@ -5,16 +5,15 @@
 #       Alvarion VSAs for use with Alvarion WiMAX ASN-GW
 #
 #	This does conflict with the default Alvarion dictionary file included
-# 	with FreeRADIUS and may break existing functionality if the current 
-# 	dictionaries are used to support an existing Alvarion Breezecom or 
-#	Breezenet installation. 
+# 	with FreeRADIUS and may break existing functionality if the current
+# 	dictionaries are used to support an existing Alvarion Breezecom or
+#	Breezenet installation.
 #
 #       $Id$
 #
 ##############################################################################
 
-
-VENDOR		Alvarion				12394	
+VENDOR		Alvarion			12394
 
 BEGIN-VENDOR	Alvarion
 
