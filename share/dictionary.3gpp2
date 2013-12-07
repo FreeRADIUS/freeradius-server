@@ -133,9 +133,9 @@ ATTRIBUTE	3GPP2-Carrier-ID			142	string
 # More sub-types
 ATTRIBUTE	3GPP2-GMT-Time-Zone-Offset		143	signed
 
-ATTRIBUTE       3GPP2-HA-Request                        168     integer
-ATTRIBUTE       3GPP2-HA-Authorised                     169     integer
-ATTRIBUTE       3GPP2-IP-Ver-Authorised                 172     integer
-ATTRIBUTE       3GPP2-MIPv4-Mesg-Id                     173     string
+ATTRIBUTE	3GPP2-HA-Request			168	integer
+ATTRIBUTE	3GPP2-HA-Authorised			169	integer
+ATTRIBUTE	3GPP2-IP-Ver-Authorised			172	integer
+ATTRIBUTE	3GPP2-MIPv4-Mesg-Id			173	string
 
 END-VENDOR 3GPP2

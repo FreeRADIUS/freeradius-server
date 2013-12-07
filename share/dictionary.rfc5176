@@ -6,5 +6,5 @@
 #
 #	$Id$
 #
-VALUE	Error-Cause		Invalid-Attribute-Value	407
-VALUE	Error-Cause		Multiple-Session-Selection-Unsupported 508
+VALUE	Error-Cause			Invalid-Attribute-Value	407
+VALUE	Error-Cause			Multiple-Session-Selection-Unsupported 508

@@ -17,17 +17,17 @@ ATTRIBUTE	MS-CHAP-LM-Enc-PW			5	octets
 ATTRIBUTE	MS-CHAP-NT-Enc-PW			6	octets
 ATTRIBUTE	MS-MPPE-Encryption-Policy		7	integer
 
-VALUE	MS-MPPE-Encryption-Policy		Encryption-Allowed	1
-VALUE	MS-MPPE-Encryption-Policy		Encryption-Required	2
+VALUE	MS-MPPE-Encryption-Policy	Encryption-Allowed	1
+VALUE	MS-MPPE-Encryption-Policy	Encryption-Required	2
 
 # This is referred to as both singular and plural in the RFC.
 # Plural seems to make more sense.
 ATTRIBUTE	MS-MPPE-Encryption-Type			8	integer
 ATTRIBUTE	MS-MPPE-Encryption-Types		8	integer
 
-VALUE	MS-MPPE-Encryption-Types		RC4-40bit-Allowed	1
-VALUE	MS-MPPE-Encryption-Types		RC4-128bit-Allowed	2
-VALUE	MS-MPPE-Encryption-Types		RC4-40or128-bit-Allowed 6
+VALUE	MS-MPPE-Encryption-Types	RC4-40bit-Allowed	1
+VALUE	MS-MPPE-Encryption-Types	RC4-128bit-Allowed	2
+VALUE	MS-MPPE-Encryption-Types	RC4-40or128-bit-Allowed	6
 
 ATTRIBUTE	MS-RAS-Vendor				9	integer	# content is Vendor-ID
 ATTRIBUTE	MS-CHAP-Domain				10	string

@@ -48,5 +48,4 @@ ATTRIBUTE	Infonet-Realm-Type			249	string
 ATTRIBUTE	Infonet-LoginHost-Dest			250	string
 ATTRIBUTE	Infonet-Tunnel-Decision-IP		251	string
 
-
 END-VENDOR	infonet

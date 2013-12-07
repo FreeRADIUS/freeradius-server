@@ -134,11 +134,11 @@ ATTRIBUTE	FreeDHCP-Client-FQDN			81	string
 # Relay Agent Information
 ATTRIBUTE	FreeDHCP-Relay-Agent-Information	82	tlv
 
-ATTRIBUTE	FreeDHCP-Agent-Circuit-Id			82.1	octets
-ATTRIBUTE	FreeDHCP-Agent-Remote-Id			82.2	octets
+ATTRIBUTE	FreeDHCP-Agent-Circuit-Id		82.1	octets
+ATTRIBUTE	FreeDHCP-Agent-Remote-Id		82.2	octets
 
-ATTRIBUTE	FreeDHCP-Relay-Circuit-Id			82.1	octets
-ATTRIBUTE	FreeDHCP-Relay-Remote-Id			82.2	octets
+ATTRIBUTE	FreeDHCP-Relay-Circuit-Id		82.1	octets
+ATTRIBUTE	FreeDHCP-Relay-Remote-Id		82.2	octets
 
 # 3 is reserved and shouldn't be used for anything
 ATTRIBUTE	FreeDHCP-Docsis-Device-Class		82.4	integer
@@ -146,13 +146,13 @@ ATTRIBUTE	FreeDHCP-Relay-Link-Selection		82.5	ipaddr
 ATTRIBUTE	FreeDHCP-Subscriber-Id			82.6	string
 
 # AGH!  RADIUS inside of DHCP!
-ATTRIBUTE	FreeDHCP-RADIUS-Attributes			82.7	octets
+ATTRIBUTE	FreeDHCP-RADIUS-Attributes		82.7	octets
 
 # Horribly complicated
-ATTRIBUTE	FreeDHCP-Authentication-Information		82.8	octets
+ATTRIBUTE	FreeDHCP-Authentication-Information	82.8	octets
 ATTRIBUTE	FreeDHCP-Vendor-Specific-Information	82.9	octets
-ATTRIBUTE	FreeDHCP-Relay-Agent-Flags			82.10	byte
-ATTRIBUTE	FreeDHCP-Server-Identifier-Override		82.11	ipaddr
+ATTRIBUTE	FreeDHCP-Relay-Agent-Flags		82.10	byte
+ATTRIBUTE	FreeDHCP-Server-Identifier-Override	82.11	ipaddr
 
 # Internet Storage Name Service
 ATTRIBUTE	FreeDHCP-iSNS				83	octets
