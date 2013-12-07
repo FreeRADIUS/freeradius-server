@@ -771,10 +771,17 @@ static void rs_packet_cleanup(void *ctx)
 	 *
 	 *	We now count it as lost.
 	 */
-	if (!request->linked && !request->forced_cleanup) {
-		request->stats_req->interval.lost_total++;
+	if (!request->silent_cleanup) {
+		if (!request->linked) {
+			request->stats_req->interval.lost_total++;
 
-		conf->logger(request->id, RS_LOST, request->in, packet, NULL, NULL, false, conf->filter_response_vps);
+			conf->logger(request->id, RS_LOST, request->in, packet, NULL, NULL, false,
+				     conf->filter_response_vps);
+		}
+
+		if (request->in->type == PCAP_INTERFACE_IN) {
+			RDEBUG("Cleaning up request packet ID %i", request->expect->id);
+		}
 	}
 
 	/*
@@ -792,10 +799,6 @@ static void rs_packet_cleanup(void *ctx)
 		} else {
 			request->stats_rsp->interval.rt_total[request->rt_rsp]++;
 		}
-	}
-
-	if (!request->forced_cleanup && (request->in->type == PCAP_INTERFACE_IN)) {
-		RDEBUG("Cleaning up request packet ID %i", request->expect->id);
 	}
 
 	skip:
@@ -988,7 +991,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 					RDEBUG2("Dropped by attribute/packet filter");
 
 					/* We now need to cleanup the original request too */
-					original->forced_cleanup = true;
+					original->silent_cleanup = true;
 					original->when = header->ts;	/* Needed for correct TS */
 
 					/* This is the same as scheduling the event immediately */
@@ -1006,6 +1009,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 					if (!pairvalidate_relaxed(conf->filter_response_vps, current->vps)) {
 						goto drop_response;
 					}
+					original->silent_cleanup = false;
 				}
 
 				/*
@@ -1115,7 +1119,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 					if (!original->linked) {
 						status = RS_REUSED;
 						stats->exchange[current->code].interval.reused_total++;
-						original->forced_cleanup = true;
+						original->silent_cleanup = true;
 					}
 
 					/* This is the same as immediately scheduling the cleanup event */
@@ -1170,6 +1174,9 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 				}
 			}
 
+			/*
+			 *	Is this a retransmission?
+			 */
 			if (original) {
 				status = RS_RTX;
 				original->rt_req++;
@@ -1183,6 +1190,9 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 				original->expect = talloc_steal(original, search.expect);
 
 				fr_event_delete(event->list, &original->event);
+			/*
+			 *	...nope it's a new request.
+			 */
 			} else {
 				original = talloc_zero(conf, rs_request_t);
 				talloc_set_destructor(original, _request_free);
@@ -1199,6 +1209,16 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 					if (!rbtree_insert(link_tree, original)) {
 						REDEBUG("Failed inserting linking pairs");
 					}
+				}
+
+				/*
+				 *	Special case for when were filtering by response,
+				 *	we never count any requests as lost, because we
+				 *	don't know what the response to that request would
+				 *	of been.
+				 */
+				if (conf->filter_response_vps) {
+					original->silent_cleanup = true;
 				}
 
 				rbtree_insert(request_tree, original);

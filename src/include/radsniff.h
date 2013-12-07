@@ -183,7 +183,7 @@ typedef struct rs_request {
 	rs_latency_t		*stats_req;		//!< Latency entry for the request type.
 	rs_latency_t		*stats_rsp;		//!< Latency entry for the request type.
 
-	bool			forced_cleanup;		//!< Cleanup was forced before normal expiry period,
+	bool			silent_cleanup;		//!< Cleanup was forced before normal expiry period,
 							//!< ignore stats about packet loss.
 
 	VALUE_PAIR		*link_vps;		//!< VALUE_PAIRs used to link retransmissions.
