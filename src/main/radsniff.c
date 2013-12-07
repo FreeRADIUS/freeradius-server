@@ -1600,7 +1600,7 @@ int main(int argc, char *argv[])
 	/*
 	 *  Get options
 	 */
-	while ((opt = getopt(argc, argv, "b:c:d:DFf:hi:I:l:L:mp:P:qr:R:s:Svw:xXW:T:P:O:")) != EOF) {
+	while ((opt = getopt(argc, argv, "b:c:d:DFf:hi:I:l:L:mp:P:qr:R:s:Svw:xXW:T:P:N:O:")) != EOF) {
 		switch (opt) {
 		/* super secret option */
 		case 'b':
