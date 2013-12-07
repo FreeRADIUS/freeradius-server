@@ -748,19 +748,22 @@ static int rs_get_pairs(TALLOC_CTX *ctx, VALUE_PAIR **out, VALUE_PAIR *vps, DICT
 
 static void rs_packet_cleanup(void *ctx)
 {
-	rs_request_t	*request = talloc_get_type_abort(ctx, rs_request_t);
-	RADIUS_PACKET	*packet = request->packet;
+	rs_request_t *request = talloc_get_type_abort(ctx, rs_request_t);
+	RADIUS_PACKET *packet = request->packet;
+	uint64_t count = request->id;
 
 	assert(request->stats_req);
 	assert(!request->rt_rsp || request->stats_rsp);
 	assert(packet);
 
+	if (RIDEBUG_ENABLED()) {
+		rs_time_print(timestr, sizeof(timestr), &request->when);
+	}
+
 	/*
 	 *	Don't pollute stats or print spurious messages as radsniff closes.
 	 */
-	if (cleanup) {
-		goto skip;
-	}
+	if (cleanup) goto skip;
 
 	/*
 	 *	Were at packet cleanup time which is when the packet was received + timeout
@@ -791,6 +794,10 @@ static void rs_packet_cleanup(void *ctx)
 		}
 	}
 
+	if (!request->forced_cleanup && (request->in->type == PCAP_INTERFACE_IN)) {
+		RDEBUG("Cleaning up request packet ID %i", request->expect->id);
+	}
+
 	skip:
 
 	/*
@@ -802,12 +809,6 @@ static void rs_packet_cleanup(void *ctx)
 
 static int _request_free(rs_request_t *request)
 {
-	uint64_t count = request->id;
-
-	if (!cleanup && (request->in->type == PCAP_INTERFACE_IN)) {
-		RDEBUG("Cleaning up request packet ID %i", request->expect->id);
-	}
-
 	if (request->link_vps) {
 		assert(rbtree_deletebydata(link_tree, request));
 	}
@@ -845,7 +846,6 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 	rs_request_t		*original;
 
 	rs_request_t		search;
-	struct timeval		when;
 
 	memset(&search, 0, sizeof(search));
 
@@ -952,8 +952,6 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 	case PW_CODE_DISCONNECT_ACK:
 	case PW_CODE_STATUS_CLIENT:
 		{
-			rs_tv_add_ms(&header->ts, conf->stats.timeout, &when);
-
 			/* look for a matching request and use it for decoding */
 			search.expect = current;
 			original = rbtree_finddata(request_tree, &search);
@@ -991,6 +989,9 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 
 					/* We now need to cleanup the original request too */
 					original->forced_cleanup = true;
+					original->when = header->ts;	/* Needed for correct TS */
+
+					/* This is the same as scheduling the event immediately */
 					fr_event_delete(event->list, &original->event);
 					rs_packet_cleanup(original);
 
@@ -1021,8 +1022,8 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 				}
 
 				original->linked = talloc_steal(original, current);
-
-				if (!fr_event_insert(event->list, rs_packet_cleanup, original, &when,
+				rs_tv_add_ms(&header->ts, conf->stats.timeout, &original->when);
+				if (!fr_event_insert(event->list, rs_packet_cleanup, original, &original->when,
 						     &original->event)) {
 					REDEBUG("Failed inserting new event");
 					/*
@@ -1117,6 +1118,8 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 						original->forced_cleanup = true;
 					}
 
+					/* This is the same as immediately scheduling the cleanup event */
+					original->when = header->ts;
 					fr_event_delete(event->list, &original->event);
 					rs_packet_cleanup(original);
 					original = NULL;
@@ -1204,9 +1207,10 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			/*
 			 *	Insert a callback to remove the request from the tree
 			 */
-			original->expect->timestamp = header->ts;
-			rs_tv_add_ms(&header->ts, conf->stats.timeout, &when);
-			if (!fr_event_insert(event->list, rs_packet_cleanup, original, &when, &original->event)) {
+			original->packet->timestamp = header->ts;
+			rs_tv_add_ms(&header->ts, conf->stats.timeout, &original->when);
+			if (!fr_event_insert(event->list, rs_packet_cleanup, original,
+					     &original->when, &original->event)) {
 				REDEBUG("Failed inserting new event");
 				rbtree_deletebydata(request_tree, original);
 				return;
@@ -1236,7 +1240,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 	 *	It's a linked response
 	 */
 	if (original && original->linked) {
-		rs_tv_sub(&current->timestamp, &original->expect->timestamp, &latency);
+		rs_tv_sub(&current->timestamp, &original->packet->timestamp, &latency);
 
 		/*
 		 *	Update stats for both the request and response types.
@@ -1325,9 +1329,6 @@ static void rs_got_packet(UNUSED fr_event_list_t *el, int fd, void *ctx)
 			}
 
 			do {
-				if (RIDEBUG_ENABLED()) {
-					rs_time_print(timestr, sizeof(timestr), &header->ts);
-				}
 				now = header->ts;
 			} while (fr_event_run(el, &now) == 1);
 			count++;
