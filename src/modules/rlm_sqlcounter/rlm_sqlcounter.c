@@ -401,30 +401,25 @@ static int sqlcounter_cmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR *r
 static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
 	rlm_sqlcounter_t *inst = instance;
-	DICT_ATTR const *dattr;
+	DICT_ATTR const *da;
 	ATTR_FLAGS flags;
 	time_t now;
 
 	rad_assert(inst->query && *inst->query);
 
-	dattr = dict_attrbyname(inst->key_name);
-	rad_assert(dattr != NULL);
-	if (dattr->vendor != 0) {
-		cf_log_err_cs(conf, "Configuration item 'key' cannot be a VSA");
+	da = dict_attrbyname(inst->key_name);
+	if (!da) {
+		cf_log_err_cs(conf, "Invalid attribute '%s'", inst->key_name);
 		return -1;
 	}
-	inst->key_attr = dattr;
+	inst->key_attr = da;
 
-	dattr = dict_attrbyname(inst->reply_name);
-	rad_assert(dattr != NULL);
-	if (dattr->vendor != 0) {
-		cf_log_err_cs(conf, "Configuration item 'reply_name' cannot be a VSA");
+	da = dict_attrbyname(inst->reply_name);
+	if (!da) {
+		cf_log_err_cs(conf, "Invalid attribute '%s'", inst->reply_name);
 		return -1;
 	}
-	inst->reply_attr = dattr;
-
-	DEBUG2("rlm_sqlcounter: Reply attribute %s is number %d",
-		       inst->reply_name, dattr->attr);
+	inst->reply_attr = da;
 
 	/*
 	 *  Create a new attribute for the counter.
@@ -432,31 +427,23 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	rad_assert(inst->counter_name && *inst->counter_name);
 	memset(&flags, 0, sizeof(flags));
 	dict_addattr(inst->counter_name, -1, 0, PW_TYPE_INTEGER, flags);
-	dattr = dict_attrbyname(inst->counter_name);
-	if (!dattr) {
-		cf_log_err_cs(conf, "Failed to create counter attribute %s",
-				inst->counter_name);
+	da = dict_attrbyname(inst->counter_name);
+	if (!da) {
+		cf_log_err_cs(conf, "Failed to create counter attribute %s", inst->counter_name);
 		return -1;
 	}
-	if (dattr->vendor != 0) {
-		cf_log_err_cs(conf, "Counter attribute must not be a VSA");
-		return -1;
-	}
-	inst->dict_attr = dattr;
+	inst->dict_attr = da;
 
 	/*
 	 * Create a new attribute for the check item.
 	 */
 	rad_assert(inst->check_name && *inst->check_name);
 	dict_addattr(inst->check_name, 0, PW_TYPE_INTEGER, -1, flags);
-	dattr = dict_attrbyname(inst->check_name);
-	if (!dattr) {
-		cf_log_err_cs(conf, "Failed to create check attribute %s",
-				inst->check_name);
+	da = dict_attrbyname(inst->check_name);
+	if (!da) {
+		cf_log_err_cs(conf, "Failed to create check attribute %s", inst->check_name);
 		return -1;
 	}
-	DEBUG2("rlm_sqlcounter: Check attribute %s is number %d",
-			inst->check_name, dattr->attr);
 
 	now = time(NULL);
 	inst->reset_time = 0;
@@ -495,7 +482,7 @@ static rlm_rcode_t mod_authorize(UNUSED void *instance, UNUSED REQUEST *request)
 	rlm_sqlcounter_t *inst = instance;
 	int rcode = RLM_MODULE_NOOP;
 	uint64_t counter, res;
-	DICT_ATTR const *dattr;
+	DICT_ATTR const *da;
 	VALUE_PAIR *key_vp, *check_vp;
 	VALUE_PAIR *reply_item;
 	char msg[128];
@@ -534,11 +521,11 @@ static rlm_rcode_t mod_authorize(UNUSED void *instance, UNUSED REQUEST *request)
 	/*
 	 *      Look for the check item
 	 */
-	if ((dattr = dict_attrbyname(inst->check_name)) == NULL) {
+	if ((da = dict_attrbyname(inst->check_name)) == NULL) {
 		return rcode;
 	}
-	/* DEBUG2("rlm_sqlcounter: Found Check item attribute %d", dattr->attr); */
-	if ((check_vp = pairfind(request->config_items, dattr->attr, dattr->vendor, TAG_ANY)) == NULL) {
+	/* DEBUG2("rlm_sqlcounter: Found Check item attribute %d", da->attr); */
+	if ((check_vp = pairfind(request->config_items, da->attr, da->vendor, TAG_ANY)) == NULL) {
 		RDEBUG2("Could not find Check item value pair");
 		return rcode;
 	}
@@ -619,7 +606,7 @@ static rlm_rcode_t mod_authorize(UNUSED void *instance, UNUSED REQUEST *request)
 	 *	limit, so that the user will not need to login
 	 *	again.  Do this only for Session-Timeout.
 	 */
-	if ((inst->reply_attr->attr == PW_SESSION_TIMEOUT) &&
+	if (((inst->reply_attr->vendor == 0) && (inst->reply_attr->attr == PW_SESSION_TIMEOUT)) &&
 	    inst->reset_time && ((int) res >= (inst->reset_time - request->timestamp))) {
 		res = inst->reset_time - request->timestamp;
 		res += check_vp->vp_integer;
@@ -667,7 +654,7 @@ module_t rlm_sqlcounter = {
 	NULL,				/* detach */
 	{
 		NULL,			/* authentication */
-		mod_authorize, 	/* authorization */
+		mod_authorize,		/* authorization */
 		NULL,			/* preaccounting */
 		NULL,			/* accounting */
 		NULL,			/* checksimul */
