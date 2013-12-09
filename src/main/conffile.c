@@ -906,7 +906,7 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, int type, void *data, char
 		if (!cp) {
 			cf_log_err(&(cs->item), "Configuration item '%s' must not be empty", name);
 		} else {
-			cf_log_err(&(cp->item), "Configuration item'%s' must not be empty", name);
+			cf_log_err(&(cp->item), "Configuration item '%s' must not be empty", name);
 		}
 		return -1;
 	}
