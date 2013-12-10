@@ -268,7 +268,6 @@ static int krb5_instantiate(CONF_SECTION *conf, void *instance)
 		krb5_get_tgs_ktypes(inst->context, inst->server, &enctypes);
 		krb5_set_default_tgs_ktypes(inst->context, enctypes);
 		krb5_free_ktypes(inst->context, enctypes);
-
 	}
 #endif
 
