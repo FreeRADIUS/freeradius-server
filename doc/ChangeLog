@@ -69,6 +69,10 @@ FreeRADIUS 3.0.1 Mon  7 Oct 2013 15:48:14 EDT urgency=medium
 	* Fix typo in sqlcounter expansion code.  Fixes #463
 	* Overwrite previous instances of SQL-User-Name when adding
 	  it to the request.
+	* Workaround upstream bug in multiple versions of MIT libkrb5
+	  (including 1.11.4) where krb5_copy_context will segv if 
+	  the default tgs_ktypes and in_tkt_ktypes are not explicitly
+	  set programatically.
 
 FreeRADIUS 3.0.0 Mon  7 Oct 2013 15:48:14 EDT urgency=medium
 	Feature improvements
