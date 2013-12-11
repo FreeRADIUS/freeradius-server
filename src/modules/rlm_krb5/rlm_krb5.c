@@ -47,7 +47,7 @@ RCSID("$Id$")
  *  The functions sigs below are not provided by krb5.h, but are available
  *  in the library.
  */
-#if !defined(HEIMDAL_KRB5) && KRB5_IS_THREAD_SAFE
+#if !defined(HEIMDAL_KRB5)
 krb5_error_code
 krb5_set_default_in_tkt_ktypes(krb5_context context, const krb5_enctype *etypes);
 
