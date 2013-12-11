@@ -612,6 +612,7 @@ static int cache_verify(rlm_cache_t *inst, value_pair_map_t **head)
 					return -1;
 				}
 			}
+			/* FALL-THROUGH */
 
 		case VPT_TYPE_XLAT:
 		case VPT_TYPE_ATTR:
