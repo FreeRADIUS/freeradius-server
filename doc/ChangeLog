@@ -1,7 +1,9 @@
-FreeRADIUS 2.2.3 Friday 22 Nov 2013 10:00:00 EST, urgency=medium
+FreeRADIUS 2.2.3 Wednesday 11 Dec 2013 15:00:00 EST, urgency=medium
 	Feature improvements
 	* Added dictionary.efficientip, dictionary.alcatel-lucent-aaa
 	* Allow zero length DN strings in rlm_ldap.
+	* If Password-With-Header has no header, assume it is
+	  Cleartext-Password.
 
 	Bug fixes
 	* Make the server build when DHCP is enabled
