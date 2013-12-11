@@ -1837,7 +1837,7 @@ int main(int argc, char *argv[])
 		conf->logger = rs_packet_print_fancy;
 	}
 
-	if (conf->link_da || conf->filter_request_vps || conf->print_packet) {
+	if (conf->filter_request_vps || conf->print_packet) {
 		conf->decode_attrs = true;
 	}
 #if !defined(HAVE_PCAP_FOPEN_OFFLINE) || !defined(HAVE_PCAP_DUMP_FOPEN)
