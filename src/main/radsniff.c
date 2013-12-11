@@ -1989,7 +1989,7 @@ int main(int argc, char *argv[])
 			DEBUG2("  RADIUS response code    : [%s]", fr_packet_codes[conf->filter_response_code]);
 		}
 
-		if (conf->filter_request_vps){
+		if (conf->filter_response_vps){
 			DEBUG2("  RADIUS response filter  :");
 			vp_printlist(fr_log_fp, conf->filter_response_vps);
 		}
