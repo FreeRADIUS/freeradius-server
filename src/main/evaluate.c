@@ -473,7 +473,7 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 			    (map->dst->da->vendor == 0) &&
 			    radius_find_compare(map->dst->da)) {
 				rhs_vp = pairalloc(request, map->dst->da);
-
+				rad_assert(rhs_vp != NULL);		
 				if (!pairparsevalue(rhs_vp, rhs)) {
 					talloc_free(rhs);
 					EVAL_DEBUG("FAIL %d", __LINE__);
