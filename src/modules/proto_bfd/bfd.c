@@ -274,7 +274,7 @@ static void bfd_pipe_recv(UNUSED fr_event_list_t *xel, int fd, void *ctx)
 	 *	Read the header
 	 */
 	num = read(fd, &bfd, 4);
-	if ((num < 4) || (bfd.length < 4)) {
+	if ((num < 4) || (bfd.length < (unsigned) 4)) {
 	fail:
 		radlog(L_ERR, "BFD Failed reading from pipe!");
 		session->blocked = true;
