@@ -552,15 +552,16 @@ STATE_MACHINE_DECL(request_done)
 	}
 #endif
 
-	if (request->child_state != REQUEST_DONE) {
-
 #ifdef HAVE_PTHREAD_H
-		if (!spawn_flag)
+	/*
+	 *	If there's no children, we can mark the request as done.
+	 */
+	if (!spawn_flag) {
+		request->child_state = REQUEST_DONE;
+	}
 #endif
-		{
-			rad_panic("Request should have been marked done");
-		}
 
+	if (request->child_state != REQUEST_DONE) {
 		gettimeofday(&now, NULL);
 #ifdef WITH_PROXY
 	wait_some_more:
