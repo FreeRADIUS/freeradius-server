@@ -1276,13 +1276,17 @@ int request_receive(rad_listen_t *listener, RADIUS_PACKET *packet,
 	RADIUS_PACKET **packet_p;
 	REQUEST *request = NULL;
 	struct timeval now;
-	listen_socket_t *sock = listener->data;
+	listen_socket_t *sock = NULL;
 
 	/*
 	 *	Set the last packet received.
 	 */
 	gettimeofday(&now, NULL);
-	sock->last_packet = now.tv_sec;
+
+	if (listener->type != RAD_LISTEN_DETAIL) {
+		sock = listener->data;
+		sock->last_packet = now.tv_sec;
+	}
 	packet->timestamp = now;
 
 	/*
@@ -1360,7 +1364,7 @@ skip_dup:
 	/*
 	 *	Rate-limit the incoming packets
 	 */
-	if (sock->max_rate) {
+	if (sock && sock->max_rate) {
 		int pps;
 
 		pps = rad_pps(&sock->rate_pps_old, &sock->rate_pps_now,
