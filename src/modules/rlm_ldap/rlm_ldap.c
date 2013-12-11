@@ -913,7 +913,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 		 */
 		res = nmasldap_get_password(conn->handle, dn, password, &pass_size);
 		if (res != 0) {
-			REDEBUG("Failed to retrieve eDirectory password: %s", edir_errstr(res));
+			REDEBUG("Failed to retrieve eDirectory password: (%i) %s", res, edir_errstr(res));
 			rcode = RLM_MODULE_FAIL;
 
 			goto finish;
