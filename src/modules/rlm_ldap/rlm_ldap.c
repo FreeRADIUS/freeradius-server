@@ -961,27 +961,26 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 			case LDAP_PROC_SUCCESS:
 				rcode = RLM_MODULE_OK;
 				RDEBUG("Bind as user \"%s\" was successful", dn);
-
 				break;
+
 			case LDAP_PROC_NOT_PERMITTED:
 				rcode = RLM_MODULE_USERLOCK;
-
 				goto finish;
+
 			case LDAP_PROC_REJECT:
 				rcode = RLM_MODULE_REJECT;
-
 				goto finish;
+
 			case LDAP_PROC_BAD_DN:
 				rcode = RLM_MODULE_INVALID;
-
 				goto finish;
+
 			case LDAP_PROC_NO_RESULT:
 				rcode = RLM_MODULE_NOTFOUND;
-
 				goto finish;
+
 			default:
 				rcode = RLM_MODULE_FAIL;
-
 				goto finish;
 			};
 		}
