@@ -1486,7 +1486,7 @@ static int rs_build_filter(VALUE_PAIR **out, char const *filter)
 	     vp;
 	     vp = fr_cursor_next(&cursor)) {
 		/*
-		 *	xlat expansion isn't support hered
+		 *	xlat expansion isn't support here
 		 */
 		if (vp->type == VT_XLAT) {
 			vp->type = VT_DATA;
