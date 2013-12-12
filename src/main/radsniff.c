@@ -1921,7 +1921,7 @@ int main(int argc, char *argv[])
 	 *	But, if were just logging requests, or graphing packet, we do not need to decode
 	 *	the packet attributes.
 	 */
-	if (conf->list_da || conf->link_da || conf->filter_response_vps || conf->filter_request_vps ||
+	if (conf->list_da_num || conf->link_da_num || conf->filter_response_vps || conf->filter_request_vps ||
 	    conf->print_packet) {
 		conf->decode_attrs = true;
 	}
