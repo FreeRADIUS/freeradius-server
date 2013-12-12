@@ -1837,9 +1837,6 @@ int main(int argc, char *argv[])
 		conf->logger = rs_packet_print_fancy;
 	}
 
-	if (conf->filter_request_vps || conf->print_packet) {
-		conf->decode_attrs = true;
-	}
 #if !defined(HAVE_PCAP_FOPEN_OFFLINE) || !defined(HAVE_PCAP_DUMP_FOPEN)
 	if (conf->from_stdin || conf->to_stdout) {
 		ERROR("PCAP streams not supported");
@@ -1915,6 +1912,18 @@ int main(int argc, char *argv[])
 			conf->filter_response_code = type->vp_integer;
 			talloc_free(type);
 		}
+	}
+
+	/*
+	 *	If we need to list attributes, link requests using attributes, filter attributes
+	 *	or print the packet contents, we need to decode the attributes.
+	 *
+	 *	But, if were just logging requests, or graphing packet, we do not need to decode
+	 *	the packet attributes.
+	 */
+	if (conf->list_da || conf->link_da || conf->filter_response_vps || conf->filter_request_vps ||
+	    conf->print_packet) {
+		conf->decode_attrs = true;
 	}
 
 	/*
