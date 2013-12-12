@@ -108,6 +108,10 @@ static int krb5_detach(void *instance)
 	if (inst->gic_options) {
 		krb5_get_init_creds_opt_free(inst->context, inst->gic_options);
 	}
+
+	if (inst->server) {
+		krb5_free_principal(inst->context, inst->server);
+	}
 #endif
 
 	/* Don't free hostname, it's just a pointer into service_princ */
