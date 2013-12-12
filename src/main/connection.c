@@ -673,6 +673,15 @@ fr_connection_pool_t *fr_connection_pool_init(CONF_SECTION *parent,
 	/*
 	 *	Some simple limits
 	 */
+	if (pool->max == 0) {
+		cf_log_err_cs(cs, "Cannot set 'max' to zero");
+		goto error;
+	}
+	if (pool->min > pool->max) {
+		cf_log_err_cs(cs, "Cannot set 'min' to more than 'max'");
+		goto error;
+	}
+
 	if (pool->max > 1024) pool->max = 1024;
 	if (pool->start > pool->max) pool->start = pool->max;
 	if (pool->spare > (pool->max - pool->min)) {
