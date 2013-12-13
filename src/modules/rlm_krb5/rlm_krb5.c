@@ -14,6 +14,8 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
+#define KRB5_STRERROR_BUFSIZE (2048)
+
 /**
  * $Id$
  * @file rlm_krb5.c
@@ -37,6 +39,58 @@ RCSID("$Id$")
 #  include <et/com_err.h>
 #else
 #  include <com_err.h>
+#endif
+
+#ifndef HEIMDAL_KRB5
+#  define rlm_krb5_error(_x, _y) error_message(_y)
+#else
+fr_thread_local_setup(char *, krb5_error_buffer)	/* macro */
+
+/*
+ *	Explicitly cleanup the memory allocated to the error buffer,
+ *	just in case valgrind complains about it.
+ */
+static void _krb5_logging_free(void *arg)
+{
+	free(arg);
+}
+
+static char const *rlm_krb5_error(krb5_context context, krb5_error_code code)
+{
+	char *msg;
+	char *buffer;
+
+	buffer = fr_thread_local_init(krb5_error_buffer, _krb5_logging_free);
+	if (!buffer) {
+		int ret;
+
+		/*
+		 *	malloc is thread safe, talloc is not
+		 */
+		buffer = malloc(sizeof(char) * KRB5_STRERROR_BUFSIZE);
+		if (!buffer) {
+			ERROR("Failed allocating memory for krb5 error buffer");
+			return NULL;
+		}
+
+		ret = fr_thread_local_set(krb5_error_buffer, buffer);
+		if (ret != 0) {
+			ERROR("Failed setting up TLS for krb5 error buffer: %s", fr_syserror(ret));
+			free(buffer);
+			return NULL;
+		}
+	}
+
+	msg = krb5_get_error_message(context, code);
+	if (msg) {
+		strlcpy(buffer, msg, KRB5_STRERROR_BUFSIZE);
+		krb5_free_error_string(context, msg);
+	} else {
+		strlcpy(buffer, "Unknown error", KRB5_STRERROR_BUFSIZE);
+	}
+
+	return buffer;
+}
 #endif
 
 /** Instance configuration for rlm_krb5
@@ -132,7 +186,8 @@ static int krb5_instantiate(CONF_SECTION *conf, void *instance)
 
 	ret = krb5_init_context(&inst->context);
 	if (ret) {
-		EDEBUG("rlm_krb5 (%s): Context initialisation failed: %s", inst->xlat_name, error_message(ret));
+		EDEBUG("rlm_krb5 (%s): Context initialisation failed: %s", inst->xlat_name,
+		       rlm_krb5_error(NULL, ret));
 
 		return -1;
 	}
@@ -173,7 +228,8 @@ static int krb5_instantiate(CONF_SECTION *conf, void *instance)
 	 */
 	ret = krb5_sname_to_principal(inst->context, inst->hostname, inst->service, KRB5_NT_SRV_HST, &(inst->server));
 	if (ret) {
-		EDEBUG("rlm_krb5 (%s): Failed parsing service principal: %s", inst->xlat_name, error_message(ret));
+		EDEBUG("rlm_krb5 (%s): Failed parsing service principal: %s", inst->xlat_name,
+		       rlm_krb5_error(inst->context, ret));
 
 		return -1;
 	}
@@ -182,7 +238,7 @@ static int krb5_instantiate(CONF_SECTION *conf, void *instance)
 	if (ret) {
 		/* Uh? */
 		EDEBUG("rlm_krb5 (%s): Failed constructing service principal string: %s", inst->xlat_name,
-		       error_message(ret));
+		       rlm_krb5_error(inst->context, ret));
 
 		return -1;
 	}
@@ -202,7 +258,7 @@ static int krb5_instantiate(CONF_SECTION *conf, void *instance)
 	ret = krb5_get_init_creds_opt_alloc(inst->context, &(inst->gic_options));
 	if (ret) {
 		EDEBUG("rlm_krb5 (%s): Couldn't allocated inital credential options: %s", inst->xlat_name,
-		       error_message(ret));
+		       rlm_krb5_error(inst->context, ret));
 
 		return -1;
 	}
@@ -214,7 +270,8 @@ static int krb5_instantiate(CONF_SECTION *conf, void *instance)
 		krb5_kt_resolve(inst->context, inst->keytabname, &keytab) :
 		krb5_kt_default(inst->context, &keytab);
 	if (ret) {
-		EDEBUG("rlm_krb5 (%s): Resolving keytab failed: %s", inst->xlat_name, error_message(ret));
+		EDEBUG("rlm_krb5 (%s): Resolving keytab failed: %s", inst->xlat_name,
+		       rlm_krb5_error(inst->context, ret));
 
 		return -1;
 	}
@@ -222,7 +279,8 @@ static int krb5_instantiate(CONF_SECTION *conf, void *instance)
 	ret = krb5_kt_get_name(inst->context, keytab, keytab_name, sizeof(keytab_name));
 	krb5_kt_close(inst->context, keytab);
 	if (ret) {
-		EDEBUG("rlm_krb5 (%s): Can't retrieve keytab name: %s", inst->xlat_name, error_message(ret));
+		EDEBUG("rlm_krb5 (%s): Can't retrieve keytab name: %s", inst->xlat_name,
+		       rlm_krb5_error(inst->context, ret));
 
 		return -1;
 	}
@@ -276,7 +334,7 @@ static rlm_rcode_t krb5_parse_user(REQUEST *request, krb5_context context, krb5_
 
 	ret = krb5_parse_name(context, request->username->vp_strvalue, client);
 	if (ret) {
-		REDEBUG("Failed parsing username as principal: %s", error_message(ret));
+		REDEBUG("Failed parsing username as principal: %s", rlm_krb5_error(context, ret));
 
 		return RLM_MODULE_FAIL;
 	}
@@ -317,7 +375,7 @@ static rlm_rcode_t krb5_auth(void *instance, REQUEST *request)
 	 */
 	ret = krb5_copy_context(inst->context, &context);
 	if (ret) {
-		REDEBUG("Error cloning krb5 context: %s", error_message(ret));
+		REDEBUG("Error cloning krb5 context: %s", rlm_krb5_error(inst->context, ret));
 
 		return RLM_MODULE_FAIL;
 	}
@@ -346,7 +404,7 @@ static rlm_rcode_t krb5_auth(void *instance, REQUEST *request)
 		krb5_kt_resolve(context, inst->keytabname, &keytab) :
 		krb5_kt_default(context, &keytab);
 	if (ret) {
-		REDEBUG("Resolving keytab failed: %s", error_message(ret));
+		REDEBUG("Resolving keytab failed: %s", rlm_krb5_error(context, ret));
 		rcode = RLM_MODULE_FAIL;
 
 		goto cleanup;
@@ -370,23 +428,23 @@ static rlm_rcode_t krb5_auth(void *instance, REQUEST *request)
 		switch (ret) {
 		case KRB5_LIBOS_BADPWDMATCH:
 		case KRB5KRB_AP_ERR_BAD_INTEGRITY:
-			REDEBUG("Provided password was incorrect (%i): %s", ret, error_message(ret));
+			REDEBUG("Provided password was incorrect (%i): %s", ret, rlm_krb5_error(context, ret));
 			rcode = RLM_MODULE_REJECT;
 
 			break;
 		case KRB5KDC_ERR_KEY_EXP:
 		case KRB5KDC_ERR_CLIENT_REVOKED:
 		case KRB5KDC_ERR_SERVICE_REVOKED:
-			REDEBUG("Account has been locked out (%i): %s", ret, error_message(ret));
+			REDEBUG("Account has been locked out (%i): %s", ret, rlm_krb5_error(context, ret));
 			rcode = RLM_MODULE_USERLOCK;
 
 			break;
 		case KRB5KDC_ERR_C_PRINCIPAL_UNKNOWN:
-			RDEBUG("User not found: %s (%i)", ret, error_message(ret));
+			RDEBUG("User not found: %s (%i)", ret, rlm_krb5_error(context, ret));
 			rcode = RLM_MODULE_NOTFOUND;
 
 		default:
-			REDEBUG("Error verifying credentials (%i): %s", ret, error_message(ret));
+			REDEBUG("Error verifying credentials (%i): %s", ret, rlm_krb5_error(context, ret));
 			rcode = RLM_MODULE_FAIL;
 
 			break;
@@ -440,7 +498,7 @@ static rlm_rcode_t krb5_auth(void *instance, REQUEST *request)
 	 */
 	ret = krb5_copy_context(inst->context, &context);
 	if (ret) {
-		REDEBUG("Error cloning krb5 context: %s", error_message(ret));
+		REDEBUG("Error cloning krb5 context: %s", rlm_krb5_error(inst->context, ret));
 
 		return RLM_MODULE_FAIL;
 	}
@@ -470,7 +528,7 @@ static rlm_rcode_t krb5_auth(void *instance, REQUEST *request)
 		krb5_kt_resolve(context, inst->keytabname, &keytab) :
 		krb5_kt_default(context, &keytab);
 	if (ret) {
-		REDEBUG("Resolving keytab failed: %s", error_message(ret));
+		REDEBUG("Resolving keytab failed: %s", rlm_krb5_error(context, ret));
 
 		goto cleanup;
 	}
@@ -487,24 +545,25 @@ static rlm_rcode_t krb5_auth(void *instance, REQUEST *request)
 		switch (ret) {
 		case KRB5_LIBOS_BADPWDMATCH:
 		case KRB5KRB_AP_ERR_BAD_INTEGRITY:
-			REDEBUG("Provided password was incorrect (%i): %s", ret, error_message(ret));
+			REDEBUG("Provided password was incorrect (%i): %s", ret, rlm_krb5_error(context, ret));
 			rcode = RLM_MODULE_REJECT;
 			break;
 
 		case KRB5KDC_ERR_KEY_EXP:
 		case KRB5KDC_ERR_CLIENT_REVOKED:
 		case KRB5KDC_ERR_SERVICE_REVOKED:
-			REDEBUG("Account has been locked out (%i): %s", ret, error_message(ret));
+			REDEBUG("Account has been locked out (%i): %s", ret, rlm_krb5_error(context, ret));
 			rcode = RLM_MODULE_USERLOCK;
 			break;
 
 		case KRB5KDC_ERR_C_PRINCIPAL_UNKNOWN:
-			REDEBUG("User not found (%i): %s", ret,  error_message(ret));
+			REDEBUG("User not found (%i): %s", ret,  rlm_krb5_error(context, ret));
 			rcode = RLM_MODULE_NOTFOUND;
 			break;
 
 		default:
-			REDEBUG("Error retrieving or verifying credentials (%i): %s", ret, error_message(ret));
+			REDEBUG("Error retrieving or verifying credentials (%i): %s", ret,
+				rlm_krb5_error(context, ret));
 			rcode = RLM_MODULE_FAIL;
 			break;
 		}
