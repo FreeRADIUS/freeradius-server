@@ -39,31 +39,6 @@ RCSID("$Id$")
 #  include <com_err.h>
 #endif
 
-/*
- *  Work around bug in krb5_copy_context which attempts to copy the list
- *  of tgs_kytpes and tkt_ktypes associated with a context... except by
- *  default the pointers to those lists are NULL, and so it SEGVs
- *
- *  The functions sigs below are not provided by krb5.h, but are available
- *  in the library.
- */
-#if !defined(HEIMDAL_KRB5) && defined(KRB5_IS_THREAD_SAFE)
-krb5_error_code
-krb5_set_default_in_tkt_ktypes(krb5_context context, const krb5_enctype *etypes);
-
-krb5_error_code
-krb5_get_default_in_tkt_ktypes(krb5_context context, krb5_enctype **ktypes);
-
-krb5_error_code
-krb5_get_tgs_ktypes(krb5_context context, krb5_const_principal princ, krb5_enctype **ktypes);
-
-krb5_error_code
-krb5_set_default_tgs_ktypes(krb5_context context, const krb5_enctype *etypes);
-
-void
-krb5_free_ktypes(krb5_context context, krb5_enctype *val);
-#endif
-
 /** Instance configuration for rlm_krb5
  *
  * Holds the configuration and preparsed data for a instance of rlm_krb5.
@@ -258,23 +233,6 @@ static int krb5_instantiate(CONF_SECTION *conf, void *instance)
 
 	krb5_verify_init_creds_opt_init(inst->vic_options);
 	krb5_verify_init_creds_opt_set_ap_req_nofail(inst->vic_options, true);
-
-#  ifdef KRB5_IS_THREAD_SAFE
-	/*
-	 *	Explicitly set enctypes to work around bug in krb5_copy_context
-	 */
-	{
-		krb5_enctype *enctypes;
-
-		krb5_get_default_in_tkt_ktypes(inst->context, &enctypes);
-		krb5_set_default_in_tkt_ktypes(inst->context, enctypes);
-		krb5_free_ktypes(inst->context, enctypes);
-
-		krb5_get_tgs_ktypes(inst->context, inst->server, &enctypes);
-		krb5_set_default_tgs_ktypes(inst->context, enctypes);
-		krb5_free_ktypes(inst->context, enctypes);
-	}
-#  endif
 #endif
 
 	return 0;

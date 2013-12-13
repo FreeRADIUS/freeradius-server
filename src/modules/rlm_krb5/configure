@@ -588,6 +588,7 @@ LIBOBJS
 targetname
 mod_cflags
 mod_ldflags
+krb5config
 CPP
 OBJEXT
 EXEEXT
@@ -637,8 +638,7 @@ SHELL'
 ac_subst_files=''
 ac_user_opts='
 enable_option_checking
-with_rlm_krb5_lib_dir
-with_rlm_krb5_include_dir
+with_rlm_krb5_dir
 '
       ac_precious_vars='build_alias
 host_alias
@@ -1255,8 +1255,7 @@ if test -n "$ac_init_help"; then
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
-  --with-rlm-krb5-lib-dir=DIR       Directory for krb5 library files
-  --with-rlm-krb5-include-dir=DIR   Directory for krb5 include files
+  --with-rlm-krb5-dir=DIR       Directory for krb5 files
 
 Some influential environment variables:
   CC          C compiler command
@@ -2794,43 +2793,113 @@ ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $
 ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
-		rlm_krb5_lib_dir=
+		rlm_krb5_dir=
 
-# Check whether --with-rlm-krb5-lib-dir was given.
-if test "${with_rlm_krb5_lib_dir+set}" = set; then :
-  withval=$with_rlm_krb5_lib_dir;  case "$withval" in
+# Check whether --with-rlm-krb5-dir was given.
+if test "${with_rlm_krb5_dir+set}" = set; then :
+  withval=$with_rlm_krb5_dir;  case "$withval" in
 	    no)
-		as_fn_error $? "Need rlm-krb5-lib-dir" "$LINENO" 5
+		as_fn_error $? "Need rlm-krb5-dir" "$LINENO" 5
 		;;
 	    yes)
 		;;
 	    *)
-		rlm_krb5_lib_dir="$withval"
+		rlm_krb5_dir="$withval"
 		;;
 	  esac
 
 fi
 
 
-		rlm_krb5_inc_dir=
+	# Extract the first word of "krb5-config", so it can be a program name with args.
+set dummy krb5-config; ac_word=$2
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
+$as_echo_n "checking for $ac_word... " >&6; }
+if ${ac_cv_path_krb5config+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  case $krb5config in
+  [\\/]* | ?:[\\/]*)
+  ac_cv_path_krb5config="$krb5config" # Let the user override the test with a path.
+  ;;
+  *)
+  as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
+as_dummy="${rlm_krb5_dir}/bin:${PATH}:/usr/bin:/usr/local/bin"
+for as_dir in $as_dummy
+do
+  IFS=$as_save_IFS
+  test -z "$as_dir" && as_dir=.
+    for ac_exec_ext in '' $ac_executable_extensions; do
+  if as_fn_executable_p "$as_dir/$ac_word$ac_exec_ext"; then
+    ac_cv_path_krb5config="$as_dir/$ac_word$ac_exec_ext"
+    $as_echo "$as_me:${as_lineno-$LINENO}: found $as_dir/$ac_word$ac_exec_ext" >&5
+    break 2
+  fi
+done
+  done
+IFS=$as_save_IFS
 
-# Check whether --with-rlm-krb5-include-dir was given.
-if test "${with_rlm_krb5_include_dir+set}" = set; then :
-  withval=$with_rlm_krb5_include_dir;  case "$withval" in
-	    no)
-		as_fn_error $? "Need rlm-krb5-include-dir" "$LINENO" 5
-		;;
-	    yes)
-		;;
-	    *)
-		rlm_krb5_include_dir="$withval"
-		;;
-	  esac
-
+  test -z "$ac_cv_path_krb5config" && ac_cv_path_krb5config="not-found"
+  ;;
+esac
+fi
+krb5config=$ac_cv_path_krb5config
+if test -n "$krb5config"; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $krb5config" >&5
+$as_echo "$krb5config" >&6; }
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
 fi
 
 
-	smart_try_dir=$rlm_krb5_include_dir
+					if test "krb5config" != "not-found"; then
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: checking krb5-config CFLAGS" >&5
+$as_echo_n "checking krb5-config CFLAGS... " >&6; }
+		SMART_CFLAGS=$($krb5config --cflags)
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: result: ${SMART_CFLAGS}" >&5
+$as_echo "${SMART_CFLAGS}" >&6; }
+
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: checking krb5-config LDFLAGS" >&5
+$as_echo_n "checking krb5-config LDFLAGS... " >&6; }
+		SMART_LIBS=$($krb5config --libs)
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: result: ${SMART_LIBS}" >&5
+$as_echo "${SMART_LIBS}" >&6; }
+
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: checking krb5-config reported version" >&5
+$as_echo_n "checking krb5-config reported version... " >&6; }
+		krb5_version_raw=$($krb5config --version)
+
+				krb5_version=$(echo "$krb5_version_raw" | head -n 1 | \
+			awk '{split($(4),v,"."); if (v["3"] == "") v["3"] = "0"; print v["1"]v["2"]v["3"] }')
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: result: ${krb5_version_raw} ($krb5_version)" >&5
+$as_echo "${krb5_version_raw} ($krb5_version)" >&6; }
+
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: checking krb5-config reported vendor" >&5
+$as_echo_n "checking krb5-config reported vendor... " >&6; }
+		krb5_vendor=$($krb5config --vendor)
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: result: ${krb5_vendor}" >&5
+$as_echo "${krb5_vendor}" >&6; }
+
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: checking canonical API type" >&5
+$as_echo_n "checking canonical API type... " >&6; }
+		if test "$krb5_vendor" = "Massachusetts Institute of Technology" || \
+			echo "$krb5_vendor" | grep -i 'MIT' > /dev/null 2>&1 ; then
+			{ $as_echo "$as_me:${as_lineno-$LINENO}: result: MIT" >&5
+$as_echo "MIT" >&6; }
+
+			if test "$krb5_version" -le 1114 > /dev/null 2>&1; then
+				krb5threadsafe=no
+				{ $as_echo "$as_me:${as_lineno-$LINENO}: marking libkrb5 as non-threadsafe due to defects in MIT libkrb5 <= 1.11.4" >&5
+$as_echo "$as_me: marking libkrb5 as non-threadsafe due to defects in MIT libkrb5 <= 1.11.4" >&6;}
+			fi
+		else
+			krb5mod_cflags="$krb5mod_cflags -DHEIMDAL_KRB5"
+			{ $as_echo "$as_me:${as_lineno-$LINENO}: result: HEIMDAL" >&5
+$as_echo "HEIMDAL" >&6; }
+		fi
+	else
+		smart_try_dir="$rlm_krb5_dir/include"
 
 
 
@@ -2976,9 +3045,9 @@ if test "x$smart_include" != "x"; then
   SMART_CFLAGS="$SMART_CFLAGS $smart_include"
 fi
 
-	if test "$ac_cv_header_krb5_h" != "yes"; then
-        fail="$fail krb5.h"
-	fi
+		if test "$ac_cv_header_krb5_h" != "yes"; then
+		fail="$fail krb5.h"
+		fi
 
 
 
@@ -3125,7 +3194,7 @@ if test "x$smart_include" != "x"; then
   SMART_CFLAGS="$SMART_CFLAGS $smart_include"
 fi
 
-	if test "$ac_cv_header_com_err_h" != "yes"; then
+		if test "$ac_cv_header_com_err_h" != "yes"; then
 
 
 ac_safe=`echo "et/com_err.h" | sed 'y%./+-%__pm%'`
@@ -3270,15 +3339,15 @@ if test "x$smart_include" != "x"; then
   SMART_CFLAGS="$SMART_CFLAGS $smart_include"
 fi
 
-        if test "$ac_cv_header_et_com_err_h" != "yes"; then
-            fail="$fail com_err.h"
-	    else
-	        krb5mod_cflags="$krb5mod_cflags -DET_COMM_ERR "
-	    fi
-	fi
+		if test "$ac_cv_header_et_com_err_h" != "yes"; then
+		    fail="$fail com_err.h"
+		    else
+			krb5mod_cflags="$krb5mod_cflags -DET_COMM_ERR "
+		    fi
+		fi
 
-	krb5libcrypto=
-	smart_try_dir=$rlm_krb5_lib_dir
+		krb5libcrypto=
+		smart_try_dir="$rlm_krb5_dir/lib"
 
 
 sm_lib_safe=`echo "k5crypto" | sed 'y%./+-%__p_%'`
@@ -3445,11 +3514,11 @@ if test "x$smart_lib" != "x"; then
   SMART_LIBS="$smart_lib $SMART_LIBS"
 fi
 
-	if test "x$ac_cv_lib_k5crypto_krb5_encrypt_data" = xyes; then
-		krb5libcrypto="-lk5crypto"
-	fi
+		if test "x$ac_cv_lib_k5crypto_krb5_encrypt_data" = xyes; then
+			krb5libcrypto="-lk5crypto"
+		fi
 
-	if test "x$krb5libcrypto" = x; then
+		if test "x$krb5libcrypto" = x; then
 
 
 sm_lib_safe=`echo "crypto" | sed 'y%./+-%__p_%'`
@@ -3616,15 +3685,15 @@ if test "x$smart_lib" != "x"; then
   SMART_LIBS="$smart_lib $SMART_LIBS"
 fi
 
-		if test "x$ac_cv_lib_crypto_DH_new" = xyes; then
-			krb5libcrypto="-lcrypto"
+			if test "x$ac_cv_lib_crypto_DH_new" = xyes; then
+				krb5libcrypto="-lcrypto"
+			fi
 		fi
-	fi
 
-	if test "x$krb5libcrypto" = x; then
-		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: neither krb5 'k5crypto' nor 'crypto' libraries are found!" >&5
+		if test "x$krb5libcrypto" = x; then
+			{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: neither krb5 'k5crypto' nor 'crypto' libraries are found!" >&5
 $as_echo "$as_me: WARNING: neither krb5 'k5crypto' nor 'crypto' libraries are found!" >&2;}
-	fi
+		fi
 
 
 
@@ -3792,10 +3861,10 @@ if test "x$smart_lib" != "x"; then
   SMART_LIBS="$smart_lib $SMART_LIBS"
 fi
 
-	if test "x$ac_cv_lib_com_err_set_com_err_hook" != xyes; then
-		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: the comm_err library isn't found!" >&5
+		if test "x$ac_cv_lib_com_err_set_com_err_hook" != xyes; then
+			{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: the comm_err library isn't found!" >&5
 $as_echo "$as_me: WARNING: the comm_err library isn't found!" >&2;}
-	fi
+		fi
 
 
 
@@ -3963,9 +4032,9 @@ if test "x$smart_lib" != "x"; then
   SMART_LIBS="$smart_lib $SMART_LIBS"
 fi
 
-	if test "x$ac_cv_lib_krb5_krb5_verify_user_opt" == xyes; then
-        krb5mod_cflags="$krb5mod_cflags -DHEIMDAL_KRB5"
-	else
+		if test "x$ac_cv_lib_krb5_krb5_verify_user_opt" == xyes; then
+		krb5mod_cflags="$krb5mod_cflags -DHEIMDAL_KRB5"
+		else
 
 
 sm_lib_safe=`echo "krb5" | sed 'y%./+-%__p_%'`
@@ -4132,12 +4201,15 @@ if test "x$smart_lib" != "x"; then
   SMART_LIBS="$smart_lib $SMART_LIBS"
 fi
 
-	    if test "x$ac_cv_lib_krb5_krb5_get_init_creds_password" != xyes; then
-		    fail="$fail krb5"
-	    fi
+		    if test "x$ac_cv_lib_krb5_krb5_get_init_creds_password" != xyes; then
+			    fail="$fail krb5"
+		    fi
+		fi
+
 	fi
 
-	krb5threadsafe=
+				if test "$krb5threadsafe" == ""; then
+		krb5threadsafe=
 
 
 sm_lib_safe=`echo "krb5" | sed 'y%./+-%__p_%'`
@@ -4304,8 +4376,9 @@ if test "x$smart_lib" != "x"; then
   SMART_LIBS="$smart_lib $SMART_LIBS"
 fi
 
-	if test "x$ac_cv_lib_krb5_krb5_is_thread_safe" == xyes; then
-        if test "$cross_compiling" = yes; then :
+
+		if test "x$ac_cv_lib_krb5_krb5_is_thread_safe" == xyes; then
+		if test "$cross_compiling" = yes; then :
   { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
 $as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
 as_fn_error $? "cannot run test program while cross compiling
@@ -4332,6 +4405,7 @@ rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
   conftest.$ac_objext conftest.beam conftest.$ac_ext
 fi
 
+		fi
 	fi
 
 	targetname=rlm_krb5
@@ -4352,7 +4426,7 @@ $as_echo "$as_me: WARNING: FAILURE: rlm_krb5 requires: $fail." >&2;};
 	fi
 fi
 
-mod_ldflags="${krb5libcrypto} ${SMART_LIBS}"
+mod_ldflags="${krb5mod_ldflags} ${krb5libcrypto} ${SMART_LIBS}"
 mod_cflags="${krb5mod_cflags} ${krb5threadsafe} ${SMART_CFLAGS}"
 
 
