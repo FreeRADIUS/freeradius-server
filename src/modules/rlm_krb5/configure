@@ -2857,6 +2857,7 @@ fi
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: checking krb5-config CFLAGS" >&5
 $as_echo_n "checking krb5-config CFLAGS... " >&6; }
 		SMART_CFLAGS=$($krb5config --cflags)
+		SMART_CFLAGS=$(echo "$SMART_CFLAGS" | sed 's/-I[ ]*/-isystem /g')
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: result: ${SMART_CFLAGS}" >&5
 $as_echo "${SMART_CFLAGS}" >&6; }
 
@@ -3339,11 +3340,11 @@ if test "x$smart_include" != "x"; then
   SMART_CFLAGS="$SMART_CFLAGS $smart_include"
 fi
 
-		if test "$ac_cv_header_et_com_err_h" != "yes"; then
-		    fail="$fail com_err.h"
-		    else
-			krb5mod_cflags="$krb5mod_cflags -DET_COMM_ERR "
-		    fi
+			if test "$ac_cv_header_et_com_err_h" != "yes"; then
+				fail="$fail com_err.h"
+			else
+				krb5mod_cflags="$krb5mod_cflags -DET_COMM_ERR "
+			fi
 		fi
 
 		krb5libcrypto=
