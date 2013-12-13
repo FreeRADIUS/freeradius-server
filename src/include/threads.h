@@ -1,3 +1,5 @@
+#ifndef FR_THREADS_H
+#define FR_THREADS_H
 /*
  *   This library is free software; you can redistribute it and/or
  *   modify it under the terms of the GNU Lesser General Public
@@ -93,4 +95,5 @@ static inline int __fr_thread_local_set_##_n(_t val)\
 #  define fr_thread_local_init(_n, _f)			__fr_thread_local_init_##_n(_f)
 #  define fr_thread_local_set(_n, _v)			__fr_thread_local_set_##_n(_v)
 #  define fr_thread_local_get(_n)			__fr_thread_local_get_##_n()
+#endif
 #endif
