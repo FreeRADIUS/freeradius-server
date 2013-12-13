@@ -84,7 +84,7 @@ static char const *rlm_krb5_error(krb5_context context, krb5_error_code code)
 	msg = krb5_get_error_message(context, code);
 	if (msg) {
 		strlcpy(buffer, msg, KRB5_STRERROR_BUFSIZE);
-		krb5_free_error_string(context, msg);
+		krb5_free_error_message(context, msg);
 	} else {
 		strlcpy(buffer, "Unknown error", KRB5_STRERROR_BUFSIZE);
 	}
