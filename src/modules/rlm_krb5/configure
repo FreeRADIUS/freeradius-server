@@ -2890,7 +2890,7 @@ $as_echo_n "checking canonical API type... " >&6; }
 $as_echo "MIT" >&6; }
 
 			if test "$krb5_version" -le 1114 > /dev/null 2>&1; then
-				krb5threadsafe=no
+				krb5threadsafe='no'
 				{ $as_echo "$as_me:${as_lineno-$LINENO}: marking libkrb5 as non-threadsafe due to defects in MIT libkrb5 <= 1.11.4" >&5
 $as_echo "$as_me: marking libkrb5 as non-threadsafe due to defects in MIT libkrb5 <= 1.11.4" >&6;}
 			fi
@@ -4209,7 +4209,7 @@ fi
 
 	fi
 
-				if test "$krb5threadsafe" == ""; then
+				if test "$krb5threadsafe" != "no"; then
 		krb5threadsafe=
 
 
@@ -4407,8 +4407,9 @@ rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
 fi
 
 		fi
+	else
+		krb5threadsafe=""
 	fi
-
 	targetname=rlm_krb5
 else
 	targetname=
