@@ -32,6 +32,7 @@ if test x$with_[]modname != xno; then
 	if test "krb5config" != "not-found"; then
 		AC_MSG_CHECKING([krb5-config CFLAGS])
 		SMART_CFLAGS=$($krb5config --cflags)
+		SMART_CFLAGS=[$(echo "$SMART_CFLAGS" | sed 's/-I[ ]*/-isystem /g')]
 		AC_MSG_RESULT(${SMART_CFLAGS})
 
 		AC_MSG_CHECKING([krb5-config LDFLAGS])
@@ -76,12 +77,12 @@ if test x$with_[]modname != xno; then
 
 		FR_SMART_CHECK_INCLUDE([com_err.h])
 		if test "$ac_cv_header_com_err_h" != "yes"; then
-		FR_SMART_CHECK_INCLUDE([et/com_err.h])
-		if test "$ac_cv_header_et_com_err_h" != "yes"; then
-		    fail="$fail com_err.h"
-		    else
-			krb5mod_cflags="$krb5mod_cflags -DET_COMM_ERR "
-		    fi
+			FR_SMART_CHECK_INCLUDE([et/com_err.h])
+			if test "$ac_cv_header_et_com_err_h" != "yes"; then
+				fail="$fail com_err.h"
+			else
+				krb5mod_cflags="$krb5mod_cflags -DET_COMM_ERR "
+			fi
 		fi
 
 		krb5libcrypto=
