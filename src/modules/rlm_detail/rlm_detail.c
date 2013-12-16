@@ -65,24 +65,17 @@ typedef struct detail_instance {
 } detail_instance_t;
 
 static const CONF_PARSER module_config[] = {
-	{ "detailfile",    PW_TYPE_FILE_OUTPUT | PW_TYPE_DEPRECATED,
-	  offsetof(struct detail_instance,filename), NULL, NULL },
-	{ "filename",    PW_TYPE_FILE_OUTPUT | PW_TYPE_REQUIRED,
-	  offsetof(struct detail_instance,filename), NULL, "%A/%{Client-IP-Address}/detail" },
-	{ "header",    PW_TYPE_STRING_PTR,
-	  offsetof(struct detail_instance,header), NULL, "%t" },
-	{ "detailperm",    PW_TYPE_INTEGER | PW_TYPE_DEPRECATED,
-	  offsetof(struct detail_instance,perm), NULL, NULL },
-	{ "permissions",    PW_TYPE_INTEGER,
-	  offsetof(struct detail_instance,perm), NULL, "0600" },
-	{ "group",	 PW_TYPE_STRING_PTR,
-	  offsetof(struct detail_instance,group), NULL,  NULL},
-	{ "dir_permissions", PW_TYPE_INTEGER,
-	  offsetof(struct detail_instance,dirperm),    NULL, "0755" },
-	{ "locking",       PW_TYPE_BOOLEAN,
-	  offsetof(struct detail_instance,locking),    NULL, "no" },
-	{ "log_packet_header",       PW_TYPE_BOOLEAN,
-	  offsetof(struct detail_instance,log_srcdst),    NULL, "no" },
+	{ "detailfile", PW_TYPE_FILE_OUTPUT | PW_TYPE_DEPRECATED, offsetof(struct detail_instance,filename),
+	 NULL, NULL },
+	{ "filename", PW_TYPE_FILE_OUTPUT | PW_TYPE_REQUIRED, offsetof(struct detail_instance,filename),
+	NULL, "%A/%{Client-IP-Address}/detail" },
+	{ "header", PW_TYPE_STRING_PTR, offsetof(struct detail_instance,header), NULL, "%t" },
+	{ "detailperm",	PW_TYPE_INTEGER | PW_TYPE_DEPRECATED, offsetof(struct detail_instance,perm), NULL, NULL },
+	{ "permissions", PW_TYPE_INTEGER, offsetof(struct detail_instance,perm), NULL, "0600" },
+	{ "group", PW_TYPE_STRING_PTR, offsetof(struct detail_instance,group), NULL,  NULL},
+	{ "dir_permissions", PW_TYPE_INTEGER, offsetof(struct detail_instance,dirperm), NULL, "0755" },
+	{ "locking", PW_TYPE_BOOLEAN, offsetof(struct detail_instance,locking), NULL, "no" },
+	{ "log_packet_header", PW_TYPE_BOOLEAN, offsetof(struct detail_instance,log_srcdst), NULL, "no" },
 	{ NULL, -1, 0, NULL, NULL }
 };
 
@@ -204,8 +197,7 @@ static rlm_rcode_t do_detail(void *instance, REQUEST *request, RADIUS_PACKET *pa
 	}
 	RDEBUG2("%s expands to %s", inst->filename, buffer);
 
-#ifdef HAVE_FNMATCH_H
-#ifdef FNM_FILE_NAME
+#if defined(HAVE_FNMATCH_H) && defined(FNM_FILE_NAME)
 	/*
 	 *	If we read it from a detail file, and we're about to
 	 *	write it back to the SAME detail file directory, then
@@ -215,10 +207,9 @@ static rlm_rcode_t do_detail(void *instance, REQUEST *request, RADIUS_PACKET *pa
 	if ((request->listener->type == RAD_LISTEN_DETAIL) &&
 	    (fnmatch(((listen_detail_t *)request->listener->data)->filename,
 		     buffer, FNM_FILE_NAME | FNM_PERIOD ) == 0)) {
-		RWDEBUG2("Suppressing infinite loop.");
+		RWDEBUG2("Suppressing infinite loop");
 		return RLM_MODULE_NOOP;
 	}
-#endif
 #endif
 
 	/*
@@ -242,7 +233,7 @@ static rlm_rcode_t do_detail(void *instance, REQUEST *request, RADIUS_PACKET *pa
 		 *	a directory that the server was using.
 		 */
 		if (rad_mkdir(buffer, inst->dirperm) < 0) {
-			RERROR("rlm_detail: Failed to create directory %s: %s", buffer, strerror(errno));
+			RERROR("Failed to create directory %s: %s", buffer, strerror(errno));
 			return RLM_MODULE_FAIL;
 		}
 
@@ -256,10 +247,8 @@ static rlm_rcode_t do_detail(void *instance, REQUEST *request, RADIUS_PACKET *pa
 		 *	Open & create the file, with the given
 		 *	permissions.
 		 */
-		if ((outfd = open(buffer, O_WRONLY | O_APPEND | O_CREAT,
-				  inst->perm)) < 0) {
-			RERROR("rlm_detail: Couldn't open file %s: %s",
-			       buffer, strerror(errno));
+		if ((outfd = open(buffer, O_WRONLY | O_APPEND | O_CREAT, inst->perm)) < 0) {
+			RERROR("Couldn't open file %s: %s", buffer, strerror(errno));
 			return RLM_MODULE_FAIL;
 		}
 
@@ -284,29 +273,25 @@ static rlm_rcode_t do_detail(void *instance, REQUEST *request, RADIUS_PACKET *pa
 			 *	the lock (race condition)
 			 */
 			if (fstat(outfd, &st) != 0) {
-				RERROR("rlm_detail: Couldn't stat file %s: %s",
-				       buffer, strerror(errno));
+				RERROR("Couldn't stat file %s: %s", buffer, strerror(errno));
 				close(outfd);
 				return RLM_MODULE_FAIL;
 			}
 			if (st.st_nlink == 0) {
-				RDEBUG2("File %s removed by another program, retrying",
-				      buffer);
+				RDEBUG2("File '%s' removed by another program, retrying", buffer);
 				close(outfd);
 				lock_count = 0;
 				continue;
 			}
 
-			RDEBUG2("Acquired filelock, tried %d time(s)",
-			      lock_count + 1);
+			RDEBUG2("Acquired filelock, tried %d time(s)", lock_count + 1);
 			locked = 1;
 		}
 	} while (inst->locking && !locked && lock_count < 80);
 
 	if (inst->locking && !locked) {
 		close(outfd);
-		RERROR("rlm_detail: Failed to acquire filelock for %s, giving up",
-		       buffer);
+		RERROR("Failed to acquire filelock for '%s', giving up", buffer);
 		return RLM_MODULE_FAIL;
 	}
 
@@ -317,18 +302,18 @@ static rlm_rcode_t do_detail(void *instance, REQUEST *request, RADIUS_PACKET *pa
 		if (*endptr != '\0') {
 			grp = getgrnam(inst->group);
 			if (!grp) {
-				RDEBUG2("rlm_detail: Unable to find system group \"%s\"", inst->group);
+				RDEBUG2("Unable to find system group '%s'", inst->group);
 				goto skip_group;
 			}
 			gid = grp->gr_gid;
 		}
 
 		if (chown(buffer, -1, gid) == -1) {
-			RDEBUG2("rlm_detail: Unable to change system group of \"%s\"", buffer);
+			RDEBUG2("Unable to change system group of '%s'", buffer);
 		}
 	}
 
- skip_group:
+skip_group:
 #endif
 
 	/*
@@ -336,8 +321,7 @@ static rlm_rcode_t do_detail(void *instance, REQUEST *request, RADIUS_PACKET *pa
 	 */
 	fsize = lseek(outfd, 0L, SEEK_END);
 	if (fsize < 0) {
-		RERROR("rlm_detail: Failed to seek to the end of detail file %s",
-			buffer);
+		RERROR("Failed to seek to the end of detail file %s", buffer);
 		close(outfd);
 		return RLM_MODULE_FAIL;
 	}
@@ -351,8 +335,7 @@ static rlm_rcode_t do_detail(void *instance, REQUEST *request, RADIUS_PACKET *pa
 	 *	Open the FP for buffering.
 	 */
 	if ((fp = fdopen(outfd, "a")) == NULL) {
-		RERROR("rlm_detail: Couldn't open file %s: %s",
-			       buffer, strerror(errno));
+		RERROR("Couldn't open file %s: %s", buffer, strerror(errno));
 		close(outfd);
 		return RLM_MODULE_FAIL;
 	}
@@ -391,16 +374,16 @@ static rlm_rcode_t do_detail(void *instance, REQUEST *request, RADIUS_PACKET *pa
 			dst_vp.da = dict_attrbyvalue(PW_PACKET_DST_IP_ADDRESS, 0);
 			dst_vp.vp_ipaddr = packet->dst_ipaddr.ipaddr.ip4addr.s_addr;
 			break;
+
 		case AF_INET6:
 			src_vp.da = dict_attrbyvalue(PW_PACKET_SRC_IPV6_ADDRESS, 0);
-			memcpy(&src_vp.vp_ipv6addr,
-			       &packet->src_ipaddr.ipaddr.ip6addr,
+			memcpy(&src_vp.vp_ipv6addr, &packet->src_ipaddr.ipaddr.ip6addr,
 			       sizeof(packet->src_ipaddr.ipaddr.ip6addr));
 			dst_vp.da = dict_attrbyvalue(PW_PACKET_DST_IPV6_ADDRESS, 0);
-			memcpy(&dst_vp.vp_ipv6addr,
-			       &packet->dst_ipaddr.ipaddr.ip6addr,
+			memcpy(&dst_vp.vp_ipv6addr, &packet->dst_ipaddr.ipaddr.ip6addr,
 			       sizeof(packet->dst_ipaddr.ipaddr.ip6addr));
 			break;
+
 		default:
 			break;
 		}
@@ -446,25 +429,19 @@ static rlm_rcode_t do_detail(void *instance, REQUEST *request, RADIUS_PACKET *pa
 		if (request->proxy) {
 			char proxy_buffer[128];
 
-			inet_ntop(request->proxy->dst_ipaddr.af,
-				  &request->proxy->dst_ipaddr.ipaddr,
+			inet_ntop(request->proxy->dst_ipaddr.af, &request->proxy->dst_ipaddr.ipaddr,
 				  proxy_buffer, sizeof(proxy_buffer));
-			fprintf(fp, "\tFreeradius-Proxied-To = %s\n",
-				proxy_buffer);
-			RDEBUG("Freeradius-Proxied-To = %s",
-				proxy_buffer);
+			fprintf(fp, "\tFreeradius-Proxied-To = %s\n", proxy_buffer);
 		}
 #endif
 
-		fprintf(fp, "\tTimestamp = %ld\n",
-			(unsigned long) request->timestamp);
+		fprintf(fp, "\tTimestamp = %ld\n", (unsigned long) request->timestamp);
 	}
 
 	fprintf(fp, "\n");
 
 	/*
-	 *	If we can't flush it to disk, truncate the file and
-	 *	return an error.
+	 *	If we can't flush it to disk, truncate the file and return an error.
 	 */
 	if (fflush(fp) != 0) {
 		int ret;
@@ -582,7 +559,6 @@ static rlm_rcode_t mod_post_proxy(void *instance, REQUEST *request)
 }
 #endif
 
-
 /* globally exported name */
 module_t rlm_detail = {
 	RLM_MODULE_INIT,
@@ -594,13 +570,13 @@ module_t rlm_detail = {
 	mod_detach,			/* detach */
 	{
 		NULL,			/* authentication */
-		mod_authorize, 	/* authorization */
+		mod_authorize,		/* authorization */
 		NULL,			/* preaccounting */
-		mod_accounting,	/* accounting */
+		mod_accounting,		/* accounting */
 		NULL,			/* checksimul */
 #ifdef WITH_PROXY
 		mod_pre_proxy,      	/* pre-proxy */
-		mod_post_proxy,	/* post-proxy */
+		mod_post_proxy,		/* post-proxy */
 #else
 		NULL, NULL,
 #endif
