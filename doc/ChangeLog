@@ -1,3 +1,7 @@
+FreeRADIUS 2.2.4 Wednesday 16 Dec 2013 15:00:00 EST, urgency=medium
+	Feature improvements
+	Bug fixes
+
 FreeRADIUS 2.2.3 Wednesday 11 Dec 2013 15:00:00 EST, urgency=medium
 	Feature improvements
 	* Added dictionary.efficientip, dictionary.alcatel-lucent-aaa
