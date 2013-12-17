@@ -153,7 +153,7 @@ CREATE TABLE radpostauth (
 	reply			text,
 	CalledStationId		text,
 	CallingStationId	text,
-	authdate		timestamp with time zone NOT NULL default 'now()'
+	authdate		timestamp with time zone NOT NULL default now()
 );
 
 /*
