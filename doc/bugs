@@ -122,7 +122,7 @@ BUGS
 5. VALGRIND
 
   On Linux systems, "valgrind" is a useful tool that can catch certain
-  classes of bugs.  To use it, run the server voa:
+  classes of bugs.  To use it, run the server via:
 
 $ valgrind --tool=memcheck --leak-check=full radiusd -Xm
 
