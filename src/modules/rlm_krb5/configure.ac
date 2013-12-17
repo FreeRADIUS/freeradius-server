@@ -24,23 +24,23 @@ if test x$with_[]modname != xno; then
 	  esac ]
 	)
 
-	AC_PATH_PROG(krb5config, krb5-config, not-found, [${rlm_krb5_dir}/bin:${PATH}:/usr/bin:/usr/local/bin])
+	AC_PATH_PROG(krb5_config, krb5-config, not-found, [${rlm_krb5_dir}/bin:${PATH}:/usr/bin:/usr/local/bin])
 	dnl #
 	dnl # If we can find krb5-config we can get the version of the library and determine
 	dnl # whether it's safe to enable threading.
 	dnl #
-	if test "krb5config" != "not-found"; then
+	if test "$krb5_config" != 'not-found'; then
 		AC_MSG_CHECKING([krb5-config CFLAGS])
-		SMART_CFLAGS=$($krb5config --cflags)
+		SMART_CFLAGS=$($krb5_config --cflags)
 		SMART_CFLAGS=[$(echo "$SMART_CFLAGS" | sed 's/-I[ ]*/-isystem /g')]
 		AC_MSG_RESULT(${SMART_CFLAGS})
 
 		AC_MSG_CHECKING([krb5-config LDFLAGS])
-		SMART_LIBS=$($krb5config --libs)
+		SMART_LIBS=$($krb5_config --libs)
 		AC_MSG_RESULT(${SMART_LIBS})
 
 		AC_MSG_CHECKING([krb5-config reported version])
-		krb5_version_raw=$($krb5config --version)
+		krb5_version_raw=$($krb5_config --version)
 
 		dnl # AWK originally from from https://github.com/hpc/lustre
 		krb5_version=$(echo "$krb5_version_raw" | head -n 1 | \
@@ -48,7 +48,7 @@ if test x$with_[]modname != xno; then
 		AC_MSG_RESULT([${krb5_version_raw} ($krb5_version)])
 
 		AC_MSG_CHECKING([krb5-config reported vendor])
-		krb5_vendor=$($krb5config --vendor)
+		krb5_vendor=$($krb5_config --vendor)
 		AC_MSG_RESULT([${krb5_vendor}])
 
 		AC_MSG_CHECKING([canonical API type])

@@ -588,7 +588,7 @@ LIBOBJS
 targetname
 mod_cflags
 mod_ldflags
-krb5config
+krb5_config
 CPP
 OBJEXT
 EXEEXT
@@ -2815,12 +2815,12 @@ fi
 set dummy krb5-config; ac_word=$2
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
 $as_echo_n "checking for $ac_word... " >&6; }
-if ${ac_cv_path_krb5config+:} false; then :
+if ${ac_cv_path_krb5_config+:} false; then :
   $as_echo_n "(cached) " >&6
 else
-  case $krb5config in
+  case $krb5_config in
   [\\/]* | ?:[\\/]*)
-  ac_cv_path_krb5config="$krb5config" # Let the user override the test with a path.
+  ac_cv_path_krb5_config="$krb5_config" # Let the user override the test with a path.
   ;;
   *)
   as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
@@ -2831,7 +2831,7 @@ do
   test -z "$as_dir" && as_dir=.
     for ac_exec_ext in '' $ac_executable_extensions; do
   if as_fn_executable_p "$as_dir/$ac_word$ac_exec_ext"; then
-    ac_cv_path_krb5config="$as_dir/$ac_word$ac_exec_ext"
+    ac_cv_path_krb5_config="$as_dir/$ac_word$ac_exec_ext"
     $as_echo "$as_me:${as_lineno-$LINENO}: found $as_dir/$ac_word$ac_exec_ext" >&5
     break 2
   fi
@@ -2839,37 +2839,37 @@ done
   done
 IFS=$as_save_IFS
 
-  test -z "$ac_cv_path_krb5config" && ac_cv_path_krb5config="not-found"
+  test -z "$ac_cv_path_krb5_config" && ac_cv_path_krb5_config="not-found"
   ;;
 esac
 fi
-krb5config=$ac_cv_path_krb5config
-if test -n "$krb5config"; then
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $krb5config" >&5
-$as_echo "$krb5config" >&6; }
+krb5_config=$ac_cv_path_krb5_config
+if test -n "$krb5_config"; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $krb5_config" >&5
+$as_echo "$krb5_config" >&6; }
 else
   { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
 fi
 
 
-					if test "krb5config" != "not-found"; then
+					if test "$krb5_config" != 'not-found'; then
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: checking krb5-config CFLAGS" >&5
 $as_echo_n "checking krb5-config CFLAGS... " >&6; }
-		SMART_CFLAGS=$($krb5config --cflags)
+		SMART_CFLAGS=$($krb5_config --cflags)
 		SMART_CFLAGS=$(echo "$SMART_CFLAGS" | sed 's/-I[ ]*/-isystem /g')
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: result: ${SMART_CFLAGS}" >&5
 $as_echo "${SMART_CFLAGS}" >&6; }
 
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: checking krb5-config LDFLAGS" >&5
 $as_echo_n "checking krb5-config LDFLAGS... " >&6; }
-		SMART_LIBS=$($krb5config --libs)
+		SMART_LIBS=$($krb5_config --libs)
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: result: ${SMART_LIBS}" >&5
 $as_echo "${SMART_LIBS}" >&6; }
 
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: checking krb5-config reported version" >&5
 $as_echo_n "checking krb5-config reported version... " >&6; }
-		krb5_version_raw=$($krb5config --version)
+		krb5_version_raw=$($krb5_config --version)
 
 				krb5_version=$(echo "$krb5_version_raw" | head -n 1 | \
 			awk '{split($(4),v,"."); if (v["3"] == "") v["3"] = "0"; print v["1"]v["2"]v["3"] }')
@@ -2878,7 +2878,7 @@ $as_echo "${krb5_version_raw} ($krb5_version)" >&6; }
 
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: checking krb5-config reported vendor" >&5
 $as_echo_n "checking krb5-config reported vendor... " >&6; }
-		krb5_vendor=$($krb5config --vendor)
+		krb5_vendor=$($krb5_config --vendor)
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: result: ${krb5_vendor}" >&5
 $as_echo "${krb5_vendor}" >&6; }
 
