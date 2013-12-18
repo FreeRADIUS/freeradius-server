@@ -948,8 +948,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 		pairstrcpy(vp, password);
 		vp->length = pass_size;
 
-		RDEBUG2("Added eDirectory password in check items as %s = %s", vp->da->name, vp->vp_strvalue);
-
+		RDEBUG2("Added eDirectory password.  control:%s += '%s'", vp->da->name, vp->vp_strvalue);
 		if (inst->edir_autz) {
 			RDEBUG2("Binding as user for eDirectory authorization checks");
 			/*
@@ -960,7 +959,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 			switch (status) {
 			case LDAP_PROC_SUCCESS:
 				rcode = RLM_MODULE_OK;
-				RDEBUG("Bind as user \"%s\" was successful", dn);
+				RDEBUG("Bind as user '%s' was successful", dn);
 				break;
 
 			case LDAP_PROC_NOT_PERMITTED:
