@@ -1024,6 +1024,7 @@ finish:
 static rlm_rcode_t user_modify(ldap_instance_t *inst, REQUEST *request, ldap_acct_section_t *section)
 {
 	rlm_rcode_t	rcode = RLM_MODULE_OK;
+	ldap_rcode_t	status;
 
 	ldap_handle_t	*conn = NULL;
 
@@ -1214,7 +1215,20 @@ static rlm_rcode_t user_modify(ldap_instance_t *inst, REQUEST *request, ldap_acc
 		goto error;
 	}
 
-	rcode = rlm_ldap_modify(inst, request, &conn, dn, modify);
+	status = rlm_ldap_modify(inst, request, &conn, dn, modify);
+	switch (status) {
+	case LDAP_PROC_SUCCESS:
+		break;
+
+	case LDAP_PROC_REJECT:
+	case LDAP_PROC_BAD_DN:
+		rcode = RLM_MODULE_INVALID;
+		break;
+
+	default:
+		rcode = RLM_MODULE_FAIL;
+		break;
+	};
 
 	release:
 	error:
