@@ -366,6 +366,7 @@ int main(int argc, char *argv[])
 	const char *filter_file = NULL;
 	FILE *fp;
 	REQUEST *request;
+	VALUE_PAIR *vp;
 	VALUE_PAIR *filter_vps = NULL;
 
 	if ((progname = strrchr(argv[0], FR_DIR_SEP)) == NULL)
@@ -555,6 +556,13 @@ int main(int argc, char *argv[])
 	print_packet(fp, request->reply);
 
 	if (output_file) fclose(fp);
+
+	/*
+	 *	Update the list with the response type.
+	 */
+	vp = radius_paircreate(request, &request->reply->vps,
+			       PW_RESPONSE_PACKET_TYPE, 0);
+	vp->vp_integer = request->reply->code;
 
 	if (filter_vps && !pairvalidate(filter_vps, request->reply->vps)) {
 		fprintf(stderr, "Output file %s does not match attributes in filter %s\n",

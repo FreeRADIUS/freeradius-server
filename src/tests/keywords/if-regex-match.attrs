@@ -1,4 +1,5 @@
 User-Name = '1_2_3_4_5_6_7'
 User-Password = 'hello'
 
+Response-Packet-Type == Access-Accept
 User-Name == '7_6_5_4_3_2_1_1_2_3_4_5_6_7'
