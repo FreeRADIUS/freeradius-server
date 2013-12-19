@@ -60,8 +60,8 @@ static inline _t __fr_thread_local_init_##_n(pthread_destructor_t func)\
 	return _n;\
 }
 #  define fr_thread_local_init(_n, _f) __fr_thread_local_init_##_n(_f)
-#  define fr_thread_local_set(_n, _v) ((int)!((_n = _v) || 1));
-#  define fr_thread_local_get(_n) _n;
+#  define fr_thread_local_set(_n, _v) ((int)!((_n = _v) || 1))
+#  define fr_thread_local_get(_n) _n
 #elif defined(__THREAD)
 #  include <pthread.h>
 #  define fr_thread_local_setup(_t, _n) static __THREAD _t _n;\
