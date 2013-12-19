@@ -42,13 +42,26 @@ typedef void (*pthread_destructor_t)(void*);
  *	Now we define three macros for initialisation, updating, and retrieving
  */
 #ifndef WITH_THREADS
-#  define fr_thread_local_setup(_x, _n)	static _x _n
-/*
- *  @todo we really need to put destructors in a global array and call them on server exit
- */
-#  define fr_thread_local_init(_n, _f) _n
-#  define fr_thread_local_set(_n, _v) ((int)!((_n = _v) || 1))
-#  define fr_thread_local_get(_n) _n
+#  define fr_thread_local_setup(_t, _n)	static _t _n;\
+static inline int __fr_thread_local_destructor_##_n(pthread_destructor_t *ctx)\
+{\
+	pthread_destructor_t func = *ctx;\
+	func(_n);\
+	return 0;\
+}\
+static inline _t __fr_thread_local_init_##_n(pthread_destructor_t func)\
+{\
+	static pthread_destructor_t *ctx;\
+	if (!ctx) {\
+		ctx = talloc(talloc_autofree_context(), pthread_destructor_t);\
+		talloc_set_destructor(ctx, __fr_thread_local_destructor_##_n);\
+		*ctx = func;\
+	}\
+	return _n;\
+}
+#  define fr_thread_local_init(_n, _f) __fr_thread_local_init_##_n(_f)
+#  define fr_thread_local_set(_n, _v) ((int)!((_n = _v) || 1));
+#  define fr_thread_local_get(_n) _n;
 #elif defined(__THREAD)
 #  include <pthread.h>
 #  define fr_thread_local_setup(_t, _n) static __THREAD _t _n;\
