@@ -2830,12 +2830,14 @@ static rad_listen_t *listen_parse(CONF_SECTION *cs, char const *server)
 	this->server = server;
 	this->fd = -1;
 
+#ifdef WITH_TCP
 	/*
 	 *	Special-case '+' for "auth+acct".
 	 */
 	if (strchr(listen_type, '+') != NULL) {
 		this->dual = true;
 	}
+#endif
 
 	/*
 	 *	Call per-type parser.
