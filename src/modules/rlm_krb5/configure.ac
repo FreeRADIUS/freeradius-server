@@ -55,11 +55,6 @@ if test x$with_[]modname != xno; then
 		if test "$krb5_vendor" = "Massachusetts Institute of Technology" || \
 			echo "$krb5_vendor" | grep -i 'MIT' > /dev/null 2>&1 ; then
 			AC_MSG_RESULT([MIT])
-
-			if test "$krb5_version" -le 1114 > /dev/null 2>&1; then
-				krb5threadsafe='no'
-				AC_MSG_NOTICE([marking libkrb5 as non-threadsafe due to defects in MIT libkrb5 <= 1.11.4])
-			fi
 		else
 			krb5mod_cflags="$krb5mod_cflags -DHEIMDAL_KRB5"
 			AC_MSG_RESULT([HEIMDAL])
@@ -126,11 +121,16 @@ if test x$with_[]modname != xno; then
 	dnl #
 	if test "$krb5threadsafe" != "no"; then
 		krb5threadsafe=
-		FR_SMART_CHECK_LIB(krb5, krb5_is_thread_safe)
 
+		dnl #
+		dnl # Need to ensure the test program links against the right library
+		dnl #
+		LDFLAGS="${LDFLAGS} ${SMART_LIBS}"
+		CFLAGS="${CFLAGS} ${SMART_CFLAGS}"
+		FR_SMART_CHECK_LIB(krb5, krb5_is_thread_safe)
 		if test "x$ac_cv_lib_krb5_krb5_is_thread_safe" == xyes; then
-		AC_RUN_IFELSE([AC_LANG_PROGRAM([[#include <krb5.h>]], [[return krb5_is_thread_safe() ? 0 : 1]])],
-			      [krb5threadsafe="-DKRB5_IS_THREAD_SAFE"], [AC_MSG_WARN([[libkrb5 is not threadsafe]])])
+			AC_RUN_IFELSE([AC_LANG_PROGRAM([[#include <krb5.h>]], [[return krb5_is_thread_safe() ? 0 : 1]])],
+				[krb5threadsafe="-DKRB5_IS_THREAD_SAFE"], [AC_MSG_WARN([[libkrb5 is not threadsafe]])])
 		fi
 	else
 		krb5threadsafe=""
