@@ -703,11 +703,11 @@ static void common_socket_free(rad_listen_t *this)
 #else
 {
 	listen_socket_t *sock = this->data;
-	
+
 	if (sock->proto != IPPROTO_TCP) return;
 
 	if (!sock->parent) return;
-	
+
 	/*
 	 *      Decrement the number of connections.
 	 */
@@ -1501,14 +1501,14 @@ static int auth_socket_recv(rad_listen_t *listener)
 	{
 		listen_socket_t *sock = listener->data;
 		rad_listen_t *other;
-		
+
 		other = listener_find_byipaddr(&packet->dst_ipaddr,
 					       packet->dst_port, sock->proto);
 		if (other) listener = other;
 	}
 #endif
 #endif
-	
+
 
 	if (!request_receive(listener, packet, client, fun)) {
 		FR_STATS_INC(auth, total_packets_dropped);
@@ -2533,7 +2533,9 @@ static int listener_free(void *ctx)
 
 #ifdef WITH_TLS
 		if (sock->request) {
+#  ifdef HAVE_PTHREAD_H
 			pthread_mutex_destroy(&(sock->mutex));
+#  endif
 			request_free(&sock->request);
 			sock->packet = NULL;
 
