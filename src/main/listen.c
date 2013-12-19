@@ -736,6 +736,10 @@ int common_socket_print(rad_listen_t const *this, char *buffer, size_t bufsize)
 
 	ADDSTRING(name);
 
+	if (this->dual) {
+		ADDSTRING("+acct");
+	}
+
 	if (sock->interface) {
 		ADDSTRING(" interface ");
 		ADDSTRING(sock->interface);
@@ -2825,6 +2829,13 @@ static rad_listen_t *listen_parse(CONF_SECTION *cs, char const *server)
 	this = listen_alloc(cs, type);
 	this->server = server;
 	this->fd = -1;
+
+	/*
+	 *	Special-case '+' for "auth+acct".
+	 */
+	if (strchr(listen_type, '+') != NULL) {
+		this->dual = true;
+	}
 
 	/*
 	 *	Call per-type parser.

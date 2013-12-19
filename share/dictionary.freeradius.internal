@@ -249,6 +249,7 @@ ATTRIBUTE	Listen-Socket-Type			1147	integer
 VALUE	Listen-Socket-Type		none			0
 VALUE	Listen-Socket-Type		proxy			1
 VALUE	Listen-Socket-Type		auth			2
+VALUE	Listen-Socket-Type		auth+acct		2
 VALUE	Listen-Socket-Type		acct			3
 VALUE	Listen-Socket-Type		detail			4
 VALUE	Listen-Socket-Type		vmps			5
