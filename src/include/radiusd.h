@@ -348,6 +348,7 @@ struct rad_listen_t {
 	int		status;
 #ifdef WITH_TCP
 	int		count;
+	bool		dual;
 #endif
 	bool		nodup;
 	bool		synchronous;
