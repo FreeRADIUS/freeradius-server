@@ -110,7 +110,9 @@ static RADCLIENT *client_alloc(void *ctx)
 
 static REQUEST *request_setup(FILE *fp)
 {
+	VALUE_PAIR *vp;
 	REQUEST *request;
+	vp_cursor_t cursor;
 
 	/*
 	 *	Create and initialize the new request.
@@ -152,10 +154,114 @@ static REQUEST *request_setup(FILE *fp)
 		return NULL;
 	}
 
-	if (debug_flag) {
-		VALUE_PAIR *vp;
-		vp_cursor_t cursor;
+	/*
+	 *	Set the defaults for IPs, etc.
+	 */
+	request->packet->code = PW_AUTHENTICATION_REQUEST;
 
+	request->packet->src_ipaddr.af = AF_INET;
+	request->packet->src_ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_LOOPBACK);
+	request->packet->src_port = 18120;
+
+	request->packet->dst_ipaddr.af = AF_INET;
+	request->packet->dst_ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_LOOPBACK);
+	request->packet->dst_port = 1812;
+
+	/*
+	 *	Copied from radclient
+	 */
+#if 1
+	/*
+	 *	Fix up Digest-Attributes issues
+	 */
+	for (vp = paircursor(&cursor, &request->packet->vps);
+	     vp;
+	     vp = pairnext(&cursor)) {
+		/*
+		 *	Double quoted strings get marked up as xlat expansions,
+		 *	but we don't support that here.
+		 */
+		if (vp->type == VT_XLAT) {
+			vp->vp_strvalue = vp->value.xlat;
+			vp->value.xlat = NULL;
+			vp->type = VT_DATA;
+		}
+
+		if (!vp->da->vendor) switch (vp->da->attr) {
+			default:
+				break;
+
+				/*
+				 *	Allow it to set the packet type in
+				 *	the attributes read from the file.
+				 */
+			case PW_PACKET_TYPE:
+				request->packet->code = vp->vp_integer;
+				break;
+
+			case PW_PACKET_DST_PORT:
+				request->packet->dst_port = (vp->vp_integer & 0xffff);
+				break;
+
+			case PW_PACKET_DST_IP_ADDRESS:
+				request->packet->dst_ipaddr.af = AF_INET;
+				request->packet->dst_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
+				break;
+
+			case PW_PACKET_DST_IPV6_ADDRESS:
+				request->packet->dst_ipaddr.af = AF_INET6;
+				request->packet->dst_ipaddr.ipaddr.ip6addr = vp->vp_ipv6addr;
+				break;
+
+			case PW_PACKET_SRC_PORT:
+				request->packet->src_port = (vp->vp_integer & 0xffff);
+				break;
+
+			case PW_PACKET_SRC_IP_ADDRESS:
+				request->packet->src_ipaddr.af = AF_INET;
+				request->packet->src_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
+				break;
+
+			case PW_PACKET_SRC_IPV6_ADDRESS:
+				request->packet->src_ipaddr.af = AF_INET6;
+				request->packet->src_ipaddr.ipaddr.ip6addr = vp->vp_ipv6addr;
+				break;
+
+			case PW_DIGEST_REALM:
+			case PW_DIGEST_NONCE:
+			case PW_DIGEST_METHOD:
+			case PW_DIGEST_URI:
+			case PW_DIGEST_QOP:
+			case PW_DIGEST_ALGORITHM:
+			case PW_DIGEST_BODY_DIGEST:
+			case PW_DIGEST_CNONCE:
+			case PW_DIGEST_NONCE_COUNT:
+			case PW_DIGEST_USER_NAME:
+				/* overlapping! */
+			{
+				DICT_ATTR const *da;
+				uint8_t *p;
+
+				p = talloc_array(vp, uint8_t, vp->length + 2);
+
+				memcpy(p + 2, vp->vp_octets, vp->length);
+				p[0] = vp->da->attr - PW_DIGEST_REALM + 1;
+				vp->length += 2;
+				p[1] = vp->length;
+
+				pairmemsteal(vp, p);
+
+				da = dict_attrbyvalue(PW_DIGEST_ATTRIBUTES, 0);
+				rad_assert(da != NULL);
+				vp->da = da;
+			}
+
+			break;
+			}
+	} /* loop over the VP's we read in */
+#endif
+
+	if (debug_flag) {
 		for (vp = paircursor(&cursor, &request->packet->vps);
 		     vp;
 		     vp = pairnext(&cursor)) {
@@ -173,19 +279,6 @@ static REQUEST *request_setup(FILE *fp)
 		}
 		fflush(fr_log_fp);
 	}
-
-	/*
-	 *	FIXME: set IPs, etc.
-	 */
-	request->packet->code = PW_AUTHENTICATION_REQUEST;
-
-	request->packet->src_ipaddr.af = AF_INET;
-	request->packet->src_ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_LOOPBACK);
-	request->packet->src_port = 18120;
-
-	request->packet->dst_ipaddr.af = AF_INET;
-	request->packet->dst_ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_LOOPBACK);
-	request->packet->dst_port = 1812;
 
 	/*
 	 *	Build the reply template from the request.
