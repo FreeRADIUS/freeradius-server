@@ -4,7 +4,7 @@ ifneq "$(TARGETNAME)" ""
 TARGET		:= $(TARGETNAME).a
 endif
 
-SOURCES		:= $(TARGETNAME).c
+SOURCES		:= $(TARGETNAME).c krb5.c
 
 SRC_CFLAGS	:= @mod_cflags@
 SRC_CFLAGS	+= -DKRB5_DEPRECATED
