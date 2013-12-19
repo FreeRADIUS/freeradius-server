@@ -2888,12 +2888,6 @@ $as_echo_n "checking canonical API type... " >&6; }
 			echo "$krb5_vendor" | grep -i 'MIT' > /dev/null 2>&1 ; then
 			{ $as_echo "$as_me:${as_lineno-$LINENO}: result: MIT" >&5
 $as_echo "MIT" >&6; }
-
-			if test "$krb5_version" -le 1114 > /dev/null 2>&1; then
-				krb5threadsafe='no'
-				{ $as_echo "$as_me:${as_lineno-$LINENO}: marking libkrb5 as non-threadsafe due to defects in MIT libkrb5 <= 1.11.4" >&5
-$as_echo "$as_me: marking libkrb5 as non-threadsafe due to defects in MIT libkrb5 <= 1.11.4" >&6;}
-			fi
 		else
 			krb5mod_cflags="$krb5mod_cflags -DHEIMDAL_KRB5"
 			{ $as_echo "$as_me:${as_lineno-$LINENO}: result: HEIMDAL" >&5
@@ -4212,6 +4206,9 @@ fi
 				if test "$krb5threadsafe" != "no"; then
 		krb5threadsafe=
 
+								LDFLAGS="${LDFLAGS} ${SMART_LIBS}"
+		CFLAGS="${CFLAGS} ${SMART_CFLAGS}"
+
 
 sm_lib_safe=`echo "krb5" | sed 'y%./+-%__p_%'`
 sm_func_safe=`echo "krb5_is_thread_safe" | sed 'y%./+-%__p_%'`
@@ -4377,9 +4374,8 @@ if test "x$smart_lib" != "x"; then
   SMART_LIBS="$smart_lib $SMART_LIBS"
 fi
 
-
 		if test "x$ac_cv_lib_krb5_krb5_is_thread_safe" == xyes; then
-		if test "$cross_compiling" = yes; then :
+			if test "$cross_compiling" = yes; then :
   { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
 $as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
 as_fn_error $? "cannot run test program while cross compiling
