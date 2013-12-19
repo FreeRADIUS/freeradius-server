@@ -169,9 +169,7 @@ static REQUEST *request_setup(FILE *fp)
 
 	/*
 	 *	Copied from radclient
-	 */
-#if 1
-	/*
+	 *
 	 *	Fix up Digest-Attributes issues
 	 */
 	for (vp = paircursor(&cursor, &request->packet->vps);
@@ -259,7 +257,6 @@ static REQUEST *request_setup(FILE *fp)
 			break;
 			}
 	} /* loop over the VP's we read in */
-#endif
 
 	if (debug_flag) {
 		for (vp = paircursor(&cursor, &request->packet->vps);
