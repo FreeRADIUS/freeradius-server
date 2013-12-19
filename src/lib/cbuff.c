@@ -26,11 +26,11 @@ RCSID("$Id$")
 #include <freeradius-devel/libradius.h>
 
 #ifdef HAVE_PTHREAD_H
-#define PTHREAD_MUTEX_LOCK(_x) if (_x->lock) pthread_mutex_lock(&((_x)->mutex))
-#define PTHREAD_MUTEX_UNLOCK(_x) if (_x->lock) pthread_mutex_unlock(&((_x)->mutex))
+#  define PTHREAD_MUTEX_LOCK(_x) if (_x->lock) pthread_mutex_lock(&((_x)->mutex))
+#  define PTHREAD_MUTEX_UNLOCK(_x) if (_x->lock) pthread_mutex_unlock(&((_x)->mutex))
 #else
-#define PTHREAD_MUTEX_LOCK(_x)
-#define PTHREAD_MUTEX_UNLOCK(_x)
+#  define PTHREAD_MUTEX_LOCK(_x)
+#  define PTHREAD_MUTEX_UNLOCK(_x)
 #endif
 
 /** Standard thread safe circular buffer
@@ -56,7 +56,11 @@ struct fr_cbuff {
  * @param lock If true, insert and next operations will lock the buffer.
  * @return new cbuff, or NULL on error.
  */
+#ifdef HAVE_PTHREAD_H
 fr_cbuff_t *fr_cbuff_alloc(TALLOC_CTX *ctx, uint32_t size, bool lock)
+#else
+fr_cbuff_t *fr_cbuff_alloc(TALLOC_CTX *ctx, uint32_t size, UNUSED bool lock)
+#endif
 {
 	fr_cbuff_t *cbuff;
 
@@ -115,7 +119,11 @@ void fr_cbuff_rp_insert(fr_cbuff_t *cbuff, void *obj)
 		cbuff->out = (cbuff->out + 1) & cbuff->size;
 	}
 
-	if (cbuff->lock) PTHREAD_MUTEX_UNLOCK(cbuff);
+#ifdef HAVE_PTHREAD_H
+	if (cbuff->lock) {
+		PTHREAD_MUTEX_UNLOCK(cbuff);
+	}
+#endif
 }
 
 /** Remove an item from the buffer, and reparent to ctx
@@ -137,7 +145,10 @@ void *fr_cbuff_rp_next(fr_cbuff_t *cbuff, TALLOC_CTX *ctx)
 	cbuff->out = (cbuff->out + 1) & cbuff->size;
 
 done:
-	if (cbuff->lock) PTHREAD_MUTEX_UNLOCK(cbuff);
+#ifdef HAVE_PTHREAD_H
+	if (cbuff->lock) {
+		PTHREAD_MUTEX_UNLOCK(cbuff);
+	}
+#endif
 	return obj;
-
 }
