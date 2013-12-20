@@ -45,46 +45,46 @@ typedef struct request REQUEST;
 #endif
 
 #ifdef HAVE_PCREPOSIX_H
-#include <pcreposix.h>
+#  include <pcreposix.h>
 #else
-#ifdef HAVE_REGEX_H
-#	include <regex.h>
+#  ifdef HAVE_REGEX_H
+#    include <regex.h>
 
 /*
  *  For POSIX Regular expressions.
  *  (0) Means no extended regular expressions.
  *  REG_EXTENDED means use extended regular expressions.
  */
-#ifndef REG_EXTENDED
-#define REG_EXTENDED (0)
-#endif
+#    ifndef REG_EXTENDED
+#      define REG_EXTENDED (0)
+#    endif
 
-#ifndef REG_NOSUB
-#define REG_NOSUB (0)
-#endif
-#endif
+#    ifndef REG_NOSUB
+#      define REG_NOSUB (0)
+#    endif
+#  endif
 #endif
 
 #ifndef NDEBUG
-#define REQUEST_MAGIC (0xdeadbeef)
+#  define REQUEST_MAGIC (0xdeadbeef)
 #endif
 
 /*
  *	WITH_VMPS is handled by src/include/features.h
  */
 #ifdef WITHOUT_VMPS
-#undef WITH_VMPS
+#  undef WITH_VMPS
 #endif
 
 #ifdef WITH_TLS
-#include <freeradius-devel/tls.h>
+#  include <freeradius-devel/tls.h>
 #endif
 
 #include <freeradius-devel/stats.h>
 #include <freeradius-devel/realms.h>
 
 #ifdef WITH_COMMAND_SOCKET
-#define PW_RADMIN_PORT 18120
+#  define PW_RADMIN_PORT 18120
 #endif
 
 #ifdef __cplusplus
