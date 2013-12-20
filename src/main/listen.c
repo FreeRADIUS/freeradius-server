@@ -692,15 +692,11 @@ static int dual_tcp_accept(rad_listen_t *listener)
 }
 #endif
 
-
 /*
  *	Ensure that we always keep the correct counters.
  */
+#ifdef WITH_TLS
 static void common_socket_free(rad_listen_t *this)
-#ifndef WITH_TLS
-{
-}
-#else
 {
 	listen_socket_t *sock = this->data;
 
@@ -717,6 +713,11 @@ static void common_socket_free(rad_listen_t *this)
 	if (sock->client->limit.num_connections > 0) {
 		sock->client->limit.num_connections--;
 	}
+}
+#else
+static void common_socket_free(UNUSED rad_listen_t *this)
+{
+	return;
 }
 #endif
 
@@ -1231,8 +1232,11 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	 */
 	if (!client_cs) client_cs = parentcs;
 
-	sock->clients = clients_parse_section(client_cs,
-					      (this->tls != NULL));
+#ifdef WITH_TLS
+	sock->clients = clients_parse_section(client_cs, (this->tls != NULL));
+#else
+	sock->clients = clients_parse_section(client_cs, false);
+#endif
 	if (!sock->clients) {
 		cf_log_err_cs(cs,
 			   "Failed to load clients for this listen section");
