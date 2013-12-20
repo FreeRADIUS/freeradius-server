@@ -379,12 +379,6 @@ clients radsec {
 	}
 }
 
-listen {
-       ipaddr = 127.0.0.1
-       port = 4000
-       type = auth
-}
-
 home_server tls {
 	ipaddr = 127.0.0.1
 	port = 2083
