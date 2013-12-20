@@ -673,10 +673,15 @@ static int write_all(int fd, char const *buf, int len) {
  */
 
 static int do_mschap_cpw(rlm_mschap_t *inst,
-		     REQUEST *request, VALUE_PAIR *nt_password,
-		     uint8_t *new_nt_password,
-		     uint8_t *old_nt_hash,
-		     int do_ntlm_auth)
+			 REQUEST *request,
+#ifdef HAVE_OPENSSL_CRYPTO_H
+			 VALUE_PAIR *nt_password,
+#else
+			 UNUSED VALUE_PAIR *nt_password,
+#endif
+			 uint8_t *new_nt_password,
+			 uint8_t *old_nt_hash,
+			 int do_ntlm_auth)
 {
 	if (inst->ntlm_cpw && do_ntlm_auth) {
 		/*
