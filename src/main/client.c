@@ -835,7 +835,11 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int in_server)
  *	type.  This way we don't have to change too much in the other
  *	source-files.
  */
+#ifdef WITH_TLS
 RADCLIENT_LIST *clients_parse_section(CONF_SECTION *section, bool tls_required)
+#else
+RADCLIENT_LIST *clients_parse_section(CONF_SECTION *section, UNUSED bool tls_required)
+#endif
 {
 	int		global = false, in_server = false;
 	CONF_SECTION	*cs;
