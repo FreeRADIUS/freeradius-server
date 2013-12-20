@@ -38,7 +38,9 @@ typedef struct request REQUEST;
 #include <freeradius-devel/log.h>
 
 #ifdef HAVE_PTHREAD_H
-#include	<pthread.h>
+#  include <pthread.h>
+#else
+#  include <sys/wait.h>
 #endif
 
 #ifdef HAVE_PCREPOSIX_H
