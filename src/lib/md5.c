@@ -58,20 +58,20 @@ void fr_md5_calc(uint8_t *output, uint8_t const *input,
 /*#include <sys/systm.h>*/
 /*#include <crypto/md5.h>*/
 
-#define PUT_64BIT_LE(cp, value) do {				\
-	(cp)[7] = (value)[1] >> 24;					\
-	(cp)[6] = (value)[1] >> 16;					\
-	(cp)[5] = (value)[1] >> 8;					\
-	(cp)[4] = (value)[1];						\
-	(cp)[3] = (value)[0] >> 24;					\
-	(cp)[2] = (value)[0] >> 16;					\
-	(cp)[1] = (value)[0] >> 8;					\
+#define PUT_64BIT_LE(cp, value) do {		\
+	(cp)[7] = (value)[1] >> 24;		\
+	(cp)[6] = (value)[1] >> 16;		\
+	(cp)[5] = (value)[1] >> 8;		\
+	(cp)[4] = (value)[1];			\
+	(cp)[3] = (value)[0] >> 24;		\
+	(cp)[2] = (value)[0] >> 16;		\
+	(cp)[1] = (value)[0] >> 8;		\
 	(cp)[0] = (value)[0]; } while (0)
 
-#define PUT_32BIT_LE(cp, value) do {					\
-	(cp)[3] = (value) >> 24;					\
-	(cp)[2] = (value) >> 16;					\
-	(cp)[1] = (value) >> 8;						\
+#define PUT_32BIT_LE(cp, value) do {		\
+	(cp)[3] = (value) >> 24;		\
+	(cp)[2] = (value) >> 16;		\
+	(cp)[1] = (value) >> 8;			\
 	(cp)[0] = (value); } while (0)
 
 static const uint8_t PADDING[MD5_BLOCK_LENGTH] = {
@@ -80,17 +80,14 @@ static const uint8_t PADDING[MD5_BLOCK_LENGTH] = {
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 };
 
-/**
- * @brief Start MD5 accumulation.
+/** Start MD5 accumulation
  *
  * Set bit count to 0 and buffer to mysterious
  * initialization constants.
  *
  * @param ctx MD5 context to be initialized.
- * @return Void.
  */
-void
-fr_MD5Init(FR_MD5_CTX *ctx)
+void fr_MD5Init(FR_MD5_CTX *ctx)
 {
 	ctx->count[0] = 0;
 	ctx->count[1] = 0;
@@ -100,8 +97,7 @@ fr_MD5Init(FR_MD5_CTX *ctx)
 	ctx->state[3] = 0x10325476;
 }
 
-/**
- * @brief Hash more data into the MD5 context
+/** Hash more data into the MD5 context
  *
  * Update context to reflect the concatenation of another buffer full
  * of bytes.
@@ -109,10 +105,8 @@ fr_MD5Init(FR_MD5_CTX *ctx)
  * @param ctx MD5 hashing context to update
  * @param input Data to add to hash
  * @param len Data length
- * @return Void.
  */
-void
-fr_MD5Update(FR_MD5_CTX *ctx, unsigned char const *input, size_t len)
+void fr_MD5Update(FR_MD5_CTX *ctx, unsigned char const *input, size_t len)
 {
 	size_t have, need;
 
@@ -154,8 +148,7 @@ fr_MD5Update(FR_MD5_CTX *ctx, unsigned char const *input, size_t len)
  * Final wrapup - pad to 64-byte boundary with the bit pattern
  * 1 0* (64-bit count of bits processed, MSB-first)
  */
-void
-fr_MD5Final(uint8_t digest[MD5_DIGEST_LENGTH], FR_MD5_CTX *ctx)
+void fr_MD5Final(uint8_t digest[MD5_DIGEST_LENGTH], FR_MD5_CTX *ctx)
 {
 	uint8_t count[8];
 	size_t padlen;
@@ -197,8 +190,7 @@ fr_MD5Final(uint8_t digest[MD5_DIGEST_LENGTH], FR_MD5_CTX *ctx)
  * reflect the addition of 16 longwords of new data.  fr_MD5Update blocks
  * the data and converts bytes into longwords for this routine.
  */
-void
-fr_MD5Transform(uint32_t state[4], uint8_t const block[MD5_BLOCK_LENGTH])
+void fr_MD5Transform(uint32_t state[4], uint8_t const block[MD5_BLOCK_LENGTH])
 {
 	uint32_t a, b, c, d, in[MD5_BLOCK_LENGTH / 4];
 
