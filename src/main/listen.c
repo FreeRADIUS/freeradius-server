@@ -2797,7 +2797,8 @@ static rad_listen_t *listen_parse(CONF_SECTION *cs, char const *server)
 
 	type = dv->value;
 
-	if (strcmp(master_listen[type].name, dv->name) != 0) {
+	if ((strcmp(master_listen[type].name, dv->name) != 0) &&
+	    !strchr(dv->name, '+')) {
 		cf_log_err_cs(cs, "Inconsistent dictionaries for protocol %s",
 			      value);
 		return NULL;
