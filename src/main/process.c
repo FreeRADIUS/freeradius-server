@@ -1080,7 +1080,23 @@ STATE_MACHINE_DECL(request_finish)
 	/*
 	 *	Don't send replies if there are none to send.
 	 */
-	if (!request->in_request_hash) return;
+	if (!request->in_request_hash) {
+#ifdef WITH_TCP
+		if ((request->listener->type == RAD_LISTEN_AUTH) ||
+		    (request->listener->type == RAD_LISTEN_ACCT)) {
+			listen_socket_t *sock = request->listener->data;
+
+			if (sock->proto == IPPROTO_UDP) return;
+
+			/*
+			 *	TCP packets aren't in the request
+			 *	hash.
+			 */
+		}
+#else
+		return;
+#endif
+	}
 
 	/*
 	 *	Override the response code if a control:Response-Packet-Type attribute is present.
