@@ -890,7 +890,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 	 *	End of variable length bits, do basic check now to see if packet looks long enough
 	 */
 	len = (p - data) + sizeof(struct udp_header) + (sizeof(radius_packet_t) - 1);	/* length value */
-	if (len > header->caplen) {
+	if (len > (ssize_t)header->caplen) {
 		REDEBUG("Packet too small, we require at least %zu bytes, captured %i bytes",
 			(size_t) len, header->caplen);
 		return;

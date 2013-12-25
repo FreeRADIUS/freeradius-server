@@ -578,7 +578,7 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 	 */
 	key_vp = pairfind(request->packet->vps, PW_ACCT_DELAY_TIME, 0, TAG_ANY);
 	if (key_vp != NULL) {
-		if (key_vp->vp_integer != 0 && (request->timestamp - key_vp->vp_integer) < inst->last_reset) {
+		if (key_vp->vp_integer != 0 && (request->timestamp - key_vp->vp_integer) < (unsigned long)inst->last_reset) {
 			DEBUG("rlm_counter: This packet is too old. Returning NOOP");
 			return RLM_MODULE_NOOP;
 		}
@@ -647,7 +647,7 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 		 *	day). That is the right thing
 		 */
 		diff = request->timestamp - inst->last_reset;
-		counter.user_counter += (count_vp->vp_integer < diff) ? count_vp->vp_integer : diff;
+		counter.user_counter += (count_vp->vp_integer < (unsigned long)diff) ? count_vp->vp_integer : diff;
 
 	} else if (count_vp->da->type == PW_TYPE_INTEGER) {
 		/*
@@ -790,7 +790,7 @@ static rlm_rcode_t mod_authorize(UNUSED void *instance, UNUSED REQUEST *request)
 			*	Before that set the return value to the time
 			*	remaining to next reset
 		 	*/
-			if (inst->reset_time && (res >= (inst->reset_time - request->timestamp))) {
+			if (inst->reset_time && ((time_t)res >= (inst->reset_time - request->timestamp))) {
 				res = inst->reset_time - request->timestamp;
 				res += check_vp->vp_integer;
 			}
