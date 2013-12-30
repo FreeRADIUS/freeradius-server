@@ -26,9 +26,9 @@ import MySQLdb
 configDb = 'python'                     # Database name
 configHost = 'localhost'                # Database host
 configUser = 'python'                   # Database user and password
-configPasswd = 'python'         
+configPasswd = 'python'
 
-# xxx Database 
+# xxx Database
 
 # Globals
 dbHandle = None
@@ -65,7 +65,7 @@ def authorize(authData):
   # Extract the data we need.
   userName = None
   userPasswd = None
-  
+
   for t in authData:
     if t[0] == 'User-Name':
       userName = t[1]
@@ -76,7 +76,7 @@ def authorize(authData):
   # radiusd puts double quotes (") around the string representation of
   # the RADIUS packet.
   sql = 'select passwd, maxseconds from users where username = ' +  userName
-  
+
   log(radiusd.L_DBG, sql)
 
   # Get a cursor
@@ -94,7 +94,7 @@ def authorize(authData):
     log(radiusd.L_ERR, str(e))
     dbCursor.close()
     return radiusd.RLM_MODULE_FAIL
-  
+
   # Get the result. (passwd, maxseconds)
   result = dbCursor.fetchone()
   if not result:
@@ -104,7 +104,7 @@ def authorize(authData):
     return radiusd.RLM_MODULE_NOTFOUND
 
 
- 
+
   # Compare passwords
   # Ignore the quotes around userPasswd.
   if result[0] != userPasswd[1:-1]:
@@ -114,12 +114,12 @@ def authorize(authData):
   maxSeconds = result[1]
 
   # Compute their session limit
-  
+
   # Build and log the SQL statement
   sql = 'select sum(seconds) from sessions where username = ' + userName
 
   log(radiusd.L_DBG, sql)
-  
+
   # Execute the SQL statement
   try:
     dbCursor.execute(sql)
@@ -127,7 +127,7 @@ def authorize(authData):
     log(radiusd.L_ERR, str(e))
     dbCursor.close()
     return radiusd.RLM_MODULE_FAIL
-  
+
   # Get the result. (sum,)
   result = dbCursor.fetchone()
   if (not result) or (not result[0]):
@@ -141,10 +141,10 @@ def authorize(authData):
 
   # Note that MySQL returns the result of SUM() as a float.
   sessionTimeout = maxSeconds - int(secondsUsed)
-  
+
   if sessionTimeout <= 0:
     # No more time, reject outright
-    log(radiusd.L_INFO, 'user out of time: ' + userName)    
+    log(radiusd.L_INFO, 'user out of time: ' + userName)
     return radiusd.RLM_MODULE_REJECT
 
   # Log the success
@@ -158,7 +158,7 @@ def authorize(authData):
   return (radiusd.RLM_MODULE_UPDATED,
           (('Session-Timeout', str(sessionTimeout)),),
           (('Auth-Type', 'python'),))
-  # If you want to use different operators 
+  # If you want to use different operators
   # you can do
   # return (radiusd.RLM_MODULE_UPDATED,
   #         radiusd.resolve(
@@ -168,7 +168,7 @@ def authorize(authData):
   #         radiusd.resolve(
   #            'Auth-Type := python'
   #         )
-  #        ) 
+  #        )
   # Edit operators you need in OP_TRY in radiusd.py
 
 def authenticate(p):
@@ -203,16 +203,16 @@ def accounting(acctData):
   # We may later, for simultaneous checks and the like.
   if acctStatusType == 'Start':
     return radiusd.RLM_MODULE_OK
-  
+
   # Build and log the SQL statement
   # radiusd puts double quotes (") around the string representation of
   # the RADIUS packet.
   #
   # xxx This is simplistic as it does not record the time, etc.
-  # 
+  #
   sql = 'insert into sessions (username, seconds) values (%s, %d)' % \
         (userName, int(acctSessionTime))
-  
+
   log(radiusd.L_DBG, sql)
 
   # Get a cursor
@@ -231,7 +231,7 @@ def accounting(acctData):
     dbCursor.close()
     return radiusd.RLM_MODULE_FAIL
 
-  
+
   return radiusd.RLM_MODULE_OK
 
 
@@ -246,7 +246,7 @@ def detach():
 
 
 
-# Test the modules 
+# Test the modules
 if __name__ == '__main__':
   instantiate(None)
   print authorize((('User-Name', '"map"'), ('User-Password', '"abc"')))
