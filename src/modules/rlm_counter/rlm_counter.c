@@ -578,7 +578,7 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 	 */
 	key_vp = pairfind(request->packet->vps, PW_ACCT_DELAY_TIME, 0, TAG_ANY);
 	if (key_vp != NULL) {
-		if (key_vp->vp_integer != 0 && (request->timestamp - key_vp->vp_integer) < inst->last_reset) {
+		if ((key_vp->vp_integer != 0) && (request->timestamp - (time_t) key_vp->vp_integer) < inst->last_reset) {
 			DEBUG("rlm_counter: This packet is too old. Returning NOOP");
 			return RLM_MODULE_NOOP;
 		}
@@ -647,7 +647,7 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 		 *	day). That is the right thing
 		 */
 		diff = request->timestamp - inst->last_reset;
-		counter.user_counter += (count_vp->vp_integer < diff) ? count_vp->vp_integer : diff;
+		counter.user_counter += ((time_t) count_vp->vp_integer < diff) ? count_vp->vp_integer : diff;
 
 	} else if (count_vp->da->type == PW_TYPE_INTEGER) {
 		/*
@@ -711,8 +711,9 @@ static rlm_rcode_t mod_authorize(UNUSED void *instance, UNUSED REQUEST *request)
 		pthread_mutex_lock(&inst->mutex);
 		rcode2 = reset_db(inst);
 		pthread_mutex_unlock(&inst->mutex);
-		if (rcode2 != RLM_MODULE_OK)
+		if (rcode2 != RLM_MODULE_OK) {
 			return rcode2;
+		}
 	}
 
 
@@ -722,7 +723,7 @@ static rlm_rcode_t mod_authorize(UNUSED void *instance, UNUSED REQUEST *request)
 	 */
 	DEBUG2("rlm_counter: Entering module authorize code");
 	key_vp = (inst->key_attr->attr == PW_USER_NAME) ? request->username :
-					pairfind_da(request->packet->vps, inst->key_attr, TAG_ANY);
+		 pairfind_da(request->packet->vps, inst->key_attr, TAG_ANY);
 	if (!key_vp) {
 		DEBUG2("rlm_counter: Could not find Key value pair");
 		return rcode;
@@ -731,7 +732,7 @@ static rlm_rcode_t mod_authorize(UNUSED void *instance, UNUSED REQUEST *request)
 	/*
 	 *      Look for the check item
 	 */
-	if ((check_vp=pairfind_da(request->config_items, inst->check_attr, TAG_ANY)) == NULL) {
+	if ((check_vp = pairfind_da(request->config_items, inst->check_attr, TAG_ANY)) == NULL) {
 		DEBUG2("rlm_counter: Could not find Check item value pair");
 		return rcode;
 	}
