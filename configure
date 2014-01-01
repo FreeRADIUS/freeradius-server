@@ -10027,7 +10027,7 @@ USE_STATIC_LIBS="yes"
   unset ac_cv_env_LIBS_set
   unset ac_cv_env_LIBS_value
 
-  ac_config_files="$ac_config_files ./Make.inc ./src/include/build-radpaths-h ./src/main/radsniff.mk ./src/main/checkrad ./src/main/radlast ./src/main/radtest ./scripts/rc.radiusd ./scripts/radiusd.cron.daily ./scripts/radiusd.cron.monthly ./scripts/cryptpasswd ./raddb/dictionary ./raddb/radrelay.conf ./raddb/radiusd.conf"
+  ac_config_files="$ac_config_files ./Make.inc ./src/include/build-radpaths-h ./src/main/radsniff.mk ./src/main/checkrad ./src/main/radlast ./src/main/radtest ./scripts/rc.radiusd ./scripts/cron/radiusd.cron.daily ./scripts/cron/radiusd.cron.monthly ./scripts/cryptpasswd ./raddb/dictionary ./raddb/radrelay.conf ./raddb/radiusd.conf"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -10736,8 +10736,8 @@ do
     "./src/main/radlast") CONFIG_FILES="$CONFIG_FILES ./src/main/radlast" ;;
     "./src/main/radtest") CONFIG_FILES="$CONFIG_FILES ./src/main/radtest" ;;
     "./scripts/rc.radiusd") CONFIG_FILES="$CONFIG_FILES ./scripts/rc.radiusd" ;;
-    "./scripts/radiusd.cron.daily") CONFIG_FILES="$CONFIG_FILES ./scripts/radiusd.cron.daily" ;;
-    "./scripts/radiusd.cron.monthly") CONFIG_FILES="$CONFIG_FILES ./scripts/radiusd.cron.monthly" ;;
+    "./scripts/cron/radiusd.cron.daily") CONFIG_FILES="$CONFIG_FILES ./scripts/cron/radiusd.cron.daily" ;;
+    "./scripts/cron/radiusd.cron.monthly") CONFIG_FILES="$CONFIG_FILES ./scripts/cron/radiusd.cron.monthly" ;;
     "./scripts/cryptpasswd") CONFIG_FILES="$CONFIG_FILES ./scripts/cryptpasswd" ;;
     "./raddb/dictionary") CONFIG_FILES="$CONFIG_FILES ./raddb/dictionary" ;;
     "./raddb/radrelay.conf") CONFIG_FILES="$CONFIG_FILES ./raddb/radrelay.conf" ;;
@@ -11295,7 +11295,7 @@ $as_echo "$as_me: executing $ac_file commands" >&6;}
     "stamp-h":C) echo timestamp > src/include/stamp-h ;;
     "build-radpaths-h":C) (cd ./src/include && /bin/sh ./build-radpaths-h) ;;
     "main-chmod":C) (cd ./src/main && chmod +x checkrad radlast radtest) ;;
-    "scripts-chmod":C) (cd ./scripts && chmod +x rc.radiusd radiusd.cron.daily radiusd.cron.monthly cryptpasswd) ;;
+    "scripts-chmod":C) (cd ./scripts && chmod +x rc.radiusd cron/radiusd.cron.daily cron/radiusd.cron.monthly cryptpasswd) ;;
 
   esac
 done # for ac_tag
