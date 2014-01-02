@@ -19,6 +19,7 @@ This plugin uses the following configuration variables:
   env.rrd_path   - Path to the directory containing rrd files.
   env.type       - Either radius_rtx, radius_latency or radius_count
   env.pkt_type   - The type of packet to graph.
+  env.instance   - radsniff instance name (passed to radsniff with -N).
 
 =head1 AUTHOR
 
@@ -165,7 +166,8 @@ if [ "$1" = "config" ]; then
 fi
 
 HOST=${host:-`hostname -f`}
-RRD_PATH=${rrd_path:-"/var/lib/collectd/rrd/${HOST}/radsniff-exchanged"}
+INSTANCE=${instance:-'radsniff'}
+RRD_PATH=${rrd_path:-"/var/lib/collectd/rrd/${HOST}/${INSTANCE}-exchanged"}
 RRD_PATH="${RRD_PATH}/${type}-${pkt_type}.rrd"
 RRD_RES=${rrd_res:-300}
 
