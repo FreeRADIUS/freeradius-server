@@ -115,7 +115,11 @@ int fr_pcap_open(fr_pcap_t *pcap)
 				return -1;
 			}
 			if (pcap_set_snaplen(pcap->handle, SNAPLEN) != 0) {
-				goto error;
+			error:
+				fr_strerror_printf("%s", pcap_geterr(pcap->handle));
+				pcap_close(pcap->handle);
+				pcap->handle = NULL;
+				return -1;
 			}
 			if (pcap_set_timeout(pcap->handle, PCAP_NONBLOCK_TIMEOUT) != 0) {
 				goto error;
@@ -125,11 +129,7 @@ int fr_pcap_open(fr_pcap_t *pcap)
 			}
 			if (pcap_set_buffer_size(pcap->handle, SNAPLEN *
 						 (pcap->buffer_pkts ? pcap->buffer_pkts : PCAP_BUFFER_DEFAULT)) != 0) {
-				error:
-				fr_strerror_printf("%s", pcap_geterr(pcap->handle));
-				pcap_close(pcap->handle);
-				pcap->handle = NULL;
-				return -1;
+				goto error;
 			}
 			if (pcap_activate(pcap->handle) != 0) {
 				goto error;
