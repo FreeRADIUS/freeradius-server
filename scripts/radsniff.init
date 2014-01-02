@@ -16,7 +16,7 @@
 PROG=$(basename $0)         # This allows multiple instances of radsniff
                             # to be used by symlinking the init script.
 PROGRAM="/usr/bin/radsniff"
-PIDFILE="/var/run/freeradius/$PROG.pid"
+PIDFILE="/var/run/$PROG.pid"
 DESCR="radsniff daemon"
 
 set -e
@@ -28,12 +28,6 @@ if [ -r /etc/default/$PROG ]; then
 fi
 
 test -f $PROGRAM || exit 0
-
-# /var/run may be a tmpfs
-if [ ! -d /var/run/freeradius ]; then
-    mkdir -p /var/run/freeradius
-    chown freerad:freerad /var/run/freeradius
-fi
 
 export PATH="${PATH:+$PATH:}/usr/sbin:/sbin"
 
