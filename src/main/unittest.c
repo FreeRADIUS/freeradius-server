@@ -225,6 +225,48 @@ static REQUEST *request_setup(FILE *fp)
 				request->packet->src_ipaddr.ipaddr.ip6addr = vp->vp_ipv6addr;
 				break;
 
+			case PW_CHAP_PASSWORD: {
+				int i, already_hex = 0;
+
+				/*
+				 *	If it's 17 octets, it *might* be already encoded.
+				 *	Or, it might just be a 17-character password (maybe UTF-8)
+				 *	Check it for non-printable characters.  The odds of ALL
+				 *	of the characters being 32..255 is (1-7/8)^17, or (1/8)^17,
+				 *	or 1/(2^51), which is pretty much zero.
+				 */
+				if (vp->length == 17) {
+					for (i = 0; i < 17; i++) {
+						if (vp->vp_octets[i] < 32) {
+							already_hex = 1;
+							break;
+						}
+					}
+				}
+
+				/*
+				 *	Allow the user to specify ASCII or hex CHAP-Password
+				 */
+				if (!already_hex) {
+					uint8_t *p;
+					size_t len, len2;
+
+					len = len2 = vp->length;
+					if (len2 < 17) len2 = 17;
+
+					p = talloc_zero_array(vp, uint8_t, len2);
+
+					memcpy(p, vp->vp_strvalue, len);
+
+					rad_chap_encode(request->packet,
+							p,
+							fr_rand() & 0xff, vp);
+					vp->vp_octets = p;
+					vp->length = 17;
+				}
+			}
+				break;
+
 			case PW_DIGEST_REALM:
 			case PW_DIGEST_NONCE:
 			case PW_DIGEST_METHOD:
