@@ -18,7 +18,7 @@ export DYLD_LIBRARY_PATH
 
 RADDB_PATH := $(top_builddir)/raddb
 
-TESTS	= vpiter mschapv1 digest-01/digest* \
+TESTS	= mschapv1 digest-01/digest* \
 	test.example.com 
 
 PORT	 = 12340
