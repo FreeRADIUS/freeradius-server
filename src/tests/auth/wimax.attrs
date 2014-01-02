@@ -4,7 +4,7 @@
 #	TESTS 1
 #
 User-Name = "bob"
-User-Password = "bob"
+User-Password = "hello"
 WiMAX-GMT-Timezone-offset = -1
 WiMAX-AAA-Session-Id = 0x01020304
 WiMAX-hHA-IP-MIP4 = 192.0.2.1
@@ -24,3 +24,7 @@ WiMAX-Packet-Data-Flow-Id = 1
 WiMAX-Hotline-Indicator = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxaaaaaaaaaabbbbbbbbbbcccccccccc123"
 WiMAX-Service-Data-Flow-Id = 2
 WiMAX-hHA-IP-MIP4 = 192.0.2.2
+
+
+# and the response
+Response-Packet-Type == Access-Accept
