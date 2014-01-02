@@ -50,7 +50,7 @@ $(BUILD_DIR)/tests/auth/%.attrs: $(DIR)/%.attrs | $(BUILD_DIR)/tests/auth
 #  Don't auto-remove the files copied by the rule just above.
 #  It's unnecessary, and it clutters the output with crap.
 #
-.PRECIOUS: $(BUILD_DIR)/tests/auth/%.attrs
+.PRECIOUS: $(BUILD_DIR)/tests/auth/%.attrs raddb/mods-enabled/wimax
 
 AUTH_MODULES	:= $(shell grep -- mods-enabled src/tests/auth/radiusd.conf  | sed 's,.*/,,')
 AUTH_RADDB	:= $(addprefix raddb/mods-enabled/,$(AUTH_MODULES))
