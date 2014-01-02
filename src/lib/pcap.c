@@ -235,13 +235,27 @@ int fr_pcap_open(fr_pcap_t *pcap)
  *
  * @param pcap handle to apply filter to.
  * @param expression PCAP expression to use as a filter.
- * @return 0 on success, 1 wrong interface type, -1 on error.
+ * @return 0 on success, 1 can't apply to interface, -1 on error.
  */
 int fr_pcap_apply_filter(fr_pcap_t *pcap, char const *expression)
 {
 	bpf_u_int32 mask = 0;				/* Our netmask */
 	bpf_u_int32 net = 0;				/* Our IP */
 	struct bpf_program fp;
+
+	/*
+	 *	nflog devices are in the set of devices selected by default.
+	 *	Unfortunately there's a bug in all released version of libpcap (as of 2/1/2014)
+	 *	which triggers an abort if pcap_setfilter is called on an nflog interface.
+	 *
+	 *	See here:
+	 * 	https://github.com/the-tcpdump-group/libpcap/commit/676cf8a61ed240d0a86d471ef419f45ba35dba80
+	 */
+	if (pcap->link_type == DLT_NFLOG) {
+		fr_strerror_printf("NFLOG link-layer type filtering not implemented");
+
+		return 1;
+	}
 
 	if (pcap->type == PCAP_INTERFACE_IN) {
 		if (pcap_lookupnet(pcap->name, &net, &mask, pcap->errbuf) < 0) {
