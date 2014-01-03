@@ -251,11 +251,13 @@ int fr_pcap_apply_filter(fr_pcap_t *pcap, char const *expression)
 	 *	See here:
 	 * 	https://github.com/the-tcpdump-group/libpcap/commit/676cf8a61ed240d0a86d471ef419f45ba35dba80
 	 */
+#ifdef DLT_NFLOG
 	if (pcap->link_type == DLT_NFLOG) {
 		fr_strerror_printf("NFLOG link-layer type filtering not implemented");
 
 		return 1;
 	}
+#endif
 
 	if (pcap->type == PCAP_INTERFACE_IN) {
 		if (pcap_lookupnet(pcap->name, &net, &mask, pcap->errbuf) < 0) {
