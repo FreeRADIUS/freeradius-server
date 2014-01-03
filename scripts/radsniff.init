@@ -15,7 +15,7 @@
 
 PROG=$(basename $0)         # This allows multiple instances of radsniff
                             # to be used by symlinking the init script.
-PROGRAM="/usr/bin/radsniff"
+PROGRAM="radsniff"
 PIDFILE="/var/run/$PROG.pid"
 DESCR="radsniff daemon"
 
