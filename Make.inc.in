@@ -191,3 +191,14 @@ ifeq "${CC}" "clang"
     endif
 endif
 
+#
+#  With shared libs, the test binaries are in a different place
+#  AND the method we use to run those binaries changes.
+#
+ifeq "$(USE_SHARED_LIBS)" "yes"
+	TESTBINDIR = ./$(BUILD_DIR)/bin/local
+	TESTBIN    = $(JLIBTOOL) --quiet --mode=execute $(TESTBINDIR)
+else
+	TESTBINDIR = ./$(BUILD_DIR)/bin
+	TESTBIN    = ./$(BUILD_DIR)/bin
+endif
