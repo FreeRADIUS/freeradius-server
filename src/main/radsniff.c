@@ -127,6 +127,17 @@ static void rs_daemonize(char const *pidfile)
 		ERROR("Failed creating PID file %s: %s", pidfile, fr_syserror(errno));
 		exit(EXIT_FAILURE);
 	}
+
+	/*
+	 *	Close stdout and stderr if they've not been redirected.
+	 */
+	if (isatty(fileno(stdout))) {
+		freopen("/dev/null", "w", stdout);
+	}
+
+	if (isatty(fileno(stderr))) {
+		freopen("/dev/null", "w", stderr);
+	}
 }
 
 #define USEC 1000000
