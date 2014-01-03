@@ -55,29 +55,16 @@ if test x$with_[]modname != xno; then
 		if test "$krb5_vendor" = "Massachusetts Institute of Technology" || \
 			echo "$krb5_vendor" | grep -i 'MIT' > /dev/null 2>&1 ; then
 			AC_MSG_RESULT([MIT])
+			krb5_api_type='mit'
 		else
-			krb5mod_cflags="$krb5mod_cflags -DHEIMDAL_KRB5"
 			AC_MSG_RESULT([HEIMDAL])
+			krb5_api_type='heimdal'
 		fi
 	else
 		smart_try_dir="$rlm_krb5_dir/include"
 		FR_SMART_CHECK_INCLUDE(krb5.h)
 		if test "$ac_cv_header_krb5_h" != "yes"; then
-		fail="$fail krb5.h"
-		fi
-
-		dnl #
-		dnl # This lives in different places depending on the distro
-		dnl #
-
-		FR_SMART_CHECK_INCLUDE([com_err.h])
-		if test "$ac_cv_header_com_err_h" != "yes"; then
-			FR_SMART_CHECK_INCLUDE([et/com_err.h])
-			if test "$ac_cv_header_et_com_err_h" != "yes"; then
-				fail="$fail com_err.h"
-			else
-				krb5mod_cflags="$krb5mod_cflags -DET_COMM_ERR "
-			fi
+			fail="$fail krb5.h"
 		fi
 
 		krb5libcrypto=
@@ -103,18 +90,28 @@ if test x$with_[]modname != xno; then
 			AC_MSG_WARN([the comm_err library isn't found!])
 		fi
 
-		dnl Only the heimdal version of the library has this function
+		dnl #
+		dnl # Only the heimdal version of the library has this function
+		dnl #
 		FR_SMART_CHECK_LIB(krb5, krb5_verify_user_opt)
 		if test "x$ac_cv_lib_krb5_krb5_verify_user_opt" == xyes; then
-		krb5mod_cflags="$krb5mod_cflags -DHEIMDAL_KRB5"
+			krb5_api_type='heimdal'
 		else
-		    FR_SMART_CHECK_LIB(krb5, krb5_get_init_creds_password)
-		    if test "x$ac_cv_lib_krb5_krb5_get_init_creds_password" != xyes; then
+			krb5_api_type='mit'
+
+			FR_SMART_CHECK_LIB(krb5, krb5_get_init_creds_password)
+			if test "x$ac_cv_lib_krb5_krb5_get_init_creds_password" != xyes; then
 			    fail="$fail krb5"
-		    fi
+			fi
 		fi
 
 	fi
+
+	dnl #
+	dnl # Need to ensure the test program(s) link against the right library
+	dnl #
+	LDFLAGS="${LDFLAGS} ${SMART_LIBS}"
+	CFLAGS="${CFLAGS} ${SMART_CFLAGS}"
 
 	dnl #
 	dnl # Only check if version checks have not found kerberos to be thread unsafe
@@ -122,11 +119,6 @@ if test x$with_[]modname != xno; then
 	if test "$krb5threadsafe" != "no"; then
 		krb5threadsafe=
 
-		dnl #
-		dnl # Need to ensure the test program links against the right library
-		dnl #
-		LDFLAGS="${LDFLAGS} ${SMART_LIBS}"
-		CFLAGS="${CFLAGS} ${SMART_CFLAGS}"
 		FR_SMART_CHECK_LIB(krb5, krb5_is_thread_safe)
 		if test "x$ac_cv_lib_krb5_krb5_is_thread_safe" == xyes; then
 			AC_RUN_IFELSE([AC_LANG_PROGRAM([[#include <krb5.h>]], [[return krb5_is_thread_safe() ? 0 : 1]])],
@@ -134,6 +126,23 @@ if test x$with_[]modname != xno; then
 		fi
 	else
 		krb5threadsafe=""
+	fi
+
+	if test "$krb5_api_type" == "mit"; then
+		dnl #
+		dnl # This lives in different places depending on the distro
+		dnl #
+		FR_SMART_CHECK_INCLUDE([com_err.h])
+		if test "$ac_cv_header_com_err_h" != "yes"; then
+			FR_SMART_CHECK_INCLUDE([et/com_err.h])
+			if test "$ac_cv_header_et_com_err_h" != "yes"; then
+				fail="$fail com_err.h"
+			else
+				krb5mod_cflags="$krb5mod_cflags -DET_COMM_ERR "
+			fi
+		fi
+	else
+		krb5mod_cflags="$krb5mod_cflags -DHEIMDAL_KRB5"
 	fi
 	targetname=modname
 else

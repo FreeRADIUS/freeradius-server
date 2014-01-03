@@ -31,12 +31,6 @@ RCSIDH(krb5_h, "$Id$")
 /* krb5 includes */
 #include <krb5.h>
 
-#ifdef ET_COMM_ERR
-#  include <et/com_err.h>
-#else
-#  include <com_err.h>
-#endif
-
 typedef struct rlm_krb5_handle {
 	krb5_context	context;
 	krb5_keytab	keytab;
@@ -85,6 +79,11 @@ typedef struct rlm_krb5_t {
  *	to error_message.
  */
 #ifndef HEIMDAL_KRB5
+#  ifdef ET_COMM_ERR
+#    include <et/com_err.h>
+#  else
+#    include <com_err.h>
+#  endif
 #  define rlm_krb5_error(_x, _y) error_message(_y)
 #else
 char const *rlm_krb5_error(krb5_context context, krb5_error_code code);
