@@ -100,6 +100,8 @@ TESTS.KEYWORDS_FILES := $(addprefix $(BUILD_DIR)/tests/keywords/,$(FILES))
 #
 tests.keywords: $(TESTS.KEYWORDS_FILES)
 
+$(TESTS.KEYWORDS_FILES): $(TESTS.UNIT_FILES)
+
 .PHONY: clean.tests.keywords
 clean.tests.keywords:
 	@rm -rf $(BUILD_DIR)/tests/keywords/
