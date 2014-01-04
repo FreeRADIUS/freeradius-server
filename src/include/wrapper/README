@@ -1,0 +1,7 @@
+The files in this directory are "wrapper" files.  They do nothing more
+than set a pragma, and include the system header file.
+
+The purpose of these wrappers is to remove compile-time warnings.
+They are NEVER installed.  Any file in the parent directory MUST NOT
+include any "wrapper" file.  Only the C source files can include the
+wrappers.

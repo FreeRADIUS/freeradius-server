@@ -47,7 +47,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #endif
 
 #ifdef HAVE_OPENSSL_OCSP_H
-#include <openssl/ocsp.h>
+#include <freeradius-devel/wrapper/openssl_ocsp.h>
 #endif
 
 static void tls_server_conf_free(fr_tls_server_conf_t *conf);

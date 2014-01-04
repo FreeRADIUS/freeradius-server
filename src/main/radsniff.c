@@ -33,6 +33,7 @@ RCSID("$Id$")
 #include <freeradius-devel/libradius.h>
 #include <freeradius-devel/event.h>
 
+#include <freeradius-devel/radpaths.h>
 #include <freeradius-devel/conf.h>
 #include <freeradius-devel/pcap.h>
 #include <freeradius-devel/radsniff.h>
