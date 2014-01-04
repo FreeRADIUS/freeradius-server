@@ -17,7 +17,7 @@
 
 /**
  * $Id$
- * @file pcap.h
+ * @file include/pcap.h
  * @brief Prototypes and constants for PCAP functions.
  *
  * @author Arran Cudbard-Bell <a.cudbardb@freeradius.org>
@@ -26,7 +26,7 @@
 #include <freeradius-devel/libradius.h>
 #include <sys/types.h>
 #include <netinet/in.h>
-#include <pcap.h>
+#include <freeradius-devel/wrapper/pcap.h>
 
 /*
  *	Length of a DEC/Intel/Xerox or 802.3 Ethernet header.
