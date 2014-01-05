@@ -89,18 +89,6 @@ USE_STATIC_LIBS = @USE_STATIC_LIBS@
 bm_static_libs  = @USE_STATIC_LIBS@
 
 STATIC_MODULES	= @STATIC_MODULES@
-
-OPENSSL_LIBS	= @OPENSSL_LIBS@
-OPENSSL_INCLUDE = @OPENSSL_INCLUDE@
-
-#
-#  If the system has OpenSSL, use it's version of MD4/MD5/SHA1, instead of
-#  using ours.
-#
-ifneq "$(OPENSSL_INCLUDE)" ""
-CFLAGS		+=  -DWITH_OPENSSL_MD4 -DWITH_OPENSSL_MD5
-endif
-
 LIBREADLINE	= @LIBREADLINE@
 
 #
@@ -109,14 +97,22 @@ LIBREADLINE	= @LIBREADLINE@
 RADIUSD_VERSION_STRING = @RADIUSD_VERSION_STRING@
 
 #
-#  This allows dlopen to do runtime checks for version mistmatches
+#  This allows dlopen to do runtime checks for version mismatches
 #  between what it was originally linked with, and the library it's
 #  actually loading.
 #
-#LDFLAGS += -release=$(RADIUSD_VERSION_STRING)
-
 MODULES		= @MODULES@
 HOSTINFO	= @HOSTINFO@
+
+#
+#  If the system has OpenSSL, use it's version of MD4/MD5/SHA1, instead of
+#  using ours.
+#
+ifeq "$(WITH_OPENSSL)" "yes"
+CFLAGS		+=  -DWITH_OPENSSL_MD4 -DWITH_OPENSSL_MD5
+endif
+
+OPENSSL_LIBS	= @OPENSSL_LIBS@
 
 ifneq ($(WITH_OPENSSL_MD5),)
 LIBRADIUS_WITH_OPENSSL = 1

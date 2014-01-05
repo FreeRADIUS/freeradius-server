@@ -8050,6 +8050,11 @@ $as_echo "#define HAVE_LIBSSL 1" >>confdefs.h
 
       OPENSSL_LIBS="${OPENSSL_LIBS} ${smart_lib}"
     fi
+  else
+    { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "failed linking to libcrypto
+See \`config.log' for more details" "$LINENO" 5; }
   fi
 
   smart_try_dir="$openssl_include_dir"
@@ -8201,7 +8206,6 @@ fi
 
 $as_echo "#define HAVE_OPENSSL_SSL_H 1" >>confdefs.h
 
-    OPENSSL_INCLUDE="${smart_include}"
 
     for ac_header in \
       openssl/crypto.h \

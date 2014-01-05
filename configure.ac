@@ -984,7 +984,7 @@ if test "x$WITH_OPENSSL" = xyes; then
   CPPFLAGS="${CPPFLAGS} -DOPENSSL_NO_KRB5"
 
   dnl #
-  dnl #  Check we can link to libssl
+  dnl #  Check we can link to libcrypto and libssl
   dnl #
   smart_try_dir="$openssl_lib_dir"
   FR_SMART_CHECK_LIB(crypto, DH_new)
@@ -1007,7 +1007,6 @@ if test "x$WITH_OPENSSL" = xyes; then
   FR_SMART_CHECK_INCLUDE(openssl/ssl.h)
   if test "x$ac_cv_header_openssl_ssl_h" = "xyes"; then
     AC_DEFINE(HAVE_OPENSSL_SSL_H, 1, [Define to 1 if you have the <openssl/ssl.h> header file.])
-    OPENSSL_INCLUDE="${smart_include}"
 
     AC_CHECK_HEADERS( \
       openssl/crypto.h \
