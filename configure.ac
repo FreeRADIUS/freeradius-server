@@ -966,7 +966,6 @@ if test "x$WITH_OPENSSL" = xyes; then
             OPENSSL_LIBS="-L$OPENSSL_LIB_DIR"
           fi
           OPENSSL_LIBS="$OPENSSL_LIBS -lcrypto -lssl -lcrypto"
-          LIBS="$OPENSSL_LIBS $LIBS"
         ],
         [
           AC_MSG_FAILURE([failed linking to libssl])
