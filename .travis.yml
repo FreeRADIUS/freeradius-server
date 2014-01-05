@@ -20,6 +20,6 @@ env:
   - LIBS_OPTIONAL=no LIBS_SHARED=no
   - LIBS_OPTIONAL=yes LIBS_SHARED=yes
 before_script:
-  - ./configure -C --enable-werror --prefix=$HOME/travis --with-shared-libs=$LIBS_SHARED --with-threads=$LIBS_OPTIONAL --with-udpfromto=$LIBS_OPTIONAL --with-shared-libs=$LIBS_OPTIONAL --with-udpfromto=$LIBS_OPTIONAL --with-openssl=$LIBS_OPTIONAL
+  - ./configure -C --enable-werror --prefix=$HOME/travis --with-shared-libs=$LIBS_SHARED --with-threads=$LIBS_OPTIONAL --with-udpfromto=$LIBS_OPTIONAL --with-openssl=$LIBS_OPTIONAL
   - make
 script: make travis-test
