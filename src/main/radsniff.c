@@ -28,6 +28,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/wrapper/pcap.h>
 
+#include <freeradius-devel/radpaths.h>
 #include <freeradius-devel/conf.h>
 #include <freeradius-devel/radsniff.h>
 
