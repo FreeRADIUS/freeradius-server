@@ -147,6 +147,7 @@ install-arch: build-arch-stamp
 	dh_install -i --sourcedir=$(freeradius_dir)
 	dh_install --sourcedir=$(freeradius_dir) -p libfreeradius3
 	dh_install --sourcedir=$(freeradius_dir) -p libfreeradius-dev
+	dh_install --sourcedir=$(freeradius_dir) -p freeradius-config
 
 	for mod in ${modulelist}; do \
 	  pkg=$${mod##sql_} ; \
