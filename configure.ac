@@ -709,18 +709,18 @@ AC_CHECK_LIB(ws2_32, htonl)
 dnl #
 dnl #  Check the pcap library for the RADIUS sniffer.
 dnl #
-PCAP_LIBS=
-AC_CHECK_LIB(pcap, pcap_open_live,
-  [
-    PCAP_LIBS="-lpcap"
-    AC_DEFINE(HAVE_LIBPCAP, 1,
-      [Define to 1 if you have the `pcap' library (-lpcap).]
-    )
-  ],
-  [
-    AC_MSG_WARN([pcap library not found, silently disabling the RADIUS sniffer.])
-  ]
-)
+smart_try_dir="$pcap_lib_dir"
+FR_SMART_CHECK_LIB(pcap, pcap_open_live)
+if test "x$ac_cv_lib_pcap_pcap_open_live" != "xyes"; then
+  AC_MSG_WARN([pcap library not found. Use --with-pcap-lib-dir=<path>.])
+  AC_MSG_WARN([pcap library not found, silently disabling the RADIUS sniffer and ARP listener.])
+else
+  PCAP_LIBS="${smart_lib}"
+  LIBS=$old_LIBS
+  AC_DEFINE(HAVE_LIBPCAP, 1,
+    [Define to 1 if you have the `pcap' library (-lpcap).]
+  )
+fi
 
 VL_LIB_READLINE
 
@@ -796,9 +796,10 @@ dnl #
 dnl #  FreeBSD requires sys/socket.h before net/if.h
 dnl #
 AC_CHECK_HEADERS(net/if.h, [], [],
-[#ifdef HAVE_SYS_SOCKET_H
-#  include <sys/socket.h>
-#  endif
+[
+  #ifdef HAVE_SYS_SOCKET_H
+  #  include <sys/socket.h>
+  #endif
 ])
 
 dnl #
@@ -952,27 +953,26 @@ dnl #
 if test "x$PCAP_LIBS" = x; then
   AC_MSG_NOTICE([skipping test for pcap.h.])
 else
-  AC_CHECK_HEADER(pcap.h,
-    [
-      AC_DEFINE(HAVE_PCAP_H, 1, [Define to 1 if you have the <pcap.h> header file.])
+  smart_try_dir="$pcap_include_dir"
+  FR_SMART_CHECK_INCLUDE([pcap.h])
+  if test "x$ac_cv_header_pcap_h" != "xyes"; then
+    AC_MSG_WARN([pcap headers not found. Use --with-pcap-include-dir=<path>.])
+    AC_MSG_WARN([pcap.h not found, silently disabling the RADIUS sniffer, and ARP listener.])
+  else
+    AC_DEFINE(HAVE_PCAP_H, 1, [Define to 1 if you have the <pcap.h> header file.])
 
-      AC_CHECK_LIB(pcap, pcap_fopen_offline,
-        [
-          AC_DEFINE(HAVE_PCAP_FOPEN_OFFLINE, 1, [Define to 1 if you have the function pcap_fopen_offline.])
-        ]
-      )
+    AC_CHECK_LIB(pcap, pcap_fopen_offline,
+      [
+        AC_DEFINE(HAVE_PCAP_FOPEN_OFFLINE, 1, [Define to 1 if you have the function pcap_fopen_offline.])
+      ]
+    )
 
-      AC_CHECK_LIB(pcap, pcap_dump_fopen,
-        [
-          AC_DEFINE(HAVE_PCAP_DUMP_FOPEN, 1, [Define to 1 if you have the function pcap_dump_fopen.])
-        ]
-      )
-    ],
-    [
-      PCAP_LIBS=
-      AC_MSG_WARN([pcap.h not found, silently disabling the RADIUS sniffer.])
-    ]
-  )
+    AC_CHECK_LIB(pcap, pcap_dump_fopen,
+      [
+        AC_DEFINE(HAVE_PCAP_DUMP_FOPEN, 1, [Define to 1 if you have the function pcap_dump_fopen.])
+      ]
+    )
+  fi
 fi
 AC_SUBST(PCAP_LIBS)
 
@@ -1280,6 +1280,38 @@ AC_ARG_WITH(talloc-lib-dir,
       ;;
     *)
       talloc_lib_dir="$withval"
+      ;;
+  esac])
+
+dnl Check for pcap
+dnl extra argument: --with-pcap-include-dir=DIR
+pcap_include_dir=
+AC_ARG_WITH(pcap-include-dir,
+  [  --with-pcap-include-dir=DIR    directory to look for pcap include files in],
+  [case "$withval" in
+    no)
+      AC_MSG_ERROR([Need pcap-include-dir])
+      ;;
+    yes)
+      ;;
+    *)
+      pcap_include_dir="$withval"
+      ;;
+  esac])
+
+dnl Check for pcap
+dnl extra argument: --with-pcap-lib-dir=DIR
+pcap_lib_dir=
+AC_ARG_WITH(pcap-lib-dir,
+  [  --with-pcap-lib-dir=DIR        directory to look for pcap library files in],
+  [case "$withval" in
+    no)
+      AC_MSG_ERROR([Need pcap-lib-dir])
+      ;;
+    yes)
+      ;;
+    *)
+      pcap_lib_dir="$withval"
       ;;
   esac])
 
