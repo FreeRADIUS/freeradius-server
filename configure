@@ -749,16 +749,16 @@ with_shared_libs
 with_modules
 with_experimental_modules
 with_udpfromto
-with_openssl
-with_openssl_includes
-with_openssl_libraries
 with_rlm_FOO_lib_dir
 with_rlm_FOO_include_dir
+with_openssl
+with_openssl_libraries
+with_openssl_includes
 with_talloc_lib_dir
-with_pcap_lib_dir
-with_collectdclient_lib_dir
 with_talloc_include_dir
+with_pcap_lib_dir
 with_pcap_include_dir
+with_collectdclient_lib_dir
 with_collectdclient_include_dir
 with_rlm_pcre_lib_dir
 with_rlm_pcre_include_dir
@@ -1414,27 +1414,27 @@ Optional Packages:
                           use experimental and unstable modules. (default=no,
                           unless --enable-developer=yes)
   --with-udpfromto        compile in UDPFROMTO support. (default=yes)
-  --with-openssl          use OpenSSL. (default=yes)
-  --with-openssl-includes=DIR
-                          directory to look for OpenSSL include files
-  --with-openssl-libraries=DIR
-                          directory to look for OpenSSL library files
   --with-rlm-FOO-lib-dir=DIR
                           directory in which to look for library files used by
                           module FOO
   --with-rlm-FOO-include-dir=DIR
                           directory in which to look for include files used by
                           module FOO
+  --with-openssl          use OpenSSL. (default=yes)
+  --with-openssl-libraries=DIR
+                          directory to look for OpenSSL library files
+  --with-openssl-includes=DIR
+                          directory to look for OpenSSL include files
   --with-talloc-lib-dir=DIR
                           directory in which to look for talloc library files
+  --with-talloc-include-dir=DIR
+                          directory in which to look for talloc include files
   --with-pcap-lib-dir=DIR directory in which to look for pcap library files
+  --with-pcap-include-dir=DIR
+                          directory in which to look for pcap include files
   --with-collectdclient-lib-dir=DIR
                           directory in which to look for collectdclient
                           library files
-  --with-talloc-include-dir=DIR
-                          directory in which to look for talloc include files
-  --with-pcap-include-dir=DIR
-                          directory in which to look for pcap include files
   --with-collectdclient-include-dir=DIR
                           directory in which to look for collectdclient
                           include files
@@ -5429,6 +5429,29 @@ $as_echo "#define WITH_UDPFROMTO /**/" >>confdefs.h
 
 fi
 
+
+
+# Check whether --with-rlm-FOO-lib-dir was given.
+if test "${with_rlm_FOO_lib_dir+set}" = set; then :
+  withval=$with_rlm_FOO_lib_dir;  case "$withval" in
+  *)
+    ;;
+  esac
+
+fi
+
+
+
+# Check whether --with-rlm-FOO-include-dir was given.
+if test "${with_rlm_FOO_include_dir+set}" = set; then :
+  withval=$with_rlm_FOO_include_dir;  case "$withval" in
+  *)
+    ;;
+  esac
+
+fi
+
+
 WITH_OPENSSL=yes
 
 # Check whether --with-openssl was given.
@@ -5439,18 +5462,6 @@ if test "${with_openssl+set}" = set; then :
     ;;
   *)
     WITH_OPENSSL=yes
-    ;;
-  esac
-
-fi
-
-
-OPENSSL_INCLUDE_DIR=
-
-# Check whether --with-openssl-includes was given.
-if test "${with_openssl_includes+set}" = set; then :
-  withval=$with_openssl_includes;  case "$withval" in
-  *) OPENSSL_INCLUDE_DIR="$withval"
     ;;
   esac
 
@@ -5469,23 +5480,12 @@ if test "${with_openssl_libraries+set}" = set; then :
 fi
 
 
+OPENSSL_INCLUDE_DIR=
 
-
-# Check whether --with-rlm-FOO-lib-dir was given.
-if test "${with_rlm_FOO_lib_dir+set}" = set; then :
-  withval=$with_rlm_FOO_lib_dir;  case "$withval" in
-  *)
-    ;;
-  esac
-
-fi
-
-
-
-# Check whether --with-rlm-FOO-include-dir was given.
-if test "${with_rlm_FOO_include_dir+set}" = set; then :
-  withval=$with_rlm_FOO_include_dir;  case "$withval" in
-  *)
+# Check whether --with-openssl-includes was given.
+if test "${with_openssl_includes+set}" = set; then :
+  withval=$with_openssl_includes;  case "$withval" in
+  *) OPENSSL_INCLUDE_DIR="$withval"
     ;;
   esac
 
@@ -5836,6 +5836,23 @@ if test "${with_talloc_lib_dir+set}" = set; then :
       ;;
     *)
       talloc_lib_dir="$withval"
+      ;;
+  esac
+fi
+
+
+talloc_include_dir=
+
+# Check whether --with-talloc-include-dir was given.
+if test "${with_talloc_include_dir+set}" = set; then :
+  withval=$with_talloc_include_dir; case "$withval" in
+    no)
+      as_fn_error $? "Need talloc-include-dir" "$LINENO" 5
+      ;;
+    yes)
+      ;;
+    *)
+      talloc_include_dir="$withval"
       ;;
   esac
 fi
@@ -6457,7 +6474,23 @@ if test "${with_pcap_lib_dir+set}" = set; then :
 fi
 
 
-LIBS_OLD="${LIBS}"
+pcap_include_dir=
+
+# Check whether --with-pcap-include-dir was given.
+if test "${with_pcap_include_dir+set}" = set; then :
+  withval=$with_pcap_include_dir; case "$withval" in
+    no)
+      as_fn_error $? "Need pcap-include-dir" "$LINENO" 5
+      ;;
+    yes)
+      ;;
+    *)
+      pcap_include_dir="$withval"
+      ;;
+  esac
+fi
+
+
 smart_try_dir="$pcap_lib_dir"
 
 
@@ -6626,8 +6659,8 @@ if test "x$smart_lib" != "x"; then
 fi
 
 if test "x$ac_cv_lib_pcap_pcap_open_live" != "xyes"; then
-  { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: pcap library not found, silently disabling the RADIUS sniffer.  Use --with-pcap-lib-dir=<path>." >&5
-$as_echo "$as_me: WARNING: pcap library not found, silently disabling the RADIUS sniffer.  Use --with-pcap-lib-dir=<path>." >&2;}
+  { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: pcap library not found, silently disabling the RADIUS sniffer, and ARP listener.  Use --with-pcap-lib-dir=<path>." >&5
+$as_echo "$as_me: WARNING: pcap library not found, silently disabling the RADIUS sniffer, and ARP listener.  Use --with-pcap-lib-dir=<path>." >&2;}
 else
 
 $as_echo "#define HAVE_LIBPCAP 1" >>confdefs.h
@@ -6723,7 +6756,7 @@ fi
 
   PCAP_LIBS="${smart_lib}"
 fi
-LIBS="${LIBS_OLD}"
+LIBS="${old_LIBS}"
 
 collectdclient_lib_dir=
 
@@ -6742,7 +6775,23 @@ if test "${with_collectdclient_lib_dir+set}" = set; then :
 fi
 
 
-LIBS_OLD="${LIBS}"
+collectdclient_include_dir=
+
+# Check whether --with-collectdclient-include-dir was given.
+if test "${with_collectdclient_include_dir+set}" = set; then :
+  withval=$with_collectdclient_include_dir; case "$withval" in
+    no)
+      as_fn_error $? "Need collectdclient-include-dir" "$LINENO" 5
+      ;;
+    yes)
+      ;;
+    *)
+      collectdclient_include_dir="$withval"
+      ;;
+  esac
+fi
+
+
 smart_try_dir="$collectdclient_lib_dir"
 
 
@@ -6916,7 +6965,7 @@ $as_echo "$as_me: WARNING: collectdclient library not found. Use --with-collectd
 else
   COLLECTDC_LIBS="${smart_lib}"
 fi
-LIBS="${LIBS_OLD}"
+LIBS="${old_LIBS}"
 
 
   { $as_echo "$as_me:${as_lineno-$LINENO}: checking for a readline compatible library" >&5
@@ -7047,23 +7096,6 @@ done
   fi
 
 
-
-
-talloc_include_dir=
-
-# Check whether --with-talloc-include-dir was given.
-if test "${with_talloc_include_dir+set}" = set; then :
-  withval=$with_talloc_include_dir; case "$withval" in
-    no)
-      as_fn_error $? "Need talloc-include-dir" "$LINENO" 5
-      ;;
-    yes)
-      ;;
-    *)
-      talloc_include_dir="$withval"
-      ;;
-  esac
-fi
 
 
 smart_try_dir="$talloc_include_dir"
@@ -7914,23 +7946,6 @@ fi
 
 export OPENSSL_LIBS
 
-pcap_include_dir=
-
-# Check whether --with-pcap-include-dir was given.
-if test "${with_pcap_include_dir+set}" = set; then :
-  withval=$with_pcap_include_dir; case "$withval" in
-    no)
-      as_fn_error $? "Need pcap-include-dir" "$LINENO" 5
-      ;;
-    yes)
-      ;;
-    *)
-      pcap_include_dir="$withval"
-      ;;
-  esac
-fi
-
-
 if test "x$PCAP_LIBS" = x; then
   { $as_echo "$as_me:${as_lineno-$LINENO}: skipping test for pcap.h." >&5
 $as_echo "$as_me: skipping test for pcap.h." >&6;}
@@ -8086,27 +8101,10 @@ $as_echo "#define HAVE_PCAP_H 1" >>confdefs.h
 
 
   else
-    { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: pcap headers not found, silently disabling the RADIUS sniffer. Use --with-pcap-include-dir=<path>." >&5
-$as_echo "$as_me: WARNING: pcap headers not found, silently disabling the RADIUS sniffer. Use --with-pcap-include-dir=<path>." >&2;}
+    { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: pcap headers not found, silently disabling the RADIUS sniffer, and ARP listener. Use --with-pcap-include-dir=<path>." >&5
+$as_echo "$as_me: WARNING: pcap headers not found, silently disabling the RADIUS sniffer, and ARP listener. Use --with-pcap-include-dir=<path>." >&2;}
   fi
 fi
-
-collectdclient_include_dir=
-
-# Check whether --with-collectdclient-include-dir was given.
-if test "${with_collectdclient_include_dir+set}" = set; then :
-  withval=$with_collectdclient_include_dir; case "$withval" in
-    no)
-      as_fn_error $? "Need collectdclient-include-dir" "$LINENO" 5
-      ;;
-    yes)
-      ;;
-    *)
-      collectdclient_include_dir="$withval"
-      ;;
-  esac
-fi
-
 
 if test "x$COLLECTDC_LIBS" = x; then
   { $as_echo "$as_me:${as_lineno-$LINENO}: skipping test for collectd/client.h." >&5

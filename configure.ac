@@ -517,48 +517,6 @@ if test "x$WITH_UDPFROMTO" = "xyes"; then
 fi
 
 dnl #
-dnl #  extra argument: --with-openssl
-dnl #
-WITH_OPENSSL=yes
-AC_ARG_WITH(openssl,
-[  --with-openssl          use OpenSSL. (default=yes)],
-[ case "$withval" in
-  no)
-    WITH_OPENSSL=no
-    ;;
-  *)
-    WITH_OPENSSL=yes
-    ;;
-  esac ]
-)
-
-dnl #
-dnl #  extra argument: --with-openssl-includes=dir
-dnl #
-OPENSSL_INCLUDE_DIR=
-AC_ARG_WITH(openssl-includes,
-[AS_HELP_STRING([--with-openssl-includes=DIR],
-[directory to look for OpenSSL include files])],
-[ case "$withval" in
-  *) OPENSSL_INCLUDE_DIR="$withval"
-    ;;
-  esac ]
-)
-
-dnl #
-dnl #  extra argument: --with-openssl-libraries=dir
-dnl #
-OPENSSL_LIB_DIR=
-AC_ARG_WITH(openssl-libraries,
-[AS_HELP_STRING([--with-openssl-libraries=DIR],
-[directory to look for OpenSSL library files])],
-[ case "$withval" in
-  *) OPENSSL_LIB_DIR="$withval"
-    ;;
-  esac ]
-)
-
-dnl #
 dnl #  These next two arguments don't actually do anything.  They're
 dnl #  place holders so that the top-level configure script can tell
 dnl #  the user how to configure lower-level modules
@@ -584,6 +542,48 @@ AC_ARG_WITH(rlm-FOO-include-dir,
 [directory in which to look for include files used by module FOO])],
 [ case "$withval" in
   *)
+    ;;
+  esac ]
+)
+
+dnl #
+dnl #  extra argument: --with-openssl
+dnl #
+WITH_OPENSSL=yes
+AC_ARG_WITH(openssl,
+[  --with-openssl          use OpenSSL. (default=yes)],
+[ case "$withval" in
+  no)
+    WITH_OPENSSL=no
+    ;;
+  *)
+    WITH_OPENSSL=yes
+    ;;
+  esac ]
+)
+
+dnl #
+dnl #  extra argument: --with-openssl-libraries=dir
+dnl #
+OPENSSL_LIB_DIR=
+AC_ARG_WITH(openssl-libraries,
+[AS_HELP_STRING([--with-openssl-libraries=DIR],
+[directory to look for OpenSSL library files])],
+[ case "$withval" in
+  *) OPENSSL_LIB_DIR="$withval"
+    ;;
+  esac ]
+)
+
+dnl #
+dnl #  extra argument: --with-openssl-includes=dir
+dnl #
+OPENSSL_INCLUDE_DIR=
+AC_ARG_WITH(openssl-includes,
+[AS_HELP_STRING([--with-openssl-includes=DIR],
+[directory to look for OpenSSL include files])],
+[ case "$withval" in
+  *) OPENSSL_INCLUDE_DIR="$withval"
     ;;
   esac ]
 )
@@ -643,6 +643,22 @@ AC_ARG_WITH(talloc-lib-dir,
       ;;
     *)
       talloc_lib_dir="$withval"
+      ;;
+  esac])
+
+dnl extra argument: --with-talloc-include-dir=DIR
+talloc_include_dir=
+AC_ARG_WITH(talloc-include-dir,
+  [AS_HELP_STRING([--with-talloc-include-dir=DIR],
+  [directory in which to look for talloc include files])],
+  [case "$withval" in
+    no)
+      AC_MSG_ERROR([Need talloc-include-dir])
+      ;;
+    yes)
+      ;;
+    *)
+      talloc_include_dir="$withval"
       ;;
   esac])
 
@@ -769,11 +785,26 @@ AC_ARG_WITH(pcap-lib-dir,
       ;;
   esac])
 
-LIBS_OLD="${LIBS}"
+dnl extra argument: --with-pcap-include-dir=DIR
+pcap_include_dir=
+AC_ARG_WITH(pcap-include-dir,
+  [AS_HELP_STRING([--with-pcap-include-dir=DIR],
+  [directory in which to look for pcap include files])],
+  [case "$withval" in
+    no)
+      AC_MSG_ERROR([Need pcap-include-dir])
+      ;;
+    yes)
+      ;;
+    *)
+      pcap_include_dir="$withval"
+      ;;
+  esac])
+
 smart_try_dir="$pcap_lib_dir"
 FR_SMART_CHECK_LIB(pcap, pcap_open_live)
 if test "x$ac_cv_lib_pcap_pcap_open_live" != "xyes"; then
-  AC_MSG_WARN([pcap library not found, silently disabling the RADIUS sniffer.  Use --with-pcap-lib-dir=<path>.])
+  AC_MSG_WARN([pcap library not found, silently disabling the RADIUS sniffer, and ARP listener.  Use --with-pcap-lib-dir=<path>.])
 else
   AC_DEFINE(HAVE_LIBPCAP, 1,
     [Define to 1 if you have the `pcap' library (-lpcap).]
@@ -789,7 +820,7 @@ else
 
   PCAP_LIBS="${smart_lib}"
 fi
-LIBS="${LIBS_OLD}"
+LIBS="${old_LIBS}"
 
 dnl Check for collectdclient
 dnl extra argument: --with-collectdclient-lib-dir=DIR
@@ -808,7 +839,22 @@ AC_ARG_WITH(collectdclient-lib-dir,
       ;;
   esac])
 
-LIBS_OLD="${LIBS}"
+dnl extra argument: --with-collectdclient-include-dir=DIR
+collectdclient_include_dir=
+AC_ARG_WITH(collectdclient-include-dir,
+  [AS_HELP_STRING([--with-collectdclient-include-dir=DIR],
+  [directory in which to look for collectdclient include files])],
+  [case "$withval" in
+    no)
+      AC_MSG_ERROR([Need collectdclient-include-dir])
+      ;;
+    yes)
+      ;;
+    *)
+      collectdclient_include_dir="$withval"
+      ;;
+  esac])
+
 smart_try_dir="$collectdclient_lib_dir"
 FR_SMART_CHECK_LIB(collectdclient, lcc_connect)
 if test "x$ac_cv_lib_collectdclient_lcc_connect" != "xyes"; then
@@ -816,7 +862,7 @@ if test "x$ac_cv_lib_collectdclient_lcc_connect" != "xyes"; then
 else
   COLLECTDC_LIBS="${smart_lib}"
 fi
-LIBS="${LIBS_OLD}"
+LIBS="${old_LIBS}"
 
 VL_LIB_READLINE
 
@@ -825,23 +871,6 @@ dnl #
 dnl #  3. Checks for header files
 dnl #
 dnl #############################################################
-
-dnl Check for talloc
-dnl extra argument: --with-talloc-include-dir=DIR
-talloc_include_dir=
-AC_ARG_WITH(talloc-include-dir,
-  [AS_HELP_STRING([--with-talloc-include-dir=DIR],
-  [directory in which to look for talloc include files])],
-  [case "$withval" in
-    no)
-      AC_MSG_ERROR([Need talloc-include-dir])
-      ;;
-    yes)
-      ;;
-    *)
-      talloc_include_dir="$withval"
-      ;;
-  esac])
 
 dnl #
 dnl # Check for talloc header files
@@ -1073,23 +1102,6 @@ export OPENSSL_LIBS
 dnl #
 dnl #  Check the pcap includes for the RADIUS sniffer.
 dnl #
-dnl Check for collectd-client
-dnl extra argument: --with-pcap-include-dir=DIR
-pcap_include_dir=
-AC_ARG_WITH(pcap-include-dir,
-  [AS_HELP_STRING([--with-pcap-include-dir=DIR],
-  [directory in which to look for pcap include files])],
-  [case "$withval" in
-    no)
-      AC_MSG_ERROR([Need pcap-include-dir])
-      ;;
-    yes)
-      ;;
-    *)
-      pcap_include_dir="$withval"
-      ;;
-  esac])
-
 if test "x$PCAP_LIBS" = x; then
   AC_MSG_NOTICE([skipping test for pcap.h.])
 else
@@ -1102,27 +1114,11 @@ else
     AC_DEFINE(HAVE_PCAP_H, 1, [Define to 1 if you have the `pcap' library (-lpcap).])
     AC_SUBST(PCAP_LIBS)
   else
-    AC_MSG_WARN([pcap headers not found, silently disabling the RADIUS sniffer. Use --with-pcap-include-dir=<path>.])
+    AC_MSG_WARN([pcap headers not found, silently disabling the RADIUS sniffer, and ARP listener. Use --with-pcap-include-dir=<path>.])
   fi
 fi
 
 dnl Check for collectd-client
-dnl extra argument: --with-collectdclient-include-dir=DIR
-collectdclient_include_dir=
-AC_ARG_WITH(collectdclient-include-dir,
-  [AS_HELP_STRING([--with-collectdclient-include-dir=DIR],
-  [directory in which to look for collectdclient include files])],
-  [case "$withval" in
-    no)
-      AC_MSG_ERROR([Need collectdclient-include-dir])
-      ;;
-    yes)
-      ;;
-    *)
-      collectdclient_include_dir="$withval"
-      ;;
-  esac])
-
 if test "x$COLLECTDC_LIBS" = x; then
   AC_MSG_NOTICE([skipping test for collectd/client.h.])
 else
