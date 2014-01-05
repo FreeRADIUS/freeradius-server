@@ -26,7 +26,7 @@ RCSID("$Id$")
 #define _LIBRADIUS 1
 #include <freeradius-devel/libradius.h>
 
-#include <freeradius-devel/wrapper/pcap.h>
+#include <pcap.h>
 
 #include <freeradius-devel/radpaths.h>
 #include <freeradius-devel/conf.h>
