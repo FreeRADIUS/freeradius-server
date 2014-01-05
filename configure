@@ -640,7 +640,6 @@ LIBPREFIX
 COLLECTDC_LIBS
 PCAP_LIBS
 OPENSSL_LIBS
-OPENSSL_INCLUDE
 LIBREADLINE
 DIRNAME
 LOCATE
@@ -5468,24 +5467,24 @@ if test "${with_openssl+set}" = set; then :
 fi
 
 
-OPENSSL_LIB_DIR=
+openssl_lib_dir=
 
 # Check whether --with-openssl-libraries was given.
 if test "${with_openssl_libraries+set}" = set; then :
   withval=$with_openssl_libraries;  case "$withval" in
-  *) OPENSSL_LIB_DIR="$withval"
+  *) openssl_lib_dir="$withval"
     ;;
   esac
 
 fi
 
 
-OPENSSL_INCLUDE_DIR=
+openssl_include_dir=
 
 # Check whether --with-openssl-includes was given.
 if test "${with_openssl_includes+set}" = set; then :
   withval=$with_openssl_includes;  case "$withval" in
-  *) OPENSSL_INCLUDE_DIR="$withval"
+  *) openssl_include_dir="$withval"
     ;;
   esac
 
@@ -7694,135 +7693,523 @@ $as_echo "#define OSFSIA /**/" >>confdefs.h
 fi
 
 if test "x$WITH_OPENSSL" = xyes; then
-  old_LIBS=$LIBS
-  old_LDFLAGS="$LDFLAGS"
+  OLD_LIBS="${LIBS}"
 
-  OPENSSL_INCLUDE="-DNO_OPENSSL"
-  OPENSSL_LIBS=
-  if test "x$OPENSSL_LIB_DIR" != "x"; then
-    LDFLAGS="-L$OPENSSL_LIB_DIR $LDFLAGS"
-  fi
+        CFLAGS="${CFLAGS} -DOPENSSL_NO_KRB5"
+  CPPFLAGS="${CPPFLAGS} -DOPENSSL_NO_KRB5"
 
-        { $as_echo "$as_me:${as_lineno-$LINENO}: checking for DH_new in -lcrypto" >&5
-$as_echo_n "checking for DH_new in -lcrypto... " >&6; }
-if ${ac_cv_lib_crypto_DH_new+:} false; then :
-  $as_echo_n "(cached) " >&6
-else
-  ac_check_lib_save_LIBS=$LIBS
-LIBS="-lcrypto  $LIBS"
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+        smart_try_dir="$openssl_lib_dir"
+
+
+sm_lib_safe=`echo "crypto" | sed 'y%./+-%__p_%'`
+sm_func_safe=`echo "DH_new" | sed 'y%./+-%__p_%'`
+
+old_LIBS="$LIBS"
+smart_lib=
+smart_lib_dir=
+
+if test "x$smart_try_dir" != "x"; then
+  for try in $smart_try_dir; do
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for DH_new in -lcrypto in $try" >&5
+$as_echo_n "checking for DH_new in -lcrypto in $try... " >&6; }
+    LIBS="-L$try -lcrypto $old_LIBS -Wl,-rpath,$try"
+    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
-
-/* Override any GCC internal prototype to avoid an error.
-   Use char because int might match the return type of a GCC
-   builtin and then its argument prototype would still apply.  */
-#ifdef __cplusplus
-extern "C"
-#endif
-char DH_new ();
+extern char DH_new();
 int
 main ()
 {
-return DH_new ();
+DH_new()
   ;
   return 0;
 }
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
-  ac_cv_lib_crypto_DH_new=yes
+
+		 smart_lib="-L$try -lcrypto -Wl,-rpath,$try"
+		 { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+		 break
+
 else
-  ac_cv_lib_crypto_DH_new=no
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
 fi
 rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
-LIBS=$ac_check_lib_save_LIBS
+  done
+  LIBS="$old_LIBS"
 fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_crypto_DH_new" >&5
-$as_echo "$ac_cv_lib_crypto_DH_new" >&6; }
-if test "x$ac_cv_lib_crypto_DH_new" = xyes; then :
 
-      LIBS="-lcrypto $LIBS"
+if test "x$smart_lib" = "x"; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for DH_new in -lcrypto" >&5
+$as_echo_n "checking for DH_new in -lcrypto... " >&6; }
+  LIBS="-lcrypto $old_LIBS"
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+extern char DH_new();
+int
+main ()
+{
+DH_new()
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+
+	        smart_lib="-lcrypto"
+	        { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+  LIBS="$old_LIBS"
+fi
+
+if test "x$smart_lib" = "x"; then
+
+
+if test "x$LOCATE" != "x"; then
+        DIRS=
+  file=libcrypto${libltdl_cv_shlibext}
+
+  for x in `${LOCATE} $file 2>/dev/null`; do
+                                        base=`echo $x | sed "s%/${file}%%"`
+    if test "x$x" = "x$base"; then
+      continue;
+    fi
+
+    dir=`${DIRNAME} $x 2>/dev/null`
+                exclude=`echo ${dir} | ${GREP} /home`
+    if test "x$exclude" != "x"; then
+      continue
+    fi
+
+                    already=`echo \$smart_lib_dir ${DIRS} | ${GREP} ${dir}`
+    if test "x$already" = "x"; then
+      DIRS="$DIRS $dir"
+    fi
+  done
+fi
+
+eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
+
+
+
+if test "x$LOCATE" != "x"; then
+        DIRS=
+  file=libcrypto.a
+
+  for x in `${LOCATE} $file 2>/dev/null`; do
+                                        base=`echo $x | sed "s%/${file}%%"`
+    if test "x$x" = "x$base"; then
+      continue;
+    fi
+
+    dir=`${DIRNAME} $x 2>/dev/null`
+                exclude=`echo ${dir} | ${GREP} /home`
+    if test "x$exclude" != "x"; then
+      continue
+    fi
+
+                    already=`echo \$smart_lib_dir ${DIRS} | ${GREP} ${dir}`
+    if test "x$already" = "x"; then
+      DIRS="$DIRS $dir"
+    fi
+  done
+fi
+
+eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
+
+
+  for try in $smart_lib_dir /usr/local/lib /opt/lib; do
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for DH_new in -lcrypto in $try" >&5
+$as_echo_n "checking for DH_new in -lcrypto in $try... " >&6; }
+    LIBS="-L$try -lcrypto $old_LIBS -Wl,-rpath,$try"
+    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+extern char DH_new();
+int
+main ()
+{
+DH_new()
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+
+		  smart_lib="-L$try -lcrypto -Wl,-rpath,$try"
+		  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+		  break
+
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+  done
+  LIBS="$old_LIBS"
+fi
+
+if test "x$smart_lib" != "x"; then
+  eval "ac_cv_lib_${sm_lib_safe}_${sm_func_safe}=yes"
+  LIBS="$smart_lib $old_LIBS"
+  SMART_LIBS="$smart_lib $SMART_LIBS"
+fi
+
+  if test "x$ac_cv_lib_crypto_DH_new" = "xyes"; then
 
 $as_echo "#define HAVE_LIBCRYPTO 1" >>confdefs.h
 
-      { $as_echo "$as_me:${as_lineno-$LINENO}: checking for SSL_new in -lssl" >&5
-$as_echo_n "checking for SSL_new in -lssl... " >&6; }
-if ${ac_cv_lib_ssl_SSL_new+:} false; then :
-  $as_echo_n "(cached) " >&6
-else
-  ac_check_lib_save_LIBS=$LIBS
-LIBS="-lssl  $LIBS"
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
+    OPENSSL_LIBS="${smart_lib}"
 
-/* Override any GCC internal prototype to avoid an error.
-   Use char because int might match the return type of a GCC
-   builtin and then its argument prototype would still apply.  */
-#ifdef __cplusplus
-extern "C"
-#endif
-char SSL_new ();
+
+
+sm_lib_safe=`echo "ssl" | sed 'y%./+-%__p_%'`
+sm_func_safe=`echo "SSL_new" | sed 'y%./+-%__p_%'`
+
+old_LIBS="$LIBS"
+smart_lib=
+smart_lib_dir=
+
+if test "x$smart_try_dir" != "x"; then
+  for try in $smart_try_dir; do
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for SSL_new in -lssl in $try" >&5
+$as_echo_n "checking for SSL_new in -lssl in $try... " >&6; }
+    LIBS="-L$try -lssl $old_LIBS -Wl,-rpath,$try"
+    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+extern char SSL_new();
 int
 main ()
 {
-return SSL_new ();
+SSL_new()
   ;
   return 0;
 }
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
-  ac_cv_lib_ssl_SSL_new=yes
+
+		 smart_lib="-L$try -lssl -Wl,-rpath,$try"
+		 { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+		 break
+
 else
-  ac_cv_lib_ssl_SSL_new=no
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
 fi
 rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
-LIBS=$ac_check_lib_save_LIBS
+  done
+  LIBS="$old_LIBS"
 fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_ssl_SSL_new" >&5
-$as_echo "$ac_cv_lib_ssl_SSL_new" >&6; }
-if test "x$ac_cv_lib_ssl_SSL_new" = xyes; then :
 
+if test "x$smart_lib" = "x"; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for SSL_new in -lssl" >&5
+$as_echo_n "checking for SSL_new in -lssl... " >&6; }
+  LIBS="-lssl $old_LIBS"
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+extern char SSL_new();
+int
+main ()
+{
+SSL_new()
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
 
-$as_echo "#define HAVE_LIBSSL 1" >>confdefs.h
-
-          if test "x$OPENSSL_LIB_DIR" != "x"; then
-            OPENSSL_LIBS="-L$OPENSSL_LIB_DIR"
-          fi
-          OPENSSL_LIBS="$OPENSSL_LIBS -lcrypto -lssl -lcrypto"
+	        smart_lib="-lssl"
+	        { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
 
 else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+  LIBS="$old_LIBS"
+fi
 
-          { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+if test "x$smart_lib" = "x"; then
+
+
+if test "x$LOCATE" != "x"; then
+        DIRS=
+  file=libssl${libltdl_cv_shlibext}
+
+  for x in `${LOCATE} $file 2>/dev/null`; do
+                                        base=`echo $x | sed "s%/${file}%%"`
+    if test "x$x" = "x$base"; then
+      continue;
+    fi
+
+    dir=`${DIRNAME} $x 2>/dev/null`
+                exclude=`echo ${dir} | ${GREP} /home`
+    if test "x$exclude" != "x"; then
+      continue
+    fi
+
+                    already=`echo \$smart_lib_dir ${DIRS} | ${GREP} ${dir}`
+    if test "x$already" = "x"; then
+      DIRS="$DIRS $dir"
+    fi
+  done
+fi
+
+eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
+
+
+
+if test "x$LOCATE" != "x"; then
+        DIRS=
+  file=libssl.a
+
+  for x in `${LOCATE} $file 2>/dev/null`; do
+                                        base=`echo $x | sed "s%/${file}%%"`
+    if test "x$x" = "x$base"; then
+      continue;
+    fi
+
+    dir=`${DIRNAME} $x 2>/dev/null`
+                exclude=`echo ${dir} | ${GREP} /home`
+    if test "x$exclude" != "x"; then
+      continue
+    fi
+
+                    already=`echo \$smart_lib_dir ${DIRS} | ${GREP} ${dir}`
+    if test "x$already" = "x"; then
+      DIRS="$DIRS $dir"
+    fi
+  done
+fi
+
+eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
+
+
+  for try in $smart_lib_dir /usr/local/lib /opt/lib; do
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for SSL_new in -lssl in $try" >&5
+$as_echo_n "checking for SSL_new in -lssl in $try... " >&6; }
+    LIBS="-L$try -lssl $old_LIBS -Wl,-rpath,$try"
+    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+extern char SSL_new();
+int
+main ()
+{
+SSL_new()
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+
+		  smart_lib="-L$try -lssl -Wl,-rpath,$try"
+		  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+		  break
+
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+  done
+  LIBS="$old_LIBS"
+fi
+
+if test "x$smart_lib" != "x"; then
+  eval "ac_cv_lib_${sm_lib_safe}_${sm_func_safe}=yes"
+  LIBS="$smart_lib $old_LIBS"
+  SMART_LIBS="$smart_lib $SMART_LIBS"
+fi
+
+    if test "x$ac_cv_lib_ssl_SSL_new" != "xyes"; then
+      { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
 $as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
 as_fn_error $? "failed linking to libssl
 See \`config.log' for more details" "$LINENO" 5; }
+    else
 
+$as_echo "#define HAVE_LIBSSL 1" >>confdefs.h
 
-fi
-
-
-fi
-
-
-        old_CPPFLAGS=$CPPFLAGS
-  old_CFLAGS=$CFLAGS
-  if test "x$OPENSSL_INCLUDE_DIR" != "x"; then
-    CPPFLAGS="-isystem $OPENSSL_INCLUDE_DIR $CPPFLAGS"
-    CFLAGS="-isystem $OPENSSL_INCLUDE_DIR $CFLAGS"
+      OPENSSL_LIBS="${OPENSSL_LIBS} ${smart_lib}"
+    fi
   fi
 
-        CPPFLAGS="$CPPFLAGS -DOPENSSL_NO_KRB5"
-  for ac_header in \
-    openssl/ssl.h \
-    openssl/crypto.h \
-    openssl/err.h \
-    openssl/evp.h \
-    openssl/md5.h \
-    openssl/md4.h \
-    openssl/sha.h \
-    openssl/ocsp.h \
-    openssl/engine.h
+  smart_try_dir="$openssl_include_dir"
+
+
+ac_safe=`echo "openssl/ssl.h" | sed 'y%./+-%__pm%'`
+old_CFLAGS="$CFLAGS"
+smart_include=
+smart_include_dir=
+
+if test "x$smart_try_dir" != "x"; then
+  for try in $smart_try_dir; do
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for openssl/ssl.h in $try" >&5
+$as_echo_n "checking for openssl/ssl.h in $try... " >&6; }
+    CFLAGS="$old_CFLAGS -isystem $try"
+    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+		    #include <openssl/ssl.h>
+int
+main ()
+{
+int a = 1;
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+
+		     smart_include="-isystem $try"
+		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+		     break
+
+else
+
+		     smart_include=
+		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+  done
+  CFLAGS="$old_CFLAGS"
+fi
+
+if test "x$smart_include" = "x"; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for openssl/ssl.h" >&5
+$as_echo_n "checking for openssl/ssl.h... " >&6; }
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+		  #include <openssl/ssl.h>
+int
+main ()
+{
+int a = 1;
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+
+		   smart_include=" "
+		   { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+		   break
+
+else
+
+		   smart_include=
+		   { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+
+if test "x$smart_include" = "x"; then
+
+
+if test "x$LOCATE" != "x"; then
+        DIRS=
+  file=openssl/ssl.h
+
+  for x in `${LOCATE} $file 2>/dev/null`; do
+                                        base=`echo $x | sed "s%/${file}%%"`
+    if test "x$x" = "x$base"; then
+      continue;
+    fi
+
+    dir=`${DIRNAME} $x 2>/dev/null`
+                exclude=`echo ${dir} | ${GREP} /home`
+    if test "x$exclude" != "x"; then
+      continue
+    fi
+
+                    already=`echo \$smart_include_dir ${DIRS} | ${GREP} ${dir}`
+    if test "x$already" = "x"; then
+      DIRS="$DIRS $dir"
+    fi
+  done
+fi
+
+eval "smart_include_dir=\"\$smart_include_dir $DIRS\""
+
+  for try in $smart_include_dir /usr/local/include /opt/include; do
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for openssl/ssl.h in $try" >&5
+$as_echo_n "checking for openssl/ssl.h in $try... " >&6; }
+    CFLAGS="$old_CFLAGS -isystem $try"
+    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+		    #include <openssl/ssl.h>
+int
+main ()
+{
+int a = 1;
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+
+		     smart_include="-isystem $try"
+		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+		     break
+
+else
+
+		     smart_include=
+		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+  done
+  CFLAGS="$old_CFLAGS"
+fi
+
+if test "x$smart_include" != "x"; then
+  eval "ac_cv_header_$ac_safe=yes"
+  CFLAGS="$old_CFLAGS $smart_include"
+  SMART_CFLAGS="$SMART_CFLAGS $smart_include"
+fi
+
+  if test "x$ac_cv_header_openssl_ssl_h" = "xyes"; then
+
+$as_echo "#define HAVE_OPENSSL_SSL_H 1" >>confdefs.h
+
+    OPENSSL_INCLUDE="${smart_include}"
+
+    for ac_header in \
+      openssl/crypto.h \
+      openssl/err.h \
+      openssl/evp.h \
+      openssl/md5.h \
+      openssl/md4.h \
+      openssl/sha.h \
+      openssl/ocsp.h \
+      openssl/engine.h
 do :
   as_ac_Header=`$as_echo "ac_cv_header_$ac_header" | $as_tr_sh`
 ac_fn_c_check_header_mongrel "$LINENO" "$ac_header" "$as_ac_Header" "$ac_includes_default"
@@ -7833,7 +8220,7 @@ _ACEOF
 
 else
 
-      { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+        { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
 $as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
 as_fn_error $? "failed locating OpenSSL headers
 See \`config.log' for more details" "$LINENO" 5; }
@@ -7844,27 +8231,27 @@ fi
 done
 
 
-  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for OpenSSL version >= 0.9.7" >&5
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for OpenSSL version >= 0.9.7" >&5
 $as_echo_n "checking for OpenSSL version >= 0.9.7... " >&6; }
-  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 #include <openssl/crypto.h>
-     #if (OPENSSL_VERSION_NUMBER >= 0x00907000L)
-     yes
-     #endif
+       #if (OPENSSL_VERSION_NUMBER >= 0x00907000L)
+       yes
+       #endif
 
 _ACEOF
 if (eval "$ac_cpp conftest.$ac_ext") 2>&5 |
   $EGREP "yes" >/dev/null 2>&1; then :
 
-      { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+        { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 
 else
 
-      { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+        { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
-      { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+        { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
 $as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
 as_fn_error $? "OpenSSL version too old
 See \`config.log' for more details" "$LINENO" 5; }
@@ -7874,15 +8261,9 @@ fi
 rm -f conftest*
 
 
-  if test "x$OPENSSL_INCLUDE_DIR" != "x"; then
-    OPENSSL_INCLUDE="-isystem $OPENSSL_INCLUDE_DIR -DOPENSSL_NO_KRB5"
-  else
-    OPENSSL_INCLUDE="-DOPENSSL_NO_KRB5"
-  fi
-
-        { $as_echo "$as_me:${as_lineno-$LINENO}: checking OpenSSL library and header version consistency" >&5
+                { $as_echo "$as_me:${as_lineno-$LINENO}: checking OpenSSL library and header version consistency" >&5
 $as_echo_n "checking OpenSSL library and header version consistency... " >&6; }
-  if test "$cross_compiling" = yes; then :
+    if test "$cross_compiling" = yes; then :
   { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
 $as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
 as_fn_error $? "cannot run test program while cross compiling
@@ -7891,20 +8272,20 @@ else
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-        #include <stdio.h>
-        #include <openssl/opensslv.h>
-        #include <openssl/crypto.h>
+          #include <stdio.h>
+          #include <openssl/opensslv.h>
+          #include <openssl/crypto.h>
 
 int
 main ()
 {
 
-        if (SSLeay() == OPENSSL_VERSION_NUMBER) {
-          return 0;
-        } else {
-          printf("library: %lx header: %lx... ", (unsigned long) SSLeay(), (unsigned long) OPENSSL_VERSION_NUMBER);
-          return 1;
-        }
+          if (SSLeay() == OPENSSL_VERSION_NUMBER) {
+            return 0;
+          } else {
+            printf("library: %lx header: %lx... ", (unsigned long) SSLeay(), (unsigned long) OPENSSL_VERSION_NUMBER);
+            return 1;
+          }
 
 
   ;
@@ -7913,14 +8294,14 @@ main ()
 _ACEOF
 if ac_fn_c_try_run "$LINENO"; then :
 
-      { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+        { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 
 else
 
-      { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+        { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
-      { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+        { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
 $as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
 as_fn_error $? "OpenSSL library version does not match header version
 See \`config.log' for more details" "$LINENO" 5; }
@@ -7931,17 +8312,10 @@ rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
   conftest.$ac_objext conftest.beam conftest.$ac_ext
 fi
 
+  fi
 
-  if test "x$OPENSSL_LIBS" = x; then
-    LIBS=$old_LIBS
-    LDFLAGS="$old_LDFLAGS"
-  fi
-  if test "x$OPENSSL_INCLUDE" = x; then
-    CPPFLAGS=$old_CPPFLAGS
-    CFLAGS=$old_CFLAGS
-  fi
+  LIBS="${OLD_LIBS}"
 fi
-
 
 
 export OPENSSL_LIBS

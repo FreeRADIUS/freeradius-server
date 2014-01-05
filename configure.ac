@@ -565,12 +565,12 @@ AC_ARG_WITH(openssl,
 dnl #
 dnl #  extra argument: --with-openssl-libraries=dir
 dnl #
-OPENSSL_LIB_DIR=
+openssl_lib_dir=
 AC_ARG_WITH(openssl-libraries,
 [AS_HELP_STRING([--with-openssl-libraries=DIR],
 [directory to look for OpenSSL library files])],
 [ case "$withval" in
-  *) OPENSSL_LIB_DIR="$withval"
+  *) openssl_lib_dir="$withval"
     ;;
   esac ]
 )
@@ -578,12 +578,12 @@ AC_ARG_WITH(openssl-libraries,
 dnl #
 dnl #  extra argument: --with-openssl-includes=dir
 dnl #
-OPENSSL_INCLUDE_DIR=
+openssl_include_dir=
 AC_ARG_WITH(openssl-includes,
 [AS_HELP_STRING([--with-openssl-includes=DIR],
 [directory to look for OpenSSL include files])],
 [ case "$withval" in
-  *) OPENSSL_INCLUDE_DIR="$withval"
+  *) openssl_include_dir="$withval"
     ;;
   esac ]
 )
@@ -972,130 +972,104 @@ dnl #
 dnl #  Were we told to use OpenSSL, if we were and we find an error, call AC_MSG_FAILURE and exit
 dnl #
 if test "x$WITH_OPENSSL" = xyes; then
-  old_LIBS=$LIBS
-  old_LDFLAGS="$LDFLAGS"
+  OLD_LIBS="${LIBS}"
 
-  OPENSSL_INCLUDE="-DNO_OPENSSL"
-  OPENSSL_LIBS=
-  if test "x$OPENSSL_LIB_DIR" != "x"; then
-    LDFLAGS="-L$OPENSSL_LIB_DIR $LDFLAGS"
-  fi
+  dnl #
+  dnl #  Apparently OpenSSL will attempt to build with kerberos if we don't pass this?!
+  dnl #
+  CFLAGS="${CFLAGS} -DOPENSSL_NO_KRB5"
+  CPPFLAGS="${CPPFLAGS} -DOPENSSL_NO_KRB5"
 
   dnl #
   dnl #  Check we can link to libssl
   dnl #
-  AC_CHECK_LIB(crypto, DH_new,
-    [
-      LIBS="-lcrypto $LIBS"
-      AC_DEFINE(HAVE_LIBCRYPTO, 1, [Define to 1 if you have the `crypto' library (-lcrypto).])
-      AC_CHECK_LIB(ssl, SSL_new,
-        [
-          AC_DEFINE(HAVE_LIBSSL, 1, [Define to 1 if you have the `ssl' library (-lssl).])
-          if test "x$OPENSSL_LIB_DIR" != "x"; then
-            OPENSSL_LIBS="-L$OPENSSL_LIB_DIR"
-          fi
-          OPENSSL_LIBS="$OPENSSL_LIBS -lcrypto -lssl -lcrypto"
-        ],
-        [
-          AC_MSG_FAILURE([failed linking to libssl])
-        ]
-      )
-    ],
-    []
-  )
+  smart_try_dir="$openssl_lib_dir"
+  FR_SMART_CHECK_LIB(crypto, DH_new)
+  if test "x$ac_cv_lib_crypto_DH_new" = "xyes"; then
+    AC_DEFINE(HAVE_LIBCRYPTO, 1, [Define to 1 if you have the `crypto' library (-lcrypto).])
+    OPENSSL_LIBS="${smart_lib}"
 
-  dnl #
-  dnl #  Check we can find required headers
-  dnl #
-  old_CPPFLAGS=$CPPFLAGS
-  old_CFLAGS=$CFLAGS
-  if test "x$OPENSSL_INCLUDE_DIR" != "x"; then
-    CPPFLAGS="-isystem $OPENSSL_INCLUDE_DIR $CPPFLAGS"
-    CFLAGS="-isystem $OPENSSL_INCLUDE_DIR $CFLAGS"
-  fi
-
-  dnl #
-  dnl #  Stupid RedHat shit
-  dnl #
-  CPPFLAGS="$CPPFLAGS -DOPENSSL_NO_KRB5"
-  AC_CHECK_HEADERS( \
-    openssl/ssl.h \
-    openssl/crypto.h \
-    openssl/err.h \
-    openssl/evp.h \
-    openssl/md5.h \
-    openssl/md4.h \
-    openssl/sha.h \
-    openssl/ocsp.h \
-    openssl/engine.h,
-    [],
-    [
-      AC_MSG_FAILURE([failed locating OpenSSL headers])
-    ]
-  )
-
-  AC_MSG_CHECKING([for OpenSSL version >= 0.9.7])
-  AC_EGREP_CPP(yes,
-    [#include <openssl/crypto.h>
-     #if (OPENSSL_VERSION_NUMBER >= 0x00907000L)
-     yes
-     #endif
-    ],
-    [
-      AC_MSG_RESULT(yes)
-    ],
-    [
-      AC_MSG_RESULT(no)
-      AC_MSG_FAILURE([OpenSSL version too old])
-    ]
-  )
-
-  if test "x$OPENSSL_INCLUDE_DIR" != "x"; then
-    OPENSSL_INCLUDE="-isystem $OPENSSL_INCLUDE_DIR -DOPENSSL_NO_KRB5"
+    FR_SMART_CHECK_LIB(ssl, SSL_new)
+    if test "x$ac_cv_lib_ssl_SSL_new" != "xyes"; then
+      AC_MSG_FAILURE([failed linking to libssl])
+    else
+      AC_DEFINE(HAVE_LIBSSL, 1, [Define to 1 if you have the `ssl' library (-lssl).])
+      OPENSSL_LIBS="${OPENSSL_LIBS} ${smart_lib}"
+    fi
   else
-    OPENSSL_INCLUDE="-DOPENSSL_NO_KRB5"
+    AC_MSG_FAILURE([failed linking to libcrypto])
   fi
 
-  dnl #
-  dnl #  Now check that the header versions match the library
-  dnl #
-  AC_MSG_CHECKING([OpenSSL library and header version consistency])
-  AC_RUN_IFELSE(
-    [AC_LANG_PROGRAM(
-      [[
-        #include <stdio.h>
-        #include <openssl/opensslv.h>
-        #include <openssl/crypto.h>
-      ]],
-      [[
-        if (SSLeay() == OPENSSL_VERSION_NUMBER) {
-          return 0;
-        } else {
-          printf("library: %lx header: %lx... ", (unsigned long) SSLeay(), (unsigned long) OPENSSL_VERSION_NUMBER);
-          return 1;
-        }
-      ]]
-    )],
-    [
-      AC_MSG_RESULT(yes)
-    ],
-    [
-      AC_MSG_RESULT(no)
-      AC_MSG_FAILURE([OpenSSL library version does not match header version])
-    ]
-  )
+  smart_try_dir="$openssl_include_dir"
+  FR_SMART_CHECK_INCLUDE(openssl/ssl.h)
+  if test "x$ac_cv_header_openssl_ssl_h" = "xyes"; then
+    AC_DEFINE(HAVE_OPENSSL_SSL_H, 1, [Define to 1 if you have the <openssl/ssl.h> header file.])
+    OPENSSL_INCLUDE="${smart_include}"
 
-  if test "x$OPENSSL_LIBS" = x; then
-    LIBS=$old_LIBS
-    LDFLAGS="$old_LDFLAGS"
+    AC_CHECK_HEADERS( \
+      openssl/crypto.h \
+      openssl/err.h \
+      openssl/evp.h \
+      openssl/md5.h \
+      openssl/md4.h \
+      openssl/sha.h \
+      openssl/ocsp.h \
+      openssl/engine.h,
+      [],
+      [
+        AC_MSG_FAILURE([failed locating OpenSSL headers])
+      ]
+    )
+
+    AC_MSG_CHECKING([for OpenSSL version >= 0.9.7])
+    AC_EGREP_CPP(yes,
+      [#include <openssl/crypto.h>
+       #if (OPENSSL_VERSION_NUMBER >= 0x00907000L)
+       yes
+       #endif
+      ],
+      [
+        AC_MSG_RESULT(yes)
+      ],
+      [
+        AC_MSG_RESULT(no)
+        AC_MSG_FAILURE([OpenSSL version too old])
+      ]
+    )
+
+    dnl #
+    dnl #  Now check that the header versions match the library
+    dnl #
+    AC_MSG_CHECKING([OpenSSL library and header version consistency])
+    AC_RUN_IFELSE(
+      [AC_LANG_PROGRAM(
+        [[
+          #include <stdio.h>
+          #include <openssl/opensslv.h>
+          #include <openssl/crypto.h>
+        ]],
+        [[
+          if (SSLeay() == OPENSSL_VERSION_NUMBER) {
+            return 0;
+          } else {
+            printf("library: %lx header: %lx... ", (unsigned long) SSLeay(), (unsigned long) OPENSSL_VERSION_NUMBER);
+            return 1;
+          }
+        ]]
+      )],
+      [
+        AC_MSG_RESULT(yes)
+      ],
+      [
+        AC_MSG_RESULT(no)
+        AC_MSG_FAILURE([OpenSSL library version does not match header version])
+      ]
+    )
   fi
-  if test "x$OPENSSL_INCLUDE" = x; then
-    CPPFLAGS=$old_CPPFLAGS
-    CFLAGS=$old_CFLAGS
-  fi
+
+  LIBS="${OLD_LIBS}"
 fi
 
-AC_SUBST(OPENSSL_INCLUDE)
 AC_SUBST(OPENSSL_LIBS)
 export OPENSSL_LIBS
 
