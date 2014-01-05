@@ -7068,7 +7068,6 @@ $as_echo "#define HAVE_LIBSSL 1" >>confdefs.h
             OPENSSL_LIBS="-L$OPENSSL_LIB_DIR"
           fi
           OPENSSL_LIBS="$OPENSSL_LIBS -lcrypto -lssl -lcrypto"
-          LIBS="$OPENSSL_LIBS $LIBS"
 
 else
 

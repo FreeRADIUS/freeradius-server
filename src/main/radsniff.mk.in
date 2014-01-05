@@ -9,4 +9,4 @@ endif
 SOURCES		:= radsniff.c
 
 TGT_PREREQS	:= libfreeradius-radius.a
-TGT_LDLIBS	:= $(LIBS) $(OPENSSL_LIBS) $(PCAP_LIBS)
+TGT_LDLIBS	:= $(LIBS) $(PCAP_LIBS)
