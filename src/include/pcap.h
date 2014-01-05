@@ -26,7 +26,7 @@
 #include <freeradius-devel/libradius.h>
 #include <sys/types.h>
 #include <netinet/in.h>
-#include <freeradius-devel/wrapper/pcap.h>
+#include <pcap.h>
 
 /*
  *	Length of a DEC/Intel/Xerox or 802.3 Ethernet header.

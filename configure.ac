@@ -820,6 +820,7 @@ else
 
   PCAP_LIBS="${smart_lib}"
 fi
+dnl Set by FR_SMART_CHECK_LIB
 LIBS="${old_LIBS}"
 
 dnl Check for collectdclient
@@ -862,6 +863,7 @@ if test "x$ac_cv_lib_collectdclient_lcc_connect" != "xyes"; then
 else
   COLLECTDC_LIBS="${smart_lib}"
 fi
+dnl Set by FR_SMART_CHECKLIB
 LIBS="${old_LIBS}"
 
 VL_LIB_READLINE
@@ -885,7 +887,6 @@ fi
 dnl #
 dnl #  Interix requires us to set -D_ALL_SOURCE, otherwise
 dnl #  getopt will be #included, but won't link.  <sigh>
-dnl #
 dnl #
 case "$host" in
   *-interix*)
@@ -950,10 +951,12 @@ dnl #
 dnl #  FreeBSD requires sys/socket.h before net/if.h
 dnl #
 AC_CHECK_HEADERS(net/if.h, [], [],
-[#ifdef HAVE_SYS_SOCKET_H
-#  include <sys/socket.h>
-#  endif
-])
+  [
+    #ifdef HAVE_SYS_SOCKET_H
+    #  include <sys/socket.h>
+    #endif
+  ]
+)
 
 dnl #
 dnl #  other checks which require headers
@@ -1085,7 +1088,7 @@ else
   smart_try_dir="$pcap_include_dir"
   FR_SMART_CHECK_INCLUDE([pcap.h])
   if test "x$ac_cv_header_pcap_h" == "xyes"; then
-    AC_DEFINE(HAVE_PCAP_H, 1, [Define to 1 if you have the `pcap' library (-lpcap).])
+    AC_DEFINE(HAVE_PCAP_H, 1, [Define to 1 if you have the <pcap.h> header file.])
     AC_SUBST(PCAP_LIBS)
   else
     AC_MSG_WARN([pcap headers not found, silently disabling the RADIUS sniffer, and ARP listener. Use --with-pcap-include-dir=<path>.])

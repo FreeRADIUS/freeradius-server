@@ -7663,9 +7663,11 @@ done
 
 for ac_header in net/if.h
 do :
-  ac_fn_c_check_header_compile "$LINENO" "net/if.h" "ac_cv_header_net_if_h" "#ifdef HAVE_SYS_SOCKET_H
-#  include <sys/socket.h>
-#  endif
+  ac_fn_c_check_header_compile "$LINENO" "net/if.h" "ac_cv_header_net_if_h" "
+    #ifdef HAVE_SYS_SOCKET_H
+    #  include <sys/socket.h>
+    #endif
+
 
 "
 if test "x$ac_cv_header_net_if_h" = xyes; then :
