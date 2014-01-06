@@ -1099,15 +1099,21 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 
 #ifdef WITH_PROXY
 	if (check_config) {
+		/*
+	 	 *	Until there is a side effects free way of forwarding a
+	 	 *	request to another virtual server, this check is invalid,
+	 	 *	and should be left disabled.
+	 	 */
+#if 0
 		if (home_server_find(&sock->my_ipaddr, sock->my_port, sock->proto)) {
 				char buffer[128];
 
-				EDEBUG("We have been asked to listen on %s port %d, which is also listed as a home server.  This can create a proxy loop.",
-				      ip_ntoh(&sock->my_ipaddr, buffer, sizeof(buffer)),
-				      sock->my_port);
+				EDEBUG("We have been asked to listen on %s port %d, which is also listed as a "
+				       "home server.  This can create a proxy loop",
+				       ip_ntoh(&sock->my_ipaddr, buffer, sizeof(buffer)), sock->my_port);
 				return -1;
 		}
-
+#endif
 		return 0;	/* don't do anything */
 	}
 #endif
