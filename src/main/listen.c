@@ -547,15 +547,6 @@ static int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	sock->port = listen_port;
 
 	if (check_config) {
-		if (home_server_find(&sock->ipaddr, sock->port)) {
-				char buffer[128];
-				
-				DEBUG("ERROR: We have been asked to listen on %s port %d, which is also listed as a home server.  This can create a proxy loop.",
-				      ip_ntoh(&sock->ipaddr, buffer, sizeof(buffer)),
-				      sock->port);
-				return -1;
-		}
-
 		return 0;	/* don't do anything */
 	}
 
