@@ -238,7 +238,7 @@ static int detail_write(FILE *out, detail_instance_t *inst, REQUEST *request, RA
 		     vp;
 		     vp = pairnext(&cursor)) {
 			if (inst->ht &&
-			    fr_hash_table_finddata(inst->ht, &vp->da)) continue;
+			    fr_hash_table_finddata(inst->ht, vp->da)) continue;
 
 			/*
 			 *	Don't print passwords in old format...
