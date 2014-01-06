@@ -29,6 +29,7 @@ RCSIDH(krb5_h, "$Id$")
 #endif
 
 /* krb5 includes */
+USES_APPLE_DEPRECATED_API
 #include <krb5.h>
 
 typedef struct rlm_krb5_handle {

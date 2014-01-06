@@ -28,6 +28,7 @@
  * 	For a typical Makefile, add linker flag like this:
  *	LDFLAGS = -framework DirectoryService
  */
+USES_APPLE_DEPRECATED_API
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
 #include <freeradius-devel/rad_assert.h>
