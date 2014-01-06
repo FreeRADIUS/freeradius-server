@@ -71,7 +71,11 @@ INSTALLSTRIP	= @INSTALLSTRIP@
 DARWIN_CFLAGS	= @DARWIN_CFLAGS@
 
 LCRYPT		= @CRYPTLIB@
-LIBS		= @LIBS@
+#
+#  OpenSSL libs (if used) must be linked everywhere in order for
+#  the server to work properly on on all platforms.
+#
+LIBS		= @LIBS@ @OPENSSL_LIBS@
 PCAP_LIBS	= @PCAP_LIBS@
 COLLECTDC_LIBS	= @COLLECTDC_LIBS@
 LDFLAGS		= @LDFLAGS@
