@@ -22,6 +22,10 @@ FreeRADIUS 3.0.1 Mon  7 Oct 2013 15:48:14 EDT urgency=medium
 	  PostgreSQL driver.
 	* Changes to the OpenLDAP schema to fully expose functionality
 	  of the new LDAP module.
+	* Update debian packaging to include a freeradius-config
+	  package. This package may be provided as a site local 
+	  package to avoid fighting with the preinstalled config 
+	  files.
 
 	Bug fixes
 	* Use correct field for ARP setting in DHCP.
