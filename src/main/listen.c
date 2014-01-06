@@ -101,7 +101,7 @@ static size_t xlat_listen(UNUSED void *instance, REQUEST *request,
 		*out = '\0';
 		return 0;
 	}
-	
+
 	strlcpy(out, value, outlen);
 
 	return strlen(out);
@@ -136,7 +136,7 @@ RADCLIENT *client_listener_find(const rad_listen_t *listener,
 	if (!client) {
 		static time_t last_printed = 0;
 		char name[256], buffer[128];
-					
+
 #ifdef WITH_DYNAMIC_CLIENTS
 	unknown:		/* used only for dynamic clients */
 #endif
@@ -149,7 +149,7 @@ RADCLIENT *client_listener_find(const rad_listen_t *listener,
 		if (debug_flag == 0) {
 			now = time(NULL);
 			if (last_printed == now) return NULL;
-			
+
 			last_printed = now;
 		}
 
@@ -172,7 +172,7 @@ RADCLIENT *client_listener_find(const rad_listen_t *listener,
 	if (!client->client_server && !client->dynamic) return client;
 
 	now = time(NULL);
-	
+
 	/*
 	 *	It's a dynamically generated client, check it.
 	 */
@@ -181,7 +181,7 @@ RADCLIENT *client_listener_find(const rad_listen_t *listener,
 		 *	Lives forever.  Return it.
 		 */
 		if (client->lifetime == 0) return client;
-		
+
 		/*
 		 *	Rate-limit the deletion of known clients.
 		 *	This makes them last a little longer, but
@@ -194,7 +194,7 @@ RADCLIENT *client_listener_find(const rad_listen_t *listener,
 		 *	It's not dead yet.  Return it.
 		 */
 		if ((client->created + client->lifetime) > now) return client;
-		
+
 		/*
 		 *	This really puts them onto a queue for later
 		 *	deletion.
@@ -466,7 +466,7 @@ static int socket_print(const rad_listen_t *this, char *buffer, size_t bufsize)
 	}
 
 	ADDSTRING(" address ");
-	
+
 	if ((sock->ipaddr.af == AF_INET) &&
 	    (sock->ipaddr.ipaddr.ip4addr.s_addr == htonl(INADDR_ANY))) {
 		strlcpy(buffer, "*", bufsize);
@@ -595,7 +595,7 @@ static int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	 */
 	if (this->type == RAD_LISTEN_PROXY) return 0;
 #endif
-	
+
 	/*
 	 *	The more specific configurations are preferred to more
 	 *	generic ones.
@@ -999,7 +999,7 @@ static int do_proxy(REQUEST *request)
 
 	vp = pairfind(request->config_items, PW_HOME_SERVER_POOL);
 	if (!vp) return 0;
-	
+
 	if (!home_pool_byname(vp->vp_strvalue, HOME_TYPE_COA)) {
 		RDEBUG2("ERROR: Cannot proxy to unknown pool %s",
 			vp->vp_strvalue);
@@ -1076,10 +1076,10 @@ static int rad_coa_recv(REQUEST *request)
 		default:
 			request->reply->code = nak;
 			break;
-			
+
 		case RLM_MODULE_HANDLED:
 			return rcode;
-			
+
 		case RLM_MODULE_NOOP:
 		case RLM_MODULE_NOTFOUND:
 		case RLM_MODULE_OK:
@@ -1124,10 +1124,10 @@ static int rad_coa_recv(REQUEST *request)
 			 */
 			request->reply->code = nak;
 			break;
-			
+
 		case RLM_MODULE_HANDLED:
 			return rcode;
-			
+
 		case RLM_MODULE_NOOP:
 		case RLM_MODULE_NOTFOUND:
 		case RLM_MODULE_OK:
@@ -1539,7 +1539,7 @@ static int listen_bind(rad_listen_t *this)
 		}
 	}
 #endif
-		
+
 	/*
 	 *	Bind to a device BEFORE touching IP addresses.
 	 */
@@ -1608,7 +1608,7 @@ static int listen_bind(rad_listen_t *this)
 		return -1;
 	}
 #endif
-	
+
 	/*
 	 *	Set up sockaddr stuff.
 	 */
@@ -1616,7 +1616,7 @@ static int listen_bind(rad_listen_t *this)
 		close(this->fd);
 		return -1;
 	}
-		
+
 #ifdef HAVE_STRUCT_SOCKADDR_IN6
 	if (sock->ipaddr.af == AF_INET6) {
 		/*
@@ -1626,10 +1626,10 @@ static int listen_bind(rad_listen_t *this)
 		 *	design a little simpler.
 		 */
 #ifdef IPV6_V6ONLY
-		
+
 		if (IN6_IS_ADDR_UNSPECIFIED(&sock->ipaddr.ipaddr.ip6addr)) {
 			int on = 1;
-			
+
 			setsockopt(this->fd, IPPROTO_IPV6, IPV6_V6ONLY,
 				   (char *)&on, sizeof(on));
 		}
@@ -1640,7 +1640,7 @@ static int listen_bind(rad_listen_t *this)
 
 	if (sock->ipaddr.af == AF_INET) {
 		UNUSED int flag;
-		
+
 #if defined(IP_MTU_DISCOVER) && defined(IP_PMTUDISC_DONT)
 		/*
 		 *	Disable PMTU discovery.  On Linux, this
@@ -1671,13 +1671,13 @@ static int listen_bind(rad_listen_t *this)
 	if (rcode < 0) {
 		char buffer[256];
 		close(this->fd);
-		
+
 		this->print(this, buffer, sizeof(buffer));
 		radlog(L_ERR, "Failed binding to %s: %s\n",
 		       buffer, strerror(errno));
 		return -1;
 	}
-	
+
 	/*
 	 *	FreeBSD jail issues.  We bind to 0.0.0.0, but the
 	 *	kernel instead binds us to a 1.2.3.4.  If this
@@ -1705,13 +1705,13 @@ static int listen_bind(rad_listen_t *this)
 #ifdef O_NONBLOCK
 	{
 		int flags;
-		
+
 		if ((flags = fcntl(this->fd, F_GETFL, NULL)) < 0)  {
 			radlog(L_ERR, "Failure getting socket flags: %s)\n",
 			       strerror(errno));
 			return -1;
 		}
-		
+
 		flags |= O_NONBLOCK;
 		if( fcntl(this->fd, F_SETFL, flags) < 0) {
 			radlog(L_ERR, "Failure setting socket flags: %s)\n",
@@ -1828,7 +1828,7 @@ rad_listen_t *proxy_new_listener(fr_ipaddr_t *ipaddr, int exists)
 			if (exists) return tmp;
 			goto next;
 		}
-		
+
 		if (!old) old = sock;
 
 	next:
@@ -1919,7 +1919,7 @@ static rad_listen_t *listen_parse(CONF_SECTION *cs, const char *server)
 	rad_listen_t	*this;
 
 	listen_type = NULL;
-	
+
 	cf_log_info(cs, "listen {");
 
 	rcode = cf_item_parse(cs, "type", PW_TYPE_STRING_PTR,
@@ -1941,7 +1941,7 @@ static rad_listen_t *listen_parse(CONF_SECTION *cs, const char *server)
 		return NULL;
 	}
 	free(listen_type);
-	
+
 	/*
 	 *	Allow listen sections in the default config to
 	 *	refer to a server.
@@ -2157,7 +2157,7 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head)
 #ifdef WITH_PROXY
 			if (this->type == RAD_LISTEN_PROXY) defined_proxy = 1;
 #endif
-			
+
 			*last = this;
 			last = &(this->next);
 		} /* loop over "listen" directives in server <foo> */
@@ -2195,7 +2195,7 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head)
 	     cs = cf_subsection_find_next(config, cs, "server")) {
 		CONF_SECTION *subcs;
 		const char *name2 = cf_section_name2(cs);
-		
+
 		for (subcs = cf_subsection_find_next(cs, NULL, "listen");
 		     subcs != NULL;
 		     subcs = cf_subsection_find_next(cs, subcs, "listen")) {
@@ -2204,7 +2204,7 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head)
 				listen_free(head);
 				return -1;
 			}
-			
+
 #ifdef WITH_PROXY
 			if (this->type == RAD_LISTEN_PROXY) {
 				radlog(L_ERR, "Error: listen type \"proxy\" Cannot appear in a virtual server section");
@@ -2314,7 +2314,7 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head)
 			radlog(L_ERR, "Failed to open socket for proxying");
 			return -1;
 		}
-		
+
 		/*
 		 *	Create *additional* proxy listeners, based
 		 *	on their src_ipaddr.
@@ -2370,7 +2370,7 @@ RADCLIENT_LIST *listener_find_client_list(const fr_ipaddr_t *ipaddr,
 
 		if ((this->type != RAD_LISTEN_AUTH) &&
 		    (this->type != RAD_LISTEN_ACCT)) continue;
-		
+
 		sock = this->data;
 
 		if ((sock->port == port) &&
@@ -2396,7 +2396,7 @@ rad_listen_t *listener_find_byipaddr(const fr_ipaddr_t *ipaddr, int port)
 		 */
 		if ((this->type != RAD_LISTEN_AUTH) &&
 		    (this->type != RAD_LISTEN_ACCT)) continue;
-		
+
 		sock = this->data;
 
 		if ((sock->port == port) &&
