@@ -563,11 +563,11 @@ AC_ARG_WITH(openssl,
 )
 
 dnl #
-dnl #  extra argument: --with-openssl-libraries=dir
+dnl #  extra argument: --with-openssl-lib-dir=dir
 dnl #
 openssl_lib_dir=
-AC_ARG_WITH(openssl-libraries,
-[AS_HELP_STRING([--with-openssl-libraries=DIR],
+AC_ARG_WITH(openssl-lib-dir,
+[AS_HELP_STRING([--with-openssl-lib-dir=DIR],
 [directory to look for OpenSSL library files])],
 [ case "$withval" in
   *) openssl_lib_dir="$withval"
@@ -579,8 +579,8 @@ dnl #
 dnl #  extra argument: --with-openssl-includes=dir
 dnl #
 openssl_include_dir=
-AC_ARG_WITH(openssl-includes,
-[AS_HELP_STRING([--with-openssl-includes=DIR],
+AC_ARG_WITH(openssl-include-dir,
+[AS_HELP_STRING([--with-openssl-include-dir=DIR],
 [directory to look for OpenSSL include files])],
 [ case "$withval" in
   *) openssl_include_dir="$withval"
@@ -1051,10 +1051,10 @@ if test "x$WITH_OPENSSL" = xyes; then
           #include <openssl/crypto.h>
         ]],
         [[
+          printf("library: %lx header: %lx... ", (unsigned long) SSLeay(), (unsigned long) OPENSSL_VERSION_NUMBER);
           if (SSLeay() == OPENSSL_VERSION_NUMBER) {
             return 0;
           } else {
-            printf("library: %lx header: %lx... ", (unsigned long) SSLeay(), (unsigned long) OPENSSL_VERSION_NUMBER);
             return 1;
           }
         ]]

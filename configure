@@ -751,8 +751,8 @@ with_udpfromto
 with_rlm_FOO_lib_dir
 with_rlm_FOO_include_dir
 with_openssl
-with_openssl_libraries
-with_openssl_includes
+with_openssl_lib_dir
+with_openssl_include_dir
 with_talloc_lib_dir
 with_talloc_include_dir
 with_pcap_lib_dir
@@ -1420,9 +1420,9 @@ Optional Packages:
                           directory in which to look for include files used by
                           module FOO
   --with-openssl          use OpenSSL. (default=yes)
-  --with-openssl-libraries=DIR
+  --with-openssl-lib-dir=DIR
                           directory to look for OpenSSL library files
-  --with-openssl-includes=DIR
+  --with-openssl-include-dir=DIR
                           directory to look for OpenSSL include files
   --with-talloc-lib-dir=DIR
                           directory in which to look for talloc library files
@@ -5469,9 +5469,9 @@ fi
 
 openssl_lib_dir=
 
-# Check whether --with-openssl-libraries was given.
-if test "${with_openssl_libraries+set}" = set; then :
-  withval=$with_openssl_libraries;  case "$withval" in
+# Check whether --with-openssl-lib-dir was given.
+if test "${with_openssl_lib_dir+set}" = set; then :
+  withval=$with_openssl_lib_dir;  case "$withval" in
   *) openssl_lib_dir="$withval"
     ;;
   esac
@@ -5481,9 +5481,9 @@ fi
 
 openssl_include_dir=
 
-# Check whether --with-openssl-includes was given.
-if test "${with_openssl_includes+set}" = set; then :
-  withval=$with_openssl_includes;  case "$withval" in
+# Check whether --with-openssl-include-dir was given.
+if test "${with_openssl_include_dir+set}" = set; then :
+  withval=$with_openssl_include_dir;  case "$withval" in
   *) openssl_include_dir="$withval"
     ;;
   esac
@@ -8286,10 +8286,10 @@ int
 main ()
 {
 
+          printf("library: %lx header: %lx... ", (unsigned long) SSLeay(), (unsigned long) OPENSSL_VERSION_NUMBER);
           if (SSLeay() == OPENSSL_VERSION_NUMBER) {
             return 0;
           } else {
-            printf("library: %lx header: %lx... ", (unsigned long) SSLeay(), (unsigned long) OPENSSL_VERSION_NUMBER);
             return 1;
           }
 
