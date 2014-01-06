@@ -69,11 +69,12 @@ FreeRADIUS 3.0.1 Mon  7 Oct 2013 15:48:14 EDT urgency=medium
 	* Fix typo in sqlcounter expansion code.  Fixes #463
 	* Overwrite previous instances of SQL-User-Name when adding
 	  it to the request.
-	* Disable threading in MIT libkrb5 <= 1.11.4, MIT kerberos
-	  has issues with krb5_copy_context() which may cause random
-	  SEGVs.
+	* Work around bugs in both MIT and heimdal versions of 
+	  krb5_copy_context(), which caused segfaults in 
+	  multithreaded mode.
 	* Provide meaningful error messages if Heimdal krb5 is used.
-
+	* Fix attribute supression in rlm_detail.
+	
 FreeRADIUS 3.0.0 Mon  7 Oct 2013 15:48:14 EDT urgency=medium
 	Feature improvements
 	* Documentation for upgrading from 2.x is in raddb/README.rst
