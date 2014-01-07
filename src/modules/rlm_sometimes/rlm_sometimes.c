@@ -153,6 +153,7 @@ static rlm_rcode_t sometimes_reply(void *instance, REQUEST *request)
 	return sometimes_return(instance, request->reply, NULL);
 }
 
+#ifdef WITH_PROXY
 static rlm_rcode_t mod_pre_proxy(void *instance, REQUEST *request)
 {
 	if (!request->proxy) return RLM_MODULE_NOOP;
@@ -166,6 +167,7 @@ static rlm_rcode_t mod_post_proxy(void *instance, REQUEST *request)
 
 	return sometimes_return(instance, request->proxy_reply, NULL);
 }
+#endif
 
 module_t rlm_sometimes = {
 	RLM_MODULE_INIT,
@@ -181,8 +183,12 @@ module_t rlm_sometimes = {
 		sometimes_packet,	/* preaccounting */
 		sometimes_packet,	/* accounting */
 		NULL,
+#ifdef WITH_PROXY
 		mod_pre_proxy,	/* pre-proxy */
 		mod_post_proxy,	/* post-proxy */
+#else
+		NULL, NULL,
+#endif
 		sometimes_reply		/* post-auth */
 #ifdef WITH_COA
 		,
