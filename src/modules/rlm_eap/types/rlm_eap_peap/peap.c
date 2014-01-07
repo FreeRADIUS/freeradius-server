@@ -1192,13 +1192,17 @@ rlm_rcode_t eappeap_process(eap_handler_t *handler, tls_session_t *tls_session)
 		break;
 
 	default:
+#ifdef WITH_PROXY
 	do_process:
+#endif
 		rcode = process_reply(handler, tls_session, request,
 				      fake->reply);
 		break;
 	}
 
+#ifdef WITH_PROXY
  done:
+#endif
 	request_free(&fake);
 
 	return rcode;
