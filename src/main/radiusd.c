@@ -183,7 +183,7 @@ int main(int argc, char *argv[])
 					exit(1);
 				}
 				fr_log_fp = fdopen(mainconfig.radlog_fd, "a");
-				break;		  
+				break;
 
 			case 'i':
 				if (ip_hton(optarg, AF_UNSPEC, &mainconfig.myip) < 0) {
@@ -226,7 +226,7 @@ int main(int argc, char *argv[])
 				fr_log_fp = stdout;
 				mainconfig.radlog_dest = RADLOG_STDOUT;
 				mainconfig.radlog_fd = STDOUT_FILENO;
-				
+
 				version();
 				exit(0);
 			case 'X':
@@ -267,7 +267,7 @@ int main(int argc, char *argv[])
 
 	if (debug_flag)
 		version();
-		
+
 
 	/*  Read the configuration files, BEFORE doing anything else.  */
 	if (read_mainconfig(0) < 0) {
@@ -335,9 +335,9 @@ int main(int argc, char *argv[])
 	} else {
 		setlinebuf(stdout); /* unbuffered output */
 	}
-	
+
 	/*
-	 *	Now we have logging check that the OpenSSL 
+	 *	Now we have logging check that the OpenSSL
 	 */
 
 	/*
@@ -438,7 +438,7 @@ int main(int argc, char *argv[])
 	 *	about to die.
 	 */
 	signal(SIGTERM, SIG_IGN);
-	
+
 	/*
 	 *	Send a TERM signal to all
 	 *	associated processes
@@ -448,7 +448,7 @@ int main(int argc, char *argv[])
 #ifndef __MINGW32__
 	if (spawn_flag) kill(-radius_pid, SIGTERM);
 #endif
-	
+
 	/*
 	 *	We're exiting, so we can delete the PID
 	 *	file.  (If it doesn't exist, we can ignore
@@ -457,23 +457,23 @@ int main(int argc, char *argv[])
 	if (dont_fork == FALSE) {
 		unlink(mainconfig.pid_file);
 	}
-		
+
 	radius_event_free();
-	
+
 	/*
 	 *	Detach any modules.
 	 */
 	detach_modules();
-	
+
 	xlat_free();		/* modules may have xlat's */
 
 	/*
 	 *	Free the configuration items.
 	 */
 	free_mainconfig();
-	
+
 	free(radius_dir);
-		
+
 #ifdef WIN32
 	WSACleanup();
 #endif
