@@ -77,6 +77,8 @@ static const CONF_PARSER module_config[] = {
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
 
+
+#ifdef WITH_ACCOUNTING
 /*
  *	Zap all users on a NAS from the radutmp file.
  */
@@ -148,7 +150,6 @@ static NAS_PORT *nas_port_find(NAS_PORT *nas_port_list, uint32_t nasaddr, unsign
 }
 
 
-#ifdef WITH_ACCOUNTING
 /*
  *	Store logins in the RADIUS utmp file.
  */
