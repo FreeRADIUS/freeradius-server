@@ -676,7 +676,14 @@ static void request_process_timer(REQUEST *request)
 		 */
 		if (request->listener->status != RAD_LISTEN_STATUS_KNOWN) {
 			WDEBUG("Socket was closed while processing request %u: Stopping it.", request->number);
+#ifdef WITH_ACCOUNTING
 			goto done;
+#else
+		done:
+			request_done(request, FR_ACTION_DONE);
+			return;
+#endif
+
 		}
 	}
 
@@ -1082,8 +1089,11 @@ STATE_MACHINE_DECL(request_finish)
 	 */
 	if (!request->in_request_hash) {
 #ifdef WITH_TCP
-		if ((request->listener->type == RAD_LISTEN_AUTH) ||
-		    (request->listener->type == RAD_LISTEN_ACCT)) {
+		if ((request->listener->type == RAD_LISTEN_AUTH)
+#ifdef WITH_ACCOUNTING
+		    || (request->listener->type == RAD_LISTEN_ACCT)
+#endif
+			) {
 			listen_socket_t *sock = request->listener->data;
 
 			if (sock->proto == IPPROTO_UDP) return;
@@ -1301,7 +1311,10 @@ int request_receive(rad_listen_t *listener, RADIUS_PACKET *packet,
 	 */
 	gettimeofday(&now, NULL);
 
-	if (listener->type != RAD_LISTEN_DETAIL) {
+#ifdef WITH_ACCOUNTING
+	if (listener->type != RAD_LISTEN_DETAIL)
+#endif
+	{
 		sock = listener->data;
 		sock->last_packet = now.tv_sec;
 	}
@@ -1555,7 +1568,9 @@ static void tcp_socket_timer(void *ctx)
 #endif
 
 	case RAD_LISTEN_AUTH:
+#ifdef WITH_ACCOUNTING
 	case RAD_LISTEN_ACCT:
+#endif
 		limit = &sock->limit;
 		break;
 
