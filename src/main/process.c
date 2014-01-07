@@ -3844,7 +3844,7 @@ int event_new_fd(rad_listen_t *this)
 			/*
 			 *	EOL all requests using this socket.
 			 */
-			fr_packet_list_walk(proxy_list, this,
+			fr_packet_list_walk(pl, this,
 					    eol_listener);
 		}
 
