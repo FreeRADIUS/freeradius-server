@@ -341,7 +341,8 @@ int main(int argc, char *argv[])
 		 *  As the child can still encounter an error during initialisation
 		 *  we do a blocking read on a pipe between it and the parent.
 		 *
-		 *  Just before entering the event loop the child will
+		 *  Just before entering the event loop the child will send a success
+		 *  or failure message to the parent, via the pipe.
 		 */
 		if (pid > 0) {
 			uint8_t ret = 0;
@@ -350,6 +351,10 @@ int main(int argc, char *argv[])
 			/* So the pipe is correctly widowed if the child exits */
 			close(from_child[1]);
 
+			/*
+			 *	The child writes a 0x01 byte on
+			 *	success, and closes the pipe on error.
+			 */
 			if ((read(from_child[0], &ret, 1) < 0)) {
 				ret = 0;
 			}
@@ -507,12 +512,14 @@ int main(int argc, char *argv[])
 
 	exec_trigger(NULL, NULL, "server.start", false);
 
+	/*
+	 *	Inform the parent (who should still be waiting) that
+	 *	the rest of initialisation went OK, and that it should
+	 *	exit with a 0 status.  If we don't get this far, then
+	 *	we just close the pipe on exit, and the parent gets a
+	 *	read failure.
+	 */
 	if (!dont_fork) {
-		/*
-		 *	Inform parent (who should still be waiting) that
-		 *	the rest of initialisation went OK, and that it
-		 *	should exit with a 0 status.
-		 */
 		write(from_child[1], "\001", 1);
 		close(from_child[1]);
 	}
