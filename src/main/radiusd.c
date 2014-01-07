@@ -520,7 +520,10 @@ int main(int argc, char *argv[])
 	 *	read failure.
 	 */
 	if (!dont_fork) {
-		write(from_child[1], "\001", 1);
+		if (write(from_child[1], "\001", 1) < 0) {
+			WARN("Failed informing parent of successful start: %s",
+			     fr_syserror(errno));
+		}
 		close(from_child[1]);
 	}
 

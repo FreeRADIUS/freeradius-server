@@ -133,11 +133,15 @@ static void rs_daemonize(char const *pidfile)
 	 *	Close stdout and stderr if they've not been redirected.
 	 */
 	if (isatty(fileno(stdout))) {
-		freopen("/dev/null", "w", stdout);
+		if (!freopen("/dev/null", "w", stdout)) {
+			exit(EXIT_FAILURE);
+		}
 	}
 
 	if (isatty(fileno(stderr))) {
-		freopen("/dev/null", "w", stderr);
+		if (!freopen("/dev/null", "w", stderr)) {
+			exit(EXIT_FAILURE);
+		}
 	}
 }
 
