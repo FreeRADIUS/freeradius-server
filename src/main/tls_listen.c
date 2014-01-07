@@ -364,6 +364,7 @@ int dual_tls_recv(rad_listen_t *listener)
 		fun = rad_authenticate;
 		break;
 
+#ifdef WITH_ACCOUNTING
 	case PW_CODE_ACCOUNTING_REQUEST:
 		if (listener->type != RAD_LISTEN_ACCT) {
 			/*
@@ -378,6 +379,7 @@ int dual_tls_recv(rad_listen_t *listener)
 		FR_STATS_INC(acct, total_requests);
 		fun = rad_accounting;
 		break;
+#endif
 
 	case PW_CODE_STATUS_SERVER:
 		if (!mainconfig.status_server) {
