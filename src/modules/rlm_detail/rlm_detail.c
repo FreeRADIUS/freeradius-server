@@ -344,6 +344,7 @@ static rlm_rcode_t detail_do(void *instance, REQUEST *request, RADIUS_PACKET *pa
 	}
 	RDEBUG2("%s expands to %s", inst->filename, buffer);
 
+#ifdef WITH_ACCOUNTING
 #if defined(HAVE_FNMATCH_H) && defined(FNM_FILE_NAME)
 	/*
 	 *	If we read it from a detail file, and we're about to
@@ -357,6 +358,7 @@ static rlm_rcode_t detail_do(void *instance, REQUEST *request, RADIUS_PACKET *pa
 		RWDEBUG2("Suppressing infinite loop");
 		return RLM_MODULE_NOOP;
 	}
+#endif
 #endif
 
 	/*
