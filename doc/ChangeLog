@@ -78,6 +78,9 @@ FreeRADIUS 3.0.1 Mon  7 Oct 2013 15:48:14 EDT urgency=medium
 	  multithreaded mode.
 	* Provide meaningful error messages if Heimdal krb5 is used.
 	* Fix attribute supression in rlm_detail.
+        * Exit with error code if child fails to complete server 
+          initialisation after forking.  This allows init scripts to 
+          correctly report whether the server started ok.
 	
 FreeRADIUS 3.0.0 Mon  7 Oct 2013 15:48:14 EDT urgency=medium
 	Feature improvements
