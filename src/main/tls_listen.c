@@ -477,6 +477,7 @@ int dual_tls_send(rad_listen_t *listener, REQUEST *request)
 }
 
 
+#ifdef WITH_PROXY
 int proxy_tls_recv(rad_listen_t *listener)
 {
 	int rcode;
@@ -632,5 +633,6 @@ int proxy_tls_send(rad_listen_t *listener, REQUEST *request)
 
 	return 1;
 }
+#endif	/* WITH_PROXY */
 
 #endif	/* WITH_TLS */
