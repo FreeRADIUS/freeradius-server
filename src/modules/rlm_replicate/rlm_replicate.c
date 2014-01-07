@@ -209,7 +209,10 @@ static int replicate_packet(UNUSED void *instance, REQUEST *request, pair_lists_
 	return rcode;
 }
 #else
-static rlm_rcode_t replicate_packet(void *instance, REQUEST *request, pair_lists_t list, unsigned int code)
+static rlm_rcode_t replicate_packet(UNUSED void *instance,
+				    UNUSED REQUEST *request,
+				    UNUSED pair_lists_t list,
+				    UNUSED unsigned int code)
 {
 	RDEBUG("Replication is unsupported in this build");
 	return RLM_MODULE_FAIL;
@@ -231,6 +234,7 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 	return replicate_packet(instance, request, PAIR_LIST_REPLY, request->reply->code);
 }
 
+#ifdef WITH_PROXY
 static rlm_rcode_t mod_pre_proxy(void *instance, REQUEST *request)
 {
 	return replicate_packet(instance, request, PAIR_LIST_PROXY_REQUEST, request->proxy->code);
@@ -240,16 +244,19 @@ static rlm_rcode_t mod_post_proxy(void *instance, REQUEST *request)
 {
 	return replicate_packet(instance, request, PAIR_LIST_PROXY_REPLY, request->proxy_reply->code);
 }
+#endif
 
 static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
 {
 	return replicate_packet(instance, request, PAIR_LIST_REPLY, request->reply->code);
 }
 
+#ifdef WITH_COA
 static rlm_rcode_t mod_recv_coa(void *instance, REQUEST *request)
 {
 	return replicate_packet(instance, request, PAIR_LIST_REQUEST, request->packet->code);
 }
+#endif
 
 /*
  *	The module name should be the only globally exported symbol.
@@ -274,8 +281,12 @@ module_t rlm_replicate = {
 		mod_preaccounting,	/* preaccounting */
 		mod_accounting,		/* accounting */
 		NULL,			/* checksimul */
+#ifdef WITH_PROXY
 		mod_pre_proxy,		/* pre-proxy */
 		mod_post_proxy,		/* post-proxy */
+#else
+		NULL, NULL,
+#endif
 		mod_post_auth		/* post-auth */
 #ifdef WITH_COA
 		, mod_recv_coa,		/* coa-request */
