@@ -50,6 +50,7 @@ RCSID("$Id$")
  * Holds the configuration and preparsed data for a instance of rlm_detail.
  */
 typedef struct detail_instance {
+	char const	*name;		//!< Instance name.
 	char		*filename;	//!< File/path to write to.
 	int		perm;		//!< Permissions to use for new files.
 	char		*group;		//!< Group to use for new files.
@@ -114,6 +115,11 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	detail_instance_t *inst = instance;
 	CONF_SECTION	*cs;
 
+	inst->name = cf_section_name2(conf);
+	if (!inst->name) {
+		inst->name = cf_section_name1(conf);
+	}
+
 	/*
 	 *	Suppress certain attributes.
 	 */
@@ -141,9 +147,11 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 			}
 
 			if (!fr_hash_table_insert(inst->ht, da)) {
-				ERROR("rlm_detail: Failed trying to remember %s", attr);
+				ERROR("rlm_detail: Failed inserting '%s' into suppression table", attr);
 				return -1;
 			}
+
+			DEBUG("rlm_detail (%s): '%s' suppressed, will not appear in detail output", inst->name, attr);
 		}
 	}
 
