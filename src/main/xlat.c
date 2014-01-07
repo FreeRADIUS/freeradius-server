@@ -100,6 +100,8 @@ static char const * const xlat_foreach_names[] = {"Foreach-Variable-0",
 #endif
 static int xlat_inst[] = { 0, 1, 2, 3, 4, 5, 6, 7, 8 };	/* up to 8 for regex */
 
+
+#ifdef WITH_UNLANG
 /** Convert the value on a VALUE_PAIR to string
  *
  */
@@ -133,6 +135,7 @@ static int valuepair2str(char * out,int outlen,VALUE_PAIR * pair, int type)
 	}
 	return strlen(out);
 }
+#endif
 
 /** Print length of its RHS.
  *
@@ -532,7 +535,9 @@ int xlat_register(char const *name, RAD_XLAT_FUNC func, RADIUS_ESCAPE_STRING esc
 	 *	and into a global "initialization".  But it isn't critical...
 	 */
 	if (!xlat_root) {
+#ifdef WITH_UNLANG
 		int i;
+#endif
 
 		xlat_root = rbtree_create(xlat_cmp, free, 0);
 		if (!xlat_root) {
