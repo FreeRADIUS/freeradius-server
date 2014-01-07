@@ -346,7 +346,6 @@ int main(int argc, char *argv[])
 		if (pid > 0) {
 			uint8_t ret = 0;
 			int stat_loc;
-			int errno;
 
 			/* So the pipe is correctly widowed if the child exits */
 			close(from_child[1]);
@@ -513,8 +512,10 @@ int main(int argc, char *argv[])
 	 *	the rest of initialisation went OK, and that it
 	 * 	should exit with a 0 status.
 	 */
-	write(from_child[1], "\001", 1);
-	close(from_child[1]);
+	if (!dont_fork) {
+		write(from_child[1], "\001", 1);
+		close(from_child[1]);
+	}
 
 	/*
 	 *	Process requests until HUP or exit.
