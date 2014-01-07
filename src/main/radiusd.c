@@ -325,7 +325,7 @@ int main(int argc, char *argv[])
 		pid_t pid;
 
 		if (pipe(from_child) != 0) {
-			ERROR("Couldn't open pipe for child status: %s", fr_syserror(errno));
+			ERROR("Couldn't open pipe for child status: %s", strerror(errno));
 			exit(EXIT_FAILURE);
 		}
 
@@ -346,7 +346,6 @@ int main(int argc, char *argv[])
 		if (pid > 0) {
 			uint8_t ret = 0;
 			int stat_loc;
-			int errno;
 
 			/* So the pipe is correctly widowed if the child exits */
 			close(from_child[1]);
@@ -508,13 +507,15 @@ int main(int argc, char *argv[])
 
 	exec_trigger(NULL, NULL, "server.start", false);
 
-	/*
-	 *  	Inform parent (who should still be waiting) that
-	 *	the rest of initialisation went OK, and that it
-	 * 	should exit with a 0 status.
-	 */
-	write(from_child[1], "\001", 1);
-	close(from_child[1]);
+	if (!dont_fork) {
+		/*
+		 *	Inform parent (who should still be waiting) that
+		 *	the rest of initialisation went OK, and that it
+		 *	should exit with a 0 status.
+		 */
+		write(from_child[1], "\001", 1);
+		close(from_child[1]);
+	}
 
 	/*
 	 *	Process requests until HUP or exit.
