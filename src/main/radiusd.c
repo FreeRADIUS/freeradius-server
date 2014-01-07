@@ -97,6 +97,7 @@ int main(int argc, char *argv[])
 	int spawn_flag = TRUE;
 	int dont_fork = FALSE;
 	int flag = 0;
+	int from_child[2] = {-1, -1};
 
 #ifdef HAVE_SIGACTION
 	struct sigaction act;
@@ -286,12 +287,45 @@ int main(int argc, char *argv[])
 			exit(1);
 		}
 
+		pid = fork();
+		if (pid < 0) {
+			radlog(L_ERR, "Couldn't fork: %s", strerror(errno));
+			exit(1);
+		}
+
 		/*
 		 *  The parent exits, so the child can run in the background.
+		 *
+		 *  As the child can still encounter an error during initialisation
+		 *  we do a blocking read on a pipe between it and the parent.
+		 *
+		 *  Just before entering the event loop the child will
 		 */
 		if (pid > 0) {
+			uint8_t ret = 0;
+			int stat_loc;
+
+			/* So the pipe is correctly widowed if the child exits */
+			close(from_child[1]);
+
+			if ((read(from_child[0], &ret, 1) < 0)) {
+				ret = 0;
+			}
+
+			/* For cleanliness... */
+			close(from_child[0]);
+
+			/* Don't turn children into zombies */
+			if (!ret) {
+				waitpid(pid, &stat_loc, WNOHANG);
+				exit(1);
+			}
+
 			exit(0);
 		}
+
+		/* so the pipe is correctly widowed if the parent exits?! */
+		close(from_child[0]);
 #ifdef HAVE_SETSID
 		setsid();
 #endif
@@ -414,6 +448,14 @@ int main(int argc, char *argv[])
 			       mainconfig.pid_file, strerror(errno));
 			exit(1);
 		}
+
+		/*
+		 *  	Inform parent (who should still be waiting) that
+		 *	the rest of initialisation went OK, and that it
+		 * 	should exit with a 0 status.
+		 */
+		write(from_child[1], "\001", 1);
+		close(from_child[1]);
 	}
 
 	/*
