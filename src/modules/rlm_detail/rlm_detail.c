@@ -137,6 +137,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 			da = dict_attrbyname(attr);
 			if (!da) {
 				cf_log_err_cs(conf, "No such attribute '%s'", attr);
+				continue;
 			}
 
 			if (!fr_hash_table_insert(inst->ht, da)) {
