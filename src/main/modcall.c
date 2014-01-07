@@ -332,7 +332,6 @@ static int call_modsingle(rlm_components_t component, modsingle *sp, REQUEST *re
 	return myresult;
 }
 
-
 static int default_component_results[RLM_COMPONENT_COUNT] = {
 	RLM_MODULE_REJECT,	/* AUTH */
 	RLM_MODULE_NOTFOUND,	/* AUTZ */
@@ -465,6 +464,7 @@ redo:
 		return true;
 	}
 
+#ifdef WITH_UNLANG
 	/*
 	 *	Handle "if" conditions.
 	 */
@@ -576,6 +576,7 @@ redo:
 	 */
 	was_if = false;
 	if_taken = false;
+#endif	/* WITH_UNLANG */
 
 	if (c->type == MOD_SINGLE) {
 		modsingle *sp;
@@ -592,6 +593,7 @@ redo:
 		goto calculate_result;
 	} /* MOD_SINGLE */
 
+#ifdef WITH_UNLANG
 	/*
 	 *	Update attribute(s)
 	 */
@@ -765,15 +767,21 @@ redo:
 		entry->unwind = MOD_FOREACH;
 		return true;
 	} /* MOD_BREAK */
+#endif	  /* WITH_PROXY */
 
 	/*
 	 *	Child is a group that has children of it's own.
 	 */
-	if ((c->type == MOD_GROUP) || (c->type == MOD_POLICY) ||
-	    (c->type == MOD_CASE)) {
+	if ((c->type == MOD_GROUP) || (c->type == MOD_POLICY)
+#ifdef WITH_UNLANG
+	    || (c->type == MOD_CASE)
+#endif
+		) {
 		modgroup *g;
 
+#ifdef WITH_UNLANG
 	do_children:
+#endif
 		g = mod_callabletogroup(c);
 
 		/*
@@ -797,6 +805,7 @@ redo:
 		goto calculate_result;
 	} /* MOD_GROUP */
 
+#ifdef WITH_UNLANG
 	if (c->type == MOD_SWITCH) {
 		modcallable *this, *found, *null_case;
 		modgroup *g;
@@ -850,6 +859,7 @@ redo:
 		MOD_LOG_CLOSE_BRACE();
 		goto calculate_result;
 	} /* MOD_SWITCH */
+#endif
 
 	if ((c->type == MOD_LOAD_BALANCE) ||
 	    (c->type == MOD_REDUNDANT_LOAD_BALANCE)) {
@@ -997,11 +1007,13 @@ calculate_result:
 		entry->priority = priority;
 	}
 
+#ifdef WITH_UNLANG
 	/*
 	 *	If we're processing a "case" statement, we return once
 	 *	it's done, rather than going to the next "case" statement.
 	 */
 	if (c->type == MOD_CASE) return true;
+#endif
 
 	/*
 	 *	If we've been told to stop processing
@@ -2461,6 +2473,7 @@ void add_to_modcallable(TALLOC_CTX *ctx, modcallable **parent, modcallable *this
 }
 
 
+#ifdef WITH_UNLANG
 static bool pass2_callback(UNUSED void *ctx, fr_cond_t *c)
 {
 	value_pair_map_t *map;
@@ -2582,6 +2595,7 @@ check_paircmp:
 
 	return true;
 }
+#endif
 
 /*
  *	Do a second-stage pass on compiling the modules.
