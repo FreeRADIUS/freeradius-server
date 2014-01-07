@@ -669,6 +669,7 @@ static void *request_handler_thread(void *arg)
 		       self->thread_num, self->request->number,
 		       self->request_count);
 
+#ifdef WITH_ACCOUNTING
 		if ((self->request->packet->code == PW_ACCOUNTING_REQUEST) &&
 		    thread_pool.auto_limit_acct) {
 			VALUE_PAIR *vp;
@@ -690,6 +691,7 @@ static void *request_handler_thread(void *arg)
 				vp->vp_integer /= thread_pool.max_queue_size;
 			}
 		}
+#endif
 
 		self->request->process(self->request, FR_ACTION_RUN);
 		self->request = NULL;
