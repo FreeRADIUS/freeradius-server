@@ -146,12 +146,30 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 				continue;
 			}
 
+			/*
+			 *	Be kind to minor mistakes.
+			 */
+			if (fr_hash_table_finddata(inst->ht, da)) {
+				WARN("rlm_detail (%s): Ignoring duplicate entry '%s'", inst->name, attr);
+				continue;
+			}
+
+
 			if (!fr_hash_table_insert(inst->ht, da)) {
-				ERROR("rlm_detail: Failed inserting '%s' into suppression table", attr);
+				ERROR("rlm_detail (%s): Failed inserting '%s' into suppression table",
+				      inst->name, attr);
 				return -1;
 			}
 
 			DEBUG("rlm_detail (%s): '%s' suppressed, will not appear in detail output", inst->name, attr);
+		}
+
+		/*
+		 *	If we didn't suppress anything, delete the hash table.
+		 */
+		if (fr_hash_table_num_elements(inst->ht) == 0) {
+			fr_hash_table_free(inst->ht);
+			inst->ht = NULL;
 		}
 	}
 
