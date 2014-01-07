@@ -1248,7 +1248,9 @@ STATE_MACHINE_DECL(request_running)
 			}
 #endif
 
+#ifdef WITH_PROXY
 		finished:
+#endif
 			request_finish(request, action);
 
 		done:
@@ -1520,7 +1522,6 @@ static REQUEST *request_setup(rad_listen_t *listener, RADIUS_PACKET *packet,
 }
 
 #ifdef WITH_TCP
-#ifdef WITH_PROXY
 /***********************************************************************
  *
  *	TCP Handlers.
@@ -1541,9 +1542,11 @@ static void tcp_socket_timer(void *ctx)
 	fr_event_now(el, &now);
 
 	switch (listener->type) {
+#ifdef WITH_PROXY
 	case RAD_LISTEN_PROXY:
 		limit = &sock->home->limit;
 		break;
+#endif
 
 	case RAD_LISTEN_AUTH:
 	case RAD_LISTEN_ACCT:
@@ -1612,6 +1615,7 @@ static void tcp_socket_timer(void *ctx)
 }
 
 
+#ifdef WITH_PROXY
 /*
  *	Add +/- 2s of jitter, as suggested in RFC 3539
  *	and in RFC 5080.
