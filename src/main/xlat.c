@@ -1609,7 +1609,7 @@ static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, pair_lists_t list, DI
 		if (packet) vps = packet->vps;
 		break;
 
-#if WITH_PROXY
+#ifdef WITH_PROXY
 	case PAIR_LIST_PROXY_REQUEST:
 		packet = request->proxy;
 		if (packet) vps = packet->vps;
@@ -1704,11 +1704,15 @@ static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, pair_lists_t list, DI
 	{
 		int code = 0;
 
+#ifdef WITH_PROXY
 		if (request->proxy_reply && (!request->reply || !request->reply->code)) {
 			code = request->proxy_reply->code;
-		} else if (request->reply) {
-			code = request->reply->code;
-		}
+		} else
+#endif
+			if (request->reply) {
+				code = request->reply->code;
+			}
+
 		return talloc_strdup(ctx, fr_packet_codes[code]);
 	}
 
