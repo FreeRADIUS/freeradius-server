@@ -72,7 +72,7 @@ if test x$with_[]modname != xno; then
 		CFLAGS=$old_CFLAGS
 
 		if test "x$ac_cv_header_Python_h" = "xyes"; then
-			mod_cflags=${SMART_CFLAGS}
+			mod_cflags="$SMART_CPPFLAGS"
 		else
 			fail="$fail Python.h"
 			targetname=
@@ -94,10 +94,10 @@ if test x$with_[]modname != xno; then
 			if test "x$t" = "xyes"; then
 				mod_ldflags="$PY_LIB_LOC $PY_EXTRA_LIBS $SMART_LIBS -lm"
 				targetname=modname
-			else	
+			else
 				targetname=
 				fail="$fail libpython$PY_VERSION"
-			fi		
+			fi
 		fi
 	fi
 else

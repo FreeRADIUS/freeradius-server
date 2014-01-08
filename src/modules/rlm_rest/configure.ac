@@ -20,15 +20,15 @@ if test x$with_[]modname != xno; then
 
 	LIBCURL_CHECK_CONFIG([], [7.19.1])
 
-	if test "x$libcurl_cv_lib_version_ok" != "xyes"; then 
+	if test "x$libcurl_cv_lib_version_ok" != "xyes"; then
 		fail="$fail libcurl >= 7.19.2"
 	elif test "x$libcurl_cv_lib_curl_usable" != "xyes"; then
 		fail="$fail libcurl"
-	else	
+	else
 		if test x$libcurl_protocol_HTTP != xyes; then
 			fail="$fail libcurl_protocol_http"
 		fi
-	
+
 		if test x$libcurl_protocol_HTTPS != xyes || test x$libcurl_feature_SSL != xyes; then
 			AC_MSG_WARN([silently building without HTTPS support. requires: libcurl_protocol_https.])
 		fi
@@ -98,7 +98,7 @@ if test x$with_[]modname != xno; then
 		have_json="no"
 		AC_MSG_WARN([json-c headers not found. Use --with-jsonc-include-dir=<path>.])
 	fi
-	
+
 	dnl ############################################################
 	dnl # Check for json-c libraries
 	dnl ############################################################
@@ -110,7 +110,7 @@ if test x$with_[]modname != xno; then
 	    have_json="no"
 		AC_MSG_WARN([json-c libraries not found. Use --with-jsonc-lib-dir=<path>.])
 	fi
-	
+
 	if test "x$have_json" = "xyes"; then
 		AC_DEFINE([HAVE_JSON],[1],[Build with JSON support from json-c])
 	else
@@ -134,8 +134,8 @@ if test x"$fail" != x""; then
 	fi
 fi
 
-mod_ldflags="${LIBCURL} ${SMART_LIBS}"
-mod_cflags="${SMART_CFLAGS}"
+mod_ldflags="$LIBCURL $SMART_LIBS"
+mod_cflags="$SMART_CPPFLAGS"
 
 AC_SUBST(mod_cflags)
 AC_SUBST(mod_ldflags)

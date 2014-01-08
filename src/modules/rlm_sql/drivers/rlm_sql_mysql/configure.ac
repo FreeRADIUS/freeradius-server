@@ -173,7 +173,7 @@ if test x$with_[]modname != xno; then
 	if test "x$have_mysql_h" = "xyes"; then
 	    AC_MSG_RESULT(yes)
 	    AC_DEFINE(HAVE_MYSQL_H, [], [Define if you have <mysql.h>])
-	    SMART_CFLAGS="$SMART_CFLAGS $mod_cflags"
+	    SMART_CPPFLAGS="$SMART_CPPFLAGS $mod_cflags"
 	else
 	    AC_MSG_RESULT(no)
 
@@ -185,7 +185,7 @@ if test x$with_[]modname != xno; then
 	    if test "x$have_mysql_h" = "xyes"; then
 	        AC_MSG_RESULT(yes)
 	        AC_DEFINE(HAVE_MYSQL_H, [], [Define if you have <mysql.h>])
-	        SMART_CFLAGS="$SMART_CFLAGS $mod_cflags"
+	        SMART_CPPFLAGS="$SMART_CPPFLAGS $mod_cflags"
 	    else
 	        AC_MSG_RESULT(no)
 	    fi
@@ -226,7 +226,7 @@ if test "x$fail" != x; then
 fi
 
 mod_ldflags="$SMART_LIBS"
-mod_cflags="$SMART_CFLAGS"
+mod_cflags="$SMART_CPPFLAGS"
 AC_SUBST(mod_ldflags)
 AC_SUBST(mod_cflags)
 AC_SUBST(targetname)

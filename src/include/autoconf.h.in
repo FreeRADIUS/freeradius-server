@@ -203,7 +203,7 @@
 /* Define to 1 if you have the function pcap_fopen_offline. */
 #undef HAVE_PCAP_FOPEN_OFFLINE
 
-/* Define to 1 if you have the `pcap' library (-lpcap). */
+/* Define to 1 if you have the <pcap.h> header file. */
 #undef HAVE_PCAP_H
 
 /* define this if we have the <pcreposix.h> header file */

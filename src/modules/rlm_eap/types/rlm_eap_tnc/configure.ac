@@ -59,17 +59,17 @@ if test x$with_[]modname != xno; then
 	if test "x$ac_cv_header_naaeap_naaeap_h" != "xyes"; then
 		fail="$fail naaeap.h"
 	fi
-	
+
 	dnl ############################################################
 	dnl # Check for eap-tnc library
 	dnl ############################################################
-	
+
 	smart_try_dir="$eap_tnc_lib_dir"
 	FR_SMART_CHECK_LIB([naaeap],[processEAPTNCData])
 	if test "x$ac_cv_lib_naaeap_processEAPTNCData" != "xyes"; then
 		fail="$fail libnaaeap"
 	fi
-	
+
 	targetname=modname     # keep this!  Don't change!
 else
 	targetname=            # keep this!  Don't change!
@@ -83,16 +83,16 @@ if test x"$fail" != x""; then
 	else
 		AC_MSG_WARN([silently not building ]modname[.])
 		AC_MSG_WARN([FAILURE: ]modname[ requires: $fail.]);
-		AC_MSG_WARN([Required libraries are available from https://github.com/trustatfhh/tnc-fhh]); 
+		AC_MSG_WARN([Required libraries are available from https://github.com/trustatfhh/tnc-fhh]);
 		targetname=""
 	fi
 fi
 
-mod_cflags="${SMART_CFLAGS}"
-mod_ldflags="${SMART_LIBS}"
+mod_ldflags="$SMART_LIBS"
+mod_cflags="$SMART_CPPFLAGS"
 
-AC_SUBST(mod_cflags)
 AC_SUBST(mod_ldflags)
+AC_SUBST(mod_cflags)
 
 AC_SUBST(targetname)  # keep this!  Don't change!
 AC_OUTPUT(all.mk)  # keep this!  Don't change!

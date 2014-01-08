@@ -2750,7 +2750,8 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 sm_lib_safe=`echo "idn" | sed 'y%./+-%__p_%'`
 sm_func_safe=`echo "idna_to_ascii_8z" | sed 'y%./+-%__p_%'`
 
-old_LIBS="$LIBS"
+old LIBS="$LIBS"
+old_CPPFLAGS="$CPPFLAGS"
 smart_lib=
 smart_lib_dir=
 
@@ -2758,7 +2759,8 @@ if test "x$smart_try_dir" != "x"; then
   for try in $smart_try_dir; do
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for idna_to_ascii_8z in -lidn in $try" >&5
 $as_echo_n "checking for idna_to_ascii_8z in -lidn in $try... " >&6; }
-    LIBS="-L$try -lidn $old_LIBS -Wl,-rpath,$try"
+    LIBS="-lidn $old_LIBS"
+    CPPFLAGS="-L$try -Wl,-rpath,$try $old_CPPFLAGS"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 extern char idna_to_ascii_8z();
@@ -2785,6 +2787,7 @@ rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
   done
   LIBS="$old_LIBS"
+  CPPFLAGS="$old_CPPFLAGS"
 fi
 
 if test "x$smart_lib" = "x"; then
@@ -2876,7 +2879,8 @@ eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
   for try in $smart_lib_dir /usr/local/lib /opt/lib; do
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for idna_to_ascii_8z in -lidn in $try" >&5
 $as_echo_n "checking for idna_to_ascii_8z in -lidn in $try... " >&6; }
-    LIBS="-L$try -lidn $old_LIBS -Wl,-rpath,$try"
+    LIBS="-lidn $old_LIBS"
+    CPPFLAGS="-L$try -Wl,-rpath,$try $old_CPPFLAGS"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 extern char idna_to_ascii_8z();
@@ -2903,6 +2907,7 @@ rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
   done
   LIBS="$old_LIBS"
+  CPPFLAGS="$old_CPPFLAGS"
 fi
 
 if test "x$smart_lib" != "x"; then
@@ -2918,7 +2923,7 @@ fi
 
 
 ac_safe=`echo "idna.h" | sed 'y%./+-%__pm%'`
-old_CFLAGS="$CFLAGS"
+old_CPPFLAGS="$CPPFLAGS"
 smart_include=
 smart_include_dir=
 
@@ -2926,7 +2931,7 @@ if test "x$smart_try_dir" != "x"; then
   for try in $smart_try_dir; do
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for idna.h in $try" >&5
 $as_echo_n "checking for idna.h in $try... " >&6; }
-    CFLAGS="$old_CFLAGS -isystem $try"
+    CPPFLAGS="-isystem $try $old_CPPFLAGS"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
@@ -2955,7 +2960,7 @@ $as_echo "no" >&6; }
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
   done
-  CFLAGS="$old_CFLAGS"
+  CPPFLAGS="$old_CPPFLAGS"
 fi
 
 if test "x$smart_include" = "x"; then
@@ -3021,7 +3026,7 @@ eval "smart_include_dir=\"\$smart_include_dir $DIRS\""
   for try in $smart_include_dir /usr/local/include /opt/include; do
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for idna.h in $try" >&5
 $as_echo_n "checking for idna.h in $try... " >&6; }
-    CFLAGS="$old_CFLAGS -isystem $try"
+    CPPFLAGS="-isystem $try $old_CPPFLAGS"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
@@ -3050,13 +3055,13 @@ $as_echo "no" >&6; }
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
   done
-  CFLAGS="$old_CFLAGS"
+  CPPFLAGS="$old_CPPFLAGS"
 fi
 
 if test "x$smart_include" != "x"; then
   eval "ac_cv_header_$ac_safe=yes"
-  CFLAGS="$old_CFLAGS $smart_include"
-  SMART_CFLAGS="$SMART_CFLAGS $smart_include"
+  CPPFLAGS="$smart_include $old_CPPFLAGS"
+  SMART_CPPFLAGS="$smart_include $SMART_CPPFLAGS"
 fi
 
 	if test "$ac_cv_header_idna_h" != "yes"; then
@@ -3081,7 +3086,7 @@ $as_echo "$as_me: WARNING: FAILURE: rlm_idn requires: $fail." >&2;};
 fi
 
 mod_ldflags="${SMART_LIBS}"
-mod_cflags="${SMART_CFLAGS}"
+mod_cflags="${SMART_CPPFLAGS}"
 
 
 

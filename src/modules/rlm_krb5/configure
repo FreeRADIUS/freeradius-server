@@ -2856,10 +2856,10 @@ fi
 					if test "$krb5_config" != 'not-found'; then
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: checking krb5-config CFLAGS" >&5
 $as_echo_n "checking krb5-config CFLAGS... " >&6; }
-		SMART_CFLAGS=$($krb5_config --cflags)
-		SMART_CFLAGS=$(echo "$SMART_CFLAGS" | sed 's/-I[ ]*/-isystem /g')
-		{ $as_echo "$as_me:${as_lineno-$LINENO}: result: ${SMART_CFLAGS}" >&5
-$as_echo "${SMART_CFLAGS}" >&6; }
+		SMART_CPPFLAGS=$($krb5_config --cflags)
+		SMART_CPPFLAGS=$(echo "$SMART_CPPFLAGS" | sed 's/-I[ ]*/-isystem /g')
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: result: \"$SMART_CPPFLAGS\"" >&5
+$as_echo "\"$SMART_CPPFLAGS\"" >&6; }
 
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: checking krb5-config LDFLAGS" >&5
 $as_echo_n "checking krb5-config LDFLAGS... " >&6; }
@@ -2900,7 +2900,7 @@ $as_echo "HEIMDAL" >&6; }
 
 
 ac_safe=`echo "krb5.h" | sed 'y%./+-%__pm%'`
-old_CFLAGS="$CFLAGS"
+old_CPPFLAGS="$CPPFLAGS"
 smart_include=
 smart_include_dir=
 
@@ -2908,7 +2908,7 @@ if test "x$smart_try_dir" != "x"; then
   for try in $smart_try_dir; do
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for krb5.h in $try" >&5
 $as_echo_n "checking for krb5.h in $try... " >&6; }
-    CFLAGS="$old_CFLAGS -isystem $try"
+    CPPFLAGS="-isystem $try $old_CPPFLAGS"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
@@ -2937,7 +2937,7 @@ $as_echo "no" >&6; }
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
   done
-  CFLAGS="$old_CFLAGS"
+  CPPFLAGS="$old_CPPFLAGS"
 fi
 
 if test "x$smart_include" = "x"; then
@@ -3003,7 +3003,7 @@ eval "smart_include_dir=\"\$smart_include_dir $DIRS\""
   for try in $smart_include_dir /usr/local/include /opt/include; do
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for krb5.h in $try" >&5
 $as_echo_n "checking for krb5.h in $try... " >&6; }
-    CFLAGS="$old_CFLAGS -isystem $try"
+    CPPFLAGS="-isystem $try $old_CPPFLAGS"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
@@ -3032,13 +3032,13 @@ $as_echo "no" >&6; }
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
   done
-  CFLAGS="$old_CFLAGS"
+  CPPFLAGS="$old_CPPFLAGS"
 fi
 
 if test "x$smart_include" != "x"; then
   eval "ac_cv_header_$ac_safe=yes"
-  CFLAGS="$old_CFLAGS $smart_include"
-  SMART_CFLAGS="$SMART_CFLAGS $smart_include"
+  CPPFLAGS="$smart_include $old_CPPFLAGS"
+  SMART_CPPFLAGS="$smart_include $SMART_CPPFLAGS"
 fi
 
 		if test "$ac_cv_header_krb5_h" != "yes"; then
@@ -3052,7 +3052,8 @@ fi
 sm_lib_safe=`echo "k5crypto" | sed 'y%./+-%__p_%'`
 sm_func_safe=`echo "krb5_encrypt_data" | sed 'y%./+-%__p_%'`
 
-old_LIBS="$LIBS"
+old LIBS="$LIBS"
+old_CPPFLAGS="$CPPFLAGS"
 smart_lib=
 smart_lib_dir=
 
@@ -3060,7 +3061,8 @@ if test "x$smart_try_dir" != "x"; then
   for try in $smart_try_dir; do
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for krb5_encrypt_data in -lk5crypto in $try" >&5
 $as_echo_n "checking for krb5_encrypt_data in -lk5crypto in $try... " >&6; }
-    LIBS="-L$try -lk5crypto $old_LIBS -Wl,-rpath,$try"
+    LIBS="-lk5crypto $old_LIBS"
+    CPPFLAGS="-L$try -Wl,-rpath,$try $old_CPPFLAGS"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 extern char krb5_encrypt_data();
@@ -3087,6 +3089,7 @@ rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
   done
   LIBS="$old_LIBS"
+  CPPFLAGS="$old_CPPFLAGS"
 fi
 
 if test "x$smart_lib" = "x"; then
@@ -3178,7 +3181,8 @@ eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
   for try in $smart_lib_dir /usr/local/lib /opt/lib; do
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for krb5_encrypt_data in -lk5crypto in $try" >&5
 $as_echo_n "checking for krb5_encrypt_data in -lk5crypto in $try... " >&6; }
-    LIBS="-L$try -lk5crypto $old_LIBS -Wl,-rpath,$try"
+    LIBS="-lk5crypto $old_LIBS"
+    CPPFLAGS="-L$try -Wl,-rpath,$try $old_CPPFLAGS"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 extern char krb5_encrypt_data();
@@ -3205,6 +3209,7 @@ rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
   done
   LIBS="$old_LIBS"
+  CPPFLAGS="$old_CPPFLAGS"
 fi
 
 if test "x$smart_lib" != "x"; then
@@ -3223,7 +3228,8 @@ fi
 sm_lib_safe=`echo "crypto" | sed 'y%./+-%__p_%'`
 sm_func_safe=`echo "DH_new" | sed 'y%./+-%__p_%'`
 
-old_LIBS="$LIBS"
+old LIBS="$LIBS"
+old_CPPFLAGS="$CPPFLAGS"
 smart_lib=
 smart_lib_dir=
 
@@ -3231,7 +3237,8 @@ if test "x$smart_try_dir" != "x"; then
   for try in $smart_try_dir; do
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for DH_new in -lcrypto in $try" >&5
 $as_echo_n "checking for DH_new in -lcrypto in $try... " >&6; }
-    LIBS="-L$try -lcrypto $old_LIBS -Wl,-rpath,$try"
+    LIBS="-lcrypto $old_LIBS"
+    CPPFLAGS="-L$try -Wl,-rpath,$try $old_CPPFLAGS"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 extern char DH_new();
@@ -3258,6 +3265,7 @@ rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
   done
   LIBS="$old_LIBS"
+  CPPFLAGS="$old_CPPFLAGS"
 fi
 
 if test "x$smart_lib" = "x"; then
@@ -3349,7 +3357,8 @@ eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
   for try in $smart_lib_dir /usr/local/lib /opt/lib; do
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for DH_new in -lcrypto in $try" >&5
 $as_echo_n "checking for DH_new in -lcrypto in $try... " >&6; }
-    LIBS="-L$try -lcrypto $old_LIBS -Wl,-rpath,$try"
+    LIBS="-lcrypto $old_LIBS"
+    CPPFLAGS="-L$try -Wl,-rpath,$try $old_CPPFLAGS"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 extern char DH_new();
@@ -3376,6 +3385,7 @@ rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
   done
   LIBS="$old_LIBS"
+  CPPFLAGS="$old_CPPFLAGS"
 fi
 
 if test "x$smart_lib" != "x"; then
@@ -3399,7 +3409,8 @@ $as_echo "$as_me: WARNING: neither krb5 'k5crypto' nor 'crypto' libraries are fo
 sm_lib_safe=`echo "com_err" | sed 'y%./+-%__p_%'`
 sm_func_safe=`echo "set_com_err_hook" | sed 'y%./+-%__p_%'`
 
-old_LIBS="$LIBS"
+old LIBS="$LIBS"
+old_CPPFLAGS="$CPPFLAGS"
 smart_lib=
 smart_lib_dir=
 
@@ -3407,7 +3418,8 @@ if test "x$smart_try_dir" != "x"; then
   for try in $smart_try_dir; do
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for set_com_err_hook in -lcom_err in $try" >&5
 $as_echo_n "checking for set_com_err_hook in -lcom_err in $try... " >&6; }
-    LIBS="-L$try -lcom_err $old_LIBS -Wl,-rpath,$try"
+    LIBS="-lcom_err $old_LIBS"
+    CPPFLAGS="-L$try -Wl,-rpath,$try $old_CPPFLAGS"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 extern char set_com_err_hook();
@@ -3434,6 +3446,7 @@ rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
   done
   LIBS="$old_LIBS"
+  CPPFLAGS="$old_CPPFLAGS"
 fi
 
 if test "x$smart_lib" = "x"; then
@@ -3525,7 +3538,8 @@ eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
   for try in $smart_lib_dir /usr/local/lib /opt/lib; do
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for set_com_err_hook in -lcom_err in $try" >&5
 $as_echo_n "checking for set_com_err_hook in -lcom_err in $try... " >&6; }
-    LIBS="-L$try -lcom_err $old_LIBS -Wl,-rpath,$try"
+    LIBS="-lcom_err $old_LIBS"
+    CPPFLAGS="-L$try -Wl,-rpath,$try $old_CPPFLAGS"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 extern char set_com_err_hook();
@@ -3552,6 +3566,7 @@ rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
   done
   LIBS="$old_LIBS"
+  CPPFLAGS="$old_CPPFLAGS"
 fi
 
 if test "x$smart_lib" != "x"; then
@@ -3570,7 +3585,8 @@ $as_echo "$as_me: WARNING: the comm_err library isn't found!" >&2;}
 sm_lib_safe=`echo "krb5" | sed 'y%./+-%__p_%'`
 sm_func_safe=`echo "krb5_verify_user_opt" | sed 'y%./+-%__p_%'`
 
-old_LIBS="$LIBS"
+old LIBS="$LIBS"
+old_CPPFLAGS="$CPPFLAGS"
 smart_lib=
 smart_lib_dir=
 
@@ -3578,7 +3594,8 @@ if test "x$smart_try_dir" != "x"; then
   for try in $smart_try_dir; do
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for krb5_verify_user_opt in -lkrb5 in $try" >&5
 $as_echo_n "checking for krb5_verify_user_opt in -lkrb5 in $try... " >&6; }
-    LIBS="-L$try -lkrb5 $old_LIBS -Wl,-rpath,$try"
+    LIBS="-lkrb5 $old_LIBS"
+    CPPFLAGS="-L$try -Wl,-rpath,$try $old_CPPFLAGS"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 extern char krb5_verify_user_opt();
@@ -3605,6 +3622,7 @@ rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
   done
   LIBS="$old_LIBS"
+  CPPFLAGS="$old_CPPFLAGS"
 fi
 
 if test "x$smart_lib" = "x"; then
@@ -3696,7 +3714,8 @@ eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
   for try in $smart_lib_dir /usr/local/lib /opt/lib; do
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for krb5_verify_user_opt in -lkrb5 in $try" >&5
 $as_echo_n "checking for krb5_verify_user_opt in -lkrb5 in $try... " >&6; }
-    LIBS="-L$try -lkrb5 $old_LIBS -Wl,-rpath,$try"
+    LIBS="-lkrb5 $old_LIBS"
+    CPPFLAGS="-L$try -Wl,-rpath,$try $old_CPPFLAGS"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 extern char krb5_verify_user_opt();
@@ -3723,6 +3742,7 @@ rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
   done
   LIBS="$old_LIBS"
+  CPPFLAGS="$old_CPPFLAGS"
 fi
 
 if test "x$smart_lib" != "x"; then
@@ -3741,7 +3761,8 @@ fi
 sm_lib_safe=`echo "krb5" | sed 'y%./+-%__p_%'`
 sm_func_safe=`echo "krb5_get_init_creds_password" | sed 'y%./+-%__p_%'`
 
-old_LIBS="$LIBS"
+old LIBS="$LIBS"
+old_CPPFLAGS="$CPPFLAGS"
 smart_lib=
 smart_lib_dir=
 
@@ -3749,7 +3770,8 @@ if test "x$smart_try_dir" != "x"; then
   for try in $smart_try_dir; do
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for krb5_get_init_creds_password in -lkrb5 in $try" >&5
 $as_echo_n "checking for krb5_get_init_creds_password in -lkrb5 in $try... " >&6; }
-    LIBS="-L$try -lkrb5 $old_LIBS -Wl,-rpath,$try"
+    LIBS="-lkrb5 $old_LIBS"
+    CPPFLAGS="-L$try -Wl,-rpath,$try $old_CPPFLAGS"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 extern char krb5_get_init_creds_password();
@@ -3776,6 +3798,7 @@ rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
   done
   LIBS="$old_LIBS"
+  CPPFLAGS="$old_CPPFLAGS"
 fi
 
 if test "x$smart_lib" = "x"; then
@@ -3867,7 +3890,8 @@ eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
   for try in $smart_lib_dir /usr/local/lib /opt/lib; do
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for krb5_get_init_creds_password in -lkrb5 in $try" >&5
 $as_echo_n "checking for krb5_get_init_creds_password in -lkrb5 in $try... " >&6; }
-    LIBS="-L$try -lkrb5 $old_LIBS -Wl,-rpath,$try"
+    LIBS="-lkrb5 $old_LIBS"
+    CPPFLAGS="-L$try -Wl,-rpath,$try $old_CPPFLAGS"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 extern char krb5_get_init_creds_password();
@@ -3894,6 +3918,7 @@ rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
   done
   LIBS="$old_LIBS"
+  CPPFLAGS="$old_CPPFLAGS"
 fi
 
 if test "x$smart_lib" != "x"; then
@@ -3910,7 +3935,7 @@ fi
 	fi
 
 				LDFLAGS="${LDFLAGS} ${SMART_LIBS}"
-	CFLAGS="${CFLAGS} ${SMART_CFLAGS}"
+	CFLAGS="${CFLAGS} ${SMART_CPPFLAGS}"
 
 				if test "$krb5threadsafe" != "no"; then
 		krb5threadsafe=
@@ -3920,7 +3945,8 @@ fi
 sm_lib_safe=`echo "krb5" | sed 'y%./+-%__p_%'`
 sm_func_safe=`echo "krb5_is_thread_safe" | sed 'y%./+-%__p_%'`
 
-old_LIBS="$LIBS"
+old LIBS="$LIBS"
+old_CPPFLAGS="$CPPFLAGS"
 smart_lib=
 smart_lib_dir=
 
@@ -3928,7 +3954,8 @@ if test "x$smart_try_dir" != "x"; then
   for try in $smart_try_dir; do
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for krb5_is_thread_safe in -lkrb5 in $try" >&5
 $as_echo_n "checking for krb5_is_thread_safe in -lkrb5 in $try... " >&6; }
-    LIBS="-L$try -lkrb5 $old_LIBS -Wl,-rpath,$try"
+    LIBS="-lkrb5 $old_LIBS"
+    CPPFLAGS="-L$try -Wl,-rpath,$try $old_CPPFLAGS"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 extern char krb5_is_thread_safe();
@@ -3955,6 +3982,7 @@ rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
   done
   LIBS="$old_LIBS"
+  CPPFLAGS="$old_CPPFLAGS"
 fi
 
 if test "x$smart_lib" = "x"; then
@@ -4046,7 +4074,8 @@ eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
   for try in $smart_lib_dir /usr/local/lib /opt/lib; do
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for krb5_is_thread_safe in -lkrb5 in $try" >&5
 $as_echo_n "checking for krb5_is_thread_safe in -lkrb5 in $try... " >&6; }
-    LIBS="-L$try -lkrb5 $old_LIBS -Wl,-rpath,$try"
+    LIBS="-lkrb5 $old_LIBS"
+    CPPFLAGS="-L$try -Wl,-rpath,$try $old_CPPFLAGS"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 extern char krb5_is_thread_safe();
@@ -4073,6 +4102,7 @@ rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
   done
   LIBS="$old_LIBS"
+  CPPFLAGS="$old_CPPFLAGS"
 fi
 
 if test "x$smart_lib" != "x"; then
@@ -4118,7 +4148,7 @@ fi
 
 
 ac_safe=`echo "com_err.h" | sed 'y%./+-%__pm%'`
-old_CFLAGS="$CFLAGS"
+old_CPPFLAGS="$CPPFLAGS"
 smart_include=
 smart_include_dir=
 
@@ -4126,7 +4156,7 @@ if test "x$smart_try_dir" != "x"; then
   for try in $smart_try_dir; do
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for com_err.h in $try" >&5
 $as_echo_n "checking for com_err.h in $try... " >&6; }
-    CFLAGS="$old_CFLAGS -isystem $try"
+    CPPFLAGS="-isystem $try $old_CPPFLAGS"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
@@ -4155,7 +4185,7 @@ $as_echo "no" >&6; }
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
   done
-  CFLAGS="$old_CFLAGS"
+  CPPFLAGS="$old_CPPFLAGS"
 fi
 
 if test "x$smart_include" = "x"; then
@@ -4221,7 +4251,7 @@ eval "smart_include_dir=\"\$smart_include_dir $DIRS\""
   for try in $smart_include_dir /usr/local/include /opt/include; do
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for com_err.h in $try" >&5
 $as_echo_n "checking for com_err.h in $try... " >&6; }
-    CFLAGS="$old_CFLAGS -isystem $try"
+    CPPFLAGS="-isystem $try $old_CPPFLAGS"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
@@ -4250,20 +4280,20 @@ $as_echo "no" >&6; }
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
   done
-  CFLAGS="$old_CFLAGS"
+  CPPFLAGS="$old_CPPFLAGS"
 fi
 
 if test "x$smart_include" != "x"; then
   eval "ac_cv_header_$ac_safe=yes"
-  CFLAGS="$old_CFLAGS $smart_include"
-  SMART_CFLAGS="$SMART_CFLAGS $smart_include"
+  CPPFLAGS="$smart_include $old_CPPFLAGS"
+  SMART_CPPFLAGS="$smart_include $SMART_CPPFLAGS"
 fi
 
 		if test "$ac_cv_header_com_err_h" != "yes"; then
 
 
 ac_safe=`echo "et/com_err.h" | sed 'y%./+-%__pm%'`
-old_CFLAGS="$CFLAGS"
+old_CPPFLAGS="$CPPFLAGS"
 smart_include=
 smart_include_dir=
 
@@ -4271,7 +4301,7 @@ if test "x$smart_try_dir" != "x"; then
   for try in $smart_try_dir; do
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for et/com_err.h in $try" >&5
 $as_echo_n "checking for et/com_err.h in $try... " >&6; }
-    CFLAGS="$old_CFLAGS -isystem $try"
+    CPPFLAGS="-isystem $try $old_CPPFLAGS"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
@@ -4300,7 +4330,7 @@ $as_echo "no" >&6; }
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
   done
-  CFLAGS="$old_CFLAGS"
+  CPPFLAGS="$old_CPPFLAGS"
 fi
 
 if test "x$smart_include" = "x"; then
@@ -4366,7 +4396,7 @@ eval "smart_include_dir=\"\$smart_include_dir $DIRS\""
   for try in $smart_include_dir /usr/local/include /opt/include; do
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for et/com_err.h in $try" >&5
 $as_echo_n "checking for et/com_err.h in $try... " >&6; }
-    CFLAGS="$old_CFLAGS -isystem $try"
+    CPPFLAGS="-isystem $try $old_CPPFLAGS"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
@@ -4395,13 +4425,13 @@ $as_echo "no" >&6; }
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
   done
-  CFLAGS="$old_CFLAGS"
+  CPPFLAGS="$old_CPPFLAGS"
 fi
 
 if test "x$smart_include" != "x"; then
   eval "ac_cv_header_$ac_safe=yes"
-  CFLAGS="$old_CFLAGS $smart_include"
-  SMART_CFLAGS="$SMART_CFLAGS $smart_include"
+  CPPFLAGS="$smart_include $old_CPPFLAGS"
+  SMART_CPPFLAGS="$smart_include $SMART_CPPFLAGS"
 fi
 
 			if test "$ac_cv_header_et_com_err_h" != "yes"; then
@@ -4431,8 +4461,8 @@ $as_echo "$as_me: WARNING: FAILURE: rlm_krb5 requires: $fail." >&2;};
 	fi
 fi
 
-mod_ldflags="${krb5mod_ldflags} ${krb5libcrypto} ${SMART_LIBS}"
-mod_cflags="${krb5mod_cflags} ${krb5threadsafe} ${SMART_CFLAGS}"
+mod_ldflags="$krb5mod_ldflags $krb5libcrypto $SMART_LIBS"
+mod_cflags="$krb5mod_cflags $krb5threadsafe $SMART_CPPFLAGS"
 
 
 

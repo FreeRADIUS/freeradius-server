@@ -142,7 +142,6 @@ case "$host" in
         dnl #  their compiler checks.
         dnl #
         export CFLAGS="$CFLAGS --sysroot=$osx_sdk_path"
-        export CPPFLAGS="$CPPFLAGS --sysroot=$osx_sdk_path"
         export LDFLAGS="$LDFLAGS -L$osx_sdk_path/usr/lib/"
         DARWIN_CFLAGS="--sysroot=$osx_sdk_path"
 	AC_SUBST(DARWIN_CFLAGS)
@@ -981,7 +980,6 @@ if test "x$WITH_OPENSSL" = xyes; then
   dnl #  Apparently OpenSSL will attempt to build with kerberos if we don't pass this?!
   dnl #
   CFLAGS="${CFLAGS} -DOPENSSL_NO_KRB5"
-  CPPFLAGS="${CPPFLAGS} -DOPENSSL_NO_KRB5"
 
   dnl #
   dnl #  Check we can link to libcrypto and libssl
@@ -1040,6 +1038,14 @@ if test "x$WITH_OPENSSL" = xyes; then
     )
 
     dnl #
+    dnl #  CPPFLAGS are passed to the compiler first, so we use
+    dnl #  them to ensure things like --sysroot don't override the
+    dnl #  library location we discovered previously.
+    dnl #
+    old_CPPFLAGS="$CPPFLAGS"
+    CPPFLAGS="$OPENSSL_LIBS $CPPFLAGS"
+
+    dnl #
     dnl #  Now check that the header versions match the library
     dnl #
     AC_MSG_CHECKING([OpenSSL library and header version consistency])
@@ -1067,6 +1073,7 @@ if test "x$WITH_OPENSSL" = xyes; then
         AC_MSG_FAILURE([OpenSSL library version does not match header version])
       ]
     )
+    CPPFLAGS="$old_CPPFLAGS"
   fi
 
   LIBS="${OLD_LIBS}"

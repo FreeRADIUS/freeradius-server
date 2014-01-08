@@ -115,7 +115,19 @@ AC_DEFUN([FR_SMART_CHECK_LIB], [
 sm_lib_safe=`echo "$1" | sed 'y%./+-%__p_%'`
 sm_func_safe=`echo "$2" | sed 'y%./+-%__p_%'`
 
-old_LIBS="$LIBS"
+dnl #
+dnl #  We pass all arguments for linker testing in CCPFLAGS as these
+dnl #  will be passed to the compiler (then linker) first.
+dnl #
+dnl #  The linker will search through -L directories in the order they
+dnl #  appear on the command line.  Unfortunately the same rules appear
+dnl #  to apply to directories specified with --sysroot, so we must
+dnl #  pass the user specified directory first.
+dnl #
+dnl #  Really we should be using LDFLAGS (-L<dir>) for this.
+dnl #
+old LIBS="$LIBS"
+old_CPPFLAGS="$CPPFLAGS"
 smart_lib=
 smart_lib_dir=
 
@@ -126,7 +138,8 @@ dnl #
 if test "x$smart_try_dir" != "x"; then
   for try in $smart_try_dir; do
     AC_MSG_CHECKING([for $2 in -l$1 in $try])
-    LIBS="-L$try -l$1 $old_LIBS -Wl,-rpath,$try"
+    LIBS="-l$1 $old_LIBS"
+    CPPFLAGS="-L$try -Wl,-rpath,$try $old_CPPFLAGS"
     AC_TRY_LINK([extern char $2();],
 		[$2()],
 		[
@@ -137,6 +150,7 @@ if test "x$smart_try_dir" != "x"; then
 		[AC_MSG_RESULT(no)])
   done
   LIBS="$old_LIBS"
+  CPPFLAGS="$old_CPPFLAGS"
 fi
 
 dnl #
@@ -164,7 +178,8 @@ if test "x$smart_lib" = "x"; then
 
   for try in $smart_lib_dir /usr/local/lib /opt/lib; do
     AC_MSG_CHECKING([for $2 in -l$1 in $try])
-    LIBS="-L$try -l$1 $old_LIBS -Wl,-rpath,$try"
+    LIBS="-l$1 $old_LIBS"
+    CPPFLAGS="-L$try -Wl,-rpath,$try $old_CPPFLAGS"
     AC_TRY_LINK([extern char $2();],
 		[$2()],
 		[
@@ -175,6 +190,7 @@ if test "x$smart_lib" = "x"; then
 		[AC_MSG_RESULT(no)])
   done
   LIBS="$old_LIBS"
+  CPPFLAGS="$old_CPPFLAGS"
 fi
 
 dnl #
@@ -196,7 +212,7 @@ dnl #
 AC_DEFUN([FR_SMART_CHECK_INCLUDE], [
 
 ac_safe=`echo "$1" | sed 'y%./+-%__pm%'`
-old_CFLAGS="$CFLAGS"
+old_CPPFLAGS="$CPPFLAGS"
 smart_include=
 smart_include_dir=
 
@@ -207,7 +223,7 @@ dnl #
 if test "x$smart_try_dir" != "x"; then
   for try in $smart_try_dir; do
     AC_MSG_CHECKING([for $1 in $try])
-    CFLAGS="$old_CFLAGS -isystem $try"
+    CPPFLAGS="-isystem $try $old_CPPFLAGS"
     AC_TRY_COMPILE([$2
 		    #include <$1>],
 		   [int a = 1;],
@@ -221,7 +237,7 @@ if test "x$smart_try_dir" != "x"; then
 		     AC_MSG_RESULT(no)
 		   ])
   done
-  CFLAGS="$old_CFLAGS"
+  CPPFLAGS="$old_CPPFLAGS"
 fi
 
 dnl #
@@ -250,7 +266,7 @@ if test "x$smart_include" = "x"; then
   FR_LOCATE_DIR(smart_include_dir,$1)
   for try in $smart_include_dir /usr/local/include /opt/include; do
     AC_MSG_CHECKING([for $1 in $try])
-    CFLAGS="$old_CFLAGS -isystem $try"
+    CPPFLAGS="-isystem $try $old_CPPFLAGS"
     AC_TRY_COMPILE([$2
 		    #include <$1>],
 		   [int a = 1;],
@@ -264,7 +280,7 @@ if test "x$smart_include" = "x"; then
 		     AC_MSG_RESULT(no)
 		   ])
   done
-  CFLAGS="$old_CFLAGS"
+  CPPFLAGS="$old_CPPFLAGS"
 fi
 
 dnl #
@@ -272,8 +288,8 @@ dnl #  Found it, set the appropriate variable.
 dnl #
 if test "x$smart_include" != "x"; then
   eval "ac_cv_header_$ac_safe=yes"
-  CFLAGS="$old_CFLAGS $smart_include"
-  SMART_CFLAGS="$SMART_CFLAGS $smart_include"
+  CPPFLAGS="$smart_include $old_CPPFLAGS"
+  SMART_CPPFLAGS="$smart_include $SMART_CPPFLAGS"
 fi
 ])
 

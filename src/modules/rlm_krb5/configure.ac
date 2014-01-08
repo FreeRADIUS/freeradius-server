@@ -31,9 +31,9 @@ if test x$with_[]modname != xno; then
 	dnl #
 	if test "$krb5_config" != 'not-found'; then
 		AC_MSG_CHECKING([krb5-config CFLAGS])
-		SMART_CFLAGS=$($krb5_config --cflags)
-		SMART_CFLAGS=[$(echo "$SMART_CFLAGS" | sed 's/-I[ ]*/-isystem /g')]
-		AC_MSG_RESULT(${SMART_CFLAGS})
+		SMART_CPPFLAGS=$($krb5_config --cflags)
+		SMART_CPPFLAGS=[$(echo "$SMART_CPPFLAGS" | sed 's/-I[ ]*/-isystem /g')]
+		AC_MSG_RESULT("$SMART_CPPFLAGS")
 
 		AC_MSG_CHECKING([krb5-config LDFLAGS])
 		SMART_LIBS=$($krb5_config --libs)
@@ -111,7 +111,7 @@ if test x$with_[]modname != xno; then
 	dnl # Need to ensure the test program(s) link against the right library
 	dnl #
 	LDFLAGS="${LDFLAGS} ${SMART_LIBS}"
-	CFLAGS="${CFLAGS} ${SMART_CFLAGS}"
+	CFLAGS="${CFLAGS} ${SMART_CPPFLAGS}"
 
 	dnl #
 	dnl # Only check if version checks have not found kerberos to be thread unsafe
@@ -160,8 +160,8 @@ if test x"$fail" != x""; then
 	fi
 fi
 
-mod_ldflags="${krb5mod_ldflags} ${krb5libcrypto} ${SMART_LIBS}"
-mod_cflags="${krb5mod_cflags} ${krb5threadsafe} ${SMART_CFLAGS}"
+mod_ldflags="$krb5mod_ldflags $krb5libcrypto $SMART_LIBS"
+mod_cflags="$krb5mod_cflags $krb5threadsafe $SMART_CPPFLAGS"
 
 AC_SUBST(mod_ldflags)
 AC_SUBST(mod_cflags)

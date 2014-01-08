@@ -50,7 +50,7 @@ if test x$with_[]modname != xno; then
 			eap_ikev2_include_dir="$withval/include"
 			;;
 		esac])
-		
+
 	dnl ############################################################
 	dnl # Check for OpenSSL support
 	dnl ############################################################
@@ -71,18 +71,18 @@ if test x$with_[]modname != xno; then
 	if test "x$ac_cv_header_EAPIKEv2_connector_h" != "xyes"; then
 		fail="$fail EAPIKEv2/connector.h"
 	fi
-	
+
 	dnl ############################################################
 	dnl # Check for eap-ikev2 library
 	dnl ############################################################
-	
+
 	LIBS="${OPENSSL_LIBS}"
 	smart_try_dir="$eap_ikev2_lib_dir"
 	FR_SMART_CHECK_LIB([eap-ikev2],[ikev2_set_log_callback])
 	if test "x$ac_cv_lib_eap_ikev2_ikev2_set_log_callback" != "xyes"; then
 		fail="$fail libeap-ikev2"
 	fi
-	
+
 	targetname=modname     # keep this!  Don't change!
 else
 	targetname=            # keep this!  Don't change!
@@ -95,15 +95,15 @@ if test x"$fail" != x""; then
 		AC_MSG_ERROR([set --without-]modname[ to disable it explicitly.])
 	else
 		AC_MSG_WARN([silently not building ]modname[.])
-		AC_MSG_WARN([FAILURE: ]modname[ requires: $fail.]); 
+		AC_MSG_WARN([FAILURE: ]modname[ requires: $fail.]);
 		targetname=""
 	fi
 fi
 
-mod_cflags="${SMART_CFLAGS}"
-mod_cflags="${SMART_LIBS}"
+mod_ldfags="$SMART_LIBS"
+mod_cflags="$SMART_CPPFLAGS"
 
-AC_SUBST(mod_cflags)
+AC_SUBST(mod_ldflags)
 AC_SUBST(mod_cflags)
 
 AC_SUBST(targetname)  # keep this!  Don't change!
