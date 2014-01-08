@@ -112,7 +112,7 @@ if test x$with_[]modname != xno; then
 	dnl # Need to ensure the test program(s) link against the right library
 	dnl #
 	LDFLAGS="${LDFLAGS} ${SMART_LIBS}"
-	CFLAGS="${CFLAGS} ${SMART_CFLAGS}"
+	CFLAGS="${CFLAGS} ${SMART_CPPFLAGS}"
 
 	dnl #
 	dnl # Check how to free things returned by krb5_get_error_message
@@ -175,8 +175,8 @@ if test x"$fail" != x""; then
 	fi
 fi
 
-mod_ldflags="${krb5mod_ldflags} ${krb5libcrypto} ${SMART_LIBS}"
-mod_cflags="${krb5mod_cflags} ${krb5threadsafe} ${SMART_CFLAGS}"
+mod_ldflags="$krb5mod_ldflags $krb5libcrypto $SMART_LIBS"
+mod_cflags="$krb5mod_cflags $krb5threadsafe $SMART_CPPFLAGS"
 
 AC_SUBST(mod_ldflags)
 AC_SUBST(mod_cflags)

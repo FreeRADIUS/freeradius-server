@@ -11,7 +11,7 @@ if test x$with_[]modname != xno; then
     dnl ############################################################
     dnl # Yubikey options
     dnl ############################################################
-    
+
     dnl extra argument: --with-yubikey-include-dir=DIR
     yubikey_include_dir=
     AC_ARG_WITH(yubikey-include-dir,
@@ -59,11 +59,11 @@ if test x$with_[]modname != xno; then
 		yubikey_include_dir="$withval/include"
 		;;
 	esac])
-	
+
     dnl ############################################################
     dnl # Ykclient options
     dnl ############################################################
-	
+
     dnl extra argument: --with-ykclient-include-dir=DIR
     ykclient_include_dir=
     AC_ARG_WITH(ykclient-include-dir,
@@ -135,13 +135,13 @@ if test x$with_[]modname != xno; then
 	have_yubikey="no"
 	AC_MSG_WARN([yubikey libraries not found. Use --with-yubikey-lib-dir=<path>.])
     fi
-    
+
     if test "x$have_yubikey" = "xyes"; then
 	AC_DEFINE([HAVE_YUBIKEY],[1],[Build with yubikey token decryption support support from yubikey])
     else
 	AC_MSG_WARN([silently building without yubikey token decryption support. requires: yubikey])
     fi
-    
+
     dnl ############################################################
     dnl # Check for ykclient header files (optional)
     dnl ############################################################
@@ -153,7 +153,7 @@ if test x$with_[]modname != xno; then
 	have_ykclient="no"
 	AC_MSG_WARN([ykclient headers not found. Use --with-ykclient-include-dir=<path>.])
     fi
-	
+
     dnl ############################################################
     dnl # Check for ykclient libraries (optional)
     dnl ############################################################
@@ -169,7 +169,7 @@ if test x$with_[]modname != xno; then
 	    AC_MSG_WARN([ykclient libraries not found. Use --with-ykclient-lib-dir=<path>.])
 	fi
     fi
-	
+
     if test "x$have_ykclient" = "xyes"; then
 	AC_DEFINE([HAVE_YKCLIENT],[1],[Build with yubicloud support from ykclient])
     else
@@ -193,8 +193,8 @@ if test x"$fail" != x""; then
     fi
 fi
 
-mod_ldflags="${SMART_LIBS}"
-mod_cflags="${SMART_CFLAGS}"
+mod_ldflags="$SMART_LIBS"
+mod_cflags="$SMART_CPPFLAGS"
 
 AC_SUBST(mod_cflags)
 AC_SUBST(mod_ldflags)

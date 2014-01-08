@@ -23,8 +23,8 @@ if test x"$fail" != x""; then
 	fi
 fi
 
-mod_ldflags=$SMART_LIBS
-mod_cflags=$SMART_CFLAGS
+mod_ldflags="$SMART_LIBS"
+mod_cflags="$SMART_CPPFLAGS"
 AC_SUBST(mod_ldflags)
 AC_SUBST(mod_cflags)
 AC_SUBST(targetname)

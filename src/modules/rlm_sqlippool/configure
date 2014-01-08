@@ -157,7 +157,7 @@ $as_echo "$0: could not re-execute with $CONFIG_SHELL" >&2
 as_fn_exit 255
   fi
   # We don't want this to propagate to other subprocesses.
-	  { _as_can_reexec=; unset _as_can_reexec;}
+          { _as_can_reexec=; unset _as_can_reexec;}
 if test "x$CONFIG_SHELL" = x; then
   as_bourne_compatible="if test -n \"\${ZSH_VERSION+set}\" && (emulate sh) >/dev/null 2>&1; then :
   emulate sh
@@ -237,7 +237,7 @@ IFS=$as_save_IFS
 
       if test "x$CONFIG_SHELL" != x; then :
   export CONFIG_SHELL
-	     # We cannot yet assume a decent shell, so we have to provide a
+             # We cannot yet assume a decent shell, so we have to provide a
 # neutralization value for shells without unset; and this also
 # works around shells that cannot unset nonexistent variables.
 # Preserve -v and -x to the replacement shell.
@@ -1195,9 +1195,9 @@ Configuration:
 
 Installation directories:
   --prefix=PREFIX         install architecture-independent files in PREFIX
-			  [$ac_default_prefix]
+                          [$ac_default_prefix]
   --exec-prefix=EPREFIX   install architecture-dependent files in EPREFIX
-			  [PREFIX]
+                          [PREFIX]
 
 By default, \`make install' will install all the files in
 \`$ac_default_prefix/bin', \`$ac_default_prefix/lib' etc.  You can specify
@@ -1676,8 +1676,8 @@ else
 	echo \*\*\* module rlm_sqlippool is disabled.
 fi
 
-mod_ldflags=$SMART_LIBS
-mod_cflags=$SMART_CFLAGS
+mod_ldflags="$SMART_LIBS"
+mod_cflags="$SMART_CPPFLAGS"
 
 
 
@@ -1757,11 +1757,11 @@ $as_echo "$as_me: updating cache $cache_file" >&6;}
       if test ! -f "$cache_file" || test -h "$cache_file"; then
 	cat confcache >"$cache_file"
       else
-	case $cache_file in #(
-	*/* | ?:*)
+        case $cache_file in #(
+        */* | ?:*)
 	  mv -f confcache "$cache_file"$$ &&
 	  mv -f "$cache_file"$$ "$cache_file" ;; #(
-	*)
+        *)
 	  mv -f confcache "$cache_file" ;;
 	esac
       fi
@@ -2267,11 +2267,11 @@ Usage: $0 [OPTION]... [TAG]...
   -V, --version    print version number and configuration settings, then exit
       --config     print configuration, then exit
   -q, --quiet, --silent
-		   do not print progress messages
+                   do not print progress messages
   -d, --debug      don't remove temporary files
       --recheck    update $as_me by reconfiguring in the same conditions
       --file=FILE[:TEMPLATE]
-		   instantiate the configuration file FILE
+                   instantiate the configuration file FILE
 
 Configuration files:
 $config_files

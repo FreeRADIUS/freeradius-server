@@ -4100,7 +4100,7 @@ fi
 	fi
 
 				LDFLAGS="${LDFLAGS} ${SMART_LIBS}"
-	CFLAGS="${CFLAGS} ${SMART_CFLAGS}"
+	CFLAGS="${CFLAGS} ${SMART_CPPFLAGS}"
 
 				for ac_func in krb5_get_error_message krb5_free_error_string krb5_free_error_message
 do :
@@ -4815,8 +4815,8 @@ $as_echo "$as_me: WARNING: FAILURE: rlm_krb5 requires: $fail." >&2;};
 	fi
 fi
 
-mod_ldflags="${krb5mod_ldflags} ${krb5libcrypto} ${SMART_LIBS}"
-mod_cflags="${krb5mod_cflags} ${krb5threadsafe} ${SMART_CFLAGS}"
+mod_ldflags="$krb5mod_ldflags $krb5libcrypto $SMART_LIBS"
+mod_cflags="$krb5mod_cflags $krb5threadsafe $SMART_CPPFLAGS"
 
 
 

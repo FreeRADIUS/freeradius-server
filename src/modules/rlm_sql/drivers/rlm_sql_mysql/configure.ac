@@ -103,10 +103,10 @@ if test x$with_[]modname != xno; then
 	    mysql_libs="$(mysql_config --libs_r)"
 	    old_LIBS="$LIBS"
 	    LIBS="$mysql_libs $LIBS"
-	    
+
 	    AC_MSG_CHECKING([for mysql_init in -lmysqlclient_r (using mysql_config)])
 	    AC_TRY_LINK_FUNC([mysql_init], [have_libmysqlclient_r=yes])
-	    
+
 	    LIBS="$old_LIBS"
 	    if test "x$have_libmysqlclient_r" = "xyes"; then
 		AC_MSG_RESULT(yes)
@@ -133,10 +133,10 @@ if test x$with_[]modname != xno; then
 	    mysql_libs="$(mysql_config --libs)"
 	    old_LIBS="$LIBS"
 	    LIBS="$mysql_libs $LIBS"
-	    
+
 	    AC_MSG_CHECKING([for mysql_init in -lmysqlclient (using mysql_config)])
 	    AC_TRY_LINK_FUNC([mysql_init],[have_libmysqlclient=yes])
-	    
+
 	    LIBS="$old_LIBS"
 	    if test "x$have_libmysqlclient" = "xyes"; then
 		AC_MSG_RESULT(yes)
@@ -173,7 +173,7 @@ if test x$with_[]modname != xno; then
 	if test "x$have_mysql_h" = "xyes"; then
 	    AC_MSG_RESULT(yes)
 	    AC_DEFINE(HAVE_MYSQL_H, [], [Define if you have <mysql.h>])
-	    SMART_CFLAGS="$SMART_CFLAGS $mod_cflags"
+	    SMART_CPPFLAGS="$SMART_CPPFLAGS $mod_cflags"
 	else
 	    AC_MSG_RESULT(no)
 
@@ -183,9 +183,9 @@ if test x$with_[]modname != xno; then
 	    AC_TRY_COMPILE([#include <mysql.h>], [int a = 1;],
 			   have_mysql_h=yes)
 	    if test "x$have_mysql_h" = "xyes"; then
-		AC_MSG_RESULT(yes)
-		AC_DEFINE(HAVE_MYSQL_H, [], [Define if you have <mysql.h>])
-		SMART_CFLAGS="$SMART_CFLAGS $mod_cflags"
+	        AC_MSG_RESULT(yes)
+	        AC_DEFINE(HAVE_MYSQL_H, [], [Define if you have <mysql.h>])
+	        SMART_CPPFLAGS="$SMART_CPPFLAGS $mod_cflags"
 	    else
 		AC_MSG_RESULT(no)
 	    fi
@@ -226,7 +226,7 @@ if test "x$fail" != x; then
 fi
 
 mod_ldflags="$SMART_LIBS"
-mod_cflags="$SMART_CFLAGS"
+mod_cflags="$SMART_CPPFLAGS"
 AC_SUBST(mod_ldflags)
 AC_SUBST(mod_cflags)
 AC_SUBST(targetname)
