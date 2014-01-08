@@ -21,7 +21,7 @@ dnl #
 dnl #############################################################
 
 AC_PREREQ([2.59])
-export CFLAGS LIBS PCAP_LIBS LDFLAGS CPPFLAGS
+export CFLAGS LIBS LDFLAGS CPPFLAGS
 
 AC_INIT([freeradius],[$]Id[$],[http://bugs.freeradius.org],,[http://www.freeradius.org])
 AC_CONFIG_SRCDIR([src/main/radiusd.c])
@@ -122,6 +122,15 @@ dnl #  different versions of OSX and iOS.
 dnl #
 case "$host" in
   *-darwin*)
+    dnl #
+    dnl #  Apple's ld is 'special' and uses a different search path
+    dnl #  to GCC. The flags below set the default search path to be more
+    dnl #  like the Linux ld, so the configure script stands a chance of
+    dnl #  picking up both non system libraries and non system headers
+    dnl #  by default.
+    dnl #
+    LDFLAGS="-L/usr/local/lib -L/usr/lib"
+
     dnl #
     dnl #  The version of GCC apple ships with Mavericks works out of the
     dnl #  box, and presumably selects the highest version SDK for OSX.
@@ -668,6 +677,12 @@ if test "x$ac_cv_lib_talloc__talloc" != "xyes"; then
   AC_MSG_ERROR([FreeRADIUS requires libtalloc])
 fi
 
+TALLOC_LIBS="${smart_lib}"
+TALLOC_LDFLAGS="${smart_ldflags}"
+AC_SUBST(TALLOC_LIBS)
+AC_SUBST(TALLOC_LDFLAGS)
+LIBS="$old_LIBS"
+
 dnl #
 dnl #  If using pthreads, check for -lpthread (posix) or -lc_r (*BSD)
 dnl #
@@ -818,6 +833,7 @@ else
   )
 
   PCAP_LIBS="${smart_lib}"
+  PCAP_LDFLAGS="${smart_ldflags}"
 fi
 dnl Set by FR_SMART_CHECK_LIB
 LIBS="${old_LIBS}"
@@ -861,6 +877,7 @@ if test "x$ac_cv_lib_collectdclient_lcc_connect" != "xyes"; then
   AC_MSG_WARN([collectdclient library not found. Use --with-collectdclient-lib-dir=<path>.])
 else
   COLLECTDC_LIBS="${smart_lib}"
+  COLLECTDC_LDFLAGS="${smart_ldflags}"
 fi
 dnl Set by FR_SMART_CHECKLIB
 LIBS="${old_LIBS}"
@@ -974,12 +991,12 @@ dnl #
 dnl #  Were we told to use OpenSSL, if we were and we find an error, call AC_MSG_FAILURE and exit
 dnl #
 if test "x$WITH_OPENSSL" = xyes; then
-  OLD_LIBS="${LIBS}"
+  OLD_LIBS="$LIBS"
 
   dnl #
   dnl #  Apparently OpenSSL will attempt to build with kerberos if we don't pass this?!
   dnl #
-  CFLAGS="${CFLAGS} -DOPENSSL_NO_KRB5"
+  CFLAGS="$CFLAGS -DOPENSSL_NO_KRB5"
 
   dnl #
   dnl #  Check we can link to libcrypto and libssl
@@ -988,14 +1005,19 @@ if test "x$WITH_OPENSSL" = xyes; then
   FR_SMART_CHECK_LIB(crypto, DH_new)
   if test "x$ac_cv_lib_crypto_DH_new" = "xyes"; then
     AC_DEFINE(HAVE_LIBCRYPTO, 1, [Define to 1 if you have the `crypto' library (-lcrypto).])
-    OPENSSL_LIBS="${smart_lib}"
+    OPENSSL_LIBS="$smart_lib"
+    OPENSSL_LDFLAGS="$smart_ldflags"
 
     FR_SMART_CHECK_LIB(ssl, SSL_new)
     if test "x$ac_cv_lib_ssl_SSL_new" != "xyes"; then
       AC_MSG_FAILURE([failed linking to libssl])
     else
       AC_DEFINE(HAVE_LIBSSL, 1, [Define to 1 if you have the `ssl' library (-lssl).])
-      OPENSSL_LIBS="${OPENSSL_LIBS} ${smart_lib}"
+      OPENSSL_LIBS="$OPENSSL_LIBS $smart_lib"
+
+      if test "$OPENSSL_LDFLAGS" != "$smart_ldflags"; then
+        AC_MSG_FAILURE(["inconsistent LDFLAGS between -lssl '$smart_ldflags' and -lcrypto '$OPENSSL_LDFLAGS'"])
+      fi
     fi
   else
     AC_MSG_FAILURE([failed linking to libcrypto])
@@ -1043,7 +1065,7 @@ if test "x$WITH_OPENSSL" = xyes; then
     dnl #  library location we discovered previously.
     dnl #
     old_CPPFLAGS="$CPPFLAGS"
-    CPPFLAGS="$OPENSSL_LIBS $CPPFLAGS"
+    CPPFLAGS="$OPENSSL_LDFLAGS $CPPFLAGS"
 
     dnl #
     dnl #  Now check that the header versions match the library
@@ -1076,11 +1098,11 @@ if test "x$WITH_OPENSSL" = xyes; then
     CPPFLAGS="$old_CPPFLAGS"
   fi
 
-  LIBS="${OLD_LIBS}"
+  LIBS="$OLD_LIBS"
+  AC_SUBST(OPENSSL_LIBS)
+  AC_SUBST(OPENSSL_LDFLAGS)
+  export OPENSSL_LIBS OPENSSL_LDFLAGS
 fi
-
-AC_SUBST(OPENSSL_LIBS)
-export OPENSSL_LIBS
 
 dnl #
 dnl #  Check the pcap includes for the RADIUS sniffer.
@@ -1096,6 +1118,7 @@ else
   if test "x$ac_cv_header_pcap_h" == "xyes"; then
     AC_DEFINE(HAVE_PCAP_H, 1, [Define to 1 if you have the <pcap.h> header file.])
     AC_SUBST(PCAP_LIBS)
+    AC_SUBST(PCAP_LDFLAGS)
   else
     AC_MSG_WARN([pcap headers not found, silently disabling the RADIUS sniffer, and ARP listener. Use --with-pcap-include-dir=<path>.])
   fi
@@ -1113,6 +1136,7 @@ else
   if test "x$ac_cv_header_collectd_client_h" == "xyes"; then
     AC_DEFINE(HAVE_COLLECTDC_H, 1, [Define to 1 if you have the `collectdclient' library (-lcollectdclient).])
     AC_SUBST(COLLECTDC_LIBS)
+    AC_SUBST(COLLECTDC_LDFLAGS)
   else
     AC_MSG_WARN([collectdclient headers not found. Use --with-collectdclient-include-dir=<path>.])
   fi

@@ -637,10 +637,15 @@ REGEX_PCRE
 REGEX
 CRYPTLIB
 LIBPREFIX
+COLLECTDC_LDFLAGS
 COLLECTDC_LIBS
+PCAP_LDFLAGS
 PCAP_LIBS
+OPENSSL_LDFLAGS
 OPENSSL_LIBS
 LIBREADLINE
+TALLOC_LDFLAGS
+TALLOC_LIBS
 DIRNAME
 LOCATE
 AUTOHEADER
@@ -2583,6 +2588,8 @@ test -n "$target_alias" &&
 
 case "$host" in
   *-darwin*)
+                                LDFLAGS="-L/usr/local/lib -L/usr/lib"
+
                     { $as_echo "$as_me:${as_lineno-$LINENO}: checking if cc is apple llvm" >&5
 $as_echo_n "checking if cc is apple llvm... " >&6; }
     if ! $CC --version 2>&1 | grep -I 'Apple LLVM' > /dev/null; then
@@ -5862,9 +5869,10 @@ smart_try_dir="$talloc_lib_dir"
 sm_lib_safe=`echo "talloc" | sed 'y%./+-%__p_%'`
 sm_func_safe=`echo "_talloc" | sed 'y%./+-%__p_%'`
 
-old LIBS="$LIBS"
+old_LIBS="$LIBS"
 old_CPPFLAGS="$CPPFLAGS"
 smart_lib=
+smart_ldflags=
 smart_lib_dir=
 
 if test "x$smart_try_dir" != "x"; then
@@ -5886,7 +5894,8 @@ _talloc()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-		 smart_lib="-L$try -ltalloc -Wl,-rpath,$try"
+		 smart_lib="-ltalloc"
+		 smart_ldflags="-L$try -Wl,-rpath,$try"
 		 { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 		 break
@@ -6006,7 +6015,8 @@ _talloc()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-		  smart_lib="-L$try -ltalloc -Wl,-rpath,$try"
+		  smart_lib="-ltalloc"
+		  smart_ldflags="-L$try -Wl,-rpath,$try"
 		  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 		  break
@@ -6024,8 +6034,8 @@ fi
 
 if test "x$smart_lib" != "x"; then
   eval "ac_cv_lib_${sm_lib_safe}_${sm_func_safe}=yes"
-  LIBS="$smart_lib $old_LIBS"
-  SMART_LIBS="$smart_lib $SMART_LIBS"
+  LIBS="$smart_ldflags $smart_lib $old_LIBS"
+  SMART_LIBS="$smart_ldflags $smart_lib $SMART_LIBS"
 fi
 
 if test "x$ac_cv_lib_talloc__talloc" != "xyes"; then
@@ -6033,6 +6043,12 @@ if test "x$ac_cv_lib_talloc__talloc" != "xyes"; then
 $as_echo "$as_me: WARNING: talloc library not found. Use --with-talloc-lib-dir=<path>." >&2;}
   as_fn_error $? "FreeRADIUS requires libtalloc" "$LINENO" 5
 fi
+
+TALLOC_LIBS="${smart_lib}"
+TALLOC_LDFLAGS="${smart_ldflags}"
+
+
+LIBS="$old_LIBS"
 
 old_CFLAGS=$CFLAGS
 if test "x$WITH_THREADS" = "xyes"; then
@@ -6500,9 +6516,10 @@ smart_try_dir="$pcap_lib_dir"
 sm_lib_safe=`echo "pcap" | sed 'y%./+-%__p_%'`
 sm_func_safe=`echo "pcap_open_live" | sed 'y%./+-%__p_%'`
 
-old LIBS="$LIBS"
+old_LIBS="$LIBS"
 old_CPPFLAGS="$CPPFLAGS"
 smart_lib=
+smart_ldflags=
 smart_lib_dir=
 
 if test "x$smart_try_dir" != "x"; then
@@ -6524,7 +6541,8 @@ pcap_open_live()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-		 smart_lib="-L$try -lpcap -Wl,-rpath,$try"
+		 smart_lib="-lpcap"
+		 smart_ldflags="-L$try -Wl,-rpath,$try"
 		 { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 		 break
@@ -6644,7 +6662,8 @@ pcap_open_live()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-		  smart_lib="-L$try -lpcap -Wl,-rpath,$try"
+		  smart_lib="-lpcap"
+		  smart_ldflags="-L$try -Wl,-rpath,$try"
 		  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 		  break
@@ -6662,8 +6681,8 @@ fi
 
 if test "x$smart_lib" != "x"; then
   eval "ac_cv_lib_${sm_lib_safe}_${sm_func_safe}=yes"
-  LIBS="$smart_lib $old_LIBS"
-  SMART_LIBS="$smart_lib $SMART_LIBS"
+  LIBS="$smart_ldflags $smart_lib $old_LIBS"
+  SMART_LIBS="$smart_ldflags $smart_lib $SMART_LIBS"
 fi
 
 if test "x$ac_cv_lib_pcap_pcap_open_live" != "xyes"; then
@@ -6763,6 +6782,7 @@ fi
 
 
   PCAP_LIBS="${smart_lib}"
+  PCAP_LDFLAGS="${smart_ldflags}"
 fi
 LIBS="${old_LIBS}"
 
@@ -6806,9 +6826,10 @@ smart_try_dir="$collectdclient_lib_dir"
 sm_lib_safe=`echo "collectdclient" | sed 'y%./+-%__p_%'`
 sm_func_safe=`echo "lcc_connect" | sed 'y%./+-%__p_%'`
 
-old LIBS="$LIBS"
+old_LIBS="$LIBS"
 old_CPPFLAGS="$CPPFLAGS"
 smart_lib=
+smart_ldflags=
 smart_lib_dir=
 
 if test "x$smart_try_dir" != "x"; then
@@ -6830,7 +6851,8 @@ lcc_connect()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-		 smart_lib="-L$try -lcollectdclient -Wl,-rpath,$try"
+		 smart_lib="-lcollectdclient"
+		 smart_ldflags="-L$try -Wl,-rpath,$try"
 		 { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 		 break
@@ -6950,7 +6972,8 @@ lcc_connect()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-		  smart_lib="-L$try -lcollectdclient -Wl,-rpath,$try"
+		  smart_lib="-lcollectdclient"
+		  smart_ldflags="-L$try -Wl,-rpath,$try"
 		  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 		  break
@@ -6968,8 +6991,8 @@ fi
 
 if test "x$smart_lib" != "x"; then
   eval "ac_cv_lib_${sm_lib_safe}_${sm_func_safe}=yes"
-  LIBS="$smart_lib $old_LIBS"
-  SMART_LIBS="$smart_lib $SMART_LIBS"
+  LIBS="$smart_ldflags $smart_lib $old_LIBS"
+  SMART_LIBS="$smart_ldflags $smart_lib $SMART_LIBS"
 fi
 
 if test "x$ac_cv_lib_collectdclient_lcc_connect" != "xyes"; then
@@ -6977,6 +7000,7 @@ if test "x$ac_cv_lib_collectdclient_lcc_connect" != "xyes"; then
 $as_echo "$as_me: WARNING: collectdclient library not found. Use --with-collectdclient-lib-dir=<path>." >&2;}
 else
   COLLECTDC_LIBS="${smart_lib}"
+  COLLECTDC_LDFLAGS="${smart_ldflags}"
 fi
 LIBS="${old_LIBS}"
 
@@ -7709,9 +7733,9 @@ $as_echo "#define OSFSIA /**/" >>confdefs.h
 fi
 
 if test "x$WITH_OPENSSL" = xyes; then
-  OLD_LIBS="${LIBS}"
+  OLD_LIBS="$LIBS"
 
-        CFLAGS="${CFLAGS} -DOPENSSL_NO_KRB5"
+        CFLAGS="$CFLAGS -DOPENSSL_NO_KRB5"
 
         smart_try_dir="$openssl_lib_dir"
 
@@ -7719,9 +7743,10 @@ if test "x$WITH_OPENSSL" = xyes; then
 sm_lib_safe=`echo "crypto" | sed 'y%./+-%__p_%'`
 sm_func_safe=`echo "DH_new" | sed 'y%./+-%__p_%'`
 
-old LIBS="$LIBS"
+old_LIBS="$LIBS"
 old_CPPFLAGS="$CPPFLAGS"
 smart_lib=
+smart_ldflags=
 smart_lib_dir=
 
 if test "x$smart_try_dir" != "x"; then
@@ -7743,7 +7768,8 @@ DH_new()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-		 smart_lib="-L$try -lcrypto -Wl,-rpath,$try"
+		 smart_lib="-lcrypto"
+		 smart_ldflags="-L$try -Wl,-rpath,$try"
 		 { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 		 break
@@ -7863,7 +7889,8 @@ DH_new()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-		  smart_lib="-L$try -lcrypto -Wl,-rpath,$try"
+		  smart_lib="-lcrypto"
+		  smart_ldflags="-L$try -Wl,-rpath,$try"
 		  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 		  break
@@ -7881,24 +7908,26 @@ fi
 
 if test "x$smart_lib" != "x"; then
   eval "ac_cv_lib_${sm_lib_safe}_${sm_func_safe}=yes"
-  LIBS="$smart_lib $old_LIBS"
-  SMART_LIBS="$smart_lib $SMART_LIBS"
+  LIBS="$smart_ldflags $smart_lib $old_LIBS"
+  SMART_LIBS="$smart_ldflags $smart_lib $SMART_LIBS"
 fi
 
   if test "x$ac_cv_lib_crypto_DH_new" = "xyes"; then
 
 $as_echo "#define HAVE_LIBCRYPTO 1" >>confdefs.h
 
-    OPENSSL_LIBS="${smart_lib}"
+    OPENSSL_LIBS="$smart_lib"
+    OPENSSL_LDFLAGS="$smart_ldflags"
 
 
 
 sm_lib_safe=`echo "ssl" | sed 'y%./+-%__p_%'`
 sm_func_safe=`echo "SSL_new" | sed 'y%./+-%__p_%'`
 
-old LIBS="$LIBS"
+old_LIBS="$LIBS"
 old_CPPFLAGS="$CPPFLAGS"
 smart_lib=
+smart_ldflags=
 smart_lib_dir=
 
 if test "x$smart_try_dir" != "x"; then
@@ -7920,7 +7949,8 @@ SSL_new()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-		 smart_lib="-L$try -lssl -Wl,-rpath,$try"
+		 smart_lib="-lssl"
+		 smart_ldflags="-L$try -Wl,-rpath,$try"
 		 { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 		 break
@@ -8040,7 +8070,8 @@ SSL_new()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-		  smart_lib="-L$try -lssl -Wl,-rpath,$try"
+		  smart_lib="-lssl"
+		  smart_ldflags="-L$try -Wl,-rpath,$try"
 		  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 		  break
@@ -8058,8 +8089,8 @@ fi
 
 if test "x$smart_lib" != "x"; then
   eval "ac_cv_lib_${sm_lib_safe}_${sm_func_safe}=yes"
-  LIBS="$smart_lib $old_LIBS"
-  SMART_LIBS="$smart_lib $SMART_LIBS"
+  LIBS="$smart_ldflags $smart_lib $old_LIBS"
+  SMART_LIBS="$smart_ldflags $smart_lib $SMART_LIBS"
 fi
 
     if test "x$ac_cv_lib_ssl_SSL_new" != "xyes"; then
@@ -8071,7 +8102,14 @@ See \`config.log' for more details" "$LINENO" 5; }
 
 $as_echo "#define HAVE_LIBSSL 1" >>confdefs.h
 
-      OPENSSL_LIBS="${OPENSSL_LIBS} ${smart_lib}"
+      OPENSSL_LIBS="$OPENSSL_LIBS $smart_lib"
+
+      if test "$OPENSSL_LDFLAGS" != "$smart_ldflags"; then
+        { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "\"inconsistent LDFLAGS between -lssl '$smart_ldflags' and -lcrypto '$OPENSSL_LDFLAGS'\"
+See \`config.log' for more details" "$LINENO" 5; }
+      fi
     fi
   else
     { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
@@ -8291,7 +8329,7 @@ rm -f conftest*
 
 
                         old_CPPFLAGS="$CPPFLAGS"
-    CPPFLAGS="$OPENSSL_LIBS $CPPFLAGS"
+    CPPFLAGS="$OPENSSL_LDFLAGS $CPPFLAGS"
 
                 { $as_echo "$as_me:${as_lineno-$LINENO}: checking OpenSSL library and header version consistency" >&5
 $as_echo_n "checking OpenSSL library and header version consistency... " >&6; }
@@ -8347,11 +8385,11 @@ fi
     CPPFLAGS="$old_CPPFLAGS"
   fi
 
-  LIBS="${OLD_LIBS}"
+  LIBS="$OLD_LIBS"
+
+
+  export OPENSSL_LIBS OPENSSL_LDFLAGS
 fi
-
-
-export OPENSSL_LIBS
 
 if test "x$PCAP_LIBS" = x; then
   { $as_echo "$as_me:${as_lineno-$LINENO}: skipping test for pcap.h." >&5
@@ -8505,6 +8543,7 @@ fi
   if test "x$ac_cv_header_pcap_h" == "xyes"; then
 
 $as_echo "#define HAVE_PCAP_H 1" >>confdefs.h
+
 
 
   else
@@ -8665,6 +8704,7 @@ fi
   if test "x$ac_cv_header_collectd_client_h" == "xyes"; then
 
 $as_echo "#define HAVE_COLLECTDC_H 1" >>confdefs.h
+
 
 
   else

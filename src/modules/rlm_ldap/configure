@@ -2839,9 +2839,10 @@ fi
 sm_lib_safe=`echo "ldap_r" | sed 'y%./+-%__p_%'`
 sm_func_safe=`echo "ldap_init" | sed 'y%./+-%__p_%'`
 
-old LIBS="$LIBS"
+old_LIBS="$LIBS"
 old_CPPFLAGS="$CPPFLAGS"
 smart_lib=
+smart_ldflags=
 smart_lib_dir=
 
 if test "x$smart_try_dir" != "x"; then
@@ -2863,7 +2864,8 @@ ldap_init()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-		 smart_lib="-L$try -lldap_r -Wl,-rpath,$try"
+		 smart_lib="-lldap_r"
+		 smart_ldflags="-L$try -Wl,-rpath,$try"
 		 { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 		 break
@@ -2983,7 +2985,8 @@ ldap_init()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-		  smart_lib="-L$try -lldap_r -Wl,-rpath,$try"
+		  smart_lib="-lldap_r"
+		  smart_ldflags="-L$try -Wl,-rpath,$try"
 		  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 		  break
@@ -3001,8 +3004,8 @@ fi
 
 if test "x$smart_lib" != "x"; then
   eval "ac_cv_lib_${sm_lib_safe}_${sm_func_safe}=yes"
-  LIBS="$smart_lib $old_LIBS"
-  SMART_LIBS="$smart_lib $SMART_LIBS"
+  LIBS="$smart_ldflags $smart_lib $old_LIBS"
+  SMART_LIBS="$smart_ldflags $smart_lib $SMART_LIBS"
 fi
 
 	    if test "x$ac_cv_lib_ldap_r_ldap_init" != "xyes"; then
@@ -3014,9 +3017,10 @@ fi
 sm_lib_safe=`echo "ldap" | sed 'y%./+-%__p_%'`
 sm_func_safe=`echo "ldap_init" | sed 'y%./+-%__p_%'`
 
-old LIBS="$LIBS"
+old_LIBS="$LIBS"
 old_CPPFLAGS="$CPPFLAGS"
 smart_lib=
+smart_ldflags=
 smart_lib_dir=
 
 if test "x$smart_try_dir" != "x"; then
@@ -3038,7 +3042,8 @@ ldap_init()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-		 smart_lib="-L$try -lldap -Wl,-rpath,$try"
+		 smart_lib="-lldap"
+		 smart_ldflags="-L$try -Wl,-rpath,$try"
 		 { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 		 break
@@ -3158,7 +3163,8 @@ ldap_init()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-		  smart_lib="-L$try -lldap -Wl,-rpath,$try"
+		  smart_lib="-lldap"
+		  smart_ldflags="-L$try -Wl,-rpath,$try"
 		  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 		  break
@@ -3176,8 +3182,8 @@ fi
 
 if test "x$smart_lib" != "x"; then
   eval "ac_cv_lib_${sm_lib_safe}_${sm_func_safe}=yes"
-  LIBS="$smart_lib $old_LIBS"
-  SMART_LIBS="$smart_lib $SMART_LIBS"
+  LIBS="$smart_ldflags $smart_lib $old_LIBS"
+  SMART_LIBS="$smart_ldflags $smart_lib $SMART_LIBS"
 fi
 
 	    if test "x$ac_cv_lib_ldap_ldap_init" != "xyes"; then

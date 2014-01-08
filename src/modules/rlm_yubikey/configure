@@ -2851,9 +2851,10 @@ $as_echo "$as_me: WARNING: yubikey headers not found. Use --with-yubikey-include
 sm_lib_safe=`echo "yubikey" | sed 'y%./+-%__p_%'`
 sm_func_safe=`echo "yubikey_aes_decrypt" | sed 'y%./+-%__p_%'`
 
-old LIBS="$LIBS"
+old_LIBS="$LIBS"
 old_CPPFLAGS="$CPPFLAGS"
 smart_lib=
+smart_ldflags=
 smart_lib_dir=
 
 if test "x$smart_try_dir" != "x"; then
@@ -2875,7 +2876,8 @@ yubikey_aes_decrypt()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-		 smart_lib="-L$try -lyubikey -Wl,-rpath,$try"
+		 smart_lib="-lyubikey"
+		 smart_ldflags="-L$try -Wl,-rpath,$try"
 		 { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 		 break
@@ -2995,7 +2997,8 @@ yubikey_aes_decrypt()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-		  smart_lib="-L$try -lyubikey -Wl,-rpath,$try"
+		  smart_lib="-lyubikey"
+		  smart_ldflags="-L$try -Wl,-rpath,$try"
 		  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 		  break
@@ -3013,8 +3016,8 @@ fi
 
 if test "x$smart_lib" != "x"; then
   eval "ac_cv_lib_${sm_lib_safe}_${sm_func_safe}=yes"
-  LIBS="$smart_lib $old_LIBS"
-  SMART_LIBS="$smart_lib $SMART_LIBS"
+  LIBS="$smart_ldflags $smart_lib $old_LIBS"
+  SMART_LIBS="$smart_ldflags $smart_lib $SMART_LIBS"
 fi
 
     if test "x$ac_cv_lib_yubikey_yubikey_aes_decrypt" != "xyes"; then
@@ -3192,9 +3195,10 @@ $as_echo "$as_me: WARNING: ykclient headers not found. Use --with-ykclient-inclu
 sm_lib_safe=`echo "ykclient" | sed 'y%./+-%__p_%'`
 sm_func_safe=`echo "ykclient_request_process" | sed 'y%./+-%__p_%'`
 
-old LIBS="$LIBS"
+old_LIBS="$LIBS"
 old_CPPFLAGS="$CPPFLAGS"
 smart_lib=
+smart_ldflags=
 smart_lib_dir=
 
 if test "x$smart_try_dir" != "x"; then
@@ -3216,7 +3220,8 @@ ykclient_request_process()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-		 smart_lib="-L$try -lykclient -Wl,-rpath,$try"
+		 smart_lib="-lykclient"
+		 smart_ldflags="-L$try -Wl,-rpath,$try"
 		 { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 		 break
@@ -3336,7 +3341,8 @@ ykclient_request_process()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-		  smart_lib="-L$try -lykclient -Wl,-rpath,$try"
+		  smart_lib="-lykclient"
+		  smart_ldflags="-L$try -Wl,-rpath,$try"
 		  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 		  break
@@ -3354,8 +3360,8 @@ fi
 
 if test "x$smart_lib" != "x"; then
   eval "ac_cv_lib_${sm_lib_safe}_${sm_func_safe}=yes"
-  LIBS="$smart_lib $old_LIBS"
-  SMART_LIBS="$smart_lib $SMART_LIBS"
+  LIBS="$smart_ldflags $smart_lib $old_LIBS"
+  SMART_LIBS="$smart_ldflags $smart_lib $SMART_LIBS"
 fi
 
     if test "x$ac_cv_lib_ykclient_ykclient_request_process" != "xyes"; then
@@ -3365,9 +3371,10 @@ fi
 sm_lib_safe=`echo "ykclient" | sed 'y%./+-%__p_%'`
 sm_func_safe=`echo "ykclient_request" | sed 'y%./+-%__p_%'`
 
-old LIBS="$LIBS"
+old_LIBS="$LIBS"
 old_CPPFLAGS="$CPPFLAGS"
 smart_lib=
+smart_ldflags=
 smart_lib_dir=
 
 if test "x$smart_try_dir" != "x"; then
@@ -3389,7 +3396,8 @@ ykclient_request()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-		 smart_lib="-L$try -lykclient -Wl,-rpath,$try"
+		 smart_lib="-lykclient"
+		 smart_ldflags="-L$try -Wl,-rpath,$try"
 		 { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 		 break
@@ -3509,7 +3517,8 @@ ykclient_request()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-		  smart_lib="-L$try -lykclient -Wl,-rpath,$try"
+		  smart_lib="-lykclient"
+		  smart_ldflags="-L$try -Wl,-rpath,$try"
 		  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 		  break
@@ -3527,8 +3536,8 @@ fi
 
 if test "x$smart_lib" != "x"; then
   eval "ac_cv_lib_${sm_lib_safe}_${sm_func_safe}=yes"
-  LIBS="$smart_lib $old_LIBS"
-  SMART_LIBS="$smart_lib $SMART_LIBS"
+  LIBS="$smart_ldflags $smart_lib $old_LIBS"
+  SMART_LIBS="$smart_ldflags $smart_lib $SMART_LIBS"
 fi
 
         if test "x$ac_cv_lib_ykclient_ykclient_request" == "xyes"; then

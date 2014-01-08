@@ -70,22 +70,37 @@ INSTALL_SCRIPT	= ${INSTALL_PROGRAM}
 INSTALLSTRIP	= @INSTALLSTRIP@
 DARWIN_CFLAGS	= @DARWIN_CFLAGS@
 
+#
+#  Linker arguments for libraries searched for by the main
+#  configure script.
+#
+TALLOC_LIBS     = @TALLOC_LIBS@
+TALLOC_LDFLAGS  = @TALLOC_LDFLAGS@
+
+OPENSSL_LIBS    = @OPENSSL_LIBS@
+OPENSSL_LDFLAGS = @OPENSSL_LDFLAGS@
+
+PCAP_LIBS	= @PCAP_LIBS@
+PCAP_LDFLAGS    = @PCAP_LDFLAGS@
+
+COLLECTDC_LIBS	= @COLLECTDC_LIBS@
+COLLECTDC_LDFLAGS = @COLLECTDC_LDFLAGS@
+
 LCRYPT		= @CRYPTLIB@
+
 #
 #  OpenSSL libs (if used) must be linked everywhere in order for
 #  the server to work properly on on all platforms.
 #
-LIBS		= @LIBS@ @OPENSSL_LIBS@
-PCAP_LIBS	= @PCAP_LIBS@
-COLLECTDC_LIBS	= @COLLECTDC_LIBS@
-LDFLAGS		= @LDFLAGS@
+LIBS		= $(OPENSSL_LIBS) $(TALLOC_LIBS) @LIBS@
+LDFLAGS		= $(OPENSSL_LDFLAGS) $(TALLOC_LDFLAGS) @LDFLAGS@
 
 LOGDIR		= ${logdir}
 RADDBDIR	= ${raddbdir}
 RUNDIR		= ${localstatedir}/run/radiusd
 SBINDIR		= ${sbindir}
 RADIR		= ${radacctdir}
-LIBRADIUS	= $(top_builddir)/src/lib/$(LIBPREFIX)freeradius-radius.la -ltalloc
+LIBRADIUS	= $(top_builddir)/src/lib/$(LIBPREFIX)freeradius-radius.la $(TALLOC_LIBS)
 
 USE_SHARED_LIBS = @USE_SHARED_LIBS@
 bm_shared_libs  = @USE_SHARED_LIBS@

@@ -2785,9 +2785,10 @@ fi
 sm_lib_safe=`echo "naaeap" | sed 'y%./+-%__p_%'`
 sm_func_safe=`echo "processEAPTNCData" | sed 'y%./+-%__p_%'`
 
-old LIBS="$LIBS"
+old_LIBS="$LIBS"
 old_CPPFLAGS="$CPPFLAGS"
 smart_lib=
+smart_ldflags=
 smart_lib_dir=
 
 if test "x$smart_try_dir" != "x"; then
@@ -2809,7 +2810,8 @@ processEAPTNCData()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-		 smart_lib="-L$try -lnaaeap -Wl,-rpath,$try"
+		 smart_lib="-lnaaeap"
+		 smart_ldflags="-L$try -Wl,-rpath,$try"
 		 { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 		 break
@@ -2929,7 +2931,8 @@ processEAPTNCData()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-		  smart_lib="-L$try -lnaaeap -Wl,-rpath,$try"
+		  smart_lib="-lnaaeap"
+		  smart_ldflags="-L$try -Wl,-rpath,$try"
 		  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 		  break
@@ -2947,8 +2950,8 @@ fi
 
 if test "x$smart_lib" != "x"; then
   eval "ac_cv_lib_${sm_lib_safe}_${sm_func_safe}=yes"
-  LIBS="$smart_lib $old_LIBS"
-  SMART_LIBS="$smart_lib $SMART_LIBS"
+  LIBS="$smart_ldflags $smart_lib $old_LIBS"
+  SMART_LIBS="$smart_ldflags $smart_lib $SMART_LIBS"
 fi
 
 	if test "x$ac_cv_lib_naaeap_processEAPTNCData" != "xyes"; then

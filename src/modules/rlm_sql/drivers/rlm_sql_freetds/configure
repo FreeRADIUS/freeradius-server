@@ -2793,9 +2793,10 @@ $as_echo "$as_me: WARNING: freetds headers not found. Use --with-freetds-include
 sm_lib_safe=`echo "ct" | sed 'y%./+-%__p_%'`
 sm_func_safe=`echo "ct_command" | sed 'y%./+-%__p_%'`
 
-old LIBS="$LIBS"
+old_LIBS="$LIBS"
 old_CPPFLAGS="$CPPFLAGS"
 smart_lib=
+smart_ldflags=
 smart_lib_dir=
 
 if test "x$smart_try_dir" != "x"; then
@@ -2817,7 +2818,8 @@ ct_command()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-		 smart_lib="-L$try -lct -Wl,-rpath,$try"
+		 smart_lib="-lct"
+		 smart_ldflags="-L$try -Wl,-rpath,$try"
 		 { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 		 break
@@ -2937,7 +2939,8 @@ ct_command()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-		  smart_lib="-L$try -lct -Wl,-rpath,$try"
+		  smart_lib="-lct"
+		  smart_ldflags="-L$try -Wl,-rpath,$try"
 		  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 		  break
@@ -2955,8 +2958,8 @@ fi
 
 if test "x$smart_lib" != "x"; then
   eval "ac_cv_lib_${sm_lib_safe}_${sm_func_safe}=yes"
-  LIBS="$smart_lib $old_LIBS"
-  SMART_LIBS="$smart_lib $SMART_LIBS"
+  LIBS="$smart_ldflags $smart_lib $old_LIBS"
+  SMART_LIBS="$smart_ldflags $smart_lib $SMART_LIBS"
 fi
 
     if test "x$ac_cv_lib_ct_ct_command" != "xyes"

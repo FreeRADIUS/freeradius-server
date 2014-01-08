@@ -126,9 +126,10 @@ dnl #  pass the user specified directory first.
 dnl #
 dnl #  Really we should be using LDFLAGS (-L<dir>) for this.
 dnl #
-old LIBS="$LIBS"
+old_LIBS="$LIBS"
 old_CPPFLAGS="$CPPFLAGS"
 smart_lib=
+smart_ldflags=
 smart_lib_dir=
 
 dnl #
@@ -143,7 +144,8 @@ if test "x$smart_try_dir" != "x"; then
     AC_TRY_LINK([extern char $2();],
 		[$2()],
 		[
-		 smart_lib="-L$try -l$1 -Wl,-rpath,$try"
+		 smart_lib="-l$1"
+		 smart_ldflags="-L$try -Wl,-rpath,$try"
 		 AC_MSG_RESULT(yes)
 		 break
 		],
@@ -183,7 +185,8 @@ if test "x$smart_lib" = "x"; then
     AC_TRY_LINK([extern char $2();],
 		[$2()],
 		[
-		  smart_lib="-L$try -l$1 -Wl,-rpath,$try"
+		  smart_lib="-l$1"
+		  smart_ldflags="-L$try -Wl,-rpath,$try"
 		  AC_MSG_RESULT(yes)
 		  break
 		],
@@ -198,8 +201,8 @@ dnl #  Found it, set the appropriate variable.
 dnl #
 if test "x$smart_lib" != "x"; then
   eval "ac_cv_lib_${sm_lib_safe}_${sm_func_safe}=yes"
-  LIBS="$smart_lib $old_LIBS"
-  SMART_LIBS="$smart_lib $SMART_LIBS"
+  LIBS="$smart_ldflags $smart_lib $old_LIBS"
+  SMART_LIBS="$smart_ldflags $smart_lib $SMART_LIBS"
 fi
 ])
 
