@@ -63,10 +63,10 @@ $(LT_OBJS): $(SERVER_HEADERS)
 #
 #######################################################################
 %.lo: %.c
-	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) $(RLM_CFLAGS) -c $<
+	$(LIBTOOL) --mode=compile --tag=CC $(CC) $(CFLAGS) $(RLM_CFLAGS) -c $<
 
 %.lo: %.cpp
-	$(LIBTOOL) --mode=compile $(CXX) $(CFLAGS) $(RLM_CFLAGS) -c $<
+	$(LIBTOOL) --mode=compile --tag=CXX $(CXX) $(CFLAGS) $(RLM_CFLAGS) -c $<
 
 ifneq ($(TARGET),)
 #######################################################################
@@ -120,7 +120,7 @@ build-module: $(TARGET).la $(RLM_UTILS)
 	done
 
 $(TARGET).la: $(RLM_SUBDIRS) $(LT_OBJS)
-	$(LIBTOOL) --mode=link $(CC) -release $(RADIUSD_VERSION_STRING) \
+	$(LIBTOOL) --mode=link --tag=CC $(CC) -release $(RADIUSD_VERSION_STRING) \
 	-module $(LINK_MODE) $(LDFLAGS) $(RLM_LDFLAGS) -o $@     \
 	-rpath $(libdir) $^ $(LIBRADIUS) $(RLM_LIBS) $(LIBS)
 

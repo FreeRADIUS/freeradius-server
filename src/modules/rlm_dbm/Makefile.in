@@ -13,11 +13,11 @@ RLM_INSTALL = @dbm_install@
 include ../rules.mak
 
 rlm_dbm_parser: rlm_dbm_parser.lo $(LIBRADIUS)
-	$(LIBTOOL) --mode=link $(CC) $(LDFLAGS) $(RLM_LDFLAGS) \
+	$(LIBTOOL) --mode=link --tag=CC $(CC) $(LDFLAGS) $(RLM_LDFLAGS) \
 		-o $@ $^ $(RLM_LIBS) $(LIBS)
 
 rlm_dbm_cat: rlm_dbm_cat.lo $(LIBRADIUS)
-	$(LIBTOOL) --mode=link $(CC) $(LDFLAGS) $(RLM_LDFLAGS) \
+	$(LIBTOOL) --mode=link --tag=CC $(CC) $(LDFLAGS) $(RLM_LDFLAGS) \
 		-o $@ $^ $(RLM_LIBS) $(LIBS)
 
 #

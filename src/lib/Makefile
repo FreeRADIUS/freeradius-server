@@ -35,13 +35,13 @@ TARGET		= $(LIBPREFIX)freeradius-radius
 
 # Define new rule for libtool objects
 %.lo : %.c
-	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c $<
+	$(LIBTOOL) --mode=compile --tag=CC $(CC) $(CFLAGS) -c $<
 
 .PHONY: all clean install reconfig
 all: $(TARGET).la
 
 $(TARGET).la: $(LT_OBJS)
-	$(LIBTOOL) --mode=link $(CC) -release $(RADIUSD_VERSION) \
+	$(LIBTOOL) --mode=link --tag=CC $(CC) -release $(RADIUSD_VERSION) \
 	$(LDFLAGS) $(LINK_MODE) -o $@ -rpath $(libdir) $^
 
 $(LT_OBJS): $(INCLUDES)

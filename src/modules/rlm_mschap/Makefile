@@ -19,7 +19,7 @@ include ../rules.mak
 $(LT_OBJS): $(HEADERS)
 
 smbencrypt$(EXEEXT): smbencrypt.lo smbdes.lo $(LIBRADIUS)
-	$(LIBTOOL) --mode=link $(CC) $(LDFLAGS) $(RLM_LDFLAGS) \
+	$(LIBTOOL) --mode=link --tag=CC $(CC) $(LDFLAGS) $(RLM_LDFLAGS) \
 		-o $@ $^ $(RLM_LIBS) $(LIBS)
 
 smbencrypt-install:

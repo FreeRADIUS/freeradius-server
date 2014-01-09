@@ -22,12 +22,12 @@ TARGET		= $(LIBPREFIX)freeradius-eap
 
 # Define new rule for libtool objects
 %.lo: %.c
-	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c $<
+	$(LIBTOOL) --mode=compile --tag=CC $(CC) $(CFLAGS) -c $<
 
 all: $(TARGET).la
 
 $(TARGET).la: $(LT_OBJS)
-	$(LIBTOOL) --mode=link $(CC) -release $(RADIUSD_VERSION_STRING) \
+	$(LIBTOOL) --mode=link --tag=CC $(CC) -release $(RADIUSD_VERSION_STRING) \
 	$(LDFLAGS) $(LINK_MODE) -o $@ -rpath $(libdir) $^ \
 	$(LIBRADIUS) $(LIBS)
 	@for x in .libs/* $^; do \
