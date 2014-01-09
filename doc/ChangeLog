@@ -1,6 +1,11 @@
 FreeRADIUS 2.2.4 Wednesday 16 Dec 2013 15:00:00 EST, urgency=medium
 	Feature improvements
 	Bug fixes
+	* If the server fails to bind() after fork(), that is now
+	  reported to the parent, which exits with an error.
+	* Session / delay times in MySQL are unsigned int.
+	* Use --tag=CC for libtool.  Closes #497.  Because libtool
+	  is too stupid to notice that compiling means compilation.
 
 FreeRADIUS 2.2.3 Wednesday 11 Dec 2013 15:00:00 EST, urgency=medium
 	Feature improvements
