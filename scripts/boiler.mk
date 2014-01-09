@@ -263,7 +263,7 @@ endef
 define COMPILE_C_CMDS
 	$(Q)mkdir -p $(dir $@)
 	$(Q)$(ECHO) CC $<
-	$(Q)$(strip ${COMPILE.c} -o $@ -c -MD ${CFLAGS} ${SRC_CFLAGS} ${INCDIRS} \
+	$(Q)$(strip ${COMPILE.c} -o $@ -c -MD ${CPPFLAGS} ${CFLAGS} ${SRC_CFLAGS} ${INCDIRS} \
 	    ${SRC_INCDIRS} ${SRC_DEFS} ${DEFS} $<)
 endef
 
@@ -271,7 +271,7 @@ endef
 define ANALYZE_C_CMDS
 	$(Q)mkdir -p $(dir $@)
 	$(Q)$(ECHO) SCAN $<
-	$(Q)$(strip ${ANALYZE.c} --analyze -c $< ${CFLAGS} ${SRC_CFLAGS} ${INCDIRS} \
+	$(Q)$(strip ${ANALYZE.c} --analyze -c $< ${CPPFLAGS} ${CFLAGS} ${SRC_CFLAGS} ${INCDIRS} \
 	    ${SRC_INCDIRS} ${SRC_DEFS} ${DEFS}) || (rm -f $@ && false)
 	$(Q)touch $@
 endef
@@ -279,7 +279,7 @@ endef
 # COMPILE_CXX_CMDS - Commands for compiling C++ source code.
 define COMPILE_CXX_CMDS
 	$(Q)mkdir -p $(dir $@)
-	$(Q)$(strip ${COMPILE.cxx} -o $@ -c -MD ${CXXFLAGS} ${SRC_CXXFLAGS} ${INCDIRS} \
+	$(Q)$(strip ${COMPILE.cxx} -o $@ -c -MD ${CPPFLAGS} ${CXXFLAGS} ${SRC_CXXFLAGS} ${INCDIRS} \
 	    ${SRC_INCDIRS} ${SRC_DEFS} ${DEFS} $<)
 endef
 
