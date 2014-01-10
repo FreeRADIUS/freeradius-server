@@ -10,6 +10,12 @@
 AUTH_FILES := $(filter-out %.conf %.md %.attrs %.mk %~,$(subst $(DIR)/,,$(wildcard $(DIR)/*)))
 
 #
+#  For each file, look for precursor test.
+#  Ensure that each test depends on its precursors.
+#
+$(foreach x,$(AUTH_FILES),$(eval $(BUILD_DIR)/tests/auth/$(x): $(shell grep 'PRE: ' $(DIR)/$(x) | sed 's/.*://;s/  / /g;s, , $(BUILD_DIR)/tests/auth/,g')))
+
+#
 #  Create the output directory
 #
 .PHONY: $(BUILD_DIR)/tests/auth
@@ -28,19 +34,6 @@ AUTH	 := $(subst $(DIR),$(BUILD_DIR)/tests/auth,$(AUTH_NEEDS))
 AUTH_HAS	 := $(filter $(wildcard $(AUTH_EXISTS)),$(AUTH_EXISTS))
 AUTH_COPY	 := $(subst $(DIR),$(BUILD_DIR)/tests/auth,$(AUTH_NEEDS))
 
-#
-#  For each file, look for precursor test.
-#  Ensure that each test depends on its precursors.
-#
--include $(BUILD_DIR)/tests/auth/depends.mk
-
-$(BUILD_DIR)/tests/auth/depends.mk: $(addprefix $(DIR)/,$(AUTH_FILES)) | $(BUILD_DIR)/tests/auth
-	@rm -f $@
-	@for x in $^; do \
-		y=`grep 'PRE: ' $$x | sed 's/.*://;s/  / /g;s, , $(BUILD_DIR)/tests/auth/,g'`; \
-		echo "$$x: $$y" >> $@; \
-		echo "" >> $@; \
-	done
 #
 #  These ones get copied over from the default input
 #
