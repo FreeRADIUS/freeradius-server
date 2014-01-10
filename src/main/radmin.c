@@ -83,7 +83,7 @@ char const *radmin_version = "radmin version " RADIUSD_VERSION_STRING
 log_debug_t debug_flag = 0;
 struct main_config_t mainconfig;
 
-int check_config = false;
+bool check_config = false;
 
 static FILE *outputfp = NULL;
 static int echo = false;

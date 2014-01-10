@@ -858,7 +858,7 @@ static const CONF_PARSER detail_config[] = {
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
 
-extern int check_config;
+extern bool check_config;
 
 /*
  *	Parse a detail section.
