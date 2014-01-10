@@ -58,7 +58,7 @@ pid_t rad_waitpid(pid_t pid, int *status)
 }
 #endif
 
-int check_config = false;
+bool check_config = false;
 
 static int usage(void)
 {
