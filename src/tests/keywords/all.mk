@@ -10,12 +10,6 @@
 FILES := $(filter-out %.conf %.md %.attrs %.mk %~,$(subst $(DIR)/,,$(wildcard $(DIR)/*)))
 
 #
-#  For each file, look for precursor test.
-#  Ensure that each test depends on its precursors.
-#
-$(foreach x,$(FILES),$(eval $(BUILD_DIR)/tests/keywords/$(x): $(shell grep 'PRE: ' $(DIR)/$(x) | sed 's/.*://;s/  / /g;s, , $(BUILD_DIR)/tests/keywords/,g')))
-
-#
 #  Create the output directory
 #
 .PHONY: $(BUILD_DIR)/tests/keywords
@@ -33,6 +27,20 @@ BOOTSTRAP	 := $(subst $(DIR),$(BUILD_DIR)/tests/keywords,$(BOOTSTRAP_NEEDS))
 
 BOOTSTRAP_HAS	 := $(filter $(wildcard $(BOOTSTRAP_EXISTS)),$(BOOTSTRAP_EXISTS))
 BOOTSTRAP_COPY	 := $(subst $(DIR),$(BUILD_DIR)/tests/keywords,$(BOOTSTRAP_NEEDS))
+
+#
+#  For each file, look for precursor test.
+#  Ensure that each test depends on its precursors.
+#
+-include $(BUILD_DIR)/tests/keywords/depends.mk
+
+$(BUILD_DIR)/tests/keywords/depends.mk: $(addprefix $(DIR)/,$(FILES)) | $(BUILD_DIR)/tests/keywords
+	@rm -f $@
+	@for x in $^; do \
+		y=`grep 'PRE: ' $$x | sed 's/.*://;s/  / /g;s, , $(BUILD_DIR)/tests/keywords/,g'`; \
+		echo "$$x: $$y" >> $@; \
+		echo "" >> $@; \
+	done
 
 #
 #  These ones get copied over from the default input
