@@ -609,12 +609,9 @@ int		rad_postauth(REQUEST *);
 int		rad_virtual_server(REQUEST *);
 
 /* exec.c */
-pid_t radius_start_program(char const *cmd, REQUEST *request,
-			int exec_wait,
-			int *input_fd,
-			int *output_fd,
-			VALUE_PAIR *input_pairs,
-			int shell_escape);
+pid_t radius_start_program(char const *cmd, REQUEST *request, bool exec_wait,
+			   int *input_fd, int *output_fd,
+			   VALUE_PAIR *input_pairs, bool shell_escape);
 int radius_readfrom_program(REQUEST *request, int fd, pid_t pid, int timeout,
 			    char *answer, int left);
 int radius_exec_program(REQUEST *request, char const *cmd, bool exec_wait, bool shell_escape,

@@ -82,12 +82,9 @@ static void tv_sub(struct timeval *end, struct timeval *start,
  * @param shell_escape values before passing them as arguments.
  * @return PID of the child process, -1 on error.
  */
-pid_t radius_start_program(char const *cmd, REQUEST *request,
-			int exec_wait,
-			int *input_fd,
-			int *output_fd,
-			VALUE_PAIR *input_pairs,
-			int shell_escape)
+pid_t radius_start_program(char const *cmd, REQUEST *request, bool exec_wait,
+			   int *input_fd, int *output_fd,
+			   VALUE_PAIR *input_pairs, bool shell_escape)
 {
 #ifndef __MINGW32__
 	char *p;
@@ -224,7 +221,6 @@ pid_t radius_start_program(char const *cmd, REQUEST *request,
 		 *	has created them.
 		 */
 		if (exec_wait) {
-
 			if (input_fd) {
 				close(to_child[1]);
 				dup2(to_child[0], STDIN_FILENO);
@@ -296,7 +292,7 @@ pid_t radius_start_program(char const *cmd, REQUEST *request,
 			close(to_child[0]);
 			close(to_child[1]);
 			close(from_child[0]);
-			close(from_child[0]);
+			close(from_child[1]);
 		}
 		return -1;
 	}
