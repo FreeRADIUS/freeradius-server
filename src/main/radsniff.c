@@ -1336,7 +1336,8 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 	 *	If were filtering on responses we can only indicate we received it on response, or timeout.
 	 */
 	} else if (!conf->filter_response) {
-		conf->logger(count, status, event->in, current, &elapsed, NULL, response, true);
+		conf->logger(original ? original->id : count, status, event->in,
+			     current, &elapsed, NULL, response, true);
 	}
 
 	fflush(fr_log_fp);
