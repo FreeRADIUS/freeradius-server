@@ -51,7 +51,6 @@ FreeRADIUS 3.0.1 Mon 13 Jan 2014 14:30:00 EDT urgency=medium
 	* Mark "unknown" WiMAX attributes as being WiMAX.
 	* Fix typo in packet decoder for fragmented extended attrs
 	* RPM spec fixes.
-	* Always run unit tests before building radiusd.
 	* Fix rlm_perl build issues when not using threads.
 	* Enable %{Response-Packet-Type} again.
 	* Update configuration file parser to handle "bool"
