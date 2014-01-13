@@ -9,7 +9,7 @@ all:
 #  Make's optimization.
 #
 ifeq "$(shell [ -e src/freeradius-devel ] || ln -s include src/freeradius-devel)" ""
-	# do nothing
+# do nothing
 endif
 
 SUBMAKEFILES := include/all.mk lib/all.mk tests/all.mk modules/all.mk main/all.mk
