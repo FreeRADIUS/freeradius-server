@@ -1160,7 +1160,6 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			 */
 			if (search.link_vps) {
 				original = rbtree_finddata(link_tree, &search);
-				if (original) ERROR("FOUND");
 			}
 
 			/*
@@ -1170,25 +1169,24 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			 */
 			if (!original) {
 				original = rbtree_finddata(request_tree, &search);
-			}
-
-			if (original &&
-			    memcmp(original->expect->vector, current->vector, sizeof(original->expect->vector) != 0)) {
-				/*
-				 *	...before the request timed out (which may be an issue)
-				 *	and before we saw a response (which may be a bigger issue).
-				 */
-				if (!original->linked) {
-					status = RS_REUSED;
-					stats->exchange[current->code].interval.reused_total++;
-					original->silent_cleanup = true;
+				if (original && memcmp(original->expect->vector, current->vector,
+				    sizeof(original->expect->vector) != 0)) {
+					/*
+					 *	...before the request timed out (which may be an issue)
+					 *	and before we saw a response (which may be a bigger issue).
+					 */
+					if (!original->linked) {
+						status = RS_REUSED;
+						stats->exchange[current->code].interval.reused_total++;
+						original->silent_cleanup = true;
+					}
+					/* This is the same as immediately scheduling the cleanup event */
+					original->when = header->ts;
+					fr_event_delete(event->list, &original->event);
+					rs_packet_cleanup(original);
+					original = NULL;
+					/* else it's a proper RTX with the same src/dst id authenticator/nonce */
 				}
-				/* This is the same as immediately scheduling the cleanup event */
-				original->when = header->ts;
-				fr_event_delete(event->list, &original->event);
-				rs_packet_cleanup(original);
-				original = NULL;
-				/* else it's a proper RTX with the same src/dst id authenticator/nonce */
 			}
 
 			/*
