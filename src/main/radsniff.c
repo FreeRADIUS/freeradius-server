@@ -890,7 +890,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 
 	rs_status_t		status = RS_NORMAL;	/* Any special conditions (RTX, Unlinked, ID-Reused) */
 	RADIUS_PACKET		*current;		/* Current packet were processing */
-	rs_request_t		*original;
+	rs_request_t		*original = NULL;
 
 	rs_request_t		search;
 
@@ -1143,57 +1143,52 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			}
 			search.expect->code = current->code;
 
-			/*
-			 *	Process requests before the filter, so that we can force expiry
-			 *	when we detect ID re-use, if we don't do this we get false RTX
-			 *	notifications for responses.
-			 */
-			original = rbtree_finddata(request_tree, &search);
-
-			/*
-			 *	Upstream device re-used src/dst ip/port id...
-			 */
-			if (original) {
-				if (memcmp(original->expect->vector, current->vector,
-					   sizeof(original->expect->vector) != 0)) {
-					/*
-					 *	...before the request timed out (which may be an issue)
-					 *	and before we saw a response (which may be a bigger issue).
-					 */
-					if (!original->linked) {
-						status = RS_REUSED;
-						stats->exchange[current->code].interval.reused_total++;
-						original->silent_cleanup = true;
-					}
-
-					/* This is the same as immediately scheduling the cleanup event */
-					original->when = header->ts;
-					fr_event_delete(event->list, &original->event);
-					rs_packet_cleanup(original);
-					original = NULL;
-				}
-				/* else it's a proper RTX with the same src/dst id authenticator/nonce */
-			/*
-			 *	If we have linking attributes set, attempt to find a request in the
-			 *	linking tree.
-			 */
-			} else if ((conf->link_da_num > 0) && current->vps) {
+			if ((conf->link_da_num > 0) && current->vps) {
 				int ret;
 				ret = rs_get_pairs(current, &search.link_vps, current->vps, conf->link_da,
 						   conf->link_da_num);
 				if (ret < 0) {
 					ERROR("Failed extracting RTX linking pairs from request");
-
-					talloc_free(original);
+					rad_free(&current);
 					return;
 				}
+			}
 
+			/*
+			 *	If we have linking attributes set, attempt to find a request in the
+			 *	linking tree.
+			 */
+			if (search.link_vps) {
+				original = rbtree_finddata(link_tree, &search);
+				if (original) ERROR("FOUND");
+			}
+
+			/*
+			 *	If we can't find the request, fall back to the request tree. We need
+			 *	to do this, else we may insert a duplicate packet into the request
+			 *	tree.
+			 */
+			if (!original) {
+				original = rbtree_finddata(request_tree, &search);
+			}
+
+			if (original &&
+			    memcmp(original->expect->vector, current->vector, sizeof(original->expect->vector) != 0)) {
 				/*
-				 *	Only bother searching if we have vps to search with...
+				 *	...before the request timed out (which may be an issue)
+				 *	and before we saw a response (which may be a bigger issue).
 				 */
-				if (search.link_vps) {
-					original = rbtree_finddata(link_tree, &search);
+				if (!original->linked) {
+					status = RS_REUSED;
+					stats->exchange[current->code].interval.reused_total++;
+					original->silent_cleanup = true;
 				}
+				/* This is the same as immediately scheduling the cleanup event */
+				original->when = header->ts;
+				fr_event_delete(event->list, &original->event);
+				rs_packet_cleanup(original);
+				original = NULL;
+				/* else it's a proper RTX with the same src/dst id authenticator/nonce */
 			}
 
 			/*
@@ -1227,6 +1222,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 
 				rad_free(&original->packet);
 				rad_free(&original->expect);
+
 				/* We may of seen the response, but it may of been lost upstream */
 				rad_free(&original->linked);
 
