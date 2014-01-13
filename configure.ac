@@ -1010,7 +1010,7 @@ if test "x$WITH_OPENSSL" = xyes; then
 
     FR_SMART_CHECK_LIB(ssl, SSL_new)
     if test "x$ac_cv_lib_ssl_SSL_new" != "xyes"; then
-      AC_MSG_FAILURE([failed linking to libssl])
+      AC_MSG_FAILURE([failed linking to libssl. Use --with-openssl-lib-dir=<path>, or --with-openssl=no (builds without OpenSSL)])
     else
       AC_DEFINE(HAVE_LIBSSL, 1, [Define to 1 if you have the `ssl' library (-lssl).])
       OPENSSL_LIBS="$OPENSSL_LIBS $smart_lib"
@@ -1020,7 +1020,7 @@ if test "x$WITH_OPENSSL" = xyes; then
       fi
     fi
   else
-    AC_MSG_FAILURE([failed linking to libcrypto])
+    AC_MSG_FAILURE([failed linking to libcrypto. Use --with-openssl-lib-dir=<path>, or --with-openssl=no (builds without OpenSSL)])
   fi
 
   smart_try_dir="$openssl_include_dir"
@@ -1039,7 +1039,7 @@ if test "x$WITH_OPENSSL" = xyes; then
       openssl/engine.h,
       [],
       [
-        AC_MSG_FAILURE([failed locating OpenSSL headers])
+        AC_MSG_FAILURE([failed locating OpenSSL headers. Use --with-openssl-include-dir=<path>, or --with-openssl=no (builds without OpenSSL)])
       ]
     )
 

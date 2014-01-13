@@ -8096,7 +8096,7 @@ fi
     if test "x$ac_cv_lib_ssl_SSL_new" != "xyes"; then
       { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
 $as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
-as_fn_error $? "failed linking to libssl
+as_fn_error $? "failed linking to libssl. Use --with-openssl-lib-dir=<path>, or --with-openssl=no (builds without OpenSSL)
 See \`config.log' for more details" "$LINENO" 5; }
     else
 
@@ -8114,7 +8114,7 @@ See \`config.log' for more details" "$LINENO" 5; }
   else
     { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
 $as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
-as_fn_error $? "failed linking to libcrypto
+as_fn_error $? "failed linking to libcrypto. Use --with-openssl-lib-dir=<path>, or --with-openssl=no (builds without OpenSSL)
 See \`config.log' for more details" "$LINENO" 5; }
   fi
 
@@ -8289,7 +8289,7 @@ else
 
         { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
 $as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
-as_fn_error $? "failed locating OpenSSL headers
+as_fn_error $? "failed locating OpenSSL headers. Use --with-openssl-include-dir=<path>, or --with-openssl=no (builds without OpenSSL)
 See \`config.log' for more details" "$LINENO" 5; }
 
 
