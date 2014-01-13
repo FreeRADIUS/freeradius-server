@@ -846,12 +846,12 @@ static void rs_packet_cleanup(void *ctx)
 	}
 
 	skip:
-
 	/*
 	 *	If were attempting to cleanup the request, and it's no longer in the request_tree
 	 *	something has gone very badly wrong.
 	 */
 	assert(rbtree_deletebydata(request_tree, request));
+	talloc_free(request);
 }
 
 static int _request_free(rs_request_t *request)
@@ -1080,6 +1080,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 					 */
 					fr_event_delete(event->list, &original->event);
 					rbtree_deletebydata(request_tree, original);
+					talloc_free(original);
 					return;
 				}
 			/*
@@ -1219,14 +1220,19 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 				original->rt_req++;
 
 				rad_free(&original->packet);
-				rad_free(&original->expect);
 
 				/* We may of seen the response, but it may of been lost upstream */
 				rad_free(&original->linked);
 
 				original->packet = talloc_steal(original, current);
+
+				/* Request needs to be reinserted as the 4 tuple of the response may of changed */
+				rbtree_deletebydata(request_tree, original);
+
+				rad_free(&original->expect);
 				original->expect = talloc_steal(original, search.expect);
 
+				/* Disarm the timer for the cleanup event for the original request */
 				fr_event_delete(event->list, &original->event);
 			/*
 			 *	...nope it's a new request.
@@ -1258,9 +1264,9 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 				if (conf->filter_response_vps) {
 					original->silent_cleanup = true;
 				}
-
-				rbtree_insert(request_tree, original);
 			}
+
+			rbtree_insert(request_tree, original);
 
 			/*
 			 *	Insert a callback to remove the request from the tree
@@ -1271,6 +1277,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 					     &original->when, &original->event)) {
 				REDEBUG("Failed inserting new event");
 				rbtree_deletebydata(request_tree, original);
+				talloc_free(original);
 				return;
 			}
 			response = false;
@@ -1431,15 +1438,6 @@ static void _rs_event_status(struct timeval *wake)
 	}
 }
 
-/** Wrapper function to allow rad_free to be called as an rbtree destructor callback
- *
- * @param request to free.
- */
-static void _rb_rad_free(void *request)
-{
-	talloc_free(request);
-}
-
 /** Compare requests using packet info and lists of attributes
  *
  */
@@ -1450,7 +1448,12 @@ static int rs_rtx_cmp(rs_request_t const *a, rs_request_t const *b)
 	assert(a->link_vps);
 	assert(b->link_vps);
 
-	rcode = (int)  a->expect->dst_port - (int) b->expect->dst_port;
+	/*
+	 *	Ug. This is actually the dst port of the request, because
+	 *	were dealing with the mangled request that should match the
+	 *	reply.
+	 */
+	rcode = (int)  a->expect->src_port - (int) b->expect->src_port;
 	if (rcode != 0) return rcode;
 
 	rcode = a->expect->sockfd - b->expect->sockfd;
@@ -1967,7 +1970,7 @@ int main(int argc, char *argv[])
 	/*
 	 *	Setup the request tree
 	 */
-	request_tree = rbtree_create((rbcmp) rs_packet_cmp, _rb_rad_free, 0);
+	request_tree = rbtree_create((rbcmp) rs_packet_cmp, NULL, 0);
 	if (!request_tree) {
 		ERROR("Failed creating request tree");
 		goto finish;
