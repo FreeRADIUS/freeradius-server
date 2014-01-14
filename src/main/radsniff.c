@@ -761,7 +761,8 @@ static int rs_get_pairs(TALLOC_CTX *ctx, VALUE_PAIR **out, VALUE_PAIR *vps, DICT
 {
 	vp_cursor_t list_cursor, out_cursor;
 	VALUE_PAIR *match, *last_match, *copy;
-	int i, count = 0;
+	uint64_t count = 0;
+	int i;
 
 	last_match = vps;
 

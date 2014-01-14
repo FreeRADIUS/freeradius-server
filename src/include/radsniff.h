@@ -166,7 +166,7 @@ typedef struct rs_stats {
  * the event timer when a response is received, so we don't erroneously log the response as lost.
  */
 typedef struct rs_request {
-	int			id;			//!< Monotonically increasing packet counter.
+	uint64_t		id;			//!< Monotonically increasing packet counter.
 	fr_event_t		*event;			//!< Event created when we received the original request.
 
 	struct timeval		when;			//!< Time when the packet was received, or next time an event
