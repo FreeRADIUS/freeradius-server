@@ -1029,6 +1029,22 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			original = rbtree_finddata(request_tree, &search);
 
 			/*
+			 *	Verify this code is allowed
+			 */
+			if (conf->filter_response_code && (conf->filter_response_code != current->code)) {
+				drop_response:
+
+				rad_free(&current);
+				RDEBUG2("Dropped by attribute/packet filter");
+
+				/* We now need to cleanup the original request too */
+				if (original) {
+					RS_CLEANUP_NOW(original, true);
+				}
+				return;
+			}
+
+			/*
 			 *	Only decode attributes if we want to print them or filter on them
 			 *	rad_packet_ok does checks to verify the packet is actually valid.
 			 */
@@ -1050,20 +1066,6 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			 *	Check if we've managed to link it to a request
 			 */
 			if (original) {
-				/*
-				 *	Verify this code is allowed
-				 */
-				if (conf->filter_response_code && (conf->filter_response_code != current->code)) {
-					drop_response:
-
-					rad_free(&current);
-					RDEBUG2("Dropped by attribute/packet filter");
-
-					/* We now need to cleanup the original request too */
-					RS_CLEANUP_NOW(original, true);
-					return;
-				}
-
 				/*
 				 *	Now verify the packet passes the attribute filter
 				 */
@@ -1128,6 +1130,18 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 	case PW_CODE_DISCONNECT_REQUEST:
 	case PW_CODE_STATUS_SERVER:
 		{
+			/*
+			 *	Verify this code is allowed
+			 */
+			if (conf->filter_request_code && (conf->filter_request_code != current->code)) {
+				drop_request:
+
+				rad_free(&current);
+				RDEBUG2("Dropped by attribute/packet filter");
+
+				return;
+			}
+
 			/*
 			 *	Only decode attributes if we want to print them or filter on them
 			 *	rad_packet_ok does checks to verify the packet is actually valid.
@@ -1209,18 +1223,6 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 					}
 					/* else it's a proper RTX with the same src/dst id authenticator/nonce */
 				}
-			}
-
-			/*
-			 *	Verify this code is allowed
-			 */
-			if (conf->filter_request_code && (conf->filter_request_code != current->code)) {
-				drop_request:
-
-				rad_free(&current);
-				RDEBUG2("Dropped by attribute/packet filter");
-
-				return;
 			}
 
 			/*
