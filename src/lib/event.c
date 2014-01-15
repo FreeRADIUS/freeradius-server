@@ -141,6 +141,8 @@ int fr_event_list_num_elements(fr_event_list_t *el)
 
 int fr_event_delete(fr_event_list_t *el, fr_event_t **ev_p)
 {
+	int ret;
+
 	fr_event_t *ev;
 
 	if (!el || !ev_p || !*ev_p) return 0;
@@ -149,10 +151,10 @@ int fr_event_delete(fr_event_list_t *el, fr_event_t **ev_p)
 	if (ev->ev_p) *(ev->ev_p) = NULL;
 	*ev_p = NULL;
 
-	fr_heap_extract(el->times, ev);
+	ret = fr_heap_extract(el->times, ev);
 	free(ev);
 
-	return 1;
+	return ret;
 }
 
 

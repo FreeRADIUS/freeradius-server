@@ -791,9 +791,34 @@ static int rs_get_pairs(TALLOC_CTX *ctx, VALUE_PAIR **out, VALUE_PAIR *vps, DICT
 	return count;
 }
 
-static void rs_packet_cleanup(void *ctx)
+static int _request_free(rs_request_t *request)
 {
-	rs_request_t *request = talloc_get_type_abort(ctx, rs_request_t);
+	/*
+	 *	If were attempting to cleanup the request, and it's no longer in the request_tree
+	 *	something has gone very badly wrong.
+	 */
+	if (request->in_request_tree) {
+		assert(rbtree_deletebydata(request_tree, request));
+	}
+
+	if (request->in_link_tree) {
+		assert(rbtree_deletebydata(link_tree, request));
+	}
+
+	if (request->event) {
+		assert(fr_event_delete(events, &request->event));
+	}
+
+	rad_free(&request->packet);
+	rad_free(&request->expect);
+	rad_free(&request->linked);
+
+	return 0;
+}
+
+static void rs_packet_cleanup(rs_request_t *request)
+{
+
 	RADIUS_PACKET *packet = request->packet;
 	uint64_t count = request->id;
 
@@ -850,29 +875,11 @@ static void rs_packet_cleanup(void *ctx)
 	talloc_free(request);
 }
 
-static int _request_free(rs_request_t *request)
+static void _rs_event(void *ctx)
 {
-	/*
-	 *	If were attempting to cleanup the request, and it's no longer in the request_tree
-	 *	something has gone very badly wrong.
-	 */
-	if (request->in_request_tree) {
-		assert(rbtree_deletebydata(request_tree, request));
-	}
-
-	if (request->in_link_tree) {
-		assert(rbtree_deletebydata(link_tree, request));
-	}
-
-	if (request->event) {
-		fr_event_delete(events, &request->event);\
-	}
-
-	rad_free(&request->packet);
-	rad_free(&request->expect);
-	rad_free(&request->linked);
-
-	return 0;
+	rs_request_t *request = talloc_get_type_abort(ctx, rs_request_t);
+	request->event = NULL;
+	rs_packet_cleanup(request);
 }
 
 /** Wrapper around fr_packet_cmp to strip off the outer request struct
@@ -1090,7 +1097,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 
 				original->linked = talloc_steal(original, current);
 				rs_tv_add_ms(&header->ts, conf->stats.timeout, &original->when);
-				if (!fr_event_insert(event->list, rs_packet_cleanup, original, &original->when,
+				if (!fr_event_insert(event->list, _rs_event, original, &original->when,
 						     &original->event)) {
 					REDEBUG("Failed inserting new event");
 					/*
@@ -1300,7 +1307,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			 */
 			original->packet->timestamp = header->ts;
 			rs_tv_add_ms(&header->ts, conf->stats.timeout, &original->when);
-			if (!fr_event_insert(event->list, rs_packet_cleanup, original,
+			if (!fr_event_insert(event->list, _rs_event, original,
 					     &original->when, &original->event)) {
 				REDEBUG("Failed inserting new event");
 
