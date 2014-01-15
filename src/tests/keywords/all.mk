@@ -7,7 +7,7 @@
 #  The list is unordered.  The order is added in the next step by looking
 #  at precursors.
 #
-KEYWORD_FILES := $(filter-out %.conf %.md %.attrs %.mk %~,$(subst $(DIR)/,,$(wildcard $(DIR)/*)))
+KEYWORD_FILES := $(filter-out %.conf %.md %.attrs %.mk %~ %.rej,$(subst $(DIR)/,,$(wildcard $(DIR)/*)))
 
 #
 #  Create the output directory
