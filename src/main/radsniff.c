@@ -1033,9 +1033,8 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			 */
 			if (conf->filter_response_code && (conf->filter_response_code != current->code)) {
 				drop_response:
-
+				RDEBUG2("Response dropped by attribute/packet filter");
 				rad_free(&current);
-				RDEBUG2("Dropped by attribute/packet filter");
 
 				/* We now need to cleanup the original request too */
 				if (original) {
@@ -1135,8 +1134,8 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			if (conf->filter_request_code && (conf->filter_request_code != current->code)) {
 				drop_request:
 
+				RDEBUG2("Request dropped by attribute/packet filter");
 				rad_free(&current);
-				RDEBUG2("Dropped by attribute/packet filter");
 
 				return;
 			}
