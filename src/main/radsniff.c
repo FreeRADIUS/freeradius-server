@@ -875,6 +875,14 @@ static int _request_free(rs_request_t *request)
 	return 0;
 }
 
+/** Wrapper around fr_packet_cmp to strip off the outer request struct
+ *
+ */
+static int rs_packet_cmp(rs_request_t const *a, rs_request_t const *b)
+{
+	return fr_packet_cmp(a->expect, b->expect);
+}
+
 /* This is the same as immediately scheduling the cleanup event */
 #define RS_CLEANUP_NOW(_x, _s)\
 	{\
@@ -1165,19 +1173,26 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			}
 
 			/*
-			 *	If we have linking attributes set, attempt to find a request in the
-			 *	linking tree.
+			 *	If we have linking attributes set, attempt to find a request in the linking tree.
 			 */
 			if (search.link_vps) {
-				original = rbtree_finddata(link_tree, &search);
-			}
+				rs_request_t *tuple;
 
+				original = rbtree_finddata(link_tree, &search);
+				tuple = rbtree_finddata(request_tree, &search);
+
+				/*
+				 *	If the packet we matched using attributes is not the same
+				 *	as the packet in the request tree, then we need to clean up
+				 *	the packet in the request tree.
+				 */
+				if (tuple && (original != tuple)) {
+					RS_CLEANUP_NOW(tuple, true);
+				}
 			/*
-			 *	If we can't find the request, fall back to the request tree. We need
-			 *	to do this, else we may insert a duplicate packet into the request
-			 *	tree.
+			 *	Detect duplicates using the normal 4-tuple of src/dst ips/ports
 			 */
-			if (!original) {
+			} else {
 				original = rbtree_finddata(request_tree, &search);
 				if (original && memcmp(original->expect->vector, current->vector,
 				    sizeof(original->expect->vector) != 0)) {
@@ -1231,8 +1246,10 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 
 				original->packet = talloc_steal(original, current);
 
-				/* Request needs to be reinserted as the 4 tuple of the response may of changed */
-				rbtree_deletebydata(request_tree, original);
+				/* Request may need to be reinserted as the 4 tuple of the response may of changed */
+				if (rs_packet_cmp(original, &search) != 0) {
+					rbtree_deletebydata(request_tree, original);
+				}
 
 				rad_free(&original->expect);
 				original->expect = talloc_steal(original, search.expect);
@@ -1255,13 +1272,9 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 
 				if (search.link_vps) {
 					original->link_vps = pairsteal(original, search.link_vps);
-					if (!rbtree_insert(link_tree, original)) {
-						fr_strerror_printf("Duplicate or out of memory");
-						REDEBUG("Failed inserting linking pairs");
 
-						RS_CLEANUP_NOW(original, false);
-						return;
-					}
+					/* We should never have conflicts */
+					assert(rbtree_insert(link_tree, original));
 					original->in_link_tree = true;
 				}
 
@@ -1276,14 +1289,11 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 				}
 			}
 
-			if (!rbtree_insert(request_tree, original)) {
-				fr_strerror_printf("Duplicate or out of memory");
-				REDEBUG("Failed inserting request pairs");
-
-				RS_CLEANUP_NOW(original, false);
-				return;
+			if (!original->in_request_tree) {
+				/* We should never have conflicts */
+				assert(rbtree_insert(request_tree, original));
+				original->in_request_tree = true;
 			}
-			original->in_request_tree = true;
 
 			/*
 			 *	Insert a callback to remove the request from the tree
@@ -1294,7 +1304,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 					     &original->when, &original->event)) {
 				REDEBUG("Failed inserting new event");
 
-				RS_CLEANUP_NOW(original, false);
+				talloc_free(original);
 				return;
 			}
 			response = false;
@@ -1487,14 +1497,6 @@ static int rs_rtx_cmp(rs_request_t const *a, rs_request_t const *b)
 	if (rcode != 0) return rcode;
 
 	return pairlistcmp(a->link_vps, b->link_vps);
-}
-
-/** Wrapper around fr_packet_cmp to strip off the outer request struct
- *
- */
-static int rs_packet_cmp(rs_request_t const *a, rs_request_t const *b)
-{
-	return fr_packet_cmp(a->expect, b->expect);
 }
 
 static int rs_build_dict_list(DICT_ATTR const **out, size_t len, char *list)
