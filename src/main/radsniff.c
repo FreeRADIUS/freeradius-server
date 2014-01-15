@@ -1098,7 +1098,6 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 					 *	Delete the original request/event, it's no longer valid
 					 *	for statistics.
 					 */
-					fr_event_delete(event->list, &original->event);
 					talloc_free(original);
 					return;
 				}
