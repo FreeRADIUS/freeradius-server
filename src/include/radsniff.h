@@ -187,6 +187,9 @@ typedef struct rs_request {
 							//!< ignore stats about packet loss.
 
 	VALUE_PAIR		*link_vps;		//!< VALUE_PAIRs used to link retransmissions.
+
+	bool			in_request_tree;	//!< Whether the request is currently in the request tree.
+	bool			in_link_tree;		//!< Whether the request is currently in the linked tree.
 } rs_request_t;
 
 /** Statistic write/print event

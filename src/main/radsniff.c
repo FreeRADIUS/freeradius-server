@@ -847,18 +847,25 @@ static void rs_packet_cleanup(void *ctx)
 	}
 
 	skip:
-	/*
-	 *	If were attempting to cleanup the request, and it's no longer in the request_tree
-	 *	something has gone very badly wrong.
-	 */
-	assert(rbtree_deletebydata(request_tree, request));
 	talloc_free(request);
 }
 
 static int _request_free(rs_request_t *request)
 {
-	if (request->link_vps) {
+	/*
+	 *	If were attempting to cleanup the request, and it's no longer in the request_tree
+	 *	something has gone very badly wrong.
+	 */
+	if (request->in_request_tree) {
+		assert(rbtree_deletebydata(request_tree, request));
+	}
+
+	if (request->in_link_tree) {
 		assert(rbtree_deletebydata(link_tree, request));
+	}
+
+	if (request->event) {
+		fr_event_delete(events, &request->event);\
 	}
 
 	rad_free(&request->packet);
@@ -867,6 +874,15 @@ static int _request_free(rs_request_t *request)
 
 	return 0;
 }
+
+/* This is the same as immediately scheduling the cleanup event */
+#define RS_CLEANUP_NOW(_x, _s)\
+	{\
+		_x->silent_cleanup = _s;\
+		_x->when = header->ts;\
+		rs_packet_cleanup(_x);\
+		_x = NULL;\
+	} while (0)
 
 static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkthdr const *header, uint8_t const *data)
 {
@@ -1036,13 +1052,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 					RDEBUG2("Dropped by attribute/packet filter");
 
 					/* We now need to cleanup the original request too */
-					original->silent_cleanup = true;
-					original->when = header->ts;	/* Needed for correct TS */
-
-					/* This is the same as scheduling the event immediately */
-					fr_event_delete(event->list, &original->event);
-					rs_packet_cleanup(original);
-
+					RS_CLEANUP_NOW(original, true);
 					return;
 				}
 
@@ -1054,20 +1064,19 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 					if (!pairvalidate_relaxed(conf->filter_response_vps, current->vps)) {
 						goto drop_response;
 					}
-					original->silent_cleanup = false;
 				}
 
 				/*
 				 *	Is this a retransmit?
 				 */
-				if (!original->linked) {
-					original->stats_rsp = &stats->exchange[current->code];
-				} else {
+				if (original->linked) {
 					status = RS_RTX;
 					original->rt_rsp++;
 
 					rad_free(&original->linked);
 					fr_event_delete(event->list, &original->event);
+				} else {
+					original->stats_rsp = &stats->exchange[current->code];
 				}
 
 				original->linked = talloc_steal(original, current);
@@ -1080,7 +1089,6 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 					 *	for statistics.
 					 */
 					fr_event_delete(event->list, &original->event);
-					rbtree_deletebydata(request_tree, original);
 					talloc_free(original);
 					return;
 				}
@@ -1136,7 +1144,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			/*
 			 *	Save the request for later matching
 			 */
-			search.expect = rad_alloc_reply(conf, current);
+			search.expect = rad_alloc_reply(current, current);
 			if (!search.expect) {
 				REDEBUG("Failed allocating memory to hold expected reply");
 				rs_tv_add_ms(&header->ts, conf->stats.timeout, &stats->quiet);
@@ -1180,13 +1188,10 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 					if (!original->linked) {
 						status = RS_REUSED;
 						stats->exchange[current->code].interval.reused_total++;
-						original->silent_cleanup = true;
+						RS_CLEANUP_NOW(original, true);
+					} else {
+						RS_CLEANUP_NOW(original, false);
 					}
-					/* This is the same as immediately scheduling the cleanup event */
-					original->when = header->ts;
-					fr_event_delete(event->list, &original->event);
-					rs_packet_cleanup(original);
-					original = NULL;
 					/* else it's a proper RTX with the same src/dst id authenticator/nonce */
 				}
 			}
@@ -1197,7 +1202,6 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			if (conf->filter_request_code && (conf->filter_request_code != current->code)) {
 				drop_request:
 
-				rad_free(&search.expect);
 				rad_free(&current);
 				RDEBUG2("Dropped by attribute/packet filter");
 
@@ -1252,8 +1256,13 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 				if (search.link_vps) {
 					original->link_vps = pairsteal(original, search.link_vps);
 					if (!rbtree_insert(link_tree, original)) {
+						fr_strerror_printf("Duplicate or out of memory");
 						REDEBUG("Failed inserting linking pairs");
+
+						RS_CLEANUP_NOW(original, false);
+						return;
 					}
+					original->in_link_tree = true;
 				}
 
 				/*
@@ -1267,7 +1276,14 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 				}
 			}
 
-			rbtree_insert(request_tree, original);
+			if (!rbtree_insert(request_tree, original)) {
+				fr_strerror_printf("Duplicate or out of memory");
+				REDEBUG("Failed inserting request pairs");
+
+				RS_CLEANUP_NOW(original, false);
+				return;
+			}
+			original->in_request_tree = true;
 
 			/*
 			 *	Insert a callback to remove the request from the tree
@@ -1277,8 +1293,8 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			if (!fr_event_insert(event->list, rs_packet_cleanup, original,
 					     &original->when, &original->event)) {
 				REDEBUG("Failed inserting new event");
-				rbtree_deletebydata(request_tree, original);
-				talloc_free(original);
+
+				RS_CLEANUP_NOW(original, false);
 				return;
 			}
 			response = false;
@@ -1546,6 +1562,26 @@ static int rs_build_filter(VALUE_PAIR **out, char const *filter)
 	pairsort(out, true);
 
 	return 0;
+}
+
+/** Callback for when the request is removed from the request tree
+ *
+ * @param request being removed.
+ */
+static void _unmark_request(void *request)
+{
+	rs_request_t *this = request;
+	this->in_request_tree = false;
+}
+
+/** Callback for when the request is removed from the link tree
+ *
+ * @param request being removed.
+ */
+static void _unmark_link(void *request)
+{
+	rs_request_t *this = request;
+	this->in_link_tree = false;
 }
 
 static void NEVER_RETURNS usage(int status)
@@ -1919,7 +1955,7 @@ int main(int argc, char *argv[])
 			usage(64);
 		}
 
-		link_tree = rbtree_create((rbcmp) rs_rtx_cmp, NULL, 0);
+		link_tree = rbtree_create((rbcmp) rs_rtx_cmp, _unmark_link, 0);
 		if (!link_tree) {
 			ERROR("Failed creating RTX tree");
 			goto finish;
@@ -1975,7 +2011,7 @@ int main(int argc, char *argv[])
 	/*
 	 *	Setup the request tree
 	 */
-	request_tree = rbtree_create((rbcmp) rs_packet_cmp, NULL, 0);
+	request_tree = rbtree_create((rbcmp) rs_packet_cmp, _unmark_request, 0);
 	if (!request_tree) {
 		ERROR("Failed creating request tree");
 		goto finish;
