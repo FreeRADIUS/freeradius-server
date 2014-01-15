@@ -7,7 +7,7 @@
 #  The list is unordered.  The order is added in the next step by looking
 #  at precursors.
 #
-AUTH_FILES := $(filter-out %.conf %.md %.attrs %.mk %~,$(subst $(DIR)/,,$(wildcard $(DIR)/*)))
+AUTH_FILES := $(filter-out %.conf %.md %.attrs %.mk %~ %.rej,$(subst $(DIR)/,,$(wildcard $(DIR)/*)))
 
 #
 #  Create the output directory
