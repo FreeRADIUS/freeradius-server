@@ -70,18 +70,37 @@ INSTALL_SCRIPT	= ${INSTALL_PROGRAM}
 INSTALLSTRIP	= @INSTALLSTRIP@
 DARWIN_CFLAGS	= @DARWIN_CFLAGS@
 
-LCRYPT		= @CRYPTLIB@
-LIBS		= @LIBS@
+#
+#  Linker arguments for libraries searched for by the main
+#  configure script.
+#
+TALLOC_LIBS     = @TALLOC_LIBS@
+TALLOC_LDFLAGS  = @TALLOC_LDFLAGS@
+
+OPENSSL_LIBS    = @OPENSSL_LIBS@
+OPENSSL_LDFLAGS = @OPENSSL_LDFLAGS@
+
 PCAP_LIBS	= @PCAP_LIBS@
+PCAP_LDFLAGS    = @PCAP_LDFLAGS@
+
 COLLECTDC_LIBS	= @COLLECTDC_LIBS@
-LDFLAGS		= @LDFLAGS@
+COLLECTDC_LDFLAGS = @COLLECTDC_LDFLAGS@
+
+LCRYPT		= @CRYPTLIB@
+
+#
+#  OpenSSL libs (if used) must be linked everywhere in order for
+#  the server to work properly on on all platforms.
+#
+LIBS		= $(OPENSSL_LIBS) $(TALLOC_LIBS) @LIBS@
+LDFLAGS		= $(OPENSSL_LDFLAGS) $(TALLOC_LDFLAGS) @LDFLAGS@
 
 LOGDIR		= ${logdir}
 RADDBDIR	= ${raddbdir}
 RUNDIR		= ${localstatedir}/run/radiusd
 SBINDIR		= ${sbindir}
 RADIR		= ${radacctdir}
-LIBRADIUS	= $(top_builddir)/src/lib/$(LIBPREFIX)freeradius-radius.la -ltalloc
+LIBRADIUS	= $(top_builddir)/src/lib/$(LIBPREFIX)freeradius-radius.la $(TALLOC_LIBS)
 
 USE_SHARED_LIBS = @USE_SHARED_LIBS@
 bm_shared_libs  = @USE_SHARED_LIBS@
@@ -89,18 +108,6 @@ USE_STATIC_LIBS = @USE_STATIC_LIBS@
 bm_static_libs  = @USE_STATIC_LIBS@
 
 STATIC_MODULES	= @STATIC_MODULES@
-
-OPENSSL_LIBS	= @OPENSSL_LIBS@
-OPENSSL_INCLUDE = @OPENSSL_INCLUDE@
-
-#
-#  If the system has OpenSSL, use it's version of MD4/MD5/SHA1, instead of
-#  using ours.
-#
-ifneq "$(OPENSSL_INCLUDE)" ""
-CFLAGS		+=  -DWITH_OPENSSL_MD4 -DWITH_OPENSSL_MD5
-endif
-
 LIBREADLINE	= @LIBREADLINE@
 
 #
@@ -109,14 +116,22 @@ LIBREADLINE	= @LIBREADLINE@
 RADIUSD_VERSION_STRING = @RADIUSD_VERSION_STRING@
 
 #
-#  This allows dlopen to do runtime checks for version mistmatches
+#  This allows dlopen to do runtime checks for version mismatches
 #  between what it was originally linked with, and the library it's
 #  actually loading.
 #
-#LDFLAGS += -release=$(RADIUSD_VERSION_STRING)
-
 MODULES		= @MODULES@
 HOSTINFO	= @HOSTINFO@
+
+#
+#  If the system has OpenSSL, use it's version of MD4/MD5/SHA1, instead of
+#  using ours.
+#
+ifeq "$(WITH_OPENSSL)" "yes"
+CFLAGS		+=  -DWITH_OPENSSL_MD4 -DWITH_OPENSSL_MD5
+endif
+
+OPENSSL_LIBS	= @OPENSSL_LIBS@
 
 ifneq ($(WITH_OPENSSL_MD5),)
 LIBRADIUS_WITH_OPENSSL = 1
@@ -191,3 +206,14 @@ ifeq "${CC}" "clang"
     endif
 endif
 
+#
+#  With shared libs, the test binaries are in a different place
+#  AND the method we use to run those binaries changes.
+#
+ifeq "$(USE_SHARED_LIBS)" "yes"
+	TESTBINDIR = ./$(BUILD_DIR)/bin/local
+	TESTBIN    = $(JLIBTOOL) --quiet --mode=execute $(TESTBINDIR)
+else
+	TESTBINDIR = ./$(BUILD_DIR)/bin
+	TESTBIN    = ./$(BUILD_DIR)/bin
+endif

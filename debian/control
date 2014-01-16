@@ -28,7 +28,7 @@ Homepage: http://www.freeradius.org/
 
 Package: freeradius
 Architecture: any
-Depends: lsb-base (>= 3.1-23.2), ${shlibs:Depends}, freeradius-common, libfreeradius3 (= ${binary:Version}), ssl-cert, adduser
+Depends: lsb-base (>= 3.1-23.2), ${shlibs:Depends}, freeradius-common, freeradius-config, libfreeradius3 (= ${binary:Version}), ssl-cert, adduser
 Provides: radius-server
 Recommends: freeradius-utils
 Suggests: freeradius-ldap, freeradius-postgresql, freeradius-mysql, freeradius-krb5
@@ -45,16 +45,24 @@ Package: freeradius-common
 Depends: adduser
 Architecture: all
 Conflicts: radiusd-livingston, xtradius, yardradius
-Replaces: freeradius (<< 2.0)
+Replaces: freeradius (<< 3)
 Description: FreeRADIUS common files
  This package contains common files used by several of the other packages from
  the FreeRADIUS project.
 
+Package: freeradius-config
+Architecture: any
+Depends: freeradius-common (>= 3)
+Breaks: freeradius-config
+Description: FreeRADIUS default config files
+  This package should be used as a base for a site local packages
+  to configure the FreeRADIUS server.
+
 Package: freeradius-utils
 Architecture: any
-Replaces: freeradius (<< 2.0)
+Replaces: freeradius (<< 3)
 Conflicts: radiusd-livingston, yardradius
-Depends: ${shlibs:Depends}, freeradius-common, libfreeradius3 (= ${binary:Version})
+Depends: ${shlibs:Depends}, freeradius-common, freeradius-config, libfreeradius3 (= ${binary:Version})
 Recommends: libdbi-perl
 Description: FreeRADIUS client utilities
  This package contains various client programs and utilities from

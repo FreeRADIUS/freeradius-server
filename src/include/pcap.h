@@ -17,7 +17,7 @@
 
 /**
  * $Id$
- * @file pcap.h
+ * @file include/pcap.h
  * @brief Prototypes and constants for PCAP functions.
  *
  * @author Arran Cudbard-Bell <a.cudbardb@freeradius.org>

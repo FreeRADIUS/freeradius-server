@@ -88,7 +88,7 @@ if test "x$fail" != x; then
 fi
 
 sql_ibmdb2_ldflags="$SMART_LIBS"
-sql_ibmdb2_cflags="$SMART_CFLAGS"
+sql_ibmdb2_cflags="$SMART_CPPFLAGS"
 AC_SUBST(sql_ibmdb2_ldflags)
 AC_SUBST(sql_ibmdb2_cflags)
 AC_SUBST(targetname)

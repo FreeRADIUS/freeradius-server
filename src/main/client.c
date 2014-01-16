@@ -835,7 +835,11 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int in_server)
  *	type.  This way we don't have to change too much in the other
  *	source-files.
  */
+#ifdef WITH_TLS
 RADCLIENT_LIST *clients_parse_section(CONF_SECTION *section, bool tls_required)
+#else
+RADCLIENT_LIST *clients_parse_section(CONF_SECTION *section, UNUSED bool tls_required)
+#endif
 {
 	int		global = false, in_server = false;
 	CONF_SECTION	*cs;
@@ -1006,6 +1010,10 @@ static const CONF_PARSER dynamic_config[] = {
 	{ "FreeRADIUS-Client-IP-Address",  PW_TYPE_IPADDR,
 	  offsetof(RADCLIENT, ipaddr), 0, NULL },
 	{ "FreeRADIUS-Client-IPv6-Address",  PW_TYPE_IPV6ADDR,
+	  offsetof(RADCLIENT, ipaddr), 0, NULL },
+	{ "FreeRADIUS-Client-IP-Prefix",  PW_TYPE_IPV4PREFIX,
+	  offsetof(RADCLIENT, ipaddr), 0, NULL },
+	{ "FreeRADIUS-Client-IPv6-Prefix",  PW_TYPE_IPV6PREFIX,
 	  offsetof(RADCLIENT, ipaddr), 0, NULL },
 	{ "FreeRADIUS-Client-Src-IP-Address",  PW_TYPE_IPADDR,
 	  offsetof(RADCLIENT, src_ipaddr), 0, NULL },
@@ -1246,6 +1254,24 @@ RADCLIENT *client_from_request(RADCLIENT_LIST *clients, REQUEST *request)
 #else
 				WDEBUG("Server not build with udpfromto, ignoring FreeRADIUS-Client-Src-IPv6-Address");
 #endif
+			}
+
+			break;
+
+		case PW_TYPE_IPV4PREFIX:
+			if (da->attr == PW_FREERADIUS_CLIENT_IP_PREFIX) {
+				c->ipaddr.af = AF_INET;
+				memcpy(&c->ipaddr.ipaddr.ip4addr.s_addr, &(vp->vp_ipv4prefix[2]), sizeof(c->ipaddr.ipaddr.ip4addr.s_addr));
+				c->prefix = (vp->vp_ipv4prefix[1] & 0x3f);
+			}
+
+			break;
+
+		case PW_TYPE_IPV6PREFIX:
+			if (da->attr == PW_FREERADIUS_CLIENT_IPV6_PREFIX) {
+				c->ipaddr.af = AF_INET6;
+				memcpy(&c->ipaddr.ipaddr.ip6addr, &(vp->vp_ipv6prefix[2]), sizeof(c->ipaddr.ipaddr.ip6addr));
+				c->prefix = vp->vp_ipv6prefix[1];
 			}
 
 			break;

@@ -28,7 +28,7 @@ CREATE TABLE radacct (
   acctupdatetime datetime NULL default NULL,
   acctstoptime datetime NULL default NULL,
   acctinterval int(12) default NULL,
-  acctsessiontime int(12) default NULL,
+  acctsessiontime unsigned int(12) default NULL,
   acctauthentic varchar(32) default NULL,
   connectinfo_start varchar(50) default NULL,
   connectinfo_stop varchar(50) default NULL,

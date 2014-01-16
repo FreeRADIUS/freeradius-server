@@ -107,6 +107,7 @@ int main(int argc, char *argv[])
 	int dont_fork = false;
 	int write_pid = false;
 	int flag = 0;
+	int from_child[2] = {-1, -1};
 
 #ifdef HAVE_SIGACTION
 	struct sigaction act;
@@ -321,8 +322,14 @@ int main(int argc, char *argv[])
 	 *  Disconnect from session
 	 */
 	if (dont_fork == false) {
-		pid_t pid = fork();
+		pid_t pid;
 
+		if (pipe(from_child) != 0) {
+			ERROR("Couldn't open pipe for child status: %s", fr_syserror(errno));
+			exit(EXIT_FAILURE);
+		}
+
+		pid = fork();
 		if (pid < 0) {
 			ERROR("Couldn't fork: %s", fr_syserror(errno));
 			exit(EXIT_FAILURE);
@@ -330,10 +337,42 @@ int main(int argc, char *argv[])
 
 		/*
 		 *  The parent exits, so the child can run in the background.
+		 *
+		 *  As the child can still encounter an error during initialisation
+		 *  we do a blocking read on a pipe between it and the parent.
+		 *
+		 *  Just before entering the event loop the child will send a success
+		 *  or failure message to the parent, via the pipe.
 		 */
 		if (pid > 0) {
+			uint8_t ret = 0;
+			int stat_loc;
+
+			/* So the pipe is correctly widowed if the child exits */
+			close(from_child[1]);
+
+			/*
+			 *	The child writes a 0x01 byte on
+			 *	success, and closes the pipe on error.
+			 */
+			if ((read(from_child[0], &ret, 1) < 0)) {
+				ret = 0;
+			}
+
+			/* For cleanliness... */
+			close(from_child[0]);
+
+			/* Don't turn children into zombies */
+			if (!ret) {
+				waitpid(pid, &stat_loc, WNOHANG);
+				exit(EXIT_FAILURE);
+			}
+
 			exit(EXIT_SUCCESS);
 		}
+
+		/* so the pipe is correctly widowed if the parent exits?! */
+		close(from_child[0]);
 #ifdef HAVE_SETSID
 		setsid();
 #endif
@@ -472,6 +511,21 @@ int main(int argc, char *argv[])
 	}
 
 	exec_trigger(NULL, NULL, "server.start", false);
+
+	/*
+	 *	Inform the parent (who should still be waiting) that
+	 *	the rest of initialisation went OK, and that it should
+	 *	exit with a 0 status.  If we don't get this far, then
+	 *	we just close the pipe on exit, and the parent gets a
+	 *	read failure.
+	 */
+	if (!dont_fork) {
+		if (write(from_child[1], "\001", 1) < 0) {
+			WARN("Failed informing parent of successful start: %s",
+			     fr_syserror(errno));
+		}
+		close(from_child[1]);
+	}
 
 	/*
 	 *	Process requests until HUP or exit.

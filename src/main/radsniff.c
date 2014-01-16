@@ -29,9 +29,11 @@ RCSID("$Id$")
 #include <assert.h>
 #include <signal.h>
 #include <time.h>
+#include <math.h>
 #include <freeradius-devel/libradius.h>
 #include <freeradius-devel/event.h>
 
+#include <freeradius-devel/radpaths.h>
 #include <freeradius-devel/conf.h>
 #include <freeradius-devel/pcap.h>
 #include <freeradius-devel/radsniff.h>
@@ -125,6 +127,21 @@ static void rs_daemonize(char const *pidfile)
 	} else {
 		ERROR("Failed creating PID file %s: %s", pidfile, fr_syserror(errno));
 		exit(EXIT_FAILURE);
+	}
+
+	/*
+	 *	Close stdout and stderr if they've not been redirected.
+	 */
+	if (isatty(fileno(stdout))) {
+		if (!freopen("/dev/null", "w", stdout)) {
+			exit(EXIT_FAILURE);
+		}
+	}
+
+	if (isatty(fileno(stderr))) {
+		if (!freopen("/dev/null", "w", stderr)) {
+			exit(EXIT_FAILURE);
+		}
 	}
 }
 
@@ -584,10 +601,37 @@ static int rs_check_pcap_drop(fr_pcap_t *in, int interval) {
  */
 static void rs_stats_process_latency(rs_latency_t *stats)
 {
+	/*
+	 *	If we didn't link any packets during this interval, we don't have a value to return.
+	 *	returning 0 is misleading as it would be like saying the latency had dropped to 0.
+	 *	We instead set NaN which libcollectd converts to a 'U' or unknown value.
+	 *
+	 *	This will cause gaps in graphs, but is completely legitimate as we are missing data.
+	 *	This is unfortunately an effect of being just a passive observer.
+	 */
+	if (stats->interval.linked_total == 0) {
+		double unk = strtod("NAN()", (char **) NULL);
+
+		stats->interval.latency_average = unk;
+		stats->interval.latency_high = unk;
+		stats->interval.latency_low = unk;
+
+		/*
+		 *	We've not yet been able to determine latency, so latency_smoothed is also NaN
+		 */
+		if (stats->latency_smoothed_count == 0) {
+			stats->latency_smoothed = unk;
+		}
+		return;
+	}
+
 	if (stats->interval.linked_total && stats->interval.latency_total) {
 		stats->interval.latency_average = (stats->interval.latency_total / stats->interval.linked_total);
 	}
 
+	if (isnan(stats->latency_smoothed)) {
+		stats->latency_smoothed = 0;
+	}
 	if (stats->interval.latency_average > 0) {
 		stats->latency_smoothed_count++;
 		stats->latency_smoothed += ((stats->interval.latency_average - stats->latency_smoothed) /
@@ -717,7 +761,8 @@ static int rs_get_pairs(TALLOC_CTX *ctx, VALUE_PAIR **out, VALUE_PAIR *vps, DICT
 {
 	vp_cursor_t list_cursor, out_cursor;
 	VALUE_PAIR *match, *last_match, *copy;
-	int i, count = 0;
+	uint64_t count = 0;
+	int i;
 
 	last_match = vps;
 
@@ -746,9 +791,34 @@ static int rs_get_pairs(TALLOC_CTX *ctx, VALUE_PAIR **out, VALUE_PAIR *vps, DICT
 	return count;
 }
 
-static void rs_packet_cleanup(void *ctx)
+static int _request_free(rs_request_t *request)
 {
-	rs_request_t *request = talloc_get_type_abort(ctx, rs_request_t);
+	/*
+	 *	If were attempting to cleanup the request, and it's no longer in the request_tree
+	 *	something has gone very badly wrong.
+	 */
+	if (request->in_request_tree) {
+		assert(rbtree_deletebydata(request_tree, request));
+	}
+
+	if (request->in_link_tree) {
+		assert(rbtree_deletebydata(link_tree, request));
+	}
+
+	if (request->event) {
+		assert(fr_event_delete(events, &request->event));
+	}
+
+	rad_free(&request->packet);
+	rad_free(&request->expect);
+	rad_free(&request->linked);
+
+	return 0;
+}
+
+static void rs_packet_cleanup(rs_request_t *request)
+{
+
 	RADIUS_PACKET *packet = request->packet;
 	uint64_t count = request->id;
 
@@ -802,26 +872,32 @@ static void rs_packet_cleanup(void *ctx)
 	}
 
 	skip:
-
-	/*
-	 *	If were attempting to cleanup the request, and it's no longer in the request_tree
-	 *	something has gone very badly wrong.
-	 */
-	assert(rbtree_deletebydata(request_tree, request));
+	talloc_free(request);
 }
 
-static int _request_free(rs_request_t *request)
+static void _rs_event(void *ctx)
 {
-	if (request->link_vps) {
-		assert(rbtree_deletebydata(link_tree, request));
-	}
-
-	rad_free(&request->packet);
-	rad_free(&request->expect);
-	rad_free(&request->linked);
-
-	return 0;
+	rs_request_t *request = talloc_get_type_abort(ctx, rs_request_t);
+	request->event = NULL;
+	rs_packet_cleanup(request);
 }
+
+/** Wrapper around fr_packet_cmp to strip off the outer request struct
+ *
+ */
+static int rs_packet_cmp(rs_request_t const *a, rs_request_t const *b)
+{
+	return fr_packet_cmp(a->expect, b->expect);
+}
+
+/* This is the same as immediately scheduling the cleanup event */
+#define RS_CLEANUP_NOW(_x, _s)\
+	{\
+		_x->silent_cleanup = _s;\
+		_x->when = header->ts;\
+		rs_packet_cleanup(_x);\
+		_x = NULL;\
+	} while (0)
 
 static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkthdr const *header, uint8_t const *data)
 {
@@ -846,7 +922,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 
 	rs_status_t		status = RS_NORMAL;	/* Any special conditions (RTX, Unlinked, ID-Reused) */
 	RADIUS_PACKET		*current;		/* Current packet were processing */
-	rs_request_t		*original;
+	rs_request_t		*original = NULL;
 
 	rs_request_t		search;
 
@@ -890,7 +966,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 	 *	End of variable length bits, do basic check now to see if packet looks long enough
 	 */
 	len = (p - data) + sizeof(struct udp_header) + (sizeof(radius_packet_t) - 1);	/* length value */
-	if (len > header->caplen) {
+	if ((size_t) len > header->caplen) {
 		REDEBUG("Packet too small, we require at least %zu bytes, captured %i bytes",
 			(size_t) len, header->caplen);
 		return;
@@ -960,6 +1036,21 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			original = rbtree_finddata(request_tree, &search);
 
 			/*
+			 *	Verify this code is allowed
+			 */
+			if (conf->filter_response_code && (conf->filter_response_code != current->code)) {
+				drop_response:
+				RDEBUG2("Response dropped by attribute/packet filter");
+				rad_free(&current);
+
+				/* We now need to cleanup the original request too */
+				if (original) {
+					RS_CLEANUP_NOW(original, true);
+				}
+				return;
+			}
+
+			/*
 			 *	Only decode attributes if we want to print them or filter on them
 			 *	rad_packet_ok does checks to verify the packet is actually valid.
 			 */
@@ -982,26 +1073,6 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			 */
 			if (original) {
 				/*
-				 *	Verify this code is allowed
-				 */
-				if (conf->filter_response_code && (conf->filter_response_code != current->code)) {
-					drop_response:
-
-					rad_free(&current);
-					RDEBUG2("Dropped by attribute/packet filter");
-
-					/* We now need to cleanup the original request too */
-					original->silent_cleanup = true;
-					original->when = header->ts;	/* Needed for correct TS */
-
-					/* This is the same as scheduling the event immediately */
-					fr_event_delete(event->list, &original->event);
-					rs_packet_cleanup(original);
-
-					return;
-				}
-
-				/*
 				 *	Now verify the packet passes the attribute filter
 				 */
 				if (conf->filter_response_vps) {
@@ -1009,33 +1080,31 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 					if (!pairvalidate_relaxed(conf->filter_response_vps, current->vps)) {
 						goto drop_response;
 					}
-					original->silent_cleanup = false;
 				}
 
 				/*
 				 *	Is this a retransmit?
 				 */
-				if (!original->linked) {
-					original->stats_rsp = &stats->exchange[current->code];
-				} else {
+				if (original->linked) {
 					status = RS_RTX;
 					original->rt_rsp++;
 
 					rad_free(&original->linked);
 					fr_event_delete(event->list, &original->event);
+				} else {
+					original->stats_rsp = &stats->exchange[current->code];
 				}
 
 				original->linked = talloc_steal(original, current);
 				rs_tv_add_ms(&header->ts, conf->stats.timeout, &original->when);
-				if (!fr_event_insert(event->list, rs_packet_cleanup, original, &original->when,
+				if (!fr_event_insert(event->list, _rs_event, original, &original->when,
 						     &original->event)) {
 					REDEBUG("Failed inserting new event");
 					/*
 					 *	Delete the original request/event, it's no longer valid
 					 *	for statistics.
 					 */
-					fr_event_delete(event->list, &original->event);
-					rbtree_deletebydata(request_tree, original);
+					talloc_free(original);
 					return;
 				}
 			/*
@@ -1067,6 +1136,18 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 	case PW_CODE_STATUS_SERVER:
 		{
 			/*
+			 *	Verify this code is allowed
+			 */
+			if (conf->filter_request_code && (conf->filter_request_code != current->code)) {
+				drop_request:
+
+				RDEBUG2("Request dropped by attribute/packet filter");
+				rad_free(&current);
+
+				return;
+			}
+
+			/*
 			 *	Only decode attributes if we want to print them or filter on them
 			 *	rad_packet_ok does checks to verify the packet is actually valid.
 			 */
@@ -1090,7 +1171,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			/*
 			 *	Save the request for later matching
 			 */
-			search.expect = rad_alloc_reply(conf, current);
+			search.expect = rad_alloc_reply(current, current);
 			if (!search.expect) {
 				REDEBUG("Failed allocating memory to hold expected reply");
 				rs_tv_add_ms(&header->ts, conf->stats.timeout, &stats->quiet);
@@ -1099,19 +1180,41 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			}
 			search.expect->code = current->code;
 
-			/*
-			 *	Process requests before the filter, so that we can force expiry
-			 *	when we detect ID re-use, if we don't do this we get false RTX
-			 *	notifications for responses.
-			 */
-			original = rbtree_finddata(request_tree, &search);
+			if ((conf->link_da_num > 0) && current->vps) {
+				int ret;
+				ret = rs_get_pairs(current, &search.link_vps, current->vps, conf->link_da,
+						   conf->link_da_num);
+				if (ret < 0) {
+					ERROR("Failed extracting RTX linking pairs from request");
+					rad_free(&current);
+					return;
+				}
+			}
 
 			/*
-			 *	Upstream device re-used src/dst ip/port id...
+			 *	If we have linking attributes set, attempt to find a request in the linking tree.
 			 */
-			if (original) {
-				if (memcmp(original->expect->vector, current->vector,
-					   sizeof(original->expect->vector) != 0)) {
+			if (search.link_vps) {
+				rs_request_t *tuple;
+
+				original = rbtree_finddata(link_tree, &search);
+				tuple = rbtree_finddata(request_tree, &search);
+
+				/*
+				 *	If the packet we matched using attributes is not the same
+				 *	as the packet in the request tree, then we need to clean up
+				 *	the packet in the request tree.
+				 */
+				if (tuple && (original != tuple)) {
+					RS_CLEANUP_NOW(tuple, true);
+				}
+			/*
+			 *	Detect duplicates using the normal 4-tuple of src/dst ips/ports
+			 */
+			} else {
+				original = rbtree_finddata(request_tree, &search);
+				if (original && memcmp(original->expect->vector, current->vector,
+				    sizeof(original->expect->vector) != 0)) {
 					/*
 					 *	...before the request timed out (which may be an issue)
 					 *	and before we saw a response (which may be a bigger issue).
@@ -1119,50 +1222,12 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 					if (!original->linked) {
 						status = RS_REUSED;
 						stats->exchange[current->code].interval.reused_total++;
-						original->silent_cleanup = true;
+						RS_CLEANUP_NOW(original, true);
+					} else {
+						RS_CLEANUP_NOW(original, false);
 					}
-
-					/* This is the same as immediately scheduling the cleanup event */
-					original->when = header->ts;
-					fr_event_delete(event->list, &original->event);
-					rs_packet_cleanup(original);
-					original = NULL;
+					/* else it's a proper RTX with the same src/dst id authenticator/nonce */
 				}
-				/* else it's a proper RTX with the same src/dst id authenticator/nonce */
-			/*
-			 *	If we have linking attributes set, attempt to find a request in the
-			 *	linking tree.
-			 */
-			} else if ((conf->link_da_num > 0) && current->vps) {
-				int ret;
-				ret = rs_get_pairs(current, &search.link_vps, current->vps, conf->link_da,
-						   conf->link_da_num);
-				if (ret < 0) {
-					ERROR("Failed extracting RTX linking pairs from request");
-
-					talloc_free(original);
-					return;
-				}
-
-				/*
-				 *	Only bother searching if we have vps to search with...
-				 */
-				if (search.link_vps) {
-					original = rbtree_finddata(link_tree, &search);
-				}
-			}
-
-			/*
-			 *	Verify this code is allowed
-			 */
-			if (conf->filter_request_code && (conf->filter_request_code != current->code)) {
-				drop_request:
-
-				rad_free(&search.expect);
-				rad_free(&current);
-				RDEBUG2("Dropped by attribute/packet filter");
-
-				return;
 			}
 
 			/*
@@ -1182,13 +1247,21 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 				original->rt_req++;
 
 				rad_free(&original->packet);
-				rad_free(&original->expect);
+
 				/* We may of seen the response, but it may of been lost upstream */
 				rad_free(&original->linked);
 
 				original->packet = talloc_steal(original, current);
+
+				/* Request may need to be reinserted as the 4 tuple of the response may of changed */
+				if (rs_packet_cmp(original, &search) != 0) {
+					rbtree_deletebydata(request_tree, original);
+				}
+
+				rad_free(&original->expect);
 				original->expect = talloc_steal(original, search.expect);
 
+				/* Disarm the timer for the cleanup event for the original request */
 				fr_event_delete(event->list, &original->event);
 			/*
 			 *	...nope it's a new request.
@@ -1206,9 +1279,10 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 
 				if (search.link_vps) {
 					original->link_vps = pairsteal(original, search.link_vps);
-					if (!rbtree_insert(link_tree, original)) {
-						REDEBUG("Failed inserting linking pairs");
-					}
+
+					/* We should never have conflicts */
+					assert(rbtree_insert(link_tree, original));
+					original->in_link_tree = true;
 				}
 
 				/*
@@ -1220,8 +1294,12 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 				if (conf->filter_response_vps) {
 					original->silent_cleanup = true;
 				}
+			}
 
-				rbtree_insert(request_tree, original);
+			if (!original->in_request_tree) {
+				/* We should never have conflicts */
+				assert(rbtree_insert(request_tree, original));
+				original->in_request_tree = true;
 			}
 
 			/*
@@ -1229,10 +1307,11 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			 */
 			original->packet->timestamp = header->ts;
 			rs_tv_add_ms(&header->ts, conf->stats.timeout, &original->when);
-			if (!fr_event_insert(event->list, rs_packet_cleanup, original,
+			if (!fr_event_insert(event->list, _rs_event, original,
 					     &original->when, &original->event)) {
 				REDEBUG("Failed inserting new event");
-				rbtree_deletebydata(request_tree, original);
+
+				talloc_free(original);
 				return;
 			}
 			response = false;
@@ -1291,7 +1370,8 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 	 *	If were filtering on responses we can only indicate we received it on response, or timeout.
 	 */
 	} else if (!conf->filter_response) {
-		conf->logger(count, status, event->in, current, &elapsed, NULL, response, true);
+		conf->logger(original ? original->id : count, status, event->in,
+			     current, &elapsed, NULL, response, true);
 	}
 
 	fflush(fr_log_fp);
@@ -1393,15 +1473,6 @@ static void _rs_event_status(struct timeval *wake)
 	}
 }
 
-/** Wrapper function to allow rad_free to be called as an rbtree destructor callback
- *
- * @param request to free.
- */
-static void _rb_rad_free(void *request)
-{
-	talloc_free(request);
-}
-
 /** Compare requests using packet info and lists of attributes
  *
  */
@@ -1412,7 +1483,15 @@ static int rs_rtx_cmp(rs_request_t const *a, rs_request_t const *b)
 	assert(a->link_vps);
 	assert(b->link_vps);
 
-	rcode = (int)  a->expect->dst_port - (int) b->expect->dst_port;
+	rcode = (int) a->expect->code - (int) b->expect->code;
+	if (rcode != 0) return rcode;
+
+	/*
+	 *	Ug. This is actually the dst port of the request, because
+	 *	were dealing with the mangled request that should match the
+	 *	reply.
+	 */
+	rcode = (int) a->expect->src_port - (int) b->expect->src_port;
 	if (rcode != 0) return rcode;
 
 	rcode = a->expect->sockfd - b->expect->sockfd;
@@ -1425,14 +1504,6 @@ static int rs_rtx_cmp(rs_request_t const *a, rs_request_t const *b)
 	if (rcode != 0) return rcode;
 
 	return pairlistcmp(a->link_vps, b->link_vps);
-}
-
-/** Wrapper around fr_packet_cmp to strip off the outer request struct
- *
- */
-static int rs_packet_cmp(rs_request_t const *a, rs_request_t const *b)
-{
-	return fr_packet_cmp(a->expect, b->expect);
 }
 
 static int rs_build_dict_list(DICT_ATTR const **out, size_t len, char *list)
@@ -1486,7 +1557,7 @@ static int rs_build_filter(VALUE_PAIR **out, char const *filter)
 	     vp;
 	     vp = fr_cursor_next(&cursor)) {
 		/*
-		 *	xlat expansion isn't support hered
+		 *	xlat expansion isn't support here
 		 */
 		if (vp->type == VT_XLAT) {
 			vp->type = VT_DATA;
@@ -1500,6 +1571,26 @@ static int rs_build_filter(VALUE_PAIR **out, char const *filter)
 	pairsort(out, true);
 
 	return 0;
+}
+
+/** Callback for when the request is removed from the request tree
+ *
+ * @param request being removed.
+ */
+static void _unmark_request(void *request)
+{
+	rs_request_t *this = request;
+	this->in_request_tree = false;
+}
+
+/** Callback for when the request is removed from the link tree
+ *
+ * @param request being removed.
+ */
+static void _unmark_link(void *request)
+{
+	rs_request_t *this = request;
+	this->in_link_tree = false;
 }
 
 static void NEVER_RETURNS usage(int status)
@@ -1837,9 +1928,6 @@ int main(int argc, char *argv[])
 		conf->logger = rs_packet_print_fancy;
 	}
 
-	if (conf->link_da || conf->filter_request_vps || conf->print_packet) {
-		conf->decode_attrs = true;
-	}
 #if !defined(HAVE_PCAP_FOPEN_OFFLINE) || !defined(HAVE_PCAP_DUMP_FOPEN)
 	if (conf->from_stdin || conf->to_stdout) {
 		ERROR("PCAP streams not supported");
@@ -1876,7 +1964,7 @@ int main(int argc, char *argv[])
 			usage(64);
 		}
 
-		link_tree = rbtree_create((rbcmp) rs_rtx_cmp, NULL, 0);
+		link_tree = rbtree_create((rbcmp) rs_rtx_cmp, _unmark_link, 0);
 		if (!link_tree) {
 			ERROR("Failed creating RTX tree");
 			goto finish;
@@ -1918,9 +2006,21 @@ int main(int argc, char *argv[])
 	}
 
 	/*
+	 *	If we need to list attributes, link requests using attributes, filter attributes
+	 *	or print the packet contents, we need to decode the attributes.
+	 *
+	 *	But, if were just logging requests, or graphing packet, we do not need to decode
+	 *	the packet attributes.
+	 */
+	if (conf->list_da_num || conf->link_da_num || conf->filter_response_vps || conf->filter_request_vps ||
+	    conf->print_packet) {
+		conf->decode_attrs = true;
+	}
+
+	/*
 	 *	Setup the request tree
 	 */
-	request_tree = rbtree_create((rbcmp) rs_packet_cmp, _rb_rad_free, 0);
+	request_tree = rbtree_create((rbcmp) rs_packet_cmp, _unmark_request, 0);
 	if (!request_tree) {
 		ERROR("Failed creating request tree");
 		goto finish;
@@ -1989,7 +2089,7 @@ int main(int argc, char *argv[])
 			DEBUG2("  RADIUS response code    : [%s]", fr_packet_codes[conf->filter_response_code]);
 		}
 
-		if (conf->filter_request_vps){
+		if (conf->filter_response_vps){
 			DEBUG2("  RADIUS response filter  :");
 			vp_printlist(fr_log_fp, conf->filter_response_vps);
 		}

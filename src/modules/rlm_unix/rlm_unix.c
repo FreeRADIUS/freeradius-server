@@ -27,6 +27,7 @@
  * @copyright 2000  Alan Curry <pacman@world.std.com>
  */
 RCSID("$Id$")
+USES_APPLE_DEPRECATED_API
 
 #include	<freeradius-devel/radiusd.h>
 

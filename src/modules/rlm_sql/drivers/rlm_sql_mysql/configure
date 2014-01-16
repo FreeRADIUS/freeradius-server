@@ -2833,14 +2833,17 @@ sm_lib_safe=`echo "mysqlclient_r" | sed 'y%./+-%__p_%'`
 sm_func_safe=`echo "mysql_init" | sed 'y%./+-%__p_%'`
 
 old_LIBS="$LIBS"
+old_CPPFLAGS="$CPPFLAGS"
 smart_lib=
+smart_ldflags=
 smart_lib_dir=
 
 if test "x$smart_try_dir" != "x"; then
   for try in $smart_try_dir; do
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for mysql_init in -lmysqlclient_r in $try" >&5
 $as_echo_n "checking for mysql_init in -lmysqlclient_r in $try... " >&6; }
-    LIBS="-L$try -lmysqlclient_r $old_LIBS -Wl,-rpath,$try"
+    LIBS="-lmysqlclient_r $old_LIBS"
+    CPPFLAGS="-L$try -Wl,-rpath,$try $old_CPPFLAGS"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 extern char mysql_init();
@@ -2854,7 +2857,8 @@ mysql_init()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-		 smart_lib="-L$try -lmysqlclient_r -Wl,-rpath,$try"
+		 smart_lib="-lmysqlclient_r"
+		 smart_ldflags="-L$try -Wl,-rpath,$try"
 		 { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 		 break
@@ -2867,6 +2871,7 @@ rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
   done
   LIBS="$old_LIBS"
+  CPPFLAGS="$old_CPPFLAGS"
 fi
 
 if test "x$smart_lib" = "x"; then
@@ -2958,7 +2963,8 @@ eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
   for try in $smart_lib_dir /usr/local/lib /opt/lib; do
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for mysql_init in -lmysqlclient_r in $try" >&5
 $as_echo_n "checking for mysql_init in -lmysqlclient_r in $try... " >&6; }
-    LIBS="-L$try -lmysqlclient_r $old_LIBS -Wl,-rpath,$try"
+    LIBS="-lmysqlclient_r $old_LIBS"
+    CPPFLAGS="-L$try -Wl,-rpath,$try $old_CPPFLAGS"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 extern char mysql_init();
@@ -2972,7 +2978,8 @@ mysql_init()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-		  smart_lib="-L$try -lmysqlclient_r -Wl,-rpath,$try"
+		  smart_lib="-lmysqlclient_r"
+		  smart_ldflags="-L$try -Wl,-rpath,$try"
 		  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 		  break
@@ -2985,12 +2992,13 @@ rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
   done
   LIBS="$old_LIBS"
+  CPPFLAGS="$old_CPPFLAGS"
 fi
 
 if test "x$smart_lib" != "x"; then
   eval "ac_cv_lib_${sm_lib_safe}_${sm_func_safe}=yes"
-  LIBS="$smart_lib $old_LIBS"
-  SMART_LIBS="$smart_lib $SMART_LIBS"
+  LIBS="$smart_ldflags $smart_lib $old_LIBS"
+  SMART_LIBS="$smart_ldflags $smart_lib $SMART_LIBS"
 fi
 
 	    if test "x$ac_cv_lib_mysqlclient_r_mysql_init" != "xyes"
@@ -3051,14 +3059,17 @@ sm_lib_safe=`echo "mysqlclient" | sed 'y%./+-%__p_%'`
 sm_func_safe=`echo "mysql_init" | sed 'y%./+-%__p_%'`
 
 old_LIBS="$LIBS"
+old_CPPFLAGS="$CPPFLAGS"
 smart_lib=
+smart_ldflags=
 smart_lib_dir=
 
 if test "x$smart_try_dir" != "x"; then
   for try in $smart_try_dir; do
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for mysql_init in -lmysqlclient in $try" >&5
 $as_echo_n "checking for mysql_init in -lmysqlclient in $try... " >&6; }
-    LIBS="-L$try -lmysqlclient $old_LIBS -Wl,-rpath,$try"
+    LIBS="-lmysqlclient $old_LIBS"
+    CPPFLAGS="-L$try -Wl,-rpath,$try $old_CPPFLAGS"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 extern char mysql_init();
@@ -3072,7 +3083,8 @@ mysql_init()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-		 smart_lib="-L$try -lmysqlclient -Wl,-rpath,$try"
+		 smart_lib="-lmysqlclient"
+		 smart_ldflags="-L$try -Wl,-rpath,$try"
 		 { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 		 break
@@ -3085,6 +3097,7 @@ rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
   done
   LIBS="$old_LIBS"
+  CPPFLAGS="$old_CPPFLAGS"
 fi
 
 if test "x$smart_lib" = "x"; then
@@ -3176,7 +3189,8 @@ eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
   for try in $smart_lib_dir /usr/local/lib /opt/lib; do
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for mysql_init in -lmysqlclient in $try" >&5
 $as_echo_n "checking for mysql_init in -lmysqlclient in $try... " >&6; }
-    LIBS="-L$try -lmysqlclient $old_LIBS -Wl,-rpath,$try"
+    LIBS="-lmysqlclient $old_LIBS"
+    CPPFLAGS="-L$try -Wl,-rpath,$try $old_CPPFLAGS"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 extern char mysql_init();
@@ -3190,7 +3204,8 @@ mysql_init()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-		  smart_lib="-L$try -lmysqlclient -Wl,-rpath,$try"
+		  smart_lib="-lmysqlclient"
+		  smart_ldflags="-L$try -Wl,-rpath,$try"
 		  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 		  break
@@ -3203,12 +3218,13 @@ rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
   done
   LIBS="$old_LIBS"
+  CPPFLAGS="$old_CPPFLAGS"
 fi
 
 if test "x$smart_lib" != "x"; then
   eval "ac_cv_lib_${sm_lib_safe}_${sm_func_safe}=yes"
-  LIBS="$smart_lib $old_LIBS"
-  SMART_LIBS="$smart_lib $SMART_LIBS"
+  LIBS="$smart_ldflags $smart_lib $old_LIBS"
+  SMART_LIBS="$smart_ldflags $smart_lib $SMART_LIBS"
 fi
 
 	    if test "x$ac_cv_lib_mysqlclient_mysql_init" != "xyes"
@@ -3248,7 +3264,7 @@ $as_echo "yes" >&6; }
 
 $as_echo "#define HAVE_MYSQL_H /**/" >>confdefs.h
 
-	    SMART_CFLAGS="$SMART_CFLAGS $mod_cflags"
+	    SMART_CPPFLAGS="$SMART_CPPFLAGS $mod_cflags"
 	else
 	    { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
@@ -3278,7 +3294,7 @@ $as_echo "yes" >&6; }
 
 $as_echo "#define HAVE_MYSQL_H /**/" >>confdefs.h
 
-	        SMART_CFLAGS="$SMART_CFLAGS $mod_cflags"
+	        SMART_CPPFLAGS="$SMART_CPPFLAGS $mod_cflags"
 	    else
 	        { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
@@ -3293,7 +3309,7 @@ $as_echo "no" >&6; }
 
 
 ac_safe=`echo "mysql/mysql.h" | sed 'y%./+-%__pm%'`
-old_CFLAGS="$CFLAGS"
+old_CPPFLAGS="$CPPFLAGS"
 smart_include=
 smart_include_dir=
 
@@ -3301,7 +3317,7 @@ if test "x$smart_try_dir" != "x"; then
   for try in $smart_try_dir; do
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for mysql/mysql.h in $try" >&5
 $as_echo_n "checking for mysql/mysql.h in $try... " >&6; }
-    CFLAGS="$old_CFLAGS -isystem $try"
+    CPPFLAGS="-isystem $try $old_CPPFLAGS"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
@@ -3330,7 +3346,7 @@ $as_echo "no" >&6; }
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
   done
-  CFLAGS="$old_CFLAGS"
+  CPPFLAGS="$old_CPPFLAGS"
 fi
 
 if test "x$smart_include" = "x"; then
@@ -3396,7 +3412,7 @@ eval "smart_include_dir=\"\$smart_include_dir $DIRS\""
   for try in $smart_include_dir /usr/local/include /opt/include; do
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for mysql/mysql.h in $try" >&5
 $as_echo_n "checking for mysql/mysql.h in $try... " >&6; }
-    CFLAGS="$old_CFLAGS -isystem $try"
+    CPPFLAGS="-isystem $try $old_CPPFLAGS"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
@@ -3425,13 +3441,13 @@ $as_echo "no" >&6; }
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
   done
-  CFLAGS="$old_CFLAGS"
+  CPPFLAGS="$old_CPPFLAGS"
 fi
 
 if test "x$smart_include" != "x"; then
   eval "ac_cv_header_$ac_safe=yes"
-  CFLAGS="$old_CFLAGS $smart_include"
-  SMART_CFLAGS="$SMART_CFLAGS $smart_include"
+  CPPFLAGS="$smart_include $old_CPPFLAGS"
+  SMART_CPPFLAGS="$smart_include $SMART_CPPFLAGS"
 fi
 
 	if test "x$ac_cv_header_mysql_mysql_h" = "xyes"; then
@@ -3464,7 +3480,7 @@ $as_echo "$as_me: WARNING: FAILURE: rlm_sql_mysql requires:$fail." >&2;};
 fi
 
 mod_ldflags="$SMART_LIBS"
-mod_cflags="$SMART_CFLAGS"
+mod_cflags="$SMART_CPPFLAGS"
 
 
 

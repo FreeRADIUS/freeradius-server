@@ -694,22 +694,18 @@ static int dual_tcp_accept(rad_listen_t *listener)
 }
 #endif
 
-
 /*
  *	Ensure that we always keep the correct counters.
  */
+#ifdef WITH_TLS
 static void common_socket_free(rad_listen_t *this)
-#ifndef WITH_TLS
-{
-}
-#else
 {
 	listen_socket_t *sock = this->data;
-	
+
 	if (sock->proto != IPPROTO_TCP) return;
 
 	if (!sock->parent) return;
-	
+
 	/*
 	 *      Decrement the number of connections.
 	 */
@@ -719,6 +715,11 @@ static void common_socket_free(rad_listen_t *this)
 	if (sock->client->limit.num_connections > 0) {
 		sock->client->limit.num_connections--;
 	}
+}
+#else
+static void common_socket_free(UNUSED rad_listen_t *this)
+{
+	return;
 }
 #endif
 
@@ -735,6 +736,10 @@ int common_socket_print(rad_listen_t const *this, char *buffer, size_t bufsize)
 #define ADDSTRING(_x) strlcpy(buffer, _x, bufsize);FORWARD
 
 	ADDSTRING(name);
+
+	if (this->dual) {
+		ADDSTRING("+acct");
+	}
 
 	if (sock->interface) {
 		ADDSTRING(" interface ");
@@ -1096,15 +1101,21 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 
 #ifdef WITH_PROXY
 	if (check_config) {
+		/*
+	 	 *	Until there is a side effects free way of forwarding a
+	 	 *	request to another virtual server, this check is invalid,
+	 	 *	and should be left disabled.
+	 	 */
+#if 0
 		if (home_server_find(&sock->my_ipaddr, sock->my_port, sock->proto)) {
 				char buffer[128];
 
-				EDEBUG("We have been asked to listen on %s port %d, which is also listed as a home server.  This can create a proxy loop.",
-				      ip_ntoh(&sock->my_ipaddr, buffer, sizeof(buffer)),
-				      sock->my_port);
+				EDEBUG("We have been asked to listen on %s port %d, which is also listed as a "
+				       "home server.  This can create a proxy loop",
+				       ip_ntoh(&sock->my_ipaddr, buffer, sizeof(buffer)), sock->my_port);
 				return -1;
 		}
-
+#endif
 		return 0;	/* don't do anything */
 	}
 #endif
@@ -1229,8 +1240,11 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	 */
 	if (!client_cs) client_cs = parentcs;
 
-	sock->clients = clients_parse_section(client_cs,
-					      (this->tls != NULL));
+#ifdef WITH_TLS
+	sock->clients = clients_parse_section(client_cs, (this->tls != NULL));
+#else
+	sock->clients = clients_parse_section(client_cs, false);
+#endif
 	if (!sock->clients) {
 		cf_log_err_cs(cs,
 			   "Failed to load clients for this listen section");
@@ -1499,14 +1513,14 @@ static int auth_socket_recv(rad_listen_t *listener)
 	{
 		listen_socket_t *sock = listener->data;
 		rad_listen_t *other;
-		
+
 		other = listener_find_byipaddr(&packet->dst_ipaddr,
 					       packet->dst_port, sock->proto);
 		if (other) listener = other;
 	}
 #endif
 #endif
-	
+
 
 	if (!request_receive(listener, packet, client, fun)) {
 		FR_STATS_INC(auth, total_packets_dropped);
@@ -2523,7 +2537,9 @@ static int _listener_free(rad_listen_t *this)
 
 #ifdef WITH_TLS
 		if (sock->request) {
+#  ifdef HAVE_PTHREAD_H
 			pthread_mutex_destroy(&(sock->mutex));
+#  endif
 			request_free(&sock->request);
 			sock->packet = NULL;
 
@@ -2787,7 +2803,8 @@ static rad_listen_t *listen_parse(CONF_SECTION *cs, char const *server)
 
 	type = dv->value;
 
-	if (strcmp(master_listen[type].name, dv->name) != 0) {
+	if ((strcmp(master_listen[type].name, dv->name) != 0) &&
+	    !strchr(dv->name, '+')) {
 		cf_log_err_cs(cs, "Inconsistent dictionaries for protocol %s",
 			      value);
 		return NULL;
@@ -2825,6 +2842,15 @@ static rad_listen_t *listen_parse(CONF_SECTION *cs, char const *server)
 	this = listen_alloc(cs, type);
 	this->server = server;
 	this->fd = -1;
+
+#ifdef WITH_TCP
+	/*
+	 *	Special-case '+' for "auth+acct".
+	 */
+	if (strchr(listen_type, '+') != NULL) {
+		this->dual = true;
+	}
+#endif
 
 	/*
 	 *	Call per-type parser.

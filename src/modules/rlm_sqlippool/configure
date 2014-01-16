@@ -1676,8 +1676,8 @@ else
 	echo \*\*\* module rlm_sqlippool is disabled.
 fi
 
-mod_ldflags=$SMART_LIBS
-mod_cflags=$SMART_CFLAGS
+mod_ldflags="$SMART_LIBS"
+mod_cflags="$SMART_CPPFLAGS"
 
 
 

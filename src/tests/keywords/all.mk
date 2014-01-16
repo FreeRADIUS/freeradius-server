@@ -10,12 +10,6 @@
 FILES := $(filter-out %.conf %.md %.attrs %.mk %~,$(subst $(DIR)/,,$(wildcard $(DIR)/*)))
 
 #
-#  For each file, look for precursor test.
-#  Ensure that each test depends on its precursors.
-#
-$(foreach x,$(FILES),$(eval $(BUILD_DIR)/tests/keywords/$(x): $(shell grep 'PRE: ' $(DIR)/$(x) | sed 's/.*://;s/  / /g;s, , $(BUILD_DIR)/tests/keywords/,g')))
-
-#
 #  Create the output directory
 #
 .PHONY: $(BUILD_DIR)/tests/keywords
@@ -35,6 +29,20 @@ BOOTSTRAP_HAS	 := $(filter $(wildcard $(BOOTSTRAP_EXISTS)),$(BOOTSTRAP_EXISTS))
 BOOTSTRAP_COPY	 := $(subst $(DIR),$(BUILD_DIR)/tests/keywords,$(BOOTSTRAP_NEEDS))
 
 #
+#  For each file, look for precursor test.
+#  Ensure that each test depends on its precursors.
+#
+-include $(BUILD_DIR)/tests/keywords/depends.mk
+
+$(BUILD_DIR)/tests/keywords/depends.mk: $(addprefix $(DIR)/,$(FILES)) | $(BUILD_DIR)/tests/keywords
+	@rm -f $@
+	@for x in $^; do \
+		y=`grep 'PRE: ' $$x | sed 's/.*://;s/  / /g;s, , $(BUILD_DIR)/tests/keywords/,g'`; \
+		echo "$$x: $$y" >> $@; \
+		echo "" >> $@; \
+	done
+
+#
 #  These ones get copied over from the default input
 #
 $(BOOTSTRAP): $(DIR)/default-input.attrs | $(BUILD_DIR)/tests/keywords
@@ -52,7 +60,7 @@ $(BUILD_DIR)/tests/keywords/%.attrs: $(DIR)/%.attrs | $(BUILD_DIR)/tests/keyword
 #
 .PRECIOUS: $(BUILD_DIR)/tests/keywords/%.attrs
 
-KEYWORD_MODULES := pap always expr
+KEYWORD_MODULES := $(shell grep -- mods-enabled src/tests/keywords/radiusd.conf  | sed 's,.*/,,')
 KEYWORD_RADDB	:= $(addprefix raddb/mods-enabled/,$(KEYWORD_MODULES))
 KEYWORD_LIBS	:= $(addsuffix .la,$(addprefix rlm_,$(KEYWORD_MODULES)))
 
@@ -72,9 +80,9 @@ KEYWORD_LIBS	:= $(addsuffix .la,$(addprefix rlm_,$(KEYWORD_MODULES)))
 #  Otherwise, check the log file for a parse error which matches the
 #  ERROR line in the input.
 #
-$(BUILD_DIR)/tests/keywords/%: $(DIR)/% $(BUILD_DIR)/tests/keywords/%.attrs $(BUILD_DIR)/bin/local/unittest | $(BUILD_DIR)/tests/keywords $(KEYWORD_RADDB) $(KEYWORD_LIBS) build.raddb 
+$(BUILD_DIR)/tests/keywords/%: $(DIR)/% $(BUILD_DIR)/tests/keywords/%.attrs $(TESTBINDIR)/unittest | $(BUILD_DIR)/tests/keywords $(KEYWORD_RADDB) $(KEYWORD_LIBS) build.raddb
 	@echo UNIT-TEST $(notdir $@)
-	@if ! KEYWORD=$(notdir $@) $(JLIBTOOL) --quiet --mode=execute ./$(BUILD_DIR)/bin/local/unittest -D share -d src/tests/keywords/ -i $@.attrs -f $@.attrs -xx > $@.log 2>&1; then \
+	@if ! KEYWORD=$(notdir $@) $(TESTBIN)/unittest -D share -d src/tests/keywords/ -i $@.attrs -f $@.attrs -xx > $@.log 2>&1; then \
 		if ! grep ERROR $< 2>&1 > /dev/null; then \
 			cat $@.log; \
 			echo "# $@.log"; \
@@ -99,6 +107,8 @@ TESTS.KEYWORDS_FILES := $(addprefix $(BUILD_DIR)/tests/keywords/,$(FILES))
 #  Depend on the output files, and create the directory first.
 #
 tests.keywords: $(TESTS.KEYWORDS_FILES)
+
+$(TESTS.KEYWORDS_FILES): $(TESTS.UNIT_FILES)
 
 .PHONY: clean.tests.keywords
 clean.tests.keywords:

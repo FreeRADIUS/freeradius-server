@@ -110,7 +110,9 @@ static RADCLIENT *client_alloc(void *ctx)
 
 static REQUEST *request_setup(FILE *fp)
 {
+	VALUE_PAIR *vp;
 	REQUEST *request;
+	vp_cursor_t cursor;
 
 	/*
 	 *	Create and initialize the new request.
@@ -152,10 +154,156 @@ static REQUEST *request_setup(FILE *fp)
 		return NULL;
 	}
 
-	if (debug_flag) {
-		VALUE_PAIR *vp;
-		vp_cursor_t cursor;
+	/*
+	 *	Set the defaults for IPs, etc.
+	 */
+	request->packet->code = PW_CODE_AUTHENTICATION_REQUEST;
 
+	request->packet->src_ipaddr.af = AF_INET;
+	request->packet->src_ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_LOOPBACK);
+	request->packet->src_port = 18120;
+
+	request->packet->dst_ipaddr.af = AF_INET;
+	request->packet->dst_ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_LOOPBACK);
+	request->packet->dst_port = 1812;
+
+	/*
+	 *	Copied from radclient
+	 */
+#if 1
+	/*
+	 *	Fix up Digest-Attributes issues
+	 */
+	for (vp = fr_cursor_init(&cursor, &request->packet->vps);
+	     vp;
+	     vp = fr_cursor_next(&cursor)) {
+		/*
+		 *	Double quoted strings get marked up as xlat expansions,
+		 *	but we don't support that here.
+		 */
+		if (vp->type == VT_XLAT) {
+			vp->vp_strvalue = vp->value.xlat;
+			vp->value.xlat = NULL;
+			vp->type = VT_DATA;
+		}
+
+		if (!vp->da->vendor) switch (vp->da->attr) {
+			default:
+				break;
+
+				/*
+				 *	Allow it to set the packet type in
+				 *	the attributes read from the file.
+				 */
+			case PW_PACKET_TYPE:
+				request->packet->code = vp->vp_integer;
+				break;
+
+			case PW_PACKET_DST_PORT:
+				request->packet->dst_port = (vp->vp_integer & 0xffff);
+				break;
+
+			case PW_PACKET_DST_IP_ADDRESS:
+				request->packet->dst_ipaddr.af = AF_INET;
+				request->packet->dst_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
+				break;
+
+			case PW_PACKET_DST_IPV6_ADDRESS:
+				request->packet->dst_ipaddr.af = AF_INET6;
+				request->packet->dst_ipaddr.ipaddr.ip6addr = vp->vp_ipv6addr;
+				break;
+
+			case PW_PACKET_SRC_PORT:
+				request->packet->src_port = (vp->vp_integer & 0xffff);
+				break;
+
+			case PW_PACKET_SRC_IP_ADDRESS:
+				request->packet->src_ipaddr.af = AF_INET;
+				request->packet->src_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
+				break;
+
+			case PW_PACKET_SRC_IPV6_ADDRESS:
+				request->packet->src_ipaddr.af = AF_INET6;
+				request->packet->src_ipaddr.ipaddr.ip6addr = vp->vp_ipv6addr;
+				break;
+
+			case PW_CHAP_PASSWORD: {
+				int i, already_hex = 0;
+
+				/*
+				 *	If it's 17 octets, it *might* be already encoded.
+				 *	Or, it might just be a 17-character password (maybe UTF-8)
+				 *	Check it for non-printable characters.  The odds of ALL
+				 *	of the characters being 32..255 is (1-7/8)^17, or (1/8)^17,
+				 *	or 1/(2^51), which is pretty much zero.
+				 */
+				if (vp->length == 17) {
+					for (i = 0; i < 17; i++) {
+						if (vp->vp_octets[i] < 32) {
+							already_hex = 1;
+							break;
+						}
+					}
+				}
+
+				/*
+				 *	Allow the user to specify ASCII or hex CHAP-Password
+				 */
+				if (!already_hex) {
+					uint8_t *p;
+					size_t len, len2;
+
+					len = len2 = vp->length;
+					if (len2 < 17) len2 = 17;
+
+					p = talloc_zero_array(vp, uint8_t, len2);
+
+					memcpy(p, vp->vp_strvalue, len);
+
+					rad_chap_encode(request->packet,
+							p,
+							fr_rand() & 0xff, vp);
+					vp->vp_octets = p;
+					vp->length = 17;
+				}
+			}
+				break;
+
+			case PW_DIGEST_REALM:
+			case PW_DIGEST_NONCE:
+			case PW_DIGEST_METHOD:
+			case PW_DIGEST_URI:
+			case PW_DIGEST_QOP:
+			case PW_DIGEST_ALGORITHM:
+			case PW_DIGEST_BODY_DIGEST:
+			case PW_DIGEST_CNONCE:
+			case PW_DIGEST_NONCE_COUNT:
+			case PW_DIGEST_USER_NAME:
+				/* overlapping! */
+			{
+				DICT_ATTR const *da;
+				uint8_t *p;
+
+				p = talloc_array(vp, uint8_t, vp->length + 2);
+
+				memcpy(p + 2, vp->vp_octets, vp->length);
+				p[0] = vp->da->attr - PW_DIGEST_REALM + 1;
+				vp->length += 2;
+				p[1] = vp->length;
+
+				pairmemsteal(vp, p);
+
+				da = dict_attrbyvalue(PW_DIGEST_ATTRIBUTES, 0);
+				rad_assert(da != NULL);
+				vp->da = da;
+			}
+
+			break;
+			}
+	} /* loop over the VP's we read in */
+#endif
+
+	if (debug_flag) {
 		for (vp = fr_cursor_init(&cursor, &request->packet->vps);
 		     vp;
 		     vp = fr_cursor_next(&cursor)) {
@@ -188,6 +336,8 @@ static REQUEST *request_setup(FILE *fp)
 	request->packet->dst_port = 1812;
 
 	/*
+=======
+>>>>>>> 5cb691c... Allow Packet-Type, Digest-*, etc.
 	 *	Build the reply template from the request.
 	 */
 	request->reply->sockfd = request->packet->sockfd;
@@ -258,6 +408,7 @@ int main(int argc, char *argv[])
 	const char *filter_file = NULL;
 	FILE *fp;
 	REQUEST *request;
+	VALUE_PAIR *vp;
 	VALUE_PAIR *filter_vps = NULL;
 
 	if ((progname = strrchr(argv[0], FR_DIR_SEP)) == NULL)
@@ -447,6 +598,13 @@ int main(int argc, char *argv[])
 	print_packet(fp, request->reply);
 
 	if (output_file) fclose(fp);
+
+	/*
+	 *	Update the list with the response type.
+	 */
+	vp = radius_paircreate(request, &request->reply->vps,
+			       PW_RESPONSE_PACKET_TYPE, 0);
+	vp->vp_integer = request->reply->code;
 
 	if (filter_vps && !pairvalidate(filter_vps, request->reply->vps)) {
 		fprintf(stderr, "Output file %s does not match attributes in filter %s\n",

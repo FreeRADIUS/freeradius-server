@@ -3458,7 +3458,13 @@ ssize_t data2vp(RADIUS_PACKET *packet,
 	 *	Decrypt the attribute.
 	 */
 	if (secret && packet && (da->flags.encrypt != FLAG_ENCRYPT_NONE)) {
-		if (data == start) memcpy(buffer, data, attrlen);
+		if (data == start) {
+			if (attrlen < sizeof(buffer)) {
+				memcpy(buffer, data, attrlen);
+			} else {
+				memcpy(buffer, data, sizeof(buffer));
+			}
+		}
 		data = buffer;
 
 		switch (da->flags.encrypt) { /* can't be tagged */

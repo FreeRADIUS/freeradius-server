@@ -1,0 +1,73 @@
+#!/bin/sh
+# Start/stop the FreeRADIUS daemon.
+
+### BEGIN INIT INFO
+# Provides:          radsniff
+# Required-Start:    $network $syslog
+# Should-Start:      $time collectd
+# Required-Stop:     $syslog
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: Radius Daemon
+# Description:       RADIUS packet monitor
+### END INIT INFO
+
+
+PROG=$(basename $0)         # This allows multiple instances of radsniff
+                            # to be used by symlinking the init script.
+PROGRAM="radsniff"
+PIDFILE="/var/run/$PROG.pid"
+DESCR="radsniff daemon"
+
+set -e
+
+. /lib/lsb/init-functions
+
+if [ -r /etc/default/$PROG ]; then
+    . /etc/default/$PROG
+fi
+
+test -f $PROGRAM || exit 0
+
+export PATH="${PATH:+$PATH:}/usr/sbin:/sbin"
+
+ret=0
+
+# These defaults should work for simple installations
+RADSNIFF_OPTIONS=${RADSNIFF_OPTIONS:-'-q -W 10 -O /var/run/collectd-unixsock'}
+
+case "$1" in
+    start)
+        log_daemon_msg "Starting $DESCR" "$PROG"
+
+        start_daemon -p "$PIDFILE" "$PROGRAM" -P "$PIDFILE" -N "$PROG" $RADSNIFF_OPTIONS || ret=$?
+        log_end_msg $ret
+        ;;
+
+    stop)
+        log_daemon_msg "Stopping $DESCR" "$PROG"
+
+        killproc -p "$PIDFILE" || ret=$?
+        log_end_msg $ret
+        ;;
+
+    restart|force-reload)
+        $0 stop
+        $0 start
+        ;;
+
+    debug)
+        $PROGRAM -xxx -N "$PROG" $RADSNIFF_OPTIONS
+        ;;
+
+    status)
+        status_of_proc -p "$PIDFILE" "$PROGRAM" "$PROG" || ret=$?
+        ;;
+
+    *)
+        echo "Usage: $0 start|stop|restart|force-reload|debug|status"
+        exit 1
+        ;;
+esac
+
+exit $ret

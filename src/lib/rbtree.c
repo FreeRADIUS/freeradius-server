@@ -298,6 +298,7 @@ rbnode_t *rbtree_insertnode(rbtree_t *tree, void *Data)
 	/* setup new node */
 	X = talloc_zero(tree, rbnode_t);
 	if (!X) {
+		fr_strerror_printf("No memory for new rbtree node");
 		PTHREAD_MUTEX_UNLOCK(tree);
 		return NULL;
 	}

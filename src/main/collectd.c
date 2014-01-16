@@ -345,7 +345,7 @@ int rs_stats_collectd_open(rs_t *conf)
 	 *	because it's freed on failure, before lcc returns.
 	 */
 	if (lcc_connect(conf->stats.collectd, &(conf->stats.handle)) < 0) {
-		ERROR("Failed opening collectd socket: %s", fr_syserror(errno));
+		ERROR("Failed opening connection to collectd: %s", fr_syserror(errno));
 		return -1;
 	}
 	DEBUG2("Connected to \"%s\"", conf->stats.collectd);

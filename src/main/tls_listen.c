@@ -353,6 +353,9 @@ int dual_tls_recv(rad_listen_t *listener)
 
 	/*
 	 *	Some sanity checks, based on the packet code.
+	 *
+	 *	"auth+acct" are marked as "auth", with the "dual" flag
+	 *	set.
 	 */
 	switch(packet->code) {
 	case PW_CODE_AUTHENTICATION_REQUEST:
@@ -361,11 +364,22 @@ int dual_tls_recv(rad_listen_t *listener)
 		fun = rad_authenticate;
 		break;
 
+#ifdef WITH_ACCOUNTING
 	case PW_CODE_ACCOUNTING_REQUEST:
-		if (listener->type != RAD_LISTEN_ACCT) goto bad_packet;
+		if (listener->type != RAD_LISTEN_ACCT) {
+			/*
+			 *	Allow auth + dual.  Disallow
+			 *	everything else.
+			 */
+			if (!((listener->type == RAD_LISTEN_AUTH) &&
+			      (listener->dual))) {
+				    goto bad_packet;
+			}
+		}
 		FR_STATS_INC(acct, total_requests);
 		fun = rad_accounting;
 		break;
+#endif
 
 	case PW_CODE_STATUS_SERVER:
 		if (!mainconfig.status_server) {
@@ -465,6 +479,7 @@ int dual_tls_send(rad_listen_t *listener, REQUEST *request)
 }
 
 
+#ifdef WITH_PROXY
 int proxy_tls_recv(rad_listen_t *listener)
 {
 	int rcode;
@@ -620,5 +635,6 @@ int proxy_tls_send(rad_listen_t *listener, REQUEST *request)
 
 	return 1;
 }
+#endif	/* WITH_PROXY */
 
 #endif	/* WITH_TLS */

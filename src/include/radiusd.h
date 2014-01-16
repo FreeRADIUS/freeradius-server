@@ -38,50 +38,52 @@ typedef struct request REQUEST;
 #include <freeradius-devel/log.h>
 
 #ifdef HAVE_PTHREAD_H
-#include	<pthread.h>
+#  include <pthread.h>
+#else
+#  include <sys/wait.h>
 #endif
 
 #ifdef HAVE_PCREPOSIX_H
-#include <pcreposix.h>
+#  include <pcreposix.h>
 #else
-#ifdef HAVE_REGEX_H
-#	include <regex.h>
+#  ifdef HAVE_REGEX_H
+#    include <regex.h>
 
 /*
  *  For POSIX Regular expressions.
  *  (0) Means no extended regular expressions.
  *  REG_EXTENDED means use extended regular expressions.
  */
-#ifndef REG_EXTENDED
-#define REG_EXTENDED (0)
-#endif
+#    ifndef REG_EXTENDED
+#      define REG_EXTENDED (0)
+#    endif
 
-#ifndef REG_NOSUB
-#define REG_NOSUB (0)
-#endif
-#endif
+#    ifndef REG_NOSUB
+#      define REG_NOSUB (0)
+#    endif
+#  endif
 #endif
 
 #ifndef NDEBUG
-#define REQUEST_MAGIC (0xdeadbeef)
+#  define REQUEST_MAGIC (0xdeadbeef)
 #endif
 
 /*
  *	WITH_VMPS is handled by src/include/features.h
  */
 #ifdef WITHOUT_VMPS
-#undef WITH_VMPS
+#  undef WITH_VMPS
 #endif
 
 #ifdef WITH_TLS
-#include <freeradius-devel/tls.h>
+#  include <freeradius-devel/tls.h>
 #endif
 
 #include <freeradius-devel/stats.h>
 #include <freeradius-devel/realms.h>
 
 #ifdef WITH_COMMAND_SOCKET
-#define PW_RADMIN_PORT 18120
+#  define PW_RADMIN_PORT 18120
 #endif
 
 #ifdef __cplusplus
@@ -333,6 +335,7 @@ struct rad_listen_t {
 	int		status;
 #ifdef WITH_TCP
 	int		count;
+	bool		dual;
 #endif
 	bool		nodup;
 	bool		synchronous;
@@ -598,12 +601,9 @@ int		rad_postauth(REQUEST *);
 int		rad_virtual_server(REQUEST *);
 
 /* exec.c */
-pid_t radius_start_program(char const *cmd, REQUEST *request,
-			int exec_wait,
-			int *input_fd,
-			int *output_fd,
-			VALUE_PAIR *input_pairs,
-			int shell_escape);
+pid_t radius_start_program(char const *cmd, REQUEST *request, bool exec_wait,
+			   int *input_fd, int *output_fd,
+			   VALUE_PAIR *input_pairs, bool shell_escape);
 int radius_readfrom_program(REQUEST *request, int fd, pid_t pid, int timeout,
 			    char *answer, int left);
 int radius_exec_program(REQUEST *request, char const *cmd, bool exec_wait, bool shell_escape,

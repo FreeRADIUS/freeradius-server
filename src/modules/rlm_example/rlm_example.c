@@ -122,6 +122,7 @@ static rlm_rcode_t mod_authenticate(UNUSED void *instance, UNUSED REQUEST *reque
 	return RLM_MODULE_OK;
 }
 
+#ifdef WITH_ACCOUNTING
 /*
  *	Massage the request before recording it or proxying it
  */
@@ -154,6 +155,7 @@ static rlm_rcode_t mod_checksimul(UNUSED void *instance, UNUSED REQUEST *request
 
   return RLM_MODULE_OK;
 }
+#endif
 
 
 /*
@@ -186,9 +188,13 @@ module_t rlm_example = {
 	{
 		mod_authenticate,	/* authentication */
 		mod_authorize,	/* authorization */
+#ifdef WITH_ACCOUNTING
 		mod_preacct,	/* preaccounting */
 		mod_accounting,	/* accounting */
 		mod_checksimul,	/* checksimul */
+#else
+		NULL, NULL, NULL,
+#endif
 		NULL,			/* pre-proxy */
 		NULL,			/* post-proxy */
 		NULL			/* post-auth */

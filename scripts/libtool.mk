@@ -212,6 +212,12 @@ define ADD_LIBTOOL_TARGET
         $${TGT}_R_PRLIBS := $$(subst /lib/,/lib/${RELINK},$${$${TGT}_PRLIBS})
 
         $$(eval $$(call ADD_RELINK_RULE$${$${TGT}_SUFFIX},$${TGT}))
+
+        $$(eval $$(call ADD_CLEAN_RULE,$${$${TGT}_RELINK}_libtool))
+
+	ifneq "$${$${TGT}_NOLIBTOOL}" ""
+            $$(eval $$(call ADD_CLEAN_RULE,$${$${TGT}_NOLIBTOOL}_libtool))
+	endif
     endif
 
 endef

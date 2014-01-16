@@ -7,7 +7,16 @@
 listen {
 	ipaddr = *
 	port = 2083
-	type = auth
+
+	#
+	#  TCP and TLS sockets can accept Access-Request and
+	#  Accounting-Request on the same socket.
+	#
+	#	auth	  = only Access-Request
+	#	acct	  = only Accounting-Request
+	#	auth+acct = both
+	#
+	type = auth+acct
 
 	# For now, only TCP transport is allowed.
 	proto = tcp
@@ -368,12 +377,6 @@ clients radsec {
 		#  client.
 		#
 	}
-}
-
-listen {
-       ipaddr = 127.0.0.1
-       port = 4000
-       type = auth
 }
 
 home_server tls {
