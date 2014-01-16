@@ -1040,7 +1040,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			 */
 			if (conf->filter_response_code && (conf->filter_response_code != current->code)) {
 				drop_response:
-				RDEBUG2("Response dropped by attribute/packet filter");
+				RDEBUG2("Response dropped by filter");
 				rad_free(&current);
 
 				/* We now need to cleanup the original request too */
@@ -1083,7 +1083,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 				}
 
 				/*
-				 *	Is this a retransmit?
+				 *	Is this a retransmission?
 				 */
 				if (original->linked) {
 					status = RS_RTX;
@@ -1091,10 +1091,18 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 
 					rad_free(&original->linked);
 					fr_event_delete(event->list, &original->event);
+				/*
+				 *	...nope it's the first response to a request.
+				 */
 				} else {
 					original->stats_rsp = &stats->exchange[current->code];
 				}
 
+				/*
+				 *	Insert a callback to remove the request and response
+				 *	from the tree after the timeout period.
+				 *	The delay is so we can detect retransmissions.
+				 */
 				original->linked = talloc_steal(original, current);
 				rs_tv_add_ms(&header->ts, conf->stats.timeout, &original->when);
 				if (!fr_event_insert(event->list, _rs_event, original, &original->when,
@@ -1118,7 +1126,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 				 */
 				if (conf->filter_request) {
 					rad_free(&current);
-					RDEBUG2("Dropped by attribute filter");
+					RDEBUG2("Original request dropped by filter");
 					return;
 				}
 
@@ -1141,7 +1149,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			if (conf->filter_request_code && (conf->filter_request_code != current->code)) {
 				drop_request:
 
-				RDEBUG2("Request dropped by attribute/packet filter");
+				RDEBUG2("Request dropped by filter");
 				rad_free(&current);
 
 				return;
@@ -1549,7 +1557,7 @@ static int rs_build_filter(VALUE_PAIR **out, char const *filter)
 	}
 
 	if (!*out) {
-		ERROR("Empty RADIUS filter \"%s\"", filter);
+		ERROR("Empty RADIUS filter '%s'", filter);
 		return -1;
 	}
 
