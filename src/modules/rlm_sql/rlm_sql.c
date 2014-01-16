@@ -585,6 +585,7 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t *inst, REQUEST *request, rlm
 		return RLM_MODULE_FAIL;
 	}
 	if (rows == 0) {
+		RDEBUG2("User not found in any groups");
 		rcode = RLM_MODULE_NOTFOUND;
 		goto finish;
 	}
