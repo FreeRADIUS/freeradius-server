@@ -10,36 +10,35 @@
 /*
  * Table structure for table 'radacct'
  *
- * Note: Column type BIGSERIAL does not exist prior to Postgres 7.2
- *       If you run an older version you need to change this to SERIAL
+ * Note: Column type bigserial does not exist prior to Postgres 7.2
+ *       If you run an older version you need to change this to serial
  */
 CREATE TABLE radacct (
-	RadAcctId		BIGSERIAL PRIMARY KEY,
-	AcctSessionId		VARCHAR(64) NOT NULL,
-	AcctUniqueId		VARCHAR(32) NOT NULL UNIQUE,
-	UserName		VARCHAR(253),
-	GroupName		VARCHAR(253),
-	Realm			VARCHAR(64),
-	NASIPAddress		INET NOT NULL,
-	NASPortId		VARCHAR(15),
-	NASPortType		VARCHAR(32),
-	AcctStartTime		TIMESTAMP with time zone,
-	AcctStopTime		TIMESTAMP with time zone,
-	AcctSessionTime		BIGINT,
-	AcctAuthentic		VARCHAR(32),
-	ConnectInfo_start	VARCHAR(50),
-	ConnectInfo_stop	VARCHAR(50),
-	AcctInputOctets		BIGINT,
-	AcctOutputOctets	BIGINT,
-	CalledStationId		VARCHAR(50),
-	CallingStationId	VARCHAR(50),
-	AcctTerminateCause	VARCHAR(32),
-	ServiceType		VARCHAR(32),
-	XAscendSessionSvrKey	VARCHAR(10),
-	FramedProtocol		VARCHAR(32),
-	FramedIPAddress		INET,
-	AcctStartDelay		INTEGER,
-	AcctStopDelay		INTEGER
+	RadAcctId		bigserial PRIMARY KEY,
+	AcctSessionId		text NOT NULL,
+	AcctUniqueId		text NOT NULL UNIQUE,
+	UserName		text,
+	GroupName		text,
+	Realm			text,
+	NASIPAddress		inet NOT NULL,
+	NASPortId		text,
+	NASPortType		text,
+	AcctStartTime		timestamp with time zone,
+	AcctStopTime		timestamp with time zone,
+	AcctSessionTime		bigint,
+	AcctAuthentic		text,
+	ConnectInfo_start	text,
+	ConnectInfo_stop	text,
+	AcctInputOctets		bigint,
+	AcctOutputOctets	bigint,
+	CalledStationId		text,
+	CallingStationId	text,
+	AcctTerminateCause	text,
+	ServiceType		text,
+	FramedProtocol		text,
+	FramedIPAddress		inet,
+	AcctStartDelay		integer,
+	AcctStopDelay		integer
 );
 -- This index may be useful..
 -- CREATE UNIQUE INDEX radacct_whoson on radacct (AcctStartTime, nasipaddress);
@@ -76,11 +75,11 @@ CREATE INDEX radacct_start_user_idx ON radacct (AcctStartTime, UserName);
  * Table structure for table 'radcheck'
  */
 CREATE TABLE radcheck (
-	id		SERIAL PRIMARY KEY,
-	UserName	VARCHAR(64) NOT NULL DEFAULT '',
-	Attribute	VARCHAR(64) NOT NULL DEFAULT '',
-	op		CHAR(2) NOT NULL DEFAULT '==',
-	Value		VARCHAR(253) NOT NULL DEFAULT ''
+	id			serial PRIMARY KEY,
+	UserName		text NOT NULL DEFAULT '',
+	Attribute		text NOT NULL DEFAULT '',
+	op			VARCHAR(2) NOT NULL DEFAULT '==',
+	Value			text NOT NULL DEFAULT ''
 );
 create index radcheck_UserName on radcheck (UserName,Attribute);
 /*
@@ -92,11 +91,11 @@ create index radcheck_UserName on radcheck (UserName,Attribute);
  * Table structure for table 'radgroupcheck'
  */
 CREATE TABLE radgroupcheck (
-	id		SERIAL PRIMARY KEY,
-	GroupName	VARCHAR(64) NOT NULL DEFAULT '',
-	Attribute	VARCHAR(64) NOT NULL DEFAULT '',
-	op		CHAR(2) NOT NULL DEFAULT '==',
-	Value		VARCHAR(253) NOT NULL DEFAULT ''
+	id			serial PRIMARY KEY,
+	GroupName		text NOT NULL DEFAULT '',
+	Attribute		text NOT NULL DEFAULT '',
+	op			VARCHAR(2) NOT NULL DEFAULT '==',
+	Value			text NOT NULL DEFAULT ''
 );
 create index radgroupcheck_GroupName on radgroupcheck (GroupName,Attribute);
 
@@ -104,11 +103,11 @@ create index radgroupcheck_GroupName on radgroupcheck (GroupName,Attribute);
  * Table structure for table 'radgroupreply'
  */
 CREATE TABLE radgroupreply (
-	id		SERIAL PRIMARY KEY,
-	GroupName	VARCHAR(64) NOT NULL DEFAULT '',
-	Attribute	VARCHAR(64) NOT NULL DEFAULT '',
-	op		CHAR(2) NOT NULL DEFAULT '=',
-	Value		VARCHAR(253) NOT NULL DEFAULT ''
+	id			serial PRIMARY KEY,
+	GroupName		text NOT NULL DEFAULT '',
+	Attribute		text NOT NULL DEFAULT '',
+	op			VARCHAR(2) NOT NULL DEFAULT '=',
+	Value			text NOT NULL DEFAULT ''
 );
 create index radgroupreply_GroupName on radgroupreply (GroupName,Attribute);
 
@@ -116,11 +115,11 @@ create index radgroupreply_GroupName on radgroupreply (GroupName,Attribute);
  * Table structure for table 'radreply'
  */
 CREATE TABLE radreply (
-	id		SERIAL PRIMARY KEY,
-	UserName	VARCHAR(64) NOT NULL DEFAULT '',
-	Attribute	VARCHAR(64) NOT NULL DEFAULT '',
-	op		CHAR(2) NOT NULL DEFAULT '=',
-	Value		VARCHAR(253) NOT NULL DEFAULT ''
+	id			serial PRIMARY KEY,
+	UserName		text NOT NULL DEFAULT '',
+	Attribute		text NOT NULL DEFAULT '',
+	op			VARCHAR(2) NOT NULL DEFAULT '=',
+	Value			text NOT NULL DEFAULT ''
 );
 create index radreply_UserName on radreply (UserName,Attribute);
 /*
@@ -132,10 +131,10 @@ create index radreply_UserName on radreply (UserName,Attribute);
  * Table structure for table 'radusergroup'
  */
 CREATE TABLE radusergroup (
-	id		SERIAL PRIMARY KEY,
-	UserName	VARCHAR(64) NOT NULL DEFAULT '',
-	GroupName	VARCHAR(64) NOT NULL DEFAULT '',
-	priority	INTEGER NOT NULL DEFAULT 0
+	id			serial PRIMARY KEY,
+	UserName		text NOT NULL DEFAULT '',
+	GroupName		text NOT NULL DEFAULT '',
+	priority		integer NOT NULL DEFAULT 0
 );
 create index radusergroup_UserName on radusergroup (UserName);
 /*
@@ -143,55 +142,32 @@ create index radusergroup_UserName on radusergroup (UserName);
  */
 -- create index radusergroup_UserName_lower on radusergroup (lower(UserName));
 
-/*
- * Table structure for table 'realmgroup'
- * Commented out because currently not used
- */
---CREATE TABLE realmgroup (
---	id		SERIAL PRIMARY KEY,
---	RealmName	VARCHAR(30) DEFAULT '' NOT NULL,
---	GroupName	VARCHAR(30)
---);
---create index realmgroup_RealmName on realmgroup (RealmName);
-
-/*
- * Table structure for table 'realms'
- * This is not yet used by FreeRADIUS
- */
---CREATE TABLE realms (
---	id		SERIAL PRIMARY KEY,
---	realmname	VARCHAR(64),
---	nas		VARCHAR(128),
---	authport	int4,
---	options		VARCHAR(128) DEFAULT ''
---);
-
 --
 -- Table structure for table 'radpostauth'
 --
 
 CREATE TABLE radpostauth (
-	id			BIGSERIAL PRIMARY KEY,
-	username		VARCHAR(253) NOT NULL,
-	pass			VARCHAR(128),
-	reply			VARCHAR(32),
-	CalledStationId		VARCHAR(50),
-	CallingStationId	VARCHAR(50),
-	authdate		TIMESTAMP with time zone NOT NULL default 'now()'
+	id			bigserial PRIMARY KEY,
+	username		text NOT NULL,
+	pass			text,
+	reply			text,
+	CalledStationId		text,
+	CallingStationId	text,
+	authdate		timestamp with time zone NOT NULL default now()
 );
 
 /*
  * Table structure for table 'nas'
  */
 CREATE TABLE nas (
-        id              SERIAL PRIMARY KEY,
-        nasname         VARCHAR(128) NOT NULL,
-        shortname       VARCHAR(32) NOT NULL,
-        type            VARCHAR(30) NOT NULL DEFAULT 'other',
-        ports           int4,
-        secret          VARCHAR(60) NOT NULL,
-        server          VARCHAR(64),
-        community       VARCHAR(50),
-        description     VARCHAR(200)
+	id			serial PRIMARY KEY,
+	nasname			text NOT NULL,
+	shortname		text NOT NULL,
+	type			text NOT NULL DEFAULT 'other',
+	ports			integer,
+	secret			text NOT NULL,
+	server			text,
+	community		text,
+	description		text
 );
 create index nas_nasname on nas (nasname);

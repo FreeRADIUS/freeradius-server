@@ -1859,7 +1859,7 @@ int realms_init(CONF_SECTION *config)
 		if (cf_section_parse(cs, rc, proxy_config) < 0) {
 			ERROR("Failed parsing proxy section");
 
-			free(rc);
+			talloc_free(rc);
 			realms_free();
 			return 0;
 		}
@@ -1875,7 +1875,7 @@ int realms_init(CONF_SECTION *config)
 	     cs != NULL;
 	     cs = cf_subsection_find_next(config, cs, "home_server")) {
 		if (!home_server_add(rc, cs)) {
-			free(rc);
+			talloc_free(rc);
 			realms_free();
 			return 0;
 		}
@@ -1892,7 +1892,7 @@ int realms_init(CONF_SECTION *config)
 		     cs != NULL;
 		     cs = cf_subsection_find_next(server_cs, cs, "home_server")) {
 			if (!home_server_add(rc, cs)) {
-				free(rc);
+				talloc_free(rc);
 				realms_free();
 				return 0;
 			}
@@ -1904,7 +1904,7 @@ int realms_init(CONF_SECTION *config)
 	     cs != NULL;
 	     cs = cf_subsection_find_next(config, cs, "realm")) {
 		if (!realm_add(rc, cs)) {
-			free(rc);
+			talloc_free(rc);
 			realms_free();
 			return 0;
 		}
@@ -1926,13 +1926,13 @@ int realms_init(CONF_SECTION *config)
 
 		type = pool_peek_type(config, cs);
 		if (type == HOME_TYPE_INVALID) {
-			free(rc);
+			talloc_free(rc);
 			realms_free();
 			return 0;
 		}
 
 		if (!server_pool_add(rc, cs, type, true)) {
-			free(rc);
+			talloc_free(rc);
 			realms_free();
 			return 0;
 		}

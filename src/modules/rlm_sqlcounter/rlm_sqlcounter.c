@@ -530,7 +530,7 @@ static rlm_rcode_t mod_authorize(UNUSED void *instance, UNUSED REQUEST *request)
 		return rcode;
 	}
 
-	len = snprintf(query, sizeof(query), "%%{%s:%s}", inst->sqlmod_inst, query);
+	len = snprintf(query, sizeof(query), "%%{%s:%s}", inst->sqlmod_inst, inst->query);
 	if (len >= sizeof(query) - 1) {
 		REDEBUG("Insufficient query buffer space");
 

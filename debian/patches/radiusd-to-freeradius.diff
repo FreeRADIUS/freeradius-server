@@ -31,8 +31,8 @@
  
  	#  Core dumps are a bad thing.  This should only be set to
  	#  'yes' if you're debugging a problem with the server.
---- a/scripts/freeradius.monitrc
-+++ b/scripts/freeradius.monitrc
+--- a/scripts/monit/freeradius.monitrc
++++ b/scripts/monit/freeradius.monitrc
 @@ -8,9 +8,9 @@
  #  Totalmem limit should be lowered to 200.0 if none of the 
  #  interpreted language modules or rlm_cache are being used.

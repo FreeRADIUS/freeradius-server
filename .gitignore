@@ -32,6 +32,9 @@
 *.project
 *.bbprojectd
 
+# Local icon files
+icon.png
+
 # OS specific cruft
 .DS_Store
 

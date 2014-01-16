@@ -1066,8 +1066,7 @@ eap_handler_t *eap_handler(rlm_eap_t *inst, eap_packet_raw_t **eap_packet_p,
 		handler = eaplist_find(inst, request, eap_packet);
 		if (!handler) {
 			/* Either send EAP_Identity or EAP-Fail */
-			RDEBUG("Either EAP-request timed out OR"
-			       " EAP-response to an unknown EAP-request");
+			RDEBUG("Either EAP-request timed out OR EAP-response to an unknown EAP-request");
 			goto error;
 		}
 
@@ -1081,7 +1080,11 @@ eap_handler_t *eap_handler(rlm_eap_t *inst, eap_packet_raw_t **eap_packet_p,
 		 */
 		if ((eap_packet->data[0] != PW_EAP_NAK) &&
 		    (eap_packet->data[0] != handler->type)) {
-			RDEBUG("Response appears to match, but EAP type is wrong.");
+			RERROR("Response appears to match a previous request, but the EAP type is wrong");
+			RERROR("We expected EAP type %s, but received type %s",
+			       eap_type2name(handler->type),
+			       eap_type2name(eap_packet->data[0]));
+			RERROR("Your Supplicant or NAS is probably broken");
 			goto error;
 		}
 

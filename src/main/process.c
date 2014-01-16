@@ -552,15 +552,16 @@ STATE_MACHINE_DECL(request_done)
 	}
 #endif
 
-	if (request->child_state != REQUEST_DONE) {
-
 #ifdef HAVE_PTHREAD_H
-		if (!spawn_flag)
+	/*
+	 *	If there's no children, we can mark the request as done.
+	 */
+	if (!spawn_flag) {
+		request->child_state = REQUEST_DONE;
+	}
 #endif
-		{
-			rad_panic("Request should have been marked done");
-		}
 
+	if (request->child_state != REQUEST_DONE) {
 		gettimeofday(&now, NULL);
 #ifdef WITH_PROXY
 	wait_some_more:
@@ -675,7 +676,14 @@ static void request_process_timer(REQUEST *request)
 		 */
 		if (request->listener->status != RAD_LISTEN_STATUS_KNOWN) {
 			WDEBUG("Socket was closed while processing request %u: Stopping it.", request->number);
+#ifdef WITH_ACCOUNTING
 			goto done;
+#else
+		done:
+			request_done(request, FR_ACTION_DONE);
+			return;
+#endif
+
 		}
 	}
 
@@ -1079,7 +1087,26 @@ STATE_MACHINE_DECL(request_finish)
 	/*
 	 *	Don't send replies if there are none to send.
 	 */
-	if (!request->in_request_hash) return;
+	if (!request->in_request_hash) {
+#ifdef WITH_TCP
+		if ((request->listener->type == RAD_LISTEN_AUTH)
+#ifdef WITH_ACCOUNTING
+		    || (request->listener->type == RAD_LISTEN_ACCT)
+#endif
+			) {
+			listen_socket_t *sock = request->listener->data;
+
+			if (sock->proto == IPPROTO_UDP) return;
+
+			/*
+			 *	TCP packets aren't in the request
+			 *	hash.
+			 */
+		}
+#else
+		return;
+#endif
+	}
 
 	/*
 	 *	Override the response code if a control:Response-Packet-Type attribute is present.
@@ -1241,7 +1268,9 @@ STATE_MACHINE_DECL(request_running)
 			}
 #endif
 
+#ifdef WITH_PROXY
 		finished:
+#endif
 			request_finish(request, action);
 
 		done:
@@ -1275,13 +1304,20 @@ int request_receive(rad_listen_t *listener, RADIUS_PACKET *packet,
 	RADIUS_PACKET **packet_p;
 	REQUEST *request = NULL;
 	struct timeval now;
-	listen_socket_t *sock = listener->data;
+	listen_socket_t *sock = NULL;
 
 	/*
 	 *	Set the last packet received.
 	 */
 	gettimeofday(&now, NULL);
-	sock->last_packet = now.tv_sec;
+
+#ifdef WITH_ACCOUNTING
+	if (listener->type != RAD_LISTEN_DETAIL)
+#endif
+	{
+		sock = listener->data;
+		sock->last_packet = now.tv_sec;
+	}
 	packet->timestamp = now;
 
 	/*
@@ -1359,7 +1395,7 @@ skip_dup:
 	/*
 	 *	Rate-limit the incoming packets
 	 */
-	if (sock->max_rate) {
+	if (sock && sock->max_rate) {
 		int pps;
 
 		pps = rad_pps(&sock->rate_pps_old, &sock->rate_pps_now,
@@ -1505,7 +1541,6 @@ static REQUEST *request_setup(rad_listen_t *listener, RADIUS_PACKET *packet,
 }
 
 #ifdef WITH_TCP
-#ifdef WITH_PROXY
 /***********************************************************************
  *
  *	TCP Handlers.
@@ -1526,12 +1561,16 @@ static void tcp_socket_timer(void *ctx)
 	fr_event_now(el, &now);
 
 	switch (listener->type) {
+#ifdef WITH_PROXY
 	case RAD_LISTEN_PROXY:
 		limit = &sock->home->limit;
 		break;
+#endif
 
 	case RAD_LISTEN_AUTH:
+#ifdef WITH_ACCOUNTING
 	case RAD_LISTEN_ACCT:
+#endif
 		limit = &sock->limit;
 		break;
 
@@ -1597,6 +1636,7 @@ static void tcp_socket_timer(void *ctx)
 }
 
 
+#ifdef WITH_PROXY
 /*
  *	Add +/- 2s of jitter, as suggested in RFC 3539
  *	and in RFC 5080.
@@ -3831,7 +3871,7 @@ int event_new_fd(rad_listen_t *this)
 			/*
 			 *	EOL all requests using this socket.
 			 */
-			fr_packet_list_walk(proxy_list, this,
+			fr_packet_list_walk(pl, this,
 					    eol_listener);
 		}
 

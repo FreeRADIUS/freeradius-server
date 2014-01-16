@@ -178,6 +178,8 @@ ATTRIBUTE	Home-Server-Pool			1111	string
 
 ATTRIBUTE	FreeRADIUS-Client-IP-Address		1120	ipaddr
 ATTRIBUTE	FreeRADIUS-Client-IPv6-Address		1121	ipv6addr
+ATTRIBUTE	FreeRADIUS-Client-IP-Prefix		1150	ipv4prefix
+ATTRIBUTE	FreeRADIUS-Client-IPv6-Prefix		1151	ipv6prefix
 
 ATTRIBUTE	FreeRADIUS-Client-Require-MA		1122	integer
 

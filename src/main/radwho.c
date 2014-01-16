@@ -53,7 +53,7 @@ log_debug_t debug_flag = 0;
 char const *progname = "radwho";
 char const *radlog_dir = NULL;
 char const *radutmp_file = NULL;
-int check_config = false;
+bool check_config = false;
 
 char const *raddb_dir = NULL;
 char const *radacct_dir = NULL;
@@ -72,10 +72,12 @@ pid_t rad_fork(void)
 	return fork();
 }
 
+#ifdef HAVE_PTHREAD_H
 pid_t rad_waitpid(pid_t pid, int *status)
 {
 	return waitpid(pid, status, 0);
 }
+#endif
 
 struct radutmp_config_t {
   char *radutmp_fn;

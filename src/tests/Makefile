@@ -18,8 +18,8 @@ export DYLD_LIBRARY_PATH
 
 RADDB_PATH := $(top_builddir)/raddb
 
-TESTS	= user_password vpiter chap mschapv1 digest-01/digest* \
-	test.example.com wimax
+TESTS	= mschapv1 digest-01/digest* \
+	test.example.com 
 
 PORT	 = 12340
 #PORT	 = 1812

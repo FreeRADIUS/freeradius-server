@@ -30,7 +30,7 @@ RCSID("$Id$")
 #include <freeradius-devel/parser.h>
 #include <freeradius-devel/rad_assert.h>
 
-extern int check_config;
+extern bool check_config;
 
 typedef struct indexed_modcallable {
 	rlm_components_t	comp;
@@ -509,7 +509,7 @@ static int module_conf_parse(module_instance_t *node, void **handle)
 module_instance_t *find_module_instance(CONF_SECTION *modules,
 					char const *askedname, int do_link)
 {
-	int check_config_safe = false;
+	bool check_config_safe = false;
 	CONF_SECTION *cs;
 	char const *name1, *instname;
 	module_instance_t *node, myNode;

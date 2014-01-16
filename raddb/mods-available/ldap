@@ -60,6 +60,7 @@ ldap {
 	#  attribute ref.
 	#
 	update {
+		control:Password-With-Header	+= 'userPassword'
 #		control:NT-Password		:= 'ntPassword'
 #		reply:Reply-Message		:= 'radiusReplyMessage'
 #		reply:Tunnel-Type		:= 'radiusTunnelType'

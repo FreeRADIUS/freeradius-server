@@ -913,7 +913,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 		 */
 		res = nmasldap_get_password(conn->handle, dn, password, &pass_size);
 		if (res != 0) {
-			REDEBUG("Failed to retrieve eDirectory password: %s", edir_errstr(res));
+			REDEBUG("Failed to retrieve eDirectory password: (%i) %s", res, edir_errstr(res));
 			rcode = RLM_MODULE_FAIL;
 
 			goto finish;
@@ -926,8 +926,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 		pairstrcpy(vp, password);
 		vp->length = pass_size;
 
-		RDEBUG2("Added eDirectory password in check items as %s = %s", vp->da->name, vp->vp_strvalue);
-
+		RDEBUG2("Added eDirectory password.  control:%s += '%s'", vp->da->name, vp->vp_strvalue);
 		if (inst->edir_autz) {
 			RDEBUG2("Binding as user for eDirectory authorization checks");
 			/*
@@ -938,28 +937,27 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 			switch (status) {
 			case LDAP_PROC_SUCCESS:
 				rcode = RLM_MODULE_OK;
-				RDEBUG("Bind as user \"%s\" was successful", dn);
-
+				RDEBUG("Bind as user '%s' was successful", dn);
 				break;
+
 			case LDAP_PROC_NOT_PERMITTED:
 				rcode = RLM_MODULE_USERLOCK;
-
 				goto finish;
+
 			case LDAP_PROC_REJECT:
 				rcode = RLM_MODULE_REJECT;
-
 				goto finish;
+
 			case LDAP_PROC_BAD_DN:
 				rcode = RLM_MODULE_INVALID;
-
 				goto finish;
+
 			case LDAP_PROC_NO_RESULT:
 				rcode = RLM_MODULE_NOTFOUND;
-
 				goto finish;
+
 			default:
 				rcode = RLM_MODULE_FAIL;
-
 				goto finish;
 			};
 		}
@@ -1026,6 +1024,7 @@ finish:
 static rlm_rcode_t user_modify(ldap_instance_t *inst, REQUEST *request, ldap_acct_section_t *section)
 {
 	rlm_rcode_t	rcode = RLM_MODULE_OK;
+	ldap_rcode_t	status;
 
 	ldap_handle_t	*conn = NULL;
 
@@ -1216,7 +1215,20 @@ static rlm_rcode_t user_modify(ldap_instance_t *inst, REQUEST *request, ldap_acc
 		goto error;
 	}
 
-	rcode = rlm_ldap_modify(inst, request, &conn, dn, modify);
+	status = rlm_ldap_modify(inst, request, &conn, dn, modify);
+	switch (status) {
+	case LDAP_PROC_SUCCESS:
+		break;
+
+	case LDAP_PROC_REJECT:
+	case LDAP_PROC_BAD_DN:
+		rcode = RLM_MODULE_INVALID;
+		break;
+
+	default:
+		rcode = RLM_MODULE_FAIL;
+		break;
+	};
 
 	release:
 	error:

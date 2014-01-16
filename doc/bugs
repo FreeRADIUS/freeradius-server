@@ -12,13 +12,16 @@ BUGS
 
 1.YOU FOUND A BUG
 
-  So you think you've found a bug in the FreeRADIUS server?
+  Where the server terminates ungracefully due to a bus error, 
+  segmentation violation, or other memory error, you should create 
+  a new issue in the issue tracker <URL: http://bugs.freeradius.org>,
+  including information from sections 4 and 5.
 
-  You should first discuss it on the users list, to see if anyone can
-  reproduce it. Often there's a simple explanation of why the server
-  behaves as it does, and it's not necessarily a bug in the code, so
-  browse the lists' archives of the last two months, and if you don't
-  see messages about it, ask!
+  For other issues, you should first discuss them on the users list, 
+  to see if anyone can reproduce them. Often there's a simple explanation 
+  of why the server behaves as it does, and it's not necessarily a bug in
+  the code, so browse the lists' archives of the last two months, and if 
+  you don't see messages about it, ask!
 
   If the behavior is correct but confusing, we think that's a bug too, and
   you should file a bug against our documentation.
@@ -91,6 +94,10 @@ BUGS
 
 4. OBTAINING USEFUL INFORMATION
 
+  Once you have a core dump loaded into gdb, or FreeRADIUS running under
+  gdb, you may use the commands below to get useful information about 
+  the state of the server.
+
   If the server was built with threads, you can do:
 
   (gdb) info threads
@@ -105,19 +112,18 @@ BUGS
   If the server isn't threaded, the "thread apply" section isn't necessary
 
   The output should be printed to the screen, and also sent to the
-  gdb-radiusd.log file.  Copy the log gile and mail it to the list, or
-  put it on a web page if it's too large.  Include the name of the
-  operating system.
-  Without this information, it's impossible for anyone to know why the
-  program core dumped.
-
-  You can also submit the information to the bug database at:
-
+  gdb-radiusd.log file.  
+  
+  You should then submit the information from the log file, along with 
+  any server output, the output of radiusd -xv, and information about your
+  operating system to:
+  
     http://bugs.freeradius.org/
 
   Submitting it to the bug database ensures that the bug report won't
-  get forgotten, and that someone will eventually respond to it.
+  get forgotten, and that it will be dealt with in due course.
 
+  You should provide the issue number in any mail sent to the user's list.
 
 5. VALGRIND
 
@@ -156,5 +162,5 @@ $ valgrind --tool=memcheck --leak-check=full radiusd -Xm
 
 --
 
-FreeRADIUS Project, copyright 2008
+FreeRADIUS Project, copyright 2014
 $Id$

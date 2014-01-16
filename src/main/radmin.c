@@ -83,7 +83,7 @@ char const *radmin_version = "radmin version " RADIUSD_VERSION_STRING
 log_debug_t debug_flag = 0;
 struct main_config_t mainconfig;
 
-int check_config = false;
+bool check_config = false;
 
 static FILE *outputfp = NULL;
 static int echo = false;
@@ -95,10 +95,12 @@ pid_t rad_fork(void)
 	return fork();
 }
 
+#ifdef HAVE_PTHREAD_H
 pid_t rad_waitpid(pid_t pid, int *status)
 {
 	return waitpid(pid, status, 0);
 }
+#endif
 
 static void NEVER_RETURNS usage(int status)
 {
@@ -608,7 +610,7 @@ int main(int argc, char **argv)
 
 	if (!done_license && !quiet) {
 		printf("%s - FreeRADIUS Server administration tool.\n", radmin_version);
-		printf("Copyright (C) 2008-2012 The FreeRADIUS server project and contributors.\n");
+		printf("Copyright (C) 2008-2014 The FreeRADIUS server project and contributors.\n");
 		printf("There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A\n");
 		printf("PARTICULAR PURPOSE.\n");
 		printf("You may redistribute copies of FreeRADIUS under the terms of the\n");

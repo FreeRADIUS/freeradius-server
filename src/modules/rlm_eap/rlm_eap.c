@@ -675,9 +675,12 @@ static rlm_rcode_t mod_post_proxy(void *inst, REQUEST *request)
 
 	/*
 	 *	Decrypt the session key, using the proxy data.
+	 *
+	 *	Note that the session key is *binary*, and therefore
+	 *	may contain embedded zeros.  So we have to use memdup.
 	 */
-	i = 34;			/* starts off with 34 octets */
-	p = talloc_strdup(vp, vp->vp_strvalue);
+	i = 34;
+	p = talloc_memdup(vp, vp->vp_octets, vp->length);
 	len = rad_tunnel_pwdecode((uint8_t *)p + 17, &i,
 				  request->home_server->secret,
 				  request->proxy->vector);

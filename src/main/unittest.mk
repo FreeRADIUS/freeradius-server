@@ -10,8 +10,8 @@ SOURCES	+= cb.c tls.c
 endif
 
 SRC_CFLAGS	:= -DHOSTINFO=\"${HOSTINFO}\"
-TGT_INSTALLDIR  := 
-TGT_LDLIBS	:= $(LIBS) $(LCRYPT)
+TGT_INSTALLDIR  :=
+TGT_LDLIBS	:= $(LIBS) $(OPENSSL_LIBS) $(LCRYPT)
 TGT_PREREQS	:= libfreeradius-server.a libfreeradius-radius.a
 
 # Libraries can't depend on libraries (oops), so make the binary

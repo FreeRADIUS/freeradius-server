@@ -1,4 +1,8 @@
-FreeRADIUS 3.0.1 Mon  7 Oct 2013 15:48:14 EDT urgency=medium
+FreeRADIUS 3.0.2 Mon 13 Jan 2014 14:30:00 EDT urgency=medium
+	Feature improvements
+	Bug fixes
+
+FreeRADIUS 3.0.1 Mon 13 Jan 2014 14:30:00 EDT urgency=medium
 	Feature improvements
 	* Add "timeout" to exec, and "ntlm_auth_timeout" to mschap.
 	  So that run-away child processes are caught earlier.
@@ -22,6 +26,10 @@ FreeRADIUS 3.0.1 Mon  7 Oct 2013 15:48:14 EDT urgency=medium
 	  PostgreSQL driver.
 	* Changes to the OpenLDAP schema to fully expose functionality
 	  of the new LDAP module.
+	* Update debian packaging to include a freeradius-config
+	  package. This package may be provided as a site local
+	  package to avoid fighting with the preinstalled config
+	  files.
 
 	Bug fixes
 	* Use correct field for ARP setting in DHCP.
@@ -47,11 +55,14 @@ FreeRADIUS 3.0.1 Mon  7 Oct 2013 15:48:14 EDT urgency=medium
 	* Mark "unknown" WiMAX attributes as being WiMAX.
 	* Fix typo in packet decoder for fragmented extended attrs
 	* RPM spec fixes.
-	* Always run unit tests before building radiusd.
 	* Fix rlm_perl build issues when not using threads.
 	* Enable %{Response-Packet-Type} again.
 	* Update configuration file parser to handle "bool"
 	  consistently.
+	* Update declarations of global boolean variables to use
+	  "bool" consistently. This fixes an issue where some
+	  modules were instantiated in "config check" mode and
+	  did not work correctly.
 	* Make more messages debug instead of info, to avoid
 	  polluting the logs with messages that can't be fixed.
 	* Set operator in internal unlang code to suppress spurious
@@ -69,10 +80,14 @@ FreeRADIUS 3.0.1 Mon  7 Oct 2013 15:48:14 EDT urgency=medium
 	* Fix typo in sqlcounter expansion code.  Fixes #463
 	* Overwrite previous instances of SQL-User-Name when adding
 	  it to the request.
-	* Workaround upstream bug in multiple versions of MIT libkrb5
-	  (including 1.11.4) where krb5_copy_context will segv if 
-	  the default tgs_ktypes and in_tkt_ktypes are not explicitly
-	  set programatically.
+	* Work around bugs in both MIT and heimdal versions of
+	  krb5_copy_context(), which caused segfaults in
+	  multithreaded mode.
+	* Provide meaningful error messages if Heimdal krb5 is used.
+	* Fix attribute supression in rlm_detail.
+	* Exit with error code if child fails to complete server
+	  initialisation after forking.  This allows init scripts to
+	  correctly report whether the server started ok.
 
 FreeRADIUS 3.0.0 Mon  7 Oct 2013 15:48:14 EDT urgency=medium
 	Feature improvements

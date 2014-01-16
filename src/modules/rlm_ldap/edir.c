@@ -40,13 +40,15 @@ RCSID("$Id$")
 
 #define NMAS_SUCCESS	0
 
-#define NMAS_E_FRAG_FAILURE		(NMAS_E_BASE-31)     /* -1631 0xFFFFF9A1 */
-#define NMAS_E_BUFFER_OVERFLOW		(NMAS_E_BASE-33)     /* -1633 0xFFFFF99F */
-#define NMAS_E_SYSTEM_RESOURCES		(NMAS_E_BASE-34)     /* -1634 0xFFFFF99E */
-#define NMAS_E_INSUFFICIENT_MEMORY	(NMAS_E_BASE-35)     /* -1635 0xFFFFF99D */
-#define NMAS_E_NOT_SUPPORTED		(NMAS_E_BASE-36)     /* -1636 0xFFFFF99C */
-#define NMAS_E_INVALID_PARAMETER	(NMAS_E_BASE-43)     /* -1643 0xFFFFF995 */
-#define NMAS_E_INVALID_VERSION		(NMAS_E_BASE-52)     /* -1652 0xFFFFF98C */
+#define NMAS_E_FRAG_FAILURE		(NMAS_E_BASE-31)	/* -1631 0xFFFFF9A1 */
+#define NMAS_E_BUFFER_OVERFLOW		(NMAS_E_BASE-33)	/* -1633 0xFFFFF99F */
+#define NMAS_E_SYSTEM_RESOURCES		(NMAS_E_BASE-34)	/* -1634 0xFFFFF99E */
+#define NMAS_E_INSUFFICIENT_MEMORY	(NMAS_E_BASE-35)	/* -1635 0xFFFFF99D */
+#define NMAS_E_NOT_SUPPORTED		(NMAS_E_BASE-36)	/* -1636 0xFFFFF99C */
+#define NMAS_E_INVALID_PARAMETER	(NMAS_E_BASE-43)	/* -1643 0xFFFFF995 */
+#define NMAS_E_INVALID_VERSION		(NMAS_E_BASE-52)	/* -1652 0xFFFFF98C */
+#define NMAS_E_ACCESS_NOT_ALLOWED	(NMAS_E_BASE-59)	/* -1659 0xFFFFF985 */
+#define NMAS_E_INVALID_SPM_REQUEST	(NMAS_E_BASE-97)	/* -1697 0xFFFFF95F */
 
 /* OID of LDAP extenstion calls to read Universal Password */
 #define NMASLDAP_GET_PASSWORD_REQUEST     "2.16.840.1.113719.1.39.42.100.13"
@@ -257,6 +259,12 @@ char const *edir_errstr(int code) {
 
 	case NMAS_E_INVALID_VERSION:
 		return "LDAP EXT version does not match expected version" STRINGIFY(NMAS_LDAP_EXT_VERSION);
+
+	case NMAS_E_ACCESS_NOT_ALLOWED:
+		return "Bound user does not have sufficient rights to read the Universal Password of users";
+
+	case NMAS_E_INVALID_SPM_REQUEST:
+		return "Universal password is not enabled for the container of this user object";
 
 	default:
 		return ldap_err2string(code);
