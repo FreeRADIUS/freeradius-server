@@ -40,7 +40,8 @@ case "$1" in
     start)
         log_daemon_msg "Starting $DESCR" "$PROG"
 
-        start_daemon -p "$PIDFILE" "$PROGRAM" -P "$PIDFILE" -N "$PROG" $RADSNIFF_OPTIONS || ret=$?
+        # eval allows quoted arguments (filters for example) to be passed in $RADSNIFF_OPTIONS  
+        eval "start_daemon -p '$PIDFILE' '$PROGRAM' -P '$PIDFILE' -N '$PROG' $RADSNIFF_OPTIONS" || ret=$?
         log_end_msg $ret
         ;;
 
