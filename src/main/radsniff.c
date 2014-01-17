@@ -76,6 +76,16 @@ static int rs_useful_codes[] = {
 	PW_CODE_COA_NAK,			//!< RFC3575/RFC5176 - CoA-Nak (not willing to perform)
 };
 
+const FR_NAME_NUMBER rs_events[] = {
+	{ "received",	RS_NORMAL	},
+	{ "norsp",	RS_LOST		},
+	{ "rtx",	RS_RTX		},
+	{ "noreq",	RS_UNLINKED	},
+	{ "reused",	RS_REUSED	},
+	{ "error",	RS_ERROR	},
+	{  NULL , -1 }
+};
+
 static void NEVER_RETURNS usage(int status);
 
 /** Fork and kill the parent process, writing out our PID
@@ -309,34 +319,10 @@ static void rs_packet_print_csv(uint64_t count, rs_status_t status, fr_pcap_t *h
 
 	ssize_t len, s = sizeof(buffer);
 
-	switch (status) {
-		case RS_NORMAL:
-			status_str = "received";
-			break;
-		case RS_LOST:
-			status_str = "norsp";
-			break;
-
-		case RS_RTX:
-			status_str = "rtx";
-			break;
-
-		case RS_UNLINKED:
-			status_str = "noreq";
-			break;
-
-		case RS_REUSED:
-			status_str = "reused";
-			break;
-
-		case RS_ERROR:
-			status_str = "error";
-			break;
-	}
-
 	inet_ntop(packet->src_ipaddr.af, &packet->src_ipaddr.ipaddr, src, sizeof(src));
 	inet_ntop(packet->dst_ipaddr.af, &packet->dst_ipaddr.ipaddr, dst, sizeof(dst));
 
+	assert(status_str = fr_int2str(rs_events, status, NULL));
 	len = snprintf(p, s, "%s,%" PRIu64 ",%s,", status_str, count, timestr);
 	p += len;
 	s -= len;
@@ -411,7 +397,6 @@ static void rs_packet_print_csv(uint64_t count, rs_status_t status, fr_pcap_t *h
 static void rs_packet_print_fancy(uint64_t count, rs_status_t status, fr_pcap_t *handle, RADIUS_PACKET *packet,
 				  struct timeval *elapsed, struct timeval *latency, bool response, bool body)
 {
-	char const *status_str;
 	char buffer[2048];
 	char *p = buffer;
 
@@ -420,37 +405,15 @@ static void rs_packet_print_fancy(uint64_t count, rs_status_t status, fr_pcap_t 
 
 	ssize_t len, s = sizeof(buffer);
 
-	switch (status) {
-		default:
-		case RS_NORMAL:
-			status_str = NULL;
-			break;
-		case RS_LOST:
-			status_str = "** NO RESPONSE **";
-			break;
-
-		case RS_RTX:
-			status_str = "** RTX **";
-			break;
-
-		case RS_UNLINKED:
-			status_str = "** NO REQUEST **";
-			break;
-
-		case RS_REUSED:
-			status_str = "** ID REUSED **";
-			break;
-
-		case RS_ERROR:
-			status_str = "** ERROR **";
-			break;
-	}
-
 	inet_ntop(packet->src_ipaddr.af, &packet->src_ipaddr.ipaddr, src, sizeof(src));
 	inet_ntop(packet->dst_ipaddr.af, &packet->dst_ipaddr.ipaddr, dst, sizeof(dst));
 
-	if (status_str) {
-		len = snprintf(p, s, "%s ", status_str);
+	/* Only print out status str if something's not right */
+	if (status != RS_NORMAL) {
+		char const *status_str;
+
+		assert(status_str = fr_int2str(rs_events, status, NULL));
+		len = snprintf(p, s, "** %s ** ", status_str);
 		p += len;
 		s -= len;
 		if (s <= 0) return;
@@ -845,8 +808,12 @@ static void rs_packet_cleanup(rs_request_t *request)
 		if (!request->linked) {
 			request->stats_req->interval.lost_total++;
 
-			conf->logger(request->id, RS_LOST, request->in, packet, NULL, NULL, false,
-				     conf->filter_response_vps);
+			if (conf->event_flags & RS_LOST) {
+				/* @fixme We should use flags in the request to indicate whether it's been dumped
+				 * to a PCAP file or logged yet, this simplifies the body logging logic */
+				conf->logger(request->id, RS_LOST, request->in, packet, NULL, NULL, false,
+					     conf->filter_response_vps || !(conf->event_flags & RS_NORMAL));
+			}
 		}
 
 		if (request->in->type == PCAP_INTERFACE_IN) {
@@ -1015,7 +982,9 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 
 	if (!rad_packet_ok(current, 0, &reason)) {
 		REDEBUG("%s", fr_strerror());
-		conf->logger(count, RS_ERROR, event->in, current, &elapsed, NULL, false, false);
+		if (conf->event_flags & RS_ERROR) {
+			conf->logger(count, RS_ERROR, event->in, current, &elapsed, NULL, false, false);
+		}
 		rad_free(&current);
 
 		return;
@@ -1368,20 +1337,23 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 		/*
 		 *	Were filtering on response, now print out the full data from the request
 		 */
-		if (conf->filter_response && RIDEBUG_ENABLED()) {
+		if (conf->filter_response && RIDEBUG_ENABLED() && (conf->event_flags & RS_NORMAL)) {
 			rs_time_print(timestr, sizeof(timestr), &original->packet->timestamp);
 			rs_tv_sub(&original->packet->timestamp, &start_pcap, &elapsed);
-			conf->logger(original->id, 0, original->in, original->packet, &elapsed, NULL, false, true);
+			conf->logger(original->id, RS_NORMAL, original->in, original->packet, &elapsed, NULL, false, true);
 			rs_tv_sub(&header->ts, &start_pcap, &elapsed);
 			rs_time_print(timestr, sizeof(timestr), &header->ts);
 		}
-		conf->logger(count, status, event->in, current, &elapsed, &latency, response, true);
+
+		if (conf->event_flags & status) {
+			conf->logger(count, status, event->in, current, &elapsed, &latency, response, true);
+		}
 	/*
 	 *	It's the original request
 	 *
 	 *	If were filtering on responses we can only indicate we received it on response, or timeout.
 	 */
-	} else if (!conf->filter_response) {
+	} else if (!conf->filter_response && (conf->event_flags & status)) {
 		conf->logger(original ? original->id : count, status, event->in,
 			     current, &elapsed, NULL, response, true);
 	}
@@ -1585,6 +1557,31 @@ static int rs_build_filter(VALUE_PAIR **out, char const *filter)
 	return 0;
 }
 
+static int rs_build_flags(int *flags, FR_NAME_NUMBER const *map, char *list)
+{
+	size_t i = 0;
+	char *p, *tok;
+
+	p = list;
+	while ((tok = strsep(&p, "\t ,")) != NULL) {
+		int flag;
+
+		if ((*tok == '\t') || (*tok == ' ') || (*tok == '\0')) {
+			continue;
+		}
+
+		*flags |= flag = fr_str2int(map, tok, -1);
+		if (flag < 0) {
+			ERROR("Invalid flag \"%s\"", tok);
+			return -1;
+		}
+
+		i++;
+	}
+
+	return i;
+}
+
 /** Callback for when the request is removed from the request tree
  *
  * @param request being removed.
@@ -1610,32 +1607,40 @@ static void NEVER_RETURNS usage(int status)
 	FILE *output = status ? stderr : stdout;
 	fprintf(output, "Usage: radsniff [options][stats options] -- [pcap files]\n");
 	fprintf(output, "options:\n");
-	fprintf(output, "  -c <count>         Number of packets to capture.\n");
-	fprintf(output, "  -d <directory>     Set dictionary directory.\n");
-	fprintf(output, "  -f <filter>        PCAP filter (default is 'udp port <port> or <port + 1> or 3799')\n");
-	fprintf(output, "  -h                 This help message.\n");
-	fprintf(output, "  -i <interface>     Capture packets from interface (defaults to all if supported).\n");
-	fprintf(output, "  -I <file>          Read packets from file (overrides input of -F).\n");
-	fprintf(output, "  -l <attr>[,<attr>] Output packet sig and a list of attributes.\n");
-	fprintf(output, "  -L <attr>[,<attr>] Detect retransmissions using these attributes to link requests.\n");
-	fprintf(output, "  -m                 Don't put interface(s) into promiscuous mode.\n");
-	fprintf(output, "  -p <port>          Filter packets by port (default is 1812).\n");
-	fprintf(output, "  -P <pidfile>       Daemonize and write out <pidfile>.\n");
-	fprintf(output, "  -q                 Print less debugging information.\n");
-	fprintf(output, "  -r <filter>        RADIUS attribute request filter.\n");
-	fprintf(output, "  -R <filter>        RADIUS attribute response filter.\n");
-	fprintf(output, "  -s <secret>        RADIUS secret.\n");
-	fprintf(output, "  -S                 Write PCAP data to stdout.\n");
-	fprintf(output, "  -v                 Show program version information.\n");
-	fprintf(output, "  -w <file>          Write output packets to file (overrides output of -F).\n");
-	fprintf(output, "  -x                 Print more debugging information (defaults to -xx).\n");
+	fprintf(output, "  -c <count>            Number of packets to capture.\n");
+	fprintf(output, "  -d <directory>        Set dictionary directory.\n");
+	fprintf(output, "  -e <event>[,<event>]  Only log requests with these event flags.\n");
+	fprintf(output, "                        Event may be one of the following:\n");
+	fprintf(output, "                        - received - a request or response.\n");
+	fprintf(output, "                        - norsp    - seen for a request.\n");
+	fprintf(output, "                        - rtx      - of a request that we've seen before.\n");
+	fprintf(output, "                        - noreq    - could be matched with the response.\n");
+	fprintf(output, "                        - reused   - ID too soon.\n");
+	fprintf(output, "                        - error    - decoding the packet.\n");
+	fprintf(output, "  -f <filter>           PCAP filter (default is 'udp port <port> or <port + 1> or 3799')\n");
+	fprintf(output, "  -h                    This help message.\n");
+	fprintf(output, "  -i <interface>        Capture packets from interface (defaults to all if supported).\n");
+	fprintf(output, "  -I <file>             Read packets from file (overrides input of -F).\n");
+	fprintf(output, "  -l <attr>[,<attr>]    Output packet sig and a list of attributes.\n");
+	fprintf(output, "  -L <attr>[,<attr>]    Detect retransmissions using these attributes to link requests.\n");
+	fprintf(output, "  -m                    Don't put interface(s) into promiscuous mode.\n");
+	fprintf(output, "  -p <port>             Filter packets by port (default is 1812).\n");
+	fprintf(output, "  -P <pidfile>          Daemonize and write out <pidfile>.\n");
+	fprintf(output, "  -q                    Print less debugging information.\n");
+	fprintf(output, "  -r <filter>           RADIUS attribute request filter.\n");
+	fprintf(output, "  -R <filter>           RADIUS attribute response filter.\n");
+	fprintf(output, "  -s <secret>           RADIUS secret.\n");
+	fprintf(output, "  -S                    Write PCAP data to stdout.\n");
+	fprintf(output, "  -v                    Show program version information.\n");
+	fprintf(output, "  -w <file>             Write output packets to file (overrides output of -F).\n");
+	fprintf(output, "  -x                    Print more debugging information (defaults to -xx).\n");
 	fprintf(output, "stats options:\n");
-	fprintf(output, "  -W <interval>      Periodically write out statistics every <interval> seconds.\n");
-	fprintf(output, "  -T <timeout>       How many milliseconds before the request is counted as lost "
+	fprintf(output, "  -W <interval>         Periodically write out statistics every <interval> seconds.\n");
+	fprintf(output, "  -T <timeout>          How many milliseconds before the request is counted as lost "
 		"(defaults to %i).\n", RS_DEFAULT_TIMEOUT);
 #ifdef HAVE_COLLECTDC_H
-	fprintf(output, "  -N <prefix>        collectd plugin instance name.\n");
-	fprintf(output, "  -O <server>        Write statistics to this collectd server.\n");
+	fprintf(output, "  -N <prefix>           collectd plugin instance name.\n");
+	fprintf(output, "  -O <server>           Write statistics to this collectd server.\n");
 #endif
 	exit(status);
 }
@@ -1703,7 +1708,7 @@ int main(int argc, char *argv[])
 	/*
 	 *  Get options
 	 */
-	while ((opt = getopt(argc, argv, "b:c:d:DFf:hi:I:l:L:mp:P:qr:R:s:Svw:xXW:T:P:N:O:")) != EOF) {
+	while ((opt = getopt(argc, argv, "b:c:d:e:DFf:hi:I:l:L:mp:P:qr:R:s:Svw:xXW:T:P:N:O:")) != EOF) {
 		switch (opt) {
 		/* super secret option */
 		case 'b':
@@ -1745,6 +1750,12 @@ int main(int argc, char *argv[])
 				ret = 0;
 				goto finish;
 			}
+
+		case 'e':
+			if (rs_build_flags((int *) &conf->event_flags, rs_events, optarg) < 0) {
+				goto finish;
+			}
+			break;
 
 		case 'f':
 			conf->pcap_filter = optarg;
@@ -2015,6 +2026,13 @@ int main(int argc, char *argv[])
 			conf->filter_response_code = type->vp_integer;
 			talloc_free(type);
 		}
+	}
+
+	/*
+	 *	Default to logging and capturing all events
+	 */
+	if (conf->event_flags == 0) {
+		memset(&conf->event_flags, 1, sizeof(conf->event_flags));
 	}
 
 	/*
