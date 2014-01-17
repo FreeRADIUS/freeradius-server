@@ -174,6 +174,8 @@ static int rad_check_password(REQUEST *request)
 	int result;
 	int auth_type_count = 0;
 
+	rad_assert(request != NULL);
+
 	/*
 	 *	Look for matching check items. We skip the whole lot
 	 *	if the authentication type is PW_AUTHTYPE_ACCEPT or
