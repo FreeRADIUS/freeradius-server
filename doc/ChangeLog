@@ -6,6 +6,7 @@ FreeRADIUS 2.2.4 Wednesday 16 Dec 2013 15:00:00 EST, urgency=medium
 	* Session / delay times in MySQL are unsigned int.
 	* Use --tag=CC for libtool.  Closes #497.  Because libtool
 	  is too stupid to notice that compiling means compilation.
+	* Fix bug when copying attributes for vendors > 32767
 
 FreeRADIUS 2.2.3 Wednesday 11 Dec 2013 15:00:00 EST, urgency=medium
 	Feature improvements
