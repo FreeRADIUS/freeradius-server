@@ -1741,6 +1741,7 @@ static void remove_from_proxy_hash_nl(REQUEST *request, bool yank)
 	}
 
 #ifdef WITH_TCP
+	rad_assert(request->proxy_listener != NULL);
 	request->proxy_listener->count--;
 #endif
 	request->proxy_listener = NULL;
@@ -2617,7 +2618,7 @@ STATE_MACHINE_DECL(request_ping)
 		 *	pings.
 		 */
 		home->state = HOME_STATE_ALIVE;
-		exec_trigger(request, request->home_server->cs, "home_server.alive", false);
+		exec_trigger(request, home->cs, "home_server.alive", false);
 		home->currently_outstanding = 0;
 		home->num_sent_pings = 0;
 		home->num_received_pings = 0;
