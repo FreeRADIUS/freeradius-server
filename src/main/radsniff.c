@@ -35,8 +35,8 @@ RCSID("$Id$")
 static char const *radius_secret = "testing123";
 static VALUE_PAIR *filter_vps = NULL;
 
-static int do_sort = 0;
-static int to_stdout = 0;
+static bool do_sort = false;
+static bool to_stdout = false;
 static FILE *log_dst;
 
 #ifndef PCAP_NETMASK_UNKNOWN
@@ -367,7 +367,7 @@ int main(int argc, char *argv[])
 {
 	char const *from_dev = NULL;			/* Capture from device */
 	char const *from_file = NULL;			/* Read from pcap file */
-	int from_stdin = 0;				/* Read from stdin */
+	bool from_stdin = false;			/* Read from stdin */
 
 	pcap_t *in = NULL;				/* PCAP input handle */
 
@@ -412,8 +412,8 @@ int main(int argc, char *argv[])
 			radius_dir = optarg;
 			break;
 		case 'F':
-			from_stdin = 1;
-			to_stdout = 1;
+			from_stdin = true;
+			to_stdout = true;
 			break;
 		case 'f':
 			pcap_filter = optarg;
@@ -442,7 +442,7 @@ int main(int argc, char *argv[])
 			radius_secret = optarg;
 			break;
 		case 'S':
-			do_sort = 1;
+			do_sort = true;
 			break;
 		case 'v':
 			INFO(log_dst, "%s %s\n", radsniff_version, pcap_lib_version());
@@ -472,12 +472,12 @@ int main(int argc, char *argv[])
 
 	/* Reading from file overrides stdin */
 	if (from_stdin && (from_file || from_dev)) {
-		from_stdin = 0;
+		from_stdin = false;
 	}
 
 	/* Writing to file overrides stdout */
 	if (to_file && to_stdout) {
-		to_stdout = 0;
+		to_stdout = false;
 	}
 
 	/*
