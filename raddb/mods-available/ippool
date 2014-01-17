@@ -26,6 +26,9 @@
 # ********* THEN ERASE THE DB FILES                     *********
 #
 ippool main_pool {
+	# session-db:
+	#	The main db file used to allocate addresses.
+	filename = ${db_dir}/db.ippool
 
 	#  range-start,range-stop:
 	#	The start and end ip addresses for this pool.
@@ -41,10 +44,6 @@ ippool main_pool {
 	#	be equal to the number of ip's available in
 	#	the ip pool
 	cache_size = 800
-
-	# session-db:
-	#	The main db file used to allocate addresses.
-	session_db = ${db_dir}/db.ippool
 
 	# ip-index:
 	#	Helper db index file used in multilink
