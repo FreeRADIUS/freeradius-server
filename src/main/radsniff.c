@@ -1224,13 +1224,16 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 				if (original && memcmp(original->expect->vector, current->vector,
 				    sizeof(original->expect->vector) != 0)) {
 					/*
-					 *	...before the request timed out (which may be an issue)
-					 *	and before we saw a response (which may be a bigger issue).
+					 *	ID reused before the request timed out (which may be an issue)...
 					 */
 					if (!original->linked) {
 						status = RS_REUSED;
 						stats->exchange[current->code].interval.reused_total++;
+						/* Occurs regularly downstream of proxy servers (so don't complain) */
 						RS_CLEANUP_NOW(original, true);
+					/*
+					 *	...and before we saw a response (which may be a bigger issue).
+					 */
 					} else {
 						RS_CLEANUP_NOW(original, false);
 					}
@@ -1323,8 +1326,9 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 				return;
 			}
 			response = false;
-		}
 			break;
+		}
+
 		default:
 			REDEBUG("Unsupported code %i", current->code);
 			rad_free(&current);
