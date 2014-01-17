@@ -366,7 +366,7 @@ VALUE_PAIR *paircopy2(VALUE_PAIR *vp, int attr)
 	last = &first;
 
 	while (vp) {
-		if (attr >= 0 && vp->attribute != attr) {
+		if ((vp->attribute != attr) && (attr != -1)) {
 			vp = vp->next;
 			continue;
 		}
