@@ -1476,14 +1476,6 @@ static int rs_rtx_cmp(rs_request_t const *a, rs_request_t const *b)
 	rcode = (int) a->expect->code - (int) b->expect->code;
 	if (rcode != 0) return rcode;
 
-	/*
-	 *	Ug. This is actually the dst port of the request, because
-	 *	were dealing with the mangled request that should match the
-	 *	reply.
-	 */
-	rcode = (int) a->expect->src_port - (int) b->expect->src_port;
-	if (rcode != 0) return rcode;
-
 	rcode = a->expect->sockfd - b->expect->sockfd;
 	if (rcode != 0) return rcode;
 
