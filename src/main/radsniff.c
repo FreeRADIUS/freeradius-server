@@ -322,7 +322,9 @@ static void rs_packet_print_csv(uint64_t count, rs_status_t status, fr_pcap_t *h
 	inet_ntop(packet->src_ipaddr.af, &packet->src_ipaddr.ipaddr, src, sizeof(src));
 	inet_ntop(packet->dst_ipaddr.af, &packet->dst_ipaddr.ipaddr, dst, sizeof(dst));
 
-	assert(status_str = fr_int2str(rs_events, status, NULL));
+	status_str = fr_int2str(rs_events, status, NULL);
+	assert(status_str);
+
 	len = snprintf(p, s, "%s,%" PRIu64 ",%s,", status_str, count, timestr);
 	p += len;
 	s -= len;
@@ -412,7 +414,9 @@ static void rs_packet_print_fancy(uint64_t count, rs_status_t status, fr_pcap_t 
 	if (status != RS_NORMAL) {
 		char const *status_str;
 
-		assert(status_str = fr_int2str(rs_events, status, NULL));
+		status_str = fr_int2str(rs_events, status, NULL);
+		assert(status_str);
+
 		len = snprintf(p, s, "** %s ** ", status_str);
 		p += len;
 		s -= len;
@@ -1755,7 +1759,7 @@ int main(int argc, char *argv[])
 
 		case 'e':
 			if (rs_build_flags((int *) &conf->event_flags, rs_events, optarg) < 0) {
-				goto finish;
+				usage(64);
 			}
 			break;
 
