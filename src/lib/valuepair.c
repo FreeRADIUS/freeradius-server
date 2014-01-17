@@ -799,7 +799,7 @@ VALUE_PAIR *paircopy2(TALLOC_CTX *ctx, VALUE_PAIR *from,
 	     vp = fr_cursor_next(&src)) {
 	     	VERIFY_VP(vp);
 
-		if ((attr > 0) && ((vp->da->attr != attr) || (vp->da->vendor != vendor))) {
+		if ((vp->da->attr != attr) || (vp->da->vendor != vendor)) {
 			continue;
 		}
 
