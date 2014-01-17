@@ -789,14 +789,17 @@ static void rs_packet_cleanup(rs_request_t *request)
 	assert(!request->rt_rsp || request->stats_rsp);
 	assert(packet);
 
-	if (RIDEBUG_ENABLED()) {
-		rs_time_print(timestr, sizeof(timestr), &request->when);
-	}
-
 	/*
 	 *	Don't pollute stats or print spurious messages as radsniff closes.
 	 */
-	if (cleanup) goto skip;
+	if (cleanup) {
+		talloc_free(request);
+		return;
+	}
+
+	if (RIDEBUG_ENABLED()) {
+		rs_time_print(timestr, sizeof(timestr), &request->when);
+	}
 
 	/*
 	 *	Were at packet cleanup time which is when the packet was received + timeout
@@ -838,7 +841,6 @@ static void rs_packet_cleanup(rs_request_t *request)
 		}
 	}
 
-	skip:
 	talloc_free(request);
 }
 
