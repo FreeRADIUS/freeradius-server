@@ -109,6 +109,8 @@ VALUE_PAIR *pairalloc(TALLOC_CTX *ctx, DICT_ATTR const *da)
 	vp->op = T_OP_EQ;
 	vp->type = VT_NONE;
 
+	vp->length = da->flags.length;
+
 	talloc_set_destructor(vp, _pairfree);
 
 	return vp;
