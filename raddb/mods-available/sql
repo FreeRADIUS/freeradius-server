@@ -124,6 +124,9 @@ sql {
 	#  The connection pool is new for 3.0, and will be used in many
 	#  modules, for all kinds of connection-related activity.
 	#
+	# When the server is not threaded, the connection pool
+	# limits are ignored, and only one connection is used.
+	#
 	pool {
 		# Number of connections to start
 		start = 5
@@ -135,7 +138,15 @@ sql {
 		#
 		# If these connections are all in use and a new one
 		# is requested, the request will NOT get a connection.
-		max = 10
+		#
+		# Setting 'max' to LESS than the number of threads means
+		# that some threads may starve, and you will see errors
+		# like "No connections available and at max connection limit"
+		#
+		# Setting 'max' to MORE than the number of threads means
+		# that there are more connections than necessary.
+		#
+		max = ${thread[pool].max_servers}
 
 		# Spare connections to be left idle
 		#
