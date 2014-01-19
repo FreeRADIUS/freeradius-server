@@ -452,9 +452,9 @@ static int dual_tcp_recv(rad_listen_t *listener)
 	if (rcode == -1) {	/* error reading packet */
 		char buffer[256];
 
-		ERROR("Invalid packet from %s port %d: closing socket",
+		ERROR("Invalid packet from %s port %d, closing socket: %s",
 		       ip_ntoh(&packet->src_ipaddr, buffer, sizeof(buffer)),
-		       packet->src_port);
+		       packet->src_port, fr_strerror());
 	}
 
 	if (rcode < 0) {	/* error or connection reset */
