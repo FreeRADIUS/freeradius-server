@@ -5,7 +5,7 @@
 #        http://www.ietf.org/rfc/rfc7055.txt
 #
 
-ATTRIBUTE	GSS-Acceptor-Service-Name      164   string
-ATTRIBUTE	GSS-Acceptor-Host-Name         165   string
-ATTRIBUTE	GSS-Acceptor-Service-Specifics 166   string
-ATTRIBUTE	GSS-Acceptor-Realm-Name        167   string
+ATTRIBUTE	GSS-Acceptor-Service-Name		164	string
+ATTRIBUTE	GSS-Acceptor-Host-Name			165	string
+ATTRIBUTE	GSS-Acceptor-Service-Specifics		166	string
+ATTRIBUTE	GSS-Acceptor-Realm-Name			167	string
