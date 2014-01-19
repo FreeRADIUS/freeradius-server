@@ -296,7 +296,7 @@ static int rad_sendto(int sockfd, void *data, size_t data_len, int flags,
 done:
 #endif
 	if (rcode < 0) {
-		DEBUG("rad_send() failed: %s\n", strerror(errno));
+		fr_strerror_printf("sendto failed: %s", strerror(errno));
 	}
 
 	return rcode;

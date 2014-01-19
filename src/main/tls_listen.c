@@ -440,7 +440,7 @@ int dual_tls_send(rad_listen_t *listener, REQUEST *request)
 	 */
 	if (rad_encode(request->reply, request->packet,
 		       request->client->secret) < 0) {
-		RDEBUG("Failed encoding packet: %s", fr_strerror());
+		RERROR("Failed encoding packet: %s", fr_strerror());
 		return 0;
 	}
 
@@ -449,7 +449,7 @@ int dual_tls_send(rad_listen_t *listener, REQUEST *request)
 	 */
 	if (rad_sign(request->reply, request->packet,
 		       request->client->secret) < 0) {
-		RDEBUG("Failed signing packet: %s", fr_strerror());
+		RERROR("Failed signing packet: %s", fr_strerror());
 		return 0;
 	}
 
