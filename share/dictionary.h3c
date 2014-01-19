@@ -15,6 +15,13 @@ VENDOR		H3C				25506
 BEGIN-VENDOR	H3C
 
 ATTRIBUTE	H3C-Connect_Id				26	integer
+ATTRIBUTE	H3C-HW-Exec-Privilege			29	integer
+
+VALUE	H3C-HW-Exec-Privilege		Visitor			0
+VALUE	H3C-HW-Exec-Privilege		Monitor			1
+VALUE	H3C-HW-Exec-Privilege		Manager			2
+VALUE	H3C-HW-Exec-Privilege		Administrator		3
+
 ATTRIBUTE	H3C-NAS-Startup-Timestamp		59	integer
 ATTRIBUTE	H3C-Ip-Host-Addr			60	string
 ATTRIBUTE	H3C-Product-ID				255	string
