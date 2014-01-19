@@ -280,7 +280,14 @@ int main(int argc, char *argv[])
 	 *  Disconnect from session
 	 */
 	if (dont_fork == FALSE) {
-		pid_t pid = fork();
+		pid_t pid;
+
+		if (pipe(from_child) != 0) {
+			radlog(L_ERR, "Couldn't open pipe for child status: %s", strerror(errno));
+			exit(1);
+		}
+
+		pid = fork();
 		if (pid < 0) {
 			radlog(L_ERR, "Couldn't fork: %s", strerror(errno));
 			exit(1);
