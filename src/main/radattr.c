@@ -569,7 +569,6 @@ static void process_file(const char *root_dir, char const *filename)
 
 	if (strcmp(filename, "-") == 0) {
 		fp = stdin;
-		filename = "<stdin>";
 		directory[0] = '\0';
 
 	} else {
