@@ -396,7 +396,7 @@ static ssize_t mschap_xlat(void *instance, REQUEST *request,
 		 *	Pull the User-Name out of the User-Name...
 		 */
 	} else if (strncasecmp(fmt, "User-Name", 9) == 0) {
-		char const *p;
+		char const *p, *q;
 
 		user_name = pairfind(request->packet->vps, PW_USER_NAME, 0, TAG_ANY);
 		if (!user_name) {
@@ -409,6 +409,7 @@ static ssize_t mschap_xlat(void *instance, REQUEST *request,
 		 *	(a la Kerberos host principal)
 		 */
 		if (strncmp(user_name->vp_strvalue, "host/", 5) == 0) {
+			p = user_name->vp_strvalue + 5;
 			/*
 			 *	If we're getting a User-Name formatted in this way,
 			 *	it's likely due to PEAP.  When authenticating this against
@@ -419,15 +420,15 @@ static ssize_t mschap_xlat(void *instance, REQUEST *request,
 			 *	from that point to the first period into a string and appending
 			 * 	a $ to the end.
 			 */
-			p = strchr(user_name->vp_strvalue, '.');
+			q = strchr(p, '.');
 
 			/*
 			 * use the same hack as above
 			 * only if a period was found
 			 */
-			if (p) {
+			if (q) {
 				snprintf(out, outlen, "%.*s$",
-					 (int) (p - user_name->vp_strvalue), user_name->vp_strvalue + 5);
+					 (int) (q - p), p);
 			} else {
 				snprintf(out, outlen, "%s$", user_name->vp_strvalue + 5);
 			}
