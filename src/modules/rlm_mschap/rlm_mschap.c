@@ -430,7 +430,7 @@ static ssize_t mschap_xlat(void *instance, REQUEST *request,
 				snprintf(out, outlen, "%.*s$",
 					 (int) (q - p), p);
 			} else {
-				snprintf(out, outlen, "%s$", user_name->vp_strvalue + 5);
+				snprintf(out, outlen, "%s$", p);
 			}
 		} else {
 			p = strchr(user_name->vp_strvalue, '\\');
