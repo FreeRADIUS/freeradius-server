@@ -1053,8 +1053,6 @@ void *fr_connection_reconnect(fr_connection_pool_t *pool, void *conn)
 
 	conn_number = this->number;
 
-	rad_assert(this->in_use == true);
-
 	DEBUG("%s: Reconnecting (%" PRIu64 ")", pool->log_prefix, conn_number);
 
 	new_conn = pool->create(pool->ctx);
@@ -1067,17 +1065,25 @@ void *fr_connection_reconnect(fr_connection_pool_t *pool, void *conn)
 			pool->last_complained = now;
 		}
 
-		this->in_use = false;
+		/*
+		 *	The caller has said the connection is bad.  So
+		 *	if it's still in use, mark it as unused, and
+		 *	close it.  If it's not in use, we just try to
+		 *	get a new connection.
+		 */
+		if (this->in_use) {
+			this->in_use = false;
 
-		rad_assert(pool->active > 0);
-		pool->active--;
+			rad_assert(pool->active > 0);
+			pool->active--;
 
-		fr_connection_close(pool, this);
-		pthread_mutex_unlock(&pool->mutex);
+			fr_connection_close(pool, this);
+			pthread_mutex_unlock(&pool->mutex);
+		}
 
 		/*
-		 *	Can't create a new socket.
-		 *	Try grabbing a pre-existing one.
+		 *	We failed to create a new socket.
+		 *	Try to grab an existing one.
 		 */
 		new_conn = fr_connection_get(pool);
 		if (new_conn) return new_conn;
