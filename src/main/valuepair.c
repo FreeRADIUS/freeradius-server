@@ -839,7 +839,6 @@ void rdebug_pair_list(int level, REQUEST *request, VALUE_PAIR *vp)
 	for (vp = fr_cursor_init(&cursor, &vp);
 	     vp;
 	     vp = fr_cursor_next(&cursor)) {
-		va_list ap;
 		/*
 		 *	Take this opportunity to verify all the VALUE_PAIRs are still valid.
 		 */
@@ -851,10 +850,7 @@ void rdebug_pair_list(int level, REQUEST *request, VALUE_PAIR *vp)
 		}
 
 		vp_prints(buffer, sizeof(buffer), vp);
-
-		rad_get_va_printf_args(ap, "\t%s", buffer);\
-		request->radlog(L_DBG, level, request, "\t%s", ap);
-		va_end(ap);
+		RDEBUGX(level, "\t%s", buffer);
 	}
 }
 
