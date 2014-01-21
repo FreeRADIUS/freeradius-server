@@ -1192,7 +1192,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 					RS_CLEANUP_NOW(tuple, true);
 				}
 			/*
-			 *	Detect duplicates using the normal 4-tuple of src/dst ips/ports
+			 *	Detect duplicates using the normal 5-tuple of src/dst ips/ports id
 			 */
 			} else {
 				original = rbtree_finddata(request_tree, &search);
@@ -1239,7 +1239,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 
 				original->packet = talloc_steal(original, current);
 
-				/* Request may need to be reinserted as the 4 tuple of the response may of changed */
+				/* Request may need to be reinserted as the 5 tuple of the response may of changed */
 				if (rs_packet_cmp(original, &search) != 0) {
 					rbtree_deletebydata(request_tree, original);
 				}
