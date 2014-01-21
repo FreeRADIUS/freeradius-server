@@ -2494,7 +2494,7 @@ int paircmp(VALUE_PAIR *one, VALUE_PAIR *two)
  * @param[in] one the first attribute
  * @param[in] op the operator for comparison
  * @param[in] two the second attribute
- * @return true if ONE OP TWO is true, else false.
+ * @return < 0 if one is less than two, 0 if both are equal, > 0 if one is more than two.
  */
 int paircmp_op(VALUE_PAIR const *one, FR_TOKEN op, VALUE_PAIR const *two)
 {
@@ -2561,6 +2561,15 @@ int paircmp_op(VALUE_PAIR const *one, FR_TOKEN op, VALUE_PAIR const *two)
 		}
 		break;
 
+	case PW_TYPE_SIGNED:
+		if (one->vp_signed < two->vp_signed) {
+			compare = -1;
+		} else if (one->vp_signed == two->vp_signed) {
+			compare = 0;
+		} else {
+			compare = +1;
+		}
+
 	case PW_TYPE_INTEGER64:
 		/*
 		 *	Don't want integer overflow!
@@ -2573,8 +2582,14 @@ int paircmp_op(VALUE_PAIR const *one, FR_TOKEN op, VALUE_PAIR const *two)
 			compare = 0;
 		}
 		break;
+
+	case PW_TYPE_ETHERNET:
+		compare = memcmp(&one->vp_ether, &two->vp_ether,
+				 sizeof(one->vp_ether));
+		break;
+
 	case PW_TYPE_IPADDR:
-		if (ntohl(one->vp_ipaddr)  < ntohl(two->vp_ipaddr)) {
+		if (ntohl(one->vp_ipaddr) < ntohl(two->vp_ipaddr)) {
 			compare = -1;
 		} else if (one->vp_ipaddr  == two->vp_ipaddr) {
 			compare = 0;
@@ -2599,8 +2614,7 @@ int paircmp_op(VALUE_PAIR const *one, FR_TOKEN op, VALUE_PAIR const *two)
 				    (uint8_t const *) &two->vp_ipv4prefix);
 
 	case PW_TYPE_IFID:
-		compare = memcmp(&one->vp_ifid, &two->vp_ifid,
-				 sizeof(one->vp_ifid));
+		compare = memcmp(&one->vp_ifid, &two->vp_ifid, sizeof(one->vp_ifid));
 		break;
 
 	/*
@@ -2648,8 +2662,6 @@ int paircmp_op(VALUE_PAIR const *one, FR_TOKEN op, VALUE_PAIR const *two)
 	default:
 		return 0;
 	}
-
-	return 0;
 }
 
 /** Copy data into an "octets" data type.
