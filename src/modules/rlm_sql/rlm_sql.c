@@ -1419,14 +1419,14 @@ static rlm_rcode_t mod_checksimul(void *instance, REQUEST * request) {
 		}
 
 		if (!row[2]){
-			RDEBUG("Cannot zap stale entry. No username present in entry.", inst->config->xlat_name);
+			RDEBUG("Cannot zap stale entry. No username present in entry");
 			rcode = RLM_MODULE_FAIL;
 
 			goto finish;
 		}
 
 		if (!row[1]){
-			RDEBUG("Cannot zap stale entry. No session id in entry.", inst->config->xlat_name);
+			RDEBUG("Cannot zap stale entry. No session id in entry");
 			rcode = RLM_MODULE_FAIL;
 
 			goto finish;
