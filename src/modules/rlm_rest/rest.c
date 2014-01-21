@@ -2102,7 +2102,7 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 	return -1;
 
 	error_header:
-	RDEBUG("Failed creating header", instance->xlat_name);
+	RDEBUG("Failed creating header");
 	return -1;
 }
 
