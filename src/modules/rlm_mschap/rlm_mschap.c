@@ -912,7 +912,7 @@ ntlm_auth_err:
 		 * if not, crypto has probably gone wrong
 		 */
 		if (passlen > 512) {
-			RDEBUG2("Decrypted new password blob claims length %u > 512 - probably an invalid NT-Password", passlen);
+			RDEBUG2("Decrypted new password blob claims length %zu > 512 - probably an invalid NT-Password", passlen);
 			return -1;
 		}
 
@@ -971,14 +971,14 @@ ntlm_auth_err:
 			if (c < 0x7f) {
 				/* ascii char */
 				if (new_pass->length >= 253) {
-					RDEBUG("Ran out of room turning new password into utf8 at %d - cleartext will be truncated!", i);
+					RDEBUG("Ran out of room turning new password into utf8 at %zu - cleartext will be truncated!", i);
 					break;
 				}
 				x[new_pass->length++] = c;
 			} else if (c < 0x7ff) {
 				/* 2-byte */
 				if (new_pass->length >= 252) {
-					RDEBUG("Ran out of room turning new password into utf8 at %d - cleartext will be truncated!", i);
+					RDEBUG("Ran out of room turning new password into utf8 at %zu - cleartext will be truncated!", i);
 					break;
 				}
 				x[new_pass->length++] = 0xc0 + (c >> 6);
@@ -986,7 +986,7 @@ ntlm_auth_err:
 			} else {
 				/* 3-byte */
 				if (new_pass->length >= 251) {
-					RDEBUG("Ran out of room turning new password into utf8 at %d - cleartext will be truncated!", i);
+					RDEBUG("Ran out of room turning new password into utf8 at %zu - cleartext will be truncated!", i);
 					break;
 				}
 				x[new_pass->length++] = 0xe0 + (c >> 12);
@@ -1458,10 +1458,10 @@ static rlm_rcode_t mod_authenticate(void * instance, REQUEST *request)
 		RDEBUG("MS-CHAPv2 password change request received");
 
 		if (cpw->length != 68) {
-			RDEBUG2("MS-CHAP2-CPW has the wrong format - length %d!=68", cpw->length);
+			RDEBUG2("MS-CHAP2-CPW has the wrong format - length %zu != 68", cpw->length);
 			return RLM_MODULE_INVALID;
 		} else if (cpw->vp_octets[0]!=7) {
-			RDEBUG2("MS-CHAP2-CPW has the wrong format - code %d!=7", cpw->vp_octets[0]);
+			RDEBUG2("MS-CHAP2-CPW has the wrong format - code %d != 7", cpw->vp_octets[0]);
 			return RLM_MODULE_INVALID;
 		}
 
