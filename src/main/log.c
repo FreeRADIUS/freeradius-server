@@ -159,6 +159,7 @@ fr_log_t default_log = {
 /** Wrapper to convert variadic arguments to a va_list
  *
  * @param ap to write args to.
+ * @param fmt string to validate.
  */
 void rad_get_va_printf_args(va_list ap, char const *fmt, ...)
 {
