@@ -2291,205 +2291,22 @@ VALUE_PAIR *readvp2(TALLOC_CTX *ctx, FILE *fp, int *pfiledone, char const *errpr
 	return error ? NULL: list;
 }
 
-/*
- *	We leverage the fact that IPv4 and IPv6 prefixes both
- *	have the same format:
+/** Compare two attribute values
  *
- *	reserved, prefix-len, data...
+ * @param[in] one the first attribute.
+ * @param[in] two the second attribute.
+ * @return -1 if one is less than two, 0 if both are equal, 1 if one is more than two, < -1 on error.
  */
-static int paircmp_cidr(FR_TOKEN op, int bytes, uint8_t const *one, uint8_t const *two)
+int8_t paircmp_value(VALUE_PAIR const *one, VALUE_PAIR const *two)
 {
-	int i, common;
-	uint32_t mask;
-
-	/*
-	 *	Handle the case of netmasks being identical.
-	 */
-	if (one[1] == two[1]) {
-		int compare;
-
-		compare = memcmp(one + 2, two + 2, bytes);
-
-		/*
-		 *	If they're identical return true for
-		 *	identical.
-		 */
-		if ((compare == 0) &&
-		    ((op == T_OP_CMP_EQ) ||
-		     (op == T_OP_LE) ||
-		     (op == T_OP_GE))) {
-			return true;
-		}
-
-		/*
-		 *	Everything else returns false.
-		 *
-		 *	10/8 == 24/8  --> false
-		 *	10/8 <= 24/8  --> false
-		 *	10/8 >= 24/8  --> false
-		 */
-		return false;
-	}
-
-	/*
-	 *	Netmasks are different.  That limits the
-	 *	possible results, based on the operator.
-	 */
-	switch (op) {
-	case T_OP_CMP_EQ:
-		return false;
-
-	case T_OP_NE:
-		return true;
-
-	case T_OP_LE:
-	case T_OP_LT:	/* 192/8 < 192.168/16 --> false */
-		if (one[1] < two[1]) {
-			return false;
-		}
-		break;
-
-	case T_OP_GE:
-	case T_OP_GT:	/* 192/16 > 192.168/8 --> false */
-		if (one[1] > two[1]) {
-			return false;
-		}
-		break;
-
-	default:
-		return false;
-	}
-
-	if (one[1] < two[1]) {
-		common = one[1];
-	} else {
-		common = two[1];
-	}
-
-	/*
-	 *	Do the check byte by byte.  If the bytes are
-	 *	identical, it MAY be a match.  If they're different,
-	 *	it is NOT a match.
-	 */
-	i = 2;
-	while (i < (2 + bytes)) {
-		/*
-		 *	All leading bytes are identical.
-		 */
-		if (common == 0) return true;
-
-		/*
-		 *	Doing bitmasks takes more work.
-		 */
-		if (common < 8) break;
-
-		if (one[i] != two[i]) return false;
-
-		common -= 8;
-		i++;
-		continue;
-	}
-
-	mask = 1;
-	mask <<= (8 - common);
-	mask--;
-	mask = ~mask;
-
-	if ((one[i] & mask) == ((two[i] & mask))) {
-		return true;
-	}
-
-	return false;
-}
-
-/*
- *	Compare two pairs, using the operator from "one".
- *
- *	i.e. given two attributes, it does:
- *
- *	(two->data) (one->operator) (one->data)
- *
- *	e.g. "foo" != "bar"
- *
- *	Returns true (comparison is true), or false (comparison is not true);
- */
-int paircmp(VALUE_PAIR *one, VALUE_PAIR *two)
-{
-	int compare;
+	int compare = 0;
 
 	VERIFY_VP(one);
 	VERIFY_VP(two);
 
-	switch (one->op) {
-	case T_OP_CMP_TRUE:
-		return (two != NULL);
-
-	case T_OP_CMP_FALSE:
-		return (two == NULL);
-
-		/*
-		 *	One is a regex, compile it, print two to a string,
-		 *	and then do string comparisons.
-		 */
-	case T_OP_REG_EQ:
-	case T_OP_REG_NE:
-#ifndef WITH_REGEX
-		return -1;
-#else
-		{
-			regex_t reg;
-			char buffer[MAX_STRING_LEN * 4 + 1];
-
-			compare = regcomp(&reg, one->vp_strvalue, REG_EXTENDED);
-			if (compare != 0) {
-				regerror(compare, &reg, buffer, sizeof(buffer));
-				fr_strerror_printf("Illegal regular expression in attribute: %s: %s",
-					   one->da->name, buffer);
-				return -1;
-			}
-
-			vp_prints_value(buffer, sizeof(buffer), two, 0);
-
-			/*
-			 *	Don't care about substring matches,
-			 *	oh well...
-			 */
-			compare = regexec(&reg, buffer, 0, NULL, 0);
-
-			regfree(&reg);
-			if (one->op == T_OP_REG_EQ) return (compare == 0);
-			return (compare != 0);
-		}
-#endif
-
-	default:		/* we're OK */
-		break;
-	}
-
-	return paircmp_op(two, one->op, one);
-}
-
-/* Compare two attributes
- *
- * @param[in] one the first attribute
- * @param[in] op the operator for comparison, if T_OP_EQ, the diff between the attributes is returned.
- * @param[in] two the second attribute
- * @return < 0 if one is less than two, 0 if both are equal, > 0 if one is more than two.
- */
-int paircmp_op(VALUE_PAIR const *one, FR_TOKEN op, VALUE_PAIR const *two)
-{
-	int compare;
-
-	VERIFY_VP(one);
-	VERIFY_VP(two);
-
-	/*
-	 *	Can't compare two attributes of differing types
-	 *
-	 *	FIXME: maybe do checks for IP OP IP/mask ??
-	 */
 	if (one->da->type != two->da->type) {
-		return one->da->type - two->da->type;
+		fr_strerror_printf("Can't compare attribute values of different types");
+		return -2;
 	}
 
 	/*
@@ -2535,21 +2352,18 @@ int paircmp_op(VALUE_PAIR const *one, FR_TOKEN op, VALUE_PAIR const *two)
 	case PW_TYPE_DATE:
 		if (one->vp_integer < two->vp_integer) {
 			compare = -1;
-		} else if (one->vp_integer == two->vp_integer) {
-			compare = 0;
-		} else {
-			compare = +1;
+		} else if (one->vp_integer > two->vp_integer) {
+			compare = 1;
 		}
 		break;
 
 	case PW_TYPE_SIGNED:
 		if (one->vp_signed < two->vp_signed) {
 			compare = -1;
-		} else if (one->vp_signed == two->vp_signed) {
-			compare = 0;
-		} else {
-			compare = +1;
+		} else if (one->vp_signed > two->vp_signed) {
+			compare = 1;
 		}
+		break;
 
 	case PW_TYPE_INTEGER64:
 		/*
@@ -2558,9 +2372,7 @@ int paircmp_op(VALUE_PAIR const *one, FR_TOKEN op, VALUE_PAIR const *two)
 		if (one->vp_integer64 < two->vp_integer64) {
 			compare = -1;
 		} else if (one->vp_integer64 > two->vp_integer64) {
-			compare = +1;
-		} else {
-			compare = 0;
+			compare = 1;
 		}
 		break;
 
@@ -2572,27 +2384,22 @@ int paircmp_op(VALUE_PAIR const *one, FR_TOKEN op, VALUE_PAIR const *two)
 	case PW_TYPE_IPADDR:
 		if (ntohl(one->vp_ipaddr) < ntohl(two->vp_ipaddr)) {
 			compare = -1;
-		} else if (one->vp_ipaddr  == two->vp_ipaddr) {
-			compare = 0;
-		} else {
-			compare = +1;
+		} else if (one->vp_ipaddr > two->vp_ipaddr) {
+			compare = 1;
 		}
 		break;
 
 	case PW_TYPE_IPV6ADDR:
-		compare = memcmp(&one->vp_ipv6addr, &two->vp_ipv6addr,
-				 sizeof(one->vp_ipv6addr));
+		compare = memcmp(&one->vp_ipv6addr, &two->vp_ipv6addr, sizeof(one->vp_ipv6addr));
 		break;
 
 	case PW_TYPE_IPV6PREFIX:
-		return paircmp_cidr(op, 16,
-				    (uint8_t const *) &one->vp_ipv6prefix,
-				    (uint8_t const *) &two->vp_ipv6prefix);
+		compare = memcmp(&one->vp_ipv6addr, &two->vp_ipv6addr, sizeof(one->vp_ipv6prefix));
+		break;
 
 	case PW_TYPE_IPV4PREFIX:
-		return paircmp_cidr(op, 4,
-				    (uint8_t const *) &one->vp_ipv4prefix,
-				    (uint8_t const *) &two->vp_ipv4prefix);
+		compare = memcmp(&one->vp_ipv4prefix, &two->vp_ipv4prefix, sizeof(one->vp_ipv4prefix));
+		break;
 
 	case PW_TYPE_IFID:
 		compare = memcmp(&one->vp_ifid, &two->vp_ifid, sizeof(one->vp_ifid));
@@ -2618,13 +2425,225 @@ int paircmp_op(VALUE_PAIR const *one, FR_TOKEN op, VALUE_PAIR const *two)
 	 */
 	}
 
+	if (compare > 0) {
+		return 1;
+	} else if (compare < 0) {
+		return -1;
+	}
+	return 0;
+}
+
+/*
+ *	We leverage the fact that IPv4 and IPv6 prefixes both
+ *	have the same format:
+ *
+ *	reserved, prefix-len, data...
+ */
+static int paircmp_cidr(FR_TOKEN op, int bytes,
+			uint8_t one_net, uint8_t const *one,
+			uint8_t two_net, uint8_t const *two)
+{
+	int i, common;
+	uint32_t mask;
+
+	/*
+	 *	Handle the case of netmasks being identical.
+	 */
+	if (one_net == two_net) {
+		int compare;
+
+		compare = memcmp(one, two, bytes);
+
+		/*
+		 *	If they're identical return true for
+		 *	identical.
+		 */
+		if ((compare == 0) &&
+		    ((op == T_OP_CMP_EQ) ||
+		     (op == T_OP_LE) ||
+		     (op == T_OP_GE))) {
+			return true;
+		}
+
+		/*
+		 *	Everything else returns false.
+		 *
+		 *	10/8 == 24/8  --> false
+		 *	10/8 <= 24/8  --> false
+		 *	10/8 >= 24/8  --> false
+		 */
+		return false;
+	}
+
+	/*
+	 *	Netmasks are different.  That limits the
+	 *	possible results, based on the operator.
+	 */
+	switch (op) {
+	case T_OP_CMP_EQ:
+		return false;
+
+	case T_OP_NE:
+		return true;
+
+	case T_OP_LE:
+	case T_OP_LT:	/* 192/8 < 192.168/16 --> false */
+		if (one_net < two_net) {
+			return false;
+		}
+		break;
+
+	case T_OP_GE:
+	case T_OP_GT:	/* 192/16 > 192.168/8 --> false */
+		if (one_net > two_net) {
+			return false;
+		}
+		break;
+
+	default:
+		return false;
+	}
+
+	if (one_net < two_net) {
+		common = one_net;
+	} else {
+		common = two_net;
+	}
+
+	/*
+	 *	Do the check byte by byte.  If the bytes are
+	 *	identical, it MAY be a match.  If they're different,
+	 *	it is NOT a match.
+	 */
+	i = 0;
+	while (i < bytes) {
+		/*
+		 *	All leading bytes are identical.
+		 */
+		if (common == 0) return true;
+
+		/*
+		 *	Doing bitmasks takes more work.
+		 */
+		if (common < 8) break;
+
+		if (one[i] != two[i]) return false;
+
+		common -= 8;
+		i++;
+		continue;
+	}
+
+	mask = 1;
+	mask <<= (8 - common);
+	mask--;
+	mask = ~mask;
+
+	if ((one[i] & mask) == ((two[i] & mask))) {
+		return true;
+	}
+
+	return false;
+}
+
+/** Compare two attributes using an operator
+ *
+ * @param[in] one the first attribute
+ * @param[in] op the operator for comparison.
+ * @param[in] two the second attribute
+ * @return 1 if true, 0 if false, -1 on error.
+ */
+int8_t paircmp_op(VALUE_PAIR const *one, FR_TOKEN op, VALUE_PAIR const *two)
+{
+	int compare;
+
+	switch (one->da->type) {
+	case PW_TYPE_IPADDR:
+		switch (two->da->type) {
+		case PW_TYPE_IPADDR:		/* IPv4 and IPv4 */
+			goto cmp;
+
+		case PW_TYPE_IPV4PREFIX:	/* IPv4 and IPv4 Prefix */
+			compare = paircmp_cidr(op, 4,
+					       32, (uint8_t const *) &one->vp_ipaddr,
+					       two->vp_ipv4prefix[1], (uint8_t const *) &two->vp_ipv4prefix + 2);
+			break;
+
+		default:
+			fr_strerror_printf("Cannot compare IPv4 with IPv6 address");
+			return -1;
+		}
+		break;
+
+	case PW_TYPE_IPV4PREFIX:		/* IPv4 and IPv4 Prefix */
+		switch (two->da->type) {
+		case PW_TYPE_IPADDR:
+			compare = paircmp_cidr(op, 4,
+					       one->vp_ipv4prefix[1], (uint8_t const *) &one->vp_ipv4prefix + 2,
+					       32, (uint8_t const *) &two->vp_ipaddr);
+			break;
+
+		case PW_TYPE_IPV4PREFIX:	/* IPv4 Prefix and IPv4 Prefix */
+			compare = paircmp_cidr(op, 4,
+					       one->vp_ipv4prefix[1], (uint8_t const *) &one->vp_ipv4prefix + 2,
+					       two->vp_ipv4prefix[1], (uint8_t const *) &two->vp_ipv4prefix + 2);
+			break;
+
+		default:
+			fr_strerror_printf("Cannot compare IPv4 with IPv6 address");
+			return -1;
+		}
+		break;
+
+	case PW_TYPE_IPV6ADDR:
+		switch (two->da->type) {
+		case PW_TYPE_IPV6ADDR:		/* IPv6 and IPv6 */
+			goto cmp;
+
+		case PW_TYPE_IPV6PREFIX:	/* IPv6 and IPv6 Preifx */
+			compare = paircmp_cidr(op, 16,
+					       128, (uint8_t const *) &one->vp_ipv6addr,
+					       two->vp_ipv6prefix[1], (uint8_t const *) &two->vp_ipv6prefix + 2);
+			break;
+
+		default:
+			fr_strerror_printf("Cannot compare IPv6 with IPv4 address");
+			return -1;
+		}
+		break;
+
+	case PW_TYPE_IPV6PREFIX:
+		switch (two->da->type) {
+		case PW_TYPE_IPV6ADDR:		/* IPv6 Prefix and IPv6 */
+			compare = paircmp_cidr(op, 16,
+					       one->vp_ipv6prefix[1], (uint8_t const *) &one->vp_ipv6prefix + 2,
+					       128, (uint8_t const *) &two->vp_ipv6addr);
+			break;
+
+		case PW_TYPE_IPV6PREFIX:	/* IPv6 Prefix and IPv6 */
+			compare = paircmp_cidr(op, 16,
+					       one->vp_ipv6prefix[1], (uint8_t const *) &one->vp_ipv6prefix + 2,
+					       two->vp_ipv6prefix[1], (uint8_t const *) &two->vp_ipv6prefix + 2);
+			break;
+
+		default:
+			fr_strerror_printf("Cannot compare IPv6 with IPv4 address");
+			return -1;
+		}
+		break;
+
+	default:
+	cmp:
+		compare = paircmp_value(one, two);
+		if (compare < -1) {	/* comparison error */
+			return -1;
+		}
+	}
+
 	/*
 	 *	Now do the operator comparison.
 	 */
 	switch (op) {
-	case T_OP_EQ:
-		return compare;
-
 	case T_OP_CMP_EQ:
 		return (compare == 0);
 
@@ -2648,13 +2667,85 @@ int paircmp_op(VALUE_PAIR const *one, FR_TOKEN op, VALUE_PAIR const *two)
 	}
 }
 
+
+/** Compare two pairs, using the operator from "one"
+ *
+ *	i.e. given two attributes, it does:
+ *
+ *	(two->data) (one->operator) (one->data)
+ *
+ *	e.g. "foo" != "bar"
+ *
+ * @param[in] one the first attribute
+ * @param[in] two the second attribute
+ * @return 1 if true, 0 if false, -1 on error.
+ */
+int8_t paircmp(VALUE_PAIR *one, VALUE_PAIR *two)
+{
+	int compare;
+
+	VERIFY_VP(one);
+	VERIFY_VP(two);
+
+	switch (one->op) {
+	case T_OP_CMP_TRUE:
+		return (two != NULL);
+
+	case T_OP_CMP_FALSE:
+		return (two == NULL);
+
+		/*
+		 *	One is a regex, compile it, print two to a string,
+		 *	and then do string comparisons.
+		 */
+	case T_OP_REG_EQ:
+	case T_OP_REG_NE:
+#ifndef WITH_REGEX
+		return -1;
+#else
+		{
+			regex_t reg;
+			char buffer[MAX_STRING_LEN * 4 + 1];
+
+			compare = regcomp(&reg, one->vp_strvalue, REG_EXTENDED);
+			if (compare != 0) {
+				regerror(compare, &reg, buffer, sizeof(buffer));
+				fr_strerror_printf("Illegal regular expression in attribute: %s: %s",
+					   	   one->da->name, buffer);
+				return -1;
+			}
+
+			vp_prints_value(buffer, sizeof(buffer), two, 0);
+
+			/*
+			 *	Don't care about substring matches,
+			 *	oh well...
+			 */
+			compare = regexec(&reg, buffer, 0, NULL, 0);
+
+			regfree(&reg);
+			if (one->op == T_OP_REG_EQ) {
+				return (compare == 0);
+			}
+
+			return (compare != 0);
+		}
+#endif
+
+	default:		/* we're OK */
+		break;
+	}
+
+	return paircmp_op(two, one->op, one);
+}
+
 /** Determine equality of two lists
  *
  * This is useful for comparing lists of attributes inserted into a binary tree.
  *
  * @param a first list of VALUE_PAIRs.
  * @param b second list of VALUE_PAIRs.
- * @return -1 if a < b, 0 if the two lists are equal, 1 if b > a.
+ * @return -1 if a < b, 0 if the two lists are equal, 1 if a > b, -2 on error.
  */
 int8_t pairlistcmp(VALUE_PAIR *a, VALUE_PAIR *b)
 {
@@ -2684,7 +2775,7 @@ int8_t pairlistcmp(VALUE_PAIR *a, VALUE_PAIR *b)
 			return 1;
 		}
 
-		ret = paircmp_op(a_p, T_OP_EQ, b_p);
+		ret = paircmp_value(a_p, b_p);
 		if (ret != 0) {
 			return ret;
 		}

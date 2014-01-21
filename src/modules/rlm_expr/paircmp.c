@@ -193,8 +193,7 @@ static int genericcmp(UNUSED void *instance,
 		vp = pairmake(req, NULL, check->da->name, value, check->op);
 
 		/*
-		 *	Paircmp returns 0 for failed comparison,
-		 *	1 for succeeded.
+		 *	Paircmp returns 0 for failed comparison, 1 for succeeded -1 for error.
 		 */
 		rcode = paircmp(check, vp);
 
