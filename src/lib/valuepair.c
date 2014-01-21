@@ -1443,7 +1443,7 @@ bool pairparsevalue(VALUE_PAIR *vp, char const *value)
 		if (ascend_parse_filter(vp) < 0 ) {
 			char buffer[256];
 
-			snprintf(buffer, sizeof(buffer), "failed to parse Ascend binary attribute '%s'", fr_strerror());
+			snprintf(buffer, sizeof(buffer), "Failed to parse Ascend binary attribute '%s'", fr_strerror());
 			fr_strerror_printf("%s", buffer);
 			return false;
 		}
@@ -1495,8 +1495,7 @@ bool pairparsevalue(VALUE_PAIR *vp, char const *value)
 
 	case PW_TYPE_IFID:
 		if (ifid_aton(value, (void *) &vp->vp_ifid) == NULL) {
-			fr_strerror_printf("failed to parse interface-id "
-				   "string \"%s\"", value);
+			fr_strerror_printf("Failed to parse interface-id string \"%s\"", value);
 			return false;
 		}
 		vp->length = 8;
@@ -1523,8 +1522,7 @@ bool pairparsevalue(VALUE_PAIR *vp, char const *value)
 	case PW_TYPE_IPV6PREFIX:
 		p = strchr(value, '/');
 		if (!p || ((p - value) >= 256)) {
-			fr_strerror_printf("invalid IPv6 prefix "
-				   "string \"%s\"", value);
+			fr_strerror_printf("invalid IPv6 prefix string \"%s\"", value);
 			return false;
 		} else {
 			unsigned int prefix;
@@ -1534,15 +1532,13 @@ bool pairparsevalue(VALUE_PAIR *vp, char const *value)
 			buffer[p - value] = '\0';
 
 			if (inet_pton(AF_INET6, buffer, vp->vp_ipv6prefix + 2) <= 0) {
-				fr_strerror_printf("failed to parse IPv6 address "
-					   "string \"%s\"", value);
+				fr_strerror_printf("failed to parse IPv6 address string \"%s\"", value);
 				return false;
 			}
 
 			prefix = strtoul(p + 1, &eptr, 10);
 			if ((prefix > 128) || *eptr) {
-				fr_strerror_printf("failed to parse IPv6 address "
-					   "string \"%s\"", value);
+				fr_strerror_printf("failed to parse IPv6 address string \"%s\"", value);
 				return false;
 			}
 			vp->vp_ipv6prefix[1] = prefix;
@@ -1560,8 +1556,7 @@ bool pairparsevalue(VALUE_PAIR *vp, char const *value)
 			vp->vp_ipv4prefix[1] = 32;
 
 			if (inet_pton(AF_INET, value, vp->vp_ipv4prefix + 2) <= 0) {
-				fr_strerror_printf("failed to parse IPv4 address "
-					   "string \"%s\"", value);
+				fr_strerror_printf("failed to parse IPv4 address string \"%s\"", value);
 				return false;
 			}
 			vp->length = sizeof(vp->vp_ipv4prefix);
@@ -1572,8 +1567,7 @@ bool pairparsevalue(VALUE_PAIR *vp, char const *value)
 		 *	Otherwise parse the prefix
 		 */
 		if ((p - value) >= 256) {
-			fr_strerror_printf("invalid IPv4 prefix "
-				   "string \"%s\"", value);
+			fr_strerror_printf("invalid IPv4 prefix string \"%s\"", value);
 			return false;
 		} else {
 			unsigned int prefix;
@@ -1583,15 +1577,13 @@ bool pairparsevalue(VALUE_PAIR *vp, char const *value)
 			buffer[p - value] = '\0';
 
 			if (inet_pton(AF_INET, buffer, vp->vp_ipv4prefix + 2) <= 0) {
-				fr_strerror_printf("failed to parse IPv4 address "
-					   "string \"%s\"", value);
+				fr_strerror_printf("failed to parse IPv4 address string \"%s\"", value);
 				return false;
 			}
 
 			prefix = strtoul(p + 1, &eptr, 10);
 			if ((prefix > 32) || *eptr) {
-				fr_strerror_printf("failed to parse IPv4 address "
-					   "string \"%s\"", value);
+				fr_strerror_printf("failed to parse IPv4 address string \"%s\"", value);
 				return false;
 			}
 			vp->vp_ipv4prefix[1] = prefix;
@@ -1661,6 +1653,7 @@ bool pairparsevalue(VALUE_PAIR *vp, char const *value)
 				da = dict_attrbytype(vp->da->attr, vp->da->vendor,
 						     PW_TYPE_IPV6ADDR);
 				if (!da) {
+					fr_strerror_printf("Cannot find ipv6addr for %s", vp->da->name);
 					return false;
 				}
 
@@ -1671,6 +1664,7 @@ bool pairparsevalue(VALUE_PAIR *vp, char const *value)
 				da = dict_attrbytype(vp->da->attr, vp->da->vendor,
 						     PW_TYPE_IPADDR);
 				if (!da) {
+					fr_strerror_printf("Cannot find ipaddr for %s", vp->da->name);
 					return false;
 				}
 
