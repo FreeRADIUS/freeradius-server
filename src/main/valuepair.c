@@ -842,6 +842,7 @@ void rdebug_pair_list(int level, REQUEST *request, VALUE_PAIR *vp)
 	for (vp = paircursor(&cursor, &vp);
 	     vp;
 	     vp = pairnext(&cursor)) {
+		va_list ap;
 		/*
 		 *	Take this opportunity to verify all the VALUE_PAIRs are still valid.
 		 */
@@ -854,7 +855,9 @@ void rdebug_pair_list(int level, REQUEST *request, VALUE_PAIR *vp)
 
 		vp_prints(buffer, sizeof(buffer), vp);
 
-		request->radlog(L_DBG, level, request, "\t%s", buffer);
+		rad_get_va_printf_args(ap, "\t%s", buffer);\
+		request->radlog(L_DBG, level, request, "\t%s", ap);
+		va_end(ap);
 	}
 }
 
@@ -1424,29 +1427,32 @@ int radius_get_vp(VALUE_PAIR **vp_p, REQUEST *request, char const *name)
 	return 0;
 }
 
-/** Add a module failure message VALUE_PAIR to the request
- */
 void module_failure_msg(REQUEST *request, char const *fmt, ...)
 {
 	va_list ap;
+
+	va_start(ap, fmt);
+	vmodule_failure_msg(request, fmt, ap);
+	va_end(ap);
+}
+
+/** Add a module failure message VALUE_PAIR to the request
+ */
+void vmodule_failure_msg(REQUEST *request, char const *fmt, va_list ap)
+{
 	char *p;
 	VALUE_PAIR *vp;
 
 	if (!fmt || !request->packet) {
-		va_start(ap, fmt);
-		va_end(ap);
 		return;
 	}
 
-	va_start(ap, fmt);
 	vp = paircreate(request->packet, PW_MODULE_FAILURE_MESSAGE, 0);
 	if (!vp) {
-		va_end(ap);
 		return;
 	}
 
 	p = talloc_vasprintf(vp, fmt, ap);
-
 	if (request->module && *request->module) {
 		pairsprintf(vp, "%s: %s", request->module, p);
 	} else {

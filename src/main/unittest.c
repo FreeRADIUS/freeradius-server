@@ -309,11 +309,11 @@ static REQUEST *request_setup(FILE *fp)
 			 */
 			if (!talloc_get_type(vp, VALUE_PAIR)) {
 				ERROR("Expected VALUE_PAIR pointer got \"%s\"", talloc_get_name(vp));
-				
+
 				log_talloc_report(vp);
 				rad_assert(0);
 			}
-			
+
 			vp_print(fr_log_fp, vp);
 		}
 		fflush(fr_log_fp);
@@ -339,7 +339,7 @@ static REQUEST *request_setup(FILE *fp)
 	 *	Debugging
 	 */
 	request->options = debug_flag;
-	request->radlog = radlog_request;
+	request->radlog = vradlog_request;
 
 	request->username = pairfind(request->packet->vps, PW_USER_NAME, 0, TAG_ANY);
 	request->password = pairfind(request->packet->vps, PW_USER_PASSWORD, 0, TAG_ANY);

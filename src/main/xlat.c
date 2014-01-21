@@ -473,7 +473,7 @@ static ssize_t xlat_debug(UNUSED void *instance, REQUEST *request,
 		if (level > 4) level = 4;
 
 		request->options = level;
-		request->radlog = radlog_request;
+		request->radlog = vradlog_request;
 	}
 
 	done:
