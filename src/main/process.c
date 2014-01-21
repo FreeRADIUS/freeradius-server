@@ -1035,7 +1035,7 @@ static int request_pre_handler(REQUEST *request, UNUSED int action)
 			 */
 			if (radius_evaluate_cond(request, RLM_MODULE_OK, 0, debug_condition)) {
 				request->options = 2;
-				request->radlog = radlog_request;
+				request->radlog = vradlog_request;
 			}
 		}
 #endif

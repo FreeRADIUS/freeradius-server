@@ -112,14 +112,10 @@ int radlog(log_type_t lvl, char const *fmt, ...)
 	return r;
 }
 
-void radlog_request(UNUSED log_type_t lvl, UNUSED log_debug_t priority,
-		    UNUSED REQUEST *request, char const *msg, ...)
+void vradlog_request(UNUSED log_type_t lvl, UNUSED log_debug_t priority,
+		     UNUSED REQUEST *request, char const *msg, va_list ap)
 {
-	va_list ap;
-
-	va_start(ap, msg);
 	vfprintf(stderr, msg, ap);
-	va_end(ap);
 	fputc('\n', stderr);
 }
 

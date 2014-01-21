@@ -632,7 +632,11 @@ void module_failure_msg(REQUEST *request, char const *fmt, ...)
 		__attribute__ ((format (printf, 2, 3)))
 #endif
 ;
-
+void vmodule_failure_msg(REQUEST *request, char const *fmt, va_list ap)
+#ifdef __GNUC__
+		__attribute__ ((format (printf, 2, 0)))
+#endif
+;
 /*
  *	Less code == less bugs
  */

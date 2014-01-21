@@ -453,7 +453,7 @@ REQUEST *request_alloc(TALLOC_CTX *ctx)
 
 	request->module = "";
 	request->component = "<core>";
-	request->radlog = radlog_request;
+	request->radlog = vradlog_request;
 
 	return request;
 }

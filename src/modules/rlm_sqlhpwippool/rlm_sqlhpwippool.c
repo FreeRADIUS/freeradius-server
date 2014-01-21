@@ -82,9 +82,14 @@ static CONF_PARSER module_config[] = {
 	{ NULL, -1, 0, NULL, NULL } /* end */
 };
 
+int nvp_log(unsigned int line, rlm_sqlhpwippool_t *data, int lvl, char const *fmt, ...)
+#ifdef __GNUC__
+		__attribute__ ((format (printf, 4, 5)))
+#endif
+;
+DIAG_OFF(format-nonliteral)
 /* wrapper around radlog which adds prefix with module and instance name */
-static int nvp_log(unsigned int line, rlm_sqlhpwippool_t *data, int lvl,
-		   char const *fmt, ...)
+int nvp_log(unsigned int line, rlm_sqlhpwippool_t *data, int lvl, char const *fmt, ...)
 {
 	va_list ap;
 	int r;
@@ -100,8 +105,8 @@ static int nvp_log(unsigned int line, rlm_sqlhpwippool_t *data, int lvl,
 
 	return r;
 }
+
 /* handy SQL query tool */
-DIAG_OFF(format-nonliteral)
 static int nvp_vquery(unsigned int line, rlm_sqlhpwippool_t *data,
 		      rlm_sql_handle_t *sqlsock, char const *fmt, va_list ap)
 {
@@ -482,7 +487,7 @@ static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
 				case -1:
 					nvp_log(__LINE__, inst, L_DBG,
 						"mod_post_auth(): couldn't find "
-						"any more matching pools for gid = %u",
+						"any more matching pools for gid = %lu",
 						gid);
 					goto end_prio;	       /* select next gid */
 				case 0:

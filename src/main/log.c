@@ -156,11 +156,19 @@ fr_log_t default_log = {
 	.debug_file = NULL,
 };
 
+/** Wrapper to convert variadic arguments to a va_list
+ *
+ * @param ap to write args to.
+ */
+void rad_get_va_printf_args(va_list ap, char const *fmt, ...)
+{
+	va_start(ap, fmt);
+}
+
 /*
  *	Log the message to the logfile. Include the severity and
  *	a time stamp.
  */
-DIAG_OFF(format-nonliteral)
 int vradlog(log_type_t type, char const *fmt, va_list ap)
 {
 	unsigned char *p;
@@ -302,7 +310,6 @@ int vradlog(log_type_t type, char const *fmt, va_list ap)
 
 	return 0;
 }
-DIAG_ON(format-nonliteral)
 
 int radlog(log_type_t type, char const *msg, ...)
 {
@@ -352,17 +359,14 @@ inline bool radlog_debug_enabled(log_type_t type, log_debug_t lvl, REQUEST *requ
 	return true;
 }
 
-void radlog_request(log_type_t type, log_debug_t lvl, REQUEST *request, char const *msg, ...)
+void vradlog_request(log_type_t type, log_debug_t lvl, REQUEST *request, char const *msg, va_list ap)
 {
 	size_t len = 0;
 	char const *filename = default_log.file;
 	FILE *fp = NULL;
-	va_list ap;
 	char buffer[8192];
 	char *p;
 	char const *extra = "";
-
-	va_start(ap, msg);
 
 	/*
 	 *	Debug messages get treated specially.
@@ -370,7 +374,6 @@ void radlog_request(log_type_t type, log_debug_t lvl, REQUEST *request, char con
 	if ((type & L_DBG) != 0) {
 
 		if (!radlog_debug_enabled(type, lvl, request)) {
-			va_end(ap);
 			return;
 		}
 
@@ -398,7 +401,6 @@ void radlog_request(log_type_t type, log_debug_t lvl, REQUEST *request, char con
 
 		 /* FIXME: escape chars! */
 		if (radius_xlat(buffer, sizeof(buffer), request, filename, NULL, NULL) < 0) {
-			va_end(ap);
 			return;
 		}
 		request->radlog = rl;
@@ -408,7 +410,6 @@ void radlog_request(log_type_t type, log_debug_t lvl, REQUEST *request, char con
 			*p = '\0';
 			if (rad_mkdir(buffer, S_IRWXU) < 0) {
 				ERROR("Failed creating %s: %s", buffer, fr_syserror(errno));
-				va_end(ap);
 				return;
 			}
 			*p = FR_DIR_SEP;
@@ -484,7 +485,13 @@ void radlog_request(log_type_t type, log_debug_t lvl, REQUEST *request, char con
 		fputc('\n', fp);
 		fclose(fp);
 	}
+}
 
+void radlog_request(log_type_t type, log_debug_t lvl, REQUEST *request, char const *msg, ...)
+{
+	va_list ap;
+	va_start(ap, msg);
+	vradlog_request(type, lvl, request, msg, ap);
 	va_end(ap);
 }
 
