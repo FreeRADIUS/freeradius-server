@@ -28,7 +28,6 @@ RCSIDH(log_h, "$Id$")
 #ifdef __cplusplus
 extern "C" {
 #endif
-#include <stdarg.h>
 
 typedef enum log_type {
 	L_AUTH = 2,		//!< Authentication message.
