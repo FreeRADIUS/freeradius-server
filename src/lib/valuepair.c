@@ -2563,6 +2563,7 @@ int paircmp_op(VALUE_PAIR const *one, FR_TOKEN op, VALUE_PAIR const *two)
 		} else {
 			compare = +1;
 		}
+		break;
 
 	case PW_TYPE_INTEGER64:
 		/*
