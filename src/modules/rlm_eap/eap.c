@@ -783,7 +783,7 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 	    (eap_msg->vp_octets[0] >= PW_EAP_MAX_CODES)) {
 		RDEBUG2("Unknown EAP packet");
 	} else {
-		RDEBUG2("EAP packet type %s id %d length %d",
+		RDEBUG2("EAP packet type %s id %d length %zu",
 		       eap_codes[eap_msg->vp_octets[0]],
 		       eap_msg->vp_octets[1],
 		       eap_msg->length);

@@ -505,7 +505,7 @@ static size_t rest_encode_post(void *ptr, size_t size, size_t nmemb,
 
 		curl_free(escaped);
 
-		RDEBUG("\tLength : %i", len);
+		RDEBUG("\tLength : %zd", len);
 		RDEBUG("\tValue  : %s", p);
 
 		p += len;
@@ -529,7 +529,7 @@ static size_t rest_encode_post(void *ptr, size_t size, size_t nmemb,
 	len = p - (char*)ptr;
 
 	RDEBUG2("POST Data: %s", (char*) ptr);
-	RDEBUG2("Returning %i bytes of POST data", len);
+	RDEBUG2("Returning %zd bytes of POST data", len);
 
 	return len;
 
@@ -550,7 +550,7 @@ static size_t rest_encode_post(void *ptr, size_t size, size_t nmemb,
 	if (!len) {
 		REDEBUG("AVP exceeds buffer length or chunk");
 	} else {
-		RDEBUG2("Returning %i bytes of POST data (buffer full or chunk exceeded)", len);
+		RDEBUG2("Returning %zd bytes of POST data (buffer full or chunk exceeded)", len);
 	}
 
 	return len;
@@ -672,7 +672,7 @@ static size_t rest_encode_json(void *ptr, size_t size, size_t nmemb,
 			/*
 			 *	Show actual value length minus quotes
 			 */
-			RDEBUG2("\tLength : %i", (*p == '"') ? (len - 2) : len);
+			RDEBUG2("\tLength : %zu", (size_t) (*p == '"') ? (len - 2) : len);
 			RDEBUG2("\tValue  : %s", p);
 
 			p += len;
@@ -719,7 +719,7 @@ static size_t rest_encode_json(void *ptr, size_t size, size_t nmemb,
 	len = p - (char*)ptr;
 
 	RDEBUG2("JSON Data: %s", (char*) ptr);
-	RDEBUG2("Returning %i bytes of JSON data", len);
+	RDEBUG2("Returning %zd bytes of JSON data", len);
 
 	return len;
 
@@ -740,7 +740,7 @@ static size_t rest_encode_json(void *ptr, size_t size, size_t nmemb,
 	if (!len) {
 		REDEBUG("AVP exceeds buffer length or chunk");
 	} else {
-		RDEBUG2("Returning %i bytes of JSON data (buffer full or chunk exceeded)", len);
+		RDEBUG2("Returning %zd bytes of JSON data (buffer full or chunk exceeded)", len);
 	}
 
 	return len;

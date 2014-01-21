@@ -309,12 +309,12 @@ static void debug_packet(REQUEST *request, RADIUS_PACKET *packet, int direction)
 	 *	This really belongs in a utility library
 	 */
 	if ((packet->code > 0) && (packet->code < FR_MAX_PACKET_CODE)) {
-		RDEBUG("%s %s packet %s host %s port %d, id=%d, length=%d",
+		RDEBUG("%s %s packet %s host %s port %i, id=%i, length=%zu",
 		       received, fr_packet_codes[packet->code], from,
 		       inet_ntop(ip->af, &ip->ipaddr, buffer, sizeof(buffer)),
 		       port, packet->id, packet->data_len);
 	} else {
-		RDEBUG("%s packet %s host %s port %d code=%d, id=%d, length=%d",
+		RDEBUG("%s packet %s host %s port %d code=%d, id=%d, length=%zu",
 		       received, from,
 		       inet_ntop(ip->af, &ip->ipaddr, buffer, sizeof(buffer)),
 		       port,
