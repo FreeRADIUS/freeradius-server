@@ -188,20 +188,26 @@ static ssize_t xlat_integer(UNUSED void *instance, REQUEST *request,
 		if (vp->length > 8) {
 			break;
 		}
-
 		memcpy(&integer, &(vp->vp_octets), vp->length);
-
 		return snprintf(out, outlen, "%" PRIu64, ntohll(integer));
 
 	case PW_TYPE_INTEGER64:
 		return snprintf(out, outlen, "%" PRIu64, vp->vp_integer64);
 
-	case PW_TYPE_IPADDR:
 	case PW_TYPE_INTEGER:
-	case PW_TYPE_SHORT:
-	case PW_TYPE_BYTE:
+	case PW_TYPE_IPADDR:
 	case PW_TYPE_DATE:
+	case PW_TYPE_BYTE:
+	case PW_TYPE_SHORT:
 		return snprintf(out, outlen, "%u", vp->vp_integer);
+
+	case PW_TYPE_ETHERNET:
+		memcpy(&integer, &(vp->vp_ether), vp->length);
+		return snprintf(out, outlen, "%" PRIu64, ntohll(integer));
+
+	case PW_TYPE_SIGNED:
+		return snprintf(out, outlen, "%i", vp->vp_signed);
+
 	default:
 		break;
 	}
