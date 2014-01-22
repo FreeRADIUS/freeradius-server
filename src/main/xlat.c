@@ -209,7 +209,7 @@ static ssize_t xlat_hex(UNUSED void *instance, REQUEST *request,
 {
 	size_t i;
 	VALUE_PAIR *vp;
-	uint8_t	buffer[MAX_STRING_LEN];
+	uint8_t *p;
 	ssize_t	ret;
 	size_t	len;
 
@@ -220,7 +220,7 @@ static ssize_t xlat_hex(UNUSED void *instance, REQUEST *request,
 		return -1;
 	}
 
-	ret = rad_vp2data(vp, buffer, sizeof(buffer));
+	ret = rad_vp2data(&p, vp);
 	len = (size_t) ret;
 
 	/*
@@ -232,7 +232,7 @@ static ssize_t xlat_hex(UNUSED void *instance, REQUEST *request,
 	}
 
 	for (i = 0; i < len; i++) {
-		snprintf(out + 2*i, 3, "%02x", buffer[i]);
+		snprintf(out + 2*i, 3, "%02x", p[i]);
 	}
 
 	return len * 2;
@@ -245,7 +245,7 @@ static ssize_t xlat_base64(UNUSED void *instance, REQUEST *request,
 			   char const *fmt, char *out, size_t outlen)
 {
 	VALUE_PAIR *vp;
-	uint8_t buffer[MAX_STRING_LEN];
+	uint8_t *p;
 	ssize_t	ret;
 
 	while (isspace((int) *fmt)) fmt++;
@@ -255,13 +255,13 @@ static ssize_t xlat_base64(UNUSED void *instance, REQUEST *request,
 		return 0;
 	}
 
-	ret = rad_vp2data(vp, buffer, sizeof(buffer));
+	ret = rad_vp2data(&p, vp);
 	if (ret < 0) {
 		*out = '\0';
 		return ret;
 	}
 
-	return fr_base64_encode(buffer, (size_t) ret, out, outlen);
+	return fr_base64_encode(p, (size_t) ret, out, outlen);
 }
 
 /** Print out attribute info

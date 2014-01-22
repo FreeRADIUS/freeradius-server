@@ -200,7 +200,7 @@ typedef union value_data {
 	uint32_t		integer;			//!< 32bit unsigned integer.
 	int32_t			sinteger;			//!< 32bit signed integer.
 	uint64_t		integer64;			//!< 64bit unsigned integer.
-	size_t			filter[32/sizeof(size_t)];	//!< 64bit signed integer.
+	size_t			filter[32/sizeof(size_t)];	//!< Ascend binary filter.
 	uint8_t			ifid[8]; /* struct? */		//!< IPv6 interface ID.
 	uint8_t			ipv6prefix[18]; /* struct? */	//!< IPv6 prefix.
 	uint8_t			ipv4prefix[6]; /* struct? */	//!< IPv4 prefix.
@@ -451,7 +451,7 @@ ssize_t  rad_data2vp(unsigned int attribute, unsigned int vendor,
 		     uint8_t const *data, size_t length,
 		     VALUE_PAIR **pvp);
 
-ssize_t rad_vp2data(VALUE_PAIR const *vp, uint8_t *out, size_t outlen);
+ssize_t rad_vp2data(uint8_t **out, VALUE_PAIR const *vp);
 
 int rad_vp2extended(RADIUS_PACKET const *packet,
 		    RADIUS_PACKET const *original,
