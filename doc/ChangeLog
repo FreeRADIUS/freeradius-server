@@ -1,12 +1,14 @@
 FreeRADIUS 3.0.2 Mon 13 Jan 2014 14:30:00 EDT urgency=medium
 	Feature improvements
+	* Allow cast (and implicit conversion) of integers to IPv4 addresses
 	Bug fixes
 	* Fix SQL groups.
 	* Fix operation of fr_strerror() with RE*() macros.
 	* Don't assert if the connection were trying to reconnect 
 	  is not in_use.
-	* Fix %{mschap:name} xlat.
+	* Fix %{mschap:User-Name} xlat.
 	* Allow comparisons of signed integers and ethernet addresses.
+	* Fix parsing of text based ascend binary filters
 
 FreeRADIUS 3.0.1 Mon 13 Jan 2014 14:30:00 EDT urgency=medium
 	Feature improvements
