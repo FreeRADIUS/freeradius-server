@@ -654,7 +654,7 @@ bool fr_whitespace_check(char const *value)
 bool fr_integer_check(char const *value)
 {
 	while (*value) {
-		if (!isnumber(*value)) return false;
+		if (!isdigit(*value)) return false;
 
 		value++;
 	}
