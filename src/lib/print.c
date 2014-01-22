@@ -266,7 +266,7 @@ size_t vp_prints_value(char *out, size_t outlen, VALUE_PAIR const *vp, int8_t qu
 			return strlen(out);
 		}
 
-		return fr_print_string(vp->vp_strvalue, vp->length, out, sizeof(out));
+		return fr_print_string(vp->vp_strvalue, vp->length, out, outlen);
 
 	case PW_TYPE_INTEGER:
 		if (vp->da->flags.has_tag) {
