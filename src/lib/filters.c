@@ -958,8 +958,7 @@ static int ascend_parse_generic(int argc, char **argv,
  *
  *	return:			-1 for error or 0.
  */
-int
-ascend_parse_filter(VALUE_PAIR *pair)
+int ascend_parse_filter(VALUE_PAIR *vp, char const *value)
 {
 	int		token, type;
 	int		rcode;
@@ -983,7 +982,7 @@ ascend_parse_filter(VALUE_PAIR *pair)
 	 *	Once the filter is *completelty* parsed, then we will
 	 *	over-write it with the final binary filter.
 	 */
-	p = talloc_strdup(pair, pair->vp_strvalue);
+	p = talloc_strdup(vp, value);
 	argc = str2argv(p, argv, 32);
 	if (argc < 3) {
 		talloc_free(p);
@@ -1030,7 +1029,6 @@ ascend_parse_filter(VALUE_PAIR *pair)
 		fr_strerror_printf("Unknown Ascend filter direction \"%s\"", argv[1]);
 		talloc_free(p);
 		return -1;
-		break;
 	}
 
 	/*
@@ -1056,8 +1054,7 @@ ascend_parse_filter(VALUE_PAIR *pair)
 
 	switch (type) {
 	case RAD_FILTER_GENERIC:
-		rcode = ascend_parse_generic(argc - 3, &argv[3],
-					  &filter.u.generic);
+		rcode = ascend_parse_generic(argc - 3, &argv[3], &filter.u.generic);
 		break;
 
 	case RAD_FILTER_IP:
@@ -1073,8 +1070,8 @@ ascend_parse_filter(VALUE_PAIR *pair)
 	 *	Touch the VP only if everything was OK.
 	 */
 	if (rcode == 0) {
-		pair->length = sizeof(filter);
-		memcpy(pair->vp_filter, &filter, sizeof(filter));
+		vp->length = sizeof(filter);
+		memcpy(vp->vp_filter, &filter, sizeof(filter));
 	}
 
 	talloc_free(p);
@@ -1087,10 +1084,10 @@ ascend_parse_filter(VALUE_PAIR *pair)
      * the previous 'more' to be valid. If any should fail then TURN OFF
      * previous 'more'
      */
-    if( prevRadPair ) {
-	filt = ( RadFilter * )prevRadPair->vp_strvalue;
+    if( prevRadvp ) {
+	filt = ( RadFilter * )prevRadvp->vp_strvalue;
 	if(( tok != FILTER_GENERIC_TYPE ) || (rc == -1 ) ||
-	   ( prevRadPair->attribute != pair->attribute ) ||
+	   ( prevRadvp->attribute != vp->attribute ) ||
 	   ( filt->indirection != radFil.indirection ) ||
 	   ( filt->forward != radFil.forward ) ) {
 	    gen = &filt->u.generic;
@@ -1099,15 +1096,15 @@ ascend_parse_filter(VALUE_PAIR *pair)
 		     valstr);
 	}
     }
-    prevRadPair = NULL;
+    prevRadvp = NULL;
     if( rc != -1 && tok == FILTER_GENERIC_TYPE ) {
 	if( radFil.u.generic.more ) {
-	    prevRadPair = pair;
+	    prevRadvp = vp;
 	}
     }
 
     if( rc != -1 ) {
-	    pairmemcpy(pair, &radFil, pair->length );
+	    vpmemcpy(vp, &radFil, vp->length );
     }
     return(rc);
 
