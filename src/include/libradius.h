@@ -649,7 +649,7 @@ void fr_talloc_verify_cb(const void *ptr, int depth,
 
 #ifdef WITH_ASCEND_BINARY
 /* filters.c */
-int		ascend_parse_filter(VALUE_PAIR *pair);
+int		ascend_parse_filter(VALUE_PAIR *vp, char const *value);
 void		print_abinary(char *out, size_t outlen, VALUE_PAIR const *vp,  int8_t quote);
 #endif /*WITH_ASCEND_BINARY*/
 

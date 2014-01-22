@@ -1372,11 +1372,8 @@ bool pairparsevalue(VALUE_PAIR *vp, char const *value)
 			goto do_octets;
 		}
 
-		if (ascend_parse_filter(vp) < 0 ) {
-			char buffer[256];
-
-			snprintf(buffer, sizeof(buffer), "Failed to parse Ascend binary attribute '%s'", fr_strerror());
-			fr_strerror_printf("%s", buffer);
+		if (ascend_parse_filter(vp, value) < 0 ) {
+			/* Allow ascend_parse_filter's strerror to bubble up */
 			return false;
 		}
 		break;
@@ -1410,7 +1407,7 @@ bool pairparsevalue(VALUE_PAIR *vp, char const *value)
 			/*
 			 *	Invalid.
 			 */
-			if ((size  & 0x01) != 0) {
+			if ((size & 0x01) != 0) {
 				fr_strerror_printf("Hex string is not an even length string");
 				return false;
 			}
