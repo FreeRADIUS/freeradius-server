@@ -1258,6 +1258,14 @@ bool pairparsevalue(VALUE_PAIR *vp, char const *value)
 		{
 			fr_ipaddr_t ipaddr;
 
+			/*
+			 *	Convert things which are obviously integers to IP addresses
+			 */
+			if (fr_integer_check(value)) {
+				vp->vp_ipaddr = htonl(atol(value));
+				break;
+			}
+
 			if (ip_hton(cs, AF_INET, &ipaddr) < 0) {
 				fr_strerror_printf("Failed to find IP address for %s", cs);
 				return false;

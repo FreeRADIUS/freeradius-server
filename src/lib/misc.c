@@ -544,7 +544,7 @@ int ip_hton(char const *src, int af, fr_ipaddr_t *dst)
 		if (!inet_pton(af, src, &(dst->ipaddr))) {
 			return -1;
 		}
-		
+
 		dst->af = af;
 		return 0;
 	}
@@ -688,14 +688,29 @@ uint32_t fr_strtoul(char const *value, char **end)
 	return strtoul(value, end, 10);
 }
 
-/** Check whether the rest of the string is whitespace
+/** Check whether the string is all whitespace
  *
  * @return true if the entirety of the string is whitespace, else false.
  */
 bool fr_whitespace_check(char const *value)
 {
 	while (*value) {
-		if (!isspace((int) *value)) return false;
+		if (!isspace(*value)) return false;
+
+		value++;
+	}
+
+	return true;
+}
+
+/** Check whether the string is all numbers
+ *
+ * @return true if the entirety of the string is are numebrs, else false.
+ */
+bool fr_integer_check(char const *value)
+{
+	while (*value) {
+		if (!isnumber(*value)) return false;
 
 		value++;
 	}

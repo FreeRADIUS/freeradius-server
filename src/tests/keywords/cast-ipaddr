@@ -1,0 +1,18 @@
+#
+#  PRE: update if
+#
+update {
+       control:Cleartext-Password := 'hello'
+       request:NAS-IP-Address := 127.0.0.1
+       request:Tmp-Integer-0 := 2130706433
+}
+
+update request {
+	Tmp-String-0 := "%{request:NAS-IP-Address}"
+}
+
+if (<ipaddr>Tmp-Integer-0 == NAS-IP-Address) {
+	update reply {
+		Filter-Id := "filter"
+	}
+}
