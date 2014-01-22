@@ -1,5 +1,5 @@
 #
-# PRE: update
+# PRE: hex
 #
 update reply {
        Filter-Id := "filter"
@@ -18,7 +18,7 @@ update request {
 	Tmp-Cast-Byte       := 58
 	Tmp-Cast-Short      := 14139
 	Tmp-Cast-Ethernet   := 00:00:39:38:37:3c
-	Tmp-Cast-Integer64  := 1152921505566832400
+	Tmp-Cast-Integer64  := 1152921505566832445
 	Tmp-Cast-IPv4Prefix := 57.56.55.62/32
 }
 
@@ -70,7 +70,7 @@ if (Tmp-String-4 != 'OTg3NA==') {
 	}
 }
 
-# Abinary - bin 0x0101000039383735000000000800110000000714000200000000000000000000
+# Abinary - bin 0x0101000039383735000000002000110000000714000200000000000000000000
 if (Tmp-String-5 != 'AQEAADk4NzUAAAAAIAARAAAABxQAAgAAAAAAAAAAAAA=') {
 	update reply {
 		Filter-Id += 'fail'
@@ -91,7 +91,7 @@ if (Tmp-String-7 != 'AAAAAAAAAAAAAAAAOTg3OA==') {
 	}
 }
 
-# ipv6addrprefix - bin 0x00800000000000000000000039383739
+# ipv6addrprefix - bin 0x008000000000000000000000000039383739
 if (Tmp-String-8 != 'AIAAAAAAAAAAAAAAAAA5ODc5') {
 	update reply {
 		Filter-ID += 'fail'
@@ -127,7 +127,7 @@ if (Tmp-String-1 != 'AAA5ODc8') {
 }
 
 # integer64 - bin 0x100000003938373d
-if (Tmp-String-2 != 'EAAAADk4NxA=') {
+if (Tmp-String-2 != 'EAAAADk4Nz0=') {
 	update reply {
 		Filter-Id += 'fail'
 	}
