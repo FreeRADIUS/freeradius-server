@@ -486,7 +486,7 @@ ssize_t  rad_data2vp(unsigned int attribute, unsigned int vendor,
 		     uint8_t const *data, size_t length,
 		     VALUE_PAIR **pvp);
 
-ssize_t rad_vp2data(VALUE_PAIR const *vp, uint8_t *out, size_t outlen);
+ssize_t rad_vp2data(uint8_t **out, VALUE_PAIR const *vp);
 
 int rad_vp2extended(RADIUS_PACKET const *packet,
 		    RADIUS_PACKET const *original,
