@@ -242,13 +242,13 @@ struct request {
 #endif
 
 
-	int		     simul_max;	//!< Maximum number of
+	int			simul_max;	//!< Maximum number of
 						//!< concurrent sessions for
 						//!< this user.
 #ifdef WITH_SESSION_MGMT
-	int		     simul_count;	//!< The current number of
+	int			simul_count;	//!< The current number of
 						//!< sessions for this user.
-	int		     simul_mpp; 	//!< WEIRD: 1 is false,
+	int			simul_mpp; 	//!< WEIRD: 1 is false,
 						//!< 2 is true.
 #endif
 
@@ -298,22 +298,22 @@ struct request {
 #endif
 };				/* REQUEST typedef */
 
-#define RAD_REQUEST_OPTION_NONE	    (0)
-#define RAD_REQUEST_OPTION_DEBUG	   (1)
-#define RAD_REQUEST_OPTION_DEBUG2	  (2)
-#define RAD_REQUEST_OPTION_DEBUG3	  (3)
-#define RAD_REQUEST_OPTION_DEBUG4	  (4)
+#define RAD_REQUEST_OPTION_NONE		(0)
+#define RAD_REQUEST_OPTION_DEBUG	(1)
+#define RAD_REQUEST_OPTION_DEBUG2	(2)
+#define RAD_REQUEST_OPTION_DEBUG3	(3)
+#define RAD_REQUEST_OPTION_DEBUG4	(4)
 
-#define REQUEST_ACTIVE 		(1)
-#define REQUEST_STOP_PROCESSING (2)
-#define REQUEST_COUNTED		(3)
+#define REQUEST_ACTIVE 			(1)
+#define REQUEST_STOP_PROCESSING		(2)
+#define REQUEST_COUNTED			(3)
 
-#define REQUEST_QUEUED		(1)
-#define REQUEST_RUNNING		(2)
-#define REQUEST_PROXIED		(3)
-#define REQUEST_REJECT_DELAY	(4)
-#define REQUEST_CLEANUP_DELAY	(5)
-#define REQUEST_DONE		(6)
+#define REQUEST_QUEUED			(1)
+#define REQUEST_RUNNING			(2)
+#define REQUEST_PROXIED			(3)
+#define REQUEST_REJECT_DELAY		(4)
+#define REQUEST_CLEANUP_DELAY		(5)
+#define REQUEST_DONE			(6)
 
 typedef struct radclient_list RADCLIENT_LIST;
 
