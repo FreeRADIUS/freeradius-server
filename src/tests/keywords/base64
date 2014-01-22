@@ -1,0 +1,141 @@
+#
+# PRE: update
+#
+update reply {
+       Filter-Id := "filter"
+}
+
+update request {
+	Tmp-String-0        := '9870'
+	Tmp-Octets-0        := 0x39383731
+	Tmp-IP-Address-0    := 57.56.55.50
+	Tmp-Date-0          := 959985459
+	Tmp-Integer-0       := 959985460
+	Tmp-Cast-Abinary    := 'ip out forward srcip 57.56.55.53/32 udp dstport = 1812'
+	Tmp-Cast-IfId       := '0000:0000:3938:3737'
+	Tmp-Cast-IPv6Addr   := '::3938:3738'
+	Tmp-Cast-IPv6Prefix := '::3938:3739/128'
+	Tmp-Cast-Byte       := 58
+	Tmp-Cast-Short      := 14139
+	Tmp-Cast-Ethernet   := 00:00:39:38:37:3c
+	Tmp-Cast-Integer64  := 1152921505566832400
+	Tmp-Cast-IPv4Prefix := 57.56.55.62/32
+}
+
+update request {
+	Tmp-String-0        := "%{base64:Tmp-String-0}"
+	Tmp-String-1        := "%{base64:Tmp-Octets-0}"
+	Tmp-String-2        := "%{base64:Tmp-IP-Address-0}"
+	Tmp-String-3        := "%{base64:Tmp-Date-0}"
+	Tmp-String-4        := "%{base64:Tmp-Integer-0}"
+	Tmp-String-5        := "%{base64:Tmp-Cast-Abinary}"
+	Tmp-String-6        := "%{base64:Tmp-Cast-Ifid}"
+	Tmp-String-7        := "%{base64:Tmp-Cast-IPv6Addr}"
+	Tmp-String-8        := "%{base64:Tmp-Cast-IPv6Prefix}"
+	Tmp-String-9        := "%{base64:Tmp-Cast-Byte}"
+}
+
+# String - bin 0x39383730
+if (Tmp-String-0 != 'OTg3MA==') {
+	update reply {
+		Filter-Id += 'fail'
+	}
+}
+
+# Octets - bin 0x39383731
+if (Tmp-String-1 != 'OTg3MQ==') {
+	update reply {
+		Filter-Id += 'fail'
+	}
+}
+
+# IP Address - bin 0x39383732
+if (Tmp-String-2 != 'OTg3Mg==') {
+	update reply {
+		Filter-Id += 'fail'
+	}
+}
+
+# Date - bin 0x39383733
+if (Tmp-String-3 != 'OTg3Mw==') {
+	update reply {
+		Filter-Id += 'fail'
+	}
+}
+
+# Integer - bin 0x39383734
+if (Tmp-String-4 != 'OTg3NA==') {
+	update reply {
+		Filter-Id += 'fail'
+	}
+}
+
+# Abinary - bin 0x0101000039383735000000000800110000000714000200000000000000000000
+if (Tmp-String-5 != 'AQEAADk4NzUAAAAAIAARAAAABxQAAgAAAAAAAAAAAAA=') {
+	update reply {
+		Filter-Id += 'fail'
+	}
+}
+
+# ifid - bin 0x0000000039383737
+if (Tmp-String-6 != 'AAAAADk4Nzc=') {
+	update reply {
+		Filter-Id += 'fail'
+	}
+}
+
+# ipv6addr - bin 0x00000000000000000000000039383738
+if (Tmp-String-7 != 'AAAAAAAAAAAAAAAAOTg3OA==') {
+	update reply {
+		Filter-ID += 'fail'
+	}
+}
+
+# ipv6addrprefix - bin 0x00800000000000000000000039383739
+if (Tmp-String-8 != 'AIAAAAAAAAAAAAAAAAA5ODc5') {
+	update reply {
+		Filter-ID += 'fail'
+	}
+}
+
+# byte - bin 0x3a
+if (Tmp-String-9 != 'Og==') {
+	update reply {
+		Filter-ID += 'fail'
+	}
+}
+
+update request {
+	Tmp-String-0        := "%{base64:Tmp-Cast-Short}"
+	Tmp-String-1        := "%{base64:Tmp-Cast-Ethernet}"
+	Tmp-String-2        := "%{base64:Tmp-Cast-Integer64}"
+	Tmp-String-3        := "%{base64:Tmp-Cast-IPv4Prefix}"
+}
+
+# short - bin 0x373b
+if (Tmp-String-0 != 'Nzs=') {
+	update reply {
+		Filter-ID += 'fail'
+	}
+}
+
+# ethernet - bin 0x00003938373c
+if (Tmp-String-1 != 'AAA5ODc8') {
+	update reply {
+		Filter-Id += 'fail'
+	}
+}
+
+# integer64 - bin 0x100000003938373d
+if (Tmp-String-2 != 'EAAAADk4NxA=') {
+	update reply {
+		Filter-Id += 'fail'
+	}
+}
+
+# ipv4prefix - bin 0x00203938373e
+if (Tmp-String-3 != 'ACA5ODc+') {
+	update reply {
+		Filter-Id += 'fail'
+	}
+}
