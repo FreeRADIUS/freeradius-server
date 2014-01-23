@@ -260,10 +260,14 @@ $INCLUDE dictionary.yubico
 $INCLUDE dictionary.zeus
 $INCLUDE dictionary.zyxel
 
-#
-#  This should be auto-loaded in the future.
-#
+#	Address Resolution Protocol
 $INCLUDE dictionary.arp
+
+# 	DHCP dictionary for DHCP functionality and use of dhcp module
+$INCLUDE dictionary.dhcp
+
+# 	VQP dictionary for VMPS functionality and use of vmps module
+$INCLUDE dictionary.vqp
 
 #
 #	And finally the server internal attributes.
