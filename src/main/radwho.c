@@ -283,6 +283,14 @@ int main(int argc, char **argv)
 	}
 
 	/*
+	 *	Mismatch between the binary and the libraries it depends on
+	 */
+	if (fr_check_lib_magic(RADIUSD_MAGIC_NUMBER) < 0) {
+		fr_perror("radwho");
+		return 1;
+	}
+
+	/*
 	 *	Be safe.
 	 */
 	if (zap && !radiusoutput) zap = 0;

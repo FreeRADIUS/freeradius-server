@@ -67,7 +67,7 @@ bool memory_report = false;
 
 char const *radiusd_version = "FreeRADIUS Version " RADIUSD_VERSION_STRING
 #ifdef RADIUSD_VERSION_COMMIT
-" (git #" RADIUSD_VERSION_COMMIT ")"
+" (git #" STRINGIFY(RADIUSD_VERSION_COMMIT) ")"
 #endif
 ", for host " HOSTINFO ", built on " __DATE__ " at " __TIME__;
 
@@ -286,6 +286,18 @@ int main(int argc, char *argv[])
 #endif
 	}
 	talloc_set_log_fn(log_talloc);
+
+	/*
+	 *	Mismatch between the binary and the libraries it depends on
+	 */
+	if (fr_check_lib_magic(RADIUSD_MAGIC_NUMBER) < 0) {
+		fr_perror("radiusd");
+		exit(EXIT_FAILURE);
+	}
+
+	if (rad_check_lib_magic(RADIUSD_MAGIC_NUMBER) < 0) {
+		exit(EXIT_FAILURE);
+	}
 
 	/*
 	 *	Mismatch between build time OpenSSL and linked SSL,

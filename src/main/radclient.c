@@ -97,7 +97,7 @@ static rc_request_t *rc_request_tail = NULL;
 
 char const *radclient_version = "radclient version " RADIUSD_VERSION_STRING
 #ifdef RADIUSD_VERSION_COMMIT
-" (git #" RADIUSD_VERSION_COMMIT ")"
+" (git #" STRINGIFY(RADIUSD_VERSION_COMMIT) ")"
 #endif
 ", built on " __DATE__ " at " __TIME__;
 
@@ -1067,6 +1067,14 @@ int main(int argc, char **argv)
 	if ((argc < 3)  ||
 	    ((secret == NULL) && (argc < 4))) {
 		usage();
+	}
+
+	/*
+	 *	Mismatch between the binary and the libraries it depends on
+	 */
+	if (fr_check_lib_magic(RADIUSD_MAGIC_NUMBER) < 0) {
+		fr_perror("radclient");
+		return 1;
 	}
 
 	if (dict_init(radius_dir, RADIUS_DICTIONARY) < 0) {
