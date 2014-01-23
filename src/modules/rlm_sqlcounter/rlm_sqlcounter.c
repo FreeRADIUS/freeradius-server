@@ -620,6 +620,8 @@ static rlm_rcode_t mod_authorize(UNUSED void *instance, UNUSED REQUEST *request)
 	if (reply_item) {
 		if (reply_item->vp_integer64 > res) {
 			reply_item->vp_integer64 = res;
+		} else {
+			RDEBUG2("Leaving existing limit of " PRIu64, reply_item->vp_integer64);
 		}
 	} else {
 		reply_item = radius_paircreate(request, &request->reply->vps, inst->reply_attr->attr,
