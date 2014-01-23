@@ -147,6 +147,24 @@ static ssize_t xlat_strlen(UNUSED void *instance, UNUSED REQUEST *request,
 	return strlen(out);
 }
 
+/** Print the size of the attribute in bytes.
+ *
+ */
+static ssize_t xlat_length(UNUSED void *instance, UNUSED REQUEST *request,
+                           char const *fmt, char *out, size_t outlen)
+{
+	VALUE_PAIR *vp;
+	while (isspace((int) *fmt)) fmt++;
+
+	if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) {
+		*out = '\0';
+		return 0;
+	}
+
+	snprintf(out, outlen, "%zu", vp->length);
+	return strlen(out);
+}
+
 /** Print data as integer, not as VALUE.
  *
  */
@@ -568,6 +586,7 @@ int xlat_register(char const *name, RAD_XLAT_FUNC func, RADIUS_ESCAPE_STRING esc
 
 		XLAT_REGISTER(integer);
 		XLAT_REGISTER(strlen);
+		XLAT_REGISTER(length);
 		XLAT_REGISTER(hex);
 		XLAT_REGISTER(base64);
 		XLAT_REGISTER(string);
