@@ -109,6 +109,14 @@ int main(int argc, char **argv)
 		}
 	}
 
+	/*
+	 *	Mismatch between the binary and the libraries it depends on
+	 */
+	if (fr_check_lib_magic(RADIUSD_MAGIC_NUMBER) < 0) {
+		fr_perror("radconf2xml");
+		return 1;
+	}
+
 	snprintf(buffer, sizeof(buffer), "%s/%s.conf", raddb_dir, name);
 	cs = cf_file_read(buffer);
 	if (!cs) {

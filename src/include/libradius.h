@@ -21,13 +21,31 @@
  * @file libradius.h
  * @brief Structures and prototypes for the radius library.
  *
- * @copyright 1999-2008 The FreeRADIUS server project
+ * @copyright 1999-2014 The FreeRADIUS server project
  */
 RCSIDH(libradius_h, "$Id$")
 
-#include <freeradius-devel/missing.h>
+/*
+ *  Preprocessor hacks.
+ */
+#ifndef STRINGIFY
+#  define XSTRINGIFY(x) #x
+#  define STRINGIFY(x) XSTRINGIFY(x)
+#endif
 
-#include <talloc.h>
+#ifndef HEXIFY
+#  define XHEXIFY4(b1,b2,b3,b4)	(0x ## b1 ## b2 ## b3 ## b4)
+#  define HEXIFY4(b1,b2,b3,b4)	XHEXIFY4(b1, b2, b3, b4)
+
+#  define XHEXIFY3(b1,b2,b3)	(0x ## b1 ## b2 ## b3)
+#  define HEXIFY3(b1,b2,b3)	XHEXIFY3(b1, b2, b3)
+
+#  define XHEXIFY2(b1,b2)	(0x ## b1 ## b2)
+#  define HEXIFY2(b1,b2)	XHEXIFY2(b1, b2)
+
+#  define XHEXIFY(b1)		(0x ## b1)
+#  define HEXIFY(b1)		XHEXIFY(b1)
+#endif
 
 /*
  *  Let any external program building against the library know what
@@ -35,6 +53,36 @@ RCSIDH(libradius_h, "$Id$")
  */
 #include <freeradius-devel/features.h>
 
+#ifdef WITHOUT_VERSION_CHECK
+#  define RADIUSD_MAGIC_NUMBER	((uint64_t) (0xf4ee4ad3f4ee4ad3))
+#  define MAGIC_PREFIX(_x)	((uint8_t) 0x00)
+#  define MAGIC_VERSION(_x)	((uint32_t) 0x00000000)
+#  define MAGIC_COMMIT(_x)	((uint32_t) 0x00000000)
+#else
+#  ifdef RADIUSD_VERSION_COMMIT
+#    define RADIUSD_MAGIC_NUMBER ((uint64_t) HEXIFY4(f4, RADIUSD_VERSION, RADIUSD_VERSION_COMMIT, 0))
+#  else
+#    define RADIUSD_MAGIC_NUMBER ((uint64_t) HEXIFY3(f4, RADIUSD_VERSION, 00000000))
+#  endif
+#  define MAGIC_PREFIX(_x)	((uint8_t) (_x >> 56))
+#  define MAGIC_VERSION(_x)	((uint32_t) ((_x >> 32) & 0x00ffffff))
+#  define MAGIC_COMMIT(_x)	((uint32_t) (_x & 0xffffffff))
+#endif
+
+/*
+ *  Talloc memory allocation is used in preference to malloc throughout
+ *  the libraries and server.
+ */
+#include <talloc.h>
+
+/*
+ *  Defines signatures for any missing functions.
+ */
+#include <freeradius-devel/missing.h>
+
+/*
+ *  Include system headers.
+ */
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
@@ -337,6 +385,11 @@ typedef struct radius_packet {
 	size_t			partial;
 #endif
 } RADIUS_PACKET;
+
+/*
+ *	Version check.
+ */
+int		fr_check_lib_magic(uint64_t magic);
 
 /*
  *	Printing functions.

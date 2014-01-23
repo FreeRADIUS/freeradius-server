@@ -598,6 +598,7 @@ int		pairlist_read(TALLOC_CTX *ctx, char const *file, PAIR_LIST **list, int comp
 void		pairlist_free(PAIR_LIST **);
 
 /* version.c */
+int		rad_check_lib_magic(uint64_t magic);
 int 		ssl_check_version(void);
 char const	*ssl_version(void);
 void		version(void);

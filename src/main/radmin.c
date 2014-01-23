@@ -70,7 +70,7 @@ char const *radius_dir = RADDBDIR;
 char const *progname = "radmin";
 char const *radmin_version = "radmin version " RADIUSD_VERSION_STRING
 #ifdef RADIUSD_VERSION_COMMIT
-" (git #" RADIUSD_VERSION_COMMIT ")"
+" (git #" STRINGIFY(RADIUSD_VERSION_COMMIT) ")"
 #endif
 ", built on " __DATE__ " at " __TIME__;
 
@@ -456,6 +456,14 @@ int main(int argc, char **argv)
 			secret = NULL;
 			break;
 		}
+	}
+
+	/*
+	 *	Mismatch between the binary and the libraries it depends on
+	 */
+	if (fr_check_lib_magic(RADIUSD_MAGIC_NUMBER) < 0) {
+		fr_perror("radmin");
+		exit(1);
 	}
 
 	if (radius_dir) {

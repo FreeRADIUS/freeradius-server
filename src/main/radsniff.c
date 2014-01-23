@@ -60,7 +60,7 @@ typedef int (*rbcmp)(void const *, void const *);
 
 static char const *radsniff_version = "radsniff version " RADIUSD_VERSION_STRING
 #ifdef RADIUSD_VERSION_COMMIT
-" (git #" RADIUSD_VERSION_COMMIT ")"
+" (git #" STRINGIFY(RADIUSD_VERSION_COMMIT) ")"
 #endif
 ", built on " __DATE__ " at " __TIME__;
 
@@ -458,6 +458,14 @@ int main(int argc, char *argv[])
 		default:
 			usage(64);
 		}
+	}
+
+	/*
+	 *	Mismatch between the binary and the libraries it depends on
+	 */
+	if (fr_check_lib_magic(RADIUSD_MAGIC_NUMBER) < 0) {
+		fr_perror("radsniff");
+		exit(1);
 	}
 
 	/* What's the point in specifying -F ?! */

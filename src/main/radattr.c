@@ -820,6 +820,14 @@ int main(int argc, char *argv[])
 	}
 	talloc_set_log_fn(log_talloc);
 
+	/*
+	 *	Mismatch between the binary and the libraries it depends on
+	 */
+	if (fr_check_lib_magic(RADIUSD_MAGIC_NUMBER) < 0) {
+		fr_perror("radattr");
+		return 1;
+	}
+
 	if (dict_init(radius_dir, RADIUS_DICTIONARY) < 0) {
 		fr_perror("radattr");
 		return 1;

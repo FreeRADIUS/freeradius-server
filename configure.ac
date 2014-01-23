@@ -1239,7 +1239,7 @@ dnl #  append the current git hash onto the version string
 dnl #
 if test -d $srcdir/.git -a "x$GIT" = "xyes"; then
   RADIUSD_VERSION_COMMIT=`git log --pretty=format:'%h' -n 1`
-  AC_DEFINE_UNQUOTED([RADIUSD_VERSION_COMMIT],["${RADIUSD_VERSION_COMMIT}"],[Commit HEAD at time of configuring])
+  AC_DEFINE_UNQUOTED([RADIUSD_VERSION_COMMIT],[${RADIUSD_VERSION_COMMIT}],[Commit HEAD at time of configuring])
 fi
 
 FR_TLS

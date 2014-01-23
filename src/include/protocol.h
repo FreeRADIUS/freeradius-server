@@ -35,10 +35,10 @@ typedef int (*rad_listen_parse_t)(CONF_SECTION *, rad_listen_t *);
 typedef void (*rad_listen_free_t)(rad_listen_t *);
 
 typedef struct fr_protocol_t {
-	uint32_t 	magic;	//!< Used to validate loaded library
-	char const	*name;	//!< The name of the protocol
-	size_t		inst_size;
-	CONF_PARSER	*proto_config;
+	uint64_t 		magic;	//!< Used to validate loaded library
+	char const		*name;	//!< The name of the protocol
+	size_t			inst_size;
+	CONF_PARSER		*proto_config;
 
 	rad_listen_parse_t	parse;
 	rad_listen_free_t	free;

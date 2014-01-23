@@ -102,6 +102,44 @@ const section_type_value_t section_type_value[RLM_COMPONENT_COUNT] = {
 #define LD_LIBRARY_PATH "LD_LIBRARY_PATH"
 #endif
 
+/** Check if the magic number in the module matches the one in the library
+ *
+ * This is used to detect potential ABI issues caused by running with modules which
+ * were built for a different version of the server.
+ *
+ * @param cs being parsed.
+ * @param module being loaded.
+ * @returns 0 on success, -1 if prefix mismatch, -2 if version mismatch, -3 if commit mismatch.
+ */
+static int check_module_magic(CONF_SECTION *cs, module_t const *module)
+{
+	if (MAGIC_PREFIX(module->magic) != MAGIC_PREFIX(RADIUSD_MAGIC_NUMBER)) {
+		cf_log_err_cs(cs, "Application and rlm_%s magic number (prefix) mismatch."
+			      "  application: %x module: %x", module->name,
+			      MAGIC_PREFIX(RADIUSD_MAGIC_NUMBER),
+			      MAGIC_PREFIX(module->magic));
+		return -1;
+	}
+
+	if (MAGIC_VERSION(module->magic) != MAGIC_VERSION(RADIUSD_MAGIC_NUMBER)) {
+		cf_log_err_cs(cs, "Application and rlm_%s magic number (version) mismatch."
+			      "  application: %lx module: %lx", module->name,
+			      (unsigned long) MAGIC_VERSION(RADIUSD_MAGIC_NUMBER),
+			      (unsigned long) MAGIC_VERSION(module->magic));
+		return -2;
+	}
+
+	if (MAGIC_COMMIT(module->magic) != MAGIC_COMMIT(RADIUSD_MAGIC_NUMBER)) {
+		cf_log_err_cs(cs, "Application and rlm_%s magic number (commit) mismatch."
+			      "  application: %lx module: %lx", module->name,
+			      (unsigned long) MAGIC_COMMIT(RADIUSD_MAGIC_NUMBER),
+			      (unsigned long) MAGIC_COMMIT(module->magic));
+		return -3;
+	}
+
+	return 0;
+}
+
 /*
  *	Because dlopen produces really shitty and inaccurate error messages
  */
@@ -430,13 +468,9 @@ static module_entry_t *linkto_module(char const *module_name,
 	/*
 	 *	Before doing anything else, check if it's sane.
 	 */
-	if (module->magic != RLM_MODULE_MAGIC_NUMBER) {
+	if (check_module_magic(cs, module) < 0) {
 		dlclose(handle);
-		cf_log_err_cs(cs,
-			   "Invalid version in module '%s'",
-			   module_name);
 		return NULL;
-
 	}
 
 	/* make room for the module type */
