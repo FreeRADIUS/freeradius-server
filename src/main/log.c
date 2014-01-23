@@ -173,7 +173,7 @@ void rad_get_va_printf_args(va_list ap, char const *fmt, ...)
 int vradlog(log_type_t type, char const *fmt, va_list ap)
 {
 	unsigned char *p;
-	char buffer[8192];
+	char buffer[10240];	/* The largest config item size, then extra for prefixes and suffixes */
 	char *unsan;
 	size_t len;
 	int colourise = default_log.colourise;
@@ -365,7 +365,7 @@ void vradlog_request(log_type_t type, log_debug_t lvl, REQUEST *request, char co
 	size_t len = 0;
 	char const *filename = default_log.file;
 	FILE *fp = NULL;
-	char buffer[8192];
+	char buffer[10240];	/* The largest config item size, then extra for prefixes and suffixes */
 	char *p;
 	char const *extra = "";
 
