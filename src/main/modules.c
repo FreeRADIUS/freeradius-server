@@ -1239,13 +1239,33 @@ static int load_byserver(CONF_SECTION *cs)
 	 *	This is a bit of a hack...
 	 */
 	if (!found) do {
+#if defined(WITH_VMPS) || defined(WITH_DHCP)
 		CONF_SECTION *subcs;
-#ifdef WITH_DHCP
-		DICT_ATTR const *dattr;
+		DICT_ATTR const *da;
 #endif
 
+#ifdef WITH_VMPS
 		subcs = cf_section_sub_find(cs, "vmps");
 		if (subcs) {
+			/*
+			 *	Auto-load the DHCP dictionary.
+			 */
+			da = dict_attrbyname("VQP-Packet-Type");
+			if (!da) {
+				if (dict_read(mainconfig.dictionary_dir, "dictionary.vqp") < 0) {
+					ERROR("Failed reading dictionary.vqp: %s",
+					      fr_strerror());
+					return -1;
+				}
+				DEBUG("Loading dictionary.vqp");
+
+				da = dict_attrbyname("VQP-Packet-Type");
+				if (!da) {
+					ERROR("No VQP-Packet-Type in dictionary.vqp");
+					return -1;
+				}
+			}
+
 			cf_log_module(cs, "Checking vmps {...} for more modules to load");
 			if (load_component_section(subcs, components,
 						   RLM_COMPONENT_POST_AUTH) < 0) {
@@ -1257,16 +1277,33 @@ static int load_byserver(CONF_SECTION *cs)
 			found = 1;
 			break;
 		}
+#endif
 
 #ifdef WITH_DHCP
+		/*
+		 *	It's OK to not have DHCP.
+		 */
 		subcs = cf_subsection_find_next(cs, NULL, "dhcp");
-		dattr = dict_attrbyname("DHCP-Message-Type");
-		if (!dattr && subcs) {
-			cf_log_err_cs(subcs, "Found a 'dhcp' section, but no DHCP dictionaries have been loaded");
-			goto error;
-		}
+		if (!subcs) break;
 
-		if (!dattr) break;
+		/*
+		 *	Auto-load the DHCP dictionary.
+		 */
+		da = dict_attrbyname("DHCP-Message-Type");
+		if (!da) {
+			DEBUG("Loading dictionary.dhcp");
+			if (dict_read(mainconfig.dictionary_dir, "dictionary.dhcp") < 0) {
+				ERROR("Failed reading dictionary.dhcp: %s",
+				      fr_strerror());
+				return -1;
+			}
+
+			da = dict_attrbyname("DHCP-Message-Type");
+			if (!da) {
+				ERROR("No DHCP-Message-Type in dictionary.dhcp");
+				return -1;
+			}
+		}
 
 		/*
 		 *	Handle each DHCP Message type separately.
@@ -1277,7 +1314,7 @@ static int load_byserver(CONF_SECTION *cs)
 			DEBUG2(" Module: Checking dhcp %s {...} for more modules to load", name2);
 			if (!load_subcomponent_section(NULL, subcs,
 						       components,
-						       dattr,
+						       da,
 						       RLM_COMPONENT_POST_AUTH)) {
 				goto error; /* FIXME: memleak? */
 			}

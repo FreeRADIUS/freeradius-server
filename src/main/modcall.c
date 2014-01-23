@@ -652,7 +652,7 @@ redo:
 		}
 
 		if (radius_get_vp(&vp, request, c->name) < 0) {
-			RDEBUG("Unknown Attribute \"%s\"", c->name);
+			RDEBUG("Unknown attribute \"%s\"", c->name);
 			result = RLM_MODULE_FAIL;
 			goto calculate_result;
 		}
