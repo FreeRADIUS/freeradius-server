@@ -256,32 +256,6 @@ static ssize_t xlat_hex(UNUSED void *instance, REQUEST *request,
 	return len * 2;
 }
 
-/** Print data as base64, not as VALUE
- *
- */
-static ssize_t xlat_base64(UNUSED void *instance, REQUEST *request,
-			   char const *fmt, char *out, size_t outlen)
-{
-	VALUE_PAIR *vp;
-	uint8_t *p;
-	ssize_t	ret;
-
-	while (isspace((int) *fmt)) fmt++;
-
-	if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) {
-		*out = '\0';
-		return 0;
-	}
-
-	ret = rad_vp2data(&p, vp);
-	if (ret < 0) {
-		*out = '\0';
-		return ret;
-	}
-
-	return fr_base64_encode(p, (size_t) ret, out, outlen);
-}
-
 /** Print out attribute info
  *
  * Prints out all instances of a current attribute, or all attributes in a list.
@@ -588,7 +562,6 @@ int xlat_register(char const *name, RAD_XLAT_FUNC func, RADIUS_ESCAPE_STRING esc
 		XLAT_REGISTER(strlen);
 		XLAT_REGISTER(length);
 		XLAT_REGISTER(hex);
-		XLAT_REGISTER(base64);
 		XLAT_REGISTER(string);
 		XLAT_REGISTER(xlat);
 		XLAT_REGISTER(module);
@@ -660,6 +633,42 @@ void xlat_unregister(char const *name, UNUSED RAD_XLAT_FUNC func, void *instance
 	if (c->instance != instance) return;
 
 	rbtree_deletebydata(xlat_root, c);
+}
+
+
+/** Crappy temporary function to add attribute ref support to xlats
+ *
+ * This needs to die, and hopefully will die, when xlat functions accept
+ * xlat node structures.
+ *
+ * Provides either a pointer to a buffer which contains the value of the reference VALUE_PAIR
+ * in an architecture independent format. Or a pointer to the start of the fmt string.
+ *
+ * The pointer is only guaranteed to be valid between calls to xlat_fmt_to_ref,
+ * and so long as the source VALUE_PAIR is not freed.
+ *
+ * @param out where to write a pointer to the buffer to the data the xlat function needs to work on.
+ * @param request current request.
+ * @param fmt string.
+ * @returns the length of the data or -1 on error.
+ */
+ssize_t xlat_fmt_to_ref(uint8_t **out, REQUEST *request, char const *fmt)
+{
+	VALUE_PAIR *vp;
+
+	while (isspace((int) *fmt)) fmt++;
+
+	if (fmt[0] == '&') {
+		if ((radius_get_vp(&vp, request, fmt + 1) < 0) || !vp) {
+			*out = NULL;
+			return -1;
+		}
+
+		return rad_vp2data(out, vp);
+	}
+
+	*out = (uint8_t *)fmt;
+	return strlen(fmt);
 }
 
 /** De-register all xlat functions, used mainly for debugging.

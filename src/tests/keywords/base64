@@ -23,16 +23,16 @@ update request {
 }
 
 update request {
-	Tmp-String-0        := "%{base64:Tmp-String-0}"
-	Tmp-String-1        := "%{base64:Tmp-Octets-0}"
-	Tmp-String-2        := "%{base64:Tmp-IP-Address-0}"
-	Tmp-String-3        := "%{base64:Tmp-Date-0}"
-	Tmp-String-4        := "%{base64:Tmp-Integer-0}"
-	Tmp-String-5        := "%{base64:Tmp-Cast-Abinary}"
-	Tmp-String-6        := "%{base64:Tmp-Cast-Ifid}"
-	Tmp-String-7        := "%{base64:Tmp-Cast-IPv6Addr}"
-	Tmp-String-8        := "%{base64:Tmp-Cast-IPv6Prefix}"
-	Tmp-String-9        := "%{base64:Tmp-Cast-Byte}"
+	Tmp-String-0        := "%{base64:&Tmp-String-0}"
+	Tmp-String-1        := "%{base64:&Tmp-Octets-0}"
+	Tmp-String-2        := "%{base64:&Tmp-IP-Address-0}"
+	Tmp-String-3        := "%{base64:&Tmp-Date-0}"
+	Tmp-String-4        := "%{base64:&Tmp-Integer-0}"
+	Tmp-String-5        := "%{base64:&Tmp-Cast-Abinary}"
+	Tmp-String-6        := "%{base64:&Tmp-Cast-Ifid}"
+	Tmp-String-7        := "%{base64:&Tmp-Cast-IPv6Addr}"
+	Tmp-String-8        := "%{base64:&Tmp-Cast-IPv6Prefix}"
+	Tmp-String-9        := "%{base64:&Tmp-Cast-Byte}"
 }
 
 # String - bin 0x39383730
@@ -106,10 +106,10 @@ if (Tmp-String-9 != 'Og==') {
 }
 
 update request {
-	Tmp-String-0        := "%{base64:Tmp-Cast-Short}"
-	Tmp-String-1        := "%{base64:Tmp-Cast-Ethernet}"
-	Tmp-String-2        := "%{base64:Tmp-Cast-Integer64}"
-	Tmp-String-3        := "%{base64:Tmp-Cast-IPv4Prefix}"
+	Tmp-String-0        := "%{base64:&Tmp-Cast-Short}"
+	Tmp-String-1        := "%{base64:&Tmp-Cast-Ethernet}"
+	Tmp-String-2        := "%{base64:&Tmp-Cast-Integer64}"
+	Tmp-String-3        := "%{base64:&Tmp-Cast-IPv4Prefix}"
 }
 
 # short - bin 0x373b
