@@ -1050,7 +1050,7 @@ int radius_mapexec(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *m
 	char *expanded = NULL;
 	char answer[1024];
 	VALUE_PAIR **input_pairs = NULL;
-	VALUE_PAIR **output_pairs = NULL;
+	VALUE_PAIR *output_pairs = NULL;
 
 	*out = NULL;
 
@@ -1072,11 +1072,11 @@ int radius_mapexec(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *m
 	result = radius_exec_program(request, map->src->name, true, true,
 				     answer, sizeof(answer), EXEC_TIMEOUT,
 				     input_pairs ? *input_pairs : NULL,
-				     (map->dst->type == VPT_TYPE_LIST) ? output_pairs : NULL);
+				     (map->dst->type == VPT_TYPE_LIST) ? &output_pairs : NULL);
 	talloc_free(expanded);
 	if (result != 0) {
 		REDEBUG("%s", answer);
-		talloc_free(output_pairs);
+		if (output_pairs) talloc_free(output_pairs);
 		return -1;
 	}
 
@@ -1085,7 +1085,7 @@ int radius_mapexec(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *m
 		if (!output_pairs) {
 			return -2;
 		}
-		*out = *output_pairs;
+		*out = output_pairs;
 
 		return 0;
 	case VPT_TYPE_ATTR:
