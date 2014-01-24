@@ -3920,7 +3920,7 @@ fr_thread_local_setup(uint8_t *, rad_vp2data_buff);
  * @param vp to get the value from.
  * @return -1 on error, or the length of the value
  */
-ssize_t rad_vp2data(uint8_t **out, VALUE_PAIR const *vp)
+ssize_t rad_vp2data(uint8_t const **out, VALUE_PAIR const *vp)
 {
 	uint8_t		*buffer;
 	uint32_t	lvalue;
