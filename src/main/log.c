@@ -199,9 +199,10 @@ int vradlog(log_type_t type, char const *fmt, va_list ap)
 	len = 0;
 
 	if (colourise) {
-		len += strlcpy(buffer + len, fr_int2str(colours, type, ""),
-			       sizeof(buffer) - len) ;
-		if (len == 0) colourise = false;
+		len += strlcpy(buffer + len, fr_int2str(colours, type, ""), sizeof(buffer) - len) ;
+		if (len == 0) {
+			colourise = false;
+		}
 	}
 
 	/*
@@ -211,7 +212,8 @@ int vradlog(log_type_t type, char const *fmt, va_list ap)
 
 	/*
 	 *	Don't print timestamps to syslog, it does that for us.
-	 *	Don't print timestamps for low levels of debugging.
+	 *	Don't print timestamps and error types for low levels
+	 *	of debugging.
 	 *
 	 *	Print timestamps for non-debugging, and for high levels
 	 *	of debugging.
@@ -275,25 +277,23 @@ int vradlog(log_type_t type, char const *fmt, va_list ap)
 #ifdef HAVE_SYSLOG_H
 	case L_DST_SYSLOG:
 		switch(type) {
-			case L_DBG:
-			case L_WARN:
-			case L_DBG_WARN:
-			case L_DBG_WARN2:
-			case L_DBG_ERR:
-			case L_DBG_ERR2:
-				type = LOG_DEBUG;
-				break;
-			case L_AUTH:
-			case L_PROXY:
-			case L_ACCT:
-				type = LOG_NOTICE;
-				break;
-			case L_INFO:
-				type = LOG_INFO;
-				break;
-			case L_ERR:
-				type = LOG_ERR;
-				break;
+		case L_DBG:
+		case L_WARN:
+		case L_DBG_WARN:
+		case L_DBG_ERR:
+			type = LOG_DEBUG;
+			break;
+		case L_AUTH:
+		case L_PROXY:
+		case L_ACCT:
+			type = LOG_NOTICE;
+			break;
+		case L_INFO:
+			type = LOG_INFO;
+			break;
+		case L_ERR:
+			type = LOG_ERR;
+			break;
 		}
 		syslog(type, "%s", buffer);
 		break;
@@ -436,6 +436,7 @@ void vradlog_request(log_type_t type, log_debug_t lvl, REQUEST *request, char co
 		{
 			CTIME_R(&timeval, buffer, sizeof(buffer) - 1);
 		}
+
 		len = strlen(buffer);
 		p = strrchr(buffer, '\n');
 		if (p) {
@@ -443,17 +444,12 @@ void vradlog_request(log_type_t type, log_debug_t lvl, REQUEST *request, char co
 			p[1] = '\0';
 		}
 
-		len += strlcpy(buffer + len,
-			       fr_int2str(levels, type, ": "),
-		 	       sizeof(buffer) - len);
-
+		len += strlcpy(buffer + len, fr_int2str(levels, type, ": "), sizeof(buffer) - len);
 		if (len >= sizeof(buffer)) goto finish;
 	}
 
 	if (request && request->module[0]) {
-		len = snprintf(buffer + len, sizeof(buffer) - len, "%s : ",
-			       request->module);
-
+		len = snprintf(buffer + len, sizeof(buffer) - len, "%s : ", request->module);
 		if (len >= sizeof(buffer)) goto finish;
 	}
 
@@ -475,13 +471,12 @@ void vradlog_request(log_type_t type, log_debug_t lvl, REQUEST *request, char co
 	}
 
 	if (!fp) {
-		if (request) {
-			radlog(type, "(%u) %s%s", request->number, extra, buffer);
-		} else {
-			radlog(type, "%s%s", extra, buffer);
-		}
+		request ? radlog(type, "(%u) %s", request->number, buffer) :
+			  radlog(type, "%s%s", extra, buffer);
 	} else {
-		if (request) fprintf(fp, "(%u) ", request->number);
+		if (request) {
+			fprintf(fp, "(%u) ", request->number);
+		}
 		fputs(buffer, fp);
 		fputc('\n', fp);
 		fclose(fp);
