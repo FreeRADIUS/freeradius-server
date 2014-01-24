@@ -1051,6 +1051,9 @@ void *fr_connection_reconnect(fr_connection_pool_t *pool, void *conn)
 	this = fr_connection_find(pool, conn);
 	if (!this) return NULL;
 
+	/*
+	 *	The pool is now locked.
+	 */
 	conn_number = this->number;
 
 	DEBUG("%s: Reconnecting (%" PRIu64 ")", pool->log_prefix, conn_number);
@@ -1078,13 +1081,13 @@ void *fr_connection_reconnect(fr_connection_pool_t *pool, void *conn)
 			pool->active--;
 
 			fr_connection_close(pool, this);
-			pthread_mutex_unlock(&pool->mutex);
 		}
 
 		/*
 		 *	We failed to create a new socket.
 		 *	Try to grab an existing one.
 		 */
+		pthread_mutex_unlock(&pool->mutex);
 		new_conn = fr_connection_get(pool);
 		if (new_conn) return new_conn;
 
