@@ -1062,9 +1062,8 @@ static VALUE_PAIR *json_pairmake_leaf(UNUSED rlm_rest_t *instance,
 	 */
 	value = json_object_get_string(leaf);
 
-	RDEBUG2("\tType   : %s", fr_int2str(dict_attr_types, da->type,
-					    "¿Unknown?"));
-	RDEBUG2("\tLength : %i", strlen(value));
+	RDEBUG2("\tType   : %s", fr_int2str(dict_attr_types, da->type, "¿Unknown?"));
+	RDEBUG2("\tLength : %zu", strlen(value));
 	RDEBUG2("\tValue  : \"%s\"", value);
 
 	if (flags->do_xlat) {
@@ -1270,8 +1269,8 @@ static VALUE_PAIR *json_pairmake(rlm_rest_t *instance,
 			if (tmp) {
 				flags.op = fr_str2int(fr_tokens, json_object_get_string(tmp), 0);
 				if (!flags.op) {
-					RDEBUG("Invalid operator value \"%s\","
-					       " skipping", tmp);
+					RDEBUG("Invalid operator value \"%s\", skipping",
+					       json_object_get_string(tmp));
 					continue;
 				}
 			}
@@ -1298,7 +1297,7 @@ static VALUE_PAIR *json_pairmake(rlm_rest_t *instance,
 			 */
 			value = json_object_object_get(value, "value");
 			if (!value) {
-				RDEBUG("Value key missing, skipping", value);
+				RDEBUG("Value key missing, skipping");
 				continue;
 			}
    		}
@@ -1310,8 +1309,7 @@ static VALUE_PAIR *json_pairmake(rlm_rest_t *instance,
 		    json_object_is_type(value, json_type_array)) {
 			len = json_object_array_length(value);
 			if (!len) {
-				RDEBUG("Zero length value array, skipping",
-				       value);
+				RDEBUG("Zero length value array, skipping");
 				continue;
 			}
 			idx = json_object_array_get_idx(value, 0);
