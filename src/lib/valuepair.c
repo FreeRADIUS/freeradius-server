@@ -2393,7 +2393,7 @@ int8_t paircmp_value(VALUE_PAIR const *one, VALUE_PAIR const *two)
 		break;
 
 	case PW_TYPE_IPV6PREFIX:
-		compare = memcmp(&one->vp_ipv6addr, &two->vp_ipv6addr, sizeof(one->vp_ipv6prefix));
+		compare = memcmp(&one->vp_ipv6prefix, &two->vp_ipv6prefix, sizeof(one->vp_ipv6prefix));
 		break;
 
 	case PW_TYPE_IPV4PREFIX:
