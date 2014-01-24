@@ -173,7 +173,8 @@ static ssize_t xlat_integer(UNUSED void *instance, REQUEST *request,
 {
 	VALUE_PAIR 	*vp;
 
-	uint64_t 	integer;
+	uint64_t 	int64 = 0;	/* Needs to be initialised to zero */
+	uint32_t	int32 = 0;	/* Needs to be initialised to zero */
 
 	while (isspace((int) *fmt)) fmt++;
 
@@ -188,22 +189,38 @@ static ssize_t xlat_integer(UNUSED void *instance, REQUEST *request,
 		if (vp->length > 8) {
 			break;
 		}
-		memcpy(&integer, &(vp->vp_octets), vp->length);
-		return snprintf(out, outlen, "%" PRIu64, ntohll(integer));
+
+		if (vp->length > 4) {
+			memcpy(&int64, vp->vp_octets, vp->length);
+			return snprintf(out, outlen, "%" PRIu64, htonll(int64));
+		}
+
+		memcpy(&int32, vp->vp_octets, vp->length);
+		return snprintf(out, outlen, "%i", htonl(int32));
 
 	case PW_TYPE_INTEGER64:
 		return snprintf(out, outlen, "%" PRIu64, vp->vp_integer64);
 
-	case PW_TYPE_INTEGER:
+	/*
+	 *	IP addresses are treated specially, as parsing functions assume the value
+	 *	is bigendian and will convert it for us.
+	 */
 	case PW_TYPE_IPADDR:
+		return snprintf(out, outlen, "%u", htonl(vp->vp_ipaddr));
+
+	case PW_TYPE_INTEGER:
 	case PW_TYPE_DATE:
 	case PW_TYPE_BYTE:
 	case PW_TYPE_SHORT:
 		return snprintf(out, outlen, "%u", vp->vp_integer);
 
+	/*
+	 *	Ethernet is weird... It's network related, so we assume to it should be
+	 *	bigendian.
+	 */
 	case PW_TYPE_ETHERNET:
-		memcpy(&integer, &(vp->vp_ether), vp->length);
-		return snprintf(out, outlen, "%" PRIu64, ntohll(integer));
+		memcpy(&int64, &vp->vp_ether, vp->length);
+		return snprintf(out, outlen, "%" PRIu64, htonll(int64));
 
 	case PW_TYPE_SIGNED:
 		return snprintf(out, outlen, "%i", vp->vp_signed);
@@ -212,8 +229,8 @@ static ssize_t xlat_integer(UNUSED void *instance, REQUEST *request,
 		break;
 	}
 
-	REDEBUG("Type \"%s\" cannot be converted to integer",
-		fr_int2str(dict_attr_types, vp->da->type, PW_TYPE_INVALID));
+	REDEBUG("Type '%s' of length %zu cannot be converted to integer",
+		fr_int2str(dict_attr_types, vp->da->type, PW_TYPE_INVALID), vp->length);
 	*out = '\0';
 
 	return -1;
@@ -239,6 +256,9 @@ static ssize_t xlat_hex(UNUSED void *instance, REQUEST *request,
 	}
 
 	ret = rad_vp2data(&p, vp);
+	if (ret < 0) {
+		return ret;
+	}
 	len = (size_t) ret;
 
 	/*
@@ -373,6 +393,9 @@ static ssize_t xlat_debug_attr(UNUSED void *instance, REQUEST *request, char con
 
 			dac->type = type->number;
 			len = rad_vp2data(&data, vp);
+			if (len < 0) {
+				goto next_type;
+			}
 			if (data2vp(NULL, NULL, NULL, dac, data, len, len, &vpc) < 0) {
 				goto next_type;
 			}
@@ -464,8 +487,10 @@ static ssize_t xlat_foreach(void *instance, REQUEST *request,
 static ssize_t xlat_string(UNUSED void *instance, REQUEST *request,
 			   char const *fmt, char *out, size_t outlen)
 {
-	int len;
+	size_t len;
+	ssize_t ret;
 	VALUE_PAIR *vp;
+	uint8_t const *p;
 
 	while (isspace((int) *fmt)) fmt++;
 	if (*fmt == '&') fmt++;
@@ -478,10 +503,24 @@ static ssize_t xlat_string(UNUSED void *instance, REQUEST *request,
 
 	if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) goto nothing;
 
-	if (vp->da->type != PW_TYPE_OCTETS) goto nothing;
+	ret = rad_vp2data(&p, vp);
+	if (ret < 0) {
+		return ret;
+	}
 
-	len = fr_print_string(vp->vp_strvalue, vp->length, out, outlen);
-	out[len] = '\0';
+	switch (vp->da->type) {
+		case PW_TYPE_OCTETS:
+			len = fr_print_string((char const *) p, vp->length, out, outlen);
+			break;
+
+		case PW_TYPE_STRING:
+			len = strlcpy(out, vp->vp_strvalue, outlen);
+			break;
+
+		default:
+			len = fr_print_string((char const *) p, ret, out, outlen);
+			break;
+	}
 
 	return len;
 }
