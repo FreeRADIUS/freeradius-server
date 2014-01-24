@@ -179,20 +179,11 @@ static int dhcprelay_process_server_reply(REQUEST *request)
 	/* set DEST ipaddr/port to clientip/68 or broadcast in specific cases */
 	request->packet->dst_ipaddr.af = AF_INET;
 
-	if (!giaddr) {
-		/*
-		 *	We're a relay, and send the reply directly to the client.
-		 */
-		request->packet->src_ipaddr.ipaddr.ip4addr.s_addr = sock->lsock.my_ipaddr.ipaddr.ip4addr.s_addr;
-		request->packet->dst_port = request->packet->dst_port + 1;	/* client port */
-	} else {
-		/*
-		 *	We're a relay, and send the reply to giaddr.
-		 */
-		request->packet->src_ipaddr.ipaddr.ip4addr.s_addr = giaddr->vp_ipaddr;
-		request->packet->dst_port = request->packet->dst_port;		/* server port */
-	}
-
+	/*
+	 *	We're a relay, and send the reply to giaddr.
+	 */
+	request->reply->dst_ipaddr.ipaddr.ip4addr.s_addr = giaddr->vp_ipaddr;
+	request->reply->dst_port = request->packet->dst_port;		/* server port */
 
 	if ((request->packet->code == PW_DHCP_NAK) ||
 	    !sock->src_interface ||
