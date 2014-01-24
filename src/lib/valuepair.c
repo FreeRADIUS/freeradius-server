@@ -2175,8 +2175,9 @@ FR_TOKEN userparse(TALLOC_CTX *ctx, char const *buffer, VALUE_PAIR **list)
 	/*
 	 *	We allow an empty line.
 	 */
-	if (buffer[0] == 0)
+	if (buffer[0] == 0) {
 		return T_EOL;
+	}
 
 	head = NULL;
 	tail = &head;
@@ -2199,7 +2200,7 @@ FR_TOKEN userparse(TALLOC_CTX *ctx, char const *buffer, VALUE_PAIR **list)
 			}
 			if (pairmark_xlat(vp, raw.r_opand) < 0) {
 				talloc_free(vp);
-
+				last_token = T_OP_INVALID;
 				break;
 			}
 		} else {
