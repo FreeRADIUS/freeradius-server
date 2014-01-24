@@ -1078,14 +1078,14 @@ int radius_mapexec(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *m
 				     (map->dst->type == VPT_TYPE_LIST) ? &output_pairs : NULL);
 	talloc_free(expanded);
 	if (result != 0) {
-		REDEBUG("%s", answer);
-		if (output_pairs) talloc_free(output_pairs);
+		talloc_free(output_pairs);
 		return -1;
 	}
 
 	switch (map->dst->type) {
 	case VPT_TYPE_LIST:
 		if (!output_pairs) {
+			REDEBUG("No valid attributes received from program");
 			return -2;
 		}
 		*out = output_pairs;
