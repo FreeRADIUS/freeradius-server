@@ -284,7 +284,6 @@ static ssize_t xlat_debug_attr(UNUSED void *instance, REQUEST *request, char con
 	}
 
 	while (isspace((int) *fmt)) fmt++;
-
 	if (*fmt == '&') fmt++;
 
 	if (radius_parse_attr(fmt, &vpt, REQUEST_CURRENT, PAIR_LIST_REQUEST) < 0) {
@@ -469,6 +468,7 @@ static ssize_t xlat_string(UNUSED void *instance, REQUEST *request,
 	VALUE_PAIR *vp;
 
 	while (isspace((int) *fmt)) fmt++;
+	if (*fmt == '&') fmt++;
 
 	if (outlen < 3) {
 	nothing:
@@ -495,6 +495,7 @@ static ssize_t xlat_xlat(UNUSED void *instance, REQUEST *request,
 	VALUE_PAIR *vp;
 
 	while (isspace((int) *fmt)) fmt++;
+	if (*fmt == '&') fmt++;
 
 	if (outlen < 3) {
 	nothing:
