@@ -658,8 +658,8 @@ ssize_t radius_axlat(char **out, REQUEST *request, char const *fmt, RADIUS_ESCAP
 typedef ssize_t (*RAD_XLAT_FUNC)(void *instance, REQUEST *, char const *, char *, size_t);
 int		xlat_register(char const *module, RAD_XLAT_FUNC func, RADIUS_ESCAPE_STRING escape,
 			      void *instance);
-void		xlat_unregister(char const *module, RAD_XLAT_FUNC func,
-				void *instance);
+void		xlat_unregister(char const *module, RAD_XLAT_FUNC func, void *instance);
+ssize_t		xlat_fmt_to_ref(uint8_t **out, REQUEST *request, char const *fmt);
 void		xlat_free(void);
 
 /* threads.c */

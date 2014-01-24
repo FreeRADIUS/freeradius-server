@@ -3,15 +3,43 @@
 #
 update {
        control:Cleartext-Password := 'hello'
-       request:Called-Station-Id := "%{sha1:This is a string\n}"
+       request:Tmp-String-0 := "This is a string\n"
+       request:Tmp-Octets-0 := 0x000504030201
 }
 
 #
 #  Put "This is a string" into a file and call "sha1sum" on it.
 #  You should get this string.
 #
-if (Called-Station-Id == "cc7edf1ccc4bdf1e0ec8f72b95388b65218ecf0c") {
+if ("%{sha1:This is a string\n}" == 'cc7edf1ccc4bdf1e0ec8f72b95388b65218ecf0c') {
 	update reply {
-		Filter-Id := "filter"
+		Filter-Id := 'filter'
+	}
+}
+
+if ("%{sha1:&Tmp-String-0}" == 'cc7edf1ccc4bdf1e0ec8f72b95388b65218ecf0c') {
+	update reply {
+		Filter-Id := 'filter'
+	}
+}
+
+if ("%{sha1:&request:Tmp-String-0}" == 'cc7edf1ccc4bdf1e0ec8f72b95388b65218ecf0c') {
+	update reply {
+		Filter-Id := 'filter'
+	}
+}
+
+if ("%{sha1:%{Tmp-String-0}}" == 'cc7edf1ccc4bdf1e0ec8f72b95388b65218ecf0c') {
+	update reply {
+		Filter-Id := 'filter'
+	}
+}
+
+#
+#  SHA1 should also be able to cope with references to octet attributes
+#
+if ("%{sha1:&request:Tmp-Octets-0}" != '365b244645fe7294dff062174996572319d5a82c') {
+	update reply {
+		Filter-Id += 'fail'
 	}
 }

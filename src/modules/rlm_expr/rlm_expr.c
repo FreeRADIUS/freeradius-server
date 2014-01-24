@@ -543,8 +543,7 @@ static ssize_t uc_xlat(UNUSED void *instance, UNUSED REQUEST *request,
 	return strlen(out);
 }
 
-/**
- * @brief Calculate the MD5 hash of a string.
+/** Calculate the MD5 hash of a string or attribute.
  *
  * Example: "%{md5:foo}" == "acbd18db4cc2f85cedef654fccc4a4d8"
  */
@@ -552,7 +551,8 @@ static ssize_t md5_xlat(UNUSED void *instance, UNUSED REQUEST *request,
 		        char const *fmt, char *out, size_t outlen)
 {
 	uint8_t digest[16];
-	int i, len;
+	ssize_t i, len, inlen;
+	uint8_t *p;
 	FR_MD5_CTX ctx;
 
 	/*
@@ -563,8 +563,13 @@ static ssize_t md5_xlat(UNUSED void *instance, UNUSED REQUEST *request,
 		return 0;
 	}
 
+	inlen = xlat_fmt_to_ref(&p, request, fmt);
+	if (inlen < 0) {
+		return -1;
+	}
+
 	fr_MD5Init(&ctx);
-	fr_MD5Update(&ctx, (const void *) fmt, strlen(fmt));
+	fr_MD5Update(&ctx, p, inlen);
 	fr_MD5Final(digest, &ctx);
 
 	/*
@@ -581,16 +586,16 @@ static ssize_t md5_xlat(UNUSED void *instance, UNUSED REQUEST *request,
 	return strlen(out);
 }
 
-/**
- * @brief Calculate the SHA1 hash of a string.
+/** Calculate the SHA1 hash of a string or attribute.
  *
  * Example: "%{sha1:foo}" == "0beec7b5ea3f0fdbc95d0dd47f3c5bc275da8a33"
  */
 static ssize_t sha1_xlat(UNUSED void *instance, UNUSED REQUEST *request,
                          char const *fmt, char *out, size_t outlen)
 {
-        uint8_t digest[20];
-        int i, len;
+	uint8_t digest[16];
+	ssize_t i, len, inlen;
+	uint8_t *p;
         fr_SHA1_CTX ctx;
 
         /*
@@ -601,8 +606,13 @@ static ssize_t sha1_xlat(UNUSED void *instance, UNUSED REQUEST *request,
                 return 0;
         }
 
+	inlen = xlat_fmt_to_ref(&p, request, fmt);
+	if (inlen < 0) {
+		return -1;
+	}
+
         fr_SHA1Init(&ctx);
-        fr_SHA1Update(&ctx, (const void *) fmt, strlen(fmt));
+        fr_SHA1Update(&ctx, p, inlen);
         fr_SHA1Final(digest, &ctx);
 
         /*
@@ -620,28 +630,32 @@ static ssize_t sha1_xlat(UNUSED void *instance, UNUSED REQUEST *request,
 }
 
 /**
- * @brief Encode string as base64
+ * @brief Encode string or attribute as base64
  *
- * Example: "%{tobase64:foo}" == "Zm9v"
+ * Example: "%{base64:foo}" == "Zm9v"
  */
 static ssize_t base64_xlat(UNUSED void *instance, UNUSED REQUEST *request,
 			   char const *fmt, char *out, size_t outlen)
 {
-	ssize_t len;
+	ssize_t inlen;
+	uint8_t *p;
 
-	len = strlen(fmt);
+	inlen = xlat_fmt_to_ref(&p, request, fmt);
+	if (inlen < 0) {
+		return -1;
+	}
 
 	/*
 	 *  We can accurately calculate the length of the output string
 	 *  if it's larger than outlen, the output would be useless so abort.
 	 */
-	if ((len < 0) || ((FR_BASE64_ENC_LENGTH(len) + 1) > (ssize_t) outlen)) {
+	if ((inlen < 0) || ((FR_BASE64_ENC_LENGTH(inlen) + 1) > (ssize_t) outlen)) {
 		REDEBUG("xlat failed");
 		*out = '\0';
 		return -1;
 	}
 
-	return fr_base64_encode((const uint8_t *) fmt, len, out, outlen);
+	return fr_base64_encode(p, inlen, out, outlen);
 }
 
 /**
@@ -706,7 +720,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	xlat_register("toupper", uc_xlat, NULL, inst);
 	xlat_register("md5", md5_xlat, NULL, inst);
 	xlat_register("sha1", sha1_xlat, NULL, inst);
-	xlat_register("tobase64", base64_xlat, NULL, inst);
+	xlat_register("base64", base64_xlat, NULL, inst);
 	xlat_register("base64tohex", base64_to_hex_xlat, NULL, inst);
 
 	/*
