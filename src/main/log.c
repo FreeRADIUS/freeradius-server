@@ -47,8 +47,8 @@ static const FR_NAME_NUMBER levels[] = {
 	{ ": Error: ",		L_ERR		},
 	{ ": WARNING: ",	L_DBG_WARN	},
 	{ ": ERROR: ",		L_DBG_ERR	},
-	{ ": WARNING: ",	L_DBG_WARN2	},
-	{ ": ERROR: ",		L_DBG_ERR2	},
+	{ ": WARNING: ",	L_DBG_WARN_REQ	},
+	{ ": ERROR: ",		L_DBG_ERR_REQ	},
 	{ NULL, 0 }
 };
 
@@ -67,8 +67,8 @@ static const FR_NAME_NUMBER colours[] = {
 	{ VTC_BOLD VTC_YELLOW,	L_WARN		},
 	{ VTC_BOLD VTC_RED,	L_DBG_ERR	},
 	{ VTC_BOLD VTC_YELLOW,	L_DBG_WARN	},
-	{ VTC_BOLD VTC_RED,	L_DBG_ERR2	},
-	{ VTC_BOLD VTC_YELLOW,	L_DBG_WARN2	},
+	{ VTC_BOLD VTC_RED,	L_DBG_ERR_REQ	},
+	{ VTC_BOLD VTC_YELLOW,	L_DBG_WARN_REQ	},
 	{ NULL, 0 }
 };
 
@@ -218,31 +218,30 @@ int vradlog(log_type_t type, char const *fmt, va_list ap)
 	 *	Print timestamps for non-debugging, and for high levels
 	 *	of debugging.
 	 */
-	if ((default_log.dest != L_DST_SYSLOG) &&
-	    (debug_flag != 1) && (debug_flag != 2)) {
-		time_t timeval;
+	if (default_log.dest != L_DST_SYSLOG) {
+		if ((debug_flag != 1) && (debug_flag != 2)) {
+			time_t timeval;
 
-		timeval = time(NULL);
-		CTIME_R(&timeval, buffer + len, sizeof(buffer) - len - 1);
+			timeval = time(NULL);
+			CTIME_R(&timeval, buffer + len, sizeof(buffer) - len - 1);
 
-		len = strlen(buffer);
+			len = strlen(buffer);
+			len += strlcpy(buffer + len, fr_int2str(levels, type, ": "), sizeof(buffer) - len);
+		} else goto add_prefix;
+	} else {
+	add_prefix:
+		if (len < sizeof(buffer)) switch (type) {
+		case L_DBG_WARN:
+			len += strlcpy(buffer + len, "WARNING: ", sizeof(buffer) - len);
+			break;
 
-		len += strlcpy(buffer + len,
-			       fr_int2str(levels, type, ": "),
-			       sizeof(buffer) - len);
-	}
+		case L_DBG_ERR:
+			len += strlcpy(buffer + len, "ERROR: ", sizeof(buffer) - len);
+			break;
 
-	switch (type) {
-	case L_DBG_WARN:
-		len += strlcpy(buffer + len, "WARNING: ", sizeof(buffer) - len);
-		break;
-
-	case L_DBG_ERR:
-		len += strlcpy(buffer + len, "ERROR: ", sizeof(buffer) - len);
-		break;
-
-	default:
-		break;
+		default:
+			break;
+		}
 	}
 
 	if (len < sizeof(buffer)) {
@@ -281,6 +280,8 @@ int vradlog(log_type_t type, char const *fmt, va_list ap)
 		case L_WARN:
 		case L_DBG_WARN:
 		case L_DBG_ERR:
+		case L_DBG_ERR_REQ:
+		case L_DBG_WARN_REQ:
 			type = LOG_DEBUG;
 			break;
 		case L_AUTH:
@@ -459,23 +460,24 @@ void vradlog_request(log_type_t type, log_debug_t lvl, REQUEST *request, char co
 	switch (type) {
 	case L_DBG_WARN:
 		extra = "WARNING: ";
-		type = L_DBG_WARN2;
+		type = L_DBG_WARN_REQ;
 		break;
 
 	case L_DBG_ERR:
 		extra = "ERROR: ";
-		type = L_DBG_ERR2;
+		type = L_DBG_ERR_REQ;
 		break;
 	default:
 		break;
 	}
 
 	if (!fp) {
-		request ? radlog(type, "(%u) %s", request->number, buffer) :
+		if (debug_flag > 2) extra = "";
+		request ? radlog(type, "(%u) %s%s", request->number, extra, buffer) :
 			  radlog(type, "%s%s", extra, buffer);
 	} else {
 		if (request) {
-			fprintf(fp, "(%u) ", request->number);
+			fprintf(fp, "(%u) %s", request->number, extra);
 		}
 		fputs(buffer, fp);
 		fputc('\n', fp);
