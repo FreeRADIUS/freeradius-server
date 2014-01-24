@@ -1336,6 +1336,9 @@ bool pairparsevalue(VALUE_PAIR *vp, char const *value)
 
 			/*
 			 *	Convert things which are obviously integers to IP addresses
+			 *
+			 *	We assume the number is the bigendian representation of the
+			 *	IP address.
 			 */
 			if (fr_integer_check(value)) {
 				vp->vp_ipaddr = htonl(atol(value));
@@ -1612,6 +1615,19 @@ bool pairparsevalue(VALUE_PAIR *vp, char const *value)
 	case PW_TYPE_ETHERNET:
 		{
 			char const *c1, *c2;
+
+			/*
+			 *	Convert things which are obviously integers to Ethernet addresses
+			 *
+			 *	We assume the number is the bigendian representation of the
+			 *	ethernet address.
+			 */
+			if (fr_integer_check(value)) {
+				uint64_t integer = htonll(atoll(value));
+
+				memcpy(&vp->vp_ether, &integer, sizeof(vp->vp_ether));
+				break;
+			}
 
 			length = 0;
 			cp = value;
