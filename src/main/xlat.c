@@ -227,7 +227,7 @@ static ssize_t xlat_hex(UNUSED void *instance, REQUEST *request,
 {
 	size_t i;
 	VALUE_PAIR *vp;
-	uint8_t *p;
+	uint8_t const *p;
 	ssize_t	ret;
 	size_t	len;
 
@@ -344,7 +344,6 @@ static ssize_t xlat_debug_attr(UNUSED void *instance, REQUEST *request, char con
 		dac->flags.vp_free = 0;
 
 	next_vp:
-
 		talloc_free(dac);
 
 		if (vpt.da) {
@@ -652,7 +651,7 @@ void xlat_unregister(char const *name, UNUSED RAD_XLAT_FUNC func, void *instance
  * @param fmt string.
  * @returns the length of the data or -1 on error.
  */
-ssize_t xlat_fmt_to_ref(uint8_t **out, REQUEST *request, char const *fmt)
+ssize_t xlat_fmt_to_ref(uint8_t const **out, REQUEST *request, char const *fmt)
 {
 	VALUE_PAIR *vp;
 
@@ -667,7 +666,7 @@ ssize_t xlat_fmt_to_ref(uint8_t **out, REQUEST *request, char const *fmt)
 		return rad_vp2data(out, vp);
 	}
 
-	*out = (uint8_t *)fmt;
+	*out = (uint8_t const *)fmt;
 	return strlen(fmt);
 }
 

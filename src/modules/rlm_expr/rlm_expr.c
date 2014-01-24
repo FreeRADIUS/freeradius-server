@@ -552,7 +552,7 @@ static ssize_t md5_xlat(UNUSED void *instance, UNUSED REQUEST *request,
 {
 	uint8_t digest[16];
 	ssize_t i, len, inlen;
-	uint8_t *p;
+	uint8_t const *p;
 	FR_MD5_CTX ctx;
 
 	/*
@@ -595,7 +595,7 @@ static ssize_t sha1_xlat(UNUSED void *instance, UNUSED REQUEST *request,
 {
 	uint8_t digest[16];
 	ssize_t i, len, inlen;
-	uint8_t *p;
+	uint8_t const *p;
         fr_SHA1_CTX ctx;
 
         /*
@@ -638,7 +638,7 @@ static ssize_t base64_xlat(UNUSED void *instance, UNUSED REQUEST *request,
 			   char const *fmt, char *out, size_t outlen)
 {
 	ssize_t inlen;
-	uint8_t *p;
+	uint8_t const *p;
 
 	inlen = xlat_fmt_to_ref(&p, request, fmt);
 	if (inlen < 0) {
