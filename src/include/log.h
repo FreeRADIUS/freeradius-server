@@ -77,7 +77,7 @@ extern FR_NAME_NUMBER const syslog_str2fac[];
 extern FR_NAME_NUMBER const log_str2dst[];
 extern fr_log_t default_log;
 
-void		rad_get_va_printf_args(va_list, char const *fmt, ...)
+void		rad_get_va_printf_args(va_list *ap, char const *fmt, ...)
 #ifdef __GNUC__
 		__attribute__ ((format (printf, 2, 3)))
 #endif
@@ -162,7 +162,7 @@ void log_talloc_report(TALLOC_CTX *ctx);
 #define _RL(_l, _p, _f, ...)	do {\
 					if (request && request->radlog) {\
 						va_list _a;\
-						rad_get_va_printf_args(_a, _f, ## __VA_ARGS__);\
+						rad_get_va_printf_args(&_a, _f, ## __VA_ARGS__);\
 						request->radlog(_l, _p, request, _f, _a);\
 						va_end(_a);\
 					}\
@@ -171,7 +171,7 @@ void log_talloc_report(TALLOC_CTX *ctx);
 #define _RM(_l, _p, _f, ...)	do {\
 					if (request) {\
 						va_list _a;\
-						rad_get_va_printf_args(_a, _f, ## __VA_ARGS__);\
+						rad_get_va_printf_args(&_a, _f, ## __VA_ARGS__);\
 						if (request->radlog) {\
 							va_list _a_cpy;\
 							va_copy(_a_cpy, _a);\

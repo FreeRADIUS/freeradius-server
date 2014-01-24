@@ -161,9 +161,9 @@ fr_log_t default_log = {
  * @param ap to write args to.
  * @param fmt string to validate.
  */
-void rad_get_va_printf_args(va_list ap, char const *fmt, ...)
+void rad_get_va_printf_args(va_list *ap, char const *fmt, ...)
 {
-	va_start(ap, fmt);
+	va_start(*ap, fmt);
 }
 
 /*
