@@ -507,15 +507,15 @@ int radius_exec_program(REQUEST *request, char const *cmd, bool exec_wait, bool 
 	pid_t pid;
 	int from_child;
 #ifndef __MINGW32__
-	VALUE_PAIR *vp;
 	char *p;
 	pid_t child_pid;
 	int comma = 0;
-	int status;
-	int n, done;
+	int status, ret = 0;
+	ssize_t len;
 	char answer[4096];
 #endif
-	RDEBUG2("Executing: \"%s\"", cmd);
+
+	RDEBUG2("Executing: %s", cmd);
 
 	if (user_msg) *user_msg = '\0';
 
@@ -529,17 +529,17 @@ int radius_exec_program(REQUEST *request, char const *cmd, bool exec_wait, bool 
 	}
 
 #ifndef __MINGW32__
-	done = radius_readfrom_program(request, from_child, pid, timeout, answer, sizeof(answer));
-	if (done < 0) {
+	len = radius_readfrom_program(request, from_child, pid, timeout, answer, sizeof(answer));
+	if (len < 0) {
 		/*
-		 * failure - radius_readfrom_program will
-		 * have called close(from_child) for us
+		 *	Failure - radius_readfrom_program will
+		 *	have called close(from_child) for us
 		 */
 		DEBUG("Failed to read from child output");
 		return -1;
 
 	}
-	answer[done] = '\0';
+	answer[len] = '\0';
 
 	/*
 	 *	Make sure that the writer can't block while writing to
@@ -547,68 +547,58 @@ int radius_exec_program(REQUEST *request, char const *cmd, bool exec_wait, bool 
 	 */
 	close(from_child);
 
+	if (len == 0) {
+		goto wait;
+	}
+
 	/*
 	 *	Parse the output, if any.
 	 */
-	if (done) {
-		n = T_OP_INVALID;
-		if (output_pairs) {
-			/*
-			 *	For backwards compatibility, first check
-			 *	for plain text (user_msg).
-			 */
-			vp = NULL;
-			n = userparse(request, answer, &vp);
-			if (vp) {
-				pairfree(&vp);
+	if (output_pairs) {
+		/*
+		 *	HACK: Replace '\n' with ',' so that
+		 *	userparse() can parse the buffer in
+		 *	one go (the proper way would be to
+		 *	fix userparse(), but oh well).
+		 */
+		for (p = answer; *p; p++) {
+			if (*p == '\n') {
+				*p = comma ? ' ' : ',';
+				p++;
+				comma = 0;
+			}
+			if (*p == ',') {
+				comma++;
 			}
 		}
 
-		if (n == T_OP_INVALID) {
-			if (user_msg) {
-				strlcpy(user_msg, answer, msg_len);
-			}
-		} else {
-			/*
-			 *	HACK: Replace '\n' with ',' so that
-			 *	userparse() can parse the buffer in
-			 *	one go (the proper way would be to
-			 *	fix userparse(), but oh well).
-			 */
-			for (p = answer; *p; p++) {
-				if (*p == '\n') {
-					*p = comma ? ' ' : ',';
-					p++;
-					comma = 0;
-				}
-				if (*p == ',') comma++;
-			}
+		/*
+		 *	Replace any trailing comma by a NUL.
+		 */
+		if (answer[len - 1] == ',') {
+			answer[--len] = '\0';
+		}
 
-			/*
-			 *	Replace any trailing comma by a NUL.
-			 */
-			if (answer[strlen(answer) - 1] == ',') {
-				answer[strlen(answer) - 1] = '\0';
-			}
+		if (userparse(request, answer, output_pairs) == T_OP_INVALID) {
+			REDEBUG("Failed parsing output from: %s: %s", cmd, fr_strerror());
+			strlcpy(user_msg, answer, len);
+			ret = -1;
+		}
+	/*
+	 *	We've not been told to extract output pairs,
+	 *	just copy the programs output to the user_msg
+	 *	buffer.
+	 */
 
-			if (userparse(request, answer, &vp) == T_OP_INVALID) {
-				REDEBUG("Unparsable reply from '%s'", cmd);
-
-				return -1;
-			} else {
-				/*
-				 *	Tell the caller about the value
-				 *	pairs.
-				 */
-				*output_pairs = vp;
-			}
-		} /* else the answer was a set of VP's, not a text message */
-	} /* else we didn't read anything from the child */
+	} else if (user_msg) {
+		strlcpy(user_msg, answer, msg_len);
+	}
 
 	/*
 	 *	Call rad_waitpid (should map to waitpid on non-threaded
 	 *	or single-server systems).
 	 */
+wait:
 	child_pid = rad_waitpid(pid, &status);
 	if (child_pid == 0) {
 		REDEBUG("Timeout waiting for child");
@@ -619,10 +609,13 @@ int radius_exec_program(REQUEST *request, char const *cmd, bool exec_wait, bool 
 	if (child_pid == pid) {
 		if (WIFEXITED(status)) {
 			status = WEXITSTATUS(status);
+			if ((status != 0) || (ret < 0)) {
+				REDEBUG("Program returned code (%d) and output '%s'", status, answer);
+			} else {
+				RDEBUG("Program returned code (%d) and output '%s'", status, answer);
+			}
 
-			RDEBUG("Program returned code (%d): %s", status, answer);
-
-			return status;
+			return ret < 0 ? ret : status;
 		}
 	}
 
