@@ -42,8 +42,7 @@ static void _krb5_logging_free(void *arg)
 
 char const *rlm_krb5_error(krb5_context context, krb5_error_code code)
 {
-	char const *msg;
-	char *buffer;
+	char *msg, *buffer;
 
 	buffer = fr_thread_local_init(krb5_error_buffer, _krb5_logging_free);
 	if (!buffer) {
