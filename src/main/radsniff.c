@@ -1703,6 +1703,11 @@ int main(int argc, char *argv[])
 #endif
 
 	/*
+	 *	Useful if using radsniff as a long running stats daemon
+	 */
+	fr_fault_setup(getenv("PANIC_ACTION"), argv[0]);
+
+	/*
 	 *  Get options
 	 */
 	while ((opt = getopt(argc, argv, "b:c:d:e:DFf:hi:I:l:L:mp:P:qr:R:s:Svw:xXW:T:P:N:O:")) != EOF) {
