@@ -869,7 +869,7 @@ static char const *parse_spaces = "                                             
 int cf_item_parse(CONF_SECTION *cs, char const *name, int type, void *data, char const *dflt)
 {
 	int rcode;
-	bool deprecated, required, attribute;
+	bool deprecated, required, attribute, no_overwrite;
 	char **q;
 	char const *value;
 	fr_ipaddr_t ipaddr;
@@ -881,6 +881,7 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, int type, void *data, char
 	deprecated = (type & PW_TYPE_DEPRECATED);
 	required = (type & PW_TYPE_REQUIRED);
 	attribute = (type & PW_TYPE_ATTRIBUTE);
+	no_overwrite = (type & PW_TYPE_NO_OVERWRITE);
 
 	type &= 0xff;		/* normal types are small */
 	rcode = 0;
@@ -951,6 +952,16 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, int type, void *data, char
 	case PW_TYPE_STRING_PTR:
 		q = (char **) data;
 		if (*q != NULL) {
+			/*
+			 *	Don't over-write something we got from
+			 *	the command line.
+			 */
+			if (no_overwrite) {
+				cf_log_info(cs, "%.*s\t%s = \"%s\"",
+					    cs->depth, parse_spaces, name, *q);
+				break;
+			}
+
 			talloc_free(*q);
 		}
 

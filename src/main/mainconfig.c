@@ -163,6 +163,8 @@ static const CONF_PARSER server_config[] = {
 	{ "logdir",	     PW_TYPE_STRING_PTR, 0, &radlog_dir,	"${localstatedir}/log"},
 	{ "run_dir",	    PW_TYPE_STRING_PTR, 0, &run_dir,	   "${localstatedir}/run/${name}"},
 	{ "libdir",	     PW_TYPE_STRING_PTR, 0, &radlib_dir,	"${prefix}/lib"},
+	{ "dict_dir",		PW_TYPE_STRING_PTR | PW_TYPE_NO_OVERWRITE, 0,
+	  &mainconfig.dictionary_dir, "${prefix}/share" },
 	{ "radacctdir",	 PW_TYPE_STRING_PTR, 0, &radacct_dir,       "${logdir}/radacct" },
 	{ "hostname_lookups",   PW_TYPE_BOOLEAN,    0, &fr_dns_lookups,      "no" },
 	{ "max_request_time", PW_TYPE_INTEGER, 0, &mainconfig.max_request_time, STRINGIFY(MAX_REQUEST_TIME) },
