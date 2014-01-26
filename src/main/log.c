@@ -369,6 +369,7 @@ void vradlog_request(log_type_t type, log_debug_t lvl, REQUEST *request, char co
 	char buffer[10240];	/* The largest config item size, then extra for prefixes and suffixes */
 	char *p;
 	char const *extra = "";
+	va_list aq;
 
 	/*
 	 *	Debug messages get treated specially.
@@ -454,7 +455,18 @@ void vradlog_request(log_type_t type, log_debug_t lvl, REQUEST *request, char co
 		if (len >= sizeof(buffer)) goto finish;
 	}
 
-	vsnprintf(buffer + len, sizeof(buffer) - len, msg, ap);
+	/*
+	 *  If we don't copy the original ap we get a segfault from vasprintf. This is apparently
+	 *  due to ap sometimes being implemented with a stack offset which is invalidated if
+	 *  ap is passed into another function. See here:
+	 *  http://julipedia.meroh.net/2011/09/using-vacopy-to-safely-pass-ap.html
+	 *
+	 *  I don't buy that explanation, but doing a va_copy here does prevent SEGVs seen when
+	 *  running unit tests which generate errors under CI.
+	 */
+	va_copy(aq, ap);
+	vsnprintf(buffer + len, sizeof(buffer) - len, msg, aq);
+	va_end(aq);
 
 	finish:
 	switch (type) {
