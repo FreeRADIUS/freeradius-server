@@ -926,27 +926,20 @@ int dict_addattr(char const *name, int attr, unsigned int vendor, int type,
 		if (!v4) goto oom;
 
 		v6 = fr_pool_alloc(sizeof(*v6));
-		if (!v6) {
-			free(v4);
-			goto oom;
-		}
+		if (!v6) goto oom;
 
 		memcpy(v4, n, sizeof(*v4));
 		v4->type = PW_TYPE_IPADDR;
 
 		memcpy(v6, n, sizeof(*v6));
 		v6->type = PW_TYPE_IPV6ADDR;
-
-		if (!fr_hash_table_insert(attributes_combo, v4)) {
+		if (!fr_hash_table_replace(attributes_combo, v4)) {
 			fr_strerror_printf("dict_addattr: Failed inserting attribute name %s - IPv4", name);
-			free(v4);
-			free(v6);
 			return -1;
 		}
 
-		if (!fr_hash_table_insert(attributes_combo, v6)) {
+		if (!fr_hash_table_replace(attributes_combo, v6)) {
 			fr_strerror_printf("dict_addattr: Failed inserting attribute name %s - IPv6", name);
-			free(v6);
 			return -1;
 		}
 	}
