@@ -618,7 +618,6 @@ void		fr_printf_log(char const *, ...)
  */
 int		fr_set_signal(int sig, sig_t func);
 TALLOC_CTX	*fr_autofree_ctx(void);
-void		fr_debug_break(void);
 char const	*fr_inet_ntop(int af, void const *src);
 char const 	*ip_ntoa(char *, uint32_t);
 char		*ifid_ntoa(char *buffer, size_t size, uint8_t const *ifid);
