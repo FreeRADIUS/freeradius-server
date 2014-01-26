@@ -161,25 +161,22 @@ void log_talloc_report(TALLOC_CTX *ctx);
  */
 #define _RL(_l, _p, _f, ...)	do {\
 					if (request && request->radlog) {\
-						va_list _a;\
-						rad_get_va_printf_args(&_a, _f, ## __VA_ARGS__);\
-						request->radlog(_l, _p, request, _f, _a);\
-						va_end(_a);\
+						va_list _ap;\
+						rad_get_va_printf_args(&_ap, _f, ## __VA_ARGS__);\
+						request->radlog(_l, _p, request, _f, _ap);\
+						va_end(_ap);\
 					}\
 				} while(0)
 
 #define _RM(_l, _p, _f, ...)	do {\
 					if (request) {\
-						va_list _a;\
-						rad_get_va_printf_args(&_a, _f, ## __VA_ARGS__);\
+						va_list _ap;\
+						rad_get_va_printf_args(&_ap, _f, ## __VA_ARGS__);\
 						if (request->radlog) {\
-							va_list _a_cpy;\
-							va_copy(_a_cpy, _a);\
-							request->radlog(_l, _p, request, _f, _a_cpy);\
-							va_end(_a_cpy);\
+							request->radlog(_l, _p, request, _f, _ap);\
 						}\
-						vmodule_failure_msg(request, _f, _a);\
-						va_end(_a);\
+						vmodule_failure_msg(request, _f, _ap);\
+						va_end(_ap);\
 					}\
 				} while (0)
 

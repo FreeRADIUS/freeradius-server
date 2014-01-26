@@ -1449,6 +1449,7 @@ void vmodule_failure_msg(REQUEST *request, char const *fmt, va_list ap)
 {
 	char *p;
 	VALUE_PAIR *vp;
+	va_list aq;
 
 	if (!fmt || !request->packet) {
 		return;
@@ -1459,7 +1460,18 @@ void vmodule_failure_msg(REQUEST *request, char const *fmt, va_list ap)
 		return;
 	}
 
-	p = talloc_vasprintf(vp, fmt, ap);
+	/*
+	 *  If we don't copy the original ap we get a segfault from vasprintf. This is apparently
+	 *  due to ap sometimes being implemented with a stack offset which is invalidated if
+	 *  ap is passed into another function. See here:
+	 *  http://julipedia.meroh.net/2011/09/using-vacopy-to-safely-pass-ap.html
+	 *
+	 *  I don't buy that explanation, but doing a va_copy here does prevent SEGVs seen when
+	 *  running unit tests which generate errors under CI.
+	 */
+	va_copy(aq, ap);
+	p = talloc_vasprintf(vp, fmt, aq);
+	va_end(aq);
 	if (request->module && *request->module) {
 		pairsprintf(vp, "%s: %s", request->module, p);
 	} else {
