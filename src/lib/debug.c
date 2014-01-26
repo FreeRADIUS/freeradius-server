@@ -41,7 +41,7 @@
 
 #ifdef HAVE_EXECINFO_H
 #  define MAX_BT_FRAMES 128
-#  define MAX_BT_ENTRIES 65536			//!< Should be a power of 2
+#  define MAX_BT_CBUFF  65536			//!< Should be a power of 2
 
 #  ifdef HAVE_PTHREAD_H
 static pthread_mutex_t fr_debug_init = PTHREAD_MUTEX_INITIALIZER;
@@ -132,7 +132,7 @@ void backtrace_print(fr_cbuff_t *cbuff, void *obj)
 
 			fprintf(stderr, "Stacktrace for: %p\n", p);
 			for (i = 0; i < p->count; i++) {
-				fprintf(stdout, "%s\n", frames[i]);
+				fprintf(stderr, "%s\n", frames[i]);
 			}
 
 			/* We were only asked to look for one */
@@ -190,7 +190,7 @@ fr_bt_marker_t *fr_backtrace_attach(fr_cbuff_t **cbuff, TALLOC_CTX *obj)
 			TALLOC_CTX *ctx;
 
 			ctx = fr_autofree_ctx();
-			*cbuff = fr_cbuff_alloc(ctx, MAX_BT_ENTRIES, true);
+			*cbuff = fr_cbuff_alloc(ctx, MAX_BT_CBUFF, true);
 		}
 		PTHREAD_MUTEX_UNLOCK(&fr_debug_init);
 	}
@@ -210,11 +210,11 @@ fr_bt_marker_t *fr_backtrace_attach(fr_cbuff_t **cbuff, TALLOC_CTX *obj)
 #else
 void backtrace_print(UNUSED fr_cbuff_t *cbuff, UNUSED void *obj)
 {
-	fr_perror("Server built without fr_backtrace_* support, requires execinfo.h and possibly -lexecinfo");
+	fprintf(stderr, "Server built without fr_backtrace_* support, requires execinfo.h and possibly -lexecinfo\n");
 }
 fr_bt_marker_t *fr_backtrace_attach(UNUSED fr_cbuff_t **cbuff, UNUSED TALLOC_CTX *obj)
 {
-	fr_perror("Server built without fr_backtrace_* support, requires execinfo.h and possibly -lexecinfo");
+	fprintf(stderr, "Server built without fr_backtrace_* support, requires execinfo.h and possibly -lexecinfo\n");
 	abort();
 }
 #endif /* ifdef HAVE_EXECINFO_H */
