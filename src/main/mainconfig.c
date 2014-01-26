@@ -1002,6 +1002,9 @@ int read_mainconfig(int reload)
 	rad_assert(cs_cache == NULL);
 	cs_cache = cc;
 
+	/* Clear any unprocessed configuration errors */
+	(void) fr_strerror();
+
 	return 0;
 }
 

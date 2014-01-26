@@ -121,8 +121,8 @@ int main(int argc, char *argv[])
 	{
 		WSADATA wsaData;
 		if (WSAStartup(MAKEWORD(2, 0), &wsaData)) {
-		  fprintf(stderr, "%s: Unable to initialize socket library.\n", progname);
-			return 1;
+			fprintf(stderr, "%s: Unable to initialize socket library.\n", progname);
+			exit(EXIT_FAILURE);
 		}
 	}
 #endif
