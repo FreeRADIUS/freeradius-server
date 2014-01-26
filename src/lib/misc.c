@@ -62,8 +62,11 @@ int fr_set_signal(int sig, sig_t func)
 {
 #ifdef HAVE_SIGACTION
 	struct sigaction act;
-	act.sa_handler = func;
+
 	memset(&act, 0, sizeof(act));
+	act.sa_flags = 0;
+	sigemptyset(&act.sa_mask);
+	act.sa_handler = func;
 
 	if (sigaction(sig, &act, NULL) < 0) {
 		fr_strerror_printf("Failed setting signal %i handler via sigaction(): %s", sig, fr_syserror(errno));

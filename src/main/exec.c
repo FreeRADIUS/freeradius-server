@@ -32,7 +32,6 @@ RCSID("$Id$")
 
 #include <fcntl.h>
 #include <ctype.h>
-#include <signal.h>
 
 #ifdef HAVE_SYS_WAIT_H
 #	include <sys/wait.h>
