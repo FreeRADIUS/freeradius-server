@@ -27,7 +27,6 @@ RCSID("$Id$")
 
 #define _LIBRADIUS 1
 #include <assert.h>
-#include <signal.h>
 #include <time.h>
 #include <math.h>
 #include <freeradius-devel/libradius.h>
@@ -2297,22 +2296,12 @@ int main(int argc, char *argv[])
 	 *	Setup signal handlers so we always exit gracefully, ensuring output buffers are always
 	 *	flushed.
 	 */
-	{
-#ifdef HAVE_SIGACTION
-		struct sigaction action;
-		memset(&action, 0, sizeof(action));
-
-		action.sa_handler = rs_cleanup;
-		sigaction(SIGINT, &action, NULL);
-		sigaction(SIGQUIT, &action, NULL);
-		sigaction(SIGTERM, &action, NULL);
-#else
-		signal(SIGINT, rs_cleanup);
-#  ifdef SIGQUIT
-		signal(SIGQUIT, rs_cleanup);
-#  endif
+	fr_set_signal(SIGINT, rs_cleanup);
+	fr_set_signal(SIGTERM, rs_cleanup);
+#ifdef SIGQUIT
+	fr_set_signal(SIGQUIT, rs_cleanup);
 #endif
-	}
+
 	fr_event_loop(events);	/* Enter the main event loop */
 
 	DEBUG("Done sniffing");

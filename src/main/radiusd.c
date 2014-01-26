@@ -36,8 +36,6 @@ RCSID("$Id$")
 #include <fcntl.h>
 #include <ctype.h>
 
-#include <signal.h>
-
 #ifdef HAVE_GETOPT_H
 #	include <getopt.h>
 #endif
@@ -109,9 +107,6 @@ int main(int argc, char *argv[])
 	int flag = 0;
 	int from_child[2] = {-1, -1};
 
-#ifdef HAVE_SIGACTION
-	struct sigaction act;
-#endif
 
 #ifdef OSFC2
 	set_auth_parameters(argc,argv);
@@ -143,12 +138,6 @@ int main(int argc, char *argv[])
 	mainconfig.myip.af = AF_UNSPEC;
 	mainconfig.port = -1;
 	mainconfig.name = "radiusd";
-
-#ifdef HAVE_SIGACTION
-	memset(&act, 0, sizeof(act));
-	act.sa_flags = 0 ;
-	sigemptyset( &act.sa_mask ) ;
-#endif
 
 	/*
 	 *	Don't put output anywhere until we get told a little
@@ -446,33 +435,27 @@ int main(int argc, char *argv[])
 #ifdef SIGPIPE
 	signal(SIGPIPE, SIG_IGN);
 #endif
-#ifdef HAVE_SIGACTION
-	act.sa_handler = sig_hup;
-	sigaction(SIGHUP, &act, NULL);
-	act.sa_handler = sig_fatal;
-	sigaction(SIGTERM, &act, NULL);
-#else
-#ifdef SIGHUP
-	signal(SIGHUP, sig_hup);
-#endif
-	signal(SIGTERM, sig_fatal);
-#endif
+
+	if ((fr_set_signal(SIGHUP, sig_hup) < 0) ||
+	    (fr_set_signal(SIGTERM, sig_fatal) < 0)) {
+	    	ERROR("%s", fr_strerror());
+	 	exit(EXIT_FAILURE);
+	}
+
 	/*
 	 *	If we're debugging, then a CTRL-C will cause the
 	 *	server to die immediately.  Use SIGTERM to shut down
 	 *	the server cleanly in that case.
 	 */
 	if ((mainconfig.debug_memory == 1) || (debug_flag == 0)) {
-#ifdef HAVE_SIGACTION
-		act.sa_handler = sig_fatal;
-		sigaction(SIGINT, &act, NULL);
-		sigaction(SIGQUIT, &act, NULL);
-#else
-		signal(SIGINT, sig_fatal);
+		if ((fr_set_signal(SIGINT, sig_fatal) < 0)
 #ifdef SIGQUIT
-		signal(SIGQUIT, sig_fatal);
+		|| (fr_set_signal(SIGQUIT, sig_fatal) < 0)
 #endif
-#endif
+		) {
+			ERROR("%s", fr_strerror());
+			exit(EXIT_FAILURE);
+		}
 	}
 
 	/*
@@ -648,22 +631,22 @@ static void sig_fatal(int sig)
 	if (getpid() != radius_pid) _exit(sig);
 
 	switch(sig) {
-		case SIGTERM:
+	case SIGTERM:
+		radius_signal_self(RADIUS_SIGNAL_SELF_TERM);
+		break;
+
+	case SIGINT:
+#ifdef SIGQUIT
+	case SIGQUIT:
+#endif
+		if (mainconfig.debug_memory || memory_report) {
 			radius_signal_self(RADIUS_SIGNAL_SELF_TERM);
 			break;
+		}
+		/* FALL-THROUGH */
 
-		case SIGINT:
-#ifdef SIGQUIT
-		case SIGQUIT:
-#endif
-			if (mainconfig.debug_memory || memory_report) {
-				radius_signal_self(RADIUS_SIGNAL_SELF_TERM);
-				break;
-			}
-			/* FALL-THROUGH */
-
-		default:
-			_exit(sig);
+	default:
+		_exit(sig);
 	}
 }
 

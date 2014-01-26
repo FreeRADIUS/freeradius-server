@@ -87,6 +87,7 @@ RCSIDH(libradius_h, "$Id$")
 #include <stdlib.h>
 #include <stdarg.h>
 #include <stdbool.h>
+#include <signal.h>
 
 #include <freeradius-devel/threads.h>
 #include <freeradius-devel/radius.h>
@@ -659,6 +660,7 @@ void		fr_printf_log(char const *, ...)
 /*
  *	Several handy miscellaneous functions.
  */
+int		fr_set_signal(int sig, sig_t func);
 TALLOC_CTX	*fr_autofree_ctx(void);
 char const	*fr_inet_ntop(int af, void const *src);
 char const 	*ip_ntoa(char *, uint32_t);

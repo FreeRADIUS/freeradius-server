@@ -22,7 +22,7 @@
  * @copyright 2013  Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  */
 #include <freeradius-devel/libradius.h>
-#include <signal.h>
+
 /*
  *	runtime backtrace functions are not POSIX but are included in
  *	glibc, OSX >= 10.5 and various BSDs
