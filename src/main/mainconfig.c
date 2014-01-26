@@ -166,6 +166,7 @@ static const CONF_PARSER server_config[] = {
 	{ "dict_dir",		PW_TYPE_STRING_PTR | PW_TYPE_NO_OVERWRITE, 0,
 	  &mainconfig.dictionary_dir, "${prefix}/share" },
 	{ "radacctdir",	 PW_TYPE_STRING_PTR, 0, &radacct_dir,       "${logdir}/radacct" },
+	{ "panic_action", PW_TYPE_STRING_PTR, 0, &mainconfig.panic_action, NULL},
 	{ "hostname_lookups",   PW_TYPE_BOOLEAN,    0, &fr_dns_lookups,      "no" },
 	{ "max_request_time", PW_TYPE_INTEGER, 0, &mainconfig.max_request_time, STRINGIFY(MAX_REQUEST_TIME) },
 	{ "cleanup_delay", PW_TYPE_INTEGER, 0, &mainconfig.cleanup_delay, STRINGIFY(CLEANUP_DELAY) },
