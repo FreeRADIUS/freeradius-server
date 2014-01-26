@@ -296,7 +296,7 @@ static int rad_sendto(int sockfd, void *data, size_t data_len, int flags,
 done:
 #endif
 	if (rcode < 0) {
-		fr_strerror_printf("sendto failed: %s", strerror(errno));
+		fr_strerror_printf("sendto failed: %s", fr_syserror(errno));
 	}
 
 	return rcode;
@@ -2598,7 +2598,7 @@ RADIUS_PACKET *rad_recv(int fd, int flags)
 	 *	Check for socket errors.
 	 */
 	if (data_len < 0) {
-		fr_strerror_printf("Error receiving packet: %s", strerror(errno));
+		fr_strerror_printf("Error receiving packet: %s", fr_syserror(errno));
 		/* packet->data is NULL */
 		rad_free(&packet);
 		return NULL;
@@ -3925,7 +3925,7 @@ ssize_t rad_vp2data(uint8_t const **out, VALUE_PAIR const *vp)
 
 		ret = fr_thread_local_set(rad_vp2data_buff, buffer);
 		if (ret != 0) {
-			fr_strerror_printf("Failed setting up TLS for rad_vp2data buffer: %s", strerror(errno));
+			fr_strerror_printf("Failed setting up TLS for rad_vp2data buffer: %s", fr_syserror(errno));
 			free(buffer);
 			return -1;
 		}

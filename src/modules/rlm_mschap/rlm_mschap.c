@@ -828,7 +828,7 @@ static int do_mschap_cpw(rlm_mschap_t *inst,
 			return -1;
 		}
 		if (child_pid != pid) {
-			REDEBUG("Abnormal exit status: %s", strerror(errno));
+			REDEBUG("Abnormal exit status: %s", fr_syserror(errno));
 			return -1;
 		}
 

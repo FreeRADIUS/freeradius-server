@@ -438,7 +438,7 @@ static void fr_set_dumpable(void)
 
 		if (setrlimit(RLIMIT_CORE, &no_core) < 0) {
 			ERROR("Failed disabling core dumps: %s",
-			       strerror(errno));
+			       fr_syserror(errno));
 		}
 #endif
 		return;
@@ -451,7 +451,7 @@ static void fr_set_dumpable(void)
 #ifdef PR_SET_DUMPABLE
 	if (prctl(PR_SET_DUMPABLE, 1) < 0) {
 		ERROR("Cannot re-enable core dumps: prctl(PR_SET_DUMPABLE) failed: '%s'",
-		       strerror(errno));
+		       fr_syserror(errno));
 	}
 #endif
 #endif
@@ -462,7 +462,7 @@ static void fr_set_dumpable(void)
 #ifdef HAVE_SYS_RESOURCE_H
 	if (setrlimit(RLIMIT_CORE, &core_limits) < 0) {
 		ERROR("Cannot update core dump limit: %s",
-		       strerror(errno));
+		       fr_syserror(errno));
 	}
 #endif
 }
@@ -497,7 +497,7 @@ void fr_suid_down(void)
 
 	if (setresuid(-1, server_uid, geteuid()) < 0) {
 		fprintf(stderr, "%s: Failed switching to uid %s: %s\n",
-			progname, uid_name, strerror(errno));
+			progname, uid_name, fr_syserror(errno));
 		fr_exit_now(1);
 	}
 
@@ -516,7 +516,7 @@ void fr_suid_down_permanent(void)
 
 	if (setresuid(server_uid, server_uid, server_uid) < 0) {
 		ERROR("Failed in permanent switch to uid %s: %s",
-		       uid_name, strerror(errno));
+		       uid_name, fr_syserror(errno));
 		fr_exit_now(1);
 	}
 
@@ -540,7 +540,7 @@ void fr_suid_down(void)
 
 	if (setuid(server_uid) < 0) {
 		fprintf(stderr, "%s: Failed switching to uid %s: %s\n",
-			progname, uid_name, strerror(errno));
+			progname, uid_name, fr_syserror(errno));
 		fr_exit(1);
 	}
 
@@ -581,7 +581,7 @@ static int switch_users(CONF_SECTION *cs)
 	 *	initialized.
 	 */
 	if (getrlimit(RLIMIT_CORE, &core_limits) < 0) {
-		ERROR("Failed to get current core limit:  %s", strerror(errno));
+		ERROR("Failed to get current core limit:  %s", fr_syserror(errno));
 		return 0;
 	}
 #endif
@@ -606,7 +606,7 @@ static int switch_users(CONF_SECTION *cs)
 		gr = getgrnam(gid_name);
 		if (gr == NULL) {
 			fprintf(stderr, "%s: Cannot get ID for group %s: %s\n",
-				progname, gid_name, strerror(errno));
+				progname, gid_name, fr_syserror(errno));
 			return 0;
 		}
 		server_gid = gr->gr_gid;
@@ -623,7 +623,7 @@ static int switch_users(CONF_SECTION *cs)
 		pw = getpwnam(uid_name);
 		if (pw == NULL) {
 			fprintf(stderr, "%s: Cannot get passwd entry for user %s: %s\n",
-				progname, uid_name, strerror(errno));
+				progname, uid_name, fr_syserror(errno));
 			return 0;
 		}
 
@@ -635,7 +635,7 @@ static int switch_users(CONF_SECTION *cs)
 #ifdef HAVE_INITGROUPS
 			if (initgroups(uid_name, server_gid) < 0) {
 				fprintf(stderr, "%s: Cannot initialize supplementary group list for user %s: %s\n",
-					progname, uid_name, strerror(errno));
+					progname, uid_name, fr_syserror(errno));
 				return 0;
 			}
 #endif
@@ -648,7 +648,7 @@ static int switch_users(CONF_SECTION *cs)
 	if (chroot_dir) {
 		if (chroot(chroot_dir) < 0) {
 			fprintf(stderr, "%s: Failed to perform chroot %s: %s",
-				progname, chroot_dir, strerror(errno));
+				progname, chroot_dir, fr_syserror(errno));
 			return 0;
 		}
 
@@ -673,7 +673,7 @@ static int switch_users(CONF_SECTION *cs)
 	/*  Set GID.  */
 	if (gid_name && (setgid(server_gid) < 0)) {
 		fprintf(stderr, "%s: Failed setting group to %s: %s",
-			progname, gid_name, strerror(errno));
+			progname, gid_name, fr_syserror(errno));
 		return 0;
 	}
 #endif
@@ -692,13 +692,13 @@ static int switch_users(CONF_SECTION *cs)
 			default_log.fd = open(mainconfig.log_file,
 					      O_WRONLY | O_APPEND | O_CREAT, 0640);
 			if (default_log.fd < 0) {
-				fprintf(stderr, "radiusd: Failed to open log file %s: %s\n", mainconfig.log_file, strerror(errno));
+				fprintf(stderr, "radiusd: Failed to open log file %s: %s\n", mainconfig.log_file, fr_syserror(errno));
 				return 0;
 			}
 
 			if (chown(mainconfig.log_file, server_uid, server_gid) < 0) {
 				fprintf(stderr, "%s: Cannot change ownership of log file %s: %s\n",
-					progname, mainconfig.log_file, strerror(errno));
+					progname, mainconfig.log_file, fr_syserror(errno));
 				return 0;
 			}
 		}
@@ -746,7 +746,7 @@ int read_mainconfig(int reload)
 
 	if (stat(radius_dir, &statbuf) < 0) {
 		ERROR("Errors reading %s: %s",
-		       radius_dir, strerror(errno));
+		       radius_dir, fr_syserror(errno));
 		return -1;
 	}
 
@@ -902,7 +902,7 @@ int read_mainconfig(int reload)
 		default_log.fd = open(mainconfig.log_file,
 					    O_WRONLY | O_APPEND | O_CREAT, 0640);
 		if (default_log.fd < 0) {
-			fprintf(stderr, "radiusd: Failed to open log file %s: %s\n", mainconfig.log_file, strerror(errno));
+			fprintf(stderr, "radiusd: Failed to open log file %s: %s\n", mainconfig.log_file, fr_syserror(errno));
 			cf_file_free(cs);
 			return -1;
 		}
@@ -990,7 +990,7 @@ int read_mainconfig(int reload)
 	if (chroot_dir) {
 		if (chdir(radlog_dir) < 0) {
 			ERROR("Failed to 'chdir %s' after chroot: %s",
-			       radlog_dir, strerror(errno));
+			       radlog_dir, fr_syserror(errno));
 			return -1;
 		}
 	}

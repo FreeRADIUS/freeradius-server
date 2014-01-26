@@ -1540,7 +1540,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 				if (stat(value, &stat_buf) < 0) {
 					ERROR("%s[%d]: Failed reading directory %s: %s",
 					       filename, *lineno,
-					       value, strerror(errno));
+					       value, fr_syserror(errno));
 					return -1;
 				}
 
@@ -1554,7 +1554,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 				if (!dir) {
 					ERROR("%s[%d]: Error reading directory %s: %s",
 					       filename, *lineno, value,
-					       strerror(errno));
+					       fr_syserror(errno));
 					return -1;
 				}
 
@@ -1600,7 +1600,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 					struct stat statbuf;
 
 					if (stat(value, &statbuf) < 0) {
-						WDEBUG("Not including file %s: %s", value, strerror(errno));
+						WDEBUG("Not including file %s: %s", value, fr_syserror(errno));
 						continue;
 					}
 				}
@@ -1922,7 +1922,7 @@ int cf_file_include(CONF_SECTION *cs, char const *filename)
 	fp = fopen(filename, "r");
 	if (!fp) {
 		ERROR("Unable to open file \"%s\": %s",
-		       filename, strerror(errno));
+		       filename, fr_syserror(errno));
 		return -1;
 	}
 

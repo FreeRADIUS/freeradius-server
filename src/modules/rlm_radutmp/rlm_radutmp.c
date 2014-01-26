@@ -91,7 +91,7 @@ static rlm_rcode_t radutmp_zap(REQUEST *request, char const *filename, uint32_t 
 
 	fd = open(filename, O_RDWR);
 	if (fd < 0) {
-		REDEBUG("Error accessing file %s: %s", filename, strerror(errno));
+		REDEBUG("Error accessing file %s: %s", filename, fr_syserror(errno));
 		return RLM_MODULE_FAIL;
 	}
 
@@ -99,7 +99,7 @@ static rlm_rcode_t radutmp_zap(REQUEST *request, char const *filename, uint32_t 
 	*	Lock the utmp file, prefer lockf() over flock().
 	*/
 	if (rad_lockfd(fd, LOCK_LEN) < 0) {
-		REDEBUG("Failed to acquire lock on file %s: %s", filename, strerror(errno));
+		REDEBUG("Failed to acquire lock on file %s: %s", filename, fr_syserror(errno));
 		close(fd);
 		return RLM_MODULE_FAIL;
 	}
@@ -122,7 +122,7 @@ static rlm_rcode_t radutmp_zap(REQUEST *request, char const *filename, uint32_t 
 		u.time = t;
 
 		if (write(fd, &u, sizeof(u)) < 0) {
-			REDEBUG("Failed writing: %s", strerror(errno));
+			REDEBUG("Failed writing: %s", fr_syserror(errno));
 
 			close(fd);
 			return RLM_MODULE_FAIL;
@@ -390,7 +390,7 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 	 */
 	fd = open(filename, O_RDWR|O_CREAT, inst->permission);
 	if (fd < 0) {
-		REDEBUG("Error accessing file %s: %s", filename, strerror(errno));
+		REDEBUG("Error accessing file %s: %s", filename, fr_syserror(errno));
 		rcode = RLM_MODULE_FAIL;
 
 		goto finish;
@@ -497,7 +497,7 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 
 		ut.type = P_LOGIN;
 		if (write(fd, &ut, sizeof(u)) < 0) {
-			REDEBUG("Failed writing: %s", strerror(errno));
+			REDEBUG("Failed writing: %s", fr_syserror(errno));
 
 			rcode = RLM_MODULE_FAIL;
 			goto finish;
@@ -514,7 +514,7 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 			u.time = ut.time;
 			u.delay = ut.delay;
 			if (write(fd, &u, sizeof(u)) < 0) {
-				REDEBUG("Failed writing: %s", strerror(errno));
+				REDEBUG("Failed writing: %s", fr_syserror(errno));
 
 				rcode = RLM_MODULE_FAIL;
 				goto finish;
@@ -581,7 +581,7 @@ static rlm_rcode_t mod_checksimul(void *instance, REQUEST *request)
 		/*
 		 *	Error accessing the file.
 		 */
-		ERROR("rlm_radumtp: Error accessing file %s: %s", expanded, strerror(errno));
+		ERROR("rlm_radumtp: Error accessing file %s: %s", expanded, fr_syserror(errno));
 
 		rcode = RLM_MODULE_FAIL;
 

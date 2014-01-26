@@ -264,7 +264,7 @@ static PerlInterpreter *rlm_perl_clone(PerlInterpreter *perl, pthread_key_t *key
 
 	ret = pthread_setspecific(*key, interp);
 	if (ret != 0) {
-		DEBUG("rlm_perl: Failed associating interpretor with thread %s", strerror(ret));
+		DEBUG("rlm_perl: Failed associating interpretor with thread %s", fr_syserror(ret));
 
 		rlm_perl_destruct(interp);
 		return NULL;

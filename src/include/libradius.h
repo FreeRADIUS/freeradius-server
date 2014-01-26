@@ -587,6 +587,7 @@ void		fr_perror(char const *, ...)
 		__attribute__ ((format (printf, 1, 2)))
 #endif
 ;
+char const *fr_syserror(int num);
 extern bool fr_assert_cond(char const *file, int line, char const *expr, bool cond);
 #define fr_assert(_x) fr_assert_cond(__FILE__,  __LINE__, #_x, (_x))
 
@@ -614,7 +615,10 @@ void		fr_printf_log(char const *, ...)
 /*
  *	Several handy miscellaneous functions.
  */
+int		fr_set_signal(int sig, sig_t func);
+TALLOC_CTX	*fr_autofree_ctx(void);
 void		fr_debug_break(void);
+char const	*fr_inet_ntop(int af, void const *src);
 char const 	*ip_ntoa(char *, uint32_t);
 char		*ifid_ntoa(char *buffer, size_t size, uint8_t const *ifid);
 uint8_t		*ifid_aton(char const *ifid_str, uint8_t *ifid);

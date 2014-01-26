@@ -169,7 +169,7 @@ static int fr_server_domain_socket(char const *path)
 
 	if ((sockfd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
 		ERROR("Failed creating socket: %s",
-			strerror(errno));
+			fr_syserror(errno));
 		return -1;
 	}
 
@@ -185,7 +185,7 @@ static int fr_server_domain_socket(char const *path)
 	if (stat(path, &buf) < 0) {
 		if (errno != ENOENT) {
 			ERROR("Failed to stat %s: %s",
-			       path, strerror(errno));
+			       path, fr_syserror(errno));
 			close(sockfd);
 			return -1;
 		}
@@ -215,7 +215,7 @@ static int fr_server_domain_socket(char const *path)
 
 		if (unlink(path) < 0) {
 			ERROR("Failed to delete %s: %s",
-			       path, strerror(errno));
+			       path, fr_syserror(errno));
 			close(sockfd);
 			return -1;
 		}
@@ -223,7 +223,7 @@ static int fr_server_domain_socket(char const *path)
 
 	if (bind(sockfd, (struct sockaddr *)&salocal, socklen) < 0) {
 		ERROR("Failed binding to %s: %s",
-			path, strerror(errno));
+			path, fr_syserror(errno));
 		close(sockfd);
 		return -1;
 	}
@@ -234,14 +234,14 @@ static int fr_server_domain_socket(char const *path)
 	 */
 	if (chmod(path, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP) < 0) {
 		ERROR("Failed setting permissions on %s: %s",
-		       path, strerror(errno));
+		       path, fr_syserror(errno));
 		close(sockfd);
 		return -1;
 	}
 
 	if (listen(sockfd, 8) < 0) {
 		ERROR("Failed listening to %s: %s",
-			path, strerror(errno));
+			path, fr_syserror(errno));
 		close(sockfd);
 		return -1;
 	}
@@ -252,7 +252,7 @@ static int fr_server_domain_socket(char const *path)
 
 		if ((flags = fcntl(sockfd, F_GETFL, NULL)) < 0)  {
 			ERROR("Failure getting socket flags: %s",
-				strerror(errno));
+				fr_syserror(errno));
 			close(sockfd);
 			return -1;
 		}
@@ -260,7 +260,7 @@ static int fr_server_domain_socket(char const *path)
 		flags |= O_NONBLOCK;
 		if( fcntl(sockfd, F_SETFL, flags) < 0) {
 			ERROR("Failure setting socket flags: %s",
-				strerror(errno));
+				fr_syserror(errno));
 			close(sockfd);
 			return -1;
 		}
@@ -747,7 +747,7 @@ static int command_show_xml(rad_listen_t *listener, UNUSED int argc, UNUSED char
 
 	fp = fdopen(fd, "a");
 	if (!fp) {
-		cprintf(listener, "ERROR: Can't dup %s\n", strerror(errno));
+		cprintf(listener, "ERROR: Can't dup %s\n", fr_syserror(errno));
 		return 0;
 	}
 
@@ -961,7 +961,7 @@ static int command_show_client_config(rad_listen_t *listener, int argc, char *ar
 
 	fp = fdopen(fd, "a");
 	if (!fp) {
-		cprintf(listener, "ERROR: Can't dup %s\n", strerror(errno));
+		cprintf(listener, "ERROR: Can't dup %s\n", fr_syserror(errno));
 		return 0;
 	}
 
@@ -1033,7 +1033,7 @@ static int command_show_home_server_config(rad_listen_t *listener, int argc, cha
 
 	fp = fdopen(fd, "a");
 	if (!fp) {
-		cprintf(listener, "ERROR: Can't dup %s\n", strerror(errno));
+		cprintf(listener, "ERROR: Can't dup %s\n", fr_syserror(errno));
 		return 0;
 	}
 
@@ -1134,7 +1134,7 @@ static int null_socket_send(UNUSED rad_listen_t *listener, REQUEST *request)
 	fp = fopen(output_file, "w");
 	if (!fp) {
 		ERROR("Failed to send injected file to %s: %s",
-		       output_file, strerror(errno));
+		       output_file, fr_syserror(errno));
 		return 0;
 	}
 
@@ -1304,7 +1304,7 @@ static int command_inject_file(rad_listen_t *listener, int argc, char *argv[])
 	fp = fopen(argv[0], "r");
 	if (!fp ) {
 		cprintf(listener, "ERROR: Failed opening %s: %s\n",
-			argv[0], strerror(errno));
+			argv[0], fr_syserror(errno));
 		return 0;
 	}
 
@@ -2145,7 +2145,7 @@ static int command_socket_parse_unix(CONF_SECTION *cs, rad_listen_t *this)
 		pw = getpwnam(sock->uid_name);
 		if (!pw) {
 			ERROR("Failed getting uid for %s: %s",
-			       sock->uid_name, strerror(errno));
+			       sock->uid_name, fr_syserror(errno));
 			return -1;
 		}
 
@@ -2160,7 +2160,7 @@ static int command_socket_parse_unix(CONF_SECTION *cs, rad_listen_t *this)
 		gr = getgrnam(sock->gid_name);
 		if (!gr) {
 			ERROR("Failed getting gid for %s: %s",
-			       sock->gid_name, strerror(errno));
+			       sock->gid_name, fr_syserror(errno));
 			return -1;
 		}
 		sock->gid = gr->gr_gid;
@@ -2207,7 +2207,7 @@ static int command_socket_parse_unix(CONF_SECTION *cs, rad_listen_t *this)
 		fr_suid_up();
 		if (fchown(this->fd, sock->uid, sock->gid) < 0) {
 			ERROR("Failed setting ownership of %s: %s",
-			       sock->path, strerror(errno));
+			       sock->path, fr_syserror(errno));
 			fr_suid_down();
 			return -1;
 		}
@@ -2545,7 +2545,7 @@ static int command_write_magic(int newfd, listen_socket_t *sock)
 	magic = htonl(0xf7eead15);
 	if (write(newfd, &magic, 4) < 0) {
 		ERROR("Failed writing initial data to socket: %s",
-		       strerror(errno));
+		       fr_syserror(errno));
 		return -1;
 	}
 
@@ -2555,7 +2555,7 @@ static int command_write_magic(int newfd, listen_socket_t *sock)
 		magic = htonl(1);
 	}
 	if (write(newfd, &magic, 4) < 0) {
-		ERROR("Failed writing initial data to socket: %s", strerror(errno));
+		ERROR("Failed writing initial data to socket: %s", fr_syserror(errno));
 		return -1;
 	}
 
@@ -2577,7 +2577,7 @@ static int command_write_magic(int newfd, listen_socket_t *sock)
 		 *	FIXME: EINTR, etc.
 		 */
 		if (write(newfd, co->buffer, 16) < 0) {
-			ERROR("Failed writing version data to socket: %s", strerror(errno));
+			ERROR("Failed writing version data to socket: %s", fr_syserror(errno));
 			return -1;
 		}
 	}
@@ -2617,7 +2617,7 @@ static int command_tcp_recv(rad_listen_t *this)
 				if (errno == EINTR) return 0;
 
 				ERROR("Failed reading from control socket; %s",
-				       strerror(errno));
+				       fr_syserror(errno));
 				goto close_socket;
 			}
 
@@ -2693,7 +2693,7 @@ static int command_domain_accept(rad_listen_t *listener)
 
 		if (getpeereid(newfd, &uid, &gid) < 0) {
 			ERROR("Failed getting peer credentials for %s: %s",
-			       sock->path, strerror(errno));
+			       sock->path, fr_syserror(errno));
 			close(newfd);
 			return 0;
 		}

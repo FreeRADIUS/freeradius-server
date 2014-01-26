@@ -239,7 +239,7 @@ static int mod_instantiate(CONF_SECTION *cs, void *instance)
 
 #ifdef HAVE_PTHREAD_H
 		if (pthread_mutex_init(&(inst->handler_mutex), NULL) < 0) {
-			ERROR("rlm_eap (%s): Failed initializing mutex: %s", inst->xlat_name, strerror(errno));
+			ERROR("rlm_eap (%s): Failed initializing mutex: %s", inst->xlat_name, fr_syserror(errno));
 			return -1;
 		}
 #endif
@@ -247,7 +247,7 @@ static int mod_instantiate(CONF_SECTION *cs, void *instance)
 
 #ifdef HAVE_PTHREAD_H
 	if (pthread_mutex_init(&(inst->session_mutex), NULL) < 0) {
-		ERROR("rlm_eap (%s): Failed initializing mutex: %s", inst->xlat_name, strerror(errno));
+		ERROR("rlm_eap (%s): Failed initializing mutex: %s", inst->xlat_name, fr_syserror(errno));
 		return -1;
 	}
 #endif

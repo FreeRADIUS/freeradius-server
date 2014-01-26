@@ -579,14 +579,14 @@ static int dhcp_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	if (broadcast) {
 		if (setsockopt(this->fd, SOL_SOCKET, SO_BROADCAST, &on, sizeof(on)) < 0) {
 			ERROR("Can't set broadcast option: %s\n",
-			       strerror(errno));
+			       fr_syserror(errno));
 			return -1;
 		}
 	}
 
 	if (setsockopt(this->fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) < 0) {
 		ERROR("Can't set re-use addres option: %s\n",
-		       strerror(errno));
+		       fr_syserror(errno));
 		return -1;
 	}
 

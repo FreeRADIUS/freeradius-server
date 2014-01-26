@@ -196,7 +196,7 @@ int main(int argc, char *argv[])
 				default_log.fd = open(mainconfig.log_file,
 							    O_WRONLY | O_APPEND | O_CREAT, 0640);
 				if (default_log.fd < 0) {
-					fprintf(stderr, "radiusd: Failed to open log file %s: %s\n", mainconfig.log_file, strerror(errno));
+					fprintf(stderr, "radiusd: Failed to open log file %s: %s\n", mainconfig.log_file, fr_syserror(errno));
 					exit(EXIT_FAILURE);
 				}
 				fr_log_fp = fdopen(default_log.fd, "a");
@@ -337,13 +337,13 @@ int main(int argc, char *argv[])
 		pid_t pid;
 
 		if (pipe(from_child) != 0) {
-			ERROR("Couldn't open pipe for child status: %s", strerror(errno));
+			ERROR("Couldn't open pipe for child status: %s", fr_syserror(errno));
 			exit(EXIT_FAILURE);
 		}
 
 		pid = fork();
 		if (pid < 0) {
-			ERROR("Couldn't fork: %s", strerror(errno));
+			ERROR("Couldn't fork: %s", fr_syserror(errno));
 			exit(EXIT_FAILURE);
 		}
 
@@ -407,7 +407,7 @@ int main(int argc, char *argv[])
 		devnull = open("/dev/null", O_RDWR);
 		if (devnull < 0) {
 			ERROR("Failed opening /dev/null: %s\n",
-			       strerror(errno));
+			       fr_syserror(errno));
 			exit(EXIT_FAILURE);
 		}
 		dup2(devnull, STDIN_FILENO);
@@ -517,7 +517,7 @@ int main(int argc, char *argv[])
 			fclose(fp);
 		} else {
 			ERROR("Failed creating PID file %s: %s\n",
-			       mainconfig.pid_file, strerror(errno));
+			       mainconfig.pid_file, fr_syserror(errno));
 			exit(EXIT_FAILURE);
 		}
 	}
@@ -534,7 +534,7 @@ int main(int argc, char *argv[])
 	if (!dont_fork) {
 		if (write(from_child[1], "\001", 1) < 0) {
 			WARN("Failed informing parent of successful start: %s",
-			     strerror(errno));
+			     fr_syserror(errno));
 		}
 		close(from_child[1]);
 	}

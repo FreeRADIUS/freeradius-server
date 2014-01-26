@@ -222,7 +222,7 @@ static int radclient_init(char const *filename)
 		fp = fopen(filename, "r");
 		if (!fp) {
 			fprintf(stderr, "radclient: Error opening %s: %s\n",
-				filename, strerror(errno));
+				filename, fr_syserror(errno));
 			return 0;
 		}
 	} else {
@@ -603,7 +603,7 @@ static int send_one_packet(radclient_t *radclient)
 			mysockfd = fr_socket(&client_ipaddr, 0);
 			if (mysockfd < 0) {
 				fprintf(stderr, "radclient: Can't open new socket: %s\n",
-					strerror(errno));
+					fr_syserror(errno));
 				exit(1);
 			}
 			if (!fr_packet_list_socket_add(pl, mysockfd, ipproto,
@@ -1015,12 +1015,12 @@ int main(int argc, char **argv)
 		       fp = fopen(optarg, "r");
 		       if (!fp) {
 			       fprintf(stderr, "radclient: Error opening %s: %s\n",
-				       optarg, strerror(errno));
+				       optarg, fr_syserror(errno));
 			       exit(1);
 		       }
 		       if (fgets(filesecret, sizeof(filesecret), fp) == NULL) {
 			       fprintf(stderr, "radclient: Error reading %s: %s\n",
-				       optarg, strerror(errno));
+				       optarg, fr_syserror(errno));
 			       exit(1);
 		       }
 		       fclose(fp);
@@ -1110,7 +1110,7 @@ int main(int argc, char **argv)
 		}
 
 		if (ip_hton(hostname, force_af, &server_ipaddr) < 0) {
-			fprintf(stderr, "radclient: Failed to find IP address for host %s: %s\n", hostname, strerror(errno));
+			fprintf(stderr, "radclient: Failed to find IP address for host %s: %s\n", hostname, fr_syserror(errno));
 			exit(1);
 		}
 

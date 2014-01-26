@@ -393,7 +393,7 @@ int fr_event_loop(fr_event_list_t *el)
 		rcode = select(maxfd + 1, &read_fds, NULL, NULL, wake);
 		if ((rcode < 0) && (errno != EINTR)) {
 			fr_strerror_printf("Failed in select: %s",
-					   strerror(errno));
+					   fr_syserror(errno));
 			el->dispatch = 0;
 			return -1;
 		}

@@ -132,7 +132,7 @@ int main(int argc, char **argv)
 		fp = fopen(file, "w");
 		if (!fp) {
 			fprintf(stderr, "%s: Failed openng %s: %s\n",
-				progname, file, strerror(errno));
+				progname, file, fr_syserror(errno));
 			exit(1);
 		}
 	}

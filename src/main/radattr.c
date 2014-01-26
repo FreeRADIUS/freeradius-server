@@ -581,7 +581,7 @@ static void process_file(const char *root_dir, char const *filename)
 		fp = fopen(directory, "r");
 		if (!fp) {
 			fprintf(stderr, "Error opening %s: %s\n",
-				directory, strerror(errno));
+				directory, fr_syserror(errno));
 			exit(1);
 		}
 	}
