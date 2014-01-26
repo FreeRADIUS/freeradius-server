@@ -263,7 +263,7 @@ static void NEVER_RETURNS _fr_fault(int sig)
 		snprintf(cmd, sizeof(cmd), "%.*s%i%s",
 			 (int)(p - panic_action), panic_action, (int)getpid(), p + 2);
 	} else {
-		strlcpy(cmd, panic_action, sizeof(panic_action));
+		strlcpy(cmd, panic_action, sizeof(cmd));
 	}
 
 	fprintf(stderr, "Calling: %s\n", cmd);
@@ -294,7 +294,7 @@ int fr_fault_setup(char const *cmd, char const *program)
 			snprintf(panic_action, sizeof(panic_action), "%.*s%s%s",
 				 (int)(p - cmd), cmd, program, p + 2);
 		} else {
-			strlcpy(panic_action, cmd, sizeof(cmd));
+			strlcpy(panic_action, cmd, sizeof(panic_action));
 		}
 	} else {
 		*panic_action = '\0';
