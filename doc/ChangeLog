@@ -1,14 +1,23 @@
 FreeRADIUS 3.0.2 Mon 13 Jan 2014 14:30:00 EDT urgency=medium
 	Feature improvements
 	* Allow cast (and implicit conversion) of integers to IPv4 addresses
+	* More xlats allow attribute references.  This means they can
+	  operate on binary data.  expr, base64, md5, sha1.
+	* Added more tests
+
 	Bug fixes
 	* Fix SQL groups.
 	* Fix operation of fr_strerror() with RE*() macros.
-	* Don't assert if the connection were trying to reconnect 
+	* Don't assert if the connection were trying to reconnect
 	  is not in_use.
 	* Fix %{mschap:User-Name} xlat.
 	* Allow comparisons of signed integers and ethernet addresses.
 	* Fix parsing of text based ascend binary filters
+	* Fix a few minor Coverity and clang analyzer issues.
+	* Log WARNING prefixes only once, not twice.
+	* Allow '&' in more xlat expansions.
+	* Fix attribute truncation seen in Perl and other places.
+	* Use correct port when DHCP relaying.
 
 FreeRADIUS 3.0.1 Mon 13 Jan 2014 14:30:00 EDT urgency=medium
 	Feature improvements
