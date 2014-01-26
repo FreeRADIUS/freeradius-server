@@ -2,18 +2,16 @@
 #	This is the master dictionary file, which references the
 #	pre-defined dictionary files included with the server.
 #
-#	Any new/changed attributes MUST be placed in this file, as
-#	the pre-defined dictionaries SHOULD NOT be edited.
+#	Any new/changed attributes MUST be placed in this file.
+#	The pre-defined dictionaries SHOULD NOT be edited.
+#	As of version 3.0.2, this dictionary does not include
+#	the default dictionaries.  The server now does that
+#	automatically.
 #
 #	See "man dictionary" for documentation on its format.
 #
 #	$Id$
 #
-
-#
-#	The filename given here should be an absolute path.
-#
-$INCLUDE	@prefix@/share/freeradius/dictionary
 
 #
 #	All additional attributes an $INCLUDE's should go into

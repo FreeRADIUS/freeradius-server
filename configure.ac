@@ -1742,7 +1742,6 @@ AC_OUTPUT(\
   ./scripts/cron/radiusd.cron.daily \
   ./scripts/cron/radiusd.cron.monthly \
   ./scripts/cryptpasswd \
-  ./raddb/dictionary \
   ./raddb/radrelay.conf \
   ./raddb/radiusd.conf
 )
