@@ -63,12 +63,8 @@ static DICT_ATTR *dict_base_attrs[256];
  */
 typedef struct dict_stat_t {
 	struct dict_stat_t *next;
-	char	   	   *name;
-	time_t		   mtime;
+	struct stat stat_buf;
 } dict_stat_t;
-
-static char *stat_root_dir = NULL;
-static char *stat_root_file = NULL;
 
 static dict_stat_t *stat_head = NULL;
 static dict_stat_t *stat_tail = NULL;
@@ -348,11 +344,6 @@ static void dict_stat_free(void)
 {
 	dict_stat_t *this, *next;
 
-	free(stat_root_dir);
-	stat_root_dir = NULL;
-	free(stat_root_file);
-	stat_root_file = NULL;
-
 	if (!stat_head) {
 		stat_tail = NULL;
 		return;
@@ -360,7 +351,6 @@ static void dict_stat_free(void)
 
 	for (this = stat_head; this != NULL; this = next) {
 		next = this->next;
-		free(this->name);
 		free(this);
 	}
 
@@ -371,7 +361,7 @@ static void dict_stat_free(void)
 /*
  *	Add an entry to the list of stat buffers.
  */
-static void dict_stat_add(char const *name, struct stat const *stat_buf)
+static void dict_stat_add(struct stat const *stat_buf)
 {
 	dict_stat_t *this;
 
@@ -379,8 +369,7 @@ static void dict_stat_add(char const *name, struct stat const *stat_buf)
 	if (!this) return;
 	memset(this, 0, sizeof(*this));
 
-	this->name = strdup(name);
-	this->mtime = stat_buf->st_mtime;
+	memcpy(&(this->stat_buf), stat_buf, sizeof(this->stat_buf));
 
 	if (!stat_head) {
 		stat_head = stat_tail = this;
@@ -395,26 +384,49 @@ static void dict_stat_add(char const *name, struct stat const *stat_buf)
  *	See if any dictionaries have changed.  If not, don't
  *	do anything.
  */
-static int dict_stat_check(char const *root_dir, char const *root_file)
+static int dict_stat_check(char const *dir, char const *file)
 {
-	struct stat buf;
+	struct stat stat_buf;
 	dict_stat_t *this;
+	char buffer[2048];
 
-	if (!stat_root_dir) return 0;
-	if (!stat_root_file) return 0;
+	/*
+	 *	Nothing cached, all files are new.
+	 */
+	if (!stat_head) return 0;
 
-	if (strcmp(root_dir, stat_root_dir) != 0) return 0;
-	if (strcmp(root_file, stat_root_file) != 0) return 0;
+	/*
+	 *	Stat the file.
+	 */
+	snprintf(buffer, sizeof(buffer), "%s/%s", dir, file);
+	if (stat(buffer, &stat_buf) < 0) return 0;
 
-	if (!stat_head) return 0; /* changed, reload */
-
+	/*
+	 *	Find the cache entry.
+	 *	FIXME: use a hash table.
+	 *	FIXME: check dependencies, via children.
+	 *	       if A loads B and B changes, we probably want
+	 *	       to reload B at the minimum.
+	 */
 	for (this = stat_head; this != NULL; this = this->next) {
-		if (stat(this->name, &buf) < 0) return 0;
+		if (this->stat_buf.st_dev != stat_buf.st_dev) continue;
+		if (this->stat_buf.st_ino != stat_buf.st_ino) continue;
 
-		if (buf.st_mtime != this->mtime) return 0;
+		/*
+		 *	The file has changed.  Re-read it.
+		 */
+		if (this->stat_buf.st_mtime < stat_buf.st_mtime) return 0;
+
+		/*
+		 *	The file is the same.  Ignore it.
+		 */
+		return 1;
 	}
 
-	return 1;
+	/*
+	 *	Not in the cache.
+	 */
+	return 0;
 }
 
 typedef struct fr_pool_t {
@@ -2063,7 +2075,7 @@ static int my_dict_init(char const *parent, char const *filename,
 	}
 #endif
 
-	dict_stat_add(fn, &statbuf);
+	dict_stat_add(&statbuf);
 
 	/*
 	 *	Seed the random pool with data.
@@ -2369,8 +2381,6 @@ int dict_init(char const *dir, char const *fn)
 	 *	Free the dictionaries, and the stat cache.
 	 */
 	dict_free();
-	stat_root_dir = strdup(dir);
-	stat_root_file = strdup(fn);
 
 	/*
 	 *	Create the table of vendor by name.   There MAY NOT
