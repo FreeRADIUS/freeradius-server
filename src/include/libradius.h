@@ -635,10 +635,10 @@ void		fr_perror(char const *, ...)
 extern bool fr_assert_cond(char const *file, int line, char const *expr, bool cond);
 #define fr_assert(_x) fr_assert_cond(__FILE__,  __LINE__, #_x, (_x))
 
-extern void _fr_exit(char const *file, int line, int status);
+extern void NEVER_RETURNS _fr_exit(char const *file, int line, int status);
 #define fr_exit(_x) _fr_exit(__FILE__,  __LINE__, (_x))
 
-extern void _fr_exit_now(char const *file, int line, int status);
+extern void NEVER_RETURNS _fr_exit_now(char const *file, int line, int status);
 #define fr_exit_now(_x) _fr_exit_now(__FILE__,  __LINE__, (_x))
 
 extern char const *fr_strerror(void);
