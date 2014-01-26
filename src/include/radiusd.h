@@ -446,6 +446,7 @@ typedef struct main_config_t {
 	char const	*auth_badpass_msg;
 	char const	*auth_goodpass_msg;
 	int		debug_memory;
+	char const	*panic_action;
 } MAIN_CONFIG_T;
 
 #define SECONDS_PER_DAY		86400

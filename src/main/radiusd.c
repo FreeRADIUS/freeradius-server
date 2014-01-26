@@ -318,6 +318,11 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
+	/* Set the panic action (if required) */
+	if (mainconfig.panic_action && (fr_fault_setup(mainconfig.panic_action, argv[0]) < 0)) {
+		exit(EXIT_FAILURE);
+	}
+
 #ifndef __MINGW32__
 	/*
 	 *  Disconnect from session

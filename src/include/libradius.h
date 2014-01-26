@@ -738,9 +738,10 @@ void		*fr_cbuff_rp_next(fr_cbuff_t *cbuff, TALLOC_CTX *ctx);
 /* debug.c */
 typedef struct fr_bt_marker fr_bt_marker_t;
 
-void			fr_debug_break(void);
-void			backtrace_print(fr_cbuff_t *cbuff, void *obj);
-fr_bt_marker_t		*fr_backtrace_attach(fr_cbuff_t **cbuff, TALLOC_CTX *obj);
+void		fr_debug_break(void);
+void		backtrace_print(fr_cbuff_t *cbuff, void *obj);
+fr_bt_marker_t	*fr_backtrace_attach(fr_cbuff_t **cbuff, TALLOC_CTX *obj);
+int		fr_fault_setup(char const *cmd, char const *program);
 
 /* rbtree.c */
 typedef struct rbtree_t rbtree_t;
