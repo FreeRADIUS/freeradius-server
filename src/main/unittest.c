@@ -336,8 +336,6 @@ static REQUEST *request_setup(FILE *fp)
 	request->packet->dst_port = 1812;
 
 	/*
-=======
->>>>>>> 5cb691c... Allow Packet-Type, Digest-*, etc.
 	 *	Build the reply template from the request.
 	 */
 	request->reply->sockfd = request->packet->sockfd;
