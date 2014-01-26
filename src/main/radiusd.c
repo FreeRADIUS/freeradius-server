@@ -101,9 +101,9 @@ int main(int argc, char *argv[])
 	int rcode = EXIT_SUCCESS;
 	int status;
 	int argval;
-	int spawn_flag = true;
-	int dont_fork = false;
-	int write_pid = false;
+	bool spawn_flag = true;
+	bool dont_fork = false;
+	bool write_pid = false;
 	int flag = 0;
 	int from_child[2] = {-1, -1};
 
