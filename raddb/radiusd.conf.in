@@ -122,7 +122,7 @@ pidfile = ${run_dir}/${name}.pid
 #  panic_action: Command to execute on server fault.
 #
 #  WARNING: DO NOT SET A PANIC ACTION ON PRODUCTION SERVERS WHICH DOES
-#  WARNING: NOT IMMEDIATELY RETURN.  DOING SO MAY PREVENT YOUR server
+#  WARNING: NOT IMMEDIATELY RETURN.  DOING SO MAY PREVENT YOUR SERVER
 #  WARNING: FROM RESTARTING.
 #
 #  Sets a command which will be executed if the server receives a fatal,
@@ -136,12 +136,12 @@ pidfile = ${run_dir}/${name}.pid
 #  - %e   The currently executing program e.g. /sbin/radiusd
 #  - %p   The PID of the currently executing program e.g. 12345
 #
-#  Standard ${} syntax substitutions are also allowed.
+#  Standard ${} substitutions are also allowed.
 #
-#  An example for opening an interactive session in GDB would be:
+#  An example panic action for opening an interactive session in GDB would be:
 #panic_action = "gdb %e %p"
 #
-#  An example for opening an automated session in GDB would be:
+#  An example panic action for opening an automated session in GDB would be:
 #panic_action = "gdb -silent -x ${raddbdir}/panic.gdb %e %p > ${logdir}/gdb.log 2>&1"
 
 #  max_request_time: The maximum time (in seconds) to handle a request.

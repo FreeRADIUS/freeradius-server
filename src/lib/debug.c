@@ -280,6 +280,7 @@ static void NEVER_RETURNS _fr_fault(int sig)
  * @param cmd to execute on fault. If present %p will be substituted
  *        for the parent PID before the command is executed, and %e
  *        will be substituted for the currently running program.
+ * @param program Name of program currently executing (argv[0]).
  * @return 0 on success -1 on failure.
  */
 int fr_fault_setup(char const *cmd, char const *program)
@@ -292,7 +293,7 @@ int fr_fault_setup(char const *cmd, char const *program)
 		p = strstr(cmd, "%e");
 		if (p) {
 			snprintf(panic_action, sizeof(panic_action), "%.*s%s%s",
-				 (int)(p - cmd), cmd, program, p + 2);
+				 (int)(p - cmd), cmd, program ? program : "", p + 2);
 		} else {
 			strlcpy(panic_action, cmd, sizeof(panic_action));
 		}

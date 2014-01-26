@@ -107,6 +107,13 @@ int main(int argc, char *argv[])
 	int flag = 0;
 	int from_child[2] = {-1, -1};
 
+	/*
+	 *	If the server was built with debugging enabled always install
+	 *	the basic fatal signal handlers.
+	 */
+#ifndef NDEBUG
+	fr_fault_setup(NULL, NULL);
+#endif
 
 #ifdef OSFC2
 	set_auth_parameters(argc,argv);
