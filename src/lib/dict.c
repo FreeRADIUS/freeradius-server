@@ -2043,6 +2043,19 @@ static int my_dict_init(char const *parent, char const *filename,
 
 	}
 
+	/*
+	 *	Check if we've loaded this file before.  If so, ignore it.
+	 */
+	p = strrchr(fn, FR_DIR_SEP);
+	if (p) {
+		*p = '\0';
+		if (dict_stat_check(fn, p + 1)) {
+			*p = FR_DIR_SEP;
+			return 0;
+		}
+		*p = FR_DIR_SEP;
+	}
+
 	if ((fp = fopen(fn, "r")) == NULL) {
 		if (!src_file) {
 			fr_strerror_printf("dict_init: Couldn't open dictionary \"%s\": %s",
