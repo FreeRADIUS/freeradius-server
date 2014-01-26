@@ -685,6 +685,20 @@ void fr_rand_seed(void const *, size_t ); /* seed the random pool */
 /* crypt wrapper from crypt.c */
 int fr_crypt_check(char const *key, char const *salt);
 
+/* cbuff.c */
+typedef struct fr_cbuff fr_cbuff_t;
+
+fr_cbuff_t	*fr_cbuff_alloc(TALLOC_CTX *ctx, uint32_t size, bool lock);
+void		fr_cbuff_rp_insert(fr_cbuff_t *cbuff, void *obj);
+void		*fr_cbuff_rp_next(fr_cbuff_t *cbuff, TALLOC_CTX *ctx);
+
+/* debug.c */
+typedef struct fr_bt_marker fr_bt_marker_t;
+
+void		fr_debug_break(void);
+void		backtrace_print(fr_cbuff_t *cbuff, void *obj);
+fr_bt_marker_t	*fr_backtrace_attach(fr_cbuff_t **cbuff, TALLOC_CTX *obj);
+
 /* rbtree.c */
 typedef struct rbtree_t rbtree_t;
 typedef struct rbnode_t rbnode_t;

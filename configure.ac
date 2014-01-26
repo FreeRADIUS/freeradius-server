@@ -755,6 +755,7 @@ AC_CHECK_HEADERS( \
   unistd.h \
   crypt.h \
   errno.h \
+  execinfo.h\
   resource.h \
   sys/resource.h \
   getopt.h \
