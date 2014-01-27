@@ -970,7 +970,7 @@ int dict_addattr(char const *name, int attr, unsigned int vendor, int type,
 int dict_addvalue(char const *namestr, char const *attrstr, int value)
 {
 	size_t		length;
-	DICT_ATTR const	*dattr;
+	DICT_ATTR const	*da;
 	DICT_VALUE	*dval;
 
 	static DICT_ATTR const *last_attr = NULL;
@@ -1000,31 +1000,31 @@ int dict_addvalue(char const *namestr, char const *attrstr, int value)
 	 *	caching the last attribute.
 	 */
 	if (last_attr && (strcasecmp(attrstr, last_attr->name) == 0)) {
-		dattr = last_attr;
+		da = last_attr;
 	} else {
-		dattr = dict_attrbyname(attrstr);
-		last_attr = dattr;
+		da = dict_attrbyname(attrstr);
+		last_attr = da;
 	}
 
 	/*
 	 *	Remember which attribute is associated with this
 	 *	value, if possible.
 	 */
-	if (dattr) {
-		if (dattr->flags.has_value_alias) {
+	if (da) {
+		if (da->flags.has_value_alias) {
 			fr_strerror_printf("dict_addvalue: Cannot add VALUE for ATTRIBUTE \"%s\": It already has a VALUE-ALIAS", attrstr);
 			return -1;
 		}
 
-		dval->attr = dattr->attr;
-		dval->vendor = dattr->vendor;
+		dval->attr = da->attr;
+		dval->vendor = da->vendor;
 
 		/*
 		 *	Enforce valid values
 		 *
 		 *	Don't worry about fixups...
 		 */
-		switch (dattr->type) {
+		switch (da->type) {
 			case PW_TYPE_BYTE:
 				if (value > 255) {
 					fr_pool_free(dval);
@@ -1053,7 +1053,7 @@ int dict_addvalue(char const *namestr, char const *attrstr, int value)
 			default:
 				fr_pool_free(dval);
 				fr_strerror_printf("dict_addvalue: VALUEs cannot be defined for attributes of type '%s'",
-					   fr_int2str(dict_attr_types, dattr->type, "?Unknown?"));
+					   fr_int2str(dict_attr_types, da->type, "?Unknown?"));
 				return -1;
 		}
 	} else {
@@ -1087,7 +1087,7 @@ int dict_addvalue(char const *namestr, char const *attrstr, int value)
 		memcpy(&tmp, &dval, sizeof(tmp));
 
 		if (!fr_hash_table_insert(values_byname, tmp)) {
-			if (dattr) {
+			if (da) {
 				DICT_VALUE *old;
 
 				/*
@@ -1095,7 +1095,7 @@ int dict_addvalue(char const *namestr, char const *attrstr, int value)
 				 *	name and value.  There are lots in
 				 *	dictionary.ascend.
 				 */
-				old = dict_valbyname(dattr->attr, dattr->vendor, namestr);
+				old = dict_valbyname(da->attr, da->vendor, namestr);
 				if (old && (old->value == dval->value)) {
 					fr_pool_free(dval);
 					return 0;
@@ -2929,14 +2929,14 @@ DICT_ATTR const *dict_attrunknownbyname(char const *attribute, int vp_free)
  */
 DICT_ATTR const *dict_attrbyvalue(unsigned int attr, unsigned int vendor)
 {
-	DICT_ATTR dattr;
+	DICT_ATTR da;
 
 	if ((attr > 0) && (attr < 256) && !vendor) return dict_base_attrs[attr];
 
-	dattr.attr = attr;
-	dattr.vendor = vendor;
+	da.attr = attr;
+	da.vendor = vendor;
 
-	return fr_hash_table_finddata(attributes_byvalue, &dattr);
+	return fr_hash_table_finddata(attributes_byvalue, &da);
 }
 
 
@@ -2950,13 +2950,13 @@ DICT_ATTR const *dict_attrbyvalue(unsigned int attr, unsigned int vendor)
 DICT_ATTR const *dict_attrbytype(unsigned int attr, unsigned int vendor,
 				 PW_TYPE type)
 {
-	DICT_ATTR dattr;
+	DICT_ATTR da;
 
-	dattr.attr = attr;
-	dattr.vendor = vendor;
-	dattr.type = type;
+	da.attr = attr;
+	da.vendor = vendor;
+	da.type = type;
 
-	return fr_hash_table_finddata(attributes_combo, &dattr);
+	return fr_hash_table_finddata(attributes_combo, &da);
 }
 
 /**
@@ -2966,7 +2966,7 @@ int dict_attr_child(DICT_ATTR const *parent,
 		    unsigned int *pattr, unsigned int *pvendor)
 {
 	unsigned int attr, vendor;
-	DICT_ATTR dattr;
+	DICT_ATTR da;
 
 	if (!parent || !pattr || !pvendor) return false;
 
@@ -2992,8 +2992,8 @@ int dict_attr_child(DICT_ATTR const *parent,
 	/*
 	 *	Bootstrap by starting off with the parents values.
 	 */
-	dattr.attr = parent->attr;
-	dattr.vendor = parent->vendor;
+	da.attr = parent->attr;
+	da.vendor = parent->vendor;
 
 	/*
 	 *	Do various butchery to insert the "attr" value.
@@ -3005,10 +3005,10 @@ int dict_attr_child(DICT_ATTR const *parent,
 	 *	EEVID	000000AA	EVS with vendor VID, attr AAA
 	 *	EEVID	DDCCBBAA	EVS with TLVs
 	 */
-	if (!dattr.vendor) {
-		dattr.vendor = parent->attr * FR_MAX_VENDOR;
-		dattr.vendor |= vendor;
-		dattr.attr = attr;
+	if (!da.vendor) {
+		da.vendor = parent->attr * FR_MAX_VENDOR;
+		da.vendor |= vendor;
+		da.attr = attr;
 
 	} else {
 		int i;
@@ -3022,7 +3022,7 @@ int dict_attr_child(DICT_ATTR const *parent,
 
 		for (i = MAX_TLV_NEST - 1; i >= 0; i--) {
 			if ((parent->attr & (fr_attr_mask[i] << fr_attr_shift[i]))) {
-				dattr.attr |= (attr & fr_attr_mask[i + 1]) << fr_attr_shift[i + 1];
+				da.attr |= (attr & fr_attr_mask[i + 1]) << fr_attr_shift[i + 1];
 				goto find;
 			}
 		}
@@ -3034,11 +3034,11 @@ find:
 #if 0
 	fprintf(stderr, "LOOKING FOR %08x %08x + %08x %08x --> %08x %08x\n",
 		parent->vendor, parent->attr, attr, vendor,
-		dattr.vendor, dattr.attr);
+		da.vendor, da.attr);
 #endif
 
-	*pattr = dattr.attr;
-	*pvendor = dattr.vendor;
+	*pattr = da.attr;
+	*pvendor = da.vendor;
 	return true;
 }
 
@@ -3048,17 +3048,17 @@ find:
 DICT_ATTR const *dict_attrbyparent(DICT_ATTR const *parent, unsigned int attr, unsigned int vendor)
 {
 	unsigned int my_attr, my_vendor;
-	DICT_ATTR dattr;
+	DICT_ATTR da;
 
 	my_attr = attr;
 	my_vendor = vendor;
 
 	if (!dict_attr_child(parent, &my_attr, &my_vendor)) return NULL;
 
-	dattr.attr = my_attr;
-	dattr.vendor = my_vendor;
+	da.attr = my_attr;
+	da.vendor = my_vendor;
 
-	return fr_hash_table_finddata(attributes_byvalue, &dattr);
+	return fr_hash_table_finddata(attributes_byvalue, &da);
 }
 
 

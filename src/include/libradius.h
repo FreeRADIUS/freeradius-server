@@ -568,13 +568,13 @@ VALUE_PAIR	*paircreate(TALLOC_CTX *ctx, unsigned int attr, unsigned int vendor);
 int		pair2unknown(VALUE_PAIR *vp);
 void		pairfree(VALUE_PAIR **);
 VALUE_PAIR	*pairfind(VALUE_PAIR *, unsigned int attr, unsigned int vendor, int8_t tag);
-VALUE_PAIR	*pairfind_da(VALUE_PAIR *, DICT_ATTR const *dattr, int8_t tag);
+VALUE_PAIR	*pairfind_da(VALUE_PAIR *, DICT_ATTR const *da, int8_t tag);
 
 #define		fr_cursor_init(_x, _y)	_fr_cursor_init(_x,(VALUE_PAIR const * const *) _y)
 VALUE_PAIR	*_fr_cursor_init(vp_cursor_t *cursor, VALUE_PAIR const * const *node);
 VALUE_PAIR	*fr_cursor_first(vp_cursor_t *cursor);
 VALUE_PAIR	*fr_cursor_next_by_num(vp_cursor_t *cursor, unsigned int attr, unsigned int vendor, int8_t tag);
-VALUE_PAIR	*fr_cursor_next_by_da(vp_cursor_t *cursor, DICT_ATTR const *dattr, int8_t tag);
+VALUE_PAIR	*fr_cursor_next_by_da(vp_cursor_t *cursor, DICT_ATTR const *da, int8_t tag);
 VALUE_PAIR	*fr_cursor_next(vp_cursor_t *cursor);
 VALUE_PAIR	*fr_cursor_current(vp_cursor_t *cursor);
 void		fr_cursor_insert(vp_cursor_t *cursor, VALUE_PAIR *vp);
