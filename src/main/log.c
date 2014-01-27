@@ -47,8 +47,8 @@ static const FR_NAME_NUMBER levels[] = {
 	{ ": Error: ",		L_ERR		},
 	{ ": WARNING: ",	L_DBG_WARN	},
 	{ ": ERROR: ",		L_DBG_ERR	},
-	{ ": WARNING: ",	L_DBG_WARN2	},
-	{ ": ERROR: ",		L_DBG_ERR2	},
+	{ ": WARNING: ",	L_DBG_WARN_REQ	},
+	{ ": ERROR: ",		L_DBG_ERR_REQ	},
 	{ NULL, 0 }
 };
 
@@ -67,8 +67,8 @@ static const FR_NAME_NUMBER colours[] = {
 	{ VTC_BOLD VTC_YELLOW,	L_WARN		},
 	{ VTC_BOLD VTC_RED,	L_DBG_ERR	},
 	{ VTC_BOLD VTC_YELLOW,	L_DBG_WARN	},
-	{ VTC_BOLD VTC_RED,	L_DBG_ERR2	},
-	{ VTC_BOLD VTC_YELLOW,	L_DBG_WARN2	},
+	{ VTC_BOLD VTC_RED,	L_DBG_ERR_REQ	},
+	{ VTC_BOLD VTC_YELLOW,	L_DBG_WARN_REQ	},
 	{ NULL, 0 }
 };
 
@@ -156,15 +156,24 @@ fr_log_t default_log = {
 	.debug_file = NULL,
 };
 
+/** Wrapper to convert variadic arguments to a va_list
+ *
+ * @param ap to write args to.
+ * @param fmt string to validate.
+ */
+void rad_get_va_printf_args(va_list *ap, char const *fmt, ...)
+{
+	va_start(*ap, fmt);
+}
+
 /*
  *	Log the message to the logfile. Include the severity and
  *	a time stamp.
  */
-DIAG_OFF(format-nonliteral)
 int vradlog(log_type_t type, char const *fmt, va_list ap)
 {
 	unsigned char *p;
-	char buffer[8192];
+	char buffer[10240];	/* The largest config item size, then extra for prefixes and suffixes */
 	char *unsan;
 	size_t len;
 	int colourise = default_log.colourise;
@@ -190,9 +199,10 @@ int vradlog(log_type_t type, char const *fmt, va_list ap)
 	len = 0;
 
 	if (colourise) {
-		len += strlcpy(buffer + len, fr_int2str(colours, type, ""),
-			       sizeof(buffer) - len) ;
-		if (len == 0) colourise = false;
+		len += strlcpy(buffer + len, fr_int2str(colours, type, ""), sizeof(buffer) - len) ;
+		if (len == 0) {
+			colourise = false;
+		}
 	}
 
 	/*
@@ -202,36 +212,36 @@ int vradlog(log_type_t type, char const *fmt, va_list ap)
 
 	/*
 	 *	Don't print timestamps to syslog, it does that for us.
-	 *	Don't print timestamps for low levels of debugging.
+	 *	Don't print timestamps and error types for low levels
+	 *	of debugging.
 	 *
 	 *	Print timestamps for non-debugging, and for high levels
 	 *	of debugging.
 	 */
-	if ((default_log.dest != L_DST_SYSLOG) &&
-	    (debug_flag != 1) && (debug_flag != 2)) {
-		time_t timeval;
+	if (default_log.dest != L_DST_SYSLOG) {
+		if ((debug_flag != 1) && (debug_flag != 2)) {
+			time_t timeval;
 
-		timeval = time(NULL);
-		CTIME_R(&timeval, buffer + len, sizeof(buffer) - len - 1);
+			timeval = time(NULL);
+			CTIME_R(&timeval, buffer + len, sizeof(buffer) - len - 1);
 
-		len = strlen(buffer);
+			len = strlen(buffer);
+			len += strlcpy(buffer + len, fr_int2str(levels, type, ": "), sizeof(buffer) - len);
+		} else goto add_prefix;
+	} else {
+	add_prefix:
+		if (len < sizeof(buffer)) switch (type) {
+		case L_DBG_WARN:
+			len += strlcpy(buffer + len, "WARNING: ", sizeof(buffer) - len);
+			break;
 
-		len += strlcpy(buffer + len,
-			       fr_int2str(levels, type, ": "),
-			       sizeof(buffer) - len);
-	}
+		case L_DBG_ERR:
+			len += strlcpy(buffer + len, "ERROR: ", sizeof(buffer) - len);
+			break;
 
-	switch (type) {
-	case L_DBG_WARN:
-		len += strlcpy(buffer + len, "WARNING: ", sizeof(buffer) - len);
-		break;
-
-	case L_DBG_ERR:
-		len += strlcpy(buffer + len, "ERROR: ", sizeof(buffer) - len);
-		break;
-
-	default:
-		break;
+		default:
+			break;
+		}
 	}
 
 	if (len < sizeof(buffer)) {
@@ -266,25 +276,25 @@ int vradlog(log_type_t type, char const *fmt, va_list ap)
 #ifdef HAVE_SYSLOG_H
 	case L_DST_SYSLOG:
 		switch(type) {
-			case L_DBG:
-			case L_WARN:
-			case L_DBG_WARN:
-			case L_DBG_WARN2:
-			case L_DBG_ERR:
-			case L_DBG_ERR2:
-				type = LOG_DEBUG;
-				break;
-			case L_AUTH:
-			case L_PROXY:
-			case L_ACCT:
-				type = LOG_NOTICE;
-				break;
-			case L_INFO:
-				type = LOG_INFO;
-				break;
-			case L_ERR:
-				type = LOG_ERR;
-				break;
+		case L_DBG:
+		case L_WARN:
+		case L_DBG_WARN:
+		case L_DBG_ERR:
+		case L_DBG_ERR_REQ:
+		case L_DBG_WARN_REQ:
+			type = LOG_DEBUG;
+			break;
+		case L_AUTH:
+		case L_PROXY:
+		case L_ACCT:
+			type = LOG_NOTICE;
+			break;
+		case L_INFO:
+			type = LOG_INFO;
+			break;
+		case L_ERR:
+			type = LOG_ERR;
+			break;
 		}
 		syslog(type, "%s", buffer);
 		break;
@@ -302,7 +312,6 @@ int vradlog(log_type_t type, char const *fmt, va_list ap)
 
 	return 0;
 }
-DIAG_ON(format-nonliteral)
 
 int radlog(log_type_t type, char const *msg, ...)
 {
@@ -352,17 +361,15 @@ inline bool radlog_debug_enabled(log_type_t type, log_debug_t lvl, REQUEST *requ
 	return true;
 }
 
-void radlog_request(log_type_t type, log_debug_t lvl, REQUEST *request, char const *msg, ...)
+void vradlog_request(log_type_t type, log_debug_t lvl, REQUEST *request, char const *msg, va_list ap)
 {
 	size_t len = 0;
 	char const *filename = default_log.file;
 	FILE *fp = NULL;
-	va_list ap;
-	char buffer[8192];
+	char buffer[10240];	/* The largest config item size, then extra for prefixes and suffixes */
 	char *p;
 	char const *extra = "";
-
-	va_start(ap, msg);
+	va_list aq;
 
 	/*
 	 *	Debug messages get treated specially.
@@ -370,7 +377,6 @@ void radlog_request(log_type_t type, log_debug_t lvl, REQUEST *request, char con
 	if ((type & L_DBG) != 0) {
 
 		if (!radlog_debug_enabled(type, lvl, request)) {
-			va_end(ap);
 			return;
 		}
 
@@ -398,7 +404,6 @@ void radlog_request(log_type_t type, log_debug_t lvl, REQUEST *request, char con
 
 		 /* FIXME: escape chars! */
 		if (radius_xlat(buffer, sizeof(buffer), request, filename, NULL, NULL) < 0) {
-			va_end(ap);
 			return;
 		}
 		request->radlog = rl;
@@ -408,7 +413,6 @@ void radlog_request(log_type_t type, log_debug_t lvl, REQUEST *request, char con
 			*p = '\0';
 			if (rad_mkdir(buffer, S_IRWXU) < 0) {
 				ERROR("Failed creating %s: %s", buffer, fr_syserror(errno));
-				va_end(ap);
 				return;
 			}
 			*p = FR_DIR_SEP;
@@ -434,6 +438,7 @@ void radlog_request(log_type_t type, log_debug_t lvl, REQUEST *request, char con
 		{
 			CTIME_R(&timeval, buffer, sizeof(buffer) - 1);
 		}
+
 		len = strlen(buffer);
 		p = strrchr(buffer, '\n');
 		if (p) {
@@ -441,50 +446,62 @@ void radlog_request(log_type_t type, log_debug_t lvl, REQUEST *request, char con
 			p[1] = '\0';
 		}
 
-		len += strlcpy(buffer + len,
-			       fr_int2str(levels, type, ": "),
-		 	       sizeof(buffer) - len);
-
+		len += strlcpy(buffer + len, fr_int2str(levels, type, ": "), sizeof(buffer) - len);
 		if (len >= sizeof(buffer)) goto finish;
 	}
 
 	if (request && request->module[0]) {
-		len = snprintf(buffer + len, sizeof(buffer) - len, "%s : ",
-			       request->module);
-
+		len = snprintf(buffer + len, sizeof(buffer) - len, "%s : ", request->module);
 		if (len >= sizeof(buffer)) goto finish;
 	}
 
-	vsnprintf(buffer + len, sizeof(buffer) - len, msg, ap);
+	/*
+	 *  If we don't copy the original ap we get a segfault from vasprintf. This is apparently
+	 *  due to ap sometimes being implemented with a stack offset which is invalidated if
+	 *  ap is passed into another function. See here:
+	 *  http://julipedia.meroh.net/2011/09/using-vacopy-to-safely-pass-ap.html
+	 *
+	 *  I don't buy that explanation, but doing a va_copy here does prevent SEGVs seen when
+	 *  running unit tests which generate errors under CI.
+	 */
+	va_copy(aq, ap);
+	vsnprintf(buffer + len, sizeof(buffer) - len, msg, aq);
+	va_end(aq);
 
 	finish:
 	switch (type) {
 	case L_DBG_WARN:
 		extra = "WARNING: ";
-		type = L_DBG_WARN2;
+		type = L_DBG_WARN_REQ;
 		break;
 
 	case L_DBG_ERR:
 		extra = "ERROR: ";
-		type = L_DBG_ERR2;
+		type = L_DBG_ERR_REQ;
 		break;
 	default:
 		break;
 	}
 
 	if (!fp) {
-		if (request) {
-			radlog(type, "(%u) %s%s", request->number, extra, buffer);
-		} else {
-			radlog(type, "%s%s", extra, buffer);
-		}
+		if (debug_flag > 2) extra = "";
+		request ? radlog(type, "(%u) %s%s", request->number, extra, buffer) :
+			  radlog(type, "%s%s", extra, buffer);
 	} else {
-		if (request) fprintf(fp, "(%u) ", request->number);
+		if (request) {
+			fprintf(fp, "(%u) %s", request->number, extra);
+		}
 		fputs(buffer, fp);
 		fputc('\n', fp);
 		fclose(fp);
 	}
+}
 
+void radlog_request(log_type_t type, log_debug_t lvl, REQUEST *request, char const *msg, ...)
+{
+	va_list ap;
+	va_start(ap, msg);
+	vradlog_request(type, lvl, request, msg, ap);
 	va_end(ap);
 }
 

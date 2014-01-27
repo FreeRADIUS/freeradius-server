@@ -220,6 +220,10 @@ int main(int argc, char **argv)
 
 	raddb_dir = RADIUS_DIR;
 
+#ifndef NDEBUG
+	fr_fault_setup(getenv("PANIC_ACTION"), argv[0]);
+#endif
+
 	talloc_set_log_stderr();
 
 	while((c = getopt(argc, argv, "d:fF:nN:sSipP:crRu:U:Z")) != EOF) switch(c) {
@@ -280,6 +284,14 @@ int main(int argc, char **argv)
 		default:
 			usage(1);
 			break;
+	}
+
+	/*
+	 *	Mismatch between the binary and the libraries it depends on
+	 */
+	if (fr_check_lib_magic(RADIUSD_MAGIC_NUMBER) < 0) {
+		fr_perror("radwho");
+		return 1;
 	}
 
 	/*

@@ -309,12 +309,12 @@ static void debug_packet(REQUEST *request, RADIUS_PACKET *packet, int direction)
 	 *	This really belongs in a utility library
 	 */
 	if ((packet->code > 0) && (packet->code < FR_MAX_PACKET_CODE)) {
-		RDEBUG("%s %s packet %s host %s port %d, id=%d, length=%d",
+		RDEBUG("%s %s packet %s host %s port %i, id=%i, length=%zu",
 		       received, fr_packet_codes[packet->code], from,
 		       inet_ntop(ip->af, &ip->ipaddr, buffer, sizeof(buffer)),
 		       port, packet->id, packet->data_len);
 	} else {
-		RDEBUG("%s packet %s host %s port %d code=%d, id=%d, length=%d",
+		RDEBUG("%s packet %s host %s port %d code=%d, id=%d, length=%zu",
 		       received, from,
 		       inet_ntop(ip->af, &ip->ipaddr, buffer, sizeof(buffer)),
 		       port,
@@ -1035,7 +1035,7 @@ static int request_pre_handler(REQUEST *request, UNUSED int action)
 			 */
 			if (radius_evaluate_cond(request, RLM_MODULE_OK, 0, debug_condition)) {
 				request->options = 2;
-				request->radlog = radlog_request;
+				request->radlog = vradlog_request;
 			}
 		}
 #endif
@@ -1735,6 +1735,7 @@ static void remove_from_proxy_hash_nl(REQUEST *request, bool yank)
 	}
 
 #ifdef WITH_TCP
+	rad_assert(request->proxy_listener != NULL);
 	request->proxy_listener->count--;
 #endif
 	request->proxy_listener = NULL;
@@ -2610,7 +2611,7 @@ STATE_MACHINE_DECL(request_ping)
 		 *	pings.
 		 */
 		home->state = HOME_STATE_ALIVE;
-		exec_trigger(request, request->home_server->cs, "home_server.alive", false);
+		exec_trigger(request, home->cs, "home_server.alive", false);
 		home->currently_outstanding = 0;
 		home->num_sent_pings = 0;
 		home->num_received_pings = 0;

@@ -53,11 +53,39 @@ static char const *months[] = {
 
 fr_thread_local_setup(char *, fr_inet_ntop_buffer);	/* macro */
 
+/** Sets a signal handler using sigaction if available, else signal
+ *
+ * @param sig to set handler for.
+ * @param func handler to set.
+ */
+int fr_set_signal(int sig, sig_t func)
+{
+#ifdef HAVE_SIGACTION
+	struct sigaction act;
+
+	memset(&act, 0, sizeof(act));
+	act.sa_flags = 0;
+	sigemptyset(&act.sa_mask);
+	act.sa_handler = func;
+
+	if (sigaction(sig, &act, NULL) < 0) {
+		fr_strerror_printf("Failed setting signal %i handler via sigaction(): %s", sig, fr_syserror(errno));
+		return -1;
+	}
+#else
+	if (signal(sig, func) < 0) {
+		fr_strerror_printf("Failed setting signal %i handler via signal(): %s", sig, fr_syserror(errno));
+		return -1;
+	}
+#endif
+	return 0;
+}
+
 /** Allocates a new talloc context from the root autofree context
  *
  * This function is threadsafe, whereas using the NULL context is not.
  *
- * @note The returned context, must be freed by the caller.
+ * @note The returned context must be freed by the caller.
  * @returns a new talloc context parented by the root autofree context.
  */
 TALLOC_CTX *fr_autofree_ctx(void)
@@ -544,7 +572,7 @@ int ip_hton(char const *src, int af, fr_ipaddr_t *dst)
 		if (!inet_pton(af, src, &(dst->ipaddr))) {
 			return -1;
 		}
-		
+
 		dst->af = af;
 		return 0;
 	}
@@ -688,14 +716,29 @@ uint32_t fr_strtoul(char const *value, char **end)
 	return strtoul(value, end, 10);
 }
 
-/** Check whether the rest of the string is whitespace
+/** Check whether the string is all whitespace
  *
  * @return true if the entirety of the string is whitespace, else false.
  */
 bool fr_whitespace_check(char const *value)
 {
 	while (*value) {
-		if (!isspace((int) *value)) return false;
+		if (!isspace(*value)) return false;
+
+		value++;
+	}
+
+	return true;
+}
+
+/** Check whether the string is all numbers
+ *
+ * @return true if the entirety of the string is are numebrs, else false.
+ */
+bool fr_integer_check(char const *value)
+{
+	while (*value) {
+		if (!isdigit(*value)) return false;
 
 		value++;
 	}

@@ -242,13 +242,13 @@ struct request {
 #endif
 
 
-	int		     simul_max;	//!< Maximum number of
+	int			simul_max;	//!< Maximum number of
 						//!< concurrent sessions for
 						//!< this user.
 #ifdef WITH_SESSION_MGMT
-	int		     simul_count;	//!< The current number of
+	int			simul_count;	//!< The current number of
 						//!< sessions for this user.
-	int		     simul_mpp; 	//!< WEIRD: 1 is false,
+	int			simul_mpp; 	//!< WEIRD: 1 is false,
 						//!< 2 is true.
 #endif
 
@@ -298,22 +298,22 @@ struct request {
 #endif
 };				/* REQUEST typedef */
 
-#define RAD_REQUEST_OPTION_NONE	    (0)
-#define RAD_REQUEST_OPTION_DEBUG	   (1)
-#define RAD_REQUEST_OPTION_DEBUG2	  (2)
-#define RAD_REQUEST_OPTION_DEBUG3	  (3)
-#define RAD_REQUEST_OPTION_DEBUG4	  (4)
+#define RAD_REQUEST_OPTION_NONE		(0)
+#define RAD_REQUEST_OPTION_DEBUG	(1)
+#define RAD_REQUEST_OPTION_DEBUG2	(2)
+#define RAD_REQUEST_OPTION_DEBUG3	(3)
+#define RAD_REQUEST_OPTION_DEBUG4	(4)
 
-#define REQUEST_ACTIVE 		(1)
-#define REQUEST_STOP_PROCESSING (2)
-#define REQUEST_COUNTED		(3)
+#define REQUEST_ACTIVE 			(1)
+#define REQUEST_STOP_PROCESSING		(2)
+#define REQUEST_COUNTED			(3)
 
-#define REQUEST_QUEUED		(1)
-#define REQUEST_RUNNING		(2)
-#define REQUEST_PROXIED		(3)
-#define REQUEST_REJECT_DELAY	(4)
-#define REQUEST_CLEANUP_DELAY	(5)
-#define REQUEST_DONE		(6)
+#define REQUEST_QUEUED			(1)
+#define REQUEST_RUNNING			(2)
+#define REQUEST_PROXIED			(3)
+#define REQUEST_REJECT_DELAY		(4)
+#define REQUEST_CLEANUP_DELAY		(5)
+#define REQUEST_DONE			(6)
 
 typedef struct radclient_list RADCLIENT_LIST;
 
@@ -446,6 +446,7 @@ typedef struct main_config_t {
 	char const	*auth_badpass_msg;
 	char const	*auth_goodpass_msg;
 	int		debug_memory;
+	char const	*panic_action;
 } MAIN_CONFIG_T;
 
 #define SECONDS_PER_DAY		86400
@@ -590,6 +591,7 @@ int		pairlist_read(TALLOC_CTX *ctx, char const *file, PAIR_LIST **list, int comp
 void		pairlist_free(PAIR_LIST **);
 
 /* version.c */
+int		rad_check_lib_magic(uint64_t magic);
 int 		ssl_check_version(void);
 char const	*ssl_version(void);
 void		version(void);
@@ -632,7 +634,11 @@ void module_failure_msg(REQUEST *request, char const *fmt, ...)
 		__attribute__ ((format (printf, 2, 3)))
 #endif
 ;
-
+void vmodule_failure_msg(REQUEST *request, char const *fmt, va_list ap)
+#ifdef __GNUC__
+		__attribute__ ((format (printf, 2, 0)))
+#endif
+;
 /*
  *	Less code == less bugs
  */
@@ -653,8 +659,8 @@ ssize_t radius_axlat(char **out, REQUEST *request, char const *fmt, RADIUS_ESCAP
 typedef ssize_t (*RAD_XLAT_FUNC)(void *instance, REQUEST *, char const *, char *, size_t);
 int		xlat_register(char const *module, RAD_XLAT_FUNC func, RADIUS_ESCAPE_STRING escape,
 			      void *instance);
-void		xlat_unregister(char const *module, RAD_XLAT_FUNC func,
-				void *instance);
+void		xlat_unregister(char const *module, RAD_XLAT_FUNC func, void *instance);
+ssize_t		xlat_fmt_to_ref(uint8_t const **out, REQUEST *request, char const *fmt);
 void		xlat_free(void);
 
 /* threads.c */

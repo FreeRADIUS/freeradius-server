@@ -40,8 +40,8 @@ typedef enum log_type {
 	L_DBG = 16,		//!< Only displayed when debugging is enabled.
 	L_DBG_WARN = 17,	//!< Warning only displayed when debugging is enabled.
 	L_DBG_ERR = 18,		//!< Error only displayed when debugging is enabled.
-	L_DBG_WARN2 = 19,	//!< Less severe warning only displayed when debugging is enabled.
-	L_DBG_ERR2 = 20		//!< Less severe error only displayed when debugging is enabled.
+	L_DBG_WARN_REQ = 19,	//!< Less severe warning only displayed when debugging is enabled.
+	L_DBG_ERR_REQ = 20		//!< Less severe error only displayed when debugging is enabled.
 } log_type_t;
 
 typedef enum log_debug {
@@ -71,13 +71,22 @@ typedef struct fr_log_t {
 	char		*debug_file;	//!< Path to debug log file.
 } fr_log_t;
 
-typedef		void (*radlog_func_t)(log_type_t lvl, log_debug_t priority, REQUEST *, char const *, ...);
+typedef		void (*radlog_func_t)(log_type_t lvl, log_debug_t priority, REQUEST *, char const *, va_list ap);
 
 extern FR_NAME_NUMBER const syslog_str2fac[];
 extern FR_NAME_NUMBER const log_str2dst[];
 extern fr_log_t default_log;
 
-int		vradlog(log_type_t lvl, char const *fmt, va_list ap);
+void		rad_get_va_printf_args(va_list *ap, char const *fmt, ...)
+#ifdef __GNUC__
+		__attribute__ ((format (printf, 2, 3)))
+#endif
+;
+int		vradlog(log_type_t lvl, char const *fmt, va_list ap)
+#ifdef __GNUC__
+		__attribute__ ((format (printf, 2, 0)))
+#endif
+;
 int		radlog(log_type_t lvl, char const *fmt, ...)
 #ifdef __GNUC__
 		__attribute__ ((format (printf, 2, 3)))
@@ -85,7 +94,12 @@ int		radlog(log_type_t lvl, char const *fmt, ...)
 ;
 void 		vp_listdebug(VALUE_PAIR *vp);
 bool		radlog_debug_enabled(log_type_t type, log_debug_t lvl, REQUEST *request);
-void		radlog_request(log_type_t lvl, log_debug_t priority, REQUEST *request, char const *msg, ...)
+void		vradlog_request(log_type_t type, log_debug_t lvl, REQUEST *request, char const *msg, va_list ap)
+#ifdef __GNUC__
+		__attribute__ ((format (printf, 4, 0)))
+#endif
+;
+void		radlog_request(log_type_t type, log_debug_t lvl, REQUEST *request, char const *msg, ...)
 #ifdef __GNUC__
 		__attribute__ ((format (printf, 4, 5)))
 #endif
@@ -145,13 +159,26 @@ void log_talloc_report(TALLOC_CTX *ctx);
  *
  *	If a REQUEST * is available, these functions should be used.
  */
-#define _RL(_l, _p, _f, ...)	if (request && request->radlog) request->radlog(_l, _p, request, _f, ## __VA_ARGS__)
-#define _RM(_l, _p, _f, ...)	do { \
-					if(request) { \
-						module_failure_msg(request, _f, ## __VA_ARGS__); \
-						_RL(_l, _p, _f, ## __VA_ARGS__); \
-					} \
+#define _RL(_l, _p, _f, ...)	do {\
+					if (request && request->radlog) {\
+						va_list _ap;\
+						rad_get_va_printf_args(&_ap, _f, ## __VA_ARGS__);\
+						request->radlog(_l, _p, request, _f, _ap);\
+						va_end(_ap);\
+					}\
 				} while(0)
+
+#define _RM(_l, _p, _f, ...)	do {\
+					if (request) {\
+						va_list _ap;\
+						rad_get_va_printf_args(&_ap, _f, ## __VA_ARGS__);\
+						if (request->radlog) {\
+							request->radlog(_l, _p, request, _f, _ap);\
+						}\
+						vmodule_failure_msg(request, _f, _ap);\
+						va_end(_ap);\
+					}\
+				} while (0)
 
 #define RDEBUG_ENABLED		radlog_debug_enabled(L_DBG, L_DBG_LVL_1, request)
 #define RDEBUG_ENABLED2		radlog_debug_enabled(L_DBG, L_DBG_LVL_2, request)
@@ -162,6 +189,7 @@ void log_talloc_report(TALLOC_CTX *ctx);
 #define RACCT(fmt, ...)		_RL(L_ACCT, L_DBG_LVL_OFF, fmt, ## __VA_ARGS__)
 #define RPROXY(fmt, ...)	_RL(L_PROXY, L_DBG_LVL_OFF, fmt, ## __VA_ARGS__)
 
+#define RDEBUGX(_l, fmt, ...)	_RL(L_DBG, _l, fmt, ## __VA_ARGS__)
 #define RDEBUG(fmt, ...)	_RL(L_DBG, L_DBG_LVL_1, fmt, ## __VA_ARGS__)
 #define RDEBUG2(fmt, ...)	_RL(L_DBG, L_DBG_LVL_2, fmt, ## __VA_ARGS__)
 #define RDEBUG3(fmt, ...)	_RL(L_DBG, L_DBG_LVL_3, fmt, ## __VA_ARGS__)

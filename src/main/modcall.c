@@ -489,7 +489,7 @@ redo:
 			default:
 			case -1:
 				REDEBUG("Condition evaluation failed because the value of an operand "
-					"could not be determined");
+					"could not be determined: %s", fr_strerror());
 				break;
 			}
 			condition = 0;
@@ -2535,7 +2535,7 @@ static bool pass2_callback(UNUSED void *ctx, fr_cond_t *c)
 				     REQUEST_CURRENT, PAIR_LIST_REQUEST,
 				     REQUEST_CURRENT, PAIR_LIST_REQUEST);
 		if (!map) {
-			cf_log_err(map->ci, "Failed parsing condition");
+			cf_log_err(old->ci, "Failed parsing condition");
 			return false;
 		}
 		map->ci = old->ci;

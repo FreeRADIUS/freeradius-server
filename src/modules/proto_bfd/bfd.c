@@ -1383,7 +1383,7 @@ static int bfd_process(bfd_state_t *session, bfd_packet_t *bfd)
 
 		if (debug_flag) {
 			request->options = RAD_REQUEST_OPTION_DEBUG2;
-			request->radlog = radlog_request;
+			request->radlog = vradlog_request;
 		}
 		request->component = "";
 		request->module = "";

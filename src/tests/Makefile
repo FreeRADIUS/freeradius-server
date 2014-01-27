@@ -19,7 +19,7 @@ export DYLD_LIBRARY_PATH
 RADDB_PATH := $(top_builddir)/raddb
 
 TESTS	= mschapv1 digest-01/digest* \
-	test.example.com 
+	test.example.com
 
 PORT	 = 12340
 #PORT	 = 1812
@@ -57,12 +57,13 @@ test.conf: dictionary
 	@echo 'logdir = $${testdir}' >> test.conf
 	@echo 'radacctdir = $${testdir}' >> test.conf
 	@echo 'pidfile = $${testdir}/radiusd.pid' >> test.conf
+	@echo 'panic_action = "gdb -silent -x ${testdir}/panic.gdb %e %p > ${testdir}/gdb.log 2>&1; cat ${testdir}/gdb.log"' >> test.conf
 	@echo '$$INCLUDE radiusd.conf' >> test.conf
 	@echo '$$INCLUDE $${testdir}/config/' >> test.conf
 
 radiusd.pid: $(RADDB_PATH)/test.conf test.conf
 	@rm -f $(TEST_PATH)/gdb.log $(TEST_PATH)/radius.log
-	@gdb -silent -x $(TEST_PATH)/gdb.conf --args \
+	@gdb -silent -x $(TEST_PATH)/tests.gdb --args \
 	$(BIN_PATH)/radiusd -fPtxxxxml $(TEST_PATH)/radius.log -d $(RADDB_PATH) -n test -i 127.0.0.1 -p $(PORT) -D $(TEST_PATH) > $(TEST_PATH)/gdb.log 2>&1 &
 
 # We can't make this depend on radiusd.pid, because then make will create
@@ -136,7 +137,7 @@ eap: $(EAP_TLS_TESTS)
 	done
 
 md5:
-	$(EAPOL_TEST) -c eap-md5.conf -s $(SECRET) 
+	$(EAPOL_TEST) -c eap-md5.conf -s $(SECRET)
 
 tls:
 	$(EAPOL_TEST) -c eap-ttls-tls.conf -s $(SECRET)

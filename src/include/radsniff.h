@@ -66,12 +66,12 @@ RCSIDH(radsniff_h, "$Id$")
 #define RDEBUG2(fmt, ...)	if (conf->print_packet && (fr_debug_flag > 2)) fprintf(fr_log_fp , "%s (%" PRIu64 ") " fmt "\n", timestr, count, ## __VA_ARGS__)
 
 typedef enum {
-	RS_NORMAL = 0,
-	RS_UNLINKED,
-	RS_RTX,
-	RS_REUSED,
-	RS_ERROR,
-	RS_LOST
+	RS_NORMAL	= 0x01,
+	RS_UNLINKED	= 0x02,
+	RS_RTX		= 0x04,
+	RS_REUSED	= 0x08,
+	RS_ERROR	= 0x10,
+	RS_LOST		= 0x20
 } rs_status_t;
 
 typedef void (*rs_packet_logger_t)(uint64_t count, rs_status_t status, fr_pcap_t *handle, RADIUS_PACKET *packet,
@@ -99,10 +99,10 @@ typedef struct rs_counters {
  * And interval is defined as the time between a call to the stats output function.
  */
 typedef struct rs_latency {
-	int			intervals;		//!< Number of stats intervals.
+	int			intervals;			//!< Number of stats intervals.
 
 	double			latency_smoothed;		//!< Smoothed moving average.
-	uint64_t		latency_smoothed_count;	//!< Number of CMA datapoints processed.
+	uint64_t		latency_smoothed_count;		//!< Number of CMA datapoints processed.
 
 	struct {
 		uint64_t		received_total;		//!< Total received over interval.
@@ -248,9 +248,10 @@ struct rs {
 
 	VALUE_PAIR 		*filter_request_vps;	//!< Sorted filter vps.
 	VALUE_PAIR 		*filter_response_vps;	//!< Sorted filter vps.
-	PW_CODE			filter_request_code;	//!< Filter request packets by code
-	PW_CODE			filter_response_code;	//!< Filter response packets by code
+	PW_CODE			filter_request_code;	//!< Filter request packets by code.
+	PW_CODE			filter_response_code;	//!< Filter response packets by code.
 
+	rs_status_t		event_flags;		//!< Events we log and capture on.
 	rs_packet_logger_t	logger;			//!< Packet logger
 
 	int			buffer_pkts;		//!< Size of the ring buffer to setup for live capture.

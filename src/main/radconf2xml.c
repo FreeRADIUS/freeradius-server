@@ -79,6 +79,10 @@ int main(int argc, char **argv)
 	FILE *fp;
 	char buffer[2048];
 
+#ifndef NDEBUG
+	fr_fault_setup(getenv("PANIC_ACTION"), argv[0]);
+#endif
+
 	if ((progname = strrchr(argv[0], FR_DIR_SEP)) == NULL)
 		progname = argv[0];
 	else
@@ -107,6 +111,14 @@ int main(int argc, char **argv)
 			file = optarg;
 			break;
 		}
+	}
+
+	/*
+	 *	Mismatch between the binary and the libraries it depends on
+	 */
+	if (fr_check_lib_magic(RADIUSD_MAGIC_NUMBER) < 0) {
+		fr_perror("radconf2xml");
+		return 1;
 	}
 
 	snprintf(buffer, sizeof(buffer), "%s/%s.conf", raddb_dir, name);

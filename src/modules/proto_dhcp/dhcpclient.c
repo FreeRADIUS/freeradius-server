@@ -62,7 +62,7 @@ static RADIUS_PACKET *reply = NULL;
 
 char const *dhcpclient_version = "dhcpclient version " RADIUSD_VERSION_STRING
 #ifdef RADIUSD_VERSION_COMMIT
-" (git #" RADIUSD_VERSION_COMMIT ")"
+" (git #" STRINGIFY(RADIUSD_VERSION_COMMIT) ")"
 #endif
 ", built on " __DATE__ " at " __TIME__;
 

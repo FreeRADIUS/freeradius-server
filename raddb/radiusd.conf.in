@@ -119,6 +119,31 @@ libdir = @libdir@
 #
 pidfile = ${run_dir}/${name}.pid
 
+#  panic_action: Command to execute on server fault.
+#
+#  WARNING: DO NOT SET A PANIC ACTION ON PRODUCTION SERVERS WHICH DOES
+#  WARNING: NOT IMMEDIATELY RETURN.  DOING SO MAY PREVENT YOUR SERVER
+#  WARNING: FROM RESTARTING.
+#
+#  Sets a command which will be executed if the server receives a fatal,
+#  non user generated signal, i.e. SIGSEGV, SIGBUS, SIGABRT or SIGFPE.
+#
+#  This can be used to start an interactive debugging session so
+#  that information regarding the current state of the server can
+#  be acquired.
+#
+#  The following string substitutions are available:
+#  - %e   The currently executing program e.g. /sbin/radiusd
+#  - %p   The PID of the currently executing program e.g. 12345
+#
+#  Standard ${} substitutions are also allowed.
+#
+#  An example panic action for opening an interactive session in GDB would be:
+#panic_action = "gdb %e %p"
+#
+#  An example panic action for opening an automated session in GDB would be:
+#panic_action = "gdb -silent -x ${raddbdir}/panic.gdb %e %p > ${logdir}/gdb.log 2>&1"
+
 #  max_request_time: The maximum time (in seconds) to handle a request.
 #
 #  Requests which take more time than this to process may be killed, and

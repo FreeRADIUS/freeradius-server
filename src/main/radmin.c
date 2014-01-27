@@ -70,7 +70,7 @@ char const *radius_dir = RADDBDIR;
 char const *progname = "radmin";
 char const *radmin_version = "radmin version " RADIUSD_VERSION_STRING
 #ifdef RADIUSD_VERSION_COMMIT
-" (git #" RADIUSD_VERSION_COMMIT ")"
+" (git #" STRINGIFY(RADIUSD_VERSION_COMMIT) ")"
 #endif
 ", built on " __DATE__ " at " __TIME__;
 
@@ -374,6 +374,10 @@ int main(int argc, char **argv)
 	char *commands[MAX_COMMANDS];
 	int num_commands = -1;
 
+#ifndef NDEBUG
+	fr_fault_setup(getenv("PANIC_ACTION"), argv[0]);
+#endif
+
 	talloc_set_log_stderr();
 
 	outputfp = stdout;	/* stdout is not a constant value... */
@@ -456,6 +460,14 @@ int main(int argc, char **argv)
 			secret = NULL;
 			break;
 		}
+	}
+
+	/*
+	 *	Mismatch between the binary and the libraries it depends on
+	 */
+	if (fr_check_lib_magic(RADIUSD_MAGIC_NUMBER) < 0) {
+		fr_perror("radmin");
+		exit(1);
 	}
 
 	if (radius_dir) {

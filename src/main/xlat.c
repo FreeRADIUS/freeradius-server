@@ -173,7 +173,8 @@ static ssize_t xlat_integer(UNUSED void *instance, REQUEST *request,
 {
 	VALUE_PAIR 	*vp;
 
-	uint64_t 	integer;
+	uint64_t 	int64 = 0;	/* Needs to be initialised to zero */
+	uint32_t	int32 = 0;	/* Needs to be initialised to zero */
 
 	while (isspace((int) *fmt)) fmt++;
 
@@ -189,25 +190,47 @@ static ssize_t xlat_integer(UNUSED void *instance, REQUEST *request,
 			break;
 		}
 
-		memcpy(&integer, &(vp->vp_octets), vp->length);
+		if (vp->length > 4) {
+			memcpy(&int64, vp->vp_octets, vp->length);
+			return snprintf(out, outlen, "%" PRIu64, htonll(int64));
+		}
 
-		return snprintf(out, outlen, "%" PRIu64, ntohll(integer));
+		memcpy(&int32, vp->vp_octets, vp->length);
+		return snprintf(out, outlen, "%i", htonl(int32));
 
 	case PW_TYPE_INTEGER64:
 		return snprintf(out, outlen, "%" PRIu64, vp->vp_integer64);
 
+	/*
+	 *	IP addresses are treated specially, as parsing functions assume the value
+	 *	is bigendian and will convert it for us.
+	 */
 	case PW_TYPE_IPADDR:
+		return snprintf(out, outlen, "%u", htonl(vp->vp_ipaddr));
+
 	case PW_TYPE_INTEGER:
-	case PW_TYPE_SHORT:
-	case PW_TYPE_BYTE:
 	case PW_TYPE_DATE:
+	case PW_TYPE_BYTE:
+	case PW_TYPE_SHORT:
 		return snprintf(out, outlen, "%u", vp->vp_integer);
+
+	/*
+	 *	Ethernet is weird... It's network related, so we assume to it should be
+	 *	bigendian.
+	 */
+	case PW_TYPE_ETHERNET:
+		memcpy(&int64, &vp->vp_ether, vp->length);
+		return snprintf(out, outlen, "%" PRIu64, htonll(int64));
+
+	case PW_TYPE_SIGNED:
+		return snprintf(out, outlen, "%i", vp->vp_signed);
+
 	default:
 		break;
 	}
 
-	REDEBUG("Type \"%s\" cannot be converted to integer",
-		fr_int2str(dict_attr_types, vp->da->type, PW_TYPE_INVALID));
+	REDEBUG("Type '%s' of length %zu cannot be converted to integer",
+		fr_int2str(dict_attr_types, vp->da->type, PW_TYPE_INVALID), vp->length);
 	*out = '\0';
 
 	return -1;
@@ -221,7 +244,7 @@ static ssize_t xlat_hex(UNUSED void *instance, REQUEST *request,
 {
 	size_t i;
 	VALUE_PAIR *vp;
-	uint8_t	buffer[MAX_STRING_LEN];
+	uint8_t const *p;
 	ssize_t	ret;
 	size_t	len;
 
@@ -232,7 +255,10 @@ static ssize_t xlat_hex(UNUSED void *instance, REQUEST *request,
 		return -1;
 	}
 
-	ret = rad_vp2data(vp, buffer, sizeof(buffer));
+	ret = rad_vp2data(&p, vp);
+	if (ret < 0) {
+		return ret;
+	}
 	len = (size_t) ret;
 
 	/*
@@ -244,38 +270,11 @@ static ssize_t xlat_hex(UNUSED void *instance, REQUEST *request,
 	}
 
 	for (i = 0; i < len; i++) {
-		snprintf(out + 2*i, 3, "%02x", buffer[i]);
+		snprintf(out + 2*i, 3, "%02x", p[i]);
 	}
 
 	return len * 2;
 }
-
-/** Print data as base64, not as VALUE
- *
- */
-static ssize_t xlat_base64(UNUSED void *instance, REQUEST *request,
-			   char const *fmt, char *out, size_t outlen)
-{
-	VALUE_PAIR *vp;
-	uint8_t buffer[MAX_STRING_LEN];
-	ssize_t	ret;
-
-	while (isspace((int) *fmt)) fmt++;
-
-	if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) {
-		*out = '\0';
-		return 0;
-	}
-
-	ret = rad_vp2data(vp, buffer, sizeof(buffer));
-	if (ret < 0) {
-		*out = '\0';
-		return ret;
-	}
-
-	return fr_base64_encode(buffer, (size_t) ret, out, outlen);
-}
-
 
 /** Print out attribute info
  *
@@ -305,7 +304,6 @@ static ssize_t xlat_debug_attr(UNUSED void *instance, REQUEST *request, char con
 	}
 
 	while (isspace((int) *fmt)) fmt++;
-
 	if (*fmt == '&') fmt++;
 
 	if (radius_parse_attr(fmt, &vpt, REQUEST_CURRENT, PAIR_LIST_REQUEST) < 0) {
@@ -374,7 +372,7 @@ static ssize_t xlat_debug_attr(UNUSED void *instance, REQUEST *request, char con
 		while (type->name) {
 			int pad;
 			ssize_t len;
-			uint8_t *data = NULL;
+			uint8_t const *data = NULL;
 			vpc = NULL;
 
 			if ((PW_TYPE) type->number == vp->da->type) {
@@ -394,8 +392,10 @@ static ssize_t xlat_debug_attr(UNUSED void *instance, REQUEST *request, char con
 			}
 
 			dac->type = type->number;
-			data = talloc_array(request, uint8_t , vp->length);
-			len = rad_vp2data(vp, data, vp->length);
+			len = rad_vp2data(&data, vp);
+			if (len < 0) {
+				goto next_type;
+			}
 			if (data2vp(NULL, NULL, NULL, dac, data, len, len, &vpc) < 0) {
 				goto next_type;
 			}
@@ -426,7 +426,6 @@ static ssize_t xlat_debug_attr(UNUSED void *instance, REQUEST *request, char con
 			RDEBUG4("\t\tas %s%*s: %s", type->name, pad, " ", buffer);
 
 			next_type:
-			talloc_free(data);
 			talloc_free(vpc);
 			type++;
 		}
@@ -488,10 +487,13 @@ static ssize_t xlat_foreach(void *instance, REQUEST *request,
 static ssize_t xlat_string(UNUSED void *instance, REQUEST *request,
 			   char const *fmt, char *out, size_t outlen)
 {
-	int len;
+	size_t len;
+	ssize_t ret;
 	VALUE_PAIR *vp;
+	uint8_t const *p;
 
 	while (isspace((int) *fmt)) fmt++;
+	if (*fmt == '&') fmt++;
 
 	if (outlen < 3) {
 	nothing:
@@ -501,10 +503,24 @@ static ssize_t xlat_string(UNUSED void *instance, REQUEST *request,
 
 	if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) goto nothing;
 
-	if (vp->da->type != PW_TYPE_OCTETS) goto nothing;
+	ret = rad_vp2data(&p, vp);
+	if (ret < 0) {
+		return ret;
+	}
 
-	len = fr_print_string(vp->vp_strvalue, vp->length, out, outlen);
-	out[len] = '\0';
+	switch (vp->da->type) {
+		case PW_TYPE_OCTETS:
+			len = fr_print_string((char const *) p, vp->length, out, outlen);
+			break;
+
+		case PW_TYPE_STRING:
+			len = strlcpy(out, vp->vp_strvalue, outlen);
+			break;
+
+		default:
+			len = fr_print_string((char const *) p, ret, out, outlen);
+			break;
+	}
 
 	return len;
 }
@@ -518,6 +534,7 @@ static ssize_t xlat_xlat(UNUSED void *instance, REQUEST *request,
 	VALUE_PAIR *vp;
 
 	while (isspace((int) *fmt)) fmt++;
+	if (*fmt == '&') fmt++;
 
 	if (outlen < 3) {
 	nothing:
@@ -558,7 +575,7 @@ static ssize_t xlat_debug(UNUSED void *instance, REQUEST *request,
 		if (level > 4) level = 4;
 
 		request->options = level;
-		request->radlog = radlog_request;
+		request->radlog = vradlog_request;
 	}
 
 	done:
@@ -650,7 +667,6 @@ int xlat_register(char const *name, RAD_XLAT_FUNC func, RADIUS_ESCAPE_STRING esc
 		XLAT_REGISTER(strlen);
 		XLAT_REGISTER(length);
 		XLAT_REGISTER(hex);
-		XLAT_REGISTER(base64);
 		XLAT_REGISTER(string);
 		XLAT_REGISTER(xlat);
 		XLAT_REGISTER(module);
@@ -734,6 +750,42 @@ void xlat_unregister(char const *name, UNUSED RAD_XLAT_FUNC func, void *instance
 	if (c->instance != instance) return;
 
 	rbtree_deletebydata(xlat_root, c);
+}
+
+
+/** Crappy temporary function to add attribute ref support to xlats
+ *
+ * This needs to die, and hopefully will die, when xlat functions accept
+ * xlat node structures.
+ *
+ * Provides either a pointer to a buffer which contains the value of the reference VALUE_PAIR
+ * in an architecture independent format. Or a pointer to the start of the fmt string.
+ *
+ * The pointer is only guaranteed to be valid between calls to xlat_fmt_to_ref,
+ * and so long as the source VALUE_PAIR is not freed.
+ *
+ * @param out where to write a pointer to the buffer to the data the xlat function needs to work on.
+ * @param request current request.
+ * @param fmt string.
+ * @returns the length of the data or -1 on error.
+ */
+ssize_t xlat_fmt_to_ref(uint8_t const **out, REQUEST *request, char const *fmt)
+{
+	VALUE_PAIR *vp;
+
+	while (isspace((int) *fmt)) fmt++;
+
+	if (fmt[0] == '&') {
+		if ((radius_get_vp(&vp, request, fmt + 1) < 0) || !vp) {
+			*out = NULL;
+			return -1;
+		}
+
+		return rad_vp2data(out, vp);
+	}
+
+	*out = (uint8_t const *)fmt;
+	return strlen(fmt);
 }
 
 /** De-register all xlat functions, used mainly for debugging.

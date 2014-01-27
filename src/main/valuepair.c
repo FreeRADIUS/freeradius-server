@@ -850,8 +850,7 @@ void rdebug_pair_list(int level, REQUEST *request, VALUE_PAIR *vp)
 		}
 
 		vp_prints(buffer, sizeof(buffer), vp);
-
-		request->radlog(L_DBG, level, request, "\t%s", buffer);
+		RDEBUGX(level, "\t%s", buffer);
 	}
 }
 
@@ -1051,7 +1050,7 @@ int radius_mapexec(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *m
 	char *expanded = NULL;
 	char answer[1024];
 	VALUE_PAIR **input_pairs = NULL;
-	VALUE_PAIR **output_pairs = NULL;
+	VALUE_PAIR *output_pairs = NULL;
 
 	*out = NULL;
 
@@ -1073,10 +1072,9 @@ int radius_mapexec(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *m
 	result = radius_exec_program(request, map->src->name, true, true,
 				     answer, sizeof(answer), EXEC_TIMEOUT,
 				     input_pairs ? *input_pairs : NULL,
-				     (map->dst->type == VPT_TYPE_LIST) ? output_pairs : NULL);
+				     (map->dst->type == VPT_TYPE_LIST) ? &output_pairs : NULL);
 	talloc_free(expanded);
 	if (result != 0) {
-		REDEBUG("%s", answer);
 		talloc_free(output_pairs);
 		return -1;
 	}
@@ -1084,9 +1082,10 @@ int radius_mapexec(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *m
 	switch (map->dst->type) {
 	case VPT_TYPE_LIST:
 		if (!output_pairs) {
+			REDEBUG("No valid attributes received from program");
 			return -2;
 		}
-		*out = *output_pairs;
+		*out = output_pairs;
 
 		return 0;
 	case VPT_TYPE_ATTR:
@@ -1435,29 +1434,44 @@ int radius_get_vp(VALUE_PAIR **out, REQUEST *request, char const *name)
 	return radius_vpt_get_vp(out, request, &vpt);
 }
 
-/** Add a module failure message VALUE_PAIR to the request
- */
 void module_failure_msg(REQUEST *request, char const *fmt, ...)
 {
 	va_list ap;
-	char *p;
-	VALUE_PAIR *vp;
-
-	if (!fmt || !request->packet) {
-		va_start(ap, fmt);
-		va_end(ap);
-		return;
-	}
 
 	va_start(ap, fmt);
-	vp = paircreate(request->packet, PW_MODULE_FAILURE_MESSAGE, 0);
-	if (!vp) {
-		va_end(ap);
+	vmodule_failure_msg(request, fmt, ap);
+	va_end(ap);
+}
+
+/** Add a module failure message VALUE_PAIR to the request
+ */
+void vmodule_failure_msg(REQUEST *request, char const *fmt, va_list ap)
+{
+	char *p;
+	VALUE_PAIR *vp;
+	va_list aq;
+
+	if (!fmt || !request->packet) {
 		return;
 	}
 
-	p = talloc_vasprintf(vp, fmt, ap);
+	vp = paircreate(request->packet, PW_MODULE_FAILURE_MESSAGE, 0);
+	if (!vp) {
+		return;
+	}
 
+	/*
+	 *  If we don't copy the original ap we get a segfault from vasprintf. This is apparently
+	 *  due to ap sometimes being implemented with a stack offset which is invalidated if
+	 *  ap is passed into another function. See here:
+	 *  http://julipedia.meroh.net/2011/09/using-vacopy-to-safely-pass-ap.html
+	 *
+	 *  I don't buy that explanation, but doing a va_copy here does prevent SEGVs seen when
+	 *  running unit tests which generate errors under CI.
+	 */
+	va_copy(aq, ap);
+	p = talloc_vasprintf(vp, fmt, aq);
+	va_end(aq);
 	if (request->module && *request->module) {
 		pairsprintf(vp, "%s: %s", request->module, p);
 	} else {

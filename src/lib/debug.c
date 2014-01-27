@@ -22,7 +22,7 @@
  * @copyright 2013  Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  */
 #include <freeradius-devel/libradius.h>
-#include <signal.h>
+
 /*
  *	runtime backtrace functions are not POSIX but are included in
  *	glibc, OSX >= 10.5 and various BSDs
@@ -41,7 +41,7 @@
 
 #ifdef HAVE_EXECINFO_H
 #  define MAX_BT_FRAMES 128
-#  define MAX_BT_ENTRIES 65536			//!< Should be a power of 2
+#  define MAX_BT_CBUFF  65536			//!< Should be a power of 2
 
 #  ifdef HAVE_PTHREAD_H
 static pthread_mutex_t fr_debug_init = PTHREAD_MUTEX_INITIALIZER;
@@ -60,6 +60,7 @@ struct fr_bt_marker {
 };
 #endif
 
+static char panic_action[512];
 static int fr_debugger_present = -1;
 
 /** Stub callback to see if the SIGTRAP handler is overriden
@@ -132,7 +133,7 @@ void backtrace_print(fr_cbuff_t *cbuff, void *obj)
 
 			fprintf(stderr, "Stacktrace for: %p\n", p);
 			for (i = 0; i < p->count; i++) {
-				fprintf(stdout, "%s\n", frames[i]);
+				fprintf(stderr, "%s\n", frames[i]);
 			}
 
 			/* We were only asked to look for one */
@@ -190,7 +191,7 @@ fr_bt_marker_t *fr_backtrace_attach(fr_cbuff_t **cbuff, TALLOC_CTX *obj)
 			TALLOC_CTX *ctx;
 
 			ctx = fr_autofree_ctx();
-			*cbuff = fr_cbuff_alloc(ctx, MAX_BT_ENTRIES, true);
+			*cbuff = fr_cbuff_alloc(ctx, MAX_BT_CBUFF, true);
 		}
 		PTHREAD_MUTEX_UNLOCK(&fr_debug_init);
 	}
@@ -210,11 +211,113 @@ fr_bt_marker_t *fr_backtrace_attach(fr_cbuff_t **cbuff, TALLOC_CTX *obj)
 #else
 void backtrace_print(UNUSED fr_cbuff_t *cbuff, UNUSED void *obj)
 {
-	fr_perror("Server built without fr_backtrace_* support, requires execinfo.h and possibly -lexecinfo");
+	fprintf(stderr, "Server built without fr_backtrace_* support, requires execinfo.h and possibly -lexecinfo\n");
 }
 fr_bt_marker_t *fr_backtrace_attach(UNUSED fr_cbuff_t **cbuff, UNUSED TALLOC_CTX *obj)
 {
-	fr_perror("Server built without fr_backtrace_* support, requires execinfo.h and possibly -lexecinfo");
+	fprintf(stderr, "Server built without fr_backtrace_* support, requires execinfo.h and possibly -lexecinfo\n");
 	abort();
 }
 #endif /* ifdef HAVE_EXECINFO_H */
+
+/** Prints a simple backtrace (if execinfo is available) and calls panic_action if set.
+ *
+ * @param sig caught
+ */
+static void NEVER_RETURNS _fr_fault(int sig)
+{
+	char cmd[sizeof(panic_action) + 20];
+	char *p;
+	int ret;
+
+	fprintf(stderr, "FATAL SIGNAL: %s\n", strsignal(sig));
+
+	/*
+	 *	Produce a simple backtrace - They've very basic but at least give us an
+	 *	idea of the area of the code we hit the issue in.
+	 */
+#ifdef HAVE_EXECINFO_H
+	size_t frame_count, i;
+	void *stack[MAX_BT_FRAMES];
+	char **frames;
+
+	frame_count = backtrace(stack, MAX_BT_FRAMES);
+	frames = backtrace_symbols(stack, frame_count);
+
+	fprintf(stderr, "Backtrace of last %zu frames:\n", frame_count);
+	for (i = 0; i < frame_count; i++) {
+		fprintf(stderr, "%s\n", frames[i]);
+		/* Leak the backtrace strings, freeing may lead to undefined behaviour... */
+	}
+#endif
+
+	/* No panic action set... */
+	if (panic_action[0] == '\0') {
+		fprintf(stderr, "No panic action set\n");
+		fr_exit_now(1);
+	}
+
+	/* Substitute %p for the current PID (useful for attaching a debugger) */
+	p = strstr(panic_action, "%p");
+	if (p) {
+		snprintf(cmd, sizeof(cmd), "%.*s%i%s",
+			 (int)(p - panic_action), panic_action, (int)getpid(), p + 2);
+	} else {
+		strlcpy(cmd, panic_action, sizeof(cmd));
+	}
+
+	fprintf(stderr, "Calling: %s\n", cmd);
+	ret = system(cmd);
+	fprintf(stderr, "Panic action exited with %i\n", ret);
+
+	fr_exit_now(1);
+}
+
+/** Registers signal handlers to execute panic_action on fatal signal
+ *
+ * May be called multiple time to change the panic_action/program.
+ *
+ * @param cmd to execute on fault. If present %p will be substituted
+ *        for the parent PID before the command is executed, and %e
+ *        will be substituted for the currently running program.
+ * @param program Name of program currently executing (argv[0]).
+ * @return 0 on success -1 on failure.
+ */
+int fr_fault_setup(char const *cmd, char const *program)
+{
+	static bool setup = false;
+	char *p;
+
+	if (cmd) {
+		/* Substitute %e for the current program */
+		p = strstr(cmd, "%e");
+		if (p) {
+			snprintf(panic_action, sizeof(panic_action), "%.*s%s%s",
+				 (int)(p - cmd), cmd, program ? program : "", p + 2);
+		} else {
+			strlcpy(panic_action, cmd, sizeof(panic_action));
+		}
+	} else {
+		*panic_action = '\0';
+	}
+
+	/* Unsure what the side effects of changing the signal handler mid execution might be */
+	if (!setup) {
+#ifdef SIGSEGV
+		if (fr_set_signal(SIGSEGV, _fr_fault) < 0) return -1;
+#endif
+#ifdef SIGBUS
+		if (fr_set_signal(SIGBUS, _fr_fault) < 0) return -1;
+#endif
+#ifdef SIGABRT
+		if (fr_set_signal(SIGABRT, _fr_fault) < 0) return -1;
+#endif
+#ifdef SIGFPE
+		if (fr_set_signal(SIGFPE, _fr_fault) < 0) return -1;
+#endif
+	}
+	setup = true;
+
+	return 0;
+}
+

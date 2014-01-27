@@ -331,7 +331,7 @@ static rlm_rcode_t krb5_auth(void *instance, REQUEST *request)
 			break;
 
 		case KRB5KDC_ERR_C_PRINCIPAL_UNKNOWN:
-			RDEBUG("User not found: %s (%i)", ret, rlm_krb5_error(conn->context, ret));
+			RDEBUG("User not found: %i (%s)", ret, rlm_krb5_error(conn->context, ret));
 			rcode = RLM_MODULE_NOTFOUND;
 
 		default:

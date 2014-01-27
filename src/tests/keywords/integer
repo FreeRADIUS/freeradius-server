@@ -1,0 +1,197 @@
+#
+# PRE: update
+#
+update reply {
+       Filter-Id := "filter"
+}
+
+update request {
+	Tmp-String-0        := '9870'
+	Tmp-String-1        := '98709870'
+	Tmp-String-2        := '987098709870'
+	Tmp-Octets-0        := 0x39383731
+	Tmp-Octets-1        := 0x3938373139383731
+	Tmp-Octets-2        := 0x393837313938373139383731
+	Tmp-IP-Address-0    := 57.56.55.50
+	Tmp-Date-0          := 959985459
+	Tmp-Integer-0       := 959985460
+	Tmp-Cast-Abinary    := 'ip out forward srcip 57.56.55.53/32 udp dstport = 1812'
+	Tmp-Cast-IfId       := '0000:0000:3938:3737'
+	Tmp-Cast-IPv6Addr   := '::3938:3738'
+	Tmp-Cast-IPv6Prefix := '::3938:3739/128'
+	Tmp-Cast-Byte       := 58
+	Tmp-Cast-Short      := 14139
+	Tmp-Cast-Ethernet   := 00:00:39:38:37:3c
+	Tmp-Cast-Integer64  := 1152921505566832445
+	Tmp-Cast-IPv4Prefix := 57.56.55.62/32
+}
+
+update request {
+	Tmp-String-2        := "%{integer:Tmp-IP-Address-0}"
+	Tmp-String-3        := "%{integer:Tmp-Date-0}"
+	Tmp-String-4        := "%{integer:Tmp-Integer-0}"
+	Tmp-String-5        := "%{integer:Tmp-Cast-Abinary}"
+	Tmp-String-6        := "%{integer:Tmp-Cast-Ifid}"
+	Tmp-String-7        := "%{integer:Tmp-Cast-IPv6Addr}"
+	Tmp-String-8        := "%{integer:Tmp-Cast-IPv6Prefix}"
+}
+
+# String - network order representation of a 4 char string
+update request {
+	Tmp-Integer-0 := "%{integer:Tmp-String-0}"
+}
+if ((Tmp-String-0 != "%{string:Tmp-Integer-0}") || (Tmp-Integer-0 != 959985456)) {
+	update reply {
+		Filter-Id += 'fail'
+	}
+}
+
+# String - network order representation of a 8 char string
+update request {
+	Tmp-Integer64-0 := "%{integer:Tmp-String-1}"
+}
+if ((Tmp-String-1 != "%{string:Tmp-Integer64-0}") || (Tmp-Integer64-0 != 4123106139115632432)) {
+	update reply {
+		Filter-Id += 'fail'
+	}
+}
+
+# String - Can't convert 12 byte string to integer (our biggest native size is a 64bit unsigned int)
+if ("%{integer:Tmp-String-2}" != '') {
+	update reply {
+		Filter-Id += 'fail'
+	}
+}
+
+# Octets - network order representation of a 4 byte octet string
+update request {
+	Tmp-Integer-0 := "%{integer:Tmp-Octets-0}"
+}
+if ((Tmp-Octets-0 != "0x%{hex:Tmp-Integer-0}") || (Tmp-Integer-0 != 959985457)) {
+	update reply {
+		Filter-Id += 'fail'
+	}
+}
+
+# Octets - network order representation of a 8 byte octet string
+update request {
+	Tmp-Integer64-0 := "%{integer:Tmp-Octets-1}"
+}
+if ((Tmp-Octets-1 != "0x%{hex:Tmp-Integer64-0}") || (Tmp-Integer64-0 != 4123106143410599729)) {
+	update reply {
+		Filter-Id += 'fail'
+	}
+}
+
+# String - Can't convert 12 byte octet string to integer (our biggest native size is a 64bit unsigned int)
+if ("%{integer:Tmp-Octets-2}" != '') {
+	update reply {
+		Filter-Id += 'fail'
+	}
+}
+
+# IP Address
+if (Tmp-String-2 != '959985458') {
+	update reply {
+		Filter-Id += 'fail'
+	}
+}
+
+if (<ipaddr>Tmp-String-2 != &Tmp-IP-Address-0) {
+	update reply {
+		Filter-Id += 'fail'
+	}
+}
+
+# Date
+if (Tmp-String-3 != '959985459') {
+	update reply {
+		Filter-Id += 'fail'
+	}
+}
+
+# Integer
+if (Tmp-String-4 != '959985460') {
+	update reply {
+		Filter-Id += 'fail'
+	}
+}
+
+# Abinary - Can't convert ascend binary to an integer
+if (Tmp-String-5 != '') {
+	update reply {
+		Filter-Id += 'fail'
+	}
+}
+
+# ifid - Can't convert interface ID to an integer
+if (Tmp-String-6 != '') {
+	update reply {
+		Filter-Id += 'fail'
+	}
+}
+
+# ipv6addr - Can't convert IPv6 to integer
+if (Tmp-String-7 != '') {
+	update reply {
+		Filter-ID += 'fail'
+	}
+}
+
+# ipv6addrprefix
+if (Tmp-String-8 != '') {
+	update reply {
+		Filter-ID += 'fail'
+	}
+}
+update request {
+	Tmp-String-0        := "%{integer:Tmp-Cast-Byte}"
+	Tmp-String-1        := "%{integer:Tmp-Cast-Short}"
+	Tmp-String-2        := "%{integer:Tmp-Cast-Ethernet}"
+	Tmp-String-3        := "%{integer:Tmp-Cast-Integer64}"
+	Tmp-String-4        := "%{integer:Tmp-Cast-IPv4Prefix}"
+}
+
+# byte
+if (Tmp-String-0 != '58') {
+	update reply {
+		Filter-ID += 'fail'
+	}
+}
+
+# short
+if (Tmp-String-1 != '14139') {
+	update reply {
+		Filter-ID += 'fail'
+	}
+}
+
+# ethernet
+if (Tmp-String-2 != '62913607630848') {
+	update reply {
+		Filter-Id += 'fail'
+	}
+}
+if (<ether>Tmp-String-2 != &Tmp-Cast-Ethernet) {
+	update reply {
+		Filter-Id += 'fail'
+	}
+}
+
+# integer64
+if (Tmp-String-3 != '1152921505566832445') {
+	update reply {
+		Filter-Id += 'fail'
+	}
+}
+
+# ipv4prefix
+if (Tmp-String-4 != '') {
+	update reply {
+		Filter-Id += 'fail'
+	}
+}
+
+
+
+

@@ -21,13 +21,31 @@
  * @file libradius.h
  * @brief Structures and prototypes for the radius library.
  *
- * @copyright 1999-2008 The FreeRADIUS server project
+ * @copyright 1999-2014 The FreeRADIUS server project
  */
 RCSIDH(libradius_h, "$Id$")
 
-#include <freeradius-devel/missing.h>
+/*
+ *  Preprocessor hacks.
+ */
+#ifndef STRINGIFY
+#  define XSTRINGIFY(x) #x
+#  define STRINGIFY(x) XSTRINGIFY(x)
+#endif
 
-#include <talloc.h>
+#ifndef HEXIFY
+#  define XHEXIFY4(b1,b2,b3,b4)	(0x ## b1 ## b2 ## b3 ## b4)
+#  define HEXIFY4(b1,b2,b3,b4)	XHEXIFY4(b1, b2, b3, b4)
+
+#  define XHEXIFY3(b1,b2,b3)	(0x ## b1 ## b2 ## b3)
+#  define HEXIFY3(b1,b2,b3)	XHEXIFY3(b1, b2, b3)
+
+#  define XHEXIFY2(b1,b2)	(0x ## b1 ## b2)
+#  define HEXIFY2(b1,b2)	XHEXIFY2(b1, b2)
+
+#  define XHEXIFY(b1)		(0x ## b1)
+#  define HEXIFY(b1)		XHEXIFY(b1)
+#endif
 
 /*
  *  Let any external program building against the library know what
@@ -35,10 +53,41 @@ RCSIDH(libradius_h, "$Id$")
  */
 #include <freeradius-devel/features.h>
 
+#ifdef WITHOUT_VERSION_CHECK
+#  define RADIUSD_MAGIC_NUMBER	((uint64_t) (0xf4ee4ad3f4ee4ad3))
+#  define MAGIC_PREFIX(_x)	((uint8_t) 0x00)
+#  define MAGIC_VERSION(_x)	((uint32_t) 0x00000000)
+#  define MAGIC_COMMIT(_x)	((uint32_t) 0x00000000)
+#else
+#  ifdef RADIUSD_VERSION_COMMIT
+#    define RADIUSD_MAGIC_NUMBER ((uint64_t) HEXIFY4(f4, RADIUSD_VERSION, RADIUSD_VERSION_COMMIT, 0))
+#  else
+#    define RADIUSD_MAGIC_NUMBER ((uint64_t) HEXIFY3(f4, RADIUSD_VERSION, 00000000))
+#  endif
+#  define MAGIC_PREFIX(_x)	((uint8_t) (_x >> 56))
+#  define MAGIC_VERSION(_x)	((uint32_t) ((_x >> 32) & 0x00ffffff))
+#  define MAGIC_COMMIT(_x)	((uint32_t) (_x & 0xffffffff))
+#endif
+
+/*
+ *  Talloc memory allocation is used in preference to malloc throughout
+ *  the libraries and server.
+ */
+#include <talloc.h>
+
+/*
+ *  Defines signatures for any missing functions.
+ */
+#include <freeradius-devel/missing.h>
+
+/*
+ *  Include system headers.
+ */
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
 #include <stdbool.h>
+#include <signal.h>
 
 #include <freeradius-devel/threads.h>
 #include <freeradius-devel/radius.h>
@@ -367,6 +416,11 @@ typedef enum {
 } decode_fail_t;
 
 /*
+ *	Version check.
+ */
+int		fr_check_lib_magic(uint64_t magic);
+
+/*
  *	Printing functions.
  */
 int		fr_utf8_char(uint8_t const *str);
@@ -486,7 +540,7 @@ ssize_t  rad_data2vp(unsigned int attribute, unsigned int vendor,
 		     uint8_t const *data, size_t length,
 		     VALUE_PAIR **pvp);
 
-ssize_t rad_vp2data(VALUE_PAIR const *vp, uint8_t *out, size_t outlen);
+ssize_t rad_vp2data(uint8_t const **out, VALUE_PAIR const *vp);
 
 int rad_vp2extended(RADIUS_PACKET const *packet,
 		    RADIUS_PACKET const *original,
@@ -529,8 +583,9 @@ VALUE_PAIR	*fr_cursor_replace(vp_cursor_t *cursor, VALUE_PAIR *new);
 void		pairdelete(VALUE_PAIR **, unsigned int attr, unsigned int vendor, int8_t tag);
 void		pairadd(VALUE_PAIR **, VALUE_PAIR *);
 void		pairreplace(VALUE_PAIR **first, VALUE_PAIR *add);
-int		paircmp(VALUE_PAIR *check, VALUE_PAIR *data);
-int		paircmp_op(VALUE_PAIR const *one, FR_TOKEN op, VALUE_PAIR const *two);
+int8_t		paircmp_value(VALUE_PAIR const *a, VALUE_PAIR const *b);
+int8_t		paircmp_op(VALUE_PAIR const *one, FR_TOKEN op, VALUE_PAIR const *two);
+int8_t		paircmp(VALUE_PAIR *a, VALUE_PAIR *b);
 int8_t		pairlistcmp(VALUE_PAIR *a, VALUE_PAIR *b);
 void		pairsort(VALUE_PAIR **vps, bool with_tag);
 bool		pairvalidate(VALUE_PAIR *filter, VALUE_PAIR *list);
@@ -580,10 +635,10 @@ void		fr_perror(char const *, ...)
 extern bool fr_assert_cond(char const *file, int line, char const *expr, bool cond);
 #define fr_assert(_x) fr_assert_cond(__FILE__,  __LINE__, #_x, (_x))
 
-extern void _fr_exit(char const *file, int line, int status);
+extern void NEVER_RETURNS _fr_exit(char const *file, int line, int status);
 #define fr_exit(_x) _fr_exit(__FILE__,  __LINE__, (_x))
 
-extern void _fr_exit_now(char const *file, int line, int status);
+extern void NEVER_RETURNS _fr_exit_now(char const *file, int line, int status);
 #define fr_exit_now(_x) _fr_exit_now(__FILE__,  __LINE__, (_x))
 
 extern char const *fr_strerror(void);
@@ -605,6 +660,7 @@ void		fr_printf_log(char const *, ...)
 /*
  *	Several handy miscellaneous functions.
  */
+int		fr_set_signal(int sig, sig_t func);
 TALLOC_CTX	*fr_autofree_ctx(void);
 char const	*fr_inet_ntop(int af, void const *src);
 char const 	*ip_ntoa(char *, uint32_t);
@@ -617,6 +673,7 @@ size_t		fr_bin2hex(char *hex, uint8_t const *bin, size_t inlen);
 size_t		fr_hex2bin(uint8_t *bin, char const *hex, size_t outlen);
 uint32_t	fr_strtoul(char const *value, char **end);
 bool		fr_whitespace_check(char const *value);
+bool		fr_integer_check(char const *value);
 
 int		fr_ipaddr_cmp(fr_ipaddr_t const *a, fr_ipaddr_t const *b);
 
@@ -647,7 +704,7 @@ void fr_talloc_verify_cb(const void *ptr, int depth,
 
 #ifdef WITH_ASCEND_BINARY
 /* filters.c */
-int		ascend_parse_filter(VALUE_PAIR *pair);
+int		ascend_parse_filter(VALUE_PAIR *vp, char const *value);
 void		print_abinary(char *out, size_t outlen, VALUE_PAIR const *vp,  int8_t quote);
 #endif /*WITH_ASCEND_BINARY*/
 
@@ -681,9 +738,10 @@ void		*fr_cbuff_rp_next(fr_cbuff_t *cbuff, TALLOC_CTX *ctx);
 /* debug.c */
 typedef struct fr_bt_marker fr_bt_marker_t;
 
-void			fr_debug_break(void);
-void			backtrace_print(fr_cbuff_t *cbuff, void *obj);
-fr_bt_marker_t		*fr_backtrace_attach(fr_cbuff_t **cbuff, TALLOC_CTX *obj);
+void		fr_debug_break(void);
+void		backtrace_print(fr_cbuff_t *cbuff, void *obj);
+fr_bt_marker_t	*fr_backtrace_attach(fr_cbuff_t **cbuff, TALLOC_CTX *obj);
+int		fr_fault_setup(char const *cmd, char const *program);
 
 /* rbtree.c */
 typedef struct rbtree_t rbtree_t;

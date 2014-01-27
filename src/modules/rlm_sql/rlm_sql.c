@@ -491,6 +491,8 @@ static int sql_get_grouplist(rlm_sql_t *inst, rlm_sql_handle_t *handle, REQUEST 
 		}
 		entry->next = NULL;
 		entry->name = talloc_strdup(entry, row[0]);
+
+		num_groups++;
 	}
 
 	(inst->module->sql_finish_select_query)(handle, inst->config);
@@ -585,6 +587,7 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t *inst, REQUEST *request, rlm
 		return RLM_MODULE_FAIL;
 	}
 	if (rows == 0) {
+		RDEBUG2("User not found in any groups");
 		rcode = RLM_MODULE_NOTFOUND;
 		goto finish;
 	}
@@ -1416,14 +1419,14 @@ static rlm_rcode_t mod_checksimul(void *instance, REQUEST * request) {
 		}
 
 		if (!row[2]){
-			RDEBUG("Cannot zap stale entry. No username present in entry.", inst->config->xlat_name);
+			RDEBUG("Cannot zap stale entry. No username present in entry");
 			rcode = RLM_MODULE_FAIL;
 
 			goto finish;
 		}
 
 		if (!row[1]){
-			RDEBUG("Cannot zap stale entry. No session id in entry.", inst->config->xlat_name);
+			RDEBUG("Cannot zap stale entry. No session id in entry");
 			rcode = RLM_MODULE_FAIL;
 
 			goto finish;

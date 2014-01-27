@@ -77,21 +77,21 @@ typedef struct dhcp_socket_t {
 static int dhcprelay_process_client_request(REQUEST *request)
 {
 	uint8_t maxhops = 16;
-	VALUE_PAIR *vp, *giaddrvp;
+	VALUE_PAIR *vp, *giaddr;
 	dhcp_socket_t *sock;
 
 	rad_assert(request->packet->data[0] == 1);
 
 	/*
-	 * Do the forward by ourselves, do not rely on dhcp_socket_send()
+	 *	Do the forward by ourselves, do not rely on dhcp_socket_send()
 	 */
 	request->reply->code = 0;
 
 	/*
 	 * It's invalid to have giaddr=0 AND a relay option
 	 */
-	giaddrvp = vp = pairfind(request->packet->vps, 266, DHCP_MAGIC_VENDOR, TAG_ANY); /* DHCP-Gateway-IP-Address */
-	if (vp && (vp->vp_ipaddr == htonl(INADDR_ANY)) &&
+	giaddr = pairfind(request->packet->vps, 266, DHCP_MAGIC_VENDOR, TAG_ANY); /* DHCP-Gateway-IP-Address */
+	if (giaddr && (giaddr->vp_ipaddr == htonl(INADDR_ANY)) &&
 	    pairfind(request->packet->vps, 82, DHCP_MAGIC_VENDOR, TAG_ANY)) { /* DHCP-Relay-Agent-Information */
 		DEBUG("DHCP: Received packet with giaddr = 0 and containing relay option: Discarding packet\n");
 		return 1;
@@ -123,7 +123,7 @@ static int dhcprelay_process_client_request(REQUEST *request)
 	 */
 	/* set SRC ipaddr/port to the listener ipaddr/port */
 	request->packet->src_ipaddr.af = AF_INET;
-	request->packet->src_ipaddr.ipaddr.ip4addr.s_addr = giaddrvp->vp_ipaddr;
+	request->packet->src_ipaddr.ipaddr.ip4addr.s_addr = sock->lsock.my_ipaddr.ipaddr.ip4addr.s_addr;
 	request->packet->src_port = sock->lsock.my_port;
 
 	vp = pairfind(request->config_items, 270, DHCP_MAGIC_VENDOR, TAG_ANY); /* DHCP-Relay-To-IP-Address */
@@ -141,9 +141,14 @@ static int dhcprelay_process_client_request(REQUEST *request)
 	return fr_dhcp_send(request->packet);
 }
 
+
+/*
+ *	We've seen a reply from a server.
+ *	i.e. we're a relay.
+ */
 static int dhcprelay_process_server_reply(REQUEST *request)
 {
-	VALUE_PAIR *vp, *giaddrvp;
+	VALUE_PAIR *vp, *giaddr;
 	dhcp_socket_t *sock;
 
 	rad_assert(request->packet->data[0] == 2);
@@ -158,11 +163,10 @@ static int dhcprelay_process_server_reply(REQUEST *request)
 	/*
 	 * Check that packet is for us.
 	 */
-	giaddrvp = vp = pairfind(request->packet->vps, 266, DHCP_MAGIC_VENDOR, TAG_ANY); /* DHCP-Gateway-IP-Address */
-	rad_assert(vp != NULL);
+	giaddr = pairfind(request->packet->vps, 266, DHCP_MAGIC_VENDOR, TAG_ANY); /* DHCP-Gateway-IP-Address */
 
 	/* --with-udpfromto is needed just for the following test */
-	if (!vp || vp->vp_ipaddr != request->packet->dst_ipaddr.ipaddr.ip4addr.s_addr) {
+	if (!giaddr || giaddr->vp_ipaddr != request->packet->dst_ipaddr.ipaddr.ip4addr.s_addr) {
 		DEBUG("DHCP: Packet received from server was not for us (was for 0x%x). Discarding packet",
 		    ntohl(request->packet->dst_ipaddr.ipaddr.ip4addr.s_addr));
 		return 1;
@@ -170,12 +174,25 @@ static int dhcprelay_process_server_reply(REQUEST *request)
 
 	/* set SRC ipaddr/port to the listener ipaddr/port */
 	request->packet->src_ipaddr.af = AF_INET;
-	request->packet->src_ipaddr.ipaddr.ip4addr.s_addr = giaddrvp->vp_ipaddr;
 	request->packet->src_port = sock->lsock.my_port;
 
 	/* set DEST ipaddr/port to clientip/68 or broadcast in specific cases */
 	request->packet->dst_ipaddr.af = AF_INET;
-	request->packet->dst_port = request->packet->dst_port + 1; /* Port 68 */
+
+	if (!giaddr) {
+		/*
+		 *	We're a relay, and send the reply directly to the client.
+		 */
+		request->packet->src_ipaddr.ipaddr.ip4addr.s_addr = sock->lsock.my_ipaddr.ipaddr.ip4addr.s_addr;
+		request->packet->dst_port = request->packet->dst_port + 1;	/* client port */
+	} else {
+		/*
+		 *	We're a relay, and send the reply to giaddr.
+		 */
+		request->packet->src_ipaddr.ipaddr.ip4addr.s_addr = giaddr->vp_ipaddr;
+		request->packet->dst_port = request->packet->dst_port;		/* server port */
+	}
+
 
 	if ((request->packet->code == PW_DHCP_NAK) ||
 	    !sock->src_interface ||
@@ -437,11 +454,16 @@ static int dhcp_process(REQUEST *request)
 	 *	Answer to client's nearest DHCP gateway.  In this
 	 *	case, the client can reach the gateway, as can the
 	 *	server.
+	 *
+	 *	We also use *our* source port as the destination port.
+	 *	Gateways are servers, and listen on the server port,
+	 *	not the client port.
 	 */
 	vp = pairfind(request->reply->vps, 266, DHCP_MAGIC_VENDOR, TAG_ANY); /* DHCP-Gateway-IP-Address */
 	if (vp && (vp->vp_ipaddr != htonl(INADDR_ANY))) {
 		RDEBUG("DHCP: Reply will be unicast to giaddr");
 		request->reply->dst_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
+		request->reply->dst_port = request->packet->dst_port;
 		return 1;
 	}
 
