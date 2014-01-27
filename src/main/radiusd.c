@@ -99,6 +99,14 @@ int main(int argc, char *argv[])
 	int flag = 0;
 	int from_child[2] = {-1, -1};
 
+	/*
+	 *	If the server was built with debugging enabled always install
+	 *	the basic fatal signal handlers.
+	 */
+#ifndef NDEBUG
+	fr_fault_setup(getenv("PANIC_ACTION"), argv[0]);
+#endif
+
 #ifdef HAVE_SIGACTION
 	struct sigaction act;
 #endif
@@ -273,6 +281,15 @@ int main(int argc, char *argv[])
 	/*  Read the configuration files, BEFORE doing anything else.  */
 	if (read_mainconfig(0) < 0) {
 		exit(1);
+	}
+
+	/* Set the panic action (if required) */
+	if (mainconfig.panic_action &&
+#ifndef NDEBUG
+	    !getenv("PANIC_ACTION") &&
+#endif
+	    (fr_fault_setup(mainconfig.panic_action, argv[0]) < 0)) {
+		exit(EXIT_FAILURE);
 	}
 
 #ifndef __MINGW32__

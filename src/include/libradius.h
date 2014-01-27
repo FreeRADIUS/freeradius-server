@@ -402,6 +402,8 @@ void		fr_printf_log(const char *, ...)
 /*
  *	Several handy miscellaneous functions.
  */
+int		fr_fault_setup(char const *cmd, char const *program);
+int		fr_set_signal(int sig, sig_t func);
 const char *	ip_ntoa(char *, uint32_t);
 char		*ifid_ntoa(char *buffer, size_t size, uint8_t *ifid);
 uint8_t		*ifid_aton(const char *ifid_str, uint8_t *ifid);

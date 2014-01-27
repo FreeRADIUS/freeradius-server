@@ -167,6 +167,39 @@ pidfile = ${run_dir}/${name}.pid
 #user = radius
 #group = radius
 
+#  panic_action: Command to execute if the server dies unexpectedly.
+#
+#  FOR PRODUCTION SYSTEMS, ACTIONS SHOULD ALWAYS EXIT.
+#  AN INTERACTIVE ACTION MEANS THE SERVER IS NOT RESPONDING TO REQUESTS.
+#  AN INTERACTICE ACTION MEANS THE SERVER WILL NOT RESTART.
+#
+#  The panic action is a command which will be executed if the server
+#  receives a fatal, non user generated signal, i.e. SIGSEGV, SIGBUS,
+#  SIGABRT or SIGFPE.
+#
+#  This can be used to start an interactive debugging session so
+#  that information regarding the current state of the server can
+#  be acquired.
+#
+#  The following string substitutions are available:
+#  - %e   The currently executing program e.g. /sbin/radiusd
+#  - %p   The PID of the currently executing program e.g. 12345
+#
+#  Standard ${} substitutions are also allowed.
+#
+#  An example panic action for opening an interactive session in GDB would be:
+#
+#panic_action = "gdb %e %p"
+#
+#  Again, don't use that on a production system.
+#
+#  An example panic action for opening an automated session in GDB would be:
+#
+#panic_action = "gdb -silent -x ${raddbdir}/panic.gdb %e %p > ${logdir}/gdb-%e-%p.log 2>&1"
+#
+#  That command can be used on a production system.
+#
+
 #  max_request_time: The maximum time (in seconds) to handle a request.
 #
 #  Requests which take more time than this to process may be killed, and
@@ -547,7 +580,7 @@ $INCLUDE proxy.conf
 
 # CLIENTS CONFIGURATION
 #
-#  Client configuration is defined in "clients.conf".  
+#  Client configuration is defined in "clients.conf".
 #
 
 #  The 'clients.conf' file contains all of the information from the old
@@ -752,7 +785,7 @@ instantiate {
 	#  listed in any other section.  See 'doc/rlm_expr' for
 	#  more information.
 	#
-	#  rlm_expr is also responsible for registering many 
+	#  rlm_expr is also responsible for registering many
 	#  other xlat functions such as md5, sha1 and lc.
 	#
 	#  We do not recommend removing it's listing here.

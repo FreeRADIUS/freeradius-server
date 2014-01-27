@@ -381,6 +381,7 @@ typedef struct main_config_t {
 	int		post_proxy_authorize;
 #endif
 	int		debug_memory;
+	const char	*panic_action;
 } MAIN_CONFIG_T;
 
 #define DEBUG	if(debug_flag)log_debug

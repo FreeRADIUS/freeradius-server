@@ -32,6 +32,34 @@ RCSID("$Id$")
 int		fr_dns_lookups = 0;
 int		fr_debug_flag = 0;
 
+/** Sets a signal handler using sigaction if available, else signal
+ *
+ * @param sig to set handler for.
+ * @param func handler to set.
+ */
+int fr_set_signal(int sig, sig_t func)
+{
+#ifdef HAVE_SIGACTION
+	struct sigaction act;
+
+	memset(&act, 0, sizeof(act));
+	act.sa_flags = 0;
+	sigemptyset(&act.sa_mask);
+	act.sa_handler = func;
+
+	if (sigaction(sig, &act, NULL) < 0) {
+		fr_strerror_printf("Failed setting signal %i handler via sigaction(): %s", sig, strerror(errno));
+		return -1;
+	}
+#else
+	if (signal(sig, func) < 0) {
+		fr_strerror_printf("Failed setting signal %i handler via signal(): %s", sig, strerror(errno));
+		return -1;
+	}
+#endif
+	return 0;
+}
+
 /*
  *	Return an IP address in standard dot notation
  *
