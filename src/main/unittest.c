@@ -537,7 +537,11 @@ int main(int argc, char *argv[])
 	}
 
 	/* Set the panic action (if required) */
-	if (mainconfig.panic_action && (fr_fault_setup(mainconfig.panic_action, argv[0]) < 0)) {
+	if (mainconfig.panic_action &&
+#ifndef NDEBUG
+	    !getenv("PANIC_ACTION") &&
+#endif
+	    (fr_fault_setup(mainconfig.panic_action, argv[0]) < 0)) {
 		exit(EXIT_FAILURE);
 	}
 
