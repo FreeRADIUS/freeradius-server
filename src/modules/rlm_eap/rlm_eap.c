@@ -663,6 +663,11 @@ static int eap_post_proxy(void *inst, REQUEST *request)
 	}
 
 	/*
+	 *	This is allowed.
+	 */
+	if (!request->proxy_reply) return RLM_MODULE_NOOP;
+
+	/*
 	 *	There may be more than one Cisco-AVPair.
 	 *	Ensure we find the one with the LEAP attribute.
 	 */
