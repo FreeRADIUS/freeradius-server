@@ -656,8 +656,13 @@ ldap_rcode_t rlm_ldap_search(ldap_instance_t const *inst, REQUEST *request, ldap
 		(*pconn)->rebound = false;
 	}
 
-	LDAP_DBG_REQ("Performing search in '%s' with filter '%s'", dn, filter);
-
+	if (filter) {
+		LDAP_DBG_REQ("Performing search in '%s' with filter '%s', scope '%s'", dn, filter,
+			     fr_str2int(ldap_scope, scope, "<INVALID>"));
+	} else {
+		LDAP_DBG_REQ("Performing unfiltered search in '%s', scope '%s'", dn,
+			     fr_str2int(ldap_scope, scope, "<INVALID>"));
+	}
 	/*
 	 *	If LDAP search produced an error it should also be logged
 	 *	to the ld. result should pick it up without us
