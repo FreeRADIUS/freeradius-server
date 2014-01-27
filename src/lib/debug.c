@@ -227,8 +227,13 @@ fr_bt_marker_t *fr_backtrace_attach(UNUSED fr_cbuff_t **cbuff, UNUSED TALLOC_CTX
 static void NEVER_RETURNS _fr_fault(int sig)
 {
 	char cmd[sizeof(panic_action) + 20];
-	char *p;
-	int ret;
+	char *out = cmd;
+	size_t left = sizeof(cmd), ret;
+
+	char const *p = panic_action;
+	char const *q;
+
+	int code;
 
 	fprintf(stderr, "FATAL SIGNAL: %s\n", strsignal(sig));
 
@@ -258,17 +263,22 @@ static void NEVER_RETURNS _fr_fault(int sig)
 	}
 
 	/* Substitute %p for the current PID (useful for attaching a debugger) */
-	p = strstr(panic_action, "%p");
-	if (p) {
-		snprintf(cmd, sizeof(cmd), "%.*s%i%s",
-			 (int)(p - panic_action), panic_action, (int)getpid(), p + 2);
-	} else {
-		strlcpy(cmd, panic_action, sizeof(cmd));
+	while ((q = strstr(p, "%p"))) {
+		out += ret = snprintf(out, left, "%.*s%d", (int) (q - p), p, (int) getpid());
+		if (left <= ret) {
+		oob:
+			fprintf(stderr, "Panic action too long\n");
+			fr_exit_now(1);
+		}
+		left -= ret;
+		p = q + 2;
 	}
+	if (strlen(p) >= left) goto oob;
+	strlcpy(out, p, left);
 
 	fprintf(stderr, "Calling: %s\n", cmd);
-	ret = system(cmd);
-	fprintf(stderr, "Panic action exited with %i\n", ret);
+	code = system(cmd);
+	fprintf(stderr, "Panic action exited with %i\n", code);
 
 	fr_exit_now(1);
 }
@@ -286,17 +296,27 @@ static void NEVER_RETURNS _fr_fault(int sig)
 int fr_fault_setup(char const *cmd, char const *program)
 {
 	static bool setup = false;
-	char *p;
+
+	char *out = panic_action;
+	size_t left = sizeof(panic_action), ret;
+
+	char const *p = cmd;
+	char const *q;
 
 	if (cmd) {
 		/* Substitute %e for the current program */
-		p = strstr(cmd, "%e");
-		if (p) {
-			snprintf(panic_action, sizeof(panic_action), "%.*s%s%s",
-				 (int)(p - cmd), cmd, program ? program : "", p + 2);
-		} else {
-			strlcpy(panic_action, cmd, sizeof(panic_action));
+		while ((q = strstr(p, "%e"))) {
+			out += ret = snprintf(out, left, "%.*s%s", (int) (q - p), p, program ? program : "");
+			if (left <= ret) {
+			oob:
+				fr_strerror_printf("Panic action too long");
+				return -1;
+			}
+			left -= ret;
+			p = q + 2;
 		}
+		if (strlen(p) >= left) goto oob;
+		strlcpy(out, p, left);
 	} else {
 		*panic_action = '\0';
 	}
