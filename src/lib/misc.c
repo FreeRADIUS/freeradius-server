@@ -620,21 +620,21 @@ int fr_sockaddr2ipaddr(const struct sockaddr_storage *sa, socklen_t salen,
 			fr_strerror_printf("IPv4 address is too small");
 			return 0;
 		}
-		
+
 		memcpy(&s4, sa, sizeof(s4));
 		ipaddr->af = AF_INET;
 		ipaddr->ipaddr.ip4addr = s4.sin_addr;
 		if (port) *port = ntohs(s4.sin_port);
-		
+
 #ifdef HAVE_STRUCT_SOCKADDR_IN6
 	} else if (sa->ss_family == AF_INET6) {
 		struct sockaddr_in6	s6;
-		
+
 		if (salen < sizeof(s6)) {
 			fr_strerror_printf("IPv6 address is too small");
 			return 0;
 		}
-		
+
 		memcpy(&s6, sa, sizeof(s6));
 		ipaddr->af = AF_INET6;
 		ipaddr->ipaddr.ip6addr = s6.sin6_addr;

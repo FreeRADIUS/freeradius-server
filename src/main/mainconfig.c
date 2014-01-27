@@ -413,7 +413,7 @@ static size_t xlat_client(UNUSED void *instance, REQUEST *request,
 		*out = '\0';
 		return 0;
 	}
-	
+
 	strlcpy(out, value, outlen);
 
 	return strlen(out);
@@ -464,7 +464,7 @@ static void fr_set_dumpable(void)
 
 		no_core.rlim_cur = 0;
 		no_core.rlim_max = 0;
-		
+
 		if (setrlimit(RLIMIT_CORE, &no_core) < 0) {
 			radlog(L_ERR, "Failed disabling core dumps: %s",
 			       strerror(errno));
@@ -503,7 +503,7 @@ static int doing_setuid = FALSE;
 void fr_suid_up(void)
 {
 	uid_t ruid, euid, suid;
-	
+
 	if (getresuid(&ruid, &euid, &suid) < 0) {
 		radlog(L_ERR, "Failed getting saved UID's");
 		_exit(1);
@@ -529,7 +529,7 @@ void fr_suid_down(void)
 			progname, uid_name, strerror(errno));
 		_exit(1);
 	}
-		
+
 	if (geteuid() != server_uid) {
 		fprintf(stderr, "%s: Failed switching uid: UID is incorrect\n",
 			progname);
@@ -593,7 +593,7 @@ void fr_suid_down_permanent(void)
 	fr_set_dumpable();
 }
 #endif /* HAVE_SETUID */
- 
+
 #ifdef HAVE_SETUID
 
 /*
@@ -648,7 +648,7 @@ static int switch_users(CONF_SECTION *cs)
 	/*  Set UID.  */
 	if (uid_name) {
 		struct passwd *pw;
-		
+
 		pw = getpwnam(uid_name);
 		if (pw == NULL) {
 			fprintf(stderr, "%s: Cannot get passwd entry for user %s: %s\n",
@@ -724,14 +724,14 @@ static int switch_users(CONF_SECTION *cs)
 				fprintf(stderr, "radiusd: Failed to open log file %s: %s\n", mainconfig.log_file, strerror(errno));
 				return 0;
 			}
-		
+
 			if (chown(mainconfig.log_file, server_uid, server_gid) < 0) {
-				fprintf(stderr, "%s: Cannot change ownership of log file %s: %s\n", 
+				fprintf(stderr, "%s: Cannot change ownership of log file %s: %s\n",
 					progname, mainconfig.log_file, strerror(errno));
 				return 0;
 			}
 		}
-	}		
+	}
 
 	if (uid_name) {
 		doing_setuid = TRUE;
@@ -826,13 +826,13 @@ int read_mainconfig(int reload)
 			cf_section_free(&cs);
 			return -1;
 		}
-		
+
 		if (!radlog_dest) {
 			fprintf(stderr, "radiusd: Error: No log destination specified.\n");
 			cf_section_free(&cs);
 			return -1;
 		}
-		
+
 		mainconfig.radlog_dest = fr_str2int(str2dest, radlog_dest,
 						    RADLOG_NUM_DEST);
 		if (mainconfig.radlog_dest == RADLOG_NUM_DEST) {
@@ -841,7 +841,7 @@ int read_mainconfig(int reload)
 			cf_section_free(&cs);
 			return -1;
 		}
-		
+
 		if (mainconfig.radlog_dest == RADLOG_SYSLOG) {
 			/*
 			 *	Make sure syslog_facility isn't NULL
@@ -1024,7 +1024,7 @@ int free_mainconfig(void)
 void hup_logfile(void)
 {
 		int fd, old_fd;
-		
+
 		if (mainconfig.radlog_dest != RADLOG_FILES) return;
 
  		fd = open(mainconfig.log_file,
