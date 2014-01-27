@@ -77,11 +77,6 @@ extern FR_NAME_NUMBER const syslog_str2fac[];
 extern FR_NAME_NUMBER const log_str2dst[];
 extern fr_log_t default_log;
 
-void		rad_get_va_printf_args(va_list *ap, char const *fmt, ...)
-#ifdef __GNUC__
-		__attribute__ ((format (printf, 2, 3)))
-#endif
-;
 int		vradlog(log_type_t lvl, char const *fmt, va_list ap)
 #ifdef __GNUC__
 		__attribute__ ((format (printf, 2, 0)))
@@ -100,6 +95,11 @@ void		vradlog_request(log_type_t type, log_debug_t lvl, REQUEST *request, char c
 #endif
 ;
 void		radlog_request(log_type_t type, log_debug_t lvl, REQUEST *request, char const *msg, ...)
+#ifdef __GNUC__
+		__attribute__ ((format (printf, 4, 5)))
+#endif
+;
+void		radlog_request_error(log_type_t type, log_debug_t lvl, REQUEST *request, char const *msg, ...)
 #ifdef __GNUC__
 		__attribute__ ((format (printf, 4, 5)))
 #endif
@@ -159,26 +159,8 @@ void log_talloc_report(TALLOC_CTX *ctx);
  *
  *	If a REQUEST * is available, these functions should be used.
  */
-#define _RL(_l, _p, _f, ...)	do {\
-					if (request && request->radlog) {\
-						va_list _ap;\
-						rad_get_va_printf_args(&_ap, _f, ## __VA_ARGS__);\
-						request->radlog(_l, _p, request, _f, _ap);\
-						va_end(_ap);\
-					}\
-				} while(0)
-
-#define _RM(_l, _p, _f, ...)	do {\
-					if (request) {\
-						va_list _ap;\
-						rad_get_va_printf_args(&_ap, _f, ## __VA_ARGS__);\
-						if (request->radlog) {\
-							request->radlog(_l, _p, request, _f, _ap);\
-						}\
-						vmodule_failure_msg(request, _f, _ap);\
-						va_end(_ap);\
-					}\
-				} while (0)
+#define _RL(_l, _p, _f, ...)	do { if (request && request->radlog) radlog_request(_l, _p, request, _f, ## __VA_ARGS__); } while(0)
+#define _RM(_l, _p, _f, ...)	do { if (request) radlog_request_error(_l, _p, request, _f, ## __VA_ARGS__); } while (0)
 
 #define RDEBUG_ENABLED		radlog_debug_enabled(L_DBG, L_DBG_LVL_1, request)
 #define RDEBUG_ENABLED2		radlog_debug_enabled(L_DBG, L_DBG_LVL_2, request)
