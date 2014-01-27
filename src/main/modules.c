@@ -791,7 +791,7 @@ rlm_rcode_t indexed_modcall(rlm_components_t comp, int idx, REQUEST *request)
  */
 static int load_subcomponent_section(modcallable *parent, CONF_SECTION *cs,
 				     rbtree_t *components,
-				     DICT_ATTR const *dattr, rlm_components_t comp)
+				     DICT_ATTR const *da, rlm_components_t comp)
 {
 	indexed_modcallable *subcomp;
 	modcallable *ml;
@@ -819,7 +819,7 @@ static int load_subcomponent_section(modcallable *parent, CONF_SECTION *cs,
 	 *	automatically.  If it isn't found, it's a serious
 	 *	error.
 	 */
-	dval = dict_valbyname(dattr->attr, dattr->vendor, name2);
+	dval = dict_valbyname(da->attr, da->vendor, name2);
 	if (!dval) {
 		cf_log_err_cs(cs,
 			   "%s %s Not previously configured",
@@ -838,7 +838,7 @@ static int load_subcomponent_section(modcallable *parent, CONF_SECTION *cs,
 	return 1;		/* OK */
 }
 
-static int define_type(CONF_SECTION *cs, DICT_ATTR const *dattr, char const *name)
+static int define_type(CONF_SECTION *cs, DICT_ATTR const *da, char const *name)
 {
 	uint32_t value;
 	DICT_VALUE *dval;
@@ -847,7 +847,7 @@ static int define_type(CONF_SECTION *cs, DICT_ATTR const *dattr, char const *nam
 	 *	If the value already exists, don't
 	 *	create it again.
 	 */
-	dval = dict_valbyname(dattr->attr, dattr->vendor, name);
+	dval = dict_valbyname(da->attr, da->vendor, name);
 	if (dval) return 1;
 
 	/*
@@ -859,10 +859,10 @@ static int define_type(CONF_SECTION *cs, DICT_ATTR const *dattr, char const *nam
 	 */
 	do {
 		value = fr_rand() & 0x00ffffff;
-	} while (dict_valbyattr(dattr->attr, dattr->vendor, value));
+	} while (dict_valbyattr(da->attr, da->vendor, value));
 
-	cf_log_module(cs, "Creating %s = %s", dattr->name, name);
-	if (dict_addvalue(name, dattr->name, value) < 0) {
+	cf_log_module(cs, "Creating %s = %s", da->name, name);
+	if (dict_addvalue(name, da->name, value) < 0) {
 		ERROR("%s", fr_strerror());
 		return 0;
 	}
@@ -879,13 +879,13 @@ static int load_component_section(CONF_SECTION *cs,
 	indexed_modcallable *subcomp;
 	char const *modname;
 	char const *visiblename;
-	DICT_ATTR const *dattr;
+	DICT_ATTR const *da;
 
 	/*
 	 *	Find the attribute used to store VALUEs for this section.
 	 */
-	dattr = dict_attrbyvalue(section_type_value[comp].attr, 0);
-	if (!dattr) {
+	da = dict_attrbyvalue(section_type_value[comp].attr, 0);
+	if (!da) {
 		cf_log_err_cs(cs,
 			   "No such attribute %s",
 			   section_type_value[comp].typename);
@@ -912,7 +912,7 @@ static int load_component_section(CONF_SECTION *cs,
 				   section_type_value[comp].typename) == 0) {
 				if (!load_subcomponent_section(NULL, scs,
 							       components,
-							       dattr,
+							       da,
 							       comp)) {
 					return -1; /* FIXME: memleak? */
 				}
@@ -1081,7 +1081,7 @@ static int load_byserver(CONF_SECTION *cs)
 	for (comp = 0; comp < RLM_COMPONENT_COUNT; ++comp) {
 		CONF_SECTION *subcs;
 		CONF_ITEM *modref;
-		DICT_ATTR const *dattr;
+		DICT_ATTR const *da;
 
 		subcs = cf_section_sub_find(cs,
 					    section_type_value[comp].section);
@@ -1092,8 +1092,8 @@ static int load_byserver(CONF_SECTION *cs)
 		/*
 		 *	Find the attribute used to store VALUEs for this section.
 		 */
-		dattr = dict_attrbyvalue(section_type_value[comp].attr, 0);
-		if (!dattr) {
+		da = dict_attrbyvalue(section_type_value[comp].attr, 0);
+		if (!da) {
 			cf_log_err_cs(subcs,
 				   "No such attribute %s",
 				   section_type_value[comp].typename);
@@ -1124,7 +1124,7 @@ static int load_byserver(CONF_SECTION *cs)
 			if ((section_type_value[comp].attr == PW_AUTH_TYPE) &&
 			    cf_item_is_pair(modref)) {
 				CONF_PAIR *cp = cf_itemtopair(modref);
-				if (!define_type(cs, dattr, cf_pair_attr(cp))) {
+				if (!define_type(cs, da, cf_pair_attr(cp))) {
 					goto error;
 				}
 
@@ -1137,7 +1137,7 @@ static int load_byserver(CONF_SECTION *cs)
 			name1 = cf_section_name1(subsubcs);
 
 			if (strcmp(name1, section_type_value[comp].typename) == 0) {
-			  if (!define_type(cs, dattr,
+			  if (!define_type(cs, da,
 					   cf_section_name2(subsubcs))) {
 					goto error;
 				}

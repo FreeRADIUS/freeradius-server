@@ -749,7 +749,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		inst->config->xlat_name = cf_section_name1(conf);
 	} else {
 		char *group_name;
-		DICT_ATTR const *dattr;
+		DICT_ATTR const *da;
 		ATTR_FLAGS flags;
 
 		/*
@@ -767,8 +767,8 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 			return -1;
 		}
 
-		dattr = dict_attrbyname(group_name);
-		if (!dattr) {
+		da = dict_attrbyname(group_name);
+		if (!da) {
 			ERROR("rlm_sql (%s): Failed to create "
 			       "attribute %s", inst->config->xlat_name, group_name);
 			return -1;
@@ -778,7 +778,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		    inst->config->groupmemb_query[0]) {
 			DEBUG("rlm_sql (%s): Registering sql_groupcmp for %s",
 			      inst->config->xlat_name, group_name);
-			paircompare_register(dattr, dict_attrbyvalue(PW_USER_NAME, 0),
+			paircompare_register(da, dict_attrbyvalue(PW_USER_NAME, 0),
 					     false, sql_groupcmp, inst);
 		}
 	}
