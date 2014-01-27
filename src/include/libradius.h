@@ -36,6 +36,7 @@ RCSIDH(libradius_h, "$Id$")
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
+#include <signal.h>
 
 #include <freeradius-devel/threads.h>
 #include <freeradius-devel/radius.h>
