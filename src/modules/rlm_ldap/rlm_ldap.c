@@ -38,7 +38,7 @@ RCSID("$Id$")
 /*
  *	Scopes
  */
-const FR_NAME_NUMBER ldap_scope[] = {
+FR_NAME_NUMBER const ldap_scope[] = {
 	{ "sub",	LDAP_SCOPE_SUB	},
 	{ "one",	LDAP_SCOPE_ONE	},
 	{ "base",	LDAP_SCOPE_BASE },
@@ -48,7 +48,7 @@ const FR_NAME_NUMBER ldap_scope[] = {
 };
 
 #ifdef LDAP_OPT_X_TLS_NEVER
-const FR_NAME_NUMBER ldap_tls_require_cert[] = {
+FR_NAME_NUMBER const ldap_tls_require_cert[] = {
 	{ "never",	LDAP_OPT_X_TLS_NEVER	},
 	{ "demand",	LDAP_OPT_X_TLS_DEMAND	},
 	{ "allow",	LDAP_OPT_X_TLS_ALLOW	},
