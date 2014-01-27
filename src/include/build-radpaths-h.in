@@ -31,5 +31,6 @@ cat <<EOF > radpaths.h
 #define RUNDIR		"@localstatedir@/run"
 #define SBINDIR		"@sbindir@"
 #define RADIR		"@radacctdir@"
+#define DICTDIR		"@prefix@/share/freeradius"
 EOF
 
