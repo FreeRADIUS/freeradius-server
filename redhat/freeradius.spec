@@ -465,6 +465,7 @@ fi
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/clients.conf
 %config(noreplace) /etc/raddb/hints
 %config(noreplace) /etc/raddb/huntgroups
+%attr(640,root,radiusd) %config(noreplace) /etc/raddb/panic.gdb
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/README.rst
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/proxy.conf
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/radiusd.conf
@@ -557,6 +558,7 @@ fi
 %{_libdir}/freeradius/rlm_chap.so
 %{_libdir}/freeradius/rlm_counter.so
 %{_libdir}/freeradius/rlm_cram.so
+%{_libdir}/freeradius/rlm_date.so
 %{_libdir}/freeradius/rlm_detail.so
 %{_libdir}/freeradius/rlm_dhcp.so
 %{_libdir}/freeradius/rlm_digest.so
