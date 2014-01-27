@@ -163,8 +163,6 @@ static const CONF_PARSER server_config[] = {
 	{ "logdir",	     PW_TYPE_STRING_PTR, 0, &radlog_dir,	"${localstatedir}/log"},
 	{ "run_dir",	    PW_TYPE_STRING_PTR, 0, &run_dir,	   "${localstatedir}/run/${name}"},
 	{ "libdir",	     PW_TYPE_STRING_PTR, 0, &radlib_dir,	"${prefix}/lib"},
-	{ "dict_dir",		PW_TYPE_STRING_PTR | PW_TYPE_NO_OVERWRITE, 0,
-	  &mainconfig.dictionary_dir, "${prefix}/share" },
 	{ "radacctdir",	 PW_TYPE_STRING_PTR, 0, &radacct_dir,       "${logdir}/radacct" },
 	{ "panic_action", PW_TYPE_STRING_PTR, 0, &mainconfig.panic_action, NULL},
 	{ "hostname_lookups",   PW_TYPE_BOOLEAN,    0, &fr_dns_lookups,      "no" },
@@ -734,6 +732,7 @@ static int switch_users(CONF_SECTION *cs)
  */
 int read_mainconfig(int reload)
 {
+	int rcode;
 	char const *p = NULL;
 	CONF_SECTION *cs;
 	struct stat statbuf;
@@ -769,52 +768,41 @@ int read_mainconfig(int reload)
 	INFO("Starting - reading configuration files ...");
 
 	/*
-	 *	Load the dictionaries.  If it's unset, set it to the
-	 *	raddb directory, as per older versions of the server.
-	 *	This should probably never happen, but we should
-	 *	ideally be backwards compatible.
+	 *	We need to load the dictionaries before reading the
+	 *	configuration files.  This is because of the
+	 *	pre-compilation in conffile.c.  That should probably
+	 *	be fixed to be done as a second stage.
 	 */
-	if (!mainconfig.dictionary_dir || !*mainconfig.dictionary_dir) {
-		mainconfig.dictionary_dir = talloc_strdup(NULL, radius_dir);
+	mainconfig.dictionary_dir = talloc_strdup(NULL, DICTDIR);
 
-		DEBUG2("including dictionary file %s/%s", mainconfig.dictionary_dir, RADIUS_DICTIONARY);
-		if (dict_init(mainconfig.dictionary_dir, RADIUS_DICTIONARY) != 0) {
-			ERROR("Errors reading dictionary: %s",
-			      fr_strerror());
-			return -1;
-		}
-	} else {
-		int rcode;
+	/*
+	 *	Read the distribution dictionaries first, then
+	 *	the ones in raddb.
+	 */
+	DEBUG2("including dictionary file %s/%s", mainconfig.dictionary_dir, RADIUS_DICTIONARY);
+	if (dict_init(mainconfig.dictionary_dir, RADIUS_DICTIONARY) != 0) {
+		ERROR("Errors reading dictionary: %s",
+		      fr_strerror());
+		return -1;
+	}
 
-		/*
-		 *	Read the distribution dictionaries first, then
-		 *	the ones in raddb.
-		 */
-		DEBUG2("including dictionary file %s/%s", mainconfig.dictionary_dir, RADIUS_DICTIONARY);
-		if (dict_init(mainconfig.dictionary_dir, RADIUS_DICTIONARY) != 0) {
-			ERROR("Errors reading dictionary: %s",
-			      fr_strerror());
-			return -1;
-		}
+	/*
+	 *	It's OK if this one doesn't exist.
+	 */
+	rcode = dict_read(radius_dir, RADIUS_DICTIONARY);
+	if (rcode == -1) {
+		ERROR("Errors reading %s/%s: %s", radius_dir, RADIUS_DICTIONARY,
+		      fr_strerror());
+		return -1;
+	}
 
-		/*
-		 *	It's OK if this one doesn't exist.
-		 */
-		rcode = dict_read(radius_dir, RADIUS_DICTIONARY);
-		if (rcode == -1) {
-			ERROR("Errors reading %s/%s: %s", radius_dir, RADIUS_DICTIONARY,
-			      fr_strerror());
-			return -1;
-		}
-
-		/*
-		 *	We print this after reading it.  That way if
-		 *	it doesn't exist, it's OK, and we don't print
-		 *	anything.
-		 */
-		if (rcode == 0) {
-			DEBUG2("including dictionary file %s/%s", radius_dir, RADIUS_DICTIONARY);
-		}
+	/*
+	 *	We print this after reading it.  That way if
+	 *	it doesn't exist, it's OK, and we don't print
+	 *	anything.
+	 */
+	if (rcode == 0) {
+		DEBUG2("including dictionary file %s/%s", radius_dir, RADIUS_DICTIONARY);
 	}
 
 	/* Read the configuration file */
