@@ -220,6 +220,10 @@ int main(int argc, char **argv)
 
 	raddb_dir = RADIUS_DIR;
 
+#ifndef NDEBUG
+	fr_fault_setup(getenv("PANIC_ACTION"), argv[0]);
+#endif
+
 	talloc_set_log_stderr();
 
 	while((c = getopt(argc, argv, "d:fF:nN:sSipP:crRu:U:Z")) != EOF) switch(c) {

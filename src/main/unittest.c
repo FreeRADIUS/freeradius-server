@@ -393,6 +393,14 @@ int main(int argc, char *argv[])
 	VALUE_PAIR *vp;
 	VALUE_PAIR *filter_vps = NULL;
 
+	/*
+	 *	If the server was built with debugging enabled always install
+	 *	the basic fatal signal handlers.
+	 */
+#ifndef NDEBUG
+	fr_fault_setup(getenv("PANIC_ACTION"), argv[0]);
+#endif
+
 	if ((progname = strrchr(argv[0], FR_DIR_SEP)) == NULL)
 		progname = argv[0];
 	else
@@ -420,14 +428,6 @@ int main(int argc, char *argv[])
 	fr_log_fp = stdout;
 	default_log.dest = L_DST_STDOUT;
 	default_log.fd = STDOUT_FILENO;
-
-	/*
-	 *	If the server was built with debugging enabled always install
-	 *	the basic fatal signal handlers.
-	 */
-#ifndef NDEBUG
-	fr_fault_setup(NULL, NULL);
-#endif
 
 	/*  Process the options.  */
 	while ((argval = getopt(argc, argv, "d:D:f:hi:mMn:o:xX")) != EOF) {

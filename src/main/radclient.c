@@ -923,6 +923,10 @@ int main(int argc, char **argv)
 
 	fr_debug_flag = 0;
 
+#ifndef NDEBUG
+	fr_fault_setup(getenv("PANIC_ACTION"), argv[0]);
+#endif
+
 	talloc_set_log_stderr();
 
 	filename_tree = rbtree_create(filename_cmp, NULL, 0);

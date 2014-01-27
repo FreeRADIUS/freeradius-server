@@ -394,6 +394,13 @@ int main(int argc, char *argv[])
 	fr_debug_flag = 2;
 	log_dst = stdout;
 
+	/*
+	 *	Useful if using radsniff as a long running stats daemon
+	 */
+#ifndef NDEBUG
+	fr_fault_setup(getenv("PANIC_ACTION"), argv[0]);
+#endif
+
 	talloc_set_log_stderr();
 
 	/*

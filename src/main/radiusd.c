@@ -112,7 +112,7 @@ int main(int argc, char *argv[])
 	 *	the basic fatal signal handlers.
 	 */
 #ifndef NDEBUG
-	fr_fault_setup(NULL, NULL);
+	fr_fault_setup(getenv("PANIC_ACTION"), argv[0]);
 #endif
 
 #ifdef OSFC2
