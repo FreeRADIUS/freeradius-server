@@ -26,13 +26,14 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/rad_assert.h>
 
 #ifdef HAVE_SYS_STAT_H
-#include <sys/stat.h>
+#  include <sys/stat.h>
 #endif
 
 #ifdef HAVE_SYSLOG_H
-#	include <syslog.h>
+#  include <syslog.h>
 #endif
 
 /*
@@ -155,16 +156,6 @@ fr_log_t default_log = {
 	.file = NULL,
 	.debug_file = NULL,
 };
-
-/** Wrapper to convert variadic arguments to a va_list
- *
- * @param ap to write args to.
- * @param fmt string to validate.
- */
-void rad_get_va_printf_args(va_list *ap, char const *fmt, ...)
-{
-	va_start(*ap, fmt);
-}
 
 /*
  *	Log the message to the logfile. Include the severity and
@@ -497,13 +488,54 @@ void vradlog_request(log_type_t type, log_debug_t lvl, REQUEST *request, char co
 	}
 }
 
+/** Martial variadic log arguments into a va_list and pass to normal logging functions
+ *
+ * @see radlog_request_error for more details.
+ *
+ * @param type the log category.
+ * @param lvl of debugging this message should be displayed at.
+ * @param request The current request.
+ * @param msg format string.
+ */
 void radlog_request(log_type_t type, log_debug_t lvl, REQUEST *request, char const *msg, ...)
 {
 	va_list ap;
+
+	rad_assert(request && request->radlog);
+
 	va_start(ap, msg);
-	vradlog_request(type, lvl, request, msg, ap);
+	request->radlog(type, lvl, request, msg, ap);
 	va_end(ap);
 }
+
+/** Martial variadic log arguments into a va_list and pass to error logging functions
+ *
+ * This could all be done in a macro, but it turns out some implementations of the
+ * variadic macros do not work at all well if the va_list being written to is further
+ * up the stack (which is required as you still need a function to convert the elipses
+ * into a va_list).
+ *
+ * So, we use this small wrapper function instead, which will hopefully guarantee
+ * consistent behaviour.
+ *
+ * @param type the log category.
+ * @param lvl of debugging this message should be displayed at.
+ * @param request The current request.
+ * @param msg format string.
+ */
+void radlog_request_error(log_type_t type, log_debug_t lvl, REQUEST *request, char const *msg, ...)
+{
+	va_list ap;
+
+	rad_assert(request);
+	va_start(ap, msg);
+	if (request->radlog) {
+		request->radlog(type, lvl, request, msg, ap);
+	}
+	vmodule_failure_msg(request, msg, ap);
+	va_end(ap);
+}
+
 
 void log_talloc(char const *msg)
 {
