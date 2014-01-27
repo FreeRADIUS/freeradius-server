@@ -595,7 +595,7 @@ rlm_rcode_t rlm_ldap_check_userobj_dynamic(ldap_instance_t const *inst, REQUEST 
 		 */
 		if (!name_is_dn && !value_is_dn) {
 			if (strcmp(vals[i], name) == 0){
-				RDEBUG("User found. Comparison between membership: name, check: name]");
+				RDEBUG("User found. Comparison between membership: name, check: name");
 				rcode = RLM_MODULE_OK;
 
 				goto finish;
