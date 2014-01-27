@@ -773,7 +773,7 @@ int read_mainconfig(int reload)
 	 *	pre-compilation in conffile.c.  That should probably
 	 *	be fixed to be done as a second stage.
 	 */
-	mainconfig.dictionary_dir = talloc_strdup(NULL, DICTDIR);
+	mainconfig.dictionary_dir = DICTDIR;
 
 	/*
 	 *	Read the distribution dictionaries first, then
