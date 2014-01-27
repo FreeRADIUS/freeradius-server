@@ -1022,7 +1022,7 @@ int radius_map2request(REQUEST *request, value_pair_map_t const *map,
 		}
 
 
-		RDEBUG("\t\t%s %s %s", map->dst->name, fr_int2str(fr_tokens, vp->op, "<INVALID>"), value);
+		RDEBUG("\t%s %s %s", map->dst->name, fr_int2str(fr_tokens, vp->op, "<INVALID>"), value);
 
 		if (value != buffer) talloc_free(value);
 	}
