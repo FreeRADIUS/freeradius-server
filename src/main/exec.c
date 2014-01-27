@@ -480,6 +480,12 @@ int radius_readfrom_program(REQUEST *request, int fd, pid_t pid, int timeout,
 		if (left <= 0) break;
 	}
 #endif	/* __MINGW32__ */
+
+	/* Strip trailing new lines */
+	while ((done > 0) && (answer[done - 1] == '\n')) {
+		answer[--done] = '\0';
+	}
+
 	return done;
 }
 
