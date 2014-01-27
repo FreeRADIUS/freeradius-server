@@ -374,6 +374,10 @@ int main(int argc, char **argv)
 	char *commands[MAX_COMMANDS];
 	int num_commands = -1;
 
+#ifndef NDEBUG
+	fr_fault_setup(getenv("PANIC_ACTION"), argv[0]);
+#endif
+
 	talloc_set_log_stderr();
 
 	outputfp = stdout;	/* stdout is not a constant value... */

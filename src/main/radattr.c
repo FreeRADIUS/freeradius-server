@@ -797,6 +797,10 @@ int main(int argc, char *argv[])
 	int report = false;
 	char const *radius_dir = RADDBDIR;
 
+#ifndef NDEBUG
+	fr_fault_setup(getenv("PANIC_ACTION"), argv[0]);
+#endif
+
 	while ((c = getopt(argc, argv, "d:xM")) != EOF) switch(c) {
 		case 'd':
 			radius_dir = optarg;
