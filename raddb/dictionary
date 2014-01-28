@@ -21,8 +21,9 @@
 #
 
 #
-#	All additional attributes and $INCLUDE's should go into
-#	a file "dictionary.local".
+#	All local attributes and $INCLUDE's should go into
+#	this file.
+#
 
 #	If you want to add entries to the dictionary file,
 #	which are NOT going to be placed in a RADIUS packet,
@@ -41,18 +42,8 @@
 #
 
 #
-#	These attributes are examples.  Don't edit them here.
-#	Instead, create a "dictionary.local" file, and place
-#	them there.
+#	These attributes are examples
 #
 #ATTRIBUTE	My-Local-String		3000	string
 #ATTRIBUTE	My-Local-IPAddr		3001	ipaddr
 #ATTRIBUTE	My-Local-Integer	3002	integer
-
-#
-#	Include dictionary.local, IF it exists.  Otherwise, ignore it.
-#
-#	This file WILL NOT EVER be created, edited, or modified
-#	by FreeRADIUS.
-#
-$INCLUDE-	dictionary.local
