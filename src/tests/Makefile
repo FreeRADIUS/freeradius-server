@@ -63,8 +63,13 @@ test.conf: dictionary
 
 radiusd.pid: $(RADDB_PATH)/test.conf test.conf
 	@rm -f $(TEST_PATH)/gdb.log $(TEST_PATH)/radius.log
-	@gdb -silent -x $(TEST_PATH)/tests.gdb --args \
-	$(BIN_PATH)/radiusd -fPtxxxxml $(TEST_PATH)/radius.log -d $(RADDB_PATH) -n test -i 127.0.0.1 -p $(PORT) -D $(TEST_PATH) > $(TEST_PATH)/gdb.log 2>&1 &
+	@printf "Starting server... "
+	@if ! $(BIN_PATH)/radiusd -Ptxxxxml $(TEST_PATH)/radius.log -d $(RADDB_PATH) -n test -i 127.0.0.1 -p $(PORT) -D $(TEST_PATH) > $(TEST_PATH)/gdb.log 2>&1; then\
+		echo "failed"; \
+		echo "Last log entries were:"; \
+		tail -n 20 "$(TEST_PATH)/radius.log"; \
+	fi
+	@echo "ok"
 
 # We can't make this depend on radiusd.pid, because then make will create
 # radiusd.pid when we make radiusd.kill, which we don't want.
@@ -97,28 +102,8 @@ $(RADDB_PATH)/test.conf: test.conf
 # run the tests (ignoring any failures)
 # kill the server
 # remove the changes to raddb/
-tests: $(RADDB_PATH)/test.conf radiusd.kill
+tests: $(RADDB_PATH)/test.conf | radiusd.kill radiusd.pid
 	@chmod a+x runtests.sh
-	@$(MAKE) radiusd.pid
-	@echo "Waiting for server to start..."; \
-	for i in 15 14 13 12 11 10 9 8 7 6 5 4 3 2 1 0; do \
-		printf "$$i "; \
-		if [ -f '$(TEST_PATH)/radiusd.pid' ]; then \
-			if ps `cat $(TEST_PATH)/radiusd.pid > /dev/null` > /dev/null 2>&1; then \
-				echo; echo "Server started with PID" `cat $(TEST_PATH)/radiusd.pid`; \
-				exit 0; \
-			else \
-				break; \
-			fi; \
-		fi; \
-		sleep 1; \
-	done; echo; \
-	echo "FreeRADIUS daemon failed to start"; \
-	echo "Last log entries were:"; \
-	tail -n 20 "$(TEST_PATH)/radius.log"; \
-	echo "GDB output was:"; \
-	cat "$(TEST_PATH)/gdb.log"; \
-	exit 1;
 	@BIN_PATH="$(BIN_PATH)" PORT="$(PORT)" ./runtests.sh $(TESTS)
 	@$(MAKE) radiusd.kill
 	@rm -f $(RADDB_PATH)/test.conf
