@@ -1,5 +1,7 @@
 FreeRADIUS 2.2.4 Wednesday 16 Dec 2013 15:00:00 EST, urgency=medium
 	Feature improvements
+	* A "panic_action" can be set to have the server dump a gdb
+	  log on SEGV or other fatal error.
 	Bug fixes
 	* If the server fails to bind() after fork(), that is now
 	  reported to the parent, which exits with an error.
@@ -7,6 +9,9 @@ FreeRADIUS 2.2.4 Wednesday 16 Dec 2013 15:00:00 EST, urgency=medium
 	* Use --tag=CC for libtool.  Closes #497.  Because libtool
 	  is too stupid to notice that compiling means compilation.
 	* Fix bug when copying attributes for vendors > 32767
+	* Fix behaviour on FreeBSD where sending packets from an interface
+	  bound to an IP address would fail when the server was built with
+	  udpfromto.
 
 FreeRADIUS 2.2.3 Wednesday 11 Dec 2013 15:00:00 EST, urgency=medium
 	Feature improvements
