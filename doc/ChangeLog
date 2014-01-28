@@ -22,6 +22,9 @@ FreeRADIUS 3.0.2 Mon 13 Jan 2014 14:30:00 EDT urgency=medium
 	* Allow '&' in more xlat expansions.
 	* Fix attribute truncation seen in Perl and other places.
 	* Use correct port when DHCP relaying.
+	* Fix behaviour on FreeBSD where sending packets from an interface
+	  bound to an IP address would fail when the server was built with
+	  udpfromto.
 
 FreeRADIUS 3.0.1 Mon 13 Jan 2014 14:30:00 EDT urgency=medium
 	Feature improvements
