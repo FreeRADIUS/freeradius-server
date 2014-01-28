@@ -63,12 +63,8 @@ static DICT_ATTR *dict_base_attrs[256];
  */
 typedef struct dict_stat_t {
 	struct dict_stat_t *next;
-	char	   	   *name;
-	time_t		   mtime;
+	struct stat stat_buf;
 } dict_stat_t;
-
-static char *stat_root_dir = NULL;
-static char *stat_root_file = NULL;
 
 static dict_stat_t *stat_head = NULL;
 static dict_stat_t *stat_tail = NULL;
@@ -348,11 +344,6 @@ static void dict_stat_free(void)
 {
 	dict_stat_t *this, *next;
 
-	free(stat_root_dir);
-	stat_root_dir = NULL;
-	free(stat_root_file);
-	stat_root_file = NULL;
-
 	if (!stat_head) {
 		stat_tail = NULL;
 		return;
@@ -360,7 +351,6 @@ static void dict_stat_free(void)
 
 	for (this = stat_head; this != NULL; this = next) {
 		next = this->next;
-		free(this->name);
 		free(this);
 	}
 
@@ -371,7 +361,7 @@ static void dict_stat_free(void)
 /*
  *	Add an entry to the list of stat buffers.
  */
-static void dict_stat_add(char const *name, struct stat const *stat_buf)
+static void dict_stat_add(struct stat const *stat_buf)
 {
 	dict_stat_t *this;
 
@@ -379,8 +369,7 @@ static void dict_stat_add(char const *name, struct stat const *stat_buf)
 	if (!this) return;
 	memset(this, 0, sizeof(*this));
 
-	this->name = strdup(name);
-	this->mtime = stat_buf->st_mtime;
+	memcpy(&(this->stat_buf), stat_buf, sizeof(this->stat_buf));
 
 	if (!stat_head) {
 		stat_head = stat_tail = this;
@@ -395,26 +384,49 @@ static void dict_stat_add(char const *name, struct stat const *stat_buf)
  *	See if any dictionaries have changed.  If not, don't
  *	do anything.
  */
-static int dict_stat_check(char const *root_dir, char const *root_file)
+static int dict_stat_check(char const *dir, char const *file)
 {
-	struct stat buf;
+	struct stat stat_buf;
 	dict_stat_t *this;
+	char buffer[2048];
 
-	if (!stat_root_dir) return 0;
-	if (!stat_root_file) return 0;
+	/*
+	 *	Nothing cached, all files are new.
+	 */
+	if (!stat_head) return 0;
 
-	if (strcmp(root_dir, stat_root_dir) != 0) return 0;
-	if (strcmp(root_file, stat_root_file) != 0) return 0;
+	/*
+	 *	Stat the file.
+	 */
+	snprintf(buffer, sizeof(buffer), "%s/%s", dir, file);
+	if (stat(buffer, &stat_buf) < 0) return 0;
 
-	if (!stat_head) return 0; /* changed, reload */
-
+	/*
+	 *	Find the cache entry.
+	 *	FIXME: use a hash table.
+	 *	FIXME: check dependencies, via children.
+	 *	       if A loads B and B changes, we probably want
+	 *	       to reload B at the minimum.
+	 */
 	for (this = stat_head; this != NULL; this = this->next) {
-		if (stat(this->name, &buf) < 0) return 0;
+		if (this->stat_buf.st_dev != stat_buf.st_dev) continue;
+		if (this->stat_buf.st_ino != stat_buf.st_ino) continue;
 
-		if (buf.st_mtime != this->mtime) return 0;
+		/*
+		 *	The file has changed.  Re-read it.
+		 */
+		if (this->stat_buf.st_mtime < stat_buf.st_mtime) return 0;
+
+		/*
+		 *	The file is the same.  Ignore it.
+		 */
+		return 1;
 	}
 
-	return 1;
+	/*
+	 *	Not in the cache.
+	 */
+	return 0;
 }
 
 typedef struct fr_pool_t {
@@ -926,27 +938,20 @@ int dict_addattr(char const *name, int attr, unsigned int vendor, int type,
 		if (!v4) goto oom;
 
 		v6 = fr_pool_alloc(sizeof(*v6));
-		if (!v6) {
-			free(v4);
-			goto oom;
-		}
+		if (!v6) goto oom;
 
 		memcpy(v4, n, sizeof(*v4));
 		v4->type = PW_TYPE_IPADDR;
 
 		memcpy(v6, n, sizeof(*v6));
 		v6->type = PW_TYPE_IPV6ADDR;
-
-		if (!fr_hash_table_insert(attributes_combo, v4)) {
+		if (!fr_hash_table_replace(attributes_combo, v4)) {
 			fr_strerror_printf("dict_addattr: Failed inserting attribute name %s - IPv4", name);
-			free(v4);
-			free(v6);
 			return -1;
 		}
 
-		if (!fr_hash_table_insert(attributes_combo, v6)) {
+		if (!fr_hash_table_replace(attributes_combo, v6)) {
 			fr_strerror_printf("dict_addattr: Failed inserting attribute name %s - IPv6", name);
-			free(v6);
 			return -1;
 		}
 	}
@@ -965,7 +970,7 @@ int dict_addattr(char const *name, int attr, unsigned int vendor, int type,
 int dict_addvalue(char const *namestr, char const *attrstr, int value)
 {
 	size_t		length;
-	DICT_ATTR const	*dattr;
+	DICT_ATTR const	*da;
 	DICT_VALUE	*dval;
 
 	static DICT_ATTR const *last_attr = NULL;
@@ -995,31 +1000,31 @@ int dict_addvalue(char const *namestr, char const *attrstr, int value)
 	 *	caching the last attribute.
 	 */
 	if (last_attr && (strcasecmp(attrstr, last_attr->name) == 0)) {
-		dattr = last_attr;
+		da = last_attr;
 	} else {
-		dattr = dict_attrbyname(attrstr);
-		last_attr = dattr;
+		da = dict_attrbyname(attrstr);
+		last_attr = da;
 	}
 
 	/*
 	 *	Remember which attribute is associated with this
 	 *	value, if possible.
 	 */
-	if (dattr) {
-		if (dattr->flags.has_value_alias) {
+	if (da) {
+		if (da->flags.has_value_alias) {
 			fr_strerror_printf("dict_addvalue: Cannot add VALUE for ATTRIBUTE \"%s\": It already has a VALUE-ALIAS", attrstr);
 			return -1;
 		}
 
-		dval->attr = dattr->attr;
-		dval->vendor = dattr->vendor;
+		dval->attr = da->attr;
+		dval->vendor = da->vendor;
 
 		/*
 		 *	Enforce valid values
 		 *
 		 *	Don't worry about fixups...
 		 */
-		switch (dattr->type) {
+		switch (da->type) {
 			case PW_TYPE_BYTE:
 				if (value > 255) {
 					fr_pool_free(dval);
@@ -1048,7 +1053,7 @@ int dict_addvalue(char const *namestr, char const *attrstr, int value)
 			default:
 				fr_pool_free(dval);
 				fr_strerror_printf("dict_addvalue: VALUEs cannot be defined for attributes of type '%s'",
-					   fr_int2str(dict_attr_types, dattr->type, "?Unknown?"));
+					   fr_int2str(dict_attr_types, da->type, "?Unknown?"));
 				return -1;
 		}
 	} else {
@@ -1082,7 +1087,7 @@ int dict_addvalue(char const *namestr, char const *attrstr, int value)
 		memcpy(&tmp, &dval, sizeof(tmp));
 
 		if (!fr_hash_table_insert(values_byname, tmp)) {
-			if (dattr) {
+			if (da) {
 				DICT_VALUE *old;
 
 				/*
@@ -1090,7 +1095,7 @@ int dict_addvalue(char const *namestr, char const *attrstr, int value)
 				 *	name and value.  There are lots in
 				 *	dictionary.ascend.
 				 */
-				old = dict_valbyname(dattr->attr, dattr->vendor, namestr);
+				old = dict_valbyname(da->attr, da->vendor, namestr);
 				if (old && (old->value == dval->value)) {
 					fr_pool_free(dval);
 					return 0;
@@ -2038,6 +2043,19 @@ static int my_dict_init(char const *parent, char const *filename,
 
 	}
 
+	/*
+	 *	Check if we've loaded this file before.  If so, ignore it.
+	 */
+	p = strrchr(fn, FR_DIR_SEP);
+	if (p) {
+		*p = '\0';
+		if (dict_stat_check(fn, p + 1)) {
+			*p = FR_DIR_SEP;
+			return 0;
+		}
+		*p = FR_DIR_SEP;
+	}
+
 	if ((fp = fopen(fn, "r")) == NULL) {
 		if (!src_file) {
 			fr_strerror_printf("dict_init: Couldn't open dictionary \"%s\": %s",
@@ -2070,7 +2088,7 @@ static int my_dict_init(char const *parent, char const *filename,
 	}
 #endif
 
-	dict_stat_add(fn, &statbuf);
+	dict_stat_add(&statbuf);
 
 	/*
 	 *	Seed the random pool with data.
@@ -2376,8 +2394,6 @@ int dict_init(char const *dir, char const *fn)
 	 *	Free the dictionaries, and the stat cache.
 	 */
 	dict_free();
-	stat_root_dir = strdup(dir);
-	stat_root_file = strdup(fn);
 
 	/*
 	 *	Create the table of vendor by name.   There MAY NOT
@@ -2913,14 +2929,14 @@ DICT_ATTR const *dict_attrunknownbyname(char const *attribute, int vp_free)
  */
 DICT_ATTR const *dict_attrbyvalue(unsigned int attr, unsigned int vendor)
 {
-	DICT_ATTR dattr;
+	DICT_ATTR da;
 
 	if ((attr > 0) && (attr < 256) && !vendor) return dict_base_attrs[attr];
 
-	dattr.attr = attr;
-	dattr.vendor = vendor;
+	da.attr = attr;
+	da.vendor = vendor;
 
-	return fr_hash_table_finddata(attributes_byvalue, &dattr);
+	return fr_hash_table_finddata(attributes_byvalue, &da);
 }
 
 
@@ -2934,13 +2950,13 @@ DICT_ATTR const *dict_attrbyvalue(unsigned int attr, unsigned int vendor)
 DICT_ATTR const *dict_attrbytype(unsigned int attr, unsigned int vendor,
 				 PW_TYPE type)
 {
-	DICT_ATTR dattr;
+	DICT_ATTR da;
 
-	dattr.attr = attr;
-	dattr.vendor = vendor;
-	dattr.type = type;
+	da.attr = attr;
+	da.vendor = vendor;
+	da.type = type;
 
-	return fr_hash_table_finddata(attributes_combo, &dattr);
+	return fr_hash_table_finddata(attributes_combo, &da);
 }
 
 /**
@@ -2950,7 +2966,7 @@ int dict_attr_child(DICT_ATTR const *parent,
 		    unsigned int *pattr, unsigned int *pvendor)
 {
 	unsigned int attr, vendor;
-	DICT_ATTR dattr;
+	DICT_ATTR da;
 
 	if (!parent || !pattr || !pvendor) return false;
 
@@ -2976,8 +2992,8 @@ int dict_attr_child(DICT_ATTR const *parent,
 	/*
 	 *	Bootstrap by starting off with the parents values.
 	 */
-	dattr.attr = parent->attr;
-	dattr.vendor = parent->vendor;
+	da.attr = parent->attr;
+	da.vendor = parent->vendor;
 
 	/*
 	 *	Do various butchery to insert the "attr" value.
@@ -2989,10 +3005,10 @@ int dict_attr_child(DICT_ATTR const *parent,
 	 *	EEVID	000000AA	EVS with vendor VID, attr AAA
 	 *	EEVID	DDCCBBAA	EVS with TLVs
 	 */
-	if (!dattr.vendor) {
-		dattr.vendor = parent->attr * FR_MAX_VENDOR;
-		dattr.vendor |= vendor;
-		dattr.attr = attr;
+	if (!da.vendor) {
+		da.vendor = parent->attr * FR_MAX_VENDOR;
+		da.vendor |= vendor;
+		da.attr = attr;
 
 	} else {
 		int i;
@@ -3006,7 +3022,7 @@ int dict_attr_child(DICT_ATTR const *parent,
 
 		for (i = MAX_TLV_NEST - 1; i >= 0; i--) {
 			if ((parent->attr & (fr_attr_mask[i] << fr_attr_shift[i]))) {
-				dattr.attr |= (attr & fr_attr_mask[i + 1]) << fr_attr_shift[i + 1];
+				da.attr |= (attr & fr_attr_mask[i + 1]) << fr_attr_shift[i + 1];
 				goto find;
 			}
 		}
@@ -3018,11 +3034,11 @@ find:
 #if 0
 	fprintf(stderr, "LOOKING FOR %08x %08x + %08x %08x --> %08x %08x\n",
 		parent->vendor, parent->attr, attr, vendor,
-		dattr.vendor, dattr.attr);
+		da.vendor, da.attr);
 #endif
 
-	*pattr = dattr.attr;
-	*pvendor = dattr.vendor;
+	*pattr = da.attr;
+	*pvendor = da.vendor;
 	return true;
 }
 
@@ -3032,17 +3048,17 @@ find:
 DICT_ATTR const *dict_attrbyparent(DICT_ATTR const *parent, unsigned int attr, unsigned int vendor)
 {
 	unsigned int my_attr, my_vendor;
-	DICT_ATTR dattr;
+	DICT_ATTR da;
 
 	my_attr = attr;
 	my_vendor = vendor;
 
 	if (!dict_attr_child(parent, &my_attr, &my_vendor)) return NULL;
 
-	dattr.attr = my_attr;
-	dattr.vendor = my_vendor;
+	da.attr = my_attr;
+	da.vendor = my_vendor;
 
-	return fr_hash_table_finddata(attributes_byvalue, &dattr);
+	return fr_hash_table_finddata(attributes_byvalue, &da);
 }
 
 

@@ -38,6 +38,7 @@ typedef struct conf_data CONF_DATA;
 #define PW_TYPE_DEPRECATED	(1 << 10)
 #define PW_TYPE_REQUIRED	(1 << 11)
 #define PW_TYPE_ATTRIBUTE	(1 << 12)
+#define PW_TYPE_NO_OVERWRITE    (1 << 13)
 
 typedef struct CONF_PARSER {
   char const *name;

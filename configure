@@ -10471,7 +10471,7 @@ USE_STATIC_LIBS="yes"
   unset ac_cv_env_LIBS_set
   unset ac_cv_env_LIBS_value
 
-  ac_config_files="$ac_config_files ./Make.inc ./src/include/build-radpaths-h ./src/main/radsniff.mk ./src/main/checkrad ./src/main/radlast ./src/main/radtest ./scripts/rc.radiusd ./scripts/cron/radiusd.cron.daily ./scripts/cron/radiusd.cron.monthly ./scripts/cryptpasswd ./raddb/dictionary ./raddb/radrelay.conf ./raddb/radiusd.conf"
+  ac_config_files="$ac_config_files ./Make.inc ./src/include/build-radpaths-h ./src/main/radsniff.mk ./src/main/checkrad ./src/main/radlast ./src/main/radtest ./scripts/rc.radiusd ./scripts/cron/radiusd.cron.daily ./scripts/cron/radiusd.cron.monthly ./scripts/cryptpasswd ./raddb/radrelay.conf ./raddb/radiusd.conf"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -11183,7 +11183,6 @@ do
     "./scripts/cron/radiusd.cron.daily") CONFIG_FILES="$CONFIG_FILES ./scripts/cron/radiusd.cron.daily" ;;
     "./scripts/cron/radiusd.cron.monthly") CONFIG_FILES="$CONFIG_FILES ./scripts/cron/radiusd.cron.monthly" ;;
     "./scripts/cryptpasswd") CONFIG_FILES="$CONFIG_FILES ./scripts/cryptpasswd" ;;
-    "./raddb/dictionary") CONFIG_FILES="$CONFIG_FILES ./raddb/dictionary" ;;
     "./raddb/radrelay.conf") CONFIG_FILES="$CONFIG_FILES ./raddb/radrelay.conf" ;;
     "./raddb/radiusd.conf") CONFIG_FILES="$CONFIG_FILES ./raddb/radiusd.conf" ;;
 

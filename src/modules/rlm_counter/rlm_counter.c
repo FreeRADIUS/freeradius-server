@@ -336,7 +336,7 @@ static int find_next_reset(rlm_counter_t *inst, time_t timeval)
 static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
 	rlm_counter_t *inst = instance;
-	DICT_ATTR const *dattr;
+	DICT_ATTR const *da;
 	DICT_VALUE *dval;
 	ATTR_FLAGS flags;
 	time_t now;
@@ -349,31 +349,31 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 	cache_size = inst->cache_size;
 
-	dattr = dict_attrbyname(inst->key_name);
-	rad_assert(dattr != NULL);
-	inst->key_attr = dattr;
+	da = dict_attrbyname(inst->key_name);
+	rad_assert(da != NULL);
+	inst->key_attr = da;
 
 	/*
 	 *	Discover the attribute number of the counter.
 	 */
-	dattr = dict_attrbyname(inst->count_attribute);
-	rad_assert(dattr != NULL);
-	inst->count_attr = dattr;
+	da = dict_attrbyname(inst->count_attribute);
+	rad_assert(da != NULL);
+	inst->count_attr = da;
 
 	/*
 	 * Discover the attribute number of the reply attribute.
 	 */
 	if (inst->reply_name != NULL) {
-		dattr = dict_attrbyname(inst->reply_name);
-		if (!dattr) {
+		da = dict_attrbyname(inst->reply_name);
+		if (!da) {
 			cf_log_err_cs(conf, "No such attribute %s", inst->reply_name);
 			return -1;
 		}
-		if (dattr->type != PW_TYPE_INTEGER) {
+		if (da->type != PW_TYPE_INTEGER) {
 			cf_log_err_cs(conf, "Reply attribute' %s' is not of type integer", inst->reply_name);
 			return -1;
 		}
-		inst->reply_attr = dattr;
+		inst->reply_attr = da;
 	} else {
 		inst->reply_attr = NULL;
 	}
@@ -388,12 +388,12 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		return -1;
 	}
 
-	dattr = dict_attrbyname(inst->counter_name);
-	if (!dattr) {
+	da = dict_attrbyname(inst->counter_name);
+	if (!da) {
 		cf_log_err_cs(conf, "Failed to find counter attribute %s", inst->counter_name);
 		return -1;
 	}
-	inst->dict_attr = dattr;
+	inst->dict_attr = da;
 	DEBUG2("rlm_counter: Counter attribute %s is number %d", inst->counter_name, inst->dict_attr->attr);
 
 	/*
@@ -405,12 +405,12 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		return -1;
 
 	}
-	dattr = dict_attrbyname(inst->check_name);
-	if (!dattr) {
+	da = dict_attrbyname(inst->check_name);
+	if (!da) {
 		ERROR("rlm_counter: Failed to find check attribute %s", inst->counter_name);
 		return -1;
 	}
-	inst->check_attr = dattr;
+	inst->check_attr = da;
 
 	/*
 	 * Find the attribute for the allowed protocol

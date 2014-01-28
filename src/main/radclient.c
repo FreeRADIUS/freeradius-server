@@ -107,7 +107,8 @@ static void NEVER_RETURNS usage(void)
 
 	fprintf(stderr, "  <command>     One of auth, acct, status, coa, or disconnect.\n");
 	fprintf(stderr, "  -c <count>    Send each packet 'count' times.\n");
-	fprintf(stderr, "  -d <raddb>    Set dictionary directory.\n");
+	fprintf(stderr, "  -d <raddb>    Set user dictionary directory (defaults to " RADDBDIR ").\n");
+	fprintf(stderr, "  -D <dictdir>  Set main dictionary directory (defaults to " DICTDIR ").\n");
 	fprintf(stderr, "  -f <file>     Read packets from file, not stdin.\n");
 	fprintf(stderr, "  -F            Print the file name, packet number and reply code.\n");
 	fprintf(stderr, "  -h            Print usage help information.\n");
@@ -917,6 +918,7 @@ int main(int argc, char **argv)
 	char *p;
 	int c;
 	char const *radius_dir = RADDBDIR;
+	char const *dict_dir = DICTDIR;
 	char filesecret[256];
 	FILE *fp;
 	int do_summary = 0;
@@ -939,7 +941,7 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
-	while ((c = getopt(argc, argv, "46c:d:f:Fhi:n:p:qr:sS:t:vx"
+	while ((c = getopt(argc, argv, "46c:d:D:f:Fhi:n:p:qr:sS:t:vx"
 #ifdef WITH_TCP
 		"P:"
 #endif
@@ -954,6 +956,9 @@ int main(int argc, char **argv)
 			if (!isdigit((int) *optarg))
 				usage();
 			resend_count = atoi(optarg);
+			break;
+		case 'D':
+			dict_dir = optarg;
 			break;
 		case 'd':
 			radius_dir = optarg;
@@ -1081,7 +1086,12 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-	if (dict_init(radius_dir, RADIUS_DICTIONARY) < 0) {
+	if (dict_init(dict_dir, RADIUS_DICTIONARY) < 0) {
+		fr_perror("radclient");
+		return 1;
+	}
+
+	if (dict_read(radius_dir, RADIUS_DICTIONARY) < 0) {
 		fr_perror("radclient");
 		return 1;
 	}

@@ -380,7 +380,7 @@ STATE_MACHINE_DECL(request_done)
 	 */
 	if (!we_are_master()) {
 		request->child_state = REQUEST_DONE;
-		request->child_pid = NO_SUCH_CHILD_PID;;
+		request->child_pid = NO_SUCH_CHILD_PID;
 		return;
 	}
 #endif
@@ -4184,7 +4184,31 @@ int radius_event_init(CONF_SECTION *cs, int have_children)
 }
 
 
-static int request_hash_cb(UNUSED void *ctx, void *data)
+static int proxy_delete_cb(UNUSED void *ctx, void *data)
+{
+	REQUEST *request = fr_packet2myptr(REQUEST, packet, data);
+
+	request->master_state = REQUEST_STOP_PROCESSING;
+
+	/*
+	 *	Not done, or the child thread is still processing it.
+	 */
+	if (request->child_state != REQUEST_DONE) return 0; /* continue */
+
+#ifdef HAVE_PTHREAD_H
+	if (pthread_equal(request->child_pid, NO_SUCH_CHILD_PID) == 0) return 0;
+#endif
+
+	request->in_proxy_hash = false;
+
+	/*
+	 *	Delete it from the list.
+	 */
+	return 1;
+}
+
+
+static int request_delete_cb(UNUSED void *ctx, void *data)
 {
 	REQUEST *request = fr_packet2myptr(REQUEST, packet, data);
 
@@ -4192,22 +4216,25 @@ static int request_hash_cb(UNUSED void *ctx, void *data)
 	rad_assert(request->in_proxy_hash == false);
 #endif
 
-	request_done(request, FR_ACTION_DONE);
+	request->master_state = REQUEST_STOP_PROCESSING;
 
-	return 0;
-}
+	/*
+	 *	Not done, or the child thread is still processing it.
+	 */
+	if (request->child_state != REQUEST_DONE) return 0; /* continue */
 
-
-#ifdef WITH_PROXY
-static int proxy_hash_cb(UNUSED void *ctx, void *data)
-{
-	REQUEST *request = fr_packet2myptr(REQUEST, proxy, data);
-
-	request_done(request, FR_ACTION_DONE);
-
-	return 0;
-}
+#ifdef HAVE_PTHREAD_H
+	if (pthread_equal(request->child_pid, NO_SUCH_CHILD_PID) == 0) return 0;
 #endif
+
+	request->in_request_hash = false;
+
+	/*
+	 *	Delete it from the list.
+	 */
+	return 1;
+}
+
 
 void radius_event_free(void)
 {
@@ -4224,13 +4251,13 @@ void radius_event_free(void)
 	 *	referenced from anywhere else.  Remove them first.
 	 */
 	if (proxy_list) {
-		fr_packet_list_walk(proxy_list, NULL, proxy_hash_cb);
+		fr_packet_list_walk(proxy_list, NULL, proxy_delete_cb);
 		fr_packet_list_free(proxy_list);
 		proxy_list = NULL;
 	}
 #endif
 
-	fr_packet_list_walk(pl, NULL, request_hash_cb);
+	fr_packet_list_walk(pl, NULL, request_delete_cb);
 
 	fr_packet_list_free(pl);
 	pl = NULL;

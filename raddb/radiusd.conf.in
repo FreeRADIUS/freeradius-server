@@ -119,14 +119,15 @@ libdir = @libdir@
 #
 pidfile = ${run_dir}/${name}.pid
 
-#  panic_action: Command to execute on server fault.
+#  panic_action: Command to execute if the server dies unexpectedly.
 #
-#  WARNING: DO NOT SET A PANIC ACTION ON PRODUCTION SERVERS WHICH DOES
-#  WARNING: NOT IMMEDIATELY RETURN.  DOING SO MAY PREVENT YOUR SERVER
-#  WARNING: FROM RESTARTING.
+#  FOR PRODUCTION SYSTEMS, ACTIONS SHOULD ALWAYS EXIT.
+#  AN INTERACTIVE ACTION MEANS THE SERVER IS NOT RESPONDING TO REQUESTS.
+#  AN INTERACTICE ACTION MEANS THE SERVER WILL NOT RESTART.
 #
-#  Sets a command which will be executed if the server receives a fatal,
-#  non user generated signal, i.e. SIGSEGV, SIGBUS, SIGABRT or SIGFPE.
+#  The panic action is a command which will be executed if the server
+#  receives a fatal, non user generated signal, i.e. SIGSEGV, SIGBUS,
+#  SIGABRT or SIGFPE.
 #
 #  This can be used to start an interactive debugging session so
 #  that information regarding the current state of the server can
@@ -139,10 +140,17 @@ pidfile = ${run_dir}/${name}.pid
 #  Standard ${} substitutions are also allowed.
 #
 #  An example panic action for opening an interactive session in GDB would be:
+#
 #panic_action = "gdb %e %p"
 #
+#  Again, don't use that on a production system.
+#
 #  An example panic action for opening an automated session in GDB would be:
-#panic_action = "gdb -silent -x ${raddbdir}/panic.gdb %e %p > ${logdir}/gdb.log 2>&1"
+#
+#panic_action = "gdb -silent -x ${raddbdir}/panic.gdb %e %p > ${logdir}/gdb-%e-%p.log 2>&1"
+#
+#  That command can be used on a production system.
+#
 
 #  max_request_time: The maximum time (in seconds) to handle a request.
 #

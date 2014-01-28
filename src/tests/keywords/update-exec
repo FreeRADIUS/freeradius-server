@@ -1,3 +1,6 @@
+#
+#  PRE: update if redundant
+#
 update control {
        Cleartext-Password := 'hello'
 }
@@ -13,7 +16,7 @@ update request {
 	Tmp-String-0 := `/bin/sh -c "echo 'foo bar baz'"`
 }
 
-if (Tmp-String-0 != "foo bar baz\n") {
+if (Tmp-String-0 != "foo bar baz") {
 	update reply {
 		Filter-Id += "fail"
 	}

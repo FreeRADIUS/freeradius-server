@@ -732,6 +732,7 @@ static int switch_users(CONF_SECTION *cs)
  */
 int read_mainconfig(int reload)
 {
+	int rcode;
 	char const *p = NULL;
 	CONF_SECTION *cs;
 	struct stat statbuf;
@@ -766,13 +767,44 @@ int read_mainconfig(int reload)
 #endif
 	INFO("Starting - reading configuration files ...");
 
-	/* Initialize the dictionary */
-	if (!mainconfig.dictionary_dir) mainconfig.dictionary_dir = radius_dir;
+	/*
+	 *	We need to load the dictionaries before reading the
+	 *	configuration files.  This is because of the
+	 *	pre-compilation in conffile.c.  That should probably
+	 *	be fixed to be done as a second stage.
+	 */
+	if (!mainconfig.dictionary_dir) {
+		mainconfig.dictionary_dir = talloc_strdup(NULL, DICTDIR);
+	}
+
+	/*
+	 *	Read the distribution dictionaries first, then
+	 *	the ones in raddb.
+	 */
 	DEBUG2("including dictionary file %s/%s", mainconfig.dictionary_dir, RADIUS_DICTIONARY);
 	if (dict_init(mainconfig.dictionary_dir, RADIUS_DICTIONARY) != 0) {
 		ERROR("Errors reading dictionary: %s",
-				fr_strerror());
+		      fr_strerror());
 		return -1;
+	}
+
+	/*
+	 *	It's OK if this one doesn't exist.
+	 */
+	rcode = dict_read(radius_dir, RADIUS_DICTIONARY);
+	if (rcode == -1) {
+		ERROR("Errors reading %s/%s: %s", radius_dir, RADIUS_DICTIONARY,
+		      fr_strerror());
+		return -1;
+	}
+
+	/*
+	 *	We print this after reading it.  That way if
+	 *	it doesn't exist, it's OK, and we don't print
+	 *	anything.
+	 */
+	if (rcode == 0) {
+		DEBUG2("including dictionary file %s/%s", radius_dir, RADIUS_DICTIONARY);
 	}
 
 	/* Read the configuration file */
