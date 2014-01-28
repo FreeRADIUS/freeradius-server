@@ -172,7 +172,7 @@ ldap {
 		#
 		#  This feature is intended to be used with rlm_cache.
 		#
-		#  If you with to use this feature, you should enable
+		#  If you wish to use this feature, you should enable
 		#  the type that matches the format of your check items
 		#  i.e. if your groups are specified as DNs then enable
 		#  cacheable_dn else enable cacheable_name.
