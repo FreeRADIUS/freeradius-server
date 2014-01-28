@@ -45,6 +45,7 @@ test: ${BUILD_DIR}/bin/radiusd ${BUILD_DIR}/bin/radclient tests.unit tests.keywo
 ifneq "$(findstring travis,${prefix})" ""
 travis-test: test
 	@$(MAKE) install
+	@${sbindir}/radiusd -XC
 	@$(MAKE) deb
 endif
 
