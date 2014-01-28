@@ -618,17 +618,18 @@ static void NEVER_RETURNS usage(int status)
 {
 	FILE *output = status?stderr:stdout;
 
-	fprintf(output, "Usage: %s [-d db_dir] [-l log_dir] [-i address] [-n name] [-fsvXx]\n", progname);
+	fprintf(output, "Usage: %s [options]\n", progname);
 	fprintf(output, "Options:\n");
 	fprintf(output, "  -C            Check configuration and exit.\n");
-	fprintf(output, "  -d raddb_dir  Configuration files are in \"raddbdir/*\".\n");
+	fprintf(stderr, "  -d <raddb>    Set configuration directory (defaults to " RADDBDIR ").\n");
+	fprintf(stderr, "  -D <dictdir>  Set main dictionary directory (defaults to " DICTDIR ").\n");
 	fprintf(output, "  -f            Run as a foreground process, not a daemon.\n");
 	fprintf(output, "  -h            Print this help message.\n");
-	fprintf(output, "  -i ipaddr     Listen on ipaddr ONLY.\n");
-	fprintf(output, "  -l log_file   Logging output will be written to this file.\n");
+	fprintf(output, "  -i <ipaddr>   Listen on ipaddr ONLY.\n");
+	fprintf(output, "  -l <log_file> Logging output will be written to this file.\n");
 	fprintf(output, "  -m            On SIGINT or SIGQUIT exit cleanly instead of immediately.\n");
-	fprintf(output, "  -n name       Read raddb/name.conf instead of raddb/radiusd.conf.\n");
-	fprintf(output, "  -p port       Listen on port ONLY.\n");
+	fprintf(output, "  -n <name>     Read raddb/name.conf instead of raddb/radiusd.conf.\n");
+	fprintf(output, "  -p <port>     Listen on port ONLY.\n");
 	fprintf(output, "  -P            Always write out PID, even with -f.\n");
 	fprintf(output, "  -s            Do not spawn child processes to handle requests.\n");
 	fprintf(output, "  -t            Disable threads.\n");
