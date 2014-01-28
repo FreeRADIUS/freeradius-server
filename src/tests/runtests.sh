@@ -36,7 +36,7 @@ do
   done
 done
 
-echo "Running tests..."
+echo "Running tests:"
 
 (cd .cache;ls -1  > ../.foo)
 rm -f .bar
