@@ -292,12 +292,41 @@ int sendfromto(int s, void *buf, size_t len, int flags,
 	struct iovec iov;
 	char cbuf[256];
 
-#if !defined(IP_PKTINFO) && !defined(IP_SENDSRCADDR) && !defined(IPV6_PKTINFO)
+#ifdef __FreeBSD__
+	/*
+	 *	FreeBSD is extra pedantic about the use of IP_SENDSRCADDR,
+	 *	and sendmsg will fail with EINVAL if IP_SENDSRCADDR is used
+	 *	with a socket which is bound to something other than
+	 *	INADDR_ANY
+	 */
+	struct sockaddr bound;
+	socklen_t bound_len = sizeof(bound);
+
+	if (getsockname(s, &bound, &bound_len) < 0) {
+		return -1;
+	}
+
+	switch (bound.sa_family) {
+	case AF_INET:
+		if (((struct sockaddr_in *) &bound)->sin_addr.s_addr != INADDR_ANY) {
+			from = NULL;
+		}
+		break;
+
+	case AF_INET6:
+		if (!IN6_IS_ADDR_UNSPECIFIED(&((struct sockaddr_in6 *) &bound)->sin6_addr))) {
+			from = NULL;
+		}
+		break;
+	}
+#else
+#  if !defined(IP_PKTINFO) && !defined(IP_SENDSRCADDR) && !defined(IPV6_PKTINFO)
 	/*
 	 *	If the sendmsg() flags aren't defined, fall back to
 	 *	using sendto().
 	 */
 	from = NULL;
+#  endif
 #endif
 
 	/*
