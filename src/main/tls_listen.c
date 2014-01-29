@@ -115,7 +115,7 @@ static int tls_socket_write(rad_listen_t *listener, REQUEST *request)
 		rcode = write(request->packet->sockfd, p,
 			      (sock->ssn->dirty_out.data + sock->ssn->dirty_out.used) - p);
 		if (rcode <= 0) {
-			RDEBUG("Error writing to TLS socket: %s", strerror(errno));
+			RDEBUG("Error writing to TLS socket: %s", fr_syserror(errno));
 
 			tls_socket_close(listener);
 			return 0;
@@ -215,7 +215,7 @@ static int tls_socket_recv(rad_listen_t *listener)
 	}
 
 	if (rcode < 0) {
-		RDEBUG("Error reading TLS socket: %s", strerror(errno));
+		RDEBUG("Error reading TLS socket: %s", fr_syserror(errno));
 		goto do_close;
 	}
 
@@ -440,7 +440,7 @@ int dual_tls_send(rad_listen_t *listener, REQUEST *request)
 	 */
 	if (rad_encode(request->reply, request->packet,
 		       request->client->secret) < 0) {
-		RDEBUG("Failed encoding packet: %s", fr_strerror());
+		RERROR("Failed encoding packet: %s", fr_strerror());
 		return 0;
 	}
 
@@ -449,7 +449,7 @@ int dual_tls_send(rad_listen_t *listener, REQUEST *request)
 	 */
 	if (rad_sign(request->reply, request->packet,
 		       request->client->secret) < 0) {
-		RDEBUG("Failed signing packet: %s", fr_strerror());
+		RERROR("Failed signing packet: %s", fr_strerror());
 		return 0;
 	}
 

@@ -113,14 +113,10 @@ int radlog(log_type_t lvl, char const *fmt, ...)
 	return r;
 }
 
-void radlog_request(UNUSED log_type_t lvl, UNUSED log_debug_t priority,
-		    UNUSED REQUEST *request, char const *msg, ...)
+void vradlog_request(UNUSED log_type_t lvl, UNUSED log_debug_t priority,
+		     UNUSED REQUEST *request, char const *msg, va_list ap)
 {
-	va_list ap;
-
-	va_start(ap, msg);
 	vfprintf(stderr, msg, ap);
-	va_end(ap);
 	fputc('\n', stderr);
 }
 
@@ -1037,12 +1033,12 @@ int main(int argc, char **argv)
 		       fp = fopen(optarg, "r");
 		       if (!fp) {
 			       fprintf(stderr, "radclient: Error opening %s: %s\n",
-				       optarg, strerror(errno));
+				       optarg, fr_syserror(errno));
 			       exit(1);
 		       }
 		       if (fgets(filesecret, sizeof(filesecret), fp) == NULL) {
 			       fprintf(stderr, "radclient: Error reading %s: %s\n",
-				       optarg, strerror(errno));
+				       optarg, fr_syserror(errno));
 			       exit(1);
 		       }
 		       fclose(fp);
@@ -1137,7 +1133,7 @@ int main(int argc, char **argv)
 		}
 
 		if (ip_hton(hostname, force_af, &req->dst_ipaddr) < 0) {
-			fprintf(stderr, "radclient: Failed to find IP address for host %s: %s\n", hostname, strerror(errno));
+			fprintf(stderr, "radclient: Failed to find IP address for host %s: %s\n", hostname, fr_syserror(errno));
 			exit(1);
 		}
 
@@ -1193,7 +1189,7 @@ int main(int argc, char **argv)
 		fp = fopen(filename, "r");
 		if (!fp) {
 			fprintf(stderr, "radclient: Error opening %s: %s\n",
-				filename, strerror(errno));
+				filename, fr_syserror(errno));
 			exit(1);
 		}
 	} else {

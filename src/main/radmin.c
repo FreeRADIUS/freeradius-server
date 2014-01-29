@@ -70,7 +70,7 @@ char const *radius_dir = RADDBDIR;
 char const *progname = "radmin";
 char const *radmin_version = "radmin version " RADIUSD_VERSION_STRING
 #ifdef RADIUSD_VERSION_COMMIT
-" (git #" RADIUSD_VERSION_COMMIT ")"
+" (git #" STRINGIFY(RADIUSD_VERSION_COMMIT) ")"
 #endif
 ", built on " __DATE__ " at " __TIME__;
 
@@ -135,7 +135,7 @@ static int fr_domain_socket(char const *path)
 
 	if ((sockfd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
 		fprintf(stderr, "%s: Failed creating socket: %s\n",
-			progname, strerror(errno));
+			progname, fr_syserror(errno));
 		return -1;
 	}
 
@@ -149,7 +149,7 @@ static int fr_domain_socket(char const *path)
 
 		close(sockfd);
 		fprintf(stderr, "%s: Failed connecting to %s: %s\n",
-			progname, path, strerror(errno));
+			progname, path, fr_syserror(errno));
 
 		/*
 		 *	The file doesn't exist.  Tell the user how to
@@ -169,7 +169,7 @@ static int fr_domain_socket(char const *path)
 
 		if ((flags = fcntl(sockfd, F_GETFL, NULL)) < 0)  {
 			fprintf(stderr, "%s: Failure getting socket flags: %s",
-				progname, strerror(errno));
+				progname, fr_syserror(errno));
 			close(sockfd);
 			return -1;
 		}
@@ -177,7 +177,7 @@ static int fr_domain_socket(char const *path)
 		flags |= O_NONBLOCK;
 		if( fcntl(sockfd, F_SETFL, flags) < 0) {
 			fprintf(stderr, "%s: Failure setting socket flags: %s",
-				progname, strerror(errno));
+				progname, fr_syserror(errno));
 			close(sockfd);
 			return -1;
 		}
@@ -205,14 +205,14 @@ static int client_socket(char const *server)
 
 	if (ip_hton(buffer, AF_INET, &ipaddr) < 0) {
 		fprintf(stderr, "%s: Failed looking up host %s: %s\n",
-			progname, buffer, strerror(errno));
+			progname, buffer, fr_syserror(errno));
 		exit(1);
 	}
 
 	sockfd = fr_tcp_client_socket(NULL, &ipaddr, port);
 	if (sockfd < 0) {
 		fprintf(stderr, "%s: Failed opening socket %s: %s\n",
-			progname, server, strerror(errno));
+			progname, server, fr_syserror(errno));
 		exit(1);
 	}
 
@@ -240,7 +240,7 @@ static void do_challenge(int sockfd)
 			if (errno == EINTR) continue;
 
 			fprintf(stderr, "%s: Failed reading data: %s\n",
-				progname, strerror(errno));
+				progname, fr_syserror(errno));
 			exit(1);
 		}
 		total += r;
@@ -252,7 +252,7 @@ static void do_challenge(int sockfd)
 
 	if (write(sockfd, challenge, sizeof(challenge)) < 0) {
 		fprintf(stderr, "%s: Failed writing challenge data: %s\n",
-			progname, strerror(errno));
+			progname, fr_syserror(errno));
 	}
 }
 
@@ -292,7 +292,7 @@ static ssize_t run_command(int sockfd, char const *command,
 			if (errno == EINTR) continue;
 
 			fprintf(stderr, "%s: Failed selecting: %s\n",
-				progname, strerror(errno));
+				progname, fr_syserror(errno));
 			exit(1);
 		}
 
@@ -320,7 +320,7 @@ static ssize_t run_command(int sockfd, char const *command,
 			}
 
 			fprintf(stderr, "%s: Error reading socket: %s\n",
-				progname, strerror(errno));
+				progname, fr_syserror(errno));
 			exit(1);
 		}
 		if (len == 0) return 0;	/* clean exit */
@@ -373,6 +373,10 @@ int main(int argc, char **argv)
 
 	char *commands[MAX_COMMANDS];
 	int num_commands = -1;
+
+#ifndef NDEBUG
+	fr_fault_setup(getenv("PANIC_ACTION"), argv[0]);
+#endif
 
 	talloc_set_log_stderr();
 
@@ -458,6 +462,14 @@ int main(int argc, char **argv)
 		}
 	}
 
+	/*
+	 *	Mismatch between the binary and the libraries it depends on
+	 */
+	if (fr_check_lib_magic(RADIUSD_MAGIC_NUMBER) < 0) {
+		fr_perror("radmin");
+		exit(1);
+	}
+
 	if (radius_dir) {
 		int rcode;
 		CONF_SECTION *cs, *subcs;
@@ -512,7 +524,7 @@ int main(int argc, char **argv)
 	if (input_file) {
 		inputfp = fopen(input_file, "r");
 		if (!inputfp) {
-			fprintf(stderr, "%s: Failed opening %s: %s\n", progname, input_file, strerror(errno));
+			fprintf(stderr, "%s: Failed opening %s: %s\n", progname, input_file, fr_syserror(errno));
 			exit(1);
 		}
 	}
@@ -520,7 +532,7 @@ int main(int argc, char **argv)
 	if (output_file) {
 		outputfp = fopen(output_file, "w");
 		if (!outputfp) {
-			fprintf(stderr, "%s: Failed creating %s: %s\n", progname, output_file, strerror(errno));
+			fprintf(stderr, "%s: Failed creating %s: %s\n", progname, output_file, fr_syserror(errno));
 			exit(1);
 		}
 	}
@@ -559,7 +571,7 @@ int main(int argc, char **argv)
 		len = read(sockfd, buffer + size, 8 - size);
 		if (len < 0) {
 			fprintf(stderr, "%s: Error reading initial data from socket: %s\n",
-				progname, strerror(errno));
+				progname, fr_syserror(errno));
 			exit(1);
 		}
 	}

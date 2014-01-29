@@ -27,7 +27,6 @@ RCSID("$Id$")
 #include	<ctype.h>
 #include	<sys/file.h>
 #include	<fcntl.h>
-#include	<signal.h>
 
 #define FR_PUT_LE16(a, val)\
 	do {\
@@ -35,7 +34,14 @@ RCSID("$Id$")
 		a[0] = ((uint16_t) (val)) & 0xff;\
 	} while (0)
 
-static int	fr_debugger_present = -1;
+#ifdef HAVE_PTHREAD_H
+static pthread_mutex_t autofree_context = PTHREAD_MUTEX_INITIALIZER;
+#  define PTHREAD_MUTEX_LOCK pthread_mutex_lock
+#  define PTHREAD_MUTEX_UNLOCK pthread_mutex_unlock
+#else
+#  define PTHREAD_MUTEX_LOCK(_x)
+#  define PTHREAD_MUTEX_UNLOCK(_x)
+#endif
 
 bool	fr_dns_lookups = false;	    /* IP -> hostname lookups? */
 bool    fr_hostname_lookups = true; /* hostname -> IP lookups? */
@@ -45,32 +51,110 @@ static char const *months[] = {
 	"jan", "feb", "mar", "apr", "may", "jun",
 	"jul", "aug", "sep", "oct", "nov", "dec" };
 
-/** Allocates a new talloc context from the root autofree context
+fr_thread_local_setup(char *, fr_inet_ntop_buffer);	/* macro */
+
+/** Sets a signal handler using sigaction if available, else signal
  *
- * @param signum signal raised.
+ * @param sig to set handler for.
+ * @param func handler to set.
  */
-static void _sigtrap_handler(UNUSED int signum)
+int fr_set_signal(int sig, sig_t func)
 {
-    fr_debugger_present = 0;
-    signal(SIGTRAP, SIG_DFL);
+#ifdef HAVE_SIGACTION
+	struct sigaction act;
+
+	memset(&act, 0, sizeof(act));
+	act.sa_flags = 0;
+	sigemptyset(&act.sa_mask);
+	act.sa_handler = func;
+
+	if (sigaction(sig, &act, NULL) < 0) {
+		fr_strerror_printf("Failed setting signal %i handler via sigaction(): %s", sig, fr_syserror(errno));
+		return -1;
+	}
+#else
+	if (signal(sig, func) < 0) {
+		fr_strerror_printf("Failed setting signal %i handler via signal(): %s", sig, fr_syserror(errno));
+		return -1;
+	}
+#endif
+	return 0;
 }
 
-/** Break in GDB (if were running under GDB)
+/** Allocates a new talloc context from the root autofree context
  *
- * If the server is running under GDB this will raise a SIGTRAP which
- * will pause the running process.
+ * This function is threadsafe, whereas using the NULL context is not.
  *
- * If the server is not running under GDB then this will do nothing.
+ * @note The returned context must be freed by the caller.
+ * @returns a new talloc context parented by the root autofree context.
  */
-void fr_debug_break(void)
+TALLOC_CTX *fr_autofree_ctx(void)
 {
-    if (fr_debugger_present == -1) {
-    	fr_debugger_present = 0;
-        signal(SIGTRAP, _sigtrap_handler);
-        raise(SIGTRAP);
-    } else if (fr_debugger_present == 1) {
-    	raise(SIGTRAP);
-    }
+	static TALLOC_CTX *ctx = NULL, *child;
+	PTHREAD_MUTEX_LOCK(&autofree_context);
+	if (!ctx) {
+		ctx = talloc_autofree_context();
+	}
+
+	child = talloc_new(ctx);
+	PTHREAD_MUTEX_UNLOCK(&autofree_context);
+
+	return child;
+}
+
+/*
+ *	Explicitly cleanup the memory allocated to the error inet_ntop
+ *	buffer.
+ */
+static void _fr_inet_ntop_free(void *arg)
+{
+	free(arg);
+}
+
+/** Wrapper around inet_ntop, prints IPv4/IPv6 addresses
+ *
+ * inet_ntop requires the caller pass in a buffer for the address.
+ * This would be annoying and cumbersome, seeing as quite often the ASCII
+ * address is only used for logging output.
+ *
+ * So as with lib/log.c use TLS to allocate thread specific buffers, and
+ * write the IP address there instead.
+ *
+ * @param af address family, either AF_INET or AF_INET6.
+ * @param src pointer to network address structure.
+ * @return NULL on error, else pointer to ASCII buffer containing text version of address.
+ */
+char const *fr_inet_ntop(int af, void const *src)
+{
+	char *buffer;
+
+	if (!src) {
+		return NULL;
+	}
+
+	buffer = fr_thread_local_init(fr_inet_ntop_buffer, _fr_inet_ntop_free);
+	if (!buffer) {
+		int ret;
+
+		/*
+		 *	malloc is thread safe, talloc is not
+		 */
+		buffer = malloc(sizeof(char) * INET6_ADDRSTRLEN);
+		if (!buffer) {
+			fr_perror("Failed allocating memory for inet_ntop buffer");
+			return NULL;
+		}
+
+		ret = fr_thread_local_set(fr_inet_ntop_buffer, buffer);
+		if (ret != 0) {
+			fr_perror("Failed setting up TLS for inet_ntop buffer: %s", fr_syserror(ret));
+			free(buffer);
+			return NULL;
+		}
+	}
+	buffer[0] = '\0';
+
+	return inet_ntop(af, src, buffer, INET6_ADDRSTRLEN);
 }
 
 /*
@@ -415,7 +499,7 @@ char const *inet_ntop(int af, void const *src, char *dst, size_t cnt)
 	 *	in missing.h
 	 */
 	if (af == AF_INET6) {
-		struct const in6_addr *ipaddr = src;
+		struct in6_addr const *ipaddr = src;
 
 		if (cnt <= INET6_ADDRSTRLEN) return NULL;
 
@@ -488,7 +572,7 @@ int ip_hton(char const *src, int af, fr_ipaddr_t *dst)
 		if (!inet_pton(af, src, &(dst->ipaddr))) {
 			return -1;
 		}
-		
+
 		dst->af = af;
 		return 0;
 	}
@@ -632,14 +716,29 @@ uint32_t fr_strtoul(char const *value, char **end)
 	return strtoul(value, end, 10);
 }
 
-/** Check whether the rest of the string is whitespace
+/** Check whether the string is all whitespace
  *
  * @return true if the entirety of the string is whitespace, else false.
  */
 bool fr_whitespace_check(char const *value)
 {
 	while (*value) {
-		if (!isspace((int) *value)) return false;
+		if (!isspace(*value)) return false;
+
+		value++;
+	}
+
+	return true;
+}
+
+/** Check whether the string is all numbers
+ *
+ * @return true if the entirety of the string is are numebrs, else false.
+ */
+bool fr_integer_check(char const *value)
+{
+	while (*value) {
+		if (!isdigit(*value)) return false;
 
 		value++;
 	}

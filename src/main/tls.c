@@ -999,7 +999,7 @@ static void cbtls_remove_session(SSL_CTX *ctx, SSL_SESSION *sess)
 			 conf->session_cache_path, FR_DIR_SEP, buffer);
 		rv = unlink(filename);
 		if (rv != 0) {
-			DEBUG2("  SSL: could not remove persisted session file %s: %s", filename, strerror(errno));
+			DEBUG2("  SSL: could not remove persisted session file %s: %s", filename, fr_syserror(errno));
 		}
 		/* VPs might be absent; might not have been written to disk yet */
 		snprintf(filename, sizeof(filename), "%s%c%s.vps",
@@ -1057,7 +1057,7 @@ static int cbtls_new_session(SSL *ssl, SSL_SESSION *sess)
 			 conf->session_cache_path, FR_DIR_SEP, buffer);
 		fd = open(filename, O_RDWR|O_CREAT|O_EXCL, 0600);
 		if (fd < 0) {
-			DEBUG2("  SSL: could not open session file %s: %s", filename, strerror(errno));
+			DEBUG2("  SSL: could not open session file %s: %s", filename, fr_syserror(errno));
 			goto error;
 		}
 
@@ -1066,7 +1066,7 @@ static int cbtls_new_session(SSL *ssl, SSL_SESSION *sess)
 		while (todo > 0) {
 			rv = write(fd, p, todo);
 			if (rv < 1) {
-				DEBUG2("  SSL: failed writing session: %s", strerror(errno));
+				DEBUG2("  SSL: failed writing session: %s", fr_syserror(errno));
 				close(fd);
 				goto error;
 			}
@@ -1125,13 +1125,13 @@ static SSL_SESSION *cbtls_get_session(SSL *ssl,
 			 conf->session_cache_path, FR_DIR_SEP, buffer);
 		fd = open(filename, O_RDONLY);
 		if (fd < 0) {
-			DEBUG2("  SSL: could not find persisted session file %s: %s", filename, strerror(errno));
+			DEBUG2("  SSL: could not find persisted session file %s: %s", filename, fr_syserror(errno));
 			goto err;
 		}
 
 		rv = fstat(fd, &st);
 		if (rv < 0) {
-			DEBUG2("  SSL: could not stat persisted session file %s: %s", filename, strerror(errno));
+			DEBUG2("  SSL: could not stat persisted session file %s: %s", filename, fr_syserror(errno));
 			close(fd);
 			goto err;
 		}
@@ -1148,7 +1148,7 @@ static SSL_SESSION *cbtls_get_session(SSL *ssl,
 		while (todo > 0) {
 			rv = read(fd, p, todo);
 			if (rv < 1) {
-				DEBUG2("  SSL: could not read from persisted session: %s", strerror(errno));
+				DEBUG2("  SSL: could not read from persisted session: %s", fr_syserror(errno));
 				close(fd);
 				goto err;
 			}
@@ -1763,14 +1763,14 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 			fd = mkstemp(filename);
 			if (fd < 0) {
 				RDEBUG("Failed creating file in %s: %s",
-				       conf->verify_tmp_dir, strerror(errno));
+				       conf->verify_tmp_dir, fr_syserror(errno));
 				break;
 			}
 
 			fp = fdopen(fd, "w");
 			if (!fp) {
 				RDEBUG("Failed opening file %s: %s",
-				       filename, strerror(errno));
+				       filename, fr_syserror(errno));
 				break;
 			}
 
@@ -2367,7 +2367,7 @@ fr_tls_server_conf_t *tls_server_conf_parse(CONF_SECTION *cs)
 
 	if (conf->verify_tmp_dir) {
 		if (chmod(conf->verify_tmp_dir, S_IRWXU) < 0) {
-			ERROR("Failed changing permissions on %s: %s", conf->verify_tmp_dir, strerror(errno));
+			ERROR("Failed changing permissions on %s: %s", conf->verify_tmp_dir, fr_syserror(errno));
 			goto error;
 		}
 	}
@@ -2516,7 +2516,7 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 					);
 				vp_file = fopen(filename, "w");
 				if (vp_file == NULL) {
-					RDEBUG2("Could not write session VPs to persistent cache: %s", strerror(errno));
+					RDEBUG2("Could not write session VPs to persistent cache: %s", fr_syserror(errno));
 				} else {
 					vp_cursor_t cursor;
 					/* generate a dummy user-style entry which is easy to read back */

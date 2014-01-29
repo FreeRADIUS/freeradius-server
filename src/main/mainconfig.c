@@ -164,6 +164,7 @@ static const CONF_PARSER server_config[] = {
 	{ "run_dir",	    PW_TYPE_STRING_PTR, 0, &run_dir,	   "${localstatedir}/run/${name}"},
 	{ "libdir",	     PW_TYPE_STRING_PTR, 0, &radlib_dir,	"${prefix}/lib"},
 	{ "radacctdir",	 PW_TYPE_STRING_PTR, 0, &radacct_dir,       "${logdir}/radacct" },
+	{ "panic_action", PW_TYPE_STRING_PTR, 0, &mainconfig.panic_action, NULL},
 	{ "hostname_lookups",   PW_TYPE_BOOLEAN,    0, &fr_dns_lookups,      "no" },
 	{ "max_request_time", PW_TYPE_INTEGER, 0, &mainconfig.max_request_time, STRINGIFY(MAX_REQUEST_TIME) },
 	{ "cleanup_delay", PW_TYPE_INTEGER, 0, &mainconfig.cleanup_delay, STRINGIFY(CLEANUP_DELAY) },
@@ -436,7 +437,7 @@ static void fr_set_dumpable(void)
 
 		if (setrlimit(RLIMIT_CORE, &no_core) < 0) {
 			ERROR("Failed disabling core dumps: %s",
-			       strerror(errno));
+			       fr_syserror(errno));
 		}
 #endif
 		return;
@@ -449,7 +450,7 @@ static void fr_set_dumpable(void)
 #ifdef PR_SET_DUMPABLE
 	if (prctl(PR_SET_DUMPABLE, 1) < 0) {
 		ERROR("Cannot re-enable core dumps: prctl(PR_SET_DUMPABLE) failed: '%s'",
-		       strerror(errno));
+		       fr_syserror(errno));
 	}
 #endif
 #endif
@@ -460,7 +461,7 @@ static void fr_set_dumpable(void)
 #ifdef HAVE_SYS_RESOURCE_H
 	if (setrlimit(RLIMIT_CORE, &core_limits) < 0) {
 		ERROR("Cannot update core dump limit: %s",
-		       strerror(errno));
+		       fr_syserror(errno));
 	}
 #endif
 }
@@ -495,7 +496,7 @@ void fr_suid_down(void)
 
 	if (setresuid(-1, server_uid, geteuid()) < 0) {
 		fprintf(stderr, "%s: Failed switching to uid %s: %s\n",
-			progname, uid_name, strerror(errno));
+			progname, uid_name, fr_syserror(errno));
 		fr_exit_now(1);
 	}
 
@@ -514,7 +515,7 @@ void fr_suid_down_permanent(void)
 
 	if (setresuid(server_uid, server_uid, server_uid) < 0) {
 		ERROR("Failed in permanent switch to uid %s: %s",
-		       uid_name, strerror(errno));
+		       uid_name, fr_syserror(errno));
 		fr_exit_now(1);
 	}
 
@@ -538,7 +539,7 @@ void fr_suid_down(void)
 
 	if (setuid(server_uid) < 0) {
 		fprintf(stderr, "%s: Failed switching to uid %s: %s\n",
-			progname, uid_name, strerror(errno));
+			progname, uid_name, fr_syserror(errno));
 		fr_exit(1);
 	}
 
@@ -579,7 +580,7 @@ static int switch_users(CONF_SECTION *cs)
 	 *	initialized.
 	 */
 	if (getrlimit(RLIMIT_CORE, &core_limits) < 0) {
-		ERROR("Failed to get current core limit:  %s", strerror(errno));
+		ERROR("Failed to get current core limit:  %s", fr_syserror(errno));
 		return 0;
 	}
 #endif
@@ -604,7 +605,7 @@ static int switch_users(CONF_SECTION *cs)
 		gr = getgrnam(gid_name);
 		if (gr == NULL) {
 			fprintf(stderr, "%s: Cannot get ID for group %s: %s\n",
-				progname, gid_name, strerror(errno));
+				progname, gid_name, fr_syserror(errno));
 			return 0;
 		}
 		server_gid = gr->gr_gid;
@@ -621,7 +622,7 @@ static int switch_users(CONF_SECTION *cs)
 		pw = getpwnam(uid_name);
 		if (pw == NULL) {
 			fprintf(stderr, "%s: Cannot get passwd entry for user %s: %s\n",
-				progname, uid_name, strerror(errno));
+				progname, uid_name, fr_syserror(errno));
 			return 0;
 		}
 
@@ -633,7 +634,7 @@ static int switch_users(CONF_SECTION *cs)
 #ifdef HAVE_INITGROUPS
 			if (initgroups(uid_name, server_gid) < 0) {
 				fprintf(stderr, "%s: Cannot initialize supplementary group list for user %s: %s\n",
-					progname, uid_name, strerror(errno));
+					progname, uid_name, fr_syserror(errno));
 				return 0;
 			}
 #endif
@@ -646,7 +647,7 @@ static int switch_users(CONF_SECTION *cs)
 	if (chroot_dir) {
 		if (chroot(chroot_dir) < 0) {
 			fprintf(stderr, "%s: Failed to perform chroot %s: %s",
-				progname, chroot_dir, strerror(errno));
+				progname, chroot_dir, fr_syserror(errno));
 			return 0;
 		}
 
@@ -671,7 +672,7 @@ static int switch_users(CONF_SECTION *cs)
 	/*  Set GID.  */
 	if (gid_name && (setgid(server_gid) < 0)) {
 		fprintf(stderr, "%s: Failed setting group to %s: %s",
-			progname, gid_name, strerror(errno));
+			progname, gid_name, fr_syserror(errno));
 		return 0;
 	}
 #endif
@@ -690,13 +691,13 @@ static int switch_users(CONF_SECTION *cs)
 			default_log.fd = open(mainconfig.log_file,
 					      O_WRONLY | O_APPEND | O_CREAT, 0640);
 			if (default_log.fd < 0) {
-				fprintf(stderr, "radiusd: Failed to open log file %s: %s\n", mainconfig.log_file, strerror(errno));
+				fprintf(stderr, "radiusd: Failed to open log file %s: %s\n", mainconfig.log_file, fr_syserror(errno));
 				return 0;
 			}
 
 			if (chown(mainconfig.log_file, server_uid, server_gid) < 0) {
 				fprintf(stderr, "%s: Cannot change ownership of log file %s: %s\n",
-					progname, mainconfig.log_file, strerror(errno));
+					progname, mainconfig.log_file, fr_syserror(errno));
 				return 0;
 			}
 		}
@@ -731,6 +732,7 @@ static int switch_users(CONF_SECTION *cs)
  */
 int read_mainconfig(int reload)
 {
+	int rcode;
 	char const *p = NULL;
 	CONF_SECTION *cs;
 	struct stat statbuf;
@@ -744,7 +746,7 @@ int read_mainconfig(int reload)
 
 	if (stat(radius_dir, &statbuf) < 0) {
 		ERROR("Errors reading %s: %s",
-		       radius_dir, strerror(errno));
+		       radius_dir, fr_syserror(errno));
 		return -1;
 	}
 
@@ -765,13 +767,44 @@ int read_mainconfig(int reload)
 #endif
 	INFO("Starting - reading configuration files ...");
 
-	/* Initialize the dictionary */
-	if (!mainconfig.dictionary_dir) mainconfig.dictionary_dir = radius_dir;
+	/*
+	 *	We need to load the dictionaries before reading the
+	 *	configuration files.  This is because of the
+	 *	pre-compilation in conffile.c.  That should probably
+	 *	be fixed to be done as a second stage.
+	 */
+	if (!mainconfig.dictionary_dir) {
+		mainconfig.dictionary_dir = DICTDIR;
+	}
+
+	/*
+	 *	Read the distribution dictionaries first, then
+	 *	the ones in raddb.
+	 */
 	DEBUG2("including dictionary file %s/%s", mainconfig.dictionary_dir, RADIUS_DICTIONARY);
 	if (dict_init(mainconfig.dictionary_dir, RADIUS_DICTIONARY) != 0) {
 		ERROR("Errors reading dictionary: %s",
-				fr_strerror());
+		      fr_strerror());
 		return -1;
+	}
+
+	/*
+	 *	It's OK if this one doesn't exist.
+	 */
+	rcode = dict_read(radius_dir, RADIUS_DICTIONARY);
+	if (rcode == -1) {
+		ERROR("Errors reading %s/%s: %s", radius_dir, RADIUS_DICTIONARY,
+		      fr_strerror());
+		return -1;
+	}
+
+	/*
+	 *	We print this after reading it.  That way if
+	 *	it doesn't exist, it's OK, and we don't print
+	 *	anything.
+	 */
+	if (rcode == 0) {
+		DEBUG2("including dictionary file %s/%s", radius_dir, RADIUS_DICTIONARY);
 	}
 
 	/* Read the configuration file */
@@ -860,7 +893,7 @@ int read_mainconfig(int reload)
 		default_log.fd = open(mainconfig.log_file,
 					    O_WRONLY | O_APPEND | O_CREAT, 0640);
 		if (default_log.fd < 0) {
-			fprintf(stderr, "radiusd: Failed to open log file %s: %s\n", mainconfig.log_file, strerror(errno));
+			fprintf(stderr, "radiusd: Failed to open log file %s: %s\n", mainconfig.log_file, fr_syserror(errno));
 			cf_file_free(cs);
 			return -1;
 		}
@@ -948,7 +981,7 @@ int read_mainconfig(int reload)
 	if (chroot_dir) {
 		if (chdir(radlog_dir) < 0) {
 			ERROR("Failed to 'chdir %s' after chroot: %s",
-			       radlog_dir, strerror(errno));
+			       radlog_dir, fr_syserror(errno));
 			return -1;
 		}
 	}
@@ -959,6 +992,9 @@ int read_mainconfig(int reload)
 	cc->cs = cs;
 	rad_assert(cs_cache == NULL);
 	cs_cache = cc;
+
+	/* Clear any unprocessed configuration errors */
+	(void) fr_strerror();
 
 	return 0;
 }

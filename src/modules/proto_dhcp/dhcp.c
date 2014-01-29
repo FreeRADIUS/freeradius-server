@@ -252,7 +252,7 @@ RADIUS_PACKET *fr_dhcp_recv(int sockfd)
 #endif
 
 	if (data_len <= 0) {
-		fr_strerror_printf("Failed reading DHCP socket: %s", strerror(errno));
+		fr_strerror_printf("Failed reading DHCP socket: %s", fr_syserror(errno));
 		rad_free(&packet);
 		return NULL;
 	}
@@ -351,7 +351,7 @@ RADIUS_PACKET *fr_dhcp_recv(int sockfd)
 	 *	This should never fail...
 	 */
 	if (getsockname(sockfd, (struct sockaddr *) &dst, &sizeof_dst) < 0) {
-		fr_strerror_printf("getsockname failed: %s", strerror(errno));
+		fr_strerror_printf("getsockname failed: %s", fr_syserror(errno));
 		rad_free(&packet);
 		return NULL;
 	}
@@ -1563,7 +1563,7 @@ int fr_dhcp_add_arp_entry(int fd, char const *interface,
 
 	req.arp_flags = ATF_COM;
 	if (ioctl(fd, SIOCSARP, &req) < 0) {
-		fr_strerror_printf("Failed to add entry in ARP cache: %s (%d)", strerror(errno), errno);
+		fr_strerror_printf("Failed to add entry in ARP cache: %s (%d)", fr_syserror(errno), errno);
 		return -1;
 	}
 

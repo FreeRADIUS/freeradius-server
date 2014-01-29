@@ -93,7 +93,7 @@ static radclient_t *radclient_tail = NULL;
 
 char const *radclient_version = "radclient version " RADIUSD_VERSION_STRING
 #ifdef RADIUSD_VERSION_COMMIT
-" (git #" RADIUSD_VERSION_COMMIT ")"
+" (git #" STRINGIFY(RADIUSD_VERSION_COMMIT) ")"
 #endif
 ", built on " __DATE__ " at " __TIME__;
 
@@ -103,7 +103,8 @@ static void NEVER_RETURNS usage(void)
 
 	fprintf(stderr, "  <command>     One of auth, acct, status, coa, or disconnect.\n");
 	fprintf(stderr, "  -c <count>    Send each packet 'count' times.\n");
-	fprintf(stderr, "  -d <raddb>    Set dictionary directory.\n");
+	fprintf(stderr, "  -d <raddb>    Set user dictionary directory (defaults to " RADDBDIR ").\n");
+	fprintf(stderr, "  -D <dictdir>  Set main dictionary directory (defaults to " DICTDIR ").\n");
 	fprintf(stderr, "  -f <file>     Read packets from file, not stdin.\n");
 	fprintf(stderr, "  -F            Print the file name, packet number and reply code.\n");
 	fprintf(stderr, "  -h            Print usage help information.\n");
@@ -222,7 +223,7 @@ static int radclient_init(char const *filename)
 		fp = fopen(filename, "r");
 		if (!fp) {
 			fprintf(stderr, "radclient: Error opening %s: %s\n",
-				filename, strerror(errno));
+				filename, fr_syserror(errno));
 			return 0;
 		}
 	} else {
@@ -603,7 +604,7 @@ static int send_one_packet(radclient_t *radclient)
 			mysockfd = fr_socket(&client_ipaddr, 0);
 			if (mysockfd < 0) {
 				fprintf(stderr, "radclient: Can't open new socket: %s\n",
-					strerror(errno));
+					fr_syserror(errno));
 				exit(1);
 			}
 			if (!fr_packet_list_socket_add(pl, mysockfd, ipproto,
@@ -913,6 +914,7 @@ int main(int argc, char **argv)
 	char *p;
 	int c;
 	char const *radius_dir = RADDBDIR;
+	char const *dict_dir = DICTDIR;
 	char filesecret[256];
 	FILE *fp;
 	int do_summary = 0;
@@ -923,6 +925,10 @@ int main(int argc, char **argv)
 
 	fr_debug_flag = 0;
 
+#ifndef NDEBUG
+	fr_fault_setup(getenv("PANIC_ACTION"), argv[0]);
+#endif
+
 	talloc_set_log_stderr();
 
 	filename_tree = rbtree_create(filename_cmp, NULL, 0);
@@ -931,7 +937,7 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
-	while ((c = getopt(argc, argv, "46c:d:f:Fhi:n:p:qr:sS:t:vx"
+	while ((c = getopt(argc, argv, "46c:d:D:f:Fhi:n:p:qr:sS:t:vx"
 #ifdef WITH_TCP
 		"P:"
 #endif
@@ -946,6 +952,9 @@ int main(int argc, char **argv)
 			if (!isdigit((int) *optarg))
 				usage();
 			resend_count = atoi(optarg);
+			break;
+		case 'D':
+			dict_dir = optarg;
 			break;
 		case 'd':
 			radius_dir = optarg;
@@ -1015,12 +1024,12 @@ int main(int argc, char **argv)
 		       fp = fopen(optarg, "r");
 		       if (!fp) {
 			       fprintf(stderr, "radclient: Error opening %s: %s\n",
-				       optarg, strerror(errno));
+				       optarg, fr_syserror(errno));
 			       exit(1);
 		       }
 		       if (fgets(filesecret, sizeof(filesecret), fp) == NULL) {
 			       fprintf(stderr, "radclient: Error reading %s: %s\n",
-				       optarg, strerror(errno));
+				       optarg, fr_syserror(errno));
 			       exit(1);
 		       }
 		       fclose(fp);
@@ -1065,7 +1074,20 @@ int main(int argc, char **argv)
 		usage();
 	}
 
-	if (dict_init(radius_dir, RADIUS_DICTIONARY) < 0) {
+	/*
+	 *	Mismatch between the binary and the libraries it depends on
+	 */
+	if (fr_check_lib_magic(RADIUSD_MAGIC_NUMBER) < 0) {
+		fr_perror("radclient");
+		return 1;
+	}
+
+	if (dict_init(dict_dir, RADIUS_DICTIONARY) < 0) {
+		fr_perror("radclient");
+		return 1;
+	}
+
+	if (dict_read(radius_dir, RADIUS_DICTIONARY) == -1) {
 		fr_perror("radclient");
 		return 1;
 	}
@@ -1102,7 +1124,7 @@ int main(int argc, char **argv)
 		}
 
 		if (ip_hton(hostname, force_af, &server_ipaddr) < 0) {
-			fprintf(stderr, "radclient: Failed to find IP address for host %s: %s\n", hostname, strerror(errno));
+			fprintf(stderr, "radclient: Failed to find IP address for host %s: %s\n", hostname, fr_syserror(errno));
 			exit(1);
 		}
 

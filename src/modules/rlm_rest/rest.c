@@ -505,7 +505,7 @@ static size_t rest_encode_post(void *ptr, size_t size, size_t nmemb,
 
 		curl_free(escaped);
 
-		RDEBUG("\tLength : %i", len);
+		RDEBUG("\tLength : %zd", len);
 		RDEBUG("\tValue  : %s", p);
 
 		p += len;
@@ -529,7 +529,7 @@ static size_t rest_encode_post(void *ptr, size_t size, size_t nmemb,
 	len = p - (char*)ptr;
 
 	RDEBUG2("POST Data: %s", (char*) ptr);
-	RDEBUG2("Returning %i bytes of POST data", len);
+	RDEBUG2("Returning %zd bytes of POST data", len);
 
 	return len;
 
@@ -550,7 +550,7 @@ static size_t rest_encode_post(void *ptr, size_t size, size_t nmemb,
 	if (!len) {
 		REDEBUG("AVP exceeds buffer length or chunk");
 	} else {
-		RDEBUG2("Returning %i bytes of POST data (buffer full or chunk exceeded)", len);
+		RDEBUG2("Returning %zd bytes of POST data (buffer full or chunk exceeded)", len);
 	}
 
 	return len;
@@ -672,7 +672,7 @@ static size_t rest_encode_json(void *ptr, size_t size, size_t nmemb,
 			/*
 			 *	Show actual value length minus quotes
 			 */
-			RDEBUG2("\tLength : %i", (*p == '"') ? (len - 2) : len);
+			RDEBUG2("\tLength : %zu", (size_t) (*p == '"') ? (len - 2) : len);
 			RDEBUG2("\tValue  : %s", p);
 
 			p += len;
@@ -719,7 +719,7 @@ static size_t rest_encode_json(void *ptr, size_t size, size_t nmemb,
 	len = p - (char*)ptr;
 
 	RDEBUG2("JSON Data: %s", (char*) ptr);
-	RDEBUG2("Returning %i bytes of JSON data", len);
+	RDEBUG2("Returning %zd bytes of JSON data", len);
 
 	return len;
 
@@ -740,7 +740,7 @@ static size_t rest_encode_json(void *ptr, size_t size, size_t nmemb,
 	if (!len) {
 		REDEBUG("AVP exceeds buffer length or chunk");
 	} else {
-		RDEBUG2("Returning %i bytes of JSON data (buffer full or chunk exceeded)", len);
+		RDEBUG2("Returning %zd bytes of JSON data (buffer full or chunk exceeded)", len);
 	}
 
 	return len;
@@ -1062,9 +1062,8 @@ static VALUE_PAIR *json_pairmake_leaf(UNUSED rlm_rest_t *instance,
 	 */
 	value = json_object_get_string(leaf);
 
-	RDEBUG2("\tType   : %s", fr_int2str(dict_attr_types, da->type,
-					    "¿Unknown?"));
-	RDEBUG2("\tLength : %i", strlen(value));
+	RDEBUG2("\tType   : %s", fr_int2str(dict_attr_types, da->type, "¿Unknown?"));
+	RDEBUG2("\tLength : %zu", strlen(value));
 	RDEBUG2("\tValue  : \"%s\"", value);
 
 	if (flags->do_xlat) {
@@ -1270,8 +1269,8 @@ static VALUE_PAIR *json_pairmake(rlm_rest_t *instance,
 			if (tmp) {
 				flags.op = fr_str2int(fr_tokens, json_object_get_string(tmp), 0);
 				if (!flags.op) {
-					RDEBUG("Invalid operator value \"%s\","
-					       " skipping", tmp);
+					RDEBUG("Invalid operator value \"%s\", skipping",
+					       json_object_get_string(tmp));
 					continue;
 				}
 			}
@@ -1298,7 +1297,7 @@ static VALUE_PAIR *json_pairmake(rlm_rest_t *instance,
 			 */
 			value = json_object_object_get(value, "value");
 			if (!value) {
-				RDEBUG("Value key missing, skipping", value);
+				RDEBUG("Value key missing, skipping");
 				continue;
 			}
    		}
@@ -1310,8 +1309,7 @@ static VALUE_PAIR *json_pairmake(rlm_rest_t *instance,
 		    json_object_is_type(value, json_type_array)) {
 			len = json_object_array_length(value);
 			if (!len) {
-				RDEBUG("Zero length value array, skipping",
-				       value);
+				RDEBUG("Zero length value array, skipping");
 				continue;
 			}
 			idx = json_object_array_get_idx(value, 0);
@@ -2102,7 +2100,7 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 	return -1;
 
 	error_header:
-	RDEBUG("Failed creating header", instance->xlat_name);
+	RDEBUG("Failed creating header");
 	return -1;
 }
 

@@ -7,6 +7,8 @@ radclient - send packets to a RADIUS server, show reply
 .RB [ \-6 ]
 .RB [ \-d
 .IR raddb_directory ]
+.RB [ \-D
+.IR dictionary_directory ]
 .RB [ \-c
 .IR count ]
 .RB [ \-f
@@ -53,8 +55,11 @@ Use IPv6
 .IP \-c\ \fIcount\fP
 Send each packet \fIcount\fP times.
 .IP \-d\ \fIraddb_directory\fP
-The directory that contains the RADIUS dictionary files. Defaults to
+The directory that contains the user dictionary file. Defaults to
 \fI/etc/raddb\fP.
+.IP \-D\ \fIdictionary_directory\fP
+The directory that contains the main dictionary file. Defaults to
+\fI/usr/share/freeradius\fP.
 .IP \-f\ \fIfile\fP
 File to read the attribute/value pairs from. If this is not specified,
 they are read from stdin.  This option can be specified multiple

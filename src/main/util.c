@@ -26,7 +26,6 @@ RCSID("$Id$")
 #include <freeradius-devel/rad_assert.h>
 
 #include <ctype.h>
-#include <signal.h>
 
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -423,7 +422,7 @@ REQUEST *request_alloc(TALLOC_CTX *ctx)
 
 	request->module = "";
 	request->component = "<core>";
-	request->radlog = radlog_request;
+	request->radlog = vradlog_request;
 
 	return request;
 }

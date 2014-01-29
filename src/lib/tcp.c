@@ -73,7 +73,7 @@ int fr_tcp_socket(fr_ipaddr_t *ipaddr, int port)
 			if (setsockopt(sockfd, IPPROTO_IPV6, IPV6_V6ONLY,
 				       (char *)&on, sizeof(on)) < 0) {
 				fr_strerror_printf("Failed in setsockopt(): %s",
-						   strerror(errno));
+						   fr_syserror(errno));
 				close(sockfd);
 				return -1;
 			}
@@ -83,19 +83,19 @@ int fr_tcp_socket(fr_ipaddr_t *ipaddr, int port)
 #endif /* HAVE_STRUCT_SOCKADDR_IN6 */
 
 	if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) < 0) {
-		fr_strerror_printf("Failed in setsockopt(): %s", strerror(errno));
+		fr_strerror_printf("Failed in setsockopt(): %s", fr_syserror(errno));
 		close(sockfd);
 		return -1;
 	}
 
 	if (bind(sockfd, (struct sockaddr *) &salocal, salen) < 0) {
-		fr_strerror_printf("Failed in bind(): %s", strerror(errno));
+		fr_strerror_printf("Failed in bind(): %s", fr_syserror(errno));
 		close(sockfd);
 		return -1;
 	}
 
 	if (listen(sockfd, 8) < 0) {
-		fr_strerror_printf("Failed in listen(): %s", strerror(errno));
+		fr_strerror_printf("Failed in listen(): %s", fr_syserror(errno));
 		close(sockfd);
 		return -1;
 	}
@@ -134,7 +134,7 @@ int fr_tcp_client_socket(fr_ipaddr_t *src_ipaddr,
 
 		if ((flags = fcntl(sockfd, F_GETFL, NULL)) < 0)  {
 			fr_strerror_printf("Failure getting socket flags: %s",
-				   strerror(errno));
+				   fr_syserror(errno));
 			close(sockfd);
 			return -1;
 		}
@@ -142,7 +142,7 @@ int fr_tcp_client_socket(fr_ipaddr_t *src_ipaddr,
 		flags |= O_NONBLOCK;
 		if( fcntl(sockfd, F_SETFL, flags) < 0) {
 			fr_strerror_printf("Failure setting socket flags: %s",
-				   strerror(errno));
+				   fr_syserror(errno));
 			close(sockfd);
 			return -1;
 		}
@@ -160,7 +160,7 @@ int fr_tcp_client_socket(fr_ipaddr_t *src_ipaddr,
 
 		if (bind(sockfd, (struct sockaddr *) &salocal, salen) < 0) {
 			fr_strerror_printf("Failure binding to IP: %s",
-					   strerror(errno));
+					   fr_syserror(errno));
 			close(sockfd);
 			return -1;
 		}
@@ -177,7 +177,7 @@ int fr_tcp_client_socket(fr_ipaddr_t *src_ipaddr,
 	 *	socket is ready...
 	 */
 	if (connect(sockfd, (struct sockaddr *) &salocal, salen) < 0) {
-		fr_strerror_printf("Failed in connect(): %s", strerror(errno));
+		fr_strerror_printf("Failed in connect(): %s", fr_syserror(errno));
 		close(sockfd);
 		return -1;
 	}
@@ -239,7 +239,7 @@ int fr_tcp_read_packet(RADIUS_PACKET *packet, int flags)
 
 		if (len < 0) {
 			fr_strerror_printf("Error receiving packet: %s",
-				   strerror(errno));
+				   fr_syserror(errno));
 			return -1;
 		}
 
@@ -288,7 +288,7 @@ int fr_tcp_read_packet(RADIUS_PACKET *packet, int flags)
 #endif
 
 	if (len < 0) {
-		fr_strerror_printf("Error receiving packet: %s", strerror(errno));
+		fr_strerror_printf("Error receiving packet: %s", fr_syserror(errno));
 		return -1;
 	}
 

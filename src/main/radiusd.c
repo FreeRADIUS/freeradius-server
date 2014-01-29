@@ -36,8 +36,6 @@ RCSID("$Id$")
 #include <fcntl.h>
 #include <ctype.h>
 
-#include <signal.h>
-
 #ifdef HAVE_GETOPT_H
 #	include <getopt.h>
 #endif
@@ -67,7 +65,7 @@ bool memory_report = false;
 
 char const *radiusd_version = "FreeRADIUS Version " RADIUSD_VERSION_STRING
 #ifdef RADIUSD_VERSION_COMMIT
-" (git #" RADIUSD_VERSION_COMMIT ")"
+" (git #" STRINGIFY(RADIUSD_VERSION_COMMIT) ")"
 #endif
 ", for host " HOSTINFO ", built on " __DATE__ " at " __TIME__;
 
@@ -103,14 +101,18 @@ int main(int argc, char *argv[])
 	int rcode = EXIT_SUCCESS;
 	int status;
 	int argval;
-	int spawn_flag = true;
-	int dont_fork = false;
-	int write_pid = false;
+	bool spawn_flag = true;
+	bool dont_fork = false;
+	bool write_pid = false;
 	int flag = 0;
 	int from_child[2] = {-1, -1};
 
-#ifdef HAVE_SIGACTION
-	struct sigaction act;
+	/*
+	 *	If the server was built with debugging enabled always install
+	 *	the basic fatal signal handlers.
+	 */
+#ifndef NDEBUG
+	fr_fault_setup(getenv("PANIC_ACTION"), argv[0]);
 #endif
 
 #ifdef OSFC2
@@ -126,8 +128,8 @@ int main(int argc, char *argv[])
 	{
 		WSADATA wsaData;
 		if (WSAStartup(MAKEWORD(2, 0), &wsaData)) {
-		  fprintf(stderr, "%s: Unable to initialize socket library.\n", progname);
-			return 1;
+			fprintf(stderr, "%s: Unable to initialize socket library.\n", progname);
+			exit(EXIT_FAILURE);
 		}
 	}
 #endif
@@ -143,12 +145,6 @@ int main(int argc, char *argv[])
 	mainconfig.myip.af = AF_UNSPEC;
 	mainconfig.port = -1;
 	mainconfig.name = "radiusd";
-
-#ifdef HAVE_SIGACTION
-	memset(&act, 0, sizeof(act));
-	act.sa_flags = 0 ;
-	sigemptyset( &act.sa_mask ) ;
-#endif
 
 	/*
 	 *	Don't put output anywhere until we get told a little
@@ -196,7 +192,7 @@ int main(int argc, char *argv[])
 				default_log.fd = open(mainconfig.log_file,
 							    O_WRONLY | O_APPEND | O_CREAT, 0640);
 				if (default_log.fd < 0) {
-					fprintf(stderr, "radiusd: Failed to open log file %s: %s\n", mainconfig.log_file, strerror(errno));
+					fprintf(stderr, "radiusd: Failed to open log file %s: %s\n", mainconfig.log_file, fr_syserror(errno));
 					exit(EXIT_FAILURE);
 				}
 				fr_log_fp = fdopen(default_log.fd, "a");
@@ -288,6 +284,18 @@ int main(int argc, char *argv[])
 	talloc_set_log_fn(log_talloc);
 
 	/*
+	 *	Mismatch between the binary and the libraries it depends on
+	 */
+	if (fr_check_lib_magic(RADIUSD_MAGIC_NUMBER) < 0) {
+		fr_perror("radiusd");
+		exit(EXIT_FAILURE);
+	}
+
+	if (rad_check_lib_magic(RADIUSD_MAGIC_NUMBER) < 0) {
+		exit(EXIT_FAILURE);
+	}
+
+	/*
 	 *	Mismatch between build time OpenSSL and linked SSL,
 	 *	better to die here than segfault later.
 	 */
@@ -317,6 +325,15 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
+	/* Set the panic action (if required) */
+	if (mainconfig.panic_action &&
+#ifndef NDEBUG
+	    !getenv("PANIC_ACTION") &&
+#endif
+	    (fr_fault_setup(mainconfig.panic_action, argv[0]) < 0)) {
+		exit(EXIT_FAILURE);
+	}
+
 #ifndef __MINGW32__
 	/*
 	 *  Disconnect from session
@@ -325,13 +342,13 @@ int main(int argc, char *argv[])
 		pid_t pid;
 
 		if (pipe(from_child) != 0) {
-			ERROR("Couldn't open pipe for child status: %s", strerror(errno));
+			ERROR("Couldn't open pipe for child status: %s", fr_syserror(errno));
 			exit(EXIT_FAILURE);
 		}
 
 		pid = fork();
 		if (pid < 0) {
-			ERROR("Couldn't fork: %s", strerror(errno));
+			ERROR("Couldn't fork: %s", fr_syserror(errno));
 			exit(EXIT_FAILURE);
 		}
 
@@ -395,7 +412,7 @@ int main(int argc, char *argv[])
 		devnull = open("/dev/null", O_RDWR);
 		if (devnull < 0) {
 			ERROR("Failed opening /dev/null: %s\n",
-			       strerror(errno));
+			       fr_syserror(errno));
 			exit(EXIT_FAILURE);
 		}
 		dup2(devnull, STDIN_FILENO);
@@ -434,33 +451,27 @@ int main(int argc, char *argv[])
 #ifdef SIGPIPE
 	signal(SIGPIPE, SIG_IGN);
 #endif
-#ifdef HAVE_SIGACTION
-	act.sa_handler = sig_hup;
-	sigaction(SIGHUP, &act, NULL);
-	act.sa_handler = sig_fatal;
-	sigaction(SIGTERM, &act, NULL);
-#else
-#ifdef SIGHUP
-	signal(SIGHUP, sig_hup);
-#endif
-	signal(SIGTERM, sig_fatal);
-#endif
+
+	if ((fr_set_signal(SIGHUP, sig_hup) < 0) ||
+	    (fr_set_signal(SIGTERM, sig_fatal) < 0)) {
+	    	ERROR("%s", fr_strerror());
+	 	exit(EXIT_FAILURE);
+	}
+
 	/*
 	 *	If we're debugging, then a CTRL-C will cause the
 	 *	server to die immediately.  Use SIGTERM to shut down
 	 *	the server cleanly in that case.
 	 */
 	if ((mainconfig.debug_memory == 1) || (debug_flag == 0)) {
-#ifdef HAVE_SIGACTION
-		act.sa_handler = sig_fatal;
-		sigaction(SIGINT, &act, NULL);
-		sigaction(SIGQUIT, &act, NULL);
-#else
-		signal(SIGINT, sig_fatal);
+		if ((fr_set_signal(SIGINT, sig_fatal) < 0)
 #ifdef SIGQUIT
-		signal(SIGQUIT, sig_fatal);
+		|| (fr_set_signal(SIGQUIT, sig_fatal) < 0)
 #endif
-#endif
+		) {
+			ERROR("%s", fr_strerror());
+			exit(EXIT_FAILURE);
+		}
 	}
 
 	/*
@@ -505,7 +516,7 @@ int main(int argc, char *argv[])
 			fclose(fp);
 		} else {
 			ERROR("Failed creating PID file %s: %s\n",
-			       mainconfig.pid_file, strerror(errno));
+			       mainconfig.pid_file, fr_syserror(errno));
 			exit(EXIT_FAILURE);
 		}
 	}
@@ -522,7 +533,7 @@ int main(int argc, char *argv[])
 	if (!dont_fork) {
 		if (write(from_child[1], "\001", 1) < 0) {
 			WARN("Failed informing parent of successful start: %s",
-			     strerror(errno));
+			     fr_syserror(errno));
 		}
 		close(from_child[1]);
 	}
@@ -607,17 +618,18 @@ static void NEVER_RETURNS usage(int status)
 {
 	FILE *output = status?stderr:stdout;
 
-	fprintf(output, "Usage: %s [-d db_dir] [-l log_dir] [-i address] [-n name] [-fsvXx]\n", progname);
+	fprintf(output, "Usage: %s [options]\n", progname);
 	fprintf(output, "Options:\n");
 	fprintf(output, "  -C            Check configuration and exit.\n");
-	fprintf(output, "  -d raddb_dir  Configuration files are in \"raddbdir/*\".\n");
+	fprintf(stderr, "  -d <raddb>    Set configuration directory (defaults to " RADDBDIR ").\n");
+	fprintf(stderr, "  -D <dictdir>  Set main dictionary directory (defaults to " DICTDIR ").\n");
 	fprintf(output, "  -f            Run as a foreground process, not a daemon.\n");
 	fprintf(output, "  -h            Print this help message.\n");
-	fprintf(output, "  -i ipaddr     Listen on ipaddr ONLY.\n");
-	fprintf(output, "  -l log_file   Logging output will be written to this file.\n");
+	fprintf(output, "  -i <ipaddr>   Listen on ipaddr ONLY.\n");
+	fprintf(output, "  -l <log_file> Logging output will be written to this file.\n");
 	fprintf(output, "  -m            On SIGINT or SIGQUIT exit cleanly instead of immediately.\n");
-	fprintf(output, "  -n name       Read raddb/name.conf instead of raddb/radiusd.conf.\n");
-	fprintf(output, "  -p port       Listen on port ONLY.\n");
+	fprintf(output, "  -n <name>     Read raddb/name.conf instead of raddb/radiusd.conf.\n");
+	fprintf(output, "  -p <port>     Listen on port ONLY.\n");
 	fprintf(output, "  -P            Always write out PID, even with -f.\n");
 	fprintf(output, "  -s            Do not spawn child processes to handle requests.\n");
 	fprintf(output, "  -t            Disable threads.\n");
@@ -636,22 +648,22 @@ static void sig_fatal(int sig)
 	if (getpid() != radius_pid) _exit(sig);
 
 	switch(sig) {
-		case SIGTERM:
+	case SIGTERM:
+		radius_signal_self(RADIUS_SIGNAL_SELF_TERM);
+		break;
+
+	case SIGINT:
+#ifdef SIGQUIT
+	case SIGQUIT:
+#endif
+		if (mainconfig.debug_memory || memory_report) {
 			radius_signal_self(RADIUS_SIGNAL_SELF_TERM);
 			break;
+		}
+		/* FALL-THROUGH */
 
-		case SIGINT:
-#ifdef SIGQUIT
-		case SIGQUIT:
-#endif
-			if (mainconfig.debug_memory || memory_report) {
-				radius_signal_self(RADIUS_SIGNAL_SELF_TERM);
-				break;
-			}
-			/* FALL-THROUGH */
-
-		default:
-			_exit(sig);
+	default:
+		_exit(sig);
 	}
 }
 

@@ -787,7 +787,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 #ifdef HAVE_PTHREAD_H
 	if (pthread_mutex_init(&inst->cache_mutex, NULL) < 0) {
 		EDEBUG("Failed initializing mutex: %s",
-		       strerror(errno));
+		       fr_syserror(errno));
 		return -1;
 	}
 #endif

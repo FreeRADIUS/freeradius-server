@@ -220,6 +220,10 @@ int main(int argc, char **argv)
 
 	raddb_dir = RADIUS_DIR;
 
+#ifndef NDEBUG
+	fr_fault_setup(getenv("PANIC_ACTION"), argv[0]);
+#endif
+
 	talloc_set_log_stderr();
 
 	while((c = getopt(argc, argv, "d:fF:nN:sSipP:crRu:U:Z")) != EOF) switch(c) {
@@ -283,6 +287,14 @@ int main(int argc, char **argv)
 	}
 
 	/*
+	 *	Mismatch between the binary and the libraries it depends on
+	 */
+	if (fr_check_lib_magic(RADIUSD_MAGIC_NUMBER) < 0) {
+		fr_perror("radwho");
+		return 1;
+	}
+
+	/*
 	 *	Be safe.
 	 */
 	if (zap && !radiusoutput) zap = 0;
@@ -339,7 +351,7 @@ int main(int argc, char **argv)
 	 */
 	if ((fp = fopen(radutmp_file, "r")) == NULL) {
 		fprintf(stderr, "%s: Error reading %s: %s\n",
-			progname, radutmp_file, strerror(errno));
+			progname, radutmp_file, fr_syserror(errno));
 		return 0;
 	}
 

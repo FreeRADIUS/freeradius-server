@@ -56,6 +56,8 @@ static int all_digits(char const *string)
 {
 	char const *p = string;
 
+	rad_assert(p != NULL);
+
 	if (*p == '-') p++;
 
 	while (isdigit((int) *p)) p++;
@@ -426,6 +428,7 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 		EVAL_DEBUG("FAIL %d", __LINE__);
 		return -1;
 	}
+	rad_assert(rhs != NULL);
 
 	/*
 	 *	User-Name == FOO
@@ -496,6 +499,7 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 		EVAL_DEBUG("FAIL %d", __LINE__);
 		return -1;
 	}
+	rad_assert(lhs != NULL);
 
 	EVAL_DEBUG("LHS is %s", lhs);
 
@@ -541,6 +545,9 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 		}
 
 	} else {
+		rad_assert(lhs != NULL);
+		rad_assert(rhs != NULL);
+
 		rcode = strcmp(lhs, rhs);
 		talloc_free(lhs);
 		talloc_free(rhs);
@@ -656,6 +663,8 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from)
 	VALUE_PAIR **from_list, **to_list;
 	int *edited = NULL;
 	REQUEST *fixup = NULL;
+
+	if (!request) return;
 
 	/*
 	 *	Set up arrays for editing, to remove some of the

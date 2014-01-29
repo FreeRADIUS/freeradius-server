@@ -29,6 +29,7 @@
 RCSIDH(modules_h, "$Id$")
 
 #include <freeradius-devel/conffile.h>
+#include <freeradius-devel/features.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -105,8 +106,9 @@ extern const section_type_value_t section_type_value[];
 						//!< new instance, and then
 						//!< destroy old instance.
 
-#define RLM_MODULE_MAGIC_NUMBER ((uint32_t) (0xf4ee4ad3))
-#define RLM_MODULE_INIT RLM_MODULE_MAGIC_NUMBER
+
+/* Stop people using different module/library/server versions together */
+#define RLM_MODULE_INIT RADIUSD_MAGIC_NUMBER
 
 /** Module section callback
  *
@@ -151,7 +153,7 @@ typedef int (*detach_t)(void *instance);
  * within the module to different sections.
  */
 typedef struct module_t {
-	uint32_t 		magic;				//!< Used to validate module struct.
+	uint64_t 		magic;				//!< Used to validate module struct.
 	char const		*name;				//!< The name of the module (without rlm_ prefix).
 	int			type;				//!< One or more of the RLM_TYPE_* constants.
 	size_t			inst_size;			//!< Size of the instance data

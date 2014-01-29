@@ -1,17 +1,49 @@
 #
 # PRE: update if
 #
+update reply {
+	Filter-Id := "filter"
+}
+
 update {
        control:Cleartext-Password := 'hello'
-       request:Called-Station-Id := "%{md5:This is a string\n}"
+       request:Tmp-String-0 := "This is a string\n"
+       request:Tmp-Octets-0 := 0x000504030201
 }
 
 #
 #  Put "This is a string" into a file and call "md5sum" on it.
 #  You should get this string.
 #
-if (Called-Station-Id == "9ac4dbbc3c0ad2429e61d0df5dc28add") {
+if ("%{md5:This is a string\n}" != '9ac4dbbc3c0ad2429e61d0df5dc28add') {
 	update reply {
-		Filter-Id := "filter"
+		Filter-Id += 'fail'
+	}
+}
+
+if ("%{md5:&Tmp-String-0}" != '9ac4dbbc3c0ad2429e61d0df5dc28add') {
+	update reply {
+		Filter-Id += 'fail'
+	}
+}
+
+if ("%{md5:&request:Tmp-String-0}" != '9ac4dbbc3c0ad2429e61d0df5dc28add') {
+	update reply {
+		Filter-Id += 'fail'
+	}
+}
+
+if ("%{md5:%{request:Tmp-String-0}}" != '9ac4dbbc3c0ad2429e61d0df5dc28add') {
+	update reply {
+		Filter-Id += 'fail'
+	}
+}
+
+#
+#  MD5 should also be able to cope with references to octet attributes
+#
+if ("%{md5:&request:Tmp-Octets-0}" != 'c1e7fa505b2fc1fd0da6cac3db6f6f44') {
+	update reply {
+		Filter-Id += 'fail'
 	}
 }

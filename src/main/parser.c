@@ -849,7 +849,6 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 
 		p++;
 		while (isspace((int) *p)) p++; /* skip spaces after closing brace */
-		brace = false;
 		goto done;
 	}
 

@@ -656,8 +656,13 @@ ldap_rcode_t rlm_ldap_search(ldap_instance_t const *inst, REQUEST *request, ldap
 		(*pconn)->rebound = false;
 	}
 
-	LDAP_DBG_REQ("Performing search in '%s' with filter '%s'", dn, filter);
-
+	if (filter) {
+		LDAP_DBG_REQ("Performing search in '%s' with filter '%s', scope '%s'", dn, filter,
+			     fr_int2str(ldap_scope, scope, "<INVALID>"));
+	} else {
+		LDAP_DBG_REQ("Performing unfiltered search in '%s', scope '%s'", dn,
+			     fr_int2str(ldap_scope, scope, "<INVALID>"));
+	}
 	/*
 	 *	If LDAP search produced an error it should also be logged
 	 *	to the ld. result should pick it up without us
@@ -957,7 +962,8 @@ rlm_rcode_t rlm_ldap_check_access(ldap_instance_t const *inst, REQUEST *request,
 	if (vals) {
 		if (inst->access_positive) {
 			if (strncasecmp(vals[0], "false", 5) == 0) {
-				RDEBUG("\"%s\" attribute exists but is set to 'false' - user locked out");
+				RDEBUG("\"%s\" attribute exists but is set to 'false' - user locked out",
+				       inst->userobj_access_attr);
 				rcode = RLM_MODULE_USERLOCK;
 			}
 			/* RLM_MODULE_OK set above... */

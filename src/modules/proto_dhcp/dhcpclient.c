@@ -63,7 +63,7 @@ static RADIUS_PACKET *reply = NULL;
 
 char const *dhcpclient_version = "dhcpclient version " RADIUSD_VERSION_STRING
 #ifdef RADIUSD_VERSION_COMMIT
-" (git #" RADIUSD_VERSION_COMMIT ")"
+" (git #" STRINGIFY(RADIUSD_VERSION_COMMIT) ")"
 #endif
 ", built on " __DATE__ " at " __TIME__;
 
@@ -100,7 +100,7 @@ static int request_init(char const *filename)
 		fp = fopen(filename, "r");
 		if (!fp) {
 			fprintf(stderr, "dhcpclient: Error opening %s: %s\n",
-				filename, strerror(errno));
+				filename, fr_syserror(errno));
 			return 0;
 		}
 	} else {
@@ -341,7 +341,7 @@ int main(int argc, char **argv)
 		}
 
 		if (ip_hton(hostname, AF_INET, &server_ipaddr) < 0) {
-			fprintf(stderr, "dhcpclient: Failed to find IP address for host %s: %s\n", hostname, strerror(errno));
+			fprintf(stderr, "dhcpclient: Failed to find IP address for host %s: %s\n", hostname, fr_syserror(errno));
 			exit(1);
 		}
 
@@ -425,7 +425,7 @@ int main(int argc, char **argv)
 
 	if (fr_dhcp_send(request) < 0) {
 		fprintf(stderr, "dhcpclient: failed sending: %s\n",
-			strerror(errno));
+			fr_syserror(errno));
 		exit(1);
 	}
 

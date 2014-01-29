@@ -109,6 +109,8 @@ VALUE_PAIR *pairalloc(TALLOC_CTX *ctx, DICT_ATTR const *da)
 	vp->op = T_OP_EQ;
 	vp->type = VT_NONE;
 
+	vp->length = da->flags.length;
+
 	talloc_set_destructor(vp, _pairfree);
 
 	return vp;
@@ -864,7 +866,7 @@ VALUE_PAIR *paircopy2(TALLOC_CTX *ctx, VALUE_PAIR *from,
 	     vp = pairnext(&src)) {
 	     	VERIFY_VP(vp);
 
-		if ((attr > 0) && ((vp->da->attr != attr) || (vp->da->vendor != vendor))) {
+		if ((vp->da->attr != attr) || (vp->da->vendor != vendor)) {
 			continue;
 		}
 
@@ -1332,6 +1334,17 @@ bool pairparsevalue(VALUE_PAIR *vp, char const *value)
 		{
 			fr_ipaddr_t ipaddr;
 
+			/*
+			 *	Convert things which are obviously integers to IP addresses
+			 *
+			 *	We assume the number is the bigendian representation of the
+			 *	IP address.
+			 */
+			if (fr_integer_check(value)) {
+				vp->vp_ipaddr = htonl(atol(value));
+				break;
+			}
+
 			if (ip_hton(cs, AF_INET, &ipaddr) < 0) {
 				fr_strerror_printf("Failed to find IP address for %s", cs);
 				return false;
@@ -1438,11 +1451,8 @@ bool pairparsevalue(VALUE_PAIR *vp, char const *value)
 			goto do_octets;
 		}
 
-		if (ascend_parse_filter(vp) < 0 ) {
-			char buffer[256];
-
-			snprintf(buffer, sizeof(buffer), "failed to parse Ascend binary attribute '%s'", fr_strerror());
-			fr_strerror_printf("%s", buffer);
+		if (ascend_parse_filter(vp, value) < 0 ) {
+			/* Allow ascend_parse_filter's strerror to bubble up */
 			return false;
 		}
 		break;
@@ -1476,7 +1486,7 @@ bool pairparsevalue(VALUE_PAIR *vp, char const *value)
 			/*
 			 *	Invalid.
 			 */
-			if ((size  & 0x01) != 0) {
+			if ((size & 0x01) != 0) {
 				fr_strerror_printf("Hex string is not an even length string");
 				return false;
 			}
@@ -1493,8 +1503,7 @@ bool pairparsevalue(VALUE_PAIR *vp, char const *value)
 
 	case PW_TYPE_IFID:
 		if (ifid_aton(value, (void *) &vp->vp_ifid) == NULL) {
-			fr_strerror_printf("failed to parse interface-id "
-				   "string \"%s\"", value);
+			fr_strerror_printf("Failed to parse interface-id string \"%s\"", value);
 			return false;
 		}
 		vp->length = 8;
@@ -1521,8 +1530,7 @@ bool pairparsevalue(VALUE_PAIR *vp, char const *value)
 	case PW_TYPE_IPV6PREFIX:
 		p = strchr(value, '/');
 		if (!p || ((p - value) >= 256)) {
-			fr_strerror_printf("invalid IPv6 prefix "
-				   "string \"%s\"", value);
+			fr_strerror_printf("invalid IPv6 prefix string \"%s\"", value);
 			return false;
 		} else {
 			unsigned int prefix;
@@ -1532,15 +1540,13 @@ bool pairparsevalue(VALUE_PAIR *vp, char const *value)
 			buffer[p - value] = '\0';
 
 			if (inet_pton(AF_INET6, buffer, vp->vp_ipv6prefix + 2) <= 0) {
-				fr_strerror_printf("failed to parse IPv6 address "
-					   "string \"%s\"", value);
+				fr_strerror_printf("failed to parse IPv6 address string \"%s\"", value);
 				return false;
 			}
 
 			prefix = strtoul(p + 1, &eptr, 10);
 			if ((prefix > 128) || *eptr) {
-				fr_strerror_printf("failed to parse IPv6 address "
-					   "string \"%s\"", value);
+				fr_strerror_printf("failed to parse IPv6 address string \"%s\"", value);
 				return false;
 			}
 			vp->vp_ipv6prefix[1] = prefix;
@@ -1558,8 +1564,7 @@ bool pairparsevalue(VALUE_PAIR *vp, char const *value)
 			vp->vp_ipv4prefix[1] = 32;
 
 			if (inet_pton(AF_INET, value, vp->vp_ipv4prefix + 2) <= 0) {
-				fr_strerror_printf("failed to parse IPv4 address "
-					   "string \"%s\"", value);
+				fr_strerror_printf("failed to parse IPv4 address string \"%s\"", value);
 				return false;
 			}
 			vp->length = sizeof(vp->vp_ipv4prefix);
@@ -1570,8 +1575,7 @@ bool pairparsevalue(VALUE_PAIR *vp, char const *value)
 		 *	Otherwise parse the prefix
 		 */
 		if ((p - value) >= 256) {
-			fr_strerror_printf("invalid IPv4 prefix "
-				   "string \"%s\"", value);
+			fr_strerror_printf("invalid IPv4 prefix string \"%s\"", value);
 			return false;
 		} else {
 			unsigned int prefix;
@@ -1581,15 +1585,13 @@ bool pairparsevalue(VALUE_PAIR *vp, char const *value)
 			buffer[p - value] = '\0';
 
 			if (inet_pton(AF_INET, buffer, vp->vp_ipv4prefix + 2) <= 0) {
-				fr_strerror_printf("failed to parse IPv4 address "
-					   "string \"%s\"", value);
+				fr_strerror_printf("failed to parse IPv4 address string \"%s\"", value);
 				return false;
 			}
 
 			prefix = strtoul(p + 1, &eptr, 10);
 			if ((prefix > 32) || *eptr) {
-				fr_strerror_printf("failed to parse IPv4 address "
-					   "string \"%s\"", value);
+				fr_strerror_printf("failed to parse IPv4 address string \"%s\"", value);
 				return false;
 			}
 			vp->vp_ipv4prefix[1] = prefix;
@@ -1613,6 +1615,19 @@ bool pairparsevalue(VALUE_PAIR *vp, char const *value)
 	case PW_TYPE_ETHERNET:
 		{
 			char const *c1, *c2;
+
+			/*
+			 *	Convert things which are obviously integers to Ethernet addresses
+			 *
+			 *	We assume the number is the bigendian representation of the
+			 *	ethernet address.
+			 */
+			if (fr_integer_check(value)) {
+				uint64_t integer = htonll(atoll(value));
+
+				memcpy(&vp->vp_ether, &integer, sizeof(vp->vp_ether));
+				break;
+			}
 
 			length = 0;
 			cp = value;
@@ -1659,6 +1674,7 @@ bool pairparsevalue(VALUE_PAIR *vp, char const *value)
 				da = dict_attrbytype(vp->da->attr, vp->da->vendor,
 						     PW_TYPE_IPV6ADDR);
 				if (!da) {
+					fr_strerror_printf("Cannot find ipv6addr for %s", vp->da->name);
 					return false;
 				}
 
@@ -1669,6 +1685,7 @@ bool pairparsevalue(VALUE_PAIR *vp, char const *value)
 				da = dict_attrbytype(vp->da->attr, vp->da->vendor,
 						     PW_TYPE_IPADDR);
 				if (!da) {
+					fr_strerror_printf("Cannot find ipaddr for %s", vp->da->name);
 					return false;
 				}
 
@@ -2194,8 +2211,9 @@ FR_TOKEN userparse(TALLOC_CTX *ctx, char const *buffer, VALUE_PAIR **list)
 	/*
 	 *	We allow an empty line.
 	 */
-	if (buffer[0] == 0)
+	if (buffer[0] == 0) {
 		return T_EOL;
+	}
 
 	head = NULL;
 	tail = &head;
@@ -2218,7 +2236,7 @@ FR_TOKEN userparse(TALLOC_CTX *ctx, char const *buffer, VALUE_PAIR **list)
 			}
 			if (pairmark_xlat(vp, raw.r_opand) < 0) {
 				talloc_free(vp);
-
+				last_token = T_OP_INVALID;
 				break;
 			}
 		} else {
@@ -2492,7 +2510,7 @@ int paircmp(VALUE_PAIR *one, VALUE_PAIR *two)
  * @param[in] one the first attribute
  * @param[in] op the operator for comparison
  * @param[in] two the second attribute
- * @return true if ONE OP TWO is true, else false.
+ * @return < 0 if one is less than two, 0 if both are equal, > 0 if one is more than two.
  */
 int paircmp_op(VALUE_PAIR const *one, FR_TOKEN op, VALUE_PAIR const *two)
 {
@@ -2559,6 +2577,16 @@ int paircmp_op(VALUE_PAIR const *one, FR_TOKEN op, VALUE_PAIR const *two)
 		}
 		break;
 
+	case PW_TYPE_SIGNED:
+		if (one->vp_signed < two->vp_signed) {
+			compare = -1;
+		} else if (one->vp_signed == two->vp_signed) {
+			compare = 0;
+		} else {
+			compare = +1;
+		}
+		break;
+
 	case PW_TYPE_INTEGER64:
 		/*
 		 *	Don't want integer overflow!
@@ -2571,8 +2599,14 @@ int paircmp_op(VALUE_PAIR const *one, FR_TOKEN op, VALUE_PAIR const *two)
 			compare = 0;
 		}
 		break;
+
+	case PW_TYPE_ETHERNET:
+		compare = memcmp(&one->vp_ether, &two->vp_ether,
+				 sizeof(one->vp_ether));
+		break;
+
 	case PW_TYPE_IPADDR:
-		if (ntohl(one->vp_ipaddr)  < ntohl(two->vp_ipaddr)) {
+		if (ntohl(one->vp_ipaddr) < ntohl(two->vp_ipaddr)) {
 			compare = -1;
 		} else if (one->vp_ipaddr  == two->vp_ipaddr) {
 			compare = 0;
@@ -2597,12 +2631,27 @@ int paircmp_op(VALUE_PAIR const *one, FR_TOKEN op, VALUE_PAIR const *two)
 				    (uint8_t const *) &two->vp_ipv4prefix);
 
 	case PW_TYPE_IFID:
-		compare = memcmp(&one->vp_ifid, &two->vp_ifid,
-				 sizeof(one->vp_ifid));
+		compare = memcmp(&one->vp_ifid, &two->vp_ifid, sizeof(one->vp_ifid));
 		break;
 
-	default:
-		return 0;	/* unknown type */
+	/*
+	 *	None of the types below should be in the REQUEST
+	 */
+	case PW_TYPE_COMBO_IP:		/* This should of been converted into IPADDR/IPV6ADDR */
+	case PW_TYPE_TLV:
+	case PW_TYPE_EXTENDED:
+	case PW_TYPE_LONG_EXTENDED:
+	case PW_TYPE_EVS:
+	case PW_TYPE_VSA:
+	case PW_TYPE_INVALID:		/* We should never see these */
+	case PW_TYPE_MAX:
+		fr_assert(0);	/* unknown type */
+		return 0;
+
+	/*
+	 *	Do NOT add a default here, as new types are added
+	 *	static analysis will warn us they're not handled
+	 */
 	}
 
 	/*
@@ -2630,8 +2679,6 @@ int paircmp_op(VALUE_PAIR const *one, FR_TOKEN op, VALUE_PAIR const *two)
 	default:
 		return 0;
 	}
-
-	return 0;
 }
 
 /** Copy data into an "octets" data type.

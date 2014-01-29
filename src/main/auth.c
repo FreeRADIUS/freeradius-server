@@ -173,7 +173,8 @@ static int rad_check_password(REQUEST *request)
 	int auth_type = -1;
 	int result;
 	int auth_type_count = 0;
-	result = 0;
+
+	rad_assert(request != NULL);
 
 	/*
 	 *	Look for matching check items. We skip the whole lot

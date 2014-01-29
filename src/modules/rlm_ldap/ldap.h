@@ -278,6 +278,9 @@ typedef enum {
 #define LDAP_EXT() if (extra) LDAP_ERR(extra)
 #define LDAP_EXT_REQ() do { if (extra) { if (request) REDEBUG("%s", extra); else LDAP_ERR("%s", extra); }} while (0)
 
+extern FR_NAME_NUMBER const ldap_scope[];
+extern FR_NAME_NUMBER const ldap_tls_require_cert[];
+
 /*
  *	ldap.c - Wrappers arounds OpenLDAP functions.
  */

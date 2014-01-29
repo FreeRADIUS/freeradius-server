@@ -869,7 +869,7 @@ static char const *parse_spaces = "                                             
 int cf_item_parse(CONF_SECTION *cs, char const *name, int type, void *data, char const *dflt)
 {
 	int rcode;
-	bool deprecated, required, attribute;
+	bool deprecated, required, attribute, no_overwrite;
 	char **q;
 	char const *value;
 	fr_ipaddr_t ipaddr;
@@ -881,6 +881,7 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, int type, void *data, char
 	deprecated = (type & PW_TYPE_DEPRECATED);
 	required = (type & PW_TYPE_REQUIRED);
 	attribute = (type & PW_TYPE_ATTRIBUTE);
+	no_overwrite = (type & PW_TYPE_NO_OVERWRITE);
 
 	type &= 0xff;		/* normal types are small */
 	rcode = 0;
@@ -951,6 +952,16 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, int type, void *data, char
 	case PW_TYPE_STRING_PTR:
 		q = (char **) data;
 		if (*q != NULL) {
+			/*
+			 *	Don't over-write something we got from
+			 *	the command line.
+			 */
+			if (no_overwrite) {
+				cf_log_info(cs, "%.*s\t%s = \"%s\"",
+					    cs->depth, parse_spaces, name, *q);
+				break;
+			}
+
 			talloc_free(*q);
 		}
 
@@ -1154,6 +1165,8 @@ static void cf_section_parse_init(CONF_SECTION *cs, void *base,
 			if (!subcs) {
 				subcs = cf_section_alloc(cs, variables[i].name,
 							 NULL);
+				if (!subcs) return;
+
 				cf_item_add(cs, &(subcs->item));
 				subcs->item.filename = cs->item.filename;
 				subcs->item.lineno = cs->item.lineno;
@@ -1438,7 +1451,6 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 				return -1;
 			}
 
-			t1 = T_BARE_WORD;
 			ptr += hack;
 
 			t2 = gettoken(&ptr, buf2, sizeof(buf2));
@@ -1467,7 +1479,6 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			       ERROR("%s[%d]: Too many closing braces",
 				      filename, *lineno);
 			       return -1;
-
 		       }
 		       this = this->item.parent;
 		       if (seen_too_much(filename, *lineno, ptr)) return -1;
@@ -1484,7 +1495,12 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		   (strcasecmp(buf1, "$-INCLUDE") == 0)) {
 		       int relative = 1;
 
-			t2 = getword(&ptr, buf2, sizeof(buf2));
+		       t2 = getword(&ptr, buf2, sizeof(buf2));
+		       if (t2 != T_EOL) {
+			       ERROR("%s[%d]: Unexpected text after $INCLUDE",
+				     filename, *lineno);
+			       return -1;
+		       }
 
 			if (buf2[0] == '$') relative = 0;
 
@@ -1524,7 +1540,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 				if (stat(value, &stat_buf) < 0) {
 					ERROR("%s[%d]: Failed reading directory %s: %s",
 					       filename, *lineno,
-					       value, strerror(errno));
+					       value, fr_syserror(errno));
 					return -1;
 				}
 
@@ -1538,7 +1554,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 				if (!dir) {
 					ERROR("%s[%d]: Error reading directory %s: %s",
 					       filename, *lineno, value,
-					       strerror(errno));
+					       fr_syserror(errno));
 					return -1;
 				}
 
@@ -1584,7 +1600,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 					struct stat statbuf;
 
 					if (stat(value, &statbuf) < 0) {
-						WDEBUG("Not including file %s: %s", value, strerror(errno));
+						WDEBUG("Not including file %s: %s", value, fr_syserror(errno));
 						continue;
 					}
 				}
@@ -1601,6 +1617,12 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		       CONF_SECTION *parentcs, *templatecs;
 		       t2 = getword(&ptr, buf2, sizeof(buf2));
 
+		       if (t2 != T_EOL) {
+			       ERROR("%s[%d]: Unexpected text after $TEMPLATE",
+				      filename, *lineno);
+			       return -1;
+		       }
+
 		       parentcs = cf_top_section(current);
 
 		       templatecs = cf_section_sub_find(parentcs, "templates");
@@ -1614,6 +1636,12 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		       if (!ci || (ci->type != CONF_ITEM_SECTION)) {
 				ERROR("%s[%d]: Reference \"%s\" not found",
 				       filename, *lineno, buf2);
+				return -1;
+		       }
+
+		       if (!this) {
+				ERROR("%s[%d]: Internal sanity check error in template reference",
+				       filename, *lineno);
 				return -1;
 		       }
 
@@ -1803,6 +1831,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			 */
 		do_set:
 			cpn = cf_pair_alloc(this, buf1, value, t2, t3);
+			if (!cpn) return -1;
 			cpn->item.filename = filename;
 			cpn->item.lineno = *lineno;
 			cf_item_add(this, &(cpn->item));
@@ -1893,7 +1922,7 @@ int cf_file_include(CONF_SECTION *cs, char const *filename)
 	fp = fopen(filename, "r");
 	if (!fp) {
 		ERROR("Unable to open file \"%s\": %s",
-		       filename, strerror(errno));
+		       filename, fr_syserror(errno));
 		return -1;
 	}
 

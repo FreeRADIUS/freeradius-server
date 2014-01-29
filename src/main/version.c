@@ -17,7 +17,7 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
- * Copyright 1999-2012  The FreeRADIUS server project
+ * Copyright 1999-2014  The FreeRADIUS server project
  * Copyright 2012  Alan DeKok <aland@ox.org>
  * Copyright 2000  Chris Parker <cparker@starnetusa.com>
  */
@@ -27,10 +27,11 @@ RCSID("$Id$")
 #include <freeradius-devel/radiusd.h>
 USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
-#ifdef HAVE_OPENSSL_CRYPTO_H
+static uint64_t libmagic = RADIUSD_MAGIC_NUMBER;
 
-#include <openssl/crypto.h>
-#include <openssl/opensslv.h>
+#ifdef HAVE_OPENSSL_CRYPTO_H
+#  include <openssl/crypto.h>
+#  include <openssl/opensslv.h>
 
 static long ssl_built = OPENSSL_VERSION_NUMBER;
 
@@ -48,8 +49,7 @@ int ssl_check_version(void)
 	ssl_linked = SSLeay();
 
 	if (ssl_linked != ssl_built) {
-		ERROR("libssl version mismatch."
-		       "  Built with: %lx\n  Linked: %lx",
+		ERROR("libssl version mismatch.  built: %lx linked: %lx",
 		       (unsigned long) ssl_built,
 		       (unsigned long) ssl_linked);
 
@@ -67,7 +67,7 @@ char const *ssl_version(void)
 {
 	return SSLeay_version(SSLEAY_VERSION);
 }
-#else
+#  else
 int ssl_check_version(void) {
 	return 0;
 }
@@ -76,7 +76,39 @@ char const *ssl_version()
 {
 	return "not linked";
 }
-#endif
+#endif /* ifdef HAVE_OPENSSL_CRYPTO_H */
+
+
+/** Check if the application linking to the library has the correct magic number
+ *
+ * @param magic number as defined by RADIUSD_MAGIC_NUMBER
+ * @returns 0 on success, -1 on prefix mismatch, -2 on version mismatch -3 on commit mismatch.
+ */
+int rad_check_lib_magic(uint64_t magic)
+{
+	if (MAGIC_PREFIX(magic) != MAGIC_PREFIX(libmagic)) {
+		ERROR("Application and libfreeradius-server magic number (prefix) mismatch."
+		      "  application: %x library: %x",
+		      MAGIC_PREFIX(magic), MAGIC_PREFIX(libmagic));
+		return -1;
+	}
+
+	if (MAGIC_VERSION(magic) != MAGIC_VERSION(libmagic)) {
+		ERROR("Application and libfreeradius-server magic number (version) mismatch."
+		      "  application: %lx library: %lx",
+		      (unsigned long) MAGIC_VERSION(magic), (unsigned long) MAGIC_VERSION(libmagic));
+		return -2;
+	}
+
+	if (MAGIC_COMMIT(magic) != MAGIC_COMMIT(libmagic)) {
+		ERROR("Application and libfreeradius-server magic number (commit) mismatch."
+		      "  application: %lx library: %lx",
+		      (unsigned long) MAGIC_COMMIT(magic), (unsigned long) MAGIC_COMMIT(libmagic));
+		return -3;
+	}
+
+	return 0;
+}
 
 /*
  *	Display the revision number for this program
@@ -147,9 +179,11 @@ void version(void)
 #endif
 
 	DEBUG3("Server core libs:");
-	DEBUG3("  talloc : %i.%i.*", talloc_version_major(),
-	       talloc_version_minor());
+	DEBUG3("  talloc : %i.%i.*", talloc_version_major(), talloc_version_minor());
 	DEBUG3("  ssl    : %s", ssl_version());
+
+	DEBUG3("Library magic number:");
+	DEBUG3("  0x%llx", (unsigned long long) libmagic);
 
 	INFO("Copyright (C) 1999-2014 The FreeRADIUS server project and contributors");
 	INFO("There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A");

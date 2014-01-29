@@ -260,7 +260,7 @@ static rlm_rcode_t do_linelog(void *instance, REQUEST *request)
 		if (p) {
 			*p = '\0';
 			if (rad_mkdir(buffer, 0700) < 0) {
-				RERROR("rlm_linelog: Failed to create directory %s: %s", buffer, strerror(errno));
+				RERROR("rlm_linelog: Failed to create directory %s: %s", buffer, fr_syserror(errno));
 				return RLM_MODULE_FAIL;
 			}
 			*p = '/';
@@ -269,7 +269,7 @@ static rlm_rcode_t do_linelog(void *instance, REQUEST *request)
 		fd = open(buffer, O_WRONLY | O_APPEND | O_CREAT, inst->permissions);
 		if (fd == -1) {
 			ERROR("rlm_linelog: Failed to open %s: %s",
-			       buffer, strerror(errno));
+			       buffer, fr_syserror(errno));
 			return RLM_MODULE_FAIL;
 		}
 
@@ -309,7 +309,7 @@ static rlm_rcode_t do_linelog(void *instance, REQUEST *request)
 		strcat(line, "\n");
 
 		if (write(fd, line, strlen(line)) < 0) {
-			EDEBUG("rlm_linelog: Failed writing: %s", strerror(errno));
+			EDEBUG("rlm_linelog: Failed writing: %s", fr_syserror(errno));
 			close(fd);
 			return RLM_MODULE_FAIL;
 		}

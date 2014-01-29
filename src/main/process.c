@@ -312,12 +312,12 @@ static void debug_packet(REQUEST *request, RADIUS_PACKET *packet, int direction)
 	 *	This really belongs in a utility library
 	 */
 	if ((packet->code > 0) && (packet->code < FR_MAX_PACKET_CODE)) {
-		RDEBUG("%s %s packet %s host %s port %d, id=%d, length=%d",
+		RDEBUG("%s %s packet %s host %s port %i, id=%i, length=%zu",
 		       received, fr_packet_codes[packet->code], from,
 		       inet_ntop(ip->af, &ip->ipaddr, buffer, sizeof(buffer)),
 		       port, packet->id, packet->data_len);
 	} else {
-		RDEBUG("%s packet %s host %s port %d code=%d, id=%d, length=%d",
+		RDEBUG("%s packet %s host %s port %d code=%d, id=%d, length=%zu",
 		       received, from,
 		       inet_ntop(ip->af, &ip->ipaddr, buffer, sizeof(buffer)),
 		       port,
@@ -383,7 +383,7 @@ STATE_MACHINE_DECL(request_done)
 	 */
 	if (!we_are_master()) {
 		request->child_state = REQUEST_DONE;
-		request->child_pid = NO_SUCH_CHILD_PID;;
+		request->child_pid = NO_SUCH_CHILD_PID;
 		return;
 	}
 #endif
@@ -1045,7 +1045,7 @@ static int request_pre_handler(REQUEST *request, UNUSED int action)
 			 */
 			if (radius_evaluate_cond(request, RLM_MODULE_OK, 0, debug_condition)) {
 				request->options = 2;
-				request->radlog = radlog_request;
+				request->radlog = vradlog_request;
 			}
 		}
 #endif
@@ -1741,6 +1741,7 @@ static void remove_from_proxy_hash_nl(REQUEST *request, bool yank)
 	}
 
 #ifdef WITH_TCP
+	rad_assert(request->proxy_listener != NULL);
 	request->proxy_listener->count--;
 #endif
 	request->proxy_listener = NULL;
@@ -2617,7 +2618,7 @@ STATE_MACHINE_DECL(request_ping)
 		 *	pings.
 		 */
 		home->state = HOME_STATE_ALIVE;
-		exec_trigger(request, request->home_server->cs, "home_server.alive", false);
+		exec_trigger(request, home->cs, "home_server.alive", false);
 		home->currently_outstanding = 0;
 		home->num_sent_pings = 0;
 		home->num_received_pings = 0;
@@ -3828,12 +3829,12 @@ int event_new_fd(rad_listen_t *this)
 		devnull = open("/dev/null", O_RDWR);
 		if (devnull < 0) {
 			ERROR("FATAL failure opening /dev/null: %s",
-			       strerror(errno));
+			       fr_syserror(errno));
 			fr_exit(1);
 		}
 		if (dup2(devnull, this->fd) < 0) {
 			ERROR("FATAL failure closing socket: %s",
-			       strerror(errno));
+			       fr_syserror(errno));
 			fr_exit(1);
 		}
 		close(devnull);
@@ -4094,7 +4095,7 @@ int radius_event_init(CONF_SECTION *cs, int have_children)
 #ifdef HAVE_PTHREAD_H
 		if (pthread_mutex_init(&proxy_mutex, NULL) != 0) {
 			ERROR("FATAL: Failed to initialize proxy mutex: %s",
-			       strerror(errno));
+			       fr_syserror(errno));
 			fr_exit(1);
 		}
 #endif
@@ -4138,19 +4139,19 @@ int radius_event_init(CONF_SECTION *cs, int have_children)
 	 */
 	if (pipe(self_pipe) < 0) {
 		ERROR("radiusd: Error opening internal pipe: %s",
-		       strerror(errno));
+		       fr_syserror(errno));
 		fr_exit(1);
 	}
 	if ((fcntl(self_pipe[0], F_SETFL, O_NONBLOCK) < 0) ||
 	    (fcntl(self_pipe[0], F_SETFD, FD_CLOEXEC) < 0)) {
 		ERROR("radiusd: Error setting internal flags: %s",
-		       strerror(errno));
+		       fr_syserror(errno));
 		fr_exit(1);
 	}
 	if ((fcntl(self_pipe[1], F_SETFL, O_NONBLOCK) < 0) ||
 	    (fcntl(self_pipe[1], F_SETFD, FD_CLOEXEC) < 0)) {
 		ERROR("radiusd: Error setting internal flags: %s",
-		       strerror(errno));
+		       fr_syserror(errno));
 		fr_exit(1);
 	}
 
@@ -4189,7 +4190,31 @@ int radius_event_init(CONF_SECTION *cs, int have_children)
 }
 
 
-static int request_hash_cb(UNUSED void *ctx, void *data)
+static int proxy_delete_cb(UNUSED void *ctx, void *data)
+{
+	REQUEST *request = fr_packet2myptr(REQUEST, packet, data);
+
+	request->master_state = REQUEST_STOP_PROCESSING;
+
+	/*
+	 *	Not done, or the child thread is still processing it.
+	 */
+	if (request->child_state != REQUEST_DONE) return 0; /* continue */
+
+#ifdef HAVE_PTHREAD_H
+	if (pthread_equal(request->child_pid, NO_SUCH_CHILD_PID) == 0) return 0;
+#endif
+
+	request->in_proxy_hash = false;
+
+	/*
+	 *	Delete it from the list.
+	 */
+	return 1;
+}
+
+
+static int request_delete_cb(UNUSED void *ctx, void *data)
 {
 	REQUEST *request = fr_packet2myptr(REQUEST, packet, data);
 
@@ -4197,22 +4222,25 @@ static int request_hash_cb(UNUSED void *ctx, void *data)
 	rad_assert(request->in_proxy_hash == false);
 #endif
 
-	request_done(request, FR_ACTION_DONE);
+	request->master_state = REQUEST_STOP_PROCESSING;
 
-	return 0;
-}
+	/*
+	 *	Not done, or the child thread is still processing it.
+	 */
+	if (request->child_state != REQUEST_DONE) return 0; /* continue */
 
-
-#ifdef WITH_PROXY
-static int proxy_hash_cb(UNUSED void *ctx, void *data)
-{
-	REQUEST *request = fr_packet2myptr(REQUEST, proxy, data);
-
-	request_done(request, FR_ACTION_DONE);
-
-	return 0;
-}
+#ifdef HAVE_PTHREAD_H
+	if (pthread_equal(request->child_pid, NO_SUCH_CHILD_PID) == 0) return 0;
 #endif
+
+	request->in_request_hash = false;
+
+	/*
+	 *	Delete it from the list.
+	 */
+	return 1;
+}
+
 
 void radius_event_free(void)
 {
@@ -4230,13 +4258,13 @@ void radius_event_free(void)
 	 *	referenced from anywhere else.  Remove them first.
 	 */
 	if (proxy_list) {
-		fr_packet_list_walk(proxy_list, NULL, proxy_hash_cb);
+		fr_packet_list_walk(proxy_list, NULL, proxy_delete_cb);
 		fr_packet_list_free(proxy_list);
 		proxy_list = NULL;
 	}
 #endif
 
-	fr_packet_list_walk(pl, NULL, request_hash_cb);
+	fr_packet_list_walk(pl, NULL, request_delete_cb);
 
 	fr_packet_list_free(pl);
 	pl = NULL;

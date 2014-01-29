@@ -102,6 +102,44 @@ const section_type_value_t section_type_value[RLM_COMPONENT_COUNT] = {
 #define LD_LIBRARY_PATH "LD_LIBRARY_PATH"
 #endif
 
+/** Check if the magic number in the module matches the one in the library
+ *
+ * This is used to detect potential ABI issues caused by running with modules which
+ * were built for a different version of the server.
+ *
+ * @param cs being parsed.
+ * @param module being loaded.
+ * @returns 0 on success, -1 if prefix mismatch, -2 if version mismatch, -3 if commit mismatch.
+ */
+static int check_module_magic(CONF_SECTION *cs, module_t const *module)
+{
+	if (MAGIC_PREFIX(module->magic) != MAGIC_PREFIX(RADIUSD_MAGIC_NUMBER)) {
+		cf_log_err_cs(cs, "Application and rlm_%s magic number (prefix) mismatch."
+			      "  application: %x module: %x", module->name,
+			      MAGIC_PREFIX(RADIUSD_MAGIC_NUMBER),
+			      MAGIC_PREFIX(module->magic));
+		return -1;
+	}
+
+	if (MAGIC_VERSION(module->magic) != MAGIC_VERSION(RADIUSD_MAGIC_NUMBER)) {
+		cf_log_err_cs(cs, "Application and rlm_%s magic number (version) mismatch."
+			      "  application: %lx module: %lx", module->name,
+			      (unsigned long) MAGIC_VERSION(RADIUSD_MAGIC_NUMBER),
+			      (unsigned long) MAGIC_VERSION(module->magic));
+		return -2;
+	}
+
+	if (MAGIC_COMMIT(module->magic) != MAGIC_COMMIT(RADIUSD_MAGIC_NUMBER)) {
+		cf_log_err_cs(cs, "Application and rlm_%s magic number (commit) mismatch."
+			      "  application: %lx module: %lx", module->name,
+			      (unsigned long) MAGIC_COMMIT(RADIUSD_MAGIC_NUMBER),
+			      (unsigned long) MAGIC_COMMIT(module->magic));
+		return -3;
+	}
+
+	return 0;
+}
+
 /*
  *	Because dlopen produces really shitty and inaccurate error messages
  */
@@ -115,7 +153,7 @@ static void check_lib_access(char const *name)
 			DEBUG4("Library not found at path \"%s\"", name);
 			break;
 		default:
-			DEBUG4("Possible issue accessing Library \"%s\": %s", name, strerror(errno));
+			DEBUG4("Possible issue accessing Library \"%s\": %s", name, fr_syserror(errno));
 			break;
 	}
 }
@@ -430,13 +468,9 @@ static module_entry_t *linkto_module(char const *module_name,
 	/*
 	 *	Before doing anything else, check if it's sane.
 	 */
-	if (module->magic != RLM_MODULE_MAGIC_NUMBER) {
+	if (check_module_magic(cs, module) < 0) {
 		dlclose(handle);
-		cf_log_err_cs(cs,
-			   "Invalid version in module '%s'",
-			   module_name);
 		return NULL;
-
 	}
 
 	/* make room for the module type */
@@ -757,7 +791,7 @@ rlm_rcode_t indexed_modcall(rlm_components_t comp, int idx, REQUEST *request)
  */
 static int load_subcomponent_section(modcallable *parent, CONF_SECTION *cs,
 				     rbtree_t *components,
-				     DICT_ATTR const *dattr, rlm_components_t comp)
+				     DICT_ATTR const *da, rlm_components_t comp)
 {
 	indexed_modcallable *subcomp;
 	modcallable *ml;
@@ -785,7 +819,7 @@ static int load_subcomponent_section(modcallable *parent, CONF_SECTION *cs,
 	 *	automatically.  If it isn't found, it's a serious
 	 *	error.
 	 */
-	dval = dict_valbyname(dattr->attr, dattr->vendor, name2);
+	dval = dict_valbyname(da->attr, da->vendor, name2);
 	if (!dval) {
 		cf_log_err_cs(cs,
 			   "%s %s Not previously configured",
@@ -804,7 +838,7 @@ static int load_subcomponent_section(modcallable *parent, CONF_SECTION *cs,
 	return 1;		/* OK */
 }
 
-static int define_type(CONF_SECTION *cs, DICT_ATTR const *dattr, char const *name)
+static int define_type(CONF_SECTION *cs, DICT_ATTR const *da, char const *name)
 {
 	uint32_t value;
 	DICT_VALUE *dval;
@@ -813,7 +847,7 @@ static int define_type(CONF_SECTION *cs, DICT_ATTR const *dattr, char const *nam
 	 *	If the value already exists, don't
 	 *	create it again.
 	 */
-	dval = dict_valbyname(dattr->attr, dattr->vendor, name);
+	dval = dict_valbyname(da->attr, da->vendor, name);
 	if (dval) return 1;
 
 	/*
@@ -825,10 +859,10 @@ static int define_type(CONF_SECTION *cs, DICT_ATTR const *dattr, char const *nam
 	 */
 	do {
 		value = fr_rand() & 0x00ffffff;
-	} while (dict_valbyattr(dattr->attr, dattr->vendor, value));
+	} while (dict_valbyattr(da->attr, da->vendor, value));
 
-	cf_log_module(cs, "Creating %s = %s", dattr->name, name);
-	if (dict_addvalue(name, dattr->name, value) < 0) {
+	cf_log_module(cs, "Creating %s = %s", da->name, name);
+	if (dict_addvalue(name, da->name, value) < 0) {
 		ERROR("%s", fr_strerror());
 		return 0;
 	}
@@ -845,13 +879,13 @@ static int load_component_section(CONF_SECTION *cs,
 	indexed_modcallable *subcomp;
 	char const *modname;
 	char const *visiblename;
-	DICT_ATTR const *dattr;
+	DICT_ATTR const *da;
 
 	/*
 	 *	Find the attribute used to store VALUEs for this section.
 	 */
-	dattr = dict_attrbyvalue(section_type_value[comp].attr, 0);
-	if (!dattr) {
+	da = dict_attrbyvalue(section_type_value[comp].attr, 0);
+	if (!da) {
 		cf_log_err_cs(cs,
 			   "No such attribute %s",
 			   section_type_value[comp].typename);
@@ -878,7 +912,7 @@ static int load_component_section(CONF_SECTION *cs,
 				   section_type_value[comp].typename) == 0) {
 				if (!load_subcomponent_section(NULL, scs,
 							       components,
-							       dattr,
+							       da,
 							       comp)) {
 					return -1; /* FIXME: memleak? */
 				}
@@ -1047,7 +1081,7 @@ static int load_byserver(CONF_SECTION *cs)
 	for (comp = 0; comp < RLM_COMPONENT_COUNT; ++comp) {
 		CONF_SECTION *subcs;
 		CONF_ITEM *modref;
-		DICT_ATTR const *dattr;
+		DICT_ATTR const *da;
 
 		subcs = cf_section_sub_find(cs,
 					    section_type_value[comp].section);
@@ -1058,8 +1092,8 @@ static int load_byserver(CONF_SECTION *cs)
 		/*
 		 *	Find the attribute used to store VALUEs for this section.
 		 */
-		dattr = dict_attrbyvalue(section_type_value[comp].attr, 0);
-		if (!dattr) {
+		da = dict_attrbyvalue(section_type_value[comp].attr, 0);
+		if (!da) {
 			cf_log_err_cs(subcs,
 				   "No such attribute %s",
 				   section_type_value[comp].typename);
@@ -1090,7 +1124,7 @@ static int load_byserver(CONF_SECTION *cs)
 			if ((section_type_value[comp].attr == PW_AUTH_TYPE) &&
 			    cf_item_is_pair(modref)) {
 				CONF_PAIR *cp = cf_itemtopair(modref);
-				if (!define_type(cs, dattr, cf_pair_attr(cp))) {
+				if (!define_type(cs, da, cf_pair_attr(cp))) {
 					goto error;
 				}
 
@@ -1103,7 +1137,7 @@ static int load_byserver(CONF_SECTION *cs)
 			name1 = cf_section_name1(subsubcs);
 
 			if (strcmp(name1, section_type_value[comp].typename) == 0) {
-			  if (!define_type(cs, dattr,
+			  if (!define_type(cs, da,
 					   cf_section_name2(subsubcs))) {
 					goto error;
 				}
@@ -1172,13 +1206,33 @@ static int load_byserver(CONF_SECTION *cs)
 	 *	This is a bit of a hack...
 	 */
 	if (!found) do {
+#if defined(WITH_VMPS) || defined(WITH_DHCP)
 		CONF_SECTION *subcs;
-#ifdef WITH_DHCP
-		DICT_ATTR const *dattr;
+		DICT_ATTR const *da;
 #endif
 
+#ifdef WITH_VMPS
 		subcs = cf_section_sub_find(cs, "vmps");
 		if (subcs) {
+			/*
+			 *	Auto-load the DHCP dictionary.
+			 */
+			da = dict_attrbyname("VQP-Packet-Type");
+			if (!da) {
+				if (dict_read(mainconfig.dictionary_dir, "dictionary.vqp") < 0) {
+					ERROR("Failed reading dictionary.vqp: %s",
+					      fr_strerror());
+					return -1;
+				}
+				DEBUG("Loading dictionary.vqp");
+				
+				da = dict_attrbyname("VQP-Packet-Type");
+				if (!da) {
+					ERROR("No VQP-Packet-Type in dictionary.vqp");
+					return -1;
+				}
+			}
+
 			cf_log_module(cs, "Checking vmps {...} for more modules to load");
 			if (load_component_section(subcs, components,
 						   RLM_COMPONENT_POST_AUTH) < 0) {
@@ -1190,16 +1244,33 @@ static int load_byserver(CONF_SECTION *cs)
 			found = 1;
 			break;
 		}
+#endif
 
 #ifdef WITH_DHCP
+		/*
+		 *	It's OK to not have DHCP.
+		 */
 		subcs = cf_subsection_find_next(cs, NULL, "dhcp");
-		dattr = dict_attrbyname("DHCP-Message-Type");
-		if (!dattr && subcs) {
-			cf_log_err_cs(subcs, "Found a 'dhcp' section, but no DHCP dictionaries have been loaded");
-			goto error;
-		}
+		if (!subcs) break;
 
-		if (!dattr) break;
+		/*
+		 *	Auto-load the DHCP dictionary.
+		 */
+		da = dict_attrbyname("DHCP-Message-Type");
+		if (!da) {
+			DEBUG("Loading dictionary.dhcp");
+			if (dict_read(mainconfig.dictionary_dir, "dictionary.dhcp") < 0) {
+				ERROR("Failed reading dictionary.dhcp: %s",
+				      fr_strerror());
+				return -1;
+			}
+
+			da = dict_attrbyname("DHCP-Message-Type");
+			if (!da) {
+				ERROR("No DHCP-Message-Type in dictionary.dhcp");
+				return -1;
+			}
+		}
 
 		/*
 		 *	Handle each DHCP Message type separately.
@@ -1210,7 +1281,7 @@ static int load_byserver(CONF_SECTION *cs)
 			DEBUG2(" Module: Checking dhcp %s {...} for more modules to load", name2);
 			if (!load_subcomponent_section(NULL, subcs,
 						       components,
-						       dattr,
+						       da,
 						       RLM_COMPONENT_POST_AUTH)) {
 				goto error; /* FIXME: memleak? */
 			}

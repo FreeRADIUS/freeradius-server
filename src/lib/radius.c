@@ -296,7 +296,7 @@ static int rad_sendto(int sockfd, void *data, size_t data_len, int flags,
 done:
 #endif
 	if (rcode < 0) {
-		DEBUG("rad_send() failed: %s\n", strerror(errno));
+		fr_strerror_printf("sendto failed: %s", fr_syserror(errno));
 	}
 
 	return rcode;
@@ -2598,7 +2598,7 @@ RADIUS_PACKET *rad_recv(int fd, int flags)
 	 *	Check for socket errors.
 	 */
 	if (data_len < 0) {
-		fr_strerror_printf("Error receiving packet: %s", strerror(errno));
+		fr_strerror_printf("Error receiving packet: %s", fr_syserror(errno));
 		/* packet->data is NULL */
 		rad_free(&packet);
 		return NULL;
@@ -3891,84 +3891,122 @@ ssize_t  rad_data2vp(unsigned int attribute, unsigned int vendor,
 		       data, length, length, pvp);
 }
 
-/**
- * @brief Converts vp_data to network byte order
+fr_thread_local_setup(uint8_t *, rad_vp2data_buff);
+
+/** Converts vp_data to network byte order
+ *
+ * Provide a pointer to a buffer which contains the value of the VALUE_PAIR
+ * in an architecture independent format.
+ *
+ * The pointer is only guaranteed to be valid between calls to rad_vp2data, and so long
+ * as the source VALUE_PAIR is not freed.
+ *
+ * @param out where to write the pointer to the value.
+ * @param vp to get the value from.
  * @return -1 on error, or the length of the value
  */
-ssize_t rad_vp2data(VALUE_PAIR const *vp, uint8_t *out, size_t outlen)
+ssize_t rad_vp2data(uint8_t const **out, VALUE_PAIR const *vp)
 {
-	size_t		len = 0;
+	uint8_t		*buffer;
 	uint32_t	lvalue;
 	uint64_t	lvalue64;
 
+	*out = NULL;
+
+	buffer = fr_thread_local_init(rad_vp2data_buff, free);
+	if (!buffer) {
+		int ret;
+
+		buffer = malloc(sizeof(uint8_t) * sizeof(value_data_t));
+		if (!buffer) {
+			fr_strerror_printf("Failed allocating memory for rad_vp2data buffer");
+			return -1;
+		}
+
+		ret = fr_thread_local_set(rad_vp2data_buff, buffer);
+		if (ret != 0) {
+			fr_strerror_printf("Failed setting up TLS for rad_vp2data buffer: %s", fr_syserror(errno));
+			free(buffer);
+			return -1;
+		}
+	}
+
 	VERIFY_VP(vp);
 
-	len = vp->length;
-	if (outlen < len) {
-		fr_strerror_printf("ERROR: rad_vp2data buffer passed too small");
-		return -1;
-	}
-
 	switch(vp->da->type) {
-		case PW_TYPE_STRING:
-		case PW_TYPE_OCTETS:
-		case PW_TYPE_TLV:
-			memcpy(out, vp->data.ptr, len);
-			break;
+	case PW_TYPE_STRING:
+	case PW_TYPE_OCTETS:
+	case PW_TYPE_TLV:
+		memcpy(out, &vp->data.ptr, sizeof(*out));
+		break;
 
-			/*
-			 *	All of this data is at the same
-			 *	location.
-			 */
-		case PW_TYPE_IFID:
-		case PW_TYPE_IPADDR:
-		case PW_TYPE_IPV6ADDR:
-		case PW_TYPE_IPV6PREFIX:
-		case PW_TYPE_IPV4PREFIX:
-		case PW_TYPE_ABINARY:
-			memcpy(out, &vp->data, len);
-			break;
-
-		case PW_TYPE_BYTE:
-			out[0] = vp->vp_integer & 0xff;
-			break;
-
-		case PW_TYPE_SHORT:
-			out[0] = (vp->vp_integer >> 8) & 0xff;
-			out[1] = vp->vp_integer & 0xff;
-			break;
-
-		case PW_TYPE_INTEGER:
-			lvalue = htonl(vp->vp_integer);
-			memcpy(out, &lvalue, sizeof(lvalue));
-			break;
-
-		case PW_TYPE_INTEGER64:
-			lvalue64 = htonll(vp->vp_integer64);
-			memcpy(out, &lvalue64, sizeof(lvalue64));
-			break;
-
-		case PW_TYPE_DATE:
-			lvalue = htonl(vp->vp_date);
-			memcpy(out, &lvalue, sizeof(lvalue));
-			break;
-
-		case PW_TYPE_SIGNED:
-		{
-			int32_t slvalue;
-
-			slvalue = htonl(vp->vp_signed);
-			memcpy(out, &slvalue, sizeof(slvalue));
-			break;
-		}
-		/* unknown type: ignore it */
-		default:
-			fr_strerror_printf("ERROR: Unknown attribute type %d",
-					   vp->da->type);
-			return -1;
+	/*
+	 *	All of these values are at the same location.
+	 */
+	case PW_TYPE_IFID:
+	case PW_TYPE_IPADDR:
+	case PW_TYPE_IPV6ADDR:
+	case PW_TYPE_IPV6PREFIX:
+	case PW_TYPE_IPV4PREFIX:
+	case PW_TYPE_ABINARY:
+	case PW_TYPE_ETHERNET:
+	case PW_TYPE_COMBO_IP:
+	{
+		void const *p = &vp->data;
+		memcpy(out, &p, sizeof(*out));
+		break;
 	}
 
-	return len;
+	case PW_TYPE_BYTE:
+		buffer[0] = vp->vp_integer & 0xff;
+		*out = buffer;
+		break;
+
+	case PW_TYPE_SHORT:
+		buffer[0] = (vp->vp_integer >> 8) & 0xff;
+		buffer[1] = vp->vp_integer & 0xff;
+		*out = buffer;
+		break;
+
+	case PW_TYPE_INTEGER:
+		lvalue = htonl(vp->vp_integer);
+		memcpy(buffer, &lvalue, sizeof(lvalue));
+		*out = buffer;
+		break;
+
+	case PW_TYPE_INTEGER64:
+		lvalue64 = htonll(vp->vp_integer64);
+		memcpy(buffer, &lvalue64, sizeof(lvalue64));
+		*out = buffer;
+		break;
+
+	case PW_TYPE_DATE:
+		lvalue = htonl(vp->vp_date);
+		memcpy(buffer, &lvalue, sizeof(lvalue));
+		*out = buffer;
+		break;
+
+	case PW_TYPE_SIGNED:
+	{
+		int32_t slvalue = htonl(vp->vp_signed);
+		memcpy(buffer, &slvalue, sizeof(slvalue));
+		*out = buffer;
+		break;
+	}
+
+	case PW_TYPE_INVALID:
+	case PW_TYPE_EXTENDED:
+	case PW_TYPE_LONG_EXTENDED:
+	case PW_TYPE_EVS:
+	case PW_TYPE_VSA:
+	case PW_TYPE_MAX:
+		fr_strerror_printf("Cannot get data for VALUE_PAIR type %i", vp->da->type);
+		return -1;
+
+	/* Don't add default */
+	}
+
+	return vp->length;
 }
 
 /**

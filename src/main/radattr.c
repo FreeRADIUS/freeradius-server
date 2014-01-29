@@ -569,7 +569,6 @@ static void process_file(const char *root_dir, char const *filename)
 
 	if (strcmp(filename, "-") == 0) {
 		fp = stdin;
-		filename = "<stdin>";
 		directory[0] = '\0';
 
 	} else {
@@ -582,7 +581,7 @@ static void process_file(const char *root_dir, char const *filename)
 		fp = fopen(directory, "r");
 		if (!fp) {
 			fprintf(stderr, "Error opening %s: %s\n",
-				directory, strerror(errno));
+				directory, fr_syserror(errno));
 			exit(1);
 		}
 	}
@@ -798,6 +797,10 @@ int main(int argc, char *argv[])
 	int report = false;
 	char const *radius_dir = RADDBDIR;
 
+#ifndef NDEBUG
+	fr_fault_setup(getenv("PANIC_ACTION"), argv[0]);
+#endif
+
 	while ((c = getopt(argc, argv, "d:xM")) != EOF) switch(c) {
 		case 'd':
 			radius_dir = optarg;
@@ -820,6 +823,14 @@ int main(int argc, char *argv[])
 		talloc_enable_null_tracking();
 	}
 	talloc_set_log_fn(log_talloc);
+
+	/*
+	 *	Mismatch between the binary and the libraries it depends on
+	 */
+	if (fr_check_lib_magic(RADIUSD_MAGIC_NUMBER) < 0) {
+		fr_perror("radattr");
+		return 1;
+	}
 
 	if (dict_init(radius_dir, RADIUS_DICTIONARY) < 0) {
 		fr_perror("radattr");

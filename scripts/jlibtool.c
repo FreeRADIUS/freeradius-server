@@ -580,12 +580,26 @@ static int external_spawn(command_t *cmd, char const *file, char const **argv)
 			return execvp(argv[0], (char**)argv);
 		}
 		else {
-			int statuscode;
-			waitpid(pid, &statuscode, 0);
-			if (WIFEXITED(statuscode)) {
-				return WEXITSTATUS(statuscode);
+			int status;
+			waitpid(pid, &status, 0);
+
+			/*
+			 *	Exited via exit(status)
+			 */
+			if (WIFEXITED(status)) {
+				return WEXITSTATUS(status);
 			}
-			return 0;
+
+#ifdef WTERMSIG
+			if (WIFSIGNALED(status)) {
+				return WTERMSIG(status);
+			}
+#endif
+
+			/*
+			 *	Some other failure.
+			 */
+			return 1;
 		}
 	}
 #endif

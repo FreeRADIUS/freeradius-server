@@ -48,7 +48,7 @@ int filedone = 0;
 
 char const *radiusd_version = "FreeRADIUS Version " RADIUSD_VERSION_STRING
 #ifdef RADIUSD_VERSION_COMMIT
-" (git #" RADIUSD_VERSION_COMMIT ")"
+" (git #" STRINGIFY(RADIUSD_VERSION_COMMIT) ")"
 #endif
 ", for host " HOSTINFO ", built on " __DATE__ " at " __TIME__;
 
@@ -309,11 +309,11 @@ static REQUEST *request_setup(FILE *fp)
 			 */
 			if (!talloc_get_type(vp, VALUE_PAIR)) {
 				ERROR("Expected VALUE_PAIR pointer got \"%s\"", talloc_get_name(vp));
-				
+
 				log_talloc_report(vp);
 				rad_assert(0);
 			}
-			
+
 			vp_print(fr_log_fp, vp);
 		}
 		fflush(fr_log_fp);
@@ -339,7 +339,7 @@ static REQUEST *request_setup(FILE *fp)
 	 *	Debugging
 	 */
 	request->options = debug_flag;
-	request->radlog = radlog_request;
+	request->radlog = vradlog_request;
 
 	request->username = pairfind(request->packet->vps, PW_USER_NAME, 0, TAG_ANY);
 	request->password = pairfind(request->packet->vps, PW_USER_PASSWORD, 0, TAG_ANY);
@@ -392,6 +392,14 @@ int main(int argc, char *argv[])
 	REQUEST *request;
 	VALUE_PAIR *vp;
 	VALUE_PAIR *filter_vps = NULL;
+
+	/*
+	 *	If the server was built with debugging enabled always install
+	 *	the basic fatal signal handlers.
+	 */
+#ifndef NDEBUG
+	fr_fault_setup(getenv("PANIC_ACTION"), argv[0]);
+#endif
 
 	if ((progname = strrchr(argv[0], FR_DIR_SEP)) == NULL)
 		progname = argv[0];
@@ -495,8 +503,29 @@ int main(int argc, char *argv[])
 	}
 	fr_debug_flag = debug_flag;
 
+	/*
+	 *	Mismatch between the binary and the libraries it depends on
+	 */
+	if (fr_check_lib_magic(RADIUSD_MAGIC_NUMBER) < 0) {
+		fr_perror("radiusd");
+		exit(EXIT_FAILURE);
+	}
+
+	if (rad_check_lib_magic(RADIUSD_MAGIC_NUMBER) < 0) {
+		exit(EXIT_FAILURE);
+	}
+
 	/*  Read the configuration files, BEFORE doing anything else.  */
 	if (read_mainconfig(0) < 0) {
+		exit(EXIT_FAILURE);
+	}
+
+	/* Set the panic action (if required) */
+	if (mainconfig.panic_action &&
+#ifndef NDEBUG
+	    !getenv("PANIC_ACTION") &&
+#endif
+	    (fr_fault_setup(mainconfig.panic_action, argv[0]) < 0)) {
 		exit(EXIT_FAILURE);
 	}
 
@@ -508,7 +537,7 @@ int main(int argc, char *argv[])
 		fp = fopen(input_file, "r");
 		if (!fp) {
 			fprintf(stderr, "Failed reading %s: %s\n",
-				input_file, strerror(errno));
+				input_file, fr_syserror(errno));
 			exit(EXIT_FAILURE);
 		}
 	}
@@ -546,7 +575,7 @@ int main(int argc, char *argv[])
 			fp = fopen(filter_file, "r");
 			if (!fp) {
 				fprintf(stderr, "Failed reading %s: %s\n",
-					filter_file, strerror(errno));
+					filter_file, fr_syserror(errno));
 				exit(EXIT_FAILURE);
 			}
 		}
@@ -572,7 +601,7 @@ int main(int argc, char *argv[])
 		fp = fopen(output_file, "w");
 		if (!fp) {
 			fprintf(stderr, "Failed writing %s: %s\n",
-				output_file, strerror(errno));
+				output_file, fr_syserror(errno));
 			exit(EXIT_FAILURE);
 		}
 	}

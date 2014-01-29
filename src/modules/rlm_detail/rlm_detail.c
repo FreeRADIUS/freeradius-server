@@ -195,7 +195,7 @@ static int detail_write(FILE *out, detail_instance_t *inst, REQUEST *request, RA
 
 #define WRITE(fmt, ...) do {\
 	if (fprintf(out, fmt, ## __VA_ARGS__) < 0) {\
-		RERROR("Failed writing to detail file: %s", strerror(errno));\
+		RERROR("Failed writing to detail file: %s", fr_syserror(errno));\
 		return -1;\
 	}\
 } while(0)
@@ -382,7 +382,7 @@ static rlm_rcode_t detail_do(void *instance, REQUEST *request, RADIUS_PACKET *pa
 		 *	a directory that the server was using.
 		 */
 		if (rad_mkdir(buffer, inst->dirperm) < 0) {
-			RERROR("Failed to create directory %s: %s", buffer, strerror(errno));
+			RERROR("Failed to create directory %s: %s", buffer, fr_syserror(errno));
 			return RLM_MODULE_FAIL;
 		}
 
@@ -397,7 +397,7 @@ static rlm_rcode_t detail_do(void *instance, REQUEST *request, RADIUS_PACKET *pa
 		 *	permissions.
 		 */
 		if ((outfd = open(buffer, O_WRONLY | O_APPEND | O_CREAT, inst->perm)) < 0) {
-			RERROR("Couldn't open file %s: %s", buffer, strerror(errno));
+			RERROR("Couldn't open file %s: %s", buffer, fr_syserror(errno));
 			return RLM_MODULE_FAIL;
 		}
 
@@ -422,7 +422,7 @@ static rlm_rcode_t detail_do(void *instance, REQUEST *request, RADIUS_PACKET *pa
 			 *	the lock (race condition)
 			 */
 			if (fstat(outfd, &st) != 0) {
-				RERROR("Couldn't stat file %s: %s", buffer, strerror(errno));
+				RERROR("Couldn't stat file %s: %s", buffer, fr_syserror(errno));
 				close(outfd);
 				return RLM_MODULE_FAIL;
 			}
@@ -476,7 +476,7 @@ skip_group:
 	 *	Open the output fp for buffering.
 	 */
 	if ((outfp = fdopen(outfd, "a")) == NULL) {
-		RERROR("Couldn't open file %s: %s", buffer, strerror(errno));
+		RERROR("Couldn't open file %s: %s", buffer, fr_syserror(errno));
 		close(outfd);
 		return RLM_MODULE_FAIL;
 	}
@@ -493,7 +493,7 @@ skip_group:
 		int ret;
 		ret = ftruncate(outfd, fsize);
 		if (ret) {
-			REDEBUG4("Failed truncating detail file: %s", strerror(ret));
+			REDEBUG4("Failed truncating detail file: %s", fr_syserror(ret));
 		}
 
 		fclose(outfp);

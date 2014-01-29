@@ -58,6 +58,6 @@ ATTRIBUTE	Access-Loop-Encapsulation		144	octets # 3
 #  If this attribute exists, it means that IFW has been performed
 #  for the subscribers session.
 #
-ATTRIBUTE	IWF-Session				252	octets # 0
+ATTRIBUTE	IWF-Session				254	octets # 0
 
 END-VENDOR ADSL-Forum

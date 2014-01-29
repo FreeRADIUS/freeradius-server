@@ -25,6 +25,7 @@
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
+#include <ctype.h>
 #include <time.h>
 
 typedef struct rlm_date_t {

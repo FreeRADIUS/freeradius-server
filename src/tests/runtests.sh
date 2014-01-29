@@ -36,7 +36,7 @@ do
   done
 done
 
-echo "Running tests..."
+echo "Running tests:"
 
 (cd .cache;ls -1  > ../.foo)
 rm -f .bar
@@ -45,9 +45,10 @@ do
    echo "-f .cache/$x" >> .bar
 done
 
-$BIN_PATH/radclient `cat .bar` -xFd . 127.0.0.1:$PORT auth $SECRET > radclient.log 2>&1
+$BIN_PATH/radclient `cat .bar` -xF -D ./ 127.0.0.1:$PORT auth $SECRET > ./radclient.log 2>&1
 if [ "$?" != "0" ]; then
   echo "Failed running $BIN_PATH/radclient"
+  cat ./radclient.log
   exit 1
 fi
 
@@ -65,7 +66,7 @@ done
 
 if [ "$RCODE" = "0" ]
 then
-    rm -f radiusd.log radclient.log 
+    rm -f radiusd.log radclient.log
     echo "All tests succeeded"
 else
     echo "See radclient.log for more details"
