@@ -12,6 +12,9 @@ FreeRADIUS 2.2.4 Wednesday 16 Dec 2013 15:00:00 EST, urgency=medium
 	* Fix behaviour on FreeBSD where sending packets from an interface
 	  bound to an IP address would fail when the server was built with
 	  udpfromto.
+	* Don't fail config check if were listening on an IP which is
+	  also a home server. Some deployments have valid reasons
+	  to loop packets back to another virtual server.
 
 FreeRADIUS 2.2.3 Wednesday 11 Dec 2013 15:00:00 EST, urgency=medium
 	Feature improvements
