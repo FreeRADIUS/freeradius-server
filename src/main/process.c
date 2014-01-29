@@ -1446,7 +1446,7 @@ static REQUEST *request_setup(rad_listen_t *listener, RADIUS_PACKET *packet,
 	/*
 	 *	Create and initialize the new request.
 	 */
-	request = request_alloc(listener);
+	request = request_alloc(NULL);
 	request->reply = rad_alloc(request, 0);
 	if (!request->reply) {
 		ERROR("No memory");
@@ -4228,6 +4228,9 @@ static int request_delete_cb(UNUSED void *ctx, void *data)
 #endif
 
 	request->in_request_hash = false;
+	if (request->ev) fr_event_delete(el, &request->ev);	
+
+	request_free(&request);
 
 	/*
 	 *	Delete it from the list.
