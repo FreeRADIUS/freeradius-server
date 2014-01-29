@@ -12,7 +12,7 @@ FreeRADIUS 3.0.2 Mon 13 Jan 2014 14:30:00 EDT urgency=medium
 	Bug fixes
 	* Fix SQL groups.
 	* Fix operation of fr_strerror() with RE*() macros.
-	* Don't assert if the connection were trying to reconnect
+	* Don't assert if the connection we're trying to reconnect
 	  is not in_use.
 	* Fix %{mschap:User-Name} xlat.
 	* Allow comparisons of signed integers and ethernet addresses.
