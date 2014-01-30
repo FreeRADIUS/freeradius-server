@@ -62,7 +62,7 @@ static ssize_t dhcp_options_xlat(UNUSED void *instance, REQUEST *request,
 
 	if ((fr_dhcp_decode_options(request->packet,
 				    vp->vp_octets, vp->length, &head) < 0) || (!head)) {
-		RWDEBUG("DHCP option decoding failed");
+		RWDEBUG("DHCP option decoding failed: %s", fr_strerror());
 		*out = '\0';
 		return -1;
 	}
