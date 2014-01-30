@@ -390,6 +390,7 @@ int main(int argc, char *argv[])
 	int opt;
 	FR_TOKEN parsecode;
 	char const *radius_dir = RADIUS_DIR;
+	char const *dict_dir = DICTDIR;
 
 	fr_debug_flag = 2;
 	log_dst = stdout;
@@ -406,7 +407,7 @@ int main(int argc, char *argv[])
 	/*
 	 *  Get options
 	 */
-	while ((opt = getopt(argc, argv, "c:d:Ff:hi:I:p:qr:s:Svw:xX")) != EOF) {
+	while ((opt = getopt(argc, argv, "c:d:D:Ff:hi:I:p:qr:s:Svw:xX")) != EOF) {
 		switch (opt) {
 		case 'c':
 			limit = atoi(optarg);
@@ -417,6 +418,9 @@ int main(int argc, char *argv[])
 			break;
 		case 'd':
 			radius_dir = optarg;
+			break;
+		case 'D':
+			dict_dir = optarg;
 			break;
 		case 'F':
 			from_stdin = true;
@@ -518,7 +522,12 @@ int main(int argc, char *argv[])
 	 *  There are times when we don't need the dictionaries.
 	 */
 	if (!to_stdout) {
-		if (dict_init(radius_dir, RADIUS_DICTIONARY) < 0) {
+		if (dict_init(dict_dir, RADIUS_DICTIONARY) < 0) {
+			fr_perror("radsniff");
+			exit(64);
+		}
+
+		if (dict_read(radius_dir, RADIUS_DICTIONARY) == -1) {
 			fr_perror("radsniff");
 			exit(64);
 		}
