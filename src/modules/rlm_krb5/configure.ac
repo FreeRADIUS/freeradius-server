@@ -114,6 +114,20 @@ if test x$with_[]modname != xno; then
 	CFLAGS="${CFLAGS} ${SMART_CFLAGS}"
 
 	dnl #
+	dnl # Check how to free things returned by krb5_get_error_message
+	dnl #
+	AC_CHECK_FUNCS([krb5_get_error_message krb5_free_error_string krb5_free_error_message])
+	if test "x$ac_cv_func_krb5_get_error_message" == xyes; then
+		krb5mod_cflags="${krb5mod_cflags} -D HAVE_KRB5_GET_ERROR_MESSAGE"
+	fi
+	if test "x$ac_cv_func_krb5_free_error_message" == xyes; then
+		krb5mod_cflags="${krb5mod_cflags} -D HAVE_KRB5_FREE_ERROR_MESSAGE"
+	fi
+	if test "x$ac_cv_func_krb5_free_error_string" == xyes; then
+		krb5mod_cflags="${krb5mod_cflags} -D HAVE_KRB5_FREE_ERROR_STRING"
+	fi
+
+	dnl #
 	dnl # Only check if version checks have not found kerberos to be thread unsafe
 	dnl #
 	if test "$krb5threadsafe" != "no"; then
