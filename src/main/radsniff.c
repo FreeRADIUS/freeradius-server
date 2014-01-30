@@ -1604,8 +1604,11 @@ static void NEVER_RETURNS usage(int status)
 	FILE *output = status ? stderr : stdout;
 	fprintf(output, "Usage: radsniff [options][stats options] -- [pcap files]\n");
 	fprintf(output, "options:\n");
+	fprintf(output, "  -a                    List all interfaces available for capture.\n");
 	fprintf(output, "  -c <count>            Number of packets to capture.\n");
 	fprintf(output, "  -d <directory>        Set dictionary directory.\n");
+	fprintf(stderr, "  -d <raddb>            Set configuration directory (defaults to " RADDBDIR ").\n");
+	fprintf(stderr, "  -D <dictdir>          Set main dictionary directory (defaults to " DICTDIR ").\n");
 	fprintf(output, "  -e <event>[,<event>]  Only log requests with these event flags.\n");
 	fprintf(output, "                        Event may be one of the following:\n");
 	fprintf(output, "                        - received - a request or response.\n");
@@ -1662,7 +1665,8 @@ int main(int argc, char *argv[])
 	char buffer[1024];
 
 	int opt;
-	char const *radius_dir = RADIUS_DIR;
+	char const *radius_dir = RADDBDIR;
+	char const *dict_dir = DICTDIR;
 
 	rs_stats_t stats;
 
@@ -1712,8 +1716,28 @@ int main(int argc, char *argv[])
 	/*
 	 *  Get options
 	 */
-	while ((opt = getopt(argc, argv, "b:c:d:e:DFf:hi:I:l:L:mp:P:qr:R:s:Svw:xXW:T:P:N:O:")) != EOF) {
+	while ((opt = getopt(argc, argv, "ab:c:d:D:e:Ff:hi:I:l:L:mp:P:qr:R:s:Svw:xXW:T:P:N:O:")) != EOF) {
 		switch (opt) {
+		case 'a':
+			{
+				pcap_if_t *all_devices = NULL;
+				pcap_if_t *dev_p;
+
+				if (pcap_findalldevs(&all_devices, errbuf) < 0) {
+					ERROR("Error getting available capture devices: %s", errbuf);
+					goto finish;
+				}
+
+				int i = 1;
+				for (dev_p = all_devices;
+				     dev_p;
+				     dev_p = dev_p->next) {
+					INFO("%i.%s", i++, dev_p->name);
+				}
+				ret = 0;
+				goto finish;
+			}
+
 		/* super secret option */
 		case 'b':
 			conf->buffer_pkts = atoi(optarg);
@@ -1736,24 +1760,8 @@ int main(int argc, char *argv[])
 			break;
 
 		case 'D':
-			{
-				pcap_if_t *all_devices = NULL;
-				pcap_if_t *dev_p;
-
-				if (pcap_findalldevs(&all_devices, errbuf) < 0) {
-					ERROR("Error getting available capture devices: %s", errbuf);
-					goto finish;
-				}
-
-				int i = 1;
-				for (dev_p = all_devices;
-				     dev_p;
-				     dev_p = dev_p->next) {
-					INFO("%i.%s", i++, dev_p->name);
-				}
-				ret = 0;
-				goto finish;
-			}
+			dict_dir = optarg;
+			break;
 
 		case 'e':
 			if (rs_build_flags((int *) &conf->event_flags, rs_events, optarg) < 0) {
@@ -1976,11 +1984,18 @@ int main(int argc, char *argv[])
 		conf->pcap_filter = buffer;
 	}
 
-	if (dict_init(radius_dir, RADIUS_DICTIONARY) < 0) {
+	if (dict_init(dict_dir, RADIUS_DICTIONARY) < 0) {
 		fr_perror("radsniff");
 		ret = 64;
 		goto finish;
 	}
+
+	if (dict_read(radius_dir, RADIUS_DICTIONARY) == -1) {
+		fr_perror("radsniff");
+		ret = 64;
+		goto finish;
+	}
+
 	fr_strerror();	/* Clear out any non-fatal errors */
 
 	if (conf->list_attributes) {
