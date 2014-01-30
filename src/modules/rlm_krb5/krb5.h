@@ -79,7 +79,7 @@ typedef struct rlm_krb5_t {
  *	MIT Kerberos uses comm_err, so the macro just expands to a call
  *	to error_message.
  */
-#ifndef HEIMDAL_KRB5
+#ifndef HAVE_KRB5_GET_ERROR_MESSAGE
 #  ifdef ET_COMM_ERR
 #    include <et/com_err.h>
 #  else
