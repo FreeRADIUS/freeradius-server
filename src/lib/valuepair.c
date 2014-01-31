@@ -2773,7 +2773,7 @@ int8_t pairlistcmp(VALUE_PAIR *a, VALUE_PAIR *b)
 	     a_p && b_p;
 	     a_p = fr_cursor_next(&a_cursor), b_p = fr_cursor_next(&b_cursor)) {
 	     	/* Same VP, no point doing expensive checks */
-	     	if (a == b) {
+	     	if (a_p == b_p) {
 			continue;
 	     	}
 
