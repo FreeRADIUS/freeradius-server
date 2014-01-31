@@ -675,7 +675,10 @@ static void request_process_timer(REQUEST *request)
 		 *	there is no point in continuing.
 		 */
 		if (request->listener->status != RAD_LISTEN_STATUS_KNOWN) {
-			WDEBUG("Socket was closed while processing request %u: Stopping it.", request->number);
+			if ((request->master_state == REQUEST_ACTIVE) &&
+			    (request->child_state < REQUEST_REJECT_DELAY)) {
+				WDEBUG("Socket was closed while processing request %u: Stopping it.", request->number);
+			}
 #ifdef WITH_ACCOUNTING
 			goto done;
 #else
