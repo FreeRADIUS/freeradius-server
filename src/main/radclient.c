@@ -254,6 +254,7 @@ static int radclient_init(TALLOC_CTX *ctx, char const *filename)
 		request->packet->src_port = client_port;
 		request->packet->dst_ipaddr = server_ipaddr;
 		request->packet->dst_port = server_port;
+		request->packet->proto = ipproto;
 #endif
 
 		request->filename = filename;
