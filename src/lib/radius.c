@@ -2075,6 +2075,24 @@ int rad_send(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 	if ((fr_debug_flag > 3) && fr_log_fp) rad_print_hex(packet);
 #endif
 
+#ifdef WITH_TCP
+	/*
+	 *	If the socket is TCP, call write().  Calling sendto()
+	 *	is allowed on some platforms, but it's not nice.  Even
+	 *	worse, if UDPFROMTO is defined, we *can't* use it on
+	 *	TCP sockets.  So... just call write().
+	 */
+	if (packet->proto == IPPROTO_TCP) {
+		ssize_t rcode;
+
+		rcode = write(packet->sockfd, packet->data, packet->data_len);
+		if (rcode >= 0) return rcode;
+
+		fr_strerror_printf("sendto failed: %s", fr_syserror(errno));
+		return -1;
+	}
+#endif
+
 	/*
 	 *	And send it on it's way.
 	 */
@@ -4636,6 +4654,9 @@ RADIUS_PACKET *rad_alloc_reply(TALLOC_CTX *ctx, RADIUS_PACKET *packet)
 	reply->data = NULL;
 	reply->data_len = 0;
 
+#ifdef WITH_TCP
+	reply->proto = packet->proto;
+#endif
 	return reply;
 }
 

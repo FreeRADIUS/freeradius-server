@@ -253,6 +253,7 @@ static int radclient_init(char const *filename)
 		radclient->request->src_port = client_port;
 		radclient->request->dst_ipaddr = server_ipaddr;
 		radclient->request->dst_port = server_port;
+		radclient->request->proto = ipproto;
 #endif
 
 		radclient->filename = filename;

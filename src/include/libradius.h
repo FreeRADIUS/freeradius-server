@@ -384,6 +384,7 @@ typedef struct radius_packet {
 	ssize_t			offset;
 #ifdef WITH_TCP
 	size_t			partial;
+	int			proto;
 #endif
 } RADIUS_PACKET;
 

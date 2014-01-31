@@ -432,6 +432,7 @@ static int dual_tcp_recv(rad_listen_t *listener)
 		sock->packet->src_port = sock->other_port;
 		sock->packet->dst_ipaddr = sock->my_ipaddr;
 		sock->packet->dst_port = sock->my_port;
+		sock->packet->proto = sock->proto;
 	}
 
 	/*
