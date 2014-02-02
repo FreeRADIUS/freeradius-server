@@ -498,15 +498,6 @@ STATE_MACHINE_DECL(request_done)
 			rad_assert(0 == 1);
 		}
 		request->in_request_hash = false;
-
-		/*
-		 *	@todo: do final states for TCP sockets, too?
-		 */
-		request_stats_final(request);
-
-#ifdef WITH_TCP
-		request->listener->count--;
-#endif
 	}
 
 #ifdef WITH_PROXY
@@ -583,6 +574,14 @@ STATE_MACHINE_DECL(request_done)
 
 #ifdef HAVE_PTHREAD_H
 	rad_assert(request->child_pid == NO_SUCH_CHILD_PID);
+#endif
+
+	/*
+	 *	@todo: do final states for TCP sockets, too?
+	 */
+	request_stats_final(request);
+#ifdef WITH_TCP
+	request->listener->count--;
 #endif
 
 	if (request->packet) {
@@ -3607,6 +3606,36 @@ static void event_status(struct timeval *wake)
 
 }
 
+#ifdef WITH_TCP
+static void listener_free_cb(void *ctx)
+{
+	rad_listen_t *this = ctx;
+	char buffer[1024];
+
+	if (this->count > 0) {
+		struct timeval when;
+		listen_socket_t *sock = this->data;
+
+		fr_event_now(el, &when);
+		when.tv_sec += 3;
+		
+		if (!fr_event_insert(el, listener_free_cb, this, &when,
+				     &(sock->ev))) {
+			rad_panic("Failed to insert event");
+		}
+
+		return;
+	}
+
+	/*
+	 *	It's all free, close the socket.
+	 */
+
+	this->print(this, buffer, sizeof(buffer));
+	DEBUG("... cleaning up socket %s", buffer);
+	listen_free(&this);
+}
+#endif
 
 int event_new_fd(rad_listen_t *this)
 {
@@ -3796,6 +3825,7 @@ int event_new_fd(rad_listen_t *this)
 #ifdef WITH_TCP
 		listen_socket_t *sock = this->data;
 #endif
+		struct timeval when;
 
 		/*
 		 *	Remove it from the list of live FD's.
@@ -3836,7 +3866,7 @@ int event_new_fd(rad_listen_t *this)
 #endif
 
 #ifdef WITH_TCP
-		INFO(" ... closing socket %s", buffer);
+		INFO(" ... shutting down socket %s", buffer);
 
 #ifdef WITH_PROXY
 		/*
@@ -3869,14 +3899,24 @@ int event_new_fd(rad_listen_t *this)
 		}
 
 		/*
-		 *	Remove any pending cleanups.
-		 */
-		if (sock->ev) fr_event_delete(el, &sock->ev);
+		 *	No child threads, clean it up now.
+		 */		
+		if (!spawn_flag) {
+			if (sock->ev) fr_event_delete(el, &sock->ev);
+			listen_free(&this);
+			return 1;
+		}
 
 		/*
-		 *	And finally, close the socket.
+		 *	Wait until all requests using this socket are done.
 		 */
-		listen_free(&this);
+		gettimeofday(&when, NULL);
+		when.tv_sec += 3;
+		
+		if (!fr_event_insert(el, listener_free_cb, this, &when,
+				     &(sock->ev))) {
+			rad_panic("Failed to insert event");
+		}
 	}
 #endif	/* WITH_TCP */
 
