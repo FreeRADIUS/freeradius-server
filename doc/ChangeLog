@@ -25,6 +25,7 @@ FreeRADIUS 3.0.2 Mon 13 Jan 2014 14:30:00 EDT urgency=medium
 	* Fix behaviour on FreeBSD where sending packets from an interface
 	  bound to an IP address would fail when the server was built with
 	  udpfromto.
+	* Don't abort() when freeing home servers on exit.
 
 FreeRADIUS 3.0.1 Mon 13 Jan 2014 14:30:00 EDT urgency=medium
 	Feature improvements
