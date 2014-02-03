@@ -15,7 +15,7 @@ FreeRADIUS 3.0.2 Mon 13 Jan 2014 14:30:00 EDT urgency=medium
 	* Don't assert if the connection we're trying to reconnect
 	  is not in_use.
 	* Fix %{mschap:User-Name} xlat.
-	* Allow comparisons of signed integers and ethernet addresses.
+	* Allow comparisons of signed integers and of ethernet addresses.
 	* Fix parsing of text based ascend binary filters
 	* Fix a few minor Coverity and clang analyzer issues.
 	* Log WARNING prefixes only once, not twice.
