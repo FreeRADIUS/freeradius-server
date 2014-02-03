@@ -104,15 +104,15 @@ static int realm_name_cmp(void const *one, void const *two)
 #ifdef WITH_PROXY
 static void home_server_free(void *data)
 {
-	home_server *home = data;
+	home_server_t *home = data;
 
 	talloc_free(home);
 }
 
 static int home_server_name_cmp(void const *one, void const *two)
 {
-	home_server const *a = one;
-	home_server const *b = two;
+	home_server_t const *a = one;
+	home_server_t const *b = two;
 
 	if (a->type < b->type) return -1;
 	if (a->type > b->type) return +1;
@@ -123,8 +123,8 @@ static int home_server_name_cmp(void const *one, void const *two)
 static int home_server_addr_cmp(void const *one, void const *two)
 {
 	int rcode;
-	home_server const *a = one;
-	home_server const *b = two;
+	home_server_t const *a = one;
+	home_server_t const *b = two;
 
 	if (a->server && !b->server) return -1;
 	if (!a->server && b->server) return +1;
@@ -151,8 +151,8 @@ static int home_server_addr_cmp(void const *one, void const *two)
 #ifdef WITH_STATS
 static int home_server_number_cmp(void const *one, void const *two)
 {
-	home_server const *a = one;
-	home_server const *b = two;
+	home_server_t const *a = one;
+	home_server_t const *b = two;
 
 	return (a->number - b->number);
 }
@@ -280,16 +280,16 @@ void realms_free(void)
 #ifdef WITH_PROXY
 static CONF_PARSER limit_config[] = {
 	{ "max_connections", PW_TYPE_INTEGER,
-	  offsetof(home_server, limit.max_connections), NULL,   "16" },
+	  offsetof(home_server_t, limit.max_connections), NULL,   "16" },
 
 	{ "max_requests", PW_TYPE_INTEGER,
-	  offsetof(home_server, limit.max_requests), NULL,   "0" },
+	  offsetof(home_server_t, limit.max_requests), NULL,   "0" },
 
 	{ "lifetime", PW_TYPE_INTEGER,
-	  offsetof(home_server, limit.lifetime), NULL,   "0" },
+	  offsetof(home_server_t, limit.lifetime), NULL,   "0" },
 
 	{ "idle_timeout", PW_TYPE_INTEGER,
-	  offsetof(home_server, limit.idle_timeout), NULL,   "0" },
+	  offsetof(home_server_t, limit.idle_timeout), NULL,   "0" },
 
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
@@ -307,13 +307,13 @@ static char *hs_proto = NULL;
 #ifdef WITH_COA
 static CONF_PARSER home_server_coa[] = {
 	{ "irt",  PW_TYPE_INTEGER,
-	  offsetof(home_server, coa_irt), 0, STRINGIFY(2) },
+	  offsetof(home_server_t, coa_irt), 0, STRINGIFY(2) },
 	{ "mrt",  PW_TYPE_INTEGER,
-	  offsetof(home_server, coa_mrt), 0, STRINGIFY(16) },
+	  offsetof(home_server_t, coa_mrt), 0, STRINGIFY(16) },
 	{ "mrc",  PW_TYPE_INTEGER,
-	  offsetof(home_server, coa_mrc), 0, STRINGIFY(5) },
+	  offsetof(home_server_t, coa_mrc), 0, STRINGIFY(5) },
 	{ "mrd",  PW_TYPE_INTEGER,
-	  offsetof(home_server, coa_mrd), 0, STRINGIFY(30) },
+	  offsetof(home_server_t, coa_mrd), 0, STRINGIFY(30) },
 
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
@@ -328,7 +328,7 @@ static CONF_PARSER home_server_config[] = {
 	  0, &hs_virtual_server, NULL },
 
 	{ "port", PW_TYPE_INTEGER,
-	  offsetof(home_server,port), NULL,   "0" },
+	  offsetof(home_server_t,port), NULL,   "0" },
 
 	{ "type",  PW_TYPE_STRING_PTR,
 	  0, &hs_type, NULL },
@@ -339,42 +339,42 @@ static CONF_PARSER home_server_config[] = {
 #endif
 
 	{ "secret",  PW_TYPE_STRING_PTR,
-	  offsetof(home_server,secret), NULL,  NULL},
+	  offsetof(home_server_t,secret), NULL,  NULL},
 
 	{ "src_ipaddr",  PW_TYPE_STRING_PTR,
 	  0, &hs_srcipaddr,  NULL },
 
 	{ "response_window", PW_TYPE_INTEGER,
-	  offsetof(home_server,response_window), NULL,   "30" },
+	  offsetof(home_server_t,response_window), NULL,   "30" },
 	{ "max_outstanding", PW_TYPE_INTEGER,
-	  offsetof(home_server,max_outstanding), NULL,   "65536" },
+	  offsetof(home_server_t,max_outstanding), NULL,   "65536" },
 
 	{ "zombie_period", PW_TYPE_INTEGER,
-	  offsetof(home_server,zombie_period), NULL,   "40" },
+	  offsetof(home_server_t,zombie_period), NULL,   "40" },
 	{ "status_check", PW_TYPE_STRING_PTR,
 	  0, &hs_check,   "none" },
 	{ "ping_check", PW_TYPE_STRING_PTR,
 	  0, &hs_check,   NULL },
 
 	{ "ping_interval", PW_TYPE_INTEGER,
-	  offsetof(home_server,ping_interval), NULL,   "30" },
+	  offsetof(home_server_t,ping_interval), NULL,   "30" },
 	{ "check_interval", PW_TYPE_INTEGER,
-	  offsetof(home_server,ping_interval), NULL,   "30" },
+	  offsetof(home_server_t,ping_interval), NULL,   "30" },
 	{ "num_answers_to_alive", PW_TYPE_INTEGER,
-	  offsetof(home_server,num_pings_to_alive), NULL,   "3" },
+	  offsetof(home_server_t,num_pings_to_alive), NULL,   "3" },
 	{ "revive_interval", PW_TYPE_INTEGER,
-	  offsetof(home_server,revive_interval), NULL,   "300" },
+	  offsetof(home_server_t,revive_interval), NULL,   "300" },
 	{ "status_check_timeout", PW_TYPE_INTEGER,
-	  offsetof(home_server,ping_timeout), NULL,   "4" },
+	  offsetof(home_server_t,ping_timeout), NULL,   "4" },
 
 	{ "username",  PW_TYPE_STRING_PTR,
-	  offsetof(home_server,ping_user_name), NULL,  NULL},
+	  offsetof(home_server_t,ping_user_name), NULL,  NULL},
 	{ "password",  PW_TYPE_STRING_PTR,
-	  offsetof(home_server,ping_user_password), NULL,  NULL},
+	  offsetof(home_server_t,ping_user_password), NULL,  NULL},
 
 #ifdef WITH_STATS
 	{ "historic_average_window", PW_TYPE_INTEGER,
-	  offsetof(home_server,ema.window), NULL,  NULL },
+	  offsetof(home_server_t,ema.window), NULL,  NULL },
 #endif
 
 #ifdef WITH_COA
@@ -394,7 +394,7 @@ static void null_free(UNUSED void *data)
 static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 {
 	char const *name2;
-	home_server *home;
+	home_server_t *home;
 	int dual = false;
 	CONF_PAIR *cp;
 	CONF_SECTION *tls;
@@ -408,7 +408,7 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 		return 0;
 	}
 
-	home = talloc_zero(rc, home_server);
+	home = talloc_zero(rc, home_server_t);
 
 	home->name = name2;
 	home->cs = cs;
@@ -778,7 +778,7 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 	}
 
 	if (dual) {
-		home_server *home2 = talloc(rc, home_server);
+		home_server_t *home2 = talloc(rc, home_server_t);
 
 		memcpy(home2, home, sizeof(*home2));
 
@@ -861,9 +861,9 @@ static home_pool_t *server_pool_alloc(realm_config_t *rc, char const *name, home
  */
 static int pool_check_home_server(UNUSED realm_config_t *rc, CONF_PAIR *cp,
 				  char const *name, int server_type,
-				  home_server **phome)
+				  home_server_t **phome)
 {
-	home_server myhome, *home;
+	home_server_t myhome, *home;
 
 	if (!name) {
 		cf_log_err_cp(cp,
@@ -892,7 +892,7 @@ static int server_pool_add(realm_config_t *rc,
 	char const *value;
 	CONF_PAIR *cp;
 	int num_home_servers;
-	home_server *home;
+	home_server_t *home;
 
 	name2 = cf_section_name1(cs);
 	if (!name2 || ((strcasecmp(name2, "server_pool") != 0) &&
@@ -1023,7 +1023,7 @@ static int server_pool_add(realm_config_t *rc,
 	for (cp = cf_pair_find(cs, "home_server");
 	     cp != NULL;
 	     cp = cf_pair_find_next(cs, cp, "home_server")) {
-		home_server myhome;
+		home_server_t myhome;
 
 		value = cf_pair_value(cp);
 
@@ -1079,7 +1079,7 @@ static int old_server_add(realm_config_t *rc, CONF_SECTION *cs,
 {
 #ifdef WITH_PROXY
 	int i, insert_point, num_home_servers;
-	home_server myhome, *home;
+	home_server_t myhome, *home;
 	home_pool_t mypool, *pool;
 	CONF_SECTION *subcs;
 #else
@@ -1178,7 +1178,7 @@ static int old_server_add(realm_config_t *rc, CONF_SECTION *cs,
 		char const *p;
 		char *q;
 
-		home = talloc_zero(rc, home_server);
+		home = talloc_zero(rc, home_server_t);
 
 		home->name = name;
 		home->hostname = name;
@@ -2039,12 +2039,12 @@ REALM *realm_find(char const *name)
  *	VPs into it. Setup src/dst IP addresses based on home server, and
  *	calculate and add the message-authenticator.
  *
- *	This is a distinct function from home_server_ldb, as not all home_server
+ *	This is a distinct function from home_server_ldb, as not all home_server_t
  *	lookups result in the *CURRENT* request being proxied,
  *	as in rlm_replicate, and this may trigger asserts elsewhere in the
  *	server.
  */
-void home_server_update_request(home_server *home, REQUEST *request)
+void home_server_update_request(home_server_t *home, REQUEST *request)
 {
 
 	/*
@@ -2108,13 +2108,13 @@ void home_server_update_request(home_server *home, REQUEST *request)
 	}
 }
 
-home_server *home_server_ldb(char const *realmname,
+home_server_t *home_server_ldb(char const *realmname,
 			     home_pool_t *pool, REQUEST *request)
 {
 	int		start;
 	int		count;
-	home_server	*found = NULL;
-	home_server	*zombie = NULL;
+	home_server_t	*found = NULL;
+	home_server_t	*zombie = NULL;
 	VALUE_PAIR	*vp;
 
 	/*
@@ -2194,7 +2194,7 @@ home_server *home_server_ldb(char const *realmname,
 	 *	Otherwise, use it.
 	 */
 	for (count = 0; count < pool->num_home_servers; count++) {
-		home_server *home = pool->servers[(start + count) % pool->num_home_servers];
+		home_server_t *home = pool->servers[(start + count) % pool->num_home_servers];
 
 		if (!home) continue;
 
@@ -2364,7 +2364,7 @@ home_server *home_server_ldb(char const *realmname,
 	if (!realm_config->fallback &&
 	    realm_config->wake_all_if_all_dead) {
 		for (count = 0; count < pool->num_home_servers; count++) {
-			home_server *home = pool->servers[count];
+			home_server_t *home = pool->servers[count];
 
 			if (!home) continue;
 
@@ -2410,9 +2410,9 @@ home_server *home_server_ldb(char const *realmname,
 }
 
 
-home_server *home_server_find(fr_ipaddr_t *ipaddr, int port, int proto)
+home_server_t *home_server_find(fr_ipaddr_t *ipaddr, int port, int proto)
 {
-	home_server myhome;
+	home_server_t myhome;
 
 	memset(&myhome, 0, sizeof(myhome));
 	myhome.ipaddr = *ipaddr;
@@ -2429,9 +2429,9 @@ home_server *home_server_find(fr_ipaddr_t *ipaddr, int port, int proto)
 }
 
 #ifdef WITH_COA
-home_server *home_server_byname(char const *name, int type)
+home_server_t *home_server_byname(char const *name, int type)
 {
-	home_server myhome;
+	home_server_t myhome;
 
 	memset(&myhome, 0, sizeof(myhome));
 	myhome.type = type;
@@ -2442,9 +2442,9 @@ home_server *home_server_byname(char const *name, int type)
 #endif
 
 #ifdef WITH_STATS
-home_server *home_server_bynumber(int number)
+home_server_t *home_server_bynumber(int number)
 {
-	home_server myhome;
+	home_server_t myhome;
 
 	memset(&myhome, 0, sizeof(myhome));
 	myhome.number = number;

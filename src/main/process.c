@@ -2186,7 +2186,7 @@ static int request_will_proxy(REQUEST *request)
 	int rcode, pre_proxy_type = 0;
 	char const *realmname = NULL;
 	VALUE_PAIR *vp, *strippedname;
-	home_server *home;
+	home_server_t *home;
 	REALM *realm = NULL;
 	home_pool_t *pool = NULL;
 
@@ -2491,7 +2491,7 @@ static int request_proxy(REQUEST *request, int retransmit)
  */
 static int request_proxy_anew(REQUEST *request)
 {
-	home_server *home;
+	home_server_t *home;
 
 	/*
 	 *	Delete the request from the proxy list.
@@ -2560,7 +2560,7 @@ static int request_proxy_anew(REQUEST *request)
 
 STATE_MACHINE_DECL(request_ping)
 {
-	home_server *home = request->home_server;
+	home_server_t *home = request->home_server;
 	char buffer[128];
 
 	TRACE_STATE_MACHINE;
@@ -2641,7 +2641,7 @@ STATE_MACHINE_DECL(request_ping)
  */
 static void ping_home_server(void *ctx)
 {
-	home_server *home = ctx;
+	home_server_t *home = ctx;
 	REQUEST *request;
 	VALUE_PAIR *vp;
 	struct timeval when, now;
@@ -2775,7 +2775,7 @@ static void ping_home_server(void *ctx)
 	INSERT_EVENT(ping_home_server, home);
 }
 
-static void home_trigger(home_server *home, char const *trigger)
+static void home_trigger(home_server_t *home, char const *trigger)
 {
 	REQUEST my_request;
 	RADIUS_PACKET my_packet;
@@ -2789,7 +2789,7 @@ static void home_trigger(home_server *home, char const *trigger)
 	exec_trigger(&my_request, home->cs, trigger, false);
 }
 
-static void mark_home_server_zombie(home_server *home)
+static void mark_home_server_zombie(home_server_t *home)
 {
 	char buffer[128];
 
@@ -2834,7 +2834,7 @@ static void mark_home_server_zombie(home_server *home)
 
 void revive_home_server(void *ctx)
 {
-	home_server *home = ctx;
+	home_server_t *home = ctx;
 	char buffer[128];
 
 #ifdef WITH_TCP
@@ -2857,7 +2857,7 @@ void revive_home_server(void *ctx)
 	       home->port);
 }
 
-void mark_home_server_dead(home_server *home, struct timeval *when)
+void mark_home_server_dead(home_server_t *home, struct timeval *when)
 {
 	int previous_state = home->state;
 	char buffer[128];
@@ -2907,7 +2907,7 @@ void mark_home_server_dead(home_server *home, struct timeval *when)
 STATE_MACHINE_DECL(proxy_wait_for_reply)
 {
 	struct timeval now, when;
-	home_server *home = request->home_server;
+	home_server_t *home = request->home_server;
 	char buffer[128];
 
 	TRACE_STATE_MACHINE;

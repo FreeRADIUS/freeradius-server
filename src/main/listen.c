@@ -2585,7 +2585,7 @@ static rad_listen_t *listen_alloc(TALLOC_CTX *ctx, RAD_LISTEN_TYPE type)
  *	Not thread-safe, but all calls to it are protected by the
  *	proxy mutex in event.c
  */
-rad_listen_t *proxy_new_listener(home_server *home, int src_port)
+rad_listen_t *proxy_new_listener(home_server_t *home, int src_port)
 {
 	rad_listen_t *this;
 	listen_socket_t *sock;
@@ -3208,7 +3208,7 @@ add_sockets:
 	    (*head != NULL) && !defined_proxy) {
 		listen_socket_t *sock = NULL;
 		int		port = 0;
-		home_server	home;
+		home_server_t	home;
 
 		memset(&home, 0, sizeof(home));
 

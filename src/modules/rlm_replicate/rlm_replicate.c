@@ -123,7 +123,7 @@ static rlm_rcode_t replicate_packet(UNUSED void *instance, REQUEST *request, pai
 	 */
 	fr_cursor_init(&cursor, &request->config_items);
 	while ((vp = fr_cursor_next_by_num(&cursor, PW_REPLICATE_TO_REALM, 0, TAG_ANY))) {
-		home_server *home;
+		home_server_t *home;
 		REALM *realm;
 		home_pool_t *pool;
 

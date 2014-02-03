@@ -624,7 +624,7 @@ static int command_show_modules(rad_listen_t *listener, UNUSED int argc, UNUSED 
 static int command_show_home_servers(rad_listen_t *listener, UNUSED int argc, UNUSED char *argv[])
 {
 	int i;
-	home_server *home;
+	home_server_t *home;
 	char const *type, *state, *proto;
 
 	char buffer[256];
@@ -964,10 +964,10 @@ static int command_show_client_config(rad_listen_t *listener, int argc, char *ar
 }
 
 #ifdef WITH_PROXY
-static home_server *get_home_server(rad_listen_t *listener, int argc,
+static home_server_t *get_home_server(rad_listen_t *listener, int argc,
 				    char *argv[], int *last)
 {
-	home_server *home;
+	home_server_t *home;
 	int port;
 	int proto = IPPROTO_UDP;
 	fr_ipaddr_t ipaddr;
@@ -1011,7 +1011,7 @@ static home_server *get_home_server(rad_listen_t *listener, int argc,
 static int command_show_home_server_config(rad_listen_t *listener, int argc, char *argv[])
 {
 	int fd;
-	home_server *home;
+	home_server_t *home;
 	FILE *fp;
 
 	home = get_home_server(listener, argc, argv, NULL);
@@ -1038,7 +1038,7 @@ static int command_show_home_server_config(rad_listen_t *listener, int argc, cha
 static int command_set_home_server_state(rad_listen_t *listener, int argc, char *argv[])
 {
 	int last;
-	home_server *home;
+	home_server_t *home;
 
 	if (argc < 3) {
 		cprintf(listener, "ERROR: Must specify <ipaddr> <port> [proto] <state>\n");
@@ -1069,7 +1069,7 @@ static int command_set_home_server_state(rad_listen_t *listener, int argc, char 
 
 static int command_show_home_server_state(rad_listen_t *listener, int argc, char *argv[])
 {
-	home_server *home;
+	home_server_t *home;
 
 	home = get_home_server(listener, argc, argv, NULL);
 	if (!home) {
@@ -1758,7 +1758,7 @@ static int command_stats_detail(rad_listen_t *listener, int argc, char *argv[])
 #ifdef WITH_PROXY
 static int command_stats_home_server(rad_listen_t *listener, int argc, char *argv[])
 {
-	home_server *home;
+	home_server_t *home;
 
 	if (argc == 0) {
 		cprintf(listener, "ERROR: Must specify [auth/acct] OR <ipaddr> <port>\n");
