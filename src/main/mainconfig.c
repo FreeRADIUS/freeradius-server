@@ -986,10 +986,10 @@ int read_mainconfig(int reload)
 		}
 	}
 
-	cc = rad_malloc(sizeof(*cc));
-	memset(cc, 0, sizeof(*cc));
+	cc = talloc_zero(NULL, cached_config_t);
+	if (!cc) return -1;
 
-	cc->cs = cs;
+	cc->cs = talloc_steal(cc ,cs);
 	rad_assert(cs_cache == NULL);
 	cs_cache = cc;
 
@@ -1021,8 +1021,8 @@ int free_mainconfig(void)
 	 */
 	for (cc = cs_cache; cc != NULL; cc = next) {
 		next = cc->next;
-		cf_file_free(cc->cs);
-		free(cc);
+
+		talloc_free(cc);
 	}
 
 	dict_free();
@@ -1069,8 +1069,11 @@ void hup_mainconfig(void)
 		return;
 	}
 
-	cc = rad_malloc(sizeof(*cc));
-	memset(cc, 0, sizeof(*cc));
+	cc = talloc_zero(NULL, cached_config_t);
+	if (!cc) {
+		ERROR("Out of memory");
+		return;
+	}
 
 	/*
 	 *	Save the current configuration.  Note that we do NOT
@@ -1082,7 +1085,7 @@ void hup_mainconfig(void)
 	 *	configurations.
 	 */
 	cc->created = time(NULL);
-	cc->cs = cs;
+	cc->cs = talloc_steal(cc, cs);
 	cc->next = cs_cache;
 	cs_cache = cc;
 
