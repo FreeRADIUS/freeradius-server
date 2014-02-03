@@ -690,7 +690,7 @@ void request_stats_reply(REQUEST *request)
 	 */
 	if (((flag->vp_integer & 0x80) != 0) &&
 	    ((flag->vp_integer & 0x03) != 0)) {
-		home_server *home;
+		home_server_t *home;
 		VALUE_PAIR *server_ip, *server_port;
 		fr_ipaddr_t ipaddr;
 

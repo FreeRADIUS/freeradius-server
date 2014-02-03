@@ -57,7 +57,7 @@ static int replicate_packet(UNUSED void *instance, REQUEST *request, pair_lists_
 	int rcode = RLM_MODULE_NOOP;
 	VALUE_PAIR *vp, **vps;
 	vp_cursor_t cursor;
-	home_server *home;
+	home_server_t *home;
 	REALM *realm;
 	home_pool_t *pool;
 	RADIUS_PACKET *packet = NULL;

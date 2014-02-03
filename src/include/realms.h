@@ -103,7 +103,7 @@ typedef struct home_server {
 
 	fr_stats_ema_t  ema;
 #endif
-} home_server;
+} home_server_t;
 
 
 typedef enum home_pool_type_t {
@@ -125,12 +125,12 @@ typedef struct home_pool_t {
 
 	char const		*virtual_server; /* for pre/post-proxy */
 
-	home_server		*fallback;
+	home_server_t		*fallback;
 	int			in_fallback;
 	time_t			time_all_dead;
 
 	int			num_home_servers;
-	home_server		*servers[1];
+	home_server_t		*servers[1];
 } home_pool_t;
 
 
@@ -151,14 +151,14 @@ void realms_free(void);
 REALM *realm_find(char const *name); /* name is from a packet */
 REALM *realm_find2(char const *name); /* ... with name taken from realm_find */
 
-void home_server_update_request(home_server *home, REQUEST *request);
-home_server *home_server_ldb(char const *realmname, home_pool_t *pool, REQUEST *request);
-home_server *home_server_find(fr_ipaddr_t *ipaddr, int port, int proto);
+void home_server_update_request(home_server_t *home, REQUEST *request);
+home_server_t *home_server_ldb(char const *realmname, home_pool_t *pool, REQUEST *request);
+home_server_t *home_server_find(fr_ipaddr_t *ipaddr, int port, int proto);
 #ifdef WITH_COA
-home_server *home_server_byname(char const *name, int type);
+home_server_t *home_server_byname(char const *name, int type);
 #endif
 #ifdef WITH_STATS
-home_server *home_server_bynumber(int number);
+home_server_t *home_server_bynumber(int number);
 #endif
 home_pool_t *home_pool_byname(char const *name, int type);
 

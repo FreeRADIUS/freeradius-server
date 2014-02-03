@@ -140,7 +140,7 @@ typedef struct radclient {
 
 #ifdef WITH_COA
 	char			*coa_name;
-	home_server		*coa_server;
+	home_server_t		*coa_server;
 	home_pool_t		*coa_pool;
 #endif
 } RADCLIENT;
@@ -290,7 +290,7 @@ struct request {
 #ifdef WITH_PROXY
 	int			in_proxy_hash;
 
-	home_server	       	*home_server;
+	home_server_t	       	*home_server;
 	home_pool_t		*home_pool; /* for dynamic failover */
 
 	struct timeval		proxy_retransmit;
@@ -394,7 +394,7 @@ typedef struct listen_socket_t {
 	int		max_rate;
 
 	/* for outgoing sockets */
-	home_server	*home;
+	home_server_t	*home;
 	fr_ipaddr_t	other_ipaddr;
 	int		other_port;
 
@@ -702,7 +702,7 @@ void fr_suid_down_permanent(void);
 /* listen.c */
 void listen_free(rad_listen_t **head);
 int listen_init(CONF_SECTION *cs, rad_listen_t **head, int spawn_flag);
-rad_listen_t *proxy_new_listener(home_server *home, int src_port);
+rad_listen_t *proxy_new_listener(home_server_t *home, int src_port);
 RADCLIENT *client_listener_find(rad_listen_t *listener,
 				fr_ipaddr_t const *ipaddr, int src_port);
 
@@ -720,7 +720,7 @@ void radius_event_free(void);
 int radius_event_process(void);
 int event_new_fd(rad_listen_t *listener);
 void revive_home_server(void *ctx);
-void mark_home_server_dead(home_server *home, struct timeval *when);
+void mark_home_server_dead(home_server_t *home, struct timeval *when);
 
 /* evaluate.c */
 typedef struct fr_cond_t fr_cond_t;
