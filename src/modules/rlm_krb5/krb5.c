@@ -108,6 +108,13 @@ static int _free_handle(rlm_krb5_handle_t *conn) {
 	if (conn->keytab) {
 		krb5_kt_close(conn->context, conn->keytab);
 	}
+
+#ifdef HEIMDAL_KRB5
+	if (conn->ccache) {
+		krb5_cc_destroy(conn->context, conn->ccache);
+	}
+#endif
+
 	return 0;
 }
 
@@ -146,14 +153,13 @@ void *mod_conn_create(void *instance)
 	}
 
 #ifdef HEIMDAL_KRB5
-	/*
-	 *	Setup krb5_verify_user options
-	 *
-	 *	Not entirely sure this is necessary, but as we use context
-	 *	to get the cache handle, we probably do have to do this with
-	 *	the cloned context.
-	 */
-	krb5_cc_default(conn->context, &conn->ccache);
+	ret = krb5_cc_new_unique(conn->context, "MEMORY", NULL, &conn->ccache);
+	if (ret) {
+		ERROR("rlm_krb5 (%s): Credential cache creation failed: %s", inst->xlat_name,
+		      rlm_krb5_error(conn->context, ret));
+
+		return NULL;
+	}
 
 	krb5_verify_opt_init(&conn->options);
 	krb5_verify_opt_set_ccache(&conn->options, conn->ccache);
