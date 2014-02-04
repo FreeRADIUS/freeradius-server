@@ -235,7 +235,6 @@ static int mod_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
 	}
 
 	MEM(driver = config->driver = talloc_zero(config, rlm_sql_sqlite_config_t));
-
 	if (cf_section_parse(conf, driver, driver_config) < 0) {
 		return -1;
 	}
@@ -253,7 +252,7 @@ static int mod_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
 	}
 
 	if (driver->bootstrap && !exists) {
-#ifdef HAVE_SQLITE3_OPEN_V2
+#  ifdef HAVE_SQLITE3_OPEN_V2
 		int status;
 		int ret;
 		char *p;
@@ -272,25 +271,23 @@ static int mod_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
 			MEM(buff = talloc_strdup(conf, driver->filename));
 		}
 
-		if (rad_mkdir(buff, 0700) < 0) {
+		ret = rad_mkdir(buff, 0700);
+		talloc_free(buff);
+		if (ret < 0) {
 			ERROR("rlm_sql_sqlite: Failed creating directory for SQLite database: %s", fr_syserror(errno));
 
-			talloc_free(buff);
-
 			return -1;
-		}
-
-		talloc_free(buff);
+		};
 
 		status = sqlite3_open_v2(driver->filename, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL);
 		if (!db) {
-#ifdef HAVE_SQLITE3_ERRSTR
+#  ifdef HAVE_SQLITE3_ERRSTR
 			ERROR("rlm_sql_sqlite: Failed creating opening/creating SQLite database: %s",
 			      sqlite3_errstr(status));
-#else
+#  else
 			ERROR("rlm_sql_sqlite: Failed creating opening/creating SQLite database, got code (%i)",
 			      status);
-#endif
+#  endif
 
 			goto unlink;
 		}
@@ -304,7 +301,14 @@ static int mod_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
 		ret = sql_loadfile(conf, db, driver->bootstrap);
 		status = sqlite3_close(db);
 		if (status != SQLITE_OK) {
-			ERROR("rlm_sql_sqlite: Error closing SQLite handle: %s", sqlite3_errmsg(db));
+		/*
+		 *	Safer to use sqlite3_errstr here, just in case the handle is in a weird state
+		 */
+#  ifdef HAVE_SQLITE3_ERRSTR
+			ERROR("rlm_sql_sqlite: Error closing SQLite handle: %s", sqlite3_errstr(status));
+#  else
+			ERROR("rlm_sql_sqlite: Error closing SQLite handle, got code (%i)", status);
+#  endif
 			goto unlink;
 		}
 		if (ret < 0) {
@@ -366,7 +370,6 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 	talloc_set_destructor(conn, _sql_socket_destructor);
 
 	INFO("rlm_sql_sqlite: Opening SQLite database \"%s\"", driver->filename);
-
 #ifdef HAVE_SQLITE3_OPEN_V2
 	status = sqlite3_open_v2(driver->filename, &(conn->db), SQLITE_OPEN_READWRITE | SQLITE_OPEN_NOMUTEX, NULL);
 #else
@@ -391,7 +394,6 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 	 *	Enable extended return codes for extra debugging info.
 	 */
 	status = sqlite3_extended_result_codes(conn->db, 1);
-
 	if (sql_check_error(conn->db)) {
 		return -1;
 	}
