@@ -82,15 +82,32 @@ static int krb5_instantiate(CONF_SECTION *conf, void *instance)
 	DEBUG("Using MIT Kerberos library");
 #endif
 
-#ifndef KRB5_IS_THREAD_SAFE
 	if (!krb5_is_thread_safe()) {
-		WDEBUG("libkrb5 is not threadsafe, recompile it, and the server with thread support enabled");
+/*
+ *	rlm_krb5 was built as threadsafe
+ */
+#ifdef KRB5_IS_THREAD_SAFE
+		ERROR("Build time libkrb5 was threadsafe, but run time library claims not to be");
+		ERROR("Modify runtime linker path (LD_LIBRARY_PATH on most systems), to prefer threadsafe libkrb5");
+		return -1;
+/*
+ *	rlm_krb5 was not built as threadsafe
+ */
+#else
+		WDEBUG("libkrb5 is not threadsafe, recompile it with thread support enabled ("
+#  ifdef HEIMDAL_KRB5
+		       "--enable-pthread-support"
+#  else
+		       "--disable-thread-support=no"
+#  endif
+		       ")");
 		WDEBUG("rlm_krb5 will run in single threaded mode, performance may be degraded");
 	} else {
 		WDEBUG("Build time libkrb5 was not threadsafe, but run time library claims to be");
 		WDEBUG("Reconfigure and recompile rlm_krb5 to enable thread support");
-	}
 #endif
+	}
+
 	inst->xlat_name = cf_section_name2(conf);
 	if (!inst->xlat_name) {
 		inst->xlat_name = cf_section_name1(conf);
