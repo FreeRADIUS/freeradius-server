@@ -72,7 +72,12 @@ char const *rlm_krb5_error(krb5_context context, krb5_error_code code)
 #ifdef HAVE_KRB5_FREE_ERROR_MESSAGE
 		krb5_free_error_message(context, msg);
 #elif defined(HAVE_KRB5_FREE_ERROR_STRING)
-		krb5_free_error_string(context, msg);
+		{
+			char *free;
+
+			memcpy(&free, &msg, sizeof(free));
+			krb5_free_error_string(context, free);
+		}
 #else
 #  error "No way to free error strings, missing krb5_free_error_message() and krb5_free_error_string()"
 #endif
