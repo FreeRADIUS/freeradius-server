@@ -294,6 +294,39 @@ static rlm_rcode_t krb5_parse_user(krb5_principal *client, REQUEST *request, krb
 	return RLM_MODULE_OK;
 }
 
+/** Log error message and return appropriate rcode
+ *
+ * Translate kerberos error codes into return codes.
+ * @param request Current request.
+ * @param ret code from kerberos.
+ * @param conn used in the last operation.
+ */
+static rlm_rcode_t krb5_process_error(REQUEST *request, rlm_krb5_handle_t *conn, int ret)
+{
+	rad_assert(ret != 0);
+
+	switch (ret) {
+	case KRB5_LIBOS_BADPWDMATCH:
+	case KRB5KRB_AP_ERR_BAD_INTEGRITY:
+		REDEBUG("Provided password was incorrect (%i): %s", ret, rlm_krb5_error(conn->context, ret));
+		return RLM_MODULE_REJECT;
+
+	case KRB5KDC_ERR_KEY_EXP:
+	case KRB5KDC_ERR_CLIENT_REVOKED:
+	case KRB5KDC_ERR_SERVICE_REVOKED:
+		REDEBUG("Account has been locked out (%i): %s", ret, rlm_krb5_error(conn->context, ret));
+		return RLM_MODULE_USERLOCK;
+
+	case KRB5KDC_ERR_C_PRINCIPAL_UNKNOWN:
+		RDEBUG("User not found (%i): %s", ret, rlm_krb5_error(conn->context, ret));
+		return RLM_MODULE_NOTFOUND;
+
+	default:
+		REDEBUG("Error verifying credentials (%i): %s", ret, rlm_krb5_error(conn->context, ret));
+		return RLM_MODULE_FAIL;
+	}
+}
+
 #ifdef HEIMDAL_KRB5
 
 /*
@@ -333,35 +366,10 @@ static rlm_rcode_t krb5_auth(void *instance, REQUEST *request)
 	 */
 	ret = krb5_verify_user_opt(conn->context, client, request->password->vp_strvalue, &conn->options);
 	if (ret) {
-		switch (ret) {
-		case KRB5_LIBOS_BADPWDMATCH:
-		case KRB5KRB_AP_ERR_BAD_INTEGRITY:
-			REDEBUG("Provided password was incorrect (%i): %s", ret, rlm_krb5_error(conn->context, ret));
-			rcode = RLM_MODULE_REJECT;
-			break;
-
-		case KRB5KDC_ERR_KEY_EXP:
-		case KRB5KDC_ERR_CLIENT_REVOKED:
-		case KRB5KDC_ERR_SERVICE_REVOKED:
-			REDEBUG("Account has been locked out (%i): %s", ret, rlm_krb5_error(conn->context, ret));
-			rcode = RLM_MODULE_USERLOCK;
-			break;
-
-		case KRB5KDC_ERR_C_PRINCIPAL_UNKNOWN:
-			RDEBUG("User not found (%i): %s", ret, rlm_krb5_error(conn->context, ret));
-			rcode = RLM_MODULE_NOTFOUND;
-			break;
-
-		default:
-			REDEBUG("Error verifying credentials (%i): %s", ret, rlm_krb5_error(conn->context, ret));
-			rcode = RLM_MODULE_FAIL;
-			break;
-		}
-
-		goto cleanup;
+		rcode =  krb5_process_error(request, conn, ret);
 	}
 
-	cleanup:
+cleanup:
 	if (client) {
 		krb5_free_principal(conn->context, client);
 	}
@@ -419,45 +427,20 @@ static rlm_rcode_t krb5_auth(void *instance, REQUEST *request)
 	 * 	Retrieve the TGT from the TGS/KDC and check we can decrypt it.
 	 */
 	memcpy(&password, &request->password->vp_strvalue, sizeof(password));
+	RDEBUG("Retrieving and decrypting TGT");
 	ret = krb5_get_init_creds_password(conn->context, &init_creds, client, password,
 					   NULL, NULL, 0, NULL, inst->gic_options);
 	if (ret) {
-		error:
-		switch (ret) {
-		case KRB5_LIBOS_BADPWDMATCH:
-		case KRB5KRB_AP_ERR_BAD_INTEGRITY:
-			REDEBUG("Provided password was incorrect (%i): %s", ret, rlm_krb5_error(conn->context, ret));
-			rcode = RLM_MODULE_REJECT;
-			break;
-
-		case KRB5KDC_ERR_KEY_EXP:
-		case KRB5KDC_ERR_CLIENT_REVOKED:
-		case KRB5KDC_ERR_SERVICE_REVOKED:
-			REDEBUG("Account has been locked out (%i): %s", ret, rlm_krb5_error(conn->context, ret));
-			rcode = RLM_MODULE_USERLOCK;
-			break;
-
-		case KRB5KDC_ERR_C_PRINCIPAL_UNKNOWN:
-			REDEBUG("User not found (%i): %s", ret,  rlm_krb5_error(conn->context, ret));
-			rcode = RLM_MODULE_NOTFOUND;
-			break;
-
-		default:
-			REDEBUG("Error retrieving or verifying credentials (%i): %s", ret,
-				rlm_krb5_error(conn->context, ret));
-			rcode = RLM_MODULE_FAIL;
-			break;
-		}
-
-		goto cleanup;
+		rcode = krb5_process_error(request, conn, ret);
 	}
 
-	RDEBUG("Successfully retrieved and decrypted TGT");
-
+	RDEBUG("Attempting to authenticate against service principal");
 	ret = krb5_verify_init_creds(conn->context, &init_creds, inst->server, conn->keytab, NULL, inst->vic_options);
-	if (ret) goto error;
+	if (ret) {
+		rcode = krb5_process_error(request, conn, ret);
+	}
 
-	cleanup:
+cleanup:
 	if (client) {
 		krb5_free_principal(conn->context, client);
 	}
