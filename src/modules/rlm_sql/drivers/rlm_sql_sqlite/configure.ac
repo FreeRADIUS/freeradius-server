@@ -73,16 +73,20 @@ if test x$with_[]modname != xno; then
     dnl try to link to libsqlite3
     smart_try_dir="$sqlite_lib_dir"
     FR_SMART_CHECK_LIB(sqlite3, sqlite3_open)
+    dnl # Ensure we use the library we just found the rest of the checks
+    LDFLAGS="$SMART_LIBS"
     if test "x$ac_cv_lib_sqlite3_sqlite3_open" != "xyes"
     then
         AC_MSG_WARN([Sqlite libraries not found. Use --with-sqlite-lib-dir=<path>.])
         fail="$fail libsqlite3"
     else
-        FR_SMART_CHECK_LIB(sqlite3, sqlite3_open_v2)
-        if test "x$ac_cv_lib_sqlite3_sqlite3_open_v2" == "xyes"
-	then
-            AC_DEFINE(HAVE_SQLITE_V2_API, [1], [Define if the SQLite library has v2 API functions])   
-        fi
+    	dnl # Add any v2 variants here
+    	AC_CHECK_FUNCS(\
+		sqlite3_prepare_v2 \
+		sqlite3_open_v2 \
+		sqlite3_create_function_v2 \
+		sqlite3_errstr \
+    	)
     fi
 
     dnl ############################################################
