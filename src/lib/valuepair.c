@@ -934,51 +934,48 @@ VALUE_PAIR *paircopy(TALLOC_CTX *ctx, VALUE_PAIR *from)
  */
 void pairmove(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from)
 {
-	VALUE_PAIR **tailto, *i, *j, *next;
-	VALUE_PAIR *tailfrom = NULL;
-	VALUE_PAIR *found;
-	int has_password = 0;
+	VALUE_PAIR *i, *j, *found;
+	VALUE_PAIR *head_new, **tail_new;
+	VALUE_PAIR **tail_from;
 
 	if (!to || !from || !*from) return;
 
 	/*
-	 *	First, see if there are any passwords here, and
-	 *	point "tailto" to the end of the "to" list.
+	 *	We're editing the "to" list while we're adding new
+	 *	attributes to it.  We don't want the new attributes to
+	 *	be edited, so we create an intermediate list to hold
+	 *	them during the editing process.
 	 */
-	tailto = to;
-	if (*to) for (i = *to; i; i = i->next) {
-		VERIFY_VP(i);
-		if (!i->da->vendor &&
-		    (i->da->attr == PW_USER_PASSWORD ||
-		     i->da->attr == PW_CRYPT_PASSWORD))
-			has_password = 1;
-		tailto = &i->next;
-	}
+	head_new = NULL;
+	tail_new = &head_new;
 
 	/*
-	 *	Loop over the "from" list.
+	 *	We're looping over the "from" list, moving some
+	 *	attributes out, but leaving others in place.
 	 */
-	for (i = *from; i; i = next) {
+	tail_from = from;
+	while ((i = *tail_from) != NULL) {
 		VERIFY_VP(i);
-		next = i->next;
 
 		/*
-		 *	If there was a password in the "to" list,
-		 *	do not move any other password from the
-		 *	"from" to the "to" list.
+		 *	We never move Fall-Through.
 		 */
-		if (has_password && !i->da->vendor &&
-		    (i->da->attr == PW_USER_PASSWORD ||
-		     i->da->attr == PW_CRYPT_PASSWORD)) {
-			tailfrom = i;
+		if (!i->da->vendor && i->da->attr == PW_FALL_THROUGH) {
+			tail_from = &(i->next);
 			continue;
 		}
+
+		/*
+		 *	Unlike previous versions, we treat all other
+		 *	attributes as normal.  i.e. there's no special
+		 *	treatment for passwords or Hint.
+		 */
 
 		switch (i->op) {
 			/*
 			 *	These are COMPARISON attributes
 			 *	from a check list, and are not
-			 *	supposed to be copied!
+			 *	supposed to be moved.
 			 */
 			case T_OP_NE:
 			case T_OP_GE:
@@ -990,134 +987,104 @@ void pairmove(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from)
 			case T_OP_CMP_EQ:
 			case T_OP_REG_EQ:
 			case T_OP_REG_NE:
-				tailfrom = i;
+				tail_from = &(i->next);
 				continue;
-
-			default:
-				break;
-		}
-
-		/*
-		 *	If the attribute is already present in "to",
-		 *	do not move it from "from" to "to". We make
-		 *	an exception for "Hint" which can appear multiple
-		 *	times, and we never move "Fall-Through".
-		 */
-		if (i->da->attr == PW_FALL_THROUGH ||
-		    (i->da->attr != PW_HINT && i->da->attr != PW_FRAMED_ROUTE)) {
-
-
-			found = pairfind(*to, i->da->attr, i->da->vendor,
-					 TAG_ANY);
-
-			switch (i->op) {
 
 			/*
-			 *	If matching attributes are found,
-			 *	delete them.
+			 *	Add it to the "to" list, but only if
+			 *	it doesn't already exist.
 			 */
-			case T_OP_SUB:		/* -= */
-				if (found) {
-					if (!i->vp_strvalue[0] ||
-					    (strcmp(found->vp_strvalue,
-						    i->vp_strvalue) == 0)){
-						pairdelete(to,
-							   found->da->attr,
-							   found->da->vendor,
-							   TAG_ANY);
+			case T_OP_EQ:
+				found = pairfind(*to, i->da->attr, i->da->vendor,
+						 TAG_ANY);
+				if (!found) goto do_add;
 
-						/*
-						 *	'tailto' may have been
-						 *	deleted...
-						 */
-						tailto = to;
-						for(j = *to; j; j = j->next) {
-							tailto = &j->next;
-						}
-					}
-				}
-				tailfrom = i;
+				tail_from = &(i->next);
 				continue;
 
-			case T_OP_EQ:		/* = */
+			/*
+			 *	Add it to the "to" list, and delete any attribute
+			 *	of the same vendor/attr which already exists.
+			 */
+			case T_OP_SET:
+				found = pairfind(*to, i->da->attr, i->da->vendor,
+						 TAG_ANY);
+				if (!found) goto do_add;
+
+
+				j = found->next;
+
 				/*
-				 *  FIXME: Tunnel attributes with
-				 *  different tags are different
-				 *  attributes.
+				 *	Do NOT call pairdelete() here,
+				 *	due to issues with re-writing
+				 *	"request->username".
+				 *
+				 *	Everybody calls pairmove, and
+				 *	expects it to work.  We can't
+				 *	update request->username here,
+				 *	so instead we over-write the
+				 *	vp that it's pointing to.
 				 */
-				if (found) {
-					tailfrom = i;
-					continue; /* with the loop */
+				switch (found->da->type) {
+					default:
+						memcpy(found, i, sizeof(*found));
+						break;
+
+					case PW_TYPE_TLV:
+						pairmemsteal(found, i->vp_tlv);
+						i->vp_tlv = NULL;
+						break;
+
+					case PW_TYPE_OCTETS:
+						pairmemsteal(found, i->vp_octets);
+						i->vp_octets = NULL;
+						break;
+
+					case PW_TYPE_STRING:
+						pairstrsteal(found, i->vp_strvalue);
+						i->vp_strvalue = NULL;
+						break;
 				}
-				break;
+				found->next = j;
 
-			  /*
-			   *  If a similar attribute is found,
-			   *  replace it with the new one.  Otherwise,
-			   *  add the new one to the list.
-			   */
-			case T_OP_SET:		/* := */
-				if (found) {
-					VALUE_PAIR *mynext = found->next;
+				/*
+				 *	Delete *all* of the attributes
+				 *	of the same number.
+				 */
+				pairdelete(&found->next,
+					   found->da->attr,
+					   found->da->vendor, TAG_ANY);
 
-					/*
-					 *	Do NOT call pairdelete()
-					 *	here, due to issues with
-					 *	re-writing "request->username".
-					 *
-					 *	Everybody calls pairmove,
-					 *	and expects it to work.
-					 *	We can't update request->username
-					 *	here, so instead we over-write
-					 *	the vp that it's pointing to.
-					 */
-					memcpy(found, i, sizeof(*found));
-					found->next = mynext;
+				/*
+				 *	Remove this attribute from the
+				 *	"from" list.
+				 */
+				*tail_from = i->next;
+				i->next = NULL;
+				pairfree(&i);
+				continue;
 
-					pairdelete(&found->next,
-						   found->da->attr,
-						   found->da->vendor, TAG_ANY);
+			/*
+			 *	Move it from the old list and add it
+			 *	to the new list.
+			 */
+			case T_OP_ADD:
+		do_add:
+				*tail_from = i->next;
+				i->next = NULL;
+				*tail_new = talloc_steal(ctx, i);
+				tail_new = &(i->next);
+				continue;
 
-					/*
-					 *	'tailto' may have been
-					 *	deleted...
-					 */
-					for(j = found; j; j = j->next) {
-						tailto = &j->next;
-					}
-					continue;
-				}
-				break;
-
-			  /*
-			   *  Add the new element to the list, even
-			   *  if similar ones already exist.
-			   */
 			default:
-			case T_OP_ADD: /* += */
 				break;
-			}
 		}
-		if (tailfrom)
-			tailfrom->next = next;
-		else
-			*from = next;
+	} /* loop over the "from" list. */
 
-		/*
-		 *	If ALL of the 'to' attributes have been deleted,
-		 *	then ensure that the 'tail' is updated to point
-		 *	to the head.
-		 */
-		if (!*to) {
-			tailto = to;
-		}
-		*tailto = i;
-		if (i) {
-			tailto = &i->next;
-			i->next = NULL;
-			(void) talloc_steal(ctx, i);
-		}
-	}
+	/*
+	 *	Take the "new" list, and append it to the "to" list.
+	 */
+	pairadd(to, head_new);
 }
 
 /** Move matching pairs between VALUE_PAIR lists
