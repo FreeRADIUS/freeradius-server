@@ -304,6 +304,7 @@ static rlm_rcode_t krb5_parse_user(krb5_principal *client, REQUEST *request, krb
 static rlm_rcode_t krb5_process_error(REQUEST *request, rlm_krb5_handle_t *conn, int ret)
 {
 	rad_assert(ret != 0);
+	rad_assert(conn);	/* Silences warnings */
 
 	switch (ret) {
 	case KRB5_LIBOS_BADPWDMATCH:
