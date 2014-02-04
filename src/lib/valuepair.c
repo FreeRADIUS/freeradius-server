@@ -934,7 +934,7 @@ VALUE_PAIR *paircopy(TALLOC_CTX *ctx, VALUE_PAIR *from)
  */
 void pairmove(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from)
 {
-	VALUE_PAIR *i, *j, *found;
+	VALUE_PAIR *i, *found;
 	VALUE_PAIR *head_new, **tail_new;
 	VALUE_PAIR **tail_from;
 
@@ -1011,9 +1011,6 @@ void pairmove(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from)
 						 TAG_ANY);
 				if (!found) goto do_add;
 
-
-				j = found->next;
-
 				/*
 				 *	Do NOT call pairdelete() here,
 				 *	due to issues with re-writing
@@ -1026,8 +1023,12 @@ void pairmove(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from)
 				 *	vp that it's pointing to.
 				 */
 				switch (found->da->type) {
+					VALUE_PAIR *j;
+
 					default:
+						j = found->next;
 						memcpy(found, i, sizeof(*found));
+						found->next = j;
 						break;
 
 					case PW_TYPE_TLV:
@@ -1043,9 +1044,9 @@ void pairmove(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from)
 					case PW_TYPE_STRING:
 						pairstrsteal(found, i->vp_strvalue);
 						i->vp_strvalue = NULL;
+						found->tag = i->tag;
 						break;
 				}
-				found->next = j;
 
 				/*
 				 *	Delete *all* of the attributes
