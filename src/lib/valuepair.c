@@ -2839,7 +2839,7 @@ void pairmemcpy(VALUE_PAIR *vp, uint8_t const *src, size_t size)
  * @param[in,out] vp to update
  * @param[in] src buffer to steal.
  */
-void pairmemsteal(VALUE_PAIR *vp, uint8_t *src)
+void pairmemsteal(VALUE_PAIR *vp, uint8_t const *src)
 {
 	uint8_t *q;
 	VERIFY_VP(vp);
@@ -2857,7 +2857,7 @@ void pairmemsteal(VALUE_PAIR *vp, uint8_t *src)
  * @param[in,out] vp to update
  * @param[in] src buffer to steal.
  */
-void pairstrsteal(VALUE_PAIR *vp, char *src)
+void pairstrsteal(VALUE_PAIR *vp, char const *src)
 {
 	uint8_t *q;
 	VERIFY_VP(vp);
