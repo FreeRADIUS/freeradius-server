@@ -197,9 +197,9 @@ static int sql_loadfile(TALLOC_CTX *ctx, sqlite3 *db, char const *filename)
 		*q = '\0';
 
 #ifdef HAVE_SQLITE3_PREPARE_V2
-		(void) sqlite3_prepare_v2(conn->db, s, len, &statement, &z_tail);
+		(void) sqlite3_prepare_v2(db, s, len, &statement, &z_tail);
 #else
-		(void) sqlite3_prepare(conn->db, s, len, &>statement, &z_tail);
+		(void) sqlite3_prepare(db, s, len, &>statement, &z_tail);
 #endif
 		if (sql_check_error(db)) {
 			talloc_free(buffer);
