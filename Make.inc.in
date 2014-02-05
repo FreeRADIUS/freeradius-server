@@ -15,7 +15,7 @@ sbindir		= @sbindir@
 docdir		= @docdir@
 mandir		= @mandir@
 datadir		= @datadir@
-dictdir		= $(datadir)/freeradius
+dictdir		= @dictdir@
 logdir		= @logdir@
 includedir	= @includedir@
 

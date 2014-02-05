@@ -362,6 +362,30 @@ AC_ARG_WITH(raddbdir,
 AC_SUBST(raddbdir)
 AC_MSG_RESULT($raddbdir)
 
+dnl #
+dnl #  extra argument: --with-dictdir
+dnl #
+dictdir='${datarootdir}/freeradius'
+AC_MSG_CHECKING(dictdir)
+AC_ARG_WITH(dictdir,
+[  --with-dictdir=DIR      directory for dictionary files [DATAROOTDIR/freeradius] ],
+[ case "$withval" in
+  no)
+    AC_MSG_ERROR([Need dictdir])
+    ;;
+  yes)
+    ;;
+  [[\\/$]]* | ?:[[\\/]]* )
+    dictdir="$withval"
+    ;;
+  *)
+    AC_MSG_ERROR([expected an absolute directory name for --with-dictdir: $withval])
+    ;;
+  esac ]
+)
+AC_SUBST(dictdir)
+AC_MSG_RESULT($dictdir)
+
 modconfdir='${raddbdir}/mods-config'
 AC_SUBST(modconfdir)
 
