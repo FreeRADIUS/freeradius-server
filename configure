@@ -656,6 +656,7 @@ SNMPWALK
 SNMPGET
 PERL
 modconfdir
+dictdir
 raddbdir
 radacctdir
 logdir
@@ -743,6 +744,7 @@ with_docdir
 with_logdir
 with_radacctdir
 with_raddbdir
+with_dictdir
 with_ascend_binary
 with_threads
 with_tcp
@@ -1405,6 +1407,7 @@ Optional Packages:
   --with-logdir=DIR       directory for logfiles LOCALSTATEDIR/log/radius
   --with-radacctdir=DIR   directory for detail files LOGDIR/radacct
   --with-raddbdir=DIR     directory for config files SYSCONFDIR/raddb
+  --with-dictdir=DIR      directory for dictionary files DATAROOTDIR/freeradius
   --with-ascend-binary    include support for Ascend binary filter attributes (default=yes)
   --with-threads          use threads, if available.  (default=yes)
   --with-tcp              compile in TCP support. (default=yes)
@@ -5264,6 +5267,32 @@ fi
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $raddbdir" >&5
 $as_echo "$raddbdir" >&6; }
+
+dictdir='${datarootdir}/freeradius'
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking dictdir" >&5
+$as_echo_n "checking dictdir... " >&6; }
+
+# Check whether --with-dictdir was given.
+if test "${with_dictdir+set}" = set; then :
+  withval=$with_dictdir;  case "$withval" in
+  no)
+    as_fn_error $? "Need dictdir" "$LINENO" 5
+    ;;
+  yes)
+    ;;
+  [\\/$]* | ?:[\\/]* )
+    dictdir="$withval"
+    ;;
+  *)
+    as_fn_error $? "expected an absolute directory name for --with-dictdir: $withval" "$LINENO" 5
+    ;;
+  esac
+
+fi
+
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $dictdir" >&5
+$as_echo "$dictdir" >&6; }
 
 modconfdir='${raddbdir}/mods-config'
 
