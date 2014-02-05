@@ -18,7 +18,7 @@ FreeRADIUS 3.0.2 Mon 13 Jan 2014 14:30:00 EDT urgency=medium
 	* Allow comparisons of signed integers and of ethernet addresses.
 	* Fix parsing of text based ascend binary filters
 	* Fix a few minor Coverity and clang analyzer issues.
-	* Log WARNING prefixes only once, not twice.
+	* Log WARNING and ERROR prefixes only once, not twice.
 	* Allow '&' in more xlat expansions.
 	* Fix attribute truncation seen in Perl and other places.
 	* Use correct port when DHCP relaying.
@@ -28,6 +28,10 @@ FreeRADIUS 3.0.2 Mon 13 Jan 2014 14:30:00 EDT urgency=medium
 	* Don't abort() when freeing home servers on exit.
 	* Fix edge case in pairmove() when some attributes could be over-
 	  written.
+	* Do checks for individual sqlite v2 functions so rlm_sqlite builds
+	  correctly with more versions of the library.
+	* In heimdal kerberos, create MEMORY ccaches on a per context basis.
+	  This prevents issues with the root ccache being used.
 
 FreeRADIUS 3.0.1 Mon 13 Jan 2014 14:30:00 EDT urgency=medium
 	Feature improvements
