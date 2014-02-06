@@ -22,12 +22,17 @@
  * @copyright 2002  Alan DeKok <aland@ox.org>
  */
 RCSID("$Id$")
+USES_APPLE_DEPRECATED_API
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/md5.h>
 #include <freeradius-devel/sha1.h>
 #include <freeradius-devel/base64.h>
 #include <freeradius-devel/modules.h>
+
+#ifdef HAVE_OPENSSL_EVP_H
+#  include <openssl/evp.h>
+#endif
 
 #include <ctype.h>
 
@@ -586,6 +591,63 @@ static ssize_t md5_xlat(UNUSED void *instance, UNUSED REQUEST *request,
 	return strlen(out);
 }
 
+/** Calculate any digest supported by OpenSSL EVP_MD
+ *
+ * Example: "%{sha256:foo}" == "0beec7b5ea3f0fdbc95d0dd47f3c5bc275da8a33"
+ */
+#ifdef HAVE_OPENSSL_EVP_H
+static ssize_t evp_md_xlat(UNUSED void *instance, UNUSED REQUEST *request,
+                           char const *fmt, char *out, size_t outlen, EVP_MD const *md)
+{
+	uint8_t digest[EVP_MAX_MD_SIZE];
+	unsigned int digestlen;
+	ssize_t i, len, inlen;
+	uint8_t const *p;
+
+	EVP_MD_CTX *ctx;
+
+        /*
+         *      We need room for at least one octet of output.
+         */
+        if (outlen < 3) {
+                *out = '\0';
+                return 0;
+        }
+
+	inlen = xlat_fmt_to_ref(&p, request, fmt);
+	if (inlen < 0) {
+		return -1;
+	}
+
+	ctx = EVP_MD_CTX_create();
+	EVP_DigestInit_ex(ctx, md, NULL);
+	EVP_DigestUpdate(ctx, p, inlen);
+	EVP_DigestFinal_ex(ctx, digest, &digestlen);
+	EVP_MD_CTX_destroy(ctx);
+
+        /*
+         *      Each digest octet takes two hex digits, plus one for
+         *      the terminating NUL.
+         */
+        len = (outlen / 2) - 1;
+        if (len > digestlen) len = digestlen;
+
+	for (i = 0; i < len; i++) {
+		snprintf(out + i * 2, 3, "%02x", digest[i]);
+	}
+	return strlen(out);
+}
+
+#  define EVP_MD_XLAT(_md) \
+static ssize_t _md##_xlat(UNUSED void *instance, UNUSED REQUEST *request, char const *fmt, char *out, size_t outlen)\
+{\
+	return evp_md_xlat(instance, request, fmt, out, outlen, EVP_##_md());\
+}
+
+EVP_MD_XLAT(sha256);
+EVP_MD_XLAT(sha512);
+#endif
+
 /** Calculate the SHA1 hash of a string or attribute.
  *
  * Example: "%{sha1:foo}" == "0beec7b5ea3f0fdbc95d0dd47f3c5bc275da8a33"
@@ -719,6 +781,10 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	xlat_register("tolower", lc_xlat, NULL, inst);
 	xlat_register("toupper", uc_xlat, NULL, inst);
 	xlat_register("md5", md5_xlat, NULL, inst);
+#ifdef HAVE_OPENSSL_EVP_H
+	xlat_register("sha256", sha256_xlat, NULL, inst);
+	xlat_register("sha512", sha512_xlat, NULL, inst);
+#endif
 	xlat_register("sha1", sha1_xlat, NULL, inst);
 	xlat_register("base64", base64_xlat, NULL, inst);
 	xlat_register("base64tohex", base64_to_hex_xlat, NULL, inst);

@@ -243,13 +243,6 @@ static int setup_ssl_mutexes(void)
 {
 	int i;
 
-#ifdef HAVE_OPENSSL_EVP_H
-	/*
-	 *	Enable all ciphers and digests.
-	 */
-	OpenSSL_add_all_algorithms();
-#endif
-
 	ssl_mutexes = rad_malloc(CRYPTO_num_locks() * sizeof(pthread_mutex_t));
 	if (!ssl_mutexes) {
 		ERROR("Error allocating memory for SSL mutexes!");
