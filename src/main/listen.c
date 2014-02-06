@@ -2795,7 +2795,7 @@ static rad_listen_t *listen_parse(CONF_SECTION *cs, char const *server)
 		return NULL;
 	}
 
-	if ((dv->value == 0) || (dv->value >= MAX_LISTENER) ||
+	if ((dv->value >= MAX_LISTENER) ||
 	    (master_listen[dv->value].magic == 0)) {
 		cf_log_err_cs(cs, "Failed finding plugin for protocol %s",
 			      value);
