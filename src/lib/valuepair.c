@@ -2270,7 +2270,7 @@ VALUE_PAIR *readvp2(TALLOC_CTX *ctx, FILE *fp, int *pfiledone, char const *errpr
  */
 int8_t paircmp_value(VALUE_PAIR const *one, VALUE_PAIR const *two)
 {
-	int compare = 0;
+	int64_t compare = 0;
 
 	VERIFY_VP(one);
 	VERIFY_VP(two);
@@ -2321,19 +2321,11 @@ int8_t paircmp_value(VALUE_PAIR const *one, VALUE_PAIR const *two)
 	case PW_TYPE_SHORT:
 	case PW_TYPE_INTEGER:
 	case PW_TYPE_DATE:
-		if (one->vp_integer < two->vp_integer) {
-			compare = -1;
-		} else if (one->vp_integer > two->vp_integer) {
-			compare = 1;
-		}
+		compare = (int64_t) one->vp_integer - (int64_t) two->vp_integer;
 		break;
 
 	case PW_TYPE_SIGNED:
-		if (one->vp_signed < two->vp_signed) {
-			compare = -1;
-		} else if (one->vp_signed > two->vp_signed) {
-			compare = 1;
-		}
+		compare = one->vp_signed - two->vp_signed;
 		break;
 
 	case PW_TYPE_INTEGER64:
@@ -2348,16 +2340,11 @@ int8_t paircmp_value(VALUE_PAIR const *one, VALUE_PAIR const *two)
 		break;
 
 	case PW_TYPE_ETHERNET:
-		compare = memcmp(&one->vp_ether, &two->vp_ether,
-				 sizeof(one->vp_ether));
+		compare = memcmp(&one->vp_ether, &two->vp_ether, sizeof(one->vp_ether));
 		break;
 
 	case PW_TYPE_IPADDR:
-		if (ntohl(one->vp_ipaddr) < ntohl(two->vp_ipaddr)) {
-			compare = -1;
-		} else if (one->vp_ipaddr > two->vp_ipaddr) {
-			compare = 1;
-		}
+		compare = (int64_t) ntohl(one->vp_ipaddr) - (int64_t) ntohl(two->vp_ipaddr);
 		break;
 
 	case PW_TYPE_IPV6ADDR:
@@ -2388,7 +2375,7 @@ int8_t paircmp_value(VALUE_PAIR const *one, VALUE_PAIR const *two)
 	case PW_TYPE_INVALID:		/* We should never see these */
 	case PW_TYPE_MAX:
 		fr_assert(0);	/* unknown type */
-		return 0;
+		return -2;
 
 	/*
 	 *	Do NOT add a default here, as new types are added
@@ -2748,6 +2735,7 @@ int8_t pairlistcmp(VALUE_PAIR *a, VALUE_PAIR *b)
 
 		ret = paircmp_value(a_p, b_p);
 		if (ret != 0) {
+			fr_assert(ret < -2); 	/* Comparison error */
 			return ret;
 		}
 	}

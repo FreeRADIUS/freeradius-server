@@ -1,6 +1,9 @@
 #
 #  PRE: update
 #
+update reply {
+	Filter-Id := "filter"
+}
 update control {
        Cleartext-Password := 'hello'
 }
@@ -13,8 +16,31 @@ update request {
 #
 #  Check attribute references
 #
-if (NAS-IP-Address == &Framed-IP-Address) {
+if (!(NAS-IP-Address == &Framed-IP-Address)) {
 	update reply {
-		Filter-Id := "filter"
+		Filter-Id += 'fail'
+	}
+}
+
+update request {
+       NAS-IP-Address    := 0.0.0.0
+       Framed-IP-Address := 255.255.255.255
+}
+
+if (!(NAS-IP-Address != &Framed-IP-Address)) {
+	update reply {
+		Filter-Id += 'fail'
+	}
+}
+
+if (!(NAS-IP-Address < &Framed-IP-Address)) {
+	update reply {
+		Filter-Id += "fail"
+	}
+}
+
+if (NAS-IP-Address > &Framed-IP-Address) {
+	update reply {
+		Filter-Id += "fail"
 	}
 }
