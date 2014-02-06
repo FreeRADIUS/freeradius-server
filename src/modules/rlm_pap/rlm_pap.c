@@ -23,6 +23,7 @@
  * @copyright 2001       Kostas Kalevras <kkalev@noc.ntua.gr>
  */
 RCSID("$Id$")
+USES_APPLE_DEPRECATED_API
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
@@ -32,6 +33,10 @@ RCSID("$Id$")
 
 #include "../../include/md5.h"
 #include "../../include/sha1.h"
+
+#ifdef HAVE_OPENSSL_EVP_H
+#  include <openssl/evp.h>
+#endif
 
 /*
  *      Define a structure for our module configuration.
@@ -75,6 +80,11 @@ static const FR_NAME_NUMBER header_names[] = {
 	{ "{base64_md5}",	PW_MD5_PASSWORD },
 	{ "{smd5}",		PW_SMD5_PASSWORD },
 	{ "{crypt}",		PW_CRYPT_PASSWORD },
+#ifdef HAVE_OPENSSL_EVP_H
+	{ "{sha2}",		PW_SHA2_PASSWORD },
+	{ "{sha256}",		PW_SHA2_PASSWORD },
+	{ "{sha512}",		PW_SHA2_PASSWORD },
+#endif
 	{ "{sha}",		PW_SHA_PASSWORD },
 	{ "{ssha}",		PW_SSHA_PASSWORD },
 	{ "{nt}",		PW_NT_PASSWORD },
@@ -267,8 +277,14 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 			found_pw = true;
 			break;
 
+#ifdef HAVE_OPENSSL_EVP_H
+		case PW_SHA2_PASSWORD:
+			if (inst->normify) {
+				normify(request, vp, 28); /* ensure it's in the right format */
+			}
 			found_pw = true;
 			break;
+#endif
 
 		case PW_SHA_PASSWORD:
 		case PW_SSHA_PASSWORD:
@@ -520,11 +536,71 @@ static int pap_auth_ssha(rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
 
 	return RLM_MODULE_OK;
 }
+
+#ifdef HAVE_OPENSSL_EVP_H
+static int pap_auth_sha2(rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
+{
+	EVP_MD_CTX *ctx;
+	EVP_MD const *md;
+	char const *name;
+	uint8_t digest[EVP_MAX_MD_SIZE];
+	unsigned int digestlen;
+
+	if (inst->normify) {
+		normify(request, vp, 28);
+	}
+
+	/*
+	 *	All the SHA-2 algorithms produce digests of different lengths,
+	 *	so it's trivial to determine which EVP_MD to use.
+	 */
+	switch (vp->length) {
+	/* SHA-224 */
+	case 28:
+		name = "SHA-224";
+		md = EVP_sha224();
+		break;
+
+	/* SHA-256 */
+	case 32:
+		name = "SHA-256";
+		md = EVP_sha256();
+		break;
+
+	/* SHA-384 */
+	case 48:
+		name = "SHA-384";
+		md = EVP_sha384();
+		break;
+
+	/* SHA-512 */
+	case 64:
+		name = "SHA-512";
+		md = EVP_sha512();
+		break;
+
+	default:
+		REDEBUG("\"known good\" digest length (%zu) does not match output length of any SHA-2 digests",
+			vp->length);
+		return RLM_MODULE_INVALID;
+	}
+
+	ctx = EVP_MD_CTX_create();
+	EVP_DigestInit_ex(ctx, md, NULL);
+	EVP_DigestUpdate(ctx, request->password->vp_octets, request->password->length);
+	EVP_DigestFinal_ex(ctx, digest, &digestlen);
+	EVP_MD_CTX_destroy(ctx);
+
+	fr_assert(digestlen == (size_t) vp->length);	/* This would be an OpenSSL bug... */
+
+	if (rad_digest_cmp(digest, vp->vp_octets, vp->length) != 0) {
+		REDEBUG("%s digest does not match \"known good\" digest", name);
 		return RLM_MODULE_REJECT;
 	}
 
 	return RLM_MODULE_OK;
 }
+#endif
 
 static int pap_auth_nt(rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
 {
@@ -696,6 +772,12 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 		case PW_SMD5_PASSWORD:
 			auth_func = &pap_auth_smd5;
 			break;
+
+#ifdef HAVE_OPENSSL_EVP_H
+		case PW_SHA2_PASSWORD:
+			auth_func = &pap_auth_sha2;
+			break;
+#endif
 
 		case PW_SHA_PASSWORD:
 			auth_func = &pap_auth_sha;

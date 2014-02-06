@@ -1911,8 +1911,11 @@ static void sess_free_vps(UNUSED void *parent, void *data_ptr,
  */
 void tls_global_init(void)
 {
-	SSL_library_init();
-	SSL_load_error_strings();
+	SSL_load_error_strings();	/* readable error messages (examples show call before library_init) */
+	SSL_library_init();		/* initialize library */
+#ifdef HAVE_OPENSSL_EVP_H
+	OpenSSL_add_all_algorithms();	/* required for SHA2 in OpenSSL < 0.9.8o and 1.0.0.a */
+#endif
 }
 
 /*
