@@ -7,31 +7,35 @@ update {
        request:Tmp-Octets-0 := 0x000504030201
 }
 
+update reply {
+	Filter-Id := 'filter'
+}
+
 #
 #  Put "This is a string" into a file and call "sha1sum" on it.
 #  You should get this string.
 #
-if ("%{sha1:This is a string\n}" == 'cc7edf1ccc4bdf1e0ec8f72b95388b65218ecf0c') {
+if ("%{sha1:This is a string\n}" != 'cc7edf1ccc4bdf1e0ec8f72b95388b65218ecf0c') {
 	update reply {
-		Filter-Id := 'filter'
+		Filter-Id += 'fail'
 	}
 }
 
-if ("%{sha1:&Tmp-String-0}" == 'cc7edf1ccc4bdf1e0ec8f72b95388b65218ecf0c') {
+if ("%{sha1:&Tmp-String-0}" != 'cc7edf1ccc4bdf1e0ec8f72b95388b65218ecf0c') {
 	update reply {
-		Filter-Id := 'filter'
+		Filter-Id += 'fail'
 	}
 }
 
-if ("%{sha1:&request:Tmp-String-0}" == 'cc7edf1ccc4bdf1e0ec8f72b95388b65218ecf0c') {
+if ("%{sha1:&request:Tmp-String-0}" != 'cc7edf1ccc4bdf1e0ec8f72b95388b65218ecf0c') {
 	update reply {
-		Filter-Id := 'filter'
+		Filter-Id += 'fail'
 	}
 }
 
-if ("%{sha1:%{Tmp-String-0}}" == 'cc7edf1ccc4bdf1e0ec8f72b95388b65218ecf0c') {
+if ("%{sha1:%{Tmp-String-0}}" != 'cc7edf1ccc4bdf1e0ec8f72b95388b65218ecf0c') {
 	update reply {
-		Filter-Id := 'filter'
+		Filter-Id += 'fail'
 	}
 }
 
