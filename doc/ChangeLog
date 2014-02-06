@@ -8,6 +8,8 @@ FreeRADIUS 3.0.2 Mon 13 Jan 2014 14:30:00 EDT urgency=medium
 	  no longer needs to $INCLUDE ${prefix}/share/dictionary
 	* A "panic_action" can be set to have the server dump a gdb
 	  log on SEGV or other fatal error.
+	* Add support for SHA-224, SHA-256, SHA-384, SHA-512 to rlm_pap.
+	* Add "%{sha256:}" and "%{sha512:}" xlat functions.
 
 	Bug fixes
 	* Fix SQL groups.
