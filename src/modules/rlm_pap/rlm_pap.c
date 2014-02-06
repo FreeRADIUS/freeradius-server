@@ -261,15 +261,20 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 		case PW_SMD5_PASSWORD:
 		case PW_NT_PASSWORD:
 		case PW_LM_PASSWORD:
-			if (inst->normify)
+			if (inst->normify) {
 				normify(request, vp, 16); /* ensure it's in the right format */
+			}
+			found_pw = true;
+			break;
+
 			found_pw = true;
 			break;
 
 		case PW_SHA_PASSWORD:
 		case PW_SSHA_PASSWORD:
-			if (inst->normify)
+			if (inst->normify) {
 				normify(request, vp, 20); /* ensure it's in the right format */
+			}
 			found_pw = true;
 			break;
 
@@ -380,7 +385,7 @@ static int pap_auth_clear(UNUSED rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *
 	    (rad_digest_cmp(vp->vp_octets,
 			    request->password->vp_octets,
 			    vp->length) != 0)) {
-		REDEBUG("CLEAR TEXT password check failed");
+		REDEBUG("CLEAR TEXT password does not match \"known good\" password");
 		return RLM_MODULE_REJECT;
 	}
 	return RLM_MODULE_OK;
@@ -392,7 +397,7 @@ static int pap_auth_crypt(UNUSED rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *
 
 	if (fr_crypt_check(request->password->vp_strvalue,
 			   vp->vp_strvalue) != 0) {
-		REDEBUG("CRYPT password check failed");
+		REDEBUG("CRYPT digest does not match \"known good\" digest");
 		return RLM_MODULE_REJECT;
 	}
 	return RLM_MODULE_OK;
@@ -405,11 +410,12 @@ static int pap_auth_md5(rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
 
 	RDEBUG("Using MD5 encryption.");
 
-	if (inst->normify)
+	if (inst->normify) {
 		normify(request, vp, 16);
+	}
 	if (vp->length != 16) {
 		REDEBUG("Configured MD5 password has incorrect length");
-		return RLM_MODULE_REJECT;
+		return RLM_MODULE_INVALID;
 	}
 
 	fr_MD5Init(&md5_context);
@@ -418,7 +424,7 @@ static int pap_auth_md5(rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
 	fr_MD5Final(binbuf, &md5_context);
 
 	if (rad_digest_cmp(binbuf, vp->vp_octets, vp->length) != 0) {
-		REDEBUG("MD5 password check failed");
+		REDEBUG("MD5 digest does not match \"known good\" digest");
 		return RLM_MODULE_REJECT;
 	}
 
@@ -433,11 +439,12 @@ static int pap_auth_smd5(rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
 
 	RDEBUG("Using SMD5 encryption.");
 
-	if (inst->normify)
+	if (inst->normify) {
 		normify(request, vp, 16);
+	}
 	if (vp->length <= 16) {
 		REDEBUG("Configured SMD5 password has incorrect length");
-		return RLM_MODULE_REJECT;
+		return RLM_MODULE_INVALID;
 	}
 
 	fr_MD5Init(&md5_context);
@@ -450,7 +457,7 @@ static int pap_auth_smd5(rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
 	 *	Compare only the MD5 hash results, not the salt.
 	 */
 	if (rad_digest_cmp(binbuf, vp->vp_octets, 16) != 0) {
-		REDEBUG("SMD5 password check failed");
+		REDEBUG("SMD5 digest does not match \"known good\" digest");
 		return RLM_MODULE_REJECT;
 	}
 
@@ -464,11 +471,12 @@ static int pap_auth_sha(rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
 
 	RDEBUG("Using SHA1 encryption.");
 
-	if (inst->normify)
+	if (inst->normify) {
 		normify(request, vp, 20);
+	}
 	if (vp->length != 20) {
 		REDEBUG("SHA1 password has incorrect length");
-		return RLM_MODULE_REJECT;
+		return RLM_MODULE_INVALID;
 	}
 
 	fr_SHA1Init(&sha1_context);
@@ -477,7 +485,7 @@ static int pap_auth_sha(rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
 	fr_SHA1Final(binbuf,&sha1_context);
 
 	if (rad_digest_cmp(binbuf, vp->vp_octets, vp->length) != 0) {
-		REDEBUG("SHA1 password check failed");
+		REDEBUG("SHA1 digest does not match \"known good\" digest");
 		return RLM_MODULE_REJECT;
 	}
 
@@ -491,11 +499,12 @@ static int pap_auth_ssha(rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
 
 	RDEBUG("Using SSHA encryption.");
 
-	if (inst->normify)
+	if (inst->normify) {
 		normify(request, vp, 20);
+	}
 	if (vp->length <= 20) {
 		REDEBUG("SSHA password has incorrect length");
-		return RLM_MODULE_REJECT;
+		return RLM_MODULE_INVALID;
 	}
 
 	fr_SHA1Init(&sha1_context);
@@ -505,7 +514,12 @@ static int pap_auth_ssha(rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
 	fr_SHA1Final(binbuf,&sha1_context);
 
 	if (rad_digest_cmp(binbuf, vp->vp_octets, 20) != 0) {
-		REDEBUG("SSHA password check failed");
+		REDEBUG("SSHA digest does not match \"known good\" digest");
+		return RLM_MODULE_REJECT;
+	}
+
+	return RLM_MODULE_OK;
+}
 		return RLM_MODULE_REJECT;
 	}
 
@@ -519,11 +533,12 @@ static int pap_auth_nt(rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
 
 	RDEBUG("Using NT encryption.");
 
-	if (inst->normify)
+	if (inst->normify) {
 		normify(request, vp, 16);
+	}
 	if (vp->length != 16) {
 		REDEBUG("Configured NT-Password has incorrect length");
-		return RLM_MODULE_REJECT;
+		return RLM_MODULE_INVALID;
 	}
 
 	if (radius_xlat(charbuf, sizeof(charbuf), request, "%{mschap:NT-Hash %{User-Password}}", NULL, NULL) < 0){
@@ -532,7 +547,7 @@ static int pap_auth_nt(rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
 
 	if ((fr_hex2bin(binbuf, charbuf, sizeof(binbuf)) != vp->length) ||
 	    (rad_digest_cmp(binbuf, vp->vp_octets, vp->length) != 0)) {
-		REDEBUG("NT password check failed");
+		REDEBUG("NT digest does not match \"known good\" digest");
 		return RLM_MODULE_REJECT;
 	}
 
@@ -547,20 +562,21 @@ static int pap_auth_lm(rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
 
 	RDEBUG("Using LM encryption.");
 
-	if (inst->normify)
+	if (inst->normify) {
 		normify(request, vp, 16);
+	}
 	if (vp->length != 16) {
-		REDEBUG("Configure LM-Password has incorrect length");
-		return RLM_MODULE_REJECT;
+		REDEBUG("Configured LM-Password has incorrect length");
+		return RLM_MODULE_INVALID;
 	}
 
 	if (radius_xlat(charbuf, sizeof(charbuf), request, "%{mschap:LM-Hash %{User-Password}}", NULL, NULL) < 0){
-		return RLM_MODULE_REJECT;
+		return RLM_MODULE_FAIL;
 	}
 
 	if ((fr_hex2bin(binbuf, charbuf, sizeof(binbuf)) != vp->length) ||
 	    (rad_digest_cmp(binbuf, vp->vp_octets, vp->length) != 0)) {
-		REDEBUG("LM password check failed");
+		REDEBUG("LM digest does not match \"known good\" digest");
 		return RLM_MODULE_REJECT;
 	}
 
@@ -578,7 +594,7 @@ static int pap_auth_ns_mta_md5(UNUSED rlm_pap_t *inst, REQUEST *request, VALUE_P
 
 	if (vp->length != 64) {
 		REDEBUG("Configured NS-MTA-MD5-Password has incorrect length");
-		return RLM_MODULE_REJECT;
+		return RLM_MODULE_INVALID;
 	}
 
 	/*
@@ -586,7 +602,7 @@ static int pap_auth_ns_mta_md5(UNUSED rlm_pap_t *inst, REQUEST *request, VALUE_P
 	 */
 	if (fr_hex2bin(binbuf, vp->vp_strvalue, 32) != 16) {
 		REDEBUG("Configured NS-MTA-MD5-Password has invalid value");
-		return RLM_MODULE_REJECT;
+		return RLM_MODULE_INVALID;
 	}
 
 	/*
@@ -596,7 +612,7 @@ static int pap_auth_ns_mta_md5(UNUSED rlm_pap_t *inst, REQUEST *request, VALUE_P
 	 */
 	if (request->password->length >= (sizeof(buff) - 2 - 2 * 32)) {
 		REDEBUG("Configured password is too long");
-		return RLM_MODULE_REJECT;
+		return RLM_MODULE_INVALID;
 	}
 
 	/*
@@ -620,7 +636,7 @@ static int pap_auth_ns_mta_md5(UNUSED rlm_pap_t *inst, REQUEST *request, VALUE_P
 	}
 
 	if (rad_digest_cmp(binbuf, buff, 16) != 0) {
-		REDEBUG("NS-MTA-MD5 password check failed");
+		REDEBUG("NS-MTA-MD5 does not match \"known good\" digest");
 		return RLM_MODULE_REJECT;
 	}
 
