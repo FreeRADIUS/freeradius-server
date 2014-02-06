@@ -581,7 +581,7 @@ STATE_MACHINE_DECL(request_done)
 	 */
 	request_stats_final(request);
 #ifdef WITH_TCP
-	request->listener->count--;
+	if (request->listener) request->listener->count--;
 #endif
 
 	if (request->packet) {
