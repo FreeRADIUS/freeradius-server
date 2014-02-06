@@ -171,11 +171,12 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 	     vp = pairnext(&cursor)) {
 		switch (vp->da->attr) {
 		case PW_USER_PASSWORD: /* deprecated */
-			RDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-			RDEBUG("!!! Please update your configuration so that the \"known !!!");
-			RDEBUG("!!! good\" clear text password is in Cleartext-Password, !!!");
-			RDEBUG("!!! and NOT in User-Password.			         !!!");
-			RDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+			RWDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+			RWDEBUG("!!! Ignoring control:User-Password.  Update your        !!!");
+			RWDEBUG("!!! configuration so that the \"known good\" clear text !!!");
+			RWDEBUG("!!! password is in Cleartext-Password and NOT in        !!!");
+			RWDEBUG("!!! User-Password.                                      !!!");
+			RWDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 			break;
 
 		case PW_PASSWORD_WITH_HEADER: /* preferred */
@@ -199,7 +200,8 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 				 *	that instead of this one.
 				 */
 				if (pairfind(request->config_items, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY)) {
-					RDEBUG("Config already contains \"reference\" password.  Ignoring Password-With-Header");
+					RWDEBUG("Config already contains \"known good\" password.  "
+						"Ignoring Password-With-Header");
 					break;
 				}
 
@@ -219,7 +221,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 					goto redo;
 				}
 
-				RDEBUG("Failed to decode Password-With-Header = \"%s\"", vp->vp_strvalue);
+				REDEBUG("Failed to decode Password-With-Header = \"%s\"", vp->vp_strvalue);
 				break;
 			}
 
@@ -230,7 +232,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 
 			attr = fr_str2int(header_names, charbuf, 0);
 			if (!attr) {
-				RDEBUG2("Found unknown header {%s}: Not doing anything", charbuf);
+				RWDEBUG2("Found unknown header {%s}: Not doing anything", charbuf);
 				break;
 			}
 
