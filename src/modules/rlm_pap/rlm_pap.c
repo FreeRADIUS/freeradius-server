@@ -184,7 +184,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 			int attr;
 			char *p;
 			char const *q;
-			uint8_t *b, binbuf[128];
+			uint8_t *b, digest[128];
 			char charbuf[128];
 			VALUE_PAIR *new_vp;
 
@@ -213,11 +213,11 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 				 */
 				decoded = fr_base64_decode(vp->vp_strvalue,
 							   vp->length,
-							   binbuf,
-							   sizeof(binbuf));
-				if ((decoded > 0) && (binbuf[0] == '{') &&
-				     memchr(binbuf, '}', decoded)) {
-					pairmemcpy(vp, binbuf, decoded);
+							   digest,
+							   sizeof(digest));
+				if ((decoded > 0) && (digest[0] == '{') &&
+				     memchr(digest, '}', decoded)) {
+					pairmemcpy(vp, digest, decoded);
 					goto redo;
 				}
 
@@ -406,7 +406,7 @@ static int pap_auth_crypt(UNUSED rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *
 static int pap_auth_md5(rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
 {
 	FR_MD5_CTX md5_context;
-	uint8_t binbuf[128];
+	uint8_t digest[128];
 
 	RDEBUG("Using MD5 encryption.");
 
@@ -421,9 +421,9 @@ static int pap_auth_md5(rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
 	fr_MD5Init(&md5_context);
 	fr_MD5Update(&md5_context, request->password->vp_octets,
 		     request->password->length);
-	fr_MD5Final(binbuf, &md5_context);
+	fr_MD5Final(digest, &md5_context);
 
-	if (rad_digest_cmp(binbuf, vp->vp_octets, vp->length) != 0) {
+	if (rad_digest_cmp(digest, vp->vp_octets, vp->length) != 0) {
 		REDEBUG("MD5 digest does not match \"known good\" digest");
 		return RLM_MODULE_REJECT;
 	}
@@ -435,7 +435,7 @@ static int pap_auth_md5(rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
 static int pap_auth_smd5(rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
 {
 	FR_MD5_CTX md5_context;
-	uint8_t binbuf[128];
+	uint8_t digest[128];
 
 	RDEBUG("Using SMD5 encryption.");
 
@@ -451,12 +451,12 @@ static int pap_auth_smd5(rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
 	fr_MD5Update(&md5_context, request->password->vp_octets,
 		     request->password->length);
 	fr_MD5Update(&md5_context, &vp->vp_octets[16], vp->length - 16);
-	fr_MD5Final(binbuf, &md5_context);
+	fr_MD5Final(digest, &md5_context);
 
 	/*
 	 *	Compare only the MD5 hash results, not the salt.
 	 */
-	if (rad_digest_cmp(binbuf, vp->vp_octets, 16) != 0) {
+	if (rad_digest_cmp(digest, vp->vp_octets, 16) != 0) {
 		REDEBUG("SMD5 digest does not match \"known good\" digest");
 		return RLM_MODULE_REJECT;
 	}
@@ -467,7 +467,7 @@ static int pap_auth_smd5(rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
 static int pap_auth_sha(rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
 {
 	fr_SHA1_CTX sha1_context;
-	uint8_t binbuf[128];
+	uint8_t digest[128];
 
 	RDEBUG("Using SHA1 encryption.");
 
@@ -482,9 +482,9 @@ static int pap_auth_sha(rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
 	fr_SHA1Init(&sha1_context);
 	fr_SHA1Update(&sha1_context, request->password->vp_octets,
 		      request->password->length);
-	fr_SHA1Final(binbuf,&sha1_context);
+	fr_SHA1Final(digest,&sha1_context);
 
-	if (rad_digest_cmp(binbuf, vp->vp_octets, vp->length) != 0) {
+	if (rad_digest_cmp(digest, vp->vp_octets, vp->length) != 0) {
 		REDEBUG("SHA1 digest does not match \"known good\" digest");
 		return RLM_MODULE_REJECT;
 	}
@@ -495,7 +495,7 @@ static int pap_auth_sha(rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
 static int pap_auth_ssha(rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
 {
 	fr_SHA1_CTX sha1_context;
-	uint8_t binbuf[128];
+	uint8_t digest[128];
 
 	RDEBUG("Using SSHA encryption.");
 
@@ -511,9 +511,9 @@ static int pap_auth_ssha(rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
 	fr_SHA1Update(&sha1_context, request->password->vp_octets,
 		      request->password->length);
 	fr_SHA1Update(&sha1_context, &vp->vp_octets[20], vp->length - 20);
-	fr_SHA1Final(binbuf,&sha1_context);
+	fr_SHA1Final(digest,&sha1_context);
 
-	if (rad_digest_cmp(binbuf, vp->vp_octets, 20) != 0) {
+	if (rad_digest_cmp(digest, vp->vp_octets, 20) != 0) {
 		REDEBUG("SSHA digest does not match \"known good\" digest");
 		return RLM_MODULE_REJECT;
 	}
@@ -528,7 +528,7 @@ static int pap_auth_ssha(rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
 
 static int pap_auth_nt(rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
 {
-	uint8_t binbuf[16];
+	uint8_t digest[16];
 	char charbuf[32 + 1];
 
 	RDEBUG("Using NT encryption.");
@@ -545,8 +545,8 @@ static int pap_auth_nt(rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
 		return RLM_MODULE_REJECT;
 	}
 
-	if ((fr_hex2bin(binbuf, charbuf, sizeof(binbuf)) != vp->length) ||
-	    (rad_digest_cmp(binbuf, vp->vp_octets, vp->length) != 0)) {
+	if ((fr_hex2bin(digest, charbuf, sizeof(digest)) != vp->length) ||
+	    (rad_digest_cmp(digest, vp->vp_octets, vp->length) != 0)) {
 		REDEBUG("NT digest does not match \"known good\" digest");
 		return RLM_MODULE_REJECT;
 	}
@@ -557,7 +557,7 @@ static int pap_auth_nt(rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
 
 static int pap_auth_lm(rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
 {
-	uint8_t binbuf[16];
+	uint8_t digest[16];
 	char charbuf[32 + 1];
 
 	RDEBUG("Using LM encryption.");
@@ -574,8 +574,8 @@ static int pap_auth_lm(rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
 		return RLM_MODULE_FAIL;
 	}
 
-	if ((fr_hex2bin(binbuf, charbuf, sizeof(binbuf)) != vp->length) ||
-	    (rad_digest_cmp(binbuf, vp->vp_octets, vp->length) != 0)) {
+	if ((fr_hex2bin(digest, charbuf, sizeof(digest)) != vp->length) ||
+	    (rad_digest_cmp(digest, vp->vp_octets, vp->length) != 0)) {
 		REDEBUG("LM digest does not match \"known good\" digest");
 		return RLM_MODULE_REJECT;
 	}
@@ -586,7 +586,7 @@ static int pap_auth_lm(rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
 static int pap_auth_ns_mta_md5(UNUSED rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
 {
 	FR_MD5_CTX md5_context;
-	uint8_t binbuf[128];
+	uint8_t digest[128];
 	uint8_t buff[MAX_STRING_LEN];
 	char buff2[MAX_STRING_LEN + 50];
 
@@ -600,7 +600,7 @@ static int pap_auth_ns_mta_md5(UNUSED rlm_pap_t *inst, REQUEST *request, VALUE_P
 	/*
 	 *	Sanity check the value of NS-MTA-MD5-Password
 	 */
-	if (fr_hex2bin(binbuf, vp->vp_strvalue, 32) != 16) {
+	if (fr_hex2bin(digest, vp->vp_strvalue, 32) != 16) {
 		REDEBUG("Configured NS-MTA-MD5-Password has invalid value");
 		return RLM_MODULE_INVALID;
 	}
@@ -635,7 +635,7 @@ static int pap_auth_ns_mta_md5(UNUSED rlm_pap_t *inst, REQUEST *request, VALUE_P
 		fr_MD5Final(buff, &md5_context);
 	}
 
-	if (rad_digest_cmp(binbuf, buff, 16) != 0) {
+	if (rad_digest_cmp(digest, buff, 16) != 0) {
 		REDEBUG("NS-MTA-MD5 does not match \"known good\" digest");
 		return RLM_MODULE_REJECT;
 	}
