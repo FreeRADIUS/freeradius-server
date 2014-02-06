@@ -591,7 +591,7 @@ static int pap_auth_sha2(rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
 	EVP_DigestFinal_ex(ctx, digest, &digestlen);
 	EVP_MD_CTX_destroy(ctx);
 
-	fr_assert(digestlen == (size_t) vp->length);	/* This would be an OpenSSL bug... */
+	fr_assert((size_t) digestlen == vp->length);	/* This would be an OpenSSL bug... */
 
 	if (rad_digest_cmp(digest, vp->vp_octets, vp->length) != 0) {
 		REDEBUG("%s digest does not match \"known good\" digest", name);
