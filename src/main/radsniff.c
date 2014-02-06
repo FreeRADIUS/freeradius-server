@@ -2059,7 +2059,8 @@ int main(int argc, char *argv[])
 	 *	Default to logging and capturing all events
 	 */
 	if (conf->event_flags == 0) {
-		memset(&conf->event_flags, 1, sizeof(conf->event_flags));
+		DEBUG("Logging all events");
+		memset(&conf->event_flags, 0xff, sizeof(conf->event_flags));
 	}
 
 	/*
