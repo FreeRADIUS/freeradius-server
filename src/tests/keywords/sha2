@@ -12,7 +12,7 @@ update reply {
 }
 
 #
-#  Put "This is a string" into a file and call "sha1sum" on it.
+#  Put "This is a string" into a file and call "sha256sum" on it.
 #  You should get this string.
 #
 if ("%{sha256:This is a string\n}" != 'b3716a1ab53042bb392034f29071e13b0c38aa19b4edd75d9a76022f91189124') {
