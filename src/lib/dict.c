@@ -2778,8 +2778,7 @@ DICT_ATTR const *dict_attrunknownbyname(char const *attribute, int vp_free)
 
 			vendor = dict_vendorbyname(buffer);
 			if (!vendor) {
-				fr_strerror_printf("Unknown vendor name in "
-						   "attribute name \"%s\"",
+				fr_strerror_printf("Unknown attribute \"%s\"",
 						   attribute);
 				return NULL;
 			}
@@ -2800,7 +2799,7 @@ DICT_ATTR const *dict_attrunknownbyname(char const *attribute, int vp_free)
 	 *	Attr-%d
 	 */
 	if (strncasecmp(p, "Attr-", 5) != 0) {
-		fr_strerror_printf("Invalid format in attribute name \"%s\"",
+		fr_strerror_printf("Unknown attribute \"%s\"",
 				   attribute);
 		return NULL;
 	}
