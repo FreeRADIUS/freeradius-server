@@ -2946,7 +2946,7 @@ STATE_MACHINE_DECL(proxy_wait_for_reply)
 
 #ifdef WITH_TCP
 		if (home->proto == IPPROTO_TCP) {
-			DEBUG2("Suppressing duplicate proxied request to home server %s port %d proto TCP - ID: %d",
+			DEBUG2("Suppressing duplicate proxied request (tcp) to home server %s port %d proto TCP - ID: %d",
 			       inet_ntop(request->proxy->dst_ipaddr.af,
 					 &request->proxy->dst_ipaddr.ipaddr,
 					 buffer, sizeof(buffer)),
@@ -2955,6 +2955,23 @@ STATE_MACHINE_DECL(proxy_wait_for_reply)
 			return;
 		}
 #endif
+
+		/*
+		 *	More than one retransmit a second is stupid,
+		 *	and should be suppressed by the proxy.
+		 */
+		when = request->proxy_retransmit;
+		when.tv_sec++;
+
+		if (timercmp(&now, &when, <)) {
+			DEBUG2("Suppressing duplicate proxied request (too fast) to home server %s port %d proto TCP - ID: %d",
+			       inet_ntop(request->proxy->dst_ipaddr.af,
+					 &request->proxy->dst_ipaddr.ipaddr,
+					 buffer, sizeof(buffer)),
+			       request->proxy->dst_port,
+			       request->proxy->id);
+			return;
+		}
 
 #ifdef WITH_ACCOUNTING
 		/*
@@ -2980,6 +2997,7 @@ STATE_MACHINE_DECL(proxy_wait_for_reply)
 		DEBUG_PACKET(request, request->proxy, 1);
 		FR_STATS_TYPE_INC(home->stats.total_requests);
 		home->last_packet_sent = now.tv_sec;
+		request->proxy_retransmit = now;
 		request->proxy_listener->send(request->proxy_listener,
 					      request);
 		break;
