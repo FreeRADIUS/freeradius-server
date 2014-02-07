@@ -2735,7 +2735,7 @@ int8_t pairlistcmp(VALUE_PAIR *a, VALUE_PAIR *b)
 
 		ret = paircmp_value(a_p, b_p);
 		if (ret != 0) {
-			fr_assert(ret < -2); 	/* Comparison error */
+			fr_assert(ret >= -1); 	/* Comparison error */
 			return ret;
 		}
 	}
