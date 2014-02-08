@@ -3,29 +3,59 @@
 #  $Id$
 
 #
-# The "always" module is here for debugging purposes. Each
-# instance simply returns the same result, always, without
-# doing anything.
-always fail {
-	rcode = fail
-}
+#  The "always" module is here for debugging purposes, or
+#  for use in complex policies.
+#  Instance simply returns the same result, always, without
+#  doing anything.
+#
+#  rcode may be one of the following values:
+#  - reject   - Reject the user.
+#  - fail     - Simulate or indicate a failure.
+#  - ok       - Simulate or indicate a success.
+#  - handled  - Indicate that the request has been handled,
+#               stop processing, and send response if set.
+#  - invalid  - Indicate that the request is invalid.
+#  - userlock - Indicate that the user account has been
+#               locked out.
+#  - notfound - Indicate that a user account can't be found.
+#  - noop     - Simulate a no-op.
+#  - updated  - Indicate that the request has been updated.
+#
+#  If an instance is listed in a session {}  section, 
+#  this simulates a user having <integer> sessions.
+#  
+#  simulcount = <integer>
+#
+#  If an instance is listed in a session {}  section, 
+#  this simulates the user having multilink
+#  sessions.
+#
+#  mpp = <integer>
+#
 always reject {
 	rcode = reject
 }
-always noop {
-	rcode = noop
+always fail {
+	rcode = fail
+}
+always ok {
+	rcode = ok
 }
 always handled {
 	rcode = handled
 }
-always updated {
-	rcode = updated
+always invalid {
+	rcode = invalid
+}
+always userlock {
+	rcode = userlock
 }
 always notfound {
 	rcode = notfound
 }
-always ok {
-	rcode = ok
-	simulcount = 0
-	mpp = no
+always noop {
+	rcode = noop
+}
+always updated {
+	rcode = updated
 }
