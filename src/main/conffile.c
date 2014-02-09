@@ -1064,7 +1064,8 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, int type, void *data, char
 			 *	We were expecting the file to exist...
 			 */
 			} else if (type == PW_TYPE_FILE_INPUT) {
-				ERROR("File \"%s\" does not exist", value);
+				ERROR("Unable to open file \"%s\": %s",
+		       		      value, fr_syserror(errno));
 				return -1;
 			}
 
