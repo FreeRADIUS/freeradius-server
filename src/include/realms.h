@@ -87,10 +87,10 @@ typedef struct home_server {
 	int		revive_interval; /* if it doesn't support pings */
 	CONF_SECTION	*cs;
 #ifdef WITH_COA
-	int			coa_irt;
-	int			coa_mrc;
-	int			coa_mrt;
-	int			coa_mrd;
+	int		coa_irt;
+	int		coa_mrc;
+	int		coa_mrt;
+	int		coa_mrd;
 #endif
 #ifdef WITH_TLS
 	fr_tls_server_conf_t	*tls;
