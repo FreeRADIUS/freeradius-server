@@ -368,7 +368,31 @@ static rlm_rcode_t krb5_auth(void *instance, REQUEST *request)
 	 */
 	ret = krb5_verify_user_opt(conn->context, client, request->password->vp_strvalue, &conn->options);
 	if (ret) {
-		rcode =  krb5_process_error(request, conn, ret);
+		rcode = krb5_process_error(request, conn, ret);
+		goto cleanup;
+	}
+
+	/*
+	 *	krb5_verify_user_opt adds the credentials to the ccache
+	 *	we specified with krb5_verify_opt_set_ccache.
+	 *
+	 *	To make sure we don't accumulate thousands of sets of
+	 *	credentials, remove them again here.
+	 *
+	 * @todo This should definitely be optional, which means writing code for the MIT
+	 *	 variant as well.
+	 */
+	{
+		krb5_cc_cursor cursor;
+		krb5_creds cred;
+
+		krb5_cc_start_seq_get(conn->context, conn->ccache, &cursor)
+		for (krb5_cc_next_cred(conn->context, conn->ccache, &cursor, &cred);
+		     cred;
+		     krb5_cc_next_cred(conn->context, conn->ccache, &cursor, &cred) {
+		     krb5_cc_remove_cred(conn->context, conb->ccache, 0, &cred);
+		}
+		krb5_cc_end_seq_get(conn->context, conn->ccache, &cursor);
 	}
 
 cleanup:
