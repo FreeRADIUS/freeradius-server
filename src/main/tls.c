@@ -2360,7 +2360,7 @@ fr_tls_server_conf_t *tls_server_conf_parse(CONF_SECTION *cs)
 	}
 #endif /*HAVE_OPENSSL_OCSP_H*/
 
-	if (load_dh_params(conf->ctx, conf->dh_file) < 0) {
+	if (conf->dh_file && (load_dh_params(conf->ctx, conf->dh_file) < 0)) {
 		goto error;
 	}
 
@@ -2423,7 +2423,7 @@ fr_tls_server_conf_t *tls_client_conf_parse(CONF_SECTION *cs)
 		goto error;
 	}
 
-	if (load_dh_params(conf->ctx, conf->dh_file) < 0) {
+	if (conf->dh_file && (load_dh_params(conf->ctx, conf->dh_file) < 0)) {
 		goto error;
 	}
 
