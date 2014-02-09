@@ -487,13 +487,6 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 		goto error;
 	}
 
-	if (!home->secret) {
-		cf_log_err_cs(cs,
-			   "No shared secret defined for home server %s.",
-			   name2);
-		goto error;
-	}
-
 	/*
 	 *	Use a reasonable default.
 	 */
@@ -609,6 +602,19 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 	 *	Check the TLS configuration.
 	 */
 	tls = cf_section_sub_find(cs, "tls");
+
+	/*
+	 *	If were doing RADSEC (tls+tcp) the secret should default
+	 *	to radsec, else a secret must be set.
+	 */
+	if (!home->secret) {
+		if (!tls || (home->proto != IPPROTO_TCP)) {
+			cf_log_err_cs(cs, "No shared secret defined for home server %s", name2);
+			goto error;
+		}
+
+		home->secret = "radsec";
+	}
 
 	/*
 	 *	If the home is a virtual server, don't look up source IP.
