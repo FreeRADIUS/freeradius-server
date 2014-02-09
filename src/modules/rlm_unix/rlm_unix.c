@@ -59,6 +59,7 @@ static char trans[64] =
 #define ENC(c) trans[c]
 
 struct unix_instance {
+	char const *name;	//!< Instance name.
 	char const *radwtmp;
 };
 
@@ -115,12 +116,38 @@ static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
 {
 	struct unix_instance *inst = instance;
 
+	DICT_ATTR const *group_da, *user_name_da;
+
+	inst->name = cf_section_name2(conf);
+	if (!inst->name) {
+		inst->name = cf_section_name1(conf);
+	}
+
+	group_da = dict_attrbyvalue(PW_GROUP, 0);
+	if (!group_da) {
+		ERROR("rlm_unix (%s): 'Group' attribute not found in dictionary", inst->name);
+		return -1;
+	}
+
+	user_name_da = dict_attrbyvalue(PW_USER_NAME, 0);
+	if (!user_name_da) {
+		ERROR("rlm_unix (%s): 'User-Name' attribute not found in dictionary", inst->name);
+		return -1;
+	}
 	/* FIXME - delay these until a group file has been read so we know
 	 * groupcmp can actually do something */
-	paircompare_register(dict_attrbyvalue(PW_GROUP, 0), dict_attrbyvalue(PW_USER_NAME, 0), false, groupcmp, inst);
+	paircompare_register(group_da, user_name_da, false, groupcmp, inst);
 #ifdef PW_GROUP_NAME /* compat */
-	paircompare_register(dict_attrbyvalue(PW_GROUP_NAME, 0), dict_attrbyvalue(PW_USER_NAME, 0),
-			true, groupcmp, inst);
+	{
+		DICT_ATTR const *group_name_da;
+
+		group_name_da = dict_attrbyvalue(PW_GROUP_NAME, 0);
+		if (!group_name_da) {
+			ERROR("rlm_unix (%s): 'Group-Name' attribute not found in dictionary", inst->name);
+			return -1;
+		}
+		paircompare_register(group_name_da, user_name_da, true, groupcmp, inst);
+	}
 #endif
 
 	return 0;
