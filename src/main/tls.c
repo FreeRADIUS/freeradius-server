@@ -2218,7 +2218,7 @@ post_ca:
 
 	/* Load randomness */
 	if (conf->random_file) {
-		if (!(RAND_load_file(conf->random_file, 1024*1024))) {
+		if (!(RAND_load_file(conf->random_file, 1024*10))) {
 			ERROR("tls: SSL error %s", ERR_error_string(ERR_get_error(), NULL));
 			ERROR("tls: Error loading randomness");
 			return NULL;
