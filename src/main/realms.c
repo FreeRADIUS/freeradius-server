@@ -608,12 +608,15 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 	 *	to radsec, else a secret must be set.
 	 */
 	if (!home->secret) {
-		if (!tls || (home->proto != IPPROTO_TCP)) {
+#ifdef WITH_TLS
+		if (tls && (home->proto == IPPROTO_TCP)) {
+			home->secret = "radsec";
+		} else
+#endif
+		{
 			cf_log_err_cs(cs, "No shared secret defined for home server %s", name2);
 			goto error;
 		}
-
-		home->secret = "radsec";
 	}
 
 	/*
