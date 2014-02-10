@@ -779,7 +779,8 @@ AC_CHECK_HEADERS( \
   unistd.h \
   crypt.h \
   errno.h \
-  execinfo.h\
+  execinfo.h \
+  features.h \
   resource.h \
   sys/resource.h \
   getopt.h \
