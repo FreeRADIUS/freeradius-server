@@ -120,11 +120,10 @@ char const *fr_strerror(void)
 char const *fr_syserror(int num)
 {
 	char *buffer;
+	int ret;
 
 	buffer = fr_thread_local_init(fr_syserror_buffer, _fr_logging_free);
 	if (!buffer) {
-		int ret;
-
 		/*
 		 *	malloc is thread safe, talloc is not
 		 */
@@ -142,11 +141,19 @@ char const *fr_syserror(int num)
 		}
 	}
 
+	if (!num) {
+		return "No error";
+	}
+
 	/*
 	 *	XSI-Compliant version
 	 */
 #if !defined(HAVE_FEATURES_H) || ((_POSIX_C_SOURCE >= 200112L || _XOPEN_SOURCE >= 500) && ! _GNU_SOURCE)
-	if (!num || (strerror_r(num, buffer, FR_STRERROR_BUFSIZE) != 0)) {
+	if ((ret = strerror_r(num, buffer, (size_t) FR_STRERROR_BUFSIZE) != 0)) {
+#  ifndef NDEBUG
+		fprintf(stderr, "strerror_r() failed to write error for errno %i to buffer %p (%zu bytes), "
+			"returned %i: %s\n", num, buffer, (size_t) FR_STRERROR_BUFSIZE, ret, strerror(ret));
+#  endif
 		buffer[0] = '\0';
 	}
 	return buffer;
@@ -159,8 +166,12 @@ char const *fr_syserror(int num)
 #else
 	{
 		char const *p;
-		p = strerror_r(num, buffer, FR_STRERROR_BUFSIZE);
-		if (!num || !p) {
+		p = strerror_r(num, buffer, (size_t) FR_STRERROR_BUFSIZE);
+		if (!p) {
+#  ifndef NDEBUG
+			fprintf(stderr, "strerror_r() failed to write error for errno %i to buffer %p "
+				"(%zu bytes): %s\n", num, buffer, (size_t) FR_STRERROR_BUFSIZE, strerror(ret));
+#  endif
 			buffer[0] = '\0';
 			return buffer;
 		}
