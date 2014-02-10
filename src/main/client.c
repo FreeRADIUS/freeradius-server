@@ -896,7 +896,10 @@ RADCLIENT_LIST *clients_parse_section(CONF_SECTION *section, UNUSED bool tls_req
 		 *	non-TLS clients CANNOT use TLS listeners.
 		 */
 		if (tls_required != c->tls_required) {
-			WARN("Security mismatch (TLS / non-TLS) between client and socket.");
+			cf_log_err_cs(cs, "Client requires TLS but the associated listener does not have TLS configured.");
+			client_free(c);
+			clients_free(clients);
+			return NULL;
 		}
 #endif
 
