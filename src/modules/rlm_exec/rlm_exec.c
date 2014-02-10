@@ -355,7 +355,8 @@ static rlm_rcode_t exec_dispatch(void *instance, REQUEST *request)
 	 */
 	status = radius_exec_program(request, inst->program, inst->wait, inst->shell_escape,
 				     out, sizeof(out), inst->timeout,
-				     input_pairs ? *input_pairs : NULL, &answer);
+				     inst->input ? *input_pairs : NULL,
+				     inst->output ? &answer : NULL);
 	rcode = rlm_exec_status2rcode(request, out, strlen(out), status);
 
 	/*
@@ -363,7 +364,7 @@ static rlm_rcode_t exec_dispatch(void *instance, REQUEST *request)
 	 *
 	 *	If we're not waiting, then there are no output pairs.
 	 */
-	if (output_pairs) {
+	if (inst->output) {
 		pairmove(request, output_pairs, &answer);
 	}
 	pairfree(&answer);
