@@ -118,7 +118,7 @@ serial:
 
 random:
 	@if [ -c /dev/urandom ] ; then \
-		dd if=/dev/urandom of=./random count=10 >/dev/null 2>&1; \
+		ln -sf /dev/urandom random; \
 	else \
 		date > ./random; \
 	fi
