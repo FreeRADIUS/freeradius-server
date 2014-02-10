@@ -2221,33 +2221,24 @@ CONF_SECTION *cf_section_find(char const *name)
 }
 
 /** Find a sub-section in a section
+ *
+ *	This finds ANY section having the same first name.
+ *	The second name is ignored.
  */
 CONF_SECTION *cf_section_sub_find(CONF_SECTION const *cs, char const *name)
 {
-	CONF_ITEM *ci;
+	CONF_SECTION mycs;
 
 	if (!name) return NULL;	/* can't find an un-named section */
 
 	/*
-	 *	Do the fast lookup if possible.
+	 *	No sub-sections have been defined, so none exist.
 	 */
-	if (cs->section_tree) {
-		CONF_SECTION mycs;
+	if (!cs->section_tree) return NULL;
 
-		mycs.name1 = name;
-		mycs.name2 = NULL;
-		return rbtree_finddata(cs->section_tree, &mycs);
-	}
-
-	for (ci = cs->children; ci; ci = ci->next) {
-		if (ci->type != CONF_ITEM_SECTION)
-			continue;
-		if (strcmp(cf_itemtosection(ci)->name1, name) == 0)
-			break;
-	}
-
-	return cf_itemtosection(ci);
-
+	mycs.name1 = name;
+	mycs.name2 = NULL;
+	return rbtree_finddata(cs->section_tree, &mycs);
 }
 
 
@@ -2258,47 +2249,68 @@ CONF_SECTION *cf_section_sub_find_name2(CONF_SECTION const *cs,
 					char const *name1, char const *name2)
 {
 	CONF_ITEM    *ci;
+	CONF_SECTION *name1cs, *subcs;
+	CONF_SECTION mycs;
 
 	if (!cs) cs = root_config;
 
-	if (name1 && (cs->section_tree)) {
-		CONF_SECTION mycs, *master_cs;
+	/*
+	 *	name1 is given.  Do a simple search.  name2 may be
+	 *	NULL, in which case we're looking for a matching
+	 *	(name1, NULL).  In contrast, cf_section_sub_find()
+	 *	above doesn't check name2 at all.
+	 */
+	if (name1) {
+		name1cs = cf_section_sub_find(cs, name1);
+		if (!name1cs) return NULL;
 
 		mycs.name1 = name1;
 		mycs.name2 = name2;
+		
+		return rbtree_finddata(name1cs->name2_tree, &mycs);
+	}
 
-		master_cs = rbtree_finddata(cs->section_tree, &mycs);
-		if (master_cs) {
-			return rbtree_finddata(master_cs->name2_tree, &mycs);
+	/*
+	 *	Asking for (NULL, name2) means look for (name2, NULL)
+	 *	Yes, this is backwards.
+	 */
+	name1cs = cf_section_sub_find(cs, name2);
+	if (name1cs) {
+		if (!name1cs->name2_tree) {
+			/*
+			 *	No name2 tree, do the checks
+			 *	ourselves.  If (name2, NULL) exists,
+			 *	return it.
+			 */
+			if (!name1cs->name2) return name1cs;
+			/* else fall through to (*, name2) */
+
+		} else {
+			mycs.name1 = name2;
+			mycs.name2 = NULL;
+			subcs = rbtree_finddata(name1cs->name2_tree, &mycs);
+			if (subcs) return subcs;
+			/* else fall through to (*, name2) */
 		}
 	}
 
 	/*
-	 *	Else do it the old-fashioned way.
+	 *	No matching (name2, NULL).  Look for (*, name2) by
+	 *	brute-force search over all of the children.
 	 */
 	for (ci = cs->children; ci; ci = ci->next) {
-		CONF_SECTION *subcs;
-
 		if (ci->type != CONF_ITEM_SECTION)
 			continue;
-
+		
 		subcs = cf_itemtosection(ci);
-		if (!name1) {
-			if (!subcs->name2) {
-				if (strcmp(subcs->name1, name2) == 0) break;
-			} else {
-				if (strcmp(subcs->name2, name2) == 0) break;
-			}
-			continue; /* don't do the string comparisons below */
+		if (!subcs->name2) continue;
+		
+		if (strcmp(subcs->name2, name2) == 0) {
+			return subcs;
 		}
-
-		if ((strcmp(subcs->name1, name1) == 0) &&
-		    (subcs->name2 != NULL) &&
-		    (strcmp(subcs->name2, name2) == 0))
-			break;
 	}
 
-	return cf_itemtosection(ci);
+	return NULL;
 }
 
 /*
