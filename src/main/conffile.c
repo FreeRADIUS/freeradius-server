@@ -2032,33 +2032,12 @@ void cf_file_free(CONF_SECTION *cs)
  */
 CONF_PAIR *cf_pair_find(CONF_SECTION const *cs, char const *name)
 {
-	CONF_ITEM	*ci;
-	CONF_PAIR	*cp = NULL;
+	CONF_PAIR mycp;
 
-	if (!cs) return NULL;
+	if (!cs || !name) return NULL;
 
-	/*
-	 *	Find the name in the tree, for speed.
-	 */
-	if (name) {
-		CONF_PAIR mycp;
-
-		mycp.attr = name;
-		cp = rbtree_finddata(cs->pair_tree, &mycp);
-	} else {
-		/*
-		 *	Else find the first one that matches
-		 */
-		for (ci = cs->children; ci; ci = ci->next) {
-			if (ci->type == CONF_ITEM_PAIR) {
-				return cf_itemtopair(ci);
-			}
-		}
-	}
-
-	if (cp || !cs->template) return cp;
-
-	return cf_pair_find(cs->template, name);
+	mycp.attr = name;
+	return rbtree_finddata(cs->pair_tree, &mycp);
 }
 
 /*
