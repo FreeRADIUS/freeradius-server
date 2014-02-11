@@ -1276,6 +1276,126 @@ int cf_section_parse(CONF_SECTION *cs, void *base,
 }
 
 
+static CONF_SECTION *cf_template_copy(CONF_SECTION *parent, CONF_SECTION const *template)
+{
+	CONF_ITEM *ci;
+	CONF_SECTION *cs;
+
+	cs = cf_section_alloc(parent, template->name1, template->name2);
+	if (!cs) return NULL;
+
+	for (ci = template->children; ci; ci = ci->next) {
+		if (ci->type == CONF_ITEM_PAIR) {
+			CONF_PAIR *cp1, *cp2;
+
+			cp1 = cf_itemtopair(ci);
+			cp2 = cf_pair_alloc(cs, cp1->attr, cp1->value, cp1->op, cp1->value_type);
+			if (!cp2) return false;
+
+			cp2->item.filename = cp1->item.filename;
+			cp2->item.lineno = cp1->item.lineno;
+
+			cf_item_add(cs, &(cp1->item));
+			continue;
+		}
+
+		if (ci->type == CONF_ITEM_SECTION) {
+			CONF_SECTION *subcs1, *subcs2;
+
+			subcs1 = cf_itemtosection(ci);
+			subcs2 = cf_template_copy(cs, subcs1);
+
+			subcs2->item.filename = subcs1->item.filename;
+			subcs2->item.lineno = subcs1->item.lineno;
+
+			cf_item_add(cs, &(subcs2->item));
+			continue;
+		}
+
+		/* ignore everything else */
+	}
+
+	return cs;
+}
+
+
+/*
+ *	Merge the template so everyting else "just works".
+ */
+static bool cf_template_merge(CONF_SECTION *cs, CONF_SECTION const *template)
+{
+	CONF_ITEM *ci;
+
+	if (!cs || !template) return true;
+
+	cs->template = NULL;
+
+	/*
+	 *	Walk over the template, adding its' entries to the
+	 *	current section.  But only if the entries don't
+	 *	already exist in the current section.
+	 */
+	for (ci = template->children; ci; ci = ci->next) {
+		if (ci->type == CONF_ITEM_PAIR) {
+			CONF_PAIR *cp1, *cp2;
+
+			/*
+			 *	It exists, don't over-write it.
+			 */
+			cp1 = cf_itemtopair(ci);
+			if (cf_pair_find(cs, cp1->attr)) {
+				continue;
+			}
+
+			/*
+			 *	Create a new pair with all of the data
+			 *	of the old one.
+			 */
+			cp2 = cf_pair_alloc(cs, cp1->attr, cp1->value, cp1->op, cp1->value_type);
+			if (!cp2) return false;
+
+			cp2->item.filename = cp1->item.filename;
+			cp2->item.lineno = cp1->item.lineno;
+
+			cf_item_add(cs, &(cp2->item));
+			continue;
+		}
+
+		if (ci->type == CONF_ITEM_SECTION) {
+			CONF_SECTION *subcs1, *subcs2;
+
+			subcs1 = cf_itemtosection(ci);
+			subcs2 = cf_section_sub_find_name2(cs, subcs1->name1, subcs1->name2);
+			if (subcs2) {
+				/*
+				 *	sub-sections get merged.
+				 */
+				if (!cf_template_merge(subcs2, subcs1)) {
+					return false;
+				}
+				continue;
+			}
+
+			/*
+			 *	Our section doesn't have a matching
+			 *	sub-section.  Copy it verbatim from
+			 *	the template.
+			 */
+			subcs2 = cf_template_copy(cs, subcs1);
+
+			subcs2->item.filename = subcs1->item.filename;
+			subcs2->item.lineno = subcs1->item.lineno;
+
+			cf_item_add(cs, &(subcs2->item));
+			continue;
+		}
+
+		/* ignore everything else */
+	}
+
+	return true;
+}
+
 static char const *cf_local_file(char const *base, char const *filename,
 				 char *buffer, size_t bufsize)
 {
@@ -1477,6 +1597,17 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			       return -1;
 
 		       }
+
+		       /*
+			*	Merge the template into the existing
+			*	section.  This uses more memory, but
+			*	means that templates now work with
+			*	sub-sections, etc.
+			*/
+		       if (!cf_template_merge(this, this->template)) {
+			       return -1;
+		       }
+
 		       this = this->item.parent;
 		       if (seen_too_much(filename, *lineno, ptr)) return -1;
 		       continue;
