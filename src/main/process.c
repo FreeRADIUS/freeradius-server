@@ -1383,6 +1383,12 @@ int request_receive(rad_listen_t *listener, RADIUS_PACKET *packet,
 	 */
 	if (mainconfig.max_requests &&
 	    ((count = fr_packet_list_num_elements(pl)) > mainconfig.max_requests)) {
+		static time_t last_complained = 0;
+
+		if (last_complained == now.tv_sec) return 0;
+
+		last_complained = now.tv_sec;
+
 		ERROR("Dropping request (%d is too many): from client %s port %d - ID: %d", count,
 		       client->shortname,
 		       packet->src_port, packet->id);
