@@ -212,7 +212,7 @@ TAGS:
 #
 .PHONY: certs
 certs:
-	@cd raddb/certs && $(MAKE)
+	@$(MAKE) -C raddb/certs
 
 ######################################################################
 #
