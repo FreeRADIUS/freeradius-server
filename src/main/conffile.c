@@ -1301,7 +1301,7 @@ static CONF_SECTION *cf_template_copy(CONF_SECTION *parent, CONF_SECTION const *
 			cp2->item.filename = cp1->item.filename;
 			cp2->item.lineno = cp1->item.lineno;
 
-			cf_item_add(cs, &(cp1->item));
+			cf_item_add(cs, &(cp2->item));
 			continue;
 		}
 
