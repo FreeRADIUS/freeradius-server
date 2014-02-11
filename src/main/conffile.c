@@ -2163,12 +2163,17 @@ void cf_file_free(CONF_SECTION *cs)
  */
 CONF_PAIR *cf_pair_find(CONF_SECTION const *cs, char const *name)
 {
-	CONF_PAIR mycp;
+	CONF_PAIR *cp, mycp;
 
 	if (!cs || !name) return NULL;
 
 	mycp.attr = name;
-	return rbtree_finddata(cs->pair_tree, &mycp);
+	cp = rbtree_finddata(cs->pair_tree, &mycp);
+	if (cp) return cp;
+
+	if (!cs->template) return NULL;
+
+	return rbtree_finddata(cs->template->pair_tree, &mycp);
 }
 
 /*
