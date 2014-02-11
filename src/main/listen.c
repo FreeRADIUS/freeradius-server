@@ -3157,7 +3157,8 @@ add_sockets:
 #ifdef WITH_TLS
 		if (!check_config && !spawn_flag && this->tls) {
 			cf_log_err_cs(this->cs, "Threading must be enabled for TLS sockets to function properly");
-			cf_log_err_cs(this->cs, "You probably need to do 'radiusd -fxx -l stdout' for debugging");
+			cf_log_err_cs(this->cs, "You probably need to do '%s -fxx -l stdout' for debugging",
+				      progname);
 			return -1;
 		}
 #endif
