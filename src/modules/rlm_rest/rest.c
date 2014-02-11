@@ -893,10 +893,10 @@ static int rest_decode_post(UNUSED rlm_rest_t *instance,
 
 	while (((q = strchr(p, '=')) != NULL) &&
 	       (count < REST_BODY_MAX_ATTRS)) {
-		attribute = name;
 		reference = request;
 
 		name = curl_easy_unescape(candle, p, (q - p), &curl_len);
+		attribute = name;
 		p = (q + 1);
 
 		RDEBUG("Decoding attribute \"%s\"", name);
@@ -910,7 +910,7 @@ static int rest_decode_post(UNUSED rlm_rest_t *instance,
 			continue;
 		}
 
-		if (!radius_request(&reference, request_name)) {
+		if (radius_request(&reference, request_name)) {
 			RWDEBUG("Attribute name refers to outer request"
 		       	       " but not in a tunnel, skipping");
 
@@ -1000,6 +1000,8 @@ static int rest_decode_post(UNUSED rlm_rest_t *instance,
 			talloc_free(vp);
 			goto skip;
 		}
+
+		if (vps) pairadd(vps, vp);
 
 		if (++count == REST_BODY_MAX_ATTRS) {
 			REDEBUG("At maximum attribute limit");
