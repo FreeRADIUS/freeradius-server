@@ -139,7 +139,7 @@ static REQUEST *request_setup(FILE *fp)
 	request->number = 0;
 
 	request->master_state = REQUEST_ACTIVE;
-	request->child_state = REQUEST_ACTIVE;
+	request->child_state = REQUEST_RUNNING;
 	request->handle = NULL;
 	request->server = talloc_strdup(request, "default");
 
