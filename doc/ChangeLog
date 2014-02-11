@@ -5,11 +5,19 @@ FreeRADIUS 3.0.2 Mon 13 Jan 2014 14:30:00 EDT urgency=medium
 	  operate on binary data.  e.g. expr, base64, md5, sha1.
 	* Added more tests
 	* The dictionaries are now auto-loaded.  raddb/dictionary
-	  no longer needs to $INCLUDE ${prefix}/share/dictionary
+	  should no longer have $INCLUDE ${prefix}/share/dictionary
 	* A "panic_action" can be set to have the server dump a gdb
 	  log on SEGV or other fatal error.
 	* Add support for SHA-224, SHA-256, SHA-384, SHA-512 to rlm_pap.
 	* Add "%{sha256:}" and "%{sha512:}" xlat functions.
+	* Cache CUI in EAP session resumption.
+	* templates can now have sub-sections, which will be included
+	  in the section referencing the template.
+	* Update more dictionaries.
+	* Added more instances of the "always" module, for all return
+	  codes.
+	* Suppress broken NASes when proxying.  Retransmits which occur
+	  more than once per second are limited to only once per second.
 
 	Bug fixes
 	* Fix SQL groups.
@@ -34,6 +42,15 @@ FreeRADIUS 3.0.2 Mon 13 Jan 2014 14:30:00 EDT urgency=medium
 	  correctly with more versions of the library.
 	* In heimdal kerberos, create MEMORY ccaches on a per context basis.
 	  This prevents issues with the root ccache being used.
+	* Fix corner case with proxying, where home server goes down.
+	* Rate-limit "max_requests" complaint.  We don't want to fill the
+	  logs when something goes wrong.
+	* Use /dev/urandom for raddb/certs/random, if it exists.
+	* Issue WARNING that old-style clients should no longer be used.
+	* Auto-set secret to "radsec" for tcp+tls home servers.
+	* Fix double free in home_server_add, when there is a parse error
+	  on startup.
+	* rlm_unix checks if the dictionaries are broken
 
 FreeRADIUS 3.0.1 Mon 13 Jan 2014 14:30:00 EDT urgency=medium
 	Feature improvements
