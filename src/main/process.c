@@ -1500,7 +1500,7 @@ static REQUEST *request_setup(rad_listen_t *listener, RADIUS_PACKET *packet,
 #ifdef DEBUG_STATE_MACHINE
 	if (debug_flag) printf("(%u) ********\tSTATE %s C%u -> C%u\t********\n", request->number, __FUNCTION__, request->child_state, REQUEST_ACTIVE);
 #endif
-	request->child_state = REQUEST_ACTIVE;
+	request->child_state = REQUEST_RUNNING;
 	request->handle = fun;
 #ifdef HAVE_PTHREAD_H
 	request->child_pid = NO_SUCH_CHILD_PID;
@@ -3336,7 +3336,7 @@ static void request_coa_originate(REQUEST *request)
 #ifdef DEBUG_STATE_MACHINE
 	if (debug_flag) printf("(%u) ********\tSTATE %s C%u -> C%u\t********\n", request->number, __FUNCTION__, request->child_state, REQUEST_ACTIVE);
 #endif
-	coa->child_state = REQUEST_ACTIVE;
+	coa->child_state = REQUEST_RUNNING;
 	rad_assert(coa->proxy_reply == NULL);
 	FR_STATS_TYPE_INC(coa->home_server->stats.total_requests);
 	coa->home_server->last_packet_sent = coa->proxy->timestamp.tv_sec;

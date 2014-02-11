@@ -198,6 +198,21 @@ typedef		int (*RAD_REQUEST_FUNP)(REQUEST *);
 #define VERIFY_REQUEST(_x)
 #endif
 
+typedef enum {
+	REQUEST_ACTIVE = 1,
+	REQUEST_STOP_PROCESSING,
+	REQUEST_COUNTED
+} rad_master_state_t;
+
+typedef enum {
+	REQUEST_QUEUED = 1,
+	REQUEST_RUNNING,
+	REQUEST_PROXIED,
+	REQUEST_REJECT_DELAY,
+	REQUEST_CLEANUP_DELAY,
+	REQUEST_DONE
+} rad_child_state_t;
+
 struct request {
 #ifndef NDEBUG
 	uint32_t		magic; 		//!< Magic number used to
@@ -279,8 +294,8 @@ struct request {
 
 	int			delay;
 
-	int			master_state;
-	int			child_state;
+	rad_master_state_t	master_state;
+	rad_child_state_t	child_state;
 	RAD_LISTEN_TYPE		priority;
 
 	int			timer_action;
@@ -318,17 +333,6 @@ struct request {
 #define RAD_REQUEST_OPTION_DEBUG2	(2)
 #define RAD_REQUEST_OPTION_DEBUG3	(3)
 #define RAD_REQUEST_OPTION_DEBUG4	(4)
-
-#define REQUEST_ACTIVE 			(1)
-#define REQUEST_STOP_PROCESSING		(2)
-#define REQUEST_COUNTED			(3)
-
-#define REQUEST_QUEUED			(1)
-#define REQUEST_RUNNING			(2)
-#define REQUEST_PROXIED			(3)
-#define REQUEST_REJECT_DELAY		(4)
-#define REQUEST_CLEANUP_DELAY		(5)
-#define REQUEST_DONE			(6)
 
 typedef struct radclient_list RADCLIENT_LIST;
 
