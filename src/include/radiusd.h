@@ -188,6 +188,7 @@ typedef enum {
 	REQUEST_STOP_PROCESSING,
 	REQUEST_COUNTED
 } rad_master_state_t;
+#define REQUEST_MASTER_NUM_STATES (REQUEST_COUNTED + 1)
 
 typedef enum {
 	REQUEST_QUEUED = 1,
@@ -197,6 +198,7 @@ typedef enum {
 	REQUEST_CLEANUP_DELAY,
 	REQUEST_DONE
 } rad_child_state_t;
+#define REQUEST_CHILD_NUM_STATES (REQUEST_DONE + 1)
 
 struct request {
 #ifndef NDEBUG

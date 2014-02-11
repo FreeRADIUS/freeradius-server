@@ -68,14 +68,14 @@ static char const *action_codes[] = {
 #ifdef DEBUG_STATE_MACHINE
 #define TRACE_STATE_MACHINE if (debug_flag) printf("(%u) ********\tSTATE %s action %s live M-%s C-%s\t********\n", request->number, __FUNCTION__, action_codes[action], master_state_names[request->master_state], child_state_names[request->child_state])
 
-static char const *master_state_names[4] = {
+static char const *master_state_names[REQUEST_MASTER_NUM_STATES] = {
 	"?",
 	"active",
 	"stop-processing",
 	"counted"
 };
 
-static char const *child_state_names[7] = {
+static char const *child_state_names[REQUEST_CHILD_NUM_STATES] = {
 	"?",
 	"queued",
 	"running",
