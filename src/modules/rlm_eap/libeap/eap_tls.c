@@ -154,6 +154,9 @@ int eaptls_success(EAP_HANDLER *handler, int peap_flag)
 		vp = paircopy2(request->packet->vps, PW_STRIPPED_USER_NAME);
 		if (vp) pairadd(&vps, vp);
 
+		vp = paircopy2(request->reply->vps, PW_CHARGEABLE_USER_IDENTITY);
+		if (vp) pairadd(&vps, vp);
+		
 		vp = paircopy2(request->reply->vps, PW_CACHED_SESSION_POLICY);
 		if (vp) pairadd(&vps, vp);
 
