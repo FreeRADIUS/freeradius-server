@@ -1557,7 +1557,7 @@ static int bfd_parse_ip_port(CONF_SECTION *cs, fr_ipaddr_t *ipaddr, int *port)
 	memset(ipaddr, 0, sizeof(*ipaddr));
 	ipaddr->ipaddr.ip4addr.s_addr = htonl(INADDR_NONE);
 	rcode = cf_item_parse(cs, "ipaddr", PW_TYPE_IPADDR,
-			      &ipaddr->ipaddr.ip4addr, NULL);
+			      &ipaddr->ipaddr.ip4addr.s_addr, NULL);
 	if (rcode < 0) return -1;
 
 	if (rcode == 0) { /* successfully parsed IPv4 */
@@ -1751,8 +1751,12 @@ static int bfd_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 		if (IN6_IS_ADDR_UNSPECIFIED(&sock->my_ipaddr.ipaddr.ip6addr)) {
 			int on = 1;
 
-			setsockopt(this->fd, IPPROTO_IPV6, IPV6_V6ONLY,
-				   (char *)&on, sizeof(on));
+			if (setsockopt(this->fd, IPPROTO_IPV6, IPV6_V6ONLY,
+				       (char *)&on, sizeof(on)) < 0) {
+				radlog(L_ERR, "Can't set v6 Only option: %s\n",
+				       strerror(errno));
+			return -1;
+			}
 		}
 #endif /* IPV6_V6ONLY */
 	}
