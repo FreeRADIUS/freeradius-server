@@ -2738,15 +2738,6 @@ int cf_section_migrate(CONF_SECTION *dst, CONF_SECTION *src)
 }
 #endif
 
-int cf_section_template(CONF_SECTION *cs, CONF_SECTION *template)
-{
-	if (!cs || !template || cs->template || template->template) return -1;
-
-	cs->template = template;
-
-	return 0;
-}
-
 
 /*
  *	This is here to make the rest of the code easier to read.  It

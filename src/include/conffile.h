@@ -100,7 +100,6 @@ CONF_PAIR *cf_itemtopair(CONF_ITEM const *item);
 CONF_SECTION *cf_itemtosection(CONF_ITEM const *item);
 CONF_ITEM *cf_pairtoitem(CONF_PAIR const *cp);
 CONF_ITEM *cf_sectiontoitem(CONF_SECTION const *cs);
-int cf_section_template(CONF_SECTION *cs, CONF_SECTION *template);
 void cf_log_err(CONF_ITEM const *ci, char const *fmt, ...)
 #ifdef __GNUC__
 		__attribute__ ((format (printf, 2, 3)))
