@@ -276,7 +276,7 @@ static void bfd_pipe_recv(UNUSED fr_event_list_t *xel, int fd, void *ctx)
 	num = read(fd, &bfd, 4);
 	if ((num < 4) || (bfd.length < (unsigned) 4)) {
 	fail:
-		radlog(L_ERR, "BFD Failed reading from pipe!");
+		ERROR("BFD Failed reading from pipe!");
 		session->blocked = true;
 		return;
 	}
@@ -315,14 +315,13 @@ static int bfd_pthread_create(bfd_state_t *session)
 	pthread_attr_t attr;
 
 	if (pipe(session->pipefd) < 0) {
-		radlog(L_ERR, "Failed opening pipe: %s",
-		       strerror(errno));
+		ERROR("Failed opening pipe: %s", fr_syserror(errno));
 		return 0;
 	}
 
 	session->el = fr_event_list_create(session, NULL);
 	if (!session->el) {
-		radlog(L_ERR, "Failed creating event list");
+		ERROR("Failed creating event list");
 	close_pipes:
 		close(session->pipefd[0]);
 		close(session->pipefd[1]);
@@ -354,8 +353,7 @@ static int bfd_pthread_create(bfd_state_t *session)
 	if (rcode != 0) {
 		talloc_free(session->el);
 		session->el = NULL;
-		radlog(L_ERR, "Thread create failed: %s",
-		       strerror(rcode));
+		ERROR("Thread create failed: %s", fr_syserror(rcode));
 		goto close_pipes;
 	}
 	pthread_attr_destroy(&attr);
@@ -567,7 +565,7 @@ static bfd_state_t *bfd_new_session(bfd_socket_t *sock, int sockfd,
 			   &session->remote_sockaddr, &session->salen);
 
 	if (!rbtree_insert(sock->session_tree, session)) {
-		radlog(L_ERR, "FAILED creating new session!");
+		ERROR("FAILED creating new session!");
 		talloc_free(session);
 		return NULL;
 	}
@@ -882,8 +880,7 @@ static void bfd_send_packet(void *ctx)
 	if (sendto(session->sockfd, &bfd, bfd.length, 0,
 		   (struct sockaddr *) &session->remote_sockaddr,
 		   session->salen) < 0) {
-		radlog(L_ERR, "Failed sending packet: %s",
-		       strerror(errno));
+		ERROR("Failed sending packet: %s", fr_syserror(errno));
 	}
 }
 
@@ -1156,8 +1153,7 @@ static void bfd_poll_response(bfd_state_t *session)
 	if (sendto(session->sockfd, &bfd, bfd.length, 0,
 		   (struct sockaddr *) &session->remote_sockaddr,
 		   session->salen) < 0) {
-		radlog(L_ERR, "Failed sending poll response: %s",
-		       strerror(errno));
+		ERROR("Failed sending poll response: %s", fr_syserror(errno));
 	}
 }
 
@@ -1434,8 +1430,7 @@ static int bfd_socket_recv(rad_listen_t *listener)
 	rcode = recvfrom(listener->fd, &bfd, sizeof(bfd), 0,
 			 (struct sockaddr *)&src, &sizeof_src);
 	if (rcode < 0) {
-		radlog(L_ERR, "Failed receiving packet: %s",
-		       strerror(errno));
+		ERROR("Failed receiving packet: %s", fr_syserror(errno));
 		return 0;
 	}
 
@@ -1719,7 +1714,7 @@ static int bfd_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 
 		this->print(this, buffer, sizeof(buffer));
 
-		radlog(L_ERR, "Failed opening %s: %s", buffer, strerror(errno));
+		ERROR("Failed opening %s: %s", buffer, fr_syserror(errno));
 		return -1;
 	}
 
@@ -1732,7 +1727,7 @@ static int bfd_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	if (rcode >= 0) {
 		if (fcntl(this->fd, F_SETFD, rcode | FD_CLOEXEC) < 0) {
 			close(this->fd);
-			radlog(L_ERR, "Failed setting close on exec: %s", strerror(errno));
+			ERROR("Failed setting close on exec: %s", fr_syserror(errno));
 			return -1;
 		}
 	}
@@ -1753,8 +1748,7 @@ static int bfd_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 
 			if (setsockopt(this->fd, IPPROTO_IPV6, IPV6_V6ONLY,
 				       (char *)&on, sizeof(on)) < 0) {
-				radlog(L_ERR, "Can't set v6 Only option: %s\n",
-				       strerror(errno));
+				ERROR("Can't set v6 Only option: %s", fr_syserror(errno));
 			return -1;
 			}
 		}
@@ -1773,8 +1767,7 @@ static int bfd_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 		int on = 1;
 
 		if (setsockopt(this->fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) < 0) {
-			radlog(L_ERR, "Can't set re-use address option: %s\n",
-			       strerror(errno));
+			ERROR("Can't set re-use address option: %s", fr_syserror(errno));
 			return -1;
 		}
 #endif
@@ -1795,8 +1788,7 @@ static int bfd_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 			close(this->fd);
 
 			this->print(this, buffer, sizeof(buffer));
-			radlog(L_ERR, "Failed binding to %s: %s\n",
-			       buffer, strerror(errno));
+			ERROR("Failed binding to %s: %s", buffer, fr_syserror(errno));
 			return -1;
 		}
 
@@ -1812,14 +1804,13 @@ static int bfd_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 			memset(&src, 0, sizeof_src);
 			if (getsockname(this->fd, (struct sockaddr *) &src,
 					&sizeof_src) < 0) {
-				radlog(L_ERR, "Failed getting socket name: %s",
-				       strerror(errno));
+				ERROR("Failed getting socket name: %s", fr_syserror(errno));
 				return -1;
 			}
 
 			if (!fr_sockaddr2ipaddr(&src, sizeof_src,
 						&sock->my_ipaddr, &sock->my_port)) {
-				radlog(L_ERR, "Socket has unsupported address family");
+				ERROR("Socket has unsupported address family");
 				return -1;
 			}
 		}
@@ -1827,8 +1818,7 @@ static int bfd_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 
 	if (fr_nonblock(this->fd) < 0) {
 		close(this->fd);
-		radlog(L_ERR, "Failed setting non-blocking on socket: %s",
-		       strerror(errno));
+		ERROR("Failed setting non-blocking on socket: %s", fr_syserror(errno));
 		return -1;
 	}
 
@@ -1864,12 +1854,12 @@ static int bfd_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	sock->auth_type = fr_str2int(auth_types, auth_type_str,
 				     BFD_AUTH_INVALID);
 	if (sock->auth_type == BFD_AUTH_INVALID) {
-		radlog(L_ERR, "Unknown auth_type '%s'", auth_type_str);
+		ERROR("Unknown auth_type '%s'", auth_type_str);
 		exit(1);
 	}
 
 	if (sock->auth_type == BFD_AUTH_SIMPLE) {
-		radlog(L_ERR, "'simple' authentication is insecure and is not supported.");
+		ERROR("'simple' authentication is insecure and is not supported.");
 		exit(1);
 	}
 
@@ -1877,14 +1867,14 @@ static int bfd_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 		sock->secret_len = bfd_parse_secret(cs, sock->secret);
 
 		if (sock->secret_len == 0) {
-			radlog(L_ERR, "Cannot have empty secret");
+			ERROR("Cannot have empty secret");
 			exit(1);
 		}
 
 		if (((sock->auth_type == BFD_AUTH_KEYED_MD5) ||
 		     (sock->auth_type == BFD_AUTH_MET_KEYED_MD5)) &&
 		    (sock->secret_len > 16)) {
-			radlog(L_ERR, "Secret must be no more than 16 bytes when using MD5");
+			ERROR("Secret must be no more than 16 bytes when using MD5");
 			exit(1);
 		}
 	}
@@ -1892,7 +1882,7 @@ static int bfd_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 
 	sock->session_tree = rbtree_create(bfd_session_cmp, bfd_session_free, 0);
 	if (!sock->session_tree) {
-		radlog(L_ERR, "Failed creating session tree!");
+		ERROR("Failed creating session tree!");
 		exit(1);
 	}
 

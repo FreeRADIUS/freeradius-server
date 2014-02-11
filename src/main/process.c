@@ -3642,7 +3642,7 @@ static void listener_free_cb(void *ctx)
 
 		fr_event_now(el, &when);
 		when.tv_sec += 3;
-		
+
 		if (!fr_event_insert(el, listener_free_cb, this, &when,
 				     &(sock->ev))) {
 			rad_panic("Failed to insert event");
@@ -3802,8 +3802,7 @@ int event_new_fd(rad_listen_t *this)
 			PTHREAD_MUTEX_LOCK(&proxy_mutex);
 			if (!fr_packet_list_socket_freeze(proxy_list,
 							  this->fd)) {
-				radlog(L_ERR, "Fatal error freezing socket: %s",
-				       fr_strerror());
+				ERROR("Fatal error freezing socket: %s", fr_strerror());
 				fr_exit(1);
 			}
 			PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
@@ -3924,7 +3923,7 @@ int event_new_fd(rad_listen_t *this)
 
 		/*
 		 *	No child threads, clean it up now.
-		 */		
+		 */
 		if (!spawn_flag) {
 			if (sock->ev) fr_event_delete(el, &sock->ev);
 			listen_free(&this);
@@ -3936,7 +3935,7 @@ int event_new_fd(rad_listen_t *this)
 		 */
 		gettimeofday(&when, NULL);
 		when.tv_sec += 3;
-		
+
 		if (!fr_event_insert(el, listener_free_cb, this, &when,
 				     &(sock->ev))) {
 			rad_panic("Failed to insert event");
@@ -4292,7 +4291,7 @@ static int request_delete_cb(UNUSED void *ctx, void *data)
 #endif
 
 	request->in_request_hash = false;
-	if (request->ev) fr_event_delete(el, &request->ev);	
+	if (request->ev) fr_event_delete(el, &request->ev);
 
 	request_free(&request);
 
