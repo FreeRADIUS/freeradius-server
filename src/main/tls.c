@@ -2536,7 +2536,7 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 					     vp;
 					     vp = fr_cursor_next(&cursor)) {
 						vp_prints(buf, sizeof(buf), vp);
-						fprintf(vp_file, "\t%s%s\n", buf, ",");
+						fprintf(vp_file, "\t%s,\n", buf);
 					}
 					fclose(vp_file);
 				}
