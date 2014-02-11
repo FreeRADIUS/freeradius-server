@@ -601,6 +601,7 @@ static void request_cleanup_delay_init(REQUEST *request, struct timeval const *p
 	struct timeval now, when;
 
 	if (request->packet->code == PW_CODE_ACCOUNTING_REQUEST) goto done;
+
 	if (!request->root->cleanup_delay) goto done;
 
 	if (pnow) {
@@ -2486,6 +2487,7 @@ static int request_proxy(REQUEST *request, int retransmit)
 #ifdef HAVE_PTHREAD_H
 	request->child_pid = NO_SUCH_CHILD_PID;
 #endif
+	request->child_state = REQUEST_PROXIED;
 	FR_STATS_TYPE_INC(request->home_server->stats.total_requests);
 	request->proxy_listener->send(request->proxy_listener,
 				      request);
