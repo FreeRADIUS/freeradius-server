@@ -29,12 +29,13 @@ include scripts/boiler.mk
 #
 $(BUILD_DIR)/tests/radiusd-c: ${BUILD_DIR}/bin/radiusd | build.raddb
 	@$(MAKE) -C raddb/certs
+	@printf "radiusd -C... "
 	@if ! ./build/make/jlibtool --mode=execute ./build/bin/radiusd -XCMd ./raddb -n debug -D ./share > $(BUILD_DIR)/tests/radiusd.config.log 2>&1; then \
 		cat $(BUILD_DIR)/tests/radiusd.config.log; \
-		echo "FAIL: radiusd -C"; \
+		echo "fail"; \
 		exit 1; \
 	fi
-	@echo "OK: radiusd -C"
+	@echo "ok"
 	@touch $@
 
 test: ${BUILD_DIR}/bin/radiusd ${BUILD_DIR}/bin/radclient tests.unit tests.keywords $(BUILD_DIR)/tests/radiusd-c | build.raddb
