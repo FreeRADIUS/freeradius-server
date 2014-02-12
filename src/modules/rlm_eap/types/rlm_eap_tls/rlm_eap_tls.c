@@ -160,6 +160,8 @@ static int load_dh_params(SSL_CTX *ctx, char *file)
 	DH *dh = NULL;
 	BIO *bio;
 
+	if (!ctx || !file) return 0;
+
 	if ((bio = BIO_new_file(file, "r")) == NULL) {
 		radlog(L_ERR, "rlm_eap_tls: Unable to open DH file - %s", file);
 		return -1;
