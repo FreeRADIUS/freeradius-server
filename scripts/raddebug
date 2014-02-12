@@ -77,7 +77,7 @@ fi
 #  Debug to a file, and then tell us where the file is.
 #
 outfile=`$radmin -e "debug file radmin.debug.$$" -e "show debug file"`
-group=`$radmin -e "debug file radmin.debug.$$" -e "show config group"`
+group=`$radmin -e "debug file radmin.debug.$$" -e "show config security.group"`
 
 #
 #  If there was an error setting the debug output, re-set the
