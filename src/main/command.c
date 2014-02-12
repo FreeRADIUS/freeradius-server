@@ -850,15 +850,54 @@ static int command_debug_condition(UNUSED rad_listen_t *listener, int argc, char
 		return 0;
 	}
 
-	p = buffer;
-	*p = '\0';
-	for (i = 0; i < argc; i++) {
-		size_t len;
-
-		len = strlcpy(p, argv[i], buffer + sizeof(buffer) - p);
-		p += len;
-		*(p++) = ' ';
+	if (!((argc == 1) &&
+	      ((argv[0][0] == '"') || (argv[0][0] == '\'')))) {
+		p = buffer;
 		*p = '\0';
+		for (i = 0; i < argc; i++) {
+			size_t len;
+			
+			len = strlcpy(p, argv[i], buffer + sizeof(buffer) - p);
+			p += len;
+			*(p++) = ' ';
+			*p = '\0';
+		}
+
+	} else {
+		/*
+		 *	Backwards compatibility.  De-escape the string.
+		 */
+		char quote;
+		char *q;
+
+		p = argv[0];
+		q = buffer;
+
+		quote = *(p++);
+
+		while (true) {
+			if (!*p) {
+				ERROR("Failed parsing condition '%s': Unexpected end of string", argv[0]);
+				return 0;
+			}
+
+			if (*p == quote) {
+				if (p[1]) {
+					ERROR("Failed parsing condition '%s': Unexpected text after end of string", argv[0]);
+					return 0;
+				}
+				*q = '\0';
+				break;
+			}
+
+			if (*p == '\\') {
+				*(q++) = p[1];
+				p += 2;
+				continue;
+			}
+
+			*(q++) = *(p++);
+		}
 	}
 
 	if (fr_condition_tokenize(NULL, NULL, buffer, &new_condition, &error, FR_COND_ONE_PASS) < 0) {
