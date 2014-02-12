@@ -844,27 +844,44 @@ static int command_debug_file(rad_listen_t *listener, int argc, char *argv[])
 extern fr_cond_t *debug_condition;
 static int command_debug_condition(UNUSED rad_listen_t *listener, int argc, char *argv[])
 {
+	int i;
 	char const *error;
-
-	/*
-	 *	Delete old condition.
-	 *
-	 *	This is thread-safe because the condition is evaluated
-	 *	in the main server thread, along with code.
-	 */
-	talloc_free(debug_condition);
-	debug_condition = NULL;
+	fr_cond_t *new_condition = NULL;
+	char *p, buffer[1024];
 
 	/*
 	 *	Disable it.
 	 */
 	if (argc == 0) {
+		talloc_free(debug_condition);
+		debug_condition = NULL;
 		return 0;
 	}
 
-	if (fr_condition_tokenize(NULL, NULL, argv[0], &debug_condition, &error, FR_COND_ONE_PASS) < 0) {
-		ERROR("Failed parsing condition '%s': %s", argv[0], error);
+	p = buffer;
+	*p = '\0';
+	for (i = 0; i < argc; i++) {
+		size_t len;
+
+		len = strlcpy(p, argv[i], buffer + sizeof(buffer) - p);
+		p += len;
+		*(p++) = ' ';
+		*p = '\0';
 	}
+
+	if (fr_condition_tokenize(NULL, NULL, buffer, &new_condition, &error, FR_COND_ONE_PASS) < 0) {
+		ERROR("Failed parsing condition '%s': %s", buffer, error);
+		return 0;
+	}
+
+	/*
+	 *	Delete old condition.
+	 *
+	 *	This is thread-safe because the condition is evaluated
+	 *	in the main server thread, along with this code.
+	 */
+	talloc_free(debug_condition);
+	debug_condition = new_condition;
 
 	return 0;
 }
@@ -2268,8 +2285,6 @@ static int command_socket_print(rad_listen_t const *this, char *buffer, size_t b
 static int str2argvX(char *str, char **argv, int max_argc)
 {
 	int argc = 0;
-	size_t len;
-	char buffer[1024];
 
 	while (*str) {
 		if (argc >= max_argc) return argc;
@@ -2289,29 +2304,31 @@ static int str2argvX(char *str, char **argv, int max_argc)
 
 		if (!*str) return argc;
 
+		argv[argc++] = str;
+
 		if ((*str == '\'') || (*str == '"')) {
-			char const *p = str;
-			FR_TOKEN token;
+			char quote = *str;
+			char *p = str + 1;
 
-			token = gettoken(&p, buffer, sizeof(buffer));
-			if ((token != T_SINGLE_QUOTED_STRING) &&
-			    (token != T_DOUBLE_QUOTED_STRING)) {
-				return -1;
+			while (true) {
+				if (!*p) return -1;
+
+				if (*p == quote) {
+					str = p + 1;
+					break;
+				}
+
+				/*
+				 *	Handle \" and nothing else.
+				 */
+				if (*p == '\\') {
+					p += 2;
+					continue;
+				}
+
+				p++;
 			}
-
-			len = strlen(buffer);
-			if (len >= (size_t) (p - str)) {
-				return -1;
-			}
-
-			memcpy(str, buffer, len + 1);
-			argv[argc] = str;
-
-			memcpy(&str, &p, sizeof(str));
-		} else {
-			argv[argc] = str;
 		}
-		argc++;
 
 		while (*str &&
 		       (*str != ' ') &&
