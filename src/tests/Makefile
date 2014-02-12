@@ -64,7 +64,7 @@ test.conf: dictionary
 radiusd.pid: $(RADDB_PATH)/test.conf test.conf
 	@rm -f $(TEST_PATH)/gdb.log $(TEST_PATH)/radius.log
 	@printf "Starting server... "
-	@if ! $(BIN_PATH)/radiusd -Ptxxxxml $(TEST_PATH)/radius.log -d $(RADDB_PATH) -n test -i 127.0.0.1 -p $(PORT) -D $(TEST_PATH) > $(TEST_PATH)/gdb.log 2>&1; then\
+	@if ! $(BIN_PATH)/radiusd -Ptxxxxml $(TEST_PATH)/radius.log -d $(RADDB_PATH) -n test -i 127.0.0.1 -p $(PORT) -D $(TEST_PATH); then\
 		echo "failed"; \
 		echo "Last log entries were:"; \
 		tail -n 20 "$(TEST_PATH)/radius.log"; \
