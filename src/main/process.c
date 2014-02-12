@@ -4359,6 +4359,8 @@ void radius_event_free(void)
 	pl = NULL;
 
 	fr_event_list_free(el);
+
+	if (debug_condition) talloc_free(debug_condition);
 }
 
 int radius_event_process(void)
