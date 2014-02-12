@@ -3,7 +3,7 @@ FreeRADIUS 3.0.2 Mon 13 Jan 2014 14:30:00 EDT urgency=medium
 	* Allow cast (and implicit conversion) of integers to IPv4 addresses
 	* More xlats allow attribute references.  This means they can
 	  operate on binary data.  e.g. expr, base64, md5, sha1.
-	* Added more tests
+	* Added more tests.
 	* The dictionaries are now auto-loaded.  raddb/dictionary
 	  should no longer have $INCLUDE ${prefix}/share/dictionary
 	* A "panic_action" can be set to have the server dump a gdb
@@ -26,7 +26,7 @@ FreeRADIUS 3.0.2 Mon 13 Jan 2014 14:30:00 EDT urgency=medium
 	  is not in_use.
 	* Fix %{mschap:User-Name} xlat.
 	* Allow comparisons of signed integers and of ethernet addresses.
-	* Fix parsing of text based ascend binary filters
+	* Fix parsing of text based ascend binary filters.
 	* Fix a few minor Coverity and clang analyzer issues.
 	* Log WARNING and ERROR prefixes only once, not twice.
 	* Allow '&' in more xlat expansions.
@@ -50,7 +50,8 @@ FreeRADIUS 3.0.2 Mon 13 Jan 2014 14:30:00 EDT urgency=medium
 	* Auto-set secret to "radsec" for tcp+tls home servers.
 	* Fix double free in home_server_add, when there is a parse error
 	  on startup.
-	* rlm_unix checks if the dictionaries are broken
+	* rlm_unix checks if the dictionaries are broken.
+	* Fix issues in decoding POST responses in rlm_rest.
 
 FreeRADIUS 3.0.1 Mon 13 Jan 2014 14:30:00 EDT urgency=medium
 	Feature improvements
