@@ -247,7 +247,7 @@ static int base64_decode (const char *src, uint8_t *dst)
 static void normify(REQUEST *request, VALUE_PAIR *vp, size_t min_length)
 {
 	size_t decoded;
-	uint8_t buffer[64];
+	uint8_t buffer[256];
 
 	if (min_length >= sizeof(buffer)) return; /* paranoia */
 
@@ -255,7 +255,7 @@ static void normify(REQUEST *request, VALUE_PAIR *vp, size_t min_length)
 	 *	Hex encoding.
 	 */
 	if (vp->length >= (2 * min_length)) {
-		decoded = fr_hex2bin(vp->vp_strvalue, buffer, vp->length >> 1);
+		decoded = fr_hex2bin(vp->vp_strvalue, buffer, sizeof(buffer));
 		if (decoded == (vp->length >> 1)) {
 			RDEBUG2("Normalizing %s from hex encoding", vp->name);
 			memcpy(vp->vp_octets, buffer, decoded);
