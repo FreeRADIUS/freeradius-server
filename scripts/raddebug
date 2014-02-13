@@ -54,7 +54,7 @@ do
   t)	timeout="$OPTARG"
 	[ "$timeout" = "0" ] && timeout=1000000
 	;;
-  u)	condition="(User-Name == $OPTARG)"
+  u)	condition="(User-Name == '$OPTARG')"
 	;;
   ?)	usage
 	;;
