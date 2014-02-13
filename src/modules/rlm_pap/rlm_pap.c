@@ -123,7 +123,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 static void normify(REQUEST *request, VALUE_PAIR *vp, size_t min_length)
 {
 
-	uint8_t buffer[64];
+	uint8_t buffer[256];
 
 	if (min_length >= sizeof(buffer)) return; /* paranoia */
 
@@ -132,9 +132,10 @@ static void normify(REQUEST *request, VALUE_PAIR *vp, size_t min_length)
 	 */
 	if (vp->length >= (2 * min_length)) {
 		size_t decoded;
-		decoded = fr_hex2bin(buffer, vp->vp_strvalue, vp->length >> 1);
+		decoded = fr_hex2bin(buffer, vp->vp_strvalue, sizeof(buffer));
 		if (decoded == (vp->length >> 1)) {
-			RDEBUG2("Normalizing %s from hex encoding", vp->da->name);
+			RDEBUG2("Normalizing %s from hex encoding, %zu bytes -> %zu bytes",
+				vp->da->name, vp->length, decoded);
 			pairmemcpy(vp, buffer, decoded);
 			return;
 		}
@@ -150,7 +151,8 @@ static void normify(REQUEST *request, VALUE_PAIR *vp, size_t min_length)
 					   sizeof(buffer));
 		if (decoded < 0) return;
 		if (decoded >= (ssize_t) min_length) {
-			RDEBUG2("Normalizing %s from base64 encoding", vp->da->name);
+			RDEBUG2("Normalizing %s from base64 encoding, %zu bytes -> %zu bytes",
+				vp->da->name, vp->length, decoded);
 			pairmemcpy(vp, buffer, decoded);
 			return;
 		}
