@@ -24,7 +24,9 @@ CREATE TABLE radacct (
 	NASPortId		text,
 	NASPortType		text,
 	AcctStartTime		timestamp with time zone,
+	AcctUpdateTime		timestamp with time zone,
 	AcctStopTime		timestamp with time zone,
+	AcctInterval		bigint,
 	AcctSessionTime		bigint,
 	AcctAuthentic		text,
 	ConnectInfo_start	text,
@@ -36,9 +38,7 @@ CREATE TABLE radacct (
 	AcctTerminateCause	text,
 	ServiceType		text,
 	FramedProtocol		text,
-	FramedIPAddress		inet,
-	AcctStartDelay		integer,
-	AcctStopDelay		integer
+	FramedIPAddress		inet
 );
 -- This index may be useful..
 -- CREATE UNIQUE INDEX radacct_whoson on radacct (AcctStartTime, nasipaddress);
