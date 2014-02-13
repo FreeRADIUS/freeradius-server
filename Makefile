@@ -30,7 +30,7 @@ include scripts/boiler.mk
 $(BUILD_DIR)/tests/radiusd-c: ${BUILD_DIR}/bin/radiusd | build.raddb
 	@$(MAKE) -C raddb/certs
 	@printf "radiusd -C... "
-	@if ! ./build/make/jlibtool --mode=execute ./build/bin/radiusd -XCMd ./raddb -n debug -D ./share > $(BUILD_DIR)/tests/radiusd.config.log 2>&1; then \
+	@if ! ./build/make/jlibtool --mode=execute ./build/bin/radiusd -XCMd ./raddb -n debug -D ./share | tee $(BUILD_DIR)/tests/radiusd.config.log 2>&1; then \
 		cat $(BUILD_DIR)/tests/radiusd.config.log; \
 		echo "fail"; \
 		exit 1; \
