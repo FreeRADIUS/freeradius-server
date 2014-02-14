@@ -18,7 +18,10 @@ FreeRADIUS 3.0.2 Mon 13 Jan 2014 14:30:00 EDT urgency=medium
 	  codes.
 	* Suppress broken NASes when proxying.  Retransmits which occur
 	  more than once per second are limited to only once per second.
-
+	* Allow '&' in more xlat expansions.
+	* Update PostgreSQL schema and queries to record last updated 
+	  time, and accounting interim.
+	
 	Bug fixes
 	* Fix SQL groups.
 	* Fix operation of fr_strerror() with RE*() macros.
@@ -29,7 +32,6 @@ FreeRADIUS 3.0.2 Mon 13 Jan 2014 14:30:00 EDT urgency=medium
 	* Fix parsing of text based ascend binary filters.
 	* Fix a few minor Coverity and clang analyzer issues.
 	* Log WARNING and ERROR prefixes only once, not twice.
-	* Allow '&' in more xlat expansions.
 	* Fix attribute truncation seen in Perl and other places.
 	* Use correct port when DHCP relaying.
 	* Fix behaviour on FreeBSD where sending packets from an interface
@@ -52,6 +54,9 @@ FreeRADIUS 3.0.2 Mon 13 Jan 2014 14:30:00 EDT urgency=medium
 	  on startup.
 	* rlm_unix checks if the dictionaries are broken.
 	* Fix issues in decoding POST responses in rlm_rest.
+	* Fix potential memory corruption when normalising salted password
+	  hashes from hex, where the combined hash and salt was > 64 bytes.
+	* Register rlm_sqlcounter attributes correctly.
 
 FreeRADIUS 3.0.1 Mon 13 Jan 2014 14:30:00 EDT urgency=medium
 	Feature improvements
