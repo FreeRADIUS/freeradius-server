@@ -40,7 +40,7 @@ case "$1" in
     start)
         log_daemon_msg "Starting $DESCR" "$PROG"
 
-        # eval allows quoted arguments (filters for example) to be passed in $RADSNIFF_OPTIONS  
+        # eval allows quoted arguments (filters for example) to be passed in $RADSNIFF_OPTIONS
         eval "start_daemon -p '$PIDFILE' '$PROGRAM' -P '$PIDFILE' -N '$PROG' $RADSNIFF_OPTIONS" || ret=$?
         log_end_msg $ret
         ;;
@@ -48,9 +48,25 @@ case "$1" in
     stop)
         log_daemon_msg "Stopping $DESCR" "$PROG"
 
-        killproc -p "$PIDFILE" || ret=$?
-        log_end_msg $ret
-        ;;
+        if [ -f "$PIDFILE" ]; then
+            pid=`cat $PIDFILE`
+            killproc -p "$PIDFILE" || ret=$?
+
+            # radsniff shuts down everything gracefully which may take a little time
+            # we need to delay returning from stop because the pid file is unlinked
+            # last (as it should be), and if start_daemon finds it, it declines to
+            # start radsniff again.
+            if [ $pid != '' ] && ps $pid > /dev/null; then
+                for i in {1..5}; do
+                    if ! ps $pid > /dev/null; then break; fi;
+                    sleep 0.5
+                done
+                if [ $i -eq 5 ]; then
+                    ret=1
+                fi
+            fi
+
+        fi
 
     restart|force-reload)
         $0 stop
