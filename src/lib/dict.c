@@ -632,7 +632,7 @@ const int dict_attr_allowed_chars[256] = {
 /*
  *	Add an attribute to the dictionary.
  */
-int dict_addattr(char const *name, int attr, unsigned int vendor, int type,
+int dict_addattr(char const *name, int attr, unsigned int vendor, PW_TYPE type,
 		 ATTR_FLAGS flags)
 {
 	size_t namelen;
