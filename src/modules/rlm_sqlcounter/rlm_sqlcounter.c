@@ -438,7 +438,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 * Create a new attribute for the check item.
 	 */
 	rad_assert(inst->check_name && *inst->check_name);
-	dict_addattr(inst->check_name, 0, PW_TYPE_INTEGER, -1, flags);
+	dict_addattr(inst->check_name, -1, 0, PW_TYPE_INTEGER, flags);
 	da = dict_attrbyname(inst->check_name);
 	if (!da) {
 		cf_log_err_cs(conf, "Failed to create check attribute %s", inst->check_name);

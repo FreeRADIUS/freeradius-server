@@ -417,7 +417,7 @@ int		str2argv(char *str, char **argv, int max_argc);
 int		dict_str2oid(char const *ptr, unsigned int *pattr,
 			     unsigned int *pvendor, int tlv_depth);
 int		dict_addvendor(char const *name, unsigned int value);
-int		dict_addattr(char const *name, int attr, unsigned int vendor, int type, ATTR_FLAGS flags);
+int		dict_addattr(char const *name, int attr, unsigned int vendor, PW_TYPE type, ATTR_FLAGS flags);
 int		dict_addvalue(char const *namestr, char const *attrstr, int value);
 int		dict_init(char const *dir, char const *fn);
 void		dict_free(void);
