@@ -57,11 +57,11 @@ case "$1" in
             # last (as it should be), and if start_daemon finds it, it declines to
             # start radsniff again.
             if [ $pid != '' ] && ps $pid > /dev/null; then
-                for i in {1..5}; do
+                for i in {5..0}; do
                     if ! ps $pid > /dev/null; then break; fi;
                     sleep 0.5
                 done
-                if [ $i -eq 5 ]; then
+                if [ $i -eq 0 ]; then
                     ret=1
                 fi
             fi
