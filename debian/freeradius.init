@@ -50,7 +50,8 @@ case "$1" in
     start)
         log_daemon_msg "Starting $DESCR" "$PROG"
 
-        start_daemon -p "$PIDFILE" "$PROGRAM" $FREERADIUS_OPTIONS || ret=$?
+        # eval allows quoted arguments (config directories for example) to be passed in $FREERADIUS_OPTIONS
+        eval "start_daemon -p '$PIDFILE' '$PROGRAM' $FREERADIUS_OPTIONS" || ret=$?
         log_end_msg $ret
         ;;
 
