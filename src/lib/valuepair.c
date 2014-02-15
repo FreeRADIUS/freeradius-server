@@ -1306,7 +1306,7 @@ bool pairparsevalue(VALUE_PAIR *vp, char const *value)
 			 */
 			p = strchr(value, '/');
 			if (p) {
-				if ((p[1] != '3') || (p[2] != '2')) {
+				if ((p[1] != '3') || (p[2] != '2') || (p[3] != '\0')) {
 					fr_strerror_printf("Invalid IP address suffix \"%s\".  Only '/32' permitted "
 							   "for non-prefix types", p);
 					return false;
