@@ -300,6 +300,33 @@ int rlm_sql_fetch_row(rlm_sql_handle_t **handle, rlm_sql_t *inst)
 	return ret;
 }
 
+static void rlm_sql_query_error(rlm_sql_handle_t **handle, rlm_sql_t *inst)
+{
+	char const *p, *q;
+
+	p = (inst->module->sql_error)(*handle, inst->config);
+	if (!p) {
+		ERROR("rlm_sql (%s): Unknown query error", inst->config->xlat_name);
+		return;
+	}
+
+	/*
+	 *	Some drivers are nice and provide us with a ^ pointer to
+	 *	the place in the query string where the error occurred.
+	 *
+	 *	For this to be useful we need to split log messages on
+	 *	\n and output each of the lines individually.
+	 */
+	while ((q = strchr(p, '\n'))) {
+		ERROR("rlm_sql (%s): %.*s", inst->config->xlat_name, (int) (q - p), p);
+		p = q + 1;
+	}
+
+	if (*p != '\0') {
+		ERROR("rlm_sql (%s): %s", inst->config->xlat_name, p);
+	}
+}
+
 /*************************************************************************
  *
  *	Function: rlm_sql_query
@@ -323,8 +350,7 @@ int rlm_sql_query(rlm_sql_handle_t **handle, rlm_sql_t *inst, char const *query)
 	}
 
 	while (1) {
-		DEBUG("rlm_sql (%s): Executing query: '%s'",
-		      inst->config->xlat_name, query);
+		DEBUG("rlm_sql (%s): Executing query: '%s'", inst->config->xlat_name, query);
 
 		ret = (inst->module->sql_query)(*handle, inst->config, query);
 		/*
@@ -338,12 +364,7 @@ int rlm_sql_query(rlm_sql_handle_t **handle, rlm_sql_t *inst, char const *query)
 
 			continue;
 		}
-
-		if (ret < 0) {
-			char const *error = (inst->module->sql_error)(*handle, inst->config);
-			ERROR("rlm_sql (%s): Database query error: %s",
-			      inst->config->xlat_name, error ? error : "<UNKNOWN>");
-		}
+		if (ret < 0) rlm_sql_query_error(handle, inst);
 
 		return ret;
 	}
@@ -372,8 +393,7 @@ int rlm_sql_select_query(rlm_sql_handle_t **handle, rlm_sql_t *inst, char const 
 	}
 
 	while (1) {
-		DEBUG("rlm_sql (%s): Executing query: '%s'",
-		      inst->config->xlat_name, query);
+		DEBUG("rlm_sql (%s): Executing query: '%s'", inst->config->xlat_name, query);
 
 		ret = (inst->module->sql_select_query)(*handle, inst->config, query);
 		/*
@@ -387,12 +407,7 @@ int rlm_sql_select_query(rlm_sql_handle_t **handle, rlm_sql_t *inst, char const 
 
 			continue;
 		}
-
-		if (ret < 0) {
-			char const *error = (inst->module->sql_error)(*handle, inst->config);
-			ERROR("rlm_sql (%s): Database query error '%s'",
-			      inst->config->xlat_name, error ? error : "<UNKNOWN>");
-		}
+		if (ret < 0) rlm_sql_query_error(handle, inst);
 
 		return ret;
 	}
