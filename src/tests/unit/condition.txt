@@ -332,3 +332,5 @@ data &User-Name == "bob"
 condition (&User-Name == "%{sql: blah}")
 data &User-Name == "%{sql: blah}"
 
+condition <ipaddr>127.0.0.1 == 2130706433
+data true
