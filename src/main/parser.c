@@ -950,7 +950,7 @@ done:
 	 *	difference, but it simplifies the run-time code in
 	 *	evaluate.c
 	 */
-	if (c->type == COND_TYPE_MAP) {
+	if (c->type == COND_TYPE_MAP) do {
 		/*
 		 *	!FOO !~ BAR --> FOO =~ BAR
 		 */
@@ -986,6 +986,10 @@ done:
 			c->data.map->op = T_OP_CMP_EQ;
 		}
 
+		/*
+		 *	Is a data type.  e.g. IP address, integer,
+		 *	etc.
+		 */
 		if ((c->data.map->dst->type == VPT_TYPE_DATA) &&
 		    (c->data.map->src->type == VPT_TYPE_DATA)) {
 			int rcode;
@@ -1002,9 +1006,41 @@ done:
 			} else {
 				c->type = COND_TYPE_FALSE;
 			}
-		}
-	}
 
+			break;	/* don't do the next check */
+		}
+		
+		/*
+		 *	Two literal strings.  They're not parsed as
+		 *	VPT_TYPE_DATA because there's no cast to an
+		 *	attribute.
+		 */
+		if ((c->data.map->src->type == VPT_TYPE_LITERAL) &&
+		    (c->data.map->dst->type == VPT_TYPE_LITERAL)) {
+			int rcode;
+
+			rad_assert(c->cast == NULL);
+			rad_assert(c->regex_i == false);
+				
+			rcode = radius_evaluate_map(NULL, 0, 0, c);
+			if (rcode) {
+				c->type = COND_TYPE_TRUE;
+			} else {
+				c->type = COND_TYPE_FALSE;
+			}
+
+			/*
+			 *	Free map after using it above.
+			 */
+			talloc_free(c->data.map);
+			c->data.map = NULL;
+			break;
+		}
+	} while (0);
+
+	/*
+	 *	!TRUE -> FALSE
+	 */
 	if (c->type == COND_TYPE_TRUE) {
 		if (c->negate) {
 			c->negate = false;
@@ -1012,6 +1048,9 @@ done:
 		}
 	}
 
+	/*
+	 *	!FALSE -> TRUE
+	 */
 	if (c->type == COND_TYPE_FALSE) {
 		if (c->negate) {
 			c->negate = false;
