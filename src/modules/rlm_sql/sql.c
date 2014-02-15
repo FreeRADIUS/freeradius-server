@@ -254,7 +254,7 @@ int sql_userparse(TALLOC_CTX *ctx, VALUE_PAIR **head, rlm_sql_row_t row)
 		}
 	} else {
 		if (!pairparsevalue(vp, value)) {
-			ERROR("rlm_sql: Error parsing value");
+			ERROR("rlm_sql: Error parsing value: %s", fr_strerror());
 
 			talloc_free(vp);
 			return -1;
@@ -421,7 +421,7 @@ int sql_getvpdata(rlm_sql_t * inst, rlm_sql_handle_t **handle,
 		if (!row)
 			break;
 		if (sql_userparse(ctx, pair, row) != 0) {
-			ERROR("rlm_sql (%s): Error getting data from database", inst->config->xlat_name);
+			ERROR("rlm_sql (%s): Error parsing user data from database result", inst->config->xlat_name);
 
 			(inst->module->sql_finish_select_query)(*handle, inst->config);
 

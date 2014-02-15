@@ -1208,10 +1208,9 @@ bool pairparsevalue(VALUE_PAIR *vp, char const *value)
 		 *	cannot be resolved, or resolve later!
 		 */
 		p = NULL;
-		cs = value;
-
 		{
 			fr_ipaddr_t ipaddr;
+			char ipv4[16];
 
 			/*
 			 *	Convert things which are obviously integers to IP addresses
@@ -1222,6 +1221,25 @@ bool pairparsevalue(VALUE_PAIR *vp, char const *value)
 			if (fr_integer_check(value)) {
 				vp->vp_ipaddr = htonl(atol(value));
 				break;
+			}
+
+			/*
+			 *	Certain applications/databases print IPv4 addresses with a
+			 *	/32 suffix. Strip it off if the mask is 32, else error out.
+			 */
+			p = strchr(value, '/');
+			if (p) {
+				if ((p[1] != '3') || (p[2] != '2')) {
+					fr_strerror_printf("Invalid IP address suffix \"%s\".  Only '/32' permitted "
+							   "for non-prefix types", p);
+					return false;
+				}
+
+				strlcpy(ipv4, value, sizeof(ipv4));
+				ipv4[p - value] = '\0';
+				cs = ipv4;
+			} else {
+				cs = value;
 			}
 
 			if (ip_hton(cs, AF_INET, &ipaddr) < 0) {

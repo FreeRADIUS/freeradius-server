@@ -334,3 +334,7 @@ data &User-Name == "%{sql: blah}"
 
 condition <ipaddr>127.0.0.1 == 2130706433
 data true
+
+# /32 suffix should be trimmed for this type
+condition <ipaddr>127.0.0.1/32 == 127.0.0.1
+data true
