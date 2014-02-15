@@ -4,12 +4,6 @@
 #  $Id$
 #
 
-condition a == b
-data a == b
-
-condition a == b || c == d
-data a == b || c == d
-
 #
 #  A bunch of errors, in the order that the error strings
 #  appear in parser.c
@@ -63,8 +57,11 @@ data ERROR offset 7 Unexpected start of string
 condition ((((((a))))))
 data a
 
-condition (a == b)
-data a == b
+#
+#  Extra braces get squashed
+#
+condition (&User-Name == &User-Password)
+data &User-Name == &User-Password
 
 condition (!a)
 data !a
@@ -81,21 +78,21 @@ data a
 #
 #  These next two are identical after normalization
 #
-condition (a == b || c == d)
-data a == b || c == d
+condition (&User-Name == &User-Password || &Filter-Id == &Reply-Message)
+data &User-Name == &User-Password || &Filter-Id == &Reply-Message
 
-condition ((a == b) || (c == d))
-data a == b || c == d
+condition ((&User-Name == &User-Password) || (&Filter-Id == &Reply-Message))
+data &User-Name == &User-Password || &Filter-Id == &Reply-Message
 
-condition (!(a == b) || (c == d))
-data !a == b || c == d
+condition (!(&User-Name == &User-Password) || (&Filter-Id == &Reply-Message))
+data !&User-Name == &User-Password || &Filter-Id == &Reply-Message
 
 #  different from the previous ones.
-condition (!((a == b) || (c == d)))
-data !(a == b || c == d)
+condition (!((&User-Name == &User-Password) || (&Filter-Id == &Reply-Message)))
+data !(&User-Name == &User-Password || &Filter-Id == &Reply-Message)
 
-condition (!(a == b) || (c == d))
-data !a == b || c == d
+condition (!(&User-Name == &User-Password) || (&Filter-Id == &Reply-Message))
+data !&User-Name == &User-Password || &Filter-Id == &Reply-Message
 
 condition ((a == b) || (c == d)))
 data ERROR offset 22 Unexpected closing brace
@@ -144,14 +141,14 @@ data foo =~ /bar/
 #
 #  Convert != to !(COND) for normal checks
 #
-condition foo == "bar"
-data foo == "bar"
+condition &User-Name == &User-Password
+data &User-Name == &User-Password
 
-condition foo != "bar"
-data !foo == "bar"
+condition &User-Name != &User-Password
+data !&User-Name == &User-Password
 
-condition !foo != "bar"
-data foo == "bar"
+condition !&User-Name != &User-Password
+data &User-Name == &User-Password
 
 condition <ipv6addr>foo
 data ERROR offset 0 Cannot do cast for existence check
@@ -274,7 +271,23 @@ condition true || (User-Name == "bob")
 data true
 
 #
-#  Both sides literals: evaluate at parse time.
+#  Both sides static data with a cast: evaluate at parse time.
 #
 condition <integer>20 < 100
 data true
+
+#
+#  Both sides literal: evaluate at parse time
+#
+condition ('foo' == 'bar')
+data false
+
+condition ('foo' < 'bar')
+data false
+
+condition ('foo' > 'bar')
+data true
+
+condition ('foo' == 'foo')
+data true
+
