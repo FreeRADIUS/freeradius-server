@@ -368,6 +368,11 @@ attribute is compared to the literal string "Filter-Id".
 Where the left-hand side is an attribute, the "&" can be omitted.
 However, it is allowed for completeness.  e.g. The comparison
 "(&User-Name == &Filter-Id)" is equivalent to the example above.
+
+We recommend using attribute references instead of printing
+attributes to a string, via (User-Name == "%{Filter-Id}").
+Attribute references will be faster and more efficient.
+
 .RE
 .IP Casts
 .DS
@@ -699,6 +704,13 @@ reference.  The "Attribute-Name" is an attribute name, such as
 used, both attributes must have the same data type.  For example,
 "User-Name := &NAS-Port" is invalid, because "User-Name" is a string,
 and "NAS-Port" is an integer.
+
+We recommend using the form "Attribute-1 = &Attribute-2" for updates,
+instead of "Attribute-1 = "%{Attribute-2}".  The first version will
+copy the attribute data, no matter what its form.  The second
+version will print the Attribute-2 to a string, and then parse it to
+create the value for Attribute-1.  This second version is slower
+and more fragile than the first one.
 
 When the value is an attribute-specific string, it can be a string,
 integer, IP address, etc.  The value may be expanded as described
