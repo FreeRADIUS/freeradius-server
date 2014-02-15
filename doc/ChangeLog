@@ -19,9 +19,11 @@ FreeRADIUS 3.0.2 Mon 13 Jan 2014 14:30:00 EDT urgency=medium
 	* Suppress broken NASes when proxying.  Retransmits which occur
 	  more than once per second are limited to only once per second.
 	* Allow '&' in more xlat expansions.
-	* Update PostgreSQL schema and queries to record last updated 
+	* Update PostgreSQL schema and queries to record last updated
 	  time, and accounting interim.
-	
+	* Optimize more "if" conditions when the server loads.
+	  This avoids work at run time.  e.g. "foo" == "bar" --> FALSE.
+
 	Bug fixes
 	* Fix SQL groups.
 	* Fix operation of fr_strerror() with RE*() macros.
