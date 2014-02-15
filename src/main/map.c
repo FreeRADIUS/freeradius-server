@@ -150,6 +150,7 @@ value_pair_tmpl_t *radius_attr2tmpl(TALLOC_CTX *ctx, char const *name,
  */
 value_pair_tmpl_t *radius_str2tmpl(TALLOC_CTX *ctx, char const *name, FR_TOKEN type)
 {
+	char const *p;
 	value_pair_tmpl_t *vpt;
 
 	vpt = talloc_zero(ctx, value_pair_tmpl_t);
@@ -162,8 +163,8 @@ value_pair_tmpl_t *radius_str2tmpl(TALLOC_CTX *ctx, char const *name, FR_TOKEN t
 		if (!isdigit((int) *name)) {
 			request_refs_t ref;
 			pair_lists_t list;
-			char const *p = name;
 
+			p = name;
 			ref = radius_request_name(&p, REQUEST_CURRENT);
 			if (ref == REQUEST_UNKNOWN) goto literal;
 
@@ -195,7 +196,28 @@ value_pair_tmpl_t *radius_str2tmpl(TALLOC_CTX *ctx, char const *name, FR_TOKEN t
 		vpt->type = VPT_TYPE_LITERAL;
 		break;
 	case T_DOUBLE_QUOTED_STRING:
-		vpt->type = VPT_TYPE_XLAT;
+		p = name;
+		while (*p) {
+			if (*p == '\\') {
+				if (!p[1]) break;
+				p += 2;
+				continue;
+			}
+
+			if (*p == '%') break;
+
+			p++;
+		}
+
+		/*
+		 *	"foo" is a literal string, and doesn't need to
+		 *	be expanded at run time.
+		 */
+		if (*p) {
+			vpt->type = VPT_TYPE_XLAT;
+		} else {
+			vpt->type = VPT_TYPE_LITERAL;
+		}
 		break;
 	case T_BACK_QUOTED_STRING:
 		vpt->type = VPT_TYPE_EXEC;
