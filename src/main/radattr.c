@@ -754,6 +754,19 @@ static void process_file(const char *root_dir, char const *filename)
 			continue;
 		}
 
+		if (strncmp(p, "attribute ", 10) == 0) {
+			p += 10;
+
+			if (userparse(NULL, p, &head) != T_EOL) {
+				strlcpy(output, fr_strerror(), sizeof(output));
+				continue;
+			}
+
+			len = vp_prints(output, sizeof(output), head);
+			outlen = len;
+			continue;
+		}
+
 		if (strncmp(p, "$INCLUDE ", 9) == 0) {
 			char *q;
 
