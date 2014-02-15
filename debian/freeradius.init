@@ -22,24 +22,24 @@ set -e
 . /lib/lsb/init-functions
 
 test_freeradius_config() {
-  log_action_begin_msg "Checking $DESCR configuration"
+    log_action_begin_msg "Checking $DESCR configuration"
 
-  out=`$PROGRAM -Cxl stdout $FREERADIUS_OPTIONS`; ret=$?
-  out=`echo "${out}" | tail -n 1 | sed 's/^\s*ERROR:\s*\(.*\)\s*$/\1/'`
-  log_action_end_msg $ret "$out"
-  return $ret
+    out=`$PROGRAM -Cxl stdout $FREERADIUS_OPTIONS`; ret=$?
+    out=`echo "${out}" | tail -n 1 | sed 's/^\s*ERROR:\s*\(.*\)\s*$/\1/'`
+    log_action_end_msg $ret "$out"
+    return $ret
 }
 
 if [ -r /etc/default/$PROG ]; then
-  . /etc/default/$PROG
+    . /etc/default/$PROG
 fi
 
 test -f $PROGRAM || exit 0
 
 # /var/run may be a tmpfs
 if [ ! -d /var/run/freeradius ]; then
-  mkdir -p /var/run/freeradius
-  chown freerad:freerad /var/run/freeradius
+    mkdir -p /var/run/freeradius
+    chown freerad:freerad /var/run/freeradius
 fi
 
 export PATH="${PATH:+$PATH:}/usr/sbin:/sbin"
@@ -47,54 +47,58 @@ export PATH="${PATH:+$PATH:}/usr/sbin:/sbin"
 ret=0
 
 case "$1" in
-        start)
-                log_daemon_msg "Starting $DESCR" "$PROG"
+    start)
+        log_daemon_msg "Starting $DESCR" "$PROG"
 
-                start_daemon -p "$PIDFILE" "$PROGRAM" $FREERADIUS_OPTIONS || ret=$?
-                log_end_msg $ret
-                ;;
+        start_daemon -p "$PIDFILE" "$PROGRAM" $FREERADIUS_OPTIONS || ret=$?
+        log_end_msg $ret
+        ;;
 
-        stop)
-                log_daemon_msg "Stopping $DESCR" "$PROG"
+    stop)
+        log_daemon_msg "Stopping $DESCR" "$PROG"
 
-                killproc -p "$PIDFILE" || ret=$?
-                log_end_msg $ret
-                ;;
+        killproc -p "$PIDFILE" || ret=$?
+        log_end_msg $ret
+        ;;
 
-        restart|force-reload)
-                test_freeradius_config || exit $?
+    restart|force-reload)
+        test_freeradius_config || exit $?
 
-                $0 stop
-                $0 start
-                ;;
+        $0 stop
+        $0 start
+        ;;
 
-        reload)
-                test_freeradius_config || exit $?
+    reload)
+        test_freeradius_config || exit $?
 
-                if status_of_proc -p "$PIDFILE" "$PROG" "$DESCR"; then
-                  log_daemon_msg "Reloading $DESCR" "$PROG"
+        if status_of_proc -p "$PIDFILE" "$PROG" "$DESCR"; then
+            log_daemon_msg "Reloading $DESCR" "$PROG"
 
-                  start-stop-daemon --stop --signal HUP --quiet --pidfile $PIDFILE || ret=$?
-                  log_end_msg $ret
-                fi
-                ;;
+            start-stop-daemon --stop --signal HUP --quiet --pidfile $PIDFILE || ret=$?
+            log_end_msg $ret
+        fi
+        ;;
 
-        configtest|testconfig)
-                test_freeradius_config || exit $?
-                ;;
+    configtest|testconfig)
+        test_freeradius_config || exit $?
+        ;;
 
-        debug)
-                $PROGRAM -X $FREERADIUS_OPTIONS
-                ;;
+    debug)
+        $PROGRAM -X $FREERADIUS_OPTIONS
+        ;;
 
-        status)
-                status_of_proc -p "$PIDFILE" "$PROGRAM" "$PROG" && exit 0 || exit $?
-                ;;
+    debug-threaded)
+        $PROGRAM -f -xx -l stdout $FREERADIUS_OPTIONS
+        ;;
 
-        *)
-                echo "Usage: $0 start|stop|restart|force-reload|reload|configtest|debug|status"
-                exit 1
-                ;;
+    status)
+        status_of_proc -p "$PIDFILE" "$PROGRAM" "$PROG" && exit 0 || exit $?
+        ;;
+
+    *)
+        echo "Usage: $0 start|stop|restart|force-reload|reload|configtest|debug|debug-threaded|status"
+        exit 1
+        ;;
 esac
 
 exit 0
