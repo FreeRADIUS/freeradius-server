@@ -338,3 +338,6 @@ data true
 # /32 suffix should be trimmed for this type
 condition <ipaddr>127.0.0.1/32 == 127.0.0.1
 data true
+
+condition <ipaddr>127.0.0.1/327 == 127.0.0.1
+data ERROR offset 8 Failed to parse field
