@@ -59,6 +59,7 @@ FreeRADIUS 3.0.2 Mon 13 Jan 2014 14:30:00 EDT urgency=medium
 	* Fix potential memory corruption when normalising salted password
 	  hashes from hex, where the combined hash and salt was > 64 bytes.
 	* Register rlm_sqlcounter attributes correctly.
+	* Don't mangle error output of SQL drivers like PostgreSQL
 
 FreeRADIUS 3.0.1 Mon 13 Jan 2014 14:30:00 EDT urgency=medium
 	Feature improvements
