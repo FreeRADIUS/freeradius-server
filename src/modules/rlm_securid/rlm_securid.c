@@ -498,8 +498,11 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 	username = request->username->vp_strvalue;
 	password = request->password->vp_strvalue;
 
-	RDEBUG("User [%s] login attempt with password [%s]",
-	       username, password);
+	if (RDEBUG_ENABLED3) {
+		RDEBUG3("Login attempt with password \"%s\"", password);
+	} else {
+		RDEBUG("Login attempt with password");
+	}
 
 	rcode = securidAuth(inst, request, username, password,
 			    buffer, sizeof(buffer));

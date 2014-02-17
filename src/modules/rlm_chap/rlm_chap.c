@@ -95,12 +95,15 @@ static rlm_rcode_t mod_authenticate(UNUSED void *instance,
 			REDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 		}
 
-		REDEBUG("Clear-Text password is required for authentication");
+		REDEBUG("Cleartext password is required for authentication");
 		return RLM_MODULE_INVALID;
 	}
 
-	RDEBUG("Using Clear-Text password \"%s\" for user %s authentication.",
-	      passwd_item->vp_strvalue, request->username->vp_strvalue);
+	if (RDEBUG_ENABLED3) {
+		RDEBUG3("Comparing with \"known good\" Cleartext-Password \"%s\"", passwd_item->vp_strvalue);
+	} else {
+		RDEBUG2("Comparing with \"known good\" Cleartext-Password");
+	}
 
 	rad_chap_encode(request->packet,pass_str,
 			chap->vp_octets[0],passwd_item);

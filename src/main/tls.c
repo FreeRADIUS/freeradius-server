@@ -415,7 +415,7 @@ int tls_handshake_recv(REQUEST *request, tls_session_t *ssn)
 }
 
 /*
- *	Take clear-text user data, and encrypt it into the output buffer,
+ *	Take cleartext user data, and encrypt it into the output buffer,
  *	to send to the client at the other end of the SSL connection.
  */
 int tls_handshake_send(REQUEST *request, tls_session_t *ssn)
@@ -2005,7 +2005,8 @@ static SSL_CTX *init_tls_ctx(fr_tls_server_conf_t *conf, int client)
 
 			/* Get rid of newline at end of password. */
 			conf->private_key_password[strlen(conf->private_key_password) - 1] = '\0';
-			DEBUG2("tls:  Password from command = \"%s\"", conf->private_key_password);
+
+			DEBUG3("tls:  Password from command = \"%s\"", conf->private_key_password);
 		}
 #endif
 		SSL_CTX_set_default_passwd_cb_userdata(ctx, conf->private_key_password);
