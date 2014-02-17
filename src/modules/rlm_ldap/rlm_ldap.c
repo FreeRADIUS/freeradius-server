@@ -208,7 +208,7 @@ static const CONF_PARSER module_config[] = {
 	{"server", PW_TYPE_STRING_PTR | PW_TYPE_REQUIRED, offsetof(ldap_instance_t,server), NULL, "localhost"},
 	{"port", PW_TYPE_INTEGER, offsetof(ldap_instance_t,port), NULL, "389"},
 
-	{"password", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t,password), NULL, ""},
+	{"password", PW_TYPE_STRING_PTR | PW_TYPE_SECRET, offsetof(ldap_instance_t,password), NULL, ""},
 	{"identity", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t,admin_dn), NULL, ""},
 
 	{"valuepair_attribute", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, valuepair_attr), NULL, NULL},

@@ -38,7 +38,7 @@ static const CONF_PARSER module_config[] = {
 	  offsetof(REDIS_INST, port), NULL, "6379"},
 	{ "database", PW_TYPE_INTEGER,
 	  offsetof(REDIS_INST, database), NULL, "0"},
-	{ "password", PW_TYPE_STRING_PTR,
+	{ "password", PW_TYPE_STRING_PTR | PW_TYPE_SECRET,
 	  offsetof(REDIS_INST, password), NULL, NULL},
 
 	{ NULL, -1, 0, NULL, NULL} /* end the list */
