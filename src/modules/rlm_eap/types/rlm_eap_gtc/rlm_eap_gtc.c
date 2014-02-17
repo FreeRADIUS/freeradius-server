@@ -170,7 +170,7 @@ static int mod_authenticate(void *instance, eap_handler_t *handler)
 	 */
 	if (inst->auth_type == PW_AUTHTYPE_LOCAL) {
 		/*
-		 *	For now, do clear-text password authentication.
+		 *	For now, do cleartext password authentication.
 		 */
 		vp = pairfind(request->config_items, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY);
 		if (!vp) {
