@@ -88,7 +88,7 @@ static rlm_rcode_t mod_authenticate(UNUSED void *instance,
 		if (pairfind(request->config_items, PW_USER_PASSWORD, 0, TAG_ANY) != NULL){
 			REDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 			REDEBUG("!!! Please update your configuration so that the \"known !!!");
-			REDEBUG("!!! good\" clear text password is in Cleartext-Password, !!!");
+			REDEBUG("!!! good\" cleartext password is in Cleartext-Password,  !!!");
 			REDEBUG("!!! and NOT in User-Password.                            !!!");
 			REDEBUG("!!!						          !!!");
 			REDEBUG("!!! Authentication will fail because of this.	          !!!");

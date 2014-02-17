@@ -378,7 +378,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 			return RLM_MODULE_NOOP;
 		}
 
-		RDEBUG2("No clear-text password in the request.  Not performing PAP");
+		RDEBUG2("No cleartext password in the request.  Not performing PAP");
 		return RLM_MODULE_NOOP;
 	}
 

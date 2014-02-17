@@ -1283,7 +1283,7 @@ static rlm_rcode_t mod_authorize(void * instance, REQUEST *request)
 
 	/*
 	 *	Set Auth-Type to MS-CHAP.  The authentication code
-	 *	will take care of turning clear-text passwords into
+	 *	will take care of turning cleartext passwords into
 	 *	NT/LM passwords.
 	 */
 	if (!pairmake_config("Auth-Type", inst->auth_type, T_OP_EQ)) {

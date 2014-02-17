@@ -196,7 +196,7 @@ typedef struct ldap_instance {
  	/*
 	 *	eDir support
 	 */
-	bool		edir;				//!< If true attempt to retrieve the user's Cleartext password
+	bool		edir;				//!< If true attempt to retrieve the user's cleartext password
 							//!< using the Universal Password feature of Novell eDirectory.
 	bool		edir_autz;			//!< If true, and we have the Universal Password, bind with it
 							//!< to perform additional authorisation checks.
