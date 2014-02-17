@@ -45,8 +45,6 @@ typedef struct conf_data CONF_DATA;
 #define PW_TYPE_REQUIRED	(1 << 11)	//!< CONF_PAIR is required, server will not start without this
 						//!< config item.
 #define PW_TYPE_ATTRIBUTE	(1 << 12)	//!< CONF_PAIR value must exist in the dictionary as an attribute.
-#define PW_TYPE_NO_OVERWRITE    (1 << 13)	//!< CONF_PAIR cannot overwrite a value which has already been set
-						//!< in the target structure.
 
 typedef struct CONF_PARSER {
   char const *name;
