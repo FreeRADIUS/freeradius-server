@@ -948,7 +948,12 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 		pairstrcpy(vp, password);
 		vp->length = pass_size;
 
-		RDEBUG2("Added eDirectory password.  control:%s += '%s'", vp->da->name, vp->vp_strvalue);
+		if (RDEBUG_ENABLED3) {
+			RDEBUG3("Added eDirectory password.  control:%s += '%s'", vp->da->name, vp->vp_strvalue);
+		} else {
+			RDEBUG2("Added eDirectory password");
+		}
+
 		if (inst->edir_autz) {
 			RDEBUG2("Binding as user for eDirectory authorization checks");
 			/*
