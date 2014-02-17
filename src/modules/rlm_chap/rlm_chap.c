@@ -88,19 +88,22 @@ static rlm_rcode_t mod_authenticate(UNUSED void *instance,
 		if (pairfind(request->config_items, PW_USER_PASSWORD, 0, TAG_ANY) != NULL){
 			REDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 			REDEBUG("!!! Please update your configuration so that the \"known !!!");
-			REDEBUG("!!! good\" clear text password is in Cleartext-Password, !!!");
+			REDEBUG("!!! good\" cleartext password is in Cleartext-Password,  !!!");
 			REDEBUG("!!! and NOT in User-Password.                            !!!");
 			REDEBUG("!!!						          !!!");
 			REDEBUG("!!! Authentication will fail because of this.	          !!!");
 			REDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 		}
 
-		REDEBUG("Clear-Text password is required for authentication");
+		REDEBUG("Cleartext password is required for authentication");
 		return RLM_MODULE_INVALID;
 	}
 
-	RDEBUG("Using Clear-Text password \"%s\" for user %s authentication.",
-	      passwd_item->vp_strvalue, request->username->vp_strvalue);
+	if (RDEBUG_ENABLED3) {
+		RDEBUG3("Comparing with \"known good\" Cleartext-Password \"%s\"", passwd_item->vp_strvalue);
+	} else {
+		RDEBUG2("Comparing with \"known good\" Cleartext-Password");
+	}
 
 	rad_chap_encode(request->packet,pass_str,
 			chap->vp_octets[0],passwd_item);
