@@ -523,7 +523,7 @@ static const CONF_PARSER client_config[] = {
 	{ "require_message_authenticator",  PW_TYPE_BOOLEAN,
 	  offsetof(RADCLIENT, message_authenticator), 0, "no" },
 
-	{ "secret",  PW_TYPE_STRING_PTR,
+	{ "secret",  PW_TYPE_STRING_PTR | PW_TYPE_SECRET,
 	  offsetof(RADCLIENT, secret), 0, NULL },
 	{ "shortname",  PW_TYPE_STRING_PTR,
 	  offsetof(RADCLIENT, shortname), 0, NULL },

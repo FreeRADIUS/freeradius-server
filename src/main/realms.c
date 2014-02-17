@@ -338,7 +338,7 @@ static CONF_PARSER home_server_config[] = {
 	  0, &hs_proto, NULL },
 #endif
 
-	{ "secret",  PW_TYPE_STRING_PTR,
+	{ "secret",  PW_TYPE_STRING_PTR | PW_TYPE_SECRET,
 	  offsetof(home_server_t,secret), NULL,  NULL},
 
 	{ "src_ipaddr",  PW_TYPE_STRING_PTR,

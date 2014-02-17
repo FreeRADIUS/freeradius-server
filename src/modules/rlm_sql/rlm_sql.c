@@ -54,7 +54,7 @@ static const CONF_PARSER module_config[] = {
 	 offsetof(rlm_sql_config_t,sql_port), NULL, ""},
 	{"login", PW_TYPE_STRING_PTR,
 	 offsetof(rlm_sql_config_t,sql_login), NULL, ""},
-	{"password", PW_TYPE_STRING_PTR,
+	{"password", PW_TYPE_STRING_PTR | PW_TYPE_SECRET,
 	 offsetof(rlm_sql_config_t,sql_password), NULL, ""},
 	{"radius_db", PW_TYPE_STRING_PTR,
 	 offsetof(rlm_sql_config_t,sql_db), NULL, "radius"},

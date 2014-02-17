@@ -40,7 +40,7 @@ static CONF_PARSER tls_config[] = {
 	  offsetof(rlm_rest_section_t,tls_certificate_file), NULL, NULL},
 	{ "private_key_file", PW_TYPE_FILE_INPUT,
 	  offsetof(rlm_rest_section_t,tls_private_key_file), NULL, NULL },
-	{ "private_key_password", PW_TYPE_STRING_PTR,
+	{ "private_key_password", PW_TYPE_STRING_PTR | PW_TYPE_SECRET,
 	  offsetof(rlm_rest_section_t, tls_private_key_password), NULL, NULL },
 	{ "random_file", PW_TYPE_STRING_PTR, /* OK if it changes on HUP */
 	  offsetof(rlm_rest_section_t,tls_random_file), NULL, NULL },

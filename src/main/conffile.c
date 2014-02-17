@@ -869,7 +869,7 @@ static char const *parse_spaces = "                                             
 int cf_item_parse(CONF_SECTION *cs, char const *name, int type, void *data, char const *dflt)
 {
 	int rcode;
-	bool deprecated, required, attribute;
+	bool deprecated, required, attribute, secret;
 	char **q;
 	char const *value;
 	fr_ipaddr_t ipaddr;
@@ -881,6 +881,7 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, int type, void *data, char
 	deprecated = (type & PW_TYPE_DEPRECATED);
 	required = (type & PW_TYPE_REQUIRED);
 	attribute = (type & PW_TYPE_ATTRIBUTE);
+	secret = (type & PW_TYPE_SECRET);
 
 	type &= 0xff;		/* normal types are small */
 	rcode = 0;
@@ -994,8 +995,16 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, int type, void *data, char
 			}
 		}
 
-		cf_log_info(cs, "%.*s\t%s = \"%s\"",
-			    cs->depth, parse_spaces, name, value ? value : "(null)");
+		/*
+		 *	Hide secrets when using "radiusd -X".
+		 */
+		if (secret && (debug_flag <= 2)) {
+			cf_log_info(cs, "%.*s\t%s = <<< secret >>>",
+				    cs->depth, parse_spaces, name);
+		} else {
+			cf_log_info(cs, "%.*s\t%s = \"%s\"",
+				    cs->depth, parse_spaces, name, value ? value : "(null)");
+		}
 		*q = value ? talloc_strdup(cs, value) : NULL;
 		break;
 
