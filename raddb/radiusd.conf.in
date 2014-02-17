@@ -147,7 +147,7 @@ pidfile = ${run_dir}/${name}.pid
 #
 #  An example panic action for opening an automated session in GDB would be:
 #
-#panic_action = "gdb -silent -x ${raddbdir}/panic.gdb %e %p 2>&1 | tee ${logdir}/gdb-%e-%p.log"
+#panic_action = "gdb -silent -x ${raddbdir}/panic.gdb %e %p 2>&1 | tee ${logdir}/gdb-${name}-%p.log"
 #
 #  That command can be used on a production system.
 #
