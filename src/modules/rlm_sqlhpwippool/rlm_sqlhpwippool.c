@@ -47,6 +47,8 @@
 #define RLM_NETVIM_MAX_ROWS 1000000
 #define RLM_NETVIM_TMP_PREFIX "auth-tmp-"
 
+#define MAX_QUERY_LEN 4096
+
 static char const rcsid[] = "$Id$";
 
 typedef struct rlm_sqlhpwippool_t {
