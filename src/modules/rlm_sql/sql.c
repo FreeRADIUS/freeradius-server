@@ -459,6 +459,7 @@ void rlm_sql_query_log(rlm_sql_t *inst, REQUEST *request,
 	int fd;
 	char const *filename = NULL;
 	char *expanded = NULL;
+	size_t len;
 
 	if (section) {
 		filename = section->logfile;
@@ -483,7 +484,8 @@ void rlm_sql_query_log(rlm_sql_t *inst, REQUEST *request,
 		return;
 	}
 
-	if ((rad_lockfd(fd, MAX_QUERY_LEN) < 0) || (write(fd, query, strlen(query)) < 0) || (write(fd, ";\n", 2) < 0)) {
+	len = strlen(query);
+	if ((rad_lockfd(fd, len + 2) < 0) || (write(fd, query, len) < 0) || (write(fd, ";\n", 2) < 0)) {
 		ERROR("rlm_sql (%s): Failed writing to logfile '%s': %s", inst->config->xlat_name, expanded,
 		       fr_syserror(errno));
 	}

@@ -31,6 +31,8 @@ RCSID("$Id$")
 
 #include <rlm_sql.h>
 
+#define MAX_QUERY_LEN 4096
+
 /*
  *	Define a structure for our module configuration.
  */

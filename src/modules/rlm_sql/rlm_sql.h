@@ -14,8 +14,6 @@ RCSIDH(rlm_sql_h, "$Id$")
 #include	<freeradius-devel/connection.h>
 #include	<freeradius-devel/modpriv.h>
 
-#define MAX_QUERY_LEN		4096
-
 #define PW_ITEM_CHECK		0
 #define PW_ITEM_REPLY		1
 
