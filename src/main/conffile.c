@@ -444,6 +444,7 @@ static void cf_item_add(CONF_SECTION *cs, CONF_ITEM *ci)
 
 			case CONF_ITEM_SECTION: {
 				CONF_SECTION *cs_new = cf_itemtosection(ci);
+				CONF_SECTION *name1_cs;
 
 				if (!cs->section_tree) {
 					cs->section_tree = rbtree_create(section_cmp, NULL, 0);
@@ -453,32 +454,40 @@ static void cf_item_add(CONF_SECTION *cs, CONF_ITEM *ci)
 					}
 				}
 
-				rbtree_insert(cs->section_tree, cs_new);
+				name1_cs = rbtree_finddata(cs->section_tree, cs_new);
+				if (!name1_cs) {
+					if (!rbtree_insert(cs->section_tree, cs_new)) {
+						ERROR("Failed inserting section into tree");
+						fr_exit_now(1);
+					}
+				}
 
 				/*
-				 *	Two names: find the named instance.
+				 *	We already have a section of
+				 *	this "name1".  Add a new
+				 *	sub-section based on name2.
 				 */
-				{
-					CONF_SECTION *old_cs;
+				if (name1_cs) {
+					if (!name1_cs->name2_tree) {
+						name1_cs->name2_tree = rbtree_create(name2_cmp,
+										     NULL, 0);
+						if (!name1_cs->name2_tree) {
+							ERROR("Out of memory");
+							fr_exit_now(1);
+						}
+					}
 
 					/*
-					 *	Find the FIRST
-					 *	CONF_SECTION having
-					 *	the given name1, and
-					 *	create a new tree
-					 *	under it.
+					 *	We don't care if this
+					 *	fails.  If the user
+					 *	tries to create two
+					 *	sections of the same
+					 *	name1/name2, the
+					 *	duplicate section is
+					 *	just silently ignored.
 					 */
-					old_cs = rbtree_finddata(cs->section_tree, cs_new);
-					if (!old_cs) return; /* this is a bad error! */
-
-					if (!old_cs->name2_tree) {
-						old_cs->name2_tree = rbtree_create(name2_cmp,
-										   NULL, 0);
-					}
-					if (old_cs->name2_tree) {
-						rbtree_insert(old_cs->name2_tree, cs_new);
-					}
-				} /* had a name2 */
+					rbtree_insert(name1_cs->name2_tree, cs_new);
+				}
 				break;
 			} /* was a section */
 
@@ -2442,11 +2451,10 @@ CONF_SECTION *cf_section_sub_find_name2(CONF_SECTION const *cs,
 			continue;
 		
 		subcs = cf_itemtosection(ci);
-		if (!subcs->name2) {
-			if (!name2) return subcs;
-			continue;
-		}
-		if (!name2) continue;
+		if (!subcs->name2 && name2) continue;
+		if (subcs->name2 && !name2) continue;
+
+		if (!subcs->name2 && !name2) return subcs;
 
 		if (strcmp(subcs->name2, name2) == 0) {
 			return subcs;
