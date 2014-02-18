@@ -2397,7 +2397,7 @@ CONF_SECTION *cf_section_sub_find_name2(CONF_SECTION const *cs,
 {
 	CONF_ITEM    *ci;
 
-	if (!cs) cs = mainconfig.config;
+	if (!cs) cs = root_config;
 	if (!cs) return NULL;
 
 	if (name1) {
