@@ -255,8 +255,8 @@ static int name2_cmp(const void *a, const void *b)
 	rad_assert(strcmp(one->name1, two->name1) == 0);
 
 	if (!one->name2 && !two->name2) return 0;
-	if (!one->name2) return -1;
-	if (!two->name2) return +1;
+	if (one->name2 && !two->name2) return -1;
+	if (!one->name2 && two->name2) return +1;
 
 	return strcmp(one->name2, two->name2);
 }
