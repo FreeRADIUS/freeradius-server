@@ -4295,10 +4295,6 @@ static int request_delete_cb(UNUSED void *ctx, void *data)
 {
 	REQUEST *request = fr_packet2myptr(REQUEST, packet, data);
 
-#ifdef WITH_PROXY
-	rad_assert(request->in_proxy_hash == false);
-#endif
-
 	request->master_state = REQUEST_STOP_PROCESSING;
 
 	/*
@@ -4308,6 +4304,10 @@ static int request_delete_cb(UNUSED void *ctx, void *data)
 
 #ifdef HAVE_PTHREAD_H
 	if (pthread_equal(request->child_pid, NO_SUCH_CHILD_PID) == 0) return 0;
+#endif
+
+#ifdef WITH_PROXY
+	rad_assert(request->in_proxy_hash == false);
 #endif
 
 	request->in_request_hash = false;
