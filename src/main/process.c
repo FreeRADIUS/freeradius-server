@@ -4351,7 +4351,6 @@ void radius_event_free(void)
 		 */
 #ifdef HAVE_PTHREAD_H
 		thread_pool_stop();
-		ASSERT_MASTER;
 #endif
 
 		/*
@@ -4359,18 +4358,22 @@ void radius_event_free(void)
 		 *	requests are done.
 		 */
 		if (mainconfig.memory_report) {
+			int num;
+
 #ifdef WITH_PROXY
 			if (proxy_list) {
 				fr_packet_list_walk(proxy_list, NULL, proxy_delete_cb);
-				if (fr_packet_list_num_elements(proxy_list) > 0) {
-					ERROR("Requests are left in the proxy list");
+				num = fr_packet_list_num_elements(proxy_list);
+				if (num > 0) {
+					ERROR("Proxy list has %d requests still in it.", num);
 				}
 			}
 #endif
 
 			fr_packet_list_walk(pl, NULL, request_delete_cb);
-			if (fr_packet_list_num_elements(pl) > 0) {
-				ERROR("Requests are left in the request list");
+			num = fr_packet_list_num_elements(pl);
+			if (num > 0) {
+				ERROR("Request list has %d requests still in it.", num);
 			}
 		}
 	}
