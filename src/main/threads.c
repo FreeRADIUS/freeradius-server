@@ -1049,6 +1049,8 @@ void thread_pool_stop(void)
 	THREAD_HANDLE *handle;
 	THREAD_HANDLE *next;
 
+	if (!pool_initialized) return;
+
 	/*
 	 *	Set pool stop flag.
 	 */
