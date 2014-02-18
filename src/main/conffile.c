@@ -2416,8 +2416,12 @@ CONF_SECTION *cf_section_sub_find_name2(CONF_SECTION const *cs,
 			continue;
 		
 		subcs = cf_itemtosection(ci);
-		if (!subcs->name2) continue;
-		
+		if (!subcs->name2) {
+			if (!name2) return subcs;
+			continue;
+		}
+		if (!name2) continue;
+
 		if (strcmp(subcs->name2, name2) == 0) {
 			return subcs;
 		}
