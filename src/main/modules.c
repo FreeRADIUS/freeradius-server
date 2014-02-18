@@ -870,6 +870,13 @@ static int define_type(CONF_SECTION *cs, DICT_ATTR const *da, char const *name)
 	return 1;
 }
 
+/*
+ *	Don't complain too often.
+ */
+#define MAX_IGNORED (32)
+static int last_ignored = -1;
+static char const *ignored[MAX_IGNORED];
+
 static int load_component_section(CONF_SECTION *cs,
 				  rbtree_t *components, rlm_components_t comp)
 {
@@ -974,7 +981,27 @@ static int load_component_section(CONF_SECTION *cs,
 		 *	It's OK for the module to not exist.
 		 */
 		if (!this && modname && (modname[0] == '-')) {
-			WDEBUG("Ignoring \"%s\" (see raddb/mods-available/README.rst)", modname + 1);
+			int i;
+
+			if (last_ignored < 0) {
+			save_complain:
+				last_ignored++;
+				ignored[last_ignored] = modname;
+
+			complain:
+				WDEBUG("Ignoring \"%s\" (see raddb/mods-available/README.rst)", modname + 1);
+				continue;
+			}
+
+			if (last_ignored >= MAX_IGNORED) goto complain;
+
+			for (i = 0; i <= last_ignored; i++) {
+				if (strcmp(ignored[i], modname) == 0) {
+					break;
+				}
+			}
+
+			if (i > last_ignored) goto save_complain;
 			continue;
 		}
 
@@ -1224,7 +1251,7 @@ static int load_byserver(CONF_SECTION *cs)
 					      fr_strerror());
 					return -1;
 				}
-				DEBUG("Loading dictionary.vqp");
+				cf_log_module(cs, "Loading dictionary.vqp");
 				
 				da = dict_attrbyname("VQP-Packet-Type");
 				if (!da) {
@@ -1233,7 +1260,7 @@ static int load_byserver(CONF_SECTION *cs)
 				}
 			}
 
-			cf_log_module(cs, "Checking vmps {...} for more modules to load");
+			cf_log_module(cs, "Loading vmps {...}");
 			if (load_component_section(subcs, components,
 						   RLM_COMPONENT_POST_AUTH) < 0) {
 				goto error;
@@ -1258,7 +1285,7 @@ static int load_byserver(CONF_SECTION *cs)
 		 */
 		da = dict_attrbyname("DHCP-Message-Type");
 		if (!da) {
-			DEBUG("Loading dictionary.dhcp");
+			cf_log_module(cs, "Loading dictionary.dhcp");
 			if (dict_read(mainconfig.dictionary_dir, "dictionary.dhcp") < 0) {
 				ERROR("Failed reading dictionary.dhcp: %s",
 				      fr_strerror());
@@ -1278,7 +1305,11 @@ static int load_byserver(CONF_SECTION *cs)
 		while (subcs) {
 			char const *name2 = cf_section_name2(subcs);
 
-			DEBUG2(" Module: Checking dhcp %s {...} for more modules to load", name2);
+			if (name2) {
+				cf_log_module(cs, "Loading dhcp %s {...}", name2);
+			} else {
+				cf_log_module(cs, "Loading dhcp {...}");
+			}
 			if (!load_subcomponent_section(NULL, subcs,
 						       components,
 						       da,
