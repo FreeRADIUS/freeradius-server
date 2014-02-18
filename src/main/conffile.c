@@ -2381,7 +2381,7 @@ CONF_SECTION *cf_section_sub_find_name2(CONF_SECTION const *cs,
 	if (name1) {
 		CONF_SECTION mycs, *master_cs;
 
-		rad_assert(cs->section_tree != NULL);
+		if (!cs->section_tree) return NULL;
 
 		mycs.name1 = name1;
 		mycs.name2 = name2;
