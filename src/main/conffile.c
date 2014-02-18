@@ -2345,7 +2345,7 @@ CONF_SECTION *cf_section_sub_find(CONF_SECTION const *cs, char const *name)
 {
 	CONF_SECTION mycs;
 
-	if (!cs || name) return NULL;	/* can't find an un-named section */
+	if (!cs || !name) return NULL;	/* can't find an un-named section */
 
 	/*
 	 *	No sub-sections have been defined, so none exist.
