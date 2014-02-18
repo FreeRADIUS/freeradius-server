@@ -4296,7 +4296,7 @@ static int proxy_delete_cb(UNUSED void *ctx, void *data)
 	/*
 	 *	Delete it from the list.
 	 */
-	return 1;
+	return 2;
 }
 
 
@@ -4331,14 +4331,16 @@ static int request_delete_cb(UNUSED void *ctx, void *data)
 	request_free(&request);
 
 	/*
-	 *	Delete it from the list.
+	 *	Delete it from the list, and continue;
 	 */
-	return 1;
+	return 2;
 }
 
 
 void radius_event_free(void)
 {
+	ASSERT_MASTER;
+
 #ifdef WITH_PROXY
 	/*
 	 *	There are requests in the proxy hash that aren't
