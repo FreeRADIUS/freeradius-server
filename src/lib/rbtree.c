@@ -680,6 +680,13 @@ static int WalkNodePostOrder(rbnode_t *X,
  *	This executes an InOrder-like walk that adapts to changes in the
  *	tree above it, which may occur because we allow the callback to
  *	tell us to delete the current node.
+ *
+ *	The callback should return:
+ *
+ *		< 0  - on error
+ *		0    - continue walking, don't delete the node
+ *		1    - delete the node and stop walking
+ *		2    - delete the node and continue walking
  */
 static int WalkDeleteOrder(rbtree_t *tree, int (*callback)(void *, void *),
 			   void *context)
