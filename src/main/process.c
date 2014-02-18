@@ -4313,6 +4313,12 @@ static int request_delete_cb(UNUSED void *ctx, void *data)
 	request->in_request_hash = false;
 	if (request->ev) fr_event_delete(el, &request->ev);
 
+	if (mainconfig.memory_report) {
+		RDEBUG2("Cleaning up request packet ID %u with timestamp +%d",
+			request->packet->id,
+			(unsigned int) (request->timestamp - fr_start_time));
+	}
+
 	request_free(&request);
 
 	/*
