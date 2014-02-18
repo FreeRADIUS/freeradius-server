@@ -254,7 +254,7 @@ static void InsertFixup(rbtree_t *tree, rbnode_t *X)
 /*
  *	Insert an element into the tree.
  */
-rbnode_t *rbtree_insertnode(rbtree_t *tree, void *Data)
+static rbnode_t *rbtree_insertnode(rbtree_t *tree, void *Data)
 {
 	rbnode_t *Current, *Parent, *X;
 
@@ -706,8 +706,7 @@ static int WalkDeleteOrder(rbtree_t *tree, int (*callback)(void *, void *),
 			if (rcode != 2) {
 				return rcode;
 			}
-		}
-		else {
+		} else {
 			Solid = X;
 		}
 	}
