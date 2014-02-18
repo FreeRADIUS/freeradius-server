@@ -762,8 +762,7 @@ static void process_file(const char *root_dir, char const *filename)
 				continue;
 			}
 
-			len = vp_prints(output, sizeof(output), head);
-			outlen = len;
+			vp_prints(output, sizeof(output), head);
 			continue;
 		}
 
