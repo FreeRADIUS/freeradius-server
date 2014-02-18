@@ -2233,17 +2233,42 @@ CONF_SECTION *cf_section_sub_find_name2(const CONF_SECTION *cs,
 	CONF_ITEM    *ci;
 
 	if (!cs) cs = mainconfig.config;
-
-	if (name1 && (cs->section_tree)) {
+	if (!cs) return NULL;
+	if (name1) {
 		CONF_SECTION mycs, *master_cs;
+
+		if (!cs->section_tree) return NULL;
 
 		mycs.name1 = name1;
 		mycs.name2 = name2;
 
 		master_cs = rbtree_finddata(cs->section_tree, &mycs);
-		if (master_cs) {
-			return rbtree_finddata(master_cs->name2_tree, &mycs);
+		if (!master_cs) return NULL;
+
+		/*
+		 *	Look it up in the name2 tree.  If it's there,
+		 *	return it.
+		 */
+		if (master_cs->name2_tree) {
+			CONF_SECTION *subcs;
+
+			subcs = rbtree_finddata(master_cs->name2_tree, &mycs);
+			if (subcs) return subcs;
 		}
+
+		/*
+		 *	We don't insert ourselves into the name2 tree.
+		 *	So if there's nothing in the name2 tree, maybe
+		 *	*we* are the answer.
+		 */
+		if (!master_cs->name2 && name2) return NULL;
+		if (master_cs->name2 && !name2) return NULL;
+
+		if (strcmp(master_cs->name2, name2) == 0) {
+			return master_cs;
+		}
+
+		return NULL;
 	}
 
 	/*
@@ -2265,10 +2290,13 @@ CONF_SECTION *cf_section_sub_find_name2(const CONF_SECTION *cs,
 			continue; /* don't do the string comparisons below */
 		}
 
-		if ((strcmp(subcs->name1, name1) == 0) &&
-		    (subcs->name2 != NULL) &&
-		    (strcmp(subcs->name2, name2) == 0))
-			break;
+		if (strcmp(subcs->name1, name1) != 0) continue;
+		if (!subcs->name2 && name2) continue;
+		if (subcs->name2 && !name2) continue;
+
+		if (!subcs->name2 && !name2) break;
+
+		if (strcmp(subcs->name2, name2) == 0) break;
 	}
 
 	return cf_itemtosection(ci);
