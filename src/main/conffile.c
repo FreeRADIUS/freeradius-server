@@ -2390,6 +2390,16 @@ CONF_SECTION *cf_section_sub_find_name2(CONF_SECTION const *cs,
 		name1cs = cf_section_sub_find(cs, name1);
 		if (!name1cs) return NULL;
 
+		if (!name1cs->name2_tree) {
+			if (!name1cs->name2 && name2) return NULL;
+			if (name1cs->name2 && !name2) return NULL;
+
+			if (strcmp(name1cs->name2, name2) == 0) {
+				return name1cs;
+			}
+			return NULL;
+		}
+
 		mycs.name1 = name1;
 		mycs.name2 = name2;
 		
