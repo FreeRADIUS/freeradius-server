@@ -14,7 +14,7 @@
 #
 #  You WILL want to edit this to your local needs.  We suggest copying
 #  the "default" file here, and then editing it.  That way, any
-#  changes to the 'default" file will not affect this virtual server,
+#  changes to the "default" file will not affect this virtual server,
 #  and vice-versa.
 #
 #  When this virtual server receives the request, the original
