@@ -1363,6 +1363,8 @@ static bool cf_template_merge(CONF_SECTION *cs, CONF_SECTION const *template)
 			CONF_SECTION *subcs1, *subcs2;
 
 			subcs1 = cf_itemtosection(ci);
+			rad_assert(subcs1 != NULL);
+
 			subcs2 = cf_section_sub_find_name2(cs, subcs1->name1, subcs1->name2);
 			if (subcs2) {
 				/*
@@ -1380,6 +1382,7 @@ static bool cf_template_merge(CONF_SECTION *cs, CONF_SECTION const *template)
 			 *	the template.
 			 */
 			subcs2 = cf_template_copy(cs, subcs1);
+			if (!subcs2) return false;
 
 			subcs2->item.filename = subcs1->item.filename;
 			subcs2->item.lineno = subcs1->item.lineno;
@@ -2342,7 +2345,7 @@ CONF_SECTION *cf_section_sub_find(CONF_SECTION const *cs, char const *name)
 {
 	CONF_SECTION mycs;
 
-	if (!name) return NULL;	/* can't find an un-named section */
+	if (!cs || name) return NULL;	/* can't find an un-named section */
 
 	/*
 	 *	No sub-sections have been defined, so none exist.
@@ -2366,6 +2369,7 @@ CONF_SECTION *cf_section_sub_find_name2(CONF_SECTION const *cs,
 	CONF_SECTION mycs;
 
 	if (!cs) cs = root_config;
+	if (!cs) return NULL;
 
 	/*
 	 *	name1 is given.  Do a simple search.  name2 may be
