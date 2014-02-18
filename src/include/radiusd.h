@@ -451,7 +451,8 @@ typedef struct main_config_t {
 	char const	*name;
 	char const	*auth_badpass_msg;
 	char const	*auth_goodpass_msg;
-	int		debug_memory;
+	bool		debug_memory;
+	bool		memory_report;
 	char const	*panic_action;
 } MAIN_CONFIG_T;
 

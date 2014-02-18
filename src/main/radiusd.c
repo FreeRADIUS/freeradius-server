@@ -61,7 +61,6 @@ char const *radlib_dir = NULL;
 bool log_stripped_names;
 log_debug_t debug_flag = 0;
 bool check_config = false;
-bool memory_report = false;
 
 char const *radiusd_version = "FreeRADIUS Version " RADIUSD_VERSION_STRING
 #ifdef RADIUSD_VERSION_COMMIT
@@ -211,12 +210,12 @@ int main(int argc, char *argv[])
 				break;
 
 			case 'm':
-				mainconfig.debug_memory = 1;
+				mainconfig.debug_memory = true;
 				break;
 
 			case 'M':
-				memory_report = 1;
-				mainconfig.debug_memory = 1;
+				mainconfig.memory_report = true;
+				mainconfig.debug_memory = true;
 				break;
 
 			case 'p':
@@ -275,7 +274,7 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	if (memory_report) {
+	if (mainconfig.memory_report) {
 		talloc_enable_null_tracking();
 #ifdef WITH_VERIFY_PTR
 		talloc_set_abort_fn(die_horribly);
@@ -463,7 +462,7 @@ int main(int argc, char *argv[])
 	 *	server to die immediately.  Use SIGTERM to shut down
 	 *	the server cleanly in that case.
 	 */
-	if ((mainconfig.debug_memory == 1) || (debug_flag == 0)) {
+	if (mainconfig.debug_memory || (debug_flag == 0)) {
 		if ((fr_set_signal(SIGINT, sig_fatal) < 0)
 #ifdef SIGQUIT
 		|| (fr_set_signal(SIGQUIT, sig_fatal) < 0)
@@ -602,7 +601,7 @@ cleanup:
 	WSACleanup();
 #endif
 
-	if (memory_report) {
+	if (mainconfig.memory_report) {
 		INFO("Allocated memory at time of report:");
 		log_talloc_report(NULL);
 	}
@@ -656,7 +655,7 @@ static void sig_fatal(int sig)
 #ifdef SIGQUIT
 	case SIGQUIT:
 #endif
-		if (mainconfig.debug_memory || memory_report) {
+		if (mainconfig.debug_memory || mainconfig.memory_report) {
 			radius_signal_self(RADIUS_SIGNAL_SELF_TERM);
 			break;
 		}
