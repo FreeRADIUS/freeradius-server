@@ -4339,14 +4339,6 @@ static int request_delete_cb(UNUSED void *ctx, void *data)
 
 void radius_event_free(void)
 {
-	/*
-	 *	Stop and join all threads.
-	 */
-#ifdef HAVE_PTHREAD_H
-	thread_pool_stop();
-	ASSERT_MASTER;
-#endif
-
 #ifdef WITH_PROXY
 	/*
 	 *	There are requests in the proxy hash that aren't
@@ -4354,15 +4346,49 @@ void radius_event_free(void)
 	 */
 	if (proxy_list) {
 		fr_packet_list_walk(proxy_list, NULL, proxy_delete_cb);
-		fr_packet_list_free(proxy_list);
-		proxy_list = NULL;
 	}
 #endif
 
 	fr_packet_list_walk(pl, NULL, request_delete_cb);
 
+	if (spawn_flag) {
+		/*
+		 *	Now that all requests have been marked "please stop",
+		 *	ensure that all of the threads have exited.
+		 */
+#ifdef HAVE_PTHREAD_H
+		thread_pool_stop();
+		ASSERT_MASTER;
+#endif
+
+		/*
+		 *	Walk the lists again, ensuring that all
+		 *	requests are done.
+		 */
+		if (mainconfig.memory_report) {
+#ifdef WITH_PROXY
+			if (proxy_list) {
+				fr_packet_list_walk(proxy_list, NULL, proxy_delete_cb);
+				if (fr_packet_list_num_elements(proxy_list) > 0) {
+					ERROR("Requests are left in the proxy list");
+				}
+			}
+#endif
+
+			fr_packet_list_walk(pl, NULL, request_delete_cb);
+			if (fr_packet_list_num_elements(pl) > 0) {
+				ERROR("Requests are left in the request list");
+			}
+		}
+	}
+
 	fr_packet_list_free(pl);
 	pl = NULL;
+
+#ifdef WITH_PROXY
+	fr_packet_list_free(proxy_list);
+	proxy_list = NULL;
+#endif
 
 	fr_event_list_free(el);
 
