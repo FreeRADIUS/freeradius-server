@@ -2542,19 +2542,17 @@ static int listener_free(void *ctx)
 		) {
 		listen_socket_t *sock = this->data;
 
-#ifdef WITH_TLS
-		if (sock->request) {
-#  ifdef HAVE_PTHREAD_H
-			pthread_mutex_destroy(&(sock->mutex));
-#  endif
-			request_free(&sock->request);
-			sock->packet = NULL;
+		rad_free(&sock->packet);
 
+#ifdef WITH_TLS
+		if (this->tls) {
 			if (sock->ssn) session_free(sock->ssn);
 			request_free(&sock->request);
-		} else
+#ifdef HAVE_PTHREAD_H
+			pthread_mutex_destroy(&(sock->mutex));
 #endif
-			rad_free(&sock->packet);
+		}
+#endif	/* WITH_TLS */
 	}
 #endif				/* WITH_TCP */
 
