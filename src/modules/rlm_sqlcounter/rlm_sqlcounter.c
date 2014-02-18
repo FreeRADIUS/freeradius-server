@@ -477,7 +477,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
  *	from the database. The authentication code only needs to check
  *	the password, the rest is done here.
  */
-static rlm_rcode_t mod_authorize(UNUSED void *instance, UNUSED REQUEST *request)
+static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 {
 	rlm_sqlcounter_t *inst = instance;
 	int rcode = RLM_MODULE_NOOP;
@@ -492,6 +492,9 @@ static rlm_rcode_t mod_authorize(UNUSED void *instance, UNUSED REQUEST *request)
 	char *expanded = NULL;
 
 	size_t len;
+
+	rad_assert(instance != NULL);
+	rad_assert(request != NULL);
 
 	/*
 	 *	Before doing anything else, see if we have to reset
@@ -583,7 +586,6 @@ static rlm_rcode_t mod_authorize(UNUSED void *instance, UNUSED REQUEST *request)
 		pairmake_reply("Reply-Message", msg, T_OP_EQ);
 
 		REDEBUG("Maximum %s usage time reached", inst->reset);
-		rcode = RLM_MODULE_REJECT;
 
 		RDEBUG2("Rejected user %s, check_item=%" PRIu64 ", counter=%" PRIu64,
 			key_vp->vp_strvalue, check_vp->vp_integer64, counter);
