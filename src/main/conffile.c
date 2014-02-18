@@ -115,6 +115,7 @@ static char const *cf_expand_variables(char const *cf, int *lineno,
 				       CONF_SECTION *outercs,
 				       char *output, size_t outsize,
 				       char const *input);
+static CONF_SECTION *cf_template_copy(CONF_SECTION *parent, CONF_SECTION const *template);
 
 /*
  *	Isolate the scary casts in these tiny provably-safe functions
@@ -772,6 +773,8 @@ static char const *cf_expand_variables(char const *cf, int *lineno,
 				ptr = end + 1;
 
 			} else if (ci->type == CONF_ITEM_SECTION) {
+				CONF_SECTION *subcs;
+
 				/*
 				 *	Adding an entry again to a
 				 *	section is wrong.  We don't
@@ -781,8 +784,21 @@ static char const *cf_expand_variables(char const *cf, int *lineno,
 					ERROR("%s[%d]: Cannot reference different item in same section", cf, *lineno);
 					return NULL;
 				}
-				cf_item_add(outercs, ci);
-				(void) talloc_reference(outercs, ci);
+
+				/*
+				 *	Copy the section instead of
+				 *	referencing it.
+				 */
+				subcs = cf_template_copy(outercs, cf_itemtosection(ci));
+				if (!subcs) {
+					ERROR("%s[%d]: Failed copying reference %s", cf, *lineno, name);
+					return NULL;
+				}
+
+				cf_item_add(outercs, &(subcs->item));
+				subcs->item.filename = ci->filename;
+				subcs->item.lineno = ci->lineno;
+
 				ptr = end + 1;
 
 			} else {
