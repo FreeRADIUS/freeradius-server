@@ -141,6 +141,7 @@ tls_session_t *tls_new_client_session(fr_tls_server_conf_t *conf, int fd)
 			DEBUG("OpenSSL Err says %s",
 			      ERR_error_string(err, NULL));
 		}
+		SSL_free(ssn->ssl);
 		talloc_free(ssn);
 		return NULL;
 	}
