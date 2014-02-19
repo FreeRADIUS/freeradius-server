@@ -1289,7 +1289,9 @@ int radius_map2vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *ma
 
 		break;
 
-	case VPT_TYPE_DATA:
+	case VPT_TYPE_DATA:	
+		rad_assert(map->src && map->src->da);
+		rad_assert(map->dst && map->dst->da);
 		rad_assert(map->src->da->type == map->dst->da->type);
 		memcpy(&vp->data, map->src->vpd, sizeof(vp->data));
 		vp->length = map->src->length;
