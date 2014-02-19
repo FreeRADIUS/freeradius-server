@@ -93,7 +93,7 @@ struct  ethernet_header {
 #define IP_MF		0x2000		//!< More fragments flag.
 #define IP_OFFMASK	0x1fff		//!< Mask for fragmenting bits.
 
-struct ip_header {
+typedef struct ip_header {
 	uint8_t		ip_vhl;		//!< Header length, version.
 
 	uint8_t		ip_tos;		//!< Type of service.
@@ -105,9 +105,9 @@ struct ip_header {
 	uint8_t		ip_p;		//!< Protocol.
 	uint16_t	ip_sum;		//!< Checksum.
 	struct in_addr	ip_src, ip_dst;	//!< Src and Dst address
-};
+} ip_header_t;
 
-struct ip_header6 {
+typedef struct ip_header6 {
 	uint32_t	ip_vtcfl;	//!< Version, traffic class, flow label.
 	uint16_t	ip_len;		//!< Payload length
 
@@ -115,25 +115,25 @@ struct ip_header6 {
 	uint8_t		ip_hopl;	//!< IP Hop Limit
 
 	struct in6_addr ip_src, ip_dst;	//!< Src and Dst address
-};
+} ip_header6_t;
 
 /*
  *	UDP protocol header.
  *	Per RFC 768, September, 1981.
  */
-struct udp_header {
-	uint16_t       udp_sport;	//!< Source port.
-	uint16_t       udp_dport;	//!< Destination port.
-	uint16_t       udp_ulen;	//!< UDP length.
-	uint16_t       udp_sum;		//!< UDP checksum.
-};
+typedef struct udp_header {
+	uint16_t	src;		//!< Source port.
+	uint16_t	dst;		//!< Destination port.
+	uint16_t	len;		//!< UDP length.
+	uint16_t	checksum;	//!< UDP checksum.
+} udp_header_t;
 
 typedef struct radius_packet_t {
-	uint8_t       code;
-	uint8_t       id;
-	uint8_t       length[2];
-	uint8_t       vector[AUTH_VECTOR_LEN];
-	uint8_t       data[1];
+	uint8_t		code;
+	uint8_t		id;
+	uint8_t		length[2];
+	uint8_t		vector[AUTH_VECTOR_LEN];
+	uint8_t		data[1];
 } radius_packet_t;
 
 #define AUTH_HDR_LEN 20
@@ -181,6 +181,7 @@ int fr_pcap_open(fr_pcap_t *handle);
 int fr_pcap_apply_filter(fr_pcap_t *handle, char const *expression);
 char *fr_pcap_device_names(TALLOC_CTX *ctx, fr_pcap_t *handle, char c);
 ssize_t fr_pcap_link_layer_offset(uint8_t const *data, size_t len, int link_type);
-
+uint16_t fr_udp_checksum(uint8_t const *data, uint16_t len,
+			 struct in_addr const src_addr, struct in_addr const dst_addr);
 #endif
 

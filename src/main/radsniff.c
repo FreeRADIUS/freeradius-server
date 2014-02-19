@@ -883,9 +883,9 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 	ssize_t len;
 	uint8_t const		*p = data;
 
-	struct ip_header const	*ip = NULL;		/* The IP header */
-	struct ip_header6 const	*ip6 = NULL;		/* The IPv6 header */
-	struct udp_header const	*udp;			/* The UDP header */
+	ip_header_t const	*ip = NULL;		/* The IP header */
+	ip_header6_t const	*ip6 = NULL;		/* The IPv6 header */
+	udp_header_t const	*udp;			/* The UDP header */
 	uint8_t			version;		/* IP header version */
 	bool			response;		/* Was it a response code */
 
@@ -918,14 +918,14 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 	version = (p[0] & 0xf0) >> 4;
 	switch (version) {
 	case 4:
-		ip = (struct ip_header const *)p;
+		ip = (ip_header_t const *)p;
 		len = (0x0f & ip->ip_vhl) * 4;	/* ip_hl specifies length in 32bit words */
 		p += len;
 		break;
 
 	case 6:
-		ip6 = (struct ip_header6 const *)p;
-		p += sizeof(struct ip_header6);
+		ip6 = (ip_header6_t const *)p;
+		p += sizeof(ip_header6_t);
 
 		break;
 
@@ -937,15 +937,52 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 	/*
 	 *	End of variable length bits, do basic check now to see if packet looks long enough
 	 */
-	len = (p - data) + sizeof(struct udp_header) + (sizeof(radius_packet_t) - 1);	/* length value */
+	len = (p - data) + sizeof(udp_header_t) + (sizeof(radius_packet_t) - 1);	/* length value */
 	if ((size_t) len > header->caplen) {
 		REDEBUG("Packet too small, we require at least %zu bytes, captured %i bytes",
 			(size_t) len, header->caplen);
 		return;
 	}
 
-	udp = (struct udp_header const *)p;
-	p += sizeof(struct udp_header);
+	/*
+	 *	UDP header validation.
+	 */
+	udp = (udp_header_t const *)p;
+	{
+		uint16_t udp_len;
+		ssize_t diff;
+
+		udp_len = ntohs(udp->len);
+		diff = udp_len - (header->caplen - (p - data));
+		/* Truncated data */
+		if (diff > 0) {
+			REDEBUG("Packet too small by %zi bytes, UDP header + Payload should be %hu bytes",
+				diff, udp_len);
+			return;
+		}
+		/* Trailing data */
+		else if (diff < 0) {
+			REDEBUG("Packet too big by %zi bytes, UDP header + Payload should be %hu bytes",
+				diff * -1, udp_len);
+			return;
+		}
+	}
+	if (version == 4) {
+		uint16_t checksum, expected;
+
+		checksum = udp->checksum;
+
+		/* Zero out the checksum, so fr_udp_checksum gives us the expected result */
+		memset((uint8_t *) &udp->checksum, 0, sizeof(udp->checksum));
+
+		expected = fr_udp_checksum((uint8_t *) udp, (size_t) ntohs(udp->len), ip->ip_src, ip->ip_dst);
+		if (checksum != expected) {
+			REDEBUG("UDP checksum invalid, packet: 0x%04hx calculated: 0x%04hx", ntohs(checksum),
+				ntohs(expected));
+			/* Not a fatal error */
+		}
+	}
+	p += sizeof(udp_header_t);
 
 	/*
 	 *	With artificial talloc memory limits there's a good chance we can
@@ -982,8 +1019,8 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 		       sizeof(current->dst_ipaddr.ipaddr.ip6addr.s6_addr));
 	}
 
-	current->src_port = ntohs(udp->udp_sport);
-	current->dst_port = ntohs(udp->udp_dport);
+	current->src_port = ntohs(udp->src);
+	current->dst_port = ntohs(udp->dst);
 
 	if (!rad_packet_ok(current, 0, &reason)) {
 		REDEBUG("%s", fr_strerror());

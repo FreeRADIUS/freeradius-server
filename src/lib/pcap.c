@@ -414,4 +414,47 @@ ssize_t fr_pcap_link_layer_offset(uint8_t const *data, size_t len, int link_type
 	return -1;
 }
 
+/** Calculate UDP checksum
+ *
+ * Zero out UDP checksum in UDP header before calling fr_udp_checksum to get 'expected' checksum.
+ *
+ * @param data Pointer to the start of the UDP header
+ * @param len value of udp length field in host byte order. Must be validated to make
+ *	  sure it won't overrun data buffer.
+ * @param src_addr in network byte order.
+ * @param dst_addr in network byte order.
+ * @return 0 if the checksum is correct, else another number.
+ */
+uint16_t fr_udp_checksum(uint8_t const *data, uint16_t len,
+			 struct in_addr const src_addr, struct in_addr const dst_addr)
+{
+	uint64_t sum = 0;	/* using 64bits avoids overflow check */
+	uint16_t const *p = (uint16_t *)data;
+
+	uint16_t *ip_src = (void *) &src_addr.s_addr;
+	uint16_t *ip_dst = (void *) &dst_addr.s_addr;
+	uint16_t i;
+
+	sum += *(ip_src++);
+	sum += *ip_src;
+	sum += *(ip_dst++);
+	sum += *ip_dst;
+
+	sum += htons(IPPROTO_UDP);
+	sum += htons(len);
+
+	for (i = len; i > 1; i -= 2) {
+		sum += *p++;
+	}
+
+	if (i) {
+		sum += (0xff & *(uint8_t *)p) << 8;
+	}
+
+	while (sum >> 16) {
+		sum = (sum & 0xffff) + (sum >> 16);
+	}
+
+	return ((uint16_t) ~sum);
+}
 #endif
