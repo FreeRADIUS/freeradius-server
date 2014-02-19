@@ -422,6 +422,8 @@ static int dual_tcp_recv(rad_listen_t *listener)
 	listen_socket_t *sock = listener->data;
 	RADCLIENT	*client = sock->client;
 
+	rad_assert(client != NULL);
+
 	/*
 	 *	Allocate a packet for partial reads.
 	 */
