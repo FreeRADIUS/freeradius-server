@@ -106,6 +106,8 @@ int main(int argc, char *argv[])
 	int flag = 0;
 	int from_child[2] = {-1, -1};
 
+	int devnull;
+
 	/*
 	 *	If the server was built with debugging enabled always install
 	 *	the basic fatal signal handlers.
@@ -334,11 +336,26 @@ int main(int argc, char *argv[])
 	}
 
 #ifndef __MINGW32__
+
+	devnull = open("/dev/null", O_RDWR);
+	if (devnull < 0) {
+		ERROR("Failed opening /dev/null: %s", fr_syserror(errno));
+		exit(EXIT_FAILURE);
+	}
+
 	/*
 	 *  Disconnect from session
 	 */
 	if (dont_fork == false) {
 		pid_t pid;
+
+		/*
+		 *  Really weird things happen if we leave stdin open and call things like
+		 *  system() later.
+		 */
+		if (dont_fork == false) {
+			dup2(devnull, STDIN_FILENO);
+		}
 
 		if (pipe(from_child) != 0) {
 			ERROR("Couldn't open pipe for child status: %s", fr_syserror(errno));
@@ -406,15 +423,6 @@ int main(int argc, char *argv[])
 	 *	descriptors, AFTER forking.
 	 */
 	if (!debug_flag) {
-		int devnull;
-
-		devnull = open("/dev/null", O_RDWR);
-		if (devnull < 0) {
-			ERROR("Failed opening /dev/null: %s\n",
-			       fr_syserror(errno));
-			exit(EXIT_FAILURE);
-		}
-		dup2(devnull, STDIN_FILENO);
 		if (default_log.dest == L_DST_STDOUT) {
 			setlinebuf(stdout);
 			default_log.fd = STDOUT_FILENO;
@@ -427,15 +435,10 @@ int main(int argc, char *argv[])
 		} else {
 			dup2(devnull, STDERR_FILENO);
 		}
-		close(devnull);
-
 	} else {
 		setlinebuf(stdout); /* unbuffered output */
 	}
-
-	/*
-	 *	Now we have logging check that the OpenSSL
-	 */
+	close(devnull);
 
 	/*
 	 *	Initialize the event pool, including threads.
