@@ -2587,6 +2587,7 @@ static rad_listen_t *listen_alloc(TALLOC_CTX *ctx, RAD_LISTEN_TYPE type)
  */
 rad_listen_t *proxy_new_listener(home_server_t *home, int src_port)
 {
+	time_t now;
 	rad_listen_t *this;
 	listen_socket_t *sock;
 	char buffer[256];
@@ -2597,6 +2598,12 @@ rad_listen_t *proxy_new_listener(home_server_t *home, int src_port)
 	    (home->limit.num_connections >= home->limit.max_connections)) {
 		WDEBUG("Home server has too many open connections (%d)",
 		      home->limit.max_connections);
+		return NULL;
+	}
+
+	now = time(NULL);
+	if (home->last_failed_open == now) {
+		WDEBUG("Suppressing attempt to open socket to 'down' home server");
 		return NULL;
 	}
 
@@ -2617,7 +2624,7 @@ rad_listen_t *proxy_new_listener(home_server_t *home, int src_port)
 	}
 
 #ifdef WITH_TCP
-	sock->opened = sock->last_packet = time(NULL);
+	sock->opened = sock->last_packet = now;
 
 	if (home->proto == IPPROTO_TCP) {
 		this->recv = proxy_socket_tcp_recv;
@@ -2631,11 +2638,12 @@ rad_listen_t *proxy_new_listener(home_server_t *home, int src_port)
 		 */
 		this->fd = fr_tcp_client_socket(&home->src_ipaddr,
 						&home->ipaddr, home->port);
-#ifdef WITH_TLS
 		if (home->tls) {
 			DEBUG("Trying SSL to port %d\n", home->port);
 			sock->ssn = tls_new_client_session(home->tls, this->fd);
 			if (!sock->ssn) {
+				ERROR("Failed starting SSL to %s", buffer);
+				home->last_failed_open = now;
 				listen_free(&this);
 				return NULL;
 			}
@@ -2643,7 +2651,6 @@ rad_listen_t *proxy_new_listener(home_server_t *home, int src_port)
 			this->recv = proxy_tls_recv;
 			this->send = proxy_tls_send;
 		}
-#endif
 	} else
 #endif
 
@@ -2651,8 +2658,9 @@ rad_listen_t *proxy_new_listener(home_server_t *home, int src_port)
 
 	if (this->fd < 0) {
 		this->print(this, buffer,sizeof(buffer));
-		DEBUG("Failed opening client socket ::%s:: : %s",
+		ERROR("Failed opening client socket %s : %s",
 		      buffer, fr_strerror());
+		home->last_failed_open = now;
 		listen_free(&this);
 		return NULL;
 	}
@@ -2668,6 +2676,7 @@ rad_listen_t *proxy_new_listener(home_server_t *home, int src_port)
 		if (getsockname(this->fd, (struct sockaddr *) &src,
 				&sizeof_src) < 0) {
 			ERROR("Failed getting socket name: %s", fr_syserror(errno));
+			home->last_failed_open = now;
 			listen_free(&this);
 			return NULL;
 		}
@@ -2675,6 +2684,7 @@ rad_listen_t *proxy_new_listener(home_server_t *home, int src_port)
 		if (!fr_sockaddr2ipaddr(&src, sizeof_src,
 					&sock->my_ipaddr, &sock->my_port)) {
 			ERROR("Socket has unsupported address family");
+			home->last_failed_open = now;
 			listen_free(&this);
 			return NULL;
 		}
