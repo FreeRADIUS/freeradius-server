@@ -1,20 +1,20 @@
 /*
- * rbtree.c	Red-black balanced binary trees.
+ * rbtree.c	RED-BLACK balanced binary trees.
  *
  * Version:	$Id$
  *
- *   This library is free software; you can redistribute it and/or
- *   modify it under the terms of the GNU Lesser General Public
- *   License as published by the Free Software Foundation; either
- *   version 2.1 of the License, or (at your option) any later version.
+ *   This program is free software; you can redistribute it and/or modify
+ *   it under the terms of the GNU General Public License as published by
+ *   the Free Software Foundation; either version 2.1 of the License, or
+ *   (at your option) any later version.
  *
- *   This library is distributed in the hope that it will be useful,
+ *   This program is distributed in the hope that it will be useful,
  *   but WITHOUT ANY WARRANTY; without even the implied warranty of
- *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- *   Lesser General Public License for more details.
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *   GNU General Public License for more details.
  *
- *   You should have received a copy of the GNU Lesser General Public
- *   License along with this library; if not, write to the Free Software
+ *   You should have received a copy of the GNU General Public License
+ *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
  *  Copyright 2004,2006  The FreeRADIUS server project
@@ -34,47 +34,49 @@ RCSID("$Id$")
 #define PTHREAD_MUTEX_UNLOCK(_x)
 #endif
 
-/* red-black tree description */
-typedef enum { Black, Red } NodeColor;
+/* Red-Black tree description */
+typedef enum {
+	BLACK,
+	RED
+} node_colour_t;
 
 struct rbnode_t {
-    rbnode_t	*Left;		/* left child */
-    rbnode_t	*Right;		/* right child */
-    rbnode_t	*Parent;	/* parent */
-    NodeColor	Color;		/* node color (black, red) */
-    void	*Data;		/* data stored in node */
+    rbnode_t		*left;		//!< Left child
+    rbnode_t		*right;		//!< Right child
+    rbnode_t		*parent;	//!< Parent
+    node_colour_t	colour;		//!< Node colour (BLACK, RED)
+    void		*data;		//!< data stored in node
 };
 
-#define NIL &Sentinel	   /* all leafs are sentinels */
-static rbnode_t Sentinel = { NIL, NIL, NULL, Black, NULL};
+#define NIL &sentinel	   /* all leafs are sentinels */
+static rbnode_t sentinel = { NIL, NIL, NULL, BLACK, NULL};
 
 struct rbtree_t {
 #ifndef NDEBUG
-	uint32_t magic;
+	uint32_t		magic;
 #endif
-	rbnode_t *Root;
-	int	num_elements;
-	int (*Compare)(void const *, void const *);
-	int replace_flag;
-	void (*freeNode)(void *);
+	rbnode_t		*root;
+	int			num_elements;
+	rb_comparator_t		compare;
+	rb_free_t		free;
+	bool			replace;
 #ifdef HAVE_PTHREAD_H
-	int lock;
-	pthread_mutex_t mutex;
+	bool			lock;
+	pthread_mutex_t		mutex;
 #endif
 };
 #define RBTREE_MAGIC (0x5ad09c42)
 
-/*
- *	Walks the tree to delete all nodes.
- *	Does NOT re-balance it!
+/** Walks the tree to delete all nodes Does NOT re-balance it!
+ *
  */
-static void FreeWalker(rbtree_t *tree, rbnode_t *X)
+static void free_walker(rbtree_t *tree, rbnode_t *x)
 {
-	if (X->Left != NIL) FreeWalker(tree, X->Left);
-	if (X->Right != NIL) FreeWalker(tree, X->Right);
+	if (x->left != NIL) free_walker(tree, x->left);
+	if (x->right != NIL) free_walker(tree, x->right);
 
-	if (tree->freeNode) tree->freeNode(X->Data);
-	talloc_free(X);
+	if (tree->free) tree->free(x->data);
+	talloc_free(x);
 }
 
 void rbtree_free(rbtree_t *tree)
@@ -84,14 +86,14 @@ void rbtree_free(rbtree_t *tree)
 	PTHREAD_MUTEX_LOCK(tree);
 
 	/*
-	 *	Walk the tree, deleting the nodes...
+	 *	walk the tree, deleting the nodes...
 	 */
-	if (tree->Root != NIL) FreeWalker(tree, tree->Root);
+	if (tree->root != NIL) free_walker(tree, tree->root);
 
 #ifndef NDEBUG
 	tree->magic = 0;
 #endif
-	tree->Root = NULL;
+	tree->root = NULL;
 
 #ifdef HAVE_PTHREAD_H
 	if (tree->lock) pthread_mutex_destroy(&tree->mutex);
@@ -100,16 +102,14 @@ void rbtree_free(rbtree_t *tree)
 	talloc_free(tree);
 }
 
-/*
- *	Create a new red-black tree.
+/** Create a new RED-BLACK tree
+ *
  */
-rbtree_t *rbtree_create(int (*Compare)(void const *, void const *),
-			void (*freeNode)(void *),
-			int flags)
+rbtree_t *rbtree_create(rb_comparator_t compare, rb_free_t node_free, int flags)
 {
-	rbtree_t	*tree;
+	rbtree_t *tree;
 
-	if (!Compare) return NULL;
+	if (!compare) return NULL;
 
 	tree = talloc_zero(NULL, rbtree_t);
 	if (!tree) return NULL;
@@ -117,167 +117,161 @@ rbtree_t *rbtree_create(int (*Compare)(void const *, void const *),
 #ifndef NDEBUG
 	tree->magic = RBTREE_MAGIC;
 #endif
-	tree->Root = NIL;
-	tree->Compare = Compare;
-	tree->replace_flag = flags & RBTREE_FLAG_REPLACE;
+	tree->root = NIL;
+	tree->compare = compare;
+	tree->replace = (flags & RBTREE_FLAG_REPLACE) != 0 ? true : false;
 #ifdef HAVE_PTHREAD_H
-	tree->lock = flags & RBTREE_FLAG_LOCK;
+	tree->lock = (flags & RBTREE_FLAG_LOCK) != 0 ? true : false;
 	if (tree->lock) {
 		pthread_mutex_init(&tree->mutex, NULL);
 	}
 #endif
-	tree->freeNode = freeNode;
+	tree->free = node_free;
 
 	return tree;
 }
 
-
-static void RotateLeft(rbtree_t *tree, rbnode_t *X)
+/** Rotate Node x to left
+ *
+ */
+static void rotate_left(rbtree_t *tree, rbnode_t *x)
 {
-	/**************************
-	 *  rotate Node X to left *
-	 **************************/
 
-	rbnode_t *Y = X->Right;
+	rbnode_t *y = x->right;
 
-	/* establish X->Right link */
-	X->Right = Y->Left;
-	if (Y->Left != NIL) Y->Left->Parent = X;
+	/* establish x->right link */
+	x->right = y->left;
+	if (y->left != NIL) y->left->parent = x;
 
-	/* establish Y->Parent link */
-	if (Y != NIL) Y->Parent = X->Parent;
-	if (X->Parent) {
-		if (X == X->Parent->Left)
-			X->Parent->Left = Y;
-		else
-			X->Parent->Right = Y;
+	/* establish y->parent link */
+	if (y != NIL) y->parent = x->parent;
+	if (x->parent) {
+		if (x == x->parent->left) {
+			x->parent->left = y;
+		} else {
+			x->parent->right = y;
+		}
 	} else {
-		tree->Root = Y;
+		tree->root = y;
 	}
 
-	/* link X and Y */
-	Y->Left = X;
-	if (X != NIL) X->Parent = Y;
+	/* link x and y */
+	y->left = x;
+	if (x != NIL) x->parent = y;
 }
 
-static void RotateRight(rbtree_t *tree, rbnode_t *X)
+/** Rotate Node x to right
+ *
+ */
+static void rotate_right(rbtree_t *tree, rbnode_t *x)
 {
-	/****************************
-	 *  rotate Node X to right  *
-	 ****************************/
+	rbnode_t *y = x->left;
 
-	rbnode_t *Y = X->Left;
+	/* establish x->left link */
+	x->left = y->right;
+	if (y->right != NIL) y->right->parent = x;
 
-	/* establish X->Left link */
-	X->Left = Y->Right;
-	if (Y->Right != NIL) Y->Right->Parent = X;
-
-	/* establish Y->Parent link */
-	if (Y != NIL) Y->Parent = X->Parent;
-	if (X->Parent) {
-		if (X == X->Parent->Right)
-			X->Parent->Right = Y;
-		else
-			X->Parent->Left = Y;
+	/* establish y->parent link */
+	if (y != NIL) y->parent = x->parent;
+	if (x->parent) {
+		if (x == x->parent->right) {
+			x->parent->right = y;
+		} else {
+			x->parent->left = y;
+		}
 	} else {
-		tree->Root = Y;
+		tree->root = y;
 	}
 
-	/* link X and Y */
-	Y->Right = X;
-	if (X != NIL) X->Parent = Y;
+	/* link x and y */
+	y->right = x;
+	if (x != NIL) x->parent = y;
 }
 
-static void InsertFixup(rbtree_t *tree, rbnode_t *X)
+/** Maintain red-black tree balance after inserting node x
+ *
+ */
+static void insert_fixup(rbtree_t *tree, rbnode_t *x)
 {
-	/*************************************
-	 *  maintain red-black tree balance  *
-	 *  after inserting node X	   *
-	 *************************************/
-
-	/* check red-black properties */
-	while (X != tree->Root && X->Parent->Color == Red) {
+	/* check RED-BLACK properties */
+	while ((x != tree->root) && (x->parent->colour == RED)) {
 		/* we have a violation */
-		if (X->Parent == X->Parent->Parent->Left) {
-			rbnode_t *Y = X->Parent->Parent->Right;
-			if (Y->Color == Red) {
+		if (x->parent == x->parent->parent->left) {
+			rbnode_t *y = x->parent->parent->right;
+			if (y->colour == RED) {
 
-				/* uncle is red */
-				X->Parent->Color = Black;
-				Y->Color = Black;
-				X->Parent->Parent->Color = Red;
-				X = X->Parent->Parent;
+				/* uncle is RED */
+				x->parent->colour = BLACK;
+				y->colour = BLACK;
+				x->parent->parent->colour = RED;
+				x = x->parent->parent;
 			} else {
 
-				/* uncle is black */
-				if (X == X->Parent->Right) {
-					/* make X a left child */
-					X = X->Parent;
-					RotateLeft(tree, X);
+				/* uncle is BLACK */
+				if (x == x->parent->right) {
+					/* make x a left child */
+					x = x->parent;
+					rotate_left(tree, x);
 				}
 
-				/* recolor and rotate */
-				X->Parent->Color = Black;
-				X->Parent->Parent->Color = Red;
-				RotateRight(tree, X->Parent->Parent);
+				/* recolour and rotate */
+				x->parent->colour = BLACK;
+				x->parent->parent->colour = RED;
+				rotate_right(tree, x->parent->parent);
 			}
 		} else {
 
 			/* mirror image of above code */
-			rbnode_t *Y = X->Parent->Parent->Left;
-			if (Y->Color == Red) {
+			rbnode_t *y = x->parent->parent->left;
+			if (y->colour == RED) {
 
-				/* uncle is red */
-				X->Parent->Color = Black;
-				Y->Color = Black;
-				X->Parent->Parent->Color = Red;
-				X = X->Parent->Parent;
+				/* uncle is RED */
+				x->parent->colour = BLACK;
+				y->colour = BLACK;
+				x->parent->parent->colour = RED;
+				x = x->parent->parent;
 			} else {
 
-				/* uncle is black */
-				if (X == X->Parent->Left) {
-					X = X->Parent;
-					RotateRight(tree, X);
+				/* uncle is BLACK */
+				if (x == x->parent->left) {
+					x = x->parent;
+					rotate_right(tree, x);
 				}
-				X->Parent->Color = Black;
-				X->Parent->Parent->Color = Red;
-				RotateLeft(tree, X->Parent->Parent);
+				x->parent->colour = BLACK;
+				x->parent->parent->colour = RED;
+				rotate_left(tree, x->parent->parent);
 			}
 		}
 	}
 
-	tree->Root->Color = Black;
+	tree->root->colour = BLACK;
 }
 
 
-/*
- *	Insert an element into the tree.
+/** Insert an element into the tree
+ *
  */
-rbnode_t *rbtree_insertnode(rbtree_t *tree, void *Data)
+rbnode_t *rbtree_insert_node(rbtree_t *tree, void *data)
 {
-	rbnode_t *Current, *Parent, *X;
-
-	/***********************************************
-	 *  allocate node for Data and insert in tree  *
-	 ***********************************************/
+	rbnode_t *current, *parent, *x;
 
 	PTHREAD_MUTEX_LOCK(tree);
 
 	/* find where node belongs */
-	Current = tree->Root;
-	Parent = NULL;
-	while (Current != NIL) {
+	current = tree->root;
+	parent = NULL;
+	while (current != NIL) {
 		int result;
 
 		/*
 		 *	See if two entries are identical.
 		 */
-		result = tree->Compare(Data, Current->Data);
+		result = tree->compare(data, current->data);
 		if (result == 0) {
 			/*
 			 *	Don't replace the entry.
 			 */
-			if (tree->replace_flag == 0) {
+			if (!tree->replace) {
 				PTHREAD_MUTEX_UNLOCK(tree);
 				return NULL;
 			}
@@ -285,201 +279,201 @@ rbnode_t *rbtree_insertnode(rbtree_t *tree, void *Data)
 			/*
 			 *	Do replace the entry.
 			 */
-			if (tree->freeNode) tree->freeNode(Current->Data);
-			Current->Data = Data;
+			if (tree->free) tree->free(current->data);
+			current->data = data;
 			PTHREAD_MUTEX_UNLOCK(tree);
-			return Current;
+			return current;
 		}
 
-		Parent = Current;
-		Current = (result < 0) ? Current->Left : Current->Right;
+		parent = current;
+		current = (result < 0) ? current->left : current->right;
 	}
 
 	/* setup new node */
-	X = talloc_zero(tree, rbnode_t);
-	if (!X) {
+	x = talloc_zero(tree, rbnode_t);
+	if (!x) {
 		fr_strerror_printf("No memory for new rbtree node");
 		PTHREAD_MUTEX_UNLOCK(tree);
 		return NULL;
 	}
 
-	X->Data = Data;
-	X->Parent = Parent;
-	X->Left = NIL;
-	X->Right = NIL;
-	X->Color = Red;
+	x->data = data;
+	x->parent = parent;
+	x->left = NIL;
+	x->right = NIL;
+	x->colour = RED;
 
 	/* insert node in tree */
-	if (Parent) {
-		if (tree->Compare(Data, Parent->Data) <= 0)
-			Parent->Left = X;
-		else
-			Parent->Right = X;
+	if (parent) {
+		if (tree->compare(data, parent->data) <= 0) {
+			parent->left = x;
+		} else {
+			parent->right = x;
+		}
 	} else {
-		tree->Root = X;
+		tree->root = x;
 	}
 
-	InsertFixup(tree, X);
+	insert_fixup(tree, x);
 
 	tree->num_elements++;
 
 	PTHREAD_MUTEX_UNLOCK(tree);
-	return X;
+	return x;
 }
 
-bool rbtree_insert(rbtree_t *tree, void *Data)
+bool rbtree_insert(rbtree_t *tree, void *data)
 {
-	if (rbtree_insertnode(tree, Data)) return true;
+	if (rbtree_insert_node(tree, data)) return true;
 	return false;
 }
 
-static void DeleteFixup(rbtree_t *tree, rbnode_t *X, rbnode_t *Parent)
+/** Maintain RED-BLACK tree balance after deleting node x
+ *
+ */
+static void delete_fixup(rbtree_t *tree, rbnode_t *x, rbnode_t *parent)
 {
-	/*************************************
-	 *  maintain red-black tree balance  *
-	 *  after deleting node X	    *
-	 *************************************/
 
-	while (X != tree->Root && X->Color == Black) {
-		if (X == Parent->Left) {
-			rbnode_t *W = Parent->Right;
-			if (W->Color == Red) {
-				W->Color = Black;
-				Parent->Color = Red; /* Parent != NIL? */
-				RotateLeft(tree, Parent);
-				W = Parent->Right;
+	while (x != tree->root && x->colour == BLACK) {
+		if (x == parent->left) {
+			rbnode_t *w = parent->right;
+			if (w->colour == RED) {
+				w->colour = BLACK;
+				parent->colour = RED; /* parent != NIL? */
+				rotate_left(tree, parent);
+				w = parent->right;
 			}
-			if (W->Left->Color == Black && W->Right->Color == Black) {
-				if (W != NIL) W->Color = Red;
-				X = Parent;
-				Parent = X->Parent;
+			if ((w->left->colour == BLACK) && (w->right->colour == BLACK)) {
+				if (w != NIL) w->colour = RED;
+				x = parent;
+				parent = x->parent;
 			} else {
-				if (W->Right->Color == Black) {
-					if (W->Left != NIL) W->Left->Color = Black;
-					W->Color = Red;
-					RotateRight(tree, W);
-					W = Parent->Right;
+				if (w->right->colour == BLACK) {
+					if (w->left != NIL) w->left->colour = BLACK;
+					w->colour = RED;
+					rotate_right(tree, w);
+					w = parent->right;
 				}
-				W->Color = Parent->Color;
-				if (Parent != NIL) Parent->Color = Black;
-				if (W->Right->Color != Black) {
-					W->Right->Color = Black;
+				w->colour = parent->colour;
+				if (parent != NIL) parent->colour = BLACK;
+				if (w->right->colour != BLACK) {
+					w->right->colour = BLACK;
 				}
-				RotateLeft(tree, Parent);
-				X = tree->Root;
+				rotate_left(tree, parent);
+				x = tree->root;
 			}
 		} else {
-			rbnode_t *W = Parent->Left;
-			if (W->Color == Red) {
-				W->Color = Black;
-				Parent->Color = Red; /* Parent != NIL? */
-				RotateRight(tree, Parent);
-				W = Parent->Left;
+			rbnode_t *w = parent->left;
+			if (w->colour == RED) {
+				w->colour = BLACK;
+				parent->colour = RED; /* parent != NIL? */
+				rotate_right(tree, parent);
+				w = parent->left;
 			}
-			if (W->Right->Color == Black && W->Left->Color == Black) {
-				if (W != NIL) W->Color = Red;
-				X = Parent;
-				Parent = X->Parent;
+			if ((w->right->colour == BLACK) && (w->left->colour == BLACK)) {
+				if (w != NIL) w->colour = RED;
+				x = parent;
+				parent = x->parent;
 			} else {
-				if (W->Left->Color == Black) {
-					if (W->Right != NIL) W->Right->Color = Black;
-					W->Color = Red;
-					RotateLeft(tree, W);
-					W = Parent->Left;
+				if (w->left->colour == BLACK) {
+					if (w->right != NIL) w->right->colour = BLACK;
+					w->colour = RED;
+					rotate_left(tree, w);
+					w = parent->left;
 				}
-				W->Color = Parent->Color;
-				if (Parent != NIL) Parent->Color = Black;
-				if (W->Left->Color != Black) {
-					W->Left->Color = Black;
+				w->colour = parent->colour;
+				if (parent != NIL) parent->colour = BLACK;
+				if (w->left->colour != BLACK) {
+					w->left->colour = BLACK;
 				}
-				RotateRight(tree, Parent);
-				X = tree->Root;
+				rotate_right(tree, parent);
+				x = tree->root;
 			}
 		}
 	}
-	if (X != NIL) X->Color = Black; /* Avoid cache-dirty on NIL */
+	if (x != NIL) x->colour = BLACK; /* Avoid cache-dirty on NIL */
 }
 
-/*
- *	Delete an element from the tree.
+/** Delete an element (z) from the tree
+ *
  */
-static void rbtree_delete_internal(rbtree_t *tree, rbnode_t *Z, int skiplock)
+static void rbtree_delete_internal(rbtree_t *tree, rbnode_t *z, bool skiplock)
 {
-	rbnode_t *X, *Y;
-	rbnode_t *Parent;
+	rbnode_t *x, *y;
+	rbnode_t *parent;
 
-	/*****************************
-	 *  delete node Z from tree  *
-	 *****************************/
-
-	if (!Z || Z == NIL) return;
+	if (!z || z == NIL) return;
 
 	if (!skiplock) {
 		PTHREAD_MUTEX_LOCK(tree);
 	}
 
-	if (Z->Left == NIL || Z->Right == NIL) {
-		/* Y has a NIL node as a child */
-		Y = Z;
+	if (z->left == NIL || z->right == NIL) {
+		/* y has a NIL node as a child */
+		y = z;
 	} else {
 		/* find tree successor with a NIL node as a child */
-		Y = Z->Right;
-		while (Y->Left != NIL) Y = Y->Left;
+		y = z->right;
+		while (y->left != NIL) y = y->left;
 	}
 
-	/* X is Y's only child */
-	if (Y->Left != NIL)
-		X = Y->Left;
-	else
-		X = Y->Right;	/* may be NIL! */
+	/* x is y's only child */
+	if (y->left != NIL) {
+		x = y->left;
+	} else {
+		x = y->right;	/* may be NIL! */
+	}
 
-	/* remove Y from the parent chain */
-	Parent = Y->Parent;
-	if (X != NIL) X->Parent = Parent;
+	/* remove y from the parent chain */
+	parent = y->parent;
+	if (x != NIL) x->parent = parent;
 
-	if (Parent)
-		if (Y == Parent->Left)
-			Parent->Left = X;
-		else
-			Parent->Right = X;
-	else
-		tree->Root = X;
+	if (parent) {
+		if (y == parent->left) {
+			parent->left = x;
+		} else {
+			parent->right = x;
+		}
+	} else {
+		tree->root = x;
+	}
 
-	if (Y != Z) {
-		if (tree->freeNode) tree->freeNode(Z->Data);
-		Z->Data = Y->Data;
-		Y->Data = NULL;
+	if (y != z) {
+		if (tree->free) tree->free(z->data);
+		z->data = y->data;
+		y->data = NULL;
 
-		if ((Y->Color == Black) && Parent)
-			DeleteFixup(tree, X, Parent);
+		if ((y->colour == BLACK) && parent) {
+			delete_fixup(tree, x, parent);
+		}
 
 		/*
-		 *	The user structure in Y->Data MAY include a
-		 *	pointer to Y.  In that case, we CANNOT delete
-		 *	Y.  Instead, we copy Z (which is now in the
-		 *	tree) to Y, and fix up the parent/child
+		 *	The user structure in y->data MAy include a
+		 *	pointer to y.  In that case, we CANNOT delete
+		 *	y.  Instead, we copy z (which is now in the
+		 *	tree) to y, and fix up the parent/child
 		 *	pointers.
 		 */
-		memcpy(Y, Z, sizeof(*Y));
+		memcpy(y, z, sizeof(*y));
 
-		if (!Y->Parent) {
-			tree->Root = Y;
+		if (!y->parent) {
+			tree->root = y;
 		} else {
-			if (Y->Parent->Left == Z) Y->Parent->Left = Y;
-			if (Y->Parent->Right == Z) Y->Parent->Right = Y;
+			if (y->parent->left == z) y->parent->left = y;
+			if (y->parent->right == z) y->parent->right = y;
 		}
-		if (Y->Left->Parent == Z) Y->Left->Parent = Y;
-		if (Y->Right->Parent == Z) Y->Right->Parent = Y;
+		if (y->left->parent == z) y->left->parent = y;
+		if (y->right->parent == z) y->right->parent = y;
 
-		talloc_free(Z);
+		talloc_free(z);
 
 	} else {
-		if (tree->freeNode) tree->freeNode(Y->Data);
+		if (tree->free) tree->free(y->data);
 
-		if (Y->Color == Black)
-			DeleteFixup(tree, X, Parent);
+		if (y->colour == BLACK)
+			delete_fixup(tree, x, parent);
 
-		talloc_free(Y);
+		talloc_free(y);
 	}
 
 	tree->num_elements--;
@@ -487,13 +481,13 @@ static void rbtree_delete_internal(rbtree_t *tree, rbnode_t *Z, int skiplock)
 		PTHREAD_MUTEX_UNLOCK(tree);
 	}
 }
-void rbtree_delete(rbtree_t *tree, rbnode_t *Z) {
-	rbtree_delete_internal(tree, Z, 0);
+void rbtree_delete(rbtree_t *tree, rbnode_t *z) {
+	rbtree_delete_internal(tree, z, false);
 }
 
-/*
- *	Delete a node from the tree, based on given data, which MUST
- *	have come from rbtree_finddata().
+/** Delete a node from the tree, based on given data, which MUST have come from rbtree_finddata().
+ *
+ *
  */
 bool rbtree_deletebydata(rbtree_t *tree, void const *data)
 {
@@ -507,30 +501,25 @@ bool rbtree_deletebydata(rbtree_t *tree, void const *data)
 }
 
 
-/*
- *	Find an element in the tree, returning the data, not the node.
+/** Find an element in the tree, returning the data, not the node
+ *
  */
-rbnode_t *rbtree_find(rbtree_t *tree, void const *Data)
+rbnode_t *rbtree_find(rbtree_t *tree, void const *data)
 {
-	/*******************************
-	 *  find node containing Data  *
-	 *******************************/
-
-	rbnode_t *Current;
-
+	rbnode_t *current;
 
 	PTHREAD_MUTEX_LOCK(tree);
-	Current = tree->Root;
+	current = tree->root;
 
-	while (Current != NIL) {
-		int result = tree->Compare(Data, Current->Data);
+	while (current != NIL) {
+		int result = tree->compare(data, current->data);
 
 		if (result == 0) {
 			PTHREAD_MUTEX_UNLOCK(tree);
-			return Current;
+			return current;
 		} else {
-			Current = (result < 0) ?
-				Current->Left : Current->Right;
+			current = (result < 0) ?
+				current->left : current->right;
 		}
 	}
 
@@ -538,52 +527,44 @@ rbnode_t *rbtree_find(rbtree_t *tree, void const *Data)
 	return NULL;
 }
 
-/*
- *	Find the user data.
+/** Find the user data.
+ *
  */
-void *rbtree_finddata(rbtree_t *tree, void const *Data)
+void *rbtree_finddata(rbtree_t *tree, void const *data)
 {
-	rbnode_t *X;
+	rbnode_t *x;
 
-	X = rbtree_find(tree, Data);
-	if (!X) return NULL;
+	x = rbtree_find(tree, data);
+	if (!x) return NULL;
 
-	return X->Data;
+	return x->data;
 }
 
-/*
- * Find a node by data, perform a callback, and perhaps delete the node.
+/** Find a node by data, perform a compare, and perhaps delete the node.
+ *
  */
-void *rbtree_callbydata(rbtree_t *tree, void const *Data,
-			int (*callback)(void *, void *), void *context) {
-
-	/*******************************
-	 *  find node containing Data  *
-	 *******************************/
-
-	rbnode_t *Current;
-
+void *rbtree_callbydata(rbtree_t *tree, void const *data, rb_comparator_t compare, void *context) {
+	rbnode_t *current;
 
 	PTHREAD_MUTEX_LOCK(tree);
-	Current = tree->Root;
 
-	while (Current != NIL) {
-		int result = tree->Compare(Data, Current->Data);
+	current = tree->root;
+	while (current != NIL) {
+		int result = tree->compare(data, current->data);
 
 		if (result == 0) {
-			void *data = Current->Data;
+			void *our_data = current->data;
 
-			if (callback(context, data) > 0) {
-				rbtree_delete_internal(tree, Current, 1);
-				if (tree->freeNode) {
-					data = NULL;
+			if (compare(context, our_data) > 0) {
+				rbtree_delete_internal(tree, current, true);
+				if (tree->free) {
+					our_data = NULL;
 				}
 			}
 			PTHREAD_MUTEX_UNLOCK(tree);
-			return data;
+			return our_data;
 		} else {
-			Current = (result < 0) ?
-				Current->Left : Current->Right;
+			current = (result < 0) ? current->left : current->right;
 		}
 	}
 
@@ -591,146 +572,139 @@ void *rbtree_callbydata(rbtree_t *tree, void const *Data,
 	return NULL;
 }
 
-/*
- *	Walk the tree, Pre-order
+/** Walk the tree, Pre-order
  *
- *	We call ourselves recursively for each function, but that's OK,
- *	as the stack is only log(N) deep, which is ~12 entries deep.
+ * We call ourselves recursively for each function, but that's OK,
+ * as the stack is only log(N) deep, which is ~12 entries deep.
  */
-static int WalkNodePreOrder(rbnode_t *X,
-			    int (*callback)(void *, void *), void *context)
+static int walk_node_pre_order(rbnode_t *x, rb_comparator_t compare, void *context)
 {
 	int rcode;
-	rbnode_t *Left, *Right;
+	rbnode_t *left, *right;
 
-	Left = X->Left;
-	Right = X->Right;
+	left = x->left;
+	right = x->right;
 
-	rcode = callback(context, X->Data);
+	rcode = compare(context, x->data);
 	if (rcode != 0) return rcode;
 
-	if (Left != NIL) {
-		rcode = WalkNodePreOrder(Left, callback, context);
+	if (left != NIL) {
+		rcode = walk_node_pre_order(left, compare, context);
 		if (rcode != 0) return rcode;
 	}
 
-	if (Right != NIL) {
-		rcode = WalkNodePreOrder(Right, callback, context);
+	if (right != NIL) {
+		rcode = walk_node_pre_order(right, compare, context);
 		if (rcode != 0) return rcode;
 	}
 
 	return 0;		/* we know everything returned zero */
 }
 
-/*
- *	Inorder
- */
-static int WalkNodeInOrder(rbnode_t *X,
-			   int (*callback)(void *, void *), void *context)
-{
-	int rcode;
-	rbnode_t *Right;
-
-	if (X->Left != NIL) {
-		rcode = WalkNodeInOrder(X->Left, callback, context);
-		if (rcode != 0) return rcode;
-	}
-
-	Right = X->Right;
-
-	rcode = callback(context, X->Data);
-	if (rcode != 0) return rcode;
-
-	if (Right != NIL) {
-		rcode = WalkNodeInOrder(Right, callback, context);
-		if (rcode != 0) return rcode;
-	}
-
-	return 0;		/* we know everything returned zero */
-}
-
-
-/*
- *	PostOrder
- */
-static int WalkNodePostOrder(rbnode_t *X,
-			     int (*callback)(void *, void*), void *context)
-{
-	int rcode;
-
-	if (X->Left != NIL) {
-		rcode = WalkNodePostOrder(X->Left, callback, context);
-		if (rcode != 0) return rcode;
-	}
-
-	if (X->Right != NIL) {
-		rcode = WalkNodePostOrder(X->Right, callback, context);
-		if (rcode != 0) return rcode;
-	}
-
-	rcode = callback(context, X->Data);
-	if (rcode != 0) return rcode;
-
-	return 0;		/* we know everything returned zero */
-}
-
-
-/*
- *	DeleteOrder
+/** rbtree_in_order
  *
- *	This executes an InOrder-like walk that adapts to changes in the
- *	tree above it, which may occur because we allow the callback to
+ */
+static int walk_node_in_order(rbnode_t *x, rb_comparator_t compare, void *context)
+{
+	int rcode;
+	rbnode_t *right;
+
+	if (x->left != NIL) {
+		rcode = walk_node_in_order(x->left, compare, context);
+		if (rcode != 0) return rcode;
+	}
+
+	right = x->right;
+
+	rcode = compare(context, x->data);
+	if (rcode != 0) return rcode;
+
+	if (right != NIL) {
+		rcode = walk_node_in_order(right, compare, context);
+		if (rcode != 0) return rcode;
+	}
+
+	return 0;		/* we know everything returned zero */
+}
+
+
+/** rbtree_post_order
+ *
+ */
+static int walk_node_post_order(rbnode_t *x, rb_comparator_t compare, void *context)
+{
+	int rcode;
+
+	if (x->left != NIL) {
+		rcode = walk_node_post_order(x->left, compare, context);
+		if (rcode != 0) return rcode;
+	}
+
+	if (x->right != NIL) {
+		rcode = walk_node_post_order(x->right, compare, context);
+		if (rcode != 0) return rcode;
+	}
+
+	rcode = compare(context, x->data);
+	if (rcode != 0) return rcode;
+
+	return 0;		/* we know everything returned zero */
+}
+
+
+/** rbtree_delete_order
+ *
+ *	This executes an rbtree_in_order-like walk that adapts to changes in the
+ *	tree above it, which may occur because we allow the compare to
  *	tell us to delete the current node.
  *
- *	The callback should return:
+ *	The compare should return:
  *
  *		< 0  - on error
  *		0    - continue walking, don't delete the node
  *		1    - delete the node and stop walking
  *		2    - delete the node and continue walking
  */
-static int WalkDeleteOrder(rbtree_t *tree, int (*callback)(void *, void *),
-			   void *context)
+static int walk_delete_order(rbtree_t *tree, rb_comparator_t compare, void *context)
 {
-	rbnode_t *Solid, *X;
+	rbnode_t *solid, *x;
 	int rcode = 0;
 
 	/* Keep track of last node that refused deletion. */
-	Solid = NIL;
-	while (Solid == NIL) {
-		X = tree->Root;
-		if (X == NIL) break;
+	solid = NIL;
+	while (solid == NIL) {
+		x = tree->root;
+		if (x == NIL) break;
 	descend:
-		while (X->Left != NIL) {
-			X = X->Left;
+		while (x->left != NIL) {
+			x = x->left;
 		}
 	visit:
-		rcode = callback(context, X->Data);
+		rcode = compare(context, x->data);
 		if (rcode < 0) {
 			return rcode;
 		}
 		if (rcode) {
-			rbtree_delete_internal(tree, X, 1);
+			rbtree_delete_internal(tree, x, true);
 			if (rcode != 2) {
 				return rcode;
 			}
-		}
-		else {
-			Solid = X;
+		} else {
+			solid = x;
 		}
 	}
-	if (Solid != NIL) {
-		X = Solid;
-		if (X->Right != NIL) {
-			X = X->Right;
+	if (solid != NIL) {
+		x = solid;
+		if (x->right != NIL) {
+			x = x->right;
 			goto descend;
 		}
-		while (X->Parent) {
-			if (X->Parent->Left == X) {
-				X = X->Parent;
+		while (x->parent) {
+			if (x->parent->left == x) {
+				x = x->parent;
 				goto visit;
 			}
-			X = X->Parent;
+			x = x->parent;
 		}
 	}
 	return rcode;
@@ -738,33 +712,37 @@ static int WalkDeleteOrder(rbtree_t *tree, int (*callback)(void *, void *),
 
 
 /*
- *	Walk the entire tree.  The callback function CANNOT modify
+ *	walk the entire tree.  The compare function CANNOT modify
  *	the tree.
  *
- *	The callback function should return 0 to continue walking.
+ *	The compare function should return 0 to continue walking.
  *	Any other value stops the walk, and is returned.
  */
-int rbtree_walk(rbtree_t *tree, RBTREE_ORDER order,
-		int (*callback)(void *, void *), void *context)
+int rbtree_walk(rbtree_t *tree, rb_order_t order, rb_comparator_t compare, void *context)
 {
 	int rcode;
 
-	if (tree->Root == NIL) return 0;
+	if (tree->root == NIL) return 0;
 
 	PTHREAD_MUTEX_LOCK(tree);
+
 	switch (order) {
-	case PreOrder:
-		rcode = WalkNodePreOrder(tree->Root, callback, context);
+	case RBTREE_PRE_ORDER:
+		rcode = walk_node_pre_order(tree->root, compare, context);
 		break;
-	case InOrder:
-		rcode = WalkNodeInOrder(tree->Root, callback, context);
+
+	case RBTREE_IN_ORDER:
+		rcode = walk_node_in_order(tree->root, compare, context);
 		break;
-	case PostOrder:
-		rcode = WalkNodePostOrder(tree->Root, callback, context);
+
+	case RBTREE_POST_ORDER:
+		rcode = walk_node_post_order(tree->root, compare, context);
 		break;
-	case DeleteOrder:
-		rcode = WalkDeleteOrder(tree, callback, context);
+
+	case RBTREE_DELETE_ORDER:
+		rcode = walk_delete_order(tree, compare, context);
 		break;
+
 	default:
 		rcode = -1;
 		break;
@@ -781,7 +759,6 @@ int rbtree_num_elements(rbtree_t *tree)
 	return tree->num_elements;
 }
 
-
 /*
  *	Given a Node, return the data.
  */
@@ -789,7 +766,7 @@ void *rbtree_node2data(UNUSED rbtree_t *tree, rbnode_t *node)
 {
 	if (!node) return NULL;
 
-	return node->Data;
+	return node->data;
 }
 
 /*
@@ -798,15 +775,15 @@ void *rbtree_node2data(UNUSED rbtree_t *tree, rbnode_t *node)
 void *rbtree_min(rbtree_t *tree)
 {
 	void *data;
-	rbnode_t *Current;
+	rbnode_t *current;
 
-	if (!tree || !tree->Root) return NULL;
+	if (!tree || !tree->root) return NULL;
 
 	PTHREAD_MUTEX_LOCK(tree);
-	Current = tree->Root;
-	while (Current->Left != NIL) Current = Current->Left;
+	current = tree->root;
+	while (current->left != NIL) current = current->left;
 
-	data = Current->Data;
+	data = current->data;
 	PTHREAD_MUTEX_UNLOCK(tree);
 	return data;
 }

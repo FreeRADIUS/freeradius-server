@@ -2824,7 +2824,7 @@ static int cf_section_cmp(CONF_SECTION *a, CONF_SECTION *b)
 	 *	Walk over the CONF_DATA, stat'ing PW_TYPE_FILE_INPUT.
 	 */
 	if (a->data_tree &&
-	    (rbtree_walk(a->data_tree, InOrder, filename_stat, NULL) != 0)) {
+	    (rbtree_walk(a->data_tree, RBTREE_IN_ORDER, filename_stat, NULL) != 0)) {
 		return 0;
 	}
 

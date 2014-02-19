@@ -707,7 +707,7 @@ int xlat_register(char const *name, RAD_XLAT_FUNC func, RADIUS_ESCAPE_STRING esc
 	c->length = strlen(c->name);
 	c->instance = instance;
 
-	node = rbtree_insertnode(xlat_root, c);
+	node = rbtree_insert_node(xlat_root, c);
 	if (!node) {
 		talloc_free(c);
 		return -1;
