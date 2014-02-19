@@ -2644,19 +2644,6 @@ rad_listen_t *proxy_new_listener(home_server_t *home, int src_port)
 		 */
 		this->fd = fr_tcp_client_socket(&home->src_ipaddr,
 						&home->ipaddr, home->port);
-		if (home->tls) {
-			DEBUG("Trying SSL to port %d\n", home->port);
-			sock->ssn = tls_new_client_session(home->tls, this->fd);
-			if (!sock->ssn) {
-				ERROR("Failed starting SSL to %s", buffer);
-				home->last_failed_open = now;
-				listen_free(&this);
-				return NULL;
-			}
-
-			this->recv = proxy_tls_recv;
-			this->send = proxy_tls_send;
-		}
 	} else
 #endif
 		this->fd = fr_socket(&home->src_ipaddr, src_port);
@@ -2670,6 +2657,24 @@ rad_listen_t *proxy_new_listener(home_server_t *home, int src_port)
 		return NULL;
 	}
 
+
+#ifdef WITH_TCP
+#ifdef WITH_TLS
+	if ((home->proto == IPPROTO_TCP) && home->tls) {
+		DEBUG("Trying SSL to port %d\n", home->port);
+		sock->ssn = tls_new_client_session(home->tls, this->fd);
+		if (!sock->ssn) {
+			ERROR("Failed starting SSL to %s", buffer);
+			home->last_failed_open = now;
+			listen_free(&this);
+			return NULL;
+		}
+
+		this->recv = proxy_tls_recv;
+		this->send = proxy_tls_send;
+	}
+#endif
+#endif
 	/*
 	 *	Figure out which port we were bound to.
 	 */
