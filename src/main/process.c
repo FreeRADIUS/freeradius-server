@@ -1843,7 +1843,6 @@ static int insert_into_proxy_hash(REQUEST *request)
 		this = proxy_new_listener(request->home_server, 0);
 		if (!this) {
 			PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
-			ERROR("proxy: Failed to create a new outbound socket");
 			goto fail;
 		}
 
