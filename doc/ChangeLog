@@ -1,5 +1,7 @@
 FreeRADIUS 3.0.2 Mon 13 Jan 2014 14:30:00 EDT urgency=medium
 	Feature improvements
+	* secret keys and LDAP / SQL passwords are now printed as
+	  '<<< secret >>>' in debugging mode.  Use -Xx to see them.
 	* Allow cast (and implicit conversion) of integers to IPv4 addresses
 	* More xlats allow attribute references.  This means they can
 	  operate on binary data.  e.g. expr, base64, md5, sha1.
@@ -21,8 +23,8 @@ FreeRADIUS 3.0.2 Mon 13 Jan 2014 14:30:00 EDT urgency=medium
 	* Allow '&' in more xlat expansions.
 	* Update PostgreSQL schema and queries to record last updated
 	  time, and accounting interim.
-	* Optimize more "if" conditions when the server loads.
-	  This avoids work at run time.  e.g. "foo" == "bar" --> FALSE.
+	* Optimize more "if" conditions when the server loads.  This will
+	  avoid work at run time.  e.g. ("foo" == "bar") --> FALSE.
 
 	Bug fixes
 	* Fix SQL groups.
@@ -59,7 +61,16 @@ FreeRADIUS 3.0.2 Mon 13 Jan 2014 14:30:00 EDT urgency=medium
 	* Fix potential memory corruption when normalising salted password
 	  hashes from hex, where the combined hash and salt was > 64 bytes.
 	* Register rlm_sqlcounter attributes correctly.
+	* treat 127.0.0.1/32 as 127.0.0.1
 	* Don't mangle error output of SQL drivers like PostgreSQL
+	* Fix usage of "tls = ${tls}".  It could previously cause problems
+	  when used multiple times.
+	* Fix TLS session leak for incoming sockets.
+	* Try harder to clean up memory on exit when using "-mM"
+	* Fix memory leak when home server is down for RadSec connections
+	* Fix minor warnings as noted by clang analyzer.
+	* rate-limit outgoing connection attempts when the home server
+	  is down.  It will retry no more than once per second.
 
 FreeRADIUS 3.0.1 Mon 13 Jan 2014 14:30:00 EDT urgency=medium
 	Feature improvements
