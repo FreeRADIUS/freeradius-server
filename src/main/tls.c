@@ -50,8 +50,6 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include <openssl/ocsp.h>
 #endif
 
-static void tls_server_conf_free(fr_tls_server_conf_t *conf);
-
 /* record */
 static void 		record_init(record_t *buf);
 static void 		record_close(record_t *buf);
@@ -2286,10 +2284,8 @@ post_ca:
  *	added to automatically free the data when the CONF_SECTION
  *	is freed.
  */
-static void tls_server_conf_free(fr_tls_server_conf_t *conf)
+static int tls_server_conf_free(fr_tls_server_conf_t *conf)
 {
-	if (!conf) return;
-
 	if (conf->ctx) SSL_CTX_free(conf->ctx);
 
 #ifdef HAVE_OPENSSL_OCSP_H
@@ -2300,7 +2296,7 @@ static void tls_server_conf_free(fr_tls_server_conf_t *conf)
 #ifndef NDEBUG
 	memset(conf, 0, sizeof(*conf));
 #endif
-	talloc_free(conf);
+	return 0;
 }
 
 
@@ -2324,9 +2320,11 @@ fr_tls_server_conf_t *tls_server_conf_parse(CONF_SECTION *cs)
 		return NULL;
 	}
 
+	talloc_set_destructor(conf, tls_server_conf_free);
+
 	if (cf_section_parse(cs, conf, tls_server_config) < 0) {
 	error:
-		tls_server_conf_free(conf);
+		talloc_free(conf);
 		return NULL;
 	}
 
@@ -2386,7 +2384,7 @@ fr_tls_server_conf_t *tls_server_conf_parse(CONF_SECTION *cs)
 	/*
 	 *	Cache conf in cs in case we're asked to parse this again.
 	 */
-	cf_data_add(cs, "tls-conf", conf, (void *)(void *) tls_server_conf_free);
+	cf_data_add(cs, "tls-conf", conf, NULL);
 
 	return conf;
 }
@@ -2434,7 +2432,7 @@ fr_tls_server_conf_t *tls_client_conf_parse(CONF_SECTION *cs)
 		goto error;
 	}
 
-	cf_data_add(cs, "tls-conf", conf, (void *)(void *) tls_server_conf_free);
+	cf_data_add(cs, "tls-conf", conf, NULL);
 
 	return conf;
 }
