@@ -2445,6 +2445,7 @@ CONF_SECTION *cf_section_sub_find_name2(CONF_SECTION const *cs,
 		 */
 		if (!master_cs->name2 && name2) return NULL;
 		if (master_cs->name2 && !name2) return NULL;
+		if (!master_cs->name2 && !name2) return master_cs;
 
 		if (strcmp(master_cs->name2, name2) == 0) {
 			return master_cs;
