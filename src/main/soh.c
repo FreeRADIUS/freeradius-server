@@ -27,6 +27,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/soh.h>
+#include <freeradius-devel/rad_assert.h>
 
 /*
  * This code implements parsing of MS-SOH data into FreeRadius AVPs
@@ -380,6 +381,9 @@ int soh_verify(REQUEST *request, uint8_t const *data, unsigned int data_len) {
 	soh_mode_subheader mode;
 	soh_tlv tlv;
 	int curr_shid=-1, curr_shid_c=-1, curr_hc=-1;
+
+	rad_assert(request != NULL);
+	rad_assert(request->packet != NULL);
 
 	hdr.tlv_type = soh_pull_be_16(data); data += 2;
 	hdr.tlv_len = soh_pull_be_16(data); data += 2;
