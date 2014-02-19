@@ -1687,10 +1687,10 @@ static void add_jitter(struct timeval *when)
 /*
  *	Called by socket_del to remove requests with this socket
  */
-static int eol_proxy_listener(void const *ctx, void const *data)
+static int eol_proxy_listener(void *ctx, void *data)
 {
-	rad_listen_t const *this = ctx;
-	RADIUS_PACKET * const *proxy_p = data;
+	rad_listen_t *this = ctx;
+	RADIUS_PACKET **proxy_p = data;
 	REQUEST *request;
 
 	request = fr_packet2myptr(REQUEST, proxy, proxy_p);
@@ -1716,10 +1716,10 @@ static int eol_proxy_listener(void const *ctx, void const *data)
 }
 #endif	/* WITH_PROXY */
 
-static int eol_listener(void const *ctx, void const *data)
+static int eol_listener(void *ctx, void *data)
 {
-	rad_listen_t const *this = ctx;
-	RADIUS_PACKET * const *packet_p = data;
+	rad_listen_t *this = ctx;
+	RADIUS_PACKET **packet_p = data;
 	REQUEST *request;
 
 	request = fr_packet2myptr(REQUEST, packet, packet_p);
@@ -3929,8 +3929,7 @@ int event_new_fd(rad_listen_t *this)
 		 */
 		if (this->type == RAD_LISTEN_PROXY) {
 			PTHREAD_MUTEX_LOCK(&proxy_mutex);
-			fr_packet_list_walk(proxy_list, this,
-					    eol_proxy_listener);
+			fr_packet_list_walk(proxy_list, this, eol_proxy_listener);
 
 			if (!fr_packet_list_socket_del(proxy_list, this->fd)) {
 				ERROR("Fatal error removing socket: %s",
@@ -3947,8 +3946,7 @@ int event_new_fd(rad_listen_t *this)
 			/*
 			 *	EOL all requests using this socket.
 			 */
-			fr_packet_list_walk(pl, this,
-					    eol_listener);
+			fr_packet_list_walk(pl, this, eol_listener);
 		}
 
 		/*
@@ -4275,7 +4273,7 @@ int radius_event_init(CONF_SECTION *cs, int have_children)
 }
 
 
-static int proxy_delete_cb(UNUSED void const *ctx, void const *data)
+static int proxy_delete_cb(UNUSED void *ctx, void *data)
 {
 	REQUEST *request = fr_packet2myptr(REQUEST, packet, data);
 
@@ -4299,7 +4297,7 @@ static int proxy_delete_cb(UNUSED void const *ctx, void const *data)
 }
 
 
-static int request_delete_cb(UNUSED void const *ctx, void const *data)
+static int request_delete_cb(UNUSED void *ctx, void *data)
 {
 	REQUEST *request = fr_packet2myptr(REQUEST, packet, data);
 

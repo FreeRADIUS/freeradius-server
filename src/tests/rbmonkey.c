@@ -54,7 +54,7 @@ static int comp(void const *a, void const *b)
 }
 
 #if 0
-static int print_cb(UNUSED void const *ctx, void const *i)
+static int print_cb(UNUSED void *ctx, void *i)
 {
 	fprintf(stderr, "%i\n", *(int*)i);
 	return 0;
@@ -66,7 +66,7 @@ static int print_cb(UNUSED void const *ctx, void const *i)
 static int r = 0;
 static int rvals[MAXSIZE];
 
-static int store_cb(UNUSED void const *ctx, void const *i)
+static int store_cb(UNUSED void *ctx, void  *i)
 {
 	rvals[r++] = *(int const *)i;
 	return 0;
@@ -74,9 +74,9 @@ static int store_cb(UNUSED void const *ctx, void const *i)
 
 static int mask;
 
-static int filter_cb(UNUSED void const *ctx, void const *i)
+static int filter_cb(UNUSED void *ctx, void *i)
 {
-	if ((*(int const *)i & mask) == (*(int const *)ctx & mask)) {
+	if ((*(int *)i & mask) == (*(int *)ctx & mask)) {
 		return 2;
 	}
 	return 0;

@@ -577,7 +577,7 @@ void *rbtree_callbydata(rbtree_t *tree, void const *data, rb_comparator_t compar
  * We call ourselves recursively for each function, but that's OK,
  * as the stack is only log(N) deep, which is ~12 entries deep.
  */
-static int walk_node_pre_order(rbnode_t *x, rb_comparator_t compare, void *context)
+static int walk_node_pre_order(rbnode_t *x, rb_walker_t compare, void *context)
 {
 	int rcode;
 	rbnode_t *left, *right;
@@ -604,7 +604,7 @@ static int walk_node_pre_order(rbnode_t *x, rb_comparator_t compare, void *conte
 /** rbtree_in_order
  *
  */
-static int walk_node_in_order(rbnode_t *x, rb_comparator_t compare, void *context)
+static int walk_node_in_order(rbnode_t *x, rb_walker_t compare, void *context)
 {
 	int rcode;
 	rbnode_t *right;
@@ -631,7 +631,7 @@ static int walk_node_in_order(rbnode_t *x, rb_comparator_t compare, void *contex
 /** rbtree_post_order
  *
  */
-static int walk_node_post_order(rbnode_t *x, rb_comparator_t compare, void *context)
+static int walk_node_post_order(rbnode_t *x, rb_walker_t compare, void *context)
 {
 	int rcode;
 
@@ -665,7 +665,7 @@ static int walk_node_post_order(rbnode_t *x, rb_comparator_t compare, void *cont
  *		1    - delete the node and stop walking
  *		2    - delete the node and continue walking
  */
-static int walk_delete_order(rbtree_t *tree, rb_comparator_t compare, void *context)
+static int walk_delete_order(rbtree_t *tree, rb_walker_t compare, void *context)
 {
 	rbnode_t *solid, *x;
 	int rcode = 0;
@@ -718,7 +718,7 @@ static int walk_delete_order(rbtree_t *tree, rb_comparator_t compare, void *cont
  *	The compare function should return 0 to continue walking.
  *	Any other value stops the walk, and is returned.
  */
-int rbtree_walk(rbtree_t *tree, rb_order_t order, rb_comparator_t compare, void *context)
+int rbtree_walk(rbtree_t *tree, rb_order_t order, rb_walker_t compare, void *context)
 {
 	int rcode;
 
