@@ -2597,7 +2597,7 @@ rad_listen_t *proxy_new_listener(home_server_t *home, int src_port)
 	if ((home->limit.max_connections > 0) &&
 	    (home->limit.num_connections >= home->limit.max_connections)) {
 		WDEBUG("Home server has too many open connections (%d)",
-		      home->limit.max_connections);
+		       home->limit.max_connections);
 		return NULL;
 	}
 
@@ -2618,9 +2618,13 @@ rad_listen_t *proxy_new_listener(home_server_t *home, int src_port)
 	sock->my_port = src_port;
 	sock->proto = home->proto;
 
+	/*
+	 *	For error messages.
+	 */
+	this->print(this, buffer, sizeof(buffer));
+
 	if (debug_flag >= 2) {
-		this->print(this, buffer, sizeof(buffer));
-		DEBUG("Opening new %s", buffer);
+		DEBUG("Opening new proxy socket '%s'", buffer);
 	}
 
 #ifdef WITH_TCP
@@ -2645,7 +2649,7 @@ rad_listen_t *proxy_new_listener(home_server_t *home, int src_port)
 
 	if (this->fd < 0) {
 		this->print(this, buffer,sizeof(buffer));
-		ERROR("Failed opening client socket %s : %s",
+		ERROR("Failed opening proxy socket '%s' : %s",
 		      buffer, fr_strerror());
 		home->last_failed_open = now;
 		listen_free(&this);
@@ -2659,7 +2663,7 @@ rad_listen_t *proxy_new_listener(home_server_t *home, int src_port)
 		DEBUG("Trying SSL to port %d\n", home->port);
 		sock->ssn = tls_new_client_session(home->tls, this->fd);
 		if (!sock->ssn) {
-			ERROR("Failed starting SSL to %s", buffer);
+			ERROR("Failed starting SSL to '%s'", buffer);
 			home->last_failed_open = now;
 			listen_free(&this);
 			return NULL;
@@ -2680,7 +2684,8 @@ rad_listen_t *proxy_new_listener(home_server_t *home, int src_port)
 		memset(&src, 0, sizeof_src);
 		if (getsockname(this->fd, (struct sockaddr *) &src,
 				&sizeof_src) < 0) {
-			ERROR("Failed getting socket name: %s", fr_syserror(errno));
+			ERROR("Failed getting socket name for '%s': %s",
+			      buffer, fr_syserror(errno));
 			home->last_failed_open = now;
 			listen_free(&this);
 			return NULL;
@@ -2688,7 +2693,7 @@ rad_listen_t *proxy_new_listener(home_server_t *home, int src_port)
 
 		if (!fr_sockaddr2ipaddr(&src, sizeof_src,
 					&sock->my_ipaddr, &sock->my_port)) {
-			ERROR("Socket has unsupported address family");
+			ERROR("Socket has unsupported address family for '%s'", buffer);
 			home->last_failed_open = now;
 			listen_free(&this);
 			return NULL;
