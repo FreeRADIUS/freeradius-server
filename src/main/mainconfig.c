@@ -1004,8 +1004,6 @@ int read_mainconfig(int reload)
  */
 int free_mainconfig(void)
 {
-	cached_config_t *cc, *next;
-
 	virtual_servers_free(0);
 
 	/*
@@ -1017,14 +1015,9 @@ int free_mainconfig(void)
 	listen_free(&mainconfig.listen);
 
 	/*
-	 *	Free all of the cached configurations.
+	 *	Frees current config and any previous configs.
 	 */
-	for (cc = cs_cache; cc != NULL; cc = next) {
-		next = cc->next;
-
-		talloc_free(cc);
-	}
-
+	TALLOC_FREE(cs_cache);
 	dict_free();
 
 	return 0;
@@ -1069,7 +1062,7 @@ void hup_mainconfig(void)
 		return;
 	}
 
-	cc = talloc_zero(NULL, cached_config_t);
+	cc = talloc_zero(cs_cache, cached_config_t);
 	if (!cc) {
 		ERROR("Out of memory");
 		return;

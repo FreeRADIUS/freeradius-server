@@ -947,7 +947,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 	/*
 	 *	UDP header validation.
 	 */
-	udp = (udp_header_t const *)p;
+	udp = (udp_header_t *)p;
 	{
 		uint16_t udp_len;
 		ssize_t diff;
