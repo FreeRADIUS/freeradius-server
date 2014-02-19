@@ -1324,6 +1324,11 @@ static int old_server_add(realm_config_t *rc, CONF_SECTION *cs,
 	}
 
 	pool = server_pool_alloc(realm, ldflag, type, num_home_servers);
+	if (!pool) {
+		cf_log_err_cs(cs, "Out of memory");
+		return 0;
+	}
+
 	pool->cs = cs;
 
 	pool->servers[0] = home;
