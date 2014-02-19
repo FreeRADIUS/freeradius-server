@@ -50,6 +50,8 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include <openssl/ocsp.h>
 #endif
 
+static void tls_server_conf_free(fr_tls_server_conf_t *conf);
+
 /* record */
 static void 		record_init(record_t *buf);
 static void 		record_close(record_t *buf);
@@ -2280,8 +2282,11 @@ post_ca:
 
 /*
  *	Free TLS client/server config
+ *	Should not be called outside this code, as a callback is
+ *	added to automatically free the data when the CONF_SECTION
+ *	is freed.
  */
-void tls_server_conf_free(fr_tls_server_conf_t *conf)
+static void tls_server_conf_free(fr_tls_server_conf_t *conf)
 {
 	if (!conf) return;
 

@@ -106,13 +106,6 @@ static void home_server_free(void *data)
 {
 	home_server_t *home = data;
 
-#ifdef WITH_TLS
-	if (home->tls) {
-		tls_server_conf_free(home->tls);
-		home->tls = NULL;
-	}
-#endif
-
 	talloc_free(home);
 }
 
