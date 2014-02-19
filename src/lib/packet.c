@@ -820,7 +820,7 @@ bool fr_packet_list_id_free(fr_packet_list_t *pl,
  *	1  means delete current node and stop
  *	2  means delete current node and continue
  */
-int fr_packet_list_walk(fr_packet_list_t *pl, void *ctx, rb_comparator_t callback)
+int fr_packet_list_walk(fr_packet_list_t *pl, void *ctx, rb_walker_t callback)
 {
 	if (!pl || !callback) return 0;
 

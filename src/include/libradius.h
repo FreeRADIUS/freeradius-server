@@ -760,7 +760,8 @@ typedef enum {
 #define RBTREE_FLAG_REPLACE (1 << 0)
 #define RBTREE_FLAG_LOCK    (1 << 1)
 
-typedef int (*rb_comparator_t)(void const *a, void const *b);
+typedef int (*rb_comparator_t)(void const *ctx, void const *data);
+typedef int (*rb_walker_t)(void *ctx, void *data);
 typedef void (*rb_free_t)(void *data);
 
 rbtree_t       *rbtree_create(rb_comparator_t compare, rb_free_t node_free, int flags);
@@ -791,7 +792,7 @@ void	       *rbtree_node2data(rbtree_t *tree, rbnode_t *node);
  *	or 2 to delete the current node and continue.  This may be
  *	used to batch-delete select nodes from a locked rbtree.
  */
-int rbtree_walk(rbtree_t *tree, rb_order_t order, rb_comparator_t compare, void *context);
+int rbtree_walk(rbtree_t *tree, rb_order_t order, rb_walker_t compare, void *context);
 
 /*
  *	Find a matching data item in an rbtree and, if one is found,
