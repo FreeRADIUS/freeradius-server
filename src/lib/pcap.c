@@ -429,10 +429,10 @@ uint16_t fr_udp_checksum(uint8_t const *data, uint16_t len,
 			 struct in_addr const src_addr, struct in_addr const dst_addr)
 {
 	uint64_t sum = 0;	/* using 64bits avoids overflow check */
-	uint16_t const *p = (uint16_t *)data;
+	uint16_t const *p = (uint16_t const *)data;
 
-	uint16_t *ip_src = (void *) &src_addr.s_addr;
-	uint16_t *ip_dst = (void *) &dst_addr.s_addr;
+	uint16_t const *ip_src = (void const *) &src_addr.s_addr;
+	uint16_t const *ip_dst = (void const *) &dst_addr.s_addr;
 	uint16_t i;
 
 	sum += *(ip_src++);
@@ -448,7 +448,7 @@ uint16_t fr_udp_checksum(uint8_t const *data, uint16_t len,
 	}
 
 	if (i) {
-		sum += (0xff & *(uint8_t *)p) << 8;
+		sum += (0xff & *(uint8_t const *)p) << 8;
 	}
 
 	while (sum >> 16) {
