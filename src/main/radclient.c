@@ -453,7 +453,7 @@ static int filename_cmp(void const *one, void const *two)
 	return strcmp((char const *) one, (char const *) two);
 }
 
-static int filename_walk(UNUSED void *context, void *data)
+static int filename_walk(UNUSED void const *context, void const *data)
 {
 	char const	*filename = data;
 
@@ -1193,7 +1193,7 @@ int main(int argc, char **argv)
 	/*
 	 *	Walk over the list of filenames, creating the requests.
 	 */
-	if (rbtree_walk(filename_tree, InOrder, filename_walk, NULL) != 0) {
+	if (rbtree_walk(filename_tree, RBTREE_IN_ORDER, filename_walk, NULL) != 0) {
 		fprintf(stderr, "Failed walking over filenames\n");
 		exit(1);
 	}

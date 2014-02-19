@@ -554,8 +554,9 @@ static xlat_t *xlat_find(char const *name)
  */
 int xlat_register(char const *name, RAD_XLAT_FUNC func, RADIUS_ESCAPE_STRING escape, void *instance)
 {
-	xlat_t	*c;
-	xlat_t	my_xlat;
+	xlat_t	 *c;
+	xlat_t	 my_xlat;
+	rbnode_t *node;
 
 	if (!name || !*name) {
 		DEBUG("xlat_register: Invalid xlat name");
@@ -639,7 +640,11 @@ int xlat_register(char const *name, RAD_XLAT_FUNC func, RADIUS_ESCAPE_STRING esc
 	c->length = strlen(c->name);
 	c->instance = instance;
 
-	rbtree_insert(xlat_root, c);
+	node = rbtree_insert_node(xlat_root, c);
+	if (!node) {
+		talloc_free(c);
+		return -1;
+	}
 
 	return 0;
 }

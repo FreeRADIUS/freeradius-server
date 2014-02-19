@@ -704,24 +704,32 @@ int		fr_fault_setup(char const *cmd, char const *program);
 typedef struct rbtree_t rbtree_t;
 typedef struct rbnode_t rbnode_t;
 
+/* callback order for walking  */
+typedef enum {
+	RBTREE_PRE_ORDER,
+	RBTREE_IN_ORDER,
+	RBTREE_POST_ORDER,
+	RBTREE_DELETE_ORDER
+} rb_order_t;
+
 #define RBTREE_FLAG_NONE    (0)
 #define RBTREE_FLAG_REPLACE (1 << 0)
 #define RBTREE_FLAG_LOCK    (1 << 1)
-rbtree_t       *rbtree_create(int (*Compare)(void const *, void const *),
-			      void (*freeNode)(void *),
-			      int flags);
+
+typedef int (*rb_comparator_t)(void const *a, void const *b);
+typedef void (*rb_free_t)(void *data);
+
+rbtree_t       *rbtree_create(rb_comparator_t compare, rb_free_t node_free, int flags);
 void		rbtree_free(rbtree_t *tree);
-bool		rbtree_insert(rbtree_t *tree, void *Data);
-void		rbtree_delete(rbtree_t *tree, rbnode_t *Z);
+bool		rbtree_insert(rbtree_t *tree, void *data);
+rbnode_t	*rbtree_insert_node(rbtree_t *tree, void *data);
+void		rbtree_delete(rbtree_t *tree, rbnode_t *z);
 bool		rbtree_deletebydata(rbtree_t *tree, void const *data);
-rbnode_t       *rbtree_find(rbtree_t *tree, void const *Data);
-void	       *rbtree_finddata(rbtree_t *tree, void const *Data);
+rbnode_t       *rbtree_find(rbtree_t *tree, void const *data);
+void	       *rbtree_finddata(rbtree_t *tree, void const *data);
 int		rbtree_num_elements(rbtree_t *tree);
 void	       *rbtree_min(rbtree_t *tree);
 void	       *rbtree_node2data(rbtree_t *tree, rbnode_t *node);
-
-/* callback order for walking  */
-typedef enum { PreOrder, InOrder, PostOrder, DeleteOrder } RBTREE_ORDER;
 
 /*
  *	The callback should be declared as:
@@ -734,12 +742,12 @@ typedef enum { PreOrder, InOrder, PostOrder, DeleteOrder } RBTREE_ORDER;
  *	It should return 0 if all is OK, and !0 for any error.
  *	The walking will stop on any error.
  *
- *	Except with DeleteOrder, where the callback should return <0 for
+ *	Except with RBTREE_DELETE_ORDER, where the callback should return <0 for
  *	errors, and may return 1 to delete the current node and halt,
  *	or 2 to delete the current node and continue.  This may be
  *	used to batch-delete select nodes from a locked rbtree.
  */
-int rbtree_walk(rbtree_t *tree, RBTREE_ORDER order, int (*callback)(void *, void *), void *context);
+int rbtree_walk(rbtree_t *tree, rb_order_t order, rb_comparator_t compare, void *context);
 
 /*
  *	Find a matching data item in an rbtree and, if one is found,
@@ -759,7 +767,7 @@ int rbtree_walk(rbtree_t *tree, RBTREE_ORDER order, int (*callback)(void *, void
  *	item was not found, or NULL if the item was deleted and the tree was
  *	created with a freeNode garbage collection routine.
  */
-void *rbtree_callbydata(rbtree_t *tree, void const *Data, int (*callback)(void *, void *), void *context);
+void *rbtree_callbydata(rbtree_t *tree, void const *data, rb_comparator_t compare, void *context);
 
 /*
  *	FIFOs
