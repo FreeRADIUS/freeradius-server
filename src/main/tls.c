@@ -2405,9 +2405,11 @@ fr_tls_server_conf_t *tls_client_conf_parse(CONF_SECTION *cs)
 		return NULL;
 	}
 
+	talloc_set_destructor(conf, tls_server_conf_free);
+
 	if (cf_section_parse(cs, conf, tls_client_config) < 0) {
 	error:
-		tls_server_conf_free(conf);
+		talloc_free(conf);
 		return NULL;
 	}
 
