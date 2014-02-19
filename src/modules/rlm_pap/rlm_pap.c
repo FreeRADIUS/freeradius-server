@@ -28,6 +28,7 @@ USES_APPLE_DEPRECATED_API
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
 #include <freeradius-devel/base64.h>
+#include <freeradius-devel/rad_assert.h>
 
 #include <ctype.h>
 
@@ -122,10 +123,11 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
  */
 static void normify(REQUEST *request, VALUE_PAIR *vp, size_t min_length)
 {
-
 	uint8_t buffer[256];
 
 	if (min_length >= sizeof(buffer)) return; /* paranoia */
+
+	rad_assert(request != NULL);
 
 	/*
 	 *	Hex encoding.
@@ -177,6 +179,8 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 	int found_pw = false;
 	VALUE_PAIR *vp;
 	vp_cursor_t cursor;
+
+	rad_assert(request != NULL);
 
 	for (vp = fr_cursor_init(&cursor, &request->config_items);
 	     vp;
