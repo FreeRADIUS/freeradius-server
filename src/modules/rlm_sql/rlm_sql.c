@@ -577,6 +577,9 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t *inst, REQUEST *request, rlm
 	char			*expanded = NULL;
 	int			rows;
 
+	rad_assert(request != NULL);
+	rad_assert(request->packet != NULL);
+
 	/*
 	 *	Get the list of groups this user is a member of
 	 */
@@ -926,6 +929,10 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST * request)
 	int	rows;
 
 	char	*expanded = NULL;
+
+	rad_assert(request != NULL);
+	rad_assert(request->packet != NULL);
+	rad_assert(request->reply != NULL);
 
 	/*
 	 *  Set, escape, and check the user attr here
