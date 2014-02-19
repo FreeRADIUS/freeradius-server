@@ -885,7 +885,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 
 	ip_header_t const	*ip = NULL;		/* The IP header */
 	ip_header6_t const	*ip6 = NULL;		/* The IPv6 header */
-	udp_header_t const	*udp;			/* The UDP header */
+	udp_header_t		*udp;			/* The UDP header */
 	uint8_t			version;		/* IP header version */
 	bool			response;		/* Was it a response code */
 
@@ -973,7 +973,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 		checksum = udp->checksum;
 
 		/* Zero out the checksum, so fr_udp_checksum gives us the expected result */
-		memset((uint8_t *) &udp->checksum, 0, sizeof(udp->checksum));
+		udp->checksum = 0;
 
 		expected = fr_udp_checksum((uint8_t *) udp, (size_t) ntohs(udp->len), ip->ip_src, ip->ip_dst);
 		if (checksum != expected) {
