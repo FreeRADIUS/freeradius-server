@@ -110,15 +110,16 @@ int udpfromto_init(int s)
 		 */
 		proto = SOL_IP;
 		flag = IP_PKTINFO;
-#endif
-
+#else
 #ifdef IP_RECVDSTADDR
+
 		/*
 		 *	Set the IP_RECVDSTADDR option (BSD).  Note:
 		 *	IP_RECVDSTADDR == IP_SENDSRCADDR
 		 */
 		proto = IPPROTO_IP;
 		flag = IP_RECVDSTADDR;
+#endif
 #endif
 
 #ifdef AF_INET6
