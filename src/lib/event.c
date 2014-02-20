@@ -147,12 +147,20 @@ int fr_event_delete(fr_event_list_t *el, fr_event_t **ev_p)
 
 	if (!el || !ev_p || !*ev_p) return 0;
 
+	/*
+	 *  This should catch potential double frees
+	 */
+#ifndef NDEBUG
+	ev = talloc_get_type_abort(*ev_p, fr_event_t);
+#else
 	ev = *ev_p;
+#endif
+
 	if (ev->ev_p) *(ev->ev_p) = NULL;
 	*ev_p = NULL;
 
 	ret = fr_heap_extract(el->times, ev);
-	free(ev);
+	talloc_free(ev);
 
 	return ret;
 }
@@ -167,17 +175,14 @@ int fr_event_insert(fr_event_list_t *el, fr_event_callback_t callback, void *ctx
 
 	if (ev_p && *ev_p) fr_event_delete(el, ev_p);
 
-	ev = malloc(sizeof(*ev));
-	if (!ev) return 0;
-	memset(ev, 0, sizeof(*ev));
-
+	ev = talloc_zero(el, fr_event_t);
 	ev->callback = callback;
 	ev->ctx = ctx;
 	ev->when = *when;
 	ev->ev_p = ev_p;
 
 	if (!fr_heap_insert(el->times, ev)) {
-		free(ev);
+		talloc_free(ev);
 		return 0;
 	}
 
