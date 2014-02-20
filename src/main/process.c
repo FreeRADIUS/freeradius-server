@@ -821,7 +821,6 @@ static void request_process_timer(REQUEST *request)
 static void request_queue_or_run(UNUSED REQUEST *request,
 				 fr_request_process_t process)
 {
-	struct timeval when;
 #ifdef DEBUG_STATE_MACHINE
 	int action = FR_ACTION_TIMER;
 #endif
@@ -844,6 +843,8 @@ static void request_queue_or_run(UNUSED REQUEST *request,
 
 #ifdef HAVE_PTHREAD_H
 	if (we_are_master()) {
+		struct timeval when;
+
 		/*
 		 *	(re) set the initial delay.
 		 */
