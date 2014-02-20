@@ -885,7 +885,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 
 	ip_header_t const	*ip = NULL;		/* The IP header */
 	ip_header6_t const	*ip6 = NULL;		/* The IPv6 header */
-	udp_header_t		*udp;			/* The UDP header */
+	udp_header_t const	*udp;			/* The UDP header */
 	uint8_t			version;		/* IP header version */
 	bool			response;		/* Was it a response code */
 
@@ -947,7 +947,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 	/*
 	 *	UDP header validation.
 	 */
-	udp = (udp_header_t *)p;
+	udp = (udp_header_t const *)p;
 	{
 		uint16_t udp_len;
 		ssize_t diff;
@@ -968,17 +968,13 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 		}
 	}
 	if (version == 4) {
-		uint16_t checksum, expected;
+		uint16_t expected;
 
-		checksum = udp->checksum;
-
-		/* Zero out the checksum, so fr_udp_checksum gives us the expected result */
-		udp->checksum = 0;
-
-		expected = fr_udp_checksum((uint8_t *) udp, (size_t) ntohs(udp->len), ip->ip_src, ip->ip_dst);
-		if (checksum != expected) {
-			REDEBUG("UDP checksum invalid, packet: 0x%04hx calculated: 0x%04hx", ntohs(checksum),
-				ntohs(expected));
+		expected = fr_udp_checksum((uint8_t const *) udp, ntohs(udp->len), udp->checksum,
+					   ip->ip_src, ip->ip_dst);
+		if (udp->checksum != expected) {
+			REDEBUG("UDP checksum invalid, packet: 0x%04hx calculated: 0x%04hx",
+				ntohs(udp->checksum), ntohs(expected));
 			/* Not a fatal error */
 		}
 	}

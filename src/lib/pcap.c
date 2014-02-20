@@ -421,11 +421,12 @@ ssize_t fr_pcap_link_layer_offset(uint8_t const *data, size_t len, int link_type
  * @param data Pointer to the start of the UDP header
  * @param len value of udp length field in host byte order. Must be validated to make
  *	  sure it won't overrun data buffer.
+ * @param checksum current checksum, leave as 0 to just enable validation.
  * @param src_addr in network byte order.
  * @param dst_addr in network byte order.
  * @return 0 if the checksum is correct, else another number.
  */
-uint16_t fr_udp_checksum(uint8_t const *data, uint16_t len,
+uint16_t fr_udp_checksum(uint8_t const *data, uint16_t len, uint16_t checksum,
 			 struct in_addr const src_addr, struct in_addr const dst_addr)
 {
 	uint64_t sum = 0;	/* using 64bits avoids overflow check */
@@ -450,6 +451,8 @@ uint16_t fr_udp_checksum(uint8_t const *data, uint16_t len,
 	if (i) {
 		sum += (0xff & *(uint8_t const *)p) << 8;
 	}
+
+	sum -= checksum;
 
 	while (sum >> 16) {
 		sum = (sum & 0xffff) + (sum >> 16);
