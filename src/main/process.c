@@ -4271,6 +4271,7 @@ int radius_event_init(CONF_SECTION *cs, int have_children)
 }
 
 
+#ifdef WITH_PROXY
 static int proxy_delete_cb(UNUSED void *ctx, void *data)
 {
 	REQUEST *request = fr_packet2myptr(REQUEST, packet, data);
@@ -4293,6 +4294,7 @@ static int proxy_delete_cb(UNUSED void *ctx, void *data)
 	 */
 	return 2;
 }
+#endif
 
 
 static int request_delete_cb(UNUSED void *ctx, void *data)
