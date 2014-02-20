@@ -2547,6 +2547,11 @@ static int listener_free(void *ctx)
 		rad_free(&sock->packet);
 
 #ifdef WITH_TLS
+		/*
+		 *	Note that we do NOT free this->tls, as the
+		 *	pointer is parented by its CONF_SECTION.  It
+		 *	may be used by multiple listeners.
+		 */
 		if (this->tls) {
 			if (sock->ssn) session_free(sock->ssn);
 			request_free(&sock->request);
