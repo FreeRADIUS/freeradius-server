@@ -960,6 +960,12 @@ int thread_pool_init(UNUSED CONF_SECTION *cs, int *spawn_flag)
 		ERROR("FATAL: max_queue_size value must be in range 2-1048576");
 		return -1;
 	}
+
+	if (thread_pool.start_threads > thread_pool.max_threads) {
+		ERROR("FATAL: start_servers (%i) must be <= max_servers (%i)",
+		      thread_pool.start_threads, thread_pool.max_threads);
+		return -1;
+	}
 #endif	/* WITH_GCD */
 
 	/*
