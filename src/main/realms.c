@@ -1869,14 +1869,7 @@ int realms_init(CONF_SECTION *config)
 	if (cs) {
 		if (cf_section_parse(cs, rc, proxy_config) < 0) {
 			ERROR("Failed parsing proxy section");
-		error:
-			realms_free();
-			/*
-			 *	Must be called after realms_free as home_servers
-			 *	parented by rc are in trees freed by realms_free()
-			 */
-			talloc_free(rc);
-			return 0;
+			goto error;
 		}
 	} else {
 		rc->dead_time = DEAD_TIME;
@@ -1910,7 +1903,18 @@ int realms_init(CONF_SECTION *config)
 	for (cs = cf_subsection_find_next(config, NULL, "realm");
 	     cs != NULL;
 	     cs = cf_subsection_find_next(config, cs, "realm")) {
-		if (!realm_add(rc, cs)) goto error;
+		if (!realm_add(rc, cs)) {
+#if defined (WITH_PROXY) || defined (WITH_COA)
+		error:
+#endif
+			realms_free();
+			/*
+			 *	Must be called after realms_free as home_servers
+			 *	parented by rc are in trees freed by realms_free()
+			 */
+			talloc_free(rc);
+			return 0;
+		}
 	}
 
 #ifdef WITH_COA
