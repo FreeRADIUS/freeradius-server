@@ -99,6 +99,8 @@ int main(int argc, char *argv[])
 	int flag = 0;
 	int from_child[2] = {-1, -1};
 
+	int devnull;
+
 	/*
 	 *	If the server was built with debugging enabled always install
 	 *	the basic fatal signal handlers.
@@ -293,11 +295,26 @@ int main(int argc, char *argv[])
 	}
 
 #ifndef __MINGW32__
+
+	devnull = open("/dev/null", O_RDWR);
+	if (devnull < 0) {
+		radlog(L_ERR|L_CONS, "Failed opening /dev/null: %s\n", strerror(errno));
+		exit(1);
+	}
+
 	/*
 	 *  Disconnect from session
 	 */
 	if (dont_fork == FALSE) {
 		pid_t pid;
+
+		/*
+		 *  Really weird things happen if we leave stdin open and call
+		 *  things like system() later.
+		 */
+		if (dont_fork == 0) {
+			dup2(devnull, STDIN_FILENO);
+		}
 
 		if (pipe(from_child) != 0) {
 			radlog(L_ERR, "Couldn't open pipe for child status: %s", strerror(errno));
@@ -355,37 +372,27 @@ int main(int argc, char *argv[])
 	 */
 	radius_pid = getpid();
 
-	/*
-	 *	If we're running as a daemon, close the default file
-	 *	descriptors, AFTER forking.
-	 */
-	if (!debug_flag) {
-		int devnull;
-
-		devnull = open("/dev/null", O_RDWR);
-		if (devnull < 0) {
-			radlog(L_ERR|L_CONS, "Failed opening /dev/null: %s\n",
-			       strerror(errno));
-			exit(1);
-		}
-		dup2(devnull, STDIN_FILENO);
-		if (mainconfig.radlog_dest == RADLOG_STDOUT) {
-			setlinebuf(stdout);
-			mainconfig.radlog_fd = STDOUT_FILENO;
-		} else {
-			dup2(devnull, STDOUT_FILENO);
-		}
-		if (mainconfig.radlog_dest == RADLOG_STDERR) {
-			setlinebuf(stderr);
-			mainconfig.radlog_fd = STDERR_FILENO;
-		} else {
-			dup2(devnull, STDERR_FILENO);
-		}
-		close(devnull);
-
-	} else {
-		setlinebuf(stdout); /* unbuffered output */
+	if (mainconfig.radlog_dest == RADLOG_STDOUT) {
+		setlinebuf(stdout);
+		mainconfig.radlog_fd = STDOUT_FILENO;
+	} else if (debug_flag) {
+		dup2(devnull, STDOUT_FILENO);
 	}
+
+	if (mainconfig.radlog_dest == RADLOG_STDERR) {
+		setlinebuf(stdout);
+		mainconfig.radlog_fd = STDERR_FILENO;
+	} else {
+		dup2(devnull, STDERR_FILENO);
+	}
+
+	/* Libraries may write messages to stderr or stdout */
+	if (debug_flag) {
+		dup2(mainconfig.radlog_fd, STDOUT_FILENO);
+		dup2(mainconfig.radlog_fd, STDERR_FILENO);
+	}
+
+	close(devnull);
 
 	/*
 	 *	Now we have logging check that the OpenSSL
