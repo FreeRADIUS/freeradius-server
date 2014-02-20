@@ -406,39 +406,39 @@ int main(int argc, char *argv[])
 
 		/* so the pipe is correctly widowed if the parent exits?! */
 		close(from_child[0]);
-#ifdef HAVE_SETSID
+#  ifdef HAVE_SETSID
 		setsid();
-#endif
+#  endif
 	}
 #endif
+
+	if (default_log.dest == L_DST_STDOUT) {
+		setlinebuf(stdout);
+		default_log.fd = STDOUT_FILENO;
+	} else if (debug_flag) {
+		dup2(devnull, STDOUT_FILENO);
+	}
+
+	if (default_log.dest == L_DST_STDERR) {
+		setlinebuf(stdout);
+		default_log.fd = STDERR_FILENO;
+	} else {
+		dup2(devnull, STDERR_FILENO);
+	}
+
+	/* Libraries may write messages to stderr or stdout */
+	if (debug_flag) {
+		dup2(default_log.fd, STDOUT_FILENO);
+		dup2(default_log.fd, STDERR_FILENO);
+	}
+
+	close(devnull);
 
 	/*
 	 *  Ensure that we're using the CORRECT pid after forking,
 	 *  NOT the one we started with.
 	 */
 	radius_pid = getpid();
-
-	/*
-	 *	If we're running as a daemon, close the default file
-	 *	descriptors, AFTER forking.
-	 */
-	if (!debug_flag) {
-		if (default_log.dest == L_DST_STDOUT) {
-			setlinebuf(stdout);
-			default_log.fd = STDOUT_FILENO;
-		} else {
-			dup2(devnull, STDOUT_FILENO);
-		}
-		if (default_log.dest == L_DST_STDERR) {
-			setlinebuf(stderr);
-			default_log.fd = STDERR_FILENO;
-		} else {
-			dup2(devnull, STDERR_FILENO);
-		}
-	} else {
-		setlinebuf(stdout); /* unbuffered output */
-	}
-	close(devnull);
 
 	/*
 	 *	Initialize the event pool, including threads.
