@@ -51,6 +51,7 @@ struct fr_event_list_t {
 	int		dispatch;
 
 	int		max_readers;
+	int		num_readers;
 	fr_event_fd_t	readers[FR_EV_MAX_FDS];
 };
 
@@ -81,34 +82,35 @@ static int fr_event_list_time_cmp(void const *one, void const *two)
 }
 
 
-void fr_event_list_free(fr_event_list_t *el)
+static int _event_list_free(fr_event_list_t *list)
 {
+	fr_event_list_t *el = list;
 	fr_event_t *ev;
-
-	if (!el) return;
 
 	while ((ev = fr_heap_peek(el->times)) != NULL) {
 		fr_event_delete(el, &ev);
 	}
 
 	fr_heap_delete(el->times);
-	free(el);
+
+	return 0;
 }
 
 
-fr_event_list_t *fr_event_list_create(fr_event_status_t status)
+fr_event_list_t *fr_event_list_create(TALLOC_CTX *ctx, fr_event_status_t status)
 {
 	int i;
 	fr_event_list_t *el;
 
-	el = malloc(sizeof(*el));
-	if (!el) return NULL;
-	memset(el, 0, sizeof(*el));
+	el = talloc_zero(ctx, fr_event_list_t);
+	if (!fr_assert(el)) {
+		return NULL;
+	}
+	talloc_set_destructor(el, _event_list_free);
 
-	el->times = fr_heap_create(fr_event_list_time_cmp,
-				   offsetof(fr_event_t, heap));
+	el->times = fr_heap_create(fr_event_list_time_cmp, offsetof(fr_event_t, heap));
 	if (!el->times) {
-		fr_event_list_free(el);
+		talloc_free(el);
 		return NULL;
 	}
 
@@ -122,6 +124,13 @@ fr_event_list_t *fr_event_list_create(fr_event_status_t status)
 	return el;
 }
 
+int fr_event_list_num_fds(fr_event_list_t *el)
+{
+	if (!el) return 0;
+
+	return el->num_readers;
+}
+
 int fr_event_list_num_elements(fr_event_list_t *el)
 {
 	if (!el) return 0;
@@ -132,25 +141,33 @@ int fr_event_list_num_elements(fr_event_list_t *el)
 
 int fr_event_delete(fr_event_list_t *el, fr_event_t **ev_p)
 {
+	int ret;
+
 	fr_event_t *ev;
 
 	if (!el || !ev_p || !*ev_p) return 0;
 
+	/*
+	 *  This should catch potential double frees
+	 */
+#ifndef NDEBUG
+	ev = talloc_get_type_abort(*ev_p, fr_event_t);
+#else
 	ev = *ev_p;
+#endif
+
 	if (ev->ev_p) *(ev->ev_p) = NULL;
 	*ev_p = NULL;
 
-	fr_heap_extract(el->times, ev);
-	free(ev);
+	ret = fr_heap_extract(el->times, ev);
+	talloc_free(ev);
 
-	return 1;
+	return ret;
 }
 
 
-int fr_event_insert(fr_event_list_t *el,
-		      fr_event_callback_t callback,
-		      void *ctx, struct timeval *when,
-		      fr_event_t **ev_p)
+int fr_event_insert(fr_event_list_t *el, fr_event_callback_t callback, void *ctx, struct timeval *when,
+		    fr_event_t **ev_p)
 {
 	fr_event_t *ev;
 
@@ -158,17 +175,14 @@ int fr_event_insert(fr_event_list_t *el,
 
 	if (ev_p && *ev_p) fr_event_delete(el, ev_p);
 
-	ev = malloc(sizeof(*ev));
-	if (!ev) return 0;
-	memset(ev, 0, sizeof(*ev));
-
+	ev = talloc_zero(el, fr_event_t);
 	ev->callback = callback;
 	ev->ctx = ctx;
 	ev->when = *when;
 	ev->ev_p = ev_p;
 
 	if (!fr_heap_insert(el->times, ev)) {
-		free(ev);
+		talloc_free(ev);
 		return 0;
 	}
 
@@ -266,6 +280,7 @@ int fr_event_fd_insert(fr_event_list_t *el, int type, int fd,
 
 		if (el->readers[i].fd < 0) {
 			ef = &el->readers[i];
+			el->num_readers++;
 
 			if (i == el->max_readers) el->max_readers = i + 1;
 			break;
@@ -294,6 +309,8 @@ int fr_event_fd_delete(fr_event_list_t *el, int type, int fd)
 	for (i = 0; i < el->max_readers; i++) {
 		if (el->readers[i].fd == fd) {
 			el->readers[i].fd = -1;
+			el->num_readers--;
+
 			if ((i + 1) == el->max_readers) el->max_readers = i;
 			el->changed = 1;
 			return 1;
@@ -311,6 +328,10 @@ void fr_event_loop_exit(fr_event_list_t *el, int code)
 	el->exit = code;
 }
 
+bool fr_event_loop_exiting(fr_event_list_t *el)
+{
+	return (el->exit != 0);
+}
 
 int fr_event_loop(fr_event_list_t *el)
 {
@@ -392,8 +413,7 @@ int fr_event_loop(fr_event_list_t *el)
 		read_fds = master_fds;
 		rcode = select(maxfd + 1, &read_fds, NULL, NULL, wake);
 		if ((rcode < 0) && (errno != EINTR)) {
-			fr_strerror_printf("Failed in select: %s",
-					   fr_syserror(errno));
+			fr_strerror_printf("Failed in select: %s", fr_syserror(errno));
 			el->dispatch = 0;
 			return -1;
 		}
@@ -474,7 +494,7 @@ int main(int argc, char **argv)
 	struct timeval now, when;
 	fr_event_list_t *el;
 
-	el = fr_event_list_create();
+	el = fr_event_list_create(NULL, NULL);
 	if (!el) exit(1);
 
 	memset(&rand_pool, 0, sizeof(rand_pool));
@@ -509,7 +529,7 @@ int main(int argc, char **argv)
 		}
 	}
 
-	fr_event_list_free(el);
+	talloc_free(el);
 
 	return 0;
 }

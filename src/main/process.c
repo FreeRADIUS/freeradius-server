@@ -4158,7 +4158,7 @@ int radius_event_init(CONF_SECTION *cs, int have_children)
 
 	time(&fr_start_time);
 
-	el = fr_event_list_create(event_status);
+	el = fr_event_list_create(NULL, event_status);
 	if (!el) return 0;
 
 	pl = fr_packet_list_create(0);
@@ -4394,7 +4394,7 @@ void radius_event_free(void)
 	proxy_list = NULL;
 #endif
 
-	fr_event_list_free(el);
+	talloc_free(el);
 
 	if (debug_condition) talloc_free(debug_condition);
 }

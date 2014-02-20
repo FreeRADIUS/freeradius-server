@@ -37,9 +37,9 @@ typedef	void (*fr_event_callback_t)(void *);
 typedef	void (*fr_event_status_t)(struct timeval *);
 typedef void (*fr_event_fd_handler_t)(fr_event_list_t *el, int sock, void *ctx);
 
-fr_event_list_t *fr_event_list_create(fr_event_status_t status);
-void fr_event_list_free(fr_event_list_t *el);
+fr_event_list_t *fr_event_list_create(TALLOC_CTX *ctx, fr_event_status_t status);
 
+int fr_event_list_num_fds(fr_event_list_t *el);
 int fr_event_list_num_elements(fr_event_list_t *el);
 
 int fr_event_insert(fr_event_list_t *el,
@@ -56,6 +56,7 @@ int fr_event_fd_insert(fr_event_list_t *el, int type, int fd,
 int fr_event_fd_delete(fr_event_list_t *el, int type, int fd);
 int fr_event_loop(fr_event_list_t *el);
 void fr_event_loop_exit(fr_event_list_t *el, int code);
+bool fr_event_loop_exiting(fr_event_list_t *el);
 
 #ifdef __cplusplus
 }
