@@ -827,17 +827,6 @@ static void request_queue_or_run(UNUSED REQUEST *request,
 #endif
 
 	TRACE_STATE_MACHINE;
-	ASSERT_MASTER;
-
-	/*
-	 *	(re) set the initial delay.
-	 */
-	request->delay = USEC / 3;
-	gettimeofday(&when, NULL);
-	tv_add(&when, request->delay);
-	request->delay += request->delay >> 1;
-
-	STATE_MACHINE_TIMER(FR_ACTION_TIMER);
 
 	/*
 	 *	Do this here so that fewer other functions need to do
@@ -854,11 +843,28 @@ static void request_queue_or_run(UNUSED REQUEST *request,
 	request->process = process;
 
 #ifdef HAVE_PTHREAD_H
-	if (spawn_flag) {
+	if (we_are_master()) {
+		/*
+		 *	(re) set the initial delay.
+		 */
+		request->delay = USEC / 3;
+		gettimeofday(&when, NULL);
+		tv_add(&when, request->delay);
+		request->delay += request->delay >> 1;
+
+		STATE_MACHINE_TIMER(FR_ACTION_TIMER);
+
+		/*
+		 *	A child thread will eventually pick it up.
+		 */
 		if (!request_enqueue(request)) {
-			request_done(request, FR_ACTION_DONE);
-			return;
-		}
+
+		/*
+		 *	Otherwise we're not going to do anything with
+		 *	it...
+		 */
+		request_done(request, FR_ACTION_DONE);
+		return;
 
 	} else
 #endif
