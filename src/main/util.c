@@ -418,11 +418,10 @@ char *rad_ajoin(TALLOC_CTX *ctx, char const **array, char c)
  *
  */
 
-void NEVER_RETURNS rad_assert_fail (char const *file, unsigned int line,
-				    char const *expr)
+void NEVER_RETURNS rad_assert_fail(char const *file, unsigned int line, char const *expr)
 {
 	ERROR("ASSERT FAILED %s[%u]: %s", file, line, expr);
-	abort();
+	fr_fault(SIGABRT);
 }
 
 
