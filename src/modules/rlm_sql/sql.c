@@ -300,11 +300,11 @@ int rlm_sql_fetch_row(rlm_sql_handle_t **handle, rlm_sql_t *inst)
 	return ret;
 }
 
-static void rlm_sql_query_error(rlm_sql_handle_t **handle, rlm_sql_t *inst)
+static void rlm_sql_query_error(rlm_sql_handle_t *handle, rlm_sql_t *inst)
 {
 	char const *p, *q;
 
-	p = (inst->module->sql_error)(*handle, inst->config);
+	p = (inst->module->sql_error)(handle, inst->config);
 	if (!p) {
 		ERROR("rlm_sql (%s): Unknown query error", inst->config->xlat_name);
 		return;
@@ -324,6 +324,32 @@ static void rlm_sql_query_error(rlm_sql_handle_t **handle, rlm_sql_t *inst)
 
 	if (*p != '\0') {
 		ERROR("rlm_sql (%s): %s", inst->config->xlat_name, p);
+	}
+}
+
+static void rlm_sql_query_debug(rlm_sql_handle_t *handle, rlm_sql_t *inst)
+{
+	char const *p, *q;
+
+	p = (inst->module->sql_error)(handle, inst->config);
+	if (!p) {
+		return;
+	}
+
+	/*
+	 *	Some drivers are nice and provide us with a ^ pointer to
+	 *	the place in the query string where the error occurred.
+	 *
+	 *	For this to be useful we need to split log messages on
+	 *	\n and output each of the lines individually.
+	 */
+	while ((q = strchr(p, '\n'))) {
+		DEBUG2("rlm_sql (%s): %.*s", inst->config->xlat_name, (int) (q - p), p);
+		p = q + 1;
+	}
+
+	if (*p != '\0') {
+		DEBUG2("rlm_sql (%s): %s", inst->config->xlat_name, p);
 	}
 }
 
@@ -349,22 +375,34 @@ int rlm_sql_query(rlm_sql_handle_t **handle, rlm_sql_t *inst, char const *query)
 		goto sql_down;
 	}
 
-	while (1) {
+	while (true) {
 		DEBUG("rlm_sql (%s): Executing query: '%s'", inst->config->xlat_name, query);
 
 		ret = (inst->module->sql_query)(*handle, inst->config, query);
+		switch (ret) {
+		case RLM_SQL_OK:
+			break;
+
 		/*
-		 * Run through all available sockets until we exhaust all existing
-		 * sockets in the pool and fail to establish a *new* connection.
+		 *	Run through all available sockets until we exhaust all existing
+		 *	sockets in the pool and fail to establish a *new* connection.
 		 */
-		if (ret == RLM_SQL_RECONNECT) {
-			sql_down:
+		case RLM_SQL_RECONNECT:
+		sql_down:
 			*handle = fr_connection_reconnect(inst->pool, *handle);
 			if (!*handle) return RLM_SQL_RECONNECT;
-
 			continue;
+
+		case RLM_SQL_QUERY_ERROR:
+		case RLM_SQL_ERROR:
+			rlm_sql_query_error(*handle, inst);
+			break;
+
+		case RLM_SQL_DUPLICATE:
+			rlm_sql_query_debug(*handle, inst);
+			break;
+
 		}
-		if (ret < 0) rlm_sql_query_error(handle, inst);
 
 		return ret;
 	}
@@ -392,22 +430,34 @@ int rlm_sql_select_query(rlm_sql_handle_t **handle, rlm_sql_t *inst, char const 
 		goto sql_down;
 	}
 
-	while (1) {
+	while (true) {
 		DEBUG("rlm_sql (%s): Executing query: '%s'", inst->config->xlat_name, query);
 
 		ret = (inst->module->sql_select_query)(*handle, inst->config, query);
+		switch (ret) {
+		case RLM_SQL_OK:
+			break;
+
 		/*
-		 * Run through all available sockets until we exhaust all existing
-		 * sockets in the pool and fail to establish a *new* connection.
+		 *	Run through all available sockets until we exhaust all existing
+		 *	sockets in the pool and fail to establish a *new* connection.
 		 */
-		if (ret == RLM_SQL_RECONNECT) {
-			sql_down:
+		case RLM_SQL_RECONNECT:
+		sql_down:
 			*handle = fr_connection_reconnect(inst->pool, *handle);
 			if (!*handle) return RLM_SQL_RECONNECT;
-
 			continue;
+
+		case RLM_SQL_QUERY_ERROR:
+		case RLM_SQL_ERROR:
+			rlm_sql_query_error(*handle, inst);
+			break;
+
+		case RLM_SQL_DUPLICATE:
+			rlm_sql_query_debug(*handle, inst);
+			break;
+
 		}
-		if (ret < 0) rlm_sql_query_error(handle, inst);
 
 		return ret;
 	}

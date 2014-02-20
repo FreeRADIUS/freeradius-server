@@ -1253,11 +1253,14 @@ static int acct_redundant(rlm_sql_t *inst, REQUEST *request, sql_acct_section_t 
 		/*
 		 *  Assume all other errors are incidental, and just meant our
 		 *  operation failed and its not a client or SQL syntax error.
+		 *
+		 *  @fixme We should actually be able to distinguish between key
+		 *  constraint violations (which we expect) and other errors.
 		 */
-		if (sql_ret == 0) {
+		if (sql_ret == RLM_SQL_OK) {
 			numaffected = (inst->module->sql_affected_rows)(handle, inst->config);
 			if (numaffected > 0) {
-				break;
+				break;	/* A query succeeded, were done! */
 			}
 
 			RDEBUG("No records updated");
