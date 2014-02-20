@@ -857,7 +857,7 @@ static void request_queue_or_run(UNUSED REQUEST *request,
 		/*
 		 *	A child thread will eventually pick it up.
 		 */
-		if (!request_enqueue(request)) {
+		if (request_enqueue(request)) return;
 
 		/*
 		 *	Otherwise we're not going to do anything with
