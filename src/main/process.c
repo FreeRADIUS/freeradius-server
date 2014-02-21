@@ -65,6 +65,8 @@ static char const *action_codes[] = {
 #endif
 };
 
+#define DEBUG_STATE_MACHINE 1
+
 #ifdef DEBUG_STATE_MACHINE
 #define TRACE_STATE_MACHINE if (debug_flag) printf("(%u) ********\tSTATE %s action %s live M-%s C-%s\t********\n", request->number, __FUNCTION__, action_codes[action], master_state_names[request->master_state], child_state_names[request->child_state])
 
@@ -718,7 +720,7 @@ static void request_process_timer(REQUEST *request)
 	 *	OR it was proxied, and there was no response,
 	 *	OR it was sitting in the queue for too long.
 	 */
-	if ((request->child_state != REQUEST_DONE) &&
+	if ((request->child_state == REQUEST_RUNNING) &&
 	    (request->master_state != REQUEST_STOP_PROCESSING)) {
 		when = request->packet->timestamp;
 		when.tv_sec += request->root->max_request_time;
@@ -854,8 +856,7 @@ static void request_queue_or_run(UNUSED REQUEST *request,
 
 	request->process = process;
 
-#ifdef HAVE_PTHREAD_H
-	if (spawn_flag && we_are_master()) {
+	if (we_are_master()) {
 		struct timeval when;
 
 		/*
@@ -868,32 +869,33 @@ static void request_queue_or_run(UNUSED REQUEST *request,
 
 		STATE_MACHINE_TIMER(FR_ACTION_TIMER);
 
-		/*
-		 *	A child thread will eventually pick it up.
-		 */
-		if (request_enqueue(request)) return;
+#ifdef HAVE_PTHREAD_H
+		if (spawn_flag) {
+			/*
+			 *	A child thread will eventually pick it up.
+			 */
+			if (request_enqueue(request)) return;
 
-		/*
-		 *	Otherwise we're not going to do anything with
-		 *	it...
-		 */
-		request_done(request, FR_ACTION_DONE);
-		return;
-
-	} else
-#endif
-	{
-		request->process(request, FR_ACTION_RUN);
-
-#ifdef WNOHANG
-		/*
-		 *	Requests that care about child process exit
-		 *	codes have already either called
-		 *	rad_waitpid(), or they've given up.
-		 */
-		while (waitpid(-1, NULL, WNOHANG) > 0);
+			/*
+			 *	Otherwise we're not going to do anything with
+			 *	it...
+			 */
+			request_done(request, FR_ACTION_DONE);
+			return;
+		}
 #endif
 	}
+
+	request->process(request, FR_ACTION_RUN);
+
+#ifdef WNOHANG
+	/*
+	 *	Requests that care about child process exit
+	 *	codes have already either called
+	 *	rad_waitpid(), or they've given up.
+	 */
+	while (waitpid(-1, NULL, WNOHANG) > 0);
+#endif
 }
 
 STATE_MACHINE_DECL(request_common)
@@ -1200,17 +1202,6 @@ STATE_MACHINE_DECL(request_finish)
 	}
 
 	/*
-	 *	Send the reply here.
-	 */
-	if ((request->reply->code != PW_AUTHENTICATION_REJECT) ||
-	    (request->root->reject_delay == 0)) {
-		DEBUG_PACKET(request, request->reply, 1);
-		request->listener->send(request->listener,
-					request);
-		pairfree(&request->reply->vps);
-	}
-
-	/*
 	 *	Clean up.  These are no longer needed.
 	 */
 	pairfree(&request->config_items);
@@ -1228,7 +1219,33 @@ STATE_MACHINE_DECL(request_finish)
 	}
 #endif
 
-	RDEBUG2("Finished request %u.", request->number);
+	gettimeofday(&request->reply->timestamp, NULL);
+
+	/*
+	 *	Send the reply.
+	 */
+	if ((request->reply->code != PW_AUTHENTICATION_REJECT) ||
+	    (request->root->reject_delay == 0)) {
+		DEBUG_PACKET(request, request->reply, 1);
+		request->listener->send(request->listener,
+					request);
+		pairfree(&request->reply->vps);
+
+		RDEBUG2("Finished request %u.", request->number);
+#ifdef WITH_ACCOUNTING
+		if (request->packet->code == PW_ACCOUNTING_REQUEST) {
+			request->child_state = REQUEST_DONE;
+		}
+#endif
+		{
+			request->child_state = REQUEST_CLEANUP_DELAY;
+		}
+	} else {
+		RDEBUG2("Delaying reject of request %u for %d seconds",
+			request->number,
+			request->root->reject_delay);
+		request->child_state = REQUEST_REJECT_DELAY;
+	}
 }
 
 STATE_MACHINE_DECL(request_running)
@@ -1236,9 +1253,12 @@ STATE_MACHINE_DECL(request_running)
 	TRACE_STATE_MACHINE;
 
 	switch (action) {
+	case FR_ACTION_TIMER:
+		request_process_timer(request);
+		break;
+
 	case FR_ACTION_CONFLICTING:
 	case FR_ACTION_DUP:
-	case FR_ACTION_TIMER:
 		request_common(request, action);
 		return;
 
@@ -1259,7 +1279,20 @@ STATE_MACHINE_DECL(request_running)
 #endif
 
 	case FR_ACTION_RUN:
-		if (!request_pre_handler(request, action)) goto done;
+		if (!request_pre_handler(request, action)) {
+#ifdef DEBUG_STATE_MACHINE
+			if (debug_flag) printf("(%u) ********\tSTATE %s failed in pre-handler C-%s -> C-%s\t********\n",
+					       request->number, __FUNCTION__,
+					       child_state_names[request->child_state],
+					       child_state_names[REQUEST_DONE]);
+#endif
+
+#ifdef HAVE_PTHREAD_H
+			request->child_pid = NO_SUCH_CHILD_PID;
+#endif
+			request->child_state = REQUEST_DONE;
+			break;
+		}
 
 		rad_assert(request->handle != NULL);
 		request->handle(request);
@@ -1300,25 +1333,6 @@ STATE_MACHINE_DECL(request_running)
 		finished:
 #endif
 			request_finish(request, action);
-
-		done:
-			/*
-			 *	Get the time of the reply, which is
-			 *	when we're done.
-			 */
-			gettimeofday(&request->reply->timestamp, NULL);
-
-#ifdef DEBUG_STATE_MACHINE
-			if (debug_flag) printf("(%u) ********\tSTATE %s C-%s -> C-%s\t********\n",
-					       request->number, __FUNCTION__,
-					       child_state_names[request->child_state],
-					       child_state_names[REQUEST_DONE]);
-#endif
-
-#ifdef HAVE_PTHREAD_H
-			request->child_pid = NO_SUCH_CHILD_PID;
-#endif
-			request->child_state = REQUEST_DONE;
 		}
 		break;
 
