@@ -410,7 +410,7 @@ int request_enqueue(REQUEST *request)
 	thread_pool.request_count++;
 
 	if (thread_pool.num_queued >= thread_pool.max_queue_size) {
-		int complain = false;
+		bool complain = false;
 		time_t now;
 		static time_t last_complained = 0;
 
@@ -426,7 +426,8 @@ int request_enqueue(REQUEST *request)
 		 *	Mark the request as done.
 		 */
 		if (complain) {
-			ERROR("Something is blocking the server.  There are %d packets in the queue, waiting to be processed.  Ignoring the new request.", thread_pool.max_queue_size);
+			ERROR("Something is blocking the server.  There are %d packets in the queue, "
+			      "waiting to be processed.  Ignoring the new request.", thread_pool.num_queued);
 		}
 		return 0;
 	}
