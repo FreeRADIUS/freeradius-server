@@ -675,7 +675,7 @@ ssize_t		xlat_fmt_to_ref(uint8_t const **out, REQUEST *request, char const *fmt)
 void		xlat_free(void);
 
 /* threads.c */
-extern		int thread_pool_init(CONF_SECTION *cs, int *spawn_flag);
+extern		int thread_pool_init(CONF_SECTION *cs, bool *spawn_flag);
 extern		void thread_pool_stop(void);
 extern		int thread_pool_addrequest(REQUEST *, RAD_REQUEST_FUNP);
 extern		pid_t rad_fork(void);
@@ -704,7 +704,7 @@ void fr_suid_down_permanent(void);
 
 /* listen.c */
 void listen_free(rad_listen_t **head);
-int listen_init(CONF_SECTION *cs, rad_listen_t **head, int spawn_flag);
+int listen_init(CONF_SECTION *cs, rad_listen_t **head, bool spawn_flag);
 rad_listen_t *proxy_new_listener(home_server_t *home, int src_port);
 RADCLIENT *client_listener_find(rad_listen_t *listener,
 				fr_ipaddr_t const *ipaddr, int src_port);
@@ -718,7 +718,7 @@ rad_listen_t *listener_find_byipaddr(fr_ipaddr_t const *ipaddr, int port,
 int rad_status_server(REQUEST *request);
 
 /* event.c */
-int radius_event_init(CONF_SECTION *cs, int spawn_flag);
+int radius_event_init(CONF_SECTION *cs, bool spawn_flag);
 void radius_event_free(void);
 int radius_event_process(void);
 int event_new_fd(rad_listen_t *listener);

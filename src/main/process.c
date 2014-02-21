@@ -47,8 +47,8 @@ extern pid_t radius_pid;
 extern bool check_config;
 extern fr_cond_t *debug_condition;
 
-static int spawn_flag = 0;
-static int just_started = true;
+static bool spawn_flag = false;
+static bool just_started = true;
 time_t				fr_start_time;
 static fr_packet_list_t *pl = NULL;
 static fr_event_list_t *el = NULL;
@@ -4150,7 +4150,7 @@ static void event_signal_handler(UNUSED fr_event_list_t *xel,
 /*
  *	Externally-visibly functions.
  */
-int radius_event_init(CONF_SECTION *cs, int have_children)
+int radius_event_init(CONF_SECTION *cs, bool have_children)
 {
 	rad_listen_t *head = NULL;
 
@@ -4185,6 +4185,13 @@ int radius_event_init(CONF_SECTION *cs, int have_children)
 	}
 #endif
 
+	/*
+	 *	Move all of the thread calls to this file?
+	 *
+	 *	It may be best for the mutexes to be in this file...
+	 */
+	spawn_flag = have_children;
+
 #ifdef HAVE_PTHREAD_H
 	NO_SUCH_CHILD_PID = pthread_self(); /* not a child thread */
 
@@ -4193,17 +4200,10 @@ int radius_event_init(CONF_SECTION *cs, int have_children)
 	 *	we're running normally.
 	 */
 	if (have_children && !check_config &&
-	    (thread_pool_init(cs, &have_children) < 0)) {
+	    (thread_pool_init(cs, &spawn_flag) < 0)) {
 		fr_exit(1);
 	}
 #endif
-
-	/*
-	 *	Move all of the thread calls to this file?
-	 *
-	 *	It may be best for the mutexes to be in this file...
-	 */
-	spawn_flag = have_children;
 
 	if (check_config) {
 		DEBUG("%s: #### Skipping IP addresses and Ports ####",

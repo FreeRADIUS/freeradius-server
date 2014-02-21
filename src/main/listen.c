@@ -2927,9 +2927,9 @@ static void *recv_thread(void *arg)
  */
 int listen_init(CONF_SECTION *config, rad_listen_t **head,
 #ifdef WITH_TLS
-	        int spawn_flag
+	        bool spawn_flag
 #else
-		UNUSED int spawn_flag
+		UNUSED bool spawn_flag
 #endif
 	        )
 
