@@ -80,8 +80,8 @@ static char const *child_state_names[REQUEST_CHILD_NUM_STATES] = {
 	"queued",
 	"running",
 	"proxied",
-	"cleanup-delay",
 	"reject-delay",
+	"cleanup-delay",
 	"done"
 };
 
