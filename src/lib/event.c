@@ -215,6 +215,10 @@ int fr_event_run(fr_event_list_t *el, struct timeval *when)
 		return 0;
 	}
 
+#ifndef NDEBUG
+	ev = talloc_get_type_abort(ev, fr_event_t);
+#endif
+
 	/*
 	 *	See if it's time to do this one.
 	 */
