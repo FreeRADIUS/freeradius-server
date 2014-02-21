@@ -351,7 +351,7 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 	int		protocol = -1;
 #endif
 	int		nas_port = 0;
-	int		port_seen = 0;
+	bool		port_seen = true;
 	struct unix_instance *inst = (struct unix_instance *) instance;
 
 	/*
@@ -421,7 +421,7 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 				break;
 			case PW_NAS_PORT:
 				nas_port = vp->vp_integer;
-				port_seen = 1;
+				port_seen = true;
 				break;
 			case PW_ACCT_DELAY_TIME:
 				delay = vp->vp_ipaddr;

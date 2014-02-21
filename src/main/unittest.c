@@ -44,7 +44,7 @@ bool memory_report = false;
 bool check_config = false;
 bool log_stripped_names = false;
 
-int filedone = 0;
+bool filedone = false;
 
 char const *radiusd_version = "FreeRADIUS Version " RADIUSD_VERSION_STRING
 #ifdef RADIUSD_VERSION_COMMIT
@@ -457,12 +457,12 @@ int main(int argc, char *argv[])
 				break;
 
 			case 'm':
-				mainconfig.debug_memory = 1;
+				mainconfig.debug_memory = true;
 				break;
 
 			case 'M':
-				memory_report = 1;
-				mainconfig.debug_memory = 1;
+				memory_report = true;
+				mainconfig.debug_memory = true;
 				break;
 
 			case 'n':
@@ -562,7 +562,7 @@ int main(int argc, char *argv[])
 			fclose(fp);
 			fp = NULL;
 		}
-		filedone = 0;
+		filedone = false;
 	}
 
 	/*

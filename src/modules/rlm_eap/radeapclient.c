@@ -1207,8 +1207,7 @@ int main(int argc, char **argv)
 	while(!filedone) {
 		if(req->vps) pairfree(&req->vps);
 
-		if ((req->vps = readvp2(NULL, fp, &filedone, "radeapclient:"))
-		    == NULL) {
+		if ((req->vps = readvp2(NULL, fp, &filedone, "radeapclient:")) == NULL) {
 			break;
 		}
 

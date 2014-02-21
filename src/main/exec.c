@@ -372,7 +372,7 @@ int radius_readfrom_program(REQUEST *request, int fd, pid_t pid, int timeout,
 	int status;
 	struct timeval start;
 #ifdef O_NONBLOCK
-	int nonblock = true;
+	bool nonblock = true;
 #endif
 
 #ifdef O_NONBLOCK

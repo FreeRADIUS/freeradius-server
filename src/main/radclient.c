@@ -41,11 +41,11 @@ typedef struct REQUEST REQUEST;	/* to shut up warnings about mschap.h */
 #include "smbdes.h"
 #include "mschap.h"
 
-static int success = 0;
+static bool success = false;
 static int retries = 3;
 static float timeout = 5;
 static char const *secret = NULL;
-static int do_output = 1;
+static bool do_output = true;
 static int totalapp = 0;
 static int totaldeny = 0;
 static int totallost = 0;
@@ -54,8 +54,8 @@ static int server_port = 0;
 static int packet_code = 0;
 static fr_ipaddr_t server_ipaddr;
 static int resend_count = 1;
-static int done = 1;
-static int print_filename = 0;
+static bool done = true;
+static bool print_filename = false;
 
 static fr_ipaddr_t client_ipaddr;
 static int client_port = 0;
@@ -85,7 +85,7 @@ typedef struct radclient_t {
 	RADIUS_PACKET	*reply;
 	int		resend;
 	int		tries;
-	int		done;
+	bool		done;
 } radclient_t;
 
 static radclient_t *radclient_head = NULL;
@@ -211,7 +211,7 @@ static int radclient_init(char const *filename)
 	vp_cursor_t cursor;
 	VALUE_PAIR *vp;
 	radclient_t *radclient;
-	int filedone = 0;
+	bool filedone = false;
 	int packet_number = 1;
 
 	assert(filename != NULL);
@@ -563,7 +563,7 @@ static void print_hex(RADIUS_PACKET *packet)
  */
 static int send_one_packet(radclient_t *radclient)
 {
-	assert(radclient->done == 0);
+	assert(radclient->done == false);
 
 	/*
 	 *	Remember when we have to wake up, to re-send the
@@ -633,9 +633,8 @@ static int send_one_packet(radclient_t *radclient)
 
 			if ((vp = pairfind(radclient->request->vps, PW_USER_PASSWORD, 0, TAG_ANY)) != NULL) {
 				pairstrcpy(vp, radclient->password);
-
 			} else if ((vp = pairfind(radclient->request->vps, PW_CHAP_PASSWORD, 0, TAG_ANY)) != NULL) {
-				int already_hex = 0;
+				bool already_hex = false;
 
 				/*
 				 *	If it's 17 octets, it *might* be already encoded.
@@ -647,7 +646,7 @@ static int send_one_packet(radclient_t *radclient)
 				if (vp->length == 17) {
 					for (i = 0; i < 17; i++) {
 						if (vp->vp_octets[i] < 32) {
-							already_hex = 1;
+							already_hex = true;
 							break;
 						}
 					}
@@ -742,7 +741,7 @@ static int send_one_packet(radclient_t *radclient)
 			 *	the response, but this is a special case.
 			 */
 			if (radclient->resend == resend_count) {
-				radclient->done = 1;
+				radclient->done = true;
 			}
 			totallost++;
 			return -1;
@@ -880,14 +879,14 @@ static int recv_one_packet(int wait_time)
 	    (radclient->reply->code == PW_ACCOUNTING_RESPONSE) ||
 	    (radclient->reply->code == PW_COA_ACK) ||
 	    (radclient->reply->code == PW_DISCONNECT_ACK)) {
-		success = 1;		/* have a good response */
+		success = true;		/* have a good response */
 		totalapp++;
 	} else {
 		totaldeny++;
 	}
 
 	if (radclient->resend == resend_count) {
-		radclient->done = 1;
+		radclient->done = true;
 	}
 
  packet_done:
@@ -918,7 +917,7 @@ int main(int argc, char **argv)
 	char const *dict_dir = DICTDIR;
 	char filesecret[256];
 	FILE *fp;
-	int do_summary = 0;
+	int do_summary = false;
 	int persec = 0;
 	int parallel = 1;
 	radclient_t	*this;
@@ -964,7 +963,7 @@ int main(int argc, char **argv)
 			rbtree_insert(filename_tree, optarg);
 			break;
 		case 'F':
-			print_filename = 1;
+			print_filename = true;
 			break;
 		case 'i':	/* currently broken */
 			if (!isdigit((int) *optarg))
@@ -1009,7 +1008,7 @@ int main(int argc, char **argv)
 #endif
 
 		case 'q':
-			do_output = 0;
+			do_output = false;
 			fr_log_fp = NULL; /* no output from you, either! */
 			break;
 		case 'r':
@@ -1019,7 +1018,7 @@ int main(int argc, char **argv)
 			if ((retries == 0) || (retries > 1000)) usage();
 			break;
 		case 's':
-			do_summary = 1;
+			do_summary = true;
 			break;
 		case 'S':
 		       fp = fopen(optarg, "r");
@@ -1152,7 +1151,7 @@ int main(int argc, char **argv)
 		if (server_port == 0) server_port = getport("radacct");
 		if (server_port == 0) server_port = PW_ACCT_UDP_PORT;
 		packet_code = PW_ACCOUNTING_REQUEST;
-		do_summary = 0;
+		do_summary = false;
 
 	} else if (strcmp(argv[2], "status") == 0) {
 		if (server_port == 0) server_port = getport("radius");
@@ -1267,7 +1266,7 @@ int main(int argc, char **argv)
 		radclient_t *next;
 		char const *filename = NULL;
 
-		done = 1;
+		done = true;
 		sleep_time = -1;
 
 		/*
@@ -1351,13 +1350,13 @@ int main(int argc, char **argv)
 				 *	and we shouldn't sleep.
 				 */
 				if (this->resend < resend_count) {
-					done = 0;
+					done = false;
 					sleep_time = 0;
 				}
 			} else { /* haven't sent this packet, we're not done */
-				assert(this->done == 0);
+				assert(this->done == false);
 				assert(this->reply == NULL);
-				done = 0;
+				done = false;
 			}
 		}
 
@@ -1365,7 +1364,7 @@ int main(int argc, char **argv)
 		 *	Still have outstanding requests.
 		 */
 		if (fr_packet_list_num_elements(pl) > 0) {
-			done = 0;
+			done = false;
 		} else {
 			sleep_time = 0;
 		}

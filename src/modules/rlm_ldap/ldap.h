@@ -64,7 +64,7 @@ typedef struct ldap_instance {
 
 	char const	*xlat_name;			//!< Instance name.
 
-	int		expect_password;		//!< True if the user_map included a mapping between an LDAP
+	bool		expect_password;		//!< True if the user_map included a mapping between an LDAP
 							//!< attribute and one of our password reference attributes.
 
 	/*

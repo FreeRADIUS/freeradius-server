@@ -32,7 +32,7 @@ RCSID("$Id$")
 /*
  *  No pthreads, no mutex.
  */
-static int fr_crypt_init = 0;
+static bool fr_crypt_init = false;
 static pthread_mutex_t fr_crypt_mutex;
 #endif
 
@@ -53,9 +53,9 @@ int fr_crypt_check(char const *key, char const *crypted)
 	/*
 	 *	Ensure we're thread-safe, as crypt() isn't.
 	 */
-	if (fr_crypt_init == 0) {
+	if (fr_crypt_init == false) {
 		pthread_mutex_init(&fr_crypt_mutex, NULL);
-		fr_crypt_init = 1;
+		fr_crypt_init = true;
 	}
 
 	pthread_mutex_lock(&fr_crypt_mutex);

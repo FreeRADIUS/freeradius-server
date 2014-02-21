@@ -180,7 +180,7 @@ typedef struct THREAD_POOL {
 } THREAD_POOL;
 
 static THREAD_POOL thread_pool;
-static int pool_initialized = false;
+static bool pool_initialized = false;
 
 #ifndef WITH_GCD
 static time_t last_cleaned = 0;

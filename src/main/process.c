@@ -187,7 +187,7 @@ static fr_packet_list_t *proxy_list = NULL;
 #ifdef WITH_PROXY
 static pthread_mutex_t	proxy_mutex;
 static rad_listen_t *proxy_listener_list = NULL;
-static int proxy_no_new_sockets = false;
+static bool proxy_no_new_sockets = false;
 #endif
 
 #define PTHREAD_MUTEX_LOCK if (spawn_flag) pthread_mutex_lock

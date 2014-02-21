@@ -806,7 +806,7 @@ static void process_file(const char *root_dir, char const *filename)
 int main(int argc, char *argv[])
 {
 	int c;
-	int report = false;
+	bool report = false;
 	char const *radius_dir = RADDBDIR;
 	char const *dict_dir = DICTDIR;
 

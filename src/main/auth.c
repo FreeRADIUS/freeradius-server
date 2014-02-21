@@ -33,17 +33,20 @@ RCSID("$Id$")
  *	Return a short string showing the terminal server, port
  *	and calling station ID.
  */
-char *auth_name(char *buf, size_t buflen, REQUEST *request, int do_cli)
+char *auth_name(char *buf, size_t buflen, REQUEST *request, bool do_cli)
 {
 	VALUE_PAIR	*cli;
 	VALUE_PAIR	*pair;
 	int		port = 0;
 	char const	*tls = "";
 
-	if ((cli = pairfind(request->packet->vps, PW_CALLING_STATION_ID, 0, TAG_ANY)) == NULL)
-		do_cli = 0;
-	if ((pair = pairfind(request->packet->vps, PW_NAS_PORT, 0, TAG_ANY)) != NULL)
+	if ((cli = pairfind(request->packet->vps, PW_CALLING_STATION_ID, 0, TAG_ANY)) == NULL) {
+		do_cli = false;
+	}
+
+	if ((pair = pairfind(request->packet->vps, PW_NAS_PORT, 0, TAG_ANY)) != NULL) {
 		port = pair->vp_integer;
+	}
 
 	if (request->packet->dst_port == 0) {
 		if (pairfind(request->packet->vps, PW_FREERADIUS_PROXIED_TO, 0, TAG_ANY)) {

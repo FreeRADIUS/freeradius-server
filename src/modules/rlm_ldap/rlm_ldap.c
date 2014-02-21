@@ -359,8 +359,8 @@ static int rlm_ldap_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR
 	ldap_instance_t	*inst = instance;
 	rlm_rcode_t	rcode;
 
-	int		found = false;
-	int		check_is_dn;
+	bool		found = false;
+	bool		check_is_dn;
 
 	ldap_handle_t	*conn = NULL;
 	char const	*user_dn;
@@ -1093,7 +1093,7 @@ static rlm_rcode_t user_modify(ldap_instance_t *inst, REQUEST *request, ldap_acc
 	 *	Iterate over all the pairs, building our mods array
 	 */
 	for (ci = cf_item_find_next(cs, NULL); ci != NULL; ci = cf_item_find_next(cs, ci)) {
-	     	int do_xlat = false;
+	     	bool do_xlat = false;
 
 	     	if (total == LDAP_MAX_ATTRMAP) {
 	     		REDEBUG("Modify map size exceeded");

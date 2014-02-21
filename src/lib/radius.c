@@ -2300,8 +2300,8 @@ int rad_packet_ok(RADIUS_PACKET *packet, int flags)
 	int			count;
 	radius_packet_t		*hdr;
 	char			host_ipaddr[128];
-	int			require_ma = 0;
-	int			seen_ma = 0;
+	bool			require_ma = false;
+	bool			seen_ma = false;
 	int			num_attributes;
 
 	/*
@@ -2347,12 +2347,12 @@ int rad_packet_ok(RADIUS_PACKET *packet, int flags)
 	 *	Message-Authenticator is required in Status-Server
 	 *	packets, otherwise they can be trivially forged.
 	 */
-	if (hdr->code == PW_STATUS_SERVER) require_ma = 1;
+	if (hdr->code == PW_STATUS_SERVER) require_ma = true;
 
 	/*
 	 *	It's also required if the caller asks for it.
 	 */
-	if (flags) require_ma = 1;
+	if (flags) require_ma = true;
 
 	/*
 	 *	Repeat the length checks.  This time, instead of
@@ -2499,7 +2499,7 @@ int rad_packet_ok(RADIUS_PACKET *packet, int flags)
 			 *	a Message-Authenticator.
 			 */
 		case PW_EAP_MESSAGE:
-			require_ma = 1;
+			require_ma = true;
 			break;
 
 		case PW_MESSAGE_AUTHENTICATOR:
@@ -2511,7 +2511,7 @@ int rad_packet_ok(RADIUS_PACKET *packet, int flags)
 					   attr[1] - 2);
 				return 0;
 			}
-			seen_ma = 1;
+			seen_ma = true;
 			break;
 		}
 

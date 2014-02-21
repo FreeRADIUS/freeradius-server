@@ -912,7 +912,7 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, int type, void *data, char
 	rcode = 0;
 
 	if (attribute) {
-		required = 1;
+		required = true;
 	}
 
 	cp = cf_pair_find(cs, name);
@@ -1492,7 +1492,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 	char buf2[8192];
 	char buf3[8192];
 	int t1, t2, t3;
-	int spaces = false;
+	bool spaces = false;
 	char *cbuf = buf;
 	size_t len;
 	fr_cond_t *cond = NULL;
@@ -1651,7 +1651,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		 */
 	       if ((strcasecmp(buf1, "$INCLUDE") == 0) ||
 		   (strcasecmp(buf1, "$-INCLUDE") == 0)) {
-		       int relative = 1;
+			bool relative = true;
 
 		       t2 = getword(&ptr, buf2, sizeof(buf2));
 		       if (t2 != T_EOL) {
@@ -1660,12 +1660,12 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			       return -1;
 		       }
 
-			if (buf2[0] == '$') relative = 0;
+			if (buf2[0] == '$') relative = false;
 
 			value = cf_expand_variables(filename, lineno, this, buf, sizeof(buf), buf2);
 			if (!value) return -1;
 
-			if (!FR_DIR_IS_RELATIVE(value)) relative = 0;
+			if (!FR_DIR_IS_RELATIVE(value)) relative = false;
 
 			if (relative) {
 				value = cf_local_file(filename, value, buf3,

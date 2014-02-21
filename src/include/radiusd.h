@@ -608,7 +608,7 @@ char const	*ssl_version(void);
 void		version(void);
 
 /* auth.c */
-char	*auth_name(char *buf, size_t buflen, REQUEST *request, int do_cli);
+char	*auth_name(char *buf, size_t buflen, REQUEST *request, bool do_cli);
 int		rad_authenticate (REQUEST *);
 int		rad_postauth(REQUEST *);
 int		rad_virtual_server(REQUEST *);

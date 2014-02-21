@@ -295,7 +295,7 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool,
 	rad_assert(pool->num <= pool->max);
 
 	if ((pool->last_failed == now) || pool->spawning) {
-		int complain = false;
+		bool complain = false;
 
 		if (pool->last_throttled != now) {
 			complain = true;
@@ -913,7 +913,7 @@ void *fr_connection_get(fr_connection_pool_t *pool)
 	}
 
 	if (pool->num == pool->max) {
-		int complain = false;
+		bool complain = false;
 
 		/*
 		 *	Rate-limit complaints.

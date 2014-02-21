@@ -395,7 +395,7 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 {
 	char const *name2;
 	home_server_t *home;
-	int dual = false;
+	bool dual = false;
 	CONF_PAIR *cp;
 	CONF_SECTION *tls;
 
@@ -1589,7 +1589,7 @@ static int realm_add(realm_config_t *rc, CONF_SECTION *cs)
 	cp = cf_pair_find(cs, "acct_pool");
 	if (cp) acct_pool_name = cf_pair_value(cp);
 	if (cp && acct_pool_name) {
-		int do_print = true;
+		bool do_print = true;
 
 		if (acct_pool) {
 			cf_log_err_cs(cs, "Cannot use \"pool\" and \"acct_pool\" at the same time.");
@@ -1613,7 +1613,7 @@ static int realm_add(realm_config_t *rc, CONF_SECTION *cs)
 	cp = cf_pair_find(cs, "coa_pool");
 	if (cp) coa_pool_name = cf_pair_value(cp);
 	if (cp && coa_pool_name) {
-		int do_print = true;
+		bool do_print = true;
 
 		if (!add_pool_to_realm(rc, cs,
 				       coa_pool_name, &coa_pool,

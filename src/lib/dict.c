@@ -1795,7 +1795,7 @@ static int process_vendor(char const* fn, int const line, char **argv,
 			  int argc)
 {
 	int		value;
-	int		continuation = 0;
+	bool		continuation = false;
 	char const	*format = NULL;
 
 	if ((argc < 2) || (argc > 3)) {
@@ -1880,7 +1880,7 @@ static int process_vendor(char const* fn, int const line, char **argv,
 					   fn, line, p);
 				return -1;
 			}
-			continuation = 1;
+			continuation = true;
 
 			if ((value != VENDORPEC_WIMAX) ||
 			    (type != 1) || (length != 1)) {

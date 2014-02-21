@@ -246,7 +246,7 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 	VALUE_PAIR *vp, *found, **to_req, **to_cache, **from;
 	DICT_ATTR const *da;
 
-	int merge = true;
+	bool merge = true;
 	REQUEST *context;
 
 	value_pair_map_t const *map;
