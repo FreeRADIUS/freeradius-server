@@ -62,7 +62,7 @@ struct fr_event_t {
 	fr_event_callback_t	callback;
 	void			*ctx;
 	struct timeval		when;
-	fr_event_t		**ev_p;
+	fr_event_t		**parent;
 	int			heap;
 };
 
@@ -139,25 +139,25 @@ int fr_event_list_num_elements(fr_event_list_t *el)
 }
 
 
-int fr_event_delete(fr_event_list_t *el, fr_event_t **ev_p)
+int fr_event_delete(fr_event_list_t *el, fr_event_t **parent)
 {
 	int ret;
 
 	fr_event_t *ev;
 
-	if (!el || !ev_p || !*ev_p) return 0;
+	if (!el || !parent || !*parent) return 0;
 
 	/*
 	 *  This should catch potential double frees
 	 */
 #ifndef NDEBUG
-	ev = talloc_get_type_abort(*ev_p, fr_event_t);
+	ev = talloc_get_type_abort(*parent, fr_event_t);
 #else
-	ev = *ev_p;
+	ev = *parent;
 #endif
 
-	if (ev->ev_p) *(ev->ev_p) = NULL;
-	*ev_p = NULL;
+	if (ev->parent) *(ev->parent) = NULL;
+	*parent = NULL;
 
 	ret = fr_heap_extract(el->times, ev);
 	talloc_free(ev);
@@ -167,26 +167,26 @@ int fr_event_delete(fr_event_list_t *el, fr_event_t **ev_p)
 
 
 int fr_event_insert(fr_event_list_t *el, fr_event_callback_t callback, void *ctx, struct timeval *when,
-		    fr_event_t **ev_p)
+		    fr_event_t **parent)
 {
 	fr_event_t *ev;
 
 	if (!el || !callback | !when || (when->tv_usec >= USEC)) return 0;
 
-	if (ev_p && *ev_p) fr_event_delete(el, ev_p);
+	if (parent && *parent) fr_event_delete(el, parent);
 
 	ev = talloc_zero(el, fr_event_t);
 	ev->callback = callback;
 	ev->ctx = ctx;
 	ev->when = *when;
-	ev->ev_p = ev_p;
+	ev->parent = parent;
 
 	if (!fr_heap_insert(el->times, ev)) {
 		talloc_free(ev);
 		return 0;
 	}
 
-	if (ev_p) *ev_p = ev;
+	if (parent) *parent = ev;
 	return 1;
 }
 
