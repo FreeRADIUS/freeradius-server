@@ -2540,6 +2540,8 @@ static int _listener_free(rad_listen_t *this)
 
 		rad_free(&sock->packet);
 
+		rad_assert(sock->ev == NULL);
+
 #ifdef WITH_TLS
 		/*
 		 *	Note that we do NOT free this->tls, as the
