@@ -147,11 +147,14 @@ int fr_event_delete(fr_event_list_t *el, fr_event_t **parent)
 
 	if (!el || !parent || !*parent) return 0;
 
-	/*
-	 *  This should catch potential double frees
-	 */
 #ifndef NDEBUG
+	/*
+	 *  Validate the event_t struct to detect memory issues early.
+	 */
 	ev = talloc_get_type_abort(*parent, fr_event_t);
+	if (ev->parent) {
+		(void) talloc_get_type_abort(ev->parent, fr_event_t);
+	}
 #else
 	ev = *parent;
 #endif
