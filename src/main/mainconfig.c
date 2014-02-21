@@ -467,7 +467,7 @@ static void fr_set_dumpable(void)
 }
 
 #ifdef HAVE_SETUID
-static int doing_setuid = false;
+static bool doing_setuid = false;
 
 #if defined(HAVE_SETRESUID) && defined (HAVE_GETRESUID)
 void fr_suid_up(void)

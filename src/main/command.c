@@ -855,7 +855,7 @@ static int command_debug_condition(UNUSED rad_listen_t *listener, int argc, char
 		*p = '\0';
 		for (i = 0; i < argc; i++) {
 			size_t len;
-			
+
 			len = strlcpy(p, argv[i], buffer + sizeof(buffer) - p);
 			p += len;
 			*(p++) = ' ';
@@ -1317,7 +1317,7 @@ static int command_inject_from(rad_listen_t *listener, int argc, char *argv[])
 static int command_inject_file(rad_listen_t *listener, int argc, char *argv[])
 {
 	static int inject_id = 0;
-	int filedone;
+	bool filedone;
 	fr_command_socket_t *sock = listener->data;
 	rad_listen_t *fake;
 	RADIUS_PACKET *packet;
@@ -1850,7 +1850,7 @@ static int command_stats_home_server(rad_listen_t *listener, int argc, char *arg
 
 static int command_stats_client(rad_listen_t *listener, int argc, char *argv[])
 {
-	int auth = true;
+	bool auth = true;
 	fr_stats_t *stats;
 	RADCLIENT *client, fake;
 
@@ -1938,7 +1938,7 @@ static int command_stats_client(rad_listen_t *listener, int argc, char *argv[])
 
 static int command_stats_socket(rad_listen_t *listener, int argc, char *argv[])
 {
-	int auth = true;
+	bool auth = true;
 	rad_listen_t *sock;
 
 	sock = get_socket(listener, argc, argv, NULL);

@@ -402,7 +402,7 @@ static rlm_rcode_t mod_post_auth(UNUSED void *instance, UNUSED REQUEST *request)
 	char xlat_str[MAX_STRING_LEN];
 	FR_MD5_CTX md5_context;
 #ifdef WITH_DHCP
-	int dhcp = false;
+	bool dhcp = false;
 #endif
 	int attr_ipaddr = PW_FRAMED_IP_ADDRESS;
 	int attr_ipmask = PW_FRAMED_IP_NETMASK;

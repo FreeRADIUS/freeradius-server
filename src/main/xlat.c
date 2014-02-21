@@ -40,7 +40,7 @@ typedef struct xlat_t {
 	void			*instance;		//!< Module instance passed to xlat and escape functions.
 	RAD_XLAT_FUNC		func;			//!< xlat function.
 	RADIUS_ESCAPE_STRING	escape;			//!< Escape function to apply to dynamic input to func.
-	int			internal;		//!< If true, cannot be redefined.
+	bool			internal;		//!< If true, cannot be redefined.
 } xlat_t;
 
 typedef enum {

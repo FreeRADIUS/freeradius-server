@@ -2942,21 +2942,21 @@ static void *recv_thread(void *arg)
  */
 int listen_init(CONF_SECTION *config, rad_listen_t **head,
 #ifdef WITH_TLS
-	        int spawn_flag
+	        bool spawn_flag
 #else
-		UNUSED int spawn_flag
+		UNUSED bool spawn_flag
 #endif
 	        )
 
 {
-	int		override = false;
+	bool		override = false;
 	CONF_SECTION	*cs = NULL;
 	rad_listen_t	**last;
 	rad_listen_t	*this;
 	fr_ipaddr_t	server_ipaddr;
 	int		auth_port = 0;
 #ifdef WITH_PROXY
-	int		defined_proxy = 0;
+	bool		defined_proxy = false;
 #endif
 
 	/*
@@ -3177,7 +3177,7 @@ add_sockets:
 	for (this = *head; this != NULL; this = this->next) {
 #ifdef WITH_PROXY
 		if (this->type == RAD_LISTEN_PROXY) {
-			defined_proxy = 1;
+			defined_proxy = true;
 		}
 
 #endif

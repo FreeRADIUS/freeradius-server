@@ -175,8 +175,8 @@ static void normify(REQUEST *request, VALUE_PAIR *vp, size_t min_length)
 static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 {
 	rlm_pap_t *inst = instance;
-	int auth_type = false;
-	int found_pw = false;
+	bool auth_type = false;
+	bool found_pw = false;
 	VALUE_PAIR *vp;
 	vp_cursor_t cursor;
 

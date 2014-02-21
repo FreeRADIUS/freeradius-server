@@ -144,7 +144,7 @@ typedef struct THREAD_POOL {
 	int cleanup_delay;
 	int stop_flag;
 #endif	/* WITH_GCD */
-	int spawn_flag;
+	bool spawn_flag;
 
 #ifdef WNOHANG
 	pthread_mutex_t	wait_mutex;
@@ -180,7 +180,7 @@ typedef struct THREAD_POOL {
 } THREAD_POOL;
 
 static THREAD_POOL thread_pool;
-static int pool_initialized = false;
+static bool pool_initialized = false;
 
 #ifndef WITH_GCD
 static time_t last_cleaned = 0;
@@ -883,7 +883,7 @@ static int pid_cmp(void const *one, void const *two)
  *
  *	FIXME: What to do on a SIGHUP???
  */
-int thread_pool_init(UNUSED CONF_SECTION *cs, int *spawn_flag)
+int thread_pool_init(UNUSED CONF_SECTION *cs, bool *spawn_flag)
 {
 #ifndef WITH_GCD
 	int		i, rcode;

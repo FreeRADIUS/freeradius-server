@@ -535,7 +535,7 @@ rlm_rcode_t rlm_ldap_check_userobj_dynamic(ldap_instance_t const *inst, REQUEST 
 {
 	rlm_rcode_t	rcode = RLM_MODULE_NOTFOUND, ret;
 	ldap_rcode_t	status;
-	int		name_is_dn = false, value_is_dn = false;
+	bool		name_is_dn = false, value_is_dn = false;
 
 	LDAPMessage     *result = NULL;
 	LDAPMessage     *entry = NULL;

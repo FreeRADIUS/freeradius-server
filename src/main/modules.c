@@ -1286,7 +1286,7 @@ static int load_byserver(CONF_SECTION *cs)
 				}
 
 				cf_log_module(cs, "Loading dictionary.vqp");
-				
+
 				da = dict_attrbyname("VQP-Packet-Type");
 				if (!da) {
 					ERROR("No VQP-Packet-Type in dictionary.vqp");
@@ -1410,7 +1410,7 @@ int virtual_servers_load(CONF_SECTION *config)
 {
 	CONF_SECTION *cs;
 	virtual_server_t *server;
-	static int first_time = true;
+	static bool first_time = true;
 
 	DEBUG2("%s: #### Loading Virtual Servers ####", mainconfig.name);
 

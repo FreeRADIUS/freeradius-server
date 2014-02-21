@@ -131,7 +131,7 @@ static int tls_socket_write(rad_listen_t *listener, REQUEST *request)
 
 static int tls_socket_recv(rad_listen_t *listener)
 {
-	int doing_init = false;
+	bool doing_init = false;
 	ssize_t rcode;
 	RADIUS_PACKET *packet;
 	REQUEST *request;

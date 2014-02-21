@@ -1592,7 +1592,7 @@ static modcallable *do_compile_modswitch(modcallable *parent, UNUSED rlm_compone
 {
 	modcallable *csingle;
 	CONF_ITEM *ci;
-	int had_seen_default = false;
+	bool had_seen_default = false;
 
 	if (!cf_section_name2(cs)) {
 		cf_log_err_cs(cs,

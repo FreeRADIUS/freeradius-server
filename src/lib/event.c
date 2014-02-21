@@ -41,14 +41,14 @@ typedef struct fr_event_fd_t {
 struct fr_event_list_t {
 	fr_heap_t	*times;
 
-	int		changed;
+	bool		changed;
 
 	int		exit;
 
 	fr_event_status_t status;
 
 	struct timeval  now;
-	int		dispatch;
+	bool		dispatch;
 
 	int		max_readers;
 	int		num_readers;
@@ -119,7 +119,7 @@ fr_event_list_t *fr_event_list_create(TALLOC_CTX *ctx, fr_event_status_t status)
 	}
 
 	el->status = status;
-	el->changed = 1;	/* force re-set of fds's */
+	el->changed = true;	/* force re-set of fds's */
 
 	return el;
 }
@@ -296,7 +296,7 @@ int fr_event_fd_insert(fr_event_list_t *el, int type, int fd,
 	ef->ctx = ctx;
 	ef->fd = fd;
 
-	el->changed = 1;
+	el->changed = true;
 
 	return 1;
 }
@@ -315,7 +315,7 @@ int fr_event_fd_delete(fr_event_list_t *el, int type, int fd)
 			el->num_readers--;
 
 			if ((i + 1) == el->max_readers) el->max_readers = i;
-			el->changed = 1;
+			el->changed = true;
 			return 1;
 		}
 	}
@@ -343,8 +343,8 @@ int fr_event_loop(fr_event_list_t *el)
 	fd_set read_fds, master_fds;
 
 	el->exit = 0;
-	el->dispatch = 1;
-	el->changed = 1;
+	el->dispatch = true;
+	el->changed = true;
 
 	while (!el->exit) {
 		/*
@@ -362,7 +362,7 @@ int fr_event_loop(fr_event_list_t *el)
 				FD_SET(el->readers[i].fd, &master_fds);
 			}
 
-			el->changed = 0;
+			el->changed = false;
 		}
 
 		/*
@@ -417,7 +417,7 @@ int fr_event_loop(fr_event_list_t *el)
 		rcode = select(maxfd + 1, &read_fds, NULL, NULL, wake);
 		if ((rcode < 0) && (errno != EINTR)) {
 			fr_strerror_printf("Failed in select: %s", fr_syserror(errno));
-			el->dispatch = 0;
+			el->dispatch = false;
 			return -1;
 		}
 
@@ -443,7 +443,7 @@ int fr_event_loop(fr_event_list_t *el)
 		}
 	}
 
-	el->dispatch = 0;
+	el->dispatch = false;
 	return el->exit;
 }
 

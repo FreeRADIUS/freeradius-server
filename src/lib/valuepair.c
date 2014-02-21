@@ -2228,13 +2228,13 @@ FR_TOKEN userparse(TALLOC_CTX *ctx, char const *buffer, VALUE_PAIR **list)
  *
  *	Hmm... this function is only used by radclient..
  */
-VALUE_PAIR *readvp2(TALLOC_CTX *ctx, FILE *fp, int *pfiledone, char const *errprefix)
+VALUE_PAIR *readvp2(TALLOC_CTX *ctx, FILE *fp, bool *pfiledone, char const *errprefix)
 {
 	char buf[8192];
 	FR_TOKEN last_token = T_EOL;
 	VALUE_PAIR *vp;
 	VALUE_PAIR *list;
-	int error = 0;
+	bool error = false;
 
 	list = NULL;
 
@@ -2263,7 +2263,7 @@ VALUE_PAIR *readvp2(TALLOC_CTX *ctx, FILE *fp, int *pfiledone, char const *errpr
 		if (!vp) {
 			if (last_token != T_EOL) {
 				fr_perror("%s", errprefix);
-				error = 1;
+				error = false;
 				break;
 			}
 			break;
@@ -2275,7 +2275,7 @@ VALUE_PAIR *readvp2(TALLOC_CTX *ctx, FILE *fp, int *pfiledone, char const *errpr
 
 	if (error) pairfree(&list);
 
-	*pfiledone = 1;
+	*pfiledone = true;
 
 	return error ? NULL: list;
 }

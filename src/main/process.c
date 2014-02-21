@@ -47,8 +47,8 @@ extern pid_t radius_pid;
 extern bool check_config;
 extern fr_cond_t *debug_condition;
 
-static int spawn_flag = 0;
-static int just_started = true;
+static bool spawn_flag = false;
+static bool just_started = true;
 time_t				fr_start_time;
 static fr_packet_list_t *pl = NULL;
 static fr_event_list_t *el = NULL;
@@ -187,7 +187,7 @@ static fr_packet_list_t *proxy_list = NULL;
 #ifdef WITH_PROXY
 static pthread_mutex_t	proxy_mutex;
 static rad_listen_t *proxy_listener_list = NULL;
-static int proxy_no_new_sockets = false;
+static bool proxy_no_new_sockets = false;
 #endif
 
 #define PTHREAD_MUTEX_LOCK if (spawn_flag) pthread_mutex_lock
