@@ -479,7 +479,10 @@ STATE_MACHINE_DECL(request_done)
 		}
 #endif
 #ifdef DEBUG_STATE_MACHINE
-		if (debug_flag) printf("(%u) ********\tSTATE %s C%u -> C%u\t********\n", request->number, __FUNCTION__, request->child_state, REQUEST_DONE);
+		if (debug_flag) printf("(%u) ********\tSTATE %s C-%s -> C-%s\t********\n",
+				       request->number, __FUNCTION__,
+				       child_state_names[request->child_state],
+				       child_state_names[REQUEST_DONE]);
 #endif
 		request->child_state = REQUEST_DONE;
 		break;
@@ -833,7 +836,11 @@ static void request_queue_or_run(UNUSED REQUEST *request,
 	 */
 	if (request->master_state == REQUEST_STOP_PROCESSING) {
 #ifdef DEBUG_STATE_MACHINE
-		if (debug_flag) printf("(%u) ********\tSTATE %s C%u -> C%u\t********\n", request->number, __FUNCTION__, request->child_state, REQUEST_DONE);
+		if (debug_flag) printf("(%u) ********\tSTATE %s M-%s causes C-%s-> C-%s\t********\n",
+				       request->number, __FUNCTION__,
+				       master_state_names[request->master_state],
+				       child_state_names[request->child_state],
+				       child_state_names[REQUEST_DONE]);
 #endif
 		request_done(request, FR_ACTION_DONE);
 		return;
@@ -1296,7 +1303,10 @@ STATE_MACHINE_DECL(request_running)
 			gettimeofday(&request->reply->timestamp, NULL);
 
 #ifdef DEBUG_STATE_MACHINE
-			if (debug_flag) printf("(%u) ********\tSTATE %s C%u -> C%u\t********\n", request->number, __FUNCTION__, request->child_state, REQUEST_DONE);
+			if (debug_flag) printf("(%u) ********\tSTATE %s C-%s -> C-%s\t********\n",
+					       request->number, __FUNCTION__,
+					       child_state_names[request->child_state],
+					       child_state_names[REQUEST_DONE]);
 #endif
 
 #ifdef HAVE_PTHREAD_H
@@ -1496,7 +1506,10 @@ static REQUEST *request_setup(rad_listen_t *listener, RADIUS_PACKET *packet,
 
 	request->master_state = REQUEST_ACTIVE;
 #ifdef DEBUG_STATE_MACHINE
-	if (debug_flag) printf("(%u) ********\tSTATE %s C%u -> C%u\t********\n", request->number, __FUNCTION__, request->child_state, REQUEST_ACTIVE);
+	if (debug_flag) printf("(%u) ********\tSTATE %s C-%s -> C-%s\t********\n",
+			       request->number, __FUNCTION__,
+			       child_state_names[request->child_state],
+			       child_state_names[REQUEST_RUNNING]);
 #endif
 	request->child_state = REQUEST_RUNNING;
 	request->handle = fun;
