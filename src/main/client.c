@@ -991,9 +991,9 @@ RADCLIENT_LIST *clients_parse_section(CONF_SECTION *section, UNUSED bool tls_req
 			closedir(dir);
 		}
 #endif /* HAVE_DIRENT_H */
-#endif /* WITH_DYNAMIC_CLIENTS */
 
 	add_client:
+#endif /* WITH_DYNAMIC_CLIENTS */
 		if (!client_add(clients, c)) {
 			cf_log_err_cs(cs,
 				   "Failed to add client %s",

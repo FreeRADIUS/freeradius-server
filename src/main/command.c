@@ -1964,6 +1964,7 @@ static int command_stats_socket(rad_listen_t *listener, int argc, char *argv[])
 #endif	/* WITH_STATS */
 
 
+#ifdef WITH_DYNAMIC_CLIENTS
 static int command_add_client_file(rad_listen_t *listener, int argc, char *argv[])
 {
 	RADCLIENT *c;
@@ -1994,7 +1995,6 @@ static int command_add_client_file(rad_listen_t *listener, int argc, char *argv[
 
 static int command_del_client(rad_listen_t *listener, int argc, char *argv[])
 {
-#ifdef WITH_DYNAMIC_CLIENTS
 	RADCLIENT *client;
 
 	client = get_client(listener, argc, argv);
@@ -2014,9 +2014,6 @@ static int command_del_client(rad_listen_t *listener, int argc, char *argv[])
 	 *	structure will stick around for a while.  Oh well...
 	 */
 	client->lifetime = 1;
-#else
-	cprintf(listener, "ERROR: Dynamic clients are not supported.\n");
-#endif
 
 	return 1;
 }
@@ -2056,7 +2053,7 @@ static fr_command_table_t command_table_add[] = {
 
 	{ NULL, 0, NULL, NULL, NULL }
 };
-
+#endif
 
 #ifdef WITH_PROXY
 static fr_command_table_t command_table_set_home[] = {
@@ -2130,11 +2127,15 @@ static fr_command_table_t command_table_stats[] = {
 #endif
 
 static fr_command_table_t command_table[] = {
+#ifdef WITH_DYNAMIC_CLIENTS
 	{ "add", FR_WRITE, NULL, NULL, command_table_add },
+#endif
 	{ "debug", FR_WRITE,
 	  "debug <command> - debugging commands",
 	  NULL, command_table_debug },
+#ifdef WITH_DYNAMIC_CLIENTS
 	{ "del", FR_WRITE, NULL, NULL, command_table_del },
+#endif
 	{ "hup", FR_WRITE,
 	  "hup [module] - sends a HUP signal to the server, or optionally to one module",
 	  command_hup, NULL },
