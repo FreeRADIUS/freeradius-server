@@ -271,9 +271,7 @@ static sql_rcode_t sql_query(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t 
 	/*
 	 *  Successful completion of a command returning data (such as a SELECT or SHOW).
 	 */
-#ifdef PGRES_SINGLE_TUPLE
 	case PGRES_SINGLE_TUPLE:
-#endif
 	case PGRES_TUPLES_OK:
 		conn->cur_row = 0;
 		conn->affected_rows = PQntuples(conn->result);
