@@ -82,10 +82,6 @@ typedef struct request REQUEST;
 #include <freeradius-devel/stats.h>
 #include <freeradius-devel/realms.h>
 
-#ifdef WITH_COMMAND_SOCKET
-#  define PW_RADMIN_PORT 18120
-#endif
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -759,6 +755,11 @@ int dual_tls_send(rad_listen_t *listener, REQUEST *request);
 int proxy_tls_recv(rad_listen_t *listener);
 int proxy_tls_send(rad_listen_t *listener, REQUEST *request);
 #endif
+
+/*
+ *	For radmin over TCP.
+ */
+#define PW_RADMIN_PORT 18120
 
 #ifdef __cplusplus
 }
