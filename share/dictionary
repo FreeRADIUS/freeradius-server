@@ -127,6 +127,7 @@ $INCLUDE dictionary.3gpp
 $INCLUDE dictionary.3gpp2
 $INCLUDE dictionary.acc
 $INCLUDE dictionary.acme
+$INCLUDE dictionary.actelis
 $INCLUDE dictionary.airespace
 $INCLUDE dictionary.alcatel
 $INCLUDE dictionary.alcatel.sr
