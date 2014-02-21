@@ -314,6 +314,8 @@ static void reap_children(void)
  */
 int request_enqueue(REQUEST *request)
 {
+	rad_assert(pool_initialized == true);
+
 	/*
 	 *	If we haven't checked the number of child threads
 	 *	in a while, OR if the thread pool appears to be full,
@@ -472,6 +474,8 @@ static int request_dequeue(REQUEST **prequest)
 	RAD_LISTEN_TYPE i, start;
 	REQUEST *request;
 	reap_children();
+
+	rad_assert(pool_initialized == true);
 
 	pthread_mutex_lock(&thread_pool.queue_mutex);
 
