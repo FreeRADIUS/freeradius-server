@@ -23,7 +23,6 @@
 
 #ifdef WITH_COMMAND_SOCKET
 
-#include <freeradius-devel/modpriv.h>
 #include <freeradius-devel/parser.h>
 
 #ifdef HAVE_INTTYPES_H
