@@ -153,7 +153,7 @@ int fr_event_delete(fr_event_list_t *el, fr_event_t **parent)
 	 */
 	ev = talloc_get_type_abort(*parent, fr_event_t);
 	if (ev->parent) {
-		(void) talloc_get_type_abort(ev->parent, fr_event_t);
+		(void) talloc_get_type_abort(*ev->parent, fr_event_t *);
 	}
 #else
 	ev = *parent;
