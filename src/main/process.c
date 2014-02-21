@@ -236,14 +236,14 @@ static REQUEST *request_setup(rad_listen_t *listener, RADIUS_PACKET *packet,
 STATE_MACHINE_DECL(request_common);
 
 #if  defined(HAVE_PTHREAD_H) && !defined (NDEBUG)
-static int we_are_master(void)
+static bool we_are_master(void)
 {
 	if (spawn_flag &&
 	    (pthread_equal(pthread_self(), NO_SUCH_CHILD_PID) == 0)) {
-		return 0;
+		return false;
 	}
 
-	return 1;
+	return true;
 }
 #define ASSERT_MASTER 	if (!we_are_master()) rad_panic("We are not master")
 

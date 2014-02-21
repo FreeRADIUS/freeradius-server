@@ -136,7 +136,6 @@ int main(int argc, char *argv[])
 #endif
 
 	debug_flag = 0;
-	spawn_flag = true;
 	radius_dir = talloc_strdup(NULL, RADIUS_DIR);
 
 	/*
