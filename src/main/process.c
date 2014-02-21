@@ -848,7 +848,7 @@ static void request_queue_or_run(UNUSED REQUEST *request,
 	request->process = process;
 
 #ifdef HAVE_PTHREAD_H
-	if (we_are_master()) {
+	if (spawn_flag && we_are_master()) {
 		struct timeval when;
 
 		/*
