@@ -2152,7 +2152,6 @@ static int setup_post_proxy_fail(REQUEST *request)
 	if (!dval) dval = dict_valbyname(PW_POST_PROXY_TYPE, 0, "Fail");
 
 	if (!dval) {
-		DEBUG("No Post-Proxy-Type Fail: ignoring");
 		pairdelete(&request->config_items, PW_POST_PROXY_TYPE, 0, TAG_ANY);
 		return 0;
 	}
@@ -3090,7 +3089,8 @@ STATE_MACHINE_DECL(proxy_wait_for_reply)
 		 *	may have failed over to another home server.
 		 *	But that one may be dead, too.
 		 */
-		RERROR("Failing request due to lack of any response from home server %s port %d",
+		RERROR("Failing request - ID %u, due to lack of any response from home server %s port %d",
+		       request->packet->id,
 			       inet_ntop(request->proxy->dst_ipaddr.af,
 					 &request->proxy->dst_ipaddr.ipaddr,
 					 buffer, sizeof(buffer)),
