@@ -152,17 +152,18 @@ int fr_event_delete(fr_event_list_t *el, fr_event_t **parent)
 	 *  Validate the event_t struct to detect memory issues early.
 	 */
 	ev = talloc_get_type_abort(*parent, fr_event_t);
-	if (ev->parent) {
-		(void) talloc_get_type_abort(*(ev->parent), fr_event_t);
-	}
 #else
 	ev = *parent;
 #endif
 
-	if (ev->parent) *(ev->parent) = NULL;
+	fr_assert(ev->parent != NULL);
+	fr_assert(*(ev->parent) == ev);
+
+	*ev->parent = NULL;
 	*parent = NULL;
 
 	ret = fr_heap_extract(el->times, ev);
+	fr_assert(ret == 1);	/* events MUST be in the heap */
 	talloc_free(ev);
 
 	return ret;
@@ -174,7 +175,8 @@ int fr_event_insert(fr_event_list_t *el, fr_event_callback_t callback, void *ctx
 {
 	fr_event_t *ev;
 
-	if (!el || !callback | !when || (when->tv_usec >= USEC)) return 0;
+	if (!el || !callback | !when || (when->tv_usec >= USEC) ||
+	    !parent) return 0;
 
 	if (parent && *parent) fr_event_delete(el, parent);
 
@@ -189,7 +191,7 @@ int fr_event_insert(fr_event_list_t *el, fr_event_callback_t callback, void *ctx
 		return 0;
 	}
 
-	if (parent) *parent = ev;
+	*parent = ev;
 	return 1;
 }
 
