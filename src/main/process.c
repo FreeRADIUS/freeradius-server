@@ -925,19 +925,28 @@ STATE_MACHINE_DECL(request_common)
 #endif
 
 	TRACE_STATE_MACHINE;
+	ASSERT_MASTER;
+	
+	/*
+	 *	Bail out as early as possible.
+	 */
+	if (request->master_state == REQUEST_STOP_PROCESSING) {
+		request_done(request, REQUEST_DONE);
+		return;
+	}	       
 
 	switch (action) {
 	case FR_ACTION_DUP:
 #ifdef WITH_PROXY
-		if ((request->master_state != REQUEST_STOP_PROCESSING) &&
-		     request->proxy && !request->proxy_reply) {
-			/*
-			 *	TODO: deal with this in a better way?
-			 */
+		/*
+		 *	We're still waiting for a proxy reply.
+		 */
+		if (request->child_state == REQUEST_PROXIED) {
 			proxy_wait_for_reply(request, action);
 			return;
 		}
 #endif
+
 		ERROR("(%u) Discarding duplicate request from "
 		       "client %s port %d - ID: %u due to unfinished request",
 		       request->number, request->client->shortname,
