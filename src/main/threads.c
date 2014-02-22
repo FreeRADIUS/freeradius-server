@@ -433,6 +433,7 @@ int request_enqueue(REQUEST *request)
 	}
 	request->component = "<core>";
 	request->module = "<queue>";
+	request->child_state = REQUEST_QUEUED;
 
 	/*
 	 *	Push the request onto the appropriate fifo for that
@@ -553,6 +554,7 @@ static int request_dequeue(REQUEST **prequest)
 
 	request->component = "<core>";
 	request->module = "";
+	request->child_state = REQUEST_RUNNING;
 
 	/*
 	 *	If the request has sat in the queue for too long,

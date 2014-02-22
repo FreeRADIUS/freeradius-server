@@ -905,6 +905,7 @@ static void request_queue_or_run(UNUSED REQUEST *request,
 #endif
 	}
 
+	request->child_state = REQUEST_RUNNING;
 	request->process(request, FR_ACTION_RUN);
 
 #ifdef WNOHANG
