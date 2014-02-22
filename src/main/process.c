@@ -194,12 +194,15 @@ static bool proxy_no_new_sockets = false;
 #define PTHREAD_MUTEX_UNLOCK if (spawn_flag) pthread_mutex_unlock
 
 static pthread_t NO_SUCH_CHILD_PID;
+#define CHILD_DONE request->child_pid = NO_SUCH_CHILD_PID
+
 #else
 /*
  *	This is easier than ifdef's throughout the code.
  */
 #define PTHREAD_MUTEX_LOCK(_x)
 #define PTHREAD_MUTEX_UNLOCK(_x)
+#define CHILD_DONE
 #endif
 
 /*
@@ -1253,19 +1256,23 @@ STATE_MACHINE_DECL(request_finish)
 		RDEBUG2("Finished request %u.", request->number);
 #ifdef WITH_ACCOUNTING
 		if (request->packet->code == PW_ACCOUNTING_REQUEST) {
+			CHILD_DONE;
 			request->child_state = REQUEST_DONE;
 		} else
 #endif
 
 		if (request->root->cleanup_delay == 0) {
+			CHILD_DONE;
 			request->child_state = REQUEST_DONE;
 		} else {
+			CHILD_DONE;
 			request->child_state = REQUEST_CLEANUP_DELAY;
 		}
 	} else {
 		RDEBUG2("Delaying reject of request %u for %d seconds",
 			request->number,
 			request->root->reject_delay);
+		CHILD_DONE;
 		request->child_state = REQUEST_REJECT_DELAY;
 	}
 }
@@ -4356,7 +4363,7 @@ static int request_delete_cb(UNUSED void *ctx, void *data)
 	/*
 	 *	Not done, or the child thread is still processing it.
 	 */
-	if (request->child_state != REQUEST_DONE) return 0; /* continue */
+	if (request->child_state < REQUEST_REJECT_DELAY) return 0; /* continue */
 
 #ifdef HAVE_PTHREAD_H
 	if (pthread_equal(request->child_pid, NO_SUCH_CHILD_PID) == 0) return 0;
