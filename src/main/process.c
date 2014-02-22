@@ -256,9 +256,9 @@ STATE_MACHINE_DECL(request_reject_delay);
 STATE_MACHINE_DECL(request_cleanup_delay);
 STATE_MACHINE_DECL(request_running);
 #ifdef WITH_COA
-static void request_coa_timer(REQUEST *request);
 static void request_coa_originate(REQUEST *request);
-STATE_MACHINE_DECL(request_coa_process);
+STATE_MACHINE_DECL(coa_running);
+STATE_MACHINE_DECL(coa_wait_for_reply);
 static void request_coa_separate(REQUEST *coa);
 #endif
 
@@ -684,7 +684,8 @@ static void request_process_timer(REQUEST *request)
 	if (request->coa) request_coa_separate(request->coa);
 
 	/*
-	 *	Check request stuff ONLY if we're running the request.
+	 *	If we're the request, OR it isn't originating a CoA
+	 *	request, check more things.
 	 */
 	if (!request->proxy || (request->packet->code == request->proxy->code))
 #endif
@@ -699,27 +700,62 @@ static void request_process_timer(REQUEST *request)
 			if ((request->master_state == REQUEST_ACTIVE) &&
 			    (request->child_state < REQUEST_REJECT_DELAY)) {
 				WDEBUG("Socket was closed while processing request %u: Stopping it.", request->number);
+				request->master_state = REQUEST_STOP_PROCESSING;
 			}
-#ifdef WITH_ACCOUNTING
-			goto done;
-#else
-		done:
-			request_done(request, FR_ACTION_DONE);
-			return;
-#endif
-
 		}
 	}
 
 	gettimeofday(&now, NULL);
 
 	/*
-	 *	A child thread is still working on the request,
-	 *	OR it was proxied, and there was no response,
-	 *	OR it was sitting in the queue for too long.
+	 *	The request was forcibly stopped.
 	 */
-	if ((request->child_state == REQUEST_RUNNING) &&
-	    (request->master_state != REQUEST_STOP_PROCESSING)) {
+	if (request->master_state == REQUEST_STOP_PROCESSING) {
+		switch (request->child_state) {
+		case REQUEST_QUEUED:
+		case REQUEST_RUNNING:
+#ifdef HAVE_PTHREAD_H
+			rad_assert(spawn_flag == true);
+#endif
+
+		delay:
+			/*
+			 *	Sleep for some more.  We HOPE that the
+			 *	child will become responsive at some
+			 *	point in the future.
+			 */
+			when = now;
+			tv_add(&when, request->delay);
+			request->delay += request->delay >> 1;
+			STATE_MACHINE_TIMER(FR_ACTION_TIMER);
+			return;
+
+			/*
+			 *	These should all be managed by the master thread
+			 */
+#ifdef WITH_PROXY
+		case REQUEST_PROXIED:
+#endif
+		case REQUEST_REJECT_DELAY:
+		case REQUEST_CLEANUP_DELAY:
+		case REQUEST_DONE:
+		done:
+			request_done(request, FR_ACTION_DONE);
+			return;
+		}
+	}
+
+	rad_assert(request->master_state == REQUEST_ACTIVE);
+
+	/*
+	 *	It's still supposed to be running.
+	 */
+	switch (request->child_state) {
+	case REQUEST_QUEUED:
+	case REQUEST_RUNNING:
+#ifdef WITH_PROXY
+	case REQUEST_PROXIED:
+#endif
 		when = request->packet->timestamp;
 		when.tv_sec += request->root->max_request_time;
 
@@ -735,96 +771,81 @@ static void request_process_timer(REQUEST *request)
 			if (spawn_flag &&
 			    (pthread_equal(request->child_pid, NO_SUCH_CHILD_PID) == 0)) {
 				ERROR("Unresponsive child for request %u, in component %s module %s",
-				       request->number,
-				       request->component ? request->component : "<core>",
-			       request->module ? request->module : "<core>");
+				      request->number,
+				      request->component ? request->component : "<core>",
+				      request->module ? request->module : "<core>");
 				exec_trigger(request, NULL, "server.thread.unresponsive", true);
 			}
 #endif
-
-			/*
-			 *	Tell the request to stop it.
-			 */
-			goto done;
-		} /* else we're not at max_request_time */
+			request->master_state = REQUEST_STOP_PROCESSING;
+		}
 
 #ifdef WITH_PROXY
-		if ((request->master_state != REQUEST_STOP_PROCESSING) &&
-		    request->proxy &&
-		    (request->process == request_running)) {
-#ifdef DEBUG_STATE_MACHINE
-			if (debug_flag) printf("(%u) ********\tNEXT-STATE %s -> %s\n", request->number, __FUNCTION__, "request_proxied");
-#endif
+		/*
+		 *	We should wait for the proxy reply.
+		 */
+		if (request->child_state == REQUEST_PROXIED) {
 			request->process = proxy_wait_for_reply;
 		}
 #endif
 
 		/*
-		 *	Wake up again in the future, to check for
-		 *	more things to do.
+		 *	If the request has been told to die, we wait.
+		 *	Otherwise, we wait for the child thread to
+		 *	finish it's work.
 		 */
-		when = now;
-		tv_add(&when, request->delay);
-		request->delay += request->delay >> 1;
+		goto delay;
 
-		STATE_MACHINE_TIMER(FR_ACTION_TIMER);
-		return;
-	}
-
-#ifdef WITH_ACCOUNTING
-	if (request->reply->code == PW_ACCOUNTING_RESPONSE) {
-	done:
-		request_done(request, FR_ACTION_DONE);
-		return;
-	}
-#endif
-
+	case REQUEST_REJECT_DELAY:
+		rad_assert(request->root->reject_delay > 0);
 #ifdef WITH_COA
-	if (!request->proxy || (request->packet->code == request->proxy->code))
+		rad_assert(!request->proxy || (request->packet->code == request->proxy->code));
 #endif
 
-	if ((request->reply->code == PW_AUTHENTICATION_REJECT) &&
-	    (request->root->reject_delay)) {
-		rad_assert(request->reply->timestamp.tv_sec != 0);
+		request->process = request_reject_delay;
 
 		when = request->reply->timestamp;
 		when.tv_sec += request->root->reject_delay;
 
-		/*
-		 *	Set timer for when we need to send it.
-		 */
 		if (timercmp(&when, &now, >)) {
 #ifdef DEBUG_STATE_MACHINE
 			if (debug_flag) printf("(%u) ********\tNEXT-STATE %s -> %s\n", request->number, __FUNCTION__, "request_reject_delay");
 #endif
-			request->process = request_reject_delay;
-
 			STATE_MACHINE_TIMER(FR_ACTION_TIMER);
 			return;
-		}
+		} /* else it's time to send the reject */
 
-		if (request->process == request_reject_delay) {
-			/*
-			 *	Assume we're at (or near) the reject
-			 *	delay time.
-			 */
-			request->reply->timestamp = now;
+		RDEBUG2("Sending delayed reject");
+		DEBUG_PACKET(request, request->reply, 1);
+		request->listener->send(request->listener, request);
+		request->child_state = REQUEST_CLEANUP_DELAY;
+		/* FALL-THROUGH */
 
-			RDEBUG2("Sending delayed reject");
-			DEBUG_PACKET(request, request->reply, 1);
-			request->process = request_cleanup_delay;
-			request->listener->send(request->listener, request);
-		}
+	case REQUEST_CLEANUP_DELAY:
+		rad_assert(request->root->cleanup_delay > 0);
+
+#ifdef WITH_COA
+		rad_assert(!request->proxy || (request->packet->code == request->proxy->code));
+#endif
+
+		request->process = request_cleanup_delay;
+
+		when = request->reply->timestamp;
+		when.tv_sec += request->root->cleanup_delay;
+
+		if (timercmp(&when, &now, >)) {
+#ifdef DEBUG_STATE_MACHINE
+			if (debug_flag) printf("(%u) ********\tNEXT-STATE %s -> %s\n", request->number, __FUNCTION__, "request_cleanup_delay");
+#endif
+			STATE_MACHINE_TIMER(FR_ACTION_TIMER);
+			return;
+		} /* else it's time to clean up */
+		/* FALL-THROUGH */
+
+	case REQUEST_DONE:
+		goto done;
 	}
 
-	/*
-	 *	The cleanup_delay is zero for accounting packets, and
-	 *	enforced for all other packets.  We do the
-	 *	cleanup_delay even if we don't respond to the NAS, so
-	 *	that any retransmit is *not* processed as a new packet.
-	 */
-	request_cleanup_delay_init(request, &now);
-	return;
 }
 
 static void request_queue_or_run(UNUSED REQUEST *request,
@@ -1233,9 +1254,12 @@ STATE_MACHINE_DECL(request_finish)
 #ifdef WITH_ACCOUNTING
 		if (request->packet->code == PW_ACCOUNTING_REQUEST) {
 			request->child_state = REQUEST_DONE;
-		}
+		} else
 #endif
-		{
+
+		if (request->root->cleanup_delay == 0) {
+			request->child_state = REQUEST_DONE;
+		} else {
 			request->child_state = REQUEST_CLEANUP_DELAY;
 		}
 	} else {
@@ -1267,8 +1291,8 @@ STATE_MACHINE_DECL(request_running)
 		 *	Catch the case of a proxy reply when called
 		 *	from the main worker thread.
 		 */
-		if (we_are_master() &&
-		    (request->process != proxy_running)) {
+		if (we_are_master()) {
+			rad_assert(request->process != proxy_running);
 			request_queue_or_run(request, proxy_running);
 			return;
 		}
@@ -2784,7 +2808,9 @@ static void ping_home_server(void *ctx)
 	request->proxy->dst_port = home->port;
 	request->home_server = home;
 #ifdef DEBUG_STATE_MACHINE
-	if (debug_flag) printf("(%u) ********\tSTATE %s C%u -> C%u\t********\n", request->number, __FUNCTION__, request->child_state, REQUEST_DONE);
+	if (debug_flag) printf("(%u) ********\tSTATE %s C%-%s -> C-%s\t********\n", request->number, __FUNCTION__,
+			       child_state_names[request->child_state],
+			       child_state_names[REQUEST_DONE]);
 	if (debug_flag) printf("(%u) ********\tNEXT-STATE %s -> %s\n", request->number, __FUNCTION__, "request_ping");
 #endif
 #ifdef HAVE_PTHREAD_H
@@ -3356,11 +3382,13 @@ static void request_coa_originate(REQUEST *request)
 
 	DEBUG_PACKET(coa, coa->proxy, 1);
 
-	coa->process = request_coa_process;
+	coa->process = coa_wait_for_reply;
 #ifdef DEBUG_STATE_MACHINE
-	if (debug_flag) printf("(%u) ********\tSTATE %s C%u -> C%u\t********\n", request->number, __FUNCTION__, request->child_state, REQUEST_ACTIVE);
+	if (debug_flag) printf("(%u) ********\tSTATE %s C-%s -> C-%s\t********\n", request->number, __FUNCTION__,
+			       child_state_names[request->child_state],
+			       child_state_names[REQUEST_RUNNING]);
 #endif
-	coa->child_state = REQUEST_RUNNING;
+	coa->child_state = REQUEST_PROXIED;
 	rad_assert(coa->proxy_reply == NULL);
 	FR_STATS_TYPE_INC(coa->home_server->stats.total_requests);
 	coa->home_server->last_packet_sent = coa->proxy->timestamp.tv_sec;
@@ -3368,31 +3396,7 @@ static void request_coa_originate(REQUEST *request)
 }
 
 
-static void request_coa_separate(REQUEST *request)
-{
-#ifdef DEBUG_STATE_MACHINE
-	int action = FR_ACTION_TIMER;
-#endif
-	TRACE_STATE_MACHINE;
-
-	rad_assert(request->parent != NULL);
-	rad_assert(request->parent->coa == request);
-	rad_assert(request->ev == NULL);
-	rad_assert(!request->in_request_hash);
-
-	rad_assert(request->proxy_listener != NULL);
-	/* don't talloc_steal request, it will be cleaned up elsewhere */
-	request->parent->coa = NULL;
-	request->parent = NULL;
-
-	/*
-	 *	Set up timers for the CoA request.  These do all kinds
-	 *	of different things....
-	 */
-	request_coa_timer(request);
-}
-
-static void request_coa_timer(REQUEST *request)
+static void coa_timer(REQUEST *request)
 {
 	int delay, frac;
 	struct timeval now, when, mrd;
@@ -3443,7 +3447,7 @@ static void request_coa_timer(REQUEST *request)
 			return;
 		}
 
-		request_queue_or_run(request, proxy_running);
+		request_queue_or_run(request, coa_running);
 		return;
 	}
 
@@ -3505,43 +3509,18 @@ static void request_coa_timer(REQUEST *request)
 				      request);
 }
 
-
-#ifdef HAVE_PTHREAD_H
-STATE_MACHINE_DECL(coa_running)
+STATE_MACHINE_DECL(coa_wait_for_reply)
 {
+	rad_assert(request->parent == NULL);
+
 	TRACE_STATE_MACHINE;
 
 	switch (action) {
 	case FR_ACTION_TIMER:
-		request_coa_timer(request);
-		break;
-
-	case FR_ACTION_PROXY_REPLY:
-		request_common(request, action);
-		break;
-
-	case FR_ACTION_RUN:
-		request_running(request, FR_ACTION_PROXY_REPLY);
-		break;
-
-	default:
-		RDEBUG3("%s: Ignoring action %s", __FUNCTION__, action_codes[action]);
-		break;
-	}
-}
-#endif	/* HAVE_PTHREAD_H */
-
-
-/*
- *	Process CoA requests that we originated.
- */
-STATE_MACHINE_DECL(request_coa_process)
-{
-	TRACE_STATE_MACHINE;
-
-	switch (action) {
-	case FR_ACTION_TIMER:
-		request_coa_timer(request);
+		/*
+		 *	This is big enough to be in it's own function.
+		 */
+		coa_timer(request);
 		break;
 
 	case FR_ACTION_PROXY_REPLY:
@@ -3551,8 +3530,7 @@ STATE_MACHINE_DECL(request_coa_process)
 		 *	Catch the case of a proxy reply when called
 		 *	from the main worker thread.
 		 */
-		if (we_are_master() &&
-		    (request->process != coa_running)) {
+		if (we_are_master()) {
 			request_queue_or_run(request, coa_running);
 			return;
 		}
@@ -3568,6 +3546,51 @@ STATE_MACHINE_DECL(request_coa_process)
 	}
 }
 
+static void request_coa_separate(REQUEST *request)
+{
+#ifdef DEBUG_STATE_MACHINE
+	int action = FR_ACTION_TIMER;
+#endif
+	TRACE_STATE_MACHINE;
+
+	rad_assert(request->parent != NULL);
+	rad_assert(request->parent->coa == request);
+	rad_assert(request->ev == NULL);
+	rad_assert(!request->in_request_hash);
+
+	rad_assert(request->proxy_listener != NULL);
+	/* don't talloc_steal request, it will be cleaned up elsewhere */
+	request->parent->coa = NULL;
+	request->parent = NULL;
+
+	/*
+	 *	Should be coa_wait_for_reply()
+	 */
+	request->process(request, FR_ACTION_TIMER);
+}
+
+STATE_MACHINE_DECL(coa_running)
+{
+	TRACE_STATE_MACHINE;
+
+	switch (action) {
+	case FR_ACTION_TIMER:
+		request_process_timer(request);
+		break;
+
+	case FR_ACTION_PROXY_REPLY:
+		request_common(request, action);
+		break;
+
+	case FR_ACTION_RUN:
+		request_running(request, FR_ACTION_PROXY_REPLY);
+		break;
+
+	default:
+		RDEBUG3("%s: Ignoring action %s", __FUNCTION__, action_codes[action]);
+		break;
+	}
+}
 #endif	/* WITH_COA */
 
 /***********************************************************************
