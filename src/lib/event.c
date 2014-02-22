@@ -178,7 +178,7 @@ int fr_event_insert(fr_event_list_t *el, fr_event_callback_t callback, void *ctx
 	if (!el || !callback | !when || (when->tv_usec >= USEC) ||
 	    !parent) return 0;
 
-	if (parent && *parent) fr_event_delete(el, parent);
+	if (*parent) fr_event_delete(el, parent);
 
 	ev = talloc_zero(el, fr_event_t);
 	ev->callback = callback;
