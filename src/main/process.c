@@ -788,7 +788,11 @@ static void request_process_timer(REQUEST *request)
 		 *	We should wait for the proxy reply.
 		 */
 		if (request->child_state == REQUEST_PROXIED) {
-			request->process = proxy_wait_for_reply;
+			if (request->proxy_reply) {
+				request->process = proxy_running;
+			} else {
+				request->process = proxy_wait_for_reply;
+			}
 		}
 #endif
 
@@ -1301,6 +1305,19 @@ STATE_MACHINE_DECL(request_running)
 		request_common(request, action);
 		return;
 
+#ifdef WITH_PROXY
+		/*
+		 *	This can happen due to a race condition where
+		 *	we send a proxied request, and immediately get
+		 *	another reply, before the timer has a chance
+		 *	to update the various states.
+		 */
+	case FR_ACTION_PROXY_REPLY:
+		request->child_state = REQUEST_RUNNING;
+		request->process = proxy_running;
+		/* FALL-THROUGH */
+#endif
+
 	case FR_ACTION_RUN:
 		if (!request_pre_handler(request, action)) {
 #ifdef DEBUG_STATE_MACHINE
@@ -1357,12 +1374,6 @@ STATE_MACHINE_DECL(request_running)
 		}
 		break;
 
-		/*
-		 *	Note that we ignore FR_ACTION_PROXY_REPLY.  If
-		 *	we have a proxy reply, then request->process
-		 *	should be proxy_wait_for_reply, or
-		 *	proxy_running.  Not request_running.
-		 */
 	default:
 		RDEBUG3("%s: Ignoring action %s", __FUNCTION__, action_codes[action]);
 		break;
