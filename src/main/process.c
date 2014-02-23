@@ -1298,22 +1298,6 @@ STATE_MACHINE_DECL(request_running)
 		request_common(request, action);
 		return;
 
-#ifdef WITH_PROXY
-	case FR_ACTION_PROXY_REPLY:
-#ifdef HAVE_PTHREAD_H
-		/*
-		 *	Catch the case of a proxy reply when called
-		 *	from the main worker thread.
-		 */
-		if (we_are_master()) {
-			rad_assert(request->process != proxy_running);
-			request_queue_or_run(request, proxy_running);
-			return;
-		}
-		/* FALL-THROUGH */
-#endif
-#endif
-
 	case FR_ACTION_RUN:
 		if (!request_pre_handler(request, action)) {
 #ifdef DEBUG_STATE_MACHINE
@@ -1372,6 +1356,12 @@ STATE_MACHINE_DECL(request_running)
 		}
 		break;
 
+		/*
+		 *	Note that we ignore FR_ACTION_PROXY_REPLY.  If
+		 *	we have a proxy reply, then request->process
+		 *	should be proxy_wait_for_reply, or
+		 *	proxy_running.  Not request_running.
+		 */
 	default:
 		RDEBUG3("%s: Ignoring action %s", __FUNCTION__, action_codes[action]);
 		break;
