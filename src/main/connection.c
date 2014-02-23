@@ -76,9 +76,8 @@ struct fr_connection_pool_t {
 					//!< connections to allow.
 	int		spare;		//!< Number of spare connections to try
 					//!< and maintain.
-	int		cleanup_delay;	//!< How long a connection can go unused
-					//!< for before it's closed
-					//!< (0 is infinite).
+	int		cleanup_delay;	//!< Interval between pruning 
+					//!< excess connections.
 	uint64_t	max_uses;	//!< Maximum number of times a
 					//!< connection can be used before being
 					//!< closed.
