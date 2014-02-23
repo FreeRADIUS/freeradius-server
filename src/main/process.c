@@ -194,7 +194,7 @@ static bool proxy_no_new_sockets = false;
 #define PTHREAD_MUTEX_UNLOCK if (spawn_flag) pthread_mutex_unlock
 
 static pthread_t NO_SUCH_CHILD_PID;
-#define CHILD_DONE request->child_pid = NO_SUCH_CHILD_PID
+#define NO_CHILD_THREAD request->child_pid = NO_SUCH_CHILD_PID
 
 #else
 /*
@@ -202,7 +202,7 @@ static pthread_t NO_SUCH_CHILD_PID;
  */
 #define PTHREAD_MUTEX_LOCK(_x)
 #define PTHREAD_MUTEX_UNLOCK(_x)
-#define CHILD_DONE
+#define NO_CHILD_THREAD
 #endif
 
 /*
@@ -404,7 +404,7 @@ STATE_MACHINE_DECL(request_done)
 	 */
 	if (!we_are_master()) {
 		request->child_state = REQUEST_DONE;
-		request->child_pid = NO_SUCH_CHILD_PID;
+		NO_CHILD_THREAD;
 		return;
 	}
 #endif
@@ -1266,23 +1266,23 @@ STATE_MACHINE_DECL(request_finish)
 		RDEBUG2("Finished request %u.", request->number);
 #ifdef WITH_ACCOUNTING
 		if (request->packet->code == PW_ACCOUNTING_REQUEST) {
-			CHILD_DONE;
+			NO_CHILD_THREAD;
 			request->child_state = REQUEST_DONE;
 		} else
 #endif
 
 		if (request->root->cleanup_delay == 0) {
-			CHILD_DONE;
+			NO_CHILD_THREAD;
 			request->child_state = REQUEST_DONE;
 		} else {
-			CHILD_DONE;
+			NO_CHILD_THREAD;
 			request->child_state = REQUEST_CLEANUP_DELAY;
 		}
 	} else {
 		RDEBUG2("Delaying reject of request %u for %d seconds",
 			request->number,
 			request->root->reject_delay);
-		CHILD_DONE;
+		NO_CHILD_THREAD;
 		request->child_state = REQUEST_REJECT_DELAY;
 	}
 }
@@ -1310,9 +1310,7 @@ STATE_MACHINE_DECL(request_running)
 					       child_state_names[REQUEST_DONE]);
 #endif
 
-#ifdef HAVE_PTHREAD_H
-			request->child_pid = NO_SUCH_CHILD_PID;
-#endif
+			NO_CHILD_THREAD;
 			request->child_state = REQUEST_DONE;
 			break;
 		}
@@ -1558,9 +1556,7 @@ static REQUEST *request_setup(rad_listen_t *listener, RADIUS_PACKET *packet,
 #endif
 	request->child_state = REQUEST_RUNNING;
 	request->handle = fun;
-#ifdef HAVE_PTHREAD_H
-	request->child_pid = NO_SUCH_CHILD_PID;
-#endif
+	NO_CHILD_THREAD;
 
 #ifdef WITH_STATS
 	request->listener->stats.last_packet = request->packet->timestamp.tv_sec;
@@ -2532,9 +2528,7 @@ static int request_proxy(REQUEST *request, int retransmit)
 
 		if (!we_are_master()) {
 			request_virtual_server(request, FR_ACTION_RUN);
-#ifdef HAVE_PTHREAD_H
-			request->child_pid = NO_SUCH_CHILD_PID;
-#endif
+			NO_CHILD_THREAD;
 			return 1;
 		}
 
@@ -2566,11 +2560,9 @@ static int request_proxy(REQUEST *request, int retransmit)
 		request->home_server->last_packet_sent = request->proxy_retransmit.tv_sec;
 	}
 
-#ifdef HAVE_PTHREAD_H
-	request->child_pid = NO_SUCH_CHILD_PID;
-#endif
-	request->child_state = REQUEST_PROXIED;
 	FR_STATS_TYPE_INC(request->home_server->stats.total_requests);
+	NO_CHILD_THREAD;
+	request->child_state = REQUEST_PROXIED;
 	request->proxy_listener->send(request->proxy_listener,
 				      request);
 	return 1;
@@ -2760,9 +2752,7 @@ static void ping_home_server(void *ctx)
 
 	request = request_alloc(NULL);
 	request->number = request_num_counter++;
-#ifdef HAVE_PTHREAD_H
-	request->child_pid = NO_SUCH_CHILD_PID;
-#endif
+	NO_CHILD_THREAD;
 
 	request->proxy = rad_alloc(request, 1);
 	rad_assert(request->proxy != NULL);
