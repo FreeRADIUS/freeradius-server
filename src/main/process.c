@@ -2243,7 +2243,7 @@ STATE_MACHINE_DECL(proxy_running)
 		break;
 
 	case FR_ACTION_RUN:
-		request_running(request, FR_ACTION_PROXY_REPLY);
+		request_running(request, action);
 		break;
 
 	default:
