@@ -378,7 +378,7 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool,
 	pool->spawning = false;
 	pool->last_spawned = time(NULL);
 	pool->delay_interval = pool->cleanup_interval;
-	pool->next_delay += (pool->delay_interval >> 1);
+	pool->next_delay = pool->cleanup_interval;
 
 	pthread_mutex_unlock(&pool->mutex);
 
