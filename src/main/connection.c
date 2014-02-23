@@ -75,9 +75,18 @@ struct fr_connection_pool_t {
 	int		max;		//!< Maximum number of concurrent
 					//!< connections to allow.
 	int		spare;		//!< Number of spare connections to try
-					//!< and maintain.
-	int		cleanup_delay;	//!< Interval between pruning 
-					//!< excess connections.
+	int		cleanup_interval; //!< Initial timer for how
+					  //!< often we sweep the pool
+					  //!< for free connections.
+					  //!< (0 is infinite).
+	int		delay_interval;  //!< When we next do a
+					//!< cleanup.  Initialized to
+					//!< cleanup_interval, and increase
+					//!< from there based on the delay.
+	int		next_delay;     //!< The next delay time.
+					//!< cleanup.  Initialized to
+					//!< cleanup_interval, and decays
+					//!< from there.
 	uint64_t	max_uses;	//!< Maximum number of times a
 					//!< connection can be used before being
 					//!< closed.
@@ -165,8 +174,10 @@ static const CONF_PARSER connection_config[] = {
 	  0, "0" },
 	{ "lifetime", PW_TYPE_INTEGER, offsetof(fr_connection_pool_t, lifetime),
 	  0, "0" },
-	{ "cleanup_delay", PW_TYPE_INTEGER, offsetof(fr_connection_pool_t, cleanup_delay),
-	  0, "5" },
+	{ "cleanup_delay", PW_TYPE_INTEGER, offsetof(fr_connection_pool_t, cleanup_interval),
+	  0, NULL},
+	{ "cleanup_interval", PW_TYPE_INTEGER, offsetof(fr_connection_pool_t, cleanup_interval),
+	  0, "30" },
 	{ "idle_timeout",  PW_TYPE_INTEGER, offsetof(fr_connection_pool_t, idle_timeout),
 	  0, "60" },
 	{ "spread", PW_TYPE_BOOLEAN, offsetof(fr_connection_pool_t, spread),
@@ -366,6 +377,8 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool,
 	pool->num++;
 	pool->spawning = false;
 	pool->last_spawned = time(NULL);
+	pool->delay_interval = pool->cleanup_interval;
+	pool->next_delay = pool->delay_interval + pool->delay_interval >> 1;
 
 	pthread_mutex_unlock(&pool->mutex);
 
@@ -657,7 +670,7 @@ fr_connection_pool_t *fr_connection_pool_init(CONF_SECTION *parent,
 		pool->min = 5;
 		pool->max = 10;
 		pool->spare = 3;
-		pool->cleanup_delay = 5;
+		pool->cleanup_interval = 30;
 		pool->idle_timeout = 60;
 	}
 
@@ -680,6 +693,14 @@ fr_connection_pool_t *fr_connection_pool_init(CONF_SECTION *parent,
 	}
 	if ((pool->lifetime > 0) && (pool->idle_timeout > pool->lifetime)) {
 		pool->idle_timeout = 0;
+	}
+
+	if (pool->cleanup_interval < 0) {
+		pool->cleanup_interval = 30;
+	}
+
+	if ((pool->idle_timeout > 0) && (pool->cleanup_interval > pool->idle_timeout)) {
+		pool->cleanup_interval = pool->idle_timeout;
 	}
 
 	/*
@@ -804,7 +825,7 @@ static int fr_connection_pool_check(fr_connection_pool_t *pool)
 	 *	are too many spare ones.  Close the one which has been
 	 *	idle for the longest.
 	 */
-	if ((now >= (pool->last_spawned + pool->cleanup_delay)) &&
+	if ((now >= (pool->last_spawned + pool->delay_interval)) &&
 	    (spare > pool->spare)) {
 		fr_connection_t *idle;
 
@@ -823,6 +844,14 @@ static int fr_connection_pool_check(fr_connection_pool_t *pool)
 		INFO("%s: Closing connection (%" PRIu64 "): Too many free connections (%d > %d)", pool->log_prefix,
 		     idle->number, spare, pool->spare);
 		fr_connection_close(pool, idle);
+
+		/*
+		 *	Decrease the delay for the next time we clean
+		 *	up.
+		 */
+		pool->next_delay >>= 1;
+		if (pool->next_delay == 0) pool->next_delay = 1;
+		pool->delay_interval += pool->next_delay;
 	}
 
 	/*

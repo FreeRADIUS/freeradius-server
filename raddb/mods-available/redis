@@ -37,9 +37,10 @@ redis {
 		# try to keep "spare" connections
 		spare = 0
 
-		# If we have spare connections for "cleanup_delay" seconds,
-		# start deleting them
-		cleanup_delay = 300
+		# The pool is checked for free connections every
+		# "cleanup_interval".  If there are free connections,
+		# then one of them is closed.
+		cleanup_interval = 300
 
 		# connections last no more than "lifetime" seconds.
 		lifetime = 86400
