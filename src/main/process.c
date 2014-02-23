@@ -2825,7 +2825,7 @@ static void ping_home_server(void *ctx)
 	request->proxy->dst_port = home->port;
 	request->home_server = home;
 #ifdef DEBUG_STATE_MACHINE
-	if (debug_flag) printf("(%u) ********\tSTATE %s C%-%s -> C-%s\t********\n", request->number, __FUNCTION__,
+	if (debug_flag) printf("(%u) ********\tSTATE %s C-%s -> C-%s\t********\n", request->number, __FUNCTION__,
 			       child_state_names[request->child_state],
 			       child_state_names[REQUEST_DONE]);
 	if (debug_flag) printf("(%u) ********\tNEXT-STATE %s -> %s\n", request->number, __FUNCTION__, "request_ping");
