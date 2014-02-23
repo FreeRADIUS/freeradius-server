@@ -2546,7 +2546,7 @@ static int request_proxy(REQUEST *request, int retransmit)
 	 *	We're actually sending a proxied packet.  Do that now.
 	 */
 	if (!request->in_proxy_hash && !insert_into_proxy_hash(request)) {
-		RPROXY("Failed to insert initial packet into the proxy list.");
+		EDEBUG("Failed to insert request into the proxy list.");
 		return -1;
 	}
 
