@@ -223,51 +223,139 @@ int fr_heap_num_elements(fr_heap_t *hp)
 
 
 #ifdef TESTING
+static bool fr_heap_check(fr_heap_t *hp, void *data)
+{
+	int i;
+
+	if (!hp || (hp->num_elements == 0)) return false;
+
+	for (i = 0; i < hp->num_elements; i++) {
+		if (hp->p[i] == data) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
+typedef struct heap_thing {
+	int data;
+	int heap;		/* for the heap */
+} heap_thing;
+
+
 /*
  *  cc -g -DTESTING -I .. heap.c -o heap
  *
  *  ./heap
  */
-static int heap_cmp(void const *a, void const *b)
+static int heap_cmp(void const *one, void const *two)
 {
-	return *(int *)a - *(int *) b;
+	heap_thing const *a;
+	heap_thing const *b;
+
+	a = (heap_thing const *) one;
+	b = (heap_thing const *) two;
+
+	return a->data - b->data;
 
 }
 
+#define ARRAY_SIZE (1024)
 
-int main(int argc, char **arg)
+void NEVER_RETURNS _fr_exit(char const *file, int line, int status)
+{
+#ifndef NDEBUG
+	fprintf(stderr, "EXIT CALLED %s[%u]: %i: ", file, line, status);
+#endif
+	fflush(stderr);
+	exit(status);
+}
+
+int main(int argc, char **argv)
 {
 	fr_heap_t *hp;
-	int i, array[1024];
+	int i;
+	heap_thing array[ARRAY_SIZE];
+	int skip = 0;
+	int left;
 
-	hp = fr_heap_create(heap_cmp, 0);
+	if (argc > 1) {
+		skip = atoi(argv[1]);
+	}
+
+	hp = fr_heap_create(heap_cmp, offsetof(heap_thing, heap));
 	if (!hp) {
 		fprintf(stderr, "Failed creating heap!\n");
 		fr_exit(1);
 	}
 
-	for (i = 0; i < 1024; i++) {
-		array[i] = (i * 257) % 65537;
+	for (i = 0; i < ARRAY_SIZE; i++) {
+		array[i].data = rand() % 65537;
 		if (!fr_heap_insert(hp, &array[i])) {
 			fprintf(stderr, "Failed inserting %d\n", i);
 			fr_exit(1);
 		}
+	
+		if (!fr_heap_check(hp, &array[i])) {
+			fprintf(stderr, "Inserted but not in heap %d\n", i);
+			fr_exit(1);
+		}
 	}
 
-	for (i = 0; i < 1024; i++) {
-		int *p = fr_heap_peek(hp);
+#if 0
+	for (i = 0; i < ARRAY_SIZE; i++) {
+		printf("Array %d has value %d at offset %d\n",
+		       i, array[i].data, array[i].heap);
+	}
+#endif
 
-		if (!p) {
+	if (skip) {
+		int entry;
+
+		printf("%d elements to remove\n", ARRAY_SIZE / skip);
+
+		for (i = 0; i < ARRAY_SIZE / skip; i++) {
+			entry = i * skip;
+
+			if (!fr_heap_extract(hp, &array[entry])) {
+				fprintf(stderr, "Failed removing %d\n", entry);
+			}
+
+			if (fr_heap_check(hp, &array[entry])) {
+				fprintf(stderr, "Deleted but still in heap %d\n", entry);
+				fr_exit(1);
+			}
+
+			if (array[entry].heap != -1) {
+				fprintf(stderr, "heap offset is wrong %d\n", entry);
+				fr_exit(1);
+			}
+		}
+	}
+
+	left = fr_heap_num_elements(hp);
+	printf("%d elements left in the heap\n", left);
+
+	for (i = 0; i < left; i++) {
+		heap_thing *t = fr_heap_peek(hp);
+
+		if (!t) {
 			fprintf(stderr, "Failed peeking %d\n", i);
 			fr_exit(1);
 		}
 
-		printf("%d\t%d\n", i, *p);
+		printf("%d\t%d\n", i, t->data);
 
 		if (!fr_heap_extract(hp, NULL)) {
 			fprintf(stderr, "Failed extracting %d\n", i);
 			fr_exit(1);
 		}
+	}
+
+	if (fr_heap_num_elements(hp) > 0) {
+		fprintf(stderr, "%d elements left at the end", fr_heap_num_elements(hp));
+		fr_exit(1);
 	}
 
 	fr_heap_delete(hp);
