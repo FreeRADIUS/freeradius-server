@@ -156,7 +156,7 @@ void pairfree(VALUE_PAIR **vps)
 	VALUE_PAIR	*vp;
 	vp_cursor_t	cursor;
 
-	if (!vps) {
+	if (!vps || !*vps) {
 		return;
 	}
 
