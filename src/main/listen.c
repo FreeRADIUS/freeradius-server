@@ -987,16 +987,16 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 #ifdef WITH_TLS
 		tls = cf_section_sub_find(cs, "tls");
 
-		/*
-		 *	Don't allow TLS configurations for UDP sockets.
-		 */
-		if (sock->proto != IPPROTO_TCP) {
-			cf_log_err_cs(cs,
-				   "TLS transport is not available for UDP sockets");
-			return -1;
-		}
-
 		if (tls) {
+			/*
+			 *	Don't allow TLS configurations for UDP sockets.
+			 */
+			if (sock->proto != IPPROTO_TCP) {
+				cf_log_err_cs(cs,
+					      "TLS transport is not available for UDP sockets.");
+				return -1;
+			}
+
 			/*
 			 *	FIXME: Make this better.
 			 */
