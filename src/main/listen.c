@@ -996,9 +996,9 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 			}
 
 			/*
-			 *	FIXME: Make this better.
+			 *	If unset, set to default.
 			 */
-			if (listen_port == 0) listen_port = 2083;
+			if (listen_port == 0) listen_port = PW_RADIUS_TLS_PORT;
 
 			this->tls = tls_server_conf_parse(tls);
 			if (!this->tls) {
