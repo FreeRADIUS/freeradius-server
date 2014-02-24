@@ -33,3 +33,8 @@ if ((Tmp-String-0 && (Tmp-String-0 == 'foobarbaz')) || \
 		reply:Filter-Id := 'fail'
 	}
 }
+
+# This will of been removed too
+update request {
+	User-Password := 'hello'
+}
