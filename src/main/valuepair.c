@@ -1151,6 +1151,12 @@ int radius_map2vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *ma
 
 			pairfree(from);
 
+			/* @fixme hacky! */
+			if (map->dst->list == PAIR_LIST_REQUEST) {
+				context->username = NULL;
+				context->password = NULL;
+			}
+
 			return 0;
 		}
 
