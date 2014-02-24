@@ -25,6 +25,8 @@ FreeRADIUS 3.0.2 Mon 13 Jan 2014 14:30:00 EDT urgency=medium
 	  time, and accounting interim.
 	* Optimize more "if" conditions when the server loads.  This will
 	  avoid work at run time.  e.g. ("foo" == "bar") --> FALSE.
+	* Allow removal of all attributes within a list with !* operator.
+	* Allow list to list copies with request qualifiers (outer.).
 
 	Bug fixes
 	* Fix SQL groups.
