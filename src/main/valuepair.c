@@ -973,7 +973,6 @@ int radius_map2request(REQUEST *request, value_pair_map_t const *map,
 	 *	The callback should either return -1 to signify operations error, -2 when it can't find the
 	 *	attribute or list being referenced, or 0 to signify success.
 	 *	It may return "sucess", but still have no VPs to work with.
-	 *	Only if it returned an error code should it not write anything to the head pointer.
 	 */
 	rcode = func(&head, request, map, ctx);
 	if (rcode < 0) {
@@ -1123,7 +1122,7 @@ int radius_map2vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *ma
 	int rcode = 0;
 	VALUE_PAIR *vp = NULL, *found, **from = NULL;
 	DICT_ATTR const *da;
-	REQUEST *context;
+	REQUEST *context = request;
 	vp_cursor_t cursor;
 
 	rad_assert(request != NULL);
@@ -1132,10 +1131,27 @@ int radius_map2vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *ma
 	*out = NULL;
 
 	/*
-	 *	Special case for !*, we don't need to parse the value, just allocate an attribute with
-	 *	the right operator.
+	 *	Special case for !*, we don't need to parse RHS as this is a unary operator.
 	 */
 	if (map->op == T_OP_CMP_FALSE) {
+		/*
+		 *  Were deleting all the attributes in a list. This isn't like the other
+		 *  mappings because lists aren't represented as attributes (yet),
+		 *  so we can't return a <list> attribute with the !* operator for
+		 *  radius_pairmove() to consume, and need to do the work here instead.
+		 */
+		if (map->dst->type == VPT_TYPE_LIST) {
+			if (radius_request(&context, map->dst->request) == 0) {
+				from = radius_list(context, map->dst->list);
+			}
+			if (!from) return -2;
+
+			pairfree(from);
+
+			return 0;
+		}
+
+		/* Not a list, but an attribute, radius_pairmove() will perform that actual delete */
 		vp = pairalloc(request, map->dst->da);
 		if (!vp) return -1;
 		vp->op = map->op;
@@ -1146,11 +1162,13 @@ int radius_map2vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *ma
 
 	/*
 	 *	List to list found, this is a special case because we don't need
-	 *	to allocate any attributes, just found the current list, and change
+	 *	to allocate any attributes, just finding the current list, and change
 	 *	the op.
 	 */
 	if ((map->dst->type == VPT_TYPE_LIST) && (map->src->type == VPT_TYPE_LIST)) {
-		from = radius_list(request, map->src->list);
+		if (radius_request(&context, map->src->request) == 0) {
+			from = radius_list(context, map->src->list);
+		}
 		if (!from) return -2;
 
 		found = paircopy(request, *from);
@@ -1171,7 +1189,7 @@ int radius_map2vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *ma
 	}
 
 	/*
-	 *	Deal with all non-list founding operations.
+	 *	Deal with all non-list operations.
 	 */
 	da = map->dst->da ? map->dst->da : map->src->da;
 
@@ -1280,7 +1298,6 @@ int radius_map2vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *ma
 		 *	Copy the data over verbatim, assuming it's
 		 *	actually data.
 		 */
-//		rad_assert(found->type == VT_DATA);
 		vp = paircopyvpdata(request, da, found);
 		if (!vp) {
 			return -1;
@@ -1289,7 +1306,7 @@ int radius_map2vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *ma
 
 		break;
 
-	case VPT_TYPE_DATA:	
+	case VPT_TYPE_DATA:
 		rad_assert(map->src && map->src->da);
 		rad_assert(map->dst && map->dst->da);
 		rad_assert(map->src->da->type == map->dst->da->type);

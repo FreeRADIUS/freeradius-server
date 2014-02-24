@@ -418,10 +418,10 @@ value_pair_map_t *radius_cp2map(TALLOC_CTX *ctx, CONF_PAIR *cp,
 	 *	to create.
 	 *
 	 *	The only exception is where were using a unary
-	 *	operator like =* or !*.
+	 *	operator like !*.
 	 */
 	if ((map->dst->type == VPT_TYPE_LIST) &&
-	    (map->op != T_OP_CMP_FALSE) && (map->op != T_OP_CMP_TRUE) &&
+	    (map->op != T_OP_CMP_FALSE) &&
 	    ((map->src->type == VPT_TYPE_XLAT) || (map->src->type == VPT_TYPE_LITERAL))) {
 		cf_log_err(ci, "Can't copy value into list (we don't know which attribute to create)");
 		goto error;
