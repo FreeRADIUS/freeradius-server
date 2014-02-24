@@ -37,6 +37,7 @@ before_install:
       libsnmp-dev
       libssl-dev
       libtalloc-dev
+      libtalloc2-dbg
       libykclient-dev
       libyubikey-dev
   - sudo apt-get install -qq -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" libmysqlclient-dev
