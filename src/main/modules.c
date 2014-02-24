@@ -752,7 +752,7 @@ rlm_rcode_t indexed_modcall(rlm_components_t comp, int idx, REQUEST *request)
 
 	if (idx == 0) {
 		list = server->mc[comp];
-		if (!list) RWDEBUG3("Empty %s section.  Using default return values.", section_type_value[comp].section);
+		if (!list) RDEBUG3("Empty %s section.  Using default return values.", section_type_value[comp].section);
 
 	} else {
 		indexed_modcallable *this;
