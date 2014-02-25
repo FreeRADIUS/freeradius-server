@@ -110,9 +110,9 @@ int rlm_ldap_map_verify(ldap_instance_t *inst, value_pair_map_t **head)
 				 *	request list, and then complain it's not working...
 				 */
 				if (map->dst->list != PAIR_LIST_CONTROL) {
-					LDAP_DBGW("Mapping LDAP (%s) attribute to password \"reference\" attribute "
+					LDAP_DBGW("Mapping LDAP (%s) attribute to \"known good\" password attribute "
 						  "(%s) in %s list. This is probably *NOT* the correct list, "
-						  "you should prepend \"control:\" to \"reference\" attribute "
+						  "you should prepend \"control:\" to password attribute "
 						  "(control:%s)",
 						  map->src->name, map->dst->da->name,
 						  fr_int2str(pair_lists, map->dst->list, "<invalid>"),

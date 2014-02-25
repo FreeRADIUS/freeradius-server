@@ -1002,7 +1002,7 @@ void rlm_ldap_check_reply(ldap_instance_t const *inst, REQUEST *request)
 		    !pairfind(request->config_items, PW_USER_PASSWORD, 0, TAG_ANY) &&
 		    !pairfind(request->config_items, PW_PASSWORD_WITH_HEADER, 0, TAG_ANY) &&
 		    !pairfind(request->config_items, PW_CRYPT_PASSWORD, 0, TAG_ANY)) {
-			RWDEBUG("No \"reference\" password added. Ensure the admin user has permission to "
+			RWDEBUG("No \"known good\" password added. Ensure the admin user has permission to "
 				"read the password attribute");
 			RWDEBUG("PAP authentication will *NOT* work with Active Directory (if that is what you "
 				"were trying to configure)");
