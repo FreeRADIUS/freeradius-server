@@ -542,6 +542,11 @@ redo:
 		switch (SSL_get_error(sock->ssn->ssl, rcode)) {
 		case SSL_ERROR_WANT_READ:
 		case SSL_ERROR_WANT_WRITE:
+			/*
+			 *  This should never happen as SSL_read blocks
+			 *  until the data is available.
+			 */
+			rad_assert(0);
 			break;
 
 		case SSL_ERROR_ZERO_RETURN:
