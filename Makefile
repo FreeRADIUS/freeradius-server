@@ -45,6 +45,7 @@ test: ${BUILD_DIR}/bin/radiusd ${BUILD_DIR}/bin/radclient tests.unit tests.keywo
 #  the above tests
 ifneq "$(findstring travis,${prefix})" ""
 travis-test: test
+	@./build/make/jlibtool --mode=execute ./build/bin/radiusd -xxxv
 	@$(MAKE) install
 	@${sbindir}/radiusd -XC
 	@$(MAKE) deb

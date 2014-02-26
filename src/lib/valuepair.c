@@ -1447,6 +1447,13 @@ bool pairparsevalue(VALUE_PAIR *vp, char const *value)
 				return false;
 			}
 			vp->vp_ipv6prefix[1] = prefix;
+
+			if (prefix < 128) {
+				struct in6_addr addr;
+
+				addr = fr_ipaddr_mask6((struct in6_addr *)(&vp->vp_ipv6prefix[2]), prefix);
+				memcpy(vp->vp_ipv6prefix + 2, &addr, sizeof(addr));
+			}
 		}
 		vp->length = 16 + 2;
 		break;
@@ -1494,15 +1501,9 @@ bool pairparsevalue(VALUE_PAIR *vp, char const *value)
 			vp->vp_ipv4prefix[1] = prefix;
 
 			if (prefix < 32) {
-				uint32_t addr, mask;
+				struct in_addr addr;
 
-				memcpy(&addr, vp->vp_ipv4prefix + 2, sizeof(addr));
-				mask = 1;
-				mask <<= (32 - prefix);
-				mask--;
-				mask = ~mask;
-				mask = htonl(mask);
-				addr &= mask;
+				addr = fr_ipaddr_mask((struct in_addr *)(&vp->vp_ipv4prefix[2]), prefix);
 				memcpy(vp->vp_ipv4prefix + 2, &addr, sizeof(addr));
 			}
 		}
