@@ -3779,12 +3779,6 @@ static int proxy_eol_cb(void *ctx, void *data)
 	 *	We don't care if it's being processed in a child thread.
 	 */
 
-	/*
-	 *	Removed it from the proxy list, and do any necessary
-	 *	cleanup of counters for the home server, socket, etc.
-	 */
-	request->in_proxy_hash = false;
-
 #ifdef WITH_ACCOUNTING
 	/*
 	 *	Accounting packets should be deleted immediately.
