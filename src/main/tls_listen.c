@@ -72,7 +72,7 @@ static void tls_socket_close(rad_listen_t *listener)
 {
 	listen_socket_t *sock = listener->data;
 
-	listener->status = RAD_LISTEN_STATUS_REMOVE_NOW;
+	listener->status = RAD_LISTEN_STATUS_EOL;
 	listener->tls = NULL; /* parent owns this! */
 
 	if (sock->parent) {
@@ -338,6 +338,8 @@ int dual_tls_recv(rad_listen_t *listener)
 	listen_socket_t *sock = listener->data;
 	RADCLIENT	*client = sock->client;
 
+	if (listener->status != RAD_LISTEN_STATUS_KNOWN) return 0;
+
 	if (!tls_socket_recv(listener)) {
 		return 0;
 	}
@@ -426,6 +428,8 @@ int dual_tls_send(rad_listen_t *listener, REQUEST *request)
 
 	rad_assert(request->listener == listener);
 	rad_assert(listener->send == dual_tls_send);
+
+	if (listener->status != RAD_LISTEN_STATUS_KNOWN) return 0;
 
 	/*
 	 *	Accounting reject's are silently dropped.
@@ -608,6 +612,8 @@ int proxy_tls_recv(rad_listen_t *listener)
 	RADIUS_PACKET *packet;
 	uint8_t *data;
 
+	if (listener->status != RAD_LISTEN_STATUS_KNOWN) return 0;
+
 	DEBUG3("Proxy SSL socket has data to read");
 	PTHREAD_MUTEX_LOCK(&sock->mutex);
 	rcode = proxy_tls_read(listener);
@@ -676,6 +682,8 @@ int proxy_tls_send(rad_listen_t *listener, REQUEST *request)
 {
 	int rcode;
 	listen_socket_t *sock = listener->data;
+
+	if (listener->status != RAD_LISTEN_STATUS_KNOWN) return 0;
 
 	/*
 	 *	Normal proxying calls us with the data already
