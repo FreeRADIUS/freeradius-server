@@ -529,46 +529,35 @@ char *vp_aprint(TALLOC_CTX *ctx, VALUE_PAIR const *vp)
 		break;
 	}
 
+	/*
+	 *	We need to use the proper inet_ntop functions for IP
+	 *	addresses, else the output might not match output of
+	 *	other functions, which makes testing difficult.
+	 *
+	 *	An example is tunnelled ipv4 in ipv6 addresses.
+	 */
 	case PW_TYPE_IPADDR:
-		p = talloc_asprintf(ctx, "%u.%u.%u.%u",
-				    vp->vp_ipv4prefix[0], /* network byte order */
-				    vp->vp_ipv4prefix[1],
-				    vp->vp_ipv4prefix[2],
-				    vp->vp_ipv4prefix[3]);
-		break;
-
 	case PW_TYPE_IPV4PREFIX:
-		p = talloc_asprintf(ctx, "%u.%u.%u.%u/%u",
-				    vp->vp_ipv4prefix[2],
-				    vp->vp_ipv4prefix[3],
-				    vp->vp_ipv4prefix[4],
-				    vp->vp_ipv4prefix[5],
-				    vp->vp_ipv4prefix[1] & 0x3f);
+		{
+			char buff[INET_ADDRSTRLEN  + 4]; // + /prefix
+
+			buff[0] = '\0';
+			vp_prints_value(buff, sizeof(buff), vp, 0);
+
+			p = talloc_strdup(ctx, buff);
+		}
 		break;
 
 	case PW_TYPE_IPV6ADDR:
-		p = talloc_asprintf(ctx, "%x:%x:%x:%x:%x:%x:%x:%x",
-				    (vp->vp_ipv6addr.s6_addr[0] << 8) | vp->vp_ipv6addr.s6_addr[1],
-				    (vp->vp_ipv6addr.s6_addr[2] << 8) | vp->vp_ipv6addr.s6_addr[3],
-				    (vp->vp_ipv6addr.s6_addr[4] << 8) | vp->vp_ipv6addr.s6_addr[5],
-				    (vp->vp_ipv6addr.s6_addr[6] << 8) | vp->vp_ipv6addr.s6_addr[7],
-				    (vp->vp_ipv6addr.s6_addr[8] << 8) | vp->vp_ipv6addr.s6_addr[9],
-				    (vp->vp_ipv6addr.s6_addr[10] << 8) | vp->vp_ipv6addr.s6_addr[11],
-				    (vp->vp_ipv6addr.s6_addr[12] << 8) | vp->vp_ipv6addr.s6_addr[13],
-				    (vp->vp_ipv6addr.s6_addr[14] << 8) | vp->vp_ipv6addr.s6_addr[15]);
-		break;
-
 	case PW_TYPE_IPV6PREFIX:
-		p = talloc_asprintf(ctx, "%x:%x:%x:%x:%x:%x:%x:%x/%u",
-				    (vp->vp_ipv6prefix[2] << 8) | vp->vp_ipv6prefix[3],
-				    (vp->vp_ipv6prefix[4] << 8) | vp->vp_ipv6prefix[5],
-				    (vp->vp_ipv6prefix[6] << 8) | vp->vp_ipv6prefix[7],
-				    (vp->vp_ipv6prefix[8] << 8) | vp->vp_ipv6prefix[9],
-				    (vp->vp_ipv6prefix[10] << 8) | vp->vp_ipv6prefix[11],
-				    (vp->vp_ipv6prefix[12] << 8) | vp->vp_ipv6prefix[13],
-				    (vp->vp_ipv6prefix[14] << 8) | vp->vp_ipv6prefix[15],
-				    (vp->vp_ipv6prefix[16] << 8) | vp->vp_ipv6prefix[17],
-				    vp->vp_ipv6prefix[2]);
+		{
+			char buff[INET6_ADDRSTRLEN + 4]; // + /prefix
+
+			buff[0] = '\0';
+			vp_prints_value(buff, sizeof(buff), vp, 0);
+
+			p = talloc_strdup(ctx, buff);
+		}
 		break;
 
 	case PW_TYPE_IFID:

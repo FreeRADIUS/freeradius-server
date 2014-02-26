@@ -647,6 +647,60 @@ char const *ip_ntoh(fr_ipaddr_t const *src, char *dst, size_t cnt)
 	return dst;
 }
 
+/** Mask off a portion of an IPv4 address
+ *
+ * @param ipaddr to mask.
+ * @param prefix Number of contiguous bits to mask.
+ * @return an ipv6 address with the host portion zeroed out.
+ */
+struct in_addr fr_ipaddr_mask(struct in_addr const *ipaddr, uint8_t prefix)
+{
+	uint32_t ret;
+
+	if (prefix > 32) {
+		prefix = 32;
+	}
+
+	/* Short circuit */
+	if (prefix == 32) {
+		return *ipaddr;
+	}
+
+	ret = htonl(~((0x00000001UL << (32 - prefix)) - 1)) & *((uint32_t const *)ipaddr);
+	return *(struct in_addr *) &ret;
+}
+
+/** Mask off a portion of an IPv6 address
+ *
+ * @param ipaddr to mask.
+ * @param prefix Number of contiguous bits to mask.
+ * @return an ipv6 address with the host portion zeroed out.
+ */
+struct in6_addr fr_ipaddr_mask6(struct in6_addr const *ipaddr, uint8_t prefix)
+{
+	uint64_t *p = (uint64_t const *) ipaddr;
+	uint64_t ret[2], *o = ret;
+
+	if (prefix > 128) {
+		prefix = 128;
+	}
+
+	/* Short circuit */
+	if (prefix == 128) {
+		return *ipaddr;
+	}
+
+	if (prefix >= 64) {
+		prefix -= 64;
+		*o++ = 0xffffffffffffffffULL & *p++;
+	} else {
+		ret[1] = 0;
+	}
+
+	*o = htonll(~((0x0000000000000001ULL << (64 - prefix)) - 1)) & *p;
+
+	return *(struct in6_addr *) &ret;
+}
 
 static char const *hextab = "0123456789abcdef";
 

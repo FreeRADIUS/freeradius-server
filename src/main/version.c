@@ -185,6 +185,15 @@ void version(void)
 	DEBUG3("Library magic number:");
 	DEBUG3("  0x%llx", (unsigned long long) libmagic);
 
+	DEBUG3("Endianess:");
+#if defined(LITTLE_ENDIAN)
+	DEBUG3("  little");
+#elif defined(BIG_ENDIAN)
+	DEBUG3("  big");
+#else
+	DEBUG3("  unknown");
+#endif
+
 	INFO("Copyright (C) 1999-2014 The FreeRADIUS server project and contributors");
 	INFO("There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A");
 	INFO("PARTICULAR PURPOSE");
