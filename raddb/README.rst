@@ -250,26 +250,38 @@ rlm_ldap authentication
 -----------------------
 
 In 2.x.x the LDAP module had a ``set_auth_type`` configuration item,
-which set ``Auth-Type := ldap``. This was removed in 3.x.x as it was
-not consistent with the behaviour of the rest of the server.
+which forced ``Auth-Type := ldap``. This was removed in 3.x.x as it
+often did not work, and was not consistent with the rest of the
+server.  We generally recommend that LDAP databases be used as
+databases, and that FreeRADIUS should do authentication.
+
+The only reason to use ``Auth-Type := ldap`` is when the LDAP server
+will not supply the "known good" password to FreeRADIUS, *and* where
+the Access-Request contains User-Password.  This situation happens
+only for Active Directory.  If you think you need to force ``Auth-Type
+:= ldap`` in other situations, you are very likely to be wrong.
 
 The following is an example of what should be inserted into the
 ``authorize {}`` and ``authenticate {}`` sections of the relevant
-virtual-servers, to get equivalent functionality::
+virtual-servers, to get functionality equivalent to v2.x::
 
   authorize {
+    ...
     ldap
     if ((ok || updated) && User-Password) {
       update control {
         Auth-Type := ldap
       }
     }
+    ...
   }
   
   authenticate {
+    ...
     Auth-Type ldap {
       ldap   
     }
+    ...
   }
 
 rlm_eap
