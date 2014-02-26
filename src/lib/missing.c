@@ -272,3 +272,22 @@ ntp2timeval(struct timeval *tv, char const *ntp)
 	tv->tv_sec = sec - NTP_EPOCH_OFFSET;
 	tv->tv_usec = usec / 4295; /* close enough */
 }
+
+#if !defined(HAVE_128BIT_INTEGERS) && defined(LITTLE_ENDIAN)
+/** Swap byte order of 128 bit integer
+ *
+ * @param num 128bit integer to swap.
+ * @return 128bit integer reversed.
+ */
+uint128_t ntohlll(uint128_t const num)
+{
+	uint64_t *p = (uint64_t *) &num;
+	uint64_t ret[2];
+
+	/* swapsies */
+	ret[1] = ntohll(p[0]);
+	ret[0] = ntohll(p[1]);
+
+	return *(uint128_t *)ret;
+}
+#endif
