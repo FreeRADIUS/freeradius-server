@@ -44,6 +44,8 @@ RCSID("$Id$")
 #include <sys/stat.h>
 
 #include <libpq-fe.h>
+
+#include "config.h"
 #include "rlm_sql.h"
 #include "sql_postgresql.h"
 
@@ -271,7 +273,9 @@ static sql_rcode_t sql_query(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t 
 	/*
 	 *  Successful completion of a command returning data (such as a SELECT or SHOW).
 	 */
+#ifdef HAVE_PGRES_SINGLE_TUPLE
 	case PGRES_SINGLE_TUPLE:
+#endif
 	case PGRES_TUPLES_OK:
 		conn->cur_row = 0;
 		conn->affected_rows = PQntuples(conn->result);
@@ -279,7 +283,9 @@ static sql_rcode_t sql_query(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t 
 		DEBUG("rlm_sql_postgresql: query affected rows = %i , fields = %i", conn->affected_rows, numfields);
 		return RLM_SQL_OK;
 
+#ifdef HAVE_PGRES_COPY_BOTH
 	case PGRES_COPY_BOTH:
+#endif
 	case PGRES_COPY_OUT:
 	case PGRES_COPY_IN:
 		DEBUG("rlm_sql_postgresql: Data transfer started");

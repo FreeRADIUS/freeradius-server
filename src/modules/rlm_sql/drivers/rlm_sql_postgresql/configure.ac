@@ -44,13 +44,42 @@ if test x$with_[]modname != xno; then
 	smart_try_dir="$rlm_sql_postgresql_include_dir /usr/include/postgresql /usr/local/pgsql/include /usr/include/pgsql"
 	FR_SMART_CHECK_INCLUDE(libpq-fe.h)
 	if test "x$ac_cv_header_libpqmfe_h" != "xyes"; then
-	  fail="$fail libpq-fe.h"
+		fail="$fail libpq-fe.h"
+	else
+	        CPPFLAGS="$SMART_CPPFLAGS"
+		AC_MSG_CHECKING([for PGRES_SINGLE_TUPLE])
+		AC_COMPILE_IFELSE(
+		  [AC_LANG_PROGRAM([#include <libpq-fe.h>], [[
+		    if (PGRES_SINGLE_TUPLE) return 0;
+		    return 1;
+		  ]])],
+		  [
+		    AC_DEFINE([HAVE_PGRES_SINGLE_TUPLE], [1], [Whether the PGRES_SINGLE_TUPLE constant is defined])
+		    AC_MSG_RESULT(yes)
+		  ],
+		  [
+		    AC_MSG_RESULT(no)
+		  ])
+
+		AC_MSG_CHECKING([for PGRES_COPY_BOTH])
+		AC_COMPILE_IFELSE(
+		  [AC_LANG_PROGRAM([#include <libpq-fe.h>], [[
+		    if (PGRES_COPY_BOTH) return 0;
+		    return 1;
+		  ]])],
+		  [
+		    AC_DEFINE([HAVE_PGRES_COPY_BOTH], [1], [Whether the PGRES_COPY_BOTH constant is defined])
+		    AC_MSG_RESULT(yes)
+		  ],
+		  [
+		    AC_MSG_RESULT(no)
+		  ])
 	fi
 
 	smart_try_dir="$rlm_sql_postgresql_lib_dir /usr/lib /usr/local/pgsql/lib"
 	FR_SMART_CHECK_LIB(pq, PQconnectdb)
         if test "x$ac_cv_lib_pq_PQconnectdb" != "xyes"; then
-	  fail="$fail libpq"
+		fail="$fail libpq"
         fi
 
 	targetname=modname
@@ -80,4 +109,5 @@ mod_cflags=$SMART_CFLAGS
 AC_SUBST(mod_ldflags)
 AC_SUBST(mod_cflags)
 AC_SUBST(targetname)
+AC_CONFIG_HEADER(config.h)
 AC_OUTPUT(all.mk)
