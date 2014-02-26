@@ -331,7 +331,10 @@ bool fr_packet_list_socket_del(fr_packet_list_t *pl, int sockfd)
 	ps = fr_socket_find(pl, sockfd);
 	if (!ps) return false;
 
-	if (ps->num_outgoing != 0) return false;
+	if (ps->num_outgoing != 0) {
+		fr_strerror_printf("socket is still in use");
+		return false;
+	}
 
 	ps->sockfd = -1;
 	pl->num_sockets--;
