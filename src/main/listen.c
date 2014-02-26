@@ -2879,29 +2879,6 @@ static rad_listen_t *listen_parse(CONF_SECTION *cs, char const *server)
 	return this;
 }
 
-#ifdef WITH_PROXY
-static int is_loopback(fr_ipaddr_t const *ipaddr)
-{
-	/*
-	 *	We shouldn't proxy on loopback.
-	 */
-	if ((ipaddr->af == AF_INET) &&
-	    (ipaddr->ipaddr.ip4addr.s_addr == htonl(INADDR_LOOPBACK))) {
-		return 1;
-	}
-
-#ifdef HAVE_STRUCT_SOCKADDR_IN6
-	if ((ipaddr->af == AF_INET6) &&
-	    (IN6_IS_ADDR_LINKLOCAL(&ipaddr->ipaddr.ip6addr))) {
-		return 1;
-	}
-#endif
-
-	return 0;
-}
-#endif
-
-
 #ifdef HAVE_PTHREAD_H
 /*
  *	A child thread which does NOTHING other than read and process
@@ -3221,8 +3198,7 @@ add_sockets:
 	if ((mainconfig.proxy_requests == true) &&
 	    !check_config &&
 	    (*head != NULL) && !defined_proxy) {
-		listen_socket_t *sock = NULL;
-		int		port = 0;
+		int		port ;
 		home_server_t	home;
 
 		memset(&home, 0, sizeof(home));
@@ -3232,39 +3208,7 @@ add_sockets:
 		 */
 		home.proto = IPPROTO_UDP;
 		home.src_ipaddr = server_ipaddr;
-
-		/*
-		 *	Find the first authentication port,
-		 *	and use it
-		 */
-		for (this = *head; this != NULL; this = this->next) {
-			switch (this->type) {
-			case RAD_LISTEN_AUTH:
-				sock = this->data;
-
-				if (is_loopback(&sock->my_ipaddr)) continue;
-
-				if (home.src_ipaddr.af == AF_UNSPEC) {
-					home.src_ipaddr = sock->my_ipaddr;
-				}
-				port = sock->my_port + 2;
-				break;
-#ifdef WITH_ACCT
-			case RAD_LISTEN_ACCT:
-				sock = this->data;
-
-				if (is_loopback(&sock->my_ipaddr)) continue;
-
-				if (home.src_ipaddr.af == AF_UNSPEC) {
-					home.src_ipaddr = sock->my_ipaddr;
-				}
-				port = sock->my_port + 1;
-				break;
-#endif
-			default:
-				break;
-			}
-		}
+		port = 0;
 
 		/*
 		 *	Address is still unspecified, use IPv4.
