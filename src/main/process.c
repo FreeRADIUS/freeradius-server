@@ -3100,25 +3100,41 @@ STATE_MACHINE_DECL(proxy_wait_for_reply)
 		break;
 
 	case FR_ACTION_TIMER:
-		/*
-		 *	Wake up "response_window" time in the future.
-		 *	i.e. when MY packet hasn't received a response.
-		 *
-		 *	Note that we DO NOT mark the home server as
-		 *	zombie if it doesn't respond to us.  It may be
-		 *	responding to other (better looking) packets.
-		 */
-		when = request->proxy->timestamp;
-		when.tv_sec += home->response_window;
+#ifdef WITH_TCP
+		if (request->proxy_listener->status != RAD_LISTEN_STATUS_KNOWN) {
+			remove_from_proxy_hash(request);
 
-		/*
-		 *	Not at the response window.  Set the timer for
-		 *	that.
-		 */
-		if (timercmp(&when, &now, >)) {
-			RDEBUG("Expecting proxy response no later than %d seconds from now", home->response_window);
-			STATE_MACHINE_TIMER(FR_ACTION_TIMER);
-			return;
+			when = request->packet->timestamp;
+			when.tv_sec += request->root->max_request_time;
+
+			if (timercmp(&when, &now, >)) {
+				RDEBUG("Waiting for client retransmission in order to do a proxy retransmit");
+				STATE_MACHINE_TIMER(FR_ACTION_TIMER);
+				return;
+			}
+		} else
+#endif
+		{
+			/*
+			 *	Wake up "response_window" time in the future.
+			 *	i.e. when MY packet hasn't received a response.
+			 *
+			 *	Note that we DO NOT mark the home server as
+			 *	zombie if it doesn't respond to us.  It may be
+			 *	responding to other (better looking) packets.
+			 */
+			when = request->proxy->timestamp;
+			when.tv_sec += home->response_window;
+
+			/*
+			 *	Not at the response window.  Set the timer for
+			 *	that.
+			 */
+			if (timercmp(&when, &now, >)) {
+				RDEBUG("Expecting proxy response no later than %d seconds from now", home->response_window);
+				STATE_MACHINE_TIMER(FR_ACTION_TIMER);
+				return;
+			}
 		}
 
 		RDEBUG("No proxy response, giving up on request and marking it done");
