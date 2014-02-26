@@ -246,6 +246,32 @@ changed so that only the default ``ldap {}`` instance registers
 If ``<instance>-LDAP-Group`` is already used throughout your configuration
 no changes need to be made.
 
+rlm_ldap authentication
+-----------------------
+
+In 2.x.x the LDAP module had a ``set_auth_type`` configuration item,
+which set ``Auth-Type := ldap``. This was removed in 3.x.x as it was
+not consistent with the behaviour of the rest of the server.
+
+The following is an example of what should be inserted into the
+``authorize {}`` and ``authenticate {}`` sections of the relevant
+virtual-servers, to get equivalent functionality::
+
+  authorize {
+    ldap
+    if ((ok || updated) && User-Password) {
+      update control {
+        Auth-Type := ldap
+      }
+    }
+  }
+  
+  authenticate {
+    Auth-Type ldap {
+      ldap   
+    }
+  }
+
 rlm_eap
 -------
 
