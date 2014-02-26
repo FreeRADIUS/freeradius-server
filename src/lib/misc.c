@@ -678,7 +678,7 @@ struct in_addr fr_ipaddr_mask(struct in_addr const *ipaddr, uint8_t prefix)
  */
 struct in6_addr fr_ipaddr_mask6(struct in6_addr const *ipaddr, uint8_t prefix)
 {
-	uint64_t *p = (uint64_t const *) ipaddr;
+	uint64_t const *p = (uint64_t const *) ipaddr;
 	uint64_t ret[2], *o = ret;
 
 	if (prefix > 128) {
@@ -992,6 +992,53 @@ ssize_t fr_utf8_to_ucs2(uint8_t *out, size_t outlen, char const *in, size_t inle
 	}
 
 	return out - start;
+}
+
+/** Write 128bit unsigned integer to buffer
+ *
+ * @author Alexey Frunze
+ *
+ * @param out where to write result to.
+ * @param outlen size of out.
+ * @param num 128 bit integer.
+ */
+size_t fr_prints_uint128(char *out, size_t outlen, uint128_t const num)
+{
+	char buff[128 / 3 + 1 + 1];
+	uint64_t n[2];
+	char *p = buff;
+	int i;
+
+	memset(buff, '0', sizeof(buff) - 1);
+	buff[sizeof(buff) - 1] = '\0';
+
+	memcpy(n, &num, sizeof(n));
+
+	for (i = 0; i < 128; i++) {
+		ssize_t j;
+		int carry;
+
+		carry = (n[1] >= 0x8000000000000000);
+
+		// Shift n[] left, doubling it
+		n[1] = ((n[1] << 1) & 0xffffffffffffffff) + (n[0] >= 0x8000000000000000);
+		n[0] = ((n[0] << 1) & 0xffffffffffffffff);
+
+		// Add s[] to itself in decimal, doubling it
+		for (j = sizeof(buff) - 2; j >= 0; j--) {
+			buff[j] += buff[j] - '0' + carry;
+			carry = (buff[j] > '9');
+			if (carry) {
+				buff[j] -= 10;
+			}
+		}
+	}
+
+	while ((*p == '0') && (p < &buff[sizeof(buff) - 2])) {
+		p++;
+	}
+
+	return strlcpy(out, p, outlen);
 }
 
 /** Calculate powers

@@ -1079,6 +1079,42 @@ FR_CHECK_TYPE_INCLUDE(
   uint32_t, unsigned int, [uint32_t should be the canonical 'network integer']
 )
 
+dnl #
+dnl #  Check for uint64_t
+dnl #
+FR_CHECK_TYPE_INCLUDE(
+  [
+    #ifdef HAVE_INTTYPES_H
+    #  include <inttypes.h>
+    #endif
+
+    #ifdef HAVE_STDINT_H
+    #  include <stdint.h>
+    #endif
+  ],
+  uint64_t, unsigned long long, [uint64_t is required for larger counters]
+)
+
+dnl #
+dnl #  Check for __uint128_t (compiler builtin)
+dnl #
+AC_CHECK_TYPE(__uint128_t, AC_DEFINE(HAVE___UINT128_T, 1, [compiler specific 128 bit unsigned integer]), [], [])
+
+dnl #
+dnl #  Check for uint128_t (fictitious future data type)
+dnl #
+AC_CHECK_TYPE(uint128_t, AC_DEFINE(HAVE_UINT128_T, 1, [128 bit unsigned integer]), [],
+  [
+    #ifdef HAVE_INTTYPES_H
+    #  include <inttypes.h>
+    #endif
+
+    #ifdef HAVE_STDINT_H
+    #  include <stdint.h>
+    #endif
+  ]
+)
+
 AC_CHECK_TYPE(struct in6_addr, AC_DEFINE(HAVE_STRUCT_IN6_ADDR, 1, [IPv6 address structure]), [],
   [
     #ifdef HAVE_NETINET_IN_H

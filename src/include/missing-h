@@ -385,10 +385,43 @@ int gettimeofday (struct timeval *tv, void *tz);
 void timeval2ntp(struct  timeval const *tv, uint8_t *ntp);
 void ntp2timeval(struct timeval *tv, char const *ntp);
 
-#define ntohll(x) (((uint64_t)(ntohl((uint32_t)((x << 32) >> 32))) << 32) | \
-		   (uint64_t)ntohl(((uint32_t)(x >> 32))))
+/*
+ *	This is really hacky. Any code needing to perform operations on 128bit integers,
+ *	or return 128BIT integers should check for HAVE_128BIT_INTEGERS.
+ */
+#ifndef HAVE_UINT128_T
+#  ifdef HAVE___UINT128_T
+#    define HAVE_128BIT_INTEGERS
+#    define uint128_t __uint128_t
+#    define int128_t __int128_t
+#  else
+typedef struct uint128_t { uint8_t v[16]; } uint128_t;
+typedef struct int128_t { uint8_t v[16]; } int128_t;
+#  endif
+#else
+#  define HAVE_128BIT_INTEGERS
+#endif
+
+/* abcd efgh -> dcba hgfe -> hgfe dcba */
+#ifdef LITTLE_ENDIAN
+#  define ntohll(x) (( \
+	(uint64_t)(ntohl((uint32_t)((x << 32) >> 32))) << 32) | \
+	(uint64_t)ntohl(((uint32_t)(x >> 32))))
+
+#  ifdef HAVE_128BIT_INTEGERS
+#    define ntohlll(x) (( \
+	(uint128_t)(ntohll((uint64_t)((x << 64) >> 64))) << 64) | \
+	(uint128_t)ntohll(((uint64_t)(x >> 64))))
+#  else
+uint128_t ntohlll(uint128_t num);
+#  endif
+#else
+#  define ntohll(x)
+#  define ntohlll(x)
+#endif
 
 #define htonll(x) ntohll(x)
+#define htonlll(x) htohlll(x)
 
 #ifdef __cplusplus
 }

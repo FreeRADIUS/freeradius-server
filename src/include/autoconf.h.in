@@ -370,6 +370,9 @@
 /* Define if the compiler supports __thread */
 #undef HAVE_THREAD_TLS
 
+/* 128 bit unsigned integer */
+#undef HAVE_UINT128_T
+
 /* Define to 1 if you have the <unistd.h> header file. */
 #undef HAVE_UNISTD_H
 
@@ -387,6 +390,9 @@
 
 /* Define to 1 if you have the <winsock.h> header file. */
 #undef HAVE_WINSOCK_H
+
+/* compiler specific 128 bit unsigned integer */
+#undef HAVE___UINT128_T
 
 /* define if you have OSFC2 authentication */
 #undef OSFC2
@@ -541,6 +547,9 @@
 
 /* uint32_t should be the canonical 'network integer' */
 #undef uint32_t
+
+/* uint64_t is required for larger counters */
+#undef uint64_t
 
 /* uint8_t should be the canonical 'octet' for network traffic */
 #undef uint8_t

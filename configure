@@ -7742,6 +7742,74 @@ $as_echo "#define uint32_t unsigned int" >>confdefs.h
   fi
 
 
+
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for uint64_t" >&5
+$as_echo_n "checking for uint64_t... " >&6; }
+if ${ac_cv_type_uint64_t+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+   ac_cv_type_uint64_t=no
+      cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#ifdef HAVE_INTTYPES_H
+    #  include <inttypes.h>
+    #endif
+
+    #ifdef HAVE_STDINT_H
+    #  include <stdint.h>
+    #endif
+
+int
+main ()
+{
+uint64_t foo
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  ac_cv_type_uint64_t=yes
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+
+
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_type_uint64_t" >&5
+$as_echo "$ac_cv_type_uint64_t" >&6; }
+
+  if test "$ac_cv_type_uint64_t" != "yes"; then
+
+$as_echo "#define uint64_t unsigned long long" >>confdefs.h
+
+  fi
+
+
+ac_fn_c_check_type "$LINENO" "__uint128_t" "ac_cv_type___uint128_t" "$ac_includes_default"
+if test "x$ac_cv_type___uint128_t" = xyes; then :
+
+$as_echo "#define HAVE___UINT128_T 1" >>confdefs.h
+
+fi
+
+
+ac_fn_c_check_type "$LINENO" "uint128_t" "ac_cv_type_uint128_t" "
+    #ifdef HAVE_INTTYPES_H
+    #  include <inttypes.h>
+    #endif
+
+    #ifdef HAVE_STDINT_H
+    #  include <stdint.h>
+    #endif
+
+
+"
+if test "x$ac_cv_type_uint128_t" = xyes; then :
+
+$as_echo "#define HAVE_UINT128_T 1" >>confdefs.h
+
+fi
+
+
 ac_fn_c_check_type "$LINENO" "struct in6_addr" "ac_cv_type_struct_in6_addr" "
     #ifdef HAVE_NETINET_IN_H
     #  include <netinet/in.h>
