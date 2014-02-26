@@ -378,6 +378,9 @@ static void request_timer(void *ctx)
 STATE_MACHINE_DECL(request_done)
 {
 	struct timeval now, when;
+#ifdef WITH_PROXY
+	char buffer[128];
+#endif
 
 	TRACE_STATE_MACHINE;
 
@@ -504,8 +507,13 @@ STATE_MACHINE_DECL(request_done)
 		 *	packets from the home server.
 		 */
 	case FR_ACTION_PROXY_REPLY:
-		request_common(request, action);
-		break;
+		DEBUG2("Reply from home server %s port %d  - ID: %d arrived too late for request %u. Try increasing 'retry_delay' or 'max_request_time'",
+		       inet_ntop(request->proxy->src_ipaddr.af,
+				 &request->proxy->src_ipaddr.ipaddr,
+				 buffer, sizeof(buffer)),
+		       request->proxy->dst_port, request->proxy->id,
+		       request->number);
+		return;
 #endif
 
 	default:
