@@ -1803,6 +1803,9 @@ static int eol_listener(void *ctx, void *data)
  *
  ***********************************************************************/
 
+/*
+ *	Called with the proxy mutex held
+ */
 static void remove_from_proxy_hash_nl(REQUEST *request, bool yank)
 {
 	if (!request->in_proxy_hash) return;
