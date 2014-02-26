@@ -701,13 +701,22 @@ int proxy_tls_send(rad_listen_t *listener, REQUEST *request)
 	while ((rcode = SSL_write(sock->ssn->ssl, request->proxy->data,
 				  request->proxy->data_len)) < 0) {
 		int err;
-		while ((err = ERR_get_error())) {
+
+		err = ERR_get_error();
+		switch (err) {
+		case SSL_ERROR_WANT_READ:
+		case SSL_ERROR_WANT_WRITE:
+			DEBUG("Retrying proxy TLS write");
+			break;
+
+		default:
 			DEBUG("proxy SSL_write says %s",
 			      ERR_error_string(err, NULL));
+			PTHREAD_MUTEX_UNLOCK(&sock->mutex);
+			DEBUG("Closing TLS socket to home server");
+			tls_socket_close(listener);
+			return 0;
 		}
-		PTHREAD_MUTEX_UNLOCK(&sock->mutex);
-		tls_socket_close(listener);
-		return 0;
 	}
 	PTHREAD_MUTEX_UNLOCK(&sock->mutex);
 
