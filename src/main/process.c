@@ -3888,6 +3888,13 @@ int event_new_fd(rad_listen_t *this)
 	 *	Stop using this socket, if at all possible.
 	 */
 	if (this->status == RAD_LISTEN_STATUS_EOL) {
+		/*
+		 *	Remove it from the list of live FD's.
+		 */
+		FD_MUTEX_LOCK(&fd_mutex);
+		fr_event_fd_delete(el, 0, this->fd);
+		FD_MUTEX_UNLOCK(&fd_mutex);
+
 #ifdef WITH_PROXY
 		/*
 		 *	Proxy sockets get frozen, so that we don't use
@@ -3946,13 +3953,6 @@ int event_new_fd(rad_listen_t *this)
 		listen_socket_t *sock = this->data;
 #endif
 		struct timeval when;
-
-		/*
-		 *	Remove it from the list of live FD's.
-		 */
-		FD_MUTEX_LOCK(&fd_mutex);
-		fr_event_fd_delete(el, 0, this->fd);
-		FD_MUTEX_UNLOCK(&fd_mutex);
 
 		/*
 		 *      Re-open the socket, pointing it to /dev/null.
