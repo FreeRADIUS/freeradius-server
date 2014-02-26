@@ -3101,7 +3101,8 @@ STATE_MACHINE_DECL(proxy_wait_for_reply)
 
 	case FR_ACTION_TIMER:
 #ifdef WITH_TCP
-		if (request->proxy_listener->status != RAD_LISTEN_STATUS_KNOWN) {
+		if (!request->proxy_listener ||
+		    (request->proxy_listener->status != RAD_LISTEN_STATUS_KNOWN)) {
 			remove_from_proxy_hash(request);
 
 			when = request->packet->timestamp;
