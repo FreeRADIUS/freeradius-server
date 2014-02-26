@@ -407,6 +407,7 @@ typedef struct listen_socket_t {
 	VALUE_PAIR	*certs;
 	pthread_mutex_t mutex;
 	uint8_t		*data;
+	size_t		partial;
 #endif
 
 	RADCLIENT_LIST	*clients;
