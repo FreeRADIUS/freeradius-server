@@ -2557,6 +2557,15 @@ static int request_proxy(REQUEST *request, int retransmit)
 
 	rad_assert(request->proxy->id >= 0);
 
+#ifdef WITH_TLS
+	if (request->home_server->tls) {
+		RDEBUG2("Proxying request to home server %s port %d (TLS)",
+			inet_ntop(request->proxy->dst_ipaddr.af,
+				  &request->proxy->dst_ipaddr.ipaddr,
+				  buffer, sizeof(buffer)),
+			request->proxy->dst_port);
+	} else
+#endif
 	RDEBUG2("Proxying request to home server %s port %d",
 	       inet_ntop(request->proxy->dst_ipaddr.af,
 			 &request->proxy->dst_ipaddr.ipaddr,
