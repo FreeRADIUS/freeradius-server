@@ -1651,6 +1651,8 @@ static void tcp_socket_timer(void *ctx)
 
 	fr_event_now(el, &now);
 
+	if (listener->status != RAD_LISTEN_STATUS_KNOWN) return;
+
 	switch (listener->type) {
 #ifdef WITH_PROXY
 	case RAD_LISTEN_PROXY:
@@ -3987,8 +3989,8 @@ int event_new_fd(rad_listen_t *this)
 			fr_packet_list_walk(proxy_list, this, eol_proxy_listener);
 
 			if (!fr_packet_list_socket_del(proxy_list, this->fd)) {
-				ERROR("Fatal error removing socket: %s",
-				      fr_strerror());
+				ERROR("Fatal error removing socket %s: %s",
+				      buffer, fr_strerror());
 				fr_exit(1);
 			}
 			if (sock->home &&  sock->home->limit.num_connections) {
