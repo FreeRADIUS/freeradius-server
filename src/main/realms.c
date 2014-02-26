@@ -2095,6 +2095,9 @@ void home_server_update_request(home_server_t *home, REQUEST *request)
 	request->proxy->src_port = 0;
 	request->proxy->dst_ipaddr = home->ipaddr;
 	request->proxy->dst_port = home->port;
+#ifdef WITH_TCP
+	request->proxy->proto = home->proto;
+#endif
 	request->home_server = home;
 
 	/*
