@@ -694,7 +694,6 @@ static rlm_rcode_t mod_authorize(UNUSED void *instance, UNUSED REQUEST *request)
 	datum key_datum;
 	datum count_datum;
 	rad_counter counter;
-	unsigned int res = 0;
 	VALUE_PAIR *key_vp, *check_vp;
 	VALUE_PAIR *reply_item;
 	char msg[128];
@@ -763,8 +762,11 @@ static rlm_rcode_t mod_authorize(UNUSED void *instance, UNUSED REQUEST *request)
 	 * Check if check item > counter
 	 */
 	DEBUG("rlm_counter: Check item = %d, Count = %d",check_vp->vp_integer,counter.user_counter);
-	res=check_vp->vp_integer - counter.user_counter;
-	if (res > 0) {
+	if (check_vp->vp_integer > counter.user_counter) {
+		unsigned int res;
+
+		res = check_vp->vp_integer - counter.user_counter;
+
 		DEBUG("rlm_counter: res is greater than zero");
 		if (inst->count_attr->attr == PW_ACCT_SESSION_TIME) {
 			/*
