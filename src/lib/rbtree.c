@@ -72,6 +72,8 @@ struct rbtree_t {
  */
 static void free_walker(rbtree_t *tree, rbnode_t *x)
 {
+	(void) talloc_get_type_abort(x, rbnode_t);
+
 	if (x->left != NIL) free_walker(tree, x->left);
 	if (x->right != NIL) free_walker(tree, x->right);
 
