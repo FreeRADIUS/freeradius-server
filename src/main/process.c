@@ -3767,6 +3767,52 @@ static void listener_free_cb(void *ctx)
 }
 #endif
 
+#ifdef WITH_PROXY
+static int proxy_eol_cb(void *ctx, void *data)
+{
+	struct timeval when;
+	REQUEST *request = fr_packet2myptr(REQUEST, proxy, data);
+
+	if (request->proxy_listener != ctx) return 0;
+
+	/*
+	 *	We don't care if it's being processed in a child thread.
+	 */
+
+	/*
+	 *	Removed it from the proxy list, and do any necessary
+	 *	cleanup of counters for the home server, socket, etc.
+	 */
+	request->in_proxy_hash = false;
+
+#ifdef WITH_ACCOUNTING
+	/*
+	 *	Accounting packets should be deleted immediately.
+	 *	They will never be retransmitted by the client.
+	 */
+	if (request->proxy->code == PW_CODE_ACCOUNTING_REQUEST) {
+		RDEBUG("Stopping request due to failed connection to home server");
+		request->master_state = REQUEST_STOP_PROCESSING;
+	}
+#endif
+
+	/*
+	 *	Reset the timer to be now, so that the request is
+	 *	quickly updated.  But spread the requests randomly
+	 *	over the next second, so that we don't overload the
+	 *	server.
+	 */
+	fr_event_now(el, &when);
+	tv_add(&when, fr_rand() % USEC);
+	STATE_MACHINE_TIMER(FR_ACTION_TIMER);
+
+	/*
+	 *	Don't delete it from the list.
+	 */
+	return 0;
+}
+#endif
+
 int event_new_fd(rad_listen_t *this)
 {
 	char buffer[1024];
@@ -3918,6 +3964,8 @@ int event_new_fd(rad_listen_t *this)
 				ERROR("Fatal error freezing socket: %s", fr_strerror());
 				fr_exit(1);
 			}
+
+			fr_packet_list_walk(proxy_list, this, proxy_eol_cb);
 			PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
 		}
 #endif
