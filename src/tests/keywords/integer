@@ -132,14 +132,14 @@ if (Tmp-String-6 != '') {
 }
 
 # ipv6addr - Can't convert IPv6 to integer
-if (Tmp-String-7 != '') {
+if (Tmp-String-7 != '959985464') {
 	update reply {
 		Filter-ID += 'fail'
 	}
 }
 
 # ipv6addrprefix
-if (Tmp-String-8 != '') {
+if (Tmp-String-8 != '959985465') {
 	update reply {
 		Filter-ID += 'fail'
 	}
@@ -186,7 +186,7 @@ if (Tmp-String-3 != '1152921505566832445') {
 }
 
 # ipv4prefix
-if (Tmp-String-4 != '') {
+if (Tmp-String-4 != '959985470') {
 	update reply {
 		Filter-Id += 'fail'
 	}
