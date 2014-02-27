@@ -212,7 +212,7 @@ static int tls_socket_recv(rad_listen_t *listener)
 	if ((rcode < 0) && (errno == ECONNRESET)) {
 	do_close:
 		PTHREAD_MUTEX_UNLOCK(&sock->mutex);
-		DEBUG("Closing TLS socket from client");
+		DEBUG("Closing TLS socket from client port %u", sock->other_port);
 		tls_socket_close(listener);
 		PTHREAD_MUTEX_UNLOCK(&sock->mutex);
 		return 0;
