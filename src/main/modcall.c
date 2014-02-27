@@ -296,8 +296,8 @@ static int call_modsingle(rlm_components_t component, modsingle *sp, REQUEST *re
 	       comp2str[component], sp->modinst->name,
 	       sp->modinst->entry->name, request->number);
 
-	if (sp->modinst->dead) {
-		myresult = RLM_MODULE_FAIL;
+	if (sp->modinst->force) {
+		myresult = sp->modinst->code;
 		goto fail;
 	}
 
