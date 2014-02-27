@@ -31,15 +31,13 @@ RCSID("$Id$")
 #include "config.h"
 
 #ifdef HAVE_MYSQL_MYSQL_H
-#include <mysql/mysql_version.h>
-#include <mysql/errmsg.h>
-#include <mysql/mysql.h>
-#else
-#ifdef HAVE_MYSQL_H
-#include <mysql_version.h>
-#include <errmsg.h>
-#include <mysql.h>
-#endif
+#  include <mysql/mysql_version.h>
+#  include <mysql/errmsg.h>
+#  include <mysql/mysql.h>
+#elif defined(HAVE_MYSQL_H)
+#  include <mysql_version.h>
+#  include <errmsg.h>
+#  include <mysql.h>
 #endif
 
 #include "rlm_sql.h"
@@ -47,18 +45,18 @@ RCSID("$Id$")
 static int mysql_instance_count = 0;
 
 typedef struct rlm_sql_mysql_conn {
-	MYSQL db;
-	MYSQL *sock;
-	MYSQL_RES *result;
-	rlm_sql_row_t row;
+	MYSQL		db;
+	MYSQL		*sock;
+	MYSQL_RES	*result;
+	rlm_sql_row_t	row;
 } rlm_sql_mysql_conn_t;
 
 typedef struct rlm_sql_mysql_config {
-	char const *tls_ca_file;
-	char const *tls_ca_path;
-	char const *tls_certificate_file;
-	char const *tls_private_key_file;
-	char const *tls_cipher;
+	char const	*tls_ca_file;
+	char const	*tls_ca_path;
+	char const	*tls_certificate_file;
+	char const	*tls_private_key_file;
+	char const	*tls_cipher;
 } rlm_sql_mysql_config_t;
 
 static CONF_PARSER tls_config[] = {
@@ -174,12 +172,9 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 		 */
 		if (timeout > 3) timeout /= 3;
 
-		mysql_options(&(conn->db), MYSQL_OPT_CONNECT_TIMEOUT,
-			      &timeout);
-		mysql_options(&(conn->db), MYSQL_OPT_READ_TIMEOUT,
-			      &timeout);
-		mysql_options(&(conn->db), MYSQL_OPT_WRITE_TIMEOUT,
-			      &timeout);
+		mysql_options(&(conn->db), MYSQL_OPT_CONNECT_TIMEOUT, &timeout);
+		mysql_options(&(conn->db), MYSQL_OPT_READ_TIMEOUT, &timeout);
+		mysql_options(&(conn->db), MYSQL_OPT_WRITE_TIMEOUT, &timeout);
 	}
 #endif
 
@@ -201,19 +196,15 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 					NULL,
 					sql_flags);
 	if (!conn->sock) {
-		ERROR("rlm_sql_mysql: Couldn't connect socket to MySQL "
-		       "server %s@%s:%s", config->sql_login, config->sql_server,
-		       config->sql_db);
-		ERROR("rlm_sql_mysql: Mysql error '%s'",
-		       mysql_error(&conn->db));
+		ERROR("rlm_sql_mysql: Couldn't connect socket to MySQL server %s@%s:%s", config->sql_login,
+		      config->sql_server, config->sql_db);
+		ERROR("rlm_sql_mysql: Mysql error '%s'", mysql_error(&conn->db));
 
 		conn->sock = NULL;
-
-		return -1;
+		return RLM_SQL_ERROR;
 	}
 
-
-	return 0;
+	return RLM_SQL_OK;
 }
 
 /*************************************************************************
@@ -223,25 +214,24 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
  *	Purpose: check the error to see if the server is down
  *
  *************************************************************************/
-static int sql_check_error(int error)
+static sql_rcode_t sql_check_error(int error)
 {
 	switch(error) {
+	case 0:
+		return RLM_SQL_OK;
+
 	case CR_SERVER_GONE_ERROR:
 	case CR_SERVER_LOST:
 	case -1:
 		DEBUG("rlm_sql_mysql: MYSQL check_error: %d, returning RLM_SQL_RECONNECT", error);
 		return RLM_SQL_RECONNECT;
-		break;
-	case 0:
-		return 0;
-		break;
+
 	case CR_OUT_OF_MEMORY:
 	case CR_COMMANDS_OUT_OF_SYNC:
 	case CR_UNKNOWN_ERROR:
 	default:
 		DEBUG("rlm_sql_mysql: MYSQL check_error: %d received", error);
-		return -1;
-		break;
+		return RLM_SQL_ERROR;
 	}
 }
 
@@ -256,6 +246,7 @@ static int sql_check_error(int error)
 static sql_rcode_t sql_query(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config, char const *query)
 {
 	rlm_sql_mysql_conn_t *conn = handle->conn;
+	sql_rcode_t rcode;
 
 	if (!conn->sock) {
 		ERROR("rlm_sql_mysql: Socket not connected");
@@ -263,7 +254,13 @@ static sql_rcode_t sql_query(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t 
 	}
 
 	mysql_query(conn->sock, query);
-	return sql_check_error(mysql_errno(conn->sock));
+	rcode = sql_check_error(mysql_errno(conn->sock));
+	if (rcode != RLM_SQL_OK) {
+		return rcode;
+	}
+	DEBUG2("rlm_sql_mysql: %s", mysql_info(conn->sock));
+
+	return RLM_SQL_OK;
 }
 
 
@@ -279,35 +276,37 @@ static sql_rcode_t sql_query(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t 
 static sql_rcode_t sql_store_result(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config)
 {
 	rlm_sql_mysql_conn_t *conn = handle->conn;
-	int status;
+	sql_rcode_t rcode;
+	int ret;
 
 	if (!conn->sock) {
 		ERROR("rlm_sql_mysql: Socket not connected");
 		return RLM_SQL_RECONNECT;
 	}
+
 retry_store_result:
 	if (!(conn->result = mysql_store_result(conn->sock))) {
-		status = sql_check_error(mysql_errno(conn->sock));
-		if (status != 0) {
+		rcode = sql_check_error(mysql_errno(conn->sock));
+		if (rcode != RLM_SQL_OK) {
 			ERROR("rlm_sql_mysql: Cannot store result");
-			ERROR("rlm_sql_mysql: MySQL error '%s'",
-			       mysql_error(conn->sock));
-			return status;
+			ERROR("rlm_sql_mysql: MySQL error '%s'", mysql_error(conn->sock));
+
+			return rcode;
 		}
 #if (MYSQL_VERSION_ID >= 40100)
-		status = mysql_next_result(conn->sock);
-		if (status == 0) {
+		ret = mysql_next_result(conn->sock);
+		if (ret == 0) {
 			/* there are more results */
 			goto retry_store_result;
-		} else if (status > 0) {
+		} else if (ret > 0) {
 			ERROR("rlm_sql_mysql: Cannot get next result");
-			ERROR("rlm_sql_mysql: MySQL error '%s'",
-			       mysql_error(conn->sock));
-			return sql_check_error(status);
+			ERROR("rlm_sql_mysql: MySQL error '%s'", mysql_error(conn->sock));
+
+			return sql_check_error(ret);
 		}
 #endif
 	}
-	return 0;
+	return RLM_SQL_OK;
 }
 
 
@@ -319,9 +318,9 @@ retry_store_result:
  *	       of columns from query
  *
  *************************************************************************/
-static int sql_num_fields(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config)
+static int sql_num_fields(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
 {
-	int     num = 0;
+	int num = 0;
 	rlm_sql_mysql_conn_t *conn = handle->conn;
 
 #if MYSQL_VERSION_ID >= 32224
@@ -330,8 +329,7 @@ static int sql_num_fields(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *co
 	if (!(num = mysql_num_fields(conn->sock))) {
 #endif
 		ERROR("rlm_sql_mysql: MYSQL Error: No Fields");
-		ERROR("rlm_sql_mysql: MYSQL error: %s",
-		       mysql_error(conn->sock));
+		ERROR("rlm_sql_mysql: MYSQL error: %s", mysql_error(conn->sock));
 	}
 	return num;
 }
@@ -346,14 +344,16 @@ static int sql_num_fields(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *co
  *************************************************************************/
 static sql_rcode_t sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char const *query)
 {
-	int ret;
+	sql_rcode_t rcode;
 
-	ret = sql_query(handle, config, query);
-	if(ret)
-		return ret;
-	ret = sql_store_result(handle, config);
-	if (ret) {
-		return ret;
+	rcode = sql_query(handle, config, query);
+	if (rcode != RLM_SQL_OK) {
+		return rcode;
+	}
+
+	rcode = sql_store_result(handle, config);
+	if (rcode != RLM_SQL_OK) {
+		return rcode;
 	}
 
 	/* Why? Per http://www.mysql.com/doc/n/o/node_591.html,
@@ -362,7 +362,7 @@ static sql_rcode_t sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *
 	 */
 	sql_num_fields(handle, config);
 
-	return ret;
+	return rcode;
 }
 
 
@@ -378,8 +378,9 @@ static int sql_num_rows(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *conf
 {
 	rlm_sql_mysql_conn_t *conn = handle->conn;
 
-	if (conn->result)
+	if (conn->result) {
 		return mysql_num_rows(conn->result);
+	}
 
 	return 0;
 }
@@ -397,7 +398,8 @@ static int sql_num_rows(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *conf
 static sql_rcode_t sql_fetch_row(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config)
 {
 	rlm_sql_mysql_conn_t *conn = handle->conn;
-	int status;
+	sql_rcode_t rcode;
+	int ret;
 
 	/*
 	 *  Check pointer before de-referencing it.
@@ -408,32 +410,33 @@ static sql_rcode_t sql_fetch_row(rlm_sql_handle_t * handle, UNUSED rlm_sql_confi
 
 retry_fetch_row:
 	handle->row = mysql_fetch_row(conn->result);
-
 	if (!handle->row) {
-		status = sql_check_error(mysql_errno(conn->sock));
-		if (status != 0) {
+		rcode = sql_check_error(mysql_errno(conn->sock));
+		if (rcode != RLM_SQL_OK) {
 			ERROR("rlm_sql_mysql: Cannot fetch row");
-			ERROR("rlm_sql_mysql: MySQL error '%s'",
-			       mysql_error(conn->sock));
-			return status;
+			ERROR("rlm_sql_mysql: MySQL error '%s'", mysql_error(conn->sock));
+
+			return rcode;
 		}
+
 #if (MYSQL_VERSION_ID >= 40100)
 		sql_free_result(handle, config);
-		status = mysql_next_result(conn->sock);
-		if (status == 0) {
+
+		ret = mysql_next_result(conn->sock);
+		if (ret == 0) {
 			/* there are more results */
-			if ((sql_store_result(handle, config) == 0)
-			 && (conn->result != NULL))
+			if ((sql_store_result(handle, config) == 0) && (conn->result != NULL)) {
 				goto retry_fetch_row;
-		} else if (status > 0) {
+			}
+		} else if (ret > 0) {
 			ERROR("rlm_sql_mysql: Cannot get next result");
-			ERROR("rlm_sql_mysql: MySQL error '%s'",
-			       mysql_error(conn->sock));
-			return sql_check_error(status);
+			ERROR("rlm_sql_mysql: MySQL error '%s'", mysql_error(conn->sock));
+
+			return sql_check_error(ret);
 		}
 #endif
 	}
-	return 0;
+	return RLM_SQL_OK;
 }
 
 
@@ -474,6 +477,7 @@ static char const *sql_error(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t 
 	if (!conn || !conn->sock) {
 		return "rlm_sql_mysql: no connection to db";
 	}
+
 	return mysql_error(conn->sock);
 }
 
@@ -490,28 +494,30 @@ static sql_rcode_t sql_finish_query(rlm_sql_handle_t * handle, UNUSED rlm_sql_co
 {
 #if (MYSQL_VERSION_ID >= 40100)
 	rlm_sql_mysql_conn_t *conn = handle->conn;
-	int status;
+	sql_rcode_t rcode;
+	int ret;
 
 skip_next_result:
-	status = sql_store_result(handle, config);
-	if (status != 0) {
-		return status;
+	rcode = sql_store_result(handle, config);
+	if (rcode != RLM_SQL_OK) {
+		return rcode;
 	} else if (conn->result != NULL) {
 		DEBUG("rlm_sql_mysql: SQL statement returned unexpected result");
 		sql_free_result(handle, config);
 	}
-	status = mysql_next_result(conn->sock);
-	if (status == 0) {
+
+	ret = mysql_next_result(conn->sock);
+	if (ret == 0) {
 		/* there are more results */
 		goto skip_next_result;
-	}  else if (status > 0) {
+	}  else if (ret > 0) {
 		ERROR("rlm_sql_mysql: Cannot get next result");
-		ERROR("rlm_sql_mysql: MySQL error '%s'",
-		       mysql_error(conn->sock));
-		return sql_check_error(status);
+		ERROR("rlm_sql_mysql: MySQL error '%s'", mysql_error(conn->sock));
+
+		return sql_check_error(ret);
 	}
 #endif
-	return 0;
+	return RLM_SQL_OK;
 }
 
 
@@ -526,23 +532,23 @@ skip_next_result:
 static sql_rcode_t sql_finish_select_query(rlm_sql_handle_t * handle, rlm_sql_config_t *config)
 {
 #if (MYSQL_VERSION_ID >= 40100)
-	int status;
+	int ret;
 	rlm_sql_mysql_conn_t *conn = handle->conn;
 #endif
 	sql_free_result(handle, config);
 #if (MYSQL_VERSION_ID >= 40100)
-	status = mysql_next_result(conn->sock);
-	if (status == 0) {
+	ret = mysql_next_result(conn->sock);
+	if (ret == 0) {
 		/* there are more results */
 		sql_finish_query(handle, config);
-	}  else if (status > 0) {
+	}  else if (ret > 0) {
 		ERROR("rlm_sql_mysql: Cannot get next result");
-		ERROR("rlm_sql_mysql: MySQL error '%s'",
-		       mysql_error(conn->sock));
-		return sql_check_error(status);
+		ERROR("rlm_sql_mysql: MySQL error '%s'",  mysql_error(conn->sock));
+
+		return sql_check_error(ret);
 	}
 #endif
-	return 0;
+	return RLM_SQL_OK;
 }
 
 
