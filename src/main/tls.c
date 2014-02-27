@@ -113,6 +113,9 @@ tls_session_t *tls_new_client_session(fr_tls_server_conf_t *conf, int fd)
 	if (!ssn) return NULL;
 
 	ssn->ctx = conf->ctx;
+
+	SSL_CTX_set_mode(ssn->ctx, SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER | SSL_MODE_AUTO_RETRY);
+
 	ssn->ssl = SSL_new(ssn->ctx);
 	rad_assert(ssn->ssl != NULL);
 
