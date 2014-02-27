@@ -208,6 +208,9 @@ static ssize_t xlat_integer(UNUSED void *instance, REQUEST *request,
 	case PW_TYPE_IPADDR:
 		return snprintf(out, outlen, "%u", htonl(vp->vp_ipaddr));
 
+	case PW_TYPE_IPV4PREFIX:
+		return snprintf(out, outlen, "%u", htonl((*(uint32_t *)(vp->vp_ipv4prefix + 2))));
+
 	case PW_TYPE_INTEGER:
 	case PW_TYPE_DATE:
 	case PW_TYPE_BYTE:
@@ -224,6 +227,12 @@ static ssize_t xlat_integer(UNUSED void *instance, REQUEST *request,
 
 	case PW_TYPE_SIGNED:
 		return snprintf(out, outlen, "%i", vp->vp_signed);
+
+	case PW_TYPE_IPV6ADDR:
+		return fr_prints_uint128(out, outlen, ntohlll(*(uint128_t const *) &vp->vp_ipv6addr));
+
+	case PW_TYPE_IPV6PREFIX:
+		return fr_prints_uint128(out, outlen, ntohlll(*(uint128_t const *) &(vp->vp_ipv6prefix[2])));
 
 	default:
 		break;
