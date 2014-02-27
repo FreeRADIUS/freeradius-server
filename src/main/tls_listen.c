@@ -208,9 +208,9 @@ static int tls_socket_recv(rad_listen_t *listener)
 		     sizeof(sock->ssn->dirty_in.data));
 	if ((rcode < 0) && (errno == ECONNRESET)) {
 	do_close:
-		PTHREAD_MUTEX_UNLOCK(&sock->mutex);
 		DEBUG("Closing TLS socket from client");
 		tls_socket_close(listener);
+		PTHREAD_MUTEX_UNLOCK(&sock->mutex);
 		return 0;
 	}
 
@@ -296,7 +296,9 @@ app:
 	if (!rad_packet_ok(packet, 0)) {
 		RDEBUG("Received bad packet: %s", fr_strerror());
 		DEBUG("Closing TLS socket from client");
+		PTHREAD_MUTEX_LOCK(&sock->mutex);
 		tls_socket_close(listener);
+		PTHREAD_MUTEX_UNLOCK(&sock->mutex);
 		return 0;	/* do_close unlocks the mutex */
 	}
 
@@ -619,9 +621,10 @@ int proxy_tls_recv(rad_listen_t *listener)
 	PTHREAD_MUTEX_UNLOCK(&sock->mutex);
 
 	if (rcode < 0) {
-		PTHREAD_MUTEX_UNLOCK(&sock->mutex);
 		DEBUG("Closing TLS socket to home server");
+		PTHREAD_MUTEX_LOCK(&sock->mutex);
 		tls_socket_close(listener);
+		PTHREAD_MUTEX_UNLOCK(&sock->mutex);
 		return 0;
 	}
 
@@ -714,9 +717,9 @@ int proxy_tls_send(rad_listen_t *listener, REQUEST *request)
 		default:
 			DEBUG("proxy SSL_write says %s",
 			      ERR_error_string(err, NULL));
-			PTHREAD_MUTEX_UNLOCK(&sock->mutex);
 			DEBUG("Closing TLS socket to home server");
 			tls_socket_close(listener);
+			PTHREAD_MUTEX_UNLOCK(&sock->mutex);
 			return 0;
 		}
 	}
