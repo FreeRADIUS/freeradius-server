@@ -72,6 +72,8 @@ static void tls_socket_close(rad_listen_t *listener)
 {
 	listen_socket_t *sock = listener->data;
 
+	SSL_shutdown(sock->ssn->ssl);
+
 	listener->status = RAD_LISTEN_STATUS_EOL;
 	listener->tls = NULL; /* parent owns this! */
 
