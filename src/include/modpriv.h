@@ -49,7 +49,8 @@ typedef struct module_instance_t {
 	pthread_mutex_t		*mutex;
 #endif
 	CONF_SECTION		*cs;
-	int			dead;
+	bool			force;
+	rlm_components_t	code;
 	fr_module_hup_t	       	*mh;
 } module_instance_t;
 
