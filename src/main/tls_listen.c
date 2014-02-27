@@ -210,7 +210,7 @@ static int tls_socket_recv(rad_listen_t *listener)
 		     sizeof(sock->ssn->dirty_in.data));
 	if ((rcode < 0) && (errno == ECONNRESET)) {
 	do_close:
-		DEBUG("Closing TLS socket from client");
+		DEBUG("Closing TLS socket from client port %u", sock->other_port);
 		tls_socket_close(listener);
 		PTHREAD_MUTEX_UNLOCK(&sock->mutex);
 		return 0;
