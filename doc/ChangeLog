@@ -29,6 +29,8 @@ FreeRADIUS 3.0.2 Mon 13 Jan 2014 14:30:00 EDT urgency=medium
 	* Allow list to list copies with request qualifiers (outer.).
 	* Add support for ipv4 prefixes and ipv6 addresses and prefixes to
 	  %{integer:}.
+	* allow radmin command "set module status <module> <code>"
+	  which can be used to forcibly enable/disable modules.
 
 	Bug fixes
 	* Fix SQL groups.
@@ -77,6 +79,7 @@ FreeRADIUS 3.0.2 Mon 13 Jan 2014 14:30:00 EDT urgency=medium
 	  is down.  It will retry no more than once per second.
 	* When parsing ipv6 address prefixes, always mask off the host
 	  portion.
+	* Correct rlm_counter so that it does not create two attributes
 
 FreeRADIUS 3.0.1 Mon 13 Jan 2014 14:30:00 EDT urgency=medium
 	Feature improvements
