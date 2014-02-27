@@ -2299,7 +2299,7 @@ VALUE_PAIR *readvp2(TALLOC_CTX *ctx, FILE *fp, bool *pfiledone, char const *errp
 
 	*pfiledone = true;
 
-	return error ? NULL: list;
+	return list;
 }
 
 /*
