@@ -404,14 +404,10 @@ typedef struct int128_t { uint8_t v[16]; } int128_t;
 
 /* abcd efgh -> dcba hgfe -> hgfe dcba */
 #ifdef LITTLE_ENDIAN
-#  define ntohll(x) (( \
-	(uint64_t)(ntohl((uint32_t)((x << 32) >> 32))) << 32) | \
-	(uint64_t)ntohl(((uint32_t)(x >> 32))))
+#  define ntohll(x) (((uint64_t)ntohl((uint32_t)(x >> 32))) | (((uint64_t)ntohl(((uint32_t) x)) << 32)))
 
 #  ifdef HAVE_128BIT_INTEGERS
-#    define ntohlll(x) (( \
-	(uint128_t)(ntohll((uint64_t)((x << 64) >> 64))) << 64) | \
-	(uint128_t)ntohll(((uint64_t)(x >> 64))))
+#    define ntohlll(x) (((uint128_t)ntohll((uint64_t)(x >> 64))) | (((uint128_t)ntohll(((uint64_t) x)) << 64)))
 #  else
 uint128_t ntohlll(uint128_t num);
 #  endif
