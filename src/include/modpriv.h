@@ -50,7 +50,7 @@ typedef struct module_instance_t {
 #endif
 	CONF_SECTION		*cs;
 	bool			force;
-	rlm_components_t	code;
+	rlm_rcode_t		code;
 	fr_module_hup_t	       	*mh;
 } module_instance_t;
 
