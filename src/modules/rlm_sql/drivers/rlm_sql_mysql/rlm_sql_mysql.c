@@ -44,6 +44,8 @@ RCSID("$Id$")
 
 #include "rlm_sql.h"
 
+static int mysql_instance_count = 0;
+
 typedef struct rlm_sql_mysql_conn {
 	MYSQL db;
 	MYSQL *sock;
@@ -93,11 +95,32 @@ static int _sql_socket_destructor(rlm_sql_mysql_conn_t *conn)
 	return 0;
 }
 
+static int _mod_destructor(UNUSED rlm_sql_mysql_config_t *driver)
+{
+	mysql_instance_count--;
+
+	if (mysql_instance_count == 0) {
+		 mysql_library_end();
+	}
+
+	return 0;
+}
+
 static int mod_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
 {
 	rlm_sql_mysql_config_t *driver;
 
+	if (mysql_instance_count == 0) {
+		if (mysql_library_init(0, NULL, NULL)) {
+			ERROR("Could not initialise MySQL library");
+
+			return -1;
+		}
+	}
+	mysql_instance_count++;
+
 	MEM(driver = config->driver = talloc_zero(config, rlm_sql_mysql_config_t));
+	talloc_set_destructor(driver, _mod_destructor);
 
 	if (cf_section_parse(conf, driver, driver_config) < 0) {
 		return -1;
