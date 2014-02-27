@@ -412,8 +412,8 @@ typedef struct int128_t { uint8_t v[16]; } int128_t;
 uint128_t ntohlll(uint128_t num);
 #  endif
 #else
-#  define ntohll(x)
-#  define ntohlll(x)
+#  define ntohll(x) (x)
+#  define ntohlll(x) (x)
 #endif
 
 #define htonll(x) ntohll(x)
