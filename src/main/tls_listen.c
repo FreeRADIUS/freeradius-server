@@ -699,16 +699,17 @@ int proxy_tls_send(rad_listen_t *listener, REQUEST *request)
 	DEBUG3("Proxy is writing %u bytes to SSL",
 	       (unsigned int) request->proxy->data_len);
 	PTHREAD_MUTEX_LOCK(&sock->mutex);
-	while ((rcode = SSL_write(sock->ssn->ssl, request->proxy->data,
-				  request->proxy->data_len)) < 0) {
+	rcode = SSL_write(sock->ssn->ssl, request->proxy->data,
+			  request->proxy->data_len);
+	if (rcode < 0) {
 		int err;
 
 		err = ERR_get_error();
 		switch (err) {
+		case SSL_ERROR_NONE:
 		case SSL_ERROR_WANT_READ:
 		case SSL_ERROR_WANT_WRITE:
-			DEBUG("Retrying proxy TLS write");
-			break;
+			break;	/* let someone else retry */
 
 		default:
 			DEBUG("proxy SSL_write says %s",
