@@ -2679,7 +2679,8 @@ fr_tls_status_t tls_application_data(tls_session_t *ssn,
 			break;
 
 		default:
-			DEBUG("Error in fragmentation logic: ?");
+			DEBUG("Error in fragmentation logic: %s",
+			      ERR_error_string(code, NULL));
 
 			/*
 			 *	FIXME: Call int_ssl_check?
