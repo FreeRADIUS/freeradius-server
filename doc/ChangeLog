@@ -27,6 +27,8 @@ FreeRADIUS 3.0.2 Mon 13 Jan 2014 14:30:00 EDT urgency=medium
 	  avoid work at run time.  e.g. ("foo" == "bar") --> FALSE.
 	* Allow removal of all attributes within a list with !* operator.
 	* Allow list to list copies with request qualifiers (outer.).
+	* Add support for ipv4 prefixes and ipv6 addresses and prefixes to
+	  %{integer:}.
 
 	Bug fixes
 	* Fix SQL groups.
@@ -73,6 +75,8 @@ FreeRADIUS 3.0.2 Mon 13 Jan 2014 14:30:00 EDT urgency=medium
 	* Fix minor warnings as noted by clang analyzer.
 	* rate-limit outgoing connection attempts when the home server
 	  is down.  It will retry no more than once per second.
+	* When parsing ipv6 address prefixes, always mask off the host
+	  portion.
 
 FreeRADIUS 3.0.1 Mon 13 Jan 2014 14:30:00 EDT urgency=medium
 	Feature improvements
