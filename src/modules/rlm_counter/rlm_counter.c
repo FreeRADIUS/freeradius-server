@@ -799,16 +799,20 @@ static rlm_rcode_t mod_authorize(UNUSED void *instance, UNUSED REQUEST *request)
 			}
 
 			reply_item = pairfind(request->reply->vps, PW_SESSION_TIMEOUT, 0, TAG_ANY);
-			if (reply_item && (reply_item->vp_integer > res)) {
-				reply_item->vp_integer = res;
+			if (reply_item) {
+				if (reply_item->vp_integer > res) {
+					reply_item->vp_integer = res;
+				}
 			} else {
 				reply_item = radius_paircreate(request, &request->reply->vps, PW_SESSION_TIMEOUT, 0);
 				reply_item->vp_integer = res;
 			}
 		} else if (inst->reply_attr) {
 			reply_item = pairfind_da(request->reply->vps, inst->reply_attr, TAG_ANY);
-			if (reply_item && (reply_item->vp_integer > res)) {
-				reply_item->vp_integer = res;
+			if (reply_item) {
+				if (reply_item->vp_integer > res) {
+					reply_item->vp_integer = res;
+				}
 			} else {
 				reply_item = radius_paircreate(request, &request->reply->vps, inst->reply_attr->attr,
 										inst->reply_attr->vendor);
