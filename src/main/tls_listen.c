@@ -599,8 +599,6 @@ static int proxy_tls_read(rad_listen_t *listener)
 		return 0;
 	}
 
-	sock->partial = 0;
-
 	return 1;
 }
 
@@ -630,6 +628,7 @@ int proxy_tls_recv(rad_listen_t *listener)
 	if (rcode == 0) return 0; /* no data to read */
 
 	data = sock->data;
+	sock->partial = 0;	/* we've now read the packet */
 
 	packet = rad_alloc(sock, 0);
 	packet->sockfd = listener->fd;
