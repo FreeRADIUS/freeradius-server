@@ -291,7 +291,6 @@ int rlm_sql_fetch_row(rlm_sql_handle_t **handle, rlm_sql_t *inst)
 	 * that connection.
 	 */
 	ret = (inst->module->sql_fetch_row)(*handle, inst->config);
-
 	if (ret < 0) {
 		char const *error = (inst->module->sql_error)(*handle, inst->config);
 		EDEBUG("rlm_sql (%s): Error fetching row: %s",
