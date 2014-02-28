@@ -47,8 +47,11 @@ MAKEFLAGS	= @FR_MAKEFLAGS@
 
 CC		= @CC@
 RANLIB		= @RANLIB@
-IMACROS		= -imacros ${top_srcdir}/src/freeradius-devel/build.h -imacros ${top_srcdir}/src/freeradius-devel/autoconf.h -imacros ${top_srcdir}/src/freeradius-devel/features.h
-INCLUDE		= -I${top_srcdir} -I${top_srcdir}/src
+
+INCLUDE		= -I${top_srcdir} -I${top_srcdir}/src \
+		  -include ${top_srcdir}/src/freeradius-devel/build.h \
+		  -include ${top_srcdir}/src/freeradius-devel/autoconf.h \
+		  -include ${top_srcdir}/src/freeradius-devel/features.h
 CFLAGS		= $(IMACROS) $(INCLUDE) -std=c99 -fno-strict-aliasing @CFLAGS@
 CPPFLAGS	= @CPPFLAGS@
 LIBPREFIX	= @LIBPREFIX@
@@ -131,11 +134,11 @@ endif
 
 #  http://clang.llvm.org/StaticAnalysis.html
 #
-#  $ make SCAN=/path/to/checker/ 
+#  $ make SCAN=/path/to/checker/
 #
 ifneq ($(SCAN),)
 CC		:= $(SCAN)/scan-build gcc -DFR_SCAN_BUILD
-LIBTOOL		:= 
+LIBTOOL		:=
 endif
 
 #
@@ -150,7 +153,7 @@ LINK_MODE.exe	= -static
 endif
 
 ifneq "$(LIBTOOL)" ""
-COMPILE.c	:= $(LIBTOOL) --quiet --mode=compile $(CC) 
+COMPILE.c	:= $(LIBTOOL) --quiet --mode=compile $(CC)
 LINK.lib	:= $(LIBTOOL) --quiet --mode=link $(CC) -rpath $(libdir) -o
 LO		:= lo
 LA		:= la
