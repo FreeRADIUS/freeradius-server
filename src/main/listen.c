@@ -721,6 +721,9 @@ static void common_socket_free(rad_listen_t *this)
 	if (sock->client->limit.num_connections > 0) {
 		sock->client->limit.num_connections--;
 	}
+	if (sock->home->limit.num_connections > 0) {
+		sock->home->limit.num_connections--;
+	}
 }
 #else
 static void common_socket_free(UNUSED rad_listen_t *this)
@@ -2711,6 +2714,8 @@ rad_listen_t *proxy_new_listener(home_server_t *home, int src_port)
 			return NULL;
 		}
 	}
+
+	home->limit.num_connections++;
 
 	return this;
 }
