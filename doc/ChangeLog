@@ -80,6 +80,9 @@ FreeRADIUS 3.0.2 Mon 13 Jan 2014 14:30:00 EDT urgency=medium
 	* When parsing ipv6 address prefixes, always mask off the host
 	  portion.
 	* Correct rlm_counter so that it does not create two attributes
+	* Fix issues with DHCP Sub-TLVs where the value of the first 
+	  Sub-TLV would appear corrupted, and subsequent TLVs would 
+	  not appear in debug output.
 
 FreeRADIUS 3.0.1 Mon 13 Jan 2014 14:30:00 EDT urgency=medium
 	Feature improvements
