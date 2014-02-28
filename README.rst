@@ -1,12 +1,6 @@
 The FreeRADIUS server
 =====================
-
-0. BRANCH STATE
----------------
 |BuildStatus|_
-
-.. |BuildStatus| image:: https://travis-ci.org/FreeRADIUS/freeradius-server.png?branch=v2.x.x
-.. _BuildStatus: https://travis-ci.org/FreeRADIUS/freeradius-server
 
 1. INTRODUCTION
 ---------------
@@ -191,3 +185,6 @@ Support is available.  See http://networkradius.com/.
 Please submit bug reports, suggestions, or patches.  That feedback
 gives the developers a guide as to where they should focus their work.
 If you like the server, feel free to mail the list and say so.
+
+.. |BuildStatus| image:: https://travis-ci.org/FreeRADIUS/freeradius-server.png?branch=v2.x.x
+.. _BuildStatus: https://travis-ci.org/FreeRADIUS/freeradius-server
