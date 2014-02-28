@@ -225,6 +225,7 @@ int recvfromto(int s, void *buf, size_t len, int flags,
 	}
 
 	/* Set up iov and msgh structures. */
+	memset(&cbuf, 0, sizeof(cbuf));
 	memset(&msgh, 0, sizeof(struct msghdr));
 	iov.iov_base = buf;
 	iov.iov_len  = len;
@@ -337,7 +338,8 @@ int sendfromto(int s, void *buf, size_t len, int flags,
 		return sendto(s, buf, len, flags, to, tolen);
 	}
 
-	/* Set up iov and msgh structures. */
+	/* Set up control buffer iov and msgh structures. */
+	memset(&cbuf, 0, sizeof(cbuf));
 	memset(&msgh, 0, sizeof(msgh));
 	memset(&iov, 0, sizeof(iov));
 	iov.iov_base = buf;
