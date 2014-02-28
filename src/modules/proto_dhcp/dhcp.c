@@ -505,11 +505,29 @@ static int decode_tlv(RADIUS_PACKET *packet, VALUE_PAIR *tlv, uint8_t const *dat
 	/*
 	 *	The caller allocated TLV, so we need to copy the FIRST
 	 *	attribute over top of that.
+	 *
+	 *	This is a pretty awful hack, but we should be able to
+	 *	clean it up when we get nested VPs so lets leave it for
+	 *	now.
 	 */
 	if (head) {
+		/* Cleanup any old TLV data */
+		talloc_free(tlv->vp_tlv);
+
+		/* @fixme fragile */
 		memcpy(tlv, head, sizeof(*tlv));
-		head->next = NULL;
-		pairfree(&head);
+
+		/* If the VP has a talloced value we need to reparent it to the original TLV attribute */
+		switch (head->da->type) {
+			case PW_TYPE_STRING:
+			case PW_TYPE_OCTETS:
+			case PW_TYPE_TLV:
+				talloc_steal(tlv, head->data.ptr);
+			default:
+				break;
+		}
+		tlv->next = head->next;
+		talloc_free(head);
 	}
 
 	return 0;
