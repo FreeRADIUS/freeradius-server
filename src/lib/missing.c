@@ -281,7 +281,7 @@ ntp2timeval(struct timeval *tv, char const *ntp)
  */
 uint128_t ntohlll(uint128_t const num)
 {
-	uint64_t *p = (uint64_t *) &num;
+	uint64_t const *p = (uint64_t const *) &num;
 	uint64_t ret[2];
 
 	/* swapsies */
