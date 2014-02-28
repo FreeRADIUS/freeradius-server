@@ -1,15 +1,7 @@
 The FreeRADIUS server
 =====================
 
-0. BRANCH STATE
----------------
-.. |CoverityStatus| image:: https://scan.coverity.com/projects/58/badge.svg?
-.. _CoverityStatus: https://scan.coverity.com/projects/58
-
-.. |BuildStatus| image:: https://travis-ci.org/FreeRADIUS/freeradius-server.png
-.. _BuildStatus: https://travis-ci.org/FreeRADIUS/freeradius-server
-
-|BuildStatus|_ |CoverityStatus|_ 
+|BuildStatus|_ |CoverityStatus|_
 
 1. INTRODUCTION
 ---------------
@@ -169,3 +161,9 @@ http://freeradius.org
 Please submit bug reports, suggestions, or patches.  That feedback
 gives the developers a guide as to where they should focus their work.
 If you like the server, feel free to mail the list and say so.
+
+.. |CoverityStatus| image:: https://scan.coverity.com/projects/58/badge.svg?
+.. _CoverityStatus: https://scan.coverity.com/projects/58
+
+.. |BuildStatus| image:: https://travis-ci.org/FreeRADIUS/freeradius-server.png
+.. _BuildStatus: https://travis-ci.org/FreeRADIUS/freeradius-server
