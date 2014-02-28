@@ -3,7 +3,7 @@ The FreeRADIUS server
 
 0. BRANCH STATE
 ---------------
-.. |CoverityStatus| image:: https://scan.coverity.com/projects/58/badge.svg?flat=1
+.. |CoverityStatus| image:: https://scan.coverity.com/projects/58/badge.svg?
 .. _CoverityStatus: https://scan.coverity.com/projects/58
 
 .. |BuildStatus| image:: https://travis-ci.org/FreeRADIUS/freeradius-server.png
