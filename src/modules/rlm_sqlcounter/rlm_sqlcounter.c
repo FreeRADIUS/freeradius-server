@@ -336,23 +336,24 @@ static int sqlcounter_cmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR *r
 	rlm_sqlcounter_t *inst = instance;
 	uint64_t counter;
 
-	char *p;
 	char query[MAX_QUERY_LEN];
+	char *p = query;
 	char *expanded = NULL;
+	size_t len, freespace = sizeof(query);
 
-	size_t len;
-
-	len = snprintf(query, sizeof(query), "%%{%s:%s}", inst->sqlmod_inst, inst->query);
+	/* Add xlat prefix */
+	len = snprintf(query, freespace, "%%{%s:", inst->sqlmod_inst);
 	if (len >= sizeof(query) - 1) {
 		REDEBUG("Insufficient query buffer space");
 
 		return RLM_MODULE_FAIL;
 	}
 
-	p = query + len;
+	p += len;
+	freespace -= len;
 
-	/* first, expand %k, %b and %e in query */
-	len = sqlcounter_expand(p, p - query, inst->query, inst);
+	/* Copy query, performing any sqlcounter specific substitutions */
+	len = sqlcounter_expand(p, freespace, inst->query, inst);
 	if (len <= 0) {
 		REDEBUG("Insufficient query buffer space");
 
@@ -360,17 +361,19 @@ static int sqlcounter_cmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR *r
 	}
 
 	p += len;
+	freespace -= len;
 
-	if ((p - query) < 2) {
+	if (freespace < 2) {
 		REDEBUG("Insufficient query buffer space");
 
 		return RLM_MODULE_FAIL;
 	}
 
+	/* Add xlat suffix */
 	p[0] = '}';
 	p[1] = '\0';
 
-	/* Finally, xlat resulting SQL query */
+	/* Finally, xlat query */
 	if (radius_axlat(&expanded, request, query, NULL, NULL) < 0) {
 		return RLM_MODULE_FAIL;
 	}
