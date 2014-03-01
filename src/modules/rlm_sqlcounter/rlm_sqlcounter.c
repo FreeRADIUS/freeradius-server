@@ -268,10 +268,11 @@ static size_t sqlcounter_expand(char *out, int outlen, char const *fmt, rlm_sqlc
 
 	q = out;
 	for (p = fmt; *p ; p++) {
-	/* Calculate freespace in output */
-	freespace = outlen - (q - out);
-		if (freespace <= 1)
+		/* Calculate freespace in output */
+		freespace = outlen - (q - out);
+		if (freespace <= 1) {
 			return -1;
+		}
 		c = *p;
 		if ((c != '%') && (c != '\\')) {
 			*q++ = *p;
@@ -321,7 +322,7 @@ static size_t sqlcounter_expand(char *out, int outlen, char const *fmt, rlm_sqlc
 	}
 	*q = '\0';
 
-	DEBUG2("sqlcounter_expand:  '%s'", out);
+	DEBUG2("sqlcounter_expand: '%s'", out);
 
 	return strlen(out);
 }
@@ -515,7 +516,6 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 	 *      Look for the key.  User-Name is special.  It means
 	 *      The REAL username, after stripping.
 	 */
-	RDEBUG2("Entering module authorize code");
 	key_vp = ((inst->key_attr->vendor == 0) && (inst->key_attr->attr == PW_USER_NAME)) ?
 			request->username :
 			pairfind(request->packet->vps, inst->key_attr->attr, inst->key_attr->vendor, TAG_ANY);
