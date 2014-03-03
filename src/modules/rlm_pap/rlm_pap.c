@@ -237,8 +237,13 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 					goto redo;
 				}
 
-				RDEBUG("No {...} in Password-With-Header = \"%s\", re-writing to Cleartext-Password",
-				       vp->vp_strvalue);
+				if (RDEBUG_ENABLED3) {
+					RDEBUG3("No {...} in Password-With-Header = \"%s\", re-writing to "
+					       "Cleartext-Password", vp->vp_strvalue);
+				} else {
+					RDEBUG("No {...} in Password-With-Header, re-writing to "
+					       "Cleartext-Password");
+				}
 
 				attr = PW_CLEARTEXT_PASSWORD;
 			} else {
