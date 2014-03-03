@@ -43,6 +43,7 @@ RCSIDH(radsniff_h, "$Id$")
 #define RS_FORCE_YIELD		1000		//!< Service another descriptor every X number of packets
 #define RS_RETRANSMIT_MAX	5		//!< Maximum number of times we expect to see a packet retransmitted
 #define RS_MAX_ATTRS		50		//!< Maximum number of attributes we can filter on.
+#define RS_SOCKET_REOPEN_DELAY  5000		//!< How long we delay re-opening a collectd socket.
 
 /*
  *	Logging macros
