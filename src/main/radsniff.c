@@ -1878,7 +1878,7 @@ int main(int argc, char *argv[])
 #else
 			INFO("%s %s", radsniff_version, pcap_lib_version());
 #endif
-			exit(0);
+			exit(EXIT_SUCCESS);
 			break;
 
 		case 'w':
@@ -1928,7 +1928,7 @@ int main(int argc, char *argv[])
 	 */
 	if (fr_check_lib_magic(RADIUSD_MAGIC_NUMBER) < 0) {
 		fr_perror("radsniff");
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
 	/* Useful for file globbing */
@@ -2100,8 +2100,8 @@ int main(int argc, char *argv[])
 	 *	If we need to list attributes, link requests using attributes, filter attributes
 	 *	or print the packet contents, we need to decode the attributes.
 	 *
-	 *	But, if were just logging requests, or graphing packet, we do not need to decode
-	 *	the packet attributes.
+	 *	But, if were just logging requests, or graphing packets, we don't need to decode
+	 *	attributes.
 	 */
 	if (conf->list_da_num || conf->link_da_num || conf->filter_response_vps || conf->filter_request_vps ||
 	    conf->print_packet) {
@@ -2195,7 +2195,7 @@ int main(int argc, char *argv[])
 		rs_stats_tmpl_t *tmpl, **next;
 
 		if (rs_stats_collectd_open(conf) < 0) {
-			exit(1);
+			exit(EXIT_FAILURE);
 		}
 
 		next = &conf->stats.tmpl;
@@ -2249,8 +2249,11 @@ int main(int argc, char *argv[])
 
 		if (!in) {
 			ERROR("No PCAP sources available");
-			exit(1);
+			exit(EXIT_FAILURE);
 		}
+
+		/* Clear any irrelevant errors */
+		fr_strerror();
 	}
 
 	/*
@@ -2324,7 +2327,7 @@ int main(int argc, char *argv[])
 		gettimeofday(&now, NULL);
 
 		/*
-		 *	Insert our stats processor
+		 *  Insert our stats processor
 		 */
 		if (conf->stats.interval) {
 			update.list = events;
