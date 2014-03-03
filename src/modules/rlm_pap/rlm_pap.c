@@ -208,7 +208,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 		redo:
 			q = vp->vp_strvalue;
 			p = strchr(q + 1, '}');
-			if (!p) {
+			if (p) {
 				ssize_t decoded;
 
 				/*
@@ -237,24 +237,24 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 					goto redo;
 				}
 
-				REDEBUG("Failed to decode Password-With-Header = \"%s\"", vp->vp_strvalue);
-				break;
+				RDEBUG("No {...} in Password-With-Header = \"%s\", re-writing to Cleartext-Password",
+				       vp->vp_strvalue);
+
+				attr = PW_CLEARTEXT_PASSWORD;
+			} else {
+				if ((size_t) (p - q) > sizeof(charbuf)) break;
+
+				memcpy(charbuf, q, p - q + 1);
+				charbuf[p - q + 1] = '\0';
+
+				attr = fr_str2int(header_names, charbuf, 0);
+				if (!attr) {
+					RWDEBUG2("Found unknown header {%s}: Not doing anything", charbuf);
+					break;
+				}
 			}
 
-			if ((size_t) (p - q) > sizeof(charbuf)) break;
-
-			memcpy(charbuf, q, p - q + 1);
-			charbuf[p - q + 1] = '\0';
-
-			attr = fr_str2int(header_names, charbuf, 0);
-			if (!attr) {
-				RWDEBUG2("Found unknown header {%s}: Not doing anything", charbuf);
-				break;
-			}
-
-			new_vp = radius_paircreate(request,
-						   &request->config_items,
-						   attr, 0);
+			new_vp = radius_paircreate(request, &request->config_items, attr, 0);
 
 			/*
 			 *	The data after the '}' may be binary,
