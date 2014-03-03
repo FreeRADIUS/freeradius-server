@@ -1665,14 +1665,14 @@ static void NEVER_RETURNS usage(int status)
 	fprintf(output, "  -s <secret>           RADIUS secret.\n");
 	fprintf(output, "  -S                    Write PCAP data to stdout.\n");
 	fprintf(output, "  -v                    Show program version information.\n");
-	fprintf(output, "  -w <file>             Write output packets to file (overrides output of -F).\n");
+	fprintf(output, "  -w <file>             Write output packets to file.\n");
 	fprintf(output, "  -x                    Print more debugging information (defaults to -xx).\n");
 	fprintf(output, "stats options:\n");
 	fprintf(output, "  -W <interval>         Periodically write out statistics every <interval> seconds.\n");
 	fprintf(output, "  -T <timeout>          How many milliseconds before the request is counted as lost "
 		"(defaults to %i).\n", RS_DEFAULT_TIMEOUT);
 #ifdef HAVE_COLLECTDC_H
-	fprintf(output, "  -N <prefix>           collectd plugin instance name.\n");
+	fprintf(output, "  -N <prefix>           The instance name passed to the collectd plugin.\n");
 	fprintf(output, "  -O <server>           Write statistics to this collectd server.\n");
 #endif
 	exit(status);
