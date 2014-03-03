@@ -306,5 +306,6 @@ rs_stats_tmpl_t *rs_stats_collectd_init_latency(TALLOC_CTX *ctx, rs_stats_tmpl_t
 						char const *type, rs_latency_t *stats, PW_CODE code);
 void rs_stats_collectd_do_stats(rs_t *conf, rs_stats_tmpl_t *tmpls, struct timeval *now);
 int rs_stats_collectd_open(rs_t *conf);
+int rs_stats_collectd_close(rs_t *conf);
 
 #endif

@@ -341,6 +341,11 @@ int rs_stats_collectd_open(rs_t *conf)
 	assert(conf->stats.collectd);
 
 	/*
+	 *	Tear down stale connections gracefully.
+	 */
+	rs_stats_collectd_close(conf);
+
+	/*
 	 *	There's no way to get the error from the connection handle
 	 *	because it's freed on failure, before lcc returns.
 	 */
@@ -352,5 +357,24 @@ int rs_stats_collectd_open(rs_t *conf)
 
 	assert(conf->stats.handle);
 	return 0;
+}
+
+/** Close connection
+ *
+ * @param[in,out] conf radsniff configuration.
+ * @return 0 on success -1 on failure.
+ */
+int rs_stats_collectd_close(rs_t *conf)
+{
+	assert(conf->stats.collectd);
+
+	int ret = 0;
+
+	if (conf->stats.handle) {
+		ret = lcc_disconnect(conf->stats.handle);
+		conf->stats.handle = NULL;
+	}
+
+	return ret;
 }
 #endif
