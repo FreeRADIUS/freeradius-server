@@ -175,8 +175,25 @@ int fr_event_insert(fr_event_list_t *el, fr_event_callback_t callback, void *ctx
 {
 	fr_event_t *ev;
 
-	if (!el || !callback | !when || (when->tv_usec >= USEC) ||
-	    !parent) return 0;
+	if (!el) {
+		fr_strerror_printf("Invalid arguments (NULL event list)");
+		return 0;
+	}
+
+	if (!callback) {
+		fr_strerror_printf("Invalid arguments (NULL callback)");
+		return 0;
+	}
+
+	if (!when || (when->tv_usec >= USEC)) {
+		fr_strerror_printf("Invalid arguments (time)");
+		return 0;
+	}
+
+	if (!parent) {
+		fr_strerror_printf("Invalid arguments (NULL parent)");
+		return 0;
+	}
 
 	if (*parent) fr_event_delete(el, parent);
 
@@ -260,11 +277,35 @@ int fr_event_fd_insert(fr_event_list_t *el, int type, int fd,
 	int i;
 	fr_event_fd_t *ef;
 
-	if (!el || (fd < 0) || !handler || !ctx) return 0;
+	if (!el) {
+		fr_strerror_printf("Invalid arguments (NULL event list)");
+		return 0;
+	}
 
-	if (type != 0) return 0;
+	if (!handler) {
+		fr_strerror_printf("Invalid arguments (NULL handler)");
+		return 0;
+	}
 
-	if (el->max_readers >= FR_EV_MAX_FDS) return 0;
+	if (!ctx) {
+		fr_strerror_printf("Invalid arguments (NULL ctx)");
+		return 0;
+	}
+
+	if (fd < 0) {
+		fr_strerror_printf("Invalid arguments (bad FD %i)", fd);
+		return 0;
+	}
+
+	if (type != 0) {
+		fr_strerror_printf("Invalid type %i", type);
+		return 0;
+	}
+
+	if (el->max_readers >= FR_EV_MAX_FDS) {
+		fr_strerror_printf("Too many readers");
+		return 0;
+	}
 
 	ef = NULL;
 	for (i = 0; i <= el->max_readers; i++) {
@@ -274,6 +315,7 @@ int fr_event_fd_insert(fr_event_list_t *el, int type, int fd,
 		if (el->readers[i].fd == fd) {
 			if ((el->readers[i].handler != handler) ||
 			    (el->readers[i].ctx != ctx)) {
+				fr_strerror_printf("Multiple handlers for same FD");
 				return 0;
 			}
 
@@ -292,7 +334,10 @@ int fr_event_fd_insert(fr_event_list_t *el, int type, int fd,
 		}
 	}
 
-	if (!ef) return 0;
+	if (!ef) {
+		fr_strerror_printf("Failed assigning FD");
+		return 0;
+	}
 
 	ef->handler = handler;
 	ef->ctx = ctx;
