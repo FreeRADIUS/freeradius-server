@@ -199,27 +199,27 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 		{
 			int attr;
 			char *p;
-			char const *q;
-			uint8_t *b, digest[128];
+			char const *data;
+			size_t length;
+			uint8_t digest[128];
 			char charbuf[128];
 			VALUE_PAIR *new_vp;
 
+			/*
+			 *	Password already exists: use
+			 *	that instead of this one.
+			 */
+			if (pairfind(request->config_items, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY)) {
+				RWDEBUG("Config already contains \"known good\" password.  "
+					"Ignoring Password-With-Header");
+				break;
+			}
+
 			found_pw = true;
 		redo:
-			q = vp->vp_strvalue;
-			p = strchr(q + 1, '}');
-			if (p) {
+			p = strchr(vp->vp_strvalue, '}');
+			if (!p) {
 				ssize_t decoded;
-
-				/*
-				 *	Password already exists: use
-				 *	that instead of this one.
-				 */
-				if (pairfind(request->config_items, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY)) {
-					RWDEBUG("Config already contains \"known good\" password.  "
-						"Ignoring Password-With-Header");
-					break;
-				}
 
 				/*
 				 *	If it's binary, it may be
@@ -231,12 +231,12 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 							   vp->length,
 							   digest,
 							   sizeof(digest));
-				if ((decoded > 0) && (digest[0] == '{') &&
-				     memchr(digest, '}', decoded)) {
+				if (decoded > 0) {
 					pairmemcpy(vp, digest, decoded);
 					goto redo;
 				}
 
+			invalid_header:
 				if (RDEBUG_ENABLED3) {
 					RDEBUG3("No {...} in Password-With-Header = \"%s\", re-writing to "
 					       "Cleartext-Password", vp->vp_strvalue);
@@ -245,30 +245,37 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 					       "Cleartext-Password");
 				}
 
-				attr = PW_CLEARTEXT_PASSWORD;
-			} else {
-				if ((size_t) (p - q) > sizeof(charbuf)) break;
+				data = vp->vp_strvalue;
+				new_vp = radius_paircreate(request, &request->config_items,
+							   PW_CLEARTEXT_PASSWORD, 0);
+				pairstrcpy(new_vp, data);
 
-				memcpy(charbuf, q, p - q + 1);
-				charbuf[p - q + 1] = '\0';
+			} else {
+				length = (p + 1) - vp->vp_strvalue;
+
+				if (length >= sizeof(charbuf)) break;
+
+				memcpy(charbuf, vp->vp_strvalue, length);
+				charbuf[length] = '\0';
 
 				attr = fr_str2int(header_names, charbuf, 0);
 				if (!attr) {
 					RWDEBUG2("Found unknown header {%s}: Not doing anything", charbuf);
-					break;
+					goto invalid_header;
 				}
+
+				data = vp->vp_strvalue + length;
+				length = vp->length - length;
+
+				new_vp = radius_paircreate(request, &request->config_items, attr, 0);
+				
+				/*
+				 *	The data after the '}' may be binary,
+				 *	so we copy it via memcpy.
+				 */
+				pairmemcpy(new_vp, (uint8_t const *) data, length);
 			}
 
-			new_vp = radius_paircreate(request, &request->config_items, attr, 0);
-
-			/*
-			 *	The data after the '}' may be binary,
-			 *	so we copy it via memcpy.
-			 */
-			new_vp->length = vp->length;
-			new_vp->length -= (p - q + 1);
-			new_vp->vp_octets = b = talloc_array(new_vp, uint8_t, new_vp->length);
-			memcpy(b, p + 1, new_vp->length);
 		}
 			break;
 
