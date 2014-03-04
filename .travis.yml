@@ -2,6 +2,23 @@ language: c
 compiler:
   - clang
   - gcc
+env:
+  global:
+    - PANIC_ACTION="gdb -silent -x raddb/panic.gdb %e %p"
+    - secure: "jiTi/FJ6jUToW5WswK1W5Xdb6kqZnduUlyeW24kfVsWpKqBakBX2bxG1Ko8XGLACaO+s7NjyrLypeoW0kuh9KBL/rvFMcU5gD1lzC+h0POwTHckaZZYkc0OmY0KIG4utPHXFJjwB9ga8wPJc5c+uBn/gREtlpjg9J1V87Rm39gM="
+  matrix:
+    - LIBS_OPTIONAL=no LIBS_SHARED=yes
+    - LIBS_OPTIONAL=yes LIBS_SHARED=yes
+addons:
+  coverity_scan:
+    project:
+      name: FreeRADIUS/freeradius-server
+      version: master
+      description: The FreeRADIUS server project   
+    notification_email: freeradius-devel@lists.freeradius.org
+    build_command_prepend: ./configure
+    build_command: make
+    branch_pattern: coverity_*
 before_install:
   - sudo apt-get update -qq
   - > 
@@ -41,13 +58,7 @@ before_install:
       libykclient-dev
       libyubikey-dev
   - sudo apt-get install -qq -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" libmysqlclient-dev
-env:
-    global:
-      - PANIC_ACTION="gdb -silent -x raddb/panic.gdb %e %p"
-    matrix:
-      - LIBS_OPTIONAL=no LIBS_SHARED=yes
-      - LIBS_OPTIONAL=yes LIBS_SHARED=yes
 before_script:
   - ./configure -C --enable-werror --prefix=$HOME/freeradius --with-shared-libs=$LIBS_SHARED --with-threads=$LIBS_OPTIONAL --with-udpfromto=$LIBS_OPTIONAL --with-openssl=$LIBS_OPTIONAL
   - make
-script: make travis-test
+script: if [ ${COVERITY_SCAN_BRANCH} != 1 ]; then make travis-test; fi
