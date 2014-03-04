@@ -891,7 +891,6 @@ static int rest_decode_post(UNUSED rlm_rest_t *instance,
 		reference = request;
 
 		name = curl_easy_unescape(candle, p, (q - p), &curl_len);
-		attribute = name;
 		p = (q + 1);
 
 		RDEBUG("Decoding attribute \"%s\"", name);
