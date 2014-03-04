@@ -31,6 +31,8 @@ FreeRADIUS 3.0.2 Mon 13 Jan 2014 14:30:00 EDT urgency=medium
 	  %{integer:}.
 	* allow radmin command "set module status <module> <code>"
 	  which can be used to forcibly enable/disable modules.
+	* pap module now assumes Cleartext-Password if Password-With-Header
+	  doesn't have a {...} header.
 
 	Bug fixes
 	* Fix SQL groups.
@@ -80,8 +82,8 @@ FreeRADIUS 3.0.2 Mon 13 Jan 2014 14:30:00 EDT urgency=medium
 	* When parsing ipv6 address prefixes, always mask off the host
 	  portion.
 	* Correct rlm_counter so that it does not create two attributes
-	* Fix issues with DHCP Sub-TLVs where the value of the first 
-	  Sub-TLV would appear corrupted, and subsequent TLVs would 
+	* Fix issues with DHCP Sub-TLVs where the value of the first
+	  Sub-TLV would appear corrupted, and subsequent TLVs would
 	  not appear in debug output.
 
 FreeRADIUS 3.0.1 Mon 13 Jan 2014 14:30:00 EDT urgency=medium
