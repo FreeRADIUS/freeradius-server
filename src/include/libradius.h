@@ -445,7 +445,7 @@ int		str2argv(char *str, char **argv, int max_argc);
 int		dict_str2oid(char const *ptr, unsigned int *pattr,
 			     unsigned int *pvendor, int tlv_depth);
 int		dict_addvendor(char const *name, unsigned int value);
-int		dict_addattr(char const *name, int attr, unsigned int vendor, int type, ATTR_FLAGS flags);
+int		dict_addattr(char const *name, int attr, unsigned int vendor, PW_TYPE type, ATTR_FLAGS flags);
 int		dict_addvalue(char const *namestr, char const *attrstr, int value);
 int		dict_init(char const *dir, char const *fn);
 void		dict_free(void);
@@ -615,7 +615,7 @@ VALUE_PAIR	*pairmake(TALLOC_CTX *ctx, VALUE_PAIR **vps, char const *attribute, c
 int 		pairmark_xlat(VALUE_PAIR *vp, char const *value);
 FR_TOKEN 	pairread(char const **ptr, VALUE_PAIR_RAW *raw);
 FR_TOKEN	userparse(TALLOC_CTX *ctx, char const *buffer, VALUE_PAIR **head);
-VALUE_PAIR	*readvp2(TALLOC_CTX *ctx, FILE *fp, int *pfiledone, char const *errprefix);
+VALUE_PAIR	*readvp2(TALLOC_CTX *ctx, FILE *fp, bool *pfiledone, char const *errprefix);
 
 /*
  *	Error functions.
@@ -681,11 +681,14 @@ int		fr_ipaddr_cmp(fr_ipaddr_t const *a, fr_ipaddr_t const *b);
 int		ip_ptonx(char const *src, fr_ipaddr_t *dst);
 int		ip_hton(char const *src, int af, fr_ipaddr_t *dst);
 char const	*ip_ntoh(fr_ipaddr_t const *src, char *dst, size_t cnt);
+struct in_addr	fr_ipaddr_mask(struct in_addr const *ipaddr, uint8_t prefix);
+struct in6_addr	fr_ipaddr_mask6(struct in6_addr const *ipaddr, uint8_t prefix);
 int fr_ipaddr2sockaddr(fr_ipaddr_t const *ipaddr, int port,
 		       struct sockaddr_storage *sa, socklen_t *salen);
 int fr_sockaddr2ipaddr(struct sockaddr_storage const *sa, socklen_t salen,
 		       fr_ipaddr_t *ipaddr, int * port);
 ssize_t		fr_utf8_to_ucs2(uint8_t *out, size_t outlen, char const *in, size_t inlen);
+size_t		fr_prints_uint128(char *out, size_t outlen, uint128_t const num);
 int64_t		fr_pow(int32_t base, uint8_t exp);
 int		fr_get_time(char const *date_str, time_t *date);
 
@@ -742,31 +745,40 @@ typedef struct fr_bt_marker fr_bt_marker_t;
 void		fr_debug_break(void);
 void		backtrace_print(fr_cbuff_t *cbuff, void *obj);
 fr_bt_marker_t	*fr_backtrace_attach(fr_cbuff_t **cbuff, TALLOC_CTX *obj);
+void NEVER_RETURNS fr_fault(int sig);
 int		fr_fault_setup(char const *cmd, char const *program);
 
 /* rbtree.c */
 typedef struct rbtree_t rbtree_t;
 typedef struct rbnode_t rbnode_t;
 
+/* callback order for walking  */
+typedef enum {
+	RBTREE_PRE_ORDER,
+	RBTREE_IN_ORDER,
+	RBTREE_POST_ORDER,
+	RBTREE_DELETE_ORDER
+} rb_order_t;
+
 #define RBTREE_FLAG_NONE    (0)
 #define RBTREE_FLAG_REPLACE (1 << 0)
 #define RBTREE_FLAG_LOCK    (1 << 1)
-rbtree_t       *rbtree_create(int (*Compare)(void const *, void const *),
-			      void (*freeNode)(void *),
-			      int flags);
+
+typedef int (*rb_comparator_t)(void const *ctx, void const *data);
+typedef int (*rb_walker_t)(void *ctx, void *data);
+typedef void (*rb_free_t)(void *data);
+
+rbtree_t       *rbtree_create(rb_comparator_t compare, rb_free_t node_free, int flags);
 void		rbtree_free(rbtree_t *tree);
-bool		rbtree_insert(rbtree_t *tree, void *Data);
-rbnode_t	*rbtree_insertnode(rbtree_t *tree, void *Data);
-void		rbtree_delete(rbtree_t *tree, rbnode_t *Z);
+bool		rbtree_insert(rbtree_t *tree, void *data);
+rbnode_t	*rbtree_insert_node(rbtree_t *tree, void *data);
+void		rbtree_delete(rbtree_t *tree, rbnode_t *z);
 bool		rbtree_deletebydata(rbtree_t *tree, void const *data);
-rbnode_t       *rbtree_find(rbtree_t *tree, void const *Data);
-void	       *rbtree_finddata(rbtree_t *tree, void const *Data);
+rbnode_t       *rbtree_find(rbtree_t *tree, void const *data);
+void	       *rbtree_finddata(rbtree_t *tree, void const *data);
 int		rbtree_num_elements(rbtree_t *tree);
 void	       *rbtree_min(rbtree_t *tree);
 void	       *rbtree_node2data(rbtree_t *tree, rbnode_t *node);
-
-/* callback order for walking  */
-typedef enum { PreOrder, InOrder, PostOrder, DeleteOrder } RBTREE_ORDER;
 
 /*
  *	The callback should be declared as:
@@ -779,12 +791,12 @@ typedef enum { PreOrder, InOrder, PostOrder, DeleteOrder } RBTREE_ORDER;
  *	It should return 0 if all is OK, and !0 for any error.
  *	The walking will stop on any error.
  *
- *	Except with DeleteOrder, where the callback should return <0 for
+ *	Except with RBTREE_DELETE_ORDER, where the callback should return <0 for
  *	errors, and may return 1 to delete the current node and halt,
  *	or 2 to delete the current node and continue.  This may be
  *	used to batch-delete select nodes from a locked rbtree.
  */
-int rbtree_walk(rbtree_t *tree, RBTREE_ORDER order, int (*callback)(void *, void *), void *context);
+int rbtree_walk(rbtree_t *tree, rb_order_t order, rb_walker_t compare, void *context);
 
 /*
  *	Find a matching data item in an rbtree and, if one is found,
@@ -804,7 +816,7 @@ int rbtree_walk(rbtree_t *tree, RBTREE_ORDER order, int (*callback)(void *, void
  *	item was not found, or NULL if the item was deleted and the tree was
  *	created with a freeNode garbage collection routine.
  */
-void *rbtree_callbydata(rbtree_t *tree, void const *Data, int (*callback)(void *, void *), void *context);
+void *rbtree_callbydata(rbtree_t *tree, void const *data, rb_comparator_t compare, void *context);
 
 /*
  *	FIFOs

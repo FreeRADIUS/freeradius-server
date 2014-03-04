@@ -214,7 +214,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 			return RLM_MODULE_NOOP;
 		}
 
-		RDEBUG2("No Clear-Text password in the request. Can't do Yubikey authentication");
+		RDEBUG2("No cleartext password in the request. Can't do Yubikey authentication");
 
 		return RLM_MODULE_NOOP;
 	}
@@ -284,7 +284,7 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 	 *	Can't do yubikey auth if there's no password.
 	 */
 	if (!request->password || (request->password->da->attr != PW_USER_PASSWORD)) {
-		REDEBUG("No Clear-Text password in the request. Can't do Yubikey authentication");
+		REDEBUG("No cleartext password in the request. Can't do Yubikey authentication");
 		return RLM_MODULE_INVALID;
 	}
 

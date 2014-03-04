@@ -35,10 +35,17 @@ typedef struct conf_data CONF_DATA;
 #define PW_TYPE_SUBSECTION	102
 #define PW_TYPE_FILE_INPUT	103
 #define PW_TYPE_FILE_OUTPUT	104
-#define PW_TYPE_DEPRECATED	(1 << 10)
-#define PW_TYPE_REQUIRED	(1 << 11)
-#define PW_TYPE_ATTRIBUTE	(1 << 12)
-#define PW_TYPE_NO_OVERWRITE    (1 << 13)
+
+/*
+ * Configuration type flags, these modify the processing of config
+ * items.
+ */
+#define PW_TYPE_DEPRECATED	(1 << 10)	//!< CONF_PAIR is deprecated, the server will refuse to start
+						//!< if it finds a CONFIG_ITEM with this flag.
+#define PW_TYPE_REQUIRED	(1 << 11)	//!< CONF_PAIR is required, server will not start without this
+						//!< config item.
+#define PW_TYPE_ATTRIBUTE	(1 << 12)	//!< CONF_PAIR value must exist in the dictionary as an attribute.
+#define PW_TYPE_SECRET		(1 << 13)	//!< don't print it when debug_flag==2.
 
 typedef struct CONF_PARSER {
   char const *name;

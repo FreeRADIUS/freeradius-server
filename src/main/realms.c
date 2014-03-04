@@ -338,7 +338,7 @@ static CONF_PARSER home_server_config[] = {
 	  0, &hs_proto, NULL },
 #endif
 
-	{ "secret",  PW_TYPE_STRING_PTR,
+	{ "secret",  PW_TYPE_STRING_PTR | PW_TYPE_SECRET,
 	  offsetof(home_server_t,secret), NULL,  NULL},
 
 	{ "src_ipaddr",  PW_TYPE_STRING_PTR,
@@ -395,7 +395,7 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 {
 	char const *name2;
 	home_server_t *home;
-	int dual = false;
+	bool dual = false;
 	CONF_PAIR *cp;
 	CONF_SECTION *tls;
 
@@ -1324,6 +1324,11 @@ static int old_server_add(realm_config_t *rc, CONF_SECTION *cs,
 	}
 
 	pool = server_pool_alloc(rc, realm, ldflag, type, num_home_servers);
+	if (!pool) {
+		cf_log_err_cs(cs, "Out of memory");
+		return 0;
+	}
+
 	pool->cs = cs;
 
 	pool->servers[0] = home;
@@ -1584,7 +1589,7 @@ static int realm_add(realm_config_t *rc, CONF_SECTION *cs)
 	cp = cf_pair_find(cs, "acct_pool");
 	if (cp) acct_pool_name = cf_pair_value(cp);
 	if (cp && acct_pool_name) {
-		int do_print = true;
+		bool do_print = true;
 
 		if (acct_pool) {
 			cf_log_err_cs(cs, "Cannot use \"pool\" and \"acct_pool\" at the same time");
@@ -1608,7 +1613,7 @@ static int realm_add(realm_config_t *rc, CONF_SECTION *cs)
 	cp = cf_pair_find(cs, "coa_pool");
 	if (cp) coa_pool_name = cf_pair_value(cp);
 	if (cp && coa_pool_name) {
-		int do_print = true;
+		bool do_print = true;
 
 		if (!add_pool_to_realm(rc, cs,
 				       coa_pool_name, &coa_pool,
@@ -1864,14 +1869,7 @@ int realms_init(CONF_SECTION *config)
 	if (cs) {
 		if (cf_section_parse(cs, rc, proxy_config) < 0) {
 			ERROR("Failed parsing proxy section");
-		error:
-			realms_free();
-			/*
-			 *	Must be called after realms_free as home_servers
-			 *	parented by rc are in trees freed by realms_free()
-			 */
-			talloc_free(rc);
-			return 0;
+			goto error;
 		}
 	} else {
 		rc->dead_time = DEAD_TIME;
@@ -1905,7 +1903,18 @@ int realms_init(CONF_SECTION *config)
 	for (cs = cf_subsection_find_next(config, NULL, "realm");
 	     cs != NULL;
 	     cs = cf_subsection_find_next(config, cs, "realm")) {
-		if (!realm_add(rc, cs)) goto error;
+		if (!realm_add(rc, cs)) {
+#if defined (WITH_PROXY) || defined (WITH_COA)
+		error:
+#endif
+			realms_free();
+			/*
+			 *	Must be called after realms_free as home_servers
+			 *	parented by rc are in trees freed by realms_free()
+			 */
+			talloc_free(rc);
+			return 0;
+		}
 	}
 
 #ifdef WITH_COA
@@ -2085,6 +2094,9 @@ void home_server_update_request(home_server_t *home, REQUEST *request)
 	request->proxy->src_port = 0;
 	request->proxy->dst_ipaddr = home->ipaddr;
 	request->proxy->dst_port = home->port;
+#ifdef WITH_TCP
+	request->proxy->proto = home->proto;
+#endif
 	request->home_server = home;
 
 	/*

@@ -60,6 +60,7 @@ typedef enum {
 #define PW_AUTH_UDP_PORT		1812
 #define PW_ACCT_UDP_PORT		1813
 #define PW_POD_UDP_PORT			1700
+#define PW_RADIUS_TLS_PORT	       	2083
 #define PW_COA_UDP_PORT			3799
 
 #define	PW_USER_NAME			1

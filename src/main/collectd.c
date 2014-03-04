@@ -333,7 +333,7 @@ void rs_stats_collectd_do_stats(rs_t *conf, rs_stats_tmpl_t *tmpls, struct timev
 
 /** Connect to a collectd server for stats output
  *
- * @param[in,out] conf radsniff configuration, we write the generate handle here.
+ * @param[in,out] conf radsniff configuration, we write the generated handle here.
  * @return 0 on success -1 on failure.
  */
 int rs_stats_collectd_open(rs_t *conf)
@@ -341,10 +341,15 @@ int rs_stats_collectd_open(rs_t *conf)
 	assert(conf->stats.collectd);
 
 	/*
+	 *	Tear down stale connections gracefully.
+	 */
+	rs_stats_collectd_close(conf);
+
+	/*
 	 *	There's no way to get the error from the connection handle
 	 *	because it's freed on failure, before lcc returns.
 	 */
-	if (lcc_connect(conf->stats.collectd, &(conf->stats.handle)) < 0) {
+	if (lcc_connect(conf->stats.collectd, &conf->stats.handle) < 0) {
 		ERROR("Failed opening connection to collectd: %s", fr_syserror(errno));
 		return -1;
 	}
@@ -352,5 +357,24 @@ int rs_stats_collectd_open(rs_t *conf)
 
 	assert(conf->stats.handle);
 	return 0;
+}
+
+/** Close connection
+ *
+ * @param[in,out] conf radsniff configuration.
+ * @return 0 on success -1 on failure.
+ */
+int rs_stats_collectd_close(rs_t *conf)
+{
+	assert(conf->stats.collectd);
+
+	int ret = 0;
+
+	if (conf->stats.handle) {
+		ret = lcc_disconnect(conf->stats.handle);
+		conf->stats.handle = NULL;
+	}
+
+	return ret;
 }
 #endif

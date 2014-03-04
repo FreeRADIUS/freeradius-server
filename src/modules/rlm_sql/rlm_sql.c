@@ -54,7 +54,7 @@ static const CONF_PARSER module_config[] = {
 	 offsetof(rlm_sql_config_t,sql_port), NULL, ""},
 	{"login", PW_TYPE_STRING_PTR,
 	 offsetof(rlm_sql_config_t,sql_login), NULL, ""},
-	{"password", PW_TYPE_STRING_PTR,
+	{"password", PW_TYPE_STRING_PTR | PW_TYPE_SECRET,
 	 offsetof(rlm_sql_config_t,sql_password), NULL, ""},
 	{"radius_db", PW_TYPE_STRING_PTR,
 	 offsetof(rlm_sql_config_t,sql_db), NULL, "radius"},
@@ -577,6 +577,9 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t *inst, REQUEST *request, rlm
 	char			*expanded = NULL;
 	int			rows;
 
+	rad_assert(request != NULL);
+	rad_assert(request->packet != NULL);
+
 	/*
 	 *	Get the list of groups this user is a member of
 	 */
@@ -927,6 +930,10 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST * request)
 
 	char	*expanded = NULL;
 
+	rad_assert(request != NULL);
+	rad_assert(request->packet != NULL);
+	rad_assert(request->reply != NULL);
+
 	/*
 	 *  Set, escape, and check the user attr here
 	 */
@@ -1246,11 +1253,14 @@ static int acct_redundant(rlm_sql_t *inst, REQUEST *request, sql_acct_section_t 
 		/*
 		 *  Assume all other errors are incidental, and just meant our
 		 *  operation failed and its not a client or SQL syntax error.
+		 *
+		 *  @fixme We should actually be able to distinguish between key
+		 *  constraint violations (which we expect) and other errors.
 		 */
-		if (sql_ret == 0) {
+		if (sql_ret == RLM_SQL_OK) {
 			numaffected = (inst->module->sql_affected_rows)(handle, inst->config);
 			if (numaffected > 0) {
-				break;
+				break;	/* A query succeeded, were done! */
 			}
 
 			RDEBUG("No records updated");

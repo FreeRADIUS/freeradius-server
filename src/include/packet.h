@@ -61,8 +61,7 @@ bool fr_packet_list_socket_add(fr_packet_list_t *pl, int sockfd, int proto,
 bool fr_packet_list_socket_del(fr_packet_list_t *pl, int sockfd);
 bool fr_packet_list_socket_freeze(fr_packet_list_t *pl, int sockfd);
 bool fr_packet_list_socket_thaw(fr_packet_list_t *pl, int sockfd);
-int fr_packet_list_walk(fr_packet_list_t *pl, void *ctx,
-			  fr_hash_table_walk_t callback);
+int fr_packet_list_walk(fr_packet_list_t *pl, void *ctx, rb_walker_t callback);
 int fr_packet_list_fd_set(fr_packet_list_t *pl, fd_set *set);
 RADIUS_PACKET *fr_packet_list_recv(fr_packet_list_t *pl, fd_set *set);
 

@@ -28,6 +28,7 @@ USES_APPLE_DEPRECATED_API
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
 #include <freeradius-devel/base64.h>
+#include <freeradius-devel/rad_assert.h>
 
 #include <ctype.h>
 
@@ -122,19 +123,21 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
  */
 static void normify(REQUEST *request, VALUE_PAIR *vp, size_t min_length)
 {
-
-	uint8_t buffer[64];
+	uint8_t buffer[256];
 
 	if (min_length >= sizeof(buffer)) return; /* paranoia */
+
+	rad_assert(request != NULL);
 
 	/*
 	 *	Hex encoding.
 	 */
 	if (vp->length >= (2 * min_length)) {
 		size_t decoded;
-		decoded = fr_hex2bin(buffer, vp->vp_strvalue, vp->length >> 1);
+		decoded = fr_hex2bin(buffer, vp->vp_strvalue, sizeof(buffer));
 		if (decoded == (vp->length >> 1)) {
-			RDEBUG2("Normalizing %s from hex encoding", vp->da->name);
+			RDEBUG2("Normalizing %s from hex encoding, %zu bytes -> %zu bytes",
+				vp->da->name, vp->length, decoded);
 			pairmemcpy(vp, buffer, decoded);
 			return;
 		}
@@ -150,7 +153,8 @@ static void normify(REQUEST *request, VALUE_PAIR *vp, size_t min_length)
 					   sizeof(buffer));
 		if (decoded < 0) return;
 		if (decoded >= (ssize_t) min_length) {
-			RDEBUG2("Normalizing %s from base64 encoding", vp->da->name);
+			RDEBUG2("Normalizing %s from base64 encoding, %zu bytes -> %zu bytes",
+				vp->da->name, vp->length, decoded);
 			pairmemcpy(vp, buffer, decoded);
 			return;
 		}
@@ -171,10 +175,12 @@ static void normify(REQUEST *request, VALUE_PAIR *vp, size_t min_length)
 static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 {
 	rlm_pap_t *inst = instance;
-	int auth_type = false;
-	int found_pw = false;
+	bool auth_type = false;
+	bool found_pw = false;
 	VALUE_PAIR *vp;
 	vp_cursor_t cursor;
+
+	rad_assert(request != NULL);
 
 	for (vp = fr_cursor_init(&cursor, &request->config_items);
 	     vp;
@@ -202,7 +208,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 		redo:
 			q = vp->vp_strvalue;
 			p = strchr(q + 1, '}');
-			if (!p) {
+			if (p) {
 				ssize_t decoded;
 
 				/*
@@ -231,24 +237,29 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 					goto redo;
 				}
 
-				REDEBUG("Failed to decode Password-With-Header = \"%s\"", vp->vp_strvalue);
-				break;
+				if (RDEBUG_ENABLED3) {
+					RDEBUG3("No {...} in Password-With-Header = \"%s\", re-writing to "
+					       "Cleartext-Password", vp->vp_strvalue);
+				} else {
+					RDEBUG("No {...} in Password-With-Header, re-writing to "
+					       "Cleartext-Password");
+				}
+
+				attr = PW_CLEARTEXT_PASSWORD;
+			} else {
+				if ((size_t) (p - q) > sizeof(charbuf)) break;
+
+				memcpy(charbuf, q, p - q + 1);
+				charbuf[p - q + 1] = '\0';
+
+				attr = fr_str2int(header_names, charbuf, 0);
+				if (!attr) {
+					RWDEBUG2("Found unknown header {%s}: Not doing anything", charbuf);
+					break;
+				}
 			}
 
-			if ((size_t) (p - q) > sizeof(charbuf)) break;
-
-			memcpy(charbuf, q, p - q + 1);
-			charbuf[p - q + 1] = '\0';
-
-			attr = fr_str2int(header_names, charbuf, 0);
-			if (!attr) {
-				RWDEBUG2("Found unknown header {%s}: Not doing anything", charbuf);
-				break;
-			}
-
-			new_vp = radius_paircreate(request,
-						   &request->config_items,
-						   attr, 0);
+			new_vp = radius_paircreate(request, &request->config_items, attr, 0);
 
 			/*
 			 *	The data after the '}' may be binary,
@@ -376,7 +387,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 			return RLM_MODULE_NOOP;
 		}
 
-		RDEBUG2("No clear-text password in the request.  Not performing PAP");
+		RDEBUG2("No cleartext password in the request.  Not performing PAP");
 		return RLM_MODULE_NOOP;
 	}
 
@@ -395,13 +406,17 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 
 static int pap_auth_clear(UNUSED rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
 {
-	RDEBUG("Using clear text password \"%s\"", vp->vp_strvalue);
+	if (RDEBUG_ENABLED3) {
+		RDEBUG3("Comparing with \"known good\" Cleartext-Password \"%s\"", vp->vp_strvalue);
+	} else {
+		RDEBUG3("Comparing with \"known good\" Cleartext-Password");
+	}
 
 	if ((vp->length != request->password->length) ||
 	    (rad_digest_cmp(vp->vp_octets,
 			    request->password->vp_octets,
 			    vp->length) != 0)) {
-		REDEBUG("CLEAR TEXT password does not match \"known good\" password");
+		REDEBUG("Cleartext password does not match \"known good\" password");
 		return RLM_MODULE_REJECT;
 	}
 	return RLM_MODULE_OK;
@@ -409,11 +424,15 @@ static int pap_auth_clear(UNUSED rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *
 
 static int pap_auth_crypt(UNUSED rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
 {
-	RDEBUG("Using CRYPT password \"%s\"", vp->vp_strvalue);
+	if (RDEBUG_ENABLED3) {
+		RDEBUG3("Comparing with \"known good\" Crypt-Password \"%s\"", vp->vp_strvalue);
+	} else {
+		RDEBUG("Comparing with \"known-good\" Crypt-password");
+	}
 
 	if (fr_crypt_check(request->password->vp_strvalue,
 			   vp->vp_strvalue) != 0) {
-		REDEBUG("CRYPT digest does not match \"known good\" digest");
+		REDEBUG("Crypt digest does not match \"known good\" digest");
 		return RLM_MODULE_REJECT;
 	}
 	return RLM_MODULE_OK;
@@ -424,13 +443,13 @@ static int pap_auth_md5(rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
 	FR_MD5_CTX md5_context;
 	uint8_t digest[128];
 
-	RDEBUG("Using MD5 encryption");
+	RDEBUG("Comparing with \"known-good\" MD5-Password");
 
 	if (inst->normify) {
 		normify(request, vp, 16);
 	}
 	if (vp->length != 16) {
-		REDEBUG("Configured MD5 password has incorrect length");
+		REDEBUG("\"known-good\" MD5 password has incorrect length");
 		return RLM_MODULE_INVALID;
 	}
 
@@ -453,13 +472,13 @@ static int pap_auth_smd5(rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
 	FR_MD5_CTX md5_context;
 	uint8_t digest[128];
 
-	RDEBUG("Using SMD5 encryption");
+	RDEBUG("Comparing with \"known-good\" SMD5-Password");
 
 	if (inst->normify) {
 		normify(request, vp, 16);
 	}
 	if (vp->length <= 16) {
-		REDEBUG("Configured SMD5 password has incorrect length");
+		REDEBUG("\"known-good\" SMD5-Password has incorrect length");
 		return RLM_MODULE_INVALID;
 	}
 
@@ -485,13 +504,13 @@ static int pap_auth_sha(rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
 	fr_SHA1_CTX sha1_context;
 	uint8_t digest[128];
 
-	RDEBUG("Using SHA1 encryption");
+	RDEBUG("Comparing with \"known-good\" SHA-Password");
 
 	if (inst->normify) {
 		normify(request, vp, 20);
 	}
 	if (vp->length != 20) {
-		REDEBUG("SHA1 password has incorrect length");
+		REDEBUG("\"known-good\" SHA1-password has incorrect length");
 		return RLM_MODULE_INVALID;
 	}
 
@@ -513,13 +532,13 @@ static int pap_auth_ssha(rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
 	fr_SHA1_CTX sha1_context;
 	uint8_t digest[128];
 
-	RDEBUG("Using SSHA encryption");
+	RDEBUG("Comparing with \"known-good\" SSHA-Password");
 
 	if (inst->normify) {
 		normify(request, vp, 20);
 	}
 	if (vp->length <= 20) {
-		REDEBUG("SSHA password has incorrect length");
+		REDEBUG("\"known-good\" SSHA-Password has incorrect length");
 		return RLM_MODULE_INVALID;
 	}
 
@@ -545,6 +564,8 @@ static int pap_auth_sha2(rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
 	char const *name;
 	uint8_t digest[EVP_MAX_MD_SIZE];
 	unsigned int digestlen;
+
+	RDEBUG("Comparing with \"known-good\" SHA2-Password");
 
 	if (inst->normify) {
 		normify(request, vp, 28);
@@ -607,13 +628,13 @@ static int pap_auth_nt(rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
 	uint8_t digest[16];
 	char charbuf[32 + 1];
 
-	RDEBUG("Using NT encryption");
+	RDEBUG("Comparing with \"known-good\" NT-Password");
 
 	if (inst->normify) {
 		normify(request, vp, 16);
 	}
 	if (vp->length != 16) {
-		REDEBUG("Configured NT-Password has incorrect length");
+		REDEBUG("\"known good\" NT-Password has incorrect length");
 		return RLM_MODULE_INVALID;
 	}
 
@@ -636,13 +657,13 @@ static int pap_auth_lm(rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
 	uint8_t digest[16];
 	char charbuf[32 + 1];
 
-	RDEBUG("Using LM encryption");
+	RDEBUG("Comparing with \"known-good\" LM-Password");
 
 	if (inst->normify) {
 		normify(request, vp, 16);
 	}
 	if (vp->length != 16) {
-		REDEBUG("Configured LM-Password has incorrect length");
+		REDEBUG("\"known good\" LM-Password has incorrect length");
 		return RLM_MODULE_INVALID;
 	}
 
@@ -666,10 +687,10 @@ static int pap_auth_ns_mta_md5(UNUSED rlm_pap_t *inst, REQUEST *request, VALUE_P
 	uint8_t buff[MAX_STRING_LEN];
 	char buff2[MAX_STRING_LEN + 50];
 
-	RDEBUG("Using NT-MTA-MD5 password");
+	RDEBUG("Using NT-MTA-MD5-Password");
 
 	if (vp->length != 64) {
-		REDEBUG("Configured NS-MTA-MD5-Password has incorrect length");
+		REDEBUG("\"known good\" NS-MTA-MD5-Password has incorrect length");
 		return RLM_MODULE_INVALID;
 	}
 
@@ -677,7 +698,7 @@ static int pap_auth_ns_mta_md5(UNUSED rlm_pap_t *inst, REQUEST *request, VALUE_P
 	 *	Sanity check the value of NS-MTA-MD5-Password
 	 */
 	if (fr_hex2bin(digest, vp->vp_strvalue, 32) != 16) {
-		REDEBUG("Configured NS-MTA-MD5-Password has invalid value");
+		REDEBUG("\"known good\" NS-MTA-MD5-Password has invalid value");
 		return RLM_MODULE_INVALID;
 	}
 
@@ -687,7 +708,7 @@ static int pap_auth_ns_mta_md5(UNUSED rlm_pap_t *inst, REQUEST *request, VALUE_P
 	 *	This really: sizeof(buff) - 2 - 2*32 - strlen(passwd)
 	 */
 	if (request->password->length >= (sizeof(buff) - 2 - 2 * 32)) {
-		REDEBUG("Configured password is too long");
+		REDEBUG("\"known good\" NS-MTA-MD5-Password is too long");
 		return RLM_MODULE_INVALID;
 	}
 
@@ -712,7 +733,7 @@ static int pap_auth_ns_mta_md5(UNUSED rlm_pap_t *inst, REQUEST *request, VALUE_P
 	}
 
 	if (rad_digest_cmp(digest, buff, 16) != 0) {
-		REDEBUG("NS-MTA-MD5 does not match \"known good\" digest");
+		REDEBUG("NS-MTA-MD5 digest does not match \"known good\" digest");
 		return RLM_MODULE_REJECT;
 	}
 
@@ -746,7 +767,11 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 		return RLM_MODULE_INVALID;
 	}
 
-	RDEBUG("login attempt with password \"%s\"", request->password->vp_strvalue);
+	if (RDEBUG_ENABLED3) {
+		RDEBUG3("Login attempt with password \"%s\"", request->password->vp_strvalue);
+	} else {
+		RDEBUG("Login attempt with password");
+	}
 
 	/*
 	 *	Auto-detect passwords, by attribute in the

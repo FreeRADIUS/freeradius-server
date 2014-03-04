@@ -7,7 +7,7 @@
 #  The list is unordered.  The order is added in the next step by looking
 #  at precursors.
 #
-FILES := $(filter-out %.conf %.md %.attrs %.mk %~,$(subst $(DIR)/,,$(wildcard $(DIR)/*)))
+KEYWORD_FILES := $(filter-out %.conf %.md %.attrs %.mk %~ %.rej,$(subst $(DIR)/,,$(wildcard $(DIR)/*)))
 
 #
 #  Create the output directory
@@ -21,7 +21,7 @@ $(BUILD_DIR)/tests/keywords:
 #  strip out the ones which exist
 #  move the filenames to the build directory.
 #
-BOOTSTRAP_EXISTS := $(addprefix $(DIR)/,$(addsuffix .attrs,$(FILES)))
+BOOTSTRAP_EXISTS := $(addprefix $(DIR)/,$(addsuffix .attrs,$(KEYWORD_FILES)))
 BOOTSTRAP_NEEDS	 := $(filter-out $(wildcard $(BOOTSTRAP_EXISTS)),$(BOOTSTRAP_EXISTS))
 BOOTSTRAP	 := $(subst $(DIR),$(BUILD_DIR)/tests/keywords,$(BOOTSTRAP_NEEDS))
 
@@ -34,12 +34,15 @@ BOOTSTRAP_COPY	 := $(subst $(DIR),$(BUILD_DIR)/tests/keywords,$(BOOTSTRAP_NEEDS)
 #
 -include $(BUILD_DIR)/tests/keywords/depends.mk
 
-$(BUILD_DIR)/tests/keywords/depends.mk: $(addprefix $(DIR)/,$(FILES)) | $(BUILD_DIR)/tests/keywords
+$(BUILD_DIR)/tests/keywords/depends.mk: $(addprefix $(DIR)/,$(KEYWORD_FILES)) | $(BUILD_DIR)/tests/keywords
 	@rm -f $@
 	@for x in $^; do \
 		y=`grep 'PRE: ' $$x | sed 's/.*://;s/  / /g;s, , $(BUILD_DIR)/tests/keywords/,g'`; \
-		echo "$$x: $$y" >> $@; \
-		echo "" >> $@; \
+		if [ "$$y" != "" ]; then \
+			z=`echo $$x | sed 's,src/,$(BUILD_DIR)/',`; \
+			echo "$$z: $$y" >> $@; \
+			echo "" >> $@; \
+		fi \
 	done
 
 #
@@ -101,7 +104,7 @@ $(BUILD_DIR)/tests/keywords/%: $(DIR)/% $(BUILD_DIR)/tests/keywords/%.attrs $(TE
 #
 #  Get all of the unit test output files
 #
-TESTS.KEYWORDS_FILES := $(addprefix $(BUILD_DIR)/tests/keywords/,$(FILES))
+TESTS.KEYWORDS_FILES := $(addprefix $(BUILD_DIR)/tests/keywords/,$(KEYWORD_FILES))
 
 #
 #  Depend on the output files, and create the directory first.

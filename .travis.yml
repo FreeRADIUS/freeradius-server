@@ -37,12 +37,13 @@ before_install:
       libsnmp-dev
       libssl-dev
       libtalloc-dev
+      libtalloc2-dbg
       libykclient-dev
       libyubikey-dev
   - sudo apt-get install -qq -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" libmysqlclient-dev
 env:
     global:
-      - PANIC_ACTION="gdb -silent -x $HOME/freeradius/etc/raddb/panic.gdb %e %p"
+      - PANIC_ACTION="gdb -silent -x raddb/panic.gdb %e %p"
     matrix:
       - LIBS_OPTIONAL=no LIBS_SHARED=yes
       - LIBS_OPTIONAL=yes LIBS_SHARED=yes

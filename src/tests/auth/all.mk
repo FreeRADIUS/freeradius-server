@@ -7,7 +7,7 @@
 #  The list is unordered.  The order is added in the next step by looking
 #  at precursors.
 #
-AUTH_FILES := $(filter-out %.conf %.md %.attrs %.mk %~,$(subst $(DIR)/,,$(wildcard $(DIR)/*)))
+AUTH_FILES := $(filter-out %.conf %.md %.attrs %.mk %~ %.rej,$(subst $(DIR)/,,$(wildcard $(DIR)/*)))
 
 #
 #  Create the output directory
@@ -38,8 +38,11 @@ $(BUILD_DIR)/tests/auth/depends.mk: $(addprefix $(DIR)/,$(AUTH_FILES)) | $(BUILD
 	@rm -f $@
 	@for x in $^; do \
 		y=`grep 'PRE: ' $$x | sed 's/.*://;s/  / /g;s, , $(BUILD_DIR)/tests/auth/,g'`; \
-		echo "$$x: $$y" >> $@; \
-		echo "" >> $@; \
+		if [ "$$y" != "" ]; then \
+			z=`echo $$x | sed 's,src/,$(BUILD_DIR)/',`; \
+			echo "$$z: $$y" >> $@; \
+			echo "" >> $@; \
+		fi \
 	done
 #
 #  These ones get copied over from the default input

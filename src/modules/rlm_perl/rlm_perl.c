@@ -457,7 +457,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	PL_endav = Nullav;
 
 	if(!exitstatus) {
-		exitstatus = perl_run(inst->perl);
+		perl_run(inst->perl);
 	} else {
 		ERROR("rlm_perl: perl_parse failed: %s not found or has syntax errors. \n", inst->module);
 		return (-1);

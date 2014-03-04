@@ -50,8 +50,6 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include <openssl/ocsp.h>
 #endif
 
-static void tls_server_conf_free(fr_tls_server_conf_t *conf);
-
 /* record */
 static void 		record_init(record_t *buf);
 static void 		record_close(record_t *buf);
@@ -115,6 +113,9 @@ tls_session_t *tls_new_client_session(fr_tls_server_conf_t *conf, int fd)
 	if (!ssn) return NULL;
 
 	ssn->ctx = conf->ctx;
+
+	SSL_CTX_set_mode(ssn->ctx, SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER | SSL_MODE_AUTO_RETRY);
+
 	ssn->ssl = SSL_new(ssn->ctx);
 	rad_assert(ssn->ssl != NULL);
 
@@ -143,6 +144,7 @@ tls_session_t *tls_new_client_session(fr_tls_server_conf_t *conf, int fd)
 			DEBUG("OpenSSL Err says %s",
 			      ERR_error_string(err, NULL));
 		}
+		SSL_free(ssn->ssl);
 		talloc_free(ssn);
 		return NULL;
 	}
@@ -415,7 +417,7 @@ int tls_handshake_recv(REQUEST *request, tls_session_t *ssn)
 }
 
 /*
- *	Take clear-text user data, and encrypt it into the output buffer,
+ *	Take cleartext user data, and encrypt it into the output buffer,
  *	to send to the client at the other end of the SSL connection.
  */
 int tls_handshake_send(REQUEST *request, tls_session_t *ssn)
@@ -474,8 +476,10 @@ void session_close(tls_session_t *ssn)
 	SSL_set_quiet_shutdown(ssn->ssl, 1);
 	SSL_shutdown(ssn->ssl);
 
-	if(ssn->ssl)
+	if (ssn->ssl) {
 		SSL_free(ssn->ssl);
+		ssn->ssl = NULL;
+	}
 
 	record_close(&ssn->clean_in);
 	record_close(&ssn->clean_out);
@@ -812,12 +816,12 @@ static CONF_PARSER tls_server_config[] = {
 	  offsetof(fr_tls_server_conf_t, ca_file), NULL, NULL },
 	{ "ca_file", PW_TYPE_FILE_INPUT,
 	  offsetof(fr_tls_server_conf_t, ca_file), NULL, NULL },
-	{ "private_key_password", PW_TYPE_STRING_PTR,
+	{ "private_key_password", PW_TYPE_STRING_PTR | PW_TYPE_SECRET,
 	  offsetof(fr_tls_server_conf_t, private_key_password), NULL, NULL },
 #ifdef PSK_MAX_IDENTITY_LEN
 	{ "psk_identity", PW_TYPE_STRING_PTR,
 	  offsetof(fr_tls_server_conf_t, psk_identity), NULL, NULL },
-	{ "psk_hexphrase", PW_TYPE_STRING_PTR,
+	{ "psk_hexphrase", PW_TYPE_STRING_PTR | PW_TYPE_SECRET,
 	  offsetof(fr_tls_server_conf_t, psk_password), NULL, NULL },
 #endif
 	{ "dh_file", PW_TYPE_STRING_PTR,
@@ -881,7 +885,7 @@ static CONF_PARSER tls_client_config[] = {
 	  offsetof(fr_tls_server_conf_t, certificate_file), NULL, NULL },
 	{ "ca_file", PW_TYPE_FILE_INPUT,
 	  offsetof(fr_tls_server_conf_t, ca_file), NULL, NULL },
-	{ "private_key_password", PW_TYPE_STRING_PTR,
+	{ "private_key_password", PW_TYPE_STRING_PTR | PW_TYPE_SECRET,
 	  offsetof(fr_tls_server_conf_t, private_key_password), NULL, NULL },
 	{ "dh_file", PW_TYPE_STRING_PTR,
 	  offsetof(fr_tls_server_conf_t, dh_file), NULL, NULL },
@@ -2005,7 +2009,8 @@ static SSL_CTX *init_tls_ctx(fr_tls_server_conf_t *conf, int client)
 
 			/* Get rid of newline at end of password. */
 			conf->private_key_password[strlen(conf->private_key_password) - 1] = '\0';
-			DEBUG2("tls:  Password from command = \"%s\"", conf->private_key_password);
+
+			DEBUG3("tls:  Password from command = \"%s\"", conf->private_key_password);
 		}
 #endif
 		SSL_CTX_set_default_passwd_cb_userdata(ctx, conf->private_key_password);
@@ -2287,10 +2292,8 @@ post_ca:
  *	added to automatically free the data when the CONF_SECTION
  *	is freed.
  */
-static void tls_server_conf_free(fr_tls_server_conf_t *conf)
+static int tls_server_conf_free(fr_tls_server_conf_t *conf)
 {
-	if (!conf) return;
-
 	if (conf->ctx) SSL_CTX_free(conf->ctx);
 
 #ifdef HAVE_OPENSSL_OCSP_H
@@ -2301,7 +2304,7 @@ static void tls_server_conf_free(fr_tls_server_conf_t *conf)
 #ifndef NDEBUG
 	memset(conf, 0, sizeof(*conf));
 #endif
-	talloc_free(conf);
+	return 0;
 }
 
 
@@ -2325,9 +2328,11 @@ fr_tls_server_conf_t *tls_server_conf_parse(CONF_SECTION *cs)
 		return NULL;
 	}
 
+	talloc_set_destructor(conf, tls_server_conf_free);
+
 	if (cf_section_parse(cs, conf, tls_server_config) < 0) {
 	error:
-		tls_server_conf_free(conf);
+		talloc_free(conf);
 		return NULL;
 	}
 
@@ -2387,7 +2392,7 @@ fr_tls_server_conf_t *tls_server_conf_parse(CONF_SECTION *cs)
 	/*
 	 *	Cache conf in cs in case we're asked to parse this again.
 	 */
-	cf_data_add(cs, "tls-conf", conf, (void *)(void *) tls_server_conf_free);
+	cf_data_add(cs, "tls-conf", conf, NULL);
 
 	return conf;
 }
@@ -2408,9 +2413,11 @@ fr_tls_server_conf_t *tls_client_conf_parse(CONF_SECTION *cs)
 		return NULL;
 	}
 
+	talloc_set_destructor(conf, tls_server_conf_free);
+
 	if (cf_section_parse(cs, conf, tls_client_config) < 0) {
 	error:
-		tls_server_conf_free(conf);
+		talloc_free(conf);
 		return NULL;
 	}
 
@@ -2435,7 +2442,7 @@ fr_tls_server_conf_t *tls_client_conf_parse(CONF_SECTION *cs)
 		goto error;
 	}
 
-	cf_data_add(cs, "tls-conf", conf, (void *)(void *) tls_server_conf_free);
+	cf_data_add(cs, "tls-conf", conf, NULL);
 
 	return conf;
 }
@@ -2672,7 +2679,8 @@ fr_tls_status_t tls_application_data(tls_session_t *ssn,
 			break;
 
 		default:
-			DEBUG("Error in fragmentation logic: ?");
+			DEBUG("Error in fragmentation logic: %s",
+			      ERR_error_string(code, NULL));
 
 			/*
 			 *	FIXME: Call int_ssl_check?

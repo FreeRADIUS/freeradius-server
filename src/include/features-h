@@ -7,6 +7,8 @@
  */
 #ifndef WITHOUT_PROXY
 #  define WITH_PROXY (1)
+#else
+#  define WITHOUT_COA (1)
 #endif
 
 #ifndef WITHOUT_UNLANG

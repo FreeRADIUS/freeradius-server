@@ -156,7 +156,7 @@ void pairfree(VALUE_PAIR **vps)
 	VALUE_PAIR	*vp;
 	vp_cursor_t	cursor;
 
-	if (!vps) {
+	if (!vps || !*vps) {
 		return;
 	}
 
@@ -1208,10 +1208,9 @@ bool pairparsevalue(VALUE_PAIR *vp, char const *value)
 		 *	cannot be resolved, or resolve later!
 		 */
 		p = NULL;
-		cs = value;
-
 		{
 			fr_ipaddr_t ipaddr;
+			char ipv4[16];
 
 			/*
 			 *	Convert things which are obviously integers to IP addresses
@@ -1222,6 +1221,25 @@ bool pairparsevalue(VALUE_PAIR *vp, char const *value)
 			if (fr_integer_check(value)) {
 				vp->vp_ipaddr = htonl(atol(value));
 				break;
+			}
+
+			/*
+			 *	Certain applications/databases print IPv4 addresses with a
+			 *	/32 suffix. Strip it off if the mask is 32, else error out.
+			 */
+			p = strchr(value, '/');
+			if (p) {
+				if ((p[1] != '3') || (p[2] != '2') || (p[3] != '\0')) {
+					fr_strerror_printf("Invalid IP address suffix \"%s\".  Only '/32' permitted "
+							   "for non-prefix types", p);
+					return false;
+				}
+
+				strlcpy(ipv4, value, sizeof(ipv4));
+				ipv4[p - value] = '\0';
+				cs = ipv4;
+			} else {
+				cs = value;
 			}
 
 			if (ip_hton(cs, AF_INET, &ipaddr) < 0) {
@@ -1429,6 +1447,13 @@ bool pairparsevalue(VALUE_PAIR *vp, char const *value)
 				return false;
 			}
 			vp->vp_ipv6prefix[1] = prefix;
+
+			if (prefix < 128) {
+				struct in6_addr addr;
+
+				addr = fr_ipaddr_mask6((struct in6_addr *)(&vp->vp_ipv6prefix[2]), prefix);
+				memcpy(vp->vp_ipv6prefix + 2, &addr, sizeof(addr));
+			}
 		}
 		vp->length = 16 + 2;
 		break;
@@ -1476,15 +1501,9 @@ bool pairparsevalue(VALUE_PAIR *vp, char const *value)
 			vp->vp_ipv4prefix[1] = prefix;
 
 			if (prefix < 32) {
-				uint32_t addr, mask;
+				struct in_addr addr;
 
-				memcpy(&addr, vp->vp_ipv4prefix + 2, sizeof(addr));
-				mask = 1;
-				mask <<= (32 - prefix);
-				mask--;
-				mask = ~mask;
-				mask = htonl(mask);
-				addr &= mask;
+				addr = fr_ipaddr_mask((struct in_addr *)(&vp->vp_ipv4prefix[2]), prefix);
 				memcpy(vp->vp_ipv4prefix + 2, &addr, sizeof(addr));
 			}
 		}
@@ -2210,13 +2229,13 @@ FR_TOKEN userparse(TALLOC_CTX *ctx, char const *buffer, VALUE_PAIR **list)
  *
  *	Hmm... this function is only used by radclient..
  */
-VALUE_PAIR *readvp2(TALLOC_CTX *ctx, FILE *fp, int *pfiledone, char const *errprefix)
+VALUE_PAIR *readvp2(TALLOC_CTX *ctx, FILE *fp, bool *pfiledone, char const *errprefix)
 {
 	char buf[8192];
 	FR_TOKEN last_token = T_EOL;
 	VALUE_PAIR *vp;
 	VALUE_PAIR *list;
-	int error = 0;
+	bool error = false;
 
 	list = NULL;
 
@@ -2245,7 +2264,7 @@ VALUE_PAIR *readvp2(TALLOC_CTX *ctx, FILE *fp, int *pfiledone, char const *errpr
 		if (!vp) {
 			if (last_token != T_EOL) {
 				fr_perror("%s", errprefix);
-				error = 1;
+				error = false;
 				break;
 			}
 			break;
@@ -2257,9 +2276,9 @@ VALUE_PAIR *readvp2(TALLOC_CTX *ctx, FILE *fp, int *pfiledone, char const *errpr
 
 	if (error) pairfree(&list);
 
-	*pfiledone = 1;
+	*pfiledone = true;
 
-	return error ? NULL: list;
+	return list;
 }
 
 /** Compare two attribute values
@@ -2397,9 +2416,9 @@ int8_t paircmp_value(VALUE_PAIR const *one, VALUE_PAIR const *two)
  *
  *	reserved, prefix-len, data...
  */
-static int paircmp_cidr(FR_TOKEN op, int bytes,
-			uint8_t one_net, uint8_t const *one,
-			uint8_t two_net, uint8_t const *two)
+static int paircmp_op_cidr(FR_TOKEN op, int bytes,
+			   uint8_t one_net, uint8_t const *one,
+			   uint8_t two_net, uint8_t const *two)
 {
 	int i, common;
 	uint32_t mask;
@@ -2522,10 +2541,8 @@ int8_t paircmp_op(VALUE_PAIR const *one, FR_TOKEN op, VALUE_PAIR const *two)
 			goto cmp;
 
 		case PW_TYPE_IPV4PREFIX:	/* IPv4 and IPv4 Prefix */
-			compare = paircmp_cidr(op, 4,
-					       32, (uint8_t const *) &one->vp_ipaddr,
+			return paircmp_op_cidr(op, 4, 32, (uint8_t const *) &one->vp_ipaddr,
 					       two->vp_ipv4prefix[1], (uint8_t const *) &two->vp_ipv4prefix + 2);
-			break;
 
 		default:
 			fr_strerror_printf("Cannot compare IPv4 with IPv6 address");
@@ -2536,16 +2553,14 @@ int8_t paircmp_op(VALUE_PAIR const *one, FR_TOKEN op, VALUE_PAIR const *two)
 	case PW_TYPE_IPV4PREFIX:		/* IPv4 and IPv4 Prefix */
 		switch (two->da->type) {
 		case PW_TYPE_IPADDR:
-			compare = paircmp_cidr(op, 4,
-					       one->vp_ipv4prefix[1], (uint8_t const *) &one->vp_ipv4prefix + 2,
+			return paircmp_op_cidr(op, 4, one->vp_ipv4prefix[1],
+					       (uint8_t const *) &one->vp_ipv4prefix + 2,
 					       32, (uint8_t const *) &two->vp_ipaddr);
-			break;
 
 		case PW_TYPE_IPV4PREFIX:	/* IPv4 Prefix and IPv4 Prefix */
-			compare = paircmp_cidr(op, 4,
-					       one->vp_ipv4prefix[1], (uint8_t const *) &one->vp_ipv4prefix + 2,
+			return paircmp_op_cidr(op, 4, one->vp_ipv4prefix[1],
+					       (uint8_t const *) &one->vp_ipv4prefix + 2,
 					       two->vp_ipv4prefix[1], (uint8_t const *) &two->vp_ipv4prefix + 2);
-			break;
 
 		default:
 			fr_strerror_printf("Cannot compare IPv4 with IPv6 address");
@@ -2559,8 +2574,7 @@ int8_t paircmp_op(VALUE_PAIR const *one, FR_TOKEN op, VALUE_PAIR const *two)
 			goto cmp;
 
 		case PW_TYPE_IPV6PREFIX:	/* IPv6 and IPv6 Preifx */
-			compare = paircmp_cidr(op, 16,
-					       128, (uint8_t const *) &one->vp_ipv6addr,
+			return paircmp_op_cidr(op, 16, 128, (uint8_t const *) &one->vp_ipv6addr,
 					       two->vp_ipv6prefix[1], (uint8_t const *) &two->vp_ipv6prefix + 2);
 			break;
 
@@ -2573,16 +2587,14 @@ int8_t paircmp_op(VALUE_PAIR const *one, FR_TOKEN op, VALUE_PAIR const *two)
 	case PW_TYPE_IPV6PREFIX:
 		switch (two->da->type) {
 		case PW_TYPE_IPV6ADDR:		/* IPv6 Prefix and IPv6 */
-			compare = paircmp_cidr(op, 16,
-					       one->vp_ipv6prefix[1], (uint8_t const *) &one->vp_ipv6prefix + 2,
+			return paircmp_op_cidr(op, 16, one->vp_ipv6prefix[1],
+					       (uint8_t const *) &one->vp_ipv6prefix + 2,
 					       128, (uint8_t const *) &two->vp_ipv6addr);
-			break;
 
 		case PW_TYPE_IPV6PREFIX:	/* IPv6 Prefix and IPv6 */
-			compare = paircmp_cidr(op, 16,
-					       one->vp_ipv6prefix[1], (uint8_t const *) &one->vp_ipv6prefix + 2,
+			return paircmp_op_cidr(op, 16, one->vp_ipv6prefix[1],
+					       (uint8_t const *) &one->vp_ipv6prefix + 2,
 					       two->vp_ipv6prefix[1], (uint8_t const *) &two->vp_ipv6prefix + 2);
-			break;
 
 		default:
 			fr_strerror_printf("Cannot compare IPv6 with IPv4 address");

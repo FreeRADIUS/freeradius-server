@@ -86,7 +86,7 @@ struct main_config_t mainconfig;
 bool check_config = false;
 
 static FILE *outputfp = NULL;
-static int echo = false;
+static bool echo = false;
 static char const *secret = "testing123";
 
 #include <sys/wait.h>
@@ -357,8 +357,9 @@ static ssize_t run_command(int sockfd, char const *command,
 
 int main(int argc, char **argv)
 {
-	int argval, quiet = 0;
-	int done_license = 0;
+	int argval;
+	bool quiet = false;
+	bool done_license = false;
 	int sockfd;
 	uint32_t magic, needed;
 	char *line = NULL;
@@ -429,7 +430,7 @@ int main(int argc, char **argv)
 			if (strcmp(optarg, "-") != 0) {
 				input_file = optarg;
 			}
-			quiet = 1;
+			quiet = true;
 			break;
 
 		case 'n':
@@ -440,11 +441,11 @@ int main(int argc, char **argv)
 			if (strcmp(optarg, "-") != 0) {
 				output_file = optarg;
 			}
-			quiet = 1;
+			quiet = true;
 			break;
 
 		case 'q':
-			quiet = 1;
+			quiet = true;
 			break;
 
 		case 's':
@@ -540,7 +541,7 @@ int main(int argc, char **argv)
 	/*
 	 *	Check if stdin is a TTY only if input is from stdin
 	 */
-	if (input_file && !quiet && !isatty(STDIN_FILENO)) quiet = 1;
+	if (input_file && !quiet && !isatty(STDIN_FILENO)) quiet = true;
 
 #ifdef USE_READLINE
 	if (!quiet) {
@@ -628,7 +629,7 @@ int main(int argc, char **argv)
 		printf("You may redistribute copies of FreeRADIUS under the terms of the\n");
 		printf("GNU General Public License v2.\n");
 
-		done_license = 1;
+		done_license = true;
 	}
 
 	/*

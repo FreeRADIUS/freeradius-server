@@ -281,9 +281,9 @@ static void safe_unlock(module_instance_t *instance)
 #define safe_unlock(foo)
 #endif
 
-static int call_modsingle(rlm_components_t component, modsingle *sp, REQUEST *request)
+static rlm_rcode_t call_modsingle(rlm_components_t component, modsingle *sp, REQUEST *request)
 {
-	int myresult;
+	rlm_rcode_t myresult;
 	int blocked;
 
 	rad_assert(request != NULL);
@@ -298,8 +298,8 @@ static int call_modsingle(rlm_components_t component, modsingle *sp, REQUEST *re
 	       comp2str[component], sp->modinst->name,
 	       sp->modinst->entry->name, request->number);
 
-	if (sp->modinst->dead) {
-		myresult = RLM_MODULE_FAIL;
+	if (sp->modinst->force) {
+		myresult = sp->modinst->code;
 		goto fail;
 	}
 
@@ -379,7 +379,7 @@ static char const *modcall_spaces = "                                           
  *	iteratively, and manage the call stack ourselves.
  */
 typedef struct modcall_stack_entry_t {
-	int result;
+	rlm_rcode_t result;
 	int priority;
 	int unwind;		/* unwind to this one if it exists */
 	modcallable *c;
@@ -394,7 +394,7 @@ static bool modcall_recurse(REQUEST *request, rlm_components_t component, int de
  */
 static void modcall_child(REQUEST *request, rlm_components_t component, int depth,
 			  modcall_stack_entry_t *entry, modcallable *c,
-			  int *result)
+			  rlm_rcode_t *result)
 {
 	modcall_stack_entry_t *next;
 
@@ -438,7 +438,8 @@ static bool modcall_recurse(REQUEST *request, rlm_components_t component, int de
 {
 	bool if_taken, was_if;
 	modcallable *c;
-	int result, priority;
+	int priority;
+	rlm_rcode_t result;
 
 	was_if = if_taken = false;
 	result = RLM_MODULE_UNKNOWN;
@@ -1592,7 +1593,7 @@ static modcallable *do_compile_modswitch(modcallable *parent, UNUSED rlm_compone
 {
 	modcallable *csingle;
 	CONF_ITEM *ci;
-	int had_seen_default = false;
+	bool had_seen_default = false;
 
 	if (!cf_section_name2(cs)) {
 		cf_log_err_cs(cs,
@@ -2090,9 +2091,6 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 		}
 
 		if (subcs) {
-			cf_log_module(cs, "Loading virtual module %s",
-				      modrefname);
-
 			/*
 			 *	redundant foo {} is a single.
 			 */

@@ -82,10 +82,6 @@ typedef struct request REQUEST;
 #include <freeradius-devel/stats.h>
 #include <freeradius-devel/realms.h>
 
-#ifdef WITH_COMMAND_SOCKET
-#  define PW_RADMIN_PORT 18120
-#endif
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -183,6 +179,23 @@ typedef		int (*RAD_REQUEST_FUNP)(REQUEST *);
 #define VERIFY_REQUEST(_x)
 #endif
 
+typedef enum {
+	REQUEST_ACTIVE = 1,
+	REQUEST_STOP_PROCESSING,
+	REQUEST_COUNTED
+} rad_master_state_t;
+#define REQUEST_MASTER_NUM_STATES (REQUEST_COUNTED + 1)
+
+typedef enum {
+	REQUEST_QUEUED = 1,
+	REQUEST_RUNNING,
+	REQUEST_PROXIED,
+	REQUEST_REJECT_DELAY,
+	REQUEST_CLEANUP_DELAY,
+	REQUEST_DONE
+} rad_child_state_t;
+#define REQUEST_CHILD_NUM_STATES (REQUEST_DONE + 1)
+
 struct request {
 #ifndef NDEBUG
 	uint32_t		magic; 		//!< Magic number used to
@@ -264,8 +277,8 @@ struct request {
 
 	int			delay;
 
-	int			master_state;
-	int			child_state;
+	rad_master_state_t	master_state;
+	rad_child_state_t	child_state;
 	RAD_LISTEN_TYPE		priority;
 
 	int			timer_action;
@@ -303,17 +316,6 @@ struct request {
 #define RAD_REQUEST_OPTION_DEBUG2	(2)
 #define RAD_REQUEST_OPTION_DEBUG3	(3)
 #define RAD_REQUEST_OPTION_DEBUG4	(4)
-
-#define REQUEST_ACTIVE 			(1)
-#define REQUEST_STOP_PROCESSING		(2)
-#define REQUEST_COUNTED			(3)
-
-#define REQUEST_QUEUED			(1)
-#define REQUEST_RUNNING			(2)
-#define REQUEST_PROXIED			(3)
-#define REQUEST_REJECT_DELAY		(4)
-#define REQUEST_CLEANUP_DELAY		(5)
-#define REQUEST_DONE			(6)
 
 typedef struct radclient_list RADCLIENT_LIST;
 
@@ -405,6 +407,7 @@ typedef struct listen_socket_t {
 	VALUE_PAIR	*certs;
 	pthread_mutex_t mutex;
 	uint8_t		*data;
+	size_t		partial;
 #endif
 
 	RADCLIENT_LIST	*clients;
@@ -445,7 +448,8 @@ typedef struct main_config_t {
 	char const	*name;
 	char const	*auth_badpass_msg;
 	char const	*auth_goodpass_msg;
-	int		debug_memory;
+	bool		debug_memory;
+	bool		memory_report;
 	char const	*panic_action;
 } MAIN_CONFIG_T;
 
@@ -572,10 +576,10 @@ void		client_free(RADCLIENT *client);
 int		client_add(RADCLIENT_LIST *clients, RADCLIENT *client);
 #ifdef WITH_DYNAMIC_CLIENTS
 void		client_delete(RADCLIENT_LIST *clients, RADCLIENT *client);
-RADCLIENT	*client_from_query(TALLOC_CTX *ctx, char const *identifier, char const *secret, char const *shortname,
-				   char const *type, char const *server, bool require_ma);
 RADCLIENT	*client_from_request(RADCLIENT_LIST *clients, REQUEST *request);
 #endif
+RADCLIENT	*client_from_query(TALLOC_CTX *ctx, char const *identifier, char const *secret, char const *shortname,
+				   char const *type, char const *server, bool require_ma);
 RADCLIENT	*client_find(RADCLIENT_LIST const *clients,
 			     fr_ipaddr_t const *ipaddr, int proto);
 
@@ -597,7 +601,7 @@ char const	*ssl_version(void);
 void		version(void);
 
 /* auth.c */
-char	*auth_name(char *buf, size_t buflen, REQUEST *request, int do_cli);
+char	*auth_name(char *buf, size_t buflen, REQUEST *request, bool do_cli);
 int		rad_authenticate (REQUEST *);
 int		rad_postauth(REQUEST *);
 int		rad_virtual_server(REQUEST *);
@@ -664,7 +668,7 @@ ssize_t		xlat_fmt_to_ref(uint8_t const **out, REQUEST *request, char const *fmt)
 void		xlat_free(void);
 
 /* threads.c */
-extern		int thread_pool_init(CONF_SECTION *cs, int *spawn_flag);
+extern		int thread_pool_init(CONF_SECTION *cs, bool *spawn_flag);
 extern		void thread_pool_stop(void);
 extern		int thread_pool_addrequest(REQUEST *, RAD_REQUEST_FUNP);
 extern		pid_t rad_fork(void);
@@ -693,7 +697,7 @@ void fr_suid_down_permanent(void);
 
 /* listen.c */
 void listen_free(rad_listen_t **head);
-int listen_init(CONF_SECTION *cs, rad_listen_t **head, int spawn_flag);
+int listen_init(CONF_SECTION *cs, rad_listen_t **head, bool spawn_flag);
 rad_listen_t *proxy_new_listener(home_server_t *home, int src_port);
 RADCLIENT *client_listener_find(rad_listen_t *listener,
 				fr_ipaddr_t const *ipaddr, int src_port);
@@ -707,7 +711,7 @@ rad_listen_t *listener_find_byipaddr(fr_ipaddr_t const *ipaddr, int port,
 int rad_status_server(REQUEST *request);
 
 /* event.c */
-int radius_event_init(CONF_SECTION *cs, int spawn_flag);
+int radius_event_init(CONF_SECTION *cs, bool spawn_flag);
 void radius_event_free(void);
 int radius_event_process(void);
 int event_new_fd(rad_listen_t *listener);
@@ -752,6 +756,11 @@ int dual_tls_send(rad_listen_t *listener, REQUEST *request);
 int proxy_tls_recv(rad_listen_t *listener);
 int proxy_tls_send(rad_listen_t *listener, REQUEST *request);
 #endif
+
+/*
+ *	For radmin over TCP.
+ */
+#define PW_RADMIN_PORT 18120
 
 #ifdef __cplusplus
 }

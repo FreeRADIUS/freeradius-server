@@ -14,18 +14,17 @@ RCSIDH(rlm_sql_h, "$Id$")
 #include	<freeradius-devel/connection.h>
 #include	<freeradius-devel/modpriv.h>
 
-#define MAX_QUERY_LEN		4096
-
 #define PW_ITEM_CHECK		0
 #define PW_ITEM_REPLY		1
 
 
 /* SQL Errors */
 typedef enum {
-	RLM_SQL_QUERY_ERROR = -3,
-	RLM_SQL_ERROR = -2,
-	RLM_SQL_OK = 0,
-	RLM_SQL_RECONNECT = 1
+	RLM_SQL_QUERY_ERROR = -3,	//!< Query syntax error
+	RLM_SQL_ERROR = -2,		//!< General connection/server error
+	RLM_SQL_OK = 0,			//!< Success
+	RLM_SQL_RECONNECT = 1,		//!< Stale connection, should reconnect
+	RLM_SQL_DUPLICATE = 2		//!< Key constraint violation
 } sql_rcode_t;
 
 typedef char **rlm_sql_row_t;

@@ -23,7 +23,6 @@
 
 #ifdef WITH_COMMAND_SOCKET
 
-#include <freeradius-devel/modpriv.h>
 #include <freeradius-devel/parser.h>
 
 #ifdef HAVE_INTTYPES_H
@@ -836,27 +835,83 @@ static int command_debug_file(rad_listen_t *listener, int argc, char *argv[])
 extern fr_cond_t *debug_condition;
 static int command_debug_condition(UNUSED rad_listen_t *listener, int argc, char *argv[])
 {
+	int i;
 	char const *error;
-
-	/*
-	 *	Delete old condition.
-	 *
-	 *	This is thread-safe because the condition is evaluated
-	 *	in the main server thread, along with code.
-	 */
-	talloc_free(debug_condition);
-	debug_condition = NULL;
+	fr_cond_t *new_condition = NULL;
+	char *p, buffer[1024];
 
 	/*
 	 *	Disable it.
 	 */
 	if (argc == 0) {
+		talloc_free(debug_condition);
+		debug_condition = NULL;
 		return 0;
 	}
 
-	if (fr_condition_tokenize(NULL, NULL, argv[0], &debug_condition, &error, FR_COND_ONE_PASS) < 0) {
-		ERROR("Failed parsing condition '%s': %s", argv[0], error);
+	if (!((argc == 1) &&
+	      ((argv[0][0] == '"') || (argv[0][0] == '\'')))) {
+		p = buffer;
+		*p = '\0';
+		for (i = 0; i < argc; i++) {
+			size_t len;
+
+			len = strlcpy(p, argv[i], buffer + sizeof(buffer) - p);
+			p += len;
+			*(p++) = ' ';
+			*p = '\0';
+		}
+
+	} else {
+		/*
+		 *	Backwards compatibility.  De-escape the string.
+		 */
+		char quote;
+		char *q;
+
+		p = argv[0];
+		q = buffer;
+
+		quote = *(p++);
+
+		while (true) {
+			if (!*p) {
+				ERROR("Failed parsing condition '%s': Unexpected end of string", argv[0]);
+				return 0;
+			}
+
+			if (*p == quote) {
+				if (p[1]) {
+					ERROR("Failed parsing condition '%s': Unexpected text after end of string", argv[0]);
+					return 0;
+				}
+				*q = '\0';
+				break;
+			}
+
+			if (*p == '\\') {
+				*(q++) = p[1];
+				p += 2;
+				continue;
+			}
+
+			*(q++) = *(p++);
+		}
 	}
+
+	if (fr_condition_tokenize(NULL, NULL, buffer, &new_condition, &error, FR_COND_ONE_PASS) < 0) {
+		ERROR("Failed parsing condition '%s': %s", buffer, error);
+		return 0;
+	}
+
+	/*
+	 *	Delete old condition.
+	 *
+	 *	This is thread-safe because the condition is evaluated
+	 *	in the main server thread, along with this code.
+	 */
+	talloc_free(debug_condition);
+	debug_condition = new_condition;
 
 	return 0;
 }
@@ -1262,7 +1317,7 @@ static int command_inject_from(rad_listen_t *listener, int argc, char *argv[])
 static int command_inject_file(rad_listen_t *listener, int argc, char *argv[])
 {
 	static int inject_id = 0;
-	int filedone;
+	bool filedone;
 	fr_command_socket_t *sock = listener->data;
 	rad_listen_t *fake;
 	RADIUS_PACKET *packet;
@@ -1596,6 +1651,8 @@ static int command_set_module_config(rad_listen_t *listener, int argc, char *arg
 	return 1;		/* success */
 }
 
+extern const FR_NAME_NUMBER mod_rcode_table[];
+
 static int command_set_module_status(rad_listen_t *listener, int argc, char *argv[])
 {
 	CONF_SECTION *cs;
@@ -1617,14 +1674,23 @@ static int command_set_module_status(rad_listen_t *listener, int argc, char *arg
 
 
 	if (strcmp(argv[1], "alive") == 0) {
-		mi->dead = false;
+		mi->force = false;
 
 	} else if (strcmp(argv[1], "dead") == 0) {
-		mi->dead = true;
+		mi->code = RLM_MODULE_FAIL;
+		mi->force = true;
 
 	} else {
-		cprintf(listener, "ERROR: Unknown status \"%s\"\n", argv[2]);
-		return 0;
+		int rcode;
+
+		rcode = fr_str2int(mod_rcode_table, argv[1], -1);
+		if (rcode < 0) {
+			cprintf(listener, "ERROR: Unknown status \"%s\"\n", argv[1]);
+			return 0;
+		}
+
+		mi->code = rcode;
+		mi->force = true;
 	}
 
 	return 1;		/* success */
@@ -1795,7 +1861,7 @@ static int command_stats_home_server(rad_listen_t *listener, int argc, char *arg
 
 static int command_stats_client(rad_listen_t *listener, int argc, char *argv[])
 {
-	int auth = true;
+	bool auth = true;
 	fr_stats_t *stats;
 	RADCLIENT *client, fake;
 
@@ -1883,7 +1949,7 @@ static int command_stats_client(rad_listen_t *listener, int argc, char *argv[])
 
 static int command_stats_socket(rad_listen_t *listener, int argc, char *argv[])
 {
-	int auth = true;
+	bool auth = true;
 	rad_listen_t *sock;
 
 	sock = get_socket(listener, argc, argv, NULL);
@@ -1898,6 +1964,7 @@ static int command_stats_socket(rad_listen_t *listener, int argc, char *argv[])
 #endif	/* WITH_STATS */
 
 
+#ifdef WITH_DYNAMIC_CLIENTS
 static int command_add_client_file(rad_listen_t *listener, int argc, char *argv[])
 {
 	RADCLIENT *c;
@@ -1928,7 +1995,6 @@ static int command_add_client_file(rad_listen_t *listener, int argc, char *argv[
 
 static int command_del_client(rad_listen_t *listener, int argc, char *argv[])
 {
-#ifdef WITH_DYNAMIC_CLIENTS
 	RADCLIENT *client;
 
 	client = get_client(listener, argc, argv);
@@ -1948,9 +2014,6 @@ static int command_del_client(rad_listen_t *listener, int argc, char *argv[])
 	 *	structure will stick around for a while.  Oh well...
 	 */
 	client->lifetime = 1;
-#else
-	cprintf(listener, "ERROR: Dynamic clients are not supported.\n");
-#endif
 
 	return 1;
 }
@@ -1990,7 +2053,7 @@ static fr_command_table_t command_table_add[] = {
 
 	{ NULL, 0, NULL, NULL, NULL }
 };
-
+#endif
 
 #ifdef WITH_PROXY
 static fr_command_table_t command_table_set_home[] = {
@@ -2008,7 +2071,7 @@ static fr_command_table_t command_table_set_module[] = {
 	  command_set_module_config, NULL },
 
 	{ "status", FR_WRITE,
-	  "set module status [alive|dead] - set the module to be alive or dead (always return \"fail\")",
+	  "set module status <module> [alive|...] - set the module status to be alive (operating normally), or force a particular code (ok,fail, etc.)",
 	  command_set_module_status, NULL },
 
 	{ NULL, 0, NULL, NULL, NULL }
@@ -2064,11 +2127,15 @@ static fr_command_table_t command_table_stats[] = {
 #endif
 
 static fr_command_table_t command_table[] = {
+#ifdef WITH_DYNAMIC_CLIENTS
 	{ "add", FR_WRITE, NULL, NULL, command_table_add },
+#endif
 	{ "debug", FR_WRITE,
 	  "debug <command> - debugging commands",
 	  NULL, command_table_debug },
+#ifdef WITH_DYNAMIC_CLIENTS
 	{ "del", FR_WRITE, NULL, NULL, command_table_del },
+#endif
 	{ "hup", FR_WRITE,
 	  "hup [module] - sends a HUP signal to the server, or optionally to one module",
 	  command_hup, NULL },
@@ -2255,8 +2322,6 @@ static int command_socket_print(rad_listen_t const *this, char *buffer, size_t b
 static int str2argvX(char *str, char **argv, int max_argc)
 {
 	int argc = 0;
-	size_t len;
-	char buffer[1024];
 
 	while (*str) {
 		if (argc >= max_argc) return argc;
@@ -2276,29 +2341,31 @@ static int str2argvX(char *str, char **argv, int max_argc)
 
 		if (!*str) return argc;
 
+		argv[argc++] = str;
+
 		if ((*str == '\'') || (*str == '"')) {
-			char const *p = str;
-			FR_TOKEN token;
+			char quote = *str;
+			char *p = str + 1;
 
-			token = gettoken(&p, buffer, sizeof(buffer));
-			if ((token != T_SINGLE_QUOTED_STRING) &&
-			    (token != T_DOUBLE_QUOTED_STRING)) {
-				return -1;
+			while (true) {
+				if (!*p) return -1;
+
+				if (*p == quote) {
+					str = p + 1;
+					break;
+				}
+
+				/*
+				 *	Handle \" and nothing else.
+				 */
+				if (*p == '\\') {
+					p += 2;
+					continue;
+				}
+
+				p++;
 			}
-
-			len = strlen(buffer);
-			if (len >= (size_t) (p - str)) {
-				return -1;
-			}
-
-			memcpy(str, buffer, len + 1);
-			argv[argc] = str;
-
-			memcpy(&str, &p, sizeof(str));
-		} else {
-			argv[argc] = str;
 		}
-		argc++;
 
 		while (*str &&
 		       (*str != ' ') &&
@@ -2478,8 +2545,7 @@ static int command_domain_recv_co(rad_listen_t *listener, fr_cs_buffer_t *co)
 			}
 
 			len = 1;
-			rcode = table[i].func(listener,
-					      argc - 1, argv + 1);
+			table[i].func(listener, argc - 1, argv + 1);
 			break;
 		}
 	}

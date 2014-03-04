@@ -50,6 +50,8 @@ static rbtree_t *link_tree = NULL;
 static fr_event_list_t *events;
 static bool cleanup;
 
+static int self_pipe[2] = {-1, -1};		//!< Signals from sig handlers
+
 typedef int (*rbcmp)(void const *, void const *);
 
 static char const *radsniff_version = "radsniff version " RADIUSD_VERSION_STRING
@@ -100,10 +102,13 @@ static void rs_daemonize(char const *pidfile)
 	if (pid < 0) {
 		exit(EXIT_FAILURE);
 	}
+
 	/*
 	 *	Kill the parent...
 	 */
 	if (pid > 0) {
+		close(self_pipe[0]);
+		close(self_pipe[1]);
 		exit(EXIT_SUCCESS);
 	}
 
@@ -677,7 +682,7 @@ static void rs_stats_process(void *ctx)
 	 *	Update stats in collectd using the complex structures we
 	 *	initialised earlier.
 	 */
-	if (conf->stats.out == RS_STATS_OUT_COLLECTD) {
+	if ((conf->stats.out == RS_STATS_OUT_COLLECTD) && conf->stats.handle) {
 		rs_stats_collectd_do_stats(conf, conf->stats.tmpl, &now);
 	}
 #endif
@@ -692,9 +697,14 @@ static void rs_stats_process(void *ctx)
 	}
 
 	{
+		static fr_event_t *event;
+
 		now.tv_sec += conf->stats.interval;
 		now.tv_usec = 0;
-		fr_event_insert(this->list, rs_stats_process, ctx, &now, NULL);
+
+		if (!fr_event_insert(this->list, rs_stats_process, ctx, &now, &event)) {
+			ERROR("Failed inserting stats interval event");
+		}
 	}
 }
 
@@ -883,9 +893,9 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 	ssize_t len;
 	uint8_t const		*p = data;
 
-	struct ip_header const	*ip = NULL;		/* The IP header */
-	struct ip_header6 const	*ip6 = NULL;		/* The IPv6 header */
-	struct udp_header const	*udp;			/* The UDP header */
+	ip_header_t const	*ip = NULL;		/* The IP header */
+	ip_header6_t const	*ip6 = NULL;		/* The IPv6 header */
+	udp_header_t const	*udp;			/* The UDP header */
 	uint8_t			version;		/* IP header version */
 	bool			response;		/* Was it a response code */
 
@@ -918,14 +928,14 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 	version = (p[0] & 0xf0) >> 4;
 	switch (version) {
 	case 4:
-		ip = (struct ip_header const *)p;
+		ip = (ip_header_t const *)p;
 		len = (0x0f & ip->ip_vhl) * 4;	/* ip_hl specifies length in 32bit words */
 		p += len;
 		break;
 
 	case 6:
-		ip6 = (struct ip_header6 const *)p;
-		p += sizeof(struct ip_header6);
+		ip6 = (ip_header6_t const *)p;
+		p += sizeof(ip_header6_t);
 
 		break;
 
@@ -937,15 +947,48 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 	/*
 	 *	End of variable length bits, do basic check now to see if packet looks long enough
 	 */
-	len = (p - data) + sizeof(struct udp_header) + (sizeof(radius_packet_t) - 1);	/* length value */
+	len = (p - data) + sizeof(udp_header_t) + (sizeof(radius_packet_t) - 1);	/* length value */
 	if ((size_t) len > header->caplen) {
 		REDEBUG("Packet too small, we require at least %zu bytes, captured %i bytes",
 			(size_t) len, header->caplen);
 		return;
 	}
 
-	udp = (struct udp_header const *)p;
-	p += sizeof(struct udp_header);
+	/*
+	 *	UDP header validation.
+	 */
+	udp = (udp_header_t const *)p;
+	{
+		uint16_t udp_len;
+		ssize_t diff;
+
+		udp_len = ntohs(udp->len);
+		diff = udp_len - (header->caplen - (p - data));
+		/* Truncated data */
+		if (diff > 0) {
+			REDEBUG("Packet too small by %zi bytes, UDP header + Payload should be %hu bytes",
+				diff, udp_len);
+			return;
+		}
+		/* Trailing data */
+		else if (diff < 0) {
+			REDEBUG("Packet too big by %zi bytes, UDP header + Payload should be %hu bytes",
+				diff * -1, udp_len);
+			return;
+		}
+	}
+	if (version == 4) {
+		uint16_t expected;
+
+		expected = fr_udp_checksum((uint8_t const *) udp, ntohs(udp->len), udp->checksum,
+					   ip->ip_src, ip->ip_dst);
+		if (udp->checksum != expected) {
+			REDEBUG("UDP checksum invalid, packet: 0x%04hx calculated: 0x%04hx",
+				ntohs(udp->checksum), ntohs(expected));
+			/* Not a fatal error */
+		}
+	}
+	p += sizeof(udp_header_t);
 
 	/*
 	 *	With artificial talloc memory limits there's a good chance we can
@@ -982,8 +1025,8 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 		       sizeof(current->dst_ipaddr.ipaddr.ip6addr.s6_addr));
 	}
 
-	current->src_port = ntohs(udp->udp_sport);
-	current->dst_port = ntohs(udp->udp_dport);
+	current->src_port = ntohs(udp->src);
+	current->dst_port = ntohs(udp->dst);
 
 	if (!rad_packet_ok(current, 0, &reason)) {
 		REDEBUG("%s", fr_strerror());
@@ -1599,6 +1642,77 @@ static void _unmark_link(void *request)
 	this->in_link_tree = false;
 }
 
+/** Write the last signal to the signal pipe
+ *
+ * @param sig raised
+ */
+static void rs_signal_self(int sig)
+{
+	if (write(self_pipe[1], &sig, sizeof(sig)) < 0) {
+		ERROR("Failed writing signal %s to pipe: %s", strsignal(sig), fr_syserror(errno));
+		exit(EXIT_FAILURE);
+	}
+}
+
+#ifdef HAVE_COLLECTDC_H
+/** Re-open the collectd socket
+ *
+ */
+static void rs_collectd_reopen(void *ctx)
+{
+	fr_event_list_t *list = ctx;
+	static fr_event_t *event;
+	struct timeval now, when;
+
+	if (rs_stats_collectd_open(conf) == 0) {
+		DEBUG2("Stats output socket (re)opened");
+		return;
+	}
+
+	ERROR("Will attempt to re-establish connection in %i ms", RS_SOCKET_REOPEN_DELAY);
+
+	gettimeofday(&now, NULL);
+	rs_tv_add_ms(&now, RS_SOCKET_REOPEN_DELAY, &when);
+	if (!fr_event_insert(list, rs_collectd_reopen, list, &when, &event)) {
+		ERROR("Failed inserting re-open event");
+		assert(0);
+	}
+}
+#endif
+
+/** Read the last signal from the signal pipe
+ *
+ */
+static void rs_signal_action(fr_event_list_t *list, int fd, UNUSED void *ctx)
+{
+	int sig;
+
+	if (read(fd, &sig, sizeof(sig)) < 0) {
+		ERROR("Failed reading signal from pipe: %s", fr_syserror(errno));
+		exit(EXIT_FAILURE);
+	}
+
+	switch (sig) {
+#ifdef HAVE_COLLECTDC_H
+	case SIGPIPE:
+		rs_collectd_reopen(list);
+		break;
+#endif
+
+	case SIGINT:
+	case SIGTERM:
+	case SIGQUIT:
+		DEBUG2("Signalling event loop to exit");
+		fr_event_loop_exit(events, 1);
+		break;
+
+	default:
+		ERROR("Unhandled signal %s", strsignal(sig));
+		exit(EXIT_FAILURE);
+	}
+}
+
+
 static void NEVER_RETURNS usage(int status)
 {
 	FILE *output = status ? stderr : stdout;
@@ -1632,23 +1746,17 @@ static void NEVER_RETURNS usage(int status)
 	fprintf(output, "  -s <secret>           RADIUS secret.\n");
 	fprintf(output, "  -S                    Write PCAP data to stdout.\n");
 	fprintf(output, "  -v                    Show program version information.\n");
-	fprintf(output, "  -w <file>             Write output packets to file (overrides output of -F).\n");
+	fprintf(output, "  -w <file>             Write output packets to file.\n");
 	fprintf(output, "  -x                    Print more debugging information (defaults to -xx).\n");
 	fprintf(output, "stats options:\n");
 	fprintf(output, "  -W <interval>         Periodically write out statistics every <interval> seconds.\n");
 	fprintf(output, "  -T <timeout>          How many milliseconds before the request is counted as lost "
 		"(defaults to %i).\n", RS_DEFAULT_TIMEOUT);
 #ifdef HAVE_COLLECTDC_H
-	fprintf(output, "  -N <prefix>           collectd plugin instance name.\n");
+	fprintf(output, "  -N <prefix>           The instance name passed to the collectd plugin.\n");
 	fprintf(output, "  -O <server>           Write statistics to this collectd server.\n");
 #endif
 	exit(status);
-}
-
-static void rs_cleanup(UNUSED int sig)
-{
-        DEBUG2("Signalling event loop to exit");
-        fr_event_loop_exit(events, 1);
 }
 
 int main(int argc, char *argv[])
@@ -1845,7 +1953,7 @@ int main(int argc, char *argv[])
 #else
 			INFO("%s %s", radsniff_version, pcap_lib_version());
 #endif
-			exit(0);
+			exit(EXIT_SUCCESS);
 			break;
 
 		case 'w':
@@ -1895,7 +2003,7 @@ int main(int argc, char *argv[])
 	 */
 	if (fr_check_lib_magic(RADIUSD_MAGIC_NUMBER) < 0) {
 		fr_perror("radsniff");
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
 	/* Useful for file globbing */
@@ -2067,8 +2175,8 @@ int main(int argc, char *argv[])
 	 *	If we need to list attributes, link requests using attributes, filter attributes
 	 *	or print the packet contents, we need to decode the attributes.
 	 *
-	 *	But, if were just logging requests, or graphing packet, we do not need to decode
-	 *	the packet attributes.
+	 *	But, if were just logging requests, or graphing packets, we don't need to decode
+	 *	attributes.
 	 */
 	if (conf->list_da_num || conf->link_da_num || conf->filter_response_vps || conf->filter_request_vps ||
 	    conf->print_packet) {
@@ -2119,7 +2227,7 @@ int main(int argc, char *argv[])
 	 *	Print captures values which will be used
 	 */
 	if (fr_debug_flag > 2) {
-			DEBUG2("Sniffing with options:");
+		DEBUG2("Sniffing with options:");
 		if (conf->from_dev)	{
 			char *buff = fr_pcap_device_names(conf, in, ' ');
 			DEBUG2("  Device(s)               : [%s]", buff);
@@ -2154,7 +2262,7 @@ int main(int argc, char *argv[])
 	}
 
 	/*
-	 *	Open our interface to collectd
+	 *	Setup collectd templates
 	 */
 #ifdef HAVE_COLLECTDC_H
 	if (conf->stats.out == RS_STATS_OUT_COLLECTD) {
@@ -2162,7 +2270,7 @@ int main(int argc, char *argv[])
 		rs_stats_tmpl_t *tmpl, **next;
 
 		if (rs_stats_collectd_open(conf) < 0) {
-			exit(1);
+			exit(EXIT_FAILURE);
 		}
 
 		next = &conf->stats.tmpl;
@@ -2216,8 +2324,11 @@ int main(int argc, char *argv[])
 
 		if (!in) {
 			ERROR("No PCAP sources available");
-			exit(1);
+			exit(EXIT_FAILURE);
 		}
+
+		/* Clear any irrelevant errors */
+		fr_strerror();
 	}
 
 	/*
@@ -2267,6 +2378,22 @@ int main(int argc, char *argv[])
 	 		goto finish;
 	 	}
 
+		/*
+		 *  Initialise the signal handler pipe
+		 */
+		if (pipe(self_pipe) < 0) {
+			ERROR("Couldn't open signal pipe: %s", fr_syserror(errno));
+			exit(EXIT_FAILURE);
+		}
+
+		if (!fr_event_fd_insert(events, 0, self_pipe[0], rs_signal_action, events)) {
+			ERROR("Failed inserting signal pipe descriptor: %s", fr_strerror());
+			goto finish;
+		}
+
+		/*
+		 *  Now add fd's for each of the pcap sessions we opened
+		 */
 		for (in_p = in;
 	     	     in_p;
 	     	     in_p = in_p->next) {
@@ -2291,16 +2418,20 @@ int main(int argc, char *argv[])
 		gettimeofday(&now, NULL);
 
 		/*
-		 *	Insert our stats processor
+		 *  Insert our stats processor
 		 */
 		if (conf->stats.interval) {
+			static fr_event_t *event;
+
 			update.list = events;
 			update.stats = &stats;
 			update.in = in;
 
 			now.tv_sec += conf->stats.interval;
 			now.tv_usec = 0;
-			fr_event_insert(events, rs_stats_process, (void *) &update, &now, NULL);
+			if (!fr_event_insert(events, rs_stats_process, (void *) &update, &now, &event)) {
+				ERROR("Failed inserting stats event");
+			}
 
 			INFO("Muting stats for the next %i milliseconds (warmup)", conf->stats.timeout);
 			rs_tv_add_ms(&now, conf->stats.timeout, &stats.quiet);
@@ -2319,10 +2450,11 @@ int main(int argc, char *argv[])
 	 *	Setup signal handlers so we always exit gracefully, ensuring output buffers are always
 	 *	flushed.
 	 */
-	fr_set_signal(SIGINT, rs_cleanup);
-	fr_set_signal(SIGTERM, rs_cleanup);
+	fr_set_signal(SIGPIPE, rs_signal_self);
+	fr_set_signal(SIGINT, rs_signal_self);
+	fr_set_signal(SIGTERM, rs_signal_self);
 #ifdef SIGQUIT
-	fr_set_signal(SIGQUIT, rs_cleanup);
+	fr_set_signal(SIGQUIT, rs_signal_self);
 #endif
 
 	fr_event_loop(events);	/* Enter the main event loop */

@@ -43,6 +43,7 @@ RCSIDH(radsniff_h, "$Id$")
 #define RS_FORCE_YIELD		1000		//!< Service another descriptor every X number of packets
 #define RS_RETRANSMIT_MAX	5		//!< Maximum number of times we expect to see a packet retransmitted
 #define RS_MAX_ATTRS		50		//!< Maximum number of attributes we can filter on.
+#define RS_SOCKET_REOPEN_DELAY  5000		//!< How long we delay re-opening a collectd socket.
 
 /*
  *	Logging macros
@@ -306,5 +307,6 @@ rs_stats_tmpl_t *rs_stats_collectd_init_latency(TALLOC_CTX *ctx, rs_stats_tmpl_t
 						char const *type, rs_latency_t *stats, PW_CODE code);
 void rs_stats_collectd_do_stats(rs_t *conf, rs_stats_tmpl_t *tmpls, struct timeval *now);
 int rs_stats_collectd_open(rs_t *conf);
+int rs_stats_collectd_close(rs_t *conf);
 
 #endif

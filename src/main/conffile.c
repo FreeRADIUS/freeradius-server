@@ -115,6 +115,7 @@ static char const *cf_expand_variables(char const *cf, int *lineno,
 				       CONF_SECTION *outercs,
 				       char *output, size_t outsize,
 				       char const *input);
+static CONF_SECTION *cf_template_copy(CONF_SECTION *parent, CONF_SECTION const *template);
 
 /*
  *	Isolate the scary casts in these tiny provably-safe functions
@@ -259,8 +260,8 @@ static int name2_cmp(void const *a, void const *b)
 	rad_assert(strcmp(one->name1, two->name1) == 0);
 
 	if (!one->name2 && !two->name2) return 0;
-	if (!one->name2) return -1;
-	if (!two->name2) return +1;
+	if (one->name2 && !two->name2) return -1;
+	if (!one->name2 && two->name2) return +1;
 
 	return strcmp(one->name2, two->name2);
 }
@@ -440,6 +441,7 @@ static void cf_item_add(CONF_SECTION *cs, CONF_ITEM *ci)
 
 			case CONF_ITEM_SECTION: {
 				CONF_SECTION *cs_new = cf_itemtosection(ci);
+				CONF_SECTION *name1_cs;
 
 				if (!cs->section_tree) {
 					cs->section_tree = rbtree_create(section_cmp, NULL, 0);
@@ -449,32 +451,40 @@ static void cf_item_add(CONF_SECTION *cs, CONF_ITEM *ci)
 					}
 				}
 
-				rbtree_insert(cs->section_tree, cs_new);
+				name1_cs = rbtree_finddata(cs->section_tree, cs_new);
+				if (!name1_cs) {
+					if (!rbtree_insert(cs->section_tree, cs_new)) {
+						ERROR("Failed inserting section into tree");
+						fr_exit_now(1);
+					}
+				}
 
 				/*
-				 *	Two names: find the named instance.
+				 *	We already have a section of
+				 *	this "name1".  Add a new
+				 *	sub-section based on name2.
 				 */
-				{
-					CONF_SECTION *old_cs;
+				if (name1_cs) {
+					if (!name1_cs->name2_tree) {
+						name1_cs->name2_tree = rbtree_create(name2_cmp,
+										     NULL, 0);
+						if (!name1_cs->name2_tree) {
+							ERROR("Out of memory");
+							fr_exit_now(1);
+						}
+					}
 
 					/*
-					 *	Find the FIRST
-					 *	CONF_SECTION having
-					 *	the given name1, and
-					 *	create a new tree
-					 *	under it.
+					 *	We don't care if this
+					 *	fails.  If the user
+					 *	tries to create two
+					 *	sections of the same
+					 *	name1/name2, the
+					 *	duplicate section is
+					 *	just silently ignored.
 					 */
-					old_cs = rbtree_finddata(cs->section_tree, cs_new);
-					if (!old_cs) return; /* this is a bad error! */
-
-					if (!old_cs->name2_tree) {
-						old_cs->name2_tree = rbtree_create(name2_cmp,
-										   NULL, 0);
-					}
-					if (old_cs->name2_tree) {
-						rbtree_insert(old_cs->name2_tree, cs_new);
-					}
-				} /* had a name2 */
+					rbtree_insert(name1_cs->name2_tree, cs_new);
+				}
 				break;
 			} /* was a section */
 
@@ -763,6 +773,8 @@ static char const *cf_expand_variables(char const *cf, int *lineno,
 				ptr = end + 1;
 
 			} else if (ci->type == CONF_ITEM_SECTION) {
+				CONF_SECTION *subcs;
+
 				/*
 				 *	Adding an entry again to a
 				 *	section is wrong.  We don't
@@ -772,8 +784,21 @@ static char const *cf_expand_variables(char const *cf, int *lineno,
 					ERROR("%s[%d]: Cannot reference different item in same section", cf, *lineno);
 					return NULL;
 				}
-				cf_item_add(outercs, ci);
-				(void) talloc_reference(outercs, ci);
+
+				/*
+				 *	Copy the section instead of
+				 *	referencing it.
+				 */
+				subcs = cf_template_copy(outercs, cf_itemtosection(ci));
+				if (!subcs) {
+					ERROR("%s[%d]: Failed copying reference %s", cf, *lineno, name);
+					return NULL;
+				}
+
+				cf_item_add(outercs, &(subcs->item));
+				subcs->item.filename = ci->filename;
+				subcs->item.lineno = ci->lineno;
+
 				ptr = end + 1;
 
 			} else {
@@ -865,7 +890,7 @@ static char const *parse_spaces = "                                             
 int cf_item_parse(CONF_SECTION *cs, char const *name, int type, void *data, char const *dflt)
 {
 	int rcode;
-	bool deprecated, required, attribute, no_overwrite;
+	bool deprecated, required, attribute, secret;
 	char **q;
 	char const *value;
 	fr_ipaddr_t ipaddr;
@@ -877,13 +902,13 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, int type, void *data, char
 	deprecated = (type & PW_TYPE_DEPRECATED);
 	required = (type & PW_TYPE_REQUIRED);
 	attribute = (type & PW_TYPE_ATTRIBUTE);
-	no_overwrite = (type & PW_TYPE_NO_OVERWRITE);
+	secret = (type & PW_TYPE_SECRET);
 
 	type &= 0xff;		/* normal types are small */
 	rcode = 0;
 
 	if (attribute) {
-		required = 1;
+		required = true;
 	}
 
 	cp = cf_pair_find(cs, name);
@@ -948,16 +973,6 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, int type, void *data, char
 	case PW_TYPE_STRING_PTR:
 		q = (char **) data;
 		if (*q != NULL) {
-			/*
-			 *	Don't over-write something we got from
-			 *	the command line.
-			 */
-			if (no_overwrite) {
-				cf_log_info(cs, "%.*s\t%s = \"%s\"",
-					    cs->depth, parse_spaces, name, *q);
-				break;
-			}
-
 			talloc_free(*q);
 		}
 
@@ -1001,8 +1016,16 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, int type, void *data, char
 			}
 		}
 
-		cf_log_info(cs, "%.*s\t%s = \"%s\"",
-			    cs->depth, parse_spaces, name, value ? value : "(null)");
+		/*
+		 *	Hide secrets when using "radiusd -X".
+		 */
+		if (secret && (debug_flag <= 2)) {
+			cf_log_info(cs, "%.*s\t%s = <<< secret >>>",
+				    cs->depth, parse_spaces, name);
+		} else {
+			cf_log_info(cs, "%.*s\t%s = \"%s\"",
+				    cs->depth, parse_spaces, name, value ? value : "(null)");
+		}
 		*q = value ? talloc_strdup(cs, value) : NULL;
 		break;
 
@@ -1365,6 +1388,8 @@ static bool cf_template_merge(CONF_SECTION *cs, CONF_SECTION const *template)
 			CONF_SECTION *subcs1, *subcs2;
 
 			subcs1 = cf_itemtosection(ci);
+			rad_assert(subcs1 != NULL);
+
 			subcs2 = cf_section_sub_find_name2(cs, subcs1->name1, subcs1->name2);
 			if (subcs2) {
 				/*
@@ -1382,6 +1407,7 @@ static bool cf_template_merge(CONF_SECTION *cs, CONF_SECTION const *template)
 			 *	the template.
 			 */
 			subcs2 = cf_template_copy(cs, subcs1);
+			if (!subcs2) return false;
 
 			subcs2->item.filename = subcs1->item.filename;
 			subcs2->item.lineno = subcs1->item.lineno;
@@ -1460,7 +1486,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 	char buf2[8192];
 	char buf3[8192];
 	int t1, t2, t3;
-	int spaces = false;
+	bool spaces = false;
 	char *cbuf = buf;
 	size_t len;
 	fr_cond_t *cond = NULL;
@@ -1621,16 +1647,16 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		 */
 	       if ((strcasecmp(buf1, "$INCLUDE") == 0) ||
 		   (strcasecmp(buf1, "$-INCLUDE") == 0)) {
-		       int relative = 1;
+			bool relative = true;
 
 			t2 = getword(&ptr, buf2, sizeof(buf2));
 
-			if (buf2[0] == '$') relative = 0;
+			if (buf2[0] == '$') relative = false;
 
 			value = cf_expand_variables(filename, lineno, this, buf, sizeof(buf), buf2);
 			if (!value) return -1;
 
-			if (!FR_DIR_IS_RELATIVE(value)) relative = 0;
+			if (!FR_DIR_IS_RELATIVE(value)) relative = false;
 
 			if (relative) {
 				value = cf_local_file(filename, value, buf3,
@@ -2141,12 +2167,17 @@ void cf_file_free(CONF_SECTION *cs)
  */
 CONF_PAIR *cf_pair_find(CONF_SECTION const *cs, char const *name)
 {
-	CONF_PAIR mycp;
+	CONF_PAIR *cp, mycp;
 
 	if (!cs || !name) return NULL;
 
 	mycp.attr = name;
-	return rbtree_finddata(cs->pair_tree, &mycp);
+	cp = rbtree_finddata(cs->pair_tree, &mycp);
+	if (cp) return cp;
+
+	if (!cs->template) return NULL;
+
+	return rbtree_finddata(cs->template->pair_tree, &mycp);
 }
 
 /*
@@ -2339,7 +2370,7 @@ CONF_SECTION *cf_section_sub_find(CONF_SECTION const *cs, char const *name)
 {
 	CONF_SECTION mycs;
 
-	if (!name) return NULL;	/* can't find an un-named section */
+	if (!cs || !name) return NULL;	/* can't find an un-named section */
 
 	/*
 	 *	No sub-sections have been defined, so none exist.
@@ -2359,68 +2390,77 @@ CONF_SECTION *cf_section_sub_find_name2(CONF_SECTION const *cs,
 					char const *name1, char const *name2)
 {
 	CONF_ITEM    *ci;
-	CONF_SECTION *name1cs, *subcs;
-	CONF_SECTION mycs;
 
 	if (!cs) cs = root_config;
+	if (!cs) return NULL;
 
-	/*
-	 *	name1 is given.  Do a simple search.  name2 may be
-	 *	NULL, in which case we're looking for a matching
-	 *	(name1, NULL).  In contrast, cf_section_sub_find()
-	 *	above doesn't check name2 at all.
-	 */
 	if (name1) {
-		name1cs = cf_section_sub_find(cs, name1);
-		if (!name1cs) return NULL;
+		CONF_SECTION mycs, *master_cs;
+
+		if (!cs->section_tree) return NULL;
 
 		mycs.name1 = name1;
 		mycs.name2 = name2;
-		
-		return rbtree_finddata(name1cs->name2_tree, &mycs);
-	}
 
-	/*
-	 *	Asking for (NULL, name2) means look for (name2, NULL)
-	 *	Yes, this is backwards.
-	 */
-	name1cs = cf_section_sub_find(cs, name2);
-	if (name1cs) {
-		if (!name1cs->name2_tree) {
-			/*
-			 *	No name2 tree, do the checks
-			 *	ourselves.  If (name2, NULL) exists,
-			 *	return it.
-			 */
-			if (!name1cs->name2) return name1cs;
-			/* else fall through to (*, name2) */
+		master_cs = rbtree_finddata(cs->section_tree, &mycs);
+		if (!master_cs) return NULL;
 
-		} else {
-			mycs.name1 = name2;
-			mycs.name2 = NULL;
-			subcs = rbtree_finddata(name1cs->name2_tree, &mycs);
+		/*
+		 *	Look it up in the name2 tree.  If it's there,
+		 *	return it.
+		 */
+		if (master_cs->name2_tree) {
+			CONF_SECTION *subcs;
+
+			subcs = rbtree_finddata(master_cs->name2_tree, &mycs);
 			if (subcs) return subcs;
-			/* else fall through to (*, name2) */
 		}
+
+		/*
+		 *	We don't insert ourselves into the name2 tree.
+		 *	So if there's nothing in the name2 tree, maybe
+		 *	*we* are the answer.
+		 */
+		if (!master_cs->name2 && name2) return NULL;
+		if (master_cs->name2 && !name2) return NULL;
+		if (!master_cs->name2 && !name2) return master_cs;
+
+		if (strcmp(master_cs->name2, name2) == 0) {
+			return master_cs;
+		}
+
+		return NULL;
 	}
 
 	/*
-	 *	No matching (name2, NULL).  Look for (*, name2) by
-	 *	brute-force search over all of the children.
+	 *	Else do it the old-fashioned way.
 	 */
 	for (ci = cs->children; ci; ci = ci->next) {
+		CONF_SECTION *subcs;
+
 		if (ci->type != CONF_ITEM_SECTION)
 			continue;
-		
+
 		subcs = cf_itemtosection(ci);
-		if (!subcs->name2) continue;
-		
-		if (strcmp(subcs->name2, name2) == 0) {
-			return subcs;
+		if (!name1) {
+			if (!subcs->name2) {
+				if (strcmp(subcs->name1, name2) == 0) break;
+			} else {
+				if (strcmp(subcs->name2, name2) == 0) break;
+			}
+			continue; /* don't do the string comparisons below */
 		}
+
+		if (strcmp(subcs->name1, name1) != 0) continue;
+		if (!subcs->name2 && name2) continue;
+		if (subcs->name2 && !name2) continue;
+
+		if (!subcs->name2 && !name2) break;
+
+		if (strcmp(subcs->name2, name2) == 0) break;
 	}
 
-	return NULL;
+	return cf_itemtosection(ci);
 }
 
 /*
@@ -2784,7 +2824,7 @@ static int cf_section_cmp(CONF_SECTION *a, CONF_SECTION *b)
 	 *	Walk over the CONF_DATA, stat'ing PW_TYPE_FILE_INPUT.
 	 */
 	if (a->data_tree &&
-	    (rbtree_walk(a->data_tree, InOrder, filename_stat, NULL) != 0)) {
+	    (rbtree_walk(a->data_tree, RBTREE_IN_ORDER, filename_stat, NULL) != 0)) {
 		return 0;
 	}
 

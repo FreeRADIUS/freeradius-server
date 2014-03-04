@@ -144,7 +144,7 @@ typedef struct THREAD_POOL {
 	int cleanup_delay;
 	int stop_flag;
 #endif	/* WITH_GCD */
-	int spawn_flag;
+	bool spawn_flag;
 
 #ifdef WNOHANG
 	pthread_mutex_t	wait_mutex;
@@ -180,7 +180,7 @@ typedef struct THREAD_POOL {
 } THREAD_POOL;
 
 static THREAD_POOL thread_pool;
-static int pool_initialized = false;
+static bool pool_initialized = false;
 
 #ifndef WITH_GCD
 static time_t last_cleaned = 0;
@@ -410,7 +410,7 @@ int request_enqueue(REQUEST *request)
 	thread_pool.request_count++;
 
 	if (thread_pool.num_queued >= thread_pool.max_queue_size) {
-		int complain = false;
+		bool complain = false;
 		time_t now;
 		static time_t last_complained = 0;
 
@@ -426,12 +426,14 @@ int request_enqueue(REQUEST *request)
 		 *	Mark the request as done.
 		 */
 		if (complain) {
-			ERROR("Something is blocking the server.  There are %d packets in the queue, waiting to be processed.  Ignoring the new request.", thread_pool.max_queue_size);
+			ERROR("Something is blocking the server.  There are %d packets in the queue, "
+			      "waiting to be processed.  Ignoring the new request.", thread_pool.num_queued);
 		}
 		return 0;
 	}
 	request->component = "<core>";
 	request->module = "<queue>";
+	request->child_state = REQUEST_QUEUED;
 
 	/*
 	 *	Push the request onto the appropriate fifo for that
@@ -552,6 +554,7 @@ static int request_dequeue(REQUEST **prequest)
 
 	request->component = "<core>";
 	request->module = "";
+	request->child_state = REQUEST_RUNNING;
 
 	/*
 	 *	If the request has sat in the queue for too long,
@@ -882,7 +885,7 @@ static int pid_cmp(void const *one, void const *two)
  *
  *	FIXME: What to do on a SIGHUP???
  */
-int thread_pool_init(UNUSED CONF_SECTION *cs, int *spawn_flag)
+int thread_pool_init(UNUSED CONF_SECTION *cs, bool *spawn_flag)
 {
 #ifndef WITH_GCD
 	int		i, rcode;
@@ -958,6 +961,12 @@ int thread_pool_init(UNUSED CONF_SECTION *cs, int *spawn_flag)
 		thread_pool.max_threads = 256;
 	if ((thread_pool.max_queue_size < 2) || (thread_pool.max_queue_size > 1024*1024)) {
 		ERROR("FATAL: max_queue_size value must be in range 2-1048576");
+		return -1;
+	}
+
+	if (thread_pool.start_threads > thread_pool.max_threads) {
+		ERROR("FATAL: start_servers (%i) must be <= max_servers (%i)",
+		      thread_pool.start_threads, thread_pool.max_threads);
 		return -1;
 	}
 #endif	/* WITH_GCD */
@@ -1049,6 +1058,8 @@ void thread_pool_stop(void)
 	int total_threads;
 	THREAD_HANDLE *handle;
 	THREAD_HANDLE *next;
+
+	if (!pool_initialized) return;
 
 	/*
 	 *	Set pool stop flag.

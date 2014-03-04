@@ -523,7 +523,7 @@ static const CONF_PARSER client_config[] = {
 	{ "require_message_authenticator",  PW_TYPE_BOOLEAN,
 	  offsetof(RADCLIENT, message_authenticator), 0, "no" },
 
-	{ "secret",  PW_TYPE_STRING_PTR,
+	{ "secret",  PW_TYPE_STRING_PTR | PW_TYPE_SECRET,
 	  offsetof(RADCLIENT, secret), 0, NULL },
 	{ "shortname",  PW_TYPE_STRING_PTR,
 	  offsetof(RADCLIENT, shortname), 0, NULL },
@@ -852,7 +852,7 @@ RADCLIENT_LIST *clients_parse_section(CONF_SECTION *section, bool tls_required)
 RADCLIENT_LIST *clients_parse_section(CONF_SECTION *section, UNUSED bool tls_required)
 #endif
 {
-	int		global = false, in_server = false;
+	bool		global = false, in_server = false;
 	CONF_SECTION	*cs;
 	RADCLIENT	*c;
 	RADCLIENT_LIST	*clients;
@@ -896,7 +896,7 @@ RADCLIENT_LIST *clients_parse_section(CONF_SECTION *section, UNUSED bool tls_req
 		 *	non-TLS clients CANNOT use TLS listeners.
 		 */
 		if (tls_required != c->tls_required) {
-			cf_log_err_cs(cs, "Client requires TLS but the associated listener does not have TLS configured.");
+			cf_log_err_cs(cs, "Client does not have the same TLS configuration as the listener");
 			client_free(c);
 			clients_free(clients);
 			return NULL;
@@ -991,9 +991,9 @@ RADCLIENT_LIST *clients_parse_section(CONF_SECTION *section, UNUSED bool tls_req
 			closedir(dir);
 		}
 #endif /* HAVE_DIRENT_H */
-#endif /* WITH_DYNAMIC_CLIENTS */
 
 	add_client:
+#endif /* WITH_DYNAMIC_CLIENTS */
 		if (!client_add(clients, c)) {
 			cf_log_err_cs(cs,
 				   "Failed to add client %s",
@@ -1084,7 +1084,7 @@ bool client_validate(RADCLIENT_LIST *clients, RADCLIENT *master, RADCLIENT *c)
 	/*
 	 *	Initialize the remaining fields.
 	 */
-	c->dynamic = 1;
+	c->dynamic = true;
 	c->lifetime = master->lifetime;
 	c->created = time(NULL);
 	c->longname = talloc_strdup(c, c->shortname);
@@ -1093,11 +1093,11 @@ bool client_validate(RADCLIENT_LIST *clients, RADCLIENT *master, RADCLIENT *c)
 	      ip_ntoh(&c->ipaddr, buffer, sizeof(buffer)),
 	      c->secret);
 
-	return 1;
+	return true;
 
 error:
 	client_free(c);
-	return 0;
+	return false;
 }
 
 /** Add a client from a result set (LDAP, SQL, et al)
@@ -1124,7 +1124,7 @@ RADCLIENT *client_from_query(TALLOC_CTX *ctx, char const *identifier, char const
 	c = talloc_zero(ctx, RADCLIENT);
 
 #ifdef WITH_DYNAMIC_CLIENTS
-	c->dynamic = 1;
+	c->dynamic = true;
 #endif
 
 	id = talloc_strdup(c, identifier);

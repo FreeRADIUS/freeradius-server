@@ -90,7 +90,7 @@ static int request_init(char const *filename)
 	FILE *fp;
 	vp_cursor_t cursor;
 	VALUE_PAIR *vp;
-	int filedone = 0;
+	bool filedone = false;
 
 	/*
 	 *	Determine where to read the VP's from.

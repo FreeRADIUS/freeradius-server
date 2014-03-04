@@ -64,7 +64,7 @@ typedef struct ldap_instance {
 
 	char const	*xlat_name;			//!< Instance name.
 
-	int		expect_password;		//!< True if the user_map included a mapping between an LDAP
+	bool		expect_password;		//!< True if the user_map included a mapping between an LDAP
 							//!< attribute and one of our password reference attributes.
 
 	/*
@@ -196,7 +196,7 @@ typedef struct ldap_instance {
  	/*
 	 *	eDir support
 	 */
-	bool		edir;				//!< If true attempt to retrieve the user's Cleartext password
+	bool		edir;				//!< If true attempt to retrieve the user's cleartext password
 							//!< using the Universal Password feature of Novell eDirectory.
 	bool		edir_autz;			//!< If true, and we have the Universal Password, bind with it
 							//!< to perform additional authorisation checks.

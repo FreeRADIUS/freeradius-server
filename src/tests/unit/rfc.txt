@@ -105,6 +105,12 @@ data Chargeable-User-Identity = ''
 encode -
 data 59 02
 
+attribute Framed-IP-Address = 127.0.0.1/32
+data Framed-IP-Address = 127.0.0.1
+
+attribute Framed-IP-Address = 127.0.0.1/323
+data Invalid IP address suffix "/323".  Only '/32' permitted for non-prefix types
+
 $INCLUDE errors.txt
 $INCLUDE extended.txt
 $INCLUDE lucent.txt

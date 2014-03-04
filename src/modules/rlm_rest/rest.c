@@ -870,8 +870,6 @@ static int rest_decode_post(UNUSED rlm_rest_t *instance,
 	DICT_ATTR const *da;
 	VALUE_PAIR *vp;
 
-	DICT_ATTR const **current, *processed[REST_BODY_MAX_ATTRS + 1];
-
 	pair_lists_t list_name;
 	request_refs_t request_name;
 	REQUEST *reference = request;
@@ -883,16 +881,13 @@ static int rest_decode_post(UNUSED rlm_rest_t *instance,
 	int count = 0;
 	int ret;
 
-	processed[0] = NULL;
-
 	/*
-	 * Empty response?
+	 *	Empty response?
 	 */
 	while (isspace(*p)) p++;
 	if (*p == '\0') return 0;
 
-	while (((q = strchr(p, '=')) != NULL) &&
-	       (count < REST_BODY_MAX_ATTRS)) {
+	while (((q = strchr(p, '=')) != NULL) && (count < REST_BODY_MAX_ATTRS)) {
 		reference = request;
 
 		name = curl_easy_unescape(candle, p, (q - p), &curl_len);
@@ -901,6 +896,11 @@ static int rest_decode_post(UNUSED rlm_rest_t *instance,
 
 		RDEBUG("Decoding attribute \"%s\"", name);
 
+		/*
+		 *	The attribute pointer is updated to point to the
+		 *	portion of the string after the list qualifier.
+		 */
+		attribute = name;
 		request_name = radius_request_name(&attribute, REQUEST_CURRENT);
 		if (request_name == REQUEST_UNKNOWN) {
 			RWDEBUG("Invalid request qualifier, skipping");
@@ -910,9 +910,8 @@ static int rest_decode_post(UNUSED rlm_rest_t *instance,
 			continue;
 		}
 
-		if (radius_request(&reference, request_name)) {
-			RWDEBUG("Attribute name refers to outer request"
-		       	       " but not in a tunnel, skipping");
+		if (radius_request(&reference, request_name) < 0) {
+			RWDEBUG("Attribute name refers to outer request but not in a tunnel, skipping");
 
 			curl_free(name);
 
@@ -930,8 +929,7 @@ static int rest_decode_post(UNUSED rlm_rest_t *instance,
 
 		da = dict_attrbyname(attribute);
 		if (!da) {
-			RWDEBUG("Attribute \"%s\" unknown, skipping",
-			       attribute);
+			RWDEBUG("Attribute \"%s\" unknown, skipping", attribute);
 
 			curl_free(name);
 
@@ -939,8 +937,7 @@ static int rest_decode_post(UNUSED rlm_rest_t *instance,
 		}
 
 		vps = radius_list(reference, list_name);
-
-		assert(vps);
+		rad_assert(vps);
 
 		RDEBUG2("\tType  : %s", fr_int2str(dict_attr_types, da->type, "¿Unknown?"));
 
@@ -973,26 +970,6 @@ static int rest_decode_post(UNUSED rlm_rest_t *instance,
 			goto error;
 		}
 
-		vp->op = T_OP_SET;
-
-		/*
-		 * 	Check to see if we've already processed an
-		 *	attribute of the same type if we have, change the op
-		 *	from T_OP_ADD to T_OP_SET.
-		 */
-		current = processed;
-		while (*current++) {
-			if (current[0] == da) {
-				vp->op = T_OP_ADD;
-				break;
-			}
-		}
-
-		if (vp->op != T_OP_ADD) {
-			current[0] = da;
-			current[1] = NULL;
-		}
-
 		ret = pairparsevalue(vp, expanded);
 		talloc_free(expanded);
 		if (!ret) {
@@ -1001,12 +978,9 @@ static int rest_decode_post(UNUSED rlm_rest_t *instance,
 			goto skip;
 		}
 
-		if (vps) pairadd(vps, vp);
+		pairadd(vps, vp);
 
-		if (++count == REST_BODY_MAX_ATTRS) {
-			REDEBUG("At maximum attribute limit");
-			return count;
-		}
+		count++;
 
 		skip:
 
@@ -1221,7 +1195,7 @@ static VALUE_PAIR *json_pairmake(rlm_rest_t *instance,
 			continue;
 		}
 
-		if (!radius_request(&reference, request_name)) {
+		if (radius_request(&reference, request_name) < 0) {
 			RWDEBUG("Attribute name refers to outer request"
 		       	       " but not in a tunnel, skipping");
 

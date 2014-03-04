@@ -266,7 +266,7 @@ static ldap_rcode_t rlm_ldap_result(ldap_instance_t const *inst, ldap_handle_t c
 	char *srv_err = NULL;		// Server's extended error message.
 	char *p, *a;
 
-	int freeit = false;		// Whether the message should be freed after being processed.
+	bool freeit = false;		// Whether the message should be freed after being processed.
 	int len;
 
 	struct timeval tv;		// Holds timeout values.
@@ -838,7 +838,7 @@ char const *rlm_ldap_find_user(ldap_instance_t const *inst, REQUEST *request, ld
 	char	    	filter[LDAP_MAX_FILTER_STR_LEN];
 	char	    	base_dn[LDAP_MAX_DN_STR_LEN];
 
-	int freeit = false;					//!< Whether the message should
+	bool freeit = false;					//!< Whether the message should
 								//!< be freed after being processed.
 
 	*rcode = RLM_MODULE_FAIL;
@@ -1002,7 +1002,7 @@ void rlm_ldap_check_reply(ldap_instance_t const *inst, REQUEST *request)
 		    !pairfind(request->config_items, PW_USER_PASSWORD, 0, TAG_ANY) &&
 		    !pairfind(request->config_items, PW_PASSWORD_WITH_HEADER, 0, TAG_ANY) &&
 		    !pairfind(request->config_items, PW_CRYPT_PASSWORD, 0, TAG_ANY)) {
-			RWDEBUG("No \"reference\" password added. Ensure the admin user has permission to "
+			RWDEBUG("No \"known good\" password added. Ensure the admin user has permission to "
 				"read the password attribute");
 			RWDEBUG("PAP authentication will *NOT* work with Active Directory (if that is what you "
 				"were trying to configure)");

@@ -208,7 +208,7 @@ static const CONF_PARSER module_config[] = {
 	{"server", PW_TYPE_STRING_PTR | PW_TYPE_REQUIRED, offsetof(ldap_instance_t,server), NULL, "localhost"},
 	{"port", PW_TYPE_INTEGER, offsetof(ldap_instance_t,port), NULL, "389"},
 
-	{"password", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t,password), NULL, ""},
+	{"password", PW_TYPE_STRING_PTR | PW_TYPE_SECRET, offsetof(ldap_instance_t,password), NULL, ""},
 	{"identity", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t,admin_dn), NULL, ""},
 
 	{"valuepair_attribute", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, valuepair_attr), NULL, NULL},
@@ -218,7 +218,7 @@ static const CONF_PARSER module_config[] = {
 	{"edir", PW_TYPE_BOOLEAN, offsetof(ldap_instance_t,edir), NULL, NULL}, /* NULL defaults to "no" */
 
 	/*
-	 *	Attempt to bind with the Cleartext password we got from eDirectory
+	 *	Attempt to bind with the cleartext password we got from eDirectory
 	 *	Universal password for additional authorization checks.
 	 */
 	{"edir_autz", PW_TYPE_BOOLEAN, offsetof(ldap_instance_t,edir_autz), NULL, NULL}, /* NULL defaults to "no" */
@@ -360,8 +360,8 @@ static int rlm_ldap_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR
 	ldap_instance_t	*inst = instance;
 	rlm_rcode_t	rcode;
 
-	int		found = false;
-	int		check_is_dn;
+	bool		found = false;
+	bool		check_is_dn;
 
 	ldap_handle_t	*conn = NULL;
 	char const	*user_dn;
@@ -948,7 +948,12 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 		pairstrcpy(vp, password);
 		vp->length = pass_size;
 
-		RDEBUG2("Added eDirectory password.  control:%s += '%s'", vp->da->name, vp->vp_strvalue);
+		if (RDEBUG_ENABLED3) {
+			RDEBUG3("Added eDirectory password.  control:%s += '%s'", vp->da->name, vp->vp_strvalue);
+		} else {
+			RDEBUG2("Added eDirectory password");
+		}
+
 		if (inst->edir_autz) {
 			RDEBUG2("Binding as user for eDirectory authorization checks");
 			/*
@@ -1110,7 +1115,7 @@ static rlm_rcode_t user_modify(ldap_instance_t *inst, REQUEST *request, ldap_acc
 	 *	Iterate over all the pairs, building our mods array
 	 */
 	for (ci = cf_item_find_next(cs, NULL); ci != NULL; ci = cf_item_find_next(cs, ci)) {
-	     	int do_xlat = false;
+	     	bool do_xlat = false;
 
 	     	if (total == LDAP_MAX_ATTRMAP) {
 	     		REDEBUG("Modify map size exceeded");

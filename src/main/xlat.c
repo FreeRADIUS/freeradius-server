@@ -40,7 +40,7 @@ typedef struct xlat_t {
 	void			*instance;		//!< Module instance passed to xlat and escape functions.
 	RAD_XLAT_FUNC		func;			//!< xlat function.
 	RADIUS_ESCAPE_STRING	escape;			//!< Escape function to apply to dynamic input to func.
-	int			internal;		//!< If true, cannot be redefined.
+	bool			internal;		//!< If true, cannot be redefined.
 } xlat_t;
 
 typedef enum {
@@ -208,6 +208,9 @@ static ssize_t xlat_integer(UNUSED void *instance, REQUEST *request,
 	case PW_TYPE_IPADDR:
 		return snprintf(out, outlen, "%u", htonl(vp->vp_ipaddr));
 
+	case PW_TYPE_IPV4PREFIX:
+		return snprintf(out, outlen, "%u", htonl((*(uint32_t *)(vp->vp_ipv4prefix + 2))));
+
 	case PW_TYPE_INTEGER:
 	case PW_TYPE_DATE:
 	case PW_TYPE_BYTE:
@@ -224,6 +227,12 @@ static ssize_t xlat_integer(UNUSED void *instance, REQUEST *request,
 
 	case PW_TYPE_SIGNED:
 		return snprintf(out, outlen, "%i", vp->vp_signed);
+
+	case PW_TYPE_IPV6ADDR:
+		return fr_prints_uint128(out, outlen, ntohlll(*(uint128_t const *) &vp->vp_ipv6addr));
+
+	case PW_TYPE_IPV6PREFIX:
+		return fr_prints_uint128(out, outlen, ntohlll(*(uint128_t const *) &(vp->vp_ipv6prefix[2])));
 
 	default:
 		break;
@@ -707,7 +716,7 @@ int xlat_register(char const *name, RAD_XLAT_FUNC func, RADIUS_ESCAPE_STRING esc
 	c->length = strlen(c->name);
 	c->instance = instance;
 
-	node = rbtree_insertnode(xlat_root, c);
+	node = rbtree_insert_node(xlat_root, c);
 	if (!node) {
 		talloc_free(c);
 		return -1;

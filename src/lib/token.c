@@ -73,12 +73,13 @@ static FR_TOKEN getthing(char const **ptr, char *buf, int buflen, int tok,
 {
 	char			*s;
 	char const		*p;
-	int			quote, end = 0;
+	char			quote;
+	bool			end = false;
 	unsigned int		x;
 	FR_NAME_NUMBER const	*t;
 	FR_TOKEN rcode;
 
-	buf[0] = 0;
+	buf[0] = '\0';
 
 	/* Skip whitespace */
 	p = *ptr;
@@ -105,12 +106,12 @@ static FR_TOKEN getthing(char const **ptr, char *buf, int buflen, int tok,
 	}
 
 	/* Read word. */
-	quote = 0;
+	quote = '\0';
 	if ((*p == '"') ||
 	    (*p == '\'') ||
 	    (*p == '`')) {
 		quote = *p;
-		end = 0;
+		end = false;
 		p++;
 	}
 	s = buf;
@@ -146,7 +147,7 @@ static FR_TOKEN getthing(char const **ptr, char *buf, int buflen, int tok,
 			continue;
 		}
 		if (quote && (*p == quote)) {
-			end = 1;
+			end = true;
 			p++;
 			break;
 		}

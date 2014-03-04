@@ -44,7 +44,7 @@ bool memory_report = false;
 bool check_config = false;
 bool log_stripped_names = false;
 
-int filedone = 0;
+bool filedone = false;
 
 char const *radiusd_version = "FreeRADIUS Version " RADIUSD_VERSION_STRING
 #ifdef RADIUSD_VERSION_COMMIT
@@ -139,7 +139,7 @@ static REQUEST *request_setup(FILE *fp)
 	request->number = 0;
 
 	request->master_state = REQUEST_ACTIVE;
-	request->child_state = REQUEST_ACTIVE;
+	request->child_state = REQUEST_RUNNING;
 	request->handle = NULL;
 	request->server = talloc_strdup(request, "default");
 
@@ -473,12 +473,12 @@ int main(int argc, char *argv[])
 				break;
 
 			case 'm':
-				mainconfig.debug_memory = 1;
+				mainconfig.debug_memory = true;
 				break;
 
 			case 'M':
-				memory_report = 1;
-				mainconfig.debug_memory = 1;
+				memory_report = true;
+				mainconfig.debug_memory = true;
 				break;
 
 			case 'n':
@@ -578,7 +578,7 @@ int main(int argc, char *argv[])
 			fclose(fp);
 			fp = NULL;
 		}
-		filedone = 0;
+		filedone = false;
 	}
 
 	/*

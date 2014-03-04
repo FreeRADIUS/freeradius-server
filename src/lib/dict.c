@@ -632,7 +632,7 @@ const int dict_attr_allowed_chars[256] = {
 /*
  *	Add an attribute to the dictionary.
  */
-int dict_addattr(char const *name, int attr, unsigned int vendor, int type,
+int dict_addattr(char const *name, int attr, unsigned int vendor, PW_TYPE type,
 		 ATTR_FLAGS flags)
 {
 	size_t namelen;
@@ -867,7 +867,7 @@ int dict_addattr(char const *name, int attr, unsigned int vendor, int type,
 	 */
 	if ((n = fr_pool_alloc(sizeof(*n) + namelen)) == NULL) {
 	oom:
-		fr_strerror_printf("dict_adnttr: out of memory");
+		fr_strerror_printf("dict_addattr: out of memory");
 		return -1;
 	}
 
@@ -891,7 +891,7 @@ int dict_addattr(char const *name, int attr, unsigned int vendor, int type,
 		a = fr_hash_table_finddata(attributes_byname, n);
 		if (a && (strcasecmp(a->name, n->name) == 0)) {
 			if (a->attr != n->attr) {
-				fr_strerror_printf("dict_adnttr: Duplicate attribute name %s", name);
+				fr_strerror_printf("dict_addattr: Duplicate attribute name %s", name);
 				fr_pool_free(n);
 				return -1;
 			}
@@ -908,7 +908,7 @@ int dict_addattr(char const *name, int attr, unsigned int vendor, int type,
 		fr_hash_table_delete(attributes_byvalue, a);
 
 		if (!fr_hash_table_replace(attributes_byname, n)) {
-			fr_strerror_printf("dict_adnttr: Internal error storing attribute %s", name);
+			fr_strerror_printf("dict_addattr: Internal error storing attribute %s", name);
 			fr_pool_free(n);
 			return -1;
 		}
@@ -924,7 +924,7 @@ int dict_addattr(char const *name, int attr, unsigned int vendor, int type,
 	 *	by value) we want to use the NEW name.
 	 */
 	if (!fr_hash_table_replace(attributes_byvalue, n)) {
-		fr_strerror_printf("dict_adnttr: Failed inserting attribute name %s", name);
+		fr_strerror_printf("dict_addattr: Failed inserting attribute name %s", name);
 		return -1;
 	}
 
@@ -1795,7 +1795,7 @@ static int process_vendor(char const* fn, int const line, char **argv,
 			  int argc)
 {
 	int		value;
-	int		continuation = 0;
+	bool		continuation = false;
 	char const	*format = NULL;
 
 	if ((argc < 2) || (argc > 3)) {
@@ -1880,7 +1880,7 @@ static int process_vendor(char const* fn, int const line, char **argv,
 					   fn, line, p);
 				return -1;
 			}
-			continuation = 1;
+			continuation = true;
 
 			if ((value != VENDORPEC_WIMAX) ||
 			    (type != 1) || (length != 1)) {

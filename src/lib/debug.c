@@ -224,7 +224,7 @@ fr_bt_marker_t *fr_backtrace_attach(UNUSED fr_cbuff_t **cbuff, UNUSED TALLOC_CTX
  *
  * @param sig caught
  */
-static void NEVER_RETURNS _fr_fault(int sig)
+void NEVER_RETURNS fr_fault(int sig)
 {
 	char cmd[sizeof(panic_action) + 20];
 	char *out = cmd;
@@ -324,16 +324,16 @@ int fr_fault_setup(char const *cmd, char const *program)
 	/* Unsure what the side effects of changing the signal handler mid execution might be */
 	if (!setup) {
 #ifdef SIGSEGV
-		if (fr_set_signal(SIGSEGV, _fr_fault) < 0) return -1;
+		if (fr_set_signal(SIGSEGV, fr_fault) < 0) return -1;
 #endif
 #ifdef SIGBUS
-		if (fr_set_signal(SIGBUS, _fr_fault) < 0) return -1;
+		if (fr_set_signal(SIGBUS, fr_fault) < 0) return -1;
 #endif
 #ifdef SIGABRT
-		if (fr_set_signal(SIGABRT, _fr_fault) < 0) return -1;
+		if (fr_set_signal(SIGABRT, fr_fault) < 0) return -1;
 #endif
 #ifdef SIGFPE
-		if (fr_set_signal(SIGFPE, _fr_fault) < 0) return -1;
+		if (fr_set_signal(SIGFPE, fr_fault) < 0) return -1;
 #endif
 	}
 	setup = true;

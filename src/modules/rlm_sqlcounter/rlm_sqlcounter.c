@@ -268,10 +268,11 @@ static size_t sqlcounter_expand(char *out, int outlen, char const *fmt, rlm_sqlc
 
 	q = out;
 	for (p = fmt; *p ; p++) {
-	/* Calculate freespace in output */
-	freespace = outlen - (q - out);
-		if (freespace <= 1)
+		/* Calculate freespace in output */
+		freespace = outlen - (q - out);
+		if (freespace <= 1) {
 			return -1;
+		}
 		c = *p;
 		if ((c != '%') && (c != '\\')) {
 			*q++ = *p;
@@ -321,7 +322,7 @@ static size_t sqlcounter_expand(char *out, int outlen, char const *fmt, rlm_sqlc
 	}
 	*q = '\0';
 
-	DEBUG2("sqlcounter_expand:  '%s'", out);
+	DEBUG2("sqlcounter_expand: '%s'", out);
 
 	return strlen(out);
 }
@@ -336,23 +337,24 @@ static int sqlcounter_cmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR *r
 	rlm_sqlcounter_t *inst = instance;
 	uint64_t counter;
 
-	char *p;
 	char query[MAX_QUERY_LEN];
+	char *p = query;
 	char *expanded = NULL;
+	size_t len, freespace = sizeof(query);
 
-	size_t len;
-
-	len = snprintf(query, sizeof(query), "%%{%s:%s}", inst->sqlmod_inst, inst->query);
+	/* Add xlat prefix */
+	len = snprintf(query, freespace, "%%{%s:", inst->sqlmod_inst);
 	if (len >= sizeof(query) - 1) {
 		REDEBUG("Insufficient query buffer space");
 
 		return RLM_MODULE_FAIL;
 	}
 
-	p = query + len;
+	p += len;
+	freespace -= len;
 
-	/* first, expand %k, %b and %e in query */
-	len = sqlcounter_expand(p, p - query, inst->query, inst);
+	/* Copy query, performing any sqlcounter specific substitutions */
+	len = sqlcounter_expand(p, freespace, inst->query, inst);
 	if (len <= 0) {
 		REDEBUG("Insufficient query buffer space");
 
@@ -360,17 +362,19 @@ static int sqlcounter_cmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR *r
 	}
 
 	p += len;
+	freespace -= len;
 
-	if ((p - query) < 2) {
+	if (freespace < 2) {
 		REDEBUG("Insufficient query buffer space");
 
 		return RLM_MODULE_FAIL;
 	}
 
+	/* Add xlat suffix */
 	p[0] = '}';
 	p[1] = '\0';
 
-	/* Finally, xlat resulting SQL query */
+	/* Finally, xlat query */
 	if (radius_axlat(&expanded, request, query, NULL, NULL) < 0) {
 		return RLM_MODULE_FAIL;
 	}
@@ -438,7 +442,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 * Create a new attribute for the check item.
 	 */
 	rad_assert(inst->check_name && *inst->check_name);
-	dict_addattr(inst->check_name, 0, PW_TYPE_INTEGER, -1, flags);
+	dict_addattr(inst->check_name, -1, 0, PW_TYPE_INTEGER, flags);
 	da = dict_attrbyname(inst->check_name);
 	if (!da) {
 		cf_log_err_cs(conf, "Failed to create check attribute %s", inst->check_name);
@@ -477,7 +481,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
  *	from the database. The authentication code only needs to check
  *	the password, the rest is done here.
  */
-static rlm_rcode_t mod_authorize(UNUSED void *instance, UNUSED REQUEST *request)
+static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 {
 	rlm_sqlcounter_t *inst = instance;
 	int rcode = RLM_MODULE_NOOP;
@@ -492,6 +496,9 @@ static rlm_rcode_t mod_authorize(UNUSED void *instance, UNUSED REQUEST *request)
 	char *expanded = NULL;
 
 	size_t len;
+
+	rad_assert(instance != NULL);
+	rad_assert(request != NULL);
 
 	/*
 	 *	Before doing anything else, see if we have to reset
@@ -509,7 +516,6 @@ static rlm_rcode_t mod_authorize(UNUSED void *instance, UNUSED REQUEST *request)
 	 *      Look for the key.  User-Name is special.  It means
 	 *      The REAL username, after stripping.
 	 */
-	RDEBUG2("Entering module authorize code");
 	key_vp = ((inst->key_attr->vendor == 0) && (inst->key_attr->attr == PW_USER_NAME)) ?
 			request->username :
 			pairfind(request->packet->vps, inst->key_attr->attr, inst->key_attr->vendor, TAG_ANY);
@@ -583,7 +589,6 @@ static rlm_rcode_t mod_authorize(UNUSED void *instance, UNUSED REQUEST *request)
 		pairmake_reply("Reply-Message", msg, T_OP_EQ);
 
 		REDEBUG("Maximum %s usage time reached", inst->reset);
-		rcode = RLM_MODULE_REJECT;
 
 		RDEBUG2("Rejected user %s, check_item=%" PRIu64 ", counter=%" PRIu64,
 			key_vp->vp_strvalue, check_vp->vp_integer64, counter);

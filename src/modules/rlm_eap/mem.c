@@ -132,7 +132,7 @@ typedef struct check_handler_t {
 
 static int check_opaque_free(check_handler_t *check)
 {
-	int do_warning = false;
+	bool do_warning = false;
 	uint8_t state[8];
 
 	if (!check->inst || !check->handler) {

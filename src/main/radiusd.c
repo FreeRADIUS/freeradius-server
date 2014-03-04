@@ -61,7 +61,6 @@ char const *radlib_dir = NULL;
 bool log_stripped_names;
 log_debug_t debug_flag = 0;
 bool check_config = false;
-bool memory_report = false;
 
 char const *radiusd_version = "FreeRADIUS Version " RADIUSD_VERSION_STRING
 #ifdef RADIUSD_VERSION_COMMIT
@@ -107,6 +106,8 @@ int main(int argc, char *argv[])
 	int flag = 0;
 	int from_child[2] = {-1, -1};
 
+	int devnull;
+
 	/*
 	 *	If the server was built with debugging enabled always install
 	 *	the basic fatal signal handlers.
@@ -135,7 +136,6 @@ int main(int argc, char *argv[])
 #endif
 
 	debug_flag = 0;
-	spawn_flag = true;
 	radius_dir = talloc_strdup(NULL, RADIUS_DIR);
 
 	/*
@@ -211,12 +211,12 @@ int main(int argc, char *argv[])
 				break;
 
 			case 'm':
-				mainconfig.debug_memory = 1;
+				mainconfig.debug_memory = true;
 				break;
 
 			case 'M':
-				memory_report = 1;
-				mainconfig.debug_memory = 1;
+				mainconfig.memory_report = true;
+				mainconfig.debug_memory = true;
 				break;
 
 			case 'p':
@@ -275,7 +275,7 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	if (memory_report) {
+	if (mainconfig.memory_report) {
 		talloc_enable_null_tracking();
 #ifdef WITH_VERIFY_PTR
 		talloc_set_abort_fn(die_horribly);
@@ -335,11 +335,26 @@ int main(int argc, char *argv[])
 	}
 
 #ifndef __MINGW32__
+
+	devnull = open("/dev/null", O_RDWR);
+	if (devnull < 0) {
+		ERROR("Failed opening /dev/null: %s", fr_syserror(errno));
+		exit(EXIT_FAILURE);
+	}
+
 	/*
 	 *  Disconnect from session
 	 */
 	if (dont_fork == false) {
 		pid_t pid;
+
+		/*
+		 *  Really weird things happen if we leave stdin open and call things like
+		 *  system() later.
+		 */
+		if (dont_fork == false) {
+			dup2(devnull, STDIN_FILENO);
+		}
 
 		if (pipe(from_child) != 0) {
 			ERROR("Couldn't open pipe for child status: %s", fr_syserror(errno));
@@ -390,53 +405,39 @@ int main(int argc, char *argv[])
 
 		/* so the pipe is correctly widowed if the parent exits?! */
 		close(from_child[0]);
-#ifdef HAVE_SETSID
+#  ifdef HAVE_SETSID
 		setsid();
-#endif
+#  endif
 	}
 #endif
+
+	if (default_log.dest == L_DST_STDOUT) {
+		setlinebuf(stdout);
+		default_log.fd = STDOUT_FILENO;
+	} else if (debug_flag) {
+		dup2(devnull, STDOUT_FILENO);
+	}
+
+	if (default_log.dest == L_DST_STDERR) {
+		setlinebuf(stdout);
+		default_log.fd = STDERR_FILENO;
+	} else {
+		dup2(devnull, STDERR_FILENO);
+	}
+
+	/* Libraries may write messages to stderr or stdout */
+	if (debug_flag) {
+		dup2(default_log.fd, STDOUT_FILENO);
+		dup2(default_log.fd, STDERR_FILENO);
+	}
+
+	close(devnull);
 
 	/*
 	 *  Ensure that we're using the CORRECT pid after forking,
 	 *  NOT the one we started with.
 	 */
 	radius_pid = getpid();
-
-	/*
-	 *	If we're running as a daemon, close the default file
-	 *	descriptors, AFTER forking.
-	 */
-	if (!debug_flag) {
-		int devnull;
-
-		devnull = open("/dev/null", O_RDWR);
-		if (devnull < 0) {
-			ERROR("Failed opening /dev/null: %s\n",
-			       fr_syserror(errno));
-			exit(EXIT_FAILURE);
-		}
-		dup2(devnull, STDIN_FILENO);
-		if (default_log.dest == L_DST_STDOUT) {
-			setlinebuf(stdout);
-			default_log.fd = STDOUT_FILENO;
-		} else {
-			dup2(devnull, STDOUT_FILENO);
-		}
-		if (default_log.dest == L_DST_STDERR) {
-			setlinebuf(stderr);
-			default_log.fd = STDERR_FILENO;
-		} else {
-			dup2(devnull, STDERR_FILENO);
-		}
-		close(devnull);
-
-	} else {
-		setlinebuf(stdout); /* unbuffered output */
-	}
-
-	/*
-	 *	Now we have logging check that the OpenSSL
-	 */
 
 	/*
 	 *	Initialize the event pool, including threads.
@@ -463,7 +464,7 @@ int main(int argc, char *argv[])
 	 *	server to die immediately.  Use SIGTERM to shut down
 	 *	the server cleanly in that case.
 	 */
-	if ((mainconfig.debug_memory == 1) || (debug_flag == 0)) {
+	if (mainconfig.debug_memory || (debug_flag == 0)) {
 		if ((fr_set_signal(SIGINT, sig_fatal) < 0)
 #ifdef SIGQUIT
 		|| (fr_set_signal(SIGQUIT, sig_fatal) < 0)
@@ -602,7 +603,7 @@ cleanup:
 	WSACleanup();
 #endif
 
-	if (memory_report) {
+	if (mainconfig.memory_report) {
 		INFO("Allocated memory at time of report:");
 		log_talloc_report(NULL);
 	}
@@ -656,7 +657,7 @@ static void sig_fatal(int sig)
 #ifdef SIGQUIT
 	case SIGQUIT:
 #endif
-		if (mainconfig.debug_memory || memory_report) {
+		if (mainconfig.debug_memory || mainconfig.memory_report) {
 			radius_signal_self(RADIUS_SIGNAL_SELF_TERM);
 			break;
 		}

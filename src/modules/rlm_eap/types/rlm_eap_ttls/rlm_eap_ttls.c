@@ -193,7 +193,7 @@ static int eapttls_initiate(void *type_arg, eap_handler_t *handler)
 	tls_session_t	*ssn;
 	rlm_eap_ttls_t	*inst;
 	VALUE_PAIR	*vp;
-	int		client_cert = false;
+	bool		client_cert = false;
 	REQUEST		*request = handler->request;
 
 	inst = type_arg;

@@ -28,6 +28,7 @@ RCSID("$Id$")
 #include <freeradius-devel/rad_assert.h>
 #include <freeradius-devel/process.h>
 #include <freeradius-devel/protocol.h>
+#include <freeradius-devel/modpriv.h>
 
 #include <freeradius-devel/detail.h>
 
@@ -422,6 +423,10 @@ static int dual_tcp_recv(rad_listen_t *listener)
 	listen_socket_t *sock = listener->data;
 	RADCLIENT	*client = sock->client;
 
+	rad_assert(client != NULL);
+
+	if (listener->status != RAD_LISTEN_STATUS_KNOWN) return 0;
+
 	/*
 	 *	Allocate a packet for partial reads.
 	 */
@@ -461,7 +466,7 @@ static int dual_tcp_recv(rad_listen_t *listener)
 	}
 
 	if (rcode < 0) {	/* error or connection reset */
-		listener->status = RAD_LISTEN_STATUS_REMOVE_NOW;
+		listener->status = RAD_LISTEN_STATUS_EOL;
 
 		/*
 		 *	Tell the event handler that an FD has disappeared.
@@ -716,6 +721,9 @@ static void common_socket_free(rad_listen_t *this)
 	if (sock->client->limit.num_connections > 0) {
 		sock->client->limit.num_connections--;
 	}
+	if (sock->home->limit.num_connections > 0) {
+		sock->home->limit.num_connections--;
+	}
 }
 #else
 static void common_socket_free(UNUSED rad_listen_t *this)
@@ -911,7 +919,7 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	memset(&ipaddr, 0, sizeof(ipaddr));
 	ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_NONE);
 	rcode = cf_item_parse(cs, "ipaddr", PW_TYPE_IPADDR,
-			      &ipaddr.ipaddr.ip4addr, NULL);
+			      &ipaddr.ipaddr.ip4addr.s_addr, NULL);
 	if (rcode < 0) return -1;
 
 	if (rcode == 0) { /* successfully parsed IPv4 */
@@ -984,20 +992,20 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 #ifdef WITH_TLS
 		tls = cf_section_sub_find(cs, "tls");
 
-		/*
-		 *	Don't allow TLS configurations for UDP sockets.
-		 */
-		if (sock->proto != IPPROTO_TCP) {
-			cf_log_err_cs(cs,
-				   "TLS transport is not available for UDP sockets");
-			return -1;
-		}
-
 		if (tls) {
 			/*
-			 *	FIXME: Make this better.
+			 *	Don't allow TLS configurations for UDP sockets.
 			 */
-			if (listen_port == 0) listen_port = 2083;
+			if (sock->proto != IPPROTO_TCP) {
+				cf_log_err_cs(cs,
+					      "TLS transport is not available for UDP sockets.");
+				return -1;
+			}
+
+			/*
+			 *	If unset, set to default.
+			 */
+			if (listen_port == 0) listen_port = PW_RADIUS_TLS_PORT;
 
 			this->tls = tls_server_conf_parse(tls);
 			if (!this->tls) {
@@ -1923,9 +1931,11 @@ static int proxy_socket_tcp_recv(rad_listen_t *listener)
 	listen_socket_t	*sock = listener->data;
 	char		buffer[128];
 
+	if (listener->status != RAD_LISTEN_STATUS_KNOWN) return 0;
+
 	packet = fr_tcp_recv(listener->fd, 0);
 	if (!packet) {
-		listener->status = RAD_LISTEN_STATUS_REMOVE_NOW;
+		listener->status = RAD_LISTEN_STATUS_EOL;
 		event_new_fd(listener);
 		return 0;
 	}
@@ -2536,19 +2546,24 @@ static int _listener_free(rad_listen_t *this)
 		) {
 		listen_socket_t *sock = this->data;
 
-#ifdef WITH_TLS
-		if (sock->request) {
-#  ifdef HAVE_PTHREAD_H
-			pthread_mutex_destroy(&(sock->mutex));
-#  endif
-			request_free(&sock->request);
-			sock->packet = NULL;
+		rad_free(&sock->packet);
 
+		rad_assert(sock->ev == NULL);
+
+#ifdef WITH_TLS
+		/*
+		 *	Note that we do NOT free this->tls, as the
+		 *	pointer is parented by its CONF_SECTION.  It
+		 *	may be used by multiple listeners.
+		 */
+		if (this->tls) {
 			if (sock->ssn) session_free(sock->ssn);
 			request_free(&sock->request);
-		} else
+#ifdef HAVE_PTHREAD_H
+			pthread_mutex_destroy(&(sock->mutex));
 #endif
-			rad_free(&sock->packet);
+		}
+#endif	/* WITH_TLS */
 	}
 #endif				/* WITH_TCP */
 
@@ -2587,6 +2602,7 @@ static rad_listen_t *listen_alloc(TALLOC_CTX *ctx, RAD_LISTEN_TYPE type)
  */
 rad_listen_t *proxy_new_listener(home_server_t *home, int src_port)
 {
+	time_t now;
 	rad_listen_t *this;
 	listen_socket_t *sock;
 	char buffer[256];
@@ -2596,7 +2612,13 @@ rad_listen_t *proxy_new_listener(home_server_t *home, int src_port)
 	if ((home->limit.max_connections > 0) &&
 	    (home->limit.num_connections >= home->limit.max_connections)) {
 		WDEBUG("Home server has too many open connections (%d)",
-		      home->limit.max_connections);
+		       home->limit.max_connections);
+		return NULL;
+	}
+
+	now = time(NULL);
+	if (home->last_failed_open == now) {
+		WDEBUG("Suppressing attempt to open socket to 'down' home server");
 		return NULL;
 	}
 
@@ -2611,13 +2633,17 @@ rad_listen_t *proxy_new_listener(home_server_t *home, int src_port)
 	sock->my_port = src_port;
 	sock->proto = home->proto;
 
+	/*
+	 *	For error messages.
+	 */
+	this->print(this, buffer, sizeof(buffer));
+
 	if (debug_flag >= 2) {
-		this->print(this, buffer, sizeof(buffer));
-		DEBUG("Opening new %s", buffer);
+		DEBUG("Opening new proxy socket '%s'", buffer);
 	}
 
 #ifdef WITH_TCP
-	sock->opened = sock->last_packet = time(NULL);
+	sock->opened = sock->last_packet = now;
 
 	if (home->proto == IPPROTO_TCP) {
 		this->recv = proxy_socket_tcp_recv;
@@ -2631,19 +2657,6 @@ rad_listen_t *proxy_new_listener(home_server_t *home, int src_port)
 		 */
 		this->fd = fr_tcp_client_socket(&home->src_ipaddr,
 						&home->ipaddr, home->port);
-#ifdef WITH_TLS
-		if (home->tls) {
-			DEBUG("Trying SSL to port %d\n", home->port);
-			sock->ssn = tls_new_client_session(home->tls, this->fd);
-			if (!sock->ssn) {
-				listen_free(&this);
-				return NULL;
-			}
-
-			this->recv = proxy_tls_recv;
-			this->send = proxy_tls_send;
-		}
-#endif
 	} else
 #endif
 
@@ -2651,12 +2664,31 @@ rad_listen_t *proxy_new_listener(home_server_t *home, int src_port)
 
 	if (this->fd < 0) {
 		this->print(this, buffer,sizeof(buffer));
-		DEBUG("Failed opening client socket ::%s:: : %s",
+		ERROR("Failed opening proxy socket '%s' : %s",
 		      buffer, fr_strerror());
+		home->last_failed_open = now;
 		listen_free(&this);
 		return NULL;
 	}
 
+
+#ifdef WITH_TCP
+#ifdef WITH_TLS
+	if ((home->proto == IPPROTO_TCP) && home->tls) {
+		DEBUG("Trying SSL to port %d\n", home->port);
+		sock->ssn = tls_new_client_session(home->tls, this->fd);
+		if (!sock->ssn) {
+			ERROR("Failed starting SSL to '%s'", buffer);
+			home->last_failed_open = now;
+			listen_free(&this);
+			return NULL;
+		}
+
+		this->recv = proxy_tls_recv;
+		this->send = proxy_tls_send;
+	}
+#endif
+#endif
 	/*
 	 *	Figure out which port we were bound to.
 	 */
@@ -2667,18 +2699,23 @@ rad_listen_t *proxy_new_listener(home_server_t *home, int src_port)
 		memset(&src, 0, sizeof_src);
 		if (getsockname(this->fd, (struct sockaddr *) &src,
 				&sizeof_src) < 0) {
-			ERROR("Failed getting socket name: %s", fr_syserror(errno));
+			ERROR("Failed getting socket name for '%s': %s",
+			      buffer, fr_syserror(errno));
+			home->last_failed_open = now;
 			listen_free(&this);
 			return NULL;
 		}
 
 		if (!fr_sockaddr2ipaddr(&src, sizeof_src,
 					&sock->my_ipaddr, &sock->my_port)) {
-			ERROR("Socket has unsupported address family");
+			ERROR("Socket has unsupported address family for '%s'", buffer);
+			home->last_failed_open = now;
 			listen_free(&this);
 			return NULL;
 		}
 	}
+
+	home->limit.num_connections++;
 
 	return this;
 }
@@ -2914,21 +2951,21 @@ static void *recv_thread(void *arg)
  */
 int listen_init(CONF_SECTION *config, rad_listen_t **head,
 #ifdef WITH_TLS
-	        int spawn_flag
+	        bool spawn_flag
 #else
-		UNUSED int spawn_flag
+		UNUSED bool spawn_flag
 #endif
 	        )
 
 {
-	int		override = false;
+	bool		override = false;
 	CONF_SECTION	*cs = NULL;
 	rad_listen_t	**last;
 	rad_listen_t	*this;
 	fr_ipaddr_t	server_ipaddr;
 	int		auth_port = 0;
 #ifdef WITH_PROXY
-	int		defined_proxy = 0;
+	bool		defined_proxy = false;
 #endif
 
 	/*
@@ -3149,7 +3186,7 @@ add_sockets:
 	for (this = *head; this != NULL; this = this->next) {
 #ifdef WITH_PROXY
 		if (this->type == RAD_LISTEN_PROXY) {
-			defined_proxy = 1;
+			defined_proxy = true;
 		}
 
 #endif
@@ -3157,7 +3194,8 @@ add_sockets:
 #ifdef WITH_TLS
 		if (!check_config && !spawn_flag && this->tls) {
 			cf_log_err_cs(this->cs, "Threading must be enabled for TLS sockets to function properly");
-			cf_log_err_cs(this->cs, "You probably need to do 'radiusd -fxx -l stdout' for debugging");
+			cf_log_err_cs(this->cs, "You probably need to do '%s -fxx -l stdout' for debugging",
+				      progname);
 			return -1;
 		}
 #endif
@@ -3192,8 +3230,9 @@ add_sockets:
 					DEBUG("Thread %d for %s\n", i, buffer);
 				}
 #endif
-			} else
+			} else {
 				event_new_fd(this);
+			}
 
 		}
 	}

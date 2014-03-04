@@ -754,6 +754,18 @@ static void process_file(const char *root_dir, char const *filename)
 			continue;
 		}
 
+		if (strncmp(p, "attribute ", 10) == 0) {
+			p += 10;
+
+			if (userparse(NULL, p, &head) != T_EOL) {
+				strlcpy(output, fr_strerror(), sizeof(output));
+				continue;
+			}
+
+			vp_prints(output, sizeof(output), head);
+			continue;
+		}
+
 		if (strncmp(p, "$INCLUDE ", 9) == 0) {
 			char *q;
 
@@ -794,7 +806,7 @@ static void process_file(const char *root_dir, char const *filename)
 int main(int argc, char *argv[])
 {
 	int c;
-	int report = false;
+	bool report = false;
 	char const *radius_dir = RADDBDIR;
 	char const *dict_dir = DICTDIR;
 

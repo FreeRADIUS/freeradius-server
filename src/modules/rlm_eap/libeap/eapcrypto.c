@@ -104,8 +104,6 @@ void eapsim_dump_mk(struct eapsim_keys *ek)
 {
 	unsigned int i, j, k;
 
-	j=0; k=0;
-
 	printf("Input was: \n");
 	printf("   identity: (len=%d)", ek->identitylen);
 	for (i = 0; i < ek->identitylen; i++) {
@@ -150,7 +148,7 @@ void eapsim_dump_mk(struct eapsim_keys *ek)
 	printf("\n\nOutput\n");
 
 	printf("mk:	 ");
-	j=0; k=0;
+	j=0;
 	for (i = 0; i < sizeof(ek->master_key); i++) {
 		if(j==4) {
 			printf("_");
@@ -162,7 +160,7 @@ void eapsim_dump_mk(struct eapsim_keys *ek)
 	}
 
 	printf("\nK_aut:      ");
-	j=0; k=0;
+	j=0;
 	for (i = 0; i < sizeof(ek->K_aut); i++) {
 		if(j==4) {
 			printf("_");
@@ -174,7 +172,7 @@ void eapsim_dump_mk(struct eapsim_keys *ek)
 	}
 
 	printf("\nK_encr:     ");
-	j=0; k=0;
+	j=0;
 	for (i = 0; i < sizeof(ek->K_encr); i++) {
 		if(j==4) {
 			printf("_");
