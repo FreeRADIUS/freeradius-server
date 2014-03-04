@@ -970,7 +970,7 @@ static int rest_decode_post(UNUSED rlm_rest_t *instance,
 		}
 
 		ret = pairparsevalue(vp, expanded);
-		talloc_free(expanded);
+		TALLOC_FREE(expanded);
 		if (!ret) {
 			RWDEBUG("Incompatible value assignment, skipping");
 			talloc_free(vp);
