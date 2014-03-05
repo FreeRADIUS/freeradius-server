@@ -7711,6 +7711,7 @@ for ac_header in \
   grp.h \
   stddef.h \
   fnmatch.h \
+  endian.h \
   sia.h \
   siad.h \
   features.h
