@@ -99,14 +99,22 @@ static rlm_rcode_t mod_authenticate(UNUSED void *instance,
 		return RLM_MODULE_INVALID;
 	}
 
+	rad_chap_encode(request->packet,pass_str,
+			chap->vp_octets[0],passwd_item);
+
 	if (RDEBUG_ENABLED3) {
+		char buffer[CHAP_VALUE_LENGTH * 2 + 1];
+
 		RDEBUG3("Comparing with \"known good\" Cleartext-Password \"%s\"", passwd_item->vp_strvalue);
+
+		fr_bin2hex(buffer, chap->vp_octets + 1, CHAP_VALUE_LENGTH);
+		RDEBUG3("    client sent    %s", buffer);
+
+		fr_bin2hex(buffer, pass_str + 1, CHAP_VALUE_LENGTH);
+		RDEBUG3("    we calculated  %s", buffer);
 	} else {
 		RDEBUG2("Comparing with \"known good\" Cleartext-Password");
 	}
-
-	rad_chap_encode(request->packet,pass_str,
-			chap->vp_octets[0],passwd_item);
 
 	if (rad_digest_cmp(pass_str + 1, chap->vp_octets + 1,
 			   CHAP_VALUE_LENGTH) != 0) {
