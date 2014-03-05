@@ -231,7 +231,10 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 							   vp->length,
 							   digest,
 							   sizeof(digest));
-				if (decoded > 0) {
+				if ((decoded > 0) &&
+				    (memchr(digest, '}', decoded) != NULL)) {
+					RDEBUG3("Decoded %s to %d bytes",
+						vp->vp_strvalue, (int) decoded);
 					pairmemcpy(vp, digest, decoded);
 					goto redo;
 				}
