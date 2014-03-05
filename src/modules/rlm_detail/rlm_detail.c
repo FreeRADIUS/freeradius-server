@@ -186,7 +186,7 @@ static void detail_vp_print(TALLOC_CTX *ctx, FILE *out, VALUE_PAIR const *stacke
 	vp = talloc(ctx, VALUE_PAIR);
 	if (!vp) return;
 
-	memcpy(vp, stacked, sizeof(vp));
+	memcpy(vp, stacked, sizeof(*vp));
 	vp_print(out, vp);
 	talloc_free(vp);
 }
