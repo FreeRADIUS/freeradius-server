@@ -817,7 +817,6 @@ AC_CHECK_HEADERS( \
   grp.h \
   stddef.h \
   fnmatch.h \
-  endian.h \
   sia.h \
   siad.h
 )
