@@ -4870,10 +4870,13 @@ fi
 $as_echo "$ac_cv_c_bigendian" >&6; }
  case $ac_cv_c_bigendian in #(
    yes)
-     $as_echo "#define WORDS_BIGENDIAN 1" >>confdefs.h
+
+$as_echo "#define BIGENDIAN 1" >>confdefs.h
 ;; #(
    no)
-      ;; #(
+
+$as_echo "#define LITTLEENDIAN 1" >>confdefs.h
+ ;; #(
    universal)
 
 $as_echo "#define AC_APPLE_UNIVERSAL_BUILD 1" >>confdefs.h

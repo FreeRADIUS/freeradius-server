@@ -213,7 +213,10 @@ dnl #
 dnl #  check for system bytesex
 dnl #  AC_DEFINES WORDS_BIGENDIAN
 dnl #
-AC_C_BIGENDIAN
+AC_C_BIGENDIAN(
+  [AC_DEFINE(BIGENDIAN, 1, [Define if your processor stores words with the most significant byte first])],
+  [AC_DEFINE(LITTLEENDIAN, 1, [Define if your processor stores words with the least significant byte first])]
+)
 
 dnl #
 dnl #  Find GNU Make.
