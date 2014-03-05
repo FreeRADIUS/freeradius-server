@@ -99,19 +99,34 @@ static rlm_rcode_t mod_authenticate(UNUSED void *instance,
 		return RLM_MODULE_INVALID;
 	}
 
-	rad_chap_encode(request->packet,pass_str,
-			chap->vp_octets[0],passwd_item);
+	rad_chap_encode(request->packet, pass_str,
+			chap->vp_octets[0], passwd_item);
 
 	if (RDEBUG_ENABLED3) {
+		uint8_t const *p;
+		size_t length;
+		VALUE_PAIR *vp;
 		char buffer[CHAP_VALUE_LENGTH * 2 + 1];
 
 		RDEBUG3("Comparing with \"known good\" Cleartext-Password \"%s\"", passwd_item->vp_strvalue);
 
+		vp = pairfind(request->packet->vps, PW_CHAP_CHALLENGE, 0, TAG_ANY);
+		if (vp) {
+			p = vp->vp_octets;
+			length = vp->length;
+		} else {
+			p = request->packet->vector;
+			length = sizeof(request->packet->vector);
+		}
+
+		fr_bin2hex(buffer, p, length);
+		RDEBUG3("    chap challenge  %s", buffer);
+
 		fr_bin2hex(buffer, chap->vp_octets + 1, CHAP_VALUE_LENGTH);
-		RDEBUG3("    client sent    %s", buffer);
+		RDEBUG3("    client sent     %s", buffer);
 
 		fr_bin2hex(buffer, pass_str + 1, CHAP_VALUE_LENGTH);
-		RDEBUG3("    we calculated  %s", buffer);
+		RDEBUG3("    we calculated   %s", buffer);
 	} else {
 		RDEBUG2("Comparing with \"known good\" Cleartext-Password");
 	}
