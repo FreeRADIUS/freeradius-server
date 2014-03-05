@@ -73,6 +73,9 @@ extern "C" {
  *	Here at least the endianess can be set explicitly with
  *	-DLITTLE_ENDIAN or -DBIG_ENDIAN.
  */
+#ifdef HAVE_ENDIAN_H
+#include <endian.h>
+#endif
 #if !defined(LITTLE_ENDIAN) && !defined(BIG_ENDIAN)
 #  if defined(__LITTLE_ENDIAN__) || \
       (defined(__BYTE_ORDER__) && (__BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__))
