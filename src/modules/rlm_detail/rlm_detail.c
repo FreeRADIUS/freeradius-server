@@ -176,6 +176,22 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	return 0;
 }
 
+/*
+ *	Wrapper for VPs allocated on the stack.
+ */
+static void detail_vp_print(TALLOC_CTX *ctx, FILE *out, VALUE_PAIR const *stacked)
+{
+	VALUE_PAIR *vp;
+
+	vp = talloc(ctx, VALUE_PAIR);
+	if (!vp) return;
+
+	memcpy(vp, stacked, sizeof(vp));
+	vp_print(out, vp);
+	talloc_free(vp);
+}
+
+
 /** Write a single detail entry to file pointer
  *
  * @param[in] out Where to write entry.
@@ -246,16 +262,16 @@ static int detail_write(FILE *out, detail_instance_t *inst, REQUEST *request, RA
 			break;
 		}
 
-		vp_print(out, &src_vp);
-		vp_print(out, &dst_vp);
+		detail_vp_print(request, out, &src_vp);
+		detail_vp_print(request, out, &dst_vp);
 
 		src_vp.da = dict_attrbyvalue(PW_PACKET_SRC_PORT, 0);
 		src_vp.vp_integer = packet->src_port;
 		dst_vp.da = dict_attrbyvalue(PW_PACKET_DST_PORT, 0);
 		dst_vp.vp_integer = packet->dst_port;
 
-		vp_print(out, &src_vp);
-		vp_print(out, &dst_vp);
+		detail_vp_print(request, out, &src_vp);
+		detail_vp_print(request, out, &dst_vp);
 	}
 
 	{
