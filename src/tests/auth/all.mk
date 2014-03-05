@@ -84,7 +84,7 @@ AUTH_LIBS	:= $(addsuffix .la,$(addprefix rlm_,$(AUTH_MODULES)))
 #
 $(BUILD_DIR)/tests/auth/%: $(DIR)/% $(BUILD_DIR)/tests/auth/%.attrs $(TESTBINDIR)/unittest | $(BUILD_DIR)/tests/auth $(AUTH_RADDB) $(AUTH_LIBS) build.raddb
 	@echo UNIT-TEST $(notdir $@)
-	@if ! TESTDIR=$(notdir $@) $(TESTBIN)/unittest -D share -d src/tests/auth/ -i $@.attrs -f $@.attrs -xx > $@.log 2>&1; then \
+	@if ! TESTDIR=$(notdir $@) $(TESTBIN)/unittest -D share -d src/tests/auth/ -i $@.attrs -f $@.attrs -xxx > $@.log 2>&1; then \
 		if ! grep ERROR $< 2>&1 > /dev/null; then \
 			cat $@.log; \
 			echo "# $@.log"; \
