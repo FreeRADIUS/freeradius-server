@@ -5,7 +5,7 @@
 
 /* Define if your processor stores words with the most significant byte first
    */
-#undef BIGENDIAN
+#undef BIG_ENDIAN
 
 /* BSD-Style get*byaddr_r */
 #undef BSDSTYLE
@@ -403,7 +403,7 @@
 
 /* Define if your processor stores words with the least significant byte first
    */
-#undef LITTLEENDIAN
+#undef LITTLE_ENDIAN
 
 /* define if you have OSFC2 authentication */
 #undef OSFC2
