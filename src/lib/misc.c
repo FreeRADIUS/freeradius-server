@@ -537,6 +537,8 @@ int ip_ptonx(char const *src, fr_ipaddr_t *dst)
 	}
 #endif
 
+	dst->scope = 0;
+
 	return 0;
 }
 
