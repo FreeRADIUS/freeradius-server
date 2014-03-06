@@ -49,9 +49,10 @@ CC		= @CC@
 RANLIB		= @RANLIB@
 
 INCLUDE		= -I${top_srcdir} -I${top_srcdir}/src \
-		  -include ${top_srcdir}/src/freeradius-devel/build.h \
 		  -include ${top_srcdir}/src/freeradius-devel/autoconf.h \
+		  -include ${top_srcdir}/src/freeradius-devel/build.h \
 		  -include ${top_srcdir}/src/freeradius-devel/features.h
+
 CFLAGS		= $(IMACROS) $(INCLUDE) -std=c99 -fno-strict-aliasing @CFLAGS@
 CPPFLAGS	= @CPPFLAGS@
 LIBPREFIX	= @LIBPREFIX@
