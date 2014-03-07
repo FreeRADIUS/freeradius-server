@@ -2,6 +2,7 @@ FreeRADIUS 3.0.2 Mon 13 Jan 2014 14:30:00 EDT urgency=medium
 	Feature improvements
 	* secret keys and LDAP / SQL passwords are now printed as
 	  '<<< secret >>>' in debugging mode.  Use -Xx to see them.
+	* Print out more information about passwords in -Xx
 	* Allow cast (and implicit conversion) of integers to IPv4 addresses
 	* More xlats allow attribute references.  This means they can
 	  operate on binary data.  e.g. expr, base64, md5, sha1.
@@ -85,6 +86,7 @@ FreeRADIUS 3.0.2 Mon 13 Jan 2014 14:30:00 EDT urgency=medium
 	* Fix issues with DHCP Sub-TLVs where the value of the first
 	  Sub-TLV would appear corrupted, and subsequent TLVs would
 	  not appear in debug output.
+	* Initialize scope in IP address parsing
 
 FreeRADIUS 3.0.1 Mon 13 Jan 2014 14:30:00 EDT urgency=medium
 	Feature improvements
