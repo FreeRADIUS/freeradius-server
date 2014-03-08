@@ -167,6 +167,10 @@ static ssize_t sql_xlat(void *instance, REQUEST *request, char const *query, cha
 		char buffer[21]; /* 64bit max is 20 decimal chars + null byte */
 
 		if (rlm_sql_query(&handle, inst, query)) {
+			char const *error = (inst->module->sql_error)(handle, inst->config);
+			REDEBUG("SQL query failed: %s", error);
+
+			ret = -1;
 			goto finish;
 		}
 
@@ -206,6 +210,8 @@ static ssize_t sql_xlat(void *instance, REQUEST *request, char const *query, cha
 	} /* else it's a SELECT statement */
 
 	if (rlm_sql_select_query(&handle, inst, query)){
+		char const *error = (inst->module->sql_error)(handle, inst->config);
+		REDEBUG("SQL query failed: %s", error);
 		ret = -1;
 
 		goto finish;
@@ -213,7 +219,7 @@ static ssize_t sql_xlat(void *instance, REQUEST *request, char const *query, cha
 
 	ret = rlm_sql_fetch_row(&handle, inst);
 	if (ret) {
-		RDEBUG("SQL query failed");
+		REDEBUG("SQL query failed");
 		(inst->module->sql_finish_select_query)(handle, inst->config);
 		ret = -1;
 
@@ -230,7 +236,7 @@ static ssize_t sql_xlat(void *instance, REQUEST *request, char const *query, cha
 	}
 
 	if (!row[0]){
-		RDEBUG("Null value in first column");
+		RDEBUG("NULL value in first column of result");
 		(inst->module->sql_finish_select_query)(handle, inst->config);
 		ret = -1;
 
@@ -248,8 +254,6 @@ static ssize_t sql_xlat(void *instance, REQUEST *request, char const *query, cha
 
 	strlcpy(out, row[0], freespace);
 	ret = len;
-
-	RDEBUG("sql_xlat finished");
 
 	(inst->module->sql_finish_select_query)(handle, inst->config);
 
