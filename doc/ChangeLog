@@ -2,6 +2,8 @@ FreeRADIUS 2.2.4 Wednesday 16 Dec 2013 15:00:00 EST, urgency=medium
 	Feature improvements
 	* A "panic_action" can be set to have the server dump a gdb
 	  log on SEGV or other fatal error.
+	* allow radmin command "set module status <module> <code>"
+	  which can be used to forcibly enable/disable modules.
 
 	Bug fixes
 	* If the server fails to bind() after fork(), that is now
