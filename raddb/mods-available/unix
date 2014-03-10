@@ -12,7 +12,7 @@
 #  configuration in radiusd.conf.  Look for "shadow", and follow the
 #  instructions there.
 #
-# unix {
+unix {
 	#
 	#  The location of the "wtmp" file.
 	#  The only use for 'radlast'.  If you don't use
