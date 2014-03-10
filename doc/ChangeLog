@@ -69,8 +69,8 @@ FreeRADIUS 3.0.2 Mon 13 Jan 2014 14:30:00 EDT urgency=medium
 	* Fix issues in decoding POST responses in rlm_rest.
 	* Fix potential memory corruption when normalising salted password
 	  hashes from hex, where the combined hash and salt was > 64 bytes.
-	* Register rlm_sqlcounter attributes correctly.
-	* treat 127.0.0.1/32 as 127.0.0.1
+	* Register rlm_sqlcounter attributes correctly, and fix other issues
+	* treat 127.0.0.1/32 as being identical to 127.0.0.1
 	* Don't mangle error output of SQL drivers like PostgreSQL
 	* Fix usage of "tls = ${tls}".  It could previously cause problems
 	  when used multiple times.
