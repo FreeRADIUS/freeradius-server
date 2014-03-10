@@ -150,7 +150,10 @@ static void release_hash_table(struct hashtable * ht){
 static void release_ht(struct hashtable * ht){
 	if (!ht) return;
 	release_hash_table(ht);
-	if (ht->filename) free(ht->filename);
+	if (ht->filename) {
+		free(ht->filename);
+		ht->filename = NULL;
+	}
 	free(ht);
 }
 
@@ -473,11 +476,13 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	if (! (inst->pwdfmt = mypasswd_malloc(inst->format, nfields, &len)) ){
 		ERROR("rlm_passwd: memory allocation failed");
 		release_ht(inst->ht);
+		inst->ht = NULL;
 		return -1;
 	}
 	if (!string_to_entry(inst->format, nfields, ':', inst->pwdfmt , len)) {
 		ERROR("rlm_passwd: unable to convert format entry");
 		release_ht(inst->ht);
+		inst->ht = NULL;
 		return -1;
 	}
 
@@ -493,11 +498,13 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	if (!*inst->pwdfmt->field[keyfield]) {
 		cf_log_err_cs(conf, "key field is empty");
 		release_ht(inst->ht);
+		inst->ht = NULL;
 		return -1;
 	}
 	if (! (da = dict_attrbyname (inst->pwdfmt->field[keyfield])) ) {
 		ERROR("rlm_passwd: unable to resolve attribute: %s", inst->pwdfmt->field[keyfield]);
 		release_ht(inst->ht);
+		inst->ht = NULL;
 		return -1;
 	}
 	inst->keyattr = da;
@@ -512,7 +519,10 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 static int mod_detach (void *instance) {
 #define inst ((struct passwd_instance *)instance)
-	if(inst->ht) release_ht(inst->ht);
+	if(inst->ht) {
+		release_ht(inst->ht);
+		inst->ht = NULL;
+	}
 	free(inst->pwdfmt);
 	return 0;
 #undef inst
