@@ -232,6 +232,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 							   digest,
 							   sizeof(digest));
 				if ((decoded > 0) &&
+				    (digest[0] == '{') &&
 				    (memchr(digest, '}', decoded) != NULL)) {
 					RDEBUG3("Decoded %s to %d bytes",
 						vp->vp_strvalue, (int) decoded);
