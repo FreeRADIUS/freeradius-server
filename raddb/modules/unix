@@ -4,13 +4,15 @@
 
 # Unix /etc/passwd style authentication
 #
-unix {
-	#  As of 1.1.0, the Unix module no longer reads,
-	#  or caches /etc/passwd, /etc/shadow, or /etc/group.
-	#  If you wish to cache those files, see the passwd
-	#  module.
-	#
-
+#  This module calls the system functions to get the "known good"
+#  password.  This password is usually in the "crypt" form, and is
+#  incompatible with CHAP, MS-CHAP, PEAP, etc.
+#
+#  If passwords are in /etc/shadow, you will need to set the "group"
+#  configuration in radiusd.conf.  Look for "shadow", and follow the
+#  instructions there.
+#
+# unix {
 	#
 	#  The location of the "wtmp" file.
 	#  The only use for 'radlast'.  If you don't use
