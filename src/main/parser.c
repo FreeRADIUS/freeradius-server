@@ -634,8 +634,19 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 			c->data.map = radius_str2map(c, lhs, lhs_type, op, rhs, rhs_type,
 						     REQUEST_CURRENT, PAIR_LIST_REQUEST,
 						     REQUEST_CURRENT, PAIR_LIST_REQUEST);
-
 			if (!c->data.map) {
+				if (*lhs == '&') {
+					/*
+					 *	FIXME: In the future,
+					 *	have str2map above
+					 *	know whether this is
+					 *	pass1 or pass2.  If
+					 *	it's pass2, then an
+					 *	unknown attribute is a
+					 *	soft fail.
+					 */
+					return_0("Unknown attribute");
+				}
 				return_0("Syntax error");
 			}
 
