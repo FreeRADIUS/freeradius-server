@@ -387,6 +387,7 @@ rm -rf $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/mods-config/sql/main/mssql
 %endif
 %if %{?_with_rlm_sql_oracle:0}%{!?_with_rlm_sql_oracle:1}
 rm -rf $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/mods-config/sql/ippool/oracle
+rm -rf $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/mods-config/sql/ippool-dhcp/oracle
 rm -rf $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/mods-config/sql/main/oracle
 %endif
 
@@ -740,7 +741,10 @@ fi
 %dir %attr(750,root,radiusd) /etc/raddb/mods-config/sql
 %dir %attr(750,root,radiusd) /etc/raddb/mods-config/sql/ippool
 %dir %attr(750,root,radiusd) /etc/raddb/mods-config/sql/ippool/oracle
+%dir %attr(750,root,radiusd) /etc/raddb/mods-config/sql/ippool-dhcp
+%dir %attr(750,root,radiusd) /etc/raddb/mods-config/sql/ippool-dhcp/oracle
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/mods-config/sql/ippool/oracle/*
+%attr(640,root,radiusd) %config(noreplace) /etc/raddb/mods-config/sql/ippool-dhcp/oracle/*
 %dir %attr(750,root,radiusd) /etc/raddb/mods-config/sql/main
 %dir %attr(750,root,radiusd) /etc/raddb/mods-config/sql/main/oracle
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/mods-config/sql/main/oracle/*
