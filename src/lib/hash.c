@@ -613,7 +613,7 @@ int fr_hash_table_walk(fr_hash_table_t *ht,
 
 			next = node->next;
 
-			memcpy(&arg, node->data, sizeof(arg));
+			memcpy(&arg, &node->data, sizeof(arg));
 			rcode = callback(context, arg);
 
 			if (rcode != 0) return rcode;
