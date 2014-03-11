@@ -1889,7 +1889,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 				       filename, *lineno);
 
 				EDEBUG("%s", start);
-				EDEBUG("%.*s^%s", (int) offset, spbuf, error);
+				EDEBUG("%.*s^ %s", (int) offset, spbuf, error);
 				free(spbuf);
 				return -1;
 			}
