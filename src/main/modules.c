@@ -1268,32 +1268,14 @@ static int load_byserver(CONF_SECTION *cs)
 	if (!found) do {
 #if defined(WITH_VMPS) || defined(WITH_DHCP)
 		CONF_SECTION *subcs;
+#endif
+#ifdef WITH_DHCP
 		DICT_ATTR const *da;
 #endif
 
 #ifdef WITH_VMPS
 		subcs = cf_section_sub_find(cs, "vmps");
 		if (subcs) {
-			/*
-			 *	Auto-load the DHCP dictionary.
-			 */
-			da = dict_attrbyname("VQP-Packet-Type");
-			if (!da) {
-				if (dict_read(mainconfig.dictionary_dir, "dictionary.vqp") < 0) {
-					ERROR("Failed reading dictionary.vqp: %s",
-					      fr_strerror());
-					return -1;
-				}
-
-				cf_log_module(cs, "Loading dictionary.vqp");
-
-				da = dict_attrbyname("VQP-Packet-Type");
-				if (!da) {
-					ERROR("No VQP-Packet-Type in dictionary.vqp");
-					return -1;
-				}
-			}
-
 			cf_log_module(cs, "Loading vmps {...}");
 			if (load_component_section(subcs, components,
 						   RLM_COMPONENT_POST_AUTH) < 0) {
@@ -1314,24 +1296,7 @@ static int load_byserver(CONF_SECTION *cs)
 		subcs = cf_subsection_find_next(cs, NULL, "dhcp");
 		if (!subcs) break;
 
-		/*
-		 *	Auto-load the DHCP dictionary.
-		 */
 		da = dict_attrbyname("DHCP-Message-Type");
-		if (!da) {
-			cf_log_module(cs, "Loading dictionary.dhcp");
-			if (dict_read(mainconfig.dictionary_dir, "dictionary.dhcp") < 0) {
-				ERROR("Failed reading dictionary.dhcp: %s",
-				      fr_strerror());
-				return -1;
-			}
-
-			da = dict_attrbyname("DHCP-Message-Type");
-			if (!da) {
-				ERROR("No DHCP-Message-Type in dictionary.dhcp");
-				return -1;
-			}
-		}
 
 		/*
 		 *	Handle each DHCP Message type separately.
@@ -1638,6 +1603,70 @@ int setup_modules(int reload, CONF_SECTION *config)
 	if (!modules) {
 		WARN("Cannot find a \"modules\" section in the configuration file!");
 	}
+
+#if defined(WITH_VMPS) || defined(WITH_DHCP)
+	/*
+	 *	Load dictionaries.
+	 */
+	for (cs = cf_subsection_find_next(config, NULL, "server");
+	     cs != NULL;
+	     cs = cf_subsection_find_next(config, cs, "server")) {
+		CONF_SECTION *subcs;
+		DICT_ATTR const *da;
+
+#ifdef WITH_VMPS
+		/*
+		 *	Auto-load the VMPS/VQP dictionary.
+		 */
+		subcs = cf_section_sub_find(cs, "vmps");
+		if (subcs) {
+			da = dict_attrbyname("VQP-Packet-Type");
+			if (!da) {
+				if (dict_read(mainconfig.dictionary_dir, "dictionary.vqp") < 0) {
+					ERROR("Failed reading dictionary.vqp: %s",
+					      fr_strerror());
+					return -1;
+				}
+				cf_log_module(cs, "Loading dictionary.vqp");
+
+				da = dict_attrbyname("VQP-Packet-Type");
+				if (!da) {
+					ERROR("No VQP-Packet-Type in dictionary.vqp");
+					return -1;
+				}
+			}
+		}
+#endif
+
+#ifdef WITH_DHCP
+		/*
+		 *	Auto-load the DHCP dictionary.
+		 */
+		subcs = cf_subsection_find_next(cs, NULL, "dhcp");
+		if (subcs) {
+			da = dict_attrbyname("DHCP-Message-Type");
+			if (!da) {
+				cf_log_module(cs, "Loading dictionary.dhcp");
+				if (dict_read(mainconfig.dictionary_dir, "dictionary.dhcp") < 0) {
+					ERROR("Failed reading dictionary.dhcp: %s",
+					      fr_strerror());
+					return -1;
+				}
+
+				da = dict_attrbyname("DHCP-Message-Type");
+				if (!da) {
+					ERROR("No DHCP-Message-Type in dictionary.dhcp");
+					return -1;
+				}
+			}
+		}
+#endif
+		/*
+		 *	Else it's a RADIUS virtual server, and the
+		 *	dictionaries are already loaded.
+		 */
+	}
+#endif
 
 	DEBUG2("%s: #### Instantiating modules ####", mainconfig.name);
 
