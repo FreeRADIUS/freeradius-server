@@ -210,8 +210,10 @@ value_pair_tmpl_t *radius_str2tmpl(TALLOC_CTX *ctx, char const *name, FR_TOKEN t
 		}
 
 		/*
-		 *	"foo" is a literal string, and doesn't need to
-		 *	be expanded at run time.
+		 *	If the double quoted string needs to be
+		 *	expanded at run time, make it an xlat
+		 *	expansion.  Otherwise, convert it to be a
+		 *	literal.
 		 */
 		if (*p) {
 			vpt->type = VPT_TYPE_XLAT;
