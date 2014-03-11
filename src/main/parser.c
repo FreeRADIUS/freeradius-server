@@ -997,8 +997,7 @@ done:
 			rad_assert(c->cast != NULL);
 
 			rcode = radius_evaluate_map(NULL, 0, 0, c);
-			talloc_free(c->data.map);
-			c->data.map = NULL;
+			TALLOC_FREE(c->data.map);
 			c->cast = NULL;
 			c->regex_i = false;
 			if (rcode) {
@@ -1009,7 +1008,7 @@ done:
 
 			break;	/* don't do the next check */
 		}
-		
+
 		/*
 		 *	Two literal strings.  They're not parsed as
 		 *	VPT_TYPE_DATA because there's no cast to an
@@ -1021,7 +1020,7 @@ done:
 
 			rad_assert(c->cast == NULL);
 			rad_assert(c->regex_i == false);
-				
+
 			rcode = radius_evaluate_map(NULL, 0, 0, c);
 			if (rcode) {
 				c->type = COND_TYPE_TRUE;
@@ -1032,8 +1031,7 @@ done:
 			/*
 			 *	Free map after using it above.
 			 */
-			talloc_free(c->data.map);
-			c->data.map = NULL;
+			TALLOC_FREE(c->data.map);
 			break;
 		}
 	} while (0);
