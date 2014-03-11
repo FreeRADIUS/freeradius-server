@@ -34,6 +34,17 @@ RCSID("$Id$")
 
 #ifdef WITH_EVAL_DEBUG
 #define EVAL_DEBUG(fmt, ...) printf("EVAL: ");printf(fmt, ## __VA_ARGS__);printf("\n");fflush(stdout)
+
+static const FR_NAME_NUMBER template_names[] = {
+	{ "literal",	VPT_TYPE_LITERAL },
+	{ "xlat",	VPT_TYPE_XLAT },
+	{ "attr",	VPT_TYPE_ATTR },
+	{ "list",	VPT_TYPE_LIST },
+	{ "regex",	VPT_TYPE_REGEX },
+	{ "exec",	VPT_TYPE_EXEC },
+	{ "data",	VPT_TYPE_DATA },
+	{ NULL, 0 }
+};
 #else
 #define EVAL_DEBUG(...)
 #endif
@@ -309,6 +320,10 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 	rad_assert(map->dst->type != VPT_TYPE_LIST);
 	rad_assert(map->src->type != VPT_TYPE_LIST);
 	rad_assert(map->dst->type != VPT_TYPE_REGEX);
+
+	EVAL_DEBUG("Map %s ? %s",
+		   fr_int2str(template_names, map->dst->type, "???"),
+		   fr_int2str(template_names, map->src->type, "???"));
 
 	/*
 	 *	Verify regexes.
@@ -612,6 +627,12 @@ int radius_evaluate_cond(REQUEST *request, int modreturn, int depth,
 			 fr_cond_t const *c)
 {
 	int rcode = -1;
+#ifdef WITH_EVAL_DEBUG
+	char buffer[1024];
+
+	fr_cond_sprint(buffer, sizeof(buffer), c);
+	EVAL_DEBUG("%s", buffer);
+#endif
 
 	while (c) {
 		switch (c->type) {
