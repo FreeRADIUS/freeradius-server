@@ -789,6 +789,18 @@ int read_mainconfig(int reload)
 	}
 
 	/*
+	 *	Try to load protocol-specific dictionaries.  It's OK
+	 *	if they don't exist.
+	 */
+#ifdef WITH_DHCP
+	dict_read(mainconfig.dictionary_dir, "dictionary.dhcp");
+#endif
+
+#ifdef WITH_VMPS
+	dict_read(mainconfig.dictionary_dir, "dictionary.vqp");
+#endif
+
+	/*
 	 *	It's OK if this one doesn't exist.
 	 */
 	rcode = dict_read(radius_dir, RADIUS_DICTIONARY);
