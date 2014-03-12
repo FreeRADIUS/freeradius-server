@@ -468,7 +468,7 @@ static void rs_packet_print_fancy(uint64_t count, rs_status_t status, fr_pcap_t 
 		}
 
 		if (conf->print_packet && (fr_debug_flag > 1) && packet->vps) {
-			pairsort(&packet->vps, true);
+			pairsort(&packet->vps, attrtagcmp);
 			vp_printlist(fr_log_fp, packet->vps);
 		}
 	}
@@ -1093,7 +1093,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 				 *	Now verify the packet passes the attribute filter
 				 */
 				if (conf->filter_response_vps) {
-					pairsort(&current->vps, true);
+					pairsort(&current->vps, attrtagcmp);
 					if (!pairvalidate_relaxed(conf->filter_response_vps, current->vps)) {
 						goto drop_response;
 					}
@@ -1190,7 +1190,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 					return;
 				}
 
-				pairsort(&current->vps, true);
+				pairsort(&current->vps, attrtagcmp);
 			}
 
 			/*
@@ -1592,7 +1592,7 @@ static int rs_build_filter(VALUE_PAIR **out, char const *filter)
 	/*
 	 *	This allows efficient list comparisons later
 	 */
-	pairsort(out, true);
+	pairsort(out, attrtagcmp);
 
 	return 0;
 }

@@ -356,6 +356,44 @@ void pairreplace(VALUE_PAIR **first, VALUE_PAIR *replace)
 	*prev = replace;
 }
 
+int8_t attrcmp(VALUE_PAIR const *a, VALUE_PAIR const *b)
+{
+	VERIFY_VP(a);
+	VERIFY_VP(b);
+
+	if (a->da < b->da) {
+		return -1;
+	}
+
+	if (a->da == b->da) {
+		return 0;
+	}
+
+	return 1;
+}
+
+int8_t attrtagcmp(VALUE_PAIR const *a, VALUE_PAIR const *b)
+{
+	VERIFY_VP(a);
+	VERIFY_VP(b);
+
+	uint8_t cmp;
+
+	cmp = attrcmp(a, b);
+
+	if (cmp != 0) return cmp;
+
+	if (a->tag < b->tag) {
+		return -1;
+	}
+
+	if (a->tag > b->tag) {
+		return 1;
+	}
+
+	return 0;
+}
+
 static void pairsort_split(VALUE_PAIR *source, VALUE_PAIR **front, VALUE_PAIR **back)
 {
 	VALUE_PAIR *fast;
@@ -391,7 +429,7 @@ static void pairsort_split(VALUE_PAIR *source, VALUE_PAIR **front, VALUE_PAIR **
 	slow->next = NULL;
 }
 
-static VALUE_PAIR *pairsort_merge(VALUE_PAIR *a, VALUE_PAIR *b, bool with_tag)
+static VALUE_PAIR *pairsort_merge(VALUE_PAIR *a, VALUE_PAIR *b, fr_pair_cmp_t cmp)
 {
 	VALUE_PAIR *result = NULL;
 
@@ -401,12 +439,12 @@ static VALUE_PAIR *pairsort_merge(VALUE_PAIR *a, VALUE_PAIR *b, bool with_tag)
  	/*
  	 *	Compare the DICT_ATTRs and tags
  	 */
-	if ((with_tag && (a->tag < b->tag)) || (a->da <= b->da)) {
+	if (cmp(a, b) <= 0) {
 		result = a;
-     		result->next = pairsort_merge(a->next, b, with_tag);
+     		result->next = pairsort_merge(a->next, b, cmp);
   	} else {
 		result = b;
-		result->next = pairsort_merge(a, b->next, with_tag);
+		result->next = pairsort_merge(a, b->next, cmp);
 	}
 
 	return result;
@@ -415,9 +453,9 @@ static VALUE_PAIR *pairsort_merge(VALUE_PAIR *a, VALUE_PAIR *b, bool with_tag)
 /** Sort a linked list of VALUE_PAIRs using merge sort
  *
  * @param[in,out] vps List of VALUE_PAIRs to sort.
- * @param[in] with_tag sort by tag then by DICT_ATTR
+ * @param[in] cmp to sort with
  */
-void pairsort(VALUE_PAIR **vps, bool with_tag)
+void pairsort(VALUE_PAIR **vps, fr_pair_cmp_t cmp)
 {
 	VALUE_PAIR *head = *vps;
 	VALUE_PAIR *a;
@@ -431,13 +469,13 @@ void pairsort(VALUE_PAIR **vps, bool with_tag)
 	}
 
 	pairsort_split(head, &a, &b);	/* Split into sublists */
-	pairsort(&a, with_tag);		/* Traverse left */
-	pairsort(&b, with_tag);		/* Traverse right */
+	pairsort(&a, cmp);		/* Traverse left */
+	pairsort(&b, cmp);		/* Traverse right */
 
   	/*
   	 *	merge the two sorted lists together
   	 */
-  	*vps = pairsort_merge(a, b, with_tag);
+  	*vps = pairsort_merge(a, b, cmp);
 }
 
 /** Uses paircmp to verify all VALUE_PAIRs in list match the filter defined by check
@@ -462,8 +500,8 @@ bool pairvalidate(VALUE_PAIR *filter, VALUE_PAIR *list)
 	 *
 	 *	@todo this should be removed one we have sets and lists
 	 */
-	pairsort(&filter, true);
-	pairsort(&list, true);
+	pairsort(&filter, attrtagcmp);
+	pairsort(&list, attrtagcmp);
 
 	match = fr_cursor_init(&list_cursor, &list);
 	check = fr_cursor_init(&filter_cursor, &filter);
@@ -528,8 +566,8 @@ bool pairvalidate_relaxed(VALUE_PAIR *filter, VALUE_PAIR *list)
 	 *
 	 *	@todo this should be removed one we have sets and lists
 	 */
-	pairsort(&filter, true);
-	pairsort(&list, true);
+	pairsort(&filter, attrtagcmp);
+	pairsort(&list, attrtagcmp);
 
 	fr_cursor_init(&list_cursor, &list);
 	for (check = fr_cursor_init(&filter_cursor, &filter);

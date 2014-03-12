@@ -588,7 +588,11 @@ int8_t		paircmp_value(VALUE_PAIR const *a, VALUE_PAIR const *b);
 int8_t		paircmp_op(VALUE_PAIR const *a, FR_TOKEN op, VALUE_PAIR const *b);
 int8_t		paircmp(VALUE_PAIR *a, VALUE_PAIR *b);
 int8_t		pairlistcmp(VALUE_PAIR *a, VALUE_PAIR *b);
-void		pairsort(VALUE_PAIR **vps, bool with_tag);
+
+typedef int8_t (*fr_pair_cmp_t)(VALUE_PAIR const *a, VALUE_PAIR const *b);
+int8_t		attrcmp(VALUE_PAIR const *a, VALUE_PAIR const *b);
+int8_t		attrtagcmp(VALUE_PAIR const *a, VALUE_PAIR const *b);
+void		pairsort(VALUE_PAIR **vps, fr_pair_cmp_t cmp);
 bool		pairvalidate(VALUE_PAIR *filter, VALUE_PAIR *list);
 bool 		pairvalidate_relaxed(VALUE_PAIR *filter, VALUE_PAIR *list);
 VALUE_PAIR	*paircopyvp(TALLOC_CTX *ctx, VALUE_PAIR const *vp);
