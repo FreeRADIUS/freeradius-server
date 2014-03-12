@@ -1114,18 +1114,18 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 	}
 
 	DEBUG(
-#ifdef WITH_UDPFROMTO
+#  ifdef WITH_UDPFROMTO
 	      "Encoding %s of id %08x from %s:%d to %s:%d\n",
-#else
+#  else
 	      "Encoding %s of id %08x to %s:%d\n",
-#endif
+#  endif
 	      name, (unsigned int) packet->id,
-#ifdef WITH_UDPFROMTO
+#  ifdef WITH_UDPFROMTO
 	      inet_ntop(packet->src_ipaddr.af,
 			&packet->src_ipaddr.ipaddr,
 			src_ip_buf, sizeof(src_ip_buf)),
 	      packet->src_port,
-#endif
+#  endif
 	      inet_ntop(packet->dst_ipaddr.af,
 			&packet->dst_ipaddr.ipaddr,
 		     dst_ip_buf, sizeof(dst_ip_buf)),
@@ -1493,9 +1493,9 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 			*plength += length;
 			p += length;
 
-			if (vp->next &&
-			    (vp->next->da->attr == vp->da->attr))
+			if (vp->next && (vp->next->da->attr == vp->da->attr)) {
 				vp = vp->next;
+			}
 		} /* loop over num_entries */
 
 	next:
