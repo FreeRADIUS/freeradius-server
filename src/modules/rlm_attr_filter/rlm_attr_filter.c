@@ -268,8 +268,8 @@ static rlm_rcode_t attr_filter_common(void *instance, REQUEST *request, RADIUS_P
 					continue;
 				}
 
-				if (input_item->da->attr == check_item->da->attr) {
-					check_pair(check_item, input_item, &pass, &fail);
+				if (input_item->da == check_item->da) {
+					check_pair(request, check_item, input_item, &pass, &fail);
 				}
 			}
 
