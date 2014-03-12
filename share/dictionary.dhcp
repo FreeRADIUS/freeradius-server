@@ -308,6 +308,7 @@ ATTRIBUTE	DHCP-End-Of-Options			255	byte
 VALUE	DHCP-Opcode			Client-Message		1
 VALUE	DHCP-Opcode			Server-Message		2
 
+VALUE	DHCP-Message-Type		DHCP-Do-Not-Respond	0
 VALUE	DHCP-Message-Type		DHCP-Discover		1
 VALUE	DHCP-Message-Type		DHCP-Offer		2
 VALUE	DHCP-Message-Type		DHCP-Request		3
