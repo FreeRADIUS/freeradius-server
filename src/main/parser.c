@@ -666,31 +666,6 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 			c->data.map->ci = ci;
 
 			/*
-			 *	foo =* bar is just (foo)
-			 *	foo !* bar is just (!foo)
-			 */
-			if ((op == T_OP_CMP_TRUE) || (op == T_OP_CMP_FALSE)) {
-				value_pair_tmpl_t *vpt;
-
-				vpt = talloc_steal(c, c->data.map->dst);
-				c->data.map->dst = NULL;
-
-				talloc_free(c->data.map);
-				c->type = COND_TYPE_EXISTS;
-				c->data.vpt = vpt;
-				lhs_type = T_BARE_WORD;
-
-				/*
-				 *	Invert the negation bit.
-				 */
-				if (op == T_OP_CMP_FALSE) {
-					c->negate = !c->negate;
-				}
-
-				goto done_cond;
-			}
-
-			/*
 			 *	@todo: check LHS and RHS separately, to
 			 *	get better errors
 			 */
@@ -777,10 +752,15 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 				/*
 				 *	Invalid: User-Name == bob
 				 *	Valid:   User-Name == "bob"
+				 *
+				 *	There's no real reason for
+				 *	this, other than consistency.
 				 */
 				if ((c->data.map->dst->type == VPT_TYPE_ATTR) &&
 				    (c->data.map->src->type != VPT_TYPE_ATTR) &&
 				    (c->data.map->dst->da->type == PW_TYPE_STRING) &&
+				    (c->data.map->op != T_OP_CMP_TRUE) &&
+				    (c->data.map->op != T_OP_CMP_FALSE) &&
 				    (rhs_type == T_BARE_WORD)) {
 					return_rhs("Must have string as value for attribute");
 				}
@@ -845,7 +825,6 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 				}
 			}
 
-		done_cond:
 			p += slen;
 
 			while (isspace((int) *p)) p++; /* skip spaces after RHS */
@@ -907,7 +886,16 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 
 done:
 	/*
-	 *	Normalize it before returning it.
+	 *	Normalize the condition before returning.
+	 *
+	 *	We collapse multiple levels of braces to one.  Then
+	 *	convert maps to literals.  Then literals to true/false
+	 *	statements.  Then true/false ||/&& followed by other
+	 *	conditions to just conditions.
+	 *
+	 *	Order is important.  The more complex cases are
+	 *	converted to simpler ones, from the most complex cases
+	 *	to the simplest ones.
 	 */
 
 	/*
@@ -959,9 +947,10 @@ done:
 	}
 
 	/*
-	 *	Normalize negation.  This doesn't really make any
-	 *	difference, but it simplifies the run-time code in
-	 *	evaluate.c
+	 *	Convert maps to literals.  Convert one form of map to
+	 *	a standardized form.  This doesn't make any
+	 *	theoretical difference, but it does mean that the
+	 *	run-time evaluation has fewer cases to check.
 	 */
 	if (c->type == COND_TYPE_MAP) do {
 		/*
@@ -990,7 +979,8 @@ done:
 
 		/*
 		 *	This next one catches "LDAP-Group != foo",
-		 *	which doesn't really work, but this hack fixes it.
+		 *	which doesn't work as-is, but this hack fixes
+		 *	it.
 		 *
 		 *	FOO != BAR --> !FOO == BAR
 		 */
@@ -1000,8 +990,35 @@ done:
 		}
 
 		/*
-		 *	Is a data type.  e.g. IP address, integer,
-		 *	etc.
+		 *	FOO =* BAR --> FOO
+		 *	FOO !* BAR --> !FOO
+		 */
+		if ((c->data.map->op == T_OP_CMP_TRUE) ||
+		    (c->data.map->op == T_OP_CMP_FALSE)) {
+			value_pair_tmpl_t *vpt;
+
+			vpt = talloc_steal(c, c->data.map->dst);
+			c->data.map->dst = NULL;
+
+			/*
+			 *	Invert the negation bit.
+			 */
+			if (c->data.map->op == T_OP_CMP_FALSE) {
+				c->negate = !c->negate;
+			}
+
+			TALLOC_FREE(c->data.map);
+
+			c->type = COND_TYPE_EXISTS;
+			c->data.vpt = vpt;
+			break;	/* it's no longer a map */
+		}
+
+		/*
+		 *	Both are data (IP address, integer, etc.)
+		 *
+		 *	We can do the evaluation here, so that it
+		 *	doesn't need to be done at run time
 		 */
 		if ((c->data.map->dst->type == VPT_TYPE_DATA) &&
 		    (c->data.map->src->type == VPT_TYPE_DATA)) {
@@ -1019,13 +1036,16 @@ done:
 				c->type = COND_TYPE_FALSE;
 			}
 
-			break;	/* don't do the next check */
+			break;	/* it's no longer a map */
 		}
 
 		/*
-		 *	Two literal strings.  They're not parsed as
-		 *	VPT_TYPE_DATA because there's no cast to an
+		 *	Both are literal strings.  They're not parsed
+		 *	as VPT_TYPE_DATA because there's no cast to an
 		 *	attribute.
+		 *
+		 *	We can do the evaluation here, so that it
+		 *	doesn't need to be done at run time
 		 */
 		if ((c->data.map->src->type == VPT_TYPE_LITERAL) &&
 		    (c->data.map->dst->type == VPT_TYPE_LITERAL)) {
@@ -1050,7 +1070,8 @@ done:
 	} while (0);
 
 	/*
-	 *	Existence checks.  We short-circuit strings, too.
+	 *	Existence checks.  We short-circuit static strings,
+	 *	too.
 	 */
 	if (c->type == COND_TYPE_EXISTS) {
 		switch (c->data.vpt->type) {
@@ -1061,15 +1082,19 @@ done:
 			break;
 
 			/*
-			 *	'true' and 'false' are special strings.
+			 *	'true' and 'false' are special strings
+			 *	which mean themselves.
 			 *
 			 *	For integers, 0 is false, all other
 			 *	integers are true.
 			 *
-			 *	For strings, '' is false. 'foo' is
-			 *	true. "" is false and "foo" is true.
+			 *	For strings, '' and "" are false.
+			 *	'foo' and "foo" are true.
+			 *
 			 *	The str2tmpl function takes care of
-			 *	marking "%{foo}" as VPT_TYPE_XLAT
+			 *	marking "%{foo}" as VPT_TYPE_XLAT, so
+			 *	the strings here are fixed at compile
+			 *	time.
 			 *
 			 *	`exec` and "%{...}" are left alone.
 			 *
@@ -1127,8 +1152,8 @@ done:
 
 			/*
 			 *	Else lhs_type==T_OP_INVALID, and this
-			 *	node was made by promoting a child,
-			 *	which has already been normalized.
+			 *	node was made by promoting a child
+			 *	which had already been normalized.
 			 */
 			break;
 

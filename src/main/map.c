@@ -286,13 +286,6 @@ value_pair_map_t *radius_str2map(TALLOC_CTX *ctx, char const *lhs, FR_TOKEN lhs_
 
 	map->op = op;
 
-	/*
-	 *	Ignore the RHS if it's a true / false comparison.
-	 */
-	if ((map->op == T_OP_CMP_TRUE) || (map->op == T_OP_CMP_FALSE)) {
-		return map;
-	}
-
 	if ((rhs_type == T_BARE_WORD) && (*rhs == '&')) {
 		map->src = radius_attr2tmpl(map, rhs + 1, src_request_def, src_list_def);
 	} else {
