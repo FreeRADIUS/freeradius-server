@@ -136,6 +136,9 @@ dhcp DHCP-Discover {
 	#  values would be DHCP-Offer, DHCP-Ack or DHCP-NAK. See
 	#  dictionary.dhcp for all the possible values.
 	#
+	#  DHCP-Do-Not-Respond can be used to tell the server to not
+	#  respond.
+	#
 	#  In the event that DHCP-Message-Type is not set then the
 	#  server will fall back to determining the type of reply
 	#  based on the rcode of this section.
