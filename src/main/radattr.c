@@ -584,6 +584,8 @@ static void process_file(const char *root_dir, char const *filename)
 				directory, fr_syserror(errno));
 			exit(1);
 		}
+
+		filename = directory;
 	}
 
 	lineno = 0;
@@ -617,6 +619,8 @@ static void process_file(const char *root_dir, char const *filename)
 		p = buffer;
 		while (isspace((int) *p)) p++;
 		if (!*p) continue;
+
+		DEBUG2("%s[%d]: %s\n", filename, lineno, buffer);
 
 		strlcpy(input, p, sizeof(input));
 
