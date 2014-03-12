@@ -2525,24 +2525,24 @@ static int paircmp_op_cidr(FR_TOKEN op, int bytes,
 
 /** Compare two attributes using an operator
  *
- * @param[in] one the first attribute
+ * @param[in] a the first attribute
  * @param[in] op the operator for comparison.
- * @param[in] two the second attribute
+ * @param[in] b the second attribute
  * @return 1 if true, 0 if false, -1 on error.
  */
-int8_t paircmp_op(VALUE_PAIR const *one, FR_TOKEN op, VALUE_PAIR const *two)
+int8_t paircmp_op(VALUE_PAIR const *a, FR_TOKEN op, VALUE_PAIR const *b)
 {
 	int compare;
 
-	switch (one->da->type) {
+	switch (a->da->type) {
 	case PW_TYPE_IPADDR:
-		switch (two->da->type) {
+		switch (b->da->type) {
 		case PW_TYPE_IPADDR:		/* IPv4 and IPv4 */
 			goto cmp;
 
 		case PW_TYPE_IPV4PREFIX:	/* IPv4 and IPv4 Prefix */
-			return paircmp_op_cidr(op, 4, 32, (uint8_t const *) &one->vp_ipaddr,
-					       two->vp_ipv4prefix[1], (uint8_t const *) &two->vp_ipv4prefix + 2);
+			return paircmp_op_cidr(op, 4, 32, (uint8_t const *) &a->vp_ipaddr,
+					       b->vp_ipv4prefix[1], (uint8_t const *) &b->vp_ipv4prefix + 2);
 
 		default:
 			fr_strerror_printf("Cannot compare IPv4 with IPv6 address");
@@ -2551,16 +2551,16 @@ int8_t paircmp_op(VALUE_PAIR const *one, FR_TOKEN op, VALUE_PAIR const *two)
 		break;
 
 	case PW_TYPE_IPV4PREFIX:		/* IPv4 and IPv4 Prefix */
-		switch (two->da->type) {
+		switch (b->da->type) {
 		case PW_TYPE_IPADDR:
-			return paircmp_op_cidr(op, 4, one->vp_ipv4prefix[1],
-					       (uint8_t const *) &one->vp_ipv4prefix + 2,
-					       32, (uint8_t const *) &two->vp_ipaddr);
+			return paircmp_op_cidr(op, 4, a->vp_ipv4prefix[1],
+					       (uint8_t const *) &a->vp_ipv4prefix + 2,
+					       32, (uint8_t const *) &b->vp_ipaddr);
 
 		case PW_TYPE_IPV4PREFIX:	/* IPv4 Prefix and IPv4 Prefix */
-			return paircmp_op_cidr(op, 4, one->vp_ipv4prefix[1],
-					       (uint8_t const *) &one->vp_ipv4prefix + 2,
-					       two->vp_ipv4prefix[1], (uint8_t const *) &two->vp_ipv4prefix + 2);
+			return paircmp_op_cidr(op, 4, a->vp_ipv4prefix[1],
+					       (uint8_t const *) &a->vp_ipv4prefix + 2,
+					       b->vp_ipv4prefix[1], (uint8_t const *) &b->vp_ipv4prefix + 2);
 
 		default:
 			fr_strerror_printf("Cannot compare IPv4 with IPv6 address");
@@ -2569,13 +2569,13 @@ int8_t paircmp_op(VALUE_PAIR const *one, FR_TOKEN op, VALUE_PAIR const *two)
 		break;
 
 	case PW_TYPE_IPV6ADDR:
-		switch (two->da->type) {
+		switch (b->da->type) {
 		case PW_TYPE_IPV6ADDR:		/* IPv6 and IPv6 */
 			goto cmp;
 
 		case PW_TYPE_IPV6PREFIX:	/* IPv6 and IPv6 Preifx */
-			return paircmp_op_cidr(op, 16, 128, (uint8_t const *) &one->vp_ipv6addr,
-					       two->vp_ipv6prefix[1], (uint8_t const *) &two->vp_ipv6prefix + 2);
+			return paircmp_op_cidr(op, 16, 128, (uint8_t const *) &a->vp_ipv6addr,
+					       b->vp_ipv6prefix[1], (uint8_t const *) &b->vp_ipv6prefix + 2);
 			break;
 
 		default:
@@ -2585,16 +2585,16 @@ int8_t paircmp_op(VALUE_PAIR const *one, FR_TOKEN op, VALUE_PAIR const *two)
 		break;
 
 	case PW_TYPE_IPV6PREFIX:
-		switch (two->da->type) {
+		switch (b->da->type) {
 		case PW_TYPE_IPV6ADDR:		/* IPv6 Prefix and IPv6 */
-			return paircmp_op_cidr(op, 16, one->vp_ipv6prefix[1],
-					       (uint8_t const *) &one->vp_ipv6prefix + 2,
-					       128, (uint8_t const *) &two->vp_ipv6addr);
+			return paircmp_op_cidr(op, 16, a->vp_ipv6prefix[1],
+					       (uint8_t const *) &a->vp_ipv6prefix + 2,
+					       128, (uint8_t const *) &b->vp_ipv6addr);
 
 		case PW_TYPE_IPV6PREFIX:	/* IPv6 Prefix and IPv6 */
-			return paircmp_op_cidr(op, 16, one->vp_ipv6prefix[1],
-					       (uint8_t const *) &one->vp_ipv6prefix + 2,
-					       two->vp_ipv6prefix[1], (uint8_t const *) &two->vp_ipv6prefix + 2);
+			return paircmp_op_cidr(op, 16, a->vp_ipv6prefix[1],
+					       (uint8_t const *) &a->vp_ipv6prefix + 2,
+					       b->vp_ipv6prefix[1], (uint8_t const *) &b->vp_ipv6prefix + 2);
 
 		default:
 			fr_strerror_printf("Cannot compare IPv6 with IPv4 address");
@@ -2604,7 +2604,7 @@ int8_t paircmp_op(VALUE_PAIR const *one, FR_TOKEN op, VALUE_PAIR const *two)
 
 	default:
 	cmp:
-		compare = paircmp_value(one, two);
+		compare = paircmp_value(a, b);
 		if (compare < -1) {	/* comparison error */
 			return -1;
 		}
@@ -2637,35 +2637,34 @@ int8_t paircmp_op(VALUE_PAIR const *one, FR_TOKEN op, VALUE_PAIR const *two)
 	}
 }
 
-
-/** Compare two pairs, using the operator from "one"
+/** Compare two pairs, using the operator from "a"
  *
  *	i.e. given two attributes, it does:
  *
- *	(two->data) (one->operator) (one->data)
+ *	(b->data) (a->operator) (a->data)
  *
  *	e.g. "foo" != "bar"
  *
- * @param[in] one the first attribute
- * @param[in] two the second attribute
+ * @param[in] a the first attribute
+ * @param[in] b the second attribute
  * @return 1 if true, 0 if false, -1 on error.
  */
-int8_t paircmp(VALUE_PAIR *one, VALUE_PAIR *two)
+int8_t paircmp(VALUE_PAIR *a, VALUE_PAIR *b)
 {
 	int compare;
 
-	VERIFY_VP(one);
-	VERIFY_VP(two);
+	VERIFY_VP(a);
+	VERIFY_VP(b);
 
-	switch (one->op) {
+	switch (a->op) {
 	case T_OP_CMP_TRUE:
-		return (two != NULL);
+		return (b != NULL);
 
 	case T_OP_CMP_FALSE:
-		return (two == NULL);
+		return (b == NULL);
 
 		/*
-		 *	One is a regex, compile it, print two to a string,
+		 *	a is a regex, compile it, print b to a string,
 		 *	and then do string comparisons.
 		 */
 	case T_OP_REG_EQ:
@@ -2677,15 +2676,15 @@ int8_t paircmp(VALUE_PAIR *one, VALUE_PAIR *two)
 			regex_t reg;
 			char buffer[MAX_STRING_LEN * 4 + 1];
 
-			compare = regcomp(&reg, one->vp_strvalue, REG_EXTENDED);
+			compare = regcomp(&reg, a->vp_strvalue, REG_EXTENDED);
 			if (compare != 0) {
 				regerror(compare, &reg, buffer, sizeof(buffer));
 				fr_strerror_printf("Illegal regular expression in attribute: %s: %s",
-					   	   one->da->name, buffer);
+					   	   a->da->name, buffer);
 				return -1;
 			}
 
-			vp_prints_value(buffer, sizeof(buffer), two, 0);
+			vp_prints_value(buffer, sizeof(buffer), b, 0);
 
 			/*
 			 *	Don't care about substring matches,
@@ -2694,7 +2693,7 @@ int8_t paircmp(VALUE_PAIR *one, VALUE_PAIR *two)
 			compare = regexec(&reg, buffer, 0, NULL, 0);
 
 			regfree(&reg);
-			if (one->op == T_OP_REG_EQ) {
+			if (a->op == T_OP_REG_EQ) {
 				return (compare == 0);
 			}
 
@@ -2706,7 +2705,7 @@ int8_t paircmp(VALUE_PAIR *one, VALUE_PAIR *two)
 		break;
 	}
 
-	return paircmp_op(two, one->op, one);
+	return paircmp_op(b, a->op, a);
 }
 
 /** Determine equality of two lists

@@ -585,7 +585,7 @@ void		pairdelete(VALUE_PAIR **, unsigned int attr, unsigned int vendor, int8_t t
 void		pairadd(VALUE_PAIR **, VALUE_PAIR *);
 void		pairreplace(VALUE_PAIR **first, VALUE_PAIR *add);
 int8_t		paircmp_value(VALUE_PAIR const *a, VALUE_PAIR const *b);
-int8_t		paircmp_op(VALUE_PAIR const *one, FR_TOKEN op, VALUE_PAIR const *two);
+int8_t		paircmp_op(VALUE_PAIR const *a, FR_TOKEN op, VALUE_PAIR const *b);
 int8_t		paircmp(VALUE_PAIR *a, VALUE_PAIR *b);
 int8_t		pairlistcmp(VALUE_PAIR *a, VALUE_PAIR *b);
 void		pairsort(VALUE_PAIR **vps, bool with_tag);
