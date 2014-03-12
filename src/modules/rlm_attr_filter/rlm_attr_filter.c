@@ -57,23 +57,33 @@ static const CONF_PARSER module_config[] = {
 	{ NULL, -1, 0, NULL, NULL }
 };
 
-static void check_pair(VALUE_PAIR *check_item, VALUE_PAIR *reply_item,
-		      int *pass, int *fail)
+static void check_pair(REQUEST *request, VALUE_PAIR *check_item, VALUE_PAIR *reply_item, int *pass, int *fail)
 {
 	int compare;
 
 	if (check_item->op == T_OP_SET) return;
 
 	compare = paircmp(check_item, reply_item);
+	if (compare < 0) {
+		REDEBUG("Comparison failed: %s", fr_strerror());
+	}
+
 	if (compare == 1) {
 		++*(pass);
 	} else {
 		++*(fail);
 	}
 
+	if (RDEBUG_ENABLED3) {
+		char rule[1024], pair[1024];
+
+		vp_prints(rule, sizeof(rule), check_item);
+		vp_prints(pair, sizeof(pair), reply_item);
+		RDEBUG3("%s %s %s", pair, compare == 1 ? "allowed by" : "disallowed by", rule);
+	}
+
 	return;
 }
-
 
 static int attr_filter_getfile(TALLOC_CTX *ctx, char const *filename, PAIR_LIST **pair_list)
 {
@@ -216,8 +226,7 @@ static rlm_rcode_t attr_filter_common(void *instance, REQUEST *request, RADIUS_P
 				fall_through = 1;
 				continue;
 			}
-			else if (!check_item->da->vendor &&
-				 check_item->da->attr == PW_RELAX_FILTER) {
+			else if (!check_item->da->vendor && check_item->da->attr == PW_RELAX_FILTER) {
 				relax_filter = check_item->vp_integer;
 				continue;
 			}
@@ -247,20 +256,17 @@ static rlm_rcode_t attr_filter_common(void *instance, REQUEST *request, RADIUS_P
 		for (input_item = paircursor(&input, &packet->vps);
 		     input_item;
 		     input_item = pairnext(&input)) {
-			/* reset the pass,fail vars for each reply item */
-			pass = fail = 0;
+			pass = fail = 0; /* reset the pass,fail vars for each reply item */
 
 			/*
-			 *	reset the check_item pointer to
-			 *	beginning of the list
+			 *  Reset the check_item pointer to beginning of the list
 			 */
 			for (check_item = pairfirst(&check);
 			     check_item;
 			     check_item = pairnext(&check)) {
 				/*
-				 *	Vendor-Specific is special, and
-				 *	matches any VSA if the comparison
-				 *	is always true.
+				 *  Vendor-Specific is special, and matches any VSA if the
+				 *  comparison is always true.
 				 */
 				if ((check_item->da->attr == PW_VENDOR_SPECIFIC) && (input_item->da->vendor != 0) &&
 				    (check_item->op == T_OP_CMP_TRUE)) {
@@ -273,14 +279,15 @@ static rlm_rcode_t attr_filter_common(void *instance, REQUEST *request, RADIUS_P
 				}
 			}
 
+			RDEBUG3("Attribute \"%s\" allowed by %i rules, disallowed by %i rules",
+				input_item->da->name, pass, fail);
 			/*
-			 *  Only move attribute if it passed all rules,
-			 *  or if the config says we should copy unmatched
-			 *  attributes ('relaxed' mode).
+			 *  Only move attribute if it passed all rules, or if the config says we
+			 *  should copy unmatched attributes ('relaxed' mode).
 			 */
 			if (fail == 0 && (pass > 0 || relax_filter)) {
 				if (!pass) {
-					RDEBUG3("Attribute (%s) allowed by relaxed mode", input_item->da->name);
+					RDEBUG3("Attribute \"%s\" allowed by relaxed mode", input_item->da->name);
 				}
 				vp = paircopyvp(packet, input_item);
 				if (!vp) {
@@ -355,11 +362,11 @@ module_t rlm_attr_filter = {
 	mod_instantiate,	/* instantiation */
 	NULL,			/* detach */
 	{
-		NULL,			/* authentication */
+		NULL,		/* authentication */
 		mod_authorize,	/* authorization */
 		mod_preacct,	/* pre-acct */
 		mod_accounting,	/* accounting */
-		NULL,			/* checksimul */
+		NULL,		/* checksimul */
 #ifdef WITH_PROXY
 		mod_pre_proxy,	/* pre-proxy */
 		mod_post_proxy,	/* post-proxy */
