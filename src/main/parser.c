@@ -30,6 +30,19 @@ RCSID("$Id$")
 
 #define PW_CAST_BASE (1850)
 
+static const FR_NAME_NUMBER allowed_return_codes[] = {
+	{ "reject",     1 },
+	{ "fail",       1 },
+	{ "ok",	 	1 },
+	{ "handled",    1 },
+	{ "invalid",    1 },
+	{ "userlock",   1 },
+	{ "notfound",   1 },
+	{ "noop",       1 },
+	{ "updated",    1 },
+	{ NULL, 0 }
+};
+
 /*
  *	This file shouldn't use any functions from the server core.
  */
@@ -355,6 +368,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 
 	rad_assert(c != NULL);
 	lhs = rhs = NULL;
+	lhs_type = rhs_type = T_OP_INVALID;
 
 	while (isspace((int) *p)) p++; /* skip spaces before condition */
 
@@ -466,27 +480,14 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 				return_0("Cannot do cast for existence check");
 			}
 
-			if (lhs_type == T_BARE_WORD) {
-				if ((strcmp(lhs, "true") == 0) ||
-				    ((lhs[0] == '1') && !lhs[1])) {
-					c->type = COND_TYPE_TRUE;
+			c->type = COND_TYPE_EXISTS;
 
-				} else if ((strcmp(lhs, "false") == 0) ||
-					   ((lhs[0] == '0') && !lhs[1])) {
-					c->type = COND_TYPE_FALSE;
-
-				} else {
-					goto create_exists;
-				}
-
-			} else {
-			create_exists:
-				c->type = COND_TYPE_EXISTS;
-				c->data.vpt = radius_str2tmpl(c, lhs, lhs_type);
-				if (!c->data.vpt) {
-					return_P("Failed creating exists");
-				}
+			c->data.vpt = radius_str2tmpl(c, lhs, lhs_type);
+			if (!c->data.vpt) {
+				return_P("Failed creating exists");
 			}
+
+			rad_assert(c->data.vpt->type != VPT_TYPE_REGEX);
 
 		} else { /* it's an operator */
 			int regex;
@@ -677,6 +678,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 				talloc_free(c->data.map);
 				c->type = COND_TYPE_EXISTS;
 				c->data.vpt = vpt;
+				lhs_type = T_BARE_WORD;
 
 				/*
 				 *	Invert the negation bit.
@@ -1046,6 +1048,97 @@ done:
 			break;
 		}
 	} while (0);
+
+	/*
+	 *	Existence checks.  We short-circuit strings, too.
+	 */
+	if (c->type == COND_TYPE_EXISTS) {
+		switch (c->data.vpt->type) {
+		case VPT_TYPE_XLAT:
+		case VPT_TYPE_ATTR:
+		case VPT_TYPE_LIST:
+		case VPT_TYPE_EXEC:
+			break;
+
+			/*
+			 *	'true' and 'false' are special strings.
+			 *
+			 *	For integers, 0 is false, all other
+			 *	integers are true.
+			 *
+			 *	For strings, '' is false. 'foo' is
+			 *	true. "" is false and "foo" is true.
+			 *	The str2tmpl function takes care of
+			 *	marking "%{foo}" as VPT_TYPE_XLAT
+			 *
+			 *	`exec` and "%{...}" are left alone.
+			 *
+			 *	Bare words must be module return
+			 *	codes.
+			 */
+		case VPT_TYPE_LITERAL:
+			if ((strcmp(c->data.vpt->name, "true") == 0) ||
+			    (strcmp(c->data.vpt->name, "1") == 0)) {
+				c->type = COND_TYPE_TRUE;
+				TALLOC_FREE(c->data.vpt);
+
+			} else if ((strcmp(c->data.vpt->name, "false") == 0) ||
+				   (strcmp(c->data.vpt->name, "0") == 0)) {
+				c->type = COND_TYPE_FALSE;
+				TALLOC_FREE(c->data.vpt);
+
+			} else if (!*c->data.vpt->name) {
+				c->type = COND_TYPE_FALSE;
+				TALLOC_FREE(c->data.vpt);
+
+			} else if ((lhs_type == T_SINGLE_QUOTED_STRING) ||
+				   (lhs_type == T_DOUBLE_QUOTED_STRING)) {
+				c->type = COND_TYPE_TRUE;
+				TALLOC_FREE(c->data.vpt);
+
+			} else if (lhs_type == T_BARE_WORD) {
+				int rcode;
+				char const *q;
+
+				for (q = c->data.vpt->name;
+				     *q != '\0';
+				     q++) {
+					if (!isdigit((int) *q)) {
+						break;
+					}
+				}
+
+				/*
+				 *	It's all digits, and therefore
+				 *	'true'.
+				 */
+				if (!*q) {
+					c->type = COND_TYPE_TRUE;
+					TALLOC_FREE(c->data.vpt);
+					break;
+				}
+
+				rcode = fr_str2int(allowed_return_codes,
+						   c->data.vpt->name, 0);
+				if (!rcode) {
+					return_0("Expected a module return code");
+				}
+			}
+
+			/*
+			 *	Else lhs_type==T_OP_INVALID, and this
+			 *	node was made by promoting a child,
+			 *	which has already been normalized.
+			 */
+			break;
+
+		case VPT_TYPE_DATA:
+			return_0("Cannot use data here");
+
+		default:
+			return_0("Internal sanity check failed");
+		}
+	}
 
 	/*
 	 *	!TRUE -> FALSE
