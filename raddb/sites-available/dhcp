@@ -119,7 +119,27 @@ listen {
 #  Packets received on the socket will be processed through one
 #  of the following sections, named after the DHCP packet type.
 #  See dictionary.dhcp for the packet types.
+
+#  Return packets will be sent to, in preference order:
+#     DHCP-Gateway-IP-Address
+#     DHCP-Client-IP-Address
+#     DHCP-Your-IP-Address
+#  At least one of these attributes should be set at the end of each
+#  section for a response to be sent.
+
 dhcp DHCP-Discover {
+
+	#  Set the type of packet to send in reply.
+	#
+	#  The server will look at the DHCP-Message-Type attribute to
+	#  determine which type of packet to send in reply. Common
+	#  values would be DHCP-Offer, DHCP-Ack or DHCP-NAK. See
+	#  dictionary.dhcp for all the possible values.
+	#
+	#  In the event that DHCP-Message-Type is not set then the
+	#  server will fall back to determining the type of reply
+	#  based on the rcode of this section.
+
 	update reply {
 	       DHCP-Message-Type = DHCP-Offer
 	}
@@ -151,10 +171,17 @@ dhcp DHCP-Discover {
 	#  Or, allocate IPs from the DHCP pool in SQL.
 #	dhcp_sqlippool
 
+	#  If DHCP-Message-Type is not set, returning "ok" or
+	#  "updated" from this section will respond with a DHCP-Offer
+	#  message.
+	#
+	#  Other rcodes will tell the server to not return any response.
 	ok
 }
 
 dhcp DHCP-Request {
+
+	# Response packet type. See DHCP-Discover section above.
 	update reply {
 	       DHCP-Message-Type = DHCP-Ack
 	}
@@ -186,13 +213,24 @@ dhcp DHCP-Request {
 	#  Or, allocate IPs from the DHCP pool in SQL.
 #	dhcp_sqlippool
 
+	#  If DHCP-Message-Type is not set, returning "ok" or
+	#  "updated" from this section will respond with a DHCP-Ack
+	#  packet.
+	#
+	#  "handled" will not return a packet, all other rcodes will
+	#  send back a DHCP-NAK.
 	ok
 }
 
 #  If there's no named section for the packet type, then the packet
 #  is processed through this section.
 dhcp {
-	# send a DHCP NAK.
+	#  The DHCP-Message-Type attribute will tell the server which
+	#  type of packet to respond with. If this is not set, then
+	#  "handled" will not return a response, whereas all other
+	#  rcodes will return a "NAK".
+	#
+	#  Send a DHCP NAK.
 	reject
 }
 
