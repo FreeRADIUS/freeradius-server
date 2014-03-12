@@ -2492,7 +2492,7 @@ int paircmp(VALUE_PAIR *one, VALUE_PAIR *two)
  * @param[in] one the first attribute
  * @param[in] op the operator for comparison
  * @param[in] two the second attribute
- * @return < 0 if one is less than two, 0 if both are equal, > 0 if one is more than two.
+ * @return true (comparison is true), or false (comparison is not true);
  */
 int paircmp_op(VALUE_PAIR const *one, FR_TOKEN op, VALUE_PAIR const *two)
 {
