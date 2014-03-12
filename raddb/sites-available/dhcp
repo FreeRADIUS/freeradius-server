@@ -267,8 +267,22 @@ dhcp {
 #
 #  This lets you perform simple static IP assignment.
 #
+#  There is a preconfigured "mac2ip" module setup in
+#  mods-available/mac2ip. To use it do:
+#
+#    # cd raddb/
+#    # ln -s ../mods-available/mac2ip mods-enabled/mac2ip
+#    # mkdir mods-config/passwd
+#
+#  Then create the file mods-config/passwd/mac2ip with the above
+#  format.
+#
 ######################################################################
 
+
+#  This is an example only - see mods-available/mac2ip instead; do
+#  not uncomment these lines here.
+#
 #passwd mac2ip {
 #	filename = ${confdir}/mac2ip
 #	format = "*DHCP-Client-Hardware-Address:=DHCP-Your-IP-Address"
