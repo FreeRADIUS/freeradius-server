@@ -26,36 +26,36 @@ data ERROR offset 11 No closing brace at end of string
 condition (|| b)
 data ERROR offset 1 Empty string is invalid
 
-condition ((a || b) foo)
-data ERROR offset 10 Unexpected text after condition
+condition ((ok || handled) foo)
+data ERROR offset 17 Unexpected text after condition
 
 # escapes in names are illegal
-condition (a\ foo || b)
-data ERROR offset 2 Unexpected escape
+condition (ok\ foo || handled)
+data ERROR offset 3 Unexpected escape
 
-condition (a FOO b)
-data ERROR offset 3 Invalid text. Expected comparison operator
+condition (ok FOO handled)
+data ERROR offset 4 Invalid text. Expected comparison operator
 
-condition (a !x b)
-data ERROR offset 3 Invalid operator
+condition (ok !x handled)
+data ERROR offset 4 Invalid operator
 
-condition (a =x b)
-data ERROR offset 3 Invalid operator
+condition (ok =x handled)
+data ERROR offset 4 Invalid operator
 
-condition (a =~ b)
-data ERROR offset 6 Expected regular expression
+condition (ok =~ handled)
+data ERROR offset 7 Expected regular expression
 
-condition (a == /b/)
-data ERROR offset 6 Unexpected regular expression
+condition (ok == /foo/)
+data ERROR offset 7 Unexpected regular expression
 
-condition (a == b"foo")
-data ERROR offset 7 Unexpected start of string
+condition (ok == handled"foo")
+data ERROR offset 14 Unexpected start of string
 
 # And now we have a bunch of VALID conditions we want to parse.
 
 # sillyness is OK
-condition ((((((a))))))
-data a
+condition ((((((ok))))))
+data ok
 
 #
 #  Extra braces get squashed
@@ -63,17 +63,17 @@ data a
 condition (&User-Name == &User-Password)
 data &User-Name == &User-Password
 
-condition (!a)
-data !a
+condition (!ok)
+data !ok
 
-condition !(a)
-data !a
+condition !(ok)
+data !ok
 
-condition !!a
+condition !!ok
 data ERROR offset 1 Double negation is invalid
 
-condition !(!a)
-data a
+condition !(!ok)
+data ok
 
 #
 #  These next two are identical after normalization
@@ -107,9 +107,6 @@ data handled && &Response-Packet-Type == Access-Challenge
 # and this, though it's not a good idea.
 condition handled &&&Response-Packet-Type == Access-Challenge
 data handled && &Response-Packet-Type == Access-Challenge
-
-condition (!(!foo))
-data foo
 
 condition /foo/ =~ bar
 data ERROR offset 0 Conditional check cannot begin with a regular expression
@@ -344,3 +341,60 @@ data ERROR offset 8 Failed to parse field
 
 condition <ipaddr>127.0.0.1/32 == 127.0.0.1
 data true
+
+condition (/foo/)
+data ERROR offset 1 Conditional check cannot begin with a regular expression
+
+#
+#  Tests for (FOO).
+#
+condition (1)
+data true
+
+condition (0)
+data false
+
+condition (true)
+data true
+
+condition (false)
+data false
+
+condition ('')
+data false
+
+condition ("")
+data false
+
+#
+#  Integers are true, as are non-zero strings
+#
+condition (4)
+data true
+
+condition ('a')
+data true
+
+condition (a)
+data ERROR offset 1 Expected a module return code
+
+#
+#  Module return codes are OK
+#
+condition (ok)
+data ok
+
+condition (handled)
+data handled
+
+condition (fail)
+data fail
+
+condition ("a")
+data true
+
+condition (`a`)
+data `a`
+
+condition (User-name)
+data &User-Name
