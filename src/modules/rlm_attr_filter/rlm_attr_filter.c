@@ -255,7 +255,7 @@ static rlm_rcode_t attr_filter_common(void *instance, REQUEST *request, RADIUS_P
 		 */
 		for (input_item = fr_cursor_init(&input, &packet->vps);
 		     input_item;
-		     input_item = pairnext(&input)) {
+		     input_item = fr_cursor_next(&input)) {
 			pass = fail = 0; /* reset the pass,fail vars for each reply item */
 
 			/*
