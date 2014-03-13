@@ -49,7 +49,7 @@
 
 #define MAX_QUERY_LEN 4096
 
-static char const rcsid[] = "$Id$";
+RCSID("$Id$");
 
 typedef struct rlm_sqlhpwippool_t {
 	char const *myname;	 	//!< Name of this instance
