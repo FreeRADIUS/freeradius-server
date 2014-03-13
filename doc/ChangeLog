@@ -18,6 +18,10 @@ FreeRADIUS 2.2.4 Wednesday 16 Dec 2013 15:00:00 EST, urgency=medium
 	* Don't fail config check if were listening on an IP which is
 	  also a home server. Some deployments have valid reasons
 	  to loop packets back to another virtual server.
+	* Use correct port when DHCP relaying.
+	* Set source IP address for DHCP packets from DHCP-Server-IP-Address,
+	  or DHCP-DHCP-Server-Identifier, if we're unable to otherwise
+	  determine the source IP.
 
 FreeRADIUS 2.2.3 Wednesday 11 Dec 2013 15:00:00 EST, urgency=medium
 	Feature improvements
