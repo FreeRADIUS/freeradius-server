@@ -557,8 +557,13 @@ static int dhcp_process(REQUEST *request)
 		}
 	}
 #else
-	RDEBUG("DHCP: Reply will be broadcast as this system does not support ARP updates");
-	request->reply->dst_ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_BROADCAST);
+	if (request->packet->src_ipaddr.ipaddr.ip4addr.s_addr != ntohl(INADDR_NONE)) {
+		RDEBUG("DHCP: Request will be unicast to the unicast source IP address");
+		request->reply->dst_ipaddr.ipaddr.ip4addr.s_addr = request->packet->src_ipaddr.ipaddr.ip4addr.s_addr;
+	} else {
+		RDEBUG("DHCP: Reply will be broadcast as this system does not support ARP updates");
+		request->reply->dst_ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_BROADCAST);
+	}
 #endif
 
 	return 1;
@@ -650,7 +655,7 @@ static int dhcp_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	client = &sock->dhcp_client;
 	memset(client, 0, sizeof(*client));
 	client->ipaddr.af = AF_INET;
-	client->ipaddr.ipaddr.ip4addr.s_addr = INADDR_NONE;
+	client->ipaddr.ipaddr.ip4addr.s_addr = ntohl(INADDR_NONE);
 	client->prefix = 0;
 	client->longname = client->shortname = "dhcp";
 	client->secret = client->shortname;
