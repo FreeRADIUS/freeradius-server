@@ -90,6 +90,9 @@ FreeRADIUS 3.0.2 Mon 13 Jan 2014 14:30:00 EDT urgency=medium
 	* Initialize scope in IP address parsing
 	* Prevent vendor attributes and RFC space attributes from clashing
 	  in rlm_attr_filter.
+	* Set source IP address for DHCP packets from DHCP-Server-IP-Address,
+	  or DHCP-DHCP-Server-Identifier, if we're unable to otherwise
+	  determine the source IP.
 
 FreeRADIUS 3.0.1 Mon 13 Jan 2014 14:30:00 EDT urgency=medium
 	Feature improvements
