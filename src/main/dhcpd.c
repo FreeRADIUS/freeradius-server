@@ -83,7 +83,7 @@ static int dhcprelay_process_client_request(REQUEST *request)
 	/*
 	 * It's invalid to have giaddr=0 AND a relay option
 	 */
-	giaddrvp = pairfind(request->packet->vps, DHCP2ATTR(266)); /* DHCP-Gateway-IP-Address */
+	giaddr = pairfind(request->packet->vps, DHCP2ATTR(266)); /* DHCP-Gateway-IP-Address */
 	if ((giaddr && (giaddr->vp_ipaddr == htonl(INADDR_ANY))) &&
 	    pairfind(request->packet->vps, DHCP2ATTR(82))) { /* DHCP-Relay-Agent-Information */
 		DEBUG("DHCP: Received packet with giaddr = 0 and containing relay option: Discarding packet\n");
@@ -116,7 +116,7 @@ static int dhcprelay_process_client_request(REQUEST *request)
 	 */
 	/* set SRC ipaddr/port to the listener ipaddr/port */
 	request->packet->src_ipaddr.af = AF_INET;
-	request->packet->src_ipaddr.ipaddr.ip4addr.s_addr = sock->lsock.my_ipaddr.ipaddr.ip4addr.s_addr;
+	request->packet->src_ipaddr.ipaddr.ip4addr.s_addr = sock->lsock.ipaddr.ipaddr.ip4addr.s_addr;
 	request->packet->src_port = sock->lsock.port;
 
 	vp = pairfind(request->config_items, DHCP2ATTR(270)); /* DHCP-Relay-To-IP-Address */
