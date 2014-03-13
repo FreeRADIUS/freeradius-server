@@ -516,8 +516,8 @@ static int dhcp_process(REQUEST *request)
 
 	vp = pairfind(request->reply->vps, 264, DHCP_MAGIC_VENDOR, TAG_ANY); /* DHCP-Your-IP-Address */
 	if (!vp) {
-		DEBUG("DHCP: Failed to find DHCP-Client-IP-Address or DHCP-Your-IP-Address");
-		DEBUG("      for request; not responding.");
+		RDEBUG("DHCP: Failed to find DHCP-Client-IP-Address or DHCP-Your-IP-Address for request; "
+		       "not responding.");
 		/*
 		 *	There is nowhere to send the response to, so don't bother.
 		 */
