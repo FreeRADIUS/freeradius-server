@@ -130,15 +130,17 @@ server dhcp {
 		interface = ${..interface}
 
 		#
-		#  When running as a DHCP relay, or sending unicast
-		#  responses, this IP address is used as the source
-		#  IP.  If unset, the value is taken from the "ipaddr"
-		#  field in this section. Since this might be
-		#  broadcast, it can be wrong.
+		#  The source IP for unicast packets is chosen from the first
+		#  one of the following items which returns a valid IP
+		#  address:
 		#
-		#  This example uses the "ipaddr = 127.0.0.1" line above.
-		#  It doesn't use the "ipaddr = 255.255.255.255" in this
-		#  section.
+		#	src_ipaddr
+		#	ipaddr
+		#	reply:DHCP-Server-IP-Address
+		#	reply:DHCP-DHCP-Server-Identifier
+		#
+		#  For now, use the parent's "ipaddr", not the one
+		#  in this listen section
 		#
                 src_ipaddr = ${..ipaddr}
 	}
