@@ -101,6 +101,20 @@ listen {
 	#  interface, or 0.0.0.0
 	ipaddr = 127.0.0.1
 
+	#  source IP address for unicast packets sent by the
+	#  DHCP server.
+	#
+	#  The source IP for unicast packets is chosen from the first
+	#  one of the following items which returns a valid IP
+	#  address:
+	#
+	#	src_ipaddr
+	#	ipaddr
+	#	reply:DHCP-Server-IP-Address
+	#	reply:DHCP-DHCP-Server-Identifier
+	#
+	src_ipaddr = 127.0.0.1
+
 	#  The port should be 67 for a production network. Don't set
 	#  it to 67 on a production network unless you really know
 	#  what you're doing. Even if nothing is configured below, the
