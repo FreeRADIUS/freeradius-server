@@ -408,6 +408,19 @@ static int dhcp_process(REQUEST *request)
 	request->reply->src_ipaddr.af = AF_INET;
 	request->reply->src_ipaddr.ipaddr.ip4addr.s_addr = sock->src_ipaddr.ipaddr.ip4addr.s_addr;
 
+	/*
+	 *	They didn't set a proper src_ipaddr, but we want to
+	 *	send the packet with a source IP.  If there's a server
+	 *	identifier, use it.
+	 */
+	if (request->reply->src_ipaddr.ipaddr.ip4addr.s_addr == INADDR_ANY) {
+		vp = pairfind(request->reply->vps, DHCP2ATTR(265)); /* DHCP-Server-IP-Address */
+		if (!vp) vp = pairfind(request->reply->vps, DHCP2ATTR(54)); /* DHCP-DHCP-Server-Identifier */
+		if (vp) {
+			request->reply->src_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
+		}
+	}
+
 	request->reply->dst_port = request->packet->src_port;
 	request->reply->src_port = request->packet->dst_port;
 
