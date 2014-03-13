@@ -48,6 +48,11 @@ VALUE_PAIR *_fr_cursor_init(vp_cursor_t *cursor, VALUE_PAIR const * const *node)
 	return cursor->current;
 }
 
+void fr_cursor_copy(vp_cursor_t *out, vp_cursor_t *in)
+{
+	memcpy(out, in, sizeof(*out));
+}
+
 VALUE_PAIR *fr_cursor_first(vp_cursor_t *cursor)
 {
 	cursor->current = *cursor->first;
