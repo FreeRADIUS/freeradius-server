@@ -448,7 +448,7 @@ static int dhcp_process(REQUEST *request)
 	 *	public IP, but the gateway a private one.
 	 */
 	vp = pairfind(request->reply->vps, 272, DHCP_MAGIC_VENDOR, TAG_ANY); /* DHCP-Relay-IP-Address */
-	if (vp) {
+	if (vp && (vp->vp_ipaddr != ntohl(INADDR_ANY))) {
 		RDEBUG("DHCP: Reply will be unicast to giaddr from original packet");
 		request->reply->dst_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
 		return 1;
