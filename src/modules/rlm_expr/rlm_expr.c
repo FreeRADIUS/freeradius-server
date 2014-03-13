@@ -744,6 +744,7 @@ static ssize_t base64_to_hex_xlat(UNUSED void *instance, UNUSED REQUEST *request
 	if ((size_t)((declen * 2) + 1) > outlen) {
 		REDEBUG("Base64 conversion failed, output buffer exhausted, needed %zd bytes, have %zd bytes",
 			(declen * 2) + 1, outlen);
+		return -1;
 	}
 
 	return fr_bin2hex(out, decbuf, declen);
