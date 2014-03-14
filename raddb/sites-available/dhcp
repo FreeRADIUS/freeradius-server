@@ -3,55 +3,6 @@
 #
 #	This is a virtual server that handles DHCP.
 #
-#		!!!! WARNING !!!!
-#
-#	This code is experimental, and SHOULD NOT be used in a
-#	production system.  It is intended for validation and
-#	experimentation ONLY.
-#
-#	In order for this to work, you will need to run configure:
-#
-#		$ ./configure --with-dhcp
-#		$ make
-#		$ vi share/dictionary
-#
-#	## Un-comment the line containing $INCLUDE dictionary.dhcp
-#	## Then, save the file.
-#
-#		$ make install
-#
-#	DHCP is NOT enabled by default.
-#
-#	The goal of this effort is to get the code in front of
-#	people who are interested in another DHCP server.
-#	We NEED FEEDBACK, patches, bug reports, etc.  Especially patches!
-#
-#	Please contribute, or this work will be nothing more than
-#	a curiosity.
-#
-#
-#	Q: What does it do?
-#	A: It allows the server to receive DHCP packets, and to
-#	   respond with static, pre-configured DHCP responses.
-#
-#	Q: Does it do static/dynamic IP assignment?
-#	A: No.  Or, maybe.  Try it and see.
-#
-#	Q: Does it read ISC configuration or lease files?
-#	A: No.  Please submit patches.
-#
-#	Q: Does it have DHCP feature X?
-#	A: No.  Please submit patches.
-#
-#	Q: Does it support option 82?
-#	A: Yes.
-#
-#	Q: Does it support other options?
-#	A: Maybe.  See dictionary.dhcp.  Please submit patches.
-#
-#	Q: It doesn't seem to do much of anything!
-#	A: Exactly.
-#
 #	$Id$
 #
 ######################################################################
