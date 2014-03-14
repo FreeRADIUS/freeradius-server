@@ -203,9 +203,10 @@ dhcp DHCP-Request {
 	ok
 }
 
-#  If there's no named section for the packet type, then the packet
-#  is processed through this section.
-dhcp {
+#
+#  There should be a separate section for each DHCP message type.
+#
+dhcp DHCP-Inform {
 	#  The DHCP-Message-Type attribute will tell the server which
 	#  type of packet to respond with. If this is not set, then
 	#  "handled" will not return a response, whereas all other
