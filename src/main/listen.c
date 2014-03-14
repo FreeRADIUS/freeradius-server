@@ -716,10 +716,10 @@ static void common_socket_free(rad_listen_t *this)
 	if (sock->parent->limit.num_connections > 0) {
 		sock->parent->limit.num_connections--;
 	}
-	if (sock->client->limit.num_connections > 0) {
+	if (sock->client && sock->client->limit.num_connections > 0) {
 		sock->client->limit.num_connections--;
 	}
-	if (sock->home->limit.num_connections > 0) {
+	if (sock->home && sock->home->limit.num_connections > 0) {
 		sock->home->limit.num_connections--;
 	}
 }
