@@ -1015,7 +1015,7 @@ static VALUE_PAIR *fr_dhcp_vp2suboption(TALLOC_CTX *ctx, vp_cursor_t *cursor)
 {
 	ssize_t length;
 	unsigned int parent; 	/* Parent attribute of suboption */
-	uint8_t attr;
+	uint8_t attr = 0;
 	uint8_t *p, *opt_len;
 	vp_cursor_t to_pack;
 	VALUE_PAIR *vp, *tlv;
@@ -1090,7 +1090,7 @@ static VALUE_PAIR *fr_dhcp_vp2suboption(TALLOC_CTX *ctx, vp_cursor_t *cursor)
  * @param outlen Length of out buffer.
  * @param ctx to use for any allocated memory.
  * @param cursor with current VP set to the option to be encoded. Will be advanced to the next option to encode.
- * @return > 0 length of data written, < 0 out of buffer, 0 not valid option (skipping).
+ * @return > 0 length of data written, < 0 error, 0 not valid option (skipping).
  */
 ssize_t fr_dhcp_encode_option(uint8_t *out, size_t outlen, TALLOC_CTX *ctx, vp_cursor_t *cursor)
 {
@@ -1101,6 +1101,7 @@ ssize_t fr_dhcp_encode_option(uint8_t *out, size_t outlen, TALLOC_CTX *ctx, vp_c
 	ssize_t len;
 
 	vp = fr_cursor_current(cursor);
+	if (!vp) return -1;
 
 	if (vp->da->vendor != DHCP_MAGIC_VENDOR) goto next; /* not a DHCP option */
 	if (vp->da->attr == 53) goto next; /* already done */
@@ -1117,11 +1118,12 @@ ssize_t fr_dhcp_encode_option(uint8_t *out, size_t outlen, TALLOC_CTX *ctx, vp_c
 	*(p++) = vp->da->attr & 0xff;
 
 	/* Pointer to the length field of the option */
-	opt_len = p;
+	opt_len = p++;
 
 	/* Zero out the option's length field */
-	*(p++) = 0;
+	*opt_len = 0;
 
+	/* We just consumed two bytes for the header */
 	freespace -= 2;
 
 	/* DHCP options with the same number get coalesced into a single option */
@@ -1468,10 +1470,12 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 	 *  Each call to fr_dhcp_encode_option will encode one complete DHCP option,
 	 *  and sub options.
 	 */
-	do {
-		p += len = fr_dhcp_encode_option(p, packet->data_len - (p - packet->data), packet, &cursor);
+	while (fr_cursor_current(&cursor)) {
+		len = fr_dhcp_encode_option(p, packet->data_len - (p - packet->data), packet, &cursor);
+		if (len < 0) break;
 		if (len > 0) debug_pair(vp);
-	} while (len >= 0);
+		p += len;
+	};
 
 	p[0] = 0xff;		/* end of option option */
 	p[1] = 0x00;
