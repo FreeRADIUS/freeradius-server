@@ -97,10 +97,12 @@ static inline _t __fr_thread_local_init_##_n(pthread_destructor_t func)\
 	(void) pthread_once(&__fr_thread_local_once_##_n, __fr_thread_local_key_init_##_n);\
 	return pthread_getspecific(__fr_thread_local_key_##_n);\
 }\
+DIAG_OFF(unused-function)\
 static inline _t __fr_thread_local_get_##_n(void)\
 {\
 	return pthread_getspecific(__fr_thread_local_key_##_n);\
 }\
+DIAG_ON(unused-function)\
 static inline int __fr_thread_local_set_##_n(_t val)\
 {\
 	return pthread_setspecific(__fr_thread_local_key_##_n, val);\
