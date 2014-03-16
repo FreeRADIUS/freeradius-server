@@ -2214,11 +2214,6 @@ FR_TOKEN cf_pair_value_type(CONF_PAIR const *pair)
 }
 
 /*
- *	Copied here for error reporting.
- */
-extern void fr_strerror_printf(char const *, ...);
-
-/*
  * Turn a CONF_PAIR into a VALUE_PAIR
  * For now, ignore the "value_type" field...
  */

@@ -54,7 +54,6 @@ RCSID("$Id$")
 
 /* @todo: this is a hack */
 #  define DEBUG			if (fr_debug_flag && fr_log_fp) fr_printf_log
-void fr_strerror_printf(char const *fmt, ...);
 #  define debug_pair(vp)	do { if (fr_debug_flag && fr_log_fp) { \
 					vp_print(fr_log_fp, vp); \
 				     } \
