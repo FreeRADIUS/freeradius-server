@@ -243,17 +243,26 @@ typedef struct dict_vendor {
 typedef union value_data {
 	char const	        *strvalue;			//!< Pointer to UTF-8 string.
 	uint8_t const		*octets;			//!< Pointer to binary string.
-	struct in_addr		ipaddr;				//!< IPv4 Address.
-	struct in6_addr		ipv6addr;			//!< IPv6 Address.
-	uint32_t		date;				//!< Date (32bit Unix timestamp).
 	uint32_t		integer;			//!< 32bit unsigned integer.
+	struct in_addr		ipaddr;				//!< IPv4 Address.
+	uint32_t		date;				//!< Date (32bit Unix timestamp).
+	size_t			filter[32/sizeof(size_t)];	//!< Ascend binary format a packed data
+								//!< structure.
+
+	uint8_t			ifid[8]; /* struct? */		//!< IPv6 interface ID.
+	struct in6_addr		ipv6addr;			//!< IPv6 Address.
+	uint8_t			ipv6prefix[18]; /* struct? */	//!< IPv6 prefix.
+
+	uint8_t			byte;				//!< 8bit unsigned integer.
+	uint16_t		ushort;				//!< 16bit unsigned integer.
+
+	uint8_t			ether[6];			//!< Ethernet (MAC) address.
+
 	int32_t			sinteger;			//!< 32bit signed integer.
 	uint64_t		integer64;			//!< 64bit unsigned integer.
-	size_t			filter[32/sizeof(size_t)];	//!< Ascend binary filter.
-	uint8_t			ifid[8]; /* struct? */		//!< IPv6 interface ID.
-	uint8_t			ipv6prefix[18]; /* struct? */	//!< IPv6 prefix.
+
 	uint8_t			ipv4prefix[6]; /* struct? */	//!< IPv4 prefix.
-     	uint8_t			ether[6];			//!< Ethernet (MAC) address.
+
 	uint8_t			*tlv;				//!< Nested TLV (should go away).
 	void const		*ptr;				//!< generic pointer.
 } value_data_t;
@@ -335,20 +344,22 @@ typedef struct value_pair_raw {
 	FR_TOKEN op;						//!< Operator.
 } VALUE_PAIR_RAW;
 
-#define vp_strvalue   data.strvalue
-#define vp_octets     data.octets
-#define vp_ipv6addr   data.ipv6addr
-#define vp_ifid       data.ifid
-#define vp_ipv6prefix data.ipv6prefix
-#define vp_ipv4prefix data.ipv4prefix
-#define vp_filter     data.filter
-#define vp_ether      data.ether
-#define vp_signed     data.sinteger
-#define vp_tlv	      data.tlv
-#define vp_integer64  data.integer64
-#define vp_ipaddr     data.ipaddr.s_addr
-#define vp_date       data.date
-#define vp_integer    data.integer
+#define vp_strvalue	data.strvalue
+#define vp_integer	data.integer
+#define vp_ipaddr	data.ipaddr.s_addr
+#define vp_date		data.date
+#define vp_filter	data.filter
+#define vp_octets	data.octets
+#define vp_ifid		data.ifid
+#define vp_ipv6addr	data.ipv6addr
+#define vp_ipv6prefix	data.ipv6prefix
+#define vp_byte		data.byte
+#define vp_short	data.ushort
+#define vp_ether	data.ether
+#define vp_signed	data.sinteger
+#define vp_integer64	data.integer64
+#define vp_ipv4prefix	data.ipv4prefix
+#define vp_tlv		data.tlv
 
 typedef struct fr_ipaddr_t {
 	int		af;	/* address family */
