@@ -289,7 +289,7 @@ void *mod_conn_create(void *instance)
 
 	CURL *candle = curl_easy_init();
 
-	CURLcode ret;
+	CURLcode ret = CURLE_OK;
 	char const *option = "unknown";
 
 	if (!candle) {
@@ -1462,7 +1462,7 @@ static size_t rest_write_header(void *ptr, size_t size, size_t nmemb, void *user
 			 */
 			if (!q) q = memchr(p, '\r', s);
 
-			len = !q ? s : q - p;
+			len = !q ? s : (size_t) q - p;
 
 			type = fr_substr2int(http_content_type_table, p, HTTP_BODY_UNKNOWN, len);
 
@@ -1617,7 +1617,7 @@ static int rest_request_config_body(UNUSED rlm_rest_t *instance, rlm_rest_sectio
 	rlm_rest_curl_context_t *ctx = handle->ctx;
 	CURL			*candle = handle->handle;
 
-	CURLcode ret;
+	CURLcode ret = CURLE_OK;
 	char const *option = "unknown";
 
 	ssize_t len;
@@ -1678,7 +1678,7 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 
 	http_auth_type_t auth = section->auth;
 
-	CURLcode ret;
+	CURLcode ret = CURLE_OK;
 	char const *option = "unknown";
 
 	long val = 1;
