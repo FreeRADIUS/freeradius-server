@@ -76,7 +76,7 @@ int radius_parse_attr(value_pair_tmpl_t *vpt, char const *name, request_refs_t r
 	vpt->request = radius_request_name(&p, request_def);
 	len = p - name;
 	if (vpt->request == REQUEST_UNKNOWN) {
-		ERROR("Invalid request qualifier \"%.*s\"", (int) len, name);
+		fr_strerror_printf("Invalid request qualifier \"%.*s\"", (int) len, name);
 		return -1;
 	}
 	name += len;
@@ -84,7 +84,7 @@ int radius_parse_attr(value_pair_tmpl_t *vpt, char const *name, request_refs_t r
 	vpt->list = radius_list_name(&p, list_def);
 	if (vpt->list == PAIR_LIST_UNKNOWN) {
 		len = p - name;
-		ERROR("Invalid list qualifier \"%.*s\"", (int) len, name);
+		fr_strerror_printf("Invalid list qualifier \"%.*s\"", (int) len, name);
 		return -1;
 	}
 
@@ -97,7 +97,7 @@ int radius_parse_attr(value_pair_tmpl_t *vpt, char const *name, request_refs_t r
 	if (!da) {
 		da = dict_attrunknownbyname(p, false);
 		if (!da) {
-			ERROR("Unknown attribute \"%s\"", p);
+			fr_strerror_printf("Unknown attribute \"%s\"", p);
 			return -1;
 		}
 	}
@@ -131,6 +131,7 @@ value_pair_tmpl_t *radius_attr2tmpl(TALLOC_CTX *ctx, char const *name,
 	copy = talloc_strdup(vpt, name);
 
 	if (radius_parse_attr(vpt, copy, request_def, list_def) < 0) {
+		ERROR("%s", fr_strerror());
 		radius_tmplfree(&vpt);
 		return NULL;
 	}
@@ -233,7 +234,7 @@ value_pair_tmpl_t *radius_str2tmpl(TALLOC_CTX *ctx, char const *name, FR_TOKEN t
 }
 
 
-/** Convert strings to value_pair_map_e
+/** Convert strings to value_pair_map_t
  *
  * Treatment of operands depends on quotation, barewords are treated
  * as attribute references, double quoted values are treated as

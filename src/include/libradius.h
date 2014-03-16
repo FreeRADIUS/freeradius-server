@@ -591,13 +591,11 @@ VALUE_PAIR	*readvp2(TALLOC_CTX *ctx, FILE *fp, bool *pfiledone, char const *errp
 /*
  *	Error functions.
  */
-#ifdef _LIBRADIUS
 void		fr_strerror_printf(char const *, ...)
 #ifdef __GNUC__
 		__attribute__ ((format (printf, 1, 2)))
 #endif
 ;
-#endif
 void		fr_perror(char const *, ...)
 #ifdef __GNUC__
 		__attribute__ ((format (printf, 1, 2)))
