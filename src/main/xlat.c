@@ -316,6 +316,7 @@ static ssize_t xlat_debug_attr(UNUSED void *instance, REQUEST *request, char con
 	if (*fmt == '&') fmt++;
 
 	if (radius_parse_attr(&vpt, fmt, REQUEST_CURRENT, PAIR_LIST_REQUEST) < 0) {
+		RDEBUG("%s", fr_strerror());
 		return -1;
 	}
 

@@ -2518,10 +2518,13 @@ static bool pass2_callback(UNUSED void *ctx, fr_cond_t *c)
 		value_pair_map_t *old;
 		value_pair_tmpl_t vpt;
 
+		old = c->data.map;
+
 		/*
 		 *	It's still not an attribute.  Ignore it.
 		 */
 		if (radius_parse_attr(&vpt, map->dst->name, REQUEST_CURRENT, PAIR_LIST_REQUEST) < 0) {
+			cf_log_err(old->ci, "Failed parsing condition: %s", fr_strerror());
 			c->pass2_fixup = PASS2_FIXUP_NONE;
 			return true;
 		}
@@ -2529,7 +2532,6 @@ static bool pass2_callback(UNUSED void *ctx, fr_cond_t *c)
 		/*
 		 *	Re-parse the LHS as an attribute.
 		 */
-		old = c->data.map;
 		map = radius_str2map(c, old->dst->name, T_BARE_WORD, old->op,
 				     old->src->name, T_BARE_WORD,
 				     REQUEST_CURRENT, PAIR_LIST_REQUEST,
