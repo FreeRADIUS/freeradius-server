@@ -1051,9 +1051,9 @@ static VALUE_PAIR *json_pairmake_leaf(UNUSED rlm_rest_t *instance,
 		to_parse = value;
 	}
 
-	vp = paircreate(NULL, da->attr, da->vendor);
+	vp = paircreate(request, da->attr, da->vendor);
 	if (!vp) {
-		REDEBUG("Failed creating valuepair");
+		REDEBUG("Failed creating valuepair, skipping...");
 		talloc_free(expanded);
 
 		return NULL;
@@ -1064,7 +1064,7 @@ static VALUE_PAIR *json_pairmake_leaf(UNUSED rlm_rest_t *instance,
 	ret = pairparsevalue(vp, to_parse);
 	talloc_free(expanded);
 	if (!ret) {
-		RDEBUG("Incompatible value assignment, skipping");
+		RDEBUG("Incompatible value assignment, skipping...");
 		talloc_free(vp);
 
 		return NULL;
@@ -1119,55 +1119,54 @@ static VALUE_PAIR *json_pairmake_leaf(UNUSED rlm_rest_t *instance,
  * @param[in] request Current request.
  * @param[in] object containing root node, or parent node.
  * @param[in] level Current nesting level.
- * @param[in] max_attrs counter, decremented after each VALUE_PAIR is created,
+ * @param[in] max counter, decremented after each VALUE_PAIR is created,
  * 	      when 0 no more attributes will be processed.
- * @return VALUE_PAIR or NULL on error.
+ * @return number of attributes created or < 0 on error.
  */
-static VALUE_PAIR *json_pairmake(rlm_rest_t *instance,
-				 UNUSED rlm_rest_section_t *section,
-				 REQUEST *request, json_object *object,
-				 UNUSED int level, int *max_attrs)
+static int json_pairmake(rlm_rest_t *instance,
+			 UNUSED rlm_rest_section_t *section,
+			 REQUEST *request, json_object *object,
+			 UNUSED int level, int max)
 {
-	char const *p;
-	char *q;
-
-	char const *name, *attribute;
-
-	struct json_object *value, *idx, *tmp;
 	struct lh_entry *entry;
-	json_flags_t flags;
-
-	DICT_ATTR const *da;
-	VALUE_PAIR *vp = NULL;
-
-	request_refs_t request_name;
-	pair_lists_t list_name;
-	REQUEST *reference = request;
-	VALUE_PAIR **vps;
-
-	int i, len;
+	int max_attrs = max;
 
 	if (!json_object_is_type(object, json_type_object)) {
 		RDEBUG("Can't process VP container, expected JSON object, got \"%s\", skipping",
       	       	       json_type_to_name(json_object_get_type(object)));
-		return NULL;
+		return -1;
    	}
 
 	/*
 	 *	Process VP container
 	 */
-	entry = json_object_get_object(object)->head;
-	while (entry) {
-		flags.op = T_OP_SET;
-		flags.do_xlat  = 1;
-		flags.is_json  = 0;
+	for (entry = json_object_get_object(object)->head;
+	     entry;
+	     entry = entry->next) {
+		char const *p;
+		char *q;
+
+		int i, elements;
+		struct json_object *value, *element, *tmp;
+
+		char const *name;
+
+		json_flags_t flags = {
+			.op = T_OP_SET,
+			.do_xlat = 1,
+			.is_json = 0
+		};
+
+		value_pair_tmpl_t dst;
+		REQUEST *current = request;
+		VALUE_PAIR **vps, *vp = NULL;
+
+		memset(&dst, 0, sizeof(dst));
 
 		name = (char*)entry->k;
 
 		/* Fix the compiler warnings regarding const... */
 		memcpy(&value, &entry->v, sizeof(value));
-
-		entry = entry->next;
 
 		/*
 		 *	For people handcrafting JSON responses
@@ -1178,47 +1177,27 @@ static VALUE_PAIR *json_pairmake(rlm_rest_t *instance,
 			p++;
 		}
 
-		attribute = name;
-		reference = request;
-
 		/*
 		 *	Resolve attribute name to a dictionary entry and
 		 *	pairlist.
 		 */
-		RDEBUG2("Decoding attribute \"%s\"", name);
+		RDEBUG2("Parsing attribute \"%s\"", name);
 
-		request_name = radius_request_name(&attribute, REQUEST_CURRENT);
-		if (request_name == REQUEST_UNKNOWN) {
-			RWDEBUG("Request qualifier unknown, skipping");
-
+		if (radius_parse_attr(&dst, name, REQUEST_CURRENT, PAIR_LIST_REPLY) < 0) {
+			RWDEBUG("Failed parsing attribute: %s, skipping...", fr_strerror());
 			continue;
 		}
 
-		if (radius_request(&reference, request_name) < 0) {
-			RWDEBUG("Attribute name refers to outer request"
-		       	       " but not in a tunnel, skipping");
-
+		if (radius_request(&current, dst.request) < 0) {
+			RWDEBUG("Attribute name refers to outer request but not in a tunnel, skipping...");
 			continue;
 		}
 
-		list_name = radius_list_name(&attribute, PAIR_LIST_REPLY);
-		if (list_name == PAIR_LIST_UNKNOWN) {
-			RWDEBUG("Invalid list qualifier, skipping");
-
+		vps = radius_list(current, dst.list);
+		if (!vps) {
+			RWDEBUG("List not valid in this context, skipping...");
 			continue;
 		}
-
-		da = dict_attrbyname(attribute);
-		if (!da) {
-			RWDEBUG("Attribute \"%s\" unknown, skipping",
-			       attribute);
-
-			continue;
-		}
-
-		vps = radius_list(reference, list_name);
-
-		assert(vps);
 
 		/*
 		 *	Alternate JSON structure that allows operator,
@@ -1244,8 +1223,8 @@ static VALUE_PAIR *json_pairmake(rlm_rest_t *instance,
 			if (tmp) {
 				flags.op = fr_str2int(fr_tokens, json_object_get_string(tmp), 0);
 				if (!flags.op) {
-					RDEBUG("Invalid operator value \"%s\", skipping",
-					       json_object_get_string(tmp));
+					RWDEBUG("Invalid operator value \"%s\", skipping...",
+					        json_object_get_string(tmp));
 					continue;
 				}
 			}
@@ -1272,7 +1251,7 @@ static VALUE_PAIR *json_pairmake(rlm_rest_t *instance,
 			 */
 			value = json_object_object_get(value, "value");
 			if (!value) {
-				RDEBUG("Value key missing, skipping");
+				RWDEBUG("Value key missing, skipping...");
 				continue;
 			}
    		}
@@ -1280,55 +1259,57 @@ static VALUE_PAIR *json_pairmake(rlm_rest_t *instance,
 		/*
 		 *	Setup pairmake / recursion loop.
 		 */
-		if (!flags.is_json &&
-		    json_object_is_type(value, json_type_array)) {
-			len = json_object_array_length(value);
-			if (!len) {
-				RDEBUG("Zero length value array, skipping");
+		if (!flags.is_json && json_object_is_type(value, json_type_array)) {
+			elements = json_object_array_length(value);
+			if (!elements) {
+				RWDEBUG("Zero length value array, skipping...");
 				continue;
 			}
-			idx = json_object_array_get_idx(value, 0);
+			element = json_object_array_get_idx(value, 0);
 		} else {
-			len = 1;
-			idx = value;
+			elements = 1;
+			element = value;
 		}
 
-		i = 0;
-		do {
-			if (!(*max_attrs)--) {
-					REDEBUG("At maximum attribute limit");
-					return NULL;
+		/*
+		 *	A JSON 'value' key, may have multiple elements, iterate
+		 *	over each of them, creating a new VALUE_PAIR.
+		 */
+		for (i = 0; i < elements; element = json_object_array_get_idx(value, ++i))
+		{
+			if (max_attrs-- <= 0) {
+				RWDEBUG("At maximum attribute limit");
+				return max;
 			}
 
 			/*
 			 *	Automagically switch the op for multivalued
 			 *	attributes.
 			 */
-			if (((flags.op == T_OP_SET) ||
-			     (flags.op == T_OP_EQ)) && (len > 1)) {
+			if (((flags.op == T_OP_SET) || (flags.op == T_OP_EQ)) && (i > 1)) {
 				flags.op = T_OP_ADD;
 			}
 
-			if (!flags.is_json && json_object_is_type(value, json_type_object)) {
+			if (json_object_is_type(value, json_type_object) && !flags.is_json) {
 				/* TODO: Insert nested VP into VP structure...*/
-				REDEBUG("Found nested VP, these are not yet supported");
+				RWDEBUG("Found nested VP, these are not yet supported, skipping...");
 
-				return NULL;
+				continue;
 
 				/*
 				vp = json_pairmake(instance, section,
 						   request, value,
 						   level + 1, max_attrs);*/
 			} else {
-				vp = json_pairmake_leaf(instance, section,
-							request, da, &flags,
-							idx);
+				vp = json_pairmake_leaf(instance, section, request, dst.da, &flags, element);
+				if (!vp) continue;
 			}
-		} while ((++i < len) &&
-			 (idx = json_object_array_get_idx(value, i)));
-   }
 
-   return vp;
+			radius_pairmove(current, vps, vp);
+		}
+	}
+
+	return max - max_attrs;
 }
 
 /** Converts JSON response into VALUE_PAIRs and adds them to the request.
@@ -1358,7 +1339,7 @@ static int rest_decode_json(rlm_rest_t *instance,
 
 	struct json_object *json;
 
-	int max = REST_BODY_MAX_ATTRS;
+	int ret;
 
 	/*
 	 *	Empty response?
@@ -1372,7 +1353,7 @@ static int rest_decode_json(rlm_rest_t *instance,
 		return -1;
 	}
 
-	json_pairmake(instance, section, request, json, 0, &max);
+	ret = json_pairmake(instance, section, request, json, 0, REST_BODY_MAX_ATTRS);
 
 	/*
 	 *	Decrement reference count for root object, should free entire
@@ -1380,7 +1361,7 @@ static int rest_decode_json(rlm_rest_t *instance,
 	 */
 	json_object_put(json);
 
-	return (REST_BODY_MAX_ATTRS - max);
+	return ret;
 }
 #endif
 
