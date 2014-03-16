@@ -160,9 +160,9 @@ void pairfree(VALUE_PAIR **vps)
 		return;
 	}
 
-	for (vp = paircursor(&cursor, vps);
+	for (vp = fr_cursor_init(&cursor, vps);
 	     vp;
-	     vp = pairnext(&cursor)) {
+	     vp = fr_cursor_next(&cursor)) {
 		VERIFY_VP(vp);
 		talloc_free(vp);
 	}
@@ -204,9 +204,9 @@ VALUE_PAIR *pairfind(VALUE_PAIR *vp, unsigned int attr, unsigned int vendor,
 	vp_cursor_t 	cursor;
 	VALUE_PAIR	*i;
 
-	for (i = paircursor(&cursor, &vp);
+	for (i = fr_cursor_init(&cursor, &vp);
 	     i;
-	     i = pairnext(&cursor)) {
+	     i = fr_cursor_next(&cursor)) {
 		VERIFY_VP(i);
 		if ((i->da->attr == attr) && (i->da->vendor == vendor)
 		    && ((tag == TAG_ANY) || (i->da->flags.has_tag &&
@@ -218,193 +218,28 @@ VALUE_PAIR *pairfind(VALUE_PAIR *vp, unsigned int attr, unsigned int vendor,
 	return NULL;
 }
 
-/** Setup a cursor to iterate over attribute pairs
- *
- * @param cursor Where to initialise the cursor (uses existing structure).
- * @param node to start from.
- */
-VALUE_PAIR *paircursorc(vp_cursor_t *cursor, VALUE_PAIR const * const *node)
-{
-	memset(cursor, 0, sizeof(*cursor));
-
-	if (!node || !cursor) {
-		return NULL;
-	}
-
-	memcpy(&cursor->first, &node, sizeof(cursor->first));
-	cursor->current = *cursor->first;
-
-	if (cursor->current) {
-		VERIFY_VP(cursor->current);
-		cursor->next = cursor->current->next;
-	}
-
-	return cursor->current;
-}
-
-VALUE_PAIR *pairfirst(vp_cursor_t *cursor)
-{
-	cursor->current = *cursor->first;
-
-	if (cursor->current) {
-		VERIFY_VP(cursor->current);
-		cursor->next = cursor->current->next;
-		if (cursor->next) VERIFY_VP(cursor->next);
-		cursor->found = NULL;
-	}
-
-	return cursor->current;
-}
-
-/** Iterate over attributes of a given type in the pairlist
- *
+/** Find the pair with the matching DAs
  *
  */
-VALUE_PAIR *pairfindnext(vp_cursor_t *cursor, unsigned int attr, unsigned int vendor, int8_t tag)
+VALUE_PAIR *pairfind_da(VALUE_PAIR *vp, DICT_ATTR const *da, int8_t tag)
 {
-	VALUE_PAIR *i;
+	vp_cursor_t 	cursor;
+	VALUE_PAIR	*i;
 
-	i = pairfind(!cursor->found ? cursor->current : cursor->found->next, attr, vendor, tag);
-	if (!i) {
-		cursor->next = NULL;
-		cursor->current = NULL;
-
-		return NULL;
+	if(!fr_assert(da)) {
+		 return NULL;
 	}
 
-	cursor->next = i->next;
-	cursor->current = i;
-	cursor->found = i;
-
-	return i;
-}
-
-/** Retrieve the next VALUE_PAIR
- *
- *
- */
-VALUE_PAIR *pairnext(vp_cursor_t *cursor)
-{
-	cursor->current = cursor->next;
-	if (cursor->current) {
-		VERIFY_VP(cursor->current);
-
-		/*
-		 *	Set this now in case 'current' gets freed before
-		 *	pairnext is called again.
-		 */
-		cursor->next = cursor->current->next;
-
-		/*
-		 *	Next call to pairfindnext will start from the current
-		 *	position in the list, not the last found instance.
-		 */
-		cursor->found = NULL;
-	}
-
-	return cursor->current;
-}
-
-VALUE_PAIR *paircurrent(vp_cursor_t *cursor)
-{
-	if (cursor->current) {
-		VERIFY_VP(cursor->current);
-	}
-
-	return cursor->current;
-}
-
-/** Insert a VP
- *
- * @todo don't use with pairdelete
- */
-void pairinsert(vp_cursor_t *cursor, VALUE_PAIR *add)
-{
-	VALUE_PAIR *i;
-
-	if (!add) {
-		return;
-	}
-
-	VERIFY_VP(add);
-
-	/*
-	 *	Cursor was initialised with a pointer to a NULL value_pair
-	 */
-	if (!*cursor->first) {
-		*cursor->first = add;
-		cursor->current = add;
-
-		return;
-	}
-
-	/*
-	 *	We don't yet know where the last VALUE_PAIR is
-	 *
-	 *	Assume current is closer to the end of the list and use that if available.
-	 */
-	if (!cursor->last) {
-		cursor->last = cursor->current ? cursor->current : *cursor->first;
-	}
-
-	VERIFY_VP(cursor->last);
-
-	/*
-	 *	Something outside of the cursor added another VALUE_PAIR
-	 */
-	if (cursor->last->next) {
-		for (i = cursor->last; i; i = i->next) {
-			VERIFY_VP(i);
-			cursor->last = i;
+	for (i = fr_cursor_init(&cursor, &vp);
+	     i;
+	     i = fr_cursor_next(&cursor)) {
+		VERIFY_VP(i);
+		if ((i->da == da) && (!i->da->flags.has_tag || (tag == TAG_ANY) || (i->tag == tag))) {
+			return i;
 		}
 	}
 
-	/*
-	 *	Either current was never set, or something iterated to the end of the
-	 *	attribute list.
-	 */
-	if (!cursor->current) {
-		cursor->current = add;
-	}
-
-	/*
-	 *	If there's no next cursor, and the pair we just inserted has additional
-	 *	linked pairs, we need to set next to be the next VP in the list.
-	 */
-	if (!cursor->next) {
-		cursor->next = add->next;
-	}
-
-	cursor->last->next = add;
-}
-
-/** Remove the current pair
- *
- * @todo this is really inefficient and should be fixed...
- *
- * @param cursor to remove the current pair from.
- * @return NULL on error, else the VALUE_PAIR we just removed.
- */
-VALUE_PAIR *pairremove(vp_cursor_t *cursor)
-{
-	VALUE_PAIR *vp, **last;
-
-	vp = paircurrent(cursor);
-	if (!vp) {
-	    return NULL;
-	}
-
-	last = cursor->first;
-	while (*last != vp) {
-	    last = &(*last)->next;
-	}
-
-	pairnext(cursor);   /* Advance the cursor past the one were about to delete */
-
-	*last = vp->next;
-	vp->next = NULL;
-
-	return vp;
+	return NULL;
 }
 
 /** Delete matching pairs
@@ -635,8 +470,8 @@ bool pairvalidate(VALUE_PAIR *filter, VALUE_PAIR *list)
 	pairsort(&filter, true);
 	pairsort(&list, true);
 
-	match = paircursor(&list_cursor, &list);
-	check = paircursor(&filter_cursor, &filter);
+	match = fr_cursor_init(&list_cursor, &list);
+	check = fr_cursor_init(&filter_cursor, &filter);
 
 	while (true) {
 		/*
@@ -659,8 +494,8 @@ bool pairvalidate(VALUE_PAIR *filter, VALUE_PAIR *list)
 			return false;
 		}
 
-		match = pairnext(&list_cursor);
-		check = pairnext(&filter_cursor);
+		match = fr_cursor_next(&list_cursor);
+		check = fr_cursor_next(&filter_cursor);
 
 		if (!match && !check) break;
 
@@ -867,10 +702,10 @@ VALUE_PAIR *paircopy2(TALLOC_CTX *ctx, VALUE_PAIR *from,
 
 	VALUE_PAIR *out = NULL, *vp;
 
-	paircursor(&dst, &out);
-	for (vp = paircursor(&src, &from);
+	fr_cursor_init(&dst, &out);
+	for (vp = fr_cursor_init(&src, &from);
 	     vp;
-	     vp = pairnext(&src)) {
+	     vp = fr_cursor_next(&src)) {
 	     	VERIFY_VP(vp);
 
 		if ((vp->da->attr != attr) || (vp->da->vendor != vendor)) {
@@ -886,7 +721,7 @@ VALUE_PAIR *paircopy2(TALLOC_CTX *ctx, VALUE_PAIR *from,
 			pairfree(&out);
 			return NULL;
 		}
-		pairinsert(&dst, vp);
+		fr_cursor_insert(&dst, vp);
 	}
 
 	return out;
@@ -907,17 +742,17 @@ VALUE_PAIR *paircopy(TALLOC_CTX *ctx, VALUE_PAIR *from)
 
 	VALUE_PAIR *out = NULL, *vp;
 
-	paircursor(&dst, &out);
-	for (vp = paircursor(&src, &from);
+	fr_cursor_init(&dst, &out);
+	for (vp = fr_cursor_init(&src, &from);
 	     vp;
-	     vp = pairnext(&src)) {
+	     vp = fr_cursor_next(&src)) {
 	     	VERIFY_VP(vp);
 	     	vp = paircopyvp(ctx, vp);
 	     	if (!vp) {
 	     		pairfree(&out);
 	     		return NULL;
 	     	}
-		pairinsert(&dst, vp); /* paircopy sets next pointer to NULL */
+		fr_cursor_insert(&dst, vp); /* paircopy sets next pointer to NULL */
 	}
 
 	return out;

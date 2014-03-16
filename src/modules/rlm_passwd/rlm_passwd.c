@@ -559,9 +559,9 @@ static rlm_rcode_t passwd_map(void *instance, REQUEST *request)
 		return RLM_MODULE_NOTFOUND;
 	}
 
-	for (i = paircursor(&cursor, &key);
+	for (i = fr_cursor_init(&cursor, &key);
 	     i;
-	     i = pairfindnext(&cursor, inst->keyattr->attr, inst->keyattr->vendor, TAG_ANY)) {
+	     i = fr_cursor_next_by_num(&cursor, inst->keyattr->attr, inst->keyattr->vendor, TAG_ANY)) {
 		/*
 		 *	Ensure we have the string form of the attribute
 		 */

@@ -149,7 +149,7 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, REQUEST *fake, SSL *ssl,
 	RADIUS_PACKET	*packet = fake->packet; /* FIXME: api issues */
 	vp_cursor_t	out;
 
-	paircursor(&out, &first);
+	fr_cursor_init(&out, &first);
 
 	while (data_left > 0) {
 		rad_assert(data_left <= data_len);
@@ -248,7 +248,7 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, REQUEST *fake, SSL *ssl,
 				goto do_octets;
 			}
 
-			pairinsert(&out, vp);
+			fr_cursor_insert(&out, vp);
 
 			goto next_attr;
 		}
@@ -417,7 +417,7 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, REQUEST *fake, SSL *ssl,
 		/*
 		 *	Update the list.
 		 */
-		pairinsert(&out, vp);
+		fr_cursor_insert(&out, vp);
 
 	next_attr:
 		/*
@@ -472,7 +472,7 @@ static int vp2diameter(REQUEST *request, tls_session_t *tls_session, VALUE_PAIR 
 	p = buffer;
 	total = 0;
 
-	for (vp = paircursor(&cursor, &first); vp; vp = pairnext(&cursor)) {
+	for (vp = fr_cursor_init(&cursor, &first); vp; vp = fr_cursor_next(&cursor)) {
 		/*
 		 *	Too much data: die.
 		 */
@@ -1089,7 +1089,7 @@ int eapttls_process(eap_handler_t *handler, tls_session_t *tls_session)
 		VALUE_PAIR *copy;
 		vp_cursor_t cursor;
 
-		for (vp = paircursor(&cursor, &request->packet->vps); vp; vp = pairnext(&cursor)) {
+		for (vp = fr_cursor_init(&cursor, &request->packet->vps); vp; vp = fr_cursor_next(&cursor)) {
 			/*
 			 *	The attribute is a server-side thingy,
 			 *	don't copy it.

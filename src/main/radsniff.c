@@ -73,12 +73,12 @@ static int filter_packet(RADIUS_PACKET *packet)
 	int compare;
 
 	pass = fail = 0;
-	for (vp = paircursor(&cursor, &packet->vps);
+	for (vp = fr_cursor_init(&cursor, &packet->vps);
 	     vp;
-	     vp = pairnext(&cursor)) {
-		for (check_item = paircursor(&check_cursor, &filter_vps);
+	     vp = fr_cursor_next(&cursor)) {
+		for (check_item = fr_cursor_init(&check_cursor, &filter_vps);
 		     check_item;
-		     check_item = pairnext(&check_cursor))
+		     check_item = fr_cursor_next(&check_cursor))
 			if ((check_item->da == vp->da)
 			 && (check_item->op != T_OP_SET)) {
 				compare = paircmp(check_item, vp);

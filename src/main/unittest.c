@@ -172,9 +172,9 @@ static REQUEST *request_setup(FILE *fp)
 	 *
 	 *	Fix up Digest-Attributes issues
 	 */
-	for (vp = paircursor(&cursor, &request->packet->vps);
+	for (vp = fr_cursor_init(&cursor, &request->packet->vps);
 	     vp;
-	     vp = pairnext(&cursor)) {
+	     vp = fr_cursor_next(&cursor)) {
 		/*
 		 *	Double quoted strings get marked up as xlat expansions,
 		 *	but we don't support that here.
@@ -301,9 +301,9 @@ static REQUEST *request_setup(FILE *fp)
 	} /* loop over the VP's we read in */
 
 	if (debug_flag) {
-		for (vp = paircursor(&cursor, &request->packet->vps);
+		for (vp = fr_cursor_init(&cursor, &request->packet->vps);
 		     vp;
-		     vp = pairnext(&cursor)) {
+		     vp = fr_cursor_next(&cursor)) {
 			/*
 			 *	Take this opportunity to verify all the VALUE_PAIRs are still valid.
 			 */
@@ -360,9 +360,9 @@ static void print_packet(FILE *fp, RADIUS_PACKET *packet)
 
 	fprintf(fp, "%s\n", fr_packet_codes[packet->code]);
 
-	for (vp = paircursor(&cursor, &packet->vps);
+	for (vp = fr_cursor_init(&cursor, &packet->vps);
 	     vp;
-	     vp = pairnext(&cursor)) {
+	     vp = fr_cursor_next(&cursor)) {
 		/*
 		 *	Take this opportunity to verify all the VALUE_PAIRs are still valid.
 		 */

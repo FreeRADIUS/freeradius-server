@@ -658,7 +658,7 @@ redo:
 		RDEBUG2("%.*sforeach %s ", depth + 1, modcall_spaces,
 			c->name);
 
-		paircursor(&cursor, &vp);
+		fr_cursor_init(&cursor, &vp);
 		/* Prime the cursor. */
 		cursor.found = cursor.current;
 		while (vp) {
@@ -706,7 +706,7 @@ redo:
 				break;
 			}
 
-			vp = pairfindnext(&cursor, vp->da->attr, vp->da->vendor, TAG_ANY);
+			vp = fr_cursor_next_by_num(&cursor, vp->da->attr, vp->da->vendor, TAG_ANY);
 
 			/*
 			 *	Delete the cached attribute, if it exists.

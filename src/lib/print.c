@@ -922,7 +922,7 @@ void vp_print(FILE *fp, VALUE_PAIR const *vp)
 void vp_printlist(FILE *fp, VALUE_PAIR const *vp)
 {
 	vp_cursor_t cursor;
-	for (vp = paircursorc(&cursor, &vp); vp; vp = pairnext(&cursor)) {
+	for (vp = fr_cursor_init(&cursor, &vp); vp; vp = fr_cursor_next(&cursor)) {
 		vp_print(fp, vp);
 	}
 }

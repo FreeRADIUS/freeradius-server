@@ -345,9 +345,9 @@ static void debug_packet(REQUEST *request, RADIUS_PACKET *packet, int direction)
 		       packet->code, packet->id, packet->data_len);
 	}
 
-	for (vp = paircursor(&cursor, &packet->vps);
+	for (vp = fr_cursor_init(&cursor, &packet->vps);
 	     vp;
-	     vp = pairnext(&cursor)) {
+	     vp = fr_cursor_next(&cursor)) {
 		vp_prints(buffer, sizeof(buffer), vp);
 		RDEBUG("\t%s", buffer);
 	}
@@ -2433,8 +2433,8 @@ static int request_will_proxy(REQUEST *request)
 			rad_assert(vp != NULL);	/* handled by above function */
 			/* Insert at the START of the list */
 			/* FIXME: Can't make assumptions about ordering */
-			paircursor(&cursor, &vp);
-			pairinsert(&cursor, request->proxy->vps);
+			fr_cursor_init(&cursor, &vp);
+			fr_cursor_insert(&cursor, request->proxy->vps);
 			request->proxy->vps = vp;
 		}
 		pairstrcpy(vp, strippedname->vp_strvalue);

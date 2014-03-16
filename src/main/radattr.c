@@ -737,9 +737,9 @@ static void process_file(const char *root_dir, char const *filename)
 			if (head) {
 				vp_cursor_t cursor;
 				p = output;
-				for (vp = paircursor(&cursor, &head);
+				for (vp = fr_cursor_init(&cursor, &head);
 				     vp;
-				     vp = pairnext(&cursor)) {
+				     vp = fr_cursor_next(&cursor)) {
 					vp_prints(p, sizeof(output) - (p - output), vp);
 					p += strlen(p);
 

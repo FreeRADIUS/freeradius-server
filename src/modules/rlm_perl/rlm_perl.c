@@ -521,17 +521,17 @@ static void perl_store_vps(TALLOC_CTX *ctx, VALUE_PAIR *vps, HV *rad_hv)
 		sublist = NULL;
 		pairfilter(ctx, &sublist, &head, head->da->attr, head->da->vendor, head->tag);
 
-		paircursor(&cursor, &sublist);
+		fr_cursor_init(&cursor, &sublist);
 		/*
 		 *	Attribute has multiple values
 		 */
-		if (pairnext(&cursor)) {
+		if (fr_cursor_next(&cursor)) {
 			VALUE_PAIR *vp;
 
 			av = newAV();
-			for (vp = pairfirst(&cursor);
+			for (vp = fr_cursor_first(&cursor);
 			     vp;
-			     vp = pairnext(&cursor)) {
+			     vp = fr_cursor_next(&cursor)) {
 				len = vp_prints_value(buffer, sizeof(buffer), vp, 0);
 				av_push(av, newSVpv(buffer, len));
 			}

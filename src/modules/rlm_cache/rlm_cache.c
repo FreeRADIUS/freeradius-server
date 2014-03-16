@@ -366,8 +366,8 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 				 */
 				if (!from) continue;
 
-				paircursor(&cursor, from);
-				found = pairfindnext(&cursor, da->attr, da->vendor, TAG_ANY);
+				fr_cursor_init(&cursor, from);
+				found = fr_cursor_next_by_num(&cursor, da->attr, da->vendor, TAG_ANY);
 				if (!found) {
 					RWDEBUG("\"%s\" not found, skipping",
 					       map->src->name);
@@ -411,7 +411,7 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 							radius_pairmove(request, to_req, vp);
 
 						}
-					} while ((found = pairfindnext(&cursor, da->attr, da->vendor, TAG_ANY)));
+					} while ((found = fr_cursor_next_by_num(&cursor, da->attr, da->vendor, TAG_ANY)));
 					break;
 
 				default:
@@ -435,10 +435,10 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 				if (!from) continue;
 
 				found = NULL;
-				paircursor(&out, &found);
-				for (i = paircursor(&in, from);
+				fr_cursor_init(&out, &found);
+				for (i = fr_cursor_init(&in, from);
 				     i != NULL;
-				     i = pairnext(&in)) {
+				     i = fr_cursor_next(&in)) {
 				     	/*
 				     	 *	Prevent cache control attributes being added to the cache.
 				     	 */
@@ -462,7 +462,7 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 					       fr_int2str(fr_tokens, map->op, "<INVALID>"),
 					       map->src->name, vp->da->name);
 					vp->op = map->op;
-					pairinsert(&out, vp);
+					fr_cursor_insert(&out, vp);
 				}
 
 				pairadd(to_cache, found);

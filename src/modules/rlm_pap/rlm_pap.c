@@ -182,9 +182,9 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 
 	rad_assert(request != NULL);
 
-	for (vp = paircursor(&cursor, &request->config_items);
+	for (vp = fr_cursor_init(&cursor, &request->config_items);
 	     vp;
-	     vp = pairnext(&cursor)) {
+	     vp = fr_cursor_next(&cursor)) {
 		switch (vp->da->attr) {
 		case PW_USER_PASSWORD: /* deprecated */
 			RWDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
@@ -789,9 +789,9 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 	 *	config items, to find out which authentication
 	 *	function to call.
 	 */
-	for (vp = paircursor(&cursor, &request->config_items);
+	for (vp = fr_cursor_init(&cursor, &request->config_items);
 	     vp;
-	     vp = pairnext(&cursor)) {
+	     vp = fr_cursor_next(&cursor)) {
 		if (!vp->da->vendor) switch (vp->da->attr) {
 		case PW_CLEARTEXT_PASSWORD:
 			auth_func = &pap_auth_clear;

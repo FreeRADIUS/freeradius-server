@@ -433,7 +433,7 @@ int vqp_decode(RADIUS_PACKET *packet)
 
 	if (packet->data_len < VQP_HDR_LEN) return -1;
 
-	paircursor(&cursor, &packet->vps);
+	fr_cursor_init(&cursor, &packet->vps);
 	vp = paircreate(packet, PW_VQP_PACKET_TYPE, 0);
 	if (!vp) {
 		fr_strerror_printf("No memory");
@@ -441,7 +441,7 @@ int vqp_decode(RADIUS_PACKET *packet)
 	}
 	vp->vp_integer = packet->data[1];
 	debug_pair(vp);
-	pairinsert(&cursor, vp);
+	fr_cursor_insert(&cursor, vp);
 
 	vp = paircreate(packet, PW_VQP_ERROR_CODE, 0);
 	if (!vp) {
@@ -450,7 +450,7 @@ int vqp_decode(RADIUS_PACKET *packet)
 	}
 	vp->vp_integer = packet->data[2];
 	debug_pair(vp);
-	pairinsert(&cursor, vp);
+	fr_cursor_insert(&cursor, vp);
 
 	vp = paircreate(packet, PW_VQP_SEQUENCE_NUMBER, 0);
 	if (!vp) {
@@ -459,7 +459,7 @@ int vqp_decode(RADIUS_PACKET *packet)
 	}
 	vp->vp_integer = packet->id; /* already set by vqp_recv */
 	debug_pair(vp);
-	pairinsert(&cursor, vp);
+	fr_cursor_insert(&cursor, vp);
 
 	ptr = packet->data + VQP_HDR_LEN;
 	end = packet->data + packet->data_len;
@@ -520,7 +520,7 @@ int vqp_decode(RADIUS_PACKET *packet)
 		}
 		ptr += length;
 		debug_pair(vp);
-		pairinsert(&cursor, vp);
+		fr_cursor_insert(&cursor, vp);
 	}
 
 	/*

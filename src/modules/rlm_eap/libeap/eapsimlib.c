@@ -95,9 +95,9 @@ int map_eapsim_basictypes(RADIUS_PACKET *r, eap_packet_t *ep)
 	 * that we need to encode all of this.
 	 */
 	encoded_size = 0;
-	for (vp = paircursor(&cursor, &r->vps);
+	for (vp = fr_cursor_init(&cursor, &r->vps);
 	     vp;
-	     vp = pairnext(&cursor)) {
+	     vp = fr_cursor_next(&cursor)) {
 		int roundedlen;
 		int vplen;
 
@@ -179,7 +179,7 @@ int map_eapsim_basictypes(RADIUS_PACKET *r, eap_packet_t *ep)
 	 */
 	attr = encodedmsg+3;
 
-	for (vp = pairfirst(&cursor); vp; vp = pairnext(&cursor)) {
+	for (vp = fr_cursor_first(&cursor); vp; vp = fr_cursor_next(&cursor)) {
 		int roundedlen;
 
 		if(vp->da->attr < ATTRIBUTE_EAP_SIM_BASE ||

@@ -56,8 +56,8 @@ static int digest_fix(REQUEST *request)
 		return RLM_MODULE_NOOP;
 	}
 
-	paircursor(&cursor, &first);
-	while ((i = pairfindnext(&cursor, PW_DIGEST_ATTRIBUTES, 0, TAG_ANY))) {
+	fr_cursor_init(&cursor, &first);
+	while ((i = fr_cursor_next_by_num(&cursor, PW_DIGEST_ATTRIBUTES, 0, TAG_ANY))) {
 		int length = i->length;
 		int attrlen;
 		uint8_t const *p = i->vp_octets;
@@ -101,8 +101,8 @@ static int digest_fix(REQUEST *request)
 	 *	Convert them to something sane.
 	 */
 	RDEBUG("Digest-Attributes look OK.  Converting them to something more useful.");
-	pairfirst(&cursor);
-	while ((i = pairfindnext(&cursor, PW_DIGEST_ATTRIBUTES, 0, TAG_ANY))) {
+	fr_cursor_first(&cursor);
+	while ((i = fr_cursor_next_by_num(&cursor, PW_DIGEST_ATTRIBUTES, 0, TAG_ANY))) {
 		int length = i->length;
 		int attrlen;
 		uint8_t const *p = &i->vp_octets[0];
