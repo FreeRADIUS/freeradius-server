@@ -57,16 +57,13 @@ void radius_tmplfree(value_pair_tmpl_t **tmpl)
  * string might be freed before you're done with the vpt use radius_attr2tmpl
  * instead.
  *
- * @param[in] name attribute name including qualifiers.
  * @param[out] vpt to modify.
- * @param[in] request_def The default request to insert unqualified
- *	attributes into.
+ * @param[in] name attribute name including qualifiers.
+ * @param[in] request_def The default request to insert unqualified attributes into.
  * @param[in] list_def The default list to insert unqualified attributes into.
  * @return -1 on error or 0 on success.
  */
-int radius_parse_attr(char const *name, value_pair_tmpl_t *vpt,
-		      request_refs_t request_def,
-		      pair_lists_t list_def)
+int radius_parse_attr(value_pair_tmpl_t *vpt, char const *name, request_refs_t request_def, pair_lists_t list_def)
 {
 	DICT_ATTR const *da;
 	char const *p;
@@ -133,7 +130,7 @@ value_pair_tmpl_t *radius_attr2tmpl(TALLOC_CTX *ctx, char const *name,
 	vpt = talloc(ctx, value_pair_tmpl_t); /* parse_attr zeroes it */
 	copy = talloc_strdup(vpt, name);
 
-	if (radius_parse_attr(copy, vpt, request_def, list_def) < 0) {
+	if (radius_parse_attr(vpt, copy, request_def, list_def) < 0) {
 		radius_tmplfree(&vpt);
 		return NULL;
 	}

@@ -315,7 +315,7 @@ static ssize_t xlat_debug_attr(UNUSED void *instance, REQUEST *request, char con
 	while (isspace((int) *fmt)) fmt++;
 	if (*fmt == '&') fmt++;
 
-	if (radius_parse_attr(fmt, &vpt, REQUEST_CURRENT, PAIR_LIST_REQUEST) < 0) {
+	if (radius_parse_attr(&vpt, fmt, REQUEST_CURRENT, PAIR_LIST_REQUEST) < 0) {
 		return -1;
 	}
 

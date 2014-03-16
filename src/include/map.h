@@ -132,7 +132,7 @@ typedef struct value_pair_map {
 } value_pair_map_t;
 
 void radius_tmplfree(value_pair_tmpl_t **tmpl);
-int radius_parse_attr(char const *name, value_pair_tmpl_t *vpt,
+int radius_parse_attr(value_pair_tmpl_t *vpt, char const *name,
 		      request_refs_t request_def,
 		      pair_lists_t list_def);
 value_pair_tmpl_t *radius_attr2tmpl(TALLOC_CTX *ctx, char const *name,
