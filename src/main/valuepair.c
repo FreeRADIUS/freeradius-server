@@ -1439,8 +1439,7 @@ int radius_get_vp(VALUE_PAIR **vp_p, REQUEST *request, char const *name)
 
 	*vp_p = NULL;
 
-	if (radius_parse_attr(name, &vpt, REQUEST_CURRENT,
-	    PAIR_LIST_REQUEST) < 0) {
+	if (radius_parse_attr(&vpt, name, REQUEST_CURRENT, PAIR_LIST_REQUEST) < 0) {
 		return -1;
 	}
 

@@ -2539,7 +2539,7 @@ static bool pass2_callback(UNUSED void *ctx, fr_cond_t *c)
 		/*
 		 *	It's still not an attribute.  Ignore it.
 		 */
-		if (radius_parse_attr(map->dst->name, &vpt, REQUEST_CURRENT, PAIR_LIST_REQUEST) < 0) {
+		if (radius_parse_attr(&vpt, map->dst->name, REQUEST_CURRENT, PAIR_LIST_REQUEST) < 0) {
 			c->pass2_fixup = PASS2_FIXUP_NONE;
 			return true;
 		}
