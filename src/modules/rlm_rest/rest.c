@@ -1143,13 +1143,10 @@ static int json_pairmake(rlm_rest_t *instance, UNUSED rlm_rest_section_t *sectio
 	for (entry = json_object_get_object(object)->head;
 	     entry;
 	     entry = entry->next) {
-		char const *p;
-		char *q;
-
 		int i = 0, elements;
 		struct json_object *value, *element, *tmp;
 
-		char const *name;
+		char const *name = (char const *)entry->k;
 
 		json_flags_t flags = {
 			.op = T_OP_SET,
@@ -1163,19 +1160,8 @@ static int json_pairmake(rlm_rest_t *instance, UNUSED rlm_rest_section_t *sectio
 
 		memset(&dst, 0, sizeof(dst));
 
-		name = (char*)entry->k;
-
 		/* Fix the compiler warnings regarding const... */
 		memcpy(&value, &entry->v, sizeof(value));
-
-		/*
-		 *  For people handcrafting JSON responses
-		 */
-		p = name;
-		while ((p = q = strchr(p, '|'))) {
-			*q = ':';
-			p++;
-		}
 
 		/*
 		 *  Resolve attribute name to a dictionary entry and pairlist.
