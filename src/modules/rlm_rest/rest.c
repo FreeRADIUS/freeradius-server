@@ -534,7 +534,6 @@ static size_t rest_encode_post(void *ptr, size_t size, size_t nmemb, void *userd
 	}
 
 end_chunk:
-
 	*p = '\0';
 
 	len = p - (char*)ptr;
@@ -548,7 +547,6 @@ end_chunk:
 	 *  Cleanup for error conditions
 	 */
 no_space:
-
 	*f = '\0';
 
 	len = f - (char*)ptr;
@@ -1391,7 +1389,7 @@ static size_t rest_write_header(void *ptr, size_t size, size_t nmemb, void *user
 
 	switch (ctx->state) {
 	case WRITE_STATE_INIT:
-		RDEBUG3("Processing header");
+		RDEBUG2("Processing response header");
 
 		/*
 		 *  HTTP/<version> <reason_code>[ <reason_phrase>]\r\n
