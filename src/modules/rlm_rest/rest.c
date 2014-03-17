@@ -1146,7 +1146,7 @@ static int json_pairmake(rlm_rest_t *instance, UNUSED rlm_rest_section_t *sectio
 		char const *p;
 		char *q;
 
-		int i, elements;
+		int i = 0, elements;
 		struct json_object *value, *element, *tmp;
 
 		char const *name;
@@ -1273,8 +1273,7 @@ static int json_pairmake(rlm_rest_t *instance, UNUSED rlm_rest_section_t *sectio
 		 *  A JSON 'value' key, may have multiple elements, iterate
 		 *  over each of them, creating a new VALUE_PAIR.
 		 */
-		for (i = 0; i < elements; element = json_object_array_get_idx(value, ++i))
-		{
+		do {
 			if (max_attrs-- <= 0) {
 				RWDEBUG("At maximum attribute limit");
 				return max;
@@ -1287,7 +1286,7 @@ static int json_pairmake(rlm_rest_t *instance, UNUSED rlm_rest_section_t *sectio
 				flags.op = T_OP_ADD;
 			}
 
-			if (json_object_is_type(value, json_type_object) && !flags.is_json) {
+			if (json_object_is_type(element, json_type_object) && !flags.is_json) {
 				/* TODO: Insert nested VP into VP structure...*/
 				RWDEBUG("Found nested VP, these are not yet supported, skipping...");
 
@@ -1303,7 +1302,11 @@ static int json_pairmake(rlm_rest_t *instance, UNUSED rlm_rest_section_t *sectio
 			}
 
 			radius_pairmove(current, vps, vp);
-		}
+		/*
+		 *  If we call json_object_array_get_idx on something that's not an array
+		 *  the behaviour appears to be to occasionally segfault.
+		 */
+		} while ((++i < elements) && (element = json_object_array_get_idx(value, i)));
 	}
 
 	return max - max_attrs;
