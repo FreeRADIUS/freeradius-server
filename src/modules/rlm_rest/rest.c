@@ -518,18 +518,18 @@ static size_t rest_encode_post(void *ptr, size_t size, size_t nmemb, void *userd
 
 		if (!--s) goto no_space;
 
-
-		/*
-		 *  We wrote one full attribute value pair, record progress.
-		 */
-		f = p;
-
 		/*
 		 *  there are more attributes, insert a separator
 		 */
 		if (fr_cursor_next(&ctx->cursor)) {
 			*p++ = '&';
 		}
+
+		/*
+		 *  We wrote one full attribute value pair, record progress.
+		 */
+		f = p;
+
 		ctx->state = READ_STATE_ATTR_BEGIN;
 	}
 
