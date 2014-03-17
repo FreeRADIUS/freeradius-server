@@ -517,13 +517,19 @@ static size_t rest_encode_post(void *ptr, size_t size, size_t nmemb, void *userd
 		s -= len;
 
 		if (!--s) goto no_space;
-		*p++ = '&';
+
 
 		/*
 		 *  We wrote one full attribute value pair, record progress.
 		 */
 		f = p;
-		fr_cursor_next(&ctx->cursor);
+
+		/*
+		 *  there are more attributes, insert a separator
+		 */
+		if (fr_cursor_next(&ctx->cursor)) {
+			*p++ = '&';
+		}
 		ctx->state = READ_STATE_ATTR_BEGIN;
 	}
 
