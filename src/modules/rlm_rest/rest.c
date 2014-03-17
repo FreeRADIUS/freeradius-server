@@ -1462,7 +1462,7 @@ static size_t rest_write_header(void *ptr, size_t size, size_t nmemb, void *user
 			 */
 			if (!q) q = memchr(p, '\r', s);
 
-			len = !q ? s : (size_t) q - p;
+			len = !q ? s : (size_t) (q - p);
 
 			type = fr_substr2int(http_content_type_table, p, HTTP_BODY_UNKNOWN, len);
 
