@@ -429,116 +429,121 @@ int mod_conn_delete(UNUSED void *instance, void *handle)
  *
  * @see rest_decode_post
  *
- * @param[out] ptr Char buffer to write encoded data to.
+ * @param[out] out Char buffer to write encoded data to.
  * @param[in] size Multiply by nmemb to get the length of ptr.
  * @param[in] nmemb Multiply by size to get the length of ptr.
  * @param[in] userdata rlm_rest_read_t to keep encoding state between calls.
  * @return length of data (including NULL) written to ptr, or 0 if no more
  *	data to write.
  */
-static size_t rest_encode_post(void *ptr, size_t size, size_t nmemb, void *userdata)
+static size_t rest_encode_post(void *out, size_t size, size_t nmemb, void *userdata)
 {
 	rlm_rest_read_t	*ctx = userdata;
 	REQUEST		*request = ctx->request; /* Used by RDEBUG */
 	VALUE_PAIR	*vp;
 
-	char *p = ptr;	/* Position in buffer */
-	char *f = ptr;	/* Position in buffer of last fully encoded attribute or value */
-	char *escaped;	/* Pointer to current URL escaped data */
+	char *p = out;		/* Position in buffer */
+	char *encoded = p;	/* Position in buffer of last fully encoded attribute or value */
+	char *escaped;		/* Pointer to current URL escaped data */
 
 	ssize_t len = 0;
-	ssize_t s = (size * nmemb) - 1;
+	ssize_t freespace = (size * nmemb) - 1;
 
 	/* Allow manual chunking */
-	if ((ctx->chunk) && (ctx->chunk <= s)) {
-		s = (ctx->chunk - 1);
+	if ((ctx->chunk) && (ctx->chunk <= freespace)) {
+		freespace = (ctx->chunk - 1);
 	}
 
 	if (ctx->state == READ_STATE_END) return 0;
 
 	/* Post data requires no headers */
-	if (ctx->state == READ_STATE_INIT) {
-		ctx->state = READ_STATE_ATTR_BEGIN;
-	}
+	if (ctx->state == READ_STATE_INIT) ctx->state = READ_STATE_ATTR_BEGIN;
 
-	while (s > 0) {
+	while (freespace > 0) {
 		vp = fr_cursor_current(&ctx->cursor);
 		if (!vp) {
 			ctx->state = READ_STATE_END;
 
-			goto end_chunk;
+			break;
 		}
 
 		RDEBUG2("Encoding attribute \"%s\"", vp->da->name);
 
 		if (ctx->state == READ_STATE_ATTR_BEGIN) {
 			escaped = curl_escape(vp->da->name, strlen(vp->da->name));
-			len = strlen(escaped);
+			if (!escaped) {
+				REDEBUG("Failed escaping string \"%s\"", vp->da->name);
+				return 0;
+			}
 
-			if (s < (1 + len)) {
+			len = strlen(escaped);
+			if (freespace < (1 + len)) {
 				curl_free(escaped);
 				goto no_space;
 			}
 
 			len = sprintf(p, "%s=", escaped);
-
 			curl_free(escaped);
-
 			p += len;
-			s -= len;
+			freespace -= len;
 
 			/*
 			 *  We wrote the attribute header, record progress.
 			 */
-			f = p;
+			encoded = p;
 			ctx->state = READ_STATE_ATTR_CONT;
 		}
 
 		/*
 		 *  Write out single attribute string.
 		 */
-		len = vp_prints_value(p , s, vp, 0);
-		escaped = curl_escape(p, len);
-		len = strlen(escaped);
-
-		if (s < len) {
-			curl_free(escaped);
-			goto no_space;
-		}
-
-		len = strlcpy(p, escaped, len + 1);
-
-		curl_free(escaped);
-
+		len = vp_prints_value(p, freespace, vp, 0);
 		RDEBUG3("\tLength : %zd", len);
-		RDEBUG3("\tValue  : %s", p);
+		if (len > 0) {
+			escaped = curl_escape(p, len);
+			if (!escaped) {
+				REDEBUG("Failed escaping string \"%s\"", vp->da->name);
+				return 0;
+			}
+			len = strlen(escaped);
 
-		p += len;
-		s -= len;
+			if (freespace < len) {
+				curl_free(escaped);
+				goto no_space;
+			}
 
-		if (!--s) goto no_space;
+			len = strlcpy(p, escaped, len + 1);
+
+			curl_free(escaped);
+
+			RDEBUG3("\tValue  : %s", p);
+
+			p += len;
+			freespace -= len;
+		}
 
 		/*
 		 *  there are more attributes, insert a separator
 		 */
 		if (fr_cursor_next(&ctx->cursor)) {
+			if (freespace < 1) goto no_space;
 			*p++ = '&';
+			freespace--;
 		}
 
 		/*
 		 *  We wrote one full attribute value pair, record progress.
 		 */
-		f = p;
+		encoded = p;
 
 		ctx->state = READ_STATE_ATTR_BEGIN;
 	}
 
-end_chunk:
 	*p = '\0';
 
-	len = p - (char*)ptr;
+	len = p - (char *)out;
 
-	RDEBUG3("POST Data: %s", (char*) ptr);
+	RDEBUG3("POST Data: %s", (char *)out);
 	RDEBUG3("Returning %zd bytes of POST data", len);
 
 	return len;
@@ -547,17 +552,17 @@ end_chunk:
 	 *  Cleanup for error conditions
 	 */
 no_space:
-	*f = '\0';
+	*encoded = '\0';
 
-	len = f - (char*)ptr;
+	len = encoded - (char *)out;
 
-	RDEBUG3("POST Data: %s", (char*) ptr);
+	RDEBUG3("POST Data: %s", (char *)out);
 
 	/*
 	 *  The buffer wasn't big enough to encode a single attribute chunk.
 	 */
-	if (!len) {
-		REDEBUG("AVP exceeds buffer length or chunk");
+	if (len == 0) {
+		REDEBUG("Failed encoding attribute");
 	} else {
 		RDEBUG3("Returning %zd bytes of POST data (buffer full or chunk exceeded)", len);
 	}
@@ -595,32 +600,32 @@ no_space:
 }
 @endverbatim
  *
- * @param[out] ptr Char buffer to write encoded data to.
+ * @param[out] out Char buffer to write encoded data to.
  * @param[in] size Multiply by nmemb to get the length of ptr.
  * @param[in] nmemb Multiply by size to get the length of ptr.
  * @param[in] userdata rlm_rest_read_t to keep encoding state between calls.
  * @return length of data (including NULL) written to ptr, or 0 if no more
  *	data to write.
  */
-static size_t rest_encode_json(void *ptr, size_t size, size_t nmemb, void *userdata)
+static size_t rest_encode_json(void *out, size_t size, size_t nmemb, void *userdata)
 {
 	rlm_rest_read_t	*ctx = userdata;
 	REQUEST		*request = ctx->request; /* Used by RDEBUG */
 	VALUE_PAIR	*vp, *next;
 
-	char *p = ptr;	/* Position in buffer */
-	char *f = ptr;	/* Position in buffer of last fully encoded attribute or value */
+	char *p = out;		/* Position in buffer */
+	char *encoded = p;	/* Position in buffer of last fully encoded attribute or value */
 
 	char const *type;
 
 	ssize_t len = 0;
-	ssize_t s = (size * nmemb) - 1;
+	ssize_t freespace = (size * nmemb) - 1;
 
-	assert(s > 0);
+	rad_assert(freespace > 0);
 
 	/* Allow manual chunking */
-	if ((ctx->chunk) && (ctx->chunk <= s)) {
-		s = (ctx->chunk - 1);
+	if ((ctx->chunk) && (ctx->chunk <= freespace)) {
+		freespace = (ctx->chunk - 1);
 	}
 
 	if (ctx->state == READ_STATE_END) return 0;
@@ -628,11 +633,12 @@ static size_t rest_encode_json(void *ptr, size_t size, size_t nmemb, void *userd
 	if (ctx->state == READ_STATE_INIT) {
 		ctx->state = READ_STATE_ATTR_BEGIN;
 
-		if (!--s) goto no_space;
+		if (freespace < 1) goto no_space;
 		*p++ = '{';
+		freespace--;
 	}
 
-	while (s > 0) {
+	while (freespace > 0) {
 		vp = fr_cursor_current(&ctx->cursor);
 
 		/*
@@ -641,10 +647,11 @@ static size_t rest_encode_json(void *ptr, size_t size, size_t nmemb, void *userd
 		if (!vp) {
 			ctx->state = READ_STATE_END;
 
-			if (!--s) goto no_space;
+			if (freespace < 1) goto no_space;
 			*p++ = '}';
+			freespace--;
 
-			goto end_chunk;
+			break;
 		}
 
 		/*
@@ -654,27 +661,23 @@ static size_t rest_encode_json(void *ptr, size_t size, size_t nmemb, void *userd
 		if (ctx->state == READ_STATE_ATTR_BEGIN) {
 			type = fr_int2str(dict_attr_types, vp->da->type, "<INVALID>");
 
-			len  = strlen(type);
-			len += strlen(vp->da->name);
-
-			if (s < (23 + len)) goto no_space;
-
-			len = sprintf(p, "\"%s\":{\"type\":\"%s\",\"value\":[" , vp->da->name, type);
+			len = snprintf(p, freespace + 1, "\"%s\":{\"type\":\"%s\",\"value\":[", vp->da->name, type);
+			if (len >= freespace) goto no_space;
 			p += len;
-			s -= len;
+			freespace -= len;
 
 			RDEBUG3("\tType   : %s", type);
 
 			/*
 		 	 *  We wrote the attribute header, record progress
 		 	 */
-			f = p;
+			encoded = p;
 			ctx->state = READ_STATE_ATTR_CONT;
 		}
 
 		for (;;) {
-			len = vp_prints_value_json(p, s, vp);
-			if (len >= s) goto no_space;
+			len = vp_prints_value_json(p, freespace, vp);
+			if (len >= freespace) goto no_space;
 
 			/*
 			 *  Show actual value length minus quotes
@@ -683,48 +686,50 @@ static size_t rest_encode_json(void *ptr, size_t size, size_t nmemb, void *userd
 			RDEBUG3("\tValue  : %s", p);
 
 			p += len;
-			s -= len;
+			freespace -= len;
 
 			/*
 			 *  Multivalued attribute, we sorted all the attributes earlier, so multiple
 			 *  instances should occur in a contiguous block.
 			 */
 			if ((next = fr_cursor_next(&ctx->cursor)) && (vp->da == next->da)) {
+				if (freespace < 1) goto no_space;
 				*p++ = ',';
+				freespace--;
 
 				/*
 				 *  We wrote one attribute value, record progress.
 				 */
-				f = p;
+				encoded = p;
 				vp = next;
 				continue;
 			}
 			break;
 		}
 
-		if (!(s -= 2)) goto no_space;
+		if (freespace < 2) goto no_space;
 		*p++ = ']';
 		*p++ = '}';
+		freespace -= 2;
 
 		if (next) {
-			if (!--s) goto no_space;
+			if (freespace < 1) goto no_space;
 			*p++ = ',';
+			freespace--;
 		}
 
 		/*
 		 *  We wrote one full attribute value pair, record progress.
 		 */
-		f = p;
+		encoded = p;
 		ctx->state = READ_STATE_ATTR_BEGIN;
 	}
 
-end_chunk:
-
 	*p = '\0';
 
-	len = p - (char*)ptr;
+	len = p - (char *)out;
 
-	RDEBUG3("JSON Data: %s", (char*) ptr);
+	RDEBUG3("JSON Data: %s", (char *)out);
 	RDEBUG3("Returning %zd bytes of JSON data", len);
 
 	return len;
@@ -733,17 +738,16 @@ end_chunk:
 	 *  Were out of buffer space
 	 */
 no_space:
+	*encoded = '\0';
 
-	*f = '\0';
+	len = encoded - (char *)out;
 
-	len = f - (char*)ptr;
-
-	RDEBUG3("JSON Data: %s", (char*) ptr);
+	RDEBUG3("JSON Data: %s", (char *)out);
 
 	/*
 	 *  The buffer wasn't big enough to encode a single attribute chunk.
 	 */
-	if (!len) {
+	if (len == 0) {
 		REDEBUG("AVP exceeds buffer length or chunk");
 	} else {
 		RDEBUG2("Returning %zd bytes of JSON data (buffer full or chunk exceeded)", len);
