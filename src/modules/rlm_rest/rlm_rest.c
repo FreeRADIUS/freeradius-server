@@ -81,7 +81,7 @@ static const CONF_PARSER section_config[] = {
 
 	/* Transfer configuration */
 	{ "timeout", PW_TYPE_INTEGER,
-	 offsetof(rlm_rest_section_t, timeout),    NULL, "0" },
+	 offsetof(rlm_rest_section_t, timeout),    NULL, "4" },
 	{ "chunk", PW_TYPE_INTEGER,
 	 offsetof(rlm_rest_section_t, chunk), 	   NULL, "0" },
 
@@ -93,7 +93,7 @@ static const CONF_PARSER section_config[] = {
 
 static const CONF_PARSER module_config[] = {
 	{ "connect_uri", PW_TYPE_STRING_PTR,
-	 offsetof(rlm_rest_t, connect_uri), NULL, "http://localhost/" },
+	 offsetof(rlm_rest_t, connect_uri), NULL, NULL },
 
 	{ NULL, -1, 0, NULL, NULL }
 };
