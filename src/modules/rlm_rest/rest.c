@@ -20,7 +20,7 @@
  * @brief Functions and datatypes for the REST (HTTP) transport.
  * @file rest.c
  *
- * @copyright 2012-2013  Arran Cudbard-Bell <a.cudbard-bell@freeradius.org>
+ * @copyright 2012-2014  Arran Cudbard-Bell <a.cudbard-bell@freeradius.org>
  */
 
 RCSID("$Id$")

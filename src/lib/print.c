@@ -219,7 +219,7 @@ size_t vp_prints_value(char *out, size_t outlen, VALUE_PAIR const *vp, int8_t qu
 	time_t		t;
 	struct tm	s_tm;
 
-	size_t		len, freespace = outlen;
+	size_t		len = 0, freespace = outlen;
 
 	*out = '\0';
 
@@ -417,11 +417,7 @@ size_t vp_prints_value(char *out, size_t outlen, VALUE_PAIR const *vp, int8_t qu
 		break;
 	}
 
-	if (a) {
-		strlcpy(out, a, outlen);
-	} else {
-		len = 0;
-	}
+	if (a) strlcpy(out, a, outlen);
 
 	return len;	/* Return the number of bytes we would of written (for truncation detection) */
 }
@@ -887,7 +883,6 @@ size_t vp_prints(char *out, size_t outlen, VALUE_PAIR const *vp)
 	if (is_truncated(len, freespace)) return len;
 	out += len;
 	freespace -= len;
-
 
 	len = vp_prints_value(out, freespace, vp, '\'');
 	if (is_truncated(len, freespace)) return (outlen - freespace) + len;
