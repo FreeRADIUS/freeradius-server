@@ -761,11 +761,11 @@ no_space:
 /** Emulates successive libcurl calls to an encoding function
  *
  * This function is used when the request will be sent to the HTTP server as one
- * contiguous entity. A buffer of REST_BODY_INCR bytes is allocated and passed
+ * contiguous entity. A buffer of REST_BODY_INIT bytes is allocated and passed
  * to the stream encoding function.
  *
  * If the stream function does not return 0, a new buffer is allocated which is
- * the size of the previous buffer + REST_BODY_INCR bytes, the data from the
+ * the size of the previous buffer + REST_BODY_INIT bytes, the data from the
  * previous buffer is copied, and freed, and another call is made to the stream
  * function, passing a pointer into the new buffer at the end of the previously
  * written data.
@@ -787,11 +787,11 @@ static ssize_t rest_read_wrapper(char **buffer, rest_read_t func, size_t limit, 
 	char *previous = NULL;
 	char *current;
 
-	size_t alloc = REST_BODY_INCR;	/* Size of buffer to alloc */
+	size_t alloc = REST_BODY_INIT;	/* Size of buffer to alloc */
 	size_t used = 0;		/* Size of data written */
 	size_t len = 0;
 
-	while (alloc < limit) {
+	while (alloc <= limit) {
 		current = rad_malloc(alloc);
 
 		if (previous) {
@@ -799,14 +799,14 @@ static ssize_t rest_read_wrapper(char **buffer, rest_read_t func, size_t limit, 
 			free(previous);
 		}
 
-		len = func(current + used, REST_BODY_INCR, 1, userdata);
+		len = func(current + used, alloc - used, 1, userdata);
 		used += len;
 		if (!len) {
 			*buffer = current;
 			return used;
 		}
 
-		alloc += REST_BODY_INCR;
+		alloc = alloc * 2;
 		previous = current;
 	};
 
@@ -1541,7 +1541,7 @@ static size_t rest_write_body(void *ptr, size_t size, size_t nmemb, void *userda
 
 	default:
 		if (t > (ctx->alloc - ctx->used)) {
-			ctx->alloc += ((t + 1) > REST_BODY_INCR) ? t + 1 : REST_BODY_INCR;
+			ctx->alloc += ((t + 1) > REST_BODY_INIT) ? t + 1 : REST_BODY_INIT;
 
 			tmp = ctx->buffer;
 
