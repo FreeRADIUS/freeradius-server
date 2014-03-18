@@ -1368,12 +1368,12 @@ static int rest_decode_json(rlm_rest_t *instance, UNUSED rlm_rest_section_t *sec
  * @param[in] userdata rlm_rest_write_t to keep parsing state between calls.
  * @return Length of data processed, or 0 on error.
  */
-static size_t rest_write_header(void *ptr, size_t size, size_t nmemb, void *userdata)
+static size_t rest_write_header(void *in, size_t size, size_t nmemb, void *userdata)
 {
 	rlm_rest_write_t *ctx = userdata;
 	REQUEST *request = ctx->request; /* Used by RDEBUG */
 
-	char const *p = ptr, *q;
+	char const *p = in, *q;
 
 	size_t const t = (size * nmemb);
 	size_t s = t;
@@ -1391,13 +1391,17 @@ static size_t rest_write_header(void *ptr, size_t size, size_t nmemb, void *user
 		 *
 		 *  "HTTP/1.1 " (8) + "100 " (4) + "\r\n" (2) = 14
 		 */
-		if (s < 14) goto malformed;
-
+		if (s < 14) {
+			REDEBUG("Malformed HTTP header: Status line too short");
+			goto malformed;
+		}
 		/*
 		 *  Check start of header matches...
 		 */
-		if (strncasecmp("HTTP/", p, 5) != 0) goto malformed;
-
+		if (strncasecmp("HTTP/", p, 5) != 0) {
+			REDEBUG("Malformed HTTP header: Missing HTTP version");
+			goto malformed;
+		}
 		p += 5;
 		s -= 5;
 
@@ -1405,7 +1409,10 @@ static size_t rest_write_header(void *ptr, size_t size, size_t nmemb, void *user
 		 *  Skip the version field, next space should mark start of reason_code.
 		 */
 		q = memchr(p, ' ', s);
-		if (!q) goto malformed;
+		if (!q) {
+			RDEBUG("Malformed HTTP header: Missing reason code");
+			goto malformed;
+		}
 
 		s -= (q - p);
 		p  = q;
@@ -1415,7 +1422,10 @@ static size_t rest_write_header(void *ptr, size_t size, size_t nmemb, void *user
 		 *
 		 *  " 100" (4) + "\r\n" (2) = 6
 		 */
-		if (s < 6) goto malformed;
+		if (s < 6) {
+			REDEBUG("Malformed HTTP header: Reason code too short");
+			goto malformed;
+		}
 		p++;
 		s--;
 
@@ -1497,8 +1507,14 @@ static size_t rest_write_header(void *ptr, size_t size, size_t nmemb, void *user
 	return t;
 
 malformed:
-	REDEBUG("Incoming header was malformed");
-	ctx->code = -1;
+	{
+		char escaped[1024];
+
+		fr_print_string((char *) in, t, escaped, sizeof(escaped));
+
+		REDEBUG("Received %zu bytes of response data: %s", t, escaped);
+		ctx->code = -1;
+	}
 
 	return (t - s);
 }
