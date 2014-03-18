@@ -274,31 +274,12 @@ static size_t sqlcounter_expand(char *out, int outlen, char const *fmt, rlm_sqlc
 			return -1;
 		}
 		c = *p;
-		if ((c != '%') && (c != '\\')) {
+		if (c != '%') {
 			*q++ = *p;
 			continue;
 		}
 		if (*++p == '\0') break;
-		if (c == '\\') switch(*p) {
-			case '\\':
-				*q++ = *p;
-				break;
-			case 't':
-				*q++ = '\t';
-				break;
-			case 'n':
-				*q++ = '\n';
-				break;
-			default:
-				*q++ = c;
-				*q++ = *p;
-				break;
-
-		} else if (c == '%') switch(*p) {
-
-			case '%':
-				*q++ = *p;
-				break;
+		if (c == '%') switch(*p) {
 			case 'b': /* last_reset */
 				snprintf(tmpdt, sizeof(tmpdt), "%" PRId64, (int64_t) inst->last_reset);
 				strlcpy(q, tmpdt, freespace);
