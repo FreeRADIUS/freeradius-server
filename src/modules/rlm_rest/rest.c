@@ -1362,7 +1362,7 @@ static int rest_decode_json(rlm_rest_t *instance, UNUSED rlm_rest_section_t *sec
  * Matches prototype for CURLOPT_HEADERFUNCTION, and will be called directly
  * by libcurl.
  *
- * @param[in] ptr Char buffer where inbound header data is written.
+ * @param[in] in Char buffer where inbound header data is written.
  * @param[in] size Multiply by nmemb to get the length of ptr.
  * @param[in] nmemb Multiply by size to get the length of ptr.
  * @param[in] userdata rlm_rest_write_t to keep parsing state between calls.
