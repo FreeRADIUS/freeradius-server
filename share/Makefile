@@ -3,13 +3,11 @@
 #
 #	$Id$
 #
-.PHONY: format
 
 #
 #  This should only be run by hand, and then sanity checked by hand!
 #
-format: dictionary*
-	@for x in dictionary* ; do \
-		cat $$x | ./format.pl > tmp; \
-		mv tmp $$x; \
+format: $(wildcard dictionary*)
+	@for x in $(wildcard dictionary*) ; do \
+		./format.pl $$x; \
 	done
