@@ -147,8 +147,10 @@ size_t fr_print_string(char const *in, size_t inlen, char *out, size_t outlen)
 		 *	Some clients send pings with an off-by-one
 		 *	length (confused with strings in C).
 		 */
-		if ((inlen == 1) && (*p == '\0')) break;
-
+		if ((inlen == 1) && (*p == '\0')) {
+			inlen--;
+			break;
+		}
 		switch (*p) {
 			case '\\':
 				sp = '\\';
