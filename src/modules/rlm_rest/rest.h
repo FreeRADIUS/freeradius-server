@@ -41,7 +41,7 @@ RCSIDH(other_h, "$Id$")
 
 #define REST_URI_MAX_LEN		2048
 #define REST_BODY_MAX_LEN		8192
-#define REST_BODY_INCR			512
+#define REST_BODY_INIT			1024
 #define REST_BODY_MAX_ATTRS		256
 
 typedef enum {
