@@ -18,7 +18,7 @@
  * @file rlm_rest.c
  * @brief Integrate FreeRADIUS with RESTfull APIs
  *
- * @copyright 2012-2013  Arran Cudbard-Bell <arran.cudbardb@freeradius.org>
+ * @copyright 2012-2014  Arran Cudbard-Bell <arran.cudbardb@freeradius.org>
  */
 RCSID("$Id$")
 
@@ -62,28 +62,19 @@ static CONF_PARSER tls_config[] = {
  *	buffer over-flows.
  */
 static const CONF_PARSER section_config[] = {
-	{ "uri", PW_TYPE_STRING_PTR,
-	 offsetof(rlm_rest_section_t, uri), 	   NULL, ""  },
-	{ "method", PW_TYPE_STRING_PTR,
-	 offsetof(rlm_rest_section_t, method_str), NULL, "GET" },
-	{ "body", PW_TYPE_STRING_PTR,
-	 offsetof(rlm_rest_section_t, body_str),   NULL, "post" },
+	{ "uri", PW_TYPE_STRING_PTR, offsetof(rlm_rest_section_t, uri), NULL, ""  },
+	{ "method", PW_TYPE_STRING_PTR, offsetof(rlm_rest_section_t, method_str), NULL, "GET" },
+	{ "body", PW_TYPE_STRING_PTR, offsetof(rlm_rest_section_t, body_str), NULL, "post" },
 
 	/* User authentication */
-	{ "auth", PW_TYPE_STRING_PTR,
-	 offsetof(rlm_rest_section_t, auth_str),   NULL, "none" },
-	{ "username", PW_TYPE_STRING_PTR,
-	 offsetof(rlm_rest_section_t, username),   NULL, NULL },
-	{ "password", PW_TYPE_STRING_PTR,
-	 offsetof(rlm_rest_section_t, password),   NULL, NULL },
-	{ "require_auth", PW_TYPE_BOOLEAN,
-	 offsetof(rlm_rest_section_t, require_auth), NULL, "no"},
+	{ "auth", PW_TYPE_STRING_PTR, offsetof(rlm_rest_section_t, auth_str), NULL, "none" },
+	{ "username", PW_TYPE_STRING_PTR, offsetof(rlm_rest_section_t, username), NULL, NULL },
+	{ "password", PW_TYPE_STRING_PTR, offsetof(rlm_rest_section_t, password), NULL, NULL },
+	{ "require_auth", PW_TYPE_BOOLEAN, offsetof(rlm_rest_section_t, require_auth), NULL, "no"},
 
 	/* Transfer configuration */
-	{ "timeout", PW_TYPE_INTEGER,
-	 offsetof(rlm_rest_section_t, timeout),    NULL, "4" },
-	{ "chunk", PW_TYPE_INTEGER,
-	 offsetof(rlm_rest_section_t, chunk), 	   NULL, "0" },
+	{ "timeout", PW_TYPE_INTEGER, offsetof(rlm_rest_section_t, timeout), NULL, "4" },
+	{ "chunk", PW_TYPE_INTEGER, offsetof(rlm_rest_section_t, chunk), NULL, "0" },
 
 	/* TLS Parameters */
 	{ "tls", PW_TYPE_SUBSECTION, 0, NULL, (void const *) tls_config },
@@ -92,14 +83,12 @@ static const CONF_PARSER section_config[] = {
 };
 
 static const CONF_PARSER module_config[] = {
-	{ "connect_uri", PW_TYPE_STRING_PTR,
-	 offsetof(rlm_rest_t, connect_uri), NULL, NULL },
+	{ "connect_uri", PW_TYPE_STRING_PTR, offsetof(rlm_rest_t, connect_uri), NULL, NULL },
 
 	{ NULL, -1, 0, NULL, NULL }
 };
 
-static int rlm_rest_perform(rlm_rest_t *instance, rlm_rest_section_t *section,
-			    void *handle, REQUEST *request,
+static int rlm_rest_perform(rlm_rest_t *instance, rlm_rest_section_t *section, void *handle, REQUEST *request,
 			    char const *username, char const *password)
 {
 	size_t uri_len;
@@ -110,8 +99,8 @@ static int rlm_rest_perform(rlm_rest_t *instance, rlm_rest_section_t *section,
 	RDEBUG("Expanding URI components");
 
 	/*
-	 *	Build xlat'd URI, this allows REST servers to be specified by
-	 *	request attributes.
+	 *  Build xlat'd URI, this allows REST servers to be specified by
+	 *  request attributes.
 	 */
 	uri_len = rest_uri_build(&uri, instance, section, request);
 	if (uri_len <= 0) return -1;
@@ -119,8 +108,8 @@ static int rlm_rest_perform(rlm_rest_t *instance, rlm_rest_section_t *section,
 	RDEBUG("Sending HTTP %s to \"%s\"", fr_int2str(http_method_table, section->method, NULL), uri);
 
 	/*
-	 *	Configure various CURL options, and initialise the read/write
-	 *	context data.
+	 *  Configure various CURL options, and initialise the read/write
+	 *  context data.
 	 */
 	ret = rest_request_config(instance, section, request, handle, section->method, section->body,
 				  uri, username, password);
@@ -128,8 +117,8 @@ static int rlm_rest_perform(rlm_rest_t *instance, rlm_rest_section_t *section,
 	if (ret < 0) return -1;
 
 	/*
-	 *	Send the CURL request, pre-parse headers, aggregate incoming
-	 *	HTTP body data into a single contiguous buffer.
+	 *  Send the CURL request, pre-parse headers, aggregate incoming
+	 *  HTTP body data into a single contiguous buffer.
 	 */
 	ret = rest_request_perform(instance, section, request, handle);
 	if (ret < 0) return -1;
@@ -137,15 +126,12 @@ static int rlm_rest_perform(rlm_rest_t *instance, rlm_rest_section_t *section,
 	return 0;
 }
 
-static void rlm_rest_cleanup(rlm_rest_t *instance, rlm_rest_section_t *section,
-			     void *handle)
+static void rlm_rest_cleanup(rlm_rest_t *instance, rlm_rest_section_t *section, void *handle)
 {
 	rest_request_cleanup(instance, section, handle);
 };
 
-static int parse_sub_section(CONF_SECTION *parent,
-	 		     rlm_rest_section_t *config,
-	 		     rlm_components_t comp)
+static int parse_sub_section(CONF_SECTION *parent, rlm_rest_section_t *config, rlm_components_t comp)
 {
 	CONF_SECTION *cs;
 
@@ -162,12 +148,12 @@ static int parse_sub_section(CONF_SECTION *parent,
 	}
 
 	/*
-	 *	Add section name (Maybe add to headers later?).
+	 *  Add section name (Maybe add to headers later?).
 	 */
 	config->name = name;
 
 	/*
-	 *	Sanity check
+	 *  Sanity check
 	 */
 	 if ((config->username && !config->password) || (!config->username && config->password)) {
 	 	cf_log_err_cs(cs, "'username' and 'password' must both be set or both be absent");
@@ -176,8 +162,7 @@ static int parse_sub_section(CONF_SECTION *parent,
 	 }
 
 	/*
-	 *	Convert HTTP method auth and body type strings into their
-	 *	integer equivalents.
+	 *  Convert HTTP method auth and body type strings into their integer equivalents.
 	 */
 	config->auth = fr_str2int(http_auth_table, config->auth_str, HTTP_AUTH_UNKNOWN);
 	if (config->auth == HTTP_AUTH_UNKNOWN) {
@@ -190,22 +175,16 @@ static int parse_sub_section(CONF_SECTION *parent,
 		return -1;
 	}
 
-	config->method = fr_str2int(http_method_table, config->method_str,
-				    HTTP_METHOD_CUSTOM);
-
-	config->body = fr_str2int(http_body_type_table, config->body_str,
-				  HTTP_BODY_UNKNOWN);
+	config->method = fr_str2int(http_method_table, config->method_str, HTTP_METHOD_CUSTOM);
+	config->body = fr_str2int(http_body_type_table, config->body_str, HTTP_BODY_UNKNOWN);
 
 	if (config->body == HTTP_BODY_UNKNOWN) {
-		cf_log_err_cs(cs, "Unknown HTTP body type '%s'",
-			      config->body_str);
+		cf_log_err_cs(cs, "Unknown HTTP body type '%s'", config->body_str);
 		return -1;
 	}
 
 	if (http_body_type_supported[config->body] == HTTP_BODY_UNSUPPORTED) {
-		cf_log_err_cs(cs, "Unsupported HTTP body type \"%s\""
-		       ", please submit patches",
-		       config->body_str);
+		cf_log_err_cs(cs, "Unsupported HTTP body type \"%s\", please submit patches", config->body_str);
 		return -1;
 	}
 
@@ -238,16 +217,11 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 *	Parse sub-section configs.
 	 */
 	if (
-		(parse_sub_section(conf, &inst->authorize,
-				   RLM_COMPONENT_AUTZ) < 0) ||
-		(parse_sub_section(conf, &inst->authenticate,
-				   RLM_COMPONENT_AUTH) < 0) ||
-		(parse_sub_section(conf, &inst->accounting,
-				   RLM_COMPONENT_ACCT) < 0) ||
-		(parse_sub_section(conf, &inst->checksimul,
-				   RLM_COMPONENT_SESS) < 0) ||
-		(parse_sub_section(conf, &inst->postauth,
-				   RLM_COMPONENT_POST_AUTH) < 0))
+		(parse_sub_section(conf, &inst->authorize, RLM_COMPONENT_AUTZ) < 0) ||
+		(parse_sub_section(conf, &inst->authenticate, RLM_COMPONENT_AUTH) < 0) ||
+		(parse_sub_section(conf, &inst->accounting, RLM_COMPONENT_ACCT) < 0) ||
+		(parse_sub_section(conf, &inst->checksimul, RLM_COMPONENT_SESS) < 0) ||
+		(parse_sub_section(conf, &inst->postauth, RLM_COMPONENT_POST_AUTH) < 0))
 	{
 		return -1;
 	}
@@ -294,43 +268,47 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 
 	hcode = rest_get_handle_code(handle);
 	switch (hcode) {
-		case 404:
-		case 410:
-			rcode = RLM_MODULE_NOTFOUND;
-			break;
-		case 403:
-			rcode = RLM_MODULE_USERLOCK;
-			break;
-		case 401:
-			/*
-			 *	Attempt to parse content if there was any.
-			 */
-			ret = rest_request_decode(inst, section, request, handle);
-			if (ret < 0) {
-				rcode = RLM_MODULE_FAIL;
-				break;
-			}
+	case 404:
+	case 410:
+		rcode = RLM_MODULE_NOTFOUND;
+		break;
 
-			rcode = RLM_MODULE_REJECT;
+	case 403:
+		rcode = RLM_MODULE_USERLOCK;
+		break;
+
+	case 401:
+		/*
+		 *	Attempt to parse content if there was any.
+		 */
+		ret = rest_request_decode(inst, section, request, handle);
+		if (ret < 0) {
+			rcode = RLM_MODULE_FAIL;
 			break;
-		case 204:
-			rcode = RLM_MODULE_OK;
+		}
+
+		rcode = RLM_MODULE_REJECT;
+		break;
+
+	case 204:
+		rcode = RLM_MODULE_OK;
+		break;
+
+	default:
+		/*
+		 *	Attempt to parse content if there was any.
+		 */
+		if ((hcode >= 200) && (hcode < 300)) {
+			ret = rest_request_decode(inst, section, request, handle);
+			if (ret < 0) 	   rcode = RLM_MODULE_FAIL;
+			else if (ret == 0) rcode = RLM_MODULE_OK;
+			else		   rcode = RLM_MODULE_UPDATED;
 			break;
-		default:
-			/*
-			 *	Attempt to parse content if there was any.
-			 */
-			if ((hcode >= 200) && (hcode < 300)) {
-				ret = rest_request_decode(inst, section, request, handle);
-				if (ret < 0) 	   rcode = RLM_MODULE_FAIL;
-				else if (ret == 0) rcode = RLM_MODULE_OK;
-				else		   rcode = RLM_MODULE_UPDATED;
-				break;
-			} else if (hcode < 500) {
-				rcode = RLM_MODULE_INVALID;
-			} else {
-				rcode = RLM_MODULE_FAIL;
-			}
+		} else if (hcode < 500) {
+			rcode = RLM_MODULE_INVALID;
+		} else {
+			rcode = RLM_MODULE_FAIL;
+		}
 	}
 
 	end:
@@ -383,43 +361,47 @@ static rlm_rcode_t mod_authenticate(void *instance, UNUSED REQUEST *request)
 
 	hcode = rest_get_handle_code(handle);
 	switch (hcode) {
-		case 404:
-		case 410:
-			rcode = RLM_MODULE_NOTFOUND;
-			break;
-		case 403:
-			rcode = RLM_MODULE_USERLOCK;
-			break;
-		case 401:
-			/*
-			 *	Attempt to parse content if there was any.
-			 */
-			ret = rest_request_decode(inst, section, request, handle);
-			if (ret < 0) {
-				rcode = RLM_MODULE_FAIL;
-				break;
-			}
+	case 404:
+	case 410:
+		rcode = RLM_MODULE_NOTFOUND;
+		break;
 
-			rcode = RLM_MODULE_REJECT;
+	case 403:
+		rcode = RLM_MODULE_USERLOCK;
+		break;
+
+	case 401:
+		/*
+		 *	Attempt to parse content if there was any.
+		 */
+		ret = rest_request_decode(inst, section, request, handle);
+		if (ret < 0) {
+			rcode = RLM_MODULE_FAIL;
 			break;
-		case 204:
-			rcode = RLM_MODULE_OK;
+		}
+
+		rcode = RLM_MODULE_REJECT;
+		break;
+
+	case 204:
+		rcode = RLM_MODULE_OK;
+		break;
+
+	default:
+		/*
+		 *	Attempt to parse content if there was any.
+		 */
+		if ((hcode >= 200) && (hcode < 300)) {
+			ret = rest_request_decode(inst, section, request, handle);
+			if (ret < 0) 	   rcode = RLM_MODULE_FAIL;
+			else if (ret == 0) rcode = RLM_MODULE_OK;
+			else		   rcode = RLM_MODULE_UPDATED;
 			break;
-		default:
-			/*
-			 *	Attempt to parse content if there was any.
-			 */
-			if ((hcode >= 200) && (hcode < 300)) {
-				ret = rest_request_decode(inst, section, request, handle);
-				if (ret < 0) 	   rcode = RLM_MODULE_FAIL;
-				else if (ret == 0) rcode = RLM_MODULE_OK;
-				else		   rcode = RLM_MODULE_UPDATED;
-				break;
-			} else if (hcode < 500) {
-				rcode = RLM_MODULE_INVALID;
-			} else {
-				rcode = RLM_MODULE_FAIL;
-			}
+		} else if (hcode < 500) {
+			rcode = RLM_MODULE_INVALID;
+		} else {
+			rcode = RLM_MODULE_FAIL;
+		}
 	}
 
 	end:
