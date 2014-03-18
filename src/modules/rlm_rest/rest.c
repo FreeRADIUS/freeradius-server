@@ -498,6 +498,8 @@ static size_t rest_encode_post(void *out, size_t size, size_t nmemb, void *userd
 		 *  Write out single attribute string.
 		 */
 		len = vp_prints_value(p, freespace, vp, 0);
+		if (is_truncated(len, freespace)) goto no_space;
+
 		RDEBUG3("\tLength : %zd", len);
 		if (len > 0) {
 			escaped = curl_escape(p, len);
@@ -677,7 +679,7 @@ static size_t rest_encode_json(void *out, size_t size, size_t nmemb, void *userd
 
 		for (;;) {
 			len = vp_prints_value_json(p, freespace, vp);
-			if (len >= freespace) goto no_space;
+			if (is_truncated(len, freespace)) goto no_space;
 
 			/*
 			 *  Show actual value length minus quotes
