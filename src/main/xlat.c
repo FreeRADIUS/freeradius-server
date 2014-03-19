@@ -761,7 +761,7 @@ static ssize_t xlat_tokenize_alternation(TALLOC_CTX *ctx, char *fmt, xlat_exp_t 
 	rad_assert(fmt[2] == '%');
 	rad_assert(fmt[3] == '{');
 
-	XLAT_DEBUG("ALTERNATE: %s", fmt);
+	XLAT_DEBUG("ALTERNATE <-- %s", fmt);
 
 	node = talloc_zero(ctx, xlat_exp_t);
 	node->type = XLAT_ALTERNATE;
@@ -837,7 +837,7 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 		return xlat_tokenize_alternation(ctx, fmt, head, error);
 	}
 
-	XLAT_DEBUG("EXPANSION: %s", fmt);
+	XLAT_DEBUG("EXPANSION <-- %s", fmt);
 	node = talloc_zero(ctx, xlat_exp_t);
 	attrname = node->fmt = fmt + 2;
 	node->len = 0;
@@ -853,7 +853,7 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 			return -2;
 		}
 
-		XLAT_DEBUG("REGEX: %s", fmt);
+		XLAT_DEBUG("REGEX <-- %s", fmt);
 		fmt[3] = '\0';
 		node->num = fmt[2] - '0'; /* ASCII */
 
@@ -899,7 +899,8 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 		if (node->xlat) {
 			node->type = XLAT_MODULE;
 
-			XLAT_DEBUG("MOD: %s --> %s", node->fmt, p);
+			XLAT_DEBUG("MOD <-- %s ... %s", node->fmt, p + 1);
+
 			slen = xlat_tokenize_literal(node, p + 1, &node->child, true, error);
 			if (slen <= 0) {
 				talloc_free(node);
@@ -1007,7 +1008,7 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 			node->type = XLAT_VIRTUAL;
 			node->fmt = attrname;
 
-			XLAT_DEBUG("VIRTUAL: %s", node->fmt);
+			XLAT_DEBUG("VIRTUAL <-- %s", node->fmt);
 			*head = node;
 			rad_assert(node->next == NULL);
 			brace++;
@@ -1121,7 +1122,7 @@ static ssize_t xlat_tokenize_literal(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **he
 
 	if (!*fmt) return 0;
 
-	XLAT_DEBUG("LITERAL: %s", fmt);
+	XLAT_DEBUG("LITERAL <-- %s", fmt);
 
 	node = talloc_zero(ctx, xlat_exp_t);
 	node->fmt = fmt;
@@ -1190,7 +1191,8 @@ static ssize_t xlat_tokenize_literal(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **he
 		if ((p[0] == '%') && (p[1] == '{')) {
 			ssize_t slen;
 
-			XLAT_DEBUG("LITERAL: %s --> %s", node->fmt, p);
+			XLAT_DEBUG("LITERAL <-- %s", node->fmt);
+
 			slen = xlat_tokenize_expansion(node, p, &node->next, error);
 			if (slen <= 0) {
 				talloc_free(node);
@@ -1309,16 +1311,16 @@ static void xlat_tokenize_debug(xlat_exp_t const *node, int lvl)
 	while (node) {
 		switch (node->type) {
 		case XLAT_LITERAL:
-			DEBUG("%.*sliteral: '%s'", lvl, xlat_tabs, node->fmt);
+			DEBUG("%.*sliteral --> %s", lvl, xlat_tabs, node->fmt);
 			break;
 
 		case XLAT_PERCENT:
-			DEBUG("%.*sliteral (with %%): '%c'", lvl, xlat_tabs, node->fmt[0]);
+			DEBUG("%.*spercent --> %c", lvl, xlat_tabs, node->fmt[0]);
 			break;
 
 		case XLAT_ATTRIBUTE:
 			rad_assert(node->da != NULL);
-			DEBUG("%.*sattribute: %s", lvl, xlat_tabs, node->da->name);
+			DEBUG("%.*sattribute --> %s", lvl, xlat_tabs, node->da->name);
 			rad_assert(node->child == NULL);
 			if ((node->tag != 0) || (node->num != 0)) {
 				DEBUG("%.*s{", lvl, xlat_tabs);
@@ -1343,12 +1345,12 @@ static void xlat_tokenize_debug(xlat_exp_t const *node, int lvl)
 
 		case XLAT_VIRTUAL:
 			rad_assert(node->fmt != NULL);
-			DEBUG("%.*svirtual: %s", lvl, xlat_tabs, node->fmt);
+			DEBUG("%.*svirtual --> %s", lvl, xlat_tabs, node->fmt);
 			break;
 
 		case XLAT_MODULE:
 			rad_assert(node->xlat != NULL);
-			DEBUG("%.*sxlat: %s", lvl, xlat_tabs, node->xlat->name);
+			DEBUG("%.*sxlat --> %s", lvl, xlat_tabs, node->xlat->name);
 			if (node->child) {
 				DEBUG("%.*s{", lvl, xlat_tabs);
 				xlat_tokenize_debug(node->child, lvl + 1);
@@ -1358,7 +1360,7 @@ static void xlat_tokenize_debug(xlat_exp_t const *node, int lvl)
 
 #ifdef HAVE_REGEX_H
 		case XLAT_REGEX:
-			DEBUG("%.*sregex-var: %d", lvl, xlat_tabs, node->num);
+			DEBUG("%.*sregex-var --> %d", lvl, xlat_tabs, node->num);
 			break;
 #endif
 
@@ -1532,6 +1534,7 @@ static ssize_t xlat_tokenize_request(REQUEST *request, char const *fmt, xlat_exp
 	if (!tokens) return -1;
 
 	slen = xlat_tokenize_literal(request, tokens, head, false, &error);
+
 	/*
 	 *	Zero length expansion, return a zero length node.
 	 */
@@ -1557,7 +1560,11 @@ static ssize_t xlat_tokenize_request(REQUEST *request, char const *fmt, xlat_exp
 		return slen;
 	}
 
-	if (*head && (debug_flag > 2)) {
+	if (*head
+#ifndef XLAT_DEBUG
+	    && (debug_flag > 2)
+#endif
+		) {
 		DEBUG("%s", fmt);
 		DEBUG("Parsed xlat tree:");
 		xlat_tokenize_debug(*head, 0);
@@ -1970,7 +1977,8 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 		 */
 		str = xlat_getvp(ctx, ref, node->list, node->da, node->tag, node->num, true);
 		if (str) {
-			XLAT_DEBUG("expand attr %s --> '%s'", node->da->name, str);
+			XLAT_DEBUG("EXPAND attr %s", node->da->name);
+			XLAT_DEBUG("       ---> %s", str);
 		}
 		break;
 
@@ -1990,7 +1998,8 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 			return NULL;
 		}
 
-		XLAT_DEBUG("%.*sexpand mod %s --> '%s'", lvl, xlat_spaces, node->fmt, child);
+		XLAT_DEBUG("%.*sEXPAND mod %s %s", lvl, xlat_spaces, node->fmt, node->child->fmt);
+		XLAT_DEBUG("%.*s      ---> %s", lvl, xlat_spaces, child);
 
 		str = talloc_array(ctx, char, 1024); /* FIXME: have the module call talloc_asprintf */
 		*str = '\0';	/* Be sure the string is NULL terminated, we now only free on error */
@@ -2174,7 +2183,8 @@ static ssize_t xlat_expand(char **out, size_t outlen, REQUEST *request, char con
 		return len;
 	}
 
-	RDEBUG2("\texpand: \"%s\" -> '%s'", fmt, buff);
+	RDEBUG2("\tEXPAND %s", fmt);
+	RDEBUG2("\t   --> %s", buff);
 
 	if (!*out) {
 		*out = buff;
