@@ -242,36 +242,17 @@ static int sqlippool_expand(char * out, int outlen, char const * fmt,
 			break;
 
 		c = *p;
-		if (c != '%' && c != '$' && c != '\\') {
+		if (c != '%') {
 			*q++ = *p;
 			continue;
 		}
 
-		if (*++p == '\0')
+		if (*++p == '\0') {
 			break;
-
-		if (c == '\\') {
-			switch(*p) {
-			case '\\':
-				*q++ = '\\';
-				break;
-			case 't':
-				*q++ = '\t';
-				break;
-			case 'n':
-				*q++ = '\n';
-				break;
-			default:
-				*q++ = c;
-				*q++ = *p;
-				break;
-			}
 		}
-		else if (c == '%') {
+
+		if (c == '%') {
 			switch(*p) {
-			case '%':
-				*q++ = *p;
-				break;
 			case 'P': /* pool name */
 				strlcpy(q, data->pool_name, freespace);
 				q += strlen(q);
@@ -293,6 +274,7 @@ static int sqlippool_expand(char * out, int outlen, char const * fmt,
 				strlcpy(q, tmp, freespace);
 				q += strlen(q);
 				break;
+
 			default:
 				*q++ = '%';
 				*q++ = *p;
