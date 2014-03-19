@@ -2183,8 +2183,8 @@ static ssize_t xlat_expand(char **out, size_t outlen, REQUEST *request, char con
 		return len;
 	}
 
-	RDEBUG2("\tEXPAND %s", fmt);
-	RDEBUG2("\t   --> %s", buff);
+	RDEBUG2("EXPAND %s", fmt);
+	RDEBUG2("   --> %s", buff);
 
 	if (!*out) {
 		*out = buff;
