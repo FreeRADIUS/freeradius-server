@@ -29,16 +29,16 @@ RCSID("$Id$")
 
 #define PW_CAST_BASE (1850)
 
-#define GOTO_ERROR do { RDEBUG("Unexpected text at '%s'", p); goto error;} while (0)
+#define GOTO_ERROR do { REDEBUG("Unexpected text at '%s'", p); goto error;} while (0)
 
 /** Unpack data
  *
- *  Example: %{unpack:&Class, 1, integer}
+ *  Example: %{unpack:&Class 0 integer}
  *
- *  Expands Class, treating octet 1 as an "integer".
+ *  Expands Class, treating octet at offset 0 (bytes 0-3) as an "integer".
  */
-static ssize_t unpack_xlat(UNUSED void *instance, REQUEST *request,
-			 char const *fmt, char *out, size_t outlen)
+static ssize_t unpack_xlat(UNUSED void *instance, REQUEST *request, char const *fmt,
+			   char *out, size_t outlen)
 {
 	char *data_name, *data_size, *data_type;
 	char *p;
@@ -54,10 +54,10 @@ static ssize_t unpack_xlat(UNUSED void *instance, REQUEST *request,
 	p = buffer;
 	if (*p != '&') {
 	error:
-		RDEBUG("Format string should be like '&Class, 1, integer'");
+		REDEBUG("Format string should be '&<attr> <offset> <type>' e.g. '&Class 1 integer'");
 	nothing:
 		*out = '\0';
-		return 0;
+		return -1;
 	}
 
 	p++;
@@ -86,19 +86,19 @@ static ssize_t unpack_xlat(UNUSED void *instance, REQUEST *request,
 
 	if ((vp->da->type != PW_TYPE_OCTETS) &&
 	    (vp->da->type != PW_TYPE_STRING)) {
-		RDEBUG("unpack requires the input attribute to be 'string' or 'octets'");
+		REDEBUG("unpack requires the input attribute to be 'string' or 'octets'");
 		goto nothing;
 	}
 
 	offset = (int) strtoul(data_size, &p, 10);
 	if (*p) {
-		RDEBUG("unpack requires a decimal number, not '%s'", data_size);
+		REDEBUG("unpack requires a decimal number, not '%s'", data_size);
 		goto nothing;
 	}
 
 	type = fr_str2int(dict_attr_types, data_type, PW_TYPE_INVALID);
 	if (type == PW_TYPE_INVALID) {
-		RDEBUG("Invalid data type '%s'", data_type);
+		REDEBUG("Invalid data type '%s'", data_type);
 		goto nothing;
 	}
 
@@ -107,18 +107,18 @@ static ssize_t unpack_xlat(UNUSED void *instance, REQUEST *request,
 	 */
 	if ((dict_attr_sizes[type][0] ==  0) ||
 	    (dict_attr_sizes[type][0] != dict_attr_sizes[type][1])) {
-		RDEBUG("unpack requires fixed-size output type, not '%s'", data_type);
+		REDEBUG("unpack requires fixed-size output type, not '%s'", data_type);
 		goto nothing;
 	}
 
 	if (vp->length < (offset + dict_attr_sizes[type][0])) {
-		RDEBUG("Cannot unpack attribute '%s', it is too short", data_name);
+		REDEBUG("Cannot unpack attribute '%s', it is too short", data_name);
 		goto nothing;
 	}
 
 	da = dict_attrbyvalue(PW_CAST_BASE + type, 0);
 	if (!da) {
-		RDEBUG("Cannot decode type '%s'", data_type);
+		REDEBUG("Cannot decode type '%s'", data_type);
 		goto nothing;
 	}
 
@@ -139,8 +139,7 @@ static ssize_t unpack_xlat(UNUSED void *instance, REQUEST *request,
 		break;
 
 	case PW_TYPE_SHORT:
-		cast->vp_short = ((vp->vp_octets[offset] << 8) |
-				vp->vp_octets[offset + 1]);
+		cast->vp_short = ((vp->vp_octets[offset] << 8) | vp->vp_octets[offset + 1]);
 		break;
 
 	case PW_TYPE_INTEGER64:
@@ -184,10 +183,10 @@ module_t rlm_unpack = {
 	0,
 	NULL,
 	mod_instantiate,		/* instantiation */
-	NULL,			/* detach */
+	NULL,				/* detach */
 	{
-		NULL,	/* authentication */
-		NULL,	/* authorization */
+		NULL,			/* authentication */
+		NULL,			/* authorization */
 		NULL, NULL, NULL,
 		NULL,			/* pre-proxy */
 		NULL,			/* post-proxy */
