@@ -149,7 +149,11 @@ dhcp DHCP-Discover {
 	# ...
 	#}
 
-	#  Or, allocate IPs from the DHCP pool in SQL.
+	#  Or, allocate IPs from the DHCP pool in SQL. You may need to
+	#  set the pool name here if you haven't set it elsewhere.
+#	update control {
+#		Pool-Name := "local"
+#	}
 #	dhcp_sqlippool
 
 	#  If DHCP-Message-Type is not set, returning "ok" or
@@ -191,7 +195,11 @@ dhcp DHCP-Request {
 	# ...
 	#}
 
-	#  Or, allocate IPs from the DHCP pool in SQL.
+	#  Or, allocate IPs from the DHCP pool in SQL. You may need to
+	#  set the pool name here if you haven't set it elsewhere.
+#	update control {
+#		Pool-Name := "local"
+#	}
 #	dhcp_sqlippool
 
 	#  If DHCP-Message-Type is not set, returning "ok" or
