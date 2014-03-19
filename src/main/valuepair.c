@@ -1435,8 +1435,6 @@ int radius_vpt_get_vp(VALUE_PAIR **out, REQUEST *request, value_pair_tmpl_t cons
 	return 0;
 }
 
-
-
 /** Return a VP from the specified request.
  *
  * @param out where to write the pointer to the resolved VP.
@@ -1457,6 +1455,82 @@ int radius_get_vp(VALUE_PAIR **out, REQUEST *request, char const *name)
 	}
 
 	return radius_vpt_get_vp(out, request, &vpt);
+}
+
+/** Copy pairs matching a VPT in the current request
+ *
+ * @param out where to write the copied vps.
+ * @param request current request.
+ * @param vpt the value pair template
+ * @return -1 if VP could not be found, -2 if list could not be found, -3 if context could not be found.
+ */
+int radius_vpt_copy_vp(VALUE_PAIR **out, REQUEST *request, value_pair_tmpl_t const *vpt)
+{
+	VALUE_PAIR **vps, *vp;
+	REQUEST *current = request;
+
+	if (out) *out = NULL;
+
+	if (radius_request(&current, vpt->request) < 0) {
+		return -3;
+	}
+
+	vps = radius_list(request, vpt->list);
+	if (!vps) {
+		return -2;
+	}
+
+	switch (vpt->type) {
+	/*
+	 *	May not may not be found, but it *is* a known name.
+	 */
+	case VPT_TYPE_ATTR:
+		vp = paircopy2(request, *vps, vpt->da->attr, vpt->da->vendor, TAG_ANY);
+		if (!vp) {
+			return -1;
+		}
+		break;
+
+	case VPT_TYPE_LIST:
+		vp = paircopy(request, *vps);
+
+		break;
+
+	default:
+		/*
+		 *	literal, xlat, regex, exec, data.
+		 *	no attribute.
+		 */
+		return -1;
+	}
+
+	if (out) {
+		*out = vp;
+	}
+
+	return 0;
+}
+
+/** Copy a VP from the specified request.
+ *
+ * @param out where to write the pointer to the copied VP.
+ *	Will be NULL if the attribute couldn't be resolved.
+ * @param request current request.
+ * @param name attribute name including qualifiers.
+ * @return -4 if either the attribute or qualifier were invalid, and the same error codes as radius_vpt_get_vp for other
+ *	error conditions.
+ */
+int radius_copy_vp(VALUE_PAIR **out, REQUEST *request, char const *name)
+{
+	value_pair_tmpl_t vpt;
+
+	*out = NULL;
+
+	if (radius_parse_attr(&vpt, name, REQUEST_CURRENT, PAIR_LIST_REQUEST) < 0) {
+		return -4;
+	}
+
+	return radius_vpt_copy_vp(out, request, &vpt);
 }
 
 void module_failure_msg(REQUEST *request, char const *fmt, ...)

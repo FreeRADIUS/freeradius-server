@@ -92,13 +92,14 @@ static ssize_t dhcp_xlat(UNUSED void *instance, REQUEST *request, char const *fm
 
 	while (isspace((int) *fmt)) fmt++;
 
-	if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) {
+	if ((radius_copy_vp(&vp, request, fmt) < 0) || !vp) {
 		 *out = '\0';
 		 return 0;
 	}
 	fr_cursor_init(&cursor, &vp);
 
 	len = fr_dhcp_encode_option(binbuf, sizeof(binbuf), request, &cursor);
+	talloc_free(vp);
 	if (len <= 0) {
 		REDEBUG("DHCP option encoding failed: %s", fr_strerror());
 
