@@ -68,7 +68,6 @@ FreeRADIUS 3.0.2 Mon 13 Jan 2014 14:30:00 EDT urgency=medium
 	* Fix double free in home_server_add, when there is a parse error
 	  on startup.
 	* rlm_unix checks if the dictionaries are broken.
-	* Fix issues in decoding POST responses in rlm_rest.
 	* Fix potential memory corruption when normalising salted password
 	  hashes from hex, where the combined hash and salt was > 64 bytes.
 	* Register rlm_sqlcounter attributes correctly, and fix other issues
@@ -95,10 +94,17 @@ FreeRADIUS 3.0.2 Mon 13 Jan 2014 14:30:00 EDT urgency=medium
 	* Set source IP address for DHCP packets from DHCP-Server-IP-Address,
 	  or DHCP-DHCP-Server-Identifier, if we're unable to otherwise
 	  determine the source IP.
-	* Fix JSON attribute parsing in rlm_rest
+	* Fix POST attribute parsing in rlm_rest.
+	* Fix JSON attribute parsing in rlm_rest.
+	* Don't append trailing & to POST options in rlm_rest (minor).
 	* Process HTTP 100 Continue messages correctly in rlm_rest
 	* Fix generation of long > 512 byte POST payloads, where attribute
-	  values on the chunk boundary may have been omitted.
+	  values on the chunk boundary may have been omitted in rlm_rest.
+	* Remove duplicate escape sequence parsing in rlm_sqlippool and
+	  rlm_sqlcounter which caused issues with escaping %. Escape 
+	  sequence parsing is now handled purely by the xlat functions.
+	* Ensure %% is treated as a string literal, and so not passed to any
+	  xlat escape functions for processing.
 
 FreeRADIUS 3.0.1 Mon 13 Jan 2014 14:30:00 EDT urgency=medium
 	Feature improvements
