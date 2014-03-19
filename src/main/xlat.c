@@ -1251,7 +1251,7 @@ static ssize_t xlat_tokenize_literal(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **he
 				next->type = XLAT_LITERAL;
 
 			} else {
-				node->fmt = p + 1;
+				next->fmt = p + 1;
 
 				XLAT_DEBUG("PERCENT <-- %c", *next->fmt);
 				next->type = XLAT_PERCENT;
