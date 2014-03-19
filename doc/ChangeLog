@@ -36,6 +36,8 @@ FreeRADIUS 3.0.2 Mon 13 Jan 2014 14:30:00 EDT urgency=medium
 	  doesn't have a {...} header.
 	* Added "unpack" module.  It can unpack binary data from horrible
 	  VSA formats.  See raddb/mods-available/unpack
+	* Added example IP Pool for DHCP, using sqlite.
+	  See raddb/mods-config/sql/ippool-dhcp/
 
 	Bug fixes
 	* Fix SQL groups.
@@ -101,7 +103,7 @@ FreeRADIUS 3.0.2 Mon 13 Jan 2014 14:30:00 EDT urgency=medium
 	* Fix generation of long > 512 byte POST payloads, where attribute
 	  values on the chunk boundary may have been omitted in rlm_rest.
 	* Remove duplicate escape sequence parsing in rlm_sqlippool and
-	  rlm_sqlcounter which caused issues with escaping %. Escape 
+	  rlm_sqlcounter which caused issues with escaping %. Escape
 	  sequence parsing is now handled purely by the xlat functions.
 	* Ensure %% is treated as a string literal, and so not passed to any
 	  xlat escape functions for processing.
