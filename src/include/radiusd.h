@@ -752,7 +752,7 @@ int radius_str2vp(REQUEST *request, char const *raw,
 		  request_refs_t dst_request_def, pair_lists_t dst_list_def,
 		  request_refs_t src_request_def, pair_lists_t src_list_def);
 
-int radius_vpt_get_vp(VALUE_PAIR **out, REQUEST *request, value_pair_tmpl_t const *vpt);
+VALUE_PAIR *radius_vpt_get_vp(REQUEST *request, value_pair_tmpl_t const *vpt);
 int radius_get_vp(VALUE_PAIR **out, REQUEST *request, char const *name);
 int radius_vpt_copy_vp(VALUE_PAIR **out, REQUEST *request, value_pair_tmpl_t const *vpt);
 int radius_copy_vp(VALUE_PAIR **out, REQUEST *request, char const *name);
