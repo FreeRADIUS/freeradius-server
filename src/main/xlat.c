@@ -1239,11 +1239,17 @@ static ssize_t xlat_tokenize_literal(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **he
 					return - (p - fmt);
 			}
 
-			XLAT_DEBUG("PERCENT: %s --> %c", node->fmt, p[1]);
 			next = talloc_zero(node, xlat_exp_t);
 			next->fmt = p + 1;
 			next->len = 1;
-			next->type = XLAT_PERCENT;
+
+			if (p[1] == '%') {
+				XLAT_DEBUG("LITERAL: %s --> %c", node->fmt, p[1]);
+				next->type = XLAT_LITERAL;
+			} else {
+				XLAT_DEBUG("PERCENT: %s --> %c", node->fmt, p[1]);
+				next->type = XLAT_PERCENT;
+			}
 
 			node->next = next;
 			*p = '\0';
