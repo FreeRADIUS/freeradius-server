@@ -40,7 +40,7 @@
 #
 sqlcounter dailycounter {
 	sql_module_instance = sql
-	dialect = ${sql_module_instance}.dialect
+	dialect = ${modules.sql.dialect}
 
 	counter_name = Daily-Session-Time
 	check_name = Max-Daily-Session
@@ -54,7 +54,7 @@ sqlcounter dailycounter {
 
 sqlcounter monthlycounter {
 	sql_module_instance = sql
-	dialect = ${sql_module_instance}.dialect
+	dialect = ${modules.sql.dialect}
 
 	counter_name = Monthly-Session-Time
 	check_name = Max-Monthly-Session
@@ -67,7 +67,7 @@ sqlcounter monthlycounter {
 
 sqlcounter noresetcounter {
 	sql_module_instance = sql
-	dialect = ${sql_module_instance}.dialect
+	dialect = ${modules.sql.dialect}
 
         counter_name = Max-All-Session-Time
 	check_name = Max-All-Session
@@ -84,7 +84,7 @@ sqlcounter noresetcounter {
 #  attribute.
 sqlcounter expire_on_login {
 	sql_module_instance = sql
-	dialect = ${sql_module_instance}.dialect
+	dialect = ${modules.sql.dialect}
 
         counter_name = Expire-After-Initial-Login
         check_name = Expire-After
