@@ -477,7 +477,7 @@ redo:
 		g = mod_callabletogroup(c);
 		rad_assert(g->cond != NULL);
 
-		RDEBUG2("%.*s? %s %s", depth + 1, modcall_spaces,
+		RDEBUG2("%.*s %s %s", depth + 1, modcall_spaces,
 			group_name[c->type], c->name);
 
 		condition = radius_evaluate_cond(request, result, 0, g->cond);
@@ -485,7 +485,7 @@ redo:
 			condition = false;
 			REDEBUG("Failed retrieving values required to evaluate condition");
 		} else {
-			RDEBUG2("%.*s? %s %s -> %s", depth + 1, modcall_spaces,
+			RDEBUG2("%.*s %s %s -> %s", depth + 1, modcall_spaces,
 				group_name[c->type],
 				c->name, condition ? "TRUE" : "FALSE");
 		}
