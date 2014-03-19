@@ -14,8 +14,14 @@ sqlippool dhcp_sqlippool {
 	# Client's MAC address is mapped to Calling-Station-Id in policy.conf
 	pool_key = "%{Calling-Station-Id}"
 
-	# For now, it only works with MySQL.
+	# For now, it works with MySQL.
 	$INCLUDE ${modconfdir}/sql/ippool-dhcp/mysql/queries.conf
+
+	# It may also work with sqlite - this is very experimental.
+	# Comment out the above line and add the following include.
+	# To use sqlite you need to add '%' to safe_characters in
+	# raddb/mods-config/sql/main/sqlite/queries.conf.
+	# $INCLUDE ${modconfdir}/sql/ippool-dhcp/sqlite/queries.conf
 
 	sqlippool_log_exists = "DHCP: Existing IP: %{reply:Framed-IP-Address} (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} user %{User-Name})"
 
