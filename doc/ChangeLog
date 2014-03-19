@@ -34,6 +34,8 @@ FreeRADIUS 3.0.2 Mon 13 Jan 2014 14:30:00 EDT urgency=medium
 	  which can be used to forcibly enable/disable modules.
 	* pap module now assumes Cleartext-Password if Password-With-Header
 	  doesn't have a {...} header.
+	* Added "unpack" module.  It can unpack binary data from horrible
+	  VSA formats.  See raddb/mods-available/unpack
 
 	Bug fixes
 	* Fix SQL groups.
