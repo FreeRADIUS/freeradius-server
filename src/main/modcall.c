@@ -1831,6 +1831,7 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 	modcallable *csingle;
 	module_instance_t *this;
 	CONF_SECTION *cs, *subcs, *modules;
+	char const *realname;
 
 	if (cf_item_is_section(ci)) {
 		char const *name2;
@@ -2126,12 +2127,12 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 	 */
 	modules = cf_section_find("modules");
 	this = NULL;
+	realname = modrefname;
 
 	if (modules) {
 		/*
 		 *	Try to load the optional module.
 		 */
-		char const *realname = modrefname;
 		if (realname[0] == '-') realname++;
 
 		/*
@@ -2231,7 +2232,7 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 		       sizeof csingle->actions);
 	}
 	rad_assert(modrefname != NULL);
-	csingle->name = modrefname;
+	csingle->name = realname;
 	csingle->type = MOD_SINGLE;
 	csingle->method = component;
 
