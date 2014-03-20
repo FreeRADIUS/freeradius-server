@@ -75,6 +75,8 @@ struct fr_connection_pool_t {
 	int		max;		//!< Maximum number of concurrent
 					//!< connections to allow.
 	int		spare;		//!< Number of spare connections to try
+	int		retry_delay;	//!< seconds to delay re-open
+					//!< after a failed open.
 	int		cleanup_interval; //!< Initial timer for how
 					  //!< often we sweep the pool
 					  //!< for free connections.
@@ -180,6 +182,8 @@ static const CONF_PARSER connection_config[] = {
 	  0, "30" },
 	{ "idle_timeout",  PW_TYPE_INTEGER, offsetof(fr_connection_pool_t, idle_timeout),
 	  0, "60" },
+	{ "retry_delay",  PW_TYPE_INTEGER, offsetof(fr_connection_pool_t, retry_delay),
+	  0, "1" },
 	{ "spread", PW_TYPE_BOOLEAN, offsetof(fr_connection_pool_t, spread),
 	  0, "no" },
 	{ NULL, -1, 0, NULL, NULL }
@@ -304,7 +308,23 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool,
 	pthread_mutex_lock(&pool->mutex);
 	rad_assert(pool->num <= pool->max);
 
-	if ((pool->last_failed == now) || pool->spawning) {
+	/*
+	 *	Don't spawn multiple connections at the same time.
+	 */
+	if (pool->spawning) {
+		pthread_mutex_unlock(&pool->mutex);
+
+		ERROR("%s: Cannot open new connection, "
+		      "connection spawning already in "
+		      "progress", pool->log_prefix);
+		return NULL;
+	}
+
+	/*
+	 *	If the last attempt failed, wait a bit before
+	 *	retrying.
+	 */
+	if (pool->last_failed && (pool->last_failed + pool->retry_delay) < now) {
 		bool complain = false;
 
 		if (pool->last_throttled != now) {
@@ -316,15 +336,9 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool,
 		pthread_mutex_unlock(&pool->mutex);
 
 		if (complain) {
-			if (pool->spawning) {
-				ERROR("%s: Cannot open new connection, "
-			       	       "connection spawning already in "
-			       	       "progress", pool->log_prefix);
-			} else {
-				ERROR("%s: Last connection failed, "
-				       "throttling connection spawn",
-				       pool->log_prefix);
-			}
+			ERROR("%s: Last connection attempt failed, "
+			      "waiting %d seconds before retrying",
+			      pool->log_prefix, pool->retry_delay);
 		}
 
 		return NULL;
@@ -379,6 +393,7 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool,
 	pool->last_spawned = time(NULL);
 	pool->delay_interval = pool->cleanup_interval;
 	pool->next_delay = pool->cleanup_interval;
+	pool->last_failed = 0;
 
 	pthread_mutex_unlock(&pool->mutex);
 
