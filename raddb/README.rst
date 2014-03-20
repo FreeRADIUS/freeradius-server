@@ -92,8 +92,8 @@ In most cases the server will tell you the replacement config item to
 use.  As always, run the server in debugging mode to see these
 messages.
 
-Modules
--------
+Module behavioural changes
+--------------------------
 
 The following modules have been changed.
 
@@ -351,6 +351,24 @@ some systems using NIS or NSS will not supply passwords to the
 ``unix`` module.  For those systems, we recommend putting users and
 passwords into a database, instead of relying on ``/etc/passwd``.
 
+New modules
+-----------
+
+rlm_date
+~~~~~~~~
+
+Instances of rlm_date register an xlat method which can translate
+integer and date values to an arbitrarily formatted date time
+string, or an arbitrarily formated time string to an integer, 
+depending on the attribute type passed.
+
+rlm_rest
+~~~~~~~~
+
+The ``rest`` module is used to translate RADIUS requests into 
+RESTfull HTTP requests. Currently supported body types are JSON
+and POST.
+
 rlm_unpack
 ~~~~~~~~~~
 
@@ -360,7 +378,14 @@ attributes.  e.g. if we have ``Class = 0x00000001020304`` then::
   Tmp-Integer-0 := "%{unpack:&Class 4 short}"
 
 will unpack octets 4 and 5 as a "short", which has value 0x0304.
+All integers are assumed to be in network byte order.
 
+rlm_yubikey
+~~~~~~~~~~~
+
+The ``yubikey`` module can be used to forward yubikey OTP token
+values to a Yubico validation server, or decrypt the token 
+using a PSK.
 
 Other Functionality
 -------------------
