@@ -107,6 +107,8 @@ FreeRADIUS 3.0.2 Mon 13 Jan 2014 14:30:00 EDT urgency=medium
 	  sequence parsing is now handled purely by the xlat functions.
 	* Ensure %% is treated as a string literal, and so not passed to any
 	  xlat escape functions for processing.
+	* Correct calculation of Message-Authenticator
+	  for CoA packets.  Closes #556
 
 FreeRADIUS 3.0.1 Mon 13 Jan 2014 14:30:00 EDT urgency=medium
 	Feature improvements
