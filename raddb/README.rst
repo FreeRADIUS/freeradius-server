@@ -1,9 +1,13 @@
 Upgrading to Version 3.0
 ========================
 
-The configuration for 3.0 is *largely* compatible with the 2.x.x
-configuration.  However, it is NOT possible to simply use the 2.x.x
-configuration as-is.  Instead, you should re-create it.
+.. contents:: Sections
+   :depth: 2
+
+.. important:: 
+   The configuration for 3.0 is *largely* compatible with the 2.x.x
+   configuration.  However, it is NOT possible to simply use the 2.x.x
+   configuration as-is.  Instead, you should re-create it.
 
 Security
 --------
