@@ -1,13 +1,19 @@
+freeradius (2.2.5+git) unstable; urgency=medium
+
+  * New upstream version.
+
+ -- Arran Cudbard-Bell <a.cudbardb@freeradius.org>  Thu, 20 Mar 2013 11:34:00 +0100
+
 freeradius (2.2.4+git) unstable; urgency=medium
 
   * New upstream version.
-  
+
  -- Arran Cudbard-Bell <a.cudbardb@freeradius.org>  Mon, 16 Dec 2013 12:43:49 +0100
 
 freeradius (2.2.3+git) unstable; urgency=medium
 
   * New upstream version.
-  
+
  -- Arran Cudbard-Bell <a.cudbardb@freeradius.org>  Mon, 16 Dec 2013 12:43:00 +0100
 
 freeradius (2.2.2+git) unstable; urgency=medium
@@ -19,9 +25,9 @@ freeradius (2.2.2+git) unstable; urgency=medium
 freeradius (2.2.1+git) unstable; urgency=medium
 
   * New upstream version.
-  
+
  -- Arran Cudbard-Bell <a.cudbardb@freeradius.org>  Mon, 01 Oct 2012 17:13:00 +0100
-  
+
 freeradius (2.2.0+git) unstable; urgency=medium
 
   * New upstream version.
