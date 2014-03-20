@@ -89,8 +89,8 @@ directory.  This change allows for better organization, and means that
 there are fewer files in the main ``raddb`` directory.  See
 ``mods-config/README.rst`` for more details.
 
-Module behavioural changes
---------------------------
+Changed Modules
+---------------
 
 The following modules have been changed.
 
@@ -348,7 +348,7 @@ some systems using NIS or NSS will not supply passwords to the
 ``unix`` module.  For those systems, we recommend putting users and
 passwords into a database, instead of relying on ``/etc/passwd``.
 
-New modules
+New Modules
 -----------
 
 rlm_date
