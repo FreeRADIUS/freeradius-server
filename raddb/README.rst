@@ -158,7 +158,7 @@ The ``rlm_sql_sybase`` module has been renamed to ``rlm_sql_freetds``
 and the old ``rlm_sql_freetds`` module has been removed.
 
 ``rlm_sql_sybase`` used the newer ct-lib API, and ``rlm_sql_freetds``
-used and older API and was incomplete.
+used an older API and was incomplete.
 
 The new ``rlm_sql_freetds`` module now also supports database
 selection on connection startup so ``use`` statements no longer
