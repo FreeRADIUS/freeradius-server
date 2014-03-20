@@ -117,7 +117,7 @@ that there are fewer different configuration items.  The mapping
 between the configuration items is::
 
   num_sql_socks			-> pool { max }
-  connect_failure_retry_delay	-> NOT SUPPORTED
+  connect_failure_retry_delay	-> pool { retry_delay }
   lifetime			-> pool { lifetime }
   max_queries			-> pool { uses }
 
