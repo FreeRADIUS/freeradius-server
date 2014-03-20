@@ -237,8 +237,8 @@ for a section of that name, in order to find the query to use.
 That process means that the server can be extended to support any new
 value of ``Acct-Status-Type``, simply by adding a named sub-section,
 and a query.  This behavior is preferable to that of v2, which had
-hard-coded queries for certain ``Acct-Status-Type`` values, and ignored
-all other values.
+hard-coded queries for certain ``Acct-Status-Type`` values, and was
+ignored all other values.
 
 rlm_ldap
 ~~~~~~~~
@@ -654,3 +654,4 @@ Dialup_admin
 
 The dialip_admin directory has been removed.  No one stepped forward
 to maintain it, and the code had not been changed in many years.
+
