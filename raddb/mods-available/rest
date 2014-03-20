@@ -30,32 +30,54 @@ rest {
 #		check_cert_cn  = "yes"
 	}
 
-	# rlm_rest will open a connection to the server specified in connect_uri
-	# to populate the connection cache, ready for the first request.
-	# The server will not start if the server specified is unreachable.
 	#
-	# If you wish to disable this pre-caching and reachability check,
-	# comment out the configuration item below.
+	#  rlm_rest will open a connection to the server specified in connect_uri
+	#  to populate the connection cache, ready for the first request.
+	#  The server will not start if the server specified is unreachable.
+	#
+	#  If you wish to disable this pre-caching and reachability check,
+	#  comment out the configuration item below.
+	#
 	connect_uri = "http://127.0.0.1/"
 
+	#
+	#  The following config items can be used in each of the sections.
+	#  The sections themselves reflect the sections in the server.
+	#  For example if you list rest in the authorize section of a virtual server,
+	#  the settings from the authorize section here will be used.
+	#
+	#  The following config items may be listed in any of the sections:
+	#    uri          - to send the request to.
+	#    method       - HTTP method to use, one of 'get', 'post', 'put', 'delete'.
+	#    body         - The format of the HTTP body sent to the remote server.
+	#                   May be 'post' or 'json', defaults to 'post'.
+	#    tls          - TLS settings for HTTPS.
+	#    auth         - HTTP auth method to use, one of 'none', 'srp', 'basic',
+	#                   'digest', 'digest-ie', 'gss-negotiate', 'ntlm', 
+	#                   'ntlm-winbind', 'any', 'safe'. defaults to 'none'.
+	#    username     - User to authenticate as, will be expanded.
+	#    password     - Password to use for authentication, will be expanded.
+	#    require_auth - Require HTTP authentication.
+	#    timeout      - HTTP request timeout in seconds, defaults to 4.
+	#
 	authorize {
 		uri = "${..connect_uri}/user/%{User-Name}/mac/%{Called-Station-ID}?section=authorize"
-		method = "get"
+		method = 'get'
 		tls = ${..tls}
 	}
 	authenticate {
 		uri = "${..connect_uri}/user/%{User-Name}/mac/%{Called-Station-ID}?section=authenticate"
-		method = "get"
+		method = 'get'
 		tls = ${..tls}
 	}
 	accounting {
 		uri = "${..connect_uri}/user/%{User-Name}/mac/%{Called-Station-ID}?section=accounting"
-		method = "post"
+		method = 'post'
 		tls = ${..tls}
 	}
 	session {
 		uri = "${..connect_uri}/user/%{User-Name}/mac/%{Called-Station-ID}?section=checksimul"
-		method = "post"
+		method = 'post'
 		tls = ${..tls}
 	}
 	post-auth {
