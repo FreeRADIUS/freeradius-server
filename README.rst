@@ -83,18 +83,6 @@ old, and is not much more than a basic introduction to the subject.
 
 http://www.amazon.com/exec/obidos/ASIN/0596003226/freeradiusorg-20/
 
-For other RADIUS information, the Livington internet site had a lot
-of information about radius online.  Unfortunately Livingston, and the
-site, don't exist anymore but there is a copy of the site still at:
-
-http://portmasters.com/www.livingston.com/
-
-Especially worth reading is the "RADIUS for Unix administrators guide"
-
-* HTML:  http://portmasters.com/tech/docs/radius/1185title.html
-* PDF:   http://portmasters.com/tech/docs/pdf/radius.pdf
-
-
 Problems and Concerns
 ---------------------
 
