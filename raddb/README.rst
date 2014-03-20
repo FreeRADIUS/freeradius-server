@@ -28,41 +28,6 @@ The list of moved options is::
 These entries should be moved from "radiusd.conf" to the "security"
 subsection of that file.
 
-Modules Directory
------------------
-
-As of version 3.0, the ``modules/`` directory no longer exists.
-
-Instead, all "example" modules have been put into the
-``mods-available/`` directory.  Modules which can be loaded by the
-server are placed in the ``mods-enabled/`` directory.  All of the
-modules in that directory will be loaded.  This means that the
-``instantiate`` section of radiusd.conf is less important.  The only
-reason to list a module in the ``instantiate`` section is to force
-ordering when the modules are loaded.
-
-Modules can be enabled by creating a soft link.  For module ``foo``, do::
-
-  $ cd raddb
-  $ ln -s mods-available/foo mods-enabled/foo
-
-To create "local" versions of the modules, we suggest copying the file
-instead.  This leaves the original file (with documentation) in the
-``mods-available/`` directory.  Local changes should go into the
-``mods-enabled/`` directory.
-
-Module-specific configuration files are now in the ``mods-config/``
-directory.  This change allows for better organization, and means that
-there are fewer files in the main ``raddb`` directory.  See
-``mods-config/README.rst`` for more details.
-
-Dialup_admin
-------------
-
-The dialip_admin directory has been removed.  No one stepped forward
-to maintain it, and the code had not been changed in many years.
-
-
 Naming
 ------
 
@@ -95,6 +60,34 @@ update your module configuration to use the new syntax.
 In most cases the server will tell you the replacement config item to
 use.  As always, run the server in debugging mode to see these
 messages.
+
+Modules Directory
+-----------------
+
+As of version 3.0, the ``modules/`` directory no longer exists.
+
+Instead, all "example" modules have been put into the
+``mods-available/`` directory.  Modules which can be loaded by the
+server are placed in the ``mods-enabled/`` directory.  All of the
+modules in that directory will be loaded.  This means that the
+``instantiate`` section of radiusd.conf is less important.  The only
+reason to list a module in the ``instantiate`` section is to force
+ordering when the modules are loaded.
+
+Modules can be enabled by creating a soft link.  For module ``foo``, do::
+
+  $ cd raddb
+  $ ln -s mods-available/foo mods-enabled/foo
+
+To create "local" versions of the modules, we suggest copying the file
+instead.  This leaves the original file (with documentation) in the
+``mods-available/`` directory.  Local changes should go into the
+``mods-enabled/`` directory.
+
+Module-specific configuration files are now in the ``mods-config/``
+directory.  This change allows for better organization, and means that
+there are fewer files in the main ``raddb`` directory.  See
+``mods-config/README.rst`` for more details.
 
 Module behavioural changes
 --------------------------
@@ -655,3 +648,10 @@ raddb/mods-available/sql for an example configuration.
 
 The main SQL module has more functionality than rlm_sql_log, and
 results in less code in the server.
+
+Dialup_admin
+------------
+
+The dialip_admin directory has been removed.  No one stepped forward
+to maintain it, and the code had not been changed in many years.
+
