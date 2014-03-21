@@ -640,7 +640,7 @@ static size_t rest_encode_json(void *out, size_t size, size_t nmemb, void *userd
 		freespace--;
 	}
 
-	while (freespace > 0) {
+	for (;;) {
 		vp = fr_cursor_current(&ctx->cursor);
 
 		/*
