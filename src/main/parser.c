@@ -403,6 +403,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 		 *	brackets.  Go recurse to get more.
 		 */
 		c->type = COND_TYPE_CHILD;
+		c->ci = ci;
 		slen = condition_tokenize(c, ci, p, true, &c->data.child, error, flags);
 		if (slen <= 0) {
 			return_SLEN;
@@ -481,6 +482,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 			}
 
 			c->type = COND_TYPE_EXISTS;
+			c->ci = ci;
 
 			c->data.vpt = radius_str2tmpl(c, lhs, lhs_type, REQUEST_CURRENT, PAIR_LIST_REQUEST);
 			if (!c->data.vpt) {
@@ -497,6 +499,8 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 			 */
 			regex = false;
 			c->type = COND_TYPE_MAP;
+			c->ci = ci;
+
 			switch (*p) {
 			default:
 				return_P("Invalid text. Expected comparison operator");

@@ -66,6 +66,7 @@ typedef enum fr_cond_type_t {
 struct fr_cond_t {
 	fr_cond_type_t	type;
 
+	CONF_ITEM const *ci;
 	union {
 		value_pair_map_t *map;
 		value_pair_tmpl_t *vpt;
