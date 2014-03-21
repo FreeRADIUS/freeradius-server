@@ -2534,6 +2534,13 @@ static bool pass2_callback(UNUSED void *ctx, fr_cond_t *c)
 {
 	value_pair_map_t *map;
 
+	if ((c->type == COND_TYPE_EXISTS) &&
+	    (c->data.vpt->type == VPT_TYPE_XLAT)) {
+		if (!pass2_xlat_compile(c->ci, c->data.vpt)) {
+			return false;
+		}
+	}
+
 	/*
 	 *	Maps have a paircompare fixup applied to them.
 	 *	Others get ignored.
@@ -2543,6 +2550,7 @@ static bool pass2_callback(UNUSED void *ctx, fr_cond_t *c)
 			map = c->data.map;
 			goto check_paircmp;
 		}
+
 		return true;
 	}
 
