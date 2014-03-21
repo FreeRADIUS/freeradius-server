@@ -553,7 +553,7 @@ int radius_attrmap(CONF_SECTION *cs, value_pair_map_t **head,
 
 	return 0;
 error:
-	talloc_free(*head);
+	TALLOC_FREE(*head);
 	return -1;
 }
 
