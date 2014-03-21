@@ -140,6 +140,8 @@ static const CONF_PARSER log_config_nodest[] = {
 	{ "msg_goodpass", PW_TYPE_STRING_PTR, 0, &mainconfig.auth_goodpass_msg, NULL},
 	{ "colourise", PW_TYPE_BOOLEAN, 0, &do_colourise, NULL },
 	{ "use_utc", PW_TYPE_BOOLEAN, 0, &log_dates_utc, NULL },
+	{ "msg_denied", PW_TYPE_STRING_PTR, 0, &mainconfig.denied_msg,
+	  "You are already logged in - access denied" },
 
 	{ NULL, -1, 0, NULL, NULL }
 };
