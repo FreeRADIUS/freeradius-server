@@ -2726,7 +2726,6 @@ rad_listen_t *proxy_new_listener(home_server_t *home, int src_port)
 }
 #endif
 
-
 static const FR_NAME_NUMBER listen_compare[] = {
 #ifdef WITH_STATS
 	{ "status",	RAD_LISTEN_NONE },
@@ -2757,6 +2756,11 @@ static const FR_NAME_NUMBER listen_compare[] = {
 	{ NULL, 0 },
 };
 
+static int _free_proto_handle(lt_dlhandle *handle)
+{
+	dlclose(*handle);
+	return 0;
+}
 
 static rad_listen_t *listen_parse(CONF_SECTION *cs, char const *server)
 {
@@ -2786,6 +2790,7 @@ static rad_listen_t *listen_parse(CONF_SECTION *cs, char const *server)
 	handle = lt_dlopenext(buffer);
 	if (handle) {
 		fr_protocol_t	*proto;
+		lt_dlhandle	*marker;
 
 		proto = dlsym(handle, buffer);
 		if (!proto) {
@@ -2802,9 +2807,11 @@ static rad_listen_t *listen_parse(CONF_SECTION *cs, char const *server)
 		memcpy(&master_listen[type], proto, sizeof(*proto));
 
 		/*
-		 *	And throw away the handle.
-		 *	@todo: fix it later
+		 *	Ensure handle gets closed if config section gets freed
 		 */
+		marker = talloc(cs, lt_dlhandle);
+		*marker = handle;
+		talloc_set_destructor(marker, _free_proto_handle);
 
 		if (master_listen[type].magic !=  RLM_MODULE_INIT) {
 			ERROR("Failed to load protocol '%s' due to internal sanity check problem",
