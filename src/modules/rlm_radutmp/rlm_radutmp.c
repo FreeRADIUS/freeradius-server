@@ -661,6 +661,8 @@ static rlm_rcode_t mod_checksimul(void *instance, REQUEST *request)
 			char session_id[sizeof(u.session_id) + 1];
 			char utmp_login[sizeof(u.login) + 1];
 
+			/* Guarantee string is NULL terminated */
+			u.session_id[sizeof(u.session_id) - 1] = '\0';
 			strlcpy(session_id, u.session_id, sizeof(session_id));
 
 			/*
