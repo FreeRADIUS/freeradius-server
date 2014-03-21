@@ -1477,7 +1477,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			   CONF_SECTION *current)
 
 {
-	CONF_SECTION *this, *css;
+	CONF_SECTION *this, *css, *nextcs;
 	CONF_PAIR *cpn;
 	char const *ptr, *start;
 	char const *value;
@@ -1498,6 +1498,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 	 */
 	for (;;) {
 		int at_eof;
+		nextcs = NULL;
 
 		/*
 		 *	Get data, and remember if we are at EOF.
@@ -1850,7 +1851,16 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 				if (!server) goto invalid_location;
 			}
 
-			slen = fr_condition_tokenize(this, cf_sectiontoitem(this), ptr, &cond, &error, FR_COND_TWO_PASS);
+			nextcs = cf_section_alloc(this, buf1, ptr);
+			if (!nextcs) {
+				ERROR("%s[%d]: Failed allocating memory for section",
+				      filename, *lineno);
+				return -1;
+			}
+			nextcs->item.filename = filename;
+			nextcs->item.lineno = *lineno;
+
+			slen = fr_condition_tokenize(nextcs, cf_sectiontoitem(nextcs), ptr, &cond, &error, FR_COND_TWO_PASS);
 			if (p) *p = '{';
 
 			if (slen < 0) {
@@ -1869,12 +1879,13 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 
 				EDEBUG("%s", start);
 				EDEBUG("%.*s^ %s", (int) offset, spbuf, error);
+				talloc_free(nextcs);
 				free(spbuf);
 				return -1;
 			}
 
 			if ((size_t) slen >= (sizeof(buf2) - 1)) {
-				talloc_free(cond);
+				talloc_free(nextcs);
 				EDEBUG("%s[%d]: Condition is too large after \"%s\"",
 				       filename, *lineno, buf1);
 				return -1;
@@ -1886,11 +1897,19 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			t2 = T_BARE_WORD;
 
 			if (gettoken(&ptr, buf3, sizeof(buf3)) != T_LCBRACE) {
-				talloc_free(cond);
+				talloc_free(nextcs);
 				EDEBUG("%s[%d]: Expected '{'",
 				       filename, *lineno);
 				return -1;
 			}
+
+			/*
+			 *	Swap the condition with trailing stuff for
+			 *	the final condition.
+			 */
+			memcpy(&p, &nextcs->name2, sizeof(nextcs->name2));
+			talloc_free(p);
+			nextcs->name2 = talloc_strdup(nextcs, buf2);
 
 			goto section_alloc;
 		}
@@ -1994,24 +2013,23 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 				return -1;
 			}
 
-			css = cf_section_alloc(this, buf1,
-					       t2 == T_LCBRACE ? NULL : buf2);
-			if (!css) {
-				ERROR("%s[%d]: Failed allocating memory for section",
-						filename, *lineno);
-				return -1;
-			}
-			cf_item_add(this, &(css->item));
-			css->item.filename = filename;
-			css->item.lineno = *lineno;
+			if (!cond) {
+				css = cf_section_alloc(this, buf1,
+						       t2 == T_LCBRACE ? NULL : buf2);
+				if (!css) {
+					ERROR("%s[%d]: Failed allocating memory for section",
+					      filename, *lineno);
+					return -1;
+				}
+				cf_item_add(this, &(css->item));
+				css->item.filename = filename;
+				css->item.lineno = *lineno;
 
-			if (cond) {
-				/*
-				 *	FIXME: talloc_steal cond to css
-				 *	set "ci" in all of "cond" to css
-				 *
-				 *	<sigh>
-				 */
+			} else {
+				css = nextcs;
+				nextcs = NULL;
+
+				cf_item_add(this, &(css->item));
 				cf_data_add_internal(css, "if", cond, NULL, false);
 				cond = NULL; /* eaten by the above line */
 			}
