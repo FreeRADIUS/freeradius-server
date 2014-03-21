@@ -1340,11 +1340,10 @@ int radius_map2vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *ma
 	return 0;
 }
 
-
-/** Convert a valuepair string to VALUE_PAIR and insert it into a list
+/** Convert a valuepair string to valuepair map
  *
- * Takes a valuepair string with list and request qualifiers, converts it into a VALUE_PAIR
- * and inserts it into the appropriate list.
+ * Takes a valuepair string with list and request qualifiers, converts it into a
+ * value_pair_map_t and inserts it into the appropriate list.
  *
  * @param request Current request.
  * @param raw string to parse.
@@ -1354,13 +1353,12 @@ int radius_map2vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *ma
  * @param src_list_def to use if attribute isn't qualified.
  * @return 0 on success, < 0 on error.
  */
-int radius_str2vp(REQUEST *request, char const *raw,
-		  request_refs_t dst_request_def, pair_lists_t dst_list_def,
-		  request_refs_t src_request_def, pair_lists_t src_list_def)
+int radius_strpair2map(value_pair_map_t **out, REQUEST *request, char const *raw,
+		       request_refs_t dst_request_def, pair_lists_t dst_list_def,
+		       request_refs_t src_request_def, pair_lists_t src_list_def)
 {
 	char const *p = raw;
 	FR_TOKEN ret;
-	int rcode;
 
 	VALUE_PAIR_RAW tokens;
 	value_pair_map_t *map;
@@ -1377,10 +1375,9 @@ int radius_str2vp(REQUEST *request, char const *raw,
 		REDEBUG("Failed parsing attribute string: %s", fr_strerror());
 		return -1;
 	}
+	*out = map;
 
-	rcode = radius_map2request(request, map, NULL, radius_map2vp, NULL);
-	talloc_free(map);
-	return rcode;
+	return 0;
 }
 
 /** Return a VP from a value_pair_tmpl_t

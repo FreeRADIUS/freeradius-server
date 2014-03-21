@@ -316,13 +316,20 @@ void rlm_ldap_map_do(UNUSED const ldap_instance_t *inst, REQUEST *request, LDAP 
 		count = ldap_count_values(values);
 
 		for (i = 0; i < count; i++) {
+			value_pair_map_t *attr;
+
 			RDEBUG3("Parsing attribute string '%s'", values[i]);
-			if (radius_str2vp(request, values[i],
-					  REQUEST_CURRENT, PAIR_LIST_REPLY,
-					  REQUEST_CURRENT, PAIR_LIST_REQUEST) < 0) {
+			if (radius_strpair2map(&attr, request, values[i],
+					       REQUEST_CURRENT, PAIR_LIST_REPLY,
+					       REQUEST_CURRENT, PAIR_LIST_REQUEST) < 0) {
 				RWDEBUG("Failed parsing '%s' value \"%s\" as valuepair, skipping...",
 					inst->valuepair_attr, values[i]);
+				continue;
 			}
+			if (radius_map2request(request, map, NULL, radius_map2vp, NULL) < 0) {
+				RWDEBUG("Failed adding \"%s\" to request, skipping...", values[i]);
+			}
+			talloc_free(attr);
 		}
 
 		ldap_value_free(values);
