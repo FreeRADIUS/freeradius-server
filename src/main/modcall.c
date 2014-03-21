@@ -2634,7 +2634,6 @@ static bool modcall_pass2_update(modgroup *g)
 
 		fmt = talloc_strdup(map->src, map->src->name);
 		slen = xlat_tokenize(map->src, fmt, &head, &error);
-		talloc_free(fmt);
 
 		if (slen < 0) {
 			size_t offset;
@@ -2653,7 +2652,12 @@ static bool modcall_pass2_update(modgroup *g)
 			free(spbuf);
 			return false;
 		}
-		talloc_free(head);
+
+		/*
+		 *	Re-write it to be a pre-parsed XLAT structure.
+		 */
+		map->src->type = VPT_TYPE_XLAT_STRUCT;
+		map->src->xlat = head;
 	}
 
 	return true;

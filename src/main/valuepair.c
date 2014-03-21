@@ -1000,6 +1000,7 @@ int radius_map2request(REQUEST *request, value_pair_map_t const *map,
 				break;
 
 			case VPT_TYPE_XLAT:
+			case VPT_TYPE_XLAT_STRUCT:
 				vp_prints_value(buffer, sizeof(buffer), vp, '"');
 				value = buffer;
 				break;
@@ -1216,6 +1217,7 @@ int radius_map2vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *ma
 
 	switch (map->src->type) {
 	case VPT_TYPE_XLAT:
+	case VPT_TYPE_XLAT_STRUCT:
 	case VPT_TYPE_LITERAL:
 	case VPT_TYPE_DATA:
 		vp = pairalloc(request, da);
@@ -1231,6 +1233,42 @@ int radius_map2vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *ma
 	 *	And parse the RHS
 	 */
 	switch (map->src->type) {
+	case VPT_TYPE_XLAT_STRUCT:
+		rad_assert(map->dst->da);	/* Need to know where were going to write the new attribute */
+		/*
+		 *	Don't call unnecessary expansions
+		 */
+		if (strchr(map->src->name, '%') != NULL) {
+			ssize_t slen;
+			char *str = NULL;
+
+			rad_assert(map->src->xlat != NULL);
+			slen = radius_axlat_struct(&str, request, map->src->xlat, NULL, NULL);
+			if (slen < 0) {
+				rcode = slen;
+				goto error;
+			}
+
+			/*
+			 *	We do the debug printing because radius_axlat_struct
+			 *	doesn't have access to the original string.  It's been
+			 *	mangled during the parsing to xlat_exp_t
+			 */
+			RDEBUG2("EXPAND %s", map->src->name);
+			RDEBUG2("   --> %s", str);
+
+			rcode = pairparsevalue(vp, str);
+			talloc_free(str);
+			if (!rcode) {
+				pairfree(&vp);
+				rcode = -1;
+				goto error;
+			}
+
+			break;
+		}
+		goto parse_literal;
+
 	case VPT_TYPE_XLAT:
 		rad_assert(map->dst->da);	/* Need to know where were going to write the new attribute */
 		/*
@@ -1258,6 +1296,7 @@ int radius_map2vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *ma
 		/* FALL-THROUGH */
 
 	case VPT_TYPE_LITERAL:
+	parse_literal:
 		if (!pairparsevalue(vp, map->src->name)) {
 			rcode = -2;
 			goto error;
