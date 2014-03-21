@@ -2613,6 +2613,51 @@ check_paircmp:
 
 	return true;
 }
+
+
+/*
+ *	Compile the RHS of update sections to xlat_exp_t
+ */
+static bool modcall_pass2_update(modgroup *g)
+{
+	value_pair_map_t *map;
+
+	for (map = g->map; map != NULL; map = map->next) {
+		ssize_t slen;
+		char *fmt;
+		char const *error;
+		xlat_exp_t *head;
+
+		if (map->src->type != VPT_TYPE_XLAT) continue;
+
+		rad_assert(map->src->vpd == NULL);
+
+		fmt = talloc_strdup(map->src, map->src->name);
+		slen = xlat_tokenize(map->src, fmt, &head, &error);
+		talloc_free(fmt);
+
+		if (slen < 0) {
+			size_t offset;
+			char *spbuf;
+
+			offset = -slen;
+
+			spbuf = malloc(offset + 1);
+			memset(spbuf, ' ', offset);
+			spbuf[offset] = '\0';
+
+			cf_log_err(map->ci, "Failed parsing expanded string %s",
+				   map->src->name);
+			cf_log_err(map->ci, "                               %.*s^ %s",
+				   (int) offset, spbuf, error);
+			free(spbuf);
+			return false;
+		}
+		talloc_free(head);
+	}
+
+	return true;
+}
 #endif
 
 /*
@@ -2629,13 +2674,20 @@ bool modcall_pass2(modcallable *mc)
 			rad_assert(0 == 1);
 			break;
 
-		case MOD_SINGLE:
 #ifdef WITH_UNLANG
-		case MOD_UPDATE: /* @todo: pre-parse xlat's */
+		case MOD_UPDATE:
+			g = mod_callabletogroup(this);
+			if (!modcall_pass2_update(g)) {
+				return false;
+			}
+			break;
+
 		case MOD_XLAT:   /* @todo: pre-parse xlat's */
 		case MOD_BREAK:
 		case MOD_REFERENCE:
 #endif
+
+		case MOD_SINGLE:
 			break;	/* do nothing */
 
 #ifdef WITH_UNLANG
