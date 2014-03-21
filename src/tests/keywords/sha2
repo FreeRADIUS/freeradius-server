@@ -72,4 +72,10 @@ if ("%{sha512:&request:Tmp-Octets-0}" != 'de80271eb5e03a1c24dd0cd823a22305a743ee
 	}
 }
 
-}  # run only if OPENSSL_LIBS is defined
+}
+
+else {	# no OPENSSL.  Force the test to pass
+	update reply {
+		Filter-Id := 'filter'
+	}
+}
