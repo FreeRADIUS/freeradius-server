@@ -86,12 +86,6 @@ int rlm_ldap_map_verify(ldap_instance_t *inst, value_pair_map_t **head)
 			return -1;
 		}
 
-		if (map->src->type == VPT_TYPE_EXEC) {
-			cf_log_err(map->ci, "Exec values are not allowed");
-
-			return -1;
-		}
-
 		/*
 		 *	Be smart about whether we warn the user about missing passwords.
 		 *	If there are no password attributes in the mapping, then the user's either an idiot
@@ -168,6 +162,7 @@ void rlm_ldap_map_xlat_free(rlm_ldap_map_xlat_t const *expanded)
 		if (!name) return;
 
 		switch (map->src->type) {
+		case VPT_TYPE_EXEC:
 		case VPT_TYPE_XLAT:
 		case VPT_TYPE_ATTR:
 			rad_const_free(name);
@@ -220,6 +215,23 @@ int rlm_ldap_map_xlat(REQUEST *request, value_pair_map_t const *maps, rlm_ldap_m
 
 			expanded->attrs[total++] = talloc_strdup(request, found->vp_strvalue);
 			break;
+
+		case VPT_TYPE_EXEC:
+		{
+			char answer[1024];
+			VALUE_PAIR **input_pairs = NULL;
+			int result;
+
+			input_pairs = radius_list(request, PAIR_LIST_REQUEST);
+			result = radius_exec_program(request, map->src->name, true, true, answer,
+						     sizeof(answer), EXEC_TIMEOUT,
+						     input_pairs ? *input_pairs : NULL, NULL);
+			if (result != 0) {
+				return -1;
+			}
+
+			expanded->attrs[total++] = talloc_strdup(request, answer);
+		}
 
 		case VPT_TYPE_LITERAL:
 			expanded->attrs[total++] = map->src->name;
