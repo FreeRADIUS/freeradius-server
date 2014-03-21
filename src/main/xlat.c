@@ -2224,6 +2224,45 @@ static size_t xlat_process(char **out, REQUEST *request, xlat_exp_t const * cons
  * @param[out] out Where to write pointer to output buffer.
  * @param[in] outlen Size of out.
  * @param[in] request current request.
+ * @param[in] node the xlat structure to expand
+ * @param[in] escape function to escape final value e.g. SQL quoting.
+ * @param[in] escape_ctx pointer to pass to escape function.
+ * @return length of string written @bug should really have -1 for failure
+ */
+static ssize_t xlat_expand_struct(char **out, size_t outlen, REQUEST *request, xlat_exp_t const *node,
+				  RADIUS_ESCAPE_STRING escape, void *escape_ctx)
+{
+	char *buff;
+	ssize_t len;
+
+	rad_assert(node != NULL);
+
+	len = xlat_process(&buff, request, node, escape, escape_ctx);
+
+	if ((len < 0) || !buff) {
+		rad_assert(buff == NULL);
+		if (*out) *out[0] = '\0';
+		return len;
+	}
+
+	if (!*out) {
+		*out = buff;
+	} else {
+		strlcpy(*out, buff, outlen);
+		talloc_free(buff);
+	}
+
+	return strlen(*out);
+}
+
+
+/** Replace %whatever in a string.
+ *
+ * See 'doc/variables.txt' for more information.
+ *
+ * @param[out] out Where to write pointer to output buffer.
+ * @param[in] outlen Size of out.
+ * @param[in] request current request.
  * @param[in] fmt string to expand.
  * @param[in] escape function to escape final value e.g. SQL quoting.
  * @param[in] escape_ctx pointer to pass to escape function.
@@ -2232,7 +2271,6 @@ static size_t xlat_process(char **out, REQUEST *request, xlat_exp_t const * cons
 static ssize_t xlat_expand(char **out, size_t outlen, REQUEST *request, char const *fmt,
 			   RADIUS_ESCAPE_STRING escape, void *escape_ctx)
 {
-	char *buff;
 	ssize_t len;
 	xlat_exp_t *node;
 
@@ -2257,25 +2295,13 @@ static ssize_t xlat_expand(char **out, size_t outlen, REQUEST *request, char con
 		return -1;
 	}
 
-	len = xlat_process(&buff, request, node, escape, escape_ctx);
+	len = xlat_expand_struct(out, outlen, request, node, escape, escape_ctx);
 	talloc_free(node);
 
-	if ((len < 0) || !buff) {
-		rad_assert(buff == NULL);
-		if (*out) *out[0] = '\0';
-		return len;
-	}
-
 	RDEBUG2("EXPAND %s", fmt);
-	RDEBUG2("   --> %s", buff);
+	RDEBUG2("   --> %s", *out);
 
-	if (!*out) {
-		*out = buff;
-	} else {
-		strlcpy(*out, buff, outlen);
-	}
-
-	return strlen(*out);
+	return len;
 }
 
 ssize_t radius_xlat(char *out, size_t outlen, REQUEST *request, char const *fmt, RADIUS_ESCAPE_STRING escape, void *ctx)
@@ -2286,4 +2312,9 @@ ssize_t radius_xlat(char *out, size_t outlen, REQUEST *request, char const *fmt,
 ssize_t radius_axlat(char **out, REQUEST *request, char const *fmt, RADIUS_ESCAPE_STRING escape, void *ctx)
 {
 	return xlat_expand(out, 0, request, fmt, escape, ctx);
+}
+
+ssize_t radius_axlat_struct(char **out, REQUEST *request, xlat_exp_t const *xlat, RADIUS_ESCAPE_STRING escape, void *ctx)
+{
+	return xlat_expand_struct(out, 0, request, xlat, escape, ctx);
 }

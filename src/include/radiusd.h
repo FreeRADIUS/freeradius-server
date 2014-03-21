@@ -660,6 +660,7 @@ ssize_t radius_xlat(char *out, size_t outlen, REQUEST *request, char const *fmt,
 
 ssize_t radius_axlat(char **out, REQUEST *request, char const *fmt, RADIUS_ESCAPE_STRING escape,
 		    	  void *escape_ctx);
+ssize_t radius_axlat_struct(char **out, REQUEST *request, xlat_exp_t const *xlat, RADIUS_ESCAPE_STRING escape, void *ctx);
 
 typedef ssize_t (*RAD_XLAT_FUNC)(void *instance, REQUEST *, char const *, char *, size_t);
 int		xlat_register(char const *module, RAD_XLAT_FUNC func, RADIUS_ESCAPE_STRING escape,
