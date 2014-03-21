@@ -1064,7 +1064,12 @@ static VALUE_PAIR *fr_dhcp_vp2suboption(TALLOC_CTX *ctx, vp_cursor_t *cursor)
 	for (vp = fr_cursor_current(&to_pack);
 	     vp && vp->da->flags.is_tlv && !vp->da->flags.extended && (SUBOPTION_PARENT(vp->da->attr) == parent);
 	     vp = fr_cursor_next(&to_pack)) {
-	   	/* Don't write out the header, were packing array options */
+		if (SUBOPTION_ATTR(vp->da->attr) == 0) {
+			fr_strerror_printf("Invalid attribute number 0");
+			return NULL;
+		}
+
+		/* Don't write out the header, were packing array options */
 		if (!vp->da->flags.array || (attr != SUBOPTION_ATTR(vp->da->attr))) {
 			attr = SUBOPTION_ATTR(vp->da->attr);
 			*p++ = attr;
