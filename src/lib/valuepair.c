@@ -2127,7 +2127,7 @@ VALUE_PAIR *readvp2(TALLOC_CTX *ctx, FILE *fp, bool *pfiledone, char const *errp
 		if (!vp) {
 			if (last_token != T_EOL) {
 				fr_perror("%s", errprefix);
-				error = false;
+				error = true;
 				break;
 			}
 			break;
