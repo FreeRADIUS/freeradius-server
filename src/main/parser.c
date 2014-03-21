@@ -482,7 +482,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 
 			c->type = COND_TYPE_EXISTS;
 
-			c->data.vpt = radius_str2tmpl(c, lhs, lhs_type);
+			c->data.vpt = radius_str2tmpl(c, lhs, lhs_type, REQUEST_CURRENT, PAIR_LIST_REQUEST);
 			if (!c->data.vpt) {
 				return_P("Failed creating exists");
 			}

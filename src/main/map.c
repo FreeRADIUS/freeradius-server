@@ -146,7 +146,8 @@ value_pair_tmpl_t *radius_attr2tmpl(TALLOC_CTX *ctx, char const *name,
  * @param[in] type Type of quoting around value.
  * @return pointer to new VPT.
  */
-value_pair_tmpl_t *radius_str2tmpl(TALLOC_CTX *ctx, char const *name, FR_TOKEN type)
+value_pair_tmpl_t *radius_str2tmpl(TALLOC_CTX *ctx, char const *name, FR_TOKEN type,
+				   request_refs_t request_def, pair_lists_t list_def)
 {
 	char const *p;
 	value_pair_tmpl_t *vpt;
@@ -163,10 +164,10 @@ value_pair_tmpl_t *radius_str2tmpl(TALLOC_CTX *ctx, char const *name, FR_TOKEN t
 			pair_lists_t list;
 
 			p = name;
-			ref = radius_request_name(&p, REQUEST_CURRENT);
+			ref = radius_request_name(&p, request_def);
 			if (ref == REQUEST_UNKNOWN) goto literal;
 
-			list = radius_list_name(&p, PAIR_LIST_REQUEST);
+			list = radius_list_name(&p, list_def);
 			if (list == PAIR_LIST_UNKNOWN) goto literal;
 
 			if ((p != name) && !*p) {
@@ -273,7 +274,7 @@ value_pair_map_t *radius_str2map(TALLOC_CTX *ctx, char const *lhs, FR_TOKEN lhs_
 	if ((lhs_type == T_BARE_WORD) && (*lhs == '&')) {
 		map->dst = radius_attr2tmpl(map, lhs + 1, dst_request_def, dst_list_def);
 	} else {
-		map->dst = radius_str2tmpl(map, lhs, lhs_type);
+		map->dst = radius_str2tmpl(map, lhs, lhs_type, dst_request_def, dst_list_def);
 	}
 
 	if (!map->dst) {
@@ -287,7 +288,7 @@ value_pair_map_t *radius_str2map(TALLOC_CTX *ctx, char const *lhs, FR_TOKEN lhs_
 	if ((rhs_type == T_BARE_WORD) && (*rhs == '&')) {
 		map->src = radius_attr2tmpl(map, rhs + 1, src_request_def, src_list_def);
 	} else {
-		map->src = radius_str2tmpl(map, rhs, rhs_type);
+		map->src = radius_str2tmpl(map, rhs, rhs_type, src_request_def, src_list_def);
 	}
 
 	if (!map->dst) goto error;
@@ -366,11 +367,11 @@ value_pair_map_t *radius_cp2map(TALLOC_CTX *ctx, CONF_PAIR *cp,
 				       cf_pair_filename(cp), cf_pair_lineno(cp),
 				       attr, value);
 			} else {
-				map->src = radius_str2tmpl(map, value, type);
+				map->src = radius_str2tmpl(map, value, type, src_request_def, src_list_def);
 			}
 		}
 	} else {
-		map->src = radius_str2tmpl(map, value, type);
+		map->src = radius_str2tmpl(map, value, type, src_request_def, src_list_def);
 	}
 
 	if (!map->src) {
