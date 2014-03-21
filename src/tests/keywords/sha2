@@ -1,6 +1,8 @@
 #
 # PRE: update if
 #
+if ("$ENV{OPENSSL_LIBS}" != "") {
+
 update {
        control:Cleartext-Password := 'hello'
        request:Tmp-String-0 := "This is a string\n"
@@ -69,3 +71,5 @@ if ("%{sha512:&request:Tmp-Octets-0}" != 'de80271eb5e03a1c24dd0cd823a22305a743ee
 		Filter-Id += 'fail'
 	}
 }
+
+}  # run only if OPENSSL_LIBS is defined

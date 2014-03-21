@@ -34,6 +34,8 @@ BOOTSTRAP_COPY	 := $(subst $(DIR),$(BUILD_DIR)/tests/keywords,$(BOOTSTRAP_NEEDS)
 #
 -include $(BUILD_DIR)/tests/keywords/depends.mk
 
+export OPENSSL_LIBS
+
 $(BUILD_DIR)/tests/keywords/depends.mk: $(addprefix $(DIR)/,$(KEYWORD_FILES)) | $(BUILD_DIR)/tests/keywords
 	@rm -f $@
 	@for x in $^; do \
