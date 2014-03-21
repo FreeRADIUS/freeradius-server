@@ -1360,6 +1360,7 @@ int radius_map2vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *ma
  * Takes a valuepair string with list and request qualifiers, converts it into a
  * value_pair_map_t and inserts it into the appropriate list.
  *
+ * @param out Where to write the new map (must be freed with talloc_free()).
  * @param request Current request.
  * @param raw string to parse.
  * @param dst_request_def to use if attribute isn't qualified.

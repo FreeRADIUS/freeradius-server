@@ -144,6 +144,9 @@ value_pair_tmpl_t *radius_attr2tmpl(TALLOC_CTX *ctx, char const *name,
  * @param[in] ctx for talloc
  * @param[in] name string to convert.
  * @param[in] type Type of quoting around value.
+ * @param[in] request_def The default request to insert unqualified
+ *	attributes into.
+ * @param[in] list_def The default list to insert unqualified attributes into.
  * @return pointer to new VPT.
  */
 value_pair_tmpl_t *radius_str2tmpl(TALLOC_CTX *ctx, char const *name, FR_TOKEN type,
