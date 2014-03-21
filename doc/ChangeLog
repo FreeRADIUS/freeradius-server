@@ -1,3 +1,12 @@
+FreeRADIUS 3.0.3 Fri 21 Mar 2014 08:30:00 EDT urgency=medium
+	Feature improvements
+	* rlm_ldap now supports defining the LDAP attribute name via
+	  backticked expansion (i.e. shell command) in 
+	  RADIUS <-> LDAP mappings.
+	* rlm_ldap now supports older style generic attributes.
+	
+	Bug fixes
+
 FreeRADIUS 3.0.2 Fri 21 Mar 2014 08:30:00 EDT urgency=medium
 	Feature improvements
 	* secret keys and LDAP / SQL passwords are now printed as
