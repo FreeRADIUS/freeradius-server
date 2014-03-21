@@ -83,6 +83,7 @@ RCSID("$Id$")
 /* Fallback to to using recvfrom */
 #    else
 #      undef IPV6_RECVPKTINFO
+#      undef IPV6_PKTINFO
 #    endif
 #  else
 #    define FR_IPV6_RECVPKTINFO IPV6_PKTINFO
