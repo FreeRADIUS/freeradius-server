@@ -302,10 +302,12 @@ int rlm_ldap_map_xlat(REQUEST *request, value_pair_map_t const *maps, rlm_ldap_m
 
 			expanded->attrs[total++] = talloc_strdup(request, answer);
 		}
+			break;
 
 		case VPT_TYPE_LITERAL:
 			expanded->attrs[total++] = map->src->name;
 			break;
+
 		default:
 			rad_assert(0);
 		error:
@@ -315,7 +317,6 @@ int rlm_ldap_map_xlat(REQUEST *request, value_pair_map_t const *maps, rlm_ldap_m
 
 			return -1;
 		}
-
 	}
 
 	rad_assert(total < LDAP_MAX_ATTRMAP);
@@ -396,7 +397,7 @@ void rlm_ldap_map_do(UNUSED const ldap_instance_t *inst, REQUEST *request, LDAP 
 					inst->valuepair_attr, values[i]);
 				continue;
 			}
-			if (radius_map2request(request, map, NULL, radius_map2vp, NULL) < 0) {
+			if (radius_map2request(request, attr, NULL, radius_map2vp, NULL) < 0) {
 				RWDEBUG("Failed adding \"%s\" to request, skipping...", values[i]);
 			}
 			talloc_free(attr);
