@@ -78,10 +78,13 @@ typedef enum vpt_type {
 	VPT_TYPE_LIST,			//!< Is a list.
 	VPT_TYPE_REGEX,			//!< Is a regex.
 	VPT_TYPE_EXEC,			//!< Needs to be executed.
-	VPT_TYPE_DATA			//!< is a value_data_t
+	VPT_TYPE_DATA,			//!< is a value_data_t
+	VPT_TYPE_XLAT_STRUCT,	      	//!< pre-parsed xlat_exp_t in vpd.ptr
 } vpt_type_t;
 
 extern const FR_NAME_NUMBER vpt_types[];
+
+typedef struct xlat_exp xlat_exp_t;
 
 /** A pre-parsed template attribute
  *
@@ -102,6 +105,7 @@ typedef struct value_pair_tmpl_t {
 
 	DICT_ATTR const		*da;	 //!< Resolved dictionary attribute.
 	value_data_t const	*vpd;	 //!< actual data
+	xlat_exp_t		*xlat;	 //!< pre-parsed xlat_exp_t
 	size_t			length;  //!< of the vpd data
 } value_pair_tmpl_t;
 
