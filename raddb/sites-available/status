@@ -17,7 +17,7 @@
 #	"status" port.
 #
 #	The server statistics are available ONLY on socket of type
-#	"status".  Qeuries for statistics sent to any other port
+#	"status".  Queries for statistics sent to any other port
 #	are ignored.
 #
 #	Similarly, a socket of type "status" will not process
