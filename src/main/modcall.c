@@ -1532,11 +1532,26 @@ static modcallable *do_compile_modupdate(modcallable *parent, UNUSED rlm_compone
 	}
 
 	for (map = head; map != NULL; map = map->next) {
+		/*
+		 *	Can't copy an xlat expansion or literal into a list,
+		 *	we don't know what type of attribute we'd need
+		 *	to create.
+		 *
+		 *	The only exception is where were using a unary
+		 *	operator like !*.
+		 */
+		if ((map->dst->type == VPT_TYPE_LIST) &&
+		    (map->op != T_OP_CMP_FALSE) &&
+		    ((map->src->type == VPT_TYPE_XLAT) || (map->src->type == VPT_TYPE_LITERAL))) {
+			cf_log_err(map->ci, "Can't copy value into list (we don't know which attribute to create)");
+			return NULL;
+		}
+
+		/*
+		 *	If LHS is an attribute, and RHS is a literal, we can
+		 *	check that the format is correct.
+		 */
 		if ((map->dst->type == VPT_TYPE_ATTR) && (map->src->type == VPT_TYPE_LITERAL)) {
-			/*
-			 *	If LHS is an attribute, and RHS is a literal, we can
-			 *	check that the format is correct.
-			 */
 			VALUE_PAIR *vp;
 			bool ret;
 

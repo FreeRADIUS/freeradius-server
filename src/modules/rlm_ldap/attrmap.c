@@ -35,24 +35,82 @@ static int rlm_ldap_map_getvalue(VALUE_PAIR **out, REQUEST *request, value_pair_
 
 	fr_cursor_init(&cursor, &head);
 
+	switch (map->dst->type) {
+	/*
+	 *	This is a mapping in the form of:
+	 *		<list>: += <ldap attr>
+	 *
+	 *	Where <ldap attr> is:
+	 *		<list>:<attr> <op> <value>
+	 *
+	 *	It is to allow for legacy installations which stored
+	 *	RADIUS control and reply attributes in separate LDAP
+	 *	attributes.
+	 */
+	case VPT_TYPE_LIST:
+		for (i = 0; i < self->count; i++) {
+			value_pair_map_t *attr = NULL;
+
+			RDEBUG3("Parsing valuepair string \"%s\"", self->values[i]);
+			if (radius_strpair2map(&attr, request, self->values[i],
+					       map->dst->request, map->dst->list,
+					       REQUEST_CURRENT, PAIR_LIST_REQUEST) < 0) {
+				RWDEBUG("Failed parsing \"%s\" as valuepair, skipping...", self->values[i]);
+				continue;
+			}
+
+			if ((attr->dst->request != map->dst->request)) {
+				RWDEBUG("valuepair \"%s\" has conflicting request qualifier (%s vs %s), skipping...",
+					self->values[i],
+					fr_int2str(request_refs, attr->dst->request, "<INVALID>"),
+					fr_int2str(request_refs, map->dst->request, "<INVALID>"));
+			next_pair:
+				talloc_free(attr);
+				continue;
+			}
+
+			if ((attr->dst->list != map->dst->list)) {
+				RWDEBUG("valuepair \"%s\" has conflicting list qualifier (%s vs %s), skipping...",
+					self->values[i],
+					fr_int2str(pair_lists, attr->dst->list, "<INVALID>"),
+					fr_int2str(pair_lists, map->dst->list, "<INVALID>"));
+				goto next_pair;
+			}
+
+			if (radius_map2vp(&vp, request, attr, NULL) < 0) {
+				RWDEBUG("Failed creating attribute for \"%s\", skipping...", self->values[i]);
+				goto next_pair;
+			}
+
+			fr_cursor_insert(&cursor, vp);
+			talloc_free(attr);
+		}
+		break;
+
 	/*
 	 *	Iterate over all the retrieved values,
 	 *	don't try and be clever about changing operators
 	 *	just use whatever was set in the attribute map.
 	 */
-	for (i = 0; i < self->count; i++) {
-		vp = pairalloc(request, map->dst->da);
-		rad_assert(vp);
+	case VPT_TYPE_ATTR:
+		for (i = 0; i < self->count; i++) {
+			vp = pairalloc(request, map->dst->da);
+			rad_assert(vp);
 
-		if (!pairparsevalue(vp, self->values[i])) {
-			RDEBUG("Failed parsing value for \"%s\"", map->dst->da->name);
+			if (!pairparsevalue(vp, self->values[i])) {
+				RDEBUG("Failed parsing value for \"%s\"", map->dst->da->name);
 
-			talloc_free(vp);
-			continue;
+				talloc_free(vp);
+				continue;
+			}
+
+			vp->op = map->op;
+			fr_cursor_insert(&cursor, vp);
 		}
+		break;
 
-		vp->op = map->op;
-		fr_cursor_insert(&cursor, vp);
+	default:
+		rad_assert(0);
 	}
 
 	*out = head;
@@ -74,16 +132,28 @@ int rlm_ldap_map_verify(ldap_instance_t *inst, value_pair_map_t **head)
 	 *	to do rlm_ldap specific checks here.
 	 */
 	for (map = *head; map != NULL; map = map->next) {
-		if (map->dst->type != VPT_TYPE_ATTR) {
-			cf_log_err(map->ci, "Left operand must be an attribute ref");
+		switch (map->dst->type) {
+		case VPT_TYPE_LIST:
+			if (map->op != T_OP_ADD) {
+				cf_log_err(map->ci, "Only '+=' operator is permitted for valuepair to list mapping");
+				return -1;
+			}
 
+		case VPT_TYPE_ATTR:
+			break;
+
+		default:
+			cf_log_err(map->ci, "valuepair destination must be an attribute or list");
 			return -1;
 		}
 
-		if (map->src->type == VPT_TYPE_LIST) {
-			cf_log_err(map->ci, "Right operand must not be a list");
-
+		switch (map->src->type) {
+		case VPT_TYPE_LIST:
+			cf_log_err(map->ci, "LDAP attribute name cannot be derived from a list");
 			return -1;
+
+		default:
+			break;
 		}
 
 		/*
@@ -188,19 +258,19 @@ int rlm_ldap_map_xlat(REQUEST *request, value_pair_map_t const *maps, rlm_ldap_m
 	for (map = maps; map != NULL; map = map->next) {
 		switch (map->src->type) {
 		case VPT_TYPE_XLAT:
-			{
-				char *exp = NULL;
+		{
+			char *exp = NULL;
 
-				len = radius_xlat(exp, 0, request, map->src->name, NULL, NULL);
-				if (len <= 0) {
-					RDEBUG("Expansion of LDAP attribute \"%s\" failed", map->src->name);
+			len = radius_xlat(exp, 0, request, map->src->name, NULL, NULL);
+			if (len <= 0) {
+				RDEBUG("Expansion of LDAP attribute \"%s\" failed", map->src->name);
 
-					goto error;
-				}
-
-				expanded->attrs[total++] = exp;
-				break;
+				goto error;
 			}
+
+			expanded->attrs[total++] = exp;
+			break;
+		}
 
 		case VPT_TYPE_ATTR:
 			context = request;

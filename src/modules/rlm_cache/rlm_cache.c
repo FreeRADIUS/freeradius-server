@@ -582,6 +582,22 @@ static int cache_verify(rlm_cache_t *inst, value_pair_map_t **head)
 			return -1;
 		}
 
+		/*
+		 *	Can't copy an xlat expansion or literal into a list,
+		 *	we don't know what type of attribute we'd need
+		 *	to create.
+		 *
+		 *	The only exception is where were using a unary
+		 *	operator like !*.
+		 */
+		if ((map->dst->type == VPT_TYPE_LIST) &&
+		    (map->op != T_OP_CMP_FALSE) &&
+		    ((map->src->type == VPT_TYPE_XLAT) || (map->src->type == VPT_TYPE_LITERAL))) {
+			cf_log_err(map->ci, "Can't copy value into list (we don't know which attribute to create)");
+
+			return -1;
+		}
+
 		switch (map->src->type) {
 		case VPT_TYPE_EXEC:
 			cf_log_err(map->ci, "Exec values are not allowed");

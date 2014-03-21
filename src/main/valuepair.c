@@ -1001,10 +1001,12 @@ int radius_map2request(REQUEST *request, value_pair_map_t const *map,
 				vp_prints_value(buffer, sizeof(buffer), vp, '\'');
 				value = buffer;
 				break;
+
 			case VPT_TYPE_XLAT:
 				vp_prints_value(buffer, sizeof(buffer), vp, '"');
 				value = buffer;
 				break;
+
 			case VPT_TYPE_DATA:
 				vp_prints_value(buffer, sizeof(buffer), vp, 0);
 				value = buffer;
@@ -1023,8 +1025,21 @@ int radius_map2request(REQUEST *request, value_pair_map_t const *map,
 				break;
 		}
 
+		switch (map->dst->type) {
+			case VPT_TYPE_LIST:
+				RDEBUG("\t%s%s %s %s", map->dst->name, vp->da->name,
+				       fr_int2str(fr_tokens, vp->op, "<INVALID>"), value);
+				break;
 
-		RDEBUG("\t%s %s %s", map->dst->name, fr_int2str(fr_tokens, vp->op, "<INVALID>"), value);
+			case VPT_TYPE_ATTR:
+				RDEBUG("\t%s %s %s", map->dst->name,
+				       fr_int2str(fr_tokens, vp->op, "<INVALID>"), value);
+				break;
+
+			default:
+				break;
+		}
+
 
 		if (value != buffer) talloc_free(value);
 	}
@@ -1091,20 +1106,20 @@ int radius_mapexec(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *m
 
 		return 0;
 	case VPT_TYPE_ATTR:
-		{
-			VALUE_PAIR *vp;
+	{
+		VALUE_PAIR *vp;
 
-			vp = pairalloc(request, map->dst->da);
-			if (!vp) return -1;
-			vp->op = map->op;
-			if (!pairparsevalue(vp, answer)) {
-				pairfree(&vp);
-				return -2;
-			}
-			*out = vp;
-
-			return 0;
+		vp = pairalloc(request, map->dst->da);
+		if (!vp) return -1;
+		vp->op = map->op;
+		if (!pairparsevalue(vp, answer)) {
+			pairfree(&vp);
+			return -2;
 		}
+		*out = vp;
+
+		return 0;
+	}
 	default:
 		rad_assert(0);
 	}
