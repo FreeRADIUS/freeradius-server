@@ -124,6 +124,17 @@ static int radius_expand_tmpl(char **out, REQUEST *request, value_pair_tmpl_t co
 		}
 		break;
 
+	case VPT_TYPE_XLAT_STRUCT:
+		EVAL_DEBUG("TMPL XLAT_STRUCT");
+		/* Error in expansion, this is distinct from zero length expansion */
+		if (radius_axlat_struct(out, request, vpt->xlat, NULL, NULL) < 0) {
+			rad_assert(!*out);
+			return -1;
+		}
+		RDEBUG2("EXPAND %s", vpt->name); /* xlat_struct doesn't do this */
+		RDEBUG2("   --> %s", *out);
+		break;
+
 	case VPT_TYPE_ATTR:
 		EVAL_DEBUG("TMPL ATTR");
 		vp = radius_vpt_get_vp(request, vpt);
@@ -196,6 +207,7 @@ int radius_evaluate_tmpl(REQUEST *request, int modreturn, UNUSED int depth,
 		 *	FIXME: expand the strings
 		 *	if not empty, return!
 		 */
+	case VPT_TYPE_XLAT_STRUCT:
 	case VPT_TYPE_XLAT:
 	case VPT_TYPE_EXEC:
 		if (!*vpt->name) return false;

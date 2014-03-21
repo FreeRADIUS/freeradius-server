@@ -2508,6 +2508,46 @@ void modcallable_free(modcallable **pc)
 
 
 #ifdef WITH_UNLANG
+static bool pass2_xlat_compile(CONF_ITEM const *ci, value_pair_tmpl_t *vpt)
+{
+	ssize_t slen;
+	char *fmt;
+	char const *error;
+	xlat_exp_t *head;
+
+	rad_assert(vpt->type == VPT_TYPE_XLAT);
+
+	fmt = talloc_strdup(vpt, vpt->name);
+	slen = xlat_tokenize(vpt, fmt, &head, &error);
+
+	if (slen < 0) {
+		size_t offset;
+		char *spbuf;
+
+		offset = -slen;
+
+		spbuf = malloc(offset + 1);
+		memset(spbuf, ' ', offset);
+		spbuf[offset] = '\0';
+
+		cf_log_err(ci, "Failed parsing expanded string %s",
+			   vpt->name);
+		cf_log_err(ci, "                               %.*s^ %s",
+			   (int) offset, spbuf, error);
+		free(spbuf);
+		return false;
+	}
+
+	/*
+	 *	Re-write it to be a pre-parsed XLAT structure.
+	 */
+	vpt->type = VPT_TYPE_XLAT_STRUCT;
+	vpt->xlat = head;
+
+	return true;
+}
+
+
 static bool pass2_callback(UNUSED void *ctx, fr_cond_t *c)
 {
 	value_pair_map_t *map;
@@ -2587,6 +2627,21 @@ check_paircmp:
 	rad_assert(c->pass2_fixup == PASS2_FIXUP_NONE);
 
 	/*
+	 *	Precompile xlat's
+	 */
+	if (map->src->type == VPT_TYPE_XLAT) {
+		if (!pass2_xlat_compile(map->ci, map->src)) {
+			return false;
+		}
+	}
+
+	if (map->dst->type == VPT_TYPE_XLAT) {
+		if (!pass2_xlat_compile(map->ci, map->dst)) {
+			return false;
+		}
+	}
+
+	/*
 	 *	Only attributes can have a paircompare registered, and
 	 *	they can only be with the current REQUEST, and only
 	 *	with the request pairs.
@@ -2641,41 +2696,13 @@ static bool modcall_pass2_update(modgroup *g)
 	value_pair_map_t *map;
 
 	for (map = g->map; map != NULL; map = map->next) {
-		ssize_t slen;
-		char *fmt;
-		char const *error;
-		xlat_exp_t *head;
-
 		if (map->src->type != VPT_TYPE_XLAT) continue;
 
 		rad_assert(map->src->vpd == NULL);
 
-		fmt = talloc_strdup(map->src, map->src->name);
-		slen = xlat_tokenize(map->src, fmt, &head, &error);
-
-		if (slen < 0) {
-			size_t offset;
-			char *spbuf;
-
-			offset = -slen;
-
-			spbuf = malloc(offset + 1);
-			memset(spbuf, ' ', offset);
-			spbuf[offset] = '\0';
-
-			cf_log_err(map->ci, "Failed parsing expanded string %s",
-				   map->src->name);
-			cf_log_err(map->ci, "                               %.*s^ %s",
-				   (int) offset, spbuf, error);
-			free(spbuf);
+		if (!pass2_xlat_compile(map->ci, map->src)) {
 			return false;
 		}
-
-		/*
-		 *	Re-write it to be a pre-parsed XLAT structure.
-		 */
-		map->src->type = VPT_TYPE_XLAT_STRUCT;
-		map->src->xlat = head;
 	}
 
 	return true;
