@@ -1,10 +1,15 @@
 FreeRADIUS 3.0.3 Fri 21 Mar 2014 08:30:00 EDT urgency=medium
 	Feature improvements
 	* rlm_ldap now supports defining the LDAP attribute name via
-	  backticked expansion (i.e. shell command) in 
+	  backticked expansion (i.e. shell command) in
 	  RADIUS <-> LDAP mappings.
 	* rlm_ldap now supports older style generic attributes.
-	
+	* dynamic expansions (e.g. "%{expr:1 + 2}" are now parsed
+	  when the server starts.  Syntax errors in the strings
+	  will be caught, and the server will refuse to start.
+	* dynamic expansions are cached after being parsed.  They are
+	  no longer re-parsed at run-time for every request.
+
 	Bug fixes
 
 FreeRADIUS 3.0.2 Fri 21 Mar 2014 08:30:00 EDT urgency=medium
