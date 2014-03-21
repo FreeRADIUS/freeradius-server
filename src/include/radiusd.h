@@ -466,6 +466,7 @@ typedef struct main_config_t {
 	bool		debug_memory;
 	bool		memory_report;
 	char const	*panic_action;
+	char const	*denied_msg;
 } MAIN_CONFIG_T;
 
 #define SECONDS_PER_DAY		86400

@@ -547,7 +547,6 @@ autz_redo:
 		int r, session_type = 0;
 		char		logstr[1024];
 		char		umsg[MAX_STRING_LEN + 1];
-		char const	*user_msg = NULL;
 
 		tmp = pairfind(request->config_items, PW_SESSION_TYPE, 0, TAG_ANY);
 		if (tmp) {
@@ -576,12 +575,14 @@ autz_redo:
 			}
 			if (!mpp_ok){
 				if (check_item->vp_integer > 1) {
-		  		snprintf(umsg, sizeof(umsg),
-							"\r\nYou are already logged in %d times  - access denied\r\n\n",
-							(int)check_item->vp_integer);
-					user_msg = umsg;
+					snprintf(umsg, sizeof(umsg),
+						 "\r\n%s (%d)\r\n\n",
+						 mainconfig.denied_msg,
+						 (int)check_item->vp_integer);
 				} else {
-					user_msg = "\r\nYou are already logged in - access denied\r\n\n";
+					snprintf(umsg, sizeof(umsg),
+						 "\r\n%s\r\n\n",
+						 mainconfig.denied_msg);
 				}
 
 				request->reply->code = PW_AUTHENTICATION_REJECT;
@@ -592,7 +593,7 @@ autz_redo:
 				 */
 				pairfree(&request->reply->vps);
 				pairmake_reply("Reply-Message",
-					       user_msg, T_OP_SET);
+					       umsg, T_OP_SET);
 
 				snprintf(logstr, sizeof(logstr), "Multiple logins (max %d) %s",
 					check_item->vp_integer,
