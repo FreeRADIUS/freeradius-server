@@ -2736,6 +2736,36 @@ bool modcall_pass2(modcallable *mc)
 			if (!fr_condition_walk(g->cond, pass2_callback, NULL)) {
 				return false;
 			}
+
+			/*
+			 *	Don't do pass2 checks on anything
+			 *	inside of a condition which statically
+			 *	evaluates to "false".
+			 */
+			if (g->cond->type == COND_TYPE_FALSE) {
+				continue;
+			}
+
+			/*
+			 *	If we're always going to take this
+			 *	condition, AND there's an "else" after
+			 *	it, then don't bother doing pass2
+			 *	sanity checks on anything in the
+			 *	"else" sections.  They'll be ignored
+			 *	by the run-time processor
+			 */
+			if (g->cond->type == COND_TYPE_TRUE) {
+				while (this->next &&
+				       (this->next->type == MOD_ELSIF)) {
+					this = this->next;
+				}
+
+				if (this->next &&
+				    (this->next->type == MOD_ELSE)) {
+					this = this->next;
+				}
+				continue;
+			}
 			/* FALL-THROUGH */
 #endif
 
