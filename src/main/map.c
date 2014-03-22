@@ -620,7 +620,7 @@ size_t radius_tmpl2str(char *buffer, size_t bufsize, value_pair_tmpl_t const *vp
 
 			memcpy(&ctx, &vpt, sizeof(ctx)); /* hack */
 
-			vp = pairalloc(ctx, vpt->da);
+			MEM(vp = pairalloc(ctx, vpt->da));
 			memcpy(&vp->data, vpt->vpd, sizeof(vp->data));
 			vp->length = vpt->length;
 
