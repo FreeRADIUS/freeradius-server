@@ -274,7 +274,7 @@ static void bfd_pipe_recv(UNUSED fr_event_list_t *xel, int fd, void *ctx)
 	 *	Read the header
 	 */
 	num = read(fd, &bfd, 4);
-	if ((num < 4) || (bfd.length < (unsigned) 4)) {
+	if ((num < 4) || (bfd.length < 4)) {
 	fail:
 		ERROR("BFD Failed reading from pipe!");
 		session->blocked = true;
@@ -1444,7 +1444,7 @@ static int bfd_socket_recv(rad_listen_t *listener)
 		return 0;
 	}
 
-	if (bfd.length < (unsigned) 24) {
+	if (bfd.length < 24) {
 		DEBUG("BFD packet has wrong length (%d < 24)", bfd.length);
 		return 0;
 	}
