@@ -1692,7 +1692,7 @@ VALUE_PAIR *pairmake_ip(TALLOC_CTX *ctx, char const *value, DICT_ATTR *ipv4, DIC
 			DICT_ATTR *ipv4_prefix, DICT_ATTR *ipv6_prefix)
 {
 	VALUE_PAIR *vp;
-	DICT_ATTR *da;
+	DICT_ATTR *da = NULL;
 
 	if (!fr_assert(ipv4 || ipv6 || ipv4_prefix || ipv6_prefix)) {
 		return NULL;
@@ -1713,14 +1713,17 @@ VALUE_PAIR *pairmake_ip(TALLOC_CTX *ctx, char const *value, DICT_ATTR *ipv4, DIC
 		da = ipv4_prefix;
 		goto finish;
 	}
-	da = ipv4;
 
-	if (!da) {
-		fr_strerror_printf("Invalid IP value specified, allowed types are %s%s%s%s",
-				   ipv4 ? "ipaddr " : "", ipv6 ? "ipv6addr " : "",
-				   ipv4_prefix ? "ipv4prefix " : "", ipv6_prefix ? "ipv6prefix" : "");
+	if (ipv4) {
+		da = ipv4;
+		goto finish;
 	}
-	finish:
+
+	fr_strerror_printf("Invalid IP value specified, allowed types are %s%s%s%s",
+			   ipv4 ? "ipaddr " : "", ipv6 ? "ipv6addr " : "",
+			   ipv4_prefix ? "ipv4prefix " : "", ipv6_prefix ? "ipv6prefix" : "");
+
+finish:
 	vp = pairalloc(ctx, da);
 	if (!vp) return NULL;
 	if (!pairparsevalue(vp, value)) {
