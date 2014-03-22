@@ -31,7 +31,7 @@ modcallable *compile_modgroup(modcallable *parent,
 /* Create a single modcallable node that references a module instance. This
  * may be a CONF_SECTION containing action specifiers like "notfound = return"
  * or a simple CONF_PAIR, in which case the default actions are used. */
-modcallable *compile_modsingle(modcallable *parent, rlm_components_t component, CONF_ITEM *ci,
+modcallable *compile_modsingle(modcallable **parent, rlm_components_t component, CONF_ITEM *ci,
 			       char const **modname);
 
 /*
@@ -39,9 +39,8 @@ modcallable *compile_modsingle(modcallable *parent, rlm_components_t component, 
  */
 bool modcall_pass2(modcallable *mc);
 
-/* Add an entry to the end of a modgroup, creating it first if necessary */
-void add_to_modcallable(modcallable **parent, modcallable *this,
-			rlm_components_t component, char const *name);
+/* Add an entry to the end of a modgroup */
+void add_to_modcallable(modcallable *parent, modcallable *this);
 
 /* Free a tree returned by compile_modgroup or compile_modsingle */
 void modcallable_free(modcallable **pc);

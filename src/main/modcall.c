@@ -2260,13 +2260,42 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 	return csingle;
 }
 
-modcallable *compile_modsingle(modcallable *parent,
+modcallable *compile_modsingle(modcallable **parent,
 			       rlm_components_t component, CONF_ITEM *ci,
 			       char const **modname)
 {
-	modcallable *ret = do_compile_modsingle(parent, component, ci,
-						GROUPTYPE_SIMPLE,
-						modname);
+	modcallable *ret;
+
+	if (!*parent) {
+		modcallable *c;
+		modgroup *g;
+		CONF_SECTION *parentcs;
+
+		g = rad_malloc(sizeof *g);
+		memset(g, 0, sizeof(*g));
+		g->grouptype = GROUPTYPE_SIMPLE;
+		c = mod_grouptocallable(g);
+		c->next = NULL;
+		memcpy(c->actions,
+		       defaultactions[component][GROUPTYPE_SIMPLE],
+		       sizeof(c->actions));
+
+		parentcs = cf_item_parent(ci);
+		c->name = cf_section_name2(parentcs);
+		if (!c->name) {
+			c->name = cf_section_name1(parentcs);
+		}
+
+		c->type = MOD_GROUP;
+		c->method = component;
+		g->children = NULL;
+
+		*parent = mod_grouptocallable(g);
+	}
+
+	ret = do_compile_modsingle(*parent, component, ci,
+				   GROUPTYPE_SIMPLE,
+				   modname);
 	dump_tree(component, ret);
 	return ret;
 }
@@ -2422,34 +2451,14 @@ modcallable *compile_modgroup(modcallable *parent,
 	return ret;
 }
 
-void add_to_modcallable(modcallable **parent, modcallable *this,
-			rlm_components_t component, char const *name)
+void add_to_modcallable(modcallable *parent, modcallable *this)
 {
 	modgroup *g;
 
 	rad_assert(this != NULL);
+	rad_assert(parent != NULL);
 
-	if (*parent == NULL) {
-		modcallable *c;
-
-		g = rad_malloc(sizeof *g);
-		memset(g, 0, sizeof(*g));
-		g->grouptype = GROUPTYPE_SIMPLE;
-		c = mod_grouptocallable(g);
-		c->next = NULL;
-		memcpy(c->actions,
-		       defaultactions[component][GROUPTYPE_SIMPLE],
-		       sizeof(c->actions));
-		rad_assert(name != NULL);
-		c->name = name;
-		c->type = MOD_GROUP;
-		c->method = component;
-		g->children = NULL;
-
-		*parent = mod_grouptocallable(g);
-	} else {
-		g = mod_callabletogroup(*parent);
-	}
+	g = mod_callabletogroup(parent);
 
 	add_child(g, this);
 }

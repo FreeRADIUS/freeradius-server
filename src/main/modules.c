@@ -885,7 +885,6 @@ static int load_component_section(CONF_SECTION *cs,
 	int idx;
 	indexed_modcallable *subcomp;
 	char const *modname;
-	char const *visiblename;
 	DICT_ATTR const *da;
 
 	/*
@@ -972,9 +971,53 @@ static int load_component_section(CONF_SECTION *cs,
 		}
 
 		/*
+		 *	Look for Auth-Type foo {}, which are special
+		 *	cases of named sections, and allowable ONLY
+		 *	at the top-level.
+		 *
+		 *	i.e. They're not allowed in a "group" or "redundant"
+		 *	subsection.
+		 */
+		if (comp == RLM_COMPONENT_AUTH) {
+			DICT_VALUE *dval;
+			char const *modrefname = NULL;
+			if (cp) {
+				modrefname = cf_pair_attr(cp);
+			} else {
+				modrefname = cf_section_name2(scs);
+				if (!modrefname) {
+					cf_log_err_cs(cs,
+						   "Errors parsing %s sub-section.\n",
+						   cf_section_name1(scs));
+					return -1;
+				}
+			}
+
+			dval = dict_valbyname(PW_AUTH_TYPE, 0, modrefname);
+			if (!dval) {
+				/*
+				 *	It's a section, but nothing we
+				 *	recognize.  Die!
+				 */
+				cf_log_err_cs(cs,
+					   "Unknown Auth-Type \"%s\" in %s sub-section.",
+					   modrefname, section_type_value[comp].section);
+				return -1;
+			}
+			idx = dval->value;
+		} else {
+			/* See the comment in new_sublist() for explanation
+			 * of the special index 0 */
+			idx = 0;
+		}
+
+		subcomp = new_sublist(cs, components, comp, idx);
+		if (!subcomp) continue;
+
+		/*
 		 *	Try to compile one entry.
 		 */
-		this = compile_modsingle(NULL, comp, modref, &modname);
+		this = compile_modsingle(&subcomp->modulelist, comp, modref, &modname);
 
 		/*
 		 *	It's OK for the module to not exist.
@@ -1011,62 +1054,7 @@ static int load_component_section(CONF_SECTION *cs,
 			return -1;
 		}
 
-		/*
-		 *	Look for Auth-Type foo {}, which are special
-		 *	cases of named sections, and allowable ONLY
-		 *	at the top-level.
-		 *
-		 *	i.e. They're not allowed in a "group" or "redundant"
-		 *	subsection.
-		 */
-		if (comp == RLM_COMPONENT_AUTH) {
-			DICT_VALUE *dval;
-			char const *modrefname = NULL;
-			if (cp) {
-				modrefname = cf_pair_attr(cp);
-			} else {
-				modrefname = cf_section_name2(scs);
-				if (!modrefname) {
-					modcallable_free(&this);
-					cf_log_err_cs(cs,
-						   "Errors parsing %s sub-section.\n",
-						   cf_section_name1(scs));
-					return -1;
-				}
-			}
-
-			dval = dict_valbyname(PW_AUTH_TYPE, 0, modrefname);
-			if (!dval) {
-				/*
-				 *	It's a section, but nothing we
-				 *	recognize.  Die!
-				 */
-				modcallable_free(&this);
-				cf_log_err_cs(cs,
-					   "Unknown Auth-Type \"%s\" in %s sub-section.",
-					   modrefname, section_type_value[comp].section);
-				return -1;
-			}
-			idx = dval->value;
-		} else {
-			/* See the comment in new_sublist() for explanation
-			 * of the special index 0 */
-			idx = 0;
-		}
-
-		subcomp = new_sublist(cs, components, comp, idx);
-		if (subcomp == NULL) {
-			modcallable_free(&this);
-			continue;
-		}
-
-		/* If subcomp->modulelist is NULL, add_to_modcallable will
-		 * create it */
-		visiblename = cf_section_name2(cs);
-		if (visiblename == NULL)
-			visiblename = cf_section_name1(cs);
-		add_to_modcallable(&subcomp->modulelist, this,
-				   comp, visiblename);
+		add_to_modcallable(subcomp->modulelist, this);
 	}
 
 	return 0;
