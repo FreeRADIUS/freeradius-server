@@ -948,7 +948,7 @@ static int load_component_section(CONF_SECTION *cs,
 					next_cs = cf_itemtosection(next_ci);
 					next_name = cf_section_name1(next_cs);
 					if ((strcmp(next_name, "else") == 0) ||
-					    (strcmp(next_name, "elseif") == 0)) {
+					    (strcmp(next_name, "elsif") == 0)) {
 						c = NULL;
 					} else {
 						c = cf_data_find(scs, "if");
@@ -963,7 +963,6 @@ static int load_component_section(CONF_SECTION *cs,
 					continue;
 				}
 			}
-
 
 		} else if (cf_item_is_pair(modref)) {
 			cp = cf_itemtopair(modref);
