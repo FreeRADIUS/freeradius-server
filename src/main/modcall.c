@@ -1562,8 +1562,12 @@ static modcallable *do_compile_modupdate(modcallable *parent, UNUSED rlm_compone
 		/*
 		 *	If LHS is an attribute, and RHS is a literal, we can
 		 *	check that the format is correct.
+		 *
+		 *	Unless it's a unary operator in which case map->src
+		 *	can by anything.
 		 */
-		if ((map->dst->type == VPT_TYPE_ATTR) && (map->src->type == VPT_TYPE_LITERAL)) {
+		if ((map->dst->type == VPT_TYPE_ATTR) && (map->src->type == VPT_TYPE_LITERAL) &&
+		    (map->op != T_OP_CMP_FALSE)) {
 			VALUE_PAIR *vp;
 			bool ret;
 
