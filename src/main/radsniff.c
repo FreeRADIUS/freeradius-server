@@ -288,7 +288,7 @@ static void rs_packet_print_csv_header(void)
 		char const *in;
 
 		*p++ = '"';
-		s += 1;
+		s -= 1;
 		if (s <= 0) return;
 
 		for (in = conf->list_da[i]->name; *in; in++) {
@@ -298,10 +298,10 @@ static void rs_packet_print_csv_header(void)
 		}
 
 		*p++ = '"';
-		s += 1;
+		s -= 1;
 		if (s <= 0) return;
 		*p++ = ',';
-		s += 1;
+		s -= 1;
 		if (s <= 0) return;
 	}
 
