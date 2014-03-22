@@ -32,7 +32,7 @@ RCSID("$Id$")
 /* mutually-recursive static functions need a prototype up front */
 static modcallable *do_compile_modgroup(modcallable *,
 					rlm_components_t, CONF_SECTION *,
-					int, int);
+					int, int, int);
 
 /* Actions may be a positive integer (the highest one returned in the group
  * will be returned), or the keyword "return", represented here by
@@ -1598,7 +1598,6 @@ static modcallable *do_compile_modupdate(modcallable *parent, UNUSED rlm_compone
 
 static modcallable *do_compile_modswitch(modcallable *parent, UNUSED rlm_components_t component, CONF_SECTION *cs)
 {
-	modcallable *csingle;
 	CONF_ITEM *ci;
 	bool had_seen_default = false;
 
@@ -1650,18 +1649,14 @@ static modcallable *do_compile_modswitch(modcallable *parent, UNUSED rlm_compone
 		}
 	}
 
-	csingle = do_compile_modgroup(parent, component, cs, GROUPTYPE_SIMPLE, GROUPTYPE_SIMPLE);
-	if (!csingle) return NULL;
-	csingle->type = MOD_SWITCH;
-	return csingle;
+	return do_compile_modgroup(parent, component, cs,
+				   GROUPTYPE_SIMPLE, GROUPTYPE_SIMPLE,
+				   MOD_SWITCH);
 }
 
 static modcallable *do_compile_modforeach(modcallable *parent,
-					  UNUSED rlm_components_t component, CONF_SECTION *cs,
-					  char const *name2)
+					  UNUSED rlm_components_t component, CONF_SECTION *cs)
 {
-	modcallable *csingle;
-
 	if (!cf_section_name2(cs)) {
 		cf_log_err_cs(cs,
 			   "You must specify an attribute to loop over in 'foreach'.");
@@ -1673,18 +1668,14 @@ static modcallable *do_compile_modforeach(modcallable *parent,
 		return NULL;
 	}
 
-	csingle= do_compile_modgroup(parent, component, cs,
-				     GROUPTYPE_SIMPLE, GROUPTYPE_SIMPLE);
-	if (!csingle) return NULL;
-	csingle->name = name2;
-	csingle->type = MOD_FOREACH;
-	return csingle;
+	return do_compile_modgroup(parent, component, cs,
+				   GROUPTYPE_SIMPLE, GROUPTYPE_SIMPLE,
+				   MOD_FOREACH);
 }
 
 static modcallable *do_compile_modbreak(modcallable *parent,
 					rlm_components_t component, CONF_ITEM const *ci)
 {
-	modcallable *csingle;
 	CONF_SECTION const *cs = NULL;
 
 	for (cs = cf_item_parent(ci);
@@ -1700,12 +1691,9 @@ static modcallable *do_compile_modbreak(modcallable *parent,
 		return NULL;
 	}
 
-	csingle = do_compile_modgroup(parent, component, NULL,
-				      GROUPTYPE_SIMPLE, GROUPTYPE_SIMPLE);
-	if (!csingle) return NULL;
-	csingle->name = "";
-	csingle->type = MOD_BREAK;
-	return csingle;
+	return do_compile_modgroup(parent, component, NULL,
+				   GROUPTYPE_SIMPLE, GROUPTYPE_SIMPLE,
+				   MOD_BREAK);
 }
 #endif
 
@@ -1858,7 +1846,7 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 			*modname = name2;
 			return do_compile_modgroup(parent, component, cs,
 						   GROUPTYPE_SIMPLE,
-						   grouptype);
+						   grouptype, MOD_GROUP);
 
 		} else if (strcmp(modrefname, "redundant") == 0) {
 			*modname = name2;
@@ -1869,13 +1857,13 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 
 			return do_compile_modgroup(parent, component, cs,
 						   GROUPTYPE_REDUNDANT,
-						   grouptype);
+						   grouptype, MOD_GROUP);
 
 		} else if (strcmp(modrefname, "append") == 0) {
 			*modname = name2;
 			return do_compile_modgroup(parent, component, cs,
 						   GROUPTYPE_APPEND,
-						   grouptype);
+						   grouptype, MOD_GROUP);
 
 		} else if (strcmp(modrefname, "load-balance") == 0) {
 			*modname = name2;
@@ -1884,12 +1872,9 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 				return NULL;
 			}
 
-			csingle= do_compile_modgroup(parent, component, cs,
-						     GROUPTYPE_SIMPLE,
-						     grouptype);
-			if (!csingle) return NULL;
-			csingle->type = MOD_LOAD_BALANCE;
-			return csingle;
+			return do_compile_modgroup(parent, component, cs,
+						   GROUPTYPE_SIMPLE,
+						   grouptype, MOD_LOAD_BALANCE);
 
 		} else if (strcmp(modrefname, "redundant-load-balance") == 0) {
 			*modname = name2;
@@ -1898,12 +1883,9 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 				return NULL;
 			}
 
-			csingle= do_compile_modgroup(parent, component, cs,
-						     GROUPTYPE_REDUNDANT,
-						     grouptype);
-			if (!csingle) return NULL;
-			csingle->type = MOD_REDUNDANT_LOAD_BALANCE;
-			return csingle;
+			return do_compile_modgroup(parent, component, cs,
+						   GROUPTYPE_REDUNDANT,
+						   grouptype, MOD_REDUNDANT_LOAD_BALANCE);
 
 #ifdef WITH_UNLANG
 		} else 	if (strcmp(modrefname, "if") == 0) {
@@ -1917,9 +1899,8 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 			*modname = name2;
 			csingle= do_compile_modgroup(parent, component, cs,
 						     GROUPTYPE_SIMPLE,
-						     grouptype);
+						     grouptype, MOD_IF);
 			if (!csingle) return NULL;
-			csingle->type = MOD_IF;
 			*modname = name2;
 
 			g = mod_callabletogroup(csingle);
@@ -1946,9 +1927,8 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 			*modname = name2;
 			csingle= do_compile_modgroup(parent, component, cs,
 						     GROUPTYPE_SIMPLE,
-						     grouptype);
+						     grouptype, MOD_ELSIF);
 			if (!csingle) return NULL;
-			csingle->type = MOD_ELSIF;
 			*modname = name2;
 
 			g = mod_callabletogroup(csingle);
@@ -1971,12 +1951,9 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 			}
 
 			*modname = name2;
-			csingle= do_compile_modgroup(parent, component, cs,
-						     GROUPTYPE_SIMPLE,
-						     grouptype);
-			if (!csingle) return NULL;
-			csingle->type = MOD_ELSE;
-			return csingle;
+			return  do_compile_modgroup(parent, component, cs,
+						    GROUPTYPE_SIMPLE,
+						    grouptype, MOD_ELSE);
 
 		} else 	if (strcmp(modrefname, "update") == 0) {
 			*modname = name2;
@@ -2007,9 +1984,8 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 
 			csingle= do_compile_modgroup(parent, component, cs,
 						     GROUPTYPE_SIMPLE,
-						     grouptype);
+						     grouptype, MOD_CASE);
 			if (!csingle) return NULL;
-			csingle->type = MOD_CASE;
 			csingle->name = cf_section_name2(cs); /* may be NULL */
 
 			/*
@@ -2026,11 +2002,8 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 		} else 	if (strcmp(modrefname, "foreach") == 0) {
 			*modname = name2;
 
-			csingle = do_compile_modforeach(parent, component, cs,
-							name2);
-			if (!csingle) return NULL;
+			return do_compile_modforeach(parent, component, cs);
 
-			return csingle;
 #endif
 		} /* else it's something like sql { fail = 1 ...} */
 
@@ -2118,7 +2091,7 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 							   component,
 							   subcs,
 							   GROUPTYPE_SIMPLE,
-							   grouptype);
+							   grouptype, MOD_GROUP);
 			}
 		}
 	}
@@ -2306,7 +2279,7 @@ modcallable *compile_modsingle(modcallable *parent,
  */
 static modcallable *do_compile_modgroup(modcallable *parent,
 					rlm_components_t component, CONF_SECTION *cs,
-					int grouptype, int parentgrouptype)
+					int grouptype, int parentgrouptype, int mod_type)
 {
 	int i;
 	modgroup *g;
@@ -2321,7 +2294,7 @@ static modcallable *do_compile_modgroup(modcallable *parent,
 
 	c = mod_grouptocallable(g);
 	c->parent = parent;
-	c->type = MOD_GROUP;
+	c->type = mod_type;
 	c->next = NULL;
 	memset(c->actions, 0, sizeof(c->actions));
 
@@ -2446,7 +2419,7 @@ modcallable *compile_modgroup(modcallable *parent,
 {
 	modcallable *ret = do_compile_modgroup(parent, component, cs,
 					       GROUPTYPE_SIMPLE,
-					       GROUPTYPE_SIMPLE);
+					       GROUPTYPE_SIMPLE, MOD_GROUP);
 	dump_tree(component, ret);
 	return ret;
 }
