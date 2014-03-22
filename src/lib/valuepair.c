@@ -97,7 +97,10 @@ VALUE_PAIR *pairalloc(TALLOC_CTX *ctx, DICT_ATTR const *da)
 	/*
 	 *	Caller must specify a da else we don't know what the attribute type is.
 	 */
-	if (!da) return NULL;
+	if (!da) {
+		fr_strerror_printf("Invalid arguments");
+		return NULL;
+	}
 
 	vp = talloc_zero(ctx, VALUE_PAIR);
 	if (!vp) {
@@ -628,10 +631,7 @@ VALUE_PAIR *paircopyvp(TALLOC_CTX *ctx, VALUE_PAIR const *vp)
 	VERIFY_VP(vp);
 
 	n = pairalloc(ctx, vp->da);
-	if (!n) {
-		fr_strerror_printf("out of memory");
-		return NULL;
-	}
+	if (!n) return NULL;
 
 	memcpy(n, vp, sizeof(*n));
 
@@ -749,9 +749,7 @@ VALUE_PAIR *paircopyvpdata(TALLOC_CTX *ctx, DICT_ATTR const *da, VALUE_PAIR cons
 	}
 
 	n = pairalloc(ctx, da);
-	if (!n) {
-		return NULL;
-	}
+	if (!n) return NULL;
 
 	memcpy(n, vp, sizeof(*n));
 	n->da = da;
@@ -1724,6 +1722,7 @@ VALUE_PAIR *pairmake_ip(TALLOC_CTX *ctx, char const *value, DICT_ATTR *ipv4, DIC
 	}
 	finish:
 	vp = pairalloc(ctx, da);
+	if (!vp) return NULL;
 	if (!pairparsevalue(vp, value)) {
 		talloc_free(vp);
 		return NULL;
@@ -1903,10 +1902,7 @@ VALUE_PAIR *pairmake(TALLOC_CTX *ctx, VALUE_PAIR **vps,
 	}
 
 	vp = pairalloc(ctx, da);
-	if (!vp) {
-		return NULL;
-	}
-
+	if (!vp) return NULL;
 	vp->op = (op == 0) ? T_OP_EQ : op;
 	vp->tag = tag;
 
