@@ -2751,9 +2751,6 @@ bool modcall_pass2(modcallable *mc)
 		case MOD_IF:
 		case MOD_ELSIF:
 			g = mod_callabletogroup(this);
-			if (!fr_condition_walk(g->cond, pass2_callback, NULL)) {
-				return false;
-			}
 
 			/*
 			 *	Don't do pass2 checks on anything
@@ -2761,6 +2758,7 @@ bool modcall_pass2(modcallable *mc)
 			 *	evaluates to "false".
 			 */
 			if (g->cond->type == COND_TYPE_FALSE) {
+				modcallable_free(&g->children);
 				continue;
 			}
 
@@ -2776,13 +2774,25 @@ bool modcall_pass2(modcallable *mc)
 				while (this->next &&
 				       (this->next->type == MOD_ELSIF)) {
 					this = this->next;
+					g = mod_callabletogroup(this);
+					modcallable_free(&g->children);
 				}
 
 				if (this->next &&
 				    (this->next->type == MOD_ELSE)) {
 					this = this->next;
+					g = mod_callabletogroup(this);
+					modcallable_free(&g->children);
 				}
 				continue;
+			}
+
+			/*
+			 *	Not statically 'true' or 'false', we
+			 *	have to do pass2.
+			 */
+			if (!fr_condition_walk(g->cond, pass2_callback, NULL)) {
+				return false;
 			}
 			/* FALL-THROUGH */
 #endif
