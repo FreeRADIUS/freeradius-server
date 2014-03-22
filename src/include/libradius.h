@@ -585,6 +585,8 @@ void		pairmove(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from);
 void		pairfilter(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from,
 					   unsigned int attr, unsigned int vendor, int8_t tag);
 bool		pairparsevalue(VALUE_PAIR *vp, char const *value);
+VALUE_PAIR	*pairmake_ip(TALLOC_CTX *ctx, char const *value, DICT_ATTR *ipv4, DICT_ATTR *ipv6,
+			     DICT_ATTR *ipv4_prefix, DICT_ATTR *ipv6_prefix);
 VALUE_PAIR	*pairmake(TALLOC_CTX *ctx, VALUE_PAIR **vps, char const *attribute, char const *value, FR_TOKEN op);
 int 		pairmark_xlat(VALUE_PAIR *vp, char const *value);
 FR_TOKEN 	pairread(char const **ptr, VALUE_PAIR_RAW *raw);
