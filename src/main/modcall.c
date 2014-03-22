@@ -72,6 +72,7 @@ typedef struct {
 		GROUPTYPE_COUNT
 	} grouptype;				/* after mc */
 	modcallable		*children;
+	modcallable		*tail;		/* of the children list */
 	CONF_SECTION		*cs;
 	value_pair_map_t	*map;		/* update */
 	fr_cond_t		*cond;		/* if/elsif */
@@ -146,24 +147,20 @@ static modcallable *mod_xlattocallable(modxlat *p)
 }
 
 /* modgroups are grown by adding a modcallable to the end */
-/* FIXME: This is O(N^2) */
 static void add_child(modgroup *g, modcallable *c)
 {
-	modcallable **head = &g->children;
-	modcallable *node = *head;
-	modcallable **last = head;
-
 	if (!c) return;
 
 	(void) talloc_steal(g, c);
 
-	while (node) {
-		last = &node->next;
-		node = node->next;
+	if (!g->children) {
+		g->children = g->tail = c;
+	} else {
+		rad_assert(g->tail->next == NULL);
+		g->tail->next = c;
+		g->tail = c;
 	}
 
-	rad_assert(c->next == NULL);
-	*last = c;
 	c->parent = mod_grouptocallable(g);
 }
 
