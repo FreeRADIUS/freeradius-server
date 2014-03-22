@@ -2740,7 +2740,7 @@ bool modcall_pass2(modcallable *mc)
 			 *	evaluates to "false".
 			 */
 			if (g->cond->type == COND_TYPE_FALSE) {
-				modcallable_free(&g->children);
+				TALLOC_FREE(&g->children);
 				continue;
 			}
 
@@ -2757,14 +2757,14 @@ bool modcall_pass2(modcallable *mc)
 				       (this->next->type == MOD_ELSIF)) {
 					this = this->next;
 					g = mod_callabletogroup(this);
-					modcallable_free(&g->children);
+					TALLOC_FREE(&g->children);
 				}
 
 				if (this->next &&
 				    (this->next->type == MOD_ELSE)) {
 					this = this->next;
 					g = mod_callabletogroup(this);
-					modcallable_free(&g->children);
+					TALLOC_FREE(&g->children);
 				}
 				continue;
 			}
