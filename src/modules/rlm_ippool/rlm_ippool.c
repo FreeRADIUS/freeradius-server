@@ -141,14 +141,30 @@ static const CONF_PARSER module_config[] = {
  */
 static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
-	rlm_ippool_t *inst = instance;
-	int cache_size;
-	ippool_info entry;
-	ippool_key key;
-	datum key_datum;
-	datum data_datum;
-	char const *cli = "0";
-	char const *pool_name = NULL;
+	rlm_ippool_t	*inst = instance;
+	int		cache_size;
+	ippool_info	entry;
+	ippool_key	key;
+	datum		key_datum;
+	datum		data_datum;
+
+	char const	*cli = "0";
+	char const	*pool_name = NULL;
+
+	int		rcode;
+	uint32_t	i, j;
+	uint32_t	or_result;
+	char		str[32];
+	char		init_str[17];
+
+	/*
+	 *  Add the ip pool name
+	 */
+	inst->name = NULL;
+	pool_name = cf_section_name2(conf);
+	if (pool_name != NULL) {
+		inst->name = talloc_strdup(inst, pool_name);
+	}
 
 	cache_size = inst->cache_size;
 
@@ -165,88 +181,120 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	}
 
 	inst->gdbm = gdbm_open(inst->filename, sizeof(int),
-			GDBM_WRCREAT | GDBM_IPPOOL_OPTS, 0600, NULL);
+			       GDBM_WRCREAT | GDBM_IPPOOL_OPTS, 0600, NULL);
 	if (!inst->gdbm) {
-		ERROR("rlm_ippool: Failed to open file %s: %s",
-				inst->filename, fr_syserror(errno));
+		ERROR("rlm_ippool: Failed to open file %s: %s", inst->filename, fr_syserror(errno));
+
 		return -1;
 	}
 	inst->ip = gdbm_open(inst->ip_index, sizeof(int),
-			GDBM_WRCREAT | GDBM_IPPOOL_OPTS, 0600, NULL);
+			     GDBM_WRCREAT | GDBM_IPPOOL_OPTS, 0600, NULL);
 	if (!inst->ip) {
-		ERROR("rlm_ippool: Failed to open file %s: %s",
-				inst->ip_index, fr_syserror(errno));
+		ERROR("rlm_ippool: Failed to open file %s: %s", inst->ip_index, fr_syserror(errno));
+
 		return -1;
 	}
-	if (gdbm_setopt(inst->gdbm, GDBM_CACHESIZE, &cache_size, sizeof(int)) == -1)
+
+	if (gdbm_setopt(inst->gdbm, GDBM_CACHESIZE, &cache_size, sizeof(int)) == -1) {
 		ERROR("rlm_ippool: Failed to set cache size");
-	if (gdbm_setopt(inst->ip, GDBM_CACHESIZE, &cache_size, sizeof(int)) == -1)
-		ERROR("rlm_ippool: Failed to set cache size");
-
-	key_datum = gdbm_firstkey(inst->gdbm);
-	if (!key_datum.dptr){
-			/*
-			 * If the database does not exist initialize it.
-			 * We set the nas/port pairs to not existent values and
-			 * active = 0
-			 */
-		int rcode;
-		uint32_t i, j;
-		uint32_t or_result;
-		char str[32];
-		char init_str[17];
-
-		DEBUG("rlm_ippool: Initializing database");
-		for(i=inst->range_start,j=~0;i<=inst->range_stop;i++,j--){
-
-			/*
-			 * Net and Broadcast addresses are excluded
-			 */
-			or_result = i | inst->netmask;
-			if (~inst->netmask != 0 &&
-				(or_result == inst->netmask ||
-			    (~or_result == 0))) {
-				DEBUG("rlm_ippool: IP %s excluded",
-				      ip_ntoa(str, ntohl(i)));
-				continue;
-			}
-
-			sprintf(init_str,"%016d",j);
-			DEBUG("rlm_ippool: Initialized bucket: %s",init_str);
-			memcpy(key.key, init_str,16);
-			key_datum.dptr = (char *) &key;
-			key_datum.dsize = sizeof(ippool_key);
-
-			entry.ipaddr = ntohl(i);
-			entry.active = 0;
-			entry.extra = 0;
-			entry.timestamp = 0;
-			entry.timeout = 0;
-			strcpy(entry.cli,cli);
-
-			data_datum.dptr = (char *) &entry;
-			data_datum.dsize = sizeof(ippool_info);
-
-			rcode = gdbm_store(inst->gdbm, key_datum, data_datum, GDBM_REPLACE);
-			if (rcode < 0) {
-				ERROR("rlm_ippool: Failed storing data to %s: %s",
-						inst->filename, gdbm_strerror(gdbm_errno));
-				gdbm_close(inst->gdbm);
-				gdbm_close(inst->ip);
-				return -1;
-			}
-		}
 	}
-	else
-		free(key_datum.dptr);
 
-	/* Add the ip pool name */
-	inst->name = NULL;
-	pool_name = cf_section_name2(conf);
-	if (pool_name != NULL)
-		inst->name = strdup(pool_name);
+	if (gdbm_setopt(inst->ip, GDBM_CACHESIZE, &cache_size, sizeof(int)) == -1) {
+		ERROR("rlm_ippool: Failed to set cache size");
+	}
 
 	pthread_mutex_init(&inst->op_mutex, NULL);
+
+	key_datum = gdbm_firstkey(inst->gdbm);
+	if (key_datum.dptr) {
+		free(key_datum.dptr);
+		return 0;
+	}
+
+	/*
+	 *  If the database does not exist initialize it.
+	 *  We set the nas/port pairs to not existent values and
+	 *  active = 0
+	 */
+	DEBUG("rlm_ippool: Initializing database");
+	for (i = inst->range_start, j=~0; i <= inst->range_stop; i++, j--){
+		/*
+		 *  Net and Broadcast addresses are excluded
+		 */
+		or_result = i | inst->netmask;
+		if (~inst->netmask != 0 && (or_result == inst->netmask || (~or_result == 0))) {
+			DEBUG("rlm_ippool: IP %s excluded", ip_ntoa(str, ntohl(i)));
+			continue;
+		}
+
+		sprintf(init_str,"%016d",j);
+		DEBUG("rlm_ippool: Initialized bucket: %s",init_str);
+		memcpy(key.key, init_str,16);
+		key_datum.dptr = (char *) &key;
+		key_datum.dsize = sizeof(ippool_key);
+
+		entry.ipaddr = ntohl(i);
+		entry.active = 0;
+		entry.extra = 0;
+		entry.timestamp = 0;
+		entry.timeout = 0;
+		strcpy(entry.cli,cli);
+
+		data_datum.dptr = (char *) &entry;
+		data_datum.dsize = sizeof(ippool_info);
+
+		rcode = gdbm_store(inst->gdbm, key_datum, data_datum, GDBM_REPLACE);
+		if (rcode < 0) {
+			REDEBUG("Failed storing data to %s: %s", inst->filename, gdbm_strerror(gdbm_errno));
+			gdbm_close(inst->gdbm);
+			gdbm_close(inst->ip);
+			return -1;
+		}
+	}
+
+	return 0;
+}
+
+/** Decrease allocated count from the ip index
+ *
+ */
+static int decrease_allocated_count(rlm_ippool_t *inst, REQUEST *request, ippool_info *entry, datum *save_datum)
+{
+	datum		data_datum;
+	datum		key_datum;
+	int		num;
+
+
+	key_datum.dptr = (char *) &(entry->ipaddr);
+	key_datum.dsize = sizeof(uint32_t);
+	data_datum = gdbm_fetch(inst->ip, key_datum);
+	if (!data_datum.dptr) {
+		return 0;
+	}
+	memcpy(&num, data_datum.dptr, sizeof(int));
+	free(data_datum.dptr);
+	if (num > 0){
+		int	rcode;
+
+		num--;
+
+		RDEBUG("Allocated count now: %i", num);
+		data_datum.dptr = (char *) &num;
+		data_datum.dsize = sizeof(int);
+		rcode = gdbm_store(inst->ip, key_datum, data_datum, GDBM_REPLACE);
+		if (rcode < 0) {
+			RDEBUG("Failed storing data to %s: %s", inst->ip_index, gdbm_strerror(gdbm_errno));
+			return -1;
+		}
+		if ((num > 0) && entry->extra == 1){
+			/*
+			 * We are doing MPPP and we still have nas/port entries referencing
+			 * this ip. Delete this entry so that eventually we only keep one
+			 * reference to this ip.
+			 */
+			gdbm_delete(inst->gdbm, *save_datum);
+		}
+	}
 
 	return 0;
 }
@@ -258,122 +306,104 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
  */
 static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 {
-	rlm_ippool_t *inst = instance;
-	datum key_datum;
-	datum data_datum;
-	datum save_datum;
-	int acctstatustype = 0;
-	int rcode;
-	ippool_info entry;
-	ippool_key key;
-	int num = 0;
-	VALUE_PAIR *vp;
-	char str[32];
-	uint8_t key_str[17];
-	char hex_str[35];
-	char xlat_str[MAX_STRING_LEN];
-	FR_MD5_CTX md5_context;
+	rlm_ippool_t	*inst = instance;
 
+	datum		key_datum;
+	ippool_key	key;
+	datum		data_datum;
+	ippool_info	entry;
+	datum		save_datum;
 
-	if ((vp = pairfind(request->packet->vps, PW_ACCT_STATUS_TYPE, 0, TAG_ANY)) != NULL)
-		acctstatustype = vp->vp_integer;
-	else {
-		RDEBUG("Could not find account status type in packet. Return NOOP.");
+	int		rcode;
+	VALUE_PAIR	*vp;
+
+	char		str[32];
+	uint8_t		key_str[17];
+	char		hex_str[35];
+	char		xlat_str[MAX_STRING_LEN];
+	int		ret;
+
+	vp = pairfind(request->packet->vps, PW_ACCT_STATUS_TYPE, 0, TAG_ANY);
+	if (!vp) {
+		RDEBUG2("Could not find account status type in packet");
+		return RLM_MODULE_INVALID;
+	}
+
+	switch (vp->vp_integer) {
+	case PW_STATUS_STOP:
+	{
+		FR_MD5_CTX md5_context;
+		if (radius_xlat(xlat_str, sizeof(xlat_str), request, inst->key, NULL, NULL) < 0){
+			return RLM_MODULE_FAIL;
+		}
+
+		fr_MD5Init(&md5_context);
+		fr_MD5Update(&md5_context, (uint8_t *)xlat_str, strlen(xlat_str));
+		fr_MD5Final(key_str, &md5_context);
+
+		key_str[16] = '\0';
+		fr_bin2hex(hex_str, key_str, 16);
+		hex_str[32] = '\0';
+
+		RDEBUG2("MD5 on 'key' directive maps to: %s", hex_str);
+		memcpy(key.key, key_str, 16);
+		break;
+	}
+
+	default:
+		/* We don't care about any other accounting packet */
+		RDEBUG2("This is not an Accounting-Stop");
+
 		return RLM_MODULE_NOOP;
 	}
-	switch(acctstatustype){
-		case PW_STATUS_STOP:
-			if (radius_xlat(xlat_str, sizeof(xlat_str), request, inst->key, NULL, NULL) < 0){
-				return RLM_MODULE_NOOP;
-			}
-			fr_MD5Init(&md5_context);
-			fr_MD5Update(&md5_context, (uint8_t *)xlat_str,
-			 strlen(xlat_str));
-			fr_MD5Final(key_str, &md5_context);
-			key_str[16] = '\0';
-			fr_bin2hex(hex_str, key_str, 16);
-			hex_str[32] = '\0';
-			RDEBUG("MD5 on 'key' directive maps to: %s",hex_str);
-			memcpy(key.key,key_str,16);
-			break;
-		default:
-			/* We don't care about any other accounting packet */
-			RDEBUG("This is not an Accounting-Stop. Return NOOP.");
 
-			return RLM_MODULE_NOOP;
-	}
-
-	RDEBUG("Searching for an entry for key: '%s'",xlat_str);
+	RDEBUG2("Searching for an entry for key: '%s'", xlat_str);
 	key_datum.dptr = (char *) &key;
 	key_datum.dsize = sizeof(ippool_key);
 
 	pthread_mutex_lock(&inst->op_mutex);
 	data_datum = gdbm_fetch(inst->gdbm, key_datum);
-	if (data_datum.dptr != NULL){
-
-		/*
-		 * If the entry was found set active to zero
-		 */
-		memcpy(&entry, data_datum.dptr, sizeof(ippool_info));
-		free(data_datum.dptr);
-		RDEBUG("Deallocated entry for ip: %s",ip_ntoa(str,entry.ipaddr));
-		entry.active = 0;
-		entry.timestamp = 0;
-		entry.timeout = 0;
-
-		/*
-		 * Save the reference to the entry
-		 */
-		save_datum.dptr = key_datum.dptr;
-		save_datum.dsize = key_datum.dsize;
-
-		data_datum.dptr = (char *) &entry;
-		data_datum.dsize = sizeof(ippool_info);
-
-		rcode = gdbm_store(inst->gdbm, key_datum, data_datum, GDBM_REPLACE);
-		if (rcode < 0) {
-			ERROR("rlm_ippool: Failed storing data to %s: %s",
-					inst->filename, gdbm_strerror(gdbm_errno));
-			pthread_mutex_unlock(&inst->op_mutex);
-			return RLM_MODULE_FAIL;
-		}
-
-		/*
-		 * Decrease allocated count from the ip index
-		 */
-		key_datum.dptr = (char *) &entry.ipaddr;
-		key_datum.dsize = sizeof(uint32_t);
-		data_datum = gdbm_fetch(inst->ip, key_datum);
-		if (data_datum.dptr != NULL){
-			memcpy(&num, data_datum.dptr, sizeof(int));
-			free(data_datum.dptr);
-			if (num >0){
-				num--;
-				RDEBUG("num: %d",num);
-				data_datum.dptr = (char *) &num;
-				data_datum.dsize = sizeof(int);
-				rcode = gdbm_store(inst->ip, key_datum, data_datum, GDBM_REPLACE);
-				if (rcode < 0) {
-					ERROR("rlm_ippool: Failed storing data to %s: %s",
-							inst->ip_index, gdbm_strerror(gdbm_errno));
-					pthread_mutex_unlock(&inst->op_mutex);
-					return RLM_MODULE_FAIL;
-				}
-				if (num >0 && entry.extra == 1){
-					/*
-					 * We are doing MPPP and we still have nas/port entries referencing
-					 * this ip. Delete this entry so that eventually we only keep one
-					 * reference to this ip.
-					 */
-					gdbm_delete(inst->gdbm,save_datum);
-				}
-			}
-		}
+	if (data_datum.dptr == NULL) {
 		pthread_mutex_unlock(&inst->op_mutex);
+		RDEBUG2("Entry not found");
+
+		return RLM_MODULE_NOTFOUND;
 	}
-	else{
+
+	/*
+	 *   If the entry was found set active to zero
+	 */
+	memcpy(&entry, data_datum.dptr, sizeof(ippool_info));
+	free(data_datum.dptr);
+
+	RDEBUG("Deallocated entry for ip: %s", ip_ntoa(str, entry.ipaddr));
+	entry.active = 0;
+	entry.timestamp = 0;
+	entry.timeout = 0;
+
+	/*
+	 *  Save the reference to the entry
+	 */
+	save_datum.dptr = key_datum.dptr;
+	save_datum.dsize = key_datum.dsize;
+
+	data_datum.dptr = (char *) &entry;
+	data_datum.dsize = sizeof(ippool_info);
+	rcode = gdbm_store(inst->gdbm, key_datum, data_datum, GDBM_REPLACE);
+	if (rcode < 0) {
 		pthread_mutex_unlock(&inst->op_mutex);
-		RDEBUG("Entry not found");
+		REDEBUG("Failed storing data to %s: %s", inst->filename, gdbm_strerror(gdbm_errno));
+
+		return RLM_MODULE_FAIL;
+	}
+
+	/*
+	 *  Decrease allocated count from the ip index
+	 */
+	ret = decrease_allocated_count(inst, request, &entry, &save_datum);
+	pthread_mutex_unlock(&inst->op_mutex);
+	if (ret < 0) {
+		return RLM_MODULE_FAIL;
 	}
 
 	return RLM_MODULE_OK;
@@ -382,36 +412,42 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 static rlm_rcode_t mod_post_auth(UNUSED void *instance, UNUSED REQUEST *request)
 {
 	rlm_ippool_t *inst = instance;
-	int delete = 0;
-	int found = 0;
-	int mppp = 0;
-	int extra = 0;
-	int rcode;
-	int num = 0;
-	datum key_datum;
-	datum nextkey;
-	datum data_datum;
-	datum save_datum;
-	ippool_key key;
-	ippool_info entry;
-	VALUE_PAIR *vp;
-	char const *cli = NULL;
-	char str[32];
-	uint8_t key_str[17];
-	char hex_str[35];
-	char xlat_str[MAX_STRING_LEN];
-	FR_MD5_CTX md5_context;
+
+	datum		key_datum;
+	ippool_key	key;
+	datum		nextkey;
+	datum		data_datum;
+	ippool_info	entry;
+	datum		save_datum;
+
+	int		delete = 0;
+	bool		found = false;
+	int		mppp = 0;
+	int		extra = 0;
+	int		rcode;
+	int		num = 0;
+
+	VALUE_PAIR	*vp;
+	char const	*cli = NULL;
+	char		str[32];
+	uint8_t		key_str[17];
+	char		hex_str[35];
+	char		xlat_str[MAX_STRING_LEN];
+	FR_MD5_CTX	md5_context;
+
 #ifdef WITH_DHCP
 	bool dhcp = false;
 #endif
-	int attr_ipaddr = PW_FRAMED_IP_ADDRESS;
-	int attr_ipmask = PW_FRAMED_IP_NETMASK;
-	int vendor_ipaddr = 0;
+	int		attr_ipaddr = PW_FRAMED_IP_ADDRESS;
+	int		attr_ipmask = PW_FRAMED_IP_NETMASK;
+	int		vendor_ipaddr = 0;
 
-	/* Check if Pool-Name attribute exists. If it exists check our name and
-	 * run only if they match
+	/*
+	 *  Check if Pool-Name attribute exists. If it exists check our name and
+	 *  run only if they match
 	 */
-	if ((vp = pairfind(request->config_items, PW_POOL_NAME, 0, TAG_ANY)) != NULL){
+	vp = pairfind(request->config_items, PW_POOL_NAME, 0, TAG_ANY);
+	if (vp != NULL){
 		if (!inst->name || (strcmp(inst->name,vp->vp_strvalue) && strcmp(vp->vp_strvalue,"DEFAULT")))
 			return RLM_MODULE_NOOP;
 	} else {
@@ -419,12 +455,13 @@ static rlm_rcode_t mod_post_auth(UNUSED void *instance, UNUSED REQUEST *request)
 		return RLM_MODULE_NOOP;
 	}
 
-
 	/*
-	 * Find the caller id
+	 *  Find the caller id
 	 */
-	if ((vp = pairfind(request->packet->vps, PW_CALLING_STATION_ID, 0, TAG_ANY)) != NULL)
+	vp = pairfind(request->packet->vps, PW_CALLING_STATION_ID, 0, TAG_ANY);
+	if (vp != NULL) {
 		cli = vp->vp_strvalue;
+	}
 
 #ifdef WITH_DHCP
 	if (request->listener->type == RAD_LISTEN_DHCP) {
@@ -436,7 +473,7 @@ static rlm_rcode_t mod_post_auth(UNUSED void *instance, UNUSED REQUEST *request)
 #endif
 
 	if (radius_xlat(xlat_str, sizeof(xlat_str), request, inst->key, NULL, NULL) < 0){
-		return RLM_MODULE_NOOP;
+		return RLM_MODULE_FAIL;
 	}
 
 	fr_MD5Init(&md5_context);
@@ -445,10 +482,11 @@ static rlm_rcode_t mod_post_auth(UNUSED void *instance, UNUSED REQUEST *request)
 	key_str[16] = '\0';
 	fr_bin2hex(hex_str, key_str, 16);
 	hex_str[32] = '\0';
-	RDEBUG("MD5 on 'key' directive maps to: %s",hex_str);
-	memcpy(key.key,key_str,16);
 
-	RDEBUG("Searching for an entry for key: '%s'",hex_str);
+	RDEBUG("MD5 on 'key' directive maps to: %s", hex_str);
+	memcpy(key.key, key_str, 16);
+
+	RDEBUG("Searching for an entry for key: '%s'", hex_str);
 	key_datum.dptr = (char *) &key;
 	key_datum.dsize = sizeof(ippool_key);
 
@@ -456,20 +494,22 @@ static rlm_rcode_t mod_post_auth(UNUSED void *instance, UNUSED REQUEST *request)
 	data_datum = gdbm_fetch(inst->gdbm, key_datum);
 	if (data_datum.dptr != NULL){
 		/*
-		 * If there is a corresponding entry in the database with active=1 it is stale.
-		 * Set active to zero
+		 *  If there is a corresponding entry in the database with active=1 it is stale.
+		 *  Set active to zero
 		 */
-		found = 1;
+		found = true;
 		memcpy(&entry, data_datum.dptr, sizeof(ippool_info));
 		free(data_datum.dptr);
+
 		if (entry.active){
+			int ret;
 			RDEBUG("Found a stale entry for ip: %s",ip_ntoa(str,entry.ipaddr));
 			entry.active = 0;
 			entry.timestamp = 0;
 			entry.timeout = 0;
 
 			/*
-			 * Save the reference to the entry
+			 *  Save the reference to the entry
 			 */
 			save_datum.dptr = key_datum.dptr;
 			save_datum.dsize = key_datum.dsize;
@@ -479,40 +519,18 @@ static rlm_rcode_t mod_post_auth(UNUSED void *instance, UNUSED REQUEST *request)
 
 			rcode = gdbm_store(inst->gdbm, key_datum, data_datum, GDBM_REPLACE);
 			if (rcode < 0) {
-				ERROR("rlm_ippool: Failed storing data to %s: %s",
-					inst->filename, gdbm_strerror(gdbm_errno));
+				REDEBUG("Failed storing data to %s: %s", inst->filename, gdbm_strerror(gdbm_errno));
 				pthread_mutex_unlock(&inst->op_mutex);
 				return RLM_MODULE_FAIL;
 			}
-			/* Decrease allocated count from the ip index */
 
-			key_datum.dptr = (char *) &entry.ipaddr;
-			key_datum.dsize = sizeof(uint32_t);
-			data_datum = gdbm_fetch(inst->ip, key_datum);
-			if (data_datum.dptr != NULL){
-				memcpy(&num, data_datum.dptr, sizeof(int));
-				free(data_datum.dptr);
-				if (num >0){
-					num--;
-					RDEBUG("num: %d",num);
-					data_datum.dptr = (char *) &num;
-					data_datum.dsize = sizeof(int);
-					rcode = gdbm_store(inst->ip, key_datum, data_datum, GDBM_REPLACE);
-					if (rcode < 0) {
-						ERROR("rlm_ippool: Failed storing data to %s: %s",
-								inst->ip_index, gdbm_strerror(gdbm_errno));
-						pthread_mutex_unlock(&inst->op_mutex);
-						return RLM_MODULE_FAIL;
-					}
-					if (num >0 && entry.extra == 1){
-						/*
-						 * We are doing MPPP and we still have nas/port entries referencing
-						 * this ip. Delete this entry so that eventually we only keep one
-						 * reference to this ip.
-						 */
-						gdbm_delete(inst->gdbm,save_datum);
-					}
-				}
+			/*
+			 *  Decrease allocated count for the ip
+			 */
+			ret = decrease_allocated_count(inst, request, &entry, &save_datum);
+			pthread_mutex_unlock(&inst->op_mutex);
+			if (ret < 0) {
+				return RLM_MODULE_FAIL;
 			}
 		}
 	}
@@ -520,34 +538,30 @@ static rlm_rcode_t mod_post_auth(UNUSED void *instance, UNUSED REQUEST *request)
 	pthread_mutex_unlock(&inst->op_mutex);
 
 	/*
-	 * If there is a Framed-IP-Address (or Dhcp-Your-IP-Address)
-	 * attribute in the reply, check for override
+	 *  If there is a Framed-IP-Address (or Dhcp-Your-IP-Address)
+	 *  attribute in the reply, check for override
 	 */
 	if (pairfind(request->reply->vps, attr_ipaddr, vendor_ipaddr, TAG_ANY) != NULL) {
-		RDEBUG("Found IP address attribute in reply attribute list.");
-		if (inst->override)
-		{
-			RDEBUG("Override supplied IP address");
-			pairdelete(&request->reply->vps, attr_ipaddr, vendor_ipaddr, TAG_ANY);
-		} else {
-			/* Abort */
-			RDEBUG("override is set to no. Return NOOP.");
+		RDEBUG("Found IP address attribute in reply attribute list");
+		if (!inst->override) {
+			RDEBUG("override is set to no. Return NOOP");
 			return RLM_MODULE_NOOP;
 		}
+
+		RDEBUG("Override supplied IP address");
+		pairdelete(&request->reply->vps, attr_ipaddr, vendor_ipaddr, TAG_ANY);
 	}
 
 	/*
-	 * Walk through the database searching for an active=0 entry.
-	 * We search twice. Once to see if we have an active entry with the same caller_id
-	 * so that MPPP can work ok and then once again to find a free entry.
+	 *  Walk through the database searching for an active=0 entry.
+	 *  We search twice. Once to see if we have an active entry with the same caller_id
+	 *  so that MPPP can work ok and then once again to find a free entry.
 	 */
-
 	pthread_mutex_lock(&inst->op_mutex);
-
 	key_datum.dptr = NULL;
 	if (cli != NULL){
 		key_datum = gdbm_firstkey(inst->gdbm);
-		while(key_datum.dptr){
+		while (key_datum.dptr) {
 			data_datum = gdbm_fetch(inst->gdbm, key_datum);
 			if (data_datum.dptr){
 				memcpy(&entry,data_datum.dptr, sizeof(ippool_info));
@@ -561,6 +575,7 @@ static rlm_rcode_t mod_post_auth(UNUSED void *instance, UNUSED REQUEST *request)
 					break;
 				}
 			}
+
 			nextkey = gdbm_nextkey(inst->gdbm, key_datum);
 			free(key_datum.dptr);
 			key_datum = nextkey;
@@ -651,38 +666,37 @@ static rlm_rcode_t mod_post_auth(UNUSED void *instance, UNUSED REQUEST *request)
 				rcode = gdbm_store(inst->gdbm, key_datum, data_datum_tmp, GDBM_REPLACE);
 				free(data_datum_tmp.dptr);
 				if (rcode < 0) {
-					ERROR("rlm_ippool: Failed storing data to %s: %s",
-						inst->filename, gdbm_strerror(gdbm_errno));
+					REDEBUG("Failed storing data to %s: %s", inst->filename, gdbm_strerror(gdbm_errno));
 						pthread_mutex_unlock(&inst->op_mutex);
 					return RLM_MODULE_FAIL;
 				}
 			}
-		}
-		else{
+		} else{
 			/*
 			 * We have not found the nas/port combination
 			 */
-			if (delete){
+			if (delete) {
 				/*
-		 	  	 * Delete the entry so that we can change the key
-			 	 * All is well. We delete one entry and we add one entry
+		 	  	 *  Delete the entry so that we can change the key
+			 	 *  All is well. We delete one entry and we add one entry
 		 	 	 */
 				gdbm_delete(inst->gdbm, key_datum);
-			}
-			else{
+			} else{
 				/*
-				 * We are doing MPPP. (mppp should be 1)
-				 * We don't do anything.
-				 * We will create an extra not needed entry in the database in this case
-				 * but we don't really care since we always also use the ip_index database
-				 * when we search for a free entry.
-				 * We will also delete that entry on the accounting section so that we only
-				 * have one nas/port entry referencing each ip
+				 *  We are doing MPPP. (mppp should be 1)
+				 *  We don't do anything.
+				 *  We will create an extra not needed entry in the database in this case
+				 *  but we don't really care since we always also use the ip_index database
+				 *  when we search for a free entry.
+				 *  We will also delete that entry on the accounting section so that we only
+				 *  have one nas/port entry referencing each ip
 				 */
-				if (mppp)
+				if (mppp) {
 					extra = 1;
-				if (!mppp)
-					ERROR("rlm_ippool: mppp is not one. Please report this behaviour.");
+				}
+				if (!mppp) {
+					REDEBUG("mppp is not one. Please report this behaviour");
+				}
 			}
 		}
 		free(key_datum.dptr);
@@ -701,19 +715,20 @@ static rlm_rcode_t mod_post_auth(UNUSED void *instance, UNUSED REQUEST *request)
 		} else {
 			entry.timeout = 0;
 		}
-		if (extra)
+		if (extra) {
 			entry.extra = 1;
+		}
+
 		data_datum.dptr = (char *) &entry;
 		data_datum.dsize = sizeof(ippool_info);
 		memcpy(key.key, key_str, 16);
 		key_datum.dptr = (char *) &key;
 		key_datum.dsize = sizeof(ippool_key);
 
-		DEBUG2("rlm_ippool: Allocating ip to key: '%s'",hex_str);
+		RDEBUG2("Allocating ip to key: '%s'",hex_str);
 		rcode = gdbm_store(inst->gdbm, key_datum, data_datum, GDBM_REPLACE);
 		if (rcode < 0) {
-			ERROR("rlm_ippool: Failed storing data to %s: %s",
-				inst->filename, gdbm_strerror(gdbm_errno));
+			REDEBUG("Failed storing data to %s: %s", inst->filename, gdbm_strerror(gdbm_errno));
 				pthread_mutex_unlock(&inst->op_mutex);
 			return RLM_MODULE_FAIL;
 		}
@@ -725,21 +740,21 @@ static rlm_rcode_t mod_post_auth(UNUSED void *instance, UNUSED REQUEST *request)
 		if (data_datum.dptr){
 			memcpy(&num,data_datum.dptr,sizeof(int));
 			free(data_datum.dptr);
-		} else
+		} else {
 			num = 0;
+		}
+
 		num++;
 		RDEBUG("num: %d",num);
 		data_datum.dptr = (char *) &num;
 		data_datum.dsize = sizeof(int);
 		rcode = gdbm_store(inst->ip, key_datum, data_datum, GDBM_REPLACE);
 		if (rcode < 0) {
-			ERROR("rlm_ippool: Failed storing data to %s: %s",
-				inst->ip_index, gdbm_strerror(gdbm_errno));
+			REDEBUG("Failed storing data to %s: %s", inst->ip_index, gdbm_strerror(gdbm_errno));
 			pthread_mutex_unlock(&inst->op_mutex);
 			return RLM_MODULE_FAIL;
 		}
 		pthread_mutex_unlock(&inst->op_mutex);
-
 
 		RDEBUG("Allocated ip %s to client key: %s",ip_ntoa(str,entry.ipaddr),hex_str);
 		vp = radius_paircreate(request, &request->reply->vps,
