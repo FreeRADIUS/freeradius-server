@@ -11,6 +11,8 @@ FreeRADIUS 3.0.3 Fri 21 Mar 2014 08:30:00 EDT urgency=medium
 	  no longer re-parsed at run-time for every request.
 
 	Bug fixes
+	* Fix xlat expression %{attribute[n]} so that it actually
+	  returns the n'th attribute instead of the first.
 
 FreeRADIUS 3.0.2 Fri 21 Mar 2014 08:30:00 EDT urgency=medium
 	Feature improvements
