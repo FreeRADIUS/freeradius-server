@@ -1887,8 +1887,6 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 
 #ifdef WITH_UNLANG
 		} else 	if (strcmp(modrefname, "if") == 0) {
-			modgroup *g;
-
 			if (!cf_section_name2(cs)) {
 				cf_log_err(ci, "'if' without condition.");
 				return NULL;
@@ -1901,15 +1899,9 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 			if (!csingle) return NULL;
 			*modname = name2;
 
-			g = mod_callabletogroup(csingle);
-			g->cond = cf_data_find(g->cs, "if");
-			rad_assert(g->cond != NULL);
-
 			return csingle;
 
 		} else 	if (strcmp(modrefname, "elsif") == 0) {
-			modgroup *g;
-
 			if (parent &&
 			    ((parent->type == MOD_LOAD_BALANCE) ||
 			     (parent->type == MOD_REDUNDANT_LOAD_BALANCE))) {
@@ -1923,17 +1915,9 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 			}
 
 			*modname = name2;
-			csingle= do_compile_modgroup(parent, component, cs,
-						     GROUPTYPE_SIMPLE,
-						     grouptype, MOD_ELSIF);
-			if (!csingle) return NULL;
-			*modname = name2;
-
-			g = mod_callabletogroup(csingle);
-			g->cond = cf_data_find(g->cs, "if");
-			rad_assert(g->cond != NULL);
-
-			return csingle;
+			return do_compile_modgroup(parent, component, cs,
+						   GROUPTYPE_SIMPLE,
+						   grouptype, MOD_ELSIF);
 
 		} else 	if (strcmp(modrefname, "else") == 0) {
 			if (parent &&
@@ -1956,19 +1940,13 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 		} else 	if (strcmp(modrefname, "update") == 0) {
 			*modname = name2;
 
-			csingle = do_compile_modupdate(parent, component, cs,
-						       name2);
-			if (!csingle) return NULL;
-
-			return csingle;
+			return do_compile_modupdate(parent, component, cs,
+						    name2);
 
 		} else 	if (strcmp(modrefname, "switch") == 0) {
 			*modname = name2;
 
-			csingle = do_compile_modswitch(parent, component, cs);
-			if (!csingle) return NULL;
-
-			return csingle;
+			return do_compile_modswitch(parent, component, cs);
 
 		} else 	if (strcmp(modrefname, "case") == 0) {
 			int i;
@@ -2341,10 +2319,89 @@ static modcallable *do_compile_modgroup(modcallable *parent,
 		c->name = cf_section_name1(cs);
 		if (strcmp(c->name, "group") == 0) {
 			c->name = "";
-		} else {
+		} else if (c->type == MOD_GROUP) {
 			c->type = MOD_POLICY;
 		}
 	}
+
+#ifdef WITH_UNLANG
+	/*
+	 *	Do load-time optimizations
+	 */
+	if ((c->type == MOD_IF) || (c->type == MOD_ELSIF) || (c->type == MOD_ELSE)) {
+		modgroup *f, *p;
+
+		rad_assert(parent != NULL);
+
+		if (c->type == MOD_IF) {
+			g->cond = cf_data_find(g->cs, "if");
+			rad_assert(g->cond != NULL);
+
+		check_if:
+			if (g->cond->type == COND_TYPE_FALSE) {
+				INFO(" # Skipping contents of '%s' as it is always 'false' -- %s:%d",
+				     group_name[g->mc.type],
+				     cf_section_filename(g->cs), cf_section_lineno(g->cs));
+				goto set_codes;
+			}
+
+		} else if (c->type == MOD_ELSIF) {
+
+			g->cond = cf_data_find(g->cs, "if");
+			rad_assert(g->cond != NULL);
+
+			rad_assert(parent != NULL);
+			p = mod_callabletogroup(parent);
+
+			rad_assert(p->tail != NULL);
+
+			f = mod_callabletogroup(p->tail);
+			rad_assert((f->mc.type == MOD_IF) ||
+				   (f->mc.type == MOD_ELSIF));
+
+			/*
+			 *	If we took the previous condition, we
+			 *	don't need to take this one.
+			 *
+			 *	We reset our condition to 'true', so
+			 *	that subsequent sections can check
+			 *	that they don't need to be executed.
+			 */
+			if (f->cond->type == COND_TYPE_TRUE) {
+			skip_true:
+				INFO(" # Skipping contents of '%s' as previous '%s' is always  'true' -- %s:%d",
+				     group_name[g->mc.type],
+				     group_name[f->mc.type],
+				     cf_section_filename(g->cs), cf_section_lineno(g->cs));
+				g->cond = f->cond;
+				goto set_codes;
+			}
+			goto check_if;
+
+		} else {
+			rad_assert(c->type == MOD_ELSE);
+
+			rad_assert(parent != NULL);
+			p = mod_callabletogroup(parent);
+
+			rad_assert(p->tail != NULL);
+
+			f = mod_callabletogroup(p->tail);
+			rad_assert((f->mc.type == MOD_IF) ||
+				   (f->mc.type == MOD_ELSIF));
+
+			/*
+			 *	If we took the previous condition, we
+			 *	don't need to take this one.
+			 */
+			if (f->cond->type == COND_TYPE_TRUE) goto skip_true;
+		}
+
+		/*
+		 *	Else we need to compile this section
+		 */
+	}
+#endif
 
 	/*
 	 *	Loop over the children of this group.
