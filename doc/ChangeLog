@@ -13,6 +13,8 @@ FreeRADIUS 3.0.3 Fri 21 Mar 2014 08:30:00 EDT urgency=medium
 	Bug fixes
 	* Fix xlat expression %{attribute[n]} so that it actually
 	  returns the n'th attribute instead of the first.
+	* Don't parse string on RHS of update {} when using unary
+	  operators (!*).
 
 FreeRADIUS 3.0.2 Fri 21 Mar 2014 08:30:00 EDT urgency=medium
 	Feature improvements
