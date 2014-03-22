@@ -2793,11 +2793,8 @@ int8_t pairlistcmp(VALUE_PAIR *a, VALUE_PAIR *b)
 		return -1;
 	}
 
-	if (!b_p) {
-		return 1;
-	}
-
-	return 0;
+	/* if(!b_p) */
+	return 1;
 }
 
 /** Copy data into an "octets" data type.
