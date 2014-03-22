@@ -55,11 +55,15 @@ typedef enum {
 	XLAT_ALTERNATE		//!< xlat conditional syntax :-
 } xlat_state_t;
 
+#define XLAT_ATTR_NUMBER 65536	//!< The number of times this attribute appears in a list.
+#define XLAT_ATTR_CONCAT 65537	//!< All instance of this attribute should be concatenated into a string.
+
 struct xlat_exp {
 	char const *fmt;	//!< The format string.
 	size_t len;		//!< Length of the format string.
 
 	DICT_ATTR const *da;	//!< the name of the dictionary attribute
+
 	int num;		//!< attribute number
 	int tag;		//!< attribute tag
 	pair_lists_t list;	//!< list of which attribute
@@ -1065,16 +1069,16 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 
 		p = q;
 		if (*p== '#') {
-			node->num = 65536;
+			node->num = XLAT_ATTR_NUMBER;
 			p++;
 
 		} else if (*p == '*') {
-			node->num = 65537;
+			node->num = XLAT_ATTR_CONCAT;
 			p++;
 
 		} else if (isdigit((int) *p)) {
 			num = strtoul(p, &end, 10);
-			if ((num == ULONG_MAX) || (num > 65535)) {
+			if ((num == ULONG_MAX) || (num >= XLAT_ATTR_NUMBER)) {
 				talloc_free(node);
 				*error = "Invalid number";
 				return - (p - fmt);
@@ -1334,9 +1338,9 @@ static void xlat_tokenize_debug(xlat_exp_t const *node, int lvl)
 
 				if (node->tag) DEBUG("%.*stag %d", lvl + 1, xlat_tabs, node->tag);
 				if (node->num) {
-					if (node->num == 65536) {
+					if (node->num == XLAT_ATTR_NUMBER) {
 						DEBUG("%.*s[#]", lvl + 1, xlat_tabs);
-					} else if (node->num == 65537) {
+					} else if (node->num == XLAT_ATTR_CONCAT) {
 						DEBUG("%.*s[*]", lvl + 1, xlat_tabs);
 					} else {
 						DEBUG("%.*s[%d]", lvl + 1, xlat_tabs, node->num);
@@ -1435,14 +1439,16 @@ size_t xlat_sprint(char *buffer, size_t bufsize, xlat_exp_t const *node)
 
 			if (node->num != 0) {
 				*(p++) = '[';
-
-				if (node->num == 65536) {
+				switch (node->num) {
+				case XLAT_ATTR_NUMBER:
 					*(p++) = '#';
+					break;
 
-				} else if (node->num == 65537) {
+				case XLAT_ATTR_CONCAT:
 					*(p++) = '*';
+					break;
 
-				} else {
+				default:
 					snprintf(p, end - p, "%u", node->num);
 					p += strlen(p);
 				}
@@ -1778,12 +1784,12 @@ do_print:
 		/*
 		 *	[*] means only one.
 		 */
-		if (num == 65537) num = 0;
+		if (num == XLAT_ATTR_CONCAT) num = 0;
 
 		/*
 		 *	[n] means NULL, as there's only one.
 		 */
-		if ((num > 0) && (num < 65536)) {
+		if ((num > 0) && (num < XLAT_ATTR_NUMBER)) {
 			return NULL;
 		}
 
@@ -1793,7 +1799,7 @@ do_print:
 		/*
 		 *	Get the length of it.
 		 */
-		if (num == 65536) {
+		if (num == XLAT_ATTR_NUMBER) {
 			q = talloc_asprintf(ctx, "%d", (int) strlen(p));
 			talloc_free(p);
 			return q;
@@ -1809,22 +1815,23 @@ do_print:
 		int count = 0;
 		vp_cursor_t cursor;
 
+		switch (num) {
 		/*
 		 *	Return a count of the VPs.
 		 */
-		if (num == 65536) {
+		case XLAT_ATTR_NUMBER:
 			fr_cursor_init(&cursor, &vp);
 			while (fr_cursor_next_by_num(&cursor, da->attr, da->vendor, tag) != NULL) {
 				count++;
 			}
 
 			return talloc_asprintf(ctx, "%d", count);
-		}
 
 		/*
 		 *	Ugly, but working.
 		 */
-		if (num == 65537) {
+		case XLAT_ATTR_CONCAT:
+		{
 			char *p, *q;
 
 			vp = fr_cursor_init(&cursor, &vp);
@@ -1840,12 +1847,12 @@ do_print:
 			return p;
 		}
 
-		fr_cursor_init(&cursor, &vp);
-		while (fr_cursor_next_by_num(&cursor, da->attr, da->vendor, tag) != NULL) {
-			if (count == num) {
-				break;
+		default:
+			fr_cursor_init(&cursor, &vp);
+			while ((vp = fr_cursor_next_by_num(&cursor, da->attr, da->vendor, tag)) != NULL) {
+				if (count++ == num) break;
 			}
-			count++;
+			break;
 		}
 	}
 
