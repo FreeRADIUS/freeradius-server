@@ -245,7 +245,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 		rcode = gdbm_store(inst->gdbm, key_datum, data_datum, GDBM_REPLACE);
 		if (rcode < 0) {
-			REDEBUG("Failed storing data to %s: %s", inst->filename, gdbm_strerror(gdbm_errno));
+			ERROR("rlm_ippool: Failed storing data to %s: %s", inst->filename, gdbm_strerror(gdbm_errno));
 			gdbm_close(inst->gdbm);
 			gdbm_close(inst->ip);
 			return -1;
