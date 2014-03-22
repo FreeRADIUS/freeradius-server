@@ -147,7 +147,6 @@ static modcallable *mod_xlattocallable(modxlat *p)
 }
 
 /* modgroups are grown by adding a modcallable to the end */
-/* FIXME: This is O(N^2) */
 static void add_child(modgroup *g, modcallable *c)
 {
 	if (!c) return;
