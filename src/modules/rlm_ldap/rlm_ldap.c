@@ -1275,7 +1275,7 @@ static rlm_rcode_t mod_post_auth(void *instance, REQUEST * request)
 module_t rlm_ldap = {
 	RLM_MODULE_INIT,
 	"ldap",
-	RLM_TYPE_THREAD_SAFE,	/* type: reserved 	 */
+	RLM_TYPE_THREAD_SAFE | RLM_TYPE_CHECK_CONFIG_SAFE,	/* type: reserved 	 */
 	sizeof(ldap_instance_t),
 	module_config,
 	mod_instantiate,	/* instantiation 	 */
