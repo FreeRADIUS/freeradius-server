@@ -27,6 +27,7 @@ rlm_preprocess
 rlm_python
 rlm_radutmp
 rlm_realm
+rlm_rest
 rlm_replicate
 rlm_soh
 rlm_sql
