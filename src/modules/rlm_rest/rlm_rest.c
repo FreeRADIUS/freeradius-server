@@ -25,6 +25,7 @@ RCSID("$Id$")
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
 #include <freeradius-devel/token.h>
+#include <freeradius-devel/rad_assert.h>
 
 #include "rest.h"
 
@@ -130,6 +131,111 @@ static void rlm_rest_cleanup(rlm_rest_t *instance, rlm_rest_section_t *section, 
 {
 	rest_request_cleanup(instance, section, handle);
 };
+
+/*
+ *	Simple xlat to read text data from a URL
+ */
+static ssize_t rest_xlat(void *instance, REQUEST *request,
+			 char const *fmt, char *out, size_t freespace)
+{
+	rlm_rest_t	*inst = instance;
+	void		*handle;
+	int		hcode;
+	int		ret;
+	ssize_t		len, outlen = 0;
+	char		*uri = NULL;
+	char const	*body;
+
+	/* There are no configurable parameters other than the URI */
+	static rlm_rest_section_t section = {
+		.name = "xlat",
+		.method = HTTP_METHOD_GET,
+		.body = HTTP_BODY_PLAIN,
+		.require_auth = false,
+		.timeout = 4
+	};
+
+	*out = '\0';
+
+	rad_assert(fmt);
+
+	RDEBUG("Expanding URI components");
+
+	/*
+	 *  Build xlat'd URI, this allows REST servers to be specified by
+	 *  request attributes.
+	 */
+	len = rest_uri_build(&uri, instance, request, fmt);
+	if (len <= 0) return -1;
+
+	RDEBUG("Sending HTTP %s to \"%s\"", fr_int2str(http_method_table, section.method, NULL), uri);
+
+	handle = fr_connection_get(inst->conn_pool);
+	if (!handle) return -1;
+
+	/*
+	 *  Configure various CURL options, and initialise the read/write
+	 *  context data.
+	 *
+	 *  @todo We could extract the User-Name and password from the URL string.
+	 */
+	ret = rest_request_config(instance, &section, request, handle, section.method, section.body,
+				  uri, NULL, NULL);
+	talloc_free(uri);
+	if (ret < 0) return -1;
+
+	/*
+	 *  Send the CURL request, pre-parse headers, aggregate incoming
+	 *  HTTP body data into a single contiguous buffer.
+	 */
+	ret = rest_request_perform(instance, &section, request, handle);
+	if (ret < 0) return -1;
+
+	hcode = rest_get_handle_code(handle);
+	switch (hcode) {
+	case 404:
+	case 410:
+	case 403:
+	case 401:
+		outlen = -1;
+		goto end;
+
+	case 204:
+		goto end;
+
+	default:
+		/*
+		 *	Attempt to parse content if there was any.
+		 */
+		if ((hcode >= 200) && (hcode < 300)) {
+			break;
+		} else if (hcode < 500) {
+			outlen = -2;
+			goto end;
+		} else {
+			outlen = -1;
+			goto end;
+		}
+	}
+
+	len = rest_get_handle_data(&body, handle);
+	if ((size_t) len >= freespace) {
+		RDEBUG("Insufficient space to write HTTP response, needed %zu bytes, have %zu bytes", len, freespace);
+		outlen = -1;
+		goto end;
+	}
+	if (len > 0) {
+		outlen = len;
+		strlcpy(out, body, len);
+	}
+
+end:
+	rlm_rest_cleanup(instance, &section, handle);
+
+	fr_connection_release(inst->conn_pool, handle);
+
+	return outlen;
+}
 
 /*
  *	Find the named user in this modules database.  Create the set
@@ -431,6 +537,11 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	inst->xlat_name = xlat_name;
 
 	/*
+	 *	Register the rest xlat function
+	 */
+	xlat_register(inst->xlat_name, rest_xlat, NULL, inst);
+
+	/*
 	 *	Parse sub-section configs.
 	 */
 	if (
@@ -467,6 +578,8 @@ static int mod_detach(void *instance)
 	rlm_rest_t *inst = instance;
 
 	fr_connection_pool_delete(inst->conn_pool);
+
+	xlat_unregister(inst->xlat_name, rest_xlat, instance);
 
 	/* Free any memory used by libcurl */
 	rest_cleanup();
