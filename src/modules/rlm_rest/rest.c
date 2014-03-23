@@ -234,8 +234,8 @@ int rest_init(rlm_rest_t *instance)
 	ret = curl_global_init(CURL_GLOBAL_ALL);
 	if (ret != CURLE_OK) {
 		ERROR("rlm_rest (%s): CURL init returned error: %i - %s",
-		       instance->xlat_name,
-		       ret, curl_easy_strerror(ret));
+		      instance->xlat_name,
+		      ret, curl_easy_strerror(ret));
 
 		curl_global_cleanup();
 		return -1;
@@ -351,7 +351,6 @@ error:
 	 *  So we don't leak CURL handles.
 	 */
 connection_error:
-
 	curl_easy_cleanup(candle);
 	if (randle) talloc_free(randle);
 
@@ -993,14 +992,12 @@ static int rest_decode_post(UNUSED rlm_rest_t *instance, UNUSED rlm_rest_section
 		count++;
 
 	skip:
-
 		curl_free(name);
 		curl_free(value);
 
 		continue;
 
 	error:
-
 		curl_free(name);
 		curl_free(value);
 
@@ -1481,9 +1478,7 @@ static size_t rest_write_header(void *in, size_t size, size_t nmemb, void *userd
 			if (!q) q = memchr(p, '\r', s);
 
 			len = !q ? s : (size_t) (q - p);
-
 			type = fr_substr2int(http_content_type_table, p, HTTP_BODY_UNKNOWN, len);
-
 			supp = http_body_type_supported[type];
 
 			RDEBUG2("\tType   : %s (%.*s)", fr_int2str(http_body_type_table, type, "<INVALID>"),
@@ -1552,7 +1547,7 @@ malformed:
  */
 static size_t rest_write_body(void *ptr, size_t size, size_t nmemb, void *userdata)
 {
-	rlm_rest_write_t *ctx  = userdata;
+	rlm_rest_write_t *ctx = userdata;
 	REQUEST *request = ctx->request; /* Used by RDEBUG */
 
 	char const *p = ptr;
@@ -1569,14 +1564,12 @@ static size_t rest_write_body(void *ptr, size_t size, size_t nmemb, void *userda
 
 	switch (ctx->type) {
 	case HTTP_BODY_UNSUPPORTED:
-		return t;
-
 	case HTTP_BODY_INVALID:
-		REDEBUG("%.*s", (int) t, p);
+		REDEBUG("DISCARDING: %.*s", (int) t, p);
 		return t;
 
 	case HTTP_BODY_NONE:
-		RDEBUG3("%.*s", (int) t, p);
+		RDEBUG3("DISCARDING: %.*s", (int) t, p);
 		return t;
 
 	default:
@@ -2026,7 +2019,7 @@ int rest_request_decode(rlm_rest_t *instance, UNUSED rlm_rest_section_t *section
 	int ret = -1;	/* -Wsometimes-uninitialized */
 
 	if (!ctx->write.buffer) {
-		RDEBUG2("Skipping attribute processing, no body data received");
+		RDEBUG2("Skipping attribute processing, no valid body data received");
 		return ret;
 	}
 
@@ -2039,11 +2032,13 @@ int rest_request_decode(rlm_rest_t *instance, UNUSED rlm_rest_section_t *section
 	case HTTP_BODY_POST:
 		ret = rest_decode_post(instance, section, request, handle, ctx->write.buffer, ctx->write.used);
 		break;
+
 #ifdef HAVE_JSON
 	case HTTP_BODY_JSON:
 		ret = rest_decode_json(instance, section, request, handle, ctx->write.buffer, ctx->write.used);
 		break;
 #endif
+
 	case HTTP_BODY_UNSUPPORTED:
 	case HTTP_BODY_UNAVAILABLE:
 	case HTTP_BODY_INVALID:
