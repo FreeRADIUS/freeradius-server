@@ -27,6 +27,9 @@ FreeRADIUS 3.0.3 Fri 21 Mar 2014 08:30:00 EDT urgency=medium
 	* Check for more optional functions in json-c so we can
 	  Build with libjson0, which is the name of the json-c package
 	  on debian/ubuntu.
+	* Fix issue in radmin where the main dictionaries would
+	  not be loaded which, depending on the configuration may
+	  of caused validation errors.
 
 FreeRADIUS 3.0.2 Fri 21 Mar 2014 08:30:00 EDT urgency=medium
 	Feature improvements
