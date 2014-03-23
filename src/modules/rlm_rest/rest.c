@@ -49,6 +49,7 @@ const http_body_type_t http_body_type_supported[HTTP_BODY_NUM_ENTRIES] = {
 	HTTP_BODY_UNSUPPORTED,	// HTTP_BODY_UNSUPPORTED
 	HTTP_BODY_UNSUPPORTED,  // HTTP_BODY_UNAVAILABLE
 	HTTP_BODY_UNSUPPORTED,	// HTTP_BODY_INVALID
+	HTTP_BODY_NONE,		// HTTP_BODY_NONE
 	HTTP_BODY_POST,		// HTTP_BODY_POST
 #ifdef HAVE_JSON
 	HTTP_BODY_JSON,		// HTTP_BODY_JSON
@@ -142,6 +143,7 @@ const FR_NAME_NUMBER http_body_type_table[] = {
 	{ "unsupported",			HTTP_BODY_UNSUPPORTED	},
 	{ "unavailable",			HTTP_BODY_UNAVAILABLE	},
 	{ "invalid",				HTTP_BODY_INVALID	},
+	{ "none",				HTTP_BODY_NONE		},
 	{ "post",				HTTP_BODY_POST		},
 	{ "json",				HTTP_BODY_JSON		},
 	{ "xml",				HTTP_BODY_XML		},
@@ -1573,6 +1575,10 @@ static size_t rest_write_body(void *ptr, size_t size, size_t nmemb, void *userda
 		REDEBUG("%.*s", (int) t, p);
 		return t;
 
+	case HTTP_BODY_NONE:
+		RDEBUG3("%.*s", (int) t, p);
+		return t;
+
 	default:
 		if (t > (ctx->alloc - ctx->used)) {
 			ctx->alloc += ((t + 1) > REST_BODY_INIT) ? t + 1 : REST_BODY_INIT;
@@ -1655,19 +1661,38 @@ static int rest_request_config_body(UNUSED rlm_rest_t *instance, rlm_rest_sectio
 
 	ssize_t len;
 
+	/*
+	 *  We were provided with no read function, assume this means
+	 *  no body should be sent.
+	 */
+	if (!func) {
+		SET_OPTION(CURLOPT_POSTFIELDSIZE, 0);
+		return 0;
+	}
+
+	/*
+	 *  Chunked transfer encoding means the body will be sent in
+	 *  multiple parts.
+	 */
 	if (section->chunk > 0) {
 		SET_OPTION(CURLOPT_READDATA, &ctx->read);
-		SET_OPTION(CURLOPT_READFUNCTION, rest_encode_json);
-	} else {
-		len = rest_read_wrapper(&ctx->body, func, REST_BODY_MAX_LEN, &ctx->read);
-		if (len <= 0) {
-			REDEBUG("Failed creating HTTP body content");
-			return -1;
-		}
+		SET_OPTION(CURLOPT_READFUNCTION, func);
 
-		SET_OPTION(CURLOPT_POSTFIELDS, ctx->body);
-		SET_OPTION(CURLOPT_POSTFIELDSIZE, len);
+		return 0;
 	}
+
+	/*
+	 *  If were not doing chunked encoding then we read the entire
+	 *  body into a buffer, and send it in one go.
+	 */
+	len = rest_read_wrapper(&ctx->body, func, REST_BODY_MAX_LEN, &ctx->read);
+	if (len <= 0) {
+		REDEBUG("Failed creating HTTP body content");
+		return -1;
+	}
+
+	SET_OPTION(CURLOPT_POSTFIELDS, ctx->body);
+	SET_OPTION(CURLOPT_POSTFIELDSIZE, len);
 
 	return 0;
 
@@ -1713,7 +1738,7 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 
 	CURLcode ret = CURLE_OK;
 	char const *option = "unknown";
-
+	char const *content_type;
 	long val = 1;
 
 	char buffer[512];
@@ -1729,10 +1754,12 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 
 	SET_OPTION(CURLOPT_USERAGENT, "FreeRADIUS");
 
-	snprintf(buffer, (sizeof(buffer) - 1), "Content-Type: %s",
-		 fr_int2str(http_content_type_table, type, "<INVALID>"));
-	ctx->headers = curl_slist_append(ctx->headers, buffer);
-	if (!ctx->headers) goto error_header;
+	content_type = fr_int2str(http_content_type_table, type, NULL);
+	if (content_type) {
+		snprintf(buffer, (sizeof(buffer) - 1), "Content-Type: %s", content_type);
+		ctx->headers = curl_slist_append(ctx->headers, buffer);
+		if (!ctx->headers) goto error_header;
+	}
 
 	if (section->timeout) {
 		SET_OPTION(CURLOPT_TIMEOUT, section->timeout);
@@ -1898,6 +1925,14 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 		}
 
 		switch (type) {
+		case HTTP_BODY_NONE:
+			if (rest_request_config_body(instance, section, request, handle,
+						     NULL) < 0) {
+				return -1;
+			}
+
+			break;
+
 #ifdef HAVE_JSON
 		case HTTP_BODY_JSON:
 			rest_read_ctx_init(request, &ctx->read, 1);
@@ -1998,6 +2033,9 @@ int rest_request_decode(rlm_rest_t *instance, UNUSED rlm_rest_section_t *section
 	RDEBUG3("Processing body");
 
 	switch (ctx->write.type) {
+	case HTTP_BODY_NONE:
+		return 0;
+
 	case HTTP_BODY_POST:
 		ret = rest_decode_post(instance, section, request, handle, ctx->write.buffer, ctx->write.used);
 		break;
