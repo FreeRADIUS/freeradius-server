@@ -39,6 +39,7 @@ before_install:
       libcollectdclient-dev
       firebird-dev
       freetds-dev
+      libcurl4-openssl-dev
       libgdbm-dev
       libhiredis-dev
       libidn11-dev
