@@ -91,7 +91,7 @@ static const CONF_PARSER module_config[] = {
 static int rlm_rest_perform(rlm_rest_t *instance, rlm_rest_section_t *section, void *handle, REQUEST *request,
 			    char const *username, char const *password)
 {
-	size_t uri_len;
+	ssize_t uri_len;
 	char *uri = NULL;
 
 	int ret;
