@@ -765,7 +765,7 @@ static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
 module_t rlm_eap = {
 	RLM_MODULE_INIT,
 	"eap",
-	RLM_TYPE_CHECK_CONFIG_SAFE,   	/* type */
+	0,   	/* type */
 	sizeof(rlm_eap_t),
 	module_config,
 	mod_instantiate,		/* instantiation */

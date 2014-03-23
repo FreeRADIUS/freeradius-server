@@ -727,7 +727,7 @@ static rlm_rcode_t preprocess_preaccounting(void *instance, REQUEST *request)
 module_t rlm_preprocess = {
 	RLM_MODULE_INIT,
 	"preprocess",
-	RLM_TYPE_CHECK_CONFIG_SAFE,   		/* type */
+	0,   		/* type */
 	sizeof(rlm_preprocess_t),
 	module_config,
 	mod_instantiate,			/* instantiation */

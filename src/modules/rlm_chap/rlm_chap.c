@@ -155,7 +155,7 @@ static rlm_rcode_t mod_authenticate(UNUSED void *instance,
 module_t rlm_chap = {
 	 RLM_MODULE_INIT,
 	"CHAP",
-	RLM_TYPE_CHECK_CONFIG_SAFE,   	/* type */
+	0,   	/* type */
 	 0,
 	 NULL,				/* CONF_PARSER */
 	NULL,				/* instantiation */

@@ -809,7 +809,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 module_t rlm_expr = {
 	RLM_MODULE_INIT,
 	"expr",				/* Name */
-	RLM_TYPE_CHECK_CONFIG_SAFE,   	/* type */
+	0,   	/* type */
 	sizeof(rlm_expr_t),
 	module_config,
 	mod_instantiate,		/* instantiation */

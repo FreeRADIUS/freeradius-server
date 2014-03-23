@@ -583,8 +583,8 @@ static int command_show_module_flags(rad_listen_t *listener, int argc, char *arg
 		cprintf(listener, "\tthread-unsafe\n");
 
 
-	if ((mod->type & RLM_TYPE_CHECK_CONFIG_SAFE) != 0)
-		cprintf(listener, "\twill-check-config\n");
+	if ((mod->type & RLM_TYPE_CHECK_CONFIG_UNSAFE) != 0)
+		cprintf(listener, "\tno-check-config\n");
 
 
 	if ((mod->type & RLM_TYPE_HUP_SAFE) != 0)

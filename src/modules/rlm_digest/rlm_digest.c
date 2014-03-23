@@ -596,7 +596,7 @@ static rlm_rcode_t mod_authenticate(UNUSED void *instance, REQUEST *request)
 module_t rlm_digest = {
 	RLM_MODULE_INIT,
 	"digest",
-	RLM_TYPE_CHECK_CONFIG_SAFE,   	/* type */
+	0,   	/* type */
 	0,
 	NULL,				/* CONF_PARSER */
 	NULL,				/* instantiation */

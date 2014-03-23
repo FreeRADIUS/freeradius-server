@@ -117,7 +117,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 module_t rlm_date = {
 	RLM_MODULE_INIT,
 	"date",				/* Name */
-	RLM_TYPE_CHECK_CONFIG_SAFE,   	/* type */
+	0,   	/* type */
 	sizeof(rlm_date_t),
 	module_config,
 	mod_instantiate,		/* instantiation */

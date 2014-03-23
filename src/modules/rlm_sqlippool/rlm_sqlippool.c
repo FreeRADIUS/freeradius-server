@@ -748,7 +748,7 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 module_t rlm_sqlippool = {
 	RLM_MODULE_INIT,
 	"sqlippool",
-	RLM_TYPE_THREAD_SAFE | RLM_TYPE_CHECK_CONFIG_SAFE,		/* type */
+	RLM_TYPE_THREAD_SAFE,		/* type */
 	sizeof(rlm_sqlippool_t),
 	module_config,
 	mod_instantiate,		/* instantiation */

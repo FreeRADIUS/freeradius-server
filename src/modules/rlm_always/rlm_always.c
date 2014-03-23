@@ -122,7 +122,7 @@ static rlm_rcode_t mod_checksimul(void *instance, REQUEST *request)
 module_t rlm_always = {
 	RLM_MODULE_INIT,
 	"always",
-	RLM_TYPE_CHECK_CONFIG_SAFE,   	/* type */
+	0,   	/* type */
 	sizeof(rlm_always_t),		/* config size */
 	module_config,			/* configuration */
 	mod_instantiate,		/* instantiation */
