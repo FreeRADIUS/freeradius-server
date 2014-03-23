@@ -6,20 +6,25 @@ FreeRADIUS 3.0.3 Fri 21 Mar 2014 08:30:00 EDT urgency=medium
 	* rlm_ldap now supports older style generic attributes.
 	* dynamic expansions (e.g. "%{expr:1 + 2}" are now parsed
 	  when the server starts.  Syntax errors in the strings
-	  will be caught, and the server will refuse to start.
+	  will be caught, and a descriptive error will be printed.
 	* dynamic expansions are cached after being parsed.  They are
 	  no longer re-parsed at run-time for every request.
 	* Added the %{rest:} expansion to rlm_rest, which will send
 	  a GET request to the URL passed as the format string.
 	  Any body text will be written to the expansion buffer.
 	* rlm_rest now available as a debian package.
-	
+	* When an 'if' condition statically evaluates to true/false,
+	  unlang does more static optimization.  For examples, see
+	  src/tests/keywords/if-skip
+	* More modules are marked as safe for '-C', which lets the
+	  dynamic expansion checks work in more situations.
+
 	Bug fixes
 	* Fix xlat expression %{attribute[n]} so that it actually
-	  returns the n'th attribute instead of the first.
+	  returns the n'th attribute instead of the first one.
 	* Don't parse string on RHS of update {} when using unary
-	  operators (!*).
-	* Check for more optional functions in json-c so we can 
+	  operators (!*).  The RHS should always be ignored.
+	* Check for more optional functions in json-c so we can
 	  Build with libjson0, which is the name of the json-c package
 	  on debian/ubuntu.
 
