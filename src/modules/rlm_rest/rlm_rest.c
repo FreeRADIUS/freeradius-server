@@ -64,7 +64,7 @@ static CONF_PARSER tls_config[] = {
 static const CONF_PARSER section_config[] = {
 	{ "uri", PW_TYPE_STRING_PTR, offsetof(rlm_rest_section_t, uri), NULL, ""  },
 	{ "method", PW_TYPE_STRING_PTR, offsetof(rlm_rest_section_t, method_str), NULL, "GET" },
-	{ "body", PW_TYPE_STRING_PTR, offsetof(rlm_rest_section_t, body_str), NULL, "post" },
+	{ "body", PW_TYPE_STRING_PTR, offsetof(rlm_rest_section_t, body_str), NULL, "none" },
 
 	/* User authentication */
 	{ "auth", PW_TYPE_STRING_PTR, offsetof(rlm_rest_section_t, auth_str), NULL, "none" },
