@@ -1835,7 +1835,7 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 
 	case HTTP_METHOD_CUSTOM :
 		SET_OPTION(CURLOPT_HTTPGET, val);
-		SET_OPTION(CURLOPT_CUSTOMREQUEST, section->method);
+		SET_OPTION(CURLOPT_CUSTOMREQUEST, section->method_str);
 		break;
 
 	default:
