@@ -32,6 +32,8 @@ typedef struct fr_connection fr_connection_t;
 
 static int fr_connection_pool_check(fr_connection_pool_t *pool);
 
+extern bool check_config;
+
 /** An individual connection within the connection pool
  *
  * Defines connection counters, timestamps, and holds a pointer to the
@@ -716,6 +718,16 @@ fr_connection_pool_t *fr_connection_pool_init(CONF_SECTION *parent,
 
 	if ((pool->idle_timeout > 0) && (pool->cleanup_interval > pool->idle_timeout)) {
 		pool->cleanup_interval = pool->idle_timeout;
+	}
+
+	/*
+	 *	Don't open any connections.  Instead, force the limits
+	 *	to only 1 connection.
+	 *
+	 */
+	if (check_config) {
+		pool->start = pool->min = pool->max = 1;
+		return pool;
 	}
 
 	/*
