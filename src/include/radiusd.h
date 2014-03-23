@@ -507,7 +507,6 @@ extern log_debug_t	debug_flag;
 extern char const	*radacct_dir;
 extern char const	*radlog_dir;
 extern char const	*radlib_dir;
-extern char const	*radius_dir;
 extern char const	*radius_libdir;
 extern uint32_t		expiration_seconds;
 extern bool		log_stripped_names;
@@ -697,6 +696,8 @@ extern		void thread_pool_queue_stats(int array[RAD_LISTEN_MAX], int pps[2]);
 /* Define a global config structure */
 extern struct main_config_t mainconfig;
 
+void set_radius_dir(char const *path);
+char const *get_radius_dir(void);
 int read_mainconfig(int reload);
 int free_mainconfig(void);
 void hup_mainconfig(void);
