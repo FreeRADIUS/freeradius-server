@@ -170,7 +170,7 @@ typedef enum {
 /*
  *	Outbound data context (passed to CURLOPT_READFUNCTION as CURLOPT_READDATA)
  */
-typedef struct rlm_rest_read_t {
+typedef struct rlm_rest_request_t {
 	rlm_rest_t 	*instance;
 	REQUEST 	*request;
 	read_state_t 	state;
@@ -178,13 +178,13 @@ typedef struct rlm_rest_read_t {
 	vp_cursor_t 	cursor;
 
 	unsigned int	chunk;
-} rlm_rest_read_t;
+} rlm_rest_request_t;
 
 /*
  *	Curl inbound data context (passed to CURLOPT_WRITEFUNCTION and
  *	CURLOPT_HEADERFUNCTION as CURLOPT_WRITEDATA and CURLOPT_HEADERDATA)
  */
-typedef struct rlm_rest_write_t {
+typedef struct rlm_rest_response_t {
 	rlm_rest_t	 *instance;
 	REQUEST		 *request;
 	write_state_t	 state;
@@ -195,7 +195,7 @@ typedef struct rlm_rest_write_t {
 
 	int		 code;		/* HTTP Status Code */
 	http_body_type_t type;		/* HTTP Content Type */
-} rlm_rest_write_t;
+} rlm_rest_response_t;
 
 /*
  *	Curl context data
@@ -203,8 +203,8 @@ typedef struct rlm_rest_write_t {
 typedef struct rlm_rest_curl_context_t {
 	struct curl_slist	*headers;
 	char			*body;
-	rlm_rest_read_t		read;
-	rlm_rest_write_t	write;
+	rlm_rest_request_t	request;
+	rlm_rest_response_t	response;
 } rlm_rest_curl_context_t;
 
 /*
@@ -248,18 +248,18 @@ int rest_request_perform(rlm_rest_t *instance,
 			 rlm_rest_section_t *section, REQUEST *request,
 			 void *handle);
 
-int rest_request_decode(rlm_rest_t *instance,
+int rest_response_decode(rlm_rest_t *instance,
 			UNUSED rlm_rest_section_t *section, REQUEST *request,
 			void *handle);
 
 void rest_request_cleanup(rlm_rest_t *instance, rlm_rest_section_t *section,
 			  void *handle);
 
-#define rest_get_handle_code(handle)(((rlm_rest_curl_context_t*)((rlm_rest_handle_t*)handle)->ctx)->write.code)
+#define rest_get_handle_code(handle)(((rlm_rest_curl_context_t*)((rlm_rest_handle_t*)handle)->ctx)->response.code)
 
-#define rest_get_handle_type(handle)(((rlm_rest_curl_context_t*)((rlm_rest_handle_t*)handle)->ctx)->write.type)
+#define rest_get_handle_type(handle)(((rlm_rest_curl_context_t*)((rlm_rest_handle_t*)handle)->ctx)->response.type)
 
 /*
  *	Helper functions
  */
-ssize_t rest_uri_build(char **out, rlm_rest_t *instance, rlm_rest_section_t *section, REQUEST *request);
+ssize_t rest_uri_build(char **out, rlm_rest_t *instance, REQUEST *request, char const *uri);

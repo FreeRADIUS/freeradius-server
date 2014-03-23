@@ -113,7 +113,7 @@ const unsigned long http_curl_auth[HTTP_AUTH_NUM_ENTRIES] = {
 /** Conversion table for method config values.
  *
  * HTTP verb strings for http_method_t enum values. Used by libcurl in the
- * status line of the outgoing HTTP header, by rest_write_header for decoding
+ * status line of the outgoing HTTP header, by rest_response_header for decoding
  * incoming HTTP responses, and by the configuration parser.
  *
  * @see http_method_t
@@ -171,7 +171,7 @@ const FR_NAME_NUMBER http_auth_table[] = {
 
 /** Conversion table for "Content-Type" header values.
  *
- * Used by rest_write_header for parsing incoming headers.
+ * Used by rest_response_header for parsing incoming headers.
  *
  * Values we expect to see in the 'Content-Type:' header of the incoming
  * response.
@@ -328,7 +328,7 @@ void *mod_conn_create(void *instance)
 	ctx = talloc_zero(randle, rlm_rest_curl_context_t);
 
 	ctx->headers = NULL; /* CURL needs this to be NULL */
-	ctx->read.instance = inst;
+	ctx->request.instance = inst;
 
 	randle->ctx = ctx;
 	randle->handle = candle;
@@ -433,15 +433,15 @@ int mod_conn_delete(UNUSED void *instance, void *handle)
  * @param[out] out Char buffer to write encoded data to.
  * @param[in] size Multiply by nmemb to get the length of ptr.
  * @param[in] nmemb Multiply by size to get the length of ptr.
- * @param[in] userdata rlm_rest_read_t to keep encoding state between calls.
+ * @param[in] userdata rlm_rest_request_t to keep encoding state between calls.
  * @return length of data (including NULL) written to ptr, or 0 if no more
  *	data to write.
  */
 static size_t rest_encode_post(void *out, size_t size, size_t nmemb, void *userdata)
 {
-	rlm_rest_read_t	*ctx = userdata;
-	REQUEST		*request = ctx->request; /* Used by RDEBUG */
-	VALUE_PAIR	*vp;
+	rlm_rest_request_t	*ctx = userdata;
+	REQUEST			*request = ctx->request; /* Used by RDEBUG */
+	VALUE_PAIR		*vp;
 
 	char *p = out;		/* Position in buffer */
 	char *encoded = p;	/* Position in buffer of last fully encoded attribute or value */
@@ -607,13 +607,13 @@ no_space:
  * @param[out] out Char buffer to write encoded data to.
  * @param[in] size Multiply by nmemb to get the length of ptr.
  * @param[in] nmemb Multiply by size to get the length of ptr.
- * @param[in] userdata rlm_rest_read_t to keep encoding state between calls.
+ * @param[in] userdata rlm_rest_request_t to keep encoding state between calls.
  * @return length of data (including NULL) written to ptr, or 0 if no more
  *	data to write.
  */
 static size_t rest_encode_json(void *out, size_t size, size_t nmemb, void *userdata)
 {
-	rlm_rest_read_t	*ctx = userdata;
+	rlm_rest_request_t	*ctx = userdata;
 	REQUEST		*request = ctx->request; /* Used by RDEBUG */
 	VALUE_PAIR	*vp, *next;
 
@@ -780,12 +780,12 @@ no_space:
  *	be written.
  * @param[in] func Stream function.
  * @param[in] limit Maximum buffer size to alloc.
- * @param[in] userdata rlm_rest_read_t to keep encoding state between calls to
+ * @param[in] userdata rlm_rest_request_t to keep encoding state between calls to
  *	stream function.
  * @return the length of the data written to the buffer (excluding NULL) or -1
  *	if alloc >= limit.
  */
-static ssize_t rest_read_wrapper(char **buffer, rest_read_t func, size_t limit, void *userdata)
+static ssize_t rest_request_encode_wrapper(char **buffer, rest_read_t func, size_t limit, void *userdata)
 {
 	char *previous = NULL;
 	char *current;
@@ -818,16 +818,16 @@ static ssize_t rest_read_wrapper(char **buffer, rest_read_t func, size_t limit, 
 	return -1;
 }
 
-/** (Re-)Initialises the data in a rlm_rest_read_t.
+/** (Re-)Initialises the data in a rlm_rest_request_t.
  *
- * Resets the values of a rlm_rest_read_t to their defaults.
+ * Resets the values of a rlm_rest_request_t to their defaults.
  *
  * @param[in] request Current request.
  * @param[in] ctx to initialise.
  * @param[in] sort If true VALUE_PAIRs will be sorted within the VALUE_PAIR
  *	pointer array.
  */
-static void rest_read_ctx_init(REQUEST *request, rlm_rest_read_t *ctx, bool sort)
+static void rest_request_init(REQUEST *request, rlm_rest_request_t *ctx, bool sort)
 {
 	/*
 	 * 	Setup stream read data
@@ -1366,12 +1366,12 @@ static int rest_decode_json(rlm_rest_t *instance, UNUSED rlm_rest_section_t *sec
  * @param[in] in Char buffer where inbound header data is written.
  * @param[in] size Multiply by nmemb to get the length of ptr.
  * @param[in] nmemb Multiply by size to get the length of ptr.
- * @param[in] userdata rlm_rest_write_t to keep parsing state between calls.
+ * @param[in] userdata rlm_rest_response_t to keep parsing state between calls.
  * @return Length of data processed, or 0 on error.
  */
-static size_t rest_write_header(void *in, size_t size, size_t nmemb, void *userdata)
+static size_t rest_response_header(void *in, size_t size, size_t nmemb, void *userdata)
 {
-	rlm_rest_write_t *ctx = userdata;
+	rlm_rest_response_t *ctx = userdata;
 	REQUEST *request = ctx->request; /* Used by RDEBUG */
 
 	char const *p = in, *q;
@@ -1544,12 +1544,12 @@ malformed:
  * @param[in] ptr Char buffer where inbound header data is written
  * @param[in] size Multiply by nmemb to get the length of ptr.
  * @param[in] nmemb Multiply by size to get the length of ptr.
- * @param[in] userdata rlm_rest_write_t to keep parsing state between calls.
+ * @param[in] userdata rlm_rest_response_t to keep parsing state between calls.
  * @return length of data processed, or 0 on error.
  */
-static size_t rest_write_body(void *ptr, size_t size, size_t nmemb, void *userdata)
+static size_t rest_response_body(void *ptr, size_t size, size_t nmemb, void *userdata)
 {
-	rlm_rest_write_t *ctx = userdata;
+	rlm_rest_response_t *ctx = userdata;
 	REQUEST *request = ctx->request; /* Used by RDEBUG */
 
 	char const *p = ptr, *q;
@@ -1615,20 +1615,20 @@ static size_t rest_write_body(void *ptr, size_t size, size_t nmemb, void *userda
 	return t;
 }
 
-/** (Re-)Initialises the data in a rlm_rest_write_t.
+/** (Re-)Initialises the data in a rlm_rest_response_t.
  *
- * This resets the values of the a rlm_rest_write_t to their defaults.
+ * This resets the values of the a rlm_rest_response_t to their defaults.
  * Must be called between encoding sessions.
  *
- * @see rest_write_body
- * @see rest_write_header
+ * @see rest_response_body
+ * @see rest_response_header
  *
  * @param[in] request Current request.
  * @param[in] ctx data to initialise.
  * @param[in] type Default http_body_type to use when decoding raw data, may be
- * overwritten by rest_write_header.
+ * overwritten by rest_response_header.
  */
-static void rest_write_ctx_init(REQUEST *request, rlm_rest_write_t *ctx, http_body_type_t type)
+static void rest_response_init(REQUEST *request, rlm_rest_response_t *ctx, http_body_type_t type)
 {
 	ctx->request = request;
 	ctx->type = type;
@@ -1642,7 +1642,7 @@ static void rest_write_ctx_init(REQUEST *request, rlm_rest_write_t *ctx, http_bo
  *
  * @param[in] ctx data to be freed.
  */
-static void rest_write_free(rlm_rest_write_t *ctx)
+static void rest_response_free(rlm_rest_response_t *ctx)
 {
 	if (ctx->buffer != NULL) {
 		free(ctx->buffer);
@@ -1688,7 +1688,7 @@ static int rest_request_config_body(UNUSED rlm_rest_t *instance, rlm_rest_sectio
 	 *  multiple parts.
 	 */
 	if (section->chunk > 0) {
-		SET_OPTION(CURLOPT_READDATA, &ctx->read);
+		SET_OPTION(CURLOPT_READDATA, &ctx->request);
 		SET_OPTION(CURLOPT_READFUNCTION, func);
 
 		return 0;
@@ -1698,7 +1698,7 @@ static int rest_request_config_body(UNUSED rlm_rest_t *instance, rlm_rest_sectio
 	 *  If were not doing chunked encoding then we read the entire
 	 *  body into a buffer, and send it in one go.
 	 */
-	len = rest_read_wrapper(&ctx->body, func, REST_BODY_MAX_LEN, &ctx->read);
+	len = rest_request_encode_wrapper(&ctx->body, func, REST_BODY_MAX_LEN, &ctx->request);
 	if (len <= 0) {
 		REDEBUG("Failed creating HTTP body content");
 		return -1;
@@ -1912,12 +1912,12 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 	/*
 	 *	Tell CURL how to get HTTP body content, and how to process incoming data.
 	 */
-	rest_write_ctx_init(request, &ctx->write, type);
+	rest_response_init(request, &ctx->response, type);
 
-	SET_OPTION(CURLOPT_HEADERFUNCTION, rest_write_header);
-	SET_OPTION(CURLOPT_HEADERDATA, &ctx->write);
-	SET_OPTION(CURLOPT_WRITEFUNCTION, rest_write_body);
-	SET_OPTION(CURLOPT_WRITEDATA, &ctx->write);
+	SET_OPTION(CURLOPT_HEADERFUNCTION, rest_response_header);
+	SET_OPTION(CURLOPT_HEADERDATA, &ctx->response);
+	SET_OPTION(CURLOPT_WRITEFUNCTION, rest_response_body);
+	SET_OPTION(CURLOPT_WRITEDATA, &ctx->response);
 
 	switch (method) {
 	case HTTP_METHOD_GET :
@@ -1928,7 +1928,7 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 	case HTTP_METHOD_PUT :
 	case HTTP_METHOD_CUSTOM :
 		if (section->chunk > 0) {
-			ctx->read.chunk = section->chunk;
+			ctx->request.chunk = section->chunk;
 
 			ctx->headers = curl_slist_append(ctx->headers, "Expect:");
 			if (!ctx->headers) goto error_header;
@@ -1948,7 +1948,7 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 
 #ifdef HAVE_JSON
 		case HTTP_BODY_JSON:
-			rest_read_ctx_init(request, &ctx->read, 1);
+			rest_request_init(request, &ctx->request, 1);
 
 			if (rest_request_config_body(instance, section, request, handle,
 						     rest_encode_json) < 0) {
@@ -1959,7 +1959,7 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 #endif
 
 		case HTTP_BODY_POST:
-			rest_read_ctx_init(request, &ctx->read, 0);
+			rest_request_init(request, &ctx->request, 0);
 
 			if (rest_request_config_body(instance, section, request, handle,
 						     rest_encode_post) < 0) {
@@ -2020,7 +2020,7 @@ int rest_request_perform(UNUSED rlm_rest_t *instance, UNUSED rlm_rest_section_t 
 
 /** Sends the response to the correct decode function.
  *
- * Uses the Content-Type information written in rest_write_header to
+ * Uses the Content-Type information written in rest_response_header to
  * determine the correct decode function to use. The decode function will
  * then convert the raw received data into VALUE_PAIRs.
  *
@@ -2030,32 +2030,32 @@ int rest_request_perform(UNUSED rlm_rest_t *instance, UNUSED rlm_rest_section_t 
  * @param[in] handle to use.
  * @return 0 on success or -1 on error.
  */
-int rest_request_decode(rlm_rest_t *instance, UNUSED rlm_rest_section_t *section,
-			REQUEST *request, void *handle)
+int rest_response_decode(rlm_rest_t *instance, UNUSED rlm_rest_section_t *section,
+			 REQUEST *request, void *handle)
 {
 	rlm_rest_handle_t	*randle = handle;
 	rlm_rest_curl_context_t	*ctx = randle->ctx;
 
 	int ret = -1;	/* -Wsometimes-uninitialized */
 
-	if (!ctx->write.buffer) {
+	if (!ctx->response.buffer) {
 		RDEBUG2("Skipping attribute processing, no valid body data received");
 		return ret;
 	}
 
 	RDEBUG3("Processing body");
 
-	switch (ctx->write.type) {
+	switch (ctx->response.type) {
 	case HTTP_BODY_NONE:
 		return 0;
 
 	case HTTP_BODY_POST:
-		ret = rest_decode_post(instance, section, request, handle, ctx->write.buffer, ctx->write.used);
+		ret = rest_decode_post(instance, section, request, handle, ctx->response.buffer, ctx->response.used);
 		break;
 
 #ifdef HAVE_JSON
 	case HTTP_BODY_JSON:
-		ret = rest_decode_json(instance, section, request, handle, ctx->write.buffer, ctx->write.used);
+		ret = rest_decode_json(instance, section, request, handle, ctx->response.buffer, ctx->response.used);
 		break;
 #endif
 
@@ -2076,7 +2076,7 @@ int rest_request_decode(rlm_rest_t *instance, UNUSED rlm_rest_section_t *section
  * Resets all options associated with a CURL handle, and frees any headers
  * associated with it.
  *
- * Calls rest_read_ctx_free and rest_write_free to free any memory used by
+ * Calls rest_read_ctx_free and rest_response_free to free any memory used by
  * context data.
  *
  * @param[in] instance configuration data.
@@ -2110,7 +2110,7 @@ void rest_request_cleanup(UNUSED rlm_rest_t *instance, UNUSED rlm_rest_section_t
   	/*
    	 *  Free other context info
    	 */
-  	rest_write_free(&ctx->write);
+  	rest_response_free(&ctx->response);
 }
 
 /** URL encodes a string.
@@ -2143,12 +2143,12 @@ static size_t rest_uri_escape(UNUSED REQUEST *request, char *out, size_t outlen,
  *
  * @param[out] out Where to write the pointer to the new buffer containing the escaped URI.
  * @param[in] instance configuration data.
- * @param[in] section configuration data.
+ * @param[in] uri configuration data.
  * @param[in] request Current request
  * @return length of data written to buffer (excluding NULL) or < 0 if an error
  *	occurred.
  */
-ssize_t rest_uri_build(char **out, UNUSED rlm_rest_t *instance, rlm_rest_section_t *section, REQUEST *request)
+ssize_t rest_uri_build(char **out, UNUSED rlm_rest_t *instance, REQUEST *request, char const *uri)
 {
 	char const *p;
 	char *path_exp = NULL;
@@ -2158,7 +2158,7 @@ ssize_t rest_uri_build(char **out, UNUSED rlm_rest_t *instance, rlm_rest_section
 
 	ssize_t len, outlen;
 
-	p = section->uri;
+	p = uri;
 
 	/*
 	 *  All URLs must contain at least <scheme>://<server>/
@@ -2174,15 +2174,15 @@ ssize_t rest_uri_build(char **out, UNUSED rlm_rest_t *instance, rlm_rest_section
 		goto malformed;
 	}
 
-	len = (p - section->uri);
+	len = (p - uri);
 
 	/*
 	 *  Allocate a temporary buffer to hold the first part of the URI
 	 */
 	scheme = talloc_array(request, char, len + 1);
-	strlcpy(scheme, section->uri, len + 1);
+	strlcpy(scheme, uri, len + 1);
 
-	path = (section->uri + len);
+	path = (uri + len);
 
 	len = radius_axlat(out, request, scheme, NULL, NULL);
 	talloc_free(scheme);

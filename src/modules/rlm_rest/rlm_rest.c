@@ -102,7 +102,7 @@ static int rlm_rest_perform(rlm_rest_t *instance, rlm_rest_section_t *section, v
 	 *  Build xlat'd URI, this allows REST servers to be specified by
 	 *  request attributes.
 	 */
-	uri_len = rest_uri_build(&uri, instance, section, request);
+	uri_len = rest_uri_build(&uri, instance, request, section->uri);
 	if (uri_len <= 0) return -1;
 
 	RDEBUG("Sending HTTP %s to \"%s\"", fr_int2str(http_method_table, section->method, NULL), uri);
@@ -130,6 +130,223 @@ static void rlm_rest_cleanup(rlm_rest_t *instance, rlm_rest_section_t *section, 
 {
 	rest_request_cleanup(instance, section, handle);
 };
+
+/*
+ *	Find the named user in this modules database.  Create the set
+ *	of attribute-value pairs to check and reply with for this user
+ *	from the database. The authentication code only needs to check
+ *	the password, the rest is done here.
+ */
+static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
+{
+	rlm_rest_t *inst = instance;
+	rlm_rest_section_t *section = &inst->authorize;
+
+	void *handle;
+	int hcode;
+	int rcode = RLM_MODULE_OK;
+	int ret;
+
+	handle = fr_connection_get(inst->conn_pool);
+	if (!handle) return RLM_MODULE_FAIL;
+
+	ret = rlm_rest_perform(instance, section, handle, request, NULL, NULL);
+	if (ret < 0) {
+		rcode = RLM_MODULE_FAIL;
+		goto end;
+	}
+
+	hcode = rest_get_handle_code(handle);
+	switch (hcode) {
+	case 404:
+	case 410:
+		rcode = RLM_MODULE_NOTFOUND;
+		break;
+
+	case 403:
+		rcode = RLM_MODULE_USERLOCK;
+		break;
+
+	case 401:
+		/*
+		 *	Attempt to parse content if there was any.
+		 */
+		ret = rest_response_decode(inst, section, request, handle);
+		if (ret < 0) {
+			rcode = RLM_MODULE_FAIL;
+			break;
+		}
+
+		rcode = RLM_MODULE_REJECT;
+		break;
+
+	case 204:
+		rcode = RLM_MODULE_OK;
+		break;
+
+	default:
+		/*
+		 *	Attempt to parse content if there was any.
+		 */
+		if ((hcode >= 200) && (hcode < 300)) {
+			ret = rest_response_decode(inst, section, request, handle);
+			if (ret < 0) 	   rcode = RLM_MODULE_FAIL;
+			else if (ret == 0) rcode = RLM_MODULE_OK;
+			else		   rcode = RLM_MODULE_UPDATED;
+			break;
+		} else if (hcode < 500) {
+			rcode = RLM_MODULE_INVALID;
+		} else {
+			rcode = RLM_MODULE_FAIL;
+		}
+	}
+
+	end:
+
+	rlm_rest_cleanup(instance, section, handle);
+
+	fr_connection_release(inst->conn_pool, handle);
+
+	return rcode;
+}
+
+/*
+ *	Authenticate the user with the given password.
+ */
+static rlm_rcode_t mod_authenticate(void *instance, UNUSED REQUEST *request)
+{
+	rlm_rest_t *inst = instance;
+	rlm_rest_section_t *section = &inst->authenticate;
+
+	void *handle;
+	int hcode;
+	int rcode = RLM_MODULE_OK;
+	int ret;
+
+	VALUE_PAIR const *username;
+	VALUE_PAIR const *password;
+
+	username = pairfind(request->packet->vps, PW_USER_NAME, 0, TAG_ANY);
+	if (!username) {
+		REDEBUG("Can't perform authentication, 'User-Name' attribute not found in the request");
+
+		return RLM_MODULE_INVALID;
+	}
+
+	password = pairfind(request->config_items, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY);
+	if (!password) {
+		REDEBUG("Can't perform authentication, 'Cleartext-Password' attribute not found in the control list");
+
+		return RLM_MODULE_INVALID;
+	}
+
+	handle = fr_connection_get(inst->conn_pool);
+	if (!handle) return RLM_MODULE_FAIL;
+
+	ret = rlm_rest_perform(instance, section, handle, request, username->vp_strvalue, password->vp_strvalue);
+	if (ret < 0) {
+		rcode = RLM_MODULE_FAIL;
+		goto end;
+	}
+
+	hcode = rest_get_handle_code(handle);
+	switch (hcode) {
+	case 404:
+	case 410:
+		rcode = RLM_MODULE_NOTFOUND;
+		break;
+
+	case 403:
+		rcode = RLM_MODULE_USERLOCK;
+		break;
+
+	case 401:
+		/*
+		 *	Attempt to parse content if there was any.
+		 */
+		ret = rest_response_decode(inst, section, request, handle);
+		if (ret < 0) {
+			rcode = RLM_MODULE_FAIL;
+			break;
+		}
+
+		rcode = RLM_MODULE_REJECT;
+		break;
+
+	case 204:
+		rcode = RLM_MODULE_OK;
+		break;
+
+	default:
+		/*
+		 *	Attempt to parse content if there was any.
+		 */
+		if ((hcode >= 200) && (hcode < 300)) {
+			ret = rest_response_decode(inst, section, request, handle);
+			if (ret < 0) 	   rcode = RLM_MODULE_FAIL;
+			else if (ret == 0) rcode = RLM_MODULE_OK;
+			else		   rcode = RLM_MODULE_UPDATED;
+			break;
+		} else if (hcode < 500) {
+			rcode = RLM_MODULE_INVALID;
+		} else {
+			rcode = RLM_MODULE_FAIL;
+		}
+	}
+
+	end:
+
+	rlm_rest_cleanup(instance, section, handle);
+
+	fr_connection_release(inst->conn_pool, handle);
+
+	return rcode;
+}
+
+/*
+ *	Write accounting information to this modules database.
+ */
+static rlm_rcode_t mod_accounting(void *instance, UNUSED REQUEST *request)
+{
+	rlm_rest_t *inst = instance;
+	rlm_rest_section_t *section = &inst->accounting;
+
+	void *handle;
+	int hcode;
+	int rcode = RLM_MODULE_OK;
+	int ret;
+
+	handle = fr_connection_get(inst->conn_pool);
+	if (!handle) return RLM_MODULE_FAIL;
+
+	ret = rlm_rest_perform(inst, section, handle, request, NULL, NULL);
+	if (ret < 0) {
+		rcode = RLM_MODULE_FAIL;
+		goto end;
+	}
+
+	hcode = rest_get_handle_code(handle);
+	if (hcode >= 500) {
+		rcode = RLM_MODULE_FAIL;
+	} else if (hcode == 204) {
+		rcode = RLM_MODULE_OK;
+	} else if ((hcode >= 200) && (hcode < 300)) {
+		ret = rest_response_decode(inst, section, request, handle);
+		if (ret < 0) 	   rcode = RLM_MODULE_FAIL;
+		else if (ret == 0) rcode = RLM_MODULE_OK;
+		else		   rcode = RLM_MODULE_UPDATED;
+	} else {
+		rcode = RLM_MODULE_INVALID;
+	}
+
+	end:
+
+	rlm_rest_cleanup(inst, section, handle);
+
+	fr_connection_release(inst->conn_pool, handle);
+
+	return rcode;
+}
 
 static int parse_sub_section(CONF_SECTION *parent, rlm_rest_section_t *config, rlm_components_t comp)
 {
@@ -239,223 +456,6 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	}
 
 	return 0;
-}
-
-/*
- *	Find the named user in this modules database.  Create the set
- *	of attribute-value pairs to check and reply with for this user
- *	from the database. The authentication code only needs to check
- *	the password, the rest is done here.
- */
-static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
-{
-	rlm_rest_t *inst = instance;
-	rlm_rest_section_t *section = &inst->authorize;
-
-	void *handle;
-	int hcode;
-	int rcode = RLM_MODULE_OK;
-	int ret;
-
-	handle = fr_connection_get(inst->conn_pool);
-	if (!handle) return RLM_MODULE_FAIL;
-
-	ret = rlm_rest_perform(instance, section, handle, request, NULL, NULL);
-	if (ret < 0) {
-		rcode = RLM_MODULE_FAIL;
-		goto end;
-	}
-
-	hcode = rest_get_handle_code(handle);
-	switch (hcode) {
-	case 404:
-	case 410:
-		rcode = RLM_MODULE_NOTFOUND;
-		break;
-
-	case 403:
-		rcode = RLM_MODULE_USERLOCK;
-		break;
-
-	case 401:
-		/*
-		 *	Attempt to parse content if there was any.
-		 */
-		ret = rest_request_decode(inst, section, request, handle);
-		if (ret < 0) {
-			rcode = RLM_MODULE_FAIL;
-			break;
-		}
-
-		rcode = RLM_MODULE_REJECT;
-		break;
-
-	case 204:
-		rcode = RLM_MODULE_OK;
-		break;
-
-	default:
-		/*
-		 *	Attempt to parse content if there was any.
-		 */
-		if ((hcode >= 200) && (hcode < 300)) {
-			ret = rest_request_decode(inst, section, request, handle);
-			if (ret < 0) 	   rcode = RLM_MODULE_FAIL;
-			else if (ret == 0) rcode = RLM_MODULE_OK;
-			else		   rcode = RLM_MODULE_UPDATED;
-			break;
-		} else if (hcode < 500) {
-			rcode = RLM_MODULE_INVALID;
-		} else {
-			rcode = RLM_MODULE_FAIL;
-		}
-	}
-
-	end:
-
-	rlm_rest_cleanup(instance, section, handle);
-
-	fr_connection_release(inst->conn_pool, handle);
-
-	return rcode;
-}
-
-/*
- *	Authenticate the user with the given password.
- */
-static rlm_rcode_t mod_authenticate(void *instance, UNUSED REQUEST *request)
-{
-	rlm_rest_t *inst = instance;
-	rlm_rest_section_t *section = &inst->authenticate;
-
-	void *handle;
-	int hcode;
-	int rcode = RLM_MODULE_OK;
-	int ret;
-
-	VALUE_PAIR const *username;
-	VALUE_PAIR const *password;
-
-	username = pairfind(request->packet->vps, PW_USER_NAME, 0, TAG_ANY);
-	if (!username) {
-		REDEBUG("Can't perform authentication, 'User-Name' attribute not found in the request");
-
-		return RLM_MODULE_INVALID;
-	}
-
-	password = pairfind(request->config_items, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY);
-	if (!password) {
-		REDEBUG("Can't perform authentication, 'Cleartext-Password' attribute not found in the control list");
-
-		return RLM_MODULE_INVALID;
-	}
-
-	handle = fr_connection_get(inst->conn_pool);
-	if (!handle) return RLM_MODULE_FAIL;
-
-	ret = rlm_rest_perform(instance, section, handle, request, username->vp_strvalue, password->vp_strvalue);
-	if (ret < 0) {
-		rcode = RLM_MODULE_FAIL;
-		goto end;
-	}
-
-	hcode = rest_get_handle_code(handle);
-	switch (hcode) {
-	case 404:
-	case 410:
-		rcode = RLM_MODULE_NOTFOUND;
-		break;
-
-	case 403:
-		rcode = RLM_MODULE_USERLOCK;
-		break;
-
-	case 401:
-		/*
-		 *	Attempt to parse content if there was any.
-		 */
-		ret = rest_request_decode(inst, section, request, handle);
-		if (ret < 0) {
-			rcode = RLM_MODULE_FAIL;
-			break;
-		}
-
-		rcode = RLM_MODULE_REJECT;
-		break;
-
-	case 204:
-		rcode = RLM_MODULE_OK;
-		break;
-
-	default:
-		/*
-		 *	Attempt to parse content if there was any.
-		 */
-		if ((hcode >= 200) && (hcode < 300)) {
-			ret = rest_request_decode(inst, section, request, handle);
-			if (ret < 0) 	   rcode = RLM_MODULE_FAIL;
-			else if (ret == 0) rcode = RLM_MODULE_OK;
-			else		   rcode = RLM_MODULE_UPDATED;
-			break;
-		} else if (hcode < 500) {
-			rcode = RLM_MODULE_INVALID;
-		} else {
-			rcode = RLM_MODULE_FAIL;
-		}
-	}
-
-	end:
-
-	rlm_rest_cleanup(instance, section, handle);
-
-	fr_connection_release(inst->conn_pool, handle);
-
-	return rcode;
-}
-
-/*
- *	Write accounting information to this modules database.
- */
-static rlm_rcode_t mod_accounting(void *instance, UNUSED REQUEST *request)
-{
-	rlm_rest_t *inst = instance;
-	rlm_rest_section_t *section = &inst->accounting;
-
-	void *handle;
-	int hcode;
-	int rcode = RLM_MODULE_OK;
-	int ret;
-
-	handle = fr_connection_get(inst->conn_pool);
-	if (!handle) return RLM_MODULE_FAIL;
-
-	ret = rlm_rest_perform(inst, section, handle, request, NULL, NULL);
-	if (ret < 0) {
-		rcode = RLM_MODULE_FAIL;
-		goto end;
-	}
-
-	hcode = rest_get_handle_code(handle);
-	if (hcode >= 500) {
-		rcode = RLM_MODULE_FAIL;
-	} else if (hcode == 204) {
-		rcode = RLM_MODULE_OK;
-	} else if ((hcode >= 200) && (hcode < 300)) {
-		ret = rest_request_decode(inst, section, request, handle);
-		if (ret < 0) 	   rcode = RLM_MODULE_FAIL;
-		else if (ret == 0) rcode = RLM_MODULE_OK;
-		else		   rcode = RLM_MODULE_UPDATED;
-	} else {
-		rcode = RLM_MODULE_INVALID;
-	}
-
-	end:
-
-	rlm_rest_cleanup(inst, section, handle);
-
-	fr_connection_release(inst->conn_pool, handle);
-
-	return rcode;
 }
 
 /*
