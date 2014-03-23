@@ -43,6 +43,7 @@ before_install:
       libhiredis-dev
       libidn11-dev
       libiodbc2-dev libiodbc2
+      libjson0-dev
       libkrb5-dev
       libldap2-dev
       libpam0g-dev
