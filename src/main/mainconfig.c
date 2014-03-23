@@ -737,7 +737,7 @@ void set_radius_dir(char const *path)
 	if (radius_dir) {
 		char *p;
 
-		memcpy(&p, &radius_dir, sizeof(*p));
+		memcpy(&p, &radius_dir, sizeof(p));
 		talloc_free(p);
 		radius_dir = NULL;
 	}
