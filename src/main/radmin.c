@@ -66,7 +66,6 @@ RCSID("$Id$")
 /*
  *	For configuration file stuff.
  */
-char const *radius_dir = RADDBDIR;
 char const *progname = "radmin";
 char const *radmin_version = "radmin version " RADIUSD_VERSION_STRING
 #ifdef RADIUSD_VERSION_COMMIT
@@ -357,20 +356,23 @@ static ssize_t run_command(int sockfd, char const *command,
 
 int main(int argc, char **argv)
 {
-	int argval;
-	bool quiet = false;
-	bool done_license = false;
-	int sockfd;
-	uint32_t magic, needed;
-	char *line = NULL;
-	ssize_t len, size;
-	char const *file = NULL;
-	char const *name = "radiusd";
-	char *p, buffer[65536];
-	char const *input_file = NULL;
-	FILE *inputfp = stdin;
-	char const *output_file = NULL;
-	char const *server = NULL;
+	int		argval;
+	bool		quiet = false;
+	bool		done_license = false;
+	int		sockfd;
+	uint32_t	magic, needed;
+	char		*line = NULL;
+	ssize_t		len, size;
+	char const	*file = NULL;
+	char const	*name = "radiusd";
+	char		*p, buffer[65536];
+	char const	*input_file = NULL;
+	FILE		*inputfp = stdin;
+	char const	*output_file = NULL;
+	char const	*server = NULL;
+
+	char const	*radius_dir = RADIUS_DIR;
+	char const	*dict_dir = DICTDIR;
 
 	char *commands[MAX_COMMANDS];
 	int num_commands = -1;
@@ -383,10 +385,11 @@ int main(int argc, char **argv)
 
 	outputfp = stdout;	/* stdout is not a constant value... */
 
-	if ((progname = strrchr(argv[0], FR_DIR_SEP)) == NULL)
+	if ((progname = strrchr(argv[0], FR_DIR_SEP)) == NULL) {
 		progname = argv[0];
-	else
+	} else {
 		progname++;
+	}
 
 	while ((argval = getopt(argc, argv, "d:hi:e:Ef:n:o:qs:S")) != EOF) {
 		switch(argval) {
@@ -400,6 +403,10 @@ int main(int argc, char **argv)
 				exit(1);
 			}
 			radius_dir = optarg;
+			break;
+
+		case 'D':
+			dict_dir = optarg;
 			break;
 
 		case 'e':
@@ -477,8 +484,21 @@ int main(int argc, char **argv)
 
 		file = NULL;	/* MUST read it from the conffile now */
 
-		snprintf(buffer, sizeof(buffer), "%s/%s.conf",
-			 radius_dir, name);
+		snprintf(buffer, sizeof(buffer), "%s/%s.conf", radius_dir, name);
+
+		/*
+		 *	Need to read in the dictionaries, else we may get
+		 *	validation errors when we try and parse the config.
+		 */
+		if (dict_init(dict_dir, RADIUS_DICTIONARY) < 0) {
+			fr_perror("radmin");
+			exit(64);
+		}
+
+		if (dict_read(radius_dir, RADIUS_DICTIONARY) == -1) {
+			fr_perror("radmin");
+			exit(64);
+		}
 
 		cs = cf_file_read(buffer);
 		if (!cs) {
