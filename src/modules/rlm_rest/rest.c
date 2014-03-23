@@ -1649,6 +1649,22 @@ static void rest_response_free(rlm_rest_response_t *ctx)
 	}
 }
 
+/** Extracts pointer to buffer containing response data
+ *
+ * @param[out] out Where to write the pointer to the buffer.
+ * @param[in] handle used for the last request.
+ * @return > 0 if data is available.
+ */
+size_t rest_get_handle_data(char const **out, rlm_rest_handle_t *handle)
+{
+	rlm_rest_curl_context_t *ctx = handle->ctx;
+
+	rad_assert(ctx->response.buffer || (!ctx->response.buffer && !ctx->response.used));
+
+	*out = ctx->response.buffer;
+	return ctx->response.used;
+}
+
 /** Configures body specific curlopts.
  *
  * Configures libcurl handle to use either chunked mode, where the request

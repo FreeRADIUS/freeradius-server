@@ -259,6 +259,8 @@ void rest_request_cleanup(rlm_rest_t *instance, rlm_rest_section_t *section,
 
 #define rest_get_handle_type(handle)(((rlm_rest_curl_context_t*)((rlm_rest_handle_t*)handle)->ctx)->response.type)
 
+size_t rest_get_handle_data(char const **out, rlm_rest_handle_t *handle);
+
 /*
  *	Helper functions
  */
