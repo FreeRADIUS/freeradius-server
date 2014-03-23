@@ -153,6 +153,7 @@ value_pair_tmpl_t *radius_str2tmpl(TALLOC_CTX *ctx, char const *name, FR_TOKEN t
 				   request_refs_t request_def, pair_lists_t list_def)
 {
 	char const *p;
+	bool is_attr = false;
 	value_pair_tmpl_t *vpt;
 
 	vpt = talloc_zero(ctx, value_pair_tmpl_t);
@@ -160,7 +161,10 @@ value_pair_tmpl_t *radius_str2tmpl(TALLOC_CTX *ctx, char const *name, FR_TOKEN t
 
 	switch (type) {
 	case T_BARE_WORD:
-		if (*name == '&') name++;
+		if (*name == '&') {
+			is_attr = true;
+			name++;
+		}
 
 		if (!isdigit((int) *name)) {
 			request_refs_t ref;
@@ -190,11 +194,13 @@ value_pair_tmpl_t *radius_str2tmpl(TALLOC_CTX *ctx, char const *name, FR_TOKEN t
 			vpt->request = ref;
 			vpt->list = list;
 			break;
-		}
+		} /* else the first character is a digit */
 		/* FALL-THROUGH */
 
-	case T_SINGLE_QUOTED_STRING:
 	literal:
+		if (is_attr) return NULL;
+
+	case T_SINGLE_QUOTED_STRING:
 		vpt->type = VPT_TYPE_LITERAL;
 		break;
 	case T_DOUBLE_QUOTED_STRING:
