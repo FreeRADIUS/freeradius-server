@@ -771,7 +771,7 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 module_t rlm_sqlhpwippool = {
 	RLM_MODULE_INIT,
 	"sqlhpwippool",			/* name */
-	RLM_TYPE_THREAD_SAFE | RLM_TYPE_CHECK_CONFIG_SAFE,		/* type */
+	RLM_TYPE_THREAD_SAFE,		/* type */
 	sizeof(rlm_sqlhpwippool_t),
 	module_config,
 	mod_instantiate,	/* instantiation */

@@ -356,7 +356,7 @@ RLM_AF_FUNC(send_coa, reply)
 module_t rlm_attr_filter = {
 	RLM_MODULE_INIT,
 	"attr_filter",
-	RLM_TYPE_CHECK_CONFIG_SAFE | RLM_TYPE_HUP_SAFE,   	/* type */
+	RLM_TYPE_HUP_SAFE,   	/* type */
 	sizeof(rlm_attr_filter_t),
 	module_config,
 	mod_instantiate,	/* instantiation */

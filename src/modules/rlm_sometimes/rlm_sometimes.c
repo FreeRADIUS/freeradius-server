@@ -172,7 +172,7 @@ static rlm_rcode_t mod_post_proxy(void *instance, REQUEST *request)
 module_t rlm_sometimes = {
 	RLM_MODULE_INIT,
 	"sometimes",
-	RLM_TYPE_CHECK_CONFIG_SAFE | RLM_TYPE_HUP_SAFE,   	/* type */
+	RLM_TYPE_HUP_SAFE,   	/* type */
 	sizeof(rlm_sometimes_t),
 	module_config,
 	mod_instantiate,		/* instantiation */

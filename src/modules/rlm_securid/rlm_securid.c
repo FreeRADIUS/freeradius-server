@@ -554,7 +554,7 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 module_t rlm_securid = {
 	RLM_MODULE_INIT,
 	"securid",
-	RLM_TYPE_CHECK_CONFIG_SAFE | RLM_TYPE_HUP_SAFE,   	/* type */
+	RLM_TYPE_HUP_SAFE,   	/* type */
 	sizeof(rlm_securid_t),
 	module_config,
 	mod_instantiate, 		/* instantiation */

@@ -738,7 +738,7 @@ static rlm_rcode_t mod_checksimul(void *instance, REQUEST *request)
 module_t rlm_radutmp = {
 	RLM_MODULE_INIT,
 	"radutmp",
-	RLM_TYPE_THREAD_UNSAFE | RLM_TYPE_CHECK_CONFIG_SAFE | RLM_TYPE_HUP_SAFE,   	/* type */
+	RLM_TYPE_THREAD_UNSAFE | RLM_TYPE_HUP_SAFE,   	/* type */
 	sizeof(rlm_radutmp_t),
 	module_config,
 	NULL,			       /* instantiation */

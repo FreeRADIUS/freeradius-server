@@ -553,7 +553,7 @@ static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
 module_t rlm_files = {
 	RLM_MODULE_INIT,
 	"files",
-	RLM_TYPE_CHECK_CONFIG_SAFE | RLM_TYPE_HUP_SAFE,
+	RLM_TYPE_HUP_SAFE,
 	sizeof(rlm_files_t),
 	module_config,
 	mod_instantiate,		/* instantiation */

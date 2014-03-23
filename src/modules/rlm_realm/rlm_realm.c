@@ -474,7 +474,7 @@ static rlm_rcode_t realm_recv_coa(UNUSED void *instance, REQUEST *request)
 module_t rlm_realm = {
 	RLM_MODULE_INIT,
 	"realm",
-	RLM_TYPE_CHECK_CONFIG_SAFE | RLM_TYPE_HUP_SAFE,   	/* type */
+	RLM_TYPE_HUP_SAFE,   	/* type */
 	sizeof(struct realm_config_t),
 	module_config,
 	mod_instantiate,	       	/* instantiation */

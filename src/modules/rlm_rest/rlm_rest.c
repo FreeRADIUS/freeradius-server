@@ -599,7 +599,7 @@ static int mod_detach(void *instance)
 module_t rlm_rest = {
 	RLM_MODULE_INIT,
 	"rlm_rest",
-	RLM_TYPE_THREAD_SAFE | RLM_TYPE_CHECK_CONFIG_SAFE,		/* type */
+	RLM_TYPE_THREAD_SAFE,		/* type */
 	sizeof(rlm_rest_t),
 	module_config,
 	mod_instantiate,		/* instantiation */

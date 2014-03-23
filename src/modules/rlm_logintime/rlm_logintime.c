@@ -255,7 +255,7 @@ static int mod_detach(UNUSED void *instance)
 module_t rlm_logintime = {
 	RLM_MODULE_INIT,
 	"logintime",
-	RLM_TYPE_CHECK_CONFIG_SAFE,   	/* type */
+	0,   	/* type */
 	sizeof(rlm_logintime_t),
 	module_config,
 	mod_instantiate,		/* instantiation */

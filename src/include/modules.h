@@ -96,8 +96,8 @@ extern const section_type_value_t section_type_value[];
 #define RLM_TYPE_THREAD_UNSAFE	(1 << 0) 	//!< Module is not threadsafe.
 						//!< Server will protect calls
 						//!< with mutex.
-#define RLM_TYPE_CHECK_CONFIG_SAFE (1 << 1) 	//!< Instantiate module on -C.
-						//!< Module will be
+#define RLM_TYPE_CHECK_CONFIG_UNSAFE (1 << 1) 	//!< Don't instantiate module on -C.
+						//!< Module will NOT be
 						//!< instantiated if the server
 						//!< is started in config
 						//!< check mode.

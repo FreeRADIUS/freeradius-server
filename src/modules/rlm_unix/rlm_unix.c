@@ -512,7 +512,7 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 module_t rlm_unix = {
 	RLM_MODULE_INIT,
 	"System",
-	RLM_TYPE_THREAD_UNSAFE | RLM_TYPE_CHECK_CONFIG_SAFE,
+	RLM_TYPE_THREAD_UNSAFE,
 	sizeof(struct unix_instance),
 	module_config,
 	mod_instantiate,		/* instantiation */

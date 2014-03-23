@@ -649,7 +649,7 @@ module_instance_t *find_module_instance(CONF_SECTION *modules,
 	}
 
 	if (check_config && (node->entry->module->instantiate) &&
-	    (node->entry->module->type & RLM_TYPE_CHECK_CONFIG_SAFE) == 0) {
+	    (node->entry->module->type & RLM_TYPE_CHECK_CONFIG_UNSAFE) != 0) {
 		char const *value = NULL;
 		CONF_PAIR *cp;
 
