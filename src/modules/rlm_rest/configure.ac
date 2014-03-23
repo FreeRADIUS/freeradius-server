@@ -104,16 +104,24 @@ if test x$with_[]modname != xno; then
 	dnl ############################################################
 
 	smart_try_dir="$jsonc_lib_dir"
+	dnl # Use a json-c specific function which is only 
+	dnl # available in newer versions.
 	FR_SMART_CHECK_LIB([json-c], [json_c_version])
 	if test "x$ac_cv_lib_json_c_json_c_version" != "xyes"
 	then
-	    have_json="no"
-		AC_MSG_WARN([json-c libraries not found. Use --with-jsonc-lib-dir=<path>.])
+		dnl # Use a function which is included in legacy versions
+		dnl # but which may be available in other json libraries
+		FR_SMART_CHECK_LIB([json], [json_tokener_new])
+		if test "x$ac_cv_lib_json_json_tokener_new" != "xyes"
+		then
+			have_json="no"
+		fi
 	fi
 	
 	if test "x$have_json" = "xyes"; then
 		AC_DEFINE([HAVE_JSON],[1],[Build with JSON support from json-c])
 	else
+		AC_MSG_WARN([json-c libraries not found. Use --with-jsonc-lib-dir=<path>.])
 		AC_MSG_WARN([silently building without JSON support. requires: json-c])
 	fi
 
@@ -142,3 +150,4 @@ AC_SUBST(mod_ldflags)
 
 AC_SUBST(targetname)
 AC_OUTPUT(all.mk)
+
