@@ -1263,6 +1263,15 @@ FR_CHECK_TYPE_INCLUDE(
   uint64_t, unsigned long long, [uint64_t is required for larger counters]
 )
 
+FR_CHECK_TYPE_INCLUDE(
+  [
+    #ifdef HAVE_SIGNAL_H
+    #  include <signal.h>
+    #endif
+  ],
+  sig_t, void(*sig_t)(int), [signal action callback function]
+)
+
 dnl #
 dnl #  Check for __uint128_t (compiler builtin)
 dnl #
