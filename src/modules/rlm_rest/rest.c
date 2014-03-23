@@ -1139,8 +1139,13 @@ static int json_pairmake(rlm_rest_t *instance, UNUSED rlm_rest_section_t *sectio
 	int max_attrs = max;
 
 	if (!json_object_is_type(object, json_type_object)) {
-		REDEBUG("Can't process VP container, expected JSON object, got \"%s\", skipping",
+		REDEBUG("Can't process VP container, expected JSON object"
+#ifdef HAVE_JSON_TYPE_TO_NAME
+			"got \"%s\", skipping...",
       	       	        json_type_to_name(json_object_get_type(object)));
+#else
+			", skipping...");
+#endif
 		return -1;
    	}
 
