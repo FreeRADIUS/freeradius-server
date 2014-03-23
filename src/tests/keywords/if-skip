@@ -3,6 +3,9 @@
 #  Conditions which statically evaluate to "false"
 #  have their entire contents skipped on load.
 #
+#  Conditions which statically evaluate to "true"
+#  have the following "else" sections skipped, too.
+#
 #  i.e. we can reference things which don't exist,
 #  and they'll get ignored.
 #
