@@ -97,6 +97,8 @@ static char const	*run_dir = NULL;
 static char		*syslog_facility = NULL;
 static bool		do_colourise = false;
 
+static char const	*radius_dir = NULL;	//!< Path to raddb directory
+
 
 /*
  *  Security configuration for the server.
@@ -726,6 +728,30 @@ static int switch_users(CONF_SECTION *cs)
 }
 #endif	/* HAVE_SETUID */
 
+/** Set the global radius config directory.
+ *
+ * @param path to config dir root e.g. /usr/local/etc/raddb
+ */
+void set_radius_dir(char const *path)
+{
+	if (radius_dir) {
+		char *p;
+
+		memcpy(&p, &radius_dir, sizeof(*p));
+		talloc_free(p);
+		radius_dir = NULL;
+	}
+	if (path) radius_dir = talloc_strdup(talloc_autofree_context(), path);
+}
+
+/** Get the global radius config directory.
+ *
+ * @return the global radius config directory.
+ */
+char const *get_radius_dir(void)
+{
+	return radius_dir;
+}
 
 /*
  *	Read config files.

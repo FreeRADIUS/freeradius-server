@@ -423,7 +423,7 @@ int main(int argc, char *argv[])
 		progname++;
 
 	debug_flag = 0;
-	radius_dir = talloc_strdup(NULL, RADIUS_DIR);
+	set_radius_dir(RADIUS_DIR);
 
 	/*
 	 *	Ensure that the configuration is initialized.
@@ -450,10 +450,7 @@ int main(int argc, char *argv[])
 
 		switch(argval) {
 			case 'd':
-				if (radius_dir) {
-					rad_const_free(radius_dir);
-				}
-				radius_dir = talloc_strdup(NULL, optarg);
+				set_radius_dir(optarg);
 				break;
 
 			case 'D':
@@ -654,8 +651,6 @@ int main(int argc, char *argv[])
 	 *	Free the configuration items.
 	 */
 	free_mainconfig();
-
-	rad_const_free(radius_dir);
 
 	if (memory_report) {
 		INFO("Allocated memory at time of report:");

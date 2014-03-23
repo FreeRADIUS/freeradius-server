@@ -241,7 +241,7 @@ static int mod_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
 
 	INFO("rlm_sql_sqlite: SQLite library version: %s", sqlite3_libversion());
 	if (!driver->filename) {
-		MEM(driver->filename = talloc_asprintf(driver, "%s/%s", radius_dir, config->sql_db));
+		MEM(driver->filename = talloc_asprintf(driver, "%s/%s", get_radius_dir(), config->sql_db));
 	}
 
 	exists = rad_file_exists(driver->filename);
