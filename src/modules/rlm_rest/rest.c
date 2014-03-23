@@ -573,6 +573,7 @@ no_space:
 	return len;
 }
 
+#ifdef HAVE_JSON
 /** Encodes VALUE_PAIR linked list in JSON format
  *
  * This is a stream function matching the rest_read_t prototype. Multiple
@@ -758,6 +759,7 @@ no_space:
 
 	return len;
 }
+#endif
 
 /** Emulates successive libcurl calls to an encoding function
  *
