@@ -339,7 +339,7 @@ static rlm_rcode_t mod_authorize(UNUSED void *instance, UNUSED REQUEST *request)
 module_t rlm_smsotp = {
 	RLM_MODULE_INIT,
 	"smsotp",
-	RLM_TYPE_THREAD_SAFE,		/* type */
+	RLM_TYPE_THREAD_SAFE | RLM_TYPE_CHECK_CONFIG_SAFE,		/* type */
 	sizeof(rlm_smsotp_t),
 	module_config,
 	mod_instantiate,		/* instantiation */
