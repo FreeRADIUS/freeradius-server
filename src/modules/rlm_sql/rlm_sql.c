@@ -1542,7 +1542,7 @@ static rlm_rcode_t mod_post_auth(void *instance, REQUEST * request) {
 module_t rlm_sql = {
 	RLM_MODULE_INIT,
 	"SQL",
-	RLM_TYPE_THREAD_SAFE,	/* type: reserved */
+	RLM_TYPE_THREAD_SAFE | RLM_TYPE_CHECK_CONFIG_SAFE,	/* type: reserved */
 	sizeof(rlm_sql_t),
 	module_config,
 	mod_instantiate,	/* instantiation */

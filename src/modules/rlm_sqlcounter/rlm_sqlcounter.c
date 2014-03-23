@@ -602,7 +602,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 module_t rlm_sqlcounter = {
 	RLM_MODULE_INIT,
 	"rlm_sqlcounter",
-	RLM_TYPE_THREAD_SAFE,		/* type */
+	RLM_TYPE_THREAD_SAFE | RLM_TYPE_CHECK_CONFIG_SAFE,		/* type */
 	sizeof(rlm_sqlcounter_t),
 	module_config,
 	mod_instantiate,		/* instantiation */
