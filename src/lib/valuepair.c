@@ -2385,7 +2385,7 @@ int paircmp(VALUE_PAIR *one, VALUE_PAIR *two)
  */
 int paircmp_op(VALUE_PAIR const *one, FR_TOKEN op, VALUE_PAIR const *two)
 {
-	int compare;
+	int compare = 0;
 
 	VERIFY_VP(one);
 	VERIFY_VP(two);
