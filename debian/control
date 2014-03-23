@@ -110,6 +110,13 @@ Description: LDAP module for FreeRADIUS server
  The FreeRADIUS server can use LDAP to authenticate users, and this module
  is necessary for that.
 
+Package: freeradius-rest
+Architecture: any
+Depends: freeradius (= ${binary:Version}), ${shlibs:Depends}
+Description: REST module for FreeRADIUS server
+ The FreeRADIUS server can make calls to remote web APIs, and this module
+ is necessary for that.
+
 Package: freeradius-postgresql
 Architecture: any
 Depends: freeradius (= ${binary:Version}), ${shlibs:Depends}
