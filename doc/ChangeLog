@@ -9,12 +9,19 @@ FreeRADIUS 3.0.3 Fri 21 Mar 2014 08:30:00 EDT urgency=medium
 	  will be caught, and the server will refuse to start.
 	* dynamic expansions are cached after being parsed.  They are
 	  no longer re-parsed at run-time for every request.
-
+	* Added the %{rest:} expansion to rlm_rest, which will send
+	  a GET request to the URL passed as the format string.
+	  Any body text will be written to the expansion buffer.
+	* rlm_rest now available as a debian package.
+	
 	Bug fixes
 	* Fix xlat expression %{attribute[n]} so that it actually
 	  returns the n'th attribute instead of the first.
 	* Don't parse string on RHS of update {} when using unary
 	  operators (!*).
+	* Check for more optional functions in json-c so we can 
+	  Build with libjson0, which is the name of the json-c package
+	  on debian/ubuntu.
 
 FreeRADIUS 3.0.2 Fri 21 Mar 2014 08:30:00 EDT urgency=medium
 	Feature improvements
