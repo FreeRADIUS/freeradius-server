@@ -6,6 +6,7 @@ Build-Depends: debhelper (>= 9),
  libcurl4-openssl-dev,
  libgdbm-dev,
  libiodbc2-dev,
+ libjson0,
  libjson0-dev,
  libkrb5-dev,
  libldap2-dev,
@@ -19,8 +20,8 @@ Build-Depends: debhelper (>= 9),
  libsqlite3-dev,
  libssl-dev,
  libtalloc-dev,
- libyubikey-dev
- python-dev,
+ libyubikey-dev,
+ python-dev
 Section: net
 Priority: optional
 Maintainer: Josip Rodin <joy-packages@debian.org>
