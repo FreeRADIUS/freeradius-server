@@ -1552,10 +1552,12 @@ static size_t rest_write_body(void *ptr, size_t size, size_t nmemb, void *userda
 	rlm_rest_write_t *ctx = userdata;
 	REQUEST *request = ctx->request; /* Used by RDEBUG */
 
-	char const *p = ptr;
+	char const *p = ptr, *q;
 	char *tmp;
 
 	size_t const t = (size * nmemb);
+
+	if (t == 0) return 0;
 
 	/*
 	 *  Any post processing of headers should go here...
@@ -1567,11 +1569,27 @@ static size_t rest_write_body(void *ptr, size_t size, size_t nmemb, void *userda
 	switch (ctx->type) {
 	case HTTP_BODY_UNSUPPORTED:
 	case HTTP_BODY_INVALID:
-		REDEBUG("DISCARDING: %.*s", (int) t, p);
+		while ((q = memchr(p, '\n', t - (p - (char *)ptr)))) {
+			REDEBUG("%.*s", (int) (q - p), p);
+			p = q + 1;
+		}
+
+		if (*p != '\0') {
+			REDEBUG("%.*s", (int)(t - (p - (char *)ptr)), p);
+		}
+
 		return t;
 
 	case HTTP_BODY_NONE:
-		RDEBUG3("DISCARDING: %.*s", (int) t, p);
+		while ((q = memchr(p, '\n', t - (p - (char *)ptr)))) {
+			RDEBUG3("%.*s", (int) (q - p), p);
+			p = q + 1;
+		}
+
+		if (*p != '\0') {
+			RDEBUG3("%.*s", (int)(t - (p - (char *)ptr)), p);
+		}
+
 		return t;
 
 	default:
