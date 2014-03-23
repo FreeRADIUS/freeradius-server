@@ -16,7 +16,7 @@ FreeRADIUS 3.0.3 Fri 21 Mar 2014 08:30:00 EDT urgency=medium
 	* When an 'if' condition statically evaluates to true/false,
 	  unlang does more static optimization.  For examples, see
 	  src/tests/keywords/if-skip
-	* More modules are marked as safe for '-C', which lets the
+	* All modules are marked as safe for '-C', which lets the
 	  dynamic expansion checks work in more situations.
 
 	Bug fixes
