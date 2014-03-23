@@ -298,7 +298,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 module_t rlm_redis = {
 	RLM_MODULE_INIT,
 	"redis",
-	RLM_TYPE_THREAD_SAFE, /* type */
+	RLM_TYPE_THREAD_SAFE | RLM_TYPE_CHECK_CONFIG_SAFE, /* type */
 	sizeof(REDIS_INST),	/* yuck */
 	module_config,
 	mod_instantiate, /* instantiation */
