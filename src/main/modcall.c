@@ -2777,43 +2777,18 @@ bool modcall_pass2(modcallable *mc)
 			g = mod_callabletogroup(this);
 
 			/*
-			 *	Don't do pass2 checks on anything
-			 *	inside of a condition which statically
-			 *	evaluates to "false".
+			 *	Don't walk over these.
 			 */
-			if (g->cond->type == COND_TYPE_FALSE) {
-				TALLOC_FREE(g->children);
-				continue;
+			if ((g->cond->type == COND_TYPE_TRUE) ||
+			    (g->cond->type == COND_TYPE_FALSE)) {
+				break;
 			}
 
 			/*
-			 *	If we're always going to take this
-			 *	condition, AND there's an "else" after
-			 *	it, then don't bother doing pass2
-			 *	sanity checks on anything in the
-			 *	"else" sections.  They'll be ignored
-			 *	by the run-time processor
-			 */
-			if (g->cond->type == COND_TYPE_TRUE) {
-				while (this->next &&
-				       (this->next->type == MOD_ELSIF)) {
-					this = this->next;
-					g = mod_callabletogroup(this);
-					TALLOC_FREE(g->children);
-				}
-
-				if (this->next &&
-				    (this->next->type == MOD_ELSE)) {
-					this = this->next;
-					g = mod_callabletogroup(this);
-					TALLOC_FREE(g->children);
-				}
-				continue;
-			}
-
-			/*
-			 *	Not statically 'true' or 'false', we
-			 *	have to do pass2.
+			 *	The compilation code takes care of
+			 *	simplifying 'true' and 'false'
+			 *	conditions.  For others, we have to do
+			 *	a second pass.
 			 */
 			if (!fr_condition_walk(g->cond, pass2_callback, NULL)) {
 				return false;
