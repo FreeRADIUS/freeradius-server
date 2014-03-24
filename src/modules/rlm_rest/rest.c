@@ -2233,8 +2233,9 @@ ssize_t rest_uri_build(char **out, UNUSED rlm_rest_t *instance, REQUEST *request
  *
  * @param[out] out Where to write the pointer to the new buffer containing the escaped URI.
  * @param[in] instance configuration data.
- * @param[in] uri configuration data.
  * @param[in] request Current request
+ * @param[in] handle to use.
+ * @param[in] uri configuration data.
  * @return length of data written to buffer (excluding NULL) or < 0 if an error
  *	occurred.
  */
