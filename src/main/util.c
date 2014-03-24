@@ -933,10 +933,10 @@ const FR_NAME_NUMBER request_refs[] = {
  * @see dict_attrbyname
  *
  * @param[in,out] name of attribute.
- * @param[in] unknown the list to return if no qualifiers were found.
+ * @param[in] default_list the list to return if no qualifiers were found.
  * @return PAIR_LIST_UNKOWN if qualifiers couldn't be resolved to a list.
  */
-pair_lists_t radius_list_name(char const **name, pair_lists_t unknown)
+pair_lists_t radius_list_name(char const **name, pair_lists_t default_list)
 {
 	char const *p = *name;
 	char const *q;
@@ -946,34 +946,79 @@ pair_lists_t radius_list_name(char const **name, pair_lists_t unknown)
 	rad_assert(name && *name);
 
 	/*
-	 *	We couldn't determine the list if:
-	 *
-	 * 	A colon delimiter was found, but the next char was a
-	 *	number, indicating a tag, not a list qualifier.
-	 *
-	 *	No colon was found and the first char was upper case
-	 *	indicating an attribute.
-	 *
+	 *	Unfortunately, ':' isn't a definitive separator for
+	 *	the list name.  We may have numeric tags, too.
 	 */
 	q = strchr(p, ':');
-	if (((q && (q[1] >= '0') && (q[1] <= '9'))) ||
-	    (!q && isupper((int) *p))) {
-		return unknown;
-	}
-
 	if (q) {
-		*name = (q + 1);	/* Consume the list and delimiter */
-		return fr_substr2int(pair_lists, p, PAIR_LIST_UNKNOWN, (q - p));
+		/*
+		 *	Check for tagged attributes.  They have
+		 *	"name:tag", where tag is a decimal number.
+		 *	Valid tags are invalid attributes, so that's
+		 *	OK.
+		 *
+		 *	Also allow "name:tag[#]" as a tag.
+		 *
+		 *	However, "request:" is allowed, too, and
+		 *	shouldn't be interpreted as a tag.
+		 *
+		 *	We do this check first rather than just
+		 *	looking up the request name, because this
+		 *	check is cheap, and looking up the request
+		 *	name is expensive.
+		 */
+		if (isdigit((int) q[1])) {
+			char const *d = q + 1;
+
+			while (isdigit((int) *d)) {
+				d++;
+			}
+
+			/*
+			 *	Return the DEFAULT list as supplied by
+			 *	the caller.  This is usually
+			 *	PAIRLIST_REQUEST.
+			 */
+			if (!*d || (*d == '[')) {
+				return default_list;
+			}
+		}
+
+		/*
+		 *	If the first part is a list name, then treat
+		 *	it as a list.  This means that we CANNOT have
+		 *	an attribute which is named "request",
+		 *	"reply", etc.  Allowing a tagged attribute
+		 *	"request:3" would just be insane.
+		 */
+		output = fr_substr2int(pair_lists, p, PAIR_LIST_UNKNOWN, (q - p));
+		if (output != PAIR_LIST_UNKNOWN) {
+			*name = (q + 1);	/* Consume the list and delimiter */
+			return output;
+		}
+
+		/*
+		 *	It's not a known list, say so.
+		 */
+		return PAIR_LIST_UNKNOWN;
 	}
 
-	q = (p + strlen(p));	/* Consume the entire string */
+	/*
+	 *	The input string may be just a list name,
+	 *	e.g. "request".  Check for that.
+	 */
+	q = (p + strlen(p));
 	output = fr_substr2int(pair_lists, p, PAIR_LIST_UNKNOWN, (q - p));
 	if (output != PAIR_LIST_UNKNOWN) {
 		*name = q;
 		return output;
 	}
 
-	return unknown;
+	/*
+	 *	It's just an attribute name.  Return the default list
+	 *	as supplied by the caller.
+	 */
+	return default_list;
 }
 
 
