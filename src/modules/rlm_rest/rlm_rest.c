@@ -152,7 +152,8 @@ static ssize_t rest_xlat(void *instance, REQUEST *request,
 		.method = HTTP_METHOD_GET,
 		.body = HTTP_BODY_PLAIN,
 		.require_auth = false,
-		.timeout = 4
+		.timeout = 4,
+		.force_to = HTTP_BODY_PLAIN
 	};
 
 	*out = '\0';
