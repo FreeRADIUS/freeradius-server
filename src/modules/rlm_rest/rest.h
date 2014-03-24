@@ -110,6 +110,7 @@ typedef struct rlm_rest_section_t {
 
 	char *body_str;
 	http_body_type_t body;
+	http_body_type_t force_to;
 
 	char *username;
 	char *password;
@@ -195,6 +196,7 @@ typedef struct rlm_rest_response_t {
 
 	int		 	code;		//!< HTTP Status Code.
 	http_body_type_t	type;		//!< HTTP Content Type.
+	http_body_type_t	force_to;	//!< Force decoding the body type as a particular encoding.
 } rlm_rest_response_t;
 
 /*

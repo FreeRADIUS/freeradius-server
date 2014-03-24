@@ -1561,7 +1561,14 @@ static size_t rest_response_body(void *ptr, size_t size, size_t nmemb, void *use
 	/*
 	 *  Figure out if the type is supported by one of the decoders.
 	 */
-	switch (http_body_type_supported[ctx->type]) {
+	if (ctx->force_to != HTTP_BODY_UNKNOWN) {
+		RDEBUG3("Forcing body type to \"%s\"",
+			fr_int2str(http_body_type_table, ctx->force_to, "<INVALID>"));
+		ctx->type = ctx->force_to;
+	/*
+	 *  Assume the force_to value has already been validation.
+	 */
+	} else switch (http_body_type_supported[ctx->type]) {
 	case HTTP_BODY_UNSUPPORTED:
 		REDEBUG("Type \"%s\" is currently unsupported",
 			fr_int2str(http_body_type_table, ctx->type, "<INVALID>"));
@@ -1729,6 +1736,11 @@ static int rest_request_config_body(UNUSED rlm_rest_t *instance, rlm_rest_sectio
 
 		return 0;
 	}
+
+	/*
+	 *  Force parsing the body text as a particular encoding.
+	 */
+	ctx->response.force_to = section->force_to;
 
 	/*
 	 *  If were not doing chunked encoding then we read the entire
