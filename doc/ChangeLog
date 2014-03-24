@@ -29,7 +29,9 @@ FreeRADIUS 3.0.3 Fri 21 Mar 2014 08:30:00 EDT urgency=medium
 	  on debian/ubuntu.
 	* Fix issue in radmin where the main dictionaries would
 	  not be loaded which, depending on the configuration may
-	  of caused validation errors.
+	  have caused validation errors.
+	* Fix handling of "%{reply:3GPP-*}"
+	* Fix rlm_perl garbage attributes
 
 FreeRADIUS 3.0.2 Fri 21 Mar 2014 08:30:00 EDT urgency=medium
 	Feature improvements
