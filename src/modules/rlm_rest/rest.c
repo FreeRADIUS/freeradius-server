@@ -1386,7 +1386,6 @@ static size_t rest_response_header(void *in, size_t size, size_t nmemb, void *us
 	size_t len;
 
 	http_body_type_t type;
-	http_body_type_t supp;
 
 	/*
 	 *  Curl seems to throw these (\r\n) in before the next set of headers when
@@ -1486,27 +1485,15 @@ static size_t rest_response_header(void *in, size_t size, size_t nmemb, void *us
 
 			len = !q ? s : (size_t) (q - p);
 			type = fr_substr2int(http_content_type_table, p, HTTP_BODY_UNKNOWN, len);
-			supp = http_body_type_supported[type];
+
 
 			RDEBUG2("\tType   : %s (%.*s)", fr_int2str(http_body_type_table, type, "<INVALID>"),
 				(int) len, p);
 
 			if (type == HTTP_BODY_UNKNOWN) {
-				REDEBUG("Couldn't determine type, using request type \"%s\".",
+				RWDEBUG("Couldn't determine type, using the request's type \"%s\".",
 				        fr_int2str(http_body_type_table, ctx->type, "<INVALID>"));
-			} else if (supp == HTTP_BODY_UNSUPPORTED) {
-				REDEBUG("Type \"%s\" is currently unsupported",
-				        fr_int2str(http_body_type_table, type, "<INVALID>"));
-				ctx->type = HTTP_BODY_UNSUPPORTED;
-			} else if (supp == HTTP_BODY_UNAVAILABLE) {
-				REDEBUG("Type \"%s\" is unavailable, please rebuild this module with the required "
-					"library", fr_int2str(http_body_type_table, type, "<INVALID>"));
-				ctx->type = HTTP_BODY_UNSUPPORTED;
-			} else if (supp == HTTP_BODY_INVALID) {
-				REDEBUG("Type \"%s\" is not a valid web API data markup format",
-				        fr_int2str(http_body_type_table, type, "<INVALID>"));
-				ctx->type = HTTP_BODY_INVALID;
-			} else if (type != ctx->type) {
+			} else {
 				ctx->type = type;
 			}
 		}
@@ -1571,8 +1558,36 @@ static size_t rest_response_body(void *ptr, size_t size, size_t nmemb, void *use
 		ctx->state = WRITE_STATE_PARSE_CONTENT;
 	}
 
+	/*
+	 *  Figure out if the type is supported by one of the decoders.
+	 */
+	switch (http_body_type_supported[ctx->type]) {
+	case HTTP_BODY_UNSUPPORTED:
+		REDEBUG("Type \"%s\" is currently unsupported",
+			fr_int2str(http_body_type_table, ctx->type, "<INVALID>"));
+		ctx->type = HTTP_BODY_UNSUPPORTED;
+		break;
+
+	case HTTP_BODY_UNAVAILABLE:
+		REDEBUG("Type \"%s\" is unavailable, please rebuild this module with the required "
+			"library", fr_int2str(http_body_type_table, ctx->type, "<INVALID>"));
+		ctx->type = HTTP_BODY_UNAVAILABLE;
+		break;
+
+	case HTTP_BODY_INVALID:
+		REDEBUG("Type \"%s\" is not a valid web API data markup format",
+			fr_int2str(http_body_type_table, ctx->type, "<INVALID>"));
+		ctx->type = HTTP_BODY_INVALID;
+		break;
+
+	/* supported type */
+	default:
+		break;
+	}
+
 	switch (ctx->type) {
 	case HTTP_BODY_UNSUPPORTED:
+	case HTTP_BODY_UNAVAILABLE:
 	case HTTP_BODY_INVALID:
 		while ((q = memchr(p, '\n', t - (p - (char *)ptr)))) {
 			REDEBUG("%.*s", (int) (q - p), p);
