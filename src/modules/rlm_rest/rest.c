@@ -1738,11 +1738,6 @@ static int rest_request_config_body(UNUSED rlm_rest_t *instance, rlm_rest_sectio
 	}
 
 	/*
-	 *  Force parsing the body text as a particular encoding.
-	 */
-	ctx->response.force_to = section->force_to;
-
-	/*
 	 *  If were not doing chunked encoding then we read the entire
 	 *  body into a buffer, and send it in one go.
 	 */
@@ -1966,6 +1961,11 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 	SET_OPTION(CURLOPT_HEADERDATA, &ctx->response);
 	SET_OPTION(CURLOPT_WRITEFUNCTION, rest_response_body);
 	SET_OPTION(CURLOPT_WRITEDATA, &ctx->response);
+
+	/*
+	 *  Force parsing the body text as a particular encoding.
+	 */
+	ctx->response.force_to = section->force_to;
 
 	switch (method) {
 	case HTTP_METHOD_GET :
