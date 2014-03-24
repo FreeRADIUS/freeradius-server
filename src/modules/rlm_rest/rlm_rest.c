@@ -150,7 +150,7 @@ static ssize_t rest_xlat(void *instance, REQUEST *request,
 	static rlm_rest_section_t section = {
 		.name = "xlat",
 		.method = HTTP_METHOD_GET,
-		.body = HTTP_BODY_PLAIN,
+		.body = HTTP_BODY_NONE,
 		.require_auth = false,
 		.timeout = 4,
 		.force_to = HTTP_BODY_PLAIN
@@ -224,7 +224,8 @@ static ssize_t rest_xlat(void *instance, REQUEST *request,
 
 	len = rest_get_handle_data(&body, handle);
 	if ((size_t) len >= freespace) {
-		RDEBUG("Insufficient space to write HTTP response, needed %zu bytes, have %zu bytes", len, freespace);
+		REDEBUG("Insufficient space to write HTTP response, needed %zu bytes, have %zu bytes", len + 1,
+		        freespace);
 		outlen = -1;
 		goto end;
 	}
