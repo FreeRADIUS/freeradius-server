@@ -112,3 +112,16 @@ data "Hello %S goo"
 
 xlat "%{Foreach-Variable-0}"
 data "%{Foreach-Variable-0}"
+
+#
+#  3GPP stuff, to distinguish "list:3GPP" from
+#  "attribute:tag"
+#
+xlat "%{request:3GPP-IMSI}"
+data "%{3GPP-IMSI}"
+
+xlat "%{reply:3GPP-IMSI}"
+data "%{reply:3GPP-IMSI}"
+
+xlat "%{reply:3GPP-IMSI[2]}"
+data "%{reply:3GPP-IMSI[2]}"
