@@ -161,17 +161,20 @@ static ssize_t rest_xlat(void *instance, REQUEST *request,
 
 	RDEBUG("Expanding URI components");
 
+	handle = fr_connection_get(inst->conn_pool);
+	if (!handle) return -1;
+
 	/*
 	 *  Build xlat'd URI, this allows REST servers to be specified by
 	 *  request attributes.
 	 */
-	len = rest_uri_build(&uri, instance, request, fmt);
-	if (len <= 0) return -1;
+	len = rest_uri_host_unescape(&uri, instance, request, handle, fmt);
+	if (len <= 0) {
+		outlen = -1;
+		goto end;
+	}
 
 	RDEBUG("Sending HTTP %s to \"%s\"", fr_int2str(http_method_table, section.method, NULL), uri);
-
-	handle = fr_connection_get(inst->conn_pool);
-	if (!handle) return -1;
 
 	/*
 	 *  Configure various CURL options, and initialise the read/write
@@ -539,7 +542,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	/*
 	 *	Register the rest xlat function
 	 */
-	xlat_register(inst->xlat_name, rest_xlat, NULL, inst);
+	xlat_register(inst->xlat_name, rest_xlat, rest_uri_escape, inst);
 
 	/*
 	 *	Parse sub-section configs.

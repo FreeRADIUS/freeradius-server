@@ -2104,7 +2104,7 @@ int rest_response_decode(rlm_rest_t *instance, UNUSED rlm_rest_section_t *sectio
  * @param[in] section configuration data.
  * @param[in] handle to cleanup.
  */
-void rest_request_cleanup(UNUSED rlm_rest_t *instance, UNUSED rlm_rest_section_t *section,void *handle)
+void rest_request_cleanup(UNUSED rlm_rest_t *instance, UNUSED rlm_rest_section_t *section, void *handle)
 {
 	rlm_rest_handle_t	*randle = handle;
 	rlm_rest_curl_context_t	*ctx = randle->ctx;
@@ -2145,7 +2145,7 @@ void rest_request_cleanup(UNUSED rlm_rest_t *instance, UNUSED rlm_rest_section_t
  * @param[in] arg pointer, gives context for escaping.
  * @return length of data written to out (excluding NULL).
  */
-static size_t rest_uri_escape(UNUSED REQUEST *request, char *out, size_t outlen, char const *raw, UNUSED void *arg)
+size_t rest_uri_escape(UNUSED REQUEST *request, char *out, size_t outlen, char const *raw, UNUSED void *arg)
 {
 	char *escaped;
 
@@ -2171,13 +2171,13 @@ static size_t rest_uri_escape(UNUSED REQUEST *request, char *out, size_t outlen,
  */
 ssize_t rest_uri_build(char **out, UNUSED rlm_rest_t *instance, REQUEST *request, char const *uri)
 {
-	char const *p;
-	char *path_exp = NULL;
+	char const	*p;
+	char		*path_exp = NULL;
 
-	char *scheme;
-	char const *path;
+	char		*scheme;
+	char const	*path;
 
-	ssize_t len, outlen;
+	ssize_t		len;
 
 	p = uri;
 
@@ -2212,7 +2212,6 @@ ssize_t rest_uri_build(char **out, UNUSED rlm_rest_t *instance, REQUEST *request
 
 		return 0;
 	}
-	outlen = len;
 
 	len = radius_axlat(&path_exp, request, path, rest_uri_escape, NULL);
 	if (len < 0) {
@@ -2221,8 +2220,65 @@ ssize_t rest_uri_build(char **out, UNUSED rlm_rest_t *instance, REQUEST *request
 		return 0;
 	}
 
-	*out = talloc_strdup_append(*out, path_exp);
+	MEM(*out = talloc_strdup_append(*out, path_exp));
 	talloc_free(path_exp);
 
-	return outlen += len;
+	return talloc_array_length(*out) - 1;	/* array_length includes \0 */
+}
+
+/** Unescapes the host portion of a URI string
+ *
+ * This is required because the xlat functions which operate on the input string
+ * cannot distinguish between host and path components.
+ *
+ * @param[out] out Where to write the pointer to the new buffer containing the escaped URI.
+ * @param[in] instance configuration data.
+ * @param[in] uri configuration data.
+ * @param[in] request Current request
+ * @return length of data written to buffer (excluding NULL) or < 0 if an error
+ *	occurred.
+ */
+ssize_t rest_uri_host_unescape(char **out, UNUSED rlm_rest_t *instance, REQUEST *request,
+			       void *handle, char const *uri)
+{
+	rlm_rest_handle_t	*randle = handle;
+	CURL			*candle = randle->handle;
+
+	char const		*p;
+
+	char			*scheme;
+
+	ssize_t			len;
+
+	p = uri;
+
+	/*
+	 *  All URLs must contain at least <scheme>://<server>/
+	 */
+	p = strchr(p, ':');
+	if (!p || (*++p != '/') || (*++p != '/')) {
+		malformed:
+		REDEBUG("Error URI is malformed, can't find start of path");
+		return -1;
+	}
+	p = strchr(p + 1, '/');
+	if (!p) {
+		goto malformed;
+	}
+
+	len = (p - uri);
+
+	/*
+	 *  Unescape any special sequences in the first part of the URI
+	 */
+	scheme = curl_easy_unescape(candle, uri, len, NULL);
+	if (!scheme) {
+		REDEBUG("Error unescaping host");
+		return -1;
+	}
+
+	MEM(*out = talloc_asprintf(request, "%s%s", scheme, p));
+	curl_free(scheme);
+
+	return talloc_array_length(*out) - 1;	/* array_length includes \0 */
 }
