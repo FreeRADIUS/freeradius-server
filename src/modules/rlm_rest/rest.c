@@ -1280,7 +1280,7 @@ static int json_pairmake(rlm_rest_t *instance, UNUSED rlm_rest_section_t *sectio
 			/*
 			 *  Automagically switch the op for multivalued attributes.
 			 */
-			if (((flags.op == T_OP_SET) || (flags.op == T_OP_EQ)) && (i > 1)) {
+			if (((flags.op == T_OP_SET) || (flags.op == T_OP_EQ)) && (i >= 1)) {
 				flags.op = T_OP_ADD;
 			}
 
@@ -1298,7 +1298,7 @@ static int json_pairmake(rlm_rest_t *instance, UNUSED rlm_rest_section_t *sectio
 				vp = json_pairmake_leaf(instance, section, request, dst.da, &flags, element);
 				if (!vp) continue;
 			}
-
+			debug_pair(vp);
 			radius_pairmove(current, vps, vp);
 		/*
 		 *  If we call json_object_array_get_idx on something that's not an array
