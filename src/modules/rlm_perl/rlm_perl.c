@@ -488,7 +488,7 @@ static void perl_store_vps(TALLOC_CTX *ctx, VALUE_PAIR *vps, HV *rad_hv)
 	char const *name;
 	char namebuf[256];
 	char buffer[1024];
-	size_t len;
+	int len;
 
 	hv_undef(rad_hv);
 
@@ -533,7 +533,7 @@ static void perl_store_vps(TALLOC_CTX *ctx, VALUE_PAIR *vps, HV *rad_hv)
 			     vp;
 			     vp = fr_cursor_next(&cursor)) {
 				len = vp_prints_value(buffer, sizeof(buffer), vp, 0);
-				av_push(av, newSVpv(buffer, truncate_len(len, sizeof(buffer))));
+				av_push(av, newSVpv(buffer, len));
 			}
 			(void)hv_store(rad_hv, name, strlen(name), newRV_noinc((SV *)av), 0);
 
@@ -543,7 +543,7 @@ static void perl_store_vps(TALLOC_CTX *ctx, VALUE_PAIR *vps, HV *rad_hv)
 			 */
 		} else {
 			len = vp_prints_value(buffer, sizeof(buffer), sublist, 0);
-			(void)hv_store(rad_hv, name, strlen(name), newSVpv(buffer, truncate_len(len, sizeof(buffer))), 0);
+			(void)hv_store(rad_hv, name, strlen(name), newSVpv(buffer, len), 0);
 		}
 
 		pairfree(&sublist);
