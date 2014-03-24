@@ -412,7 +412,7 @@ size_t		fr_print_string(char const *in, size_t inlen,
 				 char *out, size_t outlen);
 
 #define		is_truncated(_ret, _max) ((_ret) >= (_max))
-#define		truncate_len(_ret, _max) (((_ret) >= (_max)) ? _ret : (_max) - 1)
+#define		truncate_len(_ret, _max) (((_ret) >= (_max)) ? ((_max) - 1) : _ret)
 size_t   	vp_prints_value(char *out, size_t outlen, VALUE_PAIR const *vp, int8_t quote);
 char		*vp_aprinttype(TALLOC_CTX *ctx, PW_TYPE type);
 char     	*vp_aprint(TALLOC_CTX *ctx, VALUE_PAIR const *vp);
