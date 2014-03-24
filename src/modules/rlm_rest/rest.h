@@ -264,4 +264,7 @@ size_t rest_get_handle_data(char const **out, rlm_rest_handle_t *handle);
 /*
  *	Helper functions
  */
+size_t rest_uri_escape(UNUSED REQUEST *request, char *out, size_t outlen, char const *raw, UNUSED void *arg);
 ssize_t rest_uri_build(char **out, rlm_rest_t *instance, REQUEST *request, char const *uri);
+ssize_t rest_uri_host_unescape(char **out, UNUSED rlm_rest_t *instance, REQUEST *request,
+			       void *handle, char const *uri);
