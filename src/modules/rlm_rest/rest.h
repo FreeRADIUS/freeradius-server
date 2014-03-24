@@ -171,13 +171,13 @@ typedef enum {
  *	Outbound data context (passed to CURLOPT_READFUNCTION as CURLOPT_READDATA)
  */
 typedef struct rlm_rest_request_t {
-	rlm_rest_t 	*instance;
-	REQUEST 	*request;
-	read_state_t 	state;
+	rlm_rest_t		*instance;
+	REQUEST			*request;
+	read_state_t		state;
 
-	vp_cursor_t 	cursor;
+	vp_cursor_t		cursor;
 
-	unsigned int	chunk;
+	unsigned int		chunk;
 } rlm_rest_request_t;
 
 /*
@@ -185,16 +185,16 @@ typedef struct rlm_rest_request_t {
  *	CURLOPT_HEADERFUNCTION as CURLOPT_WRITEDATA and CURLOPT_HEADERDATA)
  */
 typedef struct rlm_rest_response_t {
-	rlm_rest_t	 *instance;
-	REQUEST		 *request;
-	write_state_t	 state;
+	rlm_rest_t		*instance;
+	REQUEST			*request;
+	write_state_t		state;
 
-	char 		 *buffer;	/* HTTP incoming raw data */
-	size_t		 alloc;		/* Space allocated for buffer */
-	size_t		 used;		/* Space used in buffer */
+	char 			*buffer;	//!< HTTP incoming raw data.
+	size_t		 	alloc;		//!< Space allocated for buffer.
+	size_t		 	used;		//!< Space used in buffer.
 
-	int		 code;		/* HTTP Status Code */
-	http_body_type_t type;		/* HTTP Content Type */
+	int		 	code;		//!< HTTP Status Code.
+	http_body_type_t	type;		//!< HTTP Content Type.
 } rlm_rest_response_t;
 
 /*
@@ -211,8 +211,8 @@ typedef struct rlm_rest_curl_context_t {
  *	Connection API handle
  */
 typedef struct rlm_rest_handle_t {
-	void	*handle;	/* Real Handle */
-	void	*ctx;		/* Context */
+	void			*handle;	//!< Real Handle.
+	void			*ctx;		//!< Context.
 } rlm_rest_handle_t;
 
 /*
