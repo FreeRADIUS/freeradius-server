@@ -3461,12 +3461,17 @@ static ssize_t data2vp(RADIUS_PACKET *packet,
 	 *	Decrypt the attribute.
 	 */
 	if (secret && packet && (da->flags.encrypt != FLAG_ENCRYPT_NONE)) {
+		/*
+		 *	Encrypted attributes can only exist for the
+		 *	old-style format.  Extended attributes CANNOT
+		 *	be encrypted.
+		 */
+		if (attrlen > 253) {
+			return -1;
+		}
+
 		if (data == start) {
-			if (attrlen < sizeof(buffer)) {
-				memcpy(buffer, data, attrlen);
-			} else {
-				memcpy(buffer, data, sizeof(buffer));
-			}
+			memcpy(buffer, data, attrlen);
 		}
 		data = buffer;
 
