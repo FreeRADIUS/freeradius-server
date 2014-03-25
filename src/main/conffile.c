@@ -2477,22 +2477,11 @@ CONF_SECTION *cf_section_sub_find_name2(CONF_SECTION const *cs,
 			continue;
 
 		subcs = cf_itemtosection(ci);
-		if (!name1) {
-			if (!subcs->name2) {
-				if (strcmp(subcs->name1, name2) == 0) break;
-			} else {
-				if (strcmp(subcs->name2, name2) == 0) break;
-			}
-			continue; /* don't do the string comparisons below */
+		if (!subcs->name2) {
+			if (strcmp(subcs->name1, name2) == 0) break;
+		} else {
+			if (strcmp(subcs->name2, name2) == 0) break;
 		}
-
-		if (strcmp(subcs->name1, name1) != 0) continue;
-		if (!subcs->name2 && name2) continue;
-		if (subcs->name2 && !name2) continue;
-
-		if (!subcs->name2 && !name2) break;
-
-		if (strcmp(subcs->name2, name2) == 0) break;
 	}
 
 	return cf_itemtosection(ci);
