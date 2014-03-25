@@ -231,7 +231,7 @@ static ssize_t rest_xlat(void *instance, REQUEST *request,
 	}
 	if (len > 0) {
 		outlen = len;
-		strlcpy(out, body, len);
+		strlcpy(out, body, len + 1);	/* strlcpy takes the size of the buffer */
 	}
 
 end:
