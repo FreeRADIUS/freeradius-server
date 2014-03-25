@@ -1011,10 +1011,7 @@ static int load_component_section(CONF_SECTION *cs,
 		}
 
 		subcomp = new_sublist(cs, components, comp, idx);
-		if (subcomp == NULL) {
-			talloc_free(this);
-			continue;
-		}
+		if (!subcomp) continue;
 
 		/*
 		 *	Try to compile one entry.
