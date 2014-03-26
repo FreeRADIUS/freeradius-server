@@ -1,0 +1,39 @@
+linelog raptor_moonshot_idp_log {
+    filename = ${logdir}/raptor-moonshot-idp.log
+    format = ""
+    reference = "raptor_moonshot_idp_log.%{%{reply:Packet-Type}:-format}"
+    raptor_moonshot_idp_log {
+        Access-Accept = "%S#%{request:Realm}#%{outer.request:Operator-Name}#%{request:User-Name}#%{reply:Chargeable-User-Identity}##%{outer.request:GSS-Acceptor-Service-Name}/%{outer.request:GSS-Acceptor-Host-Name}#%{outer.request:EAP-Type}/%{EAP-Type}##FreeRADIUS#%v#OK##"
+        Access-Reject = "%S#%{request:Realm}#%{outer.request:Operator-Name}#%{request:User-Name}#%{reply:Chargeable-User-Identity}##%{outer.request:GSS-Acceptor-Service-Name}/%{outer.request:GSS-Acceptor-Host-Name}#%{outer.request:EAP-Type}/%{EAP-Type}##FreeRADIUSs#%v#FAIL##"
+  }                                                                                                                                                                                                                                                                                                                                                                           
+}                                                                                                                                                                                                                                                                                                                                                                             
+
+linelog raptor_moonshot_rp_log {
+    filename = ${logdir}/raptor-moonshot-rp.log
+    format = ""
+    reference = "raptor_moonshot_rp_log.%{%{reply:Packet-Type}:-format}"
+    raptor_moonshot_rp_log {
+        Access-Accept = "%S#%{request:Realm}#%{request:Operator-Name}#%{request:User-Name}#%{reply:Chargeable-User-Identity}##%{request:GSS-Acceptor-Service-Name}/%{request:GSS-Acceptor-Host-Name}#%{request:EAP-Type}/%{EAP-Type}##FreeRADIUS#%v#OK##"
+        Access-Reject = "%S#%{request:Realm}#%{request:Operator-Name}#%{request:User-Name}#%{reply:Chargeable-User-Identity}##%{request:GSS-Acceptor-Service-Name}/%{request:GSS-Acceptor-Host-Name}#%{request:EAP-Type}/%{EAP-Type}##FreeRADIUS#%v#FAIL##"
+  }                                                                                                                                                                                                                                                                                                                                                                           
+}                                                                                                                                                                                                                                                                                                                                                                             
+
+linelog raptor_eduroam_idp_log {
+    filename = ${logdir}/raptor-eduroam-idp.log
+    format = ""
+    reference = "raptor_eduroam_idp_log.%{%{reply:Packet-Type}:-format}"
+    raptor_eduroam_idp_log {
+        Access-Accept = "%S#%{request:Realm}#%{request:Operator-Name}#%{request:User-Name}#%{reply:Chargeable-User-Identity}#%{outer.request:Calling-Station-Id}#%{outer.request:Called-Station-Id}#%{outer.request:EAP-Type}/%{EAP-Type}##FreeRADIUS#%v#OK##"
+        Access-Reject = "%S#%{request:Realm}#%{request:Operator-Name}#%{request:User-Name}#%{reply:Chargeable-User-Identity}#%{outer.request:Calling-Station-Id}#%{outer.request:Called-Station-Id}#%{outer.request:EAP-Type}/%{EAP-Type}##FreeRADIUS#%v#FAIL##"
+    }                                                                                                                                                                                                                                                                                                                                                                         
+}                                                                                                                                                                                                                                                                                                                                                                             
+
+linelog raptor_eduroam_rp_log {
+    filename = ${logdir}/raptor-eduroam-rp.log
+    format = ""
+    reference = "raptor_eduroam_rp_log.%{%{reply:Packet-Type}:-format}"
+    raptor_eduroam_rp_log {
+        Access-Accept = "%S#%{request:Realm}#%{request:Operator-Name}#%{request:User-Name}#%{reply:Chargeable-User-Identity}#%{request:Calling-Station-Id}#%{request:Called-Station-Id}#%{request:EAP-Type}/%{EAP-Type}##FreeRADIUS#%v#OK##"
+        Access-Reject = "%S#%{request:Realm}#%{request:Operator-Name}#%{request:User-Name}#%{reply:Chargeable-User-Identity}#%{request:Calling-Station-Id}#%{request:Called-Station-Id}#%{request:EAP-Type}/%{EAP-Type}##FreeRADIUS#%v#FAIL##"
+    }                                                                                                                                                                                                                                                                                                                                                                         
+}                                                                   
