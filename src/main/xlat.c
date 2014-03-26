@@ -104,6 +104,7 @@ static char const * const xlat_foreach_names[] = {"Foreach-Variable-0",
 #endif
 static int xlat_inst[] = { 0, 1, 2, 3, 4, 5, 6, 7, 8 };	/* up to 8 for regex */
 
+char const *radiusd_short_version = RADIUSD_VERSION_STRING;
 
 #ifdef WITH_UNLANG
 /** Convert the value on a VALUE_PAIR to string
@@ -1238,7 +1239,7 @@ static ssize_t xlat_tokenize_literal(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **he
 			ssize_t slen;
 			xlat_exp_t *next;
 
-			if (!p[1] || !strchr("%dlmtDGHISTY", p[1])) {
+			if (!p[1] || !strchr("%dlmtDGHISTYv", p[1])) {
 					talloc_free(node);
 					*error = "Invalid variable expansion";
 					p++;
@@ -1963,6 +1964,10 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 		case 'Y': /* request year */
 			(void) localtime_r(&when, &ts);
 			strftime(str, freespace, "%Y", &ts);
+			break;
+
+		case 'v': /* Version of code */
+			snprintf(str, freespace, "%s", radiusd_short_version);
 			break;
 
 		default:
