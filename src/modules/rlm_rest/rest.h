@@ -96,56 +96,62 @@ extern const FR_NAME_NUMBER http_method_table[];
 
 extern const FR_NAME_NUMBER http_body_type_table[];
 
-extern const FR_NAME_NUMBER http_content_header_table[];
+extern const FR_NAME_NUMBER http_content_type_table[];
 
 /*
  *	Structure for section configuration
  */
 typedef struct rlm_rest_section_t {
-	char const *name;
-	char *uri;
+	char const		*name;		//!< Section name.
+	char			*uri;		//!< URI to send HTTP request to.
 
-	char *method_str;
-	http_method_t method;
+	char			*method_str;	//!< The string version of the HTTP method.
+	http_method_t		method;		//!< What HTTP method should be used, GET, POST etc...
 
-	char *body_str;
-	http_body_type_t body;
-	http_body_type_t force_to;
+	char const		*body_str;	//!< The string version of the encoding/content type.
+	http_body_type_t	body;		//!< What encoding type should be used.
 
-	char *username;
-	char *password;
-	char *auth_str;
-	http_auth_type_t auth;
-	bool require_auth;
+	http_body_type_t	force_to;	//!< Override the Content-Type header in the response
+						//!< to force decoding as a particular type.
 
-	char *tls_certificate_file;
-	char *tls_private_key_file;
-	char *tls_private_key_password;
-	char *tls_ca_file;
-	char *tls_ca_path;
-	char *tls_random_file;
-	bool tls_check_cert;
-	bool tls_check_cert_cn;
+	char			*data;		//!< Custom body data (optional).
 
-	int timeout;
-	unsigned int chunk;
+	char			*auth_str;	//!< The string version of the Auth-Type.
+	http_auth_type_t	auth;		//!< HTTP auth type.
+	bool			require_auth;	//!< Whether HTTP-Auth is required or not.
+	char			*username;	//!< Username used for HTTP-Auth
+	char			*password;	//!< Password used for HTTP-Auth
+
+	char			*tls_certificate_file;
+	char			*tls_private_key_file;
+	char			*tls_private_key_password;
+	char			*tls_ca_file;
+	char			*tls_ca_path;
+	char			*tls_random_file;
+	bool			tls_check_cert;
+	bool			tls_check_cert_cn;
+
+	int			timeout;	//!< Timeout passed to CURL.
+	size_t			chunk;		//!< Max chunk-size (mainly for testing the encoders)
 } rlm_rest_section_t;
 
 /*
  *	Structure for module configuration
  */
 typedef struct rlm_rest_t {
-	char const *xlat_name;
+	char const		*xlat_name;	//!< Instance name.
 
-	char *connect_uri;
+	char			*connect_uri;	//!< URI we attempt to connect to, to pre-establish
+						//!< TCP connections.
 
-	fr_connection_pool_t *conn_pool;
+	fr_connection_pool_t	*conn_pool;	//!< Pointer to the connection pool.
 
-	rlm_rest_section_t authorize;
-	rlm_rest_section_t authenticate;
-	rlm_rest_section_t accounting;
-	rlm_rest_section_t checksimul;
-	rlm_rest_section_t postauth;
+	rlm_rest_section_t	authorize;	//!< Configuration specific to authorisation.
+	rlm_rest_section_t	authenticate;	//!< Configuration specific to authentication.
+	rlm_rest_section_t	accounting;	//!< Configuration specific to accounting.
+	rlm_rest_section_t	checksimul;	//!< Configuration specific to simultaneous session
+						//!< checking.
+	rlm_rest_section_t	postauth;	//!< Configuration specific to Post-auth
 } rlm_rest_t;
 
 /*
@@ -172,13 +178,15 @@ typedef enum {
  *	Outbound data context (passed to CURLOPT_READFUNCTION as CURLOPT_READDATA)
  */
 typedef struct rlm_rest_request_t {
-	rlm_rest_t		*instance;
-	REQUEST			*request;
-	read_state_t		state;
+	rlm_rest_t		*instance;	//!< This instance of rlm_rest.
+	REQUEST			*request;	//!< Current request.
+	read_state_t		state;		//!< Encoder state
 
-	vp_cursor_t		cursor;
+	vp_cursor_t		cursor;		//!< Cursor pointing to the start of the list to encode.
 
-	unsigned int		chunk;
+	size_t			chunk;		//!< Chunk size
+
+	void			*encoder;	//!< Encoder specific data.
 } rlm_rest_request_t;
 
 /*
@@ -186,27 +194,33 @@ typedef struct rlm_rest_request_t {
  *	CURLOPT_HEADERFUNCTION as CURLOPT_WRITEDATA and CURLOPT_HEADERDATA)
  */
 typedef struct rlm_rest_response_t {
-	rlm_rest_t		*instance;
-	REQUEST			*request;
-	write_state_t		state;
+	rlm_rest_t		*instance;	//!< This instance of rlm_rest.
+	REQUEST			*request;	//!< Current request.
+	write_state_t		state;		//!< Decoder state.
 
-	char 			*buffer;	//!< HTTP incoming raw data.
+	char 			*buffer;	//!< Raw incoming HTTP data.
 	size_t		 	alloc;		//!< Space allocated for buffer.
 	size_t		 	used;		//!< Space used in buffer.
 
 	int		 	code;		//!< HTTP Status Code.
 	http_body_type_t	type;		//!< HTTP Content Type.
 	http_body_type_t	force_to;	//!< Force decoding the body type as a particular encoding.
+
+	void			*decoder;	//!< Decoder specific data.
 } rlm_rest_response_t;
 
 /*
  *	Curl context data
  */
 typedef struct rlm_rest_curl_context_t {
-	struct curl_slist	*headers;
-	char			*body;
-	rlm_rest_request_t	request;
-	rlm_rest_response_t	response;
+	struct curl_slist	*headers;	//!< Any HTTP headers which will be sent with the
+						//!< request.
+
+	char			*body;		//!< Pointer to the buffer which contains body data/
+						//!< Only used when not performing chunked encoding.
+
+	rlm_rest_request_t	request;	//!< Request context data.
+	rlm_rest_response_t	response;	//!< Response context data.
 } rlm_rest_curl_context_t;
 
 /*
@@ -214,7 +228,7 @@ typedef struct rlm_rest_curl_context_t {
  */
 typedef struct rlm_rest_handle_t {
 	void			*handle;	//!< Real Handle.
-	void			*ctx;		//!< Context.
+	rlm_rest_curl_context_t	*ctx;		//!< Context.
 } rlm_rest_handle_t;
 
 /*
