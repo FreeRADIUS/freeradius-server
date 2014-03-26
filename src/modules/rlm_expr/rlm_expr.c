@@ -606,13 +606,13 @@ static ssize_t evp_md_xlat(UNUSED void *instance, UNUSED REQUEST *request,
 
 	EVP_MD_CTX *ctx;
 
-        /*
-         *      We need room for at least one octet of output.
-         */
-        if (outlen < 3) {
-                *out = '\0';
-                return 0;
-        }
+	/*
+	 *      We need room for at least one octet of output.
+	 */
+	if (outlen < 3) {
+		*out = '\0';
+		return 0;
+	}
 
 	inlen = xlat_fmt_to_ref(&p, request, fmt);
 	if (inlen < 0) {
@@ -625,12 +625,12 @@ static ssize_t evp_md_xlat(UNUSED void *instance, UNUSED REQUEST *request,
 	EVP_DigestFinal_ex(ctx, digest, &digestlen);
 	EVP_MD_CTX_destroy(ctx);
 
-        /*
-         *      Each digest octet takes two hex digits, plus one for
-         *      the terminating NUL.
-         */
-        len = (outlen / 2) - 1;
-        if (len > digestlen) len = digestlen;
+	/*
+	 *      Each digest octet takes two hex digits, plus one for
+	 *      the terminating NUL.
+	 */
+	len = (outlen / 2) - 1;
+	if (len > digestlen) len = digestlen;
 
 	for (i = 0; i < len; i++) {
 		snprintf(out + i * 2, 3, "%02x", digest[i]);
@@ -658,37 +658,37 @@ static ssize_t sha1_xlat(UNUSED void *instance, UNUSED REQUEST *request,
 	uint8_t digest[20];
 	ssize_t i, len, inlen;
 	uint8_t const *p;
-        fr_SHA1_CTX ctx;
+	fr_SHA1_CTX ctx;
 
-        /*
-         *      We need room for at least one octet of output.
-         */
-        if (outlen < 3) {
-                *out = '\0';
-                return 0;
-        }
+	/*
+	 *      We need room for at least one octet of output.
+	 */
+	if (outlen < 3) {
+		*out = '\0';
+		return 0;
+	}
 
 	inlen = xlat_fmt_to_ref(&p, request, fmt);
 	if (inlen < 0) {
 		return -1;
 	}
 
-        fr_SHA1Init(&ctx);
-        fr_SHA1Update(&ctx, p, inlen);
-        fr_SHA1Final(digest, &ctx);
+	fr_SHA1Init(&ctx);
+	fr_SHA1Update(&ctx, p, inlen);
+	fr_SHA1Final(digest, &ctx);
 
-        /*
-         *      Each digest octet takes two hex digits, plus one for
-         *      the terminating NUL. SHA1 is 160 bits (20 bytes)
-         */
-        len = (outlen / 2) - 1;
-        if (len > 20) len = 20;
+	/*
+	 *      Each digest octet takes two hex digits, plus one for
+	 *      the terminating NUL. SHA1 is 160 bits (20 bytes)
+	 */
+	len = (outlen / 2) - 1;
+	if (len > 20) len = 20;
 
-        for (i = 0; i < len; i++) {
-                snprintf(out + i * 2, 3, "%02x", digest[i]);
-        }
+	for (i = 0; i < len; i++) {
+		snprintf(out + i * 2, 3, "%02x", digest[i]);
+	}
 
-        return strlen(out);
+	return strlen(out);
 }
 
 /**
