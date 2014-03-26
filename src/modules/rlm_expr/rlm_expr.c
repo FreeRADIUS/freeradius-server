@@ -600,8 +600,8 @@ static ssize_t evp_md_xlat(UNUSED void *instance, UNUSED REQUEST *request,
                            char const *fmt, char *out, size_t outlen, EVP_MD const *md)
 {
 	uint8_t digest[EVP_MAX_MD_SIZE];
-	unsigned int digestlen;
-	ssize_t i, len, inlen;
+	unsigned int digestlen, i, len;
+	ssize_t inlen;
 	uint8_t const *p;
 
 	EVP_MD_CTX *ctx;
