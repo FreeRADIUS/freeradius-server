@@ -2142,27 +2142,29 @@ void rest_request_cleanup(UNUSED rlm_rest_t *instance, UNUSED rlm_rest_section_t
 	CURL			*candle = randle->handle;
 
 	/*
-   	 *  Clear any previously configured options
-   	 */
-  	curl_easy_reset(candle);
+	 *  Clear any previously configured options
+	 */
+	curl_easy_reset(candle);
 
 	/*
-   	 *  Free header list
-   	 */
-  	if (ctx->headers != NULL) {
-  		curl_slist_free_all(ctx->headers);
-  		ctx->headers = NULL;
-  	}
+	 *  Free header list
+	 */
+	if (ctx->headers != NULL) {
+		curl_slist_free_all(ctx->headers);
+		ctx->headers = NULL;
+	}
 
 	/*
-   	 *  Free body data (only used if chunking is disabled)
-   	 */
-  	if (ctx->body != NULL) free(ctx->body);
-
-  	/*
-   	 *  Free other context info
-   	 */
-  	rest_response_free(&ctx->response);
+	 *  Free body data (only used if chunking is disabled)
+	 */
+	if (ctx->body != NULL) {
+		free(ctx->body);
+		ctx->body = NULL;
+	}
+	/*
+	 *  Free other context info
+	 */
+	rest_response_free(&ctx->response);
 }
 
 /** URL encodes a string.
