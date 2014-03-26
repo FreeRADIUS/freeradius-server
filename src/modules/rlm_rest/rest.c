@@ -231,6 +231,9 @@ int rest_init(rlm_rest_t *instance)
 {
 	CURLcode ret;
 
+	/* developer sanity */
+	rad_assert((sizeof(http_body_type_supported) / sizeof(*http_body_type_supported)) == HTTP_BODY_NUM_ENTRIES);
+
 	ret = curl_global_init(CURL_GLOBAL_ALL);
 	if (ret != CURLE_OK) {
 		ERROR("rlm_rest (%s): CURL init returned error: %i - %s",
