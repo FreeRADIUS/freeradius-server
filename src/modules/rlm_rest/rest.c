@@ -1971,6 +1971,7 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 	switch (method) {
 	case HTTP_METHOD_GET :
 	case HTTP_METHOD_DELETE :
+		RDEBUG3("Using a HTTP method which does not require a body.  Forcing request body type to \"none\"");
 		return 0;
 
 	case HTTP_METHOD_POST :
@@ -1986,6 +1987,8 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 			if (!ctx->headers) goto error_header;
 		}
 
+		RDEBUG3("Request body content-type will be \"%s\"",
+			fr_int2str(http_content_type_table, type, section->body_str));
 		switch (type) {
 		case HTTP_BODY_NONE:
 			if (rest_request_config_body(instance, section, request, handle,
@@ -2092,7 +2095,7 @@ int rest_response_decode(rlm_rest_t *instance, UNUSED rlm_rest_section_t *sectio
 		return ret;
 	}
 
-	RDEBUG3("Processing body");
+	RDEBUG3("Processing response body");
 
 	switch (ctx->response.type) {
 	case HTTP_BODY_NONE:
