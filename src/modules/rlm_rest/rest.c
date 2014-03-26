@@ -1964,7 +1964,7 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 	case HTTP_METHOD_GET :
 	case HTTP_METHOD_DELETE :
 		RDEBUG3("Using a HTTP method which does not require a body.  Forcing request body type to \"none\"");
-		return 0;
+		goto finish;
 
 	case HTTP_METHOD_POST :
 	case HTTP_METHOD_PUT :
@@ -2016,12 +2016,13 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 			assert(0);
 		}
 
-		SET_OPTION(CURLOPT_HTTPHEADER, ctx->headers);
 		break;
 
 	default:
 		rad_assert(0);
 	};
+finish:
+	SET_OPTION(CURLOPT_HTTPHEADER, ctx->headers);
 
 	return 0;
 
