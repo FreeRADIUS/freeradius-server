@@ -600,19 +600,19 @@ static ssize_t evp_md_xlat(UNUSED void *instance, UNUSED REQUEST *request,
                            char const *fmt, char *out, size_t outlen, EVP_MD const *md)
 {
 	uint8_t digest[EVP_MAX_MD_SIZE];
-	unsigned int digestlen;
-	ssize_t i, len, inlen;
+	unsigned int digestlen, len, i;
+	ssize_t inlen;
 	uint8_t const *p;
 
 	EVP_MD_CTX *ctx;
 
-        /*
-         *      We need room for at least one octet of output.
-         */
-        if (outlen < 3) {
-                *out = '\0';
-                return 0;
-        }
+	/*
+	 *      We need room for at least one octet of output.
+	 */
+	if (outlen < 3) {
+		*out = '\0';
+		return 0;
+	}
 
 	inlen = xlat_fmt_to_ref(&p, request, fmt);
 	if (inlen < 0) {
@@ -625,12 +625,12 @@ static ssize_t evp_md_xlat(UNUSED void *instance, UNUSED REQUEST *request,
 	EVP_DigestFinal_ex(ctx, digest, &digestlen);
 	EVP_MD_CTX_destroy(ctx);
 
-        /*
-         *      Each digest octet takes two hex digits, plus one for
-         *      the terminating NUL.
-         */
-        len = (outlen / 2) - 1;
-        if (len > digestlen) len = digestlen;
+	/*
+	 *      Each digest octet takes two hex digits, plus one for
+	 *      the terminating NUL.
+	 */
+	len = (outlen / 2) - 1;
+	if (len > digestlen) len = digestlen;
 
 	for (i = 0; i < len; i++) {
 		snprintf(out + i * 2, 3, "%02x", digest[i]);
