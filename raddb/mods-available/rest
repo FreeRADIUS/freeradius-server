@@ -50,7 +50,7 @@ rest {
 	#    uri          - to send the request to.
 	#    method       - HTTP method to use, one of 'get', 'post', 'put', 'delete'.
 	#    body         - The format of the HTTP body sent to the remote server.
-	#                   May be 'post' or 'json', defaults to 'post'.
+	#                   May be 'none', 'post' or 'json', defaults to 'none'.
 	#    tls          - TLS settings for HTTPS.
 	#    auth         - HTTP auth method to use, one of 'none', 'srp', 'basic',
 	#                   'digest', 'digest-ie', 'gss-negotiate', 'ntlm', 
