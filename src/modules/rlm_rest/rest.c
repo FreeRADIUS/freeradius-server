@@ -447,8 +447,8 @@ static size_t rest_encode_post(void *out, size_t size, size_t nmemb, void *userd
 	char *encoded = p;	/* Position in buffer of last fully encoded attribute or value */
 	char *escaped;		/* Pointer to current URL escaped data */
 
-	ssize_t len = 0;
-	ssize_t freespace = (size * nmemb) - 1;
+	size_t len = 0;
+	size_t freespace = (size * nmemb) - 1;
 
 	/* Allow manual chunking */
 	if ((ctx->chunk) && (ctx->chunk <= freespace)) {
@@ -622,8 +622,8 @@ static size_t rest_encode_json(void *out, size_t size, size_t nmemb, void *userd
 
 	char const *type;
 
-	ssize_t len = 0;
-	ssize_t freespace = (size * nmemb) - 1;
+	size_t len = 0;
+	size_t freespace = (size * nmemb) - 1;
 
 	rad_assert(freespace > 0);
 
