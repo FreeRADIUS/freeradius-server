@@ -66,6 +66,7 @@ static const CONF_PARSER section_config[] = {
 	{ "uri", PW_TYPE_STRING_PTR, offsetof(rlm_rest_section_t, uri), NULL, ""  },
 	{ "method", PW_TYPE_STRING_PTR, offsetof(rlm_rest_section_t, method_str), NULL, "GET" },
 	{ "body", PW_TYPE_STRING_PTR, offsetof(rlm_rest_section_t, body_str), NULL, "none" },
+	{ "data", PW_TYPE_STRING_PTR, offsetof(rlm_rest_section_t, data), NULL, NULL },
 
 	/* User authentication */
 	{ "auth", PW_TYPE_STRING_PTR, offsetof(rlm_rest_section_t, auth_str), NULL, "none" },
@@ -166,7 +167,7 @@ static ssize_t rest_xlat(void *instance, REQUEST *request,
 	if (!handle) return -1;
 
 	/*
-	 *  Build xlat'd URI, this allows REST servers to be specified by
+	 *  Unescape parts of xlat'd URI, this allows REST servers to be specified by
 	 *  request attributes.
 	 */
 	len = rest_uri_host_unescape(&uri, instance, request, handle, fmt);
@@ -495,6 +496,7 @@ static int parse_sub_section(CONF_SECTION *parent, rlm_rest_section_t *config, r
 	config->auth = fr_str2int(http_auth_table, config->auth_str, HTTP_AUTH_UNKNOWN);
 	if (config->auth == HTTP_AUTH_UNKNOWN) {
 		cf_log_err_cs(cs, "Unknown HTTP auth type '%s'", config->auth_str);
+
 		return -1;
 	} else if ((config->auth != HTTP_AUTH_NONE) && !http_curl_auth[config->auth]) {
 		cf_log_err_cs(cs, "Unsupported HTTP auth type \"%s\", check libcurl version, OpenSSL build "
@@ -504,19 +506,57 @@ static int parse_sub_section(CONF_SECTION *parent, rlm_rest_section_t *config, r
 	}
 
 	config->method = fr_str2int(http_method_table, config->method_str, HTTP_METHOD_CUSTOM);
-	config->body = fr_str2int(http_body_type_table, config->body_str, HTTP_BODY_UNKNOWN);
 
-	if (config->body == HTTP_BODY_UNKNOWN) {
-		cf_log_err_cs(cs, "Unknown HTTP body type '%s'", config->body_str);
-		return -1;
+	/*
+	 *  We don't have any custom user data, so we need to select the right encoder based
+	 *  on the body type.
+	 *
+	 *  To make this slightly more/less confusing, we accept both canonical body_types,
+	 *  and content_types.
+	 */
+	if (!config->data) {
+		config->body = fr_str2int(http_body_type_table, config->body_str, HTTP_BODY_UNKNOWN);
+		if (config->body == HTTP_BODY_UNKNOWN) {
+			config->body = fr_str2int(http_content_type_table, config->body_str, HTTP_BODY_UNKNOWN);
+		}
+
+		if (config->body == HTTP_BODY_UNKNOWN) {
+			cf_log_err_cs(cs, "Unknown HTTP body type '%s'", config->body_str);
+			return -1;
+		}
+
+		switch (http_body_type_supported[config->body])
+		{
+			case HTTP_BODY_UNSUPPORTED:
+				cf_log_err_cs(cs, "Unsupported HTTP body type \"%s\", please submit patches",
+					      config->body_str);
+				return -1;
+
+			case HTTP_BODY_INVALID:
+				cf_log_err_cs(cs, "Invalid HTTP body type.  \"%s\" is not a valid web API data "
+					      "markup format", config->body_str);
+				return -1;
+
+			default:
+				break;
+		}
+	/*
+	 *  We have custom body data so we set HTTP_BODY_CUSTOM, but also need to try and
+	 *  figure out what content-type to use. So if they've used the canonical form we
+	 *  need to convert it back into a proper HTTP content_type value.
+	 */
+	} else {
+		http_body_type_t body;
+
+		config->body = HTTP_BODY_CUSTOM;
+
+		body = fr_str2int(http_body_type_table, config->body_str, HTTP_BODY_UNKNOWN);
+		if (body != HTTP_BODY_UNKNOWN) {
+			config->body_str = fr_int2str(http_content_type_table, body, config->body_str);
+		}
 	}
 
-	if (http_body_type_supported[config->body] == HTTP_BODY_UNSUPPORTED) {
-		cf_log_err_cs(cs, "Unsupported HTTP body type \"%s\", please submit patches", config->body_str);
-		return -1;
-	}
-
-	return 1;
+	return 0;
 }
 
 /*

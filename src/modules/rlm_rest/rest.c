@@ -50,6 +50,7 @@ const http_body_type_t http_body_type_supported[HTTP_BODY_NUM_ENTRIES] = {
 	HTTP_BODY_UNSUPPORTED,  // HTTP_BODY_UNAVAILABLE
 	HTTP_BODY_UNSUPPORTED,	// HTTP_BODY_INVALID
 	HTTP_BODY_NONE,		// HTTP_BODY_NONE
+	HTTP_BODY_CUSTOM,	// HTTP_BODY_CUSTOM
 	HTTP_BODY_POST,		// HTTP_BODY_POST
 #ifdef HAVE_JSON
 	HTTP_BODY_JSON,		// HTTP_BODY_JSON
@@ -193,8 +194,17 @@ const FR_NAME_NUMBER http_content_type_table[] = {
 	{ "text/x-yaml",			HTTP_BODY_YAML		},
 	{ "application/yaml",			HTTP_BODY_YAML		},
 	{ "application/x-yaml",			HTTP_BODY_YAML		},
+
 	{  NULL , -1 }
 };
+
+/*
+ *	Encoder specific structures.
+ *	@todo split encoders/decoders into submodules.
+ */
+typedef struct rest_custom_data {
+	char *p;		//!< how much text we've sent so far.
+} rest_custom_data_t;
 
 #ifdef HAVE_JSON
 /** Flags to control the conversion of JSON values to VALUE_PAIRs.
@@ -412,6 +422,33 @@ int mod_conn_delete(UNUSED void *instance, void *handle)
 	return true;
 }
 
+/** Copies a pre-expanded xlat string to the output buffer
+ *
+ * @param[out] out Char buffer to write encoded data to.
+ * @param[in] size Multiply by nmemb to get the length of ptr.
+ * @param[in] nmemb Multiply by size to get the length of ptr.
+ * @param[in] userdata rlm_rest_request_t to keep encoding state between calls.
+ * @return length of data (including NULL) written to ptr, or 0 if no more
+ *	data to write.
+ */
+static size_t rest_encode_custom(void *out, size_t size, size_t nmemb, void *userdata)
+{
+	rlm_rest_request_t *ctx = userdata;
+	rest_custom_data_t *data = ctx->encoder;
+
+	size_t	freespace = (size * nmemb) - 1;
+	size_t	len;
+
+	len = strlcpy(out, data->p, freespace);
+	if (is_truncated(len, freespace)) {
+		data->p += (freespace - 1);
+		return freespace - 1;
+	}
+	data->p += len;
+
+	return len;
+}
+
 /** Encodes VALUE_PAIR linked list in POST format
  *
  * This is a stream function matching the rest_read_t prototype. Multiple
@@ -617,8 +654,8 @@ no_space:
 static size_t rest_encode_json(void *out, size_t size, size_t nmemb, void *userdata)
 {
 	rlm_rest_request_t	*ctx = userdata;
-	REQUEST		*request = ctx->request; /* Used by RDEBUG */
-	VALUE_PAIR	*vp, *next;
+	REQUEST			*request = ctx->request; /* Used by RDEBUG */
+	VALUE_PAIR		*vp, *next;
 
 	char *p = out;		/* Position in buffer */
 	char *encoded = p;	/* Position in buffer of last fully encoded attribute or value */
@@ -1803,12 +1840,10 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 
 	SET_OPTION(CURLOPT_USERAGENT, "FreeRADIUS");
 
-	content_type = fr_int2str(http_content_type_table, type, NULL);
-	if (content_type) {
-		snprintf(buffer, (sizeof(buffer) - 1), "Content-Type: %s", content_type);
-		ctx->headers = curl_slist_append(ctx->headers, buffer);
-		if (!ctx->headers) goto error_header;
-	}
+	content_type = fr_int2str(http_content_type_table, type, section->body_str);
+	snprintf(buffer, (sizeof(buffer) - 1), "Content-Type: %s", content_type);
+	ctx->headers = curl_slist_append(ctx->headers, buffer);
+	if (!ctx->headers) goto error_header;
 
 	if (section->timeout) {
 		SET_OPTION(CURLOPT_TIMEOUT, section->timeout);
@@ -1981,46 +2016,74 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 
 		RDEBUG3("Request body content-type will be \"%s\"",
 			fr_int2str(http_content_type_table, type, section->body_str));
-		switch (type) {
-		case HTTP_BODY_NONE:
-			if (rest_request_config_body(instance, section, request, handle,
-						     NULL) < 0) {
-				return -1;
-			}
-
-			break;
-
-#ifdef HAVE_JSON
-		case HTTP_BODY_JSON:
-			rest_request_init(request, &ctx->request, 1);
-
-			if (rest_request_config_body(instance, section, request, handle,
-						     rest_encode_json) < 0) {
-				return -1;
-			}
-
-			break;
-#endif
-
-		case HTTP_BODY_POST:
-			rest_request_init(request, &ctx->request, 0);
-
-			if (rest_request_config_body(instance, section, request, handle,
-						     rest_encode_post) < 0) {
-				return -1;
-			}
-
-			break;
-
-		default:
-			assert(0);
-		}
-
 		break;
 
 	default:
 		rad_assert(0);
 	};
+
+	/*
+	 *  Setup encoder specific options
+	 */
+	switch (type) {
+	case HTTP_BODY_NONE:
+		if (rest_request_config_body(instance, section, request, handle,
+					     NULL) < 0) {
+			return -1;
+		}
+
+		break;
+
+	case HTTP_BODY_CUSTOM:
+	{
+		rest_custom_data_t *data;
+		char *expanded = NULL;
+
+		if (radius_axlat(&expanded, request, section->data, NULL, NULL) < 0) {
+			return -1;
+		}
+
+		data = talloc_zero(request, rest_custom_data_t);
+		data->p = expanded;
+
+		/* Use the encoder specific pointer to store the data we need to encode */
+		ctx->request.encoder = data;
+		if (rest_request_config_body(instance, section, request, handle,
+					     rest_encode_custom) < 0) {
+			TALLOC_FREE(ctx->request.encoder);
+			return -1;
+		}
+
+		break;
+	}
+
+#ifdef HAVE_JSON
+	case HTTP_BODY_JSON:
+		rest_request_init(request, &ctx->request, true);
+
+		if (rest_request_config_body(instance, section, request, handle,
+					     rest_encode_json) < 0) {
+			return -1;
+		}
+
+		break;
+#endif
+
+	case HTTP_BODY_POST:
+		rest_request_init(request, &ctx->request, false);
+
+		if (rest_request_config_body(instance, section, request, handle,
+					     rest_encode_post) < 0) {
+			return -1;
+		}
+
+		break;
+
+	default:
+		assert(0);
+	}
+
+
 finish:
 	SET_OPTION(CURLOPT_HTTPHEADER, ctx->headers);
 
