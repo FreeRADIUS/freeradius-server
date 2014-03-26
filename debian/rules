@@ -97,7 +97,7 @@ endif
 #Architecture 
 build: patch build-arch build-indep
 
-build-arch: build-arch-stamp
+build-arch: build-arch-stamp patch
 build-arch-stamp: config.status
 	$(MAKE) 
 	touch $@
