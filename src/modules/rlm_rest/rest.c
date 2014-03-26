@@ -1669,17 +1669,6 @@ static void rest_response_init(REQUEST *request, rlm_rest_response_t *ctx, http_
 	ctx->buffer = NULL;
 }
 
-/** Frees the intermediary buffer created by rest_write.
- *
- * @param[in] ctx data to be freed.
- */
-static void rest_response_free(rlm_rest_response_t *ctx)
-{
-	if (ctx->buffer != NULL) {
-		free(ctx->buffer);
-	}
-}
-
 /** Extracts pointer to buffer containing response data
  *
  * @param[out] out Where to write the pointer to the buffer.
@@ -2164,10 +2153,17 @@ void rest_request_cleanup(UNUSED rlm_rest_t *instance, UNUSED rlm_rest_section_t
 		free(ctx->body);
 		ctx->body = NULL;
 	}
+
 	/*
-	 *  Free other context info
+	 *  Free response data
 	 */
-	rest_response_free(&ctx->response);
+	if (ctx->response.buffer) {
+		free(ctx->response.buffer);
+		ctx->response.buffer = NULL;
+	}
+
+	TALLOC_FREE(ctx->request.encoder);
+	TALLOC_FREE(ctx->response.decoder);
 }
 
 /** URL encodes a string.
