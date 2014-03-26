@@ -25,7 +25,6 @@
 
 RCSID("$Id$")
 
-#include <assert.h>
 #include <ctype.h>
 #include <string.h>
 #include <time.h>
@@ -1889,7 +1888,7 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 		break;
 
 	default:
-		assert(0);
+		rad_assert(0);
 		break;
 	};
 
@@ -2080,7 +2079,7 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 		break;
 
 	default:
-		assert(0);
+		rad_assert(0);
 	}
 
 
@@ -2173,7 +2172,7 @@ int rest_response_decode(rlm_rest_t *instance, UNUSED rlm_rest_section_t *sectio
 		return -1;
 
 	default:
-		assert(0);
+		rad_assert(0);
 	}
 
 	return ret;
