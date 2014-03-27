@@ -62,6 +62,8 @@ static const char * const internal_xlat[] = {"check",
 #endif
 static const int xlat_inst[] = { 0, 1, 2, 3, 4, 5, 6, 7, 8 };	/* up to 8 for regex */
 
+char const *radiusd_short_version = RADIUSD_VERSION_STRING;
+
 /**
  * @brief Convert the value on a VALUE_PAIR to string
  */
@@ -1348,6 +1350,11 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 				q += valuepair2str(q,freespace,pairfind(request->packet->vps,PW_USER_NAME),PW_TYPE_STRING, func);
 				p++;
 				break;
+			case 'v': /* server version */
+				strlcpy(q,radiusd_short_version,freespace);
+                                q += strlen(q);
+                                p++;
+                                break;
 			case 'A': /* radacct_dir */
 				strlcpy(q,radacct_dir,freespace);
 				q += strlen(q);
