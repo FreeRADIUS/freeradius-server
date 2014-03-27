@@ -472,9 +472,8 @@ static void rbtree_delete_internal(rbtree_t *tree, rbnode_t *z, bool skiplock)
 	} else {
 		if (tree->free) tree->free(y->data);
 
-		if ((y->colour == BLACK) && parent) {
+		if (y->colour == BLACK)
 			delete_fixup(tree, x, parent);
-		}
 
 		talloc_free(y);
 	}
