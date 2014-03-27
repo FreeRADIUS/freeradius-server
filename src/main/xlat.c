@@ -1435,7 +1435,9 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 				p++;
 				break;
 			case 'v': /* Version of code */
-				snprintf(str, freespace, "%s", radiusd_short_version);
+				strlcpy(q,radiusd_short_version,freespace);
+				q += strlen(q);
+				p++;
 				break;
 			case 'Y': /* request year */
 				TM = localtime_r(&request->timestamp, &s_TM);
