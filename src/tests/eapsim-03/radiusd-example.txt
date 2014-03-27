@@ -246,9 +246,9 @@ log_auth_goodpass = no
 #
 usercollide = no
 
-# lower_user / lower_pass:  
+# lower_user / lower_pass:
 # Lower case the username/password "before" or "after"
-# attempting to authenticate.  
+# attempting to authenticate.
 #
 #  If "before", the server will first modify the request and then try
 #  to auth the user.  If "after", the server will first auth using the
@@ -324,7 +324,7 @@ security {
 	#  Normally this should be set to "no", because they're useless.
 	#  See: http://www.freeradius.org/rfc/rfc2865.html#Keep-Alives
 	#
-	#  However, certain NAS boxes may require them.	
+	#  However, certain NAS boxes may require them.
 	#
 	#  When sent a Status-Server message, the server responds with
 	#  and Access-Accept packet, containing a Reply-Message attribute,
@@ -356,7 +356,7 @@ $INCLUDE  ${confdir}/proxy.conf
 
 # CLIENTS CONFIGURATION
 #
-#  Client configuration is defined in "clients.conf".  
+#  Client configuration is defined in "clients.conf".
 #
 
 #  The 'clients.conf' file contains all of the information from the old
@@ -576,7 +576,7 @@ modules {
 
 	#  Extensible Authentication Protocol
 	#
-	#  For all EAP related authentications 
+	#  For all EAP related authentications
 	eap {
 		#  Invoke the default supported EAP type when
 		#  EAP-Identity response is received.
@@ -612,7 +612,7 @@ modules {
 		leap {
 		}
 
-		## EAP-TLS is highly experimental EAP-Type at the moment.  
+		## EAP-TLS is highly experimental EAP-Type at the moment.
 		#	Please give feedback on the mailing list.
 		#tls {
 		#	private_key_password = password
@@ -665,7 +665,7 @@ modules {
 		# to overwrite (or add) Auth-Type during
 		# authorization. Normally should be MS-CHAP
 		authtype = MS-CHAP
-		
+
 		# if use_mppe is not set to no mschap will
 		# add MS-CHAP-MPPE-Keys for MS-CHAPv1 and
 		# MS-MPPE-Recv-Key/MS-MPPE-Send-Key for MS-CHAPv2
@@ -685,14 +685,14 @@ modules {
 	#  This module definition allows you to use LDAP for
 	#  authorization and authentication (Auth-Type := LDAP)
 	#
-	#  See doc/rlm_ldap for description of configuration options 
-	#  and sample authorize{} and authenticate{} blocks 
+	#  See doc/rlm_ldap for description of configuration options
+	#  and sample authorize{} and authenticate{} blocks
 	ldap {
 		server = "ldap.your.domain"
 		# identity = "cn=admin,o=My Org,c=UA"
 		# password = mypass
 		basedn = "o=My Org,c=UA"
-		filter = "(uid=%{Stripped-User-Name:-%{User-Name}})"
+		filter = "(uid=%{%{Stripped-User-Name}:-%{User-Name}})"
 
 		# set this to 'yes' to use TLS encrypted connections
 		# to the LDAP database by using the StartTLS extended
@@ -748,7 +748,7 @@ modules {
 	#   ignore_nislike - ignore NIS-related records
 	#   delimiter - symbol to use as a field separator in passwd file,
 	#            for format ':' symbol is always used. '\0', '\n' are
-        #	     not allowed 
+        #	     not allowed
 	#
 
 	#  An example configuration for using /etc/smbpasswd.
@@ -806,7 +806,7 @@ modules {
 		format = suffix
 		delimiter = "%"
 	}
-	
+
 	# Preprocess the incoming RADIUS request, before handing it off
 	# to other modules.
 	#
@@ -957,7 +957,7 @@ modules {
 		#  If we want to believe the 'utmp' file, then this
 		#  configuration entry can be set to 'no'.
 		#
-		check_with_nas = yes		
+		check_with_nas = yes
 
 		# Set the file permissions, as the contents of this file
 		# are usually private.
@@ -1117,8 +1117,8 @@ modules {
 	#  If you wish to execute an external program in more than
 	#  one section (e.g. 'authorize', 'pre_proxy', etc), then it
 	#  is probably best to define a different instance of the
-	#  'exec' module for every section.	
-	#	
+	#  'exec' module for every section.
+	#
 	exec echo {
 		#
 		#  Wait for the program to finish.
@@ -1273,7 +1273,7 @@ instantiate {
 #  The order of the realm modules will determine the order that
 #  we try to find a matching realm.
 #
-#  Make *sure* that 'preprocess' comes before any realm if you 
+#  Make *sure* that 'preprocess' comes before any realm if you
 #  need to setup hints for the remote radius server
 authorize {
 	#
@@ -1286,7 +1286,7 @@ authorize {
 	#
 	#  It also adds a Client-IP-Address attribute to the request.
 	preprocess
-	
+
 	#
 	#  The chap module will set 'Auth-Type := CHAP' if we are
 	#  handling a CHAP request and Auth-Type has not already been set
@@ -1390,7 +1390,7 @@ authenticate {
 	#  module checks the users password.  Note that packets
 	#  containing CHAP-Password attributes CANNOT be authenticated
 	#  against /etc/passwd!  See the FAQ for details.
-	#  
+	#
 	unix
 
 	# Uncomment it if you want to use ldap for authentication
@@ -1457,7 +1457,7 @@ accounting {
 }
 
 
-#  Session database, used for checking Simultaneous-Use. Either the radutmp 
+#  Session database, used for checking Simultaneous-Use. Either the radutmp
 #  or rlm_sql module can handle this.
 #  The rlm_sql module is *much* faster
 session {

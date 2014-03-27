@@ -20,4 +20,4 @@
 #  Replace the User-Name with the Stripped-User-Name, if it exists.
 #
 #DEFAULT
-#	User-Name := "%{Stripped-User-Name:-%{User-Name}}"
+#	User-Name := "%{%{Stripped-User-Name}:-%{User-Name}}"

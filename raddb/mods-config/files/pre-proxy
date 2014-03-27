@@ -28,4 +28,4 @@
 #  User-Name from the original request.
 #
 #DEFAULT
-#	User-Name := `%{Stripped-User-Name:-%{User-Name}}`
+#	User-Name := `%{%{Stripped-User-Name}:-%{User-Name}}`

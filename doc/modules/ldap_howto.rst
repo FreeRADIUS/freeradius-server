@@ -981,7 +981,7 @@ An example is listed below::
     #this is the basedn to do searches on a user
     basedn = ou=users,ou=radius,dc=mydomain,dc=com
     #notice the username is the stripped user-name or user-name
-    filter = (uid=%{Stripped-User-Name:-{User-Name}})
+    filter = (uid=%{%{Stripped-User-Name}:-%{User-Name}})
     start_tls = no
     tls_mode = no
     #this maps ldap attributetypes to radius attributes
@@ -1000,7 +1000,7 @@ An example is listed below::
     #with --with-edir option.
     #edir_account_policy_check=no
     groupname_attribute = radiusGroupName
-    groupmembership_filter = (&(uid=%{Stripped-User-Name:-%{User-Name}})
+    groupmembership_filter = (&(uid=%{%{Stripped-User-Name}:-%{User-Name}})
     (objectclass=radiusprofile))
     groupmembership_attribute = radiusGroupName
     timeout = 3
@@ -1517,7 +1517,7 @@ edit radiusd.conf::
             identity = "uid=freeradius,ou=admins,ou=radius,dc=mydomain,dc=com"
             password = example
             basedn = "ou=users,ou=radius,dc=mydomain,dc=com"
-            filter = "(&(uid=%{Stripped-User-Name:-%{User-Name}})
+            filter = "(&(uid=%{%{Stripped-User-Name}:-%{User-Name}})
     (objectclass=radiusprofile)"
             start_tls = no
             tls_mode = no
@@ -1530,7 +1530,7 @@ edit radiusd.conf::
             #password_header = "{clear}"
             password_attribute = userPassword
             groupname_attribute = radiusGroupName
-            groupmembership_filter = "(&(uid=%{Stripped-User-Name:-%{User-Name}}))
+            groupmembership_filter = "(&(uid=%{%{Stripped-User-Name}:-%{User-Name}}))
     (objectclass=radiusProfile)"
             groupmembership_attribute = radiusGroupName
             timeout = 3
