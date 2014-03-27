@@ -14,10 +14,10 @@ RCSIDH(sysutmp_h, "$Id$")
  *  If we have BOTH utmp.h and utmpx.h, then
  *  we prefer to use utmp.h, but only on systems other than Solaris.
  */
-#if !defined(sun) && !defined(sgi) && !defined(hpux)
-#ifdef HAVE_UTMP_H
-#undef HAVE_UTMPX_H
-#endif
+#if !defined(_sun) && !defined(sgi) && !defined(hpux)
+#  ifdef HAVE_UTMP_H
+#    undef HAVE_UTMPX_H
+#  endif
 #endif
 
 #if defined(HAVE_UTMP_H) || defined(HAVE_UTMPX_H)
