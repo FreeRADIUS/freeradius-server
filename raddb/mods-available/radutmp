@@ -24,7 +24,7 @@ radutmp {
 	#  characters, so that will limit the possible choices
 	#  of keys.
 	#
-	#  You may want instead: %{Stripped-User-Name:-%{User-Name}}
+	#  You may want instead: %{%{Stripped-User-Name}:-%{User-Name}}
 	username = %{User-Name}
 
 

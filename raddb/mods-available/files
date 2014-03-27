@@ -12,7 +12,7 @@ files {
 	# The default key attribute to use for matches.  The content
 	# of this attribute is used to match the "name" of the
 	# entry.
-	#key = "%{Stripped-User-Name:-%{User-Name}}"
+	#key = "%{%{Stripped-User-Name}:-%{User-Name}}"
 
 	# Sets a common file for all sections which do not have
 	# specific files configured. It's recommended that
