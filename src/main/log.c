@@ -536,6 +536,33 @@ void radlog_request_error(log_type_t type, log_debug_t lvl, REQUEST *request, ch
 	va_end(ap);
 }
 
+static char const spaces[] = "                                                                                                                        ";
+
+/** Parse error, write out string we were parsing, and a message indicating the error
+ *
+ * @param type the log category.
+ * @param lvl of debugging this message should be displayed at.
+ * @param request The current request.
+ * @param fmt string we were parsing.
+ * @param indent how much to indent the message by.
+ * @param error what the parse error was.
+ */
+void radlog_request_marker(log_type_t type, log_debug_t lvl, REQUEST *request,
+			   char const *fmt, size_t indent, char const *error)
+{
+	char const *prefix = "";
+
+	if (indent >= sizeof(spaces)) {
+		size_t offset = (indent - (sizeof(spaces) - 1)) + (sizeof(spaces) * 0.75);
+		indent -= offset;
+		fmt += offset;
+
+		prefix = "... ";
+	}
+
+	radlog_request(type, lvl, request, "%s%s", prefix, fmt);
+	radlog_request(type, lvl, request, "%s%.*s^ %s", prefix, (int) indent, spaces, error);
+}
 
 void log_talloc(char const *msg)
 {
