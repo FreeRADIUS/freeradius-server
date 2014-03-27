@@ -18,6 +18,11 @@ FreeRADIUS 3.0.3 Fri 21 Mar 2014 08:30:00 EDT urgency=medium
 	  src/tests/keywords/if-skip
 	* All modules are marked as safe for '-C', which lets the
 	  dynamic expansion checks work in more situations.
+	* Added 'none' and 'custom' rlm_rest body types. 'custom'
+	  allows sending of arbitrary expanded text and content-type 
+	  headers.
+	* Added '%v' which expands to the server version - Patch
+	  from Alan Buxey.
 
 	Bug fixes
 	* Fix xlat expression %{attribute[n]} so that it actually
@@ -28,10 +33,16 @@ FreeRADIUS 3.0.3 Fri 21 Mar 2014 08:30:00 EDT urgency=medium
 	  Build with libjson0, which is the name of the json-c package
 	  on debian/ubuntu.
 	* Fix issue in radmin where the main dictionaries would
-	  not be loaded which, depending on the configuration may
+	  not be loaded which, depending on the configuration, may
 	  have caused validation errors.
 	* Fix handling of "%{reply:3GPP-*}"
 	* Fix rlm_perl garbage attributes
+	* Fix oracle SQL queries, which amongst other things still
+	  used the old expansion format, which is no longer
+	  supported/parsed.
+	* Truncate long format strings and error markers instead of 
+	  omitting them.
+	* Fix multiple attribute parsing in rlm_rest JSON
 
 FreeRADIUS 3.0.2 Fri 21 Mar 2014 08:30:00 EDT urgency=medium
 	Feature improvements
