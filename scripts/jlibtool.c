@@ -100,7 +100,7 @@
 #  define LD_LIBRARY_PATH_LOCAL		LD_LIBRARY_PATH
 #endif
 
-#if defined(sun)
+#if defined(__sun)
 #  define SHELL_CMD			"/bin/sh"
 #  define DYNAMIC_LIB_EXT		"so"
 #  define MODULE_LIB_EXT		"so"
