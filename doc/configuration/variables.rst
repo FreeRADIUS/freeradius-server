@@ -138,6 +138,8 @@ and their new equivalents.
 |%V         |Request-Authenticator      |                       |
 |           |(Verified/None)            |                       |
 +-----------+---------------------------+-----------------------+
+|%v         |Server Version             |                       |
++-----------+---------------------------+-----------------------+
 |%Y         |request year (YYYY)        |                       |
 +-----------+---------------------------+-----------------------+
 |%Z         |All request attributes     |                       |
