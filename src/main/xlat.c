@@ -1589,10 +1589,6 @@ size_t xlat_sprint(char *buffer, size_t bufsize, xlat_exp_t const *node)
 	return p - buffer;
 }
 
-
-static char const xlat_spaces[] = "                                                                                                                                                                                                                                                                ";
-
-
 ssize_t xlat_tokenize(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **head,
 		      char const **error)
 {
@@ -1638,14 +1634,10 @@ static ssize_t xlat_tokenize_request(REQUEST *request, char const *fmt, xlat_exp
 	 *	"       ^ error was here"
 	 */
 	if (slen < 0) {
-		size_t indent = -slen;
 		talloc_free(tokens);
-
 		rad_assert(error != NULL);
-		if (indent < sizeof(xlat_spaces)) {
-			REDEBUG("%s", fmt);
-			REDEBUG("%.*s^ %s", (int) -slen, xlat_spaces, error);
-		}
+
+		REMARKER(fmt, -slen, error);
 		return slen;
 	}
 

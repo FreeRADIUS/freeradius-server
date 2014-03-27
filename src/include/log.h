@@ -104,6 +104,8 @@ void		radlog_request_error(log_type_t type, log_debug_t lvl, REQUEST *request, c
 		__attribute__ ((format (printf, 4, 5)))
 #endif
 ;
+void radlog_request_marker(log_type_t type, log_debug_t lvl, REQUEST *request,
+			   char const *fmt, size_t indent, char const *error);
 
 void log_talloc(char const *message);
 void log_talloc_report(TALLOC_CTX *ctx);
@@ -159,37 +161,40 @@ void log_talloc_report(TALLOC_CTX *ctx);
  *
  *	If a REQUEST * is available, these functions should be used.
  */
-#define _RL(_l, _p, _f, ...)	do { if (request && request->radlog) radlog_request(_l, _p, request, _f, ## __VA_ARGS__); } while(0)
-#define _RM(_l, _p, _f, ...)	do { if (request) radlog_request_error(_l, _p, request, _f, ## __VA_ARGS__); } while (0)
+#define _RLOG(_l, _p, _f, ...)	do { if (request && request->radlog) radlog_request(_l, _p, request, _f, ## __VA_ARGS__); } while(0)
+#define _RMOD(_l, _p, _f, ...)	do { if (request) radlog_request_error(_l, _p, request, _f, ## __VA_ARGS__); } while (0)
+#define _RMKR(_l, _p, _m, _i, _e)	do { if (request) radlog_request_marker(_l, _p, request, _m, _i, _e); } while (0)
 
 #define RDEBUG_ENABLED		radlog_debug_enabled(L_DBG, L_DBG_LVL_1, request)
 #define RDEBUG_ENABLED2		radlog_debug_enabled(L_DBG, L_DBG_LVL_2, request)
 #define RDEBUG_ENABLED3		radlog_debug_enabled(L_DBG, L_DBG_LVL_3, request)
 #define RDEBUG_ENABLED4		radlog_debug_enabled(L_DBG, L_DBG_LVL_MAX, request)
 
-#define RAUTH(fmt, ...)		_RL(L_AUTH, L_DBG_LVL_OFF, fmt, ## __VA_ARGS__)
-#define RACCT(fmt, ...)		_RL(L_ACCT, L_DBG_LVL_OFF, fmt, ## __VA_ARGS__)
-#define RPROXY(fmt, ...)	_RL(L_PROXY, L_DBG_LVL_OFF, fmt, ## __VA_ARGS__)
+#define RAUTH(fmt, ...)		_RLOG(L_AUTH, L_DBG_LVL_OFF, fmt, ## __VA_ARGS__)
+#define RACCT(fmt, ...)		_RLOG(L_ACCT, L_DBG_LVL_OFF, fmt, ## __VA_ARGS__)
+#define RPROXY(fmt, ...)	_RLOG(L_PROXY, L_DBG_LVL_OFF, fmt, ## __VA_ARGS__)
 
-#define RDEBUGX(_l, fmt, ...)	_RL(L_DBG, _l, fmt, ## __VA_ARGS__)
-#define RDEBUG(fmt, ...)	_RL(L_DBG, L_DBG_LVL_1, fmt, ## __VA_ARGS__)
-#define RDEBUG2(fmt, ...)	_RL(L_DBG, L_DBG_LVL_2, fmt, ## __VA_ARGS__)
-#define RDEBUG3(fmt, ...)	_RL(L_DBG, L_DBG_LVL_3, fmt, ## __VA_ARGS__)
-#define RDEBUG4(fmt, ...)	_RL(L_DBG, L_DBG_LVL_MAX, fmt, ## __VA_ARGS__)
+#define RDEBUGX(_l, fmt, ...)	_RLOG(L_DBG, _l, fmt, ## __VA_ARGS__)
+#define RDEBUG(fmt, ...)	_RLOG(L_DBG, L_DBG_LVL_1, fmt, ## __VA_ARGS__)
+#define RDEBUG2(fmt, ...)	_RLOG(L_DBG, L_DBG_LVL_2, fmt, ## __VA_ARGS__)
+#define RDEBUG3(fmt, ...)	_RLOG(L_DBG, L_DBG_LVL_3, fmt, ## __VA_ARGS__)
+#define RDEBUG4(fmt, ...)	_RLOG(L_DBG, L_DBG_LVL_MAX, fmt, ## __VA_ARGS__)
 
-#define RINFO(fmt, ...)		_RL(L_INFO, L_DBG_LVL_OFF, fmt, ## __VA_ARGS__)
-#define RIDEBUG(fmt, ...)	_RL(L_INFO, L_DBG_LVL_1, fmt, ## __VA_ARGS__)
-#define RIDEBUG2(fmt, ...)	_RL(L_INFO, L_DBG_LVL_2, fmt, ## __VA_ARGS__)
+#define RINFO(fmt, ...)		_RLOG(L_INFO, L_DBG_LVL_OFF, fmt, ## __VA_ARGS__)
+#define RIDEBUG(fmt, ...)	_RLOG(L_INFO, L_DBG_LVL_1, fmt, ## __VA_ARGS__)
+#define RIDEBUG2(fmt, ...)	_RLOG(L_INFO, L_DBG_LVL_2, fmt, ## __VA_ARGS__)
 
-#define RWARN(fmt, ...)		_RL(L_DBG_WARN, L_DBG_LVL_OFF, fmt, ## __VA_ARGS__)
-#define RWDEBUG(fmt, ...)	_RL(L_DBG_WARN, L_DBG_LVL_1, fmt, ## __VA_ARGS__)
-#define RWDEBUG2(fmt, ...)	_RL(L_DBG_WARN, L_DBG_LVL_2, fmt, ## __VA_ARGS__)
+#define RWARN(fmt, ...)		_RLOG(L_DBG_WARN, L_DBG_LVL_OFF, fmt, ## __VA_ARGS__)
+#define RWDEBUG(fmt, ...)	_RLOG(L_DBG_WARN, L_DBG_LVL_1, fmt, ## __VA_ARGS__)
+#define RWDEBUG2(fmt, ...)	_RLOG(L_DBG_WARN, L_DBG_LVL_2, fmt, ## __VA_ARGS__)
 
-#define RERROR(fmt, ...)	_RM(L_DBG_ERR, L_DBG_LVL_OFF, fmt, ## __VA_ARGS__)
-#define REDEBUG(fmt, ...)	_RM(L_DBG_ERR, L_DBG_LVL_1, fmt, ## __VA_ARGS__)
-#define REDEBUG2(fmt, ...)	_RM(L_DBG_ERR, L_DBG_LVL_2, fmt, ## __VA_ARGS__)
-#define REDEBUG3(fmt, ...)	_RM(L_DBG_ERR, L_DBG_LVL_3, fmt, ## __VA_ARGS__)
-#define REDEBUG4(fmt, ...)	_RM(L_DBG_ERR, L_DBG_LVL_MAX, fmt, ## __VA_ARGS__)
+#define RERROR(fmt, ...)	_RMOD(L_DBG_ERR, L_DBG_LVL_OFF, fmt, ## __VA_ARGS__)
+#define REDEBUG(fmt, ...)	_RMOD(L_DBG_ERR, L_DBG_LVL_1, fmt, ## __VA_ARGS__)
+#define REDEBUG2(fmt, ...)	_RMOD(L_DBG_ERR, L_DBG_LVL_2, fmt, ## __VA_ARGS__)
+#define REDEBUG3(fmt, ...)	_RMOD(L_DBG_ERR, L_DBG_LVL_3, fmt, ## __VA_ARGS__)
+#define REDEBUG4(fmt, ...)	_RMOD(L_DBG_ERR, L_DBG_LVL_MAX, fmt, ## __VA_ARGS__)
+
+#define REMARKER(_m, _i, _e)	_RMKR(L_DBG_ERR, L_DBG_LVL_1, _m, _i, _e)
 
 #ifdef __cplusplus
 }

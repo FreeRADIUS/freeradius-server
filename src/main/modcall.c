@@ -2532,6 +2532,7 @@ void add_to_modcallable(modcallable *parent, modcallable *this)
 
 
 #ifdef WITH_UNLANG
+static char const spaces[] = "                                                                                                                        ";
 static bool pass2_xlat_compile(CONF_ITEM const *ci, value_pair_tmpl_t *vpt)
 {
 	ssize_t slen;
@@ -2545,20 +2546,22 @@ static bool pass2_xlat_compile(CONF_ITEM const *ci, value_pair_tmpl_t *vpt)
 	slen = xlat_tokenize(vpt, fmt, &head, &error);
 
 	if (slen < 0) {
-		size_t offset;
-		char *spbuf;
+		char const *prefix = "";
+		char const *p = vpt->name;
+		size_t indent = -slen;
 
-		offset = -slen;
+		if (indent >= sizeof(spaces)) {
+			size_t offset = (indent - (sizeof(spaces) - 1)) + (sizeof(spaces) * 0.75);
+			indent -= offset;
+			p += offset;
 
-		spbuf = malloc(offset + 1);
-		memset(spbuf, ' ', offset);
-		spbuf[offset] = '\0';
+			prefix = "...";
+		}
 
-		cf_log_err(ci, "Failed parsing expanded string %s",
-			   vpt->name);
-		cf_log_err(ci, "                               %.*s^ %s",
-			   (int) offset, spbuf, error);
-		free(spbuf);
+		cf_log_err(ci, "Failed parsing expanded string:");
+		cf_log_err(ci, "%s%s", prefix, p);
+		cf_log_err(ci, "%s%.*s^ %s", prefix, (int) indent, spaces, error);
+
 		return false;
 	}
 
