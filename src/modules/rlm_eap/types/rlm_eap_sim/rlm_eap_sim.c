@@ -199,7 +199,11 @@ static int eap_sim_get_challenge(eap_handler_t *handler, VALUE_PAIR *vps, int id
 	 *	or created by sending challenges to the SIM directly.
 	 */
 	vp = pairfind(vps, ATTRIBUTE_EAP_SIM_RAND1 + idx, 0, TAG_ANY);
-	if(!vp) {
+	/* Hack for backwards compatibility */
+	if (!vp) {
+		vp = pairfind(request->reply->vps, ATTRIBUTE_EAP_SIM_KC1 + idx, 0, TAG_ANY);
+	}
+	if (!vp) {
 		/* bad, we can't find stuff! */
 		REDEBUG("EAP-SIM Challenge[%i] not found", idx);
 		return 0;
@@ -211,6 +215,10 @@ static int eap_sim_get_challenge(eap_handler_t *handler, VALUE_PAIR *vps, int id
 	memcpy(ess->keys.rand[idx], vp->vp_strvalue, EAPSIM_RAND_SIZE);
 
 	vp = pairfind(vps, ATTRIBUTE_EAP_SIM_SRES1 + idx, 0, TAG_ANY);
+	/* Hack for backwards compatibility */
+	if (!vp) {
+		vp = pairfind(request->reply->vps, ATTRIBUTE_EAP_SIM_KC1 + idx, 0, TAG_ANY);
+	}
 	if (!vp) {
 		/* bad, we can't find stuff! */
 		REDEBUG("EAP-SIM SRES[%i] not found", idx);
@@ -223,6 +231,10 @@ static int eap_sim_get_challenge(eap_handler_t *handler, VALUE_PAIR *vps, int id
 	memcpy(ess->keys.sres[idx], vp->vp_strvalue, EAPSIM_SRES_SIZE);
 
 	vp = pairfind(vps, ATTRIBUTE_EAP_SIM_KC1 + idx, 0, TAG_ANY);
+	/* Hack for backwards compatibility */
+	if (!vp) {
+		vp = pairfind(request->reply->vps, ATTRIBUTE_EAP_SIM_KC1 + idx, 0, TAG_ANY);
+	}
 	if (!vp) {
 		/* bad, we can't find stuff! */
 		REDEBUG("EAP-SIM Kc[%i] not found", idx);
