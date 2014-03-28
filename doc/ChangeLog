@@ -42,7 +42,9 @@ FreeRADIUS 3.0.3 Fri 21 Mar 2014 08:30:00 EDT urgency=medium
 	  supported/parsed.
 	* Truncate long format strings and error markers instead of 
 	  omitting them.
-	* Fix multiple attribute parsing in rlm_rest JSON
+	* Fix multiple attribute parsing in rlm_rest JSON.
+	* Don't crash in rlm_rest if connect_uri is commented out
+	  in the configuration.
 
 FreeRADIUS 3.0.2 Fri 21 Mar 2014 08:30:00 EDT urgency=medium
 	Feature improvements
