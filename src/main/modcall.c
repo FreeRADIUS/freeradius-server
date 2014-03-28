@@ -2993,6 +2993,34 @@ bool modcall_pass2(modcallable *mc)
 				}
 			}
 
+			/*
+			 *	Do type-specific checks on the case statement
+			 */
+			if (g->vpt && (g->vpt->type == VPT_TYPE_LITERAL)) {
+				modgroup *f;
+
+				rad_assert(this->parent != NULL);
+				rad_assert(this->parent->type == MOD_SWITCH);
+
+				f = mod_callabletogroup(mc->parent);
+				rad_assert(f->vpt != NULL);
+
+				/*
+				 *	We're switching over an
+				 *	attribute.  Check that the
+				 *	values match.
+				 */
+				if (f->vpt->type == VPT_TYPE_ATTR) {
+					rad_assert(f->vpt->da != NULL);
+
+					if (!radius_cast_tmpl(g->vpt, f->vpt->da)) {
+						cf_log_err_cs(g->cs, "Invalid argument for case statement: %s",
+							      this->name, fr_strerror());
+						return false;
+					}
+				}
+			}
+
 		do_case_xlat:
 			/*
 			 *	Compile and sanity check xlat

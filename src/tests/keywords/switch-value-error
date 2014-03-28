@@ -1,0 +1,29 @@
+#
+#  PRE: switch
+#
+switch &Service-Type {
+	case "%{expr: 1 + 2}" {
+		update reply {
+			Filter-Id := "3"
+		}
+	}
+
+	case Login-User {
+		update reply {
+			Filter-Id := "Login-User"
+		}
+	}
+
+	case No-Such-Value {	# ERROR
+		update reply {
+			Filter-Id := "FAILED"
+		}
+	}
+
+	case {
+		update reply {
+			Filter-Id := "default"
+		}
+	}
+
+}
