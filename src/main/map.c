@@ -183,10 +183,7 @@ value_pair_tmpl_t *radius_str2tmpl(TALLOC_CTX *ctx, char const *name, FR_TOKEN t
 			} else {
 				DICT_ATTR const *da;
 				da = dict_attrbyname(p);
-				if (!da) {
-					vpt->type = VPT_TYPE_LITERAL;
-					break;
-				}
+				if (!da) goto literal;
 				vpt->da = da;
 				vpt->type = VPT_TYPE_ATTR;
 			}
