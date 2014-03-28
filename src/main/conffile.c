@@ -80,6 +80,7 @@ struct conf_part {
 	CONF_ITEM item;
 	char const *name1;
 	char const *name2;
+	FR_TOKEN    name2_type;
 	struct conf_item *children;
 	struct conf_item *tail;	/* for speed */
 	CONF_SECTION	*template;
@@ -2035,6 +2036,11 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			}
 
 			/*
+			 *	There may not be a name2
+			 */
+			css->name2_type = (t2 == T_LCBRACE) ? T_OP_INVALID : t2;
+
+			/*
 			 *	The current section is now the child section.
 			 */
 			this = css;
@@ -3171,4 +3177,14 @@ int cf_section2file(FILE *fp, CONF_SECTION const *cs)
 	fprintf(fp, "}\n");
 
 	return 1;		/* success */
+}
+
+/*
+ *	For "switch" and "case" statements.
+ */
+FR_TOKEN cf_section_name2_type(CONF_SECTION const *cs)
+{
+	if (!cs) return T_OP_INVALID;
+
+	return cs->name2_type;
 }
