@@ -133,43 +133,6 @@ next:
 }
 
 
-/*
- *	Cast a literal vpt to a value_data_t
- */
-static int cast_vpt(value_pair_tmpl_t *vpt, DICT_ATTR const *da)
-{
-	VALUE_PAIR *vp;
-	value_data_t *data;
-
-	rad_assert(vpt->type == VPT_TYPE_LITERAL);
-
-	vp = pairalloc(vpt, da);
-	if (!vp) return false;
-
-	if (!pairparsevalue(vp, vpt->name)) {
-		pairfree(&vp);
-		return false;
-	}
-
-	vpt->length = vp->length;
-	vpt->vpd = data = talloc(vpt, value_data_t);
-	if (!vpt->vpd) return false;
-
-	vpt->type = VPT_TYPE_DATA;
-	vpt->da = da;
-
-	if (vp->da->flags.is_pointer) {
-		data->ptr = talloc_steal(vpt, vp->data.ptr);
-		vp->data.ptr = NULL;
-	} else {
-		memcpy(data, &vp->data, sizeof(*data));
-	}
-
-	pairfree(&vp);
-
-	return true;
-}
-
 static ssize_t condition_tokenize_string(TALLOC_CTX *ctx, char const *start, char **out,
 					 FR_TOKEN *op, char const **error)
 {
@@ -699,7 +662,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 				 *	Cast it to the appropriate data type.
 				 */
 				if ((c->data.map->dst->type == VPT_TYPE_LITERAL) &&
-				    !cast_vpt(c->data.map->dst, c->cast)) {
+				    !radius_cast_tmpl(c->data.map->dst, c->cast)) {
 					*error = "Failed to parse field";
 					if (lhs) talloc_free(lhs);
 					if (rhs) talloc_free(rhs);
@@ -713,7 +676,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 				 */
 				if ((c->data.map->dst->type == VPT_TYPE_DATA) &&
 				    (c->data.map->src->type == VPT_TYPE_LITERAL) &&
-				    !cast_vpt(c->data.map->src, c->data.map->dst->da)) {
+				    !radius_cast_tmpl(c->data.map->src, c->data.map->dst->da)) {
 					return_rhs("Failed to parse field");
 				}
 
@@ -736,7 +699,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 				    (c->data.map->dst->type == VPT_TYPE_ATTR) &&
 				    (c->data.map->dst->da->type != c->data.map->src->da->type)) {
 				same_type:
-					return_0("Attribute comparisons must be of the same attribute type");
+					return_0("Attribute comparisons must be of the same data type");
 				}
 
 				/*
@@ -793,7 +756,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 				 *	literal.  Cast the RHS to the type of the cast.
 				 */
 				if (c->cast && (c->data.map->src->type == VPT_TYPE_LITERAL) &&
-				    !cast_vpt(c->data.map->src, c->cast)) {
+				    !radius_cast_tmpl(c->data.map->src, c->cast)) {
 					return_rhs("Failed to parse field");
 				}
 
@@ -803,7 +766,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 				 */
 				if ((c->data.map->dst->type == VPT_TYPE_ATTR) &&
 				    (c->data.map->src->type == VPT_TYPE_LITERAL) &&
-				    !cast_vpt(c->data.map->src, c->data.map->dst->da)) {
+				    !radius_cast_tmpl(c->data.map->src, c->data.map->dst->da)) {
 					DICT_ATTR const *da = c->data.map->dst->da;
 
 					if ((da->vendor == 0) &&

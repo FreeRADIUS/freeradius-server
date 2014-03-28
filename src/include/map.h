@@ -146,6 +146,7 @@ value_pair_tmpl_t *radius_attr2tmpl(TALLOC_CTX *ctx, char const *name,
 value_pair_tmpl_t *radius_str2tmpl(TALLOC_CTX *ctx, char const *name, FR_TOKEN type,
 				   request_refs_t request_def,
 				   pair_lists_t list_def);
+bool radius_cast_tmpl(value_pair_tmpl_t *vpt, DICT_ATTR const *da);
 size_t radius_tmpl2str(char *buffer, size_t bufsize, value_pair_tmpl_t const *vpt);
 int radius_attrmap(CONF_SECTION *cs, value_pair_map_t **head,
 		   pair_lists_t dst_list_def, pair_lists_t src_list_def,
