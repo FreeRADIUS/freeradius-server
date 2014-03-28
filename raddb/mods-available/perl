@@ -29,6 +29,13 @@ perl {
 	#  which is included.
 	#
 
+	# You can define configuration items in perl "config" sub-section.
+	# These items will be accessible in the perl script through %RAD_PERLCONF hash.
+	# For instance: $RAD_PERLCONF{'name'}
+	#config {
+	#	name = value
+	#}
+	
 	#
 	#  List of functions in the module to call.
 	#  Uncomment and change if you want to use function

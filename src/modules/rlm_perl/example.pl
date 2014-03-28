@@ -42,6 +42,8 @@ our (%RAD_REQUEST, %RAD_REPLY, %RAD_CHECK);
 #my %RAD_REPLY;
 #This is for check items
 #my %RAD_CHECK;
+# This is configuration items from "config" perl module configuration section
+#my %RAD_PERLCONF;
 
 #
 # This the remapping of return values

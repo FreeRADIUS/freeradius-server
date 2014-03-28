@@ -40,6 +40,16 @@ RCSID("$Id$")
 extern char **environ;
 #endif
 
+/* 
+ * structure to hold perl configuration items.
+ * they are stored in a hash (fr_hash_table_t), using FreeRADIUS functions.
+ */
+typedef struct perl_conf_t
+{
+	char *attr;
+	char *value;
+} perl_conf_t;
+
 /*
  *	Define a structure for our module configuration.
  *
@@ -78,6 +88,9 @@ typedef struct rlm_perl_t {
 #ifdef USE_ITHREADS
 	pthread_mutex_t clone_mutex;
 #endif
+
+	fr_hash_table_t *perl_conf_ht; // holds "config" section entries
+	
 } rlm_perl_t;
 /*
  *	A mapping of configuration file names to internal variables.
@@ -375,6 +388,30 @@ static ssize_t perl_xlat(void *instance, REQUEST *request, char const *fmt, char
 
 	return ret;
 }
+
+/* 
+ *	Hash functions for the perl configuration items
+ */
+static uint32_t perl_conf_hash(void const *data)
+{
+	const perl_conf_t *pt_conf_item = data;
+	return fr_hash_string(pt_conf_item->attr);
+}
+static int perl_conf_cmp(void const *a, void const *b)
+{
+	const perl_conf_t *pt_conf_item_a = a;
+	const perl_conf_t *pt_conf_item_b = b;
+	
+	if ((NULL == pt_conf_item_a) || (NULL == pt_conf_item_b)) return -1;
+	
+	const char * attr_a = pt_conf_item_a->attr;
+	const char * attr_b = pt_conf_item_b->attr;
+	
+	if ((NULL == attr_a) || (NULL == attr_b)) return -1;
+	
+	return strcmp(attr_a, attr_b);
+}
+
 /*
  *	Do any per-module initialization that is separate to each
  *	configured instance of the module.  e.g. set up connections
@@ -472,6 +509,51 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		xlat_register(xlat_name, perl_xlat, NULL, inst);
 	}
 
+	/* parse perl configuration sub-section */
+	CONF_SECTION *cs;
+	cs = cf_section_sub_find(conf, "config");
+	if (cs) {
+		CONF_ITEM	*ci;
+
+		inst->perl_conf_ht = fr_hash_table_create(perl_conf_hash, perl_conf_cmp, NULL);
+
+		for (ci = cf_item_find_next(cs, NULL);
+		     ci != NULL;
+		     ci = cf_item_find_next(cs, ci))
+		{
+			char const	*attr;
+			char const	*value;
+
+			if (!cf_item_is_pair(ci)) continue;
+			
+			CONF_PAIR *cp = cf_itemtopair(ci);
+
+			attr = cf_pair_attr(cp);
+			value = cf_pair_value(cp);
+			if ((!attr) || (!value)) continue;
+			
+			perl_conf_t *pt_conf_item = talloc_zero(inst, perl_conf_t);
+
+			pt_conf_item->attr = talloc_strdup(pt_conf_item, attr);
+			pt_conf_item->value = talloc_strdup(pt_conf_item, value);
+			
+			// Be kind to minor mistakes.
+			if (fr_hash_table_finddata(inst->perl_conf_ht, pt_conf_item)) {
+				WARN("rlm_perl (%s): Ignoring duplicate conf item '%s'", xlat_name, attr);
+				talloc_free(pt_conf_item);
+				continue;
+			}
+
+			if (!fr_hash_table_insert(inst->perl_conf_ht, pt_conf_item)) {
+				ERROR("rlm_perl (%s): Failed inserting '%s' into perl_conf table",
+				      xlat_name, attr);
+				return -1;
+			}
+
+			DEBUG("rlm_perl (%s): stored perl conf item '%s' = [%s]", xlat_name, pt_conf_item->attr, pt_conf_item->value);
+		}
+	}
+	
 	return 0;
 }
 
@@ -550,6 +632,34 @@ static void perl_store_vps(TALLOC_CTX *ctx, VALUE_PAIR *vps, HV *rad_hv)
 	}
 
 	rad_assert(!head);
+}
+
+/* 
+ *	Walk perl_conf hash and use it to populate rad_hv (perl %RAD_PERLCONF hash).
+ */
+static int perlconf_walk_callback(void *ctx, void *data)
+{
+	HV *rad_hv = ctx;
+	perl_conf_t *pt_conf_item = (perl_conf_t *)data;
+	
+	const char *attr = pt_conf_item->attr;
+	const char *value = pt_conf_item->value;
+	
+	if ((NULL == attr) || (NULL == value)) return -1;
+	
+	(void)hv_store(rad_hv, attr, strlen(attr), newSVpv(value, strlen(value)), 0);
+	
+	return 0;
+}
+
+/* 
+ *	Store content of perl_conf hash into a perl hash.
+ */
+static void perl_store_perlconf(fr_hash_table_t *ht, HV *rad_hv)
+{
+	hv_undef(rad_hv);
+	
+	fr_hash_table_walk(ht, perlconf_walk_callback, rad_hv);
 }
 
 /*
@@ -681,6 +791,12 @@ static int do_perl(void *instance, REQUEST *request, char *function_name)
 		}
 #endif
 
+		/* store perl configuration items in %RAD_PERLCONF */
+		HV		*rad_perlconf_hv;
+		rad_perlconf_hv = get_hv("RAD_PERLCONF",1);
+		
+		perl_store_perlconf(inst->perl_conf_ht, rad_perlconf_hv);
+		
 		PUSHMARK(SP);
 		/*
 		 * This way %RAD_xx can be pushed onto stack as sub parameters.
