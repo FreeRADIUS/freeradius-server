@@ -1836,7 +1836,7 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 	 *	Setup any header options and generic headers.
 	 */
 	SET_OPTION(CURLOPT_URL, uri);
-	SET_OPTION(CURLOPT_USERAGENT, "FreeRADIUS %s" RADIUSD_VERSION_STRING);
+	SET_OPTION(CURLOPT_USERAGENT, "FreeRADIUS " RADIUSD_VERSION_STRING);
 
 	content_type = fr_int2str(http_content_type_table, type, section->body_str);
 	snprintf(buffer, sizeof(buffer), "Content-Type: %s", content_type);
