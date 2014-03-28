@@ -820,11 +820,31 @@ redo:
 
 		rad_assert(g->vpt != NULL);
 
+		null_case = found = NULL;
+
+		/*
+		 *	The attribute doesn't exist.  We can skip
+		 *	directly to the default 'case' statement.
+		 */
+		if ((g->vpt->type == VPT_TYPE_ATTR) &&
+		    !radius_vpt_get_vp(request, g->vpt)) {
+			for (this = g->children; this; this = this->next) {
+				rad_assert(this->type == MOD_CASE);
+
+				h = mod_callabletogroup(this);
+				if (h->vpt) continue;
+
+				null_case = found = this;
+				break;
+			}
+
+			goto do_null_case;
+		}
+
 		/*
 		 *	Find either the exact matching name, or the
 		 *	"case {...}" statement.
 		 */
-		null_case = found = NULL;
 		for (this = g->children; this; this = this->next) {
 			rad_assert(this->type == MOD_CASE);
 
@@ -849,6 +869,7 @@ redo:
 
 		if (!found) found = null_case;
 
+		do_null_case:
 		modcall_child(request, component,
 			      depth + 1, entry, found,
 			      &result);
