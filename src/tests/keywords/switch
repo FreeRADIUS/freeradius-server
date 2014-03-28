@@ -16,5 +16,4 @@ switch &User-Name {
 			Filter-Id := "default"
 		}
 	}
-
 }
