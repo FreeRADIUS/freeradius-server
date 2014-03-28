@@ -75,6 +75,7 @@ typedef struct {
 	modcallable		*tail;		/* of the children list */
 	CONF_SECTION		*cs;
 	value_pair_map_t	*map;		/* update */
+	value_pair_tmpl_t	*vpt;		/* switch */
 	fr_cond_t		*cond;		/* if/elsif */
 } modgroup;
 
@@ -784,7 +785,11 @@ redo:
 			goto next_sibling;
 		}
 
-		MOD_LOG_OPEN_BRACE(cf_section_name1(g->cs));
+		if (c->name) {
+			MOD_LOG_OPEN_BRACE(cf_section_name1(g->cs));
+		} else {
+			RDEBUG2("%.*s%s {", depth + 1, modcall_spaces, cf_section_name1(g->cs));
+		}
 		modcall_child(request, component,
 			      depth + 1, entry, g->children,
 			      &result);
@@ -795,43 +800,48 @@ redo:
 #ifdef WITH_UNLANG
 	if (c->type == MOD_SWITCH) {
 		modcallable *this, *found, *null_case;
-		modgroup *g;
-		char buffer[1024];
+		modgroup *g, *h;
+		fr_cond_t cond;
+		value_pair_map_t map;
 
 		MOD_LOG_OPEN_BRACE("switch");
 
-		/*
-		 *	If there's no %, it refers to an attribute.
-		 *	Otherwise, expand it.
-		 */
-		if (!strchr(c->name, '%')) {
-			VALUE_PAIR *vp = NULL;
+		g = mod_callabletogroup(c);
 
-			radius_get_vp(&vp, request, c->name);
-			if (vp) {
-				vp_prints_value(buffer,
-						sizeof(buffer),
-						vp, 0);
-			} else {
-				*buffer = '\0';
-			}
-		} else {
-			radius_xlat(buffer, sizeof(buffer),
-				    request, c->name, NULL, NULL);
-		}
+		memset(&cond, 0, sizeof(cond));
+		memset(&map, 0, sizeof(map));
+
+		cond.type = COND_TYPE_MAP;
+		cond.data.map = &map;
+
+		map.op = T_OP_CMP_EQ;
+		map.ci = cf_sectiontoitem(g->cs);
+		map.dst = g->vpt;
+
+		rad_assert(g->vpt != NULL);
 
 		/*
 		 *	Find either the exact matching name, or the
 		 *	"case {...}" statement.
 		 */
-		g = mod_callabletogroup(c);
 		null_case = found = NULL;
 		for (this = g->children; this; this = this->next) {
-			if (!this->name) {
+			rad_assert(this->type == MOD_CASE);
+
+			h = mod_callabletogroup(this);
+
+			/*
+			 *	Remember the default case
+			 */
+			if (!h->vpt) {
 				if (!null_case) null_case = this;
 				continue;
 			}
-			if (strcmp(buffer, this->name) == 0) {
+
+			map.src = h->vpt;
+
+			if (radius_evaluate_map(request, RLM_MODULE_UNKNOWN, 0,
+						&cond) == 1) {
 				found = this;
 				break;
 			}
@@ -839,7 +849,6 @@ redo:
 
 		if (!found) found = null_case;
 
-		MOD_LOG_OPEN_BRACE(group_name[c->type]);
 		modcall_child(request, component,
 			      depth + 1, entry, found,
 			      &result);
@@ -1597,12 +1606,18 @@ static modcallable *do_compile_modupdate(modcallable *parent, UNUSED rlm_compone
 }
 
 
-static modcallable *do_compile_modswitch(modcallable *parent, UNUSED rlm_components_t component, CONF_SECTION *cs)
+static modcallable *do_compile_modswitch(modcallable *parent, rlm_components_t component, CONF_SECTION *cs)
 {
 	CONF_ITEM *ci;
+	FR_TOKEN type;
+	char const *name2;
 	bool had_seen_default = false;
+	modcallable *csingle;
+	modgroup *g;
+	value_pair_tmpl_t *vpt;
 
-	if (!cf_section_name2(cs)) {
+	name2 = cf_section_name2(cs);
+	if (!name2) {
 		cf_log_err_cs(cs,
 			   "You must specify a variable to switch over for 'switch'.");
 		return NULL;
@@ -1614,6 +1629,24 @@ static modcallable *do_compile_modswitch(modcallable *parent, UNUSED rlm_compone
 	}
 
 	/*
+	 *	Create the template.  If we fail, AND it's a bare word
+	 *	with &Foo-Bar, it MAY be an attribute defined by a
+	 *	module.  Allow it for now.  The pass2 checks below
+	 *	will fix it up.
+	 */
+	type = cf_section_name2_type(cs);
+	vpt = radius_str2tmpl(cs, name2, type, REQUEST_CURRENT, PAIR_LIST_REQUEST);
+	if (!vpt && ((type != T_BARE_WORD) || (name2[0] != '&'))) {
+		cf_log_err_cs(cs, "Syntax error in '%s': %s", name2, fr_strerror());
+		return NULL;
+	}
+
+	/*
+	 *	Otherwise a NULL vpt may refer to an attribute defined
+	 *	by a module.  That is checked in pass 2.
+	 */
+
+	/*
 	 *	Walk through the children of the switch section,
 	 *	ensuring that they're all 'case' statements
 	 */
@@ -1621,12 +1654,13 @@ static modcallable *do_compile_modswitch(modcallable *parent, UNUSED rlm_compone
 	     ci != NULL;
 	     ci=cf_item_find_next(cs, ci)) {
 		CONF_SECTION *subcs;
-		char const *name1, *name2;
+		char const *name1;
 
 		if (!cf_item_is_section(ci)) {
 			if (!cf_item_is_pair(ci)) continue;
 
 			cf_log_err(ci, "\"switch\" sections can only have \"case\" subsections");
+			talloc_free(vpt);
 			return NULL;
 		}
 
@@ -1635,6 +1669,7 @@ static modcallable *do_compile_modswitch(modcallable *parent, UNUSED rlm_compone
 
 		if (strcmp(name1, "case") != 0) {
 			cf_log_err(ci, "\"switch\" sections can only have \"case\" subsections");
+			talloc_free(vpt);
 			return NULL;
 		}
 
@@ -1646,13 +1681,93 @@ static modcallable *do_compile_modswitch(modcallable *parent, UNUSED rlm_compone
 
 		if (!name2 || (name2[0] == '\0')) {
 			cf_log_err(ci, "\"case\" sections must have a name");
+			talloc_free(vpt);
 			return NULL;
 		}
 	}
 
-	return do_compile_modgroup(parent, component, cs,
-				   GROUPTYPE_SIMPLE, GROUPTYPE_SIMPLE,
-				   MOD_SWITCH);
+	csingle = do_compile_modgroup(parent, component, cs,
+				      GROUPTYPE_SIMPLE,
+				      GROUPTYPE_SIMPLE,
+				      MOD_SWITCH);
+	if (!csingle) {
+		talloc_free(vpt);
+		return NULL;
+	}
+
+	g = mod_callabletogroup(csingle);
+	g->vpt = vpt;
+
+	return csingle;
+}
+
+static modcallable *do_compile_modcase(modcallable *parent, rlm_components_t component, CONF_SECTION *cs)
+{
+	int i;
+	char const *name2;
+	modcallable *csingle;
+	modgroup *g;
+	value_pair_tmpl_t *vpt;
+
+	if (!parent || (parent->type != MOD_SWITCH)) {
+		cf_log_err_cs(cs, "\"case\" statements may only appear within a \"switch\" section");
+		return NULL;
+	}
+
+	/*
+	 *	case THING means "match THING"
+	 *	case       means "match anything"
+	 */
+	name2 = cf_section_name2(cs);
+	if (name2) {
+		FR_TOKEN type;
+
+		type = cf_section_name2_type(cs);
+
+		vpt = radius_str2tmpl(cs, name2, type, REQUEST_CURRENT, PAIR_LIST_REQUEST);
+		if (!vpt && (name2[0] != '&')) {
+			cf_log_err_cs(cs, "Syntax error in '%s': %s", name2, fr_strerror());
+			return NULL;
+		}
+
+		/*
+		 *	Otherwise a NULL vpt may refer to an attribute defined
+		 *	by a module.  That is checked in pass 2.
+		 */
+
+	} else {
+		vpt = NULL;
+	}
+
+	csingle= do_compile_modgroup(parent, component, cs,
+				     GROUPTYPE_SIMPLE,
+				     GROUPTYPE_SIMPLE,
+				     MOD_CASE);
+	if (!csingle) {
+		talloc_free(vpt);
+		return NULL;
+	}
+
+	/*
+	 *	The interpretor expects this to be NULL for the
+	 *	default case.  do_compile_modgroup sets it to name2,
+	 *	unless name2 is NULL, in which case it sets it to name1.
+	 */
+	csingle->name = name2;
+
+	g = mod_callabletogroup(csingle);
+	g->vpt = vpt;
+
+	/*
+	 *	Set all of it's codes to return, so that
+	 *	when we pick a 'case' statement, we don't
+	 *	fall through to processing the next one.
+	 */
+	for (i = 0; i < RLM_MODULE_NUMCODES; i++) {
+		csingle->actions[i] = MOD_ACTION_RETURN;
+	}
+
+	return csingle;
 }
 
 static modcallable *do_compile_modforeach(modcallable *parent,
@@ -1952,31 +2067,9 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 			return do_compile_modswitch(parent, component, cs);
 
 		} else 	if (strcmp(modrefname, "case") == 0) {
-			int i;
-
 			*modname = name2;
 
-			if (!parent) {
-				cf_log_err(ci, "\"case\" statements may only appear within a \"switch\" section");
-				return NULL;
-			}
-
-			csingle= do_compile_modgroup(parent, component, cs,
-						     GROUPTYPE_SIMPLE,
-						     grouptype, MOD_CASE);
-			if (!csingle) return NULL;
-			csingle->name = cf_section_name2(cs); /* may be NULL */
-
-			/*
-			 *	Set all of it's codes to return, so that
-			 *	when we pick a 'case' statement, we don't
-			 *	fall through to processing the next one.
-			 */
-			for (i = 0; i < RLM_MODULE_NUMCODES; i++) {
-				csingle->actions[i] = MOD_ACTION_RETURN;
-			}
-
-			return csingle;
+			return do_compile_modcase(parent, component, cs);
 
 		} else 	if (strcmp(modrefname, "foreach") == 0) {
 			*modname = name2;
@@ -2807,25 +2900,123 @@ bool modcall_pass2(modcallable *mc)
 			 *	The compilation code takes care of
 			 *	simplifying 'true' and 'false'
 			 *	conditions.  For others, we have to do
-			 *	a second pass.
+			 *	a second pass to parse && compile xlats.
 			 */
 			if (!fr_condition_walk(g->cond, pass2_callback, NULL)) {
 				return false;
 			}
+
+			if (!modcall_pass2(g->children)) return false;
+			break;
+#endif
+
+#ifdef WITH_UNLANG
+		case MOD_SWITCH:
+			g = mod_callabletogroup(this);
+
+			/*
+			 *	We had &Foo-Bar, where Foo-Bar is
+			 *	defined by a module.
+			 */
+			if (!g->vpt) {
+				rad_assert(this->name != NULL);
+				rad_assert(this->name[0] == '&');
+				rad_assert(cf_section_name2_type(g->cs) == T_BARE_WORD);
+				goto do_case;
+			}
+
+			/*
+			 *	Statically compile xlats
+			 */
+			if (g->vpt->type == VPT_TYPE_XLAT) goto do_case_xlat;
+
+			/*
+			 *	We may have: switch Foo-Bar {
+			 *
+			 *	where Foo-Bar is an attribute defined
+			 *	by a module.  Since there's no leading
+			 *	&, it's parsed as a literal.  But if
+			 *	we can parse it as an attribute,
+			 *	switch to using that.
+			 */
+			if (g->vpt->type == VPT_TYPE_LITERAL) {
+				value_pair_tmpl_t *vpt;
+
+				vpt = radius_str2tmpl(g->cs, this->name,
+						      cf_section_name2_type(g->cs),
+						      REQUEST_CURRENT, PAIR_LIST_REQUEST);
+				if (vpt->type == VPT_TYPE_ATTR) {
+					talloc_free(g->vpt);
+					g->vpt = vpt;
+				}
+			}
+
+			/*
+			 *	Warn about old-style configuration.
+			 *
+			 *	DEPRECATED: switch User-Name { ...
+			 *	ALLOWED   : switch &User-Name { ...
+			 */
+			if ((g->vpt->type == VPT_TYPE_ATTR) &&
+			    (this->name[0] != '&')) {
+				WDEBUG("%s[%d]: Please use &%s instead of %s",
+				       cf_section_filename(g->cs),
+				       cf_section_lineno(g->cs),
+				       this->name, this->name);
+			}
+
+			if (!modcall_pass2(g->children)) return false;
+			break;
+
+		case MOD_CASE:
+			g = mod_callabletogroup(this);
+
+		do_case:
+			/*
+			 *	The statement may refer to an
+			 *	attribute which doesn't exist until
+			 *	all of the modules have been loaded.
+			 *	Check for that now.
+			 */
+			if (this->name &&
+			    (this->name[0] == '&') &&
+			    (cf_section_name2_type(g->cs) == T_BARE_WORD)) {
+				talloc_free(g->vpt); /* it's been parsed as a LITERAL */
+
+				g->vpt = radius_str2tmpl(g->cs, this->name,
+							 cf_section_name2_type(g->cs),
+							 REQUEST_CURRENT, PAIR_LIST_REQUEST);
+				if (!g->vpt) {
+					cf_log_err_cs(g->cs, "Syntax error in '%s': %s",
+						      this->name, fr_strerror());
+					return false;
+				}
+			}
+
+		do_case_xlat:
+			/*
+			 *	Compile and sanity check xlat
+			 *	expansions.
+			 */
+			if (g->vpt &&
+			    (g->vpt->type == VPT_TYPE_XLAT) &&
+			    (!pass2_xlat_compile(cf_sectiontoitem(g->cs),
+						 g->vpt))) {
+				return false;
+			}
+
+			if (!modcall_pass2(g->children)) return false;
+			break;
+
+		case MOD_ELSE:
+		case MOD_FOREACH:
+		case MOD_POLICY:
 			/* FALL-THROUGH */
 #endif
 
 		case MOD_GROUP:
 		case MOD_LOAD_BALANCE:
 		case MOD_REDUNDANT_LOAD_BALANCE:
-
-#ifdef WITH_UNLANG
-		case MOD_ELSE:
-		case MOD_SWITCH:
-		case MOD_CASE:
-		case MOD_FOREACH:
-		case MOD_POLICY:
-#endif
 			g = mod_callabletogroup(this);
 			if (!modcall_pass2(g->children)) return false;
 			break;

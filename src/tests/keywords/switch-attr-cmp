@@ -1,5 +1,15 @@
+#
+#  PRE: Switch
+#
+update request {
+	Tmp-String-0 := &User-Name
+}
+
+#
+#  A switch statement where we compare two attributes
+#
 switch &User-Name {
-	case "bob" {
+	case &Tmp-String-0 {
 		update reply {
 			Filter-Id := "filter"
 		}
