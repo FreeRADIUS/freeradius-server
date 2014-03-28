@@ -1706,7 +1706,7 @@ static modcallable *do_compile_modswitch(modcallable *parent, rlm_components_t c
 	}
 
 	g = mod_callabletogroup(csingle);
-	g->vpt = vpt;
+	g->vpt = talloc_steal(g, vpt);
 
 	return csingle;
 }
@@ -1766,7 +1766,7 @@ static modcallable *do_compile_modcase(modcallable *parent, rlm_components_t com
 	csingle->name = name2;
 
 	g = mod_callabletogroup(csingle);
-	g->vpt = vpt;
+	g->vpt = talloc_steal(g, vpt);
 
 	/*
 	 *	Set all of it's codes to return, so that
