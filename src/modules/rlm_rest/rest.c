@@ -311,7 +311,7 @@ void *mod_conn_create(void *instance)
 		return NULL;
 	}
 
-	if (!*inst->connect_uri) {
+	if (!inst->connect_uri) {
 		ERROR("rlm_rest (%s): Skipping pre-connect, connect_uri not specified", inst->xlat_name);
 		return candle;
 	}
