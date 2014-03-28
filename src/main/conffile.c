@@ -88,7 +88,7 @@ struct conf_part {
 	rbtree_t	*name2_tree; /* for sections of the same name2 */
 	rbtree_t	*data_tree;
 	void		*base;
-	int depth;
+	int		depth;
 	CONF_PARSER const *variables;
 };
 
@@ -1485,7 +1485,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 	char buf1[8192];
 	char buf2[8192];
 	char buf3[8192];
-	int t1, t2, t3;
+	FR_TOKEN t1, t2, t3;
 	bool spaces = false;
 	char *cbuf = buf;
 	size_t len;
@@ -2039,6 +2039,11 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			 */
 			this = css;
 			continue;
+
+		case T_OP_INVALID:
+			ERROR("%s[%d]: Syntax error in '%s': %s",
+			      filename, *lineno, ptr, fr_strerror());
+			return -1;
 
 		default:
 			ERROR("%s[%d]: Parse error after \"%s\": unexpected token \"%s\"",
