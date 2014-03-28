@@ -3035,7 +3035,7 @@ bool modcall_pass2(modcallable *mc)
 
 					if (!radius_cast_tmpl(g->vpt, f->vpt->da)) {
 						cf_log_err_cs(g->cs, "Invalid argument for case statement: %s",
-							      this->name, fr_strerror());
+							      fr_strerror());
 						return false;
 					}
 				}
