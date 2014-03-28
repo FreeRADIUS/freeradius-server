@@ -1,16 +1,16 @@
-.TH RADCLIENT 1 "2 April 2009" "" "FreeRADIUS Daemon"
+.TH RADCLIENT 1 "28 March 2014" "" "FreeRADIUS Daemon"
 .SH NAME
 radclient - send packets to a RADIUS server, show reply
 .SH SYNOPSIS
 .B radclient
 .RB [ \-4 ]
 .RB [ \-6 ]
+.RB [ \-c
+.IR count ]
 .RB [ \-d
 .IR raddb_directory ]
 .RB [ \-D
 .IR dictionary_directory ]
-.RB [ \-c
-.IR count ]
 .RB [ \-f
 .IR file ]
 .RB [ \-F ]
@@ -60,12 +60,16 @@ The directory that contains the user dictionary file. Defaults to
 .IP \-D\ \fIdictionary_directory\fP
 The directory that contains the main dictionary file. Defaults to
 \fI/usr/share/freeradius\fP.
-.IP \-f\ \fIfile\fP
+.IP \-f\ \fIfile[:file]\fP
 File to read the attribute/value pairs from. If this is not specified,
 they are read from stdin.  This option can be specified multiple
 times, in which case packets are sent in order by file, and within
 each file, by first packet to last packet.  A blank line separates
-logical packets within a file.
+logical packets within a file.  If a pair of files separated by a
+colon is specified, the second file will be used to filter the
+responses to requests from the first. The number of requests and
+filters must be the same.  A summary of filter results will be displayed
+if -s is passed.
 .IP \-F
 Print the file name, packet number and reply code.
 .IP \-h
