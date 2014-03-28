@@ -88,6 +88,7 @@ FR_TOKEN cf_pair_value_type(CONF_PAIR const *pair);
 VALUE_PAIR *cf_pairtovp(CONF_PAIR *pair);
 char const *cf_section_name1(CONF_SECTION const *);
 char const *cf_section_name2(CONF_SECTION const *);
+FR_TOKEN cf_section_name2_type(CONF_SECTION const *cs);
 int dump_config(CONF_SECTION const *cs);
 CONF_SECTION *cf_subsection_find_next(CONF_SECTION const *section,
 				      CONF_SECTION const *subsection,
