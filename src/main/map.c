@@ -755,3 +755,45 @@ size_t radius_map2str(char *buffer, size_t bufsize, value_pair_map_t const *map)
 
 	return p - buffer;
 }
+
+/** Cast a literal vpt to a value_data_t
+ *
+ * @param[in,out] vpt the template to modify
+ * @paramp[in] da the dictionary attribute to case it to
+ * @return true for success, false for failure.
+ */
+bool radius_cast_tmpl(value_pair_tmpl_t *vpt, DICT_ATTR const *da)
+{
+	VALUE_PAIR *vp;
+	value_data_t *data;
+
+	rad_assert(vpt != NULL);
+	rad_assert(da != NULL);
+	rad_assert(vpt->type == VPT_TYPE_LITERAL);
+
+	vp = pairalloc(vpt, da);
+	if (!vp) return false;
+
+	if (!pairparsevalue(vp, vpt->name)) {
+		pairfree(&vp);
+		return false;
+	}
+
+	vpt->length = vp->length;
+	vpt->vpd = data = talloc(vpt, value_data_t);
+	if (!vpt->vpd) return false;
+
+	vpt->type = VPT_TYPE_DATA;
+	vpt->da = da;
+
+	if (vp->da->flags.is_pointer) {
+		data->ptr = talloc_steal(vpt, vp->data.ptr);
+		vp->data.ptr = NULL;
+	} else {
+		memcpy(data, &vp->data, sizeof(*data));
+	}
+
+	pairfree(&vp);
+
+	return true;
+}
