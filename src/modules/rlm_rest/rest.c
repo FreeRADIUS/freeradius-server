@@ -1181,12 +1181,12 @@ static int json_pairmake(rlm_rest_t *instance, UNUSED rlm_rest_section_t *sectio
 		REDEBUG("Can't process VP container, expected JSON object"
 #ifdef HAVE_JSON_TYPE_TO_NAME
 			"got \"%s\", skipping...",
-      	       	        json_type_to_name(json_object_get_type(object)));
+    	     	        json_type_to_name(json_object_get_type(object)));
 #else
 			", skipping...");
 #endif
 		return -1;
-   	}
+ 	}
 
 	/*
 	 *	Process VP container
@@ -1289,7 +1289,7 @@ static int json_pairmake(rlm_rest_t *instance, UNUSED rlm_rest_section_t *sectio
 				RWDEBUG("Value key missing, skipping...");
 				continue;
 			}
-   		}
+ 		}
 
 		/*
 		 *  Setup pairmake / recursion loop.
@@ -1836,11 +1836,10 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 	 *	Setup any header options and generic headers.
 	 */
 	SET_OPTION(CURLOPT_URL, uri);
-
-	SET_OPTION(CURLOPT_USERAGENT, "FreeRADIUS");
+	SET_OPTION(CURLOPT_USERAGENT, "FreeRADIUS %s", RADIUSD_VERSION_STRING);
 
 	content_type = fr_int2str(http_content_type_table, type, section->body_str);
-	snprintf(buffer, (sizeof(buffer) - 1), "Content-Type: %s", content_type);
+	snprintf(buffer, sizeof(buffer), "Content-Type: %s", content_type);
 	ctx->headers = curl_slist_append(ctx->headers, buffer);
 	if (!ctx->headers) goto error_header;
 
@@ -1853,11 +1852,14 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 	/*
 	 *	FreeRADIUS custom headers
 	 */
-  	snprintf(buffer, (sizeof(buffer) - 1), "X-FreeRADIUS-Section: %s", section->name);
+	RDEBUG3("Adding custom headers:");
+	snprintf(buffer, sizeof(buffer), "X-FreeRADIUS-Section: %s", section->name);
+	RDEBUG3("\t%s", buffer);
 	ctx->headers = curl_slist_append(ctx->headers, buffer);
 	if (!ctx->headers) goto error_header;
 
-	snprintf(buffer, (sizeof(buffer) - 1), "X-FreeRADIUS-Server: %s", request->server);
+	snprintf(buffer, sizeof(buffer), "X-FreeRADIUS-Server: %s", request->server);
+	RDEBUG3("\t%s", buffer);
 	ctx->headers = curl_slist_append(ctx->headers, buffer);
 	if (!ctx->headers) goto error_header;
 
@@ -1897,7 +1899,7 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 	 */
 	if (auth) {
 		if ((auth >= HTTP_AUTH_BASIC) &&
-	    	    (auth <= HTTP_AUTH_ANY_SAFE)) {
+	  	    (auth <= HTTP_AUTH_ANY_SAFE)) {
 			SET_OPTION(CURLOPT_HTTPAUTH, http_curl_auth[auth]);
 
 			if (username) {
