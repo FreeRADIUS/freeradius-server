@@ -195,7 +195,10 @@ value_pair_tmpl_t *radius_str2tmpl(TALLOC_CTX *ctx, char const *name, FR_TOKEN t
 		/* FALL-THROUGH */
 
 	literal:
-		if (is_attr) return NULL;
+		if (is_attr) {
+			fr_strerror_printf("Reference to unknown attribute");
+			return NULL;
+		}
 
 	case T_SINGLE_QUOTED_STRING:
 		vpt->type = VPT_TYPE_LITERAL;
