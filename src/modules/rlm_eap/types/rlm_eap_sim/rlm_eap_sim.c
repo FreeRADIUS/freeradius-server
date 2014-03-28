@@ -201,11 +201,11 @@ static int eap_sim_get_challenge(eap_handler_t *handler, VALUE_PAIR *vps, int id
 	vp = pairfind(vps, ATTRIBUTE_EAP_SIM_RAND1 + idx, 0, TAG_ANY);
 	if (!vp) {
 		/* bad, we can't find stuff! */
-		REDEBUG("control:EAP-SIM-RAND%i not found", idx);
+		REDEBUG("control:EAP-SIM-RAND%i not found", idx + 1);
 		return 0;
 	}
 	if (vp->length != EAPSIM_RAND_SIZE) {
-		REDEBUG("control:EAP-SIM-RAND%i is not 8 bytes, got %zu bytes", idx, vp->length);
+		REDEBUG("control:EAP-SIM-RAND%i is not 8 bytes, got %zu bytes", idx + 1, vp->length);
 		return 0;
 	}
 	memcpy(ess->keys.rand[idx], vp->vp_octets, EAPSIM_RAND_SIZE);
@@ -213,11 +213,11 @@ static int eap_sim_get_challenge(eap_handler_t *handler, VALUE_PAIR *vps, int id
 	vp = pairfind(vps, ATTRIBUTE_EAP_SIM_SRES1 + idx, 0, TAG_ANY);
 	if (!vp) {
 		/* bad, we can't find stuff! */
-		REDEBUG("control:EAP-SIM-SRES%i not found", idx);
+		REDEBUG("control:EAP-SIM-SRES%i not found", idx + 1);
 		return 0;
 	}
 	if (vp->length != EAPSIM_SRES_SIZE) {
-		REDEBUG("control:EAP-SIM-SRES%i is not 4 bytes, got %zu bytes", idx, vp->length);
+		REDEBUG("control:EAP-SIM-SRES%i is not 4 bytes, got %zu bytes", idx + 1, vp->length);
 		return 0;
 	}
 	memcpy(ess->keys.sres[idx], vp->vp_octets, EAPSIM_SRES_SIZE);
@@ -225,11 +225,11 @@ static int eap_sim_get_challenge(eap_handler_t *handler, VALUE_PAIR *vps, int id
 	vp = pairfind(vps, ATTRIBUTE_EAP_SIM_KC1 + idx, 0, TAG_ANY);
 	if (!vp) {
 		/* bad, we can't find stuff! */
-		REDEBUG("control:EAP-SIM-Kc%i not found", idx);
+		REDEBUG("control:EAP-SIM-Kc%i not found", idx + 1);
 		return 0;
 	}
 	if (vp->length != EAPSIM_Kc_SIZE) {
-		REDEBUG("control:EAP-SIM-Kc%i is not 8 bytes, got %zu bytes", idx, vp->length);
+		REDEBUG("control:EAP-SIM-Kc%i is not 8 bytes, got %zu bytes", idx + 1, vp->length);
 		return 0;
 	}
 	memcpy(ess->keys.Kc[idx], vp->vp_octets, EAPSIM_Kc_SIZE);
