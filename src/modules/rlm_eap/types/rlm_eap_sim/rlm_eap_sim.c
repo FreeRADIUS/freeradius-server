@@ -205,11 +205,11 @@ static int eap_sim_get_challenge(eap_handler_t *handler, VALUE_PAIR *vps, int id
 	}
 	if (!vp) {
 		/* bad, we can't find stuff! */
-		REDEBUG("EAP-SIM-Challenge%i not found", idx);
+		REDEBUG("EAP-SIM-RAND%i not found", idx + 1);
 		return 0;
 	}
-	if(vp->length != EAPSIM_RAND_SIZE) {
-		REDEBUG("EAP-SIM-challenge%i is not 8 bytes, got %zu bytes", idx, vp->length);
+	if (vp->length != EAPSIM_RAND_SIZE) {
+		REDEBUG("EAP-SIM-RAND%i is not 8 bytes, got %zu bytes", idx + 1, vp->length);
 		return 0;
 	}
 	memcpy(ess->keys.rand[idx], vp->vp_strvalue, EAPSIM_RAND_SIZE);
@@ -221,11 +221,11 @@ static int eap_sim_get_challenge(eap_handler_t *handler, VALUE_PAIR *vps, int id
 	}
 	if (!vp) {
 		/* bad, we can't find stuff! */
-		REDEBUG("EAP-SIM-SRES%i not found", idx);
+		REDEBUG("EAP-SIM-SRES%i not found", idx + 1);
 		return 0;
 	}
 	if (vp->length != EAPSIM_SRES_SIZE) {
-		REDEBUG("EAP-SIM-SRES%i is not 16 bytes, got %zu bytes", idx, vp->length);
+		REDEBUG("EAP-SIM-SRES%i is not 16 bytes, got %zu bytes", idx + 1, vp->length);
 		return 0;
 	}
 	memcpy(ess->keys.sres[idx], vp->vp_strvalue, EAPSIM_SRES_SIZE);
@@ -237,11 +237,11 @@ static int eap_sim_get_challenge(eap_handler_t *handler, VALUE_PAIR *vps, int id
 	}
 	if (!vp) {
 		/* bad, we can't find stuff! */
-		REDEBUG("EAP-SIM-Kc%i not found", idx);
+		REDEBUG("EAP-SIM-Kc%i not found", idx + 1);
 		return 0;
 	}
 	if (vp->length != EAPSIM_Kc_SIZE) {
-		REDEBUG("EAP-SIM-Kc%i is not 16 bytes, got %zu bytes", idx, vp->length);
+		REDEBUG("EAP-SIM-Kc%i is not 16 bytes, got %zu bytes", idx + 1, vp->length);
 		return 0;
 	}
 	memcpy(ess->keys.Kc[idx], vp->vp_strvalue, EAPSIM_Kc_SIZE);
