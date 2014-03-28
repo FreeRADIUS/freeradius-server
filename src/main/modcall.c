@@ -830,7 +830,6 @@ redo:
 
 		map.op = T_OP_CMP_EQ;
 		map.ci = cf_sectiontoitem(g->cs);
-		map.dst = g->vpt;
 
 		rad_assert(g->vpt != NULL);
 
@@ -872,7 +871,22 @@ redo:
 				continue;
 			}
 
-			map.src = h->vpt;
+			/*
+			 *	If we're switching over an attribute
+			 *	AND we haven't pre-parsed the data for
+			 *	the case statement, then cast the data
+			 *	to the type of the attribute.
+			 */
+			if ((g->vpt->type == VPT_TYPE_ATTR) &&
+			    (h->vpt->type != VPT_TYPE_DATA)) {
+				map.src = g->vpt;
+				map.dst = h->vpt;
+				cond.cast = g->vpt->da;
+			} else {
+				map.src = h->vpt;
+				map.dst = g->vpt;
+				cond.cast = NULL;
+			}
 
 			if (radius_evaluate_map(request, RLM_MODULE_UNKNOWN, 0,
 						&cond) == 1) {

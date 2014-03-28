@@ -1,0 +1,34 @@
+#
+#  PRE: switch switch-attr-cmp
+#
+
+update request {
+	Service-Type := Login-User
+	Filter-Id := "Login-User"
+}
+
+switch &Service-Type {
+       case "%{expr: 1 + 2}" {
+		update reply {
+			Filter-Id := "3"
+		}
+       }
+
+       #
+       #  The Filter-Id will get printed to a string,
+       #  have the string parsed as a Service-Type attr,
+       #  and then that compared to the input Service-Type
+       #
+       case &Filter-Id {
+		update reply {
+			Filter-Id := "filter"
+		}
+       }
+
+       case {
+		update reply {
+			Filter-Id := "default"
+		}
+       }
+
+}
