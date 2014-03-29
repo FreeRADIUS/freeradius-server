@@ -23,6 +23,9 @@ FreeRADIUS 3.0.3 Fri 21 Mar 2014 08:30:00 EDT urgency=medium
 	  headers.
 	* Added '%v' which expands to the server version - Patch
 	  from Alan Buxey.
+	* Support basic response validation in radclient. This allows
+	  administrators to write local test cases for their 
+	  site-specific configurations.
 
 	Bug fixes
 	* Fix xlat expression %{attribute[n]} so that it actually
