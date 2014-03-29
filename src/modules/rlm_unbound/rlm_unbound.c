@@ -60,7 +60,8 @@ static const CONF_PARSER module_config[] = {
  *	new ub_result via a pointer that has been allocated from the heap.
  *	This pointer has been pre-initialized to a magic value.
  */
-static void link_ubres(void* my_arg, int err, struct ub_result* result) {
+static void link_ubres(void* my_arg, int err, struct ub_result* result)
+{
 	struct ub_result **ubres = (struct ub_result **)my_arg;
 
 	/*
@@ -71,8 +72,7 @@ static void link_ubres(void* my_arg, int err, struct ub_result* result) {
 	if (err) {
 		EDEBUG("rlm_unbound: %s", ub_strerror(err));
 		*ubres = NULL;
-	}
-	else {
+	} else {
 		*ubres = result;
 	}
 }
@@ -86,7 +86,8 @@ static void link_ubres(void* my_arg, int err, struct ub_result* result) {
  *	NULL, or -1 if nothing was written because it would not fit or due
  *	to a violation in the labels format.
  */
-static int rrlabels_tostr(char *out, char *rr, size_t left) {
+static int rrlabels_tostr(char *out, char *rr, size_t left)
+{
 	int offset = 0;
 
 	/*
@@ -108,10 +109,10 @@ static int rrlabels_tostr(char *out, char *rr, size_t left) {
 	/* It will fit, but does it it look well formed? */
 	while (1) {
 		size_t count;
+
 		count = *((unsigned char *)(rr + offset));
-		if (!count) {
-			break;
-		}
+		if (!count) break;
+
 		offset++;
 		if (count > 63 || strlen(rr + offset) < count) {
 			return -1;
@@ -123,28 +124,32 @@ static int rrlabels_tostr(char *out, char *rr, size_t left) {
 	offset = 0;
 	while (1) {
 		int count;
+
 		count = *((unsigned char *)(rr));
-		if (!count) {
-			break;
-		}
+		if (!count) break;
+
 		if (offset) {
 			*(out + offset) = '.';
 			offset++;
 		}
+
 		rr++;
 		memcpy(out + offset, rr, count);
 		rr += count;
 		offset += count;
 	}
+
 	*(out + offset) = '\0';
 	return offset;
 }
 
-static int ub_common_wait(rlm_unbound_t *inst, REQUEST *request, char const *tag, struct ub_result **ub, int async_id) {
+static int ub_common_wait(rlm_unbound_t *inst, REQUEST *request, char const *tag, struct ub_result **ub, int async_id)
+{
 	useconds_t iv, waited;
 
 	iv = inst->timeout > 64 ? 64000 : inst->timeout * 1000;
 	ub_process(inst->ub);
+
 	for (waited = 0; (void*)*ub == (void *)inst; waited += iv, iv += iv) {
 
 		if (waited + iv > (useconds_t)inst->timeout * 1000) {
@@ -163,8 +168,10 @@ static int ub_common_wait(rlm_unbound_t *inst, REQUEST *request, char const *tag
 		/* In case we are running single threaded */
 		ub_process(inst->ub);
 	}
+
 	if ((void *)*ub == (void *)inst) {
 		int res;
+
 		RDEBUG("rlm_unbound (%s): DNS took too long", tag);
 
 		res = ub_cancel(inst->ub, async_id);
@@ -174,22 +181,27 @@ static int ub_common_wait(rlm_unbound_t *inst, REQUEST *request, char const *tag
 		}
 		return -1;
 	}
+
 	return 0;
 }
 
-static int ub_common_fail(REQUEST *request, char const *tag, struct ub_result *ub) {
+static int ub_common_fail(REQUEST *request, char const *tag, struct ub_result *ub)
+{
 	if (ub->bogus) {
 		RWDEBUG("rlm_unbound (%s): Bogus DNS response", tag);
 		return -1;
 	}
+
 	if (ub->nxdomain) {
 		RDEBUG("rlm_unbound (%s): NXDOMAIN", tag);
 		return -1;
 	}
+
 	if (!ub->havedata) {
 		RDEBUG("rlm_unbound (%s): empty result", tag);
 		return -1;
 	}
+
 	return 0;
 }
 
@@ -211,25 +223,29 @@ static ssize_t xlat_a(void *instance, REQUEST *request, char const *fmt, char *o
 	talloc_free(fmt2);
 
 	if (ub_common_wait(inst, request, inst->xlat_a_name, ubres, async_id)) {
-		goto bail0;
+		goto error0;
 	}
 
 	if (*ubres) {
 		if (ub_common_fail(request, inst->xlat_a_name, *ubres)) {
-			goto bail1;
+			goto error1;
 		}
+
 		if (!inet_ntop(AF_INET, (*ubres)->data[0], out, freespace)) {
-			goto bail1;
+			goto error1;
 		};
+
 		ub_resolve_free(*ubres);
 		talloc_free(ubres);
 		return strlen(out);
 	}
 
 	RWDEBUG("rlm_unbound (%s): no result", inst->xlat_a_name);
- bail1:
+
+ error1:
 	ub_resolve_free(*ubres); /* Handles NULL gracefully */
- bail0:
+
+ error0:
 	talloc_free(ubres);
 	return -1;
 }
@@ -252,15 +268,15 @@ static ssize_t xlat_aaaa(void *instance, REQUEST *request, char const *fmt, char
 	talloc_free(fmt2);
 
 	if (ub_common_wait(inst, request, inst->xlat_aaaa_name, ubres, async_id)) {
-		goto bail0;
+		goto error0;
 	}
 
 	if (*ubres) {
 		if (ub_common_fail(request, inst->xlat_aaaa_name, *ubres)) {
-			goto bail1;
+			goto error1;
 		}
 		if (!inet_ntop(AF_INET6, (*ubres)->data[0], out, freespace)) {
-			goto bail1;
+			goto error1;
 		};
 		ub_resolve_free(*ubres);
 		talloc_free(ubres);
@@ -268,9 +284,11 @@ static ssize_t xlat_aaaa(void *instance, REQUEST *request, char const *fmt, char
 	}
 
 	RWDEBUG("rlm_unbound (%s): no result", inst->xlat_aaaa_name);
- bail1:
+
+error1:
 	ub_resolve_free(*ubres); /* Handles NULL gracefully */
- bail0:
+
+error0:
 	talloc_free(ubres);
 	return -1;
 }
@@ -294,15 +312,15 @@ static ssize_t xlat_ptr(void *instance, REQUEST *request, char const *fmt, char 
 
 	if (ub_common_wait(inst, request, inst->xlat_ptr_name,
 			   ubres, async_id)) {
-		goto bail0;
+		goto error0;
 	}
 
 	if (*ubres) {
 		if (ub_common_fail(request, inst->xlat_ptr_name, *ubres)) {
-			goto bail1;
+			goto error1;
 		}
 		if (rrlabels_tostr(out, (*ubres)->data[0], freespace) < 0) {
-			goto bail1;
+			goto error1;
 		}
 		ub_resolve_free(*ubres);
 		talloc_free(ubres);
@@ -310,9 +328,11 @@ static ssize_t xlat_ptr(void *instance, REQUEST *request, char const *fmt, char 
 	}
 
 	RWDEBUG("rlm_unbound (%s): no result", inst->xlat_ptr_name);
- bail1:
+
+error1:
 	ub_resolve_free(*ubres);  /* Handles NULL gracefully */
- bail0:
+
+error0:
 	talloc_free(ubres);
 	return -1;
 }
@@ -384,13 +404,13 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		inst->name = cf_section_name1(conf);
         }
 
-	if (inst->timeout < 0 || inst->timeout > 10000) {
+	if ((inst->timeout < 0) || (inst->timeout > 10000)) {
 		ERROR("rlm_unbound (%s): timeout must be 0 to 10000", inst->name);
 		return -1;
 	}
 
 	inst->ub = ub_ctx_create();
-        if(!inst->ub) {
+        if (!inst->ub) {
 		ERROR("rlm_unbound (%s): ub_ctx_create failed", inst->name);
 		return -1;
         }
@@ -407,20 +427,21 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 */
 	res = ub_ctx_async(inst->ub, 0);
 #endif
-        if(res) {
-		goto bail;
-        }
+
+        if (res) goto error;
 
 	/*	Glean some default settings to match the main server.	*/
 	/*	TODO: debug_level can be changed at runtime. */
 	/*	TODO: log until fork when stdout or stderr and !debug_flag. */
 	dlevel = 0;
+
 	if (debug_flag > 0) {
 		dlevel = debug_flag;
-	}
-	else if (mainconfig.debug_level > 0) {
+
+	} else if (mainconfig.debug_level > 0) {
 		dlevel = mainconfig.debug_level;
 	}
+
 	switch (dlevel) {
 	/* TODO: This will need some tweaking */
 	case 0:
@@ -447,10 +468,9 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		dlevel = 4; /* Insane amounts of output including crypts */
 		break;
 	}
+
 	res = ub_ctx_debuglevel(inst->ub, dlevel);
-	if (res) {
-		goto bail;
-	}
+	if (res) goto error;
 
 	switch(default_log.dest) {
 	case L_DST_STDOUT:
@@ -477,15 +497,17 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 			res = ub_ctx_set_option(inst->ub, k,
 						mainconfig.log_file);
 			if (res) {
-				goto bail;
+				goto error;
 			}
 			debug_method = 2;
 			break;
 		}
-	/* FALL-THROUGH */
+		/* FALL-THROUGH */
+
 	case L_DST_NULL:
 		debug_method = 3;
 		break;
+
 	default:
 		debug_method = 4;
 		break;
@@ -493,9 +515,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 	/* Now load the config file, which can override gleaned settings. */
 	res = ub_ctx_config(inst->ub, inst->filename);
-	if (res) {
-		goto bail;
-	}
+	if (res) goto error;
 
 	/*
 	 *	Check if the config file tried to use syslog.  Unbound
@@ -503,9 +523,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 */
 	strcpy(k, "use-syslog");
 	res = ub_ctx_get_option(inst->ub, k, &optval);
-	if (res || !optval) {
-		goto bail;
-	}
+	if (res || !optval) goto error;
 
 	if (!strcmp(optval, "yes")) {
 		char v[3];
@@ -516,31 +534,30 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		strcpy(k, "use-syslog:");
 		strcpy(v, "no");
 		res = ub_ctx_set_option(inst->ub, k, v);
-		if (res) {
-			goto bail;
-		}
+		if (res) goto error;
+
 		if (debug_method == 2) {
 			/* Reinstate the log file name JIC */
 			strcpy(k, "logfile:");
 			res = ub_ctx_set_option(inst->ub, k,
 						mainconfig.log_file);
-			if (res) {
-				goto bail;
-			}
+			if (res) goto error;
 		}
+
 	} else {
 		if (optval) free(optval);
 		strcpy(k, "logfile");
+
 		res = ub_ctx_get_option(inst->ub, k, &optval);
-		if (res) {
-			goto bail;
-		}
+		if (res) goto error;
+
 		if (optval && strlen(optval)) {
 			debug_method = 2;
-		}
-		else if (!debug_flag) {
+
+		} else if (!debug_flag) {
 			debug_method = 3;
 		}
+
 		if (optval) free(optval);
 	}
 
@@ -552,18 +569,18 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		 */
 		if (debug_fd == -1) {
 			ERROR("rlm_unbound (%s): Could not dup fd", inst->name);
-			goto bail_nores;
+			goto error_nores;
 		}
+
 		debug_stream = fdopen(debug_fd, "w");
 		if (!debug_stream) {
 			close(debug_fd);
 			ERROR("rlm_unbound (%s): error setting up log stream", inst->name);
-			goto bail_nores;
+			goto error_nores;
 		}
+
 		res = ub_ctx_debugout(inst->ub, debug_stream);
-		if (res) {
-			goto bail;
-		}
+		if (res) goto error;
 		break;
 
 	case 2:
@@ -573,21 +590,17 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	case 3:
 		/* We tell libunbound not to log at all. */
 		res = ub_ctx_debugout(inst->ub, NULL);
-		if (res) {
-			goto bail;
-		}
+		if (res) goto error;
 		break;
 
 	case 4:
 #ifdef HAVE_PTHREAD_H
-	  /*
-	   *  Currently this wreaks havoc when running threaded, so just
-	   *  turn logging off until that gets figured out.
-	   */
+		/*
+		 *  Currently this wreaks havoc when running threaded, so just
+		 *  turn logging off until that gets figured out.
+		 */
 		res = ub_ctx_debugout(inst->ub, NULL);
-		if (res) {
-			goto bail;
-		}
+		if (res) goto error;
 		break;
 #else
 		/*
@@ -595,39 +608,45 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		 *  share syslog nicely.  Or the core added some new logsink.
 		 */
 		if (pipe(inst->logfd)) {
-		bail_pipe:
+		error_pipe:
 			EDEBUG("rlm_unbound (%s): Error setting up log pipes", inst->name);
-			goto bail_nores;
+			goto error_nores;
 		}
+
 		if ((fcntl(inst->logfd[0], F_SETFL, O_NONBLOCK) < 0) ||
 		    (fcntl(inst->logfd[0], F_SETFD, FD_CLOEXEC) < 0)) {
-			goto bail_pipe;
+			goto error_pipe;
 		}
+
 		/* Opaque to us when this can be closed, so we do not. */
 		if (fcntl(inst->logfd[1], F_SETFL, O_NONBLOCK) < 0) {
-			goto bail_pipe;
+			goto error_pipe;
 		}
+
 		inst->logstream[0] = fdopen(inst->logfd[0], "r");
 		inst->logstream[1] = fdopen(inst->logfd[1], "w");
+
 		if (!inst->logstream[0] || !inst->logstream[1]) {
 			if (!inst->logstream[1]) {
 				close(inst->logfd[1]);
 			}
+
 			if (!inst->logstream[0]) {
 				close(inst->logfd[0]);
 			}
 			ERROR("rlm_unbound (%s): Error setting up log stream", inst->name);
-			goto bail_nores;
+			goto error_nores;
 		}
+
 		res = ub_ctx_debugout(inst->ub, inst->logstream[1]);
-		if (res) {
-			goto bail;
-		}
+		if (res) goto error;
+
 		if (!fr_event_fd_insert(inst->el, 0, inst->logfd[0],
 					log_spew, inst)) {
 			ERROR("rlm_unbound (%s): could not insert log fd", inst->name);
-			goto bail_nores;
+			goto error_nores;
 		}
+
 		inst->pipe_inuse = 1;
 #endif
 	default:
@@ -650,7 +669,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		if (!fr_event_fd_insert(inst->el, 0, inst->fd, ub_fd_handler, inst)) {
 			ERROR("rlm_unbound (%s): could not insert async fd", inst->name);
 			inst->fd = -1;
-			goto bail_nores;
+			goto error_nores;
 		}
 
 	}
@@ -666,21 +685,24 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		xlat_unregister(inst->xlat_a_name, xlat_a, inst);
 		xlat_unregister(inst->xlat_aaaa_name, xlat_aaaa, inst);
 		xlat_unregister(inst->xlat_ptr_name, xlat_ptr, inst);
-		goto bail_nores;
+		goto error_nores;
 	}
 	return 0;
- bail:
+
+ error:
 	ERROR("rlm_unbound (%s): %s", inst->name, ub_strerror(res));
- bail_nores:
+ error_nores:
 	return -1;
 }
 
 static int mod_detach(UNUSED void *instance)
 {
 	rlm_unbound_t *inst = instance;
+
 	xlat_unregister(inst->xlat_a_name, xlat_a, inst);
 	xlat_unregister(inst->xlat_aaaa_name, xlat_aaaa, inst);
 	xlat_unregister(inst->xlat_ptr_name, xlat_ptr, inst);
+
 	if (inst->fd >= 0) {
 		fr_event_fd_delete(inst->el, 0, inst->fd);
 		if (inst->ub) {
@@ -694,15 +716,18 @@ static int mod_detach(UNUSED void *instance)
 #endif
 		}
 	}
+
 	if (inst->logstream[1]) {
 		fclose(inst->logstream[1]);
 	}
+
 	if (inst->logstream[0]) {
 		if (inst->pipe_inuse) {
 			fr_event_fd_delete(inst->el, 0, inst->logfd[0]);
 		}
 		fclose(inst->logstream[0]);
 	}
+
 	return 0;
 }
 
