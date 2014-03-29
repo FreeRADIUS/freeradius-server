@@ -254,6 +254,7 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 			if (!filters) {
 				fprintf(stderr, "radclient: Error opening %s: %s\n",
 					files->filters, strerror(errno));
+				fclose(packets);
 				return 0;
 			}
 		}
