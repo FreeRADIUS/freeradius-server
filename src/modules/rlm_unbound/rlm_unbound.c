@@ -50,7 +50,7 @@ typedef struct rlm_unbound_t {
  */
 static const CONF_PARSER module_config[] = {
 	{ "filename", PW_TYPE_FILE_INPUT | PW_TYPE_REQUIRED, offsetof(rlm_unbound_t, filename), NULL,
-	  RADDBDIR "/mods-config/unbound/default.conf" },
+	  "${modconfdir}/unbound/default.conf" },
 	{ "timeout", PW_TYPE_INTEGER, offsetof(rlm_unbound_t, timeout), NULL, "3000" },
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
