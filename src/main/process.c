@@ -2487,7 +2487,10 @@ static int request_will_proxy(REQUEST *request)
 	 */
 	vp = pairfind(request->config_items, PW_PRE_PROXY_TYPE, 0, TAG_ANY);
 	if (vp) {
-		RDEBUG2("  Found Pre-Proxy-Type %s", vp->vp_strvalue);
+		DICT_VALUE const *dval = dict_valbyattr(vp->da->attr, vp->da->vendor, vp->vp_integer);
+		/* Must be a validation issue */
+		rad_assert(dval);
+		RDEBUG2("  Found Pre-Proxy-Type %s", dval->name);
 		pre_proxy_type = vp->vp_integer;
 	}
 
@@ -3379,7 +3382,10 @@ static void request_coa_originate(REQUEST *request)
 	 */
 	vp = pairfind(request->config_items, PW_PRE_PROXY_TYPE, 0, TAG_ANY);
 	if (vp) {
-		RDEBUG2("  Found Pre-Proxy-Type %s", vp->vp_strvalue);
+		DICT_VALUE const *dval = dict_valbyattr(vp->da->attr, vp->da->vendor, vp->vp_integer);
+		/* Must be a validation issue */
+		rad_assert(dval);
+		RDEBUG2("  Found Pre-Proxy-Type %s", dval->name);
 		pre_proxy_type = vp->vp_integer;
 	}
 
