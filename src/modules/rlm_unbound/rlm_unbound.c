@@ -30,29 +30,28 @@ RCSID("$Id$")
 #include <unbound.h>
 
 typedef struct rlm_unbound_t {
-	struct ub_ctx *ub;   /* This must come first.  Do not move */
-	fr_event_list_t *el; /* This must come second.  Do not move. */
-	char const *name, *xlat_a_name, *xlat_aaaa_name, *xlat_ptr_name;
-	char *filename;
-	int xlat_timeout;
-	int fd, logfd[2];
-	FILE *logstream[2];
-	int pipe_inuse;
+	struct ub_ctx	*ub;   /* This must come first.  Do not move */
+	fr_event_list_t	*el; /* This must come second.  Do not move. */
+
+	char const	*name;
+	char const	*xlat_a_name;
+	char const	*xlat_aaaa_name;
+	char const	*xlat_ptr_name;
+
+	char		*filename;
+	int		timeout;
+	int		fd, logfd[2];
+	FILE		*logstream[2];
+	int		pipe_inuse;
 } rlm_unbound_t;
 
 /*
  *	A mapping of configuration file names to internal variables.
  */
 static const CONF_PARSER module_config[] = {
-	{
-		"filename", PW_TYPE_FILE_INPUT | PW_TYPE_REQUIRED,
-		offsetof(rlm_unbound_t, filename), NULL,
-		RADDBDIR "/mods-config/unbound/default.conf"
-	},
-	{
-		"xlat_timeout", PW_TYPE_INTEGER,
-		offsetof(rlm_unbound_t, xlat_timeout), NULL, "3000"
-	},
+	{ "filename", PW_TYPE_FILE_INPUT | PW_TYPE_REQUIRED, offsetof(rlm_unbound_t, filename), NULL,
+	  RADDBDIR "/mods-config/unbound/default.conf" },
+	{ "timeout", PW_TYPE_INTEGER, offsetof(rlm_unbound_t, timeout), NULL, "3000" },
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
 
@@ -144,12 +143,12 @@ static int rrlabels_tostr(char *out, char *rr, size_t left) {
 static int ub_common_wait(rlm_unbound_t *inst, REQUEST *request, char const *tag, struct ub_result **ub, int async_id) {
 	useconds_t iv, waited;
 
-	iv = inst->xlat_timeout > 64 ? 64000 : inst->xlat_timeout * 1000;
+	iv = inst->timeout > 64 ? 64000 : inst->timeout * 1000;
 	ub_process(inst->ub);
 	for (waited = 0; (void*)*ub == (void *)inst; waited += iv, iv += iv) {
 
-		if (waited + iv > (useconds_t)inst->xlat_timeout * 1000) {
-			usleep(inst->xlat_timeout * 1000 - waited);
+		if (waited + iv > (useconds_t)inst->timeout * 1000) {
+			usleep(inst->timeout * 1000 - waited);
 			ub_process(inst->ub);
 			break;
 		}
@@ -211,8 +210,7 @@ static ssize_t xlat_a(void *instance, REQUEST *request, char const *fmt, char *o
 	ub_resolve_async(inst->ub, fmt2, 1, 1, ubres, link_ubres, &async_id);
 	talloc_free(fmt2);
 
-	if (ub_common_wait(inst, request, inst->xlat_a_name,
-			   ubres, async_id)) {
+	if (ub_common_wait(inst, request, inst->xlat_a_name, ubres, async_id)) {
 		goto bail0;
 	}
 
@@ -253,8 +251,7 @@ static ssize_t xlat_aaaa(void *instance, REQUEST *request, char const *fmt, char
 	ub_resolve_async(inst->ub, fmt2, 28, 1, ubres, link_ubres, &async_id);
 	talloc_free(fmt2);
 
-	if (ub_common_wait(inst, request, inst->xlat_aaaa_name,
-			   ubres, async_id)) {
+	if (ub_common_wait(inst, request, inst->xlat_aaaa_name, ubres, async_id)) {
 		goto bail0;
 	}
 
@@ -348,18 +345,17 @@ static void log_spew(UNUSED fr_event_list_t *el, UNUSED int sock, void *ctx)
 	char line[1024];
 
 	/*
-	 * This works for pipes from processes, but not from threads
-	 * right now.  The latter is hinky and will require some fancy
-	 * blocking/nonblocking trickery which is not figured out yet,
-	 * since selecting on a pipe from a thread in the same process
-	 * seems to behave differently.  It will likely preclude the use
-	 * of fgets and streams.  Left for now since some unbound logging
-	 * infrastructure is still global across multiple contexts.  Maybe
-	 * we can get unbound folks to provide a ub_ctx_debugout_async that
-	 * takes a function hook instead to just bypass the piping when
-	 * used in threaded mode.
+	 *  This works for pipes from processes, but not from threads
+	 *  right now.  The latter is hinky and will require some fancy
+	 *  blocking/nonblocking trickery which is not figured out yet,
+	 *  since selecting on a pipe from a thread in the same process
+	 *  seems to behave differently.  It will likely preclude the use
+	 *  of fgets and streams.  Left for now since some unbound logging
+	 *  infrastructure is still global across multiple contexts.  Maybe
+	 *  we can get unbound folks to provide a ub_ctx_debugout_async that
+	 *  takes a function hook instead to just bypass the piping when
+	 *  used in threaded mode.
 	 */
-
 	while (fgets(line, 1024, inst->logstream[0])) {
 		DEBUG("rlm_unbound (%s): %s", inst->name, line);
 	}
@@ -388,15 +384,14 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		inst->name = cf_section_name1(conf);
         }
 
-	if (inst->xlat_timeout < 0 || inst->xlat_timeout > 10000) {
-		EDEBUG("rlm_unbound (%s): xlat_timeout must be 0 to 10000",
-		       inst->name);
+	if (inst->timeout < 0 || inst->timeout > 10000) {
+		ERROR("rlm_unbound (%s): timeout must be 0 to 10000", inst->name);
 		return -1;
 	}
 
 	inst->ub = ub_ctx_create();
         if(!inst->ub) {
-		EDEBUG("rlm_unbound (%s): ub_ctx_create failed", inst->name);
+		ERROR("rlm_unbound (%s): ub_ctx_create failed", inst->name);
 		return -1;
         }
 
@@ -427,26 +422,30 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		dlevel = mainconfig.debug_level;
 	}
 	switch (dlevel) {
-		/* TODO: This will need some tweaking */
-		case 0:
-		case 1:
-		  break;
-       		case 2:
-		  dlevel = 1;
-		  break;
-		case 3:
-		case 4:
-		  dlevel = 2; /* mid-to-heavy levels of output */
-		  break;
-		case 5:
-		case 6:
-		case 7:
-		case 8:
-		  dlevel = 3; /* Pretty crazy amounts of output */
-		  break;
-		default:
-		  dlevel = 4; /* Insane amounts of output including crypts */
-		  break;
+	/* TODO: This will need some tweaking */
+	case 0:
+	case 1:
+		break;
+
+	case 2:
+		dlevel = 1;
+		break;
+
+	case 3:
+	case 4:
+		dlevel = 2; /* mid-to-heavy levels of output */
+		break;
+
+	case 5:
+	case 6:
+	case 7:
+	case 8:
+		dlevel = 3; /* Pretty crazy amounts of output */
+		break;
+
+	default:
+		dlevel = 4; /* Insane amounts of output including crypts */
+		break;
 	}
 	res = ub_ctx_debuglevel(inst->ub, dlevel);
 	if (res) {
@@ -462,6 +461,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		debug_method = 1;
 		debug_fd = dup(STDOUT_FILENO);
 		break;
+
 	case L_DST_STDERR:
 		if (!debug_flag) {
 			debug_method = 3;
@@ -470,6 +470,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		debug_method = 1;
 		debug_fd = dup(STDERR_FILENO);
 		break;
+
 	case L_DST_FILES:
 		if (mainconfig.log_file) {
 			strcpy(k, "logfile:");
@@ -481,6 +482,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 			debug_method = 2;
 			break;
 		}
+	/* FALL-THROUGH */
 	case L_DST_NULL:
 		debug_method = 3;
 		break;
@@ -510,8 +512,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 		free(optval);
 
-		WDEBUG("rlm_unbound (%s): Overriding syslog settings.",
-		       inst->name);
+		WDEBUG("rlm_unbound (%s): Overriding syslog settings.", inst->name);
 		strcpy(k, "use-syslog:");
 		strcpy(v, "no");
 		res = ub_ctx_set_option(inst->ub, k, v);
@@ -550,15 +551,13 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		 * dup it so libunbound doesn't close it on us.
 		 */
 		if (debug_fd == -1) {
-			ERROR("rlm_unbound (%s): Could not dup fd.",
-			      inst->name);
+			ERROR("rlm_unbound (%s): Could not dup fd", inst->name);
 			goto bail_nores;
 		}
 		debug_stream = fdopen(debug_fd, "w");
 		if (!debug_stream) {
 			close(debug_fd);
-			EDEBUG("rlm_unbound (%s): error setting up log stream",
-			       inst->name);
+			ERROR("rlm_unbound (%s): error setting up log stream", inst->name);
 			goto bail_nores;
 		}
 		res = ub_ctx_debugout(inst->ub, debug_stream);
@@ -566,9 +565,11 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 			goto bail;
 		}
 		break;
+
 	case 2:
 		/* We gave libunbound a filename.  It is on its own now. */
 		break;
+
 	case 3:
 		/* We tell libunbound not to log at all. */
 		res = ub_ctx_debugout(inst->ub, NULL);
@@ -576,11 +577,12 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 			goto bail;
 		}
 		break;
+
 	case 4:
 #ifdef HAVE_PTHREAD_H
 	  /*
-	   * Currently this wreaks havoc when running threaded, so just
-	   * turn logging off until that gets figured out.
+	   *  Currently this wreaks havoc when running threaded, so just
+	   *  turn logging off until that gets figured out.
 	   */
 		res = ub_ctx_debugout(inst->ub, NULL);
 		if (res) {
@@ -589,13 +591,12 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		break;
 #else
 		/*
-		 * We need to create a pipe, because libunbound does not
-		 * share syslog nicely.  Or the core added some new logsink.
+		 *  We need to create a pipe, because libunbound does not
+		 *  share syslog nicely.  Or the core added some new logsink.
 		 */
 		if (pipe(inst->logfd)) {
 		bail_pipe:
-			EDEBUG("rlm_unbound (%s): error setting up log pipes",
-			       inst->name);
+			EDEBUG("rlm_unbound (%s): Error setting up log pipes", inst->name);
 			goto bail_nores;
 		}
 		if ((fcntl(inst->logfd[0], F_SETFL, O_NONBLOCK) < 0) ||
@@ -615,8 +616,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 			if (!inst->logstream[0]) {
 				close(inst->logfd[0]);
 			}
-			EDEBUG("rlm_unbound (%s): error setting up log stream",
-			       inst->name);
+			ERROR("rlm_unbound (%s): Error setting up log stream", inst->name);
 			goto bail_nores;
 		}
 		res = ub_ctx_debugout(inst->ub, inst->logstream[1]);
@@ -625,8 +625,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		}
 		if (!fr_event_fd_insert(inst->el, 0, inst->logfd[0],
 					log_spew, inst)) {
-			EDEBUG("rlm_unbound (%s): could not insert log fd",
-			       inst->name);
+			ERROR("rlm_unbound (%s): could not insert log fd", inst->name);
 			goto bail_nores;
 		}
 		inst->pipe_inuse = 1;
@@ -636,44 +635,34 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	}
 
 	/*
-	 * Now we need to finalize the context.
+	 *  Now we need to finalize the context.
 	 *
-	 * There's no clean API to just finalize the context made public
-	 * in libunbound.  But we can trick it by trying to delete data
-	 * which as it happens fails quickly and quietly even though the
-	 * data did not exist.
+	 *  There's no clean API to just finalize the context made public
+	 *  in libunbound.  But we can trick it by trying to delete data
+	 *  which as it happens fails quickly and quietly even though the
+	 *  data did not exist.
 	 */
 	strcpy(k, "notar33lsite.foo123.nottld A 127.0.0.1");
 	ub_ctx_data_remove(inst->ub, k);
 
 	inst->fd = ub_fd(inst->ub);
 	if (inst->fd >= 0) {
-		if (!fr_event_fd_insert(inst->el, 0, inst->fd,
-					ub_fd_handler, inst)) {
-			EDEBUG("rlm_unbound (%s): could not insert async fd",
-			       inst->name);
+		if (!fr_event_fd_insert(inst->el, 0, inst->fd, ub_fd_handler, inst)) {
+			ERROR("rlm_unbound (%s): could not insert async fd", inst->name);
 			inst->fd = -1;
 			goto bail_nores;
 		}
 
 	}
 
-	inst->xlat_a_name = talloc_asprintf(inst, "%s-a", inst->name);
-	inst->xlat_aaaa_name = talloc_asprintf(inst, "%s-aaaa", inst->name);
-	inst->xlat_ptr_name = talloc_asprintf(inst, "%s-ptr", inst->name);
-	if (!inst->xlat_a_name
-	    || !inst->xlat_aaaa_name
-	    || !inst->xlat_ptr_name) {
+	MEM(inst->xlat_a_name = talloc_asprintf(inst, "%s-a", inst->name));
+	MEM(inst->xlat_aaaa_name = talloc_asprintf(inst, "%s-aaaa", inst->name));
+	MEM(inst->xlat_ptr_name = talloc_asprintf(inst, "%s-ptr", inst->name));
 
-		EDEBUG("rlm_unbound (%s): allocation fail", inst->name);
-		goto bail_nores;
-	}
-
-	if (xlat_register(inst->xlat_a_name, xlat_a, NULL, inst)
-	    || xlat_register(inst->xlat_aaaa_name, xlat_aaaa, NULL, inst)
-	    || xlat_register(inst->xlat_ptr_name, xlat_ptr, NULL, inst)) {
-
-		EDEBUG("rlm_unbound (%s): xlat_register fail", inst->name);
+	if (xlat_register(inst->xlat_a_name, xlat_a, NULL, inst) ||
+	    xlat_register(inst->xlat_aaaa_name, xlat_aaaa, NULL, inst) ||
+	    xlat_register(inst->xlat_ptr_name, xlat_ptr, NULL, inst)) {
+		ERROR("rlm_unbound (%s): Failed registering xlats", inst->name);
 		xlat_unregister(inst->xlat_a_name, xlat_a, inst);
 		xlat_unregister(inst->xlat_aaaa_name, xlat_aaaa, inst);
 		xlat_unregister(inst->xlat_ptr_name, xlat_ptr, inst);
@@ -681,7 +670,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	}
 	return 0;
  bail:
-	EDEBUG("rlm_unbound (%s): %s", inst->name, ub_strerror(res));
+	ERROR("rlm_unbound (%s): %s", inst->name, ub_strerror(res));
  bail_nores:
 	return -1;
 }
