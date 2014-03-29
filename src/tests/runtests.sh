@@ -31,8 +31,8 @@ do
     #
     echo "Test-Name = \"$BASE\"," >> .request
     echo 'Test-Number = ' $NUMBER >> .request
-
-    mv .request .cache/$BASE:$NUMBER
+	
+    mv .request ".cache/${BASE}_${NUMBER}"
   done
 done
 
