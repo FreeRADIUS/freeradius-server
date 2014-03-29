@@ -46,9 +46,8 @@
 #	documented in that "man" page.  They are only documented here,
 #	in the comments.
 #
-#	As of 2.0.0, FreeRADIUS supports a simple processing language
-#	in the "authorize", "authenticate", "accounting", etc. sections.
-#	See "man unlang" for details.
+#	The "unlang" policy language can be used to create complex
+#	if / else policies.  See "man unlang" for details.
 #
 
 prefix = @prefix@
