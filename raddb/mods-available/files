@@ -4,6 +4,8 @@
 
 # Livingston-style 'users' file
 #
+# See "man users" for more information.
+#
 files {
 	# Search for files in a subdirectory of mods-config which
 	# matches this instance of the files module.
@@ -14,19 +16,15 @@ files {
 	# entry.
 	#key = "%{%{Stripped-User-Name}:-%{User-Name}}"
 
-	# Sets a common file for all sections which do not have
-	# specific files configured. It's recommended that
-	# per section instances of 'files' are used, as per section
-	# files will be deprecated in a future release.
+	#  The old "users" style file is now located here.
 	filename = ${moddir}/authorize
 
+	#  This is accepted for backwards compatibility
+	#  It will be removed in a future release.
 	usersfile = ${moddir}/authorize
+
+	#  These are accepted for backwards compatibility.
+	#  They will be renamed in a future release.
 	acctusersfile = ${moddir}/accounting
 	preproxy_usersfile = ${moddir}/pre-proxy
-
-	#  If you want to use the old Cistron 'users' file
-	#  with FreeRADIUS, you should change the next line
-	#  to 'compat = cistron'.  You can the copy your 'users'
-	#  file from Cistron.
-	compat = no
 }
