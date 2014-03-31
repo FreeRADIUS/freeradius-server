@@ -702,6 +702,65 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 				}
 
 				/*
+				 *	We may be casting incompatible
+				 *	types.  We check this based on
+				 *	their size.
+				 */
+				if (c->data.map->dst->type == VPT_TYPE_ATTR) {
+					/*
+					 *      dst.min == src.min
+					 *	dst.max == src.max
+					 */
+					if ((dict_attr_sizes[c->cast->type][0] == dict_attr_sizes[c->data.map->dst->da->type][0]) &&
+					    (dict_attr_sizes[c->cast->type][1] == dict_attr_sizes[c->data.map->dst->da->type][1])) {
+						goto cast_ok;
+					}
+
+					/*
+					 *	Run-time parsing of strings.
+					 *	Run-time copying of octets.
+					 */
+					if ((c->data.map->dst->da->type == PW_TYPE_STRING) ||
+					    (c->data.map->dst->da->type == PW_TYPE_OCTETS)) {
+						goto cast_ok;
+					}
+
+					/*
+					 *	ipaddr to ipv4prefix is OK
+					 */
+					if ((c->data.map->dst->da->type == PW_TYPE_IPADDR) &&
+					    (c->cast->type == PW_TYPE_IPV4PREFIX)) {
+						goto cast_ok;
+					}
+
+					/*
+					 *	ipv6addr to ipv6prefix is OK
+					 */
+					if ((c->data.map->dst->da->type == PW_TYPE_IPV6ADDR) &&
+					    (c->cast->type == PW_TYPE_IPV6PREFIX)) {
+						goto cast_ok;
+					}
+
+					/*
+					 *	integer64 to ethernet is OK.
+					 */
+					if ((c->data.map->dst->da->type == PW_TYPE_INTEGER64) &&
+					    (c->cast->type == PW_TYPE_ETHERNET)) {
+						goto cast_ok;
+					}
+
+					/*
+					 *	dst.max < src.min
+					 *	dst.min > src.max
+					 */
+					if ((dict_attr_sizes[c->cast->type][1] < dict_attr_sizes[c->data.map->dst->da->type][0]) ||
+					    (dict_attr_sizes[c->cast->type][0] > dict_attr_sizes[c->data.map->dst->da->type][1])) {
+						return_0("Cannot cast to attribute of incompatible size");
+					}
+				}
+
+			cast_ok:
+				/*
 				 *	Casting to a redundant type means we don't need the cast.
 				 *
 				 *	Do this LAST, as the rest of the code above assumes c->cast
