@@ -121,10 +121,13 @@ int fr_utf8_char(uint8_t const *str)
 	return 0;
 }
 
-/*
- *	Convert a string to something printable.  The output string
- *	has to be larger than the input string by at least 5 bytes.
- *	If not, the output is silently truncated...
+/** Escape any non printable or non-UTF8 characters in the input string
+ *
+ * @param[in] in string to escape.
+ * @param[in] inlen length of string to escape (lets us deal with embedded NULLs)
+ * @param[out] out where to write the escaped string.
+ * @param[out] outlen the length of the buffer pointed to by out.
+ * @return the number of bytes written to the out buffer, or a number > outlen if truncation has occurred.
  */
 size_t fr_print_string(char const *in, size_t inlen, char *out, size_t outlen)
 {
@@ -133,15 +136,33 @@ size_t fr_print_string(char const *in, size_t inlen, char *out, size_t outlen)
 	int		utf8 = 0;
 	size_t		freespace = outlen;
 
-	if (!in) {
-		if (outlen) *out = '\0';
+	/* Can't '\0' terminate */
+	if (freespace == 0) {
+		return inlen;
+	}
 
+	/* No input, so no output... */
+	if (!in) {
+	no_input:
+		*out = '\0';
 		return 0;
 	}
 
+	/* Figure out the length of the input string */
 	if (inlen == 0) inlen = strlen(in);
 
-	while ((inlen > 0) && (freespace > 4)) {
+	/* Not enough space to hold one char */
+	if (freespace < 2) {
+		/* And there's input data... */
+		if (inlen > 0) {
+			*out = '\0';
+			return inlen;
+		}
+
+		goto no_input;
+	}
+
+	while (inlen > 0) {
 		/*
 		 *	Hack: never print trailing zero.
 		 *	Some clients send pings with an off-by-one
@@ -173,6 +194,7 @@ size_t fr_print_string(char const *in, size_t inlen, char *out, size_t outlen)
 		}
 
 		if (sp) {
+			if (freespace < 3) break; /* \ + <c> + \0 */
 			*out++ = '\\';
 			*out++ = sp;
 			freespace -= 2;
@@ -182,7 +204,8 @@ size_t fr_print_string(char const *in, size_t inlen, char *out, size_t outlen)
 		}
 
 		utf8 = fr_utf8_char(p);
-		if (!utf8) {
+		if (utf8 == 0) {
+			if (freespace < 5) break; /* \ + <o><o><o> + \0 */
 			snprintf(out, freespace, "\\%03o", *p);
 			out += 4;
 			freespace -= 4;
@@ -192,14 +215,19 @@ size_t fr_print_string(char const *in, size_t inlen, char *out, size_t outlen)
 		}
 
 		do {
+			if (freespace < 2) goto finish; /* <c> + \0 */
 			*out++ = *p++;
 			freespace--;
 			inlen--;
 		} while (--utf8 > 0);
 	}
+
+finish:
 	*out = '\0';
 
-	if (inlen > 0) return outlen + 4;
+	/* Indicate truncation occurred */
+	if (inlen > 0) return outlen + inlen;
+
 	return outlen - freespace;
 }
 
