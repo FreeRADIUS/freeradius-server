@@ -675,7 +675,7 @@ extern		void thread_pool_queue_stats(int array[RAD_LISTEN_MAX], int pps[2]);
 /* Define a global config structure */
 extern struct main_config_t mainconfig;
 
-void set_radius_dir(char const *path);
+void set_radius_dir(TALLOC_CTX *ctx, char const *path);
 char const *get_radius_dir(void);
 int read_mainconfig(int reload);
 int free_mainconfig(void);
@@ -707,7 +707,7 @@ typedef enum event_corral_t {
 } event_corral_t;
 
 fr_event_list_t *radius_event_list_corral(event_corral_t hint);
-int radius_event_init(bool spawn_flag, bool aux_loops);
+int radius_event_init(TALLOC_CTX *ctx);
 int radius_event_start(CONF_SECTION *cs, bool spawn_flag);
 void radius_event_free(void);
 int radius_event_process(void);

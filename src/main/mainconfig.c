@@ -732,7 +732,7 @@ static int switch_users(CONF_SECTION *cs)
  *
  * @param path to config dir root e.g. /usr/local/etc/raddb
  */
-void set_radius_dir(char const *path)
+void set_radius_dir(TALLOC_CTX *ctx, char const *path)
 {
 	if (radius_dir) {
 		char *p;
@@ -741,7 +741,7 @@ void set_radius_dir(char const *path)
 		talloc_free(p);
 		radius_dir = NULL;
 	}
-	if (path) radius_dir = talloc_strdup(talloc_autofree_context(), path);
+	if (path) radius_dir = talloc_strdup(ctx, path);
 }
 
 /** Get the global radius config directory.
