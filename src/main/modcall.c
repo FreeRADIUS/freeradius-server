@@ -868,6 +868,14 @@ redo:
 				map.src = g->vpt;
 				map.dst = h->vpt;
 				cond.cast = g->vpt->da;
+
+				/*
+				 *	Remove unnecessary casting.
+				 */
+				if ((h->vpt->type == VPT_TYPE_ATTR) &&
+				    (g->vpt->da->type == h->vpt->da->type)) {
+					cond.cast = NULL;
+				}
 			} else {
 				map.src = h->vpt;
 				map.dst = g->vpt;
