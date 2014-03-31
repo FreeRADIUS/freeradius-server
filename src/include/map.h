@@ -28,6 +28,27 @@ RCSIDH(map_h, "$Id$")
 
 #include <freeradius-devel/conffile.h>
 
+#ifdef HAVE_PCREPOSIX_H
+#  include <pcreposix.h>
+#else
+#  ifdef HAVE_REGEX_H
+#    include <regex.h>
+
+/*
+ *  For POSIX Regular expressions.
+ *  (0) Means no extended regular expressions.
+ *  REG_EXTENDED means use extended regular expressions.
+ */
+#    ifndef REG_EXTENDED
+#      define REG_EXTENDED (0)
+#    endif
+
+#    ifndef REG_NOSUB
+#      define REG_NOSUB (0)
+#    endif
+#  endif
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -79,7 +100,8 @@ typedef enum vpt_type {
 	VPT_TYPE_REGEX,			//!< Is a regex.
 	VPT_TYPE_EXEC,			//!< Needs to be executed.
 	VPT_TYPE_DATA,			//!< is a value_data_t
-	VPT_TYPE_XLAT_STRUCT,	      	//!< pre-parsed xlat_exp_t in vpd.ptr
+	VPT_TYPE_XLAT_STRUCT,	      	//!< pre-parsed xlat_exp_t
+	VPT_TYPE_REGEX_STRUCT,	      	//!< pre-parsed regex_t
 } vpt_type_t;
 
 extern const FR_NAME_NUMBER vpt_types[];
@@ -105,8 +127,9 @@ typedef struct value_pair_tmpl_t {
 
 	DICT_ATTR const		*da;	 //!< Resolved dictionary attribute.
 	value_data_t const	*vpd;	 //!< actual data
-	xlat_exp_t		*xlat;	 //!< pre-parsed xlat_exp_t
 	size_t			length;  //!< of the vpd data
+	xlat_exp_t		*xlat;	 //!< pre-parsed xlat_exp_t
+	regex_t			*preg;	 //!< pre-parsed regex_t
 } value_pair_tmpl_t;
 
 /** Value pair map
