@@ -2724,7 +2724,7 @@ static bool pass2_xlat_compile(CONF_ITEM const *ci, value_pair_tmpl_t *vpt)
 static bool pass2_regex_compile(CONF_ITEM const *ci, value_pair_tmpl_t *vpt)
 {
 	int rcode;
-	regex_t reg;
+	regex_t *preg;
 
 	rad_assert(vpt->type == VPT_TYPE_REGEX);
 
@@ -2733,15 +2733,21 @@ static bool pass2_regex_compile(CONF_ITEM const *ci, value_pair_tmpl_t *vpt)
 	 */
 	if (strchr(vpt->name, '%')) return true;
 
-	rcode = regcomp(&reg, vpt->name, REG_EXTENDED);
+	preg = talloc_zero(vpt, regex_t);
+	if (!preg) return false;
+
+	rcode = regcomp(preg, vpt->name, REG_EXTENDED);
 	if (rcode != 0) {
 		char buffer[256];
-		regerror(rcode, &reg, buffer, sizeof(buffer));
+		regerror(rcode, preg, buffer, sizeof(buffer));
 
 		cf_log_err(ci, "Invalid regular expression %s: %s",
 			   vpt->name, buffer);
 		return false;
 	}
+
+	vpt->type = VPT_TYPE_REGEX_STRUCT;
+	vpt->preg = preg;
 
 	return true;
 }
