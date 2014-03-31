@@ -51,6 +51,11 @@ FreeRADIUS 3.0.3 Fri 21 Mar 2014 08:30:00 EDT urgency=medium
 	* Don't crash in rlm_rest if connect_uri is commented out
 	  in the configuration.
 	* Don't re-run "authorize" if a home server fails to respond.
+	* "0x" isn't printed in front of octets types, for xlat
+	  expansions.  This is the same as v2, and makes it easier
+	  to concatenate multiple attributes of type "octets"
+	* more mis-matched casts are caught in "if" conditions,
+	  and descriptive errors are printed.
 
 FreeRADIUS 3.0.2 Fri 21 Mar 2014 08:30:00 EDT urgency=medium
 	Feature improvements
