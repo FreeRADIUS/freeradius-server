@@ -2677,6 +2677,7 @@ void modcallable_free(modcallable **pc)
 
 #ifdef WITH_UNLANG
 static char const spaces[] = "                                                                                                                        ";
+
 static bool pass2_xlat_compile(CONF_ITEM const *ci, value_pair_tmpl_t *vpt)
 {
 	ssize_t slen;
@@ -2719,15 +2720,48 @@ static bool pass2_xlat_compile(CONF_ITEM const *ci, value_pair_tmpl_t *vpt)
 }
 
 
+#ifdef HAVE_REGEX_H
+static bool pass2_regex_compile(CONF_ITEM const *ci, value_pair_tmpl_t *vpt)
+{
+	int rcode;
+	regex_t reg;
+
+	rad_assert(vpt->type == VPT_TYPE_REGEX);
+
+	/*
+	 *	Expanded at run-time.  We can't precompile it.
+	 */
+	if (strchr(vpt->name, '%')) return true;
+
+	rcode = regcomp(&reg, vpt->name, REG_EXTENDED);
+	if (rcode != 0) {
+		char buffer[256];
+		regerror(rcode, &reg, buffer, sizeof(buffer));
+
+		cf_log_err(ci, "Invalid regular expression %s: %s",
+			   vpt->name, buffer);
+		return false;
+	}
+
+	return true;
+}
+#endif
+
 static bool pass2_callback(UNUSED void *ctx, fr_cond_t *c)
 {
 	value_pair_map_t *map;
 
-	if ((c->type == COND_TYPE_EXISTS) &&
-	    (c->data.vpt->type == VPT_TYPE_XLAT)) {
-		if (!pass2_xlat_compile(c->ci, c->data.vpt)) {
-			return false;
+	if (c->type == COND_TYPE_EXISTS) {
+		if (c->data.vpt->type == VPT_TYPE_XLAT) {
+			return pass2_xlat_compile(c->ci, c->data.vpt);
 		}
+
+		rad_assert(c->data.vpt->type != VPT_TYPE_REGEX);
+
+		/*
+		 *	FIXME: fix up attribute references, too!
+		 */
+		return true;
 	}
 
 	/*
@@ -2820,6 +2854,15 @@ check_paircmp:
 		}
 	}
 
+#ifdef HAVE_REGEX_H
+	if (map->src->type == VPT_TYPE_REGEX) {
+		if (!pass2_regex_compile(map->ci, map->src)) {
+			return false;
+		}
+	}
+	rad_assert(map->dst->type != VPT_TYPE_REGEX);
+#endif
+
 	/*
 	 *	Only attributes can have a paircompare registered, and
 	 *	they can only be with the current REQUEST, and only
@@ -2875,13 +2918,15 @@ static bool modcall_pass2_update(modgroup *g)
 	value_pair_map_t *map;
 
 	for (map = g->map; map != NULL; map = map->next) {
-		if (map->src->type != VPT_TYPE_XLAT) continue;
+		if (map->src->type == VPT_TYPE_XLAT) {
+			rad_assert(map->src->vpd == NULL);
 
-		rad_assert(map->src->vpd == NULL);
-
-		if (!pass2_xlat_compile(map->ci, map->src)) {
-			return false;
+			if (!pass2_xlat_compile(map->ci, map->src)) {
+				return false;
+			}
 		}
+
+		rad_assert(map->src->type != VPT_TYPE_REGEX);
 	}
 
 	return true;
