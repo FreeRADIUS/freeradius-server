@@ -231,6 +231,73 @@ finish:
 	return outlen - freespace;
 }
 
+/** Find the length of the buffer required to fully escape a string with fr_print_string
+ *
+ * Were assuming here that's it's cheaper to figure out the length and do one
+ * alloc than repeatedly expand the buffer when we find extra chars which need
+ * to be added.
+ *
+ * @param in string to calculate the escaped length for.
+ * @param inlen length of the input string, if 0 strlen will be used to check the length.
+ * @return the size of buffer required to hold the escaped string excluding the NULL byte.
+ */
+size_t fr_print_string_len(char const *in, size_t inlen)
+{
+	uint8_t const	*p = (uint8_t const *) in;
+	size_t		outlen = 0;
+	int		utf8 = 0;
+
+	if (!in) {
+		return 0;
+	}
+
+	if (inlen == 0) {
+		inlen = strlen(in);
+	}
+
+	while (inlen > 0) {
+		/*
+		 *	Hack: never print trailing zero. Some clients send pings
+		 *	with an off-by-one length (confused with strings in C).
+		 */
+		if ((inlen == 1) && (*p == '\0')) {
+			inlen--;
+			break;
+		}
+
+		switch (*p) {
+		case '\\':
+		case '\r':
+		case '\n':
+		case '\t':
+		case '"':
+			outlen += 2;
+			p++;
+			inlen--;
+			continue;
+
+		default:
+			break;
+		}
+
+		utf8 = fr_utf8_char(p);
+		if (utf8 == 0) {
+			outlen += 4;
+			p++;
+			inlen--;
+			continue;
+		}
+
+		do {
+			outlen++;
+			p++;
+			inlen--;
+		} while (--utf8 > 0);
+	}
+
+	return outlen;
+}
+
 
 /** Print the value of an attribute to a string
  *
@@ -505,11 +572,21 @@ char *vp_aprint(TALLOC_CTX *ctx, VALUE_PAIR const *vp)
 
 	switch (vp->da->type) {
 	case PW_TYPE_STRING:
-		/*
-		 *	FIXME: deal with \r\n" ??
-		 */
-		p = talloc_strdup(ctx, vp->vp_strvalue);
+	{
+		size_t len, ret;
+
+		/* Gets us the size of the buffer we need to alloc */
+		len = fr_print_string_len(vp->vp_strvalue, vp->length);
+		p = talloc_array(ctx, char, len + 1); 	/* +1 for '\0' */
+		if (!p) return NULL;
+
+		ret = fr_print_string(vp->vp_strvalue, vp->length, p, len + 1);
+		if (!fr_assert(ret == len)) {
+			talloc_free(p);
+			return NULL;
+		}
 		break;
+	}
 
 	case PW_TYPE_BYTE:
 	case PW_TYPE_SHORT:
