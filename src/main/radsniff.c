@@ -1683,7 +1683,7 @@ static void rs_collectd_reopen(void *ctx)
 /** Read the last signal from the signal pipe
  *
  */
-static void rs_signal_action(fr_event_list_t *list, int fd, UNUSED void *ctx)
+static void rs_signal_action(UNUSED fr_event_list_t *list, int fd, UNUSED void *ctx)
 {
 	int sig;
 
