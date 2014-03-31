@@ -398,3 +398,9 @@ data `a`
 
 condition (User-name)
 data &User-Name
+
+#
+#  Forbidden data types in cast
+#
+condition (<vsa>"foo" == &User-Name)
+data ERROR offset 2 Forbidden data type in cast
