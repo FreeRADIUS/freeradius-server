@@ -423,7 +423,7 @@ int main(int argc, char *argv[])
 		progname++;
 
 	debug_flag = 0;
-	set_radius_dir(RADIUS_DIR);
+	set_radius_dir(NULL, RADIUS_DIR);
 
 	/*
 	 *	Ensure that the configuration is initialized.
@@ -450,7 +450,7 @@ int main(int argc, char *argv[])
 
 		switch(argval) {
 			case 'd':
-				set_radius_dir(optarg);
+				set_radius_dir(NULL, optarg);
 				break;
 
 			case 'D':

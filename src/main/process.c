@@ -4288,12 +4288,11 @@ static void event_signal_handler(UNUSED fr_event_list_t *xel,
 /*
  *	Externally-visibly functions.
  */
-int radius_event_init(UNUSED bool have_children, UNUSED bool aux_loops) {
-	el = fr_event_list_create(NULL, event_status);
+int radius_event_init(TALLOC_CTX *ctx) {
+	el = fr_event_list_create(ctx, event_status);
 	if (!el) return 0;
 
 	return 1;
-	/* If have_children/threaded we could init an auxiliary loop */
 }
 
 int radius_event_start(CONF_SECTION *cs, bool have_children)
@@ -4305,7 +4304,10 @@ int radius_event_start(CONF_SECTION *cs, bool have_children)
 	time(&fr_start_time);
 
 	if (!check_config) {
-		el = fr_event_list_create(NULL, event_status);
+		/*
+		 *  radius_event_init() must be called first
+		 */
+		rad_assert(el);
 		if (fr_start_time == (time_t)-1) return 0;
 
 		pl = fr_packet_list_create(0);
@@ -4542,7 +4544,7 @@ void radius_event_free(void)
 	proxy_list = NULL;
 #endif
 
-	talloc_free(el);
+	TALLOC_FREE(el);
 
 	if (debug_condition) talloc_free(debug_condition);
 }

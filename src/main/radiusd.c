@@ -109,6 +109,13 @@ int main(int argc, char *argv[])
 	int devnull;
 
 	/*
+	 *	We probably don't want to free the talloc autofree context
+	 *	directly, so we'll allocate a new context beneath it, and
+	 *	free that before any leak reports.
+	 */
+	TALLOC_CTX *autofree = talloc(talloc_autofree_context(), void *);
+
+	/*
 	 *	If the server was built with debugging enabled always install
 	 *	the basic fatal signal handlers.
 	 */
@@ -136,7 +143,7 @@ int main(int argc, char *argv[])
 #endif
 
 	debug_flag = 0;
-	set_radius_dir(RADIUS_DIR);
+	set_radius_dir(autofree, RADIUS_DIR);
 
 	/*
 	 *	Ensure that the configuration is initialized.
@@ -165,7 +172,7 @@ int main(int argc, char *argv[])
 				break;
 
 			case 'd':
-				set_radius_dir(optarg);
+				set_radius_dir(autofree, optarg);
 				break;
 
 			case 'D':
@@ -321,7 +328,7 @@ int main(int argc, char *argv[])
 	 *  Initialize any event loops just enough so module instantiations
 	 *  can add fd/event to them, but do not start them yet.
 	 */
-	if (!radius_event_init(spawn_flag, 0)) {
+	if (!radius_event_init(autofree)) {
 		exit(EXIT_FAILURE);
 	}
 
@@ -605,6 +612,11 @@ cleanup:
 #ifdef WIN32
 	WSACleanup();
 #endif
+
+	/*
+	 *	So we don't see autofreed memory in the talloc report
+	 */
+	talloc_free(autofree);
 
 	if (mainconfig.memory_report) {
 		INFO("Allocated memory at time of report:");
