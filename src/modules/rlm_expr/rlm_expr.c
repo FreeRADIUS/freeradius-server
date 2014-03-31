@@ -591,6 +591,49 @@ static ssize_t md5_xlat(UNUSED void *instance, UNUSED REQUEST *request,
 	return strlen(out);
 }
 
+/** Calculate the SHA1 hash of a string or attribute.
+ *
+ * Example: "%{sha1:foo}" == "0beec7b5ea3f0fdbc95d0dd47f3c5bc275da8a33"
+ */
+static ssize_t sha1_xlat(UNUSED void *instance, UNUSED REQUEST *request,
+			 char const *fmt, char *out, size_t outlen)
+{
+	uint8_t digest[20];
+	ssize_t i, len, inlen;
+	uint8_t const *p;
+	fr_SHA1_CTX ctx;
+
+	/*
+	 *      We need room for at least one octet of output.
+	 */
+	if (outlen < 3) {
+		*out = '\0';
+		return 0;
+	}
+
+	inlen = xlat_fmt_to_ref(&p, request, fmt);
+	if (inlen < 0) {
+		return -1;
+	}
+
+	fr_SHA1Init(&ctx);
+	fr_SHA1Update(&ctx, p, inlen);
+	fr_SHA1Final(digest, &ctx);
+
+	/*
+	 *      Each digest octet takes two hex digits, plus one for
+	 *      the terminating NUL. SHA1 is 160 bits (20 bytes)
+	 */
+	len = (outlen / 2) - 1;
+	if (len > 20) len = 20;
+
+	for (i = 0; i < len; i++) {
+		snprintf(out + i * 2, 3, "%02x", digest[i]);
+	}
+
+	return strlen(out);
+}
+
 /** Calculate any digest supported by OpenSSL EVP_MD
  *
  * Example: "%{sha256:foo}" == "0beec7b5ea3f0fdbc95d0dd47f3c5bc275da8a33"
@@ -647,49 +690,6 @@ static ssize_t _md##_xlat(UNUSED void *instance, UNUSED REQUEST *request, char c
 EVP_MD_XLAT(sha256);
 EVP_MD_XLAT(sha512);
 #endif
-
-/** Calculate the SHA1 hash of a string or attribute.
- *
- * Example: "%{sha1:foo}" == "0beec7b5ea3f0fdbc95d0dd47f3c5bc275da8a33"
- */
-static ssize_t sha1_xlat(UNUSED void *instance, UNUSED REQUEST *request,
-			 char const *fmt, char *out, size_t outlen)
-{
-	uint8_t digest[20];
-	ssize_t i, len, inlen;
-	uint8_t const *p;
-	fr_SHA1_CTX ctx;
-
-	/*
-	 *      We need room for at least one octet of output.
-	 */
-	if (outlen < 3) {
-		*out = '\0';
-		return 0;
-	}
-
-	inlen = xlat_fmt_to_ref(&p, request, fmt);
-	if (inlen < 0) {
-		return -1;
-	}
-
-	fr_SHA1Init(&ctx);
-	fr_SHA1Update(&ctx, p, inlen);
-	fr_SHA1Final(digest, &ctx);
-
-	/*
-	 *      Each digest octet takes two hex digits, plus one for
-	 *      the terminating NUL. SHA1 is 160 bits (20 bytes)
-	 */
-	len = (outlen / 2) - 1;
-	if (len > 20) len = 20;
-
-	for (i = 0; i < len; i++) {
-		snprintf(out + i * 2, 3, "%02x", digest[i]);
-	}
-
-	return strlen(out);
-}
 
 /**
  * @brief Encode string or attribute as base64
@@ -782,11 +782,11 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	xlat_register("tolower", lc_xlat, NULL, inst);
 	xlat_register("toupper", uc_xlat, NULL, inst);
 	xlat_register("md5", md5_xlat, NULL, inst);
+	xlat_register("sha1", sha1_xlat, NULL, inst);
 #ifdef HAVE_OPENSSL_EVP_H
 	xlat_register("sha256", sha256_xlat, NULL, inst);
 	xlat_register("sha512", sha512_xlat, NULL, inst);
 #endif
-	xlat_register("sha1", sha1_xlat, NULL, inst);
 	xlat_register("base64", base64_xlat, NULL, inst);
 	xlat_register("base64tohex", base64_to_hex_xlat, NULL, inst);
 
