@@ -9,6 +9,8 @@ FreeRADIUS 3.0.3 Fri 21 Mar 2014 08:30:00 EDT urgency=medium
 	  will be caught, and a descriptive error will be printed.
 	* dynamic expansions are cached after being parsed.  They are
 	  no longer re-parsed at run-time for every request.
+	* regular expressions are no parsed and cached when the server
+	  starts.
 	* Added the %{rest:} expansion to rlm_rest, which will send
 	  a GET request to the URL passed as the format string.
 	  Any body text will be written to the expansion buffer.
@@ -19,12 +21,12 @@ FreeRADIUS 3.0.3 Fri 21 Mar 2014 08:30:00 EDT urgency=medium
 	* All modules are marked as safe for '-C', which lets the
 	  dynamic expansion checks work in more situations.
 	* Added 'none' and 'custom' rlm_rest body types. 'custom'
-	  allows sending of arbitrary expanded text and content-type 
+	  allows sending of arbitrary expanded text and content-type
 	  headers.
 	* Added '%v' which expands to the server version - Patch
 	  from Alan Buxey.
 	* Support basic response validation in radclient. This allows
-	  administrators to write local test cases for their 
+	  administrators to write local test cases for their
 	  site-specific configurations.
 
 	Bug fixes
@@ -43,11 +45,12 @@ FreeRADIUS 3.0.3 Fri 21 Mar 2014 08:30:00 EDT urgency=medium
 	* Fix oracle SQL queries, which amongst other things still
 	  used the old expansion format, which is no longer
 	  supported/parsed.
-	* Truncate long format strings and error markers instead of 
+	* Truncate long format strings and error markers instead of
 	  omitting them.
 	* Fix multiple attribute parsing in rlm_rest JSON.
 	* Don't crash in rlm_rest if connect_uri is commented out
 	  in the configuration.
+	* Don't re-run "authorize" if a home server fails to respond.
 
 FreeRADIUS 3.0.2 Fri 21 Mar 2014 08:30:00 EDT urgency=medium
 	Feature improvements
