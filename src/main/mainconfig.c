@@ -730,6 +730,7 @@ static int switch_users(CONF_SECTION *cs)
 
 /** Set the global radius config directory.
  *
+ * @param ctx Where to allocate the memory for the path string.
  * @param path to config dir root e.g. /usr/local/etc/raddb
  */
 void set_radius_dir(TALLOC_CTX *ctx, char const *path)
