@@ -425,7 +425,7 @@ size_t vp_prints_value(char *out, size_t outlen, VALUE_PAIR const *vp, int8_t qu
 	{
 		size_t max;
 
-		/* Return the number of bytes we would of written */
+		/* Return the number of bytes we would have written */
 		len = (vp->length * 2) + 2;
 		if (freespace <= 1) {
 			return len;
@@ -548,7 +548,7 @@ char *vp_aprinttype(TALLOC_CTX *ctx, PW_TYPE type)
 		return talloc_strdup(ctx, "[:?:]/?");
 
 	case PW_TYPE_OCTETS:
-		return talloc_strdup(ctx, "0x??");
+		return talloc_strdup(ctx, "??");
 
 	case PW_TYPE_ETHERNET:
 		return talloc_strdup(ctx, "??:??:??:??:??:??:??:??");
@@ -632,10 +632,9 @@ char *vp_aprint(TALLOC_CTX *ctx, VALUE_PAIR const *vp)
 #endif
 
 	case PW_TYPE_OCTETS:
-		p = talloc_array(ctx, char, 3 + vp->length * 2);
+		p = talloc_array(ctx, char, 1 + vp->length * 2);
 		if (!p) return NULL;
-		memcpy(p, "0x", 2);
-		fr_bin2hex(p + 2, vp->vp_octets, vp->length);
+		fr_bin2hex(p, vp->vp_octets, vp->length);
 		break;
 
 	case PW_TYPE_DATE:
