@@ -42,7 +42,7 @@ update request {
 }
 if ((Tmp-String-0 != "%{string:Tmp-Integer-0}") || (Tmp-Integer-0 != 959985456)) {
 	update reply {
-		Filter-Id += 'fail'
+		Filter-Id += 'fail 1'
 	}
 }
 
@@ -52,14 +52,14 @@ update request {
 }
 if ((Tmp-String-1 != "%{string:Tmp-Integer64-0}") || (Tmp-Integer64-0 != 4123106139115632432)) {
 	update reply {
-		Filter-Id += 'fail'
+		Filter-Id += 'fail 2'
 	}
 }
 
 # String - Can't convert 12 byte string to integer (our biggest native size is a 64bit unsigned int)
 if ("%{integer:Tmp-String-2}" != '') {
 	update reply {
-		Filter-Id += 'fail'
+		Filter-Id += 'fail 3'
 	}
 }
 
@@ -69,7 +69,7 @@ update request {
 }
 if ((Tmp-Octets-0 != "0x%{hex:Tmp-Integer-0}") || (Tmp-Integer-0 != 959985457)) {
 	update reply {
-		Filter-Id += 'fail'
+		Filter-Id += 'fail 4'
 	}
 }
 
@@ -79,69 +79,69 @@ update request {
 }
 if ((Tmp-Octets-1 != "0x%{hex:Tmp-Integer64-0}") || (Tmp-Integer64-0 != 4123106143410599729)) {
 	update reply {
-		Filter-Id += 'fail'
+		Filter-Id += 'fail 5'
 	}
 }
 
 # String - Can't convert 12 byte octet string to integer (our biggest native size is a 64bit unsigned int)
 if ("%{integer:Tmp-Octets-2}" != '') {
 	update reply {
-		Filter-Id += 'fail'
+		Filter-Id += 'fail 6'
 	}
 }
 
 # IP Address
 if (Tmp-String-2 != '959985458') {
 	update reply {
-		Filter-Id += 'fail'
+		Filter-Id += 'fail 7'
 	}
 }
 
 if (<ipaddr>Tmp-String-2 != &Tmp-IP-Address-0) {
 	update reply {
-		Filter-Id += 'fail'
+		Filter-Id += 'fail 8'
 	}
 }
 
 # Date
 if (Tmp-String-3 != '959985459') {
 	update reply {
-		Filter-Id += 'fail'
+		Filter-Id += 'fail 9'
 	}
 }
 
 # Integer
 if (Tmp-String-4 != '959985460') {
 	update reply {
-		Filter-Id += 'fail'
+		Filter-Id += 'fail 10'
 	}
 }
 
 # Abinary - Can't convert ascend binary to an integer
 if (Tmp-String-5 != '') {
 	update reply {
-		Filter-Id += 'fail'
+		Filter-Id += 'fail 11'
 	}
 }
 
 # ifid - Can't convert interface ID to an integer
 if (Tmp-String-6 != '') {
 	update reply {
-		Filter-Id += 'fail'
+		Filter-Id += 'fail 12'
 	}
 }
 
 # ipv6addr - Can't convert IPv6 to integer
 if (Tmp-String-7 != '959985464') {
 	update reply {
-		Filter-ID += 'fail'
+		Filter-ID += 'fail 13'
 	}
 }
 
 # ipv6addrprefix
 if (Tmp-String-8 != '959985465') {
 	update reply {
-		Filter-ID += 'fail'
+		Filter-ID += 'fail 14'
 	}
 }
 update request {
@@ -155,40 +155,40 @@ update request {
 # byte
 if (Tmp-String-0 != '58') {
 	update reply {
-		Filter-ID += 'fail'
+		Filter-ID += 'fail 15'
 	}
 }
 
 # short
 if (Tmp-String-1 != '14139') {
 	update reply {
-		Filter-ID += 'fail'
+		Filter-ID += 'fail 16'
 	}
 }
 
 # ethernet
 if (Tmp-String-2 != '62913607630848') {
 	update reply {
-		Filter-Id += 'fail'
+		Filter-Id += 'fail 17'
 	}
 }
 if (<ether>Tmp-String-2 != &Tmp-Cast-Ethernet) {
 	update reply {
-		Filter-Id += 'fail'
+		Filter-Id += 'fail 18'
 	}
 }
 
 # integer64
 if (Tmp-String-3 != '1152921505566832445') {
 	update reply {
-		Filter-Id += 'fail'
+		Filter-Id += 'fail 19'
 	}
 }
 
 # ipv4prefix
 if (Tmp-String-4 != '959985470') {
 	update reply {
-		Filter-Id += 'fail'
+		Filter-Id += 'fail 20'
 	}
 }
 
