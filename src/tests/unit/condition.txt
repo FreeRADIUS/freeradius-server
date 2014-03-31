@@ -427,3 +427,6 @@ data ERROR offset 0 Attribute comparisons must be of the same data type
 
 condition <ipaddr>127.0.0.1 == &Filter-Id
 data ERROR offset 0 Attribute comparisons must be of the same data type
+
+condition <ipaddr>&Tmp-Integer64-0 == &Foo-Stuff-Bar
+data ERROR offset 0 Unknown attribute
