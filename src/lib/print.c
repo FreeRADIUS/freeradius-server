@@ -173,24 +173,24 @@ size_t fr_print_string(char const *in, size_t inlen, char *out, size_t outlen)
 			break;
 		}
 		switch (*p) {
-			case '\\':
-				sp = '\\';
-				break;
-			case '\r':
-				sp = 'r';
-				break;
-			case '\n':
-				sp = 'n';
-				break;
-			case '\t':
-				sp = 't';
-				break;
-			case '"':
-				sp = '"';
-				break;
-			default:
-				sp = '\0';
-				break;
+		case '\\':
+			sp = '\\';
+			break;
+		case '\r':
+			sp = 'r';
+			break;
+		case '\n':
+			sp = 'n';
+			break;
+		case '\t':
+			sp = 't';
+			break;
+		case '"':
+			sp = '"';
+			break;
+		default:
+			sp = '\0';
+			break;
 		}
 
 		if (sp) {
