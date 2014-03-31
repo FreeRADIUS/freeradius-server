@@ -381,18 +381,18 @@ static bool do_cast_copy(VALUE_PAIR *dst, VALUE_PAIR const *src)
 	if (src->da->type == PW_TYPE_OCTETS) {
 		switch (dst->da->type) {
 		case PW_TYPE_INTEGER64:
-			dst->vp_integer = ntohll(*(uint64_t *) src->vp_octets);
+			dst->vp_integer = ntohll(*(uint64_t const *) src->vp_octets);
 			break;
 
 
 		case PW_TYPE_INTEGER:
 		case PW_TYPE_DATE:
 		case PW_TYPE_SIGNED:
-			dst->vp_integer = ntohl(*(uint32_t *) src->vp_octets);
+			dst->vp_integer = ntohl(*(uint32_t const *) src->vp_octets);
 			break;
 
 		case PW_TYPE_SHORT:
-			dst->vp_integer = ntohs(*(uint16_t *) src->vp_octets);
+			dst->vp_integer = ntohs(*(uint16_t const *) src->vp_octets);
 			break;
 
 		case PW_TYPE_BYTE:
