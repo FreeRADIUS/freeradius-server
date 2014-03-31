@@ -169,7 +169,7 @@ condition <ipaddr>Filter-Id == "127.0.0.1"
 data <ipaddr>&Filter-Id == '127.0.0.1'
 
 condition <ipaddr>127.0.0.1 < &Framed-IP-Address
-data <ipaddr>127.0.0.1 < &Framed-IP-Address
+data &Framed-IP-Address > 127.0.0.1
 
 # =* and !* are only for attrs / lists
 condition "foo" !* bar
@@ -404,3 +404,20 @@ data &User-Name
 #
 condition (<vsa>"foo" == &User-Name)
 data ERROR offset 2 Forbidden data type in cast
+
+#
+#  Must have attribute references on the LHS of a condition.
+#
+condition ("foo" == &User-Name)
+data ERROR offset 1 Cannot use attribute reference on right side of condition
+
+#
+#  If the LHS is a cast to a type, and the RHS is an attribute
+#  of the same type, then re-write it so that the attribute
+#  is on the LHS of the condition.
+#
+condition <string>"foo" == &User-Name
+data &User-Name == "foo"
+
+condition <integer>"%{expr: 1 + 1}" < &NAS-Port
+data &NAS-Port > "%{expr: 1 + 1}"
