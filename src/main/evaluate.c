@@ -324,6 +324,103 @@ static int get_cast_vp(VALUE_PAIR **out, REQUEST *request, value_pair_tmpl_t con
 	return 0;
 }
 
+/*
+ *	Copy data from src to dst, where the attributes are of
+ *	different type.
+ */
+static bool do_cast_copy(VALUE_PAIR *dst, VALUE_PAIR const *src)
+{
+	rad_assert(dst->da->type != src->da->type);
+
+	if (dst->da->type == PW_TYPE_STRING) {
+		dst->vp_strvalue = vp_aprint(dst, src);
+		dst->length = strlen(dst->vp_strvalue);
+		return true;
+	}
+
+	if (dst->da->type == PW_TYPE_OCTETS) {
+		if (src->da->type == PW_TYPE_STRING) {
+			dst->vp_octets = talloc_memdup(dst, src->vp_strvalue,
+						       src->length);
+		} else {
+			dst->vp_octets = talloc_memdup(dst, &src->data,
+						       src->length);
+		}
+
+		dst->length = src->length;
+		return true;
+	}
+
+	if (src->da->type == PW_TYPE_STRING) {
+		return pairparsevalue(dst, src->vp_strvalue);
+	}
+
+	/*
+	 *	The attribute we've found has to have
+	 *	a size which is compatible with the
+	 *	destination attribute.
+	 */
+	if ((src->length < dict_attr_sizes[dst->da->type][0]) ||
+	    (src->length > dict_attr_sizes[dst->da->type][1])) {
+		EVAL_DEBUG("Casted attribute is wrong size (%u)", (unsigned int) src->length);
+		return false;
+	}
+
+	if (src->da->type == PW_TYPE_OCTETS) {
+		switch (dst->da->type) {
+		case PW_TYPE_INTEGER64:
+			dst->vp_integer = ntohll(*(uint64_t *) src->vp_octets);
+			break;
+
+
+		case PW_TYPE_INTEGER:
+		case PW_TYPE_DATE:
+		case PW_TYPE_SIGNED:
+			dst->vp_integer = ntohl(*(uint32_t *) src->vp_octets);
+			break;
+
+		case PW_TYPE_SHORT:
+			dst->vp_integer = ntohs(*(uint16_t *) src->vp_octets);
+			break;
+
+		case PW_TYPE_BYTE:
+			dst->vp_integer = src->vp_octets[0];
+			break;
+
+		default:
+			memcpy(&dst->data, src->vp_octets, src->length);
+			break;
+		}
+
+		dst->length = src->length;
+		return true;
+	}
+
+	/*
+	 *	Convert host order to network byte order.
+	 */
+	if ((dst->da->type == PW_TYPE_IPADDR) &&
+	    ((src->da->type == PW_TYPE_INTEGER) ||
+	     (src->da->type == PW_TYPE_DATE) ||
+	     (src->da->type == PW_TYPE_SIGNED))) {
+		dst->vp_ipaddr = htonl(src->vp_integer);
+
+	} else if ((src->da->type == PW_TYPE_IPADDR) &&
+		   ((dst->da->type == PW_TYPE_INTEGER) ||
+		    (dst->da->type == PW_TYPE_DATE) ||
+		    (dst->da->type == PW_TYPE_SIGNED))) {
+		dst->vp_integer = htonl(src->vp_ipaddr);
+
+	} else {		/* they're of the same byte order */
+		memcpy(&dst->data, &src->data, src->length);
+	}
+
+	dst->length = src->length;
+
+	return true;
+}
+
+
 /** Evaluate a map
  *
  * @param[in] request the REQUEST
@@ -387,9 +484,34 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 	if (c->cast) {
 		VALUE_PAIR *lhs_vp, *rhs_vp;
 
-		rcode = get_cast_vp(&lhs_vp, request, map->dst, c->cast);
-		if (rcode < 0) {
-			return rcode;
+		/*
+		 *	Try to copy data from the VP which is being
+		 *	casted, instead of printing it to a string and
+		 *	then re-parsing it.
+		 */
+		if (map->dst->type == VPT_TYPE_ATTR) {
+			VALUE_PAIR *cast_vp;
+
+			if (radius_vpt_get_vp(&cast_vp, request, map->dst) < 0) {
+				return false;
+			}
+
+			lhs_vp = pairalloc(request, c->cast);
+			if (!lhs_vp) return false;
+
+			/*
+			 *	In a separate function for clarity
+			 */
+			if (!do_cast_copy(lhs_vp, cast_vp)) {
+				talloc_free(lhs_vp);
+				return false;
+			}
+
+		} else {
+			rcode = get_cast_vp(&lhs_vp, request, map->dst, c->cast);
+			if (rcode < 0) {
+				return rcode;
+			}
 		}
 		rad_assert(lhs_vp);
 
