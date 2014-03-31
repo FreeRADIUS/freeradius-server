@@ -1581,6 +1581,7 @@ static modcallable *do_compile_modupdate(modcallable *parent, UNUSED rlm_compone
 	modgroup *g;
 	modcallable *csingle;
 	value_pair_map_t *map, *head;
+	CONF_ITEM *ci;
 
 	/*
 	 *	This looks at cs->name2 to determine which list to update
@@ -1593,7 +1594,9 @@ static modcallable *do_compile_modupdate(modcallable *parent, UNUSED rlm_compone
 		return NULL;
 	}
 
-	for (map = head; map != NULL; map = map->next) {
+	for (map = head, ci = cf_item_find_next(cs, NULL);
+	     map != NULL;
+	     map = map->next, ci = cf_item_find_next(cs, ci)) {
 		/*
 		 *	Can't copy an xlat expansion or literal into a list,
 		 *	we don't know what type of attribute we'd need
@@ -1606,33 +1609,48 @@ static modcallable *do_compile_modupdate(modcallable *parent, UNUSED rlm_compone
 		    (map->op != T_OP_CMP_FALSE) &&
 		    ((map->src->type == VPT_TYPE_XLAT) || (map->src->type == VPT_TYPE_LITERAL))) {
 			cf_log_err(map->ci, "Can't copy value into list (we don't know which attribute to create)");
+			talloc_free(head);
 			return NULL;
 		}
 
 		/*
 		 *	If LHS is an attribute, and RHS is a literal, we can
-		 *	check that the format is correct.
+		 *	preparse the information into a VPT_TYPE_DATA.
 		 *
-		 *	Unless it's a unary operator in which case map->src
-		 *	can by anything.
+		 *	Unless it's a unary operator in which case we
+		 *	ignore map->src.
 		 */
-		if ((map->dst->type == VPT_TYPE_ATTR) && (map->src->type == VPT_TYPE_LITERAL) &&
-		    (map->op != T_OP_CMP_FALSE)) {
-			VALUE_PAIR *vp;
-			bool ret;
+		if ((map->dst->type == VPT_TYPE_ATTR) && (map->op != T_OP_CMP_FALSE) &&
+		    (map->src->type == VPT_TYPE_LITERAL)) {
+			CONF_PAIR *cp;
 
-			MEM(vp = pairalloc(NULL, map->dst->da));
-			vp->op = map->op;
+			cp = cf_itemtopair(ci);
+			rad_assert(cp != NULL);
 
-			ret = pairparsevalue(vp, map->src->name);
-			talloc_free(vp);
-			if (!ret) {
-				talloc_free(head);
-				cf_log_err(map->ci, "%s", fr_strerror());
-				return NULL;
+			/*
+			 *	It's a literal string, just copy it.
+			 *	Don't escape anything.
+			 */
+			if ((map->dst->da->type == PW_TYPE_STRING) &&
+			    (cf_pair_value_type(cp) == T_SINGLE_QUOTED_STRING)) {
+				value_data_t *vpd;
+
+				map->src->vpd = vpd = talloc_zero(map->src, value_data_t);
+				rad_assert(vpd != NULL);
+
+				vpd->strvalue = talloc_strdup(vpd, map->src->name);
+				rad_assert(vpd->strvalue != NULL);
+				map->dst->type = VPT_TYPE_DATA;
+
+			} else {
+				if (!radius_cast_tmpl(map->src, map->dst->da)) {
+					talloc_free(head);
+					cf_log_err(map->ci, "%s", fr_strerror());
+					return NULL;
+				}
 			}
-		}
-	}
+		} /* else we can't precompile the data */
+	} /* loop over the conf_pairs in the update section */
 
 	g = talloc_zero(parent, modgroup);
 	csingle = mod_grouptocallable(g);
