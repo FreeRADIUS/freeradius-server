@@ -350,10 +350,27 @@ static bool do_cast_copy(VALUE_PAIR *dst, VALUE_PAIR const *src)
 		return pairparsevalue(dst, src->vp_strvalue);
 	}
 
+	if ((src->da->type == PW_TYPE_INTEGER64) &&
+	    (dst->da->type == PW_TYPE_ETHERNET)) {
+		uint8_t array[8];
+		uint64_t i;
+
+		i = htonll(src->vp_integer64);
+		memcpy(array, &i, 8);
+
+		/*
+		 *	For OUIs in the DB.
+		 */
+		if ((array[0] != 0) || (array[1] != 0)) return false;
+
+		memcpy(&dst->vp_ether, &array[2], 6);
+		dst->length = 6;
+		return true;
+	}
+
 	/*
-	 *	The attribute we've found has to have
-	 *	a size which is compatible with the
-	 *	destination attribute.
+	 *	The attribute we've found has to have a size which is
+	 *	compatible with the type of the destination cast.
 	 */
 	if ((src->length < dict_attr_sizes[dst->da->type][0]) ||
 	    (src->length > dict_attr_sizes[dst->da->type][1])) {
