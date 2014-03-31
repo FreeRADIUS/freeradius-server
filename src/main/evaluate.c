@@ -107,14 +107,6 @@ static int radius_expand_tmpl(char **out, REQUEST *request, value_pair_tmpl_t co
 		}
 		break;
 
-	case VPT_TYPE_REGEX:
-		EVAL_DEBUG("TMPL REGEX");
-		if (strchr(vpt->name, '%') == NULL) {
-			*out = talloc_strdup(request, vpt->name);
-			break;
-		}
-		/* FALL-THROUGH */
-
 	case VPT_TYPE_XLAT:
 		EVAL_DEBUG("TMPL XLAT");
 		/* Error in expansion, this is distinct from zero length expansion */
@@ -147,6 +139,8 @@ static int radius_expand_tmpl(char **out, REQUEST *request, value_pair_tmpl_t co
 		break;
 
 	case VPT_TYPE_DATA:
+	case VPT_TYPE_REGEX:
+	case VPT_TYPE_REGEX_STRUCT:
 		rad_assert(0 == 1);
 		/* FALL-THROUGH */
 
@@ -223,6 +217,7 @@ int radius_evaluate_tmpl(REQUEST *request, int modreturn, UNUSED int depth,
 		 *	Can't have a bare ... (/foo/) ...
 		 */
 	case VPT_TYPE_REGEX:
+	case VPT_TYPE_REGEX_STRUCT:
 		EVAL_DEBUG("FAIL %d", __LINE__);
 		rad_assert(0 == 1);
 		/* FALL-THROUGH */
@@ -236,33 +231,53 @@ int radius_evaluate_tmpl(REQUEST *request, int modreturn, UNUSED int depth,
 }
 
 
-static int do_regex(REQUEST *request, char const *lhs, char const *rhs, bool iflag)
+static int do_regex(REQUEST *request, value_pair_map_t const *map, bool iflag)
 {
-	int compare;
+	int compare, rcode;
 	int cflags = REG_EXTENDED;
-	regex_t reg;
+	regex_t reg, *preg;
+	char *lhs, *rhs;
 	regmatch_t rxmatch[REQUEST_MAX_REGEX + 1];
 
 	if (iflag) cflags |= REG_ICASE;
 
 	/*
-	 *	Include substring matches.
+	 *	Expand and then compile it.
 	 */
-	compare = regcomp(&reg, rhs, cflags);
-	if (compare != 0) {
-		if (debug_flag) {
-			char errbuf[128];
-
-			regerror(compare, &reg, errbuf, sizeof(errbuf));
-			EDEBUG("Failed compiling regular expression: %s", errbuf);
+	if (map->src->type == VPT_TYPE_REGEX) {
+		rcode = radius_expand_tmpl(&rhs, request, map->src);
+		if (rcode < 0) {
+			EVAL_DEBUG("FAIL %d", __LINE__);
+			return -1;
 		}
+		rad_assert(rhs != NULL);
+
+		compare = regcomp(&reg, rhs, cflags);
+		if (compare != 0) {
+			if (debug_flag) {
+				char errbuf[128];
+
+				regerror(compare, &reg, errbuf, sizeof(errbuf));
+				EDEBUG("Failed compiling regular expression: %s", errbuf);
+			}
+			EVAL_DEBUG("FAIL %d", __LINE__);
+			return -1;
+		}
+
+		preg = &reg;
+	} else {
+		preg = map->src->preg;
+	}
+
+	rcode = radius_expand_tmpl(&lhs, request, map->dst);
+	if (rcode < 0) {
 		EVAL_DEBUG("FAIL %d", __LINE__);
 		return -1;
 	}
+	rad_assert(lhs != NULL);
 
 	memset(&rxmatch, 0, sizeof(rxmatch));	/* regexec does not seem to initialise unused elements */
-	compare = regexec(&reg, lhs, REQUEST_MAX_REGEX + 1, rxmatch, 0);
-	regfree(&reg);
+	compare = regexec(preg, lhs, REQUEST_MAX_REGEX + 1, rxmatch, 0);
 	rad_regcapture(request, compare, lhs, rxmatch);
 
 	return (compare == 0);
@@ -332,6 +347,7 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 	rad_assert(map->dst->type != VPT_TYPE_LIST);
 	rad_assert(map->src->type != VPT_TYPE_LIST);
 	rad_assert(map->dst->type != VPT_TYPE_REGEX);
+	rad_assert(map->dst->type != VPT_TYPE_REGEX_STRUCT);
 
 	EVAL_DEBUG("Map %s ? %s",
 		   fr_int2str(template_names, map->dst->type, "???"),
@@ -340,7 +356,8 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 	/*
 	 *	Verify regexes.
 	 */
-	if (map->src->type == VPT_TYPE_REGEX) {
+	if ((map->src->type == VPT_TYPE_REGEX) ||
+	    (map->src->type == VPT_TYPE_REGEX_STRUCT)) {
 		rad_assert(map->op == T_OP_REG_EQ);
 	} else {
 		rad_assert(!((map->op == T_OP_REG_EQ) || (map->op == T_OP_REG_NE)));
@@ -408,6 +425,7 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 	 */
 	if ((map->dst->type == VPT_TYPE_ATTR) &&
 	    (map->src->type != VPT_TYPE_REGEX) &&
+	    (map->src->type != VPT_TYPE_REGEX_STRUCT) &&
 	    (c->pass2_fixup == PASS2_PAIRCOMPARE)) {
 	    	int ret;
 		VALUE_PAIR *lhs_vp;
@@ -467,6 +485,16 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 	rad_assert(map->src->type != VPT_TYPE_DATA);
 	rad_assert(map->dst->type != VPT_TYPE_DATA);
 
+#ifdef HAVE_REGEX_H
+	/*
+	 *	Parse regular expressions.
+	 */
+	if ((map->src->type == VPT_TYPE_REGEX) ||
+	    (map->src->type == VPT_TYPE_REGEX_STRUCT)) {
+		return do_regex(request, map, c->regex_i);
+	}
+#endif
+
 	/*
 	 *	The RHS now needs to be expanded into a string.
 	 */
@@ -486,8 +514,7 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 	 *
 	 *	The LHS may be a virtual attribute, too.
 	 */
-	if ((map->dst->type == VPT_TYPE_ATTR) &&
-	    (map->src->type != VPT_TYPE_REGEX)) {
+	if (map->dst->type == VPT_TYPE_ATTR) {
 		VALUE_PAIR *lhs_vp, *rhs_vp;
 
 		EVAL_DEBUG("ATTR to non-REGEX");
@@ -548,13 +575,6 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 	rad_assert(lhs != NULL);
 
 	EVAL_DEBUG("LHS is %s", lhs);
-
-	/*
-	 *	Compile  the RHS to a regex, and do regex stuff
-	 */
-	if (map->src->type == VPT_TYPE_REGEX) {
-		return do_regex(request, lhs, rhs, c->regex_i);
-	}
 
 	/*
 	 *	Loop over the string, doing comparisons
