@@ -300,7 +300,7 @@ value_pair_map_t *radius_str2map(TALLOC_CTX *ctx, char const *lhs, FR_TOKEN lhs_
 		map->src = radius_str2tmpl(map, rhs, rhs_type, src_request_def, src_list_def);
 	}
 
-	if (!map->dst) goto error;
+	if (!map->src) goto error;
 
 	return map;
 }
