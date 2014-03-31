@@ -106,41 +106,6 @@ static int xlat_inst[] = { 0, 1, 2, 3, 4, 5, 6, 7, 8 };	/* up to 8 for regex */
 
 char const *radiusd_short_version = RADIUSD_VERSION_STRING;
 
-#ifdef WITH_UNLANG
-/** Convert the value on a VALUE_PAIR to string
- *
- */
-static int valuepair2str(char * out,int outlen,VALUE_PAIR * pair, int type)
-{
-	if (pair != NULL) {
-		return vp_prints_value(out, outlen, pair, 0);
-	}
-
-	switch (type) {
-	case PW_TYPE_STRING :
-		strlcpy(out,"_",outlen);
-		break;
-	case PW_TYPE_INTEGER64:
-	case PW_TYPE_SIGNED:
-	case PW_TYPE_INTEGER:
-		strlcpy(out,"0",outlen);
-		break;
-	case PW_TYPE_IPADDR :
-		strlcpy(out,"?.?.?.?",outlen);
-		break;
-	case PW_TYPE_IPV6ADDR :
-		strlcpy(out,":?:",outlen);
-		break;
-	case PW_TYPE_DATE :
-		strlcpy(out,"0",outlen);
-		break;
-	default :
-		strlcpy(out,"unknown_type",outlen);
-	}
-	return strlen(out);
-}
-#endif
-
 /** Print length of its RHS.
  *
  */
@@ -488,7 +453,7 @@ static ssize_t xlat_foreach(void *instance, REQUEST *request,
 		return 0;
 	}
 
-	return valuepair2str(out, outlen, (*pvp), (*pvp)->da->type);
+	return vp_prints_value(out, outlen, *pvp, 0);
 }
 #endif
 
