@@ -44,27 +44,6 @@ typedef struct request REQUEST;
 #  include <sys/wait.h>
 #endif
 
-#ifdef HAVE_PCREPOSIX_H
-#  include <pcreposix.h>
-#else
-#  ifdef HAVE_REGEX_H
-#    include <regex.h>
-
-/*
- *  For POSIX Regular expressions.
- *  (0) Means no extended regular expressions.
- *  REG_EXTENDED means use extended regular expressions.
- */
-#    ifndef REG_EXTENDED
-#      define REG_EXTENDED (0)
-#    endif
-
-#    ifndef REG_NOSUB
-#      define REG_NOSUB (0)
-#    endif
-#  endif
-#endif
-
 #ifndef NDEBUG
 #  define REQUEST_MAGIC (0xdeadbeef)
 #endif
