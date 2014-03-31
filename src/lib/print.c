@@ -318,7 +318,7 @@ size_t vp_prints_value(char *out, size_t outlen, VALUE_PAIR const *vp, int8_t qu
 
 	size_t		len = 0, freespace = outlen;
 
-	if (outlen == 0) return 0;
+	if (outlen == 0) return vp->length;
 
 	*out = '\0';
 
