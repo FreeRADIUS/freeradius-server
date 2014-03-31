@@ -1055,6 +1055,54 @@ done:
 			TALLOC_FREE(c->data.map);
 			break;
 		}
+
+		/*
+		 *	<ipaddr>"foo" CMP &Attribute-Name The cast is
+		 *	unnecessary, and we can re-write it so that
+		 *	the attribute reference is on the LHS.
+		 */
+		if (c->cast &&
+		    (c->data.map->src->type == VPT_TYPE_ATTR) &&
+		    (c->data.map->dst->type != VPT_TYPE_ATTR)) {
+			value_pair_tmpl_t *tmp;
+
+			tmp = c->data.map->src;
+			c->data.map->src = c->data.map->dst;
+			c->data.map->dst = tmp;
+
+			c->cast = NULL;
+
+			switch (c->data.map->op) {
+			case T_OP_CMP_EQ:
+				/* do nothing */
+				break;
+
+			case T_OP_LE:
+				c->data.map->op = T_OP_GE;
+				break;
+
+			case T_OP_LT:
+				c->data.map->op = T_OP_GT;
+				break;
+
+			case T_OP_GE:
+				c->data.map->op = T_OP_LE;
+				break;
+
+			case T_OP_GT:
+				c->data.map->op = T_OP_LT;
+				break;
+
+			default:
+				return_0("Internal sanity check failed");
+			}
+
+			/*
+			 *	This must have been parsed into VPT_TYPE_DATA.
+			 */
+			rad_assert(c->data.map->src->type != VPT_TYPE_LITERAL);
+		}
+
 	} while (0);
 
 	/*
