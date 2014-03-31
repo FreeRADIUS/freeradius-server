@@ -355,9 +355,17 @@ int rad_authenticate(REQUEST *request)
 	/*
 	 *	If this request got proxied to another server, we need
 	 *	to check whether it authenticated the request or not.
+	 *
+	 *	request->proxy gets set only AFTER authorization, so
+	 *	it's safe to check it here.  If it exists, it means
+	 *	we're doing a second pass through rad_authenticate().
 	 */
-	if (request->proxy_reply) {
-		switch (request->proxy_reply->code) {
+	if (request->proxy) {
+		int code = 0;
+
+		if (request->proxy_reply) code = request->proxy_reply->code;
+
+		switch (code) {
 		/*
 		 *	Reply of ACCEPT means accept, thus set Auth-Type
 		 *	accordingly.
@@ -376,6 +384,7 @@ int rad_authenticate(REQUEST *request)
 		case PW_CODE_ACCESS_CHALLENGE:
 			request->reply->code = PW_CODE_ACCESS_CHALLENGE;
 			return RLM_MODULE_OK;
+
 		/*
 		 *	ALL other replies mean reject. (this is fail-safe)
 		 *
