@@ -113,8 +113,7 @@ char const *radiusd_short_version = RADIUSD_VERSION_STRING;
 static int valuepair2str(char * out,int outlen,VALUE_PAIR * pair, int type)
 {
 	if (pair != NULL) {
-		vp_prints_value(out, outlen, pair, -1);
-		return strlen(out);
+		return vp_prints_value(out, outlen, pair, 0);
 	}
 
 	switch (type) {
