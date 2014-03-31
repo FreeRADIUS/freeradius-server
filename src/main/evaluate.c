@@ -397,7 +397,9 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 
 		if (!rhs_vp) return false;
 
-		EVAL_DEBUG("CAST to ...");
+		EVAL_DEBUG("CAST to %s",
+			   fr_int2str(dict_attr_types,
+				      c->cast->type, "?Unknown?"));
 
 		rcode = paircmp_op(lhs_vp, map->op, rhs_vp);
 		pairfree(&lhs_vp);
