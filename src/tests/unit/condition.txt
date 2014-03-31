@@ -421,3 +421,9 @@ data &User-Name == "foo"
 
 condition <integer>"%{expr: 1 + 1}" < &NAS-Port
 data &NAS-Port > "%{expr: 1 + 1}"
+
+condition &Filter-Id == &Framed-IP-Address
+data ERROR offset 0 Attribute comparisons must be of the same data type
+
+condition <ipaddr>127.0.0.1 == &Filter-Id
+data ERROR offset 0 Attribute comparisons must be of the same data type
