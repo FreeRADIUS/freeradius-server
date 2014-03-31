@@ -1830,9 +1830,12 @@ do_print:
 			vp = fr_cursor_init(&cursor, &vp);
 			vp = fr_cursor_next_by_num(&cursor, da->attr, da->vendor, tag);
 			if (!vp) return NULL;
+
 			p = vp_aprint(ctx, vp);
+			if (!p) return NULL;
 			while ((vp = fr_cursor_next_by_num(&cursor, da->attr, da->vendor, tag)) != NULL) {
 				q = vp_aprint(ctx, vp);
+				if (!q) return NULL;
 				p = talloc_strdup_append(p, ",");
 				p = talloc_strdup_append(p, q);
 			}

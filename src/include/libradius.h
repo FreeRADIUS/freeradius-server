@@ -410,6 +410,7 @@ int		fr_check_lib_magic(uint64_t magic);
 int		fr_utf8_char(uint8_t const *str);
 size_t		fr_print_string(char const *in, size_t inlen,
 				 char *out, size_t outlen);
+size_t		fr_print_string_len(char const *in, size_t inlen);
 
 #define		is_truncated(_ret, _max) ((_ret) >= (_max))
 #define		truncate_len(_ret, _max) (((_ret) >= (_max)) ? ((_max) - 1) : _ret)
