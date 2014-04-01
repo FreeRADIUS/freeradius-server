@@ -1228,7 +1228,13 @@ bool pairparsevalue(VALUE_PAIR *vp, char const *value)
 					    (sscanf(cp, "%3o", &x) == 1)) {
 						c = x;
 						cp += 3;
-					} /* else just do '\\' */
+
+					} else if (cp[0]) {
+						/*
+						 *	\p --> p
+						 */
+						c = *cp++;
+					} /* else at EOL \ --> \ */
 				}
 			}
 			*p++ = c;
