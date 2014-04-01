@@ -584,6 +584,7 @@ static void perl_store_vps(TALLOC_CTX *ctx, VALUE_PAIR *vps, HV *rad_hv)
 
 	while (head) {
 		vp_cursor_t cursor;
+
 		/*
 		 *	Tagged attributes are added to the hash with name
 		 *	<attribute>:<tag>, others just use the normal attribute
@@ -605,6 +606,7 @@ static void perl_store_vps(TALLOC_CTX *ctx, VALUE_PAIR *vps, HV *rad_hv)
 		pairfilter(ctx, &sublist, &head, head->da->attr, head->da->vendor, head->tag);
 
 		fr_cursor_init(&cursor, &sublist);
+
 		/*
 		 *	Attribute has multiple values
 		 */
@@ -615,8 +617,12 @@ static void perl_store_vps(TALLOC_CTX *ctx, VALUE_PAIR *vps, HV *rad_hv)
 			for (vp = fr_cursor_first(&cursor);
 			     vp;
 			     vp = fr_cursor_next(&cursor)) {
-				len = vp_prints_value(buffer, sizeof(buffer), vp, 0);
-				av_push(av, newSVpv(buffer, truncate_len(len, sizeof(buffer))));
+				if (vp->da->type != PW_TYPE_INVALID) {
+					len = vp_prints_value(buffer, sizeof(buffer), vp, 0);
+					av_push(av, newSVpv(buffer, truncate_len(len, sizeof(buffer))));
+				} else {
+					av_push(av, newSVpv(vp->vp_strvalue, vp->length));
+				}
 			}
 			(void)hv_store(rad_hv, name, strlen(name), newRV_noinc((SV *)av), 0);
 
@@ -624,9 +630,14 @@ static void perl_store_vps(TALLOC_CTX *ctx, VALUE_PAIR *vps, HV *rad_hv)
 			 *	Attribute has a single value, so its value just gets
 			 *	added to the hash.
 			 */
-		} else {
-			len = vp_prints_value(buffer, sizeof(buffer), sublist, 0);
-			(void)hv_store(rad_hv, name, strlen(name), newSVpv(buffer, truncate_len(len, sizeof(buffer))), 0);
+		} else if (sublist) {
+
+			if (sublist->da->type != PW_TYPE_INVALID) {
+				len = vp_prints_value(buffer, sizeof(buffer), sublist, 0);
+				(void)hv_store(rad_hv, name, strlen(name), newSVpv(buffer, truncate_len(len, sizeof(buffer))), 0);
+			} else {
+				(void)hv_store(rad_hv, name, strlen(name), newSVpv(sublist->vp_strvalue, sublist->length), 0);
+			}
 		}
 
 		pairfree(&sublist);
@@ -648,13 +659,21 @@ static int pairadd_sv(TALLOC_CTX *ctx, VALUE_PAIR **vps, char *key, SV *sv, FR_T
 
 	if (SvOK(sv)) {
 		val = SvPV_nolen(sv);
-		vp = pairmake(ctx, vps, key, val, op);
-		if (vp != NULL) {
-			DEBUG("rlm_perl: Added pair %s = %s", key, val);
-			return 1;
-		} else {
+		vp = pairmake(ctx, vps, key, NULL, op);
+		if (!vp) {
+		fail:
 			EDEBUG("rlm_perl: Failed to create pair %s = %s", key, val);
+			return 0;
 		}
+
+		if (vp->da->type != PW_TYPE_STRING) {
+			if (!pairparsevalue(vp, val)) goto fail;
+		} else {
+			pairstrcpy(vp, val);
+		}
+
+		DEBUG("      %s = %s", key, val);
+		return 1;
 	}
 	return 0;
 }
