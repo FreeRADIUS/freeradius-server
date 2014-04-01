@@ -49,38 +49,38 @@ extern char **environ;
  */
 typedef struct rlm_perl_t {
 	/* Name of the perl module */
-	char	*module;
+	char		*module;
 
 	/* Name of the functions for each module method */
-	char	*func_authorize;
-	char	*func_authenticate;
-	char	*func_accounting;
-	char	*func_start_accounting;
-	char	*func_stop_accounting;
-	char	*func_preacct;
-	char	*func_checksimul;
-	char	*func_detach;
-	char	*func_xlat;
+	char		*func_authorize;
+	char		*func_authenticate;
+	char		*func_accounting;
+	char		*func_start_accounting;
+	char		*func_stop_accounting;
+	char		*func_preacct;
+	char		*func_checksimul;
+	char		*func_detach;
+	char		*func_xlat;
 #ifdef WITH_PROXY
-	char	*func_pre_proxy;
-	char	*func_post_proxy;
+	char		*func_pre_proxy;
+	char		*func_post_proxy;
 #endif
-	char	*func_post_auth;
+	char		*func_post_auth;
 #ifdef WITH_COA
-	char	*func_recv_coa;
-	char	*func_send_coa;
+	char		*func_recv_coa;
+	char		*func_send_coa;
 #endif
-	char	*xlat_name;
-	char	*perl_flags;
-	PerlInterpreter *perl;
+	char		*xlat_name;
+	char		*perl_flags;
+	PerlInterpreter	*perl;
 	pthread_key_t	*thread_key;
 
 #ifdef USE_ITHREADS
-	pthread_mutex_t clone_mutex;
+	pthread_mutex_t	clone_mutex;
 #endif
 
-	HV		*rad_perlconf_hv; // holds "config" items (perl %RAD_PERLCONF hash).
-	
+	HV		*rad_perlconf_hv;	//!< holds "config" items (perl %RAD_PERLCONF hash).
+
 } rlm_perl_t;
 /*
  *	A mapping of configuration file names to internal variables.
@@ -383,64 +383,63 @@ static ssize_t perl_xlat(void *instance, REQUEST *request, char const *fmt, char
  *	Parse a configuration section, and populate a HV.
  *	This function is recursively called (allows to have nested hashes.)
  */
-void perl_parse_config(CONF_SECTION *cs, int lvl, HV *rad_hv)
+static void perl_parse_config(CONF_SECTION *cs, int lvl, HV *rad_hv)
 {
-	if ((NULL == cs) || (NULL == rad_hv)) return;
-	
-	int indent_section = (lvl+1)*4;
-	int indent_item = (lvl+2)*4;
-	
+	if (!cs || !rad_hv) return;
+
+	int indent_section = (lvl + 1) * 4;
+	int indent_item = (lvl + 2) * 4;
+
 	DEBUG("%*s%s {", indent_section, " ", cf_section_name1(cs));
 
 	CONF_ITEM *ci;
-	
+
 	for (ci = cf_item_find_next(cs, NULL);
-		 ci != NULL;
-		 ci = cf_item_find_next(cs, ci))
-	{
+	     ci;
+	     ci = cf_item_find_next(cs, ci)) {
+		/*
+		 *  This is a section.
+		 *  Create a new HV, store it as a reference in current HV,
+		 *  Then recursively call perl_parse_config with this section and the new HV.
+		 */
 		if (cf_item_is_section(ci)) {
-			/* this is a section. 
-			 * create a new HV, store it as a reference in current HV,
-			 * then recursively call perl_parse_config with this section and the new HV.
-			 */
-			CONF_SECTION *scs = cf_itemtosection(ci);
-			
-			char const *scs_name = cf_section_name1(scs); // hash key
-			if (!scs_name) continue;
-	
-			if (hv_exists(rad_hv, scs_name, strlen(scs_name))) {
-				WARN("rlm_perl: Ignoring duplicate config section '%s'", scs_name);
+			CONF_SECTION	*sub_cs = cf_itemtosection(ci);
+			char const	*key = cf_section_name1(sub_cs); /* hash key */
+			HV		*sub_hv;
+			SV		*ref;
+
+			if (!key) continue;
+
+			if (hv_exists(rad_hv, key, strlen(key))) {
+				WARN("rlm_perl: Ignoring duplicate config section '%s'", key);
 				continue;
 			}
-			
-			HV *sub_hv;
-			SV* ref;
+
 			sub_hv = newHV();
 			ref = newRV_inc((SV*) sub_hv);
-			
-			(void)hv_store(rad_hv, scs_name, strlen(scs_name), ref, 0);
-			
-			perl_parse_config(scs, lvl+1, sub_hv);
-			
-		} else {
-			if (!cf_item_is_pair(ci)) continue;
-			/* this is an item. 
-			 * store item attr / value in current HV.
+
+			(void)hv_store(rad_hv, key, strlen(key), ref, 0);
+
+			perl_parse_config(sub_cs, lvl + 1, sub_hv);
+		} else if (cf_item_is_pair(ci)){
+			CONF_PAIR	*cp = cf_itemtopair(ci);
+			char const	*key = cf_pair_attr(cp);	/* hash key */
+			char const	*value = cf_pair_value(cp);	/* hash value */
+
+			if (!key || !value) continue;
+
+			/*
+			 *  This is an item.
+			 *  Store item attr / value in current HV.
 			 */
-			
-			CONF_PAIR *cp = cf_itemtopair(ci);
-			char const	*attr = cf_pair_attr(cp); // hash key
-			char const	*value = cf_pair_value(cp); // hash value
-			if ((!attr) || (!value)) continue;
-			
-			if (hv_exists(rad_hv, attr, strlen(attr))) {
-				WARN("rlm_perl: Ignoring duplicate config item '%s'", attr);
+			if (hv_exists(rad_hv, key, strlen(key))) {
+				WARN("rlm_perl: Ignoring duplicate config item '%s'", key);
 				continue;
 			}
-			
-			(void)hv_store(rad_hv, attr, strlen(attr), newSVpv(value, strlen(value)), 0);
-			
-			DEBUG("%*s%s = %s", indent_item, " ", attr, value);
+
+			(void)hv_store(rad_hv, key, strlen(key), newSVpv(value, strlen(value)), 0);
+
+			DEBUG("%*s%s = %s", indent_item, " ", key, value);
 		}
 	}
 
@@ -549,13 +548,13 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	cs = cf_section_sub_find(conf, "config");
 	if (cs) {
 		DEBUG("rlm_perl (%s): parsing 'config' section...", xlat_name);
-		
+
 		inst->rad_perlconf_hv = get_hv("RAD_PERLCONF",1);
 		perl_parse_config(cs, 0, inst->rad_perlconf_hv);
-		
+
 		DEBUG("rlm_perl (%s): done parsing 'config'.", xlat_name);
 	}
-	
+
 	return 0;
 }
 
@@ -764,7 +763,7 @@ static int do_perl(void *instance, REQUEST *request, char *function_name)
 			hv_undef(rad_request_proxy_reply_hv);
 		}
 #endif
-		
+
 		PUSHMARK(SP);
 		/*
 		 * This way %RAD_xx can be pushed onto stack as sub parameters.
@@ -924,7 +923,7 @@ static int mod_detach(void *instance)
 	int 		exitstatus = 0, count = 0;
 
 	hv_undef(inst->rad_perlconf_hv);
-	
+
 #if 0
 	/*
 	 *	FIXME: Call this in the destruct function?
