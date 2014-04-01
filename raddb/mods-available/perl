@@ -29,11 +29,15 @@ perl {
 	#  which is included.
 	#
 
-	# You can define configuration items in perl "config" sub-section.
+	# You can define configuration items (and nested sub-sections) in perl "config" section.
 	# These items will be accessible in the perl script through %RAD_PERLCONF hash.
-	# For instance: $RAD_PERLCONF{'name'}
+	# For instance: $RAD_PERLCONF{'name'} $RAD_PERLCONF{'sub-config'}->{'name'}
+	#
 	#config {
-	#	name = value
+	#	name = "value"
+	#	sub-config {
+	#		name = "value of name from config.sub-config"
+	#	}
 	#}
 	
 	#
