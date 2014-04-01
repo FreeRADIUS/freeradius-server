@@ -21,7 +21,7 @@
  * @copyright 2002,2006  The FreeRADIUS server project
  * @copyright 2002  Boian Jordanov <bjordanov@orbitel.bg>
  */
-RCSID("$Id$")
+RCSID("$Id: 5965908c2bd0834b101d728d99468340418aabcd $")
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
@@ -39,16 +39,6 @@ RCSID("$Id$")
 #ifdef __APPLE__
 extern char **environ;
 #endif
-
-/* 
- * structure to hold perl configuration items.
- * they are stored in a hash (fr_hash_table_t), using FreeRADIUS functions.
- */
-typedef struct perl_conf_t
-{
-	char *attr;
-	char *value;
-} perl_conf_t;
 
 /*
  *	Define a structure for our module configuration.
@@ -89,7 +79,7 @@ typedef struct rlm_perl_t {
 	pthread_mutex_t clone_mutex;
 #endif
 
-	fr_hash_table_t *perl_conf_ht; // holds "config" section entries
+	HV		*rad_perlconf_hv; // holds "config" items (perl %RAD_PERLCONF hash).
 	
 } rlm_perl_t;
 /*
@@ -389,27 +379,72 @@ static ssize_t perl_xlat(void *instance, REQUEST *request, char const *fmt, char
 	return ret;
 }
 
-/* 
- *	Hash functions for the perl configuration items
+/*
+ *	Parse a configuration section, and populate a HV.
+ *	This function is recursively called (allows to have nested hashes.)
  */
-static uint32_t perl_conf_hash(void const *data)
+void perl_parse_config(CONF_SECTION *cs, int lvl, HV *rad_hv)
 {
-	const perl_conf_t *pt_conf_item = data;
-	return fr_hash_string(pt_conf_item->attr);
-}
-static int perl_conf_cmp(void const *a, void const *b)
-{
-	const perl_conf_t *pt_conf_item_a = a;
-	const perl_conf_t *pt_conf_item_b = b;
+	if ((NULL == cs) || (NULL == rad_hv)) return;
 	
-	if ((NULL == pt_conf_item_a) || (NULL == pt_conf_item_b)) return -1;
+	int indent_section = (lvl+1)*4;
+	int indent_item = (lvl+2)*4;
 	
-	const char * attr_a = pt_conf_item_a->attr;
-	const char * attr_b = pt_conf_item_b->attr;
+	DEBUG("%*s%s {", indent_section, " ", cf_section_name1(cs));
+
+	CONF_ITEM *ci;
 	
-	if ((NULL == attr_a) || (NULL == attr_b)) return -1;
+	for (ci = cf_item_find_next(cs, NULL);
+		 ci != NULL;
+		 ci = cf_item_find_next(cs, ci))
+	{
+		if (cf_item_is_section(ci)) {
+			/* this is a section. 
+			 * create a new HV, store it as a reference in current HV,
+			 * then recursively call perl_parse_config with this section and the new HV.
+			 */
+			CONF_SECTION *scs = cf_itemtosection(ci);
+			
+			char const *scs_name = cf_section_name1(scs); // hash key
+			if (!scs_name) continue;
 	
-	return strcmp(attr_a, attr_b);
+			if (hv_exists(rad_hv, scs_name, strlen(scs_name))) {
+				WARN("rlm_perl: Ignoring duplicate config section '%s'", scs_name);
+				continue;
+			}
+			
+			HV *sub_hv;
+			SV* ref;
+			sub_hv = newHV();
+			ref = newRV_inc((SV*) sub_hv);
+			
+			(void)hv_store(rad_hv, scs_name, strlen(scs_name), ref, 0);
+			
+			perl_parse_config(scs, lvl+1, sub_hv);
+			
+		} else {
+			if (!cf_item_is_pair(ci)) continue;
+			/* this is an item. 
+			 * store item attr / value in current HV.
+			 */
+			
+			CONF_PAIR *cp = cf_itemtopair(ci);
+			char const	*attr = cf_pair_attr(cp); // hash key
+			char const	*value = cf_pair_value(cp); // hash value
+			if ((!attr) || (!value)) continue;
+			
+			if (hv_exists(rad_hv, attr, strlen(attr))) {
+				WARN("rlm_perl: Ignoring duplicate config item '%s'", attr);
+				continue;
+			}
+			
+			(void)hv_store(rad_hv, attr, strlen(attr), newSVpv(value, strlen(value)), 0);
+			
+			DEBUG("%*s%s = %s", indent_item, " ", attr, value);
+		}
+	}
+
+	DEBUG("%*s}", indent_section, " ");
 }
 
 /*
@@ -513,45 +548,12 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	CONF_SECTION *cs;
 	cs = cf_section_sub_find(conf, "config");
 	if (cs) {
-		CONF_ITEM	*ci;
-
-		inst->perl_conf_ht = fr_hash_table_create(perl_conf_hash, perl_conf_cmp, NULL);
-
-		for (ci = cf_item_find_next(cs, NULL);
-		     ci != NULL;
-		     ci = cf_item_find_next(cs, ci))
-		{
-			char const	*attr;
-			char const	*value;
-
-			if (!cf_item_is_pair(ci)) continue;
-			
-			CONF_PAIR *cp = cf_itemtopair(ci);
-
-			attr = cf_pair_attr(cp);
-			value = cf_pair_value(cp);
-			if ((!attr) || (!value)) continue;
-			
-			perl_conf_t *pt_conf_item = talloc_zero(inst, perl_conf_t);
-
-			pt_conf_item->attr = talloc_strdup(pt_conf_item, attr);
-			pt_conf_item->value = talloc_strdup(pt_conf_item, value);
-			
-			// Be kind to minor mistakes.
-			if (fr_hash_table_finddata(inst->perl_conf_ht, pt_conf_item)) {
-				WARN("rlm_perl (%s): Ignoring duplicate conf item '%s'", xlat_name, attr);
-				talloc_free(pt_conf_item);
-				continue;
-			}
-
-			if (!fr_hash_table_insert(inst->perl_conf_ht, pt_conf_item)) {
-				ERROR("rlm_perl (%s): Failed inserting '%s' into perl_conf table",
-				      xlat_name, attr);
-				return -1;
-			}
-
-			DEBUG("rlm_perl (%s): stored perl conf item '%s' = [%s]", xlat_name, pt_conf_item->attr, pt_conf_item->value);
-		}
+		DEBUG("rlm_perl (%s): parsing 'config' section...", xlat_name);
+		
+		inst->rad_perlconf_hv = get_hv("RAD_PERLCONF",1);
+		perl_parse_config(cs, 0, inst->rad_perlconf_hv);
+		
+		DEBUG("rlm_perl (%s): done parsing 'config'.", xlat_name);
 	}
 	
 	return 0;
@@ -632,34 +634,6 @@ static void perl_store_vps(TALLOC_CTX *ctx, VALUE_PAIR *vps, HV *rad_hv)
 	}
 
 	rad_assert(!head);
-}
-
-/* 
- *	Walk perl_conf hash and use it to populate rad_hv (perl %RAD_PERLCONF hash).
- */
-static int perlconf_walk_callback(void *ctx, void *data)
-{
-	HV *rad_hv = ctx;
-	perl_conf_t *pt_conf_item = (perl_conf_t *)data;
-	
-	const char *attr = pt_conf_item->attr;
-	const char *value = pt_conf_item->value;
-	
-	if ((NULL == attr) || (NULL == value)) return -1;
-	
-	(void)hv_store(rad_hv, attr, strlen(attr), newSVpv(value, strlen(value)), 0);
-	
-	return 0;
-}
-
-/* 
- *	Store content of perl_conf hash into a perl hash.
- */
-static void perl_store_perlconf(fr_hash_table_t *ht, HV *rad_hv)
-{
-	hv_undef(rad_hv);
-	
-	fr_hash_table_walk(ht, perlconf_walk_callback, rad_hv);
 }
 
 /*
@@ -790,12 +764,6 @@ static int do_perl(void *instance, REQUEST *request, char *function_name)
 			hv_undef(rad_request_proxy_reply_hv);
 		}
 #endif
-
-		/* store perl configuration items in %RAD_PERLCONF */
-		HV		*rad_perlconf_hv;
-		rad_perlconf_hv = get_hv("RAD_PERLCONF",1);
-		
-		perl_store_perlconf(inst->perl_conf_ht, rad_perlconf_hv);
 		
 		PUSHMARK(SP);
 		/*
@@ -955,6 +923,8 @@ static int mod_detach(void *instance)
 	rlm_perl_t	*inst = (rlm_perl_t *) instance;
 	int 		exitstatus = 0, count = 0;
 
+	hv_undef(inst->rad_perlconf_hv);
+	
 #if 0
 	/*
 	 *	FIXME: Call this in the destruct function?
