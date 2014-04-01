@@ -20,13 +20,27 @@ perl {
 	#  %RAD_CHECK		Check items
 	#  %RAD_REQUEST		Attributes from the request
 	#  %RAD_REPLY		Attributes for the reply
+	#  %RAD_REQUEST_PROXY	Attributes from the proxied request
+	#  %RAD_REQUEST_PROXY_REPLY Attributes from the proxy reply
+	#
+	#  The interface between FreeRADIUS and Perl is strings.
+	#  That is, attributes of type "octets" are converted to
+	#  printable strings, such as "0xabcdef".  If you want to
+	#  access the binary values of the attributes, you should
+	#  call the Perl "pack" function.  Then to send any binary
+	#  data back to FreeRADIUS, call the Perl "unpack" function,
+	#  so that the contents of the hashes are printable strings.
+	#
+	#  IP addresses are sent as strings, e.g. "192.0.2.25", and
+	#  not as a 4-byte binary value.  The same applies to other
+	#  attribute data types.
+	#
+	#  Attributes of type "string" are copied to Perl as-is.
+	#  They are not escaped or interpreted.
 	#
 	#  The return codes from functions in the perl_script
 	#  are passed directly back to the server.  These
-	#  codes are defined in doc/configurable_failover,
-	#  src/include/modules.h (RLM_MODULE_REJECT, etc),
-	#  and are pre-defined in the 'example.pl' program
-	#  which is included.
+	#  codes are defined in mods-config/example.pl
 	#
 
 	# You can define configuration items (and nested sub-sections) in perl "config" section.
