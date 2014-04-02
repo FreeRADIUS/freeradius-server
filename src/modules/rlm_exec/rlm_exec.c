@@ -178,7 +178,8 @@ static ssize_t exec_xlat(void *instance, REQUEST *request, char const *fmt, char
 	}
 
 	/*
-	 *	FIXME: Do xlat of program name?
+	 *	This function does it's own xlat of the input program
+	 *	to execute.
 	 */
 	result = radius_exec_program(request, fmt, inst->wait, inst->shell_escape,
 				     out, outlen, inst->timeout,
@@ -217,10 +218,6 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	}
 
 	xlat_register(inst->xlat_name, exec_xlat, rlm_exec_shell_escape, inst);
-
-	/*
-	 *	Check whether program actually exists
-	 */
 
 	if (inst->input) {
 		p = inst->input;
@@ -345,13 +342,6 @@ static rlm_rcode_t exec_dispatch(void *instance, REQUEST *request)
 	/*
 	 *	This function does it's own xlat of the input program
 	 *	to execute.
-	 *
-	 *	FIXME: if inst->program starts with %{, then
-	 *	do an xlat ourselves.  This will allow us to do
-	 *	program = %{Exec-Program}, which this module
-	 *	xlat's into it's string value, and then the
-	 *	exec program function xlat's it's string value
-	 *	into something else.
 	 */
 	status = radius_exec_program(request, inst->program, inst->wait, inst->shell_escape,
 				     out, sizeof(out), inst->timeout,
