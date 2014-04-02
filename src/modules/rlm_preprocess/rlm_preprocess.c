@@ -649,7 +649,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 /*
  *	Preprocess a request before accounting
  */
-static rlm_rcode_t preprocess_preaccounting(void *instance, REQUEST *request)
+static rlm_rcode_t mod_preaccounting(void *instance, REQUEST *request)
 {
 	int r;
 	VALUE_PAIR *vp;
@@ -735,7 +735,7 @@ module_t rlm_preprocess = {
 	{
 		NULL,				/* authentication */
 		mod_authorize,			/* authorization */
-		preprocess_preaccounting,	/* pre-accounting */
+		mod_preaccounting,		/* pre-accounting */
 		NULL,				/* accounting */
 		NULL,				/* checksimul */
 		NULL,				/* pre-proxy */
