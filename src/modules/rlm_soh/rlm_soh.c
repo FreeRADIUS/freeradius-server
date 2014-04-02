@@ -118,11 +118,14 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	return 0;
 }
 
-static rlm_rcode_t mod_post_auth(UNUSED void * instance, REQUEST *request)
+static rlm_rcode_t mod_post_auth(UNUSED void * instance, UNUSED REQUEST *request)
 {
 #ifdef WITH_DHCP
 	int rcode;
 	VALUE_PAIR *vp;
+	rlm_soh_t *inst = instance;
+
+	if (!inst->dhcp) return RLM_MODULE_NOOP;
 
 	vp = pairfind(request->packet->vps, 43, DHCP_MAGIC_VENDOR, TAG_ANY);
 	if (vp) {
