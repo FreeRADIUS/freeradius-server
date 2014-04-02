@@ -51,7 +51,7 @@ client dynamic {
 
 	#
 	#  Define the virtual server used to discover dynamic clients.
-	dynamic_clients = dynamic_client_server
+	dynamic_clients = dynamic_clients
 
 	#
 	#  The directory where client definitions are stored.  This
@@ -76,7 +76,7 @@ client dynamic {
 
 #
 #  This is the virtual server referenced above by "dynamic_clients".
-server dynamic_client_server {
+server dynamic_clients {
 
 	#
 	#  The only contents of the virtual server is the "authorize" section.
