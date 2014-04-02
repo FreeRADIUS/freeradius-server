@@ -10,12 +10,14 @@
 # proxied servers, to make sure we send back to our RADIUS client
 # only allowed attributes.
 attr_filter attr_filter.post-proxy {
+	key = "%{Realm}"
 	filename = ${modconfdir}/${.:name}/post-proxy
 }
 
 # attr_filter - filters the attributes in the packets we send to
 # the RADIUS home servers.
 attr_filter attr_filter.pre-proxy {
+	key = "%{Realm}"
 	filename = ${modconfdir}/${.:name}/pre-proxy
 }
 
