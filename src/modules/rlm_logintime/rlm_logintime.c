@@ -204,7 +204,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 
 	RDEBUG("reply:Session-Timeout set to %i", left);
 
-	return RLM_MODULE_OK;
+	return RLM_MODULE_UPDATED;
 }
 
 
