@@ -88,9 +88,10 @@ static rlm_rcode_t mod_authorize(UNUSED void *instance, UNUSED REQUEST *request)
 
 		DEBUG2("rlm_wimax: Fixing WiMAX binary Calling-Station-Id to %s",
 		       vp->vp_strvalue);
+		return RLM_MODULE_OK;
 	}
 
-	return RLM_MODULE_OK;
+	return RLM_MODULE_NOOP;
 }
 
 
