@@ -37,7 +37,7 @@ static const CONF_PARSER module_config[] = {
 	{ NULL, -1, 0, NULL, NULL }
 };
 
-static int krb5_detach(void *instance)
+static int mod_detach(void *instance)
 {
 	rlm_krb5_t *inst = instance;
 
@@ -66,7 +66,7 @@ static int krb5_detach(void *instance)
 	return 0;
 }
 
-static int krb5_instantiate(CONF_SECTION *conf, void *instance)
+static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
 	rlm_krb5_t *inst = instance;
 	krb5_error_code ret;
@@ -334,7 +334,7 @@ static rlm_rcode_t krb5_process_error(REQUEST *request, rlm_krb5_handle_t *conn,
 /*
  *	Validate user/pass (Heimdal)
  */
-static rlm_rcode_t krb5_auth(void *instance, REQUEST *request)
+static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 {
 	rlm_krb5_t *inst = instance;
 	rlm_rcode_t rcode;
@@ -411,7 +411,7 @@ cleanup:
 /*
  *  Validate userid/passwd (MIT)
  */
-static rlm_rcode_t krb5_auth(void *instance, REQUEST *request)
+static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 {
 	rlm_krb5_t *inst = instance;
 	rlm_rcode_t rcode;
@@ -490,10 +490,10 @@ module_t rlm_krb5 = {
 	,
 	sizeof(rlm_krb5_t),
 	module_config,
-	krb5_instantiate,   		/* instantiation */
-	krb5_detach,			/* detach */
+	mod_instantiate,   		/* instantiation */
+	mod_detach,			/* detach */
 	{
-		krb5_auth,		/* authenticate */
+		mod_authenticate,	/* authenticate */
 		NULL,			/* authorize */
 		NULL,			/* pre-accounting */
 		NULL,			/* accounting */
