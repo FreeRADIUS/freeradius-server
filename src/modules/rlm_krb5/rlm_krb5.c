@@ -385,11 +385,11 @@ static rlm_rcode_t krb5_auth(void *instance, REQUEST *request)
 		krb5_cc_cursor cursor;
 		krb5_creds cred;
 
-		krb5_cc_start_seq_get(conn->context, conn->ccache, &cursor)
-		for (krb5_cc_next_cred(conn->context, conn->ccache, &cursor, &cred);
-		     cred;
-		     krb5_cc_next_cred(conn->context, conn->ccache, &cursor, &cred) {
-		     krb5_cc_remove_cred(conn->context, conb->ccache, 0, &cred);
+		krb5_cc_start_seq_get(conn->context, conn->ccache, &cursor);
+		for ((ret = krb5_cc_next_cred(conn->context, conn->ccache, &cursor, &cred));
+		     ret == 0;
+		     (ret = krb5_cc_next_cred(conn->context, conn->ccache, &cursor, &cred))) {
+		     krb5_cc_remove_cred(conn->context, conn->ccache, 0, &cred);
 		}
 		krb5_cc_end_seq_get(conn->context, conn->ccache, &cursor);
 	}
