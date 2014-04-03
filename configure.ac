@@ -951,7 +951,6 @@ AC_CHECK_HEADERS( \
   unistd.h \
   crypt.h \
   errno.h \
-  execinfo.h \
   resource.h \
   sys/resource.h \
   getopt.h \
@@ -1500,13 +1499,6 @@ AC_CHECK_LIB(talloc, talloc_set_memlimit,
 )
 
 dnl #
-dnl # This is required for FreeBSD where execinfo is distinct from libc
-dnl #
-AC_CHECK_LIB(execinfo, backtrace_symbols,
-  LIBS="-lexecinfo $LIBS"
-)
-
-dnl #
 dnl # Check for libcrypt
 dnl # We use crypt(3) which may be in libc, or in libcrypt (eg FreeBSD)
 dnl #
@@ -1526,6 +1518,76 @@ AC_CHECK_LIB(cipher, setkey,
 )
 AC_SUBST(CRYPTLIB)
 
+dnl #
+dnl #  Check for libexecinfo support, on some systems this is built into libc
+dnl #  on others it's a separate library.
+dnl #
+dnl extra argument: --with-execinfo-lib-dir
+execinfo_lib_dir=
+AC_ARG_WITH(execinfo-lib-dir,
+[AS_HELP_STRING([--with-execinfo-lib-dir=DIR],
+[directory in which to look for execinfo library files])],
+[ case "$withval" in
+    no)
+        AC_MSG_ERROR([Need execinfo-lib-dir])
+	;;
+    yes)
+	;;
+    *)
+	execinfo_lib_dir="$withval"
+	;;
+  esac ]
+)
+
+dnl extra argument: --with-execinfo-include-dir
+execinfo_include_dir=
+AC_ARG_WITH(execinfo-include-dir,
+[AS_HELP_STRING([--with-execinfo-include-dir=DIR],
+[directory in which to look for execinfo include files])],
+[ case "$withval" in
+    no)
+        AC_MSG_ERROR([Need execinfo-include-dir])
+	;;
+    yes)
+	;;
+    *)
+	execinfo_include_dir="$withval"
+	;;
+  esac ]
+)
+
+dnl #
+dnl #  Look for execinfo.h and symbols
+dnl #
+smart_try_dir=$execinfo_include_dir
+FR_SMART_CHECK_INCLUDE(execinfo.h)
+if test "x$ac_cv_header_execinfo_h" = "xyes"; then
+  smart_try_dir=$execinfo_lib_dir
+  FR_SMART_CHECK_LIB(execinfo, backtrace_symbols)
+  if test "x$ac_cv_lib_execinfo_backtrace_symbols" != "xyes"; then
+    dnl # Might be provided as part of libc
+    AC_MSG_CHECKING([if execinfo provided as part of libc])
+    AC_TRY_LINK(
+      [
+        #include <execinfo.h>
+      ],
+      [
+        void *sym[1];
+        backtrace_symbols(&sym, sizeof(sym)) ],
+      [
+        AC_MSG_RESULT(yes)
+        ac_cv_lib_execinfo_backtrace_symbols="yes"
+      ],
+      [
+        AC_MSG_RESULT(no)
+      ]
+    )
+  fi
+
+  if test "x$ac_cv_lib_execinfo_backtrace_symbols" = "xyes"; then
+    AC_DEFINE(HAVE_EXECINFO, [1], [define this if we have <execinfo.h> and symbols])
+  fi
+fi
 
 dnl #
 dnl #  Check for regular expression support, if were using PCRE it MUST be included
@@ -1535,12 +1597,12 @@ dnl #  functions.
 dnl #
 dnl extra argument: --with-pcre-lib-dir
 pcre_lib_dir=
-AC_ARG_WITH(rlm-pcre-lib-dir,
+AC_ARG_WITH(pcre-lib-dir,
 [AS_HELP_STRING([--with-pcre-lib-dir=DIR],
 [directory in which to look for pcre library files])],
 [ case "$withval" in
     no)
-	AC_MSG_ERROR(Need rlm-pcre-lib-dir)
+	AC_MSG_ERROR(Need pcre-lib-dir)
 	;;
     yes)
 	;;
@@ -1552,12 +1614,12 @@ AC_ARG_WITH(rlm-pcre-lib-dir,
 
 dnl extra argument: --with-pcre-include--dir
 pcre_include_dir=
-AC_ARG_WITH(rlm-pcre-include-dir,
+AC_ARG_WITH(pcre-include-dir,
 [AS_HELP_STRING([--with-pcre-include-dir=DIR],
 [directory in which to look for pcre include files])],
 [ case "$withval" in
     no)
-	AC_MSG_ERROR(Need rlm-pcre-include-dir)
+	AC_MSG_ERROR(Need pcre-include-dir)
 	;;
     yes)
 	;;

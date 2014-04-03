@@ -27,7 +27,7 @@
  *	runtime backtrace functions are not POSIX but are included in
  *	glibc, OSX >= 10.5 and various BSDs
  */
-#ifdef HAVE_EXECINFO_H
+#ifdef HAVE_EXECINFO
 #  include <execinfo.h>
 #endif
 
@@ -39,7 +39,7 @@
 #define PTHREAD_MUTEX_UNLOCK(_x)
 #endif
 
-#ifdef HAVE_EXECINFO_H
+#ifdef HAVE_EXECINFO
 #  define MAX_BT_FRAMES 128
 #  define MAX_BT_CBUFF  65536			//!< Should be a power of 2
 
@@ -91,7 +91,7 @@ void fr_debug_break(void)
     }
 }
 
-#ifdef HAVE_EXECINFO_H
+#ifdef HAVE_EXECINFO
 /** Generate a backtrace for an object during destruction
  *
  * If this is the first entry being inserted
@@ -218,7 +218,7 @@ fr_bt_marker_t *fr_backtrace_attach(UNUSED fr_cbuff_t **cbuff, UNUSED TALLOC_CTX
 	fprintf(stderr, "Server built without fr_backtrace_* support, requires execinfo.h and possibly -lexecinfo\n");
 	abort();
 }
-#endif /* ifdef HAVE_EXECINFO_H */
+#endif /* ifdef HAVE_EXECINFO */
 
 /** Prints a simple backtrace (if execinfo is available) and calls panic_action if set.
  *
@@ -241,7 +241,7 @@ void NEVER_RETURNS fr_fault(int sig)
 	 *	Produce a simple backtrace - They've very basic but at least give us an
 	 *	idea of the area of the code we hit the issue in.
 	 */
-#ifdef HAVE_EXECINFO_H
+#ifdef HAVE_EXECINFO
 	size_t frame_count, i;
 	void *stack[MAX_BT_FRAMES];
 	char **frames;

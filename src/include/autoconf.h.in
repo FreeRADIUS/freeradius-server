@@ -54,8 +54,8 @@
 /* Define to 1 if you have the <errno.h> header file. */
 #undef HAVE_ERRNO_H
 
-/* Define to 1 if you have the <execinfo.h> header file. */
-#undef HAVE_EXECINFO_H
+/* define this if we have <execinfo.h> and symbols */
+#undef HAVE_EXECINFO
 
 /* Define to 1 if you have the `fcntl' function. */
 #undef HAVE_FCNTL
