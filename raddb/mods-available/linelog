@@ -63,30 +63,39 @@ linelog {
 	#
 	#  Reference the Packet-Type (Access-Request, etc.)  If it doesn't
 	#  exist, reference the "format" entry, above.
-	reference = "%{%{Packet-Type}:-format}"
+	reference = "messages.%{%{Packet-Type}:-default}"
 
 	#
-	#  Followed by a series of log messages.
-	Access-Request = "Requested access: %{User-Name}"
-	Access-Reject = "Rejected access: %{User-Name}"
-	Access-Challenge = "Sent challenge: %{User-Name}"
+	#  The messages defined here are taken from the "reference"
+	#  expansion, above.
+	#
+	messages {
+		default = "Unknown packet type %{Packet-Type}"
 
-	#
-	#  The log messages can be grouped into sections and
-        #  sub-sections, too.  The "reference" item needs to have a "."
-	#  for every section.  e.g. reference = foo.bar will reference
-	#  the "foo" section, "bar" configuration item.
-	#
-
-	#
-	#  Used if:	reference = "foo.bar".
-	foo {
-	    bar = "Example log.  Please ignore"
+		Access-Request = "Requested access: %{User-Name}"
+		Access-Reject = "Rejected access: %{User-Name}"
+		Access-Challenge = "Sent challenge: %{User-Name}"
 	}
+}
+
+#
+#  Another example, for accounting packets.
+#
+linelog log_accounting {
+	#
+	#  Used if the expansion of "reference" fails.
+	#
+	format = ""
+
+	filename = ${logdir}/linelog-accounting
+
+	permissions = 0600
+
+	reference = "Accounting-Request.%{%{Acct-Status-Type}:-unknown}"
 
 	#
 	#  Another example:
-	#      reference = "Accounting-Request.%{%{Acct-Status-Type}:-unknown}"
+	#      
 	#
 	Accounting-Request {
 		Start = "Connect: [%{User-Name}] (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} ip %{Framed-IP-Address})"
@@ -99,7 +108,6 @@ linelog {
 		Accounting-Off = "NAS %{Packet-Src-IP-Address} (%{NAS-IP-Address}) just went offline"
 
 		# don't log anything for other Acct-Status-Types.
-		unknown = ""
+		unknown = "NAS %{Packet-Src-IP-Address} (%{NAS-IP-Address}) sent unknown Acct-Status-Type %{Acct-Status-Type}"
 	}
-
 }
