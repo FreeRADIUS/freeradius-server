@@ -26,12 +26,12 @@ linelog {
 	permissions = 0600
 
 	#
-	# The Unix group of the log file.
+	# The Unix group which owns the log file.
 	#
 	# The user that freeradius runs as must be in the specified
 	# group, otherwise it will not be possible to set the group.
 	#
-	# group = freerad
+	# group = ${security.group}
 
 	#
 	# If logging via syslog, the facility can be set here. Otherwise
