@@ -210,7 +210,7 @@ static size_t linelog_escape_func(char *out, size_t outlen, const char *in)
 
 		default:
 			if (outlen <= 4) break;
-			snprintf(out, outlen,  "\\%03o", *in);
+			snprintf(out, outlen,  "\\%03o", (uint8_t) *in);
 			in++;
 			out += 4;
 			outlen -= 4;
