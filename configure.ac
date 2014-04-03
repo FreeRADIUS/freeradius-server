@@ -1359,7 +1359,7 @@ dnl Check for pcap
 dnl extra argument: --with-pcap-include-dir=DIR
 pcap_include_dir=
 AC_ARG_WITH(pcap-include-dir,
-  [  --with-pcap-include-dir=DIR    directory to look for pcap include files in],
+  [  --with-pcap-include-dir=DIR      directory to look for pcap include files in],
   [case "$withval" in
     no)
       AC_MSG_ERROR([Need pcap-include-dir])
@@ -1375,7 +1375,7 @@ dnl Check for pcap
 dnl extra argument: --with-pcap-lib-dir=DIR
 pcap_lib_dir=
 AC_ARG_WITH(pcap-lib-dir,
-  [  --with-pcap-lib-dir=DIR        directory to look for pcap library files in],
+  [  --with-pcap-lib-dir=DIR          directory to look for pcap library files in],
   [case "$withval" in
     no)
       AC_MSG_ERROR([Need pcap-lib-dir])
@@ -1431,8 +1431,7 @@ dnl #
 dnl extra argument: --with-execinfo-lib-dir
 execinfo_lib_dir=
 AC_ARG_WITH(execinfo-lib-dir,
-[AS_HELP_STRING([--with-execinfo-lib-dir=DIR],
-[directory in which to look for execinfo library files])],
+[  --with-execinfo-lib-dir=DIR      directory to look for execinfo library files in],
 [ case "$withval" in
     no)
         AC_MSG_ERROR([Need execinfo-lib-dir])
@@ -1448,11 +1447,10 @@ AC_ARG_WITH(execinfo-lib-dir,
 dnl extra argument: --with-execinfo-include-dir
 execinfo_include_dir=
 AC_ARG_WITH(execinfo-include-dir,
-[AS_HELP_STRING([--with-execinfo-include-dir=DIR],
-[directory in which to look for execinfo include files])],
+[  --with-execinfo-include-dir=DIR  directory to look for execinfo include files in],
 [ case "$withval" in
     no)
-        AC_MSG_ERROR([Need execinfo-include-dir])
+	AC_MSG_ERROR(Need execinfo-include-dir)
 	;;
     yes)
 	;;
@@ -1505,26 +1503,24 @@ dnl #
 dnl extra argument: --with-pcre-lib-dir
 pcre_lib_dir=
 AC_ARG_WITH(pcre-lib-dir,
-[  --with-pcre-lib-dir=DIR          directory to look for PCRE library files in],
-[directory in which to look for pcre library files],
-[ case "$withval" in
+  [  --with-pcre-lib-dir=DIR          directory to look for pcre library files in],
+  [ case "$withval" in
     no)
-	AC_MSG_ERROR(Need pcre-lib-dir)
+        AC_MSG_ERROR([Need pcre-lib-dir])
 	;;
     yes)
 	;;
     *)
 	pcre_lib_dir="$withval"
 	;;
-  esac ]
+    esac ]
 )
 
 dnl extra argument: --with-pcre-include--dir
 pcre_include_dir=
 AC_ARG_WITH(pcre-include-dir,
-[  --with-pcre-include-dir=DIR      directory to look for PCRE include files],
-[directory in which to look for pcre include files],
-[ case "$withval" in
+  [  --with-pcre-include-dir=DIR      directory to look for PCRE include files in],
+  [ case "$withval" in
     no)
 	AC_MSG_ERROR(Need pcre-include-dir)
 	;;
@@ -1533,7 +1529,7 @@ AC_ARG_WITH(pcre-include-dir,
     *)
 	pcre_include_dir="$withval"
 	;;
-  esac ]
+    esac ]
 )
 
 REGEX=no

@@ -1420,16 +1420,12 @@ Optional Packages:
   --with-rlm-FOO-include-dir=DIR   directory to look for include files used by module FOO in
   --with-talloc-include-dir=DIR    directory to look for talloc include files in
   --with-talloc-lib-dir=DIR        directory to look for talloc library files in
-  --with-pcap-include-dir=DIR    directory to look for pcap include files in
-  --with-pcap-lib-dir=DIR        directory to look for pcap library files in
-  --with-execinfo-lib-dir=DIR
-                          directory in which to look for execinfo library
-                          files
-  --with-execinfo-include-dir=DIR
-                          directory in which to look for execinfo include
-                          files
-  --with-pcre-lib-dir=DIR          directory to look for PCRE library files in
-  --with-pcre-include-dir=DIR      directory to look for PCRE include files
+  --with-pcap-include-dir=DIR      directory to look for pcap include files in
+  --with-pcap-lib-dir=DIR          directory to look for pcap library files in
+  --with-execinfo-lib-dir=DIR      directory to look for execinfo library files in
+  --with-execinfo-include-dir=DIR  directory to look for execinfo include files in
+  --with-pcre-lib-dir=DIR          directory to look for pcre library files in
+  --with-pcre-include-dir=DIR      directory to look for PCRE include files in
 
 Some influential environment variables:
   CC          C compiler command
@@ -8896,7 +8892,7 @@ execinfo_include_dir=
 if test "${with_execinfo_include_dir+set}" = set; then :
   withval=$with_execinfo_include_dir;  case "$withval" in
     no)
-        as_fn_error $? "Need execinfo-include-dir" "$LINENO" 5
+	as_fn_error $? "Need execinfo-include-dir" "$LINENO" 5
 	;;
     yes)
 	;;
@@ -9268,18 +9264,16 @@ pcre_lib_dir=
 
 # Check whether --with-pcre-lib-dir was given.
 if test "${with_pcre_lib_dir+set}" = set; then :
-  withval=$with_pcre_lib_dir; directory in which to look for pcre library files
-else
-   case "$withval" in
+  withval=$with_pcre_lib_dir;  case "$withval" in
     no)
-	as_fn_error $? "Need pcre-lib-dir" "$LINENO" 5
+        as_fn_error $? "Need pcre-lib-dir" "$LINENO" 5
 	;;
     yes)
 	;;
     *)
 	pcre_lib_dir="$withval"
 	;;
-  esac
+    esac
 
 fi
 
@@ -9288,9 +9282,7 @@ pcre_include_dir=
 
 # Check whether --with-pcre-include-dir was given.
 if test "${with_pcre_include_dir+set}" = set; then :
-  withval=$with_pcre_include_dir; directory in which to look for pcre include files
-else
-   case "$withval" in
+  withval=$with_pcre_include_dir;  case "$withval" in
     no)
 	as_fn_error $? "Need pcre-include-dir" "$LINENO" 5
 	;;
@@ -9299,7 +9291,7 @@ else
     *)
 	pcre_include_dir="$withval"
 	;;
-  esac
+    esac
 
 fi
 
