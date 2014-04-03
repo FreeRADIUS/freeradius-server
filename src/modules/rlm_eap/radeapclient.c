@@ -162,7 +162,7 @@ static void debug_packet(RADIUS_PACKET *packet, int direction)
 	 *
 	 *	This really belongs in a utility library
 	 */
-	if ((packet->code > 0) && (packet->code < FR_MAX_PACKET_CODE)) {
+	if (is_radius_code(packet->code)) {
 		printf("%s %s packet %s host %s port %d, id=%d, length=%d\n",
 		       received, fr_packet_codes[packet->code], from,
 		       inet_ntop(ip->af, &ip->ipaddr, buffer, sizeof(buffer)),

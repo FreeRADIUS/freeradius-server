@@ -91,7 +91,7 @@ static unsigned int salt_offset = 0;
 static uint8_t nullvector[AUTH_VECTOR_LEN] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }; /* for CoA decode */
 
 char const *fr_packet_codes[FR_MAX_PACKET_CODE] = {
-  "",
+  "",					//!< 0
   "Access-Request",
   "Access-Accept",
   "Access-Reject",
@@ -101,7 +101,7 @@ char const *fr_packet_codes[FR_MAX_PACKET_CODE] = {
   "Password-Request",
   "Password-Accept",
   "Password-Reject",
-  "Accounting-Message",
+  "Accounting-Message",			//!< 10
   "Access-Challenge",
   "Status-Server",
   "Status-Client",
@@ -111,7 +111,7 @@ char const *fr_packet_codes[FR_MAX_PACKET_CODE] = {
   "17",
   "18",
   "19",
-  "20",
+  "20",					//!< 20
   "Resource-Free-Request",
   "Resource-Free-Response",
   "Resource-Query-Request",
@@ -121,7 +121,7 @@ char const *fr_packet_codes[FR_MAX_PACKET_CODE] = {
   "NAS-Reboot-Response",
   "28",
   "Next-Passcode",
-  "New-Pin",
+  "New-Pin",				//!< 30
   "Terminate-Session",
   "Password-Expired",
   "Event-Request",
@@ -131,7 +131,7 @@ char const *fr_packet_codes[FR_MAX_PACKET_CODE] = {
   "37",
   "38",
   "39",
-  "Disconnect-Request",
+  "Disconnect-Request",			//!< 40
   "Disconnect-ACK",
   "Disconnect-NAK",
   "CoA-Request",
@@ -142,7 +142,7 @@ char const *fr_packet_codes[FR_MAX_PACKET_CODE] = {
   "48",
   "49",
   "IP-Address-Allocate",
-  "IP-Address-Release"
+  "IP-Address-Release",			//!< 50
 };
 
 
@@ -1716,7 +1716,7 @@ int rad_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 	 */
 	uint64_t	data[MAX_PACKET_LEN / sizeof(uint64_t)];
 
-	if ((packet->code > 0) && (packet->code < FR_MAX_PACKET_CODE)) {
+	if (is_radius_code(packet->code)) {
 		what = fr_packet_codes[packet->code];
 	} else {
 		what = "Reply";
@@ -2024,7 +2024,7 @@ int rad_send(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 		return 0;
 	}
 
-	if ((packet->code > 0) && (packet->code < FR_MAX_PACKET_CODE)) {
+	if (is_radius_code(packet->code)) {
 		what = fr_packet_codes[packet->code];
 	} else {
 		what = "Reply";
@@ -2696,7 +2696,7 @@ RADIUS_PACKET *rad_recv(int fd, int flags)
 	if (fr_debug_flag) {
 		char host_ipaddr[128];
 
-		if ((packet->code > 0) && (packet->code < FR_MAX_PACKET_CODE)) {
+		if (is_radius_code(packet->code)) {
 			DEBUG("rad_recv: %s packet from host %s port %d",
 			      fr_packet_codes[packet->code],
 			      inet_ntop(packet->src_ipaddr.af,
@@ -2837,7 +2837,7 @@ int rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 	/*
 	 *	Calculate and/or verify Request or Response Authenticator.
 	 */
-	switch(packet->code) {
+	switch (packet->code) {
 		int rcode;
 		char buffer[32];
 

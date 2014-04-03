@@ -321,7 +321,7 @@ int fr_tcp_read_packet(RADIUS_PACKET *packet, int flags)
 		}
 
 
-		if ((packet->code > 0) && (packet->code < FR_MAX_PACKET_CODE)) {
+		if (is_radius_code(packet->code)) {
 			DEBUG("rad_recv: %s packet from %s",
 			      fr_packet_codes[packet->code], buffer);
 		} else {

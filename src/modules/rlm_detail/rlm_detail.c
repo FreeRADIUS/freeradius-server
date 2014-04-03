@@ -226,7 +226,7 @@ static int detail_write(FILE *out, detail_instance_t *inst, REQUEST *request, RA
 		 *	Print out names, if they're OK.
 		 *	Numbers, if not.
 		 */
-		if ((packet->code > 0) && (packet->code < FR_MAX_PACKET_CODE)) {
+		if (is_radius_code(packet->code)) {
 			WRITE("\tPacket-Type = %s\n", fr_packet_codes[packet->code]);
 		} else {
 			WRITE("\tPacket-Type = %d\n", packet->code);

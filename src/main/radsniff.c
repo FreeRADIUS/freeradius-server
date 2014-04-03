@@ -349,8 +349,13 @@ static void rs_packet_print_csv(uint64_t count, rs_status_t status, fr_pcap_t *h
 	if (s <= 0) return;
 
 	/* Status, Type, Interface, Src, Src port, Dst, Dst port, ID */
-	len = snprintf(p, s, "%s,%s,%s,%i,%s,%i,%i,", fr_packet_codes[packet->code], handle->name,
-		       src, packet->src_port, dst, packet->dst_port, packet->id);
+	if (is_radius_code(packet->code)) {
+		len = snprintf(p, s, "%s,%s,%s,%i,%s,%i,%i,", fr_packet_codes[packet->code], handle->name,
+			       src, packet->src_port, dst, packet->dst_port, packet->id);
+	} else {
+		len = snprintf(p, s, "%i,%s,%s,%i,%s,%i,%i,", packet->code, handle->name,
+			       src, packet->src_port, dst, packet->dst_port, packet->id);
+	}
 	p += len;
 	s -= len;
 
@@ -427,14 +432,27 @@ static void rs_packet_print_fancy(uint64_t count, rs_status_t status, fr_pcap_t 
 		if (s <= 0) return;
 	}
 
-	len = snprintf(p, s, "%s Id %i %s:%s:%d %s %s:%d ",
-   		       fr_packet_codes[packet->code], packet->id,
-		       handle->name,
-		       response ? dst : src,
-		       response ? packet->dst_port : packet->src_port,
-		       response ? "<-" : "->",
-		       response ? src : dst ,
-		       response ? packet->src_port : packet->dst_port);
+	if (is_radius_code(packet->code)) {
+		len = snprintf(p, s, "%s Id %i %s:%s:%d %s %s:%i ",
+			       fr_packet_codes[packet->code],
+			       packet->id,
+			       handle->name,
+			       response ? dst : src,
+			       response ? packet->dst_port : packet->src_port,
+			       response ? "<-" : "->",
+			       response ? src : dst ,
+			       response ? packet->src_port : packet->dst_port);
+	} else {
+		len = snprintf(p, s, "%i Id %i %s:%s:%i %s %s:%i ",
+			       packet->code,
+			       packet->id,
+			       handle->name,
+			       response ? dst : src,
+			       response ? packet->dst_port : packet->src_port,
+			       response ? "<-" : "->",
+			       response ? src : dst ,
+			       response ? packet->src_port : packet->dst_port);
+	}
 	p += len;
 	s -= len;
 	if (s <= 0) return;

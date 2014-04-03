@@ -657,6 +657,7 @@ extern int	fr_debug_flag;	/* 0 = no debugging information */
 extern int	fr_max_attributes; /* per incoming packet */
 #define	FR_MAX_PACKET_CODE (52)
 extern char const *fr_packet_codes[FR_MAX_PACKET_CODE];
+#define is_radius_code(_x) ((_x > 0) && (_x < FR_MAX_PACKET_CODE))
 extern FILE	*fr_log_fp;
 extern void rad_print_hex(RADIUS_PACKET *packet);
 void		fr_printf_log(char const *, ...)

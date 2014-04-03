@@ -312,7 +312,7 @@ app:
 	if (fr_debug_flag) {
 		char host_ipaddr[128];
 
-		if ((packet->code > 0) && (packet->code < FR_MAX_PACKET_CODE)) {
+		if (is_radius_code(packet->code)) {
 			RDEBUG("tls_recv: %s packet from host %s port %d, id=%d, length=%d",
 			       fr_packet_codes[packet->code],
 			       inet_ntop(packet->src_ipaddr.af,
@@ -543,7 +543,7 @@ static int proxy_tls_read(rad_listen_t *listener)
 					DEBUG("proxy recv says %s",
 					      ERR_error_string(err, NULL));
 				}
-				
+
 				goto do_close;
 			}
 		}
