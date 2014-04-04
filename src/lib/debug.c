@@ -283,6 +283,14 @@ void NEVER_RETURNS fr_fault(int sig)
 	fr_exit_now(1);
 }
 
+#ifdef SIGABRT
+static void _fr_talloc_fault(char const *message)
+{
+	fprintf(stderr, "%s", message);
+	fr_fault(SIGABRT);
+}
+#endif
+
 /** Registers signal handlers to execute panic_action on fatal signal
  *
  * May be called multiple time to change the panic_action/program.
@@ -331,10 +339,15 @@ int fr_fault_setup(char const *cmd, char const *program)
 #endif
 #ifdef SIGABRT
 		if (fr_set_signal(SIGABRT, fr_fault) < 0) return -1;
+		talloc_set_abort_fn(_fr_talloc_fault);
 #endif
 #ifdef SIGFPE
 		if (fr_set_signal(SIGFPE, fr_fault) < 0) return -1;
 #endif
+		/*
+		 *  Use this instead of abort so we get a
+		 *  full backtrace with broken versions of LLDB
+		 */
 	}
 	setup = true;
 
