@@ -36,6 +36,8 @@ RCSID("$Id$")
 #  include <syslog.h>
 #endif
 
+#include <sys/file.h>
+
 /*
  * Logging facility names
  */
@@ -152,10 +154,137 @@ bool log_dates_utc = false;
 fr_log_t default_log = {
 	.colourise = true,
 	.fd = STDOUT_FILENO,
-	.dest = L_DST_STDOUT,
+	.dst = L_DST_STDOUT,
 	.file = NULL,
 	.debug_file = NULL,
 };
+
+static int stderr_fd = -1;	//!< The original unmolested stderr file descriptor
+static int stdout_fd = -1;	//!< The original unmolested stdout file descriptor
+
+/** Restore the original stderr/stdout file descriptors
+ *
+ * Only effective if radlog_init was called with close_stdout = false.
+ *
+ * @return true if stdout/stderr have been restored, else false.
+ */
+bool radlog_std_restore(void)
+{
+	if ((stderr_fd > 0) && (stdout_fd > 0)) {
+		dup2(stderr_fd, STDOUT_FILENO);
+		dup2(stdout_fd, STDERR_FILENO);
+		return true;
+	}
+	return false;
+}
+
+/** Set stderr/stdout to the current log descriptor.
+ *
+ * @param log Logger to manipulate.
+ * @return true if stdout/stderr have been altered, else false.
+ */
+bool radlog_std_to_log(fr_log_t *log)
+{
+	if (log->fd > 0) {
+		dup2(log->fd, STDOUT_FILENO);
+		dup2(log->fd, STDERR_FILENO);
+		return true;
+	}
+	return false;
+}
+
+/** Initialise file descriptors based on logging destination
+ *
+ * @param log Logger to manipulate.
+ * @param close_std Whether we should close stderr and stdout completely, or just redirect them.
+ * @return 0 on success -1 on failure.
+ */
+int radlog_init(fr_log_t *log, bool close_std)
+{
+	int devnull;
+
+	devnull = open("/dev/null", O_RDWR);
+	if (devnull < 0) {
+		fr_strerror_printf("Error opening /dev/null: %s", fr_syserror(errno));
+		return -1;
+	}
+
+	/*
+	 *	Dup the original stdout/stderr file descriptors so
+	 *	we can restore them later.
+	 */
+	if (!close_std) {
+		stderr_fd = dup(STDERR_FILENO);
+		stdout_fd = dup(STDOUT_FILENO);
+	}
+
+	/*
+	 *	STDOUT & STDERR go to /dev/null, unless we have "-x",
+	 *	then STDOUT & STDERR go to the "-l log" destination.
+	 *
+	 *	The complexity here is because "-l log" can go to
+	 *	STDOUT or STDERR, too.
+	 */
+	if (log->dst == L_DST_STDOUT) {
+		setlinebuf(stdout);
+		log->fd = STDOUT_FILENO;
+
+		/*
+		 *	If we're debugging, allow STDERR to go to
+		 *	STDOUT too, for executed programs,
+		 */
+		if (debug_flag) {
+			dup2(STDOUT_FILENO, STDERR_FILENO);
+		} else {
+			dup2(devnull, STDERR_FILENO);
+		}
+
+	} else if (log->dst == L_DST_STDERR) {
+		setlinebuf(stderr);
+		log->fd = STDERR_FILENO;
+
+		/*
+		 *	If we're debugging, allow STDOUT to go to
+		 *	STDERR too, for executed programs,
+		 */
+		if (debug_flag) {
+			dup2(STDERR_FILENO, STDOUT_FILENO);
+		} else {
+			dup2(devnull, STDOUT_FILENO);
+		}
+
+	} else if (log->dst == L_DST_SYSLOG) {
+		/*
+		 *	Discard STDOUT and STDERR no matter what the
+		 *	status of debugging.  Syslog isn't a file
+		 *	descriptor, so we can't use it.
+		 */
+		dup2(devnull, STDOUT_FILENO);
+		dup2(devnull, STDERR_FILENO);
+
+	} else if (debug_flag) {
+		/*
+		 *	If we're debugging, allow STDOUT and STDERR to
+		 *	go to the log file.
+		 */
+		radlog_std_to_log(log);
+
+	} else {
+		/*
+		 *	Not debugging, and the log isn't STDOUT or
+		 *	STDERR.  Ensure that we move both of them to
+		 *	/dev/null, so that the calling terminal can
+		 *	exit, and the output from executed programs
+		 *	doesn't pollute STDOUT / STDERR.
+		 */
+		dup2(devnull, STDOUT_FILENO);
+		dup2(devnull, STDERR_FILENO);
+	}
+
+	close(devnull);
+
+	return 0;
+}
 
 /*
  *	Log the message to the logfile. Include the severity and
@@ -182,7 +311,7 @@ int vradlog(log_type_t type, char const *fmt, va_list ap)
 	 *	If we don't want any messages, then
 	 *	throw them away.
 	 */
-	if (default_log.dest == L_DST_NULL) {
+	if (default_log.dst == L_DST_NULL) {
 		return 0;
 	}
 
@@ -209,7 +338,7 @@ int vradlog(log_type_t type, char const *fmt, va_list ap)
 	 *	Print timestamps for non-debugging, and for high levels
 	 *	of debugging.
 	 */
-	if (default_log.dest != L_DST_SYSLOG) {
+	if (default_log.dst != L_DST_SYSLOG) {
 		if ((debug_flag != 1) && (debug_flag != 2)) {
 			time_t timeval;
 
@@ -262,7 +391,7 @@ int vradlog(log_type_t type, char const *fmt, va_list ap)
 		buffer[sizeof(buffer) - 1] = '\0';
 	}
 
-	switch (default_log.dest) {
+	switch (default_log.dst) {
 
 #ifdef HAVE_SYSLOG_H
 	case L_DST_SYSLOG:

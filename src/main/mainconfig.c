@@ -690,7 +690,7 @@ static int switch_users(CONF_SECTION *cs)
 	 *	specified on the command-line.
 	 */
 	if (uid_name || gid_name) {
-		if ((default_log.dest == L_DST_FILES) &&
+		if ((default_log.dst == L_DST_FILES) &&
 		    (default_log.fd < 0)) {
 			default_log.fd = open(mainconfig.log_file,
 					      O_WRONLY | O_APPEND | O_CREAT, 0640);
@@ -860,7 +860,7 @@ int read_mainconfig(int reload)
 	 *	If there was no log destination set on the command line,
 	 *	set it now.
 	 */
-	if (default_log.dest == L_DST_NULL) {
+	if (default_log.dst == L_DST_NULL) {
 		if (cf_section_parse(cs, NULL, serverdest_config) < 0) {
 			fprintf(stderr, "radiusd: Error: Failed to parse log{} section.\n");
 			cf_file_free(cs);
@@ -873,16 +873,16 @@ int read_mainconfig(int reload)
 			return -1;
 		}
 
-		default_log.dest = fr_str2int(log_str2dst, radlog_dest,
+		default_log.dst = fr_str2int(log_str2dst, radlog_dest,
 					      L_DST_NUM_DEST);
-		if (default_log.dest == L_DST_NUM_DEST) {
+		if (default_log.dst == L_DST_NUM_DEST) {
 			fprintf(stderr, "radiusd: Error: Unknown log_destination %s\n",
 				radlog_dest);
 			cf_file_free(cs);
 			return -1;
 		}
 
-		if (default_log.dest == L_DST_SYSLOG) {
+		if (default_log.dst == L_DST_SYSLOG) {
 			/*
 			 *	Make sure syslog_facility isn't NULL
 			 *	before using it
@@ -908,7 +908,7 @@ int read_mainconfig(int reload)
 			openlog(progname, LOG_PID, mainconfig.syslog_facility);
 #endif
 
-		} else if (default_log.dest == L_DST_FILES) {
+		} else if (default_log.dst == L_DST_FILES) {
 			if (!mainconfig.log_file) {
 				fprintf(stderr, "radiusd: Error: Specified \"files\" as a log destination, but no log filename was given!\n");
 				cf_file_free(cs);
@@ -929,7 +929,7 @@ int read_mainconfig(int reload)
 	 *	did switch uid/gid, then the code in switch_users()
 	 *	took care of setting the file permissions correctly.
 	 */
-	if ((default_log.dest == L_DST_FILES) &&
+	if ((default_log.dst == L_DST_FILES) &&
 	    (default_log.fd < 0)) {
 		default_log.fd = open(mainconfig.log_file,
 					    O_WRONLY | O_APPEND | O_CREAT, 0640);
@@ -1068,7 +1068,7 @@ void hup_logfile(void)
 {
 		int fd, old_fd;
 
-		if (default_log.dest != L_DST_FILES) return;
+		if (default_log.dst != L_DST_FILES) return;
 
  		fd = open(mainconfig.log_file,
 			  O_WRONLY | O_APPEND | O_CREAT, 0640);

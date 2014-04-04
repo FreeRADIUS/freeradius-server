@@ -61,6 +61,7 @@ struct fr_bt_marker {
 #endif
 
 static char panic_action[512];
+static fr_fault_cb panic_cb;
 static int fr_debugger_present = -1;
 
 /** Stub callback to see if the SIGTRAP handler is overriden
@@ -73,12 +74,12 @@ static void _sigtrap_handler(UNUSED int signum)
     signal(SIGTRAP, SIG_DFL);
 }
 
-/** Break in GDB (if were running under GDB)
+/** Break in debugger (if were running under a debugger)
  *
- * If the server is running under GDB this will raise a SIGTRAP which
- * will pause the running process.
+ * If the server is running under a debugger this will raise a
+ * SIGTRAP which will pause the running process.
  *
- * If the server is not running under GDB then this will do nothing.
+ * If the server is not running under debugger then this will do nothing.
  */
 void fr_debug_break(void)
 {
@@ -238,6 +239,11 @@ void NEVER_RETURNS fr_fault(int sig)
 	fprintf(stderr, "FATAL SIGNAL: %s\n", strsignal(sig));
 
 	/*
+	 *	Run the callback if one was registered
+	 */
+	if (panic_cb && (panic_cb(sig) < 0)) fr_exit_now(1);
+
+	/*
 	 *	Produce a simple backtrace - They've very basic but at least give us an
 	 *	idea of the area of the code we hit the issue in.
 	 */
@@ -353,3 +359,12 @@ int fr_fault_setup(char const *cmd, char const *program)
 	return 0;
 }
 
+/** Set a callback to be called before fr_fault()
+ *
+ * @param cb to execute. If callback returns < 0
+ *	fr_fault will exit before running panic_action code.
+ */
+void fr_fault_set_cb(fr_fault_cb cb)
+{
+	panic_cb = cb;
+};
