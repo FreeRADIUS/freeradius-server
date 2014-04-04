@@ -284,9 +284,8 @@ void NEVER_RETURNS fr_fault(int sig)
 }
 
 #ifdef SIGABRT
-static void _fr_talloc_fault(char const *message)
+static void _fr_talloc_fault(UNUSED char const *message)
 {
-	fprintf(stderr, "%s", message);
 	fr_fault(SIGABRT);
 }
 #endif
