@@ -2588,6 +2588,7 @@ void pairmemcpy(VALUE_PAIR *vp, uint8_t const *src, size_t size)
 void pairmemsteal(VALUE_PAIR *vp, uint8_t const *src)
 {
 	uint8_t *q;
+
 	VERIFY_VP(vp);
 
 	memcpy(&q, &vp->vp_octets, sizeof(q));
@@ -2606,6 +2607,7 @@ void pairmemsteal(VALUE_PAIR *vp, uint8_t const *src)
 void pairstrsteal(VALUE_PAIR *vp, char const *src)
 {
 	uint8_t *q;
+
 	VERIFY_VP(vp);
 
 	memcpy(&q, &vp->vp_octets, sizeof(q));

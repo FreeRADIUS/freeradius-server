@@ -124,7 +124,22 @@ extern "C" {
 */
 #define FREE_MAGIC (0xF4EEF4EE)
 
-#define VERIFY_VP(_x) (void) talloc_get_type_abort(_x, VALUE_PAIR)
+#define VERIFY_VP(_x) \
+do {\
+	(void) talloc_get_type_abort(_x, VALUE_PAIR);\
+	if (_x->data.ptr) switch (_x->da->type) {\
+	case PW_TYPE_OCTETS:\
+	case PW_TYPE_TLV:\
+		(void) talloc_get_type_abort(_x, uint8_t);\
+		break;\
+	case PW_TYPE_STRING:\
+		(void) talloc_get_type_abort(_x, char);\
+		break;\
+	default:\
+		break;\
+	}\
+} while (0)\
+
 #define VERIFY_PACKET(_x) (void) talloc_get_type_abort(_x, RADIUS_PACKET)
 #else
 #define VERIFY_VP(_x)
