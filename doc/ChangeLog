@@ -23,8 +23,11 @@ FreeRADIUS 3.0.3 Fri 21 Mar 2014 08:30:00 EDT urgency=medium
 	* Added 'none' and 'custom' rlm_rest body types. 'custom'
 	  allows sending of arbitrary expanded text and content-type
 	  headers.
+	* Added "config" section to Perl.  See mods-available/perl
 	* Added '%v' which expands to the server version - Patch
 	  from Alan Buxey.
+	* more mis-matched casts are caught in "if" conditions,
+	  and descriptive errors are printed.
 	* Support basic response validation in radclient. This allows
 	  administrators to write local test cases for their
 	  site-specific configurations.
@@ -50,12 +53,17 @@ FreeRADIUS 3.0.3 Fri 21 Mar 2014 08:30:00 EDT urgency=medium
 	* Fix multiple attribute parsing in rlm_rest JSON.
 	* Don't crash in rlm_rest if connect_uri is commented out
 	  in the configuration.
+	* Don't double-escape strings to / from Perl.  You may need
+	  to double-check your Perl scripts if they use "\" characters.
+	  See mods-available/perl for documentation.
 	* Don't re-run "authorize" if a home server fails to respond.
 	* "0x" isn't printed in front of octets types, for xlat
 	  expansions.  This is the same as v2, and makes it easier
 	  to concatenate multiple attributes of type "octets"
-	* more mis-matched casts are caught in "if" conditions,
-	  and descriptive errors are printed.
+	* FreeBSD fixes for execinfo linking.
+	* Make some of the module configurations more consistent.
+	* Fix corner cases where STDOUT wouldn't be closed in
+	  daemon mode.
 
 FreeRADIUS 3.0.2 Fri 21 Mar 2014 08:30:00 EDT urgency=medium
 	Feature improvements
