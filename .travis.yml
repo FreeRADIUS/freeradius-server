@@ -4,7 +4,7 @@ compiler:
   - gcc
 env:
   global:
-    - PANIC_ACTION="gdb -silent -x raddb/panic.gdb %e %p 1>&2"
+    - PANIC_ACTION="gdb -batch -x raddb/panic.gdb %e %p 1>&2"
     - secure: "jiTi/FJ6jUToW5WswK1W5Xdb6kqZnduUlyeW24kfVsWpKqBakBX2bxG1Ko8XGLACaO+s7NjyrLypeoW0kuh9KBL/rvFMcU5gD1lzC+h0POwTHckaZZYkc0OmY0KIG4utPHXFJjwB9ga8wPJc5c+uBn/gREtlpjg9J1V87Rm39gM="
   matrix:
     - LIBS_OPTIONAL=no LIBS_SHARED=yes
@@ -21,15 +21,15 @@ addons:
     branch_pattern: coverity_*
 before_install:
   - sudo apt-get update -qq
-  - > 
-      sudo apt-get install --no-install-recommends -qq 
+  - >
+      sudo apt-get install --no-install-recommends -qq
       autoconf
       build-essential
       debhelper
       devscripts
       dh-make
       fakeroot
-      gdb 
+      gdb
       lintian
       pbuilder
       python-dev

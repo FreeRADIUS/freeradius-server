@@ -57,7 +57,7 @@ test.conf: dictionary
 	@echo 'logdir = $${testdir}' >> test.conf
 	@echo 'radacctdir = $${testdir}' >> test.conf
 	@echo 'pidfile = $${testdir}/radiusd.pid' >> test.conf
-	@echo 'panic_action = "gdb -silent -x ${testdir}/panic.gdb %e %p > ${testdir}/gdb.log 2>&1; cat ${testdir}/gdb.log"' >> test.conf
+	@echo 'panic_action = "gdb -batch -x ${testdir}/panic.gdb %e %p > ${testdir}/gdb.log 2>&1; cat ${testdir}/gdb.log"' >> test.conf
 	@echo '$$INCLUDE radiusd.conf' >> test.conf
 	@echo '$$INCLUDE $${testdir}/config/' >> test.conf
 
