@@ -426,7 +426,7 @@ int main(int argc, char *argv[])
 	if (default_log.dest == L_DST_STDOUT) {
 		setlinebuf(stdout);
 		default_log.fd = STDOUT_FILENO;
-	} else if (debug_flag) {
+	} else {
 		dup2(devnull, STDOUT_FILENO);
 	}
 
