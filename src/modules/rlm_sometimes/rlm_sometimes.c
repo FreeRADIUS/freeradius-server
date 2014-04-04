@@ -119,20 +119,20 @@ static rlm_rcode_t sometimes_return(void *instance, RADIUS_PACKET *packet,
 	 */
 	if ((inst->rcode == RLM_MODULE_HANDLED) && reply) {
 		switch (packet->code) {
-		case PW_AUTHENTICATION_REQUEST:
-			reply->code = PW_AUTHENTICATION_ACK;
+		case PW_CODE_AUTHENTICATION_REQUEST:
+			reply->code = PW_CODE_AUTHENTICATION_ACK;
 			break;
 
-		case PW_ACCOUNTING_REQUEST:
-			reply->code = PW_ACCOUNTING_RESPONSE;
+		case PW_CODE_ACCOUNTING_REQUEST:
+			reply->code = PW_CODE_ACCOUNTING_RESPONSE;
 			break;
 
-		case PW_COA_REQUEST:
-			reply->code = PW_COA_ACK;
+		case PW_CODE_COA_REQUEST:
+			reply->code = PW_CODE_COA_ACK;
 			break;
 
-		case PW_DISCONNECT_REQUEST:
-			reply->code = PW_DISCONNECT_ACK;
+		case PW_CODE_DISCONNECT_REQUEST:
+			reply->code = PW_CODE_DISCONNECT_ACK;
 			break;
 
 		default:

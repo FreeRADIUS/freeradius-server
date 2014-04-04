@@ -410,7 +410,7 @@ static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
 		case RLM_MODULE_FAIL:
 		case RLM_MODULE_INVALID:
 		case RLM_MODULE_REJECT:
-			request->reply->code = PW_AUTHENTICATION_REJECT;
+			request->reply->code = PW_CODE_AUTHENTICATION_REJECT;
 			break;
 		default:
 			break;

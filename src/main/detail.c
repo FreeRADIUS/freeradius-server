@@ -643,7 +643,7 @@ int detail_recv(rad_listen_t *listener)
 	packet->sockfd = -1;
 	packet->src_ipaddr.af = AF_INET;
 	packet->src_ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_NONE);
-	packet->code = PW_ACCOUNTING_REQUEST;
+	packet->code = PW_CODE_ACCOUNTING_REQUEST;
 	gettimeofday(&packet->timestamp, NULL);
 
 	/*

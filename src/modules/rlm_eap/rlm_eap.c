@@ -432,7 +432,7 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 	 *	says that we MUST include a User-Name attribute in the
 	 *	Access-Accept.
 	 */
-	if ((request->reply->code == PW_AUTHENTICATION_ACK) &&
+	if ((request->reply->code == PW_CODE_AUTHENTICATION_ACK) &&
 	    request->username) {
 		VALUE_PAIR *vp;
 
@@ -618,7 +618,7 @@ static rlm_rcode_t mod_post_proxy(void *inst, REQUEST *request)
 		 *	says that we MUST include a User-Name attribute in the
 		 *	Access-Accept.
 		 */
-		if ((request->reply->code == PW_AUTHENTICATION_ACK) &&
+		if ((request->reply->code == PW_CODE_AUTHENTICATION_ACK) &&
 		    request->username) {
 			/*
 			 *	Doesn't exist, add it in.

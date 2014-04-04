@@ -83,20 +83,20 @@ static int replicate_packet(UNUSED void *instance, REQUEST *request, pair_lists_
 			cleanup(packet);
 			return RLM_MODULE_FAIL;
 
-		case PW_AUTHENTICATION_REQUEST:
+		case PW_CODE_AUTHENTICATION_REQUEST:
 			pool = realm->auth_pool;
 			break;
 
 #ifdef WITH_ACCOUNTING
 
-		case PW_ACCOUNTING_REQUEST:
+		case PW_CODE_ACCOUNTING_REQUEST:
 			pool = realm->acct_pool;
 			break;
 #endif
 
 #ifdef WITH_COA
-		case PW_COA_REQUEST:
-		case PW_DISCONNECT_REQUEST:
+		case PW_CODE_COA_REQUEST:
+		case PW_CODE_DISCONNECT_REQUEST:
 			pool = realm->acct_pool;
 			break;
 #endif
@@ -156,7 +156,7 @@ static int replicate_packet(UNUSED void *instance, REQUEST *request, pair_lists_
 			 *	For CHAP, create the CHAP-Challenge if
 			 *	it doesn't exist.
 			 */
-			if ((code == PW_AUTHENTICATION_REQUEST) &&
+			if ((code == PW_CODE_AUTHENTICATION_REQUEST) &&
 			    (pairfind(request->packet->vps, PW_CHAP_PASSWORD, 0, TAG_ANY) != NULL) &&
 			    (pairfind(request->packet->vps, PW_CHAP_CHALLENGE, 0, TAG_ANY) == NULL)) {
 				uint8_t *p;

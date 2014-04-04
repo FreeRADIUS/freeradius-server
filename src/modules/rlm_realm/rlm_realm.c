@@ -221,7 +221,7 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 		/*
 		 *	Perhaps accounting proxying was turned off.
 		 */
-	case PW_ACCOUNTING_REQUEST:
+	case PW_CODE_ACCOUNTING_REQUEST:
 		if (!realm->acct_pool) {
 			RDEBUG2("Accounting realm is LOCAL.");
 			return RLM_MODULE_OK;
@@ -231,7 +231,7 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 		/*
 		 *	Perhaps authentication proxying was turned off.
 		 */
-	case PW_AUTHENTICATION_REQUEST:
+	case PW_CODE_AUTHENTICATION_REQUEST:
 		if (!realm->auth_pool) {
 			RDEBUG2("Authentication realm is LOCAL.");
 			return RLM_MODULE_OK;
@@ -247,7 +247,7 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 	 *	Skip additional checks if it's not an accounting
 	 *	request.
 	 */
-	if (request->packet->code != PW_ACCOUNTING_REQUEST) {
+	if (request->packet->code != PW_CODE_ACCOUNTING_REQUEST) {
 		*returnrealm = realm;
 		return RLM_MODULE_UPDATED;
 	}

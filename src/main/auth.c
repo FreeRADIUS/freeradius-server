@@ -312,7 +312,7 @@ int rad_postauth(REQUEST *request)
 		case RLM_MODULE_REJECT:
 		case RLM_MODULE_USERLOCK:
 		default:
-			request->reply->code = PW_AUTHENTICATION_REJECT;
+			request->reply->code = PW_CODE_AUTHENTICATION_REJECT;
 			result = RLM_MODULE_REJECT;
 			break;
 		/*
@@ -370,7 +370,7 @@ int rad_authenticate(REQUEST *request)
 		 *	Reply of ACCEPT means accept, thus set Auth-Type
 		 *	accordingly.
 		 */
-		case PW_AUTHENTICATION_ACK:
+		case PW_CODE_AUTHENTICATION_ACK:
 			tmp = radius_paircreate(request,
 						&request->config_items,
 						PW_AUTH_TYPE, 0);
@@ -381,8 +381,8 @@ int rad_authenticate(REQUEST *request)
 		 *	Challenges are punted back to the NAS without any
 		 *	further processing.
 		 */
-		case PW_ACCESS_CHALLENGE:
-			request->reply->code = PW_ACCESS_CHALLENGE;
+		case PW_CODE_ACCESS_CHALLENGE:
+			request->reply->code = PW_CODE_ACCESS_CHALLENGE;
 			return RLM_MODULE_OK;
 
 		/*
@@ -392,10 +392,10 @@ int rad_authenticate(REQUEST *request)
 		 *	are being rejected, so we minimize the amount of work
 		 *	done by the server, by rejecting them here.
 		 */
-		case PW_AUTHENTICATION_REJECT:
+		case PW_CODE_AUTHENTICATION_REJECT:
 			rad_authlog("Login incorrect (Home Server says so)",
 				    request, 0);
-			request->reply->code = PW_AUTHENTICATION_REJECT;
+			request->reply->code = PW_CODE_AUTHENTICATION_REJECT;
 			return RLM_MODULE_REJECT;
 
 		default:
@@ -441,7 +441,7 @@ autz_redo:
 			} else {
 				rad_authlog("Invalid user", request, 0);
 			}
-			request->reply->code = PW_AUTHENTICATION_REJECT;
+			request->reply->code = PW_CODE_AUTHENTICATION_REJECT;
 			return result;
 	}
 	if (!autz_retry) {
@@ -516,7 +516,7 @@ autz_redo:
 	 */
 	if (result < 0) {
 		RDEBUG2("Failed to authenticate the user.");
-		request->reply->code = PW_AUTHENTICATION_REJECT;
+		request->reply->code = PW_CODE_AUTHENTICATION_REJECT;
 
 		if ((module_msg = pairfind(request->packet->vps, PW_MODULE_FAILURE_MESSAGE, 0, TAG_ANY)) != NULL){
 			char msg[MAX_STRING_LEN+19];
@@ -594,7 +594,7 @@ autz_redo:
 						 mainconfig.denied_msg);
 				}
 
-				request->reply->code = PW_AUTHENTICATION_REJECT;
+				request->reply->code = PW_CODE_AUTHENTICATION_REJECT;
 
 				/*
 				 *	They're trying to log in too many times.
@@ -628,7 +628,7 @@ autz_redo:
 	 *	been set to something.  (i.e. Access-Challenge)
 	 */
 	if (request->reply->code == 0)
-	  request->reply->code = PW_AUTHENTICATION_ACK;
+	  request->reply->code = PW_CODE_AUTHENTICATION_ACK;
 
 	if ((module_msg = pairfind(request->packet->vps, PW_MODULE_SUCCESS_MESSAGE, 0, TAG_ANY)) != NULL){
 		char msg[MAX_STRING_LEN+12];
@@ -656,17 +656,17 @@ int rad_virtual_server(REQUEST *request)
 	 *	We currently only handle AUTH packets here.
 	 *	This could be expanded to handle other packets as well if required.
 	 */
-	rad_assert(request->packet->code == PW_AUTHENTICATION_REQUEST);
+	rad_assert(request->packet->code == PW_CODE_AUTHENTICATION_REQUEST);
 
 	result = rad_authenticate(request);
 
-	if (request->reply->code == PW_AUTHENTICATION_REJECT) {
+	if (request->reply->code == PW_CODE_AUTHENTICATION_REJECT) {
 		pairdelete(&request->config_items, PW_POST_AUTH_TYPE, 0, TAG_ANY);
 		vp = pairmake_config("Post-Auth-Type", "Reject", T_OP_SET);
 		if (vp) rad_postauth(request);
 	}
 
-	if (request->reply->code == PW_AUTHENTICATION_ACK) {
+	if (request->reply->code == PW_CODE_AUTHENTICATION_ACK) {
 		rad_postauth(request);
 	}
 

@@ -643,7 +643,7 @@ static rlm_rcode_t process_reply(UNUSED eap_handler_t *handler, tls_session_t *t
 	 *	NOT 'eap start', so we should check for that....
 	 */
 	switch (reply->code) {
-	case PW_AUTHENTICATION_ACK:
+	case PW_CODE_AUTHENTICATION_ACK:
 		RDEBUG("Got tunneled Access-Accept");
 
 		rcode = RLM_MODULE_OK;
@@ -720,7 +720,7 @@ static rlm_rcode_t process_reply(UNUSED eap_handler_t *handler, tls_session_t *t
 		break;
 
 
-	case PW_AUTHENTICATION_REJECT:
+	case PW_CODE_AUTHENTICATION_REJECT:
 		RDEBUG("Got tunneled Access-Reject");
 		rcode = RLM_MODULE_REJECT;
 		break;
@@ -731,7 +731,7 @@ static rlm_rcode_t process_reply(UNUSED eap_handler_t *handler, tls_session_t *t
 		 *	an Access-Challenge means that we MUST tunnel
 		 *	a Reply-Message to the client.
 		 */
-	case PW_ACCESS_CHALLENGE:
+	case PW_CODE_ACCESS_CHALLENGE:
 		RDEBUG("Got tunneled Access-Challenge");
 
 		/*
@@ -809,7 +809,7 @@ static int eapttls_postproxy(eap_handler_t *handler, void *data)
 	 */
 	if (fake &&
 	    handler->request->proxy_reply &&
-	    (handler->request->proxy_reply->code == PW_AUTHENTICATION_ACK)) {
+	    (handler->request->proxy_reply->code == PW_CODE_AUTHENTICATION_ACK)) {
 		/*
 		 *	Terrible hacks.
 		 */
@@ -918,7 +918,7 @@ static int eapttls_postproxy(eap_handler_t *handler, void *data)
  */
 int eapttls_process(eap_handler_t *handler, tls_session_t *tls_session)
 {
-	int code = PW_AUTHENTICATION_REJECT;
+	int code = PW_CODE_AUTHENTICATION_REJECT;
 	rlm_rcode_t rcode;
 	REQUEST *fake;
 	VALUE_PAIR *vp;
@@ -946,7 +946,7 @@ int eapttls_process(eap_handler_t *handler, tls_session_t *tls_session)
 	if (data_len == 0) {
 		if (t->authenticated) {
 			RDEBUG("Got ACK, and the user was already authenticated.");
-			return PW_AUTHENTICATION_ACK;
+			return PW_CODE_AUTHENTICATION_ACK;
 		} /* else no session, no data, die. */
 
 		/*
@@ -954,7 +954,7 @@ int eapttls_process(eap_handler_t *handler, tls_session_t *tls_session)
 		 *	wrong.
 		 */
 		RDEBUG2("SSL_read Error");
-		return PW_AUTHENTICATION_REJECT;
+		return PW_CODE_AUTHENTICATION_REJECT;
 	}
 
 #ifndef NDEBUG
@@ -973,7 +973,7 @@ int eapttls_process(eap_handler_t *handler, tls_session_t *tls_session)
 #endif
 
 	if (!diameter_verify(request, data, data_len)) {
-		return PW_AUTHENTICATION_REJECT;
+		return PW_CODE_AUTHENTICATION_REJECT;
 	}
 
 	/*
@@ -989,7 +989,7 @@ int eapttls_process(eap_handler_t *handler, tls_session_t *tls_session)
 	fake->packet->vps = diameter2vp(request, fake, tls_session->ssl, data, data_len);
 	if (!fake->packet->vps) {
 		request_free(&fake);
-		return PW_AUTHENTICATION_REJECT;
+		return PW_CODE_AUTHENTICATION_REJECT;
 	}
 
 	/*
@@ -1251,14 +1251,14 @@ int eapttls_process(eap_handler_t *handler, tls_session_t *tls_session)
 			 *	Didn't authenticate the packet, but
 			 *	we're proxying it.
 			 */
-			code = PW_STATUS_CLIENT;
+			code = PW_CODE_STATUS_CLIENT;
 
 		} else
 #endif	/* WITH_PROXY */
 		  {
 			RDEBUG("No tunneled reply was found for request %d , and the request was not proxied: rejecting the user.",
 			       request->number);
-			code = PW_AUTHENTICATION_REJECT;
+			code = PW_CODE_AUTHENTICATION_REJECT;
 		}
 		break;
 
@@ -1269,19 +1269,19 @@ int eapttls_process(eap_handler_t *handler, tls_session_t *tls_session)
 		rcode = process_reply(handler, tls_session, request, fake->reply);
 		switch (rcode) {
 		case RLM_MODULE_REJECT:
-			code = PW_AUTHENTICATION_REJECT;
+			code = PW_CODE_AUTHENTICATION_REJECT;
 			break;
 
 		case RLM_MODULE_HANDLED:
-			code = PW_ACCESS_CHALLENGE;
+			code = PW_CODE_ACCESS_CHALLENGE;
 			break;
 
 		case RLM_MODULE_OK:
-			code = PW_AUTHENTICATION_ACK;
+			code = PW_CODE_AUTHENTICATION_ACK;
 			break;
 
 		default:
-			code = PW_AUTHENTICATION_REJECT;
+			code = PW_CODE_AUTHENTICATION_REJECT;
 			break;
 		}
 		break;

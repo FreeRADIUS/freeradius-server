@@ -946,10 +946,10 @@ static int recv_one_packet(int wait_time)
 		vp_printlist(stdout, request->reply->vps);
 	}
 
-	if ((request->reply->code == PW_AUTHENTICATION_ACK) ||
-	    (request->reply->code == PW_ACCOUNTING_RESPONSE) ||
-	    (request->reply->code == PW_COA_ACK) ||
-	    (request->reply->code == PW_DISCONNECT_ACK)) {
+	if ((request->reply->code == PW_CODE_AUTHENTICATION_ACK) ||
+	    (request->reply->code == PW_CODE_ACCOUNTING_RESPONSE) ||
+	    (request->reply->code == PW_CODE_COA_ACK) ||
+	    (request->reply->code == PW_CODE_DISCONNECT_ACK)) {
 		success = true;		/* have a good reply */
 		stats.accepted++;
 	} else {
@@ -1241,31 +1241,31 @@ int main(int argc, char **argv)
 	if (strcmp(argv[2], "auth") == 0) {
 		if (server_port == 0) server_port = getport("radius");
 		if (server_port == 0) server_port = PW_AUTH_UDP_PORT;
-		packet_code = PW_AUTHENTICATION_REQUEST;
+		packet_code = PW_CODE_AUTHENTICATION_REQUEST;
 
 	} else if (strcmp(argv[2], "challenge") == 0) {
 		if (server_port == 0) server_port = getport("radius");
 		if (server_port == 0) server_port = PW_AUTH_UDP_PORT;
-		packet_code = PW_ACCESS_CHALLENGE;
+		packet_code = PW_CODE_ACCESS_CHALLENGE;
 
 	} else if (strcmp(argv[2], "acct") == 0) {
 		if (server_port == 0) server_port = getport("radacct");
 		if (server_port == 0) server_port = PW_ACCT_UDP_PORT;
-		packet_code = PW_ACCOUNTING_REQUEST;
+		packet_code = PW_CODE_ACCOUNTING_REQUEST;
 		do_summary = false;
 
 	} else if (strcmp(argv[2], "status") == 0) {
 		if (server_port == 0) server_port = getport("radius");
 		if (server_port == 0) server_port = PW_AUTH_UDP_PORT;
-		packet_code = PW_STATUS_SERVER;
+		packet_code = PW_CODE_STATUS_SERVER;
 
 	} else if (strcmp(argv[2], "disconnect") == 0) {
 		if (server_port == 0) server_port = PW_COA_UDP_PORT;
-		packet_code = PW_DISCONNECT_REQUEST;
+		packet_code = PW_CODE_DISCONNECT_REQUEST;
 
 	} else if (strcmp(argv[2], "coa") == 0) {
 		if (server_port == 0) server_port = PW_COA_UDP_PORT;
-		packet_code = PW_COA_REQUEST;
+		packet_code = PW_CODE_COA_REQUEST;
 
 	} else if (strcmp(argv[2], "auto") == 0) {
 		packet_code = -1;

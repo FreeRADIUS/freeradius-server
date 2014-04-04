@@ -365,14 +365,14 @@ int dual_tls_recv(rad_listen_t *listener)
 	 *	set.
 	 */
 	switch(packet->code) {
-	case PW_AUTHENTICATION_REQUEST:
+	case PW_CODE_AUTHENTICATION_REQUEST:
 		if (listener->type != RAD_LISTEN_AUTH) goto bad_packet;
 		FR_STATS_INC(auth, total_requests);
 		fun = rad_authenticate;
 		break;
 
 #ifdef WITH_ACCOUNTING
-	case PW_ACCOUNTING_REQUEST:
+	case PW_CODE_ACCOUNTING_REQUEST:
 		if (listener->type != RAD_LISTEN_ACCT) {
 			/*
 			 *	Allow auth + dual.  Disallow
@@ -388,7 +388,7 @@ int dual_tls_recv(rad_listen_t *listener)
 		break;
 #endif
 
-	case PW_STATUS_SERVER:
+	case PW_CODE_STATUS_SERVER:
 		if (!mainconfig.status_server) {
 			FR_STATS_INC(auth, total_unknown_types);
 			WDEBUG("Ignoring Status-Server request due to security configuration");
@@ -654,13 +654,13 @@ int proxy_tls_recv(rad_listen_t *listener)
 	 *	FIXME: Client MIB updates?
 	 */
 	switch(packet->code) {
-	case PW_AUTHENTICATION_ACK:
-	case PW_ACCESS_CHALLENGE:
-	case PW_AUTHENTICATION_REJECT:
+	case PW_CODE_AUTHENTICATION_ACK:
+	case PW_CODE_ACCESS_CHALLENGE:
+	case PW_CODE_AUTHENTICATION_REJECT:
 		break;
 
 #ifdef WITH_ACCOUNTING
-	case PW_ACCOUNTING_RESPONSE:
+	case PW_CODE_ACCOUNTING_RESPONSE:
 		break;
 #endif
 

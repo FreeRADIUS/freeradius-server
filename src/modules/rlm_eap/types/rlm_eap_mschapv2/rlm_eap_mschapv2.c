@@ -307,7 +307,7 @@ static int mschap_postproxy(eap_handler_t *handler, UNUSED void *tunnel_data)
 	 *	There is only a limited number of possibilities.
 	 */
 	switch (request->reply->code) {
-	case PW_AUTHENTICATION_ACK:
+	case PW_CODE_AUTHENTICATION_ACK:
 		RDEBUG2("Proxied authentication succeeded.");
 
 		/*
@@ -320,7 +320,7 @@ static int mschap_postproxy(eap_handler_t *handler, UNUSED void *tunnel_data)
 		break;
 
 	default:
-	case PW_AUTHENTICATION_REJECT:
+	case PW_CODE_AUTHENTICATION_REJECT:
 		RDEBUG("Proxied authentication did not succeed.");
 		return 0;
 	}
@@ -358,7 +358,7 @@ static int mschap_postproxy(eap_handler_t *handler, UNUSED void *tunnel_data)
 	 *	And we need to challenge the user, not ack/reject them,
 	 *	so we re-write the ACK to a challenge.  Yuck.
 	 */
-	request->reply->code = PW_ACCESS_CHALLENGE;
+	request->reply->code = PW_CODE_ACCESS_CHALLENGE;
 	pairfree(&response);
 
 	return 1;

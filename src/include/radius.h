@@ -33,25 +33,29 @@ typedef enum {
 	PW_TYPE_MAX		//!< Number of defined data types.
 } PW_TYPE;
 
-#define PW_AUTHENTICATION_REQUEST	1
-#define PW_AUTHENTICATION_ACK		2
-#define PW_AUTHENTICATION_REJECT	3
-#define PW_ACCOUNTING_REQUEST		4
-#define PW_ACCOUNTING_RESPONSE		5
-#define PW_ACCOUNTING_STATUS		6
-#define PW_PASSWORD_REQUEST		7
-#define PW_PASSWORD_ACK			8
-#define PW_PASSWORD_REJECT		9
-#define PW_ACCOUNTING_MESSAGE		10
-#define PW_ACCESS_CHALLENGE		11
-#define PW_STATUS_SERVER		12
-#define PW_STATUS_CLIENT		13
-#define PW_DISCONNECT_REQUEST		40
-#define PW_DISCONNECT_ACK		41
-#define PW_DISCONNECT_NAK		42
-#define PW_COA_REQUEST			43
-#define PW_COA_ACK			44
-#define PW_COA_NAK			45
+typedef enum {
+	PW_CODE_INVALID			= 0,	//!< Packet code is invalid
+	PW_CODE_AUTHENTICATION_REQUEST 	= 1,	//!< RFC2865 - Authentication request
+	PW_CODE_AUTHENTICATION_ACK	= 2,	//!< RFC2865 - Access-Accept
+	PW_CODE_AUTHENTICATION_REJECT	= 3,	//!< RFC2865 - Access-Reject
+	PW_CODE_ACCOUNTING_REQUEST	= 4,	//!< RFC2866 - Accounting-Request
+	PW_CODE_ACCOUNTING_RESPONSE	= 5,	//!< RFC2866 - Accounting-Response
+	PW_CODE_ACCOUNTING_STATUS	= 6,	//!< RFC3575 - Reserved
+	PW_CODE_PASSWORD_REQUEST	= 7,	//!< RFC3575 - Reserved
+	PW_CODE_PASSWORD_ACK		= 8,	//!< RFC3575 - Reserved
+	PW_CODE_PASSWORD_REJECT		= 9,	//!< RFC3575 - Reserved
+	PW_CODE_ACCOUNTING_MESSAGE	= 10,	//!< RFC3575 - Reserved
+	PW_CODE_ACCESS_CHALLENGE	= 11,	//!< RFC2865 - Access-Challenge
+	PW_CODE_STATUS_SERVER	 	= 12,	//!< RFC2865/RFC5997 - Status Server (request)
+	PW_CODE_STATUS_CLIENT		= 13,	//!< RFC2865/RFC5997 - Status Server (response)
+	PW_CODE_DISCONNECT_REQUEST	= 40,	//!< RFC3575/RFC5176 - Disconnect-Request
+	PW_CODE_DISCONNECT_ACK		= 41,	//!< RFC3575/RFC5176 - Disconnect-Ack (positive)
+	PW_CODE_DISCONNECT_NAK		= 42,	//!< RFC3575/RFC5176 - Disconnect-Nak (not willing to perform)
+	PW_CODE_COA_REQUEST		= 43,	//!< RFC3575/RFC5176 - CoA-Request
+	PW_CODE_COA_ACK			= 44,	//!< RFC3575/RFC5176 - CoA-Ack (positive)
+	PW_CODE_COA_NAK			= 45,	//!< RFC3575/RFC5176 - CoA-Nak (not willing to perform)
+	PW_CODE_MAX			= 255,	//!< Maximum possible code
+} PW_CODE;
 
 #define PW_AUTH_UDP_PORT		1812
 #define PW_ACCT_UDP_PORT		1813

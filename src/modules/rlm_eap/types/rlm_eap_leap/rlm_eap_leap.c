@@ -161,7 +161,7 @@ static int mod_authenticate(UNUSED void *instance, eap_handler_t *handler)
 		 *	by eap_compose() in eap.c, when the EAP reply code
 		 *	is EAP_SUCCESS.
 		 */
-		handler->request->reply->code = PW_ACCESS_CHALLENGE;
+		handler->request->reply->code = PW_CODE_ACCESS_CHALLENGE;
 		talloc_free(packet);
 		return 1;
 

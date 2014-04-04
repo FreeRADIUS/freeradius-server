@@ -158,7 +158,7 @@ int rad_accounting(REQUEST *request)
 		 */
 		case RLM_MODULE_OK:
 		case RLM_MODULE_UPDATED:
-			request->reply->code = PW_ACCOUNTING_RESPONSE;
+			request->reply->code = PW_CODE_ACCOUNTING_RESPONSE;
 			break;
 
 		/*

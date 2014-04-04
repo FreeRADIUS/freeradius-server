@@ -44,7 +44,7 @@ int session_zap(REQUEST *request, uint32_t nasaddr, unsigned int port,
 	int ret;
 
 	stopreq = request_alloc_fake(request);
-	stopreq->packet->code = PW_ACCOUNTING_REQUEST; /* just to be safe */
+	stopreq->packet->code = PW_CODE_ACCOUNTING_REQUEST; /* just to be safe */
 	stopreq->listener = request->listener;
 	rad_assert(stopreq != NULL);
 

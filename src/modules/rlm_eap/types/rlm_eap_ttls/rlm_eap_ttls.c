@@ -340,21 +340,21 @@ static int mod_authenticate(void *arg, eap_handler_t *handler)
 	 */
 	rcode = eapttls_process(handler, tls_session);
 	switch (rcode) {
-	case PW_AUTHENTICATION_REJECT:
+	case PW_CODE_AUTHENTICATION_REJECT:
 		eaptls_fail(handler, 0);
 		return 0;
 
 		/*
 		 *	Access-Challenge, continue tunneled conversation.
 		 */
-	case PW_ACCESS_CHALLENGE:
+	case PW_CODE_ACCESS_CHALLENGE:
 		eaptls_request(handler->eap_ds, tls_session);
 		return 1;
 
 		/*
 		 *	Success: Automatically return MPPE keys.
 		 */
-	case PW_AUTHENTICATION_ACK:
+	case PW_CODE_AUTHENTICATION_ACK:
 		return eaptls_success(handler, 0);
 
 		/*
@@ -363,7 +363,7 @@ static int mod_authenticate(void *arg, eap_handler_t *handler)
 		 *	that the request now has a "proxy" packet, and
 		 *	will proxy it, rather than returning an EAP packet.
 		 */
-	case PW_STATUS_CLIENT:
+	case PW_CODE_STATUS_CLIENT:
 #ifdef WITH_PROXY
 		rad_assert(handler->request->proxy != NULL);
 #endif
