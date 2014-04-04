@@ -149,8 +149,7 @@ static void normify(REQUEST *request, VALUE_PAIR *vp, size_t min_length)
 	 */
 	if ((vp->length * 3) >= ((min_length * 4))) {
 		ssize_t decoded;
-		decoded = fr_base64_decode(vp->vp_strvalue, vp->length, buffer,
-					   sizeof(buffer));
+		decoded = fr_base64_decode(buffer, sizeof(buffer), vp->vp_strvalue, vp->length);
 		if (decoded < 0) return;
 		if (decoded >= (ssize_t) min_length) {
 			RDEBUG2("Normalizing %s from base64 encoding, %zu bytes -> %zu bytes",
@@ -227,10 +226,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 				 *	and re-write the attribute to
 				 *	have the decoded value.
 				 */
-				decoded = fr_base64_decode(vp->vp_strvalue,
-							   vp->length,
-							   digest,
-							   sizeof(digest));
+				decoded = fr_base64_decode(digest, sizeof(digest), vp->vp_strvalue, vp->length);
 				if ((decoded > 0) &&
 				    (digest[0] == '{') &&
 				    (memchr(digest, '}', decoded) != NULL)) {
@@ -272,7 +268,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 				length = vp->length - length;
 
 				new_vp = radius_paircreate(request, &request->config_items, attr, 0);
-				
+
 				/*
 				 *	The data after the '}' may be binary,
 				 *	so we copy it via memcpy.
@@ -372,8 +368,8 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 			return RLM_MODULE_NOOP;
 		}
 
-		RWDEBUG("No \"known good\" password found for the user.  Not setting Auth-Type");
-		RWDEBUG("Authentication will fail unless a \"known good\" password is available");
+		RWDEBUG("No \"known good\" password found for the user.  Not setting Auth-Type.");
+		RWDEBUG("Authentication will fail unless a \"known good\" password is available.");
 		return RLM_MODULE_NOOP;
 	}
 
@@ -394,7 +390,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 		 *	Don't print out debugging messages if we know
 		 *	they're useless.
 		 */
-		if (request->packet->code == PW_CODE_ACCESS_CHALLENGE) {
+		if (request->packet->code == PW_ACCESS_CHALLENGE) {
 			return RLM_MODULE_NOOP;
 		}
 

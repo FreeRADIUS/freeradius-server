@@ -717,7 +717,7 @@ static ssize_t base64_xlat(UNUSED void *instance, UNUSED REQUEST *request,
 		return -1;
 	}
 
-	return fr_base64_encode(p, inlen, out, outlen);
+	return fr_base64_encode(out, outlen, p, inlen);
 }
 
 /**
@@ -735,7 +735,7 @@ static ssize_t base64_to_hex_xlat(UNUSED void *instance, UNUSED REQUEST *request
 
 	*out = '\0';
 
-	declen = fr_base64_decode(fmt, len, decbuf, sizeof(decbuf));
+	declen = fr_base64_decode(decbuf, sizeof(decbuf), fmt, len);
 	if (declen < 0) {
 		REDEBUG("Base64 string invalid");
 		return -1;
