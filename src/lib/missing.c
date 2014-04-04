@@ -321,7 +321,6 @@ char *talloc_typed_strdup(void const *t, char const *p)
  *
  * @param[in] t The talloc context to hang the result off.
  * @param[in] fmt The format string.
- * @param[in] ... The parameters used to fill fmt.
  * @return The formatted string, NULL on error.
  */
 char *talloc_typed_asprintf(void const *t, char const *fmt, ...)
