@@ -336,9 +336,8 @@ static ssize_t xlat_debug_attr(UNUSED void *instance, REQUEST *request, char con
 		RDEBUG3("\t\tlength        : %zu", vp->length);
 
 		dac = talloc_memdup(request, vp->da, sizeof(DICT_ATTR));
-		if (!dac) {
-			return -1;
-		}
+		if (!dac) return -1;
+		talloc_set_type(dac, DICT_ATTR);
 		dac->flags.vp_free = 0;
 
 	next_vp:
@@ -766,7 +765,7 @@ static ssize_t xlat_tokenize_alternation(TALLOC_CTX *ctx, char *fmt, xlat_exp_t 
 		 */
 		node->alternate = talloc_zero(node, xlat_exp_t);
 		node->alternate->type = XLAT_LITERAL;
-		node->alternate->fmt = talloc_strdup(node->alternate, "");
+		node->alternate->fmt = talloc_typed_strdup(node->alternate, "");
 		*(p++) = '\0';
 
 	} else {
@@ -1214,7 +1213,7 @@ static ssize_t xlat_tokenize_literal(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **he
 			next->len = 1;
 
 			if (p[1] == '%') {
-				next->fmt = talloc_strdup(next, "%");
+				next->fmt = talloc_typed_strdup(next, "%");
 
 				XLAT_DEBUG("LITERAL <-- %s", next->fmt);
 				next->type = XLAT_LITERAL;
@@ -1501,7 +1500,7 @@ static ssize_t xlat_tokenize_request(REQUEST *request, char const *fmt, xlat_exp
 	 *	the later functions can mangle it in-place, which is
 	 *	much faster.
 	 */
-	tokens = talloc_strdup(request, fmt);
+	tokens = talloc_typed_strdup(request, fmt);
 	if (!tokens) return -1;
 
 	slen = xlat_tokenize_literal(request, tokens, head, false, &error);
@@ -1624,22 +1623,22 @@ static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, pair_lists_t list, DI
 
 	case PW_CLIENT_SHORTNAME:
 		if (request->client && request->client->shortname) {
-			return talloc_strdup(ctx, request->client->shortname);
+			return talloc_typed_strdup(ctx, request->client->shortname);
 		}
-		return talloc_strdup(ctx, "<UNKNOWN-CLIENT>");
+		return talloc_typed_strdup(ctx, "<UNKNOWN-CLIENT>");
 
 	case PW_REQUEST_PROCESSING_STAGE:
 		if (request->component) {
-			return talloc_strdup(ctx, request->component);
+			return talloc_typed_strdup(ctx, request->component);
 		}
-		return talloc_strdup(ctx, "server_core");
+		return talloc_typed_strdup(ctx, "server_core");
 
 	case PW_VIRTUAL_SERVER:
 		if (!request->server) return NULL;
-		return talloc_strdup(ctx, request->server);
+		return talloc_typed_strdup(ctx, request->server);
 
 	case PW_MODULE_RETURN_CODE:
-		return talloc_asprintf(ctx, "%d", request->simul_max); /* hack */
+		return talloc_typed_asprintf(ctx, "%d", request->simul_max); /* hack */
 	}
 
 	/*
@@ -1662,8 +1661,8 @@ static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, pair_lists_t list, DI
 
 	case PW_PACKET_TYPE:
 		dv = dict_valbyattr(PW_PACKET_TYPE, 0, packet->code);
-		if (dv) return talloc_strdup(ctx, dv->name);
-		return talloc_asprintf(ctx, "%d", packet->code);
+		if (dv) return talloc_typed_strdup(ctx, dv->name);
+		return talloc_typed_asprintf(ctx, "%d", packet->code);
 
 	case PW_RESPONSE_PACKET_TYPE:
 	{
@@ -1678,7 +1677,7 @@ static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, pair_lists_t list, DI
 				code = request->reply->code;
 			}
 
-		return talloc_strdup(ctx, fr_packet_codes[code]);
+		return talloc_typed_strdup(ctx, fr_packet_codes[code]);
 	}
 
 	case PW_PACKET_AUTHENTICATION_VECTOR:
@@ -1757,7 +1756,7 @@ do_print:
 		 *	Get the length of it.
 		 */
 		if (num == XLAT_ATTR_NUMBER) {
-			q = talloc_asprintf(ctx, "%d", (int) strlen(p));
+			q = talloc_typed_asprintf(ctx, "%d", (int) strlen(p));
 			talloc_free(p);
 			return q;
 		}
@@ -1782,7 +1781,7 @@ do_print:
 				count++;
 			}
 
-			return talloc_asprintf(ctx, "%d", count);
+			return talloc_typed_asprintf(ctx, "%d", count);
 
 		/*
 		 *	Ugly, but working.
@@ -1839,7 +1838,7 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 		 */
 	case XLAT_LITERAL:
 		XLAT_DEBUG("xlat_aprint LITERAL");
-		return talloc_strdup(ctx, node->fmt);
+		return talloc_typed_strdup(ctx, node->fmt);
 
 		/*
 		 *	Do a one-character expansion.
@@ -1955,7 +1954,7 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 
 	case XLAT_VIRTUAL:
 		XLAT_DEBUG("xlat_aprint VIRTUAL");
-		str = talloc_array(ctx, char, 1024); /* FIXME: have the module call talloc_asprintf */
+		str = talloc_array(ctx, char, 1024); /* FIXME: have the module call talloc_typed_asprintf */
 		rcode = node->xlat->func(node->xlat->instance, request, NULL, str, 1024);
 		if (rcode < 0) {
 			talloc_free(str);
@@ -1972,7 +1971,7 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 		XLAT_DEBUG("%.*sEXPAND mod %s %s", lvl, xlat_spaces, node->fmt, node->child->fmt);
 		XLAT_DEBUG("%.*s      ---> %s", lvl, xlat_spaces, child);
 
-		str = talloc_array(ctx, char, 1024); /* FIXME: have the module call talloc_asprintf */
+		str = talloc_array(ctx, char, 1024); /* FIXME: have the module call talloc_typed_asprintf */
 		*str = '\0';	/* Be sure the string is NULL terminated, we now only free on error */
 
 		rcode = node->xlat->func(node->xlat->instance, request, child, str, 1024);
@@ -1990,7 +1989,7 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 					       REQUEST_DATA_REGEX | node->num);
 		if (!child) return NULL;
 
-		str = talloc_strdup(ctx, child);
+		str = talloc_typed_strdup(ctx, child);
 		break;
 #endif
 

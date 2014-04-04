@@ -525,7 +525,7 @@ char *vp_aprinttype(TALLOC_CTX *ctx, PW_TYPE type)
 {
 	switch (type) {
 	case PW_TYPE_STRING :
-		return talloc_strdup(ctx, "_");
+		return talloc_typed_strdup(ctx, "_");
 
 	case PW_TYPE_INTEGER64:
 	case PW_TYPE_SIGNED:
@@ -533,36 +533,36 @@ char *vp_aprinttype(TALLOC_CTX *ctx, PW_TYPE type)
 	case PW_TYPE_SHORT:
 	case PW_TYPE_INTEGER:
 	case PW_TYPE_DATE :
-		return talloc_strdup(ctx, "0");
+		return talloc_typed_strdup(ctx, "0");
 
 	case PW_TYPE_IPADDR :
-		return talloc_strdup(ctx, "?.?.?.?");
+		return talloc_typed_strdup(ctx, "?.?.?.?");
 
 	case PW_TYPE_IPV4PREFIX:
-		return talloc_strdup(ctx, "?.?.?.?/?");
+		return talloc_typed_strdup(ctx, "?.?.?.?/?");
 
 	case PW_TYPE_IPV6ADDR:
-		return talloc_strdup(ctx, "[:?:]");
+		return talloc_typed_strdup(ctx, "[:?:]");
 
 	case PW_TYPE_IPV6PREFIX:
-		return talloc_strdup(ctx, "[:?:]/?");
+		return talloc_typed_strdup(ctx, "[:?:]/?");
 
 	case PW_TYPE_OCTETS:
-		return talloc_strdup(ctx, "??");
+		return talloc_typed_strdup(ctx, "??");
 
 	case PW_TYPE_ETHERNET:
-		return talloc_strdup(ctx, "??:??:??:??:??:??:??:??");
+		return talloc_typed_strdup(ctx, "??:??:??:??:??:??:??:??");
 
 #ifdef WITH_ASCEND_BINARY
 	case PW_TYPE_ABINARY:
-		return talloc_strdup(ctx, "??");
+		return talloc_typed_strdup(ctx, "??");
 #endif
 
 	default :
 		break;
 	}
 
-	return talloc_strdup(ctx, "<UNKNOWN-TYPE>");
+	return talloc_typed_strdup(ctx, "<UNKNOWN-TYPE>");
 }
 
 /*
@@ -599,23 +599,23 @@ char *vp_aprint(TALLOC_CTX *ctx, VALUE_PAIR const *vp)
 			dv = dict_valbyattr(vp->da->attr, vp->da->vendor,
 					    vp->vp_integer);
 			if (dv) {
-				p = talloc_strdup(ctx, dv->name);
+				p = talloc_typed_strdup(ctx, dv->name);
 			} else {
-				p = talloc_asprintf(ctx, "%u", vp->vp_integer);
+				p = talloc_typed_asprintf(ctx, "%u", vp->vp_integer);
 			}
 		}
 		break;
 
 	case PW_TYPE_SIGNED:
-		p = talloc_asprintf(ctx, "%d", vp->vp_signed);
+		p = talloc_typed_asprintf(ctx, "%d", vp->vp_signed);
 		break;
 
 	case PW_TYPE_INTEGER64:
-		p = talloc_asprintf(ctx, "%" PRIu64 , vp->vp_integer64);
+		p = talloc_typed_asprintf(ctx, "%" PRIu64 , vp->vp_integer64);
 		break;
 
 	case PW_TYPE_ETHERNET:
-		p = talloc_asprintf(ctx, "%02x:%02x:%02x:%02x:%02x:%02x",
+		p = talloc_typed_asprintf(ctx, "%02x:%02x:%02x:%02x:%02x:%02x",
 				    vp->vp_ether[0], vp->vp_ether[1],
 				    vp->vp_ether[2], vp->vp_ether[3],
 				    vp->vp_ether[4], vp->vp_ether[5]);
@@ -665,7 +665,7 @@ char *vp_aprint(TALLOC_CTX *ctx, VALUE_PAIR const *vp)
 			buff[0] = '\0';
 			vp_prints_value(buff, sizeof(buff), vp, 0);
 
-			p = talloc_strdup(ctx, buff);
+			p = talloc_typed_strdup(ctx, buff);
 		}
 		break;
 
@@ -677,12 +677,12 @@ char *vp_aprint(TALLOC_CTX *ctx, VALUE_PAIR const *vp)
 			buff[0] = '\0';
 			vp_prints_value(buff, sizeof(buff), vp, 0);
 
-			p = talloc_strdup(ctx, buff);
+			p = talloc_typed_strdup(ctx, buff);
 		}
 		break;
 
 	case PW_TYPE_IFID:
-		p = talloc_asprintf(ctx, "%x:%x:%x:%x",
+		p = talloc_typed_asprintf(ctx, "%x:%x:%x:%x",
 				    (vp->vp_ifid[0] << 8) | vp->vp_ifid[1],
 				    (vp->vp_ifid[2] << 8) | vp->vp_ifid[3],
 				    (vp->vp_ifid[4] << 8) | vp->vp_ifid[5],

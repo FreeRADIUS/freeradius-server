@@ -199,7 +199,7 @@ static CONF_PAIR *cf_pair_alloc(CONF_SECTION *parent, char const *attr,
 	cp->value_type = value_type;
 	cp->op = op;
 
-	cp->attr = talloc_strdup(cp, attr);
+	cp->attr = talloc_typed_strdup(cp, attr);
 	if (!cp->attr) {
 	error:
 		talloc_free(cp);
@@ -207,7 +207,7 @@ static CONF_PAIR *cf_pair_alloc(CONF_SECTION *parent, char const *attr,
 	}
 
 	if (value) {
-		cp->value = talloc_strdup(cp, value);
+		cp->value = talloc_typed_strdup(cp, value);
 		if (!cp->value) goto error;
 	}
 
@@ -347,7 +347,7 @@ CONF_SECTION *cf_section_alloc(CONF_SECTION *parent, char const *name1,
 	cs->item.type = CONF_ITEM_SECTION;
 	cs->item.parent = parent;
 
-	cs->name1 = talloc_strdup(cs, name1);
+	cs->name1 = talloc_typed_strdup(cs, name1);
 	if (!cs->name1) {
 	error:
 		talloc_free(cs);
@@ -355,7 +355,7 @@ CONF_SECTION *cf_section_alloc(CONF_SECTION *parent, char const *name1,
 	}
 
 	if (name2 && *name2) {
-		cs->name2 = talloc_strdup(cs, name2);
+		cs->name2 = talloc_typed_strdup(cs, name2);
 		if (!cs->name2) goto error;
 	}
 
@@ -1031,7 +1031,7 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, int type, void *data, char
 			cf_log_info(cs, "%.*s\t%s = \"%s\"",
 				    cs->depth, parse_spaces, name, value ? value : "(null)");
 		}
-		*q = value ? talloc_strdup(cs, value) : NULL;
+		*q = value ? talloc_typed_strdup(cs, value) : NULL;
 		break;
 
 		/*
@@ -1070,7 +1070,7 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, int type, void *data, char
 
 		cf_log_info(cs, "%.*s\t%s = \"%s\"",
 			    cs->depth, parse_spaces, name, value);
-		*q = value ? talloc_strdup(cs, value) : NULL;
+		*q = value ? talloc_typed_strdup(cs, value) : NULL;
 
 		/*
 		 *	And now we "stat" the file.
@@ -1931,7 +1931,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			 */
 			memcpy(&p, &nextcs->name2, sizeof(nextcs->name2));
 			talloc_free(p);
-			nextcs->name2 = talloc_strdup(nextcs, buf2);
+			nextcs->name2 = talloc_typed_strdup(nextcs, buf2);
 
 			goto section_alloc;
 		}
@@ -2619,7 +2619,7 @@ static CONF_DATA *cf_data_alloc(CONF_SECTION *parent, char const *name,
 
 	cd->item.type = CONF_ITEM_DATA;
 	cd->item.parent = parent;
-	cd->name = talloc_strdup(cd, name);
+	cd->name = talloc_typed_strdup(cd, name);
 	if (!cd) {
 		talloc_free(cd);
 		return NULL;

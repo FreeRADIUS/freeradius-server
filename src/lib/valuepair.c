@@ -539,7 +539,7 @@ VALUE_PAIR *paircopyvp(TALLOC_CTX *ctx, VALUE_PAIR const *vp)
 	 *	Now copy the value
 	 */
 	if (vp->type == VT_XLAT) {
-		n->value.xlat = talloc_strdup(n, n->value.xlat);
+		n->value.xlat = talloc_typed_strdup(n, n->value.xlat);
 	}
 
 	n->da = dict_attr_copy(vp->da, true);
@@ -550,19 +550,20 @@ VALUE_PAIR *paircopyvp(TALLOC_CTX *ctx, VALUE_PAIR const *vp)
 
 	n->next = NULL;
 
-	if ((n->da->type == PW_TYPE_TLV) ||
-	    (n->da->type == PW_TYPE_OCTETS)) {
-		if (n->vp_octets != NULL) {
-			n->vp_octets = talloc_memdup(n, vp->vp_octets, n->length);
-		}
+	if (n->data.ptr) switch (n->da->type) {
+	case PW_TYPE_TLV:
+	case PW_TYPE_OCTETS:
+		n->vp_octets = talloc_memdup(n, vp->vp_octets, n->length);
+		talloc_set_type(n->vp_octets, uint8_t);
+		break;
 
-	} else if (n->da->type == PW_TYPE_STRING) {
-		if (n->vp_strvalue != NULL) {
-			/*
-			 *	Equivalent to, and faster than strdup.
-			 */
-			n->vp_strvalue = talloc_memdup(n, vp->vp_strvalue, n->length + 1);
-		}
+	case PW_TYPE_STRING:
+		n->vp_strvalue = talloc_memdup(n, vp->vp_strvalue, n->length + 1);	/* NULL byte */
+		talloc_set_type(n->vp_strvalue, char);
+		break;
+
+	default:
+		break;
 	}
 
 	return n;
@@ -655,24 +656,23 @@ VALUE_PAIR *paircopyvpdata(TALLOC_CTX *ctx, DICT_ATTR const *da, VALUE_PAIR cons
 	n->da = da;
 
 	if (n->type == VT_XLAT) {
-		n->value.xlat = talloc_strdup(n, n->value.xlat);
+		n->value.xlat = talloc_typed_strdup(n, n->value.xlat);
 	}
 
-	switch (n->da->type) {
-		case PW_TYPE_TLV:
-		case PW_TYPE_OCTETS:
-			if (n->vp_octets != NULL) {
-				n->vp_octets = talloc_memdup(n, vp->vp_octets, n->length);
-			}
-			break;
+	if (n->data.ptr) switch (n->da->type) {
+	case PW_TYPE_TLV:
+	case PW_TYPE_OCTETS:
+		n->vp_octets = talloc_memdup(n, vp->vp_octets, n->length);
+		talloc_set_type(n->vp_octets, uint8_t);
+		break;
 
-		case PW_TYPE_STRING:
-			if (n->vp_strvalue != NULL) {
-				n->vp_strvalue = talloc_memdup(n, vp->vp_strvalue, n->length + 1);	/* NULL byte */
-			}
-			break;
-		default:
-			return NULL;
+	case PW_TYPE_STRING:
+		n->vp_strvalue = talloc_memdup(n, vp->vp_strvalue, n->length + 1);	/* NULL byte */
+		talloc_set_type(n->vp_strvalue, char);
+		break;
+
+	default:
+		break;
 	}
 
 	n->next = NULL;
@@ -1058,7 +1058,7 @@ bool pairparsevalue(VALUE_PAIR *vp, char const *value)
 		/*
 		 *	Do escaping here
 		 */
-		p = talloc_strdup(vp, value);
+		p = talloc_typed_strdup(vp, value);
 		vp->vp_strvalue = p;
 		cp = value;
 		length = 0;
@@ -1318,6 +1318,7 @@ bool pairparsevalue(VALUE_PAIR *vp, char const *value)
 			vp->vp_octets = us;
 		} else {
 			pairstrcpy(vp, value);
+			talloc_set_type(vp->vp_octets, uint8_t);	/* fixup type */
 		}
 		break;
 
@@ -1889,7 +1890,7 @@ int pairmark_xlat(VALUE_PAIR *vp, char const *value)
 		return -1;
 	}
 
-	raw = talloc_strdup(vp, value);
+	raw = talloc_typed_strdup(vp, value);
 	if (!raw) {
 		return -1;
 	}
@@ -2558,6 +2559,29 @@ int paircmp_op(VALUE_PAIR const *one, FR_TOKEN op, VALUE_PAIR const *two)
 	}
 }
 
+/** Set the type of the VALUE_PAIR value buffer to match it's DICT_ATTR
+ *
+ * @param vp to fixup.
+ */
+void pairtypeset(VALUE_PAIR *vp)
+{
+	if (!vp->data.ptr) return;
+
+	switch(vp->da->type) {
+	case PW_TYPE_OCTETS:
+	case PW_TYPE_TLV:
+		talloc_set_type(vp->data.ptr, uint8_t);
+		return;
+
+	case PW_TYPE_STRING:
+		talloc_set_type(vp->data.ptr, char);
+		return;
+
+	default:
+		return;
+	}
+}
+
 /** Copy data into an "octets" data type.
  *
  * @param[in,out] vp to update
@@ -2572,12 +2596,14 @@ void pairmemcpy(VALUE_PAIR *vp, uint8_t const *src, size_t size)
 
 	p = talloc_memdup(vp, src, size);
 	if (!p) return;
+	talloc_set_type(p, uint8_t);
 
 	memcpy(&q, &vp->vp_octets, sizeof(q));
 	talloc_free(q);
 
 	vp->vp_octets = p;
 	vp->length = size;
+	pairtypeset(vp);
 }
 
 /** Reparent an allocated octet buffer to a VALUE_PAIR
@@ -2597,6 +2623,7 @@ void pairmemsteal(VALUE_PAIR *vp, uint8_t const *src)
 	vp->vp_octets = talloc_steal(vp, src);
 	vp->type = VT_DATA;
 	vp->length = talloc_array_length(vp->vp_octets);
+	pairtypeset(vp);
 }
 
 /** Reparent an allocated char buffer to a VALUE_PAIR
@@ -2616,6 +2643,7 @@ void pairstrsteal(VALUE_PAIR *vp, char const *src)
 	vp->vp_strvalue = talloc_steal(vp, src);
 	vp->type = VT_DATA;
 	vp->length = talloc_array_length(vp->vp_strvalue) - 1;
+	pairtypeset(vp);
 }
 
 /** Copy data into an "string" data type.
@@ -2630,6 +2658,7 @@ void pairstrcpy(VALUE_PAIR *vp, char const *src)
 	VERIFY_VP(vp);
 
 	p = talloc_strdup(vp, src);
+
 	if (!p) return;
 
 	memcpy(&q, &vp->vp_strvalue, sizeof(q));
@@ -2638,6 +2667,7 @@ void pairstrcpy(VALUE_PAIR *vp, char const *src)
 	vp->vp_strvalue = p;
 	vp->type = VT_DATA;
 	vp->length = talloc_array_length(vp->vp_strvalue) - 1;
+	pairtypeset(vp);
 }
 
 
@@ -2666,5 +2696,6 @@ void pairsprintf(VALUE_PAIR *vp, char const *fmt, ...)
 	vp->type = VT_DATA;
 
 	vp->length = talloc_array_length(vp->vp_strvalue) - 1;
+	pairtypeset(vp);
 }
 

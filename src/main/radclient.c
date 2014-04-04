@@ -424,15 +424,14 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 					vp->length += 2;
 					p[1] = vp->length;
 
-					pairmemsteal(vp, p);
-
 					da = dict_attrbyvalue(PW_DIGEST_ATTRIBUTES, 0);
 					if (!da) {
 						fprintf(stderr, "radclient: Out of memory\n");
 						goto error;
 					}
-
 					vp->da = da;
+					pairtypeset(vp);
+					pairmemsteal(vp, p);
 				}
 
 				break;

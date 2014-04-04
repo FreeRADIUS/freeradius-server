@@ -113,7 +113,7 @@ int fb_error(rlm_sql_firebird_conn_t *conn)
 		 *	API.
 		 */
 		isc_interprete(&error[0], &pstatus);
-		conn->error = talloc_asprintf(conn, "%s. ", &error[0]);
+		conn->error = talloc_typed_asprintf(conn, "%s. ", &error[0]);
 
 		while (isc_interprete(&error[0], &pstatus)) {
 			conn->error = talloc_asprintf_append(conn->error, "%s. ", &error[0]);

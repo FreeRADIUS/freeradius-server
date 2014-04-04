@@ -368,7 +368,7 @@ static ldap_rcode_t rlm_ldap_result(ldap_instance_t const *inst, ldap_handle_t c
 		len = rlm_ldap_common_dn(dn, part_dn);
 		if (len < 0) break;
 
-		our_err = talloc_asprintf(conn, "Match stopped here: [%.*s]%s", len, dn, part_dn ? part_dn : "");
+		our_err = talloc_typed_asprintf(conn, "Match stopped here: [%.*s]%s", len, dn, part_dn ? part_dn : "");
 
 		goto error_string;
 

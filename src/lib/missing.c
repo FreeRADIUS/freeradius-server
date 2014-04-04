@@ -291,3 +291,49 @@ uint128_t ntohlll(uint128_t const num)
 	return *(uint128_t *)ret;
 }
 #endif
+
+/** Call talloc strdup, setting the type on the new chunk correctly
+ *
+ * For some bizarre reason the talloc string functions don't set the
+ * memory chunk type to char, which causes all kinds of issues with
+ * verifying VALUE_PAIRs.
+ *
+ * @param[in] t The talloc context to hang the result off.
+ * @param[in] p The string you want to duplicate.
+ * @return The duplicated string, NULL on error.
+ */
+char *talloc_typed_strdup(void const *t, char const *p)
+{
+	char *n;
+
+	n = talloc_strdup(t, p);
+	if (!n) return NULL;
+	talloc_set_type(n, char);
+
+	return n;
+}
+
+/** Call talloc vasprintf, setting the type on the new chunk correctly
+ *
+ * For some bizarre reason the talloc string functions don't set the
+ * memory chunk type to char, which causes all kinds of issues with
+ * verifying VALUE_PAIRs.
+ *
+ * @param[in] t The talloc context to hang the result off.
+ * @param[in] fmt The format string.
+ * @param[in] ... The parameters used to fill fmt.
+ * @return The formatted string, NULL on error.
+ */
+char *talloc_typed_asprintf(void const *t, char const *fmt, ...)
+{
+	char *n;
+	va_list ap;
+
+	va_start(ap, fmt);
+	n = talloc_vasprintf(t, fmt, ap);
+	va_end(ap);
+	if (!n) return NULL;
+	talloc_set_type(n, char);
+
+	return n;
+}

@@ -651,9 +651,9 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int in_server)
 		}
 
 		if (prefix_ptr) *prefix_ptr = '/';
-		c->longname = talloc_strdup(c, name2);
+		c->longname = talloc_typed_strdup(c, name2);
 
-		if (!c->shortname) c->shortname = talloc_strdup(c, c->longname);
+		if (!c->shortname) c->shortname = talloc_typed_strdup(c, c->longname);
 
 	} else {
 		char buffer[1024];
@@ -687,12 +687,12 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int in_server)
 		}
 
 		ip_ntoh(&c->ipaddr, buffer, sizeof(buffer));
-		c->longname = talloc_strdup(c, buffer);
+		c->longname = talloc_typed_strdup(c, buffer);
 
 		/*
 		 *	Set the short name to the name2
 		 */
-		if (!c->shortname) c->shortname = talloc_strdup(c, name2);
+		if (!c->shortname) c->shortname = talloc_typed_strdup(c, name2);
 
 		c->proto = IPPROTO_UDP;
 		if (hs_proto) {
@@ -760,7 +760,7 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int in_server)
 
 #ifdef WITH_DYNAMIC_CLIENTS
 	if (c->client_server) {
-		c->secret = talloc_strdup(c, "testing123");
+		c->secret = talloc_typed_strdup(c, "testing123");
 
 		if (((c->ipaddr.af == AF_INET) &&
 		     (c->prefix == 32)) ||
@@ -796,7 +796,7 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int in_server)
 		 *	"radsec".  See RFC 6614.
 		 */
 		if (c->tls_required) {
-			c->secret = talloc_strdup(cs, "radsec");
+			c->secret = talloc_typed_strdup(cs, "radsec");
 		} else
 #endif
 
@@ -1059,7 +1059,7 @@ bool client_validate(RADCLIENT_LIST *clients, RADCLIENT *master, RADCLIENT *c)
 	 *	definition.
 	 */
 	if (master->server && !c->server) {
-		c->server = talloc_strdup(c, master->server);
+		c->server = talloc_typed_strdup(c, master->server);
 	}
 
 	/*
@@ -1087,7 +1087,7 @@ bool client_validate(RADCLIENT_LIST *clients, RADCLIENT *master, RADCLIENT *c)
 	c->dynamic = true;
 	c->lifetime = master->lifetime;
 	c->created = time(NULL);
-	c->longname = talloc_strdup(c, c->shortname);
+	c->longname = talloc_typed_strdup(c, c->shortname);
 
 	DEBUG("- Added client %s with shared secret %s",
 	      ip_ntoh(&c->ipaddr, buffer, sizeof(buffer)),
@@ -1127,7 +1127,7 @@ RADCLIENT *client_from_query(TALLOC_CTX *ctx, char const *identifier, char const
 	c->dynamic = true;
 #endif
 
-	id = talloc_strdup(c, identifier);
+	id = talloc_typed_strdup(c, identifier);
 
 	/*
 	 *	Look for prefixes
@@ -1160,7 +1160,7 @@ RADCLIENT *client_from_query(TALLOC_CTX *ctx, char const *identifier, char const
 	{
 		char buffer[256];
 		ip_ntoh(&c->ipaddr, buffer, sizeof(buffer));
-		c->longname = talloc_strdup(c, buffer);
+		c->longname = talloc_typed_strdup(c, buffer);
 	}
 
 	if (c->prefix < 0) switch (c->ipaddr.af) {
@@ -1177,18 +1177,18 @@ RADCLIENT *client_from_query(TALLOC_CTX *ctx, char const *identifier, char const
 	/*
 	 *	Other values (secret, shortname, nas_type, virtual_server)
 	 */
-	c->secret = talloc_strdup(c, secret);
+	c->secret = talloc_typed_strdup(c, secret);
 
 	if (shortname) {
-		c->shortname = talloc_strdup(c, shortname);
+		c->shortname = talloc_typed_strdup(c, shortname);
 	}
 
 	if (type) {
-		c->nas_type = talloc_strdup(c, type);
+		c->nas_type = talloc_typed_strdup(c, type);
 	}
 
 	if (server) {
-		c->server = talloc_strdup(c, server);
+		c->server = talloc_typed_strdup(c, server);
 	}
 
 	c->message_authenticator = require_ma;
@@ -1294,7 +1294,7 @@ RADCLIENT *client_from_request(RADCLIENT_LIST *clients, REQUEST *request)
 			p = (char **) ((char *) c + dynamic_config[i].offset);
 			if (*p) talloc_free(*p);
 			if (vp->vp_strvalue[0]) {
-				*p = talloc_strdup(c->cs, vp->vp_strvalue);
+				*p = talloc_typed_strdup(c->cs, vp->vp_strvalue);
 			} else {
 				*p = NULL;
 			}

@@ -141,7 +141,7 @@ static REQUEST *request_setup(FILE *fp)
 	request->master_state = REQUEST_ACTIVE;
 	request->child_state = REQUEST_RUNNING;
 	request->handle = NULL;
-	request->server = talloc_strdup(request, "default");
+	request->server = talloc_typed_strdup(request, "default");
 
 	request->root = &mainconfig;
 
@@ -438,7 +438,7 @@ int main(int argc, char *argv[])
 				break;
 
 			case 'D':
-				mainconfig.dictionary_dir = talloc_strdup(NULL, optarg);
+				mainconfig.dictionary_dir = talloc_typed_strdup(NULL, optarg);
 				break;
 
 			case 'f':

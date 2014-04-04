@@ -424,11 +424,11 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	char const *pool_name = NULL;
 
 	pool_name = cf_section_name2(conf);
-	if (pool_name != NULL)
-		inst->pool_name = talloc_strdup(inst, pool_name);
-	else
-		inst->pool_name = talloc_strdup(inst, "ippool");
-
+	if (pool_name != NULL) {
+		inst->pool_name = talloc_typed_strdup(inst, pool_name);
+	} else {
+		inst->pool_name = talloc_typed_strdup(inst, "ippool");
+	}
 	sqlinst = find_module_instance(cf_section_find("modules"),
 				       inst->sql_instance_name, 1);
 	if (!sqlinst) {

@@ -2375,7 +2375,7 @@ ssize_t rest_uri_host_unescape(char **out, UNUSED rlm_rest_t *instance, REQUEST 
 		return -1;
 	}
 
-	MEM(*out = talloc_asprintf(request, "%s%s", scheme, p));
+	MEM(*out = talloc_typed_asprintf(request, "%s%s", scheme, p));
 	curl_free(scheme);
 
 	return talloc_array_length(*out) - 1;	/* array_length includes \0 */

@@ -241,7 +241,7 @@ static int mod_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
 
 	INFO("rlm_sql_sqlite: SQLite library version: %s", sqlite3_libversion());
 	if (!driver->filename) {
-		MEM(driver->filename = talloc_asprintf(driver, "%s/%s", get_radius_dir(), config->sql_db));
+		MEM(driver->filename = talloc_typed_asprintf(driver, "%s/%s", get_radius_dir(), config->sql_db));
 	}
 
 	exists = rad_file_exists(driver->filename);
@@ -268,7 +268,7 @@ static int mod_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
 			buff = talloc_array(conf, char, len);
 			strlcpy(buff, driver->filename, len);
 		} else {
-			MEM(buff = talloc_strdup(conf, driver->filename));
+			MEM(buff = talloc_typed_strdup(conf, driver->filename));
 		}
 
 		ret = rad_mkdir(buff, 0700);
@@ -527,11 +527,11 @@ static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t *con
 	for (i = 0; i < conn->col_count; i++) {
 		switch (sqlite3_column_type(conn->statement, i)) {
 		case SQLITE_INTEGER:
-			MEM(row[i] = talloc_asprintf(row, "%d", sqlite3_column_int(conn->statement, i)));
+			MEM(row[i] = talloc_typed_asprintf(row, "%d", sqlite3_column_int(conn->statement, i)));
 			break;
 
 		case SQLITE_FLOAT:
-			MEM(row[i] = talloc_asprintf(row, "%f", sqlite3_column_double(conn->statement, i)));
+			MEM(row[i] = talloc_typed_asprintf(row, "%f", sqlite3_column_double(conn->statement, i)));
 			break;
 
 		case SQLITE_TEXT:
@@ -540,7 +540,7 @@ static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t *con
 				p = (char const *) sqlite3_column_text(conn->statement, i);
 
 				if (p) {
-					MEM(row[i] = talloc_strdup(row, p));
+					MEM(row[i] = talloc_typed_strdup(row, p));
 				}
 			}
 			break;

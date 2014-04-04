@@ -163,7 +163,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	inst->name = NULL;
 	pool_name = cf_section_name2(conf);
 	if (pool_name != NULL) {
-		inst->name = talloc_strdup(inst, pool_name);
+		inst->name = talloc_typed_strdup(inst, pool_name);
 	}
 
 	cache_size = inst->cache_size;

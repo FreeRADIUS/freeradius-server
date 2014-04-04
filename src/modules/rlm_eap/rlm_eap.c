@@ -686,9 +686,8 @@ static rlm_rcode_t mod_post_proxy(void *inst, REQUEST *request)
 	 */
 	i = 34;
 	p = talloc_memdup(vp, vp->vp_octets, vp->length);
-	len = rad_tunnel_pwdecode((uint8_t *)p + 17, &i,
-				  request->home_server->secret,
-				  request->proxy->vector);
+	talloc_set_type(p, uint8_t);
+	len = rad_tunnel_pwdecode((uint8_t *)p + 17, &i, request->home_server->secret, request->proxy->vector);
 
 	/*
 	 *	FIXME: Assert that i == 16.

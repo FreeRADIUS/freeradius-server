@@ -184,8 +184,8 @@ static int sql_init_socket(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
 	talloc_set_destructor((void *) conn, sql_socket_destructor);
 
 	dbstring = strchr(config->sql_db, '=') ?
-		talloc_strdup(conn, config->sql_db) :
-		talloc_asprintf(conn, "dbname='%s'", config->sql_db);
+		talloc_typed_strdup(conn, config->sql_db) :
+		talloc_typed_asprintf(conn, "dbname='%s'", config->sql_db);
 
 	if (config->sql_server[0] != '\0') {
 		dbstring = talloc_asprintf_append(dbstring, " host='%s'", config->sql_server);

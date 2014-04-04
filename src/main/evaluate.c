@@ -95,7 +95,7 @@ static int radius_expand_tmpl(char **out, REQUEST *request, value_pair_tmpl_t co
 	switch (vpt->type) {
 	case VPT_TYPE_LITERAL:
 		EVAL_DEBUG("TMPL LITERAL");
-		*out = talloc_strdup(request, vpt->name);
+		*out = talloc_typed_strdup(request, vpt->name);
 		break;
 
 	case VPT_TYPE_EXEC:
@@ -335,11 +335,11 @@ static bool do_cast_copy(VALUE_PAIR *dst, VALUE_PAIR const *src)
 
 	if (dst->da->type == PW_TYPE_OCTETS) {
 		if (src->da->type == PW_TYPE_STRING) {
-			dst->vp_octets = talloc_memdup(dst, src->vp_strvalue,
-						       src->length);
+			dst->vp_octets = talloc_memdup(dst, src->vp_strvalue, src->length);
+			talloc_set_type(dst->vp_octets, uint8_t);
 		} else {
-			dst->vp_octets = talloc_memdup(dst, &src->data,
-						       src->length);
+			dst->vp_octets = talloc_memdup(dst, &src->data, src->length);
+			talloc_set_type(dst->vp_octets, uint8_t);
 		}
 
 		dst->length = src->length;
@@ -651,7 +651,7 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 			    (map->dst->da->vendor == 0) &&
 			    radius_find_compare(map->dst->da)) {
 				rhs_vp = pairalloc(request, map->dst->da);
-				rad_assert(rhs_vp != NULL);		
+				rad_assert(rhs_vp != NULL);
 				if (!pairparsevalue(rhs_vp, rhs)) {
 					talloc_free(rhs);
 					EVAL_DEBUG("FAIL %d", __LINE__);

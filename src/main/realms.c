@@ -491,7 +491,7 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 	 *	Use a reasonable default.
 	 */
  skip_port:
-	if (!hs_type) hs_type = talloc_strdup(cs, "auth+acct");
+	if (!hs_type) hs_type = talloc_typed_strdup(cs, "auth+acct");
 
 	if (strcasecmp(hs_type, "auth") == 0) {
 		home->type = HOME_TYPE_AUTH;

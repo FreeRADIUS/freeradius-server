@@ -265,7 +265,7 @@ static char const *sql_error(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *
 
 	TALLOC_FREE(conn->error);
 	SQLGetDiagRec(SQL_HANDLE_STMT, conn->stmt, 1, (SQLCHAR *) sqlstate, &err, (SQLCHAR *) msg, sizeof(msg), &rl);
-	conn->error = talloc_asprintf(conn, "sqlstate %s: %s", sqlstate, msg);
+	conn->error = talloc_typed_asprintf(conn, "sqlstate %s: %s", sqlstate, msg);
 
 	return conn->error;
 }

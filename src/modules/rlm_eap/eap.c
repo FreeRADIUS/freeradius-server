@@ -115,7 +115,7 @@ int eap_module_load(rlm_eap_t *inst, eap_module_t **m_inst, eap_type_t num, CONF
 	/*
 	 *	The name of the module were trying to load
 	 */
-	mod_name = talloc_asprintf(method, "rlm_eap_%s", method->name);
+	mod_name = talloc_typed_asprintf(method, "rlm_eap_%s", method->name);
 
 	/*
 	 *	dlopen is case sensitive

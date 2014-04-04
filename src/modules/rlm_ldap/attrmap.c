@@ -283,7 +283,7 @@ int rlm_ldap_map_xlat(REQUEST *request, value_pair_map_t const *maps, rlm_ldap_m
 			found = pairfind(*from, map->src->da->attr, map->src->da->vendor, TAG_ANY);
 			if (!found) continue;
 
-			expanded->attrs[total++] = talloc_strdup(request, found->vp_strvalue);
+			expanded->attrs[total++] = talloc_typed_strdup(request, found->vp_strvalue);
 			break;
 
 		case VPT_TYPE_EXEC:
@@ -300,7 +300,7 @@ int rlm_ldap_map_xlat(REQUEST *request, value_pair_map_t const *maps, rlm_ldap_m
 				return -1;
 			}
 
-			expanded->attrs[total++] = talloc_strdup(request, answer);
+			expanded->attrs[total++] = talloc_typed_strdup(request, answer);
 		}
 			break;
 

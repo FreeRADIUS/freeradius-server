@@ -1625,7 +1625,7 @@ static modcallable *do_compile_modupdate(modcallable *parent, UNUSED rlm_compone
 				map->src->vpd = vpd = talloc_zero(map->src, value_data_t);
 				rad_assert(vpd != NULL);
 
-				vpd->strvalue = talloc_strdup(vpd, map->src->name);
+				vpd->strvalue = talloc_typed_strdup(vpd, map->src->name);
 				rad_assert(vpd->strvalue != NULL);
 				map->dst->type = VPT_TYPE_DATA;
 
@@ -2713,7 +2713,7 @@ static bool pass2_xlat_compile(CONF_ITEM const *ci, value_pair_tmpl_t *vpt)
 
 	rad_assert(vpt->type == VPT_TYPE_XLAT);
 
-	fmt = talloc_strdup(vpt, vpt->name);
+	fmt = talloc_typed_strdup(vpt, vpt->name);
 	slen = xlat_tokenize(vpt, fmt, &head, &error);
 
 	if (slen < 0) {
