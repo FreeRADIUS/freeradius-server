@@ -414,6 +414,23 @@ typedef struct radius_packet {
 #endif
 } RADIUS_PACKET;
 
+typedef enum {
+	DECODE_FAIL_NONE = 0,
+	DECODE_FAIL_MIN_LENGTH_PACKET,
+	DECODE_FAIL_MIN_LENGTH_FIELD,
+	DECODE_FAIL_MIN_LENGTH_MISMATCH,
+	DECODE_FAIL_HEADER_OVERFLOW,
+	DECODE_FAIL_UNKNOWN_PACKET_CODE,
+	DECODE_FAIL_INVALID_ATTRIBUTE,
+	DECODE_FAIL_ATTRIBUTE_TOO_SHORT,
+	DECODE_FAIL_ATTRIBUTE_OVERFLOW,
+	DECODE_FAIL_MA_INVALID_LENGTH,
+	DECODE_FAIL_ATTRIBUTE_UNDERFLOW,
+	DECODE_FAIL_TOO_MANY_ATTRIBUTES,
+	DECODE_FAIL_MA_MISSING,
+	DECODE_FAIL_MAX
+} decode_fail_t;
+
 /*
  *	Version check.
  */
@@ -461,7 +478,7 @@ DICT_ATTR const	*dict_attrbyname(char const *attr);
 DICT_ATTR const	*dict_attrbytype(unsigned int attr, unsigned int vendor,
 				 PW_TYPE type);
 DICT_ATTR const	*dict_attrbyparent(DICT_ATTR const *parent, unsigned int attr,
-				   unsigned int vendor);
+					   unsigned int vendor);
 int		dict_attr_child(DICT_ATTR const *parent,
 				unsigned int *pattr, unsigned int *pvendor);
 DICT_VALUE	*dict_valbyattr(unsigned int attr, unsigned int vendor, int val);
@@ -522,8 +539,7 @@ int		rad_chap_encode(RADIUS_PACKET *packet, uint8_t *output,
 				int id, VALUE_PAIR *password);
 
 int		rad_attr_ok(RADIUS_PACKET const *packet, RADIUS_PACKET const *original,
-			    DICT_ATTR *da,
-			    uint8_t const *data, size_t length);
+			    DICT_ATTR *da, uint8_t const *data, size_t length);
 int		rad_tlv_ok(uint8_t const *data, size_t length,
 			   size_t dv_type, size_t dv_length);
 
@@ -542,7 +558,6 @@ int		rad_vp2extended(RADIUS_PACKET const *packet,
 				RADIUS_PACKET const *original,
 				char const *secret, VALUE_PAIR const **pvp,
 				uint8_t *ptr, size_t room);
-
 int		rad_vp2wimax(RADIUS_PACKET const *packet,
 			     RADIUS_PACKET const *original,
 			     char const *secret, VALUE_PAIR const **pvp,
@@ -551,6 +566,7 @@ int		rad_vp2wimax(RADIUS_PACKET const *packet,
 int		rad_vp2vsa(RADIUS_PACKET const *packet, RADIUS_PACKET const *original,
 			   char const *secret, VALUE_PAIR const **pvp, uint8_t *start,
 			   size_t room);
+
 int		rad_vp2rfc(RADIUS_PACKET const *packet,
 			   RADIUS_PACKET const *original,
 			   char const *secret, VALUE_PAIR const **pvp,
@@ -582,10 +598,17 @@ VALUE_PAIR	*fr_cursor_replace(vp_cursor_t *cursor, VALUE_PAIR *new);
 void		pairdelete(VALUE_PAIR **, unsigned int attr, unsigned int vendor, int8_t tag);
 void		pairadd(VALUE_PAIR **, VALUE_PAIR *);
 void		pairreplace(VALUE_PAIR **first, VALUE_PAIR *add);
-int		paircmp(VALUE_PAIR *check, VALUE_PAIR *data);
-int		paircmp_op(VALUE_PAIR const *one, FR_TOKEN op, VALUE_PAIR const *two);
-void		pairsort(VALUE_PAIR **vps, bool with_tag);
+int8_t		paircmp_value(VALUE_PAIR const *a, VALUE_PAIR const *b);
+int8_t		paircmp_op(VALUE_PAIR const *a, FR_TOKEN op, VALUE_PAIR const *b);
+int8_t		paircmp(VALUE_PAIR *a, VALUE_PAIR *b);
+int8_t		pairlistcmp(VALUE_PAIR *a, VALUE_PAIR *b);
+
+typedef int8_t (*fr_pair_cmp_t)(VALUE_PAIR const *a, VALUE_PAIR const *b);
+int8_t		attrcmp(VALUE_PAIR const *a, VALUE_PAIR const *b);
+int8_t		attrtagcmp(VALUE_PAIR const *a, VALUE_PAIR const *b);
+void		pairsort(VALUE_PAIR **vps, fr_pair_cmp_t cmp);
 bool		pairvalidate(VALUE_PAIR *filter, VALUE_PAIR *list);
+bool 		pairvalidate_relaxed(VALUE_PAIR *filter, VALUE_PAIR *list);
 VALUE_PAIR	*paircopyvp(TALLOC_CTX *ctx, VALUE_PAIR const *vp);
 VALUE_PAIR	*paircopyvpdata(TALLOC_CTX *ctx, DICT_ATTR const *da, VALUE_PAIR const *vp);
 VALUE_PAIR	*paircopy(TALLOC_CTX *ctx, VALUE_PAIR *from);
@@ -604,9 +627,9 @@ void		pairsprintf(VALUE_PAIR *vp, char const * fmt, ...)
 void		pairmove(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from);
 void		pairfilter(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from,
 			   unsigned int attr, unsigned int vendor, int8_t tag);
+VALUE_PAIR	*pairmake_ip(TALLOC_CTX *ctx, char const *value,
+			     DICT_ATTR *ipv4, DICT_ATTR *ipv6, DICT_ATTR *ipv4_prefix, DICT_ATTR *ipv6_prefix);
 bool		pairparsevalue(VALUE_PAIR *vp, char const *value);
-VALUE_PAIR	*pairmake_ip(TALLOC_CTX *ctx, char const *value, DICT_ATTR *ipv4, DICT_ATTR *ipv6,
-			     DICT_ATTR *ipv4_prefix, DICT_ATTR *ipv6_prefix);
 VALUE_PAIR	*pairmake(TALLOC_CTX *ctx, VALUE_PAIR **vps, char const *attribute, char const *value, FR_TOKEN op);
 int 		pairmark_xlat(VALUE_PAIR *vp, char const *value);
 FR_TOKEN 	pairread(char const **ptr, VALUE_PAIR_RAW *raw);
@@ -626,6 +649,7 @@ void		fr_perror(char const *, ...)
 		__attribute__ ((format (printf, 1, 2)))
 #endif
 ;
+
 extern bool fr_assert_cond(char const *file, int line, char const *expr, bool cond);
 #define fr_assert(_x) fr_assert_cond(__FILE__,  __LINE__, #_x, (_x))
 

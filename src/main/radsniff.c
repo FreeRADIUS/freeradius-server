@@ -303,7 +303,7 @@ static void got_packet(UNUSED uint8_t *args, struct pcap_pkthdr const*header, ui
 		DEBUG(log_dst, "\n");
 		if (packet->vps) {
 			if (do_sort) {
-				pairsort(&packet->vps, true);
+				pairsort(&packet->vps, attrtagcmp);
 			}
 			vp_printlist(log_dst, packet->vps);
 			pairfree(&packet->vps);

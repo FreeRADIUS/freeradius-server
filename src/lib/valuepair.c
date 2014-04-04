@@ -196,31 +196,6 @@ int pair2unknown(VALUE_PAIR *vp)
 
 	return 0;
 }
-
-/** Find the pair with the matching attribute
- *
- * @todo should take DAs and do a pointer comparison.
- */
-VALUE_PAIR *pairfind(VALUE_PAIR *vp, unsigned int attr, unsigned int vendor,
-		     int8_t tag)
-{
-	vp_cursor_t 	cursor;
-	VALUE_PAIR	*i;
-
-	for (i = fr_cursor_init(&cursor, &vp);
-	     i;
-	     i = fr_cursor_next(&cursor)) {
-		VERIFY_VP(i);
-		if ((i->da->attr == attr) && (i->da->vendor == vendor)
-		    && ((tag == TAG_ANY) || (i->da->flags.has_tag &&
-			(i->tag == tag)))) {
-			return i;
-		}
-	}
-
-	return NULL;
-}
-
 /** Find the pair with the matching DAs
  *
  */
@@ -238,6 +213,29 @@ VALUE_PAIR *pairfind_da(VALUE_PAIR *vp, DICT_ATTR const *da, int8_t tag)
 	     i = fr_cursor_next(&cursor)) {
 		VERIFY_VP(i);
 		if ((i->da == da) && (!i->da->flags.has_tag || (tag == TAG_ANY) || (i->tag == tag))) {
+			return i;
+		}
+	}
+
+	return NULL;
+}
+
+
+/** Find the pair with the matching attribute
+ *
+ * @todo should take DAs and do a pointer comparison.
+ */
+VALUE_PAIR *pairfind(VALUE_PAIR *vp, unsigned int attr, unsigned int vendor, int8_t tag)
+{
+	vp_cursor_t 	cursor;
+	VALUE_PAIR	*i;
+
+	for (i = fr_cursor_init(&cursor, &vp);
+	     i;
+	     i = fr_cursor_next(&cursor)) {
+		VERIFY_VP(i);
+		if ((i->da->attr == attr) && (i->da->vendor == vendor) && \
+		    (!i->da->flags.has_tag || (tag == TAG_ANY) || (i->tag == tag))) {
 			return i;
 		}
 	}
@@ -361,6 +359,44 @@ void pairreplace(VALUE_PAIR **first, VALUE_PAIR *replace)
 	*prev = replace;
 }
 
+int8_t attrcmp(VALUE_PAIR const *a, VALUE_PAIR const *b)
+{
+	VERIFY_VP(a);
+	VERIFY_VP(b);
+
+	if (a->da < b->da) {
+		return -1;
+	}
+
+	if (a->da == b->da) {
+		return 0;
+	}
+
+	return 1;
+}
+
+int8_t attrtagcmp(VALUE_PAIR const *a, VALUE_PAIR const *b)
+{
+	VERIFY_VP(a);
+	VERIFY_VP(b);
+
+	uint8_t cmp;
+
+	cmp = attrcmp(a, b);
+
+	if (cmp != 0) return cmp;
+
+	if (a->tag < b->tag) {
+		return -1;
+	}
+
+	if (a->tag > b->tag) {
+		return 1;
+	}
+
+	return 0;
+}
+
 static void pairsort_split(VALUE_PAIR *source, VALUE_PAIR **front, VALUE_PAIR **back)
 {
 	VALUE_PAIR *fast;
@@ -396,7 +432,7 @@ static void pairsort_split(VALUE_PAIR *source, VALUE_PAIR **front, VALUE_PAIR **
 	slow->next = NULL;
 }
 
-static VALUE_PAIR *pairsort_merge(VALUE_PAIR *a, VALUE_PAIR *b, bool with_tag)
+static VALUE_PAIR *pairsort_merge(VALUE_PAIR *a, VALUE_PAIR *b, fr_pair_cmp_t cmp)
 {
 	VALUE_PAIR *result = NULL;
 
@@ -406,12 +442,12 @@ static VALUE_PAIR *pairsort_merge(VALUE_PAIR *a, VALUE_PAIR *b, bool with_tag)
  	/*
  	 *	Compare the DICT_ATTRs and tags
  	 */
-	if ((with_tag && (a->tag < b->tag)) || (a->da <= b->da)) {
+	if (cmp(a, b) <= 0) {
 		result = a;
-     		result->next = pairsort_merge(a->next, b, with_tag);
+     		result->next = pairsort_merge(a->next, b, cmp);
   	} else {
 		result = b;
-		result->next = pairsort_merge(a, b->next, with_tag);
+		result->next = pairsort_merge(a, b->next, cmp);
 	}
 
 	return result;
@@ -420,9 +456,9 @@ static VALUE_PAIR *pairsort_merge(VALUE_PAIR *a, VALUE_PAIR *b, bool with_tag)
 /** Sort a linked list of VALUE_PAIRs using merge sort
  *
  * @param[in,out] vps List of VALUE_PAIRs to sort.
- * @param[in] with_tag sort by tag then by DICT_ATTR
+ * @param[in] cmp to sort with
  */
-void pairsort(VALUE_PAIR **vps, bool with_tag)
+void pairsort(VALUE_PAIR **vps, fr_pair_cmp_t cmp)
 {
 	VALUE_PAIR *head = *vps;
 	VALUE_PAIR *a;
@@ -436,13 +472,13 @@ void pairsort(VALUE_PAIR **vps, bool with_tag)
 	}
 
 	pairsort_split(head, &a, &b);	/* Split into sublists */
-	pairsort(&a, with_tag);		/* Traverse left */
-	pairsort(&b, with_tag);		/* Traverse right */
+	pairsort(&a, cmp);		/* Traverse left */
+	pairsort(&b, cmp);		/* Traverse right */
 
   	/*
   	 *	merge the two sorted lists together
   	 */
-  	*vps = pairsort_merge(a, b, with_tag);
+  	*vps = pairsort_merge(a, b, cmp);
 }
 
 /** Uses paircmp to verify all VALUE_PAIRs in list match the filter defined by check
@@ -460,9 +496,6 @@ bool pairvalidate(VALUE_PAIR *filter, VALUE_PAIR *list)
 	if (!filter && !list) {
 		return true;
 	}
-	if (!filter || !list) {
-		return false;
-	}
 
 	/*
 	 *	This allows us to verify the sets of validate and reply are equal
@@ -470,8 +503,8 @@ bool pairvalidate(VALUE_PAIR *filter, VALUE_PAIR *list)
 	 *
 	 *	@todo this should be removed one we have sets and lists
 	 */
-	pairsort(&filter, true);
-	pairsort(&list, true);
+	pairsort(&filter, attrtagcmp);
+	pairsort(&list, attrtagcmp);
 
 	match = fr_cursor_init(&list_cursor, &list);
 	check = fr_cursor_init(&filter_cursor, &filter);
@@ -509,6 +542,73 @@ bool pairvalidate(VALUE_PAIR *filter, VALUE_PAIR *list)
 		if (!match || !check) {
 			return false;
 		}
+	}
+
+	return true;
+}
+
+/** Uses paircmp to verify all VALUE_PAIRs in list match the filter defined by check
+ *
+ * @param filter attributes to check list against.
+ * @param list attributes, probably a request or reply
+ */
+bool pairvalidate_relaxed(VALUE_PAIR *filter, VALUE_PAIR *list)
+{
+	vp_cursor_t filter_cursor;
+	vp_cursor_t list_cursor;
+
+	VALUE_PAIR *check, *match, *last_check = NULL, *last_match;
+
+	if (!filter && !list) {
+		return true;
+	}
+
+	/*
+	 *	This allows us to verify the sets of validate and reply are equal
+	 *	i.e. we have a validate rule which matches every reply attribute.
+	 *
+	 *	@todo this should be removed one we have sets and lists
+	 */
+	pairsort(&filter, attrtagcmp);
+	pairsort(&list, attrtagcmp);
+
+	fr_cursor_init(&list_cursor, &list);
+	for (check = fr_cursor_init(&filter_cursor, &filter);
+	     check;
+	     check = fr_cursor_next(&filter_cursor)) {
+	     	/*
+	     	 *	Were processing check attributes of a new type.
+	     	 */
+	     	if (!attribute_eq(last_check, check)) {
+			/*
+			 *	Record the start of the matching attributes in the pair list
+			 *	For every other operator we require the match to be present
+			 */
+	     		last_match = fr_cursor_next_by_da(&list_cursor, check->da, check->tag);
+	     		if (!last_match) {
+	     			if (check->op == T_OP_CMP_FALSE) {
+	     				continue;
+	     			}
+	     			return false;
+	     		}
+
+	     		fr_cursor_init(&list_cursor, &last_match);
+	     		last_check = check;
+	     	}
+
+		/*
+		 *	Now iterate over all attributes of the same type.
+		 */
+		for (match = fr_cursor_first(&list_cursor);
+	     	     attribute_eq(match, check);
+	             match = fr_cursor_next(&list_cursor)) {
+	             	/*
+	             	 *	This attribute passed the filter
+	             	 */
+	             	if (!paircmp(check, match)) {
+	             		return false;
+	             	}
+	        }
 	}
 
 	return true;
@@ -681,6 +781,36 @@ VALUE_PAIR *paircopyvpdata(TALLOC_CTX *ctx, DICT_ATTR const *da, VALUE_PAIR cons
 }
 
 
+/** Copy a pairlist.
+ *
+ * Copy all pairs from 'from' regardless of tag, attribute or vendor.
+ *
+ * @param[in] ctx for new VALUE_PAIRs to be allocated in.
+ * @param[in] from whence to copy VALUE_PAIRs.
+ * @return the head of the new VALUE_PAIR list or NULL on error.
+ */
+VALUE_PAIR *paircopy(TALLOC_CTX *ctx, VALUE_PAIR *from)
+{
+	vp_cursor_t src, dst;
+
+	VALUE_PAIR *out = NULL, *vp;
+
+	fr_cursor_init(&dst, &out);
+	for (vp = fr_cursor_init(&src, &from);
+	     vp;
+	     vp = fr_cursor_next(&src)) {
+	     	VERIFY_VP(vp);
+	     	vp = paircopyvp(ctx, vp);
+	     	if (!vp) {
+	     		pairfree(&out);
+	     		return NULL;
+	     	}
+		fr_cursor_insert(&dst, vp); /* paircopy sets next pointer to NULL */
+	}
+
+	return out;
+}
+
 /** Copy matching pairs
  *
  * Copy pairs of a matching attribute number, vendor number and tag from the
@@ -725,35 +855,23 @@ VALUE_PAIR *paircopy2(TALLOC_CTX *ctx, VALUE_PAIR *from,
 	return out;
 }
 
-
-/** Copy a pairlist.
+/** Steal all members of a VALUE_PAIR list
  *
- * Copy all pairs from 'from' regardless of tag, attribute or vendor.
- *
- * @param[in] ctx for new VALUE_PAIRs to be allocated in.
- * @param[in] from whence to copy VALUE_PAIRs.
- * @return the head of the new VALUE_PAIR list or NULL on error.
+ * @param[in] ctx to move VALUE_PAIRs into
+ * @param[in] from VALUE_PAIRs to move into the new context.
  */
-VALUE_PAIR *paircopy(TALLOC_CTX *ctx, VALUE_PAIR *from)
+VALUE_PAIR *pairsteal(TALLOC_CTX *ctx, VALUE_PAIR *from)
 {
-	vp_cursor_t src, dst;
+	vp_cursor_t cursor;
+	VALUE_PAIR *vp;
 
-	VALUE_PAIR *out = NULL, *vp;
-
-	fr_cursor_init(&dst, &out);
-	for (vp = fr_cursor_init(&src, &from);
+	for (vp = fr_cursor_init(&cursor, &from);
 	     vp;
-	     vp = fr_cursor_next(&src)) {
-	     	VERIFY_VP(vp);
-	     	vp = paircopyvp(ctx, vp);
-	     	if (!vp) {
-	     		pairfree(&out);
-	     		return NULL;
-	     	}
-		fr_cursor_insert(&dst, vp); /* paircopy sets next pointer to NULL */
+	     vp = fr_cursor_next(&cursor)) {
+		(void) talloc_steal(ctx, vp);
 	}
 
-	return out;
+	return from;
 }
 
 /** Move pairs from source list to destination list respecting operator
@@ -1622,6 +1740,7 @@ finish:
 	return vp;
 }
 
+
 /** Create a valuepair from an ASCII attribute and value
  *
  * Where the attribute name is in the form:
@@ -2205,13 +2324,144 @@ VALUE_PAIR *readvp2(TALLOC_CTX *ctx, FILE *fp, bool *pfiledone, char const *errp
 	return list;
 }
 
+/** Compare two attribute values
+ *
+ * @param[in] one the first attribute.
+ * @param[in] two the second attribute.
+ * @return -1 if one is less than two, 0 if both are equal, 1 if one is more than two, < -1 on error.
+ */
+int8_t paircmp_value(VALUE_PAIR const *one, VALUE_PAIR const *two)
+{
+	int64_t compare = 0;
+
+	VERIFY_VP(one);
+	VERIFY_VP(two);
+
+	if (one->da->type != two->da->type) {
+		fr_strerror_printf("Can't compare attribute values of different types");
+		return -2;
+	}
+
+	/*
+	 *	After doing the previous check for special comparisons,
+	 *	do the per-type comparison here.
+	 */
+	switch (one->da->type) {
+	case PW_TYPE_ABINARY:
+	case PW_TYPE_OCTETS:
+	{
+		size_t length;
+
+		if (one->length > two->length) {
+			length = one->length;
+		} else {
+			length = two->length;
+		}
+
+		if (length) {
+			compare = memcmp(one->vp_octets, two->vp_octets, length);
+			if (compare != 0) break;
+		}
+
+		/*
+		 *	Contents are the same.  The return code
+		 *	is therefore the difference in lengths.
+		 *
+		 *	i.e. "0x00" is smaller than "0x0000"
+		 */
+		compare = one->length - two->length;
+	}
+		break;
+
+	case PW_TYPE_STRING:
+		fr_assert(one->vp_strvalue);
+		fr_assert(two->vp_strvalue);
+		compare = strcmp(one->vp_strvalue, two->vp_strvalue);
+		break;
+
+	case PW_TYPE_BYTE:
+	case PW_TYPE_SHORT:
+	case PW_TYPE_INTEGER:
+	case PW_TYPE_DATE:
+		compare = (int64_t) one->vp_integer - (int64_t) two->vp_integer;
+		break;
+
+	case PW_TYPE_SIGNED:
+		compare = one->vp_signed - two->vp_signed;
+		break;
+
+	case PW_TYPE_INTEGER64:
+		/*
+		 *	Don't want integer overflow!
+		 */
+		if (one->vp_integer64 < two->vp_integer64) {
+			compare = -1;
+		} else if (one->vp_integer64 > two->vp_integer64) {
+			compare = 1;
+		}
+		break;
+
+	case PW_TYPE_ETHERNET:
+		compare = memcmp(&one->vp_ether, &two->vp_ether, sizeof(one->vp_ether));
+		break;
+
+	case PW_TYPE_IPADDR:
+		compare = (int64_t) ntohl(one->vp_ipaddr) - (int64_t) ntohl(two->vp_ipaddr);
+		break;
+
+	case PW_TYPE_IPV6ADDR:
+		compare = memcmp(&one->vp_ipv6addr, &two->vp_ipv6addr, sizeof(one->vp_ipv6addr));
+		break;
+
+	case PW_TYPE_IPV6PREFIX:
+		compare = memcmp(&one->vp_ipv6prefix, &two->vp_ipv6prefix, sizeof(one->vp_ipv6prefix));
+		break;
+
+	case PW_TYPE_IPV4PREFIX:
+		compare = memcmp(&one->vp_ipv4prefix, &two->vp_ipv4prefix, sizeof(one->vp_ipv4prefix));
+		break;
+
+	case PW_TYPE_IFID:
+		compare = memcmp(&one->vp_ifid, &two->vp_ifid, sizeof(one->vp_ifid));
+		break;
+
+	/*
+	 *	None of the types below should be in the REQUEST
+	 */
+	case PW_TYPE_COMBO_IP:		/* This should of been converted into IPADDR/IPV6ADDR */
+	case PW_TYPE_TLV:
+	case PW_TYPE_EXTENDED:
+	case PW_TYPE_LONG_EXTENDED:
+	case PW_TYPE_EVS:
+	case PW_TYPE_VSA:
+	case PW_TYPE_INVALID:		/* We should never see these */
+	case PW_TYPE_MAX:
+		fr_assert(0);	/* unknown type */
+		return -2;
+
+	/*
+	 *	Do NOT add a default here, as new types are added
+	 *	static analysis will warn us they're not handled
+	 */
+	}
+
+	if (compare > 0) {
+		return 1;
+	} else if (compare < 0) {
+		return -1;
+	}
+	return 0;
+}
+
 /*
  *	We leverage the fact that IPv4 and IPv6 prefixes both
  *	have the same format:
  *
  *	reserved, prefix-len, data...
  */
-static int paircmp_cidr(FR_TOKEN op, int bytes, uint8_t const *one, uint8_t const *two)
+static int paircmp_op_cidr(FR_TOKEN op, int bytes,
+			   uint8_t one_net, uint8_t const *one,
+			   uint8_t two_net, uint8_t const *two)
 {
 	int i, common;
 	uint32_t mask;
@@ -2219,10 +2469,10 @@ static int paircmp_cidr(FR_TOKEN op, int bytes, uint8_t const *one, uint8_t cons
 	/*
 	 *	Handle the case of netmasks being identical.
 	 */
-	if (one[1] == two[1]) {
+	if (one_net == two_net) {
 		int compare;
 
-		compare = memcmp(one + 2, two + 2, bytes);
+		compare = memcmp(one, two, bytes);
 
 		/*
 		 *	If they're identical return true for
@@ -2258,14 +2508,14 @@ static int paircmp_cidr(FR_TOKEN op, int bytes, uint8_t const *one, uint8_t cons
 
 	case T_OP_LE:
 	case T_OP_LT:	/* 192/8 < 192.168/16 --> false */
-		if (one[1] < two[1]) {
+		if (one_net < two_net) {
 			return false;
 		}
 		break;
 
 	case T_OP_GE:
 	case T_OP_GT:	/* 192/16 > 192.168/8 --> false */
-		if (one[1] > two[1]) {
+		if (one_net > two_net) {
 			return false;
 		}
 		break;
@@ -2274,10 +2524,10 @@ static int paircmp_cidr(FR_TOKEN op, int bytes, uint8_t const *one, uint8_t cons
 		return false;
 	}
 
-	if (one[1] < two[1]) {
-		common = one[1];
+	if (one_net < two_net) {
+		common = one_net;
 	} else {
-		common = two[1];
+		common = two_net;
 	}
 
 	/*
@@ -2285,8 +2535,8 @@ static int paircmp_cidr(FR_TOKEN op, int bytes, uint8_t const *one, uint8_t cons
 	 *	identical, it MAY be a match.  If they're different,
 	 *	it is NOT a match.
 	 */
-	i = 2;
-	while (i < (2 + bytes)) {
+	i = 0;
+	while (i < bytes) {
 		/*
 		 *	All leading bytes are identical.
 		 */
@@ -2316,220 +2566,91 @@ static int paircmp_cidr(FR_TOKEN op, int bytes, uint8_t const *one, uint8_t cons
 	return false;
 }
 
-/*
- *	Compare two pairs, using the operator from "one".
+/** Compare two attributes using an operator
  *
- *	i.e. given two attributes, it does:
- *
- *	(two->data) (one->operator) (one->data)
- *
- *	e.g. "foo" != "bar"
- *
- *	Returns true (comparison is true), or false (comparison is not true);
+ * @param[in] a the first attribute
+ * @param[in] op the operator for comparison.
+ * @param[in] b the second attribute
+ * @return 1 if true, 0 if false, -1 on error.
  */
-int paircmp(VALUE_PAIR *one, VALUE_PAIR *two)
+int8_t paircmp_op(VALUE_PAIR const *a, FR_TOKEN op, VALUE_PAIR const *b)
 {
 	int compare;
 
-	VERIFY_VP(one);
-	VERIFY_VP(two);
-
-	switch (one->op) {
-	case T_OP_CMP_TRUE:
-		return (two != NULL);
-
-	case T_OP_CMP_FALSE:
-		return (two == NULL);
-
-		/*
-		 *	One is a regex, compile it, print two to a string,
-		 *	and then do string comparisons.
-		 */
-	case T_OP_REG_EQ:
-	case T_OP_REG_NE:
-#ifndef WITH_REGEX
-		return -1;
-#else
-		{
-			regex_t reg;
-			char buffer[MAX_STRING_LEN * 4 + 1];
-
-			compare = regcomp(&reg, one->vp_strvalue, REG_EXTENDED);
-			if (compare != 0) {
-				regerror(compare, &reg, buffer, sizeof(buffer));
-				fr_strerror_printf("Illegal regular expression in attribute: %s: %s",
-					   one->da->name, buffer);
-				return -1;
-			}
-
-			vp_prints_value(buffer, sizeof(buffer), two, 0);
-
-			/*
-			 *	Don't care about substring matches,
-			 *	oh well...
-			 */
-			compare = regexec(&reg, buffer, 0, NULL, 0);
-
-			regfree(&reg);
-			if (one->op == T_OP_REG_EQ) return (compare == 0);
-			return (compare != 0);
-		}
-#endif
-
-	default:		/* we're OK */
-		break;
-	}
-
-	return paircmp_op(two, one->op, one);
-}
-
-/* Compare two attributes
- *
- * @param[in] one the first attribute
- * @param[in] op the operator for comparison
- * @param[in] two the second attribute
- * @return true (comparison is true), or false (comparison is not true);
- */
-int paircmp_op(VALUE_PAIR const *one, FR_TOKEN op, VALUE_PAIR const *two)
-{
-	int compare = 0;
-
-	VERIFY_VP(one);
-	VERIFY_VP(two);
-
-	/*
-	 *	Can't compare two attributes of differing types
-	 *
-	 *	FIXME: maybe do checks for IP OP IP/mask ??
-	 */
-	if (one->da->type != two->da->type) {
-		return one->da->type - two->da->type;
-	}
-
-	/*
-	 *	After doing the previous check for special comparisons,
-	 *	do the per-type comparison here.
-	 */
-	switch (one->da->type) {
-	case PW_TYPE_ABINARY:
-	case PW_TYPE_OCTETS:
-	{
-		size_t length;
-
-		if (one->length > two->length) {
-			length = one->length;
-		} else {
-			length = two->length;
-		}
-
-		if (length) {
-			compare = memcmp(one->vp_octets, two->vp_octets,
-					 length);
-			if (compare != 0) break;
-		}
-
-		/*
-		 *	Contents are the same.  The return code
-		 *	is therefore the difference in lengths.
-		 *
-		 *	i.e. "0x00" is smaller than "0x0000"
-		 */
-		compare = one->length - two->length;
-	}
-		break;
-
-	case PW_TYPE_STRING:
-		compare = strcmp(one->vp_strvalue, two->vp_strvalue);
-		break;
-
-	case PW_TYPE_BYTE:
-	case PW_TYPE_SHORT:
-	case PW_TYPE_INTEGER:
-	case PW_TYPE_DATE:
-		if (one->vp_integer < two->vp_integer) {
-			compare = -1;
-		} else if (one->vp_integer == two->vp_integer) {
-			compare = 0;
-		} else {
-			compare = +1;
-		}
-		break;
-
-	case PW_TYPE_SIGNED:
-		if (one->vp_signed < two->vp_signed) {
-			compare = -1;
-		} else if (one->vp_signed == two->vp_signed) {
-			compare = 0;
-		} else {
-			compare = +1;
-		}
-		break;
-
-	case PW_TYPE_INTEGER64:
-		/*
-		 *	Don't want integer overflow!
-		 */
-		if (one->vp_integer64 < two->vp_integer64) {
-			compare = -1;
-		} else if (one->vp_integer64 > two->vp_integer64) {
-			compare = +1;
-		} else {
-			compare = 0;
-		}
-		break;
-
-	case PW_TYPE_ETHERNET:
-		compare = memcmp(&one->vp_ether, &two->vp_ether,
-				 sizeof(one->vp_ether));
-		break;
-
+	switch (a->da->type) {
 	case PW_TYPE_IPADDR:
-		if (ntohl(one->vp_ipaddr) < ntohl(two->vp_ipaddr)) {
-			compare = -1;
-		} else if (one->vp_ipaddr  == two->vp_ipaddr) {
-			compare = 0;
-		} else {
-			compare = +1;
+		switch (b->da->type) {
+		case PW_TYPE_IPADDR:		/* IPv4 and IPv4 */
+			goto cmp;
+
+		case PW_TYPE_IPV4PREFIX:	/* IPv4 and IPv4 Prefix */
+			return paircmp_op_cidr(op, 4, 32, (uint8_t const *) &a->vp_ipaddr,
+					       b->vp_ipv4prefix[1], (uint8_t const *) &b->vp_ipv4prefix + 2);
+
+		default:
+			fr_strerror_printf("Cannot compare IPv4 with IPv6 address");
+			return -1;
+		}
+		break;
+
+	case PW_TYPE_IPV4PREFIX:		/* IPv4 and IPv4 Prefix */
+		switch (b->da->type) {
+		case PW_TYPE_IPADDR:
+			return paircmp_op_cidr(op, 4, a->vp_ipv4prefix[1],
+					       (uint8_t const *) &a->vp_ipv4prefix + 2,
+					       32, (uint8_t const *) &b->vp_ipaddr);
+
+		case PW_TYPE_IPV4PREFIX:	/* IPv4 Prefix and IPv4 Prefix */
+			return paircmp_op_cidr(op, 4, a->vp_ipv4prefix[1],
+					       (uint8_t const *) &a->vp_ipv4prefix + 2,
+					       b->vp_ipv4prefix[1], (uint8_t const *) &b->vp_ipv4prefix + 2);
+
+		default:
+			fr_strerror_printf("Cannot compare IPv4 with IPv6 address");
+			return -1;
 		}
 		break;
 
 	case PW_TYPE_IPV6ADDR:
-		compare = memcmp(&one->vp_ipv6addr, &two->vp_ipv6addr,
-				 sizeof(one->vp_ipv6addr));
+		switch (b->da->type) {
+		case PW_TYPE_IPV6ADDR:		/* IPv6 and IPv6 */
+			goto cmp;
+
+		case PW_TYPE_IPV6PREFIX:	/* IPv6 and IPv6 Preifx */
+			return paircmp_op_cidr(op, 16, 128, (uint8_t const *) &a->vp_ipv6addr,
+					       b->vp_ipv6prefix[1], (uint8_t const *) &b->vp_ipv6prefix + 2);
+			break;
+
+		default:
+			fr_strerror_printf("Cannot compare IPv6 with IPv4 address");
+			return -1;
+		}
 		break;
 
 	case PW_TYPE_IPV6PREFIX:
-		return paircmp_cidr(op, 16,
-				    (uint8_t const *) &one->vp_ipv6prefix,
-				    (uint8_t const *) &two->vp_ipv6prefix);
+		switch (b->da->type) {
+		case PW_TYPE_IPV6ADDR:		/* IPv6 Prefix and IPv6 */
+			return paircmp_op_cidr(op, 16, a->vp_ipv6prefix[1],
+					       (uint8_t const *) &a->vp_ipv6prefix + 2,
+					       128, (uint8_t const *) &b->vp_ipv6addr);
 
-	case PW_TYPE_IPV4PREFIX:
-		return paircmp_cidr(op, 4,
-				    (uint8_t const *) &one->vp_ipv4prefix,
-				    (uint8_t const *) &two->vp_ipv4prefix);
+		case PW_TYPE_IPV6PREFIX:	/* IPv6 Prefix and IPv6 */
+			return paircmp_op_cidr(op, 16, a->vp_ipv6prefix[1],
+					       (uint8_t const *) &a->vp_ipv6prefix + 2,
+					       b->vp_ipv6prefix[1], (uint8_t const *) &b->vp_ipv6prefix + 2);
 
-	case PW_TYPE_IFID:
-		compare = memcmp(&one->vp_ifid, &two->vp_ifid, sizeof(one->vp_ifid));
+		default:
+			fr_strerror_printf("Cannot compare IPv6 with IPv4 address");
+			return -1;
+		}
 		break;
 
-	/*
-	 *	None of the types below should be in the REQUEST
-	 */
-	case PW_TYPE_COMBO_IP:		/* This should of been converted into IPADDR/IPV6ADDR */
-	case PW_TYPE_TLV:
-	case PW_TYPE_EXTENDED:
-	case PW_TYPE_LONG_EXTENDED:
-	case PW_TYPE_EVS:
-	case PW_TYPE_VSA:
-	case PW_TYPE_INVALID:		/* We should never see these */
-	case PW_TYPE_MAX:
-		fr_assert(0);	/* unknown type */
-		return 0;
-
-	/*
-	 *	Do NOT add a default here, as new types are added
-	 *	static analysis will warn us they're not handled
-	 */
+	default:
+	cmp:
+		compare = paircmp_value(a, b);
+		if (compare < -1) {	/* comparison error */
+			return -1;
+		}
 	}
 
 	/*
@@ -2557,6 +2678,132 @@ int paircmp_op(VALUE_PAIR const *one, FR_TOKEN op, VALUE_PAIR const *two)
 	default:
 		return 0;
 	}
+}
+
+/** Compare two pairs, using the operator from "a"
+ *
+ *	i.e. given two attributes, it does:
+ *
+ *	(b->data) (a->operator) (a->data)
+ *
+ *	e.g. "foo" != "bar"
+ *
+ * @param[in] a the first attribute
+ * @param[in] b the second attribute
+ * @return 1 if true, 0 if false, -1 on error.
+ */
+int8_t paircmp(VALUE_PAIR *a, VALUE_PAIR *b)
+{
+	int compare;
+
+	VERIFY_VP(a);
+	VERIFY_VP(b);
+
+	switch (a->op) {
+	case T_OP_CMP_TRUE:
+		return (b != NULL);
+
+	case T_OP_CMP_FALSE:
+		return (b == NULL);
+
+		/*
+		 *	a is a regex, compile it, print b to a string,
+		 *	and then do string comparisons.
+		 */
+	case T_OP_REG_EQ:
+	case T_OP_REG_NE:
+#ifndef WITH_REGEX
+		return -1;
+#else
+		{
+			regex_t reg;
+			char buffer[MAX_STRING_LEN * 4 + 1];
+
+			compare = regcomp(&reg, a->vp_strvalue, REG_EXTENDED);
+			if (compare != 0) {
+				regerror(compare, &reg, buffer, sizeof(buffer));
+				fr_strerror_printf("Illegal regular expression in attribute: %s: %s",
+					   	   a->da->name, buffer);
+				return -1;
+			}
+
+			vp_prints_value(buffer, sizeof(buffer), b, 0);
+
+			/*
+			 *	Don't care about substring matches,
+			 *	oh well...
+			 */
+			compare = regexec(&reg, buffer, 0, NULL, 0);
+
+			regfree(&reg);
+			if (a->op == T_OP_REG_EQ) {
+				return (compare == 0);
+			}
+
+			return (compare != 0);
+		}
+#endif
+
+	default:		/* we're OK */
+		break;
+	}
+
+	return paircmp_op(b, a->op, a);
+}
+
+/** Determine equality of two lists
+ *
+ * This is useful for comparing lists of attributes inserted into a binary tree.
+ *
+ * @param a first list of VALUE_PAIRs.
+ * @param b second list of VALUE_PAIRs.
+ * @return -1 if a < b, 0 if the two lists are equal, 1 if a > b, -2 on error.
+ */
+int8_t pairlistcmp(VALUE_PAIR *a, VALUE_PAIR *b)
+{
+	vp_cursor_t a_cursor, b_cursor;
+	VALUE_PAIR *a_p, *b_p;
+	int ret;
+
+	for (a_p = fr_cursor_init(&a_cursor, &a), b_p = fr_cursor_init(&b_cursor, &b);
+	     a_p && b_p;
+	     a_p = fr_cursor_next(&a_cursor), b_p = fr_cursor_next(&b_cursor)) {
+	     	/* Same VP, no point doing expensive checks */
+	     	if (a_p == b_p) {
+			continue;
+	     	}
+
+		if (a_p->da < b_p->da) {
+			return -1;
+		}
+		if (a_p->da > b_p->da) {
+			return 1;
+		}
+
+		if (a_p->tag < b_p->tag) {
+			return -1;
+		}
+		if (a_p->tag > b_p->tag) {
+			return 1;
+		}
+
+		ret = paircmp_value(a_p, b_p);
+		if (ret != 0) {
+			fr_assert(ret >= -1); 	/* Comparison error */
+			return ret;
+		}
+	}
+
+	if (!a_p && !b_p) {
+		return 0;
+	}
+
+	if (!a_p) {
+		return -1;
+	}
+
+	/* if(!b_p) */
+	return 1;
 }
 
 /** Set the type of the VALUE_PAIR value buffer to match it's DICT_ATTR

@@ -878,7 +878,7 @@ static void rest_request_init(REQUEST *request, rlm_rest_request_t *ctx, bool so
 	 *	Sorts pairs in place, oh well...
 	 */
 	if (sort) {
-		pairsort(&request->packet->vps, true);
+		pairsort(&request->packet->vps, attrtagcmp);
 	}
 	fr_cursor_init(&ctx->cursor, &request->packet->vps);
 }
