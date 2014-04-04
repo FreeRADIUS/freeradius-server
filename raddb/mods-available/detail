@@ -53,7 +53,7 @@ detail {
 	# The user that the server runs as must be in the specified
 	# system group otherwise this will fail to work.
 	#
-#	group = freerad
+#	group = ${security.group}
 
 	#
 	#  Every entry in the detail file has a header which
