@@ -423,33 +423,68 @@ int main(int argc, char *argv[])
 	}
 #endif
 
-	if (default_log.dest == L_DST_STDOUT) {
-		setlinebuf(stdout);
-		default_log.fd = STDOUT_FILENO;
-	} else {
-		dup2(devnull, STDOUT_FILENO);
-	}
-
-	if (default_log.dest == L_DST_STDERR) {
-		setlinebuf(stdout);
-		default_log.fd = STDERR_FILENO;
-	} else {
-		dup2(devnull, STDERR_FILENO);
-	}
-
-	/* Libraries may write messages to stderr or stdout */
-	if (debug_flag) {
-		dup2(default_log.fd, STDOUT_FILENO);
-		dup2(default_log.fd, STDERR_FILENO);
-	}
-
-	close(devnull);
-
 	/*
 	 *  Ensure that we're using the CORRECT pid after forking,
 	 *  NOT the one we started with.
 	 */
 	radius_pid = getpid();
+
+	/*
+	 *	STDOUT & STDERR go to /dev/null, unless we have "-x",
+	 *	then STDOUT & STDERR go to the "-l log" destination.
+	 *
+	 *	The complexity here is because "-l log" can go to
+	 *	STDOUT or STDERR, too.
+	 */
+	if (default_log.dest == L_DST_STDOUT) {
+		setlinebuf(stdout);
+		default_log.fd = STDOUT_FILENO;
+
+		/*
+		 *	If we're debugging, allow STDERR to go to
+		 *	STDOUT too, for executed programs,
+		 */
+		if (debug_flag) {
+			dup2(STDOUT_FILENO, STDERR_FILENO);
+		} else {
+			dup2(devnull, STDERR_FILENO);
+		}
+
+	} else if (default_log.dest == L_DST_STDERR) {
+		setlinebuf(stderr);
+		default_log.fd = STDERR_FILENO;
+
+		/*
+		 *	If we're debugging, allow STDOUT to go to
+		 *	STDERR too, for executed programs,
+		 */
+		if (debug_flag) {
+			dup2(STDERR_FILENO, STDOUT_FILENO);
+		} else {
+			dup2(devnull, STDOUT_FILENO);
+		}
+
+	} else if (debug_flag) {
+		/*
+		 *	If we're debugging, allow STDOUT and STDERR to
+		 *	go to the log file.
+		 */
+		dup2(default_log.fd, STDOUT_FILENO);
+		dup2(default_log.fd, STDERR_FILENO);
+
+	} else {
+		/*
+		 *	Not debugging, and the log isn't STDOUT or
+		 *	STDERR.  Ensure that we move both of them to
+		 *	/dev/null, so that the calling terminal can
+		 *	exit, and the output from executed programs
+		 *	doesn't pollute STDOUT / STDERR.
+		 */
+		dup2(devnull, STDOUT_FILENO);
+		dup2(devnull, STDERR_FILENO);
+	}
+
+	close(devnull);
 
 	/*
 	 *	Start the event loop(s) and threads.
