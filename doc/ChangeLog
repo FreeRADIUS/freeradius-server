@@ -1,3 +1,13 @@
+FreeRADIUS 2.2.5 Wednesday 19 Mar 2014 13:20:00 EDT, urgency=medium
+	Feature improvements
+	* Update dictionary.terena.
+	* expose server version via %v.  Patch from Alan Buxey.
+
+	Bug fixes
+	* Minor changes to build on Sun.
+	* Print non-ASCII characters as octal in linelog.  Closes #578
+	* close stdout in daemon mode.
+
 FreeRADIUS 2.2.4 Wednesday 19 Mar 2014 13:20:00 EDT, urgency=medium
 	Feature improvements
 	* A "panic_action" can be set to have the server dump a gdb
