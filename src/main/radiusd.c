@@ -464,6 +464,15 @@ int main(int argc, char *argv[])
 			dup2(devnull, STDOUT_FILENO);
 		}
 
+	} else if (default_log.dest == L_DST_SYSLOG) {
+		/*
+		 *	Discard STDOUT and STDERR no matter what the
+		 *	status of debugging.  Syslog isn't a file
+		 *	descriptor, so we can't use it.
+		 */
+		dup2(devnull, STDOUT_FILENO);
+		dup2(devnull, STDERR_FILENO);
+
 	} else if (debug_flag) {
 		/*
 		 *	If we're debugging, allow STDOUT and STDERR to
