@@ -372,24 +372,59 @@ int main(int argc, char *argv[])
 	 */
 	radius_pid = getpid();
 
+	/*
+	 *	STDOUT & STDERR go to /dev/null, unless we have "-x",
+	 *	then STDOUT & STDERR go to the "-l log" destination.
+	 *
+	 *	The complexity here is because "-l log" can go to
+	 *	STDOUT or STDERR, too.
+	 */
 	if (mainconfig.radlog_dest == RADLOG_STDOUT) {
 		setlinebuf(stdout);
 		mainconfig.radlog_fd = STDOUT_FILENO;
-	} else {
-		dup2(devnull, STDOUT_FILENO);
-	}
 
-	if (mainconfig.radlog_dest == RADLOG_STDERR) {
-		setlinebuf(stdout);
+		/*
+		 *	If we're debugging, allow STDERR to go to
+		 *	STDOUT too, for executed programs,
+		 */
+		if (debug_flag) {
+			dup2(STDOUT_FILENO, STDERR_FILENO);
+		} else {
+			dup2(devnull, STDERR_FILENO);
+		}
+
+	} else if (mainconfig.radlog_dest == RADLOG_STDERR) {
+		setlinebuf(stderr);
 		mainconfig.radlog_fd = STDERR_FILENO;
-	} else {
-		dup2(devnull, STDERR_FILENO);
-	}
 
-	/* Libraries may write messages to stderr or stdout */
-	if (debug_flag) {
+		/*
+		 *	If we're debugging, allow STDOUT to go to
+		 *	STDERR too, for executed programs,
+		 */
+		if (debug_flag) {
+			dup2(STDERR_FILENO, STDOUT_FILENO);
+		} else {
+			dup2(devnull, STDOUT_FILENO);
+		}
+
+	} else if (debug_flag) {
+		/*
+		 *	If we're debugging, allow STDOUT and STDERR to
+		 *	go to the log file.
+		 */
 		dup2(mainconfig.radlog_fd, STDOUT_FILENO);
 		dup2(mainconfig.radlog_fd, STDERR_FILENO);
+
+	} else {
+		/*
+		 *	Not debugging, and the log isn't STDOUT or
+		 *	STDERR.  Ensure that we move both of them to
+		 *	/dev/null, so that the calling terminal can
+		 *	exit, and the output from executed programs
+		 *	doesn't pollute STDOUT / STDERR.
+		 */
+		dup2(devnull, STDOUT_FILENO);
+		dup2(devnull, STDERR_FILENO);
 	}
 
 	close(devnull);
