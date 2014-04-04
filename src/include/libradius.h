@@ -130,10 +130,10 @@ do {\
 	if (_x->data.ptr) switch (_x->da->type) {\
 	case PW_TYPE_OCTETS:\
 	case PW_TYPE_TLV:\
-		(void) talloc_get_type_abort(_x, uint8_t);\
+		(void) talloc_get_type_abort(_x->data.ptr, uint8_t);\
 		break;\
 	case PW_TYPE_STRING:\
-		(void) talloc_get_type_abort(_x, char);\
+		(void) talloc_get_type_abort(_x->data.ptr, char);\
 		break;\
 	default:\
 		break;\
