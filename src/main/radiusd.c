@@ -375,7 +375,7 @@ int main(int argc, char *argv[])
 	if (mainconfig.radlog_dest == RADLOG_STDOUT) {
 		setlinebuf(stdout);
 		mainconfig.radlog_fd = STDOUT_FILENO;
-	} else if (debug_flag) {
+	} else {
 		dup2(devnull, STDOUT_FILENO);
 	}
 
