@@ -95,9 +95,9 @@ RCSIDH(libradius_h, "$Id$")
 #include <freeradius-devel/hash.h>
 
 #ifdef SIZEOF_UNSIGNED_INT
-#if SIZEOF_UNSIGNED_INT != 4
-#error FATAL: sizeof(unsigned int) != 4
-#endif
+#  if SIZEOF_UNSIGNED_INT != 4
+#    error FATAL: sizeof(unsigned int) != 4
+#  endif
 #endif
 
 /*
@@ -122,9 +122,9 @@ extern "C" {
 			} \
 		      } while (0)
 */
-#define FREE_MAGIC (0xF4EEF4EE)
+#  define FREE_MAGIC (0xF4EEF4EE)
 
-#define VERIFY_VP(_x) \
+#  define VERIFY_VP(_x) \
 do {\
 	(void) talloc_get_type_abort(_x, VALUE_PAIR);\
 	if (_x->data.ptr) switch (_x->da->type) {\
@@ -140,10 +140,10 @@ do {\
 	}\
 } while (0)\
 
-#define VERIFY_PACKET(_x) (void) talloc_get_type_abort(_x, RADIUS_PACKET)
+#  define VERIFY_PACKET(_x) (void) talloc_get_type_abort(_x, RADIUS_PACKET)
 #else
-#define VERIFY_VP(_x)
-#define VERIFY_PACKET(_x)
+#  define VERIFY_VP(_x)
+#  define VERIFY_PACKET(_x)
 #endif
 
 #define AUTH_VECTOR_LEN		16
@@ -171,15 +171,15 @@ do {\
 #define PAD(_x, _y)		(_y - ((_x) % _y))
 
 #if defined(__GNUC__)
-# define PRINTF_LIKE(n) __attribute__ ((format(printf, n, n+1)))
-# define NEVER_RETURNS __attribute__ ((noreturn))
-# define UNUSED __attribute__ ((unused))
-# define BLANK_FORMAT " "	/* GCC_LINT whines about empty formats */
+#  define PRINTF_LIKE(n) __attribute__ ((format(printf, n, n+1)))
+#  define NEVER_RETURNS __attribute__ ((noreturn))
+#  define UNUSED __attribute__ ((unused))
+#  define BLANK_FORMAT " "	/* GCC_LINT whines about empty formats */
 #else
-# define PRINTF_LIKE(n)	/* ignore */
-# define NEVER_RETURNS /* ignore */
-# define UNUSED /* ignore */
-# define BLANK_FORMAT ""
+#  define PRINTF_LIKE(n)	/* ignore */
+#  define NEVER_RETURNS /* ignore */
+#  define UNUSED /* ignore */
+#  define BLANK_FORMAT ""
 #endif
 
 typedef struct attr_flags {
@@ -461,7 +461,7 @@ DICT_ATTR const	*dict_attrbyname(char const *attr);
 DICT_ATTR const	*dict_attrbytype(unsigned int attr, unsigned int vendor,
 				 PW_TYPE type);
 DICT_ATTR const	*dict_attrbyparent(DICT_ATTR const *parent, unsigned int attr,
-					   unsigned int vendor);
+				   unsigned int vendor);
 int		dict_attr_child(DICT_ATTR const *parent,
 				unsigned int *pattr, unsigned int *pvendor);
 DICT_VALUE	*dict_valbyattr(unsigned int attr, unsigned int vendor, int val);
@@ -521,42 +521,44 @@ int		rad_tunnel_pwdecode(uint8_t *encpw, size_t *len,
 int		rad_chap_encode(RADIUS_PACKET *packet, uint8_t *output,
 				int id, VALUE_PAIR *password);
 
-int rad_attr_ok(RADIUS_PACKET const *packet, RADIUS_PACKET const *original,
-		DICT_ATTR *da,
-		uint8_t const *data, size_t length);
-int rad_tlv_ok(uint8_t const *data, size_t length,
-	       size_t dv_type, size_t dv_length);
+int		rad_attr_ok(RADIUS_PACKET const *packet, RADIUS_PACKET const *original,
+			    DICT_ATTR *da,
+			    uint8_t const *data, size_t length);
+int		rad_tlv_ok(uint8_t const *data, size_t length,
+			   size_t dv_type, size_t dv_length);
 
-ssize_t	rad_attr2vp(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
-		    char const *secret,
-		    uint8_t const *data, size_t length,
-		    VALUE_PAIR **pvp);
+ssize_t		rad_attr2vp(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
+			    char const *secret,
+			    uint8_t const *data, size_t length,
+			    VALUE_PAIR **pvp);
 
-ssize_t  rad_data2vp(unsigned int attribute, unsigned int vendor,
-		     uint8_t const *data, size_t length,
-		     VALUE_PAIR **pvp);
+ssize_t		rad_data2vp(unsigned int attribute, unsigned int vendor,
+			    uint8_t const *data, size_t length,
+			    VALUE_PAIR **pvp);
 
-ssize_t rad_vp2data(uint8_t const **out, VALUE_PAIR const *vp);
+ssize_t		rad_vp2data(uint8_t const **out, VALUE_PAIR const *vp);
 
-int rad_vp2extended(RADIUS_PACKET const *packet,
-		    RADIUS_PACKET const *original,
-		    char const *secret, VALUE_PAIR const **pvp,
-		    uint8_t *ptr, size_t room);
-int rad_vp2wimax(RADIUS_PACKET const *packet,
-		 RADIUS_PACKET const *original,
-		 char const *secret, VALUE_PAIR const **pvp,
-		 uint8_t *ptr, size_t room);
-int rad_vp2vsa(RADIUS_PACKET const *packet, RADIUS_PACKET const *original,
-	       char const *secret, VALUE_PAIR const **pvp, uint8_t *start,
-	       size_t room);
-int rad_vp2rfc(RADIUS_PACKET const *packet,
-	       RADIUS_PACKET const *original,
-	       char const *secret, VALUE_PAIR const **pvp,
-	       uint8_t *ptr, size_t room);
+int		rad_vp2extended(RADIUS_PACKET const *packet,
+				RADIUS_PACKET const *original,
+				char const *secret, VALUE_PAIR const **pvp,
+				uint8_t *ptr, size_t room);
 
-int rad_vp2attr(RADIUS_PACKET const *packet,
-		RADIUS_PACKET const *original, char const *secret,
-		VALUE_PAIR const **pvp, uint8_t *ptr, size_t room);
+int		rad_vp2wimax(RADIUS_PACKET const *packet,
+			     RADIUS_PACKET const *original,
+			     char const *secret, VALUE_PAIR const **pvp,
+			     uint8_t *ptr, size_t room);
+
+int		rad_vp2vsa(RADIUS_PACKET const *packet, RADIUS_PACKET const *original,
+			   char const *secret, VALUE_PAIR const **pvp, uint8_t *start,
+			   size_t room);
+int		rad_vp2rfc(RADIUS_PACKET const *packet,
+			   RADIUS_PACKET const *original,
+			   char const *secret, VALUE_PAIR const **pvp,
+			   uint8_t *ptr, size_t room);
+
+int		rad_vp2attr(RADIUS_PACKET const *packet,
+			    RADIUS_PACKET const *original, char const *secret,
+			    VALUE_PAIR const **pvp, uint8_t *ptr, size_t room);
 
 /* valuepair.c */
 VALUE_PAIR	*pairalloc(TALLOC_CTX *ctx, DICT_ATTR const *da);
@@ -599,7 +601,7 @@ void		pairsprintf(VALUE_PAIR *vp, char const * fmt, ...)
 ;
 void		pairmove(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from);
 void		pairfilter(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from,
-					   unsigned int attr, unsigned int vendor, int8_t tag);
+			   unsigned int attr, unsigned int vendor, int8_t tag);
 bool		pairparsevalue(VALUE_PAIR *vp, char const *value);
 VALUE_PAIR	*pairmake_ip(TALLOC_CTX *ctx, char const *value, DICT_ATTR *ipv4, DICT_ATTR *ipv6,
 			     DICT_ATTR *ipv4_prefix, DICT_ATTR *ipv6_prefix);
@@ -673,10 +675,10 @@ int		ip_hton(char const *src, int af, fr_ipaddr_t *dst);
 char const	*ip_ntoh(fr_ipaddr_t const *src, char *dst, size_t cnt);
 struct in_addr	fr_ipaddr_mask(struct in_addr const *ipaddr, uint8_t prefix);
 struct in6_addr	fr_ipaddr_mask6(struct in6_addr const *ipaddr, uint8_t prefix);
-int fr_ipaddr2sockaddr(fr_ipaddr_t const *ipaddr, int port,
-		       struct sockaddr_storage *sa, socklen_t *salen);
-int fr_sockaddr2ipaddr(struct sockaddr_storage const *sa, socklen_t salen,
-		       fr_ipaddr_t *ipaddr, int * port);
+int		fr_ipaddr2sockaddr(fr_ipaddr_t const *ipaddr, int port,
+				   struct sockaddr_storage *sa, socklen_t *salen);
+int		fr_sockaddr2ipaddr(struct sockaddr_storage const *sa, socklen_t salen,
+				   fr_ipaddr_t *ipaddr, int * port);
 ssize_t		fr_utf8_to_ucs2(uint8_t *out, size_t outlen, char const *in, size_t inlen);
 size_t		fr_prints_uint128(char *out, size_t outlen, uint128_t const num);
 int64_t		fr_pow(int32_t base, uint8_t exp);
@@ -688,9 +690,9 @@ int		fr_get_time(char const *date_str, time_t *date);
  *	talloc is valid memory... just not for us.
  */
 #ifdef TALLOC_DEBUG
-void fr_talloc_verify_cb(const void *ptr, int depth,
-			 int max_depth, int is_ref,
-			 void *private_data);
+void		fr_talloc_verify_cb(const void *ptr, int depth,
+				    int max_depth, int is_ref,
+				    void *private_data);
 #define VERIFY_ALL_TALLOC talloc_report_depth_cb(NULL, 0, -1, fr_talloc_verify_cb, NULL)
 #else
 #define VERIFY_ALL_TALLOC
@@ -713,14 +715,14 @@ typedef struct fr_randctx {
 	uint32_t randc;
 } fr_randctx;
 
-void fr_isaac(fr_randctx *ctx);
-void fr_randinit(fr_randctx *ctx, int flag);
-uint32_t fr_rand(void);	/* like rand(), but better. */
-void fr_rand_seed(void const *, size_t ); /* seed the random pool */
+void		fr_isaac(fr_randctx *ctx);
+void		fr_randinit(fr_randctx *ctx, int flag);
+uint32_t	fr_rand(void);	/* like rand(), but better. */
+void		fr_rand_seed(void const *, size_t ); /* seed the random pool */
 
 
 /* crypt wrapper from crypt.c */
-int fr_crypt_check(char const *key, char const *salt);
+int		fr_crypt_check(char const *key, char const *salt);
 
 /* cbuff.c */
 typedef struct fr_cbuff fr_cbuff_t;
@@ -758,17 +760,17 @@ typedef int (*rb_comparator_t)(void const *ctx, void const *data);
 typedef int (*rb_walker_t)(void *ctx, void *data);
 typedef void (*rb_free_t)(void *data);
 
-rbtree_t       *rbtree_create(rb_comparator_t compare, rb_free_t node_free, int flags);
+rbtree_t	*rbtree_create(rb_comparator_t compare, rb_free_t node_free, int flags);
 void		rbtree_free(rbtree_t *tree);
 bool		rbtree_insert(rbtree_t *tree, void *data);
 rbnode_t	*rbtree_insert_node(rbtree_t *tree, void *data);
 void		rbtree_delete(rbtree_t *tree, rbnode_t *z);
 bool		rbtree_deletebydata(rbtree_t *tree, void const *data);
-rbnode_t       *rbtree_find(rbtree_t *tree, void const *data);
-void	       *rbtree_finddata(rbtree_t *tree, void const *data);
+rbnode_t	*rbtree_find(rbtree_t *tree, void const *data);
+void		*rbtree_finddata(rbtree_t *tree, void const *data);
 int		rbtree_num_elements(rbtree_t *tree);
-void	       *rbtree_min(rbtree_t *tree);
-void	       *rbtree_node2data(rbtree_t *tree, rbnode_t *node);
+void		*rbtree_min(rbtree_t *tree);
+void		*rbtree_node2data(rbtree_t *tree, rbnode_t *node);
 
 /*
  *	The callback should be declared as:
@@ -786,7 +788,7 @@ void	       *rbtree_node2data(rbtree_t *tree, rbnode_t *node);
  *	or 2 to delete the current node and continue.  This may be
  *	used to batch-delete select nodes from a locked rbtree.
  */
-int rbtree_walk(rbtree_t *tree, rb_order_t order, rb_walker_t compare, void *context);
+int		rbtree_walk(rbtree_t *tree, rb_order_t order, rb_walker_t compare, void *context);
 
 /*
  *	Find a matching data item in an rbtree and, if one is found,
@@ -806,19 +808,19 @@ int rbtree_walk(rbtree_t *tree, rb_order_t order, rb_walker_t compare, void *con
  *	item was not found, or NULL if the item was deleted and the tree was
  *	created with a freeNode garbage collection routine.
  */
-void *rbtree_callbydata(rbtree_t *tree, void const *data, rb_comparator_t compare, void *context);
+void		*rbtree_callbydata(rbtree_t *tree, void const *data, rb_comparator_t compare, void *context);
 
 /*
  *	FIFOs
  */
-typedef struct fr_fifo_t fr_fifo_t;
+typedef struct	fr_fifo_t fr_fifo_t;
 typedef void (*fr_fifo_free_t)(void *);
-fr_fifo_t *fr_fifo_create(int max_entries, fr_fifo_free_t freeNode);
-void fr_fifo_free(fr_fifo_t *fi);
-int fr_fifo_push(fr_fifo_t *fi, void *data);
-void *fr_fifo_pop(fr_fifo_t *fi);
-void *fr_fifo_peek(fr_fifo_t *fi);
-int fr_fifo_num_elements(fr_fifo_t *fi);
+fr_fifo_t	*fr_fifo_create(int max_entries, fr_fifo_free_t freeNode);
+void		fr_fifo_free(fr_fifo_t *fi);
+int		fr_fifo_push(fr_fifo_t *fi, void *data);
+void		*fr_fifo_pop(fr_fifo_t *fi);
+void		*fr_fifo_peek(fr_fifo_t *fi);
+int		fr_fifo_num_elements(fr_fifo_t *fi);
 
 #ifdef __cplusplus
 }
@@ -827,7 +829,7 @@ int fr_fifo_num_elements(fr_fifo_t *fi);
 #include <freeradius-devel/packet.h>
 
 #ifdef WITH_TCP
-#include <freeradius-devel/tcp.h>
+#  include <freeradius-devel/tcp.h>
 #endif
 
 #endif /*LIBRADIUS_H*/
