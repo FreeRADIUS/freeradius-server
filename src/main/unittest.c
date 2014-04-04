@@ -426,7 +426,7 @@ int main(int argc, char *argv[])
 	 *	We always log to stdout.
 	 */
 	fr_log_fp = stdout;
-	default_log.dest = L_DST_STDOUT;
+	default_log.dst = L_DST_STDOUT;
 	default_log.fd = STDOUT_FILENO;
 
 	/*  Process the options.  */

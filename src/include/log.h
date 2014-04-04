@@ -66,7 +66,7 @@ typedef struct fr_log_t {
 	int		colourise;	//!< Prefix log messages with VT100 escape codes to change text
 					//!< colour.
 	int		fd;		//!< File descriptor to write messages to.
-	log_dst_t	dest;		//!< Log destination.
+	log_dst_t	dst;		//!< Log destination.
 	char		*file;		//!< Path to log file.
 	char		*debug_file;	//!< Path to debug log file.
 } fr_log_t;
@@ -76,6 +76,10 @@ typedef		void (*radlog_func_t)(log_type_t lvl, log_debug_t priority, REQUEST *, 
 extern FR_NAME_NUMBER const syslog_str2fac[];
 extern FR_NAME_NUMBER const log_str2dst[];
 extern fr_log_t default_log;
+
+bool radlog_std_restore(void);
+bool radlog_std_to_log(fr_log_t *log);
+int radlog_init(fr_log_t *log, bool close_std);
 
 int		vradlog(log_type_t lvl, char const *fmt, va_list ap)
 #ifdef __GNUC__

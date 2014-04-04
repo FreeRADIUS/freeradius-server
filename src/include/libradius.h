@@ -758,6 +758,17 @@ void		fr_cbuff_rp_insert(fr_cbuff_t *cbuff, void *obj);
 void		*fr_cbuff_rp_next(fr_cbuff_t *cbuff, TALLOC_CTX *ctx);
 
 /* debug.c */
+
+/** Optional callback passed to fr_fault_setup
+ *
+ * Allows optional logic to be run before calling the main fault handler.
+ *
+ * If the callback returns < 0, the main fault handler will not be called.
+ *
+ * @param signum signal raised.
+ * @return 0 on success < 0 on failure.
+ */
+typedef int (*fr_fault_cb)(int signum);
 typedef struct fr_bt_marker fr_bt_marker_t;
 
 void		fr_debug_break(void);
@@ -765,6 +776,7 @@ void		backtrace_print(fr_cbuff_t *cbuff, void *obj);
 fr_bt_marker_t	*fr_backtrace_attach(fr_cbuff_t **cbuff, TALLOC_CTX *obj);
 void NEVER_RETURNS fr_fault(int sig);
 int		fr_fault_setup(char const *cmd, char const *program);
+void		fr_fault_set_cb(fr_fault_cb cb);
 
 /* rbtree.c */
 typedef struct rbtree_t rbtree_t;

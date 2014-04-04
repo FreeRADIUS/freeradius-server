@@ -92,6 +92,12 @@ static void die_horribly(char const *reason)
 }
 #endif
 
+static int _restore_std(UNUSED int signal)
+{
+	if (!radlog_std_restore()) radlog_std_to_log(&default_log);
+	return 0;
+}
+
 /*
  *	The main guy.
  */
@@ -105,8 +111,6 @@ int main(int argc, char *argv[])
 	bool write_pid = false;
 	int flag = 0;
 	int from_child[2] = {-1, -1};
-
-	int devnull;
 
 	/*
 	 *	We probably don't want to free the talloc autofree context
@@ -157,7 +161,7 @@ int main(int argc, char *argv[])
 	 *	Don't put output anywhere until we get told a little
 	 *	more.
 	 */
-	default_log.dest = L_DST_NULL;
+	default_log.dst = L_DST_NULL;
 	default_log.fd = -1;
 	mainconfig.log_file = NULL;
 
@@ -192,7 +196,7 @@ int main(int argc, char *argv[])
 					goto do_stdout;
 				}
 				mainconfig.log_file = strdup(optarg);
-				default_log.dest = L_DST_FILES;
+				default_log.dst = L_DST_FILES;
 				default_log.fd = open(mainconfig.log_file,
 							    O_WRONLY | O_APPEND | O_CREAT, 0640);
 				if (default_log.fd < 0) {
@@ -251,7 +255,7 @@ int main(int argc, char *argv[])
 				/* Don't print timestamps */
 				debug_flag += 2;
 				fr_log_fp = stdout;
-				default_log.dest = L_DST_STDOUT;
+				default_log.dst = L_DST_STDOUT;
 				default_log.fd = STDOUT_FILENO;
 
 				version();
@@ -265,7 +269,7 @@ int main(int argc, char *argv[])
 				mainconfig.log_auth_goodpass = true;
 		do_stdout:
 				fr_log_fp = stdout;
-				default_log.dest = L_DST_STDOUT;
+				default_log.dst = L_DST_STDOUT;
 				default_log.fd = STDOUT_FILENO;
 				break;
 
@@ -348,11 +352,6 @@ int main(int argc, char *argv[])
 
 #ifndef __MINGW32__
 
-	devnull = open("/dev/null", O_RDWR);
-	if (devnull < 0) {
-		ERROR("Failed opening /dev/null: %s", fr_syserror(errno));
-		exit(EXIT_FAILURE);
-	}
 
 	/*
 	 *  Disconnect from session
@@ -365,7 +364,16 @@ int main(int argc, char *argv[])
 		 *  system() later.
 		 */
 		if (dont_fork == false) {
+			int devnull;
+
+			devnull = open("/dev/null", O_RDWR);
+			if (devnull < 0) {
+				ERROR("Failed opening /dev/null: %s", fr_syserror(errno));
+				exit(EXIT_FAILURE);
+			}
 			dup2(devnull, STDIN_FILENO);
+
+			close(devnull);
 		}
 
 		if (pipe(from_child) != 0) {
@@ -424,76 +432,24 @@ int main(int argc, char *argv[])
 #endif
 
 	/*
-	 *  Ensure that we're using the CORRECT pid after forking,
-	 *  NOT the one we started with.
+	 *	Ensure that we're using the CORRECT pid after forking,
+	 *	NOT the one we started with.
 	 */
 	radius_pid = getpid();
 
 	/*
-	 *	STDOUT & STDERR go to /dev/null, unless we have "-x",
-	 *	then STDOUT & STDERR go to the "-l log" destination.
-	 *
-	 *	The complexity here is because "-l log" can go to
-	 *	STDOUT or STDERR, too.
+	 *	Restore stderr and stdout before calling panic_action
+	 *	if were running in foreground mode.
 	 */
-	if (default_log.dest == L_DST_STDOUT) {
-		setlinebuf(stdout);
-		default_log.fd = STDOUT_FILENO;
+	if (!dont_fork) fr_fault_set_cb(_restore_std);
 
-		/*
-		 *	If we're debugging, allow STDERR to go to
-		 *	STDOUT too, for executed programs,
-		 */
-		if (debug_flag) {
-			dup2(STDOUT_FILENO, STDERR_FILENO);
-		} else {
-			dup2(devnull, STDERR_FILENO);
-		}
-
-	} else if (default_log.dest == L_DST_STDERR) {
-		setlinebuf(stderr);
-		default_log.fd = STDERR_FILENO;
-
-		/*
-		 *	If we're debugging, allow STDOUT to go to
-		 *	STDERR too, for executed programs,
-		 */
-		if (debug_flag) {
-			dup2(STDERR_FILENO, STDOUT_FILENO);
-		} else {
-			dup2(devnull, STDOUT_FILENO);
-		}
-
-	} else if (default_log.dest == L_DST_SYSLOG) {
-		/*
-		 *	Discard STDOUT and STDERR no matter what the
-		 *	status of debugging.  Syslog isn't a file
-		 *	descriptor, so we can't use it.
-		 */
-		dup2(devnull, STDOUT_FILENO);
-		dup2(devnull, STDERR_FILENO);
-
-	} else if (debug_flag) {
-		/*
-		 *	If we're debugging, allow STDOUT and STDERR to
-		 *	go to the log file.
-		 */
-		dup2(default_log.fd, STDOUT_FILENO);
-		dup2(default_log.fd, STDERR_FILENO);
-
-	} else {
-		/*
-		 *	Not debugging, and the log isn't STDOUT or
-		 *	STDERR.  Ensure that we move both of them to
-		 *	/dev/null, so that the calling terminal can
-		 *	exit, and the output from executed programs
-		 *	doesn't pollute STDOUT / STDERR.
-		 */
-		dup2(devnull, STDOUT_FILENO);
-		dup2(devnull, STDERR_FILENO);
+	/*
+	 *	Redirect stderr/stdout as appropriate.
+	 */
+	if (radlog_init(&default_log, !dont_fork) < 0) {
+		ERROR("%s", fr_strerror());
+		exit(EXIT_FAILURE);
 	}
-
-	close(devnull);
 
 	/*
 	 *	Start the event loop(s) and threads.
