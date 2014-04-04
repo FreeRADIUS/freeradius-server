@@ -36,14 +36,14 @@ RCSID("$Id$")
  *
  * Base64 encode IN array of size INLEN into OUT array of size OUTLEN.
  *
- * @param[in] in Data to encode.
- * @param[in] inlen Length of data to encode.
  * @param[out] out Where to write Base64 string.
  * @param[in] outlen size of buffer including NULL byte.
+ * @param[in] in Data to encode.
+ * @param[in] inlen Length of data to encode.
  * @return The amount of data we wrote to the buffer or -1 if output buffer
  *	was too small.
  */
-size_t fr_base64_encode(uint8_t const *in, size_t inlen, char *out, size_t outlen)
+size_t fr_base64_encode(char *out, size_t outlen, uint8_t const *in, size_t inlen)
 {
 	static char const b64str[64] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklm"
 				       "nopqrstuvwxyz0123456789+/";
@@ -242,14 +242,13 @@ int fr_isbase64(char c)
  * This means that, when applicable, you must remove any line terminators
  * that is part of the data stream before calling this function.
  *
- * @param[in] in Base64 string to decode.
- * @param[in] inlen length of Base64 string.
  * @param[out] out Where to write the decoded data.
  * @param[in] outlen The length of the output buffer.
+ * @param[in] in Base64 string to decode.
+ * @param[in] inlen length of Base64 string.
  * @return -1 on error, else the length of decoded data.
  */
-ssize_t fr_base64_decode(char const *in, size_t inlen, uint8_t *out,
-			 size_t outlen)
+ssize_t fr_base64_decode(uint8_t *out, size_t outlen, char const *in, size_t inlen)
 {
 	uint8_t *p = out;
 
