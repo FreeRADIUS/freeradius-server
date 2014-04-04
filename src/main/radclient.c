@@ -219,7 +219,6 @@ static int mschapv1_encode(RADIUS_PACKET *packet, VALUE_PAIR **request,
 	return 1;
 }
 
-
 /*
  *	Initialize a radclient data structure and add it to
  *	the global linked list.
@@ -342,6 +341,23 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 				request->filter_code = vp->vp_integer;
 				talloc_free(vp);
 			}
+
+			/*
+			 *	xlat expansions aren't supported here
+			 */
+			for (vp = fr_cursor_init(&cursor, &request->filter);
+			     vp;
+			     vp = fr_cursor_next(&cursor)) {
+				if (vp->type == VT_XLAT) {
+					vp->type = VT_DATA;
+					vp->vp_strvalue = vp->value.xlat;
+				}
+			}
+
+			/*
+			 *	This allows efficient list comparisons later
+			 */
+			pairsort(&request->filter, attrtagcmp);
 		}
 
 		/*
@@ -1007,10 +1023,10 @@ static int recv_one_packet(int wait_time)
 	 */
 	if (request->reply->code != request->filter_code) {
 		if (is_radius_code(request->packet_code)) {
-			printf("Expected %s, got %s\n", fr_packet_codes[request->packet_code],
+			printf("Expected %s got %s\n", fr_packet_codes[request->filter_code],
 			       fr_packet_codes[request->reply->code]);
 		} else {
-			printf("Expected %u, got %i\n", request->packet_code,
+			printf("Expected %u got %i\n", request->filter_code,
 			       request->reply->code);
 		}
 		stats.failed++;
@@ -1020,11 +1036,12 @@ static int recv_one_packet(int wait_time)
 	} else if (!request->filter) {
 		stats.passed++;
 	} else {
+		pairsort(&request->reply->vps, attrtagcmp);
 		if (pairvalidate(request->filter, request->reply->vps)) {
-			printf("Packet passed filter!\n");
+			printf("Packet passed filter\n");
 			stats.passed++;
 		} else {
-			printf("Packet failed filter!\n");
+			printf("Packet failed filter\n");
 			stats.failed++;
 		}
 	}
