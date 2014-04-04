@@ -1426,7 +1426,7 @@ static int command_inject_file(rad_listen_t *listener, int argc, char *argv[])
 	 *	Remember what the output file is, and remember to
 	 *	delete the fake listener when done.
 	 */
-	request_data_add(request, null_socket_send, 0, talloc_strdup(NULL, buffer), true);
+	request_data_add(request, null_socket_send, 0, talloc_typed_strdup(NULL, buffer), true);
 	request_data_add(request, null_socket_send, 1, fake, true);
 
 #endif
@@ -2193,7 +2193,7 @@ static int command_socket_parse_unix(CONF_SECTION *cs, rad_listen_t *this)
 
 	sock->magic = COMMAND_SOCKET_MAGIC;
 	sock->copy = NULL;
-	if (sock->path) sock->copy = talloc_strdup(sock, sock->path);
+	if (sock->path) sock->copy = talloc_typed_strdup(sock, sock->path);
 
 #if defined(HAVE_GETPEEREID) || defined (SO_PEERCRED)
 	if (sock->uid_name) {

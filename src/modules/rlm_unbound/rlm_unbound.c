@@ -218,7 +218,7 @@ static ssize_t xlat_a(void *instance, REQUEST *request, char const *fmt, char *o
 	/* Used and thus impossible value from heap to designate incomplete */
 	*ubres = (void *)instance;
 
-	fmt2 = talloc_strdup(inst, fmt);
+	fmt2 = talloc_typed_strdup(inst, fmt);
 	ub_resolve_async(inst->ub, fmt2, 1, 1, ubres, link_ubres, &async_id);
 	talloc_free(fmt2);
 
@@ -263,7 +263,7 @@ static ssize_t xlat_aaaa(void *instance, REQUEST *request, char const *fmt, char
 	/* Used and thus impossible value from heap to designate incomplete */
 	*ubres = (void *)instance;
 
-	fmt2 = talloc_strdup(inst, fmt);
+	fmt2 = talloc_typed_strdup(inst, fmt);
 	ub_resolve_async(inst->ub, fmt2, 28, 1, ubres, link_ubres, &async_id);
 	talloc_free(fmt2);
 
@@ -306,7 +306,7 @@ static ssize_t xlat_ptr(void *instance, REQUEST *request, char const *fmt, char 
 	/* Used and thus impossible value from heap to designate incomplete */
 	*ubres = (void *)instance;
 
-	fmt2 = talloc_strdup(inst, fmt);
+	fmt2 = talloc_typed_strdup(inst, fmt);
 	ub_resolve_async(inst->ub, fmt2, 12, 1, ubres, link_ubres, &async_id);
 	talloc_free(fmt2);
 
@@ -674,9 +674,9 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 	}
 
-	MEM(inst->xlat_a_name = talloc_asprintf(inst, "%s-a", inst->name));
-	MEM(inst->xlat_aaaa_name = talloc_asprintf(inst, "%s-aaaa", inst->name));
-	MEM(inst->xlat_ptr_name = talloc_asprintf(inst, "%s-ptr", inst->name));
+	MEM(inst->xlat_a_name = talloc_typed_asprintf(inst, "%s-a", inst->name));
+	MEM(inst->xlat_aaaa_name = talloc_typed_asprintf(inst, "%s-aaaa", inst->name));
+	MEM(inst->xlat_ptr_name = talloc_typed_asprintf(inst, "%s-ptr", inst->name));
 
 	if (xlat_register(inst->xlat_a_name, xlat_a, NULL, inst) ||
 	    xlat_register(inst->xlat_aaaa_name, xlat_aaaa, NULL, inst) ||

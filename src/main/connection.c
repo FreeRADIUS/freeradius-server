@@ -670,16 +670,16 @@ fr_connection_pool_t *fr_connection_pool_init(CONF_SECTION *parent,
 					cs_name2 = cs_name1;
 				}
 
-				pool->log_prefix = talloc_asprintf(pool, LOG_PREFIX, cs_name1,
+				pool->log_prefix = talloc_typed_asprintf(pool, LOG_PREFIX, cs_name1,
 								   cs_name2);
 			}
 		} else {		/* not a module configuration */
 			cs_name1 = cf_section_name1(parent);
 
-			pool->log_prefix = talloc_strdup(pool, cs_name1);
+			pool->log_prefix = talloc_typed_strdup(pool, cs_name1);
 		}
 	} else {
-		pool->log_prefix = talloc_strdup(pool, prefix);
+		pool->log_prefix = talloc_typed_strdup(pool, prefix);
 	}
 
 	DEBUG("%s: Initialising connection pool", pool->log_prefix);

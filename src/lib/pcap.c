@@ -89,7 +89,7 @@ fr_pcap_t *fr_pcap_init(TALLOC_CTX *ctx, char const *name, fr_pcap_type_t type)
 	}
 
 	talloc_set_destructor(this, _free_pcap);
-	this->name = talloc_strdup(this, name);
+	this->name = talloc_typed_strdup(this, name);
 	this->type = type;
 	this->link_type = -1;
 

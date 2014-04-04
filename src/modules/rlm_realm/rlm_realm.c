@@ -102,7 +102,7 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 	 *	We will be modifing this later, so we want our own copy
 	 *	of it.
 	 */
-	namebuf = talloc_strdup(request,  request->username->vp_strvalue);
+	namebuf = talloc_typed_strdup(request,  request->username->vp_strvalue);
 	username = namebuf;
 
 	switch(inst->format) {

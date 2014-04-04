@@ -229,7 +229,7 @@ parse_again:
 				check_tmp = NULL;
 				reply_tmp = NULL;
 
-				t->name = talloc_strdup(t, entry);
+				t->name = talloc_typed_strdup(t, entry);
 
 				*last = t;
 				last = &(t->next);

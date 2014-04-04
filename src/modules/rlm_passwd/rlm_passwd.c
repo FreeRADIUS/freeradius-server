@@ -435,7 +435,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		return -1;
 	}
 
-	lf = talloc_strdup(inst, inst->format);
+	lf = talloc_typed_strdup(inst, inst->format);
 	if ( !lf) {
 		ERROR("rlm_passwd: memory allocation failed for lf");
 		return -1;

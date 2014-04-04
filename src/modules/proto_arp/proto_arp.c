@@ -150,6 +150,7 @@ static int arp_socket_recv(rad_listen_t *listener)
 	packet->dst_port = 1;	/* so it's not a "fake" request */
 	packet->data_len = header->caplen - link_len;
 	packet->data = talloc_memdup(packet, data + link_len, packet->data_len);
+	talloc_set_type(packet->data, uint8_t);
 
 	DEBUG("ARP received on interface %s", sock->interface);
 
@@ -295,7 +296,7 @@ static int arp_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	client->prefix = 0;
 	client->longname = client->shortname = sock->interface;
 	client->secret = client->shortname;
-	client->nas_type = talloc_strdup(sock, "none");
+	client->nas_type = talloc_typed_strdup(sock, "none");
 
 	return 0;
 }

@@ -742,7 +742,7 @@ void set_radius_dir(TALLOC_CTX *ctx, char const *path)
 		talloc_free(p);
 		radius_dir = NULL;
 	}
-	if (path) radius_dir = talloc_strdup(ctx, path);
+	if (path) radius_dir = talloc_typed_strdup(ctx, path);
 }
 
 /** Get the global radius config directory.
@@ -803,7 +803,7 @@ int read_mainconfig(int reload)
 	 *	be fixed to be done as a second stage.
 	 */
 	if (!mainconfig.dictionary_dir) {
-		mainconfig.dictionary_dir = talloc_strdup(NULL, DICTDIR);
+		mainconfig.dictionary_dir = talloc_typed_strdup(NULL, DICTDIR);
 	}
 
 	/*

@@ -1015,11 +1015,11 @@ int radius_map2request(REQUEST *request, value_pair_map_t const *map,
 			 */
 			case VPT_TYPE_LIST:
 				vp_prints_value(buffer, sizeof(buffer), vp, '\'');
-				value = talloc_asprintf(request, "&%s%s -> %s", map->src->name, vp->da->name, buffer);
+				value = talloc_typed_asprintf(request, "&%s%s -> %s", map->src->name, vp->da->name, buffer);
 				break;
 			case VPT_TYPE_ATTR:
 				vp_prints_value(buffer, sizeof(buffer), vp, '\'');
-				value = talloc_asprintf(request, "&%s -> %s", map->src->name, buffer);
+				value = talloc_typed_asprintf(request, "&%s -> %s", map->src->name, buffer);
 				break;
 		}
 
@@ -1622,6 +1622,7 @@ void vmodule_failure_msg(REQUEST *request, char const *fmt, va_list ap)
 	 */
 	va_copy(aq, ap);
 	p = talloc_vasprintf(vp, fmt, aq);
+	talloc_set_type(p, char);
 	va_end(aq);
 	if (request->module && *request->module) {
 		pairsprintf(vp, "%s: %s", request->module, p);

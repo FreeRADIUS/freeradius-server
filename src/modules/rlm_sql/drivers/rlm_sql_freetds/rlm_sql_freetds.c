@@ -76,7 +76,7 @@ static CS_RETCODE CS_PUBLIC clientmsg_callback(CS_CONTEXT *context, UNUSED CS_CO
 
 	if (this->error) TALLOC_FREE(this->error);
 
-	this->error = talloc_asprintf(this, "client error: severity(%ld), number(%ld), origin(%ld), layer(%ld): %s",
+	this->error = talloc_typed_asprintf(this, "client error: severity(%ld), number(%ld), origin(%ld), layer(%ld): %s",
 				      (long)CS_SEVERITY(emsgp->severity), (long)CS_NUMBER(emsgp->msgnumber),
 				      (long)CS_ORIGIN(emsgp->msgnumber), (long)CS_LAYER(emsgp->msgnumber),
 				      emsgp->msgstring);
@@ -120,7 +120,7 @@ static CS_RETCODE CS_PUBLIC csmsg_callback(CS_CONTEXT *context, CS_CLIENTMSG *em
 
 	if (this->error) TALLOC_FREE(this->error);
 
-	this->error = talloc_asprintf(this, "cs error: severity(%ld), number(%ld), origin(%ld), layer(%ld): %s",
+	this->error = talloc_typed_asprintf(this, "cs error: severity(%ld), number(%ld), origin(%ld), layer(%ld): %s",
 				      (long)CS_SEVERITY(emsgp->severity), (long)CS_NUMBER(emsgp->msgnumber),
 				      (long)CS_ORIGIN(emsgp->msgnumber), (long)CS_LAYER(emsgp->msgnumber),
 				      emsgp->msgstring);
@@ -169,7 +169,7 @@ static CS_RETCODE CS_PUBLIC servermsg_callback(UNUSED CS_CONTEXT *context, UNUSE
 	} else {
 		if (this->error) TALLOC_FREE(this->error);
 
-		this->error = talloc_asprintf(this, "server msg from \"%s\": severity(%ld), number(%ld), origin(%ld), "
+		this->error = talloc_typed_asprintf(this, "server msg from \"%s\": severity(%ld), number(%ld), origin(%ld), "
 		     			      "layer(%ld), procedure \"%s\": %s",
 		     			      (msgp->svrnlen > 0) ? msgp->svrname : "unknown",
 		     			      (long)msgp->msgnumber, (long)msgp->severity, (long)msgp->state,

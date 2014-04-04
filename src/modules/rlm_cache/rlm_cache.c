@@ -267,7 +267,7 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 	if (vp && (vp->vp_signed == 0)) return NULL;
 
 	c = talloc_zero(inst, rlm_cache_entry_t);
-	c->key = talloc_strdup(c, key);
+	c->key = talloc_typed_strdup(c, key);
 	c->created = c->expires = request->timestamp;
 
 	/*

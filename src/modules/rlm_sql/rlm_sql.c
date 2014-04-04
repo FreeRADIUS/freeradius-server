@@ -494,7 +494,7 @@ static int sql_get_grouplist(rlm_sql_t *inst, rlm_sql_handle_t *handle, REQUEST 
 			entry = entry->next;
 		}
 		entry->next = NULL;
-		entry->name = talloc_strdup(entry, row[0]);
+		entry->name = talloc_typed_strdup(entry, row[0]);
 
 		num_groups++;
 	}
@@ -762,7 +762,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		/*
 		 *	Allocate room for <instance>-SQL-Group
 		 */
-		group_name = talloc_asprintf(inst, "%s-SQL-Group", inst->config->xlat_name);
+		group_name = talloc_typed_asprintf(inst, "%s-SQL-Group", inst->config->xlat_name);
 		DEBUG("rlm_sql (%s): Creating new attribute %s",
 		      inst->config->xlat_name, group_name);
 

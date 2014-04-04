@@ -3767,6 +3767,7 @@ ssize_t data2vp(RADIUS_PACKET *packet,
 
 	case PW_TYPE_OCTETS:
 		vp->vp_octets = talloc_memdup(vp, data, vp->length);
+		talloc_set_type(vp->vp_octets, uint8_t);
 		break;
 
 	case PW_TYPE_ABINARY:

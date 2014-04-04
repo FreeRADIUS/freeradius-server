@@ -537,7 +537,7 @@ static void parse_xlat(char const *input, char *output, size_t outlen)
 {
 	ssize_t slen;
 	char const *error = NULL;
-	char *fmt = talloc_strdup(NULL, input);
+	char *fmt = talloc_typed_strdup(NULL, input);
 	xlat_exp_t *head;
 
 	slen = xlat_tokenize(fmt, fmt, &head, &error);

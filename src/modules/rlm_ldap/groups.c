@@ -77,7 +77,7 @@ static rlm_rcode_t rlm_ldap_group_name2dn(ldap_instance_t const *inst, REQUEST *
 	 *	It'll probably only save a few ms in network latency, but it means we can send a query
 	 *	for the entire group list at once.
 	 */
-	filter = talloc_asprintf(request, "%s%s%s",
+	filter = talloc_typed_asprintf(request, "%s%s%s",
 				 inst->groupobj_filter ? "(&" : "",
 				 inst->groupobj_filter ? inst->groupobj_filter : "",
 				 names[0] && names[1] ? "(|" : "");
@@ -225,7 +225,7 @@ static rlm_rcode_t rlm_ldap_group_dn2name(ldap_instance_t const *inst, REQUEST *
 
 	RDEBUG("Group name is \"%s\"", vals[0]);
 
-	*out = talloc_strdup(request, vals[0]);
+	*out = talloc_typed_strdup(request, vals[0]);
 
 	finish:
 	if (result) {

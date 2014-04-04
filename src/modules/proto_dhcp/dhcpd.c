@@ -633,7 +633,7 @@ static int dhcp_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	}
 
 	if (!sock->src_interface && sock->lsock.interface) {
-		sock->src_interface = talloc_strdup(sock, sock->lsock.interface);
+		sock->src_interface = talloc_typed_strdup(sock, sock->lsock.interface);
 	}
 
 	cp = cf_pair_find(cs, "src_ipaddr");
@@ -659,7 +659,7 @@ static int dhcp_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	client->prefix = 0;
 	client->longname = client->shortname = "dhcp";
 	client->secret = client->shortname;
-	client->nas_type = talloc_strdup(sock, "none");
+	client->nas_type = talloc_typed_strdup(sock, "none");
 
 	return 0;
 }

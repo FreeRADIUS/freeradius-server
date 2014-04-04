@@ -128,7 +128,7 @@ value_pair_tmpl_t *radius_attr2tmpl(TALLOC_CTX *ctx, char const *name,
 	char const *copy;
 
 	vpt = talloc(ctx, value_pair_tmpl_t); /* parse_attr zeroes it */
-	copy = talloc_strdup(vpt, name);
+	copy = talloc_typed_strdup(vpt, name);
 
 	if (radius_parse_attr(vpt, copy, request_def, list_def) < 0) {
 		ERROR("%s", fr_strerror());
@@ -157,7 +157,7 @@ value_pair_tmpl_t *radius_str2tmpl(TALLOC_CTX *ctx, char const *name, FR_TOKEN t
 	value_pair_tmpl_t *vpt;
 
 	vpt = talloc_zero(ctx, value_pair_tmpl_t);
-	vpt->name = talloc_strdup(vpt, name);
+	vpt->name = talloc_typed_strdup(vpt, name);
 
 	switch (type) {
 	case T_BARE_WORD:
