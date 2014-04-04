@@ -40,7 +40,6 @@ typedef struct REQUEST REQUEST;	/* to shut up warnings about mschap.h */
 #include "smbdes.h"
 #include "mschap.h"
 
-static bool success = false;
 static int retries = 3;
 static float timeout = 5;
 static char const *secret = NULL;
@@ -99,8 +98,10 @@ struct rc_request {
 	time_t		timestamp;
 
 	RADIUS_PACKET	*packet;	//!< The outgoing request.
+	PW_CODE		packet_code;	//!< The code in the outgoing request.
 	RADIUS_PACKET	*reply;		//!< The incoming response.
 	VALUE_PAIR	*filter;	//!< If the reply passes the filter, then the request passes.
+	PW_CODE		filter_code;	//!< Expected code of the response packet.
 
 	int		resend;
 	int		tries;
@@ -296,10 +297,20 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 		request->request_number = request_number++;
 
 		/*
-		 *	Read the VP's.
+		 *	Read the request VP's.
 		 */
 		request->packet->vps = readvp2(request, packets, &packets_done, "radclient:");
 		if (!request->packet->vps) goto error;
+
+		fr_cursor_init(&cursor, &request->filter);
+		vp = fr_cursor_next_by_num(&cursor, PW_PACKET_TYPE, 0, TAG_ANY);
+		if (vp) {
+			fr_cursor_remove(&cursor);
+			request->packet_code = vp->vp_integer;
+			talloc_free(vp);
+		} else {
+			request->packet_code = packet_code; /* Use the default set on the command line */
+		}
 
 		/*
 		 *	Read in filter VP's.
@@ -322,6 +333,40 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 				fprintf(stderr, "radclient: Differing number of packets/filters in %s:%s "
 					"(too many filters))", files->packets, files->filters);
 				goto error;
+			}
+
+			fr_cursor_init(&cursor, &request->filter);
+			vp = fr_cursor_next_by_num(&cursor, PW_PACKET_TYPE, 0, TAG_ANY);
+			if (vp) {
+				fr_cursor_remove(&cursor);
+				request->filter_code = vp->vp_integer;
+				talloc_free(vp);
+			}
+		}
+
+		/*
+		 *	Determine the response code from the request (if not already set)
+		 */
+		if (!request->filter_code) {
+			switch (request->packet_code) {
+			case PW_CODE_AUTHENTICATION_REQUEST:
+				request->filter_code = PW_CODE_AUTHENTICATION_ACK;
+				break;
+
+			case PW_CODE_ACCOUNTING_REQUEST:
+				request->filter_code = PW_CODE_ACCOUNTING_RESPONSE;
+				break;
+
+			case PW_CODE_COA_REQUEST:
+				request->filter_code = PW_CODE_COA_ACK;
+				break;
+
+			case PW_CODE_DISCONNECT_REQUEST:
+				request->filter_code = PW_CODE_DISCONNECT_ACK;
+				break;
+
+			default:
+				break;
 			}
 		}
 
@@ -944,21 +989,37 @@ static int recv_one_packet(int wait_time)
 		vp_printlist(stdout, request->reply->vps);
 	}
 
+	/*
+	 *	Increment counters...
+	 */
 	if ((request->reply->code == PW_CODE_AUTHENTICATION_ACK) ||
 	    (request->reply->code == PW_CODE_ACCOUNTING_RESPONSE) ||
 	    (request->reply->code == PW_CODE_COA_ACK) ||
 	    (request->reply->code == PW_CODE_DISCONNECT_ACK)) {
-		success = true;		/* have a good reply */
 		stats.accepted++;
 	} else {
 		stats.rejected++;
 	}
 
-	if (request->resend == resend_count) {
-		request->done = true;
-	}
-
-	if (request->filter) {
+	/*
+	 *	If we had an expected response code, check to see if the
+	 *	packet matched that.
+	 */
+	if (request->reply->code != request->filter_code) {
+		if (is_radius_code(request->packet_code)) {
+			printf("Expected %s, got %s\n", fr_packet_codes[request->packet_code],
+			       fr_packet_codes[request->reply->code]);
+		} else {
+			printf("Expected %u, got %i\n", request->packet_code,
+			       request->reply->code);
+		}
+		stats.failed++;
+	/*
+	 *	Check if the contents of the packet matched the filter
+	 */
+	} else if (!request->filter) {
+		stats.passed++;
+	} else {
 		if (pairvalidate(request->filter, request->reply->vps)) {
 			printf("Packet passed filter!\n");
 			stats.passed++;
@@ -966,6 +1027,10 @@ static int recv_one_packet(int wait_time)
 			printf("Packet failed filter!\n");
 			stats.failed++;
 		}
+	}
+
+	if (request->resend == resend_count) {
+		request->done = true;
 	}
 
  packet_done:
@@ -1492,9 +1557,8 @@ int main(int argc, char **argv)
 	dict_free();
 
 	if (do_summary) {
-		printf("\n"
-		       "\tAccess-Accept's : %" PRIu64 "\n"
-		       "\tAccess-Reject's : %" PRIu64 "\n"
+		printf("\tAccess-Accepts  : %" PRIu64 "\n"
+		       "\tAccess-Rejects  : %" PRIu64 "\n"
 		       "\tLost            : %" PRIu64 "\n"
 		       "\tPassed filter   : %" PRIu64 "\n"
 		       "\tFailed filter   : %" PRIu64 "\n",
@@ -1506,7 +1570,8 @@ int main(int argc, char **argv)
 		);
 	}
 
-	if (success) return 0;
-
-	return 1;
+	if ((stats.lost > 0) || (stats.failed > 0)) {
+		exit(1);
+	}
+	exit(0);
 }
