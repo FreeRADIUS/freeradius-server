@@ -162,60 +162,60 @@ fr_log_t default_log = {
 static int stderr_fd = -1;	//!< The original unmolested stderr file descriptor
 static int stdout_fd = -1;	//!< The original unmolested stdout file descriptor
 
-/** Restore the original stderr/stdout file descriptors
- *
- * Only effective if radlog_init was called with close_stdout = false.
- *
- * @return true if stdout/stderr have been restored, else false.
+/*
+ *	On fault, reset STDOUT and STDERR to something useful.
  */
-bool radlog_std_restore(void)
+static int _restore_std(UNUSED int nothing)
 {
 	if ((stderr_fd > 0) && (stdout_fd > 0)) {
 		dup2(stderr_fd, STDOUT_FILENO);
 		dup2(stdout_fd, STDERR_FILENO);
-		return true;
+		return 0;
 	}
-	return false;
+
+	if (default_log.fd > 0) {
+		dup2(default_log.fd, STDOUT_FILENO);
+		dup2(default_log.fd, STDERR_FILENO);
+		return 0;
+	}
+
+	return 0;
 }
 
-/** Set stderr/stdout to the current log descriptor.
- *
- * @param log Logger to manipulate.
- * @return true if stdout/stderr have been altered, else false.
- */
-bool radlog_std_to_log(fr_log_t *log)
-{
-	if (log->fd > 0) {
-		dup2(log->fd, STDOUT_FILENO);
-		dup2(log->fd, STDERR_FILENO);
-		return true;
-	}
-	return false;
-}
 
 /** Initialise file descriptors based on logging destination
  *
  * @param log Logger to manipulate.
- * @param close_std Whether we should close stderr and stdout completely, or just redirect them.
+ * @param daemon_mode whether or not the server is running in daemon mode
  * @return 0 on success -1 on failure.
  */
-int radlog_init(fr_log_t *log, bool close_std)
+int radlog_init(fr_log_t *log, bool daemon_mode)
 {
 	int devnull;
+
+	/*
+	 *	If we're running in foreground mode, save STDIN /
+	 *	STDERR as higher FDs, which won't get used by anyone
+	 *	else.  When we fork/exec a program, it's STD FDs will
+	 *	get set to pipes.  We later set STDOUT / STDERR to
+	 *	/dev/null, so that any library trying to write to them
+	 *	doesn't screw anything up.
+	 *
+	 *	Then, when something goes wrong, restore them so that
+	 *	any debugger called from the panic action has access
+	 *	to STDOUT / STDERR.
+	 */
+	if (!daemon_mode) {
+		fr_fault_set_cb(_restore_std);
+
+		stdout_fd = dup(STDOUT_FILENO);
+		stderr_fd = dup(STDERR_FILENO);
+	}
 
 	devnull = open("/dev/null", O_RDWR);
 	if (devnull < 0) {
 		fr_strerror_printf("Error opening /dev/null: %s", fr_syserror(errno));
 		return -1;
-	}
-
-	/*
-	 *	Dup the original stdout/stderr file descriptors so
-	 *	we can restore them later.
-	 */
-	if (!close_std) {
-		stderr_fd = dup(STDERR_FILENO);
-		stdout_fd = dup(STDOUT_FILENO);
 	}
 
 	/*
