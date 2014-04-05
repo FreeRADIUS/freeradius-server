@@ -27,7 +27,6 @@ RCSID("$Id$")
 #include <freeradius-devel/libradius.h>
 #include <freeradius-devel/radpaths.h>
 #include <freeradius-devel/conf.h>
-#include <freeradius-devel/rad_assert.h>
 
 #include <ctype.h>
 
@@ -487,7 +486,10 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 					p[1] = vp->length;
 
 					da = dict_attrbyvalue(PW_DIGEST_ATTRIBUTES, 0);
-					rad_assert(da != NULL);
+					if (!da) {
+						fprintf(stderr, "radclient: Out of memory\n");
+						goto error;
+					}
 					vp->da = da;
 
 					/*
