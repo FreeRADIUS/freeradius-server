@@ -964,13 +964,28 @@ int radius_map2request(REQUEST *request, value_pair_map_t const *map,
 		return -2;
 	}
 
+	/*
+	 *	If there's no CoA packet and we're updating it,
+	 *	auto-allocate it.
+	 */
+	if (((map->dst->list == PAIR_LIST_COA) ||
+	     (map->dst->list == PAIR_LIST_DM)) &&
+	    !request->coa) {
+		request_alloc_coa(context);
+		if (map->dst->list == PAIR_LIST_COA) {
+			context->coa->proxy->code = PW_CODE_COA_REQUEST;
+		} else {
+			context->coa->proxy->code = PW_CODE_DISCONNECT_REQUEST;
+		}
+		DEBUG("ALLOC COA");
+	}
+
 	list = radius_list(context, map->dst->list);
 	if (!list) {
 		REDEBUG("Mapping \"%s\" -> \"%s\" invalid in this context", map->src->name, map->dst->name);
 
 		return -2;
 	}
-
 
 	/*
 	 *	The callback should either return -1 to signify operations error, -2 when it can't find the
