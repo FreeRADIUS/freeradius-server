@@ -115,14 +115,7 @@ extern "C" {
  *	Requires typeof(), which is in most modern C compilers.
  */
 
-/*
-#define VERIFY_VP(_x) do { (void) talloc_get_type_abort(_x, VALUE_PAIR); \
-			if (_x->da) { \
-			   	(void) talloc_get_type_abort(_x->da, DICT_ATTR); \
-			} \
-		      } while (0)
-*/
-#  define FREE_MAGIC (0xF4EEF4EE)
+#define FREE_MAGIC (0xF4EEF4EE)
 
 #  define VERIFY_VP(_x) \
 do {\
