@@ -430,7 +430,7 @@ STATE_MACHINE_DECL(request_done)
 	if (request->parent && (request->parent->coa == request)) {
 		request->parent->coa = NULL;
 	}
-
+	
 #endif
 
 	/*
@@ -3268,7 +3268,7 @@ static void request_coa_originate(REQUEST *request)
 	if (vp) {
 		if (vp->vp_integer == 0) {
 		fail:
-			request_done(request->coa, FR_ACTION_DONE);
+			request_free(&request->coa);
 			return;
 		}
 	}
