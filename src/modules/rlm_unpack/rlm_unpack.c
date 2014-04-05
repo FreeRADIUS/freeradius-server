@@ -42,29 +42,34 @@ static ssize_t unpack_xlat(UNUSED void *instance, REQUEST *request, char const *
 {
 	char *data_name, *data_size, *data_type;
 	char *p;
-	size_t len;
+	size_t len, input_len;
 	int offset;
 	PW_TYPE type;
 	DICT_ATTR const *da;
 	VALUE_PAIR *vp, *cast;
+	uint8_t const *input;
 	char buffer[256];
+	uint8_t blob[256];
 
+	/*
+	 *	FIXME: copy only the fields here, as we parse them.
+	 */
 	strlcpy(buffer, fmt, sizeof(buffer));
 
 	p = buffer;
-	if (*p != '&') {
+	while (isspace((int) *p)) p++; /* skip leading spaces */
+
+	data_name = p;
+
+	while (*p && !isspace((int) *p)) p++;
+
+	if (!*p) {
 	error:
-		REDEBUG("Format string should be '&<attr> <offset> <type>' e.g. '&Class 1 integer'");
+		REDEBUG("Format string should be '<data> <offset> <type>' e.g. '&Class 1 integer'");
 	nothing:
 		*out = '\0';
 		return -1;
 	}
-
-	p++;
-
-	data_name = p;
-	while (*p && !isspace((int) *p)) p++;
-	if (!*p) GOTO_ERROR;
 
 	while (isspace((int) *p)) *(p++) = '\0';
 	if (!*p) GOTO_ERROR;
@@ -82,12 +87,34 @@ static ssize_t unpack_xlat(UNUSED void *instance, REQUEST *request, char const *
 	while (*p && !isspace((int) *p)) p++;
 	if (*p) GOTO_ERROR;	/* anything after the type is an error */
 
-	if (radius_get_vp(&vp, request, data_name) < 0) goto nothing;
+	/*
+	 *	Attribute reference
+	 */
+	if (*data_name == '&') {
+		if (radius_get_vp(&vp, request, data_name + 1) < 0) goto nothing;
 
-	if ((vp->da->type != PW_TYPE_OCTETS) &&
-	    (vp->da->type != PW_TYPE_STRING)) {
-		REDEBUG("unpack requires the input attribute to be 'string' or 'octets'");
-		goto nothing;
+		if ((vp->da->type != PW_TYPE_OCTETS) &&
+		    (vp->da->type != PW_TYPE_STRING)) {
+			REDEBUG("unpack requires the input attribute to be 'string' or 'octets'");
+			goto nothing;
+		}
+		input = vp->vp_octets;
+		input_len = vp->length;
+
+	} else if ((data_name[0] == '0') && (data_name[1] == 'x')) {
+		/*
+		 *	Hex data.
+		 */
+		len = strlen(data_name + 2);
+		if ((len & 0x01) != 0) {
+			RDEBUG("Invalid hex string in '%s'", data_name);
+			goto nothing;
+		}
+		input = blob;
+		input_len = fr_hex2bin(blob, data_name + 2, sizeof(blob));
+
+	} else {
+		GOTO_ERROR;
 	}
 
 	offset = (int) strtoul(data_size, &p, 10);
@@ -111,8 +138,8 @@ static ssize_t unpack_xlat(UNUSED void *instance, REQUEST *request, char const *
 		goto nothing;
 	}
 
-	if (vp->length < (offset + dict_attr_sizes[type][0])) {
-		REDEBUG("Cannot unpack attribute '%s', it is too short", data_name);
+	if (input_len < (offset + dict_attr_sizes[type][0])) {
+		REDEBUG("Insufficient data to unpack '%s' from '%s'", data_type, data_name);
 		goto nothing;
 	}
 
@@ -125,7 +152,7 @@ static ssize_t unpack_xlat(UNUSED void *instance, REQUEST *request, char const *
 	cast = pairalloc(request, da);
 	if (!cast) goto nothing;
 
-	memcpy(&(cast->data), vp->vp_octets + offset, dict_attr_sizes[type][0]);
+	memcpy(&(cast->data), input + offset, dict_attr_sizes[type][0]);
 	cast->length = dict_attr_sizes[type][0];
 
 	/*
@@ -139,7 +166,7 @@ static ssize_t unpack_xlat(UNUSED void *instance, REQUEST *request, char const *
 		break;
 
 	case PW_TYPE_SHORT:
-		cast->vp_short = ((vp->vp_octets[offset] << 8) | vp->vp_octets[offset + 1]);
+		cast->vp_short = ((input[offset] << 8) | input[offset + 1]);
 		break;
 
 	case PW_TYPE_INTEGER64:

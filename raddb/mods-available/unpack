@@ -7,13 +7,17 @@
 #  add it to the raddb/mods-enabled/ directory.  Then,
 #  use it on the right-hand side of a variable assignment.
 #
-#  ... = "%{unpack:&Attribute-Name 1 integer}"
+#  ... = "%{unpack:data 1 integer}"
 #
 #  The arguments are three fields:
 #
-#	&Attribute-Name
+#	data
+#		Either &Attribute-Name
 #		the name of the attribute to unpack.
-#		 MUST be a "string" or "octets" type.
+#		MUST be a "string" or "octets" type.
+#
+#		or 0xabcdef
+#		e.g. hex data.
 #
 #	1
 #		The offset into the string from which
