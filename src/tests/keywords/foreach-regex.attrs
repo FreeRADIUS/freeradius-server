@@ -1,0 +1,15 @@
+#
+#  Input packet
+#
+User-Name = "bob"
+User-Password = "hello"
+Cisco-AVPair = "stupid=1"
+Cisco-AVPair += "retarded=2"
+Cisco-AVPair += "cisco=3"
+Cisco-AVPair += "shit=4"
+
+#
+#  Expected answer
+#
+Response-Packet-Type == Access-Accept
+Called-Station-Id == "3"
