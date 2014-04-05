@@ -107,6 +107,15 @@ static int radius_expand_tmpl(char **out, REQUEST *request, value_pair_tmpl_t co
 		}
 		break;
 
+	case VPT_TYPE_REGEX:
+		EVAL_DEBUG("TMPL REGEX");
+		/* Error in expansion, this is distinct from zero length expansion */
+		if (radius_axlat(out, request, vpt->name, NULL, NULL) < 0) {
+			rad_assert(!*out);
+			return -1;
+		}
+		break;
+
 	case VPT_TYPE_XLAT:
 		EVAL_DEBUG("TMPL XLAT");
 		/* Error in expansion, this is distinct from zero length expansion */
@@ -140,7 +149,6 @@ static int radius_expand_tmpl(char **out, REQUEST *request, value_pair_tmpl_t co
 		break;
 
 	case VPT_TYPE_DATA:
-	case VPT_TYPE_REGEX:
 	case VPT_TYPE_REGEX_STRUCT:
 		rad_assert(0 == 1);
 		/* FALL-THROUGH */
