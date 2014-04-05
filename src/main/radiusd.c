@@ -107,7 +107,7 @@ int main(int argc, char *argv[])
 	int status;
 	int argval;
 	bool spawn_flag = true;
-	bool dont_fork = false;
+	bool daemon_mode = true;
 	bool write_pid = false;
 	int flag = 0;
 	int from_child[2] = {-1, -1};
@@ -172,7 +172,7 @@ int main(int argc, char *argv[])
 			case 'C':
 				check_config = true;
 				spawn_flag = false;
-				dont_fork = true;
+				daemon_mode = false;
 				break;
 
 			case 'd':
@@ -184,7 +184,7 @@ int main(int argc, char *argv[])
 				break;
 
 			case 'f':
-				dont_fork = true;
+				daemon_mode = false;
 				break;
 
 			case 'h':
@@ -244,7 +244,7 @@ int main(int argc, char *argv[])
 
 			case 's':	/* Single process mode */
 				spawn_flag = false;
-				dont_fork = true;
+				daemon_mode = false;
 				break;
 
 			case 't':	/* no child threads */
@@ -262,7 +262,7 @@ int main(int argc, char *argv[])
 				exit(EXIT_SUCCESS);
 			case 'X':
 				spawn_flag = false;
-				dont_fork = true;
+				daemon_mode = false;
 				debug_flag += 2;
 				mainconfig.log_auth = true;
 				mainconfig.log_auth_badpass = true;
@@ -356,25 +356,22 @@ int main(int argc, char *argv[])
 	/*
 	 *  Disconnect from session
 	 */
-	if (dont_fork == false) {
+	if (daemon_mode) {
 		pid_t pid;
+		int devnull;
 
 		/*
 		 *  Really weird things happen if we leave stdin open and call things like
 		 *  system() later.
 		 */
-		if (dont_fork == false) {
-			int devnull;
-
-			devnull = open("/dev/null", O_RDWR);
-			if (devnull < 0) {
-				ERROR("Failed opening /dev/null: %s", fr_syserror(errno));
-				exit(EXIT_FAILURE);
-			}
-			dup2(devnull, STDIN_FILENO);
-
-			close(devnull);
+		devnull = open("/dev/null", O_RDWR);
+		if (devnull < 0) {
+			ERROR("Failed opening /dev/null: %s", fr_syserror(errno));
+			exit(EXIT_FAILURE);
 		}
+		dup2(devnull, STDIN_FILENO);
+		
+		close(devnull);
 
 		if (pipe(from_child) != 0) {
 			ERROR("Couldn't open pipe for child status: %s", fr_syserror(errno));
@@ -441,12 +438,12 @@ int main(int argc, char *argv[])
 	 *	Restore stderr and stdout before calling panic_action
 	 *	if were running in foreground mode.
 	 */
-	if (!dont_fork) fr_fault_set_cb(_restore_std);
+	if (!daemon_mode) fr_fault_set_cb(_restore_std);
 
 	/*
 	 *	Redirect stderr/stdout as appropriate.
 	 */
-	if (radlog_init(&default_log, !dont_fork) < 0) {
+	if (radlog_init(&default_log, daemon_mode) < 0) {
 		ERROR("%s", fr_strerror());
 		exit(EXIT_FAILURE);
 	}
@@ -506,15 +503,13 @@ int main(int argc, char *argv[])
 #endif
 
 	/*
-	 *	Write out the PID anyway if were in foreground mode.
+	 *	Write the PID always if we're running as a daemon.
 	 */
-	if (!dont_fork) write_pid = true;
+	if (daemon_mode) write_pid = true;
 
 	/*
-	 *  Only write the PID file if we're running as a daemon.
-	 *
-	 *  And write it AFTER we've forked, so that we write the
-	 *  correct PID.
+	 *	Write the PID after we've forked, so that we write the
+	 *	correct one.
 	 */
 	if (write_pid) {
 		FILE *fp;
@@ -543,7 +538,7 @@ int main(int argc, char *argv[])
 	 *	we just close the pipe on exit, and the parent gets a
 	 *	read failure.
 	 */
-	if (!dont_fork) {
+	if (daemon_mode) {
 		if (write(from_child[1], "\001", 1) < 0) {
 			WARN("Failed informing parent of successful start: %s",
 			     fr_syserror(errno));
@@ -590,7 +585,7 @@ int main(int argc, char *argv[])
 	 *	file.  (If it doesn't exist, we can ignore
 	 *	the error returned by unlink)
 	 */
-	if (dont_fork == false) {
+	if (daemon_mode) {
 		unlink(mainconfig.pid_file);
 	}
 
