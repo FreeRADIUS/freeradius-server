@@ -475,7 +475,7 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 				/* overlapping! */
 				{
 					DICT_ATTR const *da;
-					uint8_t *p;
+					uint8_t *p, *q;
 
 					p = talloc_array(vp, uint8_t, vp->length + 2);
 
@@ -485,13 +485,25 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 					p[1] = vp->length;
 
 					da = dict_attrbyvalue(PW_DIGEST_ATTRIBUTES, 0);
-					if (!da) {
-						fprintf(stderr, "radclient: Out of memory\n");
-						goto error;
-					}
+					rad_assert(da != NULL);
 					vp->da = da;
-					pairtypeset(vp);
-					pairmemsteal(vp, p);
+
+					/*
+					 *	Re-do pairmemsteal ourselves,
+					 *	because we play games with
+					 *	vp->da, and pairmemsteal goes
+					 *	to GREAT lengths to sanitize
+					 *	and fix and change and
+					 *	double-check the various
+					 *	fields.
+					 */
+					memcpy(&q, &vp->vp_octets, sizeof(q));
+					talloc_free(q);
+
+					vp->vp_octets = talloc_steal(vp, p);
+					vp->type = VT_DATA;
+
+					VERIFY_VP(vp);
 				}
 
 				break;
