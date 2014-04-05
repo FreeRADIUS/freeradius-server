@@ -92,7 +92,7 @@ static void die_horribly(char const *reason)
 }
 #endif
 
-static int _restore_std(UNUSED int signal)
+static int _restore_std(UNUSED int nothing)
 {
 	if (!radlog_std_restore()) radlog_std_to_log(&default_log);
 	return 0;
