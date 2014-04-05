@@ -267,7 +267,8 @@ int radlog_init(fr_log_t *log, bool daemon_mode)
 		 *	If we're debugging, allow STDOUT and STDERR to
 		 *	go to the log file.
 		 */
-		radlog_std_to_log(log);
+		dup2(default_log.fd, STDOUT_FILENO);
+		dup2(default_log.fd, STDERR_FILENO);
 
 	} else {
 		/*
