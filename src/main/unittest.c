@@ -280,7 +280,7 @@ static REQUEST *request_setup(FILE *fp)
 				/* overlapping! */
 			{
 				DICT_ATTR const *da;
-				uint8_t *p;
+				uint8_t *p, *q;
 
 				p = talloc_array(vp, uint8_t, vp->length + 2);
 
@@ -289,11 +289,26 @@ static REQUEST *request_setup(FILE *fp)
 				vp->length += 2;
 				p[1] = vp->length;
 
-				pairmemsteal(vp, p);
-
 				da = dict_attrbyvalue(PW_DIGEST_ATTRIBUTES, 0);
 				rad_assert(da != NULL);
 				vp->da = da;
+
+				/*
+				 *	Re-do pairmemsteal ourselves,
+				 *	because we play games with
+				 *	vp->da, and pairmemsteal goes
+				 *	to GREAT lengths to sanitize
+				 *	and fix and change and
+				 *	double-check the various
+				 *	fields.
+				 */
+				memcpy(&q, &vp->vp_octets, sizeof(q));
+				talloc_free(q);
+
+				vp->vp_octets = talloc_steal(vp, p);
+				vp->type = VT_DATA;
+
+				VERIFY_VP(vp);
 			}
 
 			break;
