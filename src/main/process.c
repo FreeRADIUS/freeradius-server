@@ -2721,11 +2721,14 @@ STATE_MACHINE_DECL(request_ping)
 		if (home->state == HOME_STATE_ALIVE) break;
 
 		/*
-		 *	We haven't received enough ping responses to mark it
-		 *	"alive".  Wait a bit.
+		 *	It's dead, and we haven't received enough ping
+		 *	responses to mark it "alive".  Wait a bit.
+		 *
+		 *	If it's zombie, we mark it alive immediately.
 		 */
-		if (home->num_received_pings < home->num_pings_to_alive) {
-			break;
+		if ((home->state == HOME_STATE_IS_DEAD) &&
+		    (home->num_received_pings < home->num_pings_to_alive)) {
+			return;
 		}
 
 		/*
