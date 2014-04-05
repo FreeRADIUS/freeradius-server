@@ -92,12 +92,6 @@ static void die_horribly(char const *reason)
 }
 #endif
 
-static int _restore_std(UNUSED int nothing)
-{
-	if (!radlog_std_restore()) radlog_std_to_log(&default_log);
-	return 0;
-}
-
 /*
  *	The main guy.
  */
@@ -433,12 +427,6 @@ int main(int argc, char *argv[])
 	 *	NOT the one we started with.
 	 */
 	radius_pid = getpid();
-
-	/*
-	 *	Restore stderr and stdout before calling panic_action
-	 *	if were running in foreground mode.
-	 */
-	if (!daemon_mode) fr_fault_set_cb(_restore_std);
 
 	/*
 	 *	Redirect stderr/stdout as appropriate.

@@ -77,9 +77,7 @@ extern FR_NAME_NUMBER const syslog_str2fac[];
 extern FR_NAME_NUMBER const log_str2dst[];
 extern fr_log_t default_log;
 
-bool radlog_std_restore(void);
-bool radlog_std_to_log(fr_log_t *log);
-int radlog_init(fr_log_t *log, bool close_std);
+int radlog_init(fr_log_t *log, bool daemon_mode);
 
 int		vradlog(log_type_t lvl, char const *fmt, va_list ap)
 #ifdef __GNUC__
