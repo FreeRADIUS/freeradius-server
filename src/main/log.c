@@ -150,7 +150,6 @@ const FR_NAME_NUMBER log_str2dst[] = {
 
 bool log_dates_utc = false;
 
-
 fr_log_t default_log = {
 	.colourise = true,
 	.fd = STDOUT_FILENO,
@@ -162,10 +161,11 @@ fr_log_t default_log = {
 static int stderr_fd = -1;	//!< The original unmolested stderr file descriptor
 static int stdout_fd = -1;	//!< The original unmolested stdout file descriptor
 
-/*
- *	On fault, reset STDOUT and STDERR to something useful.
+/** On fault, reset STDOUT and STDERR to something useful.
+ *
+ * @return 0
  */
-static int _restore_std(UNUSED int nothing)
+static int _restore_std(UNUSED int sig)
 {
 	if ((stderr_fd > 0) && (stdout_fd > 0)) {
 		dup2(stderr_fd, STDOUT_FILENO);
@@ -182,11 +182,10 @@ static int _restore_std(UNUSED int nothing)
 	return 0;
 }
 
-
 /** Initialise file descriptors based on logging destination
  *
  * @param log Logger to manipulate.
- * @param daemon_mode whether or not the server is running in daemon mode
+ * @param daemon_mode whether or not the server is running in daemon mode.
  * @return 0 on success -1 on failure.
  */
 int radlog_init(fr_log_t *log, bool daemon_mode)
@@ -267,8 +266,8 @@ int radlog_init(fr_log_t *log, bool daemon_mode)
 		 *	If we're debugging, allow STDOUT and STDERR to
 		 *	go to the log file.
 		 */
-		dup2(default_log.fd, STDOUT_FILENO);
-		dup2(default_log.fd, STDERR_FILENO);
+		dup2(log->fd, STDOUT_FILENO);
+		dup2(log->fd, STDERR_FILENO);
 
 	} else {
 		/*
