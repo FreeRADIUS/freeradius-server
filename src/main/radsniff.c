@@ -1065,310 +1065,311 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 	case PW_CODE_DISCONNECT_NAK:
 	case PW_CODE_DISCONNECT_ACK:
 	case PW_CODE_STATUS_CLIENT:
-		{
-			/* look for a matching request and use it for decoding */
-			search.expect = current;
-			original = rbtree_finddata(request_tree, &search);
+	{
+		/* look for a matching request and use it for decoding */
+		search.expect = current;
+		original = rbtree_finddata(request_tree, &search);
 
-			/*
-			 *	Verify this code is allowed
-			 */
-			if (conf->filter_response_code && (conf->filter_response_code != current->code)) {
-				drop_response:
-				RDEBUG2("Response dropped by filter");
-				rad_free(&current);
+		/*
+		 *	Verify this code is allowed
+		 */
+		if (conf->filter_response_code && (conf->filter_response_code != current->code)) {
+			drop_response:
+			RDEBUG2("Response dropped by filter");
+			rad_free(&current);
 
-				/* We now need to cleanup the original request too */
-				if (original) {
-					RS_CLEANUP_NOW(original, true);
-				}
-				return;
-			}
-
-			/*
-			 *	Only decode attributes if we want to print them or filter on them
-			 *	rad_packet_ok does checks to verify the packet is actually valid.
-			 */
-			if (conf->decode_attrs) {
-				int ret;
-				FILE *log_fp = fr_log_fp;
-
-				fr_log_fp = NULL;
-				ret = rad_decode(current, original ? original->expect : NULL, conf->radius_secret);
-				fr_log_fp = log_fp;
-				if (ret != 0) {
-					rad_free(&current);
-					REDEBUG("Failed decoding");
-					return;
-				}
-			}
-
-			/*
-			 *	Check if we've managed to link it to a request
-			 */
+			/* We now need to cleanup the original request too */
 			if (original) {
-				/*
-				 *	Now verify the packet passes the attribute filter
-				 */
-				if (conf->filter_response_vps) {
-					pairsort(&current->vps, attrtagcmp);
-					if (!pairvalidate_relaxed(conf->filter_response_vps, current->vps)) {
-						goto drop_response;
-					}
-				}
-
-				/*
-				 *	Is this a retransmission?
-				 */
-				if (original->linked) {
-					status = RS_RTX;
-					original->rt_rsp++;
-
-					rad_free(&original->linked);
-					fr_event_delete(event->list, &original->event);
-				/*
-				 *	...nope it's the first response to a request.
-				 */
-				} else {
-					original->stats_rsp = &stats->exchange[current->code];
-				}
-
-				/*
-				 *	Insert a callback to remove the request and response
-				 *	from the tree after the timeout period.
-				 *	The delay is so we can detect retransmissions.
-				 */
-				original->linked = talloc_steal(original, current);
-				rs_tv_add_ms(&header->ts, conf->stats.timeout, &original->when);
-				if (!fr_event_insert(event->list, _rs_event, original, &original->when,
-						     &original->event)) {
-					REDEBUG("Failed inserting new event");
-					/*
-					 *	Delete the original request/event, it's no longer valid
-					 *	for statistics.
-					 */
-					talloc_free(original);
-					return;
-				}
-			/*
-			 *	No request seen, or request was dropped by attribute filter
-			 */
-			} else {
-				/*
-				 *	If conf->filter_request_vps are set assume the original request was dropped,
-				 *	the alternative is maintaining another 'filter', but that adds
-				 *	complexity, reduces max capture rate, and is generally a PITA.
-				 */
-				if (conf->filter_request) {
-					rad_free(&current);
-					RDEBUG2("Original request dropped by filter");
-					return;
-				}
-
-				status = RS_UNLINKED;
-				stats->exchange[current->code].interval.unlinked_total++;
+				RS_CLEANUP_NOW(original, true);
 			}
-
-			response = true;
-			break;
+			return;
 		}
-	case PW_CODE_ACCOUNTING_REQUEST:
-	case PW_CODE_AUTHENTICATION_REQUEST:
-	case PW_CODE_COA_REQUEST:
-	case PW_CODE_DISCONNECT_REQUEST:
-	case PW_CODE_STATUS_SERVER:
-		{
-			/*
-			 *	Verify this code is allowed
-			 */
-			if (conf->filter_request_code && (conf->filter_request_code != current->code)) {
-				drop_request:
 
-				RDEBUG2("Request dropped by filter");
+		/*
+		 *	Only decode attributes if we want to print them or filter on them
+		 *	rad_packet_ok does checks to verify the packet is actually valid.
+		 */
+		if (conf->decode_attrs) {
+			int ret;
+			FILE *log_fp = fr_log_fp;
+
+			fr_log_fp = NULL;
+			ret = rad_decode(current, original ? original->expect : NULL, conf->radius_secret);
+			fr_log_fp = log_fp;
+			if (ret != 0) {
 				rad_free(&current);
-
+				REDEBUG("Failed decoding");
 				return;
 			}
+		}
 
-			/*
-			 *	Only decode attributes if we want to print them or filter on them
-			 *	rad_packet_ok does checks to verify the packet is actually valid.
-			 */
-			if (conf->decode_attrs) {
-				int ret;
-				FILE *log_fp = fr_log_fp;
-
-				fr_log_fp = NULL;
-				ret = rad_decode(current, NULL, conf->radius_secret);
-				fr_log_fp = log_fp;
-
-				if (ret != 0) {
-					rad_free(&current);
-					REDEBUG("Failed decoding");
-					return;
-				}
-
-				pairsort(&current->vps, attrtagcmp);
-			}
-
-			/*
-			 *	Save the request for later matching
-			 */
-			search.expect = rad_alloc_reply(current, current);
-			if (!search.expect) {
-				REDEBUG("Failed allocating memory to hold expected reply");
-				rs_tv_add_ms(&header->ts, conf->stats.timeout, &stats->quiet);
-				rad_free(&current);
-				return;
-			}
-			search.expect->code = current->code;
-
-			if ((conf->link_da_num > 0) && current->vps) {
-				int ret;
-				ret = rs_get_pairs(current, &search.link_vps, current->vps, conf->link_da,
-						   conf->link_da_num);
-				if (ret < 0) {
-					ERROR("Failed extracting RTX linking pairs from request");
-					rad_free(&current);
-					return;
-				}
-			}
-
-			/*
-			 *	If we have linking attributes set, attempt to find a request in the linking tree.
-			 */
-			if (search.link_vps) {
-				rs_request_t *tuple;
-
-				original = rbtree_finddata(link_tree, &search);
-				tuple = rbtree_finddata(request_tree, &search);
-
-				/*
-				 *	If the packet we matched using attributes is not the same
-				 *	as the packet in the request tree, then we need to clean up
-				 *	the packet in the request tree.
-				 */
-				if (tuple && (original != tuple)) {
-					RS_CLEANUP_NOW(tuple, true);
-				}
-			/*
-			 *	Detect duplicates using the normal 5-tuple of src/dst ips/ports id
-			 */
-			} else {
-				original = rbtree_finddata(request_tree, &search);
-				if (original && memcmp(original->expect->vector, current->vector,
-				    sizeof(original->expect->vector) != 0)) {
-					/*
-					 *	ID reused before the request timed out (which may be an issue)...
-					 */
-					if (!original->linked) {
-						status = RS_REUSED;
-						stats->exchange[current->code].interval.reused_total++;
-						/* Occurs regularly downstream of proxy servers (so don't complain) */
-						RS_CLEANUP_NOW(original, true);
-					/*
-					 *	...and before we saw a response (which may be a bigger issue).
-					 */
-					} else {
-						RS_CLEANUP_NOW(original, false);
-					}
-					/* else it's a proper RTX with the same src/dst id authenticator/nonce */
-				}
-			}
-
+		/*
+		 *	Check if we've managed to link it to a request
+		 */
+		if (original) {
 			/*
 			 *	Now verify the packet passes the attribute filter
 			 */
-			if (conf->filter_request_vps) {
-				if (!pairvalidate_relaxed(conf->filter_request_vps, current->vps)) {
-					goto drop_request;
+			if (conf->filter_response_vps) {
+				pairsort(&current->vps, attrtagcmp);
+				if (!pairvalidate_relaxed(conf->filter_response_vps, current->vps)) {
+					goto drop_response;
 				}
 			}
 
 			/*
 			 *	Is this a retransmission?
 			 */
-			if (original) {
+			if (original->linked) {
 				status = RS_RTX;
-				original->rt_req++;
+				original->rt_rsp++;
 
-				rad_free(&original->packet);
-
-				/* We may of seen the response, but it may of been lost upstream */
 				rad_free(&original->linked);
-
-				original->packet = talloc_steal(original, current);
-
-				/* Request may need to be reinserted as the 5 tuple of the response may of changed */
-				if (rs_packet_cmp(original, &search) != 0) {
-					rbtree_deletebydata(request_tree, original);
-				}
-
-				rad_free(&original->expect);
-				original->expect = talloc_steal(original, search.expect);
-
-				/* Disarm the timer for the cleanup event for the original request */
 				fr_event_delete(event->list, &original->event);
 			/*
-			 *	...nope it's a new request.
+			 *	...nope it's the first response to a request.
 			 */
 			} else {
-				original = talloc_zero(conf, rs_request_t);
-				talloc_set_destructor(original, _request_free);
-
-				original->id = count;
-				original->in = event->in;
-				original->stats_req = &stats->exchange[current->code];
-
-				original->packet = talloc_steal(original, current);
-				original->expect = talloc_steal(original, search.expect);
-
-				if (search.link_vps) {
-					original->link_vps = pairsteal(original, search.link_vps);
-
-					/* We should never have conflicts */
-					assert(rbtree_insert(link_tree, original));
-					original->in_link_tree = true;
-				}
-
-				/*
-				 *	Special case for when were filtering by response,
-				 *	we never count any requests as lost, because we
-				 *	don't know what the response to that request would
-				 *	of been.
-				 */
-				if (conf->filter_response_vps) {
-					original->silent_cleanup = true;
-				}
-			}
-
-			if (!original->in_request_tree) {
-				/* We should never have conflicts */
-				assert(rbtree_insert(request_tree, original));
-				original->in_request_tree = true;
+				original->stats_rsp = &stats->exchange[current->code];
 			}
 
 			/*
-			 *	Insert a callback to remove the request from the tree
+			 *	Insert a callback to remove the request and response
+			 *	from the tree after the timeout period.
+			 *	The delay is so we can detect retransmissions.
 			 */
-			original->packet->timestamp = header->ts;
+			original->linked = talloc_steal(original, current);
 			rs_tv_add_ms(&header->ts, conf->stats.timeout, &original->when);
-			if (!fr_event_insert(event->list, _rs_event, original,
-					     &original->when, &original->event)) {
+			if (!fr_event_insert(event->list, _rs_event, original, &original->when,
+					     &original->event)) {
 				REDEBUG("Failed inserting new event");
-
+				/*
+				 *	Delete the original request/event, it's no longer valid
+				 *	for statistics.
+				 */
 				talloc_free(original);
 				return;
 			}
-			response = false;
-			break;
+		/*
+		 *	No request seen, or request was dropped by attribute filter
+		 */
+		} else {
+			/*
+			 *	If conf->filter_request_vps are set assume the original request was dropped,
+			 *	the alternative is maintaining another 'filter', but that adds
+			 *	complexity, reduces max capture rate, and is generally a PITA.
+			 */
+			if (conf->filter_request) {
+				rad_free(&current);
+				RDEBUG2("Original request dropped by filter");
+				return;
+			}
+
+			status = RS_UNLINKED;
+			stats->exchange[current->code].interval.unlinked_total++;
 		}
 
-		default:
-			REDEBUG("Unsupported code %i", current->code);
+		response = true;
+		break;
+	}
+
+	case PW_CODE_ACCOUNTING_REQUEST:
+	case PW_CODE_AUTHENTICATION_REQUEST:
+	case PW_CODE_COA_REQUEST:
+	case PW_CODE_DISCONNECT_REQUEST:
+	case PW_CODE_STATUS_SERVER:
+	{
+		/*
+		 *	Verify this code is allowed
+		 */
+		if (conf->filter_request_code && (conf->filter_request_code != current->code)) {
+			drop_request:
+
+			RDEBUG2("Request dropped by filter");
 			rad_free(&current);
 
 			return;
+		}
+
+		/*
+		 *	Only decode attributes if we want to print them or filter on them
+		 *	rad_packet_ok does checks to verify the packet is actually valid.
+		 */
+		if (conf->decode_attrs) {
+			int ret;
+			FILE *log_fp = fr_log_fp;
+
+			fr_log_fp = NULL;
+			ret = rad_decode(current, NULL, conf->radius_secret);
+			fr_log_fp = log_fp;
+
+			if (ret != 0) {
+				rad_free(&current);
+				REDEBUG("Failed decoding");
+				return;
+			}
+
+			pairsort(&current->vps, attrtagcmp);
+		}
+
+		/*
+		 *	Save the request for later matching
+		 */
+		search.expect = rad_alloc_reply(current, current);
+		if (!search.expect) {
+			REDEBUG("Failed allocating memory to hold expected reply");
+			rs_tv_add_ms(&header->ts, conf->stats.timeout, &stats->quiet);
+			rad_free(&current);
+			return;
+		}
+		search.expect->code = current->code;
+
+		if ((conf->link_da_num > 0) && current->vps) {
+			int ret;
+			ret = rs_get_pairs(current, &search.link_vps, current->vps, conf->link_da,
+					   conf->link_da_num);
+			if (ret < 0) {
+				ERROR("Failed extracting RTX linking pairs from request");
+				rad_free(&current);
+				return;
+			}
+		}
+
+		/*
+		 *	If we have linking attributes set, attempt to find a request in the linking tree.
+		 */
+		if (search.link_vps) {
+			rs_request_t *tuple;
+
+			original = rbtree_finddata(link_tree, &search);
+			tuple = rbtree_finddata(request_tree, &search);
+
+			/*
+			 *	If the packet we matched using attributes is not the same
+			 *	as the packet in the request tree, then we need to clean up
+			 *	the packet in the request tree.
+			 */
+			if (tuple && (original != tuple)) {
+				RS_CLEANUP_NOW(tuple, true);
+			}
+		/*
+		 *	Detect duplicates using the normal 5-tuple of src/dst ips/ports id
+		 */
+		} else {
+			original = rbtree_finddata(request_tree, &search);
+			if (original && memcmp(original->expect->vector, current->vector,
+			    sizeof(original->expect->vector) != 0)) {
+				/*
+				 *	ID reused before the request timed out (which may be an issue)...
+				 */
+				if (!original->linked) {
+					status = RS_REUSED;
+					stats->exchange[current->code].interval.reused_total++;
+					/* Occurs regularly downstream of proxy servers (so don't complain) */
+					RS_CLEANUP_NOW(original, true);
+				/*
+				 *	...and before we saw a response (which may be a bigger issue).
+				 */
+				} else {
+					RS_CLEANUP_NOW(original, false);
+				}
+				/* else it's a proper RTX with the same src/dst id authenticator/nonce */
+			}
+		}
+
+		/*
+		 *	Now verify the packet passes the attribute filter
+		 */
+		if (conf->filter_request_vps) {
+			if (!pairvalidate_relaxed(conf->filter_request_vps, current->vps)) {
+				goto drop_request;
+			}
+		}
+
+		/*
+		 *	Is this a retransmission?
+		 */
+		if (original) {
+			status = RS_RTX;
+			original->rt_req++;
+
+			rad_free(&original->packet);
+
+			/* We may of seen the response, but it may of been lost upstream */
+			rad_free(&original->linked);
+
+			original->packet = talloc_steal(original, current);
+
+			/* Request may need to be reinserted as the 5 tuple of the response may of changed */
+			if (rs_packet_cmp(original, &search) != 0) {
+				rbtree_deletebydata(request_tree, original);
+			}
+
+			rad_free(&original->expect);
+			original->expect = talloc_steal(original, search.expect);
+
+			/* Disarm the timer for the cleanup event for the original request */
+			fr_event_delete(event->list, &original->event);
+		/*
+		 *	...nope it's a new request.
+		 */
+		} else {
+			original = talloc_zero(conf, rs_request_t);
+			talloc_set_destructor(original, _request_free);
+
+			original->id = count;
+			original->in = event->in;
+			original->stats_req = &stats->exchange[current->code];
+
+			original->packet = talloc_steal(original, current);
+			original->expect = talloc_steal(original, search.expect);
+
+			if (search.link_vps) {
+				original->link_vps = pairsteal(original, search.link_vps);
+
+				/* We should never have conflicts */
+				assert(rbtree_insert(link_tree, original));
+				original->in_link_tree = true;
+			}
+
+			/*
+			 *	Special case for when were filtering by response,
+			 *	we never count any requests as lost, because we
+			 *	don't know what the response to that request would
+			 *	of been.
+			 */
+			if (conf->filter_response_vps) {
+				original->silent_cleanup = true;
+			}
+		}
+
+		if (!original->in_request_tree) {
+			/* We should never have conflicts */
+			assert(rbtree_insert(request_tree, original));
+			original->in_request_tree = true;
+		}
+
+		/*
+		 *	Insert a callback to remove the request from the tree
+		 */
+		original->packet->timestamp = header->ts;
+		rs_tv_add_ms(&header->ts, conf->stats.timeout, &original->when);
+		if (!fr_event_insert(event->list, _rs_event, original,
+				     &original->when, &original->event)) {
+			REDEBUG("Failed inserting new event");
+
+			talloc_free(original);
+			return;
+		}
+		response = false;
+		break;
+	}
+
+	default:
+		REDEBUG("Unsupported code %i", current->code);
+		rad_free(&current);
+
+		return;
 	}
 
 	if (event->out) {
@@ -1395,7 +1396,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 		 *	CoA and Disconnect Messages, as we get the average latency across both
 		 *	response types.
 		 *
-		 *	It also justifies allocating 255 instances rs_latency_t.
+		 *	It also justifies allocating PW_CODE_MAX instances of rs_latency_t.
 		 */
 		rs_stats_update_latency(&stats->exchange[current->code], &latency);
 		rs_stats_update_latency(&stats->exchange[original->expect->code], &latency);
