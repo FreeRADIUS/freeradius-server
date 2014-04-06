@@ -334,9 +334,11 @@ static int bfd_pthread_create(bfd_state_t *session)
 	fcntl(session->pipefd[1], F_SETFL, O_NONBLOCK | FD_CLOEXEC);
 #endif
 
-	fr_event_fd_insert(session->el, 0, session->pipefd[0],
-			   bfd_pipe_recv, session);
-
+	if (!fr_event_fd_insert(session->el, 0, session->pipefd[0],
+				bfd_pipe_recv, session)) {
+		ERROR("Failed inserting file descriptor into event list: %s", fr_strerror());
+		goto close_pipes;
+	}
 
 	pthread_attr_init(&attr);
 	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
