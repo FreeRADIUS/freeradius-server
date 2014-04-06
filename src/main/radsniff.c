@@ -1704,9 +1704,17 @@ static void rs_collectd_reopen(void *ctx)
 static void rs_signal_action(UNUSED fr_event_list_t *list, int fd, UNUSED void *ctx)
 {
 	int sig;
+	ssize_t ret;
 
-	if (read(fd, &sig, sizeof(sig)) < 0) {
+	ret = read(fd, &sig, sizeof(sig);
+	if (ret < 0) {
 		ERROR("Failed reading signal from pipe: %s", fr_syserror(errno));
+		exit(EXIT_FAILURE);
+	}
+
+	if (ret != sizeof(sig)) {
+		ERROR("Failed reading signal from pipe: "
+		      "Expected signal to be %zu bytes but only read %zu byes", sizeof(sig), ret);
 		exit(EXIT_FAILURE);
 	}
 
