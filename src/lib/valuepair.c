@@ -2809,7 +2809,7 @@ int8_t pairlistcmp(VALUE_PAIR *a, VALUE_PAIR *b)
  *
  * @param vp to fixup.
  */
-void pairtypeset(VALUE_PAIR *vp)
+static void pairtypeset(VALUE_PAIR *vp)
 {
 	if (!vp->data.ptr) return;
 

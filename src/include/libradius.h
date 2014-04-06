@@ -614,7 +614,6 @@ VALUE_PAIR	*paircopyvpdata(TALLOC_CTX *ctx, DICT_ATTR const *da, VALUE_PAIR cons
 VALUE_PAIR	*paircopy(TALLOC_CTX *ctx, VALUE_PAIR *from);
 VALUE_PAIR	*paircopy2(TALLOC_CTX *ctx, VALUE_PAIR *from, unsigned int attr, unsigned int vendor, int8_t tag);
 VALUE_PAIR	*pairsteal(TALLOC_CTX *ctx, VALUE_PAIR *from);
-void		pairtypeset(VALUE_PAIR *vp);
 void		pairmemcpy(VALUE_PAIR *vp, uint8_t const * src, size_t len);
 void		pairmemsteal(VALUE_PAIR *vp, uint8_t const *src);
 void		pairstrsteal(VALUE_PAIR *vp, char const *src);
