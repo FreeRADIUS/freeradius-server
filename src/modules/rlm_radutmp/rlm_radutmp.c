@@ -399,7 +399,12 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 	/*
 	 *	Lock the utmp file, prefer lockf() over flock().
 	 */
-	rad_lockfd(fd, LOCK_LEN);
+	if (rad_lockfd(fd, LOCK_LEN) < 0) {
+		REDEBUG("Error acquiring lock on %s: %s", filename, fr_syserror(errno));
+		rcode = RLM_MODULE_FAIL;
+
+		goto finish;
+	}
 
 	/*
 	 *	Find the entry for this NAS / portno combination.
