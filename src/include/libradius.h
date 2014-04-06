@@ -774,7 +774,7 @@ typedef struct fr_bt_marker fr_bt_marker_t;
 void		fr_debug_break(void);
 void		backtrace_print(fr_cbuff_t *cbuff, void *obj);
 fr_bt_marker_t	*fr_backtrace_attach(fr_cbuff_t **cbuff, TALLOC_CTX *obj);
-void NEVER_RETURNS fr_fault(int sig);
+void		fr_fault(int sig);
 int		fr_fault_setup(char const *cmd, char const *program);
 void		fr_fault_set_cb(fr_fault_cb cb);
 
