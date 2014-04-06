@@ -203,6 +203,9 @@ bool fr_assert_cond(char const *file, int line, char const *expr, bool cond)
 {
 	if (!cond) {
 		fr_perror("SOFT ASSERT FAILED %s[%u]: %s: ", file, line, expr);
+#if !defined(NDEBUG) && defined(SIGUSR1)
+		fr_fault(SIGUSR1);
+#endif
 		return false;
 	}
 

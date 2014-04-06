@@ -225,7 +225,7 @@ fr_bt_marker_t *fr_backtrace_attach(UNUSED fr_cbuff_t **cbuff, UNUSED TALLOC_CTX
  *
  * @param sig caught
  */
-void NEVER_RETURNS fr_fault(int sig)
+void fr_fault(int sig)
 {
 	char cmd[sizeof(panic_action) + 20];
 	char *out = cmd;
@@ -286,6 +286,9 @@ void NEVER_RETURNS fr_fault(int sig)
 	code = system(cmd);
 	fprintf(stderr, "Panic action exited with %i\n", code);
 
+#ifdef SIGUSR1
+	if (sig == SIGUSR1) return;
+#endif
 	fr_exit_now(1);
 }
 
