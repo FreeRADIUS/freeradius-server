@@ -185,10 +185,10 @@ static int _restore_std(UNUSED int sig)
 /** Initialise file descriptors based on logging destination
  *
  * @param log Logger to manipulate.
- * @param daemon_mode whether or not the server is running in daemon mode.
+ * @param daemonize whether or not the server is running in daemon mode.
  * @return 0 on success -1 on failure.
  */
-int radlog_init(fr_log_t *log, bool daemon_mode)
+int radlog_init(fr_log_t *log, bool daemonize)
 {
 	int devnull;
 
@@ -204,7 +204,7 @@ int radlog_init(fr_log_t *log, bool daemon_mode)
 	 *	any debugger called from the panic action has access
 	 *	to STDOUT / STDERR.
 	 */
-	if (!daemon_mode) {
+	if (!daemonize) {
 		fr_fault_set_cb(_restore_std);
 
 		stdout_fd = dup(STDOUT_FILENO);
