@@ -2907,8 +2907,9 @@ static void home_trigger(home_server_t *home, char const *trigger)
 	exec_trigger(&my_request, home->cs, trigger, false);
 }
 
-static void mark_home_server_zombie(home_server_t *home)
+static void mark_home_server_zombie(home_server_t *home, struct timeval *now)
 {
+	time_t start;
 	char buffer[128];
 
 	ASSERT_MASTER;
@@ -2923,19 +2924,31 @@ static void mark_home_server_zombie(home_server_t *home)
 	}
 #endif
 
+	/*
+	 *	We've received a real packet recently.  Don't mark the
+	 *	server as zombie until we've received NO packets for a
+	 *	while.  The "1/4" of zombie period was chosen rather
+	 *	arbitrarily.  It's a balance between too short, which
+	 *	gives quick fail-over and fail-back, or too long,
+	 *	where the proxy still sends packets to an unresponsive
+	 *	home server.
+	 */
+	start = now->tv_sec - ((home->zombie_period + 3) / 4);
+	if (home->last_packet_recv >= start) {
+		DEBUG("Recieved reply from home server %d seconds ago.  Might not be zombie.",
+		      (int) (now->tv_sec - home->last_packet_recv));
+		return;
+	}
+
 	home->state = HOME_STATE_ZOMBIE;
 	home_trigger(home, "home_server.zombie");
 
 	/*
-	 *	Back-date the zombie period to when we last expected
-	 *	to see a response.  i.e. when we last sent a request.
+	 *	Set the home server to "zombie", as of the time
+	 *	calculated above.
 	 */
-	if (home->last_packet_sent == 0) {
-		gettimeofday(&home->zombie_period_start, NULL);
-	} else {
-		home->zombie_period_start.tv_sec = home->last_packet_sent;
-		home->zombie_period_start.tv_usec = 0;
-	}
+	home->zombie_period_start.tv_sec = start;
+	home->zombie_period_start.tv_usec = USEC / 2;
 
 	fr_event_delete(el, &home->ev);
 	home->num_sent_pings = 0;
@@ -3163,12 +3176,12 @@ STATE_MACHINE_DECL(proxy_wait_for_reply)
 		 *	server state machine.
 		 */
 		if (((home->state == HOME_STATE_ALIVE) ||
-		     (home->state == HOME_STATE_UNKNOWN)) &&
+		     (home->state == HOME_STATE_UNKNOWN))
 #ifdef WITH_TCP
-		    (home->proto != IPPROTO_TCP) &&
+		    && (home->proto != IPPROTO_TCP)
 #endif
-		    ((home->last_packet_recv + home->response_window) <= now.tv_sec)) {
-			mark_home_server_zombie(home);
+			) {
+			mark_home_server_zombie(home, &now);
 		}
 
 		FR_STATS_TYPE_INC(home->stats.total_timeouts);
