@@ -111,7 +111,7 @@ int main(int argc, char *argv[])
 	 *	directly, so we'll allocate a new context beneath it, and
 	 *	free that before any leak reports.
 	 */
-	TALLOC_CTX *autofree = talloc(talloc_autofree_context(), void *);
+	TALLOC_CTX *autofree = talloc_init("main");
 
 	/*
 	 *	If the server was built with debugging enabled always install
@@ -364,7 +364,7 @@ int main(int argc, char *argv[])
 			exit(EXIT_FAILURE);
 		}
 		dup2(devnull, STDIN_FILENO);
-		
+
 		close(devnull);
 
 		if (pipe(from_child) != 0) {
