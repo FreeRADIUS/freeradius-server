@@ -1435,8 +1435,7 @@ bool pairparsevalue(VALUE_PAIR *vp, char const *value)
 			}
 			vp->vp_octets = us;
 		} else {
-			pairstrcpy(vp, value);
-			talloc_set_type(vp->vp_octets, uint8_t);	/* fixup type */
+			pairmemcpy(vp, (const uint8_t *) value, strlen(value));
 		}
 		break;
 

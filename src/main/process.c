@@ -430,7 +430,7 @@ STATE_MACHINE_DECL(request_done)
 	if (request->parent && (request->parent->coa == request)) {
 		request->parent->coa = NULL;
 	}
-	
+
 #endif
 
 	/*
@@ -2458,22 +2458,15 @@ static int request_will_proxy(REQUEST *request)
 	if ((request->packet->code == PW_CODE_AUTHENTICATION_REQUEST) &&
 	    pairfind(request->proxy->vps, PW_CHAP_PASSWORD, 0, TAG_ANY) &&
 	    pairfind(request->proxy->vps, PW_CHAP_CHALLENGE, 0, TAG_ANY) == NULL) {
-		uint8_t *p;
-		vp = radius_paircreate(request, &request->proxy->vps,
-				       PW_CHAP_CHALLENGE, 0);
-		vp->length = sizeof(request->packet->vector);
-		vp->vp_octets = p = talloc_array(vp, uint8_t, vp->length);
-
-		memcpy(p, request->packet->vector,
-		       sizeof(request->packet->vector));
+		vp = radius_paircreate(request, &request->proxy->vps, PW_CHAP_CHALLENGE, 0);
+		pairmemcpy(vp, request->packet->vector, sizeof(request->packet->vector));
 	}
 
 	/*
 	 *	The RFC's say we have to do this, but FreeRADIUS
 	 *	doesn't need it.
 	 */
-	vp = radius_paircreate(request, &request->proxy->vps,
-			       PW_PROXY_STATE, 0);
+	vp = radius_paircreate(request, &request->proxy->vps, PW_PROXY_STATE, 0);
 	pairsprintf(vp, "%u", request->packet->id);
 
 	/*
