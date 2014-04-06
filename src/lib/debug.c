@@ -236,7 +236,15 @@ void fr_fault(int sig)
 
 	int code;
 
-	fprintf(stderr, "FATAL SIGNAL: %s\n", strsignal(sig));
+	fprintf(stderr, "CAUGHT SIGNAL: %s\n", strsignal(sig));
+
+#ifdef SIGUSR1
+	/*
+	 *	SIGUSR1 skips the callback, and the backtrace and just
+	 *	runs the panic_action.
+	 */
+	if (sig == SIGUSR1) goto skip_backtrace;
+#endif
 
 	/*
 	 *	Run the callback if one was registered
@@ -262,6 +270,7 @@ void fr_fault(int sig)
 	}
 #endif
 
+skip_backtrace:
 	/* No panic action set... */
 	if (panic_action[0] == '\0') {
 		fprintf(stderr, "No panic action set\n");
@@ -288,6 +297,10 @@ void fr_fault(int sig)
 
 #ifdef SIGUSR1
 	if (sig == SIGUSR1) return;
+#endif
+
+#ifdef SIGUSR2
+	if (sig == SIGUSR2) return;
 #endif
 	fr_exit_now(1);
 }
@@ -355,6 +368,14 @@ int fr_fault_setup(char const *cmd, char const *program)
 #endif
 #ifdef SIGFPE
 		if (fr_set_signal(SIGFPE, fr_fault) < 0) return -1;
+#endif
+
+#ifdef SIGUSR1
+		if (fr_set_signal(SIGUSR1, fr_fault) < 0) return -1;
+#endif
+
+#ifdef SIGUSR2
+		if (fr_set_signal(SIGUSR2, fr_fault) < 0) return -1;
 #endif
 	}
 	setup = true;
