@@ -1706,7 +1706,7 @@ static void rs_signal_action(UNUSED fr_event_list_t *list, int fd, UNUSED void *
 	int sig;
 	ssize_t ret;
 
-	ret = read(fd, &sig, sizeof(sig);
+	ret = read(fd, &sig, sizeof(sig));
 	if (ret < 0) {
 		ERROR("Failed reading signal from pipe: %s", fr_syserror(errno));
 		exit(EXIT_FAILURE);
