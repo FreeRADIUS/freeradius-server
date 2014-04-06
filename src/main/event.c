@@ -1069,6 +1069,7 @@ static void post_proxy_fail_handler(REQUEST *request)
 static void no_response_to_proxied_request(void *ctx)
 {
 	REQUEST *request = ctx;
+	time_t start;
 	home_server *home;
 	char buffer[128];
 
@@ -1133,19 +1134,18 @@ static void no_response_to_proxied_request(void *ctx)
 	 *	where the proxy still sends packets to an unresponsive
 	 *	home server.
 	 */
-	if ((home->last_packet + ((home->zombie_period + 3) / 4)) >= now.tv_sec) {
+	start = now.tv_sec - ((home->zombie_period + 3) / 4);
+	if (home->last_packet >= start) {
 		return;
 	}
 
 	/*
-	 *	Enable the zombie period when we notice that the home
-	 *	server hasn't responded for a while.  We back-date the
-	 *	zombie period to when we last received a response from
-	 *	the home server.
+	 *	Set the home server to "zombie", as of the time
+	 *	calculated above.
 	 */
 	home->state = HOME_STATE_ZOMBIE;
-	
-	home->zombie_period_start.tv_sec = home->last_packet;
+
+	home->zombie_period_start.tv_sec = start;
 	home->zombie_period_start.tv_usec = USEC / 2;
 	
 	fr_event_delete(el, &home->ev);
