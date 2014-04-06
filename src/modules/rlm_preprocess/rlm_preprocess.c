@@ -625,13 +625,9 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 	if (pairfind(request->packet->vps, PW_CHAP_PASSWORD, 0, TAG_ANY) &&
 	    pairfind(request->packet->vps, PW_CHAP_CHALLENGE, 0, TAG_ANY) == NULL) {
 		VALUE_PAIR *vp;
-		uint8_t *p;
 
 		vp = radius_paircreate(request, &request->packet->vps, PW_CHAP_CHALLENGE, 0);
-		vp->length = AUTH_VECTOR_LEN;
-		vp->vp_octets = p = talloc_array(vp, uint8_t, vp->length);
-
-		memcpy(p, request->packet->vector, AUTH_VECTOR_LEN);
+		pairmemcpy(vp, request->packet->vector, AUTH_VECTOR_LEN);
 	}
 
 	if ((r = huntgroup_access(request, inst->huntgroups)) != RLM_MODULE_OK) {

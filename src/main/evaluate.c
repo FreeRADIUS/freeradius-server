@@ -348,14 +348,10 @@ static bool do_cast_copy(VALUE_PAIR *dst, VALUE_PAIR const *src)
 
 	if (dst->da->type == PW_TYPE_OCTETS) {
 		if (src->da->type == PW_TYPE_STRING) {
-			dst->vp_octets = talloc_memdup(dst, src->vp_strvalue, src->length);
-			talloc_set_type(dst->vp_octets, uint8_t);
+			pairmemcpy(dst, src->vp_octets, src->length);	/* Copy embedded NULLs */
 		} else {
-			dst->vp_octets = talloc_memdup(dst, &src->data, src->length);
-			talloc_set_type(dst->vp_octets, uint8_t);
+			pairmemcpy(dst, (uint8_t const *) &src->data, src->length);
 		}
-
-		dst->length = src->length;
 		return true;
 	}
 
