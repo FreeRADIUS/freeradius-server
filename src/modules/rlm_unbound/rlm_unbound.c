@@ -389,7 +389,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	int res, dlevel;
 	int debug_method;
 	char *optval;
-	int debug_fd;
+	int debug_fd = -1;
 	FILE *debug_stream;
 	char k[64]; /* To silence const warns until newer unbound in distros */
 
@@ -574,7 +574,6 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 		debug_stream = fdopen(debug_fd, "w");
 		if (!debug_stream) {
-			close(debug_fd);
 			ERROR("rlm_unbound (%s): error setting up log stream", inst->name);
 			goto error_nores;
 		}
@@ -692,6 +691,8 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
  error:
 	ERROR("rlm_unbound (%s): %s", inst->name, ub_strerror(res));
  error_nores:
+ 	close(debug_fd);
+
 	return -1;
 }
 
