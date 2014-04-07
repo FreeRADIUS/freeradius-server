@@ -1022,7 +1022,7 @@ if test "x$WITH_OPENSSL" = xyes; then
   dnl #
   dnl #  Apparently OpenSSL will attempt to build with kerberos if we don't pass this?!
   dnl #
-  CFLAGS="$CFLAGS -DOPENSSL_NO_KRB5"
+  CFLAGS="$CFLAGS -DOPENSSL_NO_KRB5 -DOPENSSL_NO_HEARTBEATS"
 
   dnl #
   dnl #  Check we can link to libcrypto and libssl

@@ -7775,7 +7775,7 @@ fi
 if test "x$WITH_OPENSSL" = xyes; then
   OLD_LIBS="$LIBS"
 
-        CFLAGS="$CFLAGS -DOPENSSL_NO_KRB5"
+        CFLAGS="$CFLAGS -DOPENSSL_NO_KRB5 -DOPENSSL_NO_HEARTBEATS"
 
         smart_try_dir="$openssl_lib_dir"
 
