@@ -952,7 +952,7 @@ STATE_MACHINE_DECL(request_common)
 	 *	Bail out as early as possible.
 	 */
 	if (request->master_state == REQUEST_STOP_PROCESSING) {
-		request_done(request, REQUEST_DONE);
+		request_done(request, FR_ACTION_DONE);
 		return;
 	}
 
