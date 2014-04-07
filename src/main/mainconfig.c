@@ -29,10 +29,6 @@ RCSID("$Id$")
 
 #include <sys/stat.h>
 
-#ifdef HAVE_SYS_RESOURCE_H
-#include <sys/resource.h>
-#endif
-
 #ifdef HAVE_PWD_H
 #include <pwd.h>
 #endif
