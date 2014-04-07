@@ -36,6 +36,10 @@
 #  include <sys/prctl.h>
 #endif
 
+#ifdef HAVE_SYS_RESOURCE_H
+#  include <sys/resource.h>
+#endif
+
 #ifdef HAVE_PTHREAD_H
 #  define PTHREAD_MUTEX_LOCK pthread_mutex_lock
 #  define PTHREAD_MUTEX_UNLOCK pthread_mutex_unlock
