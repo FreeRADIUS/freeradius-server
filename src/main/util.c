@@ -456,13 +456,13 @@ REQUEST *request_alloc_fake(REQUEST *request)
 	 */
 	fake->server = request->server;
 
-	fake->packet = rad_alloc(request, 1);
+	fake->packet = rad_alloc(fake, 1);
 	if (!fake->packet) {
 		request_free(&fake);
 		return NULL;
 	}
 
-	fake->reply = rad_alloc(request, 0);
+	fake->reply = rad_alloc(fake, 0);
 	if (!fake->reply) {
 		request_free(&fake);
 		return NULL;
