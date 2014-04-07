@@ -4446,7 +4446,7 @@ int radius_event_start(CONF_SECTION *cs, bool have_children)
 #ifdef WITH_PROXY
 static int proxy_delete_cb(UNUSED void *ctx, void *data)
 {
-	REQUEST *request = fr_packet2myptr(REQUEST, packet, data);
+	REQUEST *request = fr_packet2myptr(REQUEST, proxy, data);
 
 	request->master_state = REQUEST_STOP_PROCESSING;
 
