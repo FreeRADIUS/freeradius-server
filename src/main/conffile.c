@@ -901,6 +901,7 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, int type, void *data, char
 	fr_ipaddr_t ipaddr;
 	CONF_PAIR const *cp = NULL;
 	char ipbuf[128];
+	char buffer[8192];
 
 	if (!cs) return -1;
 
@@ -987,15 +988,10 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, int type, void *data, char
 		 *	file was read.
 		 */
 		if (value == dflt) {
-			char buffer[8192];
-
 			int lineno = 0;
 
 			lineno = cs->item.lineno;
 
-			/*
-			 *	FIXME: sizeof(buffer)?
-			 */
 			value = cf_expand_variables("<internal>",
 						    &lineno,
 						    cs, buffer, sizeof(buffer),
@@ -1052,13 +1048,8 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, int type, void *data, char
 		 *	file was read.
 		 */
 		if ((value == dflt) && cs) {
-			char buffer[8192];
-
 			int lineno = 0;
 
-			/*
-			 *	FIXME: sizeof(buffer)?
-			 */
 			value = cf_expand_variables("?",
 						    &lineno,
 						    cs, buffer, sizeof(buffer),
