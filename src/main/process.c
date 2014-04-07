@@ -4454,7 +4454,7 @@ static int proxy_delete_cb(UNUSED void *ctx, void *data)
 	request->master_state = REQUEST_STOP_PROCESSING;
 
 #ifdef HAVE_PTHREAD_H
-	if (pthread_equal(request->child_pid, NO_SUCH_CHILD_PID) != 0) return 0;
+	if (pthread_equal(request->child_pid, NO_SUCH_CHILD_PID) == 0) return 0;
 #endif
 
 	/*
@@ -4466,6 +4466,10 @@ static int proxy_delete_cb(UNUSED void *ctx, void *data)
 	if (request->child_state == REQUEST_QUEUED) return 0;
 
 	request->in_proxy_hash = false;
+
+	if (!request->in_request_hash) {
+		request_done(request, FR_ACTION_DONE);
+	}
 
 	/*
 	 *	Delete it from the list.
@@ -4487,7 +4491,7 @@ static int request_delete_cb(UNUSED void *ctx, void *data)
 	if (request->child_state < REQUEST_REJECT_DELAY) return 0; /* continue */
 
 #ifdef HAVE_PTHREAD_H
-	if (pthread_equal(request->child_pid, NO_SUCH_CHILD_PID) != 0) return 0;
+	if (pthread_equal(request->child_pid, NO_SUCH_CHILD_PID) == 0) return 0;
 #endif
 
 #ifdef WITH_PROXY
