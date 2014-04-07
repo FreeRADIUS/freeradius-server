@@ -977,7 +977,6 @@ int radius_map2request(REQUEST *request, value_pair_map_t const *map,
 		} else {
 			context->coa->proxy->code = PW_CODE_DISCONNECT_REQUEST;
 		}
-		DEBUG("ALLOC COA");
 	}
 
 	list = radius_list(context, map->dst->list);
