@@ -4703,7 +4703,7 @@ void rad_free(RADIUS_PACKET **radius_packet_ptr)
  *
  * @param ctx the context in which the packet is allocated. May be NULL if
  *	the packet is not associated with a REQUEST.
- * @param packet The packet to copy
+ * @param in The packet to copy
  * @return a new RADIUS_PACKET or NULL on error.
  */
 RADIUS_PACKET *rad_copy_packet(TALLOC_CTX *ctx, RADIUS_PACKET const *in)
