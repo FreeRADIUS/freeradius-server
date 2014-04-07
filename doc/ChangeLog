@@ -65,6 +65,7 @@ FreeRADIUS 3.0.3 Fri 21 Mar 2014 08:30:00 EDT urgency=medium
 	* Fix corner cases where STDOUT wouldn't be closed in
 	  daemon mode.
 	* Re-enable "update coa" and originating CoA requests.
+	* Prevent multiple threads writing to the sql query logs.
 
 FreeRADIUS 3.0.2 Fri 21 Mar 2014 08:30:00 EDT urgency=medium
 	Feature improvements
