@@ -3497,6 +3497,14 @@ static void coa_timer(REQUEST *request)
 	 */
 	if (request->home_server->coa_mrc &&
 	    (request->num_coa_requests >= request->home_server->coa_mrc)) {
+		char buffer[128];
+
+		RERROR("Failing request - originate-coa ID %u, due to lack of any response from coa server %s port %d",
+		       request->proxy->id,
+			       inet_ntop(request->proxy->dst_ipaddr.af,
+					 &request->proxy->dst_ipaddr.ipaddr,
+					 buffer, sizeof(buffer)),
+			       request->proxy->dst_port);
 		if (!setup_post_proxy_fail(request)) {
 			return;
 		}
