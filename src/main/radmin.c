@@ -379,7 +379,10 @@ int main(int argc, char **argv)
 	int num_commands = -1;
 
 #ifndef NDEBUG
-	fr_fault_setup(getenv("PANIC_ACTION"), argv[0]);
+	if (fr_fault_setup(getenv("PANIC_ACTION"), argv[0]) < 0) {
+		fr_perror("radmin");
+		exit(EXIT_FAILURE);
+	}
 #endif
 
 	talloc_set_log_stderr();

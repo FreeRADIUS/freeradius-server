@@ -429,7 +429,10 @@ int main(int argc, char *argv[])
 	 *	the basic fatal signal handlers.
 	 */
 #ifndef NDEBUG
-	fr_fault_setup(getenv("PANIC_ACTION"), argv[0]);
+	if (fr_fault_setup(getenv("PANIC_ACTION"), argv[0]) < 0) {
+		fr_perror("unittest");
+		exit(EXIT_FAILURE);
+	}
 #endif
 
 	if ((progname = strrchr(argv[0], FR_DIR_SEP)) == NULL)

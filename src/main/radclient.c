@@ -1101,7 +1101,10 @@ int main(int argc, char **argv)
 	fr_debug_flag = 0;
 
 #ifndef NDEBUG
-	fr_fault_setup(getenv("PANIC_ACTION"), argv[0]);
+	if (fr_fault_setup(getenv("PANIC_ACTION"), argv[0]) < 0) {
+		fr_perror("radclient");
+		exit(EXIT_FAILURE);
+	}
 #endif
 
 	talloc_set_log_stderr();

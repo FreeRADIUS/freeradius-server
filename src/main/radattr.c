@@ -815,7 +815,10 @@ int main(int argc, char *argv[])
 	char const *dict_dir = DICTDIR;
 
 #ifndef NDEBUG
-	fr_fault_setup(getenv("PANIC_ACTION"), argv[0]);
+	if (fr_fault_setup(getenv("PANIC_ACTION"), argv[0]) < 0) {
+		fr_perror("radattr");
+		exit(EXIT_FAILURE);
+	}
 #endif
 
 	while ((c = getopt(argc, argv, "d:D:xM")) != EOF) switch(c) {
