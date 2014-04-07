@@ -22,6 +22,7 @@
  * @copyright 2013  Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  */
 #include <freeradius-devel/libradius.h>
+#include <sys/stat.h>
 
 /*
  *	runtime backtrace functions are not POSIX but are included in
@@ -32,11 +33,11 @@
 #endif
 
 #ifdef HAVE_PTHREAD_H
-#define PTHREAD_MUTEX_LOCK pthread_mutex_lock
-#define PTHREAD_MUTEX_UNLOCK pthread_mutex_unlock
+#  define PTHREAD_MUTEX_LOCK pthread_mutex_lock
+#  define PTHREAD_MUTEX_UNLOCK pthread_mutex_unlock
 #else
-#define PTHREAD_MUTEX_LOCK(_x)
-#define PTHREAD_MUTEX_UNLOCK(_x)
+#  define PTHREAD_MUTEX_LOCK(_x)
+#  define PTHREAD_MUTEX_UNLOCK(_x)
 #endif
 
 #ifdef HAVE_EXECINFO
@@ -331,6 +332,8 @@ int fr_fault_setup(char const *cmd, char const *program)
 
 	char const *p = cmd;
 	char const *q;
+	char *filename = NULL;
+	struct stat statbuf;
 
 	if (cmd) {
 		/* Substitute %e for the current program */
@@ -349,6 +352,32 @@ int fr_fault_setup(char const *cmd, char const *program)
 	} else {
 		*panic_action = '\0';
 	}
+
+	/*
+	 *	Try and guess which part of the command is the binary, and check to see if
+	 *	it's world writeable, to try and save the admin from their own stupidity.
+	 *
+	 *	@fixme we should do this properly and take into account single and double
+	 *	quotes.
+	 */
+	if ((q = strchr(panic_action, ' '))) {
+		asprintf(&filename, "%.*s", (int)(q - panic_action), panic_action);
+		p = filename;
+	} else {
+		p = panic_action;
+	}
+
+	if (stat(p, &statbuf) == 0) {
+#ifdef S_IWOTH
+		if ((statbuf.st_mode & S_IWOTH) != 0) {
+			fr_strerror_printf("panic_action binary \"%s\" is globally writable. "
+					   "Refusing to start due to insecure configuration", p);
+			return -1;
+		}
+#endif
+	}
+
+	free(filename);
 
 	/* Unsure what the side effects of changing the signal handler mid execution might be */
 	if (!setup) {

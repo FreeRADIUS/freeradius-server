@@ -118,7 +118,10 @@ int main(int argc, char *argv[])
 	 *	the basic fatal signal handlers.
 	 */
 #ifndef NDEBUG
-	fr_fault_setup(getenv("PANIC_ACTION"), argv[0]);
+	if (fr_fault_setup(getenv("PANIC_ACTION"), argv[0]) < 0) {
+		fr_perror("radiusd");
+		exit(EXIT_FAILURE);
+	}
 #endif
 
 #ifdef OSFC2
@@ -341,6 +344,7 @@ int main(int argc, char *argv[])
 	    !getenv("PANIC_ACTION") &&
 #endif
 	    (fr_fault_setup(mainconfig.panic_action, argv[0]) < 0)) {
+		fr_perror("radiusd");
 		exit(EXIT_FAILURE);
 	}
 
