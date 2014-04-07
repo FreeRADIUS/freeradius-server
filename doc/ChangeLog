@@ -66,6 +66,8 @@ FreeRADIUS 3.0.3 Fri 21 Mar 2014 08:30:00 EDT urgency=medium
 	  daemon mode.
 	* Re-enable "update coa" and originating CoA requests.
 	* Prevent multiple threads writing to the sql query logs.
+	* Fix zombie period calculation.  Closes #579
+	* Properly parent VPs for talloc, when moving them in map2request.
 
 FreeRADIUS 3.0.2 Fri 21 Mar 2014 08:30:00 EDT urgency=medium
 	Feature improvements
