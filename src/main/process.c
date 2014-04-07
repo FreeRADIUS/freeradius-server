@@ -3621,6 +3621,7 @@ static void request_coa_separate(REQUEST *request)
 	rad_assert(request->parent->coa == request);
 	rad_assert(request->ev == NULL);
 	rad_assert(!request->in_request_hash);
+	rad_assert(request->coa == NULL);
 
 	rad_assert(request->proxy_listener != NULL);
 
@@ -4494,6 +4495,12 @@ static int request_delete_cb(UNUSED void *ctx, void *data)
 			request->packet->id,
 			(unsigned int) (request->timestamp - fr_start_time));
 	}
+
+#ifdef WITH_COA
+	if (request->coa) {
+		rad_assert(!request->coa->in_proxy_hash);
+	}
+#endif
 
 	request_free(&request);
 
