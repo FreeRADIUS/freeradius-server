@@ -1133,3 +1133,62 @@ void rad_regcapture(REQUEST *request, int compare, char const *value, regmatch_t
 	}
 }
 
+#ifndef NDEBUG
+/*
+ *	Verify a packet.
+ */
+static void verify_packet(REQUEST *request, RADIUS_PACKET *packet)
+{
+	vp_cursor_t cursor;
+	void *parent;
+	VALUE_PAIR *vp;
+
+	if (!packet) return;
+
+	parent = talloc_parent(packet);
+	rad_assert(parent == request);
+
+	VERIFY_PACKET(packet);
+
+	if (!packet->vps) return;
+
+	for (vp = fr_cursor_init(&cursor, &packet->vps);
+	     vp;
+	     vp = fr_cursor_next(&cursor)) {
+		VERIFY_VP(vp);
+
+		parent = talloc_parent(vp);
+		rad_assert(parent == packet);
+	}
+}
+
+/*
+ *	Catch horrible talloc errors.
+ */
+void request_verify(REQUEST *request)
+{
+	if (!request) return;
+
+	(void) talloc_get_type_abort(request, REQUEST);
+
+	if (request->packet) verify_packet(request, request->packet);
+	if (request->reply) verify_packet(request, request->reply);
+#ifdef WITH_PROXY
+	if (request->proxy) verify_packet(request, request->proxy);
+	if (request->proxy_reply) verify_packet(request, request->proxy_reply);
+#endif
+
+#ifdef WITH_COA
+	if (request->coa) {
+		void *parent;
+
+		(void) talloc_get_type_abort(request->coa, REQUEST);
+		parent = talloc_parent(request->coa);
+
+		rad_assert(parent == request);
+
+		request_verify(request->coa);
+	}
+#endif
+}
+#endif
