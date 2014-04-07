@@ -414,54 +414,6 @@ static ssize_t xlat_getclient(UNUSED void *instance, REQUEST *request, char cons
 	return -1;
 }
 
-#ifdef HAVE_SYS_RESOURCE_H
-static struct rlimit core_limits;
-#endif
-
-static void fr_set_dumpable(void)
-{
-	/*
-	 *	If configured, turn core dumps off.
-	 */
-	if (!allow_core_dumps) {
-#ifdef HAVE_SYS_RESOURCE_H
-		struct rlimit no_core;
-
-
-		no_core.rlim_cur = 0;
-		no_core.rlim_max = 0;
-
-		if (setrlimit(RLIMIT_CORE, &no_core) < 0) {
-			ERROR("Failed disabling core dumps: %s",
-			       fr_syserror(errno));
-		}
-#endif
-		return;
-	}
-
-	/*
-	 *	Set or re-set the dumpable flag.
-	 */
-#ifdef HAVE_SYS_PRCTL_H
-#ifdef PR_SET_DUMPABLE
-	if (prctl(PR_SET_DUMPABLE, 1) < 0) {
-		ERROR("Cannot re-enable core dumps: prctl(PR_SET_DUMPABLE) failed: '%s'",
-		       fr_syserror(errno));
-	}
-#endif
-#endif
-
-	/*
-	 *	Reset the core dump limits to their original value.
-	 */
-#ifdef HAVE_SYS_RESOURCE_H
-	if (setrlimit(RLIMIT_CORE, &core_limits) < 0) {
-		ERROR("Cannot update core dump limit: %s",
-		       fr_syserror(errno));
-	}
-#endif
-}
-
 #ifdef HAVE_SETUID
 static bool doing_setuid = false;
 
