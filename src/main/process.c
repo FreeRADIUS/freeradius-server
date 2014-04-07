@@ -70,6 +70,7 @@ static char const *action_codes[] = {
 #endif
 };
 
+#define DEBUG_STATE_MACHINE
 #ifdef DEBUG_STATE_MACHINE
 #define TRACE_STATE_MACHINE if (debug_flag) printf("(%u) ********\tSTATE %s action %s live M-%s C-%s\t********\n", request->number, __FUNCTION__, action_codes[action], master_state_names[request->master_state], child_state_names[request->child_state])
 
@@ -429,6 +430,7 @@ STATE_MACHINE_DECL(request_done)
 	 */
 	if (request->parent && (request->parent->coa == request)) {
 		request->parent->coa = NULL;
+		(void) talloc_steal(NULL, request);
 	}
 
 #endif
@@ -3384,7 +3386,7 @@ static void request_coa_originate(REQUEST *request)
 	coa->config_items = paircopy(coa, request->config_items);
 	coa->num_coa_requests = 0;
 	coa->handle = null_handler;
-	coa->number = request->number ^ (1 << 24);
+	coa->number = request->number; /* it's associated with the same request */
 
 	/*
 	 *	Call the pre-proxy routines.
@@ -3626,7 +3628,8 @@ static void request_coa_separate(REQUEST *request)
 	rad_assert(!request->in_request_hash);
 
 	rad_assert(request->proxy_listener != NULL);
-	/* don't talloc_steal request, it will be cleaned up elsewhere */
+
+	(void) talloc_steal(NULL, request);
 	request->parent->coa = NULL;
 	request->parent = NULL;
 
