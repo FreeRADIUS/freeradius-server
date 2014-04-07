@@ -421,15 +421,10 @@ STATE_MACHINE_DECL(request_done)
 	/*
 	 *	Move the CoA request to its own handler.
 	 */
-	if (request->coa) request_coa_separate(request->coa);
-
-	/*
-	 *	If we're the CoA request, make the parent forget about
-	 *	us.
-	 */
-	if (request->parent && (request->parent->coa == request)) {
-		request->parent->coa = NULL;
-		(void) talloc_steal(NULL, request);
+	if (request->coa) {
+		request_coa_separate(request->coa);
+	} else if (request->parent && (request->parent->coa == request)) {
+		request_coa_separate(request);
 	}
 
 #endif
