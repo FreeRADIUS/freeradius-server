@@ -106,6 +106,7 @@ static void NEVER_RETURNS usage(int status)
 	FILE *output = status ? stderr : stdout;
 	fprintf(output, "Usage: %s [ args ]\n", progname);
 	fprintf(output, "  -d raddb_dir    Configuration files are in \"raddbdir/*\".\n");
+	fprintf(stderr, "  -D <dictdir>    Set main dictionary directory (defaults to " DICTDIR ").\n");
 	fprintf(output, "  -e command      Execute 'command' and then exit.\n");
 	fprintf(output, "  -E              Echo commands as they are being executed.\n");
 	fprintf(output, "  -f socket_file  Open socket_file directly, without reading radius.conf\n");
@@ -391,7 +392,7 @@ int main(int argc, char **argv)
 		progname++;
 	}
 
-	while ((argval = getopt(argc, argv, "d:hi:e:Ef:n:o:qs:S")) != EOF) {
+	while ((argval = getopt(argc, argv, "d:D:hi:e:Ef:n:o:qs:S")) != EOF) {
 		switch(argval) {
 		case 'd':
 			if (file) {
@@ -556,6 +557,12 @@ int main(int argc, char **argv)
 			fprintf(stderr, "%s: Failed creating %s: %s\n", progname, output_file, strerror(errno));
 			exit(1);
 		}
+	}
+
+	if (!file && !server) {
+		fprintf(stderr, "%s: Must use one of '-d' or '-f' or '-s'\n",
+			progname);
+		exit(1);
 	}
 
 	/*
