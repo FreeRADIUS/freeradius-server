@@ -509,6 +509,7 @@ void rlm_sql_query_log(rlm_sql_t *inst, REQUEST *request,
 	char const *filename = NULL;
 	char *expanded = NULL;
 	size_t len;
+	bool failed = false;	/* Write the log message outside of the critical region */
 
 	if (section) {
 		filename = section->logfile;
@@ -527,16 +528,26 @@ void rlm_sql_query_log(rlm_sql_t *inst, REQUEST *request,
 	fd = open(filename, O_WRONLY | O_APPEND | O_CREAT, 0666);
 	if (fd < 0) {
 		ERROR("rlm_sql (%s): Couldn't open logfile '%s': %s", inst->config->xlat_name,
-		       expanded, fr_syserror(errno));
+		      expanded, fr_syserror(errno));
 
 		talloc_free(expanded);
 		return;
 	}
 
 	len = strlen(query);
+#ifdef HAVE_PTHREAD_H
+	pthread_mutex_lock(&inst->log);
+#endif
 	if ((rad_lockfd(fd, len + 2) < 0) || (write(fd, query, len) < 0) || (write(fd, ";\n", 2) < 0)) {
+		failed = true;
+	}
+#ifdef HAVE_PTHREAD_H
+	pthread_mutex_unlock(&inst->log);
+#endif
+
+	if (failed) {
 		ERROR("rlm_sql (%s): Failed writing to logfile '%s': %s", inst->config->xlat_name, expanded,
-		       fr_syserror(errno));
+		      fr_syserror(errno));
 	}
 
 	talloc_free(expanded);

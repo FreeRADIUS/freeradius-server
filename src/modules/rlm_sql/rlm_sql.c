@@ -707,6 +707,10 @@ static int mod_detach(void *instance)
 #endif
 	}
 
+#ifdef HAVE_PTHREAD_H
+	pthread_mutex_destroy(&inst->log);
+#endif
+
 	return 0;
 }
 
@@ -795,12 +799,8 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	/*
 	 *	If the configuration parameters can't be parsed, then fail.
 	 */
-	if ((parse_sub_section(conf, inst,
-			       &inst->config->accounting,
-			       RLM_COMPONENT_ACCT) < 0) ||
-	    (parse_sub_section(conf, inst,
-			       &inst->config->postauth,
-			       RLM_COMPONENT_POST_AUTH) < 0)) {
+	if ((parse_sub_section(conf, inst, &inst->config->accounting, RLM_COMPONENT_ACCT) < 0) ||
+	    (parse_sub_section(conf, inst, &inst->config->postauth, RLM_COMPONENT_POST_AUTH) < 0)) {
 		cf_log_err_cs(conf, "Invalid configuration");
 		return -1;
 	}
@@ -887,6 +887,13 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 			return -1;
 		}
 	}
+
+	/*
+	 *	Initialise the logging mutex.
+	 */
+#ifdef HAVE_PTHREAD_H
+	pthread_mutex_init(&inst->log, NULL);
+#endif
 
 	INFO("rlm_sql (%s): Driver %s (module %s) loaded and linked",
 	       inst->config->xlat_name, inst->config->sql_driver_name,
