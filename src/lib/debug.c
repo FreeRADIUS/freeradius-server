@@ -246,7 +246,7 @@ static int fr_set_dumpable_flag(bool dumpable)
 	return 0;
 }
 #else
-static int fr_set_dumpable_flag(UNUSED bool dumbpable)
+static int fr_set_dumpable_flag(UNUSED bool dumpable)
 {
 	return 0;
 }
