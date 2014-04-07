@@ -4681,3 +4681,36 @@ void rad_free(RADIUS_PACKET **radius_packet_ptr)
 	talloc_free(radius_packet);
 	*radius_packet_ptr = NULL;
 }
+
+/** Duplicate a RADIUS_PACKET
+ *
+ * @param ctx the context in which the packet is allocated. May be NULL if
+ *	the packet is not associated with a REQUEST.
+ * @param packet The packet to copy
+ * @return a new RADIUS_PACKET or NULL on error.
+ */
+RADIUS_PACKET *rad_copy_packet(TALLOC_CTX *ctx, RADIUS_PACKET const *in)
+{
+	RADIUS_PACKET *out;
+
+	out = rad_alloc(ctx, 0);
+	if (!out) return NULL;
+
+	/*
+	 *	Bootstrap by copying everything.
+	 */
+	memcpy(out, in, sizeof(*out));
+
+	/*
+	 *	Then reset necessary fields
+	 */
+	out->sockfd = -1;
+
+	out->data = NULL;
+	out->data_len = 0;
+
+	out->vps = paircopy(out, in->vps);
+	out->offset = 0;
+
+	return out;
+}
