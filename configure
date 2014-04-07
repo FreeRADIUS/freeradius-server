@@ -7191,9 +7191,9 @@ rm -f conftest*
 
 
   if test "x$OPENSSL_INCLUDE_DIR" != "x"; then
-    OPENSSL_INCLUDE="-isystem $OPENSSL_INCLUDE_DIR -DOPENSSL_NO_KRB5"
+    OPENSSL_INCLUDE="-isystem $OPENSSL_INCLUDE_DIR -DOPENSSL_NO_KRB5 -DOPENSSL_NO_HEARTBEATS"
   else
-    OPENSSL_INCLUDE="-DOPENSSL_NO_KRB5"
+    OPENSSL_INCLUDE="-DOPENSSL_NO_KRB5 -DOPENSSL_NO_HEARTBEATS"
   fi
 
         { $as_echo "$as_me:${as_lineno-$LINENO}: checking OpenSSL library and header version consistency" >&5
