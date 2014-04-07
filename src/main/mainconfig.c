@@ -41,10 +41,6 @@ RCSID("$Id$")
 #include <grp.h>
 #endif
 
-#ifdef HAVE_SYS_PRCTL_H
-#include <sys/prctl.h>
-#endif
-
 #ifdef HAVE_SYSLOG_H
 #	include <syslog.h>
 #endif
@@ -424,56 +420,10 @@ error:
 	return -1;
 }
 
-#ifdef HAVE_SYS_RESOURCE_H
-static struct rlimit core_limits;
-#endif
-
-static void fr_set_dumpable(void)
-{
-	/*
-	 *	If configured, turn core dumps off.
-	 */
-	if (!allow_core_dumps) {
-#ifdef HAVE_SYS_RESOURCE_H
-		struct rlimit no_core;
-
-
-		no_core.rlim_cur = 0;
-		no_core.rlim_max = 0;
-
-		if (setrlimit(RLIMIT_CORE, &no_core) < 0) {
-			ERROR("Failed disabling core dumps: %s", fr_syserror(errno));
-		}
-#endif
-		return;
-	}
-
-	/*
-	 *	Set or re-set the dumpable flag.
-	 */
-#ifdef HAVE_SYS_PRCTL_H
-#ifdef PR_SET_DUMPABLE
-	if (prctl(PR_SET_DUMPABLE, 1) < 0) {
-		ERROR("Cannot re-enable core dumps: prctl(PR_SET_DUMPABLE) failed: '%s'", fr_syserror(errno));
-	}
-#endif
-#endif
-
-	/*
-	 *	Reset the core dump limits to their original value.
-	 */
-#ifdef HAVE_SYS_RESOURCE_H
-	if (setrlimit(RLIMIT_CORE, &core_limits) < 0) {
-		ERROR("Cannot update core dump limit: %s",
-		       fr_syserror(errno));
-	}
-#endif
-}
-
 #ifdef HAVE_SETUID
 static bool doing_setuid = false;
 
-#if defined(HAVE_SETRESUID) && defined (HAVE_GETRESUID)
+#  if defined(HAVE_SETRESUID) && defined (HAVE_GETRESUID)
 void fr_suid_up(void)
 {
 	uid_t ruid, euid, suid;
@@ -510,7 +460,7 @@ void fr_suid_down(void)
 		fr_exit_now(1);
 	}
 
-	fr_set_dumpable();
+	fr_set_dumpable(allow_core_dumps);
 }
 
 void fr_suid_down_permanent(void)
@@ -528,15 +478,16 @@ void fr_suid_down_permanent(void)
 		fr_exit_now(1);
 	}
 
-	fr_set_dumpable();
+	fr_set_dumpable(allow_core_dumps);
 }
-#else
+#  else
 /*
  *	Much less secure...
  */
 void fr_suid_up(void)
 {
 }
+
 void fr_suid_down(void)
 {
 	if (!uid_name) return;
@@ -547,24 +498,25 @@ void fr_suid_down(void)
 		fr_exit_now(1);
 	}
 
-	fr_set_dumpable();
+	fr_set_dumpable(allow_core_dumps);
 }
+
 void fr_suid_down_permanent(void)
 {
-	fr_set_dumpable();
+	fr_set_dumpable(allow_core_dumps);
 }
-#endif /* HAVE_SETRESUID && HAVE_GETRESUID */
+#  endif /* HAVE_SETRESUID && HAVE_GETRESUID */
 #else  /* HAVE_SETUID */
 void fr_suid_up(void)
 {
 }
 void fr_suid_down(void)
 {
-	fr_set_dumpable();
+	fr_set_dumpable(allow_core_dumps);
 }
 void fr_suid_down_permanent(void)
 {
-	fr_set_dumpable();
+	fr_set_dumpable(allow_core_dumps);
 }
 #endif /* HAVE_SETUID */
 
@@ -577,17 +529,15 @@ void fr_suid_down_permanent(void)
  */
 static int switch_users(CONF_SECTION *cs)
 {
-#ifdef HAVE_SYS_RESOURCE_H
 	/*
 	 *	Get the current maximum for core files.  Do this
 	 *	before anything else so as to ensure it's properly
 	 *	initialized.
 	 */
-	if (getrlimit(RLIMIT_CORE, &core_limits) < 0) {
-		ERROR("Failed to get current core limit:  %s", fr_syserror(errno));
+	if (fr_set_dumpable_init() < 0) {
+		fr_perror("radiusd");
 		return 0;
 	}
-#endif
 
 	/*
 	 *	Don't do chroot/setuid/setgid if we're in debugging
@@ -718,7 +668,9 @@ static int switch_users(CONF_SECTION *cs)
 	 *	This also clears the dumpable flag if core dumps
 	 *	aren't allowed.
 	 */
-	fr_set_dumpable();
+	if (fr_set_dumpable(allow_core_dumps) < 0) {
+		ERROR("%s", fr_strerror());
+	}
 
 	if (allow_core_dumps) {
 		INFO("Core dumps are enabled");

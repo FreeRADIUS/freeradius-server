@@ -32,6 +32,10 @@
 #  include <execinfo.h>
 #endif
 
+#ifdef HAVE_SYS_PRCTL_H
+#  include <sys/prctl.h>
+#endif
+
 #ifdef HAVE_PTHREAD_H
 #  define PTHREAD_MUTEX_LOCK pthread_mutex_lock
 #  define PTHREAD_MUTEX_UNLOCK pthread_mutex_unlock
@@ -64,6 +68,10 @@ struct fr_bt_marker {
 static char panic_action[512];
 static fr_fault_cb panic_cb;
 static int fr_debugger_present = -1;
+
+#ifdef HAVE_SYS_RESOURCE_H
+static struct rlimit core_limits;
+#endif
 
 /** Stub callback to see if the SIGTRAP handler is overriden
  *
@@ -222,6 +230,83 @@ fr_bt_marker_t *fr_backtrace_attach(UNUSED fr_cbuff_t **cbuff, UNUSED TALLOC_CTX
 }
 #endif /* ifdef HAVE_EXECINFO */
 
+/** Set the dumpable flag, also controls whether processes can PATTACH
+ *
+ * @param dumpable whether we should allow core dumping
+ */
+#if defined(HAVE_SYS_PRCTL_H) && defined(PR_SET_DUMPABLE)
+static int fr_set_dumpable_flag(bool dumpable)
+{
+	if (prctl(PR_SET_DUMPABLE, dumpable ? 1 : 0) < 0) {
+		fr_strerror_printf("Cannot re-enable core dumps: prctl(PR_SET_DUMPABLE) failed: %s",
+				   fr_syserror(errno));
+		return -1;
+	}
+
+	return 0;
+}
+#else
+static int fr_set_dumpable_flag(UNUSED bool dumbpable)
+{
+	return 0;
+}
+#endif
+
+/** Get the current maximum for core files
+ *
+ * Do this before anything else so as to ensure it's properly initialized.
+ */
+int fr_set_dumpable_init(void)
+{
+#ifdef HAVE_SYS_RESOURCE_H
+	if (getrlimit(RLIMIT_CORE, &core_limits) < 0) {
+		fr_strerror_printf("Failed to get current core limit:  %s", fr_syserror(errno));
+		return -1;
+	}
+#endif
+	return 0;
+}
+
+/** Enable or disable core dumps
+ *
+ * @param allow_core_dumps whether to enable or disable core dumps.
+ */
+int fr_set_dumpable(bool allow_core_dumps)
+{
+	/*
+	 *	If configured, turn core dumps off.
+	 */
+	if (!allow_core_dumps) {
+#ifdef HAVE_SYS_RESOURCE_H
+		struct rlimit no_core;
+
+		no_core.rlim_cur = 0;
+		no_core.rlim_max = 0;
+
+		if (setrlimit(RLIMIT_CORE, &no_core) < 0) {
+			fr_strerror_printf("Failed disabling core dumps: %s", fr_syserror(errno));
+
+			return -1;
+		}
+#endif
+		return 0;
+	}
+
+	if (fr_set_dumpable_flag(true) < 0) return -1;
+
+	/*
+	 *	Reset the core dump limits to their original value.
+	 */
+#ifdef HAVE_SYS_RESOURCE_H
+	if (setrlimit(RLIMIT_CORE, &core_limits) < 0) {
+		fr_strerror_printf("Cannot update core dump limit: %s", fr_syserror(errno));
+
+		return -1;
+	}
+#endif
+	return 0;
+}
+
 /** Prints a simple backtrace (if execinfo is available) and calls panic_action if set.
  *
  * @param sig caught
@@ -378,6 +463,11 @@ int fr_fault_setup(char const *cmd, char const *program)
 	}
 
 	free(filename);
+
+	/*
+	 *	This is required on some systems to be able to PATTACH to the process.
+	 */
+	fr_set_dumpable_flag(true);
 
 	/* Unsure what the side effects of changing the signal handler mid execution might be */
 	if (!setup) {
