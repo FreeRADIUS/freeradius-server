@@ -70,8 +70,8 @@ static int fr_debugger_present = -1;
  */
 static void _sigtrap_handler(UNUSED int signum)
 {
-    fr_debugger_present = 0;
-    signal(SIGTRAP, SIG_DFL);
+	fr_debugger_present = 0;
+	signal(SIGTRAP, SIG_DFL);
 }
 
 /** Break in debugger (if were running under a debugger)
@@ -83,13 +83,13 @@ static void _sigtrap_handler(UNUSED int signum)
  */
 void fr_debug_break(void)
 {
-    if (fr_debugger_present == -1) {
-    	fr_debugger_present = 0;
-        signal(SIGTRAP, _sigtrap_handler);
-        raise(SIGTRAP);
-    } else if (fr_debugger_present == 1) {
-    	raise(SIGTRAP);
-    }
+	if (fr_debugger_present == -1) {
+		fr_debugger_present = 0;
+		signal(SIGTRAP, _sigtrap_handler);
+		raise(SIGTRAP);
+	} else if (fr_debugger_present == 1) {
+		raise(SIGTRAP);
+	}
 }
 
 #ifdef HAVE_EXECINFO
@@ -240,8 +240,8 @@ void fr_fault(int sig)
 
 #ifdef SIGUSR1
 	/*
-	 *	SIGUSR1 skips the callback, and the backtrace and just
-	 *	runs the panic_action.
+	 *	SIGUSR1 skips the callback, and the backtrace and just runs the
+	 *	panic_action.
 	 */
 	if (sig == SIGUSR1) goto skip_backtrace;
 #endif
