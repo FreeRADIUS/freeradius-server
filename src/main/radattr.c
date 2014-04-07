@@ -638,6 +638,10 @@ static void process_file(const char *root_dir, char const *filename)
 				continue;
 			}
 
+			if (outlen >= (sizeof(output) / 2)) {
+				outlen = (sizeof(output) / 2) - 1;
+			}
+
 			data_len = outlen;
 			for (i = 0; i < outlen; i++) {
 				snprintf(output + 3*i, sizeof(output),
