@@ -70,7 +70,6 @@ static char const *action_codes[] = {
 #endif
 };
 
-#define DEBUG_STATE_MACHINE
 #ifdef DEBUG_STATE_MACHINE
 #define TRACE_STATE_MACHINE if (debug_flag) printf("(%u) ********\tSTATE %s action %s live M-%s C-%s\t********\n", request->number, __FUNCTION__, action_codes[action], master_state_names[request->master_state], child_state_names[request->child_state])
 
@@ -3365,14 +3364,10 @@ static void request_coa_originate(REQUEST *request)
 	 */
 	rad_assert(coa->packet != NULL);
 	rad_assert(coa->packet->vps == NULL);
-	memcpy(coa->packet, request->packet, sizeof(*request->packet));
-	coa->packet->vps = paircopy(coa->packet, request->packet->vps);
-	coa->packet->data = NULL;
-	rad_assert(coa->reply != NULL);
-	rad_assert(coa->reply->vps == NULL);
-	memcpy(coa->reply, request->reply, sizeof(*request->reply));
-	coa->reply->vps = paircopy(coa->reply, request->reply->vps);
-	coa->reply->data = NULL;
+
+	coa->packet = rad_copy_packet(coa, request->packet);
+	coa->reply = rad_copy_packet(coa, request->reply);
+
 	coa->config_items = paircopy(coa, request->config_items);
 	coa->num_coa_requests = 0;
 	coa->handle = null_handler;
