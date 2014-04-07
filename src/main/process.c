@@ -3442,6 +3442,7 @@ static void request_coa_originate(REQUEST *request)
 			       child_state_names[request->child_state],
 			       child_state_names[REQUEST_RUNNING]);
 #endif
+	coa->child_pid = NO_SUCH_CHILD_PID;
 	coa->child_state = REQUEST_PROXIED;
 	rad_assert(coa->proxy_reply == NULL);
 	FR_STATS_TYPE_INC(coa->home_server->stats.total_requests);
@@ -3506,6 +3507,7 @@ static void coa_timer(REQUEST *request)
 					 buffer, sizeof(buffer)),
 			       request->proxy->dst_port);
 		if (!setup_post_proxy_fail(request)) {
+			request_done(request, FR_ACTION_DONE);
 			return;
 		}
 
