@@ -3452,8 +3452,10 @@ static void request_coa_originate(REQUEST *request)
 			       child_state_names[request->child_state],
 			       child_state_names[REQUEST_RUNNING]);
 #endif
+#ifdef HAVE_PTHREAD_H
 	coa->child_pid = NO_SUCH_CHILD_PID;
 	coa->child_state = REQUEST_PROXIED;
+#endif
 	rad_assert(coa->proxy_reply == NULL);
 	FR_STATS_TYPE_INC(coa->home_server->stats.total_requests);
 	coa->home_server->last_packet_sent = coa->proxy->timestamp.tv_sec;
