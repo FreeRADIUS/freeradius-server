@@ -65,7 +65,22 @@ int ssl_check_version(void)
  */
 char const *ssl_version(void)
 {
-	return SSLeay_version(SSLEAY_VERSION);
+	static char buffer[1024];
+	uint64_t v;
+
+	/* OpenSSL represents the version as a 36bit unsigned integer */
+	v = (uint64_t) SSLeay();
+
+	snprintf(buffer, sizeof(buffer), "%s 0x%.9" PRIx64 " (%i.%i.%i%c %i)",
+		 SSLeay_version(SSLEAY_VERSION),		/* Not all builds include a useful version number */
+		 v,
+		 (int) ((0x0000000ff0000000 & v) >> 28),
+		 (int) ((0x000000000ff00000 & v) >> 20),
+		 (int) ((0x00000000000ff000 & v) >> 12),
+		 (char)((0x0000000000000ff0 & v) >> 4 ? (0x60 + ((0x000000000000ff0 & v) >> 4)) : ' '),
+		 (int) ((0x000000000000000f & v)));
+
+	return buffer;
 }
 #  else
 int ssl_check_version(void) {
