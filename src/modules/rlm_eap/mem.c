@@ -183,7 +183,7 @@ done:
 		      state[4], state[5],
 		      state[6], state[7]);
 
-		WDEBUG("!! Please read http://wiki.freeradius.org/guide/Certificate%20Compatibility   !!");
+		WDEBUG("!! Please read http://wiki.freeradius.org/guide/Certificate_Compatibility     !!");
 		WDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 	}
 
