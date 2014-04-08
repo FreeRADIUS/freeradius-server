@@ -138,10 +138,6 @@ CONF_ITEM *cf_reference_item(CONF_SECTION const *parentcs,
 			     CONF_SECTION *outercs,
 			     char const *ptr);
 
-extern int cf_pair2xml(FILE *fp, CONF_PAIR const *cp);
-extern int cf_section2xml(FILE *fp, CONF_SECTION const *cs);
-extern int cf_pair2file(FILE *fp, CONF_PAIR const *cp);
-extern int cf_section2file(FILE *fp, CONF_SECTION const *cs);
 extern CONF_SECTION *root_config;
 
 #ifdef __cplusplus

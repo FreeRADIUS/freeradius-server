@@ -532,7 +532,6 @@ fi
 %doc %{_mandir}/man5/rlm_unix.5.gz
 %doc %{_mandir}/man5/unlang.5.gz
 %doc %{_mandir}/man5/users.5.gz
-%doc %{_mandir}/man8/radconf2xml.8.gz
 %doc %{_mandir}/man8/radcrypt.8.gz
 %doc %{_mandir}/man8/raddebug.8.gz
 %doc %{_mandir}/man8/radiusd.8.gz
