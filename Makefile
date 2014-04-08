@@ -25,16 +25,28 @@ export DESTDIR := $(R)
 include scripts/boiler.mk
 
 #
+#  To work around OpenSSL issues with travis.
+#
+.PHONY:
+raddb/test.conf:
+	@echo 'security {' >> $@
+	@echo '        allow_vulnerable_openssl = yes' >> $@
+	@echo '}' >> $@
+	@echo '$$INCLUDE radiusd.conf' >> $@
+
+#
 #  Run "radiusd -C", looking for errors.
 #
 $(BUILD_DIR)/tests/radiusd-c: ${BUILD_DIR}/bin/radiusd | build.raddb
 	@$(MAKE) -C raddb/certs
 	@printf "radiusd -C... "
-	@if ! ./build/make/jlibtool --mode=execute ./build/bin/radiusd -XCMd ./raddb -n debug -D ./share | tee $(BUILD_DIR)/tests/radiusd.config.log 2>&1; then \
+	@if ! ./build/make/jlibtool --mode=execute ./build/bin/radiusd -XCMd ./raddb -n test -D ./share | tee $(BUILD_DIR)/tests/radiusd.config.log 2>&1; then \
+		@rm -f raddb/test.conf; \
 		cat $(BUILD_DIR)/tests/radiusd.config.log; \
 		echo "fail"; \
 		exit 1; \
 	fi
+	@rm -f raddb/test.conf
 	@echo "ok"
 	@touch $@
 
@@ -44,8 +56,9 @@ test: ${BUILD_DIR}/bin/radiusd ${BUILD_DIR}/bin/radclient tests.unit tests.keywo
 #  Tests specifically for Travis.  We do a LOT more than just
 #  the above tests
 ifneq "$(findstring travis,${prefix})" ""
-travis-test: test
-	@./build/make/jlibtool --mode=execute ./build/bin/radiusd -xxxv
+travis-test: raddb/test.conf test
+	@./build/make/jlibtool --mode=execute ./build/bin/radiusd -xxxv -n test
+	@rm -f raddb/test.conf
 	@$(MAKE) install
 	@${sbindir}/radiusd -XC
 	@$(MAKE) deb
