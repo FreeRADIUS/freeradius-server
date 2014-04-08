@@ -961,11 +961,6 @@ int read_mainconfig(int reload)
 	}
 	if (mainconfig.reject_delay < 0) mainconfig.reject_delay = 0;
 
-	/*  Reload the modules.  */
-	if (setup_modules(reload, mainconfig.config) < 0) {
-		return -1;
-	}
-
 	if (chroot_dir) {
 		if (chdir(radlog_dir) < 0) {
 			ERROR("Failed to 'chdir %s' after chroot: %s",
