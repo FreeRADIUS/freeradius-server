@@ -42,7 +42,7 @@ SECRET	= testing123
 all: parse tests
 
 clean:
-	@rm -f $(RADDB_PATH)/test.conf test.conf dictionary
+	@rm -f test.conf dictionary
 
 dictionary:
 	@echo "# test dictionary not install.  Delete at any time." > dictionary
@@ -56,16 +56,24 @@ test.conf: dictionary
 	@echo "libdir =" $(LIB_PATH) >> test.conf
 	@echo "testdir =" $(TEST_PATH) >> test.conf
 	@echo 'logdir = $${testdir}' >> test.conf
+	@echo 'maindir = ${top_builddir}/raddb/' >> test.conf
 	@echo 'radacctdir = $${testdir}' >> test.conf
 	@echo 'pidfile = $${testdir}/radiusd.pid' >> test.conf
 	@echo 'panic_action = "gdb -batch -x ${testdir}/panic.gdb %e %p > ${testdir}/gdb.log 2>&1; cat ${testdir}/gdb.log"' >> test.conf
-	@echo '$$INCLUDE radiusd.conf' >> test.conf
+	@echo 'security {' >> $@
+	@echo '        allow_vulnerable_openssl = yes' >> $@
+	@echo '}' >> $@
+	@echo >> $@
+	@echo 'modconfdir = $${maindir}mods-config' >> $@
+	@echo 'certdir = $${maindir}/certs' >> $@
+	@echo 'cadir   = $${maindir}/certs' >> $@
+	@echo '$$INCLUDE $${maindir}/radiusd.conf' >> test.conf
 	@echo '$$INCLUDE $${testdir}/config/' >> test.conf
 
-radiusd.pid: $(RADDB_PATH)/test.conf test.conf
+radiusd.pid: test.conf
 	@rm -f $(TEST_PATH)/gdb.log $(TEST_PATH)/radius.log
 	@printf "Starting server... "
-	@if ! $(BIN_PATH)/radiusd -Pxxxxml $(TEST_PATH)/radius.log -d $(RADDB_PATH) -n test -i 127.0.0.1 -p $(PORT) -D $(TEST_PATH); then\
+	@if ! $(BIN_PATH)/radiusd -Pxxxxml $(TEST_PATH)/radius.log -d ${top_builddir}/src/tests -n test -i 127.0.0.1 -p $(PORT) -D $(TEST_PATH); then\
 		echo "failed"; \
 		echo "Last log entries were:"; \
 		tail -n 20 "$(TEST_PATH)/radius.log"; \
@@ -94,28 +102,22 @@ radiusd.kill:
 	fi
 	@rm -f radiusd.pid
 
-#  Link from the main database directory to here
-$(RADDB_PATH)/test.conf: test.conf
-	@[ -f $(RADDB_PATH)/test.conf ] || ln -s ../src/tests/test.conf $(RADDB_PATH)/
-
 # kill the server (if it's running)
 # start the server
 # run the tests (ignoring any failures)
 # kill the server
 # remove the changes to raddb/
-tests: $(RADDB_PATH)/test.conf | radiusd.kill radiusd.pid
+tests: test.conf | radiusd.kill radiusd.pid
 	@chmod a+x runtests.sh
 	@BIN_PATH="$(BIN_PATH)" PORT="$(PORT)" ./runtests.sh $(TESTS)
 	@$(MAKE) radiusd.kill
-	@rm -f $(RADDB_PATH)/test.conf
 
-tests.eap: $(RADDB_PATH)/test.conf radiusd.kill
+tests.eap: test.conf radiusd.kill
 	@chmod a+x runtests.sh
 	@rm -f $(TEST_PATH)/radius.log $(TEST_PATH)/gdb.log
 	@$(MAKE) radiusd.pid
 	@$(MAKE) eap
 	@$(MAKE) radiusd.kill
-	@rm -f $(RADDB_PATH)/test.conf
 
 eap: $(EAP_TLS_TESTS)
 	for x in $(EAP_TLS_TESTS); do \
