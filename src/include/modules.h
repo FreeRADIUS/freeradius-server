@@ -166,9 +166,9 @@ typedef struct module_t {
 
 } module_t;
 
-int setup_modules(int, CONF_SECTION *);
-int detach_modules(void);
-int module_hup(CONF_SECTION *modules);
+int modules_init(CONF_SECTION *);
+int modules_free(void);
+int modules_hup(CONF_SECTION *modules);
 rlm_rcode_t process_authorize(int type, REQUEST *request);
 rlm_rcode_t process_authenticate(int type, REQUEST *request);
 rlm_rcode_t module_preacct(REQUEST *request);

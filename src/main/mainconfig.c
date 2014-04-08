@@ -1081,7 +1081,7 @@ void hup_mainconfig(void)
 	/*
 	 *	Prefer the new module configuration.
 	 */
-	module_hup(cf_section_sub_find(cs, "modules"));
+	modules_hup(cf_section_sub_find(cs, "modules"));
 
 	/*
 	 *	Load new servers BEFORE freeing old ones.

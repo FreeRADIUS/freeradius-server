@@ -345,7 +345,7 @@ int main(int argc, char *argv[])
 	/*
 	 *  Load the modules
 	 */
-	if (setup_modules(false, mainconfig.config) < 0) {
+	if (modules_init(mainconfig.config) < 0) {
 		exit(EXIT_FAILURE);
 	}
 
@@ -598,7 +598,7 @@ cleanup:
 	/*
 	 *	Detach any modules.
 	 */
-	detach_modules();
+	modules_free();
 
 	xlat_free();		/* modules may have xlat's */
 

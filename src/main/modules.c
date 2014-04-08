@@ -437,7 +437,7 @@ static int _module_entry_free(module_entry_t *this)
 /*
  *	Remove the module lists.
  */
-int detach_modules(void)
+int modules_free(void)
 {
 	rbtree_free(instance_tree);
 	rbtree_free(module_tree);
@@ -1472,7 +1472,7 @@ int module_hup_module(CONF_SECTION *cs, module_instance_t *node, time_t when)
 }
 
 
-int module_hup(CONF_SECTION *modules)
+int modules_hup(CONF_SECTION *modules)
 {
 	time_t when;
 	CONF_ITEM *ci;
@@ -1514,37 +1514,27 @@ int module_hup(CONF_SECTION *modules)
 /*
  *	Parse the module config sections, and load
  *	and call each module's init() function.
- *
- *	Libtool makes your life a LOT easier, especially with libltdl.
- *	see: http://www.gnu.org/software/libtool/
  */
-int setup_modules(int reload, CONF_SECTION *config)
+int modules_init(CONF_SECTION *config)
 {
 	CONF_ITEM	*ci, *next;
 	CONF_SECTION	*cs, *modules;
 	rad_listen_t	*listener;
 
-	if (reload) return 0;
-
 	/*
-	 *	If necessary, initialize libltdl.
+	 *	Set up the internal module struct.
 	 */
-	if (!reload) {
-		/*
-		 *	Set up the internal module struct.
-		 */
-		module_tree = rbtree_create(module_entry_cmp, NULL, 0);
-		if (!module_tree) {
-			ERROR("Failed to initialize modules\n");
-			return -1;
-		}
+	module_tree = rbtree_create(module_entry_cmp, NULL, 0);
+	if (!module_tree) {
+		ERROR("Failed to initialize modules\n");
+		return -1;
+	}
 
-		instance_tree = rbtree_create(module_instance_cmp,
-					      module_instance_free, 0);
-		if (!instance_tree) {
-			ERROR("Failed to initialize modules\n");
-			return -1;
-		}
+	instance_tree = rbtree_create(module_instance_cmp,
+				      module_instance_free, 0);
+	if (!instance_tree) {
+		ERROR("Failed to initialize modules\n");
+		return -1;
 	}
 
 	memset(virtual_servers, 0, sizeof(virtual_servers));
