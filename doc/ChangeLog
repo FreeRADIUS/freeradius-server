@@ -7,6 +7,7 @@ FreeRADIUS 2.2.5 Wednesday 19 Mar 2014 13:20:00 EDT, urgency=medium
 	* Minor changes to build on Sun.
 	* Print non-ASCII characters as octal in linelog.  Closes #578
 	* close stdout in daemon mode.
+	* Fix zombie period calculation.  Closes #579
 
 FreeRADIUS 2.2.4 Wednesday 19 Mar 2014 13:20:00 EDT, urgency=medium
 	Feature improvements
