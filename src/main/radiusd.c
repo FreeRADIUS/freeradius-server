@@ -305,15 +305,7 @@ int main(int argc, char *argv[])
 	 *	better to die here than segfault later.
 	 */
 #ifdef HAVE_OPENSSL_CRYPTO_H
-	if (ssl_check_version() < 0) {
-		exit(EXIT_FAILURE);
-	}
-
-	/*
-	 *	Initialising OpenSSL once, here, is safer than having individual
-	 *	modules do it.
-	 */
-	if (tls_global_init() < 0) {
+	if (ssl_check_consistency() < 0) {
 		exit(EXIT_FAILURE);
 	}
 #endif
@@ -339,6 +331,16 @@ int main(int argc, char *argv[])
 	if (read_mainconfig(0) < 0) {
 		exit(EXIT_FAILURE);
 	}
+
+	/*
+	 *  Initialising OpenSSL once, here, is safer than having individual
+	 *  modules do it.
+	 */
+#ifdef HAVE_OPENSSL_CRYPTO_H
+	if (tls_global_init(mainconfig.allow_vulnerable_openssl) < 0) {
+		exit(EXIT_FAILURE);
+	}
+#endif
 
 	/* Set the panic action (if required) */
 	if (mainconfig.panic_action &&

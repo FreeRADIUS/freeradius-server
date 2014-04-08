@@ -42,7 +42,7 @@ static long ssl_built = OPENSSL_VERSION_NUMBER;
  *
  * @return 0 if ok, else -1
  */
-int ssl_check_version(void)
+int ssl_check_consistency(void)
 {
 	long ssl_linked;
 
@@ -83,7 +83,7 @@ char const *ssl_version(void)
 	return buffer;
 }
 #  else
-int ssl_check_version(void) {
+int ssl_check_consistency(void) {
 	return 0;
 }
 
