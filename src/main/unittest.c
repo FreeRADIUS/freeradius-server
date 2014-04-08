@@ -535,6 +535,13 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
+	/*
+	 *  Load the modules
+	 */
+	if (setup_modules(false, mainconfig.config) < 0) {
+		exit(EXIT_FAILURE);
+	}
+
 	/* Set the panic action (if required) */
 	if (mainconfig.panic_action &&
 #ifndef NDEBUG
