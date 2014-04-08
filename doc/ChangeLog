@@ -34,6 +34,11 @@ FreeRADIUS 3.0.3 Fri 21 Mar 2014 08:30:00 EDT urgency=medium
 	* Support basic response validation in radclient. This allows
 	  administrators to write local test cases for their
 	  site-specific configurations.
+	* Removed radconf2xml and radmin "show client config" and
+	  "show home_server config".
+	* Forbid running with vulnerable versions of OpenSSL.
+	  See "allow_vulnerable_openssl" in the "security"
+	  subsection of "radiusd.conf"
 
 	Bug fixes
 	* Fix xlat expression %{attribute[n]} so that it actually
