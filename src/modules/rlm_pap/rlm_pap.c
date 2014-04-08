@@ -48,7 +48,6 @@ USES_APPLE_DEPRECATED_API
  */
 typedef struct rlm_pap_t {
 	char const	*name;	/* CONF_SECTION->name, not strdup'd */
-	bool		auto_header;
 	int		auth_type;
 	bool		normify;
 } rlm_pap_t;
@@ -63,7 +62,6 @@ typedef struct rlm_pap_t {
  *      buffer over-flows.
  */
 static const CONF_PARSER module_config[] = {
-	{ "auto_header", PW_TYPE_BOOLEAN, offsetof(rlm_pap_t,auto_header), NULL, "no" },
 	{ "normalise", PW_TYPE_BOOLEAN, offsetof(rlm_pap_t,normify), NULL, "yes" },
 	{ NULL, -1, 0, NULL, NULL }
 };
