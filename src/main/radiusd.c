@@ -313,7 +313,9 @@ int main(int argc, char *argv[])
 	 *	Initialising OpenSSL once, here, is safer than having individual
 	 *	modules do it.
 	 */
-	tls_global_init();
+	if (tls_global_init() < 0) {
+		exit(EXIT_FAILURE);
+	}
 #endif
 
 	if (flag && (flag != 0x03)) {
