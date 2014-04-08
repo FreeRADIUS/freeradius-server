@@ -411,7 +411,7 @@ typedef struct main_config_t {
 #endif
 	int		reject_delay;
 	bool		status_server;
-	bool		allow_vulnerable_openssl;
+	char const	*allow_vulnerable_openssl;
 
 	int		max_request_time;
 	int		cleanup_delay;
@@ -579,6 +579,8 @@ void		pairlist_free(PAIR_LIST **);
 /* version.c */
 int		rad_check_lib_magic(uint64_t magic);
 int 		ssl_check_consistency(void);
+char const	*ssl_version_by_num(uint64_t version);
+char const	*ssl_version_range(uint64_t low, uint64_t high);
 char const	*ssl_version(void);
 void		version(void);
 

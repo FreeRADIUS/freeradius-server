@@ -50,6 +50,27 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include <openssl/ocsp.h>
 #endif
 
+typedef struct libssl_defect {
+	uint64_t	high;
+	uint64_t	low;
+
+	char const	*id;
+	char const	*name;
+	char const	*comment;
+} libssl_defect_t;
+
+/* Record critical defects in libssl here (newest first)*/
+static libssl_defect_t libssl_defects[] =
+{
+	{
+		.low		= 0x010001000,		/* 1.0.1  */
+		.high		= 0x010001060,		/* 1.0.1f */
+		.id		= "CVE-2014-0160",
+		.name		= "Heartbleed",
+		.comment	= "For more information see http://heartbleed.com"
+	}
+};
+
 /* record */
 static void 		record_init(record_t *buf);
 static void 		record_close(record_t *buf);
@@ -1915,9 +1936,9 @@ static void sess_free_vps(UNUSED void *parent, void *data_ptr,
  *
  *	This should be called exactly once from main.
  */
-int tls_global_init(bool allow_vulnerable)
+int tls_global_init(char const *acknowledged)
 {
-	long v;
+	uint64_t v;
 
 	SSL_load_error_strings();	/* readable error messages (examples show call before library_init) */
 	SSL_library_init();		/* initialize library */
@@ -1925,16 +1946,29 @@ int tls_global_init(bool allow_vulnerable)
 	OpenSSL_add_all_algorithms();	/* required for SHA2 in OpenSSL < 0.9.8o and 1.0.0.a */
 #endif
 
-	if (!allow_vulnerable) {
+	if ((strcmp(acknowledged, libssl_defects[0].id) != 0) && (strcmp(acknowledged, "yes") != 0)) {
+		bool bad = false;
+		size_t i;
+
 		/* Check for bad versions */
-		v = SSLeay();
+		v = (uint64_t) SSLeay();
 
-		/* 1.0.1 - 1.0.1f CVE-2014-0160 http://heartbleed.com */
-		if ((v >= 0x010001000) && (v < 0x010001070)) {
-			ERROR("Refusing to start with libssl version %s (in range 1.0.1 - 1.0.1f).  "
-			      "Security advisory CVE-2014-0160 (Heartbleed)", ssl_version());
-			ERROR("For more information see http://heartbleed.com");
+		for (i = 0; i < (sizeof(libssl_defects) / sizeof(*libssl_defects)); i++) {
+			libssl_defect_t *defect = &libssl_defects[i];
 
+			if ((v >= defect->low) && (v <= defect->high)) {
+				ERROR("Refusing to start with libssl version %s (in range %s)",
+				      ssl_version(), ssl_version_range(defect->low, defect->high));
+				ERROR("Security advisory %s (%s)", defect->id, defect->name);
+				ERROR("%s", defect->comment);
+
+				bad = true;
+			}
+		}
+
+		if (bad) {
+			INFO("Once you have verified libssl has been correctly patched, "
+			     "set security.allow_vulnerable_openssl = '%s'", libssl_defects[0].id);
 			return -1;
 		}
 	}
