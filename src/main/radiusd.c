@@ -263,14 +263,6 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	/*
-	 *	Mismatch between build time OpenSSL and linked SSL,
-	 *	better to die here than segfault later.
-	 */
-	if (ssl_check_version() < 0) {
-		exit(1);
-	}
-
 	if (flag && (flag != 0x03)) {
 		fprintf(stderr, "radiusd: The options -i and -p cannot be used individually.\n");
 		exit(1);
@@ -283,6 +275,19 @@ int main(int argc, char *argv[])
 	/*  Read the configuration files, BEFORE doing anything else.  */
 	if (read_mainconfig(0) < 0) {
 		exit(1);
+	}
+
+	/*
+	 *	Mismatch between build time OpenSSL and linked SSL,
+	 *	better to die here than segfault later.
+	 */
+	if (ssl_check_version(mainconfig.allow_vulnerable_openssl) < 0) {
+		exit(1);
+	}
+
+	/*  Load the modules AFTER doing SSL checks */
+	if (setup_modules(FALSE, mainconfig.config) < 0) {
+		return -1;
 	}
 
 	/* Set the panic action (if required) */

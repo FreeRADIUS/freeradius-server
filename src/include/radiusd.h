@@ -532,7 +532,7 @@ int		pairlist_read(const char *file, PAIR_LIST **list, int complain);
 void		pairlist_free(PAIR_LIST **);
 
 /* version.c */
-int 		ssl_check_version(void);
+int 		ssl_check_version(int allow_vulnerable);
 const char	*ssl_version(void);
 void		version(void);
 
