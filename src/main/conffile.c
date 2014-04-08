@@ -437,7 +437,15 @@ static void cf_item_add(CONF_SECTION *cs, CONF_ITEM *ci)
 		 */
 		switch (ci->type) {
 			case CONF_ITEM_PAIR:
-				rbtree_insert(cs->pair_tree, ci);
+				if (!rbtree_insert(cs->pair_tree, ci)) {
+					CONF_PAIR *cp = cf_itemtopair(ci);
+
+					if (strcmp(cp->attr, "confdir") == 0) break;
+					if (!cp->value) break; /* module name, "ok", etc. */
+
+					WARN("%s[%d] Duplicate configuration item \"%s\"",
+					     ci->filename, ci->lineno, (cf_itemtopair(ci))->attr);
+				}
 				break;
 
 			case CONF_ITEM_SECTION: {
@@ -458,34 +466,53 @@ static void cf_item_add(CONF_SECTION *cs, CONF_ITEM *ci)
 						ERROR("Failed inserting section into tree");
 						fr_exit_now(1);
 					}
+					break;
 				}
+
+#if 0
+				/*
+				 *	We'll ignore these checks for
+				 *	now.  Various sections can be
+				 *	duplicated, such as "listen",
+				 *	"update", "if", "else", etc.
+				 */
+				if (!name1_cs->name2 && !cs_new->name2) {
+					WARN("%s[%d] Duplicate configuration section \"%s { ...}\" %s %d",
+					     ci->filename, ci->lineno, cs_new->name1, name1_cs->item.filename, name1_cs->item.lineno);
+					break;
+				}
+
+				if ((name1_cs->name2 && cs_new->name2) &&
+				    (strcmp(name1_cs->name2, cs_new->name2) == 0)) {
+					WARN("%s[%d] Duplicate configuration section \"%s %s { ...}\"",
+					     ci->filename, ci->lineno, cs_new->name1, cs_new->name2);
+					break;
+				}
+#endif
 
 				/*
 				 *	We already have a section of
 				 *	this "name1".  Add a new
 				 *	sub-section based on name2.
 				 */
-				if (name1_cs) {
+				if (!name1_cs->name2_tree) {
+					name1_cs->name2_tree = rbtree_create(name2_cmp,
+									     NULL, 0);
 					if (!name1_cs->name2_tree) {
-						name1_cs->name2_tree = rbtree_create(name2_cmp,
-										     NULL, 0);
-						if (!name1_cs->name2_tree) {
-							ERROR("Out of memory");
-							fr_exit_now(1);
-						}
+						ERROR("Out of memory");
+						fr_exit_now(1);
 					}
-
-					/*
-					 *	We don't care if this
-					 *	fails.  If the user
-					 *	tries to create two
-					 *	sections of the same
-					 *	name1/name2, the
-					 *	duplicate section is
-					 *	just silently ignored.
-					 */
-					rbtree_insert(name1_cs->name2_tree, cs_new);
 				}
+
+				/*
+				 *	We don't care if this fails.
+				 *	If the user tries to create
+				 *	two sections of the same
+				 *	name1/name2, the duplicate
+				 *	section is just silently
+				 *	ignored.
+				 */
+				rbtree_insert(name1_cs->name2_tree, cs_new);
 				break;
 			} /* was a section */
 
@@ -796,9 +823,9 @@ static char const *cf_expand_variables(char const *cf, int *lineno,
 					return NULL;
 				}
 
-				cf_item_add(outercs, &(subcs->item));
 				subcs->item.filename = ci->filename;
 				subcs->item.lineno = ci->lineno;
+				cf_item_add(outercs, &(subcs->item));
 
 				ptr = end + 1;
 
@@ -1177,9 +1204,11 @@ static void cf_section_parse_init(CONF_SECTION *cs, void *base,
 			if (!subcs) {
 				subcs = cf_section_alloc(cs, variables[i].name,
 							 NULL);
-				cf_item_add(cs, &(subcs->item));
+				if (!subcs) return;
+
 				subcs->item.filename = cs->item.filename;
 				subcs->item.lineno = cs->item.lineno;
+				cf_item_add(cs, &(subcs->item));
 			}
 
 			cf_section_parse_init(subcs, base,
@@ -2013,9 +2042,10 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 					      filename, *lineno);
 					return -1;
 				}
-				cf_item_add(this, &(css->item));
+
 				css->item.filename = filename;
 				css->item.lineno = *lineno;
+				cf_item_add(this, &(css->item));
 
 			} else {
 				css = nextcs;
@@ -2164,7 +2194,7 @@ CONF_SECTION *cf_file_read(char const *filename)
 	if (p) *p = '\0';
 
 	cp->item.filename = "internal";
-	cp->item.lineno = 0;
+	cp->item.lineno = -1;
 	cf_item_add(cs, &(cp->item));
 
 	if (cf_file_include(cs, filename) < 0) {
