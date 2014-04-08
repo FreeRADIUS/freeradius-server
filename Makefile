@@ -42,7 +42,7 @@ raddb/test.conf:
 $(BUILD_DIR)/tests/radiusd-c: raddb/test.conf ${BUILD_DIR}/bin/radiusd | build.raddb
 	@$(MAKE) -C raddb/certs
 	@printf "radiusd -C... "
-	@if ! ./build/make/jlibtool --mode=execute ./build/bin/radiusd -XCMd ./raddb -n debug -D ./share -n test > $(BUILD_DIR)/tests/radiusd.config.log; then \
+	@if ! ./build/make/jlibtool --mode=execute ./build/bin/radiusd -XCMd ./raddb -D ./share -n test > $(BUILD_DIR)/tests/radiusd.config.log; then \
 		@rm -f raddb/test.conf; \
 		cat $(BUILD_DIR)/tests/radiusd.config.log; \
 		echo "fail"; \
