@@ -1091,26 +1091,17 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, int type, void *data, char
 		*q = value ? talloc_typed_strdup(cs, value) : NULL;
 
 		/*
-		 *	And now we "stat" the file.
+		 *	If the filename exists and we're supposed to
+		 *	read it, check it.
 		 */
-		if (*q) {
+		if (*q && (type == PW_TYPE_FILE_INPUT)) {
 			struct stat buf;
 
-			if (stat(*q, &buf) == 0) {
-				time_t *mtime = talloc(cs, time_t);
-
-				*mtime = buf.st_mtime;
-				/* FIXME: error? */
-				cf_data_add_internal(cs, *q, mtime, NULL, type);
-			/*
-			 *	We were expecting the file to exist...
-			 */
-			} else if (type == PW_TYPE_FILE_INPUT) {
+			if (stat(*q, &buf) < 0) {
 				ERROR("Unable to open file \"%s\": %s",
 		       		      value, fr_syserror(errno));
 				return -1;
 			}
-
 		}
 		break;
 
@@ -2719,207 +2710,6 @@ int cf_data_add(CONF_SECTION *cs, char const *name,
 {
 	return cf_data_add_internal(cs, name, data, data_free, 0);
 }
-
-#if 0
-/*
- *	Copy CONF_DATA from src to dst
- */
-static void cf_section_copy_data(CONF_SECTION *s, CONF_SECTION *d)
-{
-
-	CONF_ITEM *cd, *next, **last;
-
-	/*
-	 *	Don't check if s->data_tree is NULL.  It's child
-	 *	sections may have data, even if this section doesn't.
-	 */
-
-	rad_assert(d->data_tree == NULL);
-	d->data_tree = s->data_tree;
-	s->data_tree = NULL;
-
-	/*
-	 *	Walk through src, moving CONF_ITEM_DATA
-	 *	to dst, by hand.
-	 */
-	last = &(s->children);
-	for (cd = s->children; cd != NULL; cd = next) {
-		next = cd->next;
-
-		/*
-		 *	Recursively copy data from child sections.
-		 */
-		if (cd->type == CONF_ITEM_SECTION) {
-			CONF_SECTION *s1, *d1;
-
-			s1 = cf_itemtosection(cd);
-			d1 = cf_section_sub_find_name2(d, s1->name1, s1->name2);
-			if (d1) {
-				cf_section_copy_data(s1, d1);
-			}
-			last = &(cd->next);
-			continue;
-		}
-
-		/*
-		 *	Not conf data, remember last ptr.
-		 */
-		if (cd->type != CONF_ITEM_DATA) {
-			last = &(cd->next);
-			continue;
-		}
-
-		/*
-		 *	Remove it from the src list
-		 */
-		*last = cd->next;
-		cd->next = NULL;
-
-		/*
-		 *	Add it to the dst list
-		 */
-		if (!d->children) {
-			rad_assert(d->tail == NULL);
-			d->children = cd;
-		} else {
-			rad_assert(d->tail != NULL);
-			d->tail->next = cd;
-		}
-		d->tail = cd;
-	}
-}
-
-/*
- *	For a CONF_DATA element, stat the filename, if necessary.
- */
-static int filename_stat(UNUSED void *context, void *data)
-{
-	struct stat buf;
-	CONF_DATA *cd = data;
-
-	if (cd->flag != PW_TYPE_FILE_INPUT) return 0;
-
-	if (stat(cd->name, &buf) < 0) return -1;
-
-	if (buf.st_mtime != *(time_t *) cd->data) return -1;
-
-	return 0;
-}
-
-
-/*
- *	Compare two CONF_SECTIONS.  The items MUST be in the same
- *	order.
- */
-static int cf_section_cmp(CONF_SECTION *a, CONF_SECTION *b)
-{
-	CONF_ITEM *ca = a->children;
-	CONF_ITEM *cb = b->children;
-
-	while (1) {
-		CONF_PAIR *pa, *pb;
-
-		/*
-		 *	Done.  Stop.
-		 */
-		if (!ca && !cb) break;
-
-		/*
-		 *	Skip CONF_DATA.
-		 */
-		if (ca && ca->type == CONF_ITEM_DATA) {
-			ca = ca->next;
-			continue;
-		}
-		if (cb && cb->type == CONF_ITEM_DATA) {
-			cb = cb->next;
-			continue;
-		}
-
-		/*
-		 *	One is smaller than the other.  Exit.
-		 */
-		if (!ca || !cb) return 0;
-
-		if (ca->type != cb->type) return 0;
-
-		/*
-		 *	Deal with subsections.
-		 */
-		if (ca->type == CONF_ITEM_SECTION) {
-			CONF_SECTION *sa = cf_itemtosection(ca);
-			CONF_SECTION *sb = cf_itemtosection(cb);
-
-			if (!cf_section_cmp(sa, sb)) return 0;
-			goto next;
-		}
-
-		rad_assert(ca->type == CONF_ITEM_PAIR);
-
-		pa = cf_itemtopair(ca);
-		pb = cf_itemtopair(cb);
-
-		/*
-		 *	Different attr and/or value, Exit.
-		 */
-		if ((strcmp(pa->attr, pb->attr) != 0) ||
-		    (strcmp(pa->value, pb->value) != 0)) return 0;
-
-
-		/*
-		 *	And go to the next element.
-		 */
-	next:
-		ca = ca->next;
-		cb = cb->next;
-	}
-
-	/*
-	 *	Walk over the CONF_DATA, stat'ing PW_TYPE_FILE_INPUT.
-	 */
-	if (a->data_tree &&
-	    (rbtree_walk(a->data_tree, RBTREE_IN_ORDER, filename_stat, NULL) != 0)) {
-		return 0;
-	}
-
-	/*
-	 *	They must be the same, say so.
-	 */
-	return 1;
-}
-
-
-/*
- *	Migrate CONF_DATA from one section to another.
- */
-int cf_section_migrate(CONF_SECTION *dst, CONF_SECTION *src)
-{
-	CONF_ITEM *ci;
-	CONF_SECTION *s, *d;
-
-	for (ci = src->children; ci != NULL; ci = ci->next) {
-		if (ci->type != CONF_ITEM_SECTION)
-			continue;
-
-		s = cf_itemtosection(ci);
-		d = cf_section_sub_find_name2(dst, s->name1, s->name2);
-
-		if (!d) continue; /* not in new one, don't migrate it */
-
-		/*
-		 *	A section of the same name is in BOTH src & dst,
-		 *	compare the CONF_PAIR's.  If they're all the same,
-		 *	then copy the CONF_DATA from one to the other.
-		 */
-		if (cf_section_cmp(s, d)) {
-			cf_section_copy_data(s, d);
-		}
-	}
-
-	return 1;		/* rcode means anything? */
-}
-#endif
-
 
 /*
  *	This is here to make the rest of the code easier to read.  It

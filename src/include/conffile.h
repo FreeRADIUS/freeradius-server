@@ -144,11 +144,6 @@ extern int cf_pair2file(FILE *fp, CONF_PAIR const *cp);
 extern int cf_section2file(FILE *fp, CONF_SECTION const *cs);
 extern CONF_SECTION *root_config;
 
-/*
- *	Big magic.
- */
-int cf_section_migrate(CONF_SECTION *dst, CONF_SECTION *src);
-
 #ifdef __cplusplus
 }
 #endif
