@@ -59,26 +59,62 @@ int ssl_check_consistency(void)
 	return 0;
 }
 
+/** Convert a version number to a text string
+ *
+ * @note Not thread safe.
+ *
+ * @param v version to convert.
+ * @return pointer to a static buffer containing the version string.
+ */
+char const *ssl_version_by_num(uint64_t v)
+{
+	static char buffer[12];
+
+	snprintf(buffer, sizeof(buffer), "%i.%i.%i%c %i",
+		 (int) ((0xff0000000 & v) >> 28),
+		 (int) ((0x00ff00000 & v) >> 20),
+		 (int) ((0x0000ff000 & v) >> 12),
+		 (char)((0x000000ff0 & v) >> 4 ? (0x60 + ((0x000000ff0 & v) >> 4)) : ' '),
+		 (int) ((0x00000000f & v)));
+
+	return buffer;
+}
+
+/** Convert two openssl version numbers into a range string
+ *
+ * @note Not thread safe.
+ *
+ * @param low version to convert.
+ * @param high version to convert.
+ * @return pointer to a static buffer containing the version range string.
+ */
+char const *ssl_version_range(uint64_t low, uint64_t high)
+{
+	static char buffer[26];
+
+	strcat(buffer, ssl_version_by_num(low));
+	strcat(buffer, "-");
+	strcat(buffer, ssl_version_by_num(high));
+
+	return buffer;
+}
+
 /** Print the current linked version of Openssl
  *
  * Print the currently linked version of the OpenSSL library.
+ *
+ * @note Not thread safe.
  */
 char const *ssl_version(void)
 {
-	static char buffer[1024];
-	uint64_t v;
+	static char buffer[256];
 
-	/* OpenSSL represents the version as a 36bit unsigned integer */
-	v = (uint64_t) SSLeay();
+	uint64_t v = (uint64_t) SSLeay();
 
-	snprintf(buffer, sizeof(buffer), "%s 0x%.9" PRIx64 " (%i.%i.%i%c %i)",
+	snprintf(buffer, sizeof(buffer), "%s 0x%.9" PRIx64 " (%s)",
 		 SSLeay_version(SSLEAY_VERSION),		/* Not all builds include a useful version number */
 		 v,
-		 (int) ((0x0000000ff0000000 & v) >> 28),
-		 (int) ((0x000000000ff00000 & v) >> 20),
-		 (int) ((0x00000000000ff000 & v) >> 12),
-		 (char)((0x0000000000000ff0 & v) >> 4 ? (0x60 + ((0x000000000000ff0 & v) >> 4)) : ' '),
-		 (int) ((0x000000000000000f & v)));
+		 ssl_version_by_num((uint64_t) v));
 
 	return buffer;
 }
