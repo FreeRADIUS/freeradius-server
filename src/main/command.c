@@ -727,51 +727,6 @@ static int command_show_clients(rad_listen_t *listener, UNUSED int argc, UNUSED 
 }
 
 
-static int command_show_xml(rad_listen_t *listener, UNUSED int argc, UNUSED char *argv[])
-{
-	int fd;
-	CONF_ITEM *ci;
-	FILE *fp;
-
-	fd = dup(listener->fd);
-	if (fd < 0) return 0;
-
-	fp = fdopen(fd, "a");
-	if (!fp) {
-		cprintf(listener, "ERROR: Can't dup %s\n", fr_syserror(errno));
-		return 0;
-	}
-
-	if (argc == 0) {
-		cprintf(listener, "ERROR: <reference> is required\n");
-		fclose(fp);
-		return 0;
-	}
-
-	ci = cf_reference_item(mainconfig.config, mainconfig.config, argv[0]);
-	if (!ci) {
-		cprintf(listener, "ERROR: No such item <reference>\n");
-		fclose(fp);
-		return 0;
-	}
-
-	if (cf_item_is_section(ci)) {
-		cf_section2xml(fp, cf_itemtosection(ci));
-
-	} else if (cf_item_is_pair(ci)) {
-		cf_pair2xml(fp, cf_itemtopair(ci));
-
-	} else {
-		cprintf(listener, "ERROR: No such item <reference>\n");
-		fclose(fp);
-		return 0;
-	}
-
-	fclose(fp);
-
-	return 1;		/* success */
-}
-
 static int command_show_version(rad_listen_t *listener, UNUSED int argc, UNUSED char *argv[])
 {
 	cprintf(listener, "%s\n", radiusd_version);
@@ -990,34 +945,6 @@ static RADCLIENT *get_client(rad_listen_t *listener, int argc, char *argv[])
 	return client;
 }
 
-
-static int command_show_client_config(rad_listen_t *listener, int argc, char *argv[])
-{
-	int fd;
-	RADCLIENT *client;
-	FILE *fp;
-
-	client = get_client(listener, argc, argv);
-	if (!client) {
-		return 0;
-	}
-
-	if (!client->cs) return 1;
-	fd = dup(listener->fd);
-	if (fd < 0) return 0;
-
-	fp = fdopen(fd, "a");
-	if (!fp) {
-		cprintf(listener, "ERROR: Can't dup %s\n", fr_syserror(errno));
-		return 0;
-	}
-
-	cf_section2file(fp, client->cs);
-	fclose(fp);
-
-	return 1;
-}
-
 #ifdef WITH_PROXY
 static home_server_t *get_home_server(rad_listen_t *listener, int argc,
 				    char *argv[], int *last)
@@ -1061,33 +988,6 @@ static home_server_t *get_home_server(rad_listen_t *listener, int argc,
 	}
 
 	return home;
-}
-
-static int command_show_home_server_config(rad_listen_t *listener, int argc, char *argv[])
-{
-	int fd;
-	home_server_t *home;
-	FILE *fp;
-
-	home = get_home_server(listener, argc, argv, NULL);
-	if (!home) {
-		return 0;
-	}
-
-	if (!home->cs) return 1;
-	fd = dup(listener->fd);
-	if (fd < 0) return 0;
-
-	fp = fdopen(fd, "a");
-	if (!fp) {
-		cprintf(listener, "ERROR: Can't dup %s\n", fr_syserror(errno));
-		return 0;
-	}
-
-	cf_section2file(fp, home->cs);
-	fclose(fp);
-
-	return 1;
 }
 
 static int command_set_home_server_state(rad_listen_t *listener, int argc, char *argv[])
@@ -1501,13 +1401,6 @@ static fr_command_table_t command_table_show_module[] = {
 };
 
 static fr_command_table_t command_table_show_client[] = {
-	{ "config", FR_READ,
-	  "show client config <ipaddr> "
-#ifdef WITH_TCP
-	  "[proto] "
-#endif
-	  "- show configuration for given client",
-	  command_show_client_config, NULL },
 	{ "list", FR_READ,
 	  "show client list - shows list of global clients",
 	  command_show_clients, NULL },
@@ -1517,9 +1410,6 @@ static fr_command_table_t command_table_show_client[] = {
 
 #ifdef WITH_PROXY
 static fr_command_table_t command_table_show_home[] = {
-	{ "config", FR_READ,
-	  "show home_server config <ipaddr> <port> [proto] - show configuration for given home server",
-	  command_show_home_server_config, NULL },
 	{ "list", FR_READ,
 	  "show home_server list - shows list of home servers",
 	  command_show_home_servers, NULL },
@@ -1556,9 +1446,6 @@ static fr_command_table_t command_table_show[] = {
 	{ "version", FR_READ,
 	  "show version - Prints version of the running server",
 	  command_show_version, NULL },
-	{ "xml", FR_READ,
-	  "show xml <reference> - Prints out configuration as XML",
-	  command_show_xml, NULL },
 	{ NULL, 0, NULL, NULL, NULL }
 };
 
