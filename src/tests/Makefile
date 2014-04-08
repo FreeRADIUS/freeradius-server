@@ -46,6 +46,10 @@ test.conf: dictionary
 	@echo 'logdir = $${testdir}' >> test.conf
 	@echo 'radacctdir = $${testdir}' >> test.conf
 	@echo 'pidfile = $${testdir}/radiusd.pid' >> test.conf
+	@echo 'security {' >> $@
+	@echo '        allow_vulnerable_openssl = yes' >> $@
+	@echo '}' >> $@
+	@echo >> $@
 	@echo '$$INCLUDE radiusd.conf' >> test.conf
 	@echo '$$INCLUDE $${testdir}/config/' >> test.conf
 
