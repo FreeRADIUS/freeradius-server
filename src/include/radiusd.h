@@ -680,9 +680,9 @@ extern struct main_config_t mainconfig;
 
 void set_radius_dir(TALLOC_CTX *ctx, char const *path);
 char const *get_radius_dir(void);
-int read_mainconfig(int reload);
-int free_mainconfig(void);
-void hup_mainconfig(void);
+int mainconfig_init(void);
+int mainconfig_free(void);
+void mainconfig_hup(void);
 void hup_logfile(void);
 void fr_suid_down(void);
 void fr_suid_up(void);

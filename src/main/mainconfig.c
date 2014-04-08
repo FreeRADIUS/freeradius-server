@@ -706,7 +706,7 @@ char const *get_radius_dir(void)
  *
  *	This function can ONLY be called from the main server process.
  */
-int read_mainconfig(int reload)
+int mainconfig_init(void)
 {
 	int rcode;
 	char const *p = NULL;
@@ -714,11 +714,6 @@ int read_mainconfig(int reload)
 	struct stat statbuf;
 	cached_config_t *cc;
 	char buffer[1024];
-
-	if (reload != 0) {
-		ERROR("Reload is not implemented");
-		return -1;
-	}
 
 	if (stat(radius_dir, &statbuf) < 0) {
 		ERROR("Errors reading %s: %s",
@@ -985,7 +980,7 @@ int read_mainconfig(int reload)
 /*
  *	Free the configuration.  Called only when the server is exiting.
  */
-int free_mainconfig(void)
+int mainconfig_free(void)
 {
 	virtual_servers_free(0);
 
@@ -1029,7 +1024,7 @@ void hup_logfile(void)
 		}
 }
 
-void hup_mainconfig(void)
+void mainconfig_hup(void)
 {
 	cached_config_t *cc;
 	CONF_SECTION *cs;
