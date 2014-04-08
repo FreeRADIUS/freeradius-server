@@ -69,13 +69,18 @@ int ssl_check_consistency(void)
 char const *ssl_version_by_num(uint64_t v)
 {
 	static char buffer[12];
+	char *p = buffer;
 
-	snprintf(buffer, sizeof(buffer), "%i.%i.%i%c %i",
-		 (int) ((0xff0000000 & v) >> 28),
-		 (int) ((0x00ff00000 & v) >> 20),
-		 (int) ((0x0000ff000 & v) >> 12),
-		 (char)((0x000000ff0 & v) >> 4 ? (0x60 + ((0x000000ff0 & v) >> 4)) : ' '),
-		 (int) ((0x00000000f & v)));
+	p += sprintf(p, "%i.%i.%i",
+		     (int) ((0xff0000000 & v) >> 28),
+		     (int) ((0x00ff00000 & v) >> 20),
+		     (int) ((0x0000ff000 & v) >> 12));
+
+	if ((0x000000ff0 & v) >> 4) {
+		*p++ =  (char) (0x60 + ((0x000000ff0 & v) >> 4));
+	}
+
+	sprintf(p, " %i", (int) (0x00000000f & v));
 
 	return buffer;
 }
