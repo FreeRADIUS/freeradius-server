@@ -1915,7 +1915,7 @@ static void sess_free_vps(UNUSED void *parent, void *data_ptr,
  *
  *	This should be called exactly once from main.
  */
-int tls_global_init(void)
+int tls_global_init(bool allow_vulnerable)
 {
 	long v;
 
@@ -1925,16 +1925,18 @@ int tls_global_init(void)
 	OpenSSL_add_all_algorithms();	/* required for SHA2 in OpenSSL < 0.9.8o and 1.0.0.a */
 #endif
 
-	/* Check for bad versions */
-	v = SSLeay();
+	if (!allow_vulnerable) {
+		/* Check for bad versions */
+		v = SSLeay();
 
-	/* 1.0.1 - 1.0.1f CVE-2014-0160 http://heartbleed.com */
-	if ((v >= 0x010001000) && (v < 0x010001070)) {
-		ERROR("Refusing to start with libssl version %s (in range 1.0.1 - 1.0.1f).  "
-		      "Security advisory CVE-2014-0160 (Heartbleed)", ssl_version());
-		ERROR("For more information see http://heartbleed.com");
+		/* 1.0.1 - 1.0.1f CVE-2014-0160 http://heartbleed.com */
+		if ((v >= 0x010001000) && (v < 0x010001070)) {
+			ERROR("Refusing to start with libssl version %s (in range 1.0.1 - 1.0.1f).  "
+			      "Security advisory CVE-2014-0160 (Heartbleed)", ssl_version());
+			ERROR("For more information see http://heartbleed.com");
 
-		return -1;
+			return -1;
+		}
 	}
 
 	return 0;
