@@ -547,7 +547,7 @@ int main(int argc, char *argv[])
 	}
 
 	/*  Read the configuration files, BEFORE doing anything else.  */
-	if (read_mainconfig(0) < 0) {
+	if (mainconfig_init() < 0) {
 		exit(EXIT_FAILURE);
 	}
 
@@ -675,7 +675,7 @@ int main(int argc, char *argv[])
 	/*
 	 *	Free the configuration items.
 	 */
-	free_mainconfig();
+	mainconfig_free();
 
 	if (memory_report) {
 		INFO("Allocated memory at time of report:");

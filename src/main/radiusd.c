@@ -328,7 +328,7 @@ int main(int argc, char *argv[])
 	}
 
 	/*  Read the configuration files, BEFORE doing anything else.  */
-	if (read_mainconfig(0) < 0) {
+	if (mainconfig_init() < 0) {
 		exit(EXIT_FAILURE);
 	}
 
@@ -556,7 +556,7 @@ int main(int argc, char *argv[])
 #ifdef WITH_STATS
 		radius_stats_init(1);
 #endif
-		hup_mainconfig();
+		mainconfig_hup();
 	}
 	if (status < 0) {
 		ERROR("Exiting due to internal error: %s", fr_strerror());
@@ -605,7 +605,7 @@ cleanup:
 	/*
 	 *	Free the configuration items.
 	 */
-	free_mainconfig();
+	mainconfig_free();
 
 #ifdef WIN32
 	WSACleanup();
