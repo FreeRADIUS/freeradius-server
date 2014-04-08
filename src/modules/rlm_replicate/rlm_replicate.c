@@ -229,27 +229,12 @@ static rlm_rcode_t mod_preaccounting(void *instance, REQUEST *request)
 	return replicate_packet(instance, request, PAIR_LIST_REQUEST, request->packet->code);
 }
 
-static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
-{
-	return replicate_packet(instance, request, PAIR_LIST_REPLY, request->reply->code);
-}
-
 #ifdef WITH_PROXY
 static rlm_rcode_t mod_pre_proxy(void *instance, REQUEST *request)
 {
 	return replicate_packet(instance, request, PAIR_LIST_PROXY_REQUEST, request->proxy->code);
 }
-
-static rlm_rcode_t mod_post_proxy(void *instance, REQUEST *request)
-{
-	return replicate_packet(instance, request, PAIR_LIST_PROXY_REPLY, request->proxy_reply->code);
-}
 #endif
-
-static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
-{
-	return replicate_packet(instance, request, PAIR_LIST_REPLY, request->reply->code);
-}
 
 #ifdef WITH_COA
 static rlm_rcode_t mod_recv_coa(void *instance, REQUEST *request)
@@ -279,15 +264,15 @@ module_t rlm_replicate = {
 		NULL,			/* authentication */
 		mod_authorize,		/* authorization */
 		mod_preaccounting,	/* preaccounting */
-		mod_accounting,		/* accounting */
+		NULL,			/* accounting */
 		NULL,			/* checksimul */
 #ifdef WITH_PROXY
 		mod_pre_proxy,		/* pre-proxy */
-		mod_post_proxy,		/* post-proxy */
+		NULL,			/* post-proxy */
 #else
 		NULL, NULL,
 #endif
-		mod_post_auth		/* post-auth */
+		NULL			/* post-auth */
 #ifdef WITH_COA
 		, mod_recv_coa,		/* coa-request */
 		NULL
