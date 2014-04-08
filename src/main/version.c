@@ -68,7 +68,8 @@ int ssl_check_consistency(void)
  */
 char const *ssl_version_by_num(uint64_t v)
 {
-	static char buffer[12];
+	/* 2 (%s) + 1 (.) + 2 (%i) + 1 (.) + 2 (%i) + 1 (c) + 1 (-) + 2 (%i) + \0 */
+	static char buffer[13];
 	char *p = buffer;
 
 	p += sprintf(p, "%i.%i.%i",
@@ -80,7 +81,7 @@ char const *ssl_version_by_num(uint64_t v)
 		*p++ =  (char) (0x60 + ((0x000000ff0 & v) >> 4));
 	}
 
-	sprintf(p, " %i", (int) (0x00000000f & v));
+	sprintf(p, "-%i", (int) (0x00000000f & v));
 
 	return buffer;
 }
@@ -95,10 +96,11 @@ char const *ssl_version_by_num(uint64_t v)
  */
 char const *ssl_version_range(uint64_t low, uint64_t high)
 {
-	static char buffer[26];
+	/* 12 (version) + 3 ( - ) + 12 (version) */
+	static char buffer[28];
 
 	strcat(buffer, ssl_version_by_num(low));
-	strcat(buffer, "-");
+	strcat(buffer, " - ");
 	strcat(buffer, ssl_version_by_num(high));
 
 	return buffer;
