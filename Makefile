@@ -39,10 +39,10 @@ raddb/test.conf:
 #
 # Only redirect STDOUT, which should contain details of why the test failed.
 # Don't molest STDERR as this may be used to receive output from a debugger.
-$(BUILD_DIR)/tests/radiusd-c: ${BUILD_DIR}/bin/radiusd | build.raddb
+$(BUILD_DIR)/tests/radiusd-c: raddb/test.conf ${BUILD_DIR}/bin/radiusd | build.raddb
 	@$(MAKE) -C raddb/certs
 	@printf "radiusd -C... "
-	@if ! ./build/make/jlibtool --mode=execute ./build/bin/radiusd -XCMd ./raddb -n debug -D ./share > $(BUILD_DIR)/tests/radiusd.config.log; then \
+	@if ! ./build/make/jlibtool --mode=execute ./build/bin/radiusd -XCMd ./raddb -n debug -D ./share -n test > $(BUILD_DIR)/tests/radiusd.config.log; then \
 		@rm -f raddb/test.conf; \
 		cat $(BUILD_DIR)/tests/radiusd.config.log; \
 		echo "fail"; \
