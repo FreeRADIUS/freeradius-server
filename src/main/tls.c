@@ -64,7 +64,7 @@ static libssl_defect_t libssl_defects[] =
 {
 	{
 		.low		= 0x010001000,		/* 1.0.1  */
-		.high		= 0x010001060,		/* 1.0.1f */
+		.high		= 0x01000106f,		/* 1.0.1f */
 		.id		= "CVE-2014-0160",
 		.name		= "Heartbleed",
 		.comment	= "For more information see http://heartbleed.com"
