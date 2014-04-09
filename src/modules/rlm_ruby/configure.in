@@ -8,62 +8,58 @@ if test x$with_[]modname != xno; then
 	AC_PROG_CC
 	AC_PROG_CPP
 
-	AC_CHECK_PROGS(RUBYBIN, [ ruby ruby1.8 ], not-found, [${PATH}:/usr/bin:/usr/local/bin])
+	dnl extra argument: --with-rlm-ruby-bin
+	RUBYBIN=
+	AC_ARG_WITH(rlm-ruby-bin,
+	[  --with-rlm-ruby-bin=DIR       Path to the ruby binary []],
+	[ case "$withval" in
+	    no)
+		AC_MSG_ERROR(Need rlm-ruby-bin-dir)
+		;;
+	    yes)
+		;;
+	    *)
+		RUBYBIN="$withval"
+		;;
+	  esac ]
+	)
 
-	if test x$RUBYBIN = xnot-found; then
-		fail="ruby-binary"
+	if test "x$RUBYBIN" = "x"; then
+		AC_CHECK_PROGS(RUBYBIN, [ ruby ruby1.8 ], not-found, [${PATH}:/usr/bin:/usr/local/bin])
+
+		if test x$RUBYBIN = xnot-found; then
+			fail="ruby-binary"
+		fi
 	fi
-
-	dnl extra argument: --with-rlm-ruby-lib-dir
-	RB_LIB_DIR=
-	AC_ARG_WITH(rlm-ruby-lib-dir,
-	[  --with-rlm-ruby-lib-dir=DIR       Directory for Ruby library files []],
-	[ case "$withval" in
-	    no)
-		AC_MSG_ERROR(Need rlm-ruby-lib-dir)
-		;;
-	    yes)
-		;;
-	    *)
-		RB_LIB_DIR="$withval"
-		;;
-	  esac ]
-	)
-
-	dnl extra argument: --with-rlm-ruby-include-dir
-	RB_INC_DIR=
-	AC_ARG_WITH(rlm-ruby-include-dir,
-	[  --with-rlm-ruby-include-dir=DIR   Directory for Ruby include files []],
-	[ case "$withval" in
-	    no)
-		AC_MSG_ERROR(Need rlm-ruby-include-dir)
-		;;
-	    yes)
-		;;
-	    *)
-		RB_INC_DIR="$withval"
-		;;
-	  esac ]
-	)
 
 	if test x$fail = x; then
 		#We use fetch, cause [] are disapearing somewere
-		RB_PREFIX=`${RUBYBIN} -e "require 'rbconfig'; puts Config::CONFIG.fetch('prefix')"`
-		RB_EXEC_PREFIX=`${RUBYBIN} -e "require 'rbconfig'; puts Config::CONFIG.fetch('exec_prefix')"`
+		RB_PREFIX=`${RUBYBIN} -e "require 'rbconfig'; puts RbConfig::CONFIG.fetch('prefix')"`
+		RB_EXEC_PREFIX=`${RUBYBIN} -e "require 'rbconfig'; puts RbConfig::CONFIG.fetch('exec_prefix')"`
 		changequote(<<, >>)dnl
 		RB_VERSION=`${RUBYBIN} -e 'puts RUBY_VERSION'`
 		changequote([, ])dnl
+
+		AC_MSG_NOTICE([version: $RB_VERSION])
+
 #		RB_LIBS=`${RUBYBIN} -e "require 'rbconfig'; puts Config::CONFIG.fetch('LIBRUBY')"`
 #		RB_LIB_DIR=`${RUBYBIN} -e "require 'rbconfig'; puts Config::CONFIG.fetch('libdir')"`
 #		RB_EXTRA_LIBS=`${RUBYBIN} -e "require 'rbconfig'; puts Config::CONFIG.fetch('LIBS')"`
-		RB_LIBS=`${RUBYBIN} -e "require 'rbconfig'; puts Config::CONFIG.fetch('LIBRUBYARG_SHARED')"`
-		RB_INC_DIR=`${RUBYBIN} -e "require 'rbconfig'; puts Config::CONFIG.fetch('includedir')"`
-		RB_CFLAGS=`${RUBYBIN} -e "require 'rbconfig'; puts Config::CONFIG.fetch('CFLAGS')"`
-		RB_ARCH_DIR=`${RUBYBIN} -e "require 'rbconfig'; puts Config::CONFIG.fetch('archdir')"`
+		RB_LIBS=`${RUBYBIN} -e "require 'rbconfig'; puts RbConfig::CONFIG.fetch('LIBRUBYARG_SHARED')"`
+		AC_MSG_NOTICE([libs: $RB_LIBS])
+
+		RB_INC_DIR=`${RUBYBIN} -e "require 'rbconfig'; puts RbConfig::CONFIG.fetch('includedir')"`
+		AC_MSG_NOTICE([include: $RB_INC_DIR])
+
+		RB_CFLAGS=`${RUBYBIN} -e "require 'rbconfig'; puts RbConfig::CONFIG.fetch('CFLAGS')"`
+		AC_MSG_NOTICE([cflags: $RB_FLAGS])
+
+		RB_ARCH_DIR=`${RUBYBIN} -e "require 'rbconfig'; puts RbConfig::CONFIG.fetch('archdir')"`
+		AC_MSG_NOTICE([arch: $RB_ARCH_DIR])
 
 		old_CFLAGS=$CFLAGS
-		CFLAGS="$CFLAGS $RB_CFLAGS -I${RB_ARCH_DIR} -I${RB_INC_DIR}"
-#		smart_try_dir=$RB_INC_DIR
+		CFLAGS="$CFLAGS $RB_CFLAGS -I${RB_ARCH_DIR} -I${RB_INC_DIR} -I${RB_INC_DIR}/ruby-${RB_VERSION}"
+		AC_MSG_NOTICE("$CFLAGS");
 		FR_SMART_CHECK_INCLUDE(ruby.h)
 		if test "x$ac_cv_header_ruby_h" != "xyes"; then
 			fail="$fail ruby.h"
