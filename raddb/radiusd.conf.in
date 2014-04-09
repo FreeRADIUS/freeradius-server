@@ -124,6 +124,9 @@ pidfile = ${run_dir}/${name}.pid
 #  AN INTERACTIVE ACTION MEANS THE SERVER IS NOT RESPONDING TO REQUESTS.
 #  AN INTERACTICE ACTION MEANS THE SERVER WILL NOT RESTART.
 #
+#  THE SERVER MUST NOT BE ALLOWED EXECUTE UNTRUSTED PANIC ACTION CODE
+#  PATTACH CAN BE USED AS AN ATTACK VECTOR.
+#
 #  The panic action is a command which will be executed if the server
 #  receives a fatal, non user generated signal, i.e. SIGSEGV, SIGBUS,
 #  SIGABRT or SIGFPE.
