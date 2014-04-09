@@ -372,6 +372,7 @@ static int mschapv2_authenticate(void *arg, eap_handler_t *handler)
 {
 	int rcode, ccode;
 	uint8_t *p;
+	char *q;
 	mschapv2_opaque_t *data;
 	EAP_DS *eap_ds = handler->eap_ds;
 	VALUE_PAIR *challenge, *response, *name;
@@ -599,11 +600,11 @@ static int mschapv2_authenticate(void *arg, eap_handler_t *handler)
 	name->length = (((eap_ds->response->type.data[2] << 8) |
 			 eap_ds->response->type.data[3]) -
 			eap_ds->response->type.data[4] - 5);
-	name->vp_octets = p = talloc_array(name, uint8_t, name->length + 1);
-	memcpy(p,
+	name->vp_strvalue = q = talloc_array(name, char, name->length + 1);
+	memcpy(q,
 	       &eap_ds->response->type.data[4 + MSCHAPV2_RESPONSE_LEN],
 	       name->length);
-	p[name->length] = '\0';
+	q[name->length] = '\0';
 
 packet_ready:
 
