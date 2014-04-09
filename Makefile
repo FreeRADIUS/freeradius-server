@@ -60,6 +60,7 @@ travis-test: raddb/test.conf test
 	@./build/make/jlibtool --mode=execute ./build/bin/radiusd -xxxv -n test
 	@rm -f raddb/test.conf
 	@$(MAKE) install
+	@perl -p -i -e 's/allow_vulnerable_openssl = no/allow_vulnerable_openssl = yes/' ${raddbdir}/radiusd.conf
 	@${sbindir}/radiusd -XC
 	@$(MAKE) deb
 endif
