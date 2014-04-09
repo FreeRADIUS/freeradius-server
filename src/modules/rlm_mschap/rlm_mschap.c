@@ -633,7 +633,14 @@ void mschap_add_reply(REQUEST *request, unsigned char ident,
 		return;
 	}
 	vp->length = len + 1;
+
 	vp->vp_octets = p = talloc_array(vp, uint8_t, vp->length);
+
+#ifndef NDEBUG
+	if (vp->da->type == PW_TYPE_STRING) {
+		talloc_set_type(vp->data.ptr, char);
+	}
+#endif
 
 	p[0] = ident;
 	memcpy(p + 1, value, len);
