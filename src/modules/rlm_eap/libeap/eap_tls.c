@@ -790,7 +790,7 @@ static eaptls_status_t eaptls_operation(eaptls_status_t status,
 	 */
 	if (!tls_handshake_recv(handler->request, tls_session)) {
 		DEBUG2("TLS receive handshake failed during operation");
-		tls_fail(tls_session);
+		SSL_CTX_remove_session(tls_session->ctx, tls_session->ssl->session);
 		return EAPTLS_FAIL;
 	}
 
