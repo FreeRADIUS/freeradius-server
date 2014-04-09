@@ -690,8 +690,9 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
  error:
 	ERROR("rlm_unbound (%s): %s", inst->name, ub_strerror(res));
+
  error_nores:
- 	close(debug_fd);
+ 	if (debug_fd > -1) close(debug_fd);
 
 	return -1;
 }
