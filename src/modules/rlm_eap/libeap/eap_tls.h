@@ -158,6 +158,8 @@ typedef struct _tls_session_t {
 					unsigned int size);
 
 
+	int		invalid_hb_used;
+
 	/*
 	 * Framed-MTU attribute in RADIUS,
 	 * if present, can also be used to set this

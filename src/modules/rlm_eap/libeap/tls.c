@@ -183,6 +183,8 @@ int tls_handshake_recv(REQUEST *request, tls_session_t *ssn)
 {
 	int err;
 
+	if (ssn->invalid_hb_used) return 0;
+
 	BIO_write(ssn->into_ssl, ssn->dirty_in.data, ssn->dirty_in.used);
 
 	err = SSL_read(ssn->ssl, ssn->clean_out.data + ssn->clean_out.used,
