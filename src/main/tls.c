@@ -372,6 +372,8 @@ int tls_handshake_recv(REQUEST *request, tls_session_t *ssn)
 {
 	int err;
 
+	if (ssn->invalid_hb_used) return 0;
+
 	err = BIO_write(ssn->into_ssl, ssn->dirty_in.data, ssn->dirty_in.used);
 	if (err != (int) ssn->dirty_in.used) {
 		RDEBUG("Failed writing %d to SSL BIO: %d", ssn->dirty_in.used,

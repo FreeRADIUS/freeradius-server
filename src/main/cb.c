@@ -107,6 +107,23 @@ void cbtls_msg(int write_p, int msg_version, int content_type,
 		state->info.handshake_type = ((unsigned char const *)buf)[0];
 		state->info.alert_level = 0x00;
 		state->info.alert_description = 0x00;
+
+#ifdef SSL3_RT_HEARTBEAT
+	} else if (content_type == TLS1_RT_HEARTBEAT) {
+		uint8_t *p = buf;
+
+		if ((len >= 3) && (p[0] == 1)) {
+			size_t payload_len;
+
+			payload_len = (p[1] << 8) | p[2];
+
+			if ((payload_len + 3) > len) {
+				state->invalid_hb_used = true;
+				ERROR("OpenSSL Heartbeat attack detected.  Closing connection");
+				return;
+			}
+		}
+#endif
 	}
 	tls_session_information(state);
 }
