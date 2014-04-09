@@ -1960,6 +1960,10 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 			strftime(str, freespace, "%m", &ts);
 			break;
 
+		case 'n': /* Request Number*/
+			snprintf(str, freespace, "%i", request->number);
+			break;
+
 		case 't': /* request timestamp */
 			CTIME_R(&when, str, freespace);
 			nl = strchr(str, '\n');
