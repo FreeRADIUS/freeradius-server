@@ -39,6 +39,8 @@ FreeRADIUS 3.0.3 Fri 21 Mar 2014 08:30:00 EDT urgency=medium
 	* Forbid running with vulnerable versions of OpenSSL.
 	  See "allow_vulnerable_openssl" in the "security"
 	  subsection of "radiusd.conf"
+	* Catch underlying "heartbleed" problem, so that nothing bad
+	  happens even when using a vulnerable version of OpenSSL.
 
 	Bug fixes
 	* Fix xlat expression %{attribute[n]} so that it actually
@@ -76,6 +78,7 @@ FreeRADIUS 3.0.3 Fri 21 Mar 2014 08:30:00 EDT urgency=medium
 	* Prevent multiple threads writing to the sql query logs.
 	* Fix zombie period calculation.  Closes #579
 	* Properly parent VPs for talloc, when moving them in map2request.
+	* Various fixes for talloc parent / child relationships
 
 FreeRADIUS 3.0.2 Fri 21 Mar 2014 08:30:00 EDT urgency=medium
 	Feature improvements
