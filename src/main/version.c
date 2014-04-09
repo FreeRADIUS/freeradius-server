@@ -98,10 +98,11 @@ char const *ssl_version_range(uint64_t low, uint64_t high)
 {
 	/* 12 (version) + 3 ( - ) + 12 (version) */
 	static char buffer[28];
+	char *p = buffer;
 
-	strcat(buffer, ssl_version_by_num(low));
-	strcat(buffer, " - ");
-	strcat(buffer, ssl_version_by_num(high));
+	p += strlcpy(p, ssl_version_by_num(low), sizeof(buffer));
+	p += strlcpy(p, " - ", sizeof(buffer) - (p - buffer));
+	strlcpy(p, ssl_version_by_num(high), sizeof(buffer) - (p - buffer));
 
 	return buffer;
 }
@@ -111,6 +112,7 @@ char const *ssl_version_range(uint64_t low, uint64_t high)
  * Print the currently linked version of the OpenSSL library.
  *
  * @note Not thread safe.
+ * @return pointer to a static buffer containing libssl version information.
  */
 char const *ssl_version(void)
 {
