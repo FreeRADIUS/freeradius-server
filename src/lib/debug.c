@@ -311,6 +311,44 @@ int fr_set_dumpable(bool allow_core_dumps)
 	return 0;
 }
 
+/** Check to see if panic_action file is world writeable
+ *
+ * @return 0 if file is OK, else -1.
+ */
+static int fr_fault_check_permissions(void)
+{
+	char const *p, *q;
+	char *filename = NULL;
+	struct stat statbuf;
+
+	/*
+	 *	Try and guess which part of the command is the binary, and check to see if
+	 *	it's world writeable, to try and save the admin from their own stupidity.
+	 *
+	 *	@fixme we should do this properly and take into account single and double
+	 *	quotes.
+	 */
+	if ((q = strchr(panic_action, ' '))) {
+		asprintf(&filename, "%.*s", (int)(q - panic_action), panic_action);
+		p = filename;
+	} else {
+		p = panic_action;
+	}
+
+	if (stat(p, &statbuf) == 0) {
+#ifdef S_IWOTH
+		if ((statbuf.st_mode & S_IWOTH) != 0) {
+			fr_strerror_printf("panic_action file \"%s\" is globally writable", p);
+			return -1;
+		}
+#endif
+	}
+
+	free(filename);
+
+	return 0;
+}
+
 /** Prints a simple backtrace (if execinfo is available) and calls panic_action if set.
  *
  * @param sig caught
@@ -327,6 +365,14 @@ void fr_fault(int sig)
 	int code;
 
 	fprintf(stderr, "CAUGHT SIGNAL: %s\n", strsignal(sig));
+
+	/*
+	 *	Check for administrator sanity.
+	 */
+	if (fr_fault_check_permissions() < 0) {
+		fprintf(stderr, "Refusing to execute panic action: %s\n", fr_strerror());
+		return;
+	}
 
 #ifdef SIGUSR1
 	/*
@@ -421,8 +467,6 @@ int fr_fault_setup(char const *cmd, char const *program)
 
 	char const *p = cmd;
 	char const *q;
-	char *filename = NULL;
-	struct stat statbuf;
 
 	if (cmd) {
 		/* Substitute %e for the current program */
@@ -443,30 +487,9 @@ int fr_fault_setup(char const *cmd, char const *program)
 	}
 
 	/*
-	 *	Try and guess which part of the command is the binary, and check to see if
-	 *	it's world writeable, to try and save the admin from their own stupidity.
-	 *
-	 *	@fixme we should do this properly and take into account single and double
-	 *	quotes.
+	 *	Check for administrator sanity.
 	 */
-	if ((q = strchr(panic_action, ' '))) {
-		asprintf(&filename, "%.*s", (int)(q - panic_action), panic_action);
-		p = filename;
-	} else {
-		p = panic_action;
-	}
-
-	if (stat(p, &statbuf) == 0) {
-#ifdef S_IWOTH
-		if ((statbuf.st_mode & S_IWOTH) != 0) {
-			fr_strerror_printf("panic_action binary \"%s\" is globally writable. "
-					   "Refusing to start due to insecure configuration", p);
-			return -1;
-		}
-#endif
-	}
-
-	free(filename);
+	if (fr_fault_check_permissions() < 0) return -1;
 
 	/*
 	 *	This is required on some systems to be able to PATTACH to the process.
