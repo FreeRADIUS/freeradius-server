@@ -638,6 +638,8 @@ static void process_file(const char *root_dir, char const *filename)
 				continue;
 			}
 
+			if (outlen > sizeof(data)) outlen = sizeof(data);
+
 			if (outlen >= (sizeof(output) / 2)) {
 				outlen = (sizeof(output) / 2) - 1;
 			}
