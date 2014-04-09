@@ -2,6 +2,11 @@ FreeRADIUS 2.2.5 Wednesday 19 Mar 2014 13:20:00 EDT, urgency=medium
 	Feature improvements
 	* Update dictionary.terena.
 	* expose server version via %v.  Patch from Alan Buxey.
+	* Forbid running with vulnerable versions of OpenSSL.
+	  See "allow_vulnerable_openssl" in the "security"
+	  subsection of "radiusd.conf"
+	* Catch underlying "heartbleed" problem, so that nothing bad
+	  happens even when using a vulnerable version of OpenSSL.
 
 	Bug fixes
 	* Minor changes to build on Sun.
