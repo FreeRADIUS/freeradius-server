@@ -37,6 +37,7 @@ static int md5_initiate(UNUSED void *instance, eap_handler_t *handler)
 {
 	int		i;
 	MD5_PACKET	*reply;
+	REQUEST		*request = handler->request;
 
 	/*
 	 *	Allocate an EAP-MD5 packet.
@@ -68,7 +69,7 @@ static int md5_initiate(UNUSED void *instance, eap_handler_t *handler)
 	for (i = 0; i < reply->value_size; i++) {
 		reply->value[i] = fr_rand();
 	}
-	DEBUG2("rlm_eap_md5: Issuing Challenge");
+	RDEBUG2("Issuing MD5 Challenge");
 
 	/*
 	 *	Keep track of the challenge.
@@ -105,6 +106,7 @@ static int md5_authenticate(UNUSED void *arg, eap_handler_t *handler)
 	MD5_PACKET	*packet;
 	MD5_PACKET	*reply;
 	VALUE_PAIR	*password;
+	REQUEST		*request = handler->request;
 
 	/*
 	 *	Get the Cleartext-Password for this user.
@@ -114,7 +116,7 @@ static int md5_authenticate(UNUSED void *arg, eap_handler_t *handler)
 
 	password = pairfind(handler->request->config_items, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY);
 	if (!password) {
-		DEBUG2("rlm_eap_md5: Cleartext-Password is required for EAP-MD5 authentication");
+		RDEBUG2("Cleartext-Password is required for EAP-MD5 authentication");
 		return 0;
 	}
 
