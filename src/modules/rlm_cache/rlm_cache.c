@@ -660,13 +660,14 @@ static int cache_verify(rlm_cache_t *inst, value_pair_map_t **head)
 static ssize_t cache_xlat(void *instance, REQUEST *request,
 			  char const *fmt, char *out, size_t freespace)
 {
-	rlm_cache_entry_t *c;
-	rlm_cache_t *inst = instance;
-	VALUE_PAIR *vp, *vps;
-	pair_lists_t list;
-	DICT_ATTR const *target;
-	char const *p = fmt;
-	int ret = 0;
+	rlm_cache_entry_t 	*c;
+	rlm_cache_t		*inst = instance;
+	VALUE_PAIR		*vp, *vps;
+	pair_lists_t		list;
+	DICT_ATTR const		*target;
+	char const		*p = fmt;
+	size_t			len;
+	int			ret = 0;
 
 	list = radius_list_name(&p, PAIR_LIST_REQUEST);
 
@@ -717,7 +718,12 @@ static ssize_t cache_xlat(void *instance, REQUEST *request,
 		goto done;
 	}
 
-	ret = vp_prints_value(out, freespace, vp, 0);
+	len = vp_prints_value(out, freespace, vp, 0);
+	if (is_truncated(len, freespace)) {
+		PTHREAD_MUTEX_UNLOCK(&inst->cache_mutex);
+		REDEBUG("Insufficient buffer space to write cached value");
+		return -1;
+	}
 done:
 	PTHREAD_MUTEX_UNLOCK(&inst->cache_mutex);
 
