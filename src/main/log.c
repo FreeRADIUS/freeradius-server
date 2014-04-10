@@ -965,7 +965,12 @@ do_lock:
 		PTHREAD_MUTEX_UNLOCK(&(lf->mutex));
 		return -1;
 	}
-	rad_lockfd(lf->entries[i].fd, 1);
+
+	if (rad_lockfd(lf->entries[i].fd, 1) < 0) {
+		fr_strerror_printf("Failed to lock file %s: %s",
+				   filename, strerror(errno));
+		goto close_error;
+	}
 
 	/*
 	 *	Maybe someone deleted the file while we were waiting
