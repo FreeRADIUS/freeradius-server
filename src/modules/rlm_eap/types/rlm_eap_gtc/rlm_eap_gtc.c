@@ -70,15 +70,18 @@ static int gtc_attach(CONF_SECTION *cs, void **instance)
 		return -1;
 	}
 
-	dval = dict_valbyname(PW_AUTH_TYPE, 0, inst->auth_type_name);
-	if (!dval) {
-		ERROR("rlm_eap_gtc: Unknown Auth-Type %s",
-		       inst->auth_type_name);
-		return -1;
+	if (inst->auth_type_name && *inst->auth_type_name) {
+		dval = dict_valbyname(PW_AUTH_TYPE, 0, inst->auth_type_name);
+		if (!dval) {
+			ERROR("rlm_eap_gtc: Unknown Auth-Type %s",
+			      inst->auth_type_name);
+			return -1;
+		}
+
+		inst->auth_type = dval->value;
+	} else {
+		inst->auth_type = PW_AUTHTYPE_LOCAL;
 	}
-
-	inst->auth_type = dval->value;
-
 	return 0;
 }
 
