@@ -118,7 +118,7 @@ void log_talloc_report(TALLOC_CTX *ctx);
 typedef struct fr_logfile_t fr_logfile_t;
 
 fr_logfile_t *fr_logfile_init(TALLOC_CTX *ctx);
-int fr_logfile_open(fr_logfile_t *lf, char const *filename, int permissions);
+int fr_logfile_open(fr_logfile_t *lf, char const *filename, mode_t permissions);
 int fr_logfile_close(fr_logfile_t *lf, int fd);
 
 /*

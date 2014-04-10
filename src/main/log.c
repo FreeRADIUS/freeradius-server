@@ -824,7 +824,7 @@ fr_logfile_t *fr_logfile_init(TALLOC_CTX *ctx)
  * @param permissions the permissions to use
  * @return an FD used to write to the file, or -1 on error.
  */
-int fr_logfile_open(fr_logfile_t *lf, char const *filename, int permissions)
+int fr_logfile_open(fr_logfile_t *lf, char const *filename, mode_t permissions)
 {
 	int i;
 	uint32_t hash;
@@ -893,8 +893,37 @@ int fr_logfile_open(fr_logfile_t *lf, char const *filename, int permissions)
 	 */
 	lf->entries[i].fd = open(filename, O_WRONLY | O_CREAT, permissions);
 	if (lf->entries[i].fd < 0) {
-		PTHREAD_MUTEX_UNLOCK(&(lf->mutex));
-		return -1;
+		mode_t dirperm;
+		char *p, *dir;
+
+		/*
+		 *	Maybe the directory doesn't exist.  Try to
+		 *	create it.
+		 */
+		dir = talloc_strdup(lf, filename);
+		if (!dir) goto error;
+		p = strrchr(dir, FR_DIR_SEP);
+		if (!p) goto error;
+		*p = '\0';
+
+		/*
+		 *	Ensure that the 'x' bit is set, so that we can
+		 *	read the directory.
+		 */
+		dirperm = permissions;
+		if ((dirperm & 0600) != 0) dirperm |= 0100;
+		if ((dirperm & 0060) != 0) dirperm |= 0010;
+		if ((dirperm & 0006) != 0) dirperm |= 0001;
+
+		if (rad_mkdir(dir, dirperm) < 0) goto error;
+		talloc_free(dir);
+
+		lf->entries[i].fd = open(filename, O_WRONLY | O_CREAT, permissions);
+		if (lf->entries[i].fd < 0) {
+	error:
+			PTHREAD_MUTEX_UNLOCK(&(lf->mutex));
+			return -1;
+		} /* else fall through to creating the rest of the entry */
 	}
 
 #ifdef HAVE_PTHREAD_H
