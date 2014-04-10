@@ -59,6 +59,7 @@ typedef struct rlm_linelog_t {
 	char		*group;
 	char		*line;
 	char		*reference;
+	fr_logfile_t	*lf;
 } rlm_linelog_t;
 
 /*
@@ -118,6 +119,12 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 	if (!inst->line) {
 		cf_log_err_cs(conf, "Must specify a log format");
+		return -1;
+	}
+
+	inst->lf = fr_logfile_init(inst);
+	if (!inst->lf) {
+		cf_log_err_cs(conf, "Failed creating log file context");
 		return -1;
 	}
 
@@ -266,7 +273,7 @@ static rlm_rcode_t do_linelog(void *instance, REQUEST *request)
 			*p = '/';
 		}
 
-		fd = open(buffer, O_WRONLY | O_APPEND | O_CREAT, inst->permissions);
+		fd = fr_logfile_open(inst->lf, buffer, inst->permissions);
 		if (fd == -1) {
 			ERROR("rlm_linelog: Failed to open %s: %s",
 			       buffer, fr_syserror(errno));
@@ -299,7 +306,7 @@ static rlm_rcode_t do_linelog(void *instance, REQUEST *request)
 	 */
 	if (radius_xlat(line, sizeof(line) - 1, request, value, linelog_escape_func, NULL) < 0) {
 		if (fd > -1) {
-			close(fd);
+			fr_logfile_close(inst->lf, fd);
 		}
 
 		return RLM_MODULE_FAIL;
@@ -310,11 +317,11 @@ static rlm_rcode_t do_linelog(void *instance, REQUEST *request)
 
 		if (write(fd, line, strlen(line)) < 0) {
 			EDEBUG("rlm_linelog: Failed writing: %s", fr_syserror(errno));
-			close(fd);
+			fr_logfile_close(inst->lf, fd);
 			return RLM_MODULE_FAIL;
 		}
 
-		close(fd);
+		fr_logfile_close(inst->lf, fd);
 
 #ifdef HAVE_SYSLOG_H
 	} else {
