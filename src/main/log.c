@@ -737,7 +737,6 @@ typedef struct fr_logfile_entry_t {
 	uint32_t	hash;
 	time_t		last_used;
 	char		*filename;
-	off_t		lock_location;
 #ifdef HAVE_PTHREAD_H
 	pthread_mutex_t mutex;
 #endif
@@ -949,10 +948,9 @@ do_lock:
 	PTHREAD_MUTEX_LOCK(&(lf->entries[i].mutex));
 	
 	/*
-	 *	Seek to the end of the file, and lock it.
+	 *	Lock from the start of the file.
 	 */
-	lf->entries[i].lock_location = lseek(lf->entries[i].fd, 0, SEEK_END);
-	if (lf->entries[i].lock_location < 0) {
+	if (lseek(lf->entries[i].fd, 0, SEEK_SET) < 0) {
 		fr_strerror_printf("Failed to seek in file %s: %s",
 				   filename, strerror(errno));
 
@@ -966,7 +964,7 @@ do_lock:
 		return -1;
 	}
 
-	if (rad_lockfd(lf->entries[i].fd, 1) < 0) {
+	if (rad_lockfd(lf->entries[i].fd, 0) < 0) {
 		fr_strerror_printf("Failed to lock file %s: %s",
 				   filename, strerror(errno));
 		goto close_error;
@@ -991,6 +989,12 @@ do_lock:
 			goto close_error;
 		}
 	}
+
+	/*
+	 *	Seek to the end of the file before returning the FD to
+	 *	the caller.
+	 */
+	lseek(lf->entries[i].fd, 0, SEEK_END);
 
 	lf->entries[i].last_used = now;
 	return lf->entries[i].fd;
@@ -1019,8 +1023,8 @@ int fr_logfile_close(fr_logfile_t *lf, int fd)
 		 *	Unlock the bytes that we had previously locked.
 		 */
 		if (lf->entries[i].fd == fd) {
-			lseek(lf->entries[i].fd, lf->entries[i].lock_location, SEEK_SET);
-			rad_unlockfd(lf->entries[i].fd, 1);
+			lseek(lf->entries[i].fd, 0, SEEK_SET);
+			rad_unlockfd(lf->entries[i].fd, 0);
 
 			PTHREAD_MUTEX_UNLOCK(&(lf->entries[i].mutex));
 			PTHREAD_MUTEX_UNLOCK(&(lf->mutex));
