@@ -1094,8 +1094,13 @@ int radius_map2request(REQUEST *request, value_pair_map_t const *map,
 				break;
 
 			case VPT_TYPE_ATTR:
-				RDEBUG("\t%s %s %s", map->dst->name,
-				       fr_int2str(fr_tokens, vp->op, "<INVALID>"), value);
+				if (vp->da->type != PW_TYPE_STRING) {
+					RDEBUG("\t%s %s %s", map->dst->name,
+					       fr_int2str(fr_tokens, vp->op, "<INVALID>"), value);
+				} else {
+					RDEBUG("\t%s %s '%s'", map->dst->name,
+					       fr_int2str(fr_tokens, vp->op, "<INVALID>"), value);
+				}
 				break;
 
 			default:
