@@ -707,10 +707,6 @@ static int mod_detach(void *instance)
 #endif
 	}
 
-#ifdef HAVE_PTHREAD_H
-	pthread_mutex_destroy(&inst->log);
-#endif
-
 	return 0;
 }
 
@@ -888,12 +884,11 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		}
 	}
 
-	/*
-	 *	Initialise the logging mutex.
-	 */
-#ifdef HAVE_PTHREAD_H
-	pthread_mutex_init(&inst->log, NULL);
-#endif
+	inst->lf = fr_logfile_init(inst);
+	if (!inst->lf) {
+		cf_log_err_cs(conf, "Failed creating log file context");
+		return -1;
+	}
 
 	INFO("rlm_sql (%s): Driver %s (module %s) loaded and linked",
 	       inst->config->xlat_name, inst->config->sql_driver_name,
