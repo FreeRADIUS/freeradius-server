@@ -525,7 +525,7 @@ void rlm_sql_query_log(rlm_sql_t *inst, REQUEST *request,
 		return;
 	}
 
-	fd = open(filename, O_WRONLY | O_APPEND | O_CREAT, 0666);
+	fd = open(filename, O_WRONLY | O_APPEND | O_CREAT, 0640);
 	if (fd < 0) {
 		ERROR("rlm_sql (%s): Couldn't open logfile '%s': %s", inst->config->xlat_name,
 		      expanded, fr_syserror(errno));
