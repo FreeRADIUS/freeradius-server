@@ -285,8 +285,7 @@ static ssize_t expr_xlat(UNUSED void *instance, REQUEST *request, char const *fm
 	return strlen(out);
 }
 
-/**
- *  @brief Generate a random integer value
+/** Generate a random integer value
  *
  */
 static ssize_t rand_xlat(UNUSED void *instance, UNUSED REQUEST *request, char const *fmt,
@@ -312,8 +311,7 @@ static ssize_t rand_xlat(UNUSED void *instance, UNUSED REQUEST *request, char co
 	return strlen(out);
 }
 
-/**
- *  @brief Generate a string of random chars
+/** Generate a string of random chars
  *
  *  Build strings of random chars, useful for generating tokens and passcodes
  *  Format similar to String::Random.
@@ -412,8 +410,7 @@ static ssize_t randstr_xlat(UNUSED void *instance, UNUSED REQUEST *request,
 	return outlen - freespace;
 }
 
-/**
- * @brief URLencode special characters
+/** URLencode special characters
  *
  * Example: "%{urlquote:http://example.org/}" == "http%3A%47%47example.org%47"
  */
@@ -433,21 +430,21 @@ static ssize_t urlquote_xlat(UNUSED void *instance, UNUSED REQUEST *request,
 		}
 
 		switch (*p) {
-			case '-':
-			case '_':
-			case '.':
-			case '~':
-				*out++ = *p++;
+		case '-':
+		case '_':
+		case '.':
+		case '~':
+			*out++ = *p++;
+			break;
+		default:
+			if (freespace < 3)
 				break;
-			default:
-				if (freespace < 3)
-					break;
 
-				snprintf(out, 4, "%%%02x", *p++); /* %xx */
+			snprintf(out, 4, "%%%02x", *p++); /* %xx */
 
-				/* Already decremented */
-				freespace -= 2;
-				out += 3;
+			/* Already decremented */
+			freespace -= 2;
+			out += 3;
 		}
 	}
 
@@ -456,8 +453,7 @@ static ssize_t urlquote_xlat(UNUSED void *instance, UNUSED REQUEST *request,
 	return outlen - freespace;
 }
 
-/**
- * @brief Equivalent to the old safe_characters functionality in rlm_sql
+/** Equivalent to the old safe_characters functionality in rlm_sql
  *
  * @verbatim Example: "%{escape:<img>foo.jpg</img>}" == "=60img=62foo.jpg=60/img=62" @endverbatim
  */
@@ -496,8 +492,7 @@ static ssize_t escape_xlat(UNUSED void *instance, UNUSED REQUEST *request,
 	return outlen - freespace;
 }
 
-/**
- * @brief Convert a string to lowercase
+/** Convert a string to lowercase
  *
  * Example "%{tolower:Bar}" == "bar"
  *
@@ -522,8 +517,7 @@ static ssize_t lc_xlat(UNUSED void *instance, UNUSED REQUEST *request,
 	return strlen(out);
 }
 
-/**
- * @brief Convert a string to uppercase
+/** Convert a string to uppercase
  *
  * Example: "%{toupper:Foo}" == "FOO"
  *
@@ -691,8 +685,7 @@ EVP_MD_XLAT(sha256);
 EVP_MD_XLAT(sha512);
 #endif
 
-/**
- * @brief Encode string or attribute from hex to binary
+/** Encode string or attribute from hex to binary
  *
  * Example: "%{hextobin:0x616161}" == "aaa"
  */
@@ -712,8 +705,7 @@ static ssize_t hex_to_bin_xlat(UNUSED void *instance, UNUSED REQUEST *request,
 	return fr_hex2bin((uint8_t *) out, (char const *) p + 2, outlen);
 }
 
-/**
- * @brief Encode string or attribute as base64
+/** Encode string or attribute as base64
  *
  * Example: "%{base64:foo}" == "Zm9v"
  */
@@ -741,8 +733,7 @@ static ssize_t base64_xlat(UNUSED void *instance, UNUSED REQUEST *request,
 	return fr_base64_encode(out, outlen, p, inlen);
 }
 
-/**
- * @brief Convert base64 to hex
+/** Convert base64 to hex
  *
  * Example: "%{base64tohex:Zm9v}" == "666f6f"
  */
