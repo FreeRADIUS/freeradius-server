@@ -442,6 +442,7 @@ static ssize_t xlat_foreach(void *instance, REQUEST *request,
 			    UNUSED char const *fmt, char *out, size_t outlen)
 {
 	VALUE_PAIR	**pvp;
+	size_t		len;
 
 	/*
 	 *	See modcall, "FOREACH" for how this works.
@@ -452,7 +453,13 @@ static ssize_t xlat_foreach(void *instance, REQUEST *request,
 		return 0;
 	}
 
-	return vp_prints_value(out, outlen, *pvp, 0);
+	len = vp_prints_value(out, outlen, *pvp, 0);
+	if (is_truncated(len, outlen)) {
+		RDEBUG("Insufficient buffer space to write foreach value");
+		return -1;
+	}
+
+	return len;
 }
 #endif
 

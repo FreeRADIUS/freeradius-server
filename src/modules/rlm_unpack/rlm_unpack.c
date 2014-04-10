@@ -178,6 +178,10 @@ static ssize_t unpack_xlat(UNUSED void *instance, REQUEST *request, char const *
 	}
 
 	len = vp_prints_value(out, outlen, cast, 0);
+	if (is_truncated(len, outlen)) {
+		REDEBUG("Insufficient buffer space to unpack data");
+		goto nothing;
+	}
 	talloc_free(cast);
 
 	return len;
