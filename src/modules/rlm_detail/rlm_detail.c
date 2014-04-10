@@ -55,12 +55,12 @@ typedef struct detail_instance {
 	int		perm;		//!< Permissions to use for new files.
 	char		*group;		//!< Group to use for new files.
 
-	int		dirperm;	//!< Directory permissions to use for new files.
-
 	char		*header;	//!< Header format.
 	bool		locking;	//!< Whether the file should be locked.
 
 	bool		log_srcdst;	//!< Add IP src/dst attributes to entries.
+
+	fr_logfile_t    *lf;		//!< Log file handler
 
 	fr_hash_table_t *ht;		//!< Holds suppressed attributes.
 } detail_instance_t;
@@ -74,7 +74,6 @@ static const CONF_PARSER module_config[] = {
 	{ "detailperm",	PW_TYPE_INTEGER | PW_TYPE_DEPRECATED, offsetof(detail_instance_t, perm), NULL, NULL },
 	{ "permissions", PW_TYPE_INTEGER, offsetof(detail_instance_t, perm), NULL, "0600" },
 	{ "group", PW_TYPE_STRING_PTR, offsetof(detail_instance_t, group), NULL,  NULL},
-	{ "dir_permissions", PW_TYPE_INTEGER, offsetof(detail_instance_t, dirperm), NULL, "0755" },
 	{ "locking", PW_TYPE_BOOLEAN, offsetof(detail_instance_t, locking), NULL, "no" },
 	{ "log_packet_header", PW_TYPE_BOOLEAN, offsetof(detail_instance_t, log_srcdst), NULL, "no" },
 	{ NULL, -1, 0, NULL, NULL }
@@ -118,6 +117,12 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	inst->name = cf_section_name2(conf);
 	if (!inst->name) {
 		inst->name = cf_section_name1(conf);
+	}
+
+	inst->lf= fr_logfile_init(inst);
+	if (!inst->lf) {
+		cf_log_err_cs(conf, "Failed creating log file context");
+		return -1;
 	}
 
 	/*
@@ -324,13 +329,7 @@ static rlm_rcode_t detail_do(void *instance, REQUEST *request, RADIUS_PACKET *pa
 {
 	int		outfd;
 	char		buffer[DIRLEN];
-	char		*p;
-	struct stat	st;
-	int		locked;
-	int		lock_count;
-	struct timeval	tv;
 
-	off_t		fsize;
 	FILE		*outfp;
 
 #ifdef HAVE_GRP_H
@@ -377,89 +376,11 @@ static rlm_rcode_t detail_do(void *instance, REQUEST *request, RADIUS_PACKET *pa
 #endif
 #endif
 
-	/*
-	 *	Grab the last directory delimiter.
-	 */
-	p = strrchr(buffer,'/');
-
-	/*
-	 *	There WAS a directory delimiter there, and the file
-	 *	doesn't exist, so we must create it the directories..
-	 */
-	if (p) {
-		*p = '\0';
-
-		/*
-		 *	Always try to create the directory.  If it
-		 *	exists, rad_mkdir() will check via stat(), and
-		 *	return immediately.
-		 *
-		 *	This catches the case where some idiot deleted
-		 *	a directory that the server was using.
-		 */
-		if (rad_mkdir(buffer, inst->dirperm) < 0) {
-			RERROR("Failed to create directory %s: %s", buffer, fr_syserror(errno));
-			return RLM_MODULE_FAIL;
-		}
-
-		*p = '/';
-	} /* else there was no directory delimiter. */
-
-	locked = 0;
-	lock_count = 0;
-	do {
-		/*
-		 *	Open & create the file, with the given
-		 *	permissions.
-		 */
-		if ((outfd = open(buffer, O_WRONLY | O_APPEND | O_CREAT, inst->perm)) < 0) {
-			RERROR("Couldn't open file %s: %s", buffer, fr_syserror(errno));
-			return RLM_MODULE_FAIL;
-		}
-
-		/*
-		 *	If we fail to aquire the filelock in 80 tries
-		 *	(approximately two seconds) we bail out.
-		 */
-		if (inst->locking) {
-			lseek(outfd, 0L, SEEK_SET);
-			if (rad_lockfd_nonblock(outfd, 0) < 0) {
-				close(outfd);
-				tv.tv_sec = 0;
-				tv.tv_usec = 25000;
-				select(0, NULL, NULL, NULL, &tv);
-				lock_count++;
-				continue;
-			}
-
-			/*
-			 *	The file might have been deleted by
-			 *	radrelay while we tried to acquire
-			 *	the lock (race condition)
-			 */
-			if (fstat(outfd, &st) != 0) {
-				RERROR("Couldn't stat file '%s': %s", buffer, fr_syserror(errno));
-				close(outfd);
-				return RLM_MODULE_FAIL;
-			}
-			if (st.st_nlink == 0) {
-				RDEBUG2("File '%s' removed by another program, retrying", buffer);
-				close(outfd);
-				lock_count = 0;
-				continue;
-			}
-
-			RDEBUG2("Acquired filelock, tried %d time(s)", lock_count + 1);
-			locked = 1;
-		}
-	} while (inst->locking && !locked && lock_count < 80);
-
-	if (inst->locking && !locked) {
-		close(outfd);
-		RERROR("Failed to acquire filelock for '%s', giving up", buffer);
+	outfd = fr_logfile_open(inst->lf, buffer, inst->perm);
+	if (outfd < 0) {
+		RERROR("Couldn't open file %s: %s", buffer, fr_syserror(errno));
 		return RLM_MODULE_FAIL;
 	}
-
 
 #ifdef HAVE_GRP_H
 	if (inst->group != NULL) {
@@ -481,42 +402,25 @@ static rlm_rcode_t detail_do(void *instance, REQUEST *request, RADIUS_PACKET *pa
 skip_group:
 #endif
 
-	fsize = lseek(outfd, 0L, SEEK_END);
-	if (fsize < 0) {
-		RERROR("Failed to seek to the end of detail file '%s'", buffer);
-		close(outfd);
-		return RLM_MODULE_FAIL;
-	}
-
 	/*
 	 *	Open the output fp for buffering.
 	 */
 	if ((outfp = fdopen(outfd, "a")) == NULL) {
 		RERROR("Couldn't open file %s: %s", buffer, fr_syserror(errno));
-		close(outfd);
+		fr_logfile_close(inst->lf, outfd);
 		return RLM_MODULE_FAIL;
 	}
 
 	if (detail_write(outfp, inst, request, packet, compat) < 0) {
-		fclose(outfp);
+		fr_logfile_close(inst->lf, outfd); /* do NOT close outfp */
 		return RLM_MODULE_FAIL;
 	}
 
 	/*
-	 *	If we can't flush it to disk, truncate the file and return an error.
+	 *	Flush everything
 	 */
-	if (fflush(outfp) != 0) {
-		int ret;
-		ret = ftruncate(outfd, fsize);
-		if (ret) {
-			REDEBUG4("Failed truncating detail file: %s", fr_syserror(ret));
-		}
-
-		fclose(outfp);
-		return RLM_MODULE_FAIL;
-	}
-
-	fclose(outfp);
+	fflush(outfp);
+	fr_logfile_close(inst->lf, outfd); /* do NOT close outfp */
 
 	/*
 	 *	And everything is fine.
