@@ -120,12 +120,7 @@ struct sql_inst {
 
 	DICT_ATTR const		*sql_user;	//!< Cached pointer to SQL-User-Name
 						//!< dictionary attribute.
-
-#ifdef HAVE_PTHREAD_H
-	pthread_mutex_t		log;		//!< We have to use a mutex when writing to the sql log file
-						//!< as fcntl locks aren't reflected internally
-						//!< within the process.
-#endif
+	fr_logfile_t		*lf;
 
 	void *handle;
 	rlm_sql_module_t *module;

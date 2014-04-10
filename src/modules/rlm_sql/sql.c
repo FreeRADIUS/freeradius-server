@@ -525,7 +525,7 @@ void rlm_sql_query_log(rlm_sql_t *inst, REQUEST *request,
 		return;
 	}
 
-	fd = open(filename, O_WRONLY | O_APPEND | O_CREAT, 0640);
+	fd = fr_logfile_open(inst->lf, filename, 0640);
 	if (fd < 0) {
 		ERROR("rlm_sql (%s): Couldn't open logfile '%s': %s", inst->config->xlat_name,
 		      expanded, fr_syserror(errno));
@@ -535,15 +535,9 @@ void rlm_sql_query_log(rlm_sql_t *inst, REQUEST *request,
 	}
 
 	len = strlen(query);
-#ifdef HAVE_PTHREAD_H
-	pthread_mutex_lock(&inst->log);
-#endif
-	if ((rad_lockfd(fd, len + 2) < 0) || (write(fd, query, len) < 0) || (write(fd, ";\n", 2) < 0)) {
+	if ((write(fd, query, len) < 0) || (write(fd, ";\n", 2) < 0)) {
 		failed = true;
 	}
-#ifdef HAVE_PTHREAD_H
-	pthread_mutex_unlock(&inst->log);
-#endif
 
 	if (failed) {
 		ERROR("rlm_sql (%s): Failed writing to logfile '%s': %s", inst->config->xlat_name, expanded,
@@ -551,5 +545,5 @@ void rlm_sql_query_log(rlm_sql_t *inst, REQUEST *request,
 	}
 
 	talloc_free(expanded);
-	close(fd);		/* and release the lock */
+	fr_logfile_close(inst->lf, fd);
 }
