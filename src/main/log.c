@@ -38,6 +38,10 @@ RCSID("$Id$")
 
 #include <sys/file.h>
 
+#ifdef HAVE_PTHREAD_H
+#include <pthread.h>
+#endif
+
 /*
  * Logging facility names
  */
@@ -726,4 +730,247 @@ void log_talloc_report(TALLOC_CTX *ctx)
 	}
 
 	fclose(fd);
+}
+
+typedef struct fr_logfile_entry_t {
+	int		fd;
+	uint32_t	hash;
+	time_t		last_used;
+	char		*filename;
+	off_t		lock_location;
+#ifdef HAVE_PTHREAD_H
+	pthread_mutex_t mutex;
+#endif
+
+} fr_logfile_entry_t;
+
+
+struct fr_logfile_t {
+	int max_entries;
+#ifdef HAVE_PTHREAD_H
+	pthread_mutex_t mutex;
+#endif
+	fr_logfile_entry_t *entries;
+};
+
+
+#ifdef HAVE_PTHREAD_H
+#define PTHREAD_MUTEX_LOCK pthread_mutex_lock
+#define PTHREAD_MUTEX_UNLOCK pthread_mutex_unlock
+
+#else
+/*
+ *	This is easier than ifdef's throughout the code.
+ */
+#define PTHREAD_MUTEX_LOCK(_x)
+#define PTHREAD_MUTEX_UNLOCK(_x)
+#endif
+
+static int _logfile_free(fr_logfile_t *lf)
+{
+	int i;
+
+	for (i = 0; i < lf->max_entries; i++) {
+		if (!lf->entries[i].filename) continue;
+
+		PTHREAD_MUTEX_LOCK(&lf->entries[i].mutex);
+		close(lf->entries[i].fd);
+	}
+
+	return 0;
+}
+
+
+/** Initialize a way for multiple threads to log to one or more files.
+ *
+ * @param ctx The talloc context
+ * @return the new context, or NULL on error.
+ */
+fr_logfile_t *fr_logfile_init(TALLOC_CTX *ctx)
+{
+	fr_logfile_t *lf;
+
+	lf = talloc_zero(ctx, fr_logfile_t);
+	if (!lf) return NULL;
+
+	lf->entries = talloc_zero_array(lf, fr_logfile_entry_t, 64);
+	if (!lf->entries) {
+		talloc_free(lf);
+		return NULL;
+	}
+
+#ifdef HAVE_PTHREAD_H
+	if (pthread_mutex_init(&lf->mutex, NULL) != 0) {
+		talloc_free(lf);
+		return NULL;
+	}
+#endif
+
+	lf->max_entries = 64;
+
+	talloc_set_destructor(lf, _logfile_free);
+
+	return lf;
+}
+
+
+/** Open a new log file, or maybe an existing one.
+ *
+ * When multithreaded, the FD is locked via a mutex.  This way we're
+ * sure that no other thread is writing to the file.
+ *
+ * @param lf The logfile context returned from fr_logfile_init()
+ * @param filename the file to open
+ * @param permissions the permissions to use
+ * @return an FD used to write to the file, or -1 on error.
+ */
+int fr_logfile_open(fr_logfile_t *lf, char const *filename, int permissions)
+{
+	int i;
+	uint32_t hash;
+	time_t now = time(NULL);
+
+	if (!lf || !filename) return -1;
+
+	hash = fr_hash_string(filename);
+
+	PTHREAD_MUTEX_LOCK(&lf->mutex);
+
+	/*
+	 *	Clean up old entries.
+	 */
+	for (i = 0; i < lf->max_entries; i++) {
+		if (!lf->entries[i].filename) continue;
+
+		/*
+		 *	FIXME: make this configurable?
+		 */
+		if ((lf->entries[i].last_used + 30) < now) {
+			/*
+			 *	This will block forever if a thread is
+			 *	doing something stupid.
+			 */
+			PTHREAD_MUTEX_LOCK(&(lf->entries[i].mutex));
+			TALLOC_FREE(lf->entries[i].filename);
+			close(lf->entries[i].fd);
+		}
+	}
+
+	/*
+	 *	Find the matching entry.
+	 */
+	for (i = 0; i < lf->max_entries; i++) {
+		if (!lf->entries[i].filename) continue;
+
+		if (lf->entries[i].hash == hash) {
+			/*
+			 *	Same hash but different filename.  Give up.
+			 */
+			if (strcmp(lf->entries[i].filename, filename) != 0) {
+				PTHREAD_MUTEX_UNLOCK(&lf->mutex);
+				return -1;
+			}
+
+			goto do_lock;
+		}
+	}
+
+	/*
+	 *	Find an unused entry
+	 */
+	for (i = 0; i < lf->max_entries; i++) {
+		if (!lf->entries[i].filename) break;
+	}		
+
+	if (i >= lf->max_entries) {
+		fr_strerror_printf("Too many different filenames");
+		PTHREAD_MUTEX_UNLOCK(&(lf->mutex));
+		return -1;
+	}
+
+	/*
+	 *	Fill in the new entry, and return it.
+	 */
+	lf->entries[i].fd = open(filename, O_WRONLY | O_CREAT, permissions);
+	if (lf->entries[i].fd < 0) {
+		PTHREAD_MUTEX_UNLOCK(&(lf->mutex));
+		return -1;
+	}
+
+#ifdef HAVE_PTHREAD_H
+	if (pthread_mutex_init(&lf->entries[i].mutex, NULL) != 0) {
+		close(lf->entries[i].fd);
+		PTHREAD_MUTEX_UNLOCK(&(lf->mutex));
+		return -1;
+	}
+#endif
+
+	lf->entries[i].hash = hash;
+	lf->entries[i].filename = talloc_strdup(lf->entries, filename);
+
+	/*
+	 *	Unlock the main mutex first, so that
+	 *	other threads can find other files.
+	 */
+do_lock:
+	PTHREAD_MUTEX_UNLOCK(&(lf->mutex));
+	PTHREAD_MUTEX_LOCK(&(lf->entries[i].mutex));
+	
+	/*
+	 *	Seek to the end of the file, and lock it.
+	 */
+	lf->entries[i].lock_location = lseek(lf->entries[i].fd, 0, SEEK_END);
+	if (lf->entries[i].lock_location < 0) {
+		fr_strerror_printf("Failed to seek in file: %s", strerror(errno));
+
+		PTHREAD_MUTEX_LOCK(&(lf->mutex));
+		PTHREAD_MUTEX_UNLOCK(&(lf->entries[i].mutex));
+
+		TALLOC_FREE(lf->entries[i].filename);
+		close(lf->entries[i].fd);
+		PTHREAD_MUTEX_UNLOCK(&(lf->mutex));
+		return -1;
+	}
+	rad_lockfd(lf->entries[i].fd, 1);
+	
+	lf->entries[i].last_used = now;
+	return lf->entries[i].fd;
+}
+
+/** Close the log file.  Really just return it to the pool.
+ *
+ * When multithreaded, the FD is locked via a mutex.  This way we're
+ * sure that no other thread is writing to the file.  This function
+ * will unlock the mutex, so that other threads can write to the file.
+ *
+ * @param lf The logfile context returned from fr_logfile_init()
+ * @param fd the FD to close (i.e. return to the pool)
+ * @return 0 on success, or -1 on error
+ */
+int fr_logfile_close(fr_logfile_t *lf, int fd)
+{
+	int i;
+
+	PTHREAD_MUTEX_LOCK(&(lf->mutex));
+
+	for (i = 0; i < lf->max_entries; i++) {
+		if (!lf->entries[i].fd) continue;
+
+		/*
+		 *	Unlock the bytes that we had previously locked.
+		 */
+		if (lf->entries[i].fd == fd) {
+			lseek(lf->entries[i].fd, lf->entries[i].lock_location, SEEK_SET);
+			rad_unlockfd(lf->entries[i].fd, 1);
+
+			PTHREAD_MUTEX_UNLOCK(&(lf->entries[i].mutex));
+			PTHREAD_MUTEX_UNLOCK(&(lf->mutex));
+			return 0;
+		}
+	}
+
+	PTHREAD_MUTEX_UNLOCK(&(lf->mutex));
+
+	fr_strerror_printf("Attempt to unlock file which does not exist");
+	return -1;
 }

@@ -113,6 +113,15 @@ void log_talloc(char const *message);
 void log_talloc_report(TALLOC_CTX *ctx);
 
 /*
+ *	Multiple threads logging to one or more files.
+ */
+typedef struct fr_logfile_t fr_logfile_t;
+
+fr_logfile_t *fr_logfile_init(TALLOC_CTX *ctx);
+int fr_logfile_open(fr_logfile_t *lf, char const *filename, int permissions);
+int fr_logfile_close(fr_logfile_t *lf, int fd);
+
+/*
  *	Logging macros.
  *
  *	For server code, do not call radlog, vradlog et al directly, use one of the logging macros instead.
