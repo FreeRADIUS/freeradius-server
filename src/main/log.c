@@ -829,6 +829,7 @@ int fr_logfile_open(fr_logfile_t *lf, char const *filename, mode_t permissions)
 	int i;
 	uint32_t hash;
 	time_t now = time(NULL);
+	struct stat st;
 
 	if (!lf || !filename) return -1;
 
@@ -920,6 +921,8 @@ int fr_logfile_open(fr_logfile_t *lf, char const *filename, mode_t permissions)
 
 		lf->entries[i].fd = open(filename, O_WRONLY | O_CREAT, permissions);
 		if (lf->entries[i].fd < 0) {
+			fr_strerror_printf("Failed to open file %s: %s",
+					   filename, strerror(errno));
 	error:
 			PTHREAD_MUTEX_UNLOCK(&(lf->mutex));
 			return -1;
@@ -950,8 +953,10 @@ do_lock:
 	 */
 	lf->entries[i].lock_location = lseek(lf->entries[i].fd, 0, SEEK_END);
 	if (lf->entries[i].lock_location < 0) {
-		fr_strerror_printf("Failed to seek in file: %s", strerror(errno));
+		fr_strerror_printf("Failed to seek in file %s: %s",
+				   filename, strerror(errno));
 
+	close_error:
 		PTHREAD_MUTEX_LOCK(&(lf->mutex));
 		PTHREAD_MUTEX_UNLOCK(&(lf->entries[i].mutex));
 
@@ -961,7 +966,27 @@ do_lock:
 		return -1;
 	}
 	rad_lockfd(lf->entries[i].fd, 1);
-	
+
+	/*
+	 *	Maybe someone deleted the file while we were waiting
+	 *	for the lock.  If so, re-open it.
+	 */
+	if (fstat(lf->entries[i].fd, &st) < 0) {
+		fr_strerror_printf("Failed to stat file %s: %s",
+				   filename, strerror(errno));
+		goto close_error;
+	}
+
+	if (st.st_nlink == 0) {
+		close(lf->entries[i].fd);
+		lf->entries[i].fd = open(filename, O_WRONLY | O_CREAT, permissions);
+		if (lf->entries[i].fd < 0) {
+			fr_strerror_printf("Failed to open file %s: %s",
+					   filename, strerror(errno));
+			goto close_error;
+		}
+	}
+
 	lf->entries[i].last_used = now;
 	return lf->entries[i].fd;
 }
