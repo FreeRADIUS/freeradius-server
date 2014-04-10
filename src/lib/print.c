@@ -354,7 +354,14 @@ size_t vp_prints_value(char *out, size_t outlen, VALUE_PAIR const *vp, int8_t qu
 
 		/* xlat.c - need to copy raw value verbatim */
 		else if (quote < 0) {
-			return strlcpy(out, vp->vp_strvalue, outlen);
+			if (outlen > vp->length) {
+				memcpy(out, vp->vp_strvalue, vp->length + 1);
+				return vp->length;
+			}
+
+			memcpy(out, vp->vp_strvalue, outlen);
+			out[outlen - 1] = '\0';
+			return outlen - 1;
 		}
 
 		return fr_print_string(vp->vp_strvalue, vp->length, out, outlen);
