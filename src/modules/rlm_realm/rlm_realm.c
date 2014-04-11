@@ -85,7 +85,7 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 	    ) {
 
 		RDEBUG2("Proxy reply, or no User-Name.  Ignoring");
-		return RLM_MODULE_OK;
+		return RLM_MODULE_NOOP;
 	}
 
 	/*
@@ -95,7 +95,7 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 
 	if (pairfind(request->packet->vps, PW_REALM, 0, TAG_ANY) != NULL ) {
 		RDEBUG2("Request already has destination realm set.  Ignoring");
-		return RLM_MODULE_OK;
+		return RLM_MODULE_NOOP;
 	}
 
 	/*
@@ -216,7 +216,7 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 	default:
 		RDEBUG2("Unknown packet code %d\n",
 		       request->packet->code);
-		return RLM_MODULE_OK;		/* don't do anything */
+		return RLM_MODULE_NOOP;
 
 		/*
 		 *	Perhaps accounting proxying was turned off.
@@ -429,8 +429,8 @@ static rlm_rcode_t realm_recv_coa(UNUSED void *instance, REQUEST *request)
 	REALM *realm;
 
 	if (pairfind(request->packet->vps, PW_REALM, 0, TAG_ANY) != NULL) {
-		RDEBUG2("Request already has destination realm set.  Ignoring");
-		return RLM_MODULE_OK;
+		RDEBUG2("Request already has destination realm set.  Ignoring");		
+		return RLM_MODULE_NOOP;
 	}
 
 	vp = pairfind(request->packet->vps, PW_OPERATOR_NAME, 0, TAG_ANY);
@@ -494,3 +494,4 @@ module_t rlm_realm = {
 #endif
 	},
 };
+
