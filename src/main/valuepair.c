@@ -774,9 +774,6 @@ VALUE_PAIR *radius_paircreate(TALLOC_CTX *ctx, VALUE_PAIR **vps,
 {
 	VALUE_PAIR *vp;
 
-	/*
-	 *	FIXME: the context should ideally be the packet...
-	 */
 	vp = paircreate(ctx, attribute, vendor);
 	if (!vp) {
 		ERROR("No memory!");
