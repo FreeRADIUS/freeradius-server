@@ -259,6 +259,8 @@ typedef enum {
 #define PW_OTP_CHALLENGE		1145
 #define PW_EAP_SESSION_ID		1146
 
+#define PW_FREERADIUS_RESPONSE_DELAY	1152
+
 /*
  *	Integer Translations
  */

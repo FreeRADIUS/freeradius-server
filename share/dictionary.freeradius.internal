@@ -247,6 +247,10 @@ ATTRIBUTE	EAP-Session-Id				1146	octets
 ATTRIBUTE	Acct-Input-Octets64			1148	integer64
 ATTRIBUTE	Acct-Output-Octets64			1149	integer64
 
+# 1150 and 1151 are defined above, as FreeRADIUS-Client-...
+
+ATTRIBUTE  	FreeRADIUS-Response-Delay		1152	integer
+
 #
 #	Range:	1200-1279
 #		EAP-SIM (and other EAP type) weirdness.
