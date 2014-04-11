@@ -505,14 +505,11 @@ static void wait_for_child_to_die(void *ctx)
 
 	/*
 	 *	If it's still queued (waiting for a thread to pick it
-	 *	up) OR, it's running AND there's still a child thread
-	 *	handling it, THEN delay some more.
+	 *	up) OR there's still a child thread handling it, THEN
+	 *	delay some more.
 	 */
-	if ((request->child_state == REQUEST_QUEUED) ||
-	    (request->thread_id != NO_CHILD_THREAD) ||
-	    ((request->child_state == REQUEST_RUNNING) &&
-	     (request->thread_id == NO_CHILD_THREAD))) {
-
+	if ((request->child_state = REQUEST_QUEUED) ||
+	    (request->thread_id != NO_CHILD_THREAD)) {
 		/*
 		 *	Cap delay at max_request_time
 		 */
@@ -531,6 +528,7 @@ static void wait_for_child_to_die(void *ctx)
 		return;
 	}
 
+	rad_assert(request->thread_id == NO_CHILD_THREAD);
 	RDEBUG2("Child is finally responsive for request %u", request->number);
 
 #ifdef WITH_PROXY
@@ -540,8 +538,7 @@ static void wait_for_child_to_die(void *ctx)
 	}
 #endif
 
-	rad_assert(request->child_state == REQUEST_DONE);
-	rad_assert(request->thread_id == NO_CHILD_THREAD);
+	request->child_state = REQUEST_DONE;
 
 	ev_request_free(&request);
 }
