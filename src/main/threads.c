@@ -580,7 +580,7 @@ static int request_dequeue(REQUEST **prequest)
 	thread_pool.active_threads++;
 
 	blocked = time(NULL);
-	if ((blocked - request->timestamp) > 5) {
+	if (!request->proxy && (blocked - request->timestamp) > 5) {
 		total_blocked++;
 		if (last_complained < blocked) {
 			last_complained = blocked;
