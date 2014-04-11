@@ -709,7 +709,7 @@ static ssize_t hex_to_bin_xlat(UNUSED void *instance, UNUSED REQUEST *request,
 
 	if ((p[0] != '0') && (p[1] != 'x')) return -1;
 
-	return fr_hex2bin((uint8_t *) out, (char *) p + 2, outlen);
+	return fr_hex2bin((uint8_t *) out, (char const *) p + 2, outlen);
 }
 
 /**
