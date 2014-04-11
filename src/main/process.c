@@ -128,7 +128,7 @@ static char const *child_state_names[REQUEST_CHILD_NUM_STATES] = {
  * -	Y: Reply is ready.  Rejects MAY be delayed here.  All other
  *	   replies are sent immediately.
  *
- * -	J: Reject is sent "reject_delay" after the reply is ready.
+ * -	J: Reject is sent "response_delay" after the reply is ready.
  *
  * -	C: For Access-Requests, After "cleanup_delay", the request is
  *	   deleted.  Accounting-Request packets go directly from Y to C.
@@ -260,7 +260,7 @@ static bool we_are_master(void)
 #define ASSERT_MASTER
 #endif
 
-STATE_MACHINE_DECL(request_reject_delay);
+STATE_MACHINE_DECL(request_response_delay);
 STATE_MACHINE_DECL(request_cleanup_delay);
 STATE_MACHINE_DECL(request_running);
 #ifdef WITH_COA
@@ -712,7 +712,7 @@ static void request_process_timer(REQUEST *request)
 		 */
 		if (request->listener->status != RAD_LISTEN_STATUS_KNOWN) {
 			if ((request->master_state == REQUEST_ACTIVE) &&
-			    (request->child_state < REQUEST_REJECT_DELAY)) {
+			    (request->child_state < REQUEST_RESPONSE_DELAY)) {
 				WDEBUG("Socket was closed while processing request %u: Stopping it.", request->number);
 				request->master_state = REQUEST_STOP_PROCESSING;
 			}
@@ -750,7 +750,7 @@ static void request_process_timer(REQUEST *request)
 #ifdef WITH_PROXY
 		case REQUEST_PROXIED:
 #endif
-		case REQUEST_REJECT_DELAY:
+		case REQUEST_RESPONSE_DELAY:
 		case REQUEST_CLEANUP_DELAY:
 		case REQUEST_DONE:
 		done:
@@ -814,26 +814,27 @@ static void request_process_timer(REQUEST *request)
 		 */
 		goto delay;
 
-	case REQUEST_REJECT_DELAY:
-		rad_assert(request->root->reject_delay > 0);
+	case REQUEST_RESPONSE_DELAY:
+		rad_assert(request->response_delay > 0);
 #ifdef WITH_COA
 		rad_assert(!request->proxy || (request->packet->code == request->proxy->code));
 #endif
 
-		request->process = request_reject_delay;
+		request->process = request_response_delay;
 
 		when = request->reply->timestamp;
-		when.tv_sec += request->root->reject_delay;
+
+		tv_add(&when, request->response_delay * USEC);
 
 		if (timercmp(&when, &now, >)) {
 #ifdef DEBUG_STATE_MACHINE
-			if (debug_flag) printf("(%u) ********\tNEXT-STATE %s -> %s\n", request->number, __FUNCTION__, "request_reject_delay");
+			if (debug_flag) printf("(%u) ********\tNEXT-STATE %s -> %s\n", request->number, __FUNCTION__, "request_response_delay");
 #endif
 			STATE_MACHINE_TIMER(FR_ACTION_TIMER);
 			return;
 		} /* else it's time to send the reject */
 
-		RDEBUG2("Sending delayed reject");
+		RDEBUG2("Sending delayed response");
 		DEBUG_PACKET(request, request->reply, 1);
 		request->listener->send(request->listener, request);
 		request->child_state = REQUEST_CLEANUP_DELAY;
@@ -1039,7 +1040,7 @@ STATE_MACHINE_DECL(request_cleanup_delay)
 	}
 }
 
-STATE_MACHINE_DECL(request_reject_delay)
+STATE_MACHINE_DECL(request_response_delay)
 {
 	TRACE_STATE_MACHINE;
 	ASSERT_MASTER;
@@ -1047,7 +1048,7 @@ STATE_MACHINE_DECL(request_reject_delay)
 	switch (action) {
 	case FR_ACTION_DUP:
 		ERROR("(%u) Discarding duplicate request from "
-		       "client %s port %d - ID: %u due to delayed reject",
+		       "client %s port %d - ID: %u due to delayed response",
 		       request->number, request->client->shortname,
 		       request->packet->src_port,request->packet->id);
 		return;
@@ -1269,16 +1270,23 @@ STATE_MACHINE_DECL(request_finish)
 	gettimeofday(&request->reply->timestamp, NULL);
 
 	/*
+	 *	See if we need to delay an Access-Reject packet.
+	 */
+	if ((request->reply->code == PW_CODE_AUTHENTICATION_REJECT) &&
+	    (request->root->reject_delay > 0)) {
+		request->response_delay = request->root->reject_delay;
+	}
+
+	/*
 	 *	Send the reply.
 	 */
-	if ((request->reply->code != PW_CODE_AUTHENTICATION_REJECT) ||
-	    (request->root->reject_delay == 0)) {
+	if (!request->response_delay) {
 		DEBUG_PACKET(request, request->reply, 1);
 		request->listener->send(request->listener,
 					request);
 		pairfree(&request->reply->vps);
 
-		RDEBUG2("Finished request %u.", request->number);
+		RDEBUG2("Finished request", request->number);
 #ifdef WITH_ACCOUNTING
 		if (request->packet->code == PW_CODE_ACCOUNTING_REQUEST) {
 			NO_CHILD_THREAD;
@@ -1294,11 +1302,10 @@ STATE_MACHINE_DECL(request_finish)
 			request->child_state = REQUEST_CLEANUP_DELAY;
 		}
 	} else {
-		RDEBUG2("Delaying reject of request %u for %d seconds",
-			request->number,
-			request->root->reject_delay);
+		RDEBUG2("Delaying response for %d seconds",
+			request->response_delay);
 		NO_CHILD_THREAD;
-		request->child_state = REQUEST_REJECT_DELAY;
+		request->child_state = REQUEST_RESPONSE_DELAY;
 	}
 }
 
@@ -4485,7 +4492,7 @@ static int request_delete_cb(UNUSED void *ctx, void *data)
 	/*
 	 *	Not done, or the child thread is still processing it.
 	 */
-	if (request->child_state < REQUEST_REJECT_DELAY) return 0; /* continue */
+	if (request->child_state < REQUEST_RESPONSE_DELAY) return 0; /* continue */
 
 #ifdef HAVE_PTHREAD_H
 	if (pthread_equal(request->child_pid, NO_SUCH_CHILD_PID) == 0) return 0;
