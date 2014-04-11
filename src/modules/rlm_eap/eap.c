@@ -584,10 +584,9 @@ rlm_rcode_t eap_compose(eap_handler_t *handler)
 	}
 	eap_packet = (eap_packet_raw_t *)reply->packet;
 
-	vp = paircreate(request->reply, PW_EAP_MESSAGE, 0);
+	vp = radius_paircreate(request, &request->reply->vps, PW_EAP_MESSAGE, 0);
 	if (!vp) return RLM_MODULE_INVALID;
 
-	pairadd(&request->reply->vps, vp);
 	vp->length = eap_packet->length[0] * 256 + eap_packet->length[1];
 	vp->vp_octets = talloc_steal(vp, reply->packet);
 	reply->packet = NULL;
