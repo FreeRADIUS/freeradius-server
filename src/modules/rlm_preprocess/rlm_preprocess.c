@@ -321,7 +321,7 @@ static void rad_mangle(rlm_preprocess_t *inst, REQUEST *request)
 	 */
 	if (pairfind(request_pairs, PW_FRAMED_PROTOCOL, 0, TAG_ANY) != NULL &&
 	    pairfind(request_pairs, PW_SERVICE_TYPE, 0, TAG_ANY) == NULL) {
-		tmp = radius_paircreate(request, &request->packet->vps, PW_SERVICE_TYPE, 0);
+		tmp = radius_paircreate(request->packet, &request->packet->vps, PW_SERVICE_TYPE, 0);
 		tmp->vp_integer = PW_FRAMED_USER;
 	}
 
@@ -476,7 +476,7 @@ static int huntgroup_access(REQUEST *request, PAIR_LIST *huntgroups)
 			 */
 			vp = pairfind(request_pairs, PW_HUNTGROUP_NAME, 0, TAG_ANY);
 			if (!vp) {
-				vp = radius_paircreate(request, &request->packet->vps, PW_HUNTGROUP_NAME, 0);
+				vp = radius_paircreate(request->packet, &request->packet->vps, PW_HUNTGROUP_NAME, 0);
 				pairstrcpy(vp, i->name);
 			}
 			r = RLM_MODULE_OK;
@@ -499,7 +499,7 @@ static int add_nas_attr(REQUEST *request)
 	case AF_INET:
 		nas = pairfind(request->packet->vps, PW_NAS_IP_ADDRESS, 0, TAG_ANY);
 		if (!nas) {
-			nas = radius_paircreate(request, &request->packet->vps, PW_NAS_IP_ADDRESS, 0);
+			nas = radius_paircreate(request->packet, &request->packet->vps, PW_NAS_IP_ADDRESS, 0);
 			nas->vp_ipaddr = request->packet->src_ipaddr.ipaddr.ip4addr.s_addr;
 		}
 		break;
@@ -507,7 +507,7 @@ static int add_nas_attr(REQUEST *request)
 	case AF_INET6:
 		nas = pairfind(request->packet->vps, PW_NAS_IPV6_ADDRESS, 0, TAG_ANY);
 		if (!nas) {
-			nas = radius_paircreate(request, &request->packet->vps, PW_NAS_IPV6_ADDRESS, 0);
+			nas = radius_paircreate(request->packet, &request->packet->vps, PW_NAS_IPV6_ADDRESS, 0);
 			memcpy(&nas->vp_ipv6addr, &request->packet->src_ipaddr.ipaddr,
 			       sizeof(request->packet->src_ipaddr.ipaddr));
 		}
@@ -626,7 +626,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 	    pairfind(request->packet->vps, PW_CHAP_CHALLENGE, 0, TAG_ANY) == NULL) {
 		VALUE_PAIR *vp;
 
-		vp = radius_paircreate(request, &request->packet->vps, PW_CHAP_CHALLENGE, 0);
+		vp = radius_paircreate(request->packet, &request->packet->vps, PW_CHAP_CHALLENGE, 0);
 		pairmemcpy(vp, request->packet->vector, AUTH_VECTOR_LEN);
 	}
 
@@ -699,7 +699,7 @@ static rlm_rcode_t mod_preaccounting(void *instance, REQUEST *request)
 	if (!vp) {
 		VALUE_PAIR *delay;
 
-		vp = radius_paircreate(request, &request->packet->vps, PW_EVENT_TIMESTAMP, 0);
+		vp = radius_paircreate(request->packet, &request->packet->vps, PW_EVENT_TIMESTAMP, 0);
 		vp->vp_date = request->packet->timestamp.tv_sec;
 
 		delay = pairfind(request->packet->vps, PW_ACCT_DELAY_TIME, 0, TAG_ANY);

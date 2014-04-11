@@ -198,7 +198,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 			timeout->vp_integer = left;
 		}
 	} else {
-		timeout = radius_paircreate(request, &request->reply->vps, PW_SESSION_TIMEOUT, 0);
+		timeout = radius_paircreate(request->reply, &request->reply->vps, PW_SESSION_TIMEOUT, 0);
 		timeout->vp_integer = left;
 	}
 

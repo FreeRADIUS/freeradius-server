@@ -635,7 +635,7 @@ int main(int argc, char *argv[])
 	/*
 	 *	Update the list with the response type.
 	 */
-	vp = radius_paircreate(request, &request->reply->vps,
+	vp = radius_paircreate(request->reply, &request->reply->vps,
 			       PW_RESPONSE_PACKET_TYPE, 0);
 	vp->vp_integer = request->reply->code;
 

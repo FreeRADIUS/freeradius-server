@@ -145,7 +145,7 @@ static int digest_fix(REQUEST *request)
 			 *
 			 *	Didn't they know that VSA's exist?
 			 */
-			sub = radius_paircreate(request, &request->packet->vps,
+			sub = radius_paircreate(request->packet, &request->packet->vps,
 						PW_DIGEST_REALM - 1 + p[0], 0);
 			sub->length = attrlen - 2;
 			sub->vp_strvalue = q = talloc_array(sub, char, sub->length + 1);

@@ -605,7 +605,7 @@ static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
 
 	RDEBUG("Allocated IP %s [%08x]", allocation, ip_allocation);
 
-	vp = radius_paircreate(request, &request->reply->vps,
+	vp = radius_paircreate(request->reply, &request->reply->vps,
 			       PW_FRAMED_IP_ADDRESS, 0);
 	vp->vp_ipaddr = ip_allocation;
 	vp->length = 4;

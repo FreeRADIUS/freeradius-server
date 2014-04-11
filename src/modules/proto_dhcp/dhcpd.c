@@ -295,7 +295,7 @@ static int dhcp_process(REQUEST *request)
 		VALUE_PAIR *relay;
 
 		/* DHCP-Relay-IP-Address */
-		relay = radius_paircreate(request, &request->reply->vps,
+		relay = radius_paircreate(request->reply, &request->reply->vps,
 					  272, DHCP_MAGIC_VENDOR);
 		if (relay) relay->vp_ipaddr = vp->vp_ipaddr;
 	}
