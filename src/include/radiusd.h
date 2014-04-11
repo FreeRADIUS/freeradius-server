@@ -184,7 +184,7 @@ typedef enum {
 	REQUEST_QUEUED = 1,
 	REQUEST_RUNNING,
 	REQUEST_PROXIED,
-	REQUEST_REJECT_DELAY,
+	REQUEST_RESPONSE_DELAY,
 	REQUEST_CLEANUP_DELAY,
 	REQUEST_DONE
 } rad_child_state_t;
@@ -275,6 +275,7 @@ struct request {
 	rad_child_state_t	child_state;
 	RAD_LISTEN_TYPE		priority;
 
+	int			response_delay;
 	int			timer_action;
 	fr_event_t		*ev;
 
