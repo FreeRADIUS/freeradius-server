@@ -41,6 +41,9 @@ FreeRADIUS 3.0.3 Fri 21 Mar 2014 08:30:00 EDT urgency=medium
 	  subsection of "radiusd.conf"
 	* Catch underlying "heartbleed" problem, so that nothing bad
 	  happens even when using a vulnerable version of OpenSSL.
+	* Add locking API for sql_null, linelog, and detail modules,
+	  which should improve performance and work around issues
+	  on platforms with bad file locking.
 
 	Bug fixes
 	* Fix xlat expression %{attribute[n]} so that it actually
@@ -79,6 +82,9 @@ FreeRADIUS 3.0.3 Fri 21 Mar 2014 08:30:00 EDT urgency=medium
 	* Fix zombie period calculation.  Closes #579
 	* Properly parent VPs for talloc, when moving them in map2request.
 	* Various fixes for talloc parent / child relationships
+	* Allow rlm_counter to support VSAs.
+	* Normalize return codes for many modules. "do nothing" is noop,
+	  not "ok".
 
 FreeRADIUS 3.0.2 Fri 21 Mar 2014 08:30:00 EDT urgency=medium
 	Feature improvements
