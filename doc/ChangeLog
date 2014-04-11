@@ -44,6 +44,8 @@ FreeRADIUS 3.0.3 Fri 21 Mar 2014 08:30:00 EDT urgency=medium
 	* Add locking API for sql_null, linelog, and detail modules,
 	  which should improve performance and work around issues
 	  on platforms with bad file locking.
+	* Allow DHCP NAKs to be delayed, via setting
+	  reply:FreeRADIUS-Response-Delay = 1
 
 	Bug fixes
 	* Fix xlat expression %{attribute[n]} so that it actually
@@ -85,6 +87,7 @@ FreeRADIUS 3.0.3 Fri 21 Mar 2014 08:30:00 EDT urgency=medium
 	* Allow rlm_counter to support VSAs.
 	* Normalize return codes for many modules. "do nothing" is noop,
 	  not "ok".
+	* Run Post-Proxy-Type Fail.  Closes #576
 
 FreeRADIUS 3.0.2 Fri 21 Mar 2014 08:30:00 EDT urgency=medium
 	Feature improvements
