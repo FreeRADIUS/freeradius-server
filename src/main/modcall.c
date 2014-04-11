@@ -2689,12 +2689,15 @@ void add_to_modcallable(modcallable *parent, modcallable *this)
 #ifdef WITH_UNLANG
 static char const spaces[] = "                                                                                                                        ";
 
-static bool pass2_xlat_compile(CONF_ITEM const *ci, value_pair_tmpl_t *vpt)
+static bool pass2_xlat_compile(CONF_ITEM const *ci, value_pair_tmpl_t **pvpt, bool convert)
 {
 	ssize_t slen;
 	char *fmt;
 	char const *error;
 	xlat_exp_t *head;
+	value_pair_tmpl_t *vpt;
+
+	vpt = *pvpt;
 
 	rad_assert(vpt->type == VPT_TYPE_XLAT);
 
@@ -2719,6 +2722,30 @@ static bool pass2_xlat_compile(CONF_ITEM const *ci, value_pair_tmpl_t *vpt)
 		cf_log_err(ci, "%s%.*s^ %s", prefix, (int) indent, spaces, error);
 
 		return false;
+	}
+
+	if (convert) {
+		value_pair_tmpl_t *attr;
+
+		attr = radius_xlat2tmpl(talloc_parent(vpt), head);
+		if (attr) {
+			if (cf_item_is_pair(ci)) {
+				CONF_PAIR *cp = cf_itemtopair(ci);
+
+				WDEBUG("%s[%d] Please change \"%%{%s}\" to just %s",
+				       cf_pair_filename(cp), cf_pair_lineno(cp),
+				       attr->name, attr->name);
+			} else {
+				CONF_SECTION *cs = cf_itemtosection(ci);
+
+				WDEBUG("%s[%d] Please change \"%%{%s}\" to just %s",
+				       cf_section_filename(cs), cf_section_lineno(cs),
+				       attr->name, attr->name);
+			}
+			TALLOC_FREE(*pvpt);
+			*pvpt = attr;
+			return true;
+		}
 	}
 
 	/*
@@ -2770,7 +2797,7 @@ static bool pass2_callback(UNUSED void *ctx, fr_cond_t *c)
 
 	if (c->type == COND_TYPE_EXISTS) {
 		if (c->data.vpt->type == VPT_TYPE_XLAT) {
-			return pass2_xlat_compile(c->ci, c->data.vpt);
+			return pass2_xlat_compile(c->ci, &c->data.vpt, true);
 		}
 
 		rad_assert(c->data.vpt->type != VPT_TYPE_REGEX);
@@ -2859,14 +2886,29 @@ check_paircmp:
 	/*
 	 *	Precompile xlat's
 	 */
-	if (map->src->type == VPT_TYPE_XLAT) {
-		if (!pass2_xlat_compile(map->ci, map->src)) {
+	if (map->dst->type == VPT_TYPE_XLAT) {
+		/*
+		 *	Don't compile the LHS to an attribute
+		 *	reference for now.  When we do that, we've got
+		 *	to check the RHS for type-specific data, and
+		 *	parse it to a VPT_TYPE_DATA.
+		 */
+		if (!pass2_xlat_compile(map->ci, &map->dst, false)) {
 			return false;
 		}
 	}
 
-	if (map->dst->type == VPT_TYPE_XLAT) {
-		if (!pass2_xlat_compile(map->ci, map->dst)) {
+	if (map->src->type == VPT_TYPE_XLAT) {
+		/*
+		 *	Convert the RHS to an attribute reference only
+		 *	if the LHS is an attribute reference, too.
+		 *
+		 *	We can fix this when the code in evaluate.c
+		 *	can handle strings on the LHS, and attributes
+		 *	on the RHS.  For now, the code in parser.c
+		 *	forbids this.
+		 */
+		if (!pass2_xlat_compile(map->ci, &map->src, (map->dst->type == VPT_TYPE_ATTR))) {
 			return false;
 		}
 	}
@@ -2938,7 +2980,11 @@ static bool modcall_pass2_update(modgroup *g)
 		if (map->src->type == VPT_TYPE_XLAT) {
 			rad_assert(map->src->vpd == NULL);
 
-			if (!pass2_xlat_compile(map->ci, map->src)) {
+			/*
+			 *	FIXME: compile to attribute && handle
+			 *	the conversion in radius_map2vp().
+			 */
+			if (!pass2_xlat_compile(map->ci, &map->src, false)) {
 				return false;
 			}
 		}
@@ -3126,7 +3172,7 @@ bool modcall_pass2(modcallable *mc)
 			if (g->vpt &&
 			    (g->vpt->type == VPT_TYPE_XLAT) &&
 			    (!pass2_xlat_compile(cf_sectiontoitem(g->cs),
-						 g->vpt))) {
+						 &g->vpt, true))) {
 				return false;
 			}
 
