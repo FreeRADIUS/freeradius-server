@@ -2202,6 +2202,33 @@ static ssize_t xlat_expand(char **out, size_t outlen, REQUEST *request, char con
 	return len;
 }
 
+/*
+ *	Try to convert an xlat to a tmpl
+ */
+value_pair_tmpl_t *radius_xlat2tmpl(TALLOC_CTX *ctx, xlat_exp_t *xlat)
+{
+	value_pair_tmpl_t *vpt;
+
+	if (xlat->next || (xlat->type != XLAT_ATTRIBUTE)) return NULL;
+
+	/*
+	 *	Can't convert Nth reference, or tags to templates.
+	 *	They have no such fields.
+	 */
+	if ((xlat->num != 0) || (xlat->tag != TAG_ANY)) return NULL;
+
+	vpt = talloc(ctx, value_pair_tmpl_t);
+	if (!vpt) return NULL;
+
+	vpt->type = VPT_TYPE_ATTR;
+	vpt->name = talloc_strdup(vpt, xlat->fmt);
+	vpt->request = xlat->ref;
+	vpt->list = xlat->list;
+	vpt->da = xlat->da;
+
+	return vpt;
+}
+
 ssize_t radius_xlat(char *out, size_t outlen, REQUEST *request, char const *fmt, RADIUS_ESCAPE_STRING escape, void *ctx)
 {
 	return xlat_expand(&out, outlen, request, fmt, escape, ctx);
