@@ -798,7 +798,9 @@ static int _logfile_free(fr_logfile_t *lf)
  */
 fr_logfile_t *fr_logfile_init(TALLOC_CTX *ctx)
 {
+#ifdef HAVE_PTHREAD_H
 	int i;
+#endif
 	fr_logfile_t *lf;
 
 	lf = talloc_zero(ctx, fr_logfile_t);
