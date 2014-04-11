@@ -231,6 +231,7 @@ static int request_num_counter = 0;
 static int request_will_proxy(REQUEST *request);
 static int request_proxy(REQUEST *request, int retransmit);
 STATE_MACHINE_DECL(proxy_wait_for_reply);
+STATE_MACHINE_DECL(proxy_no_reply);
 STATE_MACHINE_DECL(proxy_running);
 static int process_proxy_reply(REQUEST *request);
 static void remove_from_proxy_hash(REQUEST *request);
@@ -2248,6 +2249,31 @@ static int setup_post_proxy_fail(REQUEST *request)
 	return 1;
 }
 
+STATE_MACHINE_DECL(proxy_no_reply)
+{
+	TRACE_STATE_MACHINE;
+
+	switch (action) {
+	case FR_ACTION_CONFLICTING:
+	case FR_ACTION_DUP:
+	case FR_ACTION_TIMER:
+	case FR_ACTION_PROXY_REPLY:
+		request_common(request, action);
+		break;
+
+	case FR_ACTION_RUN:
+		/*
+		 *	Which will take care of calling post-proxy-type fail.
+		 */
+		request_running(request, FR_ACTION_PROXY_REPLY);
+		break;
+
+	default:
+		RDEBUG3("%s: Ignoring action %s", __FUNCTION__, action_codes[action]);
+		break;
+	}
+}
+
 STATE_MACHINE_DECL(proxy_running)
 {
 	TRACE_STATE_MACHINE;
@@ -3219,7 +3245,12 @@ STATE_MACHINE_DECL(proxy_wait_for_reply)
 			request_cleanup_delay_init(request, NULL);
 			return;
 		}
-		/* FALL-THROUGH */
+
+		/*
+		 *	Remember that we didn't have a reply.
+		 */
+		request_queue_or_run(request, proxy_no_reply);
+		break;
 
 		/*
 		 *	Duplicate proxy replies have been quenched by
