@@ -418,6 +418,20 @@ static int dhcp_process(REQUEST *request)
 	vp->vp_integer = 2; /* BOOTREPLY */
 
 	/*
+	 *	Allow NAKs to be delayed for a short period of time.
+	 */
+	if (request->reply->code == PW_DHCP_NAK) {
+		vp = pairfind(request->reply->vps, PW_FREERADIUS_RESPONSE_DELAY, 0, TAG_ANY);
+		if (vp) {
+			if (vp->vp_integer <= 10) {
+				request->response_delay = vp->vp_integer;
+			} else {
+				request->response_delay = 10;
+			}
+		}
+	}
+
+	/*
 	 *	Prepare the reply packet for sending through dhcp_socket_send()
 	 */
 	request->reply->dst_ipaddr.af = AF_INET;
