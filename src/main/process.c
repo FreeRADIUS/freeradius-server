@@ -1284,7 +1284,7 @@ STATE_MACHINE_DECL(request_finish)
 					request);
 		pairfree(&request->reply->vps);
 
-		RDEBUG2("Finished request", request->number);
+		RDEBUG2("Finished request");
 #ifdef WITH_ACCOUNTING
 		if (request->packet->code == PW_CODE_ACCOUNTING_REQUEST) {
 			NO_CHILD_THREAD;
