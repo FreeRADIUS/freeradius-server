@@ -769,12 +769,23 @@ static int _logfile_free(fr_logfile_t *lf)
 {
 	int i;
 
+	PTHREAD_MUTEX_LOCK(&lf->mutex);
+
 	for (i = 0; i < lf->max_entries; i++) {
 		if (!lf->entries[i].filename) continue;
 
 		PTHREAD_MUTEX_LOCK(&lf->entries[i].mutex);
 		close(lf->entries[i].fd);
+#ifdef HAVE_PTHREAD_H
+		pthread_mutex_destroy(&lf->entries[i].mutex);
+#endif
 	}
+
+	PTHREAD_MUTEX_UNLOCK(&lf->mutex);
+
+#ifdef HAVE_PTHREAD_H
+	pthread_mutex_destroy(&lf->mutex);
+#endif
 
 	return 0;
 }
@@ -787,6 +798,7 @@ static int _logfile_free(fr_logfile_t *lf)
  */
 fr_logfile_t *fr_logfile_init(TALLOC_CTX *ctx)
 {
+	int i;
 	fr_logfile_t *lf;
 
 	lf = talloc_zero(ctx, fr_logfile_t);
@@ -802,6 +814,16 @@ fr_logfile_t *fr_logfile_init(TALLOC_CTX *ctx)
 	if (pthread_mutex_init(&lf->mutex, NULL) != 0) {
 		talloc_free(lf);
 		return NULL;
+	}
+
+	/*
+	 *	Create the mutexes for each entry.
+	 */
+	for (i = 0; i < lf->max_entries; i++) {
+		if (pthread_mutex_init(&lf->entries[i].mutex, NULL) != 0) {
+			talloc_free(lf);
+			return NULL;
+		}
 	}
 #endif
 
@@ -871,7 +893,17 @@ int fr_logfile_open(fr_logfile_t *lf, char const *filename, mode_t permissions)
 				return -1;
 			}
 
-			goto do_lock;
+			PTHREAD_MUTEX_UNLOCK(&(lf->mutex));
+			PTHREAD_MUTEX_LOCK(&(lf->entries[i].mutex));
+
+			/*
+			 *	Someone else failed to create the entry.
+			 */
+			if (!lf->entries[i].filename) {
+				PTHREAD_MUTEX_UNLOCK(&(lf->entries[i].mutex));
+				return -1;
+			}
+			goto do_return;
 		}
 	}
 
@@ -889,9 +921,27 @@ int fr_logfile_open(fr_logfile_t *lf, char const *filename, mode_t permissions)
 	}
 
 	/*
-	 *	Fill in the new entry, and return it.
+	 *	Create a new entry.
 	 */
-	lf->entries[i].fd = open(filename, O_WRONLY | O_CREAT, permissions);
+
+	/*
+	 *	Grab the new mutex before releasing the main one.
+	 */
+	PTHREAD_MUTEX_LOCK(&(lf->entries[i].mutex));
+
+	lf->entries[i].hash = hash;
+	lf->entries[i].filename = talloc_strdup(lf->entries, filename);
+	lf->entries[i].fd = -1;
+
+	/*
+	 *	Now that the new entry is fully populated and its'
+	 *	mutex held, release the main one.  This allows us to
+	 *	open the file without holding the main mutex, which
+	 *	lowers contention on it.
+	 */
+	PTHREAD_MUTEX_UNLOCK(&(lf->mutex));
+
+	lf->entries[i].fd = open(filename, O_WRONLY | O_APPEND | O_CREAT, permissions);
 	if (lf->entries[i].fd < 0) {
 		mode_t dirperm;
 		char *p, *dir;
@@ -915,38 +965,21 @@ int fr_logfile_open(fr_logfile_t *lf, char const *filename, mode_t permissions)
 		if ((dirperm & 0060) != 0) dirperm |= 0010;
 		if ((dirperm & 0006) != 0) dirperm |= 0001;
 
-		if (rad_mkdir(dir, dirperm) < 0) goto error;
+		if (rad_mkdir(dir, dirperm) < 0) {
+			talloc_free(dir);
+			goto error;
+		}
 		talloc_free(dir);
 
 		lf->entries[i].fd = open(filename, O_WRONLY | O_CREAT, permissions);
 		if (lf->entries[i].fd < 0) {
 			fr_strerror_printf("Failed to open file %s: %s",
 					   filename, strerror(errno));
-	error:
-			PTHREAD_MUTEX_UNLOCK(&(lf->mutex));
-			return -1;
+			goto error;
 		} /* else fall through to creating the rest of the entry */
-	}
+	} /* else the file was already opened */
 
-#ifdef HAVE_PTHREAD_H
-	if (pthread_mutex_init(&lf->entries[i].mutex, NULL) != 0) {
-		close(lf->entries[i].fd);
-		PTHREAD_MUTEX_UNLOCK(&(lf->mutex));
-		return -1;
-	}
-#endif
-
-	lf->entries[i].hash = hash;
-	lf->entries[i].filename = talloc_strdup(lf->entries, filename);
-
-	/*
-	 *	Unlock the main mutex first, so that
-	 *	other threads can find other files.
-	 */
-do_lock:
-	PTHREAD_MUTEX_UNLOCK(&(lf->mutex));
-	PTHREAD_MUTEX_LOCK(&(lf->entries[i].mutex));
-	
+do_return:
 	/*
 	 *	Lock from the start of the file.
 	 */
@@ -954,20 +987,26 @@ do_lock:
 		fr_strerror_printf("Failed to seek in file %s: %s",
 				   filename, strerror(errno));
 
-	close_error:
+	error:
+		/*
+		 *	Lock the main mutex, and destroy the entry.
+		 */
 		PTHREAD_MUTEX_LOCK(&(lf->mutex));
-		PTHREAD_MUTEX_UNLOCK(&(lf->entries[i].mutex));
 
+		lf->entries[i].hash = 0;
 		TALLOC_FREE(lf->entries[i].filename);
 		close(lf->entries[i].fd);
+		lf->entries[i].fd = -1;
+
 		PTHREAD_MUTEX_UNLOCK(&(lf->mutex));
+		PTHREAD_MUTEX_UNLOCK(&(lf->entries[i].mutex));
 		return -1;
 	}
 
 	if (rad_lockfd(lf->entries[i].fd, 0) < 0) {
 		fr_strerror_printf("Failed to lock file %s: %s",
 				   filename, strerror(errno));
-		goto close_error;
+		goto error;
 	}
 
 	/*
@@ -977,7 +1016,7 @@ do_lock:
 	if (fstat(lf->entries[i].fd, &st) < 0) {
 		fr_strerror_printf("Failed to stat file %s: %s",
 				   filename, strerror(errno));
-		goto close_error;
+		goto error;
 	}
 
 	if (st.st_nlink == 0) {
@@ -986,7 +1025,7 @@ do_lock:
 		if (lf->entries[i].fd < 0) {
 			fr_strerror_printf("Failed to open file %s: %s",
 					   filename, strerror(errno));
-			goto close_error;
+			goto error;
 		}
 	}
 
@@ -996,6 +1035,9 @@ do_lock:
 	 */
 	lseek(lf->entries[i].fd, 0, SEEK_END);
 
+	/*
+	 *	Return holding the mutex for the entry.
+	 */
 	lf->entries[i].last_used = now;
 	return lf->entries[i].fd;
 }
