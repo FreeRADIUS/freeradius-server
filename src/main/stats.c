@@ -438,7 +438,7 @@ static void request_stats_addvp(REQUEST *request,
 	VALUE_PAIR *vp;
 
 	for (i = 0; table[i].attribute != 0; i++) {
-		vp = radius_paircreate(request, &request->reply->vps,
+		vp = radius_paircreate(request->reply, &request->reply->vps,
 				       table[i].attribute, VENDORPEC_FREERADIUS);
 		if (!vp) continue;
 
@@ -503,10 +503,10 @@ void request_stats_reply(REQUEST *request)
 	 *	Internal server statistics
 	 */
 	if ((flag->vp_integer & 0x10) != 0) {
-		vp = radius_paircreate(request, &request->reply->vps,
+		vp = radius_paircreate(request->reply, &request->reply->vps,
 				       176, VENDORPEC_FREERADIUS);
 		if (vp) vp->vp_date = start_time.tv_sec;
-		vp = radius_paircreate(request, &request->reply->vps,
+		vp = radius_paircreate(request->reply, &request->reply->vps,
 				       177, VENDORPEC_FREERADIUS);
 		if (vp) vp->vp_date = hup_time.tv_sec;
 
@@ -516,7 +516,7 @@ void request_stats_reply(REQUEST *request)
 		thread_pool_queue_stats(array, pps);
 
 		for (i = 0; i <= 4; i++) {
-			vp = radius_paircreate(request, &request->reply->vps,
+			vp = radius_paircreate(request->reply, &request->reply->vps,
 					       162 + i, VENDORPEC_FREERADIUS);
 
 			if (!vp) continue;
@@ -524,7 +524,7 @@ void request_stats_reply(REQUEST *request)
 		}
 
 		for (i = 0; i < 2; i++) {
-			vp = radius_paircreate(request, &request->reply->vps,
+			vp = radius_paircreate(request->reply, &request->reply->vps,
 					       181 + i, VENDORPEC_FREERADIUS);
 
 			if (!vp) continue;
@@ -595,7 +595,7 @@ void request_stats_reply(REQUEST *request)
 			 */
 			if ((vp->da->type == PW_TYPE_INTEGER) &&
 			    (client->ipaddr.af == AF_INET)) {
-				vp = radius_paircreate(request,
+				vp = radius_paircreate(request->reply,
 						       &request->reply->vps,
 						       167, VENDORPEC_FREERADIUS);
 				if (vp) {
@@ -603,7 +603,7 @@ void request_stats_reply(REQUEST *request)
 				}
 
 				if (client->prefix != 32) {
-					vp = radius_paircreate(request,
+					vp = radius_paircreate(request->reply,
 							       &request->reply->vps,
 							       169, VENDORPEC_FREERADIUS);
 					if (vp) {
@@ -722,32 +722,32 @@ void request_stats_reply(REQUEST *request)
 		pairadd(&request->reply->vps,
 			paircopyvp(request->reply, server_port));
 
-		vp = radius_paircreate(request, &request->reply->vps,
+		vp = radius_paircreate(request->reply, &request->reply->vps,
 				       172, VENDORPEC_FREERADIUS);
 		if (vp) vp->vp_integer = home->currently_outstanding;
 
-		vp = radius_paircreate(request, &request->reply->vps,
+		vp = radius_paircreate(request->reply, &request->reply->vps,
 				       173, VENDORPEC_FREERADIUS);
 		if (vp) vp->vp_integer = home->state;
 
 		if ((home->state == HOME_STATE_ALIVE) &&
 		    (home->revive_time.tv_sec != 0)) {
-			vp = radius_paircreate(request, &request->reply->vps,
+			vp = radius_paircreate(request->reply, &request->reply->vps,
 					       175, VENDORPEC_FREERADIUS);
 			if (vp) vp->vp_date = home->revive_time.tv_sec;
 		}
 
 		if ((home->state == HOME_STATE_ALIVE) &&
 		    (home->ema.window > 0)) {
-				vp = radius_paircreate(request,
+				vp = radius_paircreate(request->reply,
 						       &request->reply->vps,
 						       178, VENDORPEC_FREERADIUS);
 				if (vp) vp->vp_integer = home->ema.window;
-				vp = radius_paircreate(request,
+				vp = radius_paircreate(request->reply,
 						       &request->reply->vps,
 						       179, VENDORPEC_FREERADIUS);
 				if (vp) vp->vp_integer = home->ema.ema1 / EMA_SCALE;
-				vp = radius_paircreate(request,
+				vp = radius_paircreate(request->reply,
 						       &request->reply->vps,
 						       180, VENDORPEC_FREERADIUS);
 				if (vp) vp->vp_integer = home->ema.ema10 / EMA_SCALE;
@@ -755,7 +755,7 @@ void request_stats_reply(REQUEST *request)
 		}
 
 		if (home->state == HOME_STATE_IS_DEAD) {
-			vp = radius_paircreate(request, &request->reply->vps,
+			vp = radius_paircreate(request->reply, &request->reply->vps,
 					       174, VENDORPEC_FREERADIUS);
 			if (vp) vp->vp_date = home->zombie_period_start.tv_sec + home->zombie_period;
 		}
@@ -765,11 +765,11 @@ void request_stats_reply(REQUEST *request)
 		 *
 		 *	FIXME: do this for clients, too!
 		 */
-		vp = radius_paircreate(request, &request->reply->vps,
+		vp = radius_paircreate(request->reply, &request->reply->vps,
 				       184, VENDORPEC_FREERADIUS);
 		if (vp) vp->vp_date = home->last_packet_recv;
 
-		vp = radius_paircreate(request, &request->reply->vps,
+		vp = radius_paircreate(request->reply, &request->reply->vps,
 				       185, VENDORPEC_FREERADIUS);
 		if (vp) vp->vp_date = home->last_packet_sent;
 

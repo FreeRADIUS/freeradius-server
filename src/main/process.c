@@ -2442,7 +2442,7 @@ static int request_will_proxy(REQUEST *request)
 		vp = pairfind(request->proxy->vps, PW_USER_NAME, 0, TAG_ANY);
 		if (!vp) {
 			vp_cursor_t cursor;
-			vp = radius_paircreate(request, NULL,
+			vp = radius_paircreate(NULL, NULL,
 					       PW_USER_NAME, 0);
 			rad_assert(vp != NULL);	/* handled by above function */
 			/* Insert at the START of the list */
@@ -2467,7 +2467,7 @@ static int request_will_proxy(REQUEST *request)
 	if ((request->packet->code == PW_CODE_AUTHENTICATION_REQUEST) &&
 	    pairfind(request->proxy->vps, PW_CHAP_PASSWORD, 0, TAG_ANY) &&
 	    pairfind(request->proxy->vps, PW_CHAP_CHALLENGE, 0, TAG_ANY) == NULL) {
-		vp = radius_paircreate(request, &request->proxy->vps, PW_CHAP_CHALLENGE, 0);
+		vp = radius_paircreate(request->proxy, &request->proxy->vps, PW_CHAP_CHALLENGE, 0);
 		pairmemcpy(vp, request->packet->vector, sizeof(request->packet->vector));
 	}
 
@@ -2475,7 +2475,7 @@ static int request_will_proxy(REQUEST *request)
 	 *	The RFC's say we have to do this, but FreeRADIUS
 	 *	doesn't need it.
 	 */
-	vp = radius_paircreate(request, &request->proxy->vps, PW_PROXY_STATE, 0);
+	vp = radius_paircreate(request->proxy, &request->proxy->vps, PW_PROXY_STATE, 0);
 	pairsprintf(vp, "%u", request->packet->id);
 
 	/*
@@ -2657,7 +2657,7 @@ static int request_proxy_anew(REQUEST *request)
 		VALUE_PAIR *vp;
 
 		vp = pairfind(request->proxy->vps, PW_ACCT_DELAY_TIME, 0, TAG_ANY);
-		if (!vp) vp = radius_paircreate(request,
+		if (!vp) vp = radius_paircreate(request->proxy,
 						&request->proxy->vps,
 						PW_ACCT_DELAY_TIME, 0);
 		if (vp) {

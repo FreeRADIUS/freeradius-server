@@ -637,7 +637,7 @@ end_gid:
 	}
 
 	/* add IP address to reply packet */
-	vp = radius_paircreate(request, &request->reply->vps,
+	vp = radius_paircreate(request->reply, &request->reply->vps,
 			       PW_FRAMED_IP_ADDRESS, 0);
 	vp->vp_ipaddr = ip.s_addr;
 

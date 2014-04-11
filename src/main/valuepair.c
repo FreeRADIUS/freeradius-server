@@ -762,7 +762,7 @@ void radius_xlat_move(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR **from)
  * @note This function ALWAYS returns. If we're OOM, then it causes the
  * @note server to exit, so you don't need to check the return value.
  *
- * @param[in] ctx Context to allocate VALUE_PAIRs in.
+ * @param[in] ctx for talloc
  * @param[out] vps List to add new VALUE_PAIR to, if NULL will just
  *	return VALUE_PAIR.
  * @param[in] attribute number.

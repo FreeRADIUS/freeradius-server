@@ -1557,7 +1557,7 @@ static rlm_rcode_t mod_authenticate(void * instance, REQUEST *request)
 		 *  the authentication
 		 */
 
-		response = radius_paircreate(request, &request->packet->vps,
+		response = radius_paircreate(request->packet, &request->packet->vps,
 					     PW_MSCHAP2_RESPONSE,
 					     VENDORPEC_MICROSOFT);
 		response->length = 50;

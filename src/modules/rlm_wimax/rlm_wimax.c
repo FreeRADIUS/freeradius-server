@@ -255,7 +255,7 @@ static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
 		 */
 		vp = pairfind(request->reply->vps, 10, VENDORPEC_WIMAX, TAG_ANY);
 		if (!vp) {
-			vp = radius_paircreate(request, &request->reply->vps,
+			vp = radius_paircreate(request->reply, &request->reply->vps,
 					       10, VENDORPEC_WIMAX);
 		}
 		if (!vp) {
@@ -269,7 +269,7 @@ static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
 		 */
 		vp = pairfind(request->reply->vps, 11, VENDORPEC_WIMAX, TAG_ANY);
 		if (!vp) {
-			vp = radius_paircreate(request, &request->reply->vps,
+			vp = radius_paircreate(request->reply, &request->reply->vps,
 					       11, VENDORPEC_WIMAX);
 		}
 		if (!vp) {
@@ -305,7 +305,7 @@ static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
 		 */
 		vp = pairfind(request->reply->vps, 10, VENDORPEC_WIMAX, TAG_ANY);
 		if (!vp) {
-			vp = radius_paircreate(request, &request->reply->vps,
+			vp = radius_paircreate(request->reply, &request->reply->vps,
 					       10, VENDORPEC_WIMAX);
 		}
 		if (!vp) {
@@ -319,7 +319,7 @@ static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
 		 */
 		vp = pairfind(request->reply->vps, 11, VENDORPEC_WIMAX, TAG_ANY);
 		if (!vp) {
-			vp = radius_paircreate(request, &request->reply->vps,
+			vp = radius_paircreate(request->reply, &request->reply->vps,
 					       11, VENDORPEC_WIMAX);
 		}
 		if (!vp) {
@@ -355,7 +355,7 @@ static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
 		 */
 		vp = pairfind(request->reply->vps, 12, VENDORPEC_WIMAX, TAG_ANY);
 		if (!vp) {
-			vp = radius_paircreate(request, &request->reply->vps,
+			vp = radius_paircreate(request->reply, &request->reply->vps,
 					       12, VENDORPEC_WIMAX);
 		}
 		if (!vp) {
@@ -369,7 +369,7 @@ static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
 		 */
 		vp = pairfind(request->reply->vps, 13, VENDORPEC_WIMAX, TAG_ANY);
 		if (!vp) {
-			vp = radius_paircreate(request, &request->reply->vps,
+			vp = radius_paircreate(request->reply, &request->reply->vps,
 					       13, VENDORPEC_WIMAX);
 		}
 		if (!vp) {
@@ -406,7 +406,7 @@ static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
 	if (fa_rk) {
 		vp = pairfind(request->reply->vps, 61, VENDORPEC_WIMAX, TAG_ANY);
 		if (!vp) {
-			vp = radius_paircreate(request, &request->reply->vps,
+			vp = radius_paircreate(request->reply, &request->reply->vps,
 					       61, VENDORPEC_WIMAX);
 		}
 		if (!vp) {

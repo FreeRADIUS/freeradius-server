@@ -580,7 +580,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 			return RLM_MODULE_OK;
 		}
 	} else {
-		reply_item = radius_paircreate(request, &request->reply->vps, inst->reply_attr->attr,
+		reply_item = radius_paircreate(request->reply, &request->reply->vps, inst->reply_attr->attr,
 					       inst->reply_attr->vendor);
 	}
 	reply_item->vp_integer64 = res;

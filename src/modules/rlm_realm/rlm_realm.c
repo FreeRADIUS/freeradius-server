@@ -182,7 +182,7 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 		 *
 		 */
 		if (request->username->da->attr != PW_STRIPPED_USER_NAME) {
-			vp = radius_paircreate(request, &request->packet->vps,
+			vp = radius_paircreate(request->packet, &request->packet->vps,
 					       PW_STRIPPED_USER_NAME, 0);
 			RDEBUG2("Adding Stripped-User-Name = \"%s\"", username);
 		} else {

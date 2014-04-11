@@ -804,7 +804,7 @@ static rlm_rcode_t mod_authorize(UNUSED void *instance, UNUSED REQUEST *request)
 					reply_item->vp_integer = res;
 				}
 			} else {
-				reply_item = radius_paircreate(request, &request->reply->vps, PW_SESSION_TIMEOUT, 0);
+				reply_item = radius_paircreate(request->reply, &request->reply->vps, PW_SESSION_TIMEOUT, 0);
 				reply_item->vp_integer = res;
 			}
 		} else if (inst->reply_attr) {
@@ -814,8 +814,8 @@ static rlm_rcode_t mod_authorize(UNUSED void *instance, UNUSED REQUEST *request)
 					reply_item->vp_integer = res;
 				}
 			} else {
-				reply_item = radius_paircreate(request, &request->reply->vps, inst->reply_attr->attr,
-										inst->reply_attr->vendor);
+				reply_item = radius_paircreate(request->reply, &request->reply->vps, inst->reply_attr->attr,
+							       inst->reply_attr->vendor);
 				reply_item->vp_integer = res;
 			}
 		}
