@@ -255,7 +255,7 @@ int map_eapsim_basictypes(RADIUS_PACKET *r, eap_packet_t *ep)
 		fr_hmac_sha1(buffer, hmaclen, vp->vp_octets, vp->length, sha1digest);
 
 		/* done with the buffer, free it */
-		free(buffer);
+		talloc_free(buffer);
 
 		/* now copy the digest to where it belongs in the AT_MAC */
 		/* note that it is truncated to 128-bits */
