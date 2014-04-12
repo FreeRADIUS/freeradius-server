@@ -284,7 +284,7 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, REQUEST *fake, SSL *ssl,
 				if (vp) pairfree(&vp);
 				da = dict_attrunknown(attr, vendor, true);
 				if (!da) return NULL;
-				vp = pairalloc(NULL, da);
+				vp = pairalloc(packet, da);
 				if (!vp) return NULL;
 				pairmemcpy(vp, data, size);
 				break;
