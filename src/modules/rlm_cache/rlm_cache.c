@@ -486,7 +486,7 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 			       fr_int2str(fr_tokens, map->op, "<INVALID>"),
 			       buffer);
 
-			vp = pairalloc(NULL, map->dst->da);
+			vp = pairalloc(map->dst, map->dst->da);
 			if (!vp) continue;
 
 			vp->op = map->op;
@@ -511,7 +511,7 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 			       fr_int2str(fr_tokens, map->op, "<INVALID>"),
 			       map->src->name);
 
-			vp = pairalloc(NULL, map->dst->da);
+			vp = pairalloc(map->dst, map->dst->da);
 			if (!vp) continue;
 
 			vp->op = map->op;
@@ -617,7 +617,7 @@ static int cache_verify(rlm_cache_t *inst, value_pair_map_t **head)
 				VALUE_PAIR *vp;
 				bool ret;
 
-				MEM(vp = pairalloc(NULL, map->dst->da));
+				MEM(vp = pairalloc(map->dst, map->dst->da));
 				vp->op = map->op;
 
 				ret = pairparsevalue(vp, map->src->name);
