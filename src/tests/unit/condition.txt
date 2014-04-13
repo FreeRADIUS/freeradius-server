@@ -449,3 +449,9 @@ data <ipaddr>&Filter-Id == &Framed-IP-Address
 
 condition <ipaddr>&Class == &Framed-IP-Address
 data <ipaddr>&Class == &Framed-IP-Address
+
+condition &Tunnel-Password:0 == "Hello"
+data ERROR offset 0 Unknown attribute
+
+condition &User-Name[0] == "bob"
+data ERROR offset 0 Unknown attribute
