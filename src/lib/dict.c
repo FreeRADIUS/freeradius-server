@@ -3075,6 +3075,41 @@ DICT_ATTR const *dict_attrbyname(char const *name)
 }
 
 /*
+ *	Get an attribute by its name, where the name might have a tag
+ *	or something else after it.
+ */
+DICT_ATTR const *dict_attrbytagged_name(char const *name)
+{
+	DICT_ATTR *da;
+	char *p;
+	uint32_t buffer[(sizeof(*da) + DICT_ATTR_MAX_NAME_LEN + 3)/4];
+
+	if (!name) return NULL;
+
+	da = (DICT_ATTR *) buffer;
+	strlcpy(da->name, name, DICT_ATTR_MAX_NAME_LEN + 1);
+
+	/*
+	 *	The name might have a tag or array reference.  That
+	 *	isn't properly part of the name, and can be ignored on
+	 *	lookup.
+	 */
+	for (p = &da->name[0]; *p; p++) {
+		if (*p == ':') {
+			*p = '\0';
+			break;
+		}
+
+		if (*p == '[') {
+			*p = '\0';
+			break;
+		}
+	}
+
+	return fr_hash_table_finddata(attributes_byname, da);
+}
+
+/*
  *	Associate a value with an attribute and return it.
  */
 DICT_VALUE *dict_valbyattr(unsigned int attr, unsigned int vendor, int value)

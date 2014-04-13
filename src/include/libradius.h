@@ -475,6 +475,7 @@ DICT_ATTR const	*dict_attrunknown(unsigned int attr, unsigned int vendor, int vp
 DICT_ATTR const	*dict_attrunknownbyname(char const *attribute, int vp_free);
 DICT_ATTR const	*dict_attrbyvalue(unsigned int attr, unsigned int vendor);
 DICT_ATTR const	*dict_attrbyname(char const *attr);
+DICT_ATTR const *dict_attrbytagged_name(char const *name);
 DICT_ATTR const	*dict_attrbytype(unsigned int attr, unsigned int vendor,
 				 PW_TYPE type);
 DICT_ATTR const	*dict_attrbyparent(DICT_ATTR const *parent, unsigned int attr,
