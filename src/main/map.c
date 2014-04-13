@@ -65,9 +65,11 @@ void radius_tmplfree(value_pair_tmpl_t **tmpl)
  */
 int radius_parse_attr(value_pair_tmpl_t *vpt, char const *name, request_refs_t request_def, pair_lists_t list_def)
 {
-	DICT_ATTR const *da;
 	char const *p;
 	size_t len;
+	unsigned long num;
+	char *q;
+	DICT_ATTR const *da;
 
 	memset(vpt, 0, sizeof(*vpt));
 	vpt->name = name;
@@ -93,7 +95,7 @@ int radius_parse_attr(value_pair_tmpl_t *vpt, char const *name, request_refs_t r
 		return 0;
 	}
 
-	da = dict_attrbyname(p);
+	da = dict_attrbytagged_name(p);
 	if (!da) {
 		da = dict_attrunknownbyname(p, false);
 		if (!da) {
@@ -102,8 +104,60 @@ int radius_parse_attr(value_pair_tmpl_t *vpt, char const *name, request_refs_t r
 		}
 	}
 	vpt->da = da;
-
 	vpt->type = VPT_TYPE_ATTR;
+	vpt->tag = TAG_ANY;
+
+	while (*p) {
+		if (*p == ':') break;
+		if (*p == '[') break;
+		p++;
+	}
+
+	if (*p == ':') {
+		if (!da->flags.has_tag) {
+			fr_strerror_printf("Attribute '%s' cannot have a tag",
+					   da->name);
+			return -1;
+		}
+
+		num = strtoul(p + 1, &q, 10);
+		if (num > 0x1f) {
+			fr_strerror_printf("Invalid tag value '%u'",
+					   (unsigned int) num);
+			return -1;
+		}
+
+		if (num == 0) {
+			vpt->tag = TAG_ANY;
+		} else {
+			vpt->tag = num;
+		}
+		p = q;
+	}
+
+	if (!*p) return 0;
+
+	if (*p != '[') {
+		fr_strerror_printf("Unexpected text after tag in '%s'",
+				   name);
+		return -1;
+	}
+
+	num = strtoul(p + 1, &q, 10);
+	if (num > 1000) {
+		fr_strerror_printf("Invalid array reference '%u'",
+				   (unsigned int) num);
+		return -1;
+	}
+
+	if ((*q != ']') || (q[1] != '\0')) {
+		fr_strerror_printf("Unexpected text after array in '%s'",
+				   name);
+		return -1;
+	}
+
+	vpt->num = num;
+
 	return 0;
 }
 
@@ -553,6 +607,7 @@ error:
  */
 size_t radius_tmpl2str(char *buffer, size_t bufsize, value_pair_tmpl_t const *vpt)
 {
+	size_t len;
 	char c;
 	char const *p;
 	char *q = buffer;
@@ -609,7 +664,31 @@ size_t radius_tmpl2str(char *buffer, size_t bufsize, value_pair_tmpl_t const *vp
 				 fr_int2str(pair_lists, vpt->list, ""),
 				 vpt->da->name);
 		}
-		return strlen(buffer);
+
+		len = strlen(buffer);
+
+		if ((vpt->tag == TAG_ANY) && !vpt->num) {
+			return len;
+		}
+
+		q = buffer + len;
+		bufsize -= len;
+
+		if (vpt->tag != TAG_ANY) {
+			snprintf(q, bufsize, ":%d", vpt->tag);
+			len = strlen(q);
+			q += len;
+			bufsize -= len;
+		}
+
+		if (vpt->num) {
+			snprintf(q, bufsize, "[%u]", vpt->num);
+			len = strlen(q);
+			q += len;
+			bufsize -= len;
+		}
+
+		return (q - buffer);
 
 	case VPT_TYPE_DATA:
 		{

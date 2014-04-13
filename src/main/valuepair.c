@@ -1585,7 +1585,7 @@ int radius_vpt_get_vp(VALUE_PAIR **out, REQUEST *request, value_pair_tmpl_t cons
 	 *	May not may not be found, but it *is* a known name.
 	 */
 	case VPT_TYPE_ATTR:
-		vp = pairfind(*vps, vpt->da->attr, vpt->da->vendor, TAG_ANY);
+		vp = pairfind(*vps, vpt->da->attr, vpt->da->vendor, vpt->tag);
 		if (!vp) {
 			return -1;
 		}
