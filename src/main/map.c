@@ -231,7 +231,6 @@ value_pair_tmpl_t *radius_str2tmpl(TALLOC_CTX *ctx, char const *name, FR_TOKEN t
 	}
 
 	radius_tmpl2str(buffer, sizeof(buffer), vpt);
-	fprintf(stderr, "PARSED %s --> %s\n", name, buffer);
 
 	return vpt;
 }
