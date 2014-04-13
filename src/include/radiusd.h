@@ -735,6 +735,7 @@ int radius_evaluate_cond(REQUEST *request, int modreturn, int depth,
 void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from);
 
 VALUE_PAIR **radius_list(REQUEST *request, pair_lists_t list);
+TALLOC_CTX *radius_list_ctx(REQUEST *request, pair_lists_t list_name);
 pair_lists_t radius_list_name(char const **name, pair_lists_t unknown);
 int radius_request(REQUEST **request, request_refs_t name);
 request_refs_t radius_request_name(char const **name, request_refs_t unknown);

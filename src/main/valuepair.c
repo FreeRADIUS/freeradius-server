@@ -930,6 +930,62 @@ VALUE_PAIR **radius_list(REQUEST *request, pair_lists_t list)
 	return NULL;
 }
 
+
+TALLOC_CTX *radius_list_ctx(REQUEST *request, pair_lists_t list_name)
+{
+	if (!request) return NULL;
+
+		switch (list_name) {
+		case PAIR_LIST_REQUEST:
+			return request->packet;			
+
+		case PAIR_LIST_REPLY:
+			return request->reply;
+
+		case PAIR_LIST_CONTROL:
+			return request;			
+
+#ifdef WITH_PROXY
+		case PAIR_LIST_PROXY_REQUEST:
+			return request->proxy;
+
+		case PAIR_LIST_PROXY_REPLY:
+			return request->proxy_reply;
+#endif
+
+#ifdef WITH_COA
+		case PAIR_LIST_COA:
+			if (!request->coa) return NULL;
+			rad_assert(request->coa->proxy != NULL);
+			if (request->coa->proxy->code != PW_CODE_COA_REQUEST) return NULL;
+			return request->coa->proxy;
+
+		case PAIR_LIST_COA_REPLY:
+			if (!request->coa) return NULL;
+			rad_assert(request->coa->proxy != NULL);
+			if (request->coa->proxy->code != PW_CODE_COA_REQUEST) return NULL;
+			return request->coa->proxy_reply;
+
+		case PAIR_LIST_DM:
+			if (!request->coa) return NULL;
+			rad_assert(request->coa->proxy != NULL);
+			if (request->coa->proxy->code != PW_CODE_DISCONNECT_REQUEST) return NULL;
+			return request->coa->proxy;
+
+		case PAIR_LIST_DM_REPLY:
+			if (!request->coa) return NULL;
+			rad_assert(request->coa->proxy != NULL);
+			if (request->coa->proxy->code != PW_CODE_DISCONNECT_REQUEST) return NULL;
+			return request->coa->proxy_reply;
+#endif
+
+		default:
+			break;
+		}
+
+		return NULL;
+}
+
 /** Convert value_pair_map_t to VALUE_PAIR(s) and add them to a REQUEST.
  *
  * Takes a single value_pair_map_t, resolves request and list identifiers
