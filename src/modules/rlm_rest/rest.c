@@ -925,6 +925,7 @@ static int rest_decode_post(UNUSED rlm_rest_t *instance, UNUSED rlm_rest_section
 	request_refs_t request_name;
 	REQUEST *reference = request;
 	VALUE_PAIR **vps;
+	TALLOC_CTX *ctx;
 
 	size_t len;
 	int curl_len; /* Length from last curl_easy_unescape call */
@@ -991,6 +992,8 @@ static int rest_decode_post(UNUSED rlm_rest_t *instance, UNUSED rlm_rest_section
 
 		RDEBUG3("\tType  : %s", fr_int2str(dict_attr_types, da->type, "<INVALID>"));
 
+		ctx = radius_list_ctx(reference, list_name);
+
 		q = strchr(p, '&');
 		len = (!q) ? (rawlen - (p - raw)) : (unsigned)(q - p);
 
@@ -1012,7 +1015,7 @@ static int rest_decode_post(UNUSED rlm_rest_t *instance, UNUSED rlm_rest_section
 			goto skip;
 		}
 
-		vp = pairalloc(request, da);
+		vp = pairalloc(ctx, da);
 		if (!vp) {
 			REDEBUG("Failed creating valuepair");
 			talloc_free(expanded);
