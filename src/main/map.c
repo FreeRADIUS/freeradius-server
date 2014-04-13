@@ -153,56 +153,43 @@ value_pair_tmpl_t *radius_str2tmpl(TALLOC_CTX *ctx, char const *name, FR_TOKEN t
 				   request_refs_t request_def, pair_lists_t list_def)
 {
 	char const *p;
-	bool is_attr = false;
 	value_pair_tmpl_t *vpt;
+	char buffer[1024];
 
 	vpt = talloc_zero(ctx, value_pair_tmpl_t);
 	vpt->name = talloc_typed_strdup(vpt, name);
 
 	switch (type) {
 	case T_BARE_WORD:
+		/*
+		 *	"&" is always an attribute reference.
+		 */
 		if (*name == '&') {
-			is_attr = true;
-			name++;
-		}
-
-		if (!isdigit((int) *name)) {
-			request_refs_t ref;
-			pair_lists_t list;
-
-			p = name;
-			ref = radius_request_name(&p, request_def);
-			if (ref == REQUEST_UNKNOWN) goto literal;
-
-			list = radius_list_name(&p, list_def);
-			if (list == PAIR_LIST_UNKNOWN) goto literal;
-
-			if ((p != name) && !*p) {
-				vpt->type = VPT_TYPE_LIST;
-
-			} else {
-				DICT_ATTR const *da;
-				da = dict_attrbyname(p);
-				if (!da) goto literal;
-				vpt->da = da;
-				vpt->type = VPT_TYPE_ATTR;
+			if (radius_parse_attr(vpt, vpt->name + 1, request_def, list_def) < 0) {
+				talloc_free(vpt);
+				return NULL;
 			}
 
-			vpt->request = ref;
-			vpt->list = list;
+			/*
+			 *	radius_parse_attr over-writes vpt->name <sigh>
+			 */
+			vpt->name--;
 			break;
-		} /* else the first character is a digit */
-		/* FALL-THROUGH */
-
-	literal:
-		if (is_attr) {
-			fr_strerror_printf("Reference to unknown attribute");
-			return NULL;
 		}
+
+		/*
+		 *	If we can parse it as an attribute, it's an attribure.
+		 *	Otherwise, treat it as a literal.
+		 */
+		if (radius_parse_attr(vpt, vpt->name, request_def, list_def) == 0) {
+			break;
+		}
+		/* FALL-THROUGH */
 
 	case T_SINGLE_QUOTED_STRING:
 		vpt->type = VPT_TYPE_LITERAL;
 		break;
+
 	case T_DOUBLE_QUOTED_STRING:
 		p = name;
 		while (*p) {
@@ -229,16 +216,22 @@ value_pair_tmpl_t *radius_str2tmpl(TALLOC_CTX *ctx, char const *name, FR_TOKEN t
 			vpt->type = VPT_TYPE_LITERAL;
 		}
 		break;
+
 	case T_BACK_QUOTED_STRING:
 		vpt->type = VPT_TYPE_EXEC;
 		break;
+
 	case T_OP_REG_EQ: /* hack */
 		vpt->type = VPT_TYPE_REGEX;
 		break;
+
 	default:
 		rad_assert(0);
 		return NULL;
 	}
+
+	radius_tmpl2str(buffer, sizeof(buffer), vpt);
+	fprintf(stderr, "PARSED %s --> %s\n", name, buffer);
 
 	return vpt;
 }
