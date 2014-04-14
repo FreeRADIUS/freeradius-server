@@ -1627,7 +1627,10 @@ static modcallable *do_compile_modupdate(modcallable *parent, UNUSED rlm_compone
 
 				vpd->strvalue = talloc_typed_strdup(vpd, map->src->name);
 				rad_assert(vpd->strvalue != NULL);
-				map->dst->type = VPT_TYPE_DATA;
+
+				map->src->type = VPT_TYPE_DATA;
+				map->src->da = map->dst->da;
+				map->src->length = talloc_array_length(vpd->strvalue) - 1;
 
 			} else {
 				if (!radius_cast_tmpl(map->src, map->dst->da)) {
