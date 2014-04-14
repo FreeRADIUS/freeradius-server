@@ -488,24 +488,43 @@ value_pair_map_t *radius_cp2map(TALLOC_CTX *ctx, CONF_PAIR *cp,
 		case T_OP_CMP_FALSE:
 			if ((map->src->type != VPT_TYPE_LITERAL) ||
 			    (strcmp(map->src->name, "ANY") != 0)) {
-				cf_log_err(ci, "Must use 'ANY' for list '!*' operator");
+				cf_log_err(ci, "List deletion MUST use '!* ANY'");
 				goto error;
 			}
 			break;
 
 		case T_OP_ADD:
-		case T_OP_SET:
 			if ((map->src->type != VPT_TYPE_LIST) &&
 			    (map->src->type != VPT_TYPE_EXEC)) {
-				cf_log_err(ci, "List assignment MUST be done from another list");
+				cf_log_err(ci, "Invalid source for list '+='");
 				goto error;
 			}
 			break;
 
-			default:
-				cf_log_err(ci, "Operator \"%s\" not allowed for list copy",
-					   fr_int2str(fr_tokens, map->op, "<INVALID>"));
+		case T_OP_SET:
+			if (map->src->type == VPT_TYPE_EXEC) {
+				WDEBUG("%s[%d] Please change ':=' to '=' for list assignment",
+				       cf_pair_filename(cp), cf_pair_lineno(cp));
+				break;
+			}
+
+			if (map->src->type != VPT_TYPE_LIST) {
+				cf_log_err(ci, "Invalid source for ':=' operator");
 				goto error;
+			}
+			break;
+
+		case T_OP_EQ:
+			if (map->src->type != VPT_TYPE_EXEC) {
+				cf_log_err(ci, "Invalid source for '=' operator");
+				goto error;
+			}
+			break;
+
+		default:
+			cf_log_err(ci, "Operator \"%s\" not allowed for list assignment",
+				   fr_int2str(fr_tokens, map->op, "<INVALID>"));
+			goto error;
 		}
 	}
 
