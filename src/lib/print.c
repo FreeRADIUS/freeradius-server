@@ -318,6 +318,8 @@ size_t vp_prints_value(char *out, size_t outlen, VALUE_PAIR const *vp, int8_t qu
 
 	size_t		len = 0, freespace = outlen;
 
+	VERIFY_VP(vp);
+
 	if (outlen == 0) return vp->length;
 
 	*out = '\0';
@@ -1021,6 +1023,8 @@ void vp_print(FILE *fp, VALUE_PAIR const *vp)
 	char	buf[1024];
 	char	*p = buf;
 	size_t	len;
+
+	VERIFY_VP(vp);
 
 	*p++ = '\t';
 	len = vp_prints(p, sizeof(buf) - 1, vp);
