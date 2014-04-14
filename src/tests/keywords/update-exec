@@ -18,7 +18,7 @@ update request {
 
 if (Tmp-String-0 != "foo bar baz") {
 	update reply {
-		Filter-Id += "fail"
+		Filter-Id += "fail 1"
 	}
 }
 
@@ -31,7 +31,7 @@ update {
 
 if (Tmp-String-0 != 'foo') {
 	update reply {
-		Filter-Id += "fail"
+		Filter-Id += "fail 2"
 	}
 }
 
@@ -44,7 +44,7 @@ update {
 
 if ((Tmp-String-0 != 'foo') || (Tmp-String-1 != 'bar')) {
 	update reply {
-		Filter-Id += "fail"
+		Filter-Id += "fail 3"
 	}
 }
 
@@ -66,7 +66,7 @@ redundant {
 }
 if (Tmp-String-0 || Tmp-String-1) {
 	update reply {
-		Filter-Id += "fail"
+		Filter-Id += "fail 4"
 	}
 }
 
@@ -88,7 +88,7 @@ redundant {
 }
 if (Tmp-String-0) {
 	update reply {
-		Filter-Id += "fail"
+		Filter-Id += "fail 5"
 	}
 }
 
