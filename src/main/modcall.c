@@ -1086,6 +1086,9 @@ int modcall(rlm_components_t component, modcallable *c, REQUEST *request)
 {
 	modcall_stack_entry_t stack[MODCALL_STACK_MAX];
 
+#ifndef NDEBUG
+	memset(stack, 0, sizeof(stack));
+#endif
 	/*
 	 *	Set up the initial stack frame.
 	 */
