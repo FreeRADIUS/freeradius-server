@@ -1579,11 +1579,33 @@ VALUE_PAIR *radius_vpt_get_vp(REQUEST *request, value_pair_tmpl_t const *vpt)
 	}
 
 	switch (vpt->type) {
-	/*
-	 *	May not may not be found, but it *is* a known name.
-	 */
+		/*
+		 *	May not may not be found, but it *is* a known
+		 *	name.
+		 */
 	case VPT_TYPE_ATTR:
-		return pairfind(*vps, vpt->da->attr, vpt->da->vendor, vpt->tag);
+		if (vpt->num == 0) {
+			return pairfind(*vps, vpt->da->attr, vpt->da->vendor, vpt->tag);
+		} else {
+			int num;
+			VALUE_PAIR *vp;
+			vp_cursor_t cursor;
+
+			/*
+			 *	It's faster to just repeat the 3-4 lines of pairfind here.
+			 */
+			num = vpt->num;
+			for (vp = fr_cursor_init(&cursor, vps);
+			     vp != NULL;
+			     vp = fr_cursor_next(&cursor)) {
+				VERIFY_VP(vp);
+				if ((vp->da == vpt->da) && (!vp->da->flags.has_tag || (vpt->tag == TAG_ANY) || (vp->tag == vpt->tag))) {
+					if (num == 0) return vp;
+					num--;
+				}
+			}
+			return NULL;
+		}
 
 	case VPT_TYPE_LIST:
 		return *vps;

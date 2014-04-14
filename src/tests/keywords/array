@@ -1,0 +1,52 @@
+#
+#  PRE: if
+#
+#  Tests for dereferencing the Nth attribute
+#
+update request {
+       Class := 0x01020304
+       Class += 0x05060708
+       Class += 0x090a0b0c
+}
+
+if (&Class != 0x01020304) {
+	update reply {
+		Filter-Id := "fail 0"
+	}
+}
+
+#  Must be the same as above
+if (&Class[0] != 0x01020304) {
+	update reply {
+		Filter-Id += "fail 0a"
+	}
+}
+
+if (&Class[1] != 0x05060708) {
+	update reply {
+		Filter-Id += "fail 1"
+	}
+}
+
+if (&Class[2] != 0x090a0b0c) {
+	update reply {
+		Filter-Id += "fail 2"
+	}
+}
+
+# must not exist
+if (&Class[3]) {
+	update reply {
+		Filter-Id += "fail 3"
+	}
+}
+
+#
+#  The test passes only if no test above
+#  added a Filter-Id
+#
+if (!reply:Filter-Id) {
+	update reply {
+		Filter-Id := "filter"
+	}
+}
