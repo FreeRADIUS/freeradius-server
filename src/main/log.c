@@ -776,6 +776,7 @@ static int _logfile_free(fr_logfile_t *lf)
 
 		PTHREAD_MUTEX_LOCK(&lf->entries[i].mutex);
 		close(lf->entries[i].fd);
+		PTHREAD_MUTEX_UNLOCK(&lf->entries[i].mutex);
 #ifdef HAVE_PTHREAD_H
 		pthread_mutex_destroy(&lf->entries[i].mutex);
 #endif
@@ -1068,7 +1069,7 @@ int fr_logfile_close(fr_logfile_t *lf, int fd)
 		 */
 		if (lf->entries[i].fd == fd) {
 			lseek(lf->entries[i].fd, 0, SEEK_SET);
-			rad_unlockfd(lf->entries[i].fd, 0);
+			(void) rad_unlockfd(lf->entries[i].fd, 0);
 
 			PTHREAD_MUTEX_UNLOCK(&(lf->entries[i].mutex));
 			PTHREAD_MUTEX_UNLOCK(&(lf->mutex));
