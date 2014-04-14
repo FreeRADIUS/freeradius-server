@@ -1068,6 +1068,19 @@ int radius_map2request(REQUEST *request, value_pair_map_t const *map,
 	REQUEST *context;
 	TALLOC_CTX *parent;
 
+	/*
+	 *	Sanity check inputs.  We can have a list or attribute
+	 *	as a destination.
+	 */
+	if ((map->dst->type != VPT_TYPE_LIST) &&
+	    (map->dst->type != VPT_TYPE_ATTR)) {
+		char buffer[1024];
+
+		radius_map2str(buffer, sizeof(buffer), map);
+		REDEBUG("Invalid mapping destination %s", buffer);
+		return -2;
+	}
+
 	context = request;
 	if (radius_request(&context, map->dst->request) < 0) {
 		REDEBUG("Mapping \"%s\" -> \"%s\" invalid in this context", map->src->name, map->dst->name);
@@ -1111,13 +1124,57 @@ int radius_map2request(REQUEST *request, value_pair_map_t const *map,
 
 	if (!head) return 0;
 
-
 	for (vp = fr_cursor_init(&cursor, &head); vp; vp = fr_cursor_next(&cursor)) {
 
 		VERIFY_VP(vp);
 		if (debug_flag) debug_map(request, map, vp);
 
 		(void) talloc_steal(parent, vp);
+	}
+
+	/*
+	 *	List to list copies.
+	 */
+	if (map->dst->type == VPT_TYPE_LIST) {
+		switch (map->op) {
+		case T_OP_CMP_FALSE:
+			rad_assert(head == NULL);
+			pairfree(list);
+
+			if (map->dst->list == PAIR_LIST_REQUEST) {
+				context->username = NULL;
+				context->password = NULL;
+			}
+			break;
+
+		case T_OP_SET:
+			if (map->src->type == VPT_TYPE_LIST) {
+				pairfree(list);
+				*list = head;
+			} else {
+		case T_OP_EQ:
+
+				rad_assert(map->src->type == VPT_TYPE_EXEC);
+				pairmove(parent, list, &head);
+				pairfree(&head);
+			}
+
+			if (map->dst->list == PAIR_LIST_REQUEST) {
+				context->username = pairfind(head, PW_USER_NAME, 0, TAG_ANY);
+				context->password = pairfind(head, PW_USER_PASSWORD, 0, TAG_ANY);
+			}
+			break;
+
+		case T_OP_ADD:
+			pairadd(list, head);
+			break;
+
+		default:
+			pairfree(&head);
+			return -1;
+		}
+
+		return 0;
 	}
 
 	/*
