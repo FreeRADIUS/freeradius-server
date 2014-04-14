@@ -407,20 +407,19 @@ skip_group:
 	 */
 	if ((outfp = fdopen(outfd, "a")) == NULL) {
 		RERROR("Couldn't open file %s: %s", buffer, fr_syserror(errno));
-		fr_logfile_close(inst->lf, outfd);
+	fail:
+		fclose(outfp);
+		fr_logfile_unlock(inst->lf, outfd);
 		return RLM_MODULE_FAIL;
 	}
 
-	if (detail_write(outfp, inst, request, packet, compat) < 0) {
-		fr_logfile_close(inst->lf, outfd); /* do NOT close outfp */
-		return RLM_MODULE_FAIL;
-	}
+	if (detail_write(outfp, inst, request, packet, compat) < 0) goto fail;
 
 	/*
 	 *	Flush everything
 	 */
-	fflush(outfp);
-	fr_logfile_close(inst->lf, outfd); /* do NOT close outfp */
+	fclose(outfp);
+	fr_logfile_unlock(inst->lf, outfd); /* do NOT close outfp */
 
 	/*
 	 *	And everything is fine.
