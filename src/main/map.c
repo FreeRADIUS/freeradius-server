@@ -691,7 +691,7 @@ size_t radius_tmpl2str(char *buffer, size_t bufsize, value_pair_tmpl_t const *vp
 		return (q - buffer);
 
 	case VPT_TYPE_DATA:
-		{
+		if (vpt->vpd) {
 			VALUE_PAIR *vp;
 			TALLOC_CTX *ctx;
 
@@ -716,6 +716,10 @@ size_t radius_tmpl2str(char *buffer, size_t bufsize, value_pair_tmpl_t const *vp
 			talloc_free(q);
 			pairfree(&vp);
 			return strlen(buffer);
+
+		} else {
+			*buffer = '\0';
+			return 0;
 		}
 	}
 
