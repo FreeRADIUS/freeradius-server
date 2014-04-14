@@ -479,26 +479,34 @@ value_pair_map_t *radius_cp2map(TALLOC_CTX *ctx, CONF_PAIR *cp,
 		}
 	}
 
-	switch (map->src->type) {
+	if (map->dst->type == VPT_TYPE_LIST) {
 		/*
-		 *	Only += and -= operators are supported for list copy.
+		 *	Only += and :=, and !* operators are supported
+		 *	for lists.
 		 */
-		case VPT_TYPE_LIST:
-			switch (map->op) {
-			case T_OP_SUB:
-			case T_OP_ADD:
-				break;
-
-			default:
-				cf_log_err(ci, "Operator \"%s\" not allowed "
-					   "for list copy",
-					   fr_int2str(fr_tokens, map->op, "<INVALID>"));
+		switch (map->op) {
+		case T_OP_CMP_FALSE:
+			if ((map->src->type != VPT_TYPE_LITERAL) ||
+			    (strcmp(map->src->name, "ANY") != 0)) {
+				cf_log_err(ci, "Must use 'ANY' for list '!*' operator");
 				goto error;
 			}
-		break;
-
-		default:
 			break;
+
+		case T_OP_ADD:
+		case T_OP_SET:
+			if ((map->src->type != VPT_TYPE_LIST) &&
+			    (map->src->type != VPT_TYPE_EXEC)) {
+				cf_log_err(ci, "List assignment MUST be done from another list");
+				goto error;
+			}
+			break;
+
+			default:
+				cf_log_err(ci, "Operator \"%s\" not allowed for list copy",
+					   fr_int2str(fr_tokens, map->op, "<INVALID>"));
+				goto error;
+		}
 	}
 
 	return map;

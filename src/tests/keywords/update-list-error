@@ -1,0 +1,19 @@
+#
+# PRE: update
+#
+#  It's an error to update lists that don't exist.
+#
+update {
+	request := reply
+	config += request
+	reply !* ANY
+}
+
+update {
+       reply += `/path/to/foo bar baz`
+}
+
+
+update {
+	request := nope		# ERROR
+}
