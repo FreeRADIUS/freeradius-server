@@ -734,6 +734,7 @@ void log_talloc_report(TALLOC_CTX *ctx)
 
 typedef struct fr_logfile_entry_t {
 	int		fd;
+	int		dup;
 	uint32_t	hash;
 	time_t		last_used;
 	char		*filename;
@@ -1042,7 +1043,10 @@ do_return:
 	 *	Return holding the mutex for the entry.
 	 */
 	lf->entries[i].last_used = now;
-	return lf->entries[i].fd;
+	lf->entries[i].dup = dup(lf->entries[i].fd);
+	if (lf->entries[i].dup < 0) goto error;
+
+	return lf->entries[i].dup;
 }
 
 /** Close the log file.  Really just return it to the pool.
@@ -1062,15 +1066,39 @@ int fr_logfile_close(fr_logfile_t *lf, int fd)
 	PTHREAD_MUTEX_LOCK(&(lf->mutex));
 
 	for (i = 0; i < lf->max_entries; i++) {
-		if (!lf->entries[i].fd) continue;
+		if (!lf->entries[i].filename) continue;
 
 		/*
 		 *	Unlock the bytes that we had previously locked.
 		 */
-		if (lf->entries[i].fd == fd) {
-			lseek(lf->entries[i].fd, 0, SEEK_SET);
-			(void) rad_unlockfd(lf->entries[i].fd, 0);
+		if (lf->entries[i].dup == fd) {
+			(void) rad_unlockfd(lf->entries[i].dup, 0);
+			close(lf->entries[i].dup); /* releases the fcntl lock */
+			lf->entries[i].dup = -1;
 
+			PTHREAD_MUTEX_UNLOCK(&(lf->entries[i].mutex));
+			PTHREAD_MUTEX_UNLOCK(&(lf->mutex));
+			return 0;
+		}
+	}
+
+	PTHREAD_MUTEX_UNLOCK(&(lf->mutex));
+
+	fr_strerror_printf("Attempt to unlock file which does not exist");
+	return -1;
+}
+
+int fr_logfile_unlock(fr_logfile_t *lf, int fd)
+{
+	int i;
+
+	PTHREAD_MUTEX_LOCK(&(lf->mutex));
+
+	for (i = 0; i < lf->max_entries; i++) {
+		if (!lf->entries[i].filename) continue;
+
+		if (lf->entries[i].dup == fd) {
+			lf->entries[i].dup = -1;
 			PTHREAD_MUTEX_UNLOCK(&(lf->entries[i].mutex));
 			PTHREAD_MUTEX_UNLOCK(&(lf->mutex));
 			return 0;
