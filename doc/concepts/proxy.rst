@@ -24,7 +24,8 @@ be handled.  Common realm formats are:
   realm\username
 
 The realm parsing syntax ( and search order ) is user definable via the
-realm module config in the ``/etc/raddb/radiusd.conf`` configuration file.
+realm module config in the ``/etc/raddb/mods-available/realm`` configuration
+file.
 
 You can define multiple instances of the realm module to support multiple
 realm syntax's at the same time.  Be sure to pay close attention to the
@@ -44,7 +45,7 @@ The realm ``NULL`` matches any requests WITHOUT a realm.
 If you set the remote server to ``LOCAL``, the request will be handled
 locally as usual, without sending it to a remote radius server.
 
-There are several options you can add in both files:
+There are several options you can add in ``/etc/raddb/proxy.conf``:
 
 - nostrip:
   By default the realm is stripped from the username before sending it
