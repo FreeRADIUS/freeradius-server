@@ -1043,48 +1043,7 @@ int radius_map2request(REQUEST *request, value_pair_map_t const *map,
 	/*
 	 *	Get the correct parent for fixing up talloc contexts.
 	 */
-	switch (map->dst->list) {
-	case PAIR_LIST_REQUEST:
-		parent = request->packet;
-		break;
-
-	case PAIR_LIST_REPLY:
-		parent = request->reply;
-		break;
-
-	case PAIR_LIST_CONTROL:
-		parent = request;
-		break;
-
-#ifdef WITH_PROXY
-	case PAIR_LIST_PROXY_REQUEST:
-		parent = request->proxy;
-		break;
-
-	case PAIR_LIST_PROXY_REPLY:
-		parent = request->proxy_reply;
-		break;
-#endif
-
-#ifdef WITH_COA
-	case PAIR_LIST_COA:
-	case PAIR_LIST_DM:
-		rad_assert(request->coa != NULL);
-		parent = request->coa->proxy;
-		break;
-
-	case PAIR_LIST_COA_REPLY:
-	case PAIR_LIST_DM_REPLY:
-		rad_assert(request->coa != NULL);
-		parent = request->coa->proxy_reply;
-		break;
-#endif
-
-	default:
-		parent = NULL;
-	}
-
-	rad_assert(parent != NULL);
+	parent = radius_list_ctx(context, map->dst->list);
 
 	/*
 	 *	The callback should either return -1 to signify operations error, -2 when it can't find the
