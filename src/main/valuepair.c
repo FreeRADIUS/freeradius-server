@@ -986,6 +986,74 @@ TALLOC_CTX *radius_list_ctx(REQUEST *request, pair_lists_t list_name)
 		return NULL;
 }
 
+/*
+ *	Debug print a map / VP
+ */
+static void debug_map(REQUEST *request, value_pair_map_t const *map, VALUE_PAIR const *vp)
+{
+	char *value;
+	char buffer[1024];
+
+	switch (map->src->type) {
+		/*
+		 *	Just print the value being assigned
+		 */
+		default:
+		case VPT_TYPE_LITERAL:
+			vp_prints_value(buffer, sizeof(buffer), vp, '\'');
+			value = buffer;
+			break;
+
+		case VPT_TYPE_XLAT:
+		case VPT_TYPE_XLAT_STRUCT:
+			vp_prints_value(buffer, sizeof(buffer), vp, '"');
+			value = buffer;
+			break;
+
+		case VPT_TYPE_DATA:
+			vp_prints_value(buffer, sizeof(buffer), vp, 0);
+			value = buffer;
+			break;
+
+			/*
+			 *	Just printing the value doesn't make sense, but we still
+			 *	want to know what it was...
+			 */
+		case VPT_TYPE_LIST:
+			vp_prints_value(buffer, sizeof(buffer), vp, '\'');
+			value = talloc_typed_asprintf(request, "&%s%s -> %s", map->src->name, vp->da->name, buffer);
+			break;
+
+		case VPT_TYPE_ATTR:
+			vp_prints_value(buffer, sizeof(buffer), vp, '\'');
+			value = talloc_typed_asprintf(request, "&%s -> %s", map->src->name, buffer);
+			break;
+	}
+
+	switch (map->dst->type) {
+		case VPT_TYPE_LIST:
+			RDEBUG("\t%s%s %s %s", map->dst->name, vp->da->name,
+			       fr_int2str(fr_tokens, vp->op, "<INVALID>"), value);
+			break;
+
+		case VPT_TYPE_ATTR:
+			if (vp->da->type != PW_TYPE_STRING) {
+				RDEBUG("\t%s %s %s", map->dst->name,
+				       fr_int2str(fr_tokens, vp->op, "<INVALID>"), value);
+			} else {
+				RDEBUG("\t%s %s '%s'", map->dst->name,
+				       fr_int2str(fr_tokens, vp->op, "<INVALID>"), value);
+			}
+			break;
+
+		default:
+			break;
+	}
+
+	if (value != buffer) talloc_free(value);
+}
+
+
 /** Convert value_pair_map_t to VALUE_PAIR(s) and add them to a REQUEST.
  *
  * Takes a single value_pair_map_t, resolves request and list identifiers
@@ -1009,12 +1077,10 @@ int radius_map2request(REQUEST *request, value_pair_map_t const *map,
 	VALUE_PAIR **list, *vp, *head = NULL;
 	REQUEST *context;
 	TALLOC_CTX *parent;
-	char buffer[1024];
 
 	context = request;
 	if (radius_request(&context, map->dst->request) < 0) {
 		REDEBUG("Mapping \"%s\" -> \"%s\" invalid in this context", map->src->name, map->dst->name);
-
 		return -2;
 	}
 
@@ -1040,9 +1106,6 @@ int radius_map2request(REQUEST *request, value_pair_map_t const *map,
 		return -2;
 	}
 
-	/*
-	 *	Get the correct parent for fixing up talloc contexts.
-	 */
 	parent = radius_list_ctx(context, map->dst->list);
 
 	/*
@@ -1053,73 +1116,16 @@ int radius_map2request(REQUEST *request, value_pair_map_t const *map,
 	rcode = func(&head, request, map, ctx);
 	if (rcode < 0) {
 		rad_assert(!head);
-
 		return rcode;
 	}
 
 	if (!head) return 0;
 
-	VERIFY_VP(head);
 
-	if (debug_flag) for (vp = fr_cursor_init(&cursor, &head); vp; vp = fr_cursor_next(&cursor)) {
-		char *value;
+	for (vp = fr_cursor_init(&cursor, &head); vp; vp = fr_cursor_next(&cursor)) {
 
-		switch (map->src->type) {
-			/*
-			 *	Just print the value being assigned
-			 */
-			default:
-
-			case VPT_TYPE_LITERAL:
-				vp_prints_value(buffer, sizeof(buffer), vp, '\'');
-				value = buffer;
-				break;
-
-			case VPT_TYPE_XLAT:
-			case VPT_TYPE_XLAT_STRUCT:
-				vp_prints_value(buffer, sizeof(buffer), vp, '"');
-				value = buffer;
-				break;
-
-			case VPT_TYPE_DATA:
-				vp_prints_value(buffer, sizeof(buffer), vp, 0);
-				value = buffer;
-				break;
-			/*
-			 *	Just printing the value doesn't make sense, but we still
-			 *	want to know what it was...
-			 */
-			case VPT_TYPE_LIST:
-				vp_prints_value(buffer, sizeof(buffer), vp, '\'');
-				value = talloc_typed_asprintf(request, "&%s%s -> %s", map->src->name, vp->da->name, buffer);
-				break;
-			case VPT_TYPE_ATTR:
-				vp_prints_value(buffer, sizeof(buffer), vp, '\'');
-				value = talloc_typed_asprintf(request, "&%s -> %s", map->src->name, buffer);
-				break;
-		}
-
-		switch (map->dst->type) {
-			case VPT_TYPE_LIST:
-				RDEBUG("\t%s%s %s %s", map->dst->name, vp->da->name,
-				       fr_int2str(fr_tokens, vp->op, "<INVALID>"), value);
-				break;
-
-			case VPT_TYPE_ATTR:
-				if (vp->da->type != PW_TYPE_STRING) {
-					RDEBUG("\t%s %s %s", map->dst->name,
-					       fr_int2str(fr_tokens, vp->op, "<INVALID>"), value);
-				} else {
-					RDEBUG("\t%s %s '%s'", map->dst->name,
-					       fr_int2str(fr_tokens, vp->op, "<INVALID>"), value);
-				}
-				break;
-
-			default:
-				break;
-		}
-
-		if (value != buffer) talloc_free(value);
+		VERIFY_VP(vp);
+		if (debug_flag) debug_map(request, map, vp);
 
 		(void) talloc_steal(parent, vp);
 	}
