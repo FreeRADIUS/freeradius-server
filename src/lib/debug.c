@@ -329,7 +329,7 @@ static int fr_fault_check_permissions(void)
 	 *	quotes.
 	 */
 	if ((q = strchr(panic_action, ' '))) {
-		asprintf(&filename, "%.*s", (int)(q - panic_action), panic_action);
+		(void) asprintf(&filename, "%.*s", (int)(q - panic_action), panic_action);
 		p = filename;
 	} else {
 		p = panic_action;
