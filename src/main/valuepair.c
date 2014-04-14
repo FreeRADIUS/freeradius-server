@@ -147,7 +147,7 @@ int radius_compare_vps(REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *vp)
 	 */
 	if (check->da->flags.has_tag) {
 		ret = ((int) vp->tag) - ((int) check->tag);
-		goto finish;
+		if (ret != 0) goto finish;
 	}
 
 	/*
