@@ -1396,25 +1396,26 @@ int radius_map2vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *ma
 			   (map->src->da->type == map->dst->da->type) ||
 			   (map->src->da->type == PW_TYPE_OCTETS) ||
 			   (map->dst->da->type == PW_TYPE_OCTETS));
-		context = request;
-
-		if (radius_request(&context, map->src->request) == 0) {
-			from = radius_list(context, map->src->list);
-		}
-
-		/*
-		 *	Can't add the attribute if the list isn't
-		 *	valid.
-		 */
-		if (!from) {
-			rcode = -2;
-			goto error;
-		}
 
 		/*
 		 *	Special case, destination is a list, found all instance of an attribute.
 		 */
 		if (map->dst->type == VPT_TYPE_LIST) {
+			context = request;
+
+			if (radius_request(&context, map->src->request) == 0) {
+				from = radius_list(context, map->src->list);
+			}
+
+			/*
+			 *	Can't add the attribute if the list isn't
+			 *	valid.
+			 */
+			if (!from) {
+				rcode = -2;
+				goto error;
+			}
+
 			found = paircopy2(request, *from, map->src->da->attr, map->src->da->vendor, TAG_ANY);
 			if (!found) {
 				REDEBUG("Attribute \"%s\" not found in request", map->src->name);
@@ -1432,10 +1433,7 @@ int radius_map2vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *ma
 			return 0;
 		}
 
-		/*
-		 *	FIXME: allow tag references?
-		 */
-		found = pairfind(*from, map->src->da->attr, map->src->da->vendor, TAG_ANY);
+		found = radius_vpt_get_vp(request, map->src);
 		if (!found) {
 			REDEBUG("Attribute \"%s\" not found in request", map->src->name);
 			rcode = -2;
