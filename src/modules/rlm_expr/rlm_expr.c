@@ -685,26 +685,6 @@ EVP_MD_XLAT(sha256);
 EVP_MD_XLAT(sha512);
 #endif
 
-/** Encode string or attribute from hex to binary
- *
- * Example: "%{hextobin:0x616161}" == "aaa"
- */
-static ssize_t hex_to_bin_xlat(UNUSED void *instance, UNUSED REQUEST *request,
-			   char const *fmt, char *out, size_t outlen)
-{
-	ssize_t inlen;
-	uint8_t const *p;
-
-	inlen = xlat_fmt_to_ref(&p, request, fmt);
-	if (inlen < 0) {
-		return -1;
-	}
-
-	if ((p[0] != '0') && (p[1] != 'x')) return -1;
-
-	return fr_hex2bin((uint8_t *) out, (char const *) p + 2, outlen);
-}
-
 /** Encode string or attribute as base64
  *
  * Example: "%{base64:foo}" == "Zm9v"
@@ -801,7 +781,6 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 #endif
 	xlat_register("base64", base64_xlat, NULL, inst);
 	xlat_register("base64tohex", base64_to_hex_xlat, NULL, inst);
-	xlat_register("hextobin", hex_to_bin_xlat, NULL, inst);
 
 	/*
 	 *	Initialize various paircompare functions
