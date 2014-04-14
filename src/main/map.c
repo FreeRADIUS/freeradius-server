@@ -477,9 +477,32 @@ value_pair_map_t *radius_cp2map(TALLOC_CTX *ctx, CONF_PAIR *cp,
 			cf_log_err(ci, "Invalid operator for attribute");
 			goto error;
 		}
+
+		/*
+		 *	Forbid self to self copies.
+		 */
+		if ((map->src->type == VPT_TYPE_ATTR) &&
+		    (map->src->request == map->dst->request) &&
+		    (map->src->list == map->dst->list) &&
+		    (map->src->da == map->dst->da) &&
+		    (map->src->num == map->dst->num) &&
+		    (map->src->tag == map->dst->tag)) {
+			cf_log_err(ci, "Invalid self reference.");
+			goto error;
+		}
 	}
 
 	if (map->dst->type == VPT_TYPE_LIST) {
+		/*
+		 *	Forbid self to self copies.
+		 */
+		if ((map->src->type == VPT_TYPE_LIST) &&
+		    (map->src->request == map->dst->request) &&
+		    (map->src->list == map->dst->list)) {
+			cf_log_err(ci, "Invalid self reference.");
+			goto error;
+		}
+
 		/*
 		 *	Only += and :=, and !* operators are supported
 		 *	for lists.
