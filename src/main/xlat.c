@@ -781,16 +781,11 @@ void xlat_free(void)
 	rbtree_free(xlat_root);
 }
 
-#if 0
-#define XLAT_DEBUG(fmt, ...) printf(fmt, ## __VA_ARGS__);printf("\n")
-#endif
 
-#ifndef XLAT_DEBUG
-#if 0
+#ifdef DEBUG_XLAT
 #define XLAT_DEBUG DEBUG3
 #else
 #define XLAT_DEBUG(...)
-#endif
 #endif
 
 static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **head,
@@ -1907,6 +1902,10 @@ do_print:
 
 	return vp_aprint(ctx, vp);
 }
+
+#ifdef DEBUG_XLAT
+static const char *xlat_spaces = "                                                                                                                                                                                                                                                                ";
+#endif
 
 static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * const node,
 			 RADIUS_ESCAPE_STRING escape, void *escape_ctx, int lvl)
