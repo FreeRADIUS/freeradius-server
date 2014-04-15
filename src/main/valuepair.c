@@ -1043,7 +1043,6 @@ static void debug_map(REQUEST *request, value_pair_map_t const *map, VALUE_PAIR 
 	if (value != buffer) talloc_free(value);
 }
 
-
 /** Convert value_pair_map_t to VALUE_PAIR(s) and add them to a REQUEST.
  *
  * Takes a single value_pair_map_t, resolves request and list identifiers
@@ -1062,11 +1061,11 @@ static void debug_map(REQUEST *request, value_pair_map_t const *map, VALUE_PAIR 
 int radius_map2request(REQUEST *request, value_pair_map_t const *map,
 		       UNUSED char const *src, radius_tmpl_getvalue_t func, void *ctx)
 {
-	int rcode;
-	vp_cursor_t cursor;
+	int rcode, num;
 	VALUE_PAIR **list, *vp, *head = NULL;
 	REQUEST *context;
 	TALLOC_CTX *parent;
+	vp_cursor_t cursor;
 
 	/*
 	 *	Sanity check inputs.  We can have a list or attribute
@@ -1074,10 +1073,7 @@ int radius_map2request(REQUEST *request, value_pair_map_t const *map,
 	 */
 	if ((map->dst->type != VPT_TYPE_LIST) &&
 	    (map->dst->type != VPT_TYPE_ATTR)) {
-		char buffer[1024];
-
-		radius_map2str(buffer, sizeof(buffer), map);
-		REDEBUG("Invalid mapping destination %s", buffer);
+		REDEBUG("Invalid mapping destination");
 		return -2;
 	}
 
@@ -1124,6 +1120,9 @@ int radius_map2request(REQUEST *request, value_pair_map_t const *map,
 
 	if (!head) return 0;
 
+	/*
+	 *	Reparent the VP
+	 */
 	for (vp = fr_cursor_init(&cursor, &head); vp; vp = fr_cursor_next(&cursor)) {
 
 		VERIFY_VP(vp);
@@ -1178,9 +1177,137 @@ int radius_map2request(REQUEST *request, value_pair_map_t const *map,
 	}
 
 	/*
-	 *	Use pairmove so the operator is respected
+	 *	We now should have only one destination attribute, and
+	 *	only one source attribute.
 	 */
-	radius_pairmove(context, list, head);
+	rad_assert(head->next == NULL);
+
+	/*
+	 *	Find the destination attribute.  We leave with either
+	 *	the cursor and vp pointing to the attribute, or vp is
+	 *	NULL.
+	 */
+	num = map->dst->num;
+	for (vp = fr_cursor_init(&cursor, list);
+	     vp != NULL;
+	     vp = fr_cursor_next(&cursor)) {
+		VERIFY_VP(vp);
+		if ((vp->da == map->dst->da) && (!vp->da->flags.has_tag || (map->dst->tag == TAG_ANY) || (vp->tag == map->dst->tag))) {
+			if (num == 0) break;
+			num--;
+		}
+	}
+
+	/*
+	 *	Figure out what to do with the source attribute.
+	 */
+	switch (map->op) {
+	case T_OP_CMP_FALSE:	/* remove matching attributes */
+		pairfree(&head);
+		if (!vp) return 0;
+
+		/*
+		 *	Wildcard: delete all of the matching ones,
+		 *	based on tag.
+		 */
+		if (!map->dst->num) {
+			pairdelete(list, map->dst->da->attr, map->dst->da->vendor,
+				   map->dst->tag);
+			vp = NULL;
+		} else {
+			/*
+			 *	We've found the Nth one.  Delete it, and only
+			 *	it.
+			 */
+			vp = fr_cursor_remove(&cursor);
+		}
+
+		/*
+		 *	Check that the User-Name and User-Password
+		 *	caches point to the correct attribute.
+		 */
+	fixup:
+		if (map->dst->list == PAIR_LIST_REQUEST) {
+			context->username = pairfind(*list, PW_USER_NAME, 0, TAG_ANY);
+			context->password = pairfind(*list, PW_USER_PASSWORD, 0, TAG_ANY);
+		}
+		pairfree(&vp);
+		return 0;
+
+	case T_OP_EQ:		/* set only if not already set */
+		if (vp) {
+			pairfree(&head);
+			return 0;
+		}
+		fr_cursor_insert(&cursor, head);
+		goto fixup;
+
+	case T_OP_SET:		/* over-write if existing, or else add */
+		if (vp) vp = fr_cursor_remove(&cursor);
+		fr_cursor_insert(&cursor, head);
+		goto fixup;
+
+	case T_OP_ADD:		/* append no matter what */
+		vp = NULL;
+		pairadd(list, head);
+		goto fixup;
+
+	case T_OP_SUB:		/* delete if it matches */
+		head->op = T_OP_CMP_EQ;
+		rcode = radius_compare_vps(NULL, head, vp);
+		pairfree(&head);
+
+		if (rcode == 0) {
+			vp = fr_cursor_remove(&cursor);
+			goto fixup;
+		}
+		return 0;
+
+	default:		/* filtering operators */
+		/*
+		 *	If the VP doesn't exist, the filters will add
+		 *	it with the given value.
+		 */
+		if (!vp) {
+			fr_cursor_insert(&cursor, head);
+			goto fixup;
+		}
+		break;
+	}
+
+	/*
+	 *	The LHS exists.  We need to limit it's value based on
+	 *	the operator, and the value of the RHS.
+	 */
+	head->op = map->op;
+	rcode = radius_compare_vps(NULL, head, vp);
+	head->op = T_OP_SET;
+
+	switch (map->op) {
+	case T_OP_CMP_EQ:
+		if (rcode == 0) {
+	leave:
+			pairfree(&head);
+			break;
+		}
+	replace:
+		vp = fr_cursor_remove(&cursor);
+		fr_cursor_insert(&cursor, head);
+		goto fixup;
+
+	case T_OP_LE:
+		if (rcode <= 0) goto leave;
+		goto replace;
+
+	case T_OP_GE:
+		if (rcode >= 0) goto leave;
+		goto replace;
+
+	default:
+		pairfree(&head);
+		return -1;
+	}
+
 	return 0;
 }
 
