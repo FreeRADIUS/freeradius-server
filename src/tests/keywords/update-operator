@@ -1,0 +1,49 @@
+#
+#  PRE: update
+#
+update request {
+	NAS-Port := 1000
+}
+
+#
+#  Filtering
+#
+update request {
+	NAS-Port == 1000
+}
+
+if (NAS-Port != 1000) {
+	update reply {
+		Filter-Id := "fail 1"
+	}
+}
+
+update request {
+	NAS-Port <= 500
+}
+
+if (NAS-Port != 500) {
+	update reply {
+		Filter-Id := "fail 2"
+	}
+}
+
+update request {
+	NAS-Port >= 2000
+}
+
+if (NAS-Port != 2000) {
+	update reply {
+		Filter-Id := "fail 3"
+	}
+}
+
+if (!reply:Filter-Id) {
+	update control {
+		Cleartext-Password := 'hello'
+	}
+
+	update reply {
+		Filter-Id := "filter"
+	}
+}
