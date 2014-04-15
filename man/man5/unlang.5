@@ -10,7 +10,7 @@
 .RE
 .sp
 ..
-.TH unlang 5 "28 March 2014" "" "FreeRADIUS Processing un-language"
+.TH unlang 5 "15 April 2014" "" "FreeRADIUS Processing un-language"
 .SH NAME
 unlang \- FreeRADIUS Processing un\-language
 .SH DESCRIPTION
@@ -187,7 +187,7 @@ the current block.
 .DS
 	update <list> {
 .br
-		attribute = value
+		Attribute-Reference = value
 .br
 		...
 .br
@@ -221,7 +221,7 @@ See raddb/sites-available/originate-coa for additional information.
 
 The only contents permitted in an "update" section are attributes and
 values.  The contents of the "update" section are described in the
-ATTRIBUTES section below.
+ATTRIBUTE REFERENCE and ATTRIBUTE ASSIGNMENT sections below.
 .IP redundant
 This section contains a simple list of modules.  The first module is
 called when the section is being processed.  If the first module
@@ -297,6 +297,62 @@ or update an attribute list.
 .br
 	}
 .DE
+.SH ATTRIBUTE REFERENCES
+
+Attributes may be referenced via the following syntax:
+.DS
+	Attribute-Name
+	Attribute-Name:TAG
+	Attribute-Name[NUM]
+	<list>:Attribute-Name
+	<list>:Attribute-Name:TAG[NUM]
+.DE
+Where <list> is one of "request", "reply", "control", "proxy-request",
+"proxy-reply", or "outer.request", "outer.reply", "outer.control",
+"outer.proxy-request", or "outer.proxy-reply". just as with the
+"update" section, above.  The "<list>:" prefix is optional, and if
+omitted, is assumed to refer to the "request" list.
+
+The TAG portion is a decimal integer between 1 and 31.  Please see RFC
+2868 for more information about tags.  Tags can only be used for
+attributes which are marked in the dictionary as "has_tag".
+
+The NUM portion is used when there are multiple attributes of the same
+name in a list.  The "Attribute-Name" reference will return the first
+attribute.  Using an array offset allows the policy to refer to the
+second and subsequent attributes.
+
+When an attribute name is encountered, the given list is examined for
+an attribute of the given name.  Some examples are:
+.DS
+	User-Name
+.br
+	request:User-Name # same as above
+.br
+	reply:User-Name
+.br
+	Tunnel-Password:1
+.br
+	Cisco-AVPAir[2]
+.br
+	outer.request:User-Name # from inside of a TTLS/PEAP tunnel
+.DE
+Note that unlike C, there is no way to define new attributes at
+run-time.  They MUST be declared in a dictionary file, and loaded when
+the server starts.
+
+All attributes are defined in the dictionaries that accompany the
+server.  These definitions define only the name and type, and do not
+define the value of the attribute.  When the server receives a packet,
+it uses the packet contents to look up entries in the dictionary, and
+instantiates attributes with a name taken from the dictionaries, and a
+value taken from the packet contents.  This process means that if an
+attribute does not exist, it is usually because it was not contained
+in a packet that the server received.
+
+Once the attribute is instantiated, it is added to a list.  It can
+then be referenced, updated, replaced, etc.
+
 .SH CONDITIONS
 The conditions are similar to C conditions in syntax, though
 quoted strings are supported, as with the Unix shell.
@@ -490,61 +546,17 @@ expression match should be done in a case-insensitive fashion.
 If the comparison operator is "=~", then parantheses in the regular
 expression will define variables containing the matching text, as
 described below in the VARIABLES section.
-.SH VARIABLES
-Run-time variables are referenced using the following syntax
+.SH EXPANSIONS
+Attributes are expanded using the ATTRIBUTE REFERENCE syntax
+described above, and surrounding the reference with "%{...}"
 
 .DS
-	%{Variable-Name}
+	%{Attribute-Reference}
 .DE
 
-Note that unlike C, there is no way to declare variables, or to refer
-to them outside of a string context.  All references to variables MUST
-be contained inside of a double-quoted or back-quoted string.
-
-Many potential variables are defined in the dictionaries that
-accompany the server.  These definitions define only the name and
-type, and do not define the value of the variable.  When the server
-receives a packet, it uses the packet contents to look up entries in
-the dictionary, and instantiates variables with a name taken from the
-dictionaries, and a value taken from the packet contents.  This
-process means that if a variable does not exist, it is usually because
-it was not mentioned in a packet that the server received.
-
-Once the variable is instantiated, it is added to an appropriate
-attribute list, as described below.  In many cases, attributes and
-variables are inter-changeble, and are often talked about that way.
-However, variables can also refer to run-time calls to modules, which
-may perform operations like SQL SELECTs, and which may return the
-result as the value of the variable.
-.PP
-Referencing attribute lists
-.RS
-Attribute lists may be referenced via the following syntax
-
-.DS
-	%{<list>:Attribute-Name}
-.DE
-
-Where <list> is one of "request", "reply", "control", "proxy-request",
-"proxy-reply", or "outer.request", "outer.reply", "outer.control",
-"outer.proxy-request", or "outer.proxy-reply". just as with the
-"update" section, above.  The "<list>:" prefix is optional, and if
-omitted, is assumed to refer to the "request" list.
-
-When a variable is encountered, the given list is examined for an
-attribute of the given name.  If found, the variable reference in the
-string is replaced with the value of that attribute.  Some examples are:
-
-.DS
-	%{User-Name}
-.br
-	%{request:User-Name} # same as above
-.br
-	%{reply:User-Name}
-.br
-	%{outer.request:User-Name} # from inside of a TTLS/PEAP tunnel
-.DE
-.RE
+The result will be a string which contains the value of the attribute
+which was referenced, as a printable string.  If the attribute does
+not exist, the result will be an empty string.
 .PP
 Results of regular expression matches
 .RS
@@ -612,27 +624,7 @@ The hex value of the Attribute-Name, as a series of hex digits.
 e.g. If a request contains "Framed-IP-Address = 127.0.0.1", the expansion
 of %{hex:Framed-IP-Address} will yeild "0x7f000001".
 
-.IP %{Attribute-Name[index]}
-Reference the N'th occurance of the given attribute.  The syntax
-%{<list>:Attribute-Name[index]} may also be used.  The indexes start
-at zero.  This feature is NOT available for non-attribute dynamic
-translations, like %{sql:...}.
-
-For example, %{User-Name[0]} is the same as %{User-Name}
-
-The variable %{Cisco-AVPair[2]} will reference the value of the
-THIRD Cisco-AVPair attribute (if it exists) in the request packet,
-.IP %{Attribute-Name[#]}
-Returns the total number of attributes of that name in the relevant
-attribute list.  The number will usually be between 0 and 200.
-
-For most requests, %{request:User-Name[#]} == 1
-.IP %{Attribute-Name[*]}
-Expands to a single string, with the value of each array
-member separated by a newline.
-.IP %{#Attribute-Name[index]}
-Expands to the length of the string %{Attribute-Name[index]}.
-.SH ATTRIBUTES
+.SH ATTRIBUTE ASSIGNMENTS
 The attribute lists described above may be edited by listing one or
 more attributes in an "update" section.  Once the attributes have been
 defined, they may be referenced as described above in the VARIABLES
@@ -643,17 +635,15 @@ attribute and value has to be all on one line in the configuration
 file.  There is no need for commas or semi-colons after the value.
 
 .DS
-	Attribute-Name = value
+	Attribute-Reference = value
 .DE
 .PP
-Attribute names
+Attribute Reference
 .RS
-The Attribute-Name must be a name previously defined in a dictionary.
-If an undefined name is used, the server will return an error, and
-will not start.
+The Attribute-Reference must be a reference (see above), using a name
+previously defined in a dictionary.  If an undefined name is used, the
+server will return an error, and will not start.
 
-The names can be qualified with a list prefix.  For example,
-"request:User-Name" is usually a synonym for "User-Name".
 .RE
 .IP Operators
 The operator used to assign the value of the attribute may be one of
