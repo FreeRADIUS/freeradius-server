@@ -46,6 +46,8 @@ FreeRADIUS 3.0.3 Fri 21 Mar 2014 08:30:00 EDT urgency=medium
 	  on platforms with bad file locking.
 	* Allow DHCP NAKs to be delayed, via setting
 	  reply:FreeRADIUS-Response-Delay = 1
+	* Allow tag and array references anywhere attributes
+	  are allowed in "unlang".
 
 	Bug fixes
 	* Fix xlat expression %{attribute[n]} so that it actually
