@@ -38,6 +38,11 @@ if (NAS-Port != 2000) {
 	}
 }
 
+# non-existent attribute
+update request {
+       Class -= 0xabcdef
+}
+
 if (!reply:Filter-Id) {
 	update control {
 		Cleartext-Password := 'hello'

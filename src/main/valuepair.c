@@ -1253,6 +1253,8 @@ int radius_map2request(REQUEST *request, value_pair_map_t const *map,
 		goto fixup;
 
 	case T_OP_SUB:		/* delete if it matches */
+		if (!vp) return 0;
+
 		head->op = T_OP_CMP_EQ;
 		rcode = radius_compare_vps(NULL, head, vp);
 		pairfree(&head);
