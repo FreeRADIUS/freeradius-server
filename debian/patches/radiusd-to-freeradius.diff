@@ -1,6 +1,6 @@
 --- a/Make.inc.in
 +++ b/Make.inc.in
-@@ -50,7 +50,7 @@ LDFLAGS		= @LDFLAGS@
+@@ -75,7 +75,7 @@
  
  LOGDIR		= ${logdir}
  RADDBDIR	= ${raddbdir}
@@ -8,10 +8,10 @@
 +RUNDIR		= ${localstatedir}/run/freeradius
  SBINDIR		= ${sbindir}
  RADIR		= ${radacctdir}
- LIBRADIUS	= $(top_builddir)/src/lib/$(LIBPREFIX)freeradius-radius.la
+ LIBRADIUS	= $(top_builddir)/src/lib/$(LIBPREFIX)freeradius-radius.la -ltalloc
 --- a/raddb/radiusd.conf.in
 +++ b/raddb/radiusd.conf.in
-@@ -62,7 +62,7 @@ radacctdir = @radacctdir@
+@@ -61,7 +61,7 @@
  
  #
  #  name of the running server.  See also the "-n" command-line option.
@@ -20,7 +20,7 @@
  
  #  Location of config and logfiles.
  confdir = ${raddbdir}
-@@ -463,8 +463,8 @@ security {
+@@ -415,8 +415,8 @@
  	#  member.  This can allow for some finer-grained access
  	#  controls.
  	#
@@ -46,4 +46,3 @@
     if failed host 127.0.0.1 port 1812 type udp protocol radius secret testing123 then alert
     if failed host 127.0.0.1 port 1813 type udp protocol radius secret testing123 then alert
     if cpu > 95% for 2 cycles then alert
-
