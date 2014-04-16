@@ -1118,8 +1118,6 @@ int radius_map2request(REQUEST *request, value_pair_map_t const *map,
 		return rcode;
 	}
 
-	if (!head) return 0;
-
 	/*
 	 *	Reparent the VP
 	 */
@@ -1137,8 +1135,8 @@ int radius_map2request(REQUEST *request, value_pair_map_t const *map,
 	if (map->dst->type == VPT_TYPE_LIST) {
 		switch (map->op) {
 		case T_OP_CMP_FALSE:
-			rad_assert(head == NULL);
 			pairfree(list);
+			pairfree(&head);
 
 			if (map->dst->list == PAIR_LIST_REQUEST) {
 				context->username = NULL;
@@ -1180,7 +1178,7 @@ int radius_map2request(REQUEST *request, value_pair_map_t const *map,
 	 *	We now should have only one destination attribute, and
 	 *	only one source attribute.
 	 */
-	rad_assert(head->next == NULL);
+	rad_assert(!head || head->next == NULL);
 
 	/*
 	 *	Find the destination attribute.  We leave with either
@@ -1253,7 +1251,11 @@ int radius_map2request(REQUEST *request, value_pair_map_t const *map,
 		goto fixup;
 
 	case T_OP_SUB:		/* delete if it matches */
-		if (!vp) return 0;
+		if (!vp) {
+			pairfree(&head);
+			return 0;
+		}
+		if (!head) return 0;
 
 		head->op = T_OP_CMP_EQ;
 		rcode = radius_compare_vps(NULL, head, vp);
@@ -1274,6 +1276,13 @@ int radius_map2request(REQUEST *request, value_pair_map_t const *map,
 			fr_cursor_insert(&cursor, head);
 			goto fixup;
 		}
+
+		/*
+		 *	If we're filtering based on the value of
+		 *	ANOTHER attribute, and that attribute doesn't
+		 *	exist, then we can't do filtering.
+		 */
+		if (!head) return 0;
 		break;
 	}
 
