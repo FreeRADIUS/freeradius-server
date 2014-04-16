@@ -477,6 +477,17 @@ value_pair_map_t *radius_cp2map(TALLOC_CTX *ctx, CONF_PAIR *cp,
 			cf_log_err(ci, "Invalid operator for attribute");
 			goto error;
 		}
+
+		/*
+		 *	This will be an error in future versions of
+		 *	the server.
+		 */
+		if ((map->op == T_OP_CMP_FALSE) &&
+		    ((map->src->type != VPT_TYPE_LITERAL) ||
+		     (strcmp(map->src->name, "ANY") != 0))) {
+			WDEBUG("%s[%d] Attribute deletion MUST use '!* ANY'",
+			       cf_pair_filename(cp), cf_pair_lineno(cp));
+		}
 	}
 
 	if (map->dst->type == VPT_TYPE_LIST) {
