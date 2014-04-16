@@ -43,6 +43,14 @@ update request {
        Class -= 0xabcdef
 }
 
+update request {
+       Class -= &Class
+}
+
+update request {
+       NAS-Port -= &NAS-Port
+}
+
 if (!reply:Filter-Id) {
 	update control {
 		Cleartext-Password := 'hello'

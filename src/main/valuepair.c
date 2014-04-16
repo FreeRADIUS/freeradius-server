@@ -1391,11 +1391,11 @@ int radius_mapexec(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *m
 
 /** Convert a map to a VALUE_PAIR.
  *
- * @param[out] out Where to write the VALUE_PAIR(s).
+ * @param[out] out Where to write the VALUE_PAIR(s), which may be NULL if not found
  * @param[in] request structure (used only for talloc)
  * @param[in] map the map. The LHS (dst) has to be VPT_TYPE_ATTR or VPT_TYPE_LIST.
  * @param[in] ctx unused
- * @return 0 on success, -1 on failure, -2 on attribute not found/equivalent
+ * @return 0 on success, -1 on failure
  */
 int radius_map2vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *map, UNUSED void *ctx)
 {
@@ -1424,7 +1424,7 @@ int radius_map2vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *ma
 			if (radius_request(&context, map->dst->request) == 0) {
 				from = radius_list(context, map->dst->list);
 			}
-			if (!from) return -2;
+			if (!from) return 0;
 
 			pairfree(from);
 
@@ -1455,13 +1455,14 @@ int radius_map2vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *ma
 		if (radius_request(&context, map->src->request) == 0) {
 			from = radius_list(context, map->src->list);
 		}
-		if (!from) return -2;
+		if (!from) return 0;
 
 		found = paircopy(request, *from);
+
 		/*
-		 *	List to list copy is invalid if the src list has no attributes.
+		 *	List to list copy is empty if the src list has no attributes.
 		 */
-		if (!found) return -2;
+		if (!found) return 0;
 
 		for (vp = fr_cursor_init(&cursor, &found);
 		     vp;
@@ -1548,7 +1549,7 @@ int radius_map2vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *ma
 
 	case VPT_TYPE_LITERAL:
 		if (!pairparsevalue(vp, map->src->name)) {
-			rcode = -2;
+			rcode = 0;
 			goto error;
 		}
 		break;
@@ -1574,14 +1575,14 @@ int radius_map2vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *ma
 			 *	valid.
 			 */
 			if (!from) {
-				rcode = -2;
+				rcode = 0;
 				goto error;
 			}
 
 			found = paircopy2(request, *from, map->src->da->attr, map->src->da->vendor, TAG_ANY);
 			if (!found) {
 				REDEBUG("Attribute \"%s\" not found in request", map->src->name);
-				rcode = -2;
+				rcode = 0;
 				goto error;
 			}
 
@@ -1597,7 +1598,7 @@ int radius_map2vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *ma
 
 		if (radius_vpt_get_vp(&found, request, map->src) < 0) {
 			REDEBUG("Attribute \"%s\" not found in request", map->src->name);
-			rcode = -2;
+			rcode = 0;
 			goto error;
 		}
 
@@ -1631,7 +1632,7 @@ int radius_map2vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *ma
 	case VPT_TYPE_EXEC:
 		return radius_mapexec(out, request, map);
 	default:
-		rad_assert(0);	/* Should of been caught at parse time */
+		rad_assert(0);	/* Should have been caught at parse time */
 	error:
 		pairfree(&vp);
 		return rcode;
