@@ -72,9 +72,11 @@ cui.post-auth {
 			Chargeable-User-Identity = "%{sha1:${policy.cui_hash_key}%{tolower:%{User-Name}%{%{Operator-Name}:-}}}"
 		}
 	}
+
 	update reply {
-		User-Name -= "%{reply:User-Name}"
+		User-Name !* ANY	# remove User-Name from the reply for security
 	}
+
 	#
 	#  The section below will store a CUI for the User in the DB.
 	#  You need to configure the cuisql module and your database for this to work.
