@@ -10,7 +10,7 @@
 .RE
 .sp
 ..
-.TH rlm_pap 5 "6 June 2008" "" "FreeRADIUS Module"
+.TH rlm_pap 5 "17 April 2014" "" "FreeRADIUS Module"
 .SH NAME
 rlm_pap \- FreeRADIUS Module
 .SH DESCRIPTION
@@ -29,14 +29,14 @@ from a database.
 .SH CONFIGURATION
 .PP
 The only relevant configuration item is:
-.IP auto_header
-If set to "yes", the module will look inside of the User-Password
-attribute for the headers {crypt}, {clear}, etc., and will
-automatically create the appropriate attribute, with the correct
-value.
+.IP normify
+The default is "yes".  This means that the module will try to convert
+hex passwords and base64-encoded passwords to "normalized" form.
+However, some clear text passwords may be erroneously converted.
+Setting this to "no" prevents that conversion.
 .PP
-This module understands many kinds of password hashing methods, as
-given by the following table.
+The module looks for the Password-With-Header attribute to find the
+"known good password.  The header is given by the following table.
 .PP
 .DS
 .br
@@ -69,6 +69,9 @@ The module tries to be flexible when handling the various password
 formats.  It will automatically handle Base-64 encoded data, hex
 strings, and binary data, and convert them to a format that the server
 can use.
+.PP
+If there is no Password-With-Header attribute, the module looks for
+Cleartext-Password, NT-Password, Crypt-Password, etc.
 .PP
 It is important to understand the difference between the User-Password
 and Cleartext-Password attributes.  The Cleartext-Password attribute
