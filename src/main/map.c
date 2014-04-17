@@ -723,7 +723,6 @@ size_t radius_tmpl2str(char *buffer, size_t bufsize, value_pair_tmpl_t const *vp
 			snprintf(q, bufsize, "[%u]", vpt->num);
 			len = strlen(q);
 			q += len;
-			bufsize -= len;
 		}
 
 		return (q - buffer);
