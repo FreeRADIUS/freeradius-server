@@ -65,7 +65,6 @@ static rlm_rcode_t getUserNodeRef(REQUEST *request, char* inUserName, char **out
 	tAttributeListRef       attrListRef	= 0;
 	char		    *pUserLocation	= NULL;
 	tAttributeValueListRef  valueRef	= 0;
-	tAttributeValueEntry    *pValueEntry	= NULL;
 	tDataList	       *pUserNode	= NULL;
 	rlm_rcode_t		result		= RLM_MODULE_FAIL;
 
@@ -142,10 +141,12 @@ static rlm_rcode_t getUserNodeRef(REQUEST *request, char* inUserName, char **out
 		for (attrIndex = 1; (attrIndex <= pRecEntry->fRecordAttributeCount) && (status == eDSNoErr); attrIndex++) {
 			status = dsGetAttributeEntry(nodeRef, tDataBuff, attrListRef, attrIndex, &valueRef, &pAttrEntry);
 			if (status == eDSNoErr && pAttrEntry != NULL) {
+				tAttributeValueEntry    *pValueEntry	= NULL;
+
 				if (strcmp(pAttrEntry->fAttributeSignature.fBufferData, kDSNAttrMetaNodeLocation) == 0) {
 					status = dsGetAttributeValue(nodeRef, tDataBuff, 1, valueRef, &pValueEntry);
 					if (status == eDSNoErr && pValueEntry != NULL) {
-						pUserLocation = (char *) calloc(pValueEntry->fAttributeValueData.fBufferLength + 1, sizeof(char));
+						pUserLocation = talloc_zero_array(request, char, pValueEntry->fAttributeValueData.fBufferLength + 1);
 						memcpy(pUserLocation, pValueEntry->fAttributeValueData.fBufferData, pValueEntry->fAttributeValueData.fBufferLength);
 					}
 				} else if (strcmp(pAttrEntry->fAttributeSignature.fBufferData, kDSNAttrRecordName) == 0) {
@@ -156,7 +157,7 @@ static rlm_rcode_t getUserNodeRef(REQUEST *request, char* inUserName, char **out
 					}
 				}
 
-				if (pValueEntry != NULL) {
+				if (pValueEntry) {
 					dsDeallocAttributeValueEntry(dsRef, pValueEntry);
 					pValueEntry = NULL;
 				}
@@ -166,6 +167,12 @@ static rlm_rcode_t getUserNodeRef(REQUEST *request, char* inUserName, char **out
 				dsCloseAttributeValueList(valueRef);
 				valueRef = 0;
 			}
+		}
+
+		if (!pUserLocation) {
+			DEBUG2("[mschap] OpenDirectory has no user location.");
+			result = RLM_MODULE_NOOP;
+			break;
 		}
 
 		/* OpenDirectory doesn't support mschapv2 authentication against
@@ -206,7 +213,7 @@ static rlm_rcode_t getUserNodeRef(REQUEST *request, char* inUserName, char **out
 		dsDataBufferDeAllocate(dsRef, tDataBuff);
 
 	if (pUserLocation != NULL)
-		free(pUserLocation);
+		talloc_free(pUserLocation);
 
 	if (pRecName != NULL) {
 		dsDataListDeallocate(dsRef, pRecName);
