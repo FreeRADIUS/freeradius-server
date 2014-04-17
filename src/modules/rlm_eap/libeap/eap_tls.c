@@ -142,6 +142,8 @@ int eaptls_success(eap_handler_t *handler, int peap_flag)
 	REQUEST *request = handler->request;
 	tls_session_t *tls_session = handler->opaque;
 
+	rad_assert(request != NULL);
+
 	handler->finished = true;
 	reply.code = FR_TLS_SUCCESS;
 	reply.length = TLS_HEADER_LEN;

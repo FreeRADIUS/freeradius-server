@@ -512,6 +512,8 @@ rlm_rcode_t eap_compose(eap_handler_t *handler)
 	reply = eap_ds->request;
 #endif
 
+	rad_assert(request != NULL);
+
 	/*
 	 *	The Id for the EAP packet to the NAS wasn't set.
 	 *	Do so now.
