@@ -90,6 +90,7 @@ FreeRADIUS 3.0.3 Fri 21 Mar 2014 08:30:00 EDT urgency=medium
 	* Normalize return codes for many modules. "do nothing" is noop,
 	  not "ok".
 	* Run Post-Proxy-Type Fail.  Closes #576
+	* Fix DHCP destination port for replies to relays.  Closes #591
 
 FreeRADIUS 3.0.2 Fri 21 Mar 2014 08:30:00 EDT urgency=medium
 	Feature improvements
