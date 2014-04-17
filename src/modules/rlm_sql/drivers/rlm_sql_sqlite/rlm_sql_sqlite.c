@@ -393,7 +393,7 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 	/*
 	 *	Enable extended return codes for extra debugging info.
 	 */
-	status = sqlite3_extended_result_codes(conn->db, 1);
+	(void) sqlite3_extended_result_codes(conn->db, 1);
 	if (sql_check_error(conn->db)) {
 		return -1;
 	}
