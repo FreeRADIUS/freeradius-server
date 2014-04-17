@@ -1832,6 +1832,7 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 	char buffer[512];
 
 	rad_assert((!username && !password) || (username && password));
+	rad_assert(request != NULL);
 
 	buffer[(sizeof(buffer) - 1)] = '\0';
 
