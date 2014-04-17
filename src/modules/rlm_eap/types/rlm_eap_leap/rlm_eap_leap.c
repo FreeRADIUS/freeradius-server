@@ -43,6 +43,7 @@ static int leap_initiate(UNUSED void *instance, eap_handler_t *handler)
 	leap_session_t	*session;
 	leap_packet_t	*reply;
 
+	rad_assert(request != NULL);
 	RDEBUG2("Stage 2");
 
 	/*
