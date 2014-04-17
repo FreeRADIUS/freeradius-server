@@ -847,7 +847,7 @@ redo:
 				h = mod_callabletogroup(this);
 				if (h->vpt) continue;
 
-				null_case = found = this;
+				found = this;
 				break;
 			}
 
