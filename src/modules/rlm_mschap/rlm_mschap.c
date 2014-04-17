@@ -688,6 +688,8 @@ static int do_mschap_cpw(rlm_mschap_t *inst,
 			 uint8_t *old_nt_hash,
 			 int do_ntlm_auth)
 {
+	rad_assert(request != NULL);
+
 	if (inst->ntlm_cpw && do_ntlm_auth) {
 		/*
 		 * we're going to run ntlm_auth in helper-mode
