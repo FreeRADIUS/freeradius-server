@@ -208,7 +208,7 @@ static ssize_t xlat_integer(UNUSED void *instance, REQUEST *request,
 	}
 
 	REDEBUG("Type '%s' of length %zu cannot be converted to integer",
-		fr_int2str(dict_attr_types, vp->da->type, PW_TYPE_INVALID), vp->length);
+		fr_int2str(dict_attr_types, vp->da->type, "???"), vp->length);
 	*out = '\0';
 
 	return -1;
