@@ -220,7 +220,7 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 	 */
 #define WRITE_ALL(_a,_b,_c) if (write_all(_a,_b,_c) < 0) goto done;
 	state = pairfind(request->packet->vps, PW_STATE, 0, TAG_ANY);
-	if (!state) {
+	if (state) {
 		RDEBUG("Found reply to access challenge");
 
 		/* send username */
@@ -228,26 +228,26 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 			 request->username->vp_strvalue);
 		WRITE_ALL(fdp, output, strlen(output));
 
-		bufsize = read_all(fdp, buffer, sizeof(buffer));
+		(void) read_all(fdp, buffer, sizeof(buffer));
 
 		/* send password */
 		snprintf(output, sizeof(output), "user otp is %s\n",
 			 request->password->vp_strvalue);
 		WRITE_ALL(fdp, output, strlen(output));
 
-		bufsize = read_all(fdp, buffer, sizeof(buffer));
+		(void) read_all(fdp, buffer, sizeof(buffer));
 
 		/* set uuid */
 		snprintf(output, sizeof(output), "otp id is %s\n",
 			 state->vp_strvalue);
 		WRITE_ALL(fdp, output, strlen(output));
 
-		bufsize = read_all(fdp, buffer, sizeof(buffer));
+		(void) read_all(fdp, buffer, sizeof(buffer));
 
 		/* now check the otp */
 		WRITE_ALL(fdp, "get check result\n", 17);
 
-		bufsize = read_all(fdp, buffer, sizeof(buffer));
+		(void) read_all(fdp, buffer, sizeof(buffer));
 
 		/* end the sesssion */
 		WRITE_ALL(fdp, "quit\n", 5);
@@ -267,7 +267,7 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 		 request->username->vp_strvalue);
 	WRITE_ALL(fdp, output, strlen(output));
 
-	bufsize = read_all(fdp, buffer, sizeof(buffer));
+	(void) read_all(fdp, buffer, sizeof(buffer));
 
 	/* end the sesssion */
 	WRITE_ALL(fdp, "quit\n", 5);
