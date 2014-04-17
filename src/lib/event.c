@@ -152,14 +152,15 @@ int fr_event_delete(fr_event_list_t *el, fr_event_t **parent)
 	 *  Validate the event_t struct to detect memory issues early.
 	 */
 	ev = talloc_get_type_abort(*parent, fr_event_t);
+
 #else
 	ev = *parent;
 #endif
 
-	fr_assert(ev->parent != NULL);
-	fr_assert(*(ev->parent) == ev);
-
-	*ev->parent = NULL;
+	if (ev->parent) {
+		fr_assert(*(ev->parent) == ev);
+		*ev->parent = NULL;
+	}
 	*parent = NULL;
 
 	ret = fr_heap_extract(el->times, ev);
