@@ -624,16 +624,13 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 						     REQUEST_CURRENT, PAIR_LIST_REQUEST,
 						     REQUEST_CURRENT, PAIR_LIST_REQUEST);
 			if (!c->data.map) {
+				/*
+				 *	FIXME: if strings are T_BARE_WORD and they start with '&',
+				 *	then they refer to attributes which have not yet been
+				 *	defined.  Create the template(s) as literals, and
+				 *	fix them up in pass2.
+				 */
 				if (*lhs == '&') {
-					/*
-					 *	FIXME: In the future,
-					 *	have str2map above
-					 *	know whether this is
-					 *	pass1 or pass2.  If
-					 *	it's pass2, then an
-					 *	unknown attribute is a
-					 *	soft fail.
-					 */
 					return_0("Unknown attribute");
 				}
 				return_0("Syntax error");

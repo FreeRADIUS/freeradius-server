@@ -91,7 +91,7 @@ static ssize_t unpack_xlat(UNUSED void *instance, REQUEST *request, char const *
 	 *	Attribute reference
 	 */
 	if (*data_name == '&') {
-		if (radius_get_vp(&vp, request, data_name + 1) < 0) goto nothing;
+		if (radius_get_vp(&vp, request, data_name) < 0) goto nothing;
 
 		if ((vp->da->type != PW_TYPE_OCTETS) &&
 		    (vp->da->type != PW_TYPE_STRING)) {

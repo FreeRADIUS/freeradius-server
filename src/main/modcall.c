@@ -1792,7 +1792,7 @@ static modcallable *do_compile_modcase(modcallable *parent, rlm_components_t com
 		type = cf_section_name2_type(cs);
 
 		vpt = radius_str2tmpl(cs, name2, type, REQUEST_CURRENT, PAIR_LIST_REQUEST);
-		if (!vpt && (name2[0] != '&')) {
+		if (!vpt && ((type != T_BARE_WORD) || (name2[0] != '&'))) {
 			cf_log_err_cs(cs, "Syntax error in '%s': %s", name2, fr_strerror());
 			return NULL;
 		}
