@@ -298,7 +298,7 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 		 *	Specifying inner/outer request doesn't work here
 		 *	but there's no easy fix...
 		 */
-		switch (map->dst->list) {
+		switch (map->dst->vpt_list) {
 		case PAIR_LIST_REQUEST:
 			to_cache = &c->packet;
 			break;
@@ -327,17 +327,17 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 		 *	  - Map src and dst attributes differ
 		 */
 		to_req = NULL;
-		if (merge && ( !map->src->da ||
-		    (map->src->list != map->dst->list) ||
-		    (map->src->da != map->dst->da))) {
+		if (merge && (!map->src->vpt_da ||
+		    (map->src->vpt_list != map->dst->vpt_list) ||
+		    (map->src->vpt_da != map->dst->vpt_da))) {
 			context = request;
 			/*
 			 *	It's ok if the list isn't valid here...
 			 *	It might be valid later when we merge
 			 *	the cache entry.
 			 */
-			if (radius_request(&context, map->dst->request) == 0) {
-				to_req = radius_list(context, map->dst->list);
+			if (radius_request(&context, map->dst->vpt_request) == 0) {
+				to_req = radius_list(context, map->dst->vpt_list);
 			}
 		}
 
@@ -355,10 +355,10 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 				vp_cursor_t cursor;
 
 				from = NULL;
-				da = map->src->da;
+				da = map->src->vpt_da;
 				context = request;
-				if (radius_request(&context, map->src->request) == 0) {
-					from = radius_list(context, map->src->list);
+				if (radius_request(&context, map->src->vpt_request) == 0) {
+					from = radius_list(context, map->src->vpt_list);
 				}
 
 				/*
@@ -385,7 +385,7 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 				case T_OP_SUB:
 					vp = map->dst->type == VPT_TYPE_LIST ?
 						paircopyvp(c, found) :
-						paircopyvpdata(c, map->dst->da, found);
+						paircopyvpdata(c, map->dst->vpt_da, found);
 
 					if (!vp) continue;
 
@@ -401,7 +401,7 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 					do {
 						vp = map->dst->type == VPT_TYPE_LIST ?
 							paircopyvp(c, found) :
-							paircopyvpdata(c, map->dst->da, found);
+							paircopyvpdata(c, map->dst->vpt_da, found);
 						if (!vp) continue;
 
 						vp->op = map->op;
@@ -430,8 +430,8 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 
 				from = NULL;
 				context = request;
-				if (radius_request(&context, map->src->request) == 0) {
-					from = radius_list(context, map->src->list);
+				if (radius_request(&context, map->src->vpt_request) == 0) {
+					from = radius_list(context, map->src->vpt_list);
 				}
 				if (!from) continue;
 
@@ -487,7 +487,7 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 			       fr_int2str(fr_tokens, map->op, "<INVALID>"),
 			       buffer);
 
-			vp = pairalloc(map->dst, map->dst->da);
+			vp = pairalloc(map->dst, map->dst->vpt_da);
 			if (!vp) continue;
 
 			vp->op = map->op;
@@ -512,7 +512,7 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 			       fr_int2str(fr_tokens, map->op, "<INVALID>"),
 			       map->src->name);
 
-			vp = pairalloc(map->dst, map->dst->da);
+			vp = pairalloc(map->dst, map->dst->vpt_da);
 			if (!vp) continue;
 
 			vp->op = map->op;
@@ -618,7 +618,7 @@ static int cache_verify(rlm_cache_t *inst, value_pair_map_t **head)
 				VALUE_PAIR *vp;
 				bool ret;
 
-				MEM(vp = pairalloc(map->dst, map->dst->da));
+				MEM(vp = pairalloc(map->dst, map->dst->vpt_da));
 				vp->op = map->op;
 
 				ret = pairparsevalue(vp, map->src->name);

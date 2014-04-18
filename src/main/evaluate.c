@@ -128,7 +128,7 @@ static int radius_expand_tmpl(char **out, REQUEST *request, value_pair_tmpl_t co
 	case VPT_TYPE_XLAT_STRUCT:
 		EVAL_DEBUG("TMPL XLAT_STRUCT");
 		/* Error in expansion, this is distinct from zero length expansion */
-		if (radius_axlat_struct(out, request, vpt->xlat, NULL, NULL) < 0) {
+		if (radius_axlat_struct(out, request, vpt->vpt_xlat, NULL, NULL) < 0) {
 			rad_assert(!*out);
 			return -1;
 		}
@@ -274,7 +274,7 @@ static int do_regex(REQUEST *request, value_pair_map_t const *map, bool iflag)
 
 		preg = &reg;
 	} else {
-		preg = map->src->preg;
+		preg = map->src->vpt_preg;
 	}
 
 	rcode = radius_expand_tmpl(&lhs, request, map->dst);
@@ -309,9 +309,9 @@ static int get_cast_vp(VALUE_PAIR **out, REQUEST *request, value_pair_tmpl_t con
 	}
 
 	if (vpt->type == VPT_TYPE_DATA) {
-		rad_assert(vp->da->type == vpt->da->type);
-		memcpy(&vp->data, vpt->vpd, sizeof(vp->data));
-		vp->length = vpt->length;
+		rad_assert(vp->da->type == vpt->vpt_da->type);
+		memcpy(&vp->data, vpt->vpt_value, sizeof(vp->data));
+		vp->length = vpt->vpt_length;
 		goto finish;
 	}
 
@@ -577,7 +577,7 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 
 		EVAL_DEBUG("virtual ATTR to DATA");
 
-		rcode = get_cast_vp(&lhs_vp, request, map->src, map->dst->da);
+		rcode = get_cast_vp(&lhs_vp, request, map->src, map->dst->vpt_da);
 		if (rcode < 0) {
 			return rcode;
 		}
@@ -611,7 +611,7 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 			return -2;
 		}
 
-		rcode = get_cast_vp(&rhs_vp, request, map->src, map->dst->da);
+		rcode = get_cast_vp(&rhs_vp, request, map->src, map->dst->vpt_da);
 		if (rcode < 0) {
 			return rcode;
 		}
@@ -672,9 +672,9 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 			 *	Not a real attr: might be a dynamic comparison.
 			 */
 			if ((map->dst->type == VPT_TYPE_ATTR) &&
-			    (map->dst->da->vendor == 0) &&
-			    radius_find_compare(map->dst->da)) {
-				rhs_vp = pairalloc(request, map->dst->da);
+			    (map->dst->vpt_da->vendor == 0) &&
+			    radius_find_compare(map->dst->vpt_da)) {
+				rhs_vp = pairalloc(request, map->dst->vpt_da);
 				rad_assert(rhs_vp != NULL);
 				if (!pairparsevalue(rhs_vp, rhs)) {
 					talloc_free(rhs);
@@ -694,7 +694,7 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 		/*
 		 *	Get VP for RHS
 		 */
-		rhs_vp = pairalloc(request, map->dst->da);
+		rhs_vp = pairalloc(request, map->dst->vpt_da);
 		rad_assert(rhs_vp != NULL);
 		if (!pairparsevalue(rhs_vp, rhs)) {
 			talloc_free(rhs);

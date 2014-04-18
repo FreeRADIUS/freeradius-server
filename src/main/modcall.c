@@ -881,13 +881,13 @@ redo:
 			    (h->vpt->type != VPT_TYPE_DATA)) {
 				map.src = g->vpt;
 				map.dst = h->vpt;
-				cond.cast = g->vpt->da;
+				cond.cast = g->vpt->vpt_da;
 
 				/*
 				 *	Remove unnecessary casting.
 				 */
 				if ((h->vpt->type == VPT_TYPE_ATTR) &&
-				    (g->vpt->da->type == h->vpt->da->type)) {
+				    (g->vpt->vpt_da->type == h->vpt->vpt_da->type)) {
 					cond.cast = NULL;
 				}
 			} else {
@@ -1634,22 +1634,21 @@ static modcallable *do_compile_modupdate(modcallable *parent, UNUSED rlm_compone
 			 *	It's a literal string, just copy it.
 			 *	Don't escape anything.
 			 */
-			if ((map->dst->da->type == PW_TYPE_STRING) &&
+			if ((map->dst->vpt_da->type == PW_TYPE_STRING) &&
 			    (cf_pair_value_type(cp) == T_SINGLE_QUOTED_STRING)) {
 				value_data_t *vpd;
 
-				map->src->vpd = vpd = talloc_zero(map->src, value_data_t);
+				map->src->vpt_value = vpd = talloc_zero(map->src, value_data_t);
 				rad_assert(vpd != NULL);
 
 				vpd->strvalue = talloc_typed_strdup(vpd, map->src->name);
 				rad_assert(vpd->strvalue != NULL);
 
 				map->src->type = VPT_TYPE_DATA;
-				map->src->da = map->dst->da;
-				map->src->length = talloc_array_length(vpd->strvalue) - 1;
-
+				map->src->vpt_da = map->dst->vpt_da;
+				map->src->vpt_length = talloc_array_length(vpd->strvalue) - 1;
 			} else {
-				if (!radius_cast_tmpl(map->src, map->dst->da)) {
+				if (!radius_cast_tmpl(map->src, map->dst->vpt_da)) {
 					talloc_free(head);
 					cf_log_err(map->ci, "%s", fr_strerror());
 					return NULL;
@@ -2758,7 +2757,7 @@ static bool pass2_xlat_compile(CONF_ITEM const *ci, value_pair_tmpl_t **pvpt, bo
 	 *	Re-write it to be a pre-parsed XLAT structure.
 	 */
 	vpt->type = VPT_TYPE_XLAT_STRUCT;
-	vpt->xlat = head;
+	vpt->vpt_xlat = head;
 
 	return true;
 }
@@ -2791,7 +2790,7 @@ static bool pass2_regex_compile(CONF_ITEM const *ci, value_pair_tmpl_t *vpt)
 	}
 
 	vpt->type = VPT_TYPE_REGEX_STRUCT;
-	vpt->preg = preg;
+	vpt->vpt_preg = preg;
 
 	return true;
 }
@@ -2835,11 +2834,11 @@ static bool pass2_callback(UNUSED void *ctx, fr_cond_t *c)
 	 *	Where "foo" is dynamically defined.
 	 */
 	if (c->pass2_fixup == PASS2_FIXUP_TYPE) {
-		if (!dict_valbyname(map->dst->da->attr,
-				    map->dst->da->vendor,
+		if (!dict_valbyname(map->dst->vpt_da->attr,
+				    map->dst->vpt_da->vendor,
 				    map->src->name)) {
 			cf_log_err(map->ci, "Invalid reference to non-existent %s %s { ... }",
-				   map->dst->da->name,
+				   map->dst->vpt_da->name,
 				   map->src->name);
 			return false;
 		}
@@ -2934,12 +2933,12 @@ check_paircmp:
 	 *	with the request pairs.
 	 */
 	if ((map->dst->type != VPT_TYPE_ATTR) ||
-	    (map->dst->request != REQUEST_CURRENT) ||
-	    (map->dst->list != PAIR_LIST_REQUEST)) {
+	    (map->dst->vpt_request != REQUEST_CURRENT) ||
+	    (map->dst->vpt_list != PAIR_LIST_REQUEST)) {
 		return true;
 	}
 
-	if (!radius_find_compare(map->dst->da)) return true;
+	if (!radius_find_compare(map->dst->vpt_da)) return true;
 
 	if (map->src->type == VPT_TYPE_ATTR) {
 		cf_log_err(map->ci, "Cannot compare virtual attribute %s to another attribute",
@@ -2984,7 +2983,7 @@ static bool modcall_pass2_update(modgroup *g)
 
 	for (map = g->map; map != NULL; map = map->next) {
 		if (map->src->type == VPT_TYPE_XLAT) {
-			rad_assert(map->src->vpd == NULL);
+			rad_assert(map->src->vpt_xlat == NULL);
 
 			/*
 			 *	FIXME: compile to attribute && handle
@@ -3158,9 +3157,9 @@ bool modcall_pass2(modcallable *mc)
 				 *	values match.
 				 */
 				if (f->vpt->type == VPT_TYPE_ATTR) {
-					rad_assert(f->vpt->da != NULL);
+					rad_assert(f->vpt->vpt_da != NULL);
 
-					if (!radius_cast_tmpl(g->vpt, f->vpt->da)) {
+					if (!radius_cast_tmpl(g->vpt, f->vpt->vpt_da)) {
 						cf_log_err_cs(g->cs, "Invalid argument for case statement: %s",
 							      fr_strerror());
 						return false;

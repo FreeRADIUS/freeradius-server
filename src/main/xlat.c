@@ -289,9 +289,9 @@ static ssize_t xlat_debug_attr(UNUSED void *instance, REQUEST *request, char con
 	}
 
 	current = request;
-	if (radius_request(&current, vpt.request) < 0) return -2;
+	if (radius_request(&current, vpt.vpt_request) < 0) return -2;
 
-	vps = radius_list(current, vpt.list);
+	vps = radius_list(current, vpt.vpt_list);
 	if (!vps) {
 		return -2;
 	}
@@ -299,8 +299,8 @@ static ssize_t xlat_debug_attr(UNUSED void *instance, REQUEST *request, char con
 	RIDEBUG("Attributes matching \"%s\"", fmt);
 	vp = fr_cursor_init(&cursor, vps);
 
-	if (vpt.da) {
-		vp = fr_cursor_next_by_num(&cursor, vpt.da->attr, vpt.da->vendor, TAG_ANY);
+	if (vpt.vpt_da) {
+		vp = fr_cursor_next_by_num(&cursor, vpt.vpt_da->attr, vpt.vpt_da->vendor, TAG_ANY);
 	}
 	while (vp) {
 		DICT_ATTR *dac = NULL;
@@ -312,14 +312,14 @@ static ssize_t xlat_debug_attr(UNUSED void *instance, REQUEST *request, char con
 
 		if (vp->da->flags.has_tag) {
 			RIDEBUG2("\t%s:%s:%i %s %s",
-				fr_int2str(pair_lists, vpt.list, "<INVALID>"),
+				fr_int2str(pair_lists, vpt.vpt_list, "<INVALID>"),
 				vp->da->name,
 				vp->tag,
 				fr_int2str(fr_tokens, vp->op, "<INVALID>"),
 				buffer);
 		} else {
 			RIDEBUG2("\t%s:%s %s %s",
-				fr_int2str(pair_lists, vpt.list, "<INVALID>"),
+				fr_int2str(pair_lists, vpt.vpt_list, "<INVALID>"),
 				vp->da->name,
 				fr_int2str(fr_tokens, vp->op, "<INVALID>"),
 				buffer);
@@ -410,8 +410,8 @@ static ssize_t xlat_debug_attr(UNUSED void *instance, REQUEST *request, char con
 
 		talloc_free(dac);
 
-		if (vpt.da) {
-			vp = fr_cursor_next_by_num(&cursor, vpt.da->attr, vpt.da->vendor, TAG_ANY);
+		if (vpt.vpt_da) {
+			vp = fr_cursor_next_by_num(&cursor, vpt.vpt_da->attr, vpt.vpt_da->vendor, TAG_ANY);
 		} else {
 			vp = fr_cursor_next(&cursor);
 		}
@@ -2301,9 +2301,9 @@ value_pair_tmpl_t *radius_xlat2tmpl(TALLOC_CTX *ctx, xlat_exp_t *xlat)
 
 	vpt->type = VPT_TYPE_ATTR;
 	vpt->name = talloc_strdup(vpt, xlat->fmt);
-	vpt->request = xlat->ref;
-	vpt->list = xlat->list;
-	vpt->da = xlat->da;
+	vpt->vpt_request = xlat->ref;
+	vpt->vpt_list = xlat->list;
+	vpt->vpt_da = xlat->da;
 
 	return vpt;
 }

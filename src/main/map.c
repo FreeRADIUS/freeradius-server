@@ -41,7 +41,7 @@ void radius_tmplfree(value_pair_tmpl_t **tmpl)
 {
 	if (*tmpl == NULL) return;
 
-	dict_attr_free(&((*tmpl)->da));
+	dict_attr_free(&((*tmpl)->vpt_da));
 
 	talloc_free(*tmpl);
 
@@ -84,16 +84,16 @@ int radius_parse_attr(value_pair_tmpl_t *vpt, char const *name, request_refs_t r
 		p++;
 	}
 
-	vpt->request = radius_request_name(&p, request_def);
+	vpt->vpt_request = radius_request_name(&p, request_def);
 	len = p - name;
-	if (vpt->request == REQUEST_UNKNOWN) {
+	if (vpt->vpt_request == REQUEST_UNKNOWN) {
 		fr_strerror_printf("Invalid request qualifier \"%.*s\"", (int) len, name);
 		return error;
 	}
 	name += len;
 
-	vpt->list = radius_list_name(&p, list_def);
-	if (vpt->list == PAIR_LIST_UNKNOWN) {
+	vpt->vpt_list = radius_list_name(&p, list_def);
+	if (vpt->vpt_list == PAIR_LIST_UNKNOWN) {
 		len = p - name;
 		fr_strerror_printf("Invalid list qualifier \"%.*s\"", (int) len, name);
 		return error;
@@ -112,9 +112,9 @@ int radius_parse_attr(value_pair_tmpl_t *vpt, char const *name, request_refs_t r
 			return error;
 		}
 	}
-	vpt->da = da;
+	vpt->vpt_da = da;
 	vpt->type = VPT_TYPE_ATTR;
-	vpt->tag = TAG_ANY;
+	vpt->vpt_tag = TAG_ANY;
 
 	/*
 	 *	After this point, we return -2 to indicate that parts
@@ -142,9 +142,9 @@ int radius_parse_attr(value_pair_tmpl_t *vpt, char const *name, request_refs_t r
 		}
 
 		if (num == 0) {
-			vpt->tag = TAG_ANY;
+			vpt->vpt_tag = TAG_ANY;
 		} else {
-			vpt->tag = num;
+			vpt->vpt_tag = num;
 		}
 		p = q;
 	}
@@ -170,7 +170,7 @@ int radius_parse_attr(value_pair_tmpl_t *vpt, char const *name, request_refs_t r
 		return -2;
 	}
 
-	vpt->num = num;
+	vpt->vpt_num = num;
 
 	return 0;
 }
@@ -437,10 +437,10 @@ value_pair_map_t *radius_cp2map(TALLOC_CTX *ctx, CONF_PAIR *cp,
 	 *	We don't support implicit type conversion,
 	 *	except for "octets"
 	 */
-	if (map->dst->da && map->src->da &&
-	    (map->src->da->type != map->dst->da->type) &&
-	    (map->src->da->type != PW_TYPE_OCTETS) &&
-	    (map->dst->da->type != PW_TYPE_OCTETS)) {
+	if (map->dst->vpt_da && map->src->vpt_da &&
+	    (map->src->vpt_da->type != map->dst->vpt_da->type) &&
+	    (map->src->vpt_da->type != PW_TYPE_OCTETS) &&
+	    (map->dst->vpt_da->type != PW_TYPE_OCTETS)) {
 		cf_log_err(ci, "Attribute type mismatch");
 		goto error;
 	}
@@ -680,40 +680,40 @@ size_t radius_tmpl2str(char *buffer, size_t bufsize, value_pair_tmpl_t const *vp
 
 	case VPT_TYPE_ATTR:
 		buffer[0] = '&';
-		if (vpt->request == REQUEST_CURRENT) {
-			if (vpt->list == PAIR_LIST_REQUEST) {
-				strlcpy(buffer + 1, vpt->da->name, bufsize - 1);
+		if (vpt->vpt_request == REQUEST_CURRENT) {
+			if (vpt->vpt_list == PAIR_LIST_REQUEST) {
+				strlcpy(buffer + 1, vpt->vpt_da->name, bufsize - 1);
 			} else {
 				snprintf(buffer + 1, bufsize - 1, "%s:%s",
-					 fr_int2str(pair_lists, vpt->list, ""),
-					 vpt->da->name);
+					 fr_int2str(pair_lists, vpt->vpt_list, ""),
+					 vpt->vpt_da->name);
 			}
 
 		} else {
 			snprintf(buffer + 1, bufsize - 1, "%s.%s:%s",
-				 fr_int2str(request_refs, vpt->request, ""),
-				 fr_int2str(pair_lists, vpt->list, ""),
-				 vpt->da->name);
+				 fr_int2str(request_refs, vpt->vpt_request, ""),
+				 fr_int2str(pair_lists, vpt->vpt_list, ""),
+				 vpt->vpt_da->name);
 		}
 
 		len = strlen(buffer);
 
-		if ((vpt->tag == TAG_ANY) && !vpt->num) {
+		if ((vpt->vpt_tag == TAG_ANY) && !vpt->vpt_num) {
 			return len;
 		}
 
 		q = buffer + len;
 		bufsize -= len;
 
-		if (vpt->tag != TAG_ANY) {
-			snprintf(q, bufsize, ":%d", vpt->tag);
+		if (vpt->vpt_tag != TAG_ANY) {
+			snprintf(q, bufsize, ":%d", vpt->vpt_tag);
 			len = strlen(q);
 			q += len;
 			bufsize -= len;
 		}
 
-		if (vpt->num) {
-			snprintf(q, bufsize, "[%u]", vpt->num);
+		if (vpt->vpt_num) {
+			snprintf(q, bufsize, "[%u]", vpt->vpt_num);
 			len = strlen(q);
 			q += len;
 		}
@@ -721,20 +721,20 @@ size_t radius_tmpl2str(char *buffer, size_t bufsize, value_pair_tmpl_t const *vp
 		return (q - buffer);
 
 	case VPT_TYPE_DATA:
-		if (vpt->vpd) {
+		if (vpt->vpt_value) {
 			VALUE_PAIR *vp;
 			TALLOC_CTX *ctx;
 
 			memcpy(&ctx, &vpt, sizeof(ctx)); /* hack */
 
-			MEM(vp = pairalloc(ctx, vpt->da));
-			memcpy(&vp->data, vpt->vpd, sizeof(vp->data));
-			vp->length = vpt->length;
+			MEM(vp = pairalloc(ctx, vpt->vpt_da));
+			memcpy(&vp->data, vpt->vpt_value, sizeof(vp->data));
+			vp->length = vpt->vpt_length;
 
 			q = vp_aprint(vp, vp);
 
-			if ((vpt->da->type != PW_TYPE_STRING) &&
-			    (vpt->da->type != PW_TYPE_DATE)) {
+			if ((vpt->vpt_da->type != PW_TYPE_STRING) &&
+			    (vpt->vpt_da->type != PW_TYPE_DATE)) {
 				strlcpy(buffer, q, bufsize);
 			} else {
 				/*
@@ -846,7 +846,7 @@ size_t radius_map2str(char *buffer, size_t bufsize, value_pair_map_t const *map)
 	rad_assert(map->src != NULL);
 
 	if ((map->dst->type == VPT_TYPE_ATTR) &&
-	    (map->dst->da->type == PW_TYPE_STRING) &&
+	    (map->dst->vpt_da->type == PW_TYPE_STRING) &&
 	    (map->src->type == VPT_TYPE_LITERAL)) {
 		*(p++) = '\'';
 		len = radius_tmpl2str(p, end - p, map->src);
@@ -884,12 +884,12 @@ bool radius_cast_tmpl(value_pair_tmpl_t *vpt, DICT_ATTR const *da)
 		return false;
 	}
 
-	vpt->length = vp->length;
-	vpt->vpd = data = talloc(vpt, value_data_t);
-	if (!vpt->vpd) return false;
+	vpt->vpt_length = vp->length;
+	vpt->vpt_value = data = talloc(vpt, value_data_t);
+	if (!vpt->vpt_value) return false;
 
 	vpt->type = VPT_TYPE_DATA;
-	vpt->da = da;
+	vpt->vpt_da = da;
 
 	if (vp->da->flags.is_pointer) {
 		data->ptr = talloc_steal(vpt, vp->data.ptr);

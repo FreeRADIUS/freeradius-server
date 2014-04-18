@@ -110,8 +110,24 @@ typedef struct xlat_exp xlat_exp_t;
 
 /** A pre-parsed template attribute
  *
- *  Value pair template, used when processing various mappings sections
- *  to create a real valuepair later.
+ * Is used as both the RHS and LHS of a map (both update, and conditional types)
+ *
+ * When used on the LHS it describes an attribute to create and should be one of these types:
+ * - VPT_TYPE_ATTR
+ * - VPT_TYPE_LIST
+ *
+ * When used on the RHS it describes the value to assign to the attribute being created and
+ * should be one of these types:
+ * - VPT_TYPE_LITERAL
+ * - VPT_TYPE_XLAT
+ * - VPT_TYPE_ATTR
+ * - VPT_TYPE_LIST
+ * - VPT_TYPE_EXEC
+ * - VPT_TYPE_DATA
+ * - VPT_TYPE_XLAT_STRUCT (pre-parsed xlat)
+ *
+ * When used as part of a condition it may be any of the RHS side types, as well as:
+ * - VPT_TYPE_REGEX_STRUCT (pre-parsed regex)
  *
  * @see value_pair_map_t
  */
@@ -122,17 +138,42 @@ typedef struct value_pair_tmpl_t {
 					 //!< attribute, just the string id for
 					 //!< the attribute.
 
-	request_refs_t		request; //!< Request to search or insert in.
-	pair_lists_t		list;	 //!< List to search or insert in.
+	/*
+	 * @todo This should be moved into the union, but some code currently
+	 * uses value_pair_tmpl_t's to describe both the value and the attribute.
+	 * This is wrong, and the code that does this should be converted to use
+	 * maps.
+	 */
+	struct {
+		request_refs_t		request; //!< Request to search or insert in.
+		pair_lists_t		list;	 //!< List to search or insert in.
 
-	DICT_ATTR const		*da;	 //!< Resolved dictionary attribute.
-	unsigned int		num;	 //!< for array references
-	int8_t			tag;     //!< for tag references
-	value_data_t const	*vpd;	 //!< actual data
-	size_t			length;  //!< of the vpd data
-	xlat_exp_t		*xlat;	 //!< pre-parsed xlat_exp_t
-	regex_t			*preg;	 //!< pre-parsed regex_t
+		DICT_ATTR const		*da;	 //!< Resolved dictionary attribute.
+		unsigned int		num;	 //!< for array references
+		int8_t			tag;     //!< for tag references
+	} attribute;
+
+	union {
+		struct {
+			value_data_t const	*value;	 //!< actual data
+			size_t			length;  //!< of the vpd data
+		} literal;
+		xlat_exp_t	*xlat;	 //!< pre-parsed xlat_exp_t
+		regex_t		*preg;	 //!< pre-parsed regex_t
+	} data;
 } value_pair_tmpl_t;
+
+#define vpt_request	attribute.request
+#define vpt_list	attribute.list
+#define vpt_da		attribute.da
+#define vpt_num		attribute.num
+#define vpt_tag		attribute.tag
+
+#define vpt_xlat	data.xlat
+#define vpt_preg	data.preg
+
+#define vpt_value	data.literal.value
+#define vpt_length	data.literal.length
 
 /** Value pair map
  *

@@ -927,13 +927,13 @@ TALLOC_CTX *radius_list_ctx(REQUEST *request, pair_lists_t list_name)
 
 		switch (list_name) {
 		case PAIR_LIST_REQUEST:
-			return request->packet;			
+			return request->packet;
 
 		case PAIR_LIST_REPLY:
 			return request->reply;
 
 		case PAIR_LIST_CONTROL:
-			return request;			
+			return request;
 
 #ifdef WITH_PROXY
 		case PAIR_LIST_PROXY_REQUEST:
@@ -1078,7 +1078,7 @@ int radius_map2request(REQUEST *request, value_pair_map_t const *map,
 	}
 
 	context = request;
-	if (radius_request(&context, map->dst->request) < 0) {
+	if (radius_request(&context, map->dst->vpt_request) < 0) {
 		REDEBUG("Mapping \"%s\" -> \"%s\" invalid in this context", map->src->name, map->dst->name);
 		return -2;
 	}
@@ -1087,25 +1087,25 @@ int radius_map2request(REQUEST *request, value_pair_map_t const *map,
 	 *	If there's no CoA packet and we're updating it,
 	 *	auto-allocate it.
 	 */
-	if (((map->dst->list == PAIR_LIST_COA) ||
-	     (map->dst->list == PAIR_LIST_DM)) &&
+	if (((map->dst->vpt_list == PAIR_LIST_COA) ||
+	     (map->dst->vpt_list == PAIR_LIST_DM)) &&
 	    !request->coa) {
 		request_alloc_coa(context);
-		if (map->dst->list == PAIR_LIST_COA) {
+		if (map->dst->vpt_list == PAIR_LIST_COA) {
 			context->coa->proxy->code = PW_CODE_COA_REQUEST;
 		} else {
 			context->coa->proxy->code = PW_CODE_DISCONNECT_REQUEST;
 		}
 	}
 
-	list = radius_list(context, map->dst->list);
+	list = radius_list(context, map->dst->vpt_list);
 	if (!list) {
 		REDEBUG("Mapping \"%s\" -> \"%s\" invalid in this context", map->src->name, map->dst->name);
 
 		return -2;
 	}
 
-	parent = radius_list_ctx(context, map->dst->list);
+	parent = radius_list_ctx(context, map->dst->vpt_list);
 
 	/*
 	 *	The callback should either return -1 to signify operations error, -2 when it can't find the
@@ -1138,7 +1138,7 @@ int radius_map2request(REQUEST *request, value_pair_map_t const *map,
 			pairfree(list);
 			pairfree(&head);
 
-			if (map->dst->list == PAIR_LIST_REQUEST) {
+			if (map->dst->vpt_list == PAIR_LIST_REQUEST) {
 				context->username = NULL;
 				context->password = NULL;
 			}
@@ -1156,7 +1156,7 @@ int radius_map2request(REQUEST *request, value_pair_map_t const *map,
 				pairfree(&head);
 			}
 
-			if (map->dst->list == PAIR_LIST_REQUEST) {
+			if (map->dst->vpt_list == PAIR_LIST_REQUEST) {
 				context->username = pairfind(head, PW_USER_NAME, 0, TAG_ANY);
 				context->password = pairfind(head, PW_USER_PASSWORD, 0, TAG_ANY);
 			}
@@ -1185,12 +1185,12 @@ int radius_map2request(REQUEST *request, value_pair_map_t const *map,
 	 *	the cursor and vp pointing to the attribute, or vp is
 	 *	NULL.
 	 */
-	num = map->dst->num;
+	num = map->dst->vpt_num;
 	for (vp = fr_cursor_init(&cursor, list);
 	     vp != NULL;
 	     vp = fr_cursor_next(&cursor)) {
 		VERIFY_VP(vp);
-		if ((vp->da == map->dst->da) && (!vp->da->flags.has_tag || (map->dst->tag == TAG_ANY) || (vp->tag == map->dst->tag))) {
+		if ((vp->da == map->dst->vpt_da) && (!vp->da->flags.has_tag || (map->dst->vpt_tag == TAG_ANY) || (vp->tag == map->dst->vpt_tag))) {
 			if (num == 0) break;
 			num--;
 		}
@@ -1208,9 +1208,9 @@ int radius_map2request(REQUEST *request, value_pair_map_t const *map,
 		 *	Wildcard: delete all of the matching ones,
 		 *	based on tag.
 		 */
-		if (!map->dst->num) {
-			pairdelete(list, map->dst->da->attr, map->dst->da->vendor,
-				   map->dst->tag);
+		if (!map->dst->vpt_num) {
+			pairdelete(list, map->dst->vpt_da->attr, map->dst->vpt_da->vendor,
+				   map->dst->vpt_tag);
 			vp = NULL;
 		} else {
 			/*
@@ -1225,7 +1225,7 @@ int radius_map2request(REQUEST *request, value_pair_map_t const *map,
 		 *	caches point to the correct attribute.
 		 */
 	fixup:
-		if (map->dst->list == PAIR_LIST_REQUEST) {
+		if (map->dst->vpt_list == PAIR_LIST_REQUEST) {
 			context->username = pairfind(*list, PW_USER_NAME, 0, TAG_ANY);
 			context->password = pairfind(*list, PW_USER_PASSWORD, 0, TAG_ANY);
 		}
@@ -1380,7 +1380,7 @@ int radius_mapexec(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *m
 	{
 		VALUE_PAIR *vp;
 
-		vp = pairalloc(request, map->dst->da);
+		vp = pairalloc(request, map->dst->vpt_da);
 		if (!vp) return -1;
 		vp->op = map->op;
 		if (!pairparsevalue(vp, answer)) {
@@ -1430,15 +1430,15 @@ int radius_map2vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *ma
 		 *  radius_pairmove() to consume, and need to do the work here instead.
 		 */
 		if (map->dst->type == VPT_TYPE_LIST) {
-			if (radius_request(&context, map->dst->request) == 0) {
-				from = radius_list(context, map->dst->list);
+			if (radius_request(&context, map->dst->vpt_request) == 0) {
+				from = radius_list(context, map->dst->vpt_list);
 			}
 			if (!from) return 0;
 
 			pairfree(from);
 
 			/* @fixme hacky! */
-			if (map->dst->list == PAIR_LIST_REQUEST) {
+			if (map->dst->vpt_list == PAIR_LIST_REQUEST) {
 				context->username = NULL;
 				context->password = NULL;
 			}
@@ -1447,7 +1447,7 @@ int radius_map2vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *ma
 		}
 
 		/* Not a list, but an attribute, radius_pairmove() will perform that actual delete */
-		vp = pairalloc(request, map->dst->da);
+		vp = pairalloc(request, map->dst->vpt_da);
 		if (!vp) return -1;
 		vp->op = map->op;
 		*out = vp;
@@ -1461,8 +1461,8 @@ int radius_map2vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *ma
 	 *	the op.
 	 */
 	if ((map->dst->type == VPT_TYPE_LIST) && (map->src->type == VPT_TYPE_LIST)) {
-		if (radius_request(&context, map->src->request) == 0) {
-			from = radius_list(context, map->src->list);
+		if (radius_request(&context, map->src->vpt_request) == 0) {
+			from = radius_list(context, map->src->vpt_list);
 		}
 		if (!from) return 0;
 
@@ -1487,7 +1487,7 @@ int radius_map2vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *ma
 	/*
 	 *	Deal with all non-list operations.
 	 */
-	da = map->dst->da ? map->dst->da : map->src->da;
+	da = map->dst->vpt_da ? map->dst->vpt_da : map->src->vpt_da;
 
 	switch (map->src->type) {
 	case VPT_TYPE_XLAT:
@@ -1511,11 +1511,11 @@ int radius_map2vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *ma
 		char *str;
 
 	case VPT_TYPE_XLAT_STRUCT:
-		rad_assert(map->dst->da);	/* Need to know where were going to write the new attribute */
-		rad_assert(map->src->xlat != NULL);
+		rad_assert(map->dst->vpt_da);	/* Need to know where were going to write the new attribute */
+		rad_assert(map->src->vpt_xlat != NULL);
 
 		str = NULL;
-		slen = radius_axlat_struct(&str, request, map->src->xlat, NULL, NULL);
+		slen = radius_axlat_struct(&str, request, map->src->vpt_xlat, NULL, NULL);
 		if (slen < 0) {
 			rcode = slen;
 			goto error;
@@ -1539,7 +1539,7 @@ int radius_map2vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *ma
 		break;
 
 	case VPT_TYPE_XLAT:
-		rad_assert(map->dst->da);	/* Need to know where were going to write the new attribute */
+		rad_assert(map->dst->vpt_da);	/* Need to know where were going to write the new attribute */
 
 		str = NULL;
 		slen = radius_axlat(&str, request, map->src->name, NULL, NULL);
@@ -1564,10 +1564,10 @@ int radius_map2vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *ma
 		break;
 
 	case VPT_TYPE_ATTR:
-		rad_assert(!map->dst->da ||
-			   (map->src->da->type == map->dst->da->type) ||
-			   (map->src->da->type == PW_TYPE_OCTETS) ||
-			   (map->dst->da->type == PW_TYPE_OCTETS));
+		rad_assert(!map->dst->vpt_da ||
+			   (map->src->vpt_da->type == map->dst->vpt_da->type) ||
+			   (map->src->vpt_da->type == PW_TYPE_OCTETS) ||
+			   (map->dst->vpt_da->type == PW_TYPE_OCTETS));
 
 		/*
 		 *	Special case, destination is a list, found all instance of an attribute.
@@ -1575,8 +1575,8 @@ int radius_map2vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *ma
 		if (map->dst->type == VPT_TYPE_LIST) {
 			context = request;
 
-			if (radius_request(&context, map->src->request) == 0) {
-				from = radius_list(context, map->src->list);
+			if (radius_request(&context, map->src->vpt_request) == 0) {
+				from = radius_list(context, map->src->vpt_list);
 			}
 
 			/*
@@ -1588,7 +1588,7 @@ int radius_map2vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *ma
 				goto error;
 			}
 
-			found = paircopy2(request, *from, map->src->da->attr, map->src->da->vendor, TAG_ANY);
+			found = paircopy2(request, *from, map->src->vpt_da->attr, map->src->vpt_da->vendor, TAG_ANY);
 			if (!found) {
 				REDEBUG("Attribute \"%s\" not found in request", map->src->name);
 				rcode = 0;
@@ -1624,11 +1624,11 @@ int radius_map2vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *ma
 		break;
 
 	case VPT_TYPE_DATA:
-		rad_assert(map->src && map->src->da);
-		rad_assert(map->dst && map->dst->da);
-		rad_assert(map->src->da->type == map->dst->da->type);
-		memcpy(&vp->data, map->src->vpd, sizeof(vp->data));
-		vp->length = map->src->length;
+		rad_assert(map->src && map->src->vpt_da);
+		rad_assert(map->dst && map->dst->vpt_da);
+		rad_assert(map->src->vpt_da->type == map->dst->vpt_da->type);
+		memcpy(&vp->data, map->src->vpt_value, sizeof(vp->data));
+		vp->length = map->src->vpt_length;
 		break;
 
 	/*
@@ -1705,11 +1705,11 @@ int radius_vpt_get_vp(VALUE_PAIR **out, REQUEST *request, value_pair_tmpl_t cons
 
 	if (out) *out = NULL;
 
-	if (radius_request(&request, vpt->request) < 0) {
+	if (radius_request(&request, vpt->vpt_request) < 0) {
 		return -3;
 	}
 
-	vps = radius_list(request, vpt->list);
+	vps = radius_list(request, vpt->vpt_list);
 	if (!vps) {
 		return -2;
 	}
@@ -1720,8 +1720,8 @@ int radius_vpt_get_vp(VALUE_PAIR **out, REQUEST *request, value_pair_tmpl_t cons
 		 *	name.
 		 */
 	case VPT_TYPE_ATTR:
-		if (vpt->num == 0) {
-			vp = pairfind(*vps, vpt->da->attr, vpt->da->vendor, vpt->tag);
+		if (vpt->vpt_num == 0) {
+			vp = pairfind(*vps, vpt->vpt_da->attr, vpt->vpt_da->vendor, vpt->vpt_tag);
 			if (!vp) return -1;
 
 		} else {
@@ -1731,12 +1731,12 @@ int radius_vpt_get_vp(VALUE_PAIR **out, REQUEST *request, value_pair_tmpl_t cons
 			/*
 			 *	It's faster to just repeat the 3-4 lines of pairfind here.
 			 */
-			num = vpt->num;
+			num = vpt->vpt_num;
 			for (vp = fr_cursor_init(&cursor, vps);
 			     vp != NULL;
 			     vp = fr_cursor_next(&cursor)) {
 				VERIFY_VP(vp);
-				if ((vp->da == vpt->da) && (!vp->da->flags.has_tag || (vpt->tag == TAG_ANY) || (vp->tag == vpt->tag))) {
+				if ((vp->da == vpt->vpt_da) && (!vp->da->flags.has_tag || (vpt->vpt_tag == TAG_ANY) || (vp->tag == vpt->vpt_tag))) {
 					if (num == 0) {
 						*out = vp;
 						return 0;
@@ -1803,11 +1803,11 @@ int radius_vpt_copy_vp(VALUE_PAIR **out, REQUEST *request, value_pair_tmpl_t con
 
 	if (out) *out = NULL;
 
-	if (radius_request(&current, vpt->request) < 0) {
+	if (radius_request(&current, vpt->vpt_request) < 0) {
 		return -3;
 	}
 
-	vps = radius_list(request, vpt->list);
+	vps = radius_list(request, vpt->vpt_list);
 	if (!vps) {
 		return -2;
 	}
@@ -1817,7 +1817,7 @@ int radius_vpt_copy_vp(VALUE_PAIR **out, REQUEST *request, value_pair_tmpl_t con
 	 *	May not may not be found, but it *is* a known name.
 	 */
 	case VPT_TYPE_ATTR:
-		vp = paircopy2(request, *vps, vpt->da->attr, vpt->da->vendor, TAG_ANY);
+		vp = paircopy2(request, *vps, vpt->vpt_da->attr, vpt->vpt_da->vendor, TAG_ANY);
 		if (!vp) {
 			return -1;
 		}
