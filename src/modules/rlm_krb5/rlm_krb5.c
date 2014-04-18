@@ -457,6 +457,7 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 					   NULL, NULL, 0, NULL, inst->gic_options);
 	if (ret) {
 		rcode = krb5_process_error(request, conn, ret);
+		goto cleanup;
 	}
 
 	RDEBUG("Attempting to authenticate against service principal");
