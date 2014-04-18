@@ -376,8 +376,6 @@ static void request_timer(void *ctx)
 	request->process(request, action);
 }
 
-#define USEC (1000000)
-
 /*
  *	Only ever called from the master thread.
  */
@@ -442,6 +440,8 @@ STATE_MACHINE_DECL(request_done)
 		if (request->reply->code != 0) {
 			request->listener->send(request->listener, request);
 			return;
+		} else {
+			RDEBUG("No reply.  Ignoring retransmit.");
 		}
 		break;
 
@@ -1271,6 +1271,14 @@ STATE_MACHINE_DECL(request_finish)
 	gettimeofday(&request->reply->timestamp, NULL);
 
 	/*
+	 *	Ignore all "do not respond" packets.
+	 */
+	if (!request->reply->code) {
+		RDEBUG("Not sending reply");
+		goto done;
+	}
+
+	/*
 	 *	See if we need to delay an Access-Reject packet.
 	 */
 	if ((request->reply->code == PW_CODE_AUTHENTICATION_REJECT) &&
@@ -1285,6 +1293,8 @@ STATE_MACHINE_DECL(request_finish)
 		DEBUG_PACKET(request, request->reply, 1);
 		request->listener->send(request->listener,
 					request);
+
+	done:
 		pairfree(&request->reply->vps);
 
 		RDEBUG2("Finished request");
@@ -1541,7 +1551,12 @@ skip_dup:
 		request->password = pairfind(request->packet->vps, PW_USER_PASSWORD, 0, TAG_ANY);
 
 		fun(request);
-		request->listener->send(request->listener, request);
+
+		if (request->reply->code != 0) {
+			request->listener->send(request->listener, request);
+		} else {
+			RDEBUG("Not sending reply");
+		}
 		request_free(&request);
 		return 1;
 	}

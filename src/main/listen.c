@@ -1281,6 +1281,8 @@ static int auth_socket_send(rad_listen_t *listener, REQUEST *request)
 	rad_assert(request->listener == listener);
 	rad_assert(listener->send == auth_socket_send);
 
+	if (request->reply->code == 0) return 0;
+
 #ifdef WITH_UDPFROMTO
 	/*
 	 *	Overwrite the src ip address on the outbound packet
