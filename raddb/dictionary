@@ -6,7 +6,7 @@
 #	As of version 3.0.2, FreeRADIUS will automatically
 #	load the main dictionary files from
 #
-#		${prefix}/share/dictionary
+#		${prefix}/share/freeradius/dictionary
 #
 #	It is no longer necessary for this file to $INCLUDE
 #	the main dictionaries.  However, if the $INCLUDE
