@@ -667,7 +667,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 			 */
 			if (c->cast) {
 				if ((c->data.map->src->type == VPT_TYPE_ATTR) &&
-				    (c->cast->type != c->data.map->src->da->type)) {
+				    (c->cast->type != c->data.map->src->vpt_da->type)) {
 					goto same_type;
 				}
 
@@ -694,7 +694,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 				 */
 				if ((c->data.map->dst->type == VPT_TYPE_DATA) &&
 				    (c->data.map->src->type == VPT_TYPE_LITERAL) &&
-				    !radius_cast_tmpl(c->data.map->src, c->data.map->dst->da)) {
+				    !radius_cast_tmpl(c->data.map->src, c->data.map->dst->vpt_da)) {
 					return_rhs("Failed to parse field");
 				}
 
@@ -708,8 +708,8 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 					 *      dst.min == src.min
 					 *	dst.max == src.max
 					 */
-					if ((dict_attr_sizes[c->cast->type][0] == dict_attr_sizes[c->data.map->dst->da->type][0]) &&
-					    (dict_attr_sizes[c->cast->type][1] == dict_attr_sizes[c->data.map->dst->da->type][1])) {
+					if ((dict_attr_sizes[c->cast->type][0] == dict_attr_sizes[c->data.map->dst->vpt_da->type][0]) &&
+					    (dict_attr_sizes[c->cast->type][1] == dict_attr_sizes[c->data.map->dst->vpt_da->type][1])) {
 						goto cast_ok;
 					}
 
@@ -717,15 +717,15 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 					 *	Run-time parsing of strings.
 					 *	Run-time copying of octets.
 					 */
-					if ((c->data.map->dst->da->type == PW_TYPE_STRING) ||
-					    (c->data.map->dst->da->type == PW_TYPE_OCTETS)) {
+					if ((c->data.map->dst->vpt_da->type == PW_TYPE_STRING) ||
+					    (c->data.map->dst->vpt_da->type == PW_TYPE_OCTETS)) {
 						goto cast_ok;
 					}
 
 					/*
 					 *	ipaddr to ipv4prefix is OK
 					 */
-					if ((c->data.map->dst->da->type == PW_TYPE_IPADDR) &&
+					if ((c->data.map->dst->vpt_da->type == PW_TYPE_IPADDR) &&
 					    (c->cast->type == PW_TYPE_IPV4PREFIX)) {
 						goto cast_ok;
 					}
@@ -733,7 +733,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 					/*
 					 *	ipv6addr to ipv6prefix is OK
 					 */
-					if ((c->data.map->dst->da->type == PW_TYPE_IPV6ADDR) &&
+					if ((c->data.map->dst->vpt_da->type == PW_TYPE_IPV6ADDR) &&
 					    (c->cast->type == PW_TYPE_IPV6PREFIX)) {
 						goto cast_ok;
 					}
@@ -741,7 +741,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 					/*
 					 *	integer64 to ethernet is OK.
 					 */
-					if ((c->data.map->dst->da->type == PW_TYPE_INTEGER64) &&
+					if ((c->data.map->dst->vpt_da->type == PW_TYPE_INTEGER64) &&
 					    (c->cast->type == PW_TYPE_ETHERNET)) {
 						goto cast_ok;
 					}
@@ -750,8 +750,8 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 					 *	dst.max < src.min
 					 *	dst.min > src.max
 					 */
-					if ((dict_attr_sizes[c->cast->type][1] < dict_attr_sizes[c->data.map->dst->da->type][0]) ||
-					    (dict_attr_sizes[c->cast->type][0] > dict_attr_sizes[c->data.map->dst->da->type][1])) {
+					if ((dict_attr_sizes[c->cast->type][1] < dict_attr_sizes[c->data.map->dst->vpt_da->type][0]) ||
+					    (dict_attr_sizes[c->cast->type][0] > dict_attr_sizes[c->data.map->dst->vpt_da->type][1])) {
 						return_0("Cannot cast to attribute of incompatible size");
 					}
 				}
@@ -764,7 +764,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 				 *	is not NULL.
 				 */
 				if ((c->data.map->dst->type == VPT_TYPE_ATTR) &&
-				    (c->cast->type == c->data.map->dst->da->type)) {
+				    (c->cast->type == c->data.map->dst->vpt_da->type)) {
 					c->cast = NULL;
 				}
 
@@ -774,7 +774,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 				 */
 				if ((c->data.map->src->type == VPT_TYPE_ATTR) &&
 				    (c->data.map->dst->type == VPT_TYPE_ATTR) &&
-				    (c->data.map->dst->da->type != c->data.map->src->da->type)) {
+				    (c->data.map->dst->vpt_da->type != c->data.map->src->vpt_da->type)) {
 				same_type:
 					return_0("Attribute comparisons must be of the same data type");
 				}
@@ -802,7 +802,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 				 */
 				if ((c->data.map->dst->type == VPT_TYPE_ATTR) &&
 				    (c->data.map->src->type != VPT_TYPE_ATTR) &&
-				    (c->data.map->dst->da->type == PW_TYPE_STRING) &&
+				    (c->data.map->dst->vpt_da->type == PW_TYPE_STRING) &&
 				    (c->data.map->op != T_OP_CMP_TRUE) &&
 				    (c->data.map->op != T_OP_CMP_FALSE) &&
 				    (rhs_type == T_BARE_WORD)) {
@@ -816,9 +816,9 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 				 */
 				if ((c->data.map->dst->type == VPT_TYPE_ATTR) &&
 				    (c->data.map->src->type != VPT_TYPE_ATTR) &&
-				    (c->data.map->dst->da->type != PW_TYPE_STRING) &&
-				    (c->data.map->dst->da->type != PW_TYPE_OCTETS) &&
-				    (c->data.map->dst->da->type != PW_TYPE_DATE) &&
+				    (c->data.map->dst->vpt_da->type != PW_TYPE_STRING) &&
+				    (c->data.map->dst->vpt_da->type != PW_TYPE_OCTETS) &&
+				    (c->data.map->dst->vpt_da->type != PW_TYPE_DATE) &&
 				    (rhs_type == T_SINGLE_QUOTED_STRING)) {
 					*error = "Value must be an unquoted string";
 				return_rhs:
@@ -843,8 +843,8 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 				 */
 				if ((c->data.map->dst->type == VPT_TYPE_ATTR) &&
 				    (c->data.map->src->type == VPT_TYPE_LITERAL) &&
-				    !radius_cast_tmpl(c->data.map->src, c->data.map->dst->da)) {
-					DICT_ATTR const *da = c->data.map->dst->da;
+				    !radius_cast_tmpl(c->data.map->src, c->data.map->dst->vpt_da)) {
+					DICT_ATTR const *da = c->data.map->dst->vpt_da;
 
 					if ((da->vendor == 0) &&
 					    ((da->attr == PW_AUTH_TYPE) ||

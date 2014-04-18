@@ -1227,12 +1227,12 @@ static int json_pairmake(rlm_rest_t *instance, UNUSED rlm_rest_section_t *sectio
 			continue;
 		}
 
-		if (radius_request(&current, dst.request) < 0) {
+		if (radius_request(&current, dst.vpt_request) < 0) {
 			RWDEBUG("Attribute name refers to outer request but not in a tunnel, skipping...");
 			continue;
 		}
 
-		vps = radius_list(current, dst.list);
+		vps = radius_list(current, dst.vpt_list);
 		if (!vps) {
 			RWDEBUG("List not valid in this context, skipping...");
 			continue;
@@ -1337,7 +1337,7 @@ static int json_pairmake(rlm_rest_t *instance, UNUSED rlm_rest_section_t *sectio
 						   request, value,
 						   level + 1, max_attrs);*/
 			} else {
-				vp = json_pairmake_leaf(instance, section, request, dst.da, &flags, element);
+				vp = json_pairmake_leaf(instance, section, request, dst.vpt_da, &flags, element);
 				if (!vp) continue;
 			}
 			debug_pair(vp);

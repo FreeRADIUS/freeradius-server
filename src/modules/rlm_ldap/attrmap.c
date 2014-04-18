@@ -53,27 +53,27 @@ static int rlm_ldap_map_getvalue(VALUE_PAIR **out, REQUEST *request, value_pair_
 
 			RDEBUG3("Parsing valuepair string \"%s\"", self->values[i]);
 			if (radius_strpair2map(&attr, request, self->values[i],
-					       map->dst->request, map->dst->list,
+					       map->dst->vpt_request, map->dst->vpt_list,
 					       REQUEST_CURRENT, PAIR_LIST_REQUEST) < 0) {
 				RWDEBUG("Failed parsing \"%s\" as valuepair, skipping...", self->values[i]);
 				continue;
 			}
 
-			if ((attr->dst->request != map->dst->request)) {
+			if (attr->dst->vpt_request != map->dst->vpt_request) {
 				RWDEBUG("valuepair \"%s\" has conflicting request qualifier (%s vs %s), skipping...",
 					self->values[i],
-					fr_int2str(request_refs, attr->dst->request, "<INVALID>"),
-					fr_int2str(request_refs, map->dst->request, "<INVALID>"));
+					fr_int2str(request_refs, attr->dst->vpt_request, "<INVALID>"),
+					fr_int2str(request_refs, map->dst->vpt_request, "<INVALID>"));
 			next_pair:
 				talloc_free(attr);
 				continue;
 			}
 
-			if ((attr->dst->list != map->dst->list)) {
+			if ((attr->dst->vpt_list != map->dst->vpt_list)) {
 				RWDEBUG("valuepair \"%s\" has conflicting list qualifier (%s vs %s), skipping...",
 					self->values[i],
-					fr_int2str(pair_lists, attr->dst->list, "<INVALID>"),
-					fr_int2str(pair_lists, map->dst->list, "<INVALID>"));
+					fr_int2str(pair_lists, attr->dst->vpt_list, "<INVALID>"),
+					fr_int2str(pair_lists, map->dst->vpt_list, "<INVALID>"));
 				goto next_pair;
 			}
 
@@ -94,11 +94,11 @@ static int rlm_ldap_map_getvalue(VALUE_PAIR **out, REQUEST *request, value_pair_
 	 */
 	case VPT_TYPE_ATTR:
 		for (i = 0; i < self->count; i++) {
-			vp = pairalloc(request, map->dst->da);
+			vp = pairalloc(request, map->dst->vpt_da);
 			rad_assert(vp);
 
 			if (!pairparsevalue(vp, self->values[i])) {
-				RDEBUG("Failed parsing value for \"%s\"", map->dst->da->name);
+				RDEBUG("Failed parsing value for \"%s\"", map->dst->vpt_da->name);
 
 				talloc_free(vp);
 				continue;
@@ -162,8 +162,8 @@ int rlm_ldap_map_verify(ldap_instance_t *inst, value_pair_map_t **head)
 		 *	and has no idea what they're doing, or they're authenticating the user using a different
 		 *	method.
 		 */
-		if (!inst->expect_password && map->dst->da && (map->dst->type == VPT_TYPE_ATTR)) {
-			switch (map->dst->da->attr) {
+		if (!inst->expect_password && map->dst->vpt_da && (map->dst->type == VPT_TYPE_ATTR)) {
+			switch (map->dst->vpt_da->attr) {
 			case PW_CLEARTEXT_PASSWORD:
 			case PW_NT_PASSWORD:
 			case PW_USER_PASSWORD:
@@ -173,14 +173,14 @@ int rlm_ldap_map_verify(ldap_instance_t *inst, value_pair_map_t **head)
 				 *	Because you just know someone is going to map NT-Password to the
 				 *	request list, and then complain it's not working...
 				 */
-				if (map->dst->list != PAIR_LIST_CONTROL) {
+				if (map->dst->vpt_list != PAIR_LIST_CONTROL) {
 					LDAP_DBGW("Mapping LDAP (%s) attribute to \"known good\" password attribute "
 						  "(%s) in %s list. This is probably *NOT* the correct list, "
 						  "you should prepend \"control:\" to password attribute "
 						  "(control:%s)",
-						  map->src->name, map->dst->da->name,
-						  fr_int2str(pair_lists, map->dst->list, "<invalid>"),
-						  map->dst->da->name);
+						  map->src->name, map->dst->vpt_da->name,
+						  fr_int2str(pair_lists, map->dst->vpt_list, "<invalid>"),
+						  map->dst->vpt_da->name);
 				}
 
 				inst->expect_password = true;
@@ -275,12 +275,12 @@ int rlm_ldap_map_xlat(REQUEST *request, value_pair_map_t const *maps, rlm_ldap_m
 		case VPT_TYPE_ATTR:
 			context = request;
 
-			if (radius_request(&context, map->src->request) == 0) {
-				from = radius_list(context, map->src->list);
+			if (radius_request(&context, map->src->vpt_request) == 0) {
+				from = radius_list(context, map->src->vpt_list);
 			}
 			if (!from) continue;
 
-			found = pairfind(*from, map->src->da->attr, map->src->da->vendor, TAG_ANY);
+			found = pairfind(*from, map->src->vpt_da->attr, map->src->vpt_da->vendor, TAG_ANY);
 			if (!found) continue;
 
 			expanded->attrs[total++] = talloc_typed_strdup(request, found->vp_strvalue);
