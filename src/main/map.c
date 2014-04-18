@@ -57,14 +57,18 @@ void radius_tmplfree(value_pair_tmpl_t **tmpl)
  * string might be freed before you're done with the vpt use radius_attr2tmpl
  * instead.
  *
+ * The special return code of -2 is used only by radius_str2tmpl, which allow
+ * bare words which might (or might not) be an attribute reference.
+ *
  * @param[out] vpt to modify.
  * @param[in] name attribute name including qualifiers.
  * @param[in] request_def The default request to insert unqualified attributes into.
  * @param[in] list_def The default list to insert unqualified attributes into.
- * @return -1 on error or 0 on success.
+ * @return -2 on partial parse followed by error, -1 on other error, or 0 on success
  */
 int radius_parse_attr(value_pair_tmpl_t *vpt, char const *name, request_refs_t request_def, pair_lists_t list_def)
 {
+	int error = -1;
 	char const *p;
 	size_t len;
 	unsigned long num;
@@ -75,11 +79,16 @@ int radius_parse_attr(value_pair_tmpl_t *vpt, char const *name, request_refs_t r
 	vpt->name = name;
 	p = name;
 
+	if (*p == '&') {
+		error = -2;
+		p++;
+	}
+
 	vpt->request = radius_request_name(&p, request_def);
 	len = p - name;
 	if (vpt->request == REQUEST_UNKNOWN) {
 		fr_strerror_printf("Invalid request qualifier \"%.*s\"", (int) len, name);
-		return -1;
+		return error;
 	}
 	name += len;
 
@@ -87,7 +96,7 @@ int radius_parse_attr(value_pair_tmpl_t *vpt, char const *name, request_refs_t r
 	if (vpt->list == PAIR_LIST_UNKNOWN) {
 		len = p - name;
 		fr_strerror_printf("Invalid list qualifier \"%.*s\"", (int) len, name);
-		return -1;
+		return error;
 	}
 
 	if (*p == '\0') {
@@ -100,13 +109,18 @@ int radius_parse_attr(value_pair_tmpl_t *vpt, char const *name, request_refs_t r
 		da = dict_attrunknownbyname(p, false);
 		if (!da) {
 			fr_strerror_printf("Unknown attribute \"%s\"", p);
-			return -1;
+			return error;
 		}
 	}
 	vpt->da = da;
 	vpt->type = VPT_TYPE_ATTR;
 	vpt->tag = TAG_ANY;
 
+	/*
+	 *	After this point, we return -2 to indicate that parts
+	 *	of the string were parsed as an attribute, but others
+	 *	weren't.
+	 */
 	while (*p) {
 		if (*p == ':') break;
 		if (*p == '[') break;
@@ -117,14 +131,14 @@ int radius_parse_attr(value_pair_tmpl_t *vpt, char const *name, request_refs_t r
 		if (!da->flags.has_tag) {
 			fr_strerror_printf("Attribute '%s' cannot have a tag",
 					   da->name);
-			return -1;
+			return -2;
 		}
 
 		num = strtoul(p + 1, &q, 10);
 		if (num > 0x1f) {
 			fr_strerror_printf("Invalid tag value '%u'",
 					   (unsigned int) num);
-			return -1;
+			return -2;
 		}
 
 		if (num == 0) {
@@ -140,20 +154,20 @@ int radius_parse_attr(value_pair_tmpl_t *vpt, char const *name, request_refs_t r
 	if (*p != '[') {
 		fr_strerror_printf("Unexpected text after tag in '%s'",
 				   name);
-		return -1;
+		return -2;
 	}
 
 	num = strtoul(p + 1, &q, 10);
 	if (num > 1000) {
 		fr_strerror_printf("Invalid array reference '%u'",
 				   (unsigned int) num);
-		return -1;
+		return -2;
 	}
 
 	if ((*q != ']') || (q[1] != '\0')) {
 		fr_strerror_printf("Unexpected text after array in '%s'",
 				   name);
-		return -1;
+		return -2;
 	}
 
 	vpt->num = num;
@@ -206,6 +220,7 @@ value_pair_tmpl_t *radius_attr2tmpl(TALLOC_CTX *ctx, char const *name,
 value_pair_tmpl_t *radius_str2tmpl(TALLOC_CTX *ctx, char const *name, FR_TOKEN type,
 				   request_refs_t request_def, pair_lists_t list_def)
 {
+	int rcode;
 	char const *p;
 	value_pair_tmpl_t *vpt;
 	char buffer[1024];
@@ -216,26 +231,15 @@ value_pair_tmpl_t *radius_str2tmpl(TALLOC_CTX *ctx, char const *name, FR_TOKEN t
 	switch (type) {
 	case T_BARE_WORD:
 		/*
-		 *	"&" is always an attribute reference.
-		 */
-		if (*name == '&') {
-			if (radius_parse_attr(vpt, vpt->name + 1, request_def, list_def) < 0) {
-				talloc_free(vpt);
-				return NULL;
-			}
-
-			/*
-			 *	radius_parse_attr over-writes vpt->name <sigh>
-			 */
-			vpt->name--;
-			break;
-		}
-
-		/*
-		 *	If we can parse it as an attribute, it's an attribure.
+		 *	If we can parse it as an attribute, it's an attribute.
 		 *	Otherwise, treat it as a literal.
 		 */
-		if (radius_parse_attr(vpt, vpt->name, request_def, list_def) == 0) {
+		rcode = radius_parse_attr(vpt, vpt->name, request_def, list_def);
+		if (rcode == -2) {
+			talloc_free(vpt);
+			return NULL;
+		}
+		if (rcode == 0) {
 			break;
 		}
 		/* FALL-THROUGH */
@@ -326,12 +330,7 @@ value_pair_map_t *radius_str2map(TALLOC_CTX *ctx, char const *lhs, FR_TOKEN lhs_
 
 	map = talloc_zero(ctx, value_pair_map_t);
 
-	if ((lhs_type == T_BARE_WORD) && (*lhs == '&')) {
-		map->dst = radius_attr2tmpl(map, lhs + 1, dst_request_def, dst_list_def);
-	} else {
-		map->dst = radius_str2tmpl(map, lhs, lhs_type, dst_request_def, dst_list_def);
-	}
-
+	map->dst = radius_str2tmpl(map, lhs, lhs_type, dst_request_def, dst_list_def);
 	if (!map->dst) {
 	error:
 		talloc_free(map);
@@ -340,12 +339,7 @@ value_pair_map_t *radius_str2map(TALLOC_CTX *ctx, char const *lhs, FR_TOKEN lhs_
 
 	map->op = op;
 
-	if ((rhs_type == T_BARE_WORD) && (*rhs == '&')) {
-		map->src = radius_attr2tmpl(map, rhs + 1, src_request_def, src_list_def);
-	} else {
-		map->src = radius_str2tmpl(map, rhs, rhs_type, src_request_def, src_list_def);
-	}
-
+	map->src = radius_str2tmpl(map, rhs, rhs_type, src_request_def, src_list_def);
 	if (!map->src) goto error;
 
 	return map;
@@ -390,6 +384,8 @@ value_pair_map_t *radius_cp2map(TALLOC_CTX *ctx, CONF_PAIR *cp,
 	if (!cp) return NULL;
 
 	map = talloc_zero(ctx, value_pair_map_t);
+	map->op = cf_pair_operator(cp);
+	map->ci = ci;
 
 	attr = cf_pair_attr(cp);
 	value = cf_pair_value(cp);
@@ -398,6 +394,9 @@ value_pair_map_t *radius_cp2map(TALLOC_CTX *ctx, CONF_PAIR *cp,
 		goto error;
 	}
 
+	/*
+	 *	LHS must always be an attribute reference.
+	 */
 	map->dst = radius_attr2tmpl(map, attr, dst_request_def, dst_list_def);
 	if (!map->dst) {
 		cf_log_err(ci, "Syntax error in attribute definition");
@@ -405,36 +404,30 @@ value_pair_map_t *radius_cp2map(TALLOC_CTX *ctx, CONF_PAIR *cp,
 	}
 
 	/*
-	 *	Bare words always mean attribute references.
+	 *	RHS might be an attribute reference.
 	 */
 	type = cf_pair_value_type(cp);
-	if (type == T_BARE_WORD) {
-		if (*value == '&') {
-			map->src = radius_attr2tmpl(map, value + 1, src_request_def, src_list_def);
-		} else {
-			if (!isdigit((int) *value) &&
-			    ((strchr(value, ':') != NULL) ||
-			     (dict_attrbyname(value) != NULL))) {
-				map->src = radius_attr2tmpl(map, value, src_request_def, src_list_def);
-			}
-			if (map->src) {
-				WDEBUG("%s[%d]: Please add '&' for attribute reference '%s = &%s'",
-				       cf_pair_filename(cp), cf_pair_lineno(cp),
-				       attr, value);
-			} else {
-				map->src = radius_str2tmpl(map, value, type, src_request_def, src_list_def);
-			}
-		}
-	} else {
-		map->src = radius_str2tmpl(map, value, type, src_request_def, src_list_def);
-	}
-
+	map->src = radius_str2tmpl(map, value, type, src_request_def, src_list_def);
 	if (!map->src) {
 		goto error;
 	}
 
-	map->op = cf_pair_operator(cp);
-	map->ci = ci;
+	/*
+	 *	Anal-retentive checks.
+	 */
+	if (debug_flag > 2) {
+		if ((map->dst->type == VPT_TYPE_ATTR) && (*attr != '&')) {
+			WDEBUG("%s[%d]: Please change attribute reference to '&%s %s ...'",
+			       cf_pair_filename(cp), cf_pair_lineno(cp),
+			       attr, fr_int2str(fr_tokens, map->op, "<INVALID>"));
+		}
+
+		if ((map->src->type == VPT_TYPE_ATTR) && (*value != '&')) {
+			WDEBUG("%s[%d]: Please change attribute reference to '... %s &%s'",
+			       cf_pair_filename(cp), cf_pair_lineno(cp),
+			       fr_int2str(fr_tokens, map->op, "<INVALID>"), value);
+		}
+	}
 
 	/*
 	 *	Lots of sanity checks for insane people...
