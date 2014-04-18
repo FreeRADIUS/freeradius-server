@@ -3108,7 +3108,7 @@ bool modcall_pass2(modcallable *mc)
 			 */
 			if ((g->vpt->type == VPT_TYPE_ATTR) &&
 			    (this->name[0] != '&')) {
-				WDEBUG("%s[%d]: Please use &%s instead of %s",
+				WDEBUG("%s[%d]: Please change %s to &%s",
 				       cf_section_filename(g->cs),
 				       cf_section_lineno(g->cs),
 				       this->name, this->name);
