@@ -3142,11 +3142,9 @@ bool modcall_pass2(modcallable *mc)
 			 *	all of the modules have been loaded.
 			 *	Check for that now.
 			 */
-			if (this->name &&
+			if (!g->vpt && this->name &&
 			    (this->name[0] == '&') &&
 			    (cf_section_name2_type(g->cs) == T_BARE_WORD)) {
-				talloc_free(g->vpt); /* it's been parsed as a LITERAL */
-
 				g->vpt = radius_str2tmpl(g->cs, this->name,
 							 cf_section_name2_type(g->cs),
 							 REQUEST_CURRENT, PAIR_LIST_REQUEST);
