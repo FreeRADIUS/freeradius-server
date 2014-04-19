@@ -2576,6 +2576,8 @@ int8_t paircmp_op(VALUE_PAIR const *a, FR_TOKEN op, VALUE_PAIR const *b)
 {
 	int compare;
 
+	if (!a || !b) return -1;
+
 	switch (a->da->type) {
 	case PW_TYPE_IPADDR:
 		switch (b->da->type) {
@@ -2695,8 +2697,10 @@ int8_t paircmp(VALUE_PAIR *a, VALUE_PAIR *b)
 {
 	int compare;
 
+	if (!a) return -1;
+
 	VERIFY_VP(a);
-	VERIFY_VP(b);
+	if (b) VERIFY_VP(b);
 
 	switch (a->op) {
 	case T_OP_CMP_TRUE:
@@ -2725,6 +2729,8 @@ int8_t paircmp(VALUE_PAIR *a, VALUE_PAIR *b)
 					   	   a->da->name, buffer);
 				return -1;
 			}
+
+			if (!b) return -1;
 
 			vp_prints_value(buffer, sizeof(buffer), b, 0);
 
