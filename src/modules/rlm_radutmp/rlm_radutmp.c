@@ -410,7 +410,10 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 	 *	Find the entry for this NAS / portno combination.
 	 */
 	if ((cache = nas_port_find(inst->nas_port_list, ut.nas_address, ut.nas_port)) != NULL) {
-		lseek(fd, (off_t)cache->offset, SEEK_SET);
+		if (lseek(fd, (off_t)cache->offset, SEEK_SET) < 0) {
+			rcode = RLM_MODULE_FAIL;
+			goto finish;
+		}
 	}
 
 	r = 0;
