@@ -1789,7 +1789,7 @@ do_print:
 		{
 			char *p, *q;
 
-			vp = fr_cursor_init(&cursor, &vp);
+			(void) fr_cursor_init(&cursor, &vp);
 			vp = fr_cursor_next_by_num(&cursor, da->attr, da->vendor, tag);
 			if (!vp) return NULL;
 
