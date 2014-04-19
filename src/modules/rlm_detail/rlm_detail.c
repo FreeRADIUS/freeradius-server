@@ -408,7 +408,7 @@ skip_group:
 	if ((outfp = fdopen(outfd, "a")) == NULL) {
 		RERROR("Couldn't open file %s: %s", buffer, fr_syserror(errno));
 	fail:
-		fclose(outfp);
+		if (outfp) fclose(outfp);
 		fr_logfile_unlock(inst->lf, outfd);
 		return RLM_MODULE_FAIL;
 	}
