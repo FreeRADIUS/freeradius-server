@@ -318,13 +318,13 @@ size_t vp_prints_value(char *out, size_t outlen, VALUE_PAIR const *vp, int8_t qu
 
 	size_t		len = 0, freespace = outlen;
 
+	if (!vp) return 0;
+
 	VERIFY_VP(vp);
 
 	if (outlen == 0) return vp->length;
 
 	*out = '\0';
-
-	if (!vp) return 0;
 
 	switch (vp->da->type) {
 	case PW_TYPE_STRING:
