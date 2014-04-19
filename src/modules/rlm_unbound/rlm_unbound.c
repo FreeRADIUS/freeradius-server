@@ -686,6 +686,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		xlat_unregister(inst->xlat_ptr_name, xlat_ptr, inst);
 		goto error_nores;
 	}
+	close(debug_fd);
 	return 0;
 
  error:
