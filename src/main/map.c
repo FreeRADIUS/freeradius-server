@@ -644,18 +644,26 @@ size_t radius_tmpl2str(char *buffer, size_t bufsize, value_pair_tmpl_t const *vp
 	char *q = buffer;
 	char *end;
 
+	if (!vpt) {
+		*buffer = '\0';
+		return 0;
+	}
+
 	switch (vpt->type) {
 	default:
 		return 0;
 
 	case VPT_TYPE_REGEX:
+	case VPT_TYPE_REGEX_STRUCT:
 		c = '/';
 		break;
 
 	case VPT_TYPE_XLAT:
+	case VPT_TYPE_XLAT_STRUCT:
 		c = '"';
 		break;
 
+	case VPT_TYPE_LIST:
 	case VPT_TYPE_LITERAL:	/* single-quoted or bare word */
 		/*
 		 *	Hack
@@ -765,7 +773,7 @@ size_t radius_tmpl2str(char *buffer, size_t bufsize, value_pair_tmpl_t const *vp
 
 	while (*p && (q < end)) {
 		if (*p == c) {
-			if ((q - end) < 4) goto no_room; /* escape, char, quote, EOS */
+			if ((end - q) < 4) goto no_room; /* escape, char, quote, EOS */
 			*(q++) = '\\';
 			*(q++) = *(p++);
 			continue;
@@ -773,27 +781,27 @@ size_t radius_tmpl2str(char *buffer, size_t bufsize, value_pair_tmpl_t const *vp
 
 		switch (*p) {
 		case '\\':
-			if ((q - end) < 4) goto no_room;
+			if ((end - q) < 4) goto no_room;
 			*(q++) = '\\';
 			*(q++) = *(p++);
 			break;
 
 		case '\r':
-			if ((q - end) < 4) goto no_room;
+			if ((end - q) < 4) goto no_room;
 			*(q++) = '\\';
 			*(q++) = 'r';
 			p++;
 			break;
 
 		case '\n':
-			if ((q - end) < 4) goto no_room;
+			if ((end - q) < 4) goto no_room;
 			*(q++) = '\\';
 			*(q++) = 'r';
 			p++;
 			break;
 
 		case '\t':
-			if ((q - end) < 4) goto no_room;
+			if ((end - q) < 4) goto no_room;
 			*(q++) = '\\';
 			*(q++) = 't';
 			p++;
