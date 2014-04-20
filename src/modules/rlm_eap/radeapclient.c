@@ -407,19 +407,16 @@ static int process_eap_start(RADIUS_PACKET *req,
 		uint16_t no_versions;
 		uint8_t *p;
 
-		newvp = paircreate(rep, ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_SELECTED_VERSION, 0);
-
-		p = talloc_zero_array(newvp, uint8_t, 2);
 		no_versions = htons(selectedversion);
-		memcpy(p, &no_versions, 2);
-		pairmemsteal(newvp, p);
 
+		newvp = paircreate(rep, ATTRIBUTE_EAP_SIM_BASE + PW_EAP_SIM_SELECTED_VERSION, 0);
+		pairmemcpy(newvp, &no_versions, 2);
 		pairreplace(&(rep->vps), newvp);
 
 		/* record the selected version */
 		memcpy(eapsim_mk.versionselect, &no_versions, 2);
 	}
-	
+
 	vp = newvp = NULL;
 
 	{
@@ -434,7 +431,7 @@ static int process_eap_start(RADIUS_PACKET *req,
 		nonce[3]=fr_rand();
 
 		newvp = paircreate(rep, ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_NONCE_MT, 0);
-		
+
 		p = talloc_zero_array(newvp, uint8_t, 18); /* 18 = 16 bytes of nonce + padding */
 		memcpy(&p[2], nonce, 16);
 		pairmemsteal(newvp, p);
@@ -465,7 +462,7 @@ static int process_eap_start(RADIUS_PACKET *req,
 		p = talloc_zero_array(newvp, uint8_t, idlen + 2);
 		no_idlen = htons(idlen);
 		memcpy(p, &no_idlen, 2);
-		memcpy(&p[2], vp->vp_strvalue, idlen);
+		memcpy(p + 2, vp->vp_strvalue, idlen);
 		pairmemsteal(newvp, p);
 
 		pairreplace(&(rep->vps), newvp);
@@ -644,9 +641,9 @@ static int process_eap_challenge(RADIUS_PACKET *req,
 		newvp = paircreate(rep, ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_MAC, 0);
 
 		p = talloc_zero_array(newvp, uint8_t, EAPSIM_SRES_SIZE*3);
-		memcpy(p+EAPSIM_SRES_SIZE*0, sres1->vp_strvalue, EAPSIM_SRES_SIZE);
-		memcpy(p+EAPSIM_SRES_SIZE*1, sres2->vp_strvalue, EAPSIM_SRES_SIZE);
-		memcpy(p+EAPSIM_SRES_SIZE*2, sres3->vp_strvalue, EAPSIM_SRES_SIZE);
+		memcpy(p+EAPSIM_SRES_SIZE * 0, sres1->vp_strvalue, EAPSIM_SRES_SIZE);
+		memcpy(p+EAPSIM_SRES_SIZE * 1, sres2->vp_strvalue, EAPSIM_SRES_SIZE);
+		memcpy(p+EAPSIM_SRES_SIZE * 2, sres3->vp_strvalue, EAPSIM_SRES_SIZE);
 		pairmemsteal(newvp, p);
 
 		pairreplace(&(rep->vps), newvp);
@@ -655,10 +652,7 @@ static int process_eap_challenge(RADIUS_PACKET *req,
 	{
 		uint8_t *p;
 		newvp = paircreate(rep, ATTRIBUTE_EAP_SIM_KEY, 0);
-
-		p = talloc_zero_array(newvp, uint8_t, EAPSIM_AUTH_SIZE);
-		memcpy(p, eapsim_mk.K_aut, EAPSIM_AUTH_SIZE);
-		pairmemsteal(newvp, p);
+		pairmemcpy(newvp, eapsim_mk.K_aut, EAPSIM_AUTH_SIZE);
 
 		pairreplace(&(rep->vps), newvp);
 	}
@@ -838,7 +832,7 @@ static int respond_eap_md5(RADIUS_PACKET *req,
 		p = talloc_zero_array(vp, uint8_t, 17);
 		lg_response = 16;
 		memcpy(p, &lg_response, 1);
-		memcpy(&p[1], response, 16);
+		memcpy(p + 1, response, 16);
 		pairmemsteal(vp, p);
 	}
 	pairreplace(&(rep->vps), vp);
@@ -1036,12 +1030,12 @@ int main(int argc, char **argv)
 	 *	free that before any leak reports.
 	 */
 	TALLOC_CTX *autofree = talloc_init("main");
-	
+
 	id = ((int)getpid() & 0xff);
 	fr_debug_flag = 0;
 
 	radlog_dest = L_DST_STDERR;
-	
+
 	set_radius_dir(autofree, RADIUS_DIR);
 
 	while ((c = getopt(argc, argv, "46c:d:D:f:hi:qst:r:S:xXv")) != EOF)
@@ -1471,10 +1465,7 @@ static void unmap_eap_methods(RADIUS_PACKET *rep)
 			uint8_t *p;
 
 			eap1 = paircreate(rep, type, 0);
-
-			p = talloc_zero_array(eap1, uint8_t, len);
-			memcpy(p, &e->data[1], len);
-			pairmemsteal(eap1, p);
+			pairmemcpy(eap1, e->data + 1, len);
 
 			pairadd(&(rep->vps), eap1);
 		}
@@ -1488,7 +1479,7 @@ static void unmap_eap_methods(RADIUS_PACKET *rep)
 static int map_eapsim_types(RADIUS_PACKET *r)
 {
 	int ret;
-	
+
 	eap_packet_t *pt_ep = talloc_zero(r, eap_packet_t);
 
 	ret = map_eapsim_basictypes(r, pt_ep);
@@ -1516,7 +1507,7 @@ static int unmap_eapsim_types(RADIUS_PACKET *r)
 
 	eap_data = talloc_memdup(esvp, esvp->vp_octets, esvp->length);
 	talloc_set_type(eap_data, uint8_t);
-	
+
 	rcode_unmap = unmap_eapsim_basictypes(r, eap_data, esvp->length);
 
 	talloc_free(eap_data);
