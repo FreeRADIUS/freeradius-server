@@ -57,7 +57,7 @@ filter_username {
 	#
 	if (User-Name =~ /\\.\\./ ) {
 		update reply {
-			Reply-Message += "Rejected: Username comtains ..s"
+			Reply-Message += "Rejected: Username contains ..s"
 		}
 		reject
 	}
