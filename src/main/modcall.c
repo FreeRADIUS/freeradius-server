@@ -716,7 +716,7 @@ redo:
 				break;
 			}
 
-			vp = fr_cursor_next_by_num(&cursor, vp->da->attr, vp->da->vendor, TAG_ANY);
+			vp = fr_cursor_next_by_num(&cursor, vp->da->attr, vp->da->vendor, g->vpt->attribute.tag);
 
 			/*
 			 *	Delete the cached attribute, if it exists.
