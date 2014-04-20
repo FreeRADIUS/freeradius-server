@@ -2744,6 +2744,9 @@ static bool pass2_xlat_compile(CONF_ITEM const *ci, value_pair_tmpl_t **pvpt, bo
 		return false;
 	}
 
+	/*
+	 *	Convert %{Attribute-Name} to &Attribute-Name
+	 */
 	if (convert) {
 		value_pair_tmpl_t *attr;
 
@@ -3214,3 +3217,103 @@ bool modcall_pass2(modcallable *mc)
 
 	return true;
 }
+
+#if 0
+/*
+ *	Future debugging.
+ */
+static void modcall_print_internal(FILE *fp, modcallable *mc, int depth)
+{
+	modcallable *this;
+	modgroup *g;
+	value_pair_map_t *map;
+	char buffer[1024];
+
+	for (this = mc; this != NULL; this = this->next) {
+		switch (this->type) {
+		default:
+			fprintf(fp, "FIXME %s\n", group_name[this->type]);
+			break;
+
+		case MOD_SINGLE: {
+			modsingle *single = mod_callabletosingle(this);
+
+			fprintf(fp, "%.*s%s\n", depth, modcall_spaces,
+				single->modinst->name);
+			}
+			break;
+
+#ifdef WITH_UNLANG
+		case MOD_UPDATE:
+			g = mod_callabletogroup(this);
+			fprintf(fp, "%.*s%s {\n", depth, modcall_spaces,
+				group_name[this->type]);
+
+			for (map = g->map; map != NULL; map = map->next) {
+				radius_map2str(buffer, sizeof(buffer), map);
+				fprintf(fp, "%.*s%s\n", depth + 1, modcall_spaces, buffer);
+			}
+
+			fprintf(fp, "%.*s}\n", depth, modcall_spaces);
+			break;
+
+		case MOD_ELSE:
+			fprintf(fp, "%.*s%s{\n", depth, modcall_spaces,
+				group_name[this->type]);
+			modcall_print_internal(fp, g->children, depth + 1);
+			fprintf(fp, "%.*s}\n", depth, modcall_spaces);
+			break;
+
+		case MOD_IF:
+		case MOD_ELSIF:
+			g = mod_callabletogroup(this);
+			fr_cond_sprint(buffer, sizeof(buffer), g->cond);
+			fprintf(fp, "%.*s%s (%s) {\n", depth, modcall_spaces,
+				group_name[this->type], buffer);
+			modcall_print_internal(fp, g->children, depth + 1);
+			fprintf(fp, "%.*s}\n", depth, modcall_spaces);
+			break;
+
+		case MOD_SWITCH:
+		case MOD_CASE:
+			g = mod_callabletogroup(this);
+			radius_tmpl2str(buffer, sizeof(buffer), g->vpt);
+			fprintf(fp, "%.*s%s %s {\n", depth, modcall_spaces,
+				group_name[this->type], buffer);
+			modcall_print_internal(fp, g->children, depth + 1);
+			fprintf(fp, "%.*s}\n", depth, modcall_spaces);
+			break;
+
+		case MOD_POLICY:
+		case MOD_FOREACH:
+			g = mod_callabletogroup(this);
+			fprintf(fp, "%.*s%s %s {\n", depth, modcall_spaces,
+				group_name[this->type], this->name);
+			modcall_print_internal(fp, g->children, depth + 1);
+			fprintf(fp, "%.*s}\n", depth, modcall_spaces);
+			break;
+
+		case MOD_BREAK:
+			fprintf(fp, "%.*sbreak\n", depth, modcall_spaces);
+			break;
+
+#endif
+		case MOD_GROUP:
+		case MOD_REDUNDANT:
+		case MOD_REDUNDANT_LOAD_BALANCE:
+			g = mod_callabletogroup(this);
+			fprintf(fp, "%.*s%s {\n", depth, modcall_spaces,
+				group_name[this->type]);
+			modcall_print_internal(fp, g->children, depth + 1);
+			fprintf(fp, "%.*s}\n", depth, modcall_spaces);
+			break;
+		}
+	}
+}
+
+void modcall_fprint(FILE *fp, modcallable *mc)
+{
+	DEBUG("*****************************************");
+	return modcall_print_internal(fp, mc, 0);
+}
+#endif
