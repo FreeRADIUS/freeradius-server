@@ -624,7 +624,7 @@ redo:
 	 */
 	if (c->type == MOD_FOREACH) {
 		int i, foreach_depth = -1;
-		VALUE_PAIR *vp;
+		VALUE_PAIR *vps, **tail, *vp;
 		modcall_stack_entry_t *next = NULL;
 		vp_cursor_t cursor;
 		modgroup *g = mod_callabletogroup(c);
@@ -652,12 +652,7 @@ redo:
 			goto calculate_result;
 		}
 
-		if (radius_get_vp(&vp, request, c->name) < 0) {
-			RDEBUG("Unknown attribute \"%s\"", c->name);
-			result = RLM_MODULE_FAIL;
-			goto calculate_result;
-		}
-
+		vp = radius_vpt_get_vp(request, g->vpt);
 		if (!vp) {	/* nothing to loop over */
 			MOD_LOG_OPEN_BRACE("foreach");
 			result = RLM_MODULE_NOOP;
@@ -665,15 +660,31 @@ redo:
 			goto calculate_result;
 		}
 
-		RDEBUG2("%.*sforeach %s ", depth + 1, modcall_spaces,
-			c->name);
-
+		/*
+		 *	Copy the VPs from the original request.
+		 */
 		fr_cursor_init(&cursor, &vp);
 		/* Prime the cursor. */
 		cursor.found = cursor.current;
-		while (vp) {
-			VALUE_PAIR *copy = NULL, **copy_p;
 
+		vps = NULL;
+		tail = &vps;
+
+		while (vp) {
+			*tail = paircopyvp(request, vp);
+			if (!*tail) break;
+			
+			tail = &((*tail)->next); /* really should be using cursors... */
+			
+			vp = fr_cursor_next_by_num(&cursor, vp->da->attr, vp->da->vendor, g->vpt->attribute.tag);
+		}
+
+		RDEBUG2("%.*sforeach %s ", depth + 1, modcall_spaces,
+			c->name);
+
+		for (vp = fr_cursor_init(&cursor, &vps);
+		     vp != NULL;
+		     vp = fr_cursor_next(&cursor)) {
 #ifndef NDEBUG
 			if (fr_debug_flag >= 2) {
 				char buffer[1024];
@@ -685,21 +696,10 @@ redo:
 #endif
 
 			/*
-			 *	Copy only the one VP we care about.
+			 *	Add the vp to the request, so that
+			 *	xlat.c, xlat_foreach() can find it.
 			 */
-			copy = paircopyvp(request, vp);
-			copy_p = &copy;
-
-			/*
-			 *	@fixme: The old code freed copy on
-			 *	request_data_add or request_data_get.
-			 *	There's no way to easily do that now.
-			 *	The foreach code should be audited for
-			 *	possible memory leaks, though it's not
-			 *	a huge priority as any leaked memory
-			 *	will be freed on request free.
-			 */
-			request_data_add(request, radius_get_vp, foreach_depth, copy_p, false);
+			request_data_add(request, radius_get_vp, foreach_depth, &vp, false);
 
 			/*
 			 *	Initialize the childs stack frame.
@@ -711,20 +711,6 @@ redo:
 			next->unwind = 0;
 
 			if (!modcall_recurse(request, component, depth + 1, next)) {
-				request_data_get(request, radius_get_vp, foreach_depth);
-				pairfree(&copy);
-				break;
-			}
-
-			vp = fr_cursor_next_by_num(&cursor, vp->da->attr, vp->da->vendor, g->vpt->attribute.tag);
-
-			/*
-			 *	Delete the cached attribute, if it exists.
-			 */
-			if (copy) {
-				request_data_get(request, radius_get_vp, foreach_depth);
-				pairfree(&copy);
-			} else {
 				break;
 			}
 
@@ -737,6 +723,8 @@ redo:
 				break;
 			}
 		} /* loop over VPs */
+
+		talloc_free(vps);
 
 		result = next->result;
 		priority = next->priority;
