@@ -652,8 +652,7 @@ redo:
 			goto calculate_result;
 		}
 
-		vp = radius_vpt_get_vp(request, g->vpt);
-		if (!vp) {	/* nothing to loop over */
+		if (radius_vpt_get_vp(&vp, request, g->vpt) <= 0) {	/* nothing to loop over */
 			MOD_LOG_OPEN_BRACE("foreach");
 			result = RLM_MODULE_NOOP;
 			MOD_LOG_CLOSE_BRACE();
