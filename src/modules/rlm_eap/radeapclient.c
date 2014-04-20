@@ -405,12 +405,11 @@ static int process_eap_start(RADIUS_PACKET *req,
 	/* insert selected version into response. */
 	{
 		uint16_t no_versions;
-		uint8_t *p;
 
 		no_versions = htons(selectedversion);
 
 		newvp = paircreate(rep, ATTRIBUTE_EAP_SIM_BASE + PW_EAP_SIM_SELECTED_VERSION, 0);
-		pairmemcpy(newvp, &no_versions, 2);
+		pairmemcpy(newvp, (uint8_t *) &no_versions, 2);
 		pairreplace(&(rep->vps), newvp);
 
 		/* record the selected version */
@@ -649,13 +648,10 @@ static int process_eap_challenge(RADIUS_PACKET *req,
 		pairreplace(&(rep->vps), newvp);
 	}
 
-	{
-		uint8_t *p;
-		newvp = paircreate(rep, ATTRIBUTE_EAP_SIM_KEY, 0);
-		pairmemcpy(newvp, eapsim_mk.K_aut, EAPSIM_AUTH_SIZE);
+	newvp = paircreate(rep, ATTRIBUTE_EAP_SIM_KEY, 0);
+	pairmemcpy(newvp, eapsim_mk.K_aut, EAPSIM_AUTH_SIZE);
 
-		pairreplace(&(rep->vps), newvp);
-	}
+	pairreplace(&(rep->vps), newvp);
 
 	return 1;
 }
@@ -1457,18 +1453,14 @@ static void unmap_eap_methods(RADIUS_PACKET *rep)
 		type += ATTRIBUTE_EAP_BASE;
 		len -= 5;
 
-		if(len > MAX_STRING_LEN) {
+		if (len > MAX_STRING_LEN) {
 			len = MAX_STRING_LEN;
 		}
 
-		{
-			uint8_t *p;
+		eap1 = paircreate(rep, type, 0);
+		pairmemcpy(eap1, e->data + 1, len);
 
-			eap1 = paircreate(rep, type, 0);
-			pairmemcpy(eap1, e->data + 1, len);
-
-			pairadd(&(rep->vps), eap1);
-		}
+		pairadd(&(rep->vps), eap1);
 		break;
 	}
 
