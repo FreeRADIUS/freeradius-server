@@ -1850,7 +1850,14 @@ static modcallable *do_compile_modcase(modcallable *parent, rlm_components_t com
 static modcallable *do_compile_modforeach(modcallable *parent,
 					  UNUSED rlm_components_t component, CONF_SECTION *cs)
 {
-	if (!cf_section_name2(cs)) {
+	FR_TOKEN type;
+	char const *name2;
+	modcallable *csingle;
+	modgroup *g;
+	value_pair_tmpl_t *vpt;
+
+	name2 = cf_section_name2(cs);
+	if (!name2) {
 		cf_log_err_cs(cs,
 			   "You must specify an attribute to loop over in 'foreach'");
 		return NULL;
@@ -1861,9 +1868,37 @@ static modcallable *do_compile_modforeach(modcallable *parent,
 		return NULL;
 	}
 
-	return do_compile_modgroup(parent, component, cs,
-				   GROUPTYPE_SIMPLE, GROUPTYPE_SIMPLE,
-				   MOD_FOREACH);
+	/*
+	 *	Create the template.  If we fail, AND it's a bare word
+	 *	with &Foo-Bar, it MAY be an attribute defined by a
+	 *	module.  Allow it for now.  The pass2 checks below
+	 *	will fix it up.
+	 */
+	type = cf_section_name2_type(cs);
+	vpt = radius_str2tmpl(cs, name2, type, REQUEST_CURRENT, PAIR_LIST_REQUEST);
+	if (!vpt && ((type != T_BARE_WORD) || (name2[0] != '&'))) {
+		cf_log_err_cs(cs, "Syntax error in '%s': %s", name2, fr_strerror());
+		return NULL;
+	}
+
+	if (vpt && (vpt->type != VPT_TYPE_ATTR)) {
+		cf_log_err_cs(cs, "MUST use attribute reference in 'foreach'");
+		return NULL;
+	}
+
+	csingle = do_compile_modgroup(parent, component, cs,
+				      GROUPTYPE_SIMPLE, GROUPTYPE_SIMPLE,
+				      MOD_FOREACH);
+
+	if (!csingle) {
+		talloc_free(vpt);
+		return NULL;
+	}
+
+	g = mod_callabletogroup(csingle);
+	g->vpt = vpt;
+
+	return csingle;
 }
 
 static modcallable *do_compile_modbreak(modcallable *parent,
@@ -3185,8 +3220,47 @@ bool modcall_pass2(modcallable *mc)
 			if (!modcall_pass2(g->children)) return false;
 			break;
 
-		case MOD_ELSE:
 		case MOD_FOREACH:
+			g = mod_callabletogroup(this);
+
+			/*
+			 *	Already parsed, handle the children.
+			 */
+			if (g->vpt) goto check_children;
+
+			/*
+			 *	We had &Foo-Bar, where Foo-Bar is
+			 *	defined by a module.
+			 */
+			rad_assert(this->name != NULL);
+			rad_assert(this->name[0] == '&');
+			rad_assert(cf_section_name2_type(g->cs) == T_BARE_WORD);
+
+			/*
+			 *	The statement may refer to an
+			 *	attribute which doesn't exist until
+			 *	all of the modules have been loaded.
+			 *	Check for that now.
+			 */
+			g->vpt = radius_str2tmpl(g->cs, this->name,
+						 cf_section_name2_type(g->cs),
+						 REQUEST_CURRENT, PAIR_LIST_REQUEST);
+			if (!g->vpt) {
+				cf_log_err_cs(g->cs, "Syntax error in '%s': %s",
+					      this->name, fr_strerror());
+				return false;
+			}
+
+		check_children:
+			rad_assert(g->vpt->type == VPT_TYPE_ATTR);
+			if (g->vpt->attribute.num != 0) {
+				cf_log_err_cs(g->cs, "MUST NOT use array references in 'foreach'");
+				return false;
+			}
+			if (!modcall_pass2(g->children)) return false;
+			break;
+
+		case MOD_ELSE:
 		case MOD_POLICY:
 			/* FALL-THROUGH */
 #endif
