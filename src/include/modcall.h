@@ -42,6 +42,8 @@ bool modcall_pass2(modcallable *mc);
 /* Add an entry to the end of a modgroup */
 void add_to_modcallable(modcallable *parent, modcallable *this);
 
+void modcall_debug(modcallable *mc, int depth);
+	
 #ifdef __cplusplus
 }
 #endif
