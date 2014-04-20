@@ -43,6 +43,8 @@ typedef struct rlm_unbound_t {
 	int		fd, logfd[2];
 	FILE		*logstream[2];
 	int		pipe_inuse;
+
+	FILE		*debug_stream;
 } rlm_unbound_t;
 
 /*
@@ -390,7 +392,6 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	int debug_method;
 	char *optval;
 	int debug_fd = -1;
-	FILE *debug_stream;
 	char k[64]; /* To silence const warns until newer unbound in distros */
 
 	inst->el = radius_event_list_corral(EVENT_CORRAL_AUX);
@@ -572,13 +573,13 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 			goto error_nores;
 		}
 
-		debug_stream = fdopen(debug_fd, "w");
-		if (!debug_stream) {
+		inst->debug_stream = fdopen(debug_fd, "w");
+		if (!inst->debug_stream) {
 			ERROR("rlm_unbound (%s): error setting up log stream", inst->name);
 			goto error_nores;
 		}
 
-		res = ub_ctx_debugout(inst->ub, debug_stream);
+		res = ub_ctx_debugout(inst->ub, inst->debug_stream);
 		if (res) goto error;
 		break;
 
@@ -686,7 +687,6 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		xlat_unregister(inst->xlat_ptr_name, xlat_ptr, inst);
 		goto error_nores;
 	}
-	close(debug_fd);
 	return 0;
 
  error:
@@ -729,6 +729,10 @@ static int mod_detach(UNUSED void *instance)
 			fr_event_fd_delete(inst->el, 0, inst->logfd[0]);
 		}
 		fclose(inst->logstream[0]);
+	}
+
+	if (inst->debug_stream) {
+		fclose(inst->debug_stream);
 	}
 
 	return 0;
