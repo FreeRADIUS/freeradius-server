@@ -45,6 +45,8 @@ void add_to_modcallable(modcallable *parent, modcallable *this);
 /* Free a tree returned by compile_modgroup or compile_modsingle */
 void modcallable_free(modcallable **pc);
 
+void modcall_debug(modcallable *mc, int depth);
+
 #ifdef __cplusplus
 }
 #endif

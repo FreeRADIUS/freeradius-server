@@ -920,6 +920,7 @@ static int load_component_section(CONF_SECTION *cs,
 							       components,
 							       da,
 							       comp)) {
+
 					return -1; /* FIXME: memleak? */
 				}
 				continue;
@@ -1018,8 +1019,11 @@ static int load_component_section(CONF_SECTION *cs,
 			return -1;
 		}
 
+		if (debug_flag > 2) modcall_debug(this, 2);
+
 		add_to_modcallable(subcomp->modulelist, this);
 	}
+
 
 	return 0;
 }
@@ -1137,9 +1141,6 @@ static int load_byserver(CONF_SECTION *cs)
 
 		if (cf_item_find_next(subcs, NULL) == NULL) continue;
 
-		cf_log_module(cs, "Loading %s {...}",
-			      section_type_value[comp].section);
-
 		/*
 		 *	Skip pre/post-proxy sections if we're not
 		 *	proxying.
@@ -1161,8 +1162,19 @@ static int load_byserver(CONF_SECTION *cs)
 		if (comp == RLM_COMPONENT_SESS) continue;
 #endif
 
+		if (debug_flag <= 3) {
+			cf_log_module(cs, "Loading %s {...}",
+				      section_type_value[comp].section);
+		} else {
+			DEBUG(" %s {", section_type_value[comp].section);
+		}
+
 		if (load_component_section(subcs, components, comp) < 0) {
 			goto error;
+		}
+
+		if (debug_flag > 3) {
+			DEBUG(" } # %s", section_type_value[comp].section);
 		}
 
 		/*
