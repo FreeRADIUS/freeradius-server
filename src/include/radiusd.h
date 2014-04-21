@@ -532,10 +532,8 @@ void (*reset_signal(int signo, void (*func)(int)))(int);
 void		request_free(REQUEST **request);
 int			request_opaque_free(REQUEST *request);
 int		rad_mkdir(char *directory, mode_t mode);
-int		rad_checkfilename(char const *filename);
-int		rad_file_exists(char const *filename);
+int        rad_file_exists(char const *filename);
 void		*rad_malloc(size_t size); /* calls exit(1) on error! */
-void		*rad_calloc(size_t size); /* calls exit(1) on error! */
 void		rad_const_free(void const *ptr);
 REQUEST		*request_alloc(TALLOC_CTX *ctx);
 REQUEST		*request_alloc_fake(REQUEST *oldreq);

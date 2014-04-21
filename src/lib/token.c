@@ -207,21 +207,6 @@ int getword(char const **ptr, char *buf, int buflen)
 	return getthing(ptr, buf, buflen, 0, fr_tokens) == T_EOL ? 0 : 1;
 }
 
-/*
- *	Read a bare "word" - this means we don't honor
- *	tokens as delimiters.
- */
-int getbareword(char const **ptr, char *buf, int buflen)
-{
-	FR_TOKEN token;
-
-	token = getthing(ptr, buf, buflen, 0, NULL);
-	if (token != T_BARE_WORD) {
-		return 0;
-	}
-
-	return 1;
-}
 
 /*
  *	Read the next word, use tokens as delimiters.
