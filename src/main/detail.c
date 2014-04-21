@@ -456,7 +456,6 @@ int detail_recv(rad_listen_t *listener)
 			}
 
 			DEBUG("No response to detail request.  Retrying");
-			data->state = STATE_NO_REPLY;
 			/* FALL-THROUGH */
 
 			/*
@@ -526,7 +525,7 @@ int detail_recv(rad_listen_t *listener)
 		 *
 		 *	FIXME: print an error for badly formatted attributes?
 		 */
-		if (sscanf(buffer, "%255s %8s %1023s", key, op, value) != 3) {
+		if (sscanf(buffer, "%255s %7s %1023s", key, op, value) != 3) {
 			WDEBUG2("Skipping badly formatted line %s",
 			       buffer);
 			continue;
