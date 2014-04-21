@@ -93,18 +93,14 @@ returned false, and if the specified condition evaluates to true.
 .DE
 .IP foreach
 .br
-Loops over a named variable, running the block for each copy of the
-named variable.  The return value of the block is the return value of
-the last statement executed.  The loop can be exited early by using
-the "break" keyword.  Unlike other languages, "break" here means "exit
-the loop at the next iteration", not "exit the loop now".  The result
-is that any statements after the "break" keyword will still be
-executed.  We recommend using "break" only when it is the last
-statement in a "foreach" block.
-
-The attribute name is just the name, e.g. reply:Reply-Message, with
-none of the usual variable referenced %{...}.  This is because it is a
-reference to the attribute, and not an expansion of the attribute.
+Loops over values of an attribute, running the block for each value.
+The return value of the block is the return value of the last
+statement executed.  The loop can be exited early by using the "break"
+keyword.  Unlike other languages, "break" here means "exit the loop at
+the next iteration", not "exit the loop now".  The result is that any
+statements after the "break" keyword will still be executed.  We
+recommend using "break" only when it is the last statement in a
+"foreach" block.
 
 Inside of the "foreach" block, the attribute which is being looped
 over can be referenced as "Foreach-Variable-#".  Where "#" is the
@@ -113,7 +109,7 @@ loops can be nested up to eight (8) deep, though this is not
 recommended.
 
 .DS
-	foreach Attribute-Name {
+	foreach &Attribute-Reference {
 .br
 		...
 .br
@@ -506,7 +502,7 @@ as seen in the examples below.
 .IP """strings"""
 .RS
 Double-quoted strings are expanded by inserting the value of any
-variables (see VARIABLES, below) before being evaluated.  If
+attributes (see VARIABLES, below) before being evaluated.  If
 the result is a number it is evaluated in a numerical context.
 
 String length is limited by line-length, usually about 8000
@@ -525,7 +521,7 @@ output as a string.  This behavior is much the same as that of Unix
 shells.
 
 Note that for security reasons, the input string is split into command
-and arguments before variable expansion is done.
+and arguments before string expansion is done.
 
 For performance reasons, we suggest that the use of back-quoted
 strings be kept to a minimum.  Executing external programs is
@@ -572,7 +568,7 @@ Obtaining results from databases
 .RS
 It is useful to query a database for some information, and to use the
 result in a condition.  The following syntax will call a module, pass
-it the given string, and replace the variable reference with the
+it the given string, and replace the string expansion with the
 resulting string returned from the module.
 
 .DS
@@ -722,7 +718,7 @@ it directly, or by having the address returned from a database query,
 or by having the address returned as the output of a program that is
 executed.
 
-When string values are finally assigned to a variable, they can have a
+When string values are finally assigned to an attribute, they can have a
 maximum length of 253 characters.  This limit is due in part to both
 protocol and internal server requirements.  That is, the strings in
 the language can be nearly 8k in length, say for a long SQL query.
