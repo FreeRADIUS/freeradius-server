@@ -2630,7 +2630,7 @@ static CONF_DATA *cf_data_alloc(CONF_SECTION *parent, char const *name,
 	cd->item.type = CONF_ITEM_DATA;
 	cd->item.parent = parent;
 	cd->name = talloc_typed_strdup(cd, name);
-	if (!cd) {
+	if (!cd->name) {
 		talloc_free(cd);
 		return NULL;
 	}
