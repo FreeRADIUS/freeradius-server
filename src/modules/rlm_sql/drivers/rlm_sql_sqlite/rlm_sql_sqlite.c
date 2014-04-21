@@ -225,8 +225,9 @@ static int sql_loadfile(TALLOC_CTX *ctx, sqlite3 *db, char const *filename)
 
 static int mod_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
 {
+	bool exists;
 	rlm_sql_sqlite_config_t *driver;
-	int exists;
+	struct stat buf;
 
 	if (sqlite3_libversion_number() != SQLITE_VERSION_NUMBER) {
 		DEBUG2("rlm_sql_sqlite: SQLite library version (%s) is different from the version the server was "
@@ -244,10 +245,14 @@ static int mod_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
 		MEM(driver->filename = talloc_typed_asprintf(driver, "%s/%s", get_radius_dir(), config->sql_db));
 	}
 
-	exists = rad_file_exists(driver->filename);
-	if (exists < 0) {
-		ERROR("rlm_sql_sqlite: Database exists, but couldn't be opened: %s", fr_syserror(errno));
+	if (stat(driver->filename, &buf) == 0) {
+		exists = true;
 
+	} else if (errno == ENOENT) {
+		exists = false;
+
+	} else {
+		ERROR("rlm_sql_sqlite: Database exists, but couldn't be opened: %s", fr_syserror(errno));
 		return -1;
 	}
 

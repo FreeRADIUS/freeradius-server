@@ -241,31 +241,6 @@ int request_opaque_free(REQUEST *request)
 	return 0;
 }
 
-/** Check if file exists
- *
- * @param filename to check.
- * @return 0 if the file does not exist, 1 if the file exists, -1 if the file
- *	exists but there was an error opening it. errno value should be usable
- *	for error messages.
- */
-int rad_file_exists(char const *filename)
-{
-	int des;
-	int ret = 1;
-
-	if ((des = open(filename, O_RDONLY)) == -1) {
-		if (errno == ENOENT) {
-			ret = 0;
-		} else {
-			ret = -1;
-		}
-	} else {
-		close(des);
-	}
-
-	return ret;
-}
-
 /*
  *	Create possibly many directories.
  *
