@@ -47,11 +47,12 @@ static const FR_NAME_NUMBER allowed_return_codes[] = {
  *	This file shouldn't use any functions from the server core.
  */
 
-size_t fr_cond_sprint(char *buffer, size_t bufsize, fr_cond_t const *c)
+size_t fr_cond_sprint(char *buffer, size_t bufsize, fr_cond_t const *in)
 {
 	size_t len;
 	char *p = buffer;
 	char *end = buffer + bufsize - 1;
+	fr_cond_t const *c = in;
 
 next:
 	if (c->negate) {
