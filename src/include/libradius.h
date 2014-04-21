@@ -450,7 +450,6 @@ size_t   	vp_prints_value(char *out, size_t outlen, VALUE_PAIR const *vp, int8_t
 char		*vp_aprinttype(TALLOC_CTX *ctx, PW_TYPE type);
 char     	*vp_aprint(TALLOC_CTX *ctx, VALUE_PAIR const *vp);
 size_t    	vp_prints_value_json(char *out, size_t outlen, VALUE_PAIR const *vp);
-size_t		vp_print_name(char *out, size_t outlen, unsigned int attr, unsigned int vendor);
 size_t		vp_prints(char *out, size_t outlen, VALUE_PAIR const *vp);
 void		vp_print(FILE *, VALUE_PAIR const *);
 void		vp_printlist(FILE *, VALUE_PAIR const *);
@@ -610,7 +609,6 @@ void		pairreplace(VALUE_PAIR **first, VALUE_PAIR *add);
 int8_t		paircmp_value(VALUE_PAIR const *a, VALUE_PAIR const *b);
 int8_t		paircmp_op(VALUE_PAIR const *a, FR_TOKEN op, VALUE_PAIR const *b);
 int8_t		paircmp(VALUE_PAIR *a, VALUE_PAIR *b);
-int8_t		pairlistcmp(VALUE_PAIR *a, VALUE_PAIR *b);
 
 typedef int8_t (*fr_pair_cmp_t)(VALUE_PAIR const *a, VALUE_PAIR const *b);
 int8_t		attrcmp(VALUE_PAIR const *a, VALUE_PAIR const *b);

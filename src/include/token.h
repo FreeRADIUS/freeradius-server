@@ -81,7 +81,6 @@ char const *fr_int2str(FR_NAME_NUMBER const *table, int number,
 
 
 int		getword (char const **ptr, char *buf, int buflen);
-int		getbareword (char const **ptr, char *buf, int buflen);
 FR_TOKEN	gettoken(char const **ptr, char *buf, int buflen);
 FR_TOKEN	getstring(char const **ptr, char *buf, int buflen);
 char const	*fr_token_name(int);

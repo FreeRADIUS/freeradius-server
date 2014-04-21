@@ -241,20 +241,6 @@ int request_opaque_free(REQUEST *request)
 	return 0;
 }
 
-/*
- *	Check a filename for sanity.
- *
- *	Allow only uppercase/lowercase letters, numbers, and '-_/.'
- */
-int rad_checkfilename(char const *filename)
-{
-	if (strspn(filename, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_/.") == strlen(filename)) {
-		return 0;
-	}
-
-	return -1;
-}
-
 /** Check if file exists
  *
  * @param filename to check.
@@ -365,13 +351,6 @@ void *rad_malloc(size_t size)
 	return ptr;
 }
 
-
-void *rad_calloc(size_t size)
-{
-	void *ptr = rad_malloc(size);
-	memset(ptr, 0, size);
-	return ptr;
-}
 
 void rad_const_free(void const *ptr)
 {

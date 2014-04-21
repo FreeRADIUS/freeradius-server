@@ -38,13 +38,6 @@ uint32_t fr_hash(void const *, size_t);
 uint32_t fr_hash_update(void const *data, size_t size, uint32_t hash);
 uint32_t fr_hash_string(char const *p);
 
-/*
- *	If you need fewer than 32-bits of hash, use this macro to get
- *	the number of bits in the hash you need.  The upper bits of the
- *	hash will be set to zero.
- */
-uint32_t fr_hash_fold(uint32_t hash, int bits);
-
 typedef struct fr_hash_table_t fr_hash_table_t;
 typedef void (*fr_hash_table_free_t)(void *);
 typedef uint32_t (*fr_hash_table_hash_t)(void const *);

@@ -759,33 +759,6 @@ uint32_t fr_hash_update(void const *data, size_t size, uint32_t hash)
 }
 
 /*
- *	Return a "folded" hash, where the lower "bits" are the
- *	hash, and the upper bits are zero.
- *
- *	If you need a non-power-of-two hash, cope.
- */
-uint32_t fr_hash_fold(uint32_t hash, int bits)
-{
-	int count;
-	uint32_t result;
-
-	if ((bits <= 0) || (bits >= 32)) return hash;
-
-	result = hash;
-
-	/*
-	 *	Never use the same bits twice in an xor.
-	 */
-	for (count = 0; count < 32; count += bits) {
-		hash >>= bits;
-		result ^= hash;
-	}
-
-	return result & (((uint32_t) (1 << bits)) - 1);
-}
-
-
-/*
  *	Hash a C string, so we loop over it once.
  */
 uint32_t fr_hash_string(char const *p)
