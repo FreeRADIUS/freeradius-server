@@ -607,7 +607,6 @@ int radius_xlat_do(REQUEST *request, VALUE_PAIR *vp)
 
 	len = radius_xlat(buffer, sizeof(buffer), request, vp->value.xlat, NULL, NULL);
 
-
 	rad_const_free(vp->value.xlat);
 	vp->value.xlat = NULL;
 	if (len < 0) {
@@ -651,7 +650,7 @@ void radius_xlat_move(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR **from)
 		/*
 		 *	Don't move 'fallthrough' over.
 		 */
-		if (!i->da->vendor && i->da->attr == PW_FALL_THROUGH) {
+		if ((i->da->vendor == 0) && (i->da->attr == PW_FALL_THROUGH)) {
 			tailfrom = i;
 			continue;
 		}
@@ -664,74 +663,73 @@ void radius_xlat_move(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR **from)
 
 		found = pairfind(*to, i->da->attr, i->da->vendor, TAG_ANY);
 		switch (i->op) {
+		/*
+		 *	If a similar attribute is found,
+		 *	delete it.
+		 */
+		case T_OP_SUB:		/* -= */
+			if (found) {
+				if (!i->vp_strvalue[0] ||
+				    (strcmp(found->vp_strvalue,
+					    i->vp_strvalue) == 0)) {
+					pairdelete(to, found->da->attr,
+						found->da->vendor,
+						found->tag);
 
-			/*
-			 *	If a similar attribute is found,
-			 *	delete it.
-			 */
-			case T_OP_SUB:		/* -= */
-				if (found) {
-					if (!i->vp_strvalue[0] ||
-				    	    (strcmp(found->vp_strvalue,
-					    	    i->vp_strvalue) == 0)) {
-				  		pairdelete(to, found->da->attr,
-				  			found->da->vendor,
-				  			found->tag);
-
-					/*
-					 *	'tailto' may have been
-					 *	deleted...
-					 */
-					tailto = to;
-					for (j = *to; j; j = j->next) {
-						tailto = &j->next;
-					}
+				/*
+				 *	'tailto' may have been
+				 *	deleted...
+				 */
+				tailto = to;
+				for (j = *to; j; j = j->next) {
+					tailto = &j->next;
 				}
 			}
-			tailfrom = i;
-			continue;
+		}
+		tailfrom = i;
+		continue;
 
-			/*
-			 *	Add it, if it's not already there.
-			 */
-			case T_OP_EQ:		/* = */
-				if (found) {
-					tailfrom = i;
-					continue; /* with the loop */
-				}
-				break;
+		/*
+		 *	Add it, if it's not already there.
+		 */
+		case T_OP_EQ:		/* = */
+			if (found) {
+				tailfrom = i;
+				continue; /* with the loop */
+			}
+			break;
 
-			/*
-			 *	If a similar attribute is found,
-			 *	replace it with the new one.  Otherwise,
-			 *	add the new one to the list.
-			 */
-			case T_OP_SET:		/* := */
-				if (found) {
-					VALUE_PAIR *vp;
+		/*
+		 *	If a similar attribute is found,
+		 *	replace it with the new one.  Otherwise,
+		 *	add the new one to the list.
+		 */
+		case T_OP_SET:		/* := */
+			if (found) {
+				VALUE_PAIR *vp;
 
-					vp = found->next;
-					memcpy(found, i, sizeof(*found));
-					found->next = vp;
-					tailfrom = i;
-					continue;
-				}
-				break;
+				vp = found->next;
+				memcpy(found, i, sizeof(*found));
+				found->next = vp;
+				tailfrom = i;
+				continue;
+			}
+			break;
 
-			/*
-			 *	FIXME: Add support for <=, >=, <, >
-			 *
-			 *	which will mean (for integers)
-			 *	'make the attribute the smaller, etc'
-			 */
+		/*
+		 *	FIXME: Add support for <=, >=, <, >
+		 *
+		 *	which will mean (for integers)
+		 *	'make the attribute the smaller, etc'
+		 */
 
-			/*
-			 *  Add the new element to the list, even
-			 *  if similar ones already exist.
-			 */
-			default:
-			case T_OP_ADD:		/* += */
-				break;
+		/*
+		 *  Add the new element to the list, even
+		 *  if similar ones already exist.
+		 */
+		default:
+		case T_OP_ADD:		/* += */
+			break;
 		}
 
 		if (tailfrom) {
