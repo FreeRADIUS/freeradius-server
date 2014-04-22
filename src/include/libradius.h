@@ -609,6 +609,7 @@ void		pairreplace(VALUE_PAIR **first, VALUE_PAIR *add);
 int8_t		paircmp_value(VALUE_PAIR const *a, VALUE_PAIR const *b);
 int8_t		paircmp_op(VALUE_PAIR const *a, FR_TOKEN op, VALUE_PAIR const *b);
 int8_t		paircmp(VALUE_PAIR *a, VALUE_PAIR *b);
+int8_t		pairlistcmp(VALUE_PAIR *a, VALUE_PAIR *b);
 
 typedef int8_t (*fr_pair_cmp_t)(VALUE_PAIR const *a, VALUE_PAIR const *b);
 int8_t		attrcmp(VALUE_PAIR const *a, VALUE_PAIR const *b);
