@@ -202,7 +202,7 @@ static int eappeap_initiate(void *type_arg, eap_handler_t *handler)
 	tls_session_t	*ssn;
 	rlm_eap_peap_t	*inst;
 	VALUE_PAIR	*vp;
-	bool		client_cert = false;
+	bool		client_cert;
 	REQUEST		*request = handler->request;
 
 	inst = type_arg;
@@ -213,7 +213,6 @@ static int eappeap_initiate(void *type_arg, eap_handler_t *handler)
 	/*
 	 *	Check if we need a client certificate.
 	 */
-	client_cert = inst->req_client_cert;
 
 	/*
 	 * EAP-TLS-Require-Client-Cert attribute will override
@@ -222,6 +221,8 @@ static int eappeap_initiate(void *type_arg, eap_handler_t *handler)
 	vp = pairfind(handler->request->config_items, PW_EAP_TLS_REQUIRE_CLIENT_CERT, 0, TAG_ANY);
 	if (vp) {
 		client_cert = vp->vp_integer;
+	} else {
+		client_cert = inst->req_client_cert;
 	}
 
 	ssn = eaptls_session(inst->tls_conf, handler, client_cert);
