@@ -2695,8 +2695,6 @@ int8_t paircmp_op(VALUE_PAIR const *a, FR_TOKEN op, VALUE_PAIR const *b)
  */
 int8_t paircmp(VALUE_PAIR *a, VALUE_PAIR *b)
 {
-	int compare;
-
 	if (!a) return -1;
 
 	VERIFY_VP(a);
@@ -2719,6 +2717,7 @@ int8_t paircmp(VALUE_PAIR *a, VALUE_PAIR *b)
 		return -1;
 #else
 		{
+			int compare;
 			regex_t reg;
 			char buffer[MAX_STRING_LEN * 4 + 1];
 
