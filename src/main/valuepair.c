@@ -1828,28 +1828,6 @@ int radius_vpt_copy_vp(VALUE_PAIR **out, REQUEST *request, value_pair_tmpl_t con
 	return 0;
 }
 
-/** Copy a VP from the specified request.
- *
- * @param out where to write the pointer to the copied VP.
- *	Will be NULL if the attribute couldn't be resolved.
- * @param request current request.
- * @param name attribute name including qualifiers.
- * @return -4 if either the attribute or qualifier were invalid, and the same error codes as radius_vpt_get_vp for other
- *	error conditions.
- */
-int radius_copy_vp(VALUE_PAIR **out, REQUEST *request, char const *name)
-{
-	value_pair_tmpl_t vpt;
-
-	*out = NULL;
-
-	if (radius_parse_attr(&vpt, name, REQUEST_CURRENT, PAIR_LIST_REQUEST) < 0) {
-		return -4;
-	}
-
-	return radius_vpt_copy_vp(out, request, &vpt);
-}
-
 void module_failure_msg(REQUEST *request, char const *fmt, ...)
 {
 	va_list ap;

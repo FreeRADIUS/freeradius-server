@@ -748,7 +748,6 @@ int radius_strpair2map(value_pair_map_t **out, REQUEST *request, char const *raw
 VALUE_PAIR *radius_vpt_get_vp(REQUEST *request, value_pair_tmpl_t const *vpt);
 int radius_get_vp(VALUE_PAIR **out, REQUEST *request, char const *name);
 int radius_vpt_copy_vp(VALUE_PAIR **out, REQUEST *request, value_pair_tmpl_t const *vpt);
-int radius_copy_vp(VALUE_PAIR **out, REQUEST *request, char const *name);
 
 #ifdef WITH_TLS
 /*
