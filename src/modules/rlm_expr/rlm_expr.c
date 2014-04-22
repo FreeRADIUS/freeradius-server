@@ -209,9 +209,9 @@ static int get_number(REQUEST *request, char const **string, int64_t *answer)
 		case TOKEN_DIVIDE:
 			if (x == 0) {
 				result = 0; /* we don't have NaN for integers */
-				break;
+			} else {
+				result /= x;
 			}
-			result /= x;
 			break;
 
 		case TOKEN_REMAINDER:
