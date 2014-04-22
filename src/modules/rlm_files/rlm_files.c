@@ -246,7 +246,6 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, fr_hash_table_t *
 				 *	good warning message.
 				 */
 				 if ((vp->da->vendor == 0) &&
-					(vp->da->attr > 0xff) &&
 					(vp->da->attr > 1000)) {
 					WDEBUG("[%s]:%d Check item \"%s\"\n"
 					       "\tfound in reply item list for user \"%s\".\n"
