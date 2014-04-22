@@ -2001,6 +2001,7 @@ static SSL_CTX *init_tls_ctx(fr_tls_server_conf_t *conf, int client)
 #endif
 
 	ctx = SSL_CTX_new(TLSv1_method());
+	if (!ctx) return NULL;
 
 	/*
 	 * Save the config on the context so that callbacks which
