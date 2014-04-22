@@ -448,11 +448,8 @@ static rlm_rcode_t file_common(rlm_files_t *inst, REQUEST *request,
 
 			/* ctx may be reply or proxy */
 			reply_tmp = paircopy(request, pl->reply);
-			radius_xlat_move(request, reply_pairs, &reply_tmp);
+			radius_pairmove(request, reply_pairs, reply_tmp, true);
 			pairmove(request, &request->config_items, &check_tmp);
-
-			/* Cleanup any unmoved valuepairs */
-			pairfree(&reply_tmp);
 			pairfree(&check_tmp);
 
 			/*

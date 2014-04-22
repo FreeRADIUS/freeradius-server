@@ -1341,7 +1341,7 @@ static int json_pairmake(rlm_rest_t *instance, UNUSED rlm_rest_section_t *sectio
 				if (!vp) continue;
 			}
 			debug_pair(vp);
-			radius_pairmove(current, vps, vp);
+			radius_pairmove(current, vps, vp, false);
 		/*
 		 *  If we call json_object_array_get_idx on something that's not an array
 		 *  the behaviour appears to be to occasionally segfault.

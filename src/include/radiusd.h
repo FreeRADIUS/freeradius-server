@@ -608,7 +608,6 @@ int		paircompare(REQUEST *request, VALUE_PAIR *req_list,
 			    VALUE_PAIR *check, VALUE_PAIR **rep_list);
 value_pair_tmpl_t *radius_xlat2tmpl(TALLOC_CTX *ctx, xlat_exp_t *xlat);
 int		radius_xlat_do(REQUEST *request, VALUE_PAIR *vp);
-void		radius_xlat_move(REQUEST *, VALUE_PAIR **to, VALUE_PAIR **from);
 int radius_compare_vps(REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *vp);
 int radius_callback_compare(REQUEST *request, VALUE_PAIR *req,
 			    VALUE_PAIR *check, VALUE_PAIR *check_pairs,
@@ -721,7 +720,7 @@ int radius_evaluate_map(REQUEST *request, int modreturn, int depth,
 			fr_cond_t const *c);
 int radius_evaluate_cond(REQUEST *request, int modreturn, int depth,
 			 fr_cond_t const *c);
-void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from);
+void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from, bool do_xlat);
 
 VALUE_PAIR **radius_list(REQUEST *request, pair_lists_t list);
 TALLOC_CTX *radius_list_ctx(REQUEST *request, pair_lists_t list_name);
