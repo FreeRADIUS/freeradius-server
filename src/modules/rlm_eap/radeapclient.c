@@ -825,6 +825,7 @@ static int respond_eap_md5(RADIUS_PACKET *req,
 		uint8_t lg_response;
 
 		vp = paircreate(rep, ATTRIBUTE_EAP_BASE+PW_EAP_MD5, 0);
+		vp->length = 17;
 
 		p = talloc_zero_array(vp, uint8_t, 17);
 		lg_response = 16;
