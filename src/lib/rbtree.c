@@ -542,38 +542,6 @@ void *rbtree_finddata(rbtree_t *tree, void const *data)
 	return x->data;
 }
 
-/** Find a node by data, perform a compare, and perhaps delete the node.
- *
- */
-void *rbtree_callbydata(rbtree_t *tree, void const *data, rb_comparator_t compare, void *context) {
-	rbnode_t *current;
-
-	PTHREAD_MUTEX_LOCK(tree);
-
-	current = tree->root;
-	while (current != NIL) {
-		int result = tree->compare(data, current->data);
-
-		if (result == 0) {
-			void *our_data = current->data;
-
-			if (compare(context, our_data) > 0) {
-				rbtree_delete_internal(tree, current, true);
-				if (tree->free) {
-					our_data = NULL;
-				}
-			}
-			PTHREAD_MUTEX_UNLOCK(tree);
-			return our_data;
-		} else {
-			current = (result < 0) ? current->left : current->right;
-		}
-	}
-
-	PTHREAD_MUTEX_UNLOCK(tree);
-	return NULL;
-}
-
 /** Walk the tree, Pre-order
  *
  * We call ourselves recursively for each function, but that's OK,
@@ -769,23 +737,4 @@ void *rbtree_node2data(UNUSED rbtree_t *tree, rbnode_t *node)
 	if (!node) return NULL;
 
 	return node->data;
-}
-
-/*
- *	Return left-most child.
- */
-void *rbtree_min(rbtree_t *tree)
-{
-	void *data;
-	rbnode_t *current;
-
-	if (!tree || !tree->root) return NULL;
-
-	PTHREAD_MUTEX_LOCK(tree);
-	current = tree->root;
-	while (current->left != NIL) current = current->left;
-
-	data = current->data;
-	PTHREAD_MUTEX_UNLOCK(tree);
-	return data;
 }
