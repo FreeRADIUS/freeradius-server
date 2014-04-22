@@ -320,7 +320,7 @@ static int sqlcounter_cmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR *r
 
 	char query[MAX_QUERY_LEN], subst[MAX_QUERY_LEN];
 	char *expanded = NULL;
-	size_t len;
+	ssize_t len;
 
 	/* First, expand %k, %b and %e in query */
 	len = sqlcounter_expand(subst, sizeof(subst), inst->query, inst);
@@ -460,7 +460,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 	char query[MAX_QUERY_LEN], subst[MAX_QUERY_LEN];
 	char *expanded = NULL;
 
-	size_t len;
+	ssize_t len;
 
 	rad_assert(instance != NULL);
 	rad_assert(request != NULL);
