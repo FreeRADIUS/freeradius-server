@@ -187,8 +187,7 @@ int getusersfile(TALLOC_CTX *ctx, char const *filename, PAIR_LIST **pair_list, c
 				 *	good warning message.
 				 */
 				 if ((vp->da->vendor == 0) &&
-					(vp->da->attr > 0xff) &&
-					(vp->da->attr > 1000)) {
+				     (vp->da->attr > 1000)) {
 					WDEBUG("[%s]:%d Check item \"%s\"\n"
 					       "\tfound in reply item list for user \"%s\".\n"
 					       "\tThis attribute MUST go on the first line"
