@@ -409,64 +409,6 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool,
 	return this;
 }
 
-/** Add a new connection to the pool
- *
- * If conn is not NULL will attempt to add that connection handle to the pool.
- * If conn is NULL will attempt to spawn a new connection using the create
- * callback.
- *
- * @note Will call the 'open' trigger.
- *
- * @param[in,out] pool to add connection to.
- * @param[in] conn to add.
- * @return 0 if the connection wasn't added else 1.
- */
-int fr_connection_add(fr_connection_pool_t *pool, void *conn)
-{
-	fr_connection_t *this;
-
-	if (!pool) return 0;
-
-	pthread_mutex_lock(&pool->mutex);
-
-	if (!conn) {
-		conn = pool->create(pool->ctx);
-		if (!conn) {
-			pthread_mutex_unlock(&pool->mutex);
-			return 0;
-		}
-
-		INFO("%s: Opening connection successful (%" PRIu64 ")", pool->log_prefix, pool->count);
-	}
-
-	/*
-	 *	Too many connections: can't add it.
-	 */
-	if (pool->num >= pool->max) {
-		pthread_mutex_unlock(&pool->mutex);
-		return 0;
-	}
-
-	this = talloc_zero(pool, fr_connection_t);
-	if (!this) {
-		pthread_mutex_unlock(&pool->mutex);
-		return 0;
-	}
-
-	this->created = this->last_used = time(NULL);
-	this->connection = conn;
-
-	this->number = pool->count++;
-	fr_connection_link_head(pool, this);
-	pool->num++;
-
-	pthread_mutex_unlock(&pool->mutex);
-
-	if (pool->trigger) exec_trigger(NULL, pool->cs, "open", true);
-
-	return 1;
-}
-
 /** Close an existing connection.
  *
  * Removes the connection from the list, calls the delete callback to close
@@ -830,7 +772,7 @@ static int fr_connection_manage(fr_connection_pool_t *pool,
  */
 static int fr_connection_pool_check(fr_connection_pool_t *pool)
 {
-	int spare, spawn;
+	int spare;
 	time_t now = time(NULL);
 	fr_connection_t *this, *next;
 
@@ -842,6 +784,8 @@ static int fr_connection_pool_check(fr_connection_pool_t *pool)
 	spare = pool->num - pool->active;
 
 	if ((pool->num < pool->max) && (spare < pool->spare)) {
+		int spawn;
+
 		spawn = pool->spare - spare;
 		if ((spawn + pool->num) > pool->max) {
 			spawn = pool->max - pool->num;
@@ -902,44 +846,6 @@ static int fr_connection_pool_check(fr_connection_pool_t *pool)
 	pthread_mutex_unlock(&pool->mutex);
 
 	return 1;
-}
-
-/** Trigger connection check for a given connection or all connections
- *
- * If conn is not NULL then we call fr_connection_manage on the connection.
- * If conn is NULL we call fr_connection_pool_check on the pool.
- *
- * @note Only connections that are not in use will be closed.
- *
- * @see fr_connection_manage
- * @see fr_connection_pool_check
- * @param[in,out] pool to manage.
- * @param[in,out] conn to check.
- * @return 0 if the connection was closed, else 1.
- */
-int fr_connection_check(fr_connection_pool_t *pool, void *conn)
-{
-	fr_connection_t *this;
-	time_t now;
-	int ret = 1;
-
-	if (!pool) return 1;
-
-	now = time(NULL);
-	pthread_mutex_lock(&pool->mutex);
-
-	if (!conn) return fr_connection_pool_check(pool);
-
-	for (this = pool->head; this != NULL; this = this->next) {
-		if (this->connection == conn) {
-			ret = fr_connection_manage(pool, conn, now);
-			break;
-		}
-	}
-
-	pthread_mutex_unlock(&pool->mutex);
-
-	return ret;
 }
 
 /** Reserve a connection in the connection pool
