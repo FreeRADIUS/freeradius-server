@@ -392,7 +392,7 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 
 					if (to_req) {
 						vp = paircopyvp(request, vp);
-						radius_pairmove(request, to_req, vp);
+						radius_pairmove(request, to_req, vp, false);
 					}
 
 					break;
@@ -408,7 +408,7 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 
 						if (to_req) {
 							vp = paircopyvp(request, vp);
-							radius_pairmove(request, to_req, vp);
+							radius_pairmove(request, to_req, vp, false);
 
 						}
 					} while ((found = fr_cursor_next_by_num(&cursor, da->attr, da->vendor, TAG_ANY)));
@@ -468,7 +468,7 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 				pairadd(to_cache, found);
 				if (to_req) {
 					vp = paircopy(request, found);
-					radius_pairmove(request, to_req, vp);
+					radius_pairmove(request, to_req, vp, false);
 				}
 
 				break;
@@ -499,7 +499,7 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 
 			if (to_req) {
 				vp = paircopyvp(request, vp);
-				radius_pairmove(request, to_req, vp);
+				radius_pairmove(request, to_req, vp, false);
 			}
 
 			break;
@@ -524,7 +524,7 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 
 			if (to_req) {
 				vp = paircopyvp(request, vp);
-				radius_pairmove(request, to_req, vp);
+				radius_pairmove(request, to_req, vp, false);
 			}
 
 			break;

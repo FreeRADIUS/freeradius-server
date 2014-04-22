@@ -421,9 +421,8 @@ static int hints_setup(PAIR_LIST *hints, REQUEST *request)
 
 			pairdelete(&add, PW_STRIP_USER_NAME, 0, TAG_ANY);
 			pairdelete(&add, PW_FALL_THROUGH, 0, TAG_ANY);
-			radius_xlat_move(request, &request->packet->vps, &add);
+			radius_pairmove(request, &request->packet->vps, add, true);
 
-			pairfree(&add);
 			updated = 1;
 			if (!ft) {
 				break;

@@ -852,7 +852,7 @@ int radius_evaluate_cond(REQUEST *request, int modreturn, int depth,
  *	only paircopy() those attributes that we're really going to
  *	use.
  */
-void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from)
+void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from, bool do_xlat)
 {
 	int i, j, count, from_count, to_count, tailto;
 	vp_cursor_t cursor;
@@ -922,6 +922,8 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from)
 		int found;
 
 		RDEBUG4("::: Examining %s", from_list[i]->da->name);
+
+		if (do_xlat) radius_xlat_do(request, from_list[i]);
 
 		/*
 		 *	Attribute should be appended, OR the "to" list

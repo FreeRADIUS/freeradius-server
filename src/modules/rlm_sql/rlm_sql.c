@@ -646,7 +646,7 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t *inst, REQUEST *request, rlm
 			RDEBUG2("Group \"%s\" check items matched", entry->name);
 			rcode = RLM_MODULE_OK;
 
-			radius_xlat_move(request, &request->config_items, &check_tmp);
+			radius_pairmove(request, &request->config_items, check_tmp, true);
 			check_tmp = NULL;
 		}
 
@@ -674,7 +674,7 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t *inst, REQUEST *request, rlm
 			RDEBUG2("Group \"%s\" reply items processed", entry->name);
 			rcode = RLM_MODULE_OK;
 
-			radius_xlat_move(request, &request->reply->vps, &reply_tmp);
+			radius_pairmove(request, &request->reply->vps, reply_tmp, true);
 			reply_tmp = NULL;
 		}
 
@@ -992,7 +992,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST * request)
 		}
 
 		RDEBUG2("Check items matched");
-		radius_xlat_move(request, &request->config_items, &check_tmp);
+		radius_pairmove(request, &request->config_items, check_tmp, true);
 		rcode = RLM_MODULE_OK;
 	}
 
@@ -1025,7 +1025,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST * request)
 
 		RDEBUG2("User found in radreply table");
 		user_found = true;
-		radius_xlat_move(request, &request->reply->vps, &reply_tmp);
+		radius_pairmove(request, &request->reply->vps, reply_tmp, true);
 		rcode = RLM_MODULE_OK;
 	}
 
