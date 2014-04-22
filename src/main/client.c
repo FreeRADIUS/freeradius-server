@@ -1257,7 +1257,7 @@ RADCLIENT *client_from_request(RADCLIENT_LIST *clients, REQUEST *request)
 			break;
 
 		case PW_TYPE_IPV6ADDR:
-			if (da->attr == PW_FREERADIUS_CLIENT_SRC_IPV6_ADDRESS) {
+			if (da->attr == PW_FREERADIUS_CLIENT_IPV6_ADDRESS) {
 				c->ipaddr.af = AF_INET6;
 				c->ipaddr.ipaddr.ip6addr = vp->vp_ipv6addr;
 				c->prefix = 128;
