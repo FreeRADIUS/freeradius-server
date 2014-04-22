@@ -1258,7 +1258,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 		} else {
 			original = rbtree_finddata(request_tree, &search);
 			if (original && memcmp(original->expect->vector, current->vector,
-			    sizeof(original->expect->vector) != 0)) {
+			    sizeof(original->expect->vector)) != 0) {
 				/*
 				 *	ID reused before the request timed out (which may be an issue)...
 				 */
