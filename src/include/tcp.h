@@ -26,10 +26,7 @@
 
 RCSIDH(tcp_h, "$Id$")
 
-int fr_tcp_socket(fr_ipaddr_t *ipaddr, int port);
 int fr_tcp_client_socket(fr_ipaddr_t *src_ipaddr, fr_ipaddr_t *dst_ipaddr, int dst_port);
 int fr_tcp_read_packet(RADIUS_PACKET *packet, int flags);
 RADIUS_PACKET *fr_tcp_recv(int sockfd, int flags);
-RADIUS_PACKET *fr_tcp_accept(int sockfd);
-ssize_t fr_tcp_write_packet(RADIUS_PACKET *packet);
 #endif /* FR_TCP_H */
