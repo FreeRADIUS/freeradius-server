@@ -320,11 +320,10 @@ static int sqlcounter_cmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR *r
 
 	char query[MAX_QUERY_LEN], subst[MAX_QUERY_LEN];
 	char *expanded = NULL;
-	ssize_t len;
+	size_t len;
 
 	/* First, expand %k, %b and %e in query */
-	len = sqlcounter_expand(subst, sizeof(subst), inst->query, inst);
-	if (len <= 0) {
+	if (sqlcounter_expand(subst, sizeof(subst), inst->query, inst) <= 0) {
 		REDEBUG("Insufficient query buffer space");
 
 		return RLM_MODULE_FAIL;
@@ -460,7 +459,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 	char query[MAX_QUERY_LEN], subst[MAX_QUERY_LEN];
 	char *expanded = NULL;
 
-	ssize_t len;
+	size_t len;
 
 	rad_assert(instance != NULL);
 	rad_assert(request != NULL);
@@ -505,8 +504,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 	}
 
 	/* First, expand %k, %b and %e in query */
-	len = sqlcounter_expand(subst, sizeof(subst), inst->query, inst);
-	if (len <= 0) {
+	if (sqlcounter_expand(subst, sizeof(subst), inst->query, inst) <= 0) {
 		REDEBUG("Insufficient query buffer space");
 
 		return RLM_MODULE_FAIL;
