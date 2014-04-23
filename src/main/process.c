@@ -2321,34 +2321,6 @@ STATE_MACHINE_DECL(proxy_running)
 	}
 }
 
-STATE_MACHINE_DECL(request_virtual_server)
-{
-	char const *old;
-
-	TRACE_STATE_MACHINE;
-
-	switch (action) {
-	case FR_ACTION_CONFLICTING:
-	case FR_ACTION_DUP:
-	case FR_ACTION_TIMER:
-	case FR_ACTION_PROXY_REPLY:
-		request_common(request, action);
-		break;
-
-	case FR_ACTION_RUN:
-		old = request->server;
-		request->server = request->home_server->server;
-		request_running(request, action);
-		request->server = old;
-		break;
-
-	default:
-		RDEBUG3("%s: Ignoring action %s", __FUNCTION__, action_codes[action]);
-		break;
-	}
-}
-
-
 static int request_will_proxy(REQUEST *request)
 {
 	int rcode, pre_proxy_type = 0;
@@ -2596,23 +2568,66 @@ static int request_proxy(REQUEST *request, int retransmit)
 #endif
 
 	/*
-	 *	The request may be sent to a virtual server.  If we're
-	 *	in a child thread, just process it here. If we're the
-	 *	master, push it back onto the queue for later
-	 *	processing.
+	 *	The request may need sending to a virtual server.
+	 *	This code is more than a little screwed up.  The rest
+	 *	of the state machine doesn't handle parent / child
+	 *	relationships well.  i.e. if the child request takes
+	 *	too long, the core will mark the *parent* as "stop
+	 *	processing".  And the child will continue without
+	 *	knowing anything...
+	 *
+	 *	So, we have some horrible hacks to get around that.
 	 */
 	if (request->home_server->server) {
+		REQUEST *fake;
+
+		if (request->packet->dst_port == 0) {
+			WDEBUG("Cannot proxy an internal request.");
+			return 0;
+		}
+
 		DEBUG("Proxying to virtual server %s",
 		      request->home_server->server);
 
-		if (!we_are_master()) {
-			request_virtual_server(request, FR_ACTION_RUN);
-			NO_CHILD_THREAD;
-			return 1;
-		}
+		/*
+		 *	Packets to virtual serrers don't get
+		 *	retransmissions sent to them.  And the virtual
+		 *	server is run ONLY if we have no child
+		 *	threads, or we're running in a child thread.
+		 */
+		rad_assert(retransmit == 0);
+		rad_assert(!spawn_flag || !we_are_master());
 
-		request_queue_or_run(request, request_virtual_server);
-		return 1;
+		fake = request_alloc_fake(request);
+
+		fake->packet->vps = paircopy(fake->packet, request->packet->vps);
+		talloc_free(request->proxy);
+
+		fake->server = request->home_server->server;
+		fake->handle = request->handle;
+		fake->process = NULL; /* should never be run for anything */
+
+		/*
+		 *	Run the virtual server.
+		 */
+		request_running(fake, FR_ACTION_RUN);
+
+		request->proxy = talloc_steal(request, fake->packet);
+		fake->packet = NULL;
+		request->proxy_reply = talloc_steal(request, fake->reply);
+		fake->reply = NULL;
+
+		request_free(&fake);
+
+		/*
+		 *	Just do the work here, rather than trying to
+		 *	run the "decode proxy reply" stuff...
+		 */
+		process_proxy_reply(request);
+
+		request->handle(request); /* to do more post-proxy stuff */
+
+		return -1;	/* so we call request_finish */
 	}
 
 	/*
