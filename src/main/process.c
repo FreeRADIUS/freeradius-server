@@ -3101,7 +3101,16 @@ STATE_MACHINE_DECL(proxy_wait_for_reply)
 
 	switch (action) {
 	case FR_ACTION_DUP:
+		/*
+		 *	We have a reply, ignore the retransmit.
+		 */
 		if (request->proxy_reply) return;
+
+		/*
+		 *	The request was proxied to a virtual server.
+		 *	Ignore the retransmit.
+		 */
+		if (request->home_server->server) return;
 
 		if ((home->state == HOME_STATE_IS_DEAD) ||
 		    !request->proxy_listener ||
