@@ -2617,6 +2617,8 @@ rad_listen_t *proxy_new_listener(home_server_t *home, int src_port)
 
 	if (!home) return NULL;
 
+	rad_assert(home->server == NULL); /* we only open real sockets */
+
 	if ((home->limit.max_connections > 0) &&
 	    (home->limit.num_connections >= home->limit.max_connections)) {
 		WDEBUG("Home server has too many open connections (%d)",
