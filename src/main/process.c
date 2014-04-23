@@ -1161,7 +1161,10 @@ STATE_MACHINE_DECL(request_finish)
 
 	(void) action;	/* -Wunused */
 
-	if (request->master_state == REQUEST_STOP_PROCESSING) return;
+	if (request->master_state == REQUEST_STOP_PROCESSING) {
+		NO_CHILD_THREAD;
+		return;
+	}
 
 	/*
 	 *	Don't send replies if there are none to send.
@@ -1183,6 +1186,7 @@ STATE_MACHINE_DECL(request_finish)
 			 */
 		}
 #else
+		NO_CHILD_THREAD;
 		return;
 #endif
 	}
