@@ -1,0 +1,99 @@
+#
+#  PRE: if
+#
+if ("%{Client-Shortname}" != '<UNKNOWN-CLIENT>') {
+	update reply {
+		Filter-Id += "fail 0"
+	}
+}
+
+if ("%{Request-Processing-Stage}" != 'authorize') {
+	update reply {
+		Filter-Id += "fail 1"
+	}
+}
+
+if ("%{Virtual-Server}" != 'default') {
+	update reply {
+		Filter-Id += "fail 2"
+	}
+}
+
+# This is actually request->simul_max not the rcode
+if ("%{Module-Return-Code}" != 0) {
+	update reply {
+		Filter-Id += "fail 3"
+	}
+}
+
+if ("%{Packet-Type}" != 'Access-Request') {
+	update reply {
+		Filter-Id += "fail 4"
+	}
+}
+
+# Response hasn't been set yet
+if ("%{Response-Packet-Type}" != '') {
+	update reply {
+		Filter-Id += "fail 5"
+	}
+}
+
+if ("%{Packet-Authentication-Vector}" != '00000000000000000000000000000000') {
+	update reply {
+		Filter-Id += "fail 6"
+	}
+}
+
+if ("%{Client-IP-Address}" != 127.0.0.1) {
+	update reply {
+		Filter-Id += "fail 7a"
+	}
+}
+
+if ("%{Packet-Src-IP-Address}" != 127.0.0.1) {
+	update reply {
+		Filter-Id += "fail 7b"
+	}
+}
+
+if ("%{Packet-Dst-IP-Address}" != 127.0.0.1) {
+	update reply {
+		Filter-Id += "fail 8"
+	}
+}
+
+# Can't have both...
+if ("%{Packet-Src-IPv6-Address}" != '') {
+	update reply {
+		Filter-Id += "fail 9"
+	}
+}
+
+if ("%{Packet-Dst-IPv6-Address}" != '') {
+	update reply {
+		Filter-Id += "fail 10"
+	}
+}
+
+if ("%{Packet-Src-Port}" != '18120') {
+	update reply {
+		Filter-Id += "fail 11"
+	}
+}
+
+if ("%{Packet-Dst-Port}" != '1812') {
+	update reply {
+		Filter-Id += "fail 12"
+	}
+}
+
+#
+#  The test passes only if no test above
+#  added a Filter-Id
+#
+if (!reply:Filter-Id) {
+	update reply {
+		Filter-Id := "filter"
+	}
+}
