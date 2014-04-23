@@ -1545,10 +1545,10 @@ static ssize_t xlat_tokenize_request(REQUEST *request, char const *fmt, xlat_exp
 static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, pair_lists_t list, DICT_ATTR const *da, int8_t tag,
 			int num, bool return_null)
 {
-	VALUE_PAIR *vp, *vps = NULL;
+	VALUE_PAIR *vp, *vps = NULL, *myvp = NULL;
 	RADIUS_PACKET *packet = NULL;
 	DICT_VALUE *dv;
-	VALUE_PAIR myvp;
+	char *ret = NULL;
 
 	/*
 	 *	Arg.  Too much abstraction is annoying.
@@ -1641,8 +1641,8 @@ static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, pair_lists_t list, DI
 	}
 
 	/*
-	 *	All of the attributes must now refer to a packet.  If
-	 *	there's no packet, we can't print any attribute
+	 *	All of the attributes must now refer to a packet.
+	 *	If there's no packet, we can't print any attribute
 	 *	referencing it.
 	 */
 	if (!packet) {
@@ -1650,10 +1650,7 @@ static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, pair_lists_t list, DI
 		return vp_aprinttype(ctx, da->type);
 	}
 
-	memset(&myvp, 0, sizeof(myvp));
-	myvp.da = da;
 	vp = NULL;
-
 	switch (da->attr) {
 	default:
 		goto print_vp;
@@ -1679,62 +1676,74 @@ static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, pair_lists_t list, DI
 		return talloc_typed_strdup(ctx, fr_packet_codes[code]);
 	}
 
+	/*
+	 *	Virtual attributes which require a temporary VALUE_PAIR
+	 *	to be allocated. We can't use stack allocated memory
+	 *	because of the talloc checks sprinkled throughout the
+	 *	various VP functions.
+	 */
 	case PW_PACKET_AUTHENTICATION_VECTOR:
-		myvp.length = sizeof(packet->vector);
-		memcpy(&myvp.vp_octets, packet->vector, sizeof(packet->vector));
-		vp = &myvp;
+		myvp = pairalloc(ctx, da);
+		pairmemcpy(myvp, packet->vector, sizeof(packet->vector));
+		vp = myvp;
 		break;
 
 	case PW_CLIENT_IP_ADDRESS:
 	case PW_PACKET_SRC_IP_ADDRESS:
 		if (packet->src_ipaddr.af == AF_INET) {
-			myvp.vp_ipaddr = packet->src_ipaddr.ipaddr.ip4addr.s_addr;
-			vp = &myvp;
+			myvp = pairalloc(ctx, da);
+			myvp->vp_ipaddr = packet->src_ipaddr.ipaddr.ip4addr.s_addr;
+			vp = myvp;
 		}
 		break;
 
 	case PW_PACKET_DST_IP_ADDRESS:
 		if (packet->dst_ipaddr.af == AF_INET) {
-			myvp.vp_ipaddr = packet->dst_ipaddr.ipaddr.ip4addr.s_addr;
-			vp = &myvp;
+			myvp = pairalloc(ctx, da);
+			myvp->vp_ipaddr = packet->dst_ipaddr.ipaddr.ip4addr.s_addr;
+			vp = myvp;
 		}
 		break;
 
 	case PW_PACKET_SRC_IPV6_ADDRESS:
 		if (packet->src_ipaddr.af == AF_INET6) {
-			memcpy(&myvp.vp_ipv6addr,
+			myvp = pairalloc(ctx, da);
+			memcpy(&myvp->vp_ipv6addr,
 			       &packet->src_ipaddr.ipaddr.ip6addr,
 			       sizeof(packet->src_ipaddr.ipaddr.ip6addr));
-			vp = &myvp;
+			vp = myvp;
 		}
 		break;
 
 	case PW_PACKET_DST_IPV6_ADDRESS:
 		if (packet->dst_ipaddr.af == AF_INET6) {
-			memcpy(&myvp.vp_ipv6addr,
+			myvp = pairalloc(ctx, da);
+			memcpy(&myvp->vp_ipv6addr,
 			       &packet->dst_ipaddr.ipaddr.ip6addr,
 			       sizeof(packet->dst_ipaddr.ipaddr.ip6addr));
-			vp = &myvp;
+			vp = myvp;
 		}
 		break;
 
 	case PW_PACKET_SRC_PORT:
-		myvp.vp_integer = packet->src_port;
-		vp = &myvp;
+		myvp = pairalloc(ctx, da);
+		myvp->vp_integer = packet->src_port;
+		vp = myvp;
 		break;
 
 	case PW_PACKET_DST_PORT:
-		myvp.vp_integer = packet->dst_port;
-		vp = &myvp;
+		myvp = pairalloc(ctx, da);
+		myvp->vp_integer = packet->dst_port;
+		vp = myvp;
 		break;
 	}
 
 do_print:
 	/*
-	 *	Hack up the virtual attributes.
+	 *	Fake various operations for virtual attributes.
 	 */
-	if (num && (vp == &myvp)) {
-		char *p, *q;
+	if (num && myvp) {
+		char *p;
 
 		/*
 		 *	[*] means only one.
@@ -1744,9 +1753,7 @@ do_print:
 		/*
 		 *	[n] means NULL, as there's only one.
 		 */
-		if ((num > 0) && (num < XLAT_ATTR_NUMBER)) {
-			return NULL;
-		}
+		if ((num > 0) && (num < XLAT_ATTR_NUMBER)) goto finish;
 
 		p = vp_aprint(ctx, vp);
 		rad_assert(p != NULL);
@@ -1755,12 +1762,13 @@ do_print:
 		 *	Get the length of it.
 		 */
 		if (num == XLAT_ATTR_NUMBER) {
-			q = talloc_typed_asprintf(ctx, "%d", (int) strlen(p));
+			ret = talloc_typed_asprintf(ctx, "%d", (int) strlen(p));
 			talloc_free(p);
-			return q;
+			goto finish;
 		}
 
-		return p;
+		ret = p;
+		goto finish;
 	}
 
 	/*
@@ -1819,7 +1827,11 @@ do_print:
 		return vp_aprinttype(ctx, da->type);
 	}
 
-	return vp_aprint(ctx, vp);
+	ret = vp_aprint(ctx, vp);
+
+finish:
+	talloc_free(myvp);
+	return ret;
 }
 
 #ifdef DEBUG_XLAT
