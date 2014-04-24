@@ -361,14 +361,16 @@ static int vp2eap(REQUEST *request, tls_session_t *tls_session, VALUE_PAIR *vp)
 #endif
 
 	/*
-	 *	Send the EAP data, WITHOUT the header.
+	 *	Send the EAP data in the first attribute, WITHOUT the
+	 *	header.
 	 */
 	(tls_session->record_plus)(&tls_session->clean_in, vp->vp_octets + EAP_HEADER_LEN, vp->length - EAP_HEADER_LEN);
 
 	/*
-	 *	Send the rest of the EAP data.
+	 *	Send the rest of the EAP data, but skipping the first VP.
 	 */
-	for (this = fr_cursor_init(&cursor, &vp);
+	this = fr_cursor_init(&cursor, &vp);
+	for (this = fr_cursor_next(&cursor);
 	     this;
 	     this = fr_cursor_next(&cursor)) {
 		(tls_session->record_plus)(&tls_session->clean_in, this->vp_octets, this->length);
