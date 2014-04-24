@@ -738,10 +738,6 @@ typedef struct fr_logfile_entry_t {
 	uint32_t	hash;
 	time_t		last_used;
 	char		*filename;
-#ifdef HAVE_PTHREAD_H
-	pthread_mutex_t mutex;
-#endif
-
 } fr_logfile_entry_t;
 
 
@@ -775,12 +771,7 @@ static int _logfile_free(fr_logfile_t *lf)
 	for (i = 0; i < lf->max_entries; i++) {
 		if (!lf->entries[i].filename) continue;
 
-		PTHREAD_MUTEX_LOCK(&lf->entries[i].mutex);
 		close(lf->entries[i].fd);
-		PTHREAD_MUTEX_UNLOCK(&lf->entries[i].mutex);
-#ifdef HAVE_PTHREAD_H
-		pthread_mutex_destroy(&lf->entries[i].mutex);
-#endif
 	}
 
 	PTHREAD_MUTEX_UNLOCK(&lf->mutex);
@@ -800,9 +791,6 @@ static int _logfile_free(fr_logfile_t *lf)
  */
 fr_logfile_t *fr_logfile_init(TALLOC_CTX *ctx)
 {
-#ifdef HAVE_PTHREAD_H
-	int i;
-#endif
 	fr_logfile_t *lf;
 
 	lf = talloc_zero(ctx, fr_logfile_t);
@@ -818,16 +806,6 @@ fr_logfile_t *fr_logfile_init(TALLOC_CTX *ctx)
 	if (pthread_mutex_init(&lf->mutex, NULL) != 0) {
 		talloc_free(lf);
 		return NULL;
-	}
-
-	/*
-	 *	Create the mutexes for each entry.
-	 */
-	for (i = 0; i < lf->max_entries; i++) {
-		if (pthread_mutex_init(&lf->entries[i].mutex, NULL) != 0) {
-			talloc_free(lf);
-			return NULL;
-		}
 	}
 #endif
 
@@ -876,7 +854,6 @@ int fr_logfile_open(fr_logfile_t *lf, char const *filename, mode_t permissions)
 			 *	This will block forever if a thread is
 			 *	doing something stupid.
 			 */
-			PTHREAD_MUTEX_LOCK(&(lf->entries[i].mutex));
 			TALLOC_FREE(lf->entries[i].filename);
 			close(lf->entries[i].fd);
 		}
@@ -896,15 +873,11 @@ int fr_logfile_open(fr_logfile_t *lf, char const *filename, mode_t permissions)
 				PTHREAD_MUTEX_UNLOCK(&lf->mutex);
 				return -1;
 			}
-
-			PTHREAD_MUTEX_UNLOCK(&(lf->mutex));
-			PTHREAD_MUTEX_LOCK(&(lf->entries[i].mutex));
-
 			/*
 			 *	Someone else failed to create the entry.
 			 */
 			if (!lf->entries[i].filename) {
-				PTHREAD_MUTEX_UNLOCK(&(lf->entries[i].mutex));
+				PTHREAD_MUTEX_UNLOCK(&lf->mutex);
 				return -1;
 			}
 			goto do_return;
@@ -928,22 +901,9 @@ int fr_logfile_open(fr_logfile_t *lf, char const *filename, mode_t permissions)
 	 *	Create a new entry.
 	 */
 
-	/*
-	 *	Grab the new mutex before releasing the main one.
-	 */
-	PTHREAD_MUTEX_LOCK(&(lf->entries[i].mutex));
-
 	lf->entries[i].hash = hash;
 	lf->entries[i].filename = talloc_strdup(lf->entries, filename);
 	lf->entries[i].fd = -1;
-
-	/*
-	 *	Now that the new entry is fully populated and its'
-	 *	mutex held, release the main one.  This allows us to
-	 *	open the file without holding the main mutex, which
-	 *	lowers contention on it.
-	 */
-	PTHREAD_MUTEX_UNLOCK(&(lf->mutex));
 
 	lf->entries[i].fd = open(filename, O_WRONLY | O_APPEND | O_CREAT, permissions);
 	if (lf->entries[i].fd < 0) {
@@ -992,18 +952,12 @@ do_return:
 				   filename, strerror(errno));
 
 	error:
-		/*
-		 *	Lock the main mutex, and destroy the entry.
-		 */
-		PTHREAD_MUTEX_LOCK(&(lf->mutex));
-
 		lf->entries[i].hash = 0;
 		TALLOC_FREE(lf->entries[i].filename);
 		close(lf->entries[i].fd);
 		lf->entries[i].fd = -1;
 
 		PTHREAD_MUTEX_UNLOCK(&(lf->mutex));
-		PTHREAD_MUTEX_UNLOCK(&(lf->entries[i].mutex));
 		return -1;
 	}
 
@@ -1063,8 +1017,6 @@ int fr_logfile_close(fr_logfile_t *lf, int fd)
 {
 	int i;
 
-	PTHREAD_MUTEX_LOCK(&(lf->mutex));
-
 	for (i = 0; i < lf->max_entries; i++) {
 		if (!lf->entries[i].filename) continue;
 
@@ -1076,7 +1028,6 @@ int fr_logfile_close(fr_logfile_t *lf, int fd)
 			close(lf->entries[i].dup); /* releases the fcntl lock */
 			lf->entries[i].dup = -1;
 
-			PTHREAD_MUTEX_UNLOCK(&(lf->entries[i].mutex));
 			PTHREAD_MUTEX_UNLOCK(&(lf->mutex));
 			return 0;
 		}
@@ -1092,14 +1043,11 @@ int fr_logfile_unlock(fr_logfile_t *lf, int fd)
 {
 	int i;
 
-	PTHREAD_MUTEX_LOCK(&(lf->mutex));
-
 	for (i = 0; i < lf->max_entries; i++) {
 		if (!lf->entries[i].filename) continue;
 
 		if (lf->entries[i].dup == fd) {
 			lf->entries[i].dup = -1;
-			PTHREAD_MUTEX_UNLOCK(&(lf->entries[i].mutex));
 			PTHREAD_MUTEX_UNLOCK(&(lf->mutex));
 			return 0;
 		}
