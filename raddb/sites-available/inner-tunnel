@@ -323,7 +323,7 @@ post-auth {
 	#  uncomment the section below, otherwise you may want
 	#  to use  Chargeable-User-Identity attribute from RFC 4372.
 	#  See further on.
-    	#update outer.reply {
+	#update outer.reply {
 	#  User-Name = "%{request:User-Name}"
 	#}
 	#
