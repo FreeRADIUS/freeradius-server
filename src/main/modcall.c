@@ -673,9 +673,9 @@ redo:
 		while (vp) {
 			*tail = paircopyvp(request, vp);
 			if (!*tail) break;
-			
+
 			tail = &((*tail)->next); /* really should be using cursors... */
-			
+
 			vp = fr_cursor_next_by_num(&cursor, vp->da->attr, vp->da->vendor, g->vpt->attribute.tag);
 		}
 
@@ -2794,6 +2794,12 @@ static bool pass2_xlat_compile(CONF_ITEM const *ci, value_pair_tmpl_t **pvpt, bo
 
 
 #ifdef HAVE_REGEX_H
+static int _free_compiled_regex(regex_t *preg)
+{
+	regfree(preg);
+	return 0;
+}
+
 static bool pass2_regex_compile(CONF_ITEM const *ci, value_pair_tmpl_t *vpt)
 {
 	int rcode;
@@ -2807,6 +2813,7 @@ static bool pass2_regex_compile(CONF_ITEM const *ci, value_pair_tmpl_t *vpt)
 	if (strchr(vpt->name, '%')) return true;
 
 	preg = talloc_zero(vpt, regex_t);
+	talloc_set_destructor(preg, _free_compiled_regex);
 	if (!preg) return false;
 
 	rcode = regcomp(preg, vpt->name, REG_EXTENDED);
