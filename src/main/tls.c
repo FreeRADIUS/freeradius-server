@@ -2001,7 +2001,14 @@ static SSL_CTX *init_tls_ctx(fr_tls_server_conf_t *conf, int client)
 #endif
 
 	ctx = SSL_CTX_new(TLSv1_method());
-	if (!ctx) return NULL;
+	if (!ctx) {
+		int err;
+		while ((err = ERR_get_error())) {
+			DEBUG("Failed creating SSL context: %s",
+			      ERR_error_string(err, NULL));
+			return NULL;
+		}
+	}
 
 	/*
 	 * Save the config on the context so that callbacks which
