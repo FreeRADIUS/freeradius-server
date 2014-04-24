@@ -189,7 +189,7 @@ static ssize_t mschap_xlat(void *instance, REQUEST *request,
 
 		/*
 		 *	MS-CHAP-Challenges are 8 octets,
-		 *	for MS-CHAPv2
+		 *	for MS-CHAPv1
 		 */
 		if (chap_challenge->length == 8) {
 			RDEBUG2(" mschap1: %02x",
