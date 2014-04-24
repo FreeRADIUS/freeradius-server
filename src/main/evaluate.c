@@ -242,7 +242,7 @@ int radius_evaluate_tmpl(REQUEST *request, int modreturn, UNUSED int depth,
 
 static int do_regex(REQUEST *request, value_pair_map_t const *map, bool iflag)
 {
-	int compare, rcode;
+	int compare, rcode, ret;
 	int cflags = REG_EXTENDED;
 	regex_t reg, *preg;
 	char *lhs, *rhs;
@@ -251,9 +251,10 @@ static int do_regex(REQUEST *request, value_pair_map_t const *map, bool iflag)
 	if (iflag) cflags |= REG_ICASE;
 
 	/*
-	 *	Expand and then compile it.
+	 *  Expand and then compile it.
 	 */
-	if (map->src->type == VPT_TYPE_REGEX) {
+	switch (map->src->type) {
+	case VPT_TYPE_REGEX:
 		rcode = radius_expand_tmpl(&rhs, request, map->src);
 		if (rcode < 0) {
 			EVAL_DEBUG("FAIL %d", __LINE__);
@@ -274,22 +275,41 @@ static int do_regex(REQUEST *request, value_pair_map_t const *map, bool iflag)
 		}
 
 		preg = &reg;
-	} else {
+		break;
+
+	case VPT_TYPE_REGEX_STRUCT:
 		preg = map->src->vpt_preg;
+		break;
+
+	default:
+		rad_assert(0);
+		break;
 	}
 
 	rcode = radius_expand_tmpl(&lhs, request, map->dst);
 	if (rcode < 0) {
 		EVAL_DEBUG("FAIL %d", __LINE__);
-		return -1;
+		ret = -1;
+		goto finish;
 	}
 	rad_assert(lhs != NULL);
 
-	memset(&rxmatch, 0, sizeof(rxmatch));	/* regexec does not seem to initialise unused elements */
+	/*
+	 *  regexec doesn't initialise unused elements
+	 */
+	memset(&rxmatch, 0, sizeof(rxmatch));
 	compare = regexec(preg, lhs, REQUEST_MAX_REGEX + 1, rxmatch, 0);
 	rad_regcapture(request, compare, lhs, rxmatch);
+	ret = (compare == 0);
 
-	return (compare == 0);
+finish:
+	/*
+	 *  regcomp allocs extra memory for the expression, so if the
+	 *  result wasn't cached we need to free it here.
+	 */
+	if (map->src->type == VPT_TYPE_REGEX) regfree(&reg);
+
+	return ret;
 }
 
 /*
