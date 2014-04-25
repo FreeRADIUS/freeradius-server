@@ -305,4 +305,4 @@ warnings:
 .PHONY: whitespace
 whitespace:
 	@for x in $$(git ls-files raddb/ src/); do unexpand $$x > $$x.bak; cp $$x.bak $$x; rm -f $$x.bak;done
-	@perl -p -i -e 's/\s+$$//' $$(git ls-files src/)
+	@perl -p -i -e 'trim' $$(git ls-files src/)
