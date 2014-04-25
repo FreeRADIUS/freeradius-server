@@ -314,6 +314,7 @@ int fr_set_dumpable(bool allow_core_dumps)
 /** Generate a talloc memory report for a context and print to stderr/stdout
  *
  * @param ctx to generate a report for, may be NULL in which case the root context is used.
+ * @param fd to write the report to.
  */
 int fr_log_talloc_report(TALLOC_CTX *ctx, int fd)
 {
