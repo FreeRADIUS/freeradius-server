@@ -171,11 +171,15 @@ static int sql_init_socket(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
 	char *dbstring;
 	rlm_sql_postgres_conn_t *conn;
 
-#ifdef HAVE_OPENSSL_CRYPTO_H
+#if defined(HAVE_OPENSSL_CRYPTO_H) && (defined(HAVE_PQINITOPENSSL) || defined(HAVE_PQINITSSL))
 	static bool ssl_init = false;
 
 	if (!ssl_init) {
+#ifdef HAVE_PQINITOPENSSL
 		PQinitOpenSSL(0, 0);
+#else
+		PQinitSSL(0);
+#endif
 		ssl_init = true;
 	}
 #endif
