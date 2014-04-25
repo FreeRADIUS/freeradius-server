@@ -775,19 +775,25 @@ void		*fr_cbuff_rp_next(fr_cbuff_t *cbuff, TALLOC_CTX *ctx);
  * @param signum signal raised.
  * @return 0 on success < 0 on failure.
  */
-typedef int (*fr_fault_cb)(int signum);
+typedef int (*fr_fault_cb_t)(int signum);
 typedef struct fr_bt_marker fr_bt_marker_t;
 
 void		fr_debug_break(void);
 void		backtrace_print(fr_cbuff_t *cbuff, void *obj);
 fr_bt_marker_t	*fr_backtrace_attach(fr_cbuff_t **cbuff, TALLOC_CTX *obj);
 
+typedef void (*fr_fault_log_t)(char const *msg, ...)
+#ifdef __GNUC__
+		__attribute__ ((format (printf, 1, 2)))
+#endif
+;
 int		fr_set_dumpable_init(void);
 int		fr_set_dumpable(bool allow_core_dumps);
 int		fr_log_talloc_report(TALLOC_CTX *ctx);
 void		fr_fault(int sig);
 int		fr_fault_setup(char const *cmd, char const *program);
-void		fr_fault_set_cb(fr_fault_cb cb);
+void		fr_fault_set_cb(fr_fault_cb_t func);
+void		fr_fault_set_log_fn(fr_fault_log_t func);
 void		fr_fault_set_log_fd(int fd);
 
 /* rbtree.c */

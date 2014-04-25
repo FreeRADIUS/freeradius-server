@@ -84,14 +84,6 @@ static void sig_fatal (int);
 static void sig_hup (int);
 #endif
 
-#ifdef WITH_VERIFY_PTR
-static void die_horribly(char const *reason)
-{
-	ERROR("talloc abort: %s\n", reason);
-	abort();
-}
-#endif
-
 /*
  *	The main guy.
  */
@@ -280,14 +272,6 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	if (mainconfig.memory_report) {
-		talloc_enable_null_tracking();
-#ifdef WITH_VERIFY_PTR
-		talloc_set_abort_fn(die_horribly);
-#endif
-	}
-	talloc_set_log_fn(log_talloc);
-
 	/*
 	 *	Mismatch between the binary and the libraries it depends on
 	 */
@@ -450,7 +434,6 @@ int main(int argc, char *argv[])
 		ERROR("%s", fr_strerror());
 		exit(EXIT_FAILURE);
 	}
-	if (default_log.fd > -1) fr_fault_set_log_fd(default_log.fd);
 
 	/*
 	 *	Start the event loop(s) and threads.
