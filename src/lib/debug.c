@@ -322,13 +322,14 @@ int fr_log_talloc_report(TALLOC_CTX *ctx, int fd)
 	char const *null_ctx = NULL;
 	int i = 0;
 
-	handle = fdopen(fd, "w");
+	handle = fdopen(dup(fd), "w");
 	if (!handle) {
 		fr_strerror_printf("Couldn't write memory report, fdopen failed: %s", fr_syserror(errno));
 
 		return -1;
 	}
 
+	fprintf(handle, "Current state of talloced memory:\n");
 	if (ctx) {
 		null_ctx = talloc_get_name(NULL);
 	}
@@ -485,6 +486,10 @@ skip_backtrace:
 }
 
 #ifdef SIGABRT
+/** Work around debuggers which can't backtrace past the signal handler
+ *
+ * At least this provides us some information when we get talloc errors.
+ */
 static void _fr_talloc_fault(UNUSED char const *message)
 {
 	fr_fault(SIGABRT);
