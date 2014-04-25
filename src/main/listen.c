@@ -1109,10 +1109,10 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 #ifdef WITH_PROXY
 	if (check_config) {
 		/*
-	 	 *	Until there is a side effects free way of forwarding a
-	 	 *	request to another virtual server, this check is invalid,
-	 	 *	and should be left disabled.
-	 	 */
+		 *	Until there is a side effects free way of forwarding a
+		 *	request to another virtual server, this check is invalid,
+		 *	and should be left disabled.
+		 */
 #if 0
 		if (home_server_find(&sock->my_ipaddr, sock->my_port, sock->proto)) {
 				char buffer[128];
@@ -2374,7 +2374,7 @@ static int listen_bind(rad_listen_t *this)
 				ERROR("Failed setting socket to IPv6 "
 				       "only: %s", fr_syserror(errno));
 
-		       		close(this->fd);
+				close(this->fd);
 				return -1;
 			}
 		}
@@ -2924,11 +2924,11 @@ static void *recv_thread(void *arg)
  */
 int listen_init(CONF_SECTION *config, rad_listen_t **head,
 #ifdef WITH_TLS
-	        bool spawn_flag
+		bool spawn_flag
 #else
 		UNUSED bool spawn_flag
 #endif
-	        )
+		)
 
 {
 	bool		override = false;

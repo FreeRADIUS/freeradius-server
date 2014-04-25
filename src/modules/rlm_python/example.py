@@ -41,11 +41,11 @@ OP_TRY = (':=', '+=', '-=', '=' )
 def resolve(*lines):
     tuples = []
     for line in lines:
-        for op in OP_TRY:
-            arr = line.rsplit(op)
-            if len(arr)==2:
-                tuples.append((str(arr[0].strip()),OP[op],str(arr[1].strip())))
-                break
+	for op in OP_TRY:
+	    arr = line.rsplit(op)
+	    if len(arr)==2:
+		tuples.append((str(arr[0].strip()),OP[op],str(arr[1].strip())))
+		break
     return tuple(tuples)
 
 # log function

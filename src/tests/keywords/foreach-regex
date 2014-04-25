@@ -9,7 +9,7 @@ update request {
 foreach Cisco-AVPair {
 	if ("%{Foreach-Variable-0}"  =~ /^%{Tmp-String-0}=(.*)$/i) {
 		update reply {
-	       		Called-Station-Id += "%{1}"
+			Called-Station-Id += "%{1}"
 		}
 	}
 }

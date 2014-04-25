@@ -2055,10 +2055,10 @@ int rad_send(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 		 *	the VP list again only for debugging.
 		 */
 	} else if (fr_debug_flag) {
-	  	DEBUG("Sending %s of id %d from %s port %u to %s port %u\n", what,
-	  	      packet->id,
-	  	      inet_ntop(packet->src_ipaddr.af, &packet->src_ipaddr.ipaddr,
-	  	      		ip_src_buffer, sizeof(ip_src_buffer)),
+		DEBUG("Sending %s of id %d from %s port %u to %s port %u\n", what,
+		      packet->id,
+		      inet_ntop(packet->src_ipaddr.af, &packet->src_ipaddr.ipaddr,
+				ip_src_buffer, sizeof(ip_src_buffer)),
 		      packet->src_port,
 		      inet_ntop(packet->dst_ipaddr.af, &packet->dst_ipaddr.ipaddr,
 				ip_dst_buffer, sizeof(ip_dst_buffer)),
@@ -2465,7 +2465,7 @@ int rad_packet_ok(RADIUS_PACKET *packet, int flags)
 		 *	Attributes are at LEAST as long as the ID & length
 		 *	fields.  Anything shorter is an invalid attribute.
 		 */
-       		if (attr[1] < 2) {
+		if (attr[1] < 2) {
 			fr_strerror_printf("WARNING: Malformed RADIUS packet from host %s: attribute %u too short",
 				   inet_ntop(packet->src_ipaddr.af,
 					     &packet->src_ipaddr.ipaddr,
@@ -2751,7 +2751,7 @@ int rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 			case PW_CODE_ACCOUNTING_REQUEST:
 			case PW_CODE_DISCONNECT_REQUEST:
 			case PW_CODE_COA_REQUEST:
-			  	memset(packet->data + 4, 0, AUTH_VECTOR_LEN);
+				memset(packet->data + 4, 0, AUTH_VECTOR_LEN);
 				break;
 
 			do_ack:
@@ -4539,7 +4539,7 @@ void fr_rand_seed(void const *data, size_t size)
 					    sizeof(fr_rand_pool.randrsl) - total);
 				if ((this < 0) && (errno != EINTR)) break;
 				if (this > 0) total += this;
- 			}
+			}
 			close(fd);
 		} else {
 			fr_rand_pool.randrsl[0] = fd;

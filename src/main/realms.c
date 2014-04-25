@@ -204,7 +204,7 @@ static size_t xlat_cs(CONF_SECTION *cs, char const *fmt, char *out, size_t outle
  *	Xlat for %{home_server:foo}
  */
 static ssize_t xlat_home_server(UNUSED void *instance, REQUEST *request,
-			        char const *fmt, char *out, size_t outlen)
+				char const *fmt, char *out, size_t outlen)
 {
 	if (!fmt || !out || (outlen < 1)) return 0;
 
@@ -223,7 +223,7 @@ static ssize_t xlat_home_server(UNUSED void *instance, REQUEST *request,
  *	Xlat for %{home_server_pool:foo}
  */
 static ssize_t xlat_server_pool(UNUSED void *instance, REQUEST *request,
-			        char const *fmt, char *out, size_t outlen)
+				char const *fmt, char *out, size_t outlen)
 {
 	if (!fmt || !out || (outlen < 1)) return 0;
 

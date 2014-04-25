@@ -413,10 +413,10 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 		for (vp = fr_cursor_init(&cursor, &request->packet->vps);
 		     vp;
 		     vp = fr_cursor_next(&cursor)) {
-		     	/*
-		     	 *	Double quoted strings get marked up as xlat expansions,
-		     	 *	but we don't support that in request.
-		     	 */
+			/*
+			 *	Double quoted strings get marked up as xlat expansions,
+			 *	but we don't support that in request.
+			 */
 			if (vp->type == VT_XLAT) {
 				vp->vp_strvalue = vp->value.xlat;
 				vp->value.xlat = NULL;
@@ -1598,11 +1598,11 @@ int main(int argc, char **argv)
 		       "\tLost            : %" PRIu64 "\n"
 		       "\tPassed filter   : %" PRIu64 "\n"
 		       "\tFailed filter   : %" PRIu64 "\n",
-		        stats.accepted,
-		        stats.rejected,
-		        stats.lost,
-		        stats.passed,
-		        stats.failed
+			stats.accepted,
+			stats.rejected,
+			stats.lost,
+			stats.passed,
+			stats.failed
 		);
 	}
 

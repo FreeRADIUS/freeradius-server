@@ -112,7 +112,7 @@ int map_eapsim_basictypes(RADIUS_PACKET *r, eap_packet_t *ep)
 		 * attribute, we pull the contents out, save it for later
 		 * processing, set the size to 16 bytes (plus 2 bytes padding).
 		 *
- 		 * At this point, we only care about the size.
+		 * At this point, we only care about the size.
 		 */
 		if(vp->da->attr == ATTRIBUTE_EAP_SIM_BASE + PW_EAP_SIM_MAC) {
 			vplen = 18;
@@ -192,7 +192,7 @@ int map_eapsim_basictypes(RADIUS_PACKET *r, eap_packet_t *ep)
 		 * attribute, we pull the contents out, save it for later
 		 * processing, set the size to 16 bytes (plus 2 bytes padding).
 		 *
- 		 * At this point, we put in zeros, and remember where the
+		 * At this point, we put in zeros, and remember where the
 		 * sixteen bytes go.
 		 */
 		if(vp->da->attr == ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_MAC) {

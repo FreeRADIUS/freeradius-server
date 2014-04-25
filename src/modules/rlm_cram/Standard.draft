@@ -94,10 +94,10 @@ KRB4 - (reserved) Kerberos V4 authentication
 KRB5 - (reserved) Kerberos V5 authentication
 
 NTLM  -  Microsoft  NTLM  v1  authentication.  SHOULD  be implemented as
-         MS-CHAP v1 (RFC2433/RFC2458)
+	 MS-CHAP v1 (RFC2433/RFC2458)
 
 NTLM2   -   (reserved)  Microsoft  NTLM  v2  authentication.  SHOULD  be
-        implemented as MS-CHAP v2 (RFC2759/RFC2458)
+	implemented as MS-CHAP v2 (RFC2759/RFC2458)
 
 CRAM-MD4 - MD4 digest authentication
 

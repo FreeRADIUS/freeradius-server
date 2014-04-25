@@ -829,7 +829,7 @@ fr_tls_status_t eaptls_process(eap_handler_t *handler)
 		 */
 		if ((status == FR_TLS_MORE_FRAGMENTS) ||
 		    (status == FR_TLS_MORE_FRAGMENTS_WITH_LENGTH) ||
-	    	    (status == FR_TLS_FIRST_FRAGMENT)) {
+		    (status == FR_TLS_FIRST_FRAGMENT)) {
 			/*
 			 *	Send the ACK.
 			 */

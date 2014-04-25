@@ -46,7 +46,7 @@ def instantiate(p):
 
   try:
     dbHandle = MySQLdb.connect(db=configDb, host=configHost,
-                               user=configUser, passwd=configPasswd)
+			       user=configUser, passwd=configPasswd)
 
   except MySQLdb.OperationalError, e:
     # Report the error and return -1 for failure.
@@ -156,8 +156,8 @@ def authorize(authData):
   # We need to set an Auth-Type.
 
   return (radiusd.RLM_MODULE_UPDATED,
-          (('Session-Timeout', str(sessionTimeout)),),
-          (('Auth-Type', 'python'),))
+	  (('Session-Timeout', str(sessionTimeout)),),
+	  (('Auth-Type', 'python'),))
   # If you want to use different operators
   # you can do
   # return (radiusd.RLM_MODULE_UPDATED,
@@ -211,7 +211,7 @@ def accounting(acctData):
   # xxx This is simplistic as it does not record the time, etc.
   #
   sql = 'insert into sessions (username, seconds) values (%s, %d)' % \
-        (userName, int(acctSessionTime))
+	(userName, int(acctSessionTime))
 
   log(radiusd.L_DBG, sql)
 

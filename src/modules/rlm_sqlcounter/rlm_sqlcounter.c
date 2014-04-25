@@ -573,7 +573,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 	if (reply_item) {
 		if (reply_item->vp_integer64 <= res) {
 			RDEBUG2("Leaving existing reply:%s value of %" PRIu64, inst->reply_attr->name,
-			        reply_item->vp_integer64);
+				reply_item->vp_integer64);
 
 			return RLM_MODULE_OK;
 		}

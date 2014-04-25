@@ -567,9 +567,9 @@ static rlm_rcode_t mod_post_auth(UNUSED void *instance, UNUSED REQUEST *request)
 				memcpy(&entry,data_datum.dptr, sizeof(ippool_info));
 				free(data_datum.dptr);
 				/*
-		 		* If we find an entry for the same caller-id with active=1
-		 		* then we use that for multilink (MPPP) to work properly.
-		 		*/
+				* If we find an entry for the same caller-id with active=1
+				* then we use that for multilink (MPPP) to work properly.
+				*/
 				if (strcmp(entry.cli,cli) == 0 && entry.active){
 					mppp = 1;
 					break;
@@ -677,9 +677,9 @@ static rlm_rcode_t mod_post_auth(UNUSED void *instance, UNUSED REQUEST *request)
 			 */
 			if (delete) {
 				/*
-		 	  	 *  Delete the entry so that we can change the key
-			 	 *  All is well. We delete one entry and we add one entry
-		 	 	 */
+				 *  Delete the entry so that we can change the key
+				 *  All is well. We delete one entry and we add one entry
+				 */
 				gdbm_delete(inst->gdbm, key_datum);
 			} else{
 				/*

@@ -39,8 +39,8 @@ sub show_help {
 GetOptions ('user=s'  => \$user,
 	    'match=s' => \$match,
 	    'file=s'  => \$filename,
-            'reset=i' => \$reset,
-            'help'    => \$help,
+	    'reset=i' => \$reset,
+	    'help'    => \$help,
 	    'hours'   => sub { $divisor = 3600 },
 	    'minutes' => sub { $divisor = 60 },
 	    'seconds' => sub { $divisor = 1 } );
@@ -61,14 +61,14 @@ if ($reset){
 #
 if ($user ne '') {
     if (defined($hash{$user})){
-        print $user, "\t\t", int ( unpack('L',$hash{$user}) / $divisor), "\n";
+	print $user, "\t\t", int ( unpack('L',$hash{$user}) / $divisor), "\n";
 	if ($reset){
-            my $uniqueid = (unpack('L A32',$hash{$user}))[1];
-            $hash{$user} = pack('L A32',$reset * $divisor,$uniqueid);
-            print $user, "\t\t", "Counter reset to ", $reset * $divisor, "\n";
-        }
+	    my $uniqueid = (unpack('L A32',$hash{$user}))[1];
+	    $hash{$user} = pack('L A32',$reset * $divisor,$uniqueid);
+	    print $user, "\t\t", "Counter reset to ", $reset * $divisor, "\n";
+	}
     }else{
-        print $user, "\t\t", "Not found\n";
+	print $user, "\t\t", "Not found\n";
     }
 
     undef $db;
@@ -95,9 +95,9 @@ foreach $key (sort keys %hash) {
     #  Print out the names...
     print $key, "\t\t", int ( unpack('L',$hash{$key}) / $divisor), "\n";
     if ($reset){
-        my $uniqueid = (unpack('L A32',$hash{$key}))[1];
-        $hash{$key} = pack('L A32',$reset * $divisor,$uniqueid);
-        print $key, "\t\t", "Counter reset to ", $reset * $divisor, "\n";
+	my $uniqueid = (unpack('L A32',$hash{$key}))[1];
+	$hash{$key} = pack('L A32',$reset * $divisor,$uniqueid);
+	print $key, "\t\t", "Counter reset to ", $reset * $divisor, "\n";
     }
 }
 undef $db;

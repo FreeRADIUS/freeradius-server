@@ -1134,7 +1134,7 @@ void print_abinary(VALUE_PAIR const *vp, char *buffer, size_t len, int8_t quote)
    *  Just for paranoia: wrong size filters get printed as octets
    */
   if (vp->length != sizeof(*filter)) {
-          uint8_t *f = (uint8_t *) &vp->vp_filter;
+	  uint8_t *f = (uint8_t *) &vp->vp_filter;
 	  strcpy(p, "0x");
 	  p += 2;
 	  len -= 2;
@@ -1147,8 +1147,8 @@ void print_abinary(VALUE_PAIR const *vp, char *buffer, size_t len, int8_t quote)
   }
 
   if (quote > 0) {
-  	*(p++) = (char) quote;
-  	len -= 3;			/* account for leading & trailing quotes */
+	*(p++) = (char) quote;
+	len -= 3;			/* account for leading & trailing quotes */
   }
 
   filter = (ascend_filter_t *) &(vp->vp_filter);

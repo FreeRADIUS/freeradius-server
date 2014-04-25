@@ -277,19 +277,19 @@ ssize_t fr_base64_decode(uint8_t *out, size_t outlen, char const *in, size_t inl
 			if (in[3] == '=') {
 				if (inlen != 4) break;
 			} else {
-	      			if (!fr_isbase64(in[3])) break;
+				if (!fr_isbase64(in[3])) break;
 
 				*p++ = ((b64[us(in[2])] << 6) & 0xc0) | b64[us(in[3])];
-	    		}
+			}
 		}
 
 		in += 4;
 		inlen -= 4;
-    	}
+	}
 
 	if (inlen != 0) {
 		return -1;
 	}
 
-  	return p - out;
+	return p - out;
 }

@@ -231,7 +231,7 @@ static ssize_t mschap_xlat(void *instance, REQUEST *request,
 				return -1;
 			}
 
- 			/*
+			/*
 			 *      Check for MS-CHAP-User-Name and if found, use it
 			 *      to construct the MSCHAPv1 challenge.  This is
 			 *      set by rlm_eap_mschap to the MS-CHAP Response
@@ -917,7 +917,7 @@ ntlm_auth_err:
 		 */
 		if (passlen > 512) {
 			REDEBUG("Decrypted new password blob claims length %zu > 512, "
-			        "probably an invalid NT-Password", passlen);
+				"probably an invalid NT-Password", passlen);
 			return -1;
 		}
 
@@ -1096,7 +1096,7 @@ static int do_mschap(rlm_mschap_t *inst,
 			 */
 			if (strcasestr(buffer, "Password expired") ||
 			    strcasestr(buffer, "Must change password")) {
-			  	REDEBUG2("%s", buffer);
+				REDEBUG2("%s", buffer);
 				return -648;
 			}
 

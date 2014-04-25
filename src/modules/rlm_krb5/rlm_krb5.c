@@ -272,7 +272,7 @@ static rlm_rcode_t krb5_parse_user(krb5_principal *client, REQUEST *request, krb
 	 */
 	if (request->password->da->attr != PW_USER_PASSWORD) {
 		REDEBUG("Attribute \"User-Password\" is required for authentication.  Cannot use \"%s\".",
-		        request->password->da->name);
+			request->password->da->name);
 
 		return RLM_MODULE_INVALID;
 	}

@@ -406,11 +406,11 @@ static void pairsort_split(VALUE_PAIR *source, VALUE_PAIR **front, VALUE_PAIR **
 	 *	Stopping condition - no more elements left to split
 	 */
 	if (!source || !source->next) {
-    		*front = source;
-    		*back = NULL;
+		*front = source;
+		*back = NULL;
 
-  		return;
-  	}
+		return;
+	}
 
 	/*
 	 *	Fast advances twice as fast as slow, so when it gets to the end,
@@ -439,13 +439,13 @@ static VALUE_PAIR *pairsort_merge(VALUE_PAIR *a, VALUE_PAIR *b, fr_pair_cmp_t cm
 	if (!a) return b;
 	if (!b) return a;
 
- 	/*
- 	 *	Compare the DICT_ATTRs and tags
- 	 */
+	/*
+	 *	Compare the DICT_ATTRs and tags
+	 */
 	if (cmp(a, b) <= 0) {
 		result = a;
-     		result->next = pairsort_merge(a->next, b, cmp);
-  	} else {
+		result->next = pairsort_merge(a->next, b, cmp);
+	} else {
 		result = b;
 		result->next = pairsort_merge(a, b->next, cmp);
 	}
@@ -475,10 +475,10 @@ void pairsort(VALUE_PAIR **vps, fr_pair_cmp_t cmp)
 	pairsort(&a, cmp);		/* Traverse left */
 	pairsort(&b, cmp);		/* Traverse right */
 
-  	/*
-  	 *	merge the two sorted lists together
-  	 */
-  	*vps = pairsort_merge(a, b, cmp);
+	/*
+	 *	merge the two sorted lists together
+	 */
+	*vps = pairsort_merge(a, b, cmp);
 }
 
 /** Uses paircmp to verify all VALUE_PAIRs in list match the filter defined by check
@@ -576,39 +576,39 @@ bool pairvalidate_relaxed(VALUE_PAIR *filter, VALUE_PAIR *list)
 	for (check = fr_cursor_init(&filter_cursor, &filter);
 	     check;
 	     check = fr_cursor_next(&filter_cursor)) {
-	     	/*
-	     	 *	Were processing check attributes of a new type.
-	     	 */
-	     	if (!attribute_eq(last_check, check)) {
+		/*
+		 *	Were processing check attributes of a new type.
+		 */
+		if (!attribute_eq(last_check, check)) {
 			/*
 			 *	Record the start of the matching attributes in the pair list
 			 *	For every other operator we require the match to be present
 			 */
-	     		last_match = fr_cursor_next_by_da(&list_cursor, check->da, check->tag);
-	     		if (!last_match) {
-	     			if (check->op == T_OP_CMP_FALSE) {
-	     				continue;
-	     			}
-	     			return false;
-	     		}
+			last_match = fr_cursor_next_by_da(&list_cursor, check->da, check->tag);
+			if (!last_match) {
+				if (check->op == T_OP_CMP_FALSE) {
+					continue;
+				}
+				return false;
+			}
 
-	     		fr_cursor_init(&list_cursor, &last_match);
-	     		last_check = check;
-	     	}
+			fr_cursor_init(&list_cursor, &last_match);
+			last_check = check;
+		}
 
 		/*
 		 *	Now iterate over all attributes of the same type.
 		 */
 		for (match = fr_cursor_first(&list_cursor);
-	     	     attribute_eq(match, check);
-	             match = fr_cursor_next(&list_cursor)) {
-	             	/*
-	             	 *	This attribute passed the filter
-	             	 */
-	             	if (!paircmp(check, match)) {
-	             		return false;
-	             	}
-	        }
+		     attribute_eq(match, check);
+		     match = fr_cursor_next(&list_cursor)) {
+			/*
+			 *	This attribute passed the filter
+			 */
+			if (!paircmp(check, match)) {
+				return false;
+			}
+		}
 	}
 
 	return true;
@@ -799,12 +799,12 @@ VALUE_PAIR *paircopy(TALLOC_CTX *ctx, VALUE_PAIR *from)
 	for (vp = fr_cursor_init(&src, &from);
 	     vp;
 	     vp = fr_cursor_next(&src)) {
-	     	VERIFY_VP(vp);
-	     	vp = paircopyvp(ctx, vp);
-	     	if (!vp) {
-	     		pairfree(&out);
-	     		return NULL;
-	     	}
+		VERIFY_VP(vp);
+		vp = paircopyvp(ctx, vp);
+		if (!vp) {
+			pairfree(&out);
+			return NULL;
+		}
 		fr_cursor_insert(&dst, vp); /* paircopy sets next pointer to NULL */
 	}
 
@@ -834,7 +834,7 @@ VALUE_PAIR *paircopy2(TALLOC_CTX *ctx, VALUE_PAIR *from,
 	for (vp = fr_cursor_init(&src, &from);
 	     vp;
 	     vp = fr_cursor_next(&src)) {
-	     	VERIFY_VP(vp);
+		VERIFY_VP(vp);
 
 		if ((vp->da->attr != attr) || (vp->da->vendor != vendor)) {
 			continue;
@@ -1040,7 +1040,7 @@ void pairmove(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from)
  * the input list to the output list.
  *
  * @note pairfree should be called on the head of the old list to free unmoved
- 	 attributes (if they're no longer needed).
+	 attributes (if they're no longer needed).
  *
  * @param[in] ctx for talloc
  * @param[in,out] to destination list.
@@ -2725,7 +2725,7 @@ int8_t paircmp(VALUE_PAIR *a, VALUE_PAIR *b)
 			if (compare != 0) {
 				regerror(compare, &reg, buffer, sizeof(buffer));
 				fr_strerror_printf("Illegal regular expression in attribute: %s: %s",
-					   	   a->da->name, buffer);
+						   a->da->name, buffer);
 				return -1;
 			}
 

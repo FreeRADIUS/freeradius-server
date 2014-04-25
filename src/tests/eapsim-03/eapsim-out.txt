@@ -115,13 +115,13 @@ mk:         85153a7d_7dfe0a4f_f3bf72f3_3521ff76_b048dbb2
 K_aut:      72cd7e8c_f2086e24_a98c1780_bc3d745b
 K_encr:     be789668_329769c3_73c0b64b_beffd665
 msk:        9be9fbc9_5415fa9e_f9d52563_bddd9758_65a3fadb
-            47a5815a_7310cf3f_10123d4e_ccaf9d4b_30b13c80
-            4dd130e5_117f35ae_a0e50b43_9a08b80d_dd15922c
-            f7fd9956
+	    47a5815a_7310cf3f_10123d4e_ccaf9d4b_30b13c80
+	    4dd130e5_117f35ae_a0e50b43_9a08b80d_dd15922c
+	    f7fd9956
 emsk:       5dd5a779_65415b21_69aa1300_09dc6ba4_96433d1e
-            72065983_cbe8bc1d_6d744c99_dc76f16f_24324709
-            cb731af2_fbe69c6a_dd302662_a083d7e2_7c05c7cd
-            279c3f66
+	    72065983_cbe8bc1d_6d744c99_dc76f16f_24324709
+	    cb731af2_fbe69c6a_dd302662_a083d7e2_7c05c7cd
+	    279c3f66
 MAC check succeed
 
 +++> About to send encoded packet:

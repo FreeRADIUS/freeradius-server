@@ -400,16 +400,16 @@ int tls_handshake_recv(REQUEST *request, tls_session_t *ssn)
 	if (SSL_is_init_finished(ssn->ssl)) {
 		DEBUG2("SSL Connection Established\n");
 	}
-   	if (SSL_in_init(ssn->ssl)) {
+	if (SSL_in_init(ssn->ssl)) {
 		DEBUG2("In SSL Handshake Phase\n");
 	}
-   	if (SSL_in_before(ssn->ssl)) {
+	if (SSL_in_before(ssn->ssl)) {
 		DEBUG2("Before SSL Handshake Phase\n");
 	}
-   	if (SSL_in_accept_init(ssn->ssl)) {
+	if (SSL_in_accept_init(ssn->ssl)) {
 		DEBUG2("In SSL Accept mode \n");
 	}
-   	if (SSL_in_connect_init(ssn->ssl)) {
+	if (SSL_in_connect_init(ssn->ssl)) {
 		DEBUG2("In SSL Connect mode \n");
 	}
 
@@ -936,7 +936,7 @@ static CONF_PARSER tls_client_config[] = {
 #endif
 #endif
 
- 	{ NULL, -1, 0, NULL, NULL }	   /* end the list */
+	{ NULL, -1, 0, NULL, NULL }	   /* end the list */
 };
 
 

@@ -467,7 +467,7 @@ int main(int argc, char *argv[])
 			break;
 		case 'x':
 		case 'X':
-		  	fr_debug_flag++;
+			fr_debug_flag++;
 			break;
 		default:
 			usage(64);
@@ -506,7 +506,7 @@ int main(int argc, char *argv[])
 	 *  If were writing pcap data stdout we *really* don't want to send
 	 *  logging there as well.
 	 */
- 	log_dst = to_stdout ? stderr : stdout;
+	log_dst = to_stdout ? stderr : stdout;
 
 #if !defined(HAVE_PCAP_FOPEN_OFFLINE) || !defined(HAVE_PCAP_DUMP_FOPEN)
 	if (from_stdin || to_stdout) {

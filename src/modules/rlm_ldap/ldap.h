@@ -187,7 +187,7 @@ typedef struct ldap_instance {
 							//!< (also bounded by value on the server).
 
 #ifdef WITH_EDIR
- 	/*
+	/*
 	 *	eDir support
 	 */
 	bool		edir;				//!< If true attempt to retrieve the user's cleartext password
@@ -351,7 +351,7 @@ void rlm_ldap_map_do(ldap_instance_t const *inst, REQUEST *request, LDAP *handle
 		     rlm_ldap_map_xlat_t const *expanded, LDAPMessage *entry);
 
 rlm_rcode_t rlm_ldap_map_profile(ldap_instance_t const *inst, REQUEST *request, ldap_handle_t **pconn,
-			    	 char const *profile, rlm_ldap_map_xlat_t const *expanded);
+				 char const *profile, rlm_ldap_map_xlat_t const *expanded);
 
 /*
  *	clients.c - Dynamic clients (bulk load).

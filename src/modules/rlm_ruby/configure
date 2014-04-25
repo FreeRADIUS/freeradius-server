@@ -157,7 +157,7 @@ $as_echo "$0: could not re-execute with $CONFIG_SHELL" >&2
 as_fn_exit 255
   fi
   # We don't want this to propagate to other subprocesses.
-          { _as_can_reexec=; unset _as_can_reexec;}
+	  { _as_can_reexec=; unset _as_can_reexec;}
 if test "x$CONFIG_SHELL" = x; then
   as_bourne_compatible="if test -n \"\${ZSH_VERSION+set}\" && (emulate sh) >/dev/null 2>&1; then :
   emulate sh
@@ -238,7 +238,7 @@ IFS=$as_save_IFS
 
       if test "x$CONFIG_SHELL" != x; then :
   export CONFIG_SHELL
-             # We cannot yet assume a decent shell, so we have to provide a
+	     # We cannot yet assume a decent shell, so we have to provide a
 # neutralization value for shells without unset; and this also
 # works around shells that cannot unset nonexistent variables.
 # Preserve -v and -x to the replacement shell.
@@ -1222,9 +1222,9 @@ Configuration:
 
 Installation directories:
   --prefix=PREFIX         install architecture-independent files in PREFIX
-                          [$ac_default_prefix]
+			  [$ac_default_prefix]
   --exec-prefix=EPREFIX   install architecture-dependent files in EPREFIX
-                          [PREFIX]
+			  [PREFIX]
 
 By default, \`make install' will install all the files in
 \`$ac_default_prefix/bin', \`$ac_default_prefix/lib' etc.  You can specify
@@ -1272,10 +1272,10 @@ Some influential environment variables:
   CC          C compiler command
   CFLAGS      C compiler flags
   LDFLAGS     linker flags, e.g. -L<lib dir> if you have libraries in a
-              nonstandard directory <lib dir>
+	      nonstandard directory <lib dir>
   LIBS        libraries to pass to the linker, e.g. -l<library>
   CPPFLAGS    (Objective) C/C++ preprocessor flags, e.g. -I<include dir> if
-              you have headers in a nonstandard directory <include dir>
+	      you have headers in a nonstandard directory <include dir>
   CPP         C preprocessor
   RUBY        Absolute path to ruby executable
 
@@ -2159,7 +2159,7 @@ else
 fi
 
 if test -z "$CC"; then
-          if test -n "$ac_tool_prefix"; then
+	  if test -n "$ac_tool_prefix"; then
     # Extract the first word of "${ac_tool_prefix}cc", so it can be a program name with args.
 set dummy ${ac_tool_prefix}cc; ac_word=$2
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
@@ -2381,7 +2381,7 @@ $as_echo "$ac_try_echo"; } >&5
   if test -s conftest.err; then
     sed '10a\
 ... rest of stderr output deleted ...
-         10q' conftest.err >conftest.er1
+	 10q' conftest.err >conftest.er1
     cat conftest.er1 >&5
   fi
   rm -f conftest.er1 conftest.err
@@ -3000,26 +3000,26 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
     if test -z "$RUBY"; then :
 
-        { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether ruby executable path has been provided" >&5
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: checking whether ruby executable path has been provided" >&5
 $as_echo_n "checking whether ruby executable path has been provided... " >&6; }
 
 # Check whether --with-ruby was given.
 if test "${with_ruby+set}" = set; then :
   withval=$with_ruby;
-            if test "$withval" != yes && test "$withval" != no; then :
+	    if test "$withval" != yes && test "$withval" != no; then :
 
-                RUBY="$withval"
-                { $as_echo "$as_me:${as_lineno-$LINENO}: result: $RUBY" >&5
+		RUBY="$withval"
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $RUBY" >&5
 $as_echo "$RUBY" >&6; }
 
 else
 
-                RUBY=""
-                { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		RUBY=""
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
-                if test "$withval" != no; then :
+		if test "$withval" != no; then :
 
-                  # Extract the first word of "ruby", so it can be a program name with args.
+		  # Extract the first word of "ruby", so it can be a program name with args.
 set dummy ruby; ac_word=$2
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
 $as_echo_n "checking for $ac_word... " >&6; }
@@ -3068,9 +3068,9 @@ fi
 
 else
 
-            { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+	    { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
-            # Extract the first word of "ruby", so it can be a program name with args.
+	    # Extract the first word of "ruby", so it can be a program name with args.
 set dummy ruby; ac_word=$2
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
 $as_echo_n "checking for $ac_word... " >&6; }
@@ -3131,7 +3131,7 @@ $as_echo_n "checking for a sed that does not truncate output... " >&6; }
 if ${ac_cv_path_SED+:} false; then :
   $as_echo_n "(cached) " >&6
 else
-            ac_script=s/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb/
+	    ac_script=s/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb/
      for ac_i in 1 2 3 4 5 6 7; do
        ac_script="$ac_script$as_nl$ac_script"
      done
@@ -3310,14 +3310,14 @@ done
 
     if test -n "$RUBY"; then :
 
-        ax_ruby_version="1.8"
+	ax_ruby_version="1.8"
 
-        { $as_echo "$as_me:${as_lineno-$LINENO}: checking for ruby version" >&5
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for ruby version" >&5
 $as_echo_n "checking for ruby version... " >&6; }
 
-        ruby_version=`$RUBY --version 2>&1 | $GREP "^ruby " | $SED -e 's/^.* \([0-9]*\.[0-9]*\.[0-9]*\) .*/\1/'`
+	ruby_version=`$RUBY --version 2>&1 | $GREP "^ruby " | $SED -e 's/^.* \([0-9]*\.[0-9]*\.[0-9]*\) .*/\1/'`
 
-        { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ruby_version" >&5
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ruby_version" >&5
 $as_echo "$ruby_version" >&6; }
 
 	RUBY_VERSION=$ruby_version
@@ -3336,17 +3336,17 @@ $as_echo "$ruby_version" >&6; }
   # digits, and non digits are removed.
 
   ax_compare_version_A=`echo "$ax_ruby_version" | sed -e 's/\([0-9]*\)/Z\1Z/g' \
-                     -e 's/Z\([0-9]\)Z/Z0\1Z/g' \
-                     -e 's/Z\([0-9][0-9]\)Z/Z0\1Z/g' \
-                     -e 's/Z\([0-9][0-9][0-9]\)Z/Z0\1Z/g' \
-                     -e 's/[^0-9]//g'`
+		     -e 's/Z\([0-9]\)Z/Z0\1Z/g' \
+		     -e 's/Z\([0-9][0-9]\)Z/Z0\1Z/g' \
+		     -e 's/Z\([0-9][0-9][0-9]\)Z/Z0\1Z/g' \
+		     -e 's/[^0-9]//g'`
 
 
   ax_compare_version_B=`echo "$ruby_version" | sed -e 's/\([0-9]*\)/Z\1Z/g' \
-                     -e 's/Z\([0-9]\)Z/Z0\1Z/g' \
-                     -e 's/Z\([0-9][0-9]\)Z/Z0\1Z/g' \
-                     -e 's/Z\([0-9][0-9][0-9]\)Z/Z0\1Z/g' \
-                     -e 's/[^0-9]//g'`
+		     -e 's/Z\([0-9]\)Z/Z0\1Z/g' \
+		     -e 's/Z\([0-9][0-9]\)Z/Z0\1Z/g' \
+		     -e 's/Z\([0-9][0-9][0-9]\)Z/Z0\1Z/g' \
+		     -e 's/[^0-9]//g'`
 
 
     ax_compare_version=`echo "x$ax_compare_version_A
@@ -3368,7 +3368,7 @@ x$ax_compare_version_B" | sed 's/^ *//' | sort | sed "s/x${ax_compare_version_A}
 
 else
 
-        { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: could not find the ruby interpreter" >&5
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: could not find the ruby interpreter" >&5
 $as_echo "$as_me: WARNING: could not find the ruby interpreter" >&2;}
 
 
@@ -3383,12 +3383,12 @@ fi
 $as_echo_n "checking for the mkmf Ruby package... " >&6; }
     ac_mkmf_result=`$RUBY -rmkmf -e ";" 2>&1`
     if test -z "$ac_mkmf_result"; then
-        { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
     else
-        { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
-        { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: cannot import Ruby module \"mkmf\".
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: cannot import Ruby module \"mkmf\".
 Please check your Ruby installation. The error was:
 $ac_distutils_result" >&5
 $as_echo "$as_me: WARNING: cannot import Ruby module \"mkmf\".
@@ -3400,76 +3400,76 @@ $ac_distutils_result" >&2;}
     # Check for Ruby include path
     #
     if test -z "$RUBY_CFLAGS"; then
-        #
-        # Check for Ruby cflags
-        #
-        { $as_echo "$as_me:${as_lineno-$LINENO}: checking for Ruby cflags" >&5
+	#
+	# Check for Ruby cflags
+	#
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for Ruby cflags" >&5
 $as_echo_n "checking for Ruby cflags... " >&6; }
-        if test -z "$RUBY_CFLAGS"; then
-            RUBY_CFLAGS=`$RUBY -rmkmf -e 'print RbConfig::CONFIG.fetch(%q(CFLAGS))'`
-        fi
-        { $as_echo "$as_me:${as_lineno-$LINENO}: result: $RUBY_CFLAGS" >&5
+	if test -z "$RUBY_CFLAGS"; then
+	    RUBY_CFLAGS=`$RUBY -rmkmf -e 'print RbConfig::CONFIG.fetch(%q(CFLAGS))'`
+	fi
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $RUBY_CFLAGS" >&5
 $as_echo "$RUBY_CFLAGS" >&6; }
 
-        #
-        # Check for Ruby include path
-        #
-        { $as_echo "$as_me:${as_lineno-$LINENO}: checking for Ruby include path" >&5
+	#
+	# Check for Ruby include path
+	#
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for Ruby include path" >&5
 $as_echo_n "checking for Ruby include path... " >&6; }
-        ruby_path=`$RUBY -rmkmf -e 'c = RbConfig::CONFIG; print c.has_key?(%q(rubyhdrdir)) ? \
-            c.fetch(%q(rubyhdrdir)) : c.fetch(%q(archdir))'`
+	ruby_path=`$RUBY -rmkmf -e 'c = RbConfig::CONFIG; print c.has_key?(%q(rubyhdrdir)) ? \
+	    c.fetch(%q(rubyhdrdir)) : c.fetch(%q(archdir))'`
 
-        ruby_arch=`$RUBY -rmkmf -e 'print RbConfig::CONFIG.fetch(%q(arch))'`
+	ruby_arch=`$RUBY -rmkmf -e 'print RbConfig::CONFIG.fetch(%q(arch))'`
 
-        if test -n "${ruby_path}"; then
-            #
-            #  For some reason ruby 1.9.1 on linux seems to put its
-            #  config.h file in ${ruby_path}/${ruby_arch}/ruby/config.h
-            #  Aside from the fact that it is WRONG to include your own
-            #  config.h file, it means we can't use the headers unless we
-            #  add both paths.
-            #
-            if test -d "${ruby_path}/${ruby_arch}"; then
-                 ruby_path=" -I${ruby_path} -I${ruby_path}/${ruby_arch}"
-            else
-                 ruby_path=" -I${ruby_path}"
-            fi
-        fi
+	if test -n "${ruby_path}"; then
+	    #
+	    #  For some reason ruby 1.9.1 on linux seems to put its
+	    #  config.h file in ${ruby_path}/${ruby_arch}/ruby/config.h
+	    #  Aside from the fact that it is WRONG to include your own
+	    #  config.h file, it means we can't use the headers unless we
+	    #  add both paths.
+	    #
+	    if test -d "${ruby_path}/${ruby_arch}"; then
+		 ruby_path=" -I${ruby_path} -I${ruby_path}/${ruby_arch}"
+	    else
+		 ruby_path=" -I${ruby_path}"
+	    fi
+	fi
 
-        RUBY_CFLAGS+="$ruby_path"
-        { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ruby_path" >&5
+	RUBY_CFLAGS+="$ruby_path"
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ruby_path" >&5
 $as_echo "$ruby_path" >&6; }
     fi
 
 
 
     if test -z "$RUBY_LDFLAGS"; then
-        #
-        # Check for Ruby library path
-        #
-        { $as_echo "$as_me:${as_lineno-$LINENO}: checking for Ruby library path" >&5
+	#
+	# Check for Ruby library path
+	#
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for Ruby library path" >&5
 $as_echo_n "checking for Ruby library path... " >&6; }
-        if test -z "$RUBY_LIBRARY_PATH"; then
-            RUBY_LIBRARY_PATH=`$RUBY -rmkmf -e 'print RbConfig::CONFIG.fetch(%q(libdir))'`
-            if test -n "${RUBY_LIBRARY_PATH}"; then
-                RUBY_LIBRARY_PATH=" -L$RUBY_LIBRARY_PATH"
-            fi
-        fi
+	if test -z "$RUBY_LIBRARY_PATH"; then
+	    RUBY_LIBRARY_PATH=`$RUBY -rmkmf -e 'print RbConfig::CONFIG.fetch(%q(libdir))'`
+	    if test -n "${RUBY_LIBRARY_PATH}"; then
+		RUBY_LIBRARY_PATH=" -L$RUBY_LIBRARY_PATH"
+	    fi
+	fi
 
-        { $as_echo "$as_me:${as_lineno-$LINENO}: result: $RUBY_LIBRARY_PATH" >&5
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $RUBY_LIBRARY_PATH" >&5
 $as_echo "$RUBY_LIBRARY_PATH" >&6; }
 
-        #
-        # Check for Ruby linking flags
-        #
-        { $as_echo "$as_me:${as_lineno-$LINENO}: checking for Ruby linking flags" >&5
+	#
+	# Check for Ruby linking flags
+	#
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for Ruby linking flags" >&5
 $as_echo_n "checking for Ruby linking flags... " >&6; }
 
-        RUBY_LDFLAGS=`$RUBY -rmkmf -e 'print RbConfig::CONFIG.fetch(%q(LIBRUBYARG_SHARED))'`
-        { $as_echo "$as_me:${as_lineno-$LINENO}: result: $RUBY_LDFLAGS" >&5
+	RUBY_LDFLAGS=`$RUBY -rmkmf -e 'print RbConfig::CONFIG.fetch(%q(LIBRUBYARG_SHARED))'`
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $RUBY_LDFLAGS" >&5
 $as_echo "$RUBY_LDFLAGS" >&6; }
 
-        RUBY_LDFLAGS="${RUBY_LIBRARY_PATH} ${RUBY_LDFLAGS}"
+	RUBY_LDFLAGS="${RUBY_LIBRARY_PATH} ${RUBY_LDFLAGS}"
     fi
 
 
@@ -3480,7 +3480,7 @@ $as_echo "$RUBY_LDFLAGS" >&6; }
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for Ruby site-packages path" >&5
 $as_echo_n "checking for Ruby site-packages path... " >&6; }
     if test -z "$RUBY_SITE_PKG"; then
-        RUBY_SITE_PKG=`$RUBY -rmkmf -e 'print RbConfig::CONFIG.fetch(%q(sitearchdir))'`
+	RUBY_SITE_PKG=`$RUBY -rmkmf -e 'print RbConfig::CONFIG.fetch(%q(sitearchdir))'`
     fi
     { $as_echo "$as_me:${as_lineno-$LINENO}: result: $RUBY_SITE_PKG" >&5
 $as_echo "$RUBY_SITE_PKG" >&6; }
@@ -3589,7 +3589,7 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 		if test -n "$RUBY_VERSION"; then
 			mod_cflags=$(echo "${RUBY_CFLAGS}" | sed 's/-I[ ]*/-isystem /g' | sed 's/-arch [^ ]*[ ]*//g')
 
-            { $as_echo "$as_me:${as_lineno-$LINENO}: Sanitized cflags are \"${mod_cflags}\"" >&5
+	    { $as_echo "$as_me:${as_lineno-$LINENO}: Sanitized cflags are \"${mod_cflags}\"" >&5
 $as_echo "$as_me: Sanitized cflags are \"${mod_cflags}\"" >&6;}
 
 			mod_ldflags="${RUBY_LDFLAGS} ${RUBY_EXTRA_LIBS}"
@@ -3698,11 +3698,11 @@ $as_echo "$as_me: updating cache $cache_file" >&6;}
       if test ! -f "$cache_file" || test -h "$cache_file"; then
 	cat confcache >"$cache_file"
       else
-        case $cache_file in #(
-        */* | ?:*)
+	case $cache_file in #(
+	*/* | ?:*)
 	  mv -f confcache "$cache_file"$$ &&
 	  mv -f "$cache_file"$$ "$cache_file" ;; #(
-        *)
+	*)
 	  mv -f confcache "$cache_file" ;;
 	esac
       fi
@@ -4208,11 +4208,11 @@ Usage: $0 [OPTION]... [TAG]...
   -V, --version    print version number and configuration settings, then exit
       --config     print configuration, then exit
   -q, --quiet, --silent
-                   do not print progress messages
+		   do not print progress messages
   -d, --debug      don't remove temporary files
       --recheck    update $as_me by reconfiguring in the same conditions
       --file=FILE[:TEMPLATE]
-                   instantiate the configuration file FILE
+		   instantiate the configuration file FILE
 
 Configuration files:
 $config_files

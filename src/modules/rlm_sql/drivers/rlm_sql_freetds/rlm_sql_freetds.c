@@ -170,11 +170,11 @@ static CS_RETCODE CS_PUBLIC servermsg_callback(UNUSED CS_CONTEXT *context, UNUSE
 		if (this->error) TALLOC_FREE(this->error);
 
 		this->error = talloc_typed_asprintf(this, "server msg from \"%s\": severity(%ld), number(%ld), origin(%ld), "
-		     			      "layer(%ld), procedure \"%s\": %s",
-		     			      (msgp->svrnlen > 0) ? msgp->svrname : "unknown",
-		     			      (long)msgp->msgnumber, (long)msgp->severity, (long)msgp->state,
-		     			      (long)msgp->line,
-		     			      (msgp->proclen > 0) ? msgp->proc : "none", msgp->text);
+					      "layer(%ld), procedure \"%s\": %s",
+					      (msgp->svrnlen > 0) ? msgp->svrname : "unknown",
+					      (long)msgp->msgnumber, (long)msgp->severity, (long)msgp->state,
+					      (long)msgp->line,
+					      (msgp->proclen > 0) ? msgp->proc : "none", msgp->text);
 	}
 
 	return CS_SUCCEED;

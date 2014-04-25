@@ -383,7 +383,7 @@ typedef struct listen_socket_t {
 	int		proto;
 
 #ifdef WITH_TCP
-  	/* for a proxy connecting to home servers */
+	/* for a proxy connecting to home servers */
 	time_t		last_packet;
 	time_t		opened;
 	fr_event_t	*ev;
@@ -609,7 +609,7 @@ void exec_trigger(REQUEST *request, CONF_SECTION *cs, char const *name, int quen
 
 /* valuepair.c */
 int paircompare_register(DICT_ATTR const *attribute, DICT_ATTR const *from,
-          bool first_only, RAD_COMPARE_FUNC func, void *instance);
+	  bool first_only, RAD_COMPARE_FUNC func, void *instance);
 void		paircompare_unregister(DICT_ATTR const *attr, RAD_COMPARE_FUNC func);
 void		paircompare_unregister_instance(void *instance);
 int		paircompare(REQUEST *request, VALUE_PAIR *req_list,
@@ -648,7 +648,7 @@ ssize_t radius_xlat(char *out, size_t outlen, REQUEST *request, char const *fmt,
 		    void *escape_ctx);
 
 ssize_t radius_axlat(char **out, REQUEST *request, char const *fmt, RADIUS_ESCAPE_STRING escape,
-		    	  void *escape_ctx);
+			  void *escape_ctx);
 ssize_t radius_axlat_struct(char **out, REQUEST *request, xlat_exp_t const *xlat, RADIUS_ESCAPE_STRING escape, void *ctx);
 
 typedef ssize_t (*RAD_XLAT_FUNC)(void *instance, REQUEST *, char const *, char *, size_t);

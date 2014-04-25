@@ -174,8 +174,8 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 	 */
 	if (OCILogon(conn->env, conn->error, &conn->ctx,
 		     (OraText const *)config->sql_login, strlen(config->sql_login),
-                     (OraText const *)config->sql_password, strlen(config->sql_password),
-                     (OraText const *)config->sql_db, strlen(config->sql_db))) {
+		     (OraText const *)config->sql_password, strlen(config->sql_password),
+		     (OraText const *)config->sql_db, strlen(config->sql_db))) {
 		ERROR("rlm_sql_oracle: Oracle logon failed: '%s'", sql_error(handle, config));
 
 		return -1;

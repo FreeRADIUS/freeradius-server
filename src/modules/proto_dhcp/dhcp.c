@@ -259,14 +259,14 @@ RADIUS_PACKET *fr_dhcp_recv(int sockfd)
 	packet->data_len = data_len;
 	if (packet->data_len < MIN_PACKET_SIZE) {
 		fr_strerror_printf("DHCP packet is too small (%zu < %d)",
-		      		   packet->data_len, MIN_PACKET_SIZE);
+				   packet->data_len, MIN_PACKET_SIZE);
 		rad_free(&packet);
 		return NULL;
 	}
 
 	if (packet->data_len > MAX_PACKET_SIZE) {
 		fr_strerror_printf("DHCP packet is too large (%zx > %d)",
-		      		   packet->data_len, MAX_PACKET_SIZE);
+				   packet->data_len, MAX_PACKET_SIZE);
 		rad_free(&packet);
 		return NULL;
 	}
@@ -1554,8 +1554,8 @@ int fr_dhcp_add_arp_entry(int fd, char const *interface,
 
 	if (!fr_assert(macaddr) ||
 	    !fr_assert((macaddr->da->type == PW_TYPE_ETHERNET) || (macaddr->da->type == PW_TYPE_OCTETS))) {
-	    	fr_strerror_printf("Wrong VP type (%s) for chaddr",
-	    			   fr_int2str(dict_attr_types, macaddr->da->type, "<invalid>"));
+		fr_strerror_printf("Wrong VP type (%s) for chaddr",
+				   fr_int2str(dict_attr_types, macaddr->da->type, "<invalid>"));
 		return -1;
 	}
 

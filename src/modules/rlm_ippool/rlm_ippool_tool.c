@@ -452,7 +452,7 @@ void viewdb(char *sessiondbname, char *indexdbname, char *ipaddress, int old) {
 
 		if ((key_datum.dsize != sizeof(struct ippool_key)) &&
 		    (key_datum.dsize != sizeof(struct old_ippool_key))) {
-		 	goto next;
+			goto next;
 		}
 
 		if (old) {

@@ -597,8 +597,8 @@ modules {
 		md5 {
 		}
 
-	        sim {
-	 	}
+		sim {
+		}
 
 		# Cisco LEAP
 		#
@@ -748,7 +748,7 @@ modules {
 	#   ignore_nislike - ignore NIS-related records
 	#   delimiter - symbol to use as a field separator in passwd file,
 	#            for format ':' symbol is always used. '\0', '\n' are
-        #	     not allowed
+	#	     not allowed
 	#
 
 	#  An example configuration for using /etc/smbpasswd.

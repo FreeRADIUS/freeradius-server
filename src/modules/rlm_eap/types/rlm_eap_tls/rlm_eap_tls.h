@@ -41,7 +41,7 @@ typedef struct rlm_eap_tls_t {
 	/*
 	 *	Virtual server for checking certificates
 	 */
-  	char	*virtual_server;
+	char	*virtual_server;
 } rlm_eap_tls_t;
 
 #endif /* _RLM_EAP_TLS_H */

@@ -44,7 +44,7 @@ typedef struct fr_hash_entry_t {
 	struct fr_hash_entry_t *next;
 	uint32_t	reversed;
 	uint32_t	key;
- 	void const 	*data;
+	void const 	*data;
 } fr_hash_entry_t;
 
 

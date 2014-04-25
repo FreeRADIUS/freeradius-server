@@ -1907,7 +1907,7 @@ static void remove_from_proxy_hash(REQUEST *request)
 
 	remove_from_proxy_hash_nl(request, true);
 
-  	PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
+	PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
 }
 
 static int insert_into_proxy_hash(REQUEST *request)
@@ -2026,7 +2026,7 @@ static int process_proxy_reply(REQUEST *request)
 	 */
 	if (!vp && request->proxy_reply &&
 	    request->proxy_reply->code == PW_CODE_AUTHENTICATION_REJECT) {
-	    	DICT_VALUE	*dval;
+		DICT_VALUE	*dval;
 
 		dval = dict_valbyname(PW_POST_PROXY_TYPE, 0, "Reject");
 		if (dval) {

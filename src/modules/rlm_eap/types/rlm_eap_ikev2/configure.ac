@@ -12,10 +12,10 @@ if test x$with_[]modname != xno; then
 		    no)
 			AC_MSG_ERROR(Need eap-ikev2-include-dir)
 		    ;;
-		        yes)
+			yes)
 		    ;;
 		    *)
-		        eap_ikev2_include_dir="$withval"
+			eap_ikev2_include_dir="$withval"
 		    ;;
 		esac])
 

@@ -363,7 +363,7 @@ static int hunt_paircmp(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check)
 	for (check_item = fr_cursor_init(&cursor, &check);
 	     check_item && (result != 0);
 	     check_item = fr_cursor_next(&cursor)) {
-	     	/* FIXME: paircopy should be removed once VALUE_PAIRs are no longer in linked lists */
+		/* FIXME: paircopy should be removed once VALUE_PAIRs are no longer in linked lists */
 		tmp = paircopyvp(request, check_item);
 		tmp->op = check_item->op;
 		result = paircompare(req, request, check_item, NULL);
@@ -581,7 +581,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 	}
 
 	if (inst->with_cisco_vsa_hack) {
-	 	/*
+		/*
 		 *	We need to run this hack because the h323-conf-id
 		 *	attribute should be used.
 		 */
@@ -589,7 +589,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 	}
 
 	if (inst->with_alvarion_vsa_hack) {
-	 	/*
+		/*
 		 *	We need to run this hack because the Alvarion
 		 *	people are crazy.
 		 */
@@ -597,7 +597,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 	}
 
 	if (inst->with_cablelabs_vsa_hack) {
-	 	/*
+		/*
 		 *	We need to run this hack because the Cablelabs
 		 *	people are crazy.
 		 */
@@ -657,7 +657,7 @@ static rlm_rcode_t mod_preaccounting(void *instance, REQUEST *request)
 	rad_mangle(inst, request);
 
 	if (inst->with_cisco_vsa_hack) {
-	 	/*
+		/*
 		 *	We need to run this hack because the h323-conf-id
 		 *	attribute should be used.
 		 */
@@ -665,7 +665,7 @@ static rlm_rcode_t mod_preaccounting(void *instance, REQUEST *request)
 	}
 
 	if (inst->with_alvarion_vsa_hack) {
-	 	/*
+		/*
 		 *	We need to run this hack because the Alvarion
 		 *	people are crazy.
 		 */
@@ -673,7 +673,7 @@ static rlm_rcode_t mod_preaccounting(void *instance, REQUEST *request)
 	}
 
 	if (inst->with_cablelabs_vsa_hack) {
-	 	/*
+		/*
 		 *	We need to run this hack because the Cablelabs
 		 *	people are crazy.
 		 */
@@ -710,8 +710,8 @@ static rlm_rcode_t mod_preaccounting(void *instance, REQUEST *request)
 	if ((r = huntgroup_access(request, inst->huntgroups)) != RLM_MODULE_OK) {
 		char buf[1024];
 		RIDEBUG("No huntgroup access: [%s] (%s)",
-		        request->username ? request->username->vp_strvalue : "<NO User-Name>",
-		        auth_name(buf, sizeof(buf), request, 1));
+			request->username ? request->username->vp_strvalue : "<NO User-Name>",
+			auth_name(buf, sizeof(buf), request, 1));
 		return r;
 	}
 

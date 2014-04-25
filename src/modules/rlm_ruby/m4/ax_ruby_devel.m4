@@ -61,10 +61,10 @@ AC_DEFUN([AX_RUBY_DEVEL],[
     AC_MSG_CHECKING([for the mkmf Ruby package])
     ac_mkmf_result=`$RUBY -rmkmf -e ";" 2>&1`
     if test -z "$ac_mkmf_result"; then
-        AC_MSG_RESULT([yes])
+	AC_MSG_RESULT([yes])
     else
-        AC_MSG_RESULT([no])
-        AC_MSG_WARN([cannot import Ruby module "mkmf".
+	AC_MSG_RESULT([no])
+	AC_MSG_WARN([cannot import Ruby module "mkmf".
 Please check your Ruby installation. The error was:
 $ac_distutils_result])
     fi
@@ -73,68 +73,68 @@ $ac_distutils_result])
     # Check for Ruby include path
     #
     if test -z "$RUBY_CFLAGS"; then
-        #
-        # Check for Ruby cflags
-        #
-        AC_MSG_CHECKING([for Ruby cflags])
-        if test -z "$RUBY_CFLAGS"; then
-            RUBY_CFLAGS=`$RUBY -rmkmf -e 'print RbConfig::CONFIG.fetch(%q(CFLAGS))'`
-        fi
-        AC_MSG_RESULT([$RUBY_CFLAGS])
+	#
+	# Check for Ruby cflags
+	#
+	AC_MSG_CHECKING([for Ruby cflags])
+	if test -z "$RUBY_CFLAGS"; then
+	    RUBY_CFLAGS=`$RUBY -rmkmf -e 'print RbConfig::CONFIG.fetch(%q(CFLAGS))'`
+	fi
+	AC_MSG_RESULT([$RUBY_CFLAGS])
     
-        #
-        # Check for Ruby include path
-        #
-        AC_MSG_CHECKING([for Ruby include path])
-        ruby_path=`$RUBY -rmkmf -e 'c = RbConfig::CONFIG; print c.has_key?(%q(rubyhdrdir)) ? \
-            c.fetch(%q(rubyhdrdir)) : c.fetch(%q(archdir))'`
-            
-        ruby_arch=`$RUBY -rmkmf -e 'print RbConfig::CONFIG.fetch(%q(arch))'`
-            
-        if test -n "${ruby_path}"; then
-            #
-            #  For some reason ruby 1.9.1 on linux seems to put its
-            #  config.h file in ${ruby_path}/${ruby_arch}/ruby/config.h
-            #  Aside from the fact that it is WRONG to include your own
-            #  config.h file, it means we can't use the headers unless we
-            #  add both paths.
-            #
-            if test -d "${ruby_path}/${ruby_arch}"; then
-                 ruby_path=" -I${ruby_path} -I${ruby_path}/${ruby_arch}"
-            else
-                 ruby_path=" -I${ruby_path}"
-            fi
-        fi
-        
-        RUBY_CFLAGS+="$ruby_path"
-        AC_MSG_RESULT([$ruby_path])
+	#
+	# Check for Ruby include path
+	#
+	AC_MSG_CHECKING([for Ruby include path])
+	ruby_path=`$RUBY -rmkmf -e 'c = RbConfig::CONFIG; print c.has_key?(%q(rubyhdrdir)) ? \
+	    c.fetch(%q(rubyhdrdir)) : c.fetch(%q(archdir))'`
+	    
+	ruby_arch=`$RUBY -rmkmf -e 'print RbConfig::CONFIG.fetch(%q(arch))'`
+	    
+	if test -n "${ruby_path}"; then
+	    #
+	    #  For some reason ruby 1.9.1 on linux seems to put its
+	    #  config.h file in ${ruby_path}/${ruby_arch}/ruby/config.h
+	    #  Aside from the fact that it is WRONG to include your own
+	    #  config.h file, it means we can't use the headers unless we
+	    #  add both paths.
+	    #
+	    if test -d "${ruby_path}/${ruby_arch}"; then
+		 ruby_path=" -I${ruby_path} -I${ruby_path}/${ruby_arch}"
+	    else
+		 ruby_path=" -I${ruby_path}"
+	    fi
+	fi
+	
+	RUBY_CFLAGS+="$ruby_path"
+	AC_MSG_RESULT([$ruby_path])
     fi
     
     AC_SUBST([RUBY_CFLAGS])
 
     if test -z "$RUBY_LDFLAGS"; then
-        #
-        # Check for Ruby library path
-        #
-        AC_MSG_CHECKING([for Ruby library path])
-        if test -z "$RUBY_LIBRARY_PATH"; then
-            RUBY_LIBRARY_PATH=`$RUBY -rmkmf -e 'print RbConfig::CONFIG.fetch(%q(libdir))'`
-            if test -n "${RUBY_LIBRARY_PATH}"; then
-                RUBY_LIBRARY_PATH=" -L$RUBY_LIBRARY_PATH"
-            fi
-        fi
-        
-        AC_MSG_RESULT([$RUBY_LIBRARY_PATH])  
-        
-        #
-        # Check for Ruby linking flags
-        #
-        AC_MSG_CHECKING([for Ruby linking flags])
+	#
+	# Check for Ruby library path
+	#
+	AC_MSG_CHECKING([for Ruby library path])
+	if test -z "$RUBY_LIBRARY_PATH"; then
+	    RUBY_LIBRARY_PATH=`$RUBY -rmkmf -e 'print RbConfig::CONFIG.fetch(%q(libdir))'`
+	    if test -n "${RUBY_LIBRARY_PATH}"; then
+		RUBY_LIBRARY_PATH=" -L$RUBY_LIBRARY_PATH"
+	    fi
+	fi
+	
+	AC_MSG_RESULT([$RUBY_LIBRARY_PATH])  
+	
+	#
+	# Check for Ruby linking flags
+	#
+	AC_MSG_CHECKING([for Ruby linking flags])
     
-        RUBY_LDFLAGS=`$RUBY -rmkmf -e 'print RbConfig::CONFIG.fetch(%q(LIBRUBYARG_SHARED))'`
-        AC_MSG_RESULT([$RUBY_LDFLAGS])
+	RUBY_LDFLAGS=`$RUBY -rmkmf -e 'print RbConfig::CONFIG.fetch(%q(LIBRUBYARG_SHARED))'`
+	AC_MSG_RESULT([$RUBY_LDFLAGS])
 
-        RUBY_LDFLAGS="${RUBY_LIBRARY_PATH} ${RUBY_LDFLAGS}"
+	RUBY_LDFLAGS="${RUBY_LIBRARY_PATH} ${RUBY_LDFLAGS}"
     fi
 
     AC_SUBST([RUBY_LDFLAGS])
@@ -144,7 +144,7 @@ $ac_distutils_result])
     #
     AC_MSG_CHECKING([for Ruby site-packages path])
     if test -z "$RUBY_SITE_PKG"; then
-        RUBY_SITE_PKG=`$RUBY -rmkmf -e 'print RbConfig::CONFIG.fetch(%q(sitearchdir))'`
+	RUBY_SITE_PKG=`$RUBY -rmkmf -e 'print RbConfig::CONFIG.fetch(%q(sitearchdir))'`
     fi
     AC_MSG_RESULT([$RUBY_SITE_PKG])
     AC_SUBST([RUBY_SITE_PKG])
@@ -183,9 +183,9 @@ $ac_distutils_result])
     ac_save_CFLAGS="$CFLAGS"
     CFLAGS="$ac_save_CFLAGS $RUBY_CFLAGS"
     AC_LINK_IFELSE(
-        [AC_LANG_PROGRAM([#include <ruby.h>],[ruby_init()])],
-        [rubyexists=yes],
-        [rubyexists=no])
+	[AC_LANG_PROGRAM([#include <ruby.h>],[ruby_init()])],
+	[rubyexists=yes],
+	[rubyexists=no])
 
     AC_MSG_RESULT([$rubyexists])
 

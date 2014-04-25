@@ -712,8 +712,8 @@ static size_t rest_encode_json(void *out, size_t size, size_t nmemb, void *userd
 			RDEBUG3("\tType   : %s", type);
 
 			/*
-		 	 *  We wrote the attribute header, record progress
-		 	 */
+			 *  We wrote the attribute header, record progress
+			 */
 			encoded = p;
 			ctx->state = READ_STATE_ATTR_CONT;
 		}
@@ -1184,12 +1184,12 @@ static int json_pairmake(rlm_rest_t *instance, UNUSED rlm_rest_section_t *sectio
 		REDEBUG("Can't process VP container, expected JSON object"
 #ifdef HAVE_JSON_TYPE_TO_NAME
 			"got \"%s\", skipping...",
-    	     	        json_type_to_name(json_object_get_type(object)));
+			json_type_to_name(json_object_get_type(object)));
 #else
 			", skipping...");
 #endif
 		return -1;
- 	}
+	}
 
 	/*
 	 *	Process VP container
@@ -1263,7 +1263,7 @@ static int json_pairmake(rlm_rest_t *instance, UNUSED rlm_rest_section_t *sectio
 				flags.op = fr_str2int(fr_tokens, json_object_get_string(tmp), 0);
 				if (!flags.op) {
 					RWDEBUG("Invalid operator value \"%s\", skipping...",
-					        json_object_get_string(tmp));
+						json_object_get_string(tmp));
 					continue;
 				}
 			}
@@ -1292,7 +1292,7 @@ static int json_pairmake(rlm_rest_t *instance, UNUSED rlm_rest_section_t *sectio
 				RWDEBUG("Value key missing, skipping...");
 				continue;
 			}
- 		}
+		}
 
 		/*
 		 *  Setup pairmake / recursion loop.
@@ -1547,7 +1547,7 @@ static size_t rest_response_header(void *in, size_t size, size_t nmemb, void *us
 			} else switch (http_body_type_supported[ctx->type]) {
 			case HTTP_BODY_UNKNOWN:
 				RWDEBUG("Couldn't determine type, using the request's type \"%s\".",
-				        fr_int2str(http_body_type_table, ctx->type, "<INVALID>"));
+					fr_int2str(http_body_type_table, ctx->type, "<INVALID>"));
 				break;
 
 			case HTTP_BODY_UNSUPPORTED:
@@ -1903,7 +1903,7 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 	 */
 	if (auth) {
 		if ((auth >= HTTP_AUTH_BASIC) &&
-	  	    (auth <= HTTP_AUTH_ANY_SAFE)) {
+		    (auth <= HTTP_AUTH_ANY_SAFE)) {
 			SET_OPTION(CURLOPT_HTTPAUTH, http_curl_auth[auth]);
 
 			if (username) {

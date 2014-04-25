@@ -61,13 +61,13 @@ typedef struct rlm_eap_peap_t {
 	/*
 	 *	Virtual server for inner tunnel session.
 	 */
-  	char	*virtual_server;
+	char	*virtual_server;
 
 	/*
 	 * 	Do we do SoH request?
 	 */
 	bool	soh;
-  	char	*soh_virtual_server;
+	char	*soh_virtual_server;
 
 	/*
 	 * 	Do we do require a client cert?
@@ -106,7 +106,7 @@ static CONF_PARSER module_config[] = {
 	{ "soh_virtual_server", PW_TYPE_STRING_PTR,
 	  offsetof(rlm_eap_peap_t, soh_virtual_server), NULL, NULL },
 
- 	{ NULL, -1, 0, NULL, NULL }	   /* end the list */
+	{ NULL, -1, 0, NULL, NULL }	   /* end the list */
 };
 
 

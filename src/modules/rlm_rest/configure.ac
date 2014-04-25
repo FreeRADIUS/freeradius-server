@@ -47,10 +47,10 @@ if test x$with_[]modname != xno; then
 		    no)
 			AC_MSG_ERROR(Need jsonc-include-dir)
 		    ;;
-		        yes)
+			yes)
 		    ;;
 		    *)
-		        jsonc_include_dir="$withval"
+			jsonc_include_dir="$withval"
 		    ;;
 		esac])
 
@@ -122,11 +122,11 @@ if test x$with_[]modname != xno; then
 		dnl # Ensure we use the library we just found the rest of the checks
 		LDFLAGS="$SMART_LIBS"
 
-    		dnl # Add any optional functions here
-    		AC_CHECK_FUNCS(\
+		dnl # Add any optional functions here
+		AC_CHECK_FUNCS(\
 			json_c_version \
 			json_type_to_name
-    		)
+		)
 
 		AC_DEFINE([HAVE_JSON],[1],[Build with JSON support from json-c])
 	else

@@ -227,7 +227,7 @@ static void fr_connection_unlink(fr_connection_pool_t *pool,
  * @param[in] this Connection to add.
  */
 static void fr_connection_link_head(fr_connection_pool_t *pool,
-			            fr_connection_t *this)
+				    fr_connection_t *this)
 {
 	rad_assert(pool != NULL);
 	rad_assert(this != NULL);
@@ -257,7 +257,7 @@ static void fr_connection_link_head(fr_connection_pool_t *pool,
  * @param[in] this Connection to add.
  */
 static void fr_connection_link_tail(fr_connection_pool_t *pool,
-			            fr_connection_t *this)
+				    fr_connection_t *this)
 {
 	rad_assert(pool != NULL);
 	rad_assert(this != NULL);

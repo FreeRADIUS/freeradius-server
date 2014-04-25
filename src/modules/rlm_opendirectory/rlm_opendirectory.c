@@ -330,7 +330,7 @@ static rlm_rcode_t mod_authenticate(UNUSED void *instance, REQUEST *request)
 
 	if (ret != RLM_MODULE_OK) {
 		RDEBUG("[%s]: Invalid password", request->username->vp_strvalue);
- 		return ret;
+		return ret;
 	}
 
 	return RLM_MODULE_OK;

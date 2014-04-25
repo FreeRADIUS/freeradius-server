@@ -1099,7 +1099,7 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, int type, void *data, char
 
 			if (stat(*q, &buf) < 0) {
 				ERROR("Unable to open file \"%s\": %s",
-		       		      value, fr_syserror(errno));
+				      value, fr_syserror(errno));
 				return -1;
 			}
 		}
@@ -2297,7 +2297,7 @@ VALUE_PAIR *cf_pairtovp(CONF_PAIR *pair)
 	if ((pair->op != T_OP_CMP_FALSE) &&
 	    ((pair->value_type == T_DOUBLE_QUOTED_STRING) ||
 	     (pair->value_type == T_BACK_QUOTED_STRING))) {
-	     	VALUE_PAIR *vp;
+		VALUE_PAIR *vp;
 
 		vp = pairmake(pair, NULL, pair->attr, NULL, pair->op);
 		if (!vp) {

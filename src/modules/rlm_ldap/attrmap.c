@@ -420,7 +420,7 @@ void rlm_ldap_map_do(UNUSED const ldap_instance_t *inst, REQUEST *request, LDAP 
  * @return One of the RLM_MODULE_* values.
  */
 rlm_rcode_t rlm_ldap_map_profile(ldap_instance_t const *inst, REQUEST *request, ldap_handle_t **pconn,
-			    	 char const *dn, rlm_ldap_map_xlat_t const *expanded)
+				 char const *dn, rlm_ldap_map_xlat_t const *expanded)
 {
 	rlm_rcode_t	rcode = RLM_MODULE_OK;
 	ldap_rcode_t	status;
@@ -462,7 +462,7 @@ rlm_rcode_t rlm_ldap_map_profile(ldap_instance_t const *inst, REQUEST *request, 
 
 		rcode = RLM_MODULE_NOTFOUND;
 
-	 	goto free_result;
+		goto free_result;
 	}
 
 	RDEBUG("Processing profile attributes");

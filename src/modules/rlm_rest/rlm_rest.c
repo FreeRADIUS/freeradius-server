@@ -226,7 +226,7 @@ static ssize_t rest_xlat(void *instance, REQUEST *request,
 	len = rest_get_handle_data(&body, handle);
 	if ((size_t) len >= freespace) {
 		REDEBUG("Insufficient space to write HTTP response, needed %zu bytes, have %zu bytes", len + 1,
-		        freespace);
+			freespace);
 		outlen = -1;
 		goto end;
 	}
@@ -485,9 +485,9 @@ static int parse_sub_section(CONF_SECTION *parent, rlm_rest_section_t *config, r
 	 *  Sanity check
 	 */
 	 if ((config->username && !config->password) || (!config->username && config->password)) {
-	 	cf_log_err_cs(cs, "'username' and 'password' must both be set or both be absent");
+		cf_log_err_cs(cs, "'username' and 'password' must both be set or both be absent");
 
-	 	return -1;
+		return -1;
 	 }
 
 	/*

@@ -8,7 +8,7 @@ if test x$with_[]modname != xno; then
 	AC_PROG_CPP
 
 	FR_SMART_CHECK_LIB(idn, idna_to_ascii_8z)
-        if test "x$ac_cv_lib_idn_idna_to_ascii_8z" != "xyes"; then
+	if test "x$ac_cv_lib_idn_idna_to_ascii_8z" != "xyes"; then
 		fail="$fail libidn"
 	fi
 

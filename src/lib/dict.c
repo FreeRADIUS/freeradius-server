@@ -1479,7 +1479,7 @@ static int process_attribute(char const* fn, int const line,
 			break;
 		}
 
-	  	flags.length = length;
+		flags.length = length;
 
 	} else {		/* argc == 4: we have options */
 		char *key, *next, *last;

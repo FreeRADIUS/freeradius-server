@@ -711,9 +711,9 @@ static int mod_detach(void *instance)
 }
 
 static int parse_sub_section(CONF_SECTION *parent,
-	 		     rlm_sql_t *inst,
-	 		     sql_acct_section_t **config,
-	 		     rlm_components_t comp)
+			     rlm_sql_t *inst,
+			     sql_acct_section_t **config,
+			     rlm_components_t comp)
 {
 	CONF_SECTION *cs;
 
@@ -1080,7 +1080,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST * request)
 		rlm_rcode_t ret;
 
 		/*
-	 	 *  Check for a default_profile or for a User-Profile.
+		 *  Check for a default_profile or for a User-Profile.
 		 */
 		RDEBUG3("... falling-through to profile processing");
 		user_profile = pairfind(request->config_items, PW_USER_PROFILE, 0, TAG_ANY);

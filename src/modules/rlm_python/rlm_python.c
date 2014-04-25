@@ -210,7 +210,7 @@ static int mod_init(void)
 	dl_handle = dlopen("libpython" STRINGIFY(PY_MAJOR_VERSION) "." STRINGIFY(PY_MINOR_VERSION) ".so",
 			   RTLD_NOW | RTLD_GLOBAL);
 	if (!dl_handle) {
-	 	WARN("Failed loading libpython symbols into global symbol table: %s", dlerror());
+		WARN("Failed loading libpython symbols into global symbol table: %s", dlerror());
 	}
 
 	Py_SetProgramName(name);

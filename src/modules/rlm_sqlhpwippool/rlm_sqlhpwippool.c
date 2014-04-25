@@ -194,15 +194,15 @@ static int nvp_freeclosed(rlm_sqlhpwippool_t *data, rlm_sql_handle_t *sqlsock)
 {
 	if (!nvp_query(__LINE__, data, sqlsock,
 	    "UPDATE `%s`.`ips`, `radacct` "
-	    	"SET "
-	    		"`ips`.`rsv_until` = `radacct`.`acctstoptime` + INTERVAL %u SECOND "
-	    	"WHERE "
-	    		"`radacct`.`acctstoptime` IS NOT NULL AND "   /* session is closed */
-	    		"("				    /* address is being used */
-	    			"`ips`.`pid` IS NOT NULL AND "
-	    			"(`rsv_until` = 0 OR `rsv_until` > NOW())"
-	    		") AND "
-	    		"`radacct`.`acctuniqueid` = `ips`.`rsv_by`",
+		"SET "
+			"`ips`.`rsv_until` = `radacct`.`acctstoptime` + INTERVAL %u SECOND "
+		"WHERE "
+			"`radacct`.`acctstoptime` IS NOT NULL AND "   /* session is closed */
+			"("				    /* address is being used */
+				"`ips`.`pid` IS NOT NULL AND "
+				"(`rsv_until` = 0 OR `rsv_until` > NOW())"
+			") AND "
+			"`radacct`.`acctuniqueid` = `ips`.`rsv_by`",
 	    data->db_name, data->free_after)) {
 		return 0;
 	}
@@ -216,16 +216,16 @@ static int nvp_syncfree(rlm_sqlhpwippool_t *data, rlm_sql_handle_t *sqlsock)
 {
 	if (!nvp_query(__LINE__, data, sqlsock,
 	    "UPDATE `%s`.`ip_pools` "
-	    	"SET `ip_pools`.`free` = "
-	    		"(SELECT COUNT(*) "
-	    			"FROM `%1$s`.`ips` "
-	    			"WHERE "
-	    				"`ips`.`ip` BETWEEN "
-	    					"`ip_pools`.`ip_start` AND `ip_pools`.`ip_stop` AND "
-	    				"("
-	    					"`ips`.`pid` IS NULL OR "
-	    					"(`ips`.`rsv_until` > 0 AND `ips`.`rsv_until` < NOW())"
-	    				"))",
+		"SET `ip_pools`.`free` = "
+			"(SELECT COUNT(*) "
+				"FROM `%1$s`.`ips` "
+				"WHERE "
+					"`ips`.`ip` BETWEEN "
+						"`ip_pools`.`ip_start` AND `ip_pools`.`ip_stop` AND "
+					"("
+						"`ips`.`pid` IS NULL OR "
+						"(`ips`.`rsv_until` > 0 AND `ips`.`rsv_until` < NOW())"
+					"))",
 	    data->db_name)) {
 		return 0;
 	}
@@ -256,19 +256,19 @@ static int nvp_cleanup(rlm_sqlhpwippool_t *data)
 	/* add sessions opened in the meantime */
 	if (!nvp_query(__LINE__, data, sqlsock,
 	    "UPDATE `%s`.`ips`, `radacct` "
-	    	"SET "
-	    		"`ips`.`pid` = 0, "
-	    		"`ips`.`rsv_by` = `radacct`.`acctuniqueid`, "
-	    		"`ips`.`rsv_since` = `radacct`.`acctstarttime`, "
-	    		"`ips`.`rsv_until` = 0 "
-	    	"WHERE "
-	    		"`radacct`.`acctstoptime` IS NULL AND "     /* session is opened */
-	    		"`ips`.`ip` = INET_ATON(`radacct`.`framedipaddress`) AND "
-	    		"("
-	    			"`ips`.`pid` IS NULL OR "
+		"SET "
+			"`ips`.`pid` = 0, "
+			"`ips`.`rsv_by` = `radacct`.`acctuniqueid`, "
+			"`ips`.`rsv_since` = `radacct`.`acctstarttime`, "
+			"`ips`.`rsv_until` = 0 "
+		"WHERE "
+			"`radacct`.`acctstoptime` IS NULL AND "     /* session is opened */
+			"`ips`.`ip` = INET_ATON(`radacct`.`framedipaddress`) AND "
+			"("
+				"`ips`.`pid` IS NULL OR "
 /*	    			"(`ips`.`rsv_until` > 0 AND `ips.`rsv_until` < NOW()) " */
-	    			"`ips`.`rsv_until` != 0"   /* no acct pkt received yet */
-	    		")",
+				"`ips`.`rsv_until` != 0"   /* no acct pkt received yet */
+			")",
 	    data->db_name)) {
 		sql_release_socket(data->sqlinst, sqlsock);
 		return 0;
@@ -433,17 +433,17 @@ static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
 		/* find the most specific group which NAS belongs to */
 		switch (nvp_select(__LINE__, inst, sqlsock,
 		       "SELECT `host_groups`.`gid` "
-		       	"FROM "
-		       		"`%s`.`host_groups`, "
-		       		"`%1$s`.`gid_ip`, "
-		       		"`%1$s`.`ids` "
-		       	"WHERE "
-		       		"`host_groups`.`gid` = `ids`.`id` AND "
-		       		"`ids`.`enabled` = 1 AND "
-		       		"`host_groups`.`gid` = `gid_ip`.`gid` AND "
-		       		"%lu BETWEEN `gid_ip`.`ip_start` AND `gid_ip`.`ip_stop` "
-		       	"ORDER BY (`gid_ip`.`ip_stop` - `gid_ip`.`ip_start`) ASC "
-		       	"LIMIT %lu, 1",
+			"FROM "
+				"`%s`.`host_groups`, "
+				"`%1$s`.`gid_ip`, "
+				"`%1$s`.`ids` "
+			"WHERE "
+				"`host_groups`.`gid` = `ids`.`id` AND "
+				"`ids`.`enabled` = 1 AND "
+				"`host_groups`.`gid` = `gid_ip`.`gid` AND "
+				"%lu BETWEEN `gid_ip`.`ip_start` AND `gid_ip`.`ip_stop` "
+			"ORDER BY (`gid_ip`.`ip_stop` - `gid_ip`.`ip_start`) ASC "
+			"LIMIT %lu, 1",
 		       inst->db_name, nasip, s_gid)) {
 			case -1:
 				nvp_log(__LINE__, inst, L_ERR,
@@ -474,7 +474,7 @@ static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
 					"FROM "
 						"`%s`.`ip_pools`, "
 						"`%1$s`.`ids`, "
-					 	"`%1$s`.`pool_names` "
+						"`%1$s`.`pool_names` "
 					"WHERE "
 						"`ip_pools`.`gid` = %lu AND "
 						"`ids`.`id` = `ip_pools`.`pid` AND "
@@ -552,19 +552,19 @@ static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
 				/* reserve an IP address */
 				if (!nvp_query(__LINE__, inst, sqlsock,
 				    "UPDATE `%s`.`ips` "
-				    	"SET "
-				    		"`pid` = %lu, "
-				    		"`rsv_since` = NOW(), "
-				    		"`rsv_by` = '" RLM_NETVIM_TMP_PREFIX "%lu', "
-				    		"`rsv_until` = NOW() + INTERVAL %d SECOND "
-				    	"WHERE "
-				    		"`ip` BETWEEN %lu AND %lu AND "
-				    		"("
-				    			"`pid` IS NULL OR "
-				    			"(`rsv_until` > 0 AND `rsv_until` < NOW())"
-				    		") "
-				    	"ORDER BY RAND() "
-				    	"LIMIT 1",
+					"SET "
+						"`pid` = %lu, "
+						"`rsv_since` = NOW(), "
+						"`rsv_by` = '" RLM_NETVIM_TMP_PREFIX "%lu', "
+						"`rsv_until` = NOW() + INTERVAL %d SECOND "
+					"WHERE "
+						"`ip` BETWEEN %lu AND %lu AND "
+						"("
+							"`pid` IS NULL OR "
+							"(`rsv_until` > 0 AND `rsv_until` < NOW())"
+						") "
+					"ORDER BY RAND() "
+					"LIMIT 1",
 				    inst->db_name, pid, connid, inst->free_after, ip_start, ip_stop)) {
 					sql_release_socket(inst->sqlinst, sqlsock);
 					return RLM_MODULE_FAIL;
@@ -595,11 +595,11 @@ static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
 				/* update free IPs count */
 				if (!nvp_query(__LINE__, inst, sqlsock,
 				    "UPDATE `%s`.`ip_pools` "
-				    	"SET "
-				    		"`free` = `free` - 1 "
-				    	"WHERE "
-				    		"`pid` = %lu "
-			    	"LIMIT 1",
+					"SET "
+						"`free` = `free` - 1 "
+					"WHERE "
+						"`pid` = %lu "
+				"LIMIT 1",
 				    inst->db_name, pid)) {
 					sql_release_socket(inst->sqlinst, sqlsock);
 					return RLM_MODULE_FAIL;
@@ -710,10 +710,10 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 
 			if (!nvp_query(__LINE__, inst, sqlsock,
 			    "UPDATE `%s`.`ips` "
-			    	"SET "
-			    		"`rsv_until` = 0, "
-			    		"`rsv_by` = '%s' "
-			    	"WHERE `ip` = %lu",
+				"SET "
+					"`rsv_until` = 0, "
+					"`rsv_by` = '%s' "
+				"WHERE `ip` = %lu",
 			    inst->db_name, sessid, framedip)) {
 				sql_release_socket(inst->sqlinst, sqlsock);
 				return RLM_MODULE_FAIL;
@@ -724,12 +724,12 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 		case PW_STATUS_STOP:
 			if (!nvp_query(__LINE__, inst, sqlsock,
 			    "UPDATE `%s`.`ips`, `%1$s`.`ip_pools` "
-			    	"SET "
-			    		"`ips`.`rsv_until` = NOW() + INTERVAL %u SECOND, "
-			    		"`ip_pools`.`free` = `ip_pools`.`free` + 1 "
-			    	"WHERE "
-			    		"`ips`.`rsv_by` = '%s' AND "
-			    		"`ips`.`ip` BETWEEN `ip_pools`.`ip_start` AND `ip_pools`.`ip_stop`",
+				"SET "
+					"`ips`.`rsv_until` = NOW() + INTERVAL %u SECOND, "
+					"`ip_pools`.`free` = `ip_pools`.`free` + 1 "
+				"WHERE "
+					"`ips`.`rsv_by` = '%s' AND "
+					"`ips`.`ip` BETWEEN `ip_pools`.`ip_start` AND `ip_pools`.`ip_stop`",
 			    inst->db_name, inst->free_after, sessid)) {
 				sql_release_socket(inst->sqlinst, sqlsock);
 				return RLM_MODULE_FAIL;
@@ -751,10 +751,10 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 
 			if (!nvp_query(__LINE__, inst, sqlsock,
 			    "UPDATE `%s`.`ips`, `radacct` "
-			    	"SET `ips`.`rsv_until` = NOW() + INTERVAL %u SECOND "
-			    	"WHERE "
-			    		"`radacct`.`nasipaddress` = '%s' AND "
-			    		"`ips`.`rsv_by` = `radacct`.`acctuniqueid`",
+				"SET `ips`.`rsv_until` = NOW() + INTERVAL %u SECOND "
+				"WHERE "
+					"`radacct`.`nasipaddress` = '%s' AND "
+					"`ips`.`rsv_by` = `radacct`.`acctuniqueid`",
 			    inst->db_name, inst->free_after, nasipstr)) {
 				sql_release_socket(inst->sqlinst, sqlsock);
 				return RLM_MODULE_FAIL;
