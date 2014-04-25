@@ -81,7 +81,10 @@ if test x$with_[]modname != xno; then
 	if test "x$ac_cv_lib_pq_PQconnectdb" != "xyes"; then
 		fail="$fail libpq"
 	fi
-
+	AC_CHECK_FUNCS(\
+		PQinitOpenSSL \
+		PQinitSSL \
+	)
 	targetname=modname
 else
 	targetname=
