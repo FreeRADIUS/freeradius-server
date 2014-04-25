@@ -6,6 +6,12 @@
 /* Define to 1 if you have the `sqlite3_errstr' function. */
 #undef HAVE_SQLITE3_ERRSTR
 
+/* Define to 1 if you have the `sqlite3_extended_result_codes' function. */
+#undef HAVE_SQLITE3_EXTENDED_RESULT_CODES
+
+/* Define to 1 if the system has the type `sqlite3_int64'. */
+#undef HAVE_SQLITE3_INT64
+
 /* Define to 1 if you have the `sqlite3_open_v2' function. */
 #undef HAVE_SQLITE3_OPEN_V2
 

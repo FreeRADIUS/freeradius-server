@@ -1499,6 +1499,60 @@ $as_echo "$ac_res" >&6; }
   eval $as_lineno_stack; ${as_lineno_stack:+:} unset as_lineno
 
 } # ac_fn_c_check_func
+
+# ac_fn_c_check_type LINENO TYPE VAR INCLUDES
+# -------------------------------------------
+# Tests whether TYPE exists after having included INCLUDES, setting cache
+# variable VAR accordingly.
+ac_fn_c_check_type ()
+{
+  as_lineno=${as_lineno-"$1"} as_lineno_stack=as_lineno_stack=$as_lineno_stack
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for $2" >&5
+$as_echo_n "checking for $2... " >&6; }
+if eval \${$3+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  eval "$3=no"
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+$4
+int
+main ()
+{
+if (sizeof ($2))
+	 return 0;
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+$4
+int
+main ()
+{
+if (sizeof (($2)))
+	    return 0;
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+
+else
+  eval "$3=yes"
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+eval ac_res=\$$3
+	       { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_res" >&5
+$as_echo "$ac_res" >&6; }
+  eval $as_lineno_stack; ${as_lineno_stack:+:} unset as_lineno
+
+} # ac_fn_c_check_type
 cat >config.log <<_ACEOF
 This file contains any messages produced by compilers while
 running configure, to aid debugging if configure makes a mistake.
@@ -2883,6 +2937,7 @@ $as_echo "$as_me: WARNING: Sqlite libraries not found. Use --with-sqlite-lib-dir
 		sqlite3_open_v2 \
 		sqlite3_create_function_v2 \
 		sqlite3_errstr \
+		sqlite3_extended_result_codes \
 
 do :
   as_ac_var=`$as_echo "ac_cv_func_$ac_func" | $as_tr_sh`
@@ -3048,6 +3103,18 @@ fi
 $as_echo "$as_me: WARNING: Sqlite headers not found. Use --with-sqlite-include-dir=<path>." >&2;}
 	fail="$fail sqlite.h"
     fi
+    CFLAGS="$SMART_CPPFLAGS"
+    ac_fn_c_check_type "$LINENO" "sqlite3_int64" "ac_cv_type_sqlite3_int64" "#include <sqlite3.h>
+"
+if test "x$ac_cv_type_sqlite3_int64" = xyes; then :
+
+cat >>confdefs.h <<_ACEOF
+#define HAVE_SQLITE3_INT64 1
+_ACEOF
+
+
+fi
+
 
     targetname=rlm_sql_sqlite
 else

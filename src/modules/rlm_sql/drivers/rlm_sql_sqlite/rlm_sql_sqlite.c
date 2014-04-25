@@ -43,6 +43,10 @@ RCSID("$Id$")
 #  define SQLITE_OPEN_NOMUTEX 0
 #endif
 
+#ifndef HAVE_SQLITE3_INT64
+typedef sqlite3_int64 sqlite_int64
+#endif
+
 typedef struct rlm_sql_sqlite_conn {
 	sqlite3 *db;
 	sqlite3_stmt *statement;
@@ -400,7 +404,9 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 	/*
 	 *	Enable extended return codes for extra debugging info.
 	 */
+#ifdef HAVE_SQLITE3_EXTENDED_RESULT_CODES
 	(void) sqlite3_extended_result_codes(conn->db, 1);
+#endif
 	if (sql_check_error(conn->db)) {
 		return -1;
 	}
