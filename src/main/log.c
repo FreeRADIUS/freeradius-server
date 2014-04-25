@@ -186,6 +186,20 @@ static int _restore_std(UNUSED int sig)
 	return 0;
 }
 
+/** Pass debug logging through to vradlog
+ *
+ */
+#ifdef __GNUC__
+__attribute__ ((format (printf, 1, 2)))
+#endif
+static void _radlog_info(char const *msg, ...) {
+	va_list ap;
+
+	va_start(ap, msg);
+	vradlog(L_INFO, msg, ap);
+	va_end(ap);
+}
+
 /** Initialise file descriptors based on logging destination
  *
  * @param log Logger to manipulate.
@@ -195,6 +209,13 @@ static int _restore_std(UNUSED int sig)
 int radlog_init(fr_log_t *log, bool daemonize)
 {
 	int devnull;
+
+	/*
+	 *	This handles setting up all the talloc logging
+	 *	and callbacks too.
+	 */
+	fr_fault_set_log_fn(_radlog_info);
+	if (default_log.fd > -1) fr_fault_set_log_fd(default_log.fd);
 
 	/*
 	 *	If we're running in foreground mode, save STDIN /
@@ -710,11 +731,6 @@ void radlog_request_marker(log_type_t type, log_debug_t lvl, REQUEST *request,
 
 	radlog_request(type, lvl, request, "%s%s", prefix, fmt);
 	radlog_request(type, lvl, request, "%s%.*s^ %s", prefix, (int) indent, spaces, error);
-}
-
-void log_talloc(char const *msg)
-{
-	INFO("%s", msg);
 }
 
 typedef struct fr_logfile_entry_t {

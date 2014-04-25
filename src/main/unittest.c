@@ -57,14 +57,6 @@ char const *radiusd_version = "FreeRADIUS Version " RADIUSD_VERSION_STRING
  */
 static void usage(int);
 
-#ifdef WITH_VERIFY_PTR
-static void die_horribly(char const *reason)
-{
-	ERROR("talloc abort: %s\n", reason);
-	abort();
-}
-#endif
-
 void listen_free(UNUSED rad_listen_t **head)
 {
 	/* do nothing */
@@ -504,14 +496,6 @@ int main(int argc, char *argv[])
 				break;
 		}
 	}
-
-	if (memory_report) {
-		talloc_enable_null_tracking();
-#ifdef WITH_VERIFY_PTR
-		talloc_set_abort_fn(die_horribly);
-#endif
-	}
-	talloc_set_log_fn(log_talloc);
 
 	if (debug_flag) {
 		version();

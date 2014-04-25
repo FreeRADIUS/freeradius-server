@@ -70,8 +70,9 @@ struct fr_bt_marker {
 #endif
 
 static char panic_action[512];				//!< The command to execute when panicking.
-static fr_fault_cb panic_cb;				//!< Callback to execute whilst panicking, before the
+static fr_fault_cb_t panic_cb = NULL;			//!< Callback to execute whilst panicking, before the
 							//!< panic_action.
+static fr_fault_log_t fr_fault_log = NULL;		//!< Function to use to process logging output.
 static int fr_fault_log_fd = STDERR_FILENO;		//!< Where to write debug output.
 
 static int fr_debugger_present = -1;			//!< Whether were attached to by a debugger.
@@ -315,52 +316,6 @@ int fr_set_dumpable(bool allow_core_dumps)
 	return 0;
 }
 
-/** Generate a talloc memory report for a context and print to stderr/stdout
- *
- * @param ctx to generate a report for, may be NULL in which case the root context is used.
- */
-int fr_log_talloc_report(TALLOC_CTX *ctx)
-{
-	FILE *log;
-	char const *null_ctx = NULL;
-	int i = 0;
-
-	log = fdopen(dup(fr_fault_log_fd), "w");
-	if (!log) {
-		fr_strerror_printf("Couldn't write memory report, fdopen failed: %s", fr_syserror(errno));
-
-		return -1;
-	}
-
-	fprintf(log, "Current state of talloced memory:\n");
-	if (ctx) {
-		null_ctx = talloc_get_name(NULL);
-	}
-
-	if (!ctx) {
-		talloc_report_full(NULL, log);
-	} else do {
-		fprintf(log, "Context level %i", i++);
-
-		talloc_report_full(ctx, log);
-	} while ((ctx = talloc_parent(ctx)) && (talloc_get_name(ctx) != null_ctx));  /* Stop before we hit NULL ctx */
-
-	fclose(log);
-
-	return 0;
-}
-
-/** Signal handler to print out a talloc memory report
- *
- * @param sig caught
- */
-static void fr_fault_memory_report(int sig)
-{
-	fprintf(stderr, "CAUGHT SIGNAL: %s\n", strsignal(sig));
-
-	if (fr_log_talloc_report(NULL) < 0) fr_perror("memreport:");
-}
-
 /** Check to see if panic_action file is world writeable
  *
  * @return 0 if file is OK, else -1.
@@ -405,8 +360,6 @@ static int fr_fault_check_permissions(void)
  */
 void fr_fault(int sig)
 {
-	FILE *log;
-
 	char cmd[sizeof(panic_action) + 20];
 	char *out = cmd;
 	size_t left = sizeof(cmd), ret;
@@ -416,20 +369,13 @@ void fr_fault(int sig)
 
 	int code;
 
-	log = fdopen(dup(fr_fault_log_fd), "w");
-	if (!log) {
-		fr_perror("Failed opening specified fd, defaulting to stderr: %s", fr_syserror(errno));
-
-		log = stderr;
-	}
-
-	fprintf(log, "CAUGHT SIGNAL: %s\n", strsignal(sig));
+	fr_fault_log("CAUGHT SIGNAL: %s\n", strsignal(sig));
 
 	/*
 	 *	Check for administrator sanity.
 	 */
 	if (fr_fault_check_permissions() < 0) {
-		fprintf(log, "Refusing to execute panic action: %s\n", fr_strerror());
+		fr_fault_log("Refusing to execute panic action: %s\n", fr_strerror());
 		goto finish;
 	}
 
@@ -444,18 +390,24 @@ void fr_fault(int sig)
 	 */
 #ifdef HAVE_EXECINFO
 	{
-		size_t frame_count;
+		size_t frame_count, i;
 		void *stack[MAX_BT_FRAMES];
+		char **strings;
 
 		frame_count = backtrace(stack, MAX_BT_FRAMES);
-		fprintf(log, "Backtrace of last %zu frames:\n", frame_count);
-		backtrace_symbols_fd(stack, frame_count, fr_fault_log_fd);
+
+		fr_fault_log("Backtrace of last %zu frames:\n", frame_count);
+		strings = backtrace_symbols(stack, frame_count);
+		for (i = 0; i < frame_count; i++) {
+			fr_fault_log("%s\n", strings[i]);
+		}
+		free(strings);
 	}
 #endif
 
 	/* No panic action set... */
 	if (panic_action[0] == '\0') {
-		fprintf(log, "No panic action set\n");
+		fr_fault_log("No panic action set\n");
 		goto finish;
 	}
 
@@ -464,7 +416,7 @@ void fr_fault(int sig)
 		out += ret = snprintf(out, left, "%.*s%d", (int) (q - p), p, (int) getpid());
 		if (left <= ret) {
 		oob:
-			fprintf(log, "Panic action too long\n");
+			fr_fault_log("Panic action too long\n");
 			fr_exit_now(1);
 		}
 		left -= ret;
@@ -473,19 +425,17 @@ void fr_fault(int sig)
 	if (strlen(p) >= left) goto oob;
 	strlcpy(out, p, left);
 
-	fprintf(log, "Calling: %s\n", cmd);
+	fr_fault_log("Calling: %s\n", cmd);
 	code = system(cmd);
-	fprintf(log, "Panic action exited with %i\n", code);
+	fr_fault_log("Panic action exited with %i\n", code);
 
 #ifdef SIGUSR1
 	if (sig == SIGUSR1) {
-		fclose(log);
 		return;
 	}
 #endif
 
 finish:
-	fclose(log);
 	fr_exit_now(1);
 }
 
@@ -494,11 +444,66 @@ finish:
  *
  * At least this provides us some information when we get talloc errors.
  */
-static void _fr_talloc_fault(UNUSED char const *message)
+static void _fr_talloc_fault(char const *reason)
 {
+	fr_fault_log("talloc abort: %s\n", reason);
 	fr_fault(SIGABRT);
 }
 #endif
+
+/** Wrapper to pass talloc log output to our fr_fault_log function
+ *
+ */
+static void _fr_talloc_log(char const *msg)
+{
+	fr_fault_log("%s\n", msg);
+}
+
+/** Generate a talloc memory report for a context and print to stderr/stdout
+ *
+ * @param ctx to generate a report for, may be NULL in which case the root context is used.
+ */
+int fr_log_talloc_report(TALLOC_CTX *ctx)
+{
+	FILE *log;
+	char const *null_ctx = NULL;
+	int i = 0;
+
+	log = fdopen(dup(fr_fault_log_fd), "w");
+	if (!log) {
+		fr_strerror_printf("Couldn't write memory report, fdopen failed: %s", fr_syserror(errno));
+
+		return -1;
+	}
+
+	fprintf(log, "Current state of talloced memory:\n");
+	if (ctx) {
+		null_ctx = talloc_get_name(NULL);
+	}
+
+	if (!ctx) {
+		talloc_report_full(NULL, log);
+	} else do {
+		fprintf(log, "Context level %i", i++);
+
+		talloc_report_full(ctx, log);
+	} while ((ctx = talloc_parent(ctx)) && (talloc_get_name(ctx) != null_ctx));  /* Stop before we hit NULL ctx */
+
+	fclose(log);
+
+	return 0;
+}
+
+/** Signal handler to print out a talloc memory report
+ *
+ * @param sig caught
+ */
+static void _fr_fault_mem_report(int sig)
+{
+	fr_fault_log("CAUGHT SIGNAL: %s\n", strsignal(sig));
+
+	if (fr_log_talloc_report(NULL) < 0) fr_perror("memreport:");
+}
 
 /** Registers signal handlers to execute panic_action on fatal signal
  *
@@ -573,8 +578,19 @@ int fr_fault_setup(char const *cmd, char const *program)
 #endif
 
 #ifdef SIGUSR2
-		if (fr_set_signal(SIGUSR2, fr_fault_memory_report) < 0) return -1;
+		if (fr_set_signal(SIGUSR2, _fr_fault_mem_report) < 0) return -1;
 #endif
+
+		/*
+		 *  Setup the default logger
+		 */
+		if (!fr_fault_log) fr_fault_set_log_fn(NULL);
+		talloc_set_log_fn(_fr_talloc_log);
+
+		/*
+		 *  Needed for memory reports
+		 */
+		talloc_enable_null_tracking();
 	}
 	setup = true;
 
@@ -583,15 +599,40 @@ int fr_fault_setup(char const *cmd, char const *program)
 
 /** Set a callback to be called before fr_fault()
  *
- * @param cb to execute. If callback returns < 0
+ * @param func to execute. If callback returns < 0
  *	fr_fault will exit before running panic_action code.
  */
-void fr_fault_set_cb(fr_fault_cb cb)
+void fr_fault_set_cb(fr_fault_cb_t func)
 {
-	panic_cb = cb;
+	panic_cb = func;
 };
 
+/** Default logger, logs output to stderr
+ *
+ */
+#ifdef __GNUC__
+__attribute__ ((format (printf, 1, 2)))
+#endif
+static void _fr_fault_log(char const *msg, ...)
+{
+	va_list ap;
+
+	va_start(ap, msg);
+	vfprintf(stderr, msg, ap);
+	va_end(ap);
+}
+
+
 /** Set a file descriptor to log panic_action output to.
+ *
+ * @param func to call to output log messages.
+ */
+void fr_fault_set_log_fn(fr_fault_log_t func)
+{
+	fr_fault_log = func ? func : _fr_fault_log;
+}
+
+/** Set a file descriptor to log memory reports to.
  *
  * @param fd to write output to.
  */
