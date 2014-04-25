@@ -283,7 +283,7 @@ static int do_regex(REQUEST *request, value_pair_map_t const *map, bool iflag)
 
 	default:
 		rad_assert(0);
-		break;
+		return -1;
 	}
 
 	rcode = radius_expand_tmpl(&lhs, request, map->dst);
@@ -307,7 +307,7 @@ finish:
 	 *  regcomp allocs extra memory for the expression, so if the
 	 *  result wasn't cached we need to free it here.
 	 */
-	if (map->src->type == VPT_TYPE_REGEX) regfree(&reg);
+	if (preg == &reg) regfree(&reg);
 
 	return ret;
 }
