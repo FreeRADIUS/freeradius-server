@@ -328,7 +328,7 @@ static REQUEST *request_setup(FILE *fp)
 			if (!talloc_get_type(vp, VALUE_PAIR)) {
 				ERROR("Expected VALUE_PAIR pointer got \"%s\"", talloc_get_name(vp));
 
-				fr_log_talloc_report(vp, default_log.fd);
+				fr_log_talloc_report(vp);
 				rad_assert(0);
 			}
 
@@ -400,7 +400,7 @@ static void print_packet(FILE *fp, RADIUS_PACKET *packet)
 		if (!talloc_get_type(vp, VALUE_PAIR)) {
 			ERROR("Expected VALUE_PAIR pointer got \"%s\"", talloc_get_name(vp));
 
-			fr_log_talloc_report(vp, default_log.fd);
+			fr_log_talloc_report(vp);
 			rad_assert(0);
 		}
 
@@ -679,7 +679,7 @@ int main(int argc, char *argv[])
 
 	if (memory_report) {
 		INFO("Allocated memory at time of report:");
-		fr_log_talloc_report(NULL, default_log.fd);
+		fr_log_talloc_report(NULL);
 	}
 
 	return rcode;

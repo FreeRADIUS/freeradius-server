@@ -50,7 +50,7 @@
 
 #ifdef HAVE_EXECINFO
 #  define MAX_BT_FRAMES 128
-#  define MAX_BT_CBUFF  65536			//!< Should be a power of 2
+#  define MAX_BT_CBUFF  65536				//!< Should be a power of 2
 
 #  ifdef HAVE_PTHREAD_H
 static pthread_mutex_t fr_debug_init = PTHREAD_MUTEX_INITIALIZER;
@@ -63,15 +63,19 @@ typedef struct fr_bt_info {
 } fr_bt_info_t;
 
 struct fr_bt_marker {
-	void 		*obj;			//!< Pointer to the parent object, this is our needle
-						//!< when we iterate over the contents of the circular buffer.
-	fr_cbuff_t 	*cbuff;			//!< Where we temporarily store the backtraces
+	void 		*obj;				//!< Pointer to the parent object, this is our needle
+							//!< when we iterate over the contents of the circular buffer.
+	fr_cbuff_t 	*cbuff;				//!< Where we temporarily store the backtraces
 };
 #endif
 
-static char panic_action[512];
-static fr_fault_cb panic_cb;
-static int fr_debugger_present = -1;
+static char panic_action[512];				//!< The command to execute when panicking.
+static fr_fault_cb panic_cb;				//!< Callback to execute whilst panicking, before the
+							//!< panic_action.
+static int fr_fault_log_fd = STDERR_FILENO;		//!< Where to write debug output.
+
+static int fr_debugger_present = -1;			//!< Whether were attached to by a debugger.
+
 
 #ifdef HAVE_SYS_RESOURCE_H
 static struct rlimit core_limits;
@@ -314,35 +318,34 @@ int fr_set_dumpable(bool allow_core_dumps)
 /** Generate a talloc memory report for a context and print to stderr/stdout
  *
  * @param ctx to generate a report for, may be NULL in which case the root context is used.
- * @param fd to write the report to.
  */
-int fr_log_talloc_report(TALLOC_CTX *ctx, int fd)
+int fr_log_talloc_report(TALLOC_CTX *ctx)
 {
-	FILE *handle;
+	FILE *log;
 	char const *null_ctx = NULL;
 	int i = 0;
 
-	handle = fdopen(dup(fd), "w");
-	if (!handle) {
+	log = fdopen(dup(fr_fault_log_fd), "w");
+	if (!log) {
 		fr_strerror_printf("Couldn't write memory report, fdopen failed: %s", fr_syserror(errno));
 
 		return -1;
 	}
 
-	fprintf(handle, "Current state of talloced memory:\n");
+	fprintf(log, "Current state of talloced memory:\n");
 	if (ctx) {
 		null_ctx = talloc_get_name(NULL);
 	}
 
 	if (!ctx) {
-		talloc_report_full(NULL, handle);
+		talloc_report_full(NULL, log);
 	} else do {
-		fprintf(handle, "Context level %i", i++);
+		fprintf(log, "Context level %i", i++);
 
-		talloc_report_full(ctx, handle);
+		talloc_report_full(ctx, log);
 	} while ((ctx = talloc_parent(ctx)) && (talloc_get_name(ctx) != null_ctx));  /* Stop before we hit NULL ctx */
 
-	fclose(handle);
+	fclose(log);
 
 	return 0;
 }
@@ -355,7 +358,7 @@ static void fr_fault_memory_report(int sig)
 {
 	fprintf(stderr, "CAUGHT SIGNAL: %s\n", strsignal(sig));
 
-	fr_log_talloc_report(NULL, STDERR_FILENO);
+	if (fr_log_talloc_report(NULL) < 0) fr_perror("memreport:");
 }
 
 /** Check to see if panic_action file is world writeable
@@ -402,6 +405,8 @@ static int fr_fault_check_permissions(void)
  */
 void fr_fault(int sig)
 {
+	FILE *log;
+
 	char cmd[sizeof(panic_action) + 20];
 	char *out = cmd;
 	size_t left = sizeof(cmd), ret;
@@ -411,14 +416,21 @@ void fr_fault(int sig)
 
 	int code;
 
-	fprintf(stderr, "CAUGHT SIGNAL: %s\n", strsignal(sig));
+	log = fdopen(dup(fr_fault_log_fd), "w");
+	if (!log) {
+		fr_perror("Failed opening specified fd, defaulting to stderr: %s", fr_syserror(errno));
+
+		log = stderr;
+	}
+
+	fprintf(log, "CAUGHT SIGNAL: %s\n", strsignal(sig));
 
 	/*
 	 *	Check for administrator sanity.
 	 */
 	if (fr_fault_check_permissions() < 0) {
-		fprintf(stderr, "Refusing to execute panic action: %s\n", fr_strerror());
-		return;
+		fprintf(log, "Refusing to execute panic action: %s\n", fr_strerror());
+		goto finish;
 	}
 
 #ifdef SIGUSR1
@@ -432,7 +444,7 @@ void fr_fault(int sig)
 	/*
 	 *	Run the callback if one was registered
 	 */
-	if (panic_cb && (panic_cb(sig) < 0)) fr_exit_now(1);
+	if (panic_cb && (panic_cb(sig) < 0)) goto finish;
 
 	/*
 	 *	Produce a simple backtrace - They've very basic but at least give us an
@@ -446,9 +458,9 @@ void fr_fault(int sig)
 	frame_count = backtrace(stack, MAX_BT_FRAMES);
 	frames = backtrace_symbols(stack, frame_count);
 
-	fprintf(stderr, "Backtrace of last %zu frames:\n", frame_count);
+	fprintf(log, "Backtrace of last %zu frames:\n", frame_count);
 	for (i = 0; i < frame_count; i++) {
-		fprintf(stderr, "%s\n", frames[i]);
+		fprintf(log, "%s\n", frames[i]);
 		/* Leak the backtrace strings, freeing may lead to undefined behaviour... */
 	}
 #endif
@@ -456,8 +468,8 @@ void fr_fault(int sig)
 skip_backtrace:
 	/* No panic action set... */
 	if (panic_action[0] == '\0') {
-		fprintf(stderr, "No panic action set\n");
-		fr_exit_now(1);
+		fprintf(log, "No panic action set\n");
+		goto finish;
 	}
 
 	/* Substitute %p for the current PID (useful for attaching a debugger) */
@@ -465,7 +477,7 @@ skip_backtrace:
 		out += ret = snprintf(out, left, "%.*s%d", (int) (q - p), p, (int) getpid());
 		if (left <= ret) {
 		oob:
-			fprintf(stderr, "Panic action too long\n");
+			fprintf(log, "Panic action too long\n");
 			fr_exit_now(1);
 		}
 		left -= ret;
@@ -474,14 +486,16 @@ skip_backtrace:
 	if (strlen(p) >= left) goto oob;
 	strlcpy(out, p, left);
 
-	fprintf(stderr, "Calling: %s\n", cmd);
+	fprintf(log, "Calling: %s\n", cmd);
 	code = system(cmd);
-	fprintf(stderr, "Panic action exited with %i\n", code);
+	fprintf(log, "Panic action exited with %i\n", code);
 
 #ifdef SIGUSR1
 	if (sig == SIGUSR1) return;
 #endif
 
+finish:
+	fclose(log);
 	fr_exit_now(1);
 }
 
@@ -586,3 +600,12 @@ void fr_fault_set_cb(fr_fault_cb cb)
 {
 	panic_cb = cb;
 };
+
+/** Set a file descriptor to log panic_action output to.
+ *
+ * @param fd to write output to.
+ */
+void fr_fault_set_log_fd(int fd)
+{
+	fr_fault_log_fd = fd;
+}

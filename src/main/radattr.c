@@ -883,7 +883,7 @@ int main(int argc, char *argv[])
 
 	if (report) {
 		dict_free();
-		fr_log_talloc_report(NULL, default_log.fd);
+		fr_log_talloc_report(NULL);
 	}
 
 	return 0;
