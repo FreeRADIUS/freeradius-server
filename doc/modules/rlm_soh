@@ -3,7 +3,7 @@
 This release adds support for Microsoft Statement-of-Health (SoH), which is
 a form of network access protection.
 
-Client supprot is present in Windows XP SP3, Vista and 7.
+Client support is present in Windows XP SP3, Vista and 7.
 
 SoH data can come in from several places:
 
