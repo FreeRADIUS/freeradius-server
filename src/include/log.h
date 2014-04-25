@@ -110,7 +110,6 @@ void radlog_request_marker(log_type_t type, log_debug_t lvl, REQUEST *request,
 			   char const *fmt, size_t indent, char const *error);
 
 void log_talloc(char const *message);
-void log_talloc_report(TALLOC_CTX *ctx);
 
 /*
  *	Multiple threads logging to one or more files.

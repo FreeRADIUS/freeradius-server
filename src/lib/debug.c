@@ -311,6 +311,51 @@ int fr_set_dumpable(bool allow_core_dumps)
 	return 0;
 }
 
+/** Generate a talloc memory report for a context and print to stderr/stdout
+ *
+ * @param ctx to generate a report for, may be NULL in which case the root context is used.
+ */
+int fr_log_talloc_report(TALLOC_CTX *ctx, int fd)
+{
+	FILE *handle;
+	char const *null_ctx = NULL;
+	int i = 0;
+
+	handle = fdopen(fd, "w");
+	if (!handle) {
+		fr_strerror_printf("Couldn't write memory report, fdopen failed: %s", fr_syserror(errno));
+
+		return -1;
+	}
+
+	if (ctx) {
+		null_ctx = talloc_get_name(NULL);
+	}
+
+	if (!ctx) {
+		talloc_report_full(NULL, handle);
+	} else do {
+		fprintf(handle, "Context level %i", i++);
+
+		talloc_report_full(ctx, handle);
+	} while ((ctx = talloc_parent(ctx)) && (talloc_get_name(ctx) != null_ctx));  /* Stop before we hit NULL ctx */
+
+	fclose(handle);
+
+	return 0;
+}
+
+/** Signal handler to print out a talloc memory report
+ *
+ * @param sig caught
+ */
+static void fr_fault_memory_report(int sig)
+{
+	fprintf(stderr, "CAUGHT SIGNAL: %s\n", strsignal(sig));
+
+	fr_log_talloc_report(NULL, STDERR_FILENO);
+}
+
 /** Check to see if panic_action file is world writeable
  *
  * @return 0 if file is OK, else -1.
@@ -435,9 +480,6 @@ skip_backtrace:
 	if (sig == SIGUSR1) return;
 #endif
 
-#ifdef SIGUSR2
-	if (sig == SIGUSR2) return;
-#endif
 	fr_exit_now(1);
 }
 
@@ -521,7 +563,7 @@ int fr_fault_setup(char const *cmd, char const *program)
 #endif
 
 #ifdef SIGUSR2
-		if (fr_set_signal(SIGUSR2, fr_fault) < 0) return -1;
+		if (fr_set_signal(SIGUSR2, fr_fault_memory_report) < 0) return -1;
 #endif
 	}
 	setup = true;

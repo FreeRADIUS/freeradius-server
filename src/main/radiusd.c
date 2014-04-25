@@ -618,7 +618,7 @@ cleanup:
 
 	if (mainconfig.memory_report) {
 		INFO("Allocated memory at time of report:");
-		log_talloc_report(NULL);
+		fr_log_talloc_report(NULL, default_log.fd);
 	}
 
 	return rcode;
