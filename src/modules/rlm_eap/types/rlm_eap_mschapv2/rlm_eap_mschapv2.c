@@ -103,18 +103,18 @@ static int eapmschapv2_compose(eap_handler_t *handler, VALUE_PAIR *reply)
 	switch (reply->da->attr) {
 	case PW_MSCHAP_CHALLENGE:
 		/*
-		 *   0		   1		   2		   3
+		 *   0                   1                   2                   3
 		 *   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
 		 *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-		 *  |     Code      |   Identifier  |	    Length	     |
+		 *  |     Code      |   Identifier  |            Length             |
 		 *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 		 *  |     Type      |   OpCode      |  MS-CHAPv2-ID |  MS-Length...
 		 *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 		 *  |   MS-Length   |  Value-Size   |  Challenge...
 		 *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-		 *  |			     Challenge...
+		 *  |                             Challenge...
 		 *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-		 *  |			     Name...
+		 *  |                             Name...
 		 *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 		 */
 		length = MSCHAPV2_HEADER_LEN + MSCHAPV2_CHALLENGE_LEN + strlen(handler->identity);
@@ -148,14 +148,14 @@ static int eapmschapv2_compose(eap_handler_t *handler, VALUE_PAIR *reply)
 
 	case PW_MSCHAP2_SUCCESS:
 		/*
-		 *   0		   1		   2		   3
+		 *   0                   1                   2                   3
 		 *   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
 		 *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-		 *  |     Code      |   Identifier  |	    Length	     |
+		 *  |     Code      |   Identifier  |            Length             |
 		 *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 		 *  |     Type      |   OpCode      |  MS-CHAPv2-ID |  MS-Length...
 		 *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-		 *  |   MS-Length   |		    Message...
+		 *  |   MS-Length   |                    Message...
 		 *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 		 */
 		DEBUG2("MSCHAP Success\n");
