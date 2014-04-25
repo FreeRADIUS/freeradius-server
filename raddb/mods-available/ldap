@@ -6,9 +6,10 @@
 #  Lightweight Directory Access Protocol (LDAP)
 #
 ldap {
-	#  Note that this needs to match the name in the LDAP server
-	#  certificate, if you're using ldaps.
-	server = "ldap.example.org"
+	#  Note that this needs to match the name(s) in the LDAP server
+	#  certificate, if you're using ldaps.  See OpenLDAP documentation
+	#  for the behavioral semantics of specifying more than one host.
+	server = "ldap.rrdns.example.org ldap.rrdns.example.org ldap.example.org"
 
 	#  Port to connect on, defaults to 389. Setting this to 636 will enable
 	#  LDAPS if start_tls (see below) is not able to be used.
