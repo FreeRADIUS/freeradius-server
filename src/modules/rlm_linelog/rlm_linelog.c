@@ -339,7 +339,7 @@ static rlm_rcode_t do_linelog(void *instance, REQUEST *request)
 module_t rlm_linelog = {
 	RLM_MODULE_INIT,
 	"linelog",
-	0,   	/* type */
+	RLM_TYPE_HUP_SAFE,   	/* type */
 	sizeof(rlm_linelog_t),
 	module_config,
 	mod_instantiate,		/* instantiation */
