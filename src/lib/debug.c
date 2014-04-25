@@ -453,7 +453,6 @@ void fr_fault(int sig)
 	}
 #endif
 
-skip_backtrace:
 	/* No panic action set... */
 	if (panic_action[0] == '\0') {
 		fprintf(log, "No panic action set\n");
