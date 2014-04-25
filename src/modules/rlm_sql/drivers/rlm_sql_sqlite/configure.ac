@@ -86,6 +86,7 @@ if test x$with_[]modname != xno; then
 		sqlite3_open_v2 \
 		sqlite3_create_function_v2 \
 		sqlite3_errstr \
+		sqlite3_extended_result_codes \
 	)
     fi
 
@@ -99,6 +100,8 @@ if test x$with_[]modname != xno; then
 	AC_MSG_WARN([Sqlite headers not found. Use --with-sqlite-include-dir=<path>.])
 	fail="$fail sqlite.h"
     fi
+    CFLAGS="$SMART_CPPFLAGS"
+    AC_CHECK_TYPES([sqlite3_int64], [], [], [[#include <sqlite3.h>]])
 
     targetname=modname
 else
