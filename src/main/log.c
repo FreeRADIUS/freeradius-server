@@ -717,36 +717,6 @@ void log_talloc(char const *msg)
 	INFO("%s", msg);
 }
 
-void log_talloc_report(TALLOC_CTX *ctx)
-{
-	FILE *fd;
-	char const *null_ctx = NULL;
-	int i = 0;
-
-	if (ctx) {
-		null_ctx = talloc_get_name(NULL);
-	}
-
-	fd = fdopen(default_log.fd, "w");
-	if (!fd) {
-		ERROR("Couldn't write memory report, fdopen failed: %s", fr_syserror(errno));
-
-		return;
-	}
-
-	if (!ctx) {
-		talloc_report_full(NULL, fd);
-	} else {
-		do {
-			INFO("Context level %i", i++);
-
-			talloc_report_full(ctx, fd);
-		} while ((ctx = talloc_parent(ctx)) && (talloc_get_name(ctx) != null_ctx));  /* Stop before we hit NULL ctx */
-	}
-
-	fclose(fd);
-}
-
 typedef struct fr_logfile_entry_t {
 	int		fd;
 	int		dup;
