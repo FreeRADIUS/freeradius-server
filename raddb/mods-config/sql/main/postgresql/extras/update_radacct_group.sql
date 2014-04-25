@@ -15,15 +15,15 @@
 CREATE OR REPLACE FUNCTION upd_radgroups() RETURNS trigger AS'
 
 DECLARE
-        v_groupname varchar;
+	v_groupname varchar;
 
 BEGIN
-        SELECT INTO v_groupname GroupName FROM radusergroup WHERE CalledStationId = NEW.CalledStationId AND UserName = NEW.UserName;
-        IF FOUND THEN
-                UPDATE radacct SET GroupName = v_groupname WHERE RadAcctId = NEW.RadAcctId;
-        END IF;
+	SELECT INTO v_groupname GroupName FROM radusergroup WHERE CalledStationId = NEW.CalledStationId AND UserName = NEW.UserName;
+	IF FOUND THEN
+		UPDATE radacct SET GroupName = v_groupname WHERE RadAcctId = NEW.RadAcctId;
+	END IF;
 
-        RETURN NEW;
+	RETURN NEW;
 END
 
 'LANGUAGE plpgsql;

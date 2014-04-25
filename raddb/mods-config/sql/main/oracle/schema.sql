@@ -171,44 +171,44 @@ CREATE TABLE realms (
 CREATE SEQUENCE realms_seq START WITH 1 INCREMENT BY 1;
 
 CREATE TABLE radhuntgroup (
-        id              INT PRIMARY KEY,
-        GroupName VARCHAR(64) NOT NULL,
-        Nasipaddress VARCHAR(15) UNIQUE NOT NULL,
-        NASPortID VARCHAR(15)
+	id              INT PRIMARY KEY,
+	GroupName VARCHAR(64) NOT NULL,
+	Nasipaddress VARCHAR(15) UNIQUE NOT NULL,
+	NASPortID VARCHAR(15)
 );
 
 CREATE SEQUENCE radhuntgroup_seq START WITH 1 INCREMENT BY 1;
 
 CREATE OR REPLACE TRIGGER radhuntgroup_serialnumber
-        BEFORE INSERT OR UPDATE OF id ON radhuntgroup
-        FOR EACH ROW
-        BEGIN
-                if ( :new.id = 0 or :new.id is null ) then
-                        SELECT radhuntgroup_seq.nextval into :new.id from dual;
-                end if;
-        END;
+	BEFORE INSERT OR UPDATE OF id ON radhuntgroup
+	FOR EACH ROW
+	BEGIN
+		if ( :new.id = 0 or :new.id is null ) then
+			SELECT radhuntgroup_seq.nextval into :new.id from dual;
+		end if;
+	END;
 
 CREATE TABLE radpostauth (
-          id            INT PRIMARY KEY,
-          UserName      VARCHAR(64) NOT NULL,
-          Pass          VARCHAR(64),
-          Reply         VARCHAR(64),
-          AuthDate 	DATE
+	  id            INT PRIMARY KEY,
+	  UserName      VARCHAR(64) NOT NULL,
+	  Pass          VARCHAR(64),
+	  Reply         VARCHAR(64),
+	  AuthDate 	DATE
 );
 
 CREATE SEQUENCE radpostauth_seq START WITH 1 INCREMENT BY 1;
 
 CREATE OR REPLACE TRIGGER radpostauth_TRIG
-        BEFORE INSERT OR UPDATE OF id ON radpostauth
-        FOR EACH ROW
-        BEGIN
-                if ( :new.id = 0 or :new.id is null ) then
-                        SELECT radpostauth_seq.nextval into :new.id from dual;
-                end if;
-                if (:new.AuthDate is null) then
-                  select sysdate into :new.AuthDate from dual;
-                end if;
-        END;
+	BEFORE INSERT OR UPDATE OF id ON radpostauth
+	FOR EACH ROW
+	BEGIN
+		if ( :new.id = 0 or :new.id is null ) then
+			SELECT radpostauth_seq.nextval into :new.id from dual;
+		end if;
+		if (:new.AuthDate is null) then
+		  select sysdate into :new.AuthDate from dual;
+		end if;
+	END;
 
 /
 
@@ -216,15 +216,15 @@ CREATE OR REPLACE TRIGGER radpostauth_TRIG
  * Table structure for table 'nas'
  */
 CREATE TABLE nas (
-        id              INT PRIMARY KEY,
-        nasname         VARCHAR(128),
-        shortname       VARCHAR(32),
-        type            VARCHAR(30),
-        ports           INT,
-        secret          VARCHAR(60),
-        server          VARCHAR(64),
-        community       VARCHAR(50),
-        description     VARCHAR(200)
+	id              INT PRIMARY KEY,
+	nasname         VARCHAR(128),
+	shortname       VARCHAR(32),
+	type            VARCHAR(30),
+	ports           INT,
+	secret          VARCHAR(60),
+	server          VARCHAR(64),
+	community       VARCHAR(50),
+	description     VARCHAR(200)
 );
 CREATE SEQUENCE nas_seq START WITH 1 INCREMENT BY 1;
 

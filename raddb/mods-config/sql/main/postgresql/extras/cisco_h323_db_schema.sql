@@ -190,31 +190,31 @@ CREATE TRUSTED LANGUAGE "plpgsql" HANDLER "plpgsql_call_handler";
 
 CREATE OR REPLACE FUNCTION strip_dot (VARCHAR) RETURNS TIMESTAMPTZ AS '
  DECLARE
-        original_timestamp ALIAS FOR $1;
+	original_timestamp ALIAS FOR $1;
  BEGIN
 	IF original_timestamp = '''' THEN
 		RETURN NULL;
-        END IF;
-        IF substring(original_timestamp from 1 for 1) = ''.'' THEN
-                RETURN substring(original_timestamp from 2);
-        ELSE
-                RETURN original_timestamp;
-        END IF;
+	END IF;
+	IF substring(original_timestamp from 1 for 1) = ''.'' THEN
+		RETURN substring(original_timestamp from 2);
+	ELSE
+		RETURN original_timestamp;
+	END IF;
  END;
 ' LANGUAGE 'plpgsql';
 
 
 CREATE OR REPLACE FUNCTION pick_id (VARCHAR, VARCHAR) RETURNS VARCHAR AS '
  DECLARE
-        h323confid ALIAS FOR $1;
-        callid ALIAS FOR $2;
+	h323confid ALIAS FOR $1;
+	callid ALIAS FOR $2;
  BEGIN
-        IF h323confid <> '''' THEN
-                RETURN h323confid;
-        END IF;
-        IF callid <> '''' THEN
-                RETURN callid;
-        END IF;
+	IF h323confid <> '''' THEN
+		RETURN h323confid;
+	END IF;
+	IF callid <> '''' THEN
+		RETURN callid;
+	END IF;
 	RETURN NULL;
  END;
 ' LANGUAGE 'plpgsql';

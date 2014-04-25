@@ -1,13 +1,13 @@
 CREATE TABLE radippool (
-        id                      int PRIMARY KEY,
-        pool_name               varchar(30) NOT NULL,
-        framedipaddress         varchar(30) NOT NULL,
-        nasipaddress            varchar(30) NOT NULL DEFAULT '',
-        pool_key                varchar(64) NOT NULL DEFAULT '',
-        calledstationid         varchar(64),
-        callingstationid        varchar(64) NOT NULL DEFAULT '',
-        expiry_time             timestamp DEFAULT NULL,
-        username                varchar(100)
+	id                      int PRIMARY KEY,
+	pool_name               varchar(30) NOT NULL,
+	framedipaddress         varchar(30) NOT NULL,
+	nasipaddress            varchar(30) NOT NULL DEFAULT '',
+	pool_key                varchar(64) NOT NULL DEFAULT '',
+	calledstationid         varchar(64),
+	callingstationid        varchar(64) NOT NULL DEFAULT '',
+	expiry_time             timestamp DEFAULT NULL,
+	username                varchar(100)
 );
  
 -- Example of how to put IPs in the pool
