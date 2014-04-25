@@ -100,14 +100,14 @@ otp_pwe_init(void)
 	/* MS-CHAPv2 */
 	da = dict_attrbyname("MS-CHAP-Challenge");
 	if (da) {
-    		pwattr[6] = da;
+		pwattr[6] = da;
 
-    		da = dict_attrbyname("MS-CHAP2-Response");
-    		if (da) {
+		da = dict_attrbyname("MS-CHAP2-Response");
+		if (da) {
 			pwattr[7] = da;
-    		} else {
-      			pwattr[6] = NULL;
-      		}
+		} else {
+			pwattr[6] = NULL;
+		}
 	}
 }
 

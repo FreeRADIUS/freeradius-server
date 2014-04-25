@@ -180,7 +180,7 @@ static int ikev2_attach(CONF_SECTION *conf, void **instance)
 	    offsetof(ikev2_ctx,enableFastReconnect),NULL,"yes"},
 
 
- 	{ NULL, -1, 0, NULL, NULL }	   /* end the list */
+	{ NULL, -1, 0, NULL, NULL }	   /* end the list */
      };
 
     ikev2_set_log_callback(vxlogf);
@@ -416,7 +416,7 @@ static int ikev2_authenticate(void *instance, eap_handler_t *handler)
 		if(ComposeRadMsg(out,olen,handler->eap_ds)){
 				free(out);
 				return 0;
-	       	}
+		}
 		free(out);
 		return 1;
 	}

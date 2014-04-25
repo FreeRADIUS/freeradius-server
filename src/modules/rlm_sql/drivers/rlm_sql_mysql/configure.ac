@@ -181,15 +181,15 @@ if test x$with_[]modname != xno; then
 	    CFLAGS="$old_CFLAGS $mod_cflags"
 	    AC_MSG_CHECKING([for mysql.h (using mysql_config --include)])
 	    AC_TRY_COMPILE([#include <mysql.h>], [int a = 1;],
-		           have_mysql_h=yes)
+			   have_mysql_h=yes)
 	    if test "x$have_mysql_h" = "xyes"; then
-	        AC_MSG_RESULT(yes)
-	        AC_DEFINE(HAVE_MYSQL_H, [], [Define if you have <mysql.h>])
-	        SMART_CPPFLAGS="$SMART_CPPFLAGS $mod_cflags"
+		AC_MSG_RESULT(yes)
+		AC_DEFINE(HAVE_MYSQL_H, [], [Define if you have <mysql.h>])
+		SMART_CPPFLAGS="$SMART_CPPFLAGS $mod_cflags"
 	    else
-	        AC_MSG_RESULT(no)
+		AC_MSG_RESULT(no)
 	    fi
-        fi
+	fi
 
 	CFLAGS="$old_CFLAGS"
     fi

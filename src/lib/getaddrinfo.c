@@ -139,7 +139,7 @@ gethostbyname_r(char const *hostname, struct hostent *result,
 
 #ifdef HAVE_PTHREAD_H
     if (fr_hostbyname == 0) {
-    	pthread_mutex_init(&fr_hostbyname_mutex, NULL);
+	pthread_mutex_init(&fr_hostbyname_mutex, NULL);
 	fr_hostbyname = 1;
     }
     pthread_mutex_lock(&fr_hostbyname_mutex);
@@ -172,7 +172,7 @@ gethostbyaddr_r(char const *addr, int len, int type, struct hostent *result,
 
 #ifdef HAVE_PTHREAD_H
     if (fr_hostbyaddr == 0) {
-    	pthread_mutex_init(&fr_hostbyaddr_mutex, NULL);
+	pthread_mutex_init(&fr_hostbyaddr_mutex, NULL);
 	fr_hostbyaddr = 1;
     }
     pthread_mutex_lock(&fr_hostbyaddr_mutex);

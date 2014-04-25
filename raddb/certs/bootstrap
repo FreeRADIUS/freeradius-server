@@ -34,7 +34,7 @@ fi
 if [ ! -f dh ]; then
   openssl dhparam -out dh 1024 || exit 1
   if [ -e /dev/urandom ] ; then
-        ln -sf /dev/urandom random
+	ln -sf /dev/urandom random
   else
 	date > ./random;
   fi

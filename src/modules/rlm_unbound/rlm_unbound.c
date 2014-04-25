@@ -400,10 +400,10 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	inst->fd = -1;
 	inst->pipe_inuse = 0;
 
-        inst->name = cf_section_name2(conf);
-        if (!inst->name) {
+	inst->name = cf_section_name2(conf);
+	if (!inst->name) {
 		inst->name = cf_section_name1(conf);
-        }
+	}
 
 	if ((inst->timeout < 0) || (inst->timeout > 10000)) {
 		ERROR("rlm_unbound (%s): timeout must be 0 to 10000", inst->name);
@@ -411,10 +411,10 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	}
 
 	inst->ub = ub_ctx_create();
-        if (!inst->ub) {
+	if (!inst->ub) {
 		ERROR("rlm_unbound (%s): ub_ctx_create failed", inst->name);
 		return -1;
-        }
+	}
 
 #ifdef HAVE_PTHREAD_H
 	/*
@@ -429,7 +429,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	res = ub_ctx_async(inst->ub, 0);
 #endif
 
-        if (res) goto error;
+	if (res) goto error;
 
 	/*	Glean some default settings to match the main server.	*/
 	/*	TODO: debug_level can be changed at runtime. */
@@ -693,7 +693,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	ERROR("rlm_unbound (%s): %s", inst->name, ub_strerror(res));
 
  error_nores:
- 	if (debug_fd > -1) close(debug_fd);
+	if (debug_fd > -1) close(debug_fd);
 
 	return -1;
 }

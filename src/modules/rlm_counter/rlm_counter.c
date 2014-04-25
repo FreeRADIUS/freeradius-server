@@ -775,24 +775,24 @@ static rlm_rcode_t mod_authorize(UNUSED void *instance, UNUSED REQUEST *request)
 			 */
 
 			/*
-		 	*	We are assuming that simultaneous-use=1. But
-		 	*	even if that does not happen then our user
-		 	*	could login at max for 2*max-usage-time Is
-		 	*	that acceptable?
-		 	*/
+			*	We are assuming that simultaneous-use=1. But
+			*	even if that does not happen then our user
+			*	could login at max for 2*max-usage-time Is
+			*	that acceptable?
+			*/
 
 			/*
-		 	*	User is allowed, but set Session-Timeout.
-		 	*	Stolen from main/auth.c
-		 	*/
+			*	User is allowed, but set Session-Timeout.
+			*	Stolen from main/auth.c
+			*/
 
 			/*
-		 	*	If we are near a reset then add the next
-		 	*	limit, so that the user will not need to
-		 	*	login again
+			*	If we are near a reset then add the next
+			*	limit, so that the user will not need to
+			*	login again
 			*	Before that set the return value to the time
 			*	remaining to next reset
-		 	*/
+			*/
 			if (inst->reset_time && (res >= (inst->reset_time - request->timestamp))) {
 				res = inst->reset_time - request->timestamp;
 				res += check_vp->vp_integer;

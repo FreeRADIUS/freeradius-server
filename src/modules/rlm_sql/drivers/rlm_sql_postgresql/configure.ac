@@ -46,7 +46,7 @@ if test x$with_[]modname != xno; then
 	if test "x$ac_cv_header_libpqmfe_h" != "xyes"; then
 		fail="$fail libpq-fe.h"
 	else
-	        CPPFLAGS="$SMART_CPPFLAGS"
+		CPPFLAGS="$SMART_CPPFLAGS"
 		AC_MSG_CHECKING([for PGRES_SINGLE_TUPLE])
 		AC_COMPILE_IFELSE(
 		  [AC_LANG_PROGRAM([#include <libpq-fe.h>], [[
@@ -78,9 +78,9 @@ if test x$with_[]modname != xno; then
 
 	smart_try_dir="$rlm_sql_postgresql_lib_dir /usr/lib /usr/local/pgsql/lib"
 	FR_SMART_CHECK_LIB(pq, PQconnectdb)
-        if test "x$ac_cv_lib_pq_PQconnectdb" != "xyes"; then
+	if test "x$ac_cv_lib_pq_PQconnectdb" != "xyes"; then
 		fail="$fail libpq"
-        fi
+	fi
 
 	targetname=modname
 else

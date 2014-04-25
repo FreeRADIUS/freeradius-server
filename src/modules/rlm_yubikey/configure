@@ -157,7 +157,7 @@ $as_echo "$0: could not re-execute with $CONFIG_SHELL" >&2
 as_fn_exit 255
   fi
   # We don't want this to propagate to other subprocesses.
-          { _as_can_reexec=; unset _as_can_reexec;}
+	  { _as_can_reexec=; unset _as_can_reexec;}
 if test "x$CONFIG_SHELL" = x; then
   as_bourne_compatible="if test -n \"\${ZSH_VERSION+set}\" && (emulate sh) >/dev/null 2>&1; then :
   emulate sh
@@ -237,7 +237,7 @@ IFS=$as_save_IFS
 
       if test "x$CONFIG_SHELL" != x; then :
   export CONFIG_SHELL
-             # We cannot yet assume a decent shell, so we have to provide a
+	     # We cannot yet assume a decent shell, so we have to provide a
 # neutralization value for shells without unset; and this also
 # works around shells that cannot unset nonexistent variables.
 # Preserve -v and -x to the replacement shell.
@@ -1213,9 +1213,9 @@ Configuration:
 
 Installation directories:
   --prefix=PREFIX         install architecture-independent files in PREFIX
-                          [$ac_default_prefix]
+			  [$ac_default_prefix]
   --exec-prefix=EPREFIX   install architecture-dependent files in EPREFIX
-                          [PREFIX]
+			  [PREFIX]
 
 By default, \`make install' will install all the files in
 \`$ac_default_prefix/bin', \`$ac_default_prefix/lib' etc.  You can specify
@@ -1258,24 +1258,24 @@ Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
   --with-yubikey-include-dir=DIR
-                          Directory where the yubikey includes may be found
+			  Directory where the yubikey includes may be found
   --with-yubikey-lib-dir=DIR
-                          Directory where the yubikey libraries may be found
+			  Directory where the yubikey libraries may be found
   --with-yubikey-dir=DIR  Base directory where yubikey is installed
   --with-ykclient-include-dir=DIR
-                          Directory where the ykclient includes may be found
+			  Directory where the ykclient includes may be found
   --with-ykclient-lib-dir=DIR
-                          Directory where the ykclient libraries may be found
+			  Directory where the ykclient libraries may be found
   --with-ykclient-dir=DIR Base directory where ykclient is installed
 
 Some influential environment variables:
   CC          C compiler command
   CFLAGS      C compiler flags
   LDFLAGS     linker flags, e.g. -L<lib dir> if you have libraries in a
-              nonstandard directory <lib dir>
+	      nonstandard directory <lib dir>
   LIBS        libraries to pass to the linker, e.g. -l<library>
   CPPFLAGS    (Objective) C/C++ preprocessor flags, e.g. -I<include dir> if
-              you have headers in a nonstandard directory <include dir>
+	      you have headers in a nonstandard directory <include dir>
 
 Use these variables to override the choices made by `configure' or to help
 it to find libraries and programs with nonstandard names/locations.
@@ -1798,7 +1798,7 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 if test x$with_rlm_yubikey != xno; then
 
 
-        yubikey_include_dir=
+	yubikey_include_dir=
 
 # Check whether --with-yubikey-include-dir was given.
 if test "${with_yubikey_include_dir+set}" = set; then :
@@ -1815,7 +1815,7 @@ if test "${with_yubikey_include_dir+set}" = set; then :
 fi
 
 
-        yubikey_lib_dir=
+	yubikey_lib_dir=
 
 # Check whether --with-yubikey-lib-dir was given.
 if test "${with_yubikey_lib_dir+set}" = set; then :
@@ -1850,7 +1850,7 @@ fi
 
 
 
-        ykclient_include_dir=
+	ykclient_include_dir=
 
 # Check whether --with-ykclient-include-dir was given.
 if test "${with_ykclient_include_dir+set}" = set; then :
@@ -1867,7 +1867,7 @@ if test "${with_ykclient_include_dir+set}" = set; then :
 fi
 
 
-        ykclient_lib_dir=
+	ykclient_lib_dir=
 
 # Check whether --with-ykclient-lib-dir was given.
 if test "${with_ykclient_lib_dir+set}" = set; then :
@@ -2002,7 +2002,7 @@ else
 fi
 
 if test -z "$CC"; then
-          if test -n "$ac_tool_prefix"; then
+	  if test -n "$ac_tool_prefix"; then
     # Extract the first word of "${ac_tool_prefix}cc", so it can be a program name with args.
 set dummy ${ac_tool_prefix}cc; ac_word=$2
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
@@ -2224,7 +2224,7 @@ $as_echo "$ac_try_echo"; } >&5
   if test -s conftest.err; then
     sed '10a\
 ... rest of stderr output deleted ...
-         10q' conftest.err >conftest.er1
+	 10q' conftest.err >conftest.er1
     cat conftest.er1 >&5
   fi
   rm -f conftest.er1 conftest.err
@@ -2773,22 +2773,22 @@ if test "x$smart_include" = "x"; then
 
 
 if test "x$LOCATE" != "x"; then
-        DIRS=
+	DIRS=
   file=yubikey.h
 
   for x in `${LOCATE} $file 2>/dev/null`; do
-                                        base=`echo $x | sed "s%/${file}%%"`
+					base=`echo $x | sed "s%/${file}%%"`
     if test "x$x" = "x$base"; then
       continue;
     fi
 
     dir=`${DIRNAME} $x 2>/dev/null`
-                exclude=`echo ${dir} | ${GREP} /home`
+		exclude=`echo ${dir} | ${GREP} /home`
     if test "x$exclude" != "x"; then
       continue
     fi
 
-                    already=`echo \$smart_include_dir ${DIRS} | ${GREP} ${dir}`
+		    already=`echo \$smart_include_dir ${DIRS} | ${GREP} ${dir}`
     if test "x$already" = "x"; then
       DIRS="$DIRS $dir"
     fi
@@ -2839,13 +2839,13 @@ if test "x$smart_include" != "x"; then
 fi
 
     if test "x$ac_cv_header_yubikey_h" != "xyes"; then
-        have_ykclient="no"
-        { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: yubikey headers not found. Use --with-yubikey-include-dir=<path>." >&5
+	have_ykclient="no"
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: yubikey headers not found. Use --with-yubikey-include-dir=<path>." >&5
 $as_echo "$as_me: WARNING: yubikey headers not found. Use --with-yubikey-include-dir=<path>." >&2;}
     fi
 
 
-        smart_try_dir="$yubikey_lib_dir"
+	smart_try_dir="$yubikey_lib_dir"
 
 
 sm_lib_safe=`echo "yubikey" | sed 'y%./+-%__p_%'`
@@ -2910,8 +2910,8 @@ yubikey_aes_decrypt()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-	        smart_lib="-lyubikey"
-	        { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		smart_lib="-lyubikey"
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 
 else
@@ -2927,22 +2927,22 @@ if test "x$smart_lib" = "x"; then
 
 
 if test "x$LOCATE" != "x"; then
-        DIRS=
+	DIRS=
   file=libyubikey${libltdl_cv_shlibext}
 
   for x in `${LOCATE} $file 2>/dev/null`; do
-                                        base=`echo $x | sed "s%/${file}%%"`
+					base=`echo $x | sed "s%/${file}%%"`
     if test "x$x" = "x$base"; then
       continue;
     fi
 
     dir=`${DIRNAME} $x 2>/dev/null`
-                exclude=`echo ${dir} | ${GREP} /home`
+		exclude=`echo ${dir} | ${GREP} /home`
     if test "x$exclude" != "x"; then
       continue
     fi
 
-                    already=`echo \$smart_lib_dir ${DIRS} | ${GREP} ${dir}`
+		    already=`echo \$smart_lib_dir ${DIRS} | ${GREP} ${dir}`
     if test "x$already" = "x"; then
       DIRS="$DIRS $dir"
     fi
@@ -2954,22 +2954,22 @@ eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
 
 
 if test "x$LOCATE" != "x"; then
-        DIRS=
+	DIRS=
   file=libyubikey.a
 
   for x in `${LOCATE} $file 2>/dev/null`; do
-                                        base=`echo $x | sed "s%/${file}%%"`
+					base=`echo $x | sed "s%/${file}%%"`
     if test "x$x" = "x$base"; then
       continue;
     fi
 
     dir=`${DIRNAME} $x 2>/dev/null`
-                exclude=`echo ${dir} | ${GREP} /home`
+		exclude=`echo ${dir} | ${GREP} /home`
     if test "x$exclude" != "x"; then
       continue
     fi
 
-                    already=`echo \$smart_lib_dir ${DIRS} | ${GREP} ${dir}`
+		    already=`echo \$smart_lib_dir ${DIRS} | ${GREP} ${dir}`
     if test "x$already" = "x"; then
       DIRS="$DIRS $dir"
     fi
@@ -3021,8 +3021,8 @@ if test "x$smart_lib" != "x"; then
 fi
 
     if test "x$ac_cv_lib_yubikey_yubikey_aes_decrypt" != "xyes"; then
-        have_yubikey="no"
-        { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: yubikey libraries not found. Use --with-yubikey-lib-dir=<path>." >&5
+	have_yubikey="no"
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: yubikey libraries not found. Use --with-yubikey-lib-dir=<path>." >&5
 $as_echo "$as_me: WARNING: yubikey libraries not found. Use --with-yubikey-lib-dir=<path>." >&2;}
     fi
 
@@ -3031,7 +3031,7 @@ $as_echo "$as_me: WARNING: yubikey libraries not found. Use --with-yubikey-lib-d
 $as_echo "#define HAVE_YUBIKEY 1" >>confdefs.h
 
     else
-        { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: silently building without yubikey token decryption support. requires: yubikey" >&5
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: silently building without yubikey token decryption support. requires: yubikey" >&5
 $as_echo "$as_me: WARNING: silently building without yubikey token decryption support. requires: yubikey" >&2;}
     fi
 
@@ -3117,22 +3117,22 @@ if test "x$smart_include" = "x"; then
 
 
 if test "x$LOCATE" != "x"; then
-        DIRS=
+	DIRS=
   file=ykclient.h
 
   for x in `${LOCATE} $file 2>/dev/null`; do
-                                        base=`echo $x | sed "s%/${file}%%"`
+					base=`echo $x | sed "s%/${file}%%"`
     if test "x$x" = "x$base"; then
       continue;
     fi
 
     dir=`${DIRNAME} $x 2>/dev/null`
-                exclude=`echo ${dir} | ${GREP} /home`
+		exclude=`echo ${dir} | ${GREP} /home`
     if test "x$exclude" != "x"; then
       continue
     fi
 
-                    already=`echo \$smart_include_dir ${DIRS} | ${GREP} ${dir}`
+		    already=`echo \$smart_include_dir ${DIRS} | ${GREP} ${dir}`
     if test "x$already" = "x"; then
       DIRS="$DIRS $dir"
     fi
@@ -3183,8 +3183,8 @@ if test "x$smart_include" != "x"; then
 fi
 
     if test "x$ac_cv_header_ykclient_h" != "xyes"; then
-        have_ykclient="no"
-        { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: ykclient headers not found. Use --with-ykclient-include-dir=<path>." >&5
+	have_ykclient="no"
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: ykclient headers not found. Use --with-ykclient-include-dir=<path>." >&5
 $as_echo "$as_me: WARNING: ykclient headers not found. Use --with-ykclient-include-dir=<path>." >&2;}
     fi
 
@@ -3254,8 +3254,8 @@ ykclient_request_process()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-	        smart_lib="-lykclient"
-	        { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		smart_lib="-lykclient"
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 
 else
@@ -3271,22 +3271,22 @@ if test "x$smart_lib" = "x"; then
 
 
 if test "x$LOCATE" != "x"; then
-        DIRS=
+	DIRS=
   file=libykclient${libltdl_cv_shlibext}
 
   for x in `${LOCATE} $file 2>/dev/null`; do
-                                        base=`echo $x | sed "s%/${file}%%"`
+					base=`echo $x | sed "s%/${file}%%"`
     if test "x$x" = "x$base"; then
       continue;
     fi
 
     dir=`${DIRNAME} $x 2>/dev/null`
-                exclude=`echo ${dir} | ${GREP} /home`
+		exclude=`echo ${dir} | ${GREP} /home`
     if test "x$exclude" != "x"; then
       continue
     fi
 
-                    already=`echo \$smart_lib_dir ${DIRS} | ${GREP} ${dir}`
+		    already=`echo \$smart_lib_dir ${DIRS} | ${GREP} ${dir}`
     if test "x$already" = "x"; then
       DIRS="$DIRS $dir"
     fi
@@ -3298,22 +3298,22 @@ eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
 
 
 if test "x$LOCATE" != "x"; then
-        DIRS=
+	DIRS=
   file=libykclient.a
 
   for x in `${LOCATE} $file 2>/dev/null`; do
-                                        base=`echo $x | sed "s%/${file}%%"`
+					base=`echo $x | sed "s%/${file}%%"`
     if test "x$x" = "x$base"; then
       continue;
     fi
 
     dir=`${DIRNAME} $x 2>/dev/null`
-                exclude=`echo ${dir} | ${GREP} /home`
+		exclude=`echo ${dir} | ${GREP} /home`
     if test "x$exclude" != "x"; then
       continue
     fi
 
-                    already=`echo \$smart_lib_dir ${DIRS} | ${GREP} ${dir}`
+		    already=`echo \$smart_lib_dir ${DIRS} | ${GREP} ${dir}`
     if test "x$already" = "x"; then
       DIRS="$DIRS $dir"
     fi
@@ -3365,7 +3365,7 @@ if test "x$smart_lib" != "x"; then
 fi
 
     if test "x$ac_cv_lib_ykclient_ykclient_request_process" != "xyes"; then
-        have_ykclient="no"
+	have_ykclient="no"
 
 
 sm_lib_safe=`echo "ykclient" | sed 'y%./+-%__p_%'`
@@ -3430,8 +3430,8 @@ ykclient_request()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-	        smart_lib="-lykclient"
-	        { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		smart_lib="-lykclient"
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 
 else
@@ -3447,22 +3447,22 @@ if test "x$smart_lib" = "x"; then
 
 
 if test "x$LOCATE" != "x"; then
-        DIRS=
+	DIRS=
   file=libykclient${libltdl_cv_shlibext}
 
   for x in `${LOCATE} $file 2>/dev/null`; do
-                                        base=`echo $x | sed "s%/${file}%%"`
+					base=`echo $x | sed "s%/${file}%%"`
     if test "x$x" = "x$base"; then
       continue;
     fi
 
     dir=`${DIRNAME} $x 2>/dev/null`
-                exclude=`echo ${dir} | ${GREP} /home`
+		exclude=`echo ${dir} | ${GREP} /home`
     if test "x$exclude" != "x"; then
       continue
     fi
 
-                    already=`echo \$smart_lib_dir ${DIRS} | ${GREP} ${dir}`
+		    already=`echo \$smart_lib_dir ${DIRS} | ${GREP} ${dir}`
     if test "x$already" = "x"; then
       DIRS="$DIRS $dir"
     fi
@@ -3474,22 +3474,22 @@ eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
 
 
 if test "x$LOCATE" != "x"; then
-        DIRS=
+	DIRS=
   file=libykclient.a
 
   for x in `${LOCATE} $file 2>/dev/null`; do
-                                        base=`echo $x | sed "s%/${file}%%"`
+					base=`echo $x | sed "s%/${file}%%"`
     if test "x$x" = "x$base"; then
       continue;
     fi
 
     dir=`${DIRNAME} $x 2>/dev/null`
-                exclude=`echo ${dir} | ${GREP} /home`
+		exclude=`echo ${dir} | ${GREP} /home`
     if test "x$exclude" != "x"; then
       continue
     fi
 
-                    already=`echo \$smart_lib_dir ${DIRS} | ${GREP} ${dir}`
+		    already=`echo \$smart_lib_dir ${DIRS} | ${GREP} ${dir}`
     if test "x$already" = "x"; then
       DIRS="$DIRS $dir"
     fi
@@ -3540,13 +3540,13 @@ if test "x$smart_lib" != "x"; then
   SMART_LIBS="$smart_ldflags $smart_lib $SMART_LIBS"
 fi
 
-        if test "x$ac_cv_lib_ykclient_ykclient_request" == "xyes"; then
-            { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: libykclient missing ykclient_request_process. A later version of libykclient is required." >&5
+	if test "x$ac_cv_lib_ykclient_ykclient_request" == "xyes"; then
+	    { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: libykclient missing ykclient_request_process. A later version of libykclient is required." >&5
 $as_echo "$as_me: WARNING: libykclient missing ykclient_request_process. A later version of libykclient is required." >&2;}
-        else
-            { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: ykclient libraries not found. Use --with-ykclient-lib-dir=<path>." >&5
+	else
+	    { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: ykclient libraries not found. Use --with-ykclient-lib-dir=<path>." >&5
 $as_echo "$as_me: WARNING: ykclient libraries not found. Use --with-ykclient-lib-dir=<path>." >&2;}
-        fi
+	fi
     fi
 
     if test "x$have_ykclient" = "xyes"; then
@@ -3566,13 +3566,13 @@ fi
 
 if test x"$fail" != x""; then
     if test x"${enable_strict_dependencies}" = x"yes"; then
-        as_fn_error $? "set --without-rlm_yubikey to disable it explicitly." "$LINENO" 5
+	as_fn_error $? "set --without-rlm_yubikey to disable it explicitly." "$LINENO" 5
     else
-        { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: silently not building rlm_yubikey." >&5
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: silently not building rlm_yubikey." >&5
 $as_echo "$as_me: WARNING: silently not building rlm_yubikey." >&2;}
-        { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: FAILURE: rlm_yubikey requires: $fail." >&5
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: FAILURE: rlm_yubikey requires: $fail." >&5
 $as_echo "$as_me: WARNING: FAILURE: rlm_yubikey requires: $fail." >&2;};
-        targetname=""
+	targetname=""
     fi
 fi
 
@@ -3660,11 +3660,11 @@ $as_echo "$as_me: updating cache $cache_file" >&6;}
       if test ! -f "$cache_file" || test -h "$cache_file"; then
 	cat confcache >"$cache_file"
       else
-        case $cache_file in #(
-        */* | ?:*)
+	case $cache_file in #(
+	*/* | ?:*)
 	  mv -f confcache "$cache_file"$$ &&
 	  mv -f "$cache_file"$$ "$cache_file" ;; #(
-        *)
+	*)
 	  mv -f confcache "$cache_file" ;;
 	esac
       fi
@@ -4138,13 +4138,13 @@ Usage: $0 [OPTION]... [TAG]...
   -V, --version    print version number and configuration settings, then exit
       --config     print configuration, then exit
   -q, --quiet, --silent
-                   do not print progress messages
+		   do not print progress messages
   -d, --debug      don't remove temporary files
       --recheck    update $as_me by reconfiguring in the same conditions
       --file=FILE[:TEMPLATE]
-                   instantiate the configuration file FILE
+		   instantiate the configuration file FILE
       --header=FILE[:TEMPLATE]
-                   instantiate the configuration header FILE
+		   instantiate the configuration header FILE
 
 Configuration files:
 $config_files

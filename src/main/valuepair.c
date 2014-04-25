@@ -775,7 +775,7 @@ VALUE_PAIR **radius_list(REQUEST *request, pair_lists_t list)
 			if (request->coa && /* match reply with request */
 			    (request->coa->proxy->code == PW_CODE_DISCONNECT_REQUEST) &&
 			    request->coa->proxy_reply) {
-			   	return &request->coa->proxy->vps;
+				return &request->coa->proxy->vps;
 			}
 			break;
 #endif
@@ -1343,7 +1343,7 @@ int radius_map2vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *ma
 		for (vp = fr_cursor_init(&cursor, &found);
 		     vp;
 		     vp = fr_cursor_next(&cursor)) {
-		 	vp->op = T_OP_ADD;
+			vp->op = T_OP_ADD;
 		}
 
 		*out = found;
@@ -1549,7 +1549,7 @@ int radius_strpair2map(value_pair_map_t **out, REQUEST *request, char const *raw
 	}
 
 	map = radius_str2map(request, tokens.l_opand, T_BARE_WORD, tokens.op, tokens.r_opand, tokens.quote,
-		       	     dst_request_def, dst_list_def, src_request_def, src_list_def);
+			     dst_request_def, dst_list_def, src_request_def, src_list_def);
 	if (!map) {
 		REDEBUG("Failed parsing attribute string: %s", fr_strerror());
 		return -1;

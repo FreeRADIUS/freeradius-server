@@ -832,7 +832,7 @@ int main(int argc, char *argv[])
 		case 'D':
 			dict_dir = optarg;
 			break;
-	  	case 'x':
+		case 'x':
 			fr_debug_flag++;
 			debug_flag = fr_debug_flag;
 			break;

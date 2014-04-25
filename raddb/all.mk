@@ -32,10 +32,10 @@ INSTALL_RADDB_DIRS :=	$(R)$(raddbdir)/ $(addprefix $(R)$(raddbdir)/, $(RADDB_DIR
 
 # Grab files from the various subdirectories
 INSTALL_FILES := 	$(wildcard raddb/sites-available/* raddb/mods-available/*) \
-		 	$(addprefix raddb/,$(LOCAL_FILES)) \
-		 	$(addprefix raddb/certs/,$(LOCAL_CERT_FILES)) \
-		 	$(shell find raddb/mods-config -type f -print) \
-		 	$(shell find raddb/policy.d -type f -print)
+			$(addprefix raddb/,$(LOCAL_FILES)) \
+			$(addprefix raddb/certs/,$(LOCAL_CERT_FILES)) \
+			$(shell find raddb/mods-config -type f -print) \
+			$(shell find raddb/policy.d -type f -print)
 
 # Re-write local files to installed files, filtering out editor backups
 INSTALL_RADDB :=	$(patsubst raddb/%,$(R)$(raddbdir)/%,\

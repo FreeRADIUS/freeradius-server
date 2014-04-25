@@ -8,7 +8,7 @@ if test x$with_[]modname != xno; then
 	AC_PROG_CPP
 
 	FR_SMART_CHECK_LIB(unbound, ub_ctx_create)
-        	if test "x$ac_cv_lib_unbound_ub_ctx_create" != "xyes"; then
+		if test "x$ac_cv_lib_unbound_ub_ctx_create" != "xyes"; then
 		fail="$fail libunbound"
 	fi
 

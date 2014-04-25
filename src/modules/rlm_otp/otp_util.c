@@ -73,7 +73,7 @@ void otp_async_challenge(char challenge[OTP_MAX_CHALLENGE_LEN + 1],
 		challenge[i] = '0' + rawchallenge[i] % 10;
 	}
 
-  	challenge[len] = '\0';
+	challenge[len] = '\0';
 }
 
 /** Guaranteed initialization
@@ -134,10 +134,10 @@ void _otp_pthread_mutex_unlock(pthread_mutex_t *mutexp, char const *caller)
 	int rc;
 
 	rc = pthread_mutex_unlock(mutexp);
-  	if (rc) {
+	if (rc) {
 		ERROR("rlm_otp: %s: pthread_mutex_unlock: %s",
 		       caller, fr_syserror(rc));
 
 		fr_exit(1);
-  	}
+	}
 }

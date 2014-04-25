@@ -251,7 +251,7 @@ static int send_packet(RADIUS_PACKET *req, RADIUS_PACKET **rep)
 	 *
 	 *	Hmm... we should really be using eapol_test, which does
 	 *	a lot more than radeapclient.
-       	 */
+	 */
 	if (rad_verify(*rep, req, secret) != 0) {
 		fr_perror("rad_verify");
 		exit(1);

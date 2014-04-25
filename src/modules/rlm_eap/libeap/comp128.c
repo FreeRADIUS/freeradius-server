@@ -275,8 +275,8 @@ void comp128v1(uint8_t *sres, uint8_t *kc, uint8_t const *ki, uint8_t const *ran
 
 	for (i = 0; i < 12; i += 2) {
 		kc[i>>1] = (x[i + 18] << 6) |
-		           (x[i + 19] << 2) |
-		           (x[i + 20] >> 2);
+			   (x[i + 19] << 2) |
+			   (x[i + 20] >> 2);
 	}
 
 	kc[6] = (x[30] << 6) | (x[31] << 2);

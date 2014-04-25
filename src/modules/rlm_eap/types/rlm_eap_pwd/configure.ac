@@ -64,7 +64,7 @@ if test x$with_[]modname != xno; then
 	   )
 	   if test "x$ac_cv_func_ev_group_free" != "xyes"; then
 	      fail="EC_GROUP_free"
-           fi
+	   fi
 	fi
 	
 

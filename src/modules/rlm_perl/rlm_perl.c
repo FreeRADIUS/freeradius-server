@@ -263,7 +263,7 @@ static PerlInterpreter *rlm_perl_clone(PerlInterpreter *perl, pthread_key_t *key
 	PL_ptr_table = NULL;
 
 	PERL_SET_CONTEXT(aTHX);
-    	rlm_perl_clear_handles(aTHX);
+	rlm_perl_clear_handles(aTHX);
 
 	ret = pthread_setspecific(*key, interp);
 	if (ret != 0) {

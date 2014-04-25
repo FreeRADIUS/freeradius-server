@@ -204,7 +204,7 @@ void fb_store_row(rlm_sql_firebird_conn_t *conn)
 				conn->row_sizes[i] = vary->vary_length + 1;
 				conn->row[i] = realloc(conn->row[i],
 						       conn->row_sizes[i]);
-		   	}
+			}
 			memmove(conn->row[i], vary->vary_string, vary->vary_length);
 			conn->row[i][vary->vary_length] = 0;
 

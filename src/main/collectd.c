@@ -116,7 +116,7 @@ static rs_stats_tmpl_t *rs_stats_collectd_init(TALLOC_CTX *ctx, rs_t *conf,
 
 		if ((ret = getaddrinfo(hostname, "radius", &hints, &info)) != 0) {
 			ERROR("Error getting hostname: %s", gai_strerror(ret));
-		    	return NULL;
+			return NULL;
 		}
 
 		strlcpy(fqdn, info->ai_canonname, sizeof(fqdn));

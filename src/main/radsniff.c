@@ -183,8 +183,8 @@ static void rs_tv_add_ms(struct timeval const *start, unsigned long interval, st
     result->tv_usec = start->tv_usec + ((interval % 1000) * 1000);
 
     if (result->tv_usec > USEC) {
-        result->tv_usec -= USEC;
-        result->tv_sec++;
+	result->tv_usec -= USEC;
+	result->tv_sec++;
     }
 }
 
@@ -1993,7 +1993,7 @@ int main(int argc, char *argv[])
 
 		case 'x':
 		case 'X':
-		  	fr_debug_flag++;
+			fr_debug_flag++;
 			break;
 
 		case 'W':
@@ -2100,8 +2100,8 @@ int main(int argc, char *argv[])
 	 *	logging there as well.
 	 */
 	if (conf->to_stdout || conf->list_attributes) {
- 		fr_log_fp = stderr;
- 	}
+		fr_log_fp = stderr;
+	}
 
 	if (conf->list_attributes) {
 		conf->logger = rs_packet_print_csv;
@@ -2138,7 +2138,7 @@ int main(int argc, char *argv[])
 
 	if (conf->list_attributes) {
 		conf->list_da_num = rs_build_dict_list(conf->list_da, sizeof(conf->list_da) / sizeof(*conf->list_da),
-				       		       conf->list_attributes);
+						       conf->list_attributes);
 		if (conf->list_da_num < 0) {
 			usage(64);
 		}
@@ -2147,7 +2147,7 @@ int main(int argc, char *argv[])
 
 	if (conf->link_attributes) {
 		conf->link_da_num = rs_build_dict_list(conf->link_da, sizeof(conf->link_da) / sizeof(*conf->link_da),
-				       		       conf->link_attributes);
+						       conf->link_attributes);
 		if (conf->link_da_num < 0) {
 			usage(64);
 		}
@@ -2243,8 +2243,8 @@ int main(int argc, char *argv[])
 		for (dev_p = all_devices;
 		     dev_p;
 		     dev_p = dev_p->next) {
-		     	/* Don't use the any devices, it's horribly broken */
-		     	if (!strcmp(dev_p->name, "any")) continue;
+			/* Don't use the any devices, it's horribly broken */
+			if (!strcmp(dev_p->name, "any")) continue;
 			*in_head = fr_pcap_init(conf, dev_p->name, PCAP_INTERFACE_IN);
 			in_head = &(*in_head)->next;
 		}
@@ -2328,8 +2328,8 @@ int main(int argc, char *argv[])
 		for (in_p = in;
 		     in_p;
 		     in_p = in_p->next) {
-		     	in_p->promiscuous = conf->promiscuous;
-		     	in_p->buffer_pkts = conf->buffer_pkts;
+			in_p->promiscuous = conf->promiscuous;
+			in_p->buffer_pkts = conf->buffer_pkts;
 			if (fr_pcap_open(in_p) < 0) {
 				ERROR("Failed opening pcap handle (%s): %s", in_p->name, fr_strerror());
 				if (conf->from_auto || (in_p->type == PCAP_FILE_IN)) {
@@ -2394,19 +2394,19 @@ int main(int argc, char *argv[])
 	 *	Setup and enter the main event loop. Who needs libev when you can roll your own...
 	 */
 	 {
-	 	struct timeval now;
-	 	rs_update_t update;
+		struct timeval now;
+		rs_update_t update;
 
-	 	char *buff;
+		char *buff;
 
 		memset(&stats, 0, sizeof(stats));
 		memset(&update, 0, sizeof(update));
 
-	 	events = fr_event_list_create(conf, _rs_event_status);
-	 	if (!events) {
-	 		ERROR();
-	 		goto finish;
-	 	}
+		events = fr_event_list_create(conf, _rs_event_status);
+		if (!events) {
+			ERROR();
+			goto finish;
+		}
 
 		/*
 		 *  Initialise the signal handler pipe
@@ -2425,15 +2425,15 @@ int main(int argc, char *argv[])
 		 *  Now add fd's for each of the pcap sessions we opened
 		 */
 		for (in_p = in;
-	     	     in_p;
-	     	     in_p = in_p->next) {
-	     	     	rs_event_t *event;
+		     in_p;
+		     in_p = in_p->next) {
+			rs_event_t *event;
 
-	     	     	event = talloc_zero(events, rs_event_t);
-	     	     	event->list = events;
-	     	     	event->in = in_p;
-	     	     	event->out = out;
-	     	     	event->stats = &stats;
+			event = talloc_zero(events, rs_event_t);
+			event->list = events;
+			event->in = in_p;
+			event->out = out;
+			event->stats = &stats;
 
 			if (!fr_event_fd_insert(events, 0, in_p->fd, rs_got_packet, event)) {
 				ERROR("Failed inserting file descriptor");

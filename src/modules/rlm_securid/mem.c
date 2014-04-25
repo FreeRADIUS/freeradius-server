@@ -72,7 +72,7 @@ void securid_sessionlist_free(rlm_securid_t *inst,REQUEST *request)
 
 	pthread_mutex_lock(&(inst->session_mutex));
 
-       	for (node = inst->session_head; node != NULL; node = next) {
+	for (node = inst->session_head; node != NULL; node = next) {
 		next = node->next;
 		securid_session_free(inst,request,node);
 	}
@@ -285,7 +285,7 @@ static void securid_sessionlist_clean_expired(rlm_securid_t *inst, REQUEST *requ
 	 *	Delete old sessions from the list
 	 *
 	 */
-       	while((session = inst->session_head)) {
+	while((session = inst->session_head)) {
 		if ((timestamp - session->timestamp) > inst->timer_limit) {
 			rbnode_t *node;
 			node = rbtree_find(inst->session_tree, session);

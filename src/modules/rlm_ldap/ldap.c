@@ -443,7 +443,7 @@ static ldap_rcode_t rlm_ldap_result(ldap_instance_t const *inst, ldap_handle_t c
 
 		if (lib_errno != srv_errno) {
 			a = talloc_asprintf_append(p, "LDAP lib error: %s (%u), srv error: %s (%u). ",
-				      		   ldap_err2string(lib_errno), lib_errno,
+						   ldap_err2string(lib_errno), lib_errno,
 						   ldap_err2string(srv_errno), srv_errno);
 			if (!a) {
 				talloc_free(p);

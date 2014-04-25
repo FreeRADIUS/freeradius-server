@@ -419,7 +419,7 @@ static void eap_sim_stateenter(eap_handler_t *handler,
 	 * 	Send the EAP Success message
 	 */
 	case eapsim_server_success:
-  		eap_sim_sendsuccess(handler);
+		eap_sim_sendsuccess(handler);
 		handler->eap_ds->request->code = PW_EAP_SUCCESS;
 		break;
 	/*
@@ -516,7 +516,7 @@ static int process_eap_sim_start(eap_handler_t *handler, VALUE_PAIR *vps)
 	/*
 	 *	Record it for later keying
 	 */
- 	memcpy(ess->keys.versionselect, selectedversion_vp->vp_strvalue, sizeof(ess->keys.versionselect));
+	memcpy(ess->keys.versionselect, selectedversion_vp->vp_strvalue, sizeof(ess->keys.versionselect));
 
 	/*
 	 *	Double check the nonce size.
@@ -667,7 +667,7 @@ static int mod_authenticate(UNUSED void *arg, eap_handler_t *handler)
 
 	default:
 		rad_assert(0 == 1);
- 	}
+	}
 
 	return 0;
 }

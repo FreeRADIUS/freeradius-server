@@ -101,7 +101,7 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 	if (sql_state(err_handle, handle, config)) {
 		ERROR("rlm_sql_unixodbc: Can't allocate connection handle");
 		return -1;
-    	}
+	}
 
 	/* 3. Connect to the datasource */
 	{
@@ -270,8 +270,8 @@ static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t *con
 
 	if ((state = sql_state(err_handle, handle, config))) {
 		if(state == RLM_SQL_RECONNECT) {
-	    		DEBUG("rlm_sql_unixodbc: rlm_sql will attempt to reconnect");
-	    	}
+			DEBUG("rlm_sql_unixodbc: rlm_sql will attempt to reconnect");
+		}
 
 		return state;
 	}
@@ -414,7 +414,7 @@ static sql_rcode_t sql_state(long err_handle, rlm_sql_handle_t *handle, UNUSED r
 		default:
 			ERROR("rlm_sql_unixodbc: %s %s", state, error);
 			res = -1;
-		    	break;
+			break;
 		}
 	}
 

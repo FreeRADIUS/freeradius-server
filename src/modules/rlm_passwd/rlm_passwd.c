@@ -68,10 +68,10 @@ static struct mypasswd * mypasswd_malloc(char const* buffer, int nfields, size_t
 	/* reserve memory for (struct mypasswd) + listflag (nfields * sizeof (char*)) +
 	** fields (nfields * sizeof (char)) + strlen (inst->format) + 1 */
 
-  	*len=sizeof (struct mypasswd) + nfields * sizeof (char*) + nfields * sizeof (char ) + strlen(buffer) + 1;
+	*len=sizeof (struct mypasswd) + nfields * sizeof (char*) + nfields * sizeof (char ) + strlen(buffer) + 1;
 	t = (struct mypasswd *) rad_malloc(*len);
 	if (t) memset(t, 0, *len);
-  	return (t);
+	return (t);
 }
 
 static int string_to_entry(char const* string, int nfields, char delimiter,
@@ -134,8 +134,8 @@ static void release_hash_table(struct hashtable * ht){
 
 	if (!ht) return;
 	for (i = 0; i < ht->tablesize; i++)
- 		if (ht->table[i])
- 			destroy_password(ht->table[i]);
+		if (ht->table[i])
+			destroy_password(ht->table[i]);
 	if (ht->table) {
 		free(ht->table);
 		ht->table = NULL;

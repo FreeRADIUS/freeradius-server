@@ -237,11 +237,11 @@ static int rad_check_password(REQUEST *request)
 		}
 
 		/*
-	 	 *	The admin hasn't told us how to
-	 	 *	authenticate the user, so we reject them!
-	 	 *
-	 	 *	This is fail-safe.
-	 	 */
+		 *	The admin hasn't told us how to
+		 *	authenticate the user, so we reject them!
+		 *
+		 *	This is fail-safe.
+		 */
 
 		REDEBUG2("No Auth-Type found: rejecting the user via Post-Auth-Type = Reject");
 		return -2;

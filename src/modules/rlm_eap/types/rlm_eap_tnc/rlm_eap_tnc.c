@@ -68,7 +68,7 @@ static CONF_PARSER module_config[] = {
 	  offsetof(rlm_eap_tnc_t, connection_string), NULL,
 	  "NAS Port: %{NAS-Port} NAS IP: %{NAS-IP-Address} NAS_PORT_TYPE: %{NAS-Port-Type}"},
 
- 	{ NULL, -1, 0, NULL, NULL }	   /* end the list */
+	{ NULL, -1, 0, NULL, NULL }	   /* end the list */
 };
 
 static int tnc_attach(CONF_SECTION *cs, void **instance)

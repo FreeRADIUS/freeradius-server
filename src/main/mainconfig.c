@@ -1009,7 +1009,7 @@ void hup_logfile(void)
 
 		if (default_log.dst != L_DST_FILES) return;
 
- 		fd = open(mainconfig.log_file,
+		fd = open(mainconfig.log_file,
 			  O_WRONLY | O_APPEND | O_CREAT, 0640);
 		if (fd >= 0) {
 			/*

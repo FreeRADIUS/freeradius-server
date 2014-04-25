@@ -301,7 +301,7 @@ otp_read(otp_fd_t *fdp, char *buf, size_t len)
 				continue;
 			} else {
 				ERROR("rlm_otp: %s: read from otpd: %s",
-		     		       __func__, fr_syserror(errno));
+				       __func__, fr_syserror(errno));
 				otp_putfd(fdp, 1);
 
 				return -1;
@@ -330,7 +330,7 @@ static int otp_write(otp_fd_t *fdp, char const *buf, size_t len)
 	size_t nleft = len;
 	ssize_t nwrote;
 
-  	while (nleft) {
+	while (nleft) {
 		nwrote = write(fdp->fd, &buf[len - nleft], nleft);
 		if (nwrote == -1) {
 			if (errno == EINTR) {

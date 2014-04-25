@@ -494,7 +494,7 @@ inline bool radlog_debug_enabled(log_type_t type, log_debug_t lvl, REQUEST *requ
 	if ((type & L_DBG) &&
 	    ((request && request->radlog && (lvl > request->options)) ||
 	     ((debug_flag != 0) && (lvl > debug_flag)))) {
-	 	return false;
+		return false;
 	}
 
 	return true;

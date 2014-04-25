@@ -18,7 +18,7 @@ idn {
 	#
 	#  Allow use of unassigned Unicode code points.
 	#
-   	allow_unassigned = no
+	allow_unassigned = no
 
 	#
 	#  Prohibit underscores and other invalid characters in domain

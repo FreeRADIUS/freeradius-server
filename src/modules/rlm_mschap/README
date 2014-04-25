@@ -7,9 +7,9 @@ New features were added:
 ! module supports both authorization and authentication. Authorization
   sets authentication to MS-CHAP if any NTLM-related things found.
   During authorization new attributes added to config_items:
-         LM-Password - LM-encoded password
-         NT-Password - NT-encoded password
-         SMB-Account-CTRL - account control flags in SAMBA format
+	 LM-Password - LM-encoded password
+	 NT-Password - NT-encoded password
+	 SMB-Account-CTRL - account control flags in SAMBA format
   During  authentication  these  attributes  are  checked  against  data
   provided by NAS.
 - RFC 2433 text with MS-CHAPv1 removed. Microsoft attributes are covered

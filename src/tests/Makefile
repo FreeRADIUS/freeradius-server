@@ -88,12 +88,12 @@ radiusd.kill:
 	    ret=0; \
 	    if ! ps `cat $(TEST_PATH)/radiusd.pid` >/dev/null 2>&1; then \
 		rm -f radiusd.pid; \
-	        echo "FreeRADIUS terminated during test"; \
-	        echo "GDB output was:"; \
-	        cat "$(TEST_PATH)/gdb.log"; \
-	        echo "Last log entries were:"; \
-	        tail -n 20 $(TEST_PATH)/radius.log; \
-	        ret=1; \
+		echo "FreeRADIUS terminated during test"; \
+		echo "GDB output was:"; \
+		cat "$(TEST_PATH)/gdb.log"; \
+		echo "Last log entries were:"; \
+		tail -n 20 $(TEST_PATH)/radius.log; \
+		ret=1; \
 	    fi; \
 		if ! kill -TERM `cat $(TEST_PATH)/radiusd.pid` >/dev/null 2>&1; then \
 		    ret=1; \

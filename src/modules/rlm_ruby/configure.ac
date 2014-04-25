@@ -26,8 +26,8 @@ if test x$with_[]modname != xno; then
 		if test -n "$RUBY_VERSION"; then
 			mod_cflags=[$(echo "${RUBY_CFLAGS}" | sed 's/-I[ ]*/-isystem /g' | sed 's/-arch [^ ]*[ ]*//g')]
 			
-            AC_MSG_NOTICE([Sanitized cflags are \"${mod_cflags}\"])
-            
+	    AC_MSG_NOTICE([Sanitized cflags are \"${mod_cflags}\"])
+	    
 			mod_ldflags="${RUBY_LDFLAGS} ${RUBY_EXTRA_LIBS}"
 		else
 			fail="ruby"

@@ -220,7 +220,7 @@ static rlm_rcode_t do_ruby(REQUEST *request, unsigned long func,
 		for (vp = fr_cursor_init(&cursor, &request->packet->vps);
 		     vp;
 		     vp = fr_cursor_next(&cursor)) {
-		 	 n_tuple++;
+			 n_tuple++;
 		}
 	}
 

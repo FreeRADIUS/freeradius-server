@@ -41,7 +41,7 @@ static const CONF_PARSER module_config[] = {
 	{ "max_sessions", PW_TYPE_INTEGER,
 	  offsetof(rlm_eap_t, max_sessions), NULL, "2048"},
 
- 	{ NULL, -1, 0, NULL, NULL }	   /* end the list */
+	{ NULL, -1, 0, NULL, NULL }	   /* end the list */
 };
 
 /*
@@ -450,14 +450,14 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 		 *	terminated string in Access-Accept.
 		 */
 		if (inst->mod_accounting_username_bug) {
-		    	char const *old = vp->vp_strvalue;
-		    	char *new = talloc_zero_array(vp, char, vp->length + 1);
+			char const *old = vp->vp_strvalue;
+			char *new = talloc_zero_array(vp, char, vp->length + 1);
 
-		    	memcpy(new, old, vp->length);
-		    	vp->vp_strvalue = new;
-		    	vp->length++;
+			memcpy(new, old, vp->length);
+			vp->vp_strvalue = new;
+			vp->length++;
 
-		    	rad_const_free(old);
+			rad_const_free(old);
 		}
 	}
 

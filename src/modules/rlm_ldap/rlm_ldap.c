@@ -484,7 +484,7 @@ static int mod_detach(void *instance)
  * @return 0 on success, else < 0 on failure.
  */
 static int parse_sub_section(ldap_instance_t *inst, CONF_SECTION *parent, ldap_acct_section_t **config,
-	 		     rlm_components_t comp)
+			     rlm_components_t comp)
 {
 	CONF_SECTION *cs;
 
@@ -1115,13 +1115,13 @@ static rlm_rcode_t user_modify(ldap_instance_t *inst, REQUEST *request, ldap_acc
 	 *	Iterate over all the pairs, building our mods array
 	 */
 	for (ci = cf_item_find_next(cs, NULL); ci != NULL; ci = cf_item_find_next(cs, ci)) {
-	     	bool do_xlat = false;
+		bool do_xlat = false;
 
-	     	if (total == LDAP_MAX_ATTRMAP) {
-	     		REDEBUG("Modify map size exceeded");
+		if (total == LDAP_MAX_ATTRMAP) {
+			REDEBUG("Modify map size exceeded");
 
-	     		goto error;
-	     	}
+			goto error;
+		}
 
 		if (!cf_item_is_pair(ci)) {
 			REDEBUG("Entry is not in \"ldap-attribute = value\" format");
@@ -1211,7 +1211,7 @@ static rlm_rcode_t user_modify(ldap_instance_t *inst, REQUEST *request, ldap_acc
 #endif
 		default:
 			REDEBUG("Operator '%s' is not supported for LDAP modify operations",
-			        fr_int2str(fr_tokens, op, "<INVALID>"));
+				fr_int2str(fr_tokens, op, "<INVALID>"));
 
 			goto error;
 		}

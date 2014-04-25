@@ -440,10 +440,10 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 				for (i = fr_cursor_init(&in, from);
 				     i != NULL;
 				     i = fr_cursor_next(&in)) {
-				     	/*
-				     	 *	Prevent cache control attributes being added to the cache.
-				     	 */
-				     	switch (i->da->attr) {
+					/*
+					 *	Prevent cache control attributes being added to the cache.
+					 */
+					switch (i->da->attr) {
 					case PW_CACHE_TTL:
 					case PW_CACHE_STATUS_ONLY:
 					case PW_CACHE_MERGE:
@@ -452,13 +452,13 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 						continue;
 					default:
 						break;
-				     	}
+					}
 
-				     	vp = paircopyvp(c, i);
-				     	if (!vp) {
-				     		pairfree(&found);
-				     		return NULL;
-				     	}
+					vp = paircopyvp(c, i);
+					if (!vp) {
+						pairfree(&found);
+						return NULL;
+					}
 					RDEBUG("\t%s %s %s (%s)", map->dst->name,
 					       fr_int2str(fr_tokens, map->op, "<INVALID>"),
 					       map->src->name, vp->da->name);
@@ -708,7 +708,7 @@ static ssize_t cache_xlat(void *instance, REQUEST *request,
 	default:
 		PTHREAD_MUTEX_UNLOCK(&inst->cache_mutex);
 		REDEBUG("Unsupported list \"%s\"",
-		        fr_int2str(pair_lists, list, "¿Unknown?"));
+			fr_int2str(pair_lists, list, "¿Unknown?"));
 		return -1;
 	}
 

@@ -120,8 +120,8 @@ if test x$with_[]modname != xno; then
     smart_try_dir="$yubikey_include_dir"
     FR_SMART_CHECK_INCLUDE(yubikey.h)
     if test "x$ac_cv_header_yubikey_h" != "xyes"; then
-        have_ykclient="no"
-        AC_MSG_WARN([yubikey headers not found. Use --with-yubikey-include-dir=<path>.])
+	have_ykclient="no"
+	AC_MSG_WARN([yubikey headers not found. Use --with-yubikey-include-dir=<path>.])
     fi
 
     dnl ############################################################
@@ -132,14 +132,14 @@ if test x$with_[]modname != xno; then
     smart_try_dir="$yubikey_lib_dir"
     FR_SMART_CHECK_LIB(yubikey, yubikey_aes_decrypt)
     if test "x$ac_cv_lib_yubikey_yubikey_aes_decrypt" != "xyes"; then
-        have_yubikey="no"
-        AC_MSG_WARN([yubikey libraries not found. Use --with-yubikey-lib-dir=<path>.])
+	have_yubikey="no"
+	AC_MSG_WARN([yubikey libraries not found. Use --with-yubikey-lib-dir=<path>.])
     fi
 
     if test "x$have_yubikey" = "xyes"; then
-        AC_DEFINE([HAVE_YUBIKEY],[1],[Build with yubikey token decryption support support from yubikey])
+	AC_DEFINE([HAVE_YUBIKEY],[1],[Build with yubikey token decryption support support from yubikey])
     else
-        AC_MSG_WARN([silently building without yubikey token decryption support. requires: yubikey])
+	AC_MSG_WARN([silently building without yubikey token decryption support. requires: yubikey])
     fi
 
     dnl ############################################################
@@ -150,8 +150,8 @@ if test x$with_[]modname != xno; then
     smart_try_dir="$ykclient_include_dir"
     FR_SMART_CHECK_INCLUDE([ykclient.h])
     if test "x$ac_cv_header_ykclient_h" != "xyes"; then
-        have_ykclient="no"
-        AC_MSG_WARN([ykclient headers not found. Use --with-ykclient-include-dir=<path>.])
+	have_ykclient="no"
+	AC_MSG_WARN([ykclient headers not found. Use --with-ykclient-include-dir=<path>.])
     fi
 
     dnl ############################################################
@@ -161,17 +161,17 @@ if test x$with_[]modname != xno; then
     smart_try_dir="$ykclient_lib_dir"
     FR_SMART_CHECK_LIB([ykclient], [ykclient_request_process])
     if test "x$ac_cv_lib_ykclient_ykclient_request_process" != "xyes"; then
-        have_ykclient="no"
-        FR_SMART_CHECK_LIB([ykclient], [ykclient_request])
-        if test "x$ac_cv_lib_ykclient_ykclient_request" == "xyes"; then
-            AC_MSG_WARN([libykclient missing ykclient_request_process. A later version of libykclient is required.])
-        else
-            AC_MSG_WARN([ykclient libraries not found. Use --with-ykclient-lib-dir=<path>.])
-        fi
+	have_ykclient="no"
+	FR_SMART_CHECK_LIB([ykclient], [ykclient_request])
+	if test "x$ac_cv_lib_ykclient_ykclient_request" == "xyes"; then
+	    AC_MSG_WARN([libykclient missing ykclient_request_process. A later version of libykclient is required.])
+	else
+	    AC_MSG_WARN([ykclient libraries not found. Use --with-ykclient-lib-dir=<path>.])
+	fi
     fi
 
     if test "x$have_ykclient" = "xyes"; then
-        AC_DEFINE([HAVE_YKCLIENT],[1],[Build with yubicloud support from ykclient])
+	AC_DEFINE([HAVE_YKCLIENT],[1],[Build with yubicloud support from ykclient])
     else
 	AC_MSG_WARN([silently building without yubicloud support. requires: ykclient])
     fi
@@ -185,11 +185,11 @@ fi
 dnl  Don't change this section.
 if test x"$fail" != x""; then
     if test x"${enable_strict_dependencies}" = x"yes"; then
-        AC_MSG_ERROR([set --without-]modname[ to disable it explicitly.])
+	AC_MSG_ERROR([set --without-]modname[ to disable it explicitly.])
     else
-        AC_MSG_WARN([silently not building ]modname[.])
-        AC_MSG_WARN([FAILURE: ]modname[ requires: $fail.]);
-        targetname=""
+	AC_MSG_WARN([silently not building ]modname[.])
+	AC_MSG_WARN([FAILURE: ]modname[ requires: $fail.]);
+	targetname=""
     fi
 fi
 

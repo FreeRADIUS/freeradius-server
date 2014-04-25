@@ -393,10 +393,10 @@ int detail_recv(rad_listen_t *listener)
 				if (fstat(listener->fd, &buf) < 0) {
 					ERROR("Failed to stat "
 					       "detail file %s: %s",
-				       		data->filename,
-				       		fr_syserror(errno));
+						data->filename,
+						fr_syserror(errno));
 
-				       	goto cleanup;
+					goto cleanup;
 				}
 				if (((off_t) ftell(data->fp)) == buf.st_size) {
 					goto cleanup;
@@ -571,7 +571,7 @@ int detail_recv(rad_listen_t *listener)
 			if (vp) {
 				vp->vp_date = (uint32_t) data->timestamp;
 				vp->type = VT_DATA;
-		    		fr_cursor_insert(&cursor, vp);
+				fr_cursor_insert(&cursor, vp);
 			}
 			continue;
 		}
@@ -585,7 +585,7 @@ int detail_recv(rad_listen_t *listener)
 		vp = NULL;
 		if ((userparse(data, buffer, &vp) > 0) &&
 		    (vp != NULL)) {
-		    	fr_cursor_insert(&cursor, vp);
+			fr_cursor_insert(&cursor, vp);
 		}
 	}
 

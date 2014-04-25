@@ -52,7 +52,7 @@ int mschap_ntpwdhash(uint8_t *out, char const *password)
 	ssize_t len;
 	uint8_t ucs2_password[512];
 
-    	len = fr_utf8_to_ucs2(ucs2_password, sizeof(ucs2_password), password, strlen(password));
+	len = fr_utf8_to_ucs2(ucs2_password, sizeof(ucs2_password), password, strlen(password));
 	if (len < 0) {
 		*out = '\0';
 		return -1;
@@ -133,7 +133,7 @@ void mschap_auth_response(char const *username,
 	 *	For example,
 	 *	"S=0123456789ABCDEF0123456789ABCDEF01234567"
 	 */
- 	response[0] = 'S';
+	response[0] = 'S';
 	response[1] = '=';
 
 	/*

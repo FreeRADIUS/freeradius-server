@@ -120,7 +120,7 @@ static ssize_t xlat_strlen(UNUSED void *instance, UNUSED REQUEST *request,
  *
  */
 static ssize_t xlat_length(UNUSED void *instance, UNUSED REQUEST *request,
-                           char const *fmt, char *out, size_t outlen)
+			   char const *fmt, char *out, size_t outlen)
 {
 	VALUE_PAIR *vp;
 	while (isspace((int) *fmt)) fmt++;
@@ -218,7 +218,7 @@ static ssize_t xlat_integer(UNUSED void *instance, REQUEST *request,
  *
  */
 static ssize_t xlat_hex(UNUSED void *instance, REQUEST *request,
-		        char const *fmt, char *out, size_t outlen)
+			char const *fmt, char *out, size_t outlen)
 {
 	size_t i;
 	VALUE_PAIR *vp;

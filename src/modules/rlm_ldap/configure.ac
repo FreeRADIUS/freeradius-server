@@ -124,11 +124,11 @@ if test x$with_[]modname != xno; then
 		[ SMART_CPPFLAGS="$SMART_CPPFLAGS -DHAVE_LDAP_INITIALIZE" ])
 
 
-        AC_CHECK_FUNCS(ldap_set_rebind_proc)
-        AC_CACHE_CHECK(whether ldap_set_rebind_proc takes 3 arguments, ac_cv_ldap_set_rebind_proc, [
-        AC_TRY_COMPILE([
-        #include <lber.h>
-        #include <ldap.h>], [ldap_set_rebind_proc(0, 0, 0);],
+	AC_CHECK_FUNCS(ldap_set_rebind_proc)
+	AC_CACHE_CHECK(whether ldap_set_rebind_proc takes 3 arguments, ac_cv_ldap_set_rebind_proc, [
+	AC_TRY_COMPILE([
+	#include <lber.h>
+	#include <ldap.h>], [ldap_set_rebind_proc(0, 0, 0);],
 	  [ac_cv_ldap_set_rebind_proc=3],
 	  [ac_cv_ldap_set_rebind_proc=2]) ])
 	fi

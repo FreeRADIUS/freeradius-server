@@ -236,7 +236,7 @@ static int eap_module_call(eap_module_t *module, eap_handler_t *handler)
  */
 static eap_type_t eap_process_nak(rlm_eap_t *inst, REQUEST *request,
 				    eap_type_t type,
-			     	    eap_type_data_t *nak)
+				    eap_type_data_t *nak)
 {
 	unsigned int i;
 	VALUE_PAIR *vp;
@@ -474,7 +474,7 @@ eap_rcode_t eap_method_select(rlm_eap_t *inst, eap_handler_t *handler)
 					    handler) == 0) {
 				REDEBUG2("Failed continuing EAP %s (%d) session. "
 					 "EAP sub-module failed",
-				       	 eap_type2name(type->num),
+					 eap_type2name(type->num),
 					 type->num);
 
 				return EAP_INVALID;
@@ -550,14 +550,14 @@ rlm_rcode_t eap_compose(eap_handler_t *handler)
 			 */
 		case PW_EAP_SUCCESS:
 		case PW_EAP_FAILURE:
-	    		break;
+			break;
 
 			/*
 			 *	We've sent a response to their
 			 *	request, the Id is incremented.
 			 */
 		default:
-	    		++reply->id;
+			++reply->id;
 		}
 	} else {
 		RDEBUG2("Underlying EAP-Type set EAP ID to %d",
@@ -929,8 +929,8 @@ static int eap_validation(REQUEST *request, eap_packet_raw_t *eap_packet)
 	 *	High level EAP packet checks
 	 */
 	if ((len <= EAP_HEADER_LEN) ||
- 	    ((eap_packet->code != PW_EAP_RESPONSE) &&
- 	     (eap_packet->code != PW_EAP_REQUEST)) ||
+	    ((eap_packet->code != PW_EAP_RESPONSE) &&
+	     (eap_packet->code != PW_EAP_REQUEST)) ||
 	    (eap_packet->data[0] <= 0) ||
 	    (eap_packet->data[0] >= PW_EAP_MAX_TYPES)) {
 

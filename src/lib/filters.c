@@ -1166,8 +1166,8 @@ void print_abinary(char *out, size_t outlen, VALUE_PAIR const *vp, int8_t quote)
 
 		if (filter->u.ip.srcip) {
 			i = snprintf(p, outlen, " srcip %d.%d.%d.%d/%d",
-		   		     ((uint8_t *) &filter->u.ip.srcip)[0],
-		   		     ((uint8_t *) &filter->u.ip.srcip)[1],
+				     ((uint8_t *) &filter->u.ip.srcip)[0],
+				     ((uint8_t *) &filter->u.ip.srcip)[1],
 				     ((uint8_t *) &filter->u.ip.srcip)[2],
 				     ((uint8_t *) &filter->u.ip.srcip)[3],
 				     filter->u.ip.srcmask);
@@ -1200,7 +1200,7 @@ void print_abinary(char *out, size_t outlen, VALUE_PAIR const *vp, int8_t quote)
 
 		if (filter->u.ip.dstPortComp > RAD_NO_COMPARE) {
 			i = snprintf(p, outlen, " dstport %s %d",
-			   	     fr_int2str(filterCompare, filter->u.ip.dstPortComp, "??"),
+				     fr_int2str(filterCompare, filter->u.ip.dstPortComp, "??"),
 				     ntohs(filter->u.ip.dstport));
 			p += i;
 			outlen -= i;

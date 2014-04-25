@@ -194,7 +194,7 @@ void eaplist_free(rlm_eap_t *inst)
 {
 	eap_handler_t *node, *next;
 
-       	for (node = inst->session_head; node != NULL; node = next) {
+	for (node = inst->session_head; node != NULL; node = next) {
 		next = node->next;
 		talloc_free(node);
 	}

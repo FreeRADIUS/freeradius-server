@@ -742,7 +742,7 @@ void		print_abinary(char *out, size_t outlen, VALUE_PAIR const *vp,  int8_t quot
 typedef struct fr_randctx {
 	uint32_t randcnt;
 	uint32_t randrsl[256];
-  	uint32_t randmem[256];
+	uint32_t randmem[256];
 	uint32_t randa;
 	uint32_t randb;
 	uint32_t randc;

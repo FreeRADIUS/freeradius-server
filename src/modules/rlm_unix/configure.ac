@@ -30,7 +30,7 @@ if test x$with_[]modname != xno; then
 	if test "$ac_cv_func_getpwnam" != "yes"; then
 		AC_MSG_RESULT(no getpwnam)
 		[ fail=$fail" getpwnam" ]
-        fi
+	fi
 
 	if test "$ac_cv_header_pwd_h" != "yes"; then
 		AC_MSG_RESULT(no pwd.h)

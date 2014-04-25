@@ -118,7 +118,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		inst->mschap_mppe_policy = 2;
 		WDEBUG("Invalid value for mschap_mppe, "
 		       "using default of 2");
-  	}
+	}
 
 	if (inst->mschap_mppe_types != 2) {
 		inst->mschap_mppe_types = 2;
@@ -150,12 +150,12 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 		auth_type_found = 0;
 		vp = pairfind(request->config_items, PW_AUTHTYPE, 0, TAG_ANY);
 		if (vp) {
-      			auth_type_found = 1;
-      			if (strcmp(vp->vp_strvalue, inst->name)) {
+			auth_type_found = 1;
+			if (strcmp(vp->vp_strvalue, inst->name)) {
 				return RLM_MODULE_NOOP;
-    			}
-  		}
-  	}
+			}
+		}
+	}
 
 	/* The State attribute will be present if this is a response. */
 	if (pairfind(request->packet->vps, PW_STATE, 0, TAG_ANY) != NULL) {

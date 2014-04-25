@@ -12,10 +12,10 @@ if test x$with_[]modname != xno; then
 		    no)
 			AC_MSG_ERROR(Need eap-tnc-include-dir)
 		    ;;
-		        yes)
+			yes)
 		    ;;
 		    *)
-		        eap_tnc_include_dir="$withval"
+			eap_tnc_include_dir="$withval"
 		    ;;
 		esac])
 

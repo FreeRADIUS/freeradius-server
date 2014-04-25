@@ -592,7 +592,7 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 	    (map->src->type != VPT_TYPE_REGEX) &&
 	    (map->src->type != VPT_TYPE_REGEX_STRUCT) &&
 	    (c->pass2_fixup == PASS2_PAIRCOMPARE)) {
-	    	int ret;
+		int ret;
 		VALUE_PAIR *lhs_vp;
 
 		EVAL_DEBUG("virtual ATTR to DATA");

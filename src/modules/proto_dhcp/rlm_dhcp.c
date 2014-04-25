@@ -46,7 +46,7 @@ typedef struct rlm_dhcp_t {
  *	Allow single attribute values to be retrieved from the dhcp.
  */
 static ssize_t dhcp_options_xlat(UNUSED void *instance, REQUEST *request,
-			 	 char const *fmt, char *out, size_t freespace)
+				 char const *fmt, char *out, size_t freespace)
 {
 	vp_cursor_t cursor;
 	VALUE_PAIR *vp, *head = NULL;

@@ -467,8 +467,8 @@ int main(int argc, char *argv[])
 
 	if ((fr_set_signal(SIGHUP, sig_hup) < 0) ||
 	    (fr_set_signal(SIGTERM, sig_fatal) < 0)) {
-	    	ERROR("%s", fr_strerror());
-	 	exit(EXIT_FAILURE);
+		ERROR("%s", fr_strerror());
+		exit(EXIT_FAILURE);
 	}
 
 	/*

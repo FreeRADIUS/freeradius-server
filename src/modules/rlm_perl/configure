@@ -157,7 +157,7 @@ $as_echo "$0: could not re-execute with $CONFIG_SHELL" >&2
 as_fn_exit 255
   fi
   # We don't want this to propagate to other subprocesses.
-          { _as_can_reexec=; unset _as_can_reexec;}
+	  { _as_can_reexec=; unset _as_can_reexec;}
 if test "x$CONFIG_SHELL" = x; then
   as_bourne_compatible="if test -n \"\${ZSH_VERSION+set}\" && (emulate sh) >/dev/null 2>&1; then :
   emulate sh
@@ -237,7 +237,7 @@ IFS=$as_save_IFS
 
       if test "x$CONFIG_SHELL" != x; then :
   export CONFIG_SHELL
-             # We cannot yet assume a decent shell, so we have to provide a
+	     # We cannot yet assume a decent shell, so we have to provide a
 # neutralization value for shells without unset; and this also
 # works around shells that cannot unset nonexistent variables.
 # Preserve -v and -x to the replacement shell.
@@ -1212,9 +1212,9 @@ Configuration:
 
 Installation directories:
   --prefix=PREFIX         install architecture-independent files in PREFIX
-                          [$ac_default_prefix]
+			  [$ac_default_prefix]
   --exec-prefix=EPREFIX   install architecture-dependent files in EPREFIX
-                          [PREFIX]
+			  [PREFIX]
 
 By default, \`make install' will install all the files in
 \`$ac_default_prefix/bin', \`$ac_default_prefix/lib' etc.  You can specify
@@ -1262,10 +1262,10 @@ Some influential environment variables:
   CC          C compiler command
   CFLAGS      C compiler flags
   LDFLAGS     linker flags, e.g. -L<lib dir> if you have libraries in a
-              nonstandard directory <lib dir>
+	      nonstandard directory <lib dir>
   LIBS        libraries to pass to the linker, e.g. -l<library>
   CPPFLAGS    (Objective) C/C++ preprocessor flags, e.g. -I<include dir> if
-              you have headers in a nonstandard directory <include dir>
+	      you have headers in a nonstandard directory <include dir>
   CPP         C preprocessor
   PERL        Absolute path to perl executable
 
@@ -1962,7 +1962,7 @@ else
 fi
 
 if test -z "$CC"; then
-          if test -n "$ac_tool_prefix"; then
+	  if test -n "$ac_tool_prefix"; then
     # Extract the first word of "${ac_tool_prefix}cc", so it can be a program name with args.
 set dummy ${ac_tool_prefix}cc; ac_word=$2
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
@@ -2184,7 +2184,7 @@ $as_echo "$ac_try_echo"; } >&5
   if test -s conftest.err; then
     sed '10a\
 ... rest of stderr output deleted ...
-         10q' conftest.err >conftest.er1
+	 10q' conftest.err >conftest.er1
     cat conftest.er1 >&5
   fi
   rm -f conftest.er1 conftest.err
@@ -2804,26 +2804,26 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
     if test -z "$PERL"; then :
 
-        { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether perl executable path has been provided" >&5
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: checking whether perl executable path has been provided" >&5
 $as_echo_n "checking whether perl executable path has been provided... " >&6; }
 
 # Check whether --with-perl was given.
 if test "${with_perl+set}" = set; then :
   withval=$with_perl;
-            if test "$withval" != yes && test "$withval" != no; then :
+	    if test "$withval" != yes && test "$withval" != no; then :
 
-                PERL="$withval"
-                { $as_echo "$as_me:${as_lineno-$LINENO}: result: $PERL" >&5
+		PERL="$withval"
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $PERL" >&5
 $as_echo "$PERL" >&6; }
 
 else
 
-                PERL=""
-                { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		PERL=""
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
-                if test "$withval" != no; then :
+		if test "$withval" != no; then :
 
-                  # Extract the first word of "perl", so it can be a program name with args.
+		  # Extract the first word of "perl", so it can be a program name with args.
 set dummy perl; ac_word=$2
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
 $as_echo_n "checking for $ac_word... " >&6; }
@@ -2872,9 +2872,9 @@ fi
 
 else
 
-            { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+	    { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
-            # Extract the first word of "perl", so it can be a program name with args.
+	    # Extract the first word of "perl", so it can be a program name with args.
 set dummy perl; ac_word=$2
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
 $as_echo_n "checking for $ac_word... " >&6; }
@@ -3042,22 +3042,22 @@ if test "x$smart_include" = "x"; then
 
 
 if test "x$LOCATE" != "x"; then
-        DIRS=
+	DIRS=
   file=EXTERN.h
 
   for x in `${LOCATE} $file 2>/dev/null`; do
-                                        base=`echo $x | sed "s%/${file}%%"`
+					base=`echo $x | sed "s%/${file}%%"`
     if test "x$x" = "x$base"; then
       continue;
     fi
 
     dir=`${DIRNAME} $x 2>/dev/null`
-                exclude=`echo ${dir} | ${GREP} /home`
+		exclude=`echo ${dir} | ${GREP} /home`
     if test "x$exclude" != "x"; then
       continue
     fi
 
-                    already=`echo \$smart_include_dir ${DIRS} | ${GREP} ${dir}`
+		    already=`echo \$smart_include_dir ${DIRS} | ${GREP} ${dir}`
     if test "x$already" = "x"; then
       DIRS="$DIRS $dir"
     fi
@@ -3191,22 +3191,22 @@ if test "x$smart_include" = "x"; then
 
 
 if test "x$LOCATE" != "x"; then
-        DIRS=
+	DIRS=
   file=perl.h
 
   for x in `${LOCATE} $file 2>/dev/null`; do
-                                        base=`echo $x | sed "s%/${file}%%"`
+					base=`echo $x | sed "s%/${file}%%"`
     if test "x$x" = "x$base"; then
       continue;
     fi
 
     dir=`${DIRNAME} $x 2>/dev/null`
-                exclude=`echo ${dir} | ${GREP} /home`
+		exclude=`echo ${dir} | ${GREP} /home`
     if test "x$exclude" != "x"; then
       continue
     fi
 
-                    already=`echo \$smart_include_dir ${DIRS} | ${GREP} ${dir}`
+		    already=`echo \$smart_include_dir ${DIRS} | ${GREP} ${dir}`
     if test "x$already" = "x"; then
       DIRS="$DIRS $dir"
     fi
@@ -3430,11 +3430,11 @@ $as_echo "$as_me: updating cache $cache_file" >&6;}
       if test ! -f "$cache_file" || test -h "$cache_file"; then
 	cat confcache >"$cache_file"
       else
-        case $cache_file in #(
-        */* | ?:*)
+	case $cache_file in #(
+	*/* | ?:*)
 	  mv -f confcache "$cache_file"$$ &&
 	  mv -f "$cache_file"$$ "$cache_file" ;; #(
-        *)
+	*)
 	  mv -f confcache "$cache_file" ;;
 	esac
       fi
@@ -3908,13 +3908,13 @@ Usage: $0 [OPTION]... [TAG]...
   -V, --version    print version number and configuration settings, then exit
       --config     print configuration, then exit
   -q, --quiet, --silent
-                   do not print progress messages
+		   do not print progress messages
   -d, --debug      don't remove temporary files
       --recheck    update $as_me by reconfiguring in the same conditions
       --file=FILE[:TEMPLATE]
-                   instantiate the configuration file FILE
+		   instantiate the configuration file FILE
       --header=FILE[:TEMPLATE]
-                   instantiate the configuration header FILE
+		   instantiate the configuration header FILE
 
 Configuration files:
 $config_files

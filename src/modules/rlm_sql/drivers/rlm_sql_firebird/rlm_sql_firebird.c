@@ -109,20 +109,20 @@ static sql_rcode_t sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *
 	 *	Try again query when deadlock, beacuse in any case it
 	 *	will be retried.
 	 */
- 	if (fb_sql_query(conn, query)) {
+	if (fb_sql_query(conn, query)) {
 		/* but may be lost for short sessions */
-   		if ((conn->sql_code == DEADLOCK_SQL_CODE) &&
-   		    !deadlock) {
-	  		DEBUG("conn_id deadlock. Retry query %s", query);
+		if ((conn->sql_code == DEADLOCK_SQL_CODE) &&
+		    !deadlock) {
+			DEBUG("conn_id deadlock. Retry query %s", query);
 
 			/*
 			 *	@todo For non READ_COMMITED transactions put
 			 *	rollback here
 			 *	fb_rollback(conn);
 			 */
-	  		deadlock = 1;
-	  		goto try_again;
-	  	}
+			deadlock = 1;
+			goto try_again;
+		}
 
 		ERROR("conn_id rlm_sql_firebird,sql_query error: sql_code=%li, error='%s', query=%s",
 		      (long int) conn->sql_code, conn->error, query);
@@ -144,7 +144,7 @@ static sql_rcode_t sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *
 		}
 		//   conn->in_use=0;
 		return -1;
-   	}
+	}
 
 	if (conn->statement_type != isc_info_sql_stmt_select) {
 		if (fb_commit(conn)) {
@@ -199,13 +199,13 @@ static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle, UNUSED rlm_sql_config
 		res = fb_fetch(conn);
 		if (res == 100) {
 			return 0;
-	 	}
+		}
 
-	 	if (res) {
-	  		ERROR("rlm_sql_firebird. Fetch problem: %s", conn->error);
+		if (res) {
+			ERROR("rlm_sql_firebird. Fetch problem: %s", conn->error);
 
-	   		return -1;
-	 	}
+			return -1;
+		}
 	} else {
 		conn->statement_type=0;
 	}

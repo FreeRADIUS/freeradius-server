@@ -69,7 +69,7 @@ sqlcounter noresetcounter {
 	sql_module_instance = sql
 	dialect = ${modules.sql.dialect}
 
-        counter_name = Max-All-Session-Time
+	counter_name = Max-All-Session-Time
 	check_name = Max-All-Session
 	key = User-Name
 	reset = never
@@ -86,10 +86,10 @@ sqlcounter expire_on_login {
 	sql_module_instance = sql
 	dialect = ${modules.sql.dialect}
 
-        counter_name = Expire-After-Initial-Login
-        check_name = Expire-After
-        key = User-Name
-        reset = never
+	counter_name = Expire-After-Initial-Login
+	check_name = Expire-After
+	key = User-Name
+	reset = never
 
 	$INCLUDE ${modconfdir}/sql/counter/${dialect}/${.:instance}.conf
 }

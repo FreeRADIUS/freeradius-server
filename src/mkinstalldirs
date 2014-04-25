@@ -22,13 +22,13 @@ do
      esac
 
      if test ! -d "$pathcomp"; then
-        echo "mkdir $pathcomp"
+	echo "mkdir $pathcomp"
 
-        mkdir "$pathcomp" || lasterr=$?
+	mkdir "$pathcomp" || lasterr=$?
 
-        if test ! -d "$pathcomp"; then
-  	  errstatus=$lasterr
-        fi
+	if test ! -d "$pathcomp"; then
+	  errstatus=$lasterr
+	fi
      fi
 
      pathcomp="$pathcomp/"

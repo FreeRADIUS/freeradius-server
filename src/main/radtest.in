@@ -57,11 +57,11 @@ do
 		;;
 	-d) 
 		OPTIONS="$OPTIONS -d $2"
-    		shift;shift
+		shift;shift
 		;;
 	-P) 
 		OPTIONS="$OPTIONS -P $2"
-    		shift;shift
+		shift;shift
 		;;
 	-x)
 		OPTIONS="$OPTIONS -x"
@@ -96,7 +96,7 @@ do
 		shift
 		;;
 
-        *)
+	*)
 		usage
 		;;
   esac
