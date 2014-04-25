@@ -433,14 +433,6 @@ void fr_fault(int sig)
 		goto finish;
 	}
 
-#ifdef SIGUSR1
-	/*
-	 *	SIGUSR1 skips the callback, and the backtrace and just runs the
-	 *	panic_action.
-	 */
-	if (sig == SIGUSR1) goto skip_backtrace;
-#endif
-
 	/*
 	 *	Run the callback if one was registered
 	 */
@@ -451,17 +443,13 @@ void fr_fault(int sig)
 	 *	idea of the area of the code we hit the issue in.
 	 */
 #ifdef HAVE_EXECINFO
-	size_t frame_count, i;
-	void *stack[MAX_BT_FRAMES];
-	char **frames;
+	{
+		size_t frame_count;
+		void *stack[MAX_BT_FRAMES];
 
-	frame_count = backtrace(stack, MAX_BT_FRAMES);
-	frames = backtrace_symbols(stack, frame_count);
-
-	fprintf(log, "Backtrace of last %zu frames:\n", frame_count);
-	for (i = 0; i < frame_count; i++) {
-		fprintf(log, "%s\n", frames[i]);
-		/* Leak the backtrace strings, freeing may lead to undefined behaviour... */
+		frame_count = backtrace(stack, MAX_BT_FRAMES);
+		fprintf(log, "Backtrace of last %zu frames:\n", frame_count);
+		backtrace_symbols_fd(stack, frame_count, fr_fault_log_fd);
 	}
 #endif
 
@@ -491,7 +479,10 @@ skip_backtrace:
 	fprintf(log, "Panic action exited with %i\n", code);
 
 #ifdef SIGUSR1
-	if (sig == SIGUSR1) return;
+	if (sig == SIGUSR1) {
+		fclose(log);
+		return;
+	}
 #endif
 
 finish:
