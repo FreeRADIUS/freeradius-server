@@ -299,8 +299,9 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 		/*
 		 *	Read the request VP's.
 		 */
-		request->packet->vps = readvp2(request, packets, &packets_done, "radclient:");
-		if (!request->packet->vps) goto error;
+		if (readvp2(&request->packet->vps, request->packet, packets, &packets_done) < 0) {
+			goto error;
+		}
 
 		fr_cursor_init(&cursor, &request->filter);
 		vp = fr_cursor_next_by_num(&cursor, PW_PACKET_TYPE, 0, TAG_ANY);
@@ -318,7 +319,10 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 		if (filters) {
 			bool filters_done;
 
-			request->filter = readvp2(request, filters, &filters_done, "radclient:");
+			if (readvp2(&request->filter, request, filters, &filters_done) < 0) {
+				goto error;
+			}
+
 			if (!request->filter) {
 				goto error;
 			}

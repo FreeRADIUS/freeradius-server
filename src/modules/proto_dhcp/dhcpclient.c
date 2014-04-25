@@ -112,8 +112,8 @@ static int request_init(char const *filename)
 	/*
 	 *	Read the VP's.
 	 */
-	request->vps = readvp2(NULL, fp, &filedone, "dhcpclient:");
-	if (!request->vps) {
+	if (readvp2(&request->vps, NULL, fp, &filedone) < 0) {
+		fr_perror("dhcpclient:");
 		rad_free(&request);
 		if (fp != stdin) fclose(fp);
 		return 1;

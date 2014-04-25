@@ -1226,6 +1226,7 @@ static int command_inject_from(rad_listen_t *listener, int argc, char *argv[])
 static int command_inject_file(rad_listen_t *listener, int argc, char *argv[])
 {
 	static int inject_id = 0;
+	int ret;
 	bool filedone;
 	fr_command_socket_t *sock = listener->data;
 	rad_listen_t *fake;
@@ -1263,9 +1264,9 @@ static int command_inject_file(rad_listen_t *listener, int argc, char *argv[])
 		return 0;
 	}
 
-	vp = readvp2(NULL, fp, &filedone, "");
+	ret = readvp2(&vp, NULL, fp, &filedone);
 	fclose(fp);
-	if (!vp) {
+	if (ret < 0) {
 		cprintf(listener, "ERROR: Failed reading attributes from %s: %s\n",
 			argv[0], fr_strerror());
 		return 0;

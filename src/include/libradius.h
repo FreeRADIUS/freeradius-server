@@ -634,7 +634,7 @@ VALUE_PAIR	*pairmake(TALLOC_CTX *ctx, VALUE_PAIR **vps, char const *attribute, c
 int 		pairmark_xlat(VALUE_PAIR *vp, char const *value);
 FR_TOKEN 	pairread(char const **ptr, VALUE_PAIR_RAW *raw);
 FR_TOKEN	userparse(TALLOC_CTX *ctx, char const *buffer, VALUE_PAIR **head);
-VALUE_PAIR	*readvp2(TALLOC_CTX *ctx, FILE *fp, bool *pfiledone, char const *errprefix);
+int		readvp2(VALUE_PAIR **out, TALLOC_CTX *ctx, FILE *fp, bool *pfiledone);
 
 /*
  *	Error functions.

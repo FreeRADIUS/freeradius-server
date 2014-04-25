@@ -1298,9 +1298,9 @@ int main(int argc, char **argv)
 	}
 
 	while(!filedone) {
-		if(req->vps) pairfree(&req->vps);
-
-		if ((req->vps = readvp2(NULL, fp, &filedone, "radeapclient:")) == NULL) {
+		if (req->vps) pairfree(&req->vps);
+		if (readvp2(&req->vps, NULL, fp, &filedone) < 0) {
+			fr_perror("radeapclient:");
 			break;
 		}
 
@@ -1560,10 +1560,11 @@ main(int argc, char *argv[])
 	}
 
 	while(!filedone) {
-		if(req->vps) pairfree(&req->vps);
-		if(req2->vps) pairfree(&req2->vps);
+		if (req->vps) pairfree(&req->vps);
+		if (req2->vps) pairfree(&req2->vps);
 
-		if ((req->vps = readvp2(NULL, stdin, &filedone, "eapsimlib:")) == NULL) {
+		if (readvp2(&req->vps, NULL, stdin, &filedone) < 0) {
+			fr_perror("radeapclient:");
 			break;
 		}
 
