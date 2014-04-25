@@ -201,10 +201,16 @@
 /* Define to 1 if you have the <openssl/ssl.h> header file. */
 #undef HAVE_OPENSSL_SSL_H
 
-/* Define to 1 if you have the function pcap_dump_fopen. */
+/* Define to 1 if you have the `pcap_activate' function. */
+#undef HAVE_PCAP_ACTIVATE
+
+/* Define to 1 if you have the `pcap_create' function. */
+#undef HAVE_PCAP_CREATE
+
+/* Define to 1 if you have the `pcap_dump_fopen' function. */
 #undef HAVE_PCAP_DUMP_FOPEN
 
-/* Define to 1 if you have the function pcap_fopen_offline. */
+/* Define to 1 if you have the `pcap_fopen_offline' function. */
 #undef HAVE_PCAP_FOPEN_OFFLINE
 
 /* Define to 1 if you have the <pcap.h> header file. */

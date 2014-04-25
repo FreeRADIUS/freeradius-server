@@ -107,56 +107,68 @@ int fr_pcap_open(fr_pcap_t *pcap)
 	switch (pcap->type) {
 	case PCAP_INTERFACE_OUT:
 	case PCAP_INTERFACE_IN:
-		{
-			pcap->handle = pcap_create(pcap->name, pcap->errbuf);
-			if (!pcap->handle) {
-				fr_strerror_printf("%s", pcap->errbuf);
-
-				return -1;
-			}
-			if (pcap_set_snaplen(pcap->handle, SNAPLEN) != 0) {
-			error:
-				fr_strerror_printf("%s", pcap_geterr(pcap->handle));
-				pcap_close(pcap->handle);
-				pcap->handle = NULL;
-				return -1;
-			}
-			if (pcap_set_timeout(pcap->handle, PCAP_NONBLOCK_TIMEOUT) != 0) {
-				goto error;
-			}
-			if (pcap_set_promisc(pcap->handle, pcap->promiscuous) != 0) {
-				goto error;
-			}
-			if (pcap_set_buffer_size(pcap->handle, SNAPLEN *
-						 (pcap->buffer_pkts ? pcap->buffer_pkts : PCAP_BUFFER_DEFAULT)) != 0) {
-				goto error;
-			}
-			if (pcap_activate(pcap->handle) != 0) {
-				goto error;
-			}
-			/*
-			 *	Despite accepting an errbuff, pcap_setnonblock doesn't seem to write
-			 *	error message there in newer versions.
-			 */
-			if (pcap_setnonblock(pcap->handle, true, pcap->errbuf) != 0) {
-				fr_strerror_printf("%s", *pcap->errbuf != '\0' ?
-						   pcap->errbuf : pcap_geterr(pcap->handle));
-				pcap_close(pcap->handle);
-				pcap->handle = NULL;
-				return -1;
-			}
-
-			pcap->fd = pcap_get_selectable_fd(pcap->handle);
-			pcap->link_type = pcap_datalink(pcap->handle);
-#ifndef __linux__
-			{
-				int value = 1;
-				if (ioctl(pcap->fd, BIOCIMMEDIATE, &value) < 0) {
-					fr_strerror_printf("Failed setting BIOCIMMEDIATE: %s", fr_syserror(errno));
-				}
-			}
-#endif
+	{
+#if defined(HAVE_PCAP_CREATE) && defined(HAVE_PCAP_ACTIVATE)
+		pcap->handle = pcap_create(pcap->name, pcap->errbuf);
+		if (!pcap->handle) {
+			fr_strerror_printf("%s", pcap->errbuf);
+			return -1;
 		}
+		if (pcap_set_snaplen(pcap->handle, SNAPLEN) != 0) {
+		create_error:
+			fr_strerror_printf("%s", pcap_geterr(pcap->handle));
+			pcap_close(pcap->handle);
+			pcap->handle = NULL;
+			return -1;
+		}
+		if (pcap_set_timeout(pcap->handle, PCAP_NONBLOCK_TIMEOUT) != 0) {
+			goto create_error;
+		}
+		if (pcap_set_promisc(pcap->handle, pcap->promiscuous) != 0) {
+			goto create_error;
+		}
+
+		if (pcap_set_buffer_size(pcap->handle, SNAPLEN *
+					 (pcap->buffer_pkts ? pcap->buffer_pkts : PCAP_BUFFER_DEFAULT)) != 0) {
+			goto create_error;
+		}
+		if (pcap_activate(pcap->handle) != 0) {
+			goto create_error;
+		}
+#else
+		/*
+		 *	Alternative functions for libpcap < 1.0
+		 */
+		pcap->handle = pcap_open_live(pcap->name, SNAPLEN, pcap->promiscuous, PCAP_NONBLOCK_TIMEOUT,
+					      pcap->errbuf);
+		if (!pcap->handle) {
+			fr_strerror_printf("%s", pcap->errbuf);
+			return -1;
+		}
+#endif
+		/*
+		 *	Despite accepting an errbuff, pcap_setnonblock doesn't seem to write
+		 *	error message there in newer versions.
+		 */
+		if (pcap_setnonblock(pcap->handle, true, pcap->errbuf) != 0) {
+			fr_strerror_printf("%s", *pcap->errbuf != '\0' ?
+					   pcap->errbuf : pcap_geterr(pcap->handle));
+			pcap_close(pcap->handle);
+			pcap->handle = NULL;
+			return -1;
+		}
+
+		pcap->fd = pcap_get_selectable_fd(pcap->handle);
+		pcap->link_type = pcap_datalink(pcap->handle);
+#ifndef __linux__
+		{
+			int value = 1;
+			if (ioctl(pcap->fd, BIOCIMMEDIATE, &value) < 0) {
+				fr_strerror_printf("Failed setting BIOCIMMEDIATE: %s", fr_syserror(errno));
+			}
+		}
+#endif
+	}
 		break;
 
 	case PCAP_FILE_IN:

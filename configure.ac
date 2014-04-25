@@ -851,12 +851,11 @@ else
     [Define to 1 if you have the `pcap' library (-lpcap).]
   )
 
-  AC_CHECK_LIB(pcap, pcap_fopen_offline,
-    [ AC_DEFINE(HAVE_PCAP_FOPEN_OFFLINE, 1, [Define to 1 if you have the function pcap_fopen_offline.]) ]
-  )
-
-  AC_CHECK_LIB(pcap, pcap_dump_fopen,
-    [ AC_DEFINE(HAVE_PCAP_DUMP_FOPEN, 1, [Define to 1 if you have the function pcap_dump_fopen.]) ]
+  AC_CHECK_FUNCS(\
+    pcap_fopen_offline \
+    pcap_dump_fopen \
+    pcap_create \
+    pcap_activate
   )
 
   PCAP_LIBS="${smart_lib}"
