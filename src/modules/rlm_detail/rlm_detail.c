@@ -526,7 +526,7 @@ static rlm_rcode_t mod_post_proxy(void *instance, REQUEST *request)
 module_t rlm_detail = {
 	RLM_MODULE_INIT,
 	"detail",
-	RLM_TYPE_THREAD_UNSAFE | RLM_TYPE_HUP_SAFE,
+	RLM_TYPE_HUP_SAFE,
 	sizeof(detail_instance_t),
 	module_config,
 	mod_instantiate,		/* instantiation */
