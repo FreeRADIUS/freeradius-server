@@ -450,6 +450,7 @@ int main(int argc, char *argv[])
 		ERROR("%s", fr_strerror());
 		exit(EXIT_FAILURE);
 	}
+	if (default_log.fd > -1) fr_fault_set_log_fd(default_log.fd);
 
 	/*
 	 *	Start the event loop(s) and threads.
@@ -618,7 +619,7 @@ cleanup:
 
 	if (mainconfig.memory_report) {
 		INFO("Allocated memory at time of report:");
-		fr_log_talloc_report(NULL, default_log.fd);
+		fr_log_talloc_report(NULL);
 	}
 
 	return rcode;

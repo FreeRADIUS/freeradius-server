@@ -701,7 +701,7 @@ void rdebug_pair_list(int level, REQUEST *request, VALUE_PAIR *vp)
 		if (!talloc_get_type(vp, VALUE_PAIR)) {
 			REDEBUG("Expected VALUE_PAIR pointer got \"%s\"", talloc_get_name(vp));
 
-			fr_log_talloc_report(vp, default_log.fd);
+			fr_log_talloc_report(vp);
 			rad_assert(0);
 		}
 
