@@ -148,8 +148,8 @@ static REQUEST *request_setup(FILE *fp)
 	/*
 	 *	Read packet from fp
 	 */
-	request->packet->vps = readvp2(request->packet, fp, &filedone, "radiusd:");
-	if (!request->packet->vps) {
+	if (readvp2(&request->packet->vps, request->packet, fp, &filedone) < 0) {
+		fr_perror("unittest:");
 		talloc_free(request);
 		return NULL;
 	}
@@ -618,8 +618,8 @@ int main(int argc, char *argv[])
 			}
 		}
 
-		filter_vps = readvp2(request, fp, &filedone, "radiusd");
-		if (!filter_vps) {
+
+		if (readvp2(&filter_vps, request, fp, &filedone) < 0) {
 			fprintf(stderr, "Failed reading attributes from %s: %s\n",
 				filter_file, fr_strerror());
 			exit(EXIT_FAILURE);

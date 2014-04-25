@@ -2268,28 +2268,25 @@ FR_TOKEN userparse(TALLOC_CTX *ctx, char const *buffer, VALUE_PAIR **list)
 
 /*
  *	Read valuepairs from the fp up to End-Of-File.
- *
- *	Hmm... this function is only used by radclient..
  */
-VALUE_PAIR *readvp2(TALLOC_CTX *ctx, FILE *fp, bool *pfiledone, char const *errprefix)
+int readvp2(VALUE_PAIR **out, TALLOC_CTX *ctx, FILE *fp, bool *pfiledone)
 {
 	char buf[8192];
 	FR_TOKEN last_token = T_EOL;
-	VALUE_PAIR *vp;
-	VALUE_PAIR *list;
-	bool error = false;
 
-	list = NULL;
+	vp_cursor_t cursor;
 
-	while (!error && fgets(buf, sizeof(buf), fp) != NULL) {
+	VALUE_PAIR *vp = NULL;
+
+	fr_cursor_init(&cursor, out);
+
+	while (fgets(buf, sizeof(buf), fp) != NULL) {
 		/*
 		 *      If we get a '\n' by itself, we assume that's
 		 *      the end of that VP
 		 */
-		if ((buf[0] == '\n') && (list)) {
-			return list;
-		}
-		if ((buf[0] == '\n') && (!list)) {
+		if (buf[0] == '\n') {
+			if (vp) return 0;
 			continue;
 		}
 
@@ -2304,23 +2301,23 @@ VALUE_PAIR *readvp2(TALLOC_CTX *ctx, FILE *fp, bool *pfiledone, char const *errp
 		vp = NULL;
 		last_token = userparse(ctx, buf, &vp);
 		if (!vp) {
-			if (last_token != T_EOL) {
-				fr_perror("%s", errprefix);
-				error = true;
-				break;
-			}
+			if (last_token != T_EOL) goto error;
 			break;
 		}
 
-		pairadd(&list, vp);
+		fr_cursor_insert(&cursor, vp);
 		buf[0] = '\0';
 	}
 
-	if (error) pairfree(&list);
-
 	*pfiledone = true;
 
-	return list;
+	return 0;
+
+error:
+	vp = fr_cursor_first(&cursor);
+	if (vp) pairfree(&vp);
+
+	return -1;
 }
 
 /** Compare two attribute values
