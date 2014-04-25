@@ -373,14 +373,29 @@ int vradlog(log_type_t type, char const *fmt, va_list ap)
 	}
 
 	/*
-	 *	Filter out characters not in Latin-1.
+	 *	Filter out control chars and non UTF8 chars
 	 */
 	for (p = (unsigned char *)unsan; *p != '\0'; p++) {
-		if (*p == '\r' || *p == '\n')
+		int clen;
+
+		switch (*p) {
+		case '\r':
+		case '\n':
 			*p = ' ';
-		else if (*p == '\t') continue;
-		else if (*p < 32 || (*p >= 128 && *p <= 160))
-			*p = '?';
+			break;
+
+		case '\t':
+			continue;
+
+		default:
+			clen = fr_utf8_char(p);
+			if (!clen) {
+				*p = '?';
+				continue;
+			}
+			p += (clen - 1);
+			break;
+		}
 	}
 
 	if (colourise && (len < sizeof(buffer))) {
@@ -889,7 +904,7 @@ int fr_logfile_open(fr_logfile_t *lf, char const *filename, mode_t permissions)
 	 */
 	for (i = 0; i < lf->max_entries; i++) {
 		if (!lf->entries[i].filename) break;
-	}		
+	}
 
 	if (i >= lf->max_entries) {
 		fr_strerror_printf("Too many different filenames");
