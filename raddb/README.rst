@@ -197,31 +197,31 @@ Alternatively a 2.x.x config may be patched to work with the
 3.0 module by adding the following::
 
   accounting {
-  	reference = "%{tolower:type.%{Acct-Status-Type}.query}"
-  	type {
-  		accounting-on {
-  			query = "${....accounting_onoff_query}"
-  		}
-  		accounting-off {
-  			query = "${....accounting_onoff_query}"
-  		}
-   		start {
-  			query = "${....accounting_start_query}"
-  			query = "${....accounting_start_query_alt}"
-  		}
-  		interim-update {
-  			query = "${....accounting_update_query}"
-  			query = "${....accounting_update_query_alt}"
-  		}
-  		stop {
-  			query = "${....accounting_stop_query}"
-  			query = "${....accounting_stop_query_alt}"
-  		}
-  	}
+	reference = "%{tolower:type.%{Acct-Status-Type}.query}"
+	type {
+		accounting-on {
+			query = "${....accounting_onoff_query}"
+		}
+		accounting-off {
+			query = "${....accounting_onoff_query}"
+		}
+		start {
+			query = "${....accounting_start_query}"
+			query = "${....accounting_start_query_alt}"
+		}
+		interim-update {
+			query = "${....accounting_update_query}"
+			query = "${....accounting_update_query_alt}"
+		}
+		stop {
+			query = "${....accounting_stop_query}"
+			query = "${....accounting_stop_query_alt}"
+		}
+	}
   }
 
   post-auth {
-  	query = "${..postauth_query}"
+	query = "${..postauth_query}"
   }
 
 In general, it is safer to migrate the configuration rather than
@@ -295,7 +295,7 @@ virtual-servers, to get functionality equivalent to v2.x::
     ldap
     if ((ok || updated) && User-Password) {
       update control {
-        Auth-Type := ldap
+	Auth-Type := ldap
       }
     }
     ...
@@ -565,7 +565,7 @@ occurred::
 reply``, you can do the following::
 
   update {
-          reply:Class := 0x0000
+	  reply:Class := 0x0000
 	  control:Cleartext-Password := "hello"
   }
 
