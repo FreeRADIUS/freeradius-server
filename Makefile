@@ -298,3 +298,12 @@ deb:
 warnings:
 	@(make clean all 2>&1) | egrep -v '^/|deprecated|^In file included|: In function|   from |^HEADER|^CC|^LINK' > warnings.txt
 	@wc -l warnings.txt
+
+#
+#  Ensure we're using tabs in the configuration files,
+#  and remove trailing whitespace in source files.
+#
+.PHONY: whitespace
+whitespace:
+	@for x in $$(git ls-files raddb/ src/); do unexpand $$x > $$x.bak; cp $$x.bak $$x; rm -f $$x.bak;done
+	@perl -p -i -e 's/\s+$$//' $$(git ls-files src/)
