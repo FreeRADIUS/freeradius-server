@@ -211,13 +211,6 @@ int radlog_init(fr_log_t *log, bool daemonize)
 	int devnull;
 
 	/*
-	 *	This handles setting up all the talloc logging
-	 *	and callbacks too.
-	 */
-	fr_fault_set_log_fn(_radlog_info);
-	if (default_log.fd > -1) fr_fault_set_log_fd(default_log.fd);
-
-	/*
 	 *	If we're running in foreground mode, save STDIN /
 	 *	STDERR as higher FDs, which won't get used by anyone
 	 *	else.  When we fork/exec a program, it's STD FDs will
@@ -307,6 +300,13 @@ int radlog_init(fr_log_t *log, bool daemonize)
 	}
 
 	close(devnull);
+
+	/*
+	 *	This handles setting up all the talloc logging
+	 *	and callbacks too.
+	 */
+	fr_fault_set_log_fn(_radlog_info);
+	fr_fault_set_log_fd(log->fd);
 
 	return 0;
 }
