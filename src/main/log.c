@@ -823,9 +823,9 @@ fr_logfile_t *fr_logfile_init(TALLOC_CTX *ctx)
  * When multithreaded, the FD is locked via a mutex.  This way we're
  * sure that no other thread is writing to the file.
  *
- * @param lf The logfile context returned from fr_logfile_init()
- * @param filename the file to open
- * @param permissions the permissions to use
+ * @param lf The logfile context returned from fr_logfile_init().
+ * @param filename the file to open.
+ * @param permissions to use.
  * @return an FD used to write to the file, or -1 on error.
  */
 int fr_logfile_open(fr_logfile_t *lf, char const *filename, mode_t permissions)
