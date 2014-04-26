@@ -233,6 +233,7 @@ $INCLUDE dictionary.wispr
 $INCLUDE dictionary.xedia
 $INCLUDE dictionary.xylan
 $INCLUDE dictionary.zeus
+$INCLUDE dictionary.zte
 $INCLUDE dictionary.zyxel
 
 #
