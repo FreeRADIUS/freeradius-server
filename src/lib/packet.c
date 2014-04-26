@@ -824,6 +824,8 @@ bool fr_packet_list_id_free(fr_packet_list_t *pl,
 	pl->num_outgoing--;
 
 	request->id = -1;
+	request->src_ipaddr.af = AF_UNSPEC; /* id_alloc checks this */
+	request->src_port = 0;
 
 	return true;
 }
