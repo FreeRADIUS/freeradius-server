@@ -192,11 +192,8 @@ typedef enum {
 
 struct request {
 #ifndef NDEBUG
-	uint32_t		magic; 		//!< Magic number used to
-						//!< detect memory corruption,
-						//!< or request structs that
-						//!< have not been properly
-						//!< initialised.
+	uint32_t		magic; 		//!< Magic number used to detect memory corruption,
+						//!< or request structs that have not been properly initialised.
 #endif
 	RADIUS_PACKET		*packet;	//!< Incoming request.
 #ifdef WITH_PROXY
@@ -206,68 +203,44 @@ struct request {
 #ifdef WITH_PROXY
 	RADIUS_PACKET		*proxy_reply;	//!< Incoming response.
 #endif
-	VALUE_PAIR		*config_items;	//!< VALUE_PAIR s used to set
-						//!< per request parameters for
-						//!< modules and the server
-						//!< core at runtime.
+	VALUE_PAIR		*config_items;	//!< VALUE_PAIR s used to set per request parameters
+						//!< for modules and the server core at runtime.
 	VALUE_PAIR		*username;	//!< Cached username VALUE_PAIR.
 	VALUE_PAIR		*password;	//!< Cached password VALUE_PAIR.
 
-	fr_request_process_t	process;	//!< The function to call to
-						//!< move the request through
-						//!< the state machine.
+	fr_request_process_t	process;	//!< The function to call to move the request through the state machine.
 
-	RAD_REQUEST_FUNP	handle;		//!< The function to call to
-						//!< move the request through
-						//!< the various server
-						//!< configuration sections.
+	RAD_REQUEST_FUNP	handle;		//!< The function to call to move the request through the
+						//!< various server configuration sections.
 
-	struct main_config_t	*root;		//!< Pointer to the main config
-						//!< hack to try and deal with
-						//!< hup.
+	struct main_config_t	*root;		//!< Pointer to the main config hack to try and deal with hup.
 
 	request_data_t		*data;		//!< Request metadata.
 
-	RADCLIENT		*client;	//!< The client that originally
-						//!< sent us the request.
+	RADCLIENT		*client;	//!< The client that originally sent us the request.
 
 #ifdef HAVE_PTHREAD_H
-	pthread_t    		child_pid;	//!< Current thread handling
-						//!< the request.
+	pthread_t    		child_pid;	//!< Current thread handling the request.
 #endif
-	time_t			timestamp;	//!< When the request was
-						//!< received.
-	unsigned int	       	number; 	//!< Monotonically increasing
-						//!< request number. Reset on
-						//!< server restart.
+	time_t			timestamp;	//!< When the request was received.
+	unsigned int	       	number; 	//!< Monotonically increasing request number. Reset on server restart.
 
-	rad_listen_t		*listener;	//!< The listener that received
-						//!< the request.
+	rad_listen_t		*listener;	//!< The listener that received the request.
 #ifdef WITH_PROXY
-	rad_listen_t		*proxy_listener;//!< Listener for outgoing
-						//!< requests.
+	rad_listen_t		*proxy_listener;//!< Listener for outgoing requests.
 #endif
 
-
-	int			simul_max;	//!< Maximum number of
-						//!< concurrent sessions for
-						//!< this user.
+	int			simul_max;	//!< Maximum number of concurrent sessions for this user.
 #ifdef WITH_SESSION_MGMT
-	int			simul_count;	//!< The current number of
-						//!< sessions for this user.
-	int			simul_mpp; 	//!< WEIRD: 1 is false,
-						//!< 2 is true.
+	int			simul_count;	//!< The current number of sessions for this user.
+	int			simul_mpp; 	//!< WEIRD: 1 is false, 2 is true.
 #endif
 
-	log_debug_t		options;	//!< Request options, currently
-						//!< just holds the debug level
-						//!< for the request.
+	log_debug_t		options;	//!< Request options, currently just holds the debug level or
+						//!< the request.
 
-	char const		*module;	//!< Module the request is
-						//!< currently being processed
-						//!< by.
-	char const		*component; 	//!< Section the request is
-						//!< in.
+	char const		*module;	//!< Module the request is currently being processed by.
+	char const		*component; 	//!< Section the request is in.
 
 	int			delay;
 
@@ -294,14 +267,11 @@ struct request {
 
 	char const		*server;
 	REQUEST			*parent;
-	radlog_func_t		radlog;		//!< Function to call to output
-						//!< log messages about this
+	radlog_func_t		radlog;		//!< Function to call to output log messages about this
 						//!< request.
 #ifdef WITH_COA
-	REQUEST			*coa;		//!< CoA request originated
-						//!< by this request.
-	int			num_coa_requests;//!< Counter for number of
-						//!< requests sent including
+	REQUEST			*coa;		//!< CoA request originated by this request.
+	int			num_coa_requests;//!< Counter for number of requests sent including
 						//!< retransmits.
 #endif
 };				/* REQUEST typedef */
@@ -455,8 +425,8 @@ typedef struct main_config_t {
 #define MAX_REQUEST_TIME	30
 #define CLEANUP_DELAY		5
 #define MAX_REQUESTS		256
-#define RETRY_DELAY	     5
-#define RETRY_COUNT	     3
+#define RETRY_DELAY		5
+#define RETRY_COUNT		3
 #define DEAD_TIME	       120
 #define EXEC_TIMEOUT	       10
 
@@ -469,14 +439,12 @@ typedef enum request_fail {
 	REQUEST_FAIL_DECODE,		//!< Rad_decode didn't like it.
 	REQUEST_FAIL_PROXY,		//!< Call to proxy modules failed.
 	REQUEST_FAIL_PROXY_SEND,	//!< Proxy_send didn't like it.
-	REQUEST_FAIL_NO_RESPONSE,	//!< We weren't told to respond,
-					//!< so we reject.
+	REQUEST_FAIL_NO_RESPONSE,	//!< We weren't told to respond, so we reject.
 	REQUEST_FAIL_HOME_SERVER,	//!< The home server didn't respond.
 	REQUEST_FAIL_HOME_SERVER2,	//!< Another case of the above.
 	REQUEST_FAIL_HOME_SERVER3,	//!< Another case of the above.
 	REQUEST_FAIL_NORMAL_REJECT,	//!< Authentication failure.
-	REQUEST_FAIL_SERVER_TIMEOUT	//!< The server took too long to
-					//!< process the request.
+	REQUEST_FAIL_SERVER_TIMEOUT	//!< The server took too long to process the request.
 } request_fail_t;
 
 /*
