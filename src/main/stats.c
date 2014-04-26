@@ -77,7 +77,7 @@ void request_stats_final(REQUEST *request)
 	 *	deleted, because only the main server thread calls
 	 *	this function, which makes it thread-safe.
 	 */
-	switch (request->reply->code) {
+	if (request->reply && (request->packet->code != PW_STATUS_SERVER)) switch (request->reply->code) {
 	case PW_AUTHENTICATION_ACK:
 		INC_AUTH(total_responses);
 		INC_AUTH(total_access_accepts);
