@@ -197,7 +197,10 @@ static int send_packet(RADIUS_PACKET *req, RADIUS_PACKET **rep)
 
 		debug_packet(req, R_SENT);
 
-		rad_send(req, NULL, secret);
+		if (rad_send(req, NULL, secret) < 0) {
+			fr_perror("Failed sending packet:");
+			exit(1);
+		}
 
 		/* And wait for reply, timing out as necessary */
 		FD_ZERO(&rdfdesc);
