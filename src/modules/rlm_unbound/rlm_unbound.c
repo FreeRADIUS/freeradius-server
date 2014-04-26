@@ -38,13 +38,16 @@ typedef struct rlm_unbound_t {
 	char const	*xlat_aaaa_name;
 	char const	*xlat_ptr_name;
 
-	char		*filename;
 	int		timeout;
-	int		fd, logfd[2];
-	FILE		*logstream[2];
-	int		pipe_inuse;
 
-	FILE		*debug_stream;
+	char		*filename;
+
+	int		log_fd;
+	FILE		*log_stream;
+
+	int		log_pipe[2];
+	FILE		*log_pipe_stream[2];
+	bool		log_pipe_in_use;
 } rlm_unbound_t;
 
 /*
@@ -378,7 +381,7 @@ static void log_spew(UNUSED fr_event_list_t *el, UNUSED int sock, void *ctx)
 	 *  takes a function hook instead to just bypass the piping when
 	 *  used in threaded mode.
 	 */
-	while (fgets(line, 1024, inst->logstream[0])) {
+	while (fgets(line, 1024, inst->log_pipe_stream[0])) {
 		DEBUG("rlm_unbound (%s): %s", inst->name, line);
 	}
 }
@@ -388,17 +391,20 @@ static void log_spew(UNUSED fr_event_list_t *el, UNUSED int sock, void *ctx)
 static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
 	rlm_unbound_t *inst = instance;
-	int res, dlevel;
-	int debug_method;
+	int res;
 	char *optval;
-	int debug_fd = -1;
+
+	log_dst_t log_dst;
+	int log_level;
+	int log_fd = -1;
+
 	char k[64]; /* To silence const warns until newer unbound in distros */
 
 	inst->el = radius_event_list_corral(EVENT_CORRAL_AUX);
-	inst->logstream[0] = NULL;
-	inst->logstream[1] = NULL;
-	inst->fd = -1;
-	inst->pipe_inuse = 0;
+	inst->log_pipe_stream[0] = NULL;
+	inst->log_pipe_stream[1] = NULL;
+	inst->log_fd = -1;
+	inst->log_pipe_in_use = false;
 
 	inst->name = cf_section_name2(conf);
 	if (!inst->name) {
@@ -434,62 +440,62 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	/*	Glean some default settings to match the main server.	*/
 	/*	TODO: debug_level can be changed at runtime. */
 	/*	TODO: log until fork when stdout or stderr and !debug_flag. */
-	dlevel = 0;
+	log_level = 0;
 
 	if (debug_flag > 0) {
-		dlevel = debug_flag;
+		log_level = debug_flag;
 
 	} else if (mainconfig.debug_level > 0) {
-		dlevel = mainconfig.debug_level;
+		log_level = mainconfig.debug_level;
 	}
 
-	switch (dlevel) {
+	switch (log_level) {
 	/* TODO: This will need some tweaking */
 	case 0:
 	case 1:
 		break;
 
 	case 2:
-		dlevel = 1;
+		log_level = 1;
 		break;
 
 	case 3:
 	case 4:
-		dlevel = 2; /* mid-to-heavy levels of output */
+		log_level = 2; /* mid-to-heavy levels of output */
 		break;
 
 	case 5:
 	case 6:
 	case 7:
 	case 8:
-		dlevel = 3; /* Pretty crazy amounts of output */
+		log_level = 3; /* Pretty crazy amounts of output */
 		break;
 
 	default:
-		dlevel = 4; /* Insane amounts of output including crypts */
+		log_level = 4; /* Insane amounts of output including crypts */
 		break;
 	}
 
-	res = ub_ctx_debuglevel(inst->ub, dlevel);
+	res = ub_ctx_debuglevel(inst->ub, log_level);
 	if (res) goto error;
 
 	switch(default_log.dst) {
 	case L_DST_STDOUT:
 		if (!debug_flag) {
-			debug_method = 3;
+			log_dst = L_DST_NULL;
 			break;
 		}
-		debug_method = 1;
-		debug_fd = dup(STDOUT_FILENO);
+		log_dst = L_DST_STDOUT;
+		log_fd = dup(STDOUT_FILENO);
 		break;
 
 	case L_DST_STDERR:
 		if (!debug_flag) {
-			debug_method = 3;
+			log_dst = L_DST_NULL;
 			break;
 		}
-		debug_method = 1;
-		debug_fd = dup(STDERR_FILENO);
+		log_dst = L_DST_STDOUT;
+		log_fd = dup(STDERR_FILENO);
 		break;
 
 	case L_DST_FILES:
@@ -500,17 +506,17 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 			if (res) {
 				goto error;
 			}
-			debug_method = 2;
+			log_dst = L_DST_FILES;
 			break;
 		}
 		/* FALL-THROUGH */
 
 	case L_DST_NULL:
-		debug_method = 3;
+		log_dst = L_DST_NULL;
 		break;
 
 	default:
-		debug_method = 4;
+		log_dst = L_DST_SYSLOG;
 		break;
 	}
 
@@ -537,11 +543,10 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		res = ub_ctx_set_option(inst->ub, k, v);
 		if (res) goto error;
 
-		if (debug_method == 2) {
+		if (log_dst == L_DST_FILES) {
 			/* Reinstate the log file name JIC */
 			strcpy(k, "logfile:");
-			res = ub_ctx_set_option(inst->ub, k,
-						mainconfig.log_file);
+			res = ub_ctx_set_option(inst->ub, k, mainconfig.log_file);
 			if (res) goto error;
 		}
 
@@ -553,47 +558,47 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		if (res) goto error;
 
 		if (optval && strlen(optval)) {
-			debug_method = 2;
+			log_dst = L_DST_FILES;
 
 		} else if (!debug_flag) {
-			debug_method = 3;
+			log_dst = L_DST_NULL;
 		}
 
 		if (optval) free(optval);
 	}
 
-	switch (debug_method) {
-	case 1:
+	switch (log_dst) {
+	case L_DST_STDOUT:
 		/*
 		 * We have an fd to log to.  And we've already attempted to
 		 * dup it so libunbound doesn't close it on us.
 		 */
-		if (debug_fd == -1) {
+		if (log_fd == -1) {
 			ERROR("rlm_unbound (%s): Could not dup fd", inst->name);
 			goto error_nores;
 		}
 
-		inst->debug_stream = fdopen(debug_fd, "w");
-		if (!inst->debug_stream) {
+		inst->log_stream = fdopen(log_fd, "w");
+		if (!inst->log_stream) {
 			ERROR("rlm_unbound (%s): error setting up log stream", inst->name);
 			goto error_nores;
 		}
 
-		res = ub_ctx_debugout(inst->ub, inst->debug_stream);
+		res = ub_ctx_debugout(inst->ub, inst->log_stream);
 		if (res) goto error;
 		break;
 
-	case 2:
+	case L_DST_FILES:
 		/* We gave libunbound a filename.  It is on its own now. */
 		break;
 
-	case 3:
+	case L_DST_NULL:
 		/* We tell libunbound not to log at all. */
 		res = ub_ctx_debugout(inst->ub, NULL);
 		if (res) goto error;
 		break;
 
-	case 4:
+	case L_DST_SYSLOG:
 #ifdef HAVE_PTHREAD_H
 		/*
 		 *  Currently this wreaks havoc when running threaded, so just
@@ -607,47 +612,46 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		 *  We need to create a pipe, because libunbound does not
 		 *  share syslog nicely.  Or the core added some new logsink.
 		 */
-		if (pipe(inst->logfd)) {
+		if (pipe(inst->log_pipe)) {
 		error_pipe:
 			EDEBUG("rlm_unbound (%s): Error setting up log pipes", inst->name);
 			goto error_nores;
 		}
 
-		if ((fcntl(inst->logfd[0], F_SETFL, O_NONBLOCK) < 0) ||
-		    (fcntl(inst->logfd[0], F_SETFD, FD_CLOEXEC) < 0)) {
+		if ((fcntl(inst->log_pipe[0], F_SETFL, O_NONBLOCK) < 0) ||
+		    (fcntl(inst->log_pipe[0], F_SETFD, FD_CLOEXEC) < 0)) {
 			goto error_pipe;
 		}
 
 		/* Opaque to us when this can be closed, so we do not. */
-		if (fcntl(inst->logfd[1], F_SETFL, O_NONBLOCK) < 0) {
+		if (fcntl(inst->log_pipe[1], F_SETFL, O_NONBLOCK) < 0) {
 			goto error_pipe;
 		}
 
-		inst->logstream[0] = fdopen(inst->logfd[0], "r");
-		inst->logstream[1] = fdopen(inst->logfd[1], "w");
+		inst->log_pipe_stream[0] = fdopen(inst->log_pipe[0], "r");
+		inst->log_pipe_stream[1] = fdopen(inst->log_pipe[1], "w");
 
-		if (!inst->logstream[0] || !inst->logstream[1]) {
-			if (!inst->logstream[1]) {
-				close(inst->logfd[1]);
+		if (!inst->log_pipe_stream[0] || !inst->log_pipe_stream[1]) {
+			if (!inst->log_pipe_stream[1]) {
+				close(inst->log_pipe[1]);
 			}
 
-			if (!inst->logstream[0]) {
-				close(inst->logfd[0]);
+			if (!inst->log_pipe_stream[0]) {
+				close(inst->log_pipe[0]);
 			}
 			ERROR("rlm_unbound (%s): Error setting up log stream", inst->name);
 			goto error_nores;
 		}
 
-		res = ub_ctx_debugout(inst->ub, inst->logstream[1]);
+		res = ub_ctx_debugout(inst->ub, inst->log_pipe_stream[1]);
 		if (res) goto error;
 
-		if (!fr_event_fd_insert(inst->el, 0, inst->logfd[0],
-					log_spew, inst)) {
+		if (!fr_event_fd_insert(inst->el, 0, inst->log_pipe[0], log_spew, inst)) {
 			ERROR("rlm_unbound (%s): could not insert log fd", inst->name);
 			goto error_nores;
 		}
 
-		inst->pipe_inuse = 1;
+		inst->log_pipe_in_use = true;
 #endif
 	default:
 		break;
@@ -664,11 +668,11 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	strcpy(k, "notar33lsite.foo123.nottld A 127.0.0.1");
 	ub_ctx_data_remove(inst->ub, k);
 
-	inst->fd = ub_fd(inst->ub);
-	if (inst->fd >= 0) {
-		if (!fr_event_fd_insert(inst->el, 0, inst->fd, ub_fd_handler, inst)) {
+	inst->log_fd = ub_fd(inst->ub);
+	if (inst->log_fd >= 0) {
+		if (!fr_event_fd_insert(inst->el, 0, inst->log_fd, ub_fd_handler, inst)) {
 			ERROR("rlm_unbound (%s): could not insert async fd", inst->name);
-			inst->fd = -1;
+			inst->log_fd = -1;
 			goto error_nores;
 		}
 
@@ -693,7 +697,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	ERROR("rlm_unbound (%s): %s", inst->name, ub_strerror(res));
 
  error_nores:
-	if (debug_fd > -1) close(debug_fd);
+	if (log_fd > -1) close(log_fd);
 
 	return -1;
 }
@@ -706,8 +710,8 @@ static int mod_detach(UNUSED void *instance)
 	xlat_unregister(inst->xlat_aaaa_name, xlat_aaaa, inst);
 	xlat_unregister(inst->xlat_ptr_name, xlat_ptr, inst);
 
-	if (inst->fd >= 0) {
-		fr_event_fd_delete(inst->el, 0, inst->fd);
+	if (inst->log_fd >= 0) {
+		fr_event_fd_delete(inst->el, 0, inst->log_fd);
 		if (inst->ub) {
 			ub_process(inst->ub);
 			/* This can hang/leave zombies currently
@@ -720,19 +724,19 @@ static int mod_detach(UNUSED void *instance)
 		}
 	}
 
-	if (inst->logstream[1]) {
-		fclose(inst->logstream[1]);
+	if (inst->log_pipe_stream[1]) {
+		fclose(inst->log_pipe_stream[1]);
 	}
 
-	if (inst->logstream[0]) {
-		if (inst->pipe_inuse) {
-			fr_event_fd_delete(inst->el, 0, inst->logfd[0]);
+	if (inst->log_pipe_stream[0]) {
+		if (inst->log_pipe_in_use) {
+			fr_event_fd_delete(inst->el, 0, inst->log_pipe[0]);
 		}
-		fclose(inst->logstream[0]);
+		fclose(inst->log_pipe_stream[0]);
 	}
 
-	if (inst->debug_stream) {
-		fclose(inst->debug_stream);
+	if (inst->log_stream) {
+		fclose(inst->log_stream);
 	}
 
 	return 0;
