@@ -708,7 +708,6 @@ char const *get_radius_dir(void)
  */
 int mainconfig_init(void)
 {
-	int rcode;
 	char const *p = NULL;
 	CONF_SECTION *cs;
 	struct stat statbuf;
@@ -759,36 +758,36 @@ int mainconfig_init(void)
 		return -1;
 	}
 
+#define DICT_READ_OPTIONAL(_d, _n) \
+do {\
+	switch (dict_read(_d, _n)) {\
+	case -1:\
+		ERROR("Errors reading %s/%s: %s", _d, _n, fr_strerror());\
+		return -1;\
+	case 0:\
+		DEBUG2("including dictionary file %s/%s", _d,_n);\
+		break;\
+	default:\
+		break;\
+	}\
+} while (0)
+
 	/*
 	 *	Try to load protocol-specific dictionaries.  It's OK
 	 *	if they don't exist.
 	 */
 #ifdef WITH_DHCP
-	dict_read(mainconfig.dictionary_dir, "dictionary.dhcp");
+	DICT_READ_OPTIONAL(mainconfig.dictionary_dir, "dictionary.dhcp");
 #endif
 
 #ifdef WITH_VMPS
-	dict_read(mainconfig.dictionary_dir, "dictionary.vqp");
+	DICT_READ_OPTIONAL(mainconfig.dictionary_dir, "dictionary.vqp");
 #endif
 
 	/*
 	 *	It's OK if this one doesn't exist.
 	 */
-	rcode = dict_read(radius_dir, RADIUS_DICTIONARY);
-	if (rcode == -1) {
-		ERROR("Errors reading %s/%s: %s", radius_dir, RADIUS_DICTIONARY,
-		      fr_strerror());
-		return -1;
-	}
-
-	/*
-	 *	We print this after reading it.  That way if
-	 *	it doesn't exist, it's OK, and we don't print
-	 *	anything.
-	 */
-	if (rcode == 0) {
-		DEBUG2("including dictionary file %s/%s", radius_dir, RADIUS_DICTIONARY);
-	}
+	DICT_READ_OPTIONAL(radius_dir, RADIUS_DICTIONARY);
 
 	/* Read the configuration file */
 	snprintf(buffer, sizeof(buffer), "%.200s/%.50s.conf",
