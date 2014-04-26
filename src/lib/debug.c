@@ -468,11 +468,16 @@ int fr_log_talloc_report(TALLOC_CTX *ctx)
 	FILE *log;
 	char const *null_ctx = NULL;
 	int i = 0;
+	int fd;
 
-	log = fdopen(dup(fr_fault_log_fd), "w");
+	fd = dup(fr_fault_log_fd);
+	if (fd < 0) {
+		fr_strerror_printf("Couldn't write memory report, failed to dup log fd: %s", fr_syserror(errno));
+		return -1;
+	}
+	log = fdopen(fd, "w");
 	if (!log) {
 		fr_strerror_printf("Couldn't write memory report, fdopen failed: %s", fr_syserror(errno));
-
 		return -1;
 	}
 
