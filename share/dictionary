@@ -261,6 +261,7 @@ $INCLUDE dictionary.xedia
 $INCLUDE dictionary.xylan
 $INCLUDE dictionary.yubico
 $INCLUDE dictionary.zeus
+$INCLUDE dictionary.zte
 $INCLUDE dictionary.zyxel
 
 #
