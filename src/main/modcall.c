@@ -669,6 +669,7 @@ redo:
 
 		RDEBUG2("%.*sforeach %s ", depth + 1, modcall_spaces,
 			c->name);
+		rad_assert(vps != NULL);
 
 		for (vp = fr_cursor_init(&cursor, &vps);
 		     vp != NULL;
@@ -714,6 +715,7 @@ redo:
 
 		talloc_free(vps);
 
+		rad_assert(next != NULL);
 		result = next->result;
 		priority = next->priority;
 		MOD_LOG_CLOSE_BRACE();
