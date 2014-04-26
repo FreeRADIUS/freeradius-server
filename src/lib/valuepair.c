@@ -2752,6 +2752,60 @@ int8_t paircmp(VALUE_PAIR *a, VALUE_PAIR *b)
 	return paircmp_op(b, a->op, a);
 }
 
+/** Determine equality of two lists
+ *
+ * This is useful for comparing lists of attributes inserted into a binary tree.
+ *
+ * @param a first list of VALUE_PAIRs.
+ * @param b second list of VALUE_PAIRs.
+ * @return -1 if a < b, 0 if the two lists are equal, 1 if a > b, -2 on error.
+ */
+int8_t pairlistcmp(VALUE_PAIR *a, VALUE_PAIR *b)
+{
+	vp_cursor_t a_cursor, b_cursor;
+	VALUE_PAIR *a_p, *b_p;
+	int ret;
+
+	for (a_p = fr_cursor_init(&a_cursor, &a), b_p = fr_cursor_init(&b_cursor, &b);
+	     a_p && b_p;
+	     a_p = fr_cursor_next(&a_cursor), b_p = fr_cursor_next(&b_cursor)) {
+		/* Same VP, no point doing expensive checks */
+		if (a_p == b_p) {
+			continue;
+		}
+
+		if (a_p->da < b_p->da) {
+			return -1;
+		}
+		if (a_p->da > b_p->da) {
+			return 1;
+		}
+
+		if (a_p->tag < b_p->tag) {
+			return -1;
+		}
+		if (a_p->tag > b_p->tag) {
+			return 1;
+		}
+
+		ret = paircmp_value(a_p, b_p);
+		if (ret != 0) {
+			fr_assert(ret >= -1); 	/* Comparison error */
+			return ret;
+		}
+	}
+
+	if (!a_p && !b_p) {
+		return 0;
+	}
+
+	if (!a_p) {
+		return -1;
+	}
+
+	/* if(!b_p) */
+	return 1;
+}
 
 /** Set the type of the VALUE_PAIR value buffer to match it's DICT_ATTR
  *
@@ -2816,7 +2870,7 @@ void pairmemsteal(VALUE_PAIR *vp, uint8_t const *src)
 
 	vp->vp_octets = talloc_steal(vp, src);
 	vp->type = VT_DATA;
-	vp->length = talloc_array_length(vp->vp_octets);
+	vp->length = talloc_array_length(vp->vp_strvalue);
 	pairtypeset(vp);
 }
 

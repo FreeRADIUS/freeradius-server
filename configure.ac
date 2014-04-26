@@ -115,45 +115,6 @@ dnl #
 AC_CANONICAL_SYSTEM
 
 dnl #
-dnl #  As of OSX 10.9 (Mavericks), /usr is no longer populated with the
-dnl #  standard set of headers and libraries, instead were meant to use
-dnl #  one of the SDKs which contains system headers and libraries for
-dnl #  different versions of OSX and iOS.
-dnl #
-case "$host" in
-  *-darwin*)
-    dnl #
-    dnl #  The version of GCC apple ships with Mavericks works out of the
-    dnl #  box, and presumably selects the highest version SDK for OSX.
-    dnl #
-    AC_MSG_CHECKING([if cc is apple llvm])
-    if ! $CC --version 2>&1 | grep -I 'Apple LLVM' > /dev/null; then
-      AC_MSG_RESULT(no)
-      AC_CHECK_PROG(SW_VERS, sw_vers, yes, no)
-      AC_CHECK_PROG(XCODEBUILD, xcodebuild, yes, no)
-
-      if test "x$SW_VERS" = "xyes" && test "x$XCODEBUILD" = "xyes"; then
-        AC_MSG_NOTICE([determining OSX SDK path])
-        osx_sdk_path=$(xcodebuild -version -sdk macosx$(sw_vers -productVersion | egrep -o '^[[0-9]]+\.[[0-9]]+') Path)
-        AC_MSG_RESULT([$osx_sdk_path])
-
-        dnl #
-        dnl #  We need to export these, else the child configure scripts all fail
-        dnl #  their compiler checks.
-        dnl #
-        export CFLAGS="$CFLAGS --sysroot=$osx_sdk_path"
-        export CPPFLAGS="$CPPFLAGS --sysroot=$osx_sdk_path"
-        export LDFLAGS="$LDFLAGS -L$osx_sdk_path/usr/lib/"
-        DARWIN_CFLAGS="--sysroot=$osx_sdk_path"
-	AC_SUBST(DARWIN_CFLAGS)
-      fi
-    else
-      AC_MSG_RESULT(yes)
-    fi
-    ;;
-esac
-
-dnl #
 dnl #  Check for GNU cc
 dnl #
 AC_PROG_CC
@@ -488,7 +449,8 @@ AC_ARG_WITH(static_modules,
 
 USE_SHARED_LIBS=yes
 AC_ARG_WITH(shared-libs,
-[  --with-shared-libs               build dynamic libraries and link against them. (default=yes)],
+[AS_HELP_STRING([--with-shared-libs ],
+[build dynamic libraries and link against them. (default=yes)])],
 [ case "$withval" in
   no)
     USE_SHARED_LIBS=no
@@ -510,7 +472,8 @@ dnl #  extra argument: --with-experimental-modules
 dnl #
 EXPERIMENTAL=
 AC_ARG_WITH(experimental-modules,
-[  --with-experimental-modules      use experimental and unstable modules. (default=no, unless --enable-developer=yes) ],
+[AS_HELP_STRING([--with-experimental-modules],
+[use experimental and unstable modules. (default=no, unless --enable-developer=yes)])],
 [ case "$withval" in
   yes)
     EXPERIMENTAL=yes
@@ -527,7 +490,7 @@ dnl #  extra argument: --with-udpfromto
 dnl #
 WITH_UDPFROMTO=yes
 AC_ARG_WITH(udpfromto,
-[  --with-udpfromto                 compile in UDPFROMTO support. (default=yes)],
+[  --with-udpfromto        compile in UDPFROMTO support. (default=yes)],
 [ case "$withval" in
   yes)
     WITH_UDPFROMTO=yes
@@ -542,11 +505,41 @@ if test "x$WITH_UDPFROMTO" = "xyes"; then
 fi
 
 dnl #
+dnl #  These next two arguments don't actually do anything.  They're
+dnl #  place holders so that the top-level configure script can tell
+dnl #  the user how to configure lower-level modules
+dnl #
+
+dnl #
+dnl #  extra argument: --with-rlm-FOO-lib-dir
+dnl #
+AC_ARG_WITH(rlm-FOO-lib-dir,
+[AS_HELP_STRING([--with-rlm-FOO-lib-dir=DIR],
+[directory in which to look for library files used by module FOO])],
+[ case "$withval" in
+  *)
+    ;;
+  esac ]
+)
+
+dnl #
+dnl #  extra argument: --with-rlm-FOO-include-dir
+dnl #
+AC_ARG_WITH(rlm-FOO-include-dir,
+[AS_HELP_STRING([--with-rlm-FOO-include-dir=DIR],
+[directory in which to look for include files used by module FOO])],
+[ case "$withval" in
+  *)
+    ;;
+  esac ]
+)
+
+dnl #
 dnl #  extra argument: --with-openssl
 dnl #
 WITH_OPENSSL=yes
 AC_ARG_WITH(openssl,
-[  --with-openssl                   use OpenSSL. (default=yes)],
+[  --with-openssl          use OpenSSL. (default=yes)],
 [ case "$withval" in
   no)
     WITH_OPENSSL=no
@@ -558,53 +551,27 @@ AC_ARG_WITH(openssl,
 )
 
 dnl #
+dnl #  extra argument: --with-openssl-lib-dir=dir
+dnl #
+openssl_lib_dir=
+AC_ARG_WITH(openssl-lib-dir,
+[AS_HELP_STRING([--with-openssl-lib-dir=DIR],
+[directory to look for OpenSSL library files])],
+[ case "$withval" in
+  *) openssl_lib_dir="$withval"
+    ;;
+  esac ]
+)
+
+dnl #
 dnl #  extra argument: --with-openssl-includes=dir
 dnl #
-OPENSSL_INCLUDE_DIR=
-AC_ARG_WITH(openssl-includes,
-[  --with-openssl-includes=DIR      directory to look for OpenSSL include files in],
+openssl_include_dir=
+AC_ARG_WITH(openssl-include-dir,
+[AS_HELP_STRING([--with-openssl-include-dir=DIR],
+[directory to look for OpenSSL include files])],
 [ case "$withval" in
-  *) OPENSSL_INCLUDE_DIR="$withval"
-    ;;
-  esac ]
-)
-
-dnl #
-dnl #  extra argument: --with-openssl-libraries=dir
-dnl #
-OPENSSL_LIB_DIR=
-AC_ARG_WITH(openssl-libraries,
-[  --with-openssl-libraries=DIR     directory to look for OpenSSL library files in],
-[ case "$withval" in
-  *) OPENSSL_LIB_DIR="$withval"
-    ;;
-  esac ]
-)
-
-dnl #
-dnl #  These next two arguments don't actually do anything.  They're
-dnl #  place holders so that the top-level configure script can tell
-dnl #  the user how to configure lower-level modules
-dnl #
-
-dnl #
-dnl #  extra argument: --with-rlm-FOO-lib-dir
-dnl #
-AC_ARG_WITH(rlm-FOO-lib-dir,
-[  --with-rlm-FOO-lib-dir=DIR       directory to look for library files used by module FOO in],
-[ case "$withval" in
-  *)
-    ;;
-  esac ]
-)
-
-dnl #
-dnl #  extra argument: --with-rlm-FOO-include-dir
-dnl #
-AC_ARG_WITH(rlm-FOO-include-dir,
-[  --with-rlm-FOO-include-dir=DIR   directory to look for include files used by module FOO in],
-[ case "$withval" in
-  *)
+  *) openssl_include_dir="$withval"
     ;;
   esac ]
 )
@@ -650,6 +617,52 @@ dnl #  2. Checks for libraries
 dnl #
 dnl #############################################################
 
+dnl Check for talloc
+dnl extra argument: --with-talloc-lib-dir=DIR
+talloc_lib_dir=
+AC_ARG_WITH(talloc-lib-dir,
+  [AS_HELP_STRING([--with-talloc-lib-dir=DIR],
+  [directory in which to look for talloc library files])],
+  [case "$withval" in
+    no)
+      AC_MSG_ERROR([Need talloc-lib-dir])
+      ;;
+    yes)
+      ;;
+    *)
+      talloc_lib_dir="$withval"
+      ;;
+  esac])
+
+dnl extra argument: --with-talloc-include-dir=DIR
+talloc_include_dir=
+AC_ARG_WITH(talloc-include-dir,
+  [AS_HELP_STRING([--with-talloc-include-dir=DIR],
+  [directory in which to look for talloc include files])],
+  [case "$withval" in
+    no)
+      AC_MSG_ERROR([Need talloc-include-dir])
+      ;;
+    yes)
+      ;;
+    *)
+      talloc_include_dir="$withval"
+      ;;
+  esac])
+
+smart_try_dir="$talloc_lib_dir"
+FR_SMART_CHECK_LIB(talloc, _talloc)
+if test "x$ac_cv_lib_talloc__talloc" != "xyes"; then
+  AC_MSG_WARN([talloc library not found. Use --with-talloc-lib-dir=<path>.])
+  AC_MSG_ERROR([FreeRADIUS requires libtalloc])
+fi
+
+TALLOC_LIBS="${smart_lib}"
+TALLOC_LDFLAGS="${smart_ldflags}"
+AC_SUBST(TALLOC_LIBS)
+AC_SUBST(TALLOC_LDFLAGS)
+LIBS="$old_LIBS"
+
 dnl #
 dnl #  If using pthreads, check for -lpthread (posix) or -lc_r (*BSD)
 dnl #
@@ -659,7 +672,11 @@ if test "x$WITH_THREADS" = "xyes"; then
     CFLAGS="$CFLAGS -mt"
   fi
 
-  AC_CHECK_HEADERS(pthread.h, [], [ WITH_THREADS="no" ])
+  AC_CHECK_HEADERS(pthread.h, [],
+    [
+      WITH_THREADS="no"
+      fail=[pthread.h]
+    ])
 
   dnl #
   dnl #  pthread stuff is usually in -lpthread
@@ -674,12 +691,26 @@ if test "x$WITH_THREADS" = "xyes"; then
       LIBS="-lpthread $LIBS"
     ],
     [
+      dnl #
+      dnl # -pthread is not a typo, it's a GCC option which sets additional flags required
+      dnl # for multithreading with the pthreads library.
+      dnl #
       AC_CHECK_LIB(c_r, pthread_create,
         [ CFLAGS="$CFLAGS -pthread -D_THREAD_SAFE" ],
-        [ WITH_THREADS="no" ]
+        [
+          WITH_THREADS="no"
+          fail=[-lpthread]
+        ]
       )
     ]
   )
+
+  if test "x$WITH_THREADS" != "xyes"; then
+    AC_MSG_WARN([silently not building with thread support.])
+    AC_MSG_WARN([FAILURE: thread support requires: $fail.])
+  else
+    AC_DEFINE(WITH_THREADS, [1], [define if you want thread support])
+  fi
 fi
 
 dnl #
@@ -704,10 +735,6 @@ else
     [],
     [AC_MSG_ERROR([[-lsem not found.  You may want to download it from ftp://ftp.to.gd-es.com/pub/BSDI/libsem.tar.bz2 or ftp://ftp.freeradius.org/pub/radius/contrib/libsem.tar.gz]])]
   )
-fi
-
-if test "x$WITH_THREADS" = "xyes"; then
-  AC_DEFINE(WITH_THREADS, [1], [define if you want thread support])
 fi
 
 dnl #
@@ -736,18 +763,103 @@ AC_CHECK_LIB(ws2_32, htonl)
 dnl #
 dnl #  Check the pcap library for the RADIUS sniffer.
 dnl #
+dnl extra argument: --with-pcap-lib-dir=DIR
+pcap_lib_dir=
+AC_ARG_WITH(pcap-lib-dir,
+  [AS_HELP_STRING([--with-pcap-lib-dir=DIR],
+  [directory in which to look for pcap library files])],
+  [case "$withval" in
+    no)
+      AC_MSG_ERROR([Need pcap-lib-dir])
+      ;;
+    yes)
+      ;;
+    *)
+      pcap_lib_dir="$withval"
+      ;;
+  esac])
+
+dnl extra argument: --with-pcap-include-dir=DIR
+pcap_include_dir=
+AC_ARG_WITH(pcap-include-dir,
+  [AS_HELP_STRING([--with-pcap-include-dir=DIR],
+  [directory in which to look for pcap include files])],
+  [case "$withval" in
+    no)
+      AC_MSG_ERROR([Need pcap-include-dir])
+      ;;
+    yes)
+      ;;
+    *)
+      pcap_include_dir="$withval"
+      ;;
+  esac])
+
 smart_try_dir="$pcap_lib_dir"
 FR_SMART_CHECK_LIB(pcap, pcap_open_live)
 if test "x$ac_cv_lib_pcap_pcap_open_live" != "xyes"; then
-  AC_MSG_WARN([pcap library not found. Use --with-pcap-lib-dir=<path>.])
-  AC_MSG_WARN([pcap library not found, silently disabling the RADIUS sniffer and ARP listener.])
+  AC_MSG_WARN([pcap library not found, silently disabling the RADIUS sniffer, and ARP listener.  Use --with-pcap-lib-dir=<path>.])
 else
-  PCAP_LIBS="${smart_lib}"
-  LIBS=$old_LIBS
   AC_DEFINE(HAVE_LIBPCAP, 1,
     [Define to 1 if you have the `pcap' library (-lpcap).]
   )
+
+  AC_CHECK_FUNCS(\
+    pcap_fopen_offline \
+    pcap_dump_fopen \
+    pcap_create \
+    pcap_activate
+  )
+
+  PCAP_LIBS="${smart_lib}"
+  PCAP_LDFLAGS="${smart_ldflags}"
 fi
+dnl Set by FR_SMART_CHECK_LIB
+LIBS="${old_LIBS}"
+
+dnl Check for collectdclient
+dnl extra argument: --with-collectdclient-lib-dir=DIR
+collectdclient_lib_dir=
+AC_ARG_WITH(collectdclient-lib-dir,
+  [AS_HELP_STRING([--with-collectdclient-lib-dir=DIR],
+  [directory in which to look for collectdclient library files])],
+  [case "$withval" in
+    no)
+      AC_MSG_ERROR([Need collectdclient-lib-dir])
+      ;;
+    yes)
+      ;;
+    *)
+      collectdclient_lib_dir="$withval"
+      ;;
+  esac])
+
+dnl extra argument: --with-collectdclient-include-dir=DIR
+collectdclient_include_dir=
+AC_ARG_WITH(collectdclient-include-dir,
+  [AS_HELP_STRING([--with-collectdclient-include-dir=DIR],
+  [directory in which to look for collectdclient include files])],
+  [case "$withval" in
+    no)
+      AC_MSG_ERROR([Need collectdclient-include-dir])
+      ;;
+    yes)
+      ;;
+    *)
+      collectdclient_include_dir="$withval"
+      ;;
+  esac])
+
+smart_try_dir="$collectdclient_lib_dir"
+FR_SMART_CHECK_LIB(collectdclient, lcc_connect)
+if test "x$ac_cv_lib_collectdclient_lcc_connect" != "xyes"; then
+  AC_MSG_WARN([collectdclient library not found. Use --with-collectdclient-lib-dir=<path>.])
+else
+  COLLECTDC_LIBS="${smart_lib}"
+  COLLECTDC_LDFLAGS="${smart_ldflags}"
+fi
+dnl Set by FR_SMART_CHECKLIB
+LIBS="${old_LIBS}"
 
 VL_LIB_READLINE
 
@@ -758,9 +870,18 @@ dnl #
 dnl #############################################################
 
 dnl #
+dnl # Check for talloc header files
+dnl #
+smart_try_dir="$talloc_include_dir"
+FR_SMART_CHECK_INCLUDE([talloc.h])
+if test "x$ac_cv_header_talloc_h" != "xyes"; then
+  AC_MSG_WARN([talloc headers not found. Use --with-talloc-include-dir=<path>.])
+  AC_MSG_ERROR([FreeRADIUS requires libtalloc])
+fi
+
+dnl #
 dnl #  Interix requires us to set -D_ALL_SOURCE, otherwise
 dnl #  getopt will be #included, but won't link.  <sigh>
-dnl #
 dnl #
 case "$host" in
   *-interix*)
@@ -782,7 +903,6 @@ AC_CHECK_HEADERS( \
   unistd.h \
   crypt.h \
   errno.h \
-  features.h \
   resource.h \
   sys/resource.h \
   getopt.h \
@@ -817,18 +937,20 @@ AC_CHECK_HEADERS( \
   stddef.h \
   fnmatch.h \
   sia.h \
-  siad.h
+  siad.h \
+  features.h
 )
 
 dnl #
 dnl #  FreeBSD requires sys/socket.h before net/if.h
 dnl #
 AC_CHECK_HEADERS(net/if.h, [], [],
-[
-  #ifdef HAVE_SYS_SOCKET_H
-  #  include <sys/socket.h>
-  #endif
-])
+  [
+    #ifdef HAVE_SYS_SOCKET_H
+    #  include <sys/socket.h>
+    #endif
+  ]
+)
 
 dnl #
 dnl #  other checks which require headers
@@ -847,132 +969,118 @@ dnl #
 dnl #  Were we told to use OpenSSL, if we were and we find an error, call AC_MSG_FAILURE and exit
 dnl #
 if test "x$WITH_OPENSSL" = xyes; then
-  old_LIBS=$LIBS
-  old_LDFLAGS="$LDFLAGS"
-
-  OPENSSL_INCLUDE="-DNO_OPENSSL"
-  OPENSSL_LIBS=
-  if test "x$OPENSSL_LIB_DIR" != "x"; then
-    LDFLAGS="-L$OPENSSL_LIB_DIR $LDFLAGS"
-  fi
+  OLD_LIBS="$LIBS"
 
   dnl #
-  dnl #  Check we can link to libssl
+  dnl #  Apparently OpenSSL will attempt to build with kerberos if we don't pass this?!
   dnl #
-  AC_CHECK_LIB(crypto, DH_new,
-    [
-      LIBS="-lcrypto $LIBS"
-      AC_DEFINE(HAVE_LIBCRYPTO, 1, [Define to 1 if you have the `crypto' library (-lcrypto).])
-      AC_CHECK_LIB(ssl, SSL_new,
-        [
-          AC_DEFINE(HAVE_LIBSSL, 1, [Define to 1 if you have the `ssl' library (-lssl).])
-          if test "x$OPENSSL_LIB_DIR" != "x"; then
-            OPENSSL_LIBS="-L$OPENSSL_LIB_DIR"
-          fi
-          OPENSSL_LIBS="$OPENSSL_LIBS -lcrypto -lssl -lcrypto"
-        ],
-        [
-          AC_MSG_FAILURE([failed linking to libssl])
-        ]
-      )
-    ],
-    []
-  )
+  CFLAGS="$CFLAGS -DOPENSSL_NO_KRB5"
 
   dnl #
-  dnl #  Check we can find required headers
+  dnl #  Check we can link to libcrypto and libssl
   dnl #
-  old_CPPFLAGS=$CPPFLAGS
-  old_CFLAGS=$CFLAGS
-  if test "x$OPENSSL_INCLUDE_DIR" != "x"; then
-    CPPFLAGS="-isystem $OPENSSL_INCLUDE_DIR $CPPFLAGS"
-    CFLAGS="-isystem $OPENSSL_INCLUDE_DIR $CFLAGS"
-  fi
+  smart_try_dir="$openssl_lib_dir"
+  FR_SMART_CHECK_LIB(crypto, DH_new)
+  if test "x$ac_cv_lib_crypto_DH_new" = "xyes"; then
+    AC_DEFINE(HAVE_LIBCRYPTO, 1, [Define to 1 if you have the `crypto' library (-lcrypto).])
+    OPENSSL_LIBS="$smart_lib"
+    OPENSSL_LDFLAGS="$smart_ldflags"
 
-  dnl #
-  dnl #  Stupid RedHat shit
-  dnl #
-  CPPFLAGS="$CPPFLAGS -DOPENSSL_NO_KRB5"
-  AC_CHECK_HEADERS( \
-    openssl/ssl.h \
-    openssl/crypto.h \
-    openssl/err.h \
-    openssl/evp.h \
-    openssl/md5.h \
-    openssl/md4.h \
-    openssl/sha.h \
-    openssl/ocsp.h \
-    openssl/engine.h,
-    [],
-    [
-      AC_MSG_FAILURE([failed locating OpenSSL headers])
-    ]
-  )
+    FR_SMART_CHECK_LIB(ssl, SSL_new)
+    if test "x$ac_cv_lib_ssl_SSL_new" != "xyes"; then
+      AC_MSG_FAILURE([failed linking to libssl. Use --with-openssl-lib-dir=<path>, or --with-openssl=no (builds without OpenSSL)])
+    else
+      AC_DEFINE(HAVE_LIBSSL, 1, [Define to 1 if you have the `ssl' library (-lssl).])
+      OPENSSL_LIBS="$OPENSSL_LIBS $smart_lib"
 
-  AC_MSG_CHECKING([for OpenSSL version >= 0.9.7])
-  AC_EGREP_CPP(yes,
-    [#include <openssl/crypto.h>
-     #if (OPENSSL_VERSION_NUMBER >= 0x00907000L)
-     yes
-     #endif
-    ],
-    [
-      AC_MSG_RESULT(yes)
-    ],
-    [
-      AC_MSG_RESULT(no)
-      AC_MSG_FAILURE([OpenSSL version too old])
-    ]
-  )
-
-  if test "x$OPENSSL_INCLUDE_DIR" != "x"; then
-    OPENSSL_INCLUDE="-isystem $OPENSSL_INCLUDE_DIR -DOPENSSL_NO_KRB5"
+      if test "$OPENSSL_LDFLAGS" != "$smart_ldflags"; then
+        AC_MSG_FAILURE(["inconsistent LDFLAGS between -lssl '$smart_ldflags' and -lcrypto '$OPENSSL_LDFLAGS'"])
+      fi
+    fi
   else
-    OPENSSL_INCLUDE="-DOPENSSL_NO_KRB5"
+    AC_MSG_FAILURE([failed linking to libcrypto. Use --with-openssl-lib-dir=<path>, or --with-openssl=no (builds without OpenSSL)])
   fi
 
-  dnl #
-  dnl #  Now check that the header versions match the library
-  dnl #
-  AC_MSG_CHECKING([OpenSSL library and header version consistency])
-  AC_RUN_IFELSE(
-    [AC_LANG_PROGRAM(
-      [[
-        #include <stdio.h>
-        #include <openssl/opensslv.h>
-        #include <openssl/crypto.h>
-      ]],
-      [[
-        if (SSLeay() == OPENSSL_VERSION_NUMBER) {
-          return 0;
-        } else {
+  smart_try_dir="$openssl_include_dir"
+  FR_SMART_CHECK_INCLUDE(openssl/ssl.h)
+  if test "x$ac_cv_header_openssl_ssl_h" = "xyes"; then
+    AC_DEFINE(HAVE_OPENSSL_SSL_H, 1, [Define to 1 if you have the <openssl/ssl.h> header file.])
+
+    AC_CHECK_HEADERS( \
+      openssl/crypto.h \
+      openssl/err.h \
+      openssl/evp.h \
+      openssl/md5.h \
+      openssl/md4.h \
+      openssl/sha.h \
+      openssl/ocsp.h \
+      openssl/engine.h,
+      [],
+      [
+        AC_MSG_FAILURE([failed locating OpenSSL headers. Use --with-openssl-include-dir=<path>, or --with-openssl=no (builds without OpenSSL)])
+      ]
+    )
+
+    AC_MSG_CHECKING([for OpenSSL version >= 0.9.7])
+    AC_EGREP_CPP(yes,
+      [#include <openssl/crypto.h>
+       #if (OPENSSL_VERSION_NUMBER >= 0x00907000L)
+       yes
+       #endif
+      ],
+      [
+        AC_MSG_RESULT(yes)
+      ],
+      [
+        AC_MSG_RESULT(no)
+        AC_MSG_FAILURE([OpenSSL version too old])
+      ]
+    )
+
+    dnl #
+    dnl #  CPPFLAGS are passed to the compiler first, so we use
+    dnl #  them to ensure things like --sysroot don't override the
+    dnl #  library location we discovered previously.
+    dnl #
+    old_CPPFLAGS="$CPPFLAGS"
+    CPPFLAGS="$OPENSSL_LDFLAGS $CPPFLAGS"
+
+    dnl #
+    dnl #  Now check that the header versions match the library
+    dnl #
+    AC_MSG_CHECKING([OpenSSL library and header version consistency])
+    AC_RUN_IFELSE(
+      [AC_LANG_PROGRAM(
+        [[
+          #include <stdio.h>
+          #include <openssl/opensslv.h>
+          #include <openssl/crypto.h>
+        ]],
+        [[
           printf("library: %lx header: %lx... ", (unsigned long) SSLeay(), (unsigned long) OPENSSL_VERSION_NUMBER);
-          return 1;
-        }
-      ]]
-    )],
-    [
-      AC_MSG_RESULT(yes)
-    ],
-    [
-      AC_MSG_RESULT(no)
-      AC_MSG_FAILURE([OpenSSL library version does not match header version])
-    ]
-  )
+          if (SSLeay() == OPENSSL_VERSION_NUMBER) {
+            return 0;
+          } else {
+            return 1;
+          }
+        ]]
+      )],
+      [
+        AC_MSG_RESULT(yes)
+      ],
+      [
+        AC_MSG_RESULT(no)
+        AC_MSG_FAILURE([OpenSSL library version does not match header version])
+      ]
+    )
+    CPPFLAGS="$old_CPPFLAGS"
+  fi
 
-  if test "x$OPENSSL_LIBS" = x; then
-    LIBS=$old_LIBS
-    LDFLAGS="$old_LDFLAGS"
-  fi
-  if test "x$OPENSSL_INCLUDE" = x; then
-    CPPFLAGS=$old_CPPFLAGS
-    CFLAGS=$old_CFLAGS
-  fi
+  LIBS="$OLD_LIBS"
+  AC_SUBST(OPENSSL_LIBS)
+  AC_SUBST(OPENSSL_LDFLAGS)
+  export OPENSSL_LIBS OPENSSL_LDFLAGS
 fi
-
-AC_SUBST(OPENSSL_INCLUDE)
-AC_SUBST(OPENSSL_LIBS)
-export OPENSSL_LIBS
 
 dnl #
 dnl #  Check the pcap includes for the RADIUS sniffer.
@@ -980,28 +1088,37 @@ dnl #
 if test "x$PCAP_LIBS" = x; then
   AC_MSG_NOTICE([skipping test for pcap.h.])
 else
+  dnl #
+  dnl # Check for pcap header files
+  dnl #
   smart_try_dir="$pcap_include_dir"
   FR_SMART_CHECK_INCLUDE([pcap.h])
-  if test "x$ac_cv_header_pcap_h" != "xyes"; then
-    AC_MSG_WARN([pcap headers not found. Use --with-pcap-include-dir=<path>.])
-    AC_MSG_WARN([pcap.h not found, silently disabling the RADIUS sniffer, and ARP listener.])
-  else
+  if test "x$ac_cv_header_pcap_h" == "xyes"; then
     AC_DEFINE(HAVE_PCAP_H, 1, [Define to 1 if you have the <pcap.h> header file.])
-
-    AC_CHECK_LIB(pcap, pcap_fopen_offline,
-      [
-        AC_DEFINE(HAVE_PCAP_FOPEN_OFFLINE, 1, [Define to 1 if you have the function pcap_fopen_offline.])
-      ]
-    )
-
-    AC_CHECK_LIB(pcap, pcap_dump_fopen,
-      [
-        AC_DEFINE(HAVE_PCAP_DUMP_FOPEN, 1, [Define to 1 if you have the function pcap_dump_fopen.])
-      ]
-    )
+    AC_SUBST(PCAP_LIBS)
+    AC_SUBST(PCAP_LDFLAGS)
+  else
+    AC_MSG_WARN([pcap headers not found, silently disabling the RADIUS sniffer, and ARP listener. Use --with-pcap-include-dir=<path>.])
   fi
 fi
-AC_SUBST(PCAP_LIBS)
+
+dnl Check for collectd-client
+if test "x$COLLECTDC_LIBS" = x; then
+  AC_MSG_NOTICE([skipping test for collectd/client.h.])
+else
+  dnl #
+  dnl # Check for collectd-client header files
+  dnl #
+  smart_try_dir="$collectdclient_include_dir"
+  FR_SMART_CHECK_INCLUDE([collectd/client.h])
+  if test "x$ac_cv_header_collectd_client_h" == "xyes"; then
+    AC_DEFINE(HAVE_COLLECTDC_H, 1, [Define to 1 if you have the `collectdclient' library (-lcollectdclient).])
+    AC_SUBST(COLLECTDC_LIBS)
+    AC_SUBST(COLLECTDC_LDFLAGS)
+  else
+    AC_MSG_WARN([collectdclient headers not found. Use --with-collectdclient-include-dir=<path>.])
+  fi
+fi
 
 dnl #############################################################
 dnl #
@@ -1323,86 +1440,15 @@ dnl #  7. Checks for library functions
 dnl #
 dnl #############################################################
 
-dnl Check for talloc
-dnl extra argument: --with-talloc-include-dir=DIR
-talloc_include_dir=
-AC_ARG_WITH(talloc-include-dir,
-  [  --with-talloc-include-dir=DIR    directory to look for talloc include files in],
-  [case "$withval" in
-    no)
-      AC_MSG_ERROR([Need talloc-include-dir])
-      ;;
-    yes)
-      ;;
-    *)
-      talloc_include_dir="$withval"
-      ;;
-  esac])
-
-dnl Check for talloc
-dnl extra argument: --with-talloc-lib-dir=DIR
-talloc_lib_dir=
-AC_ARG_WITH(talloc-lib-dir,
-  [  --with-talloc-lib-dir=DIR        directory to look for talloc library files in],
-  [case "$withval" in
-    no)
-      AC_MSG_ERROR([Need talloc-lib-dir])
-      ;;
-    yes)
-      ;;
-    *)
-      talloc_lib_dir="$withval"
-      ;;
-  esac])
-
-dnl Check for pcap
-dnl extra argument: --with-pcap-include-dir=DIR
-pcap_include_dir=
-AC_ARG_WITH(pcap-include-dir,
-  [  --with-pcap-include-dir=DIR      directory to look for pcap include files in],
-  [case "$withval" in
-    no)
-      AC_MSG_ERROR([Need pcap-include-dir])
-      ;;
-    yes)
-      ;;
-    *)
-      pcap_include_dir="$withval"
-      ;;
-  esac])
-
-dnl Check for pcap
-dnl extra argument: --with-pcap-lib-dir=DIR
-pcap_lib_dir=
-AC_ARG_WITH(pcap-lib-dir,
-  [  --with-pcap-lib-dir=DIR          directory to look for pcap library files in],
-  [case "$withval" in
-    no)
-      AC_MSG_ERROR([Need pcap-lib-dir])
-      ;;
-    yes)
-      ;;
-    *)
-      pcap_lib_dir="$withval"
-      ;;
-  esac])
-
 dnl #
-dnl # Check for talloc header files
+dnl # Check for talloc_set_memlimit
+dnl # This was only included in version 2.0.8
 dnl #
-smart_try_dir="$talloc_include_dir"
-FR_SMART_CHECK_INCLUDE([talloc.h])
-if test "x$ac_cv_header_talloc_h" != "xyes"; then
-  AC_MSG_WARN([talloc headers not found. Use --with-talloc-include-dir=<path>.])
-  AC_MSG_ERROR([FreeRADIUS requires libtalloc])
-fi
-
-smart_try_dir="$talloc_lib_dir"
-FR_SMART_CHECK_LIB(talloc, _talloc)
-if test "x$ac_cv_lib_talloc__talloc" != "xyes"; then
-  AC_MSG_WARN([talloc library not found. Use --with-talloc-lib-dir=<path>.])
-  AC_MSG_ERROR([FreeRADIUS requires libtalloc])
-fi
+AC_CHECK_LIB(talloc, talloc_set_memlimit,
+  [
+    AC_DEFINE(HAVE_TALLOC_SET_MEMLIMIT, 1, [Define to 1 if you have the function talloc_set_memlimit.])
+  ]
+)
 
 dnl #
 dnl # Check for libcrypt
@@ -1431,7 +1477,8 @@ dnl #
 dnl extra argument: --with-execinfo-lib-dir
 execinfo_lib_dir=
 AC_ARG_WITH(execinfo-lib-dir,
-[  --with-execinfo-lib-dir=DIR      directory to look for execinfo library files in],
+[AS_HELP_STRING([--with-execinfo-lib-dir=DIR],
+[directory in which to look for execinfo library files])],
 [ case "$withval" in
     no)
         AC_MSG_ERROR([Need execinfo-lib-dir])
@@ -1447,10 +1494,11 @@ AC_ARG_WITH(execinfo-lib-dir,
 dnl extra argument: --with-execinfo-include-dir
 execinfo_include_dir=
 AC_ARG_WITH(execinfo-include-dir,
-[  --with-execinfo-include-dir=DIR  directory to look for execinfo include files in],
+[AS_HELP_STRING([--with-execinfo-include-dir=DIR],
+[directory in which to look for execinfo include files])],
 [ case "$withval" in
     no)
-	AC_MSG_ERROR(Need execinfo-include-dir)
+        AC_MSG_ERROR([Need execinfo-include-dir])
 	;;
     yes)
 	;;
@@ -1480,11 +1528,10 @@ if test "x$ac_cv_header_execinfo_h" = "xyes"; then
         backtrace_symbols(&sym, sizeof(sym)) ],
       [
         AC_MSG_RESULT(yes)
-        ac_cv_lib_execinfo_backtrace_symbols=yes
+        ac_cv_lib_execinfo_backtrace_symbols="yes"
       ],
       [
         AC_MSG_RESULT(no)
-        ac_cv_lib_execinfo_backtrace_symbols=no
       ]
     )
   fi
@@ -1503,24 +1550,26 @@ dnl #
 dnl extra argument: --with-pcre-lib-dir
 pcre_lib_dir=
 AC_ARG_WITH(pcre-lib-dir,
-  [  --with-pcre-lib-dir=DIR          directory to look for pcre library files in],
-  [ case "$withval" in
+[AS_HELP_STRING([--with-pcre-lib-dir=DIR],
+[directory in which to look for pcre library files])],
+[ case "$withval" in
     no)
-        AC_MSG_ERROR([Need pcre-lib-dir])
+	AC_MSG_ERROR(Need pcre-lib-dir)
 	;;
     yes)
 	;;
     *)
 	pcre_lib_dir="$withval"
 	;;
-    esac ]
+  esac ]
 )
 
 dnl extra argument: --with-pcre-include--dir
 pcre_include_dir=
 AC_ARG_WITH(pcre-include-dir,
-  [  --with-pcre-include-dir=DIR      directory to look for PCRE include files in],
-  [ case "$withval" in
+[AS_HELP_STRING([--with-pcre-include-dir=DIR],
+[directory in which to look for pcre include files])],
+[ case "$withval" in
     no)
 	AC_MSG_ERROR(Need pcre-include-dir)
 	;;
@@ -1529,7 +1578,7 @@ AC_ARG_WITH(pcre-include-dir,
     *)
 	pcre_include_dir="$withval"
 	;;
-    esac ]
+  esac ]
 )
 
 REGEX=no

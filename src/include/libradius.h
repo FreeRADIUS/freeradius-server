@@ -508,7 +508,7 @@ void fr_hmac_sha1(uint8_t const *text, size_t text_len, uint8_t const *key, size
 
 /* radius.c */
 int		rad_send(RADIUS_PACKET *, RADIUS_PACKET const *, char const *secret);
-int		rad_packet_ok(RADIUS_PACKET *packet, int flags);
+bool		rad_packet_ok(RADIUS_PACKET *packet, int flags, decode_fail_t *reason);
 RADIUS_PACKET	*rad_recv(int fd, int flags);
 ssize_t rad_recv_header(int sockfd, fr_ipaddr_t *src_ipaddr, int *src_port,
 			int *code);
@@ -544,6 +544,12 @@ int		rad_attr_ok(RADIUS_PACKET const *packet, RADIUS_PACKET const *original,
 			    DICT_ATTR *da, uint8_t const *data, size_t length);
 int		rad_tlv_ok(uint8_t const *data, size_t length,
 			   size_t dv_type, size_t dv_length);
+
+ssize_t		data2vp(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
+			char const *secret,
+			DICT_ATTR const *da, uint8_t const *start,
+			size_t const attrlen, size_t const packetlen,
+			VALUE_PAIR **pvp);
 
 ssize_t		rad_attr2vp(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 			    char const *secret,
@@ -603,6 +609,7 @@ void		pairreplace(VALUE_PAIR **first, VALUE_PAIR *add);
 int8_t		paircmp_value(VALUE_PAIR const *a, VALUE_PAIR const *b);
 int8_t		paircmp_op(VALUE_PAIR const *a, FR_TOKEN op, VALUE_PAIR const *b);
 int8_t		paircmp(VALUE_PAIR *a, VALUE_PAIR *b);
+int8_t		pairlistcmp(VALUE_PAIR *a, VALUE_PAIR *b);
 
 typedef int8_t (*fr_pair_cmp_t)(VALUE_PAIR const *a, VALUE_PAIR const *b);
 int8_t		attrcmp(VALUE_PAIR const *a, VALUE_PAIR const *b);

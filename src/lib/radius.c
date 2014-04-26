@@ -852,19 +852,20 @@ static ssize_t vp2data_any(RADIUS_PACKET const *packet,
 	case PW_TYPE_IPV6PREFIX:
 	case PW_TYPE_IPV4PREFIX:
 	case PW_TYPE_ABINARY:
+	case PW_TYPE_ETHERNET:	/* just in case */
 		data = (uint8_t const *) &vp->data;
 		break;
 
 	case PW_TYPE_BYTE:
 		len = 1;	/* just in case */
-		array[0] = vp->vp_integer & 0xff;
+		array[0] = vp->vp_byte;
 		data = array;
 		break;
 
 	case PW_TYPE_SHORT:
 		len = 2;	/* just in case */
-		array[0] = (vp->vp_integer >> 8) & 0xff;
-		array[1] = vp->vp_integer & 0xff;
+		array[0] = (vp->vp_short >> 8) & 0xff;
+		array[1] = vp->vp_short & 0xff;
 		data = array;
 		break;
 
@@ -902,8 +903,7 @@ static ssize_t vp2data_any(RADIUS_PACKET const *packet,
 	}
 
 	default:		/* unknown type: ignore it */
-		fr_strerror_printf("ERROR: Unknown attribute type %d",
-				   vp->da->type);
+		fr_strerror_printf("ERROR: Unknown attribute type %d", vp->da->type);
 		return -1;
 	}
 
@@ -1741,7 +1741,7 @@ int rad_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 	case PW_CODE_AUTHENTICATION_REJECT:
 	case PW_CODE_ACCESS_CHALLENGE:
 		if (!original) {
-			fr_strerror_printf("ERROR: Cannot sign response packet without a request packet.");
+			fr_strerror_printf("ERROR: Cannot sign response packet without a request packet");
 			return -1;
 		}
 		break;
@@ -1900,7 +1900,7 @@ int rad_sign(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 	 *	It wasn't assigned an Id, this is bad!
 	 */
 	if (packet->id < 0) {
-		fr_strerror_printf("ERROR: RADIUS packets must be assigned an Id.");
+		fr_strerror_printf("ERROR: RADIUS packets must be assigned an Id");
 		return -1;
 	}
 
@@ -1929,7 +1929,6 @@ int rad_sign(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 		case PW_CODE_DISCONNECT_NAK:
 		case PW_CODE_COA_REQUEST:
 		case PW_CODE_COA_ACK:
-		case PW_CODE_COA_NAK:
 			memset(hdr->vector, 0, AUTH_VECTOR_LEN);
 			break;
 
@@ -1938,7 +1937,7 @@ int rad_sign(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 		case PW_CODE_AUTHENTICATION_REJECT:
 		case PW_CODE_ACCESS_CHALLENGE:
 			if (!original) {
-				fr_strerror_printf("ERROR: Cannot sign response packet without a request packet.");
+				fr_strerror_printf("ERROR: Cannot sign response packet without a request packet");
 				return -1;
 			}
 			memcpy(hdr->vector, original->vector,
@@ -2287,13 +2286,17 @@ int rad_tlv_ok(uint8_t const *data, size_t length,
 }
 
 
-/**
- * @brief See if the data pointed to by PTR is a valid RADIUS packet.
+/** See if the data pointed to by PTR is a valid RADIUS packet.
  *
- *	packet is not 'const * const' because we may update data_len,
- *	if there's more data in the UDP packet than in the RADIUS packet.
+ * Packet is not 'const * const' because we may update data_len, if there's more data
+ * in the UDP packet than in the RADIUS packet.
+ *
+ * @param packet to check
+ * @param flags to control decoding
+ * @param reason if not NULL, will have the failure reason written to where it points.
+ * @return bool, true on success, false on failure.
  */
-int rad_packet_ok(RADIUS_PACKET *packet, int flags)
+bool rad_packet_ok(RADIUS_PACKET *packet, int flags, decode_fail_t *reason)
 {
 	uint8_t			*attr;
 	size_t			totallen;
@@ -2303,6 +2306,7 @@ int rad_packet_ok(RADIUS_PACKET *packet, int flags)
 	bool			require_ma = false;
 	bool			seen_ma = false;
 	int			num_attributes;
+	decode_fail_t		failure = DECODE_FAIL_NONE;
 
 	/*
 	 *	Check for packets smaller than the packet header.
@@ -2317,7 +2321,8 @@ int rad_packet_ok(RADIUS_PACKET *packet, int flags)
 				     &packet->src_ipaddr.ipaddr,
 				     host_ipaddr, sizeof(host_ipaddr)),
 				     packet->data_len, AUTH_HDR_LEN);
-		return 0;
+		failure = DECODE_FAIL_MIN_LENGTH_PACKET;
+		goto finish;
 	}
 
 
@@ -2340,7 +2345,8 @@ int rad_packet_ok(RADIUS_PACKET *packet, int flags)
 				     &packet->src_ipaddr.ipaddr,
 				     host_ipaddr, sizeof(host_ipaddr)),
 			   hdr->code);
-		return 0;
+		failure = DECODE_FAIL_UNKNOWN_PACKET_CODE;
+		goto finish;
 	}
 
 	/*
@@ -2371,7 +2377,8 @@ int rad_packet_ok(RADIUS_PACKET *packet, int flags)
 				     &packet->src_ipaddr.ipaddr,
 				     host_ipaddr, sizeof(host_ipaddr)),
 				     totallen, AUTH_HDR_LEN);
-		return 0;
+		failure = DECODE_FAIL_MIN_LENGTH_FIELD;
+		goto finish;
 	}
 
 	/*
@@ -2403,7 +2410,8 @@ int rad_packet_ok(RADIUS_PACKET *packet, int flags)
 				     &packet->src_ipaddr.ipaddr,
 				     host_ipaddr, sizeof(host_ipaddr)),
 				     packet->data_len, totallen);
-		return 0;
+		failure = DECODE_FAIL_MIN_LENGTH_MISMATCH;
+		goto finish;
 	}
 
 	/*
@@ -2447,7 +2455,8 @@ int rad_packet_ok(RADIUS_PACKET *packet, int flags)
 				   inet_ntop(packet->src_ipaddr.af,
 					     &packet->src_ipaddr.ipaddr,
 					     host_ipaddr, sizeof(host_ipaddr)));
-			return 0;
+			failure = DECODE_FAIL_HEADER_OVERFLOW;
+			goto finish;
 		}
 
 		/*
@@ -2458,7 +2467,8 @@ int rad_packet_ok(RADIUS_PACKET *packet, int flags)
 				   inet_ntop(packet->src_ipaddr.af,
 					     &packet->src_ipaddr.ipaddr,
 					     host_ipaddr, sizeof(host_ipaddr)));
-			return 0;
+			failure = DECODE_FAIL_INVALID_ATTRIBUTE;
+			goto finish;
 		}
 
 		/*
@@ -2471,7 +2481,8 @@ int rad_packet_ok(RADIUS_PACKET *packet, int flags)
 					     &packet->src_ipaddr.ipaddr,
 					     host_ipaddr, sizeof(host_ipaddr)),
 				   attr[0]);
-			return 0;
+			failure = DECODE_FAIL_ATTRIBUTE_TOO_SHORT;
+			goto finish;
 		}
 
 		/*
@@ -2484,7 +2495,8 @@ int rad_packet_ok(RADIUS_PACKET *packet, int flags)
 					     &packet->src_ipaddr.ipaddr,
 					     host_ipaddr, sizeof(host_ipaddr)),
 					   attr[0]);
-			return 0;
+			failure = DECODE_FAIL_ATTRIBUTE_OVERFLOW;
+			goto finish;
 		}
 
 		/*
@@ -2509,7 +2521,8 @@ int rad_packet_ok(RADIUS_PACKET *packet, int flags)
 						     &packet->src_ipaddr.ipaddr,
 						     host_ipaddr, sizeof(host_ipaddr)),
 					   attr[1] - 2);
-				return 0;
+				failure = DECODE_FAIL_MA_INVALID_LENGTH;
+				goto finish;
 			}
 			seen_ma = true;
 			break;
@@ -2536,7 +2549,8 @@ int rad_packet_ok(RADIUS_PACKET *packet, int flags)
 			   inet_ntop(packet->src_ipaddr.af,
 				     &packet->src_ipaddr.ipaddr,
 				     host_ipaddr, sizeof(host_ipaddr)));
-		return 0;
+		failure = DECODE_FAIL_ATTRIBUTE_UNDERFLOW;
+		goto finish;
 	}
 
 	/*
@@ -2551,7 +2565,8 @@ int rad_packet_ok(RADIUS_PACKET *packet, int flags)
 				     &packet->src_ipaddr.ipaddr,
 				     host_ipaddr, sizeof(host_ipaddr)),
 			   num_attributes, fr_max_attributes);
-		return 0;
+		failure = DECODE_FAIL_TOO_MANY_ATTRIBUTES;
+		goto finish;
 	}
 
 	/*
@@ -2565,12 +2580,13 @@ int rad_packet_ok(RADIUS_PACKET *packet, int flags)
 	 *	Similarly, Status-Server packets MUST contain
 	 *	Message-Authenticator attributes.
 	 */
-	if (require_ma && ! seen_ma) {
+	if (require_ma && !seen_ma) {
 		fr_strerror_printf("WARNING: Insecure packet from host %s:  Packet does not contain required Message-Authenticator attribute",
 			   inet_ntop(packet->src_ipaddr.af,
 				     &packet->src_ipaddr.ipaddr,
 				     host_ipaddr, sizeof(host_ipaddr)));
-		return 0;
+		failure = DECODE_FAIL_MA_MISSING;
+		goto finish;
 	}
 
 	/*
@@ -2580,7 +2596,13 @@ int rad_packet_ok(RADIUS_PACKET *packet, int flags)
 	packet->id = hdr->id;
 	memcpy(packet->vector, hdr->vector, AUTH_VECTOR_LEN);
 
-	return 1;
+
+	finish:
+
+	if (reason) {
+		*reason = failure;
+	}
+	return (failure == DECODE_FAIL_NONE);
 }
 
 
@@ -2629,7 +2651,7 @@ RADIUS_PACKET *rad_recv(int fd, int flags)
 	 *	packet.
 	 */
 	if (packet->data_len > MAX_PACKET_LEN) {
-		fr_strerror_printf("Discarding packet: Larger than RFC limitation of 4096 bytes.");
+		fr_strerror_printf("Discarding packet: Larger than RFC limitation of 4096 bytes");
 		/* packet->data is NULL */
 		rad_free(&packet);
 		return NULL;
@@ -2642,7 +2664,7 @@ RADIUS_PACKET *rad_recv(int fd, int flags)
 	 *	packet->data == NULL
 	 */
 	if ((packet->data_len == 0) || !packet->data) {
-		fr_strerror_printf("Empty packet: Socket is not ready.");
+		fr_strerror_printf("Empty packet: Socket is not ready");
 		rad_free(&packet);
 		return NULL;
 	}
@@ -2650,7 +2672,7 @@ RADIUS_PACKET *rad_recv(int fd, int flags)
 	/*
 	 *	See if it's a well-formed RADIUS packet.
 	 */
-	if (!rad_packet_ok(packet, flags)) {
+	if (!rad_packet_ok(packet, flags, NULL)) {
 		rad_free(&packet);
 		return NULL;
 	}
@@ -2763,7 +2785,7 @@ int rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 			case PW_CODE_COA_ACK:
 			case PW_CODE_COA_NAK:
 				if (!original) {
-					fr_strerror_printf("ERROR: Cannot validate Message-Authenticator in response packet without a request packet.");
+					fr_strerror_printf("ERROR: Cannot validate Message-Authenticator in response packet without a request packet");
 					return -1;
 				}
 				memcpy(packet->data + 4, original->vector, AUTH_VECTOR_LEN);
@@ -2877,13 +2899,6 @@ int rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 	return 0;
 }
 
-
-static ssize_t data2vp(RADIUS_PACKET *packet,
-		       RADIUS_PACKET const *original,
-		       char const *secret,
-		       DICT_ATTR const *da, uint8_t const *start,
-		       size_t const attrlen, size_t const packetlen,
-		       VALUE_PAIR **pvp);
 
 /**
  * @brief convert a "concatenated" attribute to one long VP.
@@ -3366,12 +3381,12 @@ static ssize_t data2vp_vsas(RADIUS_PACKET *packet,
  *
  * @return -1 on error, or "length".
  */
-static ssize_t data2vp(RADIUS_PACKET *packet,
-		       RADIUS_PACKET const *original,
-		       char const *secret,
-		       DICT_ATTR const *da, uint8_t const *start,
-		       size_t const attrlen, size_t const packetlen,
-		       VALUE_PAIR **pvp)
+ssize_t data2vp(RADIUS_PACKET *packet,
+		RADIUS_PACKET const *original,
+		char const *secret,
+		DICT_ATTR const *da, uint8_t const *start,
+		size_t const attrlen, size_t const packetlen,
+		VALUE_PAIR **pvp)
 {
 	int tag = 0;
 	size_t datalen;
@@ -3762,11 +3777,11 @@ static ssize_t data2vp(RADIUS_PACKET *packet,
 		break;
 
 	case PW_TYPE_BYTE:
-		vp->vp_integer = data[0];
+		vp->vp_byte = data[0];
 		break;
 
 	case PW_TYPE_SHORT:
-		vp->vp_integer = (data[0] << 8) | data[1];
+		vp->vp_short = (data[0] << 8) | data[1];
 		break;
 
 	case PW_TYPE_INTEGER:
@@ -3948,7 +3963,7 @@ ssize_t rad_vp2data(uint8_t const **out, VALUE_PAIR const *vp)
 
 		ret = fr_thread_local_set(rad_vp2data_buff, buffer);
 		if (ret != 0) {
-			fr_strerror_printf("Failed setting up TLS for rad_vp2data buffer: %s", fr_syserror(errno));
+			fr_strerror_printf("Failed setting up TLS for rad_vp2data buffer: %s", strerror(errno));
 			free(buffer);
 			return -1;
 		}
@@ -4675,6 +4690,8 @@ void rad_free(RADIUS_PACKET **radius_packet_ptr)
 
 	if (!radius_packet_ptr || !*radius_packet_ptr) return;
 	radius_packet = *radius_packet_ptr;
+
+	VERIFY_PACKET(radius_packet);
 
 	pairfree(&radius_packet->vps);
 

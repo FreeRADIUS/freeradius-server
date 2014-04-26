@@ -226,7 +226,7 @@ int fr_tcp_read_packet(RADIUS_PACKET *packet, int flags)
 	/*
 	 *	See if it's a well-formed RADIUS packet.
 	 */
-	if (!rad_packet_ok(packet, flags)) {
+	if (!rad_packet_ok(packet, flags, NULL)) {
 		return -1;
 	}
 
