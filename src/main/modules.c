@@ -854,9 +854,7 @@ static int load_subcomponent_section(modcallable *parent, CONF_SECTION *cs,
 	 */
 	dval = dict_valbyname(da->attr, da->vendor, name2);
 	if (!dval) {
-		cf_log_err_cs(cs,
-			   "%s %s Not previously configured",
-			   section_type_value[comp].typename, name2);
+		cf_log_err_cs(cs, "%s %s Not previously configured", section_type_value[comp].typename, name2);
 		talloc_free(ml);
 		return 0;
 	}
