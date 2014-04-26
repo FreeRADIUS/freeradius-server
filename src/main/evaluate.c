@@ -35,7 +35,7 @@ RCSID("$Id$")
 #ifdef WITH_EVAL_DEBUG
 #define EVAL_DEBUG(fmt, ...) printf("EVAL: ");printf(fmt, ## __VA_ARGS__);printf("\n");fflush(stdout)
 
-static const FR_NAME_NUMBER template_names[] = {
+static FR_NAME_NUMBER const template_names[] = {
 	{ "literal",	VPT_TYPE_LITERAL },
 	{ "xlat",	VPT_TYPE_XLAT },
 	{ "attr",	VPT_TYPE_ATTR },
@@ -49,7 +49,7 @@ static const FR_NAME_NUMBER template_names[] = {
 #define EVAL_DEBUG(...)
 #endif
 
-static const FR_NAME_NUMBER modreturn_table[] = {
+FR_NAME_NUMBER const modreturn_table[] = {
 	{ "reject",     RLM_MODULE_REJECT       },
 	{ "fail",       RLM_MODULE_FAIL	 	},
 	{ "ok",		RLM_MODULE_OK	   	},

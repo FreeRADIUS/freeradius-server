@@ -281,7 +281,6 @@ static void safe_unlock(module_instance_t *instance)
 
 static rlm_rcode_t call_modsingle(rlm_components_t component, modsingle *sp, REQUEST *request)
 {
-	rlm_rcode_t myresult;
 	int blocked;
 
 	rad_assert(request != NULL);
@@ -297,7 +296,7 @@ static rlm_rcode_t call_modsingle(rlm_components_t component, modsingle *sp, REQ
 	       sp->modinst->entry->name, request->number);
 
 	if (sp->modinst->force) {
-		myresult = sp->modinst->code;
+		request->rcode = sp->modinst->code;
 		goto fail;
 	}
 
@@ -308,8 +307,7 @@ static rlm_rcode_t call_modsingle(rlm_components_t component, modsingle *sp, REQ
 	 */
 	request->module = sp->modinst->name;
 
-	myresult = sp->modinst->entry->module->methods[component](
-			sp->modinst->insthandle, request);
+	request->rcode = sp->modinst->entry->module->methods[component](sp->modinst->insthandle, request);
 
 	request->module = "";
 	safe_unlock(sp->modinst);
@@ -327,7 +325,7 @@ static rlm_rcode_t call_modsingle(rlm_components_t component, modsingle *sp, REQ
 	       comp2str[component], sp->modinst->name,
 	       sp->modinst->entry->name, request->number);
 
-	return myresult;
+	return request->rcode;
 }
 
 static int default_component_results[RLM_COMPONENT_COUNT] = {

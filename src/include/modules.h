@@ -35,26 +35,6 @@ RCSIDH(modules_h, "$Id$")
 extern "C" {
 #endif
 
-/** Return codes indicating the result of the module call
- *
- * All module functions must return one of the codes listed below (apart from
- * RLM_MODULE_NUMCODES, which is used to check for validity).
- */
-typedef enum rlm_rcodes {
-	RLM_MODULE_REJECT = 0,	//!< Immediately reject the request.
-	RLM_MODULE_FAIL,	//!< Module failed, don't reply.
-	RLM_MODULE_OK,		//!< The module is OK, continue.
-	RLM_MODULE_HANDLED,	//!< The module handled the request, so stop.
-	RLM_MODULE_INVALID,	//!< The module considers the request invalid.
-	RLM_MODULE_USERLOCK,	//!< Reject the request (user is locked out).
-	RLM_MODULE_NOTFOUND,	//!< User not found.
-	RLM_MODULE_NOOP,	//!< Module succeeded without doing anything.
-	RLM_MODULE_UPDATED,	//!< OK (pairs modified).
-	RLM_MODULE_NUMCODES,	//!< How many valid return codes there are.
-	RLM_MODULE_UNKNOWN	//!< Error resolving rcode (should not be
-				//!< returned by modules).
-} rlm_rcode_t;
-
 /** The different section components of the server
  *
  * Used as indexes in the methods array in the module_t struct.
