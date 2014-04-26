@@ -1715,7 +1715,8 @@ static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, pair_lists_t list, DI
 		return talloc_typed_strdup(ctx, request->server);
 
 	case PW_MODULE_RETURN_CODE:
-		return talloc_typed_asprintf(ctx, "%d", request->simul_max); /* hack */
+		if (!request->rcode) return NULL;
+		return talloc_typed_strdup(ctx, fr_int2str(modreturn_table, request->rcode, ""));
 	}
 
 	/*
