@@ -124,6 +124,13 @@ fr_event_list_t *fr_event_list_create(TALLOC_CTX *ctx, fr_event_status_t status)
 	return el;
 }
 
+int fr_event_list_num_fds(fr_event_list_t *el)
+{
+	if (!el) return 0;
+
+	return el->num_readers;
+}
+
 int fr_event_list_num_elements(fr_event_list_t *el)
 {
 	if (!el) return 0;
@@ -374,6 +381,11 @@ void fr_event_loop_exit(fr_event_list_t *el, int code)
 	if (!el) return;
 
 	el->exit = code;
+}
+
+bool fr_event_loop_exiting(fr_event_list_t *el)
+{
+	return (el->exit != 0);
 }
 
 int fr_event_loop(fr_event_list_t *el)

@@ -295,7 +295,7 @@ app:
 	packet->vps = NULL;
 	PTHREAD_MUTEX_UNLOCK(&sock->mutex);
 
-	if (!rad_packet_ok(packet, 0)) {
+	if (!rad_packet_ok(packet, 0, NULL)) {
 		RDEBUG("Received bad packet: %s", fr_strerror());
 		DEBUG("Closing TLS socket from client");
 		PTHREAD_MUTEX_LOCK(&sock->mutex);

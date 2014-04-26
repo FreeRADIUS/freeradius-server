@@ -48,6 +48,8 @@ FreeRADIUS 3.0.3 Fri 21 Mar 2014 08:30:00 EDT urgency=medium
 	  reply:FreeRADIUS-Response-Delay = 1
 	* Allow tag and array references anywhere attributes
 	  are allowed in "unlang".
+	* many enhancements to radsniff, including output 
+	  to collectd, ipv6 support and packet loss statistics.
 
 	Bug fixes
 	* Fix xlat expression %{attribute[n]} so that it actually
@@ -74,7 +76,7 @@ FreeRADIUS 3.0.3 Fri 21 Mar 2014 08:30:00 EDT urgency=medium
 	  to double-check your Perl scripts if they use "\" characters.
 	  See mods-available/perl for documentation.
 	* Don't re-run "authorize" if a home server fails to respond.
-	* "0x" isn't printed in front of octets types, for xlat
+	* Don't append "0x" to hex output of octets types, for xlat
 	  expansions.  This is the same as v2, and makes it easier
 	  to concatenate multiple attributes of type "octets"
 	* FreeBSD fixes for execinfo linking.
