@@ -203,7 +203,7 @@ struct request {
 #ifdef WITH_PROXY
 	RADIUS_PACKET		*proxy_reply;	//!< Incoming response.
 #endif
-	VALUE_PAIR		*config_items;	//!< VALUE_PAIR s used to set per request parameters
+	VALUE_PAIR		*config_items;	//!< VALUE_PAIRs used to set per request parameters
 						//!< for modules and the server core at runtime.
 	VALUE_PAIR		*username;	//!< Cached username VALUE_PAIR.
 	VALUE_PAIR		*password;	//!< Cached password VALUE_PAIR.
@@ -257,7 +257,7 @@ struct request {
 	int			in_proxy_hash;
 
 	home_server_t	       	*home_server;
-	home_pool_t		*home_pool; /* for dynamic failover */
+	home_pool_t		*home_pool;	//!< For dynamic failover
 
 	struct timeval		proxy_retransmit;
 
