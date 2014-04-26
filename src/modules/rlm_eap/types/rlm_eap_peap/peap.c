@@ -369,7 +369,7 @@ static int vp2eap(REQUEST *request, tls_session_t *tls_session, VALUE_PAIR *vp)
 	/*
 	 *	Send the rest of the EAP data, but skipping the first VP.
 	 */
-	this = fr_cursor_init(&cursor, &vp);
+	fr_cursor_init(&cursor, &vp);
 	for (this = fr_cursor_next(&cursor);
 	     this;
 	     this = fr_cursor_next(&cursor)) {
