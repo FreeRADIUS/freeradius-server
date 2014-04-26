@@ -422,7 +422,8 @@ size_t vp_prints_value(char *out, size_t outlen, VALUE_PAIR const *vp, int8_t qu
 
 	case PW_TYPE_ABINARY:
 #ifdef WITH_ASCEND_BINARY
-		print_abinary(vp, buf, sizeof(buf), quote);
+
+		print_abinary(buf, sizeof(buf), vp, quote);
 		a = buf;
 		len = strlen(buf);
 		break;
@@ -634,7 +635,7 @@ char *vp_aprint(TALLOC_CTX *ctx, VALUE_PAIR const *vp)
 #ifdef WITH_ASCEND_BINARY
 		p = talloc_array(ctx, char, 128);
 		if (!p) return NULL;
-		print_abinary(vp, p, 128, 0);
+		print_abinary(p, 128, vp, 0);
 		break;
 #else
 		  /* FALL THROUGH */
