@@ -251,10 +251,8 @@ static int mod_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
 
 	if (stat(driver->filename, &buf) == 0) {
 		exists = true;
-
 	} else if (errno == ENOENT) {
 		exists = false;
-
 	} else {
 		ERROR("rlm_sql_sqlite: Database exists, but couldn't be opened: %s", fr_syserror(errno));
 		return -1;
@@ -322,10 +320,10 @@ static int mod_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
 			goto unlink;
 		}
 		if (ret < 0) {
-			unlink:
-			if (unlink(driver->filename) < 0) {
+		unlink:
+			if ((unlink(driver->filename) < 0) && (errno != ENOENT)) {
 				ERROR("rlm_sql_sqlite: Error removing partially initialised database: %s",
-				       fr_syserror(errno));
+				      fr_syserror(errno));
 			}
 			return -1;
 		}
