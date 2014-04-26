@@ -19,10 +19,16 @@ if ("%{Virtual-Server}" != 'default') {
 	}
 }
 
-# This is actually request->simul_max not the rcode
-if ("%{Module-Return-Code}" != 0) {
+if ("%{Module-Return-Code}" != '') {
 	update reply {
-		Filter-Id += "fail 3"
+		Filter-Id += "fail 3a"
+	}
+}
+
+ok
+if ("%{Module-Return-Code}" != 'ok') {
+	update reply {
+		Filter-Id += "fail 3b"
 	}
 }
 
