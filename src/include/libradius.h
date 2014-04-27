@@ -140,9 +140,11 @@ do {\
 	}\
 } while (0)\
 
+#  define VERIFY_LIST(_x) fr_verify_list(NULL, _x)
 #  define VERIFY_PACKET(_x) (void) talloc_get_type_abort(_x, RADIUS_PACKET)
 #else
 #  define VERIFY_VP(_x)
+#  define VERIFY_LIST(_x)
 #  define VERIFY_PACKET(_x)
 #endif
 
@@ -795,6 +797,10 @@ int		fr_fault_setup(char const *cmd, char const *program);
 void		fr_fault_set_cb(fr_fault_cb_t func);
 void		fr_fault_set_log_fn(fr_fault_log_t func);
 void		fr_fault_set_log_fd(int fd);
+
+#ifdef WITH_VERIFY_PTR
+void		fr_verify_list(TALLOC_CTX *expected, VALUE_PAIR *vps);
+#endif
 
 /* rbtree.c */
 typedef struct rbtree_t rbtree_t;
