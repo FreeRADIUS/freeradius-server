@@ -194,86 +194,63 @@ static int detail_open(rad_listen_t *this)
 	 */
 	this->fd = open(data->filename_work, O_RDWR);
 	if (this->fd < 0) {
-		bool free_filename = false;
-		char *filename = data->filename;
-
-		DEBUG2("Polling for detail file %s", filename);
-
-		/*
-		 *	Try reading the detail file.  If it
-		 *	doesn't exist, we can't do anything.
-		 *
-		 *	Doing the stat will tell us if the file
-		 *	exists, even if we don't have permissions
-		 *	to read it.
-		 */
-		if (stat(filename, &st) < 0) {
 #ifndef HAVE_GLOB_H
-			return 0;
+		return 0;
 #else
-			unsigned int i;
-			int found;
-			time_t chtime;
-			glob_t files;
+		unsigned int i;
+		int found;
+		time_t chtime;
+		char const *filename;
+		glob_t files;
 
-			memset(&files, 0, sizeof(files));
-			if (glob(filename, 0, NULL, &files) != 0) {
-				globfree(&files);
-				return 0;
-			}
+		DEBUG2("Polling for detail file %s", data->filename);
 
-			chtime = 0;
-			found = -1;
-			for (i = 0; i < files.gl_pathc; i++) {
-				if (stat(files.gl_pathv[i], &st) < 0) continue;
-
-				if ((i == 0) ||
-				    (st.st_ctime < chtime)) {
-					chtime = st.st_ctime;
-					found = i;
-				}
-			}
-
-			if (found < 0) {
-				globfree(&files);
-				return 0;
-			}
-
-			filename = strdup(files.gl_pathv[found]);
-			free_filename = true;
+		memset(&files, 0, sizeof(files));
+		if (glob(data->filename, 0, NULL, &files) != 0) {
 			globfree(&files);
-#endif
+			return 0;
 		}
 
 		/*
-		 *	Open it BEFORE we rename it, just to
-		 *	be safe...
+		 *	Loop over the glob'd files, looking for the
+		 *	oldest one.
 		 */
-		this->fd = open(filename, O_RDWR);
-		if (this->fd < 0) {
-			ERROR("Detail - Failed to open %s: %s",
-			       filename, fr_syserror(errno));
-			if (free_filename) free(filename);
+		chtime = 0;
+		found = -1;
+		for (i = 0; i < files.gl_pathc; i++) {
+			if (stat(files.gl_pathv[i], &st) < 0) continue;
+
+			if ((i == 0) ||
+			    (st.st_ctime < chtime)) {
+					chtime = st.st_ctime;
+					found = i;
+			}
+		}
+
+		if (found < 0) {
+			globfree(&files);
 			return 0;
 		}
 
 		/*
 		 *	Rename detail to detail.work
 		 */
+		filename = files.gl_pathv[found];
+
 		DEBUG("Detail - Renaming %s -> %s", filename, data->filename_work);
 		if (rename(filename, data->filename_work) < 0) {
 			ERROR("Detail - Failed renaming %s to %s: %s",
 			      filename, data->filename_work, fr_syserror(errno));
-			if (free_filename) free(filename);
-			close(this->fd);
-			this->fd = -1;
+			globfree(&files);
 			return 0;
 		}
 
 		/*
-		 *	Ensure we don't leak memory.
+		 *	And try to open the filename.
 		 */
-		if (free_filename) free(filename);
+		this->fd = open(data->filename_work, O_RDWR);
+		if (this->fd < 0) return 0;
+#endif
 	} /* else detail.work existed, and we opened it */
 
 	rad_assert(data->vps == NULL);
