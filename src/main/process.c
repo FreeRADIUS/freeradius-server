@@ -1141,6 +1141,7 @@ static int request_pre_handler(REQUEST *request, UNUSED int action)
 	}
 
 	if (!request->username) {
+		rad_assert(request->packet != NULL);
 		request->username = pairfind(request->packet->vps, PW_USER_NAME, 0, TAG_ANY);
 	}
 
