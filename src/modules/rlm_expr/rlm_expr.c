@@ -91,6 +91,12 @@ static expr_map_t map[] =
 static char randstr_punc[] = "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~";
 static char randstr_salt[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmopqrstuvwxyz/.";
 
+/*
+ *	Characters humans rarely confuse. Reduces char set considerably
+ *	should only be used for things such as one time passwords.
+ */
+static char randstr_otp[] = "469ACGHJKLMNPQRUVWXYabdfhijkprstuvwxyz";
+
 static int get_number(REQUEST *request, char const **string, int64_t *answer)
 {
 	int		i, found;
@@ -331,75 +337,98 @@ static ssize_t randstr_xlat(UNUSED void *instance, UNUSED REQUEST *request,
 	while (*p && (--freespace > 0)) {
 		result = fr_rand();
 		switch (*p) {
-			/*
-			 *  Lowercase letters
-			 */
-			case 'c':
-				*out++ = 'a' + (result % 26);
+		/*
+		 *  Lowercase letters
+		 */
+		case 'c':
+			*out++ = 'a' + (result % 26);
+			break;
+
+		/*
+		 *  Uppercase letters
+		 */
+		case 'C':
+			*out++ = 'A' + (result % 26);
+			break;
+
+		/*
+		 *  Numbers
+		 */
+		case 'n':
+			*out++ = '0' + (result % 10);
+			break;
+
+		/*
+		 *  Alpha numeric
+		 */
+		case 'a':
+			*out++ = randstr_salt[result % (sizeof(randstr_salt) - 3)];
+			break;
+
+		/*
+		 *  Punctuation
+		 */
+		case '!':
+			*out++ = randstr_punc[result % (sizeof(randstr_punc) - 1)];
+			break;
+
+		/*
+		 *  Alpa numeric + punctuation
+		 */
+		case '.':
+			*out++ = '!' + (result % 95);
+			break;
+
+		/*
+		 *  Alpha numeric + salt chars './'
+		 */
+		case 's':
+			*out++ = randstr_salt[result % (sizeof(randstr_salt) - 1)];
+			break;
+
+		/*
+		 *  Chars suitable for One Time Password tokens.
+		 *  Alpha numeric with easily confused char pairs removed.
+		 */
+		case 'o'
+			*out++ = randstr_otp[result % (sizeof(randstr_otp) - 1)];
+			break;
+
+		/*
+		 *  Binary data as hexits (we don't really support
+		 *  non printable chars).
+		 */
+		case 'h':
+			if (freespace < 2) {
 				break;
+			}
 
-			/*
-			 *  Uppercase letters
-			 */
-			case 'C':
-				*out++ = 'A' + (result % 26);
+			snprintf(out, 3, "%02x", result % 256);
+
+			/* Already decremented */
+			freespace -= 1;
+			out += 2;
+			break;
+
+		/*
+		 *  Binary data with uppercase hexits
+		 */
+		case 'H':
+			if (freespace < 2) {
 				break;
+			}
 
-			/*
-			 *  Numbers
-			 */
-			case 'n':
-				*out++ = '0' + (result % 10);
-				break;
+			snprintf(out, 3, "%02X", result % 256);
 
-			/*
-			 *  Alpha numeric
-			 */
-			case 'a':
-				*out++ = randstr_salt[result % (sizeof(randstr_salt) - 3)];
-				break;
+			/* Already decremented */
+			freespace -= 1;
+			out += 2;
+			break;
 
-			/*
-			 *  Punctuation
-			 */
-			case '!':
-				*out++ = randstr_punc[result % (sizeof(randstr_punc) - 1)];
-				break;
+		default:
+			ERROR("rlm_expr: invalid character class '%c'", *p);
 
-			/*
-			 *  Alpa numeric + punctuation
-			 */
-			case '.':
-				*out++ = '!' + (result % 95);
-				break;
-
-			/*
-			 *  Alpha numeric + salt chars './'
-			 */
-			case 's':
-				*out++ = randstr_salt[result % (sizeof(randstr_salt) - 1)];
-				break;
-
-			/*
-			 *  Binary data as hexits (we don't really support
-			 *  non printable chars).
-			 */
-			case 'h':
-				if (freespace < 2) {
-					break;
-				}
-
-				snprintf(out, 3, "%02x", result % 256);
-
-				/* Already decremented */
-				freespace -= 1;
-				out += 2;
-				break;
-
-			default:
-				ERROR("rlm_expr: invalid character class '%c'", *p);
-
-				return -1;
+			return -1;
 		}
 
 		p++;
