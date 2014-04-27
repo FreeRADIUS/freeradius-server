@@ -646,7 +646,9 @@ static void process_file(const char *root_dir, char const *filename)
 
 			data_len = outlen;
 			for (i = 0; i < outlen; i++) {
-				snprintf(output + 3*i, sizeof(output),
+				if (sizeof(output) < (3*i)) break;
+
+				snprintf(output + 3*i, sizeof(output) - (3*i) - 1,
 					 "%02x ", data[i]);
 			}
 			outlen = strlen(output);
