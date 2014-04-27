@@ -101,12 +101,10 @@ static void NEVER_RETURNS usage(void)
 	exit(1);
 }
 
-int radlog(log_type_t lvl, char const *fmt, ...)
+int radlog(UNUSED log_type_t lvl, char const *fmt, ...)
 {
 	va_list ap;
 	int r;
-
-	r = lvl; /* shut up compiler */
 
 	va_start(ap, fmt);
 	r = vfprintf(stderr, fmt, ap);
@@ -191,6 +189,8 @@ static int send_packet(RADIUS_PACKET *req, RADIUS_PACKET **rep)
 {
 	int i;
 	struct timeval	tv;
+
+	if (!req || !rep || !*rep) return -1;
 
 	for (i = 0; i < retries; i++) {
 		fd_set		rdfdesc;
@@ -854,6 +854,8 @@ static int sendrecv_eap(RADIUS_PACKET *rep)
 	VALUE_PAIR *vp, *vpnext;
 	int tried_eap_md5 = 0;
 
+	if (!rep) return -1;
+
 	/*
 	 *	Keep a copy of the the User-Password attribute.
 	 */
@@ -966,6 +968,8 @@ static int sendrecv_eap(RADIUS_PACKET *rep)
 
 	/* send the response, wait for the next request */
 	send_packet(rep, &req);
+
+	if (!req) return -1;
 
 	/* okay got back the packet, go and decode the EAP-Message. */
 	unmap_eap_methods(req);
@@ -1412,6 +1416,8 @@ static void unmap_eap_methods(RADIUS_PACKET *rep)
 	eap_packet_raw_t *e;
 	int len;
 	int type;
+
+	if (!rep) return;
 
 	/* find eap message */
 	e = eap_vp2packet(NULL, rep->vps);
