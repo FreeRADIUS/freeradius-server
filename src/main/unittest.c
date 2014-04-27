@@ -141,7 +141,7 @@ static REQUEST *request_setup(FILE *fp)
 	 *	Read packet from fp
 	 */
 	if (readvp2(&request->packet->vps, request->packet, fp, &filedone) < 0) {
-		fr_perror("unittest:");
+		fr_perror("unittest");
 		talloc_free(request);
 		return NULL;
 	}

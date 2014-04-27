@@ -198,7 +198,7 @@ static int send_packet(RADIUS_PACKET *req, RADIUS_PACKET **rep)
 		debug_packet(req, R_SENT);
 
 		if (rad_send(req, NULL, secret) < 0) {
-			fr_perror("Failed sending packet:");
+			fr_perror("radeapclient");
 			exit(1);
 		}
 
@@ -239,7 +239,7 @@ static int send_packet(RADIUS_PACKET *req, RADIUS_PACKET **rep)
 			}
 			break;
 		} else {	/* NULL: couldn't receive the packet */
-			fr_perror("radclient:");
+			fr_perror("radclient");
 			exit(1);
 		}
 	}
@@ -1307,7 +1307,7 @@ int main(int argc, char **argv)
 	while(!filedone) {
 		if (req->vps) pairfree(&req->vps);
 		if (readvp2(&req->vps, NULL, fp, &filedone) < 0) {
-			fr_perror("radeapclient:");
+			fr_perror("radeapclient");
 			break;
 		}
 
@@ -1573,7 +1573,7 @@ main(int argc, char *argv[])
 		if (req2->vps) pairfree(&req2->vps);
 
 		if (readvp2(&req->vps, NULL, stdin, &filedone) < 0) {
-			fr_perror("radeapclient:");
+			fr_perror("radeapclient");
 			break;
 		}
 

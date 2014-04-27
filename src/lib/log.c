@@ -188,12 +188,12 @@ void fr_perror(char const *fmt, ...)
 
 	va_start(ap, fmt);
 	vfprintf(stderr, fmt, ap);
-	if (strchr(fmt, ':') == NULL)
-		fprintf(stderr, ": ");
 
 	error = fr_strerror();
-	if (error) {
-		fprintf(stderr, "%s\n", error);
+	if (error && (error[0] != '\0')) {
+		fprintf(stderr, ": %s\n", error);
+	} else {
+		fputs("\n", stderr);
 	}
 
 	va_end(ap);
@@ -215,7 +215,7 @@ bool fr_assert_cond(char const *file, int line, char const *expr, bool cond)
 void NEVER_RETURNS _fr_exit(char const *file, int line, int status)
 {
 #ifndef NDEBUG
-	fr_perror("EXIT CALLED %s[%u]: %i: ", file, line, status);
+	fr_perror("EXIT CALLED %s[%u]: %i", file, line, status);
 #endif
 	fflush(stderr);
 
@@ -227,7 +227,7 @@ void NEVER_RETURNS _fr_exit(char const *file, int line, int status)
 void NEVER_RETURNS _fr_exit_now(char const *file, int line, int status)
 {
 #ifndef NDEBUG
-	fr_perror("_EXIT CALLED %s[%u]: %i: ", file, line, status);
+	fr_perror("_EXIT CALLED %s[%u]: %i", file, line, status);
 #endif
 	fflush(stderr);
 

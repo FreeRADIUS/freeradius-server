@@ -61,7 +61,7 @@ RCSIDH(radsniff_h, "$Id$")
 #define RDEBUG_ENABLED()	(conf->print_packet && (fr_debug_flag > 1))
 #define RDEBUG_ENABLED2()	(conf->print_packet && (fr_debug_flag > 2))
 
-#define REDEBUG(fmt, ...)	if (conf->print_packet) fprintf(fr_log_fp , "%s (%" PRIu64 ")  " fmt ": %s\n", timestr, count, ## __VA_ARGS__,  fr_strerror())
+#define REDEBUG(fmt, ...)	if (conf->print_packet) fr_perror("%s (%" PRIu64 ") " fmt , timestr, count, ## __VA_ARGS__)
 #define RIDEBUG(fmt, ...)	if (conf->print_packet && (fr_debug_flag > 0)) fprintf(fr_log_fp , "%s (%" PRIu64 ") " fmt "\n", timestr, count, ## __VA_ARGS__)
 #define RDEBUG(fmt, ...)	if (conf->print_packet && (fr_debug_flag > 1)) fprintf(fr_log_fp , "%s (%" PRIu64 ") " fmt "\n", timestr, count, ## __VA_ARGS__)
 #define RDEBUG2(fmt, ...)	if (conf->print_packet && (fr_debug_flag > 2)) fprintf(fr_log_fp , "%s (%" PRIu64 ") " fmt "\n", timestr, count, ## __VA_ARGS__)
