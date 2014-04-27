@@ -505,7 +505,7 @@ int dual_tls_send(rad_listen_t *listener, REQUEST *request)
  *
  *	Called with the mutex held.
  */
-static int proxy_tls_read(rad_listen_t *listener)
+static ssize_t proxy_tls_read(rad_listen_t *listener)
 {
 	int rcode;
 	size_t length;
@@ -607,26 +607,27 @@ static int proxy_tls_read(rad_listen_t *listener)
 		return 0;
 	}
 
-	return 1;
+	sock->partial = 0;	/* we've now read the packet */
+	return length;
 }
 
 
 int proxy_tls_recv(rad_listen_t *listener)
 {
-	int rcode;
 	listen_socket_t *sock = listener->data;
 	char buffer[256];
 	RADIUS_PACKET *packet;
 	uint8_t *data;
+	ssize_t data_len;
 
 	if (listener->status != RAD_LISTEN_STATUS_KNOWN) return 0;
 
 	DEBUG3("Proxy SSL socket has data to read");
 	PTHREAD_MUTEX_LOCK(&sock->mutex);
-	rcode = proxy_tls_read(listener);
+	data_len = proxy_tls_read(listener);
 	PTHREAD_MUTEX_UNLOCK(&sock->mutex);
 
-	if (rcode < 0) {
+	if (data_len < 0) {
 		DEBUG("Closing TLS socket to home server");
 		PTHREAD_MUTEX_LOCK(&sock->mutex);
 		tls_socket_close(listener);
@@ -634,10 +635,9 @@ int proxy_tls_recv(rad_listen_t *listener)
 		return 0;
 	}
 
-	if (rcode == 0) return 0; /* no data to read */
+	if (data_len == 0) return 0; /* not done yet */
 
 	data = sock->data;
-	sock->partial = 0;	/* we've now read the packet */
 
 	packet = rad_alloc(sock, 0);
 	packet->sockfd = listener->fd;
@@ -647,7 +647,7 @@ int proxy_tls_recv(rad_listen_t *listener)
 	packet->dst_port = sock->my_port;
 	packet->code = data[0];
 	packet->id = data[1];
-	packet->data_len = (data[2] << 8) | data[3];
+	packet->data_len = data_len;
 	packet->data = talloc_array(packet, uint8_t, packet->data_len);
 	memcpy(packet->data, data, packet->data_len);
 	memcpy(packet->vector, packet->data + 4, 16);
