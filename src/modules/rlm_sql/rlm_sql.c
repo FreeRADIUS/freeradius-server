@@ -978,9 +978,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST * request)
 			goto error;
 		}
 
-		if (rows == 0) {
-			goto skipreply;
-		}
+		if (rows == 0) goto skipreply;	/* Don't need to free VPs we don't have */
 
 		/*
 		 *	Only do this if *some* check pairs were returned
@@ -988,12 +986,15 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST * request)
 		RDEBUG2("User found in radcheck table");
 		user_found = true;
 		if (paircompare(request, request->packet->vps, check_tmp, &request->reply->vps) != 0) {
+			pairfree(&check_tmp);
+			check_tmp = NULL;
 			goto skipreply;
 		}
 
 		RDEBUG2("Check items matched");
 		radius_pairmove(request, &request->config_items, check_tmp, true);
 		rcode = RLM_MODULE_OK;
+		check_tmp = NULL;
 	}
 
 	if (inst->config->authorize_reply_query && (inst->config->authorize_reply_query[0] != '\0')) {
@@ -1015,9 +1016,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST * request)
 			goto error;
 		}
 
-		if (rows == 0) {
-			goto skipreply;
-		}
+		if (rows == 0) goto skipreply;
 
 		if (!inst->config->read_groups) {
 			dofallthrough = fallthrough(reply_tmp);
@@ -1027,14 +1026,8 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST * request)
 		user_found = true;
 		radius_pairmove(request, &request->reply->vps, reply_tmp, true);
 		rcode = RLM_MODULE_OK;
+		reply_tmp = NULL;
 	}
-
-	/*
-	 *	radius_pairmove will have consumed any VPs so they don't have to be
-	 *	explicitly freed.
-	 */
-	check_tmp = NULL;
-	reply_tmp = NULL;
 
 skipreply:
 	/*
@@ -1131,16 +1124,20 @@ skipreply:
 	 *	At this point the key (user) hasn't be found in the check table, the reply table
 	 *	or the group mapping table, and there was no matching profile.
 	 */
-	release:
+release:
 	if (!user_found) {
 		rcode = RLM_MODULE_NOTFOUND;
 	}
 
-	error:
 	sql_release_socket(inst, handle);
 
+	return rcode;
+
+error:
 	pairfree(&check_tmp);
 	pairfree(&reply_tmp);
+
+	sql_release_socket(inst, handle);
 
 	return rcode;
 }
