@@ -230,10 +230,11 @@ VALUE_PAIR *pairfind(VALUE_PAIR *vp, unsigned int attr, unsigned int vendor, int
 	vp_cursor_t 	cursor;
 	VALUE_PAIR	*i;
 
+	VERIFY_LIST(vp);
+
 	for (i = fr_cursor_init(&cursor, &vp);
 	     i;
 	     i = fr_cursor_next(&cursor)) {
-		VERIFY_VP(i);
 		if ((i->da->attr == attr) && (i->da->vendor == vendor) && \
 		    (!i->da->flags.has_tag || (tag == TAG_ANY) || (i->tag == tag))) {
 			return i;

@@ -21,6 +21,7 @@
  * @copyright 2013  The FreeRADIUS server project
  * @copyright 2013  Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  */
+#include <assert.h>
 #include <freeradius-devel/libradius.h>
 #include <sys/stat.h>
 
@@ -645,3 +646,37 @@ void fr_fault_set_log_fd(int fd)
 {
 	fr_fault_log_fd = fd;
 }
+
+
+#ifndef WITH_VERIFY_PTR
+/*
+ *	Verify a pair list
+ */
+void fr_verify_list(TALLOC_CTX *expected, VALUE_PAIR *vps)
+{
+	vp_cursor_t cursor;
+	VALUE_PAIR *vp;
+	TALLOC_CTX *parent;
+
+	for (vp = fr_cursor_init(&cursor, &vps);
+	     vp;
+	     vp = fr_cursor_next(&cursor)) {
+		VERIFY_VP(vp);
+
+		parent = talloc_parent(vp);
+		if (expected && (parent != expected)) {
+			fr_perror("Expected VALUE_PAIR (%s) to be parented by %p (%s), "
+			          "but parented by %p (%s)",
+				  vp->da->name,
+				  expected, talloc_get_name(expected),
+				  parent, parent ? talloc_get_name(parent) : "NULL");
+
+			fr_log_talloc_report(expected);
+			if (parent) fr_log_talloc_report(parent);
+
+			assert(0);
+		}
+
+	}
+}
+#endif
