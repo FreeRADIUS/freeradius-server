@@ -506,15 +506,27 @@ int vqp_decode(RADIUS_PACKET *packet)
 
 		default:
 		case PW_TYPE_OCTETS:
-			pairmemcpy(vp, ptr, length);
+			if (length < 1024) {
+				pairmemcpy(vp, ptr, length);
+			} else {
+				pairmemcpy(vp, ptr, 1024);
+			}
 			break;
 
 		case PW_TYPE_STRING:
-			vp->length = length;
-			vp->vp_strvalue = p = talloc_array(vp, char, vp->length + 1);
-			vp->type = VT_DATA;
-			memcpy(p, ptr, vp->length);
-			p[vp->length] = '\0';
+			if (length < 1024) {
+				vp->length = length;
+				vp->vp_strvalue = p = talloc_array(vp, char, vp->length + 1);
+				vp->type = VT_DATA;
+				memcpy(p, ptr, vp->length);
+				p[vp->length] = '\0';
+			} else {
+				vp->length = 1024;
+				vp->vp_strvalue = p = talloc_array(vp, char, 1025);
+				vp->type = VT_DATA;
+				memcpy(p, ptr, vp->length);
+				p[vp->length] = '\0';
+			}
 			break;
 		}
 		ptr += length;
