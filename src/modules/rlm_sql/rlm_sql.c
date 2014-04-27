@@ -1001,7 +1001,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST * request)
 		 *	Now get the reply pairs since the paircompare matched
 		 */
 		if (radius_axlat(&expanded, request, inst->config->authorize_reply_query,
-				sql_escape_func, inst) < 0) {
+				 sql_escape_func, inst) < 0) {
 			REDEBUG("Error generating query");
 			rcode = RLM_MODULE_FAIL;
 			goto error;
@@ -1029,14 +1029,14 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST * request)
 		rcode = RLM_MODULE_OK;
 	}
 
-	skipreply:
-
 	/*
-	 *	Clear out the pairlists
+	 *	radius_pairmove will have consumed any VPs so they don't have to be
+	 *	explicitly freed.
 	 */
-	pairfree(&check_tmp);
-	pairfree(&reply_tmp);
+	check_tmp = NULL;
+	reply_tmp = NULL;
 
+skipreply:
 	/*
 	 *	dofallthrough is set to 1 by default so that if the user information
 	 *	is not found, we will still process groups.  If the user information,
