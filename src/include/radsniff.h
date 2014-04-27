@@ -231,6 +231,7 @@ struct rs {
 	bool			print_packet;		//!< Print packet info, disabled with -W
 	bool			decode_attrs;		//!< Whether we should decode attributes in the request
 							//!< and response.
+	bool			verify_udp_checksum;	//!< Check UDP checksum in packets.
 
 	char const		*radius_secret;		//!< Secret to decode encrypted attributes.
 
