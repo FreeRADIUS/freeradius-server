@@ -458,7 +458,7 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 						pairfree(&found);
 						return NULL;
 					}
-					RDEBUG("\t%s %s %s (%s)", map->dst->name,
+					RDEBUG("\t%s %s %s:%s", map->dst->name,
 					       fr_int2str(fr_tokens, map->op, "<INVALID>"),
 					       map->src->name, vp->da->name);
 					vp->op = map->op;
