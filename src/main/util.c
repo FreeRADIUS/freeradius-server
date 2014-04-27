@@ -1119,7 +1119,7 @@ static void verify_packet(REQUEST *request, RADIUS_PACKET *packet)
 /*
  *	Catch horrible talloc errors.
  */
-void request_verify(REQUEST *request)
+void verify_request(REQUEST *request)
 {
 	if (!request) return;
 
@@ -1141,7 +1141,7 @@ void request_verify(REQUEST *request)
 
 		rad_assert(parent == request);
 
-		request_verify(request->coa);
+		verify_request(request->coa);
 	}
 #endif
 }
