@@ -160,7 +160,7 @@ install-arch: build-arch-stamp
 	
 	dh_strip -a --dbg-package=freeradius-dbg
 
-	dh_makeshlibs -a -n -V 'libssl1.0.0 (>= 1.0.1e-2+deb7u6)'
+	dh_makeshlibs -a -n
 	dh_shlibdeps -l$(freeradius_dir)/usr/lib/freeradius
 
 binary-common:
