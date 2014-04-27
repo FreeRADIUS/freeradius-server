@@ -12,7 +12,7 @@ FreeRADIUS 3.0.3 Fri 21 Mar 2014 08:30:00 EDT urgency=medium
 	  are caught, and a descriptive error is printed.
 	* dynamic expansions are cached after being parsed.  They are
 	  no longer re-parsed at run-time for every request.
-	* regular expressions are no parsed and cached when the server
+	* regular expressions are now parsed and cached when the server
 	  starts.
 	* Added the %{rest:} expansion to rlm_rest, which will send
 	  a GET request to the URL passed as the format string.
