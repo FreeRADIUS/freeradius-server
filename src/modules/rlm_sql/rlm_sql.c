@@ -442,7 +442,7 @@ int sql_set_user(rlm_sql_t *inst, REQUEST *request, char const *username)
 	pairstrsteal(vp, expanded);
 	RDEBUG2("SQL-User-Name set to '%s'", vp->vp_strvalue);
 	vp->op = T_OP_SET;
-	pairmove(request, &request->packet->vps, &vp);	/* needs to be pair move else op is not respected */
+	radius_pairmove(request, &request->packet->vps, vp, false);	/* needs to be pair move else op is not respected */
 
 	return 0;
 }
