@@ -121,18 +121,18 @@ extern "C" {
 #  define VERIFY_VP(_x) \
 do {\
 	(void) talloc_get_type_abort(_x, VALUE_PAIR);\
-	if (_x->data.ptr) switch (_x->da->type) {\
+	if ((_x)->data.ptr) switch ((_x)->da->type) {\
 	case PW_TYPE_OCTETS:\
 	case PW_TYPE_TLV:\
-		if (!talloc_get_type(_x->data.ptr, uint8_t)) {\
-			fr_perror("Type check failed for attribute \"%s\"", _x->da->name);\
-			(void) talloc_get_type_abort(_x->data.ptr, uint8_t);\
+		if (!talloc_get_type((_x)->data.ptr, uint8_t)) {\
+			fr_perror("Type check failed for attribute \"%s\"", (_x)->da->name);\
+			(void) talloc_get_type_abort((_x)->data.ptr, uint8_t);\
 		}\
 		break;\
 	case PW_TYPE_STRING:\
-		if (!talloc_get_type(_x->data.ptr, char)) {\
-			fr_perror("Type check failed for attribute \"%s\"", _x->da->name);\
-			(void) talloc_get_type_abort(_x->data.ptr, char);\
+		if (!talloc_get_type((_x)->data.ptr, char)) {\
+			fr_perror("Type check failed for attribute \"%s\"", (_x)->da->name);\
+			(void) talloc_get_type_abort((_x)->data.ptr, char);\
 		}\
 		break;\
 	default:\

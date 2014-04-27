@@ -536,7 +536,7 @@ char const	*rad_default_raddb_dir(void);
 char const	*rad_default_run_dir(void);
 char const	*rad_default_sbin_dir(void);
 char const	*rad_radacct_dir(void);
-void		request_verify(REQUEST *request); /* only for special debug builds */
+void		verify_request(REQUEST *request); /* only for special debug builds */
 
 /* client.c */
 RADCLIENT_LIST	*clients_init(CONF_SECTION *cs);
