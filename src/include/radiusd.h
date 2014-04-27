@@ -544,7 +544,7 @@ int		rad_expand_xlat(REQUEST *request, char const *cmd,
 				size_t argv_buflen, char *argv_buf);
 void		rad_regcapture(REQUEST *request, int compare, char const *value,
 			       regmatch_t rxmatch[]);
-void		verify_request(REQUEST *request); /* only for special debug builds */
+void		verify_request(REQUEST *request);			/* only for special debug builds */
 
 /* client.c */
 RADCLIENT_LIST	*clients_init(CONF_SECTION *cs);
