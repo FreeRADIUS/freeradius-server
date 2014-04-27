@@ -995,7 +995,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			return;
 		}
 	}
-	if (version == 4) {
+	if ((version == 4) && conf->verify_udp_checksum) {
 		uint16_t expected;
 
 		expected = fr_udp_checksum((uint8_t const *) udp, ntohs(udp->len), udp->checksum,
@@ -1747,6 +1747,7 @@ static void NEVER_RETURNS usage(int status)
 	fprintf(output, "options:\n");
 	fprintf(output, "  -a                    List all interfaces available for capture.\n");
 	fprintf(output, "  -c <count>            Number of packets to capture.\n");
+	fprintf(output, "  -C                    Enable UDP checksum validation.\n");
 	fprintf(output, "  -d <directory>        Set dictionary directory.\n");
 	fprintf(stderr, "  -d <raddb>            Set configuration directory (defaults to " RADDBDIR ").\n");
 	fprintf(stderr, "  -D <dictdir>          Set main dictionary directory (defaults to " DICTDIR ").\n");
@@ -1854,7 +1855,7 @@ int main(int argc, char *argv[])
 	/*
 	 *  Get options
 	 */
-	while ((opt = getopt(argc, argv, "ab:c:d:D:e:Ff:hi:I:l:L:mp:P:qr:R:s:Svw:xXW:T:P:N:O:")) != EOF) {
+	while ((opt = getopt(argc, argv, "ab:c:Cd:D:e:Ff:hi:I:l:L:mp:P:qr:R:s:Svw:xXW:T:P:N:O:")) != EOF) {
 		switch (opt) {
 		case 'a':
 			{
@@ -1891,6 +1892,11 @@ int main(int argc, char *argv[])
 				ERROR("Invalid number of packets \"%s\"", optarg);
 				usage(1);
 			}
+			break;
+
+		/* udp checksum */
+		case 'C':
+			conf->verify_udp_checksum = true;
 			break;
 
 		case 'd':
