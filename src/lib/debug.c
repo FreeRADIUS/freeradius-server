@@ -648,7 +648,7 @@ void fr_fault_set_log_fd(int fd)
 }
 
 
-#ifndef WITH_VERIFY_PTR
+#ifdef WITH_VERIFY_PTR
 /*
  *	Verify a pair list
  */
