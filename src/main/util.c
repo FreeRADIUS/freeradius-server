@@ -1088,14 +1088,44 @@ void rad_regcapture(REQUEST *request, int compare, char const *value, regmatch_t
 }
 
 #ifndef NDEBUG
+
+/*
+ *	Verify a pair list
+ */
+static void verify_list(TALLOC_CTX *expected, VALUE_PAIR *vps)
+{
+	vp_cursor_t cursor;
+	VALUE_PAIR *vp;
+	TALLOC_CTX *parent;
+
+	for (vp = fr_cursor_init(&cursor, &vps);
+	     vp;
+	     vp = fr_cursor_next(&cursor)) {
+		VERIFY_VP(vp);
+
+		parent = talloc_parent(vp);
+		if (expected && (parent != expected)) {
+			ERROR("Expected VALUE_PAIR (%s) to be parented by %p (%s), "
+			      "but parented by %p (%s)",
+			      vp->da->name,
+			      expected, talloc_get_name(expected),
+			      parent, parent ? talloc_get_name(parent) : "NULL");
+
+			fr_log_talloc_report(expected);
+			if (parent) fr_log_talloc_report(parent);
+
+			rad_assert(0);
+		}
+
+	}
+}
+
 /*
  *	Verify a packet.
  */
 static void verify_packet(REQUEST *request, RADIUS_PACKET *packet)
 {
-	vp_cursor_t cursor;
-	void *parent;
-	VALUE_PAIR *vp;
+	TALLOC_CTX *parent;
 
 	if (!packet) return;
 
@@ -1116,26 +1146,7 @@ static void verify_packet(REQUEST *request, RADIUS_PACKET *packet)
 
 	if (!packet->vps) return;
 
-	for (vp = fr_cursor_init(&cursor, &packet->vps);
-	     vp;
-	     vp = fr_cursor_next(&cursor)) {
-		VERIFY_VP(vp);
-
-		parent = talloc_parent(vp);
-		if (parent != packet) {
-			ERROR("Expected VALUE_PAIR (%s) to be parented by %p (%s), "
-			      "but parented by %p (%s)",
-			      vp->da->name,
-			      packet, talloc_get_name(packet),
-			      parent, parent ? talloc_get_name(parent) : "NULL");
-
-			fr_log_talloc_report(packet);
-			if (parent) fr_log_talloc_report(parent);
-
-			rad_assert(0);
-		}
-
-	}
+	verify_list(packet, packet->vps);
 }
 
 /*
@@ -1146,6 +1157,8 @@ void verify_request(REQUEST *request)
 	if (!request) return;
 
 	(void) talloc_get_type_abort(request, REQUEST);
+
+	verify_list(request, request->config_items);
 
 	if (request->packet) verify_packet(request, request->packet);
 	if (request->reply) verify_packet(request, request->reply);
