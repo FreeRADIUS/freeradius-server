@@ -507,7 +507,7 @@ static void _fr_fault_mem_report(int sig)
 {
 	fr_fault_log("CAUGHT SIGNAL: %s\n", strsignal(sig));
 
-	if (fr_log_talloc_report(NULL) < 0) fr_perror("memreport:");
+	if (fr_log_talloc_report(NULL) < 0) fr_perror("memreport");
 }
 
 /** Registers signal handlers to execute panic_action on fatal signal
