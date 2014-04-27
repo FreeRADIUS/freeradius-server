@@ -48,8 +48,9 @@ FreeRADIUS 3.0.3 Fri 21 Mar 2014 08:30:00 EDT urgency=medium
 	  reply:FreeRADIUS-Response-Delay = 1
 	* Allow tag and array references anywhere attributes
 	  are allowed in "unlang".
-	* many enhancements to radsniff, including output 
+	* many enhancements to radsniff, including output
 	  to collectd, ipv6 support and packet loss statistics.
+	* Many dictionary updates (ZTE, Brocade, Motorola)
 
 	Bug fixes
 	* Fix xlat expression %{attribute[n]} so that it actually
@@ -93,6 +94,12 @@ FreeRADIUS 3.0.3 Fri 21 Mar 2014 08:30:00 EDT urgency=medium
 	  not "ok".
 	* Run Post-Proxy-Type Fail.  Closes #576
 	* Fix DHCP destination port for replies to relays.  Closes #591
+	* Do-Not-Respond policy works again  Closes #593
+	* Proxy-To-Virtual-Server works again.  Closes #596
+	* Build fixes for ancient systems.  Closes #607, #608, #609.
+	* %{Module-Return-Code} works again.  Closes #610.
+	* Don't increment statistics for Status-Server responses.
+	  Closes #612.
 
 FreeRADIUS 3.0.2 Fri 21 Mar 2014 08:30:00 EDT urgency=medium
 	Feature improvements
