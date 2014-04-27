@@ -390,7 +390,7 @@ static ssize_t randstr_xlat(UNUSED void *instance, UNUSED REQUEST *request,
 		 *  Chars suitable for One Time Password tokens.
 		 *  Alpha numeric with easily confused char pairs removed.
 		 */
-		case 'o'
+		case 'o':
 			*out++ = randstr_otp[result % (sizeof(randstr_otp) - 1)];
 			break;
 
