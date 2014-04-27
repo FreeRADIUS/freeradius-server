@@ -129,10 +129,10 @@ static sql_rcode_t sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *
 		      (long int) conn->sql_code, conn->error, query);
 
 		if (conn->sql_code == DOWN_SQL_CODE) {
+		reconnect:
 #ifdef _PTHREAD_H
-			pthread_mutex_lock(&conn->mut);
+			pthread_mutex_unlock(&conn->mut);
 #endif
-
 			return RLM_SQL_RECONNECT;
 		}
 
@@ -141,18 +141,23 @@ static sql_rcode_t sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *
 			//assume the network is down if rollback had failed
 			ERROR("Fail to rollback transaction after previous error: %s", conn->error);
 
-			return RLM_SQL_RECONNECT;
+			goto reconnect;
 		}
 		//   conn->in_use=0;
+	fail:
+#ifdef _PTHREAD_H
+		pthread_mutex_unlock(&conn->mut);
+#endif
 		return -1;
 	}
 
 	if (conn->statement_type != isc_info_sql_stmt_select) {
-		if (fb_commit(conn)) {
-			return -1;
-		}
+		if (fb_commit(conn)) goto fail;
 	}
 
+#ifdef _PTHREAD_H
+	pthread_mutex_unlock(&conn->mut);
+#endif
 	return 0;
 }
 
