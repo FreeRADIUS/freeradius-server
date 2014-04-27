@@ -37,6 +37,13 @@ VALUE_PAIR *_fr_cursor_init(vp_cursor_t *cursor, VALUE_PAIR const * const *node)
 		return NULL;
 	}
 
+	/*
+	 *  Useful check to see if uninitialised memory is pointed
+	 *  to by node
+	 */
+#ifndef NDEBUG
+	if (*node) VERIFY_VP(*node);
+#endif
 	memcpy(&cursor->first, &node, sizeof(cursor->first));
 	cursor->current = *cursor->first;
 
