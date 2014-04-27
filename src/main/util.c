@@ -1190,7 +1190,17 @@ static void verify_packet(REQUEST *request, RADIUS_PACKET *packet)
 	if (!packet) return;
 
 	parent = talloc_parent(packet);
-	rad_assert(parent == request);
+	if (parent != request) {
+		ERROR("Expected RADIUS_PACKET to be parented by %p (%s), "
+		      "but parented by %p (%s)",
+		      request, talloc_get_name(request),
+		      parent, parent ? talloc_get_name(parent) : "NULL");
+
+		fr_log_talloc_report(packet);
+		if (parent) fr_log_talloc_report(parent);
+
+		rad_assert(0);
+	}
 
 	VERIFY_PACKET(packet);
 
@@ -1202,7 +1212,19 @@ static void verify_packet(REQUEST *request, RADIUS_PACKET *packet)
 		VERIFY_VP(vp);
 
 		parent = talloc_parent(vp);
-		rad_assert(parent == packet);
+		if (parent != packet) {
+			ERROR("Expected VALUE_PAIR (%s) to be parented by %p (%s), "
+			      "but parented by %p (%s)",
+			      vp->da->name,
+			      packet, talloc_get_name(packet),
+			      parent, parent ? talloc_get_name(parent) : "NULL");
+
+			fr_log_talloc_report(packet);
+			if (parent) fr_log_talloc_report(parent);
+
+			rad_assert(0);
+		}
+
 	}
 }
 
