@@ -247,6 +247,7 @@ static sql_rcode_t sql_query(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t 
 {
 	rlm_sql_mysql_conn_t *conn = handle->conn;
 	sql_rcode_t rcode;
+	char const *info;
 
 	if (!conn->sock) {
 		ERROR("rlm_sql_mysql: Socket not connected");
@@ -258,7 +259,10 @@ static sql_rcode_t sql_query(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t 
 	if (rcode != RLM_SQL_OK) {
 		return rcode;
 	}
-	DEBUG2("rlm_sql_mysql: %s", mysql_info(conn->sock));
+
+	/* Only returns non-null string for INSERTS */
+	info = mysql_info(conn->sock);
+	if (info) DEBUG2("rlm_sql_mysql: %s", info);
 
 	return RLM_SQL_OK;
 }
