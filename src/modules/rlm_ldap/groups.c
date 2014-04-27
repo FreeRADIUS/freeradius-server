@@ -287,7 +287,7 @@ rlm_rcode_t rlm_ldap_cacheable_userobj(ldap_instance_t const *inst, REQUEST *req
 			 */
 			if (is_dn) {
 				pairmake(request, &request->config_items, inst->group_da->name, vals[i], T_OP_ADD);
-				RDEBUG("Added %s with value \"%s\" to control list", inst->group_da->name, vals[i]);
+				RDEBUG("Added control:%s with value \"%s\"", inst->group_da->name, vals[i]);
 
 			/*
 			 *	We were told to cache DNs but we got a name, we now need to resolve
@@ -304,7 +304,7 @@ rlm_rcode_t rlm_ldap_cacheable_userobj(ldap_instance_t const *inst, REQUEST *req
 			 */
 			if (!is_dn) {
 				pairmake(request, &request->config_items, inst->group_da->name, vals[i], T_OP_ADD);
-				RDEBUG("Added %s with value \"%s\" to control list", inst->group_da->name, vals[i]);
+				RDEBUG("Added control:%s with value \"%s\"", inst->group_da->name, vals[i]);
 			/*
 			 *	We were told to cache names but we got a DN, we now need to resolve
 			 *	this to a name.
@@ -320,7 +320,7 @@ rlm_rcode_t rlm_ldap_cacheable_userobj(ldap_instance_t const *inst, REQUEST *req
 				}
 
 				pairmake(request, &request->config_items, inst->group_da->name, name, T_OP_ADD);
-				RDEBUG("Added %s with value \"%s\" to control list", inst->group_da->name, name);
+				RDEBUG("Added control:%s with value \"%s\"", inst->group_da->name, name);
 				talloc_free(name);
 			}
 		}
@@ -338,7 +338,7 @@ rlm_rcode_t rlm_ldap_cacheable_userobj(ldap_instance_t const *inst, REQUEST *req
 	dn_p = group_dn;
 	while(*dn_p) {
 		pairmake(request, &request->config_items, inst->group_da->name, *dn_p, T_OP_ADD);
-		RDEBUG("Added %s with value \"%s\" to control list", inst->group_da->name, *dn_p);
+		RDEBUG("Added control:%s with value \"%s\"", inst->group_da->name, *dn_p);
 		ldap_memfree(*dn_p);
 
 		dn_p++;
@@ -416,7 +416,7 @@ rlm_rcode_t rlm_ldap_cacheable_groupobj(ldap_instance_t const *inst, REQUEST *re
 		if (inst->cacheable_group_dn) {
 			dn = ldap_get_dn((*pconn)->handle, entry);
 			pairmake(request, &request->config_items, inst->group_da->name, dn, T_OP_ADD);
-			RDEBUG("Added %s with value \"%s\" to control list", inst->group_da->name, dn);
+			RDEBUG("Added control:%s with value \"%s\"", inst->group_da->name, dn);
 			ldap_memfree(dn);
 		}
 
@@ -427,7 +427,7 @@ rlm_rcode_t rlm_ldap_cacheable_groupobj(ldap_instance_t const *inst, REQUEST *re
 			}
 
 			pairmake(request, &request->config_items, inst->group_da->name, *vals, T_OP_ADD);
-			RDEBUG("Added %s with value \"%s\" to control list", inst->group_da->name, *vals);
+			RDEBUG("Added control:%s with value \"%s\"", inst->group_da->name, *vals);
 
 			ldap_value_free(vals);
 		}
