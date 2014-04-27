@@ -3312,6 +3312,7 @@ void modcall_debug(modcallable *mc, int depth)
 			break;
 
 		case MOD_ELSE:
+			g = mod_callabletogroup(this);
 			DEBUG("%.*s%s {", depth, modcall_spaces,
 				group_name[this->type]);
 			modcall_debug(g->children, depth + 1);
