@@ -482,12 +482,65 @@ void pairsort(VALUE_PAIR **vps, fr_pair_cmp_t cmp)
 	*vps = pairsort_merge(a, b, cmp);
 }
 
+/** Write an error to the library errorbuff detailing the mismatch
+ *
+ * Retrieve output with fr_strerror();
+ *
+ * @todo add thread specific talloc contexts.
+ *
+ * @param ctx a hack until we have thread specific talloc contexts.
+ * @param failed pair of attributes which didn't match.
+ */
+void pairvalidate_debug(TALLOC_CTX *ctx, VALUE_PAIR const *failed[2])
+{
+	VALUE_PAIR const *filter = failed[0];
+	VALUE_PAIR const *list = failed[1];
+
+	char *value, *pair;
+
+	(void) fr_strerror();	/* Clear any existing messages */
+
+	if (!filter && !list)
+
+	if (!fr_assert(!(!filter && !list))) return;
+
+	if (!list) {
+		fr_strerror_printf("Attribute \"%s\" not found in list", filter->da->name);
+		return;
+	}
+
+	if (!filter || (filter->da != list->da)) {
+		fr_strerror_printf("Attribute \"%s\" not found in filter", list->da->name);
+		return;
+	}
+
+	if (filter->tag != list->tag) {
+		fr_strerror_printf("Attribute \"%s\" tag \"%i\" didn't match filter tag \"%i\"",
+				   list->da->name, list->tag, list->tag);
+		return;
+	}
+
+	pair = vp_aprint(ctx, filter);
+	value = vp_aprints(ctx, list);
+
+	fr_strerror_printf("Attribute value \"%s\" didn't match filter \"%s\"", value, pair);
+
+	talloc_free(pair);
+	talloc_free(value);
+
+	return;
+}
+
 /** Uses paircmp to verify all VALUE_PAIRs in list match the filter defined by check
  *
+ * @note will sort both filter and list in place.
+ *
+ * @param failed pointer to an array to write the pointers of the filter/list attributes that didn't match.
+ *	  May be NULL.
  * @param filter attributes to check list against.
  * @param list attributes, probably a request or reply
  */
-bool pairvalidate(VALUE_PAIR *filter, VALUE_PAIR *list)
+bool pairvalidate(VALUE_PAIR const *failed[2], VALUE_PAIR *filter, VALUE_PAIR *list)
 {
 	vp_cursor_t filter_cursor;
 	vp_cursor_t list_cursor;
@@ -507,8 +560,8 @@ bool pairvalidate(VALUE_PAIR *filter, VALUE_PAIR *list)
 	pairsort(&filter, attrtagcmp);
 	pairsort(&list, attrtagcmp);
 
-	match = fr_cursor_init(&list_cursor, &list);
 	check = fr_cursor_init(&filter_cursor, &filter);
+	match = fr_cursor_init(&list_cursor, &list);
 
 	while (true) {
 		/*
@@ -516,9 +569,7 @@ bool pairvalidate(VALUE_PAIR *filter, VALUE_PAIR *list)
 		 *	attributes aren't of the same type, then we're
 		 *	done.
 		 */
-		if (!attribute_eq(check, match)) {
-			return false;
-		}
+		if (!attribute_eq(check, match)) goto mismatch;
 
 		/*
 		 *	They're of the same type, but don't have the
@@ -527,33 +578,37 @@ bool pairvalidate(VALUE_PAIR *filter, VALUE_PAIR *list)
 		 *	Note that the RFCs say that for attributes of
 		 *	the same type, order is important.
 		 */
-		if (!paircmp(check, match)) {
-			return false;
-		}
+		if (!paircmp(check, match)) goto mismatch;
 
-		match = fr_cursor_next(&list_cursor);
 		check = fr_cursor_next(&filter_cursor);
-
-		if (!match && !check) break;
+		match = fr_cursor_next(&list_cursor);
+		if (!match && !check) goto mismatch;
 
 		/*
 		 *	One list ended earlier than the others, they
 		 *	didn't match.
 		 */
-		if (!match || !check) {
-			return false;
-		}
+		if (!match || !check) goto mismatch;
 	}
 
 	return true;
+
+mismatch:
+	if (failed) {
+		failed[0] = check;
+		failed[1] = match;
+	}
+	return false;
 }
 
 /** Uses paircmp to verify all VALUE_PAIRs in list match the filter defined by check
  *
+ * @note will sort both filter and list in place.
+ *
  * @param filter attributes to check list against.
  * @param list attributes, probably a request or reply
  */
-bool pairvalidate_relaxed(VALUE_PAIR *filter, VALUE_PAIR *list)
+bool pairvalidate_relaxed(VALUE_PAIR const *failed[2], VALUE_PAIR *filter, VALUE_PAIR *list)
 {
 	vp_cursor_t filter_cursor;
 	vp_cursor_t list_cursor;
@@ -587,10 +642,8 @@ bool pairvalidate_relaxed(VALUE_PAIR *filter, VALUE_PAIR *list)
 			 */
 			last_match = fr_cursor_next_by_da(&list_cursor, check->da, check->tag);
 			if (!last_match) {
-				if (check->op == T_OP_CMP_FALSE) {
-					continue;
-				}
-				return false;
+				if (check->op == T_OP_CMP_FALSE) continue;
+				goto mismatch;
 			}
 
 			fr_cursor_init(&list_cursor, &last_match);
@@ -606,13 +659,18 @@ bool pairvalidate_relaxed(VALUE_PAIR *filter, VALUE_PAIR *list)
 			/*
 			 *	This attribute passed the filter
 			 */
-			if (!paircmp(check, match)) {
-				return false;
-			}
+			if (!paircmp(check, match)) goto mismatch;
 		}
 	}
 
 	return true;
+
+mismatch:
+	if (failed) {
+		failed[0] = check;
+		failed[1] = match;
+	}
+	return false;
 }
 
 /** Copy a single valuepair

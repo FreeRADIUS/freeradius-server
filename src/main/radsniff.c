@@ -1112,7 +1112,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			 */
 			if (conf->filter_response_vps) {
 				pairsort(&current->vps, attrtagcmp);
-				if (!pairvalidate_relaxed(conf->filter_response_vps, current->vps)) {
+				if (!pairvalidate_relaxed(NULL, conf->filter_response_vps, current->vps)) {
 					goto drop_response;
 				}
 			}
@@ -1281,7 +1281,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 		 *	Now verify the packet passes the attribute filter
 		 */
 		if (conf->filter_request_vps) {
-			if (!pairvalidate_relaxed(conf->filter_request_vps, current->vps)) {
+			if (!pairvalidate_relaxed(NULL, conf->filter_request_vps, current->vps)) {
 				goto drop_request;
 			}
 		}
