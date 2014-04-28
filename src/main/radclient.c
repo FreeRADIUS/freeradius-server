@@ -242,8 +242,8 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 	if (strcmp(files->packets, "-") != 0) {
 		packets = fopen(files->packets, "r");
 		if (!packets) {
-			fprintf(stderr, "radclient: Error opening %s: %s\n",
-				files->packets, strerror(errno));
+			fr_perror("radclient: Error opening %s: %s",
+				  files->packets, strerror(errno));
 			return 0;
 		}
 
@@ -253,8 +253,8 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 		if (files->filters) {
 			filters = fopen(files->filters, "r");
 			if (!filters) {
-				fprintf(stderr, "radclient: Error opening %s: %s\n",
-					files->filters, strerror(errno));
+				fr_perror("radclient: Error opening %s: %s",
+					  files->filters, strerror(errno));
 				fclose(packets);
 				return 0;
 			}
@@ -273,14 +273,14 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 		 */
 		request = talloc_zero(ctx, rc_request_t);
 		if (!request) {
-			fprintf(stderr, "radclient: Out of memory\n");
+			fr_perror("radclient: Out of memory");
 			goto error;
 		}
 		talloc_set_destructor(request, _rc_request_free);
 
 		request->packet = rad_alloc(request, 1);
 		if (!request->packet) {
-			fprintf(stderr, "radclient: Out of memory\n");
+			fr_perror("radclient: Out of memory");
 			goto error;
 		}
 
@@ -328,14 +328,14 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 			}
 
 			if (filters_done && !packets_done) {
-				fprintf(stderr, "radclient: Differing number of packets/filters in %s:%s "
-					"(too many requests))", files->packets, files->filters);
+				fr_perror("radclient: Differing number of packets/filters in %s:%s "
+					  "(too many requests))", files->packets, files->filters);
 				goto error;
 			}
 
 			if (!filters_done && packets_done) {
-				fprintf(stderr, "radclient: Differing number of packets/filters in %s:%s "
-					"(too many filters))", files->packets, files->filters);
+				fr_perror("radclient: Differing number of packets/filters in %s:%s "
+					  "(too many filters))", files->packets, files->filters);
 				goto error;
 			}
 
@@ -491,7 +491,7 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 
 					da = dict_attrbyvalue(PW_DIGEST_ATTRIBUTES, 0);
 					if (!da) {
-						fprintf(stderr, "radclient: Out of memory\n");
+						fr_perror("radclient: Out of memory");
 						goto error;
 					}
 					vp->da = da;
@@ -563,18 +563,18 @@ static int radclient_sane(rc_request_t *request)
 	}
 	if (request->packet->dst_ipaddr.af == AF_UNSPEC) {
 		if (server_ipaddr.af == AF_UNSPEC) {
-			fprintf(stderr, "radclient: No server was given, but request %d in file %s "
-				"did not contain Packet-Dst-IP-Address\n",
-				request->request_number, request->files->packets);
+			fr_perror("radclient: No server was given, but request %d in file %s "
+				  "did not contain Packet-Dst-IP-Address",
+				  request->request_number, request->files->packets);
 			return -1;
 		}
 		request->packet->dst_ipaddr = server_ipaddr;
 	}
 	if (request->packet->code == 0) {
 		if (packet_code == -1) {
-			fprintf(stderr, "radclient: Request was \"auto\", but request %d in file %s "
-				"did not contain Packet-Type\n",
-				request->request_number, request->files->packets);
+			fr_perror("radclient: Request was \"auto\", but request %d in file %s "
+				  "did not contain Packet-Type",
+				  request->request_number, request->files->packets);
 			return -1;
 		}
 		request->packet->code = packet_code;
@@ -751,14 +751,14 @@ static int send_one_packet(rc_request_t *request)
 #endif
 			mysockfd = fr_socket(&client_ipaddr, 0);
 			if (mysockfd < 0) {
-				fprintf(stderr, "radclient: Can't open new socket: %s\n",
-					strerror(errno));
+				fr_perror("radclient: Can't open new socket: %s",
+					  strerror(errno));
 				exit(1);
 			}
 			if (!fr_packet_list_socket_add(pl, mysockfd, ipproto,
 						       &server_ipaddr,
 						       server_port, NULL)) {
-				fprintf(stderr, "radclient: Can't add new socket\n");
+				fr_perror("radclient: Can't add new socket");
 				exit(1);
 			}
 			goto retry;
@@ -881,8 +881,8 @@ static int send_one_packet(rc_request_t *request)
 			 */
 			fr_packet_list_yank(pl, request->packet);
 
-			fprintf(stderr, "radclient: no reply from server for ID %d socket %d\n",
-				request->packet->id, request->packet->sockfd);
+			fr_perror("radclient: no reply from server for ID %d socket %d",
+				  request->packet->id, request->packet->sockfd);
 			deallocate_id(request);
 
 			/*
@@ -908,8 +908,8 @@ static int send_one_packet(rc_request_t *request)
 	 *	Send the packet.
 	 */
 	if (rad_send(request->packet, NULL, secret) < 0) {
-		fprintf(stderr, "radclient: Failed to send packet for ID %d: %s\n",
-			request->packet->id, fr_strerror());
+		fr_perror("radclient: Failed to send packet for ID %d",
+			  request->packet->id);
 	}
 
 	if (fr_debug_flag > 2) print_hex(request->packet);
@@ -954,8 +954,7 @@ static int recv_one_packet(int wait_time)
 
 	reply = fr_packet_list_recv(pl, &set);
 	if (!reply) {
-		fprintf(stderr, "radclient: received bad packet: %s\n",
-			fr_strerror());
+		fr_perror("radclient: received bad packet");
 #ifdef WITH_TCP
 		/*
 		 *	If the packet is bad, we close the socket.
@@ -983,8 +982,8 @@ static int recv_one_packet(int wait_time)
 
 	packet_p = fr_packet_list_find_byreply(pl, reply);
 	if (!packet_p) {
-		fprintf(stderr, "radclient: received reply to request we did not send. (id=%d socket %d)\n",
-			reply->id, reply->sockfd);
+		fr_perror("radclient: received reply to request we did not send. (id=%d socket %d)",
+			  reply->id, reply->sockfd);
 		rad_free(&reply);
 		return -1;	/* got reply to packet we didn't send */
 	}
@@ -1117,7 +1116,7 @@ int main(int argc, char **argv)
 	filename_tree = rbtree_create(filename_cmp, NULL, 0);
 	if (!filename_tree) {
 	oom:
-		fprintf(stderr, "radclient: Out of memory\n");
+		fr_perror("radclient: Out of memory");
 		exit(1);
 	}
 
@@ -1225,13 +1224,13 @@ int main(int argc, char **argv)
 			char *p;
 			fp = fopen(optarg, "r");
 			if (!fp) {
-			       fprintf(stderr, "radclient: Error opening %s: %s\n",
-				       optarg, strerror(errno));
+			       fr_perror("radclient: Error opening %s: %s",
+				         optarg, strerror(errno));
 			       exit(1);
 			}
 			if (fgets(filesecret, sizeof(filesecret), fp) == NULL) {
-			       fprintf(stderr, "radclient: Error reading %s: %s\n",
-				       optarg, strerror(errno));
+			       fr_perror("radclient: Error reading %s: %s",
+				         optarg, strerror(errno));
 			       exit(1);
 			}
 			fclose(fp);
@@ -1245,7 +1244,7 @@ int main(int argc, char **argv)
 			}
 
 			if (strlen(filesecret) < 2) {
-			       fprintf(stderr, "radclient: Secret in %s is too short\n", optarg);
+			       fr_perror("radclient: Secret in %s is too short", optarg);
 			       exit(1);
 			}
 			secret = filesecret;
@@ -1328,7 +1327,7 @@ int main(int argc, char **argv)
 		}
 
 		if (ip_hton(hostname, force_af, &server_ipaddr) < 0) {
-			fprintf(stderr, "radclient: Failed to find IP address for host %s: %s\n", hostname, strerror(errno));
+			fr_perror("radclient: Failed to find IP address for host %s: %s\n", hostname, strerror(errno));
 			exit(1);
 		}
 
@@ -1403,7 +1402,7 @@ int main(int argc, char **argv)
 	 *	Walk over the list of filenames, creating the requests.
 	 */
 	if (rbtree_walk(filename_tree, RBTREE_IN_ORDER, filename_walk, NULL) != 0) {
-		fprintf(stderr, "Failed walking over filenames\n");
+		fr_perror("radclient: Failed parsing input files");
 		exit(1);
 	}
 
@@ -1411,7 +1410,7 @@ int main(int argc, char **argv)
 	 *	No packets read.  Die.
 	 */
 	if (!request_head) {
-		fprintf(stderr, "radclient: Nothing to send.\n");
+		fr_perror("radclient: Nothing to send");
 		exit(1);
 	}
 
@@ -1434,19 +1433,19 @@ int main(int argc, char **argv)
 #endif
 	sockfd = fr_socket(&client_ipaddr, client_port);
 	if (sockfd < 0) {
-		fprintf(stderr, "radclient: socket: %s\n", fr_strerror());
+		fr_perror("radclient: socket");
 		exit(1);
 	}
 
 	pl = fr_packet_list_create(1);
 	if (!pl) {
-		fprintf(stderr, "radclient: Out of memory\n");
+		fr_perror("radclient: Out of memory");
 		exit(1);
 	}
 
 	if (!fr_packet_list_socket_add(pl, sockfd, ipproto, &server_ipaddr,
 				       server_port, NULL)) {
-		fprintf(stderr, "radclient: Out of memory\n");
+		fr_perror("radclient: Out of memory");
 		exit(1);
 	}
 
