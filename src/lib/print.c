@@ -916,6 +916,7 @@ size_t vp_prints(char *out, size_t outlen, VALUE_PAIR const *vp)
 @endverbatim
  * to a string.
  *
+ * @param ctx to allocate string in.
  * @param vp to print.
  * @return a talloced buffer with the attribute operator and value.
  */

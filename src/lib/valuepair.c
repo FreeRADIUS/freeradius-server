@@ -605,6 +605,8 @@ mismatch:
  *
  * @note will sort both filter and list in place.
  *
+ * @param failed pointer to an array to write the pointers of the filter/list attributes that didn't match.
+ *	  May be NULL.
  * @param filter attributes to check list against.
  * @param list attributes, probably a request or reply
  */
