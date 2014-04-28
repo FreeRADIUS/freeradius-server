@@ -908,6 +908,40 @@ size_t vp_prints(char *out, size_t outlen, VALUE_PAIR const *vp)
 	return (outlen - freespace);
 }
 
+/** Print one attribute and value to a string
+ *
+ * Print a VALUE_PAIR in the format:
+@verbatim
+	<attribute_name>[:tag] <op> <value>
+@endverbatim
+ * to a string.
+ *
+ * @param vp to print.
+ * @return a talloced buffer with the attribute operator and value.
+ */
+char *vp_aprints(TALLOC_CTX *ctx, VALUE_PAIR const *vp)
+{
+	char const	*token = NULL;
+	char 		*pair, *value;
+
+	if (!vp || !vp->da) return 0;
+
+	VERIFY_VP(vp);
+
+	if ((vp->op > T_OP_INVALID) && (vp->op < T_TOKEN_LAST)) {
+		token = vp_tokens[vp->op];
+	} else {
+		token = "<INVALID-TOKEN>";
+	}
+
+	value = vp_aprints(ctx, vp);
+	pair = vp->da->flags.has_tag ?
+	       talloc_asprintf(ctx, "%s:%d %s %s", vp->da->name, vp->tag, token, value) :
+	       talloc_asprintf(ctx, "%s %s %s", vp->da->name, token, value);
+	talloc_free(value);
+
+	return pair;
+}
 
 /** Print one attribute and value to FP
  *
