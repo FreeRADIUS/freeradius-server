@@ -500,8 +500,6 @@ void pairvalidate_debug(TALLOC_CTX *ctx, VALUE_PAIR const *failed[2])
 
 	(void) fr_strerror();	/* Clear any existing messages */
 
-	if (!filter && !list)
-
 	if (!fr_assert(!(!filter && !list))) return;
 
 	if (!list) {
@@ -564,6 +562,8 @@ bool pairvalidate(VALUE_PAIR const *failed[2], VALUE_PAIR *filter, VALUE_PAIR *l
 	match = fr_cursor_init(&list_cursor, &list);
 
 	while (true) {
+		if (!match && !check) goto mismatch;
+
 		/*
 		 *	The lists are sorted, so if the first
 		 *	attributes aren't of the same type, then we're
@@ -582,13 +582,12 @@ bool pairvalidate(VALUE_PAIR const *failed[2], VALUE_PAIR *filter, VALUE_PAIR *l
 
 		check = fr_cursor_next(&filter_cursor);
 		match = fr_cursor_next(&list_cursor);
-		if (!match && !check) goto mismatch;
 
 		/*
 		 *	One list ended earlier than the others, they
 		 *	didn't match.
 		 */
-		if (!match || !check) goto mismatch;
+		if (!match || !check) break;
 	}
 
 	return true;
