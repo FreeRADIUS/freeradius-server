@@ -623,10 +623,15 @@ int main(int argc, char *argv[])
 			       PW_RESPONSE_PACKET_TYPE, 0);
 	vp->vp_integer = request->reply->code;
 
-	if (filter_vps && !pairvalidate(filter_vps, request->reply->vps)) {
-		fprintf(stderr, "Output file %s does not match attributes in filter %s\n",
-			output_file ? output_file : input_file, filter_file);
-		exit(EXIT_FAILURE);
+	{
+		VALUE_PAIR const *failed[2];
+
+		if (filter_vps && !pairvalidate(failed, filter_vps, request->reply->vps)) {
+			pairvalidate_debug(request, failed);
+			fr_perror("Output file %s does not match attributes in filter %s",
+				  output_file ? output_file : input_file, filter_file);
+			exit(EXIT_FAILURE);
+		}
 	}
 
 	talloc_free(request);

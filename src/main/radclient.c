@@ -300,6 +300,7 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 		 *	Read the request VP's.
 		 */
 		if (readvp2(&request->packet->vps, request->packet, packets, &packets_done) < 0) {
+			fr_perror("radclient: Error parsing \"%s\"", files->filters);
 			goto error;
 		}
 
@@ -320,6 +321,7 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 			bool filters_done;
 
 			if (readvp2(&request->filter, request, filters, &filters_done) < 0) {
+				fr_perror("radclient: Error parsing \"%s\"", files->filters);
 				goto error;
 			}
 
@@ -1055,12 +1057,15 @@ static int recv_one_packet(int wait_time)
 	} else if (!request->filter) {
 		stats.passed++;
 	} else {
+		VALUE_PAIR const *failed[2];
+
 		pairsort(&request->reply->vps, attrtagcmp);
-		if (pairvalidate(request->filter, request->reply->vps)) {
+		if (pairvalidate(failed, request->filter, request->reply->vps)) {
 			printf("Packet passed filter\n");
 			stats.passed++;
 		} else {
-			printf("Packet failed filter\n");
+			pairvalidate_debug(request, failed);
+			fr_perror("Packet failed filter");
 			stats.failed++;
 		}
 	}
@@ -1069,7 +1074,7 @@ static int recv_one_packet(int wait_time)
 		request->done = true;
 	}
 
- packet_done:
+packet_done:
 	rad_free(&request->reply);
 	rad_free(&reply);	/* may be NULL */
 
