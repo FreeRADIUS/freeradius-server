@@ -1,4 +1,4 @@
-FreeRADIUS 2.2.5 Wednesday 19 Mar 2014 13:20:00 EDT, urgency=medium
+FreeRADIUS 2.2.5 Monday 28 Apr 2014 15:20:00 EDT, urgency=medium
 	Feature improvements
 	* Update dictionary.terena.
 	* expose server version via %v.  Patch from Alan Buxey.
@@ -7,6 +7,7 @@ FreeRADIUS 2.2.5 Wednesday 19 Mar 2014 13:20:00 EDT, urgency=medium
 	  subsection of "radiusd.conf"
 	* Catch underlying "heartbleed" problem, so that nothing bad
 	  happens even when using a vulnerable version of OpenSSL.
+	* Add dictionary.zte
 
 	Bug fixes
 	* Minor changes to build on Sun.
