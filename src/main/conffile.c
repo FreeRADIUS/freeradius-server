@@ -446,11 +446,6 @@ static void cf_item_add(CONF_SECTION *cs, CONF_ITEM *ci)
 
 					if (strcmp(cp->attr, "confdir") == 0) break;
 					if (!cp->value) break; /* module name, "ok", etc. */
-
-					if (debug_flag > 2) {
-						WARN("%s[%d] Duplicate configuration item \"%s\"",
-						     ci->filename, ci->lineno, (cf_itemtopair(ci))->attr);
-					}
 				}
 				break;
 
