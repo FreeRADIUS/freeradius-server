@@ -1,5 +1,5 @@
 /*
- * version.c	Print version number and exit.
+ * version.c	Validate application and library magic numbers.
  *
  * Version:	$Id$
  *
