@@ -1060,6 +1060,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 	case PW_CODE_ACCOUNTING_RESPONSE:
 	case PW_CODE_AUTHENTICATION_REJECT:
 	case PW_CODE_AUTHENTICATION_ACK:
+	case PW_CODE_ACCESS_CHALLENGE:
 	case PW_CODE_COA_NAK:
 	case PW_CODE_COA_ACK:
 	case PW_CODE_DISCONNECT_NAK:
