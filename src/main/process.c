@@ -1027,10 +1027,13 @@ STATE_MACHINE_DECL(request_cleanup_delay)
 		STATE_MACHINE_TIMER(FR_ACTION_TIMER);
 		return;
 
+	case FR_ACTION_CONFLICTING:
+		request_done(request, FR_ACTION_DONE);
+		break;
+
 #ifdef WITH_PROXY
 	case FR_ACTION_PROXY_REPLY:
 #endif
-	case FR_ACTION_CONFLICTING:
 	case FR_ACTION_TIMER:
 		request_common(request, action);
 		return;
