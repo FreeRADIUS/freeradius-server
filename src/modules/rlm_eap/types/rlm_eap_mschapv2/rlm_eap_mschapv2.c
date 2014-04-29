@@ -372,6 +372,7 @@ static int mschapv2_authenticate(void *arg, eap_handler_t *handler)
 {
 	int rcode, ccode;
 	uint8_t *p;
+	size_t length;
 	char *q;
 	mschapv2_opaque_t *data;
 	EAP_DS *eap_ds = handler->eap_ds;
@@ -553,11 +554,10 @@ static int mschapv2_authenticate(void *arg, eap_handler_t *handler)
 	 *	The MS-Length field is 5 + value_size + length
 	 *	of name, which is put after the response.
 	 */
-	if (((eap_ds->response->type.data[2] << 8) |
-	     eap_ds->response->type.data[3]) < (5 + 49)) {
+	length = (eap_ds->response->type.data[2] << 8) | eap_ds->response->type.data[3];
+	if ((length < (5 + 49)) || (length > (256 + 5 + 49))) {
 		REDEBUG("Response contains contradictory length %d %d",
-			(eap_ds->response->type.data[2] << 8) |
-		       eap_ds->response->type.data[3], 5 + 49);
+			length, 5 + 49);
 		return 0;
 	}
 
@@ -597,9 +597,7 @@ static int mschapv2_authenticate(void *arg, eap_handler_t *handler)
 	/*
 	 *	MS-Length - MS-Value - 5.
 	 */
-	name->length = (((eap_ds->response->type.data[2] << 8) |
-			 eap_ds->response->type.data[3]) -
-			eap_ds->response->type.data[4] - 5);
+	name->length = length - 49 - 5;
 	name->vp_strvalue = q = talloc_array(name, char, name->length + 1);
 	memcpy(q,
 	       &eap_ds->response->type.data[4 + MSCHAPV2_RESPONSE_LEN],
