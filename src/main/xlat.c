@@ -300,7 +300,7 @@ static ssize_t xlat_debug_attr(UNUSED void *instance, REQUEST *request, char con
 	vp = fr_cursor_init(&cursor, vps);
 
 	if (vpt.vpt_da) {
-		vp = fr_cursor_next_by_num(&cursor, vpt.vpt_da->attr, vpt.vpt_da->vendor, TAG_ANY);
+		vp = fr_cursor_next_by_da(&cursor, vpt.vpt_da, TAG_ANY);
 	}
 	while (vp) {
 		DICT_ATTR *dac = NULL;
@@ -411,7 +411,7 @@ static ssize_t xlat_debug_attr(UNUSED void *instance, REQUEST *request, char con
 		talloc_free(dac);
 
 		if (vpt.vpt_da) {
-			vp = fr_cursor_next_by_num(&cursor, vpt.vpt_da->attr, vpt.vpt_da->vendor, TAG_ANY);
+			vp = fr_cursor_next_by_da(&cursor, vpt.vpt_da, TAG_ANY);
 		} else {
 			vp = fr_cursor_next(&cursor);
 		}
@@ -1863,7 +1863,7 @@ do_print:
 		 */
 		case XLAT_ATTR_NUMBER:
 			fr_cursor_init(&cursor, &vp);
-			while (fr_cursor_next_by_num(&cursor, da->attr, da->vendor, tag) != NULL) {
+			while (fr_cursor_next_by_da(&cursor, da, tag) != NULL) {
 				count++;
 			}
 
@@ -1877,12 +1877,12 @@ do_print:
 			char *p, *q;
 
 			(void) fr_cursor_init(&cursor, &vp);
-			vp = fr_cursor_next_by_num(&cursor, da->attr, da->vendor, tag);
+			vp = fr_cursor_next_by_da(&cursor, da, tag);
 			if (!vp) return NULL;
 
 			p = vp_aprint(ctx, vp);
 			if (!p) return NULL;
-			while ((vp = fr_cursor_next_by_num(&cursor, da->attr, da->vendor, tag)) != NULL) {
+			while ((vp = fr_cursor_next_by_da(&cursor, da, tag)) != NULL) {
 				q = vp_aprint(ctx, vp);
 				if (!q) return NULL;
 				p = talloc_strdup_append(p, ",");
@@ -1894,7 +1894,7 @@ do_print:
 
 		default:
 			fr_cursor_init(&cursor, &vp);
-			while ((vp = fr_cursor_next_by_num(&cursor, da->attr, da->vendor, tag)) != NULL) {
+			while ((vp = fr_cursor_next_by_da(&cursor, da, tag)) != NULL) {
 				if (count++ == num) break;
 			}
 			break;

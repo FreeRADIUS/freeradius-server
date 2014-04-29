@@ -674,7 +674,7 @@ redo:
 
 			tail = &((*tail)->next); /* really should be using cursors... */
 
-			vp = fr_cursor_next_by_num(&cursor, vp->da->attr, vp->da->vendor, g->vpt->attribute.tag);
+			vp = fr_cursor_next_by_da(&cursor, vp->da, g->vpt->attribute.tag);
 		}
 
 		RDEBUG2("%.*sforeach %s ", depth + 1, modcall_spaces,
