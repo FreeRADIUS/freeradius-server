@@ -895,11 +895,6 @@ static int ascend_parse_generic(int argc, char **argv,
 	token = fr_hex2bin(filter->value, argv[2], sizeof(filter->value));
 	if (token != sizeof(filter->value)) return -1;
 
-	/*
-	 *	The mask and value MUST be the same length.
-	 */
-	if (rcode != token) return -1;
-
 	filter->len = rcode;
 	filter->len = htons(filter->len);
 
