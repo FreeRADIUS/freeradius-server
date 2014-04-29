@@ -113,8 +113,7 @@ void fr_cbuff_rp_insert(fr_cbuff_t *cbuff, void *obj)
 		TALLOC_FREE(cbuff->elem[cbuff->in]);
 	}
 
-	cbuff->elem[cbuff->in] = obj;
-	talloc_steal(cbuff, obj);
+	cbuff->elem[cbuff->in] = talloc_steal(cbuff, obj);
 
 	cbuff->in = (cbuff->in + 1) & cbuff->size;
 
