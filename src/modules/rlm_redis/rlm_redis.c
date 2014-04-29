@@ -64,14 +64,13 @@ static void *mod_conn_create(void *ctx)
 	REDIS_INST *inst = ctx;
 	REDISSOCK *dissocket = NULL;
 	redisContext *conn;
+	redisReply *reply = NULL;	
 	char buffer[1024];
 
 	conn = redisConnect(inst->hostname, inst->port);
 	if (conn->err) return NULL;
 
 	if (inst->password) {
-		redisReply *reply = NULL;
-
 		snprintf(buffer, sizeof(buffer), "AUTH %s", inst->password);
 
 		reply = redisCommand(conn, buffer);
@@ -102,8 +101,6 @@ static void *mod_conn_create(void *ctx)
 	}
 
 	if (inst->database) {
-		redisReply *reply = NULL;
-
 		snprintf(buffer, sizeof(buffer), "SELECT %d", inst->database);
 
 		reply = redisCommand(conn, buffer);
