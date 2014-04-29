@@ -98,7 +98,9 @@ int udpfromto_init(int s)
 
 	errno = ENOSYS;
 
-	proto = -1;
+#ifndef NDEBUG
+	memset(&si, 0, sizeof(si));
+#endif
 
 	if (getsockname(s, (struct sockaddr *) &si, &si_len) < 0) {
 		return -1;
@@ -120,6 +122,8 @@ int udpfromto_init(int s)
 		 */
 		proto = IPPROTO_IP;
 		flag = IP_RECVDSTADDR;
+#else
+		return -1;
 #endif
 #endif
 
@@ -135,6 +139,8 @@ int udpfromto_init(int s)
 		 *	Work around Linux-specific hackery.
 		 */
 		flag = FR_IPV6_RECVPKTINFO;
+#else
+		return -1;
 #  endif
 #endif
 	} else {
