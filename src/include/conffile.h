@@ -47,6 +47,16 @@ typedef struct conf_data CONF_DATA;
 #define PW_TYPE_ATTRIBUTE	(1 << 12)	//!< CONF_PAIR value must exist in the dictionary as an attribute.
 #define PW_TYPE_SECRET		(1 << 13)	//!< don't print it when debug_flag==2.
 
+#define FR_INTEGER_COND_CHECK(_name, _var, _cond, _new)\
+do {\
+	if (!(_cond)) {\
+		WARN("WARNING: Ignoring \"" _name " = %i\", forcing to \"" _name " = %i\"", _var, _new);\
+		_var = _new;\
+	}\
+} while (0)
+
+#define FR_INTEGER_BOUND_CHECK(_name, _var, _op, _bound) FR_INTEGER_COND_CHECK(_name, _var, (_var _op _bound), _bound)
+
 typedef struct CONF_PARSER {
   char const *name;
   int type;			/* PW_TYPE_STRING, etc. */
