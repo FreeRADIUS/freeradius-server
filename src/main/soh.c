@@ -147,6 +147,9 @@ static int eapsoh_mstlv(REQUEST *request, uint8_t const *p, unsigned int data_le
 	int t;
 	char *q;
 
+	rad_assert(request != NULL);
+	rad_assert(p != NULL);
+
 	while (data_len > 0) {
 		c = *p++;
 		data_len--;
