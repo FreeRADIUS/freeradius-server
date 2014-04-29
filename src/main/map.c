@@ -739,7 +739,7 @@ size_t radius_tmpl2str(char *buffer, size_t bufsize, value_pair_tmpl_t const *vp
 			memcpy(&vp->data, vpt->vpt_value, sizeof(vp->data));
 			vp->length = vpt->vpt_length;
 
-			q = vp_aprint(vp, vp);
+			q = vp_aprint_value(vp, vp);
 
 			if ((vpt->vpt_da->type != PW_TYPE_STRING) &&
 			    (vpt->vpt_da->type != PW_TYPE_DATE)) {
