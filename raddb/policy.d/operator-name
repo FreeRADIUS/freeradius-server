@@ -2,15 +2,15 @@
 #  The following policies are for the Operator-Name
 #  configuration.
 #
-#  The policies below can be called as just 'oprator-name' (not
-#  oprator-name.authorize etc..)  from the various config sections.
+#  The policies below can be called as just 'operator-name' (not
+#  operator-name.authorize etc..)  from the various config sections.
 #
 
 #  If you require that the Operator-Name be set
 #  for local clients then call the 'operator-name' policy
 #  in the authorize section of the virtual-server for your clients in clients.conf
 
-#  to inject an Operator-Name whilst proxying, call the
+#  To inject an Operator-Name whilst proxying, call the
 #  'operator-name' policy in the pre-proxy section of the virtual server
 #  No need to call this if you have already enabled this in
 #  the authorize section.
