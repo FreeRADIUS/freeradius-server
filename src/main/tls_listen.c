@@ -110,6 +110,8 @@ static int tls_socket_write(rad_listen_t *listener, REQUEST *request)
 	ssize_t rcode;
 	listen_socket_t *sock = listener->data;
 
+	rad_assert(request != NULL);
+
 	p = sock->ssn->dirty_out.data;
 
 	while (p < (sock->ssn->dirty_out.data + sock->ssn->dirty_out.used)) {
