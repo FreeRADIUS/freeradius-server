@@ -503,6 +503,7 @@ void pairvalidate_debug(TALLOC_CTX *ctx, VALUE_PAIR const *failed[2])
 	if (!fr_assert(!(!filter && !list))) return;
 
 	if (!list) {
+		if (!filter) return;
 		fr_strerror_printf("Attribute \"%s\" not found in list", filter->da->name);
 		return;
 	}
