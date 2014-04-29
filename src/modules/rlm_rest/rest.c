@@ -827,7 +827,7 @@ no_space:
 static ssize_t rest_request_encode_wrapper(char **buffer, rest_read_t func, size_t limit, void *userdata)
 {
 	char *previous = NULL;
-	char *current;
+	char *current = NULL;
 
 	size_t alloc = REST_BODY_INIT;	/* Size of buffer to alloc */
 	size_t used = 0;		/* Size of data written */
