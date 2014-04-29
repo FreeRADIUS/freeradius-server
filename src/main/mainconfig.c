@@ -900,10 +900,19 @@ do {\
 		default_log.colourise = false;
 	}
 
-	if (mainconfig.max_request_time == 0) mainconfig.max_request_time = 100;
-	if (mainconfig.reject_delay > 5) mainconfig.reject_delay = 5;
-	if (mainconfig.cleanup_delay > 5) mainconfig.cleanup_delay =5;
+	/*
+	 *	Starting the server, WITHOUT "-x" on the
+	 *	command-line: use whatever is in the config
+	 *	file.
+	 */
+	if (debug_flag == 0) {
+		debug_flag = mainconfig.debug_level;
+	}
+	fr_debug_flag = debug_flag;
 
+	FR_INTEGER_COND_CHECK("max_request_time", mainconfig.max_request_time, (mainconfig.max_request_time != 0), 100);
+	FR_INTEGER_BOUND_CHECK("reject_delay", mainconfig.reject_delay, <=, 10);
+	FR_INTEGER_BOUND_CHECK("cleanup_delay", mainconfig.cleanup_delay, <=, 10);
 	/*
 	 *	Free the old configuration items, and replace them
 	 *	with the new ones.
@@ -932,16 +941,6 @@ do {\
 	xlat_register("getclient", xlat_getclient, NULL, NULL);
 
 	/*
-	 *	Starting the server, WITHOUT "-x" on the
-	 *	command-line: use whatever is in the config
-	 *	file.
-	 */
-	if (debug_flag == 0) {
-		debug_flag = mainconfig.debug_level;
-	}
-	fr_debug_flag = debug_flag;
-
-	/*
 	 *  Go update our behaviour, based on the configuration
 	 *  changes.
 	 */
@@ -950,10 +949,8 @@ do {\
 	 *	Sanity check the configuration for internal
 	 *	consistency.
 	 */
-	if (mainconfig.reject_delay > mainconfig.cleanup_delay) {
-		mainconfig.reject_delay = mainconfig.cleanup_delay;
-	}
-	if (mainconfig.reject_delay < 0) mainconfig.reject_delay = 0;
+	FR_INTEGER_BOUND_CHECK("reject_delay", mainconfig.reject_delay, <=, mainconfig.cleanup_delay);
+	FR_INTEGER_BOUND_CHECK("reject_delay", mainconfig.reject_delay, >=, 0);
 
 	if (chroot_dir) {
 		if (chdir(radlog_dir) < 0) {

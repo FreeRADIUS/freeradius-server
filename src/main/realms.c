@@ -724,47 +724,44 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 	}
 #endif
 
-	if (home->max_outstanding < 8) home->max_outstanding = 8;
-	if (home->max_outstanding > 65536*16) home->max_outstanding = 65536*16;
+	FR_INTEGER_BOUND_CHECK("max_outstanding", home->max_outstanding, >=, 8);
+	FR_INTEGER_BOUND_CHECK("max_outstanding", home->max_outstanding, <=, 65536*16);
 
-	if (home->ping_interval < 6) home->ping_interval = 6;
-	if (home->ping_interval > 120) home->ping_interval = 120;
+	FR_INTEGER_BOUND_CHECK("ping_interval", home->ping_interval, >=, 6);
+	FR_INTEGER_BOUND_CHECK("ping_interval", home->ping_interval, <=, 120);
 
-	if (home->response_window < 1) home->response_window = 1;
-	if (home->response_window > 60) home->response_window = 60;
-	if (home->response_window > mainconfig.max_request_time) home->response_window = mainconfig.max_request_time;
+	FR_INTEGER_BOUND_CHECK("response_window", home->response_window, >=, 1);
+	FR_INTEGER_BOUND_CHECK("response_window", home->response_window, <=, 60);
+	FR_INTEGER_BOUND_CHECK("response_window", home->response_window, <=, mainconfig.max_request_time);
 
-	if (home->zombie_period < 1) home->zombie_period = 1;
-	if (home->zombie_period > 120) home->zombie_period = 120;
+	FR_INTEGER_BOUND_CHECK("zombie_period", home->zombie_period, >=, 1);
+	FR_INTEGER_BOUND_CHECK("zombie_period", home->zombie_period, <=, 120);
+	FR_INTEGER_BOUND_CHECK("zombie_period", home->zombie_period, >=, home->response_window);
 
-	if (home->zombie_period < home->response_window) {
-		home->zombie_period = home->response_window;
-	}
+	FR_INTEGER_BOUND_CHECK("num_pings_to_alive", home->num_pings_to_alive, >=, 3);
+	FR_INTEGER_BOUND_CHECK("num_pings_to_alive", home->num_pings_to_alive, <=, 10);
 
-	if (home->num_pings_to_alive < 3) home->num_pings_to_alive = 3;
-	if (home->num_pings_to_alive > 10) home->num_pings_to_alive = 10;
+	FR_INTEGER_BOUND_CHECK("ping_timeout", home->ping_timeout, >=, 3);
+	FR_INTEGER_BOUND_CHECK("ping_timeout", home->ping_timeout, <=, 10);
 
-	if (home->ping_timeout < 3) home->ping_timeout = 3;
-	if (home->ping_timeout > 10) home->ping_timeout = 10;
-
-	if (home->revive_interval < 60) home->revive_interval = 60;
-	if (home->revive_interval > 3600) home->revive_interval = 3600;
+	FR_INTEGER_BOUND_CHECK("revive_interval", home->revive_interval, >=, 60);
+	FR_INTEGER_BOUND_CHECK("revive_interval", home->revive_interval, <=, 3600);
 
 #ifdef WITH_COA
-	if (home->coa_irt < 1) home->coa_irt = 1;
-	if (home->coa_irt > 5) home->coa_irt = 5;
+	FR_INTEGER_BOUND_CHECK("coa_irt", home->coa_irt, >=, 1);
+	FR_INTEGER_BOUND_CHECK("coa_irt", home->coa_irt, <=, 5);
 
-	if (home->coa_mrc < 0) home->coa_mrc = 0;
-	if (home->coa_mrc > 20 ) home->coa_mrc = 20;
+	FR_INTEGER_BOUND_CHECK("coa_mrc", home->coa_mrc, >=, 0);
+	FR_INTEGER_BOUND_CHECK("coa_mrc", home->coa_mrc, <=, 20);
 
-	if (home->coa_mrt < 0) home->coa_mrt = 0;
-	if (home->coa_mrt > 30 ) home->coa_mrt = 30;
+	FR_INTEGER_BOUND_CHECK("coa_mrt", home->coa_mrt, >=, 0);
+	FR_INTEGER_BOUND_CHECK("coa_mrt", home->coa_mrt, <=, 30);
 
-	if (home->coa_mrd < 5) home->coa_mrd = 5;
-	if (home->coa_mrd > 60 ) home->coa_mrd = 60;
+	FR_INTEGER_BOUND_CHECK("coa_mrd", home->coa_mrd, >=, 5);
+	FR_INTEGER_BOUND_CHECK("coa_mrd", home->coa_mrd, <=, 60);
 #endif
 
-	if (home->limit.max_connections > 1024) home->limit.max_connections = 1024;
+	FR_INTEGER_BOUND_CHECK("max_connections", home->limit.max_connections, <=, 1024);
 
 #ifdef WITH_TCP
 	/*
