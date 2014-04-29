@@ -146,7 +146,7 @@ static SECURID_AUTH_RC securidAuth(void *instance, REQUEST *request,
 			securid_session->identity = strdup(username);
 
 			/* Get PIN requirements */
-			acm_ret = AceGetPinParams(sdiHandle, &pin_params);
+			(void) AceGetPinParams(sdiHandle, &pin_params);
 
 			/* If a system-generated PIN is required */
 			if (pin_params.Selectable == CANNOT_CHOOSE_PIN) {
