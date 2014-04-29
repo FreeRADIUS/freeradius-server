@@ -2938,7 +2938,8 @@ check_paircmp:
 	/*
 	 *	Just in case someone adds a new fixup later.
 	 */
-	rad_assert(c->pass2_fixup == PASS2_FIXUP_NONE);
+	rad_assert((c->pass2_fixup == PASS2_FIXUP_NONE) ||
+		   (c->pass2_fixup == PASS2_PAIRCOMPARE));
 
 	/*
 	 *	Precompile xlat's
