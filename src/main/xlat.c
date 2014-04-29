@@ -1634,7 +1634,7 @@ static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, pair_lists_t list, DI
 	switch (list) {
 	default:
 		if (return_null) return NULL;
-		return vp_aprinttype(ctx, da->type);
+		return vp_aprint_type(ctx, da->type);
 
 	case PAIR_LIST_CONTROL:
 		vps = request->config_items;
@@ -1726,7 +1726,7 @@ static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, pair_lists_t list, DI
 	 */
 	if (!packet) {
 		if (return_null) return NULL;
-		return vp_aprinttype(ctx, da->type);
+		return vp_aprint_type(ctx, da->type);
 	}
 
 	vp = NULL;
@@ -1834,7 +1834,7 @@ do_print:
 		 */
 		if ((num > 0) && (num < XLAT_ATTR_NUMBER)) goto finish;
 
-		p = vp_aprint(ctx, vp);
+		p = vp_aprint_value(ctx, vp);
 		rad_assert(p != NULL);
 
 		/*
@@ -1880,10 +1880,10 @@ do_print:
 			vp = fr_cursor_next_by_da(&cursor, da, tag);
 			if (!vp) return NULL;
 
-			p = vp_aprint(ctx, vp);
+			p = vp_aprint_value(ctx, vp);
 			if (!p) return NULL;
 			while ((vp = fr_cursor_next_by_da(&cursor, da, tag)) != NULL) {
-				q = vp_aprint(ctx, vp);
+				q = vp_aprint_value(ctx, vp);
 				if (!q) return NULL;
 				p = talloc_strdup_append(p, ",");
 				p = talloc_strdup_append(p, q);
@@ -1903,10 +1903,10 @@ do_print:
 
 	if (!vp) {
 		if (return_null) return NULL;
-		return vp_aprinttype(ctx, da->type);
+		return vp_aprint_type(ctx, da->type);
 	}
 
-	ret = vp_aprint(ctx, vp);
+	ret = vp_aprint_value(ctx, vp);
 
 finish:
 	talloc_free(myvp);
