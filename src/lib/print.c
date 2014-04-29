@@ -531,7 +531,7 @@ size_t vp_prints_value(char *out, size_t outlen, VALUE_PAIR const *vp, int8_t qu
 	return len;	/* Return the number of bytes we would of written (for truncation detection) */
 }
 
-char *vp_aprinttype(TALLOC_CTX *ctx, PW_TYPE type)
+char *vp_aprint_type(TALLOC_CTX *ctx, PW_TYPE type)
 {
 	switch (type) {
 	case PW_TYPE_STRING :
@@ -574,139 +574,6 @@ char *vp_aprinttype(TALLOC_CTX *ctx, PW_TYPE type)
 
 	return talloc_typed_strdup(ctx, "<UNKNOWN-TYPE>");
 }
-
-/*
- *	vp_prints_value for talloc
- */
-char *vp_aprint(TALLOC_CTX *ctx, VALUE_PAIR const *vp)
-{
-	char *p;
-
-	switch (vp->da->type) {
-	case PW_TYPE_STRING:
-	{
-		size_t len, ret;
-
-		/* Gets us the size of the buffer we need to alloc */
-		len = fr_print_string_len(vp->vp_strvalue, vp->length);
-		p = talloc_array(ctx, char, len + 1); 	/* +1 for '\0' */
-		if (!p) return NULL;
-
-		ret = fr_print_string(vp->vp_strvalue, vp->length, p, len + 1);
-		if (!fr_assert(ret == len)) {
-			talloc_free(p);
-			return NULL;
-		}
-		break;
-	}
-
-	case PW_TYPE_BYTE:
-	case PW_TYPE_SHORT:
-	case PW_TYPE_INTEGER:
-		{
-			DICT_VALUE *dv;
-
-			dv = dict_valbyattr(vp->da->attr, vp->da->vendor,
-					    vp->vp_integer);
-			if (dv) {
-				p = talloc_typed_strdup(ctx, dv->name);
-			} else {
-				p = talloc_typed_asprintf(ctx, "%u", vp->vp_integer);
-			}
-		}
-		break;
-
-	case PW_TYPE_SIGNED:
-		p = talloc_typed_asprintf(ctx, "%d", vp->vp_signed);
-		break;
-
-	case PW_TYPE_INTEGER64:
-		p = talloc_typed_asprintf(ctx, "%" PRIu64 , vp->vp_integer64);
-		break;
-
-	case PW_TYPE_ETHERNET:
-		p = talloc_typed_asprintf(ctx, "%02x:%02x:%02x:%02x:%02x:%02x",
-				    vp->vp_ether[0], vp->vp_ether[1],
-				    vp->vp_ether[2], vp->vp_ether[3],
-				    vp->vp_ether[4], vp->vp_ether[5]);
-		break;
-
-	case PW_TYPE_ABINARY:
-#ifdef WITH_ASCEND_BINARY
-		p = talloc_array(ctx, char, 128);
-		if (!p) return NULL;
-		print_abinary(p, 128, vp, 0);
-		break;
-#else
-		  /* FALL THROUGH */
-#endif
-
-	case PW_TYPE_OCTETS:
-		p = talloc_array(ctx, char, 1 + vp->length * 2);
-		if (!p) return NULL;
-		fr_bin2hex(p, vp->vp_octets, vp->length);
-		break;
-
-	case PW_TYPE_DATE:
-	{
-		time_t t;
-		struct tm s_tm;
-
-		t = vp->vp_date;
-
-		p = talloc_array(ctx, char, 64);
-		strftime(p, 64, "%b %e %Y %H:%M:%S %Z",
-			 localtime_r(&t, &s_tm));
-		break;
-	}
-
-	/*
-	 *	We need to use the proper inet_ntop functions for IP
-	 *	addresses, else the output might not match output of
-	 *	other functions, which makes testing difficult.
-	 *
-	 *	An example is tunnelled ipv4 in ipv6 addresses.
-	 */
-	case PW_TYPE_IPADDR:
-	case PW_TYPE_IPV4PREFIX:
-		{
-			char buff[INET_ADDRSTRLEN  + 4]; // + /prefix
-
-			buff[0] = '\0';
-			vp_prints_value(buff, sizeof(buff), vp, 0);
-
-			p = talloc_typed_strdup(ctx, buff);
-		}
-		break;
-
-	case PW_TYPE_IPV6ADDR:
-	case PW_TYPE_IPV6PREFIX:
-		{
-			char buff[INET6_ADDRSTRLEN + 4]; // + /prefix
-
-			buff[0] = '\0';
-			vp_prints_value(buff, sizeof(buff), vp, 0);
-
-			p = talloc_typed_strdup(ctx, buff);
-		}
-		break;
-
-	case PW_TYPE_IFID:
-		p = talloc_typed_asprintf(ctx, "%x:%x:%x:%x",
-				    (vp->vp_ifid[0] << 8) | vp->vp_ifid[1],
-				    (vp->vp_ifid[2] << 8) | vp->vp_ifid[3],
-				    (vp->vp_ifid[4] << 8) | vp->vp_ifid[5],
-				    (vp->vp_ifid[6] << 8) | vp->vp_ifid[7]);
-		break;
-
-	default:
-		p = NULL;
-		break;
-	}
-
-	return p;
-}
-
 
 /**  Prints attribute values escaped suitably for use as JSON values
  *
@@ -909,42 +776,6 @@ size_t vp_prints(char *out, size_t outlen, VALUE_PAIR const *vp)
 	return (outlen - freespace);
 }
 
-/** Print one attribute and value to a string
- *
- * Print a VALUE_PAIR in the format:
-@verbatim
-	<attribute_name>[:tag] <op> <value>
-@endverbatim
- * to a string.
- *
- * @param ctx to allocate string in.
- * @param vp to print.
- * @return a talloced buffer with the attribute operator and value.
- */
-char *vp_aprints(TALLOC_CTX *ctx, VALUE_PAIR const *vp)
-{
-	char const	*token = NULL;
-	char 		*pair, *value;
-
-	if (!vp || !vp->da) return 0;
-
-	VERIFY_VP(vp);
-
-	if ((vp->op > T_OP_INVALID) && (vp->op < T_TOKEN_LAST)) {
-		token = vp_tokens[vp->op];
-	} else {
-		token = "<INVALID-TOKEN>";
-	}
-
-	value = vp_aprints(ctx, vp);
-	pair = vp->da->flags.has_tag ?
-	       talloc_asprintf(ctx, "%s:%d %s %s", vp->da->name, vp->tag, token, value) :
-	       talloc_asprintf(ctx, "%s %s %s", vp->da->name, token, value);
-	talloc_free(value);
-
-	return pair;
-}
-
 /** Print one attribute and value to FP
  *
  * Complete string with '\\t' and '\\n' is written to buffer before printing to
@@ -994,4 +825,174 @@ void vp_printlist(FILE *fp, VALUE_PAIR const *vp)
 		vp_print(fp, vp);
 	}
 }
+
+
+/*
+ *	vp_prints_value for talloc
+ */
+char *vp_aprint_value(TALLOC_CTX *ctx, VALUE_PAIR const *vp)
+{
+	char *p;
+
+	switch (vp->da->type) {
+	case PW_TYPE_STRING:
+	{
+		size_t len, ret;
+
+		/* Gets us the size of the buffer we need to alloc */
+		len = fr_print_string_len(vp->vp_strvalue, vp->length);
+		p = talloc_array(ctx, char, len + 1); 	/* +1 for '\0' */
+		if (!p) return NULL;
+
+		ret = fr_print_string(vp->vp_strvalue, vp->length, p, len + 1);
+		if (!fr_assert(ret == len)) {
+			talloc_free(p);
+			return NULL;
+		}
+		break;
+	}
+
+	case PW_TYPE_BYTE:
+	case PW_TYPE_SHORT:
+	case PW_TYPE_INTEGER:
+		{
+			DICT_VALUE *dv;
+
+			dv = dict_valbyattr(vp->da->attr, vp->da->vendor,
+					    vp->vp_integer);
+			if (dv) {
+				p = talloc_typed_strdup(ctx, dv->name);
+			} else {
+				p = talloc_typed_asprintf(ctx, "%u", vp->vp_integer);
+			}
+		}
+		break;
+
+	case PW_TYPE_SIGNED:
+		p = talloc_typed_asprintf(ctx, "%d", vp->vp_signed);
+		break;
+
+	case PW_TYPE_INTEGER64:
+		p = talloc_typed_asprintf(ctx, "%" PRIu64 , vp->vp_integer64);
+		break;
+
+	case PW_TYPE_ETHERNET:
+		p = talloc_typed_asprintf(ctx, "%02x:%02x:%02x:%02x:%02x:%02x",
+				    vp->vp_ether[0], vp->vp_ether[1],
+				    vp->vp_ether[2], vp->vp_ether[3],
+				    vp->vp_ether[4], vp->vp_ether[5]);
+		break;
+
+	case PW_TYPE_ABINARY:
+#ifdef WITH_ASCEND_BINARY
+		p = talloc_array(ctx, char, 128);
+		if (!p) return NULL;
+		print_abinary(p, 128, vp, 0);
+		break;
+#else
+		  /* FALL THROUGH */
+#endif
+
+	case PW_TYPE_OCTETS:
+		p = talloc_array(ctx, char, 1 + vp->length * 2);
+		if (!p) return NULL;
+		fr_bin2hex(p, vp->vp_octets, vp->length);
+		break;
+
+	case PW_TYPE_DATE:
+	{
+		time_t t;
+		struct tm s_tm;
+
+		t = vp->vp_date;
+
+		p = talloc_array(ctx, char, 64);
+		strftime(p, 64, "%b %e %Y %H:%M:%S %Z",
+			 localtime_r(&t, &s_tm));
+		break;
+	}
+
+	/*
+	 *	We need to use the proper inet_ntop functions for IP
+	 *	addresses, else the output might not match output of
+	 *	other functions, which makes testing difficult.
+	 *
+	 *	An example is tunnelled ipv4 in ipv6 addresses.
+	 */
+	case PW_TYPE_IPADDR:
+	case PW_TYPE_IPV4PREFIX:
+		{
+			char buff[INET_ADDRSTRLEN  + 4]; // + /prefix
+
+			buff[0] = '\0';
+			vp_prints_value(buff, sizeof(buff), vp, 0);
+
+			p = talloc_typed_strdup(ctx, buff);
+		}
+		break;
+
+	case PW_TYPE_IPV6ADDR:
+	case PW_TYPE_IPV6PREFIX:
+		{
+			char buff[INET6_ADDRSTRLEN + 4]; // + /prefix
+
+			buff[0] = '\0';
+			vp_prints_value(buff, sizeof(buff), vp, 0);
+
+			p = talloc_typed_strdup(ctx, buff);
+		}
+		break;
+
+	case PW_TYPE_IFID:
+		p = talloc_typed_asprintf(ctx, "%x:%x:%x:%x",
+				    (vp->vp_ifid[0] << 8) | vp->vp_ifid[1],
+				    (vp->vp_ifid[2] << 8) | vp->vp_ifid[3],
+				    (vp->vp_ifid[4] << 8) | vp->vp_ifid[5],
+				    (vp->vp_ifid[6] << 8) | vp->vp_ifid[7]);
+		break;
+
+	default:
+		p = NULL;
+		break;
+	}
+
+	return p;
+}
+
+/** Print one attribute and value to a string
+ *
+ * Print a VALUE_PAIR in the format:
+@verbatim
+	<attribute_name>[:tag] <op> <value>
+@endverbatim
+ * to a string.
+ *
+ * @param ctx to allocate string in.
+ * @param vp to print.
+ * @return a talloced buffer with the attribute operator and value.
+ */
+char *vp_aprint(TALLOC_CTX *ctx, VALUE_PAIR const *vp)
+{
+	char const	*token = NULL;
+	char 		*pair, *value;
+
+	if (!vp || !vp->da) return 0;
+
+	VERIFY_VP(vp);
+
+	if ((vp->op > T_OP_INVALID) && (vp->op < T_TOKEN_LAST)) {
+		token = vp_tokens[vp->op];
+	} else {
+		token = "<INVALID-TOKEN>";
+	}
+
+	value = vp_aprint_value(ctx, vp);
+	pair = vp->da->flags.has_tag ?
+	       talloc_asprintf(ctx, "%s:%d %s %s", vp->da->name, vp->tag, token, value) :
+	       talloc_asprintf(ctx, "%s %s %s", vp->da->name, token, value);
+	talloc_free(value);
+
+	return pair;
+}
+
 

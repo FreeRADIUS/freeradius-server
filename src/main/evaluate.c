@@ -142,7 +142,7 @@ static int radius_expand_tmpl(char **out, REQUEST *request, value_pair_tmpl_t co
 		if (!vp) {
 			return -1;
 		}
-		*out = vp_aprint(request, vp);
+		*out = vp_aprint_value(request, vp);
 		if (!*out) {
 			return -1;
 		}
@@ -356,7 +356,7 @@ static bool do_cast_copy(VALUE_PAIR *dst, VALUE_PAIR const *src)
 	rad_assert(dst->da->type != src->da->type);
 
 	if (dst->da->type == PW_TYPE_STRING) {
-		dst->vp_strvalue = vp_aprint(dst, src);
+		dst->vp_strvalue = vp_aprint_value(dst, src);
 		dst->length = strlen(dst->vp_strvalue);
 		return true;
 	}
