@@ -207,7 +207,7 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 	RDEBUG2("Adding Realm = \"%s\"", realmname);
 
 	talloc_free(namebuf);
-	realmname = username = NULL;
+	username = NULL;
 
 	/*
 	 *	Figure out what to do with the request.
