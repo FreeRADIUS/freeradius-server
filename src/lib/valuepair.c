@@ -614,7 +614,7 @@ bool pairvalidate_relaxed(VALUE_PAIR const *failed[2], VALUE_PAIR *filter, VALUE
 	vp_cursor_t filter_cursor;
 	vp_cursor_t list_cursor;
 
-	VALUE_PAIR *check, *match, *last_check = NULL, *last_match;
+	VALUE_PAIR *check, *last_check = NULL, *match = NULL;
 
 	if (!filter && !list) {
 		return true;
@@ -641,13 +641,13 @@ bool pairvalidate_relaxed(VALUE_PAIR const *failed[2], VALUE_PAIR *filter, VALUE
 			 *	Record the start of the matching attributes in the pair list
 			 *	For every other operator we require the match to be present
 			 */
-			last_match = fr_cursor_next_by_da(&list_cursor, check->da, check->tag);
-			if (!last_match) {
+			match = fr_cursor_next_by_da(&list_cursor, check->da, check->tag);
+			if (!match) {
 				if (check->op == T_OP_CMP_FALSE) continue;
 				goto mismatch;
 			}
 
-			fr_cursor_init(&list_cursor, &last_match);
+			fr_cursor_init(&list_cursor, &match);
 			last_check = check;
 		}
 
