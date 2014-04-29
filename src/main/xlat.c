@@ -840,7 +840,7 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 	 *	%{request:Tunnel-Password:1[#]}
 	 *	%{mod:foo}
 	 */
-	q = brace = NULL;
+	 brace = NULL;
 	for (p = fmt + 2; *p != '\0'; p++) {
 		if (*p == ':') break;
 
