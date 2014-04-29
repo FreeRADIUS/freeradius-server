@@ -1995,6 +1995,10 @@ int main(int argc, char *argv[])
 
 		case 'w':
 			out = fr_pcap_init(conf, optarg, PCAP_FILE_OUT);
+			if (!out) {
+				ERROR("Failed creating output %s", optarg);
+				exit(EXIT_FAILURE);
+			}
 			conf->to_file = true;
 			break;
 
