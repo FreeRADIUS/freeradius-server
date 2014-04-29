@@ -521,7 +521,7 @@ static int decode_tlv(RADIUS_PACKET *packet, VALUE_PAIR *tlv, uint8_t const *dat
 			case PW_TYPE_STRING:
 			case PW_TYPE_OCTETS:
 			case PW_TYPE_TLV:
-				talloc_steal(tlv, head->data.ptr);
+				(void) talloc_steal(tlv, head->data.ptr);
 			default:
 				break;
 		}
