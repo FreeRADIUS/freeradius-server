@@ -534,6 +534,11 @@ int main(int argc, char *argv[])
 	}
 
 	/*
+	 *	Clear the libfreeradius error buffer
+	 */
+	fr_strerror();
+
+	/*
 	 *	Process requests until HUP or exit.
 	 */
 	while ((status = radius_event_process()) == 0x80) {
