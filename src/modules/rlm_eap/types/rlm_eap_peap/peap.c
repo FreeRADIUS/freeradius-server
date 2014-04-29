@@ -1213,6 +1213,9 @@ rlm_rcode_t eappeap_process(eap_handler_t *handler, tls_session_t *tls_session)
 static int setup_fake_request(REQUEST *request, REQUEST *fake, peap_tunnel_t *t) {
 
 	VALUE_PAIR *vp;
+
+	rad_assert(request != NULL);
+
 	/*
 	 *	Tell the request that it's a fake one.
 	 */
