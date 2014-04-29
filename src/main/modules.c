@@ -1298,6 +1298,15 @@ static int load_byserver(CONF_SECTION *cs)
 }
 
 
+static int pass2_cb(UNUSED void *ctx, void *data)
+{
+	indexed_modcallable *this = data;
+
+	if (!modcall_pass2(this->modulelist)) return -1;
+
+	return 0;
+}
+
 /*
  *	Load all of the virtual servers.
  */
@@ -1381,6 +1390,12 @@ int virtual_servers_load(CONF_SECTION *config)
 
 		for (i = RLM_COMPONENT_AUTH; i < RLM_COMPONENT_COUNT; i++) {
 			if (!modcall_pass2(server->mc[i])) return -1;
+
+			if (server->components &&
+			    (rbtree_walk(server->components, RBTREE_IN_ORDER,
+					 pass2_cb, NULL) != 0)) {
+				    return -1;
+			}
 		}
 	}
 
