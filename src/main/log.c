@@ -664,7 +664,7 @@ void vradlog_request(log_type_t type, log_debug_t lvl, REQUEST *request, char co
  * @param request The current request.
  * @param msg format string.
  */
-void CC_HINT(nonnull) radlog_request(log_type_t type, log_debug_t lvl, REQUEST *request, char const *msg, ...)
+void radlog_request(log_type_t type, log_debug_t lvl, REQUEST *request, char const *msg, ...)
 {
 	va_list ap;
 
@@ -690,7 +690,7 @@ void CC_HINT(nonnull) radlog_request(log_type_t type, log_debug_t lvl, REQUEST *
  * @param request The current request.
  * @param msg format string.
  */
-void CC_HINT(nonnull) radlog_request_error(log_type_t type, log_debug_t lvl, REQUEST *request, char const *msg, ...)
+void radlog_request_error(log_type_t type, log_debug_t lvl, REQUEST *request, char const *msg, ...)
 {
 	va_list ap;
 

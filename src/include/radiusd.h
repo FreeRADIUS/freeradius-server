@@ -720,7 +720,7 @@ int radius_request(REQUEST **request, request_refs_t name);
 request_refs_t radius_request_name(char const **name, request_refs_t unknown);
 
 int radius_mapexec(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *map);
-int radius_map2vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *map, void *ctx);
+int radius_map2vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *map, void *ctx) CC_HINT(nonnull (1,2,3));
 int radius_map2request(REQUEST *request, value_pair_map_t const *map,
 		       char const *src, radius_tmpl_getvalue_t func, void *ctx);
 

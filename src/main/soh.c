@@ -373,7 +373,7 @@ static char const* healthclass2str(uint8_t hc) {
  * @return 0 on success, -1 on failure
  *
  */
-int CC_HINT(nonnull) soh_verify(REQUEST *request, uint8_t const *data, unsigned int data_len) {
+int soh_verify(REQUEST *request, uint8_t const *data, unsigned int data_len) {
 
 	VALUE_PAIR *vp;
 	eap_soh hdr;
