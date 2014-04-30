@@ -696,12 +696,6 @@ error:
 	return -1;
 }
 
-/** Check the user's password against ldap directory
- *
- * @param instance rlm_ldap configuration.
- * @param request Current request.
- * @return one of the RLM_MODULE_* values.
- */
 static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *request)
 {
 	rlm_rcode_t	rcode;
@@ -792,9 +786,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	return rcode;
 }
 
-/** Check if user is authorized for remote access
- *
- */
 static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *request)
 {
 	rlm_rcode_t	rcode = RLM_MODULE_OK;
