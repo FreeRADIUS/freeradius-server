@@ -1222,7 +1222,6 @@ int radius_mapexec(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *m
 	 *	if dst is an attribute, then we create an attribute of that type and then
 	 *	call pairparsevalue on the output of the script.
 	 */
-	out[0] = '\0';
 	result = radius_exec_program(request, map->src->name, true, true,
 				     answer, sizeof(answer), EXEC_TIMEOUT,
 				     input_pairs ? *input_pairs : NULL,
