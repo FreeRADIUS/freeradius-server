@@ -10,3 +10,13 @@ do_not_respond {
 	handled
 }
 
+#
+#  Have the server accept the current request.
+#  Can only be called from authorize.
+#  Unlike calling the always module instance 'reject' the request will continue to be processed.
+#
+accept.authorize {
+	update control {
+		Auth-Type := accept
+	}
+}
