@@ -430,7 +430,7 @@ skip_group:
 /*
  *	Accounting - write the detail files.
  */
-static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *request)
 {
 #ifdef WITH_DETAIL
 	if (request->listener->type == RAD_LISTEN_DETAIL &&
@@ -447,7 +447,7 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 /*
  *	Incoming Access Request - write the detail files.
  */
-static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *request)
 {
 	return detail_do(instance, request, request->packet, false);
 }
@@ -455,7 +455,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 /*
  *	Outgoing Access-Request Reply - write the detail files.
  */
-static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *request)
 {
 	return detail_do(instance, request, request->reply, false);
 }
@@ -464,7 +464,7 @@ static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
 /*
  *	Incoming CoA - write the detail files.
  */
-static rlm_rcode_t mod_recv_coa(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_recv_coa(void *instance, REQUEST *request)
 {
 	return detail_do(instance, request, request->packet, false);
 }
@@ -472,7 +472,7 @@ static rlm_rcode_t mod_recv_coa(void *instance, REQUEST *request)
 /*
  *	Outgoing CoA - write the detail files.
  */
-static rlm_rcode_t mod_send_coa(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_send_coa(void *instance, REQUEST *request)
 {
 	return detail_do(instance, request, request->reply, false);
 }
@@ -482,7 +482,7 @@ static rlm_rcode_t mod_send_coa(void *instance, REQUEST *request)
  *	Outgoing Access-Request to home server - write the detail files.
  */
 #ifdef WITH_PROXY
-static rlm_rcode_t mod_pre_proxy(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_pre_proxy(void *instance, REQUEST *request)
 {
 	if (request->proxy && request->proxy->vps) {
 		return detail_do(instance, request, request->proxy, false);
@@ -495,7 +495,7 @@ static rlm_rcode_t mod_pre_proxy(void *instance, REQUEST *request)
 /*
  *	Outgoing Access-Request Reply - write the detail files.
  */
-static rlm_rcode_t mod_post_proxy(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *instance, REQUEST *request)
 {
 	if (request->proxy_reply && request->proxy_reply->vps) {
 		return detail_do(instance, request, request->proxy_reply, false);

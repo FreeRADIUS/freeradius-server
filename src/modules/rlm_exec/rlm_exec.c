@@ -368,7 +368,7 @@ static rlm_rcode_t exec_dispatch(void *instance, REQUEST *request)
  *
  *	Then, call exec_dispatch.
  */
-static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *request)
 {
 	rlm_exec_t	*inst = (rlm_exec_t *) instance;
 	rlm_rcode_t 	rcode;

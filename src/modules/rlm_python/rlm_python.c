@@ -639,7 +639,7 @@ static int mod_detach(void *instance)
 	return ret;
 }
 
-#define A(x) static rlm_rcode_t mod_##x(void *instance, REQUEST *request) { \
+#define A(x) static rlm_rcode_t CC_HINT(nonnull) mod_##x(void *instance, REQUEST *request) { \
 		return do_python(request, ((rlm_python_t *)instance)->x.function, #x); \
 	}
 

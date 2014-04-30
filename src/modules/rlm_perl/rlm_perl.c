@@ -866,7 +866,7 @@ static int do_perl(void *instance, REQUEST *request, char *function_name)
 	return exitstatus;
 }
 
-#define RLM_PERL_FUNC(_x) static rlm_rcode_t mod_##_x(void *instance, REQUEST *request) \
+#define RLM_PERL_FUNC(_x) static rlm_rcode_t CC_HINT(nonnull) mod_##_x(void *instance, REQUEST *request) \
 	{								\
 		return do_perl(instance, request,			\
 			       ((rlm_perl_t *)instance)->func_##_x); \
@@ -893,7 +893,7 @@ RLM_PERL_FUNC(preacct)
 /*
  *	Write accounting information to this modules database.
  */
-static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *request)
 {
 	VALUE_PAIR	*pair;
 	int 		acctstatustype=0;

@@ -922,7 +922,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 }
 
 
-static rlm_rcode_t mod_authorize(void *instance, REQUEST * request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST * request)
 {
 	rlm_rcode_t rcode = RLM_MODULE_NOOP;
 
@@ -1304,7 +1304,7 @@ static int acct_redundant(rlm_sql_t *inst, REQUEST *request, sql_acct_section_t 
 /*
  *	Accounting: Insert or update session data in our sql table
  */
-static rlm_rcode_t mod_accounting(void *instance, REQUEST * request) {
+static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST * request) {
 	rlm_sql_t *inst = instance;
 
 	if (inst->config->accounting) {
@@ -1326,7 +1326,7 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST * request) {
  *	logins by querying the terminal server (using eg. SNMP).
  */
 
-static rlm_rcode_t mod_checksimul(void *instance, REQUEST * request) {
+static rlm_rcode_t CC_HINT(nonnull) mod_checksimul(void *instance, REQUEST * request) {
 	rlm_rcode_t		rcode = RLM_MODULE_OK;
 	rlm_sql_handle_t 	*handle = NULL;
 	rlm_sql_t		*inst = instance;
@@ -1525,7 +1525,7 @@ static rlm_rcode_t mod_checksimul(void *instance, REQUEST * request) {
 /*
  *	Postauth: Write a record of the authentication attempt
  */
-static rlm_rcode_t mod_post_auth(void *instance, REQUEST * request) {
+static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST * request) {
 	rlm_sql_t *inst = instance;
 
 	if (inst->config->postauth) {

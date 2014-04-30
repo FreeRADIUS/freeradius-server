@@ -169,7 +169,7 @@ static void normify(REQUEST *request, VALUE_PAIR *vp, size_t min_length)
  *	This isn't strictly necessary, but it does make the
  *	server simpler to configure.
  */
-static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *request)
 {
 	rlm_pap_t *inst = instance;
 	bool auth_type = false;
@@ -761,7 +761,7 @@ static int pap_auth_ns_mta_md5(UNUSED rlm_pap_t *inst, REQUEST *request, VALUE_P
 /*
  *	Authenticate the user via one of any well-known password.
  */
-static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *request)
 {
 	rlm_pap_t *inst = instance;
 	VALUE_PAIR *vp;

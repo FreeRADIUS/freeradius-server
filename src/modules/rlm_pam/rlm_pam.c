@@ -189,7 +189,7 @@ static int pam_pass(char const *name, char const *passwd, char const *pamauth)
 }
 
 /* translate between function declarations */
-static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *request)
 {
 	int	r;
 	VALUE_PAIR *pair;

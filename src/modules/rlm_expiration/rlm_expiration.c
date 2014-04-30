@@ -31,7 +31,7 @@ RCSID("$Id$")
 /*
  *      Check if account has expired, and if user may login now.
  */
-static rlm_rcode_t mod_authorize(UNUSED void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, REQUEST *request)
 {
 	VALUE_PAIR *vp, *check_item = NULL;
 

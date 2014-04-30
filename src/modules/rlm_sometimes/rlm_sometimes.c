@@ -154,14 +154,14 @@ static rlm_rcode_t sometimes_reply(void *instance, REQUEST *request)
 }
 
 #ifdef WITH_PROXY
-static rlm_rcode_t mod_pre_proxy(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_pre_proxy(void *instance, REQUEST *request)
 {
 	if (!request->proxy) return RLM_MODULE_NOOP;
 
 	return sometimes_return(instance, request->proxy, request->proxy_reply);
 }
 
-static rlm_rcode_t mod_post_proxy(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *instance, REQUEST *request)
 {
 	if (!request->proxy_reply) return RLM_MODULE_NOOP;
 

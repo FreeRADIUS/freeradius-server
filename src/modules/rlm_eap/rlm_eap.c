@@ -259,7 +259,7 @@ static int mod_instantiate(CONF_SECTION *cs, void *instance)
 /*
  *	For backwards compatibility.
  */
-static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *request)
 {
 	rlm_eap_t		*inst;
 	eap_handler_t		*handler;
@@ -469,7 +469,7 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
  * to check for user existence & get their configured values.
  * It Handles EAP-START Messages, User-Name initilization.
  */
-static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *request)
 {
 	rlm_eap_t	*inst;
 	int		status;
@@ -541,7 +541,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
  *	If we're proxying EAP, then there may be magic we need
  *	to do.
  */
-static rlm_rcode_t mod_post_proxy(void *inst, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *inst, REQUEST *request)
 {
 	size_t		i;
 	size_t		len;
@@ -705,7 +705,7 @@ static rlm_rcode_t mod_post_proxy(void *inst, REQUEST *request)
 }
 #endif
 
-static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *request)
 {
 	rlm_eap_t	*inst = instance;
 	VALUE_PAIR	*vp;

@@ -106,7 +106,7 @@ static rlm_rcode_t always_return(void *instance, UNUSED REQUEST *request)
 /*
  *	checksimul fakes some other variables besides the rcode...
  */
-static rlm_rcode_t mod_checksimul(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_checksimul(void *instance, REQUEST *request)
 {
 	struct rlm_always_t *inst = instance;
 
