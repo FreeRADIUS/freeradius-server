@@ -1813,10 +1813,10 @@ error:
  * @param[in] uri buffer containing the expanded URI to send the request to.
  * @return 0 on success (all opts configured) -1 on error.
  */
-int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
-			REQUEST *request, void *handle, http_method_t method,
-			http_body_type_t type,
-			char const *uri, char const *username, char const *password)
+int CC_HINT(nonnull (1,2,3,4,7)) rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
+						     REQUEST *request, void *handle, http_method_t method,
+						     http_body_type_t type,
+						     char const *uri, char const *username, char const *password)
 {
 	rlm_rest_handle_t	*randle	= handle;
 	rlm_rest_curl_context_t	*ctx = randle->ctx;
@@ -1832,7 +1832,6 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 	char buffer[512];
 
 	rad_assert((!username && !password) || (username && password));
-	rad_assert(request != NULL);
 
 	buffer[(sizeof(buffer) - 1)] = '\0';
 

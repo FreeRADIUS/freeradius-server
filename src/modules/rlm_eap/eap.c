@@ -492,7 +492,7 @@ eap_rcode_t eap_method_select(rlm_eap_t *inst, eap_handler_t *handler)
  *	Set the RADIUS reply codes based on EAP request codes.  Append
  *	any additonal VPs to RADIUS reply
  */
-rlm_rcode_t eap_compose(eap_handler_t *handler)
+rlm_rcode_t CC_HINT(nonnull) eap_compose(eap_handler_t *handler)
 {
 	VALUE_PAIR *vp;
 	eap_packet_raw_t *eap_packet;
@@ -511,8 +511,6 @@ rlm_rcode_t eap_compose(eap_handler_t *handler)
 	eap_ds = handler->eap_ds;
 	reply = eap_ds->request;
 #endif
-
-	rad_assert(request != NULL);
 
 	/*
 	 *	The Id for the EAP packet to the NAS wasn't set.

@@ -420,7 +420,6 @@ int sql_set_user(rlm_sql_t *inst, REQUEST *request, char const *username)
 	char const *sqluser;
 	ssize_t len;
 
-	rad_assert(request != NULL);
 	rad_assert(request->packet != NULL);
 
 	if (username != NULL) {
@@ -584,7 +583,6 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t *inst, REQUEST *request, rlm
 	char			*expanded = NULL;
 	int			rows;
 
-	rad_assert(request != NULL);
 	rad_assert(request->packet != NULL);
 
 	/*
@@ -939,7 +937,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST * requ
 
 	char	*expanded = NULL;
 
-	rad_assert(request != NULL);
 	rad_assert(request->packet != NULL);
 	rad_assert(request->reply != NULL);
 

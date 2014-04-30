@@ -461,9 +461,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 
 	size_t len;
 
-	rad_assert(instance != NULL);
-	rad_assert(request != NULL);
-
 	/*
 	 *	Before doing anything else, see if we have to reset
 	 *	the counters.

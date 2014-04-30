@@ -119,13 +119,9 @@ static int cache_heap_cmp(void const *one, void const *two)
 /*
  *	Merge a cached entry into a REQUEST.
  */
-static void cache_merge(rlm_cache_t *inst, REQUEST *request,
-			rlm_cache_entry_t *c)
+static void CC_HINT(nonnull) cache_merge(rlm_cache_t *inst, REQUEST *request, rlm_cache_entry_t *c)
 {
 	VALUE_PAIR *vp;
-
-	rad_assert(request != NULL);
-	rad_assert(c != NULL);
 
 	vp = pairfind(request->config_items, PW_CACHE_MERGE, 0, TAG_ANY);
 	if (vp && (vp->vp_integer == 0)) {

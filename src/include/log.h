@@ -77,21 +77,30 @@ extern FR_NAME_NUMBER const syslog_str2fac[];
 extern FR_NAME_NUMBER const log_str2dst[];
 extern fr_log_t default_log;
 
-int radlog_init(fr_log_t *log, bool daemonize);
+int	radlog_init(fr_log_t *log, bool daemonize);
 
-int		vradlog(log_type_t lvl, char const *fmt, va_list ap) CC_HINT(format (printf, 2, 0));
-int		radlog(log_type_t lvl, char const *fmt, ...) CC_HINT(format (printf, 2, 3));
+void 	vp_listdebug(VALUE_PAIR *vp);
 
-void 		vp_listdebug(VALUE_PAIR *vp);
-bool		radlog_debug_enabled(log_type_t type, log_debug_t lvl, REQUEST *request);
-void		vradlog_request(log_type_t type, log_debug_t lvl, REQUEST *request, char const *msg, va_list ap)
-		CC_HINT(format (printf, 4, 0));
-void		radlog_request(log_type_t type, log_debug_t lvl, REQUEST *request, char const *msg, ...)
-		CC_HINT(format (printf, 4, 5));
-void		radlog_request_error(log_type_t type, log_debug_t lvl, REQUEST *request, char const *msg, ...)
-		CC_HINT(format (printf, 4, 5));
-void radlog_request_marker(log_type_t type, log_debug_t lvl, REQUEST *request,
-			   char const *fmt, size_t indent, char const *error);
+int	vradlog(log_type_t lvl, char const *fmt, va_list ap)
+	CC_HINT(format (printf, 2, 0)) CC_HINT(nonnull);
+int	radlog(log_type_t lvl, char const *fmt, ...)
+	CC_HINT(format (printf, 2, 3)) CC_HINT(nonnull (2));
+
+bool	radlog_debug_enabled(log_type_t type, log_debug_t lvl, REQUEST *request)
+	CC_HINT(nonnull) CC_HINT(always_inline);
+
+void	vradlog_request(log_type_t type, log_debug_t lvl, REQUEST *request, char const *msg, va_list ap)
+	CC_HINT(format (printf, 4, 0)) CC_HINT(nonnull (3, 4)) CC_HINT(always_inline);
+
+void	radlog_request(log_type_t type, log_debug_t lvl, REQUEST *request, char const *msg, ...)
+	CC_HINT(format (printf, 4, 5)) CC_HINT(nonnull (3, 4)) CC_HINT(always_inline);
+
+void	radlog_request_error(log_type_t type, log_debug_t lvl, REQUEST *request, char const *msg, ...)
+	CC_HINT(format (printf, 4, 5)) CC_HINT(nonnull (3, 4));
+
+void	radlog_request_marker(log_type_t type, log_debug_t lvl, REQUEST *request,
+			      char const *fmt, size_t indent, char const *error)
+	CC_HINT(nonnull) CC_HINT(always_inline);
 
 /*
  *	Multiple threads logging to one or more files.
@@ -154,9 +163,9 @@ int fr_logfile_unlock(fr_logfile_t *lf, int fd);
  *
  *	If a REQUEST * is available, these functions should be used.
  */
-#define _RLOG(_l, _p, _f, ...)	do { if (request && request->radlog) radlog_request(_l, _p, request, _f, ## __VA_ARGS__); } while(0)
-#define _RMOD(_l, _p, _f, ...)	do { if (request) radlog_request_error(_l, _p, request, _f, ## __VA_ARGS__); } while (0)
-#define _RMKR(_l, _p, _m, _i, _e)	do { if (request) radlog_request_marker(_l, _p, request, _m, _i, _e); } while (0)
+#define _RLOG(_l, _p, _f, ...)		radlog_request(_l, _p, request, _f, ## __VA_ARGS__)
+#define _RMOD(_l, _p, _f, ...)		radlog_request_error(_l, _p, request, _f, ## __VA_ARGS__)
+#define _RMKR(_l, _p, _m, _i, _e)	radlog_request_marker(_l, _p, request, _m, _i, _e)
 
 #define RDEBUG_ENABLED		radlog_debug_enabled(L_DBG, L_DBG_LVL_1, request)
 #define RDEBUG_ENABLED2		radlog_debug_enabled(L_DBG, L_DBG_LVL_2, request)

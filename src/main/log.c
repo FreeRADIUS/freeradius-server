@@ -664,11 +664,11 @@ void vradlog_request(log_type_t type, log_debug_t lvl, REQUEST *request, char co
  * @param request The current request.
  * @param msg format string.
  */
-void radlog_request(log_type_t type, log_debug_t lvl, REQUEST *request, char const *msg, ...)
+void CC_HINT(nonnull) radlog_request(log_type_t type, log_debug_t lvl, REQUEST *request, char const *msg, ...)
 {
 	va_list ap;
 
-	rad_assert(request && request->radlog);
+	if (request->radlog == NULL) return;
 
 	va_start(ap, msg);
 	request->radlog(type, lvl, request, msg, ap);
@@ -690,11 +690,10 @@ void radlog_request(log_type_t type, log_debug_t lvl, REQUEST *request, char con
  * @param request The current request.
  * @param msg format string.
  */
-void radlog_request_error(log_type_t type, log_debug_t lvl, REQUEST *request, char const *msg, ...)
+void CC_HINT(nonnull) radlog_request_error(log_type_t type, log_debug_t lvl, REQUEST *request, char const *msg, ...)
 {
 	va_list ap;
 
-	rad_assert(request);
 	va_start(ap, msg);
 	if (request->radlog) {
 		request->radlog(type, lvl, request, msg, ap);
