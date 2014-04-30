@@ -375,7 +375,7 @@ RADIUS_PACKET *fr_dhcp_recv(int sockfd)
 				 packet->code - PW_DHCP_OFFSET);
 		}
 
-		DEBUG("Received %s of id %08x from %s:%d to %s:%d\n",
+		DEBUG("Received %s of Id %08x from %s:%d to %s:%d\n",
 		       name, (unsigned int) packet->id,
 		       inet_ntop(packet->src_ipaddr.af,
 				 &packet->src_ipaddr.ipaddr,
@@ -432,9 +432,9 @@ int fr_dhcp_send(RADIUS_PACKET *packet)
 
 		DEBUG(
 #ifdef WITH_UDPFROMTO
-		"Sending %s of id %08x from %s:%d to %s:%d\n",
+		"Sending %s Id %08x from %s:%d to %s:%d\n",
 #else
-		"Sending %s of id %08x to %s:%d\n",
+		"Sending %s Id %08x to %s:%d\n",
 #endif
 		   name, (unsigned int) packet->id,
 #ifdef WITH_UDPFROMTO
