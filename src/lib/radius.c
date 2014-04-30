@@ -1722,7 +1722,7 @@ int rad_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 		what = "Reply";
 	}
 
-	DEBUG("Sending %s of id %d from %s port %u to %s port %u\n",
+	DEBUG("Sending %s Id %d from %s:%u to %s:%u\n",
 	      what, packet->id,
 	      inet_ntop(packet->src_ipaddr.af,
 			&packet->src_ipaddr.ipaddr,
@@ -2054,7 +2054,7 @@ int rad_send(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 		 *	the VP list again only for debugging.
 		 */
 	} else if (fr_debug_flag) {
-		DEBUG("Sending %s of id %d from %s port %u to %s port %u\n", what,
+		DEBUG("Sending %s Id %d from %s:%u to %s:%u\n", what,
 		      packet->id,
 		      inet_ntop(packet->src_ipaddr.af, &packet->src_ipaddr.ipaddr,
 				ip_src_buffer, sizeof(ip_src_buffer)),
@@ -2694,25 +2694,36 @@ RADIUS_PACKET *rad_recv(int fd, int flags)
 	packet->vps = NULL;
 
 	if (fr_debug_flag) {
-		char host_ipaddr[128];
+		char src_ipaddr[128];
+		char dst_ipaddr[128];
 
 		if (is_radius_code(packet->code)) {
-			DEBUG("rad_recv: %s packet from host %s port %d",
+			DEBUG("Received %s Id %d from %s:%d to %s:%d length %d\n",
 			      fr_packet_codes[packet->code],
+			      packet->id,
 			      inet_ntop(packet->src_ipaddr.af,
 					&packet->src_ipaddr.ipaddr,
-					host_ipaddr, sizeof(host_ipaddr)),
-			      packet->src_port);
-		} else {
-			DEBUG("rad_recv: Packet from host %s port %d code=%d",
-			      inet_ntop(packet->src_ipaddr.af,
-					&packet->src_ipaddr.ipaddr,
-					host_ipaddr, sizeof(host_ipaddr)),
+					src_ipaddr, sizeof(src_ipaddr)),
 			      packet->src_port,
-			      packet->code);
+			      inet_ntop(packet->dst_ipaddr.af,
+					&packet->dst_ipaddr.ipaddr,
+					dst_ipaddr, sizeof(dst_ipaddr)),
+			      packet->dst_port,
+			      (int) packet->data_len);
+		} else {
+			DEBUG("Received code %d Id %d from %s:%d to %s:%d length %d\n",
+			      packet->code,
+			      packet->id,
+			      inet_ntop(packet->src_ipaddr.af,
+					&packet->src_ipaddr.ipaddr,
+					src_ipaddr, sizeof(src_ipaddr)),
+			      packet->src_port,
+			      inet_ntop(packet->dst_ipaddr.af,
+					&packet->dst_ipaddr.ipaddr,
+					dst_ipaddr, sizeof(dst_ipaddr)),
+			      packet->dst_port,
+			      (int) packet->data_len);
 		}
-		DEBUG(", id=%d, length=%d\n",
-		      packet->id, (int) packet->data_len);
 	}
 
 #ifndef NDEBUG

@@ -247,10 +247,10 @@ int fr_tcp_read_packet(RADIUS_PACKET *packet, int flags)
 
 
 		if (is_radius_code(packet->code)) {
-			DEBUG("rad_recv: %s packet from %s",
+			DEBUG("Received %s packet from %s",
 			      fr_packet_codes[packet->code], buffer);
 		} else {
-			DEBUG("rad_recv: Packet from %s code=%d",
+			DEBUG("Received packet from %s code %d",
 			      buffer, packet->code);
 		}
 		DEBUG(", id=%d, length=%zu\n", packet->id, packet->data_len);
