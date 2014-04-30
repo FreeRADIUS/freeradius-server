@@ -498,6 +498,13 @@ void vp_listdebug(VALUE_PAIR *vp)
 	}
 }
 
+inline bool debug_enabled(log_type_t type, log_debug_t lvl)
+{
+	if ((type & L_DBG) && (debug_flag != 0) && (lvl > debug_flag)) return true;
+
+	return false;
+}
+
 inline bool radlog_debug_enabled(log_type_t type, log_debug_t lvl, REQUEST *request)
 {
 	/*
