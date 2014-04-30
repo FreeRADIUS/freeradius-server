@@ -252,60 +252,46 @@ int rad_mkdir(char *directory, mode_t mode)
 {
 	int rcode;
 	char *p;
-	struct stat st;
 
 	/*
-	 *	If the directory exists, don't do anything.
+	 *	Try to make the directory.  If it exists, chmod it.
+	 *	If a path doesn't exist, that's OK.  Otherwise
+	 *	return with an error.
 	 */
-	if (stat(directory, &st) == 0) {
-		return 0;
-	}
+	rcode = mkdir(directory, mode & 0777);
+	if (rcode < 0) {
+		if (errno == EEXIST) {
+			return chmod(directory, mode);
+		}
 
-	/*
-	 *	Look for the LAST directory name.  Try to create that,
-	 *	failing on any error.
-	 */
-	p = strrchr(directory, FR_DIR_SEP);
-	if (p != NULL) {
-		*p = '\0';
-		rcode = rad_mkdir(directory, mode);
-
-		/*
-		 *	On error, we leave the directory name as the
-		 *	one which caused the error.
-		 */
-		if (rcode < 0) {
-			if (errno == EEXIST) return 0;
+		if (errno != ENOENT) {
 			return rcode;
 		}
 
 		/*
-		 *	Reset the directory delimiter, and go ask
-		 *	the system to make the directory.
+		 *	A component in the directory path doesn't
+		 *	exist.  Look for the LAST directory name.  Try
+		 *	to create that.  If there's an error, we leave
+		 *	the directory path as the one at which the
+		 *	error occured.
+		 */
+		p = strrchr(directory, FR_DIR_SEP);
+		if (!p || (p == directory)) return -1;
+
+		*p = '\0';
+		rcode = rad_mkdir(directory, mode);
+		if (rcode < 0) return rcode;
+
+		/*
+		 *	Reset the directory path, and try again to
+		 *	make the directory.
 		 */
 		*p = FR_DIR_SEP;
-	} else {
-		return 0;
-	}
+		rcode = mkdir(directory, mode & 0777);
+		if (rcode < 0) return rcode;
+	} /* else we successfully created the directory */
 
-	/*
-	 *	Having done everything successfully, we do the
-	 *	system call to actually go create the directory.
-	 */
-	rcode = mkdir(directory, mode & 0777);
-	if (rcode < 0) {
-		return rcode;
-	}
-
-	/*
-	 *	Set things like sticky bits that aren't supported by
-	 *	mkdir.
-	 */
-	if (mode & ~0777) {
-		rcode = chmod(directory, mode);
-	}
-
-	return rcode;
+	return chmod(directory, mode);
 }
 
 
