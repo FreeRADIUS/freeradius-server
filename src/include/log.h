@@ -93,10 +93,10 @@ bool	radlog_debug_enabled(log_type_t type, log_debug_t lvl, REQUEST *request)
 	CC_HINT(nonnull) CC_HINT(always_inline);
 
 void	vradlog_request(log_type_t type, log_debug_t lvl, REQUEST *request, char const *msg, va_list ap)
-	CC_HINT(format (printf, 4, 0)) CC_HINT(nonnull (3, 4)) CC_HINT(always_inline);
+	CC_HINT(format (printf, 4, 0)) CC_HINT(nonnull (3, 4));
 
 void	radlog_request(log_type_t type, log_debug_t lvl, REQUEST *request, char const *msg, ...)
-	CC_HINT(format (printf, 4, 5)) CC_HINT(nonnull (3, 4)) CC_HINT(always_inline);
+	CC_HINT(format (printf, 4, 5)) CC_HINT(nonnull (3, 4));
 
 void	radlog_request_error(log_type_t type, log_debug_t lvl, REQUEST *request, char const *msg, ...)
 	CC_HINT(format (printf, 4, 5)) CC_HINT(nonnull (3, 4));
