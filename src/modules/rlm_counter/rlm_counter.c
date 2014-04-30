@@ -612,7 +612,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 	DEBUG("rlm_counter: Searching the database for key '%s'",key_vp->vp_strvalue);
 	pthread_mutex_lock(&inst->mutex);
 	count_datum = gdbm_fetch(inst->gdbm, key_datum);
-	pthread_mutex_unlock(&inst->mutex);
 	if (!count_datum.dptr) {
 		DEBUG("rlm_counter: Could not find the requested key in the database");
 		counter.user_counter = 0;
@@ -628,6 +627,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 		if (uniqueid_vp != NULL) {
 			if (strncmp(uniqueid_vp->vp_strvalue,counter.uniqueid, UNIQUEID_MAX_LEN - 1) == 0) {
 				DEBUG("rlm_counter: Unique IDs for user match. Droping the request");
+				pthread_mutex_unlock(&inst->mutex);
 				return RLM_MODULE_NOOP;
 			}
 			strlcpy(counter.uniqueid,uniqueid_vp->vp_strvalue, sizeof(counter.uniqueid));
@@ -669,7 +669,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 	count_datum.dsize = sizeof(rad_counter);
 
 	DEBUG("rlm_counter: Storing new value in database");
-	pthread_mutex_lock(&inst->mutex);
 	ret = gdbm_store(inst->gdbm, key_datum, count_datum, GDBM_REPLACE);
 	pthread_mutex_unlock(&inst->mutex);
 	if (ret < 0) {
