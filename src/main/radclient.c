@@ -193,7 +193,7 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 	VALUE_PAIR *vp;
 	rc_request_t *request;
 	bool packets_done = false;
-	int request_number = 1;
+	uint64_t num = 0;
 
 	assert(files->packets != NULL);
 
@@ -203,8 +203,7 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 	if (strcmp(files->packets, "-") != 0) {
 		packets = fopen(files->packets, "r");
 		if (!packets) {
-			fr_perror("radclient: Error opening %s: %s",
-				  files->packets, strerror(errno));
+			ERROR("Error opening %s: %s", files->packets, strerror(errno));
 			return 0;
 		}
 
@@ -214,8 +213,7 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 		if (files->filters) {
 			filters = fopen(files->filters, "r");
 			if (!filters) {
-				fr_perror("radclient: Error opening %s: %s",
-					  files->filters, strerror(errno));
+				ERROR("Error opening %s: %s", files->filters, strerror(errno));
 				fclose(packets);
 				return 0;
 			}
@@ -234,14 +232,14 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 		 */
 		request = talloc_zero(ctx, rc_request_t);
 		if (!request) {
-			fr_perror("radclient: Out of memory");
+			ERROR("Out of memory");
 			goto error;
 		}
 		talloc_set_destructor(request, _rc_request_free);
 
 		request->packet = rad_alloc(request, 1);
 		if (!request->packet) {
-			fr_perror("radclient: Out of memory");
+			ERROR("Out of memory");
 			goto error;
 		}
 
@@ -255,13 +253,13 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 
 		request->files = files;
 		request->packet->id = -1; /* allocate when sending */
-		request->request_number = request_number++;
+		request->num = num++;
 
 		/*
 		 *	Read the request VP's.
 		 */
 		if (readvp2(&request->packet->vps, request->packet, packets, &packets_done) < 0) {
-			fr_perror("radclient: Error parsing \"%s\"", files->filters);
+			ERROR("Error parsing \"%s\"", files->filters);
 			goto error;
 		}
 
@@ -282,7 +280,7 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 			bool filters_done;
 
 			if (readvp2(&request->filter, request, filters, &filters_done) < 0) {
-				fr_perror("radclient: Error parsing \"%s\"", files->filters);
+				ERROR("Error parsing \"%s\"", files->filters);
 				goto error;
 			}
 
@@ -291,14 +289,14 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 			}
 
 			if (filters_done && !packets_done) {
-				fr_perror("radclient: Differing number of packets/filters in %s:%s "
-					  "(too many requests))", files->packets, files->filters);
+				ERROR("Differing number of packets/filters in %s:%s "
+				      "(too many requests))", files->packets, files->filters);
 				goto error;
 			}
 
 			if (!filters_done && packets_done) {
-				fr_perror("radclient: Differing number of packets/filters in %s:%s "
-					  "(too many filters))", files->packets, files->filters);
+				ERROR("Differing number of packets/filters in %s:%s "
+				      "(too many filters))", files->packets, files->filters);
 				goto error;
 			}
 
@@ -454,7 +452,7 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 
 					da = dict_attrbyvalue(PW_DIGEST_ATTRIBUTES, 0);
 					if (!da) {
-						fr_perror("radclient: Out of memory");
+						ERROR("Out of memory");
 						goto error;
 					}
 					vp->da = da;
@@ -526,18 +524,16 @@ static int radclient_sane(rc_request_t *request)
 	}
 	if (request->packet->dst_ipaddr.af == AF_UNSPEC) {
 		if (server_ipaddr.af == AF_UNSPEC) {
-			fr_perror("radclient: No server was given, but request %d in file %s "
-				  "did not contain Packet-Dst-IP-Address",
-				  request->request_number, request->files->packets);
+			ERROR("No server was given, and request %" PRIu64 " in file %s did not contain "
+			      "Packet-Dst-IP-Address", request->num, request->files->packets);
 			return -1;
 		}
 		request->packet->dst_ipaddr = server_ipaddr;
 	}
 	if (request->packet->code == 0) {
 		if (packet_code == -1) {
-			fr_perror("radclient: Request was \"auto\", but request %d in file %s "
-				  "did not contain Packet-Type",
-				  request->request_number, request->files->packets);
+			ERROR("Request was \"auto\", and request %" PRIu64 " in file %s did not contain Packet-Type",
+			      request->num, request->files->packets);
 			return -1;
 		}
 		request->packet->code = packet_code;
@@ -607,68 +603,6 @@ static void deallocate_id(rc_request_t *request)
 	if (request->reply) rad_free(&request->reply);
 }
 
-
-static void print_hex(RADIUS_PACKET *packet)
-{
-	int i;
-
-	if (!packet->data) return;
-
-	printf("  Code:\t\t%u\n", packet->data[0]);
-	printf("  Id:\t\t%u\n", packet->data[1]);
-	printf("  Length:\t%u\n", ((packet->data[2] << 8) |
-				   (packet->data[3])));
-	printf("  Vector:\t");
-	for (i = 4; i < 20; i++) {
-		printf("%02x", packet->data[i]);
-	}
-	printf("\n");
-
-	if (packet->data_len > 20) {
-		int total;
-		uint8_t const *ptr;
-		printf("  Data:");
-
-		total = packet->data_len - 20;
-		ptr = packet->data + 20;
-
-		while (total > 0) {
-			int attrlen;
-
-			printf("\t\t");
-			if (total < 2) { /* too short */
-				printf("%02x\n", *ptr);
-				break;
-			}
-
-			if (ptr[1] > total) { /* too long */
-				for (i = 0; i < total; i++) {
-					printf("%02x ", ptr[i]);
-				}
-				break;
-			}
-
-			printf("%02x  %02x  ", ptr[0], ptr[1]);
-			attrlen = ptr[1] - 2;
-			ptr += 2;
-			total -= 2;
-
-			for (i = 0; i < attrlen; i++) {
-				if ((i > 0) && ((i & 0x0f) == 0x00))
-					printf("\t\t\t");
-				printf("%02x ", ptr[i]);
-				if ((i & 0x0f) == 0x0f) printf("\n");
-			}
-
-			if ((attrlen & 0x0f) != 0x00) printf("\n");
-
-			ptr += attrlen;
-			total -= attrlen;
-		}
-	}
-	fflush(stdout);
-}
-
 /*
  *	Send one packet.
  */
@@ -714,14 +648,13 @@ static int send_one_packet(rc_request_t *request)
 #endif
 			mysockfd = fr_socket(&client_ipaddr, 0);
 			if (mysockfd < 0) {
-				fr_perror("radclient: Can't open new socket: %s",
-					  strerror(errno));
+				ERROR("Can't open new socket: %s", strerror(errno));
 				exit(1);
 			}
 			if (!fr_packet_list_socket_add(pl, mysockfd, ipproto,
 						       &server_ipaddr,
 						       server_port, NULL)) {
-				fr_perror("radclient: Can't add new socket");
+				ERROR("Can't add new socket");
 				exit(1);
 			}
 			goto retry;
@@ -787,8 +720,8 @@ static int send_one_packet(rc_request_t *request)
 				mschapv1_encode(request->packet,
 						&request->packet->vps,
 						request->password);
-			} else if (fr_debug_flag) {
-				printf("WARNING: No password in the request\n");
+			} else {
+				DEBUG("WARNING: No password in the request");
 			}
 		}
 
@@ -844,8 +777,8 @@ static int send_one_packet(rc_request_t *request)
 			 */
 			fr_packet_list_yank(pl, request->packet);
 
-			fr_perror("radclient: no reply from server for ID %d socket %d",
-				  request->packet->id, request->packet->sockfd);
+			REDEBUG("No reply from server for ID %d socket %d",
+			        request->packet->id, request->packet->sockfd);
 			deallocate_id(request);
 
 			/*
@@ -866,16 +799,12 @@ static int send_one_packet(rc_request_t *request)
 		request->tries++;
 	}
 
-
 	/*
 	 *	Send the packet.
 	 */
 	if (rad_send(request->packet, NULL, secret) < 0) {
-		fr_perror("radclient: Failed to send packet for ID %d",
-			  request->packet->id);
+		REDEBUG("Failed to send packet for ID %d", request->packet->id);
 	}
-
-	if (fr_debug_flag > 2) print_hex(request->packet);
 
 	return 0;
 }
@@ -914,10 +843,9 @@ static int recv_one_packet(int wait_time)
 	/*
 	 *	Look for the packet.
 	 */
-
 	reply = fr_packet_list_recv(pl, &set);
 	if (!reply) {
-		fr_perror("radclient: received bad packet");
+		ERROR("Received bad packet");
 #ifdef WITH_TCP
 		/*
 		 *	If the packet is bad, we close the socket.
@@ -941,12 +869,10 @@ static int recv_one_packet(int wait_time)
 	reply->src_port = server_port;
 #endif
 
-	if (fr_debug_flag > 2) print_hex(reply);
-
 	packet_p = fr_packet_list_find_byreply(pl, reply);
 	if (!packet_p) {
-		fr_perror("radclient: received reply to request we did not send. (id=%d socket %d)",
-			  reply->id, reply->sockfd);
+		ERROR("Received reply to request we did not send. (id=%d socket %d)",
+		      reply->id, reply->sockfd);
 		rad_free(&reply);
 		return -1;	/* got reply to packet we didn't send */
 	}
@@ -957,13 +883,13 @@ static int recv_one_packet(int wait_time)
 	 *	FIXME: Silently drop it and listen for another packet.
 	 */
 	if (rad_verify(reply, request->packet, secret) < 0) {
-		fr_perror("rad_verify");
+		REDEBUG("Reply verification failed");
 		stats.lost++;
 		goto packet_done; /* shared secret is incorrect */
 	}
 
 	if (print_filename) {
-		printf("%s:%d %d\n", request->files->packets, request->request_number, reply->code);
+		RDEBUG("%s response code %d", request->files->packets, reply->code);
 	}
 
 	deallocate_id(request);
@@ -974,28 +900,26 @@ static int recv_one_packet(int wait_time)
 	 *	If this fails, we're out of memory.
 	 */
 	if (rad_decode(request->reply, request->packet, secret) != 0) {
-		fr_perror("rad_decode");
+		REDEBUG("Reply decode failed");
 		stats.lost++;
 		goto packet_done;
-	}
-
-	/* libradius debug already prints out the value pairs for us */
-	if (!fr_debug_flag && do_output) {
-		printf("Received reply ID %d, code %d, length = %zd\n",
-		       request->reply->id, request->reply->code,
-		       request->reply->data_len);
-		vp_printlist(stdout, request->reply->vps);
 	}
 
 	/*
 	 *	Increment counters...
 	 */
-	if ((request->reply->code == PW_CODE_AUTHENTICATION_ACK) ||
-	    (request->reply->code == PW_CODE_ACCOUNTING_RESPONSE) ||
-	    (request->reply->code == PW_CODE_COA_ACK) ||
-	    (request->reply->code == PW_CODE_DISCONNECT_ACK)) {
+	switch (request->reply->code) {
+	case PW_CODE_AUTHENTICATION_ACK:
+	case PW_CODE_ACCOUNTING_RESPONSE:
+	case PW_CODE_COA_ACK:
+	case PW_CODE_DISCONNECT_ACK:
 		stats.accepted++;
-	} else {
+		break;
+
+	case PW_CODE_ACCESS_CHALLENGE:
+		break;
+
+	default:
 		stats.rejected++;
 	}
 
@@ -1005,11 +929,11 @@ static int recv_one_packet(int wait_time)
 	 */
 	if (request->reply->code != request->filter_code) {
 		if (is_radius_code(request->packet_code)) {
-			printf("Expected %s got %s\n", fr_packet_codes[request->filter_code],
-			       fr_packet_codes[request->reply->code]);
+			REDEBUG("Expected %s got %s", fr_packet_codes[request->filter_code],
+				fr_packet_codes[request->reply->code]);
 		} else {
-			printf("Expected %u got %i\n", request->filter_code,
-			       request->reply->code);
+			REDEBUG("Expected %u got %i", request->filter_code,
+			        request->reply->code);
 		}
 		stats.failed++;
 	/*
@@ -1022,11 +946,11 @@ static int recv_one_packet(int wait_time)
 
 		pairsort(&request->reply->vps, attrtagcmp);
 		if (pairvalidate(failed, request->filter, request->reply->vps)) {
-			printf("Packet passed filter\n");
+			RDEBUG("Response passed filter");
 			stats.passed++;
 		} else {
 			pairvalidate_debug(request, failed);
-			fr_perror("Packet failed filter");
+			REDEBUG("Response failed filter");
 			stats.failed++;
 		}
 	}
@@ -1068,7 +992,8 @@ int main(int argc, char **argv)
 	rc_request_t	*this;
 	int force_af = AF_UNSPEC;
 
-	fr_debug_flag = 0;
+	fr_debug_flag = 2;
+	fr_log_fp = stdout;
 
 #ifndef NDEBUG
 	if (fr_fault_setup(getenv("PANIC_ACTION"), argv[0]) < 0) {
@@ -1082,7 +1007,7 @@ int main(int argc, char **argv)
 	filename_tree = rbtree_create(filename_cmp, NULL, 0);
 	if (!filename_tree) {
 	oom:
-		fr_perror("radclient: Out of memory");
+		ERROR("Out of memory");
 		exit(1);
 	}
 
@@ -1190,13 +1115,11 @@ int main(int argc, char **argv)
 			char *p;
 			fp = fopen(optarg, "r");
 			if (!fp) {
-			       fr_perror("radclient: Error opening %s: %s",
-				         optarg, strerror(errno));
+			       ERROR("Error opening %s: %s", optarg, fr_syserror(errno));
 			       exit(1);
 			}
 			if (fgets(filesecret, sizeof(filesecret), fp) == NULL) {
-			       fr_perror("radclient: Error reading %s: %s",
-				         optarg, strerror(errno));
+			       ERROR("Error reading %s: %s", optarg, fr_syserror(errno));
 			       exit(1);
 			}
 			fclose(fp);
@@ -1210,7 +1133,7 @@ int main(int argc, char **argv)
 			}
 
 			if (strlen(filesecret) < 2) {
-			       fr_perror("radclient: Secret in %s is too short", optarg);
+			       ERROR("Secret in %s is too short", optarg);
 			       exit(1);
 			}
 			secret = filesecret;
@@ -1222,12 +1145,11 @@ int main(int argc, char **argv)
 			timeout = atof(optarg);
 			break;
 		case 'v':
-			printf("%s\n", radclient_version);
+			DEBUG("%s", radclient_version);
 			exit(0);
 			break;
 		case 'x':
 			fr_debug_flag++;
-			fr_log_fp = stdout;
 			break;
 		case 'h':
 		default:
@@ -1237,11 +1159,10 @@ int main(int argc, char **argv)
 	argc -= (optind - 1);
 	argv += (optind - 1);
 
-	if ((argc < 3)  ||
-	    ((secret == NULL) && (argc < 4))) {
+	if ((argc < 3)  || ((secret == NULL) && (argc < 4))) {
+		ERROR("Insufficient arguments");
 		usage();
 	}
-
 	/*
 	 *	Mismatch between the binary and the libraries it depends on
 	 */
@@ -1293,7 +1214,7 @@ int main(int argc, char **argv)
 		}
 
 		if (ip_hton(hostname, force_af, &server_ipaddr) < 0) {
-			fr_perror("radclient: Failed to find IP address for host %s: %s\n", hostname, strerror(errno));
+			ERROR("Failed to find IP address for host %s: %s", hostname, strerror(errno));
 			exit(1);
 		}
 
@@ -1368,7 +1289,7 @@ int main(int argc, char **argv)
 	 *	Walk over the list of filenames, creating the requests.
 	 */
 	if (rbtree_walk(filename_tree, RBTREE_IN_ORDER, filename_walk, NULL) != 0) {
-		fr_perror("radclient: Failed parsing input files");
+		ERROR("Failed parsing input files");
 		exit(1);
 	}
 
@@ -1376,7 +1297,7 @@ int main(int argc, char **argv)
 	 *	No packets read.  Die.
 	 */
 	if (!request_head) {
-		fr_perror("radclient: Nothing to send");
+		ERROR("Nothing to send");
 		exit(1);
 	}
 
@@ -1399,19 +1320,19 @@ int main(int argc, char **argv)
 #endif
 	sockfd = fr_socket(&client_ipaddr, client_port);
 	if (sockfd < 0) {
-		fr_perror("radclient: socket");
+		ERROR("Error opening socket");
 		exit(1);
 	}
 
 	pl = fr_packet_list_create(1);
 	if (!pl) {
-		fr_perror("radclient: Out of memory");
+		ERROR("Out of memory");
 		exit(1);
 	}
 
 	if (!fr_packet_list_socket_add(pl, sockfd, ipproto, &server_ipaddr,
 				       server_port, NULL)) {
-		fr_perror("radclient: Out of memory");
+		ERROR("Out of memory");
 		exit(1);
 	}
 
@@ -1562,16 +1483,17 @@ int main(int argc, char **argv)
 	dict_free();
 
 	if (do_summary) {
-		printf("\tAccess-Accepts  : %" PRIu64 "\n"
-		       "\tAccess-Rejects  : %" PRIu64 "\n"
-		       "\tLost            : %" PRIu64 "\n"
-		       "\tPassed filter   : %" PRIu64 "\n"
-		       "\tFailed filter   : %" PRIu64 "\n",
-			stats.accepted,
-			stats.rejected,
-			stats.lost,
-			stats.passed,
-			stats.failed
+		DEBUG("Packet summary:\n"
+		      "\tAccess-Accepts  : %" PRIu64 "\n"
+		      "\tAccess-Rejects  : %" PRIu64 "\n"
+		      "\tLost            : %" PRIu64 "\n"
+		      "\tPassed filter   : %" PRIu64 "\n"
+		      "\tFailed filter   : %" PRIu64,
+		      stats.accepted,
+		      stats.rejected,
+		      stats.lost,
+		      stats.passed,
+		      stats.failed
 		);
 	}
 
