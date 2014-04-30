@@ -20,6 +20,7 @@ addons:
     build_command: make
     branch_pattern: coverity_scan
 before_install:
+  - $CC --version
   - sudo apt-get update -qq
   - >
       sudo apt-get install --no-install-recommends -qq
