@@ -142,6 +142,9 @@ static ssize_t sql_xlat(void *instance, REQUEST *request, char const *query, cha
 	ssize_t ret = 0;
 	size_t len = 0;
 
+	rad_assert(request);
+	rad_assert(request->packet);
+
 	/*
 	 *	Add SQL-User-Name attribute just in case it is needed
 	 *	We could search the string fmt for SQL-User-Name to see if this is
