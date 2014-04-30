@@ -153,7 +153,7 @@ static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
 /*
  *	Common attr_filter checks
  */
-static rlm_rcode_t CC_HINT(nonull(1,2)) attr_filter_common(void *instance, REQUEST *request, RADIUS_PACKET *packet)
+static rlm_rcode_t CC_HINT(nonnull(1,2)) attr_filter_common(void *instance, REQUEST *request, RADIUS_PACKET *packet)
 {
 	rlm_attr_filter_t *inst = instance;
 	VALUE_PAIR	*vp;

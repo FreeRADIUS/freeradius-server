@@ -315,7 +315,7 @@ static void eaplist_expire(rlm_eap_t *inst, REQUEST *request, time_t timestamp)
  *	Since we're adding it to the list, we guess that this means
  *	the packet needs a State attribute.  So add one.
  */
-int CC_HINT(nonnull) eaplist_add(rlm_eap_t *inst, eap_handler_t *handler)
+int eaplist_add(rlm_eap_t *inst, eap_handler_t *handler)
 {
 	int		status = 0;
 	VALUE_PAIR	*state;

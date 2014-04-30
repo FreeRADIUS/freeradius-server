@@ -914,7 +914,7 @@ static int CC_HINT(nonnull) eapttls_postproxy(eap_handler_t *handler, void *data
 /*
  *	Process the "diameter" contents of the tunneled data.
  */
-PW_CODE CC_HINT(nonnull) eapttls_process(eap_handler_t *handler, tls_session_t *tls_session)
+PW_CODE eapttls_process(eap_handler_t *handler, tls_session_t *tls_session)
 {
 	PW_CODE code = PW_CODE_AUTHENTICATION_REJECT;
 	rlm_rcode_t rcode;

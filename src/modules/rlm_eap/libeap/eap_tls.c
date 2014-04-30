@@ -136,7 +136,7 @@ int eaptls_start(EAP_DS *eap_ds, int peap_flag)
 	return 1;
 }
 
-int CC_HINT(nonnull) eaptls_success(eap_handler_t *handler, int peap_flag)
+int eaptls_success(eap_handler_t *handler, int peap_flag)
 {
 	EAPTLS_PACKET	reply;
 	REQUEST *request = handler->request;
