@@ -289,7 +289,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 /*
  *  Dispatch an exec method
  */
-static rlm_rcode_t exec_dispatch(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_exec_dispatch(void *instance, REQUEST *request)
 {
 	rlm_exec_t	*inst = (rlm_exec_t *)instance;
 	rlm_rcode_t	rcode;
@@ -389,7 +389,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 			return RLM_MODULE_NOOP;
 		}
 
-		rcode = exec_dispatch(instance, request);
+		rcode = mod_exec_dispatch(instance, request);
 		goto finish;
 	}
 
@@ -424,7 +424,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
  *
  *	Then, call exec_dispatch.
  */
-static  rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *request)
 {
 	rlm_exec_t	*inst = (rlm_exec_t *) instance;
 	int		status;
@@ -438,7 +438,7 @@ static  rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 	 *	Exec-Program and Exec-Program-Wait.
 	 */
 	if (!inst->bare) {
-		return exec_dispatch(instance, request);
+		return mod_exec_dispatch(instance, request);
 	}
 
 	vp = pairfind(request->reply->vps, PW_EXEC_PROGRAM, 0, TAG_ANY);
@@ -475,17 +475,17 @@ module_t rlm_exec = {
 	mod_instantiate,		/* instantiation */
 	NULL,				/* detach */
 	{
-		exec_dispatch,		/* authentication */
-		exec_dispatch,		/* authorization */
-		exec_dispatch,		/* pre-accounting */
+		mod_exec_dispatch,	/* authentication */
+		mod_exec_dispatch,	/* authorization */
+		mod_exec_dispatch,	/* pre-accounting */
 		mod_accounting,		/* accounting */
 		NULL,			/* check simul */
-		exec_dispatch,		/* pre-proxy */
-		exec_dispatch,		/* post-proxy */
+		mod_exec_dispatch,	/* pre-proxy */
+		mod_exec_dispatch,	/* post-proxy */
 		mod_post_auth		/* post-auth */
 #ifdef WITH_COA
-		, exec_dispatch,
-		exec_dispatch
+		, mod_exec_dispatch,
+		mod_exec_dispatch
 #endif
 	},
 };

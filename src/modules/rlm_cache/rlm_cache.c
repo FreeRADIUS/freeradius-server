@@ -850,7 +850,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
  *	If you want to cache something different in different sections,
  *	configure another cache module.
  */
-static rlm_rcode_t cache_it(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_cache_it(void *instance, REQUEST *request)
 {
 	rlm_cache_entry_t *c;
 	rlm_cache_t *inst = instance;
@@ -915,12 +915,12 @@ module_t rlm_cache = {
 	mod_detach,			/* detach */
 	{
 		NULL,			/* authentication */
-		cache_it,		/* authorization */
-		cache_it,		/* preaccounting */
-		cache_it,		/* accounting */
+		mod_cache_it,		/* authorization */
+		mod_cache_it,		/* preaccounting */
+		mod_cache_it,		/* accounting */
 		NULL,			/* checksimul */
-		cache_it,	      	/* pre-proxy */
-		cache_it,	       	/* post-proxy */
-		cache_it,		/* post-auth */
+		mod_cache_it,	      	/* pre-proxy */
+		mod_cache_it,	       	/* post-proxy */
+		mod_cache_it,		/* post-auth */
 	},
 };

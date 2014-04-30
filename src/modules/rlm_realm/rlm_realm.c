@@ -423,7 +423,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_preacct(void *instance, REQUEST *request
  *	CoA realms via Operator-Name.  Because the realm isn't in a
  *	User-Name, concepts like "prefix" and "suffix' don't matter.
  */
-static rlm_rcode_t realm_recv_coa(UNUSED void *instance, REQUEST *request)
+static rlm_rcode_t mod_realm_recv_coa(UNUSED void *instance, REQUEST *request)
 {
 	VALUE_PAIR *vp;
 	REALM *realm;
@@ -489,7 +489,7 @@ module_t rlm_realm = {
 		NULL,			/* post-proxy */
 		NULL			/* post-auth */
 #ifdef WITH_COA
-		, realm_recv_coa,	/* recv-coa */
+		, mod_realm_recv_coa,	/* recv-coa */
 		NULL			/* send-coa */
 #endif
 	},
