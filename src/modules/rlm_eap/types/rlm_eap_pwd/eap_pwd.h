@@ -50,7 +50,7 @@ typedef struct _pwd_hdr {
 #define EAP_PWD_EXCH_CONFIRM	    3
 //    uint16_t total_length;      /* there if the L-bit is set */
     uint8_t data[0];
-} __attribute__ ((packed)) pwd_hdr;
+} CC_HINT(packed) pwd_hdr;
 
 #define EAP_PWD_GET_LENGTH_BIT(x)       ((x)->lm_exchange & 0x80)
 #define EAP_PWD_SET_LENGTH_BIT(x)       ((x)->lm_exchange |= 0x80)
@@ -71,7 +71,7 @@ typedef struct _pwd_id_packet {
 #define EAP_PWD_PREP_MS		 1
 #define EAP_PWD_PREP_SASL	       2
     char identity[0];
-} __attribute__ ((packed)) pwd_id_packet;
+} CC_HINT(packed) pwd_id_packet;
 
 typedef struct _pwd_session_t {
     uint16_t state;

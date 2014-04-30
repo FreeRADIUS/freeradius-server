@@ -79,33 +79,17 @@ extern fr_log_t default_log;
 
 int radlog_init(fr_log_t *log, bool daemonize);
 
-int		vradlog(log_type_t lvl, char const *fmt, va_list ap)
-#ifdef __GNUC__
-		__attribute__ ((format (printf, 2, 0)))
-#endif
-;
-int		radlog(log_type_t lvl, char const *fmt, ...)
-#ifdef __GNUC__
-		__attribute__ ((format (printf, 2, 3)))
-#endif
-;
+int		vradlog(log_type_t lvl, char const *fmt, va_list ap) CC_HINT(format (printf, 2, 0));
+int		radlog(log_type_t lvl, char const *fmt, ...) CC_HINT(format (printf, 2, 3));
+
 void 		vp_listdebug(VALUE_PAIR *vp);
 bool		radlog_debug_enabled(log_type_t type, log_debug_t lvl, REQUEST *request);
 void		vradlog_request(log_type_t type, log_debug_t lvl, REQUEST *request, char const *msg, va_list ap)
-#ifdef __GNUC__
-		__attribute__ ((format (printf, 4, 0)))
-#endif
-;
+		CC_HINT(format (printf, 4, 0));
 void		radlog_request(log_type_t type, log_debug_t lvl, REQUEST *request, char const *msg, ...)
-#ifdef __GNUC__
-		__attribute__ ((format (printf, 4, 5)))
-#endif
-;
+		CC_HINT(format (printf, 4, 5));
 void		radlog_request_error(log_type_t type, log_debug_t lvl, REQUEST *request, char const *msg, ...)
-#ifdef __GNUC__
-		__attribute__ ((format (printf, 4, 5)))
-#endif
-;
+		CC_HINT(format (printf, 4, 5));
 void radlog_request_marker(log_type_t type, log_debug_t lvl, REQUEST *request,
 			   char const *fmt, size_t indent, char const *error);
 

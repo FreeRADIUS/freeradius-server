@@ -1,18 +1,40 @@
 #
 # Version:	$Id$
 #
-
-HEADERS	= conf.h conffile.h detail.h event.h features.h hash.h heap.h \
-	libradius.h md4.h md5.h missing.h modcall.h modules.h \
-	packet.h rad_assert.h radius.h radiusd.h radutmp.h realms.h \
-	sha1.h stats.h sysutmp.h token.h udpfromto.h base64.h map.h
+HEADERS	= \
+	build.h \
+	conf.h \
+	conffile.h \
+	detail.h \
+	event.h \
+	features.h \
+	hash.h \
+	heap.h \
+	libradius.h \
+	md4.h \
+	md5.h \
+	missing.h \
+	modcall.h \
+	modules.h \
+	packet.h \
+	rad_assert.h \
+	radius.h \
+	radiusd.h \
+	radutmp.h \
+	realms.h \
+	sha1.h \
+	stats.h \
+	sysutmp.h \
+	token.h \
+	udpfromto.h \
+	base64.h \
+	map.h
 
 #
 #  Build dynamic headers by substituting various values from autoconf.h, these
 #  get installed with the library files, so external programs can tell what
 #  the server library was built with.
 #
-
 HEADERS_DY = src/include/features.h src/include/missing.h src/include/tls.h \
 	src/include/radpaths.h
 

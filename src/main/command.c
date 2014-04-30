@@ -119,13 +119,6 @@ static FR_NAME_NUMBER mode_names[] = {
 	{ NULL, 0 }
 };
 
-
-static ssize_t cprintf(rad_listen_t *listener, char const *fmt, ...)
-#ifdef __GNUC__
-		__attribute__ ((format (printf, 2, 3)))
-#endif
-;
-
 #ifndef HAVE_GETPEEREID
 static int getpeereid(int s, uid_t *euid, gid_t *egid)
 {
@@ -273,8 +266,7 @@ static void command_close_socket(rad_listen_t *this)
 	event_new_fd(this);
 }
 
-
-static ssize_t cprintf(rad_listen_t *listener, char const *fmt, ...)
+static ssize_t CC_HINT(format (printf, 2, 3)) cprintf(rad_listen_t *listener, char const *fmt, ...)
 {
 	ssize_t len;
 	va_list ap;
