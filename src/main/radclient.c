@@ -17,20 +17,19 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
- * Copyright 2000,2006  The FreeRADIUS server project
+ * Copyright 2000,2006,2014  The FreeRADIUS server project
  * Copyright 2000  Miquel van Smoorenburg <miquels@cistron.nl>
  * Copyright 2000  Alan DeKok <aland@ox.org>
  */
 
 RCSID("$Id$")
 
-#include <freeradius-devel/libradius.h>
+#include <freeradius-devel/radclient.h>
 #include <freeradius-devel/conf.h>
-
 #include <ctype.h>
 
 #ifdef HAVE_GETOPT_H
-#	include <getopt.h>
+#  include <getopt.h>
 #endif
 
 #include <assert.h>
@@ -44,14 +43,6 @@ static int retries = 3;
 static float timeout = 5;
 static char const *secret = NULL;
 static bool do_output = true;
-
-typedef struct rc_stats {
-	uint64_t accepted;		//!< Requests to which we received a accept
-	uint64_t rejected;		//!< Requests to which we received a reject
-	uint64_t lost;			//!< Requests to which we received no response
-	uint64_t passed;		//!< Requests which passed a filter
-	uint64_t failed;		//!< Requests which failed a fitler
-} rc_stats_t;
 
 static rc_stats_t stats;
 
@@ -77,36 +68,6 @@ static rbtree_t *filename_tree = NULL;
 static fr_packet_list_t *pl = NULL;
 
 static int sleep_time = -1;
-
-typedef struct rc_request rc_request_t;
-
-typedef struct rc_file_pair {
-	char const *packets;		//!< The file containing the request packet
-	char const *filters;		//!< The file containing the definition of the
-					//!< packet we want to match.
-} rc_file_pair_t;
-
-struct rc_request {
-	rc_request_t	*prev;
-	rc_request_t	*next;
-
-	rc_file_pair_t	*files;		//!< Request and response file names.
-
-	int		request_number; //!< The number (within the file) of the request were reading.
-
-	char		password[256];
-	time_t		timestamp;
-
-	RADIUS_PACKET	*packet;	//!< The outgoing request.
-	PW_CODE		packet_code;	//!< The code in the outgoing request.
-	RADIUS_PACKET	*reply;		//!< The incoming response.
-	VALUE_PAIR	*filter;	//!< If the reply passes the filter, then the request passes.
-	PW_CODE		filter_code;	//!< Expected code of the response packet.
-
-	int		resend;
-	int		tries;
-	bool		done;		//!< Whether the request is complete.
-};
 
 static rc_request_t *request_head = NULL;
 static rc_request_t *rc_request_tail = NULL;
