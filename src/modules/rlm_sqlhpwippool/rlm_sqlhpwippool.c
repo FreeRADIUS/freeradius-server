@@ -84,11 +84,8 @@ static CONF_PARSER module_config[] = {
 	{ NULL, -1, 0, NULL, NULL } /* end */
 };
 
-int nvp_log(unsigned int line, rlm_sqlhpwippool_t *data, int lvl, char const *fmt, ...)
-#ifdef __GNUC__
-		__attribute__ ((format (printf, 4, 5)))
-#endif
-;
+int nvp_log(unsigned int line, rlm_sqlhpwippool_t *data, int lvl, char const *fmt, ...) CC_HINT(format (printf, 4, 5));
+
 DIAG_OFF(format-nonliteral)
 /* wrapper around radlog which adds prefix with module and instance name */
 int nvp_log(unsigned int line, rlm_sqlhpwippool_t *data, int lvl, char const *fmt, ...)

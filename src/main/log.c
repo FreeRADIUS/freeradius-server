@@ -189,10 +189,8 @@ static int _restore_std(UNUSED int sig)
 /** Pass debug logging through to vradlog
  *
  */
-#ifdef __GNUC__
-__attribute__ ((format (printf, 1, 2)))
-#endif
-static void _radlog_info(char const *msg, ...) {
+static void CC_HINT(format (printf, 1, 2)) _radlog_info(char const *msg, ...)
+{
 	va_list ap;
 
 	va_start(ap, msg);

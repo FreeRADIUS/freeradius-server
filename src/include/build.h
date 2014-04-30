@@ -5,6 +5,8 @@
  *
  * @copyright 2013 The FreeRADIUS server project
  */
+#ifndef _BUILD_H
+#define _BUILD_H
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -15,6 +17,32 @@ extern "C" {
 #define XSTRINGIFY(x) #x
 #define STRINGIFY(x) XSTRINGIFY(x)
 
+/*
+ *	HEX concatenation macros
+ */
+#ifndef HEXIFY
+#  define XHEXIFY4(b1,b2,b3,b4)	(0x ## b1 ## b2 ## b3 ## b4)
+#  define HEXIFY4(b1,b2,b3,b4)	XHEXIFY4(b1, b2, b3, b4)
+
+#  define XHEXIFY3(b1,b2,b3)	(0x ## b1 ## b2 ## b3)
+#  define HEXIFY3(b1,b2,b3)	XHEXIFY3(b1, b2, b3)
+
+#  define XHEXIFY2(b1,b2)	(0x ## b1 ## b2)
+#  define HEXIFY2(b1,b2)	XHEXIFY2(b1, b2)
+
+#  define XHEXIFY(b1)		(0x ## b1)
+#  define HEXIFY(b1)		XHEXIFY(b1)
+#endif
+
+/*
+ *	Only use GCC __attribute__ if were building with a GCClike
+ *	compiler.
+ */
+#ifdef __GNUC__
+#  define CC_HINT(_x) __attribute__ ((_x))
+#else
+#  define CC_HINT(_x)
+#endif
 /*
  *	Macros for controlling warnings in GCC >= 4.2 and clang >= 2.8
  */
@@ -88,3 +116,4 @@ extern "C" {
 #ifdef __cplusplus
 }
 #endif
+#endif /* _BUILD_H */

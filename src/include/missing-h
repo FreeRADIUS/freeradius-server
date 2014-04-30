@@ -424,9 +424,5 @@ uint128_t ntohlll(uint128_t num);
 #endif
 
 char *talloc_typed_strdup(const void *t, const char *p);
-char *talloc_typed_asprintf(const void *t, const char *fmt, ...)
-#ifdef __GNUC__
-	__attribute__ ((format (printf, 2, 3)))
-#endif
-;
+char *talloc_typed_asprintf(const void *t, const char *fmt, ...) CC_HINT(format (printf, 2, 3));
 #endif /* _FR_MISSING_H */
