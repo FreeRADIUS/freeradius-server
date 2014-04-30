@@ -127,6 +127,8 @@ uint32_t soh_pull_be_32(uint8_t const *p) {
 	return r;
 }
 
+static int eapsoh_mstlv(REQUEST *request, uint8_t const *p, unsigned int data_len) CC_HINT(nonnull);
+
 /**
  * @brief Parses the MS-SOH type/value (note: NOT type/length/value) data and
  * 	update the sohvp list
@@ -141,7 +143,8 @@ uint32_t soh_pull_be_32(uint8_t const *p) {
  * @param data_len length of blob
  * @return 1 on success, 0 on failure
  */
-static int CC_HINT(nonnull) eapsoh_mstlv(REQUEST *request, uint8_t const *p, unsigned int data_len) {
+static int eapsoh_mstlv(REQUEST *request, uint8_t const *p, unsigned int data_len)
+{
 	VALUE_PAIR *vp;
 	uint8_t c;
 	int t;
