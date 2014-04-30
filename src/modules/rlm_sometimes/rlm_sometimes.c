@@ -82,8 +82,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 /*
  *	A lie!  It always returns!
  */
-static rlm_rcode_t sometimes_return(void *instance, RADIUS_PACKET *packet,
-				    RADIUS_PACKET *reply)
+static rlm_rcode_t sometimes_return(void *instance, RADIUS_PACKET *packet, RADIUS_PACKET *reply)
 {
 	uint32_t hash;
 	int value;
@@ -143,12 +142,12 @@ static rlm_rcode_t sometimes_return(void *instance, RADIUS_PACKET *packet,
 	return inst->rcode;
 }
 
-static rlm_rcode_t sometimes_packet(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_sometimes_packet(void *instance, REQUEST *request)
 {
 	return sometimes_return(instance, request->packet, request->reply);
 }
 
-static rlm_rcode_t sometimes_reply(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_sometimes_reply(void *instance, REQUEST *request)
 {
 	return sometimes_return(instance, request->reply, NULL);
 }
@@ -178,22 +177,22 @@ module_t rlm_sometimes = {
 	mod_instantiate,		/* instantiation */
 	NULL,				/* detach */
 	{
-		sometimes_packet,	/* authentication */
-		sometimes_packet,	/* authorization */
-		sometimes_packet,	/* preaccounting */
-		sometimes_packet,	/* accounting */
+		mod_sometimes_packet,	/* authentication */
+		mod_sometimes_packet,	/* authorization */
+		mod_sometimes_packet,	/* preaccounting */
+		mod_sometimes_packet,	/* accounting */
 		NULL,
 #ifdef WITH_PROXY
-		mod_pre_proxy,	/* pre-proxy */
-		mod_post_proxy,	/* post-proxy */
+		mod_pre_proxy,		/* pre-proxy */
+		mod_post_proxy,		/* post-proxy */
 #else
 		NULL, NULL,
 #endif
-		sometimes_reply		/* post-auth */
+		mod_sometimes_reply	/* post-auth */
 #ifdef WITH_COA
 		,
-		sometimes_packet,	/* recv-coa */
-		sometimes_reply		/* send-coa */
+		mod_sometimes_packet,	/* recv-coa */
+		mod_sometimes_reply	/* send-coa */
 #endif
 	},
 };

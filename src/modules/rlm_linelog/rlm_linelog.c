@@ -196,7 +196,7 @@ static size_t linelog_escape_func(UNUSED REQUEST *request,
 	return len;
 }
 
-static rlm_rcode_t do_linelog(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_do_linelog(void *instance, REQUEST *request)
 {
 	int fd = -1;
 	char buffer[4096];
@@ -345,17 +345,17 @@ module_t rlm_linelog = {
 	mod_instantiate,		/* instantiation */
 	NULL,				/* detach */
 	{
-		do_linelog,	/* authentication */
-		do_linelog,	/* authorization */
-		do_linelog,	/* preaccounting */
-		do_linelog,	/* accounting */
-		NULL,		/* checksimul */
-		do_linelog, 	/* pre-proxy */
-		do_linelog,	/* post-proxy */
-		do_linelog	/* post-auth */
+		mod_do_linelog,		/* authentication */
+		mod_do_linelog,		/* authorization */
+		mod_do_linelog,		/* preaccounting */
+		mod_do_linelog,		/* accounting */
+		NULL,			/* checksimul */
+		mod_do_linelog, 	/* pre-proxy */
+		mod_do_linelog,		/* post-proxy */
+		mod_do_linelog		/* post-auth */
 #ifdef WITH_COA
-		, do_linelog,	/* recv-coa */
-		do_linelog	/* send-coa */
+		, mod_do_linelog,	/* recv-coa */
+		mod_do_linelog		/* send-coa */
 #endif
 	},
 };

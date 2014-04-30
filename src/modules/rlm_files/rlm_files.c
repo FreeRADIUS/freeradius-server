@@ -507,7 +507,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_preacct(void *instance, REQUEST *request
 }
 
 #ifdef WITH_PROXY
-static rlm_rcode_t file_preproxy(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_pre_proxy(void *instance, REQUEST *request)
 {
 	rlm_files_t *inst = instance;
 
@@ -516,7 +516,7 @@ static rlm_rcode_t file_preproxy(void *instance, REQUEST *request)
 			   request->packet->vps, &request->proxy->vps);
 }
 
-static rlm_rcode_t file_postproxy(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *instance, REQUEST *request)
 {
 	rlm_files_t *inst = instance;
 
@@ -561,8 +561,8 @@ module_t rlm_files = {
 		NULL,			/* accounting */
 		NULL,			/* checksimul */
 #ifdef WITH_PROXY
-		file_preproxy,		/* pre-proxy */
-		file_postproxy,		/* post-proxy */
+		mod_pre_proxy,		/* pre-proxy */
+		mod_post_proxy,		/* post-proxy */
 #else
 		NULL, NULL,
 #endif
