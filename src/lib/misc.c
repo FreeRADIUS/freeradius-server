@@ -1170,7 +1170,7 @@ int fr_get_time(char const *date_str, time_t *date)
 	char		buf[64];
 	char		*p;
 	char		*f[4];
-	char		*tail = '\0';
+	char		*tail = NULL;
 
 	/*
 	 * Test for unix timestamp date
