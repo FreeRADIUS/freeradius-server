@@ -37,13 +37,12 @@ RCSID("$Id$")
  * len = header + type + leap_methoddata
  * leap_methoddata = value_size + value
  */
-static int leap_initiate(UNUSED void *instance, eap_handler_t *handler)
+static int CC_HINT(nonnull) leap_initiate(UNUSED void *instance, eap_handler_t *handler)
 {
 	REQUEST 	*request = handler->request;
 	leap_session_t	*session;
 	leap_packet_t	*reply;
 
-	rad_assert(request != NULL);
 	RDEBUG2("Stage 2");
 
 	/*
@@ -88,7 +87,7 @@ static int leap_initiate(UNUSED void *instance, eap_handler_t *handler)
 	return 1;
 }
 
-static int mod_authenticate(UNUSED void *instance, eap_handler_t *handler)
+static int CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, eap_handler_t *handler)
 {
 	int		rcode;
 	REQUEST 	*request = handler->request;
@@ -96,8 +95,6 @@ static int mod_authenticate(UNUSED void *instance, eap_handler_t *handler)
 	leap_packet_t	*packet;
 	leap_packet_t	*reply;
 	VALUE_PAIR	*password;
-
-	rad_assert(request);
 
 	if (!handler->opaque) {
 		REDEBUG("Cannot authenticate without LEAP history");

@@ -279,11 +279,9 @@ static void safe_unlock(module_instance_t *instance)
 #define safe_unlock(foo)
 #endif
 
-static rlm_rcode_t call_modsingle(rlm_components_t component, modsingle *sp, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) call_modsingle(rlm_components_t component, modsingle *sp, REQUEST *request)
 {
 	int blocked;
-
-	rad_assert(request != NULL);
 
 	/*
 	 *	If the request should stop, refuse to do anything.
