@@ -29,6 +29,24 @@
 extern "C" {
 #endif
 
+/*
+ *	Logging macros
+ */
+ #undef DEBUG
+#define DEBUG(fmt, ...)		if (do_output && (fr_debug_flag > 0)) fprintf(fr_log_fp, fmt "\n", ## __VA_ARGS__)
+#undef DEBUG2
+#define DEBUG2(fmt, ...)	if (do_output && (fr_debug_flag > 1)) fprintf(fr_log_fp, fmt "\n", ## __VA_ARGS__)
+
+
+#define ERROR(fmt, ...)		if (do_output) fr_perror("radclient: " fmt, ## __VA_ARGS__)
+
+#define RDEBUG_ENABLED()	(do_output && (fr_debug_flag > 0))
+#define RDEBUG_ENABLED2()	(do_output && (fr_debug_flag > 1))
+
+#define REDEBUG(fmt, ...)	if (do_output) fr_perror("(%" PRIu64 ") " fmt , request->num, ## __VA_ARGS__)
+#define RDEBUG(fmt, ...)	if (do_output && (fr_debug_flag > 0)) fprintf(fr_log_fp, "(%" PRIu64 ") " fmt "\n", request->num, ## __VA_ARGS__)
+#define RDEBUG2(fmt, ...)	if (do_output && (fr_debug_flag > 1)) fprintf(fr_log_fp, "(%" PRIu64 ") " fmt "\n", request->num, ## __VA_ARGS__)
+
 typedef struct rc_stats {
 	uint64_t accepted;		//!< Requests to which we received a accept
 	uint64_t rejected;		//!< Requests to which we received a reject
@@ -46,12 +64,12 @@ typedef struct rc_file_pair {
 typedef struct rc_request rc_request_t;
 
 struct rc_request {
+	uint64_t	num;		//!< The number (within the file) of the request were reading.
+
 	rc_request_t	*prev;
 	rc_request_t	*next;
 
 	rc_file_pair_t	*files;		//!< Request and response file names.
-
-	int		request_number; //!< The number (within the file) of the request were reading.
 
 	char		password[256];
 	time_t		timestamp;
