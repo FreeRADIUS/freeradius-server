@@ -8,12 +8,7 @@
 rm -f verbose.log
 RCODE=0
 
-rm -rf .cache
-mkdir .cache
-
-#
-#  Bootstrap the tests
-#
+echo "Running tests:"
 for NAME in $@
 do
   TOTAL=`grep TESTS $NAME | sed 's/.*TESTS//'`
@@ -32,35 +27,16 @@ do
     echo "Test-Name = \"$BASE\"," >> .request
     echo 'Test-Number = ' $NUMBER >> .request
 
-    mv .request ".cache/${BASE}_${NUMBER}"
-  done
-done
-
-echo "Running tests:"
-
-(cd .cache;ls -1  > ../.foo)
-rm -f .bar
-for x in `cat .foo`
-do
-   echo "-f .cache/$x" >> .bar
-done
-
-$BIN_PATH/radclient `cat .bar` -xF -D ./ 127.0.0.1:$PORT auth $SECRET 1> ./radclient.log
-if [ "$?" != "0" ]; then
-  echo "Failed running $BIN_PATH/radclient"
-  cat ./radclient.log
-  exit 1
-fi
-
-for x in `cat .foo`
-do
-  RESULT=`egrep ^\\.cache/$x radclient.log | sed 's/.* //'`
-  if [ "$RESULT" = "2" ]; then
-      echo "$x : Success"
+    rm ./radclient.log > /dev/null 2>&1
+    $BIN_PATH/radclient -f .request -xF -D ./ 127.0.0.1:$PORT auth $SECRET 1> ./radclient.log
+    if [ "$?" = "0" ]; then
+      echo "${BASE}_${NUMBER} : Success"
     else
-      echo "$x : FAILED"
+      echo "${BASE}_${NUMBER} : FAILED"
+      cat ./radclient.log
       RCODE=1
-  fi
+    fi
+  done
 done
 
 
