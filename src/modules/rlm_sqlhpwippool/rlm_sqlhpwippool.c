@@ -324,7 +324,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 }
 
 /* assign new IP address, if required */
-static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *request)
 {
 	VALUE_PAIR *vp;
 	char const *pname;       /* name of requested IP pool */
@@ -643,7 +643,7 @@ end_gid:
 	return RLM_MODULE_OK;
 }
 
-static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *request)
 {
 	VALUE_PAIR *vp;
 	rlm_sql_handle_t *sqlsock;

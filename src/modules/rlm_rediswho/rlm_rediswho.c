@@ -165,7 +165,7 @@ static int mod_accounting_all(REDISSOCK **dissocket_p,
 	return RLM_MODULE_OK;
 }
 
-static rlm_rcode_t mod_accounting(void * instance, REQUEST * request)
+static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void * instance, REQUEST * request)
 {
 	rlm_rcode_t rcode;
 	VALUE_PAIR * vp;

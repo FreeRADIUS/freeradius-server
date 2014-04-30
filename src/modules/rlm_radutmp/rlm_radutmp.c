@@ -153,7 +153,7 @@ static NAS_PORT *nas_port_find(NAS_PORT *nas_port_list, uint32_t nasaddr, unsign
 /*
  *	Store logins in the RADIUS utmp file.
  */
-static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *request)
 {
 	rlm_rcode_t	rcode = RLM_MODULE_OK;
 	struct radutmp	ut, u;
@@ -555,7 +555,7 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
  *	max. number of logins, do a second pass and validate all
  *	logins by querying the terminal server (using eg. SNMP).
  */
-static rlm_rcode_t mod_checksimul(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_checksimul(void *instance, REQUEST *request)
 {
 	rlm_rcode_t	rcode = RLM_MODULE_OK;
 	struct radutmp	u;

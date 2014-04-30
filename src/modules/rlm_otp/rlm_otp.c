@@ -136,7 +136,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 /*
  *	Generate a challenge to be presented to the user.
  */
-static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *request)
 {
 	rlm_otp_t *inst = (rlm_otp_t *) instance;
 
@@ -302,7 +302,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 /*
  *	Verify the response entered by the user.
  */
-static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *request)
 {
 	rlm_otp_t *inst = instance;
 

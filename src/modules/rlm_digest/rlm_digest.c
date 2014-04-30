@@ -169,7 +169,7 @@ static int digest_fix(REQUEST *request)
 	return RLM_MODULE_OK;
 }
 
-static rlm_rcode_t mod_authorize(UNUSED void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, REQUEST *request)
 {
 	rlm_rcode_t rcode;
 
@@ -197,7 +197,7 @@ static rlm_rcode_t mod_authorize(UNUSED void *instance, REQUEST *request)
 /*
  *	Perform all of the wondrous variants of digest authentication.
  */
-static rlm_rcode_t mod_authenticate(UNUSED void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, REQUEST *request)
 {
 	int i;
 	size_t a1_len, a2_len, kd_len;

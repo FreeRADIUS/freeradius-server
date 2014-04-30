@@ -234,25 +234,25 @@ static rlm_rcode_t replicate_packet(UNUSED void *instance,
 }
 #endif
 
-static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *request)
 {
 	return replicate_packet(instance, request, PAIR_LIST_REQUEST, request->packet->code);
 }
 
-static rlm_rcode_t mod_preaccounting(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_preaccounting(void *instance, REQUEST *request)
 {
 	return replicate_packet(instance, request, PAIR_LIST_REQUEST, request->packet->code);
 }
 
 #ifdef WITH_PROXY
-static rlm_rcode_t mod_pre_proxy(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_pre_proxy(void *instance, REQUEST *request)
 {
 	return replicate_packet(instance, request, PAIR_LIST_PROXY_REQUEST, request->proxy->code);
 }
 #endif
 
 #ifdef WITH_COA
-static rlm_rcode_t mod_recv_coa(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_recv_coa(void *instance, REQUEST *request)
 {
 	return replicate_packet(instance, request, PAIR_LIST_REQUEST, request->packet->code);
 }

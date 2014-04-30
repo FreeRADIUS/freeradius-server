@@ -362,7 +362,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
  *
  *  This should very nearly duplicate the old proxy_send() code
  */
-static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *request)
 {
 	rlm_rcode_t rcode;
 	REALM *realm;
@@ -390,7 +390,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
  * This does the exact same thing as the mod_authorize, it's just called
  * differently.
  */
-static rlm_rcode_t mod_preacct(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_preacct(void *instance, REQUEST *request)
 {
 	int rcode;
 	REALM *realm;

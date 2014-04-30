@@ -56,7 +56,7 @@ static const CONF_PARSER module_config[] = {
  *	from the database. The authentication code only needs to check
  *	the password, the rest is done here.
  */
-static rlm_rcode_t mod_authorize(UNUSED void *instance, UNUSED REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, UNUSED REQUEST *request)
 {
 	VALUE_PAIR *vp;
 
@@ -98,7 +98,7 @@ static rlm_rcode_t mod_authorize(UNUSED void *instance, UNUSED REQUEST *request)
 /*
  *	Massage the request before recording it or proxying it
  */
-static rlm_rcode_t mod_preacct(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_preacct(void *instance, REQUEST *request)
 {
 	return mod_authorize(instance, request);
 }
@@ -106,7 +106,7 @@ static rlm_rcode_t mod_preacct(void *instance, REQUEST *request)
 /*
  *	Write accounting information to this modules database.
  */
-static rlm_rcode_t mod_accounting(UNUSED void *instance, UNUSED REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_accounting(UNUSED void *instance, UNUSED REQUEST *request)
 {
 	return RLM_MODULE_OK;
 }
@@ -114,7 +114,7 @@ static rlm_rcode_t mod_accounting(UNUSED void *instance, UNUSED REQUEST *request
 /*
  *	Generate the keys after the user has been authenticated.
  */
-static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *request)
 {
 	rlm_wimax_t *inst = instance;
 	VALUE_PAIR *msk, *emsk, *vp;

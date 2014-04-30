@@ -158,7 +158,7 @@ static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
  *	Pull the users password from where-ever, and add it to
  *	the given vp list.
  */
-static rlm_rcode_t mod_authorize(UNUSED void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, REQUEST *request)
 {
 	char const	*name;
 	char const	*encrypted_pass;
@@ -334,7 +334,7 @@ static char *uue(void *in)
 /*
  *	Unix accounting - write a wtmp file.
  */
-static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *request)
 {
 	VALUE_PAIR	*vp;
 	vp_cursor_t	cursor;

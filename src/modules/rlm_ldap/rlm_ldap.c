@@ -724,7 +724,7 @@ error:
  * @param request Current request.
  * @return one of the RLM_MODULE_* values.
  */
-static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *request)
 {
 	rlm_rcode_t	rcode;
 	ldap_rcode_t	status;
@@ -817,7 +817,7 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 /** Check if user is authorized for remote access
  *
  */
-static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *request)
 {
 	rlm_rcode_t	rcode = RLM_MODULE_OK;
 	ldap_rcode_t	status;
@@ -1271,7 +1271,7 @@ static rlm_rcode_t user_modify(ldap_instance_t *inst, REQUEST *request, ldap_acc
 	return rcode;
 }
 
-static rlm_rcode_t mod_accounting(void *instance, REQUEST * request) {
+static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST * request) {
 	ldap_instance_t *inst = instance;
 
 	if (inst->accounting) {
@@ -1281,7 +1281,7 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST * request) {
 	return RLM_MODULE_NOOP;
 }
 
-static rlm_rcode_t mod_post_auth(void *instance, REQUEST * request)
+static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST * request)
 {
 	ldap_instance_t	*inst = instance;
 
