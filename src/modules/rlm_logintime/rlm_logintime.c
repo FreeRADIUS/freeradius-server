@@ -143,7 +143,7 @@ static int time_of_day(UNUSED void *instance, REQUEST *req, UNUSED VALUE_PAIR *r
 /*
  *      Check if account has expired, and if user may login now.
  */
-static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *request)
 {
 	rlm_logintime_t *inst = instance;
 	VALUE_PAIR *ends, *timeout;

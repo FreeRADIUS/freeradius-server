@@ -193,7 +193,7 @@ static int mod_detach(void *instance)
  *	from the database. The authentication code only needs to check
  *	the password, the rest is done here.
  */
-static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *request)
 {
 	rlm_yubikey_t *inst = instance;
 
@@ -273,7 +273,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 /*
  *	Authenticate the user with the given password.
  */
-static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *request)
 {
 	rlm_rcode_t rcode = RLM_MODULE_NOOP;
 	rlm_yubikey_t *inst = instance;

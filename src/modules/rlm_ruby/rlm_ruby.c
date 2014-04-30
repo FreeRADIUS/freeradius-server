@@ -417,7 +417,7 @@ static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
 	return do_ruby(NULL, inst->func_instantiate, inst->module, "instantiate");
 }
 
-#define RLM_RUBY_FUNC(foo) static rlm_rcode_t mod_##foo(void *instance, REQUEST *request) \
+#define RLM_RUBY_FUNC(foo) static rlm_rcode_t CC_HINT(nonnull) mod_##foo(void *instance, REQUEST *request) \
 	{ \
 		return do_ruby(request,	\
 			       ((struct rlm_ruby_t *)instance)->func_##foo,((struct rlm_ruby_t *)instance)->module, \

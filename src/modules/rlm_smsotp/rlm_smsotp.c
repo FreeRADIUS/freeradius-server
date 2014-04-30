@@ -192,7 +192,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 /*
  *	Authenticate the user with the given password.
  */
-static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *request)
 {
 	rlm_smsotp_t *inst = instance;
 	VALUE_PAIR *state;
@@ -307,7 +307,7 @@ done:
  *	from the database. The authentication code only needs to check
  *	the password, the rest is done here.
  */
-static rlm_rcode_t mod_authorize(UNUSED void *instance, UNUSED REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, UNUSED REQUEST *request)
 {
 	VALUE_PAIR *state;
 	rlm_smsotp_t *inst = instance;

@@ -330,7 +330,7 @@ static rlm_rcode_t attr_filter_common(void *instance, REQUEST *request, RADIUS_P
 	return RLM_MODULE_FAIL;
 }
 
-#define RLM_AF_FUNC(_x, _y) static rlm_rcode_t mod_##_x(void *instance, REQUEST *request) \
+#define RLM_AF_FUNC(_x, _y) static rlm_rcode_t CC_HINT(nonnull) mod_##_x(void *instance, REQUEST *request) \
 			{ \
 				return attr_filter_common(instance, request, request->_y); \
 			}

@@ -482,7 +482,7 @@ static rlm_rcode_t file_common(rlm_files_t *inst, REQUEST *request,
  *	for this user from the database. The main code only
  *	needs to check the password, the rest is done here.
  */
-static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *request)
 {
 	rlm_files_t *inst = instance;
 
@@ -497,7 +497,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
  *	config_items. Reply items are Not Recommended(TM) in acct_users,
  *	except for Fallthrough, which should work
  */
-static rlm_rcode_t mod_preacct(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_preacct(void *instance, REQUEST *request)
 {
 	rlm_files_t *inst = instance;
 
@@ -526,7 +526,7 @@ static rlm_rcode_t file_postproxy(void *instance, REQUEST *request)
 }
 #endif
 
-static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *request)
 {
 	rlm_files_t *inst = instance;
 
@@ -535,7 +535,7 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 			   request->packet->vps, &request->reply->vps);
 }
 
-static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *request)
 {
 	rlm_files_t *inst = instance;
 

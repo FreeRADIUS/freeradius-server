@@ -559,7 +559,7 @@ static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
 /*
  *	Preprocess a request.
  */
-static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *request)
 {
 	int r;
 	rlm_preprocess_t *inst = instance;
@@ -644,7 +644,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 /*
  *	Preprocess a request before accounting
  */
-static rlm_rcode_t mod_preaccounting(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_preaccounting(void *instance, REQUEST *request)
 {
 	int r;
 	VALUE_PAIR *vp;

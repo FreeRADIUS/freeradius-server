@@ -474,7 +474,7 @@ static int do_logging(REQUEST *request, char *str, int rcode)
 /*
  *	Allocate an IP number from the pool.
  */
-static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *request)
 {
 	rlm_sqlippool_t *inst = (rlm_sqlippool_t *) instance;
 	char allocation[MAX_STRING_LEN];
@@ -671,7 +671,7 @@ static int mod_accounting_off(rlm_sql_handle_t *handle,
  *	If we find one and we have allocated an IP to this nas/port
  *	combination, then deallocate it.
  */
-static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *request)
 {
 	int rcode = RLM_MODULE_NOOP;
 	VALUE_PAIR *vp;

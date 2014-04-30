@@ -446,7 +446,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
  *	from the database. The authentication code only needs to check
  *	the password, the rest is done here.
  */
-static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *request)
 {
 	rlm_sqlcounter_t *inst = instance;
 	int rcode = RLM_MODULE_NOOP;

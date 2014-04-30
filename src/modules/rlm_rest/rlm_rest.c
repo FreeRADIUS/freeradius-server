@@ -249,7 +249,7 @@ end:
  *	from the database. The authentication code only needs to check
  *	the password, the rest is done here.
  */
-static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *request)
 {
 	rlm_rest_t *inst = instance;
 	rlm_rest_section_t *section = &inst->authorize;
@@ -325,7 +325,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 /*
  *	Authenticate the user with the given password.
  */
-static rlm_rcode_t mod_authenticate(void *instance, UNUSED REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED REQUEST *request)
 {
 	rlm_rest_t *inst = instance;
 	rlm_rest_section_t *section = &inst->authenticate;
@@ -418,7 +418,7 @@ static rlm_rcode_t mod_authenticate(void *instance, UNUSED REQUEST *request)
 /*
  *	Write accounting information to this modules database.
  */
-static rlm_rcode_t mod_accounting(void *instance, UNUSED REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED REQUEST *request)
 {
 	rlm_rest_t *inst = instance;
 	rlm_rest_section_t *section = &inst->accounting;

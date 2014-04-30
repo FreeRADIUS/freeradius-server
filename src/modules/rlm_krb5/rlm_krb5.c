@@ -333,7 +333,7 @@ static rlm_rcode_t krb5_process_error(REQUEST *request, rlm_krb5_handle_t *conn,
 /*
  *	Validate user/pass (Heimdal)
  */
-static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *request)
 {
 	rlm_krb5_t *inst = instance;
 	rlm_rcode_t rcode;
@@ -410,7 +410,7 @@ cleanup:
 /*
  *  Validate userid/passwd (MIT)
  */
-static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *request)
 {
 	rlm_krb5_t *inst = instance;
 	rlm_rcode_t rcode;

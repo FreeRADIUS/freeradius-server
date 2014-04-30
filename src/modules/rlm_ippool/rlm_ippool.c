@@ -304,7 +304,7 @@ static int decrease_allocated_count(rlm_ippool_t *inst, REQUEST *request, ippool
  *	Check for an Accounting-Stop
  *	If we find one and we have allocated an IP to this nas/port combination, deallocate it.
  */
-static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *request)
 {
 	rlm_ippool_t	*inst = instance;
 
@@ -409,7 +409,7 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 	return RLM_MODULE_OK;
 }
 
-static rlm_rcode_t mod_post_auth(UNUSED void *instance, UNUSED REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(UNUSED void *instance, UNUSED REQUEST *request)
 {
 	rlm_ippool_t *inst = instance;
 

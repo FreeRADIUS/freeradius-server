@@ -454,7 +454,7 @@ static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
 /*
  *	Authenticate the user via one of any well-known password.
  */
-static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *request)
 {
 	int rcode;
 	rlm_securid_t *inst = instance;
