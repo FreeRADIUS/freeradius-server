@@ -123,7 +123,7 @@ extern int unmap_eapsim_basictypes(RADIUS_PACKET *r,
 
 #define EAPSIM_SRES_SIZE 4
 #define EAPSIM_RAND_SIZE 16
-#define EAPSIM_Kc_SIZE   8
+#define EAPSIM_KC_SIZE   8
 #define EAPSIM_CALCMAC_SIZE 20
 #define EAPSIM_NONCEMT_SIZE 16
 #define EAPSIM_AUTH_SIZE    16
@@ -135,7 +135,7 @@ struct eapsim_keys {
   uint8_t nonce_mt[EAPSIM_NONCEMT_SIZE];
   uint8_t rand[3][EAPSIM_RAND_SIZE];
   uint8_t sres[3][EAPSIM_SRES_SIZE];
-  uint8_t Kc[3][EAPSIM_Kc_SIZE];
+  uint8_t Kc[3][EAPSIM_KC_SIZE];
   uint8_t versionlist[MAX_STRING_LEN];
   uint8_t versionlistlen;
   uint8_t versionselect[2];
