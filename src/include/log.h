@@ -41,7 +41,7 @@ typedef enum log_type {
 	L_DBG_WARN = 17,	//!< Warning only displayed when debugging is enabled.
 	L_DBG_ERR = 18,		//!< Error only displayed when debugging is enabled.
 	L_DBG_WARN_REQ = 19,	//!< Less severe warning only displayed when debugging is enabled.
-	L_DBG_ERR_REQ = 20		//!< Less severe error only displayed when debugging is enabled.
+	L_DBG_ERR_REQ = 20	//!< Less severe error only displayed when debugging is enabled.
 } log_type_t;
 
 typedef enum log_debug {
@@ -85,6 +85,9 @@ int	vradlog(log_type_t lvl, char const *fmt, va_list ap)
 	CC_HINT(format (printf, 2, 0)) CC_HINT(nonnull);
 int	radlog(log_type_t lvl, char const *fmt, ...)
 	CC_HINT(format (printf, 2, 3)) CC_HINT(nonnull (2));
+
+bool	radlog_debug_enabled(log_type_t type, log_debug_t lvl)
+	CC_HINT(always_inline);
 
 bool	radlog_debug_enabled(log_type_t type, log_debug_t lvl, REQUEST *request)
 	CC_HINT(nonnull) CC_HINT(always_inline);
@@ -133,10 +136,10 @@ int fr_logfile_unlock(fr_logfile_t *lf, int fd);
  */
 #define _SL(_l, _p, _f, ...)	if (debug_flag >= _p) radlog(_l, _f, ## __VA_ARGS__)
 
-#define DEBUG_ENABLED		radlog_debug_enabled(L_DBG, L_DBG_LVL_1, NULL)
-#define DEBUG_ENABLED2		radlog_debug_enabled(L_DBG, L_DBG_LVL_2, NULL)
-#define DEBUG_ENABLED3		radlog_debug_enabled(L_DBG, L_DBG_LVL_3, NULL)
-#define DEBUG_ENABLED4		radlog_debug_enabled(L_DBG, L_DBG_LVL_MAX, NULL)
+#define DEBUG_ENABLED		debug_enabled(L_DBG, L_DBG_LVL_1)
+#define DEBUG_ENABLED2		debug_enabled(L_DBG, L_DBG_LVL_2)
+#define DEBUG_ENABLED3		debug_enabled(L_DBG, L_DBG_LVL_3)
+#define DEBUG_ENABLED4		debug_enabled(L_DBG, L_DBG_LVL_MAX)
 
 #define AUTH(fmt, ...)		_SL(L_AUTH, L_DBG_LVL_OFF, fmt, ## __VA_ARGS__)
 #define ACCT(fmt, ...)		_SL(L_ACCT, L_DBG_LVL_OFF, fmt, ## __VA_ARGS__)
