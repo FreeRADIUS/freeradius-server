@@ -724,7 +724,7 @@ static void print_tunneled_data(uint8_t const *data, size_t data_len)
 /*
  *	Process the pseudo-EAP contents of the tunneled data.
  */
-rlm_rcode_t CC_HINT(nonnull) eappeap_process(eap_handler_t *handler, tls_session_t *tls_session)
+rlm_rcode_t eappeap_process(eap_handler_t *handler, tls_session_t *tls_session)
 {
 	peap_tunnel_t	*t = tls_session->opaque;
 	REQUEST		*fake;

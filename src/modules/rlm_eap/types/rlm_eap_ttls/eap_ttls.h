@@ -41,6 +41,6 @@ typedef struct ttls_tunnel_t {
 /*
  *	Process the TTLS portion of an EAP-TTLS request.
  */
-int eapttls_process(eap_handler_t *handler, tls_session_t *tls_session);
+int eapttls_process(eap_handler_t *handler, tls_session_t *tls_session) CC_HINT(nonnull);
 
 #endif /* _EAP_TTLS_H */

@@ -67,5 +67,5 @@ typedef struct peap_tunnel_t {
 /*
  *	Process the PEAP portion of an EAP-PEAP request.
  */
-rlm_rcode_t eappeap_process(eap_handler_t *handler, tls_session_t *tls_session);
+rlm_rcode_t eappeap_process(eap_handler_t *handler, tls_session_t *tls_session) CC_HINT(nonnull);
 #endif /* _EAP_PEAP_H */
