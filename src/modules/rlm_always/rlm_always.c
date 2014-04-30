@@ -97,7 +97,7 @@ static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
  *	Just return the rcode ... this function is autz, auth, acct, and
  *	preacct!
  */
-static rlm_rcode_t always_return(void *instance, UNUSED REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_always_return(void *instance, UNUSED REQUEST *request)
 {
 	return ((struct rlm_always_t *)instance)->rcode;
 }
@@ -128,22 +128,22 @@ module_t rlm_always = {
 	mod_instantiate,		/* instantiation */
 	NULL,				/* detach */
 	{
-		always_return,		/* authentication */
-		always_return,		/* authorization */
-		always_return,		/* preaccounting */
-		always_return,		/* accounting */
+		mod_always_return,		/* authentication */
+		mod_always_return,		/* authorization */
+		mod_always_return,		/* preaccounting */
+		mod_always_return,		/* accounting */
 #ifdef WITH_SESSION_MGMT
 		mod_checksimul,	/* checksimul */
 #else
 		NULL,
 #endif
-		always_return,	       	/* pre-proxy */
-		always_return,		/* post-proxy */
-		always_return		/* post-auth */
+		mod_always_return,	       	/* pre-proxy */
+		mod_always_return,		/* post-proxy */
+		mod_always_return		/* post-auth */
 #ifdef WITH_COA
 		,
-		always_return,		/* recv-coa */
-		always_return		/* send-coa */
+		mod_always_return,		/* recv-coa */
+		mod_always_return		/* send-coa */
 #endif
 	},
 };

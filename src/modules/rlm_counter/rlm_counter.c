@@ -874,9 +874,9 @@ module_t rlm_counter = {
 	mod_detach,			/* detach */
 	{
 		NULL,			/* authentication */
-		mod_authorize, 	/* authorization */
+		mod_authorize,		/* authorization */
 		NULL,			/* preaccounting */
-		mod_accounting,	/* accounting */
+		mod_accounting,		/* accounting */
 		NULL,			/* checksimul */
 		NULL,			/* pre-proxy */
 		NULL,			/* post-proxy */

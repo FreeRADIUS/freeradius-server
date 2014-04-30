@@ -546,7 +546,7 @@ static void addresult (struct passwd_instance * inst, REQUEST *request, TALLOC_C
 	}
 }
 
-static rlm_rcode_t passwd_map(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_passwd_map(void *instance, REQUEST *request)
 {
 #define inst ((struct passwd_instance *)instance)
 	char buffer[1024];
@@ -595,16 +595,16 @@ module_t rlm_passwd = {
 	mod_detach,			/* detach */
 	{
 		NULL,			/* authentication */
-		passwd_map,		/* authorization */
+		mod_passwd_map,		/* authorization */
 		NULL,			/* pre-accounting */
-		passwd_map,		/* accounting */
+		mod_passwd_map,		/* accounting */
 		NULL,			/* checksimul */
 		NULL,			/* pre-proxy */
 		NULL,			/* post-proxy */
-		passwd_map	       	/* post-auth */
+		mod_passwd_map	       	/* post-auth */
 #ifdef WITH_COA
-		, passwd_map,
-		passwd_map
+		, mod_passwd_map,
+		mod_passwd_map
 #endif
 	},
 };
