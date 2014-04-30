@@ -556,8 +556,8 @@ static int mschapv2_authenticate(void *arg, eap_handler_t *handler)
 	 */
 	length = (eap_ds->response->type.data[2] << 8) | eap_ds->response->type.data[3];
 	if ((length < (5 + 49)) || (length > (256 + 5 + 49))) {
-		REDEBUG("Response contains contradictory length %u %d",
-			(unsigned int) length, 5 + 49);
+		REDEBUG("Response contains contradictory length %zu %d",
+			length, 5 + 49);
 		return 0;
 	}
 
