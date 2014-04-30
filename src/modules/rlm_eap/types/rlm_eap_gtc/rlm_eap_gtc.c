@@ -131,7 +131,7 @@ static int gtc_initiate(void *instance, eap_handler_t *handler)
 /*
  *	Authenticate a previously sent challenge.
  */
-static int mod_authenticate(void *instance, eap_handler_t *handler)
+static int CC_HINT(nonnull) mod_authenticate(void *instance, eap_handler_t *handler)
 {
 	VALUE_PAIR *vp;
 	EAP_DS *eap_ds = handler->eap_ds;
@@ -141,7 +141,6 @@ static int mod_authenticate(void *instance, eap_handler_t *handler)
 	/*
 	 *	Get the Cleartext-Password for this user.
 	 */
-	rad_assert(request != NULL);
 	rad_assert(handler->stage == AUTHENTICATE);
 
 	/*

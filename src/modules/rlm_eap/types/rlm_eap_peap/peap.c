@@ -542,13 +542,12 @@ static int process_reply(eap_handler_t *handler, tls_session_t *tls_session,
 /*
  *	Do post-proxy processing,
  */
-static int eappeap_postproxy(eap_handler_t *handler, void *data)
+static int CC_HINT(nonnull) eappeap_postproxy(eap_handler_t *handler, void *data)
 {
 	int rcode;
 	tls_session_t *tls_session = (tls_session_t *) data;
 	REQUEST *fake, *request = handler->request;
 
-	rad_assert(request != NULL);
 	RDEBUG2("Passing reply from proxy back into the tunnel");
 
 	/*
@@ -725,7 +724,7 @@ static void print_tunneled_data(uint8_t const *data, size_t data_len)
 /*
  *	Process the pseudo-EAP contents of the tunneled data.
  */
-rlm_rcode_t eappeap_process(eap_handler_t *handler, tls_session_t *tls_session)
+rlm_rcode_t CC_HINT(nonnull) eappeap_process(eap_handler_t *handler, tls_session_t *tls_session)
 {
 	peap_tunnel_t	*t = tls_session->opaque;
 	REQUEST		*fake;
@@ -737,8 +736,6 @@ rlm_rcode_t eappeap_process(eap_handler_t *handler, tls_session_t *tls_session)
 
 	REQUEST *request = handler->request;
 	EAP_DS *eap_ds = handler->eap_ds;
-
-	rad_assert(request != NULL);
 
 	/*
 	 *	Just look at the buffer directly, without doing
@@ -1210,11 +1207,9 @@ rlm_rcode_t eappeap_process(eap_handler_t *handler, tls_session_t *tls_session)
 	return rcode;
 }
 
-static int setup_fake_request(REQUEST *request, REQUEST *fake, peap_tunnel_t *t) {
+static int CC_HINT(nonnull) setup_fake_request(REQUEST *request, REQUEST *fake, peap_tunnel_t *t) {
 
 	VALUE_PAIR *vp;
-
-	rad_assert(request != NULL);
 
 	/*
 	 *	Tell the request that it's a fake one.

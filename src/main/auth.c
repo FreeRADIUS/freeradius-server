@@ -169,15 +169,13 @@ static int rad_authlog(char const *msg, REQUEST *request, int goodpass)
  *
  *	NOTE: NOT the same as the RLM_ values !
  */
-static int rad_check_password(REQUEST *request)
+static int CC_HINT(nonnull) rad_check_password(REQUEST *request)
 {
 	vp_cursor_t cursor;
 	VALUE_PAIR *auth_type_pair;
 	int auth_type = -1;
 	int result;
 	int auth_type_count = 0;
-
-	rad_assert(request != NULL);
 
 	/*
 	 *	Look for matching check items. We skip the whole lot

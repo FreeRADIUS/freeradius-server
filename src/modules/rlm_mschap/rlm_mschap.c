@@ -677,19 +677,17 @@ static int write_all(int fd, char const *buf, int len) {
  * Perform an MS-CHAP2 password change
  */
 
-static int do_mschap_cpw(rlm_mschap_t *inst,
-			 REQUEST *request,
+static int CC_HINT(nonnull) do_mschap_cpw(rlm_mschap_t *inst,
+				          REQUEST *request,
 #ifdef HAVE_OPENSSL_CRYPTO_H
-			 VALUE_PAIR *nt_password,
+					  VALUE_PAIR *nt_password,
 #else
-			 UNUSED VALUE_PAIR *nt_password,
+					  UNUSED VALUE_PAIR *nt_password,
 #endif
-			 uint8_t *new_nt_password,
-			 uint8_t *old_nt_hash,
-			 int do_ntlm_auth)
+					  uint8_t *new_nt_password,
+					  uint8_t *old_nt_hash,
+					  int do_ntlm_auth)
 {
-	rad_assert(request != NULL);
-
 	if (inst->ntlm_cpw && do_ntlm_auth) {
 		/*
 		 * we're going to run ntlm_auth in helper-mode
@@ -1039,14 +1037,11 @@ ntlm_auth_err:
  *	authentication is in one place, and we can perhaps later replace
  *	it with code to call winbindd, or something similar.
  */
-static int do_mschap(rlm_mschap_t *inst,
-		     REQUEST *request, VALUE_PAIR *password,
-		     uint8_t const *challenge, uint8_t const *response,
-		     uint8_t *nthashhash, int do_ntlm_auth)
+static int CC_HINT(nonnull) do_mschap(rlm_mschap_t *inst, REQUEST *request, VALUE_PAIR *password,
+				      uint8_t const *challenge, uint8_t const *response,
+				      uint8_t *nthashhash, int do_ntlm_auth)
 {
 	uint8_t		calculated[24];
-
-	rad_assert(request != NULL);
 
 	/*
 	 *	Do normal authentication.

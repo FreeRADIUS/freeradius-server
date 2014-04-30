@@ -290,14 +290,13 @@ static int mschapv2_initiate(UNUSED void *instance, eap_handler_t *handler)
  *
  *	Called from rlm_eap.c, eap_postproxy().
  */
-static int mschap_postproxy(eap_handler_t *handler, UNUSED void *tunnel_data)
+static int CC_HINT(nonnull) mschap_postproxy(eap_handler_t *handler, UNUSED void *tunnel_data)
 {
 	VALUE_PAIR *response = NULL;
 	mschapv2_opaque_t *data;
 	REQUEST *request = handler->request;
 
 	data = (mschapv2_opaque_t *) handler->opaque;
-	rad_assert(data != NULL);
 	rad_assert(request != NULL);
 
 	RDEBUG2("Passing reply from proxy back into the tunnel %d.",
@@ -368,7 +367,7 @@ static int mschap_postproxy(eap_handler_t *handler, UNUSED void *tunnel_data)
 /*
  *	Authenticate a previously sent challenge.
  */
-static int mschapv2_authenticate(void *arg, eap_handler_t *handler)
+static int CC_HINT(nonnull) mschapv2_authenticate(void *arg, eap_handler_t *handler)
 {
 	int rcode, ccode;
 	uint8_t *p;
@@ -380,7 +379,6 @@ static int mschapv2_authenticate(void *arg, eap_handler_t *handler)
 	rlm_eap_mschapv2_t *inst = (rlm_eap_mschapv2_t *) arg;
 	REQUEST *request = handler->request;
 
-	rad_assert(request != NULL);
 	rad_assert(handler->stage == AUTHENTICATE);
 
 	data = (mschapv2_opaque_t *) handler->opaque;

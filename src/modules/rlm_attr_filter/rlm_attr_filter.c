@@ -153,7 +153,7 @@ static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
 /*
  *	Common attr_filter checks
  */
-static rlm_rcode_t attr_filter_common(void *instance, REQUEST *request, RADIUS_PACKET *packet)
+static rlm_rcode_t CC_HINT(nonull(1,2)) attr_filter_common(void *instance, REQUEST *request, RADIUS_PACKET *packet)
 {
 	rlm_attr_filter_t *inst = instance;
 	VALUE_PAIR	*vp;
@@ -166,8 +166,6 @@ static rlm_rcode_t attr_filter_common(void *instance, REQUEST *request, RADIUS_P
 	char		buffer[256];
 
 	if (!packet) return RLM_MODULE_NOOP;
-
-	rad_assert(request != NULL);
 
 	if (!inst->key) {
 		VALUE_PAIR	*namepair;
@@ -318,8 +316,9 @@ static rlm_rcode_t attr_filter_common(void *instance, REQUEST *request, RADIUS_P
 
 	if (request->packet->code == PW_CODE_AUTHENTICATION_REQUEST) {
 		request->username = pairfind(request->packet->vps, PW_STRIPPED_USER_NAME, 0, TAG_ANY);
-		if (!request->username)
+		if (!request->username) {
 			request->username = pairfind(request->packet->vps, PW_USER_NAME, 0, TAG_ANY);
+		}
 		request->password = pairfind(request->packet->vps, PW_USER_PASSWORD, 0, TAG_ANY);
 	}
 

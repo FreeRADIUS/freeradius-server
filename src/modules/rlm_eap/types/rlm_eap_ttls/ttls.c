@@ -611,14 +611,13 @@ static int vp2diameter(REQUEST *request, tls_session_t *tls_session, VALUE_PAIR 
 /*
  *	Use a reply packet to determine what to do.
  */
-static rlm_rcode_t process_reply(UNUSED eap_handler_t *handler, tls_session_t *tls_session,
-				 REQUEST *request, RADIUS_PACKET *reply)
+static rlm_rcode_t CC_HINT(nonnull) process_reply(UNUSED eap_handler_t *handler, tls_session_t *tls_session,
+						  REQUEST *request, RADIUS_PACKET *reply)
 {
 	rlm_rcode_t rcode = RLM_MODULE_REJECT;
 	VALUE_PAIR *vp;
 	ttls_tunnel_t *t = tls_session->opaque;
 
-	rad_assert(request != NULL);
 	rad_assert(handler->request == request);
 
 	/*
@@ -787,13 +786,12 @@ static rlm_rcode_t process_reply(UNUSED eap_handler_t *handler, tls_session_t *t
 /*
  *	Do post-proxy processing,
  */
-static int eapttls_postproxy(eap_handler_t *handler, void *data)
+static int CC_HINT(nonnull) eapttls_postproxy(eap_handler_t *handler, void *data)
 {
 	int rcode;
 	tls_session_t *tls_session = (tls_session_t *) data;
 	REQUEST *fake, *request = handler->request;
 
-	rad_assert(request != NULL);
 	RDEBUG("Passing reply from proxy back into the tunnel");
 
 	/*
@@ -916,7 +914,7 @@ static int eapttls_postproxy(eap_handler_t *handler, void *data)
 /*
  *	Process the "diameter" contents of the tunneled data.
  */
-PW_CODE eapttls_process(eap_handler_t *handler, tls_session_t *tls_session)
+PW_CODE CC_HINT(nonnull) eapttls_process(eap_handler_t *handler, tls_session_t *tls_session)
 {
 	PW_CODE code = PW_CODE_AUTHENTICATION_REJECT;
 	rlm_rcode_t rcode;
@@ -926,8 +924,6 @@ PW_CODE eapttls_process(eap_handler_t *handler, tls_session_t *tls_session)
 	uint8_t const *data;
 	size_t data_len;
 	REQUEST *request = handler->request;
-
-	rad_assert(request != NULL);
 
 	/*
 	 *	Just look at the buffer directly, without doing

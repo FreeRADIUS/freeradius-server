@@ -1272,16 +1272,14 @@ int radius_mapexec(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *m
  * @param[in] ctx unused
  * @return 0 on success, -1 on failure
  */
-int radius_map2vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *map, UNUSED void *ctx)
+int CC_HINT(nonnull (1,2,3)) radius_map2vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *map,
+					   UNUSED void *ctx)
 {
 	int rcode = 0;
 	VALUE_PAIR *vp = NULL, *found, **from = NULL;
 	DICT_ATTR const *da;
 	REQUEST *context = request;
 	vp_cursor_t cursor;
-
-	rad_assert(request != NULL);
-	rad_assert(map != NULL);
 
 	*out = NULL;
 

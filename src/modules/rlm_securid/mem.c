@@ -90,14 +90,10 @@ void securid_sessionlist_free(rlm_securid_t *inst,REQUEST *request)
  *	Since we're adding it to the list, we guess that this means
  *	the packet needs a State attribute.  So add one.
  */
-int securid_sessionlist_add(rlm_securid_t *inst,REQUEST *request,
-			    SECURID_SESSION *session)
+int CC_HINT(nonnull) securid_sessionlist_add(rlm_securid_t *inst,REQUEST *request, SECURID_SESSION *session)
 {
 	int		status = 0;
 	VALUE_PAIR	*state;
-
-	rad_assert(session != NULL);
-	rad_assert(request != NULL);
 
 	/*
 	 *	The time at which this request was made was the time

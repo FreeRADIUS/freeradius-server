@@ -104,13 +104,11 @@ static void tls_socket_close(rad_listen_t *listener)
 	 */
 }
 
-static int tls_socket_write(rad_listen_t *listener, REQUEST *request)
+static int CC_HINT(nonnull) tls_socket_write(rad_listen_t *listener, REQUEST *request)
 {
 	uint8_t *p;
 	ssize_t rcode;
 	listen_socket_t *sock = listener->data;
-
-	rad_assert(request != NULL);
 
 	p = sock->ssn->dirty_out.data;
 

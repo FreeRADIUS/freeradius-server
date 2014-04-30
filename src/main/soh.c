@@ -141,14 +141,11 @@ uint32_t soh_pull_be_32(uint8_t const *p) {
  * @param data_len length of blob
  * @return 1 on success, 0 on failure
  */
-static int eapsoh_mstlv(REQUEST *request, uint8_t const *p, unsigned int data_len) {
+static int CC_HINT(nonnull) eapsoh_mstlv(REQUEST *request, uint8_t const *p, unsigned int data_len) {
 	VALUE_PAIR *vp;
 	uint8_t c;
 	int t;
 	char *q;
-
-	rad_assert(request != NULL);
-	rad_assert(p != NULL);
 
 	while (data_len > 0) {
 		c = *p++;
@@ -376,7 +373,7 @@ static char const* healthclass2str(uint8_t hc) {
  * @return 0 on success, -1 on failure
  *
  */
-int soh_verify(REQUEST *request, uint8_t const *data, unsigned int data_len) {
+int CC_HINT(nonnull) soh_verify(REQUEST *request, uint8_t const *data, unsigned int data_len) {
 
 	VALUE_PAIR *vp;
 	eap_soh hdr;
@@ -385,7 +382,6 @@ int soh_verify(REQUEST *request, uint8_t const *data, unsigned int data_len) {
 	soh_tlv tlv;
 	int curr_shid=-1, curr_shid_c=-1, curr_hc=-1;
 
-	rad_assert(request != NULL);
 	rad_assert(request->packet != NULL);
 
 	hdr.tlv_type = soh_pull_be_16(data); data += 2;

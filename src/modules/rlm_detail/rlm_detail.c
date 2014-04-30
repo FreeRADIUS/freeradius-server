@@ -325,7 +325,7 @@ static int detail_write(FILE *out, detail_instance_t *inst, REQUEST *request, RA
 /*
  *	Do detail, compatible with old accounting
  */
-static rlm_rcode_t detail_do(void *instance, REQUEST *request, RADIUS_PACKET *packet, bool compat)
+static rlm_rcode_t CC_HINT(nonnull) detail_do(void *instance, REQUEST *request, RADIUS_PACKET *packet, bool compat)
 {
 	int		outfd;
 	char		buffer[DIRLEN];
@@ -339,8 +339,6 @@ static rlm_rcode_t detail_do(void *instance, REQUEST *request, RADIUS_PACKET *pa
 #endif
 
 	detail_instance_t *inst = instance;
-
-	rad_assert(request != NULL);
 
 	/*
 	 *	Nothing to log: don't do anything.

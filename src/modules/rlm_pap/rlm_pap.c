@@ -119,13 +119,11 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 /*
  *	Hex or base64 or bin auto-discovery.
  */
-static void normify(REQUEST *request, VALUE_PAIR *vp, size_t min_length)
+static void CC_HINT(nonnull) normify(REQUEST *request, VALUE_PAIR *vp, size_t min_length)
 {
 	uint8_t buffer[256];
 
 	if (min_length >= sizeof(buffer)) return; /* paranoia */
-
-	rad_assert(request != NULL);
 
 	/*
 	 *	Hex encoding.
@@ -176,8 +174,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 	bool found_pw = false;
 	VALUE_PAIR *vp;
 	vp_cursor_t cursor;
-
-	rad_assert(request != NULL);
 
 	for (vp = fr_cursor_init(&cursor, &request->config_items);
 	     vp;
@@ -401,10 +397,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
  *	PAP authentication functions
  */
 
-static int pap_auth_clear(UNUSED rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
+static rlm_rcode_t CC_HINT(nonnull) pap_auth_clear(UNUSED rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
 {
-	rad_assert(request != NULL);
-
 	if (RDEBUG_ENABLED3) {
 		RDEBUG3("Comparing with \"known good\" Cleartext-Password \"%s\"", vp->vp_strvalue);
 	} else {
@@ -421,10 +415,8 @@ static int pap_auth_clear(UNUSED rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *
 	return RLM_MODULE_OK;
 }
 
-static int pap_auth_crypt(UNUSED rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
+static rlm_rcode_t CC_HINT(nonnull) pap_auth_crypt(UNUSED rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
 {
-	rad_assert(request != NULL);
-
 	if (RDEBUG_ENABLED3) {
 		RDEBUG3("Comparing with \"known good\" Crypt-Password \"%s\"", vp->vp_strvalue);
 	} else {
@@ -439,12 +431,10 @@ static int pap_auth_crypt(UNUSED rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *
 	return RLM_MODULE_OK;
 }
 
-static int pap_auth_md5(rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
+static rlm_rcode_t CC_HINT(nonnull) pap_auth_md5(rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
 {
 	FR_MD5_CTX md5_context;
 	uint8_t digest[128];
-
-	rad_assert(request != NULL);
 
 	RDEBUG("Comparing with \"known-good\" MD5-Password");
 
@@ -470,12 +460,10 @@ static int pap_auth_md5(rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
 }
 
 
-static int pap_auth_smd5(rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
+static rlm_rcode_t CC_HINT(nonnull) pap_auth_smd5(rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
 {
 	FR_MD5_CTX md5_context;
 	uint8_t digest[128];
-
-	rad_assert(request != NULL);
 
 	RDEBUG("Comparing with \"known-good\" SMD5-Password");
 
@@ -504,12 +492,10 @@ static int pap_auth_smd5(rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
 	return RLM_MODULE_OK;
 }
 
-static int pap_auth_sha(rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
+static rlm_rcode_t CC_HINT(nonnull) pap_auth_sha(rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
 {
 	fr_SHA1_CTX sha1_context;
 	uint8_t digest[128];
-
-	rad_assert(request != NULL);
 
 	RDEBUG("Comparing with \"known-good\" SHA-Password");
 
@@ -534,12 +520,10 @@ static int pap_auth_sha(rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
 	return RLM_MODULE_OK;
 }
 
-static int pap_auth_ssha(rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
+static rlm_rcode_t CC_HINT(nonnull) pap_auth_ssha(rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
 {
 	fr_SHA1_CTX sha1_context;
 	uint8_t digest[128];
-
-	rad_assert(request != NULL);
 
 	RDEBUG("Comparing with \"known-good\" SSHA-Password");
 
@@ -566,15 +550,13 @@ static int pap_auth_ssha(rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
 }
 
 #ifdef HAVE_OPENSSL_EVP_H
-static int pap_auth_sha2(rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
+static rlm_rcode_t CC_HINT(nonnull) pap_auth_sha2(rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
 {
 	EVP_MD_CTX *ctx;
 	EVP_MD const *md;
 	char const *name;
 	uint8_t digest[EVP_MAX_MD_SIZE];
 	unsigned int digestlen;
-
-	rad_assert(request != NULL);
 
 	RDEBUG("Comparing with \"known-good\" SHA2-Password");
 
@@ -634,12 +616,10 @@ static int pap_auth_sha2(rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
 }
 #endif
 
-static int pap_auth_nt(rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
+static rlm_rcode_t CC_HINT(nonnull) pap_auth_nt(rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
 {
 	uint8_t digest[16];
 	char charbuf[32 + 1];
-
-	rad_assert(request != NULL);
 
 	RDEBUG("Comparing with \"known-good\" NT-Password");
 
@@ -665,12 +645,10 @@ static int pap_auth_nt(rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
 }
 
 
-static int pap_auth_lm(rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
+static rlm_rcode_t CC_HINT(nonnull) pap_auth_lm(rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
 {
 	uint8_t digest[16];
 	char charbuf[32 + 1];
-
-	rad_assert(request != NULL);
 
 	RDEBUG("Comparing with \"known-good\" LM-Password");
 
@@ -695,14 +673,12 @@ static int pap_auth_lm(rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
 	return RLM_MODULE_OK;
 }
 
-static int pap_auth_ns_mta_md5(UNUSED rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
+static rlm_rcode_t CC_HINT(nonnull) pap_auth_ns_mta_md5(UNUSED rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
 {
 	FR_MD5_CTX md5_context;
 	uint8_t digest[128];
 	uint8_t buff[MAX_STRING_LEN];
 	char buff2[MAX_STRING_LEN + 50];
-
-	rad_assert(request != NULL);
 
 	RDEBUG("Using NT-MTA-MD5-Password");
 
@@ -767,9 +743,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	VALUE_PAIR *vp;
 	rlm_rcode_t rc = RLM_MODULE_INVALID;
 	vp_cursor_t cursor;
-	int (*auth_func)(rlm_pap_t *, REQUEST *, VALUE_PAIR *) = NULL;
-
-	rad_assert(request != NULL);
+	rlm_rcode_t (*auth_func)(rlm_pap_t *, REQUEST *, VALUE_PAIR *) = NULL;
 
 	if (!request->password ||
 	    (request->password->da->attr != PW_USER_PASSWORD)) {
