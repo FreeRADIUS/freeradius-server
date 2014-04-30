@@ -26,26 +26,10 @@
 RCSIDH(libradius_h, "$Id$")
 
 /*
- *  Preprocessor hacks.
+ *  Compiler hinting macros.  Included here for 3rd party consumers
+ *  of libradius.h.
  */
-#ifndef STRINGIFY
-#  define XSTRINGIFY(x) #x
-#  define STRINGIFY(x) XSTRINGIFY(x)
-#endif
-
-#ifndef HEXIFY
-#  define XHEXIFY4(b1,b2,b3,b4)	(0x ## b1 ## b2 ## b3 ## b4)
-#  define HEXIFY4(b1,b2,b3,b4)	XHEXIFY4(b1, b2, b3, b4)
-
-#  define XHEXIFY3(b1,b2,b3)	(0x ## b1 ## b2 ## b3)
-#  define HEXIFY3(b1,b2,b3)	XHEXIFY3(b1, b2, b3)
-
-#  define XHEXIFY2(b1,b2)	(0x ## b1 ## b2)
-#  define HEXIFY2(b1,b2)	XHEXIFY2(b1, b2)
-
-#  define XHEXIFY(b1)		(0x ## b1)
-#  define HEXIFY(b1)		XHEXIFY(b1)
-#endif
+#include <freeradius-devel/build.h>
 
 /*
  *  Let any external program building against the library know what
@@ -172,17 +156,10 @@ do {\
 
 #define PAD(_x, _y)		(_y - ((_x) % _y))
 
-#if defined(__GNUC__)
-#  define PRINTF_LIKE(n) __attribute__ ((format(printf, n, n+1)))
-#  define NEVER_RETURNS __attribute__ ((noreturn))
-#  define UNUSED __attribute__ ((unused))
-#  define BLANK_FORMAT " "	/* GCC_LINT whines about empty formats */
-#else
-#  define PRINTF_LIKE(n)	/* ignore */
-#  define NEVER_RETURNS /* ignore */
-#  define UNUSED /* ignore */
-#  define BLANK_FORMAT ""
-#endif
+#define PRINTF_LIKE(n)		CC_HINT(format(printf, n, n+1))
+#define NEVER_RETURNS		CC_HINT(noreturn)
+#define UNUSED			CC_HINT(unused)
+#define BLANK_FORMAT		" "	/* GCC_LINT whines about empty formats */
 
 typedef struct attr_flags {
 	unsigned int 	is_unknown : 1;				//!< Attribute number or vendor is unknown.
@@ -630,11 +607,7 @@ void		pairmemcpy(VALUE_PAIR *vp, uint8_t const * src, size_t len);
 void		pairmemsteal(VALUE_PAIR *vp, uint8_t const *src);
 void		pairstrsteal(VALUE_PAIR *vp, char const *src);
 void		pairstrcpy(VALUE_PAIR *vp, char const * src);
-void		pairsprintf(VALUE_PAIR *vp, char const * fmt, ...)
-#ifdef __GNUC__
-		__attribute__ ((format (printf, 2, 3)))
-#endif
-;
+void		pairsprintf(VALUE_PAIR *vp, char const * fmt, ...) CC_HINT(format (printf, 2, 3));
 void		pairmove(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from);
 void		pairfilter(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from,
 			   unsigned int attr, unsigned int vendor, int8_t tag);
@@ -650,16 +623,8 @@ int		readvp2(VALUE_PAIR **out, TALLOC_CTX *ctx, FILE *fp, bool *pfiledone);
 /*
  *	Error functions.
  */
-void		fr_strerror_printf(char const *, ...)
-#ifdef __GNUC__
-		__attribute__ ((format (printf, 1, 2)))
-#endif
-;
-void		fr_perror(char const *, ...)
-#ifdef __GNUC__
-		__attribute__ ((format (printf, 1, 2)))
-#endif
-;
+void		fr_strerror_printf(char const *, ...) CC_HINT(format (printf, 1, 2));
+void		fr_perror(char const *, ...) CC_HINT(format (printf, 1, 2));
 
 extern bool fr_assert_cond(char const *file, int line, char const *expr, bool cond);
 #define fr_assert(_x) fr_assert_cond(__FILE__,  __LINE__, #_x, (_x))
@@ -681,11 +646,7 @@ extern char const *fr_packet_codes[FR_MAX_PACKET_CODE];
 #define is_radius_code(_x) ((_x > 0) && (_x < FR_MAX_PACKET_CODE))
 extern FILE	*fr_log_fp;
 extern void rad_print_hex(RADIUS_PACKET *packet);
-void		fr_printf_log(char const *, ...)
-#ifdef __GNUC__
-		__attribute__ ((format (printf, 1, 2)))
-#endif
-;
+void		fr_printf_log(char const *, ...) CC_HINT(format (printf, 1, 2));
 
 /*
  *	Several handy miscellaneous functions.
@@ -786,11 +747,8 @@ void		fr_debug_break(void);
 void		backtrace_print(fr_cbuff_t *cbuff, void *obj);
 fr_bt_marker_t	*fr_backtrace_attach(fr_cbuff_t **cbuff, TALLOC_CTX *obj);
 
-typedef void (*fr_fault_log_t)(char const *msg, ...)
-#ifdef __GNUC__
-		__attribute__ ((format (printf, 1, 2)))
-#endif
-;
+typedef void (*fr_fault_log_t)(char const *msg, ...) CC_HINT(format (printf, 1, 2));
+
 int		fr_set_dumpable_init(void);
 int		fr_set_dumpable(bool allow_core_dumps);
 int		fr_log_talloc_report(TALLOC_CTX *ctx);

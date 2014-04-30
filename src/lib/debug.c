@@ -616,10 +616,7 @@ void fr_fault_set_cb(fr_fault_cb_t func)
 /** Default logger, logs output to stderr
  *
  */
-#ifdef __GNUC__
-__attribute__ ((format (printf, 1, 2)))
-#endif
-static void _fr_fault_log(char const *msg, ...)
+static void CC_HINT(format (printf, 1, 2)) _fr_fault_log(char const *msg, ...)
 {
 	va_list ap;
 
