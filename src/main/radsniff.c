@@ -1996,7 +1996,7 @@ int main(int argc, char *argv[])
 		case 'w':
 			out = fr_pcap_init(conf, optarg, PCAP_FILE_OUT);
 			if (!out) {
-				ERROR("Failed creating output %s", optarg);
+				ERROR("Failed creating pcap file \"%s\"", optarg);
 				exit(EXIT_FAILURE);
 			}
 			conf->to_file = true;
@@ -2274,7 +2274,7 @@ int main(int argc, char *argv[])
 			DEBUG2("  Device(s)               : [%s]", buff);
 			talloc_free(buff);
 		}
-		if (conf->to_file || conf->to_stdout) {
+		if (out) {
 			DEBUG2("  Writing to              : [%s]", out->name);
 		}
 		if (conf->limit > 0)	{
