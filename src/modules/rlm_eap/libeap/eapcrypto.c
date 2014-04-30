@@ -44,9 +44,9 @@ void eapsim_calculate_keys(struct eapsim_keys *ek)
 
 	p = buf;
 	memcpy(p, ek->identity, ek->identitylen);   p = p+ek->identitylen;
-	memcpy(p, ek->Kc[0], EAPSIM_Kc_SIZE);       p = p+EAPSIM_Kc_SIZE;
-	memcpy(p, ek->Kc[1], EAPSIM_Kc_SIZE);       p = p+EAPSIM_Kc_SIZE;
-	memcpy(p, ek->Kc[2], EAPSIM_Kc_SIZE);       p = p+EAPSIM_Kc_SIZE;
+	memcpy(p, ek->Kc[0], EAPSIM_KC_SIZE);       p = p+EAPSIM_KC_SIZE;
+	memcpy(p, ek->Kc[1], EAPSIM_KC_SIZE);       p = p+EAPSIM_KC_SIZE;
+	memcpy(p, ek->Kc[2], EAPSIM_KC_SIZE);       p = p+EAPSIM_KC_SIZE;
 	memcpy(p, ek->nonce_mt, sizeof(ek->nonce_mt)); p=p+sizeof(ek->nonce_mt);
 	memcpy(p, ek->versionlist, ek->versionlistlen);p=p+ek->versionlistlen;
 	memcpy(p, ek->versionselect, sizeof(ek->versionselect)); p=p+sizeof(ek->versionselect);
@@ -131,7 +131,7 @@ void eapsim_dump_mk(struct eapsim_keys *ek)
 
 	for (k = 0; k<3; k++) {
 		printf("\n   Kc%d: ", k);
-		for (i = 0; i < EAPSIM_Kc_SIZE; i++) {
+		for (i = 0; i < EAPSIM_KC_SIZE; i++) {
 			printf("%02x", ek->Kc[k][i]);
 		}
 	}

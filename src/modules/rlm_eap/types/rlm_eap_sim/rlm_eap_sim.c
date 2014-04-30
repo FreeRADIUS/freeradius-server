@@ -186,7 +186,7 @@ static int eap_sim_get_challenge(eap_handler_t *handler, VALUE_PAIR *vps, int id
 			RDEBUG2("\tSRES : 0x%s", buffer);
 
 			p = buffer;
-			for (i = 0; i < EAPSIM_Kc_SIZE; i++) {
+			for (i = 0; i < EAPSIM_KC_SIZE; i++) {
 				p += sprintf(p, "%02x", ess->keys.Kc[idx][i]);
 			}
 			RDEBUG2("\tKc   : 0x%s", buffer);
@@ -209,7 +209,8 @@ static int eap_sim_get_challenge(eap_handler_t *handler, VALUE_PAIR *vps, int id
 		return 0;
 	}
 	if (vp->length != EAPSIM_RAND_SIZE) {
-		REDEBUG("EAP-SIM-RAND%i is not 8 bytes, got %zu bytes", idx + 1, vp->length);
+		REDEBUG("EAP-SIM-RAND%i is not " STRINGIFY(EAPSIM_RAND_SIZE) " bytes, got %zu bytes",
+			idx + 1, vp->length);
 		return 0;
 	}
 	memcpy(ess->keys.rand[idx], vp->vp_strvalue, EAPSIM_RAND_SIZE);
@@ -225,7 +226,8 @@ static int eap_sim_get_challenge(eap_handler_t *handler, VALUE_PAIR *vps, int id
 		return 0;
 	}
 	if (vp->length != EAPSIM_SRES_SIZE) {
-		REDEBUG("EAP-SIM-SRES%i is not 16 bytes, got %zu bytes", idx + 1, vp->length);
+		REDEBUG("EAP-SIM-SRES%i is not " STRINGIFY(EAPSIM_SRES_SIZE) " bytes, got %zu bytes",
+			idx + 1, vp->length);
 		return 0;
 	}
 	memcpy(ess->keys.sres[idx], vp->vp_strvalue, EAPSIM_SRES_SIZE);
@@ -240,11 +242,12 @@ static int eap_sim_get_challenge(eap_handler_t *handler, VALUE_PAIR *vps, int id
 		REDEBUG("EAP-SIM-Kc%i not found", idx + 1);
 		return 0;
 	}
-	if (vp->length != EAPSIM_Kc_SIZE) {
-		REDEBUG("EAP-SIM-Kc%i is not 16 bytes, got %zu bytes", idx + 1, vp->length);
+	if (vp->length != EAPSIM_KC_SIZE) {
+		REDEBUG("EAP-SIM-Kc%i is not " STRINGIFY(EAPSIM_KC_SIZE) " bytes, got %zu bytes",
+			idx + 1, vp->length);
 		return 0;
 	}
-	memcpy(ess->keys.Kc[idx], vp->vp_strvalue, EAPSIM_Kc_SIZE);
+	memcpy(ess->keys.Kc[idx], vp->vp_strvalue, EAPSIM_KC_SIZE);
 
 	return 1;
 }
