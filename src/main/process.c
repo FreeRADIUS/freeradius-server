@@ -98,7 +98,7 @@ static char const *child_state_names[REQUEST_CHILD_NUM_STATES] = {
  *	Declare a state in the state machine.
  *
  */
-#define STATE_MACHINE_DECL(_x) static void _x(REQUEST *request, int action)
+#define STATE_MACHINE_DECL(_x) static void CC_HINT(nonnull) _x(REQUEST *request, int action)
 
 #define STATE_MACHINE_TIMER(_x) request->timer_action = _x; \
 		fr_event_insert(el, request_timer, request, \
