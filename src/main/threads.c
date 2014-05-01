@@ -1430,7 +1430,7 @@ void exec_trigger(REQUEST *request, CONF_SECTION *cs, char const *name, int quen
 
 	ci = cf_reference_item(subcs, mainconfig.config, attr);
 	if (!ci) {
-		EDEBUG3("No such item in trigger section: %s", attr);
+		EDEBUG2("No such item in trigger section: %s", attr);
 		return;
 	}
 
