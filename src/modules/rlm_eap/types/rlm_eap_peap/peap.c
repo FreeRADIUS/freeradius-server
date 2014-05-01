@@ -622,7 +622,6 @@ static int CC_HINT(nonnull) eappeap_postproxy(eap_handler_t *handler, void *data
 			request_free(&fake);
 			eaptls_fail(handler, 0);
 			return 0;
-			break;
 
 		default:  /* Don't Do Anything */
 			RDEBUG2("Got reply %d", request->proxy_reply->code);
@@ -1290,7 +1289,6 @@ static int CC_HINT(nonnull) setup_fake_request(REQUEST *request, REQUEST *fake, 
 			case PW_EAP_MESSAGE:
 			case PW_STATE:
 				continue;
-				break;
 
 				/*
 				 *	By default, copy it over.
