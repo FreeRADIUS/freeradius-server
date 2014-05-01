@@ -2246,7 +2246,7 @@ static ssize_t xlat_expand_struct(char **out, size_t outlen, REQUEST *request, x
 }
 
 static ssize_t xlat_expand(char **out, size_t outlen, REQUEST *request, char const *fmt,
-			   RADIUS_ESCAPE_STRING escape, void *escape_ctx) CC_HINT(nonnull);
+			   RADIUS_ESCAPE_STRING escape, void *escape_ctx) CC_HINT(nonnull (1, 3, 4));
 
 /** Replace %whatever in a string.
  *
@@ -2260,8 +2260,8 @@ static ssize_t xlat_expand(char **out, size_t outlen, REQUEST *request, char con
  * @param[in] escape_ctx pointer to pass to escape function.
  * @return length of string written @bug should really have -1 for failure
  */
-static ssize_t xlat_expand(char **out, size_t outlen, REQUEST *request, char const *fmt, RADIUS_ESCAPE_STRING escape,
-			   void *escape_ctx)
+static ssize_t xlat_expand(char **out, size_t outlen, REQUEST *request, char const *fmt,
+			   RADIUS_ESCAPE_STRING escape, void *escape_ctx)
 {
 	ssize_t len;
 	xlat_exp_t *node;
