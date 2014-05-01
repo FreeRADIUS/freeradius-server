@@ -177,6 +177,11 @@ pid_t radius_start_program(char const *cmd, REQUEST *request, bool exec_wait,
 			 *	Don't add too many attributes.
 			 */
 			if (envlen == (MAX_ENVP - 1)) break;
+
+			/*
+			 *	NULL terminate for execve
+			 */
+			envp[envlen] = NULL;
 		}
 	}
 
