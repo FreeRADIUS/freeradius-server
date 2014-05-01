@@ -133,7 +133,7 @@ void fips186_2prf(uint8_t mk[20], uint8_t finalkey[160])
 		/*   b. w_0 = SHA1(XVAL)  */
 		fr_SHA1Init(&context);
 
-		memset(zeros, 0, sizeof(zeros));
+		memset(zeros + 20, 0, sizeof(zeros) - 20);
 		memcpy(zeros, xval.p, 20);
 #ifndef WITH_OPENSSL_SHA1
 		fr_SHA1Transform(context.state, zeros);
@@ -152,7 +152,7 @@ void fips186_2prf(uint8_t mk[20], uint8_t finalkey[160])
 		/*   e. w_1 = SHA1(XVAL)  */
 		fr_SHA1Init(&context);
 
-		memset(zeros, 0, sizeof(zeros));
+		memset(zeros + 20, 0, sizeof(zeros) - 20);
 		memcpy(zeros, xval.p, 20);
 #ifndef WITH_OPENSSL_SHA1
 		fr_SHA1Transform(context.state, zeros);
