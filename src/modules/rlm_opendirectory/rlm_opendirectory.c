@@ -63,7 +63,7 @@ extern int mbr_check_membership_refresh(uuid_t const user, uuid_t group, int *is
  *  Returns: ds err
  */
 
-static long od_check_passwd(char const *uname, char const *password)
+static long od_check_passwd(REQUEST *request, char const *uname, char const *password)
 {
 	long			result 		= eDSAuthFailed;
 	tDirReference		dsRef 		= 0;
@@ -147,7 +147,7 @@ static long od_check_passwd(char const *uname, char const *password)
 					status = dsGetAttributeValue( nodeRef, tDataBuff, 1, valueRef, &pValueEntry );
 					if ( status == eDSNoErr && pValueEntry != NULL )
 					{
-						pUserLocation = (char *) calloc( pValueEntry->fAttributeValueData.fBufferLength + 1, sizeof(char) );
+						pUserLocation = talloc_zero_array(request, char, pValueEntry->fAttributeValueData.fBufferLength + 1);
 						memcpy( pUserLocation, pValueEntry->fAttributeValueData.fBufferData, pValueEntry->fAttributeValueData.fBufferLength );
 					}
 				}
@@ -157,7 +157,7 @@ static long od_check_passwd(char const *uname, char const *password)
 					status = dsGetAttributeValue( nodeRef, tDataBuff, 1, valueRef, &pValueEntry );
 					if ( status == eDSNoErr && pValueEntry != NULL )
 					{
-						pUserName = (char *) calloc( pValueEntry->fAttributeValueData.fBufferLength + 1, sizeof(char) );
+						pUserName = talloc_zero_array(request, char, pValueEntry->fAttributeValueData.fBufferLength + 1);
 						memcpy( pUserName, pValueEntry->fAttributeValueData.fBufferData, pValueEntry->fAttributeValueData.fBufferLength );
 					}
 				}
@@ -198,6 +198,11 @@ static long od_check_passwd(char const *uname, char const *password)
 		pAuthType = dsDataNodeAllocateString( dsRef, kDSStdAuthNodeNativeClearTextOK );
 		uiCurr = 0;
 
+		if (!pUserName) {
+			RDEBUG("Failed to find user name");
+			break;
+		}
+
 		/* User name */
 		uiLen = (uint32_t)strlen( pUserName );
 		memcpy( &(tDataBuff->fBufferData[ uiCurr ]), &uiLen, sizeof(uiLen) );
@@ -237,8 +242,12 @@ static long od_check_passwd(char const *uname, char const *password)
 		pStepBuff = NULL;
 	}
 	if (pUserLocation != NULL) {
-		free(pUserLocation);
+		talloc_free(pUserLocation);
 		pUserLocation = NULL;
+	}
+	if (pUserName != NULL) {
+		talloc_free(pUserName);
+		pUserName = NULL;
 	}
 	if (pRecName != NULL) {
 		dsDataListDeallocate( dsRef, pRecName );
@@ -295,7 +304,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, REQU
 		return RLM_MODULE_INVALID;
 	}
 
-	odResult = od_check_passwd(request->username->vp_strvalue,
+	odResult = od_check_passwd(request, request->username->vp_strvalue,
 				   request->password->vp_strvalue);
 	switch(odResult) {
 		case eDSNoErr:
@@ -403,7 +412,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, REQUEST
 	}
 
 	if (uuid_is_null(guid_sacl) && uuid_is_null(guid_nasgroup)) {
-		RDEBUG("no access control groups, all users allowed");
+		RDEBUG("no access control groups, all users allowed.");
 		if (pairfind(request->config_items, PW_AUTH_TYPE, 0, TAG_ANY) == NULL) {
 			pairmake_config("Auth-Type", kAuthType, T_OP_EQ);
 			RDEBUG("Setting Auth-Type = %s", kAuthType);
