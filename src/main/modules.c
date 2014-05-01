@@ -982,7 +982,6 @@ static int load_component_section(CONF_SECTION *cs,
 			} else {
 				modrefname = cf_section_name2(scs);
 				if (!modrefname) {
-					talloc_free(this);
 					cf_log_err_cs(cs,
 						   "Errors parsing %s sub-section.\n",
 						   cf_section_name1(scs));
@@ -996,7 +995,6 @@ static int load_component_section(CONF_SECTION *cs,
 				 *	It's a section, but nothing we
 				 *	recognize.  Die!
 				 */
-				talloc_free(this);
 				cf_log_err_cs(cs,
 					   "Unknown Auth-Type \"%s\" in %s sub-section.",
 					   modrefname, section_type_value[comp].section);
