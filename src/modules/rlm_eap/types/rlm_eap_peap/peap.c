@@ -416,8 +416,8 @@ static int eappeap_check_tlv(REQUEST *request, uint8_t const *data,
 /*
  *	Use a reply packet to determine what to do.
  */
-static int process_reply(eap_handler_t *handler, tls_session_t *tls_session,
-			 REQUEST *request, RADIUS_PACKET *reply)
+static int CC_HINT(nonnull) process_reply(eap_handler_t *handler, tls_session_t *tls_session,
+					  REQUEST *request, RADIUS_PACKET *reply)
 {
 	int rcode = RLM_MODULE_REJECT;
 	VALUE_PAIR *vp;

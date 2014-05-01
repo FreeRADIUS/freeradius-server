@@ -95,7 +95,10 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
 	rlm_linelog_t *inst = instance;
 
-	rad_assert(inst->filename && *inst->filename);
+	if (!inst->filename) {
+		cf_log_err_cs(conf, "No value provided for 'filename'");
+		return -1;
+	}
 
 #ifndef HAVE_SYSLOG_H
 	if (strcmp(inst->filename, "syslog") == 0) {
@@ -211,14 +214,15 @@ static rlm_rcode_t CC_HINT(nonnull) mod_do_linelog(void *instance, REQUEST *requ
 	char *endptr;
 #endif
 
+	line[0] = '\0';
+
 	if (inst->reference) {
 		CONF_ITEM *ci;
 		CONF_PAIR *cp;
 
 		p = line + 1;
 
-		if (radius_xlat(p, sizeof(line) - 2, request, inst->reference, linelog_escape_func,
-		    NULL) < 0) {
+		if (radius_xlat(p, sizeof(line) - 2, request, inst->reference, linelog_escape_func, NULL) < 0) {
 			return RLM_MODULE_FAIL;
 		}
 
@@ -304,7 +308,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_do_linelog(void *instance, REQUEST *requ
 	/*
 	 *	FIXME: Check length.
 	 */
-	if (radius_xlat(line, sizeof(line) - 1, request, value, linelog_escape_func, NULL) < 0) {
+	if (value && (radius_xlat(line, sizeof(line) - 1, request, value, linelog_escape_func, NULL) < 0)) {
 		if (fd > -1) {
 			fr_logfile_close(inst->lf, fd);
 		}

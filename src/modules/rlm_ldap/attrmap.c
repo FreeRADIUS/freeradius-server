@@ -261,7 +261,7 @@ int rlm_ldap_map_xlat(REQUEST *request, value_pair_map_t const *maps, rlm_ldap_m
 			ssize_t len;
 			char *exp = NULL;
 
-			len = radius_xlat(exp, 0, request, map->src->name, NULL, NULL);
+			len = radius_axlat(&exp, request, map->src->name, NULL, NULL);
 			if (len < 0) {
 				RDEBUG("Expansion of LDAP attribute \"%s\" failed", map->src->name);
 

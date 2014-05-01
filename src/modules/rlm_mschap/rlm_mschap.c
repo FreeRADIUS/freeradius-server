@@ -677,16 +677,16 @@ static int write_all(int fd, char const *buf, int len) {
  * Perform an MS-CHAP2 password change
  */
 
-static int CC_HINT(nonnull) do_mschap_cpw(rlm_mschap_t *inst,
-				          REQUEST *request,
+static int CC_HINT(nonnull (1, 2, 4, 5)) do_mschap_cpw(rlm_mschap_t *inst,
+						       REQUEST *request,
 #ifdef HAVE_OPENSSL_CRYPTO_H
-					  VALUE_PAIR *nt_password,
+						       VALUE_PAIR *nt_password,
 #else
-					  UNUSED VALUE_PAIR *nt_password,
+						       UNUSED VALUE_PAIR *nt_password,
 #endif
-					  uint8_t *new_nt_password,
-					  uint8_t *old_nt_hash,
-					  int do_ntlm_auth)
+						       uint8_t *new_nt_password,
+						       uint8_t *old_nt_hash,
+						       bool do_ntlm_auth)
 {
 	if (inst->ntlm_cpw && do_ntlm_auth) {
 		/*
@@ -1037,11 +1037,11 @@ ntlm_auth_err:
  *	authentication is in one place, and we can perhaps later replace
  *	it with code to call winbindd, or something similar.
  */
-static int CC_HINT(nonnull) do_mschap(rlm_mschap_t *inst, REQUEST *request, VALUE_PAIR *password,
-				      uint8_t const *challenge, uint8_t const *response,
-				      uint8_t *nthashhash, int do_ntlm_auth)
+static int CC_HINT(nonnull (1, 2, 4, 5 ,6)) do_mschap(rlm_mschap_t *inst, REQUEST *request, VALUE_PAIR *password,
+						      uint8_t const *challenge, uint8_t const *response,
+						      uint8_t *nthashhash, bool do_ntlm_auth)
 {
-	uint8_t		calculated[24];
+	uint8_t	calculated[24];
 
 	/*
 	 *	Do normal authentication.
@@ -1326,7 +1326,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void * instance, REQUEST *r
 	uint8_t *p;
 	char const *username_string;
 	int chap = 0;
-	int		do_ntlm_auth;
+	bool do_ntlm_auth;
 
 	/*
 	 *	If we have ntlm_auth configured, use it unless told
@@ -1340,7 +1340,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void * instance, REQUEST *r
 	 */
 	if (do_ntlm_auth) {
 		VALUE_PAIR *vp = pairfind(request->config_items, PW_MS_CHAP_USE_NTLM_AUTH, 0, TAG_ANY);
-		if (vp) do_ntlm_auth = vp->vp_integer;
+		if (vp) do_ntlm_auth = (vp->vp_integer > 0);
 	}
 
 	/*
@@ -1521,11 +1521,12 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void * instance, REQUEST *r
 		 * 2 octets  - flags (ignored)
 		 */
 
-		memcpy(old_nt_encrypted, cpw->vp_octets+2, sizeof(old_nt_encrypted));
+		memcpy(old_nt_encrypted, cpw->vp_octets + 2, sizeof(old_nt_encrypted));
 
 		RDEBUG2("Password change payload valid");
 
 		/* perform the actual password change */
+		rad_assert(nt_password);
 		if (do_mschap_cpw(inst, request, nt_password, new_nt_encrypted, old_nt_encrypted, do_ntlm_auth) < 0) {
 			char buffer[128];
 

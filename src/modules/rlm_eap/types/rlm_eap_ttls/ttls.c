@@ -805,9 +805,7 @@ static int CC_HINT(nonnull) eapttls_postproxy(eap_handler_t *handler, void *data
 	/*
 	 *	Do the callback, if it exists, and if it was a success.
 	 */
-	if (fake &&
-	    handler->request->proxy_reply &&
-	    (handler->request->proxy_reply->code == PW_CODE_AUTHENTICATION_ACK)) {
+	if (fake && (handler->request->proxy_reply->code == PW_CODE_AUTHENTICATION_ACK)) {
 		/*
 		 *	Terrible hacks.
 		 */
@@ -872,8 +870,7 @@ static int CC_HINT(nonnull) eapttls_postproxy(eap_handler_t *handler, void *data
 	/*
 	 *	Process the reply from the home server.
 	 */
-	rcode = process_reply(handler, tls_session, handler->request,
-			      handler->request->proxy_reply);
+	rcode = process_reply(handler, tls_session, handler->request, handler->request->proxy_reply);
 
 	/*
 	 *	The proxy code uses the reply from the home server as
