@@ -339,7 +339,7 @@ static ssize_t xlat_client(UNUSED void *instance, REQUEST *request, char const *
 
 	if (!fmt || !out || (outlen < 1)) return 0;
 
-	if (!request || !request->client) {
+	if (!request->client) {
 		RWDEBUG("No client associated with this request");
 		*out = '\0';
 		return 0;

@@ -630,7 +630,7 @@ typedef size_t (*RADIUS_ESCAPE_STRING)(REQUEST *, char *out, size_t outlen, char
 
 ssize_t radius_xlat(char *out, size_t outlen, REQUEST *request, char const *fmt, RADIUS_ESCAPE_STRING escape,
 		    void *escape_ctx)
-	CC_HINT(nonnull (1, 3, 4));
+	CC_HINT(nonnull (1 ,3 ,4));
 
 ssize_t radius_axlat(char **out, REQUEST *request, char const *fmt, RADIUS_ESCAPE_STRING escape, void *escape_ctx)
 	CC_HINT(nonnull (1, 2, 3));

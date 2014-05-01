@@ -194,8 +194,9 @@ static void add_vp_tuple(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vpp, VA
  */
 
 #define BUF_SIZE 1024
-static rlm_rcode_t do_ruby(REQUEST *request, unsigned long func,
-			   VALUE module, char const *function_name) {
+static rlm_rcode_t CC_HINT(nonnull (4)) do_ruby(REQUEST *request, unsigned long func,
+					        VALUE module, char const *function_name)
+{
 	rlm_rcode_t rcode = RLM_MODULE_OK;
 	vp_cursor_t cursor;
 
@@ -216,12 +217,10 @@ static rlm_rcode_t do_ruby(REQUEST *request, unsigned long func,
 
 	n_tuple = 0;
 
-	if (request) {
-		for (vp = fr_cursor_init(&cursor, &request->packet->vps);
-		     vp;
-		     vp = fr_cursor_next(&cursor)) {
-			 n_tuple++;
-		}
+	for (vp = fr_cursor_init(&cursor, &request->packet->vps);
+	     vp;
+	     vp = fr_cursor_next(&cursor)) {
+		 n_tuple++;
 	}
 
 
@@ -262,8 +261,7 @@ static rlm_rcode_t do_ruby(REQUEST *request, unsigned long func,
 	 */
 	if (TYPE(rb_result) == T_ARRAY) {
 		if (!FIXNUM_P(rb_ary_entry(rb_result, 0))) {
-			REDEBUG("First element of an array was not a "
-				"FIXNUM (Which has to be a return_value)");
+			EDEBUG("First element of an array was not a FIXNUM (Which has to be a return_value)");
 
 			rcode = RLM_MODULE_FAIL;
 			goto finish;

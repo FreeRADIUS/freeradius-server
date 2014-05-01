@@ -352,7 +352,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, REQUEST
 	int err;
 	char host_ipaddr[128] = {0};
 
-	if (!request || !request->username) {
+	if (!request->username) {
 		RDEBUG("OpenDirectory requires a User-Name attribute.");
 		return RLM_MODULE_NOOP;
 	}
