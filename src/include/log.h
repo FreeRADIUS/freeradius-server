@@ -86,11 +86,10 @@ int	vradlog(log_type_t lvl, char const *fmt, va_list ap)
 int	radlog(log_type_t lvl, char const *fmt, ...)
 	CC_HINT(format (printf, 2, 3)) CC_HINT(nonnull (2));
 
-bool	debug_enabled(log_type_t type, log_debug_t lvl)
-	CC_HINT(always_inline);
+bool	debug_enabled(log_type_t type, log_debug_t lvl);
 
 bool	radlog_debug_enabled(log_type_t type, log_debug_t lvl, REQUEST *request)
-	CC_HINT(nonnull) CC_HINT(always_inline);
+	CC_HINT(nonnull);
 
 void	vradlog_request(log_type_t type, log_debug_t lvl, REQUEST *request, char const *msg, va_list ap)
 	CC_HINT(format (printf, 4, 0)) CC_HINT(nonnull (3, 4));
@@ -103,7 +102,7 @@ void	radlog_request_error(log_type_t type, log_debug_t lvl, REQUEST *request, ch
 
 void	radlog_request_marker(log_type_t type, log_debug_t lvl, REQUEST *request,
 			      char const *fmt, size_t indent, char const *error)
-	CC_HINT(nonnull) CC_HINT(always_inline);
+	CC_HINT(nonnull);
 
 /*
  *	Multiple threads logging to one or more files.
