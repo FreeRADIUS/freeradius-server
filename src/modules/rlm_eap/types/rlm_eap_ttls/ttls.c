@@ -857,7 +857,6 @@ static int CC_HINT(nonnull) eapttls_postproxy(eap_handler_t *handler, void *data
 			request_free(&fake);
 			eaptls_fail(handler, 0);
 			return 0;
-			break;
 
 		default:  /* Don't Do Anything */
 			RDEBUG2("Got reply %d",
