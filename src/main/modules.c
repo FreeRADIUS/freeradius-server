@@ -172,6 +172,12 @@ lt_dlhandle lt_dlopenext(char const *name)
 #endif
 		flags |= RTLD_LOCAL;
 
+#ifndef NDEBUG
+	/*
+	 *	Bind all the symbols *NOW* so we don't hit errors later
+	 */
+	flags |= RTLD_NOW;
+#endif
 	/*
 	 *	Prefer loading our libraries by absolute path.
 	 */
