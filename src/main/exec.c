@@ -99,6 +99,7 @@ pid_t radius_start_program(char const *cmd, REQUEST *request, bool exec_wait,
 	char argv_buf[4096];
 #define MAX_ENVP 1024
 	char *envp[MAX_ENVP];
+	int envlen = 0;
 
 	argc = rad_expand_xlat(request, cmd, MAX_ARGV, argv, true, sizeof(argv_buf), argv_buf);
 	if (argc <= 0) {
@@ -142,7 +143,6 @@ pid_t radius_start_program(char const *cmd, REQUEST *request, bool exec_wait,
 
 	if (input_pairs) {
 		vp_cursor_t cursor;
-		int envlen;
 		char buffer[1024];
 
 		/*
@@ -151,8 +151,6 @@ pid_t radius_start_program(char const *cmd, REQUEST *request, bool exec_wait,
 		 *	hold mutexes.  They might be locked when we fork,
 		 *	and will remain locked in the child.
 		 */
-		envlen = 0;
-
 		for (vp = fr_cursor_init(&cursor, &input_pairs); vp; vp = fr_cursor_next(&cursor)) {
 			/*
 			 *	Hmm... maybe we shouldn't pass the
@@ -171,7 +169,7 @@ pid_t radius_start_program(char const *cmd, REQUEST *request, bool exec_wait,
 			}
 
 			n = strlen(buffer);
-			vp_prints_value(buffer+n, sizeof(buffer) - n, vp, shell_escape ? '"' : 0);
+			vp_prints_value(buffer + n, sizeof(buffer) - n, vp, shell_escape ? '"' : 0);
 
 			envp[envlen++] = strdup(buffer);
 
@@ -180,7 +178,6 @@ pid_t radius_start_program(char const *cmd, REQUEST *request, bool exec_wait,
 			 */
 			if (envlen == (MAX_ENVP - 1)) break;
 		}
-		envp[envlen] = NULL;
 	}
 
 	if (exec_wait) {
@@ -277,7 +274,7 @@ pid_t radius_start_program(char const *cmd, REQUEST *request, bool exec_wait,
 	/*
 	 *	Free child environment variables
 	 */
-	for (i = 0; envp[i] != NULL; i++) {
+	for (i = 0; i < envlen; i++) {
 		free(envp[i]);
 	}
 
