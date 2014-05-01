@@ -1015,25 +1015,32 @@ static void cbtls_remove_session(SSL_CTX *ctx, SSL_SESSION *sess)
 
 	fr_bin2hex(buffer, sess->session_id, size);
 
-	DEBUG2("  SSL: Removing session %s from the cache", buffer);
+	DEBUG2("SSL: Removing session %s from the cache", buffer);
 	conf = (fr_tls_server_conf_t *)SSL_CTX_get_app_data(ctx);
 	if (conf && conf->session_cache_path) {
-		int rv;
 		char filename[256];
+		size_t len;
 
 		/* remove session and any cached VPs */
-		rv = snprintf(filename, sizeof(filename), "%s%c%s.asn1",
-			conf->session_cache_path, FR_DIR_SEP, buffer
-			);
-		rv = unlink(filename);
-		if (rv != 0) {
-			DEBUG2("  SSL: could not remove persisted session file %s: %s", filename, fr_syserror(errno));
+		len = snprintf(filename, sizeof(filename), "%s%c%s.asn1", conf->session_cache_path, FR_DIR_SEP, buffer);
+		if (is_truncated(len, sizeof(filename))) {
+		truncated:
+			EDEBUG("SSL: Filename buffer too small to write out cache file path.  "
+			       "Use smaller session cache path, and remove stale cache files manually");
+			return;
 		}
+
+		if (unlink(filename) != 0) {
+		unlink_error:
+			EDEBUG("SSL: could not remove persisted session file %s: %s", filename, fr_syserror(errno));
+			return;
+		}
+
 		/* VPs might be absent; might not have been written to disk yet */
-		rv = snprintf(filename, sizeof(filename), "%s%c%s.vps",
-			conf->session_cache_path, FR_DIR_SEP, buffer
-			);
-		rv = unlink(filename);
+		len = snprintf(filename, sizeof(filename), "%s%c%s.vps", conf->session_cache_path, FR_DIR_SEP, buffer);
+		if (is_truncated(len, sizeof(filename))) goto truncated;
+
+		if (unlink(filename) != 0) goto unlink_error;
 	}
 
 	return;
@@ -1051,11 +1058,12 @@ static int cbtls_new_session(SSL *ssl, SSL_SESSION *sess)
 
 	fr_bin2hex(buffer, sess->session_id, size);
 
-	DEBUG2("  SSL: adding session %s to cache", buffer);
+	DEBUG2("SSL: Adding session %s to cache", buffer);
 
 	conf = (fr_tls_server_conf_t *)SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_CONF);
 	if (conf && conf->session_cache_path) {
-		int fd, rv, todo, blob_len;
+		int fd, todo, blob_len, rv;
+		size_t len;
 		char filename[256];
 		unsigned char *p;
 
@@ -1063,30 +1071,34 @@ static int cbtls_new_session(SSL *ssl, SSL_SESSION *sess)
 		blob_len = i2d_SSL_SESSION(sess, NULL);
 		if (blob_len < 1) {
 			/* something went wrong */
-			DEBUG2("  SSL: could not find buffer length to persist session");
+			EDEBUG("SSL: Could not find buffer length to persist session");
 			return 0;
 		}
 
 		/* alloc and convert to ASN.1 */
 		sess_blob = talloc_array(conf, unsigned char, blob_len);
 		if (!sess_blob) {
-			DEBUG2("  SSL: could not allocate buffer len=%d to persist session", blob_len);
+			EDEBUG("SSL: Could not allocate buffer len=%d to persist session", blob_len);
 			return 0;
 		}
 		/* openssl mutates &p */
 		p = sess_blob;
 		rv = i2d_SSL_SESSION(sess, &p);
 		if (rv != blob_len) {
-			DEBUG2("  SSL: could not persist session");
+			EDEBUG("SSL: Could not persist session");
 			goto error;
 		}
 
 		/* open output file */
-		rv = snprintf(filename, sizeof(filename), "%s%c%s.asn1",
-			      conf->session_cache_path, FR_DIR_SEP, buffer);
-		fd = open(filename, O_RDWR|O_CREAT|O_EXCL, 0600);
+		len = snprintf(filename, sizeof(filename), "%s%c%s.asn1", conf->session_cache_path, FR_DIR_SEP, buffer);
+		if (is_truncated(len, sizeof(filename))) {
+			EDEBUG("Filename buffer too small, reduce length of session cache path");
+			goto error;
+		}
+
+		fd = open(filename, O_RDWR | O_CREAT | O_EXCL, 0600);
 		if (fd < 0) {
-			DEBUG2("  SSL: could not open session file %s: %s", filename, fr_syserror(errno));
+			EDEBUG("SSL: Could not open session file %s: %s", filename, fr_syserror(errno));
 			goto error;
 		}
 
@@ -1095,7 +1107,7 @@ static int cbtls_new_session(SSL *ssl, SSL_SESSION *sess)
 		while (todo > 0) {
 			rv = write(fd, p, todo);
 			if (rv < 1) {
-				DEBUG2("  SSL: failed writing session: %s", fr_syserror(errno));
+				EDEBUG("SSL: Failed writing session: %s", fr_syserror(errno));
 				close(fd);
 				goto error;
 			}
@@ -1103,7 +1115,7 @@ static int cbtls_new_session(SSL *ssl, SSL_SESSION *sess)
 			todo -= rv;
 		}
 		close(fd);
-		DEBUG2("  SSL: wrote session %s to %s len=%d", buffer, filename, blob_len);
+		DEBUG2("SSL: Wrote session %s to %s len=%d", buffer, filename, blob_len);
 	}
 
 error:
@@ -1113,7 +1125,7 @@ error:
 }
 
 static SSL_SESSION *cbtls_get_session(SSL *ssl,
-				      unsigned char *data, int len,
+				      unsigned char *data, int inlen,
 				      int *copy)
 {
 	size_t size;
@@ -1124,54 +1136,61 @@ static SSL_SESSION *cbtls_get_session(SSL *ssl,
 	unsigned char *sess_data = NULL;
 	PAIR_LIST *pairlist = NULL;
 
-	size = len;
+	size = inlen;
 	if (size > MAX_SESSION_SIZE) size = MAX_SESSION_SIZE;
 
 	fr_bin2hex(buffer, data, size);
 
-	DEBUG2("  SSL: Client requested cached session %s", buffer);
+	DEBUG2("SSL: Client requested cached session %s", buffer);
 
 	conf = (fr_tls_server_conf_t *)SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_CONF);
 	if (conf && conf->session_cache_path) {
 		int rv, fd, todo;
+		size_t len;
 		char filename[256];
 		unsigned char *p;
 		struct stat st;
 		VALUE_PAIR *vp;
 
 		/* read in the cached VPs from the .vps file */
-		rv = snprintf(filename, sizeof(filename), "%s%c%s.vps",
-			conf->session_cache_path, FR_DIR_SEP, buffer
-			);
+		len = snprintf(filename, sizeof(filename), "%s%c%s.vps", conf->session_cache_path, FR_DIR_SEP, buffer);
+		if (is_truncated(len, sizeof(filename))) {
+			EDEBUG("Filename buffer too small, reduce length of session cache path");
+			goto error;
+		}
+
 		rv = pairlist_read(NULL, filename, &pairlist, 1);
 		if (rv < 0) {
 			/* not safe to un-persist a session w/o VPs */
-			DEBUG2("  SSL: could not load persisted VPs for session %s", buffer);
-			goto err;
+			EDEBUG("SSL: could not load persisted VPs for session %s", buffer);
+			goto error;
 		}
 
 		/* load the actual SSL session */
-		rv = snprintf(filename, sizeof(filename), "%s%c%s.asn1",
-			conf->session_cache_path, FR_DIR_SEP, buffer
-			);
+		len = snprintf(filename, sizeof(filename), "%s%c%s.asn1", conf->session_cache_path, FR_DIR_SEP, buffer);
+		if (is_truncated(len, sizeof(filename))) {
+			EDEBUG("Filename buffer too small, reduce length of session cache path");
+			goto error;
+		}
+
 		fd = open(filename, O_RDONLY);
 		if (fd == -1) {
-			DEBUG2("  SSL: could not find persisted session file %s: %s", filename, fr_syserror(errno));
-			goto err;
+			EDEBUG("SSL: could not find persisted session file %s: %s", filename, fr_syserror(errno));
+			goto error;
 		}
 
 		rv = fstat(fd, &st);
 		if (rv == -1) {
-			DEBUG2("  SSL: could not stat persisted session file %s: %s", filename, fr_syserror(errno));
+			EDEBUG("SSL: could not stat persisted session file %s: %s", filename, fr_syserror(errno));
 			close(fd);
-			goto err;
+			goto error;
 		}
 
 		sess_data = talloc_array(NULL, unsigned char, st.st_size);
 		if (!sess_data) {
-		  DEBUG2("  SSL: could not alloc buffer for persisted session len=%d", (int) st.st_size);
+			EDEBUG("SSL: could not alloc buffer for persisted session len=%d", (int) st.st_size);
 			close(fd);
-			goto err;
+			goto error;
 		}
 
 		p = sess_data;
@@ -1179,9 +1198,9 @@ static SSL_SESSION *cbtls_get_session(SSL *ssl,
 		while (todo > 0) {
 			rv = read(fd, p, todo);
 			if (rv < 1) {
-				DEBUG2("  SSL: could not read from persisted session: %s", fr_syserror(errno));
+				EDEBUG("SSL: could not read from persisted session: %s", fr_syserror(errno));
 				close(fd);
-				goto err;
+				goto error;
 			}
 			todo -= rv;
 			p += rv;
@@ -1193,16 +1212,16 @@ static SSL_SESSION *cbtls_get_session(SSL *ssl,
 		sess = d2i_SSL_SESSION(NULL, (unsigned char const **)(void **) &p, st.st_size);
 
 		if (!sess) {
-			DEBUG2("  SSL: OpenSSL failed to load persisted session: %s", ERR_error_string(ERR_get_error(), NULL));
-			goto err;
+			EDEBUG("SSL: OpenSSL failed to load persisted session: %s", ERR_error_string(ERR_get_error(), NULL));
+			goto error;
 		}
 
 		/* cache the VPs into the session */
 		vp = paircopy(NULL, pairlist->reply);
 		SSL_SESSION_set_ex_data(sess, FR_TLS_EX_INDEX_VPS, vp);
-		DEBUG2("  SSL: Successfully restored session %s", buffer);
+		DEBUG2("SSL: Successfully restored session %s", buffer);
 	}
-err:
+error:
 	if (sess_data) talloc_free(sess_data);
 	if (pairlist) pairlist_free(&pairlist);
 
