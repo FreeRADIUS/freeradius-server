@@ -1478,7 +1478,6 @@ static int seen_too_much(char const *filename, int lineno, char const *ptr)
 	return false;
 }
 
-
 /*
  *	Read a part of the config file.
  */
@@ -1602,7 +1601,6 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 				return -1;
 			}
 
-			t1 = T_BARE_WORD;
 			ptr += hack;
 
 			t2 = gettoken(&ptr, buf2, sizeof(buf2));
@@ -1631,7 +1629,6 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			       ERROR("%s[%d]: Too many closing braces",
 				      filename, *lineno);
 			       return -1;
-
 		       }
 
 		       /*
@@ -1660,6 +1657,11 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			bool relative = true;
 
 			t2 = getword(&ptr, buf2, sizeof(buf2));
+			if (t2 != T_EOL) {
+			       ERROR("%s[%d]: Unexpected text after $INCLUDE",
+				     filename, *lineno);
+			       return -1;
+			}
 
 			if (buf2[0] == '$') relative = false;
 
@@ -1776,6 +1778,12 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		       CONF_SECTION *parentcs, *templatecs;
 		       t2 = getword(&ptr, buf2, sizeof(buf2));
 
+		       if (t2 != T_EOL) {
+			       ERROR("%s[%d]: Unexpected text after $TEMPLATE",
+				      filename, *lineno);
+			       return -1;
+		       }
+
 		       parentcs = cf_top_section(current);
 
 		       templatecs = cf_section_sub_find(parentcs, "templates");
@@ -1789,6 +1797,12 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		       if (!ci || (ci->type != CONF_ITEM_SECTION)) {
 				ERROR("%s[%d]: Reference \"%s\" not found",
 				       filename, *lineno, buf2);
+				return -1;
+		       }
+
+		       if (!this) {
+				ERROR("%s[%d]: Internal sanity check error in template reference",
+				       filename, *lineno);
 				return -1;
 		       }
 
@@ -1996,6 +2010,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			 */
 		do_set:
 			cpn = cf_pair_alloc(this, buf1, value, t2, t3);
+			if (!cpn) return -1;
 			cpn->item.filename = filename;
 			cpn->item.lineno = *lineno;
 			cf_item_add(this, &(cpn->item));
