@@ -163,7 +163,6 @@ lt_dlhandle lt_dlopenext(char const *name)
 	int flags = RTLD_NOW;
 	void *handle;
 	char buffer[2048];
-	char *env;
 
 #ifdef RTLD_GLOBAL
 	if (strcmp(name, "rlm_perl") == 0) {
@@ -172,55 +171,18 @@ lt_dlhandle lt_dlopenext(char const *name)
 #endif
 		flags |= RTLD_LOCAL;
 
-#ifndef NDEBUG
-	/*
-	 *	Bind all the symbols *NOW* so we don't hit errors later
-	 */
-	flags |= RTLD_NOW;
-#endif
 	/*
 	 *	Prefer loading our libraries by absolute path.
 	 */
 	snprintf(buffer, sizeof(buffer), "%s/%s%s", radlib_dir, name, LT_SHREXT);
 
-	DEBUG4("Loading library using absolute path");
-
-	handle = dlopen(buffer, flags);
-	if (handle) {
-		return handle;
-	}
 	check_lib_access(buffer);
 
-	DEBUG4("Falling back to linker search path(s)");
-	if (DEBUG_ENABLED4) {
-#ifdef __APPLE__
-
-		env = getenv("LD_LIBRARY_PATH");
-		if (env) {
-			DEBUG4("LD_LIBRARY_PATH            : %s", env);
-		}
-		env = getenv("DYLD_LIBRARY_PATH");
-		if (env) {
-			DEBUG4("DYLB_LIBRARY_PATH          : %s", env);
-		}
-		env = getenv("DYLD_FALLBACK_LIBRARY_PATH");
-		if (env) {
-			DEBUG4("DYLD_FALLBACK_LIBRARY_PATH : %s", env);
-		}
-		env = getcwd(buffer, sizeof(buffer));
-		if (env) {
-			DEBUG4("Current directory          : %s", env);
-		}
-#else
-		env = getenv("LD_LIBRARY_PATH");
-		if (env) {
-			DEBUG4("LD_LIBRARY_PATH  : %s", env);
-		}
-		DEBUG4("Defaults         : /lib:/usr/lib");
-#endif
-	}
+	handle = dlopen(buffer, flags);
+	if (handle) return handle;
 
 	strlcpy(buffer, name, sizeof(buffer));
+
 	/*
 	 *	FIXME: Make this configurable...
 	 */
