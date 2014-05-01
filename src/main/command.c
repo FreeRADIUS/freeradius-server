@@ -389,11 +389,9 @@ static void cprint_conf_parser(rad_listen_t *listener, int indent, CONF_SECTION 
 
 {
 	int i;
-	void const *data;
 	char const *name1 = cf_section_name1(cs);
 	char const *name2 = cf_section_name2(cs);
 	CONF_PARSER const *variables = cf_section_parse_table(cs);
-	char buffer[256];
 
 	if (name2) {
 		cprintf(listener, "%.*s%s %s {\n", indent, tabs, name1, name2);
@@ -407,6 +405,9 @@ static void cprint_conf_parser(rad_listen_t *listener, int indent, CONF_SECTION 
 	 *	Print
 	 */
 	if (variables) for (i = 0; variables[i].name != NULL; i++) {
+		void const *data;
+		char buffer[256];
+
 		/*
 		 *	No base struct offset, data must be the pointer.
 		 *	If data doesn't exist, ignore the entry, there
@@ -1062,7 +1063,6 @@ static int null_socket_send(UNUSED rad_listen_t *listener, REQUEST *request)
 	vp_cursor_t cursor;
 	char *output_file;
 	FILE *fp;
-	VALUE_PAIR *vp;
 
 	output_file = request_data_reference(request, null_socket_send, 0);
 	if (!output_file) {
@@ -1078,6 +1078,7 @@ static int null_socket_send(UNUSED rad_listen_t *listener, REQUEST *request)
 
 	if (request->reply->code != 0) {
 		char const *what = "reply";
+		VALUE_PAIR *vp;
 		char buffer[1024];
 
 		if (request->reply->code < FR_MAX_PACKET_CODE) {
