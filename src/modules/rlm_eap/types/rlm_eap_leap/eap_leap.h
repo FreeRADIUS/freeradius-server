@@ -67,7 +67,6 @@ int		eapleap_stage4(REQUEST *request, leap_packet_t *packet, VALUE_PAIR* passwor
 leap_packet_t	*eapleap_stage6(REQUEST *request, leap_packet_t *packet, VALUE_PAIR *user_name, VALUE_PAIR* password,
 				leap_session_t *session);
 
-void eapleap_lmpwdhash(unsigned char const *password,unsigned char *lmhash);
 void eapleap_mschap(unsigned char const *win_password, unsigned char const *challenge, unsigned char *response);
 
 #endif /*_EAP_LEAP_H*/

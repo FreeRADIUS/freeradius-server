@@ -310,25 +310,6 @@ static void smbhash(unsigned char *out, unsigned char const *in, unsigned char *
 }
 
 /*
- *	Converts the password to uppercase, and creates the LM
- *	password hash.
- */
-void eapleap_lmpwdhash(unsigned char const *password, unsigned char *lmhash)
-{
-	int i;
-	unsigned char p14[14];
-	static unsigned char sp8[8] = {0x4b, 0x47, 0x53, 0x21, 0x40, 0x23, 0x24, 0x25};
-
-	memset(p14, 0, sizeof(p14));
-	for (i = 0; i < 14 && password[i]; i++) {
-		p14[i] = toupper((int) password[i]);
-	}
-
-	smbhash(lmhash, sp8, p14);
-	smbhash(lmhash+8, sp8, p14+7);
-}
-
-/*
  *	Take the NT or LM password, and return the MSCHAP response
  *
  *	The win_password MUST be exactly 16 bytes long.
