@@ -3840,7 +3840,7 @@ ssize_t data2vp(RADIUS_PACKET *packet,
 
 	case PW_TYPE_IPV4PREFIX:
 		/* FIXME: do the same double-check as for IPv6Prefix */
-		memcpy(&vp->vp_ipv4prefix, buffer, sizeof(vp->vp_ipv4prefix));
+		memcpy(&vp->vp_ipv4prefix, data, vp->length);
 
 		/*
 		 *	/32 means "keep all bits".  Otherwise, mask
@@ -3851,7 +3851,7 @@ ssize_t data2vp(RADIUS_PACKET *packet,
 
 			memcpy(&addr, vp->vp_octets + 2, sizeof(addr));
 			mask = 1;
-			mask <<= (32 - (buffer[1] & 0x3f));
+			mask <<= (32 - (data[1] & 0x3f));
 			mask--;
 			mask = ~mask;
 			mask = htonl(mask);
