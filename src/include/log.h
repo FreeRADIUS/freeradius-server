@@ -86,7 +86,7 @@ int	vradlog(log_type_t lvl, char const *fmt, va_list ap)
 int	radlog(log_type_t lvl, char const *fmt, ...)
 	CC_HINT(format (printf, 2, 3)) CC_HINT(nonnull (2));
 
-bool	radlog_debug_enabled(log_type_t type, log_debug_t lvl)
+bool	debug_enabled(log_type_t type, log_debug_t lvl)
 	CC_HINT(always_inline);
 
 bool	radlog_debug_enabled(log_type_t type, log_debug_t lvl, REQUEST *request)
