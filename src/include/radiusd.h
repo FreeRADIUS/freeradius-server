@@ -587,7 +587,8 @@ int radius_readfrom_program(REQUEST *request, int fd, pid_t pid, int timeout,
 int radius_exec_program(REQUEST *request, char const *cmd, bool exec_wait, bool shell_escape,
 			char *user_msg, size_t msg_len, int timeout,
 			VALUE_PAIR *input_pairs, VALUE_PAIR **output_pairs);
-void exec_trigger(REQUEST *request, CONF_SECTION *cs, char const *name, int quench);
+void exec_trigger(REQUEST *request, CONF_SECTION *cs, char const *name, int quench)
+     CC_HINT(nonnull (3));
 
 /* valuepair.c */
 int paircompare_register(DICT_ATTR const *attribute, DICT_ATTR const *from,
@@ -620,11 +621,15 @@ void vmodule_failure_msg(REQUEST *request, char const *fmt, va_list ap) CC_HINT(
 typedef size_t (*RADIUS_ESCAPE_STRING)(REQUEST *, char *out, size_t outlen, char const *in, void *arg);
 
 ssize_t radius_xlat(char *out, size_t outlen, REQUEST *request, char const *fmt, RADIUS_ESCAPE_STRING escape,
-		    void *escape_ctx);
+		    void *escape_ctx)
+	CC_HINT(nonnull (1, 3, 4));
 
-ssize_t radius_axlat(char **out, REQUEST *request, char const *fmt, RADIUS_ESCAPE_STRING escape,
-			  void *escape_ctx);
-ssize_t radius_axlat_struct(char **out, REQUEST *request, xlat_exp_t const *xlat, RADIUS_ESCAPE_STRING escape, void *ctx);
+ssize_t radius_axlat(char **out, REQUEST *request, char const *fmt, RADIUS_ESCAPE_STRING escape, void *escape_ctx)
+	CC_HINT(nonnull (1, 2, 3));
+
+ssize_t radius_axlat_struct(char **out, REQUEST *request, xlat_exp_t const *xlat, RADIUS_ESCAPE_STRING escape,
+			    void *ctx)
+	CC_HINT(nonnull (1, 2, 3));
 
 typedef ssize_t (*RAD_XLAT_FUNC)(void *instance, REQUEST *, char const *, char *, size_t);
 int		xlat_register(char const *module, RAD_XLAT_FUNC func, RADIUS_ESCAPE_STRING escape,
@@ -634,15 +639,15 @@ ssize_t		xlat_fmt_to_ref(uint8_t const **out, REQUEST *request, char const *fmt)
 void		xlat_free(void);
 
 /* threads.c */
-extern		int thread_pool_init(CONF_SECTION *cs, bool *spawn_flag);
-extern		void thread_pool_stop(void);
-extern		int thread_pool_addrequest(REQUEST *, RAD_REQUEST_FUNP);
-extern		pid_t rad_fork(void);
-extern		pid_t rad_waitpid(pid_t pid, int *status);
-extern	  int total_active_threads(void);
-extern	  void thread_pool_lock(void);
-extern	  void thread_pool_unlock(void);
-extern		void thread_pool_queue_stats(int array[RAD_LISTEN_MAX], int pps[2]);
+extern int thread_pool_init(CONF_SECTION *cs, bool *spawn_flag);
+extern void thread_pool_stop(void);
+extern int thread_pool_addrequest(REQUEST *, RAD_REQUEST_FUNP);
+extern pid_t rad_fork(void);
+extern pid_t rad_waitpid(pid_t pid, int *status);
+extern int total_active_threads(void);
+extern void thread_pool_lock(void);
+extern void thread_pool_unlock(void);
+extern void thread_pool_queue_stats(int array[RAD_LISTEN_MAX], int pps[2]);
 
 #ifndef HAVE_PTHREAD_H
 #define rad_fork(n) fork()

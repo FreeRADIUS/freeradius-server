@@ -352,6 +352,8 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 
 				from = NULL;
 				da = map->src->vpt_da;
+				rad_assert(da != NULL);
+
 				context = request;
 				if (radius_request(&context, map->src->vpt_request) == 0) {
 					from = radius_list(context, map->src->vpt_list);
@@ -364,7 +366,7 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 				if (!from) continue;
 
 				fr_cursor_init(&cursor, from);
-				found = fr_cursor_next_by_num(&cursor, da->attr, da->vendor, TAG_ANY);
+				found = fr_cursor_next_by_da(&cursor, da, TAG_ANY);
 				if (!found) {
 					RWDEBUG("\"%s\" not found, skipping",
 					       map->src->name);
@@ -408,7 +410,7 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 							radius_pairmove(request, to_req, vp, false);
 
 						}
-					} while ((found = fr_cursor_next_by_num(&cursor, da->attr, da->vendor, TAG_ANY)));
+					} while ((found = fr_cursor_next_by_da(&cursor, da, TAG_ANY)));
 					break;
 
 				default:

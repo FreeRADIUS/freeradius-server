@@ -1427,12 +1427,12 @@ void exec_trigger(REQUEST *request, CONF_SECTION *cs, char const *name, int quen
 
 	ci = cf_reference_item(subcs, mainconfig.config, attr);
 	if (!ci) {
-		RDEBUG3("No such item in trigger section: %s", attr);
+		EDEBUG3("No such item in trigger section: %s", attr);
 		return;
 	}
 
 	if (!cf_item_is_pair(ci)) {
-		RDEBUG2("Trigger is not a configuration variable: %s", attr);
+		EDEBUG2("Trigger is not a configuration variable: %s", attr);
 		return;
 	}
 
@@ -1441,7 +1441,7 @@ void exec_trigger(REQUEST *request, CONF_SECTION *cs, char const *name, int quen
 
 	value = cf_pair_value(cp);
 	if (!value) {
-		RDEBUG2("Trigger has no value: %s", name);
+		EDEBUG2("Trigger has no value: %s", name);
 		return;
 	}
 
@@ -1479,6 +1479,6 @@ void exec_trigger(REQUEST *request, CONF_SECTION *cs, char const *name, int quen
 		}
 	}
 
-	RDEBUG("Trigger %s -> %s", name, value);
+	DEBUG("Trigger %s -> %s", name, value);
 	radius_exec_program(request, value, false, true, NULL, 0, EXEC_TIMEOUT, vp, NULL);
 }

@@ -1153,7 +1153,7 @@ static rlm_rcode_t user_modify(ldap_instance_t *inst, REQUEST *request, ldap_acc
 		} else if (do_xlat) {
 			char *exp = NULL;
 
-			if (radius_xlat(exp, 0, request, value, NULL, NULL) <= 0) {
+			if (radius_axlat(&exp, request, value, NULL, NULL) <= 0) {
 				RDEBUG("Skipping attribute \"%s\"", attr);
 
 				talloc_free(exp);
