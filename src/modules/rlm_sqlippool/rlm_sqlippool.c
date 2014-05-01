@@ -346,9 +346,9 @@ static int sqlippool_command(char const * fmt, rlm_sql_handle_t * handle, rlm_sq
 /*
  * Query the database expecting a single result row
  */
-static int CC_HINT(nonnull (1,3,4,5)) sqlippool_query1(char *out, int outlen, char const *fmt,
-						       rlm_sql_handle_t *handle, rlm_sqlippool_t *data,
-						       REQUEST *request, char *param, int param_len)
+static int CC_HINT(nonnull (1, 3, 4, 5)) sqlippool_query1(char *out, int outlen, char const *fmt,
+							  rlm_sql_handle_t *handle, rlm_sqlippool_t *data,
+							  REQUEST *request, char *param, int param_len)
 {
 	char query[MAX_QUERY_LEN];
 	char *expanded = NULL;
