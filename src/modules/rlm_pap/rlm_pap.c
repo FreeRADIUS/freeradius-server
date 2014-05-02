@@ -264,10 +264,18 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 				new_vp = radius_paircreate(request, &request->config_items, attr, 0);
 
 				/*
-				 *	The data after the '}' may be binary,
-				 *	so we copy it via memcpy.
+				 *	The data after the '}' may be
+				 *	binary, so we copy it via
+				 *	memcpy.  BUT it might be a
+				 *	string, so we ensure that
+				 *	there's a trailing zero, too.
 				 */
-				pairmemcpy(new_vp, (uint8_t const *) data, length);
+				if (new_vp->da->type == PW_TYPE_OCTETS) {
+					pairmemcpy(new_vp, (uint8_t const *) data, length + 1);
+					new_vp->length = length;
+				} else {
+					pairstrcpy(new_vp, data);
+				}
 			}
 
 		}
