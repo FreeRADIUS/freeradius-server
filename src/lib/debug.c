@@ -683,12 +683,13 @@ inline void fr_verify_vp(VALUE_PAIR const *vp)
 		}
 
 		len = (talloc_array_length(vp->vp_strvalue) - 1);
-		if (vp->length != len) {
-			fr_perror("VALUE_PAIR length %zu does not equal char buffer length %zu", vp->length, len);
+		if (vp->length > len) {
+			fr_perror("VALUE_PAIR %s length %zu is too small for char buffer length %zu",
+				  vp->da->name, vp->length, len);
 			fr_assert(0);
 		}
 		if (vp->vp_strvalue[vp->length] != '\0') {
-			fr_perror("VALUE_PAIR buffer not \\0 terminated");
+			fr_perror("VALUE_PAIR %s buffer not \\0 terminated", vp->da->name);
 			fr_assert(0);
 		}
 	}
