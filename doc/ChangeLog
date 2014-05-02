@@ -1,5 +1,7 @@
 FreeRADIUS 3.0.3 Fri 21 Mar 2014 08:30:00 EDT urgency=medium
 	Feature improvements
+	* Everything now builds with no warnings from the C compiler,
+	  Coverity, clang static analyzer, or cppcheck.
 	* rlm_ldap now supports defining the LDAP attribute name via
 	  backticked expansion (i.e. shell command) in
 	  RADIUS <-> LDAP mappings.
@@ -100,6 +102,9 @@ FreeRADIUS 3.0.3 Fri 21 Mar 2014 08:30:00 EDT urgency=medium
 	* %{Module-Return-Code} works again.  Closes #610.
 	* Don't increment statistics for Status-Server responses.
 	  Closes #612.
+	* A duplicate request isn't a duplicate if the original one
+	  is marked "done".  This should lower retransmissions from
+	  clients.
 
 FreeRADIUS 3.0.2 Fri 21 Mar 2014 08:30:00 EDT urgency=medium
 	Feature improvements
