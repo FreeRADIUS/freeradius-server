@@ -2487,15 +2487,6 @@ static int listen_bind(rad_listen_t *this)
 #ifdef WITH_TCP
 	if (sock->proto == IPPROTO_TCP) {
 		/*
-		 *	Allow a backlog of 8 listeners
-		 */
-		if (listen(this->fd, 8) < 0) {
-			close(this->fd);
-			ERROR("Failed in listen(): %s", fr_syserror(errno));
-			return -1;
-		}
-
-		/*
 		 *	If there are hard-coded worker threads, they're blocking.
 		 *
 		 *	Otherwise, they're non-blocking.
@@ -2504,6 +2495,15 @@ static int listen_bind(rad_listen_t *this)
 			close(this->fd);
 			ERROR("Failed setting non-blocking on socket: %s",
 			      fr_syserror(errno));
+			return -1;
+		}
+
+		/*
+		 *	Allow a backlog of 8 listeners
+		 */
+		if (listen(this->fd, 8) < 0) {
+			close(this->fd);
+			ERROR("Failed in listen(): %s", fr_syserror(errno));
 			return -1;
 		}
 	}
