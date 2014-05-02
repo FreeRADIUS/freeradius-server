@@ -1,14 +1,11 @@
 /* junk */
+
 RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/libradius.h>
 #include <freeradius-devel/modules.h>
 #include <freeradius-devel/rad_assert.h>
-
-#include <libcouchbase/couchbase.h>
-
-#include <json/json.h>
 
 #include "mod.h"
 #include "couchbase.h"

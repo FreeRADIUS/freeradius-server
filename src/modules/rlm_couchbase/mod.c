@@ -1,9 +1,8 @@
 /* blargs */
+
 RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
-
-#include <json/json.h>
 
 #include "couchbase.h"
 
