@@ -118,8 +118,7 @@ static int eapmschapv2_compose(eap_handler_t *handler, VALUE_PAIR *reply)
 		 *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 		 */
 		length = MSCHAPV2_HEADER_LEN + MSCHAPV2_CHALLENGE_LEN + strlen(handler->identity);
-		eap_ds->request->type.data = talloc_array(eap_ds->request,
-							  uint8_t, length);
+		eap_ds->request->type.data = talloc_array(eap_ds->request, uint8_t, length);
 		/*
 		 *	Allocate room for the EAP-MS-CHAPv2 data.
 		 */
@@ -142,7 +141,7 @@ static int eapmschapv2_compose(eap_handler_t *handler, VALUE_PAIR *reply)
 		/*
 		 *	Copy the Challenge, success, or error over.
 		 */
-		memcpy(ptr, reply->vp_strvalue, reply->length);
+		memcpy(ptr, reply->vp_octets, reply->length);
 		memcpy((ptr + reply->length), handler->identity, strlen(handler->identity));
 		break;
 
@@ -181,8 +180,7 @@ static int eapmschapv2_compose(eap_handler_t *handler, VALUE_PAIR *reply)
 	case PW_MSCHAP_ERROR:
 		DEBUG2("MSCHAP Failure\n");
 		length = 4 + reply->length - 1;
-		eap_ds->request->type.data = talloc_array(eap_ds->request,
-							  uint8_t, length);
+		eap_ds->request->type.data = talloc_array(eap_ds->request, uint8_t, length);
 
 		/*
 		 *	Allocate room for the EAP-MS-CHAPv2 data.
@@ -248,7 +246,7 @@ static int mschapv2_initiate(UNUSED void *instance, eap_handler_t *handler)
 	 *	We're at the stage where we're challenging the user.
 	 */
 	data->code = PW_EAP_MSCHAPV2_CHALLENGE;
-	memcpy(data->challenge, challenge->vp_strvalue, MSCHAPV2_CHALLENGE_LEN);
+	memcpy(data->challenge, challenge->vp_octets, MSCHAPV2_CHALLENGE_LEN);
 	data->mppe_keys = NULL;
 	data->reply = NULL;
 
@@ -313,9 +311,7 @@ static int CC_HINT(nonnull) mschap_postproxy(eap_handler_t *handler, UNUSED void
 		 *	Move the attribute, so it doesn't go into
 		 *	the reply.
 		 */
-		pairfilter(data, &response,
-			  &request->reply->vps,
-			  PW_MSCHAP2_SUCCESS, VENDORPEC_MICROSOFT, TAG_ANY);
+		pairfilter(data, &response, &request->reply->vps, PW_MSCHAP2_SUCCESS, VENDORPEC_MICROSOFT, TAG_ANY);
 		break;
 
 	default:
@@ -578,14 +574,12 @@ static int CC_HINT(nonnull) mschapv2_authenticate(void *arg, eap_handler_t *hand
 	if (!response) {
 		return 0;
 	}
-
 	response->length = MSCHAPV2_RESPONSE_LEN;
 	response->vp_octets = p = talloc_array(response, uint8_t, response->length);
 
 	p[0] = eap_ds->response->type.data[1];
 	p[1] = eap_ds->response->type.data[5 + MSCHAPV2_RESPONSE_LEN];
-	memcpy(p + 2, &eap_ds->response->type.data[5],
-	       MSCHAPV2_RESPONSE_LEN - 2);
+	memcpy(p + 2, &eap_ds->response->type.data[5], MSCHAPV2_RESPONSE_LEN - 2);
 
 	name = pairmake_packet("MS-CHAP-User-Name", NULL, T_OP_EQ);
 	if (!name) {
