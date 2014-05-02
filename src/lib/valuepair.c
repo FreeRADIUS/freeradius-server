@@ -1976,9 +1976,6 @@ VALUE_PAIR *pairmake(TALLOC_CTX *ctx, VALUE_PAIR **vps,
 	vp->tag = tag;
 
 	switch (vp->op) {
-	default:
-		break;
-
 	case T_OP_CMP_TRUE:
 	case T_OP_CMP_FALSE:
 		vp->vp_strvalue = NULL;
@@ -1993,6 +1990,10 @@ VALUE_PAIR *pairmake(TALLOC_CTX *ctx, VALUE_PAIR **vps,
 		 */
 	case T_OP_REG_EQ:	/* =~ */
 	case T_OP_REG_NE:	/* !~ */
+	{
+
+		int compare;
+		regex_t reg;
 #ifndef WITH_REGEX
 		fr_strerror_printf("Regular expressions are not supported");
 		return NULL;
@@ -2006,18 +2007,14 @@ VALUE_PAIR *pairmake(TALLOC_CTX *ctx, VALUE_PAIR **vps,
 
 		talloc_free(vp);
 
-		if (1) {
-			int compare;
-			regex_t reg;
-
-			compare = regcomp(&reg, value, REG_EXTENDED);
-			if (compare != 0) {
-				regerror(compare, &reg, buffer, sizeof(buffer));
-				fr_strerror_printf("Illegal regular expression in attribute: %s: %s",
+		compare = regcomp(&reg, value, REG_EXTENDED);
+		if (compare != 0) {
+			regerror(compare, &reg, buffer, sizeof(buffer));
+			fr_strerror_printf("Illegal regular expression in attribute: %s: %s",
 					   attribute, buffer);
-				return NULL;
-			}
+			return NULL;
 		}
+		regfree(&reg);
 
 		vp = pairmake(ctx, NULL, attribute, NULL, op);
 		if (!vp) return NULL;
@@ -2030,6 +2027,9 @@ VALUE_PAIR *pairmake(TALLOC_CTX *ctx, VALUE_PAIR **vps,
 		value = NULL;	/* ignore it */
 		break;
 #endif
+	}
+	default:
+		break;
 	}
 
 	/*
