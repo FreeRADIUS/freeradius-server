@@ -97,21 +97,31 @@ void fr_request_from_reply(RADIUS_PACKET *request,
 	request->dst_ipaddr = reply->src_ipaddr;
 }
 
-
-int fr_nonblock(UNUSED int fd)
-{
-	int flags = 0;
-
 #ifdef O_NONBLOCK
+int fr_nonblock(int fd)
+{
+	int flags;
 
 	flags = fcntl(fd, F_GETFL, NULL);
-	if (flags >= 0) {
-		flags |= O_NONBLOCK;
-		return fcntl(fd, F_SETFL, flags);
+	if (flags < 0)  {
+		fr_strerror_printf("Failure getting socket flags: %s", fr_syserror(errno));
+		return -1;
 	}
-#endif
+
+	flags |= O_NONBLOCK;
+	if (fcntl(fd, F_SETFL, flags) < 0) {
+		fr_strerror_printf("Failure setting socket flags: %s", fr_syserror(errno));
+		return -1;
+	}
+
 	return flags;
 }
+#else
+int fr_nonblock(UNUSED int fd)
+{
+	return 0;
+}
+#endif
 
 /*
  *	Open a socket on the given IP and port.
