@@ -694,13 +694,10 @@ packet_ready:
 	 */
 	response = NULL;
 	if (rcode == RLM_MODULE_OK) {
-		pairfilter(data, &response, &request->reply->vps,
-			 PW_MSCHAP2_SUCCESS, VENDORPEC_MICROSOFT, TAG_ANY);
+		pairfilter(data, &response, &request->reply->vps, PW_MSCHAP2_SUCCESS, VENDORPEC_MICROSOFT, TAG_ANY);
 		data->code = PW_EAP_MSCHAPV2_SUCCESS;
-
 	} else if (inst->send_error) {
-		pairfilter(data, &response, &request->reply->vps,
-			  PW_MSCHAP_ERROR, VENDORPEC_MICROSOFT, TAG_ANY);
+		pairfilter(data, &response, &request->reply->vps, PW_MSCHAP_ERROR, VENDORPEC_MICROSOFT, TAG_ANY);
 		if (response) {
 			int n,err,retry;
 			char buf[34];
