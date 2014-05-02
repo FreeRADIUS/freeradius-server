@@ -1482,6 +1482,7 @@ int request_receive(rad_listen_t *listener, RADIUS_PACKET *packet,
 			}
 #endif	/* WITH_STATS */
 
+			TRACE_STATE_MACHINE;
 			request->process(request, FR_ACTION_DUP);
 			return 0;
 		}
@@ -1490,6 +1491,7 @@ int request_receive(rad_listen_t *listener, RADIUS_PACKET *packet,
 		 *	Say we're ignoring the old one, and continue
 		 *	to process the new one.
 		 */
+		TRACE_STATE_MACHINE;
 		request->process(request, FR_ACTION_CONFLICTING);
 		request = NULL;
 	}
