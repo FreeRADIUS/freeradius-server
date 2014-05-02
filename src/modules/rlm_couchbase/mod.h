@@ -3,7 +3,6 @@
 RCSIDH(mod_h, "$Id$");
 
 #include <libcouchbase/couchbase.h>
-
 #include <json/json.h>
 
 /* maximum size of a stored value */

@@ -4,8 +4,10 @@ RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
 
-#include "couchbase.h"
+#include <libcouchbase/couchbase.h>
+#include <json/json.h>
 
+#include "couchbase.h"
 #include "mod.h"
 
 /* create new connection pool handle */
