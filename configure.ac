@@ -115,53 +115,6 @@ dnl #
 AC_CANONICAL_SYSTEM
 
 dnl #
-dnl #  As of OSX 10.9 (Mavericks), /usr is no longer populated with the
-dnl #  standard set of headers and libraries, instead were meant to use
-dnl #  one of the SDKs which contains system headers and libraries for
-dnl #  different versions of OSX and iOS.
-dnl #
-case "$host" in
-  *-darwin*)
-    dnl #
-    dnl #  Apple's ld is 'special' and uses a different search path
-    dnl #  to GCC. The flags below set the default search path to be more
-    dnl #  like the Linux ld, so the configure script stands a chance of
-    dnl #  picking up both non system libraries and non system headers
-    dnl #  by default.
-    dnl #
-    LDFLAGS="-L/usr/local/lib -L/usr/lib"
-
-    dnl #
-    dnl #  The version of GCC apple ships with Mavericks works out of the
-    dnl #  box, and presumably selects the highest version SDK for OSX.
-    dnl #
-    AC_MSG_CHECKING([if cc is apple llvm])
-    if ! $CC --version 2>&1 | grep -I 'Apple LLVM' > /dev/null; then
-      AC_MSG_RESULT(no)
-      AC_CHECK_PROG(SW_VERS, sw_vers, yes, no)
-      AC_CHECK_PROG(XCODEBUILD, xcodebuild, yes, no)
-
-      if test "x$SW_VERS" = "xyes" && test "x$XCODEBUILD" = "xyes"; then
-        AC_MSG_NOTICE([determining OSX SDK path])
-        osx_sdk_path=$(xcodebuild -version -sdk macosx$(sw_vers -productVersion | egrep -o '^[[0-9]]+\.[[0-9]]+') Path)
-        AC_MSG_RESULT([$osx_sdk_path])
-
-        dnl #
-        dnl #  We need to export these, else the child configure scripts all fail
-        dnl #  their compiler checks.
-        dnl #
-        export CFLAGS="$CFLAGS --sysroot=$osx_sdk_path"
-        export LDFLAGS="$LDFLAGS -L$osx_sdk_path/usr/lib/"
-        DARWIN_CFLAGS="--sysroot=$osx_sdk_path"
-	AC_SUBST(DARWIN_CFLAGS)
-      fi
-    else
-      AC_MSG_RESULT(yes)
-    fi
-    ;;
-esac
-
-dnl #
 dnl #  Check for GNU cc
 dnl #
 AC_PROG_CC

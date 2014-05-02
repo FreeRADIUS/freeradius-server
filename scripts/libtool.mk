@@ -33,7 +33,7 @@ ifeq "${LIBTOOL}" "JLIBTOOL"
     ${JLIBTOOL}: ${top_makedir}/jlibtool.c
 	$(Q)mkdir -p $(dir $@)
 	$(Q)echo CC jlibtool.c
-	$(Q)${CC} $< -o $@ ${DARWIN_CFLAGS}
+	$(Q)${CC} $< -o $@
 
     clean: jlibtool_clean
 
@@ -147,12 +147,12 @@ ifeq "${bm_shared_libs}" "yes"
     RELINK := local/
 
     # RPATH  : flags use to build executables that are installed,
-    #          with no dependency on the source. 
+    #          with no dependency on the source.
     # RELINL : flags use to build executables that can be run
     #          from the build directory / source tree.
     RPATH_FLAGS := -rpath ${libdir}
     RELINK_FLAGS := -rpath $(abspath ${BUILD_DIR})/lib/${RELINK}/.libs
-    
+
     RELINK_FLAGS_MIN := -rpath ${libdir}
 
     ifneq "${bm_static_libs}" "yes"
