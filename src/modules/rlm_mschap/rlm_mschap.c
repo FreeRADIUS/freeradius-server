@@ -622,33 +622,38 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
  *	attribute to reply packet
  */
 void mschap_add_reply(REQUEST *request, unsigned char ident,
-		      char const* name, char const* value, int len)
+		      char const *name, char const *value, size_t len)
 {
 	VALUE_PAIR *vp;
-	uint8_t *p;
 
 	vp = pairmake_reply(name, NULL, T_OP_EQ);
 	if (!vp) {
 		REDEBUG("Failed to create attribute %s: %s", name, fr_strerror());
 		return;
 	}
+
+	/* Account for the ident byte */
 	vp->length = len + 1;
-
-	p = talloc_array(vp, uint8_t, vp->length);
-	p[0] = ident;
-	memcpy(p + 1, value, len);
-
-	vp->vp_octets = p;
 	if (vp->da->type == PW_TYPE_STRING) {
-		talloc_set_type(vp->data.ptr, char);
+		char *p;
+
+		vp->vp_strvalue = p = talloc_array(vp, char, vp->length + 1);
+		p[vp->length] = '\0';	/* Always \0 terminate */
+		p[0] = ident;
+		memcpy(p + 1, value, len);
+	} else {
+		uint8_t *p;
+
+		vp->vp_octets = p = talloc_array(vp, uint8_t, vp->length);
+		p[0] = ident;
+		memcpy(p + 1, value, len);
 	}
 }
 
 /*
  *	Add MPPE attributes to the reply.
  */
-static void mppe_add_reply(REQUEST *request,
-			   char const* name, uint8_t const * value, int len)
+static void mppe_add_reply(REQUEST *request, char const* name, uint8_t const * value, size_t len)
 {
        VALUE_PAIR *vp;
 
