@@ -98,7 +98,11 @@ int udpfromto_init(int s)
 
 	errno = ENOSYS;
 
-#ifndef NDEBUG
+	/*
+	 *	Clang analyzer doesn't see that getsockname initialises
+	 *	the memory passed to it.
+	 */
+#ifdef __clang_analyzer__
 	memset(&si, 0, sizeof(si));
 #endif
 
@@ -177,6 +181,14 @@ int recvfromto(int s, void *buf, size_t len, int flags,
 	 *	Catch the case where the caller passes invalid arguments.
 	 */
 	if (!to || !tolen) return recvfrom(s, buf, len, flags, from, fromlen);
+
+	/*
+	 *	Clang analyzer doesn't see that getsockname initialises
+	 *	the memory passed to it.
+	 */
+#ifdef __clang_analyzer__
+	memset(&si, 0, sizeof(si));
+#endif
 
 	/*
 	 *	recvmsg doesn't provide sin_port so we have to

@@ -271,8 +271,8 @@ endef
 define ANALYZE_C_CMDS
 	$(Q)mkdir -p $(dir $@)
 	$(Q)$(ECHO) SCAN $<
-	${Q}$(strip ${ANALYZE.c} --analyze -c $< -o $@ ${CFLAGS} ${SRC_CFLAGS} ${INCDIRS} \
-	    ${SRC_INCDIRS} ${SRC_DEFS} ${DEFS}) || (rm -f $@ && false)
+	${Q}$(strip ${ANALYZE.c} --analyze -Xanalyzer -analyzer-output=html -c $< -o $@ ${CFLAGS} \
+	    ${SRC_CFLAGS} ${INCDIRS} ${SRC_INCDIRS} ${SRC_DEFS} ${DEFS}) || (rm -f $@ && false)
 	$(Q)touch $@
 endef
 

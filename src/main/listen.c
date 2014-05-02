@@ -86,7 +86,7 @@ static ssize_t xlat_listen(UNUSED void *instance, REQUEST *request,
 
 	if (!fmt || !out || (outlen < 1)) return 0;
 
-	if (!request || !request->listener) {
+	if (!request->listener) {
 		RWDEBUG("No listener associated with this request");
 		*out = '\0';
 		return 0;

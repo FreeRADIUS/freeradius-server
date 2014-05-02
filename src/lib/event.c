@@ -403,8 +403,11 @@ int fr_event_loop(fr_event_list_t *el)
 		 *	Cache the list of FD's to watch.
 		 */
 		if (el->changed) {
+#ifdef __clang_analyzer__
+			memset(&master_fds, 0, sizeof(master_fds));
+#else
 			FD_ZERO(&master_fds);
-
+#endif
 			for (i = 0; i < el->max_readers; i++) {
 				if (el->readers[i].fd < 0) continue;
 
