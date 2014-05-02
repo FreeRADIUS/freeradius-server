@@ -1234,11 +1234,12 @@ bool pairparsevalue(VALUE_PAIR *vp, char const *value)
 
 	switch(vp->da->type) {
 	case PW_TYPE_STRING:
+	{
+		char *buff;
 		/*
 		 *	Do escaping here
 		 */
-		p = talloc_typed_strdup(vp, value);
-		vp->vp_strvalue = p;
+		buff = p = talloc_typed_strdup(vp, value);
 		cp = value;
 		length = 0;
 
@@ -1300,6 +1301,19 @@ bool pairparsevalue(VALUE_PAIR *vp, char const *value)
 		}
 		*p = '\0';
 		vp->length = length;
+
+#ifndef WITH_VERIFY_PTR
+		/*
+		 *	Correct the length of the buffer if were doing extended
+		 *	sanity checks with WITH_VERIFY_PTR. Otherwise leave it,
+		 *	it'll usually only be a few extra bytes, and probably
+		 *	not worth the overhead of the realloc.
+		 */
+		vp->vp_strvalue = talloc_realloc(vp, buff, char, length + 1);
+#else
+		vp->vp_strvalue = buff;
+#endif
+	}
 		break;
 
 	case PW_TYPE_IPADDR:
