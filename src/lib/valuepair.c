@@ -2787,7 +2787,10 @@ int8_t paircmp(VALUE_PAIR *a, VALUE_PAIR *b)
 				return -1;
 			}
 
-			if (!b) return -1;
+			if (!b) {
+				regfree(&reg);
+				return -1;
+			}
 
 			vp_prints_value(buffer, sizeof(buffer), b, 0);
 
