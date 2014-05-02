@@ -52,26 +52,11 @@ int fr_tcp_client_socket(fr_ipaddr_t *src_ipaddr,
 		return sockfd;
 	}
 
-#if 0
-#ifdef O_NONBLOCK
-	{
-		int flags;
-
-		if ((flags = fcntl(sockfd, F_GETFL, NULL)) < 0)  {
-			fr_strerror_printf("Failure getting socket flags: %s", fr_syserror(errno));
-			close(sockfd);
-			return -1;
-		}
-
-		flags |= O_NONBLOCK;
-		if( fcntl(sockfd, F_SETFL, flags) < 0) {
-			fr_strerror_printf("Failure setting socket flags: %s", fr_syserror(errno));
-			close(sockfd);
-			return -1;
-		}
+	if (fr_nonblock(sockfd) < 0) {
+		close(sockfd);
+		return -1;
 	}
-#endif
-#endif
+
 	/*
 	 *	Allow the caller to bind us to a specific source IP.
 	 */
@@ -89,7 +74,7 @@ int fr_tcp_client_socket(fr_ipaddr_t *src_ipaddr,
 	}
 
 	if (!fr_ipaddr2sockaddr(dst_ipaddr, dst_port, &salocal, &salen)) {
-			close(sockfd);
+		close(sockfd);
 		return -1;
 	}
 
