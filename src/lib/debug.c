@@ -668,6 +668,7 @@ inline void fr_verify_vp(VALUE_PAIR const *vp)
 		if (vp->length > len) {
 			fr_perror("VALUE_PAIR length %zu does not equal uint8_t buffer length %zu", vp->length, len);
 			fr_assert(0);
+			fr_exit_now(1);
 		}
 	}
 		break;
@@ -686,10 +687,12 @@ inline void fr_verify_vp(VALUE_PAIR const *vp)
 			fr_perror("VALUE_PAIR %s length %zu is too small for char buffer length %zu",
 				  vp->da->name, vp->length, len);
 			fr_assert(0);
+			fr_exit_now(1);
 		}
 		if (vp->vp_strvalue[vp->length] != '\0') {
 			fr_perror("VALUE_PAIR %s buffer not \\0 terminated", vp->da->name);
 			fr_assert(0);
+			fr_exit_now(1);
 		}
 	}
 		break;
