@@ -965,6 +965,13 @@ STATE_MACHINE_DECL(request_common)
 		}
 #endif
 
+		/*
+		 *	We probbly should check if the request is
+		 *	DONE.  If so, delete it, and allow the new
+		 *	request to continue.  But we can't give
+		 *	feedback to request_receive(), so we let it
+		 *	take care of that.
+		 */
 		ERROR("(%u) Discarding duplicate request from "
 		       "client %s port %d - ID: %u due to unfinished request",
 		       request->number, request->client->shortname,
@@ -1456,44 +1463,62 @@ int request_receive(rad_listen_t *listener, RADIUS_PACKET *packet,
 		    (memcmp(request->packet->vector, packet->vector,
 			    sizeof(packet->vector)) == 0)) {
 
+			/*
+			 *	If the request is running, it'
+			 */
+			if (request->child_state != REQUEST_DONE) {
+				request->process(request, FR_ACTION_DUP);
+
 #ifdef WITH_STATS
-			switch (packet->code) {
-			case PW_CODE_AUTHENTICATION_REQUEST:
-				FR_STATS_INC(auth, total_dup_requests);
-				break;
+				switch (packet->code) {
+				case PW_CODE_AUTHENTICATION_REQUEST:
+					FR_STATS_INC(auth, total_dup_requests);
+					break;
 
 #ifdef WITH_ACCOUNTING
-			case PW_CODE_ACCOUNTING_REQUEST:
-				FR_STATS_INC(acct, total_dup_requests);
-				break;
+				case PW_CODE_ACCOUNTING_REQUEST:
+					FR_STATS_INC(acct, total_dup_requests);
+					break;
 #endif
 #ifdef WITH_COA
-			case PW_CODE_COA_REQUEST:
-				FR_STATS_INC(coa, total_dup_requests);
-				break;
+				case PW_CODE_COA_REQUEST:
+					FR_STATS_INC(coa, total_dup_requests);
+					break;
 
-			case PW_CODE_DISCONNECT_REQUEST:
-				FR_STATS_INC(dsc, total_dup_requests);
-				break;
+				case PW_CODE_DISCONNECT_REQUEST:
+					FR_STATS_INC(dsc, total_dup_requests);
+					break;
 #endif
 
-			default:
-			  break;
-			}
+				default:
+					break;
+				}
 #endif	/* WITH_STATS */
+				return 0; /* duplicate of live request */
+			}
+#ifdef HAVE_PTHREAD_H
+			/*
+			 *	There should no longer be a child
+			 *	thread associated with this request.
+			 */
+			rad_assert(pthread_equal(request->child_pid, NO_SUCH_CHILD_PID) != 0);
+#endif
 
-			TRACE_STATE_MACHINE;
-			request->process(request, FR_ACTION_DUP);
-			return 0;
+			/*
+			 *	Clean up the old request, and allow
+			 *	the new one to continue.
+			 */
+			request_done(request, FR_ACTION_DONE);
+			request = NULL;
+
+		} else {
+			/*
+			 *	Say we're ignoring the old one, and continue
+			 *	to process the new one.
+			 */
+			request->process(request, FR_ACTION_CONFLICTING);
+			request = NULL;
 		}
-
-		/*
-		 *	Say we're ignoring the old one, and continue
-		 *	to process the new one.
-		 */
-		TRACE_STATE_MACHINE;
-		request->process(request, FR_ACTION_CONFLICTING);
-		request = NULL;
 	}
 
 	/*
