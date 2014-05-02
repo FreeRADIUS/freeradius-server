@@ -1246,7 +1246,7 @@ bool pairparsevalue(VALUE_PAIR *vp, char const *value)
 		while (*cp) {
 			char c = *cp++;
 
-			if (c == '\\')	switch (*cp) {
+			if (c == '\\') switch (*cp) {
 			case 'r':
 				c = '\r';
 				cp++;
