@@ -417,7 +417,7 @@ void fr_fault(int sig)
 		out += ret = snprintf(out, left, "%.*s%d", (int) (q - p), p, (int) getpid());
 		if (left <= ret) {
 		oob:
-			fr_fault_log("Panic action too long\n");
+			fr_fault_log("Panic action too long");
 			fr_exit_now(1);
 		}
 		left -= ret;
@@ -430,13 +430,12 @@ void fr_fault(int sig)
 	code = system(cmd);
 	fr_fault_log("Panic action exited with %i\n", code);
 
+finish:
 #ifdef SIGUSR1
 	if (sig == SIGUSR1) {
 		return;
 	}
 #endif
-
-finish:
 	fr_exit_now(1);
 }
 
