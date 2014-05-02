@@ -646,6 +646,59 @@ void fr_fault_set_log_fd(int fd)
 
 
 #ifdef WITH_VERIFY_PTR
+
+/*
+ *	Verify a VALUE_PAIR
+ */
+inline void fr_verify_vp(VALUE_PAIR const *vp)
+{
+	(void) talloc_get_type_abort(vp, VALUE_PAIR);
+
+	if (vp->data.ptr) switch (vp->da->type) {
+	case PW_TYPE_OCTETS:
+	case PW_TYPE_TLV:
+	{
+		size_t len;
+
+		if (!talloc_get_type(vp->data.ptr, uint8_t)) {
+			fr_perror("Type check failed for attribute \"%s\"", vp->da->name);
+			(void) talloc_get_type_abort(vp->data.ptr, uint8_t);
+		}
+
+		len = talloc_array_length(vp->vp_octets);
+		if (vp->length != len) {
+			fr_perror("VALUE_PAIR length %zu does not equal uint8_t buffer length %zu", vp->length, len);
+			fr_assert(0);
+		}
+	}
+		break;
+
+	case PW_TYPE_STRING:
+	{
+		size_t len;
+
+		if (!talloc_get_type(vp->data.ptr, char)) {
+			fr_perror("Type check failed for attribute \"%s\"", vp->da->name);
+			(void) talloc_get_type_abort(vp->data.ptr, char);
+		}
+
+		len = (talloc_array_length(vp->vp_strvalue) - 1);
+		if (vp->length != len) {
+			fr_perror("VALUE_PAIR length %zu does not equal char buffer length %zu", vp->length, len);
+			fr_assert(0);
+		}
+		if (vp->vp_strvalue[vp->length] != '\0') {
+			fr_perror("VALUE_PAIR buffer not \\0 terminated");
+			fr_assert(0);
+		}
+	}
+		break;
+
+	default:
+		break;
+	}
+}
+
 /*
  *	Verify a pair list
  */

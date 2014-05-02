@@ -102,31 +102,7 @@ extern "C" {
  *  Add if (_x->da) (void) talloc_get_type_abort(_x->da, DICT_ATTR);
  *  to the macro below when dictionaries are talloced.
  */
-#  define VERIFY_VP(_x) \
-do {\
-	(void) talloc_get_type_abort(_x, VALUE_PAIR);\
-	if ((_x)->data.ptr) switch ((_x)->da->type) {\
-	case PW_TYPE_OCTETS:\
-	case PW_TYPE_TLV:\
-		if (!talloc_get_type((_x)->data.ptr, uint8_t)) {\
-			fr_perror("Type check failed for attribute \"%s\"", (_x)->da->name);\
-			(void) talloc_get_type_abort((_x)->data.ptr, uint8_t);\
-		}\
-		fr_assert((_x)->length == talloc_array_length((_x)->vp_octets));\
-		break;\
-	case PW_TYPE_STRING:\
-		if (!talloc_get_type((_x)->data.ptr, char)) {\
-			fr_perror("Type check failed for attribute \"%s\"", (_x)->da->name);\
-			(void) talloc_get_type_abort((_x)->data.ptr, char);\
-		}\
-		fr_assert((_x)->length == (talloc_array_length((_x)->vp_strvalue) - 1));\
-		fr_assert((_x)->vp_strvalue[(_x)->length] == '\0');\
-		break;\
-	default:\
-		break;\
-	}\
-} while (0)\
-
+#  define VERIFY_VP(_x) fr_verify_vp(_x)
 #  define VERIFY_LIST(_x) fr_verify_list(NULL, _x)
 #  define VERIFY_PACKET(_x) (void) talloc_get_type_abort(_x, RADIUS_PACKET)
 #else
@@ -765,6 +741,7 @@ void		fr_fault_set_log_fn(fr_fault_log_t func);
 void		fr_fault_set_log_fd(int fd);
 
 #ifdef WITH_VERIFY_PTR
+void		fr_verify_vp(VALUE_PAIR const *vp);
 void		fr_verify_list(TALLOC_CTX *expected, VALUE_PAIR *vps);
 #endif
 
