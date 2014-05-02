@@ -702,6 +702,8 @@ packet_ready:
 			int n,err,retry;
 			char buf[34];
 
+			VERIFY_VP(response);
+
 			RDEBUG2("MSCHAP-Error: %s", response->vp_strvalue);
 
 			/*
