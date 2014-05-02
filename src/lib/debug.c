@@ -665,7 +665,7 @@ inline void fr_verify_vp(VALUE_PAIR const *vp)
 		}
 
 		len = talloc_array_length(vp->vp_octets);
-		if (vp->length != len) {
+		if (vp->length > len) {
 			fr_perror("VALUE_PAIR length %zu does not equal uint8_t buffer length %zu", vp->length, len);
 			fr_assert(0);
 			fr_exit_now(1);
