@@ -990,7 +990,9 @@ int radius_map2request(REQUEST *request, value_pair_map_t const *map,
 	 *	Reparent the VP.  Although this is a loop, the func() above
 	 *	should usually only return a single VP.
 	 */
-	for (vp = fr_cursor_init(&cursor, &head); vp; vp = fr_cursor_next(&cursor)) {
+	for (vp = fr_cursor_init(&cursor, &head);
+	     vp;
+	     vp = fr_cursor_next(&cursor)) {
 		VERIFY_VP(vp);
 
 		if (debug_flag) debug_map(request, map, vp);

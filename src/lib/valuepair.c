@@ -1245,57 +1245,55 @@ bool pairparsevalue(VALUE_PAIR *vp, char const *value)
 		while (*cp) {
 			char c = *cp++;
 
-			if (c == '\\') {
-				switch (*cp) {
-				case 'r':
-					c = '\r';
-					cp++;
-					break;
-				case 'n':
-					c = '\n';
-					cp++;
-					break;
-				case 't':
-					c = '\t';
-					cp++;
-					break;
-				case '"':
-					c = '"';
-					cp++;
-					break;
-				case '\'':
-					c = '\'';
-					cp++;
-					break;
-				case '\\':
-					c = '\\';
-					cp++;
-					break;
-				case '`':
-					c = '`';
-					cp++;
-					break;
-				case '\0':
-					c = '\\'; /* no cp++ */
-					break;
-				default:
-					if ((cp[0] >= '0') &&
-					    (cp[0] <= '9') &&
-					    (cp[1] >= '0') &&
-					    (cp[1] <= '9') &&
-					    (cp[2] >= '0') &&
-					    (cp[2] <= '9') &&
-					    (sscanf(cp, "%3o", &x) == 1)) {
-						c = x;
-						cp += 3;
+			if (c == '\\')	switch (*cp) {
+			case 'r':
+				c = '\r';
+				cp++;
+				break;
+			case 'n':
+				c = '\n';
+				cp++;
+				break;
+			case 't':
+				c = '\t';
+				cp++;
+				break;
+			case '"':
+				c = '"';
+				cp++;
+				break;
+			case '\'':
+				c = '\'';
+				cp++;
+				break;
+			case '\\':
+				c = '\\';
+				cp++;
+				break;
+			case '`':
+				c = '`';
+				cp++;
+				break;
+			case '\0':
+				c = '\\'; /* no cp++ */
+				break;
+			default:
+				if ((cp[0] >= '0') &&
+				    (cp[0] <= '9') &&
+				    (cp[1] >= '0') &&
+				    (cp[1] <= '9') &&
+				    (cp[2] >= '0') &&
+				    (cp[2] <= '9') &&
+				    (sscanf(cp, "%3o", &x) == 1)) {
+					c = x;
+					cp += 3;
 
-					} else if (cp[0]) {
-						/*
-						 *	\p --> p
-						 */
-						c = *cp++;
-					} /* else at EOL \ --> \ */
-				}
+				} else if (cp[0]) {
+					/*
+					 *	\p --> p
+					 */
+					c = *cp++;
+				} /* else at EOL \ --> \ */
 			}
 			*p++ = c;
 			length++;
