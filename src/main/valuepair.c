@@ -974,9 +974,10 @@ int radius_map2request(REQUEST *request, value_pair_map_t const *map,
 	parent = radius_list_ctx(context, map->dst->vpt_list);
 
 	/*
-	 *	The callback should either return -1 to signify operations error, -2 when it can't find the
-	 *	attribute or list being referenced, or 0 to signify success.
-	 *	It may return "sucess", but still have no VPs to work with.
+	 *	The callback should either return -1 to signify operations error,
+	 *	-2 when it can't find the attribute or list being referenced, or
+	 *	0 to signify success. It may return "sucess", but still have no
+	 *	VPs to work with.
 	 */
 	rcode = func(&head, request, map, ctx);
 	if (rcode < 0) {
@@ -985,11 +986,12 @@ int radius_map2request(REQUEST *request, value_pair_map_t const *map,
 	}
 
 	/*
-	 *	Reparent the VP
+	 *	Reparent the VP.  Although this is a loop, the func() above
+	 *	should usually only return a single VP.
 	 */
 	for (vp = fr_cursor_init(&cursor, &head); vp; vp = fr_cursor_next(&cursor)) {
-
 		VERIFY_VP(vp);
+
 		if (debug_flag) debug_map(request, map, vp);
 
 		(void) talloc_steal(parent, vp);
