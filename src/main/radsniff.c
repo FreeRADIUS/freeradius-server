@@ -485,11 +485,13 @@ static void rs_packet_print_fancy(uint64_t count, rs_status_t status, fr_pcap_t 
 			rad_print_hex(packet);
 		}
 
-		if (conf->print_packet && (fr_debug_flag > 1) && packet->vps) {
+		if (conf->print_packet && (fr_debug_flag > 1)) {
 			char vector[(AUTH_VECTOR_LEN * 2) + 1];
 
-			pairsort(&packet->vps, attrtagcmp);
-			vp_printlist(fr_log_fp, packet->vps);
+			if (packet->vps) {
+				pairsort(&packet->vps, attrtagcmp);
+				vp_printlist(fr_log_fp, packet->vps);
+			}
 
 			fr_bin2hex(vector, packet->vector, AUTH_VECTOR_LEN);
 			INFO("\tAuthenticator-Field = 0x%s", vector);
