@@ -112,6 +112,7 @@ do {\
 			fr_perror("Type check failed for attribute \"%s\"", (_x)->da->name);\
 			(void) talloc_get_type_abort((_x)->data.ptr, uint8_t);\
 		}\
+		fr_assert((_x)->length == talloc_array_length((_x)->vp_octets));\
 		break;\
 	case PW_TYPE_STRING:\
 		if (!talloc_get_type((_x)->data.ptr, char)) {\
