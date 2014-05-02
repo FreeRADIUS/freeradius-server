@@ -118,6 +118,8 @@ do {\
 			fr_perror("Type check failed for attribute \"%s\"", (_x)->da->name);\
 			(void) talloc_get_type_abort((_x)->data.ptr, char);\
 		}\
+		fr_assert((_x)->length == (talloc_array_length((_x)->vp_strvalue) - 1));\
+		fr_assert((_x)->vp_strvalue[(_x)->length] == '\0');\
 		break;\
 	default:\
 		break;\
