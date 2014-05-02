@@ -43,10 +43,8 @@ int mod_attribute_to_element(const char *name, CONF_SECTION *map, void *attribut
 
 void *mod_json_object_to_value_pairs(json_object *json, const char *section, REQUEST *request);
 
-json_object *mod_value_pair_to_json_object(VALUE_PAIR *vp);
+json_object *mod_value_pair_to_json_object(REQUEST *request, VALUE_PAIR *vp);
 
 int mod_ensure_start_timestamp(json_object *json, VALUE_PAIR *vps);
-
-char *mod_split_user_domain(const char *instring, char *outstring, size_t size, char **domain);
 
 #endif /* _UTIL_H */

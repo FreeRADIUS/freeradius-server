@@ -209,7 +209,7 @@ void *mod_json_object_to_value_pairs(json_object *json, const char *section, REQ
 /* convert freeradius value/pair to json object
  * basic structure taken from freeradius function
  * vp_prints_value_json in src/lib/print.c */
-json_object *mod_value_pair_to_json_object(VALUE_PAIR *vp) {
+json_object *mod_value_pair_to_json_object(REQUEST *request, VALUE_PAIR *vp) {
     char value[255];    /* radius attribute value */
 
     /* add this attribute/value pair to our json output */
@@ -221,19 +221,19 @@ json_object *mod_value_pair_to_json_object(VALUE_PAIR *vp) {
                 /* skip if we have flags */
                 if (vp->da->flags.has_value) break;
                 /* debug */
-                DEBUG("rlm_couchbase: creating new int64 for unsigned 32 bit int/byte/short '%s'", vp->da->name);
+                RDEBUG3("creating new int64 for unsigned 32 bit int/byte/short '%s'", vp->da->name);
                 /* return as 64 bit int - json-c does not seem to support unsigned 32 bit ints */
                 return json_object_new_int64(vp->vp_integer);
             break;
             case PW_TYPE_SIGNED:
                 /* debug */
-                DEBUG("rlm_couchbase: creating new int64 for signed 32 bit integer '%s'", vp->da->name);
+                RDEBUG3("creating new int64 for signed 32 bit integer '%s'", vp->da->name);
                 /* return as 64 bit int - json-c represents all ints as 64 bits internally */
                 return json_object_new_int64(vp->vp_signed);
             break;
             case PW_TYPE_INTEGER64:
                 /* debug */
-                DEBUG("rlm_couchbase: creating new int64 for 64 bit integer '%s'", vp->da->name);
+                RDEBUG3("creating new int64 for 64 bit integer '%s'", vp->da->name);
                 /* return as 64 bit int - because it is a 64 bit int */
                 return json_object_new_int64(vp->vp_integer64);
             break;
@@ -247,12 +247,12 @@ json_object *mod_value_pair_to_json_object(VALUE_PAIR *vp) {
     switch (vp->da->type) {
         case PW_TYPE_STRING:
             /* debug */
-            DEBUG("rlm_couchbase: assigning string '%s' as string", vp->da->name);
+            RDEBUG3("assigning string '%s' as string", vp->da->name);
             /* return string value */
             return json_object_new_string(vp->vp_strvalue);
         default:
             /* debug */
-            DEBUG("rlm_couchbase: assigning unhandled '%s' as string", vp->da->name);
+            RDEBUG3("assigning unhandled '%s' as string", vp->da->name);
             /* get standard value */
             vp_prints_value(value, sizeof(value), vp, 0);
             /* return string value from above */
@@ -321,28 +321,4 @@ int mod_ensure_start_timestamp(json_object *json, VALUE_PAIR *vps) {
 
     /* default return */
     return 0;
-}
-
-/* split username and domain from passed user name string */
-char *mod_split_user_domain(const char *instring, char *outstring, size_t size, char **domain) {
-    char *ptr = NULL;   /* position pointer */
-    *domain = NULL;     /* domain portion */
-
-    /* copy input to output and ensure null termination */
-    strlcpy(outstring, instring, size);
-
-    /* check for domain prefix */
-    if ((ptr = strstr(outstring, "\\")) != NULL) {
-        *domain = outstring;
-        *ptr = '\0';
-        outstring = ptr + 1;
-    }
-    /* check for domain suffix */
-    else if ((ptr = strstr(outstring, "@")) != NULL) {
-        *ptr = '\0';
-        *domain = ptr + 1;
-    }
-
-    /* return username without domain */
-    return outstring;
 }

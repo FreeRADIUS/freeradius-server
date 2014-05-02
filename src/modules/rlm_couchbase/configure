@@ -2972,7 +2972,8 @@ fi
 
 	if test "x$ac_cv_header_json_json_h" != "xyes"; then
 		have_json="no"
-		as_fn_error $? "json-c headers not found. Use --with-jsonc-include-dir=<path>." "$LINENO" 5
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: json-c headers not found. Use --with-jsonc-include-dir=<path>." >&5
+$as_echo "$as_me: WARNING: json-c headers not found. Use --with-jsonc-include-dir=<path>." >&2;}
 	fi
 
 
@@ -3108,7 +3109,7 @@ eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
   for try in $smart_lib_dir /usr/local/lib /opt/lib; do
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for json_c_version in -ljson-c in $try" >&5
 $as_echo_n "checking for json_c_version in -ljson-c in $try... " >&6; }
-    LIBS="-L$try -rpath$try -ljson-c $old_LIBS -Wl,-rpath,$try"
+    LIBS="-L$try -ljson-c $old_LIBS -Wl,-rpath,$try"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 extern char json_c_version();
@@ -3145,12 +3146,180 @@ fi
 
 	if test "x$ac_cv_lib_json_c_json_c_version" != "xyes"
 	then
-		have_json="no"
-		as_fn_error $? "json-c libraries not found. Use --with-jsonc-lib-dir=<path>." "$LINENO" 5
+
+
+sm_lib_safe=`echo "json" | sed 'y%./+-%__p_%'`
+sm_func_safe=`echo "json_tokener_new" | sed 'y%./+-%__p_%'`
+
+old_LIBS="$LIBS"
+smart_lib=
+smart_lib_dir=
+
+if test "x$smart_try_dir" != "x"; then
+  for try in $smart_try_dir; do
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for json_tokener_new in -ljson in $try" >&5
+$as_echo_n "checking for json_tokener_new in -ljson in $try... " >&6; }
+    LIBS="-L$try -ljson $old_LIBS -Wl,-rpath,$try"
+    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+extern char json_tokener_new();
+int
+main ()
+{
+json_tokener_new()
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+
+		 smart_lib="-L$try -ljson -Wl,-rpath,$try"
+		 { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+		 break
+
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+  done
+  LIBS="$old_LIBS"
+fi
+
+if test "x$smart_lib" = "x"; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for json_tokener_new in -ljson" >&5
+$as_echo_n "checking for json_tokener_new in -ljson... " >&6; }
+  LIBS="-ljson $old_LIBS"
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+extern char json_tokener_new();
+int
+main ()
+{
+json_tokener_new()
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+
+	        smart_lib="-ljson"
+	        { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+  LIBS="$old_LIBS"
+fi
+
+if test "x$smart_lib" = "x"; then
+
+
+if test "x$LOCATE" != "x"; then
+        DIRS=
+  file=libjson${libltdl_cv_shlibext}
+
+  for x in `${LOCATE} $file 2>/dev/null`; do
+                                        base=`echo $x | sed "s%/${file}%%"`
+    if test "x$x" = "x$base"; then
+      continue;
+    fi
+
+    dir=`${DIRNAME} $x 2>/dev/null`
+                exclude=`echo ${dir} | ${GREP} /home`
+    if test "x$exclude" != "x"; then
+      continue
+    fi
+
+                    already=`echo \$smart_lib_dir ${DIRS} | ${GREP} ${dir}`
+    if test "x$already" = "x"; then
+      DIRS="$DIRS $dir"
+    fi
+  done
+fi
+
+eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
+
+
+
+if test "x$LOCATE" != "x"; then
+        DIRS=
+  file=libjson.a
+
+  for x in `${LOCATE} $file 2>/dev/null`; do
+                                        base=`echo $x | sed "s%/${file}%%"`
+    if test "x$x" = "x$base"; then
+      continue;
+    fi
+
+    dir=`${DIRNAME} $x 2>/dev/null`
+                exclude=`echo ${dir} | ${GREP} /home`
+    if test "x$exclude" != "x"; then
+      continue
+    fi
+
+                    already=`echo \$smart_lib_dir ${DIRS} | ${GREP} ${dir}`
+    if test "x$already" = "x"; then
+      DIRS="$DIRS $dir"
+    fi
+  done
+fi
+
+eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
+
+
+  for try in $smart_lib_dir /usr/local/lib /opt/lib; do
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for json_tokener_new in -ljson in $try" >&5
+$as_echo_n "checking for json_tokener_new in -ljson in $try... " >&6; }
+    LIBS="-L$try -ljson $old_LIBS -Wl,-rpath,$try"
+    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+extern char json_tokener_new();
+int
+main ()
+{
+json_tokener_new()
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+
+		  smart_lib="-L$try -ljson -Wl,-rpath,$try"
+		  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+		  break
+
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+  done
+  LIBS="$old_LIBS"
+fi
+
+if test "x$smart_lib" != "x"; then
+  eval "ac_cv_lib_${sm_lib_safe}_${sm_func_safe}=yes"
+  LIBS="$smart_lib $old_LIBS"
+  SMART_LIBS="$smart_lib $SMART_LIBS"
+fi
+
+		if test "x$ac_cv_lib_json_json_tokener_new" != "xyes"
+		then
+			have_json="no"
+		fi
 	fi
 
 	if test "x$have_json" = "xno"; then
-		fail="$fail json-c not found"
+		fail="$fail json-c"
 	fi
 
 
@@ -3354,7 +3523,8 @@ fi
 
 	if test "x$ac_cv_header_libcouchbase_couchbase_h" != "xyes"; then
 		have_couchbase="no"
-		as_fn_error $? "libcouchbase headers not found. Use --with-libcouchbase-include-dir=<path>." "$LINENO" 5
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: libcouchbase headers not found. Use --with-libcouchbase-include-dir=<path>." >&5
+$as_echo "$as_me: WARNING: libcouchbase headers not found. Use --with-libcouchbase-include-dir=<path>." >&2;}
 	fi
 
 
@@ -3490,7 +3660,7 @@ eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
   for try in $smart_lib_dir /usr/local/lib /opt/lib; do
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for lcb_get_version in -lcouchbase in $try" >&5
 $as_echo_n "checking for lcb_get_version in -lcouchbase in $try... " >&6; }
-    LIBS="-L$try -rpath$try -lcouchbase $old_LIBS -Wl,-rpath,$try"
+    LIBS="-L$try -lcouchbase $old_LIBS -Wl,-rpath,$try"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 extern char lcb_get_version();
@@ -3528,11 +3698,12 @@ fi
 	if test "x$ac_cv_lib_couchbase_lcb_get_version" != "xyes"
 	then
 		have_couchbase="no"
-		as_fn_error $? "libcouchbase libraries not found. Use --with-libcouchbase-lib-dir=<path>." "$LINENO" 5
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: libcouchbase libraries not found. Use --with-libcouchbase-lib-dir=<path>." >&5
+$as_echo "$as_me: WARNING: libcouchbase libraries not found. Use --with-libcouchbase-lib-dir=<path>." >&2;}
 	fi
 
 	if test "x$have_couchbase" = "xno"; then
-		fail="$fail libcouchbase not found"
+		fail="$fail libcouchbase"
 	fi
 
 
