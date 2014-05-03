@@ -78,7 +78,6 @@ static int fr_fault_log_fd = STDERR_FILENO;		//!< Where to write debug output.
 
 static int fr_debugger_present = -1;			//!< Whether were attached to by a debugger.
 
-
 #ifdef HAVE_SYS_RESOURCE_H
 static struct rlimit core_limits;
 #endif
@@ -258,9 +257,36 @@ static int fr_set_dumpable_flag(bool dumpable)
 #else
 static int fr_set_dumpable_flag(UNUSED bool dumpable)
 {
-	return 0;
+	fr_strerror_printf("Changing value of PR_DUMPABLE not supported on this system");
+	return -2;
 }
 #endif
+
+/** Get the processes dumpable flag
+ *
+ * @param dumpable whether we should allow core dumping
+ */
+#if defined(HAVE_SYS_PRCTL_H) && defined(PR_GET_DUMPABLE)
+static int fr_get_dumpable_flag(void)
+{
+	int ret;
+
+	ret = prctl(PR_GET_DUMPABLE);
+	if (ret < 0) {
+		fr_strerror_printf("Cannot get dumpable flag: %s", fr_syserror(errno));
+		return -1;
+	}
+
+	return ret;
+}
+#else
+static int fr_get_dumpable_flag(void)
+{
+	fr_strerror_printf("Getting value of PR_DUMPABLE not supported on this system");
+	return -2;
+}
+#endif
+
 
 /** Get the current maximum for core files
  *
@@ -427,8 +453,40 @@ void fr_fault(int sig)
 	strlcpy(out, p, left);
 
 	fr_fault_log("Calling: %s\n", cmd);
-	code = system(cmd);
-	fr_fault_log("Panic action exited with %i\n", code);
+
+	{
+		bool disabled;
+		bool disable = false;
+
+		/*
+		 *	Here we temporarily enable the dumpable flag so if GBD or LLDB
+		 *	is called in the panic_action, they can pattach tot he running
+		 *	process.
+		 */
+		disabled = (fr_get_dumpable_flag() == 0);
+		if (disabled) {
+			if (fr_set_dumpable_flag(true) < 0) {
+				fr_fault_log("Failed setting dumpable flag, pattach may not work: %s", fr_strerror());
+			} else {
+				disable = true;
+			}
+		}
+
+		code = system(cmd);
+
+		/*
+		 *	We only want to error out here, if dumable was originally disabled
+		 *	and we managed to change the value to enabled, but failed
+		 *	setting it back to disabled.
+		 */
+		if (disable && (fr_set_dumpable_flag(false) < 0)) {
+			fr_fault_log("Failed reseting dumpable flag to off: %s", fr_strerror());
+			fr_fault_log("Exiting due to insecure process state");
+			fr_exit_now(1);
+		}
+	}
+
+	fr_fault_log("Panic action exited with %i", code);
 
 finish:
 #ifdef SIGUSR1
@@ -552,11 +610,6 @@ int fr_fault_setup(char const *cmd, char const *program)
 	 *	Check for administrator sanity.
 	 */
 	if (fr_fault_check_permissions() < 0) return -1;
-
-	/*
-	 *	This is required on some systems to be able to PATTACH to the process.
-	 */
-	fr_set_dumpable_flag(true);
 
 	/* Unsure what the side effects of changing the signal handler mid execution might be */
 	if (!setup) {
