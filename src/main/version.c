@@ -237,6 +237,9 @@ void version(void)
 #ifdef WITH_VMPS
 	DEBUG3("  vmps");
 #endif
+#ifndef NDEBUG
+	DEBUG3("  developer");
+#endif
 
 	DEBUG3("Server core libs:");
 	DEBUG3("  talloc : %i.%i.*", talloc_version_major(), talloc_version_minor());
