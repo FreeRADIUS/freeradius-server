@@ -361,7 +361,10 @@ static int fr_fault_check_permissions(void)
 	 *	quotes.
 	 */
 	if ((q = strchr(panic_action, ' '))) {
-		(void) asprintf(&filename, "%.*s", (int)(q - panic_action), panic_action);
+		if (asprintf(&filename, "%.*s", (int)(q - panic_action), panic_action) < 0) {
+			fr_strerror_printf("Failed writing panic_action to temporary buffer");
+			return -1;
+		}
 		p = filename;
 	} else {
 		p = panic_action;
