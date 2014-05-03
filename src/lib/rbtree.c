@@ -430,7 +430,7 @@ static void rbtree_delete_internal(rbtree_t *tree, rbnode_t *z, bool skiplock)
 	parent = y->parent;
 	if (x != NIL) x->parent = parent;
 
-	if (parent) {
+	if (parent != NIL) {
 		if (y == parent->left) {
 			parent->left = x;
 		} else {
