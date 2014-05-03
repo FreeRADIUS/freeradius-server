@@ -1295,6 +1295,62 @@ int fr_get_time(char const *date_str, time_t *date)
 	return 0;
 }
 
+/** Compares two pointers
+ *
+ * @param a first pointer to compare.
+ * @param b second pointer to compare.
+ * @return -1 if a < b, +1 if b > a, or 0 if both equal.
+ */
+int8_t fr_pointer_cmp(void const *a, void const *b)
+{
+	if (a < b) return -1;
+	if (a == b) return 0;
+
+	return 1;
+}
+
+static int _quick_partition(void const *to_sort[], int min, int max, fr_cmp_t cmp) {
+	void const *pivot = to_sort[min];
+	int i = min;
+	int j = max + 1;
+	void const *tmp;
+
+	for (;;) {
+		do ++i; while((cmp(to_sort[i], pivot) <= 0) && i <= max);
+		do --j; while(cmp(to_sort[j], pivot) > 0);
+
+		if (i >= j) break;
+
+		tmp = to_sort[i];
+		to_sort[i] = to_sort[j];
+		to_sort[j] = tmp;
+	}
+
+	tmp = to_sort[min];
+	to_sort[min] = to_sort[j];
+	to_sort[j] = tmp;
+
+	return j;
+}
+
+/** Quick sort an array of pointers using a comparator
+ *
+ * @param to_sort array of pointers to sort.
+ * @param min_idx the lowest index (usually 0).
+ * @param max_idx the highest index (usually length of array - 1).
+ * @param cmp the comparison function to use to sort the array elements.
+ */
+void fr_quick_sort(void const *to_sort[], int min_idx, int max_idx, fr_cmp_t cmp)
+{
+	int part;
+
+	if (min_idx >= max_idx) return;
+
+	part = _quick_partition(to_sort, min_idx, max_idx, cmp);
+	fr_quick_sort(to_sort, min_idx, part - 1, cmp);
+	fr_quick_sort(to_sort, part + 1, max_idx, cmp);
+}
+
 #ifdef TALLOC_DEBUG
 void fr_talloc_verify_cb(UNUSED const void *ptr, UNUSED int depth,
 			 UNUSED int max_depth, UNUSED int is_ref,

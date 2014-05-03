@@ -1584,6 +1584,11 @@ static int rs_build_dict_list(DICT_ATTR const **out, size_t len, char *list)
 		i++;
 	}
 
+	/*
+	 *	This allows efficient list comparisons later
+	 */
+	if (i > 1) fr_quick_sort((void const **)out, 0, i - 1, fr_pointer_cmp);
+
 	return i;
 }
 

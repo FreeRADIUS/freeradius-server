@@ -39,7 +39,7 @@ int fr_dhcp_send(RADIUS_PACKET *packet);
 
 int fr_dhcp_add_arp_entry(int fd, char const *interface, VALUE_PAIR *hwvp, VALUE_PAIR *clvp);
 
-int8_t fr_dhcp_attr_cmp(VALUE_PAIR const *a, VALUE_PAIR const *b);
+int8_t fr_dhcp_attr_cmp(void const *a, void const *b);
 ssize_t fr_dhcp_encode_option(uint8_t *out, size_t outlen, TALLOC_CTX *ctx, vp_cursor_t *cursor);
 int fr_dhcp_encode(RADIUS_PACKET *packet);
 ssize_t fr_dhcp_decode_options(RADIUS_PACKET *packet,

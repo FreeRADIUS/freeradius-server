@@ -924,20 +924,26 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 }
 
 
-int8_t fr_dhcp_attr_cmp(VALUE_PAIR const *a, VALUE_PAIR const *b)
+int8_t fr_dhcp_attr_cmp(void const *a, void const *b)
 {
+	VALUE_PAIR const *my_a = a;
+	VALUE_PAIR const *my_b = b;
+
+	VERIFY_VP(my_a);
+	VERIFY_VP(my_b);
+
 	/*
 	 *	DHCP-Message-Type is first, for simplicity.
 	 */
-	if ((a->da->attr == 53) && (b->da->attr != 53)) return -1;
+	if ((my_a->da->attr == 53) && (my_b->da->attr != 53)) return -1;
 
 	/*
 	 *	Relay-Agent is last
 	 */
-	if ((a->da->attr == 82) && (b->da->attr != 82)) return 1;
+	if ((my_a->da->attr == 82) && (my_b->da->attr != 82)) return 1;
 
-	if (a->da->attr < b->da->attr) return -1;
-	if (a->da->attr > b->da->attr) return 1;
+	if (my_a->da->attr < my_b->da->attr) return -1;
+	if (my_a->da->attr > my_b->da->attr) return 1;
 
 	return 0;
 }
