@@ -205,12 +205,11 @@ static int fr_server_domain_socket(char const *path)
 			return -1;
 		}
 
-		if (unlink(path) < 0) {
-			ERROR("Failed to delete %s: %s",
-			       path, fr_syserror(errno));
-			close(sockfd);
-			return -1;
-		}
+		/*
+		 *	No need to unlink it.  If we own it, we can
+		 *	continue.  Otherwise, we ignore the socket.
+		 *	Someone else might be using it.
+		 */
 	}
 
 	if (bind(sockfd, (struct sockaddr *)&salocal, socklen) < 0) {
@@ -265,7 +264,11 @@ static int fr_server_domain_socket(char const *path)
 
 static void command_close_socket(rad_listen_t *this)
 {
+	fr_command_socket_t *sock = this->data;
+
 	this->status = RAD_LISTEN_STATUS_EOL;
+
+	if (sock->path) (void) unlink(sock->path);
 
 	/*
 	 *	This removes the socket from the event fd, so no one
