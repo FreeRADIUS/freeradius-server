@@ -573,10 +573,10 @@ int8_t		paircmp_op(VALUE_PAIR const *a, FR_TOKEN op, VALUE_PAIR const *b);
 int8_t		paircmp(VALUE_PAIR *a, VALUE_PAIR *b);
 int8_t		pairlistcmp(VALUE_PAIR *a, VALUE_PAIR *b);
 
-typedef int8_t (*fr_pair_cmp_t)(VALUE_PAIR const *a, VALUE_PAIR const *b);
-int8_t		attrcmp(VALUE_PAIR const *a, VALUE_PAIR const *b);
-int8_t		attrtagcmp(VALUE_PAIR const *a, VALUE_PAIR const *b);
-void		pairsort(VALUE_PAIR **vps, fr_pair_cmp_t cmp);
+typedef int8_t (*fr_cmp_t)(void const *a, void const *b);
+int8_t		attrcmp(void const *a, void const *b);
+int8_t		attrtagcmp(void const *a, void const *b);
+void		pairsort(VALUE_PAIR **vps, fr_cmp_t cmp);
 void		pairvalidate_debug(TALLOC_CTX *ctx, VALUE_PAIR const *failed[2]);
 bool		pairvalidate(VALUE_PAIR const *failed[2], VALUE_PAIR *filter, VALUE_PAIR *list);
 bool 		pairvalidate_relaxed(VALUE_PAIR const *failed[2], VALUE_PAIR *filter, VALUE_PAIR *list);
@@ -663,7 +663,8 @@ ssize_t		fr_utf8_to_ucs2(uint8_t *out, size_t outlen, char const *in, size_t inl
 size_t		fr_prints_uint128(char *out, size_t outlen, uint128_t const num);
 int64_t		fr_pow(int32_t base, uint8_t exp);
 int		fr_get_time(char const *date_str, time_t *date);
-
+int8_t		fr_pointer_cmp(void const *a, void const *b);
+void		fr_quick_sort(void const *to_sort[], int min_idx, int max_idx, fr_cmp_t cmp);
 /*
  *	Define TALLOC_DEBUG to check overflows with talloc.
  *	we can't use valgrind, because the memory used by

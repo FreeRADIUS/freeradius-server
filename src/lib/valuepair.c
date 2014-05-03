@@ -360,38 +360,25 @@ void pairreplace(VALUE_PAIR **first, VALUE_PAIR *replace)
 	*prev = replace;
 }
 
-int8_t attrcmp(VALUE_PAIR const *a, VALUE_PAIR const *b)
+int8_t attrtagcmp(void const *a, void const *b)
 {
-	VERIFY_VP(a);
-	VERIFY_VP(b);
+	VALUE_PAIR const *my_a = a;
+	VALUE_PAIR const *my_b = b;
 
-	if (a->da < b->da) {
-		return -1;
-	}
-
-	if (a->da == b->da) {
-		return 0;
-	}
-
-	return 1;
-}
-
-int8_t attrtagcmp(VALUE_PAIR const *a, VALUE_PAIR const *b)
-{
-	VERIFY_VP(a);
-	VERIFY_VP(b);
+	VERIFY_VP(my_a);
+	VERIFY_VP(my_b);
 
 	uint8_t cmp;
 
-	cmp = attrcmp(a, b);
+	cmp = fr_pointer_cmp(my_a->da, my_b->da);
 
 	if (cmp != 0) return cmp;
 
-	if (a->tag < b->tag) {
+	if (my_a->tag < my_b->tag) {
 		return -1;
 	}
 
-	if (a->tag > b->tag) {
+	if (my_a->tag > my_b->tag) {
 		return 1;
 	}
 
@@ -433,7 +420,7 @@ static void pairsort_split(VALUE_PAIR *source, VALUE_PAIR **front, VALUE_PAIR **
 	slow->next = NULL;
 }
 
-static VALUE_PAIR *pairsort_merge(VALUE_PAIR *a, VALUE_PAIR *b, fr_pair_cmp_t cmp)
+static VALUE_PAIR *pairsort_merge(VALUE_PAIR *a, VALUE_PAIR *b, fr_cmp_t cmp)
 {
 	VALUE_PAIR *result = NULL;
 
@@ -459,7 +446,7 @@ static VALUE_PAIR *pairsort_merge(VALUE_PAIR *a, VALUE_PAIR *b, fr_pair_cmp_t cm
  * @param[in,out] vps List of VALUE_PAIRs to sort.
  * @param[in] cmp to sort with
  */
-void pairsort(VALUE_PAIR **vps, fr_pair_cmp_t cmp)
+void pairsort(VALUE_PAIR **vps, fr_cmp_t cmp)
 {
 	VALUE_PAIR *head = *vps;
 	VALUE_PAIR *a;
