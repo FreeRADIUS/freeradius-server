@@ -276,7 +276,11 @@ static int fr_get_dumpable_flag(void)
 		return -1;
 	}
 
-	return ret;
+	/*
+	 *  Linux is crazy and prctl sometimes returns 2 for disabled
+	 */
+	if (ret != 1) return 0;
+	return 1;
 }
 #else
 static int fr_get_dumpable_flag(void)
@@ -457,7 +461,6 @@ void fr_fault(int sig)
 	fr_fault_log("Calling: %s\n", cmd);
 
 	{
-		bool disabled;
 		bool disable = false;
 
 		/*
@@ -465,26 +468,29 @@ void fr_fault(int sig)
 		 *	is called in the panic_action, they can pattach tot he running
 		 *	process.
 		 */
-		disabled = (fr_get_dumpable_flag() == 0);
-		if (disabled) {
-			if (fr_set_dumpable_flag(true) < 0) {
+		if (fr_get_dumpable_flag() == 0) {
+			if ((fr_set_dumpable_flag(true) < 0) || !fr_get_dumpable_flag()) {
 				fr_fault_log("Failed setting dumpable flag, pattach may not work: %s", fr_strerror());
 			} else {
 				disable = true;
 			}
+			fr_fault_log("Temporarily setting PR_DUMPABLE to 1");
 		}
 
 		code = system(cmd);
 
 		/*
-		 *	We only want to error out here, if dumable was originally disabled
+		 *	We only want to error out here, if dumpable was originally disabled
 		 *	and we managed to change the value to enabled, but failed
 		 *	setting it back to disabled.
 		 */
-		if (disable && (fr_set_dumpable_flag(false) < 0)) {
-			fr_fault_log("Failed reseting dumpable flag to off: %s", fr_strerror());
-			fr_fault_log("Exiting due to insecure process state");
-			fr_exit_now(1);
+		if (disable) {
+			fr_fault_log("Resetting PR_DUMPABLE to 0");
+			if (fr_set_dumpable_flag(false) < 0) {
+				fr_fault_log("Failed reseting dumpable flag to off: %s", fr_strerror());
+				fr_fault_log("Exiting due to insecure process state");
+				fr_exit_now(1);
+			}
 		}
 	}
 
