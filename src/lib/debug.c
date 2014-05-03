@@ -353,7 +353,8 @@ int fr_set_dumpable(bool allow_core_dumps)
 static int fr_fault_check_permissions(void)
 {
 	char const *p, *q;
-	char *filename = NULL;
+	size_t len;
+	char filename[256];
 	struct stat statbuf;
 
 	/*
@@ -364,8 +365,13 @@ static int fr_fault_check_permissions(void)
 	 *	quotes.
 	 */
 	if ((q = strchr(panic_action, ' '))) {
-		if (asprintf(&filename, "%.*s", (int)(q - panic_action), panic_action) < 0) {
-			fr_strerror_printf("Failed writing panic_action to temporary buffer");
+		/*
+		 *	need to use a static buffer, because mallocing memory in a signal handler
+		 *	is a bad idea and can result in deadlock.
+		 */
+		len = snprintf(filename, sizeof(filename), "%.*s", (int)(q - panic_action), panic_action);
+		if (is_truncated(len, sizeof(filename))) {
+			fr_strerror_printf("Failed writing panic_action to temporary buffer (truncated)");
 			return -1;
 		}
 		p = filename;
@@ -381,8 +387,6 @@ static int fr_fault_check_permissions(void)
 		}
 #endif
 	}
-
-	free(filename);
 
 	return 0;
 }
