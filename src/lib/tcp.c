@@ -52,11 +52,6 @@ int fr_tcp_client_socket(fr_ipaddr_t *src_ipaddr,
 		return sockfd;
 	}
 
-	if (fr_nonblock(sockfd) < 0) {
-		close(sockfd);
-		return -1;
-	}
-
 	/*
 	 *	Allow the caller to bind us to a specific source IP.
 	 */
@@ -85,6 +80,15 @@ int fr_tcp_client_socket(fr_ipaddr_t *src_ipaddr,
 	 */
 	if (connect(sockfd, (struct sockaddr *) &salocal, salen) < 0) {
 		fr_strerror_printf("Failed in connect(): %s", fr_syserror(errno));
+		close(sockfd);
+		return -1;
+	}
+
+	/*
+	 *	Set non-block *AFTER* connecting to the remote server
+	 *	so it doesn't return immediately.
+	 */
+	if (fr_nonblock(sockfd) < 0) {
 		close(sockfd);
 		return -1;
 	}
