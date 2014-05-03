@@ -35,6 +35,7 @@ typedef struct rlm_sql_unixodbc_conn {
 } rlm_sql_unixodbc_conn_t;
 
 
+USES_APPLE_DEPRECATED_API
 #include <sql.h>
 #include <sqlext.h>
 
