@@ -205,11 +205,12 @@ static int fr_server_domain_socket(char const *path)
 			return -1;
 		}
 
-		/*
-		 *	No need to unlink it.  If we own it, we can
-		 *	continue.  Otherwise, we ignore the socket.
-		 *	Someone else might be using it.
-		 */
+		if (unlink(path) < 0) {
+                       ERROR("Failed to delete %s: %s",
+			     path, fr_syserror(errno));
+                       close(sockfd);
+                       return -1;
+		}
 	}
 
 	if (bind(sockfd, (struct sockaddr *)&salocal, socklen) < 0) {
