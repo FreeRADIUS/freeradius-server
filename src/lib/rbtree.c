@@ -337,8 +337,6 @@ static void delete_fixup(rbtree_t *tree, rbnode_t *x, rbnode_t *parent)
 {
 
 	while (x != tree->root && x->colour == BLACK) {
-		if (!parent) _exit(1);
-
 		if (x == parent->left) {
 			rbnode_t *w = parent->right;
 			if (w->colour == RED) {
@@ -474,11 +472,8 @@ static void rbtree_delete_internal(rbtree_t *tree, rbnode_t *z, bool skiplock)
 	} else {
 		if (tree->free) tree->free(y->data);
 
-		if (y->colour == BLACK) {
-			if (parent) {
-				delete_fixup(tree, x, parent);
-			} /* tree->root == x, and no fixup is necessary */
-		}
+		if (y->colour == BLACK) 
+			delete_fixup(tree, x, parent);
 
 		talloc_free(y);
 	}
