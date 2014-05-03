@@ -514,22 +514,21 @@ static int sql_get_grouplist(rlm_sql_t *inst, rlm_sql_handle_t *handle, REQUEST 
  * username will then be checked with the passed check string.
  */
 
-static int sql_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR *request_vp, VALUE_PAIR *check,
-			UNUSED VALUE_PAIR *check_pairs, UNUSED VALUE_PAIR **reply_pairs)
+static int CC_HINT(nonnull (1 ,2, 4)) sql_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR *request_vp,
+						   VALUE_PAIR *check, UNUSED VALUE_PAIR *check_pairs,
+						   UNUSED VALUE_PAIR **reply_pairs)
 {
 	rlm_sql_handle_t *handle;
 	rlm_sql_t *inst = instance;
 	rlm_sql_grouplist_t *head, *entry;
 
 	RDEBUG("sql_groupcmp");
-	if (!check || !check->length){
+
+	if (check->length == 0){
 		RDEBUG("sql_groupcmp: Illegal group name");
 		return 1;
 	}
-	if (!request){
-		RDEBUG("sql_groupcmp: NULL request");
-		return 1;
-	}
+
 	/*
 	 *	Set, escape, and check the user attr here
 	 */
