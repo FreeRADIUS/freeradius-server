@@ -216,19 +216,20 @@ static rlm_rcode_t CC_HINT(nonnull (4)) do_ruby(REQUEST *request, unsigned long 
 	}
 
 	n_tuple = 0;
-
-	for (vp = fr_cursor_init(&cursor, &request->packet->vps);
-	     vp;
-	     vp = fr_cursor_next(&cursor)) {
-		 n_tuple++;
+	if (request) {
+		for (vp = fr_cursor_init(&cursor, &request->packet->vps);
+		     vp;
+		     vp = fr_cursor_next(&cursor)) {
+			 n_tuple++;
+		}
 	}
-
 
 	/*
 	  Creating ruby array, that contains arrays of [name,value]
 	  Maybe we should use hash instead? Can this names repeat?
 	*/
 	rb_request = rb_ary_new2(n_tuple);
+
 	if (request) {
 		for (vp = fr_cursor_init(&cursor, &request->packet->vps);
 		     vp;
