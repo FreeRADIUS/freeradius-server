@@ -264,7 +264,6 @@ static int fr_set_dumpable_flag(UNUSED bool dumpable)
 
 /** Get the processes dumpable flag
  *
- * @param dumpable whether we should allow core dumping
  */
 #if defined(HAVE_SYS_PRCTL_H) && defined(PR_GET_DUMPABLE)
 static int fr_get_dumpable_flag(void)
