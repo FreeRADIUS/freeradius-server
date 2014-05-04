@@ -1,6 +1,7 @@
 .cache
 .foo
 .bar
+.request
 dictionary
 test.conf
 radius.log
