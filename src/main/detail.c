@@ -197,16 +197,17 @@ static int detail_open(rad_listen_t *this)
 #ifndef HAVE_GLOB_H
 		return 0;
 #else
-		unsigned int i;
-		int found;
-		time_t chtime;
-		char const *filename;
-		glob_t files;
+		unsigned int	i;
+		int		found;
+		time_t		chtime;
+		char const	*filename;
+		glob_t		files;
 
 		DEBUG2("Polling for detail file %s", data->filename);
 
 		memset(&files, 0, sizeof(files));
 		if (glob(data->filename, 0, NULL, &files) != 0) {
+		noop:
 			globfree(&files);
 			return 0;
 		}
@@ -220,17 +221,13 @@ static int detail_open(rad_listen_t *this)
 		for (i = 0; i < files.gl_pathc; i++) {
 			if (stat(files.gl_pathv[i], &st) < 0) continue;
 
-			if ((i == 0) ||
-			    (st.st_ctime < chtime)) {
-					chtime = st.st_ctime;
-					found = i;
+			if ((i == 0) || (st.st_ctime < chtime)) {
+				chtime = st.st_ctime;
+				found = i;
 			}
 		}
 
-		if (found < 0) {
-			globfree(&files);
-			return 0;
-		}
+		if (found < 0) goto noop;
 
 		/*
 		 *	Rename detail to detail.work
@@ -241,9 +238,10 @@ static int detail_open(rad_listen_t *this)
 		if (rename(filename, data->filename_work) < 0) {
 			ERROR("Detail - Failed renaming %s to %s: %s",
 			      filename, data->filename_work, fr_syserror(errno));
-			globfree(&files);
-			return 0;
+			goto noop;
 		}
+
+		globfree(&files);	/* Shouldn't be using anything in files now */
 
 		/*
 		 *	And try to open the filename.
@@ -905,8 +903,8 @@ int detail_parse(CONF_SECTION *cs, rad_listen_t *this)
 		snprintf(buffer, sizeof(buffer), "%s.work", data->filename);
 	}
 
-	free(data->filename_work);
-	data->filename_work = strdup(buffer); /* FIXME: leaked */
+	talloc_free(data->filename_work);
+	data->filename_work = talloc_strdup(this, buffer); /* FIXME: leaked */
 
 	data->vps = NULL;
 	data->fp = NULL;
@@ -924,7 +922,7 @@ int detail_parse(CONF_SECTION *cs, rad_listen_t *this)
 	client->prefix = 0;
 	client->longname = client->shortname = data->filename;
 	client->secret = client->shortname;
-	client->nas_type = strdup("none");
+	client->nas_type = talloc_strdup(client, "none");
 
 	return 0;
 }
