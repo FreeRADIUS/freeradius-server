@@ -434,11 +434,22 @@ void fr_fault(int sig)
 		frame_count = backtrace(stack, MAX_BT_FRAMES);
 
 		fr_fault_log("Backtrace of last %zu frames:\n", frame_count);
-		strings = backtrace_symbols(stack, frame_count);
-		for (i = 0; i < frame_count; i++) {
-			fr_fault_log("%s\n", strings[i]);
+
+		/*
+		 *	Only use backtrace_symbols() if we don't have a logging fd.
+		 *	If the server has experienced memory corruption, there's
+		 *	a high probability that calling backtrace_symbols() which
+		 *	mallocs more memory, will fail.
+		 */
+		if (fr_fault_log_fd < 0) {
+			strings = backtrace_symbols(stack, frame_count);
+			for (i = 0; i < frame_count; i++) {
+				fr_fault_log("%s\n", strings[i]);
+			}
+			free(strings);
+		} else {
+			backtrace_symbols_fd(stack, frame_count, fr_fault_log_fd);
 		}
-		free(strings);
 	}
 #endif
 
