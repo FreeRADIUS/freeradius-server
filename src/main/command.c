@@ -265,11 +265,7 @@ static int fr_server_domain_socket(char const *path)
 
 static void command_close_socket(rad_listen_t *this)
 {
-	fr_command_socket_t *sock = this->data;
-
 	this->status = RAD_LISTEN_STATUS_EOL;
-
-	if (sock->path) (void) unlink(sock->path);
 
 	/*
 	 *	This removes the socket from the event fd, so no one
