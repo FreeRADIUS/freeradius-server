@@ -63,6 +63,7 @@ static void *mod_conn_create(void *instance)
 	 *	destructor has access to the module configuration.
 	 */
 	handle->inst = inst;
+	handle->init = false;
 
 	/*
 	 *	When something frees this handle the destructor set by
@@ -73,19 +74,26 @@ static void *mod_conn_create(void *instance)
 	talloc_set_destructor(handle, _sql_conn_destructor);
 
 	rcode = (inst->module->sql_socket_init)(handle, inst->config);
-	if (rcode == 0) {
-		exec_trigger(NULL, inst->cs, "modules.sql.open", false);
+	if (rcode != 0) {
+	fail:
+		exec_trigger(NULL, inst->cs, "modules.sql.fail", true);
 
-		return handle;
+		/*
+		 *	Destroy any half opened connections.
+		 */
+		talloc_free(handle);
+		return NULL;
 	}
 
-	exec_trigger(NULL, inst->cs, "modules.sql.fail", true);
+	if (inst->config->start_query) {
+		if (rlm_sql_select_query(&handle, inst, inst->config->start_query)) {
+			goto fail;
+		}
+	}
 
-	/*
-	 *	Destroy any half opened connections.
-	 */
-	talloc_free(handle);
-	return NULL;
+	exec_trigger(NULL, inst->cs, "modules.sql.open", false);
+	handle->init = true;
+	return handle;
 }
 
 /*
@@ -443,6 +451,8 @@ int rlm_sql_select_query(rlm_sql_handle_t **handle, rlm_sql_t *inst, char const 
 		 */
 		case RLM_SQL_RECONNECT:
 		sql_down:
+			if (!(*handle)->init) return RLM_SQL_RECONNECT;
+
 			*handle = fr_connection_reconnect(inst->pool, *handle);
 			if (!*handle) return RLM_SQL_RECONNECT;
 			continue;
