@@ -55,6 +55,8 @@ typedef struct sql_config {
 	char const	*default_profile;
 
 	char const	*client_query;
+
+	char const	*start_query;
 	char const	*authorize_check_query;
 	char const 	*authorize_reply_query;
 	char const	*authorize_group_check_query;
@@ -92,6 +94,7 @@ typedef struct rlm_sql_handle {
 	void	*conn;
 	rlm_sql_row_t row;
 	rlm_sql_t *inst;
+	bool	init;
 } rlm_sql_handle_t;
 
 typedef struct rlm_sql_module_t {

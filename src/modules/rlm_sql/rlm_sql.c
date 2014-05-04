@@ -81,6 +81,8 @@ static const CONF_PARSER module_config[] = {
 	 "SELECT id,nasname,shortname,type,secret FROM nas"},
 	{"authorize_check_query", PW_TYPE_STRING_PTR,
 	 offsetof(rlm_sql_config_t,authorize_check_query), NULL, ""},
+	{"start_query", PW_TYPE_STRING_PTR,
+	 offsetof(rlm_sql_config_t,start_query), NULL, ""},
 	{"authorize_reply_query", PW_TYPE_STRING_PTR,
 	 offsetof(rlm_sql_config_t,authorize_reply_query), NULL, NULL},
 	{"authorize_group_check_query", PW_TYPE_STRING_PTR,
