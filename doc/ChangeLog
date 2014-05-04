@@ -105,7 +105,15 @@ FreeRADIUS 3.0.3 Fri 21 Mar 2014 08:30:00 EDT urgency=medium
 	* A duplicate request isn't a duplicate if the original one
 	  is marked "done".  This should lower retransmissions from
 	  clients.
-
+	* Fix multiple regular expression and glob memory leaks.
+	* Don't allocate any memory in fr_fault() as it can cause malloc
+	  to deadlock.
+	* Temporarily set dumpable flag before calling system in fr_fault()
+	  else the debugger may not be able to attach.
+	* Set nonblock on all TCP client sockets.
+	* Fix minor buffer overrun in mschapv2 where some attribute strings
+	  were not correctly \0 terminated.
+	
 FreeRADIUS 3.0.2 Fri 21 Mar 2014 08:30:00 EDT urgency=medium
 	Feature improvements
 	* secret keys and LDAP / SQL passwords are now printed as
