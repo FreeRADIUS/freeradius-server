@@ -113,6 +113,7 @@ FreeRADIUS 3.0.3 Fri 21 Mar 2014 08:30:00 EDT urgency=medium
 	* Set nonblock on all TCP client sockets.
 	* Fix minor buffer overrun in mschapv2 where some attribute strings
 	  were not correctly \0 terminated.
+	* Fix crash on authentication failure with MIT kerberos.
 	
 FreeRADIUS 3.0.2 Fri 21 Mar 2014 08:30:00 EDT urgency=medium
 	Feature improvements
