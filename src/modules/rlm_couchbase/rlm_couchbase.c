@@ -57,29 +57,35 @@ static const CONF_PARSER module_config[] = {
 static int mod_instantiate(CONF_SECTION *conf, void *instance) {
 	rlm_couchbase_t *inst = instance;   /* our module instance */
 
-	}
+	if (inst->server) {
+		char *server, *p;
+		size_t len, i;
+		bool sep = false;
 
-	/* rebuild server list if needed - libcouchbase only takes a semi-colon separated list */
-	if (strchr(inst->server, '\t') || strchr(inst->server, ' ') || strchr(inst->server, ',')) {
-		char *tok;  /* temporary token pointer */
-		/* make a temporary copy of the server string */
-		char *temps1 = talloc_typed_strdup(inst, inst->server);
-		/* temporary buffer for the new server string */
-		char *temps2 = talloc_zero_size(inst, strlen(inst->server) + 1);
-		/* loop through server list and break into pieces */
-		while ((tok = strsep(&temps1, "\t ,")) != NULL) {
-			/* build server string */
-			if (strlen(tok)) {
-				temps2 = talloc_asprintf_append(temps2, "%s;", tok);
+		len = talloc_array_length(inst->server);
+		server = p = talloc_array(inst, char, len);
+		for (i = 0; i < len; i++) {
+			switch (inst->server[i]) {
+			case '\t':
+			case ' ':
+			case ',':
+				/* Consume multiple separators occurring in sequence */
+				if (sep == true) continue;
+
+				sep = true;
+				*p++ = ';';
+				break;
+
+			default:
+				sep = false;
+				*p++ = inst->server[i];
+				break;
 			}
 		}
-		/* replace old server string with new */
-		strlcpy(inst->server, temps2, strlen(temps2));
-		/* free temporary buffers */
-		talloc_free(temps1);
-		talloc_free(temps2);
-		/* debugging */
-		DEBUG("rlm_couchbase: built server string '%s' from config", inst->server);
+
+		*p = '\0';
+		talloc_free(inst->server);
+		inst->server = server;
 	}
 
 	/* setup item map */
