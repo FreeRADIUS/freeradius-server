@@ -82,7 +82,7 @@ static const CONF_PARSER module_config[] = {
 	{"authorize_check_query", PW_TYPE_STRING_PTR,
 	 offsetof(rlm_sql_config_t,authorize_check_query), NULL, ""},
 	{"open_query", PW_TYPE_STRING_PTR,
-	 offsetof(rlm_sql_config_t,open_query), NULL, ""},
+	 offsetof(rlm_sql_config_t,open_query), NULL, NULL},
 	{"authorize_reply_query", PW_TYPE_STRING_PTR,
 	 offsetof(rlm_sql_config_t,authorize_reply_query), NULL, NULL},
 	{"authorize_group_check_query", PW_TYPE_STRING_PTR,
