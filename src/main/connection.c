@@ -326,7 +326,7 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool,
 	 *	If the last attempt failed, wait a bit before
 	 *	retrying.
 	 */
-	if (pool->last_failed && (pool->last_failed + pool->retry_delay) < now) {
+	if (pool->last_failed && ((pool->last_failed + pool->retry_delay) > now)) {
 		bool complain = false;
 
 		if (pool->last_throttled != now) {
