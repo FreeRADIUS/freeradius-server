@@ -57,7 +57,7 @@ static const CONF_PARSER module_config[] = {
 static int mod_instantiate(CONF_SECTION *conf, void *instance) {
 	rlm_couchbase_t *inst = instance;   /* our module instance */
 
-	if (inst->server) {
+	{
 		char *server, *p;
 		size_t len, i;
 		bool sep = false;
