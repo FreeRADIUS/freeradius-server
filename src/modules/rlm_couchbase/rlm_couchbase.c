@@ -57,11 +57,6 @@ static const CONF_PARSER module_config[] = {
 static int mod_instantiate(CONF_SECTION *conf, void *instance) {
 	rlm_couchbase_t *inst = instance;   /* our module instance */
 
-	/* fail on bad config */
-	if (cf_section_parse(conf, inst, module_config) < 0) {
-		ERROR("rlm_couchbase: failed to parse config");
-		/* fail */
-		return -1;
 	}
 
 	/* rebuild server list if needed - libcouchbase only takes a semi-colon separated list */
