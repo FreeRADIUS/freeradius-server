@@ -858,24 +858,13 @@ static int fr_connection_pool_check(fr_connection_pool_t *pool)
 	return 1;
 }
 
-/** Reserve a connection in the connection pool
+/** Get a connection from the connection pool
  *
- * Will attempt to find an unused connection in the connection pool, if one is
- * found, will mark it as in in use increment the number of active connections
- * and return the connection handle.
- *
- * If no free connections are found will attempt to spawn a new one, conditional
- * on a connection spawning not already being in progress, and not being at the
- * 'max' connection limit.
- *
- * @note fr_connection_release must be called once the caller has finished
- * using the connection.
- *
- * @see fr_connection_release
  * @param[in,out] pool to reserve the connection from.
+ * @param[in] spawn whether to spawn a new connection
  * @return a pointer to the connection handle, or NULL on error.
  */
-void *fr_connection_get(fr_connection_pool_t *pool)
+static void *fr_connection_get_internal(fr_connection_pool_t *pool, int spawn)
 {
 	time_t now;
 	fr_connection_t *this, *next;
@@ -912,6 +901,9 @@ void *fr_connection_get(fr_connection_pool_t *pool)
 	}
 
 	pthread_mutex_unlock(&pool->mutex);
+
+	if (!spawn) return NULL;
+
 	this = fr_connection_spawn(pool, now);
 	if (!this) return NULL;
 	pthread_mutex_lock(&pool->mutex);
@@ -931,6 +923,30 @@ do_return:
 
 	return this->connection;
 }
+
+
+/** Reserve a connection in the connection pool
+ *
+ * Will attempt to find an unused connection in the connection pool, if one is
+ * found, will mark it as in in use increment the number of active connections
+ * and return the connection handle.
+ *
+ * If no free connections are found will attempt to spawn a new one, conditional
+ * on a connection spawning not already being in progress, and not being at the
+ * 'max' connection limit.
+ *
+ * @note fr_connection_release must be called once the caller has finished
+ * using the connection.
+ *
+ * @see fr_connection_release
+ * @param[in,out] pool to reserve the connection from.
+ * @return a pointer to the connection handle, or NULL on error.
+ */
+void *fr_connection_get(fr_connection_pool_t *pool)
+{
+	return fr_connection_get_internal(pool, true);
+}
+
 
 /** Release a connection
  *
@@ -1031,6 +1047,9 @@ void *fr_connection_reconnect(fr_connection_pool_t *pool, void *conn)
 	void *new_conn;
 	fr_connection_t *this;
 	uint64_t conn_number;
+#ifdef PTHREAD_DEBUG
+	pthread_t pthread_id;
+#endif
 
 	if (!pool || !conn) return NULL;
 
@@ -1066,29 +1085,28 @@ void *fr_connection_reconnect(fr_connection_pool_t *pool, void *conn)
 		}
 
 		/*
-		 *	The caller has said the connection is bad.  So
-		 *	if it's still in use, mark it as unused, and
-		 *	close it.  If it's not in use, we just try to
-		 *	get a new connection.
+		 *	We can't create a new connection, so close
+		 *	this one.
 		 */
-		if (this->in_use) fr_connection_close(pool, this);
+		fr_connection_close(pool, this);
 
 		/*
-		 *	We failed to create a new socket.
-		 *	Try to grab an existing one.
+		 *	Maybe there's a connection which is unused and
+		 *	available.  If so, return it.
 		 */
 		pthread_mutex_unlock(&pool->mutex);
-		new_conn = fr_connection_get(pool);
+		new_conn = fr_connection_get_internal(pool, false);
 		if (new_conn) return new_conn;
 
 		if (!now) return NULL;
 
-		ERROR("%s: Failed to reconnect (%" PRIu64 "), and no other connections available", pool->log_prefix,
+		ERROR("%s: Failed to reconnect (%" PRIu64 "), no free connections are available", pool->log_prefix,
 		      conn_number);
 
 		return NULL;
 	}
 
+	if (pool->trigger) exec_trigger(NULL, pool->cs, "close", true);
 	pool->delete(pool->ctx, conn);
 	this->connection = new_conn;
 	pthread_mutex_unlock(&pool->mutex);
