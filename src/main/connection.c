@@ -1024,7 +1024,7 @@ void fr_connection_release(fr_connection_pool_t *pool, void *conn)
  * @see fr_connection_get
  * @param[in,out] pool to reconnect the connection in.
  * @param[in,out] conn to reconnect.
- * @return ew connection handle if successful else NULL.
+ * @return new connection handle if successful else NULL.
  */
 void *fr_connection_reconnect(fr_connection_pool_t *pool, void *conn)
 {
@@ -1036,6 +1036,17 @@ void *fr_connection_reconnect(fr_connection_pool_t *pool, void *conn)
 
 	this = fr_connection_find(pool, conn);
 	if (!this) return NULL;
+
+#ifdef PTHREAD_DEBUG
+	/*
+	 *	The thread which grabbed the connection must be the
+	 *	thread which releases it.
+	 */
+	pthread_id = pthread_self();
+	rad_assert(pthread_equal(this->pthread_id, pthread_id) != 0);
+#endif
+
+	rad_assert(this->in_use == true);
 
 	/*
 	 *	The pool is now locked.
