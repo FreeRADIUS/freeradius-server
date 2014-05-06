@@ -824,6 +824,7 @@ static THREAD_HANDLE *spawn_thread(time_t now, int do_trigger)
 	rcode = pthread_create(&handle->pthread_id, 0,
 			request_handler_thread, handle);
 	if (rcode != 0) {
+		free(handle);
 		ERROR("Thread create failed: %s",
 		       fr_syserror(rcode));
 		return NULL;
