@@ -1819,6 +1819,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 
 			fp = fdopen(fd, "w");
 			if (!fp) {
+				close(fd);
 				RDEBUG("Failed opening file %s: %s",
 				       filename, fr_syserror(errno));
 				break;
