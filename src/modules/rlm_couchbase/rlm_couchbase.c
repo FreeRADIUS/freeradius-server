@@ -41,14 +41,14 @@ RCSID("$Id$");
  * Module Configuration
  */
 static const CONF_PARSER module_config[] = {
-	{"acctkey", PW_TYPE_STRING_PTR, offsetof(rlm_couchbase_t, acctkey), NULL,
+	{"acct_key", PW_TYPE_STRING_PTR, offsetof(rlm_couchbase_t, acctkey), NULL,
 		"radacct_%{%{Acct-Unique-Session-Id}:-%{Acct-Session-Id}}"},
 	{"doctype", PW_TYPE_STRING_PTR, offsetof(rlm_couchbase_t, doctype), NULL, "radacct"},
 	{"server", PW_TYPE_STRING_PTR | PW_TYPE_REQUIRED, offsetof(rlm_couchbase_t, server), NULL, NULL},
 	{"bucket", PW_TYPE_STRING_PTR | PW_TYPE_REQUIRED, offsetof(rlm_couchbase_t, bucket), NULL, NULL},
-	{"pass", PW_TYPE_STRING_PTR, offsetof(rlm_couchbase_t, pass), NULL, NULL},
+	{"password", PW_TYPE_STRING_PTR, offsetof(rlm_couchbase_t, pass), NULL, NULL},
 	{"expire", PW_TYPE_INTEGER, offsetof(rlm_couchbase_t, expire), NULL, 0},
-	{"userkey", PW_TYPE_STRING_PTR | PW_TYPE_REQUIRED, offsetof(rlm_couchbase_t, userkey), NULL,
+	{"user_key", PW_TYPE_STRING_PTR | PW_TYPE_REQUIRED, offsetof(rlm_couchbase_t, userkey), NULL,
 		"raduser_%{md5:%{tolower:%{%{Stripped-User-Name}:-%{User-Name}}}}"},
 	{NULL, -1, 0, NULL, NULL}     /* end the list */
 };
