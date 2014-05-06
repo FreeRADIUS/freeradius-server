@@ -430,13 +430,9 @@ int rlm_sql_select_query(rlm_sql_handle_t **handle, rlm_sql_t *inst, char const 
 	/*
 	 *	If there's no query, return an error.
 	 */
-	if (!query || !*query) {
-		return -1;
-	}
+	if (!query || !*query) return -1;
 
-	if (!*handle || !(*handle)->conn) {
-		goto sql_down;
-	}
+	if (!*handle || !(*handle)->conn) goto sql_down;
 
 	while (true) {
 		DEBUG("rlm_sql (%s): Executing query: '%s'", inst->config->xlat_name, query);
@@ -452,10 +448,11 @@ int rlm_sql_select_query(rlm_sql_handle_t **handle, rlm_sql_t *inst, char const 
 		 */
 		case RLM_SQL_RECONNECT:
 		sql_down:
+			if (!*handle) return RLM_SQL_RECONNECT;
+
 			if (!(*handle)->init) return RLM_SQL_RECONNECT;
 
 			*handle = fr_connection_reconnect(inst->pool, *handle);
-			if (!*handle) return RLM_SQL_RECONNECT;
 			continue;
 
 		case RLM_SQL_QUERY_ERROR:
