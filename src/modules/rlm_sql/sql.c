@@ -86,7 +86,7 @@ static void *mod_conn_create(void *instance)
 		return NULL;
 	}
 
-	if (inst->config->open_query) {
+	if (inst->config->open_query && *inst->config->open_query) {
 		if (rlm_sql_select_query(&handle, inst, inst->config->open_query)) {
 			goto fail;
 		}
