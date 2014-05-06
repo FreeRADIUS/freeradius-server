@@ -34,6 +34,12 @@ static int fr_connection_pool_check(fr_connection_pool_t *pool);
 
 extern bool check_config;
 
+#ifndef NDEBUG
+#ifdef HAVE_PTHREAD_H
+#define PTHREAD_DEBUG (1)
+#endif
+#endif
+
 /** An individual connection within the connection pool
  *
  * Defines connection counters, timestamps, and holds a pointer to the
@@ -59,6 +65,9 @@ struct fr_connection {
 					//!< lifetime of the connection pool.
 	void		*connection;	//!< Pointer to whatever the module
 					//!< uses for a connection handle.
+#ifdef PTHREAD_DEBUG
+	pthread_t	pthread_id;	//!< When 'in_use == true'
+#endif
 };
 
 /** A connection pool
@@ -424,9 +433,21 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool,
 static void fr_connection_close(fr_connection_pool_t *pool,
 				fr_connection_t *this)
 {
-	if (pool->trigger) exec_trigger(NULL, pool->cs, "close", true);
+	/*
+	 *	If it's in use, release it.
+	 */
+	if (this->in_use) {
+#ifdef PTHREAD_DEBUG
+		pthread_t pthread_id = pthread_self();
+		rad_assert(pthread_equal(this->pthread_id, pthread_id) != 0);
+#endif
+		this->in_use = false;
 
-	rad_assert(this->in_use == false);
+		rad_assert(pool->active > 0);
+		pool->active--;
+	}
+
+	if (pool->trigger) exec_trigger(NULL, pool->cs, "close", true);
 
 	fr_connection_unlink(pool, this);
 	pool->delete(pool->ctx, this->connection);
@@ -487,17 +508,6 @@ int fr_connection_del(fr_connection_pool_t *pool, void *conn)
 
 	this = fr_connection_find(pool, conn);
 	if (!this) return 0;
-
-	/*
-	 *	If it's in use, release it.
-	 */
-	if (this->in_use) {
-		rad_assert(this->in_use == true);
-		this->in_use = false;
-
-		rad_assert(pool->active > 0);
-		pool->active--;
-	}
 
 	INFO("%s: Deleting connection (%" PRIu64 ")", pool->log_prefix, this->number);
 
@@ -912,6 +922,9 @@ do_return:
 	this->last_used = now;
 	this->in_use = true;
 
+#ifdef PTHREAD_DEBUG
+	this->pthread_id = pthread_self();
+#endif
 	pthread_mutex_unlock(&pool->mutex);
 
 	DEBUG("%s: Reserved connection (%" PRIu64 ")", pool->log_prefix, this->number);
@@ -931,9 +944,21 @@ do_return:
 void fr_connection_release(fr_connection_pool_t *pool, void *conn)
 {
 	fr_connection_t *this;
+#ifdef PTHREAD_DEBUG
+	pthread_t pthread_id;
+#endif
 
 	this = fr_connection_find(pool, conn);
 	if (!this) return;
+
+#ifdef PTHREAD_DEBUG
+	/*
+	 *	The thread which grabbed the connection must be the
+	 *	thread which releases it.
+	 */
+	pthread_id = pthread_self();
+	rad_assert(pthread_equal(this->pthread_id, pthread_id) != 0);
+#endif
 
 	rad_assert(this->in_use == true);
 	this->in_use = false;
@@ -1035,14 +1060,7 @@ void *fr_connection_reconnect(fr_connection_pool_t *pool, void *conn)
 		 *	close it.  If it's not in use, we just try to
 		 *	get a new connection.
 		 */
-		if (this->in_use) {
-			this->in_use = false;
-
-			rad_assert(pool->active > 0);
-			pool->active--;
-
-			fr_connection_close(pool, this);
-		}
+		if (this->in_use) fr_connection_close(pool, this);
 
 		/*
 		 *	We failed to create a new socket.
