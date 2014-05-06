@@ -39,29 +39,21 @@ int json_object_get_string_len(json_object *obj) {
 int json_object_object_get_ex(struct json_object *jso, const char *key, struct json_object **value) {
 	struct json_object *jobj;
 
-	if (value != NULL)
-		*value = NULL;
+	if ((jso == NULL) || (key == NULL)) return 0;
+	if (value != NULL) *value = NULL;
 
-	if (NULL == jso)
+	switch (jso->o_type) {
+	case json_type_object:
+		jobj = json_object_object_get(jso, key);
+		if (jobj == NULL) return 0;
+
+		if (value != NULL) *value = jobj;
+		return 1;
+
+	default:
+		if (value != NULL) *value = NULL;
 		return 0;
-
-	switch(jso->o_type) {
-		case json_type_object:
-			jobj = json_object_object_get(jso, key);
-			if (jobj != NULL) {
-				*value = jobj;
-				return 1;
-			}
-			return 0;
-		break;
-		default:
-			if (value != NULL) {
-				*value = NULL;
-			}
-			return 0;
-		break;
 	}
-	return 0;
 }
 #endif
 
