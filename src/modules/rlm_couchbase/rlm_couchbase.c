@@ -331,6 +331,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 			}
 			/* check start timestamp and adjust if needed */
 			mod_ensure_start_timestamp(cookie->jobj, request->packet->vps);
+		break;
 		case PW_STATUS_ALIVE:
 			/* check start timestamp and adjust if needed */
 			mod_ensure_start_timestamp(cookie->jobj, request->packet->vps);
@@ -346,7 +347,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 			}
 			/* return without doing anything */
 			return RLM_MODULE_NOOP;
-		break;
 	}
 
 	/* loop through pairs and add to json document */
