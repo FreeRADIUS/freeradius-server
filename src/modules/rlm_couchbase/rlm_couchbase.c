@@ -41,14 +41,14 @@ RCSID("$Id$");
  * Module Configuration
  */
 static const CONF_PARSER module_config[] = {
-	{"acct_key", PW_TYPE_STRING_PTR, offsetof(rlm_couchbase_t, acctkey), NULL,
+	{"acct_key", PW_TYPE_STRING_PTR, offsetof(rlm_couchbase_t, acct_key), NULL,
 		"radacct_%{%{Acct-Unique-Session-Id}:-%{Acct-Session-Id}}"},
 	{"doctype", PW_TYPE_STRING_PTR, offsetof(rlm_couchbase_t, doctype), NULL, "radacct"},
 	{"server", PW_TYPE_STRING_PTR | PW_TYPE_REQUIRED, offsetof(rlm_couchbase_t, server), NULL, NULL},
 	{"bucket", PW_TYPE_STRING_PTR | PW_TYPE_REQUIRED, offsetof(rlm_couchbase_t, bucket), NULL, NULL},
-	{"password", PW_TYPE_STRING_PTR, offsetof(rlm_couchbase_t, pass), NULL, NULL},
+	{"password", PW_TYPE_STRING_PTR, offsetof(rlm_couchbase_t, password), NULL, NULL},
 	{"expire", PW_TYPE_INTEGER, offsetof(rlm_couchbase_t, expire), NULL, 0},
-	{"user_key", PW_TYPE_STRING_PTR | PW_TYPE_REQUIRED, offsetof(rlm_couchbase_t, userkey), NULL,
+	{"user_key", PW_TYPE_STRING_PTR | PW_TYPE_REQUIRED, offsetof(rlm_couchbase_t, user_key), NULL,
 		"raduser_%{md5:%{tolower:%{%{Stripped-User-Name}:-%{User-Name}}}}"},
 	{NULL, -1, 0, NULL, NULL}     /* end the list */
 };
@@ -119,9 +119,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 	rad_assert(request->packet != NULL);
 
 	/* attempt to build document key */
-	if (radius_xlat(dockey, sizeof(dockey), request, inst->userkey, NULL, NULL) < 0) {
+	if (radius_xlat(dockey, sizeof(dockey), request, inst->user_key, NULL, NULL) < 0) {
 		/* log error */
-		RERROR("could not find user key attribute (%s) in packet", inst->userkey);
+		RERROR("could not find user key attribute (%s) in packet", inst->user_key);
 		/* return */
 		return RLM_MODULE_FAIL;
 	}
@@ -266,9 +266,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 	}
 
 	/* attempt to build document key */
-	if (radius_xlat(dockey, sizeof(dockey), request, inst->acctkey, NULL, NULL) < 0) {
+	if (radius_xlat(dockey, sizeof(dockey), request, inst->acct_key, NULL, NULL) < 0) {
 		/* log error */
-		RERROR("could not find accounting key attribute (%s) in packet", inst->acctkey);
+		RERROR("could not find accounting key attribute (%s) in packet", inst->acct_key);
 		/* release handle */
 		if (handle) {
 			fr_connection_release(inst->pool, handle);

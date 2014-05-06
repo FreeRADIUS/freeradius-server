@@ -43,7 +43,7 @@ This exmaple is from an Aerohive wireless access point.
       "strippedUserDomain": "blargs.com"
     }
 
-To generate the 'calledStationSSID' fields you will need to use the ```rewrite_called_station_id``` policy in the ```preacct``` section of your config.  Similarly to get the 'Stripped-User-Name' and 'Stripped-User-Domain' attributes I create a file in ```raddb/policy.d/``` with the following content:
+To generate the 'calledStationSSID' fields you will need to use the ```rewrite_called_station_id``` policy in the ```preacct``` section of your config.  Similarly to get the 'Stripped-User-Name' and 'Stripped-User-Domain' attributes you can create a file in ```raddb/policy.d/``` with the following content:
 
     ## nt domain regex
     simple_nt_regexp = "^([^\\\\\\\\]*)(\\\\\\\\(.*))$"
@@ -70,14 +70,14 @@ To generate the 'calledStationSSID' fields you will need to use the ```rewrite_c
       }
     }
 
-I then reference this policy in both the ```preacct``` and ```authorization``` sections of my configuration before referencing this module.
+You can then reference this policy in both the ```preacct``` and ```authorization``` sections of your configuration before calling this module.
 
 Authorization
 -------------
 
 The authorization funcionality relies on the user documents being stored with deterministic keys based on information available in the authorization request.  The format of those keys may be specified in unlang like the example below:
 
-    userkey = "raduser_%{md5:%{tolower:%{%{Stripped-User-Name}:-%{User-Name}}}}"
+    user_key = "raduser_%{md5:%{tolower:%{%{Stripped-User-Name}:-%{User-Name}}}}"
 
 This will create an md5 hash of the lowercase 'Stripped-User-Name' attribute or the 'User-Name' attribute if 'Stripped-User-Name' doesn't exist.  The module will then attempt to fetch the resulting key from the configured couchbase bucket.
 
@@ -125,11 +125,11 @@ Configuration
         # Couchbase bucket name
         bucket = "radius"
 
-        # Couchbase bucket password
-        #pass = "password"
+        # Couchbase bucket password (optional)
+        #password = "password"
 
         # Couchbase accounting document key (unlang supported)
-        acctkey = "radacct_%{%{Acct-Unique-Session-Id}:-%{Acct-Session-Id}}"
+        acct_key = "radacct_%{%{Acct-Unique-Session-Id}:-%{Acct-Session-Id}}"
 
         # Value for the 'docType' element in the json body for accounting documents
         doctype = "radacct"
@@ -176,7 +176,7 @@ Configuration
         }
 
         # Couchbase document key for user documents (unlang supported)
-        userkey = "raduser_%{md5:%{tolower:%{%{Stripped-User-Name}:-%{User-Name}}}}"
+        user_key = "raduser_%{md5:%{tolower:%{%{Stripped-User-Name}:-%{User-Name}}}}"
 
         #
         #  The connection pool is new for 3.0, and will be used in many
@@ -230,9 +230,3 @@ Configuration
             # or increase lifetime/idle_timeout.
         }
     }
-
-Notes
------
-
-This module was built and tested against the latest [FreeRADIUS v3.0.x branch](https://github.com/FreeRADIUS/freeradius-server/tree/v3.0.x)
-as of the most current commit to this repository.

@@ -43,7 +43,7 @@ void *mod_conn_create(void *instance) {
 	lcb_error_t cb_error = LCB_SUCCESS;         /* couchbase error status */
 
 	/* create instance */
-	cb_inst = couchbase_init_connection(inst->server, inst->bucket, inst->pass);
+	cb_inst = couchbase_init_connection(inst->server, inst->bucket, inst->password);
 
 	/* check couchbase instance status */
 	if ((cb_error = lcb_get_last_error(cb_inst)) != LCB_SUCCESS) {

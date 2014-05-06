@@ -41,13 +41,13 @@ RCSIDH(mod_h, "$Id$");
 
 /* configuration struct */
 typedef struct rlm_couchbase_t {
-	const char *acctkey;            /* accounting document key */
+	const char *acct_key;           /* accounting document key */
 	const char *doctype;            /* value of 'docType' element name */
 	char *server;                   /* couchbase server list */
 	const char *bucket;             /* couchbase bucket */
-	const char *pass;               /* couchbase bucket password */
+	const char *password;           /* couchbase bucket password */
 	unsigned int expire;            /* document expire time in seconds */
-	const char *userkey;            /* user document key */
+	const char *user_key;           /* user document key */
 	json_object *map;               /* json object to hold user defined attribute map */
 	fr_connection_pool_t *pool;     /* connection pool */
 } rlm_couchbase_t;
