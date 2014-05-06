@@ -776,7 +776,7 @@ static int fr_connection_manage(fr_connection_pool_t *pool,
  */
 static int fr_connection_pool_check(fr_connection_pool_t *pool)
 {
-	int spare;
+	int spawn, idle, extra;
 	time_t now = time(NULL);
 	fr_connection_t *this, *next;
 
@@ -785,48 +785,96 @@ static int fr_connection_pool_check(fr_connection_pool_t *pool)
 		return 1;
 	}
 
-	spare = pool->num - pool->active;
+	/*
+	 *	Some idle connections are OK, if they're within the
+	 *	configured "spare" range.  Any extra connections
+	 *	outside of that range can be closed.
+	 */
+	idle = pool->num - pool->active;
+	if (idle <= pool->spare) {
+		extra = 0;
+	} else {
+		extra = idle - pool->spare;
+	}
 
-	if ((pool->num < pool->max) && (spare < pool->spare)) {
-		int spawn;
-
-		spawn = pool->spare - spare;
-		if ((spawn + pool->num) > pool->max) {
-			spawn = pool->max - pool->num;
+	/*
+	 *	The other end can close connections.  If so, we'll
+	 *	have fewer than "min".  When that happens, open more
+	 *	connections to enforce "min".
+	 */
+	if (pool->num <= pool->min) {
+		if (pool->spawning) {
+			spawn = 0;
+		} else {
+			spawn = pool->min - pool->num;
 		}
-		if (pool->spawning) spawn = 0;
+		extra = 0;
 
-		if (spawn) {
-			pthread_mutex_unlock(&pool->mutex);
-			fr_connection_spawn(pool, now); /* ignore return code */
-			pthread_mutex_lock(&pool->mutex);
-		}
+	} else if (pool->num >= pool->max) {
+		/*
+		 *	Ensure we don't spawn more connections.  If
+		 *	there are extra idle connections, we can
+		 *	delete all of them.
+		 */
+		spawn = 0;
+		/* leave extra alone from above */
+
+	} else if (idle <= pool->spare) {
+		/*
+		 *	Not enough spare connections.  Spawn a few.
+		 */
+		spawn = pool->spare - idle;
+		extra = 0;
+
+	} else if ((pool->min + extra) >= pool->num) {
+		/*
+		 *	If closing the extra connections would take us
+		 *	below "min", then don't do that.  Cap the
+		 *	spare connections at the ones which will take
+		 *	us exactly to "min".
+		 */
+		spawn = 0;
+		extra = pool->num - pool->min;
+
+	} else {
+		/*
+		 *	Closing the "extra" connections won't take us
+		 *	below "min".  It's therefore safe to close
+		 *	them all.
+		 */
+		spawn = 0;
+		/* leave extra alone from above */
+	}
+
+	if (spawn) {
+		pthread_mutex_unlock(&pool->mutex);
+		fr_connection_spawn(pool, now); /* ignore return code */
+		pthread_mutex_lock(&pool->mutex);
 	}
 
 	/*
 	 *	We haven't spawned connections in a while, and there
 	 *	are too many spare ones.  Close the one which has been
-	 *	idle for the longest.
+	 *	unused for the longest.
 	 */
-	if ((now >= (pool->last_spawned + pool->delay_interval)) &&
-	    (spare > pool->spare)) {
-		fr_connection_t *idle;
+	if (extra && (now >= (pool->last_spawned + pool->delay_interval))) {
+		fr_connection_t *found;
 
-		idle = NULL;
+		found = NULL;
 		for (this = pool->tail; this != NULL; this = this->prev) {
 			if (this->in_use) continue;
 
-			if (!idle ||
-			   (this->last_used < idle->last_used)) {
-				idle = this;
+			if (!found ||
+			   (this->last_used < found->last_used)) {
+				found = this;
 			}
 		}
 
-		rad_assert(idle != NULL);
+		rad_assert(found != NULL);
 
-		INFO("%s: Closing connection (%" PRIu64 "): Too many free connections (%d > %d)", pool->log_prefix,
-		     idle->number, spare, pool->spare);
-		fr_connection_close(pool, idle);
+		INFO("%s: Closing connection (%" PRIu64 "), from %d unused connections", pool->log_prefix,
+		     found->number, extra);
+		fr_connection_close(pool, found);
 
 		/*
 		 *	Decrease the delay for the next time we clean
