@@ -558,6 +558,7 @@ int fr_log_talloc_report(TALLOC_CTX *ctx)
 	}
 	log = fdopen(fd, "w");
 	if (!log) {
+		close(fd);
 		fr_strerror_printf("Couldn't write memory report, fdopen failed: %s", fr_syserror(errno));
 		return -1;
 	}
