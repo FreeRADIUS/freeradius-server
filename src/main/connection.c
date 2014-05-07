@@ -36,7 +36,7 @@ extern bool check_config;
 
 #ifndef NDEBUG
 #ifdef HAVE_PTHREAD_H
-#define PTHREAD_DEBUG (1)
+/* #define PTHREAD_DEBUG (1) */
 #endif
 #endif
 
