@@ -89,6 +89,7 @@ static void *mod_conn_create(void *instance)
 		if (rlm_sql_select_query(&handle, inst, inst->config->open_query)) {
 			goto fail;
 		}
+		(inst->module->sql_finish_select_query)(handle, inst->config);
 	}
 
 	exec_trigger(NULL, inst->cs, "modules.sql.open", false);
