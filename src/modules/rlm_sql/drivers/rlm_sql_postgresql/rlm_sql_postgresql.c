@@ -90,11 +90,8 @@ static int affected_rows(PGresult * result)
  */
 static void free_result_row(rlm_sql_postgres_conn_t *conn)
 {
-	if (conn->row != NULL) {
-		TALLOC_FREE(conn->row);
-		conn->row = NULL;
-		conn->num_fields = 0;
-	}
+	TALLOC_FREE(conn->row);
+	conn->num_fields = 0;
 }
 
 #if defined(PG_DIAG_SQLSTATE) && defined(PG_DIAG_MESSAGE_PRIMARY)
@@ -165,6 +162,7 @@ static int _sql_socket_destructor(rlm_sql_postgres_conn_t *conn)
 
 	/* PQfinish also frees the memory used by the PGconn structure */
 	PQfinish(conn->db);
+	conn->db = NULL;
 
 	return 0;
 }
@@ -176,7 +174,8 @@ static int _sql_socket_destructor(rlm_sql_postgres_conn_t *conn)
  *	Purpose: Establish connection to the db
  *
  *************************************************************************/
-static int sql_init_socket(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
+static int CC_HINT(nonnull) sql_init_socket(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
+{
 	char *dbstring;
 	rlm_sql_postgres_conn_t *conn;
 
@@ -224,7 +223,8 @@ static int sql_init_socket(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
  *	Purpose: Issue a query to the database
  *
  *************************************************************************/
-static sql_rcode_t sql_query(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config, char const *query)
+static CC_HINT(nonnull) sql_rcode_t sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config,
+					      char const *query)
 {
 	rlm_sql_postgres_conn_t *conn = handle->conn;
 	ExecStatusType status;
@@ -397,7 +397,7 @@ static sql_rcode_t sql_free_result(rlm_sql_handle_t * handle, UNUSED rlm_sql_con
 
 	rlm_sql_postgres_conn_t *conn = handle->conn;
 
-	if (conn->result) {
+	if (conn->result != NULL) {
 		PQclear(conn->result);
 		conn->result = NULL;
 	}
