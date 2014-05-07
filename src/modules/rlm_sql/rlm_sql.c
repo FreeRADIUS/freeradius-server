@@ -1249,7 +1249,6 @@ static int acct_redundant(rlm_sql_t *inst, REQUEST *request, sql_acct_section_t 
 
 		if (sql_ret == RLM_SQL_RECONNECT) {
 			rcode = RLM_MODULE_FAIL;
-
 			goto finish;
 		}
 		rad_assert(handle);
@@ -1290,7 +1289,7 @@ static int acct_redundant(rlm_sql_t *inst, REQUEST *request, sql_acct_section_t 
 
 	(inst->module->sql_finish_query)(handle, inst->config);
 
-	finish:
+finish:
 	talloc_free(expanded);
 	sql_release_socket(inst, handle);
 
