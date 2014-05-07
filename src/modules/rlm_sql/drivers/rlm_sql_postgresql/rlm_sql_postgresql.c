@@ -73,14 +73,8 @@ static int affected_rows(PGresult * result)
  */
 static void free_result_row(rlm_sql_postgres_conn_t *conn)
 {
-	int i;
 	if (conn->row != NULL) {
-		for (i = conn->num_fields-1; i >= 0; i--) {
-			if (conn->row[i] != NULL) {
-				free(conn->row[i]);
-			}
-		}
-		free((char*)conn->row);
+		TALLOC_FREE(conn->row);
 		conn->row = NULL;
 		conn->num_fields = 0;
 	}
@@ -355,14 +349,11 @@ static sql_rcode_t sql_fetch_row(rlm_sql_handle_t * handle, UNUSED rlm_sql_confi
 	conn->num_fields = records;
 
 	if ((PQntuples(conn->result) > 0) && (records > 0)) {
-		conn->row = (char **)rad_malloc((records+1)*sizeof(char *));
-		memset(conn->row, '\0', (records+1)*sizeof(char *));
-
+		conn->row = talloc_zero_array(conn, char *, records + 1);
 		for (i = 0; i < records; i++) {
 			len = PQgetlength(conn->result, conn->cur_row, i);
-			conn->row[i] = (char *)rad_malloc(len+1);
-			memset(conn->row[i], '\0', len+1);
-			strlcpy(conn->row[i], PQgetvalue(conn->result, conn->cur_row,i),len + 1);
+			conn->row[i] = talloc_array(conn->row, char, len + 1);
+			strlcpy(conn->row[i], PQgetvalue(conn->result, conn->cur_row, i),len + 1);
 		}
 		conn->cur_row++;
 		handle->row = conn->row;
