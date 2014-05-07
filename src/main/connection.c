@@ -298,10 +298,11 @@ static void fr_connection_link_tail(fr_connection_pool_t *pool,
  *
  * @param[in] pool to modify.
  * @param[in] now Current time.
+ * @param[in] in_use whether the new connection should be "in_use" or not
  * @return the new connection struct or NULL on error.
  */
 static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool,
-					    time_t now)
+					    time_t now, bool in_use)
 {
 	fr_connection_t *this;
 	void *conn;
@@ -368,9 +369,6 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool,
 
 	INFO("%s: Opening additional connection (%" PRIu64 ")", pool->log_prefix, pool->count);
 
-	this = rad_malloc(sizeof(*this));
-	memset(this, 0, sizeof(*this));
-
 	/*
 	 *	This may take a long time, which prevents other
 	 *	threads from releasing connections.  We don't care
@@ -382,13 +380,16 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool,
 		ERROR("%s: Opening connection failed (%" PRIu64 ")", pool->log_prefix, pool->count);
 
 		pool->last_failed = now;
-		free(this);
 		pool->spawning = false; /* atomic, so no lock is needed */
 		return NULL;
 	}
 
+	this = rad_malloc(sizeof(*this));
+	memset(this, 0, sizeof(*this));
+
 	this->created = now;
 	this->connection = conn;
+	this->in_use = in_use;
 
 	/*
 	 *	And lock the mutex again while we link the new
@@ -689,7 +690,7 @@ fr_connection_pool_t *fr_connection_pool_init(CONF_SECTION *parent,
 	 *	not to.
 	 */
 	for (i = 0; i < pool->start; i++) {
-		this = fr_connection_spawn(pool, now);
+		this = fr_connection_spawn(pool, now, false);
 		if (!this) {
 		error:
 			fr_connection_pool_delete(pool);
@@ -853,7 +854,7 @@ static int fr_connection_pool_check(fr_connection_pool_t *pool)
 
 	if (spawn) {
 		pthread_mutex_unlock(&pool->mutex);
-		fr_connection_spawn(pool, now); /* ignore return code */
+		fr_connection_spawn(pool, now, false); /* ignore return code */
 		pthread_mutex_lock(&pool->mutex);
 	}
 
@@ -951,7 +952,7 @@ static void *fr_connection_get_internal(fr_connection_pool_t *pool, int spawn)
 
 	if (!spawn) return NULL;
 
-	this = fr_connection_spawn(pool, now);
+	this = fr_connection_spawn(pool, now, true); /* MY connection! */
 	if (!this) return NULL;
 	pthread_mutex_lock(&pool->mutex);
 
