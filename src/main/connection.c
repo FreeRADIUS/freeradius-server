@@ -828,9 +828,14 @@ static int fr_connection_pool_check(fr_connection_pool_t *pool)
 	} else if (idle <= pool->spare) {
 		/*
 		 *	Not enough spare connections.  Spawn a few.
+		 *	But cap the pool size at "max"
 		 */
 		spawn = pool->spare - idle;
 		extra = 0;
+
+		if ((pool->num + spawn) > pool->max) {
+			spawn = pool->max - pool->num;
+		}
 
 	} else if ((pool->min + extra) >= pool->num) {
 		/*
