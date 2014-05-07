@@ -480,7 +480,17 @@ static fr_connection_t *fr_connection_find(fr_connection_pool_t *pool, void *con
 	 *	order to find top of the parent structure.
 	 */
 	for (this = pool->head; this != NULL; this = this->next) {
-		if (this->connection == conn) return this;
+		if (this->connection == conn) {
+#ifdef PTHREAD_DEBUG
+			pthread_t pthread_id;
+
+			pthread_id = pthread_self();
+			rad_assert(pthread_equal(this->pthread_id, pthread_id) != 0);
+#endif
+
+			rad_assert(this->in_use == true);
+			return this;
+		}
 	}
 
 	pthread_mutex_unlock(&pool->mutex);
@@ -1008,23 +1018,10 @@ void *fr_connection_get(fr_connection_pool_t *pool)
 void fr_connection_release(fr_connection_pool_t *pool, void *conn)
 {
 	fr_connection_t *this;
-#ifdef PTHREAD_DEBUG
-	pthread_t pthread_id;
-#endif
 
 	this = fr_connection_find(pool, conn);
 	if (!this) return;
 
-#ifdef PTHREAD_DEBUG
-	/*
-	 *	The thread which grabbed the connection must be the
-	 *	thread which releases it.
-	 */
-	pthread_id = pthread_self();
-	rad_assert(pthread_equal(this->pthread_id, pthread_id) != 0);
-#endif
-
-	rad_assert(this->in_use == true);
 	this->in_use = false;
 
 	/*
@@ -1095,25 +1092,11 @@ void *fr_connection_reconnect(fr_connection_pool_t *pool, void *conn)
 	void *new_conn;
 	fr_connection_t *this;
 	uint64_t conn_number;
-#ifdef PTHREAD_DEBUG
-	pthread_t pthread_id;
-#endif
 
 	if (!pool || !conn) return NULL;
 
 	this = fr_connection_find(pool, conn);
 	if (!this) return NULL;
-
-#ifdef PTHREAD_DEBUG
-	/*
-	 *	The thread which grabbed the connection must be the
-	 *	thread which releases it.
-	 */
-	pthread_id = pthread_self();
-	rad_assert(pthread_equal(this->pthread_id, pthread_id) != 0);
-#endif
-
-	rad_assert(this->in_use == true);
 
 	/*
 	 *	The pool is now locked.
