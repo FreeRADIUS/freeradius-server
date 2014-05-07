@@ -205,10 +205,17 @@ static int CC_HINT(nonnull) sql_init_socket(rlm_sql_handle_t *handle, rlm_sql_co
 	conn->dbstring = dbstring;
 	conn->db = PQconnectdb(dbstring);
 	DEBUG2("rlm_sql_postgresql: Connecting using parameters: %s", dbstring);
-	if (!conn->db || (PQstatus(conn->db) != CONNECTION_OK)) {
-		ERROR("rlm_sql_postgresql: Connection failed: %s", PQerrorMessage(conn->db));
+	if (!conn->db) {
+		ERROR("rlm_sql_postgresql: Connection failed: Out of memory");
 		return -1;
 	}
+	if (PQstatus(conn->db) != CONNECTION_OK) {
+		ERROR("rlm_sql_postgresql: Connection failed: %s", PQerrorMessage(conn->db));
+		PQfinish(conn->db);
+		conn->db = NULL;
+		return -1;
+	}
+
 	DEBUG2("Connected to database '%s' on '%s' server version %i, protocol version %i, backend PID %i ",
 	       PQdb(conn->db), PQhost(conn->db), PQserverVersion(conn->db), PQprotocolVersion(conn->db),
 	       PQbackendPID(conn->db));
