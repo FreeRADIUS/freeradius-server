@@ -1179,6 +1179,7 @@ int main(int argc, char **argv)
 		fr_perror("radclient");
 		return 1;
 	}
+	fr_strerror();	/* Clear the error buffer */
 
 	/*
 	 *	Resolve hostname.
