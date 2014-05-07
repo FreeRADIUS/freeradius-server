@@ -258,7 +258,7 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 		 *	Read the request VP's.
 		 */
 		if (readvp2(&request->packet->vps, request->packet, packets, &packets_done) < 0) {
-			ERROR("Error parsing \"%s\"", files->filters);
+			ERROR("Error parsing \"%s\"", files->packets);
 			goto error;
 		}
 
