@@ -188,7 +188,7 @@ int sql_userparse(TALLOC_CTX *ctx, VALUE_PAIR **head, rlm_sql_row_t row)
 	 */
 	if (row[4] != NULL && row[4][0] != '\0') {
 		ptr = row[4];
-		operator = gettoken(&ptr, buf, sizeof(buf));
+		operator = gettoken(&ptr, buf, sizeof(buf), false);
 		if ((operator < T_OP_ADD) ||
 		    (operator > T_OP_CMP_EQ)) {
 			ERROR("rlm_sql: Invalid operator \"%s\" for attribute %s", row[4], row[2]);
@@ -216,7 +216,7 @@ int sql_userparse(TALLOC_CTX *ctx, VALUE_PAIR **head, rlm_sql_row_t row)
 	   ((row[3][0] == '\'') || (row[3][0] == '`') || (row[3][0] == '"')) &&
 	   (row[3][0] == row[3][strlen(row[3])-1])) {
 
-		token = gettoken(&value, buf, sizeof(buf));
+		token = gettoken(&value, buf, sizeof(buf), false);
 		switch (token) {
 		/*
 		 *	Take the unquoted string.
