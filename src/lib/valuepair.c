@@ -2166,7 +2166,7 @@ FR_TOKEN pairread(char const **ptr, VALUE_PAIR_RAW *raw)
 	*ptr = p;
 
 	/* Now we should have an operator here. */
-	raw->op = gettoken(ptr, buf, sizeof(buf));
+	raw->op = gettoken(ptr, buf, sizeof(buf), false);
 	if (raw->op  < T_EQSTART || raw->op  > T_EQEND) {
 		fr_strerror_printf("Expecting operator");
 
@@ -2176,7 +2176,7 @@ FR_TOKEN pairread(char const **ptr, VALUE_PAIR_RAW *raw)
 	/*
 	 *	Read value.  Note that empty string values are allowed
 	 */
-	quote = gettoken(ptr, raw->r_opand, sizeof(raw->r_opand));
+	quote = gettoken(ptr, raw->r_opand, sizeof(raw->r_opand), false);
 	if (quote == T_EOL) {
 		fr_strerror_printf("Failed to get value");
 
@@ -2188,7 +2188,7 @@ FR_TOKEN pairread(char const **ptr, VALUE_PAIR_RAW *raw)
 	 */
 	p = *ptr;
 
-	next = gettoken(&p, buf, sizeof(buf));
+	next = gettoken(&p, buf, sizeof(buf), false);
 	switch (next) {
 	case T_EOL:
 	case T_HASH:

@@ -1608,7 +1608,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 
 			ptr += hack;
 
-			t2 = gettoken(&ptr, buf2, sizeof(buf2));
+			t2 = gettoken(&ptr, buf2, sizeof(buf2), true);
 			switch (t2) {
 			case T_EOL:
 			case T_HASH:
@@ -1620,7 +1620,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 				return -1;
 			}
 		} else {
-			t1 = gettoken(&ptr, buf1, sizeof(buf1));
+			t1 = gettoken(&ptr, buf1, sizeof(buf1), true);
 		}
 
 		/*
@@ -1661,12 +1661,12 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		   (strcasecmp(buf1, "$-INCLUDE") == 0)) {
 			bool relative = true;
 
-		       t2 = getword(&ptr, buf2, sizeof(buf2));
-		       if (t2 != T_EOL) {
+			t2 = getword(&ptr, buf2, sizeof(buf2), true);
+			if (t2 != T_EOL) {
 			       ERROR("%s[%d]: Unexpected text after $INCLUDE",
 				     filename, *lineno);
 			       return -1;
-		       }
+			}
 
 			if (buf2[0] == '$') relative = false;
 
@@ -1781,7 +1781,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 	       if (strcasecmp(buf1, "$template") == 0) {
 		       CONF_ITEM *ci;
 		       CONF_SECTION *parentcs, *templatecs;
-		       t2 = getword(&ptr, buf2, sizeof(buf2));
+		       t2 = getword(&ptr, buf2, sizeof(buf2), true);
 
 		       if (t2 != T_EOL) {
 			       ERROR("%s[%d]: Unexpected text after $TEMPLATE",
@@ -1924,7 +1924,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			ptr += slen;
 			t2 = T_BARE_WORD;
 
-			if (gettoken(&ptr, buf3, sizeof(buf3)) != T_LCBRACE) {
+			if (gettoken(&ptr, buf3, sizeof(buf3), true) != T_LCBRACE) {
 				talloc_free(nextcs);
 				EDEBUG("%s[%d]: Expected '{'",
 				       filename, *lineno);
@@ -1945,7 +1945,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		/*
 		 *	Grab the next token.
 		 */
-		t2 = gettoken(&ptr, buf2, sizeof(buf2));
+		t2 = gettoken(&ptr, buf2, sizeof(buf2), true);
 		switch (t2) {
 		case T_EOL:
 		case T_HASH:
@@ -1971,7 +1971,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 
 		case T_OP_EQ:
 		case T_OP_SET:
-			t3 = getstring(&ptr, buf3, sizeof(buf3));
+			t3 = getstring(&ptr, buf3, sizeof(buf3), true);
 			if (t3 == T_OP_INVALID) {
 				ERROR("%s[%d]: Parse error: %s",
 				       filename, *lineno,
@@ -2027,7 +2027,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		case T_BARE_WORD:
 		case T_DOUBLE_QUOTED_STRING:
 		case T_SINGLE_QUOTED_STRING:
-			t3 = gettoken(&ptr, buf3, sizeof(buf3));
+			t3 = gettoken(&ptr, buf3, sizeof(buf3), true);
 			if (t3 != T_LCBRACE) {
 				ERROR("%s[%d]: Expecting section start brace '{' after \"%s %s\"",
 				       filename, *lineno, buf1, buf2);

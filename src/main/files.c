@@ -118,7 +118,7 @@ parse_again:
 			}
 
 			ptr = buffer;
-			getword(&ptr, entry, sizeof(entry));
+			getword(&ptr, entry, sizeof(entry), false);
 
 			/*
 			 *	Include another file if we see
@@ -146,11 +146,9 @@ parse_again:
 						p = newfile + strlen(newfile);
 						*p = FR_DIR_SEP;
 					}
-					getword(&ptr, p + 1,
-						sizeof(newfile) - 1 - (p - newfile));
+					getword(&ptr, p + 1, sizeof(newfile) - 1 - (p - newfile), false);
 				} else {
-					getword(&ptr, newfile,
-						sizeof(newfile));
+					getword(&ptr, newfile, sizeof(newfile), false);
 				}
 
 				t = NULL;

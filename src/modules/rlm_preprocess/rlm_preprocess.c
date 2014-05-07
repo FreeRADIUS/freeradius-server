@@ -153,7 +153,7 @@ static void cisco_vsa_hack(REQUEST *request)
 			char const *p;
 
 			p = vp->vp_strvalue;
-			gettoken(&p, newattr, sizeof(newattr));
+			gettoken(&p, newattr, sizeof(newattr), false);
 
 			if (dict_attrbyname(newattr) != NULL) {
 				pairmake_packet(newattr, ptr + 1, T_OP_EQ);
