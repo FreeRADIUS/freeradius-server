@@ -1964,9 +1964,8 @@ int tls_global_init(char const *acknowledged)
 
 	SSL_load_error_strings();	/* readable error messages (examples show call before library_init) */
 	SSL_library_init();		/* initialize library */
-#ifdef HAVE_OPENSSL_EVP_H
 	OpenSSL_add_all_algorithms();	/* required for SHA2 in OpenSSL < 0.9.8o and 1.0.0.a */
-#endif
+	OPENSSL_config(NULL);
 
 	if ((strcmp(acknowledged, libssl_defects[0].id) != 0) && (strcmp(acknowledged, "yes") != 0)) {
 		bool bad = false;
