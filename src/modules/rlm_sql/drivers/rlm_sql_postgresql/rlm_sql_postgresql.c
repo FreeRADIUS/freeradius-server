@@ -59,6 +59,23 @@ typedef struct rlm_sql_postgres_conn {
 	char		**row;
 } rlm_sql_postgres_conn_t;
 
+static int mod_instantiate(UNUSED CONF_SECTION *conf, UNUSED rlm_sql_config_t *config)
+{
+#if defined(HAVE_OPENSSL_CRYPTO_H) && (defined(HAVE_PQINITOPENSSL) || defined(HAVE_PQINITSSL))
+	static bool ssl_init = false;
+
+	if (!ssl_init) {
+#ifdef HAVE_PQINITOPENSSL
+		PQinitOpenSSL(0, 0);
+#else
+		PQinitSSL(0);
+#endif
+		ssl_init = true;
+	}
+#endif
+
+	return 0;
+}
 
 /** Return the number of affected rows of the result as an int instead of the string that postgresql provides
  *
@@ -164,19 +181,6 @@ static int sql_socket_destructor(void *c)
 static int sql_init_socket(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
 	char *dbstring;
 	rlm_sql_postgres_conn_t *conn;
-
-#if defined(HAVE_OPENSSL_CRYPTO_H) && (defined(HAVE_PQINITOPENSSL) || defined(HAVE_PQINITSSL))
-	static bool ssl_init = false;
-
-	if (!ssl_init) {
-#ifdef HAVE_PQINITOPENSSL
-		PQinitOpenSSL(0, 0);
-#else
-		PQinitSSL(0);
-#endif
-		ssl_init = true;
-	}
-#endif
 
 	MEM(conn = handle->conn = talloc_zero(handle, rlm_sql_postgres_conn_t));
 	talloc_set_destructor((void *) conn, sql_socket_destructor);
@@ -463,7 +467,7 @@ static int sql_affected_rows(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t 
 /* Exported to rlm_sql */
 rlm_sql_module_t rlm_sql_postgresql = {
 	"rlm_sql_postgresql",
-	NULL,
+	mod_instantiate,
 	sql_init_socket,
 	sql_query,
 	sql_select_query,
