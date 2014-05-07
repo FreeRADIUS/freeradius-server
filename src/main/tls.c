@@ -1472,13 +1472,15 @@ ocsp_end:
 /*
  *	For creating certificate attributes.
  */
-static char const *cert_attr_names[6][2] = {
+static char const *cert_attr_names[8][2] = {
   { "TLS-Client-Cert-Serial",		"TLS-Cert-Serial" },
   { "TLS-Client-Cert-Expiration",	"TLS-Cert-Expiration" },
   { "TLS-Client-Cert-Subject",		"TLS-Cert-Subject" },
   { "TLS-Client-Cert-Issuer",		"TLS-Cert-Issuer" },
   { "TLS-Client-Cert-Common-Name",	"TLS-Cert-Common-Name" },
-  { "TLS-Client-Cert-Subject-Alt-Name-Email",	"TLS-Cert-Subject-Alt-Name-Email" }
+  { "TLS-Client-Cert-Subject-Alt-Name-Email",	"TLS-Cert-Subject-Alt-Name-Email" },
+  { "TLS-Client-Cert-Subject-Alt-Name-Dns",	"TLS-Cert-Subject-Alt-Name-Dns" },
+  { "TLS-Client-Cert-Subject-Alt-Name-Upn",	"TLS-Cert-Subject-Alt-Name-Upn" }
 };
 
 #define FR_TLS_SERIAL		(0)
@@ -1487,6 +1489,8 @@ static char const *cert_attr_names[6][2] = {
 #define FR_TLS_ISSUER		(3)
 #define FR_TLS_CN		(4)
 #define FR_TLS_SAN_EMAIL       	(5)
+#define FR_TLS_SAN_DNS          (6)
+#define FR_TLS_SAN_UPN          (7)
 
 /*
  *	Before trusting a certificate, you must make sure that the
@@ -1636,7 +1640,6 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 		pairmake(NULL, certs, cert_attr_names[FR_TLS_CN][lookup], common_name, T_OP_SET);
 	}
 
-#ifdef GEN_EMAIL
 	/*
 	 *	Get the RFC822 Subject Alternative Name
 	 */
@@ -1652,10 +1655,34 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 				GENERAL_NAME *name = sk_GENERAL_NAME_value(names, i);
 
 				switch (name->type) {
+#ifdef GEN_EMAIL
 				case GEN_EMAIL:
 					pairmake(NULL, certs, cert_attr_names[FR_TLS_SAN_EMAIL][lookup],
 						 (char *) ASN1_STRING_data(name->d.rfc822Name), T_OP_SET);
 					break;
+#endif	/* GEN_EMAIL */
+#ifdef GEN_DNS
+				case GEN_DNS:
+					pairmake(NULL, certs, cert_attr_names[FR_TLS_SAN_DNS][lookup],
+						 (char *) ASN1_STRING_data(name->d.dNSName), T_OP_SET);
+					break;
+#endif	/* GEN_DNS */
+#ifdef GEN_OTHERNAME
+				case GEN_OTHERNAME:
+                                        /* look for a MS UPN */
+                                        if (NID_ms_upn == OBJ_obj2nid(name->d.otherName->type_id)) {
+                                            /* we've got a UPN - Must be ASN1-encoded UTF8 string */
+                                            if (name->d.otherName->value->type == V_ASN1_UTF8STRING) {
+                                                pairmake(NULL, certs, cert_attr_names[FR_TLS_SAN_UPN][lookup],
+                                                         (char *) ASN1_STRING_data(name->d.otherName->value->value.utf8string), T_OP_SET);
+                                                break;
+                                            } else {
+                                                RWARN("Invalid UPN in Subject Alt Name (should be UTF-8)\n");
+                                                break;
+                                            }
+                                        }
+					break;
+#endif	/* GEN_OTHERNAME */
 				default:
 					/* XXX TODO handle other SAN types */
 					break;
@@ -1665,7 +1692,6 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 		if (names != NULL)
 			sk_GENERAL_NAME_free(names);
 	}
-#endif	/* GEN_EMAIL */
 
 	/*
 	 *	If the CRL has expired, that might still be OK.
