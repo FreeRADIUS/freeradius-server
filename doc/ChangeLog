@@ -114,6 +114,10 @@ FreeRADIUS 3.0.3 Fri 21 Mar 2014 08:30:00 EDT urgency=medium
 	* Fix minor buffer overrun in mschapv2 where some attribute strings
 	  were not correctly \0 terminated.
 	* Fix crash on authentication failure with MIT kerberos.
+	* Fix code so that octal escape sequences aren't prematurely unescaped
+	  in rlm_sql, radclient, preprocess, and other places. This may 
+	  require configuration changes, as these sequences will no longer
+	  need double escaping (\\) of the backslash.
 	
 FreeRADIUS 3.0.2 Fri 21 Mar 2014 08:30:00 EDT urgency=medium
 	Feature improvements
