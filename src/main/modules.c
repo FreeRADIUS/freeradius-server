@@ -795,7 +795,7 @@ rlm_rcode_t indexed_modcall(rlm_components_t comp, int idx, REQUEST *request)
 			list = this->modulelist;
 		} else {
 			RDEBUG3("%s sub-section not found.  Ignoring.",
-			        section_type_value[comp].typename);
+				section_type_value[comp].typename);
 		}
 	}
 

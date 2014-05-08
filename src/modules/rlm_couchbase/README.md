@@ -54,19 +54,19 @@ To generate the 'calledStationSSID' fields you will need to use the ```rewrite_c
     ## split user@domain and domain\user formats
     strip_user_domain {
       if(User-Name && (User-Name =~ /${policy.simple_nt_regexp}/)){
-        update request {
-          Stripped-User-Domain = "%{1}"
-          Stripped-User-Name = "%{3}"
-        }
+	update request {
+	  Stripped-User-Domain = "%{1}"
+	  Stripped-User-Name = "%{3}"
+	}
       }
       elsif(User-Name && (User-Name =~ /${policy.simple_nai_regexp}/)){
-        update request {
-          Stripped-User-Name = "%{1}"
-          Stripped-User-Domain = "%{3}"
-        }
+	update request {
+	  Stripped-User-Name = "%{1}"
+	  Stripped-User-Domain = "%{3}"
+	}
       }
       else {
-        noop
+	noop
       }
     }
 
@@ -87,16 +87,16 @@ The document structure is straight forward and flexible:
       "docType": "raduser",
       "userName": "test",
       "config": {
-        "SHA-Password": {
-          "value": "a94a8fe5ccb19ba61c4c0873d391e987982fbbd3",
-          "op": ":="
-        }
+	"SHA-Password": {
+	  "value": "a94a8fe5ccb19ba61c4c0873d391e987982fbbd3",
+	  "op": ":="
+	}
       },
       "reply": {
-        "Reply-Message": {
-          "value": "Hidey Ho!",
-          "op": "="
-        }
+	"Reply-Message": {
+	  "value": "Hidey Ho!",
+	  "op": "="
+	}
       }
     }
 
@@ -115,118 +115,118 @@ Configuration
 -------------
 
     couchbase {
-        #
-        # List of Couchbase hosts (hosts may be space, tab, comma or semi-colon separated).
-        # Ports are optional if servers are listening on the standard port.
-        # Complete pool urls are preferred.
-        #
-        server = "http://cb01.blargs.com:8091/pools/ http://cb04.blargs.com:8091/pools/"
+	#
+	# List of Couchbase hosts (hosts may be space, tab, comma or semi-colon separated).
+	# Ports are optional if servers are listening on the standard port.
+	# Complete pool urls are preferred.
+	#
+	server = "http://cb01.blargs.com:8091/pools/ http://cb04.blargs.com:8091/pools/"
 
-        # Couchbase bucket name
-        bucket = "radius"
+	# Couchbase bucket name
+	bucket = "radius"
 
-        # Couchbase bucket password (optional)
-        #password = "password"
+	# Couchbase bucket password (optional)
+	#password = "password"
 
-        # Couchbase accounting document key (unlang supported)
-        acct_key = "radacct_%{%{Acct-Unique-Session-Id}:-%{Acct-Session-Id}}"
+	# Couchbase accounting document key (unlang supported)
+	acct_key = "radacct_%{%{Acct-Unique-Session-Id}:-%{Acct-Session-Id}}"
 
-        # Value for the 'docType' element in the json body for accounting documents
-        doctype = "radacct"
+	# Value for the 'docType' element in the json body for accounting documents
+	doctype = "radacct"
 
-        ## Accounting document expire time in seconds (0 = never)
-        expire = 2592000
+	## Accounting document expire time in seconds (0 = never)
+	expire = 2592000
 
-        #
-        # Map attribute names to json element names for accounting.
-        #
-        # Configuration items are in the format:
-        # <element name> = '<radius attribute>'
-        #
-        # Attribute names should be single quoted.
-        #
-        # Note: Atrributes not in this map will not be recorded.
-        #
-        map {
-            sessionId           = 'Acct-Session-Id'
-            uniqueId            = 'Acct-Unique-Session-Id'
-            lastStatus          = 'Acct-Status-Type'
-            authentic           = 'Acct-Authentic'
-            userName            = 'User-Name'
-            strippedUserName    = 'Stripped-User-Name'
-            strippedUserDomain  = 'Stripped-User-Domain'
-            realm               = 'Realm'
-            nasIpAddress        = 'NAS-IP-Address'
-            nasIdentifier       = 'NAS-Identifier'
-            nasPort             = 'NAS-Port'
-            calledStationId     = 'Called-Station-Id'
-            calledStationSSID   = 'Called-Station-SSID'
-            callingStationId    = 'Calling-Station-Id'
-            framedIpAddress     = 'Framed-IP-Address'
-            nasPortType         = 'NAS-Port-Type'
-            connectInfo         = 'Connect-Info'
-            sessionTime         = 'Acct-Session-Time'
-            inputPackets        = 'Acct-Input-Packets'
-            outputPackets       = 'Acct-Output-Packets'
-            inputOctets         = 'Acct-Input-Octets'
-            outputOctets        = 'Acct-Output-Octets'
-            inputGigawords      = 'Acct-Input-Gigawords'
-            outputGigawords     = 'Acct-Output-Gigawords'
-            lastUpdated         = 'Event-Timestamp'
-        }
+	#
+	# Map attribute names to json element names for accounting.
+	#
+	# Configuration items are in the format:
+	# <element name> = '<radius attribute>'
+	#
+	# Attribute names should be single quoted.
+	#
+	# Note: Atrributes not in this map will not be recorded.
+	#
+	map {
+	    sessionId           = 'Acct-Session-Id'
+	    uniqueId            = 'Acct-Unique-Session-Id'
+	    lastStatus          = 'Acct-Status-Type'
+	    authentic           = 'Acct-Authentic'
+	    userName            = 'User-Name'
+	    strippedUserName    = 'Stripped-User-Name'
+	    strippedUserDomain  = 'Stripped-User-Domain'
+	    realm               = 'Realm'
+	    nasIpAddress        = 'NAS-IP-Address'
+	    nasIdentifier       = 'NAS-Identifier'
+	    nasPort             = 'NAS-Port'
+	    calledStationId     = 'Called-Station-Id'
+	    calledStationSSID   = 'Called-Station-SSID'
+	    callingStationId    = 'Calling-Station-Id'
+	    framedIpAddress     = 'Framed-IP-Address'
+	    nasPortType         = 'NAS-Port-Type'
+	    connectInfo         = 'Connect-Info'
+	    sessionTime         = 'Acct-Session-Time'
+	    inputPackets        = 'Acct-Input-Packets'
+	    outputPackets       = 'Acct-Output-Packets'
+	    inputOctets         = 'Acct-Input-Octets'
+	    outputOctets        = 'Acct-Output-Octets'
+	    inputGigawords      = 'Acct-Input-Gigawords'
+	    outputGigawords     = 'Acct-Output-Gigawords'
+	    lastUpdated         = 'Event-Timestamp'
+	}
 
-        # Couchbase document key for user documents (unlang supported)
-        user_key = "raduser_%{md5:%{tolower:%{%{Stripped-User-Name}:-%{User-Name}}}}"
+	# Couchbase document key for user documents (unlang supported)
+	user_key = "raduser_%{md5:%{tolower:%{%{Stripped-User-Name}:-%{User-Name}}}}"
 
-        #
-        #  The connection pool is new for 3.0, and will be used in many
-        #  modules, for all kinds of connection-related activity.
-        #
-        pool {
-            # Number of connections to start
-            start = 5
+	#
+	#  The connection pool is new for 3.0, and will be used in many
+	#  modules, for all kinds of connection-related activity.
+	#
+	pool {
+	    # Number of connections to start
+	    start = 5
 
-            # Minimum number of connections to keep open
-            min = 5
+	    # Minimum number of connections to keep open
+	    min = 5
 
-            # Maximum number of connections
-            #
-            # If these connections are all in use and a new one
-            # is requested, the request will NOT get a connection.
-            #
-            # NOTE: This should be greater than or equal to "min" above.
-            max = 20
+	    # Maximum number of connections
+	    #
+	    # If these connections are all in use and a new one
+	    # is requested, the request will NOT get a connection.
+	    #
+	    # NOTE: This should be greater than or equal to "min" above.
+	    max = 20
 
-            # Spare connections to be left idle
-            #
-            # NOTE: Idle connections WILL be closed if "idle_timeout"
-            # is set.  This should be less than or equal to "max" above.
-            spare = 15
+	    # Spare connections to be left idle
+	    #
+	    # NOTE: Idle connections WILL be closed if "idle_timeout"
+	    # is set.  This should be less than or equal to "max" above.
+	    spare = 15
 
-            # Number of uses before the connection is closed
-            #
-            # NOTE: A setting of 0 means infinite (no limit).
-            uses = 0
+	    # Number of uses before the connection is closed
+	    #
+	    # NOTE: A setting of 0 means infinite (no limit).
+	    uses = 0
 
-            # The lifetime (in seconds) of the connection
-            #
-            # NOTE: A setting of 0 means infinite (no limit).
-            lifetime = 0
+	    # The lifetime (in seconds) of the connection
+	    #
+	    # NOTE: A setting of 0 means infinite (no limit).
+	    lifetime = 0
 
-            # The idle timeout (in seconds).  A connection which is
-            # unused for this length of time will be closed.
-            #
-            # NOTE: A setting of 0 means infinite (no timeout).
-            idle_timeout = 1200
+	    # The idle timeout (in seconds).  A connection which is
+	    # unused for this length of time will be closed.
+	    #
+	    # NOTE: A setting of 0 means infinite (no timeout).
+	    idle_timeout = 1200
 
-            # NOTE: All configuration settings are enforced.  If a
-            # connection is closed because of "idle_timeout",
-            # "uses", or "lifetime", then the total number of
-            # connections MAY fall below "min".  When that
-            # happens, it will open a new connection.  It will
-            # also log a WARNING message.
-            #
-            # The solution is to either lower the "min" connections,
-            # or increase lifetime/idle_timeout.
-        }
+	    # NOTE: All configuration settings are enforced.  If a
+	    # connection is closed because of "idle_timeout",
+	    # "uses", or "lifetime", then the total number of
+	    # connections MAY fall below "min".  When that
+	    # happens, it will open a new connection.  It will
+	    # also log a WARNING message.
+	    #
+	    # The solution is to either lower the "min" connections,
+	    # or increase lifetime/idle_timeout.
+	}
     }

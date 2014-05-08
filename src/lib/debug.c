@@ -796,7 +796,7 @@ void fr_verify_list(TALLOC_CTX *expected, VALUE_PAIR *vps)
 		parent = talloc_parent(vp);
 		if (expected && (parent != expected)) {
 			fr_perror("Expected VALUE_PAIR (%s) to be parented by %p (%s), "
-			          "but parented by %p (%s)",
+				  "but parented by %p (%s)",
 				  vp->da->name,
 				  expected, talloc_get_name(expected),
 				  parent, parent ? talloc_get_name(parent) : "NULL");

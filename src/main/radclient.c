@@ -777,7 +777,7 @@ static int send_one_packet(rc_request_t *request)
 			fr_packet_list_yank(pl, request->packet);
 
 			REDEBUG("No reply from server for ID %d socket %d",
-			        request->packet->id, request->packet->sockfd);
+				request->packet->id, request->packet->sockfd);
 			deallocate_id(request);
 
 			/*
@@ -932,7 +932,7 @@ static int recv_one_packet(int wait_time)
 				fr_packet_codes[request->reply->code]);
 		} else {
 			REDEBUG("Expected %u got %i", request->filter_code,
-			        request->reply->code);
+				request->reply->code);
 		}
 		stats.failed++;
 	/*
