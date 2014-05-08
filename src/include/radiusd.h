@@ -694,7 +694,7 @@ int radius_event_init(TALLOC_CTX *ctx);
 int radius_event_start(CONF_SECTION *cs, bool spawn_flag);
 void radius_event_free(void);
 int radius_event_process(void);
-int event_new_fd(rad_listen_t *listener);
+void radius_update_listener(rad_listen_t *listener);
 void revive_home_server(void *ctx);
 void mark_home_server_dead(home_server_t *home, struct timeval *when);
 

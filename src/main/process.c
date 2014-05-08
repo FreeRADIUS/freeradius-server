@@ -190,8 +190,7 @@ static fr_packet_list_t *proxy_list = NULL;
 
 #ifdef HAVE_PTHREAD_H
 #ifdef WITH_PROXY
-static pthread_mutex_t	proxy_mutex;
-static rad_listen_t *proxy_listener_list = NULL;
+static pthread_mutex_t proxy_mutex;
 static bool proxy_no_new_sockets = false;
 #endif
 
@@ -210,15 +209,72 @@ static pthread_t NO_SUCH_CHILD_PID;
 #define NO_CHILD_THREAD
 #endif
 
+#if  defined(HAVE_PTHREAD_H) && !defined (NDEBUG)
+static bool we_are_master(void)
+{
+	if (spawn_flag &&
+	    (pthread_equal(pthread_self(), NO_SUCH_CHILD_PID) == 0)) {
+		return false;
+	}
+
+	return true;
+}
+#define ASSERT_MASTER 	if (!we_are_master()) rad_panic("We are not master")
+
+#else
+#define we_are_master(_x) (1)
+#define ASSERT_MASTER
+#endif
+
+static int event_new_fd(rad_listen_t *this);
+
 /*
  *	We need mutexes around the event FD list *only* in certain
  *	cases.
  */
 #if defined (HAVE_PTHREAD_H) && (defined(WITH_PROXY) || defined(WITH_TCP))
+static rad_listen_t *new_listeners = NULL;
+
 static pthread_mutex_t	fd_mutex;
 #define FD_MUTEX_LOCK if (spawn_flag) pthread_mutex_lock
 #define FD_MUTEX_UNLOCK if (spawn_flag) pthread_mutex_unlock
+
+void radius_update_listener(rad_listen_t *this)
+{
+	/*
+	 *	Just do it ourselves.
+	 */
+	if (we_are_master()) {
+		event_new_fd(this);
+		return;
+	}
+
+	FD_MUTEX_LOCK(&fd_mutex);
+
+	/*
+	 *	If it's already in the list, don't add it again.
+	 */
+	if (this->next) {
+		FD_MUTEX_UNLOCK(&fd_mutex);
+		return;
+	}
+
+	/*
+	 *	Otherwise, add it to the list
+	 */
+	this->next = new_listeners;
+	new_listeners = this;
+	FD_MUTEX_UNLOCK(&fd_mutex);
+	radius_signal_self(RADIUS_SIGNAL_SELF_NEW_FD);
+}
 #else
+void radius_update_listener(rad_listen_t *this)
+{
+	/*
+	 *	No threads.  Just insert it.
+	 */
+	return event_new_fd(this);
+}
 /*
  *	This is easier than ifdef's throughout the code.
  */
@@ -243,24 +299,6 @@ static REQUEST *request_setup(rad_listen_t *listener, RADIUS_PACKET *packet,
 			      RADCLIENT *client, RAD_REQUEST_FUNP fun);
 
 STATE_MACHINE_DECL(request_common);
-
-#if  defined(HAVE_PTHREAD_H) && !defined (NDEBUG)
-static bool we_are_master(void)
-{
-	if (spawn_flag &&
-	    (pthread_equal(pthread_self(), NO_SUCH_CHILD_PID) == 0)) {
-		return false;
-	}
-
-	return true;
-}
-#define ASSERT_MASTER 	if (!we_are_master()) rad_panic("We are not master")
-
-#else
-#define we_are_master(_x) (1)
-#define ASSERT_MASTER
-#endif
-
 STATE_MACHINE_DECL(request_response_delay);
 STATE_MACHINE_DECL(request_cleanup_delay);
 STATE_MACHINE_DECL(request_running);
@@ -1720,6 +1758,8 @@ static void tcp_socket_timer(void *ctx)
 	char buffer[256];
 	fr_socket_limit_t *limit;
 
+	ASSERT_MASTER;
+
 	fr_event_now(el, &now);
 
 	if (listener->status != RAD_LISTEN_STATUS_KNOWN) return;
@@ -1990,15 +2030,11 @@ static int insert_into_proxy_hash(REQUEST *request)
 		proxy_listener = this;
 
 		/*
-		 *	Add it to the event loop (and to the packet list)
-		 *	before we try to grab another Id.
+		 *	Add it to the event loop.  Ensure that we have
+		 *	only one mutex locked at a time.
 		 */
 		PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
-		if (!event_new_fd(this)) {
-			RDEBUG3("proxy: Failed inserting new socket into event loop");
-			listen_free(&this);
-			goto fail;
-		}
+		radius_update_listener(this);
 		PTHREAD_MUTEX_LOCK(&proxy_mutex);
 	}
 
@@ -3958,9 +3994,11 @@ static int proxy_eol_cb(void *ctx, void *data)
 }
 #endif
 
-int event_new_fd(rad_listen_t *this)
+static int event_new_fd(rad_listen_t *this)
 {
 	char buffer[1024];
+
+	ASSERT_MASTER;
 
 	if (this->status == RAD_LISTEN_STATUS_KNOWN) return 1;
 
@@ -3975,13 +4013,29 @@ int event_new_fd(rad_listen_t *this)
 			INFO(" ... adding new socket %s", buffer);
 		}
 
+		switch (this->type) {
+#ifdef WITH_DETAIL
+		/*
+		 *	Detail files are always known, and aren't
+		 *	put into the socket event loop.
+		 */
+		case RAD_LISTEN_DETAIL:
+			this->status = RAD_LISTEN_STATUS_KNOWN;
+
+			/*
+			 *	Set up the first poll interval.
+			 */
+			event_poll_detail(this);
+			return 1;
+#endif
+
 #ifdef WITH_PROXY
 		/*
 		 *	Add it to the list of sockets we can use.
 		 *	Server sockets (i.e. auth/acct) are never
 		 *	added to the packet list.
 		 */
-		if (this->type == RAD_LISTEN_PROXY) {
+		case RAD_LISTEN_PROXY:
 			PTHREAD_MUTEX_LOCK(&proxy_mutex);
 			if (!fr_packet_list_socket_add(proxy_list, this->fd,
 						       sock->proto,
@@ -4003,81 +4057,61 @@ int event_new_fd(rad_listen_t *this)
 				       fr_strerror());
 				return 0;
 			}
-
-			if (sock->home) {
-				sock->home->limit.num_connections++;
-
-#ifdef HAVE_PTHREAD_H
-				/*
-				 *	If necessary, add it to the list of
-				 *	new proxy listeners.
-				 */
-				if (sock->home->limit.lifetime || sock->home->limit.idle_timeout) {
-					this->next = proxy_listener_list;
-					proxy_listener_list = this;
-				}
-#endif
-			}
 			PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
 
+#ifdef WITH_TCP
 			/*
-			 *	Tell the main thread that we've added
-			 *	a proxy listener, but only if we need
-			 *	to update the event list.  Do this
-			 *	with the mutex unlocked, to reduce
-			 *	contention.
+			 *	Add timers to outgoing child sockets, if necessary.
 			 */
-			if (sock->home) {
-				if (sock->home->limit.lifetime || sock->home->limit.idle_timeout) {
-					radius_signal_self(RADIUS_SIGNAL_SELF_NEW_FD);
+			if (sock->proto == IPPROTO_TCP && sock->opened &&
+			    (sock->home->limit.lifetime || sock->home->limit.idle_timeout)) {
+				struct timeval when;
+
+				when.tv_sec = sock->opened + 1;
+				when.tv_usec = 0;
+
+				if (!fr_event_insert(el, tcp_socket_timer, this, &when,
+						     &(sock->ev))) {
+					rad_panic("Failed to insert event");
 				}
 			}
-		}
 #endif
-
-#ifdef WITH_DETAIL
-		/*
-		 *	Detail files are always known, and aren't
-		 *	put into the socket event loop.
-		 */
-		if (this->type == RAD_LISTEN_DETAIL) {
-			this->status = RAD_LISTEN_STATUS_KNOWN;
+			break;
+#endif	/* WITH_PROXY */
 
 			/*
-			 *	Set up the first poll interval.
+			 *	FIXME: put idle timers on command sockets.
 			 */
-			event_poll_detail(this);
-			return 1;
-		}
-#endif
 
+		default:
 #ifdef WITH_TCP
-		/*
-		 *	Add timers to child sockets, if necessary.
-		 */
-		if (sock->proto == IPPROTO_TCP && sock->opened &&
-		    (sock->limit.lifetime || sock->limit.idle_timeout)) {
-			struct timeval when;
+			/*
+			 *	Add timers to incoming child sockets, if necessary.
+			 */
+			if (sock->proto == IPPROTO_TCP && sock->opened &&
+			    (sock->limit.lifetime || sock->limit.idle_timeout)) {
+				struct timeval when;
 
-			ASSERT_MASTER;
+				when.tv_sec = sock->opened + 1;
+				when.tv_usec = 0;
 
-			when.tv_sec = sock->opened + 1;
-			when.tv_usec = 0;
-
-			if (!fr_event_insert(el, tcp_socket_timer, this, &when,
-					     &(sock->ev))) {
-				rad_panic("Failed to insert event");
+				if (!fr_event_insert(el, tcp_socket_timer, this, &when,
+						     &(sock->ev))) {
+					rad_panic("Failed to insert event");
+				}
 			}
-		}
 #endif
+			break;
+		} /* switch over listener types */
 
-		FD_MUTEX_LOCK(&fd_mutex);
+		/*
+		 *	All sockets: add the FD to the event handler.
+		 */
 		if (!fr_event_fd_insert(el, 0, this->fd,
 					event_socket_handler, this)) {
 			ERROR("Failed adding event handler for socket!");
 			fr_exit(1);
 		}
-		FD_MUTEX_UNLOCK(&fd_mutex);
 
 		this->status = RAD_LISTEN_STATUS_KNOWN;
 		return 1;
@@ -4091,9 +4125,7 @@ int event_new_fd(rad_listen_t *this)
 		/*
 		 *	Remove it from the list of live FD's.
 		 */
-		FD_MUTEX_LOCK(&fd_mutex);
 		fr_event_fd_delete(el, 0, this->fd);
-		FD_MUTEX_UNLOCK(&fd_mutex);
 
 #ifdef WITH_PROXY
 		/*
@@ -4205,9 +4237,6 @@ int event_new_fd(rad_listen_t *this)
 				      buffer, fr_strerror());
 				fr_exit(1);
 			}
-			if (sock->home &&  sock->home->limit.num_connections) {
-				sock->home->limit.num_connections--;
-			}
 			PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
 		} else
 #endif
@@ -4251,6 +4280,8 @@ int event_new_fd(rad_listen_t *this)
 
 static void handle_signal_self(int flag)
 {
+	ASSERT_MASTER;
+
 	if ((flag & (RADIUS_SIGNAL_SELF_EXIT | RADIUS_SIGNAL_SELF_TERM)) != 0) {
 		if ((flag & RADIUS_SIGNAL_SELF_EXIT) != 0) {
 			INFO("Signalled to exit");
@@ -4315,41 +4346,31 @@ static void handle_signal_self(int flag)
 #ifdef WITH_PROXY
 #ifdef HAVE_PTHREAD_H
 	/*
-	 *	Add event handlers for idle timeouts && maximum lifetime.
+	 *	There are new listeners in the list.  Run
+	 *	event_new_fd() on them.
 	 */
 	if ((flag & RADIUS_SIGNAL_SELF_NEW_FD) != 0) {
-		struct timeval when, now;
+		rad_listen_t *this, *next;
 
-		fr_event_now(el, &now);
+		FD_MUTEX_LOCK(&fd_mutex);
 
-		PTHREAD_MUTEX_LOCK(&proxy_mutex);
-
-		while (proxy_listener_list) {
-			rad_listen_t *this = proxy_listener_list;
+		/*
+		 *	FIXME: unlock the mutex before calling
+		 *	event_new_fd()?
+		 */
+		for (this = new_listeners; this != NULL; this = next) {
 			listen_socket_t *sock = this->data;
 
-			rad_assert(sock->proto == IPPROTO_TCP);
-			proxy_listener_list = this->next;
+			next = this->next;
 			this->next = NULL;
 
-			if (!sock->home) continue; /* skip UDP sockets */
+			rad_assert(sock->proto == IPPROTO_TCP);
 
-			when = now;
-
-			/*
-			 *	Sockets should only be added to the
-			 *	proxy_listener_list if they have limits.
-			 *
-			 */
-			rad_assert(sock->home->limit.lifetime || sock->home->limit.idle_timeout);
-
-			if (!fr_event_insert(el, tcp_socket_timer, this, &when,
-					     &(sock->ev))) {
-				rad_panic("Failed to insert event");
-			}
+			event_new_fd(this);
 		}
 
-		PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
+		new_listeners = NULL;
+		FD_MUTEX_UNLOCK(&fd_mutex);
 	}
 #endif	/* HAVE_PTHREAD_H */
 #endif	/* WITH_PROXY */

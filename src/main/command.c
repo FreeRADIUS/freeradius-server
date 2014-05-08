@@ -264,7 +264,7 @@ static void command_close_socket(rad_listen_t *this)
 	 *	This removes the socket from the event fd, so no one
 	 *	will be calling us any more.
 	 */
-	event_new_fd(this);
+	radius_update_listener(this);
 }
 
 static ssize_t CC_HINT(format (printf, 2, 3)) cprintf(rad_listen_t *listener, char const *fmt, ...)
@@ -2693,7 +2693,7 @@ static int command_domain_accept(rad_listen_t *listener)
 	/*
 	 *	Tell the event loop that we have a new FD
 	 */
-	event_new_fd(this);
+	radius_update_listener(this);
 
 	return 0;
 }

@@ -472,7 +472,7 @@ static int dual_tcp_recv(rad_listen_t *listener)
 		 *	Tell the event handler that an FD has disappeared.
 		 */
 		DEBUG("Client has closed connection");
-		event_new_fd(listener);
+		radius_update_listener(listener);
 
 		/*
 		 *	Do NOT free the listener here.  It's in use by
@@ -694,7 +694,7 @@ static int dual_tcp_accept(rad_listen_t *listener)
 	 *	Tell the event loop that we have a new FD.
 	 *	This can be called from a child thread...
 	 */
-	event_new_fd(this);
+	radius_update_listener(this);
 
 	return 0;
 }
@@ -703,7 +703,7 @@ static int dual_tcp_accept(rad_listen_t *listener)
 /*
  *	Ensure that we always keep the correct counters.
  */
-#ifdef WITH_TLS
+#ifdef WITH_TCP
 static void common_socket_free(rad_listen_t *this)
 {
 	listen_socket_t *sock = this->data;
@@ -1938,7 +1938,7 @@ static int proxy_socket_tcp_recv(rad_listen_t *listener)
 	packet = fr_tcp_recv(listener->fd, 0);
 	if (!packet) {
 		listener->status = RAD_LISTEN_STATUS_EOL;
-		event_new_fd(listener);
+		radius_update_listener(listener);
 		return 0;
 	}
 
@@ -3244,7 +3244,7 @@ add_sockets:
 				}
 #endif
 			} else {
-				event_new_fd(this);
+				radius_update_listener(this);
 			}
 
 		}
@@ -3320,11 +3320,7 @@ add_sockets:
 			return -1;
 		}
 
-		if (!event_new_fd(this)) {
-			listen_free(&this);
-			listen_free(head);
-			return -1;
-		}
+		radius_update_listener(this);
 	}
 #endif
 
