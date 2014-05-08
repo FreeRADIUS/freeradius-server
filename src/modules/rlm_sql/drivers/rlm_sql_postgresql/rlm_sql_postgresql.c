@@ -178,33 +178,35 @@ static int sql_socket_destructor(void *c)
  *************************************************************************/
 static int CC_HINT(nonnull) sql_init_socket(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 {
+	char *dbstring;
 	rlm_sql_postgres_conn_t *conn;
 
 	MEM(conn = handle->conn = talloc_zero(handle, rlm_sql_postgres_conn_t));
 	talloc_set_destructor((void *) conn, sql_socket_destructor);
 
-	MEM(conn->dbstring = strchr(config->sql_db, '=') ?
+	dbstring = strchr(config->sql_db, '=') ?
 		talloc_typed_strdup(conn, config->sql_db) :
-		talloc_typed_asprintf(conn, "dbname='%s'", config->sql_db));
+		talloc_typed_asprintf(conn, "dbname='%s'", config->sql_db);
 
 	if (config->sql_server[0] != '\0') {
-		MEM(conn->dbstring = talloc_asprintf_append(conn->dbstring, " host='%s'", config->sql_server));
+		dbstring = talloc_asprintf_append(dbstring, " host='%s'", config->sql_server);
 	}
 
 	if (config->sql_port[0] != '\0') {
-		MEM(conn->dbstring = talloc_asprintf_append(conn->dbstring, " port=%s", config->sql_port));
+		dbstring = talloc_asprintf_append(dbstring, " port=%s", config->sql_port);
 	}
 
 	if (config->sql_login[0] != '\0') {
-		MEM(conn->dbstring = talloc_asprintf_append(conn->dbstring, " user='%s'", config->sql_login));
+		dbstring = talloc_asprintf_append(dbstring, " user='%s'", config->sql_login);
 	}
 
 	if (config->sql_password[0] != '\0') {
-		MEM(conn->dbstring = talloc_asprintf_append(conn->dbstring, " password='%s'", config->sql_password));
+		dbstring = talloc_asprintf_append(dbstring, " password='%s'", config->sql_password);
 	}
 
-	DEBUG2("rlm_sql_postgresql: Connecting using parameters: %s", conn->dbstring);
-	conn->db = PQconnectdb(conn->dbstring);
+	conn->dbstring = dbstring;
+	conn->db = PQconnectdb(dbstring);
+	DEBUG2("rlm_sql_postgresql: Connecting using parameters: %s", dbstring);
 	if (!conn->db) {
 		ERROR("rlm_sql_postgresql: Connection failed: Out of memory");
 		return -1;
