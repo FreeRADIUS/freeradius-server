@@ -317,14 +317,15 @@ void 		session_free(void *ssn);
 void 		session_close(tls_session_t *ssn);
 void 		session_init(tls_session_t *ssn);
 
-#define FR_TLS_EX_INDEX_HANDLER (0)
-#define FR_TLS_EX_INDEX_CONF	(1)
-#define FR_TLS_EX_INDEX_REQUEST	(2)
-#define FR_TLS_EX_INDEX_CERTS	(3)
-#define FR_TLS_EX_INDEX_IDENTITY (4)
-#define FR_TLS_EX_INDEX_STORE	(6)
-#define FR_TLS_EX_INDEX_SSN	(7)
-#define FR_TLS_EX_INDEX_TALLOC	(8)
+#define FR_TLS_EX_INDEX_HANDLER  (10)
+#define FR_TLS_EX_INDEX_CONF	 (11)
+#define FR_TLS_EX_INDEX_REQUEST	 (12)
+#define FR_TLS_EX_INDEX_IDENTITY (13)
+#define FR_TLS_EX_INDEX_STORE	 (14)
+#define FR_TLS_EX_INDEX_SSN	 (15)
+#define FR_TLS_EX_INDEX_TALLOC	 (16)
+
+extern int FR_TLS_EX_INDEX_CERTS;
 
 /* configured values goes right here */
 struct fr_tls_server_conf_t {

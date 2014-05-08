@@ -996,6 +996,7 @@ static int generate_eph_rsa_key(SSL_CTX *ctx)
  * needs to be dynamic so we can supply a "free" function
  */
 static int FR_TLS_EX_INDEX_VPS = -1;
+int FR_TLS_EX_INDEX_CERTS = -1;
 
 /*
  *	Print debugging messages, and free data.
@@ -1962,6 +1963,18 @@ static void sess_free_vps(UNUSED void *parent, void *data_ptr,
 	pairfree(&vp);
 }
 
+static void sess_free_certs(UNUSED void *parent, void *data_ptr,
+				UNUSED CRYPTO_EX_DATA *ad, UNUSED int idx,
+				UNUSED long argl, UNUSED void *argp)
+{
+	VALUE_PAIR **certs = data_ptr;
+	if (!certs) return;
+
+	DEBUG2("  Freeing cached session Certificates");
+
+	pairfree(certs);
+}
+
 /*
  *	Add all the default ciphers and message digests
  *	Create our context.
@@ -2282,6 +2295,8 @@ post_ca:
 		SSL_CTX_set_quiet_shutdown(ctx, 1);
 		if (FR_TLS_EX_INDEX_VPS < 0)
 			FR_TLS_EX_INDEX_VPS = SSL_SESSION_get_ex_new_index(0, NULL, NULL, NULL, sess_free_vps);
+		if (FR_TLS_EX_INDEX_CERTS < 0)
+			FR_TLS_EX_INDEX_CERTS = SSL_SESSION_get_ex_new_index(0, NULL, NULL, NULL, sess_free_certs);
 	}
 
 	/*
