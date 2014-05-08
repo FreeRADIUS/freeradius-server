@@ -81,7 +81,7 @@ static void tls_socket_close(rad_listen_t *listener)
 	 *	Tell the event handler that an FD has disappeared.
 	 */
 	DEBUG("Client has closed connection");
-	radius_add_listener(listener);
+	radius_update_listener(listener);
 
 	/*
 	 *	Do NOT free the listener here.  It's in use by
