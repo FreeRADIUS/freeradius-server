@@ -206,10 +206,10 @@ static int fr_server_domain_socket(char const *path)
 		}
 
 		if (unlink(path) < 0) {
-                       ERROR("Failed to delete %s: %s",
+		       ERROR("Failed to delete %s: %s",
 			     path, fr_syserror(errno));
-                       close(sockfd);
-                       return -1;
+		       close(sockfd);
+		       return -1;
 		}
 	}
 

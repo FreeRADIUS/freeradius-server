@@ -195,7 +195,7 @@ static void add_vp_tuple(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vpp, VA
 
 #define BUF_SIZE 1024
 static rlm_rcode_t CC_HINT(nonnull (4)) do_ruby(REQUEST *request, unsigned long func,
-					        VALUE module, char const *function_name)
+						VALUE module, char const *function_name)
 {
 	rlm_rcode_t rcode = RLM_MODULE_OK;
 	vp_cursor_t cursor;
