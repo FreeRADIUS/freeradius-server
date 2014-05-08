@@ -92,7 +92,7 @@ static void tls_socket_close(rad_listen_t *listener)
 	/*
 	 *	Tell the event handler that an FD has disappeared.
 	 */
-	event_new_fd(listener);
+	radius_add_listener(listener);
 
 	/*
 	 *	Do NOT free the listener here.  It's in use by
