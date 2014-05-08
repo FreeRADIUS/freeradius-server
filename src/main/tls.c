@@ -1119,6 +1119,7 @@ static SSL_SESSION *cbtls_get_session(SSL *ssl,
 	size_t size;
 	char buffer[2 * MAX_SESSION_SIZE + 1];
 	fr_tls_server_conf_t *conf;
+	TALLOC_CTX *talloc_ctx;
 
 	SSL_SESSION *sess = NULL;
 	unsigned char *sess_data = NULL;
@@ -1132,6 +1133,7 @@ static SSL_SESSION *cbtls_get_session(SSL *ssl,
 	DEBUG2("  SSL: Client requested cached session %s", buffer);
 
 	conf = (fr_tls_server_conf_t *)SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_CONF);
+	talloc_ctx = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_TALLOC);
 	if (conf && conf->session_cache_path) {
 		int rv, fd, todo;
 		char filename[256];
@@ -1196,7 +1198,7 @@ static SSL_SESSION *cbtls_get_session(SSL *ssl,
 		}
 
 		/* cache the VPs into the session */
-		vp = paircopy(NULL, pairlist->reply);
+		vp = paircopy(talloc_ctx, pairlist->reply);
 		SSL_SESSION_set_ex_data(sess, FR_TLS_EX_INDEX_VPS, vp);
 		DEBUG2("  SSL: Successfully restored session %s", buffer);
 	}
@@ -1521,6 +1523,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	X509_STORE *ocsp_store = NULL;
 	X509 *issuer_cert;
 #endif
+	TALLOC_CTX *talloc_ctx;
 
 	client_cert = X509_STORE_CTX_get_current_cert(ctx);
 	err = X509_STORE_CTX_get_error(ctx);
@@ -1554,6 +1557,8 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	ocsp_store = (X509_STORE *)SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_STORE);
 #endif
 
+	talloc_ctx = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_TALLOC);
+
 	/*
 	 *	Get the Serial Number
 	 */
@@ -1575,7 +1580,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 			sprintf(p, "%02x", (unsigned int)sn->data[i]);
 			p += 2;
 		}
-		pairmake(NULL, certs, cert_attr_names[FR_TLS_SERIAL][lookup], buf, T_OP_SET);
+		pairmake(talloc_ctx, certs, cert_attr_names[FR_TLS_SERIAL][lookup], buf, T_OP_SET);
 	}
 
 
@@ -1588,7 +1593,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	    (asn_time->length < (int) sizeof(buf))) {
 		memcpy(buf, (char*) asn_time->data, asn_time->length);
 		buf[asn_time->length] = '\0';
-		pairmake(NULL, certs, cert_attr_names[FR_TLS_EXPIRATION][lookup], buf, T_OP_SET);
+		pairmake(talloc_ctx, certs, cert_attr_names[FR_TLS_EXPIRATION][lookup], buf, T_OP_SET);
 	}
 
 	/*
@@ -1599,14 +1604,14 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 			  sizeof(subject));
 	subject[sizeof(subject) - 1] = '\0';
 	if (identity && (lookup <= 1) && subject[0]) {
-		pairmake(NULL, certs, cert_attr_names[FR_TLS_SUBJECT][lookup], subject, T_OP_SET);
+		pairmake(talloc_ctx, certs, cert_attr_names[FR_TLS_SUBJECT][lookup], subject, T_OP_SET);
 	}
 
 	X509_NAME_oneline(X509_get_issuer_name(ctx->current_cert), issuer,
 			  sizeof(issuer));
 	issuer[sizeof(issuer) - 1] = '\0';
 	if (identity && (lookup <= 1) && issuer[0]) {
-		pairmake(NULL, certs, cert_attr_names[FR_TLS_ISSUER][lookup], issuer, T_OP_SET);
+		pairmake(talloc_ctx, certs, cert_attr_names[FR_TLS_ISSUER][lookup], issuer, T_OP_SET);
 	}
 
 	/*
@@ -1616,7 +1621,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 				  NID_commonName, common_name, sizeof(common_name));
 	common_name[sizeof(common_name) - 1] = '\0';
 	if (identity && (lookup <= 1) && common_name[0] && subject[0]) {
-		pairmake(NULL, certs, cert_attr_names[FR_TLS_CN][lookup], common_name, T_OP_SET);
+		pairmake(talloc_ctx, certs, cert_attr_names[FR_TLS_CN][lookup], common_name, T_OP_SET);
 	}
 
 	/*
@@ -1636,7 +1641,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 				switch (name->type) {
 #ifdef GEN_EMAIL
 				case GEN_EMAIL:
-					pairmake(NULL, certs, cert_attr_names[FR_TLS_SAN_EMAIL][lookup],
+					pairmake(talloc_ctx, certs, cert_attr_names[FR_TLS_SAN_EMAIL][lookup],
 						 (char *) ASN1_STRING_data(name->d.rfc822Name), T_OP_SET);
 					break;
 #endif	/* GEN_EMAIL */
@@ -1736,7 +1741,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 				if (*p == ' ') *p = '-';
 			}
 
-			vp = pairmake(NULL, certs, attribute, value, T_OP_ADD);
+			vp = pairmake(talloc_ctx, certs, attribute, value, T_OP_ADD);
 			if (vp) debug_pair_list(vp);
 		}
 
@@ -1952,7 +1957,7 @@ static void sess_free_vps(UNUSED void *parent, void *data_ptr,
 	VALUE_PAIR *vp = data_ptr;
 	if (!vp) return;
 
-	DEBUG2("  Freeing cached session VPs %p", vp);
+	DEBUG2("  Freeing cached session VPs");;
 
 	pairfree(&vp);
 }
@@ -2537,9 +2542,12 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 {
 	VALUE_PAIR *vp, *vps = NULL;
 	fr_tls_server_conf_t *conf;
+	TALLOC_CTX *talloc_ctx;
 
 	conf = (fr_tls_server_conf_t *)SSL_get_ex_data(ssn->ssl, FR_TLS_EX_INDEX_CONF);
 	rad_assert(conf != NULL);
+
+	talloc_ctx = SSL_get_ex_data(ssn->ssl, FR_TLS_EX_INDEX_TALLOC);
 
 	/*
 	 *	If there's no session resumption, delete the entry
@@ -2580,16 +2588,16 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 
 		fr_bin2hex(buffer, ssn->ssl->session->session_id, size);
 
-		vp = paircopy2(NULL, request->reply->vps, PW_USER_NAME, 0, TAG_ANY);
+		vp = paircopy2(talloc_ctx, request->reply->vps, PW_USER_NAME, 0, TAG_ANY);
 		if (vp) pairadd(&vps, vp);
 
-		vp = paircopy2(NULL, request->packet->vps, PW_STRIPPED_USER_NAME, 0, TAG_ANY);
+		vp = paircopy2(talloc_ctx, request->packet->vps, PW_STRIPPED_USER_NAME, 0, TAG_ANY);
 		if (vp) pairadd(&vps, vp);
 
-		vp = paircopy2(NULL, request->reply->vps, PW_CHARGEABLE_USER_IDENTITY, 0, TAG_ANY);
+		vp = paircopy2(talloc_ctx, request->reply->vps, PW_CHARGEABLE_USER_IDENTITY, 0, TAG_ANY);
 		if (vp) pairadd(&vps, vp);
 
-		vp = paircopy2(NULL, request->reply->vps, PW_CACHED_SESSION_POLICY, 0, TAG_ANY);
+		vp = paircopy2(talloc_ctx, request->reply->vps, PW_CACHED_SESSION_POLICY, 0, TAG_ANY);
 		if (vp) pairadd(&vps, vp);
 
 		certs = (VALUE_PAIR **)SSL_get_ex_data(ssn->ssl, FR_TLS_EX_INDEX_CERTS);
@@ -2602,7 +2610,7 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 			 *	@todo: some go into reply, others into
 			 *	request
 			 */
-			pairadd(&vps, paircopy(NULL, *certs));
+			pairadd(&vps, paircopy(talloc_ctx, *certs));
 		}
 
 		if (vps) {

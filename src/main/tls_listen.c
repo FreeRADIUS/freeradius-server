@@ -192,6 +192,7 @@ static int tls_socket_recv(rad_listen_t *listener)
 		(void) talloc_steal(sock, sock->ssn);
 		SSL_set_ex_data(sock->ssn->ssl, FR_TLS_EX_INDEX_REQUEST, (void *)request);
 		SSL_set_ex_data(sock->ssn->ssl, FR_TLS_EX_INDEX_CERTS, (void *)&request->packet->vps);
+		SSL_set_ex_data(sock->ssn->ssl, FR_TLS_EX_INDEX_TALLOC, sock->parent);
 
 		doing_init = true;
 	}
