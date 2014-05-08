@@ -1669,7 +1669,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 #endif	/* GEN_EMAIL */
 #ifdef GEN_DNS
 				case GEN_DNS:
-					pairmake(NULL, certs, cert_attr_names[FR_TLS_SAN_DNS][lookup],
+					pairmake(talloc_ctx, certs, cert_attr_names[FR_TLS_SAN_DNS][lookup],
 						 (char *) ASN1_STRING_data(name->d.dNSName), T_OP_SET);
 					break;
 #endif	/* GEN_DNS */
@@ -1679,7 +1679,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 					if (NID_ms_upn == OBJ_obj2nid(name->d.otherName->type_id)) {
 					    /* we've got a UPN - Must be ASN1-encoded UTF8 string */
 					    if (name->d.otherName->value->type == V_ASN1_UTF8STRING) {
-						pairmake(NULL, certs, cert_attr_names[FR_TLS_SAN_UPN][lookup],
+						pairmake(talloc_ctx, certs, cert_attr_names[FR_TLS_SAN_UPN][lookup],
 							 (char *) ASN1_STRING_data(name->d.otherName->value->value.utf8string), T_OP_SET);
 						break;
 					    } else {
