@@ -77,18 +77,6 @@ static void tls_socket_close(rad_listen_t *listener)
 	listener->status = RAD_LISTEN_STATUS_EOL;
 	listener->tls = NULL; /* parent owns this! */
 
-	if (sock->parent) {
-		/*
-		 *	Decrement the number of connections.
-		 */
-		if (sock->parent->limit.num_connections > 0) {
-			sock->parent->limit.num_connections--;
-		}
-		if (sock->client->limit.num_connections > 0) {
-			sock->client->limit.num_connections--;
-		}
-	}
-
 	/*
 	 *	Tell the event handler that an FD has disappeared.
 	 */
