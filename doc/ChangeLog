@@ -120,6 +120,8 @@ FreeRADIUS 3.0.3 Fri 21 Mar 2014 08:30:00 EDT urgency=medium
 	  need double escaping (\\) of the backslash.
 	* The connection pools no longer have one connection used twice
 	  in certain rare conditions.
+	* Use self pipes for internal signals.  The code was there, but for
+	  some reason was unused.
 
 FreeRADIUS 3.0.2 Fri 21 Mar 2014 08:30:00 EDT urgency=medium
 	Feature improvements
