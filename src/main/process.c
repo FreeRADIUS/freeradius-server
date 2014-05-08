@@ -273,7 +273,7 @@ void radius_update_listener(rad_listen_t *this)
 	/*
 	 *	No threads.  Just insert it.
 	 */
-	return event_new_fd(this);
+	event_new_fd(this);
 }
 /*
  *	This is easier than ifdef's throughout the code.
