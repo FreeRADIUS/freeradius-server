@@ -324,6 +324,7 @@ void 		session_init(tls_session_t *ssn);
 #define FR_TLS_EX_INDEX_IDENTITY (4)
 #define FR_TLS_EX_INDEX_STORE	(6)
 #define FR_TLS_EX_INDEX_SSN	(7)
+#define FR_TLS_EX_INDEX_TALLOC	(8)
 
 /* configured values goes right here */
 struct fr_tls_server_conf_t {
