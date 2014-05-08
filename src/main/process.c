@@ -4361,12 +4361,8 @@ static void handle_signal_self(int flag)
 #endif	/* WITH_TCP */
 }
 
-#ifndef WITH_SELF_PIPE
-void radius_signal_self(int flag)
-{
-	handle_signal_self(flag);
-}
-#else
+static int self_pipe[2] = { -1, -1 };
+
 /*
  *	Inform ourselves that we received a signal.
  */
@@ -4413,7 +4409,6 @@ static void event_signal_handler(UNUSED fr_event_list_t *xel,
 
 	handle_signal_self(buffer[0]);
 }
-#endif
 
 /***********************************************************************
  *
@@ -4499,7 +4494,6 @@ int radius_event_start(CONF_SECTION *cs, bool have_children)
 		return 1;
 	}
 
-#ifdef WITH_SELF_PIPE
 	/*
 	 *	Child threads need a pipe to signal us, as do the
 	 *	signal handlers.
@@ -4527,7 +4521,6 @@ int radius_event_start(CONF_SECTION *cs, bool have_children)
 		ERROR("Failed creating handler for signals");
 		fr_exit(1);
 	}
-#endif	/* WITH_SELF_PIPE */
 
        DEBUG("%s: #### Opening IP addresses and Ports ####",
 	       mainconfig.name);
