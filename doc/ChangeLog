@@ -1,7 +1,7 @@
 FreeRADIUS 3.0.3 Fri 21 Mar 2014 08:30:00 EDT urgency=medium
 	Feature improvements
 	* Everything now builds with no warnings from the C compiler,
-	  Coverity, clang static analyzer, or cppcheck.
+	  clang static analyzer, or cppcheck.
 	* rlm_ldap now supports defining the LDAP attribute name via
 	  backticked expansion (i.e. shell command) in
 	  RADIUS <-> LDAP mappings.
