@@ -56,14 +56,16 @@ static FR_NAME_NUMBER state_names[] = {
 	{ NULL, 0 }
 };
 
+
 /*
  *	If we're limiting outstanding packets, then mark the response
  *	as being sent.
  */
 int detail_send(rad_listen_t *listener, REQUEST *request)
 {
-	int rtt;
-	struct timeval now;
+#ifdef WITH_DETAIL_THREAD
+	char c = 0;
+#endif
 	listen_detail_t *data = listener->data;
 
 	rad_assert(request->listener == listener);
@@ -80,85 +82,90 @@ int detail_send(rad_listen_t *listener, REQUEST *request)
 
 		RDEBUG("Detail - No response configured for request %d.  Will retry in %d seconds",
 		       request->number, data->retry_interval);
-
-		radius_signal_self(RADIUS_SIGNAL_SELF_DETAIL);
-		return 0;
-	}
-
-	/*
-	 *	We call gettimeofday a lot.  But it should be OK,
-	 *	because there's nothing else to do.
-	 */
-	gettimeofday(&now, NULL);
-
-	/*
-	 *	If we haven't sent a packet in the last second, reset
-	 *	the RTT.
-	 */
-	now.tv_sec -= 1;
-	if (timercmp(&data->last_packet, &now, <)) {
-		data->has_rtt = false;
-	}
-	now.tv_sec += 1;
-
-	/*
-	 *	Only one detail packet may be outstanding at a time,
-	 *	so it's safe to update some entries in the detail
-	 *	structure.
-	 *
-	 *	We keep smoothed round trip time (SRTT), but not round
-	 *	trip timeout (RTO).  We use SRTT to calculate a rough
-	 *	load factor.
-	 */
-	rtt = now.tv_sec - request->packet->timestamp.tv_sec;
-	rtt *= USEC;
-	rtt += now.tv_usec;
-	rtt -= request->packet->timestamp.tv_usec;
-
-	/*
-	 *	If we're proxying, the RTT is our processing time,
-	 *	plus the network delay there and back, plus the time
-	 *	on the other end to process the packet.  Ideally, we
-	 *	should remove the network delays from the RTT, but we
-	 *	don't know what they are.
-	 *
-	 *	So, to be safe, we over-estimate the total cost of
-	 *	processing the packet.
-	 */
-	if (!data->has_rtt) {
-		data->has_rtt = true;
-		data->srtt = rtt;
-		data->rttvar = rtt / 2;
-
 	} else {
-		data->rttvar -= data->rttvar >> 2;
-		data->rttvar += (data->srtt - rtt);
-		data->srtt -= data->srtt >> 3;
-		data->srtt += rtt >> 3;
+		int rtt;
+		struct timeval now;
+		/*
+		 *	We call gettimeofday a lot.  But it should be OK,
+		 *	because there's nothing else to do.
+		 */
+		gettimeofday(&now, NULL);
+
+		/*
+		 *	If we haven't sent a packet in the last second, reset
+		 *	the RTT.
+		 */
+		now.tv_sec -= 1;
+		if (timercmp(&data->last_packet, &now, <)) {
+			data->has_rtt = false;
+		}
+		now.tv_sec += 1;
+
+		/*
+		 *	Only one detail packet may be outstanding at a time,
+		 *	so it's safe to update some entries in the detail
+		 *	structure.
+		 *
+		 *	We keep smoothed round trip time (SRTT), but not round
+		 *	trip timeout (RTO).  We use SRTT to calculate a rough
+		 *	load factor.
+		 */
+		rtt = now.tv_sec - request->packet->timestamp.tv_sec;
+		rtt *= USEC;
+		rtt += now.tv_usec;
+		rtt -= request->packet->timestamp.tv_usec;
+
+		/*
+		 *	If we're proxying, the RTT is our processing time,
+		 *	plus the network delay there and back, plus the time
+		 *	on the other end to process the packet.  Ideally, we
+		 *	should remove the network delays from the RTT, but we
+		 *	don't know what they are.
+		 *
+		 *	So, to be safe, we over-estimate the total cost of
+		 *	processing the packet.
+		 */
+		if (!data->has_rtt) {
+			data->has_rtt = true;
+			data->srtt = rtt;
+			data->rttvar = rtt / 2;
+
+		} else {
+			data->rttvar -= data->rttvar >> 2;
+			data->rttvar += (data->srtt - rtt);
+			data->srtt -= data->srtt >> 3;
+			data->srtt += rtt >> 3;
+		}
+
+		/*
+		 *	Calculate the time we wait before sending the next
+		 *	packet.
+		 *
+		 *	rtt / (rtt + delay) = load_factor / 100
+		 */
+		data->delay_time = (data->srtt * (100 - data->load_factor)) / (data->load_factor);
+
+		/*
+		 *	Cap delay at no less than 4 packets/s.  If the
+		 *	end system can't handle this, then it's very
+		 *	broken.
+		 */
+		if (data->delay_time > (USEC / 4)) data->delay_time= USEC / 4;
+
+		RDEBUG3("Received response for request %d.  Will read the next packet in %d seconds",
+			request->number, data->delay_time / USEC);
+
+		data->last_packet = now;
+		data->signal = 1;
+		data->state = STATE_REPLIED;
+		data->counter++;
 	}
 
-	/*
-	 *	Calculate the time we wait before sending the next
-	 *	packet.
-	 *
-	 *	rtt / (rtt + delay) = load_factor / 100
-	 */
-	data->delay_time = (data->srtt * (100 - data->load_factor)) / (data->load_factor);
-
-	/*
-	 *	Cap delay at 4 packets/s.  If the end system can't
-	 *	handle this, then it's very broken.
-	 */
-	if (data->delay_time > (USEC / 4)) data->delay_time= USEC / 4;
-
-	RDEBUG3("Received response for request %d.  Will read the next packet in %d seconds",
-		request->number, data->delay_time / USEC);
-
-	data->last_packet = now;
-	data->signal = 1;
-	data->state = STATE_REPLIED;
-	data->counter++;
+#ifdef WITH_DETAIL_THREAD
+	(void) write(data->child_pipe[1], &c, 1);
+#else
 	radius_signal_self(RADIUS_SIGNAL_SELF_DETAIL);
+#endif
 
 	return 0;
 }
@@ -192,8 +199,8 @@ static int detail_open(rad_listen_t *this)
 	 *	this file will be read && processed before the
 	 *	file globbing is done.
 	 */
-	this->fd = open(data->filename_work, O_RDWR);
-	if (this->fd < 0) {
+	data->work_fd = open(data->filename_work, O_RDWR);
+	if (data->work_fd < 0) {
 #ifndef HAVE_GLOB_H
 		return 0;
 #else
@@ -246,8 +253,8 @@ static int detail_open(rad_listen_t *this)
 		/*
 		 *	And try to open the filename.
 		 */
-		this->fd = open(data->filename_work, O_RDWR);
-		if (this->fd < 0) return 0;
+		data->work_fd = open(data->filename_work, O_RDWR);
+		if (data->work_fd < 0) return 0;
 #endif
 	} /* else detail.work existed, and we opened it */
 
@@ -281,7 +288,65 @@ static int detail_open(rad_listen_t *this)
  *	t_rtt + t_delay wait for signal that the server is idle.
  *
  */
+#ifndef WITH_DETAIL_THREAD
+static RADIUS_PACKET *detail_poll(rad_listen_t *listener);
+
 int detail_recv(rad_listen_t *listener)
+{
+	RADIUS_PACKET *packet;
+
+	/*
+	 *	We may be in the main thread.  It needs to update the
+	 *	timers before we try to read from the file again.
+	 */
+	if (data->signal) return 0;
+
+	packet = detail_poll(listener);
+	if (!packet) return -1;
+
+	/*
+	 *	Don't bother doing limit checks, etc.
+	 */
+	if (!request_receive(listener, packet, &data->detail_client,
+			     rad_accounting)) {
+		rad_free(&packet);
+		data->state = STATE_NO_REPLY;	/* try again later */
+		return 0;
+	}
+
+	return 1;
+}
+#else
+int detail_recv(rad_listen_t *listener)
+{
+	ssize_t rcode;
+	RADIUS_PACKET *packet;
+	listen_detail_t *data = listener->data;
+
+	/*
+	 *	Block until there's a packet ready.
+	 */
+	rcode = read(data->master_pipe[0], &packet, sizeof(packet));
+	if (rcode <= 0) return rcode;
+
+	rad_assert(packet != NULL);
+
+	if (!request_receive(listener, packet, &data->detail_client,
+				     rad_accounting)) {
+		char c = 0;
+		rad_free(&packet);
+		data->state = STATE_NO_REPLY;	/* try again later */
+		(void) write(data->child_pipe[1], &c, 1);
+	}
+
+	/*
+	 *	Wait for the child thread to write an answer to the pipe
+	 */
+	return 0;
+}
+#endif
+
+static RADIUS_PACKET *detail_poll(rad_listen_t *listener)
 {
 	char		key[256], op[8], value[1024];
 	vp_cursor_t	cursor;
@@ -290,21 +355,15 @@ int detail_recv(rad_listen_t *listener)
 	char		buffer[2048];
 	listen_detail_t *data = listener->data;
 
-	/*
-	 *	We may be in the main thread.  It needs to update the
-	 *	timers before we try to read from the file again.
-	 */
-	if (data->signal) return 0;
-
 	switch (data->state) {
 		case STATE_UNOPENED:
 	open_file:
-			rad_assert(listener->fd < 0);
+			rad_assert(data->work_fd < 0);
 
-			if (!detail_open(listener)) return 0;
+			if (!detail_open(listener)) return NULL;
 
 			rad_assert(data->state == STATE_UNLOCKED);
-			rad_assert(listener->fd >= 0);
+			rad_assert(data->work_fd >= 0);
 
 			/* FALL-THROUGH */
 
@@ -326,19 +385,19 @@ int detail_recv(rad_listen_t *listener)
 			 *	"ping-pongs" between radiusd &
 			 *	radrelay.
 			 */
-			if (rad_lockfd_nonblock(listener->fd, 0) < 0) {
+			if (rad_lockfd_nonblock(data->work_fd, 0) < 0) {
 				/*
 				 *	Close the FD.  The main loop
 				 *	will wake up in a second and
 				 *	try again.
 				 */
-				close(listener->fd);
-				listener->fd = -1;
+				close(data->work_fd);
+				data->work_fd = -1;
 				data->state = STATE_UNOPENED;
-				return 0;
+				return NULL;
 			}
 
-			data->fp = fdopen(listener->fd, "r");
+			data->fp = fdopen(data->work_fd, "r");
 			if (!data->fp) {
 				ERROR("FATAL: Failed to re-open detail file %s: %s",
 				       data->filename, fr_syserror(errno));
@@ -365,7 +424,7 @@ int detail_recv(rad_listen_t *listener)
 			{
 				struct stat buf;
 
-				if (fstat(listener->fd, &buf) < 0) {
+				if (fstat(data->work_fd, &buf) < 0) {
 					ERROR("Failed to stat "
 					       "detail file %s: %s",
 						data->filename,
@@ -389,7 +448,7 @@ int detail_recv(rad_listen_t *listener)
 				unlink(data->filename_work);
 				if (data->fp) fclose(data->fp);
 				data->fp = NULL;
-				listener->fd = -1;
+				data->work_fd = -1;
 				data->state = STATE_UNOPENED;
 				rad_assert(data->vps == NULL);
 
@@ -398,7 +457,7 @@ int detail_recv(rad_listen_t *listener)
 					radius_signal_self(RADIUS_SIGNAL_SELF_EXIT);
 				}
 
-				return 0;
+				return NULL;
 			}
 
 			/*
@@ -427,7 +486,7 @@ int detail_recv(rad_listen_t *listener)
 			 */
 		case STATE_RUNNING:
 			if (time(NULL) < (data->running + data->retry_interval)) {
-				return 0;
+				return NULL;
 			}
 
 			DEBUG("No response to detail request.  Retrying");
@@ -599,7 +658,7 @@ int detail_recv(rad_listen_t *listener)
 	if (!data->vps) {
 		data->state = STATE_HEADER;
 		if (!data->fp || feof(data->fp)) goto cleanup;
-		return 0;
+		return NULL;
 	}
 
 	/*
@@ -716,22 +775,11 @@ int detail_recv(rad_listen_t *listener)
 		}
 	}
 
-	/*
-	 *	Don't bother doing limit checks, etc.
-	 */
-	if (!request_receive(listener, packet, &data->detail_client,
-			     rad_accounting)) {
-		rad_free(&packet);
-		data->state = STATE_NO_REPLY;	/* try again later */
-		return 0;
-	}
-
 	data->state = STATE_RUNNING;
 	data->running = packet->timestamp.tv_sec;
 
-	return 1;
+	return packet;
 }
-
 
 /*
  *	Free detail-specific stuff.
@@ -739,6 +787,32 @@ int detail_recv(rad_listen_t *listener)
 void detail_free(rad_listen_t *this)
 {
 	listen_detail_t *data = this->data;
+
+#ifdef WITH_DETAIL_THREAD
+	void *arg = NULL;
+
+	/*
+	 *	Mark the child pipes as unusable
+	 */
+	close(data->child_pipe[0]);
+	close(data->child_pipe[1]);
+	data->child_pipe[0] = -1;
+
+	/*
+	 *	Tell it to stop (interrupting it's sleep)
+	 */
+	pthread_kill(data->pthread_id, SIGTERM);
+
+	/*
+	 *	Wait for it to acknowledge that it's stopped.
+	 */
+	(void) read(data->master_pipe[0], &arg, sizeof(arg));
+
+	close(data->master_pipe[0]);
+	close(data->master_pipe[1]);
+
+	pthread_join(data->pthread_id, &arg);
+#endif
 
 	talloc_free(data->filename);
 	data->filename = NULL;
@@ -763,32 +837,42 @@ int detail_print(rad_listen_t const *this, char *buffer, size_t bufsize)
 			this->server);
 }
 
+
+/*
+ *	Delay while waiting for a file to be ready
+ */
+static int detail_delay(listen_detail_t *data)
+{
+	int delay = (data->poll_interval - 1) * USEC;
+
+	/*
+	 *	Add +/- 0.25s of jitter
+	 */
+	delay += (USEC * 3) / 4;
+	delay += fr_rand() % (USEC / 2);
+
+	DEBUG2("Detail listener %s state %s waiting %d.%06d sec",
+	       data->filename,
+	       fr_int2str(state_names, data->state, "?"),
+	       (delay / USEC), delay % USEC);
+
+	return delay;
+}
+
 /*
  *	Overloaded to return delay times.
  */
-int detail_encode(rad_listen_t *this, UNUSED REQUEST *request)
+int detail_encode(UNUSED rad_listen_t *this, UNUSED REQUEST *request)
 {
+#ifdef WITH_DETAIL_THREAD
+	return 0;
+#else
 	listen_detail_t *data = this->data;
 
 	/*
 	 *	We haven't sent a packet... delay things a bit.
 	 */
-	if (!data->signal) {
-		int delay = (data->poll_interval - 1) * USEC;
-
-		/*
-		 *	Add +/- 0.25s of jitter
-		 */
-		delay += (USEC * 3) / 4;
-		delay += fr_rand() % (USEC / 2);
-
-		DEBUG2("Detail listener %s state %s signalled %d waiting %d.%06d sec",
-		       data->filename,
-		       fr_int2str(state_names, data->state, "?"), data->signal,
-		       (delay / USEC), delay % USEC);
-
-		return delay;
-	}
+	if (!data->signal) return detail_delay(data);
 
 	data->signal = 0;
 
@@ -799,18 +883,67 @@ int detail_encode(rad_listen_t *this, UNUSED REQUEST *request)
 	       data->delay_time % USEC);
 
 	return data->delay_time;
+#endif
 }
-
 
 /*
  *	Overloaded to return "should we fix delay times"
  */
-int detail_decode(rad_listen_t *this, UNUSED REQUEST *request)
+int detail_decode(UNUSED rad_listen_t *this, UNUSED REQUEST *request)
 {
+#ifdef WITH_DETAIL_THREAD
+	return 0;
+#else
 	listen_detail_t *data = this->data;
 
 	return data->signal;
+#endif
 }
+
+
+#ifdef WITH_DETAIL_THREAD
+static void *detail_handler_thread(void *arg)
+{
+	char c;
+	ssize_t rcode;
+	rad_listen_t *this = arg;
+	listen_detail_t *data = this->data;
+
+	while (true) {
+		RADIUS_PACKET *packet;
+
+		while ((packet = detail_poll(this)) == NULL) {
+			usleep(detail_delay(data));
+
+			/*
+			 *	If we're supposed to exit then tell
+			 *	the master thread we've exited.
+			 */
+			if (data->child_pipe[0] < 0) {
+				packet = NULL;
+				(void) write(data->master_pipe[1], &packet, sizeof(packet));
+				return NULL;
+			}
+		}
+
+		/*
+		 *	Keep retrying forever.
+		 *
+		 *	FIXME: cap the retries.
+		 */
+		do {
+			(void) write(data->master_pipe[1], &packet, sizeof(packet));
+
+			rcode = read(data->child_pipe[0], &c, 1);
+			if (rcode < 0) break; /* fatal? */
+
+			if (data->delay_time > 0) usleep(data->delay_time);
+		} while (data->state != STATE_REPLIED);
+	}
+
+	return NULL;
+}
+#endif
 
 
 static const CONF_PARSER detail_config[] = {
@@ -906,6 +1039,7 @@ int detail_parse(CONF_SECTION *cs, rad_listen_t *this)
 	talloc_free(data->filename_work);
 	data->filename_work = talloc_strdup(this, buffer); /* FIXME: leaked */
 
+	data->work_fd = -1;
 	data->vps = NULL;
 	data->fp = NULL;
 	data->state = STATE_UNOPENED;
@@ -923,6 +1057,27 @@ int detail_parse(CONF_SECTION *cs, rad_listen_t *this)
 	client->longname = client->shortname = data->filename;
 	client->secret = client->shortname;
 	client->nas_type = strdup("none");
+
+#ifdef WITH_DETAIL_THREAD
+	/*
+	 *	Create the communication pipes.
+	 */
+	if (pipe(data->master_pipe) < 0) {
+		ERROR("radiusd: Error opening internal pipe: %s",
+		      fr_syserror(errno));
+		fr_exit(1);
+	}
+
+	if (pipe(data->child_pipe) < 0) {
+		ERROR("radiusd: Error opening internal pipe: %s",
+		      fr_syserror(errno));
+		fr_exit(1);
+	}
+
+	pthread_create(&data->pthread_id, NULL, detail_handler_thread, this);
+
+	this->fd = data->master_pipe[0];
+#endif
 
 	return 0;
 }

@@ -24,12 +24,30 @@ typedef enum detail_state_t {
   STATE_REPLIED
 } detail_state_t;
 
+/*
+ *	Allow people to revert to the old behavior if desired.
+ *	Also, use the old code if we don't have threads.
+ *	FIXME: delete the old (crappy) code, and enable the new
+ *	code to work without threads.  One thing at a time...
+ */
+#ifndef WITHOUT_DETAIL_THREAD
+#ifdef HAVE_PTHREAD_H
+#define WITH_DETAIL_THREAD (1)
+#endif
+#endif
+
 typedef struct listen_detail_t {
 	fr_event_t	*ev;	/* has to be first entry (ugh) */
 	int		delay_time;
 	char		*filename;
 	char		*filename_work;
 	VALUE_PAIR	*vps;
+	int		work_fd;
+#ifdef WITH_DETAIL_THREAD
+	int		master_pipe[2];
+	int		child_pipe[2];
+	pthread_t	pthread_id;
+#endif
 	FILE		*fp;
 	off_t		offset;
 	detail_state_t 	state;
