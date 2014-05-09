@@ -21,6 +21,8 @@ addons:
     branch_pattern: coverity_scan
 before_install:
   - $CC --version
+  - wget -O - http://packages.couchbase.com/ubuntu/couchbase.key | sudo apt-key add -
+  - sudo sudo wget -O /etc/apt/sources.list.d/couchbase.list http://packages.couchbase.com/ubuntu/couchbase-ubuntu1204.list
   - sudo apt-get update -qq
   - >
       sudo apt-get install --no-install-recommends -qq
