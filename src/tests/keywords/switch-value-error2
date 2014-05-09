@@ -5,7 +5,7 @@
 #  is hidden inside of an xlat expansion.  We now turn
 #  simple attribute xlats into templates.
 #
-switch "%{Service-Type}" {
+switch "%{Service-Type}" {	# ERROR
 	case "%{expr: 1 + 2}" {
 		update reply {
 			Filter-Id := "3"
@@ -15,12 +15,6 @@ switch "%{Service-Type}" {
 	case Login-User {
 		update reply {
 			Filter-Id := "Login-User"
-		}
-	}
-
-	case No-Such-Value {	# ERROR
-		update reply {
-			Filter-Id := "FAILED"
 		}
 	}
 
