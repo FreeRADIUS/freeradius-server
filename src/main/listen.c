@@ -2615,8 +2615,14 @@ rad_listen_t *proxy_new_listener(home_server_t *home, int src_port)
 
 	if ((home->limit.max_connections > 0) &&
 	    (home->limit.num_connections >= home->limit.max_connections)) {
-		WDEBUG("Home server has too many open connections (%d)",
-		       home->limit.max_connections);
+		static time_t last_complained = 0;
+
+		now = time(NULL); /* we do this WAY too often */
+		if (last_complained == now) return NULL;
+		last_complained = now;
+
+		INFO("Home server %s has too many open connections (%d)",
+		     home->name, home->limit.max_connections);
 		return NULL;
 	}
 
