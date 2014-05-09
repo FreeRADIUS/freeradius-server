@@ -3838,6 +3838,8 @@ static void event_socket_handler(UNUSED fr_event_list_t *xel, UNUSED int fd, voi
 }
 
 #ifdef WITH_DETAIL
+#ifdef WITH_DETAIL_THREAD
+#else
 /*
  *	This function is called periodically to see if this detail
  *	file is available for reading.
@@ -3872,7 +3874,8 @@ static void event_poll_detail(void *ctx)
 		fr_exit(1);
 	}
 }
-#endif
+#endif	/* WITH_DETAIL_THREAD */
+#endif	/* WITH_DETAIL */
 
 static void event_status(struct timeval *wake)
 {
@@ -4016,12 +4019,16 @@ static int event_new_fd(rad_listen_t *this)
 		case RAD_LISTEN_DETAIL:
 			this->status = RAD_LISTEN_STATUS_KNOWN;
 
+#ifndef WITH_DETAIL_THREAD
 			/*
 			 *	Set up the first poll interval.
 			 */
 			event_poll_detail(this);
 			return 1;
+#else
+			break;	/* add the FD to the list */
 #endif
+#endif	/* WITH_DETAIL */
 
 #ifdef WITH_PROXY
 		/*
@@ -4311,6 +4318,7 @@ static void handle_signal_self(int flag)
 	}
 
 #ifdef WITH_DETAIL
+#ifndef WITH_DETAIL_THREAD
 	if ((flag & RADIUS_SIGNAL_SELF_DETAIL) != 0) {
 		rad_listen_t *this;
 
@@ -4334,6 +4342,7 @@ static void handle_signal_self(int flag)
 			event_poll_detail(this);
 		}
 	}
+#endif
 #endif
 
 #ifdef WITH_TCP
