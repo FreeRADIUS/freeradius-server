@@ -204,6 +204,7 @@ int fr_logfile_unlock(fr_logfile_t *lf, int fd);
  * @param _e error e.g. "kitties are not pets, are nature devouring hell beasts"
  */
 #define REMARKER(_m, _i, _e)	_RMKR(L_DBG_ERR, L_DBG_LVL_1, _m, _i, _e)
+#define RDMARKER(_m, _i, _e)	_RMKR(L_DBG, L_DBG_LVL_1, _m, _i, _e)
 
 /*
  *	Rate limit messages.
