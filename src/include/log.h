@@ -191,6 +191,18 @@ int fr_logfile_unlock(fr_logfile_t *lf, int fd);
 #define REDEBUG3(fmt, ...)	_RMOD(L_DBG_ERR, L_DBG_LVL_3, fmt, ## __VA_ARGS__)
 #define REDEBUG4(fmt, ...)	_RMOD(L_DBG_ERR, L_DBG_LVL_MAX, fmt, ## __VA_ARGS__)
 
+/*
+ * Output string with error marker, showing where format error occurred.
+ *
+ @verbatim
+   my pet kitty
+      ^ kitties are not pets, are nature devouring hell beasts
+ @endverbatim
+ *
+ * @param _m string to mark e.g. "my pet kitty"
+ * @param _i offset e.g. 3
+ * @param _e error e.g. "kitties are not pets, are nature devouring hell beasts"
+ */
 #define REMARKER(_m, _i, _e)	_RMKR(L_DBG_ERR, L_DBG_LVL_1, _m, _i, _e)
 
 /*
