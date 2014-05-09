@@ -4358,12 +4358,8 @@ static void handle_signal_self(int flag)
 		 *	event_new_fd()?
 		 */
 		for (this = new_listeners; this != NULL; this = next) {
-			listen_socket_t *sock = this->data;
-
 			next = this->next;
 			this->next = NULL;
-
-			rad_assert(sock->proto == IPPROTO_TCP);
 
 			event_new_fd(this);
 		}
