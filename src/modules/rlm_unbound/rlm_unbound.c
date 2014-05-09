@@ -75,7 +75,7 @@ static void link_ubres(void* my_arg, int err, struct ub_result* result)
 	 *	and only documented in the examples.  It could change.
 	 */
 	if (err) {
-		EDEBUG("rlm_unbound: %s", ub_strerror(err));
+		ERROR("rlm_unbound: %s", ub_strerror(err));
 		*ubres = NULL;
 	} else {
 		*ubres = result;
@@ -537,7 +537,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 		free(optval);
 
-		WDEBUG("rlm_unbound (%s): Overriding syslog settings.", inst->name);
+		WARN("rlm_unbound (%s): Overriding syslog settings.", inst->name);
 		strcpy(k, "use-syslog:");
 		strcpy(v, "no");
 		res = ub_ctx_set_option(inst->ub, k, v);
@@ -614,7 +614,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		 */
 		if (pipe(inst->log_pipe)) {
 		error_pipe:
-			EDEBUG("rlm_unbound (%s): Error setting up log pipes", inst->name);
+			ERROR("rlm_unbound (%s): Error setting up log pipes", inst->name);
 			goto error_nores;
 		}
 

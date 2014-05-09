@@ -90,7 +90,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	    (inst->challenge_len > OTP_MAX_CHALLENGE_LEN)) {
 		inst->challenge_len = 6;
 
-		WDEBUG("invalid challenge_length %d, "
+		WARN("invalid challenge_length %d, "
 		       "range 5-%d, using default of 6",
 		       inst->challenge_len, OTP_MAX_CHALLENGE_LEN);
 	}
@@ -104,25 +104,25 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	if ((inst->mschapv2_mppe_policy > 2) ||
 	    (inst->mschapv2_mppe_policy < 0)) {
 		inst->mschapv2_mppe_policy = 2;
-		WDEBUG("Invalid value for mschapv2_mppe, "
+		WARN("Invalid value for mschapv2_mppe, "
 			"using default of 2");
 	}
 
 	if ((inst->mschapv2_mppe_types > 2) || (inst->mschapv2_mppe_types < 0)) {
 		inst->mschapv2_mppe_types = 2;
-		WDEBUG("Invalid value for "
+		WARN("Invalid value for "
 		       "mschapv2_mppe_bits, using default of 2");
 	}
 
 	if ((inst->mschap_mppe_policy > 2) || (inst->mschap_mppe_policy < 0)) {
 		inst->mschap_mppe_policy = 2;
-		WDEBUG("Invalid value for mschap_mppe, "
+		WARN("Invalid value for mschap_mppe, "
 		       "using default of 2");
 	}
 
 	if (inst->mschap_mppe_types != 2) {
 		inst->mschap_mppe_types = 2;
-		WDEBUG("Invalid value for "
+		WARN("Invalid value for "
 		       "mschap_mppe_bits, using default of 2");
 	}
 

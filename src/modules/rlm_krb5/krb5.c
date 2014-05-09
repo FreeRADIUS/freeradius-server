@@ -141,7 +141,7 @@ void *mod_conn_create(void *instance)
 	MEM(conn = talloc_zero(instance, rlm_krb5_handle_t));
 	ret = krb5_init_context(&conn->context);
 	if (ret) {
-		EDEBUG("rlm_krb5 (%s): Context initialisation failed: %s", inst->xlat_name,
+		ERROR("rlm_krb5 (%s): Context initialisation failed: %s", inst->xlat_name,
 		       rlm_krb5_error(NULL, ret));
 
 		return NULL;

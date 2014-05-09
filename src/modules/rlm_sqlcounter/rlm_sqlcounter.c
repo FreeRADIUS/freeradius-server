@@ -291,7 +291,7 @@ static size_t sqlcounter_expand(char *out, int outlen, char const *fmt, rlm_sqlc
 				q += strlen(q);
 				break;
 			case 'k': /* Key Name */
-				WDEBUG2("Please replace '%%k' with '${key}'");
+				WARN("Please replace '%%k' with '${key}'");
 				strlcpy(q, inst->key_name, freespace);
 				q += strlen(q);
 				break;

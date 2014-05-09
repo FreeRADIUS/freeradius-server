@@ -503,7 +503,7 @@ static int dual_tcp_recv(rad_listen_t *listener)
 	case PW_CODE_STATUS_SERVER:
 		if (!mainconfig.status_server) {
 			FR_STATS_INC(auth, total_unknown_types);
-			WDEBUG("Ignoring Status-Server request due to security configuration");
+			WARN("Ignoring Status-Server request due to security configuration");
 			rad_free(&sock->packet);
 			return 0;
 		}
@@ -1117,7 +1117,7 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 		if (home_server_find(&sock->my_ipaddr, sock->my_port, sock->proto)) {
 				char buffer[128];
 
-				EDEBUG("We have been asked to listen on %s port %d, which is also listed as a "
+				ERROR("We have been asked to listen on %s port %d, which is also listed as a "
 				       "home server.  This can create a proxy loop",
 				       ip_ntoh(&sock->my_ipaddr, buffer, sizeof(buffer)), sock->my_port);
 				return -1;
@@ -1479,7 +1479,7 @@ static int auth_socket_recv(rad_listen_t *listener)
 		if (!mainconfig.status_server) {
 			rad_recv_discard(listener->fd);
 			FR_STATS_INC(auth, total_unknown_types);
-			WDEBUG("Ignoring Status-Server request due to security configuration");
+			WARN("Ignoring Status-Server request due to security configuration");
 			return 0;
 		}
 		fun = rad_status_server;
@@ -1586,7 +1586,7 @@ static int acct_socket_recv(rad_listen_t *listener)
 			rad_recv_discard(listener->fd);
 			FR_STATS_INC(acct, total_unknown_types);
 
-			WDEBUG("Ignoring Status-Server request due to security configuration");
+			WARN("Ignoring Status-Server request due to security configuration");
 			return 0;
 		}
 		fun = rad_status_server;
@@ -2221,7 +2221,7 @@ static int listen_bind(rad_listen_t *this)
 #endif
 
 		default:
-			WDEBUG("Internal sanity check failed in binding to socket.  Ignoring problem.");
+			WARN("Internal sanity check failed in binding to socket.  Ignoring problem.");
 			return -1;
 		}
 	}
@@ -2628,7 +2628,7 @@ rad_listen_t *proxy_new_listener(home_server_t *home, int src_port)
 
 	now = time(NULL);
 	if (home->last_failed_open == now) {
-		WDEBUG("Suppressing attempt to open socket to 'down' home server");
+		WARN("Suppressing attempt to open socket to 'down' home server");
 		return NULL;
 	}
 

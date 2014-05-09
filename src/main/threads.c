@@ -1419,12 +1419,12 @@ void exec_trigger(REQUEST *request, CONF_SECTION *cs, char const *name, int quen
 
 	ci = cf_reference_item(subcs, mainconfig.config, attr);
 	if (!ci) {
-		EDEBUG2("No such item in trigger section: %s", attr);
+		ERROR("No such item in trigger section: %s", attr);
 		return;
 	}
 
 	if (!cf_item_is_pair(ci)) {
-		EDEBUG2("Trigger is not a configuration variable: %s", attr);
+		ERROR("Trigger is not a configuration variable: %s", attr);
 		return;
 	}
 
@@ -1433,7 +1433,7 @@ void exec_trigger(REQUEST *request, CONF_SECTION *cs, char const *name, int quen
 
 	value = cf_pair_value(cp);
 	if (!value) {
-		EDEBUG2("Trigger has no value: %s", name);
+		ERROR("Trigger has no value: %s", name);
 		return;
 	}
 

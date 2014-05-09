@@ -328,7 +328,7 @@ static int mod_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
 			return -1;
 		}
 #else
-		WDEBUG("rlm_sql_sqlite: sqlite3_open_v2() not available, cannot bootstrap database. "
+		WARN("rlm_sql_sqlite: sqlite3_open_v2() not available, cannot bootstrap database. "
 		       "Upgrade to SQLite >= 3.5.1 if you need this functionality");
 #endif
 	}
@@ -346,7 +346,7 @@ static int sql_socket_destructor(void *c)
 	if (conn->db) {
 		status = sqlite3_close(conn->db);
 		if (status != SQLITE_OK) {
-			WDEBUG("rlm_sql_sqlite: Got SQLite error code (%u) when closing socket", status);
+			WARN("rlm_sql_sqlite: Got SQLite error code (%u) when closing socket", status);
 		}
 	}
 

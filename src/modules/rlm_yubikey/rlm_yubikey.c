@@ -147,7 +147,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 #ifndef HAVE_YUBIKEY
 	if (inst->decrypt) {
-		EDEBUG("rlm_yubikey (%s): Requires libyubikey for OTP decryption", inst->name);
+		ERROR("rlm_yubikey (%s): Requires libyubikey for OTP decryption", inst->name);
 		return -1;
 	}
 #endif
@@ -158,7 +158,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 		cs = cf_section_sub_find(conf, "validation");
 		if (!cs) {
-			EDEBUG("rlm_yubikey (%s): Missing validation section", inst->name);
+			ERROR("rlm_yubikey (%s): Missing validation section", inst->name);
 			return -1;
 		}
 
@@ -166,7 +166,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 			return -1;
 		}
 #else
-		EDEBUG("rlm_yubikey (%s): Requires libykclient for OTP validation against Yubicloud servers", inst->name);
+		ERROR("rlm_yubikey (%s): Requires libykclient for OTP validation against Yubicloud servers", inst->name);
 		return -1;
 #endif
 	}

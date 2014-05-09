@@ -262,7 +262,7 @@ static rlm_rcode_t CC_HINT(nonnull (4)) do_ruby(REQUEST *request, unsigned long 
 	 */
 	if (TYPE(rb_result) == T_ARRAY) {
 		if (!FIXNUM_P(rb_ary_entry(rb_result, 0))) {
-			EDEBUG("First element of an array was not a FIXNUM (Which has to be a return_value)");
+			ERROR("First element of an array was not a FIXNUM (Which has to be a return_value)");
 
 			rcode = RLM_MODULE_FAIL;
 			goto finish;
@@ -364,7 +364,7 @@ static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
 	 */
 	module = inst->module = rb_define_module(inst->module_name);
 	if (!module) {
-		EDEBUG("Ruby rb_define_module failed");
+		ERROR("Ruby rb_define_module failed");
 
 		return -1;
 	}
@@ -384,7 +384,7 @@ static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
 	DEBUG("Loading file %s...", inst->filename);
 	rb_load_protect(rb_str_new2(inst->filename), 0, &status);
 	if (status) {
-		EDEBUG("Error loading file %s status: %d", inst->filename, status);
+		ERROR("Error loading file %s status: %d", inst->filename, status);
 
 		return -1;
 	}

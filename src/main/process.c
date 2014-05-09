@@ -750,7 +750,7 @@ static void request_process_timer(REQUEST *request)
 		if (request->listener->status != RAD_LISTEN_STATUS_KNOWN) {
 			if ((request->master_state == REQUEST_ACTIVE) &&
 			    (request->child_state < REQUEST_RESPONSE_DELAY)) {
-				WDEBUG("Socket was closed while processing request %u: Stopping it.", request->number);
+				WARN("Socket was closed while processing request %u: Stopping it.", request->number);
 				request->master_state = REQUEST_STOP_PROCESSING;
 			}
 		}
@@ -2309,7 +2309,7 @@ static int setup_post_proxy_fail(REQUEST *request)
 		dval = dict_valbyname(PW_POST_PROXY_TYPE, 0, "Fail-Disconnect");
 #endif
 	} else {
-		WDEBUG("Unknown packet type in Post-Proxy-Type Fail: ignoring");
+		WARN("Unknown packet type in Post-Proxy-Type Fail: ignoring");
 		return 0;
 	}
 
@@ -2636,7 +2636,7 @@ static int request_proxy(REQUEST *request, int retransmit)
 		REQUEST *fake;
 
 		if (request->packet->dst_port == 0) {
-			WDEBUG("Cannot proxy an internal request.");
+			WARN("Cannot proxy an internal request.");
 			return 0;
 		}
 
@@ -2688,7 +2688,7 @@ static int request_proxy(REQUEST *request, int retransmit)
 	 *	We're actually sending a proxied packet.  Do that now.
 	 */
 	if (!request->in_proxy_hash && !insert_into_proxy_hash(request)) {
-		EDEBUG("Failed to insert request into the proxy list.");
+		ERROR("Failed to insert request into the proxy list.");
 		return -1;
 	}
 
@@ -3044,7 +3044,7 @@ static void mark_home_server_zombie(home_server_t *home, struct timeval *now)
 
 #ifdef WITH_TCP
 	if (home->proto == IPPROTO_TCP) {
-		WDEBUG("Not marking TCP server %s zombie", home->name);
+		WARN("Not marking TCP server %s zombie", home->name);
 		return;
 	}
 #endif
@@ -3120,7 +3120,7 @@ void mark_home_server_dead(home_server_t *home, struct timeval *when)
 
 #ifdef WITH_TCP
 	if (home->proto == IPPROTO_TCP) {
-		WDEBUG("Not marking TCP server dead");
+		WARN("Not marking TCP server dead");
 		return;
 	}
 #endif

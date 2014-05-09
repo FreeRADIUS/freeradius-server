@@ -150,15 +150,8 @@ int fr_logfile_unlock(fr_logfile_t *lf, int fd);
 #define DEBUG4(fmt, ...)	_SL(L_DBG, L_DBG_LVL_MAX, fmt, ## __VA_ARGS__)
 
 #define INFO(fmt, ...)		_SL(L_INFO, L_DBG_LVL_OFF, fmt, ## __VA_ARGS__)
-#define DEBUGI(fmt, ...)	_SL(L_INFO, L_DBG_LVL_1, fmt, ## __VA_ARGS__)
-
 #define WARN(fmt, ...)		_SL(L_WARN, L_DBG_LVL_OFF, fmt, ## __VA_ARGS__)
-#define WDEBUG(fmt, ...)	_SL(L_DBG_WARN, L_DBG_LVL_1, fmt, ## __VA_ARGS__)
-#define WDEBUG2(fmt, ...)	_SL(L_DBG_WARN, L_DBG_LVL_2, fmt, ## __VA_ARGS__)
-
 #define ERROR(fmt, ...)		_SL(L_ERR, L_DBG_LVL_OFF, fmt, ## __VA_ARGS__)
-#define EDEBUG(fmt, ...)	_SL(L_DBG_ERR, L_DBG_LVL_1, fmt, ## __VA_ARGS__)
-#define EDEBUG2(fmt, ...)	_SL(L_DBG_ERR, L_DBG_LVL_2, fmt, ## __VA_ARGS__)
 
 /*
  *	Log request driven messages which including elements from the current request, like section and module

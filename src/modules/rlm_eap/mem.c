@@ -176,15 +176,15 @@ done:
 	PTHREAD_MUTEX_UNLOCK(&(check->inst->handler_mutex));
 
 	if (do_warning) {
-		WDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-		WDEBUG("!! EAP session with state 0x%02x%02x%02x%02x%02x%02x%02x%02x did not finish!  !!",
+		WARN("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+		WARN("!! EAP session with state 0x%02x%02x%02x%02x%02x%02x%02x%02x did not finish!  !!",
 		      state[0], state[1],
 		      state[2], state[3],
 		      state[4], state[5],
 		      state[6], state[7]);
 
-		WDEBUG("!! Please read http://wiki.freeradius.org/guide/Certificate_Compatibility     !!");
-		WDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+		WARN("!! Please read http://wiki.freeradius.org/guide/Certificate_Compatibility     !!");
+		WARN("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 	}
 
 	return 0;

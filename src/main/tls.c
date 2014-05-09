@@ -958,8 +958,8 @@ static int load_dh_params(SSL_CTX *ctx, char *file)
 	dh = PEM_read_bio_DHparams(bio, NULL, NULL, NULL);
 	BIO_free(bio);
 	if (!dh) {
-		WDEBUG2("tls: Unable to set DH parameters.  DH cipher suites may not work!");
-		WDEBUG2("Fix this by running the OpenSSL command listed in eap.conf");
+		WARN("tls: Unable to set DH parameters.  DH cipher suites may not work!");
+		WARN("Fix this by running the OpenSSL command listed in eap.conf");
 		return 0;
 	}
 
