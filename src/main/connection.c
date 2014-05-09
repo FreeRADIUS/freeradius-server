@@ -123,8 +123,6 @@ struct fr_connection_pool_t {
 	time_t		last_spawned;	//!< Last time we spawned a connection.
 	time_t		last_failed;	//!< Last time we tried to spawn a
 					//!< a connection but failed.
-	time_t		last_complained;//!< Last time we complained about
-					//!< configuration parameters.
 	time_t		last_throttled; //!< Last time we refused to spawn a
 					//!< connection because the last
 					//!< connection failed, or we were
@@ -744,11 +742,8 @@ static int fr_connection_manage(fr_connection_pool_t *pool,
 		DEBUG("%s: Closing expired connection (%" PRIu64 "): Hit max_uses limit", pool->log_prefix,
 		      this->number);
 	do_delete:
-		if ((pool->num <= pool->min) &&
-		    (pool->last_complained < now)) {
-			WARN("%s: You probably need to lower \"min\"", pool->log_prefix);
-
-			pool->last_complained = now;
+		if (pool->num <= pool->min) {
+			RATE_LIMIT(WARN("%s: You probably need to lower \"min\"", pool->log_prefix));
 		}
 		fr_connection_close(pool, this);
 		return 0;
@@ -1107,14 +1102,6 @@ void *fr_connection_reconnect(fr_connection_pool_t *pool, void *conn)
 
 	new_conn = pool->create(pool->ctx);
 	if (!new_conn) {
-		time_t now = time(NULL);
-
-		if (pool->last_complained == now) {
-			now = 0;
-		} else {
-			pool->last_complained = now;
-		}
-
 		/*
 		 *	We can't create a new connection, so close
 		 *	this one.
@@ -1129,11 +1116,8 @@ void *fr_connection_reconnect(fr_connection_pool_t *pool, void *conn)
 		new_conn = fr_connection_get_internal(pool, false);
 		if (new_conn) return new_conn;
 
-		if (!now) return NULL;
-
-		ERROR("%s: Failed to reconnect (%" PRIu64 "), no free connections are available", pool->log_prefix,
-		      conn_number);
-
+		RATE_LIMIT(ERROR("%s: Failed to reconnect (%" PRIu64 "), no free connections are available", pool->log_prefix,
+				 conn_number));
 		return NULL;
 	}
 

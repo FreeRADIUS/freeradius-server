@@ -412,25 +412,13 @@ int request_enqueue(REQUEST *request)
 	thread_pool.request_count++;
 
 	if (thread_pool.num_queued >= thread_pool.max_queue_size) {
-		bool complain = false;
-		time_t now;
-		static time_t last_complained = 0;
-
-		now = time(NULL);
-		if (last_complained != now) {
-			last_complained = now;
-			complain = true;
-		}
-
 		pthread_mutex_unlock(&thread_pool.queue_mutex);
 
 		/*
 		 *	Mark the request as done.
 		 */
-		if (complain) {
-			ERROR("Something is blocking the server.  There are %d packets in the queue, "
-			      "waiting to be processed.  Ignoring the new request.", thread_pool.num_queued);
-		}
+		RATE_LIMIT(ERROR("Something is blocking the server.  There are %d packets in the queue, "
+				 "waiting to be processed.  Ignoring the new request.", thread_pool.num_queued));
 		return 0;
 	}
 	request->component = "<core>";
