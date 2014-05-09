@@ -396,7 +396,7 @@ int main(int argc, char *argv[])
 	const char *output_file = NULL;
 	const char *filter_file = NULL;
 	FILE *fp;
-	REQUEST *request;
+	REQUEST *request = NULL;
 	VALUE_PAIR *vp;
 	VALUE_PAIR *filter_vps = NULL;
 
