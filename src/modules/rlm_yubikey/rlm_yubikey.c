@@ -39,7 +39,7 @@ RCSID("$Id$")
 #ifdef HAVE_YKCLIENT
 static const CONF_PARSER validation_config[] = {
 	{ "client_id", PW_TYPE_INTEGER, offsetof(rlm_yubikey_t, client_id), NULL, 0},
-	{ "api_key", PW_TYPE_STRING_PTR, offsetof(rlm_yubikey_t, api_key), NULL, NULL},
+	{ "api_key", PW_TYPE_STRING_PTR | PW_TYPE_SECRET, offsetof(rlm_yubikey_t, api_key), NULL, NULL},
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
 #endif
