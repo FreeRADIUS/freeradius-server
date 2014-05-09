@@ -2971,7 +2971,7 @@ void pairstrcpy(VALUE_PAIR *vp, char const *src)
  *
  * @param[in,out] vp to update.
  * @param[in] src data to copy.
- * @param[in] length of data to copy.
+ * @param[in] len of data to copy.
  */
 void pairstrncpy(VALUE_PAIR *vp, char const *src, size_t len)
 {
