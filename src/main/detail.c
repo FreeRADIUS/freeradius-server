@@ -41,6 +41,8 @@ RCSID("$Id$")
 
 #ifdef WITH_DETAIL
 
+extern bool check_config;
+
 #define USEC (1000000)
 
 static FR_NAME_NUMBER state_names[] = {
@@ -790,29 +792,31 @@ void detail_free(rad_listen_t *this)
 	listen_detail_t *data = this->data;
 
 #ifdef WITH_DETAIL_THREAD
-	void *arg = NULL;
+	if (!check_config) {
+		void *arg = NULL;
 
-	/*
-	 *	Mark the child pipes as unusable
-	 */
-	close(data->child_pipe[0]);
-	close(data->child_pipe[1]);
-	data->child_pipe[0] = -1;
+		/*
+		 *	Mark the child pipes as unusable
+		 */
+		close(data->child_pipe[0]);
+		close(data->child_pipe[1]);
+		data->child_pipe[0] = -1;
 
-	/*
-	 *	Tell it to stop (interrupting it's sleep)
-	 */
-	pthread_kill(data->pthread_id, SIGTERM);
+		/*
+		 *	Tell it to stop (interrupting it's sleep)
+		 */
+		pthread_kill(data->pthread_id, SIGTERM);
 
-	/*
-	 *	Wait for it to acknowledge that it's stopped.
-	 */
-	(void) read(data->master_pipe[0], &arg, sizeof(arg));
+		/*
+		 *	Wait for it to acknowledge that it's stopped.
+		 */
+		(void) read(data->master_pipe[0], &arg, sizeof(arg));
 
-	close(data->master_pipe[0]);
-	close(data->master_pipe[1]);
+		close(data->master_pipe[0]);
+		close(data->master_pipe[1]);
 
-	pthread_join(data->pthread_id, &arg);
+		pthread_join(data->pthread_id, &arg);
+	}
 #endif
 
 	talloc_free(data->filename);
@@ -965,8 +969,6 @@ static const CONF_PARSER detail_config[] = {
 
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
-
-extern bool check_config;
 
 /*
  *	Parse a detail section.
