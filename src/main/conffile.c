@@ -1885,7 +1885,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 				      filename, *lineno);
 				return -1;
 			}
-			nextcs->item.filename = filename;
+			nextcs->item.filename = talloc_strdup(nextcs, filename);
 			nextcs->item.lineno = *lineno;
 
 			slen = fr_condition_tokenize(nextcs, cf_sectiontoitem(nextcs), ptr, &cond, &error, FR_COND_TWO_PASS);
@@ -2016,7 +2016,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		do_set:
 			cpn = cf_pair_alloc(this, buf1, value, t2, t3);
 			if (!cpn) return -1;
-			cpn->item.filename = filename;
+			cpn->item.filename = talloc_strdup(cpn, filename);
 			cpn->item.lineno = *lineno;
 			cf_item_add(this, &(cpn->item));
 			continue;
@@ -2051,7 +2051,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 					return -1;
 				}
 
-				css->item.filename = filename;
+				css->item.filename = talloc_strdup(css, filename);
 				css->item.lineno = *lineno;
 				cf_item_add(this, &(css->item));
 
@@ -2168,7 +2168,7 @@ int cf_file_include(CONF_SECTION *cs, char const *filename)
 		return -1;
 	}
 
-	if (!cs->item.filename) cs->item.filename = filename;
+	if (!cs->item.filename) cs->item.filename = talloc_strdup(cs, filename);
 
 	/*
 	 *	Read the section.  It's OK to have EOF without a
