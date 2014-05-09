@@ -200,6 +200,16 @@ int fr_logfile_unlock(fr_logfile_t *lf, int fd);
 
 #define REMARKER(_m, _i, _e)	_RMKR(L_DBG_ERR, L_DBG_LVL_1, _m, _i, _e)
 
+/*
+ *	Rate limit messages.
+ */
+#define RATE_LIMIT(_x) do {static time_t rl_last_complained = 0;time_t rl_now = time(NULL); \
+			    if (rl_now != rl_last_complained) { \
+				rl_last_complained = rl_now; \
+				_x; \
+			    } \
+                       } while (0)
+
 #ifdef __cplusplus
 }
 #endif
