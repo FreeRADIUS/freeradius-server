@@ -254,7 +254,11 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 			otp = passcode + password_len;
 			ret = otp_string_valid(inst, otp, (inst->id_len + YUBIKEY_TOKEN_LEN));
 			if (ret <= 0) {
-				RDMARKER(otp, -ret, "User-Password (aes-block) value contains non modhex chars");
+				if (RDEBUG_ENABLED3) {
+					RDMARKER(otp, -ret, "User-Password (aes-block) value contains non modhex chars");
+				} else {
+					RDEBUG("User-Password (aes-block) value contains non modhex chars");
+				}
 				return RLM_MODULE_NOOP;
 			}
 
@@ -293,7 +297,11 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 
 		ret = otp_string_valid(inst, passcode, (inst->id_len + YUBIKEY_TOKEN_LEN));
 		if (ret <= 0) {
-			RDMARKER(passcode, -ret, "User-Password (aes-block) value contains non modhex chars");
+			if (RDEBUG_ENABLED3) {
+				RDMARKER(passcode, -ret, "User-Password (aes-block) value contains non modhex chars");
+			} else {
+				RDEBUG("User-Password (aes-block) value contains non modhex chars");
+			}
 			return RLM_MODULE_NOOP;
 		}
 	}
@@ -378,7 +386,11 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 
 	ret = otp_string_valid(inst, passcode, (inst->id_len + YUBIKEY_TOKEN_LEN));
 	if (ret <= 0) {
-		REMARKER(passcode, -ret, "Passcode (aes-block) value contains non modhex chars");
+		if (RDEBUG_ENABLED3) {
+			REMARKER(passcode, -ret, "Passcode (aes-block) value contains non modhex chars");
+		} else {
+			RERROR("Passcode (aes-block) value contains non modhex chars");
+		}
 		return RLM_MODULE_INVALID;
 	}
 
