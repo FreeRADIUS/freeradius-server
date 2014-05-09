@@ -2967,6 +2967,32 @@ void pairstrcpy(VALUE_PAIR *vp, char const *src)
 	pairtypeset(vp);
 }
 
+/** Copy data into an "string" data type.
+ *
+ * @param[in,out] vp to update.
+ * @param[in] src data to copy.
+ * @param[in] length of data to copy.
+ */
+void pairstrncpy(VALUE_PAIR *vp, char const *src, size_t len)
+{
+	char *p, *q;
+
+	VERIFY_VP(vp);
+
+	p = talloc_array(vp, char, len + 1);
+	memcpy(p, src, len);	/* embdedded \0 safe */
+	p[len] = '\0';
+
+	if (!p) return;
+
+	memcpy(&q, &vp->vp_strvalue, sizeof(q));
+	talloc_free(q);
+
+	vp->vp_strvalue = p;
+	vp->type = VT_DATA;
+	vp->length = len;
+	pairtypeset(vp);
+}
 
 /** Print data into an "string" data type.
  *
