@@ -294,6 +294,7 @@ static RADIUS_PACKET *detail_poll(rad_listen_t *listener);
 int detail_recv(rad_listen_t *listener)
 {
 	RADIUS_PACKET *packet;
+	listen_detail_t *data = listener->data;
 
 	/*
 	 *	We may be in the main thread.  It needs to update the
