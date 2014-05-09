@@ -267,7 +267,7 @@ static int do_regex(REQUEST *request, value_pair_map_t const *map, bool iflag)
 				char errbuf[128];
 
 				regerror(compare, &reg, errbuf, sizeof(errbuf));
-				EDEBUG("Failed compiling regular expression: %s", errbuf);
+				ERROR("Failed compiling regular expression: %s", errbuf);
 			}
 			EVAL_DEBUG("FAIL %d", __LINE__);
 			return -1;

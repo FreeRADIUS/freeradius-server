@@ -113,7 +113,7 @@ void eaptls_gen_mppe_keys(REQUEST *request, SSL *s,
 	size_t prf_size;
 
 	if (!s->s3) {
-		EDEBUG("No SSLv3 information");
+		ERROR("No SSLv3 information");
 		return;
 	}
 
@@ -157,7 +157,7 @@ void eapttls_gen_challenge(SSL *s, uint8_t *buffer, size_t size)
 	uint8_t *p = seed;
 
 	if (!s->s3) {
-		EDEBUG("No SSLv3 information");
+		ERROR("No SSLv3 information");
 		return;
 	}
 
@@ -183,7 +183,7 @@ void eaptls_gen_eap_key(RADIUS_PACKET *packet, SSL *s, uint32_t header)
 	uint8_t *p;
 
 	if (!s->s3) {
-		EDEBUG("No SSLv3 information");
+		ERROR("No SSLv3 information");
 		return;
 	}
 

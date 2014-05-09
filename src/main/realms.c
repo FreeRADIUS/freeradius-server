@@ -1038,7 +1038,7 @@ static int server_pool_add(realm_config_t *rc,
 		}
 
 		if (0) {
-			WDEBUG2("Duplicate home server %s in server pool %s", home->name, pool->name);
+			WARN("Duplicate home server %s in server pool %s", home->name, pool->name);
 			continue;
 		}
 
@@ -1702,7 +1702,7 @@ static int realm_add(realm_config_t *rc, CONF_SECTION *cs)
 		    ((cp = cf_pair_find(cs, "accthost")) != NULL) ||
 		    ((cp = cf_pair_find(cs, "secret")) != NULL) ||
 		    ((cp = cf_pair_find(cs, "ldflag")) != NULL)) {
-			WDEBUG2("Ignoring old-style configuration entry \"%s\" in realm \"%s\"", cf_pair_attr(cp), r->name);
+			WARN("Ignoring old-style configuration entry \"%s\" in realm \"%s\"", cf_pair_attr(cp), r->name);
 		}
 
 
@@ -2323,7 +2323,7 @@ home_server_t *home_server_ldb(char const *realmname,
 	if (!found && pool->fallback) {
 		found = pool->fallback;
 
-		WDEBUG("Home server pool %s failing over to fallback %s",
+		WARN("Home server pool %s failing over to fallback %s",
 		      pool->name, found->server);
 		if (pool->in_fallback) goto update_and_return;
 

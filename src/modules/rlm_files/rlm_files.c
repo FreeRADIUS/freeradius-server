@@ -187,7 +187,7 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, fr_hash_table_t *
 				if ((vp->da->vendor != 0) ||
 						(vp->da->attr < 0x100)) {
 					if (!compat_mode) {
-						WDEBUG("[%s]:%d Changing '%s =' to '%s =='\n\tfor comparing RADIUS attribute in check item list for user %s",
+						WARN("[%s]:%d Changing '%s =' to '%s =='\n\tfor comparing RADIUS attribute in check item list for user %s",
 								filename, entry->lineno,
 								vp->da->name, vp->da->name,
 								entry->name);
@@ -247,7 +247,7 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, fr_hash_table_t *
 				 */
 				 if ((vp->da->vendor == 0) &&
 					(vp->da->attr > 1000)) {
-					WDEBUG("[%s]:%d Check item \"%s\"\n"
+					WARN("[%s]:%d Check item \"%s\"\n"
 					       "\tfound in reply item list for user \"%s\".\n"
 					       "\tThis attribute MUST go on the first line"
 					       " with the other check items", filename, entry->lineno, vp->da->name,

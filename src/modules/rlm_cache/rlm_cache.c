@@ -807,7 +807,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 #ifdef HAVE_PTHREAD_H
 	if (pthread_mutex_init(&inst->cache_mutex, NULL) < 0) {
-		EDEBUG("Failed initializing mutex: %s",
+		ERROR("Failed initializing mutex: %s",
 		       fr_syserror(errno));
 		return -1;
 	}
@@ -818,7 +818,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 */
 	inst->cache = rbtree_create(cache_entry_cmp, cache_entry_free, 0);
 	if (!inst->cache) {
-		EDEBUG("Failed to create cache");
+		ERROR("Failed to create cache");
 		return -1;
 	}
 
@@ -828,7 +828,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	inst->heap = fr_heap_create(cache_heap_cmp,
 				    offsetof(rlm_cache_entry_t, offset));
 	if (!inst->heap) {
-		EDEBUG("Failed to create heap for the cache");
+		ERROR("Failed to create heap for the cache");
 		return -1;
 	}
 

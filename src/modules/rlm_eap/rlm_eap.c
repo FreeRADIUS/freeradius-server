@@ -89,7 +89,7 @@ static int eap_handler_cmp(void const *a, void const *b)
 	 *	EAP work.
 	 */
 	if (fr_ipaddr_cmp(&one->src_ipaddr, &two->src_ipaddr) != 0) {
-		WDEBUG("EAP packets are arriving from two different upstream "
+		WARN("EAP packets are arriving from two different upstream "
 		       "servers.  Has there been a proxy fail-over?");
 	}
 

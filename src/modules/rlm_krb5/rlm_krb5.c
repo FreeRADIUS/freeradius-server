@@ -95,17 +95,17 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
  *	rlm_krb5 was not built as threadsafe
  */
 #else
-		WDEBUG("libkrb5 is not threadsafe, recompile it with thread support enabled ("
+		WARN("libkrb5 is not threadsafe, recompile it with thread support enabled ("
 #  ifdef HEIMDAL_KRB5
 		       "--enable-pthread-support"
 #  else
 		       "--disable-thread-support=no"
 #  endif
 		       ")");
-		WDEBUG("rlm_krb5 will run in single threaded mode, performance may be degraded");
+		WARN("rlm_krb5 will run in single threaded mode, performance may be degraded");
 	} else {
-		WDEBUG("Build time libkrb5 was not threadsafe, but run time library claims to be");
-		WDEBUG("Reconfigure and recompile rlm_krb5 to enable thread support");
+		WARN("Build time libkrb5 was not threadsafe, but run time library claims to be");
+		WARN("Reconfigure and recompile rlm_krb5 to enable thread support");
 #endif
 	}
 

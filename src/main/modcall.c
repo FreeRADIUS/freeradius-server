@@ -2765,13 +2765,13 @@ static bool pass2_xlat_compile(CONF_ITEM const *ci, value_pair_tmpl_t **pvpt, bo
 			if (cf_item_is_pair(ci)) {
 				CONF_PAIR *cp = cf_itemtopair(ci);
 
-				WDEBUG("%s[%d] Please change \"%%{%s}\" to just %s",
+				WARN("%s[%d] Please change \"%%{%s}\" to just %s",
 				       cf_pair_filename(cp), cf_pair_lineno(cp),
 				       attr->name, attr->name);
 			} else {
 				CONF_SECTION *cs = cf_itemtosection(ci);
 
-				WDEBUG("%s[%d] Please change \"%%{%s}\" to just %s",
+				WARN("%s[%d] Please change \"%%{%s}\" to just %s",
 				       cf_section_filename(cs), cf_section_lineno(cs),
 				       attr->name, attr->name);
 			}
@@ -3143,7 +3143,7 @@ bool modcall_pass2(modcallable *mc)
 			 */
 			if ((g->vpt->type == VPT_TYPE_ATTR) &&
 			    (this->name[0] != '&')) {
-				WDEBUG("%s[%d]: Please change %s to &%s",
+				WARN("%s[%d]: Please change %s to &%s",
 				       cf_section_filename(g->cs),
 				       cf_section_lineno(g->cs),
 				       this->name, this->name);

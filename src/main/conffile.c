@@ -656,7 +656,7 @@ CONF_ITEM *cf_reference_item(CONF_SECTION const *parentcs,
 	}
 
 no_such_item:
-	WDEBUG2("No such configuration item %s", ptr);
+	WARN("No such configuration item %s", ptr);
 	return NULL;
 }
 
@@ -1761,7 +1761,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 					struct stat statbuf;
 
 					if (stat(value, &statbuf) < 0) {
-						WDEBUG("Not including file %s: %s", value, fr_syserror(errno));
+						WARN("Not including file %s: %s", value, fr_syserror(errno));
 						continue;
 					}
 				}
@@ -1900,8 +1900,8 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 				ERROR("%s[%d]: Parse error in condition",
 				       filename, *lineno);
 
-				EDEBUG("%s", start);
-				EDEBUG("%.*s^ %s", (int) offset, spbuf, error);
+				ERROR("%s", start);
+				ERROR("%.*s^ %s", (int) offset, spbuf, error);
 				talloc_free(nextcs);
 				free(spbuf);
 				return -1;
@@ -1909,7 +1909,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 
 			if ((size_t) slen >= (sizeof(buf2) - 1)) {
 				talloc_free(nextcs);
-				EDEBUG("%s[%d]: Condition is too large after \"%s\"",
+				ERROR("%s[%d]: Condition is too large after \"%s\"",
 				       filename, *lineno, buf1);
 				return -1;
 			}
@@ -1921,7 +1921,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 
 			if (gettoken(&ptr, buf3, sizeof(buf3), true) != T_LCBRACE) {
 				talloc_free(nextcs);
-				EDEBUG("%s[%d]: Expected '{'",
+				ERROR("%s[%d]: Expected '{'",
 				       filename, *lineno);
 				return -1;
 			}

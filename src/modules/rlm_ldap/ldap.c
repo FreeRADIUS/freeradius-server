@@ -1202,7 +1202,7 @@ void *mod_conn_create(void *instance)
 	 */
 	if (inst->start_tls) {
 		if (inst->port == 636) {
-			WDEBUG("Told to Start TLS on LDAPS port this will probably fail, please correct the "
+			WARN("Told to Start TLS on LDAPS port this will probably fail, please correct the "
 			       "configuration");
 		}
 

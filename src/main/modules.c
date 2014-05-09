@@ -147,7 +147,7 @@ static void check_lib_access(char const *name)
 {
 	if (access(name, R_OK) < 0) switch (errno) {
 		case EACCES:
-			WDEBUG("Library \"%s\" exists, but we don't have permission to read", name);
+			WARN("Library \"%s\" exists, but we don't have permission to read", name);
 			break;
 		case ENOENT:
 			DEBUG4("Library not found at path \"%s\"", name);
@@ -1027,7 +1027,7 @@ static int load_component_section(CONF_SECTION *cs,
 				ignored[last_ignored] = modname;
 
 			complain:
-				WDEBUG("Ignoring \"%s\" (see raddb/mods-available/README.rst)", modname + 1);
+				WARN("Ignoring \"%s\" (see raddb/mods-available/README.rst)", modname + 1);
 				continue;
 			}
 
@@ -1293,7 +1293,7 @@ static int load_byserver(CONF_SECTION *cs)
 	}
 
 	if (!found && name) {
-		WDEBUG("Server %s is empty, and will do nothing!",
+		WARN("Server %s is empty, and will do nothing!",
 		      name);
 	}
 

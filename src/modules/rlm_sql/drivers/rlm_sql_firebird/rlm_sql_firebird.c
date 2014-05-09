@@ -43,7 +43,7 @@ static int _sql_socket_destructor(rlm_sql_firebird_conn_t *conn)
 		isc_detach_database(conn->status, &(conn->dbh));
 
 		if (fb_error(conn)) {
-			WDEBUG("rlm_sql_firebird: Got error "
+			WARN("rlm_sql_firebird: Got error "
 			       "when closing socket: %s", conn->error);
 		}
 	}

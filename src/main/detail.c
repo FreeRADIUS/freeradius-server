@@ -501,7 +501,7 @@ int detail_recv(rad_listen_t *listener)
 		 *	FIXME: print an error for badly formatted attributes?
 		 */
 		if (sscanf(buffer, "%255s %7s %1023s", key, op, value) != 3) {
-			WDEBUG2("Skipping badly formatted line %s",
+			WARN("Skipping badly formatted line %s",
 			       buffer);
 			continue;
 		}

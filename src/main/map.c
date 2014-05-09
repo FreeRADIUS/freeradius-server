@@ -417,13 +417,13 @@ value_pair_map_t *radius_cp2map(TALLOC_CTX *ctx, CONF_PAIR *cp,
 	 */
 	if (debug_flag > 2) {
 		if ((map->dst->type == VPT_TYPE_ATTR) && (*attr != '&')) {
-			WDEBUG("%s[%d]: Please change attribute reference to '&%s %s ...'",
+			WARN("%s[%d]: Please change attribute reference to '&%s %s ...'",
 			       cf_pair_filename(cp), cf_pair_lineno(cp),
 			       attr, fr_int2str(fr_tokens, map->op, "<INVALID>"));
 		}
 
 		if ((map->src->type == VPT_TYPE_ATTR) && (*value != '&')) {
-			WDEBUG("%s[%d]: Please change attribute reference to '... %s &%s'",
+			WARN("%s[%d]: Please change attribute reference to '... %s &%s'",
 			       cf_pair_filename(cp), cf_pair_lineno(cp),
 			       fr_int2str(fr_tokens, map->op, "<INVALID>"), value);
 		}
@@ -478,7 +478,7 @@ value_pair_map_t *radius_cp2map(TALLOC_CTX *ctx, CONF_PAIR *cp,
 		if ((map->op == T_OP_CMP_FALSE) &&
 		    ((map->src->type != VPT_TYPE_LITERAL) ||
 		     (strcmp(map->src->name, "ANY") != 0))) {
-			WDEBUG("%s[%d] Attribute deletion MUST use '!* ANY'",
+			WARN("%s[%d] Attribute deletion MUST use '!* ANY'",
 			       cf_pair_filename(cp), cf_pair_lineno(cp));
 		}
 	}
@@ -507,7 +507,7 @@ value_pair_map_t *radius_cp2map(TALLOC_CTX *ctx, CONF_PAIR *cp,
 
 		case T_OP_SET:
 			if (map->src->type == VPT_TYPE_EXEC) {
-				WDEBUG("%s[%d] Please change ':=' to '=' for list assignment",
+				WARN("%s[%d] Please change ':=' to '=' for list assignment",
 				       cf_pair_filename(cp), cf_pair_lineno(cp));
 				break;
 			}
