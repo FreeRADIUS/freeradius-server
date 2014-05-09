@@ -510,13 +510,10 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	if (rad_check_lib_magic(RADIUSD_MAGIC_NUMBER) < 0) {
-		exit(EXIT_FAILURE);
-	}
-
 	/*  Read the configuration files, BEFORE doing anything else.  */
 	if (mainconfig_init() < 0) {
-		exit(EXIT_FAILURE);
+		rcode = EXIT_FAILURE;
+		goto finish;
 	}
 
 	/*
@@ -532,7 +529,8 @@ int main(int argc, char *argv[])
 	    !getenv("PANIC_ACTION") &&
 #endif
 	    (fr_fault_setup(mainconfig.panic_action, argv[0]) < 0)) {
-		exit(EXIT_FAILURE);
+		rcode = EXIT_FAILURE;
+		goto finish;
 	}
 
 	setlinebuf(stdout); /* unbuffered output */
@@ -544,7 +542,7 @@ int main(int argc, char *argv[])
 		if (!fp) {
 			fprintf(stderr, "Failed reading %s: %s\n",
 				input_file, fr_syserror(errno));
-			exit(EXIT_FAILURE);
+			goto finish;
 		}
 	}
 
@@ -554,7 +552,8 @@ int main(int argc, char *argv[])
 	request = request_setup(fp);
 	if (!request) {
 		fprintf(stderr, "Failed reading input: %s\n", fr_strerror());
-		exit(EXIT_FAILURE);
+		rcode = EXIT_FAILURE;
+		goto finish;
 	}
 
 	/*
@@ -580,9 +579,9 @@ int main(int argc, char *argv[])
 		if (!fp) {
 			fp = fopen(filter_file, "r");
 			if (!fp) {
-				fprintf(stderr, "Failed reading %s: %s\n",
-					filter_file, fr_syserror(errno));
-				exit(EXIT_FAILURE);
+				fprintf(stderr, "Failed reading %s: %s\n", filter_file, strerror(errno));
+				rcode = EXIT_FAILURE;
+				goto finish;
 			}
 		}
 
@@ -590,7 +589,8 @@ int main(int argc, char *argv[])
 		if (readvp2(&filter_vps, request, fp, &filedone) < 0) {
 			fprintf(stderr, "Failed reading attributes from %s: %s\n",
 				filter_file, fr_strerror());
-			exit(EXIT_FAILURE);
+			rcode = EXIT_FAILURE;
+			goto finish;
 		}
 
 		/*
@@ -630,13 +630,15 @@ int main(int argc, char *argv[])
 			pairvalidate_debug(request, failed);
 			fr_perror("Output file %s does not match attributes in filter %s",
 				  output_file ? output_file : input_file, filter_file);
-			exit(EXIT_FAILURE);
+			rcode = EXIT_FAILURE;
+			goto finish;
 		}
 	}
 
-	talloc_free(request);
-
 	INFO("Exiting normally.");
+
+finish:
+	talloc_free(request);
 
 	/*
 	 *	Detach any modules.
