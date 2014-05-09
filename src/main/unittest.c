@@ -520,7 +520,8 @@ int main(int argc, char *argv[])
 	 *  Load the modules
 	 */
 	if (modules_init(mainconfig.config) < 0) {
-		exit(EXIT_FAILURE);
+		rcode = EXIT_FAILURE;
+		goto finish;
 	}
 
 	/* Set the panic action (if required) */
