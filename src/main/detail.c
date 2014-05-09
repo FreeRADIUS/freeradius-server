@@ -980,8 +980,6 @@ int detail_parse(CONF_SECTION *cs, rad_listen_t *this)
 	RADCLIENT	*client;
 	char buffer[2048];
 
-	if (check_config) return 0;
-
 	data = this->data;
 
 	rcode = cf_section_parse(cs, data, detail_config);
@@ -1010,6 +1008,8 @@ int detail_parse(CONF_SECTION *cs, rad_listen_t *this)
 		cf_log_err_cs(cs, "poll_interval must be between 1 and 20");
 		return -1;
 	}
+
+	if (check_config) return 0;
 
 	if (data->max_outstanding == 0) data->max_outstanding = 1;
 
