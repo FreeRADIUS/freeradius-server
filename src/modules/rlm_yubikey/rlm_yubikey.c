@@ -309,9 +309,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 	 *	needs to verify it's associated with the user.
 	 *
 	 *	It's left up to the user if they want to decode it or not.
-	 *
-	 *	@todo: is this even right?  Is there anything in passcode other than
-	 *	the public ID?  Why pairmake(...NULL) instead of pairmake(..., passcode) ?
 	 */
 	if (inst->id_len) {
 		vp = pairmake(request, &request->packet->vps, "Yubikey-Public-ID", NULL, T_OP_SET);
