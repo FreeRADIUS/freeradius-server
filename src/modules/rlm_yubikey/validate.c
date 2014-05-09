@@ -186,17 +186,17 @@ rlm_rcode_t rlm_yubikey_validate(rlm_yubikey_t *inst, REQUEST *request,  VALUE_P
 		REDEBUG("%s", ykclient_strerror(status));
 
 		switch (status) {
-			case YKCLIENT_BAD_OTP:
-			case YKCLIENT_REPLAYED_OTP:
-				rcode = RLM_MODULE_REJECT;
-				break;
+		case YKCLIENT_BAD_OTP:
+		case YKCLIENT_REPLAYED_OTP:
+			rcode = RLM_MODULE_REJECT;
+			break;
 
-			case YKCLIENT_NO_SUCH_CLIENT:
-				rcode = RLM_MODULE_NOTFOUND;
-				break;
+		case YKCLIENT_NO_SUCH_CLIENT:
+			rcode = RLM_MODULE_NOTFOUND;
+			break;
 
-			default:
-				rcode = RLM_MODULE_FAIL;
+		default:
+			rcode = RLM_MODULE_FAIL;
 		}
 	}
 

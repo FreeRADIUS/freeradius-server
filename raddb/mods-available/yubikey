@@ -11,6 +11,15 @@ yubikey {
 #	id_length = 12
 
 	#
+	#  If true, the authorize method of rlm_yubikey will attempt to split the
+	#  value of User-Password, into the user's password, and the OTP token.
+	#
+	#  If enabled and successful, the value of User-Password will be truncated
+	#  and request:Yubikey-OTP will be added.
+	#
+#	split = yes
+
+	#
 	#  Decrypt mode - Tokens will be decrypted and processed locally
 	#
 	#  The module itself does not provide persistent storage as this
