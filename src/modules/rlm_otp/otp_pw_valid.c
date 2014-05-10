@@ -323,7 +323,7 @@ otp_read(otp_fd_t *fdp, char *buf, size_t len)
 
 /*
  *	Full write with logging, and close on failure.
- *	Returns 0 on success, errno on failure.
+ *	Returns number of bytes written on success, errno on failure.
  */
 static int otp_write(otp_fd_t *fdp, char const *buf, size_t len)
 {
@@ -348,7 +348,7 @@ static int otp_write(otp_fd_t *fdp, char const *buf, size_t len)
 		nleft -= nwrote;
 	}
 
-	return 0;
+	return len - nleft;
 }
 
 /* connect to otpd and return fd */
