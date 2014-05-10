@@ -614,9 +614,10 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int in_server)
 	    !cf_pair_find(cs, "ipv6addr")) {
 		char *prefix_ptr;
 
-		WARN("No 'ipaddr' or 'ipv6addr' field found in client %s.  Please fix your configuration",
-			name2);
+#if 0
+		WARN("No 'ipaddr' or 'ipv6addr' field found in client %s.  Please fix your configuration",name2);
 		WARN("Support for old-style clients will be removed in a future release");
+#endif
 
 #ifdef WITH_TCP
 		if (cf_pair_find(cs, "proto") != NULL) {
