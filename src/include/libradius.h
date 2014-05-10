@@ -646,8 +646,9 @@ int		rad_unlockfd(int fd, int lock_len);
 size_t		fr_bin2hex(char *hex, uint8_t const *bin, size_t inlen);
 size_t		fr_hex2bin(uint8_t *bin, char const *hex, size_t outlen);
 uint32_t	fr_strtoul(char const *value, char **end);
-bool		fr_whitespace_check(char const *value);
-bool		fr_integer_check(char const *value);
+bool		is_whitespace(char const *value);
+bool		is_integer(char const *value);
+bool		is_zero(char const *value);
 
 int		fr_ipaddr_cmp(fr_ipaddr_t const *a, fr_ipaddr_t const *b);
 

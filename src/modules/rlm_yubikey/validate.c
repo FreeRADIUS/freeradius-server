@@ -68,13 +68,15 @@ int rlm_yubikey_ykclient_init(CONF_SECTION *conf, rlm_yubikey_t *inst)
 	int count = 0;
 
 	if (!inst->client_id) {
-		ERROR("rlm_yubikey (%s): client_id must be set when validation is enabled", inst->name);
+		ERROR("rlm_yubikey (%s): validation.client_id must be set (to a valid id) when validation is enabled",
+		      inst->name);
 
 		return -1;
 	}
 
-	if (!inst->api_key) {
-		ERROR("rlm_yubikey (%s): api_key must be set when validation is enabled", inst->name);
+	if (!inst->api_key || !*inst->api_key || is_zero(inst->api_key)) {
+		ERROR("rlm_yubikey (%s): validation.api_key must be set (to a valid key) when validation is enabled",
+		      inst->name);
 
 		return -1;
 	}
