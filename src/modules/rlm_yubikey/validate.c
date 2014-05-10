@@ -156,7 +156,7 @@ int rlm_yubikey_ykclient_detach(rlm_yubikey_t *inst)
 	return 0;
 }
 
-rlm_rcode_t rlm_yubikey_validate(rlm_yubikey_t *inst, REQUEST *request,  VALUE_PAIR *otp)
+rlm_rcode_t rlm_yubikey_validate(rlm_yubikey_t *inst, REQUEST *request,  char const *passcode)
 {
 	rlm_rcode_t rcode = RLM_MODULE_OK;
 	ykclient_rc status;
@@ -183,10 +183,9 @@ rlm_rcode_t rlm_yubikey_validate(rlm_yubikey_t *inst, REQUEST *request,  VALUE_P
 	 */
 	ykclient_handle_cleanup(yandle);
 
-	status = ykclient_request_process(inst->ykc, yandle, otp->vp_strvalue);
+	status = ykclient_request_process(inst->ykc, yandle, passcode);
 	if (status != YKCLIENT_OK) {
 		REDEBUG("%s", ykclient_strerror(status));
-
 		switch (status) {
 		case YKCLIENT_BAD_OTP:
 		case YKCLIENT_REPLAYED_OTP:

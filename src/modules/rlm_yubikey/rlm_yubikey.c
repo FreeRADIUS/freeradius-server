@@ -396,7 +396,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 
 #ifdef HAVE_YUBIKEY
 	if (inst->decrypt) {
-		rcode = rlm_yubikey_decrypt(inst, request, request->password);
+		rcode = rlm_yubikey_decrypt(inst, request, passcode);
 		if (rcode != RLM_MODULE_OK) {
 			return rcode;
 		}
@@ -406,7 +406,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 
 #ifdef HAVE_YKCLIENT
 	if (inst->validate) {
-		return rlm_yubikey_validate(inst, request, request->password);
+		return rlm_yubikey_validate(inst, request, passcode);
 	}
 #endif
 	return rcode;
