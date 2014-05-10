@@ -328,10 +328,11 @@ otp_read(otp_fd_t *fdp, char *buf, size_t len)
 static int otp_write(otp_fd_t *fdp, char const *buf, size_t len)
 {
 	size_t nleft = len;
-	ssize_t nwrote;
+	size_t n;
+	ssize_t nwrote = 0;
 
 	while (nleft) {
-		nwrote = write(fdp->fd, &buf[len - nleft], nleft);
+		n = write(fdp->fd, &buf[len - nleft], nleft);
 		if (nwrote == -1) {
 			if (errno == EINTR) {
 				continue;
@@ -345,10 +346,11 @@ static int otp_write(otp_fd_t *fdp, char const *buf, size_t len)
 			}
 		}
 
-		nleft -= nwrote;
+		nleft -= n;
+		nwrote += n;
 	}
 
-	return 0;
+	return nwrote;
 }
 
 /* connect to otpd and return fd */
