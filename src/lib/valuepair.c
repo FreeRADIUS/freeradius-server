@@ -1305,7 +1305,7 @@ bool pairparsevalue(VALUE_PAIR *vp, char const *value)
 			 *	We assume the number is the bigendian representation of the
 			 *	IP address.
 			 */
-			if (fr_integer_check(value)) {
+			if (is_integer(value)) {
 				vp->vp_ipaddr = htonl(atol(value));
 				break;
 			}
@@ -1353,7 +1353,7 @@ bool pairparsevalue(VALUE_PAIR *vp, char const *value)
 			}
 			break;
 		}
-		if (fr_whitespace_check(p)) break;
+		if (is_whitespace(p)) break;
 		goto check_for_value;
 
 	case PW_TYPE_SHORT:
@@ -1369,7 +1369,7 @@ bool pairparsevalue(VALUE_PAIR *vp, char const *value)
 			}
 			break;
 		}
-		if (fr_whitespace_check(p)) break;
+		if (is_whitespace(p)) break;
 		goto check_for_value;
 
 	case PW_TYPE_INTEGER:
@@ -1379,7 +1379,7 @@ bool pairparsevalue(VALUE_PAIR *vp, char const *value)
 		vp->vp_integer = fr_strtoul(value, &p);
 		vp->length = 4;
 		if (!*p) break;
-		if (fr_whitespace_check(p)) break;
+		if (is_whitespace(p)) break;
 
 	check_for_value:
 		/*
@@ -1405,7 +1405,7 @@ bool pairparsevalue(VALUE_PAIR *vp, char const *value)
 		vp->vp_integer64 = y;
 		vp->length = 8;
 		length = strspn(value, "0123456789");
-		if (fr_whitespace_check(value + length)) break;
+		if (is_whitespace(value + length)) break;
 		break;
 
 	case PW_TYPE_DATE:
@@ -1607,7 +1607,7 @@ bool pairparsevalue(VALUE_PAIR *vp, char const *value)
 			 *	We assume the number is the bigendian representation of the
 			 *	ethernet address.
 			 */
-			if (fr_integer_check(value)) {
+			if (is_integer(value)) {
 				uint64_t integer = htonll(atoll(value));
 
 				memcpy(&vp->vp_ether, &integer, sizeof(vp->vp_ether));

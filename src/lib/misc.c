@@ -776,13 +776,11 @@ uint32_t fr_strtoul(char const *value, char **end)
  *
  * @return true if the entirety of the string is whitespace, else false.
  */
-bool fr_whitespace_check(char const *value)
+bool is_whitespace(char const *value)
 {
-	while (*value) {
+	do {
 		if (!isspace(*value)) return false;
-
-		value++;
-	}
+	} while (*value++);
 
 	return true;
 }
@@ -791,13 +789,24 @@ bool fr_whitespace_check(char const *value)
  *
  * @return true if the entirety of the string is are numebrs, else false.
  */
-bool fr_integer_check(char const *value)
+bool is_integer(char const *value)
 {
-	while (*value) {
+	do {
 		if (!isdigit(*value)) return false;
+	} while (*value++);
 
-		value++;
-	}
+	return true;
+}
+
+/** Check whether the string is allzeros
+ *
+ * @return true if the entirety of the string is are numebrs, else false.
+ */
+bool is_zero(char const *value)
+{
+	do {
+		if (*value != '0') return false;
+	} while (*value++);
 
 	return true;
 }
