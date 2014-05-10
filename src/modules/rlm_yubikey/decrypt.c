@@ -43,7 +43,7 @@ rlm_rcode_t rlm_yubikey_decrypt(rlm_yubikey_t *inst, REQUEST *request, char cons
 		return RLM_MODULE_INVALID;
 	}
 
-	yubikey_parse((uint8_t *) passcode + inst->id_len, key->vp_octets, &token);
+	yubikey_parse((uint8_t const *) passcode + inst->id_len, key->vp_octets, &token);
 
 	/*
 	 *	Apparently this just uses byte offsets...
