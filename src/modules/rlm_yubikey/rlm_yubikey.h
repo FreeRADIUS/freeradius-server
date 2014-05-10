@@ -42,7 +42,7 @@ typedef struct rlm_yubikey_t {
 /*
  *	decrypt.c - Decryption functions
  */
-rlm_rcode_t rlm_yubikey_decrypt(rlm_yubikey_t *inst, REQUEST *request, VALUE_PAIR *otp);
+rlm_rcode_t rlm_yubikey_decrypt(rlm_yubikey_t *inst, REQUEST *request, char const *passcode);
 
 /*
  *	validate.c - Connection pool and validation functions
@@ -51,4 +51,4 @@ int rlm_yubikey_ykclient_init(CONF_SECTION *conf, rlm_yubikey_t *inst);
 
 int rlm_yubikey_ykclient_detach(rlm_yubikey_t *inst);
 
-rlm_rcode_t rlm_yubikey_validate(rlm_yubikey_t *inst, REQUEST *request, VALUE_PAIR *otp);
+rlm_rcode_t rlm_yubikey_validate(rlm_yubikey_t *inst, REQUEST *request, char const *passcode);
