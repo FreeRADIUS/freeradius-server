@@ -1059,7 +1059,7 @@ int detail_parse(CONF_SECTION *cs, rad_listen_t *this)
 	client->prefix = 0;
 	client->longname = client->shortname = data->filename;
 	client->secret = client->shortname;
-	client->nas_type = "none";	/* Fairly sure client never gets freed (it's alloced as part of data) */
+	client->nas_type = talloc_strdup(this, "none");	/* Part of 'data' not dynamically allocated */
 
 #ifdef WITH_DETAIL_THREAD
 	/*
