@@ -1040,7 +1040,7 @@ int detail_parse(CONF_SECTION *cs, rad_listen_t *this)
 	}
 
 	talloc_free(data->filename_work);
-	data->filename_work = talloc_strdup(this, buffer); /* FIXME: leaked */
+	data->filename_work = talloc_strdup(this, buffer);
 
 	data->work_fd = -1;
 	data->vps = NULL;
@@ -1059,7 +1059,7 @@ int detail_parse(CONF_SECTION *cs, rad_listen_t *this)
 	client->prefix = 0;
 	client->longname = client->shortname = data->filename;
 	client->secret = client->shortname;
-	client->nas_type = strdup("none");
+	client->nas_type = "none";	/* Fairly sure client never gets freed (it's alloced as part of data) */
 
 #ifdef WITH_DETAIL_THREAD
 	/*
