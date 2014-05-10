@@ -1035,8 +1035,7 @@ int detail_parse(CONF_SECTION *cs, rad_listen_t *this)
 		snprintf(buffer, sizeof(buffer), "%s.work", data->filename);
 	}
 
-	talloc_free(data->filename_work);
-	data->filename_work = talloc_strdup(this, buffer);
+	data->filename_work = talloc_strdup(data, buffer);
 
 	data->work_fd = -1;
 	data->vps = NULL;
@@ -1055,7 +1054,7 @@ int detail_parse(CONF_SECTION *cs, rad_listen_t *this)
 	client->prefix = 0;
 	client->longname = client->shortname = data->filename;
 	client->secret = client->shortname;
-	client->nas_type = talloc_strdup(this, "none");	/* Part of 'data' not dynamically allocated */
+	client->nas_type = talloc_strdup(data, "none");	/* Part of 'data' not dynamically allocated */
 
 #ifdef WITH_DETAIL_THREAD
 	/*
