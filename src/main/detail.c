@@ -819,10 +819,6 @@ void detail_free(rad_listen_t *this)
 	}
 #endif
 
-	talloc_free(data->filename);
-	data->filename = NULL;
-	pairfree(&data->vps);
-
 	if (data->fp != NULL) {
 		fclose(data->fp);
 		data->fp = NULL;
