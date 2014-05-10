@@ -592,6 +592,12 @@ static void _fr_fault_mem_report(int sig)
 	if (fr_log_talloc_report(NULL) < 0) fr_perror("memreport");
 }
 
+static int _fr_disable_null_tracking(UNUSED bool *p)
+{
+	talloc_disable_null_tracking();
+	return 0;
+}
+
 /** Registers signal handlers to execute panic_action on fatal signal
  *
  * May be called multiple time to change the panic_action/program.
@@ -671,8 +677,19 @@ int fr_fault_setup(char const *cmd, char const *program)
 
 		/*
 		 *  Needed for memory reports
+		 *
+		 *  Disable null tracking on exit, else valgrind complains
 		 */
-		talloc_enable_null_tracking();
+		{
+			TALLOC_CTX *autofree;
+			bool *marker;
+
+			talloc_enable_null_tracking();
+
+			autofree = talloc_autofree_context();
+			marker = talloc(autofree, bool);
+			talloc_set_destructor(marker, _fr_disable_null_tracking);
+		}
 	}
 	setup = true;
 
