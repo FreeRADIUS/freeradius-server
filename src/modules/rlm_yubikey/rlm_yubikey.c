@@ -286,7 +286,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 			/*
 			 *	So the ID split code works on the non password portion.
 			 */
-			passcode = otp;
+			passcode = vp->vp_strvalue;
 		}
 	} else if (len < (inst->id_len + YUBIKEY_TOKEN_LEN)) {
 		RDEBUG2("User-Password value is not the correct length, expected at least %u bytes, got %zu bytes",
