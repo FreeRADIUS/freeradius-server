@@ -430,7 +430,7 @@ int main(int argc, char *argv[])
 	/*
 	 *	Redirect stderr/stdout as appropriate.
 	 */
-	if (radlog_init(&default_log) < 0) {
+	if (radlog_init(&default_log, main_config.daemonize) < 0) {
 		ERROR("%s", fr_strerror());
 		exit(EXIT_FAILURE);
 	}

@@ -77,7 +77,7 @@ extern FR_NAME_NUMBER const syslog_str2fac[];
 extern FR_NAME_NUMBER const log_str2dst[];
 extern fr_log_t default_log;
 
-int	radlog_init(fr_log_t *log);
+int	radlog_init(fr_log_t *log, bool daemonize);
 
 void 	vp_listdebug(VALUE_PAIR *vp);
 
@@ -87,6 +87,8 @@ int	radlog(log_type_t lvl, char const *fmt, ...)
 	CC_HINT(format (printf, 2, 3)) CC_HINT(nonnull (2));
 
 bool	debug_enabled(log_type_t type, log_debug_t lvl);
+
+bool	rate_limit_enabled(void);
 
 bool	radlog_debug_enabled(log_type_t type, log_debug_t lvl, REQUEST *request)
 	CC_HINT(nonnull);
@@ -209,7 +211,7 @@ int fr_logfile_unlock(fr_logfile_t *lf, int fd);
 /*
  *	Rate limit messages.
  */
-#define RATE_LIMIT_ENABLED (!main_config.daemonize || (debug_flag < 2))
+#define RATE_LIMIT_ENABLED rate_limit_enabled()
 #define RATE_LIMIT(_x) \
 do {\
 	if (RATE_LIMIT_ENABLED) {\
