@@ -346,11 +346,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 
 #ifdef KRB5_IS_THREAD_SAFE
 	conn = fr_connection_get(inst->pool);
-	if (!conn) {
-		REDEBUG("All krb5 contexts are in use");
-
-		return RLM_MODULE_FAIL;
-	}
+	if (!conn) REDEBUG("All krb5 contexts are in use");
 #else
 	conn = inst->conn;
 #endif
@@ -427,11 +423,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 
 #ifdef KRB5_IS_THREAD_SAFE
 	conn = fr_connection_get(inst->pool);
-	if (!conn) {
-		REDEBUG("All krb5 contexts are in use");
-
-		return RLM_MODULE_FAIL;
-	}
+	if (!conn) return RLM_MODULE_FAIL;
 #else
 	conn = inst->conn;
 #endif

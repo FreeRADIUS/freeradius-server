@@ -203,10 +203,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	char output[1000];
 
 	fdp = fr_connection_get(inst->pool);
-	if (!fdp) {
-		REDEBUG("Failed to get handle from connection pool");
-		return RLM_MODULE_FAIL;
-	}
+	if (!fdp) return RLM_MODULE_FAIL;
 
 	/* Get greeting */
 	bufsize = read_all(fdp, buffer, sizeof(buffer));
