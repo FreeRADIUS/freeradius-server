@@ -429,7 +429,7 @@ static int module_entry_free(module_entry_t *this)
 	 *	debugging.  This removes the symbols needed by
 	 *	valgrind.
 	 */
-	if (!mainconfig.debug_memory)
+	if (!main_config.debug_memory)
 #endif
 		dlclose(this->handle);	/* ignore any errors */
 	return 0;
@@ -1184,7 +1184,7 @@ static int load_byserver(CONF_SECTION *cs)
 		 */
 		if (
 #ifdef WITH_PROXY
-		    !mainconfig.proxy_requests &&
+		    !main_config.proxy_requests &&
 #endif
 		    ((comp == RLM_COMPONENT_PRE_PROXY) ||
 		     (comp == RLM_COMPONENT_POST_PROXY))) {
@@ -1353,7 +1353,7 @@ int virtual_servers_load(CONF_SECTION *config)
 	virtual_server_t *server;
 	static bool first_time = true;
 
-	DEBUG2("%s: #### Loading Virtual Servers ####", mainconfig.name);
+	DEBUG2("%s: #### Loading Virtual Servers ####", main_config.name);
 
 	/*
 	 *	If we have "server { ...}", then there SHOULD NOT be
@@ -1594,7 +1594,7 @@ int modules_init(CONF_SECTION *config)
 		if (subcs) {
 			da = dict_attrbyname("VQP-Packet-Type");
 			if (!da) {
-				if (dict_read(mainconfig.dictionary_dir, "dictionary.vqp") < 0) {
+				if (dict_read(main_config.dictionary_dir, "dictionary.vqp") < 0) {
 					ERROR("Failed reading dictionary.vqp: %s",
 					      fr_strerror());
 					return -1;
@@ -1619,7 +1619,7 @@ int modules_init(CONF_SECTION *config)
 			da = dict_attrbyname("DHCP-Message-Type");
 			if (!da) {
 				cf_log_module(cs, "Loading dictionary.dhcp");
-				if (dict_read(mainconfig.dictionary_dir, "dictionary.dhcp") < 0) {
+				if (dict_read(main_config.dictionary_dir, "dictionary.dhcp") < 0) {
 					ERROR("Failed reading dictionary.dhcp: %s",
 					      fr_strerror());
 					return -1;
@@ -1640,7 +1640,7 @@ int modules_init(CONF_SECTION *config)
 	}
 #endif
 
-	DEBUG2("%s: #### Instantiating modules ####", mainconfig.name);
+	DEBUG2("%s: #### Instantiating modules ####", main_config.name);
 
 	/*
 	 *	Loop over module definitions, looking for duplicates.
@@ -1751,7 +1751,7 @@ int modules_init(CONF_SECTION *config)
 	 *	Loop over the listeners, figuring out which sections
 	 *	to load.
 	 */
-	for (listener = mainconfig.listen;
+	for (listener = main_config.listen;
 	     listener != NULL;
 	     listener = listener->next) {
 		char buffer[256];

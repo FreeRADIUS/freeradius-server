@@ -49,7 +49,7 @@ RCSID("$Id$")
 #include <fcntl.h>
 #endif
 
-struct main_config_t mainconfig;
+struct main_config_t main_config;
 char *debug_condition = NULL;
 extern int log_dates_utc;
 
@@ -97,9 +97,9 @@ static char const	*radius_dir = NULL;	//!< Path to raddb directory
  */
 static const CONF_PARSER security_config[] = {
 	{ "max_attributes",  PW_TYPE_INTEGER, 0, &fr_max_attributes, STRINGIFY(0) },
-	{ "reject_delay",  PW_TYPE_INTEGER, 0, &mainconfig.reject_delay, STRINGIFY(0) },
-	{ "status_server", PW_TYPE_BOOLEAN, 0, &mainconfig.status_server, "no"},
-	{ "allow_vulnerable_openssl", PW_TYPE_STRING_PTR, 0, &mainconfig.allow_vulnerable_openssl, "no"},
+	{ "reject_delay",  PW_TYPE_INTEGER, 0, &main_config.reject_delay, STRINGIFY(0) },
+	{ "status_server", PW_TYPE_BOOLEAN, 0, &main_config.status_server, "no"},
+	{ "allow_vulnerable_openssl", PW_TYPE_STRING_PTR, 0, &main_config.allow_vulnerable_openssl, "no"},
 	{ NULL, -1, 0, NULL, NULL }
 };
 
@@ -111,7 +111,7 @@ static const CONF_PARSER logdest_config[] = {
 	{ "destination",  PW_TYPE_STRING_PTR, 0, &radlog_dest, "files" },
 	{ "syslog_facility",  PW_TYPE_STRING_PTR, 0, &syslog_facility, STRINGIFY(0) },
 
-	{ "file", PW_TYPE_STRING_PTR, 0, &mainconfig.log_file, "${logdir}/radius.log" },
+	{ "file", PW_TYPE_STRING_PTR, 0, &main_config.log_file, "${logdir}/radius.log" },
 	{ "requests", PW_TYPE_STRING_PTR, 0, &default_log.file, NULL },
 	{ NULL, -1, 0, NULL, NULL }
 };
@@ -119,7 +119,7 @@ static const CONF_PARSER logdest_config[] = {
 
 static const CONF_PARSER serverdest_config[] = {
 	{ "log", PW_TYPE_SUBSECTION, 0, NULL, (void const *) logdest_config },
-	{ "log_file", PW_TYPE_STRING_PTR, 0, &mainconfig.log_file, NULL },
+	{ "log_file", PW_TYPE_STRING_PTR, 0, &main_config.log_file, NULL },
 	{ "log_destination", PW_TYPE_STRING_PTR, 0, &radlog_dest, NULL },
 	{ "use_utc", PW_TYPE_BOOLEAN, 0, &log_dates_utc, NULL },
 	{ NULL, -1, 0, NULL, NULL }
@@ -128,14 +128,14 @@ static const CONF_PARSER serverdest_config[] = {
 
 static const CONF_PARSER log_config_nodest[] = {
 	{ "stripped_names", PW_TYPE_BOOLEAN, 0, &log_stripped_names,"no" },
-	{ "auth", PW_TYPE_BOOLEAN, 0, &mainconfig.log_auth, "no" },
-	{ "auth_badpass", PW_TYPE_BOOLEAN, 0, &mainconfig.log_auth_badpass, "no" },
-	{ "auth_goodpass", PW_TYPE_BOOLEAN, 0, &mainconfig.log_auth_goodpass, "no" },
-	{ "msg_badpass", PW_TYPE_STRING_PTR, 0, &mainconfig.auth_badpass_msg, NULL},
-	{ "msg_goodpass", PW_TYPE_STRING_PTR, 0, &mainconfig.auth_goodpass_msg, NULL},
+	{ "auth", PW_TYPE_BOOLEAN, 0, &main_config.log_auth, "no" },
+	{ "auth_badpass", PW_TYPE_BOOLEAN, 0, &main_config.log_auth_badpass, "no" },
+	{ "auth_goodpass", PW_TYPE_BOOLEAN, 0, &main_config.log_auth_goodpass, "no" },
+	{ "msg_badpass", PW_TYPE_STRING_PTR, 0, &main_config.auth_badpass_msg, NULL},
+	{ "msg_goodpass", PW_TYPE_STRING_PTR, 0, &main_config.auth_goodpass_msg, NULL},
 	{ "colourise", PW_TYPE_BOOLEAN, 0, &do_colourise, NULL },
 	{ "use_utc", PW_TYPE_BOOLEAN, 0, &log_dates_utc, NULL },
-	{ "msg_denied", PW_TYPE_STRING_PTR, 0, &mainconfig.denied_msg,
+	{ "msg_denied", PW_TYPE_STRING_PTR, 0, &main_config.denied_msg,
 	  "You are already logged in - access denied" },
 
 	{ NULL, -1, 0, NULL, NULL }
@@ -161,21 +161,21 @@ static const CONF_PARSER server_config[] = {
 	{ "run_dir",	    PW_TYPE_STRING_PTR, 0, &run_dir,	   "${localstatedir}/run/${name}"},
 	{ "libdir",	     PW_TYPE_STRING_PTR, 0, &radlib_dir,	"${prefix}/lib"},
 	{ "radacctdir",	 PW_TYPE_STRING_PTR, 0, &radacct_dir,       "${logdir}/radacct" },
-	{ "panic_action", PW_TYPE_STRING_PTR, 0, &mainconfig.panic_action, NULL},
+	{ "panic_action", PW_TYPE_STRING_PTR, 0, &main_config.panic_action, NULL},
 	{ "hostname_lookups",   PW_TYPE_BOOLEAN,    0, &fr_dns_lookups,      "no" },
-	{ "max_request_time", PW_TYPE_INTEGER, 0, &mainconfig.max_request_time, STRINGIFY(MAX_REQUEST_TIME) },
-	{ "cleanup_delay", PW_TYPE_INTEGER, 0, &mainconfig.cleanup_delay, STRINGIFY(CLEANUP_DELAY) },
-	{ "max_requests", PW_TYPE_INTEGER, 0, &mainconfig.max_requests, STRINGIFY(MAX_REQUESTS) },
+	{ "max_request_time", PW_TYPE_INTEGER, 0, &main_config.max_request_time, STRINGIFY(MAX_REQUEST_TIME) },
+	{ "cleanup_delay", PW_TYPE_INTEGER, 0, &main_config.cleanup_delay, STRINGIFY(CLEANUP_DELAY) },
+	{ "max_requests", PW_TYPE_INTEGER, 0, &main_config.max_requests, STRINGIFY(MAX_REQUESTS) },
 #ifdef DELETE_BLOCKED_REQUESTS
-	{ "delete_blocked_requests", PW_TYPE_INTEGER, 0, &mainconfig.kill_unresponsive_children, STRINGIFY(false) },
+	{ "delete_blocked_requests", PW_TYPE_INTEGER, 0, &main_config.kill_unresponsive_children, STRINGIFY(false) },
 #endif
-	{ "pidfile", PW_TYPE_STRING_PTR, 0, &mainconfig.pid_file, "${run_dir}/radiusd.pid"},
-	{ "checkrad", PW_TYPE_STRING_PTR, 0, &mainconfig.checkrad, "${sbindir}/checkrad" },
+	{ "pidfile", PW_TYPE_STRING_PTR, 0, &main_config.pid_file, "${run_dir}/radiusd.pid"},
+	{ "checkrad", PW_TYPE_STRING_PTR, 0, &main_config.checkrad, "${sbindir}/checkrad" },
 
-	{ "debug_level", PW_TYPE_INTEGER, 0, &mainconfig.debug_level, "0"},
+	{ "debug_level", PW_TYPE_INTEGER, 0, &main_config.debug_level, "0"},
 
 #ifdef WITH_PROXY
-	{ "proxy_requests", PW_TYPE_BOOLEAN, 0, &mainconfig.proxy_requests, "yes" },
+	{ "proxy_requests", PW_TYPE_BOOLEAN, 0, &main_config.proxy_requests, "yes" },
 #endif
 	{ "log", PW_TYPE_SUBSECTION, 0, NULL, (void const *) log_config_nodest },
 
@@ -187,9 +187,9 @@ static const CONF_PARSER server_config[] = {
 	 *	DON'T exist in radiusd.conf, then the previously parsed
 	 *	values for "log { foo = bar}" will be used.
 	 */
-	{ "log_auth", PW_TYPE_BOOLEAN | PW_TYPE_DEPRECATED, 0, &mainconfig.log_auth, NULL },
-	{ "log_auth_badpass", PW_TYPE_BOOLEAN | PW_TYPE_DEPRECATED, 0, &mainconfig.log_auth_badpass, NULL },
-	{ "log_auth_goodpass", PW_TYPE_BOOLEAN | PW_TYPE_DEPRECATED, 0, &mainconfig.log_auth_goodpass, NULL },
+	{ "log_auth", PW_TYPE_BOOLEAN | PW_TYPE_DEPRECATED, 0, &main_config.log_auth, NULL },
+	{ "log_auth_badpass", PW_TYPE_BOOLEAN | PW_TYPE_DEPRECATED, 0, &main_config.log_auth_badpass, NULL },
+	{ "log_auth_goodpass", PW_TYPE_BOOLEAN | PW_TYPE_DEPRECATED, 0, &main_config.log_auth_goodpass, NULL },
 	{ "log_stripped_names", PW_TYPE_BOOLEAN | PW_TYPE_DEPRECATED, 0, &log_stripped_names, NULL },
 
 	{  "security", PW_TYPE_SUBSECTION, 0, NULL, (void const *) security_config },
@@ -637,16 +637,16 @@ static int switch_users(CONF_SECTION *cs)
 	if (uid_name || gid_name) {
 		if ((default_log.dst == L_DST_FILES) &&
 		    (default_log.fd < 0)) {
-			default_log.fd = open(mainconfig.log_file,
+			default_log.fd = open(main_config.log_file,
 					      O_WRONLY | O_APPEND | O_CREAT, 0640);
 			if (default_log.fd < 0) {
-				fprintf(stderr, "radiusd: Failed to open log file %s: %s\n", mainconfig.log_file, fr_syserror(errno));
+				fprintf(stderr, "radiusd: Failed to open log file %s: %s\n", main_config.log_file, fr_syserror(errno));
 				return 0;
 			}
 
-			if (chown(mainconfig.log_file, server_uid, server_gid) < 0) {
+			if (chown(main_config.log_file, server_uid, server_gid) < 0) {
 				fprintf(stderr, "%s: Cannot change ownership of log file %s: %s\n",
-					progname, mainconfig.log_file, fr_syserror(errno));
+					progname, main_config.log_file, fr_syserror(errno));
 				return 0;
 			}
 		}
@@ -706,7 +706,7 @@ char const *get_radius_dir(void)
  *
  *	This function can ONLY be called from the main server process.
  */
-int mainconfig_init(void)
+int main_config_init(void)
 {
 	char const *p = NULL;
 	CONF_SECTION *cs;
@@ -743,16 +743,16 @@ int mainconfig_init(void)
 	 *	pre-compilation in conffile.c.  That should probably
 	 *	be fixed to be done as a second stage.
 	 */
-	if (!mainconfig.dictionary_dir) {
-		mainconfig.dictionary_dir = DICTDIR;
+	if (!main_config.dictionary_dir) {
+		main_config.dictionary_dir = DICTDIR;
 	}
 
 	/*
 	 *	Read the distribution dictionaries first, then
 	 *	the ones in raddb.
 	 */
-	DEBUG2("including dictionary file %s/%s", mainconfig.dictionary_dir, RADIUS_DICTIONARY);
-	if (dict_init(mainconfig.dictionary_dir, RADIUS_DICTIONARY) != 0) {
+	DEBUG2("including dictionary file %s/%s", main_config.dictionary_dir, RADIUS_DICTIONARY);
+	if (dict_init(main_config.dictionary_dir, RADIUS_DICTIONARY) != 0) {
 		ERROR("Errors reading dictionary: %s",
 		      fr_strerror());
 		return -1;
@@ -777,11 +777,11 @@ do {\
 	 *	if they don't exist.
 	 */
 #ifdef WITH_DHCP
-	DICT_READ_OPTIONAL(mainconfig.dictionary_dir, "dictionary.dhcp");
+	DICT_READ_OPTIONAL(main_config.dictionary_dir, "dictionary.dhcp");
 #endif
 
 #ifdef WITH_VMPS
-	DICT_READ_OPTIONAL(mainconfig.dictionary_dir, "dictionary.vqp");
+	DICT_READ_OPTIONAL(main_config.dictionary_dir, "dictionary.vqp");
 #endif
 
 	/*
@@ -791,7 +791,7 @@ do {\
 
 	/* Read the configuration file */
 	snprintf(buffer, sizeof(buffer), "%.200s/%.50s.conf",
-		 radius_dir, mainconfig.name);
+		 radius_dir, main_config.name);
 	if ((cs = cf_file_read(buffer)) == NULL) {
 		ERROR("Errors reading or parsing %s", buffer);
 		return -1;
@@ -833,8 +833,8 @@ do {\
 				cf_file_free(cs);
 				return -1;
 			}
-			mainconfig.syslog_facility = fr_str2int(syslog_str2fac, syslog_facility, -1);
-			if (mainconfig.syslog_facility < 0) {
+			main_config.syslog_facility = fr_str2int(syslog_str2fac, syslog_facility, -1);
+			if (main_config.syslog_facility < 0) {
 				fprintf(stderr, "radiusd: Error: Unknown syslog_facility %s\n",
 					syslog_facility);
 				cf_file_free(cs);
@@ -846,11 +846,11 @@ do {\
 			 *	Call openlog only once, when the
 			 *	program starts.
 			 */
-			openlog(progname, LOG_PID, mainconfig.syslog_facility);
+			openlog(progname, LOG_PID, main_config.syslog_facility);
 #endif
 
 		} else if (default_log.dst == L_DST_FILES) {
-			if (!mainconfig.log_file) {
+			if (!main_config.log_file) {
 				fprintf(stderr, "radiusd: Error: Specified \"files\" as a log destination, but no log filename was given!\n");
 				cf_file_free(cs);
 				return -1;
@@ -872,10 +872,10 @@ do {\
 	 */
 	if ((default_log.dst == L_DST_FILES) &&
 	    (default_log.fd < 0)) {
-		default_log.fd = open(mainconfig.log_file,
+		default_log.fd = open(main_config.log_file,
 					    O_WRONLY | O_APPEND | O_CREAT, 0640);
 		if (default_log.fd < 0) {
-			fprintf(stderr, "radiusd: Failed to open log file %s: %s\n", mainconfig.log_file, fr_syserror(errno));
+			fprintf(stderr, "radiusd: Failed to open log file %s: %s\n", main_config.log_file, fr_syserror(errno));
 			cf_file_free(cs);
 			return -1;
 		}
@@ -906,13 +906,13 @@ do {\
 	 *	file.
 	 */
 	if (debug_flag == 0) {
-		debug_flag = mainconfig.debug_level;
+		debug_flag = main_config.debug_level;
 	}
 	fr_debug_flag = debug_flag;
 
-	FR_INTEGER_COND_CHECK("max_request_time", mainconfig.max_request_time, (mainconfig.max_request_time != 0), 100);
-	FR_INTEGER_BOUND_CHECK("reject_delay", mainconfig.reject_delay, <=, 10);
-	FR_INTEGER_BOUND_CHECK("cleanup_delay", mainconfig.cleanup_delay, <=, 10);
+	FR_INTEGER_COND_CHECK("max_request_time", main_config.max_request_time, (main_config.max_request_time != 0), 100);
+	FR_INTEGER_BOUND_CHECK("reject_delay", main_config.reject_delay, <=, 10);
+	FR_INTEGER_BOUND_CHECK("cleanup_delay", main_config.cleanup_delay, <=, 10);
 	/*
 	 *	Free the old configuration items, and replace them
 	 *	with the new ones.
@@ -920,15 +920,15 @@ do {\
 	 *	Note that where possible, we do atomic switch-overs,
 	 *	to ensure that the pointers are always valid.
 	 */
-	rad_assert(mainconfig.config == NULL);
-	root_config = mainconfig.config = cs;
+	rad_assert(main_config.config == NULL);
+	root_config = main_config.config = cs;
 
-	DEBUG2("%s: #### Loading Realms and Home Servers ####", mainconfig.name);
+	DEBUG2("%s: #### Loading Realms and Home Servers ####", main_config.name);
 	if (!realms_init(cs)) {
 		return -1;
 	}
 
-	DEBUG2("%s: #### Loading Clients ####", mainconfig.name);
+	DEBUG2("%s: #### Loading Clients ####", main_config.name);
 	if (!clients_parse_section(cs, false)) {
 		return -1;
 	}
@@ -949,8 +949,8 @@ do {\
 	 *	Sanity check the configuration for internal
 	 *	consistency.
 	 */
-	FR_INTEGER_BOUND_CHECK("reject_delay", mainconfig.reject_delay, <=, mainconfig.cleanup_delay);
-	FR_INTEGER_BOUND_CHECK("reject_delay", mainconfig.reject_delay, >=, 0);
+	FR_INTEGER_BOUND_CHECK("reject_delay", main_config.reject_delay, <=, main_config.cleanup_delay);
+	FR_INTEGER_BOUND_CHECK("reject_delay", main_config.reject_delay, >=, 0);
 
 	if (chroot_dir) {
 		if (chdir(radlog_dir) < 0) {
@@ -976,7 +976,7 @@ do {\
 /*
  *	Free the configuration.  Called only when the server is exiting.
  */
-int mainconfig_free(void)
+int main_config_free(void)
 {
 	virtual_servers_free(0);
 
@@ -986,7 +986,7 @@ int mainconfig_free(void)
 	 */
 	clients_free(NULL);
 	realms_free();
-	listen_free(&mainconfig.listen);
+	listen_free(&main_config.listen);
 
 	/*
 	 *	Frees current config and any previous configs.
@@ -1003,7 +1003,7 @@ void hup_logfile(void)
 
 		if (default_log.dst != L_DST_FILES) return;
 
-		fd = open(mainconfig.log_file,
+		fd = open(main_config.log_file,
 			  O_WRONLY | O_APPEND | O_CREAT, 0640);
 		if (fd >= 0) {
 			/*
@@ -1020,7 +1020,7 @@ void hup_logfile(void)
 		}
 }
 
-void mainconfig_hup(void)
+void main_config_hup(void)
 {
 	cached_config_t *cc;
 	CONF_SECTION *cs;
@@ -1030,7 +1030,7 @@ void mainconfig_hup(void)
 
 	/* Read the configuration file */
 	snprintf(buffer, sizeof(buffer), "%.200s/%.50s.conf",
-		 radius_dir, mainconfig.name);
+		 radius_dir, main_config.name);
 	if ((cs = cf_file_read(buffer)) == NULL) {
 		ERROR("Failed to re-read or parse %s", buffer);
 		return;
@@ -1077,5 +1077,5 @@ void mainconfig_hup(void)
 	 */
 	virtual_servers_load(cs);
 
-	virtual_servers_free(cc->created - mainconfig.max_request_time * 4);
+	virtual_servers_free(cc->created - main_config.max_request_time * 4);
 }

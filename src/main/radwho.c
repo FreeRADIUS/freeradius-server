@@ -64,7 +64,7 @@ bool log_stripped_names;
 /*
  *	Global, for log.c to use.
  */
-struct main_config_t mainconfig;
+struct main_config_t main_config;
 
 #include <sys/wait.h>
 pid_t rad_fork(void)
@@ -321,9 +321,9 @@ int main(int argc, char **argv)
 	if (radutmp_file) goto have_radutmp;
 
 	/*
-	 *	Initialize mainconfig
+	 *	Initialize main_config
 	 */
-	memset(&mainconfig, 0, sizeof(mainconfig));
+	memset(&main_config, 0, sizeof(main_config));
 
 	/* Read radiusd.conf */
 	snprintf(buffer, sizeof(buffer), "%.200s/radiusd.conf", raddb_dir);

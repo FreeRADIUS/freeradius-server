@@ -201,10 +201,9 @@ static void CC_HINT(format (printf, 1, 2)) _radlog_info(char const *msg, ...)
 /** Initialise file descriptors based on logging destination
  *
  * @param log Logger to manipulate.
- * @param daemonize whether or not the server is running in daemon mode.
  * @return 0 on success -1 on failure.
  */
-int radlog_init(fr_log_t *log, bool daemonize)
+int radlog_init(fr_log_t *log)
 {
 	int devnull;
 
@@ -220,7 +219,7 @@ int radlog_init(fr_log_t *log, bool daemonize)
 	 *	any debugger called from the panic action has access
 	 *	to STDOUT / STDERR.
 	 */
-	if (!daemonize) {
+	if (!main_config.daemonize) {
 		fr_fault_set_cb(_restore_std);
 
 		stdout_fd = dup(STDOUT_FILENO);

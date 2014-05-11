@@ -87,7 +87,7 @@ static int eap_module_free(void *ctx)
 	 *	debugging.  This removes the symbols needed by
 	 *	valgrind.
 	 */
-	if (!mainconfig.debug_memory)
+	if (!main_config.debug_memory)
 #endif
 	if (inst->handle) dlclose(inst->handle);
 

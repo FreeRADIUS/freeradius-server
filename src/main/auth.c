@@ -584,12 +584,12 @@ autz_redo:
 				if (check_item->vp_integer > 1) {
 					snprintf(umsg, sizeof(umsg),
 						 "\r\n%s (%d)\r\n\n",
-						 mainconfig.denied_msg,
+						 main_config.denied_msg,
 						 (int)check_item->vp_integer);
 				} else {
 					snprintf(umsg, sizeof(umsg),
 						 "\r\n%s\r\n\n",
-						 mainconfig.denied_msg);
+						 main_config.denied_msg);
 				}
 
 				request->reply->code = PW_CODE_AUTHENTICATION_REJECT;
