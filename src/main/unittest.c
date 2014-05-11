@@ -135,7 +135,7 @@ static REQUEST *request_setup(FILE *fp)
 	request->handle = NULL;
 	request->server = talloc_typed_strdup(request, "default");
 
-	request->root = &mainconfig;
+	request->root = &main_config;
 
 	/*
 	 *	Read packet from fp
@@ -438,10 +438,10 @@ int main(int argc, char *argv[])
 	/*
 	 *	Ensure that the configuration is initialized.
 	 */
-	memset(&mainconfig, 0, sizeof(mainconfig));
-	mainconfig.myip.af = AF_UNSPEC;
-	mainconfig.port = -1;
-	mainconfig.name = "radiusd";
+	memset(&main_config, 0, sizeof(main_config));
+	main_config.myip.af = AF_UNSPEC;
+	main_config.port = -1;
+	main_config.name = "radiusd";
 
 	/*
 	 *	The tests should have only IPs, not host names.
@@ -464,7 +464,7 @@ int main(int argc, char *argv[])
 				break;
 
 			case 'D':
-				mainconfig.dictionary_dir = talloc_typed_strdup(NULL, optarg);
+				main_config.dictionary_dir = talloc_typed_strdup(NULL, optarg);
 				break;
 
 			case 'f':
@@ -480,16 +480,16 @@ int main(int argc, char *argv[])
 				break;
 
 			case 'm':
-				mainconfig.debug_memory = true;
+				main_config.debug_memory = true;
 				break;
 
 			case 'M':
 				memory_report = true;
-				mainconfig.debug_memory = true;
+				main_config.debug_memory = true;
 				break;
 
 			case 'n':
-				mainconfig.name = optarg;
+				main_config.name = optarg;
 				break;
 
 			case 'o':
@@ -498,9 +498,9 @@ int main(int argc, char *argv[])
 
 			case 'X':
 				debug_flag += 2;
-				mainconfig.log_auth = true;
-				mainconfig.log_auth_badpass = true;
-				mainconfig.log_auth_goodpass = true;
+				main_config.log_auth = true;
+				main_config.log_auth_badpass = true;
+				main_config.log_auth_goodpass = true;
 				break;
 
 			case 'x':
@@ -527,7 +527,7 @@ int main(int argc, char *argv[])
 	}
 
 	/*  Read the configuration files, BEFORE doing anything else.  */
-	if (mainconfig_init() < 0) {
+	if (main_config_init() < 0) {
 		rcode = EXIT_FAILURE;
 		goto finish;
 	}
@@ -535,17 +535,17 @@ int main(int argc, char *argv[])
 	/*
 	 *  Load the modules
 	 */
-	if (modules_init(mainconfig.config) < 0) {
+	if (modules_init(main_config.config) < 0) {
 		rcode = EXIT_FAILURE;
 		goto finish;
 	}
 
 	/* Set the panic action (if required) */
-	if (mainconfig.panic_action &&
+	if (main_config.panic_action &&
 #ifndef NDEBUG
 	    !getenv("PANIC_ACTION") &&
 #endif
-	    (fr_fault_setup(mainconfig.panic_action, argv[0]) < 0)) {
+	    (fr_fault_setup(main_config.panic_action, argv[0]) < 0)) {
 		rcode = EXIT_FAILURE;
 		goto finish;
 	}
@@ -668,7 +668,7 @@ finish:
 	/*
 	 *	Free the configuration items.
 	 */
-	mainconfig_free();
+	main_config_free();
 
 	if (memory_report) {
 		INFO("Allocated memory at time of report:");

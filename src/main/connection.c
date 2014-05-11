@@ -345,9 +345,8 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool,
 
 		pthread_mutex_unlock(&pool->mutex);
 
-		if (complain) {
-			ERROR("%s: Last connection attempt failed, "
-			      "waiting %d seconds before retrying",
+		if (!RATE_LIMIT_ENABLED || complain) {
+			ERROR("%s: Last connection attempt failed, waiting %d seconds before retrying",
 			      pool->log_prefix, pool->retry_delay);
 		}
 
@@ -950,7 +949,7 @@ static void *fr_connection_get_internal(fr_connection_pool_t *pool, int spawn)
 
 		pthread_mutex_unlock(&pool->mutex);
 
-		if (complain) {
+		if (!RATE_LIMIT_ENABLED || complain) {
 			ERROR("%s: No connections available and at max connection limit", pool->log_prefix);
 		}
 

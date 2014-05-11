@@ -445,8 +445,8 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	if (debug_flag > 0) {
 		log_level = debug_flag;
 
-	} else if (mainconfig.debug_level > 0) {
-		log_level = mainconfig.debug_level;
+	} else if (main_config.debug_level > 0) {
+		log_level = main_config.debug_level;
 	}
 
 	switch (log_level) {
@@ -499,10 +499,10 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		break;
 
 	case L_DST_FILES:
-		if (mainconfig.log_file) {
+		if (main_config.log_file) {
 			strcpy(k, "logfile:");
 			res = ub_ctx_set_option(inst->ub, k,
-						mainconfig.log_file);
+						main_config.log_file);
 			if (res) {
 				goto error;
 			}
@@ -546,7 +546,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		if (log_dst == L_DST_FILES) {
 			/* Reinstate the log file name JIC */
 			strcpy(k, "logfile:");
-			res = ub_ctx_set_option(inst->ub, k, mainconfig.log_file);
+			res = ub_ctx_set_option(inst->ub, k, main_config.log_file);
 			if (res) goto error;
 		}
 

@@ -688,7 +688,7 @@ static char const *cf_expand_variables(char const *cf, int *lineno,
 
 	/*
 	 *	Find the master parent conf section.
-	 *	We can't use mainconfig.config, because we're in the
+	 *	We can't use main_config.config, because we're in the
 	 *	process of re-building it, and it isn't set up yet...
 	 */
 	parentcs = cf_top_section(outercs);

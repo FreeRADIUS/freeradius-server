@@ -77,7 +77,7 @@ extern FR_NAME_NUMBER const syslog_str2fac[];
 extern FR_NAME_NUMBER const log_str2dst[];
 extern fr_log_t default_log;
 
-int	radlog_init(fr_log_t *log, bool daemonize);
+int	radlog_init(fr_log_t *log);
 
 void 	vp_listdebug(VALUE_PAIR *vp);
 
@@ -199,9 +199,9 @@ int fr_logfile_unlock(fr_logfile_t *lf, int fd);
       ^ kitties are not pets, are nature devouring hell beasts
  @endverbatim
  *
- * @param _m string to mark e.g. "my pet kitty"
- * @param _i offset e.g. 3
- * @param _e error e.g. "kitties are not pets, are nature devouring hell beasts"
+ * @param _m string to mark e.g. "my pet kitty".
+ * @param _i index e.g. 3 (starts from 0).
+ * @param _e error e.g. "kitties are not pets, are nature devouring hell beasts".
  */
 #define REMARKER(_m, _i, _e)	_RMKR(L_DBG_ERR, L_DBG_LVL_1, _m, _i, _e)
 #define RDMARKER(_m, _i, _e)	_RMKR(L_DBG, L_DBG_LVL_1, _m, _i, _e)
@@ -209,12 +209,18 @@ int fr_logfile_unlock(fr_logfile_t *lf, int fd);
 /*
  *	Rate limit messages.
  */
-#define RATE_LIMIT(_x) do {static time_t rl_last_complained = 0;time_t rl_now = time(NULL); \
-			    if (rl_now != rl_last_complained) { \
-				rl_last_complained = rl_now; \
-				_x; \
-			    } \
-                       } while (0)
+#define RATE_LIMIT_ENABLED (!main_config.daemonize || (debug_flag < 2))
+#define RATE_LIMIT(_x) \
+do {\
+	if (RATE_LIMIT_ENABLED) {\
+		static time_t _last_complained = 0;\
+		time_t _now = time(NULL);\
+		if (_now != _last_complained) {\
+			_last_complained = _now;\
+			_x;\
+		}\
+	} else _x;\
+} while (0)
 
 #ifdef __cplusplus
 }

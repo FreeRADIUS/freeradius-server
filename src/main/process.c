@@ -1563,8 +1563,8 @@ int request_receive(rad_listen_t *listener, RADIUS_PACKET *packet,
 	/*
 	 *	Quench maximum number of outstanding requests.
 	 */
-	if (mainconfig.max_requests &&
-	    ((count = fr_packet_list_num_elements(pl)) > mainconfig.max_requests)) {
+	if (main_config.max_requests &&
+	    ((count = fr_packet_list_num_elements(pl)) > main_config.max_requests)) {
 		RATE_LIMIT(ERROR("Dropping request (%d is too many): from client %s port %d - ID: %d", count,
 				 client->shortname,
 				 packet->src_port, packet->id);
@@ -1702,7 +1702,7 @@ static REQUEST *request_setup(rad_listen_t *listener, RADIUS_PACKET *packet,
 		request->server = NULL;
 	}
 
-	request->root = &mainconfig;
+	request->root = &main_config;
 #ifdef WITH_TCP
 	request->listener->count++;
 #endif
@@ -4325,7 +4325,7 @@ static void handle_signal_self(int flag)
 		/*
 		 *	FIXME: O(N) loops suck.
 		 */
-		for (this = mainconfig.listen;
+		for (this = main_config.listen;
 		     this != NULL;
 		     this = this->next) {
 			if (this->type != RAD_LISTEN_DETAIL) continue;
@@ -4471,7 +4471,7 @@ int radius_event_start(CONF_SECTION *cs, bool have_children)
 	request_num_counter = 0;
 
 #ifdef WITH_PROXY
-	if (mainconfig.proxy_requests && !check_config) {
+	if (main_config.proxy_requests && !check_config) {
 		/*
 		 *	Create the tree for managing proxied requests and
 		 *	responses.
@@ -4511,7 +4511,7 @@ int radius_event_start(CONF_SECTION *cs, bool have_children)
 
 	if (check_config) {
 		DEBUG("%s: #### Skipping IP addresses and Ports ####",
-		       mainconfig.name);
+		       main_config.name);
 		if (listen_init(cs, &head, spawn_flag) < 0) {
 			fflush(NULL);
 			fr_exit(1);
@@ -4550,7 +4550,7 @@ int radius_event_start(CONF_SECTION *cs, bool have_children)
 #endif
 
        DEBUG("%s: #### Opening IP addresses and Ports ####",
-	       mainconfig.name);
+	       main_config.name);
 
        /*
 	*	The server temporarily switches to an unprivileged
@@ -4565,7 +4565,7 @@ int radius_event_start(CONF_SECTION *cs, bool have_children)
 		fr_exit_now(1);
 	}
 
-	mainconfig.listen = head;
+	main_config.listen = head;
 
 	/*
 	 *	At this point, no one has any business *ever* going
@@ -4632,7 +4632,7 @@ static int request_delete_cb(UNUSED void *ctx, void *data)
 	request->in_request_hash = false;
 	if (request->ev) fr_event_delete(el, &request->ev);
 
-	if (mainconfig.memory_report) {
+	if (main_config.memory_report) {
 		RDEBUG2("Cleaning up request packet ID %u with timestamp +%d",
 			request->packet->id,
 			(unsigned int) (request->timestamp - fr_start_time));
@@ -4682,7 +4682,7 @@ void radius_event_free(void)
 		 *	Walk the lists again, ensuring that all
 		 *	requests are done.
 		 */
-		if (mainconfig.memory_report) {
+		if (main_config.memory_report) {
 			int num;
 
 #ifdef WITH_PROXY

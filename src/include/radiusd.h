@@ -399,6 +399,7 @@ typedef struct main_config_t {
 	bool		log_auth_goodpass;
 	bool		allow_core_dumps;
 	int		debug_level;
+	bool		daemonize;
 #ifdef WITH_PROXY
 	bool		proxy_requests;
 #endif
@@ -654,15 +655,15 @@ extern void thread_pool_queue_stats(int array[RAD_LISTEN_MAX], int pps[2]);
 #define rad_waitpid(a,b) waitpid(a,b, 0)
 #endif
 
-/* mainconfig.c */
+/* main_config.c */
 /* Define a global config structure */
-extern struct main_config_t mainconfig;
+extern struct main_config_t main_config;
 
 void set_radius_dir(TALLOC_CTX *ctx, char const *path);
 char const *get_radius_dir(void);
-int mainconfig_init(void);
-int mainconfig_free(void);
-void mainconfig_hup(void);
+int main_config_init(void);
+int main_config_free(void);
+void main_config_hup(void);
 void hup_logfile(void);
 void fr_suid_down(void);
 void fr_suid_up(void);

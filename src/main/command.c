@@ -366,7 +366,7 @@ static int command_show_config(rad_listen_t *listener, int argc, char *argv[])
 		return 0;
 	}
 
-	ci = cf_reference_item(mainconfig.config, mainconfig.config, argv[0]);
+	ci = cf_reference_item(main_config.config, main_config.config, argv[0]);
 	if (!ci) return 0;
 
 	if (!cf_item_is_pair(ci)) return 0;
@@ -1661,7 +1661,7 @@ static int command_stats_detail(rad_listen_t *listener, int argc, char *argv[])
 	}
 
 	data = NULL;
-	for (this = mainconfig.listen; this != NULL; this = this->next) {
+	for (this = main_config.listen; this != NULL; this = this->next) {
 		if (this->type != RAD_LISTEN_DETAIL) continue;
 
 		data = this->data;

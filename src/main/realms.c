@@ -727,7 +727,7 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 
 	FR_INTEGER_BOUND_CHECK("response_window", home->response_window, >=, 1);
 	FR_INTEGER_BOUND_CHECK("response_window", home->response_window, <=, 60);
-	FR_INTEGER_BOUND_CHECK("response_window", home->response_window, <=, mainconfig.max_request_time);
+	FR_INTEGER_BOUND_CHECK("response_window", home->response_window, <=, main_config.max_request_time);
 
 	FR_INTEGER_BOUND_CHECK("zombie_period", home->zombie_period, >=, 1);
 	FR_INTEGER_BOUND_CHECK("zombie_period", home->zombie_period, <=, 120);

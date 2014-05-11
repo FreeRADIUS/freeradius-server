@@ -93,7 +93,6 @@ int main(int argc, char *argv[])
 	int status;
 	int argval;
 	bool spawn_flag = true;
-	bool daemonize = true;
 	bool write_pid = false;
 	int flag = 0;
 	int from_child[2] = {-1, -1};
@@ -141,10 +140,11 @@ int main(int argc, char *argv[])
 	/*
 	 *	Ensure that the configuration is initialized.
 	 */
-	memset(&mainconfig, 0, sizeof(mainconfig));
-	mainconfig.myip.af = AF_UNSPEC;
-	mainconfig.port = -1;
-	mainconfig.name = "radiusd";
+	memset(&main_config, 0, sizeof(main_config));
+	main_config.myip.af = AF_UNSPEC;
+	main_config.port = -1;
+	main_config.name = "radiusd";
+	main_config.daemonize = true;
 
 	/*
 	 *	Don't put output anywhere until we get told a little
@@ -152,7 +152,7 @@ int main(int argc, char *argv[])
 	 */
 	default_log.dst = L_DST_NULL;
 	default_log.fd = -1;
-	mainconfig.log_file = NULL;
+	main_config.log_file = NULL;
 
 	/*  Process the options.  */
 	while ((argval = getopt(argc, argv, "Cd:D:fhi:l:mMn:p:PstvxX")) != EOF) {
@@ -161,7 +161,7 @@ int main(int argc, char *argv[])
 			case 'C':
 				check_config = true;
 				spawn_flag = false;
-				daemonize = false;
+				main_config.daemonize = false;
 				break;
 
 			case 'd':
@@ -169,11 +169,11 @@ int main(int argc, char *argv[])
 				break;
 
 			case 'D':
-				mainconfig.dictionary_dir = talloc_typed_strdup(NULL, optarg);
+				main_config.dictionary_dir = talloc_typed_strdup(NULL, optarg);
 				break;
 
 			case 'f':
-				daemonize = false;
+				main_config.daemonize = false;
 				break;
 
 			case 'h':
@@ -184,19 +184,19 @@ int main(int argc, char *argv[])
 				if (strcmp(optarg, "stdout") == 0) {
 					goto do_stdout;
 				}
-				mainconfig.log_file = strdup(optarg);
+				main_config.log_file = strdup(optarg);
 				default_log.dst = L_DST_FILES;
-				default_log.fd = open(mainconfig.log_file,
+				default_log.fd = open(main_config.log_file,
 							    O_WRONLY | O_APPEND | O_CREAT, 0640);
 				if (default_log.fd < 0) {
-					fprintf(stderr, "radiusd: Failed to open log file %s: %s\n", mainconfig.log_file, fr_syserror(errno));
+					fprintf(stderr, "radiusd: Failed to open log file %s: %s\n", main_config.log_file, fr_syserror(errno));
 					exit(EXIT_FAILURE);
 				}
 				fr_log_fp = fdopen(default_log.fd, "a");
 				break;
 
 			case 'i':
-				if (ip_hton(optarg, AF_UNSPEC, &mainconfig.myip) < 0) {
+				if (ip_hton(optarg, AF_UNSPEC, &main_config.myip) < 0) {
 					fprintf(stderr, "radiusd: Invalid IP Address or hostname \"%s\"\n", optarg);
 					exit(EXIT_FAILURE);
 				}
@@ -204,22 +204,22 @@ int main(int argc, char *argv[])
 				break;
 
 			case 'n':
-				mainconfig.name = optarg;
+				main_config.name = optarg;
 				break;
 
 			case 'm':
-				mainconfig.debug_memory = true;
+				main_config.debug_memory = true;
 				break;
 
 			case 'M':
-				mainconfig.memory_report = true;
-				mainconfig.debug_memory = true;
+				main_config.memory_report = true;
+				main_config.debug_memory = true;
 				break;
 
 			case 'p':
-				mainconfig.port = atoi(optarg);
-				if ((mainconfig.port <= 0) ||
-				    (mainconfig.port >= 65536)) {
+				main_config.port = atoi(optarg);
+				if ((main_config.port <= 0) ||
+				    (main_config.port >= 65536)) {
 					fprintf(stderr, "radiusd: Invalid port number %s\n", optarg);
 					exit(EXIT_FAILURE);
 				}
@@ -233,7 +233,7 @@ int main(int argc, char *argv[])
 
 			case 's':	/* Single process mode */
 				spawn_flag = false;
-				daemonize = false;
+				main_config.daemonize = false;
 				break;
 
 			case 't':	/* no child threads */
@@ -251,11 +251,11 @@ int main(int argc, char *argv[])
 				exit(EXIT_SUCCESS);
 			case 'X':
 				spawn_flag = false;
-				daemonize = false;
+				main_config.daemonize = false;
 				debug_flag += 2;
-				mainconfig.log_auth = true;
-				mainconfig.log_auth_badpass = true;
-				mainconfig.log_auth_goodpass = true;
+				main_config.log_auth = true;
+				main_config.log_auth_badpass = true;
+				main_config.log_auth_goodpass = true;
 		do_stdout:
 				fr_log_fp = stdout;
 				default_log.dst = L_DST_STDOUT;
@@ -312,7 +312,7 @@ int main(int argc, char *argv[])
 	}
 
 	/*  Read the configuration files, BEFORE doing anything else.  */
-	if (mainconfig_init() < 0) {
+	if (main_config_init() < 0) {
 		exit(EXIT_FAILURE);
 	}
 
@@ -321,7 +321,7 @@ int main(int argc, char *argv[])
 	 *  modules do it.
 	 */
 #ifdef HAVE_OPENSSL_CRYPTO_H
-	if (tls_global_init(mainconfig.allow_vulnerable_openssl) < 0) {
+	if (tls_global_init(main_config.allow_vulnerable_openssl) < 0) {
 		exit(EXIT_FAILURE);
 	}
 #endif
@@ -329,16 +329,16 @@ int main(int argc, char *argv[])
 	/*
 	 *  Load the modules
 	 */
-	if (modules_init(mainconfig.config) < 0) {
+	if (modules_init(main_config.config) < 0) {
 		exit(EXIT_FAILURE);
 	}
 
 	/* Set the panic action (if required) */
-	if (mainconfig.panic_action &&
+	if (main_config.panic_action &&
 #ifndef NDEBUG
 	    !getenv("PANIC_ACTION") &&
 #endif
-	    (fr_fault_setup(mainconfig.panic_action, argv[0]) < 0)) {
+	    (fr_fault_setup(main_config.panic_action, argv[0]) < 0)) {
 		fr_perror("radiusd");
 		exit(EXIT_FAILURE);
 	}
@@ -349,7 +349,7 @@ int main(int argc, char *argv[])
 	/*
 	 *  Disconnect from session
 	 */
-	if (daemonize) {
+	if (main_config.daemonize) {
 		pid_t pid;
 		int devnull;
 
@@ -430,7 +430,7 @@ int main(int argc, char *argv[])
 	/*
 	 *	Redirect stderr/stdout as appropriate.
 	 */
-	if (radlog_init(&default_log, daemonize) < 0) {
+	if (radlog_init(&default_log) < 0) {
 		ERROR("%s", fr_strerror());
 		exit(EXIT_FAILURE);
 	}
@@ -438,7 +438,7 @@ int main(int argc, char *argv[])
 	/*
 	 *	Start the event loop(s) and threads.
 	 */
-	radius_event_start(mainconfig.config, spawn_flag);
+	radius_event_start(main_config.config, spawn_flag);
 
 	/*
 	 *	Now that we've set everything up, we can install the signal
@@ -460,7 +460,7 @@ int main(int argc, char *argv[])
 	 *	server to die immediately.  Use SIGTERM to shut down
 	 *	the server cleanly in that case.
 	 */
-	if (mainconfig.debug_memory || (debug_flag == 0)) {
+	if (main_config.debug_memory || (debug_flag == 0)) {
 		if ((fr_set_signal(SIGINT, sig_fatal) < 0)
 #ifdef SIGQUIT
 		|| (fr_set_signal(SIGQUIT, sig_fatal) < 0)
@@ -478,7 +478,7 @@ int main(int argc, char *argv[])
 		DEBUG("Configuration appears to be OK");
 
 		/* for -C -m|-M */
-		if (mainconfig.debug_memory) {
+		if (main_config.debug_memory) {
 			goto cleanup;
 		}
 
@@ -492,7 +492,7 @@ int main(int argc, char *argv[])
 	/*
 	 *	Write the PID always if we're running as a daemon.
 	 */
-	if (daemonize) write_pid = true;
+	if (main_config.daemonize) write_pid = true;
 
 	/*
 	 *	Write the PID after we've forked, so that we write the
@@ -501,7 +501,7 @@ int main(int argc, char *argv[])
 	if (write_pid) {
 		FILE *fp;
 
-		fp = fopen(mainconfig.pid_file, "w");
+		fp = fopen(main_config.pid_file, "w");
 		if (fp != NULL) {
 			/*
 			 *	FIXME: What about following symlinks,
@@ -511,7 +511,7 @@ int main(int argc, char *argv[])
 			fclose(fp);
 		} else {
 			ERROR("Failed creating PID file %s: %s\n",
-			       mainconfig.pid_file, fr_syserror(errno));
+			       main_config.pid_file, fr_syserror(errno));
 			exit(EXIT_FAILURE);
 		}
 	}
@@ -525,7 +525,7 @@ int main(int argc, char *argv[])
 	 *	we just close the pipe on exit, and the parent gets a
 	 *	read failure.
 	 */
-	if (daemonize) {
+	if (main_config.daemonize) {
 		if (write(from_child[1], "\001", 1) < 0) {
 			WARN("Failed informing parent of successful start: %s",
 			     fr_syserror(errno));
@@ -545,7 +545,7 @@ int main(int argc, char *argv[])
 #ifdef WITH_STATS
 		radius_stats_init(1);
 #endif
-		mainconfig_hup();
+		main_config_hup();
 	}
 	if (status < 0) {
 		ERROR("Exiting due to internal error: %s", fr_strerror());
@@ -577,8 +577,8 @@ int main(int argc, char *argv[])
 	 *	file.  (If it doesn't exist, we can ignore
 	 *	the error returned by unlink)
 	 */
-	if (daemonize) {
-		unlink(mainconfig.pid_file);
+	if (main_config.daemonize) {
+		unlink(main_config.pid_file);
 	}
 
 	radius_event_free();
@@ -594,7 +594,7 @@ cleanup:
 	/*
 	 *	Free the configuration items.
 	 */
-	mainconfig_free();
+	main_config_free();
 
 #ifdef WIN32
 	WSACleanup();
@@ -605,7 +605,7 @@ cleanup:
 	 */
 	talloc_free(autofree);
 
-	if (mainconfig.memory_report) {
+	if (main_config.memory_report) {
 		INFO("Allocated memory at time of report:");
 		fr_log_talloc_report(NULL);
 	}
@@ -659,7 +659,7 @@ static void sig_fatal(int sig)
 #ifdef SIGQUIT
 	case SIGQUIT:
 #endif
-		if (mainconfig.debug_memory || mainconfig.memory_report) {
+		if (main_config.debug_memory || main_config.memory_report) {
 			radius_signal_self(RADIUS_SIGNAL_SELF_TERM);
 			break;
 		}

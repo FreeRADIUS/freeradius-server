@@ -1387,7 +1387,7 @@ void exec_trigger(REQUEST *request, CONF_SECTION *cs, char const *name, int quen
 	 *	Use global "trigger" section if no local config is given.
 	 */
 	if (!cs) {
-		cs = mainconfig.config;
+		cs = main_config.config;
 		attr = name;
 	} else {
 		/*
@@ -1407,14 +1407,14 @@ void exec_trigger(REQUEST *request, CONF_SECTION *cs, char const *name, int quen
 	 *	reference to the full path, rather than the sub-path.
 	 */
 	subcs = cf_section_sub_find(cs, "trigger");
-	if (!subcs && (cs != mainconfig.config)) {
-		subcs = cf_section_sub_find(mainconfig.config, "trigger");
+	if (!subcs && (cs != main_config.config)) {
+		subcs = cf_section_sub_find(main_config.config, "trigger");
 		attr = name;
 	}
 
 	if (!subcs) return;
 
-	ci = cf_reference_item(subcs, mainconfig.config, attr);
+	ci = cf_reference_item(subcs, main_config.config, attr);
 	if (!ci) {
 		ERROR("No such item in trigger section: %s", attr);
 		return;

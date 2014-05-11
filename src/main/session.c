@@ -204,10 +204,10 @@ int rad_check_ts(uint32_t nasaddr, unsigned int portnum, char const *user,
 	execl(getenv("COMSPEC"), "", "/C","checkrad", cl->nas_type, address, port,
 		user, session_id, NULL);
 #else
-	execl(mainconfig.checkrad, "checkrad", cl->nas_type, address, port,
+	execl(main_config.checkrad, "checkrad", cl->nas_type, address, port,
 		user, session_id, NULL);
 #endif
-	ERROR("Check-TS: exec %s: %s", mainconfig.checkrad, fr_syserror(errno));
+	ERROR("Check-TS: exec %s: %s", main_config.checkrad, fr_syserror(errno));
 
 	/*
 	 *	Exit - 2 means "some error occured".

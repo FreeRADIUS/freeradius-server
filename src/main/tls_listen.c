@@ -380,7 +380,7 @@ int dual_tls_recv(rad_listen_t *listener)
 #endif
 
 	case PW_CODE_STATUS_SERVER:
-		if (!mainconfig.status_server) {
+		if (!main_config.status_server) {
 			FR_STATS_INC(auth, total_unknown_types);
 			WARN("Ignoring Status-Server request due to security configuration");
 			rad_free(&sock->packet);

@@ -258,7 +258,7 @@ RADCLIENT *client_listener_find(rad_listen_t *listener,
 	request->number = 0;
 	request->priority = listener->type;
 	request->server = client->client_server;
-	request->root = &mainconfig;
+	request->root = &main_config;
 
 	/*
 	 *	Run a fake request through the given virtual server.
@@ -503,7 +503,7 @@ static int dual_tcp_recv(rad_listen_t *listener)
 #endif
 
 	case PW_CODE_STATUS_SERVER:
-		if (!mainconfig.status_server) {
+		if (!main_config.status_server) {
 			FR_STATS_INC(auth, total_unknown_types);
 			WARN("Ignoring Status-Server request due to security configuration");
 			rad_free(&sock->packet);
@@ -1476,7 +1476,7 @@ static int auth_socket_recv(rad_listen_t *listener)
 		break;
 
 	case PW_CODE_STATUS_SERVER:
-		if (!mainconfig.status_server) {
+		if (!main_config.status_server) {
 			rad_recv_discard(listener->fd);
 			FR_STATS_INC(auth, total_unknown_types);
 			WARN("Ignoring Status-Server request due to security configuration");
@@ -1582,7 +1582,7 @@ static int acct_socket_recv(rad_listen_t *listener)
 		break;
 
 	case PW_CODE_STATUS_SERVER:
-		if (!mainconfig.status_server) {
+		if (!main_config.status_server) {
 			rad_recv_discard(listener->fd);
 			FR_STATS_INC(acct, total_unknown_types);
 
@@ -2624,7 +2624,7 @@ rad_listen_t *proxy_new_listener(home_server_t *home, int src_port)
 		return NULL;
 	}
 
-	this = listen_alloc(mainconfig.config, RAD_LISTEN_PROXY);
+	this = listen_alloc(main_config.config, RAD_LISTEN_PROXY);
 
 	sock = this->data;
 	sock->other_ipaddr = home->ipaddr;
@@ -2995,16 +2995,16 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head,
 	 *
 	 *	FIXME: If argv[0] == "vmpsd", then don't listen on auth/acct!
 	 */
-	if (mainconfig.port >= 0) {
-		auth_port = mainconfig.port;
+	if (main_config.port >= 0) {
+		auth_port = main_config.port;
 
 		/*
 		 *	-p X but no -i Y on the command-line.
 		 */
-		if ((mainconfig.port > 0) &&
-		    (mainconfig.myip.af == AF_UNSPEC)) {
+		if ((main_config.port > 0) &&
+		    (main_config.myip.af == AF_UNSPEC)) {
 			ERROR("The command-line says \"-p %d\", but there is no associated IP address to use",
-			       mainconfig.port);
+			       main_config.port);
 			return -1;
 		}
 	}
@@ -3013,10 +3013,10 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head,
 	 *	If the IP address was configured on the command-line,
 	 *	use that as the "bind_address"
 	 */
-	if (mainconfig.myip.af != AF_UNSPEC) {
+	if (main_config.myip.af != AF_UNSPEC) {
 		listen_socket_t *sock;
 
-		memcpy(&server_ipaddr, &mainconfig.myip,
+		memcpy(&server_ipaddr, &main_config.myip,
 		       sizeof(server_ipaddr));
 		override = true;
 
@@ -3050,8 +3050,8 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head,
 		auth_port = sock->my_port;	/* may have been updated in listen_bind */
 		if (override) {
 			cs = cf_section_sub_find_name2(config, "server",
-						       mainconfig.name);
-			if (cs) this->server = mainconfig.name;
+						       main_config.name);
+			if (cs) this->server = main_config.name;
 		}
 
 		*last = this;
@@ -3099,8 +3099,8 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head,
 
 		if (override) {
 			cs = cf_section_sub_find_name2(config, "server",
-						       mainconfig.name);
-			if (cs) this->server = mainconfig.name;
+						       main_config.name);
+			if (cs) this->server = main_config.name;
 		}
 
 		*last = this;
@@ -3112,12 +3112,12 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head,
 	 *	They specified an IP on the command-line, ignore
 	 *	all listen sections except the one in '-n'.
 	 */
-	if (mainconfig.myip.af != AF_UNSPEC) {
+	if (main_config.myip.af != AF_UNSPEC) {
 		CONF_SECTION *subcs;
 		char const *name2 = cf_section_name2(cs);
 
 		cs = cf_section_sub_find_name2(config, "server",
-					       mainconfig.name);
+					       main_config.name);
 		if (!cs) goto add_sockets;
 
 		/*
@@ -3253,7 +3253,7 @@ add_sockets:
 	 *	Otherwise, don't do anything.
 	 */
 #ifdef WITH_PROXY
-	if ((mainconfig.proxy_requests == true) &&
+	if ((main_config.proxy_requests == true) &&
 	    !check_config &&
 	    (*head != NULL) && !defined_proxy) {
 		listen_socket_t *sock = NULL;
@@ -3357,7 +3357,7 @@ RADCLIENT_LIST *listener_find_client_list(fr_ipaddr_t const *ipaddr,
 {
 	rad_listen_t *this;
 
-	for (this = mainconfig.listen; this != NULL; this = this->next) {
+	for (this = main_config.listen; this != NULL; this = this->next) {
 		listen_socket_t *sock;
 
 		if ((this->type != RAD_LISTEN_AUTH)
@@ -3382,7 +3382,7 @@ rad_listen_t *listener_find_byipaddr(fr_ipaddr_t const *ipaddr, int port, int pr
 {
 	rad_listen_t *this;
 
-	for (this = mainconfig.listen; this != NULL; this = this->next) {
+	for (this = main_config.listen; this != NULL; this = this->next) {
 		listen_socket_t *sock;
 
 		sock = this->data;
@@ -3397,7 +3397,7 @@ rad_listen_t *listener_find_byipaddr(fr_ipaddr_t const *ipaddr, int port, int pr
 	/*
 	 *	Failed to find a specific one.  Find INADDR_ANY
 	 */
-	for (this = mainconfig.listen; this != NULL; this = this->next) {
+	for (this = main_config.listen; this != NULL; this = this->next) {
 		listen_socket_t *sock;
 
 		sock = this->data;

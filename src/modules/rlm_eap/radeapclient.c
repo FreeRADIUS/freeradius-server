@@ -54,7 +54,7 @@ char const *dict_dir = NULL;
 char const *progname = "radeapclient";
 /* fr_randctx randctx; */
 
-struct main_config_t mainconfig;
+struct main_config_t main_config;
 char const *radiusd_version = "";
 
 #ifdef WITH_TLS
@@ -1055,7 +1055,7 @@ int main(int argc, char **argv)
 			set_radius_dir(autofree, optarg);
 			break;
 		case 'D':
-			mainconfig.dictionary_dir = talloc_typed_strdup(NULL, optarg);
+			main_config.dictionary_dir = talloc_typed_strdup(NULL, optarg);
 			break;
 		case 'f':
 			filename = optarg;
@@ -1143,16 +1143,16 @@ int main(int argc, char **argv)
 		usage();
 	}
 
-	if (!mainconfig.dictionary_dir) {
-		mainconfig.dictionary_dir = DICTDIR;
+	if (!main_config.dictionary_dir) {
+		main_config.dictionary_dir = DICTDIR;
 	}
 
 	/*
 	 *	Read the distribution dictionaries first, then
 	 *	the ones in raddb.
 	 */
-	DEBUG2("including dictionary file %s/%s", mainconfig.dictionary_dir, RADIUS_DICTIONARY);
-	if (dict_init(mainconfig.dictionary_dir, RADIUS_DICTIONARY) != 0) {
+	DEBUG2("including dictionary file %s/%s", main_config.dictionary_dir, RADIUS_DICTIONARY);
+	if (dict_init(main_config.dictionary_dir, RADIUS_DICTIONARY) != 0) {
 		ERROR("Errors reading dictionary: %s",
 		      fr_strerror());
 		exit(1);
