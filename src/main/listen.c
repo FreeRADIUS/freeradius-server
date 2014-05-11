@@ -710,12 +710,10 @@ static void common_socket_free(rad_listen_t *this)
 
 	if (sock->proto != IPPROTO_TCP) return;
 
-	if (!sock->parent) return;
-
 	/*
 	 *      Decrement the number of connections.
 	 */
-	if (sock->parent->limit.num_connections > 0) {
+	if (sock->parent && (sock->parent->limit.num_connections > 0)) {
 		sock->parent->limit.num_connections--;
 	}
 	if (sock->client && sock->client->limit.num_connections > 0) {
