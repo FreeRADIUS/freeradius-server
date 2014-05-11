@@ -42,6 +42,8 @@ RCSID("$Id$")
 #include <pthread.h>
 #endif
 
+bool rate_limit = true;
+
 /*
  * Logging facility names
  */
@@ -201,11 +203,14 @@ static void CC_HINT(format (printf, 1, 2)) _radlog_info(char const *msg, ...)
 /** Initialise file descriptors based on logging destination
  *
  * @param log Logger to manipulate.
+ * @param daemonize Whether the server is starting as a daemon.
  * @return 0 on success -1 on failure.
  */
-int radlog_init(fr_log_t *log)
+int radlog_init(fr_log_t *log, bool daemonize)
 {
 	int devnull;
+
+	rate_limit = daemonize;
 
 	/*
 	 *	If we're running in foreground mode, save STDIN /
@@ -219,7 +224,7 @@ int radlog_init(fr_log_t *log)
 	 *	any debugger called from the panic action has access
 	 *	to STDOUT / STDERR.
 	 */
-	if (!main_config.daemonize) {
+	if (!daemonize) {
 		fr_fault_set_cb(_restore_std);
 
 		stdout_fd = dup(STDOUT_FILENO);
@@ -500,6 +505,13 @@ void vp_listdebug(VALUE_PAIR *vp)
 inline bool debug_enabled(log_type_t type, log_debug_t lvl)
 {
 	if ((type & L_DBG) && (debug_flag != 0) && (lvl > debug_flag)) return true;
+
+	return false;
+}
+
+inline bool rate_limit_enabled(void)
+{
+	if (rate_limit || (debug_flag < 1)) return true;
 
 	return false;
 }
