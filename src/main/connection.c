@@ -382,18 +382,21 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool,
 		return NULL;
 	}
 
-	this = rad_malloc(sizeof(*this));
-	memset(this, 0, sizeof(*this));
-
-	this->created = now;
-	this->connection = conn;
-	this->in_use = in_use;
-
 	/*
 	 *	And lock the mutex again while we link the new
 	 *	connection back into the pool.
 	 */
 	pthread_mutex_lock(&pool->mutex);
+
+	this = talloc_zero(pool, fr_connection_t);
+	if (!this) {
+		pthread_mutex_unlock(&pool->mutex);
+		return NULL;
+	}
+
+	this->created = now;
+	this->connection = conn;
+	this->in_use = in_use;
 
 	this->number = pool->count++;
 	this->last_used = now;
@@ -447,7 +450,7 @@ static void fr_connection_close(fr_connection_pool_t *pool,
 	pool->delete(pool->ctx, this->connection);
 	rad_assert(pool->num > 0);
 	pool->num--;
-	free(this);
+	talloc_free(this);
 }
 
 /** Find a connection handle in the connection list
@@ -554,8 +557,7 @@ void fr_connection_pool_delete(fr_connection_pool_t *pool)
 	rad_assert(pool->tail == NULL);
 	rad_assert(pool->num == 0);
 
-	free(pool->log_prefix);
-	free(pool);
+	talloc_free(pool);
 }
 
 /** Create a new connection pool
@@ -584,7 +586,7 @@ fr_connection_pool_t *fr_connection_pool_init(CONF_SECTION *parent,
 					      fr_connection_delete_t d,
 					      char const *prefix)
 {
-	int i, lp_len;
+	int i;
 	fr_connection_pool_t *pool;
 	fr_connection_t *this;
 	CONF_SECTION *modules;
@@ -597,8 +599,12 @@ fr_connection_pool_t *fr_connection_pool_init(CONF_SECTION *parent,
 	cs = cf_section_sub_find(parent, "pool");
 	if (!cs) cs = cf_section_sub_find(parent, "limit");
 
-	pool = rad_malloc(sizeof(*pool));
-	memset(pool, 0, sizeof(*pool));
+	if (cs) {
+		pool = talloc_zero(cs, fr_connection_pool_t);
+	} else {
+		pool = talloc_zero(parent, fr_connection_pool_t);
+	}
+	if (!pool) return NULL;
 
 	pool->cs = cs;
 	pool->ctx = ctx;
@@ -623,18 +629,16 @@ fr_connection_pool_t *fr_connection_pool_init(CONF_SECTION *parent,
 					cs_name2 = cs_name1;
 				}
 
-				lp_len = (sizeof(LOG_PREFIX) - 4) + strlen(cs_name1) + strlen(cs_name2);
-				pool->log_prefix = rad_malloc(lp_len);
-				snprintf(pool->log_prefix, lp_len, LOG_PREFIX, cs_name1,
-					 cs_name2);
+				pool->log_prefix = talloc_typed_asprintf(pool, LOG_PREFIX, cs_name1,
+								   cs_name2);
 			}
 		} else {		/* not a module configuration */
 			cs_name1 = cf_section_name1(parent);
 
-			pool->log_prefix = strdup(cs_name1);
+			pool->log_prefix = talloc_typed_strdup(pool, cs_name1);
 		}
 	} else {
-		pool->log_prefix = strdup(prefix);
+		pool->log_prefix = talloc_typed_strdup(pool, prefix);
 	}
 
 	DEBUG("%s: Initialising connection pool", pool->log_prefix);
