@@ -3,7 +3,7 @@
 #
 #	Altiga vendor attributes
 #
-#	Altiga networks was aquired by Cisco in 2000.
+#	Altiga networks was acquired by Cisco in 2000.
 #
 #	$Id$
 #
@@ -11,24 +11,24 @@
 VENDOR		Altiga				3076
 
 BEGIN-VENDOR	Altiga
-ATTRIBUTE Altiga-Access-Hours-G/U                 1	string
-ATTRIBUTE Altiga-Simultaneous-Logins-G/U          2     integer
+ATTRIBUTE	Altiga-Access-Hours-G/U                 1	string
+ATTRIBUTE	Altiga-Simultaneous-Logins-G/U          2	integer
 ATTRIBUTE	Altiga-Min-Password-Length-G		3	integer
 ATTRIBUTE	Altiga-Allow-Alpha-Only-Passwords-G	4	integer
 ATTRIBUTE	Altiga-Primary-DNS-G			5	ipaddr
 ATTRIBUTE	Altiga-Secondary-DNS-G			6	ipaddr
 ATTRIBUTE	Altiga-Primary-WINS-G			7	ipaddr
 ATTRIBUTE	Altiga-Secondary-WINS-G			8	ipaddr
-ATTRIBUTE Altiga-SEP-Card-Assignment-G/U          9     integer
-ATTRIBUTE Altiga-Priority-on-SEP-G/U              10    integer
-ATTRIBUTE Altiga-Tunneling-Protocols-G/U          11    integer
-ATTRIBUTE Altiga-IPSec-Sec-Association-G/U        12    string
+ATTRIBUTE	Altiga-SEP-Card-Assignment-G/U          9	integer
+ATTRIBUTE	Altiga-Priority-on-SEP-G/U              10	integer
+ATTRIBUTE	Altiga-Tunneling-Protocols-G/U          11	integer
+ATTRIBUTE	Altiga-IPSec-Sec-Association-G/U        12	string
 ATTRIBUTE	Altiga-IPSec-Authentication-G		13	integer
 ATTRIBUTE	Altiga-IPSec-Banner-G			15	string
-ATTRIBUTE Altiga-IPSec-Allow-Passwd-Store-G/U     16    integer
-ATTRIBUTE Altiga-Use-Client-Address-G/U           17    integer
-ATTRIBUTE Altiga-PPTP-Min-Authentication-G/U      18    integer
-ATTRIBUTE Altiga-L2TP-Min-Authentication-G/U      19    integer
+ATTRIBUTE	Altiga-IPSec-Allow-Passwd-Store-G/U     16	integer
+ATTRIBUTE	Altiga-Use-Client-Address-G/U           17	integer
+ATTRIBUTE	Altiga-PPTP-Min-Authentication-G/U      18	integer
+ATTRIBUTE	Altiga-L2TP-Min-Authentication-G/U      19	integer
 ATTRIBUTE	Altiga-PPTP-Encryption-G		20	integer
 ATTRIBUTE	Altiga-L2TP-Encryption-G		21	integer
 ATTRIBUTE	Altiga-Argument-Authentication-Server-Type 22	integer
