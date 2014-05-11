@@ -64,7 +64,7 @@ static void *mod_conn_create(void *ctx)
 	REDIS_INST *inst = ctx;
 	REDISSOCK *dissocket = NULL;
 	redisContext *conn;
-	redisReply *reply = NULL;	
+	redisReply *reply = NULL;
 	char buffer[1024];
 
 	conn = redisConnect(inst->hostname, inst->port);
@@ -143,12 +143,7 @@ static ssize_t redis_xlat(void *instance, REQUEST *request, char const *fmt, cha
 	char buffer[21];
 
 	dissocket = fr_connection_get(inst->pool);
-	if (!dissocket) {
-		ERROR("rlm_redis (%s): redis_get_socket() failed",
-		       inst->xlat_name);
-
-		return -1;
-	}
+	if (!dissocket) return -1;
 
 	/* Query failed for some reason, release socket and return */
 	if (rlm_redis_query(&dissocket, inst, fmt, request) < 0) {

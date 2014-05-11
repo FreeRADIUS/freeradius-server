@@ -1257,18 +1257,9 @@ int mod_conn_delete(UNUSED void *instance, void *handle)
  * @param inst rlm_ldap configuration.
  * @param request Current request (may be NULL).
  */
-ldap_handle_t *rlm_ldap_get_socket(ldap_instance_t const *inst, REQUEST *request)
+ldap_handle_t *rlm_ldap_get_socket(ldap_instance_t const *inst, UNUSED REQUEST *request)
 {
-	ldap_handle_t *conn;
-
-	conn = fr_connection_get(inst->pool);
-	if (!conn) {
-		REDEBUG("All ldap connections are in use");
-
-		return NULL;
-	}
-
-	return conn;
+	return fr_connection_get(inst->pool);
 }
 
 

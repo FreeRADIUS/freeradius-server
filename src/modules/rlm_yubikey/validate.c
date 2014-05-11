@@ -163,9 +163,7 @@ rlm_rcode_t rlm_yubikey_validate(rlm_yubikey_t *inst, REQUEST *request,  char co
 	ykclient_handle_t *yandle;
 
 	yandle = fr_connection_get(inst->conn_pool);
-	if (!yandle) {
-		return RLM_MODULE_FAIL;
-	}
+	if (!yandle) return RLM_MODULE_FAIL;
 
 	/*
 	 *	The libcurl multi-handle interface will tear down the TCP sockets for any partially completed
