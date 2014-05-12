@@ -1,4 +1,4 @@
-FreeRADIUS 3.0.3 Fri 21 Mar 2014 08:30:00 EDT urgency=medium
+FreeRADIUS 3.0.3 Mon 12 May 2014 15:30:00 EDT urgency=medium
 	Feature improvements
 	* Everything now builds with no warnings from the C compiler,
 	  clang static analyzer, or cppcheck.
@@ -53,9 +53,11 @@ FreeRADIUS 3.0.3 Fri 21 Mar 2014 08:30:00 EDT urgency=medium
 	* many enhancements to radsniff, including output
 	  to collectd, ipv6 support and packet loss statistics.
 	* Many dictionary updates (ZTE, Brocade, Motorola).
-	* rlm_yubikey now automatically splits passwords from OTP 
+	* rlm_yubikey now automatically splits passwords from OTP
 	  strings.
-	  
+	* The detail file reader is now threaded by default.
+	  This should improve performance reading the files.
+
 	Bug fixes
 	* Fix xlat expression %{attribute[n]} so that it actually
 	  returns the n'th attribute instead of the first one.
@@ -122,10 +124,11 @@ FreeRADIUS 3.0.3 Fri 21 Mar 2014 08:30:00 EDT urgency=medium
 	  need double escaping (\\) of the backslash.
 	* The connection pools no longer have one connection used twice
 	  in certain rare conditions.
-	* Use self pipes for internal signals.  The code was there, but for
-	  some reason was unused.
+	* Use self pipes for internal signals.  The code was there, but was
+	  unused.
 	* Don't crash if there are outstanding EAP sessions and were told to
 	  exit gracefully.
+	* Fix typo in dictionary.rfc4072
 
 FreeRADIUS 3.0.2 Fri 21 Mar 2014 08:30:00 EDT urgency=medium
 	Feature improvements
