@@ -124,6 +124,8 @@ FreeRADIUS 3.0.3 Fri 21 Mar 2014 08:30:00 EDT urgency=medium
 	  in certain rare conditions.
 	* Use self pipes for internal signals.  The code was there, but for
 	  some reason was unused.
+	* Don't crash if there are outstanding EAP sessions and were told to
+	  exit gracefully.
 
 FreeRADIUS 3.0.2 Fri 21 Mar 2014 08:30:00 EDT urgency=medium
 	Feature improvements
