@@ -52,8 +52,10 @@ FreeRADIUS 3.0.3 Fri 21 Mar 2014 08:30:00 EDT urgency=medium
 	  are allowed in "unlang".
 	* many enhancements to radsniff, including output
 	  to collectd, ipv6 support and packet loss statistics.
-	* Many dictionary updates (ZTE, Brocade, Motorola)
-
+	* Many dictionary updates (ZTE, Brocade, Motorola).
+	* rlm_yubikey now automatically splits passwords from OTP 
+	  strings.
+	  
 	Bug fixes
 	* Fix xlat expression %{attribute[n]} so that it actually
 	  returns the n'th attribute instead of the first one.
