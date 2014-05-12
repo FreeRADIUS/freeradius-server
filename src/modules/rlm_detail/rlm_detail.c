@@ -376,7 +376,7 @@ static rlm_rcode_t CC_HINT(nonnull) detail_do(void *instance, REQUEST *request, 
 
 	outfd = fr_logfile_open(inst->lf, buffer, inst->perm);
 	if (outfd < 0) {
-		RERROR("Couldn't open file %s: %s", buffer, fr_syserror(errno));
+		RERROR("Couldn't open file %s: %s", buffer, fr_strerror());
 		return RLM_MODULE_FAIL;
 	}
 
