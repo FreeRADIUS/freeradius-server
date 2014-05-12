@@ -59,7 +59,14 @@ static int mod_detach(void *instance)
 #endif
 
 	rbtree_free(inst->session_tree);
-	if (inst->handler_tree) rbtree_free(inst->handler_tree);
+	if (inst->handler_tree) {
+		rbtree_free(inst->handler_tree);
+		/*
+		 *  Must be NULL else when nodes are freed they try to
+		 *  delete themselves from the tree.
+		 */
+		inst->handler_tree = NULL;
+	}
 	inst->session_tree = NULL;
 	eaplist_free(inst);
 
