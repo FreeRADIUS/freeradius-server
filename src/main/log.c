@@ -933,7 +933,10 @@ int fr_logfile_open(fr_logfile_t *lf, char const *filename, mode_t permissions)
 		dir = talloc_strdup(lf, filename);
 		if (!dir) goto error;
 		p = strrchr(dir, FR_DIR_SEP);
-		if (!p) goto error;
+		if (!p) {
+			fr_strerror_printf("No '/' in '%s'", filename);
+			goto error;
+		}
 		*p = '\0';
 
 		/*
@@ -946,6 +949,8 @@ int fr_logfile_open(fr_logfile_t *lf, char const *filename, mode_t permissions)
 		if ((dirperm & 0006) != 0) dirperm |= 0001;
 
 		if (rad_mkdir(dir, dirperm) < 0) {
+			fr_strerror_printf("Failed to create directory %s: %s",
+					   dir, strerror(errno));
 			talloc_free(dir);
 			goto error;
 		}
@@ -1014,7 +1019,11 @@ do_return:
 	 */
 	lf->entries[i].last_used = now;
 	lf->entries[i].dup = dup(lf->entries[i].fd);
-	if (lf->entries[i].dup < 0) goto error;
+	if (lf->entries[i].dup < 0) {
+		fr_strerror_printf("Failed calling dup(): %s",
+				   strerror(errno));
+		goto error;
+	}
 
 	return lf->entries[i].dup;
 }
