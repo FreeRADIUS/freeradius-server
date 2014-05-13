@@ -68,10 +68,10 @@ couchbase {
 	#
 	pool {
 		# Number of connections to start
-		start = 5
+		start = ${thread[pool].start_servers}
 
 		# Minimum number of connections to keep open
-		min = 5
+		min = ${thread[pool].min_spare_servers}
 
 		# Maximum number of connections
 		#
@@ -79,13 +79,13 @@ couchbase {
 		# is requested, the request will NOT get a connection.
 		#
 		# NOTE: This should be greater than or equal to "min" above.
-		max = 20
+		max = ${thread[pool].max_servers}
 
 		# Spare connections to be left idle
 		#
 		# NOTE: Idle connections WILL be closed if "idle_timeout"
 		# is set.  This should be less than or equal to "max" above.
-		spare = 15
+		spare = ${thread[pool].max_spare_servers}
 
 		# Number of uses before the connection is closed
 		#

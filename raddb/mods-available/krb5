@@ -16,44 +16,52 @@ krb5 {
 	#
 	#  The context pool is only used if the underlying libkrb5 reported
 	#  that it was thread safe at compile time.
+	#
 	pool {
-		# Number of contexts to create
-		start = 10
+		# Number of connections to start
+		start = ${thread[pool].start_servers}
 
-		# Minimum number of contexts to keep available
-		min = 4
+		# Minimum number of connections to keep open
+		min = ${thread[pool].min_spare_servers}
 
-		# Maximum number of contexts
+		# Maximum number of connections
 		#
-		# If these contexts are all in use and a new one
+		# If these connections are all in use and a new one
 		# is requested, the request will NOT get a connection.
-		max = 10
-
-		# Spare contexts to be left idle
 		#
-		# NOTE: Idle contexts WILL be closed if "idle_timeout"
-		# is set.
-		spare = 3
+		# NOTE: This should be greater than or equal to "min" above.
+		max = ${thread[pool].max_servers}
 
-		# Number of uses before the context is freed
-		# 0 means "infinite"
+		# Spare connections to be left idle
+		#
+		# NOTE: Idle connections WILL be closed if "idle_timeout"
+		# is set.  This should be less than or equal to "max" above.
+		spare = ${thread[pool].max_spare_servers}
+
+		# Number of uses before the connection is closed
+		#
+		# NOTE: A setting of 0 means infinite (no limit).
 		uses = 0
 
-		# The lifetime (in seconds) of the context
+		# The lifetime (in seconds) of the connection
+		#
+		# NOTE: A setting of 0 means infinite (no limit).
 		lifetime = 0
 
-		# idle timeout (in seconds).  A context which is
-		# unused for this length of time will be freed.
-		idle_timeout = 60
+		# The idle timeout (in seconds).  A connection which is
+		# unused for this length of time will be closed.
+		#
+		# NOTE: A setting of 0 means infinite (no timeout).
+		idle_timeout = 0
 
 		# NOTE: All configuration settings are enforced.  If a
-		# context is closed because of "idle_timeout",
+		# connection is closed because of "idle_timeout",
 		# "uses", or "lifetime", then the total number of
-		# contexts MAY fall below "min".  When that
-		# happens, it will create a new context.  It will
+		# connections MAY fall below "min".  When that
+		# happens, it will open a new connection.  It will
 		# also log a WARNING message.
 		#
-		# The solution is to either lower the "min" contexts,
+		# The solution is to either lower the "min" connections,
 		# or increase lifetime/idle_timeout.
 	}
 }

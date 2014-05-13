@@ -53,7 +53,7 @@ rest {
 	#                   May be 'none', 'post' or 'json', defaults to 'none'.
 	#    tls          - TLS settings for HTTPS.
 	#    auth         - HTTP auth method to use, one of 'none', 'srp', 'basic',
-	#                   'digest', 'digest-ie', 'gss-negotiate', 'ntlm', 
+	#                   'digest', 'digest-ie', 'gss-negotiate', 'ntlm',
 	#                   'ntlm-winbind', 'any', 'safe'. defaults to 'none'.
 	#    username     - User to authenticate as, will be expanded.
 	#    password     - Password to use for authentication, will be expanded.
@@ -92,33 +92,39 @@ rest {
 	#
 	pool {
 		# Number of connections to start
-		start = 5
+		start = ${thread[pool].start_servers}
 
 		# Minimum number of connections to keep open
-		min = 4
+		min = ${thread[pool].min_spare_servers}
 
 		# Maximum number of connections
 		#
 		# If these connections are all in use and a new one
 		# is requested, the request will NOT get a connection.
-		max = 10
+		#
+		# NOTE: This should be greater than or equal to "min" above.
+		max = ${thread[pool].max_servers}
 
 		# Spare connections to be left idle
 		#
 		# NOTE: Idle connections WILL be closed if "idle_timeout"
-		# is set.
-		spare = 3
+		# is set.  This should be less than or equal to "max" above.
+		spare = ${thread[pool].max_spare_servers}
 
 		# Number of uses before the connection is closed
 		#
-		# 0 means "infinite"
+		# NOTE: A setting of 0 means infinite (no limit).
 		uses = 0
 
 		# The lifetime (in seconds) of the connection
+		#
+		# NOTE: A setting of 0 means infinite (no limit).
 		lifetime = 0
 
-		# idle timeout (in seconds).  A connection which is
+		# The idle timeout (in seconds).  A connection which is
 		# unused for this length of time will be closed.
+		#
+		# NOTE: A setting of 0 means infinite (no timeout).
 		idle_timeout = 60
 
 		# NOTE: All configuration settings are enforced.  If a
