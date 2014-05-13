@@ -2631,9 +2631,6 @@ static void received_retransmit(REQUEST *request, const RADCLIENT *client)
 	switch (request->child_state) {
 	case REQUEST_QUEUED:
 	case REQUEST_RUNNING:
-#ifdef WITH_PROXY
-	discard:
-#endif
 		radlog(L_ERR, "Discarding duplicate request from "
 		       "client %s port %d - ID: %u due to unfinished request %u",
 		       client->shortname,
@@ -2663,7 +2660,12 @@ static void received_retransmit(REQUEST *request, const RADCLIENT *client)
 		 *	packets, this logic has to be fixed.
 		 */
 		if (request->packet->code != PW_AUTHENTICATION_REQUEST) {
-			goto discard;
+			radlog(L_ERR, "Discarding duplicate request from "
+			       "client %s port %d - ID: %u due to unfinished proxied request %u",
+			       client->shortname,
+			       request->packet->src_port,request->packet->id,
+			       request->number);
+			break;
 		}
 
 		check_for_zombie_home_server(request);
