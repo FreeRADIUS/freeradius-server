@@ -341,13 +341,6 @@ static rlm_rcode_t CC_HINT(nonnull) detail_do(void *instance, REQUEST *request, 
 	detail_instance_t *inst = instance;
 
 	/*
-	 *	Nothing to log: don't do anything.
-	 */
-	if (!packet) {
-		return RLM_MODULE_NOOP;
-	}
-
-	/*
 	 *	Generate the path for the detail file.  Use the same
 	 *	format, but truncate at the last /.  Then feed it
 	 *	through radius_xlat() to expand the variables.
