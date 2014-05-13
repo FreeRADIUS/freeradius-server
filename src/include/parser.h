@@ -73,7 +73,6 @@ struct fr_cond_t {
 		fr_cond_t  	*child;
 	} data;
 
-	int		regex_i;
 	int		negate;
 	int		pass2_fixup;
 

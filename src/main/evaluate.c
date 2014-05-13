@@ -240,15 +240,12 @@ int radius_evaluate_tmpl(REQUEST *request, int modreturn, UNUSED int depth,
 }
 
 
-static int do_regex(REQUEST *request, value_pair_map_t const *map, bool iflag)
+static int do_regex(REQUEST *request, value_pair_map_t const *map)
 {
 	int compare, rcode, ret;
-	int cflags = REG_EXTENDED;
 	regex_t reg, *preg;
 	char *lhs, *rhs;
 	regmatch_t rxmatch[REQUEST_MAX_REGEX + 1];
-
-	if (iflag) cflags |= REG_ICASE;
 
 	/*
 	 *  Expand and then compile it.
@@ -262,7 +259,7 @@ static int do_regex(REQUEST *request, value_pair_map_t const *map, bool iflag)
 		}
 		rad_assert(rhs != NULL);
 
-		compare = regcomp(&reg, rhs, cflags);
+		compare = regcomp(&reg, rhs, REG_EXTENDED | (map->src->vpt_iflag ? REG_ICASE : 0));
 		if (compare != 0) {
 			if (debug_flag) {
 				char errbuf[128];
@@ -635,7 +632,7 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 	 */
 	if ((map->src->type == VPT_TYPE_REGEX) ||
 	    (map->src->type == VPT_TYPE_REGEX_STRUCT)) {
-		return do_regex(request, map, c->regex_i);
+		return do_regex(request, map);
 	}
 #endif
 
