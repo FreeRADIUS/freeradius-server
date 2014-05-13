@@ -340,7 +340,8 @@ static ssize_t condition_tokenize_cast(char const *start, DICT_ATTR const **pda,
  *  @param[out] error the parse error (if any)
  *  @return length of the string skipped, or when negative, the offset to the offending error
  */
-static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *start, int brace, fr_cond_t **pcond, char const **error, int flags)
+static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *start, int brace,
+				  fr_cond_t **pcond, char const **error, int flags)
 {
 	ssize_t slen;
 	char const *p = start;
@@ -477,7 +478,8 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 			rad_assert(c->data.vpt->type != VPT_TYPE_REGEX);
 
 		} else { /* it's an operator */
-			int regex;
+			bool regex;
+			bool i_flag = false;
 
 			/*
 			 *	The next thing should now be a comparison operator.
@@ -613,7 +615,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 				 *	Allow /foo/i
 				 */
 				if (p[slen] == 'i') {
-					c->regex_i = true;
+					i_flag = true;
 					slen++;
 				}
 
@@ -635,6 +637,10 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 					return_0("Unknown attribute");
 				}
 				return_0("Syntax error");
+			}
+
+			if (c->data.map->src->type == VPT_TYPE_REGEX) {
+				c->data.map->src->vpt_iflag = i_flag;
 			}
 
 			/*
@@ -1074,7 +1080,6 @@ done:
 			rcode = radius_evaluate_map(NULL, 0, 0, c);
 			TALLOC_FREE(c->data.map);
 			c->cast = NULL;
-			c->regex_i = false;
 			if (rcode) {
 				c->type = COND_TYPE_TRUE;
 			} else {
@@ -1097,7 +1102,6 @@ done:
 			int rcode;
 
 			rad_assert(c->cast == NULL);
-			rad_assert(c->regex_i == false);
 
 			rcode = radius_evaluate_map(NULL, 0, 0, c);
 			if (rcode) {

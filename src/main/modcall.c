@@ -2814,7 +2814,7 @@ static bool pass2_regex_compile(CONF_ITEM const *ci, value_pair_tmpl_t *vpt)
 	talloc_set_destructor(preg, _free_compiled_regex);
 	if (!preg) return false;
 
-	rcode = regcomp(preg, vpt->name, REG_EXTENDED);
+	rcode = regcomp(preg, vpt->name, REG_EXTENDED | (vpt->vpt_iflag ? REG_ICASE : 0));
 	if (rcode != 0) {
 		char buffer[256];
 		regerror(rcode, preg, buffer, sizeof(buffer));
