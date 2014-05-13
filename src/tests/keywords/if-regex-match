@@ -56,35 +56,35 @@ else {
 	}
 }
 
-# compiled - ref - insensitive
+# uncompiled - ref - insensitive
 if (Calling-Station-Id !~ /:roamyroam%{Tmp-String-0}$/i) {
 	update reply {
 		Filter-Id += 'Fail 5'
 	}
 }
 
-# compiled - expansion - insensitive
+# uncompiled - expansion - insensitive
 if ("%{Calling-Station-Id}" !~ /:roamyroam%{Tmp-String-0}$/i) {
 	update reply {
 		Filter-Id += 'Fail 6'
 	}
 }
 
-# compiled - enum - ref - insensitive
+# uncompiled - enum - ref - insensitive
 if (Service-Type !~ /^framed-user%{Tmp-String-0}$/i) {
 	update reply {
 		Filter-Id += 'Fail 7'
 	}
 }
 
-# compiled - enum - expansion - insensitive
+# uncompiled - enum - expansion - insensitive
 if ("%{Service-Type}" !~ /^framed-user%{Tmp-String-0}$/i) {
 	update reply {
 		Filter-Id += 'Fail 8'
 	}
 }
 
-# compiled - enum - ref
+# uncompiled - enum - ref
 if (Service-Type =~ /^framed-user%{Tmp-String-0}$/) {
 	update reply {
 		Filter-Id += 'Fail 9'
