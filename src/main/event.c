@@ -2661,10 +2661,10 @@ static void received_retransmit(REQUEST *request, const RADCLIENT *client)
 		 */
 		if (request->packet->code != PW_AUTHENTICATION_REQUEST) {
 			radlog(L_ERR, "Discarding duplicate request from "
-			       "client %s port %d - ID: %u due to unfinished proxied request %u",
+			       "client %s port %d - ID: %u due to unfinished proxied request %u in component %s module %s.",
 			       client->shortname,
 			       request->packet->src_port,request->packet->id,
-			       request->number);
+			       request->number, request->component, request->module);
 			break;
 		}
 
