@@ -1013,9 +1013,11 @@ STATE_MACHINE_DECL(request_common)
 		 *	take care of that.
 		 */
 		ERROR("(%u) Discarding duplicate request from "
-		       "client %s port %d - ID: %u due to unfinished request",
-		       request->number, request->client->shortname,
-		       request->packet->src_port,request->packet->id);
+		      "client %s port %d - ID: %u due to unfinished request "
+		      "in component %s module %s",
+		      request->number, request->client->shortname,
+		      request->packet->src_port,request->packet->id,
+		      request->component, request->module);
 		break;
 
 	case FR_ACTION_CONFLICTING:
