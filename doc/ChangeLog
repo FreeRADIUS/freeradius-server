@@ -1,3 +1,9 @@
+FreeRADIUS 3.0.4 Mon 12 May 2014 15:30:00 EDT urgency=medium
+	Feature improvements
+
+	Bug fixes
+	* make case-insensitive regular expressions work again.
+
 FreeRADIUS 3.0.3 Mon 12 May 2014 15:30:00 EDT urgency=medium
 	Feature improvements
 	* Everything now builds with no warnings from the C compiler,
