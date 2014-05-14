@@ -617,7 +617,7 @@ static void perl_store_vps(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR *vps, H
 			for (vp = fr_cursor_first(&cursor);
 			     vp;
 			     vp = fr_cursor_next(&cursor)) {
-				if (vp->da->type != PW_TYPE_INVALID) {
+				if (vp->da->type != PW_TYPE_STRING) {
 					len = vp_prints_value(buffer, sizeof(buffer), vp, 0);
 					av_push(av, newSVpv(buffer, truncate_len(len, sizeof(buffer))));
 					RDEBUG("<--  %s = %s", vp->da->name, buffer);
@@ -634,7 +634,7 @@ static void perl_store_vps(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR *vps, H
 			 */
 		} else if (sublist) {
 
-			if (sublist->da->type != PW_TYPE_INVALID) {
+			if (sublist->da->type != PW_TYPE_STRING) {
 				len = vp_prints_value(buffer, sizeof(buffer), sublist, 0);
 				(void)hv_store(rad_hv, name, strlen(name), newSVpv(buffer, truncate_len(len, sizeof(buffer))), 0);
 				RDEBUG("<--  %s = %s", sublist->da->name, buffer);
