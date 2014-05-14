@@ -1000,6 +1000,7 @@ STATE_MACHINE_DECL(request_common)
 		 *	We're still waiting for a proxy reply.
 		 */
 		if (request->child_state == REQUEST_PROXIED) {
+			request->process = proxy_wait_for_reply;
 			proxy_wait_for_reply(request, action);
 			return;
 		}
