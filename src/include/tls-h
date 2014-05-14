@@ -295,6 +295,7 @@ int		cbtls_verify(int ok, X509_STORE_CTX *ctx);
 
 /* TLS */
 int		tls_global_init(char const *acknowledged);
+void		tls_global_remove(void);
 tls_session_t	*tls_new_session(fr_tls_server_conf_t *conf, REQUEST *request,
 			       int client_cert);
 tls_session_t	*tls_new_client_session(fr_tls_server_conf_t *conf, int fd);

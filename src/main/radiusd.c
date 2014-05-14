@@ -600,6 +600,10 @@ cleanup:
 	WSACleanup();
 #endif
 
+#ifdef HAVE_OPENSSL_CRYPTO_H
+	tls_global_remove();
+#endif
+
 	/*
 	 *	So we don't see autofreed memory in the talloc report
 	 */

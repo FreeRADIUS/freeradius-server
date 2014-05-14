@@ -2020,6 +2020,16 @@ int tls_global_init(char const *acknowledged)
 	return 0;
 }
 
+void tls_global_remove(void)
+{
+	ERR_remove_state(0);
+	ENGINE_cleanup();
+	CONF_modules_unload(1);
+	ERR_free_strings();
+	EVP_cleanup();
+	CRYPTO_cleanup_all_ex_data();
+}
+
 /*
  *	Create Global context SSL and use it in every new session
  *
