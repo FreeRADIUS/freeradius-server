@@ -94,6 +94,7 @@ int main(int argc, char *argv[])
 	int argval;
 	bool spawn_flag = true;
 	bool write_pid = false;
+	bool display_version = false;
 	int flag = 0;
 	int from_child[2] = {-1, -1};
 
@@ -241,14 +242,9 @@ int main(int argc, char *argv[])
 				break;
 
 			case 'v':
-				/* Don't print timestamps */
-				debug_flag += 2;
-				fr_log_fp = stdout;
-				default_log.dst = L_DST_STDOUT;
-				default_log.fd = STDOUT_FILENO;
+				display_version = true;
+				break;
 
-				version();
-				exit(EXIT_SUCCESS);
 			case 'X':
 				spawn_flag = false;
 				main_config.daemonize = false;
@@ -297,6 +293,21 @@ int main(int argc, char *argv[])
 	if (flag && (flag != 0x03)) {
 		fprintf(stderr, "radiusd: The options -i and -p cannot be used individually.\n");
 		exit(EXIT_FAILURE);
+	}
+
+	/*
+	 *	Better here, so it doesn't matter whether we get passed
+	 *	-xv or -vx.
+	 */
+	if (display_version) {
+		/* Don't print timestamps */
+		debug_flag += 2;
+		fr_log_fp = stdout;
+		default_log.dst = L_DST_STDOUT;
+		default_log.fd = STDOUT_FILENO;
+
+		version();
+		exit(EXIT_SUCCESS);
 	}
 
 	if (debug_flag) {
