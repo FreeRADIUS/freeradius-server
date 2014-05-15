@@ -833,7 +833,7 @@ int radius_evaluate_cond(REQUEST *request, int modreturn, int depth,
 		case COND_TYPE_EXISTS:
 			rcode = radius_evaluate_tmpl(request, modreturn, depth, c->data.vpt);
 			/* Existence checks are special, because we expect them to fail */
-			if (rcode < 0) rcode = false;
+			if (rcode < 0) rcode = 0;
 			break;
 
 		case COND_TYPE_MAP:
