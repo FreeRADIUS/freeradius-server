@@ -1309,6 +1309,7 @@ AC_CHECK_FUNCS( \
   inet_aton \
   inet_pton \
   inet_ntop \
+  mallopt \
   setlinebuf \
   setvbuf \
   getusershell \

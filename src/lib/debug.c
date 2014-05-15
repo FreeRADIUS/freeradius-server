@@ -690,6 +690,15 @@ int fr_fault_setup(char const *cmd, char const *program)
 			marker = talloc(autofree, bool);
 			talloc_set_destructor(marker, _fr_disable_null_tracking);
 		}
+
+		/*
+		 *  If were using glibc malloc > 2.4 this scribbles over
+		 *  uninitialised and freed memory, to make memory issues easier
+		 *  to track down.
+		 */
+#if defined(HAVE_MALLOPT) && !defined(NDEBUG)
+		mallopt(M_PERTURB, 0x42);
+#endif
 	}
 	setup = true;
 
