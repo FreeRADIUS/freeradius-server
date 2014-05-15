@@ -2883,24 +2883,27 @@ static void pairtypeset(VALUE_PAIR *vp)
  *
  * @param[in,out] vp to update
  * @param[in] src data to copy
- * @param[in] size of the data
+ * @param[in] size of the data, may be 0 in which case previous value will be freed.
  */
 void pairmemcpy(VALUE_PAIR *vp, uint8_t const *src, size_t size)
 {
-	uint8_t *p, *q;
+	uint8_t *p = NULL, *q;
 
 	VERIFY_VP(vp);
 
-	p = talloc_memdup(vp, src, size);
-	if (!p) return;
-	talloc_set_type(p, uint8_t);
+	if (size > 0) {
+		p = talloc_memdup(vp, src, size);
+		if (!p) return;
+		talloc_set_type(p, uint8_t);
+	}
 
 	memcpy(&q, &vp->vp_octets, sizeof(q));
-	talloc_free(q);
+	TALLOC_FREE(q);
 
 	vp->vp_octets = p;
 	vp->length = size;
-	pairtypeset(vp);
+
+	if (size > 0) pairtypeset(vp);
 }
 
 /** Reparent an allocated octet buffer to a VALUE_PAIR
