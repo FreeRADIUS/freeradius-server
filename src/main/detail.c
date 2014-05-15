@@ -164,7 +164,9 @@ int detail_send(rad_listen_t *listener, REQUEST *request)
 	}
 
 #ifdef WITH_DETAIL_THREAD
-	(void) write(data->child_pipe[1], &c, 1);
+	if (write(data->child_pipe[1], &c, 1) < 0) {
+		ERROR("Failed writing ack to reader thread: %s", fr_syserror(errno));
+	}
 #else
 	radius_signal_self(RADIUS_SIGNAL_SELF_DETAIL);
 #endif
@@ -339,7 +341,9 @@ int detail_recv(rad_listen_t *listener)
 		char c = 0;
 		rad_free(&packet);
 		data->state = STATE_NO_REPLY;	/* try again later */
-		(void) write(data->child_pipe[1], &c, 1);
+		if (write(data->child_pipe[1], &c, 1) < 0) {
+			ERROR("Failed writing ack to reader thread: %s", fr_syserror(errno));
+		}
 	}
 
 	/*
@@ -810,7 +814,9 @@ void detail_free(rad_listen_t *this)
 		/*
 		 *	Wait for it to acknowledge that it's stopped.
 		 */
-		(void) read(data->master_pipe[0], &arg, sizeof(arg));
+		if (read(data->master_pipe[0], &arg, sizeof(arg)) < 0) {
+			ERROR("Reader thread exited without informing the master: %s", fr_syserror(errno));
+		}
 
 		close(data->master_pipe[0]);
 		close(data->master_pipe[1]);
@@ -922,7 +928,9 @@ static void *detail_handler_thread(void *arg)
 			 */
 			if (data->child_pipe[0] < 0) {
 				packet = NULL;
-				(void) write(data->master_pipe[1], &packet, sizeof(packet));
+				if (write(data->master_pipe[1], &packet, sizeof(packet)) < 0) {
+					ERROR("Failed writing exit status to master: %s", fr_syserror(errno));
+				}
 				return NULL;
 			}
 		}
@@ -933,10 +941,14 @@ static void *detail_handler_thread(void *arg)
 		 *	FIXME: cap the retries.
 		 */
 		do {
-			(void) write(data->master_pipe[1], &packet, sizeof(packet));
+			if (write(data->master_pipe[1], &packet, sizeof(packet)) < 0) {
+				ERROR("Failed passing detail packet pointer to master: %s", fr_syserror(errno));
+			}
 
-			rcode = read(data->child_pipe[0], &c, 1);
-			if (rcode < 0) break; /* fatal? */
+			if (read(data->child_pipe[0], &c, 1) < 0) {
+				ERROR("Failed getting detail packet ack from master: %s", fr_syserror(errno));
+				break;
+			}
 
 			if (data->delay_time > 0) usleep(data->delay_time);
 		} while (data->state != STATE_REPLIED);
