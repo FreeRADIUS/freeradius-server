@@ -912,7 +912,6 @@ int detail_decode(UNUSED rad_listen_t *this, UNUSED REQUEST *request)
 static void *detail_handler_thread(void *arg)
 {
 	char c;
-	ssize_t rcode;
 	rad_listen_t *this = arg;
 	listen_detail_t *data = this->data;
 
