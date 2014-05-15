@@ -99,7 +99,7 @@ data
 
 # except for CUI.  Thank you, WiMAX!
 decode 59 02
-data Chargeable-User-Identity = ''
+data Chargeable-User-Identity = 0x
 
 # Hah! Thought you had it figured out, didn't you?
 encode -

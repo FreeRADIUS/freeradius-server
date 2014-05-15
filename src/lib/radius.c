@@ -3444,11 +3444,11 @@ ssize_t data2vp(RADIUS_PACKET *packet,
 		 *	will break assumptions about CUI.  We know
 		 *	this, but Coverity doesn't.
 		 */
-		if (da->type != PW_TYPE_STRING) return -1;
+		if (da->type != PW_TYPE_OCTETS) return -1;
 #endif
 
-		data = (uint8_t const *) "";
-		datalen = 1;
+		data = NULL;
+		datalen = 0;
 		goto alloc_cui;	/* skip everything */
 	}
 
