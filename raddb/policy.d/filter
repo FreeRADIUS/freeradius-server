@@ -16,13 +16,16 @@ deny_realms {
 #  what constitutes a user name.
 #
 filter_username {
-	#
-	#  reject mixed case
-	#  e.g. "UseRNaMe"
-	#
-	if (User-Name != "%{tolower:%{User-Name}}") {
-		reject
+	if (!User-Name) {
+		noop
 	}
+
+	#
+	#  reject mixed case e.g. "UseRNaMe"
+	#
+	#if (User-Name != "%{tolower:%{User-Name}}") {
+	#	reject
+	#}
 
 	#
 	#  reject all whitespace
