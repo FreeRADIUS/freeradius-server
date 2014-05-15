@@ -8999,6 +8999,7 @@ for ac_func in \
   inet_aton \
   inet_pton \
   inet_ntop \
+  mallopt \
   setlinebuf \
   setvbuf \
   getusershell \
