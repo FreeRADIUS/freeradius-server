@@ -28,6 +28,9 @@
 /* Define to 1 if you have the `closefrom' function. */
 #undef HAVE_CLOSEFROM
 
+/* Define to 1 if you have the `collectdclient' library (-lcollectdclient). */
+#undef HAVE_COLLECTDC_H
+
 /* Do we have the crypt function */
 #undef HAVE_CRYPT
 
@@ -156,6 +159,9 @@
 /* Define to 1 if you have the <malloc.h> header file. */
 #undef HAVE_MALLOC_H
 
+/* Define to 1 if you have the `mallopt' function. */
+#undef HAVE_MALLOPT
+
 /* Define to 1 if you have the <memory.h> header file. */
 #undef HAVE_MEMORY_H
 
@@ -198,10 +204,16 @@
 /* Define to 1 if you have the <openssl/ssl.h> header file. */
 #undef HAVE_OPENSSL_SSL_H
 
-/* Define to 1 if you have the function pcap_dump_fopen. */
+/* Define to 1 if you have the `pcap_activate' function. */
+#undef HAVE_PCAP_ACTIVATE
+
+/* Define to 1 if you have the `pcap_create' function. */
+#undef HAVE_PCAP_CREATE
+
+/* Define to 1 if you have the `pcap_dump_fopen' function. */
 #undef HAVE_PCAP_DUMP_FOPEN
 
-/* Define to 1 if you have the function pcap_fopen_offline. */
+/* Define to 1 if you have the `pcap_fopen_offline' function. */
 #undef HAVE_PCAP_FOPEN_OFFLINE
 
 /* Define to 1 if you have the <pcap.h> header file. */
@@ -371,8 +383,8 @@
 /* Define to 1 if you have the <sys/wait.h> header file. */
 #undef HAVE_SYS_WAIT_H
 
-/* Define if the compiler supports __thread */
-#undef HAVE_THREAD_TLS
+/* Define to 1 if you have the function talloc_set_memlimit. */
+#undef HAVE_TALLOC_SET_MEMLIMIT
 
 /* 128 bit unsigned integer */
 #undef HAVE_UINT128_T
@@ -452,6 +464,9 @@
 
 /* Define to 1 if you can safely include both <sys/time.h> and <time.h>. */
 #undef TIME_WITH_SYS_TIME
+
+/* Define if the compiler supports a thread local storage class */
+#undef TLS_STORAGE_CLASS
 
 /* Enable extensions on AIX 3, Interix.  */
 #ifndef _ALL_SOURCE
