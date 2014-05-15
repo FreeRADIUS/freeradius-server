@@ -416,7 +416,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED REQU
 }
 
 /*
- *	Write accounting information to this modules database.
+ *	Send accounting info to a REST API endpoint
  */
 static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED REQUEST *request)
 {
@@ -451,8 +451,51 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED REQUES
 		rcode = RLM_MODULE_INVALID;
 	}
 
-	end:
+end:
+	rlm_rest_cleanup(inst, section, handle);
 
+	fr_connection_release(inst->conn_pool, handle);
+
+	return rcode;
+}
+
+/*
+ *	Send post-auth info to a REST API endpoint
+ */
+static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED REQUEST *request)
+{
+	rlm_rest_t *inst = instance;
+	rlm_rest_section_t *section = &inst->post_auth;
+
+	void *handle;
+	int hcode;
+	int rcode = RLM_MODULE_OK;
+	int ret;
+
+	handle = fr_connection_get(inst->conn_pool);
+	if (!handle) return RLM_MODULE_FAIL;
+
+	ret = rlm_rest_perform(inst, section, handle, request, NULL, NULL);
+	if (ret < 0) {
+		rcode = RLM_MODULE_FAIL;
+		goto end;
+	}
+
+	hcode = rest_get_handle_code(handle);
+	if (hcode >= 500) {
+		rcode = RLM_MODULE_FAIL;
+	} else if (hcode == 204) {
+		rcode = RLM_MODULE_OK;
+	} else if ((hcode >= 200) && (hcode < 300)) {
+		ret = rest_response_decode(inst, section, request, handle);
+		if (ret < 0) 	   rcode = RLM_MODULE_FAIL;
+		else if (ret == 0) rcode = RLM_MODULE_OK;
+		else		   rcode = RLM_MODULE_UPDATED;
+	} else {
+		rcode = RLM_MODULE_INVALID;
+	}
+
+end:
 	rlm_rest_cleanup(inst, section, handle);
 
 	fr_connection_release(inst->conn_pool, handle);
@@ -593,8 +636,10 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		(parse_sub_section(conf, &inst->authorize, RLM_COMPONENT_AUTZ) < 0) ||
 		(parse_sub_section(conf, &inst->authenticate, RLM_COMPONENT_AUTH) < 0) ||
 		(parse_sub_section(conf, &inst->accounting, RLM_COMPONENT_ACCT) < 0) ||
-		(parse_sub_section(conf, &inst->checksimul, RLM_COMPONENT_SESS) < 0) ||
-		(parse_sub_section(conf, &inst->postauth, RLM_COMPONENT_POST_AUTH) < 0))
+
+/* @todo add behaviour for checksimul */
+/*		(parse_sub_section(conf, &inst->checksimul, RLM_COMPONENT_SESS) < 0) || */
+		(parse_sub_section(conf, &inst->post_auth, RLM_COMPONENT_POST_AUTH) < 0))
 	{
 		return -1;
 	}
@@ -657,6 +702,6 @@ module_t rlm_rest = {
 		NULL,			/* checksimul */
 		NULL,			/* pre-proxy */
 		NULL,			/* post-proxy */
-		NULL			/* post-auth */
+		mod_post_auth		/* post-auth */
 	},
 };
