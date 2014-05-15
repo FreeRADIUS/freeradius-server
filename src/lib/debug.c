@@ -25,6 +25,10 @@
 #include <freeradius-devel/libradius.h>
 #include <sys/stat.h>
 
+#if defined(HAVE_MALLOPT) && defined(HAVE_MALLOC_H)
+#  include <malloc.h>
+#endif
+
 /*
  *	runtime backtrace functions are not POSIX but are included in
  *	glibc, OSX >= 10.5 and various BSDs
