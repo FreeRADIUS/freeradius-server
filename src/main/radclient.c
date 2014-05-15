@@ -1047,6 +1047,7 @@ int main(int argc, char **argv)
 				files->filters = p + 1;
 			} else {
 				files->packets = optarg;
+				files->filters = NULL;
 			}
 			rbtree_insert(filename_tree, (void *) files);
 		}
