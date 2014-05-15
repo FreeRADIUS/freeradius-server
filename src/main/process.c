@@ -4417,7 +4417,7 @@ void radius_signal_self(int flag)
 
 	buffer[0] |= flag;
 
-	write(self_pipe[1], buffer, 1);
+	if (write(self_pipe[1], buffer, 1) < 0) fr_exit(0);
 }
 
 
