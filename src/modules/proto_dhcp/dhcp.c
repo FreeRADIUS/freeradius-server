@@ -1021,7 +1021,7 @@ static VALUE_PAIR *fr_dhcp_vp2suboption(TALLOC_CTX *ctx, vp_cursor_t *cursor)
 	ssize_t length;
 	unsigned int parent; 	/* Parent attribute of suboption */
 	uint8_t attr = 0;
-	uint8_t *p, *opt_len;
+	uint8_t *p, *opt_len = NULL;
 	vp_cursor_t to_pack;
 	VALUE_PAIR *vp, *tlv;
 
@@ -1087,6 +1087,8 @@ static VALUE_PAIR *fr_dhcp_vp2suboption(TALLOC_CTX *ctx, vp_cursor_t *cursor)
 			talloc_free(tlv);
 			return NULL;
 		}
+
+		rad_assert(opt_len);
 		*opt_len += length;
 		p += length;
 	};
