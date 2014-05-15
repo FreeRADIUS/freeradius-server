@@ -83,7 +83,7 @@ static char const *radlog_dest = NULL;
  */
 static char const	*localstatedir = NULL;
 static char const	*prefix = NULL;
-static char		my_name;
+static char const	*my_name = NULL;
 static char const	*sbindir = NULL;
 static char const	*run_dir = NULL;
 static char		*syslog_facility = NULL;
