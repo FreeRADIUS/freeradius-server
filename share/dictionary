@@ -171,6 +171,7 @@ $INCLUDE dictionary.eltex
 $INCLUDE dictionary.epygi
 $INCLUDE dictionary.equallogic
 $INCLUDE dictionary.ericsson
+$INCLUDE dictionary.ericsson.packet.core.networks
 $INCLUDE dictionary.extreme
 $INCLUDE dictionary.f5
 $INCLUDE dictionary.fdxtended
