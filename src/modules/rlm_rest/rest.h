@@ -152,7 +152,7 @@ typedef struct rlm_rest_t {
 	rlm_rest_section_t	accounting;	//!< Configuration specific to accounting.
 	rlm_rest_section_t	checksimul;	//!< Configuration specific to simultaneous session
 						//!< checking.
-	rlm_rest_section_t	postauth;	//!< Configuration specific to Post-auth
+	rlm_rest_section_t	post_auth;	//!< Configuration specific to Post-auth
 } rlm_rest_t;
 
 /*
