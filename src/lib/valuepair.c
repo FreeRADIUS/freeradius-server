@@ -73,7 +73,7 @@ static int _pairfree(VALUE_PAIR *vp) {
 	}
 
 #ifndef NDEBUG
-	vp->vp_integer = FREE_MAGIC;
+	vp->vp_integer = 0xf4eef4ee;
 #endif
 
 #ifdef TALLOC_DEBUG
