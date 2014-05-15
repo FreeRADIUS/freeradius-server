@@ -26,7 +26,6 @@ RCSID("$Id$")
 #include <freeradius-devel/libradius.h>
 #include <freeradius-devel/udpfromto.h>
 #include <freeradius-devel/dhcp.h>
-#include <freeradius-devel/rad_assert.h>
 
 #ifndef __MINGW32__
 #include <sys/ioctl.h>
@@ -1089,7 +1088,7 @@ static VALUE_PAIR *fr_dhcp_vp2suboption(TALLOC_CTX *ctx, vp_cursor_t *cursor)
 			return NULL;
 		}
 
-		rad_assert(opt_len);
+		fr_assert(opt_len);
 		*opt_len += length;
 		p += length;
 	};
