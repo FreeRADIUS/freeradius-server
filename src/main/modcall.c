@@ -1635,8 +1635,8 @@ static modcallable *do_compile_modupdate(modcallable *parent, UNUSED rlm_compone
 				map->src->vpt_length = talloc_array_length(vpd->strvalue) - 1;
 			} else {
 				if (!radius_cast_tmpl(map->src, map->dst->vpt_da)) {
-					talloc_free(head);
 					cf_log_err(map->ci, "%s", fr_strerror());
+					talloc_free(head);
 					return NULL;
 				}
 			}
