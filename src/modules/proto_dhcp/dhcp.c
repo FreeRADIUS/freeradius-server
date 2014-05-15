@@ -26,6 +26,7 @@ RCSID("$Id$")
 #include <freeradius-devel/libradius.h>
 #include <freeradius-devel/udpfromto.h>
 #include <freeradius-devel/dhcp.h>
+#include <freeradius-devel/rad_assert.h>
 
 #ifndef __MINGW32__
 #include <sys/ioctl.h>
