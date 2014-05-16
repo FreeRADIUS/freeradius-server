@@ -43,6 +43,8 @@ static FR_NAME_NUMBER const template_names[] = {
 	{ "regex",	VPT_TYPE_REGEX },
 	{ "exec",	VPT_TYPE_EXEC },
 	{ "data",	VPT_TYPE_DATA },
+	{ "xlat",	VPT_TYPE_XLAT_STRUCT },
+	{ "regex",	VPT_TYPE_REGEX_STRUCT },
 	{ NULL, 0 }
 };
 #else
