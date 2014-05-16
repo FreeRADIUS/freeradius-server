@@ -2956,6 +2956,25 @@ check_paircmp:
 		}
 	}
 
+	/*
+	 *	Convert bare refs to %{Foreach-Variable-N}
+	 */
+	if ((map->dst->type == VPT_TYPE_LITERAL) &&
+	    (strncmp(map->dst->name, "Foreach-Variable-", 17) == 0)) {
+		char *fmt;
+		value_pair_tmpl_t *vpt;
+
+		fmt = talloc_asprintf(map->dst, "%%{%s}", map->dst->name);
+		vpt = radius_str2tmpl(map, fmt, T_DOUBLE_QUOTED_STRING, REQUEST_CURRENT, PAIR_LIST_REQUEST);
+		if (!vpt) {
+			cf_log_err(map->ci, "Failed compiling %s", map->dst->name);
+			talloc_free(fmt);
+			return false;
+		}
+		talloc_free(map->dst);
+		map->dst = vpt;
+	}
+
 #ifdef HAVE_REGEX_H
 	if (map->src->type == VPT_TYPE_REGEX) {
 		if (!pass2_regex_compile(map->ci, map->src)) {
