@@ -9,7 +9,7 @@ env:
   matrix:
     - LIBS_OPTIONAL=no LIBS_SHARED=yes
     - LIBS_OPTIONAL=yes LIBS_SHARED=yes
-    - LIBS_OPTIONAL=yes LIBS_SHARED=yes CFLAGS="-O2 -g3" MALLOC_CHECK_=3
+    - LIBS_OPTIONAL=yes LIBS_SHARED=yes BUILD_CFLAGS="-O2 -g3" MALLOC_CHECK_=3
 addons:
   coverity_scan:
     project:
@@ -69,6 +69,6 @@ before_install:
       libyubikey-dev
   - sudo apt-get install -qq -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" libmysqlclient-dev
 before_script:
-  - ./configure -C --enable-werror --prefix=$HOME/freeradius --with-shared-libs=$LIBS_SHARED --with-threads=$LIBS_OPTIONAL --with-udpfromto=$LIBS_OPTIONAL --with-openssl=$LIBS_OPTIONAL
+  - CFLAGS="${BUILD_CFLAGS}" ./configure -C --enable-werror --prefix=$HOME/freeradius --with-shared-libs=$LIBS_SHARED --with-threads=$LIBS_OPTIONAL --with-udpfromto=$LIBS_OPTIONAL --with-openssl=$LIBS_OPTIONAL
   - make
 script: if [ ${COVERITY_SCAN_BRANCH} != 1 ]; then make travis-test; fi
