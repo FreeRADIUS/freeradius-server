@@ -9,7 +9,7 @@ env:
   matrix:
     - LIBS_OPTIONAL=no LIBS_SHARED=yes
     - LIBS_OPTIONAL=yes LIBS_SHARED=yes
-    - LIBS_OPTIONAL=yes LIBS_SHARED=yes CFLAGS="-O2 -g3" MALLOC_CHECK_=3 MALLOC_PERTURB_=3
+    - LIBS_OPTIONAL=yes LIBS_SHARED=yes CFLAGS="-O2 -g3" MALLOC_CHECK_=3
 addons:
   coverity_scan:
     project:
