@@ -726,6 +726,7 @@ int fr_fault_setup(char const *cmd, char const *program)
 		 */
 #if defined(HAVE_MALLOPT) && !defined(NDEBUG)
 		mallopt(M_PERTURB, 0x42);
+		mallopt(M_CHECK_ACTION, 3);
 #endif
 	}
 	setup = true;
