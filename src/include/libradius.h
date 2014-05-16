@@ -734,6 +734,7 @@ fr_bt_marker_t	*fr_backtrace_attach(fr_cbuff_t **cbuff, TALLOC_CTX *obj);
 
 typedef void (*fr_fault_log_t)(char const *msg, ...) CC_HINT(format (printf, 1, 2));
 
+void		fr_panic_on_free(TALLOC_CTX *ctx);
 int		fr_set_dumpable_init(void);
 int		fr_set_dumpable(bool allow_core_dumps);
 int		fr_log_talloc_report(TALLOC_CTX *ctx);

@@ -243,6 +243,25 @@ fr_bt_marker_t *fr_backtrace_attach(UNUSED fr_cbuff_t **cbuff, UNUSED TALLOC_CTX
 }
 #endif /* ifdef HAVE_EXECINFO */
 
+static int _panic_on_free(UNUSED char *foo)
+{
+	fr_fault(SIGUSR1);
+	return -1;	/* this should make the free fail */
+}
+
+/** Insert memory into the context of another talloc memory chunk which
+ * causes a panic when freed.
+ *
+ * @param ctx TALLOC_CTX to monitor for frees.
+ */
+void fr_panic_on_free(TALLOC_CTX *ctx)
+{
+	char *ptr;
+
+	ptr = talloc(ctx, char);
+	talloc_set_destructor(ptr, _panic_on_free);
+}
+
 /** Set the dumpable flag, also controls whether processes can PATTACH
  *
  * @param dumpable whether we should allow core dumping
