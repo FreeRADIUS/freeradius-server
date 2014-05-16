@@ -732,9 +732,7 @@ redo:
 		for (i = 8; i >= 0; i--) {
 			copy_p = request_data_get(request, radius_get_vp, i);
 			if (copy_p) {
-				RDEBUG2("%.*s # break Foreach-Variable-%d", depth + 1,
-					modcall_spaces, i);
-				pairfree(copy_p);
+				RDEBUG2("%.*s # break Foreach-Variable-%d", depth + 1, modcall_spaces, i);
 				break;
 			}
 		}
