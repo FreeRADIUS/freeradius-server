@@ -429,6 +429,11 @@ void fr_fault(int sig)
 
 	int code;
 
+	/*
+	 *	Makes the backtraces slightly cleaner
+	 */
+	memset(cmd, 0, sizeof(cmd));
+
 	fr_fault_log("CAUGHT SIGNAL: %s\n", strsignal(sig));
 
 	/*
