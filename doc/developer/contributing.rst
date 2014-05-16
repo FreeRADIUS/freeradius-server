@@ -41,6 +41,7 @@ Submitting patches via GitHub
 -----------------------------
 
 See the following links for more details about submitting via github:
+
 - https://help.github.com/articles/fork-a-repo
 - http://wiki.freeradius.org/contributing/GitHub
 
