@@ -5,9 +5,8 @@ For a person or company wishing to submit a change to the FreeRADIUS project the
 you're not familiar with "the system." This text is a collection of suggestions which can greatly increase the chances 
 of your change being accepted.
 
-Only trivial patches will be accepted via email. Large patches, or patches that modify a number of files MUST be
+Note: Only trivial patches will be accepted via email. Large patches, or patches that modify a number of files MUST be
 submitted as a pull-request via GitHub.
-
 
 Hints and tips
 --------------
