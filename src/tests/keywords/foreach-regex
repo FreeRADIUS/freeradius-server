@@ -6,6 +6,7 @@ update request {
 	Tmp-String-0 := "cisco"
 }
 
+# Expanded regex
 foreach Cisco-AVPair {
 	if ("%{Foreach-Variable-0}"  =~ /^%{Tmp-String-0}=(.*)$/i) {
 		update reply {
@@ -13,3 +14,13 @@ foreach Cisco-AVPair {
 		}
 	}
 }
+
+# Compiled regex
+foreach Cisco-AVPair {
+	if ("%{Foreach-Variable-0}"  =~ /^stupid=(.*)$/i) {
+		update reply {
+			Called-Station-Id += "%{1}"
+		}
+	}
+}
+
