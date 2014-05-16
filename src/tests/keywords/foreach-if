@@ -1,0 +1,12 @@
+#
+#  PRE: foreach if
+#
+if (Cisco-AVPair) {
+	foreach &Cisco-AVPair {
+		if (Foreach-Variable-0 =~ /^audit-session-id=(.+)$/) {
+			update reply {
+                		Filter-Id := "%{1}"
+			}
+		}
+	}
+}
