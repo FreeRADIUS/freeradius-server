@@ -486,7 +486,7 @@ redo:
 			default:
 			case -1:
 				REDEBUG("Condition evaluation failed because the value of an operand "
-					"could not be determined: %s", fr_strerror());
+					"could not be determined");
 				break;
 			}
 			condition = 0;
