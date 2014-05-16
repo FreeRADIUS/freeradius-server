@@ -620,9 +620,9 @@ redo:
 	 */
 	if (c->type == MOD_FOREACH) {
 		int i, foreach_depth = -1;
-		VALUE_PAIR *vps, **tail, *vp;
+		VALUE_PAIR *vps, *vp;
 		modcall_stack_entry_t *next = NULL;
-		vp_cursor_t cursor;
+		vp_cursor_t cursor, copy;
 		modgroup *g = mod_callabletogroup(c);
 
 		if (depth >= MODCALL_STACK_MAX) {
@@ -657,31 +657,35 @@ redo:
 		}
 
 		/*
-		 *	Copy the VPs from the original request.
+		 *	Copy the VPs from the original request, this ensures deterministic
+		 *	behaviour if someone decides to add or remove VPs in the set were
+		 *	iterating over.
 		 */
+		vps = NULL;
+
 		fr_cursor_init(&cursor, &vp);
+
 		/* Prime the cursor. */
 		cursor.found = cursor.current;
+		for (fr_cursor_init(&copy, &vps);
+		     vp;
+		     vp = fr_cursor_next_by_da(&cursor, vp->da, g->vpt->attribute.tag)) {
+		     VALUE_PAIR *tmp;
 
-		vps = NULL;
-		tail = &vps;
-
-		while (vp) {
-			*tail = paircopyvp(request, vp);
-			if (!*tail) break;
-
-			tail = &((*tail)->next); /* really should be using cursors... */
-
-			vp = fr_cursor_next_by_da(&cursor, vp->da, g->vpt->attribute.tag);
+		     MEM(tmp = paircopyvp(request, vp));
+		     fr_cursor_insert(&copy, tmp);
 		}
 
-		RDEBUG2("%.*sforeach %s ", depth + 1, modcall_spaces,
-			c->name);
+		RDEBUG2("%.*sforeach %s ", depth + 1, modcall_spaces, c->name);
+
 		rad_assert(vps != NULL);
 
-		for (vp = fr_cursor_init(&cursor, &vps);
+		/*
+		 *	This is the actual body of the foreach loop
+		 */
+		for (vp = fr_cursor_first(&copy);
 		     vp != NULL;
-		     vp = fr_cursor_next(&cursor)) {
+		     vp = fr_cursor_next(&copy)) {
 #ifndef NDEBUG
 			if (fr_debug_flag >= 2) {
 				char buffer[1024];
@@ -721,7 +725,7 @@ redo:
 			}
 		} /* loop over VPs */
 
-		talloc_free(vps);
+		pairfree(&vps);
 
 		rad_assert(next != NULL);
 		result = next->result;
