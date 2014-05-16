@@ -698,16 +698,16 @@ VALUE_PAIR *paircopyvp(TALLOC_CTX *ctx, VALUE_PAIR const *vp)
 
 	n->next = NULL;
 
-	if (n->data.ptr) switch (n->da->type) {
+	switch (vp->da->type) {
 	case PW_TYPE_TLV:
 	case PW_TYPE_OCTETS:
-		n->vp_octets = talloc_memdup(n, vp->vp_octets, n->length);
-		talloc_set_type(n->vp_octets, uint8_t);
+		n->vp_octets = NULL;	/* else pairmemcpy will free vp's value */
+		pairmemcpy(n, vp->vp_octets, n->length);
 		break;
 
 	case PW_TYPE_STRING:
-		n->vp_strvalue = talloc_memdup(n, vp->vp_strvalue, n->length + 1);	/* NULL byte */
-		talloc_set_type(n->vp_strvalue, char);
+		n->vp_strvalue = NULL;	/* else pairstrnpy will free vp's value */
+		pairstrncpy(n, vp->vp_strvalue, n->length);
 		break;
 
 	default:
