@@ -877,7 +877,7 @@ rlm_rcode_t eappeap_process(eap_handler_t *handler, tls_session_t *tls_session)
 			return RLM_MODULE_HANDLED;
 		}
 
-		RDEBUG2("We sent a success, but received something weird in return.");
+		RDEBUG2("We sent a success, but the client did not agree.");
 		return RLM_MODULE_REJECT;
 
 	/*
