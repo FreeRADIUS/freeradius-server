@@ -868,14 +868,14 @@ static void debug_map(REQUEST *request, value_pair_map_t const *map, VALUE_PAIR 
 			break;
 
 		case VPT_TYPE_DATA:
-			vp_prints_value(buffer, sizeof(buffer), vp, 0);
+			vp_prints_value(buffer, sizeof(buffer), vp, '\'');
 			value = buffer;
 			break;
 
-			/*
-			 *	Just printing the value doesn't make sense, but we still
-			 *	want to know what it was...
-			 */
+		/*
+		 *	Just printing the value doesn't make sense, but we still
+		 *	want to know what it was...
+		 */
 		case VPT_TYPE_LIST:
 			vp_prints_value(buffer, sizeof(buffer), vp, '\'');
 			value = talloc_typed_asprintf(request, "&%s%s -> %s", map->src->name, vp->da->name, buffer);
@@ -894,13 +894,8 @@ static void debug_map(REQUEST *request, value_pair_map_t const *map, VALUE_PAIR 
 			break;
 
 		case VPT_TYPE_ATTR:
-			if (vp->da->type != PW_TYPE_STRING) {
-				RDEBUG("\t%s %s %s", map->dst->name,
-				       fr_int2str(fr_tokens, vp->op, "<INVALID>"), value);
-			} else {
-				RDEBUG("\t%s %s '%s'", map->dst->name,
-				       fr_int2str(fr_tokens, vp->op, "<INVALID>"), value);
-			}
+			RDEBUG("\t%s %s %s", map->dst->name,
+			       fr_int2str(fr_tokens, vp->op, "<INVALID>"), value);
 			break;
 
 		default:
