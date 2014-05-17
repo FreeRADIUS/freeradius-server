@@ -1122,7 +1122,7 @@ rlm_rcode_t eappeap_process(eap_handler_t *handler, tls_session_t *tls_session)
 			 *	tunneled request.
 			 */
 			rad_assert(!request->proxy);
-			request->proxy = fake->packet;
+			request->proxy = talloc_steal(request, fake->packet);
 			memset(&request->proxy->src_ipaddr, 0,
 			       sizeof(request->proxy->src_ipaddr));
 			memset(&request->proxy->dst_ipaddr, 0,
