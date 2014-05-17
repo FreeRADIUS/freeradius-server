@@ -595,8 +595,7 @@ static void deallocate_id(rc_request_t *request)
 	 *	authentication vector.
 	 */
 	if (request->packet->data) {
-		talloc_free(request->packet->data);
-		request->packet->data = NULL;
+		TALLOC_FREE(request->packet->data);
 	}
 
 	if (request->reply) rad_free(&request->reply);
@@ -1480,7 +1479,7 @@ int main(int argc, char **argv)
 
 	rbtree_free(filename_tree);
 	fr_packet_list_free(pl);
-	while (request_head) talloc_free(request_head);
+	while (request_head) TALLOC_FREE(request_head);
 	dict_free();
 
 	if (do_summary) {
