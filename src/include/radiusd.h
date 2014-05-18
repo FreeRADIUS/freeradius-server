@@ -33,7 +33,7 @@ RCSIDH(radiusd_h, "$Id$")
 #include <freeradius-devel/connection.h>
 #include <freeradius-devel/map.h>
 
-typedef struct request REQUEST;
+typedef struct rad_request REQUEST;
 
 #include <freeradius-devel/log.h>
 
@@ -195,7 +195,7 @@ typedef enum {
 } rad_child_state_t;
 #define REQUEST_CHILD_NUM_STATES (REQUEST_DONE + 1)
 
-struct request {
+struct rad_request {
 #ifndef NDEBUG
 	uint32_t		magic; 		//!< Magic number used to detect memory corruption,
 						//!< or request structs that have not been properly initialised.
