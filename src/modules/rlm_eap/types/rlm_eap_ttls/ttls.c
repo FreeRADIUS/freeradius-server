@@ -53,7 +53,7 @@ static int diameter_verify(REQUEST *request, uint8_t const *data, unsigned int d
 		hdr_len = 12;
 
 		if (remaining < hdr_len) {
-		  RDEBUG2(" Diameter attribute is too small (%u) to contain a Diameter header", remaining);
+		  RDEBUG2("Diameter attribute is too small (%u) to contain a Diameter header", remaining);
 			return 0;
 		}
 
@@ -64,7 +64,7 @@ static int diameter_verify(REQUEST *request, uint8_t const *data, unsigned int d
 
 		if ((data[4] & 0x80) != 0) {
 			if (remaining < 16) {
-				RDEBUG2(" Diameter attribute is too small to contain a Diameter header with Vendor-Id");
+				RDEBUG2("Diameter attribute is too small to contain a Diameter header with Vendor-Id");
 				return 0;
 			}
 

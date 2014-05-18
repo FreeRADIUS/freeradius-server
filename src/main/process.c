@@ -2063,7 +2063,7 @@ static int insert_into_proxy_hash(REQUEST *request)
 
 	PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
 
-	RDEBUG3(" proxy: allocating destination %s port %d - Id %d",
+	RDEBUG3("proxy: allocating destination %s port %d - Id %d",
 	       inet_ntop(request->proxy->dst_ipaddr.af,
 			 &request->proxy->dst_ipaddr.ipaddr, buf, sizeof(buf)),
 	       request->proxy->dst_port,
@@ -2109,18 +2109,18 @@ static int process_proxy_reply(REQUEST *request)
 	if (vp) {
 		post_proxy_type = vp->vp_integer;
 
-		RDEBUG2("  Found Post-Proxy-Type %s",
-			dict_valnamebyattr(PW_POST_PROXY_TYPE, 0,
-					   post_proxy_type));
+		RDEBUG2("Found Post-Proxy-Type %s", dict_valnamebyattr(PW_POST_PROXY_TYPE, 0, post_proxy_type));
 	}
 
 	if (request->home_pool && request->home_pool->virtual_server) {
 		char const *old_server = request->server;
 
 		request->server = request->home_pool->virtual_server;
-		RDEBUG2(" server %s {", request->server);
+		RDEBUG2("server %s {", request->server);
+		RINDENT();
 		rcode = process_post_proxy(post_proxy_type, request);
-		RDEBUG2(" }");
+		REXDENT();
+		RDEBUG2("}");
 		request->server = old_server;
 	} else {
 		rcode = process_post_proxy(post_proxy_type, request);
@@ -2572,7 +2572,7 @@ static int request_will_proxy(REQUEST *request)
 		DICT_VALUE const *dval = dict_valbyattr(vp->da->attr, vp->da->vendor, vp->vp_integer);
 		/* Must be a validation issue */
 		rad_assert(dval);
-		RDEBUG2("  Found Pre-Proxy-Type %s", dval->name);
+		RDEBUG2("Found Pre-Proxy-Type %s", dval->name);
 		pre_proxy_type = vp->vp_integer;
 	}
 
@@ -2582,10 +2582,14 @@ static int request_will_proxy(REQUEST *request)
 		char const *old_server = request->server;
 
 		request->server = request->home_pool->virtual_server;
-		RDEBUG2(" server %s {", request->server);
+
+		RDEBUG2("server %s {", request->server);
+		RINDENT();
 		rcode = process_pre_proxy(pre_proxy_type, request);
-		RDEBUG2(" }");
-			request->server = old_server;
+		REXDENT();
+		RDEBUG2("}");
+
+		request->server = old_server;
 	} else {
 		rcode = process_pre_proxy(pre_proxy_type, request);
 	}
@@ -3525,7 +3529,7 @@ static void request_coa_originate(REQUEST *request)
 		DICT_VALUE const *dval = dict_valbyattr(vp->da->attr, vp->da->vendor, vp->vp_integer);
 		/* Must be a validation issue */
 		rad_assert(dval);
-		RDEBUG2("  Found Pre-Proxy-Type %s", dval->name);
+		RDEBUG2("Found Pre-Proxy-Type %s", dval->name);
 		pre_proxy_type = vp->vp_integer;
 	}
 
@@ -3533,9 +3537,11 @@ static void request_coa_originate(REQUEST *request)
 		char const *old_server = coa->server;
 
 		coa->server = coa->home_pool->virtual_server;
-		RDEBUG2(" server %s {", coa->server);
+		RDEBUG2("server %s {", coa->server);
+		RINDENT();
 		rcode = process_pre_proxy(pre_proxy_type, coa);
-		RDEBUG2(" }");
+		REXDENT();
+		RDEBUG2("}");
 		coa->server = old_server;
 	} else {
 		rcode = process_pre_proxy(pre_proxy_type, coa);

@@ -291,7 +291,8 @@ static rlm_rcode_t CC_HINT(nonnull) call_modsingle(rlm_components_t component, m
 	blocked = (request->master_state == REQUEST_STOP_PROCESSING);
 	if (blocked) return RLM_MODULE_NOOP;
 
-	RDEBUG3("  modsingle[%s]: calling %s (%s) for request %d",
+	RINDENT();
+	RDEBUG3("modsingle[%s]: calling %s (%s) for request %d",
 	       comp2str[component], sp->modinst->name,
 	       sp->modinst->entry->name, request->number);
 
@@ -321,7 +322,8 @@ static rlm_rcode_t CC_HINT(nonnull) call_modsingle(rlm_components_t component, m
 	}
 
  fail:
-	RDEBUG3("  modsingle[%s]: returned from %s (%s) for request %d",
+	REXDENT();
+	RDEBUG3("modsingle[%s]: returned from %s (%s) for request %d",
 	       comp2str[component], sp->modinst->name,
 	       sp->modinst->entry->name, request->number);
 

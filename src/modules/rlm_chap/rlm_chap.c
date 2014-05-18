@@ -120,13 +120,15 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance,
 		}
 
 		fr_bin2hex(buffer, p, length);
-		RDEBUG3("    chap challenge  %s", buffer);
+		RINDENT();
+		RDEBUG3("CHAP challenge :  %s", buffer);
 
 		fr_bin2hex(buffer, chap->vp_octets + 1, CHAP_VALUE_LENGTH);
-		RDEBUG3("    client sent     %s", buffer);
+		RDEBUG3("Client sent    : %s", buffer);
 
 		fr_bin2hex(buffer, pass_str + 1, CHAP_VALUE_LENGTH);
-		RDEBUG3("    we calculated   %s", buffer);
+		RDEBUG3("We calculated  : %s", buffer);
+		REXDENT();
 	} else {
 		RDEBUG2("Comparing with \"known good\" Cleartext-Password");
 	}

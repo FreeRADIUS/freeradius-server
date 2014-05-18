@@ -313,7 +313,8 @@ rlm_rcode_t od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR *
 	memcpy(&(tDataBuff->fBufferData[uiCurr]), shortUserName, uiLen);
 	uiCurr += uiLen;
 #ifndef NDEBUG
-	RDEBUG2("	stepbuf server challenge:\t");
+	RINDENT();
+	RDEBUG2("Stepbuf server challenge : ");
 	for (t = 0; t < challenge->length; t++) {
 		fprintf(stderr, "%02x", challenge->vp_strvalue[t]);
 	}
@@ -329,7 +330,7 @@ rlm_rcode_t od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR *
 	uiCurr += uiLen;
 
 #ifndef NDEBUG
-	RDEBUG2("	stepbuf peer challenge:\t\t");
+	RDEBUG2("Stepbuf peer challenge   : ");
 	for (t = 2; t < 18; t++) {
 		fprintf(stderr, "%02x", response->vp_strvalue[t]);
 	}
@@ -345,7 +346,8 @@ rlm_rcode_t od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR *
 	uiCurr += uiLen;
 
 #ifndef NDEBUG
-	RDEBUG2("	stepbuf p24:\t\t");
+	RDEBUG2("Stepbuf p24              : ");
+	REXDENT();
 	for (t = 26; t < 50; t++) {
 		fprintf(stderr, "%02x", response->vp_strvalue[t]);
 	}
