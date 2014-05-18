@@ -278,6 +278,9 @@ struct rad_request {
 
 		log_debug_t	lvl;		//!< Request options, currently just holds the debug level or
 						//!< the request.
+
+		uint8_t		indent;		//!< By how much to indent log messages. uin8_t so it's obvious
+						//!< when a request has been exdented too much.
 	} log;
 
 #ifdef WITH_COA
