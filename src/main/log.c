@@ -529,7 +529,7 @@ inline bool radlog_debug_enabled(log_type_t type, log_debug_t lvl, REQUEST *requ
 	 *	then don't log the message.
 	 */
 	if ((type & L_DBG) &&
-	    ((request && request->radlog && (lvl > request->options)) ||
+	    ((request && request->log.func && (lvl > request->log.lvl)) ||
 	     ((debug_flag != 0) && (lvl > debug_flag)))) {
 		return false;
 	}
@@ -569,9 +569,9 @@ void vradlog_request(log_type_t type, log_debug_t lvl, REQUEST *request, char co
 	}
 
 	if (request && filename) {
-		radlog_func_t rl = request->radlog;
+		radlog_func_t rl = request->log.func;
 
-		request->radlog = NULL;
+		request->log.func = NULL;
 
 		/*
 		 *	This is SLOW!  Doing it for every log message
@@ -582,7 +582,7 @@ void vradlog_request(log_type_t type, log_debug_t lvl, REQUEST *request, char co
 		if (radius_xlat(buffer, sizeof(buffer), request, filename, NULL, NULL) < 0) {
 			return;
 		}
-		request->radlog = rl;
+		request->log.func = rl;
 
 		p = strrchr(buffer, FR_DIR_SEP);
 		if (p) {
@@ -686,10 +686,10 @@ void radlog_request(log_type_t type, log_debug_t lvl, REQUEST *request, char con
 {
 	va_list ap;
 
-	if (request->radlog == NULL) return;
+	if (request->log.func == NULL) return;
 
 	va_start(ap, msg);
-	request->radlog(type, lvl, request, msg, ap);
+	request->log.func(type, lvl, request, msg, ap);
 	va_end(ap);
 }
 
@@ -713,8 +713,8 @@ void radlog_request_error(log_type_t type, log_debug_t lvl, REQUEST *request, ch
 	va_list ap;
 
 	va_start(ap, msg);
-	if (request->radlog) {
-		request->radlog(type, lvl, request, msg, ap);
+	if (request->log.func) {
+		request->log.func(type, lvl, request, msg, ap);
 	}
 	vmodule_failure_msg(request, msg, ap);
 	va_end(ap);

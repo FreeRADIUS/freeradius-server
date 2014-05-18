@@ -586,7 +586,7 @@ static int CC_HINT(nonnull) eappeap_postproxy(eap_handler_t *handler, void *data
 		 *	Perform a post-auth stage, which will get the EAP
 		 *	handler, too...
 		 */
-		fake->options &= ~RAD_REQUEST_OPTION_PROXY_EAP;
+		fake->log.lvl &= ~RAD_REQUEST_OPTION_PROXY_EAP;
 		RDEBUG2("Passing reply back for EAP-MS-CHAP-V2");
 		process_post_proxy(0, fake);
 
@@ -1062,7 +1062,7 @@ rlm_rcode_t eappeap_process(eap_handler_t *handler, tls_session_t *tls_session)
 			 *	done, THEN we proxy it...
 			 */
 			if (!t->proxy_tunneled_request_as_eap) {
-				fake->options |= RAD_REQUEST_OPTION_PROXY_EAP;
+				fake->log.lvl |= RAD_REQUEST_OPTION_PROXY_EAP;
 
 				/*
 				 *	Hmm... should we check for
@@ -1093,7 +1093,7 @@ rlm_rcode_t eappeap_process(eap_handler_t *handler, tls_session_t *tls_session)
 				 *	The module decided it wasn't
 				 *	done.  Handle it like normal.
 				 */
-				if ((fake->options & RAD_REQUEST_OPTION_PROXY_EAP) == 0) {
+				if ((fake->log.lvl & RAD_REQUEST_OPTION_PROXY_EAP) == 0) {
 					DEBUG2("    PEAP: Cancelling proxy to realm %s until the tunneled EAP session has been established", vp->vp_strvalue);
 					goto do_process;
 				}
@@ -1153,7 +1153,7 @@ rlm_rcode_t eappeap_process(eap_handler_t *handler, tls_session_t *tls_session)
 			 *	We're not proxying it as EAP, so we've got
 			 *	to do the callback later.
 			 */
-			if ((fake->options & RAD_REQUEST_OPTION_PROXY_EAP) != 0) {
+			if ((fake->log.lvl & RAD_REQUEST_OPTION_PROXY_EAP) != 0) {
 				DEBUG2("  PEAP: Remembering to do EAP-MS-CHAP-V2 post-proxy");
 
 				/*

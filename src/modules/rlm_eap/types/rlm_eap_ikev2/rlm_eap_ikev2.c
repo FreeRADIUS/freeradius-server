@@ -275,8 +275,8 @@ static int ikev2_initiate(void *instance, eap_handler_t *handler)
 {
     INFO(IKEv2_LOG_PREFIX "Initiate connection!");
 // This is the way for silent discarding behavior
-//    handler->request->options|=RAD_REQUEST_OPTION_FAKE_REQUEST;
-//    handler->request->options|=RAD_REQUEST_OPTION_DONT_CACHE;
+//    handler->request->log.lvl|=RAD_REQUEST_OPTION_FAKE_REQUEST;
+//    handler->request->log.lvl|=RAD_REQUEST_OPTION_DONT_CACHE;
 //    handler->request->reply->code=0;
 //    return 0;
 

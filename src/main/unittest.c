@@ -361,8 +361,8 @@ static REQUEST *request_setup(FILE *fp)
 	/*
 	 *	Debugging
 	 */
-	request->options = debug_flag;
-	request->radlog = vradlog_request;
+	request->log.lvl = debug_flag;
+	request->log.func = vradlog_request;
 
 	request->username = pairfind(request->packet->vps, PW_USER_NAME, 0, TAG_ANY);
 	request->password = pairfind(request->packet->vps, PW_USER_PASSWORD, 0, TAG_ANY);

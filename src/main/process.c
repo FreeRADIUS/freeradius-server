@@ -339,7 +339,7 @@ static void tv_add(struct timeval *tv, int usec_delay)
 /*
  *	In daemon mode, AND this request has debug flags set.
  */
-#define DEBUG_PACKET if (!debug_flag && request->options && request->radlog) debug_packet
+#define DEBUG_PACKET if (!debug_flag && request->log.lvl && request->log.func) debug_packet
 
 static void debug_packet(REQUEST *request, RADIUS_PACKET *packet, int direction)
 {
@@ -352,7 +352,7 @@ static void debug_packet(REQUEST *request, RADIUS_PACKET *packet, int direction)
 
 	if (!packet) return;
 
-	rad_assert(request->radlog != NULL);
+	rad_assert(request->log.func != NULL);
 
 	if (direction == 0) {
 		received = "Received";
@@ -1174,8 +1174,8 @@ static int CC_HINT(nonnull) request_pre_handler(REQUEST *request, UNUSED int act
 			 *	Ignore parse errors.
 			 */
 			if (radius_evaluate_cond(request, RLM_MODULE_OK, 0, debug_condition)) {
-				request->options = 2;
-				request->radlog = vradlog_request;
+				request->log.lvl = L_DBG_LVL_2;
+				request->log.func = vradlog_request;
 			}
 		}
 #endif
