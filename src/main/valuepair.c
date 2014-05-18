@@ -690,7 +690,7 @@ void rdebug_pair_list(int level, REQUEST *request, VALUE_PAIR *vp)
 {
 	vp_cursor_t cursor;
 	char buffer[256];
-	if (!vp || !request || !request->radlog) return;
+	if (!vp || !request || !request->log.func) return;
 
 	for (vp = fr_cursor_init(&cursor, &vp);
 	     vp;

@@ -357,11 +357,11 @@ REQUEST *request_alloc(TALLOC_CTX *ctx)
 	request->username = NULL;
 	request->password = NULL;
 	request->timestamp = time(NULL);
-	request->options = debug_flag; /* Default to global debug level */
+	request->log.lvl = debug_flag; /* Default to global debug level */
 
 	request->module = "";
 	request->component = "<core>";
-	request->radlog = vradlog_request;
+	request->log.func = vradlog_request;
 
 	return request;
 }
@@ -449,8 +449,7 @@ REQUEST *request_alloc_fake(REQUEST *request)
 	/*
 	 *	Copy debug information.
 	 */
-	fake->options = request->options;
-	fake->radlog = request->radlog;
+	memcpy(&(fake->log), &(request->log), sizeof(fake->log));
 
 	return fake;
 }

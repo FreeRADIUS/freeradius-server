@@ -258,9 +258,6 @@ struct rad_request {
 	int			simul_mpp; 	//!< WEIRD: 1 is false, 2 is true.
 #endif
 
-	log_debug_t		options;	//!< Request options, currently just holds the debug level or
-						//!< the request.
-
 	char const		*module;	//!< Module the request is currently being processed by.
 	char const		*component; 	//!< Section the request is in.
 
@@ -289,8 +286,15 @@ struct rad_request {
 
 	char const		*server;
 	REQUEST			*parent;
-	radlog_func_t		radlog;		//!< Function to call to output log messages about this
+
+	struct {
+		radlog_func_t	func;		//!< Function to call to output log messages about this
 						//!< request.
+
+		log_debug_t	lvl;		//!< Request options, currently just holds the debug level or
+						//!< the request.
+	} log;
+
 #ifdef WITH_COA
 	REQUEST			*coa;		//!< CoA request originated by this request.
 	int			num_coa_requests;//!< Counter for number of requests sent including
