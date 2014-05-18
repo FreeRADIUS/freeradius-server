@@ -167,7 +167,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 	/* User-Name attribute required. */
 	if (!request->username) {
 		RWDEBUG("Attribute \"User-Name\" "
-		       "required for authentication.");
+		       "required for authentication");
 
 		return RLM_MODULE_INVALID;
 	}
@@ -175,7 +175,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 	if (otp_pwe_present(request) == 0) {
 		RWDEBUG("Attribute "
 			"\"User-Password\" or equivalent required "
-			"for authentication.");
+			"for authentication");
 
 		return RLM_MODULE_INVALID;
 	}
@@ -290,7 +290,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 	 */
 	request->reply->code = PW_CODE_ACCESS_CHALLENGE;
 
-	DEBUG("rlm_otp: Sending Access-Challenge.");
+	DEBUG("rlm_otp: Sending Access-Challenge");
 
 	if (!auth_type_found) {
 		pairmake_config("Auth-Type", inst->name, T_OP_EQ);
@@ -320,7 +320,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	/* User-Name attribute required. */
 	if (!request->username) {
 		RWDEBUG("Attribute \"User-Name\" required "
-			"for authentication.");
+			"for authentication");
 
 		return RLM_MODULE_INVALID;
 	}
@@ -330,7 +330,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	pwe = otp_pwe_present(request);
 	if (pwe == 0) {
 		RWDEBUG("Attribute \"User-Password\" "
-			"or equivalent required for authentication.");
+			"or equivalent required for authentication");
 
 		return RLM_MODULE_INVALID;
 	}

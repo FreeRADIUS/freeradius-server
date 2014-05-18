@@ -750,7 +750,7 @@ int rad_expand_xlat(REQUEST *request, char const *cmd,
 	 *	We have to have SOMETHING, at least.
 	 */
 	if (argc <= 0) {
-		ERROR("rad_expand_xlat: Empty command line.");
+		ERROR("rad_expand_xlat: Empty command line");
 		return -1;
 	}
 
@@ -791,7 +791,7 @@ int rad_expand_xlat(REQUEST *request, char const *cmd,
 		left--;
 
 		if (left <= 0) {
-			ERROR("rad_expand_xlat: Ran out of space while expanding arguments.");
+			ERROR("rad_expand_xlat: Ran out of space while expanding arguments");
 			return -1;
 		}
 	}

@@ -218,7 +218,7 @@ SECURID_SESSION *securid_sessionlist_find(rlm_securid_t *inst, REQUEST *request)
 	 *	Might not have been there.
 	 */
 	if (!session) {
-		ERROR("rlm_securid: No SECURID session matching the State variable.");
+		ERROR("rlm_securid: No SECURID session matching the State variable");
 		return NULL;
 	}
 

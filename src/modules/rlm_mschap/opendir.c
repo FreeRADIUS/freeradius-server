@@ -170,7 +170,7 @@ static rlm_rcode_t getUserNodeRef(REQUEST *request, char* inUserName, char **out
 		}
 
 		if (!pUserLocation) {
-			DEBUG2("[mschap] OpenDirectory has no user location.");
+			DEBUG2("[mschap] OpenDirectory has no user location");
 			result = RLM_MODULE_NOOP;
 			break;
 		}
@@ -180,7 +180,7 @@ static rlm_rcode_t getUserNodeRef(REQUEST *request, char* inUserName, char **out
 		 * normal freeradius AD path (i.e. ntlm_auth).
 		 */
 		if (strncmp(pUserLocation, kActiveDirLoc, strlen(kActiveDirLoc)) == 0) {
-			DEBUG2("[mschap] OpenDirectory authentication returning noop.  OD doesn't support MSCHAPv2 for ActiveDirectory users.");
+			DEBUG2("[mschap] OpenDirectory authentication returning noop.  OD doesn't support MSCHAPv2 for ActiveDirectory users");
 			result = RLM_MODULE_NOOP;
 			break;
 		}

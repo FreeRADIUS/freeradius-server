@@ -636,7 +636,7 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	INFO("Exiting normally.");
+	INFO("Exiting normally");
 
 finish:
 	talloc_free(request);

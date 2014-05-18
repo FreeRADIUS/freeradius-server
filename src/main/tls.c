@@ -1294,7 +1294,7 @@ static int ocsp_check(X509_STORE *store, X509 *issuer_cert, X509 *client_cert,
 	}
 
 	if (!host || !port || !path) {
-		DEBUG2("[ocsp] - Host / port / path missing.  Not doing OCSP.");
+		DEBUG2("[ocsp] - Host / port / path missing.  Not doing OCSP");
 		ocsp_ok = 2;
 		goto ocsp_skip;
 	}
@@ -1434,8 +1434,8 @@ ocsp_end:
 		break;
 	case 2:
 		if (conf->ocsp_softfail) {
-			DEBUG2("[ocsp] --> Unable to check certificate; assuming valid.");
-			DEBUG2("[ocsp] --> Warning! This may be insecure.");
+			DEBUG2("[ocsp] --> Unable to check certificate; assuming valid");
+			DEBUG2("[ocsp] --> Warning! This may be insecure");
 			ocsp_ok = 1;
 		} else {
 			DEBUG2("[ocsp] --> Unable to check certificate; failing!");
@@ -2595,7 +2595,7 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 		 *	not allowed,
 		 */
 		if (SSL_session_reused(ssn->ssl)) {
-			RDEBUG("FAIL: Forcibly stopping session resumption as it is not allowed.");
+			RDEBUG("FAIL: Forcibly stopping session resumption as it is not allowed");
 			return -1;
 		}
 
@@ -2810,7 +2810,7 @@ fr_tls_status_t tls_application_data(tls_session_t *ssn,
 	}
 
 	if (err == 0) {
-		RWDEBUG("No data inside of the tunnel.");
+		RWDEBUG("No data inside of the tunnel");
 	}
 
 	/*
@@ -2833,16 +2833,16 @@ fr_tls_status_t tls_ack_handler(tls_session_t *ssn, REQUEST *request)
 	RDEBUG2("Received TLS ACK");
 
 	if (ssn == NULL){
-		RERROR("FAIL: Unexpected ACK received.  Could not obtain session information.");
+		RERROR("FAIL: Unexpected ACK received.  Could not obtain session information");
 		return FR_TLS_INVALID;
 	}
 	if (ssn->info.initialized == 0) {
-		RDEBUG("No SSL info available. Waiting for more SSL data.");
+		RDEBUG("No SSL info available. Waiting for more SSL data");
 		return FR_TLS_REQUEST;
 	}
 	if ((ssn->info.content_type == handshake) &&
 	    (ssn->info.origin == 0)) {
-		RERROR("FAIL: ACK without earlier message.");
+		RERROR("FAIL: ACK without earlier message");
 		return FR_TLS_INVALID;
 	}
 

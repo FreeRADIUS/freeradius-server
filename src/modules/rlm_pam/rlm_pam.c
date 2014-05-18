@@ -202,7 +202,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	 *	a User-Name attribute.
 	 */
 	if (!request->username) {
-		AUTH("rlm_pam: Attribute \"User-Name\" is required for authentication.");
+		AUTH("rlm_pam: Attribute \"User-Name\" is required for authentication");
 		return RLM_MODULE_INVALID;
 	}
 
@@ -211,7 +211,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	 *	a User-Password attribute.
 	 */
 	if (!request->password) {
-		AUTH("rlm_pam: Attribute \"User-Password\" is required for authentication.");
+		AUTH("rlm_pam: Attribute \"User-Password\" is required for authentication");
 		return RLM_MODULE_INVALID;
 	}
 

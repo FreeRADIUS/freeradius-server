@@ -341,8 +341,8 @@ static void rad_mangle(rlm_preprocess_t *inst, REQUEST *request)
 	}
 
 	if (num_proxy_state > 10) {
-		RWDEBUG("There are more than 10 Proxy-State attributes in the request.");
-		RWDEBUG("You have likely configured an infinite proxy loop.");
+		RWDEBUG("There are more than 10 Proxy-State attributes in the request");
+		RWDEBUG("You have likely configured an infinite proxy loop");
 	}
 }
 

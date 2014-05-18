@@ -486,7 +486,7 @@ int main(int argc, char *argv[])
 	 *	Everything seems to have loaded OK, exit gracefully.
 	 */
 	if (check_config) {
-		DEBUG("Configuration appears to be OK.");
+		DEBUG("Configuration appears to be OK");
 
 		/* for -C -m|-M */
 		if (main_config.debug_memory) {
@@ -562,7 +562,7 @@ int main(int argc, char *argv[])
 		ERROR("Exiting due to internal error: %s", fr_strerror());
 		rcode = EXIT_FAILURE;
 	} else {
-		INFO("Exiting normally.");
+		INFO("Exiting normally");
 	}
 
 	exec_trigger(NULL, NULL, "server.stop", false);

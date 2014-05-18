@@ -149,13 +149,13 @@ static int fr_server_domain_socket(char const *path)
 	struct stat buf;
 
 	if (!path) {
-		ERROR("No path provided, was NULL.");
+		ERROR("No path provided, was NULL");
 		return -1;
 	}
 
 	len = strlen(path);
 	if (len >= sizeof(salocal.sun_path)) {
-		ERROR("Path too long in socket filename.");
+		ERROR("Path too long in socket filename");
 		return -1;
 	}
 
@@ -2615,7 +2615,7 @@ static int command_domain_accept(rad_listen_t *listener)
 
 	salen = sizeof(src);
 
-	DEBUG2(" ... new connection request on command socket.");
+	DEBUG2(" ... new connection request on command socket");
 
 	newfd = accept(listener->fd, (struct sockaddr *) &src, &salen);
 	if (newfd < 0) {
@@ -2626,7 +2626,7 @@ static int command_domain_accept(rad_listen_t *listener)
 			return 0;
 		}
 
-		DEBUG2(" ... failed to accept connection.");
+		DEBUG2(" ... failed to accept connection");
 		return 0;
 	}
 

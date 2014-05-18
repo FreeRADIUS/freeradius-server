@@ -100,7 +100,7 @@ static int digest_fix(REQUEST *request)
 	/*
 	 *	Convert them to something sane.
 	 */
-	RDEBUG("Digest-Attributes look OK.  Converting them to something more useful.");
+	RDEBUG("Digest-Attributes look OK.  Converting them to something more useful");
 	fr_cursor_first(&cursor);
 	while ((i = fr_cursor_next_by_num(&cursor, PW_DIGEST_ATTRIBUTES, 0, TAG_ANY))) {
 		int length = i->length;
@@ -215,14 +215,14 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, REQU
 	passwd = pairfind(request->config_items, PW_DIGEST_HA1, 0, TAG_ANY);
 	if (passwd) {
 		if (passwd->length != 32) {
-			RAUTH("Digest-HA1 has invalid length, authentication failed.");
+			RAUTH("Digest-HA1 has invalid length, authentication failed");
 			return RLM_MODULE_INVALID;
 		}
 	} else {
 		passwd = pairfind(request->config_items, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY);
 	}
 	if (!passwd) {
-		RAUTH("Cleartext-Password or Digest-HA1 is required for authentication.");
+		RAUTH("Cleartext-Password or Digest-HA1 is required for authentication");
 		return RLM_MODULE_INVALID;
 	}
 

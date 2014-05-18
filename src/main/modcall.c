@@ -1673,12 +1673,12 @@ static modcallable *do_compile_modswitch(modcallable *parent, rlm_components_t c
 	name2 = cf_section_name2(cs);
 	if (!name2) {
 		cf_log_err_cs(cs,
-			   "You must specify a variable to switch over for 'switch'.");
+			   "You must specify a variable to switch over for 'switch'");
 		return NULL;
 	}
 
 	if (!cf_item_find_next(cs, NULL)) {
-		cf_log_err_cs(cs, "'switch' statements cannot be empty.");
+		cf_log_err_cs(cs, "'switch' statements cannot be empty");
 		return NULL;
 	}
 
@@ -1836,12 +1836,12 @@ static modcallable *do_compile_modforeach(modcallable *parent,
 	name2 = cf_section_name2(cs);
 	if (!name2) {
 		cf_log_err_cs(cs,
-			   "You must specify an attribute to loop over in 'foreach'.");
+			   "You must specify an attribute to loop over in 'foreach'");
 		return NULL;
 	}
 
 	if (!cf_item_find_next(cs, NULL)) {
-		cf_log_err_cs(cs, "'foreach' blocks cannot be empty.");
+		cf_log_err_cs(cs, "'foreach' blocks cannot be empty");
 		return NULL;
 	}
 
@@ -2095,7 +2095,7 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 #ifdef WITH_UNLANG
 		} else 	if (strcmp(modrefname, "if") == 0) {
 			if (!cf_section_name2(cs)) {
-				cf_log_err(ci, "'if' without condition.");
+				cf_log_err(ci, "'if' without condition");
 				return NULL;
 			}
 
@@ -2112,12 +2112,12 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 			if (parent &&
 			    ((parent->type == MOD_LOAD_BALANCE) ||
 			     (parent->type == MOD_REDUNDANT_LOAD_BALANCE))) {
-				cf_log_err(ci, "'elsif' cannot be used in this section.");
+				cf_log_err(ci, "'elsif' cannot be used in this section");
 				return NULL;
 			}
 
 			if (!cf_section_name2(cs)) {
-				cf_log_err(ci, "'elsif' without condition.");
+				cf_log_err(ci, "'elsif' without condition");
 				return NULL;
 			}
 
@@ -2130,12 +2130,12 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 			if (parent &&
 			    ((parent->type == MOD_LOAD_BALANCE) ||
 			     (parent->type == MOD_REDUNDANT_LOAD_BALANCE))) {
-				cf_log_err(ci, "'else' cannot be used in this section section.");
+				cf_log_err(ci, "'else' cannot be used in this section section");
 				return NULL;
 			}
 
 			if (cf_section_name2(cs)) {
-				cf_log_err(ci, "Cannot have conditions on 'else'.");
+				cf_log_err(ci, "Cannot have conditions on 'else'");
 				return NULL;
 			}
 

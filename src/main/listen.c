@@ -542,7 +542,7 @@ static int dual_tcp_accept(rad_listen_t *listener)
 
 	salen = sizeof(src);
 
-	DEBUG2(" ... new connection request on TCP socket.");
+	DEBUG2(" ... new connection request on TCP socket");
 
 	newfd = accept(listener->fd, (struct sockaddr *) &src, &salen);
 	if (newfd < 0) {
@@ -555,13 +555,13 @@ static int dual_tcp_accept(rad_listen_t *listener)
 		}
 #endif
 
-		DEBUG2(" ... failed to accept connection.");
+		DEBUG2(" ... failed to accept connection");
 		return -1;
 	}
 
 	if (!fr_sockaddr2ipaddr(&src, salen, &src_ipaddr, &src_port)) {
 		close(newfd);
-		DEBUG2(" ... unknown address family.");
+		DEBUG2(" ... unknown address family");
 		return 0;
 	}
 
@@ -949,7 +949,7 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	if (cf_pair_find(cs, "proto")) {
 #ifndef WITH_TCP
 		cf_log_err_cs(cs,
-			   "System does not support the TCP protocol.  Delete this line from the configuration file.");
+			   "System does not support the TCP protocol.  Delete this line from the configuration file");
 		return -1;
 #else
 		char *proto = NULL;
@@ -994,7 +994,7 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 			 */
 			if (sock->proto != IPPROTO_TCP) {
 				cf_log_err_cs(cs,
-					      "TLS transport is not available for UDP sockets.");
+					      "TLS transport is not available for UDP sockets");
 				return -1;
 			}
 
@@ -1023,7 +1023,7 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 		 */
 		if (cf_section_sub_find(cs, "tls")) {
 			cf_log_err_cs(cs,
-				   "TLS transport is not available in this executable.");
+				   "TLS transport is not available in this executable");
 			return -1;
 		}
 #endif	/* WITH_TLS */
@@ -1035,7 +1035,7 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 		 */
 	} else if (cf_section_sub_find(cs, "tls")) {
 		cf_log_err_cs(cs,
-			   "TLS transport is not available in this \"listen\" section.");
+			   "TLS transport is not available in this \"listen\" section");
 		return -1;
 	}
 
@@ -1150,7 +1150,7 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	if (cf_pair_find(cs, "broadcast")) {
 #ifndef SO_BROADCAST
 		cf_log_err_cs(cs,
-			   "System does not support broadcast sockets.  Delete this line from the configuration file.");
+			   "System does not support broadcast sockets.  Delete this line from the configuration file");
 		return -1;
 #else
 		char const *value;
@@ -1158,7 +1158,7 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 
 		if (this->type != RAD_LISTEN_DHCP) {
 			cf_log_err_cp(cp,
-				   "Broadcast can only be set for DHCP listeners.  Delete this line from the configuration file.");
+				   "Broadcast can only be set for DHCP listeners.  Delete this line from the configuration file");
 			return -1;
 		}
 
@@ -2219,7 +2219,7 @@ static int listen_bind(rad_listen_t *this)
 #endif
 
 		default:
-			WARN("Internal sanity check failed in binding to socket.  Ignoring problem.");
+			WARN("Internal sanity check failed in binding to socket.  Ignoring problem");
 			return -1;
 		}
 	}
@@ -3146,7 +3146,7 @@ add_sockets:
 	 *	proxying is pointless.
 	 */
 	if (!*head) {
-		ERROR("The server is not configured to listen on any ports.  Cannot start.");
+		ERROR("The server is not configured to listen on any ports.  Cannot start");
 		return -1;
 	}
 

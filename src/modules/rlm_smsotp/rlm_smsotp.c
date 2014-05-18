@@ -289,7 +289,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	 *  The server will take care of sending it to the user.
 	 */
 	request->reply->code = PW_CODE_ACCESS_CHALLENGE;
-	DEBUG("rlm_smsotp: Sending Access-Challenge.");
+	DEBUG("rlm_smsotp: Sending Access-Challenge");
 
 	rcode = RLM_MODULE_HANDLED;
 

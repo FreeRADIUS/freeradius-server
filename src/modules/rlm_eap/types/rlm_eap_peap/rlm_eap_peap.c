@@ -344,7 +344,7 @@ static int mod_authenticate(void *arg, eap_handler_t *handler)
 	 *	Session is established, proceed with decoding
 	 *	tunneled data.
 	 */
-	RDEBUG2("Session established.  Decoding tunneled attributes.");
+	RDEBUG2("Session established.  Decoding tunneled attributes");
 
 	/*
 	 *	We may need PEAP data associated with the session, so

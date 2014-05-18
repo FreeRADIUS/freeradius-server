@@ -163,7 +163,7 @@ int fr_tcp_read_packet(RADIUS_PACKET *packet, int flags)
 		packet_len = (packet->vector[2] << 8) | packet->vector[3];
 
 		if (packet_len < AUTH_HDR_LEN) {
-			fr_strerror_printf("Discarding packet: Smaller than RFC minimum of 20 bytes.");
+			fr_strerror_printf("Discarding packet: Smaller than RFC minimum of 20 bytes");
 			return -1;
 		}
 
@@ -171,7 +171,7 @@ int fr_tcp_read_packet(RADIUS_PACKET *packet, int flags)
 		 *	If the packet is too big, then the socket is bad.
 		 */
 		if (packet_len > MAX_PACKET_LEN) {
-			fr_strerror_printf("Discarding packet: Larger than RFC limitation of 4096 bytes.");
+			fr_strerror_printf("Discarding packet: Larger than RFC limitation of 4096 bytes");
 			return -1;
 		}
 

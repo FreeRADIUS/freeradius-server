@@ -399,7 +399,7 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 	name2 = cf_section_name2(cs);
 	if (!name2) {
 		cf_log_err_cs(cs,
-			   "Home server section is missing a name.");
+			   "Home server section is missing a name");
 		return 0;
 	}
 
@@ -640,14 +640,14 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 		}
 
 		if (tls && (home->proto != IPPROTO_TCP)) {
-			cf_log_err_cs(cs, "TLS transport is not available for UDP sockets.");
+			cf_log_err_cs(cs, "TLS transport is not available for UDP sockets");
 			goto error;
 		}
 
 #ifndef WITH_TLS
 
 		if (tls) {
-			cf_log_err_cs(cs, "TLS transport is not available in this executable.");
+			cf_log_err_cs(cs, "TLS transport is not available in this executable");
 			goto error;
 		}
 #else
@@ -864,7 +864,7 @@ static int pool_check_home_server(UNUSED realm_config_t *rc, CONF_PAIR *cp,
 
 	if (!name) {
 		cf_log_err_cp(cp,
-			   "No value given for home_server.");
+			   "No value given for home_server");
 		return 0;
 	}
 
@@ -895,14 +895,14 @@ static int server_pool_add(realm_config_t *rc,
 	if (!name2 || ((strcasecmp(name2, "server_pool") != 0) &&
 		       (strcasecmp(name2, "home_server_pool") != 0))) {
 		cf_log_err_cs(cs,
-			   "Section is not a home_server_pool.");
+			   "Section is not a home_server_pool");
 		return 0;
 	}
 
 	name2 = cf_section_name2(cs);
 	if (!name2) {
 		cf_log_err_cs(cs,
-			   "Server pool section is missing a name.");
+			   "Server pool section is missing a name");
 		return 0;
 	}
 
@@ -945,7 +945,7 @@ static int server_pool_add(realm_config_t *rc,
 	if (cp) {
 #ifdef WITH_COA
 		if (server_type == HOME_TYPE_COA) {
-			cf_log_err_cs(cs, "Home server pools of type \"coa\" cannot have a fallback virtual server.");
+			cf_log_err_cs(cs, "Home server pools of type \"coa\" cannot have a fallback virtual server");
 			goto error;
 		}
 #endif
@@ -984,7 +984,7 @@ static int server_pool_add(realm_config_t *rc,
 		value = cf_pair_value(cp);
 		if (!value) {
 			cf_log_err_cp(cp,
-				   "No value given for type.");
+				   "No value given for type");
 			goto error;
 		}
 
@@ -1526,13 +1526,13 @@ static int realm_add(realm_config_t *rc, CONF_SECTION *cs)
 
 	name2 = cf_section_name1(cs);
 	if (!name2 || (strcasecmp(name2, "realm") != 0)) {
-		cf_log_err_cs(cs, "Section is not a realm.");
+		cf_log_err_cs(cs, "Section is not a realm");
 		return 0;
 	}
 
 	name2 = cf_section_name2(cs);
 	if (!name2) {
-		cf_log_err_cs(cs, "Realm section is missing the realm name.");
+		cf_log_err_cs(cs, "Realm section is missing the realm name");
 		return 0;
 	}
 
@@ -1568,7 +1568,7 @@ static int realm_add(realm_config_t *rc, CONF_SECTION *cs)
 	if (cp) auth_pool_name = cf_pair_value(cp);
 	if (cp && auth_pool_name) {
 		if (auth_pool) {
-			cf_log_err_cs(cs, "Cannot use \"pool\" and \"auth_pool\" at the same time.");
+			cf_log_err_cs(cs, "Cannot use \"pool\" and \"auth_pool\" at the same time");
 			return 0;
 		}
 		if (!add_pool_to_realm(rc, cs,
@@ -1584,7 +1584,7 @@ static int realm_add(realm_config_t *rc, CONF_SECTION *cs)
 		bool do_print = true;
 
 		if (acct_pool) {
-			cf_log_err_cs(cs, "Cannot use \"pool\" and \"acct_pool\" at the same time.");
+			cf_log_err_cs(cs, "Cannot use \"pool\" and \"acct_pool\" at the same time");
 			return 0;
 		}
 

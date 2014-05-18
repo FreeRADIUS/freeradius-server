@@ -1100,7 +1100,7 @@ static int CC_HINT(nonnull (1, 2, 4, 5 ,6)) do_mschap(rlm_mschap_t *inst, REQUES
 				return -648;
 			}
 
-			RDEBUG2("External script failed.");
+			RDEBUG2("External script failed");
 			p = strchr(buffer, '\n');
 			if (p) *p = '\0';
 
@@ -1372,7 +1372,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void * instance, REQUEST *r
 		 *	Password is not required.
 		 */
 		if ((smb_ctrl->vp_integer & ACB_PWNOTREQ) != 0) {
-			RDEBUG2("SMB-Account-Ctrl says no password is required.");
+			RDEBUG2("SMB-Account-Ctrl says no password is required");
 			return RLM_MODULE_OK;
 		}
 	}
@@ -1707,7 +1707,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void * instance, REQUEST *r
 		 *  Otherwise OD will determine auth success/fail.
 		 */
 		if (!nt_password && inst->open_directory) {
-			RDEBUG2("No NT-Password configured. Trying OpenDirectory Authentication.");
+			RDEBUG2("No NT-Password configured. Trying OpenDirectory Authentication");
 			int odStatus = od_mschap_auth(request, challenge, username);
 			if (odStatus != RLM_MODULE_NOOP) {
 				return odStatus;

@@ -374,7 +374,7 @@ eap_rcode_t eap_method_select(rlm_eap_t *inst, eap_handler_t *handler)
 	 *	Multiple levels of nesting are invalid.
 	 */
 	if (handler->request->parent && handler->request->parent->parent) {
-		RDEBUG2("Multiple levels of TLS nesting is invalid.");
+		RDEBUG2("Multiple levels of TLS nesting is invalid");
 
 		return EAP_INVALID;
 	}
@@ -667,7 +667,7 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 	 */
 	vp = pairfind(request->packet->vps, PW_EAP_TYPE, 0, TAG_ANY);
 	if (vp && vp->vp_integer == 0) {
-		RDEBUG2("Found EAP-Message, but EAP-Type = None, so we're not doing EAP.");
+		RDEBUG2("Found EAP-Message, but EAP-Type = None, so we're not doing EAP");
 		return EAP_NOOP;
 	}
 
@@ -747,7 +747,7 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 	if (eap_msg->length < (EAP_HEADER_LEN + 1)) {
 		if (proxy) goto do_proxy;
 
-		RDEBUG2("Ignoring EAP-Message which is too short to be meaningful.");
+		RDEBUG2("Ignoring EAP-Message which is too short to be meaningful");
 		return EAP_FAIL;
 	}
 
@@ -797,7 +797,7 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 	 */
 	if ((eap_msg->vp_octets[0] != PW_EAP_REQUEST) &&
 	    (eap_msg->vp_octets[0] != PW_EAP_RESPONSE)) {
-		RDEBUG2("Ignoring EAP packet which we don't know how to handle.");
+		RDEBUG2("Ignoring EAP packet which we don't know how to handle");
 		return EAP_FAIL;
 	}
 
@@ -845,7 +845,7 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 
 	if ((eap_msg->vp_octets[4] == PW_EAP_TTLS) ||
 	    (eap_msg->vp_octets[4] == PW_EAP_PEAP)) {
-		RDEBUG2("Continuing tunnel setup.");
+		RDEBUG2("Continuing tunnel setup");
 		return EAP_OK;
 	}
 	/*
@@ -1114,7 +1114,7 @@ eap_handler_t *eap_handler(rlm_eap_t *inst, eap_packet_raw_t **eap_packet_p,
 			*/
 		       if (strncmp(handler->identity, vp->vp_strvalue,
 				   MAX_STRING_LEN) != 0) {
-			       RDEBUG("Identity does not match User-Name.  Authentication failed.");
+			       RDEBUG("Identity does not match User-Name.  Authentication failed");
 			       goto error;
 		       }
 	       }
@@ -1158,7 +1158,7 @@ eap_handler_t *eap_handler(rlm_eap_t *inst, eap_packet_raw_t **eap_packet_p,
 			*/
 		       if (strncmp(handler->identity, vp->vp_strvalue,
 				   MAX_STRING_LEN) != 0) {
-			       RDEBUG("Identity does not match User-Name, setting from EAP Identity.");
+			       RDEBUG("Identity does not match User-Name, setting from EAP Identity");
 			       goto error2;
 		       }
 	       }

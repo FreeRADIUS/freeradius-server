@@ -183,7 +183,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 	 *	Which type is this.
 	 */
 	if ((vp = pairfind(request->packet->vps, PW_ACCT_STATUS_TYPE, 0, TAG_ANY)) == NULL) {
-		RDEBUG("No Accounting-Status-Type record.");
+		RDEBUG("No Accounting-Status-Type record");
 		return RLM_MODULE_NOOP;
 	}
 	status = vp->vp_integer;
@@ -215,7 +215,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 		if (check1 == 0 || check2 == 0) {
 			break;
 		}
-		INFO("rlm_radutmp: converting reboot records.");
+		INFO("rlm_radutmp: converting reboot records");
 		if (status == PW_STATUS_STOP)
 			status = PW_STATUS_ACCOUNTING_OFF;
 		if (status == PW_STATUS_START)

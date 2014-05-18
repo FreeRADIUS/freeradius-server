@@ -370,8 +370,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 			return RLM_MODULE_NOOP;
 		}
 
-		RWDEBUG("No \"known good\" password found for the user.  Not setting Auth-Type.");
-		RWDEBUG("Authentication will fail unless a \"known good\" password is available.");
+		RWDEBUG("No \"known good\" password found for the user.  Not setting Auth-Type");
+		RWDEBUG("Authentication will fail unless a \"known good\" password is available");
 		return RLM_MODULE_NOOP;
 	}
 

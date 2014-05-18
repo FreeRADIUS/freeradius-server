@@ -217,7 +217,7 @@ static int mod_init(void)
 	Py_InitializeEx(0);				/* Don't override signal handlers */
 	PyEval_InitThreads(); 				/* This also grabs a lock */
 	if ((radiusd_module = Py_InitModule3("radiusd", radiusd_methods,
-					     "FreeRADIUS Module.")) == NULL)
+					     "FreeRADIUS Module")) == NULL)
 		goto failed;
 
 	for (i = 0; radiusd_constants[i].name; i++) {

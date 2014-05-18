@@ -84,7 +84,7 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 #endif
 	    ) {
 
-		RDEBUG2("Proxy reply, or no User-Name.  Ignoring.");
+		RDEBUG2("Proxy reply, or no User-Name.  Ignoring");
 		return RLM_MODULE_NOOP;
 	}
 
@@ -94,7 +94,7 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 	 */
 
 	if (pairfind(request->packet->vps, PW_REALM, 0, TAG_ANY) != NULL ) {
-		RDEBUG2("Request already has destination realm set.  Ignoring.");
+		RDEBUG2("Request already has destination realm set.  Ignoring");
 		return RLM_MODULE_NOOP;
 	}
 
@@ -165,7 +165,7 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 	}
 	if( inst->ignore_default &&
 	    (strcmp(realm->name, "DEFAULT")) == 0) {
-		RDEBUG2("Found DEFAULT, but skipping due to config.");
+		RDEBUG2("Found DEFAULT, but skipping due to config");
 		talloc_free(namebuf);
 		return RLM_MODULE_NOOP;
 	}
@@ -223,7 +223,7 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 		 */
 	case PW_CODE_ACCOUNTING_REQUEST:
 		if (!realm->acct_pool) {
-			RDEBUG2("Accounting realm is LOCAL.");
+			RDEBUG2("Accounting realm is LOCAL");
 			return RLM_MODULE_OK;
 		}
 		break;
@@ -233,7 +233,7 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 		 */
 	case PW_CODE_AUTHENTICATION_REQUEST:
 		if (!realm->auth_pool) {
-			RDEBUG2("Authentication realm is LOCAL.");
+			RDEBUG2("Authentication realm is LOCAL");
 			return RLM_MODULE_OK;
 		}
 		break;
@@ -429,7 +429,7 @@ static rlm_rcode_t mod_realm_recv_coa(UNUSED void *instance, REQUEST *request)
 	REALM *realm;
 
 	if (pairfind(request->packet->vps, PW_REALM, 0, TAG_ANY) != NULL) {
-		RDEBUG2("Request already has destination realm set.  Ignoring.");
+		RDEBUG2("Request already has destination realm set.  Ignoring");
 		return RLM_MODULE_NOOP;
 	}
 
@@ -455,7 +455,7 @@ static rlm_rcode_t mod_realm_recv_coa(UNUSED void *instance, REQUEST *request)
 	if (!realm) return RLM_MODULE_NOTFOUND;
 
 	if (!realm->coa_pool) {
-		RDEBUG2("CoA realm is LOCAL.");
+		RDEBUG2("CoA realm is LOCAL");
 		return RLM_MODULE_OK;
 	}
 

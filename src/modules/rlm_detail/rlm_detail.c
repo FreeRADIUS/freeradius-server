@@ -427,7 +427,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 	if (request->listener->type == RAD_LISTEN_DETAIL &&
 	    strcmp(((detail_instance_t *)instance)->filename,
 		   ((listen_detail_t *)request->listener->data)->filename) == 0) {
-		RDEBUG("Suppressing writes to detail file as the request was just read from a detail file.");
+		RDEBUG("Suppressing writes to detail file as the request was just read from a detail file");
 		return RLM_MODULE_NOOP;
 	}
 #endif

@@ -353,7 +353,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, REQUEST
 	char host_ipaddr[128] = {0};
 
 	if (!request->username) {
-		RDEBUG("OpenDirectory requires a User-Name attribute.");
+		RDEBUG("OpenDirectory requires a User-Name attribute");
 		return RLM_MODULE_NOOP;
 	}
 
@@ -412,7 +412,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, REQUEST
 	}
 
 	if (uuid_is_null(guid_sacl) && uuid_is_null(guid_nasgroup)) {
-		RDEBUG("no access control groups, all users allowed.");
+		RDEBUG("no access control groups, all users allowed");
 		if (pairfind(request->config_items, PW_AUTH_TYPE, 0, TAG_ANY) == NULL) {
 			pairmake_config("Auth-Type", kAuthType, T_OP_EQ);
 			RDEBUG("Setting Auth-Type = %s", kAuthType);

@@ -176,7 +176,7 @@ static int CC_HINT(nonnull) mod_authenticate(void *instance, eap_handler_t *hand
 		 */
 		vp = pairfind(request->config_items, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY);
 		if (!vp) {
-			REDEBUG2("Cleartext-Password is required for authentication.");
+			REDEBUG2("Cleartext-Password is required for authentication");
 			eap_ds->request->code = PW_EAP_FAILURE;
 			return 0;
 		}

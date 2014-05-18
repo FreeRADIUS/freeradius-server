@@ -288,7 +288,7 @@ static sql_rcode_t sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *
 	case CS_FAIL: /* Serious failure, freetds requires us to cancel and maybe even close db */
 		ERROR("rlm_sql_freetds: failure retrieving query results");
 		if ((ret = ct_cancel(NULL, conn->command, CS_CANCEL_ALL)) == CS_FAIL) {
-			INFO("rlm_sql_freetds: cleaning up.");
+			INFO("rlm_sql_freetds: cleaning up");
 
 			return RLM_SQL_RECONNECT;
 		}
@@ -490,7 +490,7 @@ static sql_rcode_t sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *
 		ERROR("rlm_sql_freetds: failure retrieving query results");
 
 		if ((ret = ct_cancel(NULL, conn->command, CS_CANCEL_ALL)) == CS_FAIL) {
-			ERROR("rlm_sql_freetds: cleaning up.");
+			ERROR("rlm_sql_freetds: cleaning up");
 
 			return RLM_SQL_RECONNECT;
 		}
@@ -571,7 +571,7 @@ static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle, UNUSED rlm_sql_config
 		 */
 		ERROR("rlm_sql_freetds: failure fetching row data");
 		if ((ret = ct_cancel(NULL, conn->command, CS_CANCEL_ALL)) == CS_FAIL) {
-			ERROR("rlm_sql_freetds: cleaning up.");
+			ERROR("rlm_sql_freetds: cleaning up");
 		} else {
 			conn->command = NULL;
 		}

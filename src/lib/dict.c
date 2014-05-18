@@ -688,7 +688,7 @@ int dict_addattr(char const *name, int attr, unsigned int vendor, PW_TYPE type,
 	 */
 	if (flags.extended || flags.long_extended || flags.evs) {
 		if (vendor && (vendor < FR_MAX_VENDOR)) {
-			fr_strerror_printf("dict_addattr: VSAs cannot use the \"extended\" or \"evs\" attribute formats.");
+			fr_strerror_printf("dict_addattr: VSAs cannot use the \"extended\" or \"evs\" attribute formats");
 			return -1;
 		}
 		if (flags.has_tag
@@ -696,7 +696,7 @@ int dict_addattr(char const *name, int attr, unsigned int vendor, PW_TYPE type,
 		    || flags.array
 #endif
 		    || (flags.encrypt != FLAG_ENCRYPT_NONE)) {
-			fr_strerror_printf("dict_addattr: The \"extended\" attributes MUST NOT have any flags set.");
+			fr_strerror_printf("dict_addattr: The \"extended\" attributes MUST NOT have any flags set");
 			return -1;
 		}
 	}
@@ -739,19 +739,19 @@ int dict_addattr(char const *name, int attr, unsigned int vendor, PW_TYPE type,
 	}
 
 	if (vendor && flags.concat) {
-		fr_strerror_printf("VSAs cannot have the \"concat\" flag set.");
+		fr_strerror_printf("VSAs cannot have the \"concat\" flag set");
 		return -1;
 	}
 
 	if (flags.concat && (type != PW_TYPE_OCTETS)) {
-		fr_strerror_printf("The \"concat\" flag can only be set for attributes of type \"octets\".");
+		fr_strerror_printf("The \"concat\" flag can only be set for attributes of type \"octets\"");
 		return -1;
 	}
 
 	if (flags.concat && (flags.has_tag || flags.array || flags.is_tlv || flags.has_tlv ||
 			     flags.length || flags.evs || flags.extended || flags.long_extended ||
 			     (flags.encrypt != FLAG_ENCRYPT_NONE))) {
-		fr_strerror_printf("The \"concat\" flag cannot be used with any other flag.");
+		fr_strerror_printf("The \"concat\" flag cannot be used with any other flag");
 		return -1;
 	}
 
@@ -805,7 +805,7 @@ int dict_addattr(char const *name, int attr, unsigned int vendor, PW_TYPE type,
 		 *	properly.
 		 */
 		if ((dv->type == 1) && (attr >= 256) && !flags.is_tlv) {
-			fr_strerror_printf("dict_addattr: ATTRIBUTE has invalid number (larger than 255).");
+			fr_strerror_printf("dict_addattr: ATTRIBUTE has invalid number (larger than 255)");
 			return -1;
 		} /* else 256..65535 are allowed */
 
@@ -1186,7 +1186,7 @@ int dict_str2oid(char const *ptr, unsigned int *pvalue, unsigned int *pvendor,
 	if (*pvalue) {
 		da = dict_attrbyvalue(*pvalue, *pvendor);
 		if (!da) {
-			fr_strerror_printf("Parent attribute is undefined.");
+			fr_strerror_printf("Parent attribute is undefined");
 			return -1;
 		}
 

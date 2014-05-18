@@ -493,7 +493,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 	}
 
 	if (pairfind(request->config_items, PW_POOL_NAME, 0, TAG_ANY) == NULL) {
-		RDEBUG("No Pool-Name defined.");
+		RDEBUG("No Pool-Name defined");
 
 		return do_logging(request, inst->log_nopool, RLM_MODULE_NOOP);
 	}
@@ -572,14 +572,14 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 			 *	sqlippool, so we should just ignore this
 			 *	allocation failure and return NOOP
 			 */
-			RDEBUG("IP address could not be allocated as no pool exists with that name.");
+			RDEBUG("IP address could not be allocated as no pool exists with that name");
 			return RLM_MODULE_NOOP;
 
 		}
 
 		inst->sql_inst->sql_release_socket(inst->sql_inst, handle);
 
-		RDEBUG("IP address could not be allocated.");
+		RDEBUG("IP address could not be allocated");
 		return do_logging(request, inst->log_failed, RLM_MODULE_NOOP);
 	}
 
@@ -679,7 +679,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 
 	vp = pairfind(request->packet->vps, PW_ACCT_STATUS_TYPE, 0, TAG_ANY);
 	if (!vp) {
-		RDEBUG("Could not find account status type in packet.");
+		RDEBUG("Could not find account status type in packet");
 		return RLM_MODULE_NOOP;
 	}
 	acct_status_type = vp->vp_integer;

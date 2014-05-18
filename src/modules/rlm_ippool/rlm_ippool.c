@@ -451,7 +451,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(UNUSED void *instance, UNUSED 
 		if (!inst->name || (strcmp(inst->name,vp->vp_strvalue) && strcmp(vp->vp_strvalue,"DEFAULT")))
 			return RLM_MODULE_NOOP;
 	} else {
-		RDEBUG("Could not find Pool-Name attribute.");
+		RDEBUG("Could not find Pool-Name attribute");
 		return RLM_MODULE_NOOP;
 	}
 
@@ -774,7 +774,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(UNUSED void *instance, UNUSED 
 	}
 	else{
 		pthread_mutex_unlock(&inst->op_mutex);
-		RDEBUG("No available ip addresses in pool.");
+		RDEBUG("No available ip addresses in pool");
 		return RLM_MODULE_NOTFOUND;
 	}
 

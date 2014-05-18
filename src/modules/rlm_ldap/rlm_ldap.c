@@ -717,13 +717,13 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 
 	if (!request->password ||
 	    (request->password->da->attr != PW_USER_PASSWORD)) {
-		RWDEBUG("You have set \"Auth-Type := LDAP\" somewhere.");
+		RWDEBUG("You have set \"Auth-Type := LDAP\" somewhere");
 		RWDEBUG("*********************************************");
 		RWDEBUG("* THAT CONFIGURATION IS WRONG.  DELETE IT.   ");
-		RWDEBUG("* YOU ARE PREVENTING THE SERVER FROM WORKING.");
+		RWDEBUG("* YOU ARE PREVENTING THE SERVER FROM WORKING");
 		RWDEBUG("*********************************************");
 
-		REDEBUG("Attribute \"User-Password\" is required for authentication.");
+		REDEBUG("Attribute \"User-Password\" is required for authentication");
 
 		return RLM_MODULE_INVALID;
 	}
@@ -801,7 +801,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 	rlm_ldap_map_xlat_t	expanded; /* faster than mallocing every time */
 
 	if (!request->username) {
-		RDEBUG2("Attribute \"User-Name\" is required for authorization.");
+		RDEBUG2("Attribute \"User-Name\" is required for authorization");
 
 		return RLM_MODULE_NOOP;
 	}

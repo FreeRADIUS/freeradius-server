@@ -109,7 +109,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, UNUSED 
 	 *  The server will take care of sending it to the user.
 	 */
 	request->reply->code = PW_CODE_ACCESS_CHALLENGE;
-	RDEBUG("Sending Access-Challenge.");
+	RDEBUG("Sending Access-Challenge");
 
 	return RLM_MODULE_HANDLED;
 }

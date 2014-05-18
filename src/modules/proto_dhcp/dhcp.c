@@ -904,7 +904,7 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 	mtu = pairfind(packet->vps, 26, DHCP_MAGIC_VENDOR, TAG_ANY);
 
 	if (mtu && (mtu->vp_integer < DEFAULT_PACKET_SIZE)) {
-		fr_strerror_printf("DHCP Fatal: Client says MTU is smaller than minimum permitted by the specification.");
+		fr_strerror_printf("DHCP Fatal: Client says MTU is smaller than minimum permitted by the specification");
 		return -1;
 	}
 

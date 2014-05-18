@@ -181,7 +181,7 @@ int sql_userparse(TALLOC_CTX *ctx, VALUE_PAIR **head, rlm_sql_row_t row)
 	 *	Verify the 'Attribute' field
 	 */
 	if (!row[2] || row[2][0] == '\0') {
-		ERROR("rlm_sql: The 'Attribute' field is empty or NULL, skipping the entire row.");
+		ERROR("rlm_sql: The 'Attribute' field is empty or NULL, skipping the entire row");
 		return -1;
 	}
 
@@ -203,7 +203,7 @@ int sql_userparse(TALLOC_CTX *ctx, VALUE_PAIR **head, rlm_sql_row_t row)
 		 */
 		operator = T_OP_CMP_EQ;
 		ERROR("rlm_sql: The 'op' field for attribute '%s = %s' is NULL, or non-existent.", row[2], row[3]);
-		ERROR("rlm_sql: You MUST FIX THIS if you want the configuration to behave as you expect.");
+		ERROR("rlm_sql: You MUST FIX THIS if you want the configuration to behave as you expect");
 	}
 
 	/*

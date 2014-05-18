@@ -585,7 +585,7 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int in_server)
 	c->prefix = -1;
 
 	if (cf_section_parse(cs, c, client_config) < 0) {
-		cf_log_err_cs(cs, "Error parsing client section.");
+		cf_log_err_cs(cs, "Error parsing client section");
 	error:
 		client_free(c);
 #ifdef WITH_TCP
@@ -602,7 +602,7 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int in_server)
 	 */
 	if (in_server && c->server) {
 		cf_log_err_cs(cs,
-			   "Clients inside of an server section cannot point to a server.");
+			   "Clients inside of an server section cannot point to a server");
 		goto error;
 	}
 
@@ -768,7 +768,7 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int in_server)
 		    ((c->ipaddr.af == AF_INET6) &&
 		     (c->prefix == 128))) {
 			cf_log_err_cs(cs,
-				   "Dynamic clients MUST be a network, not a single IP address.");
+				   "Dynamic clients MUST be a network, not a single IP address");
 			goto error;
 		}
 
@@ -1251,7 +1251,7 @@ RADCLIENT *client_from_request(RADCLIENT_LIST *clients, REQUEST *request)
 				c->src_ipaddr.af = AF_INET;
 				c->src_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
 #else
-				WARN("Server not build with udpfromto, ignoring FreeRADIUS-Client-Src-IP-Address.");
+				WARN("Server not build with udpfromto, ignoring FreeRADIUS-Client-Src-IP-Address");
 #endif
 			}
 
@@ -1267,7 +1267,7 @@ RADCLIENT *client_from_request(RADCLIENT_LIST *clients, REQUEST *request)
 				c->src_ipaddr.af = AF_INET6;
 				c->src_ipaddr.ipaddr.ip6addr = vp->vp_ipv6addr;
 #else
-				WARN("Server not build with udpfromto, ignoring FreeRADIUS-Client-Src-IPv6-Address.");
+				WARN("Server not build with udpfromto, ignoring FreeRADIUS-Client-Src-IPv6-Address");
 #endif
 			}
 

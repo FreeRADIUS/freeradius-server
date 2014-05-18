@@ -846,7 +846,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		       inst->config->sql_driver_name,
 		       dlerror());
 		ERROR("Make sure it (and all its dependent libraries!)"
-		       "are in the search path of your system's ld.");
+		       "are in the search path of your system's ld");
 		return -1;
 	}
 
@@ -912,7 +912,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 	if (inst->config->do_clients) {
 		if (generate_sql_clients(inst) == -1){
-			ERROR("Failed to load clients from SQL.");
+			ERROR("Failed to load clients from SQL");
 			return -1;
 		}
 	}
