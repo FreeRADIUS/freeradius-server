@@ -193,6 +193,9 @@ int fr_logfile_unlock(fr_logfile_t *lf, int fd);
 #define REDEBUG3(fmt, ...)	_RMOD(L_DBG_ERR, L_DBG_LVL_3, fmt, ## __VA_ARGS__)
 #define REDEBUG4(fmt, ...)	_RMOD(L_DBG_ERR, L_DBG_LVL_MAX, fmt, ## __VA_ARGS__)
 
+#define RINDENT()		(request->log.indent++)
+#define REXDENT()		(request->log.indent--)
+
 /*
  * Output string with error marker, showing where format error occurred.
  *

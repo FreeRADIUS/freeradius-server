@@ -167,6 +167,8 @@ fr_log_t default_log = {
 static int stderr_fd = -1;	//!< The original unmolested stderr file descriptor
 static int stdout_fd = -1;	//!< The original unmolested stdout file descriptor
 
+static char const spaces[] = "                                                                                                                        ";
+
 /** On fault, reset STDOUT and STDERR to something useful.
  *
  * @return 0
@@ -660,8 +662,15 @@ void vradlog_request(log_type_t type, log_debug_t lvl, REQUEST *request, char co
 	}
 
 	if (!fp) {
+		uint8_t indent;
+
 		if (debug_flag > 2) extra = "";
-		request ? radlog(type, "(%u) %s%s", request->number, extra, buffer) :
+
+		indent = request->log.indent > sizeof(spaces) ?
+			 sizeof(spaces) :
+			 request->log.indent;
+
+		request ? radlog(type, "(%u) %.*s%s%s", request->number, indent, spaces, extra, buffer) :
 			  radlog(type, "%s%s", extra, buffer);
 	} else {
 		if (request) {
@@ -720,32 +729,39 @@ void radlog_request_error(log_type_t type, log_debug_t lvl, REQUEST *request, ch
 	va_end(ap);
 }
 
-static char const spaces[] = "                                                                                                                        ";
-
 /** Parse error, write out string we were parsing, and a message indicating the error
  *
  * @param type the log category.
  * @param lvl of debugging this message should be displayed at.
  * @param request The current request.
  * @param fmt string we were parsing.
- * @param indent how much to indent the message by.
- * @param error what the parse error was.
+ * @param idx The position of the marker relative to the string.
+ * @param error What the parse error was.
  */
 void radlog_request_marker(log_type_t type, log_debug_t lvl, REQUEST *request,
-			   char const *fmt, size_t indent, char const *error)
+			   char const *fmt, size_t idx, char const *error)
 {
 	char const *prefix = "";
+	uint8_t indent;
 
-	if (indent >= sizeof(spaces)) {
-		size_t offset = (indent - (sizeof(spaces) - 1)) + (sizeof(spaces) * 0.75);
-		indent -= offset;
+	if (idx >= sizeof(spaces)) {
+		size_t offset = (idx - (sizeof(spaces) - 1)) + (sizeof(spaces) * 0.75);
+		idx -= offset;
 		fmt += offset;
 
 		prefix = "... ";
 	}
 
+	/*
+	 *  Don't want format markers being indented
+	 */
+	indent = request->log.indent;
+	request->log.indent = 0;
+
 	radlog_request(type, lvl, request, "%s%s", prefix, fmt);
-	radlog_request(type, lvl, request, "%s%.*s^ %s", prefix, (int) indent, spaces, error);
+	radlog_request(type, lvl, request, "%s%.*s^ %s", prefix, (int) idx, spaces, error);
+
+	request->log.indent = indent;
 }
 
 typedef struct fr_logfile_entry_t {
