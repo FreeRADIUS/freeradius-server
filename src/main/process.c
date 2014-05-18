@@ -479,7 +479,7 @@ STATE_MACHINE_DECL(request_done)
 			request->listener->send(request->listener, request);
 			return;
 		} else {
-			RDEBUG("No reply.  Ignoring retransmit.");
+			RDEBUG("No reply.  Ignoring retransmit");
 		}
 		break;
 
@@ -2645,7 +2645,7 @@ static int request_proxy(REQUEST *request, int retransmit)
 		REQUEST *fake;
 
 		if (request->packet->dst_port == 0) {
-			WARN("Cannot proxy an internal request.");
+			WARN("Cannot proxy an internal request");
 			return 0;
 		}
 

@@ -744,7 +744,7 @@ int dict_addattr(char const *name, int attr, unsigned int vendor, PW_TYPE type,
 	}
 
 	if (flags.concat && (type != PW_TYPE_OCTETS)) {
-		fr_strerror_printf("The \"concat\" flag can only be set for attributes of type \"octets\".");
+		fr_strerror_printf("The \"concat\" flag can only be set for attributes of type \"octets\"");
 		return -1;
 	}
 

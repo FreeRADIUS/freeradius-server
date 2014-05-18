@@ -226,7 +226,7 @@ static int mod_init(rlm_python_t *inst)
 	}
 
 	if ((radiusd_module = Py_InitModule3("radiusd", radiusd_methods,
-					     "FreeRADIUS Module.")) == NULL)
+					     "FreeRADIUS Module")) == NULL)
 		goto failed;
 
 	for (i = 0; radiusd_constants[i].name; i++) {

@@ -996,7 +996,7 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 			 */
 			if (sock->proto != IPPROTO_TCP) {
 				cf_log_err_cs(cs,
-					      "TLS transport is not available for UDP sockets.");
+					      "TLS transport is not available for UDP sockets");
 				return -1;
 			}
 

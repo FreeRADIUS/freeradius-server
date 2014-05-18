@@ -523,7 +523,7 @@ static int dhcp_process(REQUEST *request)
 	vp = pairfind(request->reply->vps, 264, DHCP_MAGIC_VENDOR, TAG_ANY); /* DHCP-Your-IP-Address */
 	if (!vp) {
 		RDEBUG("DHCP: Failed to find DHCP-Client-IP-Address or DHCP-Your-IP-Address for request; "
-		       "not responding.");
+		       "not responding");
 		/*
 		 *	There is nowhere to send the response to, so don't bother.
 		 */
@@ -600,7 +600,7 @@ static int dhcp_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	sock = this->data;
 
 	if (!sock->lsock.interface) {
-		WARN("No \"interface\" setting is defined.  Only unicast DHCP will work.");
+		WARN("No \"interface\" setting is defined.  Only unicast DHCP will work");
 	}
 
 	/*

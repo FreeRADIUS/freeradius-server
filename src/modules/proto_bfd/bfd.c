@@ -1861,7 +1861,7 @@ static int bfd_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	}
 
 	if (sock->auth_type == BFD_AUTH_SIMPLE) {
-		ERROR("'simple' authentication is insecure and is not supported.");
+		ERROR("'simple' authentication is insecure and is not supported");
 		exit(1);
 	}
 

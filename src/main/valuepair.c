@@ -470,7 +470,7 @@ int paircompare(REQUEST *request, VALUE_PAIR *req_list, VALUE_PAIR *check,
 			 */
 			case PW_USER_PASSWORD:
 				if (check_item->op == T_OP_CMP_EQ) {
-					WARN("Found User-Password == \"...\".");
+					WARN("Found User-Password == \"...\"");
 					WARN("Are you sure you don't mean Cleartext-Password?");
 					WARN("See \"man rlm_pap\" for more information");
 				}

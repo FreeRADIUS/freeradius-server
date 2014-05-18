@@ -170,7 +170,7 @@ static rlm_rcode_t getUserNodeRef(REQUEST *request, char* inUserName, char **out
 		}
 
 		if (!pUserLocation) {
-			DEBUG2("[mschap] OpenDirectory has no user location.");
+			DEBUG2("[mschap] OpenDirectory has no user location");
 			result = RLM_MODULE_NOOP;
 			break;
 		}
