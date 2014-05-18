@@ -323,7 +323,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	 *	If we're doing horrible tunneling work, remember it.
 	 */
 	if ((request->log.lvl & RAD_REQUEST_OPTION_PROXY_EAP) != 0) {
-		RDEBUG2("  Not-EAP proxy set.  Not composing EAP");
+		RDEBUG2("No EAP proxy set.  Not composing EAP");
 		/*
 		 *	Add the handle to the proxied list, so that we
 		 *	can retrieve it in the post-proxy stage, and
@@ -380,7 +380,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 		 */
 		pairdelete(&request->proxy->vps, PW_FREERADIUS_PROXIED_TO, VENDORPEC_FREERADIUS, TAG_ANY);
 
-		RDEBUG2("  Tunneled session will be proxied.  Not doing EAP");
+		RDEBUG2("Tunneled session will be proxied.  Not doing EAP");
 		return RLM_MODULE_HANDLED;
 	}
 #endif

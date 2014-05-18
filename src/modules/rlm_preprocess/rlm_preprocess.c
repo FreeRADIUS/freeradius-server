@@ -410,7 +410,7 @@ static int hints_setup(PAIR_LIST *hints, REQUEST *request)
 		 */
 		if (((strcmp(i->name, "DEFAULT") == 0) || (strcmp(i->name, name) == 0)) &&
 		    (paircompare(request, request_pairs, i->check, NULL) == 0)) {
-			RDEBUG2("  hints: Matched %s at %d", i->name, i->lineno);
+			RDEBUG2("hints: Matched %s at %d", i->name, i->lineno);
 			/*
 			 *	Now add all attributes to the request list,
 			 *	except PW_STRIP_USER_NAME and PW_FALL_THROUGH

@@ -885,11 +885,14 @@ rlm_rcode_t eappeap_process(eap_handler_t *handler, tls_session_t *tls_session)
 	 *	packets after we told them to f*ck off.
 	 */
 	case PEAP_STATUS_SENT_TLV_FAILURE:
-		RDEBUG(" The users session was previously rejected: returning reject (again.)");
-		RDEBUG(" *** This means you need to read the PREVIOUS messages in the debug output");
-		RDEBUG(" *** to find out the reason why the user was rejected");
-		RDEBUG(" *** Look for \"reject\" or \"fail\".  Those earlier messages will tell you");
-		RDEBUG(" *** what went wrong, and how to fix the problem");
+		RINDENT();
+		RDEBUG("The users session was previously rejected: returning reject (again.)");
+		RDEBUG("*** This means you need to read the PREVIOUS messages in the debug output");
+		RDEBUG("*** to find out the reason why the user was rejected");
+		RDEBUG("*** Look for \"reject\" or \"fail\".  Those earlier messages will tell you");
+		RDEBUG("*** what went wrong, and how to fix the problem");
+		REXDENT();
+
 		return RLM_MODULE_REJECT;
 
 		case PEAP_STATUS_PHASE2_INIT:
