@@ -163,6 +163,7 @@ static const CONF_PARSER server_config[] = {
 	{ "radacctdir",	 PW_TYPE_STRING_PTR, 0, &radacct_dir,       "${logdir}/radacct" },
 	{ "panic_action", PW_TYPE_STRING_PTR, 0, &main_config.panic_action, NULL},
 	{ "hostname_lookups",   PW_TYPE_BOOLEAN,    0, &fr_dns_lookups,      "no" },
+	{ "init_delay", PW_TYPE_INTEGER, 0, &main_config.init_delay, "333333" },
 	{ "max_request_time", PW_TYPE_INTEGER, 0, &main_config.max_request_time, STRINGIFY(MAX_REQUEST_TIME) },
 	{ "cleanup_delay", PW_TYPE_INTEGER, 0, &main_config.cleanup_delay, STRINGIFY(CLEANUP_DELAY) },
 	{ "max_requests", PW_TYPE_INTEGER, 0, &main_config.max_requests, STRINGIFY(MAX_REQUESTS) },
@@ -913,6 +914,7 @@ do {\
 	fr_debug_flag = debug_flag;
 
 	FR_INTEGER_COND_CHECK("max_request_time", main_config.max_request_time, (main_config.max_request_time != 0), 100);
+	FR_INTEGER_BOUND_CHECK("init_delay", main_config.init_delay, >=, 10);
 	FR_INTEGER_BOUND_CHECK("reject_delay", main_config.reject_delay, <=, 10);
 	FR_INTEGER_BOUND_CHECK("cleanup_delay", main_config.cleanup_delay, <=, 10);
 	/*

@@ -642,7 +642,8 @@ STATE_MACHINE_DECL(request_done)
 #endif
 
 		when = now;
-		if (request->delay < (USEC / 3)) request->delay = USEC / 3;
+		if (request->delay < request->root->init_delay)
+			request->delay = request->root->init_delay;
 		tv_add(&when, request->delay);
 		request->delay += request->delay >> 1;
 		if (request->delay > (10 * USEC)) request->delay = 10 * USEC;
@@ -941,7 +942,7 @@ static void request_queue_or_run(UNUSED REQUEST *request,
 		/*
 		 *	(re) set the initial delay.
 		 */
-		request->delay = USEC / 3;
+		request->delay = request->root->init_delay;
 		gettimeofday(&when, NULL);
 		tv_add(&when, request->delay);
 		request->delay += request->delay >> 1;

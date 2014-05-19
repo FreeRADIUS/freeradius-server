@@ -416,6 +416,7 @@ typedef struct main_config_t {
 	char const	*allow_vulnerable_openssl;
 
 	int		max_request_time;
+	int		init_delay;
 	int		cleanup_delay;
 	int		max_requests;
 #ifdef DELETE_BLOCKED_REQUESTS
