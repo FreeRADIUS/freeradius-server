@@ -1,6 +1,6 @@
 --- a/Make.inc.in
 +++ b/Make.inc.in
-@@ -75,7 +75,7 @@
+@@ -94,7 +94,7 @@
  
  LOGDIR		= ${logdir}
  RADDBDIR	= ${raddbdir}
@@ -8,7 +8,7 @@
 +RUNDIR		= ${localstatedir}/run/freeradius
  SBINDIR		= ${sbindir}
  RADIR		= ${radacctdir}
- LIBRADIUS	= $(top_builddir)/src/lib/$(LIBPREFIX)freeradius-radius.la -ltalloc
+ LIBRADIUS	= $(top_builddir)/src/lib/$(LIBPREFIX)freeradius-radius.la $(TALLOC_LIBS)
 --- a/raddb/radiusd.conf.in
 +++ b/raddb/radiusd.conf.in
 @@ -61,7 +61,7 @@
