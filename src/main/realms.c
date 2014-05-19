@@ -295,6 +295,8 @@ static char *hs_srcipaddr = NULL;
 static char *hs_type = NULL;
 static char *hs_check = NULL;
 static char *hs_virtual_server = NULL;
+static int response_window = 0;
+static int response_window_usec = 0;
 #ifdef WITH_TCP
 static char *hs_proto = NULL;
 #endif
@@ -340,7 +342,9 @@ static CONF_PARSER home_server_config[] = {
 	  0, &hs_srcipaddr,  NULL },
 
 	{ "response_window", PW_TYPE_INTEGER,
-	  offsetof(home_server_t,response_window), NULL,   "30" },
+	  0, &response_window, "30" },
+	{ "response_window_usec", PW_TYPE_INTEGER,
+	  0, &response_window_usec, "0" },
 	{ "max_outstanding", PW_TYPE_INTEGER,
 	  offsetof(home_server_t,max_outstanding), NULL,   "65536" },
 
@@ -385,6 +389,8 @@ static CONF_PARSER home_server_config[] = {
 static void null_free(UNUSED void *data)
 {
 }
+
+#define timerceil(ptv) ((int)(ptv)->tv_sec + ((ptv)->tv_usec ? 1 : 0))
 
 static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 {
@@ -725,13 +731,25 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 	FR_INTEGER_BOUND_CHECK("ping_interval", home->ping_interval, >=, 6);
 	FR_INTEGER_BOUND_CHECK("ping_interval", home->ping_interval, <=, 120);
 
-	FR_INTEGER_BOUND_CHECK("response_window", home->response_window, >=, 1);
-	FR_INTEGER_BOUND_CHECK("response_window", home->response_window, <=, 60);
-	FR_INTEGER_BOUND_CHECK("response_window", home->response_window, <=, main_config.max_request_time);
+	FR_INTEGER_BOUND_CHECK("response_window", response_window, >=, 0);
+	FR_INTEGER_BOUND_CHECK("response_window", response_window, <=, 60);
+	FR_INTEGER_BOUND_CHECK("response_window", response_window, <=, main_config.max_request_time);
+	FR_INTEGER_BOUND_CHECK("response_window_usec", response_window_usec, >=, 0);
+	FR_INTEGER_BOUND_CHECK("response_window_usec", response_window_usec, <=, 999999);
+	FR_INTEGER_COND_CHECK("response_window_usec", response_window_usec,
+			      response_window < 60 &&
+					response_window < main_config.max_request_time,
+			      0);
+	FR_INTEGER_COND_CHECK("response_window_usec", response_window_usec,
+			      response_window > 0 || response_window_usec > 0,
+			      1);
+
+	home->response_window.tv_sec = response_window;
+	home->response_window.tv_usec = response_window_usec;
 
 	FR_INTEGER_BOUND_CHECK("zombie_period", home->zombie_period, >=, 1);
 	FR_INTEGER_BOUND_CHECK("zombie_period", home->zombie_period, <=, 120);
-	FR_INTEGER_BOUND_CHECK("zombie_period", home->zombie_period, >=, home->response_window);
+	FR_INTEGER_BOUND_CHECK("zombie_period", home->zombie_period, >=, timerceil(&home->response_window));
 
 	FR_INTEGER_BOUND_CHECK("num_pings_to_alive", home->num_pings_to_alive, >=, 3);
 	FR_INTEGER_BOUND_CHECK("num_pings_to_alive", home->num_pings_to_alive, <=, 10);
@@ -1242,7 +1260,8 @@ static int old_server_add(realm_config_t *rc, CONF_SECTION *cs,
 		home->max_outstanding = 65535*16;
 		home->zombie_period = rc->retry_delay * rc->retry_count;
 		if (home->zombie_period == 0) home->zombie_period =30;
-		home->response_window = home->zombie_period - 1;
+		home->response_window.tv_sec = home->zombie_period - 1;
+		home->response_window.tv_usec = 0;
 
 		home->ping_check = HOME_PING_CHECK_NONE;
 

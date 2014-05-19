@@ -595,7 +595,7 @@ STATE_MACHINE_DECL(request_done)
 			when.tv_sec += request->home_server->coa_mrd;
 		} else
 #endif
-		when.tv_sec += request->home_server->response_window;
+		timeradd(&when, &request->home_server->response_window, &when);
 
 		/*
 		 *	We haven't received all responses, AND there's still
@@ -3082,10 +3082,10 @@ static void mark_home_server_zombie(home_server_t *home, struct timeval *now)
 	home->num_sent_pings = 0;
 	home->num_received_pings = 0;
 
-	PROXY( "Marking home server %s port %d as zombie (it has not responded in %d seconds).",
+	PROXY( "Marking home server %s port %d as zombie (it has not responded in %d.%.6d seconds).",
 	       inet_ntop(home->ipaddr.af, &home->ipaddr.ipaddr,
 			 buffer, sizeof(buffer)),
-	       home->port, home->response_window);
+	       home->port, (int)home->response_window.tv_sec, (int)home->response_window.tv_usec);
 
 	ping_home_server(home);
 }
@@ -3284,15 +3284,16 @@ STATE_MACHINE_DECL(proxy_wait_for_reply)
 			 *	zombie if it doesn't respond to us.  It may be
 			 *	responding to other (better looking) packets.
 			 */
-			when = request->proxy->timestamp;
-			when.tv_sec += home->response_window;
+			timeradd(&request->proxy->timestamp, &home->response_window, &when);
 
 			/*
 			 *	Not at the response window.  Set the timer for
 			 *	that.
 			 */
 			if (timercmp(&when, &now, >)) {
-				RDEBUG("Expecting proxy response no later than %d seconds from now", home->response_window);
+				RDEBUG("Expecting proxy response no later than %d.%.6d seconds from now",
+					(int)home->response_window.tv_sec,
+					(int)home->response_window.tv_usec);
 				STATE_MACHINE_TIMER(FR_ACTION_TIMER);
 				return;
 			}
