@@ -345,6 +345,8 @@ static CONF_PARSER home_server_config[] = {
 	  0, &response_window, "30" },
 	{ "response_window_usec", PW_TYPE_INTEGER,
 	  0, &response_window_usec, "0" },
+	{ "max_response_timeouts", PW_TYPE_INTEGER,
+	  offsetof(home_server_t,max_response_timeouts), NULL, "0" },
 	{ "max_outstanding", PW_TYPE_INTEGER,
 	  offsetof(home_server_t,max_outstanding), NULL,   "65536" },
 
@@ -746,6 +748,8 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 
 	home->response_window.tv_sec = response_window;
 	home->response_window.tv_usec = response_window_usec;
+
+	FR_INTEGER_BOUND_CHECK("max_response_timeouts", home->max_response_timeouts, >=, 0);
 
 	FR_INTEGER_BOUND_CHECK("zombie_period", home->zombie_period, >=, 1);
 	FR_INTEGER_BOUND_CHECK("zombie_period", home->zombie_period, <=, 120);
@@ -2385,6 +2389,7 @@ home_server_t *home_server_ldb(char const *realmname,
 			if ((home->state == HOME_STATE_IS_DEAD) &&
 			    (home->ping_check == HOME_PING_CHECK_NONE)) {
 				home->state = HOME_STATE_ALIVE;
+				home->response_timeouts = 0;
 				if (!found) found = home;
 			}
 		}
