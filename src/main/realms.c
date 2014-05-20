@@ -339,7 +339,7 @@ static CONF_PARSER home_server_config[] = {
 	{ "src_ipaddr",  PW_TYPE_STRING_PTR,
 	  0, &hs_srcipaddr,  NULL },
 
-	{ "response_window", PW_TYPE_INTEGER,
+	{ "response_window", PW_TYPE_TIMEVAL,
 	  offsetof(home_server_t,response_window), NULL,   "30" },
 	{ "max_outstanding", PW_TYPE_INTEGER,
 	  offsetof(home_server_t,max_outstanding), NULL,   "65536" },
@@ -725,13 +725,28 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 	FR_INTEGER_BOUND_CHECK("ping_interval", home->ping_interval, >=, 6);
 	FR_INTEGER_BOUND_CHECK("ping_interval", home->ping_interval, <=, 120);
 
-	FR_INTEGER_BOUND_CHECK("response_window", home->response_window, >=, 1);
-	FR_INTEGER_BOUND_CHECK("response_window", home->response_window, <=, 60);
-	FR_INTEGER_BOUND_CHECK("response_window", home->response_window, <=, main_config.max_request_time);
+	if (!home->response_window.tv_sec) {
+		int tmp = home->response_window.tv_usec; /* which isn't an integer */
+
+		FR_INTEGER_BOUND_CHECK("response_window microseconds", tmp, >=, 1000);
+		home->response_window.tv_usec = tmp;
+
+	} else {
+		int tmp = home->response_window.tv_sec; /* which isn't an integer */
+
+		FR_INTEGER_BOUND_CHECK("response_window", tmp, <=, 60);
+		FR_INTEGER_BOUND_CHECK("response_window", tmp, <=, main_config.max_request_time);
+		FR_INTEGER_BOUND_CHECK("response_window", tmp, <=, main_config.max_request_time);
+
+		if (home->response_window.tv_sec != tmp) {
+			home->response_window.tv_sec = tmp;
+			home->response_window.tv_usec = 0;
+		}
+	}
 
 	FR_INTEGER_BOUND_CHECK("zombie_period", home->zombie_period, >=, 1);
 	FR_INTEGER_BOUND_CHECK("zombie_period", home->zombie_period, <=, 120);
-	FR_INTEGER_BOUND_CHECK("zombie_period", home->zombie_period, >=, home->response_window);
+	FR_INTEGER_BOUND_CHECK("zombie_period", home->zombie_period, >=, (int) home->response_window.tv_sec);
 
 	FR_INTEGER_BOUND_CHECK("num_pings_to_alive", home->num_pings_to_alive, >=, 3);
 	FR_INTEGER_BOUND_CHECK("num_pings_to_alive", home->num_pings_to_alive, <=, 10);
@@ -1241,8 +1256,9 @@ static int old_server_add(realm_config_t *rc, CONF_SECTION *cs,
 		 */
 		home->max_outstanding = 65535*16;
 		home->zombie_period = rc->retry_delay * rc->retry_count;
-		if (home->zombie_period == 0) home->zombie_period =30;
-		home->response_window = home->zombie_period - 1;
+		if (home->zombie_period == 0) home->zombie_period = 30;
+		home->response_window.tv_sec = home->zombie_period - 1;
+		home->response_window.tv_usec = 0;
 
 		home->ping_check = HOME_PING_CHECK_NONE;
 
