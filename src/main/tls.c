@@ -1975,20 +1975,27 @@ static void sess_free_certs(UNUSED void *parent, void *data_ptr,
 	pairfree(certs);
 }
 
-/*
- *	Add all the default ciphers and message digests
- *	Create our context.
+/** Add all the default ciphers and message digests reate our context.
  *
- *	This should be called exactly once from main.
+ * This should be called exactly once from main, before reading the main config
+ * or initialising any modules.
  */
-int tls_global_init(char const *acknowledged)
+void tls_global_init(void)
 {
-	uint64_t v;
-
 	SSL_load_error_strings();	/* readable error messages (examples show call before library_init) */
 	SSL_library_init();		/* initialize library */
 	OpenSSL_add_all_algorithms();	/* required for SHA2 in OpenSSL < 0.9.8o and 1.0.0.a */
 	OPENSSL_config(NULL);
+}
+
+/** Check for vulnerable versions of libssl
+ *
+ * @param acknowledged The highest CVE number a user has confirmed is not present in the system's libssl.
+ * @return 0 if the CVE specified by the user matches the most recent CVE we have, else -1.
+ */
+int tls_global_version_check(char const *acknowledged)
+{
+	uint64_t v;
 
 	if ((strcmp(acknowledged, libssl_defects[0].id) != 0) && (strcmp(acknowledged, "yes") != 0)) {
 		bool bad = false;
@@ -2020,7 +2027,10 @@ int tls_global_init(char const *acknowledged)
 	return 0;
 }
 
-void tls_global_remove(void)
+/** Free any memory alloced by libssl
+ *
+ */
+void tls_global_cleanup(void)
 {
 	ERR_remove_state(0);
 	ENGINE_cleanup();

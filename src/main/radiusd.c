@@ -315,6 +315,14 @@ int main(int argc, char *argv[])
 	}
 
 	/*
+	 *  Initialising OpenSSL once, here, is safer than having individual
+	 *  modules do it.
+	 */
+#ifdef HAVE_OPENSSL_CRYPTO_H
+	tls_global_init();
+#endif
+
+	/*
 	 *  Initialize any event loops just enough so module instantiations
 	 *  can add fd/event to them, but do not start them yet.
 	 */
@@ -327,15 +335,10 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	/*
-	 *  Initialising OpenSSL once, here, is safer than having individual
-	 *  modules do it.
-	 */
-#ifdef HAVE_OPENSSL_CRYPTO_H
-	if (tls_global_init(main_config.allow_vulnerable_openssl) < 0) {
+	/*  Check for vulnerabilities in the version of libssl were linked against */
+	if (tls_global_version_check(main_config.allow_vulnerable_openssl) < 0) {
 		exit(EXIT_FAILURE);
 	}
-#endif
 
 	/*
 	 *  Load the modules
@@ -612,7 +615,7 @@ cleanup:
 #endif
 
 #ifdef HAVE_OPENSSL_CRYPTO_H
-	tls_global_remove();
+	tls_global_cleanup();
 #endif
 
 	/*
