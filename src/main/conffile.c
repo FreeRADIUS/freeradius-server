@@ -1140,6 +1140,34 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, int type, void *data, char
 		       sizeof(ipaddr.ipaddr.ip6addr));
 		break;
 
+	case PW_TYPE_TIMEVAL: {
+		int sec;
+		char *end;
+		struct timeval tv;
+
+		sec = strtoul(value, &end, 10);
+		tv.tv_sec = sec;
+		tv.tv_usec = 0;
+		if (*end == '.') {
+			sec = strlen(end + 1);
+
+			if (sec > 6) {
+				ERROR("Too much precision for timeval");
+				return -1;
+			}
+
+			strcpy(buffer, "000000");
+			memcpy(buffer, end + 1, sec);
+
+			sec = strtoul(buffer, NULL, 10);
+			tv.tv_usec = sec;
+		}
+		cf_log_info(cs, "%.*s\t%s = %d.%06d",
+			    cs->depth, parse_spaces, name, (int) tv.tv_sec, (int) tv.tv_usec);
+
+		}
+		break;
+
 	default:
 		/*
 		 *	If we get here, it's a sanity check error.
