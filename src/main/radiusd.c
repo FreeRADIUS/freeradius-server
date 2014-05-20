@@ -336,9 +336,11 @@ int main(int argc, char *argv[])
 	}
 
 	/*  Check for vulnerabilities in the version of libssl were linked against */
+#ifdef HAVE_OPENSSL_CRYPTO_H
 	if (tls_global_version_check(main_config.allow_vulnerable_openssl) < 0) {
 		exit(EXIT_FAILURE);
 	}
+#endif
 
 	/*
 	 *  Load the modules

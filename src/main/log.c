@@ -671,7 +671,7 @@ void vradlog_request(log_type_t type, log_debug_t lvl, REQUEST *request, char co
 			indent = request->log.indent > sizeof(spaces) ?
 				 sizeof(spaces) :
 				 request->log.indent;
-			radlog(type, "(%u) %.*s%s%s", request->number, indent, spaces, extra, buffer) :
+			radlog(type, "(%u) %.*s%s%s", request->number, indent, spaces, extra, buffer);
 		} else {
 			radlog(type, "%s%s", extra, buffer);
 		}
