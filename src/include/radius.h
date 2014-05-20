@@ -34,7 +34,7 @@ typedef enum {
 } PW_TYPE;
 
 typedef enum {
-	PW_CODE_INVALID			= 0,	//!< Packet code is invalid
+	PW_CODE_UNDEFINED		= 0,	//!< Packet code has not been set
 	PW_CODE_AUTHENTICATION_REQUEST 	= 1,	//!< RFC2865 - Access-Request
 	PW_CODE_AUTHENTICATION_ACK	= 2,	//!< RFC2865 - Access-Accept
 	PW_CODE_AUTHENTICATION_REJECT	= 3,	//!< RFC2865 - Access-Reject
