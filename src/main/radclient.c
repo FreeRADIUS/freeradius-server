@@ -47,7 +47,7 @@ static bool do_output = true;
 
 static rc_stats_t stats;
 
-static int server_port = 0;
+static uint16_t server_port = 0;
 static int packet_code = 0;
 static fr_ipaddr_t server_ipaddr;
 static int resend_count = 1;
@@ -110,6 +110,17 @@ static void NEVER_RETURNS usage(void)
 
 	exit(1);
 }
+
+static const FR_NAME_NUMBER request_types[] = {
+	{ "auth",	PW_CODE_AUTHENTICATION_REQUEST },
+	{ "challenge",	PW_CODE_ACCESS_CHALLENGE },
+	{ "status",	PW_CODE_STATUS_SERVER },
+	{ "disconnect",	PW_CODE_DISCONNECT_REQUEST },
+	{ "coa",	PW_CODE_COA_REQUEST },
+	{ "auto",	PW_CODE_UNDEFINED },
+
+	{ NULL, 0}
+};
 
 /*
  *	Free a radclient struct, which may (or may not)
@@ -179,6 +190,45 @@ static int mschapv1_encode(RADIUS_PACKET *packet, VALUE_PAIR **request,
 
 	smbdes_mschap(nthash, challenge->vp_octets, p + 26);
 	return 1;
+}
+
+
+static int getport(char const *name)
+{
+	struct	servent *svp;
+
+	svp = getservbyname(name, "udp");
+	if (!svp) {
+		return 0;
+	}
+
+	return ntohs(svp->s_port);
+}
+
+static void radclient_get_port(PW_CODE type, uint16_t *port)
+{
+	switch (type) {
+	default:
+	case PW_CODE_AUTHENTICATION_REQUEST:
+	case PW_CODE_ACCESS_CHALLENGE:
+	case PW_CODE_STATUS_SERVER:
+		if (*port == 0) *port = getport("radius");
+		if (*port == 0) *port = PW_AUTH_UDP_PORT;
+		return;
+
+	case PW_CODE_ACCOUNTING_REQUEST:
+		if (*port == 0) *port = getport("radacct");
+		if (*port == 0) *port = PW_ACCT_UDP_PORT;
+		return;
+
+	case PW_CODE_DISCONNECT_REQUEST:
+	case PW_CODE_COA_REQUEST:
+		if (*port == 0) *port = PW_COA_UDP_PORT;
+		return;
+
+	case PW_CODE_UNDEFINED:
+		if (*port == 0) *port = 0;
+	}
 }
 
 /*
@@ -478,6 +528,14 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 				break;
 			}
 		} /* loop over the VP's we read in */
+
+		/*
+		 *	Automatically set the port if we don't have a global
+		 *	or packet specific one.
+		 */
+		if ((server_port == 0) && (request->packet->dst_port == 0)) {
+			radclient_get_port(request->packet->code, &request->packet->dst_port);
+		}
 
 		/*
 		 *	Add it to the tail of the list.
@@ -965,19 +1023,6 @@ packet_done:
 	return 0;
 }
 
-
-static int getport(char const *name)
-{
-	struct	servent		*svp;
-
-	svp = getservbyname (name, "udp");
-	if (!svp) {
-		return 0;
-	}
-
-	return ntohs(svp->s_port);
-}
-
 int main(int argc, char **argv)
 {
 	int c;
@@ -1182,6 +1227,20 @@ int main(int argc, char **argv)
 	}
 	fr_strerror();	/* Clear the error buffer */
 
+
+	/*
+	 *	Get the request type
+	 */
+	if (!isdigit((int) argv[2][0])) {
+		packet_code = fr_str2int(request_types, argv[2], -2);
+		if (packet_code == -2) {
+			ERROR("Unrecognised request type \"%s\"", argv[2]);
+			usage();
+		}
+	} else {
+		packet_code = atoi(argv[2]);
+	}
+
 	/*
 	 *	Resolve hostname.
 	 */
@@ -1225,48 +1284,7 @@ int main(int argc, char **argv)
 		if (portname) server_port = atoi(portname);
 	}
 
-	/*
-	 *	See what kind of request we want to send.
-	 */
-	if (strcmp(argv[2], "auth") == 0) {
-		if (server_port == 0) server_port = getport("radius");
-		if (server_port == 0) server_port = PW_AUTH_UDP_PORT;
-		packet_code = PW_CODE_AUTHENTICATION_REQUEST;
-
-	} else if (strcmp(argv[2], "challenge") == 0) {
-		if (server_port == 0) server_port = getport("radius");
-		if (server_port == 0) server_port = PW_AUTH_UDP_PORT;
-		packet_code = PW_CODE_ACCESS_CHALLENGE;
-
-	} else if (strcmp(argv[2], "acct") == 0) {
-		if (server_port == 0) server_port = getport("radacct");
-		if (server_port == 0) server_port = PW_ACCT_UDP_PORT;
-		packet_code = PW_CODE_ACCOUNTING_REQUEST;
-		do_summary = false;
-
-	} else if (strcmp(argv[2], "status") == 0) {
-		if (server_port == 0) server_port = getport("radius");
-		if (server_port == 0) server_port = PW_AUTH_UDP_PORT;
-		packet_code = PW_CODE_STATUS_SERVER;
-
-	} else if (strcmp(argv[2], "disconnect") == 0) {
-		if (server_port == 0) server_port = PW_COA_UDP_PORT;
-		packet_code = PW_CODE_DISCONNECT_REQUEST;
-
-	} else if (strcmp(argv[2], "coa") == 0) {
-		if (server_port == 0) server_port = PW_COA_UDP_PORT;
-		packet_code = PW_CODE_COA_REQUEST;
-
-	} else if (strcmp(argv[2], "auto") == 0) {
-		packet_code = -1;
-
-	} else if (isdigit((int) argv[2][0])) {
-		if (server_port == 0) server_port = getport("radius");
-		if (server_port == 0) server_port = PW_AUTH_UDP_PORT;
-		packet_code = atoi(argv[2]);
-	} else {
-		usage();
-	}
+	radclient_get_port(packet_code, &server_port);
 
 	/*
 	 *	Add the secret.
