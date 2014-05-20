@@ -662,16 +662,19 @@ void vradlog_request(log_type_t type, log_debug_t lvl, REQUEST *request, char co
 	}
 
 	if (!fp) {
-		uint8_t indent;
 
 		if (debug_flag > 2) extra = "";
-
-		indent = request->log.indent > sizeof(spaces) ?
-			 sizeof(spaces) :
-			 request->log.indent;
-
-		request ? radlog(type, "(%u) %.*s%s%s", request->number, indent, spaces, extra, buffer) :
-			  radlog(type, "%s%s", extra, buffer);
+		
+		if (request) {
+			uint8_t indent;
+		
+			indent = request->log.indent > sizeof(spaces) ?
+				 sizeof(spaces) :
+				 request->log.indent;
+			radlog(type, "(%u) %.*s%s%s", request->number, indent, spaces, extra, buffer) :
+		} else {
+			radlog(type, "%s%s", extra, buffer);
+		}
 	} else {
 		if (request) {
 			fprintf(fp, "(%u) %s", request->number, extra);
