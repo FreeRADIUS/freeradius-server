@@ -490,6 +490,8 @@ RADCLIENT *client_find_old(fr_ipaddr_t const *ipaddr)
 static struct in_addr cl_ip4addr;
 static struct in6_addr cl_ip6addr;
 static char *cl_srcipaddr = NULL;
+static int response_window = 0;
+static int response_window_usec = 0;
 #ifdef WITH_TCP
 static char *hs_proto = NULL;
 #endif
@@ -537,6 +539,10 @@ static const CONF_PARSER client_config[] = {
 	  offsetof(RADCLIENT, password), 0, NULL },
 	{ "virtual_server",  PW_TYPE_STRING_PTR,
 	  offsetof(RADCLIENT, server), 0, NULL },
+	{ "response_window", PW_TYPE_INTEGER,
+	  0, &response_window, "0" },
+	{ "response_window_usec", PW_TYPE_INTEGER,
+	  0, &response_window_usec, "0" },
 
 #ifdef WITH_TCP
 	{ "proto",  PW_TYPE_STRING_PTR,
@@ -758,6 +764,19 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int in_server)
 	default:
 		break;
 	}
+
+	FR_INTEGER_BOUND_CHECK("response_window", response_window, >=, 0);
+	FR_INTEGER_BOUND_CHECK("response_window", response_window, <=, 60);
+	FR_INTEGER_BOUND_CHECK("response_window", response_window, <=, main_config.max_request_time);
+	FR_INTEGER_BOUND_CHECK("response_window_usec", response_window_usec, >=, 0);
+	FR_INTEGER_BOUND_CHECK("response_window_usec", response_window_usec, <=, 999999);
+	FR_INTEGER_COND_CHECK("response_window_usec", response_window_usec,
+			      response_window < 60 &&
+					response_window < main_config.max_request_time,
+			      0);
+
+	c->response_window.tv_sec = response_window;
+	c->response_window.tv_usec = response_window_usec;
 
 #ifdef WITH_DYNAMIC_CLIENTS
 	if (c->client_server) {

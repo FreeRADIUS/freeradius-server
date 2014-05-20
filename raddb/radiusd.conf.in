@@ -172,6 +172,17 @@ pidfile = ${run_dir}/${name}.pid
 #
 max_request_time = 30
 
+#  init_delay: Initial delay (in microseconds) before sending a request.
+#
+#  Requests will be sent this amount of time after being triggered. E.g. a
+#  request to a proxy will be sent with this delay after receiving the
+#  original request.
+#
+#  NOTE: This doesn't affect CoA request IRT (initial retransmit timeout),
+#  which is similar, but is specified using home server's coa.irt option.
+#
+init_delay = 333333
+
 #  cleanup_delay: The time to wait (in seconds) before cleaning up
 #  a reply which was sent to the NAS.
 #
