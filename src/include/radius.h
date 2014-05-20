@@ -30,6 +30,7 @@ typedef enum {
 	PW_TYPE_INTEGER64,	//!< 64 Bit unsigned integer.
 	PW_TYPE_IPV4PREFIX,	//!< IPv4 Prefix.
 	PW_TYPE_VSA,		//!< Vendor-Specific, for attribute 26
+	PW_TYPE_TIMEVAL,	//!< "struct timeval", only for config items
 	PW_TYPE_MAX		//!< Number of defined data types.
 } PW_TYPE;
 

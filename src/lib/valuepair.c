@@ -2470,13 +2470,14 @@ int8_t paircmp_value(VALUE_PAIR const *one, VALUE_PAIR const *two)
 	/*
 	 *	None of the types below should be in the REQUEST
 	 */
+	case PW_TYPE_INVALID:		/* We should never see these */
 	case PW_TYPE_COMBO_IP:		/* This should of been converted into IPADDR/IPV6ADDR */
 	case PW_TYPE_TLV:
 	case PW_TYPE_EXTENDED:
 	case PW_TYPE_LONG_EXTENDED:
 	case PW_TYPE_EVS:
 	case PW_TYPE_VSA:
-	case PW_TYPE_INVALID:		/* We should never see these */
+	case PW_TYPE_TIMEVAL:
 	case PW_TYPE_MAX:
 		fr_assert(0);	/* unknown type */
 		return -2;
