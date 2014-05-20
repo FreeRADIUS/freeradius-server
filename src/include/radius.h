@@ -6,32 +6,30 @@
  */
 
 typedef enum {
-	PW_TYPE_INVALID = 0,	//!< Invalid (uninitialised) attribute type.
-	PW_TYPE_STRING,		//!< String of printable characters.
-	PW_TYPE_INTEGER,	//!< 32 Bit unsigned integer.
-	PW_TYPE_IPADDR,		//!< 32 Bit IPv4 Address.
-	PW_TYPE_DATE,		//!< 32 Bit Unix timestamp.
-	PW_TYPE_ABINARY,	//!< Ascend binary format a packed data
-				//!< structure.
-	PW_TYPE_OCTETS,		//!< Raw octets.
-	PW_TYPE_IFID,		//!< Interface ID.
-	PW_TYPE_IPV6ADDR,	//!< 128 Bit IPv6 Address.
-	PW_TYPE_IPV6PREFIX,	//!< IPv6 Prefix.
-	PW_TYPE_BYTE,		//!< 8 Bit unsigned integer.
-	PW_TYPE_SHORT,		//!< 16 Bit unsigned integer.
-	PW_TYPE_ETHERNET,	//!< 48 Bit Mac-Address.
-	PW_TYPE_SIGNED,		//!< 32 Bit signed integer.
-	PW_TYPE_COMBO_IP,	//!< WiMAX IPv4 or IPv6 address depending
-				//!< on length.
-	PW_TYPE_TLV,		//!< Contains nested attributes.
-	PW_TYPE_EXTENDED,	//!< Extended attribute space attribute.
-	PW_TYPE_LONG_EXTENDED,	//!< Long extended attribute space attribute.
-	PW_TYPE_EVS,		//!< Extended attribute, vendor specific.
-	PW_TYPE_INTEGER64,	//!< 64 Bit unsigned integer.
-	PW_TYPE_IPV4PREFIX,	//!< IPv4 Prefix.
-	PW_TYPE_VSA,		//!< Vendor-Specific, for attribute 26
-	PW_TYPE_TIMEVAL,	//!< "struct timeval", only for config items
-	PW_TYPE_MAX		//!< Number of defined data types.
+	PW_TYPE_INVALID = 0,			//!< Invalid (uninitialised) attribute type.
+	PW_TYPE_STRING,				//!< String of printable characters.
+	PW_TYPE_INTEGER,			//!< 32 Bit unsigned integer.
+	PW_TYPE_IPADDR,				//!< 32 Bit IPv4 Address.
+	PW_TYPE_DATE,				//!< 32 Bit Unix timestamp.
+	PW_TYPE_ABINARY,			//!< Ascend binary format a packed data structure.
+	PW_TYPE_OCTETS,				//!< Raw octets.
+	PW_TYPE_IFID,				//!< Interface ID.
+	PW_TYPE_IPV6ADDR,			//!< 128 Bit IPv6 Address.
+	PW_TYPE_IPV6PREFIX,			//!< IPv6 Prefix.
+	PW_TYPE_BYTE,				//!< 8 Bit unsigned integer.
+	PW_TYPE_SHORT,				//!< 16 Bit unsigned integer.
+	PW_TYPE_ETHERNET,			//!< 48 Bit Mac-Address.
+	PW_TYPE_SIGNED,				//!< 32 Bit signed integer.
+	PW_TYPE_COMBO_IP,			//!< WiMAX IPv4 or IPv6 address depending on length.
+	PW_TYPE_TLV,				//!< Contains nested attributes.
+	PW_TYPE_EXTENDED,			//!< Extended attribute space attribute.
+	PW_TYPE_LONG_EXTENDED,			//!< Long extended attribute space attribute.
+	PW_TYPE_EVS,				//!< Extended attribute, vendor specific.
+	PW_TYPE_INTEGER64,			//!< 64 Bit unsigned integer.
+	PW_TYPE_IPV4PREFIX,			//!< IPv4 Prefix.
+	PW_TYPE_VSA,				//!< Vendor-Specific, for RADIUS attribute 26.
+	PW_TYPE_TIMEVAL,			//!< Time value (struct timeval), only for config items.
+	PW_TYPE_MAX				//!< Number of defined data types.
 } PW_TYPE;
 
 typedef enum {
