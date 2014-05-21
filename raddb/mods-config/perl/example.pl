@@ -61,12 +61,14 @@ use constant {
 };
 
 # Same as src/include/radiusd.h
-use constant	L_DBG=>   1;
-use constant	L_AUTH=>  2;
-use constant	L_INFO=>  3;
-use constant	L_ERR=>   4;
-use constant	L_PROXY=> 5;
-use constant	L_ACCT=>  6;
+use constant {
+	L_DBG   => 1,
+	L_AUTH  => 2,
+	L_INFO  => 3,
+	L_ERR   => 4,
+	L_PROXY => 5,
+	L_ACCT  => 6
+};
 
 #  Global variables can persist across different calls to the module.
 #
@@ -84,11 +86,11 @@ use constant	L_ACCT=>  6;
 # Function to handle authorize
 sub authorize {
 	# For debugging purposes only
-#	&log_request_attributes;
+#	log_request_attributes();
 
 	# Here's where your authorization code comes
 	# You can call another function from here:
-	&test_call;
+	test_call();
 
 	return RLM_MODULE_OK;
 }
@@ -96,7 +98,7 @@ sub authorize {
 # Function to handle authenticate
 sub authenticate {
 	# For debugging purposes only
-#	&log_request_attributes;
+#	log_request_attributes();
 
 	if ($RAD_REQUEST{'User-Name'} =~ /^baduser/i) {
 		# Reject user and tell him why
@@ -112,7 +114,7 @@ sub authenticate {
 # Function to handle preacct
 sub preacct {
 	# For debugging purposes only
-#	&log_request_attributes;
+#	log_request_attributes();
 
 	return RLM_MODULE_OK;
 }
@@ -120,10 +122,10 @@ sub preacct {
 # Function to handle accounting
 sub accounting {
 	# For debugging purposes only
-#	&log_request_attributes;
+#	log_request_attributes();
 
 	# You can call another subroutine from here
-	&test_call;
+	test_call();
 
 	return RLM_MODULE_OK;
 }
@@ -131,7 +133,7 @@ sub accounting {
 # Function to handle checksimul
 sub checksimul {
 	# For debugging purposes only
-#	&log_request_attributes;
+#	log_request_attributes();
 
 	return RLM_MODULE_OK;
 }
@@ -139,7 +141,7 @@ sub checksimul {
 # Function to handle pre_proxy
 sub pre_proxy {
 	# For debugging purposes only
-#	&log_request_attributes;
+#	log_request_attributes();
 
 	return RLM_MODULE_OK;
 }
@@ -147,7 +149,7 @@ sub pre_proxy {
 # Function to handle post_proxy
 sub post_proxy {
 	# For debugging purposes only
-#	&log_request_attributes;
+#	log_request_attributes();
 
 	return RLM_MODULE_OK;
 }
@@ -155,7 +157,7 @@ sub post_proxy {
 # Function to handle post_auth
 sub post_auth {
 	# For debugging purposes only
-#	&log_request_attributes;
+#	log_request_attributes();
 
 	return RLM_MODULE_OK;
 }
@@ -163,12 +165,12 @@ sub post_auth {
 # Function to handle xlat
 sub xlat {
 	# For debugging purposes only
-#	&log_request_attributes;
+#	log_request_attributes();
 
 	# Loads some external perl and evaluate it
 	my ($filename,$a,$b,$c,$d) = @_;
-	&radiusd::radlog(L_DBG, "From xlat $filename ");
-	&radiusd::radlog(L_DBG,"From xlat $a $b $c $d ");
+	radiusd::radlog(L_DBG, "From xlat $filename ");
+	radiusd::radlog(L_DBG,"From xlat $a $b $c $d ");
 	local *FH;
 	open FH, $filename or die "open '$filename' $!";
 	local($/) = undef;
@@ -182,10 +184,10 @@ sub xlat {
 # Function to handle detach
 sub detach {
 	# For debugging purposes only
-#	&log_request_attributes;
+#	log_request_attributes();
 
 	# Do some logging.
-	&radiusd::radlog(L_DBG,"rlm_perl::Detaching. Reloading. Done");
+	radiusd::radlog(L_DBG,"rlm_perl::Detaching. Reloading. Done");
 }
 
 #
@@ -200,7 +202,7 @@ sub log_request_attributes {
 	# This shouldn't be done in production environments!
 	# This is only meant for debugging!
 	for (keys %RAD_REQUEST) {
-		&radiusd::radlog(L_DBG, "RAD_REQUEST: $_ = $RAD_REQUEST{$_}");
+		radiusd::radlog(L_DBG, "RAD_REQUEST: $_ = $RAD_REQUEST{$_}");
 	}
 }
 
