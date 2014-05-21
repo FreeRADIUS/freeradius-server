@@ -46,14 +46,6 @@ extern "C" {
 #  define CC_HINT(_x)
 #endif
 
-
-/*
- *	Check for __has_builtin support
- */
-#ifndef __has_builtin
-#  define __has_builtin(_x) 0
-#endif
-
 /*
  *	Macros to add pragmas
  */

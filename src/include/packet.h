@@ -50,7 +50,7 @@ RADIUS_PACKET **fr_packet_list_find_byreply(fr_packet_list_t *pl,
 					      RADIUS_PACKET *reply);
 bool fr_packet_list_yank(fr_packet_list_t *pl,
 			 RADIUS_PACKET *request);
-int fr_packet_list_num_elements(fr_packet_list_t *pl);
+uint32_t fr_packet_list_num_elements(fr_packet_list_t *pl);
 bool fr_packet_list_id_alloc(fr_packet_list_t *pl, int proto,
 			    RADIUS_PACKET **request_p, void **pctx);
 bool fr_packet_list_id_free(fr_packet_list_t *pl,
@@ -65,8 +65,8 @@ int fr_packet_list_walk(fr_packet_list_t *pl, void *ctx, rb_walker_t callback);
 int fr_packet_list_fd_set(fr_packet_list_t *pl, fd_set *set);
 RADIUS_PACKET *fr_packet_list_recv(fr_packet_list_t *pl, fd_set *set);
 
-int fr_packet_list_num_incoming(fr_packet_list_t *pl);
-int fr_packet_list_num_outgoing(fr_packet_list_t *pl);
+uint32_t fr_packet_list_num_incoming(fr_packet_list_t *pl);
+uint32_t fr_packet_list_num_outgoing(fr_packet_list_t *pl);
 
 /*
  *	"find" returns a pointer to the RADIUS_PACKET* member in the

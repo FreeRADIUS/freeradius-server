@@ -458,4 +458,50 @@ AC_DEFUN([VL_LIB_READLINE], [
   AC_SUBST(LIBREADLINE)
 ])dnl
 
+dnl #
+dnl #  Figure out which storage class specifier for Thread Local Storage is supported by the compiler
+dnl #
+AC_DEFUN([FR_HAVE_BUILTIN_CHOOSE_EXPR],
+[
+dnl #
+dnl #  See if the compilation works with __thread, for thread-local storage
+dnl #
+  AC_MSG_CHECKING(for __builtin_choose_expr support in compiler)
+  AC_RUN_IFELSE(
+    [AC_LANG_SOURCE(
+      [[
+        int main(int argc, char **argv) {
+		return __builtin_choose_expr(0, 1, 0);
+        }
+      ]])
+    ],[have_builtin=yes],[have_builtin=no],[have_builtin=no])
+  AC_MSG_RESULT($have_builtin)
+  if test "x$have_builtin" = "xyes"; then
+    AC_DEFINE([HAVE_BUILTIN_CHOOSE_EXPR],1,[Define if the compiler supports __builtin_choose_expr])
+  fi
+])
+
+dnl #
+dnl #  Figure out which storage class specifier for Thread Local Storage is supported by the compiler
+dnl #
+AC_DEFUN([FR_HAVE_BUILTIN_TYPES_COMPATIBLE_P],
+[
+dnl #
+dnl #  See if the compilation works with __thread, for thread-local storage
+dnl #
+  AC_MSG_CHECKING(for __builtin_types_compatible_p support in compiler)
+  AC_RUN_IFELSE(
+    [AC_LANG_SOURCE(
+      [[
+        int main(int argc, char **argv) {
+		return !(__builtin_types_compatible_p(char *, char *));
+        }
+      ]])
+    ],[have_builtin=yes],[have_builtin=no],[have_builtin=no])
+  AC_MSG_RESULT($have_builtin)
+  if test "x$have_builtin" = "xyes"; then
+    AC_DEFINE([HAVE_BUILTIN_TYPES_COMPATIBLE_P],1,[Define if the compiler supports __builtin_types_compatible_p])
+  fi
+])
+
 AC_INCLUDE(aclocal.m4)

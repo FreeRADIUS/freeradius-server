@@ -29,14 +29,14 @@ typedef struct conf_data CONF_DATA;
 typedef void conf_type_mismatch;
 typedef void conf_type_invalid;
 
-#if __has_builtin(__builtin_choose_expr) && __has_builtin(__builtin_types_compatible_p)
+#if defined(HAVE_BUILTIN_CHOOSE_EXPR) && defined(HAVE_BUILTIN_TYPES_COMPATIBLE_P)
 /*
  * Validation macro to check the type of the pointer or offset passed in
  * matches the type of the configuration item.
  */
 #  define FR_CONF_TYPE_CHECK(_t, _ct, _p) \
-	__builtin_choose_expr((_t == PW_TYPE_STRING_PTR),\
-		__builtin_choose_expr(__builtin_types_compatible_p(char *, _ct), _p, (conf_type_mismatch) 0),\
+	__builtin_choose_expr((_t == PW_TYPE_STRING),\
+		__builtin_choose_expr(__builtin_types_compatible_p(char const **, _ct), _p, (conf_type_mismatch) 0),\
 	__builtin_choose_expr((_t == PW_TYPE_BOOLEAN),\
 		__builtin_choose_expr(__builtin_types_compatible_p(bool *, _ct), _p, (conf_type_mismatch) 0),\
 	__builtin_choose_expr((_t == PW_TYPE_SUBSECTION),\
@@ -78,7 +78,7 @@ typedef void conf_type_invalid;
 #  define FR_CONF_POINTER(_t, _p)	_t, 0, FR_CONF_TYPE_CHECK((_t & 0xff), __typeof__(_p), _p)
 #else
 #  define FR_CONF_OFFSET(_t, _s, _f)	_t, offsetof(_x, _f), NULL
-#  define FR_CONF_POINTS(_t, _p)	_t, 0, _p
+#  define FR_CONF_POINTER(_t, _p)	_t, 0, _p
 #endif
 
 /*

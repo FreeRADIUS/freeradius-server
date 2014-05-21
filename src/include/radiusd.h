@@ -405,24 +405,24 @@ typedef struct main_config_t {
 	bool		log_auth_badpass;
 	bool		log_auth_goodpass;
 	bool		allow_core_dumps;
-	int		debug_level;
+	uint32_t	debug_level;
 	bool		daemonize;
 #ifdef WITH_PROXY
 	bool		proxy_requests;
 #endif
-	int		reject_delay;
+	uint32_t	reject_delay;
 	bool		status_server;
 	char const	*allow_vulnerable_openssl;
 
-	int		max_request_time;
-	int		cleanup_delay;
-	int		max_requests;
+	uint32_t	max_request_time;
+	uint32_t	cleanup_delay;
+	uint32_t	max_requests;
 #ifdef DELETE_BLOCKED_REQUESTS
 	int		kill_unresponsive_children;
 #endif
-	char		*log_file;
+	char const	*log_file;
 	char const	*dictionary_dir;
-	char		*checkrad;
+	char const	*checkrad;
 	char const      *pid_file;
 	rad_listen_t	*listen;
 	int		syslog_facility;

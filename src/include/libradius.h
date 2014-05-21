@@ -623,7 +623,7 @@ extern char const *fr_syserror(int num);
 extern bool	fr_dns_lookups;	/* do IP -> hostname lookups? */
 extern bool	fr_hostname_lookups; /* do hostname -> IP lookups? */
 extern int	fr_debug_flag;	/* 0 = no debugging information */
-extern int	fr_max_attributes; /* per incoming packet */
+extern uint32_t	fr_max_attributes; /* per incoming packet */
 #define	FR_MAX_PACKET_CODE (52)
 extern char const *fr_packet_codes[FR_MAX_PACKET_CODE];
 #define is_radius_code(_x) ((_x > 0) && (_x < FR_MAX_PACKET_CODE))
@@ -777,7 +777,7 @@ void		rbtree_delete(rbtree_t *tree, rbnode_t *z);
 bool		rbtree_deletebydata(rbtree_t *tree, void const *data);
 rbnode_t	*rbtree_find(rbtree_t *tree, void const *data);
 void		*rbtree_finddata(rbtree_t *tree, void const *data);
-int		rbtree_num_elements(rbtree_t *tree);
+uint32_t	rbtree_num_elements(rbtree_t *tree);
 void		*rbtree_node2data(rbtree_t *tree, rbnode_t *node);
 
 /*

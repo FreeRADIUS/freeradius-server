@@ -74,7 +74,7 @@ static void VP_HEXDUMP(char const *msg, uint8_t const *data, size_t len)
  *	is unsigned, and the attacker can use resources on the server,
  *	even if the end request is rejected.
  */
-int fr_max_attributes = 0;
+uint32_t fr_max_attributes = 0;
 FILE *fr_log_fp = NULL;
 
 typedef struct radius_packet_t {
@@ -2305,7 +2305,7 @@ bool rad_packet_ok(RADIUS_PACKET *packet, int flags, decode_fail_t *reason)
 	char			host_ipaddr[128];
 	bool			require_ma = false;
 	bool			seen_ma = false;
-	int			num_attributes;
+	uint32_t		num_attributes;
 	decode_fail_t		failure = DECODE_FAIL_NONE;
 
 	/*
@@ -4072,7 +4072,7 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 	       char const *secret)
 {
 	int			packet_length;
-	int			num_attributes;
+	uint32_t		num_attributes;
 	uint8_t			*ptr;
 	radius_packet_t		*hdr;
 	VALUE_PAIR *head, **tail, *vp;

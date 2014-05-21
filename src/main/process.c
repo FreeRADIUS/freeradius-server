@@ -1467,7 +1467,7 @@ STATE_MACHINE_DECL(request_running)
 int request_receive(rad_listen_t *listener, RADIUS_PACKET *packet,
 		    RADCLIENT *client, RAD_REQUEST_FUNP fun)
 {
-	int count;
+	uint32_t count;
 	RADIUS_PACKET **packet_p;
 	REQUEST *request = NULL;
 	struct timeval now;

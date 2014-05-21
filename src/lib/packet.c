@@ -237,7 +237,7 @@ typedef struct fr_packet_socket_t {
 	int		sockfd;
 	void		*ctx;
 
-	int		num_outgoing;
+	uint32_t	num_outgoing;
 
 	int		src_any;
 	fr_ipaddr_t	src_ipaddr;
@@ -272,7 +272,7 @@ struct fr_packet_list_t {
 	rbtree_t	*tree;
 
 	int		alloc_id;
-	int		num_outgoing;
+	uint32_t	num_outgoing;
 	int		last_recv;
 	int		num_sockets;
 
@@ -557,7 +557,7 @@ bool fr_packet_list_yank(fr_packet_list_t *pl, RADIUS_PACKET *request)
 	return true;
 }
 
-int fr_packet_list_num_elements(fr_packet_list_t *pl)
+uint32_t fr_packet_list_num_elements(fr_packet_list_t *pl)
 {
 	if (!pl) return 0;
 
@@ -902,9 +902,9 @@ RADIUS_PACKET *fr_packet_list_recv(fr_packet_list_t *pl, fd_set *set)
 	return NULL;
 }
 
-int fr_packet_list_num_incoming(fr_packet_list_t *pl)
+uint32_t fr_packet_list_num_incoming(fr_packet_list_t *pl)
 {
-	int num_elements;
+	uint32_t num_elements;
 
 	if (!pl) return 0;
 
@@ -914,7 +914,7 @@ int fr_packet_list_num_incoming(fr_packet_list_t *pl)
 	return num_elements - pl->num_outgoing;
 }
 
-int fr_packet_list_num_outgoing(fr_packet_list_t *pl)
+uint32_t fr_packet_list_num_outgoing(fr_packet_list_t *pl)
 {
 	if (!pl) return 0;
 

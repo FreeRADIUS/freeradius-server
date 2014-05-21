@@ -25,6 +25,12 @@
 /* Define to 1 if you have the <arpa/inet.h> header file. */
 #undef HAVE_ARPA_INET_H
 
+/* Define if the compiler supports __builtin_choose_expr */
+#undef HAVE_BUILTIN_CHOOSE_EXPR
+
+/* Define if the compiler supports __builtin_types_compatible_p */
+#undef HAVE_BUILTIN_TYPES_COMPATIBLE_P
+
 /* Define to 1 if you have the `closefrom' function. */
 #undef HAVE_CLOSEFROM
 
