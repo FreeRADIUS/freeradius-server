@@ -15,29 +15,35 @@ RCSIDH(realms_h, "$Id$")
 extern "C" {
 #endif
 
-#define HOME_TYPE_INVALID (0)
-#define HOME_TYPE_AUTH    (1)
-#define HOME_TYPE_ACCT    (2)
+typedef enum {
+	HOME_TYPE_INVALID = 0,
+	HOME_TYPE_AUTH,
+	HOME_TYPE_ACCT
 #ifdef WITH_COA
-#define HOME_TYPE_COA     (3)
+	,HOME_TYPE_COA
 #endif
+} home_type_t;
 
-#define HOME_PING_CHECK_NONE		(0)
-#define HOME_PING_CHECK_STATUS_SERVER	(1)
-#define HOME_PING_CHECK_REQUEST		(2)
+typedef enum {
+	HOME_PING_CHECK_NONE = 0,
+	HOME_PING_CHECK_STATUS_SERVER,
+	HOME_PING_CHECK_REQUEST
+} home_ping_check_t;
 
-#define HOME_STATE_ALIVE		(0)
-#define HOME_STATE_ZOMBIE		(1)
-#define HOME_STATE_IS_DEAD		(2)
-#define HOME_STATE_UNKNOWN		(3)
+typedef enum {
+	HOME_STATE_ALIVE = 0,
+	HOME_STATE_ZOMBIE,
+	HOME_STATE_IS_DEAD,
+	HOME_STATE_UNKNOWN
+} home_state_t;
 
 typedef struct fr_socket_limit_t {
-	int		max_connections;
-	int		num_connections;
-	int		max_requests;
-	int		num_requests;
-	int		lifetime;
-	int		idle_timeout;
+	uint32_t	max_connections;
+	uint32_t	num_connections;
+	uint32_t	max_requests;
+	uint32_t	num_requests;
+	uint32_t	lifetime;
+	uint32_t	idle_timeout;
 } fr_socket_limit_t;
 
 typedef struct home_server {
