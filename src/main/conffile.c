@@ -1164,7 +1164,7 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, int type, void *data, char
 		}
 		cf_log_info(cs, "%.*s\t%s = %d.%06d",
 			    cs->depth, parse_spaces, name, (int) tv.tv_sec, (int) tv.tv_usec);
-
+		memcpy(data, &tv, sizeof(tv));
 		}
 		break;
 
