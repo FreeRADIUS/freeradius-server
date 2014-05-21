@@ -33,8 +33,6 @@ typedef struct conf_data CONF_DATA;
 #define PW_TYPE_STRING_PTR	100
 #define PW_TYPE_BOOLEAN		101
 #define PW_TYPE_SUBSECTION	102
-#define PW_TYPE_FILE_INPUT	103
-#define PW_TYPE_FILE_OUTPUT	104
 
 /*
  * Configuration type flags, these modify the processing of config
@@ -46,6 +44,13 @@ typedef struct conf_data CONF_DATA;
 						//!< config item.
 #define PW_TYPE_ATTRIBUTE	(1 << 12)	//!< CONF_PAIR value must exist in the dictionary as an attribute.
 #define PW_TYPE_SECRET		(1 << 13)	//!< don't print it when debug_flag==2.
+
+/*
+ * File i/o types have a base type of string, so they're validate
+ * correctly by the config parser.
+ */
+#define PW_TYPE_FILE_INPUT	((1 << 14) | PW_TYPE_STRING)
+#define PW_TYPE_FILE_OUTPUT	((1 << 15) | PW_TYPE_STRING)
 
 #define FR_INTEGER_COND_CHECK(_name, _var, _cond, _new)\
 do {\
