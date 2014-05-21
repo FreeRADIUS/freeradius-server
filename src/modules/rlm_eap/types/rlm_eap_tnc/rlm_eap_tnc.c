@@ -64,7 +64,7 @@ typedef struct rlm_eap_tnc {
 } rlm_eap_tnc_t;
 
 static CONF_PARSER module_config[] = {
-	{ "connection_string", PW_TYPE_STRING_PTR,
+	{ "connection_string", PW_TYPE_STRING,
 	  offsetof(rlm_eap_tnc_t, connection_string), NULL,
 	  "NAS Port: %{NAS-Port} NAS IP: %{NAS-IP-Address} NAS_PORT_TYPE: %{NAS-Port-Type}"},
 

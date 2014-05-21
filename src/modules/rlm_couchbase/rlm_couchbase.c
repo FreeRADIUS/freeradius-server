@@ -41,14 +41,14 @@ RCSID("$Id$");
  * Module Configuration
  */
 static const CONF_PARSER module_config[] = {
-	{"acct_key", PW_TYPE_STRING_PTR, offsetof(rlm_couchbase_t, acct_key), NULL,
+	{"acct_key", PW_TYPE_STRING, offsetof(rlm_couchbase_t, acct_key), NULL,
 		"radacct_%{%{Acct-Unique-Session-Id}:-%{Acct-Session-Id}}"},
-	{"doctype", PW_TYPE_STRING_PTR, offsetof(rlm_couchbase_t, doctype), NULL, "radacct"},
-	{"server", PW_TYPE_STRING_PTR | PW_TYPE_REQUIRED, offsetof(rlm_couchbase_t, server), NULL, NULL},
-	{"bucket", PW_TYPE_STRING_PTR | PW_TYPE_REQUIRED, offsetof(rlm_couchbase_t, bucket), NULL, NULL},
-	{"password", PW_TYPE_STRING_PTR, offsetof(rlm_couchbase_t, password), NULL, NULL},
+	{"doctype", PW_TYPE_STRING, offsetof(rlm_couchbase_t, doctype), NULL, "radacct"},
+	{"server", PW_TYPE_STRING | PW_TYPE_REQUIRED, offsetof(rlm_couchbase_t, server), NULL, NULL},
+	{"bucket", PW_TYPE_STRING | PW_TYPE_REQUIRED, offsetof(rlm_couchbase_t, bucket), NULL, NULL},
+	{"password", PW_TYPE_STRING, offsetof(rlm_couchbase_t, password), NULL, NULL},
 	{"expire", PW_TYPE_INTEGER, offsetof(rlm_couchbase_t, expire), NULL, 0},
-	{"user_key", PW_TYPE_STRING_PTR | PW_TYPE_REQUIRED, offsetof(rlm_couchbase_t, user_key), NULL,
+	{"user_key", PW_TYPE_STRING | PW_TYPE_REQUIRED, offsetof(rlm_couchbase_t, user_key), NULL,
 		"raduser_%{md5:%{tolower:%{%{Stripped-User-Name}:-%{User-Name}}}}"},
 	{NULL, -1, 0, NULL, NULL}     /* end the list */
 };

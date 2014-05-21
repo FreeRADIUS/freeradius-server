@@ -75,10 +75,10 @@ typedef struct rlm_eap_ttls_t {
 
 
 static CONF_PARSER module_config[] = {
-	{ "tls", PW_TYPE_STRING_PTR,
+	{ "tls", PW_TYPE_STRING,
 	  offsetof(rlm_eap_ttls_t, tls_conf_name), NULL, NULL },
 
-	{ "default_eap_type", PW_TYPE_STRING_PTR,
+	{ "default_eap_type", PW_TYPE_STRING,
 	  offsetof(rlm_eap_ttls_t, default_method_name), NULL, "md5" },
 
 	{ "copy_request_to_tunnel", PW_TYPE_BOOLEAN,
@@ -87,7 +87,7 @@ static CONF_PARSER module_config[] = {
 	{ "use_tunneled_reply", PW_TYPE_BOOLEAN,
 	  offsetof(rlm_eap_ttls_t, use_tunneled_reply), NULL, "no" },
 
-	{ "virtual_server", PW_TYPE_STRING_PTR,
+	{ "virtual_server", PW_TYPE_STRING,
 	  offsetof(rlm_eap_ttls_t, virtual_server), NULL, NULL },
 
 	{ "include_length", PW_TYPE_BOOLEAN,

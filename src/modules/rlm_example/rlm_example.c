@@ -46,7 +46,7 @@ typedef struct rlm_example_t {
 static const CONF_PARSER module_config[] = {
   { "integer", PW_TYPE_INTEGER,    offsetof(rlm_example_t,value), NULL,   "1" },
   { "boolean", PW_TYPE_BOOLEAN,    offsetof(rlm_example_t,boolean), NULL, "no"},
-  { "string",  PW_TYPE_STRING_PTR, offsetof(rlm_example_t,string), NULL,  NULL},
+  { "string",  PW_TYPE_STRING, offsetof(rlm_example_t,string), NULL,  NULL},
   { "ipaddr",  PW_TYPE_IPADDR,     offsetof(rlm_example_t,ipaddr), NULL,  "*" },
 
   { NULL, -1, 0, NULL, NULL }		/* end the list */

@@ -104,10 +104,10 @@ static const CONF_PARSER module_config[] = {
 	{ "session-db", PW_TYPE_FILE_OUTPUT | PW_TYPE_DEPRECATED, offsetof(rlm_ippool_t,filename), NULL, NULL },
 	{ "filename", PW_TYPE_FILE_OUTPUT | PW_TYPE_REQUIRED, offsetof(rlm_ippool_t,filename), NULL, NULL },
 
-	{ "ip-index", PW_TYPE_STRING_PTR | PW_TYPE_DEPRECATED, offsetof(rlm_ippool_t,ip_index), NULL, NULL },
-	{ "ip_index", PW_TYPE_STRING_PTR | PW_TYPE_REQUIRED, offsetof(rlm_ippool_t,ip_index), NULL, NULL },
+	{ "ip-index", PW_TYPE_STRING | PW_TYPE_DEPRECATED, offsetof(rlm_ippool_t,ip_index), NULL, NULL },
+	{ "ip_index", PW_TYPE_STRING | PW_TYPE_REQUIRED, offsetof(rlm_ippool_t,ip_index), NULL, NULL },
 
-	{ "key", PW_TYPE_STRING_PTR | PW_TYPE_REQUIRED,
+	{ "key", PW_TYPE_STRING | PW_TYPE_REQUIRED,
 	  offsetof(rlm_ippool_t,key), NULL, "%{NAS-IP-Address} %{NAS-Port}" },
 
 	{ "range-start", PW_TYPE_IPADDR | PW_TYPE_DEPRECATED, offsetof(rlm_ippool_t,range_start), NULL, NULL },

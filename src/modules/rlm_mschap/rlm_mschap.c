@@ -530,13 +530,13 @@ static ssize_t mschap_xlat(void *instance, REQUEST *request,
 
 
 static const CONF_PARSER passchange_config[] = {
-	{ "ntlm_auth",   PW_TYPE_STRING_PTR,
+	{ "ntlm_auth",   PW_TYPE_STRING,
 	  offsetof(rlm_mschap_t, ntlm_cpw), NULL,  NULL },
-	{ "ntlm_auth_username",   PW_TYPE_STRING_PTR,
+	{ "ntlm_auth_username",   PW_TYPE_STRING,
 	  offsetof(rlm_mschap_t, ntlm_cpw_username), NULL,  NULL },
-	{ "ntlm_auth_domain",   PW_TYPE_STRING_PTR,
+	{ "ntlm_auth_domain",   PW_TYPE_STRING,
 	  offsetof(rlm_mschap_t, ntlm_cpw_domain), NULL,  NULL },
-	{ "local_cpw",   PW_TYPE_STRING_PTR,
+	{ "local_cpw",   PW_TYPE_STRING,
 	  offsetof(rlm_mschap_t, local_cpw), NULL,  NULL },
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
@@ -552,14 +552,14 @@ static const CONF_PARSER module_config[] = {
 	  offsetof(rlm_mschap_t,require_strong), NULL, "no" },
 	{ "with_ntdomain_hack",     PW_TYPE_BOOLEAN,
 	  offsetof(rlm_mschap_t,with_ntdomain_hack), NULL, "yes" },
-	{ "ntlm_auth",   PW_TYPE_STRING_PTR,
+	{ "ntlm_auth",   PW_TYPE_STRING,
 	  offsetof(rlm_mschap_t, ntlm_auth), NULL,  NULL },
 	{ "ntlm_auth_timeout",   PW_TYPE_INTEGER,
 	  offsetof(rlm_mschap_t, ntlm_auth_timeout), NULL,  NULL },
 	{ "passchange", PW_TYPE_SUBSECTION, 0, NULL, (void const *) passchange_config },
 	{ "allow_retry",   PW_TYPE_BOOLEAN,
 	  offsetof(rlm_mschap_t, allow_retry), NULL,  "yes" },
-	{ "retry_msg",   PW_TYPE_STRING_PTR,
+	{ "retry_msg",   PW_TYPE_STRING,
 	  offsetof(rlm_mschap_t, retry_msg), NULL,  NULL },
 #ifdef WITH_OPEN_DIRECTORY
 	{ "use_open_directory",    PW_TYPE_BOOLEAN,

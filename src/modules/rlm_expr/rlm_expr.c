@@ -47,8 +47,7 @@ typedef struct rlm_expr_t {
 } rlm_expr_t;
 
 static const CONF_PARSER module_config[] = {
-	{"safe_characters", PW_TYPE_STRING_PTR,
-	 offsetof(rlm_expr_t, allowed_chars), NULL,
+	{"safe_characters", PW_TYPE_STRING, offsetof(rlm_expr_t, allowed_chars), NULL,
 	"@abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_: /"},
 	{NULL, -1, 0, NULL, NULL}
 };

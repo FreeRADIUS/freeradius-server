@@ -71,9 +71,9 @@ typedef struct rlm_sqlhpwippool_t {
 /* char *name, int type,
  * size_t offset, void *data, char *dflt */
 static CONF_PARSER module_config[] = {
-	{ "sql_module_instance",       PW_TYPE_STRING_PTR,
+	{ "sql_module_instance",       PW_TYPE_STRING,
 	  offsetof(rlm_sqlhpwippool_t, sql_module_instance),       NULL, "sql" },
-	{ "db_name",	    PW_TYPE_STRING_PTR,
+	{ "db_name",	    PW_TYPE_STRING,
 	  offsetof(rlm_sqlhpwippool_t, db_name),	    NULL, "netvim" },
 	{ "no_free_fail",	 PW_TYPE_BOOLEAN,
 	  offsetof(rlm_sqlhpwippool_t, no_free_fail),	 NULL, "yes" },

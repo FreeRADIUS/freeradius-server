@@ -99,7 +99,7 @@ static const CONF_PARSER security_config[] = {
 	{ "max_attributes",  PW_TYPE_INTEGER, 0, &fr_max_attributes, STRINGIFY(0) },
 	{ "reject_delay",  PW_TYPE_INTEGER, 0, &main_config.reject_delay, STRINGIFY(0) },
 	{ "status_server", PW_TYPE_BOOLEAN, 0, &main_config.status_server, "no"},
-	{ "allow_vulnerable_openssl", PW_TYPE_STRING_PTR, 0, &main_config.allow_vulnerable_openssl, "no"},
+	{ "allow_vulnerable_openssl", PW_TYPE_STRING, 0, &main_config.allow_vulnerable_openssl, "no"},
 	{ NULL, -1, 0, NULL, NULL }
 };
 
@@ -108,19 +108,19 @@ static const CONF_PARSER security_config[] = {
  *	Logging configuration for the server.
  */
 static const CONF_PARSER logdest_config[] = {
-	{ "destination",  PW_TYPE_STRING_PTR, 0, &radlog_dest, "files" },
-	{ "syslog_facility",  PW_TYPE_STRING_PTR, 0, &syslog_facility, STRINGIFY(0) },
+	{ "destination",  PW_TYPE_STRING, 0, &radlog_dest, "files" },
+	{ "syslog_facility",  PW_TYPE_STRING, 0, &syslog_facility, STRINGIFY(0) },
 
-	{ "file", PW_TYPE_STRING_PTR, 0, &main_config.log_file, "${logdir}/radius.log" },
-	{ "requests", PW_TYPE_STRING_PTR, 0, &default_log.file, NULL },
+	{ "file", PW_TYPE_STRING, 0, &main_config.log_file, "${logdir}/radius.log" },
+	{ "requests", PW_TYPE_STRING, 0, &default_log.file, NULL },
 	{ NULL, -1, 0, NULL, NULL }
 };
 
 
 static const CONF_PARSER serverdest_config[] = {
 	{ "log", PW_TYPE_SUBSECTION, 0, NULL, (void const *) logdest_config },
-	{ "log_file", PW_TYPE_STRING_PTR, 0, &main_config.log_file, NULL },
-	{ "log_destination", PW_TYPE_STRING_PTR, 0, &radlog_dest, NULL },
+	{ "log_file", PW_TYPE_STRING, 0, &main_config.log_file, NULL },
+	{ "log_destination", PW_TYPE_STRING, 0, &radlog_dest, NULL },
 	{ "use_utc", PW_TYPE_BOOLEAN, 0, &log_dates_utc, NULL },
 	{ NULL, -1, 0, NULL, NULL }
 };
@@ -131,11 +131,11 @@ static const CONF_PARSER log_config_nodest[] = {
 	{ "auth", PW_TYPE_BOOLEAN, 0, &main_config.log_auth, "no" },
 	{ "auth_badpass", PW_TYPE_BOOLEAN, 0, &main_config.log_auth_badpass, "no" },
 	{ "auth_goodpass", PW_TYPE_BOOLEAN, 0, &main_config.log_auth_goodpass, "no" },
-	{ "msg_badpass", PW_TYPE_STRING_PTR, 0, &main_config.auth_badpass_msg, NULL},
-	{ "msg_goodpass", PW_TYPE_STRING_PTR, 0, &main_config.auth_goodpass_msg, NULL},
+	{ "msg_badpass", PW_TYPE_STRING, 0, &main_config.auth_badpass_msg, NULL},
+	{ "msg_goodpass", PW_TYPE_STRING, 0, &main_config.auth_goodpass_msg, NULL},
 	{ "colourise", PW_TYPE_BOOLEAN, 0, &do_colourise, NULL },
 	{ "use_utc", PW_TYPE_BOOLEAN, 0, &log_dates_utc, NULL },
-	{ "msg_denied", PW_TYPE_STRING_PTR, 0, &main_config.denied_msg,
+	{ "msg_denied", PW_TYPE_STRING, 0, &main_config.denied_msg,
 	  "You are already logged in - access denied" },
 
 	{ NULL, -1, 0, NULL, NULL }
@@ -153,15 +153,15 @@ static const CONF_PARSER server_config[] = {
 	 *	hard-coded defines for the locations of the various
 	 *	files.
 	 */
-	{ "name",	       PW_TYPE_STRING_PTR, 0, &my_name,	  "radiusd"},
-	{ "prefix",	     PW_TYPE_STRING_PTR, 0, &prefix,	    "/usr/local"},
-	{ "localstatedir",      PW_TYPE_STRING_PTR, 0, &localstatedir,     "${prefix}/var"},
-	{ "sbindir",	    PW_TYPE_STRING_PTR, 0, &sbindir,	    "${prefix}/sbin"},
-	{ "logdir",	     PW_TYPE_STRING_PTR, 0, &radlog_dir,	"${localstatedir}/log"},
-	{ "run_dir",	    PW_TYPE_STRING_PTR, 0, &run_dir,	   "${localstatedir}/run/${name}"},
-	{ "libdir",	     PW_TYPE_STRING_PTR, 0, &radlib_dir,	"${prefix}/lib"},
-	{ "radacctdir",	 PW_TYPE_STRING_PTR, 0, &radacct_dir,       "${logdir}/radacct" },
-	{ "panic_action", PW_TYPE_STRING_PTR, 0, &main_config.panic_action, NULL},
+	{ "name",	       PW_TYPE_STRING, 0, &my_name,	  "radiusd"},
+	{ "prefix",	     PW_TYPE_STRING, 0, &prefix,	    "/usr/local"},
+	{ "localstatedir",      PW_TYPE_STRING, 0, &localstatedir,     "${prefix}/var"},
+	{ "sbindir",	    PW_TYPE_STRING, 0, &sbindir,	    "${prefix}/sbin"},
+	{ "logdir",	     PW_TYPE_STRING, 0, &radlog_dir,	"${localstatedir}/log"},
+	{ "run_dir",	    PW_TYPE_STRING, 0, &run_dir,	   "${localstatedir}/run/${name}"},
+	{ "libdir",	     PW_TYPE_STRING, 0, &radlib_dir,	"${prefix}/lib"},
+	{ "radacctdir",	 PW_TYPE_STRING, 0, &radacct_dir,       "${logdir}/radacct" },
+	{ "panic_action", PW_TYPE_STRING, 0, &main_config.panic_action, NULL},
 	{ "hostname_lookups",   PW_TYPE_BOOLEAN,    0, &fr_dns_lookups,      "no" },
 	{ "max_request_time", PW_TYPE_INTEGER, 0, &main_config.max_request_time, STRINGIFY(MAX_REQUEST_TIME) },
 	{ "cleanup_delay", PW_TYPE_INTEGER, 0, &main_config.cleanup_delay, STRINGIFY(CLEANUP_DELAY) },
@@ -169,8 +169,8 @@ static const CONF_PARSER server_config[] = {
 #ifdef DELETE_BLOCKED_REQUESTS
 	{ "delete_blocked_requests", PW_TYPE_INTEGER, 0, &main_config.kill_unresponsive_children, STRINGIFY(false) },
 #endif
-	{ "pidfile", PW_TYPE_STRING_PTR, 0, &main_config.pid_file, "${run_dir}/radiusd.pid"},
-	{ "checkrad", PW_TYPE_STRING_PTR, 0, &main_config.checkrad, "${sbindir}/checkrad" },
+	{ "pidfile", PW_TYPE_STRING, 0, &main_config.pid_file, "${run_dir}/radiusd.pid"},
+	{ "checkrad", PW_TYPE_STRING, 0, &main_config.checkrad, "${sbindir}/checkrad" },
 
 	{ "debug_level", PW_TYPE_INTEGER, 0, &main_config.debug_level, "0"},
 
@@ -199,10 +199,10 @@ static const CONF_PARSER server_config[] = {
 
 static const CONF_PARSER bootstrap_security_config[] = {
 #ifdef HAVE_SETUID
-	{ "user",  PW_TYPE_STRING_PTR, 0, &uid_name, NULL },
-	{ "group",  PW_TYPE_STRING_PTR, 0, &gid_name, NULL },
+	{ "user",  PW_TYPE_STRING, 0, &uid_name, NULL },
+	{ "group",  PW_TYPE_STRING, 0, &gid_name, NULL },
 #endif
-	{ "chroot",  PW_TYPE_STRING_PTR, 0, &chroot_dir, NULL },
+	{ "chroot",  PW_TYPE_STRING, 0, &chroot_dir, NULL },
 	{ "allow_core_dumps", PW_TYPE_BOOLEAN, 0, &allow_core_dumps, "no" },
 
 	{ NULL, -1, 0, NULL, NULL }
@@ -215,10 +215,10 @@ static const CONF_PARSER bootstrap_config[] = {
 	 *	For backwards compatibility.
 	 */
 #ifdef HAVE_SETUID
-	{ "user",  PW_TYPE_STRING_PTR | PW_TYPE_DEPRECATED, 0, &uid_name, NULL },
-	{ "group",  PW_TYPE_STRING_PTR | PW_TYPE_DEPRECATED, 0, &gid_name, NULL },
+	{ "user",  PW_TYPE_STRING | PW_TYPE_DEPRECATED, 0, &uid_name, NULL },
+	{ "group",  PW_TYPE_STRING | PW_TYPE_DEPRECATED, 0, &gid_name, NULL },
 #endif
-	{ "chroot",  PW_TYPE_STRING_PTR | PW_TYPE_DEPRECATED, 0, &chroot_dir, NULL },
+	{ "chroot",  PW_TYPE_STRING | PW_TYPE_DEPRECATED, 0, &chroot_dir, NULL },
 	{ "allow_core_dumps", PW_TYPE_BOOLEAN | PW_TYPE_DEPRECATED, 0, &allow_core_dumps, NULL },
 
 	{ NULL, -1, 0, NULL, NULL }

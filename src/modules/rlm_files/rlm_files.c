@@ -95,9 +95,9 @@ static const CONF_PARSER module_config[] = {
 	  offsetof(rlm_files_t,auth_usersfile), NULL, NULL },
 	{ "postauth_usersfile", PW_TYPE_FILE_INPUT,
 	  offsetof(rlm_files_t,postauth_usersfile), NULL, NULL },
-	{ "compat",	   PW_TYPE_STRING_PTR,
+	{ "compat",	   PW_TYPE_STRING,
 	  offsetof(rlm_files_t,compat_mode), NULL, "cistron" },
-	{ "key",	   PW_TYPE_STRING_PTR,
+	{ "key",	   PW_TYPE_STRING,
 	  offsetof(rlm_files_t,key), NULL, NULL },
 	{ NULL, -1, 0, NULL, NULL }
 };

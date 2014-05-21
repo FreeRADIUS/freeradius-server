@@ -42,7 +42,7 @@ typedef struct rlm_always_t {
  *	A mapping of configuration file names to internal variables.
  */
 static const CONF_PARSER module_config[] = {
-  { "rcode",      PW_TYPE_STRING_PTR, offsetof(rlm_always_t,rcode_str),
+  { "rcode",      PW_TYPE_STRING, offsetof(rlm_always_t,rcode_str),
     NULL, "fail" },
   { "simulcount", PW_TYPE_INTEGER,    offsetof(rlm_always_t,simulcount),
     NULL, "0" },

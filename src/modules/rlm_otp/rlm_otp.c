@@ -36,9 +36,9 @@ static int ninstance = 0;	//!< Number of instances, for global init.
 
 /* A mapping of configuration file names to internal variables. */
 static const CONF_PARSER module_config[] = {
-	{ "otpd_rp", PW_TYPE_STRING_PTR, offsetof(rlm_otp_t, otpd_rp),
+	{ "otpd_rp", PW_TYPE_STRING, offsetof(rlm_otp_t, otpd_rp),
 	  NULL, OTP_OTPD_RP },
-	{ "challenge_prompt", PW_TYPE_STRING_PTR,offsetof(rlm_otp_t, chal_prompt),
+	{ "challenge_prompt", PW_TYPE_STRING,offsetof(rlm_otp_t, chal_prompt),
 	  NULL, OTP_CHALLENGE_PROMPT },
 	{ "challenge_length", PW_TYPE_INTEGER, offsetof(rlm_otp_t, challenge_len),
 	  NULL, "6" },

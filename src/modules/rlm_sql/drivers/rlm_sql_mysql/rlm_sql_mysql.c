@@ -68,7 +68,7 @@ static CONF_PARSER tls_config[] = {
 	/*
 	 *	MySQL Specific TLS attributes
 	 */
-	{"cipher", PW_TYPE_STRING_PTR, offsetof(rlm_sql_mysql_config_t, tls_cipher), NULL, NULL},
+	{"cipher", PW_TYPE_STRING, offsetof(rlm_sql_mysql_config_t, tls_cipher), NULL, NULL},
 
 	{ NULL, -1, 0, NULL, NULL }
 };

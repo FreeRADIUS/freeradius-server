@@ -783,17 +783,17 @@ static CONF_PARSER cache_config[] = {
 	  offsetof(fr_tls_server_conf_t, session_timeout), NULL, "24" },
 	{ "max_entries", PW_TYPE_INTEGER,
 	  offsetof(fr_tls_server_conf_t, session_cache_size), NULL, "255" },
-	{ "name", PW_TYPE_STRING_PTR,
+	{ "name", PW_TYPE_STRING,
 	  offsetof(fr_tls_server_conf_t, session_id_name), NULL, NULL},
-	{ "persist_dir", PW_TYPE_STRING_PTR,
+	{ "persist_dir", PW_TYPE_STRING,
 	  offsetof(fr_tls_server_conf_t, session_cache_path), NULL, NULL},
 	{ NULL, -1, 0, NULL, NULL }	   /* end the list */
 };
 
 static CONF_PARSER verify_config[] = {
-	{ "tmpdir", PW_TYPE_STRING_PTR,
+	{ "tmpdir", PW_TYPE_STRING,
 	  offsetof(fr_tls_server_conf_t, verify_tmp_dir), NULL, NULL},
-	{ "client", PW_TYPE_STRING_PTR,
+	{ "client", PW_TYPE_STRING,
 	  offsetof(fr_tls_server_conf_t, verify_client_cert_cmd), NULL, NULL},
 	{ NULL, -1, 0, NULL, NULL }	   /* end the list */
 };
@@ -804,7 +804,7 @@ static CONF_PARSER ocsp_config[] = {
 	  offsetof(fr_tls_server_conf_t, ocsp_enable), NULL, "no"},
 	{ "override_cert_url", PW_TYPE_BOOLEAN,
 	  offsetof(fr_tls_server_conf_t, ocsp_override_url), NULL, "no"},
-	{ "url", PW_TYPE_STRING_PTR,
+	{ "url", PW_TYPE_STRING,
 	  offsetof(fr_tls_server_conf_t, ocsp_url), NULL, NULL },
 	{ "use_nonce", PW_TYPE_BOOLEAN,
 	  offsetof(fr_tls_server_conf_t, ocsp_use_nonce), NULL, "yes"},
@@ -841,17 +841,17 @@ static CONF_PARSER tls_server_config[] = {
 	  offsetof(fr_tls_server_conf_t, ca_file), NULL, NULL },
 	{ "ca_file", PW_TYPE_FILE_INPUT,
 	  offsetof(fr_tls_server_conf_t, ca_file), NULL, NULL },
-	{ "private_key_password", PW_TYPE_STRING_PTR | PW_TYPE_SECRET,
+	{ "private_key_password", PW_TYPE_STRING | PW_TYPE_SECRET,
 	  offsetof(fr_tls_server_conf_t, private_key_password), NULL, NULL },
 #ifdef PSK_MAX_IDENTITY_LEN
-	{ "psk_identity", PW_TYPE_STRING_PTR,
+	{ "psk_identity", PW_TYPE_STRING,
 	  offsetof(fr_tls_server_conf_t, psk_identity), NULL, NULL },
-	{ "psk_hexphrase", PW_TYPE_STRING_PTR | PW_TYPE_SECRET,
+	{ "psk_hexphrase", PW_TYPE_STRING | PW_TYPE_SECRET,
 	  offsetof(fr_tls_server_conf_t, psk_password), NULL, NULL },
 #endif
-	{ "dh_file", PW_TYPE_STRING_PTR,
+	{ "dh_file", PW_TYPE_STRING,
 	  offsetof(fr_tls_server_conf_t, dh_file), NULL, NULL },
-	{ "random_file", PW_TYPE_STRING_PTR,
+	{ "random_file", PW_TYPE_STRING,
 	  offsetof(fr_tls_server_conf_t, random_file), NULL, NULL },
 	{ "fragment_size", PW_TYPE_INTEGER,
 	  offsetof(fr_tls_server_conf_t, fragment_size), NULL, "1024" },
@@ -861,18 +861,18 @@ static CONF_PARSER tls_server_config[] = {
 	  offsetof(fr_tls_server_conf_t, check_crl), NULL, "no"},
 	{ "allow_expired_crl", PW_TYPE_BOOLEAN,
 	  offsetof(fr_tls_server_conf_t, allow_expired_crl), NULL, NULL},
-	{ "check_cert_cn", PW_TYPE_STRING_PTR,
+	{ "check_cert_cn", PW_TYPE_STRING,
 	  offsetof(fr_tls_server_conf_t, check_cert_cn), NULL, NULL},
-	{ "cipher_list", PW_TYPE_STRING_PTR,
+	{ "cipher_list", PW_TYPE_STRING,
 	  offsetof(fr_tls_server_conf_t, cipher_list), NULL, NULL},
-	{ "check_cert_issuer", PW_TYPE_STRING_PTR,
+	{ "check_cert_issuer", PW_TYPE_STRING,
 	  offsetof(fr_tls_server_conf_t, check_cert_issuer), NULL, NULL},
 	{ "require_client_cert", PW_TYPE_BOOLEAN,
 	  offsetof(fr_tls_server_conf_t, require_client_cert), NULL, NULL },
 
 #if OPENSSL_VERSION_NUMBER >= 0x0090800fL
 #ifndef OPENSSL_NO_ECDH
-	{ "ecdh_curve", PW_TYPE_STRING_PTR,
+	{ "ecdh_curve", PW_TYPE_STRING,
 	  offsetof(fr_tls_server_conf_t, ecdh_curve), NULL, "prime256v1"},
 #endif
 #endif
@@ -910,11 +910,11 @@ static CONF_PARSER tls_client_config[] = {
 	  offsetof(fr_tls_server_conf_t, certificate_file), NULL, NULL },
 	{ "ca_file", PW_TYPE_FILE_INPUT,
 	  offsetof(fr_tls_server_conf_t, ca_file), NULL, NULL },
-	{ "private_key_password", PW_TYPE_STRING_PTR | PW_TYPE_SECRET,
+	{ "private_key_password", PW_TYPE_STRING | PW_TYPE_SECRET,
 	  offsetof(fr_tls_server_conf_t, private_key_password), NULL, NULL },
-	{ "dh_file", PW_TYPE_STRING_PTR,
+	{ "dh_file", PW_TYPE_STRING,
 	  offsetof(fr_tls_server_conf_t, dh_file), NULL, NULL },
-	{ "random_file", PW_TYPE_STRING_PTR,
+	{ "random_file", PW_TYPE_STRING,
 	  offsetof(fr_tls_server_conf_t, random_file), NULL, NULL },
 	{ "fragment_size", PW_TYPE_INTEGER,
 	  offsetof(fr_tls_server_conf_t, fragment_size), NULL, "1024" },
@@ -922,16 +922,16 @@ static CONF_PARSER tls_client_config[] = {
 	  offsetof(fr_tls_server_conf_t, include_length), NULL, "yes" },
 	{ "check_crl", PW_TYPE_BOOLEAN,
 	  offsetof(fr_tls_server_conf_t, check_crl), NULL, "no"},
-	{ "check_cert_cn", PW_TYPE_STRING_PTR,
+	{ "check_cert_cn", PW_TYPE_STRING,
 	  offsetof(fr_tls_server_conf_t, check_cert_cn), NULL, NULL},
-	{ "cipher_list", PW_TYPE_STRING_PTR,
+	{ "cipher_list", PW_TYPE_STRING,
 	  offsetof(fr_tls_server_conf_t, cipher_list), NULL, NULL},
-	{ "check_cert_issuer", PW_TYPE_STRING_PTR,
+	{ "check_cert_issuer", PW_TYPE_STRING,
 	  offsetof(fr_tls_server_conf_t, check_cert_issuer), NULL, NULL},
 
 #if OPENSSL_VERSION_NUMBER >= 0x0090800fL
 #ifndef OPENSSL_NO_ECDH
-	{ "ecdh_curve", PW_TYPE_STRING_PTR,
+	{ "ecdh_curve", PW_TYPE_STRING,
 	  offsetof(fr_tls_server_conf_t, ecdh_curve), NULL, "prime256v1"},
 #endif
 #endif

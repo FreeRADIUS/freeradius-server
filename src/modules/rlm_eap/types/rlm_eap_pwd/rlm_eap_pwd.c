@@ -46,9 +46,9 @@ static CONF_PARSER pwd_module_config[] = {
       offsetof(EAP_PWD_CONF, group), NULL, "19"},
     { "fragment_size", PW_TYPE_INTEGER,
       offsetof(EAP_PWD_CONF, fragment_size), NULL, "1020"},
-    { "server_id", PW_TYPE_STRING_PTR,
+    { "server_id", PW_TYPE_STRING,
       offsetof(EAP_PWD_CONF, server_id), NULL, NULL },
-    { "virtual_server", PW_TYPE_STRING_PTR,
+    { "virtual_server", PW_TYPE_STRING,
       offsetof(EAP_PWD_CONF, virtual_server), NULL, NULL },
     { NULL, -1, 0, NULL, NULL }
 };

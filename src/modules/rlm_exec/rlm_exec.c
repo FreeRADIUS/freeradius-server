@@ -56,10 +56,10 @@ typedef struct rlm_exec_t {
  */
 static const CONF_PARSER module_config[] = {
 	{ "wait", PW_TYPE_BOOLEAN, offsetof(rlm_exec_t,wait), NULL, "yes" },
-	{ "program",  PW_TYPE_STRING_PTR, offsetof(rlm_exec_t,program), NULL, NULL },
-	{ "input_pairs", PW_TYPE_STRING_PTR, offsetof(rlm_exec_t,input), NULL, NULL },
-	{ "output_pairs",  PW_TYPE_STRING_PTR, offsetof(rlm_exec_t,output), NULL, NULL },
-	{ "packet_type", PW_TYPE_STRING_PTR, offsetof(rlm_exec_t,packet_type), NULL, NULL },
+	{ "program",  PW_TYPE_STRING, offsetof(rlm_exec_t,program), NULL, NULL },
+	{ "input_pairs", PW_TYPE_STRING, offsetof(rlm_exec_t,input), NULL, NULL },
+	{ "output_pairs",  PW_TYPE_STRING, offsetof(rlm_exec_t,output), NULL, NULL },
+	{ "packet_type", PW_TYPE_STRING, offsetof(rlm_exec_t,packet_type), NULL, NULL },
 	{ "shell_escape", PW_TYPE_BOOLEAN,  offsetof(rlm_exec_t,shell_escape), NULL, "yes" },
 	{ "timeout", PW_TYPE_INTEGER,  offsetof(rlm_exec_t,timeout), NULL, NULL },
 

@@ -74,15 +74,15 @@ typedef struct rlm_linelog_t {
 static const CONF_PARSER module_config[] = {
 	{ "filename",  PW_TYPE_FILE_OUTPUT| PW_TYPE_REQUIRED,
 	  offsetof(rlm_linelog_t,filename), NULL,  NULL},
-	{ "syslog_facility",  PW_TYPE_STRING_PTR,
+	{ "syslog_facility",  PW_TYPE_STRING,
 	  offsetof(rlm_linelog_t,syslog_facility), NULL,  NULL},
 	{ "permissions",  PW_TYPE_INTEGER,
 	  offsetof(rlm_linelog_t,permissions), NULL,  "0600"},
-	{ "group",  PW_TYPE_STRING_PTR,
+	{ "group",  PW_TYPE_STRING,
 	  offsetof(rlm_linelog_t,group), NULL,  NULL},
-	{ "format",  PW_TYPE_STRING_PTR,
+	{ "format",  PW_TYPE_STRING,
 	  offsetof(rlm_linelog_t,line), NULL,  NULL},
-	{ "reference",  PW_TYPE_STRING_PTR,
+	{ "reference",  PW_TYPE_STRING,
 	  offsetof(rlm_linelog_t,reference), NULL,  NULL},
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };

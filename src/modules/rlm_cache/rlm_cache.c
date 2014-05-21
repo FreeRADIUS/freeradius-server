@@ -738,7 +738,7 @@ done:
  *	buffer over-flows.
  */
 static const CONF_PARSER module_config[] = {
-	{ "key",  PW_TYPE_STRING_PTR | PW_TYPE_REQUIRED,
+	{ "key",  PW_TYPE_STRING | PW_TYPE_REQUIRED,
 	  offsetof(rlm_cache_t, key), NULL, NULL},
 	{ "ttl", PW_TYPE_INTEGER,
 	  offsetof(rlm_cache_t, ttl), NULL, "500" },

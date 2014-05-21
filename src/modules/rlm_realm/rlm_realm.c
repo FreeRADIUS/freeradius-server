@@ -37,9 +37,9 @@ typedef struct realm_config_t {
 } realm_config_t;
 
 static CONF_PARSER module_config[] = {
-  { "format", PW_TYPE_STRING_PTR,
+  { "format", PW_TYPE_STRING,
     offsetof(realm_config_t,formatstring), NULL, "suffix" },
-  { "delimiter", PW_TYPE_STRING_PTR,
+  { "delimiter", PW_TYPE_STRING,
     offsetof(realm_config_t,delim), NULL, "@" },
   { "ignore_default", PW_TYPE_BOOLEAN,
     offsetof(realm_config_t,ignore_default), NULL, "no" },

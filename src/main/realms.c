@@ -319,24 +319,24 @@ static CONF_PARSER home_server_config[] = {
 	  0, &hs_ip4addr,  NULL },
 	{ "ipv6addr",  PW_TYPE_IPV6ADDR,
 	  0, &hs_ip6addr, NULL },
-	{ "virtual_server",  PW_TYPE_STRING_PTR,
+	{ "virtual_server",  PW_TYPE_STRING,
 	  0, &hs_virtual_server, NULL },
 
 	{ "port", PW_TYPE_INTEGER,
 	  offsetof(home_server_t,port), NULL,   "0" },
 
-	{ "type",  PW_TYPE_STRING_PTR,
+	{ "type",  PW_TYPE_STRING,
 	  0, &hs_type, NULL },
 
 #ifdef WITH_TCP
-	{ "proto",  PW_TYPE_STRING_PTR,
+	{ "proto",  PW_TYPE_STRING,
 	  0, &hs_proto, NULL },
 #endif
 
-	{ "secret",  PW_TYPE_STRING_PTR | PW_TYPE_SECRET,
+	{ "secret",  PW_TYPE_STRING | PW_TYPE_SECRET,
 	  offsetof(home_server_t,secret), NULL,  NULL},
 
-	{ "src_ipaddr",  PW_TYPE_STRING_PTR,
+	{ "src_ipaddr",  PW_TYPE_STRING,
 	  0, &hs_srcipaddr,  NULL },
 
 	{ "response_window", PW_TYPE_TIMEVAL,
@@ -346,9 +346,9 @@ static CONF_PARSER home_server_config[] = {
 
 	{ "zombie_period", PW_TYPE_INTEGER,
 	  offsetof(home_server_t,zombie_period), NULL,   "40" },
-	{ "status_check", PW_TYPE_STRING_PTR,
+	{ "status_check", PW_TYPE_STRING,
 	  0, &hs_check,   "none" },
-	{ "ping_check", PW_TYPE_STRING_PTR,
+	{ "ping_check", PW_TYPE_STRING,
 	  0, &hs_check,   NULL },
 
 	{ "ping_interval", PW_TYPE_INTEGER,
@@ -362,9 +362,9 @@ static CONF_PARSER home_server_config[] = {
 	{ "status_check_timeout", PW_TYPE_INTEGER,
 	  offsetof(home_server_t,ping_timeout), NULL,   "4" },
 
-	{ "username",  PW_TYPE_STRING_PTR,
+	{ "username",  PW_TYPE_STRING,
 	  offsetof(home_server_t,ping_user_name), NULL,  NULL},
-	{ "password",  PW_TYPE_STRING_PTR,
+	{ "password",  PW_TYPE_STRING,
 	  offsetof(home_server_t,ping_user_password), NULL,  NULL},
 
 #ifdef WITH_STATS

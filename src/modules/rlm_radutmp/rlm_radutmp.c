@@ -60,7 +60,7 @@ typedef struct rlm_radutmp_t {
 static const CONF_PARSER module_config[] = {
 	{ "filename", PW_TYPE_FILE_OUTPUT | PW_TYPE_REQUIRED,
 	  offsetof(rlm_radutmp_t,filename), NULL,  RADUTMP },
-	{ "username", PW_TYPE_STRING_PTR | PW_TYPE_REQUIRED,
+	{ "username", PW_TYPE_STRING | PW_TYPE_REQUIRED,
 	  offsetof(rlm_radutmp_t,username), NULL,  "%{User-Name}"},
 	{ "case_sensitive", PW_TYPE_BOOLEAN,
 	  offsetof(rlm_radutmp_t,case_sensitive), NULL,  "yes"},

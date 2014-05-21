@@ -77,10 +77,10 @@ typedef struct rlm_eap_peap_t {
 
 
 static CONF_PARSER module_config[] = {
-	{ "tls", PW_TYPE_STRING_PTR,
+	{ "tls", PW_TYPE_STRING,
 	  offsetof(rlm_eap_peap_t, tls_conf_name), NULL, NULL },
 
-	{ "default_method", PW_TYPE_STRING_PTR,
+	{ "default_method", PW_TYPE_STRING,
 	  offsetof(rlm_eap_peap_t, default_method_name), NULL, "mschapv2" },
 
 	{ "copy_request_to_tunnel", PW_TYPE_BOOLEAN,
@@ -94,7 +94,7 @@ static CONF_PARSER module_config[] = {
 	  offsetof(rlm_eap_peap_t, proxy_tunneled_request_as_eap), NULL, "yes" },
 #endif
 
-	{ "virtual_server", PW_TYPE_STRING_PTR,
+	{ "virtual_server", PW_TYPE_STRING,
 	  offsetof(rlm_eap_peap_t, virtual_server), NULL, NULL },
 
 	{ "soh", PW_TYPE_BOOLEAN,
@@ -103,7 +103,7 @@ static CONF_PARSER module_config[] = {
 	{ "require_client_cert", PW_TYPE_BOOLEAN,
 	  offsetof(rlm_eap_peap_t, req_client_cert), NULL, "no" },
 
-	{ "soh_virtual_server", PW_TYPE_STRING_PTR,
+	{ "soh_virtual_server", PW_TYPE_STRING,
 	  offsetof(rlm_eap_peap_t, soh_virtual_server), NULL, NULL },
 
 	{ NULL, -1, 0, NULL, NULL }	   /* end the list */
