@@ -74,8 +74,8 @@ typedef void conf_type_invalid;
 		(conf_type_invalid) 0\
 	))))))))))))))))))
 
-#  define FR_CONF_OFFSET(_t, _s, _f)	_t, FR_CONF_TYPE_CHECK((_t & 0xff), __typeof__(&(((_s *)NULL)->_f)), offsetof(_s, _f)), NULL
-#  define FR_CONF_POINTER(_t, _p)	_t, 0, FR_CONF_TYPE_CHECK((_t & 0xff), __typeof__(_p), _p)
+#  define FR_CONF_OFFSET(_t, _s, _f)	_t, FR_CONF_TYPE_CHECK(((_t) & 0xff), __typeof__(&(((_s *)NULL)->_f)), offsetof(_s, _f)), NULL
+#  define FR_CONF_POINTER(_t, _p)	_t, 0, FR_CONF_TYPE_CHECK(((_t) & 0xff), __typeof__(_p), _p)
 #else
 #  define FR_CONF_OFFSET(_t, _s, _f)	_t, offsetof(_x, _f), NULL
 #  define FR_CONF_POINTER(_t, _p)	_t, 0, _p

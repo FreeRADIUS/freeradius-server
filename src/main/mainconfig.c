@@ -952,7 +952,6 @@ do {\
 	 *	consistency.
 	 */
 	FR_INTEGER_BOUND_CHECK("reject_delay", main_config.reject_delay, <=, main_config.cleanup_delay);
-	FR_INTEGER_BOUND_CHECK("reject_delay", main_config.reject_delay, >=, 0);
 
 	if (chroot_dir) {
 		if (chdir(radlog_dir) < 0) {
