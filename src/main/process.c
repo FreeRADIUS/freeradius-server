@@ -2252,7 +2252,7 @@ int request_proxy_reply(RADIUS_PACKET *packet)
 	 *	Call the state machine to do something useful with the
 	 *	request.
 	 */
-	request->proxy_reply = packet;
+	request->proxy_reply = talloc_steal(request, packet);
 	packet->timestamp = now;
 	request->priority = RAD_LISTEN_PROXY;
 
