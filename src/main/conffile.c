@@ -995,9 +995,18 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, int type, void *data, char
 		break;
 
 	case PW_TYPE_INTEGER:
-		*(int *)data = strtol(value, 0, 0);
-		cf_log_info(cs, "%.*s\t%s = %d",
-			    cs->depth, parse_spaces, name, *(int *)data);
+		*(uint32_t *)data = strtoul(value, 0, 0);
+		cf_log_info(cs, "%.*s\t%s = %u", cs->depth, parse_spaces, name, *(uint32_t *)data);
+		break;
+
+	case PW_TYPE_INTEGER64:
+		*(uint64_t *)data = strtoull(value, 0, 0);
+		cf_log_info(cs, "%.*s\t%s = %" PRIu64, cs->depth, parse_spaces, name, *(uint64_t *)data);
+		break;
+
+	case PW_TYPE_SIGNED:
+		*(int32_t *)data = strtol(value, 0, 0);
+		cf_log_info(cs, "%.*s\t%s = %d", cs->depth, parse_spaces, name, *(int32_t *)data);
 		break;
 
 	case PW_TYPE_STRING:
