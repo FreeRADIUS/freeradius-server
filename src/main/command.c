@@ -99,13 +99,13 @@ typedef struct fr_command_socket_t {
 } fr_command_socket_t;
 
 static const CONF_PARSER command_config[] = {
-  { "socket",  PW_TYPE_STRING_PTR,
+  { "socket",  PW_TYPE_STRING,
     offsetof(fr_command_socket_t, path), NULL, "${run_dir}/radiusd.sock"},
-  { "uid",  PW_TYPE_STRING_PTR,
+  { "uid",  PW_TYPE_STRING,
     offsetof(fr_command_socket_t, uid_name), NULL, NULL},
-  { "gid",  PW_TYPE_STRING_PTR,
+  { "gid",  PW_TYPE_STRING,
     offsetof(fr_command_socket_t, gid_name), NULL, NULL},
-  { "mode",  PW_TYPE_STRING_PTR,
+  { "mode",  PW_TYPE_STRING,
     offsetof(fr_command_socket_t, mode_name), NULL, NULL},
 
   { NULL, -1, 0, NULL, NULL }		/* end the list */
@@ -453,7 +453,7 @@ static void cprint_conf_parser(rad_listen_t *listener, int indent, CONF_SECTION 
 				((*(bool const *) data) == false) ? "no" : "yes");
 			break;
 
-		case PW_TYPE_STRING_PTR:
+		case PW_TYPE_STRING:
 		case PW_TYPE_FILE_INPUT:
 		case PW_TYPE_FILE_OUTPUT:
 			/*

@@ -30,7 +30,6 @@ typedef struct conf_data CONF_DATA;
  *  the configuration file routines MAY just parse it directly into
  *  user-supplied variables.
  */
-#define PW_TYPE_BOOLEAN		101
 #define PW_TYPE_SUBSECTION	102
 
 /*
@@ -62,11 +61,11 @@ do {\
 #define FR_INTEGER_BOUND_CHECK(_name, _var, _op, _bound) FR_INTEGER_COND_CHECK(_name, _var, (_var _op _bound), _bound)
 
 typedef struct CONF_PARSER {
-  char const *name;
-  int type;			/* PW_TYPE_STRING, etc. */
-  size_t offset;		/* relative pointer within "base" */
-  void *data;			/* absolute pointer if base is NULL */
-  const void *dflt;		/* default as it would appear in radiusd.conf */
+	char const	*name;
+	int		type;			//!< PW_TYPE_STRING, etc.
+	size_t		offset;			//!< Relative pointer within "base".
+	void		*data;			//!< Absolute pointer if base is NULL.
+	const void	*dflt;			//!< Default as it would appear in radiusd.conf.
 } CONF_PARSER;
 
 CONF_SECTION	*cf_section_alloc(CONF_SECTION *parent, char const *name1,

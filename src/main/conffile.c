@@ -996,7 +996,7 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, int type, void *data, char
 			    cs->depth, parse_spaces, name, *(int *)data);
 		break;
 
-	case PW_TYPE_STRING_PTR:
+	case PW_TYPE_STRING:
 		q = (char **) data;
 		if (*q != NULL) {
 			talloc_free(*q);
@@ -1051,7 +1051,7 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, int type, void *data, char
 		break;
 
 		/*
-		 *	This is the same as PW_TYPE_STRING_PTR,
+		 *	This is the same as PW_TYPE_STRING,
 		 *	except that we also "stat" the file, and
 		 *	cache the result.
 		 */
@@ -1232,7 +1232,7 @@ static void cf_section_parse_init(CONF_SECTION *cs, void *base,
 			continue;
 		}
 
-		if ((variables[i].type != PW_TYPE_STRING_PTR) &&
+		if ((variables[i].type != PW_TYPE_STRING) &&
 		    (variables[i].type != PW_TYPE_FILE_INPUT) &&
 		    (variables[i].type != PW_TYPE_FILE_OUTPUT)) {
 			continue;

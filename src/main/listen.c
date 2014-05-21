@@ -959,7 +959,7 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 		CONF_SECTION *tls;
 #endif
 
-		rcode = cf_item_parse(cs, "proto", PW_TYPE_STRING_PTR,
+		rcode = cf_item_parse(cs, "proto", PW_TYPE_STRING,
 				      &proto, "udp");
 		if (rcode < 0) return -1;
 
@@ -1205,7 +1205,7 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	 */
 	client_cs = NULL;
 	parentcs = cf_top_section(cs);
-	rcode = cf_item_parse(cs, "clients", PW_TYPE_STRING_PTR,
+	rcode = cf_item_parse(cs, "clients", PW_TYPE_STRING,
 			      &section_name, NULL);
 	if (rcode < 0) return -1; /* bad string */
 	if (rcode == 0) {
@@ -2823,7 +2823,7 @@ static rad_listen_t *listen_parse(CONF_SECTION *cs, char const *server)
 	cf_log_info(cs, "listen {");
 
 	listen_type = NULL;
-	rcode = cf_item_parse(cs, "type", PW_TYPE_STRING_PTR,
+	rcode = cf_item_parse(cs, "type", PW_TYPE_STRING,
 			      &listen_type, "");
 	if (rcode < 0) return NULL;
 	if (rcode == 1) {
@@ -2864,10 +2864,10 @@ static rad_listen_t *listen_parse(CONF_SECTION *cs, char const *server)
 	 *	refer to a server.
 	 */
 	if (!server) {
-		rcode = cf_item_parse(cs, "virtual_server", PW_TYPE_STRING_PTR,
+		rcode = cf_item_parse(cs, "virtual_server", PW_TYPE_STRING,
 				      &server, NULL);
 		if (rcode == 1) { /* compatiblity with 2.0-pre */
-			rcode = cf_item_parse(cs, "server", PW_TYPE_STRING_PTR,
+			rcode = cf_item_parse(cs, "server", PW_TYPE_STRING,
 					      &server, NULL);
 		}
 		if (rcode < 0) return NULL;

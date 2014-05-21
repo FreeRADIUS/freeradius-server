@@ -84,31 +84,31 @@ typedef struct rlm_sqlcounter_t {
  *	buffer over-flows.
  */
 static const CONF_PARSER module_config[] = {
-	{ "sql-module-instance", PW_TYPE_STRING_PTR | PW_TYPE_DEPRECATED,
+	{ "sql-module-instance", PW_TYPE_STRING | PW_TYPE_DEPRECATED,
 	  offsetof(rlm_sqlcounter_t,sqlmod_inst), NULL, NULL },
-	{ "sql_module_instance", PW_TYPE_STRING_PTR | PW_TYPE_REQUIRED,
+	{ "sql_module_instance", PW_TYPE_STRING | PW_TYPE_REQUIRED,
 	  offsetof(rlm_sqlcounter_t,sqlmod_inst), NULL, NULL },
 
-	{ "key", PW_TYPE_STRING_PTR | PW_TYPE_ATTRIBUTE,
+	{ "key", PW_TYPE_STRING | PW_TYPE_ATTRIBUTE,
 	  offsetof(rlm_sqlcounter_t,key_name), NULL, NULL },
-	{ "query", PW_TYPE_STRING_PTR | PW_TYPE_REQUIRED,
+	{ "query", PW_TYPE_STRING | PW_TYPE_REQUIRED,
 	  offsetof(rlm_sqlcounter_t,query), NULL, NULL },
-	{ "reset", PW_TYPE_STRING_PTR | PW_TYPE_REQUIRED,
+	{ "reset", PW_TYPE_STRING | PW_TYPE_REQUIRED,
 	  offsetof(rlm_sqlcounter_t,reset), NULL,  NULL },
 
-	{ "counter-name", PW_TYPE_STRING_PTR | PW_TYPE_DEPRECATED,
+	{ "counter-name", PW_TYPE_STRING | PW_TYPE_DEPRECATED,
 	  offsetof(rlm_sqlcounter_t,counter_name), NULL,  NULL },
-	{ "counter_name", PW_TYPE_STRING_PTR | PW_TYPE_REQUIRED,
+	{ "counter_name", PW_TYPE_STRING | PW_TYPE_REQUIRED,
 	  offsetof(rlm_sqlcounter_t,counter_name), NULL,  NULL },
 
-	{ "check-name", PW_TYPE_STRING_PTR | PW_TYPE_DEPRECATED,
+	{ "check-name", PW_TYPE_STRING | PW_TYPE_DEPRECATED,
 	  offsetof(rlm_sqlcounter_t,limit_name), NULL, NULL },
-	{ "check_name", PW_TYPE_STRING_PTR | PW_TYPE_REQUIRED,
+	{ "check_name", PW_TYPE_STRING | PW_TYPE_REQUIRED,
 	  offsetof(rlm_sqlcounter_t,limit_name), NULL, NULL },
 
-	{ "reply-name", PW_TYPE_STRING_PTR | PW_TYPE_DEPRECATED,
+	{ "reply-name", PW_TYPE_STRING | PW_TYPE_DEPRECATED,
 	  offsetof(rlm_sqlcounter_t,reply_name), NULL, NULL },
-	{ "reply_name", PW_TYPE_STRING_PTR | PW_TYPE_ATTRIBUTE,
+	{ "reply_name", PW_TYPE_STRING | PW_TYPE_ATTRIBUTE,
 	  offsetof(rlm_sqlcounter_t,reply_name), NULL, "Session-Timeout" },
 
 	{ NULL, -1, 0, NULL, NULL }

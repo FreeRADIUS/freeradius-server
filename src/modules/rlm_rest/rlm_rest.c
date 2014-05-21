@@ -41,9 +41,9 @@ static CONF_PARSER tls_config[] = {
 	  offsetof(rlm_rest_section_t,tls_certificate_file), NULL, NULL},
 	{ "private_key_file", PW_TYPE_FILE_INPUT,
 	  offsetof(rlm_rest_section_t,tls_private_key_file), NULL, NULL },
-	{ "private_key_password", PW_TYPE_STRING_PTR | PW_TYPE_SECRET,
+	{ "private_key_password", PW_TYPE_STRING | PW_TYPE_SECRET,
 	  offsetof(rlm_rest_section_t, tls_private_key_password), NULL, NULL },
-	{ "random_file", PW_TYPE_STRING_PTR, /* OK if it changes on HUP */
+	{ "random_file", PW_TYPE_STRING, /* OK if it changes on HUP */
 	  offsetof(rlm_rest_section_t,tls_random_file), NULL, NULL },
 	{ "check_cert", PW_TYPE_BOOLEAN,
 	  offsetof(rlm_rest_section_t, tls_check_cert), NULL, "yes" },
@@ -63,15 +63,15 @@ static CONF_PARSER tls_config[] = {
  *	buffer over-flows.
  */
 static const CONF_PARSER section_config[] = {
-	{ "uri", PW_TYPE_STRING_PTR, offsetof(rlm_rest_section_t, uri), NULL, ""  },
-	{ "method", PW_TYPE_STRING_PTR, offsetof(rlm_rest_section_t, method_str), NULL, "GET" },
-	{ "body", PW_TYPE_STRING_PTR, offsetof(rlm_rest_section_t, body_str), NULL, "none" },
-	{ "data", PW_TYPE_STRING_PTR, offsetof(rlm_rest_section_t, data), NULL, NULL },
+	{ "uri", PW_TYPE_STRING, offsetof(rlm_rest_section_t, uri), NULL, ""  },
+	{ "method", PW_TYPE_STRING, offsetof(rlm_rest_section_t, method_str), NULL, "GET" },
+	{ "body", PW_TYPE_STRING, offsetof(rlm_rest_section_t, body_str), NULL, "none" },
+	{ "data", PW_TYPE_STRING, offsetof(rlm_rest_section_t, data), NULL, NULL },
 
 	/* User authentication */
-	{ "auth", PW_TYPE_STRING_PTR, offsetof(rlm_rest_section_t, auth_str), NULL, "none" },
-	{ "username", PW_TYPE_STRING_PTR, offsetof(rlm_rest_section_t, username), NULL, NULL },
-	{ "password", PW_TYPE_STRING_PTR, offsetof(rlm_rest_section_t, password), NULL, NULL },
+	{ "auth", PW_TYPE_STRING, offsetof(rlm_rest_section_t, auth_str), NULL, "none" },
+	{ "username", PW_TYPE_STRING, offsetof(rlm_rest_section_t, username), NULL, NULL },
+	{ "password", PW_TYPE_STRING, offsetof(rlm_rest_section_t, password), NULL, NULL },
 	{ "require_auth", PW_TYPE_BOOLEAN, offsetof(rlm_rest_section_t, require_auth), NULL, "no"},
 
 	/* Transfer configuration */
@@ -85,7 +85,7 @@ static const CONF_PARSER section_config[] = {
 };
 
 static const CONF_PARSER module_config[] = {
-	{ "connect_uri", PW_TYPE_STRING_PTR, offsetof(rlm_rest_t, connect_uri), NULL, NULL },
+	{ "connect_uri", PW_TYPE_STRING, offsetof(rlm_rest_t, connect_uri), NULL, NULL },
 
 	{ NULL, -1, 0, NULL, NULL }
 };

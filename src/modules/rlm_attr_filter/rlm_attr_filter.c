@@ -50,7 +50,7 @@ static const CONF_PARSER module_config[] = {
 	  offsetof(rlm_attr_filter_t, filename), NULL, NULL},
 	{ "filename",     PW_TYPE_FILE_INPUT | PW_TYPE_REQUIRED,
 	  offsetof(rlm_attr_filter_t, filename), NULL, NULL},
-	{ "key",     PW_TYPE_STRING_PTR,
+	{ "key",     PW_TYPE_STRING,
 	  offsetof(rlm_attr_filter_t, key), NULL, "%{Realm}" },
 	{ "relaxed",    PW_TYPE_BOOLEAN,
 	  offsetof(rlm_attr_filter_t, relaxed), NULL, "no" },

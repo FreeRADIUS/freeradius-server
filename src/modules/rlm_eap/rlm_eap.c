@@ -30,7 +30,7 @@ RCSID("$Id$")
 #include "rlm_eap.h"
 
 static const CONF_PARSER module_config[] = {
-	{ "default_eap_type", PW_TYPE_STRING_PTR,
+	{ "default_eap_type", PW_TYPE_STRING,
 	  offsetof(rlm_eap_t, default_method_name), NULL, "md5" },
 	{ "timer_expire", PW_TYPE_INTEGER,
 	  offsetof(rlm_eap_t, timer_limit), NULL, "60"},

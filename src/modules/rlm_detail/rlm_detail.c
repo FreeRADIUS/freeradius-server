@@ -70,10 +70,10 @@ static const CONF_PARSER module_config[] = {
 	 NULL, NULL },
 	{ "filename", PW_TYPE_FILE_OUTPUT | PW_TYPE_REQUIRED, offsetof(detail_instance_t, filename),
 	 NULL, "%A/%{Client-IP-Address}/detail" },
-	{ "header", PW_TYPE_STRING_PTR, offsetof(detail_instance_t, header), NULL, "%t" },
+	{ "header", PW_TYPE_STRING, offsetof(detail_instance_t, header), NULL, "%t" },
 	{ "detailperm",	PW_TYPE_INTEGER | PW_TYPE_DEPRECATED, offsetof(detail_instance_t, perm), NULL, NULL },
 	{ "permissions", PW_TYPE_INTEGER, offsetof(detail_instance_t, perm), NULL, "0600" },
-	{ "group", PW_TYPE_STRING_PTR, offsetof(detail_instance_t, group), NULL,  NULL},
+	{ "group", PW_TYPE_STRING, offsetof(detail_instance_t, group), NULL,  NULL},
 	{ "locking", PW_TYPE_BOOLEAN, offsetof(detail_instance_t, locking), NULL, "no" },
 	{ "log_packet_header", PW_TYPE_BOOLEAN, offsetof(detail_instance_t, log_srcdst), NULL, "no" },
 	{ NULL, -1, 0, NULL, NULL }

@@ -49,8 +49,8 @@ typedef struct rlm_sometimes_t {
  *	buffer over-flows.
  */
 static const CONF_PARSER module_config[] = {
-	{ "rcode",      PW_TYPE_STRING_PTR, offsetof(rlm_sometimes_t,rcode_str), NULL, "fail" },
-	{ "key", PW_TYPE_STRING_PTR | PW_TYPE_ATTRIBUTE,    offsetof(rlm_sometimes_t,key), NULL, "User-Name" },
+	{ "rcode",      PW_TYPE_STRING, offsetof(rlm_sometimes_t,rcode_str), NULL, "fail" },
+	{ "key", PW_TYPE_STRING | PW_TYPE_ATTRIBUTE,    offsetof(rlm_sometimes_t,key), NULL, "User-Name" },
 	{ "start", PW_TYPE_INTEGER,    offsetof(rlm_sometimes_t,start), NULL, "0" },
 	{ "end", PW_TYPE_INTEGER,    offsetof(rlm_sometimes_t,end), NULL, "127" },
 

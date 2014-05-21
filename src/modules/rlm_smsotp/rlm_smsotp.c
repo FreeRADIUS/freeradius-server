@@ -35,12 +35,12 @@ typedef struct rlm_smsotp_t {
 } rlm_smsotp_t;
 
 static const CONF_PARSER module_config[] = {
-	{ "socket", PW_TYPE_STRING_PTR,
+	{ "socket", PW_TYPE_STRING,
 	  offsetof(rlm_smsotp_t, socket),
 	  NULL, "/var/run/smsotp_socket" },
-	{ "challenge_message", PW_TYPE_STRING_PTR,
+	{ "challenge_message", PW_TYPE_STRING,
 	  offsetof(rlm_smsotp_t, challenge), NULL, "Enter Mobile PIN" },
-	{ "challenge_type", PW_TYPE_STRING_PTR,
+	{ "challenge_type", PW_TYPE_STRING,
 	  offsetof(rlm_smsotp_t, authtype),
 	  NULL, "smsotp-reply" },
 

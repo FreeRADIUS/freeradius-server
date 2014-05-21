@@ -85,18 +85,18 @@ static CONF_PARSER tls_config[] = {
 	 *	LDAP Specific TLS attributes
 	 */
 	{"start_tls", PW_TYPE_BOOLEAN, offsetof(ldap_instance_t, start_tls), NULL, "no"},
-	{"require_cert", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, tls_require_cert_str), NULL, NULL},
+	{"require_cert", PW_TYPE_STRING, offsetof(ldap_instance_t, tls_require_cert_str), NULL, NULL},
 
 	{ NULL, -1, 0, NULL, NULL }
 };
 
 
 static CONF_PARSER profile_config[] = {
-	{"filter", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, profile_filter), NULL, "(&)"},	//!< Correct filter for
+	{"filter", PW_TYPE_STRING, offsetof(ldap_instance_t, profile_filter), NULL, "(&)"},	//!< Correct filter for
 												//!< when the DN is
 												//!< known.
-	{"attribute", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, profile_attr), NULL, NULL},
-	{"default", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, default_profile), NULL, NULL},
+	{"attribute", PW_TYPE_STRING, offsetof(ldap_instance_t, profile_attr), NULL, NULL},
+	{"default", PW_TYPE_STRING, offsetof(ldap_instance_t, default_profile), NULL, NULL},
 
 	{ NULL, -1, 0, NULL, NULL }
 };
@@ -105,11 +105,11 @@ static CONF_PARSER profile_config[] = {
  *	User configuration
  */
 static CONF_PARSER user_config[] = {
-	{"filter", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, userobj_filter), NULL, "(uid=%u)"},
-	{"scope", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, userobj_scope_str), NULL, "sub"},
-	{"base_dn", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t,userobj_base_dn), NULL, ""},
+	{"filter", PW_TYPE_STRING, offsetof(ldap_instance_t, userobj_filter), NULL, "(uid=%u)"},
+	{"scope", PW_TYPE_STRING, offsetof(ldap_instance_t, userobj_scope_str), NULL, "sub"},
+	{"base_dn", PW_TYPE_STRING, offsetof(ldap_instance_t,userobj_base_dn), NULL, ""},
 
-	{"access_attribute", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, userobj_access_attr), NULL, NULL},
+	{"access_attribute", PW_TYPE_STRING, offsetof(ldap_instance_t, userobj_access_attr), NULL, NULL},
 	{"access_positive", PW_TYPE_BOOLEAN, offsetof(ldap_instance_t, access_positive), NULL, "yes"},
 
 	{ NULL, -1, 0, NULL, NULL }
@@ -119,16 +119,16 @@ static CONF_PARSER user_config[] = {
  *	Group configuration
  */
 static CONF_PARSER group_config[] = {
-	{"filter", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, groupobj_filter), NULL, NULL},
-	{"scope", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, groupobj_scope_str), NULL, "sub"},
-	{"base_dn", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, groupobj_base_dn), NULL, ""},
+	{"filter", PW_TYPE_STRING, offsetof(ldap_instance_t, groupobj_filter), NULL, NULL},
+	{"scope", PW_TYPE_STRING, offsetof(ldap_instance_t, groupobj_scope_str), NULL, "sub"},
+	{"base_dn", PW_TYPE_STRING, offsetof(ldap_instance_t, groupobj_base_dn), NULL, ""},
 
-	{"name_attribute", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, groupobj_name_attr), NULL, "cn"},
-	{"membership_attribute", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, userobj_membership_attr), NULL, NULL},
-	{"membership_filter", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, groupobj_membership_filter), NULL, NULL},
+	{"name_attribute", PW_TYPE_STRING, offsetof(ldap_instance_t, groupobj_name_attr), NULL, "cn"},
+	{"membership_attribute", PW_TYPE_STRING, offsetof(ldap_instance_t, userobj_membership_attr), NULL, NULL},
+	{"membership_filter", PW_TYPE_STRING, offsetof(ldap_instance_t, groupobj_membership_filter), NULL, NULL},
 	{"cacheable_name", PW_TYPE_BOOLEAN, offsetof(ldap_instance_t, cacheable_group_name), NULL, "no"},
 	{"cacheable_dn", PW_TYPE_BOOLEAN, offsetof(ldap_instance_t, cacheable_group_dn), NULL, "no"},
-	{"cache_attribute", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, cache_attribute), NULL, NULL},
+	{"cache_attribute", PW_TYPE_STRING, offsetof(ldap_instance_t, cache_attribute), NULL, NULL},
 
 	{ NULL, -1, 0, NULL, NULL }
 };
@@ -137,21 +137,21 @@ static CONF_PARSER group_config[] = {
  *	Client configuration
  */
 static CONF_PARSER client_attribute[] = {
-	{"identifier", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, clientobj_identifier), NULL, "host"},
-	{"shortname", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, clientobj_shortname), NULL, "cn"},
-	{"nas_type", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, clientobj_type), NULL, NULL},
-	{"secret", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, clientobj_secret), NULL, NULL},
-	{"virtual_server", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, clientobj_server), NULL, NULL},
-	{"require_message_authenticator", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, clientobj_require_ma),
+	{"identifier", PW_TYPE_STRING, offsetof(ldap_instance_t, clientobj_identifier), NULL, "host"},
+	{"shortname", PW_TYPE_STRING, offsetof(ldap_instance_t, clientobj_shortname), NULL, "cn"},
+	{"nas_type", PW_TYPE_STRING, offsetof(ldap_instance_t, clientobj_type), NULL, NULL},
+	{"secret", PW_TYPE_STRING, offsetof(ldap_instance_t, clientobj_secret), NULL, NULL},
+	{"virtual_server", PW_TYPE_STRING, offsetof(ldap_instance_t, clientobj_server), NULL, NULL},
+	{"require_message_authenticator", PW_TYPE_STRING, offsetof(ldap_instance_t, clientobj_require_ma),
 	 NULL, NULL},
 
 	{ NULL, -1, 0, NULL, NULL }
 };
 
 static CONF_PARSER client_config[] = {
-	{"filter", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, clientobj_filter), NULL, NULL},
-	{"scope", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, clientobj_scope_str), NULL, "sub"},
-	{"base_dn", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, clientobj_base_dn), NULL, ""},
+	{"filter", PW_TYPE_STRING, offsetof(ldap_instance_t, clientobj_filter), NULL, NULL},
+	{"scope", PW_TYPE_STRING, offsetof(ldap_instance_t, clientobj_scope_str), NULL, "sub"},
+	{"base_dn", PW_TYPE_STRING, offsetof(ldap_instance_t, clientobj_base_dn), NULL, ""},
 	{"attribute", PW_TYPE_SUBSECTION, 0, NULL, (void const *) client_attribute},
 
 	{ NULL, -1, 0, NULL, NULL }
@@ -161,7 +161,7 @@ static CONF_PARSER client_config[] = {
  *	Reference for accounting updates
  */
 static const CONF_PARSER acct_section_config[] = {
-	{"reference", PW_TYPE_STRING_PTR, offsetof(ldap_acct_section_t, reference), NULL, "."},
+	{"reference", PW_TYPE_STRING, offsetof(ldap_acct_section_t, reference), NULL, "."},
 
 	{NULL, -1, 0, NULL, NULL}
 };
@@ -205,13 +205,13 @@ static CONF_PARSER option_config[] = {
 
 
 static const CONF_PARSER module_config[] = {
-	{"server", PW_TYPE_STRING_PTR | PW_TYPE_REQUIRED, offsetof(ldap_instance_t,server), NULL, "localhost"},
+	{"server", PW_TYPE_STRING | PW_TYPE_REQUIRED, offsetof(ldap_instance_t,server), NULL, "localhost"},
 	{"port", PW_TYPE_INTEGER, offsetof(ldap_instance_t,port), NULL, "389"},
 
-	{"password", PW_TYPE_STRING_PTR | PW_TYPE_SECRET, offsetof(ldap_instance_t,password), NULL, ""},
-	{"identity", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t,admin_dn), NULL, ""},
+	{"password", PW_TYPE_STRING | PW_TYPE_SECRET, offsetof(ldap_instance_t,password), NULL, ""},
+	{"identity", PW_TYPE_STRING, offsetof(ldap_instance_t,admin_dn), NULL, ""},
 
-	{"valuepair_attribute", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, valuepair_attr), NULL, NULL},
+	{"valuepair_attribute", PW_TYPE_STRING, offsetof(ldap_instance_t, valuepair_attr), NULL, NULL},
 
 #ifdef WITH_EDIR
 	/* support for eDirectory Universal Password */

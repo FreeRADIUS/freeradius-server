@@ -641,7 +641,7 @@ static int dhcp_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 
 	cp = cf_pair_find(cs, "src_interface");
 	if (cp) {
-		cf_item_parse(cs, "src_interface", PW_TYPE_STRING_PTR,
+		cf_item_parse(cs, "src_interface", PW_TYPE_STRING,
 			      &sock->src_interface, NULL);
 	} else {
 		sock->src_interface = sock->lsock.interface;

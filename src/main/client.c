@@ -517,36 +517,36 @@ static const CONF_PARSER client_config[] = {
 	{ "netmask",  PW_TYPE_INTEGER,
 	  offsetof(RADCLIENT, prefix), 0, NULL },
 
-	{ "src_ipaddr",  PW_TYPE_STRING_PTR,
+	{ "src_ipaddr",  PW_TYPE_STRING,
 	  0, &cl_srcipaddr,  NULL },
 
 	{ "require_message_authenticator",  PW_TYPE_BOOLEAN,
 	  offsetof(RADCLIENT, message_authenticator), 0, "no" },
 
-	{ "secret",  PW_TYPE_STRING_PTR | PW_TYPE_SECRET,
+	{ "secret",  PW_TYPE_STRING | PW_TYPE_SECRET,
 	  offsetof(RADCLIENT, secret), 0, NULL },
-	{ "shortname",  PW_TYPE_STRING_PTR,
+	{ "shortname",  PW_TYPE_STRING,
 	  offsetof(RADCLIENT, shortname), 0, NULL },
-	{ "nastype",  PW_TYPE_STRING_PTR | PW_TYPE_DEPRECATED,
+	{ "nastype",  PW_TYPE_STRING | PW_TYPE_DEPRECATED,
 	  offsetof(RADCLIENT, nas_type), 0, NULL },
-	{ "nas_type",  PW_TYPE_STRING_PTR,
+	{ "nas_type",  PW_TYPE_STRING,
 	  offsetof(RADCLIENT, nas_type), 0, NULL },
-	{ "login",  PW_TYPE_STRING_PTR,
+	{ "login",  PW_TYPE_STRING,
 	  offsetof(RADCLIENT, login), 0, NULL },
-	{ "password",  PW_TYPE_STRING_PTR,
+	{ "password",  PW_TYPE_STRING,
 	  offsetof(RADCLIENT, password), 0, NULL },
-	{ "virtual_server",  PW_TYPE_STRING_PTR,
+	{ "virtual_server",  PW_TYPE_STRING,
 	  offsetof(RADCLIENT, server), 0, NULL },
 
 #ifdef WITH_TCP
-	{ "proto",  PW_TYPE_STRING_PTR,
+	{ "proto",  PW_TYPE_STRING,
 	  0, &hs_proto, NULL },
 
 	{ "limit", PW_TYPE_SUBSECTION, 0, NULL, (void const *) limit_config },
 #endif
 
 #ifdef WITH_DYNAMIC_CLIENTS
-	{ "dynamic_clients",  PW_TYPE_STRING_PTR,
+	{ "dynamic_clients",  PW_TYPE_STRING,
 	  offsetof(RADCLIENT, client_server), 0, NULL },
 	{ "lifetime",  PW_TYPE_INTEGER,
 	  offsetof(RADCLIENT, lifetime), 0, NULL },
@@ -555,7 +555,7 @@ static const CONF_PARSER client_config[] = {
 #endif
 
 #ifdef WITH_COA
-	{ "coa_server",  PW_TYPE_STRING_PTR,
+	{ "coa_server",  PW_TYPE_STRING,
 	  offsetof(RADCLIENT, coa_name), 0, NULL },
 #endif
 
@@ -1038,13 +1038,13 @@ static const CONF_PARSER dynamic_config[] = {
 	{ "FreeRADIUS-Client-Require-MA",  PW_TYPE_BOOLEAN,
 	  offsetof(RADCLIENT, message_authenticator), NULL, NULL },
 
-	{ "FreeRADIUS-Client-Secret",  PW_TYPE_STRING_PTR,
+	{ "FreeRADIUS-Client-Secret",  PW_TYPE_STRING,
 	  offsetof(RADCLIENT, secret), 0, "" },
-	{ "FreeRADIUS-Client-Shortname",  PW_TYPE_STRING_PTR,
+	{ "FreeRADIUS-Client-Shortname",  PW_TYPE_STRING,
 	  offsetof(RADCLIENT, shortname), 0, "" },
-	{ "FreeRADIUS-Client-NAS-Type",  PW_TYPE_STRING_PTR,
+	{ "FreeRADIUS-Client-NAS-Type",  PW_TYPE_STRING,
 	  offsetof(RADCLIENT, nas_type), 0, NULL },
-	{ "FreeRADIUS-Client-Virtual-Server",  PW_TYPE_STRING_PTR,
+	{ "FreeRADIUS-Client-Virtual-Server",  PW_TYPE_STRING,
 	  offsetof(RADCLIENT, server), 0, NULL },
 
 	{ NULL, -1, 0, NULL, NULL }
@@ -1291,7 +1291,7 @@ RADCLIENT *client_from_request(RADCLIENT_LIST *clients, REQUEST *request)
 
 			break;
 
-		case PW_TYPE_STRING_PTR:
+		case PW_TYPE_STRING:
 			p = (char **) ((char *) c + dynamic_config[i].offset);
 			if (*p) talloc_free(*p);
 			if (vp->vp_strvalue[0]) {

@@ -85,7 +85,7 @@ typedef struct rlm_perl_t {
 /*
  *	A mapping of configuration file names to internal variables.
  */
-#define RLM_PERL_CONF(_x) { "func_" STRINGIFY(_x), PW_TYPE_STRING_PTR, \
+#define RLM_PERL_CONF(_x) { "func_" STRINGIFY(_x), PW_TYPE_STRING, \
 			offsetof(rlm_perl_t,func_##_x), NULL, STRINGIFY(_x)}
 
 static const CONF_PARSER module_config[] = {
@@ -111,13 +111,13 @@ static const CONF_PARSER module_config[] = {
 	RLM_PERL_CONF(recv_coa),
 	RLM_PERL_CONF(send_coa),
 #endif
-	{ "perl_flags", PW_TYPE_STRING_PTR,
+	{ "perl_flags", PW_TYPE_STRING,
 	  offsetof(rlm_perl_t,perl_flags), NULL, NULL},
 
-	{ "func_start_accounting", PW_TYPE_STRING_PTR,
+	{ "func_start_accounting", PW_TYPE_STRING,
 	  offsetof(rlm_perl_t,func_start_accounting), NULL, NULL},
 
-	{ "func_stop_accounting", PW_TYPE_STRING_PTR,
+	{ "func_stop_accounting", PW_TYPE_STRING,
 	  offsetof(rlm_perl_t,func_stop_accounting), NULL, NULL},
 
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */

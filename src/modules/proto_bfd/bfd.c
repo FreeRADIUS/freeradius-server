@@ -427,7 +427,7 @@ static ssize_t bfd_parse_secret(CONF_SECTION *cs, uint8_t secret[20])
 	size_t len;
 	char *value = NULL;
 
-	rcode = cf_item_parse(cs, "secret", PW_TYPE_STRING_PTR, &value, NULL);
+	rcode = cf_item_parse(cs, "secret", PW_TYPE_STRING, &value, NULL);
 	if (rcode != 0) return 0;
 
 	len = strlen(value);
@@ -1834,11 +1834,11 @@ static int bfd_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 		      &sock->max_timeouts, "3");
 	cf_item_parse(cs, "demand", PW_TYPE_BOOLEAN,
 		      &sock->demand, "no");
-	cf_item_parse(cs, "auth_type", PW_TYPE_STRING_PTR,
+	cf_item_parse(cs, "auth_type", PW_TYPE_STRING,
 		      &auth_type_str, NULL);
 
 	if (!this->server) {
-		cf_item_parse(cs, "server", PW_TYPE_STRING_PTR,
+		cf_item_parse(cs, "server", PW_TYPE_STRING,
 			      &sock->server, NULL);
 	} else {
 		sock->server = this->server;

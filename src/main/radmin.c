@@ -526,7 +526,7 @@ int main(int argc, char **argv)
 			 *	Now find the socket name (sigh)
 			 */
 			rcode = cf_item_parse(subcs, "socket",
-					      PW_TYPE_STRING_PTR,
+					      PW_TYPE_STRING,
 					      &file, NULL);
 			if (rcode < 0) {
 				fprintf(stderr, "%s: Failed parsing listen section\n", progname);
