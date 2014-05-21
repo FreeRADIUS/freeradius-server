@@ -50,7 +50,7 @@ static const CONF_PARSER module_config[] = {
 	{ "decrypt", PW_TYPE_BOOLEAN, offsetof(rlm_yubikey_t, decrypt), NULL, "no" },
 	{ "validate", PW_TYPE_BOOLEAN, offsetof(rlm_yubikey_t, validate), NULL, "no" },
 #ifdef HAVE_YKCLIENT
-	{ "validation", PW_TYPE_SUBSECTION, 0, NULL, (void const *) validation_config },
+	{ "validation", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) validation_config },
 #endif
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };

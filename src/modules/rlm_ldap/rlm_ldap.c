@@ -152,7 +152,7 @@ static CONF_PARSER client_config[] = {
 	{"filter", PW_TYPE_STRING, offsetof(ldap_instance_t, clientobj_filter), NULL, NULL},
 	{"scope", PW_TYPE_STRING, offsetof(ldap_instance_t, clientobj_scope_str), NULL, "sub"},
 	{"base_dn", PW_TYPE_STRING, offsetof(ldap_instance_t, clientobj_base_dn), NULL, ""},
-	{"attribute", PW_TYPE_SUBSECTION, 0, NULL, (void const *) client_attribute},
+	{ "attribute", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) client_attribute },
 
 	{ NULL, -1, 0, NULL, NULL }
 };
@@ -226,17 +226,17 @@ static const CONF_PARSER module_config[] = {
 
 	{"read_clients", PW_TYPE_BOOLEAN, offsetof(ldap_instance_t,do_clients), NULL, NULL}, /* NULL defaults to "no" */
 
-	{ "user", PW_TYPE_SUBSECTION, 0, NULL, (void const *) user_config },
+	{ "user", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) user_config },
 
-	{ "group", PW_TYPE_SUBSECTION, 0, NULL, (void const *) group_config },
+	{ "group", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) group_config },
 
-	{ "client", PW_TYPE_SUBSECTION, 0, NULL, (void const *) client_config },
+	{ "client", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) client_config },
 
-	{ "profile", PW_TYPE_SUBSECTION, 0, NULL, (void const *) profile_config },
+	{ "profile", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) profile_config },
 
-	{ "options", PW_TYPE_SUBSECTION, 0, NULL, (void const *) option_config },
+	{ "options", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) option_config },
 
-	{ "tls", PW_TYPE_SUBSECTION, 0, NULL, (void const *) tls_config },
+	{ "tls", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) tls_config },
 
 	{NULL, -1, 0, NULL, NULL}
 };

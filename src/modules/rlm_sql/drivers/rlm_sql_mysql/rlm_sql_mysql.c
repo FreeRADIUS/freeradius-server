@@ -74,7 +74,7 @@ static CONF_PARSER tls_config[] = {
 };
 
 static const CONF_PARSER driver_config[] = {
-	{ "tls", PW_TYPE_SUBSECTION, 0, NULL, (void const *) tls_config },
+	{ "tls", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) tls_config },
 
 	{NULL, -1, 0, NULL, NULL}
 };

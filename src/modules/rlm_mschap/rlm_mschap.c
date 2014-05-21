@@ -556,7 +556,7 @@ static const CONF_PARSER module_config[] = {
 	  offsetof(rlm_mschap_t, ntlm_auth), NULL,  NULL },
 	{ "ntlm_auth_timeout",   PW_TYPE_INTEGER,
 	  offsetof(rlm_mschap_t, ntlm_auth_timeout), NULL,  NULL },
-	{ "passchange", PW_TYPE_SUBSECTION, 0, NULL, (void const *) passchange_config },
+	{ "passchange", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) passchange_config },
 	{ "allow_retry",   PW_TYPE_BOOLEAN,
 	  offsetof(rlm_mschap_t, allow_retry), NULL,  "yes" },
 	{ "retry_msg",   PW_TYPE_STRING,

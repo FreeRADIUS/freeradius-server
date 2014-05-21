@@ -211,7 +211,7 @@ static CONF_PARSER module_config[] = {
 	{ "off-commit",PW_TYPE_STRING | PW_TYPE_DEPRECATED, offsetof(rlm_sqlippool_t,off_commit), NULL, NULL },
 	{ "off_commit", PW_TYPE_STRING, offsetof(rlm_sqlippool_t,off_commit), NULL, "COMMIT" },
 
-	{ "messages", PW_TYPE_SUBSECTION, 0, NULL, (void const *) message_config },
+	{ "messages", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) message_config },
 
 	{ NULL, -1, 0, NULL, NULL }
 };
