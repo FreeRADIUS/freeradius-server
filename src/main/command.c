@@ -579,6 +579,39 @@ static int command_show_module_flags(rad_listen_t *listener, int argc, char *arg
 	return 1;		/* success */
 }
 
+extern const FR_NAME_NUMBER mod_rcode_table[];
+
+
+static int command_show_module_status(rad_listen_t *listener, int argc, char *argv[])
+{
+	CONF_SECTION *cs;
+	const module_instance_t *mi;
+	const module_t *mod;
+
+	if (argc != 1) {
+		cprintf(listener, "ERROR: No module name was given\n");
+		return 0;
+	}
+
+	cs = cf_section_find("modules");
+	if (!cs) return 0;
+
+	mi = find_module_instance(cs, argv[0], 0);
+	if (!mi) {
+		cprintf(listener, "ERROR: No such module \"%s\"\n", argv[0]);
+		return 0;
+	}
+
+	if (mi->force == FALSE) {
+		cprintf(listener, "alive\n");
+	} else {
+		cprintf(listener, "%s\n", fr_int2str(mod_rcode_table, mi->code, "<invalid>"));
+	}
+
+	
+	return 1;		/* success */
+}
+
 
 /*
  *	Show all loaded modules
@@ -1342,6 +1375,9 @@ static fr_command_table_t command_table_show_module[] = {
 	{ "methods", FR_READ,
 	  "show module methods <module> - show sections where <module> may be used",
 	  command_show_module_methods, NULL },
+	{ "status", FR_READ,
+	  "show module status <module> - show the module status",
+	  command_show_module_status, NULL },
 
 	{ NULL, 0, NULL, NULL, NULL }
 };
