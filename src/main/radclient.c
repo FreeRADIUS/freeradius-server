@@ -113,6 +113,7 @@ static void NEVER_RETURNS usage(void)
 static const FR_NAME_NUMBER request_types[] = {
 	{ "auth",	PW_CODE_AUTHENTICATION_REQUEST },
 	{ "challenge",	PW_CODE_ACCESS_CHALLENGE },
+	{ "acct",	PW_CODE_ACCOUNTING_REQUEST },
 	{ "status",	PW_CODE_STATUS_SERVER },
 	{ "disconnect",	PW_CODE_DISCONNECT_REQUEST },
 	{ "coa",	PW_CODE_COA_REQUEST },
