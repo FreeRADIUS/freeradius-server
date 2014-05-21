@@ -30,7 +30,6 @@ typedef struct conf_data CONF_DATA;
  *  the configuration file routines MAY just parse it directly into
  *  user-supplied variables.
  */
-#define PW_TYPE_STRING_PTR	100
 #define PW_TYPE_BOOLEAN		101
 #define PW_TYPE_SUBSECTION	102
 
