@@ -877,12 +877,12 @@ static CONF_PARSER tls_server_config[] = {
 #endif
 #endif
 
-	{ "cache", PW_TYPE_SUBSECTION, 0, NULL, (void const *) cache_config },
+	{ "cache", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) cache_config },
 
-	{ "verify", PW_TYPE_SUBSECTION, 0, NULL, (void const *) verify_config },
+	{ "verify", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) verify_config },
 
 #ifdef HAVE_OPENSSL_OCSP_H
-	{ "ocsp", PW_TYPE_SUBSECTION, 0, NULL, (void const *) ocsp_config },
+	{ "ocsp", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) ocsp_config },
 #endif
 
 	{ NULL, -1, 0, NULL, NULL }	   /* end the list */

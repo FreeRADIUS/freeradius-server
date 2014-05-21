@@ -291,12 +291,12 @@ static CONF_PARSER limit_config[] = {
 
 static struct in_addr hs_ip4addr;
 static struct in6_addr hs_ip6addr;
-static char *hs_srcipaddr = NULL;
-static char *hs_type = NULL;
-static char *hs_check = NULL;
-static char *hs_virtual_server = NULL;
+static char const *hs_srcipaddr = NULL;
+static char const *hs_type = NULL;
+static char const *hs_check = NULL;
+static char const *hs_virtual_server = NULL;
 #ifdef WITH_TCP
-static char *hs_proto = NULL;
+static char const *hs_proto = NULL;
 #endif
 
 #ifdef WITH_COA
@@ -315,29 +315,23 @@ static CONF_PARSER home_server_coa[] = {
 #endif
 
 static CONF_PARSER home_server_config[] = {
-	{ "ipaddr",  PW_TYPE_IPADDR,
-	  0, &hs_ip4addr,  NULL },
-	{ "ipv6addr",  PW_TYPE_IPV6ADDR,
-	  0, &hs_ip6addr, NULL },
-	{ "virtual_server",  PW_TYPE_STRING,
-	  0, &hs_virtual_server, NULL },
+	{ "ipaddr", FR_CONF_POINTER(PW_TYPE_IPADDR, &hs_ip4addr), NULL },
+	{ "ipv6addr", FR_CONF_POINTER(PW_TYPE_IPV6ADDR, &hs_ip6addr), NULL },
+	{ "virtual_server", FR_CONF_POINTER(PW_TYPE_STRING, &hs_virtual_server), NULL },
 
 	{ "port", PW_TYPE_INTEGER,
 	  offsetof(home_server_t,port), NULL,   "0" },
 
-	{ "type",  PW_TYPE_STRING,
-	  0, &hs_type, NULL },
+	{ "type", FR_CONF_POINTER(PW_TYPE_STRING, &hs_type), NULL },
 
 #ifdef WITH_TCP
-	{ "proto",  PW_TYPE_STRING,
-	  0, &hs_proto, NULL },
+	{ "proto", FR_CONF_POINTER(PW_TYPE_STRING, &hs_proto), NULL },
 #endif
 
 	{ "secret",  PW_TYPE_STRING | PW_TYPE_SECRET,
 	  offsetof(home_server_t,secret), NULL,  NULL},
 
-	{ "src_ipaddr",  PW_TYPE_STRING,
-	  0, &hs_srcipaddr,  NULL },
+	{ "src_ipaddr", FR_CONF_POINTER(PW_TYPE_STRING, &hs_srcipaddr), NULL },
 
 	{ "response_window", PW_TYPE_TIMEVAL,
 	  offsetof(home_server_t,response_window), NULL,   "30" },
@@ -346,10 +340,8 @@ static CONF_PARSER home_server_config[] = {
 
 	{ "zombie_period", PW_TYPE_INTEGER,
 	  offsetof(home_server_t,zombie_period), NULL,   "40" },
-	{ "status_check", PW_TYPE_STRING,
-	  0, &hs_check,   "none" },
-	{ "ping_check", PW_TYPE_STRING,
-	  0, &hs_check,   NULL },
+	{ "status_check", FR_CONF_POINTER(PW_TYPE_STRING, &hs_check), "none" },
+	{ "ping_check", FR_CONF_POINTER(PW_TYPE_STRING, &hs_check), NULL },
 
 	{ "ping_interval", PW_TYPE_INTEGER,
 	  offsetof(home_server_t,ping_interval), NULL,   "30" },
@@ -373,10 +365,10 @@ static CONF_PARSER home_server_config[] = {
 #endif
 
 #ifdef WITH_COA
-	{  "coa", PW_TYPE_SUBSECTION, 0, NULL, (void const *) home_server_coa },
+	{ "coa", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) home_server_coa },
 #endif
 
-	{ "limit", PW_TYPE_SUBSECTION, 0, NULL, (void const *) limit_config },
+	{ "limit", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) limit_config },
 
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
@@ -398,8 +390,7 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 
 	name2 = cf_section_name2(cs);
 	if (!name2) {
-		cf_log_err_cs(cs,
-			   "Home server section is missing a name");
+		cf_log_err_cs(cs, "Home server section is missing a name");
 		return 0;
 	}
 
@@ -455,11 +446,9 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 		goto skip_port;
 
 	} else {
-		cf_log_err_cs(cs,
-			   "No ipaddr, ipv6addr, or virtual_server defined for home server \"%s\".",
-			   name2);
+		cf_log_err_cs(cs, "No ipaddr, ipv6addr, or virtual_server defined for home server \"%s\"", name2);
 	error:
-		TALLOC_FREE(hs_type);
+		hs_type = NULL;
 		hs_check = NULL;
 		hs_srcipaddr = NULL;
 #ifdef WITH_TCP
@@ -486,37 +475,29 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 	 *	Use a reasonable default.
 	 */
  skip_port:
-	if (!hs_type) hs_type = talloc_typed_strdup(cs, "auth+acct");
-
-	if (strcasecmp(hs_type, "auth") == 0) {
+	if ((strcasecmp(hs_type, "auth+acct") == 0) || !hs_type) {
+		home->type = HOME_TYPE_AUTH;
+		dual = true;
+	} else if (strcasecmp(hs_type, "auth") == 0) {
 		home->type = HOME_TYPE_AUTH;
 
 	} else if (strcasecmp(hs_type, "acct") == 0) {
 		home->type = HOME_TYPE_ACCT;
-
-	} else if (strcasecmp(hs_type, "auth+acct") == 0) {
-		home->type = HOME_TYPE_AUTH;
-		dual = true;
-
 #ifdef WITH_COA
 	} else if (strcasecmp(hs_type, "coa") == 0) {
 		home->type = HOME_TYPE_COA;
 		dual = false;
 
 		if (home->server != NULL) {
-			cf_log_err_cs(cs,
-				   "Home servers of type \"coa\" cannot point to a virtual server");
+			cf_log_err_cs(cs, "Home servers of type \"coa\" cannot point to a virtual server");
 			goto error;
 		}
 #endif
 
 	} else {
-		cf_log_err_cs(cs,
-			   "Invalid type \"%s\" for home server %s.",
-			   hs_type, name2);
+		cf_log_err_cs(cs, "Invalid type \"%s\" for home server %s.", hs_type, name2);
 		goto error;
 	}
-	if (hs_type) talloc_free(hs_type);
 	hs_type = NULL;
 
 	if (!hs_check || (strcasecmp(hs_check, "none") == 0)) {

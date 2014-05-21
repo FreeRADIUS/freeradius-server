@@ -489,9 +489,9 @@ RADCLIENT *client_find_old(fr_ipaddr_t const *ipaddr)
 
 static struct in_addr cl_ip4addr;
 static struct in6_addr cl_ip6addr;
-static char *cl_srcipaddr = NULL;
+static char const *cl_srcipaddr = NULL;
 #ifdef WITH_TCP
-static char *hs_proto = NULL;
+static char const *hs_proto = NULL;
 #endif
 
 #ifdef WITH_TCP
@@ -510,15 +510,11 @@ static CONF_PARSER limit_config[] = {
 #endif
 
 static const CONF_PARSER client_config[] = {
-	{ "ipaddr",  PW_TYPE_IPADDR,
-	  0, &cl_ip4addr,  NULL },
-	{ "ipv6addr",  PW_TYPE_IPV6ADDR,
-	  0, &cl_ip6addr, NULL },
-	{ "netmask",  PW_TYPE_INTEGER,
-	  offsetof(RADCLIENT, prefix), 0, NULL },
+	{ "ipaddr", FR_CONF_POINTER(PW_TYPE_IPADDR, &cl_ip4addr), NULL },
+	{ "ipv6addr", FR_CONF_POINTER(PW_TYPE_IPV6ADDR, &cl_ip6addr), NULL },
+	{ "netmask",  PW_TYPE_INTEGER, offsetof(RADCLIENT, prefix), 0, NULL },
 
-	{ "src_ipaddr",  PW_TYPE_STRING,
-	  0, &cl_srcipaddr,  NULL },
+	{ "src_ipaddr", FR_CONF_POINTER(PW_TYPE_STRING, &cl_srcipaddr), NULL },
 
 	{ "require_message_authenticator",  PW_TYPE_BOOLEAN,
 	  offsetof(RADCLIENT, message_authenticator), 0, "no" },
@@ -539,10 +535,8 @@ static const CONF_PARSER client_config[] = {
 	  offsetof(RADCLIENT, server), 0, NULL },
 
 #ifdef WITH_TCP
-	{ "proto",  PW_TYPE_STRING,
-	  0, &hs_proto, NULL },
-
-	{ "limit", PW_TYPE_SUBSECTION, 0, NULL, (void const *) limit_config },
+	{ "proto", FR_CONF_POINTER(PW_TYPE_STRING, &hs_proto), NULL },
+	{ "limit", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) limit_config },
 #endif
 
 #ifdef WITH_DYNAMIC_CLIENTS

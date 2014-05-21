@@ -79,7 +79,7 @@ static const CONF_PARSER section_config[] = {
 	{ "chunk", PW_TYPE_INTEGER, offsetof(rlm_rest_section_t, chunk), NULL, "0" },
 
 	/* TLS Parameters */
-	{ "tls", PW_TYPE_SUBSECTION, 0, NULL, (void const *) tls_config },
+	{ "tls", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) tls_config },
 
 	{ NULL, -1, 0, NULL, NULL }
 };

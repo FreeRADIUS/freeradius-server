@@ -12,6 +12,7 @@ RCSIDH(conffile_h, "$Id$")
 
 #include <stddef.h>
 #include <freeradius-devel/token.h>
+#include <sys/time.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -31,6 +32,13 @@ typedef void conf_type_invalid;
 
 #if defined(HAVE_BUILTIN_CHOOSE_EXPR) && defined(HAVE_BUILTIN_TYPES_COMPATIBLE_P)
 /*
+ * Dumb hack for GCC which explodes with lots of errors masking the real
+ * error cause, if we don't use typdefs for these structures.
+ */
+typedef struct timeval _timeval_t;
+typedef struct in6_addr _in6addr_t;
+typedef struct in_addr _inaddr_t;
+/*
  * Validation macro to check the type of the pointer or offset passed in
  * matches the type of the configuration item.
  */
@@ -44,7 +52,7 @@ typedef void conf_type_invalid;
 	__builtin_choose_expr((_t == PW_TYPE_INTEGER),\
 		__builtin_choose_expr(__builtin_types_compatible_p(uint32_t *, _ct), _p, (conf_type_mismatch) 0),\
 	__builtin_choose_expr((_t == PW_TYPE_IPADDR),\
-		__builtin_choose_expr(__builtin_types_compatible_p(uint32_t *, _ct), _p, (conf_type_mismatch) 0),\
+		__builtin_choose_expr(__builtin_types_compatible_p(_inaddr_t *, _ct), _p, (conf_type_mismatch) 0),\
 	__builtin_choose_expr((_t == PW_TYPE_DATE),\
 		__builtin_choose_expr(__builtin_types_compatible_p(uint32_t *, _ct), _p, (conf_type_mismatch) 0),\
 	__builtin_choose_expr((_t == PW_TYPE_ABINARY),\
@@ -54,7 +62,7 @@ typedef void conf_type_invalid;
 	__builtin_choose_expr((_t == PW_TYPE_IFID),\
 		__builtin_choose_expr(__builtin_types_compatible_p(uint8_t[8], _ct), _p, (conf_type_mismatch) 0),\
 	__builtin_choose_expr((_t == PW_TYPE_IPV6ADDR),\
-		__builtin_choose_expr(__builtin_types_compatible_p(struct in6_addr *, _ct), _p, (conf_type_mismatch) 0),\
+		__builtin_choose_expr(__builtin_types_compatible_p(_in6addr_t *, _ct), _p, (conf_type_mismatch) 0),\
 	__builtin_choose_expr((_t == PW_TYPE_IPV6PREFIX),\
 		__builtin_choose_expr(__builtin_types_compatible_p(uint8_t[18], _ct), _p, (conf_type_mismatch) 0),\
 	__builtin_choose_expr((_t == PW_TYPE_BYTE),\
@@ -70,7 +78,7 @@ typedef void conf_type_invalid;
 	__builtin_choose_expr((_t == PW_TYPE_IPV4PREFIX),\
 		__builtin_choose_expr(__builtin_types_compatible_p(uint8_t[8], _ct), _p, (conf_type_mismatch) 0),\
 	__builtin_choose_expr((_t == PW_TYPE_TIMEVAL),\
-		__builtin_choose_expr(__builtin_types_compatible_p(struct timeval *, _ct), _p, (conf_type_mismatch) 0),\
+		__builtin_choose_expr(__builtin_types_compatible_p(_timeval_t *, _ct), _p, (conf_type_mismatch) 0),\
 		(conf_type_invalid) 0\
 	))))))))))))))))))
 
