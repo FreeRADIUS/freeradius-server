@@ -41,21 +41,22 @@ RCSIDH(mod_h, "$Id$");
 
 /* configuration struct */
 typedef struct rlm_couchbase_t {
-	const char *acct_key;           /* accounting document key */
-	const char *doctype;            /* value of 'docType' element name */
-	char *server;                   /* couchbase server list */
-	const char *bucket;             /* couchbase bucket */
-	const char *password;           /* couchbase bucket password */
-	unsigned int expire;            /* document expire time in seconds */
-	const char *user_key;           /* user document key */
-	json_object *map;               /* json object to hold user defined attribute map */
-	fr_connection_pool_t *pool;     /* connection pool */
+	char const *acct_key;		//!< Accounting document key.
+	char const *doctype;		//!< Value of 'docType' element name.
+	char const *server_raw;		//!< Raw server string before parsing.
+	char const *server;		//!< Couchbase server list.
+	char const *bucket;		//!< Couchbase bucket.
+	char const *password;		//!< Couchbase bucket password.
+	uint32_t expire;		//!< Document expire time in seconds.
+	const char *user_key;		//!< User document key.
+	json_object *map;		//!< Json object to hold user defined attribute map.
+	fr_connection_pool_t *pool;	//!< Connection pool.
 } rlm_couchbase_t;
 
 /* connection pool handle struct */
 typedef struct rlm_couchbase_handle_t {
-	void *handle;    /* real couchbsae instance */
-	void *cookie;    /* couchbase cookie */
+	void *handle;			//!< Real couchbase instance.
+	void *cookie;			//!< Couchbase cookie.
 } rlm_couchbase_handle_t;
 
 /* define functions */
