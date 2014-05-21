@@ -25,6 +25,62 @@ typedef struct conf_pair CONF_PAIR;
 typedef struct conf_part CONF_SECTION;
 typedef struct conf_data CONF_DATA;
 
+
+typedef void conf_type_mismatch;
+typedef void conf_type_invalid;
+
+#if __has_builtin(__builtin_choose_expr) && __has_builtin(__builtin_types_compatible_p)
+/*
+ * Validation macro to check the type of the pointer or offset passed in
+ * matches the type of the configuration item.
+ */
+#  define FR_CONF_TYPE_CHECK(_t, _ct, _p) \
+	__builtin_choose_expr((_t == PW_TYPE_STRING_PTR),\
+		__builtin_choose_expr(__builtin_types_compatible_p(char *, _ct), _p, (conf_type_mismatch) 0),\
+	__builtin_choose_expr((_t == PW_TYPE_BOOLEAN),\
+		__builtin_choose_expr(__builtin_types_compatible_p(bool *, _ct), _p, (conf_type_mismatch) 0),\
+	__builtin_choose_expr((_t == PW_TYPE_SUBSECTION),\
+		NULL,\
+	__builtin_choose_expr((_t == PW_TYPE_INTEGER),\
+		__builtin_choose_expr(__builtin_types_compatible_p(uint32_t *, _ct), _p, (conf_type_mismatch) 0),\
+	__builtin_choose_expr((_t == PW_TYPE_IPADDR),\
+		__builtin_choose_expr(__builtin_types_compatible_p(uint32_t *, _ct), _p, (conf_type_mismatch) 0),\
+	__builtin_choose_expr((_t == PW_TYPE_DATE),\
+		__builtin_choose_expr(__builtin_types_compatible_p(uint32_t *, _ct), _p, (conf_type_mismatch) 0),\
+	__builtin_choose_expr((_t == PW_TYPE_ABINARY),\
+		__builtin_choose_expr(__builtin_types_compatible_p(size_t[32/sizeof(size_t)], _ct), _p, (conf_type_mismatch) 0),\
+	__builtin_choose_expr((_t == PW_TYPE_OCTETS),\
+		__builtin_choose_expr(__builtin_types_compatible_p(uint8_t *, _ct), _p, (conf_type_mismatch) 0),\
+	__builtin_choose_expr((_t == PW_TYPE_IFID),\
+		__builtin_choose_expr(__builtin_types_compatible_p(uint8_t[8], _ct), _p, (conf_type_mismatch) 0),\
+	__builtin_choose_expr((_t == PW_TYPE_IPV6ADDR),\
+		__builtin_choose_expr(__builtin_types_compatible_p(struct in6_addr *, _ct), _p, (conf_type_mismatch) 0),\
+	__builtin_choose_expr((_t == PW_TYPE_IPV6PREFIX),\
+		__builtin_choose_expr(__builtin_types_compatible_p(uint8_t[18], _ct), _p, (conf_type_mismatch) 0),\
+	__builtin_choose_expr((_t == PW_TYPE_BYTE),\
+		__builtin_choose_expr(__builtin_types_compatible_p(uint8_t *, _ct), _p, (conf_type_mismatch) 0),\
+	__builtin_choose_expr((_t == PW_TYPE_SHORT),\
+		__builtin_choose_expr(__builtin_types_compatible_p(uint16_t *, _ct), _p, (conf_type_mismatch) 0),\
+	__builtin_choose_expr((_t == PW_TYPE_ETHERNET),\
+		__builtin_choose_expr(__builtin_types_compatible_p(uint8_t[6], _ct), _p, (conf_type_mismatch) 0),\
+	__builtin_choose_expr((_t == PW_TYPE_SIGNED),\
+		__builtin_choose_expr(__builtin_types_compatible_p(int32_t *, _ct), _p, (conf_type_mismatch) 0),\
+	__builtin_choose_expr((_t == PW_TYPE_INTEGER64),\
+		__builtin_choose_expr(__builtin_types_compatible_p(uint64_t *, _ct), _p, (conf_type_mismatch) 0),\
+	__builtin_choose_expr((_t == PW_TYPE_IPV4PREFIX),\
+		__builtin_choose_expr(__builtin_types_compatible_p(uint8_t[8], _ct), _p, (conf_type_mismatch) 0),\
+	__builtin_choose_expr((_t == PW_TYPE_TIMEVAL),\
+		__builtin_choose_expr(__builtin_types_compatible_p(struct timeval *, _ct), _p, (conf_type_mismatch) 0),\
+		(conf_type_invalid) 0\
+	))))))))))))))))))
+
+#  define FR_CONF_OFFSET(_t, _s, _f)	_t, FR_CONF_TYPE_CHECK((_t & 0xff), __typeof__(&(((_s *)NULL)->_f)), offsetof(_s, _f)), NULL
+#  define FR_CONF_POINTER(_t, _p)	_t, 0, FR_CONF_TYPE_CHECK((_t & 0xff), __typeof__(_p), _p)
+#else
+#  define FR_CONF_OFFSET(_t, _s, _f)	_t, offsetof(_x, _f), NULL
+#  define FR_CONF_POINTS(_t, _p)	_t, 0, _p
+#endif
+
 /*
  *  Instead of putting the information into a configuration structure,
  *  the configuration file routines MAY just parse it directly into
