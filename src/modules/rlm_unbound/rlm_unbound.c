@@ -500,9 +500,12 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 	case L_DST_FILES:
 		if (main_config.log_file) {
+			char *log_file;
+
 			strcpy(k, "logfile:");
-			res = ub_ctx_set_option(inst->ub, k,
-						main_config.log_file);
+			/* 3rd argument isn't const'd in libunbounds API */
+			memcpy(&log_file, &main_config.log_file, sizeof(log_file));
+			res = ub_ctx_set_option(inst->ub, k, log_file);
 			if (res) {
 				goto error;
 			}
@@ -544,9 +547,13 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		if (res) goto error;
 
 		if (log_dst == L_DST_FILES) {
+			char *log_file;
+
 			/* Reinstate the log file name JIC */
 			strcpy(k, "logfile:");
-			res = ub_ctx_set_option(inst->ub, k, main_config.log_file);
+			/* 3rd argument isn't const'd in libunbounds API */
+			memcpy(&log_file, &main_config.log_file, sizeof(log_file));
+			res = ub_ctx_set_option(inst->ub, k, log_file);
 			if (res) goto error;
 		}
 
