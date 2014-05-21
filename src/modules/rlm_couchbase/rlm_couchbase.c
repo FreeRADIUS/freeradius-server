@@ -41,15 +41,13 @@ RCSID("$Id$");
  * Module Configuration
  */
 static const CONF_PARSER module_config[] = {
-	{"acct_key", PW_TYPE_STRING, offsetof(rlm_couchbase_t, acct_key), NULL,
-		"radacct_%{%{Acct-Unique-Session-Id}:-%{Acct-Session-Id}}"},
-	{"doctype", PW_TYPE_STRING, offsetof(rlm_couchbase_t, doctype), NULL, "radacct"},
-	{"server", PW_TYPE_STRING | PW_TYPE_REQUIRED, offsetof(rlm_couchbase_t, server), NULL, NULL},
-	{"bucket", PW_TYPE_STRING | PW_TYPE_REQUIRED, offsetof(rlm_couchbase_t, bucket), NULL, NULL},
-	{"password", PW_TYPE_STRING, offsetof(rlm_couchbase_t, password), NULL, NULL},
-	{"expire", PW_TYPE_INTEGER, offsetof(rlm_couchbase_t, expire), NULL, 0},
-	{"user_key", PW_TYPE_STRING | PW_TYPE_REQUIRED, offsetof(rlm_couchbase_t, user_key), NULL,
-		"raduser_%{md5:%{tolower:%{%{Stripped-User-Name}:-%{User-Name}}}}"},
+	{ "acct_key", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_couchbase_t, acct_key), "radacct_%{%{Acct-Unique-Session-Id}:-%{Acct-Session-Id}}" },
+	{ "doctype", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_couchbase_t, doctype), "radacct" },
+	{ "server", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_REQUIRED, rlm_couchbase_t, server), NULL },
+	{ "bucket", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_REQUIRED, rlm_couchbase_t, bucket), NULL },
+	{ "password", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_couchbase_t, password), NULL },
+	{ "expire", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_couchbase_t, expire), 0 },
+	{ "user_key", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_REQUIRED, rlm_couchbase_t, user_key), "raduser_%{md5:%{tolower:%{%{Stripped-User-Name}:-%{User-Name}}}}" },
 	{NULL, -1, 0, NULL, NULL}     /* end the list */
 };
 
@@ -62,10 +60,10 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance) {
 		size_t len, i;
 		bool sep = false;
 
-		len = talloc_array_length(inst->server);
+		len = talloc_array_length(inst->server_raw);
 		server = p = talloc_array(inst, char, len);
 		for (i = 0; i < len; i++) {
-			switch (inst->server[i]) {
+			switch (inst->server_raw[i]) {
 			case '\t':
 			case ' ':
 			case ',':
@@ -78,13 +76,12 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance) {
 
 			default:
 				sep = false;
-				*p++ = inst->server[i];
+				*p++ = inst->server_raw[i];
 				break;
 			}
 		}
 
 		*p = '\0';
-		talloc_free(inst->server);
 		inst->server = server;
 	}
 
