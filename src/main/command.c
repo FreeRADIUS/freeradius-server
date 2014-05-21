@@ -119,6 +119,8 @@ static FR_NAME_NUMBER mode_names[] = {
 	{ NULL, 0 }
 };
 
+extern const FR_NAME_NUMBER mod_rcode_table[];
+
 #ifndef HAVE_GETPEEREID
 static int getpeereid(int s, uid_t *euid, gid_t *egid)
 {
@@ -586,9 +588,6 @@ static int command_show_module_flags(rad_listen_t *listener, int argc, char *arg
 	return 1;		/* success */
 }
 
-extern const FR_NAME_NUMBER mod_rcode_table[];
-
-
 static int command_show_module_status(rad_listen_t *listener, int argc, char *argv[])
 {
 	CONF_SECTION *cs;
@@ -614,7 +613,7 @@ static int command_show_module_status(rad_listen_t *listener, int argc, char *ar
 		cprintf(listener, "%s\n", fr_int2str(mod_rcode_table, mi->code, "<invalid>"));
 	}
 
-	
+
 	return 1;		/* success */
 }
 
@@ -1576,8 +1575,6 @@ static int command_set_module_config(rad_listen_t *listener, int argc, char *arg
 
 	return 1;		/* success */
 }
-
-extern const FR_NAME_NUMBER mod_rcode_table[];
 
 static int command_set_module_status(rad_listen_t *listener, int argc, char *argv[])
 {
