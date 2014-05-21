@@ -664,10 +664,10 @@ void vradlog_request(log_type_t type, log_debug_t lvl, REQUEST *request, char co
 	if (!fp) {
 
 		if (debug_flag > 2) extra = "";
-		
+
 		if (request) {
 			uint8_t indent;
-		
+
 			indent = request->log.indent > sizeof(spaces) ?
 				 sizeof(spaces) :
 				 request->log.indent;
@@ -777,7 +777,7 @@ typedef struct fr_logfile_entry_t {
 
 
 struct fr_logfile_t {
-	int max_entries;
+	uint32_t max_entries;
 #ifdef HAVE_PTHREAD_H
 	pthread_mutex_t mutex;
 #endif
@@ -799,7 +799,7 @@ struct fr_logfile_t {
 
 static int _logfile_free(fr_logfile_t *lf)
 {
-	int i;
+	uint32_t i;
 
 	PTHREAD_MUTEX_LOCK(&lf->mutex);
 
@@ -864,7 +864,7 @@ fr_logfile_t *fr_logfile_init(TALLOC_CTX *ctx)
  */
 int fr_logfile_open(fr_logfile_t *lf, char const *filename, mode_t permissions)
 {
-	int i;
+	uint32_t i;
 	uint32_t hash;
 	time_t now = time(NULL);
 	struct stat st;
@@ -1059,7 +1059,7 @@ do_return:
  */
 int fr_logfile_close(fr_logfile_t *lf, int fd)
 {
-	int i;
+	uint32_t i;
 
 	for (i = 0; i < lf->max_entries; i++) {
 		if (!lf->entries[i].filename) continue;
@@ -1085,7 +1085,7 @@ int fr_logfile_close(fr_logfile_t *lf, int fd)
 
 int fr_logfile_unlock(fr_logfile_t *lf, int fd)
 {
-	int i;
+	uint32_t i;
 
 	for (i = 0; i < lf->max_entries; i++) {
 		if (!lf->entries[i].filename) continue;

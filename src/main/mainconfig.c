@@ -51,7 +51,7 @@ RCSID("$Id$")
 
 struct main_config_t main_config;
 char *debug_condition = NULL;
-extern int log_dates_utc;
+extern bool log_dates_utc;
 
 typedef struct cached_config_t {
 	struct cached_config_t *next;
@@ -86,7 +86,7 @@ static char const	*prefix = NULL;
 static char const	*my_name = NULL;
 static char const	*sbindir = NULL;
 static char const	*run_dir = NULL;
-static char		*syslog_facility = NULL;
+static char const	*syslog_facility = NULL;
 static bool		do_colourise = false;
 
 static char const	*radius_dir = NULL;	//!< Path to raddb directory
@@ -96,10 +96,10 @@ static char const	*radius_dir = NULL;	//!< Path to raddb directory
  *  Security configuration for the server.
  */
 static const CONF_PARSER security_config[] = {
-	{ "max_attributes",  PW_TYPE_INTEGER, 0, &fr_max_attributes, STRINGIFY(0) },
-	{ "reject_delay",  PW_TYPE_INTEGER, 0, &main_config.reject_delay, STRINGIFY(0) },
-	{ "status_server", PW_TYPE_BOOLEAN, 0, &main_config.status_server, "no"},
-	{ "allow_vulnerable_openssl", PW_TYPE_STRING, 0, &main_config.allow_vulnerable_openssl, "no"},
+	{ "max_attributes",  FR_CONF_POINTER(PW_TYPE_INTEGER, &fr_max_attributes), STRINGIFY(0) },
+	{ "reject_delay",  FR_CONF_POINTER(PW_TYPE_INTEGER, &main_config.reject_delay), STRINGIFY(0) },
+	{ "status_server", FR_CONF_POINTER(PW_TYPE_BOOLEAN, &main_config.status_server), "no"},
+	{ "allow_vulnerable_openssl", FR_CONF_POINTER(PW_TYPE_STRING, &main_config.allow_vulnerable_openssl), "no"},
 	{ NULL, -1, 0, NULL, NULL }
 };
 
@@ -108,34 +108,34 @@ static const CONF_PARSER security_config[] = {
  *	Logging configuration for the server.
  */
 static const CONF_PARSER logdest_config[] = {
-	{ "destination",  PW_TYPE_STRING, 0, &radlog_dest, "files" },
-	{ "syslog_facility",  PW_TYPE_STRING, 0, &syslog_facility, STRINGIFY(0) },
+	{ "destination",  FR_CONF_POINTER(PW_TYPE_STRING, &radlog_dest), "files" },
+	{ "syslog_facility",  FR_CONF_POINTER(PW_TYPE_STRING, &syslog_facility), STRINGIFY(0) },
 
-	{ "file", PW_TYPE_STRING, 0, &main_config.log_file, "${logdir}/radius.log" },
-	{ "requests", PW_TYPE_STRING, 0, &default_log.file, NULL },
+	{ "file",  FR_CONF_POINTER(PW_TYPE_STRING, &main_config.log_file), "${logdir}/radius.log" },
+	{ "requests",  FR_CONF_POINTER(PW_TYPE_STRING, &default_log.file), NULL },
 	{ NULL, -1, 0, NULL, NULL }
 };
 
 
 static const CONF_PARSER serverdest_config[] = {
-	{ "log", PW_TYPE_SUBSECTION, 0, NULL, (void const *) logdest_config },
-	{ "log_file", PW_TYPE_STRING, 0, &main_config.log_file, NULL },
-	{ "log_destination", PW_TYPE_STRING, 0, &radlog_dest, NULL },
-	{ "use_utc", PW_TYPE_BOOLEAN, 0, &log_dates_utc, NULL },
+	{ "log",  FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) logdest_config },
+	{ "log_file",  FR_CONF_POINTER(PW_TYPE_STRING, &main_config.log_file), NULL },
+	{ "log_destination", FR_CONF_POINTER(PW_TYPE_STRING, &radlog_dest), NULL },
+	{ "use_utc", FR_CONF_POINTER(PW_TYPE_BOOLEAN, &log_dates_utc), NULL },
 	{ NULL, -1, 0, NULL, NULL }
 };
 
 
 static const CONF_PARSER log_config_nodest[] = {
-	{ "stripped_names", PW_TYPE_BOOLEAN, 0, &log_stripped_names,"no" },
-	{ "auth", PW_TYPE_BOOLEAN, 0, &main_config.log_auth, "no" },
-	{ "auth_badpass", PW_TYPE_BOOLEAN, 0, &main_config.log_auth_badpass, "no" },
-	{ "auth_goodpass", PW_TYPE_BOOLEAN, 0, &main_config.log_auth_goodpass, "no" },
-	{ "msg_badpass", PW_TYPE_STRING, 0, &main_config.auth_badpass_msg, NULL},
-	{ "msg_goodpass", PW_TYPE_STRING, 0, &main_config.auth_goodpass_msg, NULL},
-	{ "colourise", PW_TYPE_BOOLEAN, 0, &do_colourise, NULL },
-	{ "use_utc", PW_TYPE_BOOLEAN, 0, &log_dates_utc, NULL },
-	{ "msg_denied", PW_TYPE_STRING, 0, &main_config.denied_msg,
+	{ "stripped_names", FR_CONF_POINTER(PW_TYPE_BOOLEAN, &log_stripped_names),"no" },
+	{ "auth", FR_CONF_POINTER(PW_TYPE_BOOLEAN, &main_config.log_auth), "no" },
+	{ "auth_badpass", FR_CONF_POINTER(PW_TYPE_BOOLEAN, &main_config.log_auth_badpass), "no" },
+	{ "auth_goodpass", FR_CONF_POINTER(PW_TYPE_BOOLEAN, &main_config.log_auth_goodpass), "no" },
+	{ "msg_badpass", FR_CONF_POINTER(PW_TYPE_STRING, &main_config.auth_badpass_msg), NULL},
+	{ "msg_goodpass", FR_CONF_POINTER(PW_TYPE_STRING, &main_config.auth_goodpass_msg), NULL},
+	{ "colourise",FR_CONF_POINTER(PW_TYPE_BOOLEAN, &do_colourise), NULL },
+	{ "use_utc", FR_CONF_POINTER(PW_TYPE_BOOLEAN, &log_dates_utc), NULL },
+	{ "msg_denied", FR_CONF_POINTER(PW_TYPE_STRING, &main_config.denied_msg),
 	  "You are already logged in - access denied" },
 
 	{ NULL, -1, 0, NULL, NULL }
@@ -153,31 +153,31 @@ static const CONF_PARSER server_config[] = {
 	 *	hard-coded defines for the locations of the various
 	 *	files.
 	 */
-	{ "name",	       PW_TYPE_STRING, 0, &my_name,	  "radiusd"},
-	{ "prefix",	     PW_TYPE_STRING, 0, &prefix,	    "/usr/local"},
-	{ "localstatedir",      PW_TYPE_STRING, 0, &localstatedir,     "${prefix}/var"},
-	{ "sbindir",	    PW_TYPE_STRING, 0, &sbindir,	    "${prefix}/sbin"},
-	{ "logdir",	     PW_TYPE_STRING, 0, &radlog_dir,	"${localstatedir}/log"},
-	{ "run_dir",	    PW_TYPE_STRING, 0, &run_dir,	   "${localstatedir}/run/${name}"},
-	{ "libdir",	     PW_TYPE_STRING, 0, &radlib_dir,	"${prefix}/lib"},
-	{ "radacctdir",	 PW_TYPE_STRING, 0, &radacct_dir,       "${logdir}/radacct" },
-	{ "panic_action", PW_TYPE_STRING, 0, &main_config.panic_action, NULL},
-	{ "hostname_lookups",   PW_TYPE_BOOLEAN,    0, &fr_dns_lookups,      "no" },
-	{ "max_request_time", PW_TYPE_INTEGER, 0, &main_config.max_request_time, STRINGIFY(MAX_REQUEST_TIME) },
-	{ "cleanup_delay", PW_TYPE_INTEGER, 0, &main_config.cleanup_delay, STRINGIFY(CLEANUP_DELAY) },
-	{ "max_requests", PW_TYPE_INTEGER, 0, &main_config.max_requests, STRINGIFY(MAX_REQUESTS) },
+	{ "name", FR_CONF_POINTER(PW_TYPE_STRING, &my_name), "radiusd"},
+	{ "prefix", FR_CONF_POINTER(PW_TYPE_STRING, &prefix), "/usr/local"},
+	{ "localstatedir", FR_CONF_POINTER(PW_TYPE_STRING, &localstatedir), "${prefix}/var"},
+	{ "sbindir", FR_CONF_POINTER(PW_TYPE_STRING, &sbindir), "${prefix}/sbin"},
+	{ "logdir", FR_CONF_POINTER(PW_TYPE_STRING, &radlog_dir), "${localstatedir}/log"},
+	{ "run_dir", FR_CONF_POINTER(PW_TYPE_STRING, &run_dir), "${localstatedir}/run/${name}"},
+	{ "libdir", FR_CONF_POINTER(PW_TYPE_STRING, &radlib_dir), "${prefix}/lib"},
+	{ "radacctdir", FR_CONF_POINTER(PW_TYPE_STRING, &radacct_dir), "${logdir}/radacct" },
+	{ "panic_action", FR_CONF_POINTER(PW_TYPE_STRING, &main_config.panic_action), NULL},
+	{ "hostname_lookups", FR_CONF_POINTER(PW_TYPE_BOOLEAN, &fr_dns_lookups), "no" },
+	{ "max_request_time", FR_CONF_POINTER(PW_TYPE_INTEGER, &main_config.max_request_time), STRINGIFY(MAX_REQUEST_TIME) },
+	{ "cleanup_delay", FR_CONF_POINTER(PW_TYPE_INTEGER, &main_config.cleanup_delay), STRINGIFY(CLEANUP_DELAY) },
+	{ "max_requests", FR_CONF_POINTER(PW_TYPE_INTEGER, &main_config.max_requests), STRINGIFY(MAX_REQUESTS) },
 #ifdef DELETE_BLOCKED_REQUESTS
-	{ "delete_blocked_requests", PW_TYPE_INTEGER, 0, &main_config.kill_unresponsive_children, STRINGIFY(false) },
+	{ "delete_blocked_requests", FR_CONF_POINTER(PW_TYPE_INTEGER, &main_config.kill_unresponsive_children), STRINGIFY(false) },
 #endif
-	{ "pidfile", PW_TYPE_STRING, 0, &main_config.pid_file, "${run_dir}/radiusd.pid"},
-	{ "checkrad", PW_TYPE_STRING, 0, &main_config.checkrad, "${sbindir}/checkrad" },
+	{ "pidfile", FR_CONF_POINTER(PW_TYPE_STRING, &main_config.pid_file), "${run_dir}/radiusd.pid"},
+	{ "checkrad", FR_CONF_POINTER(PW_TYPE_STRING, &main_config.checkrad), "${sbindir}/checkrad" },
 
-	{ "debug_level", PW_TYPE_INTEGER, 0, &main_config.debug_level, "0"},
+	{ "debug_level", FR_CONF_POINTER(PW_TYPE_INTEGER, &main_config.debug_level), "0"},
 
 #ifdef WITH_PROXY
-	{ "proxy_requests", PW_TYPE_BOOLEAN, 0, &main_config.proxy_requests, "yes" },
+	{ "proxy_requests", FR_CONF_POINTER(PW_TYPE_BOOLEAN, &main_config.proxy_requests), "yes" },
 #endif
-	{ "log", PW_TYPE_SUBSECTION, 0, NULL, (void const *) log_config_nodest },
+	{ "log", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) log_config_nodest },
 
 	/*
 	 *	People with old configs will have these.  They are listed
@@ -187,39 +187,39 @@ static const CONF_PARSER server_config[] = {
 	 *	DON'T exist in radiusd.conf, then the previously parsed
 	 *	values for "log { foo = bar}" will be used.
 	 */
-	{ "log_auth", PW_TYPE_BOOLEAN | PW_TYPE_DEPRECATED, 0, &main_config.log_auth, NULL },
-	{ "log_auth_badpass", PW_TYPE_BOOLEAN | PW_TYPE_DEPRECATED, 0, &main_config.log_auth_badpass, NULL },
-	{ "log_auth_goodpass", PW_TYPE_BOOLEAN | PW_TYPE_DEPRECATED, 0, &main_config.log_auth_goodpass, NULL },
-	{ "log_stripped_names", PW_TYPE_BOOLEAN | PW_TYPE_DEPRECATED, 0, &log_stripped_names, NULL },
+	{ "log_auth", FR_CONF_POINTER(PW_TYPE_BOOLEAN | PW_TYPE_DEPRECATED, &main_config.log_auth), NULL },
+	{ "log_auth_badpass", FR_CONF_POINTER(PW_TYPE_BOOLEAN | PW_TYPE_DEPRECATED, &main_config.log_auth_badpass), NULL },
+	{ "log_auth_goodpass", FR_CONF_POINTER(PW_TYPE_BOOLEAN | PW_TYPE_DEPRECATED, &main_config.log_auth_goodpass), NULL },
+	{ "log_stripped_names", FR_CONF_POINTER(PW_TYPE_BOOLEAN | PW_TYPE_DEPRECATED, &log_stripped_names), NULL },
 
-	{  "security", PW_TYPE_SUBSECTION, 0, NULL, (void const *) security_config },
+	{  "security", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) security_config },
 
 	{ NULL, -1, 0, NULL, NULL }
 };
 
 static const CONF_PARSER bootstrap_security_config[] = {
 #ifdef HAVE_SETUID
-	{ "user",  PW_TYPE_STRING, 0, &uid_name, NULL },
-	{ "group",  PW_TYPE_STRING, 0, &gid_name, NULL },
+	{ "user",  FR_CONF_POINTER(PW_TYPE_STRING, &uid_name), NULL },
+	{ "group", FR_CONF_POINTER(PW_TYPE_STRING, &gid_name), NULL },
 #endif
-	{ "chroot",  PW_TYPE_STRING, 0, &chroot_dir, NULL },
-	{ "allow_core_dumps", PW_TYPE_BOOLEAN, 0, &allow_core_dumps, "no" },
+	{ "chroot",  FR_CONF_POINTER(PW_TYPE_STRING, &chroot_dir), NULL },
+	{ "allow_core_dumps", FR_CONF_POINTER(PW_TYPE_BOOLEAN, &allow_core_dumps), "no" },
 
 	{ NULL, -1, 0, NULL, NULL }
 };
 
 static const CONF_PARSER bootstrap_config[] = {
-	{  "security", PW_TYPE_SUBSECTION, 0, NULL, (void const *) bootstrap_security_config },
+	{  "security", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) bootstrap_security_config },
 
 	/*
 	 *	For backwards compatibility.
 	 */
 #ifdef HAVE_SETUID
-	{ "user",  PW_TYPE_STRING | PW_TYPE_DEPRECATED, 0, &uid_name, NULL },
-	{ "group",  PW_TYPE_STRING | PW_TYPE_DEPRECATED, 0, &gid_name, NULL },
+	{ "user",  FR_CONF_POINTER(PW_TYPE_STRING | PW_TYPE_DEPRECATED, &uid_name), NULL },
+	{ "group",  FR_CONF_POINTER(PW_TYPE_STRING | PW_TYPE_DEPRECATED, &gid_name), NULL },
 #endif
-	{ "chroot",  PW_TYPE_STRING | PW_TYPE_DEPRECATED, 0, &chroot_dir, NULL },
-	{ "allow_core_dumps", PW_TYPE_BOOLEAN | PW_TYPE_DEPRECATED, 0, &allow_core_dumps, NULL },
+	{ "chroot",  FR_CONF_POINTER(PW_TYPE_STRING | PW_TYPE_DEPRECATED, &chroot_dir), NULL },
+	{ "allow_core_dumps", FR_CONF_POINTER(PW_TYPE_BOOLEAN | PW_TYPE_DEPRECATED, &allow_core_dumps), NULL },
 
 	{ NULL, -1, 0, NULL, NULL }
 };

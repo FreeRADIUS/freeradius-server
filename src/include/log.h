@@ -67,8 +67,8 @@ typedef struct fr_log_t {
 					//!< colour.
 	int		fd;		//!< File descriptor to write messages to.
 	log_dst_t	dst;		//!< Log destination.
-	char		*file;		//!< Path to log file.
-	char		*debug_file;	//!< Path to debug log file.
+	char const	*file;		//!< Path to log file.
+	char const	*debug_file;	//!< Path to debug log file.
 } fr_log_t;
 
 typedef		void (*radlog_func_t)(log_type_t lvl, log_debug_t priority, REQUEST *, char const *, va_list ap);

@@ -64,7 +64,7 @@ typedef struct rlm_eap {
 	bool		ignore_unknown_types;
 	bool		mod_accounting_username_bug;
 
-	int		max_sessions;
+	uint32_t	max_sessions;
 
 #ifdef HAVE_PTHREAD_H
 	pthread_mutex_t	session_mutex;

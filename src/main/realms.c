@@ -726,13 +726,13 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 	FR_INTEGER_BOUND_CHECK("ping_interval", home->ping_interval, <=, 120);
 
 	if (!home->response_window.tv_sec) {
-		int tmp = home->response_window.tv_usec; /* which isn't an integer */
+		uint32_t tmp = home->response_window.tv_usec; /* which isn't an integer */
 
 		FR_INTEGER_BOUND_CHECK("response_window microseconds", tmp, >=, 1000);
 		home->response_window.tv_usec = tmp;
 
 	} else {
-		int tmp = home->response_window.tv_sec; /* which isn't an integer */
+		uint32_t tmp = home->response_window.tv_sec; /* which isn't an integer */
 
 		FR_INTEGER_BOUND_CHECK("response_window", tmp, <=, 60);
 		FR_INTEGER_BOUND_CHECK("response_window", tmp, <=, main_config.max_request_time);

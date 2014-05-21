@@ -43,7 +43,7 @@ typedef struct rlm_cache_t {
 	char const		*xlat_name;
 	char			*key;
 	int			ttl;
-	int			max_entries;
+	uint32_t		max_entries;
 	int			epoch;
 	bool			stats;
 	CONF_SECTION		*cs;
