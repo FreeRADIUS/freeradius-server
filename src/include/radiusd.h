@@ -417,9 +417,6 @@ typedef struct main_config_t {
 	uint32_t	max_request_time;
 	uint32_t	cleanup_delay;
 	uint32_t	max_requests;
-#ifdef DELETE_BLOCKED_REQUESTS
-	int		kill_unresponsive_children;
-#endif
 	char const	*log_file;
 	char const	*dictionary_dir;
 	char const	*checkrad;
