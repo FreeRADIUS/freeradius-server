@@ -31,7 +31,9 @@ RCSID("$Id$");
 
 #ifndef HAVE_JSON_OBJECT_GET_STRING_LEN
 int json_object_get_string_len(json_object *obj) {
-	return strlen(json_object_to_json_string(obj));
+	if (json_object_get_type(obj) != json_type_string)
+		return 0;
+	return (int)strlen(json_object_to_json_string(obj));
 }
 #endif
 
@@ -42,7 +44,7 @@ int json_object_object_get_ex(struct json_object *jso, const char *key, struct j
 	if ((jso == NULL) || (key == NULL)) return 0;
 	if (value != NULL) *value = NULL;
 
-	switch (jso->o_type) {
+	switch (json_object_get_type(jso)) {
 	case json_type_object:
 		jobj = json_object_object_get(jso, key);
 		if (jobj == NULL) return 0;
@@ -64,7 +66,7 @@ struct json_object* json_tokener_parse_verbose(const char *str, enum json_tokene
 
 	tok = json_tokener_new();
 	if (!tok)
-	  return NULL;
+		return NULL;
 	obj = json_tokener_parse_ex(tok, str, -1);
 	*error = tok->err;
 	if(tok->err != json_tokener_success) {
