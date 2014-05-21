@@ -1036,8 +1036,8 @@ STATE_MACHINE_DECL(request_common)
 #ifdef WITH_PROXY
 	case FR_ACTION_PROXY_REPLY:
 		DEBUG2("Reply from home server %s port %d  - ID: %d arrived too late for request %u. Try increasing 'retry_delay' or 'max_request_time'",
-		       inet_ntop(request->proxy->src_ipaddr.af,
-				 &request->proxy->src_ipaddr.ipaddr,
+		       inet_ntop(request->proxy->dst_ipaddr.af,
+				 &request->proxy->dst_ipaddr.ipaddr,
 				 buffer, sizeof(buffer)),
 		       request->proxy->dst_port, request->proxy->id,
 		       request->number);
