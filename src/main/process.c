@@ -1137,33 +1137,7 @@ static int CC_HINT(nonnull) request_pre_handler(REQUEST *request, UNUSED int act
 		return 1;
 	}
 
-#ifdef WITH_PROXY
-	/*
-	 *	Put the decoded packet into it's proper place.
-	 */
-	if (request->proxy_reply != NULL) {
-		/*
-		 *	There may be a proxy reply, but it may be too late.
-		 */
-		if (!request->proxy_listener) return 0;
-
-		rcode = request->proxy_listener->decode(request->proxy_listener, request);
-		DEBUG_PACKET(request, request->proxy_reply, 0);
-
-		/*
-		 *	Pro-actively remove it from the proxy hash.
-		 *	This is later than in 2.1.x, but it means that
-		 *	the replies are authenticated before being
-		 *	removed from the hash.
-		 */
-		if ((rcode == 0) &&
-		    (request->num_proxied_requests <= request->num_proxied_responses)) {
-			remove_from_proxy_hash(request);
-		}
-
-	} else
-#endif
-	if (request->packet->vps == NULL) {
+	if (!request->packet->vps) { /* FIXME: check for correct state */
 		rcode = request->listener->decode(request->listener, request);
 
 #ifdef WITH_UNLANG
@@ -1192,12 +1166,6 @@ static int CC_HINT(nonnull) request_pre_handler(REQUEST *request, UNUSED int act
 	if (!request->username) {
 		request->username = pairfind(request->packet->vps, PW_USER_NAME, 0, TAG_ANY);
 	}
-
-#ifdef WITH_PROXY
-	if (action == FR_ACTION_PROXY_REPLY) {
-		return process_proxy_reply(request);
-	}
-#endif
 
 	return 1;
 }
@@ -1397,7 +1365,8 @@ STATE_MACHINE_DECL(request_running)
 	case FR_ACTION_PROXY_REPLY:
 		request->child_state = REQUEST_RUNNING;
 		request->process = proxy_running;
-		/* FALL-THROUGH */
+		request->process(request, FR_ACTION_RUN);
+		break;
 #endif
 
 	case FR_ACTION_RUN:
@@ -2073,6 +2042,13 @@ static int process_proxy_reply(REQUEST *request)
 	VALUE_PAIR *vp;
 
 	/*
+	 *	There may be a proxy reply, but it may be too late.
+	 */
+	if (!request->proxy_listener) return 0;
+
+	rad_assert(request->proxy_reply != NULL);
+
+	/*
 	 *	Delete any reply we had accumulated until now.
 	 */
 	pairfree(&request->reply->vps);
@@ -2087,7 +2063,7 @@ static int process_proxy_reply(REQUEST *request)
 	 *	If we have a proxy_reply, and it was a reject, setup
 	 *	post-proxy-type Reject
 	 */
-	if (!vp && request->proxy_reply &&
+	if (!vp &&
 	    request->proxy_reply->code == PW_CODE_AUTHENTICATION_REJECT) {
 		DICT_VALUE	*dval;
 
@@ -2104,6 +2080,23 @@ static int process_proxy_reply(REQUEST *request)
 		post_proxy_type = vp->vp_integer;
 
 		RDEBUG2("Found Post-Proxy-Type %s", dict_valnamebyattr(PW_POST_PROXY_TYPE, 0, post_proxy_type));
+	}
+
+	/*
+	 *	Decode the packet.
+	 */
+	rcode = request->proxy_listener->decode(request->proxy_listener, request);
+	DEBUG_PACKET(request, request->proxy_reply, 0);
+
+	/*
+	 *	Pro-actively remove it from the proxy hash.
+	 *	This is later than in 2.1.x, but it means that
+	 *	the replies are authenticated before being
+	 *	removed from the hash.
+	 */
+	if ((rcode == 0) &&
+	    (request->num_proxied_requests <= request->num_proxied_responses)) {
+		remove_from_proxy_hash(request);
 	}
 
 	if (request->home_pool && request->home_pool->virtual_server) {
@@ -2134,24 +2127,14 @@ static int process_proxy_reply(REQUEST *request)
 	 *	running Post-Proxy-Type = Fail.
 	 */
 	if (request->proxy_reply) {
+		request->reply->vps = paircopy(request->reply, request->proxy_reply->vps);
+
 		/*
 		 *	Delete the Proxy-State Attributes from
 		 *	the reply.  These include Proxy-State
 		 *	attributes from us and remote server.
 		 */
-		pairdelete(&request->proxy_reply->vps, PW_PROXY_STATE, 0, TAG_ANY);
-
-		/*
-		 *	Add the attributes left in the proxy
-		 *	reply to the reply list.
-		 */
-		pairfilter(request->reply, &request->reply->vps,
-			  &request->proxy_reply->vps, 0, 0, TAG_ANY);
-
-		/*
-		 *	Free proxy request pairs.
-		 */
-		pairfree(&request->proxy->vps);
+		pairdelete(&request->reply->vps, PW_PROXY_STATE, 0, TAG_ANY);
 	}
 
 	switch (rcode) {
@@ -2369,7 +2352,11 @@ STATE_MACHINE_DECL(proxy_running)
 		break;
 
 	case FR_ACTION_RUN:
-		request_running(request, action);
+		if (!process_proxy_reply(request)) {
+			request_done(request, FR_ACTION_DONE);
+		} else {
+			request_running(request, action);
+		}
 		break;
 
 	default:
