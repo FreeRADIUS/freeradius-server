@@ -2421,6 +2421,7 @@ int8_t paircmp_value(VALUE_PAIR const *one, VALUE_PAIR const *two)
 		compare = strcmp(one->vp_strvalue, two->vp_strvalue);
 		break;
 
+	case PW_TYPE_BOOLEAN:
 	case PW_TYPE_BYTE:
 	case PW_TYPE_SHORT:
 	case PW_TYPE_INTEGER:

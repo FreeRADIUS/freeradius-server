@@ -4006,6 +4006,11 @@ ssize_t rad_vp2data(uint8_t const **out, VALUE_PAIR const *vp)
 		break;
 	}
 
+	case PW_TYPE_BOOLEAN:
+		buffer[0] = vp->vp_integer & 0x01;
+		*out = buffer;
+		break;
+
 	case PW_TYPE_BYTE:
 		buffer[0] = vp->vp_integer & 0xff;
 		*out = buffer;
