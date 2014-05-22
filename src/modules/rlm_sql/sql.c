@@ -369,7 +369,7 @@ static void rlm_sql_query_debug(rlm_sql_handle_t *handle, rlm_sql_t *inst)
  *         RLM_SQL_QUERY_ERROR/RLM_SQL_ERROR on invalid query or connection error, RLM_SQL_DUPLICATE on constraints
  *         violation.
  */
-int rlm_sql_query(rlm_sql_handle_t **handle, rlm_sql_t *inst, char const *query)
+sql_rcode_t rlm_sql_query(rlm_sql_handle_t **handle, rlm_sql_t *inst, char const *query)
 {
 	int ret = RLM_SQL_ERROR;
 
@@ -426,7 +426,7 @@ int rlm_sql_query(rlm_sql_handle_t **handle, rlm_sql_t *inst, char const *query)
  * @return RLM_SQL_OK on success, RLM_SQL_RECONNECT if a new handle is required (also sets *handle = NULL),
  *         RLM_SQL_QUERY_ERROR/RLM_SQL_ERROR on invalid query or connection error.
  */
-int rlm_sql_select_query(rlm_sql_handle_t **handle, rlm_sql_t *inst, char const *query)
+sql_rcode_t rlm_sql_select_query(rlm_sql_handle_t **handle, rlm_sql_t *inst, char const *query)
 {
 	int ret = RLM_SQL_ERROR;
 
