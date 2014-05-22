@@ -263,7 +263,7 @@ endef
 define COMPILE_C_CMDS
 	$(Q)mkdir -p $(dir $@)
 	$(Q)$(ECHO) CC $<
-	$(Q)$(strip ${COMPILE.c} -o $@ -c -MD ${CFLAGS} ${SRC_CFLAGS} ${INCDIRS} \
+	$(Q)$(strip ${COMPILE.c} -o $@ -c -MD ${CPPFLAGS} ${CFLAGS} ${SRC_CFLAGS} ${INCDIRS} \
 	    ${SRC_INCDIRS} ${SRC_DEFS} ${DEFS} $<)
 endef
 
@@ -279,7 +279,7 @@ endef
 # COMPILE_CXX_CMDS - Commands for compiling C++ source code.
 define COMPILE_CXX_CMDS
 	$(Q)mkdir -p $(dir $@)
-	$(Q)$(strip ${COMPILE.cxx} -o $@ -c -MD ${CXXFLAGS} ${SRC_CXXFLAGS} ${INCDIRS} \
+	$(Q)$(strip ${COMPILE.cxx} -o $@ -c -MD ${CPPFLAGS} ${CXXFLAGS} ${SRC_CXXFLAGS} ${INCDIRS} \
 	    ${SRC_INCDIRS} ${SRC_DEFS} ${DEFS} $<)
 endef
 
@@ -354,6 +354,14 @@ define INCLUDE_SUBMAKEFILE
         $${TGT}_SOURCES :=
         $${TGT}_MAN := $${MAN}
         $${TGT}_SUFFIX := $$(if $$(suffix $${TGT}),$$(suffix $${TGT}),.exe)
+
+        # If it's an EXE, ensure that transitive library linking works.
+        # i.e. we build libfoo.a which in turn requires -lbar.  So, the executable
+        # has to be linked to both libfoo.a and -lbar.
+        ifeq "$${$${TGT}_SUFFIX}" ".exe"
+                $${TGT}_LDLIBS += $$(filter-out %.a %.so %.la,$${$${TGT_PREREQS}_LDLIBS})
+        endif
+
         $${TGT}_BUILD := $$(if $$(suffix $${TGT}),$${BUILD_DIR}/lib,$${BUILD_DIR}/bin)
         $${TGT}_MAKEFILES += ${1}
         $${TGT}_CHECK_HEADERS := $${TGT_CHECK_HEADERS}
