@@ -14,7 +14,7 @@ update request {
 
 if (NAS-Port != 1000) {
 	update reply {
-		Filter-Id := "fail 1"
+		Filter-Id += "fail 1"
 	}
 }
 
@@ -24,7 +24,7 @@ update request {
 
 if (NAS-Port != 500) {
 	update reply {
-		Filter-Id := "fail 2"
+		Filter-Id += "fail 2"
 	}
 }
 
@@ -34,7 +34,7 @@ update request {
 
 if (NAS-Port != 2000) {
 	update reply {
-		Filter-Id := "fail 3"
+		Filter-Id += "fail 3"
 	}
 }
 
