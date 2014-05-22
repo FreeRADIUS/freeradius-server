@@ -152,7 +152,7 @@ int     sql_getvpdata(rlm_sql_t *inst, rlm_sql_handle_t **handle, TALLOC_CTX *ct
 int     sql_read_naslist(rlm_sql_handle_t *handle);
 int     sql_read_clients(rlm_sql_handle_t *handle);
 int     sql_dict_init(rlm_sql_handle_t *handle);
-void 	CC_HINT(nonnull) rlm_sql_query_log(rlm_sql_t *inst, REQUEST *request, sql_acct_section_t *section, char const *query);
+void 	CC_HINT(nonnull (1, 2, 4)) rlm_sql_query_log(rlm_sql_t *inst, REQUEST *request, sql_acct_section_t *section, char const *query);
 int	CC_HINT(nonnull) rlm_sql_select_query(rlm_sql_handle_t **handle, rlm_sql_t *inst, char const *query);
 int	CC_HINT(nonnull) rlm_sql_query(rlm_sql_handle_t **handle, rlm_sql_t *inst, char const *query);
 int	rlm_sql_fetch_row(rlm_sql_handle_t **handle, rlm_sql_t *inst);
