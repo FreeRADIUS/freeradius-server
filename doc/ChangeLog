@@ -1,8 +1,26 @@
 FreeRADIUS 3.0.4 Mon 12 May 2014 15:30:00 EDT urgency=medium
 	Feature improvements
+	* Home server "response_window" can now take fractions
+	  of a second.  See proxy.conf.
+	* radmin now supports "show module status", as the
+	  counterpart to "set module status"
+	* Better indentation in debugging mode
+	* Added dictionary ericsson.packet.ccore.networks
 
 	Bug fixes
 	* make case-insensitive regular expressions work again.
+	* Added tests for the above
+	* A few more talloc parenting issues
+	* Fix delayed proxy reply handling.  Closes #637
+	* Fixes for rlm_couchbase.  #647, #648
+	* Fix OpenSSL initialization order when using
+	  RADIUS/TLS.  Fixes #646
+	* Don't double-quote strings in debugging messages
+	* Fix foreach / break.  Fixes #639
+	* Chargeable-User-Identifier should be "octets"
+	* Fix typo in mainconfig.  Fixes #634
+	* More rlm_perl fixes.  Fixes #635
+	* Free OpenSSL memory on clean exit.
 
 FreeRADIUS 3.0.3 Mon 12 May 2014 15:30:00 EDT urgency=medium
 	Feature improvements
