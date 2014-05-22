@@ -89,7 +89,7 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 	 *      it already ( via another rlm_realm instance ) and should return.
 	 */
 
-	if (pairfind(request->packet->vps, PW_REALM, 0, TAG_ANY) != NULL ) {
+	if (pairfind(request->packet->vps, PW_REALM, 0, TAG_ANY) != NULL) {
 		RDEBUG2("Request already has destination realm set.  Ignoring");
 		return RLM_MODULE_NOOP;
 	}
@@ -98,10 +98,10 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 	 *	We will be modifing this later, so we want our own copy
 	 *	of it.
 	 */
-	namebuf = talloc_typed_strdup(request,  request->username->vp_strvalue);
+	namebuf = talloc_typed_strdup(request, request->username->vp_strvalue);
 	username = namebuf;
 
-	switch(inst->format) {
+	switch (inst->format) {
 	case REALM_FORMAT_SUFFIX:
 
 	  /* DEBUG2("  rlm_realm: Checking for suffix after \"%c\"", inst->delim[0]); */
@@ -119,9 +119,9 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 		ptr = strchr(username, inst->delim[0]);
 		if (ptr) {
 			*ptr = '\0';
-		     ptr++;
-		     realmname = username;
-		     username = ptr;
+			ptr++;
+			realmname = username;
+			username = ptr;
 		}
 		break;
 
@@ -139,7 +139,7 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 		RDEBUG2("Looking up realm \"%s\" for User-Name = \"%s\"",
 		       realmname, request->username->vp_strvalue);
 	} else {
-		if (inst->ignore_null ) {
+		if (inst->ignore_null) {
 			RDEBUG2("No '%c' in User-Name = \"%s\", skipping NULL due to config.",
 			inst->delim[0], request->username->vp_strvalue);
 			talloc_free(namebuf);
@@ -159,7 +159,7 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 		talloc_free(namebuf);
 		return RLM_MODULE_NOOP;
 	}
-	if( inst->ignore_default &&
+	if (inst->ignore_default &&
 	    (strcmp(realm->name, "DEFAULT")) == 0) {
 		RDEBUG2("Found DEFAULT, but skipping due to config");
 		talloc_free(namebuf);
@@ -330,21 +330,21 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	struct realm_config_t *inst = instance;
 
 	if (strcasecmp(inst->format_string, "suffix") == 0) {
-	     inst->format = REALM_FORMAT_SUFFIX;
+		inst->format = REALM_FORMAT_SUFFIX;
 
 	} else if (strcasecmp(inst->format_string, "prefix") == 0) {
-	     inst->format = REALM_FORMAT_PREFIX;
+		inst->format = REALM_FORMAT_PREFIX;
 
 	} else {
 		cf_log_err_cs(conf, "Invalid value \"%s\" for format",
 			      inst->format_string);
-	     return -1;
+		return -1;
 	}
 
 	if (strlen(inst->delim) != 1) {
 		cf_log_err_cs(conf, "Invalid value \"%s\" for delimiter",
 			      inst->delim);
-	     return -1;
+		return -1;
 	}
 
 	return 0;
