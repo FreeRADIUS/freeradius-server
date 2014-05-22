@@ -91,10 +91,9 @@ typedef struct sql_config {
 typedef struct sql_inst rlm_sql_t;
 
 typedef struct rlm_sql_handle {
-	void	*conn;
-	rlm_sql_row_t row;
-	rlm_sql_t *inst;
-	bool	init;
+	void		*conn;	//!< Database specific connection handle.
+	rlm_sql_row_t	row;	//!< Row data from the last query.
+	rlm_sql_t	*inst;	//!< The rlm_sql instance this connection belongs to.
 } rlm_sql_handle_t;
 
 typedef struct rlm_sql_module_t {

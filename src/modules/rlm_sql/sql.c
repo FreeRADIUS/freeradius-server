@@ -64,7 +64,6 @@ static void *mod_conn_create(void *instance)
 	 *	destructor has access to the module configuration.
 	 */
 	handle->inst = inst;
-	handle->init = false;
 
 	/*
 	 *	When something frees this handle the destructor set by
@@ -94,7 +93,6 @@ static void *mod_conn_create(void *instance)
 	}
 
 	exec_trigger(NULL, inst->cs, "modules.sql.open", false);
-	handle->init = true;
 	return handle;
 }
 
@@ -371,18 +369,16 @@ static void rlm_sql_query_debug(rlm_sql_handle_t *handle, rlm_sql_t *inst)
  *************************************************************************/
 int rlm_sql_query(rlm_sql_handle_t **handle, rlm_sql_t *inst, char const *query)
 {
-	int ret = -1;
+	int ret = RLM_SQL_ERROR;
 
-	/*
-	 *	If there's no query, return an error.
-	 */
-	if (!query || !*query) {
-		return -1;
-	}
+	/* There's no query to run, return an error */
+	if (!query || (query[0] == '\0')) return RLM_SQL_QUERY_ERROR;
 
-	if (!*handle || !(*handle)->conn) {
-		goto sql_down;
-	}
+	/* There's no handle, we need a new one */
+	if (!*handle) return RLM_SQL_RECONNECT;
+
+	/* There's a SQL handle but the connection handle has been invalidated */
+	if (!(*handle)->conn) goto sql_down;
 
 	while (true) {
 		DEBUG("rlm_sql (%s): Executing query: '%s'", inst->config->xlat_name, query);
@@ -399,7 +395,9 @@ int rlm_sql_query(rlm_sql_handle_t **handle, rlm_sql_t *inst, char const *query)
 		case RLM_SQL_RECONNECT:
 		sql_down:
 			*handle = fr_connection_reconnect(inst->pool, *handle);
+			/* Reconnection failed */
 			if (!*handle) return RLM_SQL_RECONNECT;
+			/* Reconnection succeeded, try again with the new handle */
 			continue;
 
 		case RLM_SQL_QUERY_ERROR:
@@ -426,14 +424,16 @@ int rlm_sql_query(rlm_sql_handle_t **handle, rlm_sql_t *inst, char const *query)
  *************************************************************************/
 int rlm_sql_select_query(rlm_sql_handle_t **handle, rlm_sql_t *inst, char const *query)
 {
-	int ret = -1;
+	int ret = RLM_SQL_ERROR;
 
-	/*
-	 *	If there's no query, return an error.
-	 */
-	if (!query || !*query) return -1;
+	/* There's no query to run, return an error */
+	if (!query || (query[0] == '\0')) return RLM_SQL_QUERY_ERROR;
 
-	if (!*handle || !(*handle)->conn) goto sql_down;
+	/* There's no handle, we need a new one */
+	if (!*handle) return RLM_SQL_RECONNECT;
+
+	/* There's a SQL handle but the connection handle has been invalidated */
+	if (!(*handle)->conn) goto sql_down;
 
 	while (true) {
 		DEBUG("rlm_sql (%s): Executing query: '%s'", inst->config->xlat_name, query);
@@ -449,12 +449,12 @@ int rlm_sql_select_query(rlm_sql_handle_t **handle, rlm_sql_t *inst, char const 
 		 */
 		case RLM_SQL_RECONNECT:
 		sql_down:
-			if (!*handle) return RLM_SQL_RECONNECT;
-
-			if (!(*handle)->init) return RLM_SQL_RECONNECT;
-
 			*handle = fr_connection_reconnect(inst->pool, *handle);
+			/* Reconnection failed */
+			if (!*handle) return RLM_SQL_RECONNECT;
+			/* Reconnection succeeded, try again with the new handle */
 			continue;
+
 
 		case RLM_SQL_QUERY_ERROR:
 		case RLM_SQL_ERROR:
