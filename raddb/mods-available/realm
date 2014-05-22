@@ -14,6 +14,9 @@
 #			  The special cases of "DEFAULT"
 #			  and "NULL" are allowed, too.
 #	delimiter      -  must be a single character
+#	ignore_default -  do not allow "DEFAULT" as realm name (default: no)
+#	ignore_null    -  do not look up realm "NULL" if not realm is given
+#	                  (default: no)
 
 #  'realm/username'
 #
