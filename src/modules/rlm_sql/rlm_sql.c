@@ -452,7 +452,7 @@ int sql_set_user(rlm_sql_t *inst, REQUEST *request, char const *username)
 }
 
 
-static int sql_get_grouplist(rlm_sql_t *inst, rlm_sql_handle_t *handle, REQUEST *request,
+static int sql_get_grouplist(rlm_sql_t *inst, rlm_sql_handle_t **handle, REQUEST *request,
 			     rlm_sql_grouplist_t **phead)
 {
 	char    *expanded = NULL;
@@ -473,25 +473,26 @@ static int sql_get_grouplist(rlm_sql_t *inst, rlm_sql_handle_t *handle, REQUEST 
 		return -1;
 	}
 
-	ret = rlm_sql_select_query(&handle, inst, expanded);
+	ret = rlm_sql_select_query(handle, inst, expanded);
 	talloc_free(expanded);
 	if (ret < 0) {
 		return -1;
 	}
 
-	while (rlm_sql_fetch_row(&handle, inst) == 0) {
-		row = handle->row;
+	while (rlm_sql_fetch_row(handle, inst) == 0) {
+		row = (*handle)->row;
 		if (!row)
 			break;
+
 		if (!row[0]){
 			RDEBUG("row[0] returned NULL");
-			(inst->module->sql_finish_select_query)(handle, inst->config);
+			(inst->module->sql_finish_select_query)(*handle, inst->config);
 			talloc_free(entry);
 			return -1;
 		}
 
 		if (!*phead) {
-			*phead = talloc_zero(handle, rlm_sql_grouplist_t);
+			*phead = talloc_zero(*handle, rlm_sql_grouplist_t);
 			entry = *phead;
 		} else {
 			entry->next = talloc_zero(*phead, rlm_sql_grouplist_t);
@@ -503,7 +504,7 @@ static int sql_get_grouplist(rlm_sql_t *inst, rlm_sql_handle_t *handle, REQUEST 
 		num_groups++;
 	}
 
-	(inst->module->sql_finish_select_query)(handle, inst->config);
+	(inst->module->sql_finish_select_query)(*handle, inst->config);
 
 	return num_groups;
 }
@@ -548,7 +549,7 @@ static int CC_HINT(nonnull (1 ,2, 4)) sql_groupcmp(void *instance, REQUEST *requ
 	/*
 	 *	Get the list of groups this user is a member of
 	 */
-	if (sql_get_grouplist(inst, handle, request, &head) < 0) {
+	if (sql_get_grouplist(inst, &handle, request, &head) < 0) {
 		REDEBUG("Error getting group membership");
 		sql_release_socket(inst, handle);
 		return 1;
@@ -566,15 +567,14 @@ static int CC_HINT(nonnull (1 ,2, 4)) sql_groupcmp(void *instance, REQUEST *requ
 
 	/* Free the grouplist */
 	talloc_free(head);
-	sql_release_socket(inst,handle);
+	sql_release_socket(inst, handle);
 
-	RDEBUG("sql_groupcmp finished: User is NOT a member of group %s",
-	       check->vp_strvalue);
+	RDEBUG("sql_groupcmp finished: User is NOT a member of group %s", check->vp_strvalue);
 
 	return 1;
 }
 
-static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t *inst, REQUEST *request, rlm_sql_handle_t *handle,
+static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t *inst, REQUEST *request, rlm_sql_handle_t **handle,
 					  bool *dofallthrough)
 {
 	rlm_rcode_t		rcode = RLM_MODULE_NOOP;
@@ -626,7 +626,7 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t *inst, REQUEST *request, rlm
 				goto finish;
 			}
 
-			rows = sql_getvpdata(inst, &handle, request, &check_tmp, expanded);
+			rows = sql_getvpdata(inst, handle, request, &check_tmp, expanded);
 			TALLOC_FREE(expanded);
 			if (rows < 0) {
 				REDEBUG("Error retrieving check pairs for group %s", entry->name);
@@ -663,7 +663,7 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t *inst, REQUEST *request, rlm
 				goto finish;
 			}
 
-			rows = sql_getvpdata(inst, &handle, request->reply, &reply_tmp, expanded);
+			rows = sql_getvpdata(inst, handle, request->reply, &reply_tmp, expanded);
 			TALLOC_FREE(expanded);
 			if (rows < 0) {
 				REDEBUG("Error retrieving reply pairs for group %s", entry->name);
@@ -1041,7 +1041,7 @@ skipreply:
 		rlm_rcode_t ret;
 
 		RDEBUG3("... falling-through to group processing");
-		ret = rlm_sql_process_groups(inst, request, handle, &dofallthrough);
+		ret = rlm_sql_process_groups(inst, request, &handle, &dofallthrough);
 		switch (ret) {
 			/*
 			 *	Nothing bad happened, continue...
@@ -1095,7 +1095,7 @@ skipreply:
 			goto error;
 		}
 
-		ret = rlm_sql_process_groups(inst, request, handle, &dofallthrough);
+		ret = rlm_sql_process_groups(inst, request, &handle, &dofallthrough);
 		switch (ret) {
 			/*
 			 *	Nothing bad happened, continue...
