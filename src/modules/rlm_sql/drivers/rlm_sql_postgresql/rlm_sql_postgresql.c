@@ -434,31 +434,6 @@ static char const *sql_error(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t 
 
 /*************************************************************************
  *
- *	Function: sql_finish_query
- *
- *	Purpose: End the query, such as freeing memory
- *
- *************************************************************************/
-static sql_rcode_t sql_finish_query(rlm_sql_handle_t * handle, rlm_sql_config_t *config) {
-
-	return sql_free_result(handle, config);
-}
-
-/*************************************************************************
- *
- *	Function: sql_finish_select_query
- *
- *	Purpose: End the select query, such as freeing memory or result
- *
- *************************************************************************/
-static sql_rcode_t sql_finish_select_query(rlm_sql_handle_t * handle, rlm_sql_config_t *config) {
-
-	return sql_free_result(handle, config);
-}
-
-
-/*************************************************************************
- *
  *	Function: sql_affected_rows
  *
  *	Purpose: Return the number of rows affected by the last query.
@@ -483,7 +458,7 @@ rlm_sql_module_t rlm_sql_postgresql = {
 	sql_fetch_row,
 	NULL, /* sql_free_result */
 	sql_error,
-	sql_finish_query,
-	sql_finish_select_query,
+	sql_free_result,
+	sql_free_result,
 	sql_affected_rows,
 };
