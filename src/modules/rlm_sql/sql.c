@@ -455,7 +455,6 @@ int rlm_sql_select_query(rlm_sql_handle_t **handle, rlm_sql_t *inst, char const 
 			/* Reconnection succeeded, try again with the new handle */
 			continue;
 
-
 		case RLM_SQL_QUERY_ERROR:
 		case RLM_SQL_ERROR:
 			rlm_sql_query_error(*handle, inst);
