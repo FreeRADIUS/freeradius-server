@@ -75,9 +75,9 @@ endef
 #	delete references to ${BUILD_DIR}/make/include, the "config.mk"
 #	file adds these dependencies automatically.
 #	replace "build/" with "${BUILD_DIR}/" when it's in the middle of a line
-#	
+#
 #	remove sequential duplicate lines
-#	
+#
 #  2) Create empty dependencies from the files
 #
 #	COMMON
@@ -175,7 +175,7 @@ endef
 
 # ADD_TARGET_RULE.* - Parameterized "functions" that adds a new target to the
 #   Makefile.  There should be one ADD_TARGET_RULE definition for each
-#   type of target that is used in the build.  
+#   type of target that is used in the build.
 #
 #   New rules can be added by copying one of the existing ones, and
 #   replacing the line after the "mkdir"
@@ -586,7 +586,7 @@ ECHO = echo
 # Define the "all" target (which simply builds all user-defined targets) as the
 # default goal.
 .PHONY: all
-all: 
+all:
 
 # Add "clean" rules to remove all build-generated files.
 .PHONY: clean
