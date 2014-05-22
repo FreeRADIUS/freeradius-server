@@ -555,6 +555,7 @@ VALUE_PAIR	*pairfind_da(VALUE_PAIR *, DICT_ATTR const *da, int8_t tag);
 VALUE_PAIR	*_fr_cursor_init(vp_cursor_t *cursor, VALUE_PAIR const * const *node);
 void		fr_cursor_copy(vp_cursor_t *out, vp_cursor_t *in);
 VALUE_PAIR	*fr_cursor_first(vp_cursor_t *cursor);
+VALUE_PAIR	*fr_cursor_last(vp_cursor_t *cursor);
 VALUE_PAIR	*fr_cursor_next_by_num(vp_cursor_t *cursor, unsigned int attr, unsigned int vendor, int8_t tag);
 
 VALUE_PAIR	*fr_cursor_next_by_da(vp_cursor_t *cursor, DICT_ATTR const *da, int8_t tag)
