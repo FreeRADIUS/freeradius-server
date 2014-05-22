@@ -1,0 +1,100 @@
+#
+# PRE: update update-remove-value
+#
+#  Remove all attributes in a list
+#
+update {
+	control:Cleartext-Password := 'hello'
+	reply:Filter-Id := 'filter'
+}
+
+update {
+	request:Tmp-String-0 := 'foobarbaz'
+	request:Tmp-Integer-0 := 123456789
+	request:Tmp-IP-Address-0 := 192.0.2.1
+	request:Tmp-IP-Address-0 += 192.0.2.2
+	request:Tmp-IP-Address-0 += 192.0.2.3
+	request:Tmp-IP-Address-0 += 192.0.2.2
+	request:Tmp-IP-Address-0 += 192.0.2.4
+}
+
+
+update request {
+	Tmp-IP-Address-0[3] -= 192.0.2.2
+}
+
+# Only the 1st, 2nd, 3rd and 5th Tmp-IP-Address attributes should still be in the list
+if (("%{Tmp-IP-Address-0[0]}" != '192.0.2.1') || \
+    ("%{Tmp-IP-Address-0[1]}" != '192.0.2.2') || \
+    ("%{Tmp-IP-Address-0[2]}" != '192.0.2.3') || \
+    ("%{Tmp-IP-Address-0[3]}" != '192.0.2.4') || \
+    ("%{Tmp-IP-Address-0[4]}" != '')) {
+	update reply {
+		Filter-Id += 'fail 1'
+	}
+}
+
+# There's still a 192.0.2.2 but it's not at index 3
+update request {
+	Tmp-IP-Address-0[3] -= 192.0.2.2
+}
+
+# Should be the same as the previous result
+if (("%{Tmp-IP-Address-0[0]}" != '192.0.2.1') || \
+    ("%{Tmp-IP-Address-0[1]}" != '192.0.2.2') || \
+    ("%{Tmp-IP-Address-0[2]}" != '192.0.2.3') || \
+    ("%{Tmp-IP-Address-0[3]}" != '192.0.2.4') || \
+    ("%{Tmp-IP-Address-0[4]}" != '')) {
+	update reply {
+		Filter-Id += 'fail 2'
+	}
+}
+
+# Remove whatever's at index 0
+update request {
+	Tmp-IP-Address-0[0] !* ANY
+}
+
+# IP address at index 0 should be removed
+if (("%{Tmp-IP-Address-0[0]}" != '192.0.2.2') || \
+    ("%{Tmp-IP-Address-0[1]}" != '192.0.2.3') || \
+    ("%{Tmp-IP-Address-0[2]}" != '192.0.2.4') || \
+    ("%{Tmp-IP-Address-0[3]}" != '')) {
+	update reply {
+		Filter-Id += 'fail 3'
+	}
+}
+
+# Remove whatever's at index 3 (should be nothing)
+update request {
+	Tmp-IP-Address-0[3] !* ANY
+}
+
+# Should be the same as the previous result
+if (("%{Tmp-IP-Address-0[0]}" != '192.0.2.2') || \
+    ("%{Tmp-IP-Address-0[1]}" != '192.0.2.3') || \
+    ("%{Tmp-IP-Address-0[2]}" != '192.0.2.4') || \
+    ("%{Tmp-IP-Address-0[3]}" != '')) {
+	update reply {
+		Filter-Id += 'fail 4'
+	}
+}
+
+# Remove all instances of Tmp-IP-Address
+update request {
+	Tmp-IP-Address-0 !* ANY
+}
+
+# No more IP address attributes!
+if ("%{Tmp-IP-Address-0[0]}" != '') {
+	update reply {
+		Filter-Id += 'fail 5'
+	}
+}
+
+# Non Tmp-IP-Address-0 address attributes should still be in the request list
+if ((Tmp-String-0 != 'foobarbaz') || (Tmp-Integer-0 != 123456789)) {
+	update reply {
+		Filter-Id += 'fail 6'
+	}
+}
