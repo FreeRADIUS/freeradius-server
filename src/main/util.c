@@ -331,7 +331,8 @@ void rad_const_free(void const *ptr)
 void NEVER_RETURNS rad_assert_fail(char const *file, unsigned int line, char const *expr)
 {
 	ERROR("ASSERT FAILED %s[%u]: %s", file, line, expr);
-	abort();
+	fr_fault(SIGABRT);
+	fr_exit_now(1);
 }
 
 
