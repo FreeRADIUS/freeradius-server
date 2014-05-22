@@ -359,19 +359,22 @@ static void rlm_sql_query_debug(rlm_sql_handle_t *handle, rlm_sql_t *inst)
 	}
 }
 
-/*************************************************************************
+/** Call the driver's sql_query method, reconnecting if necessary.
  *
- *	Function: rlm_sql_query
- *
- *	Purpose: call the module's sql_query and implement re-connect
- *
- *************************************************************************/
+ * @param handle to query the database with. *handle should not be NULL, as this indicates
+ *	  previous reconnection attempt has failed.
+ * @param inst rlm_sql instance data.
+ * @param query to execute. Should not be zero length.
+ * @return RLM_SQL_OK on success, RLM_SQL_RECONNECT if a new handle is required (also sets *handle = NULL),
+ *         RLM_SQL_QUERY_ERROR/RLM_SQL_ERROR on invalid query or connection error, RLM_SQL_DUPLICATE on constraints
+ *         violation.
+ */
 int rlm_sql_query(rlm_sql_handle_t **handle, rlm_sql_t *inst, char const *query)
 {
 	int ret = RLM_SQL_ERROR;
 
 	/* There's no query to run, return an error */
-	if (!query || (query[0] == '\0')) return RLM_SQL_QUERY_ERROR;
+	if (query[0] == '\0') return RLM_SQL_QUERY_ERROR;
 
 	/* There's no handle, we need a new one */
 	if (!*handle) return RLM_SQL_RECONNECT;
@@ -414,19 +417,21 @@ int rlm_sql_query(rlm_sql_handle_t **handle, rlm_sql_t *inst, char const *query)
 	}
 }
 
-/*************************************************************************
+/** Call the driver's sql_select_query method, reconnecting if necessary.
  *
- *	Function: rlm_sql_select_query
- *
- *	Purpose: call the module's sql_select_query and implement re-connect
- *
- *************************************************************************/
+ * @param handle to query the database with. *handle should not be NULL, as this indicates
+ *	  previous reconnection attempt has failed.
+ * @param inst rlm_sql instance data.
+ * @param query to execute. Should not be zero length.
+ * @return RLM_SQL_OK on success, RLM_SQL_RECONNECT if a new handle is required (also sets *handle = NULL),
+ *         RLM_SQL_QUERY_ERROR/RLM_SQL_ERROR on invalid query or connection error.
+ */
 int rlm_sql_select_query(rlm_sql_handle_t **handle, rlm_sql_t *inst, char const *query)
 {
 	int ret = RLM_SQL_ERROR;
 
 	/* There's no query to run, return an error */
-	if (!query || (query[0] == '\0')) return RLM_SQL_QUERY_ERROR;
+	if (query[0] == '\0') return RLM_SQL_QUERY_ERROR;
 
 	/* There's no handle, we need a new one */
 	if (!*handle) return RLM_SQL_RECONNECT;
@@ -456,13 +461,9 @@ int rlm_sql_select_query(rlm_sql_handle_t **handle, rlm_sql_t *inst, char const 
 
 		case RLM_SQL_QUERY_ERROR:
 		case RLM_SQL_ERROR:
+		default:
 			rlm_sql_query_error(*handle, inst);
 			break;
-
-		case RLM_SQL_DUPLICATE:
-			rlm_sql_query_debug(*handle, inst);
-			break;
-
 		}
 
 		return ret;
