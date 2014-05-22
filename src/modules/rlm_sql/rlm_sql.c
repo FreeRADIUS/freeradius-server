@@ -168,7 +168,7 @@ static ssize_t sql_xlat(void *instance, REQUEST *request, char const *query, cha
 		int numaffected;
 		char buffer[21]; /* 64bit max is 20 decimal chars + null byte */
 
-		if (rlm_sql_query(&handle, inst, query)) {
+		if (rlm_sql_query(&handle, inst, query) != RLM_SQL_OK) {
 			char const *error = (inst->module->sql_error)(handle, inst->config);
 			REDEBUG("SQL query failed: %s", error);
 
@@ -211,7 +211,7 @@ static ssize_t sql_xlat(void *instance, REQUEST *request, char const *query, cha
 		goto finish;
 	} /* else it's a SELECT statement */
 
-	if (rlm_sql_select_query(&handle, inst, query)){
+	if (rlm_sql_select_query(&handle, inst, query) != RLM_SQL_OK){
 		char const *error = (inst->module->sql_error)(handle, inst->config);
 		REDEBUG("SQL query failed: %s", error);
 		ret = -1;
@@ -259,7 +259,7 @@ static ssize_t sql_xlat(void *instance, REQUEST *request, char const *query, cha
 
 	(inst->module->sql_finish_select_query)(handle, inst->config);
 
-	finish:
+finish:
 	sql_release_socket(inst, handle);
 
 	return ret;
@@ -283,11 +283,11 @@ static int generate_sql_clients(rlm_sql_t *inst)
 		return -1;
 	}
 
-	if (rlm_sql_select_query(&handle, inst, inst->config->client_query)){
+	if (rlm_sql_select_query(&handle, inst, inst->config->client_query) != RLM_SQL_OK){
 		return -1;
 	}
 
-	while((rlm_sql_fetch_row(&handle, inst) == 0) && (row = handle->row)) {
+	while ((rlm_sql_fetch_row(&handle, inst) == 0) && (row = handle->row)) {
 		char *server = NULL;
 		i++;
 
@@ -475,7 +475,7 @@ static int sql_get_grouplist(rlm_sql_t *inst, rlm_sql_handle_t **handle, REQUEST
 
 	ret = rlm_sql_select_query(handle, inst, expanded);
 	talloc_free(expanded);
-	if (ret < 0) {
+	if (ret != RLM_SQL_OK) {
 		return -1;
 	}
 
@@ -1246,7 +1246,6 @@ static int acct_redundant(rlm_sql_t *inst, REQUEST *request, sql_acct_section_t 
 		 */
 		sql_ret = rlm_sql_query(&handle, inst, expanded);
 		TALLOC_FREE(expanded);
-
 		if (sql_ret == RLM_SQL_RECONNECT) {
 			rcode = RLM_MODULE_FAIL;
 			goto finish;
@@ -1365,7 +1364,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_checksimul(void *instance, REQUEST * req
 		return RLM_MODULE_FAIL;
 	}
 
-	if (rlm_sql_select_query(&handle, inst, expanded)) {
+	if (rlm_sql_select_query(&handle, inst, expanded) != RLM_SQL_OK) {
 		rcode = RLM_MODULE_FAIL;
 		goto finish;
 	}
@@ -1387,7 +1386,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_checksimul(void *instance, REQUEST * req
 	(inst->module->sql_finish_select_query)(handle, inst->config);
 	TALLOC_FREE(expanded);
 
-	if(request->simul_count < request->simul_max) {
+	if (request->simul_count < request->simul_max) {
 		rcode = RLM_MODULE_OK;
 		goto finish;
 	}
@@ -1408,7 +1407,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_checksimul(void *instance, REQUEST * req
 		goto finish;
 	}
 
-	if(rlm_sql_select_query(&handle, inst, expanded)) {
+	if (rlm_sql_select_query(&handle, inst, expanded) != RLM_SQL_OK) {
 		goto finish;
 	}
 
