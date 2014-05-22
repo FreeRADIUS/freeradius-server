@@ -74,6 +74,26 @@ VALUE_PAIR *fr_cursor_first(vp_cursor_t *cursor)
 	return cursor->current;
 }
 
+/** Return the last pair in the list
+ *
+ */
+VALUE_PAIR *fr_cursor_last(vp_cursor_t *cursor)
+{
+	if (!*cursor->first) return NULL;
+
+	/* Need to start at the start */
+	if (!cursor->current) {
+		fr_cursor_first(cursor);
+	}
+
+	/* Wind to the end */
+	while (cursor->next) {
+		fr_cursor_next(cursor);
+	}
+
+	return fr_cursor_current(cursor);
+}
+
 /** Iterate over attributes of a given type in the pairlist
  *
  *
