@@ -950,14 +950,11 @@ int radius_map2request(REQUEST *request, value_pair_map_t const *map,
 	 *	auto-allocate it.
 	 */
 	if (((map->dst->vpt_list == PAIR_LIST_COA) ||
-	     (map->dst->vpt_list == PAIR_LIST_DM)) &&
-	    !request->coa) {
+	     (map->dst->vpt_list == PAIR_LIST_DM)) && !request->coa) {
 		request_alloc_coa(context);
-		if (map->dst->vpt_list == PAIR_LIST_COA) {
-			context->coa->proxy->code = PW_CODE_COA_REQUEST;
-		} else {
-			context->coa->proxy->code = PW_CODE_DISCONNECT_REQUEST;
-		}
+		context->coa->proxy->code = (map->dst->vpt_list == PAIR_LIST_COA) ?
+					    PW_CODE_COA_REQUEST :
+					    PW_CODE_DISCONNECT_REQUEST;
 	}
 
 	list = radius_list(context, map->dst->vpt_list);
