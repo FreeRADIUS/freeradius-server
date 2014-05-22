@@ -77,6 +77,7 @@ typedef struct {
 	value_pair_map_t	*map;		/* update */
 	value_pair_tmpl_t	*vpt;		/* switch */
 	fr_cond_t		*cond;		/* if/elsif */
+	bool			done_pass2;
 } modgroup;
 
 typedef struct {
@@ -3077,9 +3078,12 @@ bool modcall_pass2(modcallable *mc)
 #ifdef WITH_UNLANG
 		case MOD_UPDATE:
 			g = mod_callabletogroup(this);
+			if (g->done_pass2) return true;
+
 			if (!modcall_pass2_update(g)) {
 				return false;
 			}
+			g->done_pass2 = true;
 			break;
 
 		case MOD_XLAT:   /* @todo: pre-parse xlat's */
@@ -3094,6 +3098,7 @@ bool modcall_pass2(modcallable *mc)
 		case MOD_IF:
 		case MOD_ELSIF:
 			g = mod_callabletogroup(this);
+			if (g->done_pass2) return true;
 
 			/*
 			 *	Don't walk over these.
@@ -3114,12 +3119,14 @@ bool modcall_pass2(modcallable *mc)
 			}
 
 			if (!modcall_pass2(g->children)) return false;
+			g->done_pass2 = true;
 			break;
 #endif
 
 #ifdef WITH_UNLANG
 		case MOD_SWITCH:
 			g = mod_callabletogroup(this);
+			if (g->done_pass2) return true;
 
 			/*
 			 *	We had &Foo-Bar, where Foo-Bar is
@@ -3173,10 +3180,12 @@ bool modcall_pass2(modcallable *mc)
 			}
 
 			if (!modcall_pass2(g->children)) return false;
+			g->done_pass2 = true;
 			break;
 
 		case MOD_CASE:
 			g = mod_callabletogroup(this);
+			if (g->done_pass2) return true;
 
 		do_case:
 			/*
@@ -3239,10 +3248,12 @@ bool modcall_pass2(modcallable *mc)
 			}
 
 			if (!modcall_pass2(g->children)) return false;
+			g->done_pass2 = true;
 			break;
 
 		case MOD_FOREACH:
 			g = mod_callabletogroup(this);
+			if (g->done_pass2) return true;
 
 			/*
 			 *	Already parsed, handle the children.
@@ -3279,6 +3290,7 @@ bool modcall_pass2(modcallable *mc)
 				return false;
 			}
 			if (!modcall_pass2(g->children)) return false;
+			g->done_pass2 = true;
 			break;
 
 		case MOD_ELSE:
@@ -3290,7 +3302,9 @@ bool modcall_pass2(modcallable *mc)
 		case MOD_LOAD_BALANCE:
 		case MOD_REDUNDANT_LOAD_BALANCE:
 			g = mod_callabletogroup(this);
+			if (g->done_pass2) return true;
 			if (!modcall_pass2(g->children)) return false;
+			g->done_pass2 = true;
 			break;
 		}
 	}
