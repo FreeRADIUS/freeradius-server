@@ -804,8 +804,8 @@ int rad_expand_xlat(REQUEST *request, char const *cmd,
 const FR_NAME_NUMBER pair_lists[] = {
 	{ "request",		PAIR_LIST_REQUEST },
 	{ "reply",		PAIR_LIST_REPLY },
+	{ "control",		PAIR_LIST_CONTROL },		/* New name should have priority */
 	{ "config",		PAIR_LIST_CONTROL },
-	{ "control",		PAIR_LIST_CONTROL },
 #ifdef WITH_PROXY
 	{ "proxy-request",	PAIR_LIST_PROXY_REQUEST },
 	{ "proxy-reply",	PAIR_LIST_PROXY_REPLY },
