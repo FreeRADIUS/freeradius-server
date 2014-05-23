@@ -1049,7 +1049,7 @@ int radius_map2request(REQUEST *request, value_pair_map_t const *map,
 	 */
 	num = map->dst->vpt_num;
 	dst = fr_cursor_init(&dst_list, list);
-	if (num != 0) {
+	if (num != NUM_ANY) {
 		while ((dst = fr_cursor_next_by_da(&dst_list, map->dst->vpt_da, map->dst->vpt_tag))) {
 			if (num-- == 0) break;
 		}
@@ -1077,7 +1077,7 @@ int radius_map2request(REQUEST *request, value_pair_map_t const *map,
 		/*
 		 *	Wildcard: delete all of the matching ones, based on tag.
 		 */
-		if (map->dst->vpt_num == 0) {
+		if (map->dst->vpt_num == NUM_ANY) {
 			pairdelete(list, map->dst->vpt_da->attr, map->dst->vpt_da->vendor, map->dst->vpt_tag);
 			dst = NULL;
 		/*
@@ -1142,7 +1142,7 @@ int radius_map2request(REQUEST *request, value_pair_map_t const *map,
 	 *	This operation has two modes:
 	 *	- If map->dst->vpt_num > 0, we check each of the src_list attributes against
 	 *	  the dst attribute, to see if any of their values match.
-	 *	- If map->dst->vpt_num == 0, we compare all instances of the dst attribute
+	 *	- If map->dst->vpt_num == NUM_ANY, we compare all instances of the dst attribute
 	 *	  against each of the src_list attributes.
 	 */
 	case T_OP_SUB:
@@ -1154,7 +1154,7 @@ int radius_map2request(REQUEST *request, value_pair_map_t const *map,
 		}
 
 		/* All instances[*] delete */
-		if (map->dst->vpt_num == 0) {
+		if (map->dst->vpt_num == NUM_ANY) {
 			for (dst = fr_cursor_current(&dst_list);
 			     dst;
 			     dst = fr_cursor_next_by_da(&dst_list, map->dst->vpt_da, map->dst->vpt_tag)) {
@@ -1661,7 +1661,7 @@ int radius_vpt_get_vp(VALUE_PAIR **out, REQUEST *request, value_pair_tmpl_t cons
 		 *	name.
 		 */
 	case VPT_TYPE_ATTR:
-		if (vpt->vpt_num == 0) {
+		if (vpt->vpt_num == NUM_ANY) {
 			vp = pairfind(*vps, vpt->vpt_da->attr, vpt->vpt_da->vendor, vpt->vpt_tag);
 			if (!vp) return -1;
 		} else {

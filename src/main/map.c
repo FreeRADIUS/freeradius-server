@@ -115,6 +115,7 @@ int radius_parse_attr(value_pair_tmpl_t *vpt, char const *name, request_refs_t r
 	vpt->vpt_da = da;
 	vpt->type = VPT_TYPE_ATTR;
 	vpt->vpt_tag = TAG_ANY;
+	vpt->vpt_num = NUM_ANY;
 
 	/*
 	 *	After this point, we return -2 to indicate that parts
@@ -701,7 +702,7 @@ size_t radius_tmpl2str(char *buffer, size_t bufsize, value_pair_tmpl_t const *vp
 
 		len = strlen(buffer);
 
-		if ((vpt->vpt_tag == TAG_ANY) && !vpt->vpt_num) {
+		if ((vpt->vpt_tag == TAG_ANY) && (vpt->vpt_num == NUM_ANY)) {
 			return len;
 		}
 
@@ -715,7 +716,7 @@ size_t radius_tmpl2str(char *buffer, size_t bufsize, value_pair_tmpl_t const *vp
 			bufsize -= len;
 		}
 
-		if (vpt->vpt_num) {
+		if (vpt->vpt_num != NUM_ANY) {
 			snprintf(q, bufsize, "[%u]", vpt->vpt_num);
 			len = strlen(q);
 			q += len;

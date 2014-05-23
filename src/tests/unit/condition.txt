@@ -463,13 +463,13 @@ data &Tunnel-Password:1 == "Hello"
 #  zero offset into arrays get parsed and ignored
 #
 condition &User-Name[0] == "bob"
-data &User-Name == "bob"
+data &User-Name[0] == "bob"
 
 condition &User-Name[1] == "bob"
 data &User-Name[1] == "bob"
 
 condition &Tunnel-Password:1[0] == "Hello"
-data &Tunnel-Password:1 == "Hello"
+data &Tunnel-Password:1[0] == "Hello"
 
 condition &Tunnel-Password:1[3] == "Hello"
 data &Tunnel-Password:1[3] == "Hello"
