@@ -1643,7 +1643,7 @@ int radius_strpair2map(value_pair_map_t **out, REQUEST *request, char const *raw
  */
 VALUE_PAIR *radius_vpt_get_vp(REQUEST *request, value_pair_tmpl_t const *vpt)
 {
-	VALUE_PAIR **vps;
+	VALUE_PAIR **vps, *vp;
 
 	if (radius_request(&request, vpt->vpt_request) < 0) {
 		return NULL;
@@ -1655,33 +1655,27 @@ VALUE_PAIR *radius_vpt_get_vp(REQUEST *request, value_pair_tmpl_t const *vpt)
 	}
 
 	switch (vpt->type) {
-		/*
-		 *	May not may not be found, but it *is* a known
-		 *	name.
-		 */
+	/*
+	 *	May not may not be found, but it *is* a known
+	 *	name.
+	 */
 	case VPT_TYPE_ATTR:
-		if (vpt->vpt_num == NUM_ANY) {
-			vp = pairfind(*vps, vpt->vpt_da->attr, vpt->vpt_da->vendor, vpt->vpt_tag);
-			if (!vp) return -1;
-		} else {
-			int16_t num;
-			vp_cursor_t cursor;
+	{
+		int16_t num;
+		vp_cursor_t cursor;
 
-			/*
-			 *	It's faster to just repeat the 3-4 lines of pairfind here.
-			 */
-			num = vpt->vpt_num;
-			for (vp = fr_cursor_init(&cursor, vps);
-			     vp != NULL;
-			     vp = fr_cursor_next(&cursor)) {
-				VERIFY_VP(vp);
-				if ((vp->da == vpt->vpt_da) && (!vp->da->flags.has_tag || (vpt->vpt_tag == TAG_ANY) || (vp->tag == vpt->vpt_tag))) {
-					if (num == 0) return vp;
-					num--;
-				}
-			}
-			return NULL;
+		if (vpt->vpt_num == NUM_ANY) {
+			return pairfind(*vps, vpt->vpt_da->attr, vpt->vpt_da->vendor, vpt->vpt_tag);
 		}
+
+		vp = fr_cursor_init(&cursor, vps);
+		num = vpt->vpt_num;
+		while ((vp = fr_cursor_next_by_da(&cursor, vpt->vpt_da, vpt->vpt_tag)) {
+			VERIFY_VP(vp);
+			if (num-- == 0) return vp;
+		}
+		return NULL;
+	}
 
 	case VPT_TYPE_LIST:
 		return *vps;
