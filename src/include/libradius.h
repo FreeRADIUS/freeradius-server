@@ -133,9 +133,9 @@ extern "C" {
 #define TAG_ANY			-128	/* minimum signed char */
 #define TAG_UNUSED		0
 
-#define NUM_ANY			-128
-#define NUM_JOIN		-127
-#define NUM_COUNT		-126
+#define NUM_ANY			-32768
+#define NUM_JOIN		-32767
+#define NUM_COUNT		-32766
 
 #define PAD(_x, _y)		(_y - ((_x) % _y))
 
