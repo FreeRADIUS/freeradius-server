@@ -1698,22 +1698,26 @@ static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, pair_lists_t list, DI
 		break;		/* ignore them */
 
 	case PW_CLIENT_SHORTNAME:
+		if (num == NUM_COUNT) goto count;
 		if (request->client && request->client->shortname) {
 			return talloc_typed_strdup(ctx, request->client->shortname);
 		}
 		return talloc_typed_strdup(ctx, "<UNKNOWN-CLIENT>");
 
 	case PW_REQUEST_PROCESSING_STAGE:
+		if (num == NUM_COUNT) goto count;
 		if (request->component) {
 			return talloc_typed_strdup(ctx, request->component);
 		}
 		return talloc_typed_strdup(ctx, "server_core");
 
 	case PW_VIRTUAL_SERVER:
+		if (num == NUM_COUNT) goto count;
 		if (!request->server) return NULL;
 		return talloc_typed_strdup(ctx, request->server);
 
 	case PW_MODULE_RETURN_CODE:
+		if (num == NUM_COUNT) goto count;
 		if (!request->rcode) return NULL;
 		return talloc_typed_strdup(ctx, fr_int2str(modreturn_table, request->rcode, ""));
 	}
@@ -1820,33 +1824,27 @@ do_print:
 	/*
 	 *	Fake various operations for virtual attributes.
 	 */
-	if ((num != NUM_ANY) && myvp) {
-		char *p;
-
+	if (myvp && (num != NUM_ANY)) {
 		switch (num) {
 		/*
 		 *	[*] means only one.
 		 */
 		case NUM_JOIN:
-			num = 0;
-			break;
-
+			ret = vp_aprint_value(ctx, myvp);
+			goto finish;
 		/*
-		 *	[n] means NULL, as there's only one.
+		 *	[#] means 1 (as there's only one)
 		 */
 		case NUM_COUNT:
-			p = vp_aprint_value(ctx, vp);
-			rad_assert(p != NULL);
-
-			/*
-			 *	Get the length of it.
-			 */
-			ret = talloc_typed_asprintf(ctx, "%d", (int) strlen(p));
-			talloc_free(p);
+		count:
+			ret = talloc_strdup(ctx, "1");
 			goto finish;
 
-			ret = p;
-			goto finish;
+		/*
+		 *	[0] is fine (get the first instance)
+		 */
+		case 0:
+			break;
 
 		default:
 			goto finish;
