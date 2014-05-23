@@ -1034,6 +1034,7 @@ int radius_map2request(REQUEST *request, value_pair_map_t const *map,
 
 		case T_OP_ADD:
 			pairadd(list, head);
+			head = NULL;
 			goto finish;
 
 		default:
