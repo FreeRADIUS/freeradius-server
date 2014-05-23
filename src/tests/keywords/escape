@@ -1,5 +1,5 @@
 #
-#  PRE: update if xlat-attr-number
+#  PRE: update if xlat-attr-index
 #
 update request {
        control:Cleartext-Password := 'hello'
