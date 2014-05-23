@@ -1876,15 +1876,15 @@ VALUE_PAIR *pairmake(TALLOC_CTX *ctx, VALUE_PAIR **vps,
 	VALUE_PAIR	*vp;
 	char		*tc, *ts;
 	int8_t		tag;
-	int		found_tag;
+	bool		found_tag;
 	char		buffer[256];
 	char const	*attrname = attribute;
 
 	/*
 	 *    Check for tags in 'Attribute:Tag' format.
 	 */
-	found_tag = 0;
 	tag = 0;
+	found_tag = false;
 
 	ts = strrchr(attribute, ':');
 	if (ts && !ts[1]) {
@@ -1902,18 +1902,19 @@ VALUE_PAIR *pairmake(TALLOC_CTX *ctx, VALUE_PAIR **vps,
 		 if (ts[1] == '*' && ts[2] == 0) {
 			 /* Wildcard tag for check items */
 			 tag = TAG_ANY;
-			 *ts = 0;
+			 *ts = '\0';
 		 } else if ((ts[1] >= '0') && (ts[1] <= '9')) {
 			 /* It's not a wild card tag */
 			 tag = strtol(ts + 1, &tc, 0);
 			 if (tc && !*tc && TAG_VALID_ZERO(tag))
-				 *ts = 0;
+			 	 *ts = '\0';
 			 else tag = 0;
+
 		 } else {
 			 fr_strerror_printf("Invalid tag for attribute %s", attribute);
 			 return NULL;
 		 }
-		 found_tag = 1;
+		 found_tag = true;
 	}
 
 	/*
