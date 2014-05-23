@@ -2052,7 +2052,7 @@ static int process_proxy_reply(REQUEST *request)
 	 */
 	if (!request->proxy_listener) return 0;
 
-	rad_assert(request->proxy_reply != NULL);
+	if (!request->proxy_reply) return 1;
 
 	/*
 	 *	Delete any reply we had accumulated until now.
@@ -2069,7 +2069,7 @@ static int process_proxy_reply(REQUEST *request)
 	 *	If we have a proxy_reply, and it was a reject, setup
 	 *	post-proxy-type Reject
 	 */
-	if (!vp &&
+	if (!vp && request->proxy_reply &&
 	    request->proxy_reply->code == PW_CODE_AUTHENTICATION_REJECT) {
 		DICT_VALUE	*dval;
 
@@ -2088,20 +2088,24 @@ static int process_proxy_reply(REQUEST *request)
 		RDEBUG2("Found Post-Proxy-Type %s", dict_valnamebyattr(PW_POST_PROXY_TYPE, 0, post_proxy_type));
 	}
 
-	/*
-	 *	Decode the packet.
-	 */
-	rcode = request->proxy_listener->decode(request->proxy_listener, request);
-	DEBUG_PACKET(request, request->proxy_reply, 0);
+	if (request->proxy_reply) {
+		/*
+		 *	Decode the packet.
+		 */
+		rcode = request->proxy_listener->decode(request->proxy_listener, request);
+		DEBUG_PACKET(request, request->proxy_reply, 0);
 
-	/*
-	 *	Pro-actively remove it from the proxy hash.
-	 *	This is later than in 2.1.x, but it means that
-	 *	the replies are authenticated before being
-	 *	removed from the hash.
-	 */
-	if ((rcode == 0) &&
-	    (request->num_proxied_requests <= request->num_proxied_responses)) {
+		/*
+		 *	Pro-actively remove it from the proxy hash.
+		 *	This is later than in 2.1.x, but it means that
+		 *	the replies are authenticated before being
+		 *	removed from the hash.
+		 */
+		if ((rcode == 0) &&
+		    (request->num_proxied_requests <= request->num_proxied_responses)) {
+			remove_from_proxy_hash(request);
+		}
+	} else {
 		remove_from_proxy_hash(request);
 	}
 
