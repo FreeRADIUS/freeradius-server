@@ -265,6 +265,9 @@ VALUE_PAIR *fr_cursor_remove(vp_cursor_t *cursor)
 	*last = vp->next;
 	vp->next = NULL;
 
+	/* Fixup cursor->found if we removed the VP it was referring to */
+	if (vp == cursor->found) cursor->found = *last;
+
 	return vp;
 }
 
