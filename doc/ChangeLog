@@ -21,6 +21,14 @@ FreeRADIUS 3.0.4 Mon 12 May 2014 15:30:00 EDT urgency=medium
 	* Fix typo in mainconfig.  Fixes #634
 	* More rlm_perl fixes.  Fixes #635
 	* Free OpenSSL memory on clean exit.
+	* Fix <attr>[0] !* ANY - Was removing all instances of <attr>
+	* Fix case where multiple attributes were returned from LHS of 
+	  mapping, as with rlm_ldap. Fixes #652
+	* Fix corner case in cursor where using fr_cursor_next_by_da
+	  after calling fr_cursor_remove may result in a read of 
+	  uninitialised memory.
+	* Don't SEGV if all connections to a database server go away.
+	  Fixes #651
 
 FreeRADIUS 3.0.3 Mon 12 May 2014 15:30:00 EDT urgency=medium
 	Feature improvements
