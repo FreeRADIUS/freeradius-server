@@ -1,6 +1,11 @@
 #
 #  PRE: if
 #
+
+update reply {
+	Filter-Id := "filter"
+}
+
 if ("%{Client-Shortname}" != '<UNKNOWN-CLIENT>') {
 	update reply {
 		Filter-Id += "fail 0"
@@ -94,12 +99,33 @@ if ("%{Packet-Dst-Port}" != '1812') {
 	}
 }
 
-#
-#  The test passes only if no test above
-#  added a Filter-Id
-#
-if (!reply:Filter-Id) {
+
+# We should allow the user to overload virtual attributes
+update request {
+	Client-Shortname := 'my_test_client'
+}
+
+if ("%{Client-Shortname}" != 'my_test_client') {
 	update reply {
-		Filter-Id := "filter"
+		Filter-Id += "fail 13"
+	}
+}
+
+# Operations on virtual attributes should be the same as on real ones
+if ("%{Virtual-Server[0]}" != 'default') {
+	update reply {
+		Filter-Id += "fail 14"
+	}
+}
+
+if ("%{Virtual-Server[*]}" != 'default') {
+	update reply {
+		Filter-Id += "fail 15"
+	}
+}
+
+if ("%{Virtual-Server[#]}" != 1) {
+	update reply {
+		Filter-Id += "fail 16"
 	}
 }
