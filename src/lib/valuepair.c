@@ -500,9 +500,9 @@ void pairvalidate_debug(TALLOC_CTX *ctx, VALUE_PAIR const *failed[2])
 		return;
 	}
 
-	if (filter->tag != list->tag) {
+	if ((filter->tag != TAG_ANY) && (filter->tag != list->tag)) {
 		fr_strerror_printf("Attribute \"%s\" tag \"%i\" didn't match filter tag \"%i\"",
-				   list->da->name, list->tag, list->tag);
+				   list->da->name, list->tag, filter->tag);
 		return;
 	}
 
