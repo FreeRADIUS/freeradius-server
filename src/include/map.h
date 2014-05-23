@@ -149,7 +149,7 @@ typedef struct value_pair_tmpl_t {
 		pair_lists_t		list;	 //!< List to search or insert in.
 
 		DICT_ATTR const		*da;	 //!< Resolved dictionary attribute.
-		unsigned int		num;	 //!< for array references
+		int8_t			num;	 //!< for array references
 		int8_t			tag;     //!< for tag references
 	} attribute;
 
