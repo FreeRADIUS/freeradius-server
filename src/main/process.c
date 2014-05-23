@@ -2329,10 +2329,8 @@ STATE_MACHINE_DECL(proxy_no_reply)
 		break;
 
 	case FR_ACTION_RUN:
-		/*
-		 *	Which will take care of calling post-proxy-type fail.
-		 */
-		request_running(request, FR_ACTION_PROXY_REPLY);
+		(void) process_proxy_reply(request);
+		request_done(request, FR_ACTION_DONE);
 		break;
 
 	default:
