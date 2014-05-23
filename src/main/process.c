@@ -2052,8 +2052,6 @@ static int process_proxy_reply(REQUEST *request)
 	 */
 	if (!request->proxy_listener) return 0;
 
-	if (!request->proxy_reply) return 1;
-
 	/*
 	 *	Delete any reply we had accumulated until now.
 	 */
