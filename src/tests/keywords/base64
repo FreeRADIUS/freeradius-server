@@ -38,70 +38,70 @@ update request {
 # String - bin 0x39383730
 if (Tmp-String-0 != 'OTg3MA==') {
 	update reply {
-		Filter-Id += 'fail'
+		Filter-Id += 'fail 0'
 	}
 }
 
 # Octets - bin 0x39383731
 if (Tmp-String-1 != 'OTg3MQ==') {
 	update reply {
-		Filter-Id += 'fail'
+		Filter-Id += 'fail 1'
 	}
 }
 
 # IP Address - bin 0x39383732
 if (Tmp-String-2 != 'OTg3Mg==') {
 	update reply {
-		Filter-Id += 'fail'
+		Filter-Id += 'fail 2'
 	}
 }
 
 # Date - bin 0x39383733
 if (Tmp-String-3 != 'OTg3Mw==') {
 	update reply {
-		Filter-Id += 'fail'
+		Filter-Id += 'fail 3'
 	}
 }
 
 # Integer - bin 0x39383734
 if (Tmp-String-4 != 'OTg3NA==') {
 	update reply {
-		Filter-Id += 'fail'
+		Filter-Id += 'fail 4'
 	}
 }
 
 # Abinary - bin 0x0101000039383735000000002000110000000714000200000000000000000000
 if (Tmp-String-5 != 'AQEAADk4NzUAAAAAIAARAAAABxQAAgAAAAAAAAAAAAA=') {
 	update reply {
-		Filter-Id += 'fail'
+		Filter-Id += 'fail 5'
 	}
 }
 
 # ifid - bin 0x0000000039383737
 if (Tmp-String-6 != 'AAAAADk4Nzc=') {
 	update reply {
-		Filter-Id += 'fail'
+		Filter-Id += 'fail 6'
 	}
 }
 
 # ipv6addr - bin 0x00000000000000000000000039383738
 if (Tmp-String-7 != 'AAAAAAAAAAAAAAAAOTg3OA==') {
 	update reply {
-		Filter-ID += 'fail'
+		Filter-ID += 'fail 7'
 	}
 }
 
 # ipv6addrprefix - bin 0x008000000000000000000000000039383739
 if (Tmp-String-8 != 'AIAAAAAAAAAAAAAAAAA5ODc5') {
 	update reply {
-		Filter-ID += 'fail'
+		Filter-ID += 'fail 8'
 	}
 }
 
 # byte - bin 0x3a
 if (Tmp-String-9 != 'Og==') {
 	update reply {
-		Filter-ID += 'fail'
+		Filter-ID += 'fail 9'
 	}
 }
 
@@ -115,27 +115,27 @@ update request {
 # short - bin 0x373b
 if (Tmp-String-0 != 'Nzs=') {
 	update reply {
-		Filter-ID += 'fail'
+		Filter-ID += 'fail 9'
 	}
 }
 
 # ethernet - bin 0x00003938373c
 if (Tmp-String-1 != 'AAA5ODc8') {
 	update reply {
-		Filter-Id += 'fail'
+		Filter-Id += 'fail 10'
 	}
 }
 
 # integer64 - bin 0x100000003938373d
 if (Tmp-String-2 != 'EAAAADk4Nz0=') {
 	update reply {
-		Filter-Id += 'fail'
+		Filter-Id += 'fail 11'
 	}
 }
 
 # ipv4prefix - bin 0x00203938373e
 if (Tmp-String-3 != 'ACA5ODc+') {
 	update reply {
-		Filter-Id += 'fail'
+		Filter-Id += 'fail 12'
 	}
 }
