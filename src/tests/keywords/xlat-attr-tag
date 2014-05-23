@@ -1,0 +1,41 @@
+#
+# PRE: update
+#
+#  Remove all attributes in a list
+#
+update {
+	control:Cleartext-Password := 'hello'
+	reply:Filter-Id := 'filter'
+}
+
+update request {
+	Tunnel-Server-Endpoint:0 := 192.0.1.1	# Should not be tagged
+	Tunnel-Server-Endpoint:0 += 192.0.1.1	# Should not be tagged
+	Tunnel-Server-Endpoint:1 := 192.0.2.1
+	Tunnel-Server-Endpoint:1 += 192.0.2.1
+	Tunnel-Server-Endpoint:2 := 192.0.3.2
+	Tunnel-Server-Endpoint:2 += 192.0.3.2
+}
+
+update request {
+	Tmp-Integer-0 := "%{debug_attr:request:}"
+}
+
+# Check that access attributes by tag works first
+if ("%{Tunnel-Server-Endpoint:2}" != 192.0.3.2) {
+	update {
+		reply:Filter-Id += 'fail 1'
+	}
+}
+
+if ("%{Tunnel-Server-Endpoint:2}" == 192.0.3.1) {
+	update {
+		reply:Filter-Id += 'fail 2'
+	}
+}
+
+if ("%{Tunnel-Server-Endpoint:1}" != 192.0.2.1) {
+	update {
+		reply:Filter-Id += 'fail 3'
+	}
+}

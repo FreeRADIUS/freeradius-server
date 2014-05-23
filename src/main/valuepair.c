@@ -1061,11 +1061,10 @@ int radius_map2request(REQUEST *request, value_pair_map_t const *map,
 
 	/*
 	 *	The destination is an attribute
-	 *
-	 *	It's a remove operation, or a filter, or an add or a set.
 	 */
 	switch (map->op) {
-
+	default:
+		break;
 	/*
 	 * 	!* - Remove all attributes which match dst in the specified list.
 	 *	This doesn't use attributes returned by the func(), and immediately frees them.
@@ -1093,48 +1092,7 @@ int radius_map2request(REQUEST *request, value_pair_map_t const *map,
 		 *	Check that the User-Name and User-Password
 		 *	caches point to the correct attribute.
 		 */
-		break;
-	/*
-	 *	= - Set only if not already set
-	 */
-	case T_OP_EQ:
-		if (dst) {
-			RDEBUG3("Refusing to overwrite (use :=)");
-			pairfree(&head);
-			return 0;
-		}
-
-		/* Insert first instance (if multiple) */
-		fr_cursor_first(&src_list);
-		fr_cursor_insert(&dst_list, fr_cursor_remove(&src_list));
-		/* Free any we didn't insert */
-		pairfree(&head);
-		break;
-
-	/*
-	 *	:= - Overwrite existing attribute with last src_list attribute
-	 */
-	case T_OP_SET:
-		/* Wind to last instance */
-		fr_cursor_last(&src_list);
-		if (dst) {
-			dst = fr_cursor_remove(&dst_list);
-			DEBUG_OVERWRITE(dst, fr_cursor_current(&src_list));
-			pairfree(&dst);
-		}
-		fr_cursor_insert(&dst_list, fr_cursor_remove(&src_list));
-		/* Free any we didn't insert */
-		pairfree(&head);
-		break;
-
-	/*
-	 *	+= - Add all src_list attributes to the destination
-	 */
-	case T_OP_ADD:
-		/* Insert all the instances! (if multiple) */
-		pairadd(list, head);
-		head = NULL;
-		break;
+		goto finish;
 
 	/*
 	 *	-= - Delete attributes in the dst list which match any of the
@@ -1147,7 +1105,6 @@ int radius_map2request(REQUEST *request, value_pair_map_t const *map,
 	 *	  against each of the src_list attributes.
 	 */
 	case T_OP_SUB:
-	{
 		/* We didn't find any attributes earlier */
 		if (!dst) {
 			pairfree(&head);
@@ -1190,9 +1147,62 @@ int radius_map2request(REQUEST *request, value_pair_map_t const *map,
 		}
 		pairfree(&head);
 		if (!found) return 0;
-		break;
+		goto finish;
 	}
 
+	/*
+	 *	Another fixup pass to set tags on attributes were about to insert
+	 */
+	if (map->dst->vpt_tag != TAG_ANY) {
+		for (vp = fr_cursor_init(&src_list, &head);
+		     vp;
+		     vp = fr_cursor_next(&src_list)) {
+			vp->tag = map->dst->vpt_tag;
+		}
+	}
+
+	switch (map->op) {
+	/*
+	 *	= - Set only if not already set
+	 */
+	case T_OP_EQ:
+		if (dst) {
+			RDEBUG3("Refusing to overwrite (use :=)");
+			pairfree(&head);
+			return 0;
+		}
+
+		/* Insert first instance (if multiple) */
+		fr_cursor_first(&src_list);
+		fr_cursor_insert(&dst_list, fr_cursor_remove(&src_list));
+		/* Free any we didn't insert */
+		pairfree(&head);
+		break;
+
+	/*
+	 *	:= - Overwrite existing attribute with last src_list attribute
+	 */
+	case T_OP_SET:
+		/* Wind to last instance */
+		fr_cursor_last(&src_list);
+		if (dst) {
+			dst = fr_cursor_remove(&dst_list);
+			DEBUG_OVERWRITE(dst, fr_cursor_current(&src_list));
+			pairfree(&dst);
+		}
+		fr_cursor_insert(&dst_list, fr_cursor_remove(&src_list));
+		/* Free any we didn't insert */
+		pairfree(&head);
+		break;
+
+	/*
+	 *	+= - Add all src_list attributes to the destination
+	 */
+	case T_OP_ADD:
+		/* Insert all the instances! (if multiple) */
+		pairadd(list, head);
+		head = NULL;
+		break;
 
 	/*
 	 *	Filtering operators
