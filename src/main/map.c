@@ -129,15 +129,13 @@ int radius_parse_attr(value_pair_tmpl_t *vpt, char const *name, request_refs_t r
 
 	if (*p == ':') {
 		if (!da->flags.has_tag) {
-			fr_strerror_printf("Attribute '%s' cannot have a tag",
-					   da->name);
+			fr_strerror_printf("Attribute '%s' cannot have a tag", da->name);
 			return -2;
 		}
 
 		num = strtoul(p + 1, &q, 10);
 		if (num > 0x1f) {
-			fr_strerror_printf("Invalid tag value '%u'",
-					   (unsigned int) num);
+			fr_strerror_printf("Invalid tag value '%u' (should be between 0-31)", (unsigned int) num);
 			return -2;
 		}
 
@@ -152,21 +150,18 @@ int radius_parse_attr(value_pair_tmpl_t *vpt, char const *name, request_refs_t r
 	if (!*p) return 0;
 
 	if (*p != '[') {
-		fr_strerror_printf("Unexpected text after tag in '%s'",
-				   name);
+		fr_strerror_printf("Unexpected text after tag in '%s'", name);
 		return -2;
 	}
 
 	num = strtoul(p + 1, &q, 10);
-	if (num > 1000) {
-		fr_strerror_printf("Invalid array reference '%u'",
-				   (unsigned int) num);
+	if (num > 127) {
+		fr_strerror_printf("Invalid array reference '%u' (should be between 0-127)", (unsigned int) num);
 		return -2;
 	}
 
 	if ((*q != ']') || (q[1] != '\0')) {
-		fr_strerror_printf("Unexpected text after array in '%s'",
-				   name);
+		fr_strerror_printf("Unexpected text after array in '%s'", name);
 		return -2;
 	}
 
