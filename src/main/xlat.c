@@ -1619,8 +1619,8 @@ static ssize_t xlat_tokenize_request(REQUEST *request, char const *fmt, xlat_exp
 }
 
 
-static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, pair_lists_t list, DICT_ATTR const *da, int8_t tag,
-			int16_t num, bool return_null)
+static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, pair_lists_t list, DICT_ATTR const *da,
+			int8_t tag, int16_t num, bool return_null)
 {
 	VALUE_PAIR *vp, *vps = NULL, *myvp = NULL;
 	RADIUS_PACKET *packet = NULL;
@@ -1678,17 +1678,15 @@ static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, pair_lists_t list, DI
 	}
 
 	/*
-	 *	Now that we have the list, etc. handled,
-	 *	find the VP and print it.
+	 *	Now we have the list, check to see if we have an attribute in
+	 *	the request, if we do, it takes precedence over the virtual
+	 *	attributes.
+	 *
+	 *	This allows users to manipulate virtual attributes as if they
+	 *	were real ones.
 	 */
-	if ((da->vendor != 0) || (da->attr < 256) || (list == PAIR_LIST_CONTROL)) {
-	print_vp:
-		vp = pairfind(vps, da->attr, da->vendor, tag);
-		if (!vp) {
-			return NULL;
-		}
-		goto do_print;
-	}
+	vp = pairfind(vps, da->attr, da->vendor, tag);
+	if (vp) goto do_print;
 
 	/*
 	 *	Some non-packet expansions
@@ -1735,7 +1733,7 @@ static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, pair_lists_t list, DI
 	vp = NULL;
 	switch (da->attr) {
 	default:
-		goto print_vp;
+		break;
 
 	case PW_PACKET_TYPE:
 		dv = dict_valbyattr(PW_PACKET_TYPE, 0, packet->code);
@@ -1820,18 +1818,22 @@ static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, pair_lists_t list, DI
 		break;
 	}
 
-do_print:
 	/*
 	 *	Fake various operations for virtual attributes.
 	 */
-	if (myvp && (num != NUM_ANY)) {
-		switch (num) {
+	if (myvp) {
+		if (num != NUM_ANY) switch (num) {
+		/*
+		 *	[n] is NULL (we only have [0])
+		 */
+		default:
+			goto finish;
 		/*
 		 *	[*] means only one.
 		 */
 		case NUM_JOIN:
-			ret = vp_aprint_value(ctx, myvp);
-			goto finish;
+			break;
+
 		/*
 		 *	[#] means 1 (as there's only one)
 		 */
@@ -1845,13 +1847,11 @@ do_print:
 		 */
 		case 0:
 			break;
-
-		default:
-			goto finish;
-
 		}
+		goto print;
 	}
 
+do_print:
 	/*
 	 *	We want the N'th VP.
 	 */
@@ -1868,7 +1868,6 @@ do_print:
 			while (fr_cursor_next_by_da(&cursor, da, tag) != NULL) {
 				count++;
 			}
-
 			return talloc_typed_asprintf(ctx, "%d", count);
 
 		/*
@@ -1908,6 +1907,7 @@ do_print:
 		return vp_aprint_type(ctx, da->type);
 	}
 
+print:
 	ret = vp_aprint_value(ctx, vp);
 
 finish:
