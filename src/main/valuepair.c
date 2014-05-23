@@ -933,7 +933,8 @@ do {\
 int radius_map2request(REQUEST *request, value_pair_map_t const *map,
 		       UNUSED char const *src, radius_tmpl_getvalue_t func, void *ctx)
 {
-	int rcode, num;
+	int rcode;
+	int16_t num;
 	VALUE_PAIR **list, *vp, *dst, *head = NULL;
 	bool found = false;
 	REQUEST *context;
@@ -1663,7 +1664,7 @@ VALUE_PAIR *radius_vpt_get_vp(REQUEST *request, value_pair_tmpl_t const *vpt)
 			vp = pairfind(*vps, vpt->vpt_da->attr, vpt->vpt_da->vendor, vpt->vpt_tag);
 			if (!vp) return -1;
 		} else {
-			int8_t num;
+			int16_t num;
 			vp_cursor_t cursor;
 
 			/*

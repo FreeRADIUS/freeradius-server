@@ -156,8 +156,8 @@ int radius_parse_attr(value_pair_tmpl_t *vpt, char const *name, request_refs_t r
 	}
 
 	num = strtoul(p + 1, &q, 10);
-	if (num > 127) {
-		fr_strerror_printf("Invalid array reference '%u' (should be between 0-127)", (unsigned int) num);
+	if (num > 1000) {
+		fr_strerror_printf("Invalid array reference '%u' (should be between 0-1000)", (unsigned int) num);
 		return -2;
 	}
 

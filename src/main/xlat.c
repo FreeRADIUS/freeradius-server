@@ -61,7 +61,7 @@ struct xlat_exp {
 
 	DICT_ATTR const *da;	//!< the name of the dictionary attribute
 
-	int8_t num;		//!< attribute number
+	int16_t num;		//!< attribute number
 	int8_t tag;		//!< attribute tag
 	pair_lists_t list;	//!< list of which attribute
 	request_refs_t ref;	//!< outer / this / ...
@@ -1024,7 +1024,7 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 	 *	Check for array reference
 	 */
 	if (q) {
-		int8_t num;
+		unsigned long num;
 		char *end;
 
 		p = q;
@@ -1038,7 +1038,7 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 
 		} else if (isdigit((int) *p)) {
 			num = strtoul(p, &end, 10);
-			if (num > 127) {
+			if (num > 1000) {
 				talloc_free(node);
 				*error = "Invalid array reference";
 				return - (p - fmt);
@@ -1542,7 +1542,7 @@ static ssize_t xlat_tokenize_request(REQUEST *request, char const *fmt, xlat_exp
 
 
 static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, pair_lists_t list, DICT_ATTR const *da, int8_t tag,
-			int8_t num, bool return_null)
+			int16_t num, bool return_null)
 {
 	VALUE_PAIR *vp, *vps = NULL, *myvp = NULL;
 	RADIUS_PACKET *packet = NULL;
