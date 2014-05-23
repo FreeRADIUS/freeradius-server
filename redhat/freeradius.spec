@@ -308,6 +308,7 @@ exit 0
 %config(noreplace) /etc/raddb/ldap.attrmap
 %dir %attr(750,root,radiusd) /etc/raddb/modules
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/*
+%attr(640,root,radiusd) %config(noreplace) /etc/raddb/panic.gdb
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/policy.conf
 %config(noreplace) /etc/raddb/policy.txt
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/preproxy_users
