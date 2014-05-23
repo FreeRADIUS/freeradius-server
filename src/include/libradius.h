@@ -133,6 +133,10 @@ extern "C" {
 #define TAG_ANY			-128	/* minimum signed char */
 #define TAG_UNUSED		0
 
+#define NUM_ANY			-128
+#define NUM_JOIN		-127
+#define NUM_COUNT		-126
+
 #define PAD(_x, _y)		(_y - ((_x) % _y))
 
 #define PRINTF_LIKE(n)		CC_HINT(format(printf, n, n+1))
