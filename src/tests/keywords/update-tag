@@ -1,0 +1,176 @@
+#
+# PRE: update
+#
+#  Remove all attributes in a list
+#
+update {
+	control:Cleartext-Password := 'hello'
+	reply:Filter-Id := 'filter'
+}
+
+update request {
+	Tunnel-Server-Endpoint:0 := '192.0.1.1'	# Should not be tagged
+	Tunnel-Server-Endpoint:0 += '192.0.1.2'	# Should not be tagged
+	Tunnel-Server-Endpoint:1 := '192.0.2.1'
+	Tunnel-Server-Endpoint:1 += '192.0.2.2'
+	Tunnel-Server-Endpoint:2 := '192.0.3.1'
+	Tunnel-Server-Endpoint:2 += '192.0.3.2'
+}
+
+update request {
+	Tmp-Integer-0 := "%{debug_attr:request:}"
+}
+
+
+#
+# Selecting on attributes which have no tag (0)
+#
+if (Tunnel-Server-Endpoint:0[0] != '192.0.1.1') {
+	update {
+		reply:Filter-Id += 'fail 1'
+	}
+}
+
+if (Tunnel-Server-Endpoint:0[1] != '192.0.1.2') {
+	update {
+		reply:Filter-Id += 'fail 2'
+	}
+}
+
+#
+# Selecting on attributes with no tag specified (should match all of that type)
+#
+if (Tunnel-Server-Endpoint[0] != '192.0.1.1') {
+	update {
+		reply:Filter-Id += 'fail 3'
+	}
+}
+
+if (Tunnel-Server-Endpoint[1] != '192.0.1.2') {
+	update {
+		reply:Filter-Id += 'fail 4'
+	}
+}
+
+if (Tunnel-Server-Endpoint[2] != '192.0.2.1') {
+	update {
+		reply:Filter-Id += 'fail 5'
+	}
+}
+
+#
+# Now the none xlat version
+#
+# Check that access attributes by tag works first
+if (Tunnel-Server-Endpoint:2 != '192.0.3.1') {
+	update {
+		reply:Filter-Id += 'fail 6'
+	}
+}
+
+if (Tunnel-Server-Endpoint:2 == '192.0.3.2') {
+	update {
+		reply:Filter-Id += 'fail 7'
+	}
+}
+
+if (Tunnel-Server-Endpoint:1 != '192.0.2.1') {
+	update {
+		reply:Filter-Id += 'fail 8'
+	}
+}
+
+# Get the first instance of Tunnel-Server-Endpoint:2
+if (Tunnel-Server-Endpoint:2[0] != '192.0.3.1') {
+	update {
+		reply:Filter-Id += 'fail 9'
+	}
+}
+
+# Get the first instance of Tunnel-Server-Endpoint:2
+if (Tunnel-Server-Endpoint:2[1] != '192.0.3.2') {
+	update {
+		reply:Filter-Id += 'fail 10'
+	}
+}
+
+#
+# Assignment (bare)
+#
+update request {
+	Tmp-String-1 += &Tunnel-Server-Endpoint:2		# 0
+	Tmp-String-1 += &Tunnel-Server-Endpoint:2		# 1
+	Tmp-String-1 += &Tunnel-Server-Endpoint:1		# 2
+	Tmp-String-1 += &Tunnel-Server-Endpoint:2[0]		# 3
+	Tmp-String-1 += &Tunnel-Server-Endpoint:2[1]		# 4
+	Tmp-String-1 += &Tunnel-Server-Endpoint:0[0]		# 5
+	Tmp-String-1 += &Tunnel-Server-Endpoint:0[1]		# 6
+	Tmp-String-1 += &Tunnel-Server-Endpoint:0[2]		# 7 (No attribute should be added here)
+	Tmp-String-1 += &Tunnel-Server-Endpoint[0]		# 8
+	Tmp-String-1 += &Tunnel-Server-Endpoint[1]		# 9
+	Tmp-String-1 += &Tunnel-Server-Endpoint[2]		# 10
+}
+
+# Check that access attributes by tag works first
+if (Tmp-String-1[0] != '192.0.3.1') {
+	update {
+		reply:Filter-Id += 'fail 11'
+	}
+}
+
+if (Tmp-String-1[1] == '192.0.3.2') {
+	update {
+		reply:Filter-Id += 'fail 12'
+	}
+}
+
+if (Tmp-String-1[2] != '192.0.2.1') {
+	update {
+		reply:Filter-Id += 'fail 13'
+	}
+}
+
+# Get the first instance of Tunnel-Server-Endpoint:2
+if (Tmp-String-1[3] != '192.0.3.1') {
+	update {
+		reply:Filter-Id += 'fail 14'
+	}
+}
+
+# Get the first instance of Tunnel-Server-Endpoint:2
+if (Tmp-String-1[4] != '192.0.3.2') {
+	update {
+		reply:Filter-Id += 'fail 15'
+	}
+}
+
+# Now check the assignment
+if (Tmp-String-1[5] != '192.0.1.1') {
+	update {
+		reply:Filter-Id += 'fail 16'
+	}
+}
+
+if (Tmp-String-1[6] != '192.0.1.2') {
+	update {
+		reply:Filter-Id += 'fail 17'
+	}
+}
+
+if (Tmp-String-1[7] != '192.0.1.1') {
+	update {
+		reply:Filter-Id += 'fail 19'
+	}
+}
+
+if (Tmp-String-1[8] != '192.0.1.2') {
+	update {
+		reply:Filter-Id += 'fail 20'
+	}
+}
+
+if (Tmp-String-1[9] != '192.0.2.1') {
+	update {
+		reply:Filter-Id += 'fail 21'
+	}
+}

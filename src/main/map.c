@@ -140,11 +140,7 @@ int radius_parse_attr(value_pair_tmpl_t *vpt, char const *name, request_refs_t r
 			return -2;
 		}
 
-		if (num == 0) {
-			vpt->vpt_tag = TAG_ANY;
-		} else {
-			vpt->vpt_tag = num;
-		}
+		vpt->vpt_tag = num;
 		p = q;
 	}
 

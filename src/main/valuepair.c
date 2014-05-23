@@ -1540,7 +1540,8 @@ int radius_map2vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *ma
 				goto error;
 			}
 
-			found = paircopy2(request, *from, map->src->vpt_da->attr, map->src->vpt_da->vendor, TAG_ANY);
+			found = paircopy2(request, *from, map->src->vpt_da->attr, map->src->vpt_da->vendor,
+					  map->src->vpt_tag);
 			if (!found) {
 				REDEBUG("Attribute \"%s\" not found in request", map->src->name);
 				rcode = 0;
@@ -1759,7 +1760,7 @@ int radius_vpt_copy_vp(VALUE_PAIR **out, REQUEST *request, value_pair_tmpl_t con
 	 *	May not may not be found, but it *is* a known name.
 	 */
 	case VPT_TYPE_ATTR:
-		vp = paircopy2(request, *vps, vpt->vpt_da->attr, vpt->vpt_da->vendor, TAG_ANY);
+		vp = paircopy2(request, *vps, vpt->vpt_da->attr, vpt->vpt_da->vendor, vpt->vpt_tag);
 		if (!vp) {
 			return -1;
 		}
