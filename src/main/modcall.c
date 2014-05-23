@@ -3300,7 +3300,7 @@ bool modcall_pass2(modcallable *mc)
 
 		check_children:
 			rad_assert(g->vpt->type == VPT_TYPE_ATTR);
-			if (g->vpt->attribute.num != 0) {
+			if (g->vpt->vpt_num != 0) {
 				cf_log_err_cs(g->cs, "MUST NOT use array references in 'foreach'");
 				return false;
 			}
