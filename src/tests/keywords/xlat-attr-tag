@@ -56,25 +56,25 @@ if ("%{Tunnel-Server-Endpoint:2[1]}" != '192.0.3.2') {
 
 if ("%{Tunnel-Server-Endpoint:0[2]}" != '') {
 	update {
-		reply:Filter-Id += 'fail 8'
+		reply:Filter-Id += 'fail 6'
 	}
 }
 
 if ("%{Tunnel-Server-Endpoint:0[0]}" != '192.0.1.1') {
 	update {
-		reply:Filter-Id += 'fail 6'
+		reply:Filter-Id += 'fail 7'
 	}
 }
 
 if ("%{Tunnel-Server-Endpoint:0[1]}" != '192.0.1.2') {
 	update {
-		reply:Filter-Id += 'fail 7'
+		reply:Filter-Id += 'fail 8'
 	}
 }
 
 if ("%{Tunnel-Server-Endpoint:0[2]}" != '') {
 	update {
-		reply:Filter-Id += 'fail 8'
+		reply:Filter-Id += 'fail 9'
 	}
 }
 
@@ -83,19 +83,19 @@ if ("%{Tunnel-Server-Endpoint:0[2]}" != '') {
 #
 if ("%{Tunnel-Server-Endpoint[0]}" != '192.0.1.1') {
 	update {
-		reply:Filter-Id += 'fail 9'
+		reply:Filter-Id += 'fail 10'
 	}
 }
 
 if ("%{Tunnel-Server-Endpoint[1]}" != '192.0.1.2') {
 	update {
-		reply:Filter-Id += 'fail 10'
+		reply:Filter-Id += 'fail 11'
 	}
 }
 
 if ("%{Tunnel-Server-Endpoint[2]}" != '192.0.2.1') {
 	update {
-		reply:Filter-Id += 'fail 11'
+		reply:Filter-Id += 'fail 12'
 	}
 }
 
@@ -119,69 +119,69 @@ update request {
 # Check that access attributes by tag works first
 if (Tmp-String-0[0] != '192.0.3.1') {
 	update {
-		reply:Filter-Id += 'fail 12'
+		reply:Filter-Id += 'fail 13'
 	}
 }
 
 if (Tmp-String-0[1] == '192.0.3.2') {
 	update {
-		reply:Filter-Id += 'fail 13'
-	}
-}
-
-if (Tmp-String-0[2] != '192.0.2.1') {
-	update {
 		reply:Filter-Id += 'fail 14'
 	}
 }
 
-# Get the first instance of Tunnel-Server-Endpoint:2
-if (Tmp-String-0[3] != '192.0.3.1') {
+if (Tmp-String-0[2] != '192.0.2.1') {
 	update {
 		reply:Filter-Id += 'fail 15'
 	}
 }
 
 # Get the first instance of Tunnel-Server-Endpoint:2
-if (Tmp-String-0[4] != '192.0.3.2') {
+if (Tmp-String-0[3] != '192.0.3.1') {
 	update {
 		reply:Filter-Id += 'fail 16'
+	}
+}
+
+# Get the first instance of Tunnel-Server-Endpoint:2
+if (Tmp-String-0[4] != '192.0.3.2') {
+	update {
+		reply:Filter-Id += 'fail 17'
 	}
 }
 
 # Now check the assignment
 if (Tmp-String-0[5] != '192.0.1.1') {
 	update {
-		reply:Filter-Id += 'fail 17'
+		reply:Filter-Id += 'fail 18'
 	}
 }
 
 if (Tmp-String-0[6] != '192.0.1.2') {
 	update {
-		reply:Filter-Id += 'fail 18'
+		reply:Filter-Id += 'fail 19'
 	}
 }
 
 if (Tmp-String-0[7] != '') {
 	update {
-		reply:Filter-Id += 'fail 19'
+		reply:Filter-Id += 'fail 20'
 	}
 }
 
 if (Tmp-String-0[8] != '192.0.1.1') {
 	update {
-		reply:Filter-Id += 'fail 20'
+		reply:Filter-Id += 'fail 21'
 	}
 }
 
 if (Tmp-String-0[9] != '192.0.1.2') {
 	update {
-		reply:Filter-Id += 'fail 21'
+		reply:Filter-Id += 'fail 22'
 	}
 }
 
 if (Tmp-String-0[10] != '192.0.2.1') {
 	update {
-		reply:Filter-Id += 'fail 22'
+		reply:Filter-Id += 'fail 23'
 	}
 }
