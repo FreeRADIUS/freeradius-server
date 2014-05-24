@@ -7546,7 +7546,8 @@ for ac_header in \
   fnmatch.h \
   sia.h \
   siad.h \
-  features.h
+  features.h \
+  limits.h
 
 do :
   as_ac_Header=`$as_echo "ac_cv_header_$ac_header" | $as_tr_sh`

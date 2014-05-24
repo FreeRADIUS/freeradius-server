@@ -938,7 +938,8 @@ AC_CHECK_HEADERS( \
   fnmatch.h \
   sia.h \
   siad.h \
-  features.h
+  features.h \
+  limits.h
 )
 
 dnl #
