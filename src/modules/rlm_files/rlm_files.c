@@ -28,7 +28,6 @@ RCSID("$Id$")
 
 #include	<ctype.h>
 #include	<fcntl.h>
-#include	<limits.h>
 
 typedef struct rlm_files_t {
 	char *compat_mode;

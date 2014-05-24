@@ -43,10 +43,6 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include <sys/time.h>
 #include <arpa/inet.h>
 
-#ifdef HAVE_LIMITS_H
-#include <limits.h>
-#endif
-
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
 #endif

@@ -31,8 +31,6 @@ RCSID("$Id$")
 
 #include	<ctype.h>
 #include	<fcntl.h>
-#include	<limits.h>
-
 
 /*
  *	Define a structure with the module configuration, so it can

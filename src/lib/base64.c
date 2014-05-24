@@ -27,9 +27,6 @@ RCSID("$Id$")
 #include <freeradius-devel/libradius.h>
 #include <freeradius-devel/base64.h>
 
-/* Get UCHAR_MAX from stdint.h, in src/include/missing.h */
-#include <limits.h>
-
 #define us(x) (uint8_t) x
 
 /** Base 64 encode binary data
