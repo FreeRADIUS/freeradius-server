@@ -25,10 +25,14 @@ FreeRADIUS 3.0.4 Mon 12 May 2014 15:30:00 EDT urgency=medium
 	* Fix case where multiple attributes were returned from LHS of 
 	  mapping, as with rlm_ldap. Fixes #652
 	* Fix corner case in cursor where using fr_cursor_next_by_da
-	  after calling fr_cursor_remove may result in a read of 
+	  after calling fr_cursor_remove may of resulted in a read of 
 	  uninitialised memory.
 	* Don't SEGV if all connections to a database server go away.
-	  Fixes #651
+	  Fixes #651.
+	* Fix issue where <attr> -= <value> was not removing tagged
+	  instances of <attr> equal to <value> (only untagged).
+	* Fix issue where tag values were not being set on attributes
+	  created with unlang/ldap update blocks.
 
 FreeRADIUS 3.0.3 Mon 12 May 2014 15:30:00 EDT urgency=medium
 	Feature improvements
