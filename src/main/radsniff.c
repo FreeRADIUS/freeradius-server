@@ -1763,8 +1763,8 @@ static void NEVER_RETURNS usage(int status)
 	fprintf(output, "  -c <count>            Number of packets to capture.\n");
 	fprintf(output, "  -C                    Enable UDP checksum validation.\n");
 	fprintf(output, "  -d <directory>        Set dictionary directory.\n");
-	fprintf(stderr, "  -d <raddb>            Set configuration directory (defaults to " RADDBDIR ").\n");
-	fprintf(stderr, "  -D <dictdir>          Set main dictionary directory (defaults to " DICTDIR ").\n");
+	fprintf(output, "  -d <raddb>            Set configuration directory (defaults to " RADDBDIR ").\n");
+	fprintf(output, "  -D <dictdir>          Set main dictionary directory (defaults to " DICTDIR ").\n");
 	fprintf(output, "  -e <event>[,<event>]  Only log requests with these event flags.\n");
 	fprintf(output, "                        Event may be one of the following:\n");
 	fprintf(output, "                        - received - a request or response.\n");
