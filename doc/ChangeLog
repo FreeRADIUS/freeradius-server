@@ -12,7 +12,6 @@ FreeRADIUS 3.0.4 Mon 12 May 2014 15:30:00 EDT urgency=medium
 	* Added tests for the above
 	* A few more talloc parenting issues
 	* Fix delayed proxy reply handling.  Closes #637
-	* Fixes for rlm_couchbase.  #647, #648
 	* Fix OpenSSL initialization order when using
 	  RADIUS/TLS.  Fixes #646
 	* Don't double-quote strings in debugging messages
