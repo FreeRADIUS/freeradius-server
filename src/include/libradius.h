@@ -73,6 +73,10 @@ RCSIDH(libradius_h, "$Id$")
 #include <stdbool.h>
 #include <signal.h>
 
+#ifdef HAVE_LIMITS_H
+#  include <limits.h>
+#endif
+
 #include <freeradius-devel/threads.h>
 #include <freeradius-devel/radius.h>
 #include <freeradius-devel/token.h>

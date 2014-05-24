@@ -32,8 +32,6 @@ RCSID("$Id$")
 #include	<freeradius-devel/base64.h>
 
 #include	<ctype.h>
-#include	<limits.h>
-
 typedef struct xlat_t {
 	char			name[MAX_STRING_LEN];	//!< Name of the xlat expansion.
 	int			length;			//!< Length of name.

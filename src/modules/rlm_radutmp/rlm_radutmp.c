@@ -28,7 +28,6 @@ RCSID("$Id$")
 #include	<freeradius-devel/rad_assert.h>
 
 #include	<fcntl.h>
-#include	<limits.h>
 
 #include "config.h"
 
