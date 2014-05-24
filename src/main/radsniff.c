@@ -1480,7 +1480,8 @@ static void rs_got_packet(UNUSED fr_event_list_t *el, int fd, void *ctx)
 				DEBUG("Done reading packets (%s)", event->in->name);
 				fr_event_fd_delete(events, 0, fd);
 
-				if (fr_event_list_num_fds(events) == 0) {
+				/* Signal pipe takes one slot which is why this is == 1 */
+				if (fr_event_list_num_fds(events) == 1) {
 					fr_event_loop_exit(events, 1);
 				}
 
