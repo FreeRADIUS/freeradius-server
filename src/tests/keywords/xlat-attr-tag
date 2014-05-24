@@ -9,7 +9,7 @@ update {
 }
 
 update request {
-	Tunnel-Server-Endpoint:0 := '192.0.1.1'	# Should not be tagged
+	Tunnel-Server-Endpoint   := '192.0.1.1'	# Should not be tagged
 	Tunnel-Server-Endpoint:0 += '192.0.1.2'	# Should not be tagged
 	Tunnel-Server-Endpoint:1 := '192.0.2.1'
 	Tunnel-Server-Endpoint:1 += '192.0.2.2'
@@ -19,6 +19,44 @@ update request {
 
 update request {
 	Tmp-Integer-0 := "%{debug_attr:request:}"
+}
+
+# Check the tag printing xlat works correctly
+if ("%{tag:Tunnel-Server-Endpoint[0]}" != '') {
+	update {
+		reply:Filter-Id += 'fail 0a'
+	}
+}
+
+if ("%{tag:Tunnel-Server-Endpoint[1]}" != '') {
+	update {
+		reply:Filter-Id += 'fail 0b'
+	}
+}
+
+
+if ("%{tag:Tunnel-Server-Endpoint[2]}" != '1') {
+	update {
+		reply:Filter-Id += 'fail 0v'
+	}
+}
+
+if ("%{tag:Tunnel-Server-Endpoint[5]}" != '2') {
+	update {
+		reply:Filter-Id += 'fail 0d'
+	}
+}
+
+if ("%{tag:Tunnel-Server-Endpoint[6]}" != '') {
+	update {
+		reply:Filter-Id += 'fail 0e'
+	}
+}
+
+if ("%{tag:control:Cleartext-Password}" != '') {
+	update {
+		reply:Filter-Id += 'fail 0f'
+	}
 }
 
 # Check that access attributes by tag works first

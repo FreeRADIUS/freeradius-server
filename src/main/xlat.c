@@ -251,6 +251,29 @@ static ssize_t xlat_hex(UNUSED void *instance, REQUEST *request,
 	return len * 2;
 }
 
+/** Return the tag of an attribute reference
+ *
+ */
+static ssize_t xlat_tag(UNUSED void *instance, REQUEST *request,
+		        char const *fmt, char *out, size_t outlen)
+{
+	VALUE_PAIR *vp;
+
+	while (isspace((int) *fmt)) fmt++;
+
+	if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) {
+		*out = '\0';
+		return 0;
+	}
+
+	if (!vp->da->flags.has_tag || !TAG_VALID(vp->tag)) {
+		*out = '\0';
+		return 0;
+	}
+
+	return snprintf(out, outlen, "%u", vp->tag);
+}
+
 /** Print out attribute info
  *
  * Prints out all instances of a current attribute, or all attributes in a list.
@@ -578,6 +601,7 @@ int xlat_register(char const *name, RAD_XLAT_FUNC func, RADIUS_ESCAPE_STRING esc
 		XLAT_REGISTER(strlen);
 		XLAT_REGISTER(length);
 		XLAT_REGISTER(hex);
+		XLAT_REGISTER(tag);
 		XLAT_REGISTER(string);
 		XLAT_REGISTER(xlat);
 		XLAT_REGISTER(module);
