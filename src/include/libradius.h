@@ -130,7 +130,7 @@ extern "C" {
 
 #define TAG_VALID(x)		((x) > 0 && (x) < 0x20)
 #define TAG_VALID_ZERO(x)	((x) < 0x20)
-#define TAG_ANY			-128	/* minimum signed char */
+#define TAG_ANY			INT8_MIN
 #define TAG_NONE		0
 /** Check if tags are equal
  *
@@ -139,9 +139,9 @@ extern "C" {
  */
 #define TAG_EQ(_s, _a) ((_s == _a) || (_s == TAG_ANY) || ((_s == TAG_NONE) && (_a == TAG_ANY)))
 
-#define NUM_ANY			-32768
-#define NUM_JOIN		-32767
-#define NUM_COUNT		-32766
+#define NUM_ANY			INT_MIN
+#define NUM_JOIN		(INT_MIN + 1)
+#define NUM_COUNT		(INT_MIN + 2)
 
 #define PAD(_x, _y)		(_y - ((_x) % _y))
 
