@@ -110,6 +110,7 @@ VALUE_PAIR *pairalloc(TALLOC_CTX *ctx, DICT_ATTR const *da)
 
 	vp->da = da;
 	vp->op = T_OP_EQ;
+	vp->tag = TAG_ANY;
 	vp->type = VT_NONE;
 
 	vp->length = da->flags.length;
@@ -196,6 +197,7 @@ int pair2unknown(VALUE_PAIR *vp)
 
 	return 0;
 }
+
 /** Find the pair with the matching DAs
  *
  */
@@ -212,7 +214,7 @@ VALUE_PAIR *pairfind_da(VALUE_PAIR *vp, DICT_ATTR const *da, int8_t tag)
 	     i;
 	     i = fr_cursor_next(&cursor)) {
 		VERIFY_VP(i);
-		if ((i->da == da) && (!i->da->flags.has_tag || (tag == TAG_ANY) || (i->tag == tag))) {
+		if ((i->da == da) && (!i->da->flags.has_tag || TAG_EQ(tag, i->tag))) {
 			return i;
 		}
 	}
@@ -236,7 +238,7 @@ VALUE_PAIR *pairfind(VALUE_PAIR *vp, unsigned int attr, unsigned int vendor, int
 	     i;
 	     i = fr_cursor_next(&cursor)) {
 		if ((i->da->attr == attr) && (i->da->vendor == vendor) && \
-		    (!i->da->flags.has_tag || (tag == TAG_ANY) || (i->tag == tag))) {
+		    (!i->da->flags.has_tag || TAG_EQ(tag, i->tag))) {
 			return i;
 		}
 	}
@@ -251,7 +253,7 @@ VALUE_PAIR *pairfind(VALUE_PAIR *vp, unsigned int attr, unsigned int vendor, int
  * @param[in,out] first VP in list.
  * @param[in] attr to match.
  * @param[in] vendor to match.
- * @param[in] tag to match. TAG_ANY matches any tag, TAG_UNUSED matches tagless VPs.
+ * @param[in] tag to match. TAG_ANY matches any tag, TAG_NONE matches tagless VPs.
  *
  * @todo should take DAs and do a point comparison.
  */
@@ -265,8 +267,7 @@ void pairdelete(VALUE_PAIR **first, unsigned int attr, unsigned int vendor,
 		VERIFY_VP(i);
 		next = i->next;
 		if ((i->da->attr == attr) && (i->da->vendor == vendor) &&
-		    ((tag == TAG_ANY) ||
-		     (i->da->flags.has_tag && (i->tag == tag)))) {
+		    (!i->da->flags.has_tag || TAG_EQ(tag, i->tag))) {
 			*last = next;
 			talloc_free(i);
 		} else {
@@ -334,9 +335,7 @@ void pairreplace(VALUE_PAIR **first, VALUE_PAIR *replace)
 		 *	Found the first attribute, replace it,
 		 *	and return.
 		 */
-		if ((i->da == replace->da) &&
-		    (!i->da->flags.has_tag || (i->tag == replace->tag))
-		) {
+		if ((i->da == replace->da) && (!i->da->flags.has_tag || TAG_EQ(replace->tag, i->tag))) {
 			*prev = replace;
 
 			/*
@@ -500,7 +499,7 @@ void pairvalidate_debug(TALLOC_CTX *ctx, VALUE_PAIR const *failed[2])
 		return;
 	}
 
-	if ((filter->tag != TAG_ANY) && (filter->tag != list->tag)) {
+	if (TAG_EQ(filter->tag, list->tag)) {
 		fr_strerror_printf("Attribute \"%s\" tag \"%i\" didn't match filter tag \"%i\"",
 				   list->da->name, list->tag, filter->tag);
 		return;
@@ -868,7 +867,7 @@ VALUE_PAIR *paircopy(TALLOC_CTX *ctx, VALUE_PAIR *from)
  * @param[in] from whence to copy VALUE_PAIRs.
  * @param[in] attr to match, if 0 input list will not be filtered by attr.
  * @param[in] vendor to match.
- * @param[in] tag to match, TAG_ANY matches any tag, TAG_UNUSED matches tagless VPs.
+ * @param[in] tag to match, TAG_ANY matches any tag, TAG_NONE matches tagless VPs.
  * @return the head of the new VALUE_PAIR list or NULL on error.
  */
 VALUE_PAIR *paircopy2(TALLOC_CTX *ctx, VALUE_PAIR *from,
@@ -888,7 +887,7 @@ VALUE_PAIR *paircopy2(TALLOC_CTX *ctx, VALUE_PAIR *from,
 			continue;
 		}
 
-		if ((tag != TAG_ANY) && vp->da->flags.has_tag && (vp->tag != tag)) {
+		if (vp->da->flags.has_tag && TAG_EQ(tag, vp->tag)) {
 			continue;
 		}
 
@@ -992,8 +991,7 @@ void pairmove(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from)
 			 *	it doesn't already exist.
 			 */
 			case T_OP_EQ:
-				found = pairfind(*to, i->da->attr, i->da->vendor,
-						 TAG_ANY);
+				found = pairfind(*to, i->da->attr, i->da->vendor, TAG_ANY);
 				if (!found) goto do_add;
 
 				tail_from = &(i->next);
@@ -1004,8 +1002,7 @@ void pairmove(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from)
 			 *	of the same vendor/attr which already exists.
 			 */
 			case T_OP_SET:
-				found = pairfind(*to, i->da->attr, i->da->vendor,
-						 TAG_ANY);
+				found = pairfind(*to, i->da->attr, i->da->vendor, TAG_ANY);
 				if (!found) goto do_add;
 
 				/*
@@ -1096,7 +1093,7 @@ void pairmove(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from)
  * @param[in] attr to match, if PW_VENDOR_SPECIFIC and vendor 0, only VSAs will
  *	      be copied.  If 0 and 0, all attributes will match
  * @param[in] vendor to match.
- * @param[in] tag to match, TAG_ANY matches any tag, TAG_UNUSED matches tagless VPs.
+ * @param[in] tag to match, TAG_ANY matches any tag, TAG_NONE matches tagless VPs.
  */
 void pairfilter(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from, unsigned int attr, unsigned int vendor, int8_t tag)
 {
@@ -1140,8 +1137,7 @@ void pairfilter(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from, unsigned in
 		VERIFY_VP(i);
 		next = i->next;
 
-		if ((tag != TAG_ANY) && i->da->flags.has_tag &&
-		    (i->tag != tag)) {
+		if (i->da->flags.has_tag && TAG_EQ(tag, i->tag)) {
 			continue;
 		}
 
@@ -1883,8 +1879,8 @@ VALUE_PAIR *pairmake(TALLOC_CTX *ctx, VALUE_PAIR **vps,
 	/*
 	 *    Check for tags in 'Attribute:Tag' format.
 	 */
-	tag = 0;
 	found_tag = false;
+	tag = TAG_ANY;
 
 	ts = strrchr(attribute, ':');
 	if (ts && !ts[1]) {
@@ -1907,9 +1903,8 @@ VALUE_PAIR *pairmake(TALLOC_CTX *ctx, VALUE_PAIR **vps,
 			 /* It's not a wild card tag */
 			 tag = strtol(ts + 1, &tc, 0);
 			 if (tc && !*tc && TAG_VALID_ZERO(tag))
-			 	 *ts = '\0';
-			 else tag = 0;
-
+				 *ts = '\0';
+			 else tag = TAG_ANY;
 		 } else {
 			 fr_strerror_printf("Invalid tag for attribute %s", attribute);
 			 return NULL;
