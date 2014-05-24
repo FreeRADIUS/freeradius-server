@@ -2434,16 +2434,6 @@ static int listen_bind(rad_listen_t *this)
 	 *	May be binding to priviledged ports.
 	 */
 	if (sock->my_port != 0) {
-#ifdef SO_REUSEADDR
-		int on = 1;
-
-		if (setsockopt(this->fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) < 0) {
-			ERROR("Can't set re-use address option: %s",
-			       fr_syserror(errno));
-			return -1;
-		}
-#endif
-
 		fr_suid_up();
 		rcode = bind(this->fd, (struct sockaddr *) &salocal, salen);
 		fr_suid_down();
