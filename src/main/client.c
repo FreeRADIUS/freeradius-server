@@ -142,6 +142,7 @@ void clients_free(RADCLIENT_LIST *clients)
 	int i;
 
 	if (!clients) clients = root_clients;
+	if (!clients) return;	/* Clients may not have been initialised yet */
 
 	for (i = 0; i <= 128; i++) {
 		if (clients->trees[i]) rbtree_free(clients->trees[i]);
