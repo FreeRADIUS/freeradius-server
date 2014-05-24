@@ -818,9 +818,9 @@ void detail_free(rad_listen_t *this)
 		ret = read(data->master_pipe[0], &arg, sizeof(arg));
 		if (ret < 0) {
 			ERROR("Reader thread exited without informing the master: %s", fr_syserror(errno));
-		}
-		if (ret != sizeof(arg)) {
+		} else if (ret != sizeof(arg)) {
 			ERROR("Invalid thread pointer received from reader thread during exit");
+			ERROR("Expected %zu bytes, got %zi bytes", sizeof(arg), ret);
 		}
 
 		close(data->master_pipe[0]);
