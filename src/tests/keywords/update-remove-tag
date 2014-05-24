@@ -1,0 +1,275 @@
+#
+# PRE: update update-remove-value update-remove-index update-tag
+#
+#  Remove all attributes in a list
+#
+update {
+	control:Cleartext-Password := 'hello'
+	reply:Filter-Id := 'filter'
+}
+
+update {
+	request:Tunnel-Server-Endpoint += '192.0.1.1'
+	request:Tunnel-Server-Endpoint += '192.0.1.2'
+	request:Tunnel-Server-Endpoint:1 += '192.0.1.1'
+	request:Tunnel-Server-Endpoint:2 += '192.0.2.1'
+	request:Tunnel-Server-Endpoint:2 += '192.0.2.2'
+	request:Tunnel-Server-Endpoint:3 += '192.0.3.1'
+	request:Tunnel-Server-Endpoint:3 += '192.0.3.2'
+	request:Tunnel-Server-Endpoint:3 += '192.0.3.3'
+	control: += request:
+}
+
+# Check [#] is working correctly (should probably be another set of tests)
+if (("%{request:Tunnel-Server-Endpoint[#]}" != 8) || \
+    ("%{request:Tunnel-Server-Endpoint:0[#]}" != 2) || \
+    ("%{request:Tunnel-Server-Endpoint:1[#]}" != 1) || \
+    ("%{request:Tunnel-Server-Endpoint:2[#]}" != 2) || \
+    ("%{request:Tunnel-Server-Endpoint:3[#]}" != 3)) {
+	update reply {
+		Filter-Id += 'fail 0'
+	}
+}
+
+update {
+	Tunnel-Server-Endpoint !* ANY
+}
+
+# List should now be empty
+if ("%{request:Tunnel-Server-Endpoint[#]}" != 0) {
+	update reply {
+		Filter-Id += 'fail 1'
+	}
+}
+
+# Reset the list
+update {
+	request: += control:
+}
+
+# Now remove all Tunnel-Server-Endpoint attributes with :2
+update {
+	Tunnel-Server-Endpoint:2 !* ANY
+}
+
+if (("%{request:Tunnel-Server-Endpoint[#]}" != 6) || \
+    ("%{request:Tunnel-Server-Endpoint:0[#]}" != 2) || \
+    ("%{request:Tunnel-Server-Endpoint:1[#]}" != 1) || \
+    ("%{request:Tunnel-Server-Endpoint:2[#]}" != 0) || \
+    ("%{request:Tunnel-Server-Endpoint:3[#]}" != 3)) {
+	update reply {
+		Filter-Id += 'fail 2'
+	}
+}
+
+# Now remove all Tunnel-Server-Endpoint attributes with :0 (no tags)
+update {
+	Tunnel-Server-Endpoint:0 !* ANY
+}
+
+if (("%{request:Tunnel-Server-Endpoint[#]}" != 4) || \
+    ("%{request:Tunnel-Server-Endpoint:0[#]}" != 0) || \
+    ("%{request:Tunnel-Server-Endpoint:1[#]}" != 1) || \
+    ("%{request:Tunnel-Server-Endpoint:2[#]}" != 0) || \
+    ("%{request:Tunnel-Server-Endpoint:3[#]}" != 3)) {
+	update reply {
+		Filter-Id += 'fail 3'
+	}
+}
+
+# Now remove all Tunnel-Server-Endpoint attributes with :3
+update {
+	Tunnel-Server-Endpoint:3 !* ANY
+}
+
+if (("%{request:Tunnel-Server-Endpoint[#]}" != 1) || \
+    ("%{request:Tunnel-Server-Endpoint:0[#]}" != 0) || \
+    ("%{request:Tunnel-Server-Endpoint:1[#]}" != 1) || \
+    ("%{request:Tunnel-Server-Endpoint:2[#]}" != 0) || \
+    ("%{request:Tunnel-Server-Endpoint:3[#]}" != 0)) {
+	update reply {
+		Filter-Id += 'fail 4'
+	}
+}
+
+# Now remove all Tunnel-Server-Endpoint attributes with :1
+update {
+	Tunnel-Server-Endpoint:1 !* ANY
+}
+
+if (("%{request:Tunnel-Server-Endpoint[#]}" != 0) || \
+    ("%{request:Tunnel-Server-Endpoint:0[#]}" != 0) || \
+    ("%{request:Tunnel-Server-Endpoint:1[#]}" != 0) || \
+    ("%{request:Tunnel-Server-Endpoint:2[#]}" != 0) || \
+    ("%{request:Tunnel-Server-Endpoint:3[#]}" != 0)) {
+	update reply {
+		Filter-Id += 'fail 5'
+	}
+}
+
+# Reset the list
+update {
+	request: += control:
+}
+
+# Remove all Tunnel-Server-Endpoint attributes at :3[0] (none)
+update {
+	Tunnel-Server-Endpoint:1[3] !* ANY
+}
+
+if (Tunnel-Server-Endpoint:3[0] != '192.0.3.1') {
+	update reply {
+		Filter-Id += 'fail 6'
+	}
+}
+
+if (Tunnel-Server-Endpoint:3[1] != '192.0.3.2') {
+	update reply {
+		Filter-Id += 'fail 7'
+	}
+}
+
+if (Tunnel-Server-Endpoint:3[2] != '192.0.3.3') {
+	update reply {
+		Filter-Id += 'fail 8'
+	}
+}
+
+# Remove all Tunnel-Server-Endpoint attributes at :3[1]
+update {
+	Tunnel-Server-Endpoint:3[1] !* ANY
+}
+
+if (Tunnel-Server-Endpoint:3[0] != '192.0.3.1') {
+	update reply {
+		Filter-Id += 'fail 9'
+	}
+}
+
+if (Tunnel-Server-Endpoint:3[1] != '192.0.3.3') {
+	update reply {
+		Filter-Id += 'fail 10'
+	}
+}
+
+# Remove any Tunnel-Server-Endpoint with a value of '192.0.1.1' (should remove both tagged and untagged versions)
+update {
+	Tunnel-Server-Endpoint -= '192.0.1.1'
+}
+
+# Also checks whether presence checks for tagged attributes work correctly
+if (request:Tunnel-Server-Endpoint:1) {
+	update reply {
+		Filter-Id += 'fail 11'
+	}
+}
+
+if (request:Tunnel-Server-Endpoint:0[0] != '192.0.1.2') {
+	update reply {
+		Filter-Id += 'fail 12'
+	}
+}
+
+# Remove any Tunnel-Server-Endpoint with a value of '192.0.3.1'
+update {
+	Tunnel-Server-Endpoint:3 -= '192.0.3.2'
+}
+
+if (request:Tunnel-Server-Endpoint:3[0] != '192.0.3.1') {
+	update reply {
+		Filter-Id += 'fail 13'
+	}
+}
+
+if (request:Tunnel-Server-Endpoint:3[1] != '192.0.3.3') {
+	update reply {
+		Filter-Id += 'fail 14'
+	}
+}
+
+# Reset the list
+update {
+	request: !* ANY
+}
+update {
+	request: += control:
+}
+
+# Remove only the tagged version of '192.0.1.1'
+update {
+	request:Tunnel-Server-Endpoint:1 -= '192.0.1.1'
+}
+
+if (request:Tunnel-Server-Endpoint:0[0] != '192.0.1.1') {
+	update reply {
+		Filter-Id += 'fail 15'
+	}
+}
+
+# Reset the list
+update {
+	request: !* ANY
+}
+update {
+	request: += control:
+}
+
+# Remove only the untagged version of '192.0.1.1'
+update {
+	request:Tunnel-Server-Endpoint:0 -= '192.0.1.1'
+}
+
+if (request:Tunnel-Server-Endpoint:1[0] != '192.0.1.1') {
+	update reply {
+		Filter-Id += 'fail 16'
+	}
+}
+
+# Remove the value of Tunnel-Server-Endpoint:3 at index 1 only if it matches '192.0.3.3' (which it does)
+update {
+	Tunnel-Server-Endpoint:3[1] -= '192.0.3.2'
+}
+
+if (Tunnel-Server-Endpoint:3[0] != '192.0.3.1') {
+	update reply {
+		Filter-Id += 'fail 17'
+	}
+}
+
+if (Tunnel-Server-Endpoint:3[1] != '192.0.3.3') {
+	update reply {
+		Filter-Id += 'fail 18'
+	}
+}
+
+# Reset the list
+update {
+	request: !* ANY
+}
+update {
+	request: += control:
+}
+
+# Remove the value of Tunnel-Server-Endpoint:3 at index 1 only if it matches '192.0.3.4' (which it doesn't)
+update {
+	Tunnel-Server-Endpoint:3[1] -= '192.0.3.4'
+}
+
+if (Tunnel-Server-Endpoint:3[0] != '192.0.3.1') {
+	update reply {
+		Filter-Id += 'fail 19'
+	}
+}
+
+if (Tunnel-Server-Endpoint:3[1] != '192.0.3.2') {
+	update reply {
+		Filter-Id += 'fail 20'
+	}
+}
+
+if (Tunnel-Server-Endpoint:3[2] != '192.0.3.3') {
+	update reply {
+		Filter-Id += 'fail 21'
+	}
+}
+

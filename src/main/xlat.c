@@ -1292,13 +1292,15 @@ static void xlat_tokenize_debug(xlat_exp_t const *node, int lvl)
 			rad_assert(node->da != NULL);
 			DEBUG("%.*sattribute --> %s", lvl, xlat_tabs, node->da->name);
 			rad_assert(node->child == NULL);
-			if ((node->tag != TAG_UNUSED) || (node->num != NUM_ANY)) {
+			if ((node->tag != TAG_ANY) || (node->num != NUM_ANY)) {
 				DEBUG("%.*s{", lvl, xlat_tabs);
 
 				DEBUG("%.*sref  %d", lvl + 1, xlat_tabs, node->ref);
 				DEBUG("%.*slist %d", lvl + 1, xlat_tabs, node->list);
 
-				if (node->tag) DEBUG("%.*stag %d", lvl + 1, xlat_tabs, node->tag);
+				if (node->tag != TAG_ANY) {
+					DEBUG("%.*stag %d", lvl + 1, xlat_tabs, node->tag);
+				}
 				if (node->num != NUM_ANY) {
 					if (node->num == NUM_COUNT) {
 						DEBUG("%.*s[#]", lvl + 1, xlat_tabs);

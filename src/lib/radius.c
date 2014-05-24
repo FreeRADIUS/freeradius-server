@@ -955,7 +955,7 @@ static ssize_t vp2data_any(RADIUS_PACKET const *packet,
 				return -1;
 			}
 
-			if (lvalue) ptr[0] = vp->tag;
+			if (lvalue) ptr[0] = TAG_VALID(vp->tag) ? vp->tag : TAG_NONE;
 			make_tunnel_passwd(ptr + lvalue, &len, data, len,
 					   room - lvalue,
 					   secret, original->vector);
@@ -963,7 +963,7 @@ static ssize_t vp2data_any(RADIUS_PACKET const *packet,
 		case PW_CODE_ACCOUNTING_REQUEST:
 		case PW_CODE_DISCONNECT_REQUEST:
 		case PW_CODE_COA_REQUEST:
-			ptr[0] = vp->tag;
+			ptr[0] = TAG_VALID(vp->tag) ? vp->tag : TAG_NONE;
 			make_tunnel_passwd(ptr + 1, &len, data, len - 1, room,
 					   secret, packet->vector);
 			break;
@@ -3399,7 +3399,7 @@ ssize_t data2vp(RADIUS_PACKET *packet,
 		size_t const attrlen, size_t const packetlen,
 		VALUE_PAIR **pvp)
 {
-	int tag = 0;
+	int8_t tag = TAG_NONE;
 	size_t datalen;
 	ssize_t rcode;
 	uint32_t vendor;
@@ -3744,7 +3744,7 @@ ssize_t data2vp(RADIUS_PACKET *packet,
 			fr_strerror_printf("Internal sanity check %d", __LINE__);
 			return -1;
 		}
-		tag = 0;
+		tag = TAG_NONE;
 #ifndef NDEBUG
 		/*
 		 *	Fix for Coverity.
