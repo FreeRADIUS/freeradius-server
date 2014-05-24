@@ -37,7 +37,7 @@ if ("%{tag:Tunnel-Server-Endpoint[1]}" != '') {
 
 if ("%{tag:Tunnel-Server-Endpoint[2]}" != '1') {
 	update {
-		reply:Filter-Id += 'fail 0v'
+		reply:Filter-Id += 'fail 0c'
 	}
 }
 
