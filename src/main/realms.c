@@ -475,7 +475,7 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 	 *	Use a reasonable default.
 	 */
  skip_port:
-	if ((strcasecmp(hs_type, "auth+acct") == 0) || !hs_type) {
+	if (!hs_type || (strcasecmp(hs_type, "auth+acct") == 0)) {
 		home->type = HOME_TYPE_AUTH;
 		dual = true;
 	} else if (strcasecmp(hs_type, "auth") == 0) {
