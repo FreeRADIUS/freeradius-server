@@ -797,7 +797,7 @@ void detail_free(rad_listen_t *this)
 
 #ifdef WITH_DETAIL_THREAD
 	if (!check_config) {
-		size_t ret;
+		ssize_t ret;
 		void *arg = NULL;
 
 		/*
