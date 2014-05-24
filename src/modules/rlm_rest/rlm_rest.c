@@ -338,17 +338,17 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED REQU
 	VALUE_PAIR const *username;
 	VALUE_PAIR const *password;
 
-	username = pairfind(request->packet->vps, PW_USER_NAME, 0, TAG_ANY);
-	if (!username) {
+	username = request->username;
+	if (!request->username) {
 		REDEBUG("Can't perform authentication, 'User-Name' attribute not found in the request");
 
 		return RLM_MODULE_INVALID;
 	}
 
-	password = pairfind(request->config_items, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY);
-	if (!password) {
-		REDEBUG("Can't perform authentication, 'Cleartext-Password' attribute not found in the control list");
-
+	password = request->password;
+	if (!password ||
+	    (password->da->attr != PW_USER_PASSWORD)) {
+		REDEBUG("You set 'Auth-Type = REST' for a request that does not contain a User-Password attribute!");
 		return RLM_MODULE_INVALID;
 	}
 
