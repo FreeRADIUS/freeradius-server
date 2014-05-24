@@ -1630,7 +1630,7 @@ static int rs_build_filter(VALUE_PAIR **out, char const *filter)
 	return 0;
 }
 
-static int rs_build_flags(int *flags, FR_NAME_NUMBER const *map, char *list)
+static int rs_build_event_flags(int *flags, FR_NAME_NUMBER const *map, char *list)
 {
 	size_t i = 0;
 	char *p, *tok;
@@ -1675,18 +1675,6 @@ static void _unmark_link(void *request)
 	this->in_link_tree = false;
 }
 
-/** Write the last signal to the signal pipe
- *
- * @param sig raised
- */
-static void rs_signal_self(int sig)
-{
-	if (write(self_pipe[1], &sig, sizeof(sig)) < 0) {
-		ERROR("Failed writing signal %s to pipe: %s", strsignal(sig), fr_syserror(errno));
-		exit(EXIT_FAILURE);
-	}
-}
-
 #ifdef HAVE_COLLECTDC_H
 /** Re-open the collectd socket
  *
@@ -1712,6 +1700,18 @@ static void rs_collectd_reopen(void *ctx)
 	}
 }
 #endif
+
+/** Write the last signal to the signal pipe
+ *
+ * @param sig raised
+ */
+static void rs_signal_self(int sig)
+{
+	if (write(self_pipe[1], &sig, sizeof(sig)) < 0) {
+		ERROR("Failed writing signal %s to pipe: %s", strsignal(sig), fr_syserror(errno));
+		exit(EXIT_FAILURE);
+	}
+}
 
 /** Read the last signal from the signal pipe
  *
@@ -1753,7 +1753,6 @@ static void rs_signal_action(UNUSED fr_event_list_t *list, int fd, UNUSED void *
 	}
 }
 
-
 static void NEVER_RETURNS usage(int status)
 {
 	FILE *output = status ? stderr : stdout;
@@ -1789,7 +1788,7 @@ static void NEVER_RETURNS usage(int status)
 	fprintf(output, "  -S                    Write PCAP data to stdout.\n");
 	fprintf(output, "  -v                    Show program version information.\n");
 	fprintf(output, "  -w <file>             Write output packets to file.\n");
-	fprintf(output, "  -x                    Print more debugging information (defaults to -xx).\n");
+	fprintf(output, "  -x                    Print more debugging information.\n");
 	fprintf(output, "stats options:\n");
 	fprintf(output, "  -W <interval>         Periodically write out statistics every <interval> seconds.\n");
 	fprintf(output, "  -T <timeout>          How many milliseconds before the request is counted as lost "
@@ -1872,24 +1871,24 @@ int main(int argc, char *argv[])
 	while ((opt = getopt(argc, argv, "ab:c:Cd:D:e:Ff:hi:I:l:L:mp:P:qr:R:s:Svw:xXW:T:P:N:O:")) != EOF) {
 		switch (opt) {
 		case 'a':
-			{
-				pcap_if_t *all_devices = NULL;
-				pcap_if_t *dev_p;
+		{
+			pcap_if_t *all_devices = NULL;
+			pcap_if_t *dev_p;
 
-				if (pcap_findalldevs(&all_devices, errbuf) < 0) {
-					ERROR("Error getting available capture devices: %s", errbuf);
-					goto finish;
-				}
-
-				int i = 1;
-				for (dev_p = all_devices;
-				     dev_p;
-				     dev_p = dev_p->next) {
-					INFO("%i.%s", i++, dev_p->name);
-				}
-				ret = 0;
+			if (pcap_findalldevs(&all_devices, errbuf) < 0) {
+				ERROR("Error getting available capture devices: %s", errbuf);
 				goto finish;
 			}
+
+			int i = 1;
+			for (dev_p = all_devices;
+			     dev_p;
+			     dev_p = dev_p->next) {
+				INFO("%i.%s", i++, dev_p->name);
+			}
+			ret = 0;
+			goto finish;
+		}
 
 		/* super secret option */
 		case 'b':
@@ -1922,7 +1921,7 @@ int main(int argc, char *argv[])
 			break;
 
 		case 'e':
-			if (rs_build_flags((int *) &conf->event_flags, rs_events, optarg) < 0) {
+			if (rs_build_event_flags((int *) &conf->event_flags, rs_events, optarg) < 0) {
 				usage(64);
 			}
 			break;
