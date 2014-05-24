@@ -1049,7 +1049,7 @@ int radius_map2request(REQUEST *request, value_pair_map_t const *map,
 	 *	being NULL (no attribute at that index).
 	 */
 	num = map->dst->vpt_num;
-	dst = fr_cursor_init(&dst_list, list);
+	(void) fr_cursor_init(&dst_list, list);
 	if (num != NUM_ANY) {
 		while ((dst = fr_cursor_next_by_da(&dst_list, map->dst->vpt_da, map->dst->vpt_tag))) {
 			if (num-- == 0) break;
@@ -1222,13 +1222,6 @@ int radius_map2request(REQUEST *request, value_pair_map_t const *map,
 			head = NULL;
 			goto finish;
 		}
-
-		/*
-		 *	If we're filtering based on the value of
-		 *	ANOTHER attribute, and that attribute doesn't
-		 *	exist, then we can't do filtering.
-		 */
-		if (!head) return 0;
 
 		/*
 		 *	The LHS exists.  We need to limit it's value based on

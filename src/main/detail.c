@@ -797,6 +797,7 @@ void detail_free(rad_listen_t *this)
 
 #ifdef WITH_DETAIL_THREAD
 	if (!check_config) {
+		size_t ret;
 		void *arg = NULL;
 
 		/*
@@ -814,14 +815,18 @@ void detail_free(rad_listen_t *this)
 		/*
 		 *	Wait for it to acknowledge that it's stopped.
 		 */
-		if (read(data->master_pipe[0], &arg, sizeof(arg)) < 0) {
+		ret = read(data->master_pipe[0], &arg, sizeof(arg));
+		if (ret < 0) {
 			ERROR("Reader thread exited without informing the master: %s", fr_syserror(errno));
+		}
+		if (ret != sizeof(arg)) {
+			ERROR("Invalid thread pointer received from reader thread during exit");
 		}
 
 		close(data->master_pipe[0]);
 		close(data->master_pipe[1]);
 
-		pthread_join(data->pthread_id, &arg);
+		if (arg) pthread_join(data->pthread_id, &arg);
 	}
 #endif
 
