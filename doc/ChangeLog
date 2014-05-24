@@ -6,6 +6,8 @@ FreeRADIUS 3.0.4 Mon 12 May 2014 15:30:00 EDT urgency=medium
 	  counterpart to "set module status"
 	* Better indentation in debugging mode
 	* Added dictionary ericsson.packet.ccore.networks
+	* Add %{tag:} expansion to get the tag value of an 
+	  attribute.
 
 	Bug fixes
 	* make case-insensitive regular expressions work again.
