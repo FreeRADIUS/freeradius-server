@@ -306,6 +306,7 @@ STATE_MACHINE_DECL(request_running);
 static void request_coa_originate(REQUEST *request);
 STATE_MACHINE_DECL(coa_running);
 STATE_MACHINE_DECL(coa_wait_for_reply);
+STATE_MACHINE_DECL(coa_no_reply);
 static void request_coa_separate(REQUEST *coa);
 #endif
 
@@ -835,6 +836,19 @@ static void request_process_timer(REQUEST *request)
 		 *	We should wait for the proxy reply.
 		 */
 		if (request->child_state == REQUEST_PROXIED) {
+#ifdef WITH_COA
+			/*
+			 *	Ugh.
+			 */
+			if (request->packet->code != request->proxy->code) {
+				if (request->proxy_reply) {
+					request->process = coa_running;
+				} else {
+					request->process = coa_wait_for_reply;
+				}
+				goto delay;
+			}
+#endif
 			if (request->proxy_reply) {
 				request->process = proxy_running;
 			} else {
@@ -3655,7 +3669,7 @@ static void coa_timer(REQUEST *request)
 			return;
 		}
 
-		request_queue_or_run(request, coa_running);
+		request_queue_or_run(request, coa_no_reply);
 		return;
 	}
 
@@ -3733,19 +3747,7 @@ STATE_MACHINE_DECL(coa_wait_for_reply)
 
 	case FR_ACTION_PROXY_REPLY:
 		rad_assert(request->parent == NULL);
-#ifdef HAVE_PTHREAD_H
-		/*
-		 *	Catch the case of a proxy reply when called
-		 *	from the main worker thread.
-		 */
-		if (we_are_master()) {
-			request_queue_or_run(request, coa_running);
-			return;
-		}
-		/* FALL-THROUGH */
-#endif
-	case FR_ACTION_RUN:
-		request_running(request, action);
+		request_queue_or_run(request, coa_running);
 		break;
 
 	default:
@@ -3777,6 +3779,39 @@ static void request_coa_separate(REQUEST *request)
 	 *	Should be coa_wait_for_reply()
 	 */
 	request->process(request, FR_ACTION_TIMER);
+}
+
+STATE_MACHINE_DECL(coa_no_reply)
+{
+	char buffer[128];
+
+	TRACE_STATE_MACHINE;
+
+	switch (action) {
+	case FR_ACTION_TIMER:
+		request_common(request, action);
+		break;
+
+	case FR_ACTION_PROXY_REPLY: /* too late! */
+		RDEBUG2("Reply from CoA server %s port %d  - ID: %d arrived too late.",
+			inet_ntop(request->proxy->src_ipaddr.af,
+				  &request->proxy->src_ipaddr.ipaddr,
+				  buffer, sizeof(buffer)),
+			request->proxy->dst_port, request->proxy->id);
+		break;
+
+	case FR_ACTION_RUN:
+		/*
+		 *	FIXME: do recv_coa Fail
+		 */
+		(void) process_proxy_reply(request, NULL);
+		request_done(request, FR_ACTION_DONE);
+		break;
+
+	default:
+		RDEBUG3("%s: Ignoring action %s", __FUNCTION__, action_codes[action]);
+		break;
+	}
 }
 
 STATE_MACHINE_DECL(coa_running)
