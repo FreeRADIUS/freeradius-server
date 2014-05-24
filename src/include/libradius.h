@@ -222,7 +222,7 @@ typedef struct dict_vendor {
 
 /** Union containing all data types supported by the server
  *
- * This union contains all data types that can be represented with VALUE_PAIRs. It may also be used in other parts
+ * This union contains all data types that can be represented by VALUE_PAIRs. It may also be used in other parts
  * of the server where values of different types need to be stored.
  *
  * PW_TYPE should be an enumeration of the values in this union.
@@ -236,9 +236,9 @@ typedef union value_data {
 	size_t			filter[32/sizeof(size_t)];	//!< Ascend binary format a packed data
 								//!< structure.
 
-	uint8_t			ifid[8]; /* struct? */		//!< IPv6 interface ID.
+	uint8_t			ifid[8];			//!< IPv6 interface ID (should be struct?).
 	struct in6_addr		ipv6addr;			//!< IPv6 Address.
-	uint8_t			ipv6prefix[18]; /* struct? */	//!< IPv6 prefix.
+	uint8_t			ipv6prefix[18];			//!< IPv6 prefix (should be struct?).
 
 	uint8_t			byte;				//!< 8bit unsigned integer.
 	uint16_t		ushort;				//!< 16bit unsigned integer.
@@ -248,7 +248,7 @@ typedef union value_data {
 	int32_t			sinteger;			//!< 32bit signed integer.
 	uint64_t		integer64;			//!< 64bit unsigned integer.
 
-	uint8_t			ipv4prefix[6]; /* struct? */	//!< IPv4 prefix.
+	uint8_t			ipv4prefix[6];			//!< IPv4 prefix (should be struct?).
 
 	uint8_t			*tlv;				//!< Nested TLV (should go away).
 	void const		*ptr;				//!< generic pointer.
@@ -271,8 +271,7 @@ typedef enum value_type {
 
 /** Stores an attribute, a value and various bits of other data
  *
- * VALUE_PAIRs are the main data structure used in the server, they specify an attribute, it's children and
- * it's siblings.
+ * VALUE_PAIRs are the main data structure used in the server
  *
  * They also specify what behaviour should be used when the attribute is merged into a new list/tree.
  */
