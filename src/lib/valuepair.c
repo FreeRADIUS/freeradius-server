@@ -2981,10 +2981,10 @@ void pairstrncpy(VALUE_PAIR *vp, char const *src, size_t len)
 	VERIFY_VP(vp);
 
 	p = talloc_array(vp, char, len + 1);
+	if (!p) return;
+
 	memcpy(p, src, len);	/* embdedded \0 safe */
 	p[len] = '\0';
-
-	if (!p) return;
 
 	memcpy(&q, &vp->vp_strvalue, sizeof(q));
 	talloc_free(q);
