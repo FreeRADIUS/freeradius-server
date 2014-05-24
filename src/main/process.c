@@ -289,7 +289,7 @@ static int request_proxy(REQUEST *request, int retransmit);
 STATE_MACHINE_DECL(proxy_wait_for_reply);
 STATE_MACHINE_DECL(proxy_no_reply);
 STATE_MACHINE_DECL(proxy_running);
-static int process_proxy_reply(REQUEST *request);
+static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply);
 static void remove_from_proxy_hash(REQUEST *request);
 static void remove_from_proxy_hash_nl(REQUEST *request, bool yank);
 static int insert_into_proxy_hash(REQUEST *request);
@@ -2041,7 +2041,7 @@ static int insert_into_proxy_hash(REQUEST *request)
 	return 1;
 }
 
-static int process_proxy_reply(REQUEST *request)
+static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply)
 {
 	int rcode;
 	int post_proxy_type = 0;
@@ -2067,8 +2067,8 @@ static int process_proxy_reply(REQUEST *request)
 	 *	If we have a proxy_reply, and it was a reject, setup
 	 *	post-proxy-type Reject
 	 */
-	if (!vp && request->proxy_reply &&
-	    request->proxy_reply->code == PW_CODE_AUTHENTICATION_REJECT) {
+	if (!vp && reply &&
+	    reply->code == PW_CODE_AUTHENTICATION_REJECT) {
 		DICT_VALUE	*dval;
 
 		dval = dict_valbyname(PW_POST_PROXY_TYPE, 0, "Reject");
@@ -2086,12 +2086,12 @@ static int process_proxy_reply(REQUEST *request)
 		RDEBUG2("Found Post-Proxy-Type %s", dict_valnamebyattr(PW_POST_PROXY_TYPE, 0, post_proxy_type));
 	}
 
-	if (request->proxy_reply) {
+	if (reply) {
 		/*
 		 *	Decode the packet.
 		 */
 		rcode = request->proxy_listener->decode(request->proxy_listener, request);
-		DEBUG_PACKET(request, request->proxy_reply, 0);
+		DEBUG_PACKET(request, reply, 0);
 
 		/*
 		 *	Pro-actively remove it from the proxy hash.
@@ -2134,8 +2134,8 @@ static int process_proxy_reply(REQUEST *request)
 	 *	There may NOT be a proxy reply, as we may be
 	 *	running Post-Proxy-Type = Fail.
 	 */
-	if (request->proxy_reply) {
-		request->reply->vps = paircopy(request->reply, request->proxy_reply->vps);
+	if (reply) {
+		request->reply->vps = paircopy(request->reply, reply->vps);
 
 		/*
 		 *	Delete the Proxy-State Attributes from
@@ -2335,7 +2335,7 @@ STATE_MACHINE_DECL(proxy_no_reply)
 		break;
 
 	case FR_ACTION_RUN:
-		(void) process_proxy_reply(request);
+		(void) process_proxy_reply(request, NULL);
 		request_done(request, FR_ACTION_DONE);
 		break;
 
@@ -2358,10 +2358,11 @@ STATE_MACHINE_DECL(proxy_running)
 		break;
 
 	case FR_ACTION_RUN:
-		if (!process_proxy_reply(request)) {
-			request_done(request, FR_ACTION_DONE);
+		if (process_proxy_reply(request, request->proxy_reply)) {
+			request->handle(request);
+			request_finish(request, action);
 		} else {
-			request_running(request, action);
+			request_done(request, FR_ACTION_DONE);
 		}
 		break;
 
@@ -2677,7 +2678,7 @@ static int request_proxy(REQUEST *request, int retransmit)
 		 *	Just do the work here, rather than trying to
 		 *	run the "decode proxy reply" stuff...
 		 */
-		process_proxy_reply(request);
+		process_proxy_reply(request, request->proxy_reply);
 
 		request->handle(request); /* to do more post-proxy stuff */
 
@@ -3789,7 +3790,12 @@ STATE_MACHINE_DECL(coa_running)
 		break;
 
 	case FR_ACTION_RUN:
-		request_running(request, FR_ACTION_PROXY_REPLY);
+		if (process_proxy_reply(request, request->proxy_reply)) {
+			request->handle(request);
+			request_finish(request, action);
+		} else {
+			request_done(request, FR_ACTION_DONE);
+		}
 		break;
 
 	default:
