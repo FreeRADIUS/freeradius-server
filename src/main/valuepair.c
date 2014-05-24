@@ -1111,38 +1111,42 @@ int radius_map2request(REQUEST *request, value_pair_map_t const *map,
 			return 0;
 		}
 
-		/* All instances[*] delete */
-		if (map->dst->vpt_num == NUM_ANY) {
-			for (dst = fr_cursor_current(&dst_list);
-			     dst;
-			     dst = fr_cursor_next_by_da(&dst_list, map->dst->vpt_da, map->dst->vpt_tag)) {
-				for (vp = fr_cursor_first(&src_list);
-				     vp;
-				     vp = fr_cursor_next(&src_list)) {
-					head->op = T_OP_CMP_EQ;
-					rcode = radius_compare_vps(request, vp, dst);
-					if (rcode == 0) {
-						dst = fr_cursor_remove(&dst_list);
-						pairfree(&dst);
-						found = true;
-					}
+		/*
+		 *	Instance specific[n] delete
+		 */
+		if (map->dst->vpt_num != NUM_ANY) {
+			for (vp = fr_cursor_first(&src_list);
+			     vp;
+			     vp = fr_cursor_next(&src_list)) {
+				head->op = T_OP_CMP_EQ;
+				rcode = radius_compare_vps(request, vp, dst);
+				if (rcode == 0) {
+					dst = fr_cursor_remove(&dst_list);
+					pairfree(&dst);
+					found = true;
 				}
 			}
 			pairfree(&head);
 			if (!found) return 0;
-			break;
+			goto finish;
 		}
 
-		/* Instance specific[n] delete */
-		for (vp = fr_cursor_first(&src_list);
-		     vp;
-		     vp = fr_cursor_next(&src_list)) {
-			head->op = T_OP_CMP_EQ;
-			rcode = radius_compare_vps(request, vp, dst);
-			if (rcode == 0) {
-				dst = fr_cursor_remove(&dst_list);
-				pairfree(&dst);
-				found = true;
+		/*
+		 *	All instances[*] delete
+		 */
+		for (dst = fr_cursor_current(&dst_list);
+		     dst;
+		     dst = fr_cursor_next_by_da(&dst_list, map->dst->vpt_da, map->dst->vpt_tag)) {
+			for (vp = fr_cursor_first(&src_list);
+			     vp;
+			     vp = fr_cursor_next(&src_list)) {
+				head->op = T_OP_CMP_EQ;
+				rcode = radius_compare_vps(request, vp, dst);
+				if (rcode == 0) {
+					dst = fr_cursor_remove(&dst_list);
+					pairfree(&dst);
+					found = true;
+				}
 			}
 		}
 		pairfree(&head);
