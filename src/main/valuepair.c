@@ -935,7 +935,7 @@ int radius_map2request(REQUEST *request, value_pair_map_t const *map,
 		       UNUSED char const *src, radius_tmpl_getvalue_t func, void *ctx)
 {
 	int rcode;
-	int16_t num;
+	int num;
 	VALUE_PAIR **list, *vp, *dst, *head = NULL;
 	bool found = false;
 	REQUEST *context;
@@ -1672,7 +1672,7 @@ int radius_vpt_get_vp(VALUE_PAIR **out, REQUEST *request, value_pair_tmpl_t cons
 		 */
 	case VPT_TYPE_ATTR:
 	{
-		int16_t num;
+		int num;
 		vp_cursor_t cursor;
 
 		if (vpt->vpt_num == NUM_ANY) {
