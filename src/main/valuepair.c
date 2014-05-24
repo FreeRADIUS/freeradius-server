@@ -1688,7 +1688,7 @@ int radius_vpt_get_vp(VALUE_PAIR **out, REQUEST *request, value_pair_tmpl_t cons
 			break;
 		}
 
-		vp = fr_cursor_init(&cursor, vps);
+		(void) fr_cursor_init(&cursor, vps);
 		num = vpt->vpt_num;
 		while((vp = fr_cursor_next_by_da(&cursor, vpt->vpt_da, vpt->vpt_tag))) {
 			VERIFY_VP(vp);
