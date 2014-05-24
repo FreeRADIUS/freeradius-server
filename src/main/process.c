@@ -836,6 +836,8 @@ static void request_process_timer(REQUEST *request)
 		 *	We should wait for the proxy reply.
 		 */
 		if (request->child_state == REQUEST_PROXIED) {
+			rad_assert(request->proxy != NULL);
+
 #ifdef WITH_COA
 			/*
 			 *	Ugh.
