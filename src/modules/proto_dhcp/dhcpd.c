@@ -635,14 +635,12 @@ static int dhcp_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	sock->suppress_responses = false;
 	cp = cf_pair_find(cs, "suppress_responses");
 	if (cp) {
-		cf_item_parse(cs, "suppress_responses", PW_TYPE_BOOLEAN,
-			      &sock->suppress_responses, NULL);
+		cf_item_parse(cs, "suppress_responses", FR_ITEM_POINTER(PW_TYPE_BOOLEAN, &sock->suppress_responses), NULL);
 	}
 
 	cp = cf_pair_find(cs, "src_interface");
 	if (cp) {
-		cf_item_parse(cs, "src_interface", PW_TYPE_STRING,
-			      &sock->src_interface, NULL);
+		cf_item_parse(cs, "src_interface", FR_ITEM_POINTER(PW_TYPE_STRING, &sock->src_interface), NULL);
 	} else {
 		sock->src_interface = sock->lsock.interface;
 	}
@@ -655,8 +653,8 @@ static int dhcp_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	if (cp) {
 		memset(&sock->src_ipaddr, 0, sizeof(sock->src_ipaddr));
 		sock->src_ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_NONE);
-		rcode = cf_item_parse(cs, "src_ipaddr", PW_TYPE_IPADDR,
-				      &sock->src_ipaddr.ipaddr.ip4addr, NULL);
+		rcode = cf_item_parse(cs, "src_ipaddr",
+				      FR_ITEM_POINTER(PW_TYPE_IPADDR, &sock->src_ipaddr.ipaddr.ip4addr), NULL);
 		if (rcode < 0) return -1;
 
 		sock->src_ipaddr.af = AF_INET;

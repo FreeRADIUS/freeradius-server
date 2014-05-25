@@ -82,7 +82,7 @@ typedef struct ippool_info {
 
 typedef struct old_ippool_key {
 	char nas[MAX_NAS_NAME_SIZE];
-	unsigned int port;
+	uint16_t port;
 } old_ippool_key;
 
 typedef struct ippool_key {
@@ -104,25 +104,25 @@ void usage(char *argv0);
 void addip(char *sessiondbname, char *indexdbname, char *ipaddress,
 	   char *NASname, char *NASport, int old)
 {
-	GDBM_FILE sessiondb;
-	GDBM_FILE indexdb;
-	datum key_datum, data_datum, save_datum;
-	datum nextkey;
+	GDBM_FILE	sessiondb;
+	GDBM_FILE	indexdb;
+	datum		key_datum, data_datum, save_datum;
+	datum		nextkey;
 
-	ippool_key key;
-	old_ippool_key old_key;
+	ippool_key	key;
+	old_ippool_key	old_key;
 
-	ippool_info entry;
-	struct in_addr ipaddr;
-	uint8_t key_str[17];
-	char hex_str[35];
-	int num = 0;
-	int mppp = 0;
-	int mode = GDBM_WRITER;
-	signed int rcode;
-	int delete = 0;
-	int port;
-	int found = 0;
+	ippool_info	entry;
+	struct in_addr	ipaddr;
+	uint8_t		key_str[17];
+	char		hex_str[35];
+	int		num = 0;
+	int		mppp = 0;
+	int		mode = GDBM_WRITER;
+	int		rcode;
+	int		delete = 0;
+	uint16_t	port;
+	bool		found = false;
 
 	sessiondb = gdbm_open(sessiondbname, 512, mode, 0,NULL);
 	indexdb = gdbm_open(indexdbname, 512, mode, 0,NULL);
@@ -171,7 +171,7 @@ void addip(char *sessiondbname, char *indexdbname, char *ipaddress,
 
 	data_datum = gdbm_fetch(sessiondb, key_datum);
 	if (data_datum.dptr != NULL){
-		found = 1;
+		found = true;
 		memcpy(&entry, data_datum.dptr, sizeof(ippool_info));
 
 		if (entry.active){

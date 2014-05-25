@@ -143,7 +143,7 @@ int main(int argc, char *argv[])
 	 */
 	memset(&main_config, 0, sizeof(main_config));
 	main_config.myip.af = AF_UNSPEC;
-	main_config.port = -1;
+	main_config.port = 0;
 	main_config.name = "radiusd";
 	main_config.daemonize = true;
 
@@ -218,13 +218,18 @@ int main(int argc, char *argv[])
 				break;
 
 			case 'p':
-				main_config.port = atoi(optarg);
-				if ((main_config.port <= 0) ||
-				    (main_config.port >= 65536)) {
-					fprintf(stderr, "radiusd: Invalid port number %s\n", optarg);
+			{
+				unsigned long port;
+
+				port = strtoul(optarg, 0, 10);
+				if ((port == 0) || (port > UINT16_MAX)) {
+					fprintf(stderr, "radiusd: Invalid port number \"%s\"\n", optarg);
 					exit(EXIT_FAILURE);
 				}
+
+				main_config.port = (uint16_t) port;
 				flag |= 2;
+			}
 				break;
 
 			case 'P':

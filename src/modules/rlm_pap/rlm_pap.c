@@ -62,7 +62,7 @@ typedef struct rlm_pap_t {
  *      buffer over-flows.
  */
 static const CONF_PARSER module_config[] = {
-	{ "normalise", PW_TYPE_BOOLEAN, offsetof(rlm_pap_t,normify), NULL, "yes" },
+	{ "normalise", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_pap_t, normify), "yes" },
 	{ NULL, -1, 0, NULL, NULL }
 };
 

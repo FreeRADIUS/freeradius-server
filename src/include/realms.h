@@ -55,7 +55,7 @@ typedef struct home_server {
 
 	fr_ipaddr_t	ipaddr;
 
-	int		port;
+	uint16_t	port;
 	int		type;		/* auth/acct */
 
 	int		proto;
@@ -69,15 +69,15 @@ typedef struct home_server {
 	struct timeval	when;
 
 	struct timeval	response_window;
-	int		max_outstanding; /* don't overload it */
-	int		currently_outstanding;
+	uint32_t	max_outstanding; /* don't overload it */
+	uint32_t	currently_outstanding;
 
 	time_t		last_packet_sent;
 	time_t		last_packet_recv;
 	time_t		last_failed_open;
 	struct timeval	revive_time;
 	struct timeval	zombie_period_start;
-	int		zombie_period; /* unresponsive for T, mark it dead */
+	uint32_t	zombie_period; /* unresponsive for T, mark it dead */
 
 	int		state;
 
@@ -85,19 +85,19 @@ typedef struct home_server {
 	char const	*ping_user_name;
 	char const	*ping_user_password;
 
-	int		ping_interval;
-	int		num_pings_to_alive;
-	int		num_sent_pings;
-	int		num_received_pings;
-	int		ping_timeout;
+	uint32_t	ping_interval;
+	uint32_t	num_pings_to_alive;
+	uint32_t	num_sent_pings;
+	uint32_t	num_received_pings;
+	uint32_t	ping_timeout;
 
-	int		revive_interval; /* if it doesn't support pings */
+	uint32_t	revive_interval; /* if it doesn't support pings */
 	CONF_SECTION	*cs;
 #ifdef WITH_COA
-	int		coa_irt;
-	int		coa_mrc;
-	int		coa_mrt;
-	int		coa_mrd;
+	uint32_t	coa_irt;
+	uint32_t	coa_mrc;
+	uint32_t	coa_mrt;
+	uint32_t	coa_mrd;
 #endif
 #ifdef WITH_TLS
 	fr_tls_server_conf_t	*tls;
@@ -160,7 +160,7 @@ REALM *realm_find2(char const *name); /* ... with name taken from realm_find */
 
 void home_server_update_request(home_server_t *home, REQUEST *request);
 home_server_t *home_server_ldb(char const *realmname, home_pool_t *pool, REQUEST *request);
-home_server_t *home_server_find(fr_ipaddr_t *ipaddr, int port, int proto);
+home_server_t *home_server_find(fr_ipaddr_t *ipaddr, uint16_t port, int proto);
 #ifdef WITH_COA
 home_server_t *home_server_byname(char const *name, int type);
 #endif

@@ -43,12 +43,11 @@ USES_APPLE_DEPRECATED_API
  */
 typedef struct rlm_expr_t {
 	char const *xlat_name;
-	char *allowed_chars;
+	char const *allowed_chars;
 } rlm_expr_t;
 
 static const CONF_PARSER module_config[] = {
-	{"safe_characters", PW_TYPE_STRING, offsetof(rlm_expr_t, allowed_chars), NULL,
-	"@abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_: /"},
+	{ "safe_characters", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_expr_t, allowed_chars), "@abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_: /" },
 	{NULL, -1, 0, NULL, NULL}
 };
 

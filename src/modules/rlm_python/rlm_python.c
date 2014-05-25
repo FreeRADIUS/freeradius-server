@@ -49,6 +49,9 @@ struct py_function_def {
 };
 
 typedef struct rlm_python_t {
+	void		*libpython;
+	PyThreadState	*main_thread_state;
+	char const	*python_path;
 	struct py_function_def
 	instantiate,
 		authorize,
@@ -96,6 +99,8 @@ static CONF_PARSER module_config[] = {
 	A(detach)
 
 #undef A
+
+	{ "python_path", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_python_t, python_path), NULL },
 
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
@@ -216,6 +221,15 @@ static int mod_init(void)
 	Py_SetProgramName(name);
 	Py_InitializeEx(0);				/* Don't override signal handlers */
 	PyEval_InitThreads(); 				/* This also grabs a lock */
+	inst->main_thread_state = PyThreadState_Get();	/* We need this for setting up thread local stuff */
+#endif
+	if (inst->python_path) {
+		char *path;
+
+		memcpy(&path, &inst->python_path, sizeof(path));
+		PySys_SetPath(path);
+	}
+
 	if ((radiusd_module = Py_InitModule3("radiusd", radiusd_methods,
 					     "FreeRADIUS Module")) == NULL)
 		goto failed;

@@ -65,13 +65,13 @@ typedef struct sql_config {
 	char const	*simul_verify_query;
 	char const 	*groupmemb_query;
 
-	bool const	do_clients;
-	bool const	read_groups;
+	bool		do_clients;
+	bool		read_groups;
 	char const	*logfile;
 
-	bool const	deletestalesessions;
+	bool		deletestalesessions;
 	char const	*allowed_chars;
-	int const	query_timeout;
+	uint32_t	query_timeout;
 
 	void		*driver;	//!< Where drivers should write a
 					//!< pointer to their configurations.

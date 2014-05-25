@@ -35,13 +35,13 @@ typedef struct rlm_eap_tls_t {
 	/*
 	 *	TLS configuration
 	 */
-	char	*tls_conf_name;
+	char const *tls_conf_name;
 	fr_tls_server_conf_t *tls_conf;
 
 	/*
 	 *	Virtual server for checking certificates
 	 */
-	char	*virtual_server;
+	char const *virtual_server;
 } rlm_eap_tls_t;
 
 #endif /* _RLM_EAP_TLS_H */

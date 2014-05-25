@@ -39,8 +39,8 @@ typedef enum detail_state_t {
 typedef struct listen_detail_t {
 	fr_event_t	*ev;	/* has to be first entry (ugh) */
 	int		delay_time;
-	char		*filename;
-	char		*filename_work;
+	char const	*filename;
+	char const	*filename_work;
 	VALUE_PAIR	*vps;
 	int		work_fd;
 #ifdef WITH_DETAIL_THREAD
@@ -54,10 +54,12 @@ typedef struct listen_detail_t {
 	time_t		timestamp;
 	time_t		running;
 	fr_ipaddr_t	client_ip;
-	int		load_factor; /* 1..100 */
+
+	uint32_t	load_factor; /* 1..100 */
+	uint32_t	poll_interval;
+	uint32_t	retry_interval;
+
 	int		signal;
-	int		poll_interval;
-	int		retry_interval;
 	int		packets;
 	int		tries;
 	bool		one_shot;

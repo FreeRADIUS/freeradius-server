@@ -482,8 +482,7 @@ void fr_hmac_sha1(uint8_t const *text, size_t text_len, uint8_t const *key, size
 int		rad_send(RADIUS_PACKET *, RADIUS_PACKET const *, char const *secret);
 bool		rad_packet_ok(RADIUS_PACKET *packet, int flags, decode_fail_t *reason);
 RADIUS_PACKET	*rad_recv(int fd, int flags);
-ssize_t rad_recv_header(int sockfd, fr_ipaddr_t *src_ipaddr, int *src_port,
-			int *code);
+ssize_t rad_recv_header(int sockfd, fr_ipaddr_t *src_ipaddr, uint16_t *src_port, int *code);
 void		rad_recv_discard(int sockfd);
 int		rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 			   char const *secret);
@@ -671,10 +670,10 @@ int		ip_hton(char const *src, int af, fr_ipaddr_t *dst);
 char const	*ip_ntoh(fr_ipaddr_t const *src, char *dst, size_t cnt);
 struct in_addr	fr_ipaddr_mask(struct in_addr const *ipaddr, uint8_t prefix);
 struct in6_addr	fr_ipaddr_mask6(struct in6_addr const *ipaddr, uint8_t prefix);
-int		fr_ipaddr2sockaddr(fr_ipaddr_t const *ipaddr, int port,
+int		fr_ipaddr2sockaddr(fr_ipaddr_t const *ipaddr, uint16_t port,
 				   struct sockaddr_storage *sa, socklen_t *salen);
 int		fr_sockaddr2ipaddr(struct sockaddr_storage const *sa, socklen_t salen,
-				   fr_ipaddr_t *ipaddr, int * port);
+				   fr_ipaddr_t *ipaddr, uint16_t *port);
 ssize_t		fr_utf8_to_ucs2(uint8_t *out, size_t outlen, char const *in, size_t inlen);
 size_t		fr_prints_uint128(char *out, size_t outlen, uint128_t const num);
 int64_t		fr_pow(int32_t base, uint8_t exp);

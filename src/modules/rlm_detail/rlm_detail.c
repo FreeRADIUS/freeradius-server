@@ -51,11 +51,11 @@ RCSID("$Id$")
  */
 typedef struct detail_instance {
 	char const	*name;		//!< Instance name.
-	char		*filename;	//!< File/path to write to.
-	int		perm;		//!< Permissions to use for new files.
-	char		*group;		//!< Group to use for new files.
+	char const	*filename;	//!< File/path to write to.
+	uint32_t	perm;		//!< Permissions to use for new files.
+	char const	*group;		//!< Group to use for new files.
 
-	char		*header;	//!< Header format.
+	char const	*header;	//!< Header format.
 	bool		locking;	//!< Whether the file should be locked.
 
 	bool		log_srcdst;	//!< Add IP src/dst attributes to entries.
@@ -66,16 +66,14 @@ typedef struct detail_instance {
 } detail_instance_t;
 
 static const CONF_PARSER module_config[] = {
-	{ "detailfile", PW_TYPE_FILE_OUTPUT | PW_TYPE_DEPRECATED, offsetof(detail_instance_t, filename),
-	 NULL, NULL },
-	{ "filename", PW_TYPE_FILE_OUTPUT | PW_TYPE_REQUIRED, offsetof(detail_instance_t, filename),
-	 NULL, "%A/%{Client-IP-Address}/detail" },
-	{ "header", PW_TYPE_STRING, offsetof(detail_instance_t, header), NULL, "%t" },
-	{ "detailperm",	PW_TYPE_INTEGER | PW_TYPE_DEPRECATED, offsetof(detail_instance_t, perm), NULL, NULL },
-	{ "permissions", PW_TYPE_INTEGER, offsetof(detail_instance_t, perm), NULL, "0600" },
-	{ "group", PW_TYPE_STRING, offsetof(detail_instance_t, group), NULL,  NULL},
-	{ "locking", PW_TYPE_BOOLEAN, offsetof(detail_instance_t, locking), NULL, "no" },
-	{ "log_packet_header", PW_TYPE_BOOLEAN, offsetof(detail_instance_t, log_srcdst), NULL, "no" },
+	{ "detailfile", FR_CONF_OFFSET(PW_TYPE_FILE_OUTPUT | PW_TYPE_DEPRECATED, detail_instance_t, filename), NULL },
+	{ "filename", FR_CONF_OFFSET(PW_TYPE_FILE_OUTPUT | PW_TYPE_REQUIRED, detail_instance_t, filename), "%A/%{Client-IP-Address}/detail" },
+	{ "header", FR_CONF_OFFSET(PW_TYPE_STRING, detail_instance_t, header), "%t" },
+	{ "detailperm", FR_CONF_OFFSET(PW_TYPE_INTEGER | PW_TYPE_DEPRECATED, detail_instance_t, perm), NULL },
+	{ "permissions", FR_CONF_OFFSET(PW_TYPE_INTEGER, detail_instance_t, perm), "0600" },
+	{ "group", FR_CONF_OFFSET(PW_TYPE_STRING, detail_instance_t, group), NULL },
+	{ "locking", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, detail_instance_t, locking), "no" },
+	{ "log_packet_header", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, detail_instance_t, log_srcdst), "no" },
 	{ NULL, -1, 0, NULL, NULL }
 };
 

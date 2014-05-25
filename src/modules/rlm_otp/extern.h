@@ -39,25 +39,25 @@ RCSIDH(extern_h, "$Id$")
 #define OTP_CHALLENGE_PROMPT "Challenge: %{reply:OTP-Challenge}\n Response: "
 
 typedef struct rlm_otp_t {
-	char const *name;	//!< Instance name for mod_authorize().
-	char *otpd_rp;		//!< Otpd rendezvous point.
-	char *chal_prompt;	//!< Text to present challenge to user
-				//!< must have %s.
+	char const *name;		//!< Instance name for mod_authorize().
+	char const *otpd_rp;		//!< Otpd rendezvous point.
+	char const *chal_prompt;	//!< Text to present challenge to user
+					//!< must have %s.
 
-	uint8_t hmac_key[16];   //!< because it doesn't track State
+	uint8_t hmac_key[16];   	//!< because it doesn't track State
 
-	int challenge_len;	//!< Challenge length, min 5 digits.
-	int challenge_delay;	//!< Max delay time for response, in seconds.
-	int allow_sync;		//!< Useful to override pwdfile
-				//!< card_type settings.
-	int allow_async;	//!< C/R mode allowed?
+	uint32_t challenge_len;		//!< Challenge length, min 5 digits.
+	uint32_t challenge_delay;	//!< Max delay time for response, in seconds.
+	bool allow_sync;		//!< Useful to override pwdfile
+					//!< card_type settings.
+	bool allow_async;		//!< C/R mode allowed?
 
-	int mschapv2_mppe_policy;	//!< Whether or not do to mppe for
+	uint32_t mschapv2_mppe_policy;	//!< Whether or not do to mppe for
 					//!< mschapv2.
-	int mschapv2_mppe_types;	//!< Key type/length for mschapv2/mppe.
-	int mschap_mppe_policy;		//!< Whether or not do to mppe for
+	uint32_t mschapv2_mppe_types;	//!< Key type/length for mschapv2/mppe.
+	uint32_t mschap_mppe_policy;	//!< Whether or not do to mppe for
 					//!< mschap .
-	int mschap_mppe_types;		//!< key type/length for mschap/mppe.
+	uint32_t mschap_mppe_types;	//!< key type/length for mschap/mppe.
 } rlm_otp_t;
 
 /* otp_mppe.c */

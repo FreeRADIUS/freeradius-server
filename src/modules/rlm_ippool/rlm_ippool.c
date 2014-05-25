@@ -60,15 +60,20 @@ RCSID("$Id$")
  *	be used as the instance handle.
  */
 typedef struct rlm_ippool_t {
-	char		*filename;
-	char		*ip_index;
-	char		*name;
-	char		*key;
+	char const	*filename;
+	char const	*ip_index;
+	char const	*name;
+	char const	*key;
+
+	struct in_addr	range_start_addr;
+	struct in_addr	range_stop_addr;
+	struct in_addr	netmask_addr;
 	uint32_t	range_start;
 	uint32_t	range_stop;
 	uint32_t	netmask;
-	time_t		max_timeout;
-	int		cache_size;
+
+	uint32_t	max_timeout;
+	uint32_t	cache_size;
 	bool		override;
 	GDBM_FILE	gdbm;
 	GDBM_FILE	ip;
@@ -101,30 +106,29 @@ typedef struct ippool_key {
 } ippool_key;
 
 static const CONF_PARSER module_config[] = {
-	{ "session-db", PW_TYPE_FILE_OUTPUT | PW_TYPE_DEPRECATED, offsetof(rlm_ippool_t,filename), NULL, NULL },
-	{ "filename", PW_TYPE_FILE_OUTPUT | PW_TYPE_REQUIRED, offsetof(rlm_ippool_t,filename), NULL, NULL },
+	{ "session-db", FR_CONF_OFFSET(PW_TYPE_FILE_OUTPUT | PW_TYPE_DEPRECATED, rlm_ippool_t, filename), NULL },
+	{ "filename", FR_CONF_OFFSET(PW_TYPE_FILE_OUTPUT | PW_TYPE_REQUIRED, rlm_ippool_t, filename), NULL },
 
-	{ "ip-index", PW_TYPE_STRING | PW_TYPE_DEPRECATED, offsetof(rlm_ippool_t,ip_index), NULL, NULL },
-	{ "ip_index", PW_TYPE_STRING | PW_TYPE_REQUIRED, offsetof(rlm_ippool_t,ip_index), NULL, NULL },
+	{ "ip-index", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_DEPRECATED, rlm_ippool_t, ip_index), NULL },
+	{ "ip_index", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_REQUIRED, rlm_ippool_t, ip_index), NULL },
 
-	{ "key", PW_TYPE_STRING | PW_TYPE_REQUIRED,
-	  offsetof(rlm_ippool_t,key), NULL, "%{NAS-IP-Address} %{NAS-Port}" },
+	{ "key", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_REQUIRED, rlm_ippool_t, key), "%{NAS-IP-Address} %{NAS-Port}" },
 
-	{ "range-start", PW_TYPE_IPADDR | PW_TYPE_DEPRECATED, offsetof(rlm_ippool_t,range_start), NULL, NULL },
-	{ "range_start", PW_TYPE_IPADDR, offsetof(rlm_ippool_t,range_start), NULL, "0" },
+	{ "range-start", FR_CONF_OFFSET(PW_TYPE_IPADDR | PW_TYPE_DEPRECATED, rlm_ippool_t, range_start_addr), NULL },
+	{ "range_start", FR_CONF_OFFSET(PW_TYPE_IPADDR, rlm_ippool_t, range_start_addr), "0" },
 
-	{ "range-stop", PW_TYPE_IPADDR | PW_TYPE_DEPRECATED, offsetof(rlm_ippool_t,range_stop), NULL, NULL },
-	{ "range_stop", PW_TYPE_IPADDR, offsetof(rlm_ippool_t,range_stop), NULL, "0" },
+	{ "range-stop", FR_CONF_OFFSET(PW_TYPE_IPADDR | PW_TYPE_DEPRECATED, rlm_ippool_t, range_stop_addr), NULL },
+	{ "range_stop", FR_CONF_OFFSET(PW_TYPE_IPADDR, rlm_ippool_t, range_stop_addr), "0" },
 
-	{ "netmask", PW_TYPE_IPADDR, offsetof(rlm_ippool_t,netmask), NULL, "0" },
+	{ "netmask", FR_CONF_OFFSET(PW_TYPE_IPADDR, rlm_ippool_t, netmask_addr), "0" },
 
-	{ "cache-size", PW_TYPE_INTEGER | PW_TYPE_DEPRECATED, offsetof(rlm_ippool_t,cache_size), NULL, NULL },
-	{ "cache_size", PW_TYPE_INTEGER, offsetof(rlm_ippool_t,cache_size), NULL, "1000" },
+	{ "cache-size", FR_CONF_OFFSET(PW_TYPE_INTEGER | PW_TYPE_DEPRECATED, rlm_ippool_t, cache_size), NULL },
+	{ "cache_size", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_ippool_t, cache_size), "1000" },
 
-	{ "override", PW_TYPE_BOOLEAN, offsetof(rlm_ippool_t,override), NULL, "no" },
+	{ "override", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_ippool_t, override), "no" },
 
-	{ "maximum-timeout", PW_TYPE_INTEGER | PW_TYPE_DEPRECATED, offsetof(rlm_ippool_t,max_timeout), NULL, NULL },
-	{ "maximum_timeout", PW_TYPE_INTEGER, offsetof(rlm_ippool_t,max_timeout), NULL, "0" },
+	{ "maximum-timeout", FR_CONF_OFFSET(PW_TYPE_INTEGER | PW_TYPE_DEPRECATED, rlm_ippool_t, max_timeout), NULL },
+	{ "maximum_timeout", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_ippool_t, max_timeout), "0" },
 
 	{ NULL, -1, 0, NULL, NULL }
 };
@@ -171,24 +175,37 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	rad_assert(inst->filename && *inst->filename);
 	rad_assert(inst->ip_index && *inst->ip_index);
 
-	inst->range_start = htonl(inst->range_start);
-	inst->range_stop = htonl(inst->range_stop);
-	inst->netmask = htonl(inst->netmask);
+	inst->range_start = htonl(*((uint32_t *)(&inst->range_start_addr)));
+	inst->range_stop = htonl(*((uint32_t *)(&inst->range_stop_addr)));
+	inst->netmask = htonl(*((uint32_t *)(&inst->netmask_addr)));
 	if (inst->range_start == 0 || inst->range_stop == 0 || \
 	    inst->range_start >= inst->range_stop ) {
 		cf_log_err_cs(conf, "Invalid data range");
 		return -1;
 	}
 
-	inst->gdbm = gdbm_open(inst->filename, sizeof(int),
-			       GDBM_WRCREAT | GDBM_IPPOOL_OPTS, 0600, NULL);
+	{
+		char *file;
+
+		memcpy(&file, &inst->filename, sizeof(file));
+		inst->gdbm = gdbm_open(file, sizeof(int),
+				       GDBM_WRCREAT | GDBM_IPPOOL_OPTS, 0600, NULL);
+	}
+
 	if (!inst->gdbm) {
 		ERROR("rlm_ippool: Failed to open file %s: %s", inst->filename, fr_syserror(errno));
 
 		return -1;
 	}
-	inst->ip = gdbm_open(inst->ip_index, sizeof(int),
-			     GDBM_WRCREAT | GDBM_IPPOOL_OPTS, 0600, NULL);
+
+	{
+		char *file;
+
+		memcpy(&file, &inst->ip_index, sizeof(file));
+		inst->ip = gdbm_open(file, sizeof(int),
+				     GDBM_WRCREAT | GDBM_IPPOOL_OPTS, 0600, NULL);
+	}
+
 	if (!inst->ip) {
 		ERROR("rlm_ippool: Failed to open file %s: %s", inst->ip_index, fr_syserror(errno));
 

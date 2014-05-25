@@ -37,72 +37,66 @@ RCSID("$Id$")
  *	Define a structure for our module configuration.
  */
 typedef struct rlm_sqlippool_t {
-	char *sql_instance_name;
+	char const *sql_instance_name;
 
-	int lease_duration;
+	uint32_t lease_duration;
 
 	rlm_sql_t *sql_inst;
 
-	char *pool_name;
+	char const *pool_name;
 
-	/* We ended up removing the init
-	   queries so that its up to user
-	   to create the db structure and put the required
-	   information in there
-	*/
-				/* Allocation sequence */
-	time_t last_clear;	/* so we only do it once a second */
-	char *allocate_begin;	/* SQL query to begin */
-	char *allocate_clear;	/* SQL query to clear an IP */
-	char *allocate_find;	/* SQL query to find an unused IP */
-	char *allocate_update;	/* SQL query to mark an IP as used */
-	char *allocate_commit;	/* SQL query to commit */
+	time_t last_clear;		//!< So we only do it once a second.
+	char const *allocate_begin;	//!< SQL query to begin.
+	char const *allocate_clear;	//!< SQL query to clear an IP.
+	char const *allocate_find;	//!< SQL query to find an unused IP.
+	char const *allocate_update;	//!< SQL query to mark an IP as used.
+	char const *allocate_commit;	//!< SQL query to commit.
 
-	char *pool_check;	/* Query to check for the existence of the pool */
+	char const *pool_check;		//!< Query to check for the existence of the pool.
 
-				/* Start sequence */
-	char *start_begin;	/* SQL query to begin */
-	char *start_update;	/* SQL query to update an IP entry */
-	char *start_commit;	/* SQL query to commit */
+					//!< Start sequence.
+	char const *start_begin;	//!< SQL query to begin.
+	char const *start_update;	//!< SQL query to update an IP entry.
+	char const *start_commit;	//!< SQL query to commit.
 
-				/* Alive sequence */
-	char *alive_begin;	/* SQL query to begin */
-	char *alive_update;	/* SQL query to update an IP entry */
-	char *alive_commit;	/* SQL query to commit */
+					//!< Alive sequence.
+	char const *alive_begin;	//!< SQL query to begin.
+	char const *alive_update;	//!< SQL query to update an IP entry.
+	char const *alive_commit;	//!< SQL query to commit.
 
-				/* Stop sequence */
-	char *stop_begin;	/* SQL query to begin */
-	char *stop_clear;	/* SQL query to clear an IP */
-	char *stop_commit;	/* SQL query to commit */
+					//!< Stop sequence.
+	char const *stop_begin;		//!< SQL query to begin.
+	char const *stop_clear;		//!< SQL query to clear an IP.
+	char const *stop_commit;	//!< SQL query to commit.
 
-				/* On sequence */
-	char *on_begin;		/* SQL query to begin */
-	char *on_clear;		/* SQL query to clear an entire NAS */
-	char *on_commit;	/* SQL query to commit */
+					//!< On sequence.
+	char const *on_begin;		//!< SQL query to begin.
+	char const *on_clear;		//!< SQL query to clear an entire NAS.
+	char const *on_commit;		//!< SQL query to commit.
 
-				/* Off sequence */
-	char *off_begin;	/* SQL query to begin */
-	char *off_clear;	/* SQL query to clear an entire NAS */
-	char *off_commit;	/* SQL query to commit */
+					//!< Off sequence.
+	char const *off_begin;		//!< SQL query to begin.
+	char const *off_clear;		//!< SQL query to clear an entire NAS.
+	char const *off_commit;		//!< SQL query to commit.
 
-				/* Logging Section */
-	char *log_exists;	/* There was an ip address already assigned */
-	char *log_success;	/* We successfully allocated ip address from pool */
-	char *log_clear;	/* We successfully deallocated ip address from pool */
-	char *log_failed;	/* Failed to allocate ip from the pool */
-	char *log_nopool;	/* There was no Framed-IP-Address but also no Pool-Name */
+					//!< Logging Section.
+	char const *log_exists;		//!< There was an ip address already assigned.
+	char const *log_success;	//!< We successfully allocated ip address from pool.
+	char const *log_clear;		//!< We successfully deallocated ip address from pool.
+	char const *log_failed;		//!< Failed to allocate ip from the pool.
+	char const *log_nopool;		//!< There was no Framed-IP-Address but also no Pool-Name.
 
-				/* Reserved to handle 255.255.255.254 Requests */
-	char *defaultpool;	/* Default Pool-Name if there is none in the check items */
+					//!< Reserved to handle 255.255.255.254 Requests.
+	char const *defaultpool;	//!< Default Pool-Name if there is none in the check items.
 
 } rlm_sqlippool_t;
 
 static CONF_PARSER message_config[] = {
-	{ "exists", PW_TYPE_STRING, offsetof(rlm_sqlippool_t, log_exists), NULL, NULL },
-	{ "success", PW_TYPE_STRING, offsetof(rlm_sqlippool_t, log_success), NULL, NULL },
-	{ "clear", PW_TYPE_STRING, offsetof(rlm_sqlippool_t, log_clear), NULL, NULL },
-	{ "failed", PW_TYPE_STRING, offsetof(rlm_sqlippool_t, log_failed), NULL, NULL },
-	{ "nopool", PW_TYPE_STRING, offsetof(rlm_sqlippool_t, log_nopool), NULL, NULL },
+	{ "exists", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sqlippool_t, log_exists), NULL },
+	{ "success", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sqlippool_t, log_success), NULL },
+	{ "clear", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sqlippool_t, log_clear), NULL },
+	{ "failed", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sqlippool_t, log_failed), NULL },
+	{ "nopool", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sqlippool_t, log_nopool), NULL },
 
 	{ NULL, -1, 0, NULL, NULL }
 };
@@ -117,99 +111,87 @@ static CONF_PARSER message_config[] = {
  *	buffer over-flows.
  */
 static CONF_PARSER module_config[] = {
-	{"sql-instance-name",PW_TYPE_STRING | PW_TYPE_DEPRECATED,
-	 offsetof(rlm_sqlippool_t,sql_instance_name), NULL, NULL},
-	{"sql_module_instance",PW_TYPE_STRING | PW_TYPE_REQUIRED,
-	 offsetof(rlm_sqlippool_t,sql_instance_name), NULL, "sql"},
+	{ "sql-instance-name", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_DEPRECATED, rlm_sqlippool_t, sql_instance_name), NULL },
+	{ "sql_module_instance", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_REQUIRED, rlm_sqlippool_t, sql_instance_name), "sql" },
 
-	{ "lease-duration", PW_TYPE_INTEGER | PW_TYPE_DEPRECATED, offsetof(rlm_sqlippool_t,lease_duration), NULL, NULL},
-	{ "lease_duration", PW_TYPE_INTEGER, offsetof(rlm_sqlippool_t,lease_duration), NULL, "86400"},
+	{ "lease-duration", FR_CONF_OFFSET(PW_TYPE_INTEGER | PW_TYPE_DEPRECATED, rlm_sqlippool_t, lease_duration), NULL },
+	{ "lease_duration", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_sqlippool_t, lease_duration), "86400" },
 
-	{ "pool-name", PW_TYPE_STRING | PW_TYPE_DEPRECATED, offsetof(rlm_sqlippool_t, pool_name), NULL, NULL},
-	{ "pool_name", PW_TYPE_STRING, offsetof(rlm_sqlippool_t, pool_name), NULL, ""},
+	{ "pool-name", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_DEPRECATED, rlm_sqlippool_t, pool_name), NULL },
+	{ "pool_name", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sqlippool_t, pool_name), "" },
 
-	{ "default-pool", PW_TYPE_STRING | PW_TYPE_DEPRECATED, offsetof(rlm_sqlippool_t, defaultpool), NULL, NULL },
-	{ "default_pool", PW_TYPE_STRING, offsetof(rlm_sqlippool_t, defaultpool), NULL, "main_pool" },
+	{ "default-pool", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_DEPRECATED, rlm_sqlippool_t, defaultpool), NULL },
+	{ "default_pool", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sqlippool_t, defaultpool), "main_pool" },
 
 
-	{ "allocate-begin", PW_TYPE_STRING | PW_TYPE_DEPRECATED,
-	  offsetof(rlm_sqlippool_t,allocate_begin), NULL, NULL},
-	{ "allocate_begin", PW_TYPE_STRING,
-	  offsetof(rlm_sqlippool_t,allocate_begin), NULL, "START TRANSACTION" },
+	{ "allocate-begin", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_DEPRECATED, rlm_sqlippool_t, allocate_begin), NULL },
+	{ "allocate_begin", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sqlippool_t, allocate_begin), "START TRANSACTION" },
 
-	{ "allocate-clear", PW_TYPE_STRING | PW_TYPE_DEPRECATED,
-	  offsetof(rlm_sqlippool_t,allocate_clear), NULL, NULL},
-	{ "allocate_clear", PW_TYPE_STRING | PW_TYPE_REQUIRED,
-	  offsetof(rlm_sqlippool_t,allocate_clear), NULL, "" },
+	{ "allocate-clear", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_DEPRECATED, rlm_sqlippool_t, allocate_clear), NULL },
+	{ "allocate_clear", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_REQUIRED, rlm_sqlippool_t, allocate_clear), ""  },
 
-	{ "allocate-find", PW_TYPE_STRING | PW_TYPE_DEPRECATED,
-	  offsetof(rlm_sqlippool_t,allocate_find), NULL, NULL},
-	{ "allocate_find", PW_TYPE_STRING | PW_TYPE_REQUIRED,
-	  offsetof(rlm_sqlippool_t,allocate_find), NULL, "" },
+	{ "allocate-find", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_DEPRECATED, rlm_sqlippool_t, allocate_find), NULL },
+	{ "allocate_find", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_REQUIRED, rlm_sqlippool_t, allocate_find), ""  },
 
-	{ "allocate-update", PW_TYPE_STRING | PW_TYPE_DEPRECATED,
-	  offsetof(rlm_sqlippool_t,allocate_update), NULL, NULL },
-	{ "allocate_update", PW_TYPE_STRING | PW_TYPE_REQUIRED,
-	  offsetof(rlm_sqlippool_t,allocate_update), NULL, "" },
+	{ "allocate-update", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_DEPRECATED, rlm_sqlippool_t, allocate_update), NULL },
+	{ "allocate_update", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_REQUIRED, rlm_sqlippool_t, allocate_update), ""  },
 
-	{ "allocate-commit", PW_TYPE_STRING | PW_TYPE_DEPRECATED,
-	  offsetof(rlm_sqlippool_t,allocate_commit), NULL, NULL },
-	{ "allocate_commit", PW_TYPE_STRING,
-	  offsetof(rlm_sqlippool_t,allocate_commit), NULL, "COMMIT" },
+	{ "allocate-commit", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_DEPRECATED, rlm_sqlippool_t, allocate_commit), NULL },
+	{ "allocate_commit", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sqlippool_t, allocate_commit), "COMMIT" },
 
 
-	{ "pool-check", PW_TYPE_STRING | PW_TYPE_DEPRECATED, offsetof(rlm_sqlippool_t,pool_check), NULL, NULL },
-	{ "pool_check", PW_TYPE_STRING, offsetof(rlm_sqlippool_t,pool_check), NULL, "" },
+	{ "pool-check", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_DEPRECATED, rlm_sqlippool_t, pool_check), NULL },
+	{ "pool_check", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sqlippool_t, pool_check), ""  },
 
 
-	{ "start-begin", PW_TYPE_STRING | PW_TYPE_DEPRECATED, offsetof(rlm_sqlippool_t,start_begin), NULL, NULL },
-	{ "start_begin", PW_TYPE_STRING, offsetof(rlm_sqlippool_t,start_begin), NULL, "START TRANSACTION" },
+	{ "start-begin", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_DEPRECATED, rlm_sqlippool_t, start_begin), NULL },
+	{ "start_begin", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sqlippool_t, start_begin), "START TRANSACTION" },
 
-	{ "start-update", PW_TYPE_STRING | PW_TYPE_DEPRECATED, offsetof(rlm_sqlippool_t,start_update), NULL, NULL },
-	{ "start_update", PW_TYPE_STRING | PW_TYPE_REQUIRED, offsetof(rlm_sqlippool_t,start_update), NULL, "" },
+	{ "start-update", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_DEPRECATED, rlm_sqlippool_t, start_update), NULL },
+	{ "start_update", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_REQUIRED, rlm_sqlippool_t, start_update), ""  },
 
-	{ "start-commit", PW_TYPE_STRING | PW_TYPE_DEPRECATED, offsetof(rlm_sqlippool_t,start_commit), NULL, NULL },
-	{ "start_commit", PW_TYPE_STRING, offsetof(rlm_sqlippool_t,start_commit), NULL, "COMMIT" },
-
-
-	{ "alive-begin", PW_TYPE_STRING | PW_TYPE_DEPRECATED, offsetof(rlm_sqlippool_t,alive_begin), NULL, NULL },
-	{ "alive_begin", PW_TYPE_STRING, offsetof(rlm_sqlippool_t,alive_begin), NULL, "START TRANSACTION" },
-
-	{ "alive-update", PW_TYPE_STRING | PW_TYPE_DEPRECATED, offsetof(rlm_sqlippool_t,alive_update), NULL, NULL },
-	{ "alive_update", PW_TYPE_STRING | PW_TYPE_REQUIRED, offsetof(rlm_sqlippool_t,alive_update), NULL, "" },
-
-	{ "alive-commit", PW_TYPE_STRING | PW_TYPE_DEPRECATED, offsetof(rlm_sqlippool_t,alive_commit), NULL, NULL },
-	{ "alive_commit", PW_TYPE_STRING, offsetof(rlm_sqlippool_t,alive_commit), NULL, "COMMIT" },
+	{ "start-commit", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_DEPRECATED, rlm_sqlippool_t, start_commit), NULL },
+	{ "start_commit", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sqlippool_t, start_commit), "COMMIT" },
 
 
-	{ "stop-begin", PW_TYPE_STRING | PW_TYPE_DEPRECATED, offsetof(rlm_sqlippool_t,stop_begin), NULL, NULL },
-	{ "stop_begin", PW_TYPE_STRING, offsetof(rlm_sqlippool_t,stop_begin), NULL, "START TRANSACTION" },
+	{ "alive-begin", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_DEPRECATED, rlm_sqlippool_t, alive_begin), NULL },
+	{ "alive_begin", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sqlippool_t, alive_begin), "START TRANSACTION" },
 
-	{ "stop-clear", PW_TYPE_STRING | PW_TYPE_DEPRECATED, offsetof(rlm_sqlippool_t,stop_clear), NULL, NULL },
-	{ "stop_clear", PW_TYPE_STRING | PW_TYPE_REQUIRED, offsetof(rlm_sqlippool_t,stop_clear), NULL, "" },
+	{ "alive-update", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_DEPRECATED, rlm_sqlippool_t, alive_update), NULL },
+	{ "alive_update", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_REQUIRED, rlm_sqlippool_t, alive_update), ""  },
 
-	{ "stop-commit", PW_TYPE_STRING | PW_TYPE_DEPRECATED, offsetof(rlm_sqlippool_t,stop_commit), NULL, NULL },
-	{ "stop_commit", PW_TYPE_STRING, offsetof(rlm_sqlippool_t,stop_commit), NULL, "COMMIT" },
-
-
-	{ "on-begin", PW_TYPE_STRING | PW_TYPE_DEPRECATED, offsetof(rlm_sqlippool_t,on_begin), NULL, NULL },
-	{ "on_begin", PW_TYPE_STRING, offsetof(rlm_sqlippool_t,on_begin), NULL, "START TRANSACTION" },
-
-	{ "on-clear", PW_TYPE_STRING | PW_TYPE_DEPRECATED, offsetof(rlm_sqlippool_t,on_clear), NULL, NULL },
-	{ "on_clear", PW_TYPE_STRING | PW_TYPE_REQUIRED, offsetof(rlm_sqlippool_t,on_clear), NULL, "" },
-
-	{ "on-commit", PW_TYPE_STRING | PW_TYPE_DEPRECATED, offsetof(rlm_sqlippool_t,on_commit), NULL, NULL },
-	{ "on_commit", PW_TYPE_STRING, offsetof(rlm_sqlippool_t,on_commit), NULL, "COMMIT" },
+	{ "alive-commit", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_DEPRECATED, rlm_sqlippool_t, alive_commit), NULL },
+	{ "alive_commit", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sqlippool_t, alive_commit), "COMMIT" },
 
 
-	{ "off-begin", PW_TYPE_STRING | PW_TYPE_DEPRECATED, offsetof(rlm_sqlippool_t,off_begin), NULL, NULL },
-	{ "off_begin", PW_TYPE_STRING, offsetof(rlm_sqlippool_t,off_begin), NULL, "START TRANSACTION" },
+	{ "stop-begin", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_DEPRECATED, rlm_sqlippool_t, stop_begin), NULL },
+	{ "stop_begin", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sqlippool_t, stop_begin), "START TRANSACTION" },
 
-	{ "off-clear", PW_TYPE_STRING | PW_TYPE_DEPRECATED, offsetof(rlm_sqlippool_t,off_clear), NULL, NULL },
-	{ "off_clear", PW_TYPE_STRING | PW_TYPE_REQUIRED, offsetof(rlm_sqlippool_t,off_clear), NULL, "" },
+	{ "stop-clear", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_DEPRECATED, rlm_sqlippool_t, stop_clear), NULL },
+	{ "stop_clear", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_REQUIRED, rlm_sqlippool_t, stop_clear), ""  },
 
-	{ "off-commit",PW_TYPE_STRING | PW_TYPE_DEPRECATED, offsetof(rlm_sqlippool_t,off_commit), NULL, NULL },
-	{ "off_commit", PW_TYPE_STRING, offsetof(rlm_sqlippool_t,off_commit), NULL, "COMMIT" },
+	{ "stop-commit", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_DEPRECATED, rlm_sqlippool_t, stop_commit), NULL },
+	{ "stop_commit", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sqlippool_t, stop_commit), "COMMIT" },
+
+
+	{ "on-begin", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_DEPRECATED, rlm_sqlippool_t, on_begin), NULL },
+	{ "on_begin", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sqlippool_t, on_begin), "START TRANSACTION" },
+
+	{ "on-clear", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_DEPRECATED, rlm_sqlippool_t, on_clear), NULL },
+	{ "on_clear", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_REQUIRED, rlm_sqlippool_t, on_clear), ""  },
+
+	{ "on-commit", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_DEPRECATED, rlm_sqlippool_t, on_commit), NULL },
+	{ "on_commit", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sqlippool_t, on_commit), "COMMIT" },
+
+
+	{ "off-begin", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_DEPRECATED, rlm_sqlippool_t, off_begin), NULL },
+	{ "off_begin", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sqlippool_t, off_begin), "START TRANSACTION" },
+
+	{ "off-clear", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_DEPRECATED, rlm_sqlippool_t, off_clear), NULL },
+	{ "off_clear", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_REQUIRED, rlm_sqlippool_t, off_clear), ""  },
+
+	{ "off-commit", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_DEPRECATED, rlm_sqlippool_t, off_commit), NULL },
+	{ "off_commit", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sqlippool_t, off_commit), "COMMIT" },
 
 	{ "messages", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) message_config },
 
@@ -451,7 +433,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
  *	If we have something to log, then we log it.
  *	Otherwise we return the retcode as soon as possible
  */
-static int do_logging(REQUEST *request, char *str, int rcode)
+static int do_logging(REQUEST *request, char const *str, int rcode)
 {
 	char *expanded = NULL;
 

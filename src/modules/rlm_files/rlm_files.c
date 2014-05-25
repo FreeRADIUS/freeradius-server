@@ -30,38 +30,38 @@ RCSID("$Id$")
 #include	<fcntl.h>
 
 typedef struct rlm_files_t {
-	char *compat_mode;
+	char const *compat_mode;
 
-	char *key;
+	char const *key;
 
-	char *filename;
+	char const *filename;
 	fr_hash_table_t *common;
 
 	/* autz */
-	char *usersfile;
+	char const *usersfile;
 	fr_hash_table_t *users;
 
 
 	/* authenticate */
-	char *auth_usersfile;
+	char const *auth_usersfile;
 	fr_hash_table_t *auth_users;
 
 	/* preacct */
-	char *acctusersfile;
+	char const *acctusersfile;
 	fr_hash_table_t *acctusers;
 
 #ifdef WITH_PROXY
 	/* pre-proxy */
-	char *preproxy_usersfile;
+	char const *preproxy_usersfile;
 	fr_hash_table_t *preproxy_users;
 
 	/* post-proxy */
-	char *postproxy_usersfile;
+	char const *postproxy_usersfile;
 	fr_hash_table_t *postproxy_users;
 #endif
 
 	/* post-authenticate */
-	char *postauth_usersfile;
+	char const *postauth_usersfile;
 	fr_hash_table_t *postauth_users;
 } rlm_files_t;
 
@@ -78,26 +78,17 @@ static int fallthrough(VALUE_PAIR *vp)
 }
 
 static const CONF_PARSER module_config[] = {
-	{ "filename",	   PW_TYPE_FILE_INPUT,
-	  offsetof(rlm_files_t,filename), NULL, NULL },
-	{ "usersfile",	   PW_TYPE_FILE_INPUT,
-	  offsetof(rlm_files_t,usersfile), NULL, NULL },
-	{ "acctusersfile", PW_TYPE_FILE_INPUT,
-	  offsetof(rlm_files_t,acctusersfile), NULL, NULL },
+	{ "filename", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT, rlm_files_t, filename), NULL },
+	{ "usersfile", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT, rlm_files_t, usersfile), NULL },
+	{ "acctusersfile", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT, rlm_files_t, acctusersfile), NULL },
 #ifdef WITH_PROXY
-	{ "preproxy_usersfile", PW_TYPE_FILE_INPUT,
-	  offsetof(rlm_files_t,preproxy_usersfile), NULL, NULL },
-	{ "postproxy_usersfile", PW_TYPE_FILE_INPUT,
-	  offsetof(rlm_files_t,postproxy_usersfile), NULL, NULL },
+	{ "preproxy_usersfile", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT, rlm_files_t, preproxy_usersfile), NULL },
+	{ "postproxy_usersfile", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT, rlm_files_t, postproxy_usersfile), NULL },
 #endif
-	{ "auth_usersfile", PW_TYPE_FILE_INPUT,
-	  offsetof(rlm_files_t,auth_usersfile), NULL, NULL },
-	{ "postauth_usersfile", PW_TYPE_FILE_INPUT,
-	  offsetof(rlm_files_t,postauth_usersfile), NULL, NULL },
-	{ "compat",	   PW_TYPE_STRING,
-	  offsetof(rlm_files_t,compat_mode), NULL, "cistron" },
-	{ "key",	   PW_TYPE_STRING,
-	  offsetof(rlm_files_t,key), NULL, NULL },
+	{ "auth_usersfile", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT, rlm_files_t, auth_usersfile), NULL },
+	{ "postauth_usersfile", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT, rlm_files_t, postauth_usersfile), NULL },
+	{ "compat", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_files_t, compat_mode), "cistron" },
+	{ "key", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_files_t, key), NULL },
 	{ NULL, -1, 0, NULL, NULL }
 };
 
@@ -121,8 +112,7 @@ static void my_pairlist_free(void *data)
 }
 
 
-static int getusersfile(TALLOC_CTX *ctx, char const *filename, fr_hash_table_t **pht,
-			char *compat_mode_str)
+static int getusersfile(TALLOC_CTX *ctx, char const *filename, fr_hash_table_t **pht, char const *compat_mode_str)
 {
 	int rcode;
 	PAIR_LIST *users = NULL;

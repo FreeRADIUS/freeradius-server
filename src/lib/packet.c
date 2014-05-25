@@ -126,16 +126,11 @@ int fr_nonblock(UNUSED int fd)
 /*
  *	Open a socket on the given IP and port.
  */
-int fr_socket(fr_ipaddr_t *ipaddr, int port)
+int fr_socket(fr_ipaddr_t *ipaddr, uint16_t port)
 {
 	int sockfd;
 	struct sockaddr_storage salocal;
 	socklen_t	salen;
-
-	if ((port < 0) || (port > 65535)) {
-		fr_strerror_printf("Port %d is out of allowed bounds", port);
-		return -1;
-	}
 
 	sockfd = socket(ipaddr->af, SOCK_DGRAM, 0);
 	if (sockfd < 0) {
@@ -241,13 +236,13 @@ typedef struct fr_packet_socket_t {
 
 	int		src_any;
 	fr_ipaddr_t	src_ipaddr;
-	int		src_port;
+	uint16_t	src_port;
 
 	int		dst_any;
 	fr_ipaddr_t	dst_ipaddr;
-	int		dst_port;
+	uint16_t	dst_port;
 
-	int		dont_use;
+	bool		dont_use;
 
 #ifdef WITH_TCP
 	int		proto;
@@ -314,7 +309,7 @@ bool fr_packet_list_socket_freeze(fr_packet_list_t *pl, int sockfd)
 		return false;
 	}
 
-	ps->dont_use = 1;
+	ps->dont_use = true;
 	return true;
 }
 
@@ -327,7 +322,7 @@ bool fr_packet_list_socket_thaw(fr_packet_list_t *pl, int sockfd)
 	ps = fr_socket_find(pl, sockfd);
 	if (!ps) return false;
 
-	ps->dont_use = 0;
+	ps->dont_use = false;
 	return true;
 }
 
@@ -354,7 +349,7 @@ bool fr_packet_list_socket_del(fr_packet_list_t *pl, int sockfd)
 
 
 bool fr_packet_list_socket_add(fr_packet_list_t *pl, int sockfd, int proto,
-			      fr_ipaddr_t *dst_ipaddr, int dst_port,
+			      fr_ipaddr_t *dst_ipaddr, uint16_t dst_port,
 			      void *ctx)
 {
 	int i, start;

@@ -334,42 +334,42 @@ struct fr_tls_server_conf_t {
 	SSL_CTX		*ctx;
 	CONF_SECTION	*cs;
 
-	char		*private_key_password;
-	char		*private_key_file;
-	char		*certificate_file;
-	char		*random_file;
-	char		*ca_path;
-	char		*ca_file;
-	char		*dh_file;
-	char		*rsa_file;
+	char const	*private_key_password;
+	char const	*private_key_file;
+	char const	*certificate_file;
+	char const	*random_file;
+	char const	*ca_path;
+	char const	*ca_file;
+	char const	*dh_file;
+	char const	*rsa_file;
 	bool		rsa_key;
 	bool		dh_key;
-	int		rsa_key_length;
-	int		dh_key_length;
-	int		verify_depth;
+	uint32_t	rsa_key_length;
+	uint32_t	dh_key_length;
+	uint32_t	verify_depth;
 	bool		file_type;
 	bool		include_length;
 
 	/*
 	 *	Always < 4096 (due to radius limit), 0 by default = 2048
 	 */
-	int		fragment_size;
+	uint32_t	fragment_size;
 	bool		check_crl;
 	bool		allow_expired_crl;
-	char		*check_cert_cn;
-	char		*cipher_list;
-	char		*check_cert_issuer;
+	char const	*check_cert_cn;
+	char const	*cipher_list;
+	char const	*check_cert_issuer;
 
 	bool     	session_cache_enable;
-	int     	session_timeout;
-	int     	session_cache_size;
-	char		*session_id_name;
-	char		*session_cache_path;
+	uint32_t     	session_timeout;
+	uint32_t     	session_cache_size;
+	char const	*session_id_name;
+	char const	*session_cache_path;
 	char		session_context_id[SSL_MAX_SSL_SESSION_ID_LENGTH];
 	time_t		session_last_flushed;
 
-	char		*verify_tmp_dir;
-	char		*verify_client_cert_cmd;
+	char const	*verify_tmp_dir;
+	char const	*verify_client_cert_cmd;
 	bool		require_client_cert;
 
 #ifdef HAVE_OPENSSL_OCSP_H
@@ -378,22 +378,22 @@ struct fr_tls_server_conf_t {
 	 */
 	bool		ocsp_enable;
 	bool		ocsp_override_url;
-	char		*ocsp_url;
+	char const	*ocsp_url;
 	bool		ocsp_use_nonce;
 	X509_STORE	*ocsp_store;
-	int		ocsp_timeout;
+	uint32_t	ocsp_timeout;
 	bool		ocsp_softfail;
 #endif
 
 #if OPENSSL_VERSION_NUMBER >= 0x0090800fL
 #ifndef OPENSSL_NO_ECDH
-	char		*ecdh_curve;
+	char const	*ecdh_curve;
 #endif
 #endif
 
 #ifdef PSK_MAX_IDENTITY_LEN
-	char		*psk_identity;
-	char		*psk_password;
+	char const	*psk_identity;
+	char const	*psk_password;
 #endif
 
 };

@@ -41,10 +41,10 @@ RCSID("$Id$")
  */
 typedef struct rlm_cache_t {
 	char const		*xlat_name;
-	char			*key;
-	int			ttl;
+	char const		*key;
+	uint32_t		ttl;
 	uint32_t		max_entries;
-	int			epoch;
+	uint32_t		epoch;
 	bool			stats;
 	CONF_SECTION		*cs;
 	rbtree_t		*cache;
@@ -738,16 +738,11 @@ done:
  *	buffer over-flows.
  */
 static const CONF_PARSER module_config[] = {
-	{ "key",  PW_TYPE_STRING | PW_TYPE_REQUIRED,
-	  offsetof(rlm_cache_t, key), NULL, NULL},
-	{ "ttl", PW_TYPE_INTEGER,
-	  offsetof(rlm_cache_t, ttl), NULL, "500" },
-	{ "max_entries", PW_TYPE_INTEGER,
-	  offsetof(rlm_cache_t, max_entries), NULL, "16384" },
-	{ "epoch", PW_TYPE_INTEGER,
-	  offsetof(rlm_cache_t, epoch), NULL, "0" },
-	{ "add_stats", PW_TYPE_BOOLEAN,
-	  offsetof(rlm_cache_t, stats), NULL, "no" },
+	{ "key", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_REQUIRED, rlm_cache_t, key), NULL },
+	{ "ttl", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_cache_t, ttl), "500" },
+	{ "max_entries", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_cache_t, max_entries), "16384" },
+	{ "epoch", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_cache_t, epoch), "0" },
+	{ "add_stats", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_cache_t, stats), "no" },
 
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };

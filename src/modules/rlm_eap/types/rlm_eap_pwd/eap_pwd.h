@@ -105,8 +105,8 @@ typedef struct _pwd_session_t {
 
 int compute_password_element(pwd_session_t *sess, uint16_t grp_num,
 			     char const *password, int password_len,
-			     char *id_server, int id_server_len,
-			     char *id_peer, int id_peer_len,
+			     char const *id_server, int id_server_len,
+			     char const *id_peer, int id_peer_len,
 			     uint32_t *token);
 int compute_scalar_element(pwd_session_t *sess, BN_CTX *bnctx);
 int process_peer_commit (pwd_session_t *sess, uint8_t *commit, BN_CTX *bnctx);

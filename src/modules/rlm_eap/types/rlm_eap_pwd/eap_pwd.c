@@ -108,8 +108,8 @@ eap_pwd_kdf(uint8_t *key, int keylen, char const *label, int labellen,
 int
 compute_password_element (pwd_session_t *sess, uint16_t grp_num,
 			  char const *password, int password_len,
-			  char *id_server, int id_server_len,
-			  char *id_peer, int id_peer_len,
+			  char const *id_server, int id_server_len,
+			  char const *id_peer, int id_peer_len,
 			  uint32_t *token)
 {
     BIGNUM *x_candidate = NULL, *rnd = NULL, *cofactor = NULL;
@@ -191,8 +191,8 @@ compute_password_element (pwd_session_t *sess, uint16_t grp_num,
 	 */
 	H_Init(&ctx);
 	H_Update(&ctx, (uint8_t *)token, sizeof(*token));
-	H_Update(&ctx, (uint8_t *)id_peer, id_peer_len);
-	H_Update(&ctx, (uint8_t *)id_server, id_server_len);
+	H_Update(&ctx, (uint8_t const *)id_peer, id_peer_len);
+	H_Update(&ctx, (uint8_t const *)id_server, id_server_len);
 	H_Update(&ctx, (uint8_t const *)password, password_len);
 	H_Update(&ctx, (uint8_t *)&ctr, sizeof(ctr));
 	H_Final(&ctx, pwe_digest);

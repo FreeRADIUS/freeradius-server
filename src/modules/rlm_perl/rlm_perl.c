@@ -49,29 +49,29 @@ extern char **environ;
  */
 typedef struct rlm_perl_t {
 	/* Name of the perl module */
-	char		*module;
+	char const	*module;
 
 	/* Name of the functions for each module method */
-	char		*func_authorize;
-	char		*func_authenticate;
-	char		*func_accounting;
-	char		*func_start_accounting;
-	char		*func_stop_accounting;
-	char		*func_preacct;
-	char		*func_checksimul;
-	char		*func_detach;
-	char		*func_xlat;
+	char const	*func_authorize;
+	char const	*func_authenticate;
+	char const	*func_accounting;
+	char const	*func_start_accounting;
+	char const	*func_stop_accounting;
+	char const	*func_preacct;
+	char const	*func_checksimul;
+	char const	*func_detach;
+	char const	*func_xlat;
 #ifdef WITH_PROXY
-	char		*func_pre_proxy;
-	char		*func_post_proxy;
+	char const	*func_pre_proxy;
+	char const	*func_post_proxy;
 #endif
-	char		*func_post_auth;
+	char const	*func_post_auth;
 #ifdef WITH_COA
-	char		*func_recv_coa;
-	char		*func_send_coa;
+	char const	*func_recv_coa;
+	char const	*func_send_coa;
 #endif
-	char		*xlat_name;
-	char		*perl_flags;
+	char const	*xlat_name;
+	char const	*perl_flags;
 	PerlInterpreter	*perl;
 	pthread_key_t	*thread_key;
 
@@ -89,10 +89,8 @@ typedef struct rlm_perl_t {
 			offsetof(rlm_perl_t,func_##_x), NULL, STRINGIFY(_x)}
 
 static const CONF_PARSER module_config[] = {
-	{ "module",  PW_TYPE_FILE_INPUT | PW_TYPE_DEPRECATED,
-	  offsetof(rlm_perl_t,module), NULL,  NULL},
-	{ "filename",  PW_TYPE_FILE_INPUT | PW_TYPE_REQUIRED,
-	  offsetof(rlm_perl_t,module), NULL,  NULL},
+	{ "module", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT | PW_TYPE_DEPRECATED, rlm_perl_t, module), NULL },
+	{ "filename", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT | PW_TYPE_REQUIRED, rlm_perl_t, module), NULL },
 
 	RLM_PERL_CONF(authorize),
 	RLM_PERL_CONF(authenticate),
@@ -111,14 +109,11 @@ static const CONF_PARSER module_config[] = {
 	RLM_PERL_CONF(recv_coa),
 	RLM_PERL_CONF(send_coa),
 #endif
-	{ "perl_flags", PW_TYPE_STRING,
-	  offsetof(rlm_perl_t,perl_flags), NULL, NULL},
+	{ "perl_flags", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_perl_t, perl_flags), NULL },
 
-	{ "func_start_accounting", PW_TYPE_STRING,
-	  offsetof(rlm_perl_t,func_start_accounting), NULL, NULL},
+	{ "func_start_accounting", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_perl_t, func_start_accounting), NULL },
 
-	{ "func_stop_accounting", PW_TYPE_STRING,
-	  offsetof(rlm_perl_t,func_stop_accounting), NULL, NULL},
+	{ "func_stop_accounting", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_perl_t, func_stop_accounting), NULL },
 
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
@@ -321,7 +316,7 @@ static void xs_init(pTHX)
 static ssize_t perl_xlat(void *instance, REQUEST *request, char const *fmt, char *out, size_t freespace)
 {
 
-	rlm_perl_t	*inst= (rlm_perl_t *) instance;
+	rlm_perl_t	*inst = (rlm_perl_t *) instance;
 	char		*tmp;
 	char const	*p, *q;
 	int		count;
@@ -466,13 +461,14 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	rlm_perl_t       *inst = instance;
 	AV		*end_AV;
 
+	char const **embed_c;	/* Stupid Perl and lack of const consistency */
 	char **embed;
 	char **envp = NULL;
 	char const *xlat_name;
 	int exitstatus = 0, argc=0;
 
-	MEM(embed = talloc_zero_array(inst, char *, 4));
-
+	MEM(embed_c = talloc_zero_array(inst, char const *, 4));
+	memcpy(&embed, &embed_c, sizeof(embed));
 	/*
 	 *	Create pthread key. This key will be stored in instance
 	 */
@@ -488,15 +484,15 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 	char arg[] = "0";
 
-	embed[0] = NULL;
+	embed_c[0] = NULL;
 	if (inst->perl_flags) {
-		embed[1] = inst->perl_flags;
-		embed[2] = inst->module;
-		embed[3] = arg;
+		embed_c[1] = inst->perl_flags;
+		embed_c[2] = inst->module;
+		embed_c[3] = arg;
 		argc = 4;
 	} else {
-		embed[1] = inst->module;
-		embed[2] = arg;
+		embed_c[1] = inst->module;
+		embed_c[2] = arg;
 		argc = 3;
 	}
 
@@ -716,7 +712,7 @@ static int get_hv_content(TALLOC_CTX *ctx, REQUEST *request, HV *my_hv, VALUE_PA
  * 	Store all vps in hashes %RAD_CHECK %RAD_REPLY %RAD_REQUEST
  *
  */
-static int do_perl(void *instance, REQUEST *request, char *function_name)
+static int do_perl(void *instance, REQUEST *request, char const *function_name)
 {
 
 	rlm_perl_t	*inst = instance;

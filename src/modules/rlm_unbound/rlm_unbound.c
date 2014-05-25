@@ -38,9 +38,9 @@ typedef struct rlm_unbound_t {
 	char const	*xlat_aaaa_name;
 	char const	*xlat_ptr_name;
 
-	int		timeout;
+	uint32_t	timeout;
 
-	char		*filename;
+	char const	*filename;
 
 	int		log_fd;
 	FILE		*log_stream;
@@ -54,9 +54,8 @@ typedef struct rlm_unbound_t {
  *	A mapping of configuration file names to internal variables.
  */
 static const CONF_PARSER module_config[] = {
-	{ "filename", PW_TYPE_FILE_INPUT | PW_TYPE_REQUIRED, offsetof(rlm_unbound_t, filename), NULL,
-	  "${modconfdir}/unbound/default.conf" },
-	{ "timeout", PW_TYPE_INTEGER, offsetof(rlm_unbound_t, timeout), NULL, "3000" },
+	{ "filename", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT | PW_TYPE_REQUIRED, rlm_unbound_t, filename), "${modconfdir}/unbound/default.conf"  },
+	{ "timeout", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_unbound_t, timeout), "3000" },
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
 
@@ -411,7 +410,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		inst->name = cf_section_name1(conf);
 	}
 
-	if ((inst->timeout < 0) || (inst->timeout > 10000)) {
+	if (inst->timeout > 10000) {
 		ERROR("rlm_unbound (%s): timeout must be 0 to 10000", inst->name);
 		return -1;
 	}
@@ -524,8 +523,13 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	}
 
 	/* Now load the config file, which can override gleaned settings. */
-	res = ub_ctx_config(inst->ub, inst->filename);
-	if (res) goto error;
+	{
+		char *file;
+
+		memcpy(&file, &inst->filename, sizeof(file));
+		res = ub_ctx_config(inst->ub, file);
+		if (res) goto error;
+	}
 
 	/*
 	 *	Check if the config file tried to use syslog.  Unbound

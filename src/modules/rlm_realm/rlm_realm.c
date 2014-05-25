@@ -29,22 +29,18 @@ RCSID("$Id$")
 #define  REALM_FORMAT_SUFFIX   1
 
 typedef struct realm_config_t {
-	int	format;
-	char	*formatstring;
-	char	*delim;
-	bool	ignore_default;
-	bool	ignore_null;
+	int		format;
+	char const	*format_string;
+	char const	*delim;
+	bool		ignore_default;
+	bool		ignore_null;
 } realm_config_t;
 
 static CONF_PARSER module_config[] = {
-  { "format", PW_TYPE_STRING,
-    offsetof(realm_config_t,formatstring), NULL, "suffix" },
-  { "delimiter", PW_TYPE_STRING,
-    offsetof(realm_config_t,delim), NULL, "@" },
-  { "ignore_default", PW_TYPE_BOOLEAN,
-    offsetof(realm_config_t,ignore_default), NULL, "no" },
-  { "ignore_null", PW_TYPE_BOOLEAN,
-    offsetof(realm_config_t,ignore_null), NULL, "no" },
+  { "format", FR_CONF_OFFSET(PW_TYPE_STRING, realm_config_t, format_string), "suffix" },
+  { "delimiter", FR_CONF_OFFSET(PW_TYPE_STRING, realm_config_t, delim), "@" },
+  { "ignore_default", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, realm_config_t, ignore_default), "no" },
+  { "ignore_null", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, realm_config_t, ignore_null), "no" },
   { NULL, -1, 0, NULL, NULL }    /* end the list */
 };
 
@@ -333,15 +329,15 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
 	struct realm_config_t *inst = instance;
 
-	if (strcasecmp(inst->formatstring, "suffix") == 0) {
+	if (strcasecmp(inst->format_string, "suffix") == 0) {
 	     inst->format = REALM_FORMAT_SUFFIX;
 
-	} else if (strcasecmp(inst->formatstring, "prefix") == 0) {
+	} else if (strcasecmp(inst->format_string, "prefix") == 0) {
 	     inst->format = REALM_FORMAT_PREFIX;
 
 	} else {
 		cf_log_err_cs(conf, "Invalid value \"%s\" for format",
-			      inst->formatstring);
+			      inst->format_string);
 	     return -1;
 	}
 

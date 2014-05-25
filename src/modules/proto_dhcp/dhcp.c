@@ -221,7 +221,7 @@ RADIUS_PACKET *fr_dhcp_recv(int sockfd)
 	socklen_t		sizeof_src;
 	socklen_t		sizeof_dst;
 	RADIUS_PACKET		*packet;
-	int			port;
+	uint16_t		port;
 	uint8_t			*code;
 	ssize_t			data_len;
 

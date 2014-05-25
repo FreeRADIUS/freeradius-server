@@ -271,17 +271,17 @@ struct rad_request {
 	int			timer_action;
 	fr_event_t		*ev;
 
-	int			in_request_hash;
+	bool			in_request_hash;
 #ifdef WITH_PROXY
-	int			in_proxy_hash;
+	bool			in_proxy_hash;
 
 	home_server_t	       	*home_server;
 	home_pool_t		*home_pool;	//!< For dynamic failover
 
 	struct timeval		proxy_retransmit;
 
-	int			num_proxied_requests;
-	int			num_proxied_responses;
+	uint32_t		num_proxied_requests;
+	uint32_t		num_proxied_responses;
 #endif
 
 	char const		*server;
@@ -300,7 +300,7 @@ struct rad_request {
 
 #ifdef WITH_COA
 	REQUEST			*coa;		//!< CoA request originated by this request.
-	int			num_coa_requests;//!< Counter for number of requests sent including
+	uint32_t		num_coa_requests;//!< Counter for number of requests sent including
 						//!< retransmits.
 #endif
 };				/* REQUEST typedef */
@@ -335,7 +335,7 @@ struct rad_listen_t {
 #endif
 	bool		nodup;
 	bool		synchronous;
-	int		workers;
+	uint32_t	workers;
 
 #ifdef WITH_TLS
 	fr_tls_server_conf_t *tls;
@@ -363,21 +363,21 @@ typedef struct listen_socket_t {
 	 *	For normal sockets.
 	 */
 	fr_ipaddr_t	my_ipaddr;
-	int		my_port;
+	uint16_t	my_port;
 
 	char const	*interface;
 #ifdef SO_BROADCAST
 	int		broadcast;
 #endif
 	time_t		rate_time;
-	int		rate_pps_old;
-	int		rate_pps_now;
-	int		max_rate;
+	uint32_t	rate_pps_old;
+	uint32_t	rate_pps_now;
+	uint32_t	max_rate;
 
 	/* for outgoing sockets */
 	home_server_t	*home;
 	fr_ipaddr_t	other_ipaddr;
-	int		other_port;
+	uint16_t	other_port;
 
 	int		proto;
 
@@ -415,7 +415,7 @@ typedef struct listen_socket_t {
 typedef struct main_config_t {
 	struct main_config *next;
 	fr_ipaddr_t	myip;	/* from the command-line only */
-	int		port;	/* from the command-line only */
+	uint16_t	port;	/* from the command-line only */
 	bool		log_auth;
 	bool		log_auth_badpass;
 	bool		log_auth_goodpass;
@@ -507,12 +507,11 @@ void			radius_signal_self(int flag);
 int		rad_accounting(REQUEST *);
 
 /* session.c */
-int		rad_check_ts(uint32_t nasaddr, unsigned int port, char const *user,
-			     char const *sessionid);
+int		rad_check_ts(uint32_t nasaddr, uint32_t nas_port, char const *user, char const *sessionid);
 int		session_zap(REQUEST *request, uint32_t nasaddr,
-			    unsigned int port, char const *user,
+			    uint32_t nas_port, char const *user,
 			    char const *sessionid, uint32_t cliaddr,
-			    char proto,int session_time);
+			    char proto, int session_time);
 
 /* radiusd.c */
 #undef debug_pair
@@ -542,8 +541,7 @@ void		*request_data_reference(REQUEST *request,
 int		rad_copy_string(char *dst, char const *src);
 int		rad_copy_string_bare(char *dst, char const *src);
 int		rad_copy_variable(char *dst, char const *from);
-int		rad_pps(int *past, int *present, time_t *then,
-			struct timeval *now);
+uint32_t	rad_pps(uint32_t *past, uint32_t *present, time_t *then, struct timeval *now);
 int		rad_expand_xlat(REQUEST *request, char const *cmd,
 				int max_argc, char *argv[], bool can_fail,
 				size_t argv_buflen, char *argv_buf);
@@ -684,16 +682,13 @@ void fr_suid_down_permanent(void);
 /* listen.c */
 void listen_free(rad_listen_t **head);
 int listen_init(CONF_SECTION *cs, rad_listen_t **head, bool spawn_flag);
-rad_listen_t *proxy_new_listener(home_server_t *home, int src_port);
-RADCLIENT *client_listener_find(rad_listen_t *listener,
-				fr_ipaddr_t const *ipaddr, int src_port);
+rad_listen_t *proxy_new_listener(home_server_t *home, uint16_t src_port);
+RADCLIENT *client_listener_find(rad_listen_t *listener, fr_ipaddr_t const *ipaddr, uint16_t src_port);
 
 #ifdef WITH_STATS
-RADCLIENT_LIST *listener_find_client_list(fr_ipaddr_t const *ipaddr,
-					  int port);
+RADCLIENT_LIST *listener_find_client_list(fr_ipaddr_t const *ipaddr, uint16_t port);
 #endif
-rad_listen_t *listener_find_byipaddr(fr_ipaddr_t const *ipaddr, int port,
-				     int proto);
+rad_listen_t *listener_find_byipaddr(fr_ipaddr_t const *ipaddr, uint16_t port, int proto);
 int rad_status_server(REQUEST *request);
 
 /* event.c */

@@ -189,7 +189,8 @@ static int fr_domain_socket(char const *path)
 
 static int client_socket(char const *server)
 {
-	int sockfd, port;
+	int sockfd;
+	uint16_t port;
 	fr_ipaddr_t ipaddr;
 	char *p, buffer[1024];
 
@@ -525,9 +526,7 @@ int main(int argc, char **argv)
 			/*
 			 *	Now find the socket name (sigh)
 			 */
-			rcode = cf_item_parse(subcs, "socket",
-					      PW_TYPE_STRING,
-					      &file, NULL);
+			rcode = cf_item_parse(subcs, "socket", FR_ITEM_POINTER(PW_TYPE_STRING, &file), NULL);
 			if (rcode < 0) {
 				fprintf(stderr, "%s: Failed parsing listen section\n", progname);
 				exit(1);

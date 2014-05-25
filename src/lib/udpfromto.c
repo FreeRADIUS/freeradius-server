@@ -464,7 +464,7 @@ int main(int argc, char **argv)
 	struct sockaddr_in from, to, in;
 	char buf[TESTLEN];
 	char *destip = DESTIP;
-	int port = DEF_PORT;
+	uint16_t port = DEF_PORT;
 	int n, server_socket, client_socket, fl, tl, pid;
 
 	if (argc > 1) destip = argv[1];

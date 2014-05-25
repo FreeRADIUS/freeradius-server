@@ -52,35 +52,30 @@
 RCSID("$Id$");
 
 typedef struct rlm_sqlhpwippool_t {
-	char const *myname;	 	//!< Name of this instance
+	char const *myname;	 		//!< Name of this instance
 	rlm_sql_t *sqlinst;
 	rlm_sql_module_t *db;
 #ifdef HAVE_PTHREAD_D
-	pthread_mutex_t mutex;		//!< Used "with" sync_after
+	pthread_mutex_t mutex;			//!< Used "with" sync_after
 #endif
-	int	sincesync;		//!< req. done so far since last free IP sync.
+	uint32_t	sincesync;		//!< req. done so far since last free IP sync.
 
 	/* from config */
-	char	*sql_module_instance;	//!< rlm_sql instance to use.
-	char	*db_name;		//!< Netvim database.
-	bool	no_free_fail;		//!< Fail if no free IP addresses found.
-	int	free_after;	      	//!< How many seconds an IP should not be used after freeing.
-	int	sync_after;		//!< How often to sync with radacct.
+	char const	*sql_module_instance;	//!< rlm_sql instance to use.
+	char const	*db_name;		//!< Netvim database.
+	bool		no_free_fail;		//!< Fail if no free IP addresses found.
+	uint32_t	free_after;	      	//!< How many seconds an IP should not be used after freeing.
+	uint32_t	sync_after;		//!< How often to sync with radacct.
 } rlm_sqlhpwippool_t;
 
 /* char *name, int type,
  * size_t offset, void *data, char *dflt */
 static CONF_PARSER module_config[] = {
-	{ "sql_module_instance",       PW_TYPE_STRING,
-	  offsetof(rlm_sqlhpwippool_t, sql_module_instance),       NULL, "sql" },
-	{ "db_name",	    PW_TYPE_STRING,
-	  offsetof(rlm_sqlhpwippool_t, db_name),	    NULL, "netvim" },
-	{ "no_free_fail",	 PW_TYPE_BOOLEAN,
-	  offsetof(rlm_sqlhpwippool_t, no_free_fail),	 NULL, "yes" },
-	{ "free_after",	  PW_TYPE_INTEGER,
-	  offsetof(rlm_sqlhpwippool_t, free_after),	  NULL, "300" },
-	{ "sync_after",	  PW_TYPE_INTEGER,
-	  offsetof(rlm_sqlhpwippool_t, sync_after),	  NULL, "25" },
+	{ "sql_module_instance", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sqlhpwippool_t, sql_module_instance), "sql" },
+	{ "db_name", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sqlhpwippool_t, db_name), "netvim" },
+	{ "no_free_fail", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_sqlhpwippool_t, no_free_fail), "yes" },
+	{ "free_after", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_sqlhpwippool_t, free_after), "300" },
+	{ "sync_after", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_sqlhpwippool_t, sync_after), "25" },
 	{ NULL, -1, 0, NULL, NULL } /* end */
 };
 

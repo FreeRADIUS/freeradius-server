@@ -42,14 +42,10 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #define MPPE_KEY_LEN    32
 
 static CONF_PARSER pwd_module_config[] = {
-    { "group", PW_TYPE_INTEGER,
-      offsetof(EAP_PWD_CONF, group), NULL, "19"},
-    { "fragment_size", PW_TYPE_INTEGER,
-      offsetof(EAP_PWD_CONF, fragment_size), NULL, "1020"},
-    { "server_id", PW_TYPE_STRING,
-      offsetof(EAP_PWD_CONF, server_id), NULL, NULL },
-    { "virtual_server", PW_TYPE_STRING,
-      offsetof(EAP_PWD_CONF, virtual_server), NULL, NULL },
+    { "group", FR_CONF_OFFSET(PW_TYPE_INTEGER, EAP_PWD_CONF, group), "19" },
+    { "fragment_size", FR_CONF_OFFSET(PW_TYPE_INTEGER, EAP_PWD_CONF, fragment_size), "1020" },
+    { "server_id", FR_CONF_OFFSET(PW_TYPE_STRING, EAP_PWD_CONF, server_id), NULL },
+    { "virtual_server", FR_CONF_OFFSET(PW_TYPE_STRING, EAP_PWD_CONF, virtual_server), NULL },
     { NULL, -1, 0, NULL, NULL }
 };
 

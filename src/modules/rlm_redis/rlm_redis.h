@@ -41,13 +41,13 @@ typedef struct redis_socket_t {
 typedef struct rlm_redis_t REDIS_INST;
 
 typedef struct rlm_redis_t {
-	char const	    *xlat_name;
+	char const		*xlat_name;
 
-	char	    *hostname;
-	int	     port;
-	int		database;
-	char		*password;
-	fr_connection_pool_t *pool;
+	char const		*hostname;
+	uint16_t		port;
+	uint32_t		database;
+	char const		*password;
+	fr_connection_pool_t	*pool;
 
 	int (*redis_query)(REDISSOCK **dissocket_p, REDIS_INST *inst, char const *query, REQUEST *request);
 	int (*redis_finish_query)(REDISSOCK *dissocket);

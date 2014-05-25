@@ -352,7 +352,7 @@ static void debug_packet(REQUEST *request, RADIUS_PACKET *packet, int direction)
 	char buffer[1024];
 	char const *received, *from;
 	fr_ipaddr_t const *ip;
-	int port;
+	uint16_t port;
 
 	if (!packet) return;
 
@@ -1564,11 +1564,9 @@ skip_dup:
 	 *	Rate-limit the incoming packets
 	 */
 	if (sock && sock->max_rate) {
-		int pps;
+		uint32_t pps;
 
-		pps = rad_pps(&sock->rate_pps_old, &sock->rate_pps_now,
-			      &sock->rate_time, &now);
-
+		pps = rad_pps(&sock->rate_pps_old, &sock->rate_pps_now, &sock->rate_time, &now);
 		if (pps > sock->max_rate) {
 			DEBUG("Dropping request due to rate limiting");
 			return 0;
@@ -3482,7 +3480,7 @@ static void request_coa_originate(REQUEST *request)
 		home_server_update_request(coa->home_server, coa);
 
 	} else if (!coa->home_server) {
-		int port = PW_COA_UDP_PORT;
+		uint16_t port = PW_COA_UDP_PORT;
 
 		vp = pairfind(coa->proxy->vps, PW_PACKET_DST_PORT, 0, TAG_ANY);
 		if (vp) port = vp->vp_integer;
@@ -3613,7 +3611,7 @@ static void request_coa_originate(REQUEST *request)
 
 static void coa_timer(REQUEST *request)
 {
-	int delay, frac;
+	uint32_t delay, frac;
 	struct timeval now, when, mrd;
 
 	rad_assert(request->parent == NULL);

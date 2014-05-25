@@ -52,13 +52,13 @@ RCSID("$Id$")
  */
 typedef struct rlm_linelog_t {
 	CONF_SECTION	*cs;
-	char		*filename;
-	char		*syslog_facility;
+	char const	*filename;
+	char const	*syslog_facility;
 	int		facility;
-	int		permissions;
-	char		*group;
-	char		*line;
-	char		*reference;
+	uint32_t	permissions;
+	char const	*group;
+	char const	*line;
+	char const	*reference;
 	fr_logfile_t	*lf;
 } rlm_linelog_t;
 
@@ -72,18 +72,12 @@ typedef struct rlm_linelog_t {
  *	buffer over-flows.
  */
 static const CONF_PARSER module_config[] = {
-	{ "filename",  PW_TYPE_FILE_OUTPUT| PW_TYPE_REQUIRED,
-	  offsetof(rlm_linelog_t,filename), NULL,  NULL},
-	{ "syslog_facility",  PW_TYPE_STRING,
-	  offsetof(rlm_linelog_t,syslog_facility), NULL,  NULL},
-	{ "permissions",  PW_TYPE_INTEGER,
-	  offsetof(rlm_linelog_t,permissions), NULL,  "0600"},
-	{ "group",  PW_TYPE_STRING,
-	  offsetof(rlm_linelog_t,group), NULL,  NULL},
-	{ "format",  PW_TYPE_STRING,
-	  offsetof(rlm_linelog_t,line), NULL,  NULL},
-	{ "reference",  PW_TYPE_STRING,
-	  offsetof(rlm_linelog_t,reference), NULL,  NULL},
+	{ "filename", FR_CONF_OFFSET(PW_TYPE_FILE_OUTPUT| PW_TYPE_REQUIRED, rlm_linelog_t, filename), NULL },
+	{ "syslog_facility", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_linelog_t, syslog_facility), NULL },
+	{ "permissions", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_linelog_t, permissions), "0600" },
+	{ "group", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_linelog_t, group), NULL },
+	{ "format", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_linelog_t, line), NULL },
+	{ "reference", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_linelog_t, reference), NULL },
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
 

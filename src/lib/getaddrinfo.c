@@ -204,7 +204,7 @@ gethostbyaddr_r(char const *addr, int len, int type, struct hostent *result,
 
 #ifndef HAVE_GETADDRINFO
 static struct addrinfo *
-malloc_ai(int port, u_long addr, int socktype, int proto)
+malloc_ai(uint16_t port, u_long addr, int socktype, int proto)
 {
     struct addrinfo *ai;
 
@@ -266,7 +266,8 @@ getaddrinfo(char const *hostname, char const *servname,
     struct hostent *hp;
     struct hostent result;
     struct in_addr in;
-    int i, port = 0, socktype, proto;
+    int i, socktype, proto;
+    uint16_t port = 0;
     int error;
     char buffer[2048];
 

@@ -143,15 +143,15 @@ typedef struct rlm_mschap_t {
 	bool		require_strong;
 	bool		with_ntdomain_hack;	/* this should be in another module */
 	char const	*xlat_name;
-	char		*ntlm_auth;
-	int		ntlm_auth_timeout;
-	char		*ntlm_cpw;
-	char		*ntlm_cpw_username;
-	char		*ntlm_cpw_domain;
-	char		*local_cpw;
+	char const	*ntlm_auth;
+	uint32_t	ntlm_auth_timeout;
+	char const	*ntlm_cpw;
+	char const	*ntlm_cpw_username;
+	char const	*ntlm_cpw_domain;
+	char const	*local_cpw;
 	char const	*auth_type;
 	bool		allow_retry;
-	char		*retry_msg;
+	char const	*retry_msg;
 #ifdef WITH_OPEN_DIRECTORY
 	bool		open_directory;
 #endif
@@ -530,40 +530,27 @@ static ssize_t mschap_xlat(void *instance, REQUEST *request,
 
 
 static const CONF_PARSER passchange_config[] = {
-	{ "ntlm_auth",   PW_TYPE_STRING,
-	  offsetof(rlm_mschap_t, ntlm_cpw), NULL,  NULL },
-	{ "ntlm_auth_username",   PW_TYPE_STRING,
-	  offsetof(rlm_mschap_t, ntlm_cpw_username), NULL,  NULL },
-	{ "ntlm_auth_domain",   PW_TYPE_STRING,
-	  offsetof(rlm_mschap_t, ntlm_cpw_domain), NULL,  NULL },
-	{ "local_cpw",   PW_TYPE_STRING,
-	  offsetof(rlm_mschap_t, local_cpw), NULL,  NULL },
+	{ "ntlm_auth", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_mschap_t, ntlm_cpw), NULL },
+	{ "ntlm_auth_username", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_mschap_t, ntlm_cpw_username), NULL },
+	{ "ntlm_auth_domain", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_mschap_t, ntlm_cpw_domain), NULL },
+	{ "local_cpw", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_mschap_t, local_cpw), NULL },
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
 static const CONF_PARSER module_config[] = {
 	/*
 	 *	Cache the password by default.
 	 */
-	{ "use_mppe",    PW_TYPE_BOOLEAN,
-	  offsetof(rlm_mschap_t,use_mppe), NULL, "yes" },
-	{ "require_encryption",    PW_TYPE_BOOLEAN,
-	  offsetof(rlm_mschap_t,require_encryption), NULL, "no" },
-	{ "require_strong",    PW_TYPE_BOOLEAN,
-	  offsetof(rlm_mschap_t,require_strong), NULL, "no" },
-	{ "with_ntdomain_hack",     PW_TYPE_BOOLEAN,
-	  offsetof(rlm_mschap_t,with_ntdomain_hack), NULL, "yes" },
-	{ "ntlm_auth",   PW_TYPE_STRING,
-	  offsetof(rlm_mschap_t, ntlm_auth), NULL,  NULL },
-	{ "ntlm_auth_timeout",   PW_TYPE_INTEGER,
-	  offsetof(rlm_mschap_t, ntlm_auth_timeout), NULL,  NULL },
+	{ "use_mppe", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_mschap_t, use_mppe), "yes" },
+	{ "require_encryption", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_mschap_t, require_encryption), "no" },
+	{ "require_strong", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_mschap_t, require_strong), "no" },
+	{ "with_ntdomain_hack", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_mschap_t, with_ntdomain_hack), "yes" },
+	{ "ntlm_auth", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_mschap_t, ntlm_auth), NULL },
+	{ "ntlm_auth_timeout", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_mschap_t, ntlm_auth_timeout), NULL },
 	{ "passchange", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) passchange_config },
-	{ "allow_retry",   PW_TYPE_BOOLEAN,
-	  offsetof(rlm_mschap_t, allow_retry), NULL,  "yes" },
-	{ "retry_msg",   PW_TYPE_STRING,
-	  offsetof(rlm_mschap_t, retry_msg), NULL,  NULL },
+	{ "allow_retry", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_mschap_t, allow_retry), "yes" },
+	{ "retry_msg", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_mschap_t, retry_msg), NULL },
 #ifdef WITH_OPEN_DIRECTORY
-	{ "use_open_directory",    PW_TYPE_BOOLEAN,
-	  offsetof(rlm_mschap_t,open_directory), NULL, "yes" },
+	{ "use_open_directory", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_mschap_t, open_directory), "yes" },
 #endif
 
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */

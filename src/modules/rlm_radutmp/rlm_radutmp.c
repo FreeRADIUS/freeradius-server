@@ -41,38 +41,30 @@ static char const porttypes[] = "ASITX";
  */
 typedef struct nas_port {
 	uint32_t		nasaddr;
-	unsigned int	port;
+	uint16_t		port;
 	off_t			offset;
 	struct nas_port 	*next;
 } NAS_PORT;
 
 typedef struct rlm_radutmp_t {
 	NAS_PORT	*nas_port_list;
-	char		*filename;
-	char		*username;
+	char const	*filename;
+	char const	*username;
 	bool		case_sensitive;
 	bool		check_nas;
-	int		permission;
+	uint32_t	permission;
 	bool		caller_id_ok;
 } rlm_radutmp_t;
 
 static const CONF_PARSER module_config[] = {
-	{ "filename", PW_TYPE_FILE_OUTPUT | PW_TYPE_REQUIRED,
-	  offsetof(rlm_radutmp_t,filename), NULL,  RADUTMP },
-	{ "username", PW_TYPE_STRING | PW_TYPE_REQUIRED,
-	  offsetof(rlm_radutmp_t,username), NULL,  "%{User-Name}"},
-	{ "case_sensitive", PW_TYPE_BOOLEAN,
-	  offsetof(rlm_radutmp_t,case_sensitive), NULL,  "yes"},
-	{ "check_with_nas", PW_TYPE_BOOLEAN,
-	  offsetof(rlm_radutmp_t,check_nas), NULL,  "yes"},
-	{ "perm",     PW_TYPE_INTEGER | PW_TYPE_DEPRECATED,
-	  offsetof(rlm_radutmp_t,permission), NULL,  NULL },
-	{ "permissions",     PW_TYPE_INTEGER,
-	  offsetof(rlm_radutmp_t,permission), NULL,  "0644" },
-	{ "callerid", PW_TYPE_BOOLEAN | PW_TYPE_DEPRECATED,
-	  offsetof(rlm_radutmp_t,caller_id_ok), NULL, NULL },
-	{ "caller_id", PW_TYPE_BOOLEAN,
-	  offsetof(rlm_radutmp_t,caller_id_ok), NULL, "no" },
+	{ "filename", FR_CONF_OFFSET(PW_TYPE_FILE_OUTPUT | PW_TYPE_REQUIRED, rlm_radutmp_t, filename), RADUTMP  },
+	{ "username", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_REQUIRED, rlm_radutmp_t, username), "%{User-Name}" },
+	{ "case_sensitive", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_radutmp_t, case_sensitive), "yes" },
+	{ "check_with_nas", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_radutmp_t, check_nas), "yes" },
+	{ "perm", FR_CONF_OFFSET(PW_TYPE_INTEGER | PW_TYPE_DEPRECATED, rlm_radutmp_t, permission), NULL },
+	{ "permissions", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_radutmp_t, permission), "0644" },
+	{ "callerid", FR_CONF_OFFSET(PW_TYPE_BOOLEAN | PW_TYPE_DEPRECATED, rlm_radutmp_t, caller_id_ok), NULL },
+	{ "caller_id", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_radutmp_t, caller_id_ok), "no" },
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
 
@@ -135,7 +127,7 @@ static rlm_rcode_t radutmp_zap(REQUEST *request, char const *filename, uint32_t 
 /*
  *	Lookup a NAS_PORT in the nas_port_list
  */
-static NAS_PORT *nas_port_find(NAS_PORT *nas_port_list, uint32_t nasaddr, unsigned int port)
+static NAS_PORT *nas_port_find(NAS_PORT *nas_port_list, uint32_t nasaddr, uint16_t port)
 {
 	NAS_PORT	*cl;
 
@@ -162,7 +154,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 	int		protocol = -1;
 	time_t		t;
 	int		fd = -1;
-	int		port_seen = 0;
+	bool		port_seen = false;
 	int		off;
 	rlm_radutmp_t	*inst = instance;
 	char		ip_name[32]; /* 255.255.255.255 */
@@ -245,7 +237,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 				break;
 			case PW_NAS_PORT:
 				ut.nas_port = vp->vp_integer;
-				port_seen = 1;
+				port_seen = true;
 				break;
 			case PW_ACCT_DELAY_TIME:
 				ut.delay = vp->vp_integer;
