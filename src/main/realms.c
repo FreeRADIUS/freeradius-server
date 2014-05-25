@@ -1162,13 +1162,13 @@ static int old_server_add(realm_config_t *rc, CONF_SECTION *cs,
 
 		} else if (p == name) {
 			cf_log_err_cs(cs, "Invalid hostname %s", name);
-			free(home);
+			talloc_free(home);
 			return 0;
 		} else {
 			unsigned long port = strtoul(p + 1, NULL, 0);
 			if ((port == 0) || (port > 65535)) {
 				cf_log_err_cs(cs, "Invalid port %s", p + 1);
-				free(home);
+				talloc_free(home);
 				return 0;
 			}
 
@@ -1184,8 +1184,8 @@ static int old_server_add(realm_config_t *rc, CONF_SECTION *cs,
 				cf_log_err_cs(cs,
 					   "Failed looking up hostname %s.",
 					   p);
-				free(home);
-				free(q);
+				talloc_free(home);
+				talloc_free(q);
 				return 0;
 			}
 			home->src_ipaddr.af = home->ipaddr.af;
@@ -1193,7 +1193,7 @@ static int old_server_add(realm_config_t *rc, CONF_SECTION *cs,
 			home->ipaddr.af = AF_UNSPEC;
 			home->server = server;
 		}
-		free(q);
+		talloc_free(q);
 
 		/*
 		 *	Use the old-style configuration.
@@ -1210,20 +1210,20 @@ static int old_server_add(realm_config_t *rc, CONF_SECTION *cs,
 
 		if (rbtree_finddata(home_servers_byaddr, home)) {
 			cf_log_err_cs(cs, "Home server %s has the same IP address and/or port as another home server.", name);
-			free(home);
+			talloc_free(home);
 			return 0;
 		}
 
 		if (!rbtree_insert(home_servers_byname, home)) {
 			cf_log_err_cs(cs, "Internal error %d adding home server %s.", __LINE__, name);
-			free(home);
+			talloc_free(home);
 			return 0;
 		}
 
 		if (!rbtree_insert(home_servers_byaddr, home)) {
 			rbtree_deletebydata(home_servers_byname, home);
 			cf_log_err_cs(cs, "Internal error %d adding home server %s.", __LINE__, name);
-			free(home);
+			talloc_free(home);
 			return 0;
 		}
 
@@ -1237,7 +1237,7 @@ static int old_server_add(realm_config_t *rc, CONF_SECTION *cs,
 			cf_log_err_cs(cs,
 				   "Internal error %d adding home server %s.",
 				   __LINE__, name);
-			free(home);
+			talloc_free(home);
 			return 0;
 		}
 #endif
@@ -1271,7 +1271,7 @@ static int old_server_add(realm_config_t *rc, CONF_SECTION *cs,
 
 	if (num_home_servers == 0) {
 		cf_log_err_cs(cs, "Internal error counting pools for home server %s.", name);
-		free(home);
+		talloc_free(home);
 		return 0;
 	}
 
