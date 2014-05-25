@@ -32,9 +32,9 @@ RCSID("$Id$")
  *	going to return.
  */
 typedef struct rlm_always_t {
-	char		*rcode_str;
+	char const	*rcode_str;
 	rlm_rcode_t	rcode;
-	int		simulcount;
+	uint32_t	simulcount;
 	bool		mpp;
 } rlm_always_t;
 
@@ -42,12 +42,9 @@ typedef struct rlm_always_t {
  *	A mapping of configuration file names to internal variables.
  */
 static const CONF_PARSER module_config[] = {
-  { "rcode",      PW_TYPE_STRING, offsetof(rlm_always_t,rcode_str),
-    NULL, "fail" },
-  { "simulcount", PW_TYPE_INTEGER,    offsetof(rlm_always_t,simulcount),
-    NULL, "0" },
-  { "mpp",	PW_TYPE_BOOLEAN,    offsetof(rlm_always_t,mpp),
-    NULL, "no" },
+  { "rcode", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_always_t, rcode_str), "fail" },
+  { "simulcount", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_always_t, simulcount), "0" },
+  { "mpp", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_always_t, mpp), "no" },
 
   { NULL, -1, 0, NULL, NULL }		/* end the list */
 };

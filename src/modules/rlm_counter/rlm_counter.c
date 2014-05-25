@@ -69,7 +69,7 @@ typedef struct rlm_counter_t {
 	char const *reply_name;		/* Session-Timeout */
 	char const *service_type;	/* Service-Type to search for */
 
-	int cache_size;
+	uint32_t cache_size;
 	uint32_t service_val;
 
 	DICT_ATTR const *key_attr;
@@ -113,27 +113,27 @@ typedef struct rad_counter {
  *	buffer over-flows.
  */
 static const CONF_PARSER module_config[] = {
-	{ "filename", PW_TYPE_FILE_OUTPUT | PW_TYPE_REQUIRED, offsetof(rlm_counter_t,filename), NULL, NULL },
-	{ "key", PW_TYPE_STRING | PW_TYPE_ATTRIBUTE, offsetof(rlm_counter_t,key_name), NULL, NULL },
-	{ "reset", PW_TYPE_STRING | PW_TYPE_REQUIRED, offsetof(rlm_counter_t,reset), NULL, NULL },
+	{ "filename", FR_CONF_OFFSET(PW_TYPE_FILE_OUTPUT | PW_TYPE_REQUIRED, rlm_counter_t, filename), NULL },
+	{ "key", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_ATTRIBUTE, rlm_counter_t, key_name), NULL },
+	{ "reset", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_REQUIRED, rlm_counter_t, reset), NULL },
 
-	{ "count-attribute", PW_TYPE_STRING | PW_TYPE_DEPRECATED, offsetof(rlm_counter_t,count_attribute), NULL, NULL },
-	{ "count_attribute", PW_TYPE_STRING | PW_TYPE_ATTRIBUTE, offsetof(rlm_counter_t,count_attribute), NULL, NULL },
+	{ "count-attribute", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_DEPRECATED, rlm_counter_t, count_attribute), NULL },
+	{ "count_attribute", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_ATTRIBUTE, rlm_counter_t, count_attribute), NULL },
 
-	{ "counter-name", PW_TYPE_STRING | PW_TYPE_DEPRECATED, offsetof(rlm_counter_t,counter_name), NULL,  NULL },
-	{ "counter_name", PW_TYPE_STRING | PW_TYPE_REQUIRED, offsetof(rlm_counter_t,counter_name), NULL,  NULL },
+	{ "counter-name", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_DEPRECATED, rlm_counter_t, counter_name), NULL },
+	{ "counter_name", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_REQUIRED, rlm_counter_t, counter_name), NULL },
 
-	{ "check-name", PW_TYPE_STRING | PW_TYPE_DEPRECATED, offsetof(rlm_counter_t,check_name), NULL, NULL },
-	{ "check_name", PW_TYPE_STRING | PW_TYPE_REQUIRED, offsetof(rlm_counter_t,check_name), NULL, NULL },
+	{ "check-name", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_DEPRECATED, rlm_counter_t, check_name), NULL },
+	{ "check_name", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_REQUIRED, rlm_counter_t, check_name), NULL },
 
-	{ "reply-name", PW_TYPE_STRING | PW_TYPE_DEPRECATED, offsetof(rlm_counter_t,reply_name), NULL, NULL },
-	{ "reply_name", PW_TYPE_STRING | PW_TYPE_ATTRIBUTE, offsetof(rlm_counter_t,reply_name), NULL, NULL},
+	{ "reply-name", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_DEPRECATED, rlm_counter_t, reply_name), NULL },
+	{ "reply_name", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_ATTRIBUTE, rlm_counter_t, reply_name), NULL },
 
-	{ "allowed-servicetype", PW_TYPE_STRING | PW_TYPE_DEPRECATED, offsetof(rlm_counter_t,service_type), NULL, NULL },
-	{ "allowed_service_type", PW_TYPE_STRING, offsetof(rlm_counter_t,service_type), NULL, NULL },
+	{ "allowed-servicetype", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_DEPRECATED, rlm_counter_t, service_type), NULL },
+	{ "allowed_service_type", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_counter_t, service_type), NULL },
 
-	{ "cache-size", PW_TYPE_INTEGER | PW_TYPE_DEPRECATED, offsetof(rlm_counter_t,cache_size), NULL, NULL },
-	{ "cache_size", PW_TYPE_INTEGER, offsetof(rlm_counter_t,cache_size), NULL, "1000" },
+	{ "cache-size", FR_CONF_OFFSET(PW_TYPE_INTEGER | PW_TYPE_DEPRECATED, rlm_counter_t, cache_size), NULL },
+	{ "cache_size", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_counter_t, cache_size), "1000" },
 
 	{ NULL, -1, 0, NULL, NULL }
 };

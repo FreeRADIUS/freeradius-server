@@ -30,12 +30,12 @@ RCSID("$Id$")
 #include	<ctype.h>
 
 typedef struct rlm_preprocess_t {
-	char		*huntgroup_file;
-	char		*hints_file;
+	char const	*huntgroup_file;
+	char const	*hints_file;
 	PAIR_LIST	*huntgroups;
 	PAIR_LIST	*hints;
 	bool		with_ascend_hack;
-	int		ascend_channels_per_line;
+	uint32_t	ascend_channels_per_line;
 	bool		with_ntdomain_hack;
 	bool		with_specialix_jetstream_hack;
 	bool		with_cisco_vsa_hack;
@@ -44,27 +44,17 @@ typedef struct rlm_preprocess_t {
 } rlm_preprocess_t;
 
 static const CONF_PARSER module_config[] = {
-	{ "huntgroups",			PW_TYPE_FILE_INPUT,
-	  offsetof(rlm_preprocess_t,huntgroup_file), NULL, NULL },
-	{ "hints",			PW_TYPE_FILE_INPUT,
-	  offsetof(rlm_preprocess_t,hints_file), NULL, NULL },
-	{ "with_ascend_hack",		PW_TYPE_BOOLEAN,
-	  offsetof(rlm_preprocess_t,with_ascend_hack), NULL, "no" },
-	{ "ascend_channels_per_line",   PW_TYPE_INTEGER,
-	  offsetof(rlm_preprocess_t,ascend_channels_per_line), NULL, "23" },
+	{ "huntgroups", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT, rlm_preprocess_t, huntgroup_file), NULL },
+	{ "hints", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT, rlm_preprocess_t, hints_file), NULL },
+	{ "with_ascend_hack", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_preprocess_t, with_ascend_hack), "no" },
+	{ "ascend_channels_per_line", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_preprocess_t, ascend_channels_per_line), "23" },
 
-	{ "with_ntdomain_hack",		PW_TYPE_BOOLEAN,
-	  offsetof(rlm_preprocess_t,with_ntdomain_hack), NULL, "no" },
-	{ "with_specialix_jetstream_hack",  PW_TYPE_BOOLEAN,
-	  offsetof(rlm_preprocess_t,with_specialix_jetstream_hack), NULL,
-	  "no" },
-	{ "with_cisco_vsa_hack",	PW_TYPE_BOOLEAN,
-	  offsetof(rlm_preprocess_t,with_cisco_vsa_hack), NULL, "no" },
-	{ "with_alvarion_vsa_hack",	PW_TYPE_BOOLEAN,
-	  offsetof(rlm_preprocess_t,with_alvarion_vsa_hack), NULL, "no" },
+	{ "with_ntdomain_hack", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_preprocess_t, with_ntdomain_hack), "no" },
+	{ "with_specialix_jetstream_hack", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_preprocess_t, with_specialix_jetstream_hack), "no"  },
+	{ "with_cisco_vsa_hack", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_preprocess_t, with_cisco_vsa_hack), "no" },
+	{ "with_alvarion_vsa_hack", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_preprocess_t, with_alvarion_vsa_hack), "no" },
 #if 0
-	{ "with_cablelabs_vsa_hack",	PW_TYPE_BOOLEAN,
-	  offsetof(rlm_preprocess_t,with_cablelabs_vsa_hack), NULL, NULL },
+	{ "with_cablelabs_vsa_hack", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_preprocess_t, with_cablelabs_vsa_hack), NULL },
 #endif
 	{ NULL, -1, 0, NULL, NULL }
 };

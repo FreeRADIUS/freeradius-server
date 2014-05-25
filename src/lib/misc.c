@@ -872,7 +872,7 @@ int fr_ipaddr_cmp(fr_ipaddr_t const *a, fr_ipaddr_t const *b)
 	return -1;
 }
 
-int fr_ipaddr2sockaddr(fr_ipaddr_t const *ipaddr, int port,
+int fr_ipaddr2sockaddr(fr_ipaddr_t const *ipaddr, uint16_t port,
 		       struct sockaddr_storage *sa, socklen_t *salen)
 {
 	if (ipaddr->af == AF_INET) {
@@ -910,7 +910,7 @@ int fr_ipaddr2sockaddr(fr_ipaddr_t const *ipaddr, int port,
 
 
 int fr_sockaddr2ipaddr(struct sockaddr_storage const *sa, socklen_t salen,
-		       fr_ipaddr_t *ipaddr, int *port)
+		       fr_ipaddr_t *ipaddr, uint16_t *port)
 {
 	if (sa->ss_family == AF_INET) {
 		struct sockaddr_in	s4;

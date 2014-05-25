@@ -84,9 +84,11 @@ typedef struct in_addr _inaddr_t;
 
 #  define FR_CONF_OFFSET(_t, _s, _f)	_t, FR_CONF_TYPE_CHECK(((_t) & 0xff), __typeof__(&(((_s *)NULL)->_f)), offsetof(_s, _f)), NULL
 #  define FR_CONF_POINTER(_t, _p)	_t, 0, FR_CONF_TYPE_CHECK(((_t) & 0xff), __typeof__(_p), _p)
+#  define FR_ITEM_POINTER(_t, _p)	_t, FR_CONF_TYPE_CHECK(((_t) & 0xff), __typeof__(_p), _p)
 #else
 #  define FR_CONF_OFFSET(_t, _s, _f)	_t, offsetof(_x, _f), NULL
 #  define FR_CONF_POINTER(_t, _p)	_t, 0, _p
+#  define FR_ITEM_POINTER(_t, _p)	_t, _p
 #endif
 
 /*
@@ -132,14 +134,10 @@ typedef struct CONF_PARSER {
 	const void	*dflt;			//!< Default as it would appear in radiusd.conf.
 } CONF_PARSER;
 
-CONF_SECTION	*cf_section_alloc(CONF_SECTION *parent, char const *name1,
-				  char const *name2);
-int		cf_pair_replace(CONF_SECTION *cs, CONF_PAIR *cp,
-				char const *value);
-int		cf_item_parse(CONF_SECTION *cs, char const *name,
-			      int type, void *data, char const *dflt);
-int		cf_section_parse(CONF_SECTION *, void *base,
-				 CONF_PARSER const *variables);
+CONF_SECTION	*cf_section_alloc(CONF_SECTION *parent, char const *name1, char const *name2);
+int		cf_pair_replace(CONF_SECTION *cs, CONF_PAIR *cp, char const *value);
+int		cf_item_parse(CONF_SECTION *cs, char const *name, int type, void *data, char const *dflt);
+int		cf_section_parse(CONF_SECTION *, void *base, CONF_PARSER const *variables);
 const CONF_PARSER *cf_section_parse_table(CONF_SECTION *cs);
 CONF_SECTION	*cf_file_read(char const *file);
 void		cf_file_free(CONF_SECTION *cs);

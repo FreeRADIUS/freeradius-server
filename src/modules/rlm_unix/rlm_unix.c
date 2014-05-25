@@ -350,7 +350,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 #ifdef USER_PROCESS
 	int		protocol = -1;
 #endif
-	int		nas_port = 0;
+	uint32_t	nas_port = 0;
 	bool		port_seen = true;
 	struct unix_instance *inst = (struct unix_instance *) instance;
 

@@ -104,9 +104,9 @@ extern const FR_NAME_NUMBER http_content_type_table[];
  */
 typedef struct rlm_rest_section_t {
 	char const		*name;		//!< Section name.
-	char			*uri;		//!< URI to send HTTP request to.
+	char const		*uri;		//!< URI to send HTTP request to.
 
-	char			*method_str;	//!< The string version of the HTTP method.
+	char const		*method_str;	//!< The string version of the HTTP method.
 	http_method_t		method;		//!< What HTTP method should be used, GET, POST etc...
 
 	char const		*body_str;	//!< The string version of the encoding/content type.
@@ -115,25 +115,25 @@ typedef struct rlm_rest_section_t {
 	http_body_type_t	force_to;	//!< Override the Content-Type header in the response
 						//!< to force decoding as a particular type.
 
-	char			*data;		//!< Custom body data (optional).
+	char const		*data;		//!< Custom body data (optional).
 
-	char			*auth_str;	//!< The string version of the Auth-Type.
+	char const		*auth_str;	//!< The string version of the Auth-Type.
 	http_auth_type_t	auth;		//!< HTTP auth type.
 	bool			require_auth;	//!< Whether HTTP-Auth is required or not.
-	char			*username;	//!< Username used for HTTP-Auth
-	char			*password;	//!< Password used for HTTP-Auth
+	char const		*username;	//!< Username used for HTTP-Auth
+	char const		*password;	//!< Password used for HTTP-Auth
 
-	char			*tls_certificate_file;
-	char			*tls_private_key_file;
-	char			*tls_private_key_password;
-	char			*tls_ca_file;
-	char			*tls_ca_path;
-	char			*tls_random_file;
+	char const		*tls_certificate_file;
+	char const		*tls_private_key_file;
+	char const		*tls_private_key_password;
+	char const		*tls_ca_file;
+	char const		*tls_ca_path;
+	char const		*tls_random_file;
 	bool			tls_check_cert;
 	bool			tls_check_cert_cn;
 
-	int			timeout;	//!< Timeout passed to CURL.
-	size_t			chunk;		//!< Max chunk-size (mainly for testing the encoders)
+	uint32_t		timeout;	//!< Timeout passed to CURL.
+	uint32_t		chunk;		//!< Max chunk-size (mainly for testing the encoders)
 } rlm_rest_section_t;
 
 /*
@@ -142,7 +142,7 @@ typedef struct rlm_rest_section_t {
 typedef struct rlm_rest_t {
 	char const		*xlat_name;	//!< Instance name.
 
-	char			*connect_uri;	//!< URI we attempt to connect to, to pre-establish
+	char const		*connect_uri;	//!< URI we attempt to connect to, to pre-establish
 						//!< TCP connections.
 
 	fr_connection_pool_t	*conn_pool;	//!< Pointer to the connection pool.

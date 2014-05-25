@@ -120,7 +120,7 @@ void vradlog_request(UNUSED log_type_t lvl, UNUSED log_debug_t priority,
 	fputc('\n', stderr);
 }
 
-static int getport(char const *name)
+static uint16_t getport(char const *name)
 {
 	struct	servent		*svp;
 
@@ -140,7 +140,7 @@ static void debug_packet(RADIUS_PACKET *packet, int direction)
 	char buffer[1024];
 	char const *received, *from;
 	fr_ipaddr_t const *ip;
-	int port;
+	uint16_t port;
 
 	if (!packet) return;
 
@@ -1022,7 +1022,7 @@ int main(int argc, char **argv)
 	RADIUS_PACKET *req;
 	char *p;
 	int c;
-	int port = 0;
+	uint16_t port = 0;
 	char *filename = NULL;
 	FILE *fp;
 	int id;

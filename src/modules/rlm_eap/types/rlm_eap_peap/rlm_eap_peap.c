@@ -26,85 +26,47 @@ RCSID("$Id$")
 #include "eap_peap.h"
 
 typedef struct rlm_eap_peap_t {
-	/*
-	 *	TLS configuration
-	 */
-	char	*tls_conf_name;
+	char const *tls_conf_name;		//!< TLS configuration.
 	fr_tls_server_conf_t *tls_conf;
+	char const *default_method_name;	//!< Default tunneled EAP type.
+	int default_method;
+	bool use_tunneled_reply;		//!< Use the reply attributes from the tunneled session in
+						//!< the non-tunneled reply to the client.
 
-	/*
-	 *	Default tunneled EAP type
-	 */
-	char	*default_method_name;
-	int	default_method;
-
-	/*
-	 *	Use the reply attributes from the tunneled session in
-	 *	the non-tunneled reply to the client.
-	 */
-	bool	use_tunneled_reply;
-
-	/*
-	 *	Use SOME of the request attributes from outside of the
-	 *	tunneled session in the tunneled request
-	 */
-	bool	copy_request_to_tunnel;
-
+	bool copy_request_to_tunnel;		//!< Use SOME of the request attributes from outside of the
+						//!< tunneled session in the tunneled request.
 #ifdef WITH_PROXY
-	/*
-	 *	Proxy tunneled session as EAP, or as de-capsulated
-	 *	protocol.
-	 */
-	bool	proxy_tunneled_request_as_eap;
+	bool proxy_tunneled_request_as_eap;	//!< Proxy tunneled session as EAP, or as de-capsulated
+						//!< protocol.
 #endif
+	char const *virtual_server;		//!< Virtual server for inner tunnel session.
 
-	/*
-	 *	Virtual server for inner tunnel session.
-	 */
-	char	*virtual_server;
-
-	/*
-	 * 	Do we do SoH request?
-	 */
-	bool	soh;
-	char	*soh_virtual_server;
-
-	/*
-	 * 	Do we do require a client cert?
-	 */
-	bool	req_client_cert;
+	bool soh;				//!< Do we do SoH request?
+	char const *soh_virtual_server;
+	bool req_client_cert;			//!< Do we do require a client cert?
 } rlm_eap_peap_t;
 
 
 static CONF_PARSER module_config[] = {
-	{ "tls", PW_TYPE_STRING,
-	  offsetof(rlm_eap_peap_t, tls_conf_name), NULL, NULL },
+	{ "tls", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_eap_peap_t, tls_conf_name), NULL },
 
-	{ "default_method", PW_TYPE_STRING,
-	  offsetof(rlm_eap_peap_t, default_method_name), NULL, "mschapv2" },
+	{ "default_method", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_eap_peap_t, default_method_name), "mschapv2" },
 
-	{ "copy_request_to_tunnel", PW_TYPE_BOOLEAN,
-	  offsetof(rlm_eap_peap_t, copy_request_to_tunnel), NULL, "no" },
+	{ "copy_request_to_tunnel", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_eap_peap_t, copy_request_to_tunnel), "no" },
 
-	{ "use_tunneled_reply", PW_TYPE_BOOLEAN,
-	  offsetof(rlm_eap_peap_t, use_tunneled_reply), NULL, "no" },
+	{ "use_tunneled_reply", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_eap_peap_t, use_tunneled_reply), "no" },
 
 #ifdef WITH_PROXY
-	{ "proxy_tunneled_request_as_eap", PW_TYPE_BOOLEAN,
-	  offsetof(rlm_eap_peap_t, proxy_tunneled_request_as_eap), NULL, "yes" },
+	{ "proxy_tunneled_request_as_eap", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_eap_peap_t, proxy_tunneled_request_as_eap), "yes" },
 #endif
 
-	{ "virtual_server", PW_TYPE_STRING,
-	  offsetof(rlm_eap_peap_t, virtual_server), NULL, NULL },
+	{ "virtual_server", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_eap_peap_t, virtual_server), NULL },
 
-	{ "soh", PW_TYPE_BOOLEAN,
-	  offsetof(rlm_eap_peap_t, soh), NULL, "no" },
+	{ "soh", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_eap_peap_t, soh), "no" },
 
-	{ "require_client_cert", PW_TYPE_BOOLEAN,
-	  offsetof(rlm_eap_peap_t, req_client_cert), NULL, "no" },
+	{ "require_client_cert", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_eap_peap_t, req_client_cert), "no" },
 
-	{ "soh_virtual_server", PW_TYPE_STRING,
-	  offsetof(rlm_eap_peap_t, soh_virtual_server), NULL, NULL },
+	{ "soh_virtual_server", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_eap_peap_t, soh_virtual_server), NULL },
 
 	{ NULL, -1, 0, NULL, NULL }	   /* end the list */
 };

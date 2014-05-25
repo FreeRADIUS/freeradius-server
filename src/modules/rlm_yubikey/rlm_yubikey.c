@@ -38,17 +38,17 @@ RCSID("$Id$")
 
 #ifdef HAVE_YKCLIENT
 static const CONF_PARSER validation_config[] = {
-	{ "client_id", PW_TYPE_INTEGER, offsetof(rlm_yubikey_t, client_id), NULL, 0},
-	{ "api_key", PW_TYPE_STRING | PW_TYPE_SECRET, offsetof(rlm_yubikey_t, api_key), NULL, NULL},
+	{ "client_id", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_yubikey_t, client_id), 0 },
+	{ "api_key", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_SECRET, rlm_yubikey_t, api_key), NULL },
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
 #endif
 
 static const CONF_PARSER module_config[] = {
-	{ "id_length", PW_TYPE_INTEGER, offsetof(rlm_yubikey_t, id_len), NULL, "12" },
-	{ "split", PW_TYPE_BOOLEAN, offsetof(rlm_yubikey_t, split), NULL, "yes" },
-	{ "decrypt", PW_TYPE_BOOLEAN, offsetof(rlm_yubikey_t, decrypt), NULL, "no" },
-	{ "validate", PW_TYPE_BOOLEAN, offsetof(rlm_yubikey_t, validate), NULL, "no" },
+	{ "id_length", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_yubikey_t, id_len), "12" },
+	{ "split", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_yubikey_t, split), "yes" },
+	{ "decrypt", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_yubikey_t, decrypt), "no" },
+	{ "validate", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_yubikey_t, validate), "no" },
 #ifdef HAVE_YKCLIENT
 	{ "validation", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) validation_config },
 #endif

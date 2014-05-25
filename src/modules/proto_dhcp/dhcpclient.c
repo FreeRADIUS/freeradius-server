@@ -42,12 +42,12 @@ static int success = 0;
 static int retries = 3;
 static float timeout = 5;
 
-static int server_port = 0;
+static uint16_t server_port = 0;
 static int packet_code = 0;
 static fr_ipaddr_t server_ipaddr;
 
 static fr_ipaddr_t client_ipaddr;
-static int client_port = 0;
+static uint16_t client_port = 0;
 
 static int sockfd;
 

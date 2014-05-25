@@ -32,7 +32,7 @@ typedef struct rlm_yubikey_t {
 
 #ifdef HAVE_YKCLIENT
 	unsigned int		client_id;		//!< Validation API client ID.
-	char			*api_key;		//!< Validation API signing key.
+	char const		*api_key;		//!< Validation API signing key.
 	ykclient_t		*ykc;			//!< ykclient configuration.
 	fr_connection_pool_t	*conn_pool;		//!< Connection pool instance.
 #endif

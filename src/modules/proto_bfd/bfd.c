@@ -80,8 +80,8 @@ typedef struct bfd_state_t {
 
 	fr_ipaddr_t	local_ipaddr;
 	fr_ipaddr_t	remote_ipaddr;
-	int		local_port;
-	int		remote_port;
+	uint16_t	local_port;
+	uint16_t	remote_port;
 
 	/*
 	 *	To simplify sending the packets.
@@ -210,14 +210,14 @@ typedef struct bfd_packet_t {
 
 typedef struct bfd_socket_t {
 	fr_ipaddr_t	my_ipaddr;
-	int		my_port;
+	uint16_t	my_port;
 
 	int		number;
 	const char	*server;
 
-	int		min_tx_interval;
-	int		min_rx_interval;
-	int		max_timeouts;
+	uint32_t	min_tx_interval;
+	uint32_t	min_rx_interval;
+	uint32_t	max_timeouts;
 	bool		demand;
 
 	bfd_auth_type_t	auth_type;
@@ -425,9 +425,9 @@ static ssize_t bfd_parse_secret(CONF_SECTION *cs, uint8_t secret[20])
 {
 	int rcode;
 	size_t len;
-	char *value = NULL;
+	char const *value = NULL;
 
-	rcode = cf_item_parse(cs, "secret", PW_TYPE_STRING, &value, NULL);
+	rcode = cf_item_parse(cs, "secret", FR_ITEM_POINTER(PW_TYPE_STRING, &value), NULL);
 	if (rcode != 0) return 0;
 
 	len = strlen(value);
@@ -463,11 +463,11 @@ static ssize_t bfd_parse_secret(CONF_SECTION *cs, uint8_t secret[20])
  */
 static bfd_state_t *bfd_new_session(bfd_socket_t *sock, int sockfd,
 				    CONF_SECTION *cs,
-				    const fr_ipaddr_t *ipaddr, int port)
+				    const fr_ipaddr_t *ipaddr, uint16_t port)
 {
 	int rcode;
 	bool flag;
-	int number;
+	uint32_t number;
 	bfd_state_t *session;
 
 	session = talloc_zero(sock, bfd_state_t);
@@ -496,29 +496,26 @@ static bfd_state_t *bfd_new_session(bfd_socket_t *sock, int sockfd,
 	/*
 	 *	Allow over-riding of variables per session.
 	 */
-	rcode = cf_item_parse(cs, "demand", PW_TYPE_BOOLEAN, &flag, NULL);
+	rcode = cf_item_parse(cs, "demand", FR_ITEM_POINTER(PW_TYPE_BOOLEAN, &flag), NULL);
 	if (rcode == 0) {
 		session->demand_mode = flag;
 	}
 
-	rcode = cf_item_parse(cs, "min_transmit_interval", PW_TYPE_INTEGER,
-			      &number, NULL);
+	rcode = cf_item_parse(cs, "min_transmit_interval", FR_ITEM_POINTER(PW_TYPE_INTEGER, &number), NULL);
 	if (rcode == 0) {
 		if (number < 100) number = 100;
 		if (number > 10000) number = 10000;
 
 		session->desired_min_tx_interval = number * 1000;
 	}
-	rcode = cf_item_parse(cs, "min_receive_interval", PW_TYPE_INTEGER,
-			      &number, NULL);
+	rcode = cf_item_parse(cs, "min_receive_interval", FR_ITEM_POINTER(PW_TYPE_INTEGER, &number), NULL);
 	if (rcode == 0) {
 		if (number < 100) number = 100;
 		if (number > 10000) number = 10000;
 
 		session->required_min_rx_interval = number * 1000;
 	}
-	rcode = cf_item_parse(cs, "max_timeouts", PW_TYPE_INTEGER,
-			      &number,NULL);
+	rcode = cf_item_parse(cs, "max_timeouts", FR_ITEM_POINTER(PW_TYPE_INTEGER, &number), NULL);
 	if (rcode == 0) {
 		if (number == 0) number = 1;
 		if (number > 10) number = 10;
@@ -1544,7 +1541,7 @@ static int bfd_socket_recv(rad_listen_t *listener)
 	return bfd_process(session, &bfd);
 }
 
-static int bfd_parse_ip_port(CONF_SECTION *cs, fr_ipaddr_t *ipaddr, int *port)
+static int bfd_parse_ip_port(CONF_SECTION *cs, fr_ipaddr_t *ipaddr, uint16_t *port)
 {
 	int rcode;
 
@@ -1553,16 +1550,14 @@ static int bfd_parse_ip_port(CONF_SECTION *cs, fr_ipaddr_t *ipaddr, int *port)
 	 */
 	memset(ipaddr, 0, sizeof(*ipaddr));
 	ipaddr->ipaddr.ip4addr.s_addr = htonl(INADDR_NONE);
-	rcode = cf_item_parse(cs, "ipaddr", PW_TYPE_IPADDR,
-			      &ipaddr->ipaddr.ip4addr.s_addr, NULL);
+	rcode = cf_item_parse(cs, "ipaddr", FR_ITEM_POINTER(PW_TYPE_IPADDR, &ipaddr->ipaddr.ip4addr), NULL);
 	if (rcode < 0) return -1;
 
 	if (rcode == 0) { /* successfully parsed IPv4 */
 		ipaddr->af = AF_INET;
 
 	} else {	/* maybe IPv6? */
-		rcode = cf_item_parse(cs, "ipv6addr", PW_TYPE_IPV6ADDR,
-				      &ipaddr->ipaddr.ip6addr, NULL);
+		rcode = cf_item_parse(cs, "ipv6addr", FR_ITEM_POINTER(PW_TYPE_IPV6ADDR, &ipaddr->ipaddr.ip6addr), NULL);
 		if (rcode < 0) return -1;
 
 		if (rcode == 1) {
@@ -1573,25 +1568,15 @@ static int bfd_parse_ip_port(CONF_SECTION *cs, fr_ipaddr_t *ipaddr, int *port)
 		ipaddr->af = AF_INET6;
 	}
 
-	rcode = cf_item_parse(cs, "port", PW_TYPE_INTEGER,
-			      port, "0");
+	rcode = cf_item_parse(cs, "port", FR_ITEM_POINTER(PW_TYPE_SHORT, port), "0");
 	if (rcode < 0) return -1;
-
-	if ((*port < 0) || (*port > 65535)) {
-			cf_log_err(cf_sectiontoitem(cs),
-				   "Invalid value for \"port\"");
-			return -1;
-	}
-
 	return 0;
 }
-
-
 static int bfd_init_sessions(CONF_SECTION *cs, bfd_socket_t *sock, int sockfd)
 {
 	CONF_ITEM *ci;
 	CONF_SECTION *peer;
-	int port;
+	uint16_t port;
 	fr_ipaddr_t ipaddr;
 
 	for (ci=cf_item_find_next(cs, NULL);
@@ -1680,8 +1665,8 @@ static int bfd_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 {
 	int rcode;
 	bfd_socket_t *sock = this->data;
-	char *auth_type_str = NULL;
-	int listen_port;
+	char const *auth_type_str = NULL;
+	uint16_t listen_port;
 	fr_ipaddr_t ipaddr;
 
 	rad_assert(sock != NULL);
@@ -1826,20 +1811,14 @@ static int bfd_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 
 	/* end of code copied from listen_init() */
 
-	cf_item_parse(cs, "min_transmit_interval", PW_TYPE_INTEGER,
-		      &sock->min_tx_interval, "1000");
-	cf_item_parse(cs, "min_receive_interval", PW_TYPE_INTEGER,
-		      &sock->min_rx_interval, "1000");
-	cf_item_parse(cs, "max_timeouts", PW_TYPE_INTEGER,
-		      &sock->max_timeouts, "3");
-	cf_item_parse(cs, "demand", PW_TYPE_BOOLEAN,
-		      &sock->demand, "no");
-	cf_item_parse(cs, "auth_type", PW_TYPE_STRING,
-		      &auth_type_str, NULL);
+	cf_item_parse(cs, "min_transmit_interval", FR_ITEM_POINTER(PW_TYPE_INTEGER, &sock->min_tx_interval), "1000");
+	cf_item_parse(cs, "min_receive_interval", FR_ITEM_POINTER(PW_TYPE_INTEGER, &sock->min_rx_interval), "1000");
+	cf_item_parse(cs, "max_timeouts", FR_ITEM_POINTER(PW_TYPE_INTEGER, &sock->max_timeouts), "3");
+	cf_item_parse(cs, "demand", FR_ITEM_POINTER(PW_TYPE_BOOLEAN, &sock->demand), "no");
+	cf_item_parse(cs, "auth_type", FR_ITEM_POINTER(PW_TYPE_STRING, &auth_type_str), NULL);
 
 	if (!this->server) {
-		cf_item_parse(cs, "server", PW_TYPE_STRING,
-			      &sock->server, NULL);
+		cf_item_parse(cs, "server", FR_ITEM_POINTER(PW_TYPE_STRING, &sock->server), NULL);
 	} else {
 		sock->server = this->server;
 	}
@@ -1853,8 +1832,7 @@ static int bfd_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	if (sock->max_timeouts == 0) sock->max_timeouts = 1;
 	if (sock->max_timeouts > 10) sock->max_timeouts = 10;
 
-	sock->auth_type = fr_str2int(auth_types, auth_type_str,
-				     BFD_AUTH_INVALID);
+	sock->auth_type = fr_str2int(auth_types, auth_type_str, BFD_AUTH_INVALID);
 	if (sock->auth_type == BFD_AUTH_INVALID) {
 		ERROR("Unknown auth_type '%s'", auth_type_str);
 		exit(1);

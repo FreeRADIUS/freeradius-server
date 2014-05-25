@@ -66,37 +66,37 @@ static CONF_PARSER tls_config[] = {
 	/*
 	 *	Deprecated attributes
 	 */
-	{"cacertfile", PW_TYPE_FILE_INPUT | PW_TYPE_DEPRECATED, offsetof(ldap_instance_t, tls_ca_file), NULL, NULL},
-	{"ca_file", PW_TYPE_FILE_INPUT, offsetof(ldap_instance_t, tls_ca_file), NULL, NULL},
+	{ "cacertfile", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT | PW_TYPE_DEPRECATED, ldap_instance_t, tls_ca_file), NULL },
+	{ "ca_file", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT, ldap_instance_t, tls_ca_file), NULL },
 
-	{"cacertdir", PW_TYPE_FILE_INPUT | PW_TYPE_DEPRECATED, offsetof(ldap_instance_t, tls_ca_path), NULL, NULL},
-	{"ca_path", PW_TYPE_FILE_INPUT, offsetof(ldap_instance_t, tls_ca_path), NULL, NULL},
+	{ "cacertdir", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT | PW_TYPE_DEPRECATED, ldap_instance_t, tls_ca_path), NULL },
+	{ "ca_path", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT, ldap_instance_t, tls_ca_path), NULL },
 
-	{"certfile", PW_TYPE_FILE_INPUT | PW_TYPE_DEPRECATED, offsetof(ldap_instance_t, tls_certificate_file), NULL, NULL},
-	{"certificate_file", PW_TYPE_FILE_INPUT, offsetof(ldap_instance_t, tls_certificate_file), NULL, NULL},
+	{ "certfile", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT | PW_TYPE_DEPRECATED, ldap_instance_t, tls_certificate_file), NULL },
+	{ "certificate_file", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT, ldap_instance_t, tls_certificate_file), NULL },
 
-	{"keyfile", PW_TYPE_FILE_INPUT | PW_TYPE_DEPRECATED, offsetof(ldap_instance_t, tls_private_key_file), NULL, NULL}, // OK if it changes on HUP
-	{"private_key_file", PW_TYPE_FILE_INPUT, offsetof(ldap_instance_t, tls_private_key_file), NULL, NULL}, // OK if it changes on HUP
+	{ "keyfile", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT | PW_TYPE_DEPRECATED, ldap_instance_t, tls_private_key_file), NULL }, // OK if it changes on HUP
+	{ "private_key_file", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT, ldap_instance_t, tls_private_key_file), NULL }, // OK if it changes on HUP
 
-	{"randfile", PW_TYPE_FILE_INPUT | PW_TYPE_DEPRECATED, offsetof(ldap_instance_t, tls_random_file), NULL, NULL},
-	{"random_file", PW_TYPE_FILE_INPUT, offsetof(ldap_instance_t, tls_random_file), NULL, NULL},
+	{ "randfile", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT | PW_TYPE_DEPRECATED, ldap_instance_t, tls_random_file), NULL },
+	{ "random_file", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT, ldap_instance_t, tls_random_file), NULL },
 
 	/*
 	 *	LDAP Specific TLS attributes
 	 */
-	{"start_tls", PW_TYPE_BOOLEAN, offsetof(ldap_instance_t, start_tls), NULL, "no"},
-	{"require_cert", PW_TYPE_STRING, offsetof(ldap_instance_t, tls_require_cert_str), NULL, NULL},
+	{ "start_tls", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, ldap_instance_t, start_tls), "no" },
+	{ "require_cert", FR_CONF_OFFSET(PW_TYPE_STRING, ldap_instance_t, tls_require_cert_str), NULL },
 
 	{ NULL, -1, 0, NULL, NULL }
 };
 
 
 static CONF_PARSER profile_config[] = {
-	{"filter", PW_TYPE_STRING, offsetof(ldap_instance_t, profile_filter), NULL, "(&)"},	//!< Correct filter for
+	{ "filter", FR_CONF_OFFSET(PW_TYPE_STRING, ldap_instance_t, profile_filter), "(&)" },	//!< Correct filter for
 												//!< when the DN is
 												//!< known.
-	{"attribute", PW_TYPE_STRING, offsetof(ldap_instance_t, profile_attr), NULL, NULL},
-	{"default", PW_TYPE_STRING, offsetof(ldap_instance_t, default_profile), NULL, NULL},
+	{ "attribute", FR_CONF_OFFSET(PW_TYPE_STRING, ldap_instance_t, profile_attr), NULL },
+	{ "default", FR_CONF_OFFSET(PW_TYPE_STRING, ldap_instance_t, default_profile), NULL },
 
 	{ NULL, -1, 0, NULL, NULL }
 };
@@ -105,12 +105,12 @@ static CONF_PARSER profile_config[] = {
  *	User configuration
  */
 static CONF_PARSER user_config[] = {
-	{"filter", PW_TYPE_STRING, offsetof(ldap_instance_t, userobj_filter), NULL, "(uid=%u)"},
-	{"scope", PW_TYPE_STRING, offsetof(ldap_instance_t, userobj_scope_str), NULL, "sub"},
-	{"base_dn", PW_TYPE_STRING, offsetof(ldap_instance_t,userobj_base_dn), NULL, ""},
+	{ "filter", FR_CONF_OFFSET(PW_TYPE_STRING, ldap_instance_t, userobj_filter), "(uid=%u)" },
+	{ "scope", FR_CONF_OFFSET(PW_TYPE_STRING, ldap_instance_t, userobj_scope_str), "sub" },
+	{ "base_dn", FR_CONF_OFFSET(PW_TYPE_STRING, ldap_instance_t, userobj_base_dn), "" },
 
-	{"access_attribute", PW_TYPE_STRING, offsetof(ldap_instance_t, userobj_access_attr), NULL, NULL},
-	{"access_positive", PW_TYPE_BOOLEAN, offsetof(ldap_instance_t, access_positive), NULL, "yes"},
+	{ "access_attribute", FR_CONF_OFFSET(PW_TYPE_STRING, ldap_instance_t, userobj_access_attr), NULL },
+	{ "access_positive", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, ldap_instance_t, access_positive), "yes" },
 
 	{ NULL, -1, 0, NULL, NULL }
 };
@@ -119,16 +119,16 @@ static CONF_PARSER user_config[] = {
  *	Group configuration
  */
 static CONF_PARSER group_config[] = {
-	{"filter", PW_TYPE_STRING, offsetof(ldap_instance_t, groupobj_filter), NULL, NULL},
-	{"scope", PW_TYPE_STRING, offsetof(ldap_instance_t, groupobj_scope_str), NULL, "sub"},
-	{"base_dn", PW_TYPE_STRING, offsetof(ldap_instance_t, groupobj_base_dn), NULL, ""},
+	{ "filter", FR_CONF_OFFSET(PW_TYPE_STRING, ldap_instance_t, groupobj_filter), NULL },
+	{ "scope", FR_CONF_OFFSET(PW_TYPE_STRING, ldap_instance_t, groupobj_scope_str), "sub" },
+	{ "base_dn", FR_CONF_OFFSET(PW_TYPE_STRING, ldap_instance_t, groupobj_base_dn), "" },
 
-	{"name_attribute", PW_TYPE_STRING, offsetof(ldap_instance_t, groupobj_name_attr), NULL, "cn"},
-	{"membership_attribute", PW_TYPE_STRING, offsetof(ldap_instance_t, userobj_membership_attr), NULL, NULL},
-	{"membership_filter", PW_TYPE_STRING, offsetof(ldap_instance_t, groupobj_membership_filter), NULL, NULL},
-	{"cacheable_name", PW_TYPE_BOOLEAN, offsetof(ldap_instance_t, cacheable_group_name), NULL, "no"},
-	{"cacheable_dn", PW_TYPE_BOOLEAN, offsetof(ldap_instance_t, cacheable_group_dn), NULL, "no"},
-	{"cache_attribute", PW_TYPE_STRING, offsetof(ldap_instance_t, cache_attribute), NULL, NULL},
+	{ "name_attribute", FR_CONF_OFFSET(PW_TYPE_STRING, ldap_instance_t, groupobj_name_attr), "cn" },
+	{ "membership_attribute", FR_CONF_OFFSET(PW_TYPE_STRING, ldap_instance_t, userobj_membership_attr), NULL },
+	{ "membership_filter", FR_CONF_OFFSET(PW_TYPE_STRING, ldap_instance_t, groupobj_membership_filter), NULL },
+	{ "cacheable_name", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, ldap_instance_t, cacheable_group_name), "no" },
+	{ "cacheable_dn", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, ldap_instance_t, cacheable_group_dn), "no" },
+	{ "cache_attribute", FR_CONF_OFFSET(PW_TYPE_STRING, ldap_instance_t, cache_attribute), NULL },
 
 	{ NULL, -1, 0, NULL, NULL }
 };
@@ -137,21 +137,20 @@ static CONF_PARSER group_config[] = {
  *	Client configuration
  */
 static CONF_PARSER client_attribute[] = {
-	{"identifier", PW_TYPE_STRING, offsetof(ldap_instance_t, clientobj_identifier), NULL, "host"},
-	{"shortname", PW_TYPE_STRING, offsetof(ldap_instance_t, clientobj_shortname), NULL, "cn"},
-	{"nas_type", PW_TYPE_STRING, offsetof(ldap_instance_t, clientobj_type), NULL, NULL},
-	{"secret", PW_TYPE_STRING, offsetof(ldap_instance_t, clientobj_secret), NULL, NULL},
-	{"virtual_server", PW_TYPE_STRING, offsetof(ldap_instance_t, clientobj_server), NULL, NULL},
-	{"require_message_authenticator", PW_TYPE_STRING, offsetof(ldap_instance_t, clientobj_require_ma),
-	 NULL, NULL},
+	{ "identifier", FR_CONF_OFFSET(PW_TYPE_STRING, ldap_instance_t, clientobj_identifier), "host" },
+	{ "shortname", FR_CONF_OFFSET(PW_TYPE_STRING, ldap_instance_t, clientobj_shortname), "cn" },
+	{ "nas_type", FR_CONF_OFFSET(PW_TYPE_STRING, ldap_instance_t, clientobj_type), NULL },
+	{ "secret", FR_CONF_OFFSET(PW_TYPE_STRING, ldap_instance_t, clientobj_secret), NULL },
+	{ "virtual_server", FR_CONF_OFFSET(PW_TYPE_STRING, ldap_instance_t, clientobj_server), NULL },
+	{ "require_message_authenticator", FR_CONF_OFFSET(PW_TYPE_STRING, ldap_instance_t, clientobj_require_ma), NULL },
 
 	{ NULL, -1, 0, NULL, NULL }
 };
 
 static CONF_PARSER client_config[] = {
-	{"filter", PW_TYPE_STRING, offsetof(ldap_instance_t, clientobj_filter), NULL, NULL},
-	{"scope", PW_TYPE_STRING, offsetof(ldap_instance_t, clientobj_scope_str), NULL, "sub"},
-	{"base_dn", PW_TYPE_STRING, offsetof(ldap_instance_t, clientobj_base_dn), NULL, ""},
+	{ "filter", FR_CONF_OFFSET(PW_TYPE_STRING, ldap_instance_t, clientobj_filter), NULL },
+	{ "scope", FR_CONF_OFFSET(PW_TYPE_STRING, ldap_instance_t, clientobj_scope_str), "sub" },
+	{ "base_dn", FR_CONF_OFFSET(PW_TYPE_STRING, ldap_instance_t, clientobj_base_dn), "" },
 	{ "attribute", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) client_attribute },
 
 	{ NULL, -1, 0, NULL, NULL }
@@ -161,7 +160,7 @@ static CONF_PARSER client_config[] = {
  *	Reference for accounting updates
  */
 static const CONF_PARSER acct_section_config[] = {
-	{"reference", PW_TYPE_STRING, offsetof(ldap_acct_section_t, reference), NULL, "."},
+	{ "reference", FR_CONF_OFFSET(PW_TYPE_STRING, ldap_acct_section_t, reference), "." },
 
 	{NULL, -1, 0, NULL, NULL}
 };
@@ -175,29 +174,29 @@ static CONF_PARSER option_config[] = {
 	/*
 	 *	Debugging flags to the server
 	 */
-	{"ldap_debug", PW_TYPE_INTEGER, offsetof(ldap_instance_t,ldap_debug), NULL, "0x0000"},
+	{ "ldap_debug", FR_CONF_OFFSET(PW_TYPE_INTEGER, ldap_instance_t, ldap_debug), "0x0000" },
 
-	{"chase_referrals", PW_TYPE_BOOLEAN, offsetof(ldap_instance_t,chase_referrals), NULL, NULL},
+	{ "chase_referrals", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, ldap_instance_t, chase_referrals), NULL },
 
-	{"rebind", PW_TYPE_BOOLEAN, offsetof(ldap_instance_t,rebind), NULL, NULL},
+	{ "rebind", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, ldap_instance_t, rebind), NULL },
 
 	/* timeout on network activity */
-	{"net_timeout", PW_TYPE_INTEGER, offsetof(ldap_instance_t,net_timeout), NULL, "10"},
+	{ "net_timeout", FR_CONF_OFFSET(PW_TYPE_INTEGER, ldap_instance_t, net_timeout), "10" },
 
 	/* timeout for search results */
-	{"res_timeout", PW_TYPE_INTEGER, offsetof(ldap_instance_t,res_timeout), NULL, "20"},
+	{ "res_timeout", FR_CONF_OFFSET(PW_TYPE_INTEGER, ldap_instance_t, res_timeout), "20" },
 
 	/* allow server unlimited time for search (server-side limit) */
-	{"srv_timelimit", PW_TYPE_INTEGER, offsetof(ldap_instance_t,srv_timelimit), NULL, "20"},
+	{ "srv_timelimit", FR_CONF_OFFSET(PW_TYPE_INTEGER, ldap_instance_t, srv_timelimit), "20" },
 
 #ifdef LDAP_OPT_X_KEEPALIVE_IDLE
-	{"idle", PW_TYPE_INTEGER, offsetof(ldap_instance_t,keepalive_idle), NULL, "60"},
+	{ "idle", FR_CONF_OFFSET(PW_TYPE_INTEGER, ldap_instance_t, keepalive_idle), "60" },
 #endif
 #ifdef LDAP_OPT_X_KEEPALIVE_PROBES
-	{"probes", PW_TYPE_INTEGER, offsetof(ldap_instance_t,keepalive_probes), NULL, "3"},
+	{ "probes", FR_CONF_OFFSET(PW_TYPE_INTEGER, ldap_instance_t, keepalive_probes), "3" },
 #endif
 #ifdef LDAP_OPT_X_KEEPALIVE_INTERVAL
-	{"interval", PW_TYPE_INTEGER,  offsetof(ldap_instance_t,keepalive_interval), NULL, "30"},
+	{ "interval", FR_CONF_OFFSET(PW_TYPE_INTEGER, ldap_instance_t, keepalive_interval), "30" },
 #endif
 
 	{ NULL, -1, 0, NULL, NULL }
@@ -205,26 +204,26 @@ static CONF_PARSER option_config[] = {
 
 
 static const CONF_PARSER module_config[] = {
-	{"server", PW_TYPE_STRING | PW_TYPE_REQUIRED, offsetof(ldap_instance_t,server), NULL, "localhost"},
-	{"port", PW_TYPE_INTEGER, offsetof(ldap_instance_t,port), NULL, "389"},
+	{ "server", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_REQUIRED, ldap_instance_t, server), "localhost" },
+	{ "port", FR_CONF_OFFSET(PW_TYPE_SHORT, ldap_instance_t, port), "389" },
 
-	{"password", PW_TYPE_STRING | PW_TYPE_SECRET, offsetof(ldap_instance_t,password), NULL, ""},
-	{"identity", PW_TYPE_STRING, offsetof(ldap_instance_t,admin_dn), NULL, ""},
+	{ "password", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_SECRET, ldap_instance_t, password), "" },
+	{ "identity", FR_CONF_OFFSET(PW_TYPE_STRING, ldap_instance_t, admin_dn), "" },
 
-	{"valuepair_attribute", PW_TYPE_STRING, offsetof(ldap_instance_t, valuepair_attr), NULL, NULL},
+	{ "valuepair_attribute", FR_CONF_OFFSET(PW_TYPE_STRING, ldap_instance_t, valuepair_attr), NULL },
 
 #ifdef WITH_EDIR
 	/* support for eDirectory Universal Password */
-	{"edir", PW_TYPE_BOOLEAN, offsetof(ldap_instance_t,edir), NULL, NULL}, /* NULL defaults to "no" */
+	{ "edir", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, ldap_instance_t, edir), NULL }, /* NULL defaults to "no" */
 
 	/*
 	 *	Attempt to bind with the cleartext password we got from eDirectory
 	 *	Universal password for additional authorization checks.
 	 */
-	{"edir_autz", PW_TYPE_BOOLEAN, offsetof(ldap_instance_t,edir_autz), NULL, NULL}, /* NULL defaults to "no" */
+	{ "edir_autz", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, ldap_instance_t, edir_autz), NULL }, /* NULL defaults to "no" */
 #endif
 
-	{"read_clients", PW_TYPE_BOOLEAN, offsetof(ldap_instance_t,do_clients), NULL, NULL}, /* NULL defaults to "no" */
+	{ "read_clients", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, ldap_instance_t, do_clients), NULL }, /* NULL defaults to "no" */
 
 	{ "user", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) user_config },
 
@@ -284,7 +283,7 @@ static ssize_t ldap_xlat(void *instance, REQUEST *request, char const *fmt, char
 
 	if (ldap_url->lud_host &&
 	    ((strncmp(inst->server, ldap_url->lud_host, strlen(inst->server)) != 0) ||
-	     (ldap_url->lud_port != inst->port))) {
+	     ((uint32_t) ldap_url->lud_port != inst->port))) {
 		RDEBUG("Requested server/port is \"%s:%i\"", ldap_url->lud_host, inst->port);
 
 		goto free_urldesc;

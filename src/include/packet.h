@@ -34,7 +34,7 @@ int fr_packet_cmp(RADIUS_PACKET const *a, RADIUS_PACKET const *b);
 int fr_inaddr_any(fr_ipaddr_t *ipaddr);
 void fr_request_from_reply(RADIUS_PACKET *request,
 			     RADIUS_PACKET const *reply);
-int fr_socket(fr_ipaddr_t *ipaddr, int port);
+int fr_socket(fr_ipaddr_t *ipaddr, uint16_t port);
 int fr_nonblock(int fd);
 
 typedef struct fr_packet_list_t fr_packet_list_t;
@@ -56,7 +56,7 @@ bool fr_packet_list_id_alloc(fr_packet_list_t *pl, int proto,
 bool fr_packet_list_id_free(fr_packet_list_t *pl,
 			    RADIUS_PACKET *request, bool yank);
 bool fr_packet_list_socket_add(fr_packet_list_t *pl, int sockfd, int proto,
-			      fr_ipaddr_t *dst_ipaddr, int dst_port,
+			      fr_ipaddr_t *dst_ipaddr, uint16_t dst_port,
 			      void *ctx);
 bool fr_packet_list_socket_del(fr_packet_list_t *pl, int sockfd);
 bool fr_packet_list_socket_freeze(fr_packet_list_t *pl, int sockfd);

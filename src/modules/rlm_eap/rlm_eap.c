@@ -30,16 +30,11 @@ RCSID("$Id$")
 #include "rlm_eap.h"
 
 static const CONF_PARSER module_config[] = {
-	{ "default_eap_type", PW_TYPE_STRING,
-	  offsetof(rlm_eap_t, default_method_name), NULL, "md5" },
-	{ "timer_expire", PW_TYPE_INTEGER,
-	  offsetof(rlm_eap_t, timer_limit), NULL, "60"},
-	{ "ignore_unknown_eap_types", PW_TYPE_BOOLEAN,
-	  offsetof(rlm_eap_t, ignore_unknown_types), NULL, "no" },
-	{ "mod_accounting_username_bug", PW_TYPE_BOOLEAN,
-	  offsetof(rlm_eap_t, mod_accounting_username_bug), NULL, "no" },
-	{ "max_sessions", PW_TYPE_INTEGER,
-	  offsetof(rlm_eap_t, max_sessions), NULL, "2048"},
+	{ "default_eap_type", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_eap_t, default_method_name), "md5" },
+	{ "timer_expire", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_eap_t, timer_limit), "60" },
+	{ "ignore_unknown_eap_types", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_eap_t, ignore_unknown_types), "no" },
+	{ "mod_accounting_username_bug", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_eap_t, mod_accounting_username_bug), "no" },
+	{ "max_sessions", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_eap_t, max_sessions), "2048" },
 
 	{ NULL, -1, 0, NULL, NULL }	   /* end the list */
 };

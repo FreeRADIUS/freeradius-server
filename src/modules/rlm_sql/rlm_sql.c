@@ -37,77 +37,46 @@ RCSID("$Id$")
 #include "rlm_sql.h"
 
 static const CONF_PARSER acct_section_config[] = {
-	{"reference", PW_TYPE_STRING,
-	  offsetof(sql_acct_section_t, reference), NULL, ".query"},
-	{"logfile", PW_TYPE_STRING,
-	 offsetof(sql_acct_section_t, logfile), NULL, NULL},
+	{ "reference", FR_CONF_OFFSET(PW_TYPE_STRING, sql_acct_section_t, reference), ".query" },
+	{ "logfile", FR_CONF_OFFSET(PW_TYPE_STRING, sql_acct_section_t, logfile), NULL },
 
 	{NULL, -1, 0, NULL, NULL}
 };
 
 static const CONF_PARSER module_config[] = {
-	{"driver", PW_TYPE_STRING,
-	 offsetof(rlm_sql_config_t,sql_driver_name), NULL, "rlm_sql_null"},
-	{"server", PW_TYPE_STRING,
-	 offsetof(rlm_sql_config_t,sql_server), NULL, "localhost"},
-	{"port", PW_TYPE_STRING,
-	 offsetof(rlm_sql_config_t,sql_port), NULL, ""},
-	{"login", PW_TYPE_STRING,
-	 offsetof(rlm_sql_config_t,sql_login), NULL, ""},
-	{"password", PW_TYPE_STRING | PW_TYPE_SECRET,
-	 offsetof(rlm_sql_config_t,sql_password), NULL, ""},
-	{"radius_db", PW_TYPE_STRING,
-	 offsetof(rlm_sql_config_t,sql_db), NULL, "radius"},
-	{"read_groups", PW_TYPE_BOOLEAN,
-	 offsetof(rlm_sql_config_t,read_groups), NULL, "yes"},
-	{"readclients", PW_TYPE_BOOLEAN | PW_TYPE_DEPRECATED,
-	 offsetof(rlm_sql_config_t,do_clients), NULL, NULL},
-	{"read_clients", PW_TYPE_BOOLEAN,
-	 offsetof(rlm_sql_config_t,do_clients), NULL, "no"},
-	{"deletestalesessions", PW_TYPE_BOOLEAN | PW_TYPE_DEPRECATED,
-	 offsetof(rlm_sql_config_t,deletestalesessions), NULL, NULL},
-	{"delete_stale_sessions", PW_TYPE_BOOLEAN,
-	 offsetof(rlm_sql_config_t,deletestalesessions), NULL, "yes"},
-	{"sql_user_name", PW_TYPE_STRING,
-	 offsetof(rlm_sql_config_t,query_user), NULL, ""},
-	{"logfile", PW_TYPE_STRING,
-	 offsetof(rlm_sql_config_t,logfile), NULL, NULL},
-	{"default_user_profile", PW_TYPE_STRING,
-	 offsetof(rlm_sql_config_t,default_profile), NULL, ""},
-	{"nas_query", PW_TYPE_STRING | PW_TYPE_DEPRECATED,
-	 offsetof(rlm_sql_config_t,client_query), NULL, NULL},
-	{"client_query", PW_TYPE_STRING,
-	 offsetof(rlm_sql_config_t,client_query), NULL,
-	 "SELECT id,nasname,shortname,type,secret FROM nas"},
-	{"authorize_check_query", PW_TYPE_STRING,
-	 offsetof(rlm_sql_config_t,authorize_check_query), NULL, ""},
-	{"open_query", PW_TYPE_STRING,
-	 offsetof(rlm_sql_config_t,open_query), NULL, NULL},
-	{"authorize_reply_query", PW_TYPE_STRING,
-	 offsetof(rlm_sql_config_t,authorize_reply_query), NULL, NULL},
-	{"authorize_group_check_query", PW_TYPE_STRING,
-	 offsetof(rlm_sql_config_t,authorize_group_check_query), NULL, ""},
-	{"authorize_group_reply_query", PW_TYPE_STRING,
-	 offsetof(rlm_sql_config_t,authorize_group_reply_query), NULL, ""},
-	{"group_membership_query", PW_TYPE_STRING,
-	 offsetof(rlm_sql_config_t,groupmemb_query), NULL, NULL},
+	{ "driver", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sql_config_t, sql_driver_name), "rlm_sql_null" },
+	{ "server", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sql_config_t, sql_server), "localhost" },
+	{ "port", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sql_config_t, sql_port), "" },
+	{ "login", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sql_config_t, sql_login), "" },
+	{ "password", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_SECRET, rlm_sql_config_t, sql_password), "" },
+	{ "radius_db", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sql_config_t, sql_db), "radius" },
+	{ "read_groups", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_sql_config_t, read_groups), "yes" },
+	{ "readclients", FR_CONF_OFFSET(PW_TYPE_BOOLEAN | PW_TYPE_DEPRECATED, rlm_sql_config_t, do_clients), NULL },
+	{ "read_clients", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_sql_config_t, do_clients), "no" },
+	{ "deletestalesessions", FR_CONF_OFFSET(PW_TYPE_BOOLEAN | PW_TYPE_DEPRECATED, rlm_sql_config_t, deletestalesessions), NULL },
+	{ "delete_stale_sessions", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_sql_config_t, deletestalesessions), "yes" },
+	{ "sql_user_name", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sql_config_t, query_user), "" },
+	{ "logfile", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sql_config_t, logfile), NULL },
+	{ "default_user_profile", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sql_config_t, default_profile), "" },
+	{ "nas_query", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_DEPRECATED, rlm_sql_config_t, client_query), NULL },
+	{ "client_query", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sql_config_t, client_query), "SELECT id,nasname,shortname,type,secret FROM nas" },
+	{ "authorize_check_query", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sql_config_t, authorize_check_query), "" },
+	{ "open_query", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sql_config_t, open_query), NULL },
+	{ "authorize_reply_query", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sql_config_t, authorize_reply_query), NULL },
+	{ "authorize_group_check_query", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sql_config_t, authorize_group_check_query), "" },
+	{ "authorize_group_reply_query", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sql_config_t, authorize_group_reply_query), "" },
+	{ "group_membership_query", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sql_config_t, groupmemb_query), NULL },
 #ifdef WITH_SESSION_MGMT
-	{"simul_count_query", PW_TYPE_STRING,
-	 offsetof(rlm_sql_config_t,simul_count_query), NULL, ""},
-	{"simul_verify_query", PW_TYPE_STRING,
-	 offsetof(rlm_sql_config_t,simul_verify_query), NULL, ""},
+	{ "simul_count_query", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sql_config_t, simul_count_query), "" },
+	{ "simul_verify_query", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sql_config_t, simul_verify_query), "" },
 #endif
-	{"safe-characters", PW_TYPE_STRING | PW_TYPE_DEPRECATED,
-	 offsetof(rlm_sql_config_t,allowed_chars), NULL, NULL},
-	{"safe_characters", PW_TYPE_STRING,
-	 offsetof(rlm_sql_config_t,allowed_chars), NULL,
-	"@abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_: /"},
+	{ "safe-characters", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_DEPRECATED, rlm_sql_config_t, allowed_chars), NULL },
+	{ "safe_characters", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sql_config_t, allowed_chars), "@abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_: /" },
 
 	/*
 	 *	This only works for a few drivers.
 	 */
-	{"query_timeout", PW_TYPE_INTEGER,
-	 offsetof(rlm_sql_config_t,query_timeout), NULL, NULL},
+	{ "query_timeout", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_sql_config_t, query_timeout), NULL },
 
 	{NULL, -1, 0, NULL, NULL}
 };
@@ -1333,7 +1302,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_checksimul(void *instance, REQUEST * req
 	VALUE_PAIR		*vp;
 	int			ret;
 	uint32_t		nas_addr = 0;
-	int			nas_port = 0;
+	uint32_t		nas_port = 0;
 
 	char 			*expanded = NULL;
 

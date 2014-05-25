@@ -45,9 +45,9 @@ static realm_regex_t *realms_regex = NULL;
 
 typedef struct realm_config_t {
 	CONF_SECTION	*cs;
-	int		dead_time;
-	int		retry_count;
-	int		retry_delay;
+	uint32_t	dead_time;
+	uint32_t	retry_count;
+	uint32_t	retry_delay;
 	bool		fallback;
 	bool		wake_all_if_all_dead;
 } realm_config_t;
@@ -68,25 +68,15 @@ static rbtree_t	*home_pools_byname = NULL;
  *  Map the proxy server configuration parameters to variables.
  */
 static const CONF_PARSER proxy_config[] = {
-	{ "retry_delay",  PW_TYPE_INTEGER,
-	  offsetof(realm_config_t, retry_delay),
-	  NULL, STRINGIFY(RETRY_DELAY) },
+	{ "retry_delay", FR_CONF_OFFSET(PW_TYPE_INTEGER, realm_config_t, retry_delay), STRINGIFY(RETRY_DELAY)  },
 
-	{ "retry_count",  PW_TYPE_INTEGER,
-	  offsetof(realm_config_t, retry_count),
-	  NULL, STRINGIFY(RETRY_COUNT) },
+	{ "retry_count", FR_CONF_OFFSET(PW_TYPE_INTEGER, realm_config_t, retry_count), STRINGIFY(RETRY_COUNT)  },
 
-	{ "default_fallback", PW_TYPE_BOOLEAN,
-	  offsetof(realm_config_t, fallback),
-	  NULL, "no" },
+	{ "default_fallback", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, realm_config_t, fallback), "no" },
 
-	{ "dead_time",    PW_TYPE_INTEGER,
-	  offsetof(realm_config_t, dead_time),
-	  NULL, STRINGIFY(DEAD_TIME) },
+	{ "dead_time", FR_CONF_OFFSET(PW_TYPE_INTEGER, realm_config_t, dead_time), STRINGIFY(DEAD_TIME)  },
 
-	{ "wake_all_if_all_dead", PW_TYPE_BOOLEAN,
-	  offsetof(realm_config_t, wake_all_if_all_dead),
-	  NULL, "no" },
+	{ "wake_all_if_all_dead", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, realm_config_t, wake_all_if_all_dead), "no" },
 
 	{ NULL, -1, 0, NULL, NULL }
 };
@@ -319,8 +309,7 @@ static CONF_PARSER home_server_config[] = {
 	{ "ipv6addr", FR_CONF_POINTER(PW_TYPE_IPV6ADDR, &hs_ip6addr), NULL },
 	{ "virtual_server", FR_CONF_POINTER(PW_TYPE_STRING, &hs_virtual_server), NULL },
 
-	{ "port", PW_TYPE_INTEGER,
-	  offsetof(home_server_t,port), NULL,   "0" },
+	{ "port", FR_CONF_OFFSET(PW_TYPE_SHORT, home_server_t, port), "0" },
 
 	{ "type", FR_CONF_POINTER(PW_TYPE_STRING, &hs_type), NULL },
 
@@ -328,36 +317,25 @@ static CONF_PARSER home_server_config[] = {
 	{ "proto", FR_CONF_POINTER(PW_TYPE_STRING, &hs_proto), NULL },
 #endif
 
-	{ "secret",  PW_TYPE_STRING | PW_TYPE_SECRET,
-	  offsetof(home_server_t,secret), NULL,  NULL},
+	{ "secret", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_SECRET, home_server_t, secret), NULL },
 
 	{ "src_ipaddr", FR_CONF_POINTER(PW_TYPE_STRING, &hs_srcipaddr), NULL },
 
-	{ "response_window", PW_TYPE_TIMEVAL,
-	  offsetof(home_server_t,response_window), NULL,   "30" },
-	{ "max_outstanding", PW_TYPE_INTEGER,
-	  offsetof(home_server_t,max_outstanding), NULL,   "65536" },
+	{ "response_window", FR_CONF_OFFSET(PW_TYPE_TIMEVAL, home_server_t, response_window), "30" },
+	{ "max_outstanding", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, max_outstanding), "65536" },
 
-	{ "zombie_period", PW_TYPE_INTEGER,
-	  offsetof(home_server_t,zombie_period), NULL,   "40" },
+	{ "zombie_period", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, zombie_period), "40" },
 	{ "status_check", FR_CONF_POINTER(PW_TYPE_STRING, &hs_check), "none" },
 	{ "ping_check", FR_CONF_POINTER(PW_TYPE_STRING, &hs_check), NULL },
 
-	{ "ping_interval", PW_TYPE_INTEGER,
-	  offsetof(home_server_t,ping_interval), NULL,   "30" },
-	{ "check_interval", PW_TYPE_INTEGER,
-	  offsetof(home_server_t,ping_interval), NULL,   "30" },
-	{ "num_answers_to_alive", PW_TYPE_INTEGER,
-	  offsetof(home_server_t,num_pings_to_alive), NULL,   "3" },
-	{ "revive_interval", PW_TYPE_INTEGER,
-	  offsetof(home_server_t,revive_interval), NULL,   "300" },
-	{ "status_check_timeout", PW_TYPE_INTEGER,
-	  offsetof(home_server_t,ping_timeout), NULL,   "4" },
+	{ "ping_interval", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, ping_interval), "30" },
+	{ "check_interval", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, ping_interval), "30" },
+	{ "num_answers_to_alive", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, num_pings_to_alive), "3" },
+	{ "revive_interval", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, revive_interval), "300" },
+	{ "status_check_timeout", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, ping_timeout), "4" },
 
-	{ "username",  PW_TYPE_STRING,
-	  offsetof(home_server_t,ping_user_name), NULL,  NULL},
-	{ "password",  PW_TYPE_STRING,
-	  offsetof(home_server_t,ping_user_password), NULL,  NULL},
+	{ "username", FR_CONF_OFFSET(PW_TYPE_STRING, home_server_t, ping_user_name), NULL },
+	{ "password", FR_CONF_OFFSET(PW_TYPE_STRING, home_server_t, ping_user_password), NULL },
 
 #ifdef WITH_STATS
 	{ "historic_average_window", PW_TYPE_INTEGER,
@@ -457,17 +435,8 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 		return 0;
 	}
 
-	if (!home->port || (home->port > 65535)) {
-		cf_log_err_cs(cs,
-			   "No port, or invalid port defined for home server %s.",
-			   name2);
-		goto error;
-	}
-
-	if (0) {
-		cf_log_err_cs(cs,
-			   "Fatal error!  Home server %s is ourselves!",
-			   name2);
+	if (home->port == 0) {
+		cf_log_err_cs(cs, "No port, or invalid port defined for home server %s", name2);
 		goto error;
 	}
 
@@ -727,7 +696,7 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 
 	FR_INTEGER_BOUND_CHECK("zombie_period", home->zombie_period, >=, 1);
 	FR_INTEGER_BOUND_CHECK("zombie_period", home->zombie_period, <=, 120);
-	FR_INTEGER_BOUND_CHECK("zombie_period", home->zombie_period, >=, (int) home->response_window.tv_sec);
+	FR_INTEGER_BOUND_CHECK("zombie_period", home->zombie_period, >=, (uint32_t) home->response_window.tv_sec);
 
 	FR_INTEGER_BOUND_CHECK("num_pings_to_alive", home->num_pings_to_alive, >=, 3);
 	FR_INTEGER_BOUND_CHECK("num_pings_to_alive", home->num_pings_to_alive, <=, 10);
@@ -742,10 +711,8 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 	FR_INTEGER_BOUND_CHECK("coa_irt", home->coa_irt, >=, 1);
 	FR_INTEGER_BOUND_CHECK("coa_irt", home->coa_irt, <=, 5);
 
-	FR_INTEGER_BOUND_CHECK("coa_mrc", home->coa_mrc, >=, 0);
 	FR_INTEGER_BOUND_CHECK("coa_mrc", home->coa_mrc, <=, 20);
 
-	FR_INTEGER_BOUND_CHECK("coa_mrt", home->coa_mrt, >=, 0);
 	FR_INTEGER_BOUND_CHECK("coa_mrt", home->coa_mrt, <=, 30);
 
 	FR_INTEGER_BOUND_CHECK("coa_mrd", home->coa_mrd, >=, 5);
@@ -1195,22 +1162,19 @@ static int old_server_add(realm_config_t *rc, CONF_SECTION *cs,
 			q = NULL;
 
 		} else if (p == name) {
-				cf_log_err_cs(cs,
-					   "Invalid hostname %s.",
-					   name);
+				cf_log_err_cs(cs, "Invalid hostname %s", name);
 				talloc_free(home);
 				return 0;
 
 		} else {
-			home->port = atoi(p + 1);
-			if ((home->port == 0) || (home->port > 65535)) {
-				cf_log_err_cs(cs,
-					   "Invalid port %s.",
-					   p + 1);
+			unsigned long port = strtoul(p + 1, NULL, 0);
+			if ((port == 0) || (port > 65535)) {
+				cf_log_err_cs(cs, "Invalid port %s", p + 1);
 				talloc_free(home);
 				return 0;
 			}
 
+			home->port = (uint16_t)port;
 			q = talloc_array(home, char, (p - name) + 1);
 			memcpy(q, name, (p - name));
 			q[p - name] = '\0';
@@ -2402,7 +2366,7 @@ home_server_t *home_server_ldb(char const *realmname,
 }
 
 
-home_server_t *home_server_find(fr_ipaddr_t *ipaddr, int port, int proto)
+home_server_t *home_server_find(fr_ipaddr_t *ipaddr, uint16_t port, int proto)
 {
 	home_server_t myhome;
 

@@ -1030,8 +1030,7 @@ static const CONF_PARSER dynamic_config[] = {
 	{ "FreeRADIUS-Client-Src-IPv6-Address",  PW_TYPE_IPV6ADDR,
 	  offsetof(RADCLIENT, src_ipaddr), 0, NULL },
 
-	{ "FreeRADIUS-Client-Require-MA",  PW_TYPE_BOOLEAN,
-	  offsetof(RADCLIENT, message_authenticator), NULL, NULL },
+	{ "FreeRADIUS-Client-Require-MA", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, RADCLIENT, message_authenticator), NULL },
 
 	{ "FreeRADIUS-Client-Secret",  PW_TYPE_STRING,
 	  offsetof(RADCLIENT, secret), 0, "" },

@@ -31,12 +31,12 @@ RCSID("$Id$")
  *	going to return.
  */
 typedef struct rlm_sometimes_t {
-	char			*rcode_str;
-	int			rcode;
-	int			start;
-	int			end;
-	char			*key;
-	DICT_ATTR const		*da;
+	char const	*rcode_str;
+	rlm_rcode_t	rcode;
+	uint32_t	start;
+	uint32_t	end;
+	char const	*key;
+	DICT_ATTR const	*da;
 } rlm_sometimes_t;
 
 /*
@@ -49,10 +49,10 @@ typedef struct rlm_sometimes_t {
  *	buffer over-flows.
  */
 static const CONF_PARSER module_config[] = {
-	{ "rcode",      PW_TYPE_STRING, offsetof(rlm_sometimes_t,rcode_str), NULL, "fail" },
-	{ "key", PW_TYPE_STRING | PW_TYPE_ATTRIBUTE,    offsetof(rlm_sometimes_t,key), NULL, "User-Name" },
-	{ "start", PW_TYPE_INTEGER,    offsetof(rlm_sometimes_t,start), NULL, "0" },
-	{ "end", PW_TYPE_INTEGER,    offsetof(rlm_sometimes_t,end), NULL, "127" },
+	{ "rcode", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sometimes_t, rcode_str), "fail" },
+	{ "key", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_ATTRIBUTE, rlm_sometimes_t, key), "User-Name" },
+	{ "start", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_sometimes_t, start), "0" },
+	{ "end", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_sometimes_t, end), "127" },
 
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
@@ -67,8 +67,8 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	/*
 	 *	Convert the rcode string to an int, and get rid of it
 	 */
-	inst->rcode = fr_str2int(mod_rcode_table, inst->rcode_str, -1);
-	if (inst->rcode == -1) {
+	inst->rcode = fr_str2int(mod_rcode_table, inst->rcode_str, RLM_MODULE_UNKNOWN);
+	if (inst->rcode == RLM_MODULE_UNKNOWN) {
 		cf_log_err_cs(conf, "Unknown module return code '%s'", inst->rcode_str);
 		return -1;
 	}
@@ -85,7 +85,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 static rlm_rcode_t sometimes_return(void *instance, RADIUS_PACKET *packet, RADIUS_PACKET *reply)
 {
 	uint32_t hash;
-	int value;
+	uint32_t value;
 	rlm_sometimes_t *inst = instance;
 	VALUE_PAIR *vp;
 

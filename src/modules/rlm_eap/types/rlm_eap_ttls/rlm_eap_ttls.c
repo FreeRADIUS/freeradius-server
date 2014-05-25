@@ -30,26 +30,26 @@ typedef struct rlm_eap_ttls_t {
 	/*
 	 *	TLS configuration
 	 */
-	char	*tls_conf_name;
+	char const *tls_conf_name;
 	fr_tls_server_conf_t *tls_conf;
 
 	/*
 	 *	Default tunneled EAP type
 	 */
-	char	*default_method_name;
-	int	default_method;
+	char const *default_method_name;
+	int default_method;
 
 	/*
 	 *	Use the reply attributes from the tunneled session in
 	 *	the non-tunneled reply to the client.
 	 */
-	bool	use_tunneled_reply;
+	bool use_tunneled_reply;
 
 	/*
 	 *	Use SOME of the request attributes from outside of the
 	 *	tunneled session in the tunneled request
 	 */
-	bool	copy_request_to_tunnel;
+	bool copy_request_to_tunnel;
 
 	/*
 	 *	RFC 5281 (TTLS) says that the length field MUST NOT be
@@ -60,41 +60,28 @@ typedef struct rlm_eap_ttls_t {
 	 *	RFC, we add the option here.  If set to "no", it sends
 	 *	the length field in ONLY the first fragment.
 	 */
-	bool	include_length;
+	bool include_length;
 
 	/*
 	 *	Virtual server for inner tunnel session.
 	 */
-	char	*virtual_server;
+	char const *virtual_server;
 
 	/*
 	 * 	Do we do require a client cert?
 	 */
-	bool	req_client_cert;
+	bool req_client_cert;
 } rlm_eap_ttls_t;
 
 
 static CONF_PARSER module_config[] = {
-	{ "tls", PW_TYPE_STRING,
-	  offsetof(rlm_eap_ttls_t, tls_conf_name), NULL, NULL },
-
-	{ "default_eap_type", PW_TYPE_STRING,
-	  offsetof(rlm_eap_ttls_t, default_method_name), NULL, "md5" },
-
-	{ "copy_request_to_tunnel", PW_TYPE_BOOLEAN,
-	  offsetof(rlm_eap_ttls_t, copy_request_to_tunnel), NULL, "no" },
-
-	{ "use_tunneled_reply", PW_TYPE_BOOLEAN,
-	  offsetof(rlm_eap_ttls_t, use_tunneled_reply), NULL, "no" },
-
-	{ "virtual_server", PW_TYPE_STRING,
-	  offsetof(rlm_eap_ttls_t, virtual_server), NULL, NULL },
-
-	{ "include_length", PW_TYPE_BOOLEAN,
-	  offsetof(rlm_eap_ttls_t, include_length), NULL, "yes" },
-
-	{ "require_client_cert", PW_TYPE_BOOLEAN,
-	  offsetof(rlm_eap_ttls_t, req_client_cert), NULL, "no" },
+	{ "tls", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_eap_ttls_t, tls_conf_name), NULL },
+	{ "default_eap_type", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_eap_ttls_t, default_method_name), "md5" },
+	{ "copy_request_to_tunnel", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_eap_ttls_t, copy_request_to_tunnel), "no" },
+	{ "use_tunneled_reply", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_eap_ttls_t, use_tunneled_reply), "no" },
+	{ "virtual_server", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_eap_ttls_t, virtual_server), NULL },
+	{ "include_length", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_eap_ttls_t, include_length), "yes" },
+	{ "require_client_cert", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_eap_ttls_t, req_client_cert), "no" },
 
 	{ NULL, -1, 0, NULL, NULL }	   /* end the list */
 };

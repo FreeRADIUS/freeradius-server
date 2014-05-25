@@ -112,10 +112,10 @@ typedef struct thread_fork_t {
 
 #ifdef WITH_STATS
 typedef struct fr_pps_t {
-	int	pps_old;
-	int	pps_now;
-	int	pps;
-	time_t	time_old;
+	uint32_t	pps_old;
+	uint32_t	pps_now;
+	uint32_t	pps;
+	time_t		time_old;
 } fr_pps_t;
 #endif
 
@@ -127,24 +127,25 @@ typedef struct fr_pps_t {
  */
 typedef struct THREAD_POOL {
 #ifndef WITH_GCD
-	THREAD_HANDLE *head;
-	THREAD_HANDLE *tail;
+	THREAD_HANDLE	*head;
+	THREAD_HANDLE	*tail;
 
-	int active_threads;	/* protected by queue_mutex */
-	int exited_threads;
-	int total_threads;
-	int max_thread_num;
-	int start_threads;
-	int max_threads;
-	int min_spare_threads;
-	int max_spare_threads;
-	unsigned int max_requests_per_thread;
-	unsigned long request_count;
-	time_t time_last_spawned;
-	int cleanup_delay;
-	int stop_flag;
+	uint32_t	active_threads;	/* protected by queue_mutex */
+	uint32_t	total_threads;
+
+	uint32_t	exited_threads;
+	uint32_t	max_thread_num;
+	uint32_t	start_threads;
+	uint32_t	max_threads;
+	uint32_t	min_spare_threads;
+	uint32_t	max_spare_threads;
+	uint32_t	max_requests_per_thread;
+	uint32_t	request_count;
+	time_t		time_last_spawned;
+	uint32_t	cleanup_delay;
+	bool		stop_flag;
 #endif	/* WITH_GCD */
-	bool spawn_flag;
+	bool		spawn_flag;
 
 #ifdef WNOHANG
 	pthread_mutex_t	wait_mutex;
@@ -173,8 +174,8 @@ typedef struct THREAD_POOL {
 	 */
 	pthread_mutex_t	queue_mutex;
 
-	int		max_queue_size;
-	int		num_queued;
+	uint32_t	max_queue_size;
+	uint32_t	num_queued;
 	fr_fifo_t	*fifo[NUM_FIFOS];
 #endif	/* WITH_GCD */
 } THREAD_POOL;
@@ -367,7 +368,7 @@ int request_enqueue(REQUEST *request)
 		    (thread_pool.num_queued > (thread_pool.max_queue_size / 2)) &&
 		    (thread_pool.pps_in.pps_now > thread_pool.pps_out.pps_now)) {
 			uint32_t prob;
-			int keep;
+			uint32_t keep;
 
 			/*
 			 *	Take a random value of how full we
@@ -877,7 +878,8 @@ static int pid_cmp(void const *one, void const *two)
 int thread_pool_init(UNUSED CONF_SECTION *cs, bool *spawn_flag)
 {
 #ifndef WITH_GCD
-	int		i, rcode;
+	uint32_t	i;
+	int		rcode;
 	CONF_SECTION	*pool_cf;
 #endif
 	time_t		now;
@@ -903,7 +905,7 @@ int thread_pool_init(UNUSED CONF_SECTION *cs, bool *spawn_flag)
 	thread_pool.total_threads = 0;
 	thread_pool.max_thread_num = 1;
 	thread_pool.cleanup_delay = 5;
-	thread_pool.stop_flag = 0;
+	thread_pool.stop_flag = false;
 #endif
 	thread_pool.spawn_flag = *spawn_flag;
 
@@ -1053,7 +1055,7 @@ void thread_pool_stop(void)
 	/*
 	 *	Set pool stop flag.
 	 */
-	thread_pool.stop_flag = 1;
+	thread_pool.stop_flag = true;
 
 	/*
 	 *	Wakeup all threads to make them see stop flag.
@@ -1099,10 +1101,10 @@ int request_enqueue(REQUEST *request)
  */
 static void thread_pool_manage(time_t now)
 {
-	int spare;
+	uint32_t spare;
 	int i, total;
 	THREAD_HANDLE *handle, *next;
-	int active_threads;
+	uint32_t active_threads;
 
 	/*
 	 *	Loop over the thread pool, deleting exited threads.
@@ -1132,13 +1134,12 @@ static void thread_pool_manage(time_t now)
 	active_threads = thread_pool.active_threads;
 	spare = thread_pool.total_threads - active_threads;
 	if (debug_flag) {
-		static int old_total = -1;
-		static int old_active = -1;
+		static uint32_t old_total = 0;
+		static uint32_t old_active = 0;
 
-		if ((old_total != thread_pool.total_threads) ||
-				(old_active != active_threads)) {
+		if ((old_total != thread_pool.total_threads) || (old_active != active_threads)) {
 			DEBUG2("Threads: total/active/spare threads = %d/%d/%d",
-					thread_pool.total_threads, active_threads, spare);
+			       thread_pool.total_threads, active_threads, spare);
 			old_total = thread_pool.total_threads;
 			old_active = active_threads;
 		}

@@ -33,17 +33,11 @@ RCSID("$Id$")
  *	Open a socket TO the given IP and port.
  */
 int fr_tcp_client_socket(fr_ipaddr_t *src_ipaddr,
-			 fr_ipaddr_t *dst_ipaddr, int dst_port)
+			 fr_ipaddr_t *dst_ipaddr, uint16_t dst_port)
 {
 	int sockfd;
 	struct sockaddr_storage salocal;
 	socklen_t	salen;
-
-	if ((dst_port < 0) || (dst_port > 65535)) {
-		fr_strerror_printf("Port %d is out of allowed bounds",
-				   dst_port);
-		return -1;
-	}
 
 	if (!dst_ipaddr) return -1;
 

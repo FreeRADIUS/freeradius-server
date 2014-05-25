@@ -34,15 +34,15 @@ typedef struct rlm_exec_t {
 	char const	*xlat_name;
 	int		bare;
 	bool		wait;
-	char		*program;
-	char		*input;
-	char		*output;
+	char const	*program;
+	char const	*input;
+	char const	*output;
 	pair_lists_t	input_list;
 	pair_lists_t	output_list;
-	char		*packet_type;
+	char const	*packet_type;
 	unsigned int	packet_code;
 	bool		shell_escape;
-	int		timeout;
+	uint32_t	timeout;
 } rlm_exec_t;
 
 /*
@@ -55,13 +55,13 @@ typedef struct rlm_exec_t {
  *	buffer over-flows.
  */
 static const CONF_PARSER module_config[] = {
-	{ "wait", PW_TYPE_BOOLEAN, offsetof(rlm_exec_t,wait), NULL, "yes" },
-	{ "program",  PW_TYPE_STRING, offsetof(rlm_exec_t,program), NULL, NULL },
-	{ "input_pairs", PW_TYPE_STRING, offsetof(rlm_exec_t,input), NULL, NULL },
-	{ "output_pairs",  PW_TYPE_STRING, offsetof(rlm_exec_t,output), NULL, NULL },
-	{ "packet_type", PW_TYPE_STRING, offsetof(rlm_exec_t,packet_type), NULL, NULL },
-	{ "shell_escape", PW_TYPE_BOOLEAN,  offsetof(rlm_exec_t,shell_escape), NULL, "yes" },
-	{ "timeout", PW_TYPE_INTEGER,  offsetof(rlm_exec_t,timeout), NULL, NULL },
+	{ "wait", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_exec_t, wait), "yes" },
+	{ "program", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_exec_t, program), NULL },
+	{ "input_pairs", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_exec_t, input), NULL },
+	{ "output_pairs", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_exec_t, output), NULL },
+	{ "packet_type", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_exec_t, packet_type), NULL },
+	{ "shell_escape", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_exec_t, shell_escape), "yes" },
+	{ "timeout", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_exec_t, timeout), NULL },
 
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };

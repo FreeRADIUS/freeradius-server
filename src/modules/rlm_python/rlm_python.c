@@ -56,7 +56,7 @@ struct py_function_def {
 typedef struct rlm_python_t {
 	void		*libpython;
 	PyThreadState	*main_thread_state;
-	char		*python_path;
+	char const	*python_path;
 
 	struct py_function_def
 	instantiate,
@@ -100,7 +100,7 @@ static CONF_PARSER module_config[] = {
 
 #undef A
 
-	{ "python_path", PW_TYPE_STRING, offsetof(rlm_python_t, python_path), NULL, NULL },
+	{ "python_path", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_python_t, python_path), NULL },
 
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
@@ -222,7 +222,10 @@ static int mod_init(rlm_python_t *inst)
 	inst->main_thread_state = PyThreadState_Get();	/* We need this for setting up thread local stuff */
 #endif
 	if (inst->python_path) {
-		PySys_SetPath(inst->python_path);
+		char *path;
+
+		memcpy(&path, &inst->python_path, sizeof(path));
+		PySys_SetPath(path);
 	}
 
 	if ((radiusd_module = Py_InitModule3("radiusd", radiusd_methods,

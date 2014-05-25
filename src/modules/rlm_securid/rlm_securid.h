@@ -73,9 +73,9 @@ typedef struct rlm_securid_t {
 	/*
 	 *	Configuration items.
 	 */
-	int		timer_limit;
-	int		max_sessions;
-	int		max_trips_per_session;
+	uint32_t	timer_limit;
+	uint32_t	max_sessions;
+	uint32_t	max_trips_per_session;
 } rlm_securid_t;
 
 /* Memory Management */

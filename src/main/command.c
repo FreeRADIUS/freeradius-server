@@ -66,23 +66,23 @@ struct fr_command_table_t {
 #define COMMAND_BUFFER_SIZE (1024)
 
 typedef struct fr_cs_buffer_t {
-	int	auth;
-	int	mode;
-	ssize_t offset;
-	ssize_t next;
-	char buffer[COMMAND_BUFFER_SIZE];
+	int		auth;
+	int		mode;
+	ssize_t		offset;
+	ssize_t		next;
+	char		buffer[COMMAND_BUFFER_SIZE];
 } fr_cs_buffer_t;
 
 #define COMMAND_SOCKET_MAGIC (0xffdeadee)
 typedef struct fr_command_socket_t {
-	uint32_t magic;
-	char	*path;
-	char	*copy;		/* <sigh> */
-	uid_t	uid;
-	gid_t	gid;
-	char	*uid_name;
-	char	*gid_name;
-	char	*mode_name;
+	uint32_t	magic;
+	char const	*path;
+	char		*copy;		/* <sigh> */
+	uid_t		uid;
+	gid_t		gid;
+	char const	*uid_name;
+	char const	*gid_name;
+	char const	*mode_name;
 	char user[256];
 
 	/*
@@ -91,7 +91,7 @@ typedef struct fr_command_socket_t {
 	 */
 	fr_ipaddr_t	src_ipaddr; /* src_port is always 0 */
 	fr_ipaddr_t	dst_ipaddr;
-	int		dst_port;
+	uint16_t	dst_port;
 	rad_listen_t	*inject_listener;
 	RADCLIENT	*inject_client;
 
@@ -99,16 +99,12 @@ typedef struct fr_command_socket_t {
 } fr_command_socket_t;
 
 static const CONF_PARSER command_config[] = {
-  { "socket",  PW_TYPE_STRING,
-    offsetof(fr_command_socket_t, path), NULL, "${run_dir}/radiusd.sock"},
-  { "uid",  PW_TYPE_STRING,
-    offsetof(fr_command_socket_t, uid_name), NULL, NULL},
-  { "gid",  PW_TYPE_STRING,
-    offsetof(fr_command_socket_t, gid_name), NULL, NULL},
-  { "mode",  PW_TYPE_STRING,
-    offsetof(fr_command_socket_t, mode_name), NULL, NULL},
+	{ "socket", FR_CONF_OFFSET(PW_TYPE_STRING, fr_command_socket_t, path), "${run_dir}/radiusd.sock" },
+	{ "uid", FR_CONF_OFFSET(PW_TYPE_STRING, fr_command_socket_t, uid_name), NULL },
+	{ "gid", FR_CONF_OFFSET(PW_TYPE_STRING, fr_command_socket_t, gid_name), NULL },
+	{ "mode", FR_CONF_OFFSET(PW_TYPE_STRING, fr_command_socket_t, mode_name), NULL },
 
-  { NULL, -1, 0, NULL, NULL }		/* end the list */
+	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
 
 static FR_NAME_NUMBER mode_names[] = {
@@ -975,7 +971,7 @@ static home_server_t *get_home_server(rad_listen_t *listener, int argc,
 				    char *argv[], int *last)
 {
 	home_server_t *home;
-	int port;
+	uint16_t port;
 	int proto = IPPROTO_UDP;
 	fr_ipaddr_t ipaddr;
 
@@ -1146,7 +1142,7 @@ static rad_listen_t *get_socket(rad_listen_t *listener, int argc,
 			       char *argv[], int *last)
 {
 	rad_listen_t *sock;
-	int port;
+	uint16_t port;
 	int proto = IPPROTO_UDP;
 	fr_ipaddr_t ipaddr;
 
@@ -1557,8 +1553,7 @@ static int command_set_module_config(rad_listen_t *listener, int argc, char *arg
 	 */
 	cf_pair_replace(mi->cs, cp, argv[2]);
 
-	rcode = cf_item_parse(mi->cs, argv[1], variables[i].type,
-			      data, argv[2]);
+	rcode = cf_item_parse(mi->cs, argv[1], variables[i].type, data, argv[2]);
 	if (rcode < 0) {
 		cprintf(listener, "ERROR: Failed to parse value\n");
 		return 0;
