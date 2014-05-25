@@ -2840,14 +2840,17 @@ sm_lib_safe=`echo "ldap_r" | sed 'y%./+-%__p_%'`
 sm_func_safe=`echo "ldap_init" | sed 'y%./+-%__p_%'`
 
 old_LIBS="$LIBS"
+old_CPPFLAGS="$CPPFLAGS"
 smart_lib=
+smart_ldflags=
 smart_lib_dir=
 
 if test "x$smart_try_dir" != "x"; then
   for try in $smart_try_dir; do
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for ldap_init in -lldap_r in $try" >&5
 $as_echo_n "checking for ldap_init in -lldap_r in $try... " >&6; }
-    LIBS="-L$try -lldap_r $old_LIBS -Wl,-rpath,$try"
+    LIBS="-lldap_r $old_LIBS"
+    CPPFLAGS="-L$try -Wl,-rpath,$try $old_CPPFLAGS"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 extern char ldap_init();
@@ -2861,7 +2864,8 @@ ldap_init()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-		 smart_lib="-L$try -lldap_r -Wl,-rpath,$try"
+		 smart_lib="-lldap_r"
+		 smart_ldflags="-L$try -Wl,-rpath,$try"
 		 { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 		 break
@@ -2874,6 +2878,7 @@ rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
   done
   LIBS="$old_LIBS"
+  CPPFLAGS="$old_CPPFLAGS"
 fi
 
 if test "x$smart_lib" = "x"; then
@@ -2965,7 +2970,8 @@ eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
   for try in $smart_lib_dir /usr/local/lib /opt/lib; do
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for ldap_init in -lldap_r in $try" >&5
 $as_echo_n "checking for ldap_init in -lldap_r in $try... " >&6; }
-    LIBS="-L$try -lldap_r $old_LIBS -Wl,-rpath,$try"
+    LIBS="-lldap_r $old_LIBS"
+    CPPFLAGS="-L$try -Wl,-rpath,$try $old_CPPFLAGS"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 extern char ldap_init();
@@ -2979,7 +2985,8 @@ ldap_init()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-		  smart_lib="-L$try -lldap_r -Wl,-rpath,$try"
+		  smart_lib="-lldap_r"
+		  smart_ldflags="-L$try -Wl,-rpath,$try"
 		  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 		  break
@@ -2992,12 +2999,13 @@ rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
   done
   LIBS="$old_LIBS"
+  CPPFLAGS="$old_CPPFLAGS"
 fi
 
 if test "x$smart_lib" != "x"; then
   eval "ac_cv_lib_${sm_lib_safe}_${sm_func_safe}=yes"
-  LIBS="$smart_lib $old_LIBS"
-  SMART_LIBS="$smart_lib $SMART_LIBS"
+  LIBS="$smart_ldflags $smart_lib $old_LIBS"
+  SMART_LIBS="$smart_ldflags $smart_lib $SMART_LIBS"
 fi
 
 	    if test "x$ac_cv_lib_ldap_r_ldap_init" != "xyes"; then
@@ -3010,14 +3018,17 @@ sm_lib_safe=`echo "ldap" | sed 'y%./+-%__p_%'`
 sm_func_safe=`echo "ldap_init" | sed 'y%./+-%__p_%'`
 
 old_LIBS="$LIBS"
+old_CPPFLAGS="$CPPFLAGS"
 smart_lib=
+smart_ldflags=
 smart_lib_dir=
 
 if test "x$smart_try_dir" != "x"; then
   for try in $smart_try_dir; do
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for ldap_init in -lldap in $try" >&5
 $as_echo_n "checking for ldap_init in -lldap in $try... " >&6; }
-    LIBS="-L$try -lldap $old_LIBS -Wl,-rpath,$try"
+    LIBS="-lldap $old_LIBS"
+    CPPFLAGS="-L$try -Wl,-rpath,$try $old_CPPFLAGS"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 extern char ldap_init();
@@ -3031,7 +3042,8 @@ ldap_init()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-		 smart_lib="-L$try -lldap -Wl,-rpath,$try"
+		 smart_lib="-lldap"
+		 smart_ldflags="-L$try -Wl,-rpath,$try"
 		 { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 		 break
@@ -3044,6 +3056,7 @@ rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
   done
   LIBS="$old_LIBS"
+  CPPFLAGS="$old_CPPFLAGS"
 fi
 
 if test "x$smart_lib" = "x"; then
@@ -3135,7 +3148,8 @@ eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
   for try in $smart_lib_dir /usr/local/lib /opt/lib; do
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for ldap_init in -lldap in $try" >&5
 $as_echo_n "checking for ldap_init in -lldap in $try... " >&6; }
-    LIBS="-L$try -lldap $old_LIBS -Wl,-rpath,$try"
+    LIBS="-lldap $old_LIBS"
+    CPPFLAGS="-L$try -Wl,-rpath,$try $old_CPPFLAGS"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 extern char ldap_init();
@@ -3149,7 +3163,8 @@ ldap_init()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-		  smart_lib="-L$try -lldap -Wl,-rpath,$try"
+		  smart_lib="-lldap"
+		  smart_ldflags="-L$try -Wl,-rpath,$try"
 		  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 		  break
@@ -3162,12 +3177,13 @@ rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
   done
   LIBS="$old_LIBS"
+  CPPFLAGS="$old_CPPFLAGS"
 fi
 
 if test "x$smart_lib" != "x"; then
   eval "ac_cv_lib_${sm_lib_safe}_${sm_func_safe}=yes"
-  LIBS="$smart_lib $old_LIBS"
-  SMART_LIBS="$smart_lib $SMART_LIBS"
+  LIBS="$smart_ldflags $smart_lib $old_LIBS"
+  SMART_LIBS="$smart_ldflags $smart_lib $SMART_LIBS"
 fi
 
 	    if test "x$ac_cv_lib_ldap_ldap_init" != "xyes"; then
@@ -3180,7 +3196,7 @@ fi
 
 
 ac_safe=`echo "ldap.h" | sed 'y%./+-%__pm%'`
-old_CFLAGS="$CFLAGS"
+old_CPPFLAGS="$CPPFLAGS"
 smart_include=
 smart_include_dir=
 
@@ -3188,7 +3204,7 @@ if test "x$smart_try_dir" != "x"; then
   for try in $smart_try_dir; do
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for ldap.h in $try" >&5
 $as_echo_n "checking for ldap.h in $try... " >&6; }
-    CFLAGS="$old_CFLAGS -isystem $try"
+    CPPFLAGS="-isystem $try $old_CPPFLAGS"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
@@ -3217,7 +3233,7 @@ $as_echo "no" >&6; }
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
   done
-  CFLAGS="$old_CFLAGS"
+  CPPFLAGS="$old_CPPFLAGS"
 fi
 
 if test "x$smart_include" = "x"; then
@@ -3283,7 +3299,7 @@ eval "smart_include_dir=\"\$smart_include_dir $DIRS\""
   for try in $smart_include_dir /usr/local/include /opt/include; do
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for ldap.h in $try" >&5
 $as_echo_n "checking for ldap.h in $try... " >&6; }
-    CFLAGS="$old_CFLAGS -isystem $try"
+    CPPFLAGS="-isystem $try $old_CPPFLAGS"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
@@ -3312,13 +3328,13 @@ $as_echo "no" >&6; }
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
   done
-  CFLAGS="$old_CFLAGS"
+  CPPFLAGS="$old_CPPFLAGS"
 fi
 
 if test "x$smart_include" != "x"; then
   eval "ac_cv_header_$ac_safe=yes"
-  CFLAGS="$old_CFLAGS $smart_include"
-  SMART_CFLAGS="$SMART_CFLAGS $smart_include"
+  CPPFLAGS="$smart_include $old_CPPFLAGS"
+  SMART_CPPFLAGS="$smart_include $SMART_CPPFLAGS"
 fi
 
 	if test "$ac_cv_header_ldap_h" != "yes"; then
@@ -3329,12 +3345,12 @@ fi
 	if test "x$fail" = "x"; then
 	    ac_fn_c_check_func "$LINENO" "ldap_start_tls_s" "ac_cv_func_ldap_start_tls_s"
 if test "x$ac_cv_func_ldap_start_tls_s" = xyes; then :
-   SMART_CFLAGS="$SMART_CFLAGS -DHAVE_LDAP_START_TLS"
+   SMART_CPPFLAGS="$SMART_CPPFLAGS -DHAVE_LDAP_START_TLS"
 fi
 
 	    ac_fn_c_check_func "$LINENO" "ldap_initialize" "ac_cv_func_ldap_initialize"
 if test "x$ac_cv_func_ldap_initialize" = xyes; then :
-   SMART_CFLAGS="$SMART_CFLAGS -DHAVE_LDAP_INITIALIZE"
+   SMART_CPPFLAGS="$SMART_CPPFLAGS -DHAVE_LDAP_INITIALIZE"
 fi
 
 
@@ -3407,7 +3423,7 @@ $as_echo "$as_me: WARNING: $libsuggestion" >&2;}
 fi
 
 mod_ldflags=$SMART_LIBS
-mod_cflags="$SMART_CFLAGS -DWITH_EDIR -DLDAP_DEPRECATED -DLDAP_SET_REBIND_PROC_ARGS=$ac_cv_ldap_set_rebind_proc"
+mod_cflags="$SMART_CPPFLAGS -DWITH_EDIR -DLDAP_DEPRECATED -DLDAP_SET_REBIND_PROC_ARGS=$ac_cv_ldap_set_rebind_proc"
 
 
 

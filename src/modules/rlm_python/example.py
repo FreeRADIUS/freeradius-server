@@ -1,58 +1,63 @@
 #! /usr/bin/env python
 #
-# Definitions for RADIUS programs
-#
-# Copyright 2002 Miguel A.L. Paraz <mparaz@mparaz.com>
-#
-# This should only be used when testing modules.
-# Inside freeradius, the 'radiusd' Python module is created by the C module
-# and the definitions are automatically created.
+# Python module example file
+# Miguel A.L. Paraz <mparaz@mparaz.com>
 #
 # $Id$
 
-# from modules.h
+import radiusd
 
-RLM_MODULE_REJECT = 0
-RLM_MODULE_FAIL = 1
-RLM_MODULE_OK = 2
-RLM_MODULE_HANDLED = 3
-RLM_MODULE_INVALID = 4
-RLM_MODULE_USERLOCK = 5
-RLM_MODULE_NOTFOUND = 6
-RLM_MODULE_NOOP = 7	
-RLM_MODULE_UPDATED = 8
-RLM_MODULE_NUMCODES = 9
+def instantiate(p):
+  print "*** instantiate ***"
+  print p
+
+def authorize(p):
+  print "*** authorize ***"
+  print
+  radiusd.radlog(radiusd.L_INFO, '*** radlog call in authorize ***')
+  print
+  print p
+  return radiusd.RLM_MODULE_OK
+
+def preacct(p):
+  print "*** preacct ***"
+  print p
+  return radiusd.RLM_MODULE_OK
+
+def accounting(p):
+  print "*** accounting ***"
+  radiusd.radlog(radiusd.L_INFO, '*** radlog call in accounting (0) ***')
+  print
+  print p
+  return radiusd.RLM_MODULE_OK
+
+def pre_proxy(p):
+  print "*** pre_proxy ***"
+  print p
+  return radiusd.RLM_MODULE_OK
+
+def post_proxy(p):
+  print "*** post_proxy ***"
+  print p
+  return radiusd.RLM_MODULE_OK
+
+def post_auth(p):
+  print "*** post_auth ***"
+  print p
+  return radiusd.RLM_MODULE_OK
+
+def recv_coa(p):
+  print "*** recv_coa ***"
+  print p
+  return radiusd.RLM_MODULE_OK
+
+def send_coa(p):
+  print "*** send_coa ***"
+  print p
+  return radiusd.RLM_MODULE_OK
 
 
-# from radiusd.h
-L_DBG = 1
-L_AUTH = 2
-L_INFO = 3
-L_ERR = 4
-L_PROXY	= 5
-L_CONS = 128
-
-OP={       '{':2,   '}':3,   '(':4,   ')':5,   ',':6,   ';':7,  '+=':8,  '-=':9,  ':=':10,
-  '=':11, '!=':12, '>=':13,  '>':14, '<=':15,  '<':16, '=~':17, '!~':18, '=*':19, '!*':20,
- '==':21 , '#':22 }
-
-OP_TRY = (':=', '+=', '-=', '=' )
-
-def resolve(*lines):
-    tuples = []
-    for line in lines:
-	for op in OP_TRY:
-	    arr = line.rsplit(op)
-	    if len(arr)==2:
-		tuples.append((str(arr[0].strip()),OP[op],str(arr[1].strip())))
-		break
-    return tuple(tuples)
-
-# log function
-def radlog(level, msg):
-    import sys
-    sys.stdout.write(msg + '\n')
-
-    level = level
-
+def detach():
+  print "*** goodbye from example.py ***"
+  return radiusd.RLM_MODULE_OK
 

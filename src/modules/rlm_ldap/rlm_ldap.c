@@ -128,6 +128,7 @@ static CONF_PARSER group_config[] = {
 	{ "membership_filter", FR_CONF_OFFSET(PW_TYPE_STRING, ldap_instance_t, groupobj_membership_filter), NULL },
 	{ "cacheable_name", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, ldap_instance_t, cacheable_group_name), "no" },
 	{ "cacheable_dn", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, ldap_instance_t, cacheable_group_dn), "no" },
+	{ "cache_attribute", FR_CONF_OFFSET(PW_TYPE_STRING, ldap_instance_t, cache_attribute), NULL },
 
 	{ NULL, -1, 0, NULL, NULL }
 };
@@ -650,7 +651,11 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 			 inst->xlat_name);
 		memset(&flags, 0, sizeof(flags));
 
-		dict_addattr(buffer, -1, 0, PW_TYPE_STRING, flags);
+		if (dict_addattr(buffer, -1, 0, PW_TYPE_STRING, flags) < 0) {
+			LDAP_ERR("Error creating group attribute: %s", fr_strerror());
+
+			return -1;
+		}
 		inst->group_da = dict_attrbyname(buffer);
 		if (!inst->group_da) {
 			LDAP_ERR("Failed creating attribute %s", buffer);
@@ -669,6 +674,23 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	}
 
 	xlat_register(inst->xlat_name, ldap_xlat, rlm_ldap_escape_func, inst);
+
+	/*
+	 *	Setup the cache attribute
+	 */
+	if (inst->cache_attribute) {
+		ATTR_FLAGS flags;
+		memset(&flags, 0, sizeof(flags));
+
+		if (dict_addattr(inst->cache_attribute, -1, 0, PW_TYPE_STRING, flags) < 0) {
+			LDAP_ERR("Error creating cache attribute: %s", fr_strerror());
+
+			return -1;
+		}
+		inst->cache_da = dict_attrbyname(inst->cache_attribute);
+	} else {
+		inst->cache_da = inst->group_da;	/* Default to the group_da */
+	}
 
 	/*
 	 *	Initialize the socket pool.

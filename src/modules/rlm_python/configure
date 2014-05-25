@@ -2862,7 +2862,7 @@ fi
 
 
 ac_safe=`echo "Python.h" | sed 'y%./+-%__pm%'`
-old_CFLAGS="$CFLAGS"
+old_CPPFLAGS="$CPPFLAGS"
 smart_include=
 smart_include_dir=
 
@@ -2870,7 +2870,7 @@ if test "x$smart_try_dir" != "x"; then
   for try in $smart_try_dir; do
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for Python.h in $try" >&5
 $as_echo_n "checking for Python.h in $try... " >&6; }
-    CFLAGS="$old_CFLAGS -isystem $try"
+    CPPFLAGS="-isystem $try $old_CPPFLAGS"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
@@ -2899,7 +2899,7 @@ $as_echo "no" >&6; }
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
   done
-  CFLAGS="$old_CFLAGS"
+  CPPFLAGS="$old_CPPFLAGS"
 fi
 
 if test "x$smart_include" = "x"; then
@@ -2965,7 +2965,7 @@ eval "smart_include_dir=\"\$smart_include_dir $DIRS\""
   for try in $smart_include_dir /usr/local/include /opt/include; do
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for Python.h in $try" >&5
 $as_echo_n "checking for Python.h in $try... " >&6; }
-    CFLAGS="$old_CFLAGS -isystem $try"
+    CPPFLAGS="-isystem $try $old_CPPFLAGS"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
@@ -2994,19 +2994,19 @@ $as_echo "no" >&6; }
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
   done
-  CFLAGS="$old_CFLAGS"
+  CPPFLAGS="$old_CPPFLAGS"
 fi
 
 if test "x$smart_include" != "x"; then
   eval "ac_cv_header_$ac_safe=yes"
-  CFLAGS="$old_CFLAGS $smart_include"
-  SMART_CFLAGS="$SMART_CFLAGS $smart_include"
+  CPPFLAGS="$smart_include $old_CPPFLAGS"
+  SMART_CPPFLAGS="$smart_include $SMART_CPPFLAGS"
 fi
 
 		CFLAGS=$old_CFLAGS
 
 		if test "x$ac_cv_header_Python_h" = "xyes"; then
-			mod_cflags=${SMART_CFLAGS}
+			mod_cflags="$SMART_CPPFLAGS"
 		else
 			fail="$fail Python.h"
 			targetname=
@@ -3021,14 +3021,17 @@ sm_lib_safe=`echo "python${PY_VERSION}" | sed 'y%./+-%__p_%'`
 sm_func_safe=`echo "Py_Initialize" | sed 'y%./+-%__p_%'`
 
 old_LIBS="$LIBS"
+old_CPPFLAGS="$CPPFLAGS"
 smart_lib=
+smart_ldflags=
 smart_lib_dir=
 
 if test "x$smart_try_dir" != "x"; then
   for try in $smart_try_dir; do
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for Py_Initialize in -lpython${PY_VERSION} in $try" >&5
 $as_echo_n "checking for Py_Initialize in -lpython${PY_VERSION} in $try... " >&6; }
-    LIBS="-L$try -lpython${PY_VERSION} $old_LIBS -Wl,-rpath,$try"
+    LIBS="-lpython${PY_VERSION} $old_LIBS"
+    CPPFLAGS="-L$try -Wl,-rpath,$try $old_CPPFLAGS"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 extern char Py_Initialize();
@@ -3042,7 +3045,8 @@ Py_Initialize()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-		 smart_lib="-L$try -lpython${PY_VERSION} -Wl,-rpath,$try"
+		 smart_lib="-lpython${PY_VERSION}"
+		 smart_ldflags="-L$try -Wl,-rpath,$try"
 		 { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 		 break
@@ -3055,6 +3059,7 @@ rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
   done
   LIBS="$old_LIBS"
+  CPPFLAGS="$old_CPPFLAGS"
 fi
 
 if test "x$smart_lib" = "x"; then
@@ -3146,7 +3151,8 @@ eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
   for try in $smart_lib_dir /usr/local/lib /opt/lib; do
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for Py_Initialize in -lpython${PY_VERSION} in $try" >&5
 $as_echo_n "checking for Py_Initialize in -lpython${PY_VERSION} in $try... " >&6; }
-    LIBS="-L$try -lpython${PY_VERSION} $old_LIBS -Wl,-rpath,$try"
+    LIBS="-lpython${PY_VERSION} $old_LIBS"
+    CPPFLAGS="-L$try -Wl,-rpath,$try $old_CPPFLAGS"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 extern char Py_Initialize();
@@ -3160,7 +3166,8 @@ Py_Initialize()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-		  smart_lib="-L$try -lpython${PY_VERSION} -Wl,-rpath,$try"
+		  smart_lib="-lpython${PY_VERSION}"
+		  smart_ldflags="-L$try -Wl,-rpath,$try"
 		  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 		  break
@@ -3173,12 +3180,13 @@ rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
   done
   LIBS="$old_LIBS"
+  CPPFLAGS="$old_CPPFLAGS"
 fi
 
 if test "x$smart_lib" != "x"; then
   eval "ac_cv_lib_${sm_lib_safe}_${sm_func_safe}=yes"
-  LIBS="$smart_lib $old_LIBS"
-  SMART_LIBS="$smart_lib $SMART_LIBS"
+  LIBS="$smart_ldflags $smart_lib $old_LIBS"
+  SMART_LIBS="$smart_ldflags $smart_lib $SMART_LIBS"
 fi
 
 		LIBS=$old_LIBS
@@ -3194,14 +3202,17 @@ sm_lib_safe=`echo "python${PY_VERSION}m" | sed 'y%./+-%__p_%'`
 sm_func_safe=`echo "Py_Initialize" | sed 'y%./+-%__p_%'`
 
 old_LIBS="$LIBS"
+old_CPPFLAGS="$CPPFLAGS"
 smart_lib=
+smart_ldflags=
 smart_lib_dir=
 
 if test "x$smart_try_dir" != "x"; then
   for try in $smart_try_dir; do
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for Py_Initialize in -lpython${PY_VERSION}m in $try" >&5
 $as_echo_n "checking for Py_Initialize in -lpython${PY_VERSION}m in $try... " >&6; }
-    LIBS="-L$try -lpython${PY_VERSION}m $old_LIBS -Wl,-rpath,$try"
+    LIBS="-lpython${PY_VERSION}m $old_LIBS"
+    CPPFLAGS="-L$try -Wl,-rpath,$try $old_CPPFLAGS"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 extern char Py_Initialize();
@@ -3215,7 +3226,8 @@ Py_Initialize()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-		 smart_lib="-L$try -lpython${PY_VERSION}m -Wl,-rpath,$try"
+		 smart_lib="-lpython${PY_VERSION}m"
+		 smart_ldflags="-L$try -Wl,-rpath,$try"
 		 { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 		 break
@@ -3228,6 +3240,7 @@ rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
   done
   LIBS="$old_LIBS"
+  CPPFLAGS="$old_CPPFLAGS"
 fi
 
 if test "x$smart_lib" = "x"; then
@@ -3319,7 +3332,8 @@ eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
   for try in $smart_lib_dir /usr/local/lib /opt/lib; do
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for Py_Initialize in -lpython${PY_VERSION}m in $try" >&5
 $as_echo_n "checking for Py_Initialize in -lpython${PY_VERSION}m in $try... " >&6; }
-    LIBS="-L$try -lpython${PY_VERSION}m $old_LIBS -Wl,-rpath,$try"
+    LIBS="-lpython${PY_VERSION}m $old_LIBS"
+    CPPFLAGS="-L$try -Wl,-rpath,$try $old_CPPFLAGS"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 extern char Py_Initialize();
@@ -3333,7 +3347,8 @@ Py_Initialize()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-		  smart_lib="-L$try -lpython${PY_VERSION}m -Wl,-rpath,$try"
+		  smart_lib="-lpython${PY_VERSION}m"
+		  smart_ldflags="-L$try -Wl,-rpath,$try"
 		  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 		  break
@@ -3346,12 +3361,13 @@ rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
   done
   LIBS="$old_LIBS"
+  CPPFLAGS="$old_CPPFLAGS"
 fi
 
 if test "x$smart_lib" != "x"; then
   eval "ac_cv_lib_${sm_lib_safe}_${sm_func_safe}=yes"
-  LIBS="$smart_lib $old_LIBS"
-  SMART_LIBS="$smart_lib $SMART_LIBS"
+  LIBS="$smart_ldflags $smart_lib $old_LIBS"
+  SMART_LIBS="$smart_ldflags $smart_lib $SMART_LIBS"
 fi
 
 			eval t=\${ac_cv_lib_${sm_lib_safe}_${sm_func_safe}}

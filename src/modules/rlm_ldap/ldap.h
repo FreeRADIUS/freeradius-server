@@ -111,6 +111,12 @@ typedef struct ldap_instance {
 							//!< resolution necessary to determine the DNs of those groups,
 							//!< then right them to the control list (LDAP-GroupDN).
 
+	char const	*cache_attribute;		//!< Sets the attribute we use when creating and retrieving
+							//!< cached group memberships.
+
+	DICT_ATTR const	*cache_da;			//!< The DA associated with this specific version of the
+							//!< rlm_ldap module.
+
 	DICT_ATTR const	*group_da;			//!< The DA associated with this specific version of the
 							//!< rlm_ldap module.
 
