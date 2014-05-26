@@ -46,7 +46,7 @@ typedef struct _securid_session_t {
 	fr_ipaddr_t		  src_ipaddr;
 	time_t			  timestamp;
 	unsigned int		  session_id;
-	int			  trips;
+	uint32_t		  trips;
 
 	char			  *pin;	     /* previous pin if user entered it during NEW-PIN mode process */
 	char			  *identity; /* save user's identity name for future use */
