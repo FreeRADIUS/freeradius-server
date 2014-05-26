@@ -44,7 +44,7 @@ typedef struct rlm_cache_t {
 	char const		*key;
 	uint32_t		ttl;
 	uint32_t		max_entries;
-	uint32_t		epoch;
+	int32_t			epoch;
 	bool			stats;
 	CONF_SECTION		*cs;
 	rbtree_t		*cache;
@@ -77,6 +77,28 @@ typedef struct rlm_cache_entry_t {
 #endif
 
 #define MAX_ATTRMAP	128
+
+/*
+ *	A mapping of configuration file names to internal variables.
+ *
+ *	Note that the string is dynamically allocated, so it MUST
+ *	be freed.  When the configuration file parse re-reads the string,
+ *	it free's the old one, and strdup's the new one, placing the pointer
+ *	to the strdup'd string into 'config.string'.  This gets around
+ *	buffer over-flows.
+ */
+static const CONF_PARSER module_config[] = {
+	{ "key", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_REQUIRED, rlm_cache_t, key), NULL },
+	{ "ttl", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_cache_t, ttl), "500" },
+	{ "max_entries", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_cache_t, max_entries), "16384" },
+
+	/* Should be a type which matches time_t, @fixme before 2038 */
+	{ "epoch", FR_CONF_OFFSET(PW_TYPE_SIGNED, rlm_cache_t, epoch), "0" },
+	{ "add_stats", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_cache_t, stats), "no" },
+
+	{ NULL, -1, 0, NULL, NULL }		/* end the list */
+};
+
 
 /*
  *	Compare two entries by key.  There may only be one entry with
@@ -728,26 +750,6 @@ done:
 
 	return ret;
 }
-
-/*
- *	A mapping of configuration file names to internal variables.
- *
- *	Note that the string is dynamically allocated, so it MUST
- *	be freed.  When the configuration file parse re-reads the string,
- *	it free's the old one, and strdup's the new one, placing the pointer
- *	to the strdup'd string into 'config.string'.  This gets around
- *	buffer over-flows.
- */
-static const CONF_PARSER module_config[] = {
-	{ "key", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_REQUIRED, rlm_cache_t, key), NULL },
-	{ "ttl", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_cache_t, ttl), "500" },
-	{ "max_entries", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_cache_t, max_entries), "16384" },
-	{ "epoch", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_cache_t, epoch), "0" },
-	{ "add_stats", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_cache_t, stats), "no" },
-
-	{ NULL, -1, 0, NULL, NULL }		/* end the list */
-};
-
 
 /*
  *	Only free memory we allocated.  The strings allocated via
