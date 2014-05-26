@@ -86,7 +86,7 @@ typedef struct in_addr _inaddr_t;
 #  define FR_CONF_POINTER(_t, _p)	_t, 0, FR_CONF_TYPE_CHECK(((_t) & 0xff), __typeof__(_p), _p)
 #  define FR_ITEM_POINTER(_t, _p)	_t, FR_CONF_TYPE_CHECK(((_t) & 0xff), __typeof__(_p), _p)
 #else
-#  define FR_CONF_OFFSET(_t, _s, _f)	_t, offsetof(_x, _f), NULL
+#  define FR_CONF_OFFSET(_t, _s, _f)	_t, offsetof(_s, _f), NULL
 #  define FR_CONF_POINTER(_t, _p)	_t, 0, _p
 #  define FR_ITEM_POINTER(_t, _p)	_t, _p
 #endif
