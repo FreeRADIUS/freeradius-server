@@ -1188,7 +1188,7 @@ static void thread_pool_manage(time_t now)
 	 *	passed since we last created one.  This helps to minimize
 	 *	the amount of create/delete cycles.
 	 */
-	if ((now - thread_pool.time_last_spawned) < thread_pool.cleanup_delay) {
+	if ((now - thread_pool.time_last_spawned) < (int)thread_pool.cleanup_delay) {
 		return;
 	}
 

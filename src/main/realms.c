@@ -682,11 +682,10 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 		home->response_window.tv_usec = tmp;
 
 	} else {
-		uint32_t tmp = home->response_window.tv_sec; /* which isn't an integer */
+		int tmp = (int)home->response_window.tv_sec; /* which isn't an integer */
 
 		FR_INTEGER_BOUND_CHECK("response_window", tmp, <=, 60);
-		FR_INTEGER_BOUND_CHECK("response_window", tmp, <=, main_config.max_request_time);
-		FR_INTEGER_BOUND_CHECK("response_window", tmp, <=, main_config.max_request_time);
+		FR_INTEGER_BOUND_CHECK("response_window", tmp, <=, (int)main_config.max_request_time);
 
 		if (home->response_window.tv_sec != tmp) {
 			home->response_window.tv_sec = tmp;
