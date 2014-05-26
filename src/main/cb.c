@@ -32,6 +32,8 @@ void cbtls_info(SSL const *s, int where, int ret)
 	char const *str, *state;
 	REQUEST *request = SSL_get_ex_data(s, FR_TLS_EX_INDEX_REQUEST);
 
+	rad_assert(request != NULL);
+
 	if ((where & ~SSL_ST_MASK) & SSL_ST_CONNECT) {
 		str="TLS_connect";
 	} else if (((where & ~SSL_ST_MASK)) & SSL_ST_ACCEPT) {
@@ -44,42 +46,25 @@ void cbtls_info(SSL const *s, int where, int ret)
 	state = state ? state : "<none>";
 
 	if ((where & SSL_CB_LOOP) || (where & SSL_CB_HANDSHAKE_START) || (where & SSL_CB_HANDSHAKE_DONE)) {
-		if (request) {
-			RDEBUG2("%s: %s", str, state);
-		} else {
-			DEBUG2("tls: %s: %s", str, state);
-		}
+		RDEBUG2("%s: %s", str, state);
 		return;
 	}
 
 	if (where & SSL_CB_ALERT) {
-		if (request) {
-			RERROR("TLS Alert %s:%s:%s", (where & SSL_CB_READ) ? "read": "write",
-			       SSL_alert_type_string_long(ret), SSL_alert_desc_string_long(ret));
-		} else {
-			ERROR("tls: TLS Alert %s:%s:%s", (where & SSL_CB_READ) ? "read": "write",
-			      SSL_alert_type_string_long(ret), SSL_alert_desc_string_long(ret));
-		}
+		RERROR("TLS Alert %s:%s:%s", (where & SSL_CB_READ) ? "read": "write",
+		       SSL_alert_type_string_long(ret), SSL_alert_desc_string_long(ret));
 		return;
 	}
 
 	if (where & SSL_CB_EXIT) {
 		if (ret == 0) {
-			if (request) {
-				RERROR("%s: Failed in %s", str, state);
-			} else {
-				ERROR("tls: %s: Failed in %s", str, state);
-			}
+			RERROR("%s: Failed in %s", str, state);
 			return;
 		}
 
 		if (ret < 0) {
 			if (SSL_want_read(s)) {
-				if (request) {
-					RDEBUG2("%s: Need to read more data: %s", str, state);
-				} else {
-					DEBUG2("tls: %s: Need to read more data: %s", str, state);
-				}
+				RDEBUG2("%s: Need to read more data: %s", str, state);
 				return;
 			}
 			ERROR("tls: %s: Error in %s", str, state);
