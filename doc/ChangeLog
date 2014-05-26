@@ -4,10 +4,14 @@ FreeRADIUS 3.0.4 Mon 12 May 2014 15:30:00 EDT urgency=medium
 	  of a second.  See proxy.conf.
 	* radmin now supports "show module status", as the
 	  counterpart to "set module status"
-	* Better indentation in debugging mode
 	* Added dictionary ericsson.packet.ccore.networks
 	* Add %{tag:} expansion to get the tag value of an 
 	  attribute.
+	* Report 'application_name' in connections to PostgreSQL
+	  servers. FreeRADIUS connections will now appear as 
+	  'FreeRADIUS <version> - <name>' in pg_stat_activity.
+	* All config item fields are now type checked at compile
+	  time to prevent issues similar to #634 occuring again.
 
 	Bug fixes
 	* make case-insensitive regular expressions work again.
