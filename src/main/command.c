@@ -700,11 +700,11 @@ static int command_show_home_servers(rad_listen_t *listener, UNUSED int argc, UN
 			 *	The *reported* state changes because
 			 *	the internal state machine NEEDS THE
 			 *	RIGHT STATE.  However, reporting that
-			 *	to the admin will confuse him.  So...
-			 *	we lie.  Yes, that dress doesn't make
-			 *	you look fat.
+			 *	to the admin will confuse them.
+			 *	So... we lie.  No, that dress doesn't
+			 *	make you look fat...
 			 */
-			if ((home->last_packet_recv + home->ping_interval) >= now) {
+			if ((home->last_packet_recv + (int)home->ping_interval) >= now) {
 				state = "alive";
 			} else {
 				state = "unknown";

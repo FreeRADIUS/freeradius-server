@@ -391,7 +391,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 		 *	State is valid, but check expiry.
 		 */
 		then = ntohl(then);
-		if (time(NULL) - then > inst->challenge_delay) {
+		if ((time(NULL) - then) > (int)inst->challenge_delay) {
 			REDEBUG("bad radstate for [%s]: expired",username);
 
 			return RLM_MODULE_REJECT;

@@ -286,7 +286,7 @@ static void eaplist_expire(rlm_eap_t *inst, REQUEST *request, time_t timestamp)
 		 *	Expire entries from the start of the list.
 		 *	They should be the oldest ones.
 		 */
-		if ((timestamp - handler->timestamp) > inst->timer_limit) {
+		if ((timestamp - handler->timestamp) > (int)inst->timer_limit) {
 			rbnode_t *node;
 			node = rbtree_find(inst->session_tree, handler);
 			rad_assert(node != NULL);

@@ -492,7 +492,7 @@ static RADIUS_PACKET *detail_poll(rad_listen_t *listener)
 			 *	retry it.
 			 */
 		case STATE_RUNNING:
-			if (time(NULL) < (data->running + data->retry_interval)) {
+			if (time(NULL) < (data->running + (int)data->retry_interval)) {
 				return NULL;
 			}
 

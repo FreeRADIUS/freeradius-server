@@ -191,7 +191,7 @@ tls_session_t *tls_new_session(fr_tls_server_conf_t *conf, REQUEST *request,
 	 *	FIXME: Also do it every N sessions?
 	 */
 	if (conf->session_cache_enable &&
-	    ((conf->session_last_flushed + (conf->session_timeout * 1800)) <= request->timestamp)){
+	    ((conf->session_last_flushed + ((int)conf->session_timeout * 1800)) <= request->timestamp)){
 		RDEBUG2("Flushing SSL sessions (of #%ld)",
 			SSL_CTX_sess_number(conf->ctx));
 
