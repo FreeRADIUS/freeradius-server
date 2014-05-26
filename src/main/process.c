@@ -1319,6 +1319,17 @@ STATE_MACHINE_DECL(request_finish)
 	if ((request->reply->code == PW_CODE_AUTHENTICATION_REJECT) &&
 	    (request->root->reject_delay > 0)) {
 		request->response_delay = request->root->reject_delay;
+
+#ifdef WITH_PROXY
+		/*
+		 *	If we timed out a proxy packet, don't delay
+		 *	the reject any more.
+		 */
+		if (request->proxy && !request->proxy_reply) {
+			request->response_delay = 0;
+		}
+#endif
+
 	}
 
 	/*
