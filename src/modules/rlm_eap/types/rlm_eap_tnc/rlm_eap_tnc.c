@@ -60,7 +60,7 @@
 #define SET_START(x) 		((x) | (0x20))
 
 typedef struct rlm_eap_tnc {
-	char	*connection_string;
+	char const	*connection_string;
 } rlm_eap_tnc_t;
 
 static CONF_PARSER module_config[] = {
