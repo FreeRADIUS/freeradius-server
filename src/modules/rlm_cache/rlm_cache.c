@@ -224,7 +224,7 @@ static rlm_cache_entry_t *cache_find(rlm_cache_t *inst, REQUEST *request,
 	 *	passed.  Delete it, and pretend it doesn't exist.
 	 */
 	if ((c->expires < request->timestamp) ||
-	    (c->created < inst->epoch)) {
+	    (c->created < (int)inst->epoch)) {
 	delete:
 		RDEBUG("Entry has expired, removing");
 
