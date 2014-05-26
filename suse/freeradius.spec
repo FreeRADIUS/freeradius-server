@@ -26,6 +26,7 @@ BuildRequires: gdbm-devel
 BuildRequires: glibc-devel
 BuildRequires: libtalloc-devel
 BuildRequires: openldap2-devel
+BuildRequires: openssl
 BuildRequires: openssl-devel
 BuildRequires: pam-devel
 BuildRequires: perl
@@ -216,6 +217,7 @@ rm -rf $RPM_BUILD_ROOT
 %{_sysconfdir}/init.d/freeradius
 %config %{_sysconfdir}/pam.d/radiusd
 %config %{_sysconfdir}/logrotate.d/freeradius-server
+%dir %{_sysconfdir}/tmpfiles.d
 %config %{_sysconfdir}/tmpfiles.d/radiusd.conf
 %dir %attr(755,radiusd,radiusd) %{_localstatedir}/lib/radiusd
 # configs
@@ -243,13 +245,16 @@ rm -rf $RPM_BUILD_ROOT
 %attr(755,root,root) %{_libdir}/freeradius/rlm_*.so*
 
 %files utils
+%defattr(-,root,root)
 /usr/bin/*
 
 %files libs
 # RADIUS shared libs
 %attr(755,root,root) %dir %{_libdir}/freeradius
-%attr(755,root,root) %{_libdir}/freeradius/*.so*
+%attr(755,root,root) %{_libdir}/freeradius/lib*.so*
+%attr(755,root,root) %{_libdir}/freeradius/proto*.so*
 
 %files devel
 %defattr(-,root,root)
+%dir /usr/include/freeradius
 %attr(644,root,root) /usr/include/freeradius/*.h
