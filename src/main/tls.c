@@ -129,6 +129,7 @@ tls_session_t *tls_new_client_session(fr_tls_server_conf_t *conf, int fd)
 {
 	int verify_mode;
 	tls_session_t *ssn = NULL;
+	REQUEST *request;
 
 	ssn = talloc_zero(conf, tls_session_t);
 	if (!ssn) return NULL;
@@ -138,7 +139,13 @@ tls_session_t *tls_new_client_session(fr_tls_server_conf_t *conf, int fd)
 	SSL_CTX_set_mode(ssn->ctx, SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER | SSL_MODE_AUTO_RETRY);
 
 	ssn->ssl = SSL_new(ssn->ctx);
-	rad_assert(ssn->ssl != NULL);
+	if (!ssn->ssl) {
+		talloc_free(ssn);
+		return NULL;
+	}
+
+	request = talloc_zero(ssn, REQUEST);
+	SSL_set_ex_data(ssn->ssl, FR_TLS_EX_INDEX_REQUEST, (void *)request);
 
 	/*
 	 *	Add the message callback to identify what type of
