@@ -282,7 +282,7 @@ void radius_update_listener(rad_listen_t *this)
 #define FD_MUTEX_UNLOCK(_x)
 #endif
 
-static int request_num_counter = 0;
+static int request_num_counter = 1;
 #ifdef WITH_PROXY
 static int request_will_proxy(REQUEST *request);
 static int request_proxy(REQUEST *request, int retransmit);
