@@ -80,6 +80,7 @@ fr_connection_pool_t *fr_connection_pool_init(CONF_SECTION *cs,
 void fr_connection_pool_delete(fr_connection_pool_t *pool);
 
 void *fr_connection_get(fr_connection_pool_t *pool);
+int fr_connection_get_num(fr_connection_pool_t *pool);
 void fr_connection_release(fr_connection_pool_t *pool, void *conn);
 void *fr_connection_reconnect(fr_connection_pool_t *pool, void *conn);
 int fr_connection_del(fr_connection_pool_t *pool, void *conn);

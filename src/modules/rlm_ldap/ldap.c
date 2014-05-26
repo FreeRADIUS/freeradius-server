@@ -523,6 +523,8 @@ ldap_rcode_t rlm_ldap_bind(ldap_instance_t const *inst, REQUEST *request, ldap_h
 	char const	*error = NULL;
 	char 		*extra = NULL;
 
+	int 		i;
+
 	rad_assert(*pconn && (*pconn)->handle);
 
 	/*
@@ -530,72 +532,79 @@ ldap_rcode_t rlm_ldap_bind(ldap_instance_t const *inst, REQUEST *request, ldap_h
 	 */
 	if (!dn) dn = "";
 
-retry:
-	msgid = ldap_bind((*pconn)->handle, dn, password, LDAP_AUTH_SIMPLE);
-	/* We got a valid message ID */
-	if (msgid >= 0) {
-		if (request) {
-			RDEBUG2("Waiting for bind result...");
-		} else {
-			DEBUG2("rlm_ldap (%s): Waiting for bind result...", inst->xlat_name);
-		}
-	}
-
-	status = rlm_ldap_result(inst, *pconn, msgid, dn, NULL, &error, &extra);
-	switch (status) {
-	case LDAP_PROC_SUCCESS:
-		LDAP_DBG_REQ("Bind successful");
-		break;
-	case LDAP_PROC_NOT_PERMITTED:
-		LDAP_ERR_REQ("Bind was not permitted: %s", error);
-		LDAP_EXT_REQ();
-
-		break;
-
-	case LDAP_PROC_REJECT:
-		LDAP_ERR_REQ("Bind credentials incorrect: %s", error);
-		LDAP_EXT_REQ();
-
-		break;
-
-	case LDAP_PROC_RETRY:
-		if (retry) {
-			*pconn = fr_connection_reconnect(inst->pool, *pconn);
-			if (*pconn) {
-				LDAP_DBGW_REQ("Bind with %s to %s:%d failed: %s. Got new socket, retrying...",
-					      dn, inst->server, inst->port, error);
-
-				talloc_free(extra); /* don't leak debug info */
-
-				goto retry;
+	/*
+	 *	For sanity, for when no connections are viable,
+	 *	and we can't make a new one.
+	 */
+	for (i = fr_connection_get_num(inst->pool); i >= 0; i--) {
+		msgid = ldap_bind((*pconn)->handle, dn, password, LDAP_AUTH_SIMPLE);
+		/* We got a valid message ID */
+		if (msgid >= 0) {
+			if (request) {
+				RDEBUG2("Waiting for bind result...");
+			} else {
+				DEBUG2("rlm_ldap (%s): Waiting for bind result...", inst->xlat_name);
 			}
-		};
-
-		status = LDAP_PROC_ERROR;
-
-		/*
-		 *	Were not allowed to retry, or there are no more
-		 *	sockets, treat this as a hard failure.
-		 */
-		/* FALL-THROUGH */
-	default:
-#ifdef HAVE_LDAP_INITIALIZE
-		if (inst->is_url) {
-			LDAP_ERR_REQ("Bind with %s to %s failed: %s", dn, inst->server, error);
-		} else
-#endif
-		{
-			LDAP_ERR_REQ("Bind with %s to %s:%d failed: %s", dn, inst->server,
-				     inst->port, error);
 		}
-		LDAP_EXT_REQ();
 
-		break;
+		status = rlm_ldap_result(inst, *pconn, msgid, dn, NULL, &error, &extra);
+		switch (status) {
+		case LDAP_PROC_SUCCESS:
+			LDAP_DBG_REQ("Bind successful");
+			break;
+		case LDAP_PROC_NOT_PERMITTED:
+			LDAP_ERR_REQ("Bind was not permitted: %s", error);
+			LDAP_EXT_REQ();
+
+			break;
+
+		case LDAP_PROC_REJECT:
+			LDAP_ERR_REQ("Bind credentials incorrect: %s", error);
+			LDAP_EXT_REQ();
+
+			break;
+
+		case LDAP_PROC_RETRY:
+			if (retry) {
+				*pconn = fr_connection_reconnect(inst->pool, *pconn);
+				if (*pconn) {
+					LDAP_DBGW_REQ("Bind with %s to %s:%d failed: %s. Got new socket, retrying...",
+						      dn, inst->server, inst->port, error);
+
+					talloc_free(extra); /* don't leak debug info */
+
+					continue;
+				}
+			};
+			status = LDAP_PROC_ERROR;
+
+			/*
+			 *	Were not allowed to retry, or there are no more
+			 *	sockets, treat this as a hard failure.
+			 */
+			/* FALL-THROUGH */
+		default:
+#ifdef HAVE_LDAP_INITIALIZE
+			if (inst->is_url) {
+				LDAP_ERR_REQ("Bind with %s to %s failed: %s", dn, inst->server, error);
+			} else
+#endif
+			{
+				LDAP_ERR_REQ("Bind with %s to %s:%d failed: %s", dn, inst->server,
+					     inst->port, error);
+			}
+			LDAP_EXT_REQ();
+
+			break;
+		}
 	}
 
-	if (extra) {
-		talloc_free(extra);
+	if (i < 0) {
+		LDAP_ERR_REQ("Hit reconnection limit");
+		status = LDAP_PROC_ERROR;
 	}
+
+	talloc_free(extra);
 
 	return status; /* caller closes the connection */
 }
@@ -632,6 +641,9 @@ ldap_rcode_t rlm_ldap_search(ldap_instance_t const *inst, REQUEST *request, ldap
 
 	char const 	*error = NULL;
 	char		*extra = NULL;
+
+	int 		i;
+
 
 	rad_assert(*pconn && (*pconn)->handle);
 
@@ -670,14 +682,21 @@ ldap_rcode_t rlm_ldap_search(ldap_instance_t const *inst, REQUEST *request, ldap
 	 */
 	memset(&tv, 0, sizeof(tv));
 	tv.tv_sec = inst->res_timeout;
-retry:
-	(void) ldap_search_ext((*pconn)->handle, dn, scope, filter, search_attrs, 0, NULL, NULL, &tv, 0, &msgid);
 
-	LDAP_DBG_REQ("Waiting for search result...");
-	status = rlm_ldap_result(inst, *pconn, msgid, dn, &our_result, &error, &extra);
-	switch (status) {
+	/*
+	 *	For sanity, for when no connections are viable,
+	 *	and we can't make a new one.
+	 */
+	for (i = fr_connection_get_num(inst->pool); i >= 0; i--) {
+		(void) ldap_search_ext((*pconn)->handle, dn, scope, filter, search_attrs,
+				       0, NULL, NULL, &tv, 0, &msgid);
+
+		LDAP_DBG_REQ("Waiting for search result...");
+		status = rlm_ldap_result(inst, *pconn, msgid, dn, &our_result, &error, &extra);
+		switch (status) {
 		case LDAP_PROC_SUCCESS:
 			break;
+
 		case LDAP_PROC_RETRY:
 			*pconn = fr_connection_reconnect(inst->pool, *pconn);
 			if (*pconn) {
@@ -685,7 +704,7 @@ retry:
 
 				talloc_free(extra); /* don't leak debug info */
 
-				goto retry;
+				continue;
 			}
 
 			status = LDAP_PROC_ERROR;
@@ -696,6 +715,14 @@ retry:
 			if (extra) LDAP_ERR_REQ("%s", extra);
 
 			goto finish;
+		}
+	}
+
+	if (i < 0) {
+		LDAP_ERR_REQ("Hit reconnection limit");
+		status = LDAP_PROC_ERROR;
+
+		goto finish;
 	}
 
 	count = ldap_count_entries((*pconn)->handle, our_result);
@@ -713,10 +740,8 @@ retry:
 		our_result = NULL;
 	}
 
-	finish:
-	if (extra) {
-		talloc_free(extra);
-	}
+finish:
+	talloc_free(extra);
 
 	/*
 	 *	We always need to get the result to count entries, but the caller
@@ -755,6 +780,8 @@ ldap_rcode_t rlm_ldap_modify(ldap_instance_t const *inst, REQUEST *request, ldap
 	char const 	*error = NULL;
 	char		*extra = NULL;
 
+	int 		i;
+
 	rad_assert(*pconn && (*pconn)->handle);
 
 	/*
@@ -771,39 +798,47 @@ ldap_rcode_t rlm_ldap_modify(ldap_instance_t const *inst, REQUEST *request, ldap
 		(*pconn)->rebound = false;
 	}
 
-	RDEBUG2("Modifying object with DN \"%s\"", dn);
-	retry:
-	(void) ldap_modify_ext((*pconn)->handle, dn, mods, NULL, NULL, &msgid);
+	/*
+	 *	For sanity, for when no connections are viable,
+	 *	and we can't make a new one.
+	 */
+	for (i = fr_connection_get_num(inst->pool); i >= 0; i--) {
+		RDEBUG2("Modifying object with DN \"%s\"", dn);
+		(void) ldap_modify_ext((*pconn)->handle, dn, mods, NULL, NULL, &msgid);
 
-	RDEBUG2("Waiting for modify result...");
-	status = rlm_ldap_result(inst, *pconn, msgid, dn, NULL, &error, &extra);
-	switch (status) {
-		case LDAP_PROC_SUCCESS:
-			break;
-		case LDAP_PROC_RETRY:
-			*pconn = fr_connection_reconnect(inst->pool, *pconn);
-			if (*pconn) {
-				RWDEBUG("Modify failed: %s. Got new socket, retrying...", error);
+		RDEBUG2("Waiting for modify result...");
+		status = rlm_ldap_result(inst, *pconn, msgid, dn, NULL, &error, &extra);
+		switch (status) {
+			case LDAP_PROC_SUCCESS:
+				break;
+			case LDAP_PROC_RETRY:
+				*pconn = fr_connection_reconnect(inst->pool, *pconn);
+				if (*pconn) {
+					RWDEBUG("Modify failed: %s. Got new socket, retrying...", error);
 
-				talloc_free(extra); /* don't leak debug info */
+					talloc_free(extra); /* don't leak debug info */
 
-				goto retry;
-			}
+					continue;
+				}
 
-			status = LDAP_PROC_ERROR;
+				status = LDAP_PROC_ERROR;
 
-			/* FALL-THROUGH */
-		default:
-			REDEBUG("Failed modifying object: %s", error);
-			REDEBUG("%s", extra);
+				/* FALL-THROUGH */
+			default:
+				REDEBUG("Failed modifying object: %s", error);
+				REDEBUG("%s", extra);
 
-			goto finish;
+				goto finish;
+		}
 	}
 
-	finish:
-	if (extra) {
-		talloc_free(extra);
+	if (i < 0) {
+		LDAP_ERR_REQ("Hit reconnection limit");
+		status = LDAP_PROC_ERROR;
 	}
+
+finish:
+	talloc_free(extra);
 
 	return status;
 }
