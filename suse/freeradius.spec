@@ -376,6 +376,7 @@ rm -rf $RPM_BUILD_ROOT
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/sites-enabled/*
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/eap.conf
 %attr(640,root,radiusd) %{_sysconfdir}/raddb/example.pl
+%attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/panic.gdb
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/policy.conf
 %{_sysconfdir}/raddb/policy.txt
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/templates.conf
