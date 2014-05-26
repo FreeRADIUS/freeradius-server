@@ -54,8 +54,6 @@ RCSID("$Id$")
 #  define NAMEDATALEN 64
 #endif
 
-#define HAVE_PG_SSL (defined(HAVE_OPENSSL_CRYPTO_H) && (defined(HAVE_PQINITOPENSSL) || defined(HAVE_PQINITSSL)))
-
 typedef struct rlm_sql_postgres_config {
 	char const	*db_string;
 } rlm_sql_postgres_config_t;
@@ -73,7 +71,7 @@ typedef struct rlm_sql_postgres_conn {
 
 static int mod_instantiate(UNUSED CONF_SECTION *conf, UNUSED rlm_sql_config_t *config)
 {
-#if HAVE_PG_SSL
+#if defined(HAVE_OPENSSL_CRYPTO_H) && (defined(HAVE_PQINITOPENSSL) || defined(HAVE_PQINITSSL))
 	static bool			ssl_init = false;
 #endif
 
@@ -81,7 +79,7 @@ static int mod_instantiate(UNUSED CONF_SECTION *conf, UNUSED rlm_sql_config_t *c
 	char 				application_name[NAMEDATALEN];
 	char				*db_string;
 
-#if HAVE_PG_SSL
+#if defined(HAVE_OPENSSL_CRYPTO_H) && (defined(HAVE_PQINITOPENSSL) || defined(HAVE_PQINITSSL))
 	if (!ssl_init) {
 #  ifdef HAVE_PQINITOPENSSL
 		PQinitOpenSSL(0, 0);
