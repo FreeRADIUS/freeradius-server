@@ -117,7 +117,7 @@ static int mod_instantiate(UNUSED CONF_SECTION *conf, UNUSED rlm_sql_config_t *c
 	 */
 	if (!strstr(db_string, "application_name")) {
 		snprintf(application_name, sizeof(application_name),
-			 "FreeRADIUS "  RADIUSD_VERSION_STRING " - %s", progname);
+			 "FreeRADIUS "  RADIUSD_VERSION_STRING " - %s (%s)", progname, config->xlat_name);
 		db_string = talloc_asprintf_append(db_string, " application_name='%s'", application_name);
 	}
 	driver->db_string = db_string;
