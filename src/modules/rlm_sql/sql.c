@@ -381,9 +381,6 @@ sql_rcode_t rlm_sql_query(rlm_sql_handle_t **handle, rlm_sql_t *inst, char const
 	/* There's no handle, we need a new one */
 	if (!*handle) return RLM_SQL_RECONNECT;
 
-	/* There's a SQL handle but the connection handle has been invalidated */
-	if (!(*handle)->conn) goto sql_down;
-
 	/* For sanity, for when no connections are viable, and we can't make a new one */
 	for (i = fr_connection_get_num(inst->pool); i >= 0; i--) {
 		DEBUG("rlm_sql (%s): Executing query: '%s'", inst->config->xlat_name, query);
@@ -443,9 +440,6 @@ sql_rcode_t rlm_sql_select_query(rlm_sql_handle_t **handle, rlm_sql_t *inst, cha
 
 	/* There's no handle, we need a new one */
 	if (!*handle) return RLM_SQL_RECONNECT;
-
-	/* There's a SQL handle but the connection handle has been invalidated */
-	if (!(*handle)->conn) goto sql_down;
 
 	/* For sanity, for when no connections are viable, and we can't make a new one */
 	for (i = fr_connection_get_num(inst->pool); i >= 0; i--) {
