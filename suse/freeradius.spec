@@ -24,12 +24,10 @@ PreReq:       perl
 PreReq:       %insserv_prereq %fillup_prereq
 BuildRoot:    %{_tmppath}/%{name}-%{version}-build
 %define _oracle_support	0
-%define apxs2 apxs2-prefork
-%define apache2_sysconfdir %(%{_sbindir}/%{apxs2} -q SYSCONFDIR)
+%define apache2_sysconfdir /etc/apache2
 Requires:      %{name}-libs = %{version}
 Requires:      python
 Recommends:    logrotate
-BuildRequires: apache2-devel 
 BuildRequires: cyrus-sasl-devel
 BuildRequires: db-devel
 BuildRequires: gcc-c++
@@ -328,6 +326,7 @@ rm -rf $RPM_BUILD_ROOT
 %{_sysconfdir}/init.d/radiusd
 %config %{_sysconfdir}/pam.d/radiusd
 %config %{_sysconfdir}/logrotate.d/freeradius-server
+%dir %{_sysconfdir}/tmpfiles.d
 %config %{_sysconfdir}/tmpfiles.d/radiusd.conf
 %{_sbindir}/rcradiusd
 %dir %attr(755,radiusd,radiusd) %{_localstatedir}/lib/radiusd
@@ -376,6 +375,7 @@ rm -rf $RPM_BUILD_ROOT
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/sites-enabled/*
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/eap.conf
 %attr(640,root,radiusd) %{_sysconfdir}/raddb/example.pl
+%attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/panic.gdb
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/policy.conf
 %{_sysconfdir}/raddb/policy.txt
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/templates.conf
@@ -432,6 +432,8 @@ rm -rf $RPM_BUILD_ROOT
 %{_datadir}/dialup_admin/sql/
 %dir %{_datadir}/dialup_admin/conf/
 %config(noreplace) %{_datadir}/dialup_admin/conf/*
+%dir %{apache2_sysconfdir}
+%dir %{apache2_sysconfdir}/conf.d
 %config(noreplace) %{apache2_sysconfdir}/conf.d/radius.conf
 %{_datadir}/dialup_admin/Changelog
 %{_datadir}/dialup_admin/README
