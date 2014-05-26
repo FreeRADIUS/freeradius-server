@@ -995,8 +995,25 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, int type, void *data, char
 		break;
 
 	case PW_TYPE_INTEGER:
-		*(uint32_t *)data = strtoul(value, 0, 0);
+	{
+		unsigned long v = strtoul(value, 0, 0);
+
+		/*
+		 *	Restrict integer values to 0-INT32_MAX, this means
+		 *	it will always be safe to cast them to a signed type
+		 *	for comparisons, and imposes the same range limit as
+		 *	before we switched to using an unsigned type to
+		 *	represent config item integers.
+		 */
+		if (v > INT32_MAX) {
+			cf_log_err(&(cs->item), "Invalid value \"%s\" for variable %s, must be between 0-%u", value,
+				   name, INT32_MAX);
+			return -1;
+		}
+
+		*(uint32_t *)data = v;
 		cf_log_info(cs, "%.*s\t%s = %u", cs->depth, parse_spaces, name, *(uint32_t *)data);
+	}
 		break;
 
 	case PW_TYPE_SHORT:
@@ -1012,6 +1029,7 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, int type, void *data, char
 		cf_log_info(cs, "%.*s\t%s = %u", cs->depth, parse_spaces, name, *(uint16_t *)data);
 	}
 		break;
+
 	case PW_TYPE_INTEGER64:
 		*(uint64_t *)data = strtoull(value, 0, 0);
 		cf_log_info(cs, "%.*s\t%s = %" PRIu64, cs->depth, parse_spaces, name, *(uint64_t *)data);
