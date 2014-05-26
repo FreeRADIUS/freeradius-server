@@ -395,7 +395,6 @@ sql_rcode_t rlm_sql_query(rlm_sql_handle_t **handle, rlm_sql_t *inst, char const
 		 *	sockets in the pool and fail to establish a *new* connection.
 		 */
 		case RLM_SQL_RECONNECT:
-		sql_down:
 			*handle = fr_connection_reconnect(inst->pool, *handle);
 			/* Reconnection failed */
 			if (!*handle) return RLM_SQL_RECONNECT;
@@ -455,7 +454,6 @@ sql_rcode_t rlm_sql_select_query(rlm_sql_handle_t **handle, rlm_sql_t *inst, cha
 		 *	sockets in the pool and fail to establish a *new* connection.
 		 */
 		case RLM_SQL_RECONNECT:
-		sql_down:
 			*handle = fr_connection_reconnect(inst->pool, *handle);
 			/* Reconnection failed */
 			if (!*handle) return RLM_SQL_RECONNECT;
