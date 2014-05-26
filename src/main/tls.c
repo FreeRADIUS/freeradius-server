@@ -769,8 +769,11 @@ void tls_session_information(tls_session_t *tls_session)
 		 str_details1, str_details2);
 
 	request = SSL_get_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_REQUEST);
-
-	RDEBUG2("%s\n", tls_session->info.info_description);
+	if (request) {
+		RDEBUG2("%s", tls_session->info.info_description);
+	} else {
+		DEBUG2("%s", tls_session->info.info_description);
+	}
 }
 
 static CONF_PARSER cache_config[] = {
