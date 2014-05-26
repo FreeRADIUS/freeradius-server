@@ -32,8 +32,6 @@ void cbtls_info(SSL const *s, int where, int ret)
 	char const *str, *state;
 	REQUEST *request = SSL_get_ex_data(s, FR_TLS_EX_INDEX_REQUEST);
 
-	rad_assert(request != NULL);
-
 	if ((where & ~SSL_ST_MASK) & SSL_ST_CONNECT) {
 		str="TLS_connect";
 	} else if (((where & ~SSL_ST_MASK)) & SSL_ST_ACCEPT) {
