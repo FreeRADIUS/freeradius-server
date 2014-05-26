@@ -1003,6 +1003,15 @@ void *fr_connection_get(fr_connection_pool_t *pool)
 	return fr_connection_get_internal(pool, true);
 }
 
+/** Get the number of connections currently in the pool
+ *
+ * @param pool to count connections for.
+ * @return the number of connections in the pool
+ */
+int fr_connection_get_num(fr_connection_pool_t *pool)
+{
+	return pool->num;
+}
 
 /** Release a connection
  *

@@ -372,6 +372,7 @@ static void rlm_sql_query_debug(rlm_sql_handle_t *handle, rlm_sql_t *inst)
 sql_rcode_t rlm_sql_query(rlm_sql_handle_t **handle, rlm_sql_t *inst, char const *query)
 {
 	int ret = RLM_SQL_ERROR;
+	int i;
 
 	/* There's no query to run, return an error */
 	if (query[0] == '\0') return RLM_SQL_QUERY_ERROR;
@@ -382,7 +383,8 @@ sql_rcode_t rlm_sql_query(rlm_sql_handle_t **handle, rlm_sql_t *inst, char const
 	/* There's a SQL handle but the connection handle has been invalidated */
 	if (!(*handle)->conn) goto sql_down;
 
-	while (true) {
+	/* For sanity, for when no connections are viable, and we can't make a new one */
+	for (i = fr_connection_get_num(inst->pool); i >= 0; i--) {
 		DEBUG("rlm_sql (%s): Executing query: '%s'", inst->config->xlat_name, query);
 
 		ret = (inst->module->sql_query)(*handle, inst->config, query);
@@ -415,6 +417,10 @@ sql_rcode_t rlm_sql_query(rlm_sql_handle_t **handle, rlm_sql_t *inst, char const
 
 		return ret;
 	}
+
+	ERROR("rlm_sql (%s): Hit reconnection limit", inst->config->xlat_name);
+
+	return RLM_SQL_ERROR;
 }
 
 /** Call the driver's sql_select_query method, reconnecting if necessary.
@@ -429,6 +435,7 @@ sql_rcode_t rlm_sql_query(rlm_sql_handle_t **handle, rlm_sql_t *inst, char const
 sql_rcode_t rlm_sql_select_query(rlm_sql_handle_t **handle, rlm_sql_t *inst, char const *query)
 {
 	int ret = RLM_SQL_ERROR;
+	int i;
 
 	/* There's no query to run, return an error */
 	if (query[0] == '\0') return RLM_SQL_QUERY_ERROR;
@@ -439,7 +446,8 @@ sql_rcode_t rlm_sql_select_query(rlm_sql_handle_t **handle, rlm_sql_t *inst, cha
 	/* There's a SQL handle but the connection handle has been invalidated */
 	if (!(*handle)->conn) goto sql_down;
 
-	while (true) {
+	/* For sanity, for when no connections are viable, and we can't make a new one */
+	for (i = fr_connection_get_num(inst->pool); i >= 0; i--) {
 		DEBUG("rlm_sql (%s): Executing query: '%s'", inst->config->xlat_name, query);
 
 		ret = (inst->module->sql_select_query)(*handle, inst->config, query);
@@ -468,6 +476,10 @@ sql_rcode_t rlm_sql_select_query(rlm_sql_handle_t **handle, rlm_sql_t *inst, cha
 
 		return ret;
 	}
+
+	ERROR("rlm_sql (%s): Hit reconnection limit", inst->config->xlat_name);
+
+	return RLM_SQL_ERROR;
 }
 
 
