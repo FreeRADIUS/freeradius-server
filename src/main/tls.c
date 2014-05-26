@@ -162,8 +162,7 @@ tls_session_t *tls_new_client_session(fr_tls_server_conf_t *conf, int fd)
 	if (SSL_connect(ssn->ssl) <= 0) {
 		int err;
 		while ((err = ERR_get_error())) {
-			DEBUG("OpenSSL Err says %s",
-			      ERR_error_string(err, NULL));
+			ERROR("tls: %s", ERR_error_string(err, NULL));
 		}
 		SSL_free(ssn->ssl);
 		talloc_free(ssn);
