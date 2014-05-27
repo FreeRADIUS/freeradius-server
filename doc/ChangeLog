@@ -38,6 +38,8 @@ FreeRADIUS 3.0.4 Mon 12 May 2014 15:30:00 EDT urgency=medium
 	  instances of <attr> equal to <value> (only untagged).
 	* Fix issue where tag values were not being set on attributes
 	  created with unlang/ldap update blocks.
+	* Create rlm_sqlcounter attributes as integer64 types instead
+	  of integer types, so large counter values can be specified.
 
 FreeRADIUS 3.0.3 Mon 12 May 2014 15:30:00 EDT urgency=medium
 	Feature improvements
