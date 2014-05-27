@@ -215,13 +215,15 @@ bool fr_assert_cond(char const *file, int line, char const *expr, bool cond)
 void NEVER_RETURNS _fr_exit(char const *file, int line, int status)
 {
 #ifndef NDEBUG
-	char *error = fr_strerror();
+	char const *error = fr_strerror();
+
 	if (error && (status != 0)) {
 		fr_perror("EXIT(%i) CALLED %s[%u].  Last error was: %s", status, file, line, error);
 	} else {
 		fr_perror("EXIT(%i) CALLED %s[%u]", status, file, line);
 	}
 #endif
+	fr_perror("If running under a debugger it should break <<here>>");
 	fflush(stderr);
 
 	fr_debug_break();	/* If running under GDB we'll break here */
@@ -232,7 +234,7 @@ void NEVER_RETURNS _fr_exit(char const *file, int line, int status)
 void NEVER_RETURNS _fr_exit_now(char const *file, int line, int status)
 {
 #ifndef NDEBUG
-	char *error = fr_strerror();
+	char const *error = fr_strerror();
 
 	if (error && (status != 0)) {
 		fr_perror("_EXIT(%i) CALLED %s[%u].  Last error was: %s", status, file, line, error);
@@ -240,6 +242,7 @@ void NEVER_RETURNS _fr_exit_now(char const *file, int line, int status)
 		fr_perror("_EXIT(%i) CALLED %s[%u]", status, file, line);
 	}
 #endif
+	fr_perror("If running under a debugger it should break <<here>>");
 	fflush(stderr);
 
 	fr_debug_break();	/* If running under GDB we'll break here */
