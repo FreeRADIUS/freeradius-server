@@ -639,8 +639,7 @@ redo:
 			goto calculate_result;
 		}
 
-		vp = radius_vpt_get_vp(request, g->vpt);
-		if (!vp) {	/* nothing to loop over */
+		if (radius_vpt_get_vp(&vp, request, g->vpt) < 0) {	/* nothing to loop over */
 			MOD_LOG_OPEN_BRACE("foreach");
 			result = RLM_MODULE_NOOP;
 			MOD_LOG_CLOSE_BRACE();
@@ -816,8 +815,7 @@ redo:
 		 *	The attribute doesn't exist.  We can skip
 		 *	directly to the default 'case' statement.
 		 */
-		if ((g->vpt->type == VPT_TYPE_ATTR) &&
-		    !radius_vpt_get_vp(request, g->vpt)) {
+		if ((g->vpt->type == VPT_TYPE_ATTR) && (radius_vpt_get_vp(NULL, request, g->vpt) < 0)) {
 			for (this = g->children; this; this = this->next) {
 				rad_assert(this->type == MOD_CASE);
 

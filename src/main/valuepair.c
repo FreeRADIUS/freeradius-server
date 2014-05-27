@@ -1555,8 +1555,7 @@ int radius_map2vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *ma
 			return 0;
 		}
 
-		found = radius_vpt_get_vp(request, map->src);
-		if (!found) {
+		if (radius_vpt_get_vp(&found, request, map->src) < 0) {
 			REDEBUG("Attribute \"%s\" not found in request", map->src->name);
 			rcode = 0;
 			goto error;
@@ -1643,80 +1642,91 @@ int radius_strpair2map(value_pair_map_t **out, REQUEST *request, char const *raw
 	return 0;
 }
 
-
 /** Return a VP from a value_pair_tmpl_t
  *
+ * @param out where to write the retrieved vp.
  * @param request current request.
  * @param vpt the value pair template
- * @return NULL if not found, or the VPs.
+ * @return -1 if VP could not be found, -2 if list could not be found, -3 if context could not be found.
  */
-VALUE_PAIR *radius_vpt_get_vp(REQUEST *request, value_pair_tmpl_t const *vpt)
+int radius_vpt_get_vp(VALUE_PAIR **out, REQUEST *request, value_pair_tmpl_t const *vpt)
 {
 	VALUE_PAIR **vps, *vp;
 
+	if (out) *out = NULL;
+
 	if (radius_request(&request, vpt->vpt_request) < 0) {
-		return NULL;
+		return -3;
 	}
 
 	vps = radius_list(request, vpt->vpt_list);
 	if (!vps) {
-		return NULL;
+		return -2;
 	}
 
 	switch (vpt->type) {
-	/*
-	 *	May not may not be found, but it *is* a known
-	 *	name.
-	 */
+		/*
+		 *	May not may not be found, but it *is* a known
+		 *	name.
+		 */
 	case VPT_TYPE_ATTR:
 	{
 		int num;
 		vp_cursor_t cursor;
 
 		if (vpt->vpt_num == NUM_ANY) {
-			return pairfind(*vps, vpt->vpt_da->attr, vpt->vpt_da->vendor, vpt->vpt_tag);
+			vp = pairfind(*vps, vpt->vpt_da->attr, vpt->vpt_da->vendor, vpt->vpt_tag);
+			if (!vp) return -1;
+			break;
 		}
 
 		(void) fr_cursor_init(&cursor, vps);
 		num = vpt->vpt_num;
-		while ((vp = fr_cursor_next_by_da(&cursor, vpt->vpt_da, vpt->vpt_tag))) {
+		while((vp = fr_cursor_next_by_da(&cursor, vpt->vpt_da, vpt->vpt_tag))) {
 			VERIFY_VP(vp);
-			if (num-- == 0) return vp;
+			if (num-- == 0) goto finish;
 		}
-		return NULL;
+		return -1;
 	}
 
 	case VPT_TYPE_LIST:
-		return *vps;
+		vp = *vps;
+		break;
 
 	default:
-		break;
+		/*
+		 *	literal, xlat, regex, exec, data.
+		 *	no attribute.
+		 */
+		return -1;
 	}
 
-	return NULL;
+finish:
+	if (out) *out = vp;
+
+	return 0;
 }
 
 /** Return a VP from the specified request.
  *
- * @param vp_p where to write the pointer to the resolved VP.
+ * @param out where to write the pointer to the resolved VP.
  *	Will be NULL if the attribute couldn't be resolved.
  * @param request current request.
  * @param name attribute name including qualifiers.
- * @return -1 if either the attribute or qualifier were invalid, else 0
+ * @return -4 if either the attribute or qualifier were invalid, and the same error codes as radius_vpt_get_vp for other
+ *	error conditions.
  */
-int radius_get_vp(VALUE_PAIR **vp_p, REQUEST *request, char const *name)
+int radius_get_vp(VALUE_PAIR **out, REQUEST *request, char const *name)
 {
 	value_pair_tmpl_t vpt;
 
-	*vp_p = NULL;
+	*out = NULL;
 
 	if (radius_parse_attr(&vpt, name, REQUEST_CURRENT, PAIR_LIST_REQUEST) < 0) {
-		RDEBUG("%s", fr_strerror());
-		return -1;
+		return -4;
 	}
 
-	*vp_p = radius_vpt_get_vp(request, &vpt);
-	return 0;
+	return radius_vpt_get_vp(out, request, &vpt);
 }
 
 /** Copy pairs matching a VPT in the current request
@@ -1771,6 +1781,28 @@ int radius_vpt_copy_vp(VALUE_PAIR **out, REQUEST *request, value_pair_tmpl_t con
 	}
 
 	return 0;
+}
+
+/** Copy a VP from the specified request.
+ *
+ * @param out where to write the pointer to the copied VP.
+ *	Will be NULL if the attribute couldn't be resolved.
+ * @param request current request.
+ * @param name attribute name including qualifiers.
+ * @return -4 if either the attribute or qualifier were invalid, and the same error codes as radius_vpt_get_vp for other
+ *	error conditions.
+ */
+int radius_copy_vp(VALUE_PAIR **out, REQUEST *request, char const *name)
+{
+	value_pair_tmpl_t vpt;
+
+	*out = NULL;
+
+	if (radius_parse_attr(&vpt, name, REQUEST_CURRENT, PAIR_LIST_REQUEST) < 0) {
+		return -4;
+	}
+
+	return radius_vpt_copy_vp(out, request, &vpt);
 }
 
 void module_failure_msg(REQUEST *request, char const *fmt, ...)

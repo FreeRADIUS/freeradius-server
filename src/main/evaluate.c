@@ -90,6 +90,7 @@ static int all_digits(char const *string)
 static int radius_expand_tmpl(char **out, REQUEST *request, value_pair_tmpl_t const *vpt)
 {
 	VALUE_PAIR *vp;
+	int ret;
 	*out = NULL;
 
 	rad_assert(vpt->type != VPT_TYPE_LIST);
@@ -140,10 +141,9 @@ static int radius_expand_tmpl(char **out, REQUEST *request, value_pair_tmpl_t co
 
 	case VPT_TYPE_ATTR:
 		EVAL_DEBUG("TMPL ATTR");
-		vp = radius_vpt_get_vp(request, vpt);
-		if (!vp) {
-			return -1;
-		}
+		ret = radius_vpt_get_vp(&vp, request, vpt);
+		if (ret < 0) return ret;
+
 		*out = vp_aprint_value(request, vp);
 		if (!*out) {
 			return -1;
@@ -200,10 +200,10 @@ int radius_evaluate_tmpl(REQUEST *request, int modreturn, UNUSED int depth,
 
 	case VPT_TYPE_ATTR:
 	case VPT_TYPE_LIST:
-		if (radius_vpt_get_vp(request, vpt) != NULL) {
-			rcode = true;
-		} else {
+		if (radius_vpt_get_vp(NULL, request, vpt) < 0) {
 			rcode = false;
+		} else {
+			rcode = true;
 		}
 		break;
 
@@ -504,10 +504,8 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 		VALUE_PAIR *lhs_vp, *rhs_vp;
 
 		EVAL_DEBUG("ATTR to ATTR");
-		lhs_vp = radius_vpt_get_vp(request, map->dst);
-		rhs_vp = radius_vpt_get_vp(request, map->src);
-
-		if (!lhs_vp || !rhs_vp) return false;
+		if ((radius_vpt_get_vp(&lhs_vp, request, map->dst) < 0) ||
+		    (radius_vpt_get_vp(&rhs_vp, request, map->src) < 0)) return false;
 
 		return paircmp_op(lhs_vp, map->op, rhs_vp);
 	}
@@ -527,8 +525,7 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 		if (map->dst->type == VPT_TYPE_ATTR) {
 			VALUE_PAIR *cast_vp;
 
-			cast_vp = radius_vpt_get_vp(request, map->dst);
-			if (!cast_vp) return false;
+			if (radius_vpt_get_vp(&cast_vp, request, map->dst) < 0) return false;
 
 			lhs_vp = pairalloc(request, c->cast);
 			if (!lhs_vp) return false;
@@ -551,7 +548,7 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 		 *	VP, and return that.
 		 */
 		if (map->src->type == VPT_TYPE_ATTR) {
-			rhs_vp = radius_vpt_get_vp(request, map->src);
+			radius_vpt_get_vp(&rhs_vp, request, map->src);
 		} else {
 			rhs_vp = get_cast_vp(request, map->src, c->cast);
 		}
@@ -609,8 +606,7 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 
 		EVAL_DEBUG("ATTR to DATA");
 
-		lhs_vp = radius_vpt_get_vp(request, map->dst);
-		if (!lhs_vp) return false;
+		if (radius_vpt_get_vp(&lhs_vp, request, map->dst) < 0) return false;
 
 		rhs_vp = get_cast_vp(request, map->src, map->dst->vpt_da);
 		if (!rhs_vp) return false;
@@ -665,8 +661,7 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 		/*
 		 *	No LHS means no match
 		 */
-		lhs_vp = radius_vpt_get_vp(request, map->dst);
-		if (!lhs_vp) {
+		if (radius_vpt_get_vp(&lhs_vp, request, map->dst) < 0) {
 			/*
 			 *	Not a real attr: might be a dynamic comparison.
 			 */
