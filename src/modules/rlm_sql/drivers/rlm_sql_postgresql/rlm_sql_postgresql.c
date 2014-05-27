@@ -56,6 +56,7 @@ RCSID("$Id$")
 
 typedef struct rlm_sql_postgres_config {
 	char const	*db_string;
+	bool		send_application_name;
 } rlm_sql_postgres_config_t;
 
 typedef struct rlm_sql_postgres_conn {
@@ -67,9 +68,13 @@ typedef struct rlm_sql_postgres_conn {
 	char		**row;
 } rlm_sql_postgres_conn_t;
 
+static CONF_PARSER driver_config[] = {
+	{ "send_application_name", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_sql_postgres_config_t, send_application_name), "yes" },
 
+	{ NULL, -1, 0, NULL, NULL }
+};
 
-static int mod_instantiate(UNUSED CONF_SECTION *conf, UNUSED rlm_sql_config_t *config)
+static int mod_instantiate(CONF_SECTION *conf, UNUSED rlm_sql_config_t *config)
 {
 #if defined(HAVE_OPENSSL_CRYPTO_H) && (defined(HAVE_PQINITOPENSSL) || defined(HAVE_PQINITSSL))
 	static bool			ssl_init = false;
@@ -91,6 +96,9 @@ static int mod_instantiate(UNUSED CONF_SECTION *conf, UNUSED rlm_sql_config_t *c
 #endif
 
 	MEM(driver = config->driver = talloc_zero(config, rlm_sql_postgres_config_t));
+	if (cf_section_parse(conf, driver, driver_config) < 0) {
+		return -1;
+	}
 
 	db_string = strchr(config->sql_db, '=') ?
 		talloc_typed_strdup(driver, config->sql_db) :
@@ -115,7 +123,7 @@ static int mod_instantiate(UNUSED CONF_SECTION *conf, UNUSED rlm_sql_config_t *c
 	/*
 	 *	Allow the user to set their own, or disable it
 	 */
-	if (!strstr(db_string, "application_name")) {
+	if (driver->send_application_name) {
 		snprintf(application_name, sizeof(application_name),
 			 "FreeRADIUS "  RADIUSD_VERSION_STRING " - %s (%s)", progname, config->xlat_name);
 		db_string = talloc_asprintf_append(db_string, " application_name='%s'", application_name);
