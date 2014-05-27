@@ -384,7 +384,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 */
 	rad_assert(inst->counter_name && *inst->counter_name);
 	memset(&flags, 0, sizeof(flags));
-	dict_addattr(inst->counter_name, -1, 0, PW_TYPE_INTEGER, flags);
+	dict_addattr(inst->counter_name, -1, 0, PW_TYPE_INTEGER64, flags);
 	da = dict_attrbyname(inst->counter_name);
 	if (!da) {
 		cf_log_err_cs(conf, "Failed to create counter attribute %s", inst->counter_name);
@@ -396,7 +396,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 *  Create a new attribute for the check item.
 	 */
 	rad_assert(inst->limit_name && *inst->limit_name);
-	dict_addattr(inst->limit_name, -1, 0, PW_TYPE_INTEGER, flags);
+	dict_addattr(inst->limit_name, -1, 0, PW_TYPE_INTEGER64, flags);
 	da = dict_attrbyname(inst->limit_name);
 	if (!da) {
 		cf_log_err_cs(conf, "Failed to create check attribute %s", inst->limit_name);
