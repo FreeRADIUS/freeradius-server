@@ -2358,8 +2358,9 @@ STATE_MACHINE_DECL(proxy_no_reply)
 		break;
 
 	case FR_ACTION_RUN:
-		(void) process_proxy_reply(request, NULL);
-		request_finish(request, action);
+		if (process_proxy_reply(request, NULL)) {
+			request_finish(request, action);
+		}
 		request_done(request, FR_ACTION_DONE);
 		break;
 
