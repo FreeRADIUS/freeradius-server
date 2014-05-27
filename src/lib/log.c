@@ -202,7 +202,7 @@ void fr_perror(char const *fmt, ...)
 bool fr_assert_cond(char const *file, int line, char const *expr, bool cond)
 {
 	if (!cond) {
-		fr_perror("SOFT ASSERT FAILED %s[%u]: %s: ", file, line, expr);
+		fr_perror("SOFT ASSERT FAILED %s[%u]: %s", file, line, expr);
 #if !defined(NDEBUG) && defined(SIGUSR1)
 		fr_fault(SIGUSR1);
 #endif
@@ -215,7 +215,12 @@ bool fr_assert_cond(char const *file, int line, char const *expr, bool cond)
 void NEVER_RETURNS _fr_exit(char const *file, int line, int status)
 {
 #ifndef NDEBUG
-	fr_perror("EXIT CALLED %s[%u]: %i", file, line, status);
+	char *error = fr_strerror();
+	if (error && (status != 0)) {
+		fr_perror("EXIT(%i) CALLED %s[%u].  Last error was: %s", status, file, line, error);
+	} else {
+		fr_perror("EXIT(%i) CALLED %s[%u]", status, file, line);
+	}
 #endif
 	fflush(stderr);
 
@@ -227,7 +232,13 @@ void NEVER_RETURNS _fr_exit(char const *file, int line, int status)
 void NEVER_RETURNS _fr_exit_now(char const *file, int line, int status)
 {
 #ifndef NDEBUG
-	fr_perror("_EXIT CALLED %s[%u]: %i", file, line, status);
+	char *error = fr_strerror();
+
+	if (error && (status != 0)) {
+		fr_perror("_EXIT(%i) CALLED %s[%u].  Last error was: %s", status, file, line, error);
+	} else {
+		fr_perror("_EXIT(%i) CALLED %s[%u]", status, file, line);
+	}
 #endif
 	fflush(stderr);
 
