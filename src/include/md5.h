@@ -26,7 +26,7 @@ RCSIDH(md5_h, "$Id$")
 
 #include <string.h>
 
-#ifdef WITH_OPENSSL_MD5
+#ifdef HAVE_OPENSSL_MD5_H
 #include <openssl/md5.h>
 #endif
 
@@ -34,7 +34,7 @@ RCSIDH(md5_h, "$Id$")
 extern "C" {
 #endif
 
-#ifndef WITH_OPENSSL_MD5
+#ifndef HAVE_OPENSSL_MD5_H
 /*  The below was retrieved from
  *  http://www.openbsd.org/cgi-bin/cvsweb/~checkout~/src/sys/crypto/md5.h?rev=1.1
  *  With the following changes: uint64_t => uint32_t[2]
@@ -76,7 +76,7 @@ void	 fr_MD5Transform(uint32_t [4], uint8_t const [MD5_BLOCK_LENGTH])
 /*		__attribute__((__bounded__(__minbytes__,2,MD5_BLOCK_LENGTH)))*/;
 /* __END_DECLS */
 
-#else  /* WITH_OPENSSL_HASH */
+#else  /* HAVE_OPENSSL_MD5_H */
 
 USES_APPLE_DEPRECATED_API
 #define FR_MD5_CTX	MD5_CTX

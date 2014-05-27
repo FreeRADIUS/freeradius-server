@@ -15,7 +15,7 @@ RCSID("$Id$")
  *  FORCE MD5 TO USE OUR MD5 HEADER FILE!
  *  If we don't do this, it might pick up the systems broken MD5.
  */
-#include "../include/md5.h"
+#include <freeradius-devel/md5.h>
 
 void fr_md5_calc(uint8_t *output, uint8_t const *input,
 		     unsigned int inlen)
@@ -28,7 +28,7 @@ void fr_md5_calc(uint8_t *output, uint8_t const *input,
 }
 
 
-#ifndef WITH_OPENSSL_MD5
+#ifndef HAVE_OPENSSL_MD5_H
 /*	The below was retrieved from
  *	http://www.openbsd.org/cgi-bin/cvsweb/~checkout~/src/sys/crypto/md5.c?rev=1.1
  *	with the following changes:
@@ -171,7 +171,6 @@ void fr_MD5Final(uint8_t digest[MD5_DIGEST_LENGTH], FR_MD5_CTX *ctx)
 	}
 	memset(ctx, 0, sizeof(*ctx));	/* in case it's sensitive */
 }
-
 
 /* The four core functions - F1 is optimized somewhat */
 

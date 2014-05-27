@@ -25,7 +25,7 @@ RCSIDH(md4_h, "$Id$")
 
 #include <string.h>
 
-#ifdef WITH_OPENSSL_MD4
+#ifdef HAVE_OPENSSL_MD4_H
 #include <openssl/md4.h>
 #endif
 
@@ -35,7 +35,7 @@ extern "C" {
 
 void fr_md4_calc (unsigned char *, unsigned char const *, unsigned int);
 
-#ifndef WITH_OPENSSL_MD4
+#ifndef HAVE_OPENSSL_MD4_H
 /*  The below was retrieved from
  *  http://www.openbsd.org/cgi-bin/cvsweb/src/include/md4.h?rev=1.12
  *  With the following changes: uint64_t => uint32_t[2]
@@ -83,7 +83,7 @@ void	 fr_MD4Transform(uint32_t [4], uint8_t const [MD4_BLOCK_LENGTH])
 /*		__attribute__((__bounded__(__minbytes__,1,4)))
 		__attribute__((__bounded__(__minbytes__,2,MD4_BLOCK_LENGTH)))*/;
 /*__END_DECLS*/
-#else  /* WITH_OPENSSL_MD4 */
+#else  /* HAVE_OPENSSL_MD4_H */
 USES_APPLE_DEPRECATED_API
 #define FR_MD4_CTX	MD4_CTX
 #define fr_MD4Init	MD4_Init

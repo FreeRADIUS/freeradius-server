@@ -13,7 +13,7 @@ RCSID("$Id$")
  *  FORCE MD4 TO USE OUR MD4 HEADER FILE!
  *  If we don't do this, it might pick up the systems broken MD4.
  */
-#include "../include/md4.h"
+#include <freeradius-devel/md4.h>
 
 void fr_md4_calc(output, input, inlen)
 unsigned char *output;
@@ -27,7 +27,7 @@ unsigned int inlen;		     /* length of input block */
 	fr_MD4Final(output, &context);
 }
 
-#ifndef WITH_OPENSSL_MD4
+#ifndef HAVE_OPENSSL_MD4_H
 /*	The below was retrieved from
  *	http://www.openbsd.org/cgi-bin/cvsweb/~checkout~/src/lib/libc/hash/md4.c?rev=1.2
  *	with the following changes:
