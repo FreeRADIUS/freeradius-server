@@ -3798,16 +3798,12 @@ STATE_MACHINE_DECL(proxy_wait_for_reply)
 			       request->proxy->dst_port);
 		}
 
-		if (!setup_post_proxy_fail(request)) {
+		if (setup_post_proxy_fail(request)) {
+			request_queue_or_run(request, proxy_no_reply);
+		} else {
 			gettimeofday(&request->reply->timestamp, NULL);
 			request_cleanup_delay_init(request, NULL);
-			return;
 		}
-
-		/*
-		 *	Remember that we didn't have a reply.
-		 */
-		request_queue_or_run(request, proxy_no_reply);
 		break;
 
 		/*
@@ -4128,12 +4124,12 @@ static void coa_timer(REQUEST *request)
 					 &request->proxy->dst_ipaddr.ipaddr,
 					 buffer, sizeof(buffer)),
 			       request->proxy->dst_port);
-		if (!setup_post_proxy_fail(request)) {
-			request_done(request, FR_ACTION_DONE);
-			return;
-		}
 
-		request_queue_or_run(request, coa_no_reply);
+		if (setup_post_proxy_fail(request)) {
+			request_queue_or_run(request, coa_no_reply);
+		} else {
+			request_done(request, FR_ACTION_DONE);
+		}
 		return;
 	}
 
