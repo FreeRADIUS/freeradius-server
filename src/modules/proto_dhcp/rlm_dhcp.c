@@ -54,7 +54,6 @@ static ssize_t dhcp_options_xlat(UNUSED void *instance, REQUEST *request,
 
 	while (isspace((int) *fmt)) fmt++;
 
-
 	if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) {
 		 *out = '\0';
 		 return 0;
@@ -84,6 +83,38 @@ static ssize_t dhcp_options_xlat(UNUSED void *instance, REQUEST *request,
 	return strlen(out);
 }
 
+static ssize_t dhcp_xlat(UNUSED void *instance, REQUEST *request, char const *fmt, char *out, size_t freespace)
+{
+	vp_cursor_t cursor;
+	VALUE_PAIR *vp;
+	uint8_t binbuf[255];
+	ssize_t len;
+
+	while (isspace((int) *fmt)) fmt++;
+
+	if ((radius_copy_vp(&vp, request, fmt) < 0) || !vp) {
+		 *out = '\0';
+		 return 0;
+	}
+	fr_cursor_init(&cursor, &vp);
+
+	len = fr_dhcp_encode_option(binbuf, sizeof(binbuf), request, &cursor);
+	talloc_free(vp);
+	if (len <= 0) {
+		REDEBUG("DHCP option encoding failed: %s", fr_strerror());
+
+		return -1;
+	}
+
+	if ((size_t)((len * 2) + 1) > freespace) {
+		REDEBUG("DHCP option encoding failed: Output buffer exhausted, needed %zd bytes, have %zd bytes",
+			(len * 2) + 1, freespace);
+
+		return -1;
+	}
+
+	return fr_bin2hex(out, binbuf, len);
+}
 
 /*
  *	Only free memory we allocated.  The strings allocated via
@@ -92,6 +123,7 @@ static ssize_t dhcp_options_xlat(UNUSED void *instance, REQUEST *request,
 static int mod_detach(void *instance)
 {
 	xlat_unregister("dhcp_options", dhcp_options_xlat, instance);
+	xlat_unregister("dhcp", dhcp_xlat, instance);
 	return 0;
 }
 
@@ -104,6 +136,7 @@ static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
 	rlm_dhcp_t *inst = instance;
 
 	xlat_register("dhcp_options", dhcp_options_xlat, NULL, inst);
+	xlat_register("dhcp", dhcp_xlat, NULL, inst);
 
 	return 0;
 }
