@@ -58,6 +58,12 @@ sql {
 #		}
 #	}
 #
+#	postgres {
+#		# Send application_name to the postgres server
+#		# Only supported in PG 9.0 and greater. Defaults to yes.
+#		send_application_name = yes
+#	}
+#
 
 	# The dialect of SQL you want to use, this should usually match
 	# the driver you selected above.
