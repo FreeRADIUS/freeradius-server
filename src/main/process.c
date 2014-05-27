@@ -1019,14 +1019,7 @@ STATE_MACHINE_DECL(request_common)
 		}
 #endif
 
-		/*
-		 *	We probbly should check if the request is
-		 *	DONE.  If so, delete it, and allow the new
-		 *	request to continue.  But we can't give
-		 *	feedback to request_receive(), so we let it
-		 *	take care of that.
-		 */
-		ERROR("(%u) Discarding duplicate request from "
+		ERROR("(%u) Ignoring duplicate packet from "
 		      "client %s port %d - ID: %u due to unfinished request "
 		      "in component %s module %s",
 		      request->number, request->client->shortname,
