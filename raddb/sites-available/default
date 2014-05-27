@@ -53,7 +53,7 @@ server default {
 #  therefore authentication and accounting have to be configured in
 #  different sections.
 #
-#  The server ignore all "listen" section if you are using '-i' and '-p'
+#  The server ignores all "listen" section if you are using '-i' and '-p'
 #  on the command line.
 #
 listen {
