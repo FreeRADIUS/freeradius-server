@@ -235,8 +235,9 @@ typedef struct rlm_ldap_map_xlat {
 } rlm_ldap_map_xlat_t;
 
 typedef struct rlm_ldap_result {
-	char	**values;
-	int	count;
+	struct berval	**values;			//!< libldap struct containing bv_val (char *)
+							//!< and length bv_len.
+	int		count;				//!< Number of values.
 } rlm_ldap_result_t;
 
 typedef enum {

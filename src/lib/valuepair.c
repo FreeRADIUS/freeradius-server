@@ -1199,8 +1199,8 @@ static char const *hextab = "0123456789abcdef";
  *
  * @param vp to assign value to.
  * @param value string to convert. Binary safe for variable length values if len is provided.
- * @param inlen may be 0 in which case strlen(len) is used to determine length, else the length
- *	  of the string or sub string to parse.
+ * @param inlen may be 0 in which case strlen(len) is used to determine length, else inline
+ *	  should be the length of the string or sub string to parse.
  * @return true on success, else false.
  */
 bool pairparsevalue(VALUE_PAIR *vp, char const *value, size_t inlen)
