@@ -1980,6 +1980,7 @@ static int insert_into_proxy_hash(REQUEST *request)
 
 	for (tries = 0; tries < 2; tries++) {
 		rad_listen_t *this;
+		listen_socket_t *sock;
 
 		RDEBUG3("proxy: Trying to allocate ID (%d/2)", tries);
 		rcode = fr_packet_list_id_alloc(proxy_list,
@@ -2004,6 +2005,28 @@ static int insert_into_proxy_hash(REQUEST *request)
 
 		request->proxy->src_port = 0; /* Use any new socket */
 		proxy_listener = this;
+
+		sock = this->data;
+		if (!fr_packet_list_socket_add(proxy_list, this->fd,
+					       sock->proto,
+					       &sock->other_ipaddr, sock->other_port,
+					       this)) {
+
+#ifdef HAVE_PTHREAD_H
+			proxy_no_new_sockets = true;
+#endif
+			PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
+
+			/*
+			 *	This is bad.  However, the
+			 *	packet list now supports 256
+			 *	open sockets, which should
+			 *	minimize this problem.
+			 */
+			ERROR("Failed adding proxy socket: %s",
+			      fr_strerror());
+			goto fail;
+		}
 
 		/*
 		 *	Add it to the event loop.  Ensure that we have
@@ -4080,29 +4103,6 @@ static int event_new_fd(rad_listen_t *this)
 		 *	added to the packet list.
 		 */
 		case RAD_LISTEN_PROXY:
-			PTHREAD_MUTEX_LOCK(&proxy_mutex);
-			if (!fr_packet_list_socket_add(proxy_list, this->fd,
-						       sock->proto,
-						       &sock->other_ipaddr, sock->other_port,
-						       this)) {
-
-#ifdef HAVE_PTHREAD_H
-				proxy_no_new_sockets = true;
-#endif
-				PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
-
-				/*
-				 *	This is bad.  However, the
-				 *	packet list now supports 256
-				 *	open sockets, which should
-				 *	minimize this problem.
-				 */
-				ERROR("Failed adding proxy socket: %s",
-				       fr_strerror());
-				return 0;
-			}
-			PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
-
 #ifdef WITH_TCP
 			/*
 			 *	Add timers to outgoing child sockets, if necessary.
