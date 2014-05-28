@@ -2467,7 +2467,9 @@ static int listen_bind(rad_listen_t *this)
 		 */
 		if (!this->workers
 #ifdef WITH_PROXY
+#ifdef WITH_TLS
 		    && (this->type == RAD_LISTEN_PROXY) && !this->tls
+#endif
 #endif
 			) {
 			if (fr_nonblock(this->fd) < 0) {
