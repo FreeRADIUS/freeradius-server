@@ -49,6 +49,8 @@ void cbtls_info(SSL const *s, int where, int ret)
 	}
 
 	if (where & SSL_CB_ALERT) {
+		if ((ret & 0xff) == SSL_AD_CLOSE_NOTIFY) return;
+
 		RERROR("TLS Alert %s:%s:%s", (where & SSL_CB_READ) ? "read": "write",
 		       SSL_alert_type_string_long(ret), SSL_alert_desc_string_long(ret));
 		return;
