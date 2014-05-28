@@ -523,7 +523,7 @@ ldap_rcode_t rlm_ldap_bind(ldap_instance_t const *inst, REQUEST *request, ldap_h
 	char const	*error = NULL;
 	char 		*extra = NULL;
 
-	int 		i;
+	int 		i, num;
 
 	rad_assert(*pconn && (*pconn)->handle);
 
@@ -532,11 +532,18 @@ ldap_rcode_t rlm_ldap_bind(ldap_instance_t const *inst, REQUEST *request, ldap_h
 	 */
 	if (!dn) dn = "";
 
+
+	/*
+	 *	rlm_ldap_bind is being called during spawning a connection
+	 *	we don't want to retry on failure.
+	 */
+	num = request ? fr_connection_get_num(inst->pool) : 1;
+
 	/*
 	 *	For sanity, for when no connections are viable,
 	 *	and we can't make a new one.
 	 */
-	for (i = fr_connection_get_num(inst->pool); i >= 0; i--) {
+	for (i = num; i >= 0; i--) {
 		msgid = ldap_bind((*pconn)->handle, dn, password, LDAP_AUTH_SIMPLE);
 		/* We got a valid message ID */
 		if (msgid >= 0) {
