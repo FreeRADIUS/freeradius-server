@@ -514,7 +514,7 @@ static ldap_rcode_t rlm_ldap_result(ldap_instance_t const *inst, ldap_handle_t c
  * @return one of the LDAP_PROC_* values.
  */
 ldap_rcode_t rlm_ldap_bind(ldap_instance_t const *inst, REQUEST *request, ldap_handle_t **pconn, char const *dn,
-			   char const *password, int retry)
+			   char const *password, bool retry)
 {
 	ldap_rcode_t	status;
 
@@ -526,23 +526,18 @@ ldap_rcode_t rlm_ldap_bind(ldap_instance_t const *inst, REQUEST *request, ldap_h
 	int 		i, num;
 
 	rad_assert(*pconn && (*pconn)->handle);
+	rad_assert(!retry || inst->pool);
 
 	/*
 	 *	Bind as anonymous user
 	 */
 	if (!dn) dn = "";
 
-
-	/*
-	 *	rlm_ldap_bind is being called during spawning a connection
-	 *	we don't want to retry on failure.
-	 */
-	num = request ? fr_connection_get_num(inst->pool) : 1;
-
 	/*
 	 *	For sanity, for when no connections are viable,
 	 *	and we can't make a new one.
 	 */
+	num = retry ? fr_connection_get_num(inst->pool) : 0;
 	for (i = num; i >= 0; i--) {
 		msgid = ldap_bind((*pconn)->handle, dn, password, LDAP_AUTH_SIMPLE);
 		/* We got a valid message ID */
@@ -559,6 +554,7 @@ ldap_rcode_t rlm_ldap_bind(ldap_instance_t const *inst, REQUEST *request, ldap_h
 		case LDAP_PROC_SUCCESS:
 			LDAP_DBG_REQ("Bind successful");
 			break;
+
 		case LDAP_PROC_NOT_PERMITTED:
 			LDAP_ERR_REQ("Bind was not permitted: %s", error);
 			LDAP_EXT_REQ();
@@ -606,7 +602,7 @@ ldap_rcode_t rlm_ldap_bind(ldap_instance_t const *inst, REQUEST *request, ldap_h
 		}
 	}
 
-	if (i < 0) {
+	if (retry && (i < 0)) {
 		LDAP_ERR_REQ("Hit reconnection limit");
 		status = LDAP_PROC_ERROR;
 	}
