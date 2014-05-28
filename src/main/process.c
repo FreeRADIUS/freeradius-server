@@ -3369,7 +3369,7 @@ STATE_MACHINE_DECL(proxy_wait_for_reply)
 		 *	may have failed over to another home server.
 		 *	But that one may be dead, too.
 		 */
-		RERROR("Failing request due to lack of any response from home server %s port %d",
+		RERROR("Failing proxied request, due to lack of any response from home server %s port %d",
 			       inet_ntop(request->proxy->dst_ipaddr.af,
 					 &request->proxy->dst_ipaddr.ipaddr,
 					 buffer, sizeof(buffer)),
