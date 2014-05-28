@@ -173,6 +173,7 @@ tls_session_t *tls_new_client_session(fr_tls_server_conf_t *conf, int fd)
 		}
 		SSL_free(ssn->ssl);
 		talloc_free(ssn);
+
 		return NULL;
 	}
 
@@ -1501,12 +1502,9 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	if (!conf) return 1;
 
 	request = (REQUEST *)SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST);
-
-	if (!request) return 1;	/* FIXME: outbound TLS */
-
 	rad_assert(request != NULL);
 	certs = (VALUE_PAIR **)SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_CERTS);
-	rad_assert(certs != NULL);
+
 	identity = (char **)SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_IDENTITY);
 #ifdef HAVE_OPENSSL_OCSP_H
 	ocsp_store = (X509_STORE *)SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_STORE);
@@ -1526,7 +1524,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	 *	have a user identity.  i.e. we don't create the
 	 *	attributes for RadSec connections.
 	 */
-	if (identity &&
+	if (certs && identity &&
 	    (lookup <= 1) && sn && ((size_t) sn->length < (sizeof(buf) / 2))) {
 		char *p = buf;
 		int i;
@@ -1544,7 +1542,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	 */
 	buf[0] = '\0';
 	asn_time = X509_get_notAfter(client_cert);
-	if (identity && (lookup <= 1) && asn_time &&
+	if (certs && identity && (lookup <= 1) && asn_time &&
 	    (asn_time->length < (int) sizeof(buf))) {
 		memcpy(buf, (char*) asn_time->data, asn_time->length);
 		buf[asn_time->length] = '\0';
@@ -1558,14 +1556,14 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	X509_NAME_oneline(X509_get_subject_name(client_cert), subject,
 			  sizeof(subject));
 	subject[sizeof(subject) - 1] = '\0';
-	if (identity && (lookup <= 1) && subject[0]) {
+	if (certs && identity && (lookup <= 1) && subject[0]) {
 		pairmake(talloc_ctx, certs, cert_attr_names[FR_TLS_SUBJECT][lookup], subject, T_OP_SET);
 	}
 
 	X509_NAME_oneline(X509_get_issuer_name(ctx->current_cert), issuer,
 			  sizeof(issuer));
 	issuer[sizeof(issuer) - 1] = '\0';
-	if (identity && (lookup <= 1) && issuer[0]) {
+	if (certs && identity && (lookup <= 1) && issuer[0]) {
 		pairmake(talloc_ctx, certs, cert_attr_names[FR_TLS_ISSUER][lookup], issuer, T_OP_SET);
 	}
 
@@ -1575,7 +1573,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	X509_NAME_get_text_by_NID(X509_get_subject_name(client_cert),
 				  NID_commonName, common_name, sizeof(common_name));
 	common_name[sizeof(common_name) - 1] = '\0';
-	if (identity && (lookup <= 1) && common_name[0] && subject[0]) {
+	if (certs && identity && (lookup <= 1) && common_name[0] && subject[0]) {
 		pairmake(talloc_ctx, certs, cert_attr_names[FR_TLS_CN][lookup], common_name, T_OP_SET);
 	}
 
@@ -1583,7 +1581,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	 *	Get the RFC822 Subject Alternative Name
 	 */
 	loc = X509_get_ext_by_NID(client_cert, NID_subject_alt_name, 0);
-	if (lookup <= 1 && loc >= 0) {
+	if (certs && (lookup <= 1) && (loc >= 0)) {
 		X509_EXTENSION *ext = NULL;
 		GENERAL_NAMES *names = NULL;
 		int i;
