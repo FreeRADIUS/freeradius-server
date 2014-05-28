@@ -684,7 +684,8 @@ int proxy_tls_send(rad_listen_t *listener, REQUEST *request)
 
 	VERIFY_REQUEST(request);
 
-	if (listener->status != RAD_LISTEN_STATUS_KNOWN) return 0;
+	if ((listener->status != RAD_LISTEN_STATUS_INIT) &&
+	    (listener->status != RAD_LISTEN_STATUS_KNOWN)) return 0;
 
 	/*
 	 *	Normal proxying calls us with the data already
