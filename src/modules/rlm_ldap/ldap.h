@@ -297,7 +297,7 @@ int rlm_ldap_is_dn(char const *str);
 ssize_t rlm_ldap_xlat_filter(REQUEST *request, char const **sub, size_t sublen, char *out, size_t outlen);
 
 ldap_rcode_t rlm_ldap_bind(ldap_instance_t const *inst, REQUEST *request, ldap_handle_t **pconn, char const *dn,
-			  char const *password, int retry);
+			  char const *password, bool retry);
 
 char const *rlm_ldap_error_str(ldap_handle_t const *conn);
 
