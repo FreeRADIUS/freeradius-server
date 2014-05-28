@@ -978,6 +978,7 @@ int radius_map2request(REQUEST *request, value_pair_map_t const *map,
 	}
 
 	parent = radius_list_ctx(context, map->dst->vpt_list);
+	rad_assert(parent);
 
 	/*
 	 *	The callback should either return -1 to signify operations error,

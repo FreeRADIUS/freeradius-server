@@ -106,13 +106,18 @@ extern "C" {
  *  Add if (_x->da) (void) talloc_get_type_abort(_x->da, DICT_ATTR);
  *  to the macro below when dictionaries are talloced.
  */
-#  define VERIFY_VP(_x) fr_verify_vp(_x)
-#  define VERIFY_LIST(_x) fr_verify_list(NULL, _x)
-#  define VERIFY_PACKET(_x) (void) talloc_get_type_abort(_x, RADIUS_PACKET)
+#  define VERIFY_VP(_x)		fr_verify_vp(_x)
+#  define VERIFY_LIST(_x)	fr_verify_list(NULL, _x)
+#  define VERIFY_PACKET(_x)	(void) talloc_get_type_abort(_x, RADIUS_PACKET)
 #else
-#  define VERIFY_VP(_x)
-#  define VERIFY_LIST(_x)
-#  define VERIFY_PACKET(_x)
+/*
+ *  Even if were building without WITH_VERIFY_PTR
+ *  the pointer must not be NULL when these various macros are used
+ *  so we can add some sneaky soft asserts.
+ */
+#  define VERIFY_VP(_x)		fr_assert(_x)
+#  define VERIFY_LIST(_x)	fr_assert(_x)
+#  define VERIFY_PACKET(_x)	fr_assert(_x)
 #endif
 
 #define AUTH_VECTOR_LEN		16
