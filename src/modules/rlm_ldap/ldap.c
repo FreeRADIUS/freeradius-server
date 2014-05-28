@@ -489,9 +489,7 @@ static ldap_rcode_t rlm_ldap_result(ldap_instance_t const *inst, ldap_handle_t c
 		ldap_memfree(part_dn);
 	}
 
-	if (our_err) {
-		talloc_free(our_err);
-	}
+	talloc_free(our_err);
 
 	if ((lib_errno || srv_errno) && *result) {
 		ldap_msgfree(*result);
@@ -516,7 +514,7 @@ static ldap_rcode_t rlm_ldap_result(ldap_instance_t const *inst, ldap_handle_t c
 ldap_rcode_t rlm_ldap_bind(ldap_instance_t const *inst, REQUEST *request, ldap_handle_t **pconn, char const *dn,
 			   char const *password, bool retry)
 {
-	ldap_rcode_t	status;
+	ldap_rcode_t	status = LDAP_PROC_ERROR;
 
 	int		msgid;
 
