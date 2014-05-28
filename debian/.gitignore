@@ -6,6 +6,7 @@ freeradius-krb5
 freeradius-ldap
 freeradius-mysql
 freeradius-postgresql
+freeradius-rest
 freeradius-utils
 freeradius
 libfreeradius-dev
