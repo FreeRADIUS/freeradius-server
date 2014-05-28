@@ -337,7 +337,7 @@ static VALUE_PAIR *get_cast_vp(REQUEST *request, value_pair_tmpl_t const *vpt, D
 		return NULL;
 	}
 
-	if (!pairparsevalue(vp, str, 0)) {
+	if ((pairparsevalue(vp, str, 0) < 0)) {
 		talloc_free(str);
 		pairfree(&vp);
 		return NULL;
@@ -350,14 +350,14 @@ static VALUE_PAIR *get_cast_vp(REQUEST *request, value_pair_tmpl_t const *vpt, D
  *	Copy data from src to dst, where the attributes are of
  *	different type.
  */
-static bool do_cast_copy(VALUE_PAIR *dst, VALUE_PAIR const *src)
+static int do_cast_copy(VALUE_PAIR *dst, VALUE_PAIR const *src)
 {
 	rad_assert(dst->da->type != src->da->type);
 
 	if (dst->da->type == PW_TYPE_STRING) {
 		dst->vp_strvalue = vp_aprint_value(dst, src);
 		dst->length = strlen(dst->vp_strvalue);
-		return true;
+		return 0;
 	}
 
 	if (dst->da->type == PW_TYPE_OCTETS) {
@@ -366,7 +366,7 @@ static bool do_cast_copy(VALUE_PAIR *dst, VALUE_PAIR const *src)
 		} else {
 			pairmemcpy(dst, (uint8_t const *) &src->data, src->length);
 		}
-		return true;
+		return 0;
 	}
 
 	if (src->da->type == PW_TYPE_STRING) {
@@ -384,11 +384,11 @@ static bool do_cast_copy(VALUE_PAIR *dst, VALUE_PAIR const *src)
 		/*
 		 *	For OUIs in the DB.
 		 */
-		if ((array[0] != 0) || (array[1] != 0)) return false;
+		if ((array[0] != 0) || (array[1] != 0)) return -1;
 
 		memcpy(&dst->vp_ether, &array[2], 6);
 		dst->length = 6;
-		return true;
+		return 0;
 	}
 
 	/*
@@ -398,7 +398,7 @@ static bool do_cast_copy(VALUE_PAIR *dst, VALUE_PAIR const *src)
 	if ((src->length < dict_attr_sizes[dst->da->type][0]) ||
 	    (src->length > dict_attr_sizes[dst->da->type][1])) {
 		EVAL_DEBUG("Casted attribute is wrong size (%u)", (unsigned int) src->length);
-		return false;
+		return -1;
 	}
 
 	if (src->da->type == PW_TYPE_OCTETS) {
@@ -428,7 +428,7 @@ static bool do_cast_copy(VALUE_PAIR *dst, VALUE_PAIR const *src)
 		}
 
 		dst->length = src->length;
-		return true;
+		return 0;
 	}
 
 	/*
@@ -452,7 +452,7 @@ static bool do_cast_copy(VALUE_PAIR *dst, VALUE_PAIR const *src)
 
 	dst->length = src->length;
 
-	return true;
+	return 0;
 }
 
 
@@ -533,7 +533,7 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 			/*
 			 *	In a separate function for clarity
 			 */
-			if (!do_cast_copy(lhs_vp, cast_vp)) {
+			if (do_cast_copy(lhs_vp, cast_vp) < 0) {
 				talloc_free(lhs_vp);
 				return false;
 			}
@@ -670,7 +670,7 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 			    radius_find_compare(map->dst->vpt_da)) {
 				rhs_vp = pairalloc(request, map->dst->vpt_da);
 				rad_assert(rhs_vp != NULL);
-				if (!pairparsevalue(rhs_vp, rhs, 0)) {
+				if (pairparsevalue(rhs_vp, rhs, 0) < 0) {
 					talloc_free(rhs);
 					EVAL_DEBUG("FAIL %d", __LINE__);
 					return -1;
@@ -690,7 +690,7 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 		 */
 		rhs_vp = pairalloc(request, map->dst->vpt_da);
 		rad_assert(rhs_vp != NULL);
-		if (!pairparsevalue(rhs_vp, rhs, 0)) {
+		if (pairparsevalue(rhs_vp, rhs, 0) < 0) {
 			talloc_free(rhs);
 			pairfree(&rhs_vp);
 			EVAL_DEBUG("FAIL %d", __LINE__);

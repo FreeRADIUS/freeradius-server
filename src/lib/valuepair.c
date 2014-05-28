@@ -1203,14 +1203,14 @@ static char const *hextab = "0123456789abcdef";
  *	  should be the length of the string or sub string to parse.
  * @return true on success, else false.
  */
-bool pairparsevalue(VALUE_PAIR *vp, char const *value, size_t inlen)
+int pairparsevalue(VALUE_PAIR *vp, char const *value, size_t inlen)
 {
 	char const	*cs;
 	DICT_VALUE	*dval;
 	size_t		len;
 	char		buffer[256];
 
-	if (!value) return false;
+	if (!value) return -1;
 	VERIFY_VP(vp);
 
 	/*
@@ -1335,7 +1335,7 @@ bool pairparsevalue(VALUE_PAIR *vp, char const *value, size_t inlen)
 		 */
 		if ((len & 0x01) != 0) {
 			fr_strerror_printf("Length of Hex String is not even, got %zu bytes", vp->length);
-			return false;
+			return -1;
 		}
 
 		vp->length = len >> 1;
@@ -1343,7 +1343,7 @@ bool pairparsevalue(VALUE_PAIR *vp, char const *value, size_t inlen)
 		if (fr_hex2bin(p, value + 2, len) != vp->length) {
 			talloc_free(p);
 			fr_strerror_printf("Invalid hex data");
-			return false;
+			return -1;
 		}
 
 		vp->vp_octets = p;
@@ -1356,7 +1356,7 @@ bool pairparsevalue(VALUE_PAIR *vp, char const *value, size_t inlen)
 
 		if (ascend_parse_filter(vp, value, len) < 0 ) {
 			/* Allow ascend_parse_filter's strerror to bubble up */
-			return false;
+			return -1;
 		}
 		goto finish;
 #else
@@ -1375,7 +1375,7 @@ bool pairparsevalue(VALUE_PAIR *vp, char const *value, size_t inlen)
 
 		if ((len < 2) || (len & 0x01) || (strncasecmp(value, "0x", 2) != 0)) {
 			fr_strerror_printf("Invalid TLV specification");
-			return false;
+			return -1;
 		}
 		len -= 2;
 
@@ -1383,11 +1383,11 @@ bool pairparsevalue(VALUE_PAIR *vp, char const *value, size_t inlen)
 		p = talloc_array(vp, uint8_t, vp->length);
 		if (!p) {
 			fr_strerror_printf("No memory");
-			return false;
+			return -1;
 		}
 		if (fr_hex2bin(p, value + 2, len) != vp->length) {
 			fr_strerror_printf("Invalid hex data in TLV");
-			return false;
+			return -1;
 		}
 
 		vp->vp_tlv = p;
@@ -1405,7 +1405,7 @@ bool pairparsevalue(VALUE_PAIR *vp, char const *value, size_t inlen)
 	if (inlen > 0) {
 		if (len >= sizeof(buffer)) {
 			fr_strerror_printf("Temporary buffer too small");
-			return false;
+			return -1;
 		}
 
 		memcpy(buffer, value, inlen);
@@ -1445,7 +1445,7 @@ bool pairparsevalue(VALUE_PAIR *vp, char const *value, size_t inlen)
 			if ((p[1] != '3') || (p[2] != '2') || (p[3] != '\0')) {
 				fr_strerror_printf("Invalid IP address suffix \"%s\".  Only '/32' permitted "
 						   "for non-prefix types", p);
-				return false;
+				return -1;
 			}
 
 			strlcpy(ipv4, value, sizeof(ipv4));
@@ -1457,7 +1457,7 @@ bool pairparsevalue(VALUE_PAIR *vp, char const *value, size_t inlen)
 
 		if (ip_hton(cs, AF_INET, &ipaddr) < 0) {
 			fr_strerror_printf("Failed to find IP address for %s", cs);
-			return false;
+			return -1;
 		}
 
 		vp->vp_ipaddr = ipaddr.ipaddr.ip4addr.s_addr;
@@ -1477,7 +1477,7 @@ bool pairparsevalue(VALUE_PAIR *vp, char const *value, size_t inlen)
 		if (!*p) {
 			if (vp->vp_integer > 255) {
 				fr_strerror_printf("Byte value \"%s\" is larger than 255", value);
-				return false;
+				return -1;
 			}
 			break;
 		}
@@ -1497,7 +1497,7 @@ bool pairparsevalue(VALUE_PAIR *vp, char const *value, size_t inlen)
 		if (!*p) {
 			if (vp->vp_integer > 65535) {
 				fr_strerror_printf("Byte value \"%s\" is larger than 65535", value);
-				return false;
+				return -1;
 			}
 			break;
 		}
@@ -1524,7 +1524,7 @@ bool pairparsevalue(VALUE_PAIR *vp, char const *value, size_t inlen)
 		 */
 		if ((dval = dict_valbyname(vp->da->attr, vp->da->vendor, value)) == NULL) {
 			fr_strerror_printf("Unknown value '%s' for attribute '%s'", value, vp->da->name);
-			return false;
+			return -1;
 		}
 		vp->vp_integer = dval->value;
 	}
@@ -1540,7 +1540,7 @@ bool pairparsevalue(VALUE_PAIR *vp, char const *value, size_t inlen)
 		if (sscanf(value, "%" PRIu64, &y) != 1) {
 			fr_strerror_printf("Invalid value '%s' for attribute '%s'",
 					   value, vp->da->name);
-			return false;
+			return -1;
 		}
 		vp->vp_integer64 = y;
 		vp->length = 8;
@@ -1560,7 +1560,7 @@ bool pairparsevalue(VALUE_PAIR *vp, char const *value, size_t inlen)
 		if (fr_get_time(value, &date) < 0) {
 			fr_strerror_printf("failed to parse time string "
 				   "\"%s\"", value);
-			return false;
+			return -1;
 		}
 
 		vp->vp_date = date;
@@ -1572,7 +1572,7 @@ bool pairparsevalue(VALUE_PAIR *vp, char const *value, size_t inlen)
 	case PW_TYPE_IFID:
 		if (ifid_aton(value, (void *) &vp->vp_ifid) == NULL) {
 			fr_strerror_printf("Failed to parse interface-id string \"%s\"", value);
-			return false;
+			return -1;
 		}
 		vp->length = 8;
 		break;
@@ -1584,7 +1584,7 @@ bool pairparsevalue(VALUE_PAIR *vp, char const *value, size_t inlen)
 		if (ip_hton(value, AF_INET6, &ipaddr) < 0) {
 			fr_strerror_printf("failed to parse IPv6 address "
 					   "string \"%s\": %s", value, fr_strerror());
-			return false;
+			return -1;
 		}
 		vp->vp_ipv6addr = ipaddr.ipaddr.ip6addr;
 		vp->length = 16; /* length of IPv6 address */
@@ -1600,7 +1600,7 @@ bool pairparsevalue(VALUE_PAIR *vp, char const *value, size_t inlen)
 		p = strchr(value, '/');
 		if (!p || ((p - value) >= 256)) {
 			fr_strerror_printf("invalid IPv6 prefix string \"%s\"", value);
-			return false;
+			return -1;
 		}
 
 		/*
@@ -1611,13 +1611,13 @@ bool pairparsevalue(VALUE_PAIR *vp, char const *value, size_t inlen)
 
 		if (inet_pton(AF_INET6, buffer, vp->vp_ipv6prefix + 2) <= 0) {
 			fr_strerror_printf("failed to parse IPv6 address string \"%s\"", value);
-			return false;
+			return -1;
 		}
 
 		prefix = strtoul(p + 1, &eptr, 10);
 		if ((prefix > 128) || *eptr) {
 			fr_strerror_printf("failed to parse IPv6 address string \"%s\"", value);
-			return false;
+			return -1;
 		}
 		vp->vp_ipv6prefix[1] = prefix;
 
@@ -1647,7 +1647,7 @@ bool pairparsevalue(VALUE_PAIR *vp, char const *value, size_t inlen)
 
 			if (inet_pton(AF_INET, value, vp->vp_ipv4prefix + 2) <= 0) {
 				fr_strerror_printf("failed to parse IPv4 address string \"%s\"", value);
-				return false;
+				return -1;
 			}
 			vp->length = sizeof(vp->vp_ipv4prefix);
 			break;
@@ -1658,7 +1658,7 @@ bool pairparsevalue(VALUE_PAIR *vp, char const *value, size_t inlen)
 		 */
 		if ((size_t)(p - value) >= sizeof(buffer)) {
 			fr_strerror_printf("invalid IPv4 prefix string \"%s\"", value);
-			return false;
+			return -1;
 		}
 
 		/*
@@ -1669,13 +1669,13 @@ bool pairparsevalue(VALUE_PAIR *vp, char const *value, size_t inlen)
 
 		if (inet_pton(AF_INET, buffer, vp->vp_ipv4prefix + 2) <= 0) {
 			fr_strerror_printf("failed to parse IPv4 address string \"%s\"", value);
-			return false;
+			return -1;
 		}
 
 		prefix = strtoul(p + 1, &eptr, 10);
 		if ((prefix > 32) || *eptr) {
 			fr_strerror_printf("failed to parse IPv4 address string \"%s\"", value);
-			return false;
+			return -1;
 		}
 		vp->vp_ipv4prefix[1] = prefix;
 
@@ -1724,7 +1724,7 @@ bool pairparsevalue(VALUE_PAIR *vp, char const *value, size_t inlen)
 			}
 			if (!c1 || !c2 || (vp_len >= sizeof(vp->vp_ether))) {
 				fr_strerror_printf("failed to parse Ethernet address \"%s\"", value);
-				return false;
+				return -1;
 			}
 			vp->vp_ether[vp_len] = ((c1-hextab)<<4) + (c2-hextab);
 			vp_len++;
@@ -1751,7 +1751,7 @@ bool pairparsevalue(VALUE_PAIR *vp, char const *value, size_t inlen)
 			da = dict_attrbytype(vp->da->attr, vp->da->vendor, PW_TYPE_IPV6ADDR);
 			if (!da) {
 				fr_strerror_printf("Cannot find ipv6addr for %s", vp->da->name);
-				return false;
+				return -1;
 			}
 
 			vp->length = 16; /* length of IPv6 address */
@@ -1762,12 +1762,12 @@ bool pairparsevalue(VALUE_PAIR *vp, char const *value, size_t inlen)
 					     PW_TYPE_IPADDR);
 			if (!da) {
 				fr_strerror_printf("Cannot find ipaddr for %s", vp->da->name);
-				return false;
+				return -1;
 			}
 
 			if (ip_hton(value, AF_INET, &ipaddr) < 0) {
 				fr_strerror_printf("Failed to find IPv4 address for %s", value);
-				return false;
+				return -1;
 			}
 
 			vp->vp_ipaddr = ipaddr.ipaddr.ip4addr.s_addr;
@@ -1789,12 +1789,12 @@ bool pairparsevalue(VALUE_PAIR *vp, char const *value, size_t inlen)
 		 */
 	default:
 		fr_strerror_printf("unknown attribute type %d", vp->da->type);
-		return false;
+		return -1;
 	}
 
 finish:
 	vp->type = VT_DATA;
-	return true;
+	return 0;
 }
 
 /** Use simple heuristics to create an VALUE_PAIR from an unknown address string
@@ -1848,7 +1848,7 @@ VALUE_PAIR *pairmake_ip(TALLOC_CTX *ctx, char const *value, DICT_ATTR *ipv4, DIC
 finish:
 	vp = pairalloc(ctx, da);
 	if (!vp) return NULL;
-	if (!pairparsevalue(vp, value, 0)) {
+	if (pairparsevalue(vp, value, 0) < 0) {
 		talloc_free(vp);
 		return NULL;
 	}
@@ -2096,7 +2096,7 @@ VALUE_PAIR *pairmake(TALLOC_CTX *ctx, VALUE_PAIR **vps,
 	 *	We probably want to fix pairparsevalue to accept
 	 *	octets as values for any attribute.
 	 */
-	if (value && !pairparsevalue(vp, value, 0)) {
+	if (value && (pairparsevalue(vp, value, 0) < 0)) {
 		talloc_free(vp);
 		return NULL;
 	}

@@ -616,7 +616,7 @@ int radius_xlat_do(REQUEST *request, VALUE_PAIR *vp)
 	/*
 	 *	Parse the string into a new value.
 	 */
-	if (!pairparsevalue(vp, buffer, 0)){
+	if (pairparsevalue(vp, buffer, 0) < 0){
 		return -2;
 	}
 
@@ -1336,7 +1336,7 @@ int radius_mapexec(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *m
 		vp = pairalloc(request, map->dst->vpt_da);
 		if (!vp) return -1;
 		vp->op = map->op;
-		if (!pairparsevalue(vp, answer, 0)) {
+		if (pairparsevalue(vp, answer, 0) < 0) {
 			pairfree(&vp);
 			return -2;
 		}
@@ -1481,9 +1481,8 @@ int radius_map2vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *ma
 
 		rcode = pairparsevalue(vp, str, 0);
 		talloc_free(str);
-		if (!rcode) {
+		if (rcode < 0) {
 			pairfree(&vp);
-			rcode = -1;
 			goto error;
 		}
 		break;
@@ -1499,15 +1498,14 @@ int radius_map2vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *ma
 		}
 		rcode = pairparsevalue(vp, str, 0);
 		talloc_free(str);
-		if (!rcode) {
+		if (rcode < 0) {
 			pairfree(&vp);
-			rcode = -1;
 			goto error;
 		}
 		break;
 
 	case VPT_TYPE_LITERAL:
-		if (!pairparsevalue(vp, map->src->name, 0)) {
+		if (pairparsevalue(vp, map->src->name, 0) < 0) {
 			rcode = 0;
 			goto error;
 		}
