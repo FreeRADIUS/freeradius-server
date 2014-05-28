@@ -609,7 +609,7 @@ void		pairfilter(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from,
 			   unsigned int attr, unsigned int vendor, int8_t tag);
 VALUE_PAIR	*pairmake_ip(TALLOC_CTX *ctx, char const *value,
 			     DICT_ATTR *ipv4, DICT_ATTR *ipv6, DICT_ATTR *ipv4_prefix, DICT_ATTR *ipv6_prefix);
-bool		pairparsevalue(VALUE_PAIR *vp, char const *value);
+bool		pairparsevalue(VALUE_PAIR *vp, char const *value, size_t len);
 VALUE_PAIR	*pairmake(TALLOC_CTX *ctx, VALUE_PAIR **vps, char const *attribute, char const *value, FR_TOKEN op);
 int 		pairmark_xlat(VALUE_PAIR *vp, char const *value);
 FR_TOKEN 	pairread(char const **ptr, VALUE_PAIR_RAW *raw);
@@ -696,7 +696,7 @@ void		fr_talloc_verify_cb(const void *ptr, int depth,
 
 #ifdef WITH_ASCEND_BINARY
 /* filters.c */
-int		ascend_parse_filter(VALUE_PAIR *vp, char const *value);
+int		ascend_parse_filter(VALUE_PAIR *vp, char const *value, size_t len);
 void		print_abinary(char *out, size_t outlen, VALUE_PAIR const *vp,  int8_t quote);
 #endif /*WITH_ASCEND_BINARY*/
 
