@@ -953,7 +953,7 @@ static int ascend_parse_generic(int argc, char **argv,
  *
  *	return:			-1 for error or 0.
  */
-int ascend_parse_filter(VALUE_PAIR *vp, char const *value)
+int ascend_parse_filter(VALUE_PAIR *vp, char const *value, size_t len)
 {
 	int		token, type;
 	int		rcode;
@@ -977,7 +977,8 @@ int ascend_parse_filter(VALUE_PAIR *vp, char const *value)
 	 *	Once the filter is *completelty* parsed, then we will
 	 *	over-write it with the final binary filter.
 	 */
-	p = talloc_typed_strdup(vp, value);
+	p = talloc_memdup(vp, value, len);
+	p[len] = '\0';
 	argc = str2argv(p, argv, 32);
 	if (argc < 3) {
 		talloc_free(p);

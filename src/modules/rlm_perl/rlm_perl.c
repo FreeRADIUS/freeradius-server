@@ -668,7 +668,7 @@ static int pairadd_sv(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, char 
 		}
 
 		if (vp->da->type != PW_TYPE_STRING) {
-			if (!pairparsevalue(vp, val)) goto fail;
+			if (!pairparsevalue(vp, val, 0)) goto fail;
 		} else {
 			pairstrncpy(vp, val, len);
 		}

@@ -1023,7 +1023,7 @@ static int rest_decode_post(UNUSED rlm_rest_t *instance, UNUSED rlm_rest_section
 			goto error;
 		}
 
-		ret = pairparsevalue(vp, expanded);
+		ret = pairparsevalue(vp, expanded, 0);
 		TALLOC_FREE(expanded);
 		if (!ret) {
 			RWDEBUG("Incompatible value assignment, skipping");
@@ -1112,7 +1112,7 @@ static VALUE_PAIR *json_pairmake_leaf(UNUSED rlm_rest_t *instance, UNUSED rlm_re
 
 	vp->op = flags->op;
 
-	ret = pairparsevalue(vp, to_parse);
+	ret = pairparsevalue(vp, to_parse, 0);
 	talloc_free(expanded);
 	if (!ret) {
 		RWDEBUG("Incompatible value assignment, skipping...");

@@ -510,7 +510,7 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 			if (!vp) continue;
 
 			vp->op = map->op;
-			if (!pairparsevalue(vp, buffer)) {
+			if (!pairparsevalue(vp, buffer, 0)) {
 				pairfree(&vp);
 				continue;
 			}
@@ -535,7 +535,7 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 			if (!vp) continue;
 
 			vp->op = map->op;
-			if (!pairparsevalue(vp, map->src->name)) {
+			if (!pairparsevalue(vp, map->src->name, 0)) {
 				pairfree(&vp);
 				continue;
 			}
@@ -640,7 +640,7 @@ static int cache_verify(rlm_cache_t *inst, value_pair_map_t **head)
 				MEM(vp = pairalloc(map->dst, map->dst->vpt_da));
 				vp->op = map->op;
 
-				ret = pairparsevalue(vp, map->src->name);
+				ret = pairparsevalue(vp, map->src->name, 0);
 				talloc_free(vp);
 				if (!ret) {
 					cf_log_err(map->ci, "%s", fr_strerror());

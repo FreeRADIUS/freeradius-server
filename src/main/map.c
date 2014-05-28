@@ -879,7 +879,7 @@ bool radius_cast_tmpl(value_pair_tmpl_t *vpt, DICT_ATTR const *da)
 	vp = pairalloc(vpt, da);
 	if (!vp) return false;
 
-	if (!pairparsevalue(vp, vpt->name)) {
+	if (!pairparsevalue(vp, vpt->name, 0)) {
 		pairfree(&vp);
 		return false;
 	}
