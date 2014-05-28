@@ -79,15 +79,6 @@ int fr_tcp_client_socket(fr_ipaddr_t *src_ipaddr,
 		return -1;
 	}
 
-	/*
-	 *	Set non-block *AFTER* connecting to the remote server
-	 *	so it doesn't return immediately.
-	 */
-	if (fr_nonblock(sockfd) < 0) {
-		close(sockfd);
-		return -1;
-	}
-
 	return sockfd;
 }
 
