@@ -644,13 +644,10 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 *	Group comparison checks.
 	 */
 	if (cf_section_name2(conf)) {
-		ATTR_FLAGS flags;
+		static ATTR_FLAGS flags;
 		char buffer[256];
 
-		snprintf(buffer, sizeof(buffer), "%s-Ldap-Group",
-			 inst->xlat_name);
-		memset(&flags, 0, sizeof(flags));
-
+		snprintf(buffer, sizeof(buffer), "%s-Ldap-Group", inst->xlat_name);
 		if (dict_addattr(buffer, -1, 0, PW_TYPE_STRING, flags) < 0) {
 			LDAP_ERR("Error creating group attribute: %s", fr_strerror());
 
@@ -679,8 +676,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 *	Setup the cache attribute
 	 */
 	if (inst->cache_attribute) {
-		ATTR_FLAGS flags;
-		memset(&flags, 0, sizeof(flags));
+		static ATTR_FLAGS flags;
 
 		if (dict_addattr(inst->cache_attribute, -1, 0, PW_TYPE_STRING, flags) < 0) {
 			LDAP_ERR("Error creating cache attribute: %s", fr_strerror());
