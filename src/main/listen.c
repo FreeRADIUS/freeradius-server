@@ -2463,20 +2463,30 @@ static int listen_bind(rad_listen_t *this)
 #ifdef WITH_TCP
 	if (sock->proto == IPPROTO_TCP) {
 		/*
-		 *	If there are hard-coded worker threads, they're blocking.
+		 *	If there are hard-coded worker threads, OR
+		 *	it's a TLS connection, it's blocking.
 		 *
 		 *	Otherwise, they're non-blocking.
 		 */
-		if (!this->workers && fr_nonblock(this->fd) < 0) {
-			close(this->fd);
-			ERROR("Failed setting non-blocking on socket: %s",
-			      fr_syserror(errno));
-			return -1;
+		if (!this->workers
+#ifdef WITH_PROXY
+		    && (this->type == RAD_LISTEN_PROXY) && !this->tls
+#endif
+			) {
+			if (fr_nonblock(this->fd) < 0) {
+				close(this->fd);
+				ERROR("Failed setting non-blocking on socket: %s",
+				      fr_syserror(errno));
+				return -1;
+			}
 		}
 
 		/*
-		 *	Allow a backlog of 8 listeners
+		 *	Allow a backlog of 8 listeners, but only for incoming interfaces.
 		 */
+#ifdef WITH_PROXY
+		if (this->type != RAD_LISTEN_PROXY)
+#endif
 		if (listen(this->fd, 8) < 0) {
 			close(this->fd);
 			ERROR("Failed in listen(): %s", fr_syserror(errno));
