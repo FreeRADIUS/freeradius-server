@@ -600,6 +600,8 @@ ldap_rcode_t rlm_ldap_bind(ldap_instance_t const *inst, REQUEST *request, ldap_h
 
 			break;
 		}
+
+		break;
 	}
 
 	if (retry && (i < 0)) {
@@ -719,6 +721,8 @@ ldap_rcode_t rlm_ldap_search(ldap_instance_t const *inst, REQUEST *request, ldap
 
 			goto finish;
 		}
+
+		break;
 	}
 
 	if (i < 0) {
@@ -833,6 +837,8 @@ ldap_rcode_t rlm_ldap_modify(ldap_instance_t const *inst, REQUEST *request, ldap
 
 				goto finish;
 		}
+
+		break;
 	}
 
 	if (i < 0) {
