@@ -912,6 +912,10 @@ do {\
 	FR_INTEGER_COND_CHECK("max_request_time", main_config.max_request_time, (main_config.max_request_time != 0), 100);
 	FR_INTEGER_BOUND_CHECK("reject_delay", main_config.reject_delay, <=, 10);
 	FR_INTEGER_BOUND_CHECK("cleanup_delay", main_config.cleanup_delay, <=, 10);
+
+	main_config.min_response_window.tv_sec = 0;
+	main_config.min_response_window.tv_usec = 1000000 / 3;
+
 	/*
 	 *	Free the old configuration items, and replace them
 	 *	with the new ones.

@@ -954,7 +954,8 @@ static void request_queue_or_run(UNUSED REQUEST *request,
 		/*
 		 *	(re) set the initial delay.
 		 */
-		request->delay = USEC / 3;
+		request->delay =  (main_config.min_response_window.tv_sec * USEC) + main_config.min_response_window.tv_usec;
+		if (request->delay > USEC) request->delay = USEC;
 		gettimeofday(&when, NULL);
 		tv_add(&when, request->delay);
 		request->delay += request->delay >> 1;
