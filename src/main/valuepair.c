@@ -1806,11 +1806,6 @@ void vmodule_failure_msg(REQUEST *request, char const *fmt, va_list ap)
 		return;
 	}
 
-	vp = paircreate(request->packet, PW_MODULE_FAILURE_MESSAGE, 0);
-	if (!vp) {
-		return;
-	}
-
 	/*
 	 *  If we don't copy the original ap we get a segfault from vasprintf. This is apparently
 	 *  due to ap sometimes being implemented with a stack offset which is invalidated if
@@ -1821,14 +1816,14 @@ void vmodule_failure_msg(REQUEST *request, char const *fmt, va_list ap)
 	 *  running unit tests which generate errors under CI.
 	 */
 	va_copy(aq, ap);
-	p = talloc_vasprintf(vp, fmt, aq);
-	talloc_set_type(p, char);
+	p = talloc_vasprintf(request, fmt, aq);
 	va_end(aq);
-	if (request->module && *request->module) {
+
+	MEM(vp = pairmake_packet("Module-Failure-Message", NULL, T_OP_ADD));
+	if (request->module && (request->module[0] != '\0')) {
 		pairsprintf(vp, "%s: %s", request->module, p);
 	} else {
 		pairsprintf(vp, "%s", p);
 	}
 	talloc_free(p);
-	pairadd(&request->packet->vps, vp);
 }
