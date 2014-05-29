@@ -882,7 +882,7 @@ static void debug_map(REQUEST *request, value_pair_map_t const *map, VALUE_PAIR 
 
 		case VPT_TYPE_ATTR:
 			vp_prints_value(buffer, sizeof(buffer), vp, '\'');
-			value = talloc_typed_asprintf(request, "&%s -> %s", map->src->name, buffer);
+			value = talloc_typed_asprintf(request, "&%s -> %s", map->src->vpt_da->name, buffer);
 			break;
 	}
 
