@@ -614,6 +614,10 @@ void vmodule_failure_msg(REQUEST *request, char const *fmt, va_list ap) CC_HINT(
 
 /*
  *	Less code == fewer bugs
+ *
+ * @param _a attribute
+ * @param _b value
+ * @param _c op
  */
 #define pairmake_packet(_a, _b, _c) pairmake(request->packet, &request->packet->vps, _a, _b, _c)
 #define pairmake_reply(_a, _b, _c) pairmake(request->reply, &request->reply->vps, _a, _b, _c)
