@@ -509,12 +509,11 @@ static CONF_PARSER limit_config[] = {
 static const CONF_PARSER client_config[] = {
 	{ "ipaddr", FR_CONF_POINTER(PW_TYPE_IPADDR, &cl_ip4addr), NULL },
 	{ "ipv6addr", FR_CONF_POINTER(PW_TYPE_IPV6ADDR, &cl_ip6addr), NULL },
-	{ "netmask",  PW_TYPE_INTEGER, offsetof(RADCLIENT, prefix), 0, NULL },
+	{ "netmask",  FR_CONF_OFFSET(PW_TYPE_INTEGER, RADCLIENT, prefix), NULL },
 
 	{ "src_ipaddr", FR_CONF_POINTER(PW_TYPE_STRING, &cl_srcipaddr), NULL },
 
-	{ "require_message_authenticator",  PW_TYPE_BOOLEAN,
-	  offsetof(RADCLIENT, message_authenticator), 0, "no" },
+	{ "require_message_authenticator",  FR_CONF_OFFSET(PW_TYPE_BOOLEAN, RADCLIENT, message_authenticator), "no" },
 
 	{ "secret",  PW_TYPE_STRING | PW_TYPE_SECRET,
 	  offsetof(RADCLIENT, secret), 0, NULL },
