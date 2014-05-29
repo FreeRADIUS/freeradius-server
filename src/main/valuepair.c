@@ -845,21 +845,18 @@ TALLOC_CTX *radius_list_ctx(REQUEST *request, pair_lists_t list_name)
 /*
  *	Debug print a map / VP
  */
-static void debug_map(REQUEST *request, value_pair_map_t const *map, VALUE_PAIR const *vp)
+static void CC_HINT(nonnull(1, 2)) debug_map(REQUEST *request, value_pair_map_t const *map, VALUE_PAIR const *vp)
 {
 	char *value;
 	char buffer[1024];
+
+	rad_assert(vp || (map->src->type == VPT_TYPE_NULL));
 
 	switch (map->src->type) {
 		/*
 		 *	Just print the value being assigned
 		 */
 		default:
-		case VPT_TYPE_NULL:
-			strcpy(buffer, "ANY");
-			value = buffer;
-			break;
-
 		case VPT_TYPE_LITERAL:
 			vp_prints_value(buffer, sizeof(buffer), vp, '\'');
 			value = buffer;
@@ -889,17 +886,22 @@ static void debug_map(REQUEST *request, value_pair_map_t const *map, VALUE_PAIR 
 			vp_prints_value(buffer, sizeof(buffer), vp, '\'');
 			value = talloc_typed_asprintf(request, "&%s -> %s", map->src->vpt_da->name, buffer);
 			break;
+
+		case VPT_TYPE_NULL:
+			strcpy(buffer, "ANY");
+			value = buffer;
+			break;
 	}
 
 	switch (map->dst->type) {
 		case VPT_TYPE_LIST:
-			RDEBUG("\t%s%s %s %s", map->dst->name, vp->da->name,
-			       fr_int2str(fr_tokens, vp->op, "<INVALID>"), value);
+			RDEBUG("\t%s%s %s %s", map->dst->name, vp ? vp->da->name : "",
+			       fr_int2str(fr_tokens, vp ? vp->op : map->op, "<INVALID>"), value);
 			break;
 
 		case VPT_TYPE_ATTR:
 			RDEBUG("\t%s %s %s", map->dst->name,
-			       fr_int2str(fr_tokens, vp->op, "<INVALID>"), value);
+			       fr_int2str(fr_tokens, vp ? vp->op : map->op, "<INVALID>"), value);
 			break;
 
 		default:
@@ -997,6 +999,8 @@ int radius_map2request(REQUEST *request, value_pair_map_t const *map,
 			return rcode;
 		}
 		if (!head) return rcode;
+	} else {
+		if (debug_flag) debug_map(request, map, NULL);
 	}
 
 	/*
