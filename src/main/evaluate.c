@@ -548,7 +548,7 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 		 *	VP, and return that.
 		 */
 		if (map->src->type == VPT_TYPE_ATTR) {
-			radius_vpt_get_vp(&rhs_vp, request, map->src);
+			if (radius_vpt_get_vp(&rhs_vp, request, map->src) < 0) return false;
 		} else {
 			rhs_vp = get_cast_vp(request, map->src, c->cast);
 		}
