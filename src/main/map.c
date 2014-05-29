@@ -422,6 +422,22 @@ value_pair_map_t *radius_cp2map(TALLOC_CTX *ctx, CONF_PAIR *cp,
 	}
 
 	/*
+	 *	Values used by unary operators should be literal ANY
+	 *
+	 *	We then free the template and alloc a NULL one instead.
+	 */
+	if (map->op == T_OP_CMP_FALSE) {
+	 	if ((map->src->type != VPT_TYPE_LITERAL) || (strcmp(map->src->name, "ANY") != 0)) {
+			WARN("%s[%d] Wildcard deletion MUST use '!* ANY'", cf_pair_filename(cp), cf_pair_lineno(cp));
+		}
+
+		radius_tmplfree(&map->src);
+
+		map->src = talloc_zero(map, value_pair_tmpl_t);
+		map->src->type = VPT_TYPE_NULL;
+	}
+
+	/*
 	 *	Lots of sanity checks for insane people...
 	 */
 
@@ -451,27 +467,20 @@ value_pair_map_t *radius_cp2map(TALLOC_CTX *ctx, CONF_PAIR *cp,
 	 *	disallowed.
 	 */
 	if (map->dst->type == VPT_TYPE_ATTR) {
-		if ((map->op != T_OP_EQ) &&
-		    (map->op != T_OP_CMP_EQ) &&
-		    (map->op != T_OP_ADD) &&
-		    (map->op != T_OP_SUB) &&
-		    (map->op != T_OP_LE) &&
-		    (map->op != T_OP_GE) &&
-		    (map->op != T_OP_CMP_FALSE) &&
-		    (map->op != T_OP_SET)) {
+		switch (map->op) {
+		default:
 			cf_log_err(ci, "Invalid operator for attribute");
 			goto error;
-		}
 
-		/*
-		 *	This will be an error in future versions of
-		 *	the server.
-		 */
-		if ((map->op == T_OP_CMP_FALSE) &&
-		    ((map->src->type != VPT_TYPE_LITERAL) ||
-		     (strcmp(map->src->name, "ANY") != 0))) {
-			WARN("%s[%d] Attribute deletion MUST use '!* ANY'",
-			       cf_pair_filename(cp), cf_pair_lineno(cp));
+		case T_OP_EQ:
+		case T_OP_CMP_EQ:
+		case T_OP_ADD:
+		case T_OP_SUB:
+		case T_OP_LE:
+		case T_OP_GE:
+		case T_OP_CMP_FALSE:
+		case T_OP_SET:
+			break;
 		}
 	}
 
@@ -482,11 +491,6 @@ value_pair_map_t *radius_cp2map(TALLOC_CTX *ctx, CONF_PAIR *cp,
 		 */
 		switch (map->op) {
 		case T_OP_CMP_FALSE:
-			if ((map->src->type != VPT_TYPE_LITERAL) ||
-			    (strcmp(map->src->name, "ANY") != 0)) {
-				cf_log_err(ci, "List deletion MUST use '!* ANY'");
-				goto error;
-			}
 			break;
 
 		case T_OP_ADD:
