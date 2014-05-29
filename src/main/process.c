@@ -405,6 +405,24 @@ static void debug_packet(REQUEST *request, RADIUS_PACKET *packet, int direction)
  *
  ***********************************************************************/
 
+static struct timeval *request_response_window(REQUEST *request)
+{
+	/*
+	 *	The client hasn't set the response window.  Return
+	 *	either the home server one, if set, or the global one.
+	 */
+	if (!timerisset(&request->client->response_window)) {
+		return &request->home_server->response_window;
+	}
+
+	if (timercmp(&request->client->response_window,
+		     &request->home_server->response_window, <)) {
+		return &request->client->response_window;
+	}
+
+	return &request->home_server->response_window;
+}
+
 /*
  *	Callback for ALL timer events related to the request.
  */
@@ -593,7 +611,7 @@ STATE_MACHINE_DECL(request_done)
 			when.tv_sec += request->home_server->coa_mrd;
 		} else
 #endif
-			timeradd(&when, &request->home_server->response_window, &when);
+			timeradd(&when, request_response_window(request), &when);
 
 		/*
 		 *	We haven't received all responses, AND there's still
@@ -3069,7 +3087,7 @@ static void home_trigger(home_server_t *home, char const *trigger)
 	exec_trigger(&my_request, home->cs, trigger, false);
 }
 
-static void mark_home_server_zombie(home_server_t *home, struct timeval *now)
+static void mark_home_server_zombie(home_server_t *home, struct timeval *now, struct timeval *response_window)
 {
 	time_t start;
 	char buffer[128];
@@ -3119,7 +3137,7 @@ static void mark_home_server_zombie(home_server_t *home, struct timeval *now)
 	PROXY( "Marking home server %s port %d as zombie (it has not responded in %d.%06d seconds).",
 	       inet_ntop(home->ipaddr.af, &home->ipaddr.ipaddr,
 			 buffer, sizeof(buffer)),
-	       home->port, (int) home->response_window.tv_sec, (int) home->response_window.tv_usec);
+	       home->port, (int) response_window->tv_sec, (int) response_window->tv_usec);
 
 	ping_home_server(home);
 }
@@ -3200,6 +3218,7 @@ void mark_home_server_dead(home_server_t *home, struct timeval *when)
 STATE_MACHINE_DECL(proxy_wait_for_reply)
 {
 	struct timeval now, when;
+	struct timeval *response_window = NULL;
 	home_server_t *home = request->home_server;
 	char buffer[128];
 
@@ -3294,6 +3313,8 @@ STATE_MACHINE_DECL(proxy_wait_for_reply)
 		break;
 
 	case FR_ACTION_TIMER:
+		response_window = request_response_window(request);
+
 #ifdef WITH_TCP
 		if (!request->proxy_listener ||
 		    (request->proxy_listener->status != RAD_LISTEN_STATUS_KNOWN)) {
@@ -3319,7 +3340,7 @@ STATE_MACHINE_DECL(proxy_wait_for_reply)
 			 *	responding to other (better looking) packets.
 			 */
 			when = request->proxy->timestamp;
-			timeradd(&when, &home->response_window, &when);
+			timeradd(&when, response_window, &when);
 
 			/*
 			 *	Not at the response window.  Set the timer for
@@ -3327,7 +3348,7 @@ STATE_MACHINE_DECL(proxy_wait_for_reply)
 			 */
 			if (timercmp(&when, &now, >)) {
 				RDEBUG("Expecting proxy response no later than %d.%06d seconds from now",
-				       (int) home->response_window.tv_sec, (int) home->response_window.tv_usec);
+				       (int) response_window->tv_sec, (int) response_window->tv_usec);
 				STATE_MACHINE_TIMER(FR_ACTION_TIMER);
 				return;
 			}
@@ -3353,7 +3374,7 @@ STATE_MACHINE_DECL(proxy_wait_for_reply)
 		    && (home->proto != IPPROTO_TCP)
 #endif
 			) {
-			mark_home_server_zombie(home, &now);
+			mark_home_server_zombie(home, &now, response_window);
 		}
 
 		FR_STATS_TYPE_INC(home->stats.total_timeouts);

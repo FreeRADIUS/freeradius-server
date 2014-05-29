@@ -96,6 +96,8 @@ typedef struct radclient {
 #endif
 #endif
 
+	struct timeval		response_window;
+
 	int			proto;
 #ifdef WITH_TCP
 	fr_socket_limit_t	limit;
