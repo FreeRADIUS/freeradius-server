@@ -54,7 +54,7 @@ typedef enum fr_token_t {
   T_OP_REG_EQ,			/* =~ */
   T_OP_REG_NE,			/* !~ */
   T_OP_CMP_TRUE,		/* =* 		20 */
-  T_OP_CMP_FALSE,	       /* !* */
+  T_OP_CMP_FALSE,		/* !* */
   T_OP_CMP_EQ,			/* == */
   T_HASH,			/* # */
   T_BARE_WORD,			/* bare word */
