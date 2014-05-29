@@ -339,7 +339,7 @@ int main(int argc, char **argv)
 			portname = NULL;
 		}
 
-		if (ip_hton(hostname, AF_INET, &server_ipaddr) < 0) {
+		if (ip_hton(AF_INET, hostname, &server_ipaddr) < 0) {
 			fprintf(stderr, "dhcpclient: Failed to find IP address for host %s: %s\n", hostname, fr_syserror(errno));
 			exit(1);
 		}

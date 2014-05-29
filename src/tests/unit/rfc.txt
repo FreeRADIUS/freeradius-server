@@ -109,7 +109,31 @@ attribute Framed-IP-Address = 127.0.0.1/32
 data Framed-IP-Address = 127.0.0.1
 
 attribute Framed-IP-Address = 127.0.0.1/323
-data Invalid IP address suffix "/323".  Only '/32' permitted for non-prefix types
+data Invalid IPv4 mask length "/323".  Should be between 0-32
+
+attribute Framed-IP-Address = 127.0.0.1/30
+data Invalid IPv4 mask length "/30".  Only "/32" permitted for non-prefix types
+
+attribute Framed-IP-Address = *
+data Framed-IP-Address = 0.0.0.0
+
+attribute Framed-IP-Address = 127
+data Framed-IP-Address = 0.0.0.127
+
+attribute Framed-IPv6-Prefix = ::1
+data Framed-IPv6-Prefix = ::1/128
+
+attribute Framed-IPv6-Prefix = ::1/200
+data Invalid IPv6 mask length "/200".  Should be between 0-128
+
+attribute Framed-IPv6-Prefix = ::1/200
+data Invalid IPv6 mask length "/200".  Should be between 0-128
+
+attribute Framed-IPv6-Prefix = 11:22:33:44:55:66:77:88/128
+data Framed-IPv6-Prefix = 11:22:33:44:55:66:77:88/128
+
+attribute Framed-IPv6-Prefix = *
+data Framed-IPv6-Prefix = ::/128
 
 $INCLUDE errors.txt
 $INCLUDE extended.txt

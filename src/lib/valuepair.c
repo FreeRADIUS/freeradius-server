@@ -1205,7 +1205,6 @@ static char const *hextab = "0123456789abcdef";
  */
 int pairparsevalue(VALUE_PAIR *vp, char const *value, size_t inlen)
 {
-	char const	*cs;
 	DICT_VALUE	*dval;
 	size_t		len;
 	char		buffer[256];
@@ -1394,6 +1393,72 @@ int pairparsevalue(VALUE_PAIR *vp, char const *value, size_t inlen)
 	}
 		goto finish;
 
+	case PW_TYPE_IPADDR:
+	{
+		fr_ipaddr_t addr;
+
+		if (fr_pton(&addr, value, inlen, false) < 0) return -1;
+
+		/*
+		 *	We allow v4 addresses to have a /32 suffix as some databases (PostgreSQL)
+		 *	print them this way.
+		 */
+		if (addr.prefix != 32) {
+			fr_strerror_printf("Invalid IPv4 mask length \"/%i\".  Only \"/32\" permitted "
+					   "for non-prefix types", addr.prefix);
+			return -1;
+		}
+
+		vp->vp_ipaddr = addr.ipaddr.ip4addr.s_addr;
+		vp->length = sizeof(vp->vp_ipaddr);
+	}
+		goto finish;
+
+	case PW_TYPE_IPV4PREFIX:
+	{
+		fr_ipaddr_t addr;
+
+		if (fr_pton(&addr, value, inlen, false) < 0) return -1;
+
+		vp->vp_ipv4prefix[1] = addr.prefix;
+		memcpy(vp->vp_ipv4prefix + 2, &addr.ipaddr.ip4addr.s_addr, sizeof(vp->vp_ipv4prefix) - 2);
+		vp->length = sizeof(vp->vp_ipv4prefix);
+	}
+		goto finish;
+
+	case PW_TYPE_IPV6ADDR:
+	{
+		fr_ipaddr_t addr;
+
+		if (fr_pton6(&addr, value, inlen, false) < 0) return -1;
+
+		/*
+		 *	We allow v6 addresses to have a /128 suffix as some databases (PostgreSQL)
+		 *	print them this way.
+		 */
+		if (addr.prefix != 128) {
+			fr_strerror_printf("Invalid IPv6 mask length \"/%i\".  Only \"/128\" permitted "
+					   "for non-prefix types", addr.prefix);
+			return -1;
+		}
+
+		memcpy(&vp->vp_ipv6addr, &addr.ipaddr.ip6addr.s6_addr, sizeof(vp->vp_ipv6addr));
+		vp->length = sizeof(vp->vp_ipv6addr);
+	}
+		goto finish;
+
+	case PW_TYPE_IPV6PREFIX:
+	{
+		fr_ipaddr_t addr;
+
+		if (fr_pton6(&addr, value, inlen, false) < 0) return -1;
+
+		vp->vp_ipv6prefix[1] = addr.prefix;
+		memcpy(vp->vp_ipv6prefix + 2, &addr.ipaddr.ip6addr.s6_addr, sizeof(vp->vp_ipv6prefix) - 2);
+		vp->length = sizeof(vp->vp_ipv6prefix);
+	}
+		goto finish;
+
 	default:
 		break;
 	}
@@ -1414,57 +1479,6 @@ int pairparsevalue(VALUE_PAIR *vp, char const *value, size_t inlen)
 	}
 
 	switch(vp->da->type) {
-	case PW_TYPE_IPADDR:
-	{
-		char const *p;
-		fr_ipaddr_t ipaddr;
-		char ipv4[16];
-		/*
-		 *	FIXME: complain if hostname
-		 *	cannot be resolved, or resolve later!
-		 */
-		p = NULL;
-
-		/*
-		 *	Convert things which are obviously integers to IP addresses
-		 *
-		 *	We assume the number is the bigendian representation of the
-		 *	IP address.
-		 */
-		if (is_integer(value)) {
-			vp->vp_ipaddr = htonl(atol(value));
-			break;
-		}
-
-		/*
-		 *	Certain applications/databases print IPv4 addresses with a
-		 *	/32 suffix. Strip it off if the mask is 32, else error out.
-		 */
-		p = strchr(value, '/');
-		if (p) {
-			if ((p[1] != '3') || (p[2] != '2') || (p[3] != '\0')) {
-				fr_strerror_printf("Invalid IP address suffix \"%s\".  Only '/32' permitted "
-						   "for non-prefix types", p);
-				return -1;
-			}
-
-			strlcpy(ipv4, value, sizeof(ipv4));
-			ipv4[p - value] = '\0';
-			cs = ipv4;
-		} else {
-			cs = value;
-		}
-
-		if (ip_hton(cs, AF_INET, &ipaddr) < 0) {
-			fr_strerror_printf("Failed to find IP address for %s", cs);
-			return -1;
-		}
-
-		vp->vp_ipaddr = ipaddr.ipaddr.ip4addr.s_addr;
-		vp->length = 4;
-	}
-		break;
-
 	case PW_TYPE_BYTE:
 	{
 		char *p;
@@ -1577,119 +1591,6 @@ int pairparsevalue(VALUE_PAIR *vp, char const *value, size_t inlen)
 		vp->length = 8;
 		break;
 
-	case PW_TYPE_IPV6ADDR:
-	{
-		fr_ipaddr_t ipaddr;
-
-		if (ip_hton(value, AF_INET6, &ipaddr) < 0) {
-			fr_strerror_printf("failed to parse IPv6 address "
-					   "string \"%s\": %s", value, fr_strerror());
-			return -1;
-		}
-		vp->vp_ipv6addr = ipaddr.ipaddr.ip6addr;
-		vp->length = 16; /* length of IPv6 address */
-	}
-		break;
-
-	case PW_TYPE_IPV6PREFIX:
-	{
-		char const *p;
-		unsigned int prefix;
-		char *eptr;
-
-		p = strchr(value, '/');
-		if (!p || ((p - value) >= 256)) {
-			fr_strerror_printf("invalid IPv6 prefix string \"%s\"", value);
-			return -1;
-		}
-
-		/*
-		 *	Copy string to temporary buffer if we didn't do it earlier
-		 */
-		if (inlen == 0) memcpy(buffer, value, p - value);
-		buffer[p - value] = '\0';
-
-		if (inet_pton(AF_INET6, buffer, vp->vp_ipv6prefix + 2) <= 0) {
-			fr_strerror_printf("failed to parse IPv6 address string \"%s\"", value);
-			return -1;
-		}
-
-		prefix = strtoul(p + 1, &eptr, 10);
-		if ((prefix > 128) || *eptr) {
-			fr_strerror_printf("failed to parse IPv6 address string \"%s\"", value);
-			return -1;
-		}
-		vp->vp_ipv6prefix[1] = prefix;
-
-		if (prefix < 128) {
-			struct in6_addr addr;
-
-			addr = fr_ipaddr_mask6((struct in6_addr *)(&vp->vp_ipv6prefix[2]), prefix);
-			memcpy(vp->vp_ipv6prefix + 2, &addr, sizeof(addr));
-		}
-		vp->length = 16 + 2;
-	}
-		break;
-
-	case PW_TYPE_IPV4PREFIX:
-	{
-		char *p;
-		unsigned int prefix;
-		char *eptr;
-
-		p = strchr(value, '/');
-
-		/*
-		 *	192.0.2.2 is parsed as if it was /32
-		 */
-		if (!p) {
-			vp->vp_ipv4prefix[1] = 32;
-
-			if (inet_pton(AF_INET, value, vp->vp_ipv4prefix + 2) <= 0) {
-				fr_strerror_printf("failed to parse IPv4 address string \"%s\"", value);
-				return -1;
-			}
-			vp->length = sizeof(vp->vp_ipv4prefix);
-			break;
-		}
-
-		/*
-		 *	Otherwise parse the prefix
-		 */
-		if ((size_t)(p - value) >= sizeof(buffer)) {
-			fr_strerror_printf("invalid IPv4 prefix string \"%s\"", value);
-			return -1;
-		}
-
-		/*
-		 *	Copy string to temporary buffer if we didn't do it earlier
-		 */
-		if (inlen == 0) memcpy(buffer, value, p - value);
-		buffer[p - value] = '\0';
-
-		if (inet_pton(AF_INET, buffer, vp->vp_ipv4prefix + 2) <= 0) {
-			fr_strerror_printf("failed to parse IPv4 address string \"%s\"", value);
-			return -1;
-		}
-
-		prefix = strtoul(p + 1, &eptr, 10);
-		if ((prefix > 32) || *eptr) {
-			fr_strerror_printf("failed to parse IPv4 address string \"%s\"", value);
-			return -1;
-		}
-		vp->vp_ipv4prefix[1] = prefix;
-
-		if (prefix < 32) {
-			struct in_addr addr;
-
-			addr = fr_ipaddr_mask((struct in_addr *)(&vp->vp_ipv4prefix[2]), prefix);
-			memcpy(vp->vp_ipv4prefix + 2, &addr, sizeof(addr));
-		}
-
-		vp->length = sizeof(vp->vp_ipv4prefix);
-	}
-		break;
-
 	case PW_TYPE_ETHERNET:
 	{
 		char const *c1, *c2, *cp;
@@ -1765,7 +1666,7 @@ int pairparsevalue(VALUE_PAIR *vp, char const *value, size_t inlen)
 				return -1;
 			}
 
-			if (ip_hton(value, AF_INET, &ipaddr) < 0) {
+			if (ip_hton(AF_INET, value, &ipaddr) < 0) {
 				fr_strerror_printf("Failed to find IPv4 address for %s", value);
 				return -1;
 			}
