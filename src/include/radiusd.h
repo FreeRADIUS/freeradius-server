@@ -446,6 +446,7 @@ typedef struct main_config_t {
 	bool		memory_report;
 	char const	*panic_action;
 	char const	*denied_msg;
+	struct timeval	min_response_window; /* for home servers */
 } MAIN_CONFIG_T;
 
 #define SECONDS_PER_DAY		86400

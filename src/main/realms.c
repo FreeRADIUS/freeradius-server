@@ -689,6 +689,14 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 		}
 	}
 
+	/*
+	 *	Track the minimum response window, so that we can
+	 *	correctly set the timers in process.c
+	 */
+	if (timercmp(&main_config.min_response_window, &home->response_window, >)) {
+		main_config.min_response_window = home->response_window;
+	}
+
 	FR_INTEGER_BOUND_CHECK("zombie_period", home->zombie_period, >=, 1);
 	FR_INTEGER_BOUND_CHECK("zombie_period", home->zombie_period, <=, 120);
 	FR_INTEGER_BOUND_CHECK("zombie_period", home->zombie_period, >=, (uint32_t) home->response_window.tv_sec);
@@ -1195,7 +1203,7 @@ static int old_server_add(realm_config_t *rc, CONF_SECTION *cs,
 		 */
 		home->max_outstanding = 65535*16;
 		home->zombie_period = rc->retry_delay * rc->retry_count;
-		if (home->zombie_period == 0) home->zombie_period = 30;
+		if (home->zombie_period < 2) home->zombie_period = 30;
 		home->response_window.tv_sec = home->zombie_period - 1;
 		home->response_window.tv_usec = 0;
 
