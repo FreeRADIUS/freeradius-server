@@ -26,6 +26,12 @@
 #include <freeradius-devel/rad_assert.h>
 #include "ldap.h"
 
+/** Callback for radius_map2request
+ *
+ * Performs exactly the same job as radius_map2vp, but pulls attribute values from LDAP entries
+ *
+ * @see radius_map2vp
+ */
 static int rlm_ldap_map_getvalue(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *map, void *ctx)
 {
 	rlm_ldap_result_t *self = ctx;
