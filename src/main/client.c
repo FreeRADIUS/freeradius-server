@@ -389,7 +389,7 @@ void client_delete(RADCLIENT_LIST *clients, RADCLIENT *client)
 
 	if (!client->dynamic) return;
 
-	rad_assert((client->prefix >= 0) && (client->prefix <= 128));
+	rad_assert(client->prefix <= 128);
 
 	client->dynamic = 2;	/* signal to client_free */
 
