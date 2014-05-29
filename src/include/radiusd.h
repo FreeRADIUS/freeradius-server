@@ -442,8 +442,8 @@ typedef struct main_config_t {
 #define MAX_REQUESTS		256
 #define RETRY_DELAY		5
 #define RETRY_COUNT		3
-#define DEAD_TIME	       120
-#define EXEC_TIMEOUT	       10
+#define DEAD_TIME		120
+#define EXEC_TIMEOUT		10
 
 /* for paircompare_register */
 typedef int (*RAD_COMPARE_FUNC)(void *instance, REQUEST *,VALUE_PAIR *, VALUE_PAIR *, VALUE_PAIR *, VALUE_PAIR **);
@@ -479,14 +479,15 @@ extern bool		log_auth_detail;
 extern char const	*radiusd_version;
 void			radius_signal_self(int flag);
 
-#define RADIUS_SIGNAL_SELF_NONE		(0)
-#define RADIUS_SIGNAL_SELF_HUP		(1 << 0)
-#define RADIUS_SIGNAL_SELF_TERM		(1 << 1)
-#define RADIUS_SIGNAL_SELF_EXIT		(1 << 2)
-#define RADIUS_SIGNAL_SELF_DETAIL	(1 << 3)
-#define RADIUS_SIGNAL_SELF_NEW_FD	(1 << 4)
-#define RADIUS_SIGNAL_SELF_MAX		(1 << 5)
-
+typedef enum {
+	RADIUS_SIGNAL_SELF_NONE		= (0),
+	RADIUS_SIGNAL_SELF_HUP		= (1 << 0),
+	RADIUS_SIGNAL_SELF_TERM		= (1 << 1),
+	RADIUS_SIGNAL_SELF_EXIT		= (1 << 2),
+	RADIUS_SIGNAL_SELF_DETAIL	= (1 << 3),
+	RADIUS_SIGNAL_SELF_NEW_FD	= (1 << 4),
+	RADIUS_SIGNAL_SELF_MAX		= (1 << 5)
+} radius_signal_t;
 /*
  *	Function prototypes.
  */
