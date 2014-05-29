@@ -568,7 +568,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 	/*
 	 *	FIXME: Make it work with the ipv6 addresses
 	 */
-	if ((ip_hton(allocation, AF_INET, &ipaddr) < 0) ||
+	if ((ip_hton(AF_INET, allocation, &ipaddr) < 0) ||
 	    ((ip_allocation = ipaddr.ipaddr.ip4addr.s_addr) == INADDR_NONE)) {
 		DO(allocate_commit);
 

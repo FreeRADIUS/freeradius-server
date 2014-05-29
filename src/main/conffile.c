@@ -1152,7 +1152,7 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, int type, void *data, char
 				    cs->depth, parse_spaces, name);
 			break;
 		}
-		if (ip_hton(value, AF_INET, &ipaddr) < 0) {
+		if (ip_hton(AF_INET, value, &ipaddr) < 0) {
 			ERROR("Can't find IP address for host %s", value);
 			return -1;
 		}
@@ -1169,7 +1169,7 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, int type, void *data, char
 		break;
 
 	case PW_TYPE_IPV6ADDR:
-		if (ip_hton(value, AF_INET6, &ipaddr) < 0) {
+		if (ip_hton(AF_INET6, value, &ipaddr) < 0) {
 			ERROR("Can't find IPv6 address for host %s", value);
 			return -1;
 		}

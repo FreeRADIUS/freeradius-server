@@ -174,6 +174,202 @@ char const *ip_ntoa(char *buffer, uint32_t ipaddr)
 	return buffer;
 }
 
+/** Parse an IPv4 address or IPv4 prefix in presentation format (and others)
+ *
+ * @param out Where to write the ip address value.
+ * @param value to parse, may be dotted quad [+ prefix], or integer, or octal number, or '*' (INADDR_ANY).
+ * @param inlen Length of value, if value is \0 terminated inlen may be 0.
+ * @param resolve If true and value doesn't look like an IP address, try and resolve value as a hostname.
+ * @return 0 if ip address was parsed successfully, else -1 on error.
+ */
+int fr_pton(fr_ipaddr_t *out, char const *value, size_t inlen, bool resolve)
+{
+	char *p;
+	unsigned int prefix;
+	char *eptr;
+
+	/* Dotted quad + / + [0-9]{1,2} */
+	char buffer[INET_ADDRSTRLEN + 3];
+
+	/*
+	 *	Copy to intermediary buffer if we were given a length
+	 */
+	if (inlen > 0) {
+		if (inlen >= sizeof(buffer)) {
+			fr_strerror_printf("Invalid IPv4 address string \"%s\"", value);
+			return -1;
+		}
+		memcpy(buffer, value, inlen);
+		buffer[inlen] = '\0';
+	}
+
+	p = strchr(value, '/');
+	/*
+	 *	192.0.2.2 is parsed as if it was /32
+	 */
+	if (!p) {
+		/*
+		 *	Allow '*' as the wildcard address usually 0.0.0.0
+		 */
+		if ((value[0] == '*') && (value[1] == '\0')) {
+			out->ipaddr.ip4addr.s_addr = htonl(INADDR_ANY);
+		/*
+		 *	Convert things which are obviously integers to IP addresses
+		 *
+		 *	We assume the number is the bigendian representation of the
+		 *	IP address.
+		 */
+		} else if (is_integer(value)) {
+			out->ipaddr.ip4addr.s_addr = htonl(strtoul(value, NULL, 0));
+		} else if (!resolve) {
+			if (inet_pton(AF_INET, value, &(out->ipaddr.ip4addr.s_addr)) <= 0) {
+				fr_strerror_printf("Failed to parse IPv4 address string \"%s\"", value);
+				return -1;
+			}
+		} else if (ip_hton(AF_INET, value, out) < 0) return -1;
+
+		out->prefix = 32;
+		out->af = AF_INET;
+
+		return 0;
+	}
+
+	/*
+	 *	Otherwise parse the prefix
+	 */
+	if ((size_t)(p - value) >= INET_ADDRSTRLEN) {
+		fr_strerror_printf("Invalid IPv4 address string \"%s\"", value);
+		return -1;
+	}
+
+	/*
+	 *	Copy the IP portion into a temporary buffer if we haven't already.
+	 */
+	if (inlen == 0) memcpy(buffer, value, p - value);
+	buffer[p - value] = '\0';
+
+	if (!resolve) {
+		if (inet_pton(AF_INET, buffer, &(out->ipaddr.ip4addr.s_addr)) <= 0) {
+			fr_strerror_printf("Failed to parse IPv4 address string \"%s\"", value);
+			return -1;
+		}
+	} else if (ip_hton(AF_INET, buffer, out) < 0) return -1;
+
+	prefix = strtoul(p + 1, &eptr, 10);
+	if (prefix > 32) {
+		fr_strerror_printf("Invalid IPv4 mask length \"%s\".  Should be between 0-32", p);
+		return -1;
+	}
+	if (eptr[0] != '\0') {
+		fr_strerror_printf("Failed to parse IPv4 address string \"%s\", "
+				   "got garbage after mask length \"%s\"", value, eptr);
+		return -1;
+	}
+
+	if (prefix < 32) {
+		struct in_addr addr;
+
+		addr = fr_ipaddr_mask(&(out->ipaddr.ip4addr), prefix);
+		memcpy(&(out->ipaddr.ip4addr.s_addr), &addr, sizeof(addr));
+	}
+
+	out->prefix = (uint8_t) prefix;
+	out->af = AF_INET;
+
+	return 0;
+}
+
+/** Parse an IPv6 address or IPv6 prefix in presentation format (and others)
+ *
+ * @param out Where to write the ip address value.
+ * @param value to parse.
+ * @param inlen Length of value, if value is \0 terminated inlen may be 0.
+ * @param resolve If true and value doesn't look like an IP address, try and resolve value as a hostname.
+ * @return 0 if ip address was parsed successfully, else -1 on error.
+ */
+int fr_pton6(fr_ipaddr_t *out, char const *value, size_t inlen, bool resolve)
+{
+	char const *p;
+	unsigned int prefix;
+	char *eptr;
+
+	/* IPv6  + / + [0-9]{1,3} */
+	char buffer[INET6_ADDRSTRLEN + 4];
+
+	/*
+	 *	Copy to intermediary buffer if we were given a length
+	 */
+	if (inlen > 0) {
+		if (inlen >= sizeof(buffer)) {
+			fr_strerror_printf("Invalid IPv6 address string \"%s\"", value);
+			return -1;
+		}
+		memcpy(buffer, value, inlen);
+		buffer[inlen] = '\0';
+	}
+
+	p = strchr(value, '/');
+	if (!p) {
+		/*
+		 *	Allow '*' as the wildcard address
+		 */
+		if ((value[0] == '*') && (value[1] == '\0')) {
+			memset(&out->ipaddr.ip6addr.s6_addr, 0, sizeof(out->ipaddr.ip6addr.s6_addr));
+		} else if (!resolve) {
+			if (inet_pton(AF_INET6, value, &(out->ipaddr.ip6addr.s6_addr)) <= 0) {
+				fr_strerror_printf("Failed to parse IPv6 address string \"%s\"", value);
+				return -1;
+			}
+		} else if (ip_hton(AF_INET6, value, out) < 0) return -1;
+
+		out->prefix = 128;
+		out->af = AF_INET6;
+
+		return 0;
+	}
+
+	if ((p - value) >= INET6_ADDRSTRLEN) {
+		fr_strerror_printf("Invalid IPv6 address string \"%s\"", value);
+		return -1;
+	}
+
+	/*
+	 *	Copy string to temporary buffer if we didn't do it earlier
+	 */
+	if (inlen == 0) memcpy(buffer, value, p - value);
+	buffer[p - value] = '\0';
+
+	if (!resolve) {
+		if (inet_pton(AF_INET6, buffer, &(out->ipaddr.ip6addr.s6_addr)) <= 0) {
+			fr_strerror_printf("Failed to parse IPv6 address string \"%s\"", value);
+			return -1;
+		}
+	} else if (ip_hton(AF_INET6, buffer, out) < 0) return -1;
+
+	prefix = strtoul(p + 1, &eptr, 10);
+	if (prefix > 128) {
+		fr_strerror_printf("Invalid IPv6 mask length \"%s\".  Should be between 0-128", p);
+		return -1;
+	}
+	if (eptr[0] != '\0') {
+		fr_strerror_printf("Failed to parse IPv6 address string \"%s\", "
+				   "got garbage after mask length \"%s\"", value, eptr);
+		return -1;
+	}
+
+	if (prefix < 128) {
+		struct in6_addr addr;
+
+		addr = fr_ipaddr_mask6(&(out->ipaddr.ip6addr), prefix);
+		memcpy(&(out->ipaddr.ip6addr.s6_addr), &addr, sizeof(addr));
+	}
+
+	out->prefix = (uint8_t) prefix;
+	out->af = AF_INET6;
+
+	return 0;
+}
+
 /*
  *	Internal wrapper for locking, to minimize the number of ifdef's
  *
@@ -548,7 +744,7 @@ int ip_ptonx(char const *src, fr_ipaddr_t *dst)
  *	address family, or the first address (of whatever family),
  *	if AF_UNSPEC is used.
  */
-int ip_hton(char const *src, int af, fr_ipaddr_t *dst)
+int ip_hton(int af, char const *src, fr_ipaddr_t *out)
 {
 	int rcode;
 	struct addrinfo hints, *ai = NULL, *res = NULL;
@@ -571,11 +767,11 @@ int ip_hton(char const *src, int af, fr_ipaddr_t *dst)
 
 		if (af == AF_UNSPEC) af = AF_INET;
 
-		if (!inet_pton(af, src, &(dst->ipaddr))) {
+		if (!inet_pton(af, src, &(out->ipaddr))) {
 			return -1;
 		}
 
-		dst->af = af;
+		out->af = af;
 		return 0;
 	}
 
@@ -591,7 +787,7 @@ int ip_hton(char const *src, int af, fr_ipaddr_t *dst)
 		/*
 		 *	If it's all numeric, avoid getaddrinfo()
 		 */
-		if (inet_pton(af, src, &dst->ipaddr.ip4addr) == 1) {
+		if (inet_pton(af, src, &out->ipaddr.ip4addr) == 1) {
 			return 0;
 		}
 	}
@@ -614,7 +810,7 @@ int ip_hton(char const *src, int af, fr_ipaddr_t *dst)
 	}
 
 	rcode = fr_sockaddr2ipaddr((struct sockaddr_storage *)ai->ai_addr,
-				   ai->ai_addrlen, dst, NULL);
+				   ai->ai_addrlen, out, NULL);
 	freeaddrinfo(ai);
 	if (!rcode) return -1;
 

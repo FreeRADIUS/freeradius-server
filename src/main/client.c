@@ -639,7 +639,7 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int in_server)
 		/*
 		 *	Always get the numeric representation of IP
 		 */
-		if (ip_hton(name2, AF_UNSPEC, &c->ipaddr) < 0) {
+		if (ip_hton(AF_UNSPEC, name2, &c->ipaddr) < 0) {
 			cf_log_err_cs(cs,
 				   "Failed to look up hostname %s: %s",
 				   name2, fr_strerror());
@@ -735,7 +735,7 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int in_server)
 	 */
 	if (cl_srcipaddr) {
 #ifdef WITH_UDPFROMTO
-		if (ip_hton(cl_srcipaddr, c->ipaddr.af, &c->src_ipaddr) < 0) {
+		if (ip_hton(c->ipaddr.af, cl_srcipaddr, &c->src_ipaddr) < 0) {
 			cf_log_err_cs(cs, "Failed parsing src_ipaddr");
 			goto error;
 		}
@@ -1175,7 +1175,7 @@ RADCLIENT *client_from_query(TALLOC_CTX *ctx, char const *identifier, char const
 	/*
 	 *	Always get the numeric representation of IP
 	 */
-	if (ip_hton(id, AF_UNSPEC, &c->ipaddr) < 0) {
+	if (ip_hton(AF_UNSPEC, id, &c->ipaddr) < 0) {
 		ERROR("Failed to look up hostname %s: %s", id, fr_strerror());
 		talloc_free(c);
 

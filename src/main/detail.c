@@ -591,7 +591,7 @@ static RADIUS_PACKET *detail_poll(rad_listen_t *listener)
 		 */
 		if (!strcasecmp(key, "Client-IP-Address")) {
 			data->client_ip.af = AF_INET;
-			if (ip_hton(value, AF_INET, &data->client_ip) < 0) {
+			if (ip_hton(AF_INET, value, &data->client_ip) < 0) {
 				ERROR("Failed parsing Client-IP-Address");
 
 				pairfree(&data->vps);

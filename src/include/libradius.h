@@ -358,6 +358,7 @@ typedef struct fr_ipaddr_t {
 		struct in_addr	ip4addr;
 		struct in6_addr ip6addr; /* maybe defined in missing.h */
 	} ipaddr;
+	uint8_t		prefix;
 	uint32_t	scope;	/* for IPv6 */
 } fr_ipaddr_t;
 
@@ -656,6 +657,8 @@ int		fr_set_signal(int sig, sig_t func);
 TALLOC_CTX	*fr_autofree_ctx(void);
 char const	*fr_inet_ntop(int af, void const *src);
 char const 	*ip_ntoa(char *, uint32_t);
+int		fr_pton(fr_ipaddr_t *out, char const *value, size_t inlen, bool resolve);
+int		fr_pton6(fr_ipaddr_t *out, char const *value, size_t inlen, bool resolve);
 char		*ifid_ntoa(char *buffer, size_t size, uint8_t const *ifid);
 uint8_t		*ifid_aton(char const *ifid_str, uint8_t *ifid);
 int		rad_lockfd(int fd, int lock_len);
@@ -671,7 +674,7 @@ bool		is_zero(char const *value);
 int		fr_ipaddr_cmp(fr_ipaddr_t const *a, fr_ipaddr_t const *b);
 
 int		ip_ptonx(char const *src, fr_ipaddr_t *dst);
-int		ip_hton(char const *src, int af, fr_ipaddr_t *dst);
+int		ip_hton(int af, char const *src, fr_ipaddr_t *dst);
 char const	*ip_ntoh(fr_ipaddr_t const *src, char *dst, size_t cnt);
 struct in_addr	fr_ipaddr_mask(struct in_addr const *ipaddr, uint8_t prefix);
 struct in6_addr	fr_ipaddr_mask6(struct in6_addr const *ipaddr, uint8_t prefix);
