@@ -849,7 +849,7 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 		return EAP_OK;
 	}
 	/*
-	 * We return ok in response to EAP identity and MSCHAP success/fail
+	 * We return ok in response to EAP identity
 	 * This means we can write:
 	 *
 	 * eap {
@@ -863,16 +863,6 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 	if (eap_msg->vp_octets[4] == PW_EAP_IDENTITY) {
 		RDEBUG2("EAP-Identity reply, returning 'ok' so we can short-circuit the rest of authorize");
 		return EAP_OK;
-	}
-	if ((eap_msg->vp_octets[4] == PW_EAP_MSCHAPV2) && (eap_msg->length >= 6)) {
-		switch (eap_msg->vp_octets[5]) {
-			case 3:
-				RDEBUG2("EAP-MSCHAPV2 success, returning short-circuit ok");
-				return EAP_OK;
-			case 4:
-				RDEBUG2("EAP-MSCHAPV2 failure, returning short-circuit ok");
-				return EAP_OK;
-		}
 	}
 
 	/*
