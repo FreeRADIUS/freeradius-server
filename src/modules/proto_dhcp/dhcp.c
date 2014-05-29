@@ -1379,7 +1379,8 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 	 */
 
 	/* DHCP-Boot-Filename */
-	if ((vp = pairfind(packet->vps, 269, DHCP_MAGIC_VENDOR, TAG_ANY))) {
+	vp = pairfind(packet->vps, 269, DHCP_MAGIC_VENDOR, TAG_ANY);
+	if (vp) {
 		if (vp->length > DHCP_FILE_LEN) {
 			memcpy(p, vp->vp_strvalue, DHCP_FILE_LEN);
 		} else {
@@ -1482,7 +1483,7 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 	 *  Each call to fr_dhcp_encode_option will encode one complete DHCP option,
 	 *  and sub options.
 	 */
-	while (fr_cursor_current(&cursor)) {
+	while ((vp = fr_cursor_current(&cursor))) {
 		len = fr_dhcp_encode_option(p, packet->data_len - (p - packet->data), packet, &cursor);
 		if (len < 0) break;
 		if (len > 0) debug_pair(vp);

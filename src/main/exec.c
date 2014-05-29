@@ -493,7 +493,7 @@ int radius_readfrom_program(REQUEST *request, int fd, pid_t pid, int timeout,
 
 /** Execute a program.
  *
- * @param[in] request Current request.
+ * @param[in] request Current request (may be NULL).
  * @param[in] cmd Command to execute. This is parsed into argv[] parts, then each individual argv part
  *	is xlat'ed.
  * @param[in] exec_wait set to 1 if you want to read from or write to child.
@@ -522,7 +522,7 @@ int radius_exec_program(REQUEST *request, char const *cmd, bool exec_wait, bool 
 	char answer[4096];
 #endif
 
-	RDEBUG2("Executing: %s", cmd);
+	DEBUG2("Executing: %s:", cmd);
 
 	if (user_msg) *user_msg = '\0';
 
@@ -587,7 +587,7 @@ int radius_exec_program(REQUEST *request, char const *cmd, bool exec_wait, bool 
 		}
 
 		if (userparse(request, answer, output_pairs) == T_OP_INVALID) {
-			REDEBUG("Failed parsing output from: %s: %s", cmd, fr_strerror());
+			ERROR("Failed parsing output from: %s: %s", cmd, fr_strerror());
 			strlcpy(user_msg, answer, len);
 			ret = -1;
 		}
@@ -608,7 +608,7 @@ int radius_exec_program(REQUEST *request, char const *cmd, bool exec_wait, bool 
 wait:
 	child_pid = rad_waitpid(pid, &status);
 	if (child_pid == 0) {
-		REDEBUG("Timeout waiting for child");
+		ERROR("Timeout waiting for child");
 
 		return -2;
 	}
@@ -617,16 +617,16 @@ wait:
 		if (WIFEXITED(status)) {
 			status = WEXITSTATUS(status);
 			if ((status != 0) || (ret < 0)) {
-				REDEBUG("Program returned code (%d) and output '%s'", status, answer);
+				ERROR("Program returned code (%d) and output '%s'", status, answer);
 			} else {
-				RDEBUG("Program returned code (%d) and output '%s'", status, answer);
+				ERROR("Program returned code (%d) and output '%s'", status, answer);
 			}
 
 			return ret < 0 ? ret : status;
 		}
 	}
 
-	REDEBUG("Abnormal child exit: %s", fr_syserror(errno));
+	ERROR("Abnormal child exit: %s", fr_syserror(errno));
 #endif	/* __MINGW32__ */
 
 	return -1;

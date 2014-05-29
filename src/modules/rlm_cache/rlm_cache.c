@@ -636,7 +636,7 @@ static int cache_verify(rlm_cache_t *inst, value_pair_map_t **head)
 			 */
 			if (map->dst->type == VPT_TYPE_ATTR) {
 				VALUE_PAIR *vp;
-				bool ret;
+				int ret;
 
 				MEM(vp = pairalloc(map->dst, map->dst->vpt_da));
 				vp->op = map->op;
