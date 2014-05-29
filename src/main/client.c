@@ -629,7 +629,6 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int in_server)
 			mask = strtoul(prefix_ptr + 1, NULL, 10);
 
 			if ((mask == ULONG_MAX) || (mask > 128)) {
-			invalid_prefix:
 				cf_log_err_cs(cs, "Invalid prefix value '%s' for IP.", prefix_ptr + 1);
 				goto error;
 			}
@@ -666,7 +665,7 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int in_server)
 			if (c->prefix == 256) c->prefix = 32;
 
 			if (c->prefix > 32) {
-				cf_log_err_cs(cs, "Netmask must be between 0 and 32");
+				cf_log_err_cs(cs, "Prefix length must be between 1-32, got %i", c->prefix);
 
 				goto error;
 			}
@@ -678,8 +677,7 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int in_server)
 			if (c->prefix == 256) c->prefix = 128;
 
 			if (c->prefix > 128) {
-				cf_log_err_cs(cs,
-					   "Netmask must be between 0 and 128");
+				cf_log_err_cs(cs, "Prefix length must be between 1-128, got %i", c->prefix);
 				goto error;
 			}
 		} else {
@@ -753,7 +751,10 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int in_server)
 	case AF_INET:
 		if (c->prefix == 256) {
 			c->prefix = 32;
-		} else if (c->prefix > 32) goto invalid_prefix;
+		} else if (c->prefix > 32) {
+			cf_log_err_cs(cs, "Prefix length must be between 0-32, got %i", c->prefix);
+			goto error;
+		}
 		break;
 	case AF_INET6:
 		if (c->prefix == 256) c->prefix = 128;
