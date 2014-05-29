@@ -86,7 +86,7 @@ struct fr_connection_pool_t {
 	uint32_t       	max;		//!< Maximum number of concurrent
 					//!< connections to allow.
 	uint32_t       	spare;		//!< Number of spare connections to try
-	int		retry_delay;	//!< seconds to delay re-open
+	uint32_t       	retry_delay;	//!< seconds to delay re-open
 					//!< after a failed open.
 	uint32_t       	cleanup_interval; //!< Initial timer for how
 					  //!< often we sweep the pool
@@ -174,26 +174,16 @@ struct fr_connection_pool_t {
 
 static const CONF_PARSER connection_config[] = {
 	{ "start",    FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_connection_pool_t, start), "5" },
-	{ "min",      PW_TYPE_INTEGER, offsetof(fr_connection_pool_t, min),
-	  0, "5" },
-	{ "max",      PW_TYPE_INTEGER, offsetof(fr_connection_pool_t, max),
-	  0, "10" },
-	{ "spare",    PW_TYPE_INTEGER, offsetof(fr_connection_pool_t, spare),
-	  0, "3" },
-	{ "uses",     PW_TYPE_INTEGER, offsetof(fr_connection_pool_t, max_uses),
-	  0, "0" },
-	{ "lifetime", PW_TYPE_INTEGER, offsetof(fr_connection_pool_t, lifetime),
-	  0, "0" },
-	{ "cleanup_delay", PW_TYPE_INTEGER, offsetof(fr_connection_pool_t, cleanup_interval),
-	  0, NULL},
-	{ "cleanup_interval", PW_TYPE_INTEGER, offsetof(fr_connection_pool_t, cleanup_interval),
-	  0, "30" },
-	{ "idle_timeout",  PW_TYPE_INTEGER, offsetof(fr_connection_pool_t, idle_timeout),
-	  0, "60" },
-	{ "retry_delay",  PW_TYPE_INTEGER, offsetof(fr_connection_pool_t, retry_delay),
-	  0, "1" },
-	{ "spread", PW_TYPE_BOOLEAN, offsetof(fr_connection_pool_t, spread),
-	  0, "no" },
+	{ "min",      FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_connection_pool_t, min), "5" },
+	{ "max",      FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_connection_pool_t, max), "10" },
+	{ "spare",    FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_connection_pool_t, spare), "3" },
+	{ "uses",     FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_connection_pool_t, max_uses), "0" },
+	{ "lifetime", FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_connection_pool_t, lifetime), "0" },
+	{ "cleanup_delay", FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_connection_pool_t, cleanup_interval), NULL},
+	{ "cleanup_interval", FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_connection_pool_t, cleanup_interval), "30" },
+	{ "idle_timeout",  FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_connection_pool_t, idle_timeout), "60" },
+	{ "retry_delay",  FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_connection_pool_t, retry_delay), "1" },
+	{ "spread", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_connection_pool_t, spread), "no" },
 	{ NULL, -1, 0, NULL, NULL }
 };
 
