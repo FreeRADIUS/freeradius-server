@@ -86,6 +86,8 @@ static int fr_debugger_present = -1;			//!< Whether were attached to by a debugg
 static struct rlimit core_limits;
 #endif
 
+#define FR_FAULT_LOG(fmt, ...) fr_fault_log(fmt "\n", ## __VA_ARGS__)
+
 /** Stub callback to see if the SIGTRAP handler is overriden
  *
  * @param signum signal raised.
@@ -434,13 +436,13 @@ void fr_fault(int sig)
 	 */
 	memset(cmd, 0, sizeof(cmd));
 
-	fr_fault_log("CAUGHT SIGNAL: %s\n", strsignal(sig));
+	FR_FAULT_LOG("CAUGHT SIGNAL: %s", strsignal(sig));
 
 	/*
 	 *	Check for administrator sanity.
 	 */
 	if (fr_fault_check_permissions() < 0) {
-		fr_fault_log("Refusing to execute panic action: %s\n", fr_strerror());
+		FR_FAULT_LOG("Refusing to execute panic action: %s", fr_strerror());
 		goto finish;
 	}
 
@@ -461,7 +463,7 @@ void fr_fault(int sig)
 
 		frame_count = backtrace(stack, MAX_BT_FRAMES);
 
-		fr_fault_log("Backtrace of last %zu frames:\n", frame_count);
+		FR_FAULT_LOG("Backtrace of last %zu frames:", frame_count);
 
 		/*
 		 *	Only use backtrace_symbols() if we don't have a logging fd.
@@ -472,7 +474,7 @@ void fr_fault(int sig)
 		if (fr_fault_log_fd < 0) {
 			strings = backtrace_symbols(stack, frame_count);
 			for (i = 0; i < frame_count; i++) {
-				fr_fault_log("%s\n", strings[i]);
+				FR_FAULT_LOG("%s", strings[i]);
 			}
 			free(strings);
 		} else {
@@ -483,7 +485,7 @@ void fr_fault(int sig)
 
 	/* No panic action set... */
 	if (panic_action[0] == '\0') {
-		fr_fault_log("No panic action set\n");
+		FR_FAULT_LOG("No panic action set");
 		goto finish;
 	}
 
@@ -492,7 +494,7 @@ void fr_fault(int sig)
 		out += ret = snprintf(out, left, "%.*s%d", (int) (q - p), p, (int) getpid());
 		if (left <= ret) {
 		oob:
-			fr_fault_log("Panic action too long");
+			FR_FAULT_LOG("Panic action too long");
 			fr_exit_now(1);
 		}
 		left -= ret;
@@ -501,7 +503,7 @@ void fr_fault(int sig)
 	if (strlen(p) >= left) goto oob;
 	strlcpy(out, p, left);
 
-	fr_fault_log("Calling: %s\n", cmd);
+	FR_FAULT_LOG("Calling: %s", cmd);
 
 	{
 		bool disable = false;
@@ -513,11 +515,11 @@ void fr_fault(int sig)
 		 */
 		if (fr_get_dumpable_flag() == 0) {
 			if ((fr_set_dumpable_flag(true) < 0) || !fr_get_dumpable_flag()) {
-				fr_fault_log("Failed setting dumpable flag, pattach may not work: %s", fr_strerror());
+				FR_FAULT_LOG("Failed setting dumpable flag, pattach may not work: %s", fr_strerror());
 			} else {
 				disable = true;
 			}
-			fr_fault_log("Temporarily setting PR_DUMPABLE to 1");
+			FR_FAULT_LOG("Temporarily setting PR_DUMPABLE to 1");
 		}
 
 		code = system(cmd);
@@ -528,16 +530,16 @@ void fr_fault(int sig)
 		 *	setting it back to disabled.
 		 */
 		if (disable) {
-			fr_fault_log("Resetting PR_DUMPABLE to 0");
+			FR_FAULT_LOG("Resetting PR_DUMPABLE to 0");
 			if (fr_set_dumpable_flag(false) < 0) {
-				fr_fault_log("Failed reseting dumpable flag to off: %s", fr_strerror());
-				fr_fault_log("Exiting due to insecure process state");
+				FR_FAULT_LOG("Failed reseting dumpable flag to off: %s", fr_strerror());
+				FR_FAULT_LOG("Exiting due to insecure process state");
 				fr_exit_now(1);
 			}
 		}
 	}
 
-	fr_fault_log("Panic action exited with %i", code);
+	FR_FAULT_LOG("Panic action exited with %i", code);
 
 finish:
 #ifdef SIGUSR1
