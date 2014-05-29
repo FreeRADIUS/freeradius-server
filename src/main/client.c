@@ -530,6 +530,8 @@ static const CONF_PARSER client_config[] = {
 	  offsetof(RADCLIENT, password), 0, NULL },
 	{ "virtual_server",  PW_TYPE_STRING,
 	  offsetof(RADCLIENT, server), 0, NULL },
+	{ "response_window",  PW_TYPE_TIMEVAL,
+	  offsetof(RADCLIENT, response_window), 0, NULL },
 
 #ifdef WITH_TCP
 	{ "proto", FR_CONF_POINTER(PW_TYPE_STRING, &hs_proto), NULL },
@@ -662,6 +664,8 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int in_server)
 			c->ipaddr.af = AF_INET;
 			c->ipaddr.ipaddr.ip4addr = cl_ip4addr;
 
+			if (c->prefix == 256) c->prefix = 32;
+
 			if (c->prefix > 32) {
 				cf_log_err_cs(cs, "Netmask must be between 0 and 32");
 
@@ -671,6 +675,8 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int in_server)
 		} else if (cf_pair_find(cs, "ipv6addr")) {
 			c->ipaddr.af = AF_INET6;
 			c->ipaddr.ipaddr.ip6addr = cl_ip6addr;
+
+			if (c->prefix == 256) c->prefix = 128;
 
 			if (c->prefix > 128) {
 				cf_log_err_cs(cs,
@@ -755,6 +761,24 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int in_server)
 		break;
 	default:
 		break;
+	}
+
+	if (!c->response_window.tv_sec) {
+		uint32_t tmp = c->response_window.tv_usec; /* which isn't an integer */
+
+		FR_INTEGER_BOUND_CHECK("response_window microseconds", tmp, >=, 1000);
+		c->response_window.tv_usec = tmp;
+
+	} else {
+		int tmp = (int)c->response_window.tv_sec; /* which isn't an integer */
+
+		FR_INTEGER_BOUND_CHECK("response_window", tmp, <=, 60);
+		FR_INTEGER_BOUND_CHECK("response_window", tmp, <=, (int)main_config.max_request_time);
+
+		if (c->response_window.tv_sec != tmp) {
+			c->response_window.tv_sec = tmp;
+			c->response_window.tv_usec = 0;
+		}
 	}
 
 #ifdef WITH_DYNAMIC_CLIENTS
@@ -1401,3 +1425,4 @@ RADCLIENT *client_read(char const *filename, int in_server, int flag)
 	return c;
 }
 #endif
+
