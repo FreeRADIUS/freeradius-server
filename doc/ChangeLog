@@ -1,17 +1,17 @@
 FreeRADIUS 3.0.4 Mon 12 May 2014 15:30:00 EDT urgency=medium
 	Feature improvements
-	* Home server "response_window" can now take fractions of a 
+	* Home server "response_window" can now take fractions of a
 	  second.  See proxy.conf.
-	* radmin now supports "show module status", as the counterpart 
+	* radmin now supports "show module status", as the counterpart
 	  to "set module status"
 	* Added dictionary ericsson.packet.ccore.networks
 	* Add %{tag:} expansion to get the tag value of an attribute.
-	* Report 'application_name' in connections to PostgreSQL servers. 
-	  FreeRADIUS connections will now appear as 
+	* Report 'application_name' in connections to PostgreSQL servers.
+	  FreeRADIUS connections will now appear as
 	  'FreeRADIUS <version> - <name>' in pg_stat_activity.
-	* All config item fields are now type checked at compile time 
+	* All config item fields are now type checked at compile time
 	  to prevent issues similar to #634 occuring again.
-	* Modify pairparsevalue to deal with embedded NULLs better, 
+	* Modify pairparsevalue to deal with embedded NULLs better,
 	  and use the binary versions of attribute values in rlm_ldap.
 
 	Bug fixes
@@ -28,10 +28,10 @@ FreeRADIUS 3.0.4 Mon 12 May 2014 15:30:00 EDT urgency=medium
 	* More rlm_perl fixes.  Fixes #635
 	* Free OpenSSL memory on clean exit.
 	* Fix <attr>[0] !* ANY - Was removing all instances of <attr>
-	* Fix case where multiple attributes were returned from LHS of 
+	* Fix case where multiple attributes were returned from LHS of
 	  mapping, as with rlm_ldap. Fixes #652
 	* Fix corner case in cursor where using fr_cursor_next_by_da
-	  after calling fr_cursor_remove may of resulted in a read of 
+	  after calling fr_cursor_remove may of resulted in a read of
 	  uninitialised memory.
 	* Don't SEGV if all connections to a database server go away.
 	  Fixes #651.
