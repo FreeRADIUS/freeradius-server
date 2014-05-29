@@ -102,6 +102,7 @@ typedef enum vpt_type {
 	VPT_TYPE_DATA,			//!< is a value_data_t
 	VPT_TYPE_XLAT_STRUCT,	      	//!< pre-parsed xlat_exp_t
 	VPT_TYPE_REGEX_STRUCT,	      	//!< pre-parsed regex_t
+	VPT_TYPE_NULL			//!< VPT has no value
 } vpt_type_t;
 
 extern const FR_NAME_NUMBER vpt_types[];

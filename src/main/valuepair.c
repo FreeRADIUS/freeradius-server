@@ -856,6 +856,11 @@ static void debug_map(REQUEST *request, value_pair_map_t const *map, VALUE_PAIR 
 		 *	Just print the value being assigned
 		 */
 		default:
+		case VPT_TYPE_NULL:
+			strcpy(buffer, "ANY");
+			value = buffer;
+			break;
+
 		case VPT_TYPE_LITERAL:
 			vp_prints_value(buffer, sizeof(buffer), vp, '\'');
 			value = buffer;
@@ -934,7 +939,7 @@ do {\
 int radius_map2request(REQUEST *request, value_pair_map_t const *map,
 		       UNUSED char const *src, radius_tmpl_getvalue_t func, void *ctx)
 {
-	int rcode;
+	int rcode = 0;
 	int num;
 	VALUE_PAIR **list, *vp, *dst, *head = NULL;
 	bool found = false;
@@ -986,12 +991,14 @@ int radius_map2request(REQUEST *request, value_pair_map_t const *map,
 	 *	0 to signify success. It may return "sucess", but still have no
 	 *	VPs to work with.
 	 */
-	rcode = func(&head, request, map, ctx);
-	if (rcode < 0) {
-		rad_assert(!head);
-		return rcode;
+	if (map->src->type != VPT_TYPE_NULL) {
+		rcode = func(&head, request, map, ctx);
+		if (rcode < 0) {
+			rad_assert(!head);
+			return rcode;
+		}
+		if (!head) return rcode;
 	}
-	if (!head) return rcode;
 
 	/*
 	 *	Reparent the VPs (func may return multiple)
@@ -1012,7 +1019,8 @@ int radius_map2request(REQUEST *request, value_pair_map_t const *map,
 		switch (map->op) {
 		case T_OP_CMP_FALSE:
 			/* We don't need the src VPs (should just be 'ANY') */
-			pairfree(&head);
+			rad_assert(!head);
+
 			/* Clear the entire dst list */
 			pairfree(list);
 
@@ -1073,7 +1081,7 @@ int radius_map2request(REQUEST *request, value_pair_map_t const *map,
 	 */
 	case T_OP_CMP_FALSE:
 		/* We don't need the src VPs (should just be 'ANY') */
-		pairfree(&head);
+		rad_assert(!head);
 		if (!dst) return 0;
 
 		/*
@@ -1373,38 +1381,7 @@ int radius_map2vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *ma
 	/*
 	 *	Special case for !*, we don't need to parse RHS as this is a unary operator.
 	 */
-	if (map->op == T_OP_CMP_FALSE) {
-		/*
-		 *  Were deleting all the attributes in a list. This isn't like the other
-		 *  mappings because lists aren't represented as attributes (yet),
-		 *  so we can't return a <list> attribute with the !* operator for
-		 *  radius_pairmove() to consume, and need to do the work here instead.
-		 */
-		if (map->dst->type == VPT_TYPE_LIST) {
-			if (radius_request(&context, map->dst->vpt_request) == 0) {
-				from = radius_list(context, map->dst->vpt_list);
-			}
-			if (!from) return 0;
-
-			pairfree(from);
-
-			/* @fixme hacky! */
-			if (map->dst->vpt_list == PAIR_LIST_REQUEST) {
-				context->username = NULL;
-				context->password = NULL;
-			}
-
-			return 0;
-		}
-
-		/* Not a list, but an attribute, radius_pairmove() will perform that actual delete */
-		vp = pairalloc(request, map->dst->vpt_da);
-		if (!vp) return -1;
-		vp->op = map->op;
-		*out = vp;
-
-		return 0;
-	}
+	if (map->op == T_OP_CMP_FALSE) return 0;
 
 	/*
 	 *	List to list found, this is a special case because we don't need
