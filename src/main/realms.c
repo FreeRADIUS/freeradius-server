@@ -291,14 +291,10 @@ static char const *hs_proto = NULL;
 
 #ifdef WITH_COA
 static CONF_PARSER home_server_coa[] = {
-	{ "irt",  PW_TYPE_INTEGER,
-	  offsetof(home_server_t, coa_irt), 0, STRINGIFY(2) },
-	{ "mrt",  PW_TYPE_INTEGER,
-	  offsetof(home_server_t, coa_mrt), 0, STRINGIFY(16) },
-	{ "mrc",  PW_TYPE_INTEGER,
-	  offsetof(home_server_t, coa_mrc), 0, STRINGIFY(5) },
-	{ "mrd",  PW_TYPE_INTEGER,
-	  offsetof(home_server_t, coa_mrd), 0, STRINGIFY(30) },
+	{ "irt",  FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, coa_irt), STRINGIFY(2) },
+	{ "mrt",  FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, coa_mrt), STRINGIFY(16) },
+	{ "mrc",  FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, coa_mrc), STRINGIFY(5) },
+	{ "mrd",  FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, coa_mrd), STRINGIFY(30) },
 
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };

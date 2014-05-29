@@ -43,7 +43,7 @@ struct radclient_list {
 	 *	FIXME: One set of trees for IPv4, and another for IPv6?
 	 */
 	rbtree_t	*trees[129]; /* for 0..128, inclusive. */
-	int		min_prefix;
+	uint32_t       	min_prefix;
 };
 
 
@@ -281,10 +281,6 @@ int client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 		clients = root_clients;
 	}
 
-	if ((client->prefix < 0) || (client->prefix > 128)) {
-		return 0;
-	}
-
 	if (!client_sane(client)) return 0;
 
 	/*
@@ -440,7 +436,7 @@ RADCLIENT *client_findbynumber(UNUSED const RADCLIENT_LIST *clients, UNUSED int 
  */
 RADCLIENT *client_find(RADCLIENT_LIST const *clients, fr_ipaddr_t const *ipaddr, int proto)
 {
-	int i, max_prefix;
+	uint32_t i, max_prefix;
 	RADCLIENT myclient;
 
 	if (!clients) clients = root_clients;
@@ -577,7 +573,7 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int in_server)
 
 	memset(&cl_ip4addr, 0, sizeof(cl_ip4addr));
 	memset(&cl_ip6addr, 0, sizeof(cl_ip6addr));
-	c->prefix = -1;
+	c->prefix = 256;	/* invalid */
 
 	if (cf_section_parse(cs, c, client_config) < 0) {
 		cf_log_err_cs(cs, "Error parsing client section");
@@ -627,13 +623,18 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int in_server)
 		 *	Look for prefixes.
 		 */
 		if (prefix_ptr) {
-			c->prefix = atoi(prefix_ptr + 1);
-			if ((c->prefix < 0) || (c->prefix > 128)) {
-				cf_log_err_cs(cs, "Invalid Prefix value '%s' for IP.", prefix_ptr + 1);
+			unsigned long mask;
+
+			mask = strtoul(prefix_ptr + 1, NULL, 10);
+
+			if ((mask == ULONG_MAX) || (mask > 128)) {
+			invalid_prefix:
+				cf_log_err_cs(cs, "Invalid prefix value '%s' for IP.", prefix_ptr + 1);
 				goto error;
 			}
 			/* Replace '/' with '\0' */
 			*prefix_ptr = '\0';
+			c->prefix = mask;
 		}
 
 		/*
@@ -661,7 +662,7 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int in_server)
 			c->ipaddr.af = AF_INET;
 			c->ipaddr.ipaddr.ip4addr = cl_ip4addr;
 
-			if ((c->prefix < -1) || (c->prefix > 32)) {
+			if (c->prefix > 32) {
 				cf_log_err_cs(cs, "Netmask must be between 0 and 32");
 
 				goto error;
@@ -671,7 +672,7 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int in_server)
 			c->ipaddr.af = AF_INET6;
 			c->ipaddr.ipaddr.ip6addr = cl_ip6addr;
 
-			if ((c->prefix < -1) || (c->prefix > 128)) {
+			if (c->prefix > 128) {
 				cf_log_err_cs(cs,
 					   "Netmask must be between 0 and 128");
 				goto error;
@@ -743,12 +744,14 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int in_server)
 		cl_srcipaddr = NULL;
 	}
 
-	if (c->prefix < 0) switch (c->ipaddr.af) {
+	switch (c->ipaddr.af) {
 	case AF_INET:
-		c->prefix = 32;
+		if (c->prefix == 256) {
+			c->prefix = 32;
+		} else if (c->prefix > 32) goto invalid_prefix;
 		break;
 	case AF_INET6:
-		c->prefix = 128;
+		if (c->prefix == 256) c->prefix = 128;
 		break;
 	default:
 		break;
@@ -1111,7 +1114,7 @@ RADCLIENT *client_from_query(TALLOC_CTX *ctx, char const *identifier, char const
 {
 	RADCLIENT *c;
 	char *id;
-	char *prefix;
+	char *prefix_ptr;
 
 	rad_assert(identifier);
 	rad_assert(secret);
@@ -1127,19 +1130,23 @@ RADCLIENT *client_from_query(TALLOC_CTX *ctx, char const *identifier, char const
 	/*
 	 *	Look for prefixes
 	 */
-	c->prefix = -1;
-	prefix = strchr(id, '/');
-	if (prefix) {
-		c->prefix = atoi(prefix + 1);
-		if ((c->prefix < 0) || (c->prefix > 128)) {
-			ERROR("Invalid Prefix value '%s' for IP.", prefix + 1);
+	c->prefix = 256;
+	prefix_ptr = strchr(id, '/');
+	if (prefix_ptr) {
+		unsigned long mask;
+
+		mask = strtoul(prefix_ptr + 1, NULL, 10);
+		if ((mask == ULONG_MAX) || (mask > 128)) {
+		invalid_prefix:
+			ERROR("Invalid prefix value '%s' for IP.", prefix_ptr + 1);
 			talloc_free(c);
 
 			return NULL;
 		}
 
 		/* Replace '/' with '\0' */
-		*prefix = '\0';
+		*prefix_ptr = '\0';
+		c->prefix = mask;
 	}
 
 	/*
@@ -1158,12 +1165,14 @@ RADCLIENT *client_from_query(TALLOC_CTX *ctx, char const *identifier, char const
 		c->longname = talloc_typed_strdup(c, buffer);
 	}
 
-	if (c->prefix < 0) switch (c->ipaddr.af) {
+	switch (c->ipaddr.af) {
 	case AF_INET:
-		c->prefix = 32;
+		if (c->prefix == 256) {
+			c->prefix = 32;
+		} else if (c->prefix > 32) goto invalid_prefix;
 		break;
 	case AF_INET6:
-		c->prefix = 128;
+		if (c->prefix == 256) c->prefix = 128;
 		break;
 	default:
 		break;
