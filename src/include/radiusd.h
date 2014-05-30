@@ -556,7 +556,8 @@ void		client_delete(RADCLIENT_LIST *clients, RADCLIENT *client);
 RADCLIENT	*client_from_request(RADCLIENT_LIST *clients, REQUEST *request);
 #endif
 RADCLIENT	*client_from_query(TALLOC_CTX *ctx, char const *identifier, char const *secret, char const *shortname,
-				   char const *type, char const *server, bool require_ma);
+				   char const *type, char const *server, bool require_ma) CC_HINT(nonnull(2, 3));
+
 RADCLIENT	*client_find(RADCLIENT_LIST const *clients,
 			     fr_ipaddr_t const *ipaddr, int proto);
 
