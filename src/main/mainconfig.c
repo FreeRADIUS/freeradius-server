@@ -913,8 +913,13 @@ do {\
 	FR_INTEGER_BOUND_CHECK("reject_delay", main_config.reject_delay, <=, 10);
 	FR_INTEGER_BOUND_CHECK("cleanup_delay", main_config.cleanup_delay, <=, 10);
 
-	main_config.min_response_window.tv_sec = 0;
-	main_config.min_response_window.tv_usec = 1000000 / 3;
+	/*
+	 * Set default initial request processing delay to 1/3 of a second.
+	 * Will be updated by the lowest response window across all home servers,
+	 * if it is less than this.
+	 */
+	main_config.init_delay.tv_sec = 0;
+	main_config.init_delay.tv_usec = 1000000 / 3;
 
 	/*
 	 *	Free the old configuration items, and replace them
