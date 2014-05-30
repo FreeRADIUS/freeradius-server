@@ -78,10 +78,10 @@ typedef struct radclient {
 	char const		*secret;
 	char const		*shortname;
 	bool			message_authenticator;
-	char			*nas_type;
-	char			*login;
-	char			*password;
-	char			*server;
+	char const		*nas_type;
+	char const		*login;
+	char const		*password;
+	char const 		*server;
 	int			number;	/* internal use only */
 	CONF_SECTION const 	*cs;
 #ifdef WITH_STATS
@@ -106,16 +106,16 @@ typedef struct radclient {
 #endif
 
 #ifdef WITH_DYNAMIC_CLIENTS
-	int			lifetime;
-	int			dynamic; /* was dynamically defined */
+	uint32_t		lifetime;
+	uint32_t		dynamic; /* was dynamically defined */
 	time_t			created;
 	time_t			last_new_client;
-	char			*client_server;
+	char const		*client_server;
 	bool			rate_limit;
 #endif
 
 #ifdef WITH_COA
-	char			*coa_name;
+	char const		*coa_name;
 	home_server_t		*coa_server;
 	home_pool_t		*coa_pool;
 #endif

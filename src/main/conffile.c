@@ -918,9 +918,7 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, int type, void *data, char
 	bool deprecated, required, attribute, secret;
 	char **q;
 	char const *value;
-	fr_ipaddr_t ipaddr;
 	CONF_PAIR const *cp = NULL;
-	char ipbuf[128];
 	char buffer[8192];
 
 	if (!cs) return -1;
@@ -1139,41 +1137,67 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, int type, void *data, char
 		break;
 
 	case PW_TYPE_IPADDR:
-		/*
-		 *	Allow '*' as any address
-		 */
-		if (strcmp(value, "*") == 0) {
-			*(uint32_t *) data = htonl(INADDR_ANY);
-			cf_log_info(cs, "%.*s\t%s = *",
-				    cs->depth, parse_spaces, name);
-			break;
-		}
-		if (ip_hton(AF_INET, value, &ipaddr) < 0) {
-			ERROR("Can't find IP address for host %s", value);
+	case PW_TYPE_IPV4PREFIX:
+	{
+		fr_ipaddr_t *ipaddr = data;
+		char ipbuf[128];
+
+		if (fr_pton(ipaddr, value, 0, true) < 0) {
+			ERROR("%s", fr_strerror());
 			return -1;
 		}
 
-		if (strspn(value, "0123456789.") == strlen(value)) {
-			cf_log_info(cs, "%.*s\t%s = %s",
-				    cs->depth, parse_spaces, name, value);
+		/*
+		 *	Debug format depends on format of input string
+		 */
+		if (strcmp(value, "*") == 0) {
+			cf_log_info(cs, "%.*s\t%s = *", cs->depth, parse_spaces, name);
+		} else if ((strspn(value, "0123456789./") == strlen(value)) ||
+			   (strspn(value, "0123456789xabcdefABCDEF/") == strlen(value))) {
+			cf_log_info(cs, "%.*s\t%s = %s", cs->depth, parse_spaces, name, value);
 		} else {
 			cf_log_info(cs, "%.*s\t%s = %s IP address [%s]",
-				    cs->depth, parse_spaces, name, value,
-			       ip_ntoh(&ipaddr, ipbuf, sizeof(ipbuf)));
+				    cs->depth, parse_spaces, name, value, ip_ntoh(ipaddr, ipbuf, sizeof(ipbuf)));
 		}
-		*(uint32_t *) data = ipaddr.ipaddr.ip4addr.s_addr;
+
+		if ((type == PW_TYPE_IPADDR) && (ipaddr->prefix != 32)) {
+			ERROR("Invalid IPv4 mask length \"/%i\".  Only \"/32\" permitted for non-prefix types",
+			      ipaddr->prefix);
+			return -1;
+		}
+	}
 		break;
 
 	case PW_TYPE_IPV6ADDR:
-		if (ip_hton(AF_INET6, value, &ipaddr) < 0) {
-			ERROR("Can't find IPv6 address for host %s", value);
+	case PW_TYPE_IPV6PREFIX:
+	{
+		fr_ipaddr_t *ipaddr = data;
+		char ipbuf[128];
+
+		if (fr_pton6(ipaddr, value, 0, true) < 0) {
+			ERROR("%s", fr_strerror());
 			return -1;
 		}
-		cf_log_info(cs, "%.*s\t%s = %s IPv6 address [%s]",
-			    cs->depth, parse_spaces, name, value,
-			    ip_ntoh(&ipaddr, ipbuf, sizeof(ipbuf)));
-		memcpy(data, &ipaddr.ipaddr.ip6addr,
-		       sizeof(ipaddr.ipaddr.ip6addr));
+
+		/*
+		 *	Debug format depends on format of input string
+		 */
+		if (strcmp(value, "*") == 0) {
+			cf_log_info(cs, "%.*s\t%s = *", cs->depth, parse_spaces, name);
+		} else if (strspn(value, "0123456789abdefABCDEF:%[]/") == strlen(value)) {
+			cf_log_info(cs, "%.*s\t%s = %s", cs->depth, parse_spaces, name, value);
+		} else {
+			cf_log_info(cs, "%.*s\t%s = %s IPv6 address [%s]", cs->depth, parse_spaces, name, value,
+				    ip_ntoh(ipaddr, ipbuf, sizeof(ipbuf)));
+		}
+
+		if ((type == PW_TYPE_IPV6ADDR) && (ipaddr->prefix != 128)) {
+			ERROR("Invalid IPv6 mask length \"/%i\".  Only \"/128\" permitted "
+			      "for non-prefix types", ipaddr->prefix);
+			return -1;
+		}
+	}
+
 		break;
 
 	case PW_TYPE_TIMEVAL: {

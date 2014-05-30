@@ -65,9 +65,9 @@ typedef struct rlm_ippool_t {
 	char const	*name;
 	char const	*key;
 
-	struct in_addr	range_start_addr;
-	struct in_addr	range_stop_addr;
-	struct in_addr	netmask_addr;
+	fr_ipaddr_t	range_start_addr;
+	fr_ipaddr_t	range_stop_addr;
+	fr_ipaddr_t	netmask_addr;
 	uint32_t	range_start;
 	uint32_t	range_stop;
 	uint32_t	netmask;
@@ -175,9 +175,9 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	rad_assert(inst->filename && *inst->filename);
 	rad_assert(inst->ip_index && *inst->ip_index);
 
-	inst->range_start = htonl(*((uint32_t *)(&inst->range_start_addr)));
-	inst->range_stop = htonl(*((uint32_t *)(&inst->range_stop_addr)));
-	inst->netmask = htonl(*((uint32_t *)(&inst->netmask_addr)));
+	inst->range_start = htonl(*((uint32_t *)(&(inst->range_start_addr.ipaddr.ip4addr))));
+	inst->range_stop = htonl(*((uint32_t *)(&(inst->range_stop_addr.ipaddr.ip4addr))));
+	inst->netmask = htonl(*((uint32_t *)(&(inst->netmask_addr.ipaddr.ip4addr))));
 	if (inst->range_start == 0 || inst->range_stop == 0 || \
 	    inst->range_start >= inst->range_stop ) {
 		cf_log_err_cs(conf, "Invalid data range");

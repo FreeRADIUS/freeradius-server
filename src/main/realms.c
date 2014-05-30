@@ -264,23 +264,16 @@ void realms_free(void)
 
 #ifdef WITH_PROXY
 static CONF_PARSER limit_config[] = {
-	{ "max_connections", PW_TYPE_INTEGER,
-	  offsetof(home_server_t, limit.max_connections), NULL,   "16" },
-
-	{ "max_requests", PW_TYPE_INTEGER,
-	  offsetof(home_server_t, limit.max_requests), NULL,   "0" },
-
-	{ "lifetime", PW_TYPE_INTEGER,
-	  offsetof(home_server_t, limit.lifetime), NULL,   "0" },
-
-	{ "idle_timeout", PW_TYPE_INTEGER,
-	  offsetof(home_server_t, limit.idle_timeout), NULL,   "0" },
+	{ "max_connections", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, limit.max_connections), "16" },
+	{ "max_requests", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, limit.max_requests), "0" },
+	{ "lifetime", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, limit.lifetime), "0" },
+	{ "idle_timeout", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, limit.idle_timeout), "0" },
 
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
 
-static struct in_addr hs_ip4addr;
-static struct in6_addr hs_ip6addr;
+static fr_ipaddr_t hs_ip4addr;
+static fr_ipaddr_t hs_ip6addr;
 static char const *hs_srcipaddr = NULL;
 static char const *hs_type = NULL;
 static char const *hs_check = NULL;
@@ -334,8 +327,7 @@ static CONF_PARSER home_server_config[] = {
 	{ "password", FR_CONF_OFFSET(PW_TYPE_STRING, home_server_t, ping_user_password), NULL },
 
 #ifdef WITH_STATS
-	{ "historic_average_window", PW_TYPE_INTEGER,
-	  offsetof(home_server_t,ema.window), NULL,  NULL },
+	{ "historic_average_window", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, ema.window), NULL },
 #endif
 
 #ifdef WITH_COA
@@ -388,13 +380,9 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 	 *	Figure out which one to use.
 	 */
 	if (cf_pair_find(cs, "ipaddr")) {
-		home->ipaddr.af = AF_INET;
-		home->ipaddr.ipaddr.ip4addr = hs_ip4addr;
-
+		memcpy(&home->ipaddr, &hs_ip4addr, sizeof(home->ipaddr));
 	} else if (cf_pair_find(cs, "ipv6addr")) {
-		home->ipaddr.af = AF_INET6;
-		home->ipaddr.ipaddr.ip6addr = hs_ip6addr;
-
+		memcpy(&home->ipaddr, &hs_ip6addr, sizeof(home->ipaddr));
 	} else if ((cp = cf_pair_find(cs, "virtual_server")) != NULL) {
 		home->ipaddr.af = AF_UNSPEC;
 		home->server = cf_pair_value(cp);
