@@ -1108,7 +1108,7 @@ RADCLIENT *client_from_request(RADCLIENT_LIST *clients, REQUEST *request)
 			if (da->attr == PW_FREERADIUS_CLIENT_IP_PREFIX) {
 				c->ipaddr.af = AF_INET;
 				memcpy(&c->ipaddr.ipaddr.ip4addr.s_addr, &(vp->vp_ipv4prefix[2]), sizeof(c->ipaddr.ipaddr.ip4addr.s_addr));
-				c->ipaddr.prefix = (vp->vp_ipv4prefix[1] & 0x3f);
+				fr_ipaddr_mask(&c->ipaddr, (vp->vp_ipv4prefix[1] & 0x3f));
 			}
 
 			break;
@@ -1117,7 +1117,7 @@ RADCLIENT *client_from_request(RADCLIENT_LIST *clients, REQUEST *request)
 			if (da->attr == PW_FREERADIUS_CLIENT_IPV6_PREFIX) {
 				c->ipaddr.af = AF_INET6;
 				memcpy(&c->ipaddr.ipaddr.ip6addr, &(vp->vp_ipv6prefix[2]), sizeof(c->ipaddr.ipaddr.ip6addr));
-				c->ipaddr.prefix = vp->vp_ipv6prefix[1];
+				fr_ipaddr_mask(&c->ipaddr, vp->vp_ipv6prefix[1]);
 			}
 
 			break;
@@ -1156,15 +1156,24 @@ RADCLIENT *client_from_request(RADCLIENT_LIST *clients, REQUEST *request)
 		goto error;
 	}
 
-	if (fr_ipaddr_cmp(&request->packet->src_ipaddr, &c->ipaddr) != 0) {
-		char buf2[128];
+	{
+		fr_ipaddr_t addr;
 
-		DEBUG("- Cannot add client %s: IP address %s do not match",
-		      ip_ntoh(&request->packet->src_ipaddr,
-			      buffer, sizeof(buffer)),
-		      ip_ntoh(&c->ipaddr,
-			      buf2, sizeof(buf2)));
-		goto error;
+		/*
+		 *	Need to apply the same mask as we set for the client
+		 *	else clients created with FreeRADIUS-Client-IPv6-Prefix
+		 *	or FreeRADIUS-Client-IPv4-Prefix will fail this check.
+		 */
+		addr = request->packet->src_ipaddr;
+		fr_ipaddr_mask(&addr, c->ipaddr.prefix);
+		if (fr_ipaddr_cmp(&addr, &c->ipaddr) != 0) {
+			char buf2[128];
+
+			DEBUG("- Cannot add client %s: IP address %s do not match",
+			      ip_ntoh(&request->packet->src_ipaddr, buffer, sizeof(buffer)),
+			      ip_ntoh(&c->ipaddr, buf2, sizeof(buf2)));
+			goto error;
+		}
 	}
 
 	if (!c->secret || !*c->secret) {
