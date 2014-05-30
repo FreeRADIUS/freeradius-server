@@ -367,6 +367,71 @@ int fr_pton6(fr_ipaddr_t *out, char const *value, size_t inlen, bool resolve)
 	return 0;
 }
 
+/** Simple wrapper to decide whether an IP value is v4 or v6 and call the appropriate parser.
+ *
+ * @param out Where to write the ip address value.
+ * @param value to parse.
+ * @param inlen Length of value, if value is \0 terminated inlen may be 0.
+ * @param resolve If true and value doesn't look like an IP address, try and resolve value as a hostname.
+ * @return 0 if ip address was parsed successfully, else -1 on error.
+ */
+int fr_ptonx(fr_ipaddr_t *out, char const *value, size_t inlen, bool resolve)
+{
+	char const *p;
+	int af = AF_INET;
+
+	for (p = value; *p != '\0'; p++) {
+		if ((*p == ':') ||
+		    (*p == '[') ||
+		    (*p == ']')) {
+			af = AF_INET6;
+			break;
+		}
+	}
+
+	switch (af) {
+	case AF_INET:
+		return fr_pton(out, value, inlen, resolve);
+
+	case AF_INET6:
+		return fr_pton6(out, value, inlen, resolve);
+
+	default:
+		return -1;
+	}
+}
+
+/** Check if the IP address is equivalent to INADDR_ANY
+ *
+ * @param addr to chec.
+ * @return true if IP address matches INADDR_ANY or INADDR6_ANY (assumed to be 0), else false.
+ */
+bool is_wildcard(fr_ipaddr_t *addr)
+{
+	static struct in6_addr in6_addr;
+
+	switch (addr->af) {
+	case AF_INET:
+		return (addr->ipaddr.ip4addr.s_addr == htons(INADDR_ANY));
+
+	case AF_INET6:
+		return (memcmp(addr->ipaddr.ip6addr.s6_addr, in6_addr.s6_addr, sizeof(in6_addr.s6_addr)) == 0) ? true :false;
+
+	default:
+		fr_assert(0);
+		return false;
+	}
+}
+
+int fr_ntop(char *out, size_t outlen, fr_ipaddr_t *addr)
+{
+	char buffer[INET6_ADDRSTRLEN];
+
+	if (inet_ntop(addr->af, &(addr->ipaddr), buffer, sizeof(buffer)) == NULL) return -1;
+
+	return snprintf(out, outlen, "%s/%i", buffer, addr->prefix);
+}
+
 /*
  *	Internal wrapper for locking, to minimize the number of ifdef's
  *
@@ -711,29 +776,6 @@ char const *inet_ntop(int af, void const *src, char *dst, size_t cnt)
 	return NULL;		/* don't support IPv6 */
 }
 #endif
-
-
-/*
- *	Try to convert the address to v4 then v6
- */
-int ip_ptonx(char const *src, fr_ipaddr_t *dst)
-{
-	if (inet_pton(AF_INET, src, &dst->ipaddr.ip4addr) == 1) {
-		dst->af = AF_INET;
-		return 1;
-	}
-
-#ifdef HAVE_STRUCT_SOCKADDR_IN6
-	if (inet_pton(AF_INET6, src, &dst->ipaddr.ip6addr) == 1) {
-		dst->af = AF_INET6;
-		return 1;
-	}
-#endif
-
-	dst->scope = 0;
-
-	return 0;
-}
 
 /*
  *	Wrappers for IPv4/IPv6 host to IP address lookup.
