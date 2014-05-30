@@ -355,7 +355,7 @@ eap {
 			#
 			#  Enable it.  The default is "no".
 			#  Deleting the entire "cache" subsection
-			#  Also disables caching.
+			#  also disables caching.
 			#
 			#  You can disallow resumption for a
 			#  particular user by adding the following
@@ -463,7 +463,7 @@ eap {
 			#
 			#  Enable it.  The default is "no".
 			#  Deleting the entire "ocsp" subsection
-			#  Also disables ocsp checking
+			#  also disables ocsp checking
 			#
 			enable = no
 
