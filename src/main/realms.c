@@ -272,8 +272,7 @@ static CONF_PARSER limit_config[] = {
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
 
-static fr_ipaddr_t hs_ip4addr;
-static fr_ipaddr_t hs_ip6addr;
+static fr_ipaddr_t hs_ipaddr;
 static char const *hs_srcipaddr = NULL;
 static char const *hs_type = NULL;
 static char const *hs_check = NULL;
@@ -294,8 +293,9 @@ static CONF_PARSER home_server_coa[] = {
 #endif
 
 static CONF_PARSER home_server_config[] = {
-	{ "ipaddr", FR_CONF_POINTER(PW_TYPE_IPV4_ADDR, &hs_ip4addr), NULL },
-	{ "ipv6addr", FR_CONF_POINTER(PW_TYPE_IPV6_ADDR, &hs_ip6addr), NULL },
+	{ "ipaddr", FR_CONF_POINTER(PW_TYPE_IP_ADDR, &hs_ipaddr), NULL },
+	{ "ipv4addr", FR_CONF_POINTER(PW_TYPE_IPV4_ADDR, &hs_ipaddr), NULL },
+	{ "ipv6addr", FR_CONF_POINTER(PW_TYPE_IPV6_ADDR, &hs_ipaddr), NULL },
 	{ "virtual_server", FR_CONF_POINTER(PW_TYPE_STRING, &hs_virtual_server), NULL },
 
 	{ "port", FR_CONF_OFFSET(PW_TYPE_SHORT, home_server_t, port), "0" },
@@ -370,8 +370,7 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 	 *	Last packet sent / received are zero.
 	 */
 
-	memset(&hs_ip4addr, 0, sizeof(hs_ip4addr));
-	memset(&hs_ip6addr, 0, sizeof(hs_ip6addr));
+	memset(&hs_ipaddr, 0, sizeof(hs_ipaddr));
 	if (cf_section_parse(cs, home, home_server_config) < 0) {
 		goto error;
 	}
@@ -379,10 +378,8 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 	/*
 	 *	Figure out which one to use.
 	 */
-	if (cf_pair_find(cs, "ipaddr")) {
-		memcpy(&home->ipaddr, &hs_ip4addr, sizeof(home->ipaddr));
-	} else if (cf_pair_find(cs, "ipv6addr")) {
-		memcpy(&home->ipaddr, &hs_ip6addr, sizeof(home->ipaddr));
+	if (cf_pair_find(cs, "ipaddr") || cf_pair_find(cs, "ipv4addr") || cf_pair_find(cs, "ipv6addr")) {
+		home->ipaddr = hs_ipaddr;
 	} else if ((cp = cf_pair_find(cs, "virtual_server")) != NULL) {
 		home->ipaddr.af = AF_UNSPEC;
 		home->server = cf_pair_value(cp);
@@ -408,7 +405,7 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 		goto skip_port;
 
 	} else {
-		cf_log_err_cs(cs, "No ipaddr, ipv6addr, or virtual_server defined for home server \"%s\"", name2);
+		cf_log_err_cs(cs, "No ipaddr, ipv4addr, ipv6addr, or virtual_server defined for home server \"%s\"", name2);
 	error:
 		hs_type = NULL;
 		hs_check = NULL;
