@@ -553,7 +553,7 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int in_server)
 	}
 
 	/*
-	 * The size is fine.. Let's create the buffer
+	 *	The size is fine.. Let's create the buffer
 	 */
 	c = talloc_zero(cs, RADCLIENT);
 	c->cs = cs;
@@ -575,12 +575,10 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int in_server)
 	}
 
 	/*
-	 *	Global clients can set servers to use,
-	 *	per-server clients cannot.
+	 *	Global clients can set servers to use per-server clients cannot.
 	 */
 	if (in_server && c->server) {
-		cf_log_err_cs(cs,
-			   "Clients inside of an server section cannot point to a server");
+		cf_log_err_cs(cs, "Clients inside of an server section cannot point to a server");
 		goto error;
 	}
 
@@ -747,8 +745,7 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int in_server)
 
 	FR_TIMEVAL_BOUND_CHECK("response_window", &c->response_window, >=, 0, 1000);
 	FR_TIMEVAL_BOUND_CHECK("response_window", &c->response_window, <=, 60, 0);
-	FR_TIMEVAL_BOUND_CHECK("response_window", &c->response_window, <=,
-				main_config.max_request_time, 0);
+	FR_TIMEVAL_BOUND_CHECK("response_window", &c->response_window, <=, main_config.max_request_time, 0);
 
 #ifdef WITH_DYNAMIC_CLIENTS
 	if (c->client_server) {
@@ -767,7 +764,7 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int in_server)
 	}
 #endif
 
-	if (!c->secret || !*c->secret) {
+	if (!c->secret || (c->secret[0] == '\0')) {
 #ifdef WITH_DHCP
 		char const *value = NULL;
 		CONF_PAIR *cp = cf_pair_find(cs, "dhcp");
@@ -778,7 +775,6 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int in_server)
 		 *	Secrets aren't needed for DHCP.
 		 */
 		if (value && (strcmp(value, "yes") == 0)) return c;
-
 #endif
 
 #ifdef WITH_TLS
@@ -1165,19 +1161,9 @@ RADCLIENT *client_from_query(TALLOC_CTX *ctx, char const *identifier, char const
 	 *	Other values (secret, shortname, nas_type, virtual_server)
 	 */
 	c->secret = talloc_typed_strdup(c, secret);
-
-	if (shortname) {
-		c->shortname = talloc_typed_strdup(c, shortname);
-	}
-
-	if (type) {
-		c->nas_type = talloc_typed_strdup(c, type);
-	}
-
-	if (server) {
-		c->server = talloc_typed_strdup(c, server);
-	}
-
+	if (shortname) c->shortname = talloc_typed_strdup(c, shortname);
+	if (type) c->nas_type = talloc_typed_strdup(c, type);
+	if (server) c->server = talloc_typed_strdup(c, server);
 	c->message_authenticator = require_ma;
 
 	return c;
