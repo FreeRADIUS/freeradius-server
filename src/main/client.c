@@ -528,7 +528,8 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int in_server)
 	 *	No "ipaddr" or "ipv6addr", use old-style "client <ipaddr> {" syntax.
 	 */
 	} else {
-		WARN("No 'ipaddr' or 'ipv6addr' field found in client %s.  Please fix your configuration", name2);
+		WARN("No 'ipaddr' or 'ipv4addr' or 'ipv6addr' field found in client %s.  Please fix your configuration",
+		     name2);
 		WARN("Support for old-style clients will be removed in a future release");
 
 #ifdef WITH_TCP
