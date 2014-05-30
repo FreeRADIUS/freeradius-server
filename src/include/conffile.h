@@ -72,14 +72,18 @@ typedef struct timeval _timeval_t;
 		__builtin_choose_expr(__builtin_types_compatible_p(uint8_t[6], _ct), _p, (conf_type_mismatch) 0),\
 	__builtin_choose_expr((_t == PW_TYPE_SIGNED),\
 		__builtin_choose_expr(__builtin_types_compatible_p(int32_t *, _ct), _p, (conf_type_mismatch) 0),\
+	__builtin_choose_expr((_t == PW_TYPE_COMBO_IP),\
+		__builtin_choose_expr(__builtin_types_compatible_p(fr_ipaddr_t *, _ct), _p, (conf_type_mismatch) 0),\
 	__builtin_choose_expr((_t == PW_TYPE_INTEGER64),\
 		__builtin_choose_expr(__builtin_types_compatible_p(uint64_t *, _ct), _p, (conf_type_mismatch) 0),\
 	__builtin_choose_expr((_t == PW_TYPE_IPV4PREFIX),\
 		__builtin_choose_expr(__builtin_types_compatible_p(fr_ipaddr_t *, _ct), _p, (conf_type_mismatch) 0),\
 	__builtin_choose_expr((_t == PW_TYPE_TIMEVAL),\
 		__builtin_choose_expr(__builtin_types_compatible_p(_timeval_t *, _ct), _p, (conf_type_mismatch) 0),\
+	__builtin_choose_expr((_t == PW_TYPE_COMBO_IPPREFIX),\
+		__builtin_choose_expr(__builtin_types_compatible_p(fr_ipaddr_t *, _ct), _p, (conf_type_mismatch) 0),\
 		(conf_type_invalid) 0\
-	))))))))))))))))))
+	))))))))))))))))))))
 
 #  define FR_CONF_OFFSET(_t, _s, _f)	_t, FR_CONF_TYPE_CHECK(((_t) & 0xff), __typeof__(&(((_s *)NULL)->_f)), offsetof(_s, _f)), NULL
 #  define FR_CONF_POINTER(_t, _p)	_t, 0, FR_CONF_TYPE_CHECK(((_t) & 0xff), __typeof__(_p), _p)

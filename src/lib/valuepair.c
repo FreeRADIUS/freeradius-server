@@ -2445,6 +2445,7 @@ int8_t paircmp_value(VALUE_PAIR const *one, VALUE_PAIR const *two)
 	 */
 	case PW_TYPE_INVALID:		/* We should never see these */
 	case PW_TYPE_COMBO_IP:		/* This should of been converted into IPADDR/IPV6ADDR */
+	case PW_TYPE_COMBO_IPPREFIX:	/* This should of been converted into IPADDR/IPV6ADDR */
 	case PW_TYPE_TLV:
 	case PW_TYPE_EXTENDED:
 	case PW_TYPE_LONG_EXTENDED:
