@@ -267,10 +267,7 @@ int fr_pton(fr_ipaddr_t *out, char const *value, size_t inlen, bool resolve)
 	}
 
 	if (prefix < 32) {
-		struct in_addr addr;
-
-		addr = fr_ipaddr_mask(&(out->ipaddr.ip4addr), prefix);
-		memcpy(&(out->ipaddr.ip4addr.s_addr), &addr, sizeof(addr));
+		out->ipaddr.ip4addr = fr_ipaddr_mask(&(out->ipaddr.ip4addr), prefix);
 	}
 
 	out->prefix = (uint8_t) prefix;
@@ -864,8 +861,8 @@ struct in_addr fr_ipaddr_mask(struct in_addr const *ipaddr, uint8_t prefix)
 		return *ipaddr;
 	}
 
-	ret = htonl(~((0x00000001UL << (32 - prefix)) - 1)) & *((uint32_t const *)ipaddr);
-	return *(struct in_addr *) &ret;
+	ret = htonl(~((0x00000001UL << (32 - prefix)) - 1)) & ipaddr->s_addr;
+	return (*(struct in_addr *)&ret);
 }
 
 /** Mask off a portion of an IPv6 address
