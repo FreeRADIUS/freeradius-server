@@ -395,8 +395,12 @@ int fr_pton(fr_ipaddr_t *out, char const *value, size_t inlen, bool resolve)
 	case AF_INET:
 		return fr_pton4(out, value, inlen, resolve, true);
 
+	/*
+	 *	If we found ':' or '[' or ']' in the above string, there's
+	 *	no way this can be a hostname, so don't try to resolve.
+	 */
 	case AF_INET6:
-		return fr_pton6(out, value, inlen, resolve, true);
+		return fr_pton6(out, value, inlen, false, false);
 
 	default:
 		return -1;
