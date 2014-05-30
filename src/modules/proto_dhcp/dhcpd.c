@@ -653,7 +653,7 @@ static int dhcp_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	if (cp) {
 		memset(&sock->src_ipaddr, 0, sizeof(sock->src_ipaddr));
 		sock->src_ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_NONE);
-		rcode = cf_item_parse(cs, "src_ipaddr", FR_ITEM_POINTER(PW_TYPE_IPADDR, &sock->src_ipaddr), NULL);
+		rcode = cf_item_parse(cs, "src_ipaddr", FR_ITEM_POINTER(PW_TYPE_IPV4_ADDR, &sock->src_ipaddr), NULL);
 		if (rcode < 0) return -1;
 
 		sock->src_ipaddr.af = AF_INET;

@@ -415,7 +415,7 @@ size_t vp_prints_value(char *out, size_t outlen, VALUE_PAIR const *vp, int8_t qu
 		a = buf;
 		break;
 
-	case PW_TYPE_IPADDR:
+	case PW_TYPE_IPV4_ADDR:
 		a = inet_ntop(AF_INET, &(vp->vp_ipaddr), buf, sizeof(buf));
 		len = strlen(buf);
 		break;
@@ -468,12 +468,12 @@ size_t vp_prints_value(char *out, size_t outlen, VALUE_PAIR const *vp, int8_t qu
 		len = strlen(buf);
 		break;
 
-	case PW_TYPE_IPV6ADDR:
+	case PW_TYPE_IPV6_ADDR:
 		a = inet_ntop(AF_INET6, &vp->vp_ipv6addr, buf, sizeof(buf));
 		len = strlen(buf);
 		break;
 
-	case PW_TYPE_IPV6PREFIX:
+	case PW_TYPE_IPV6_PREFIX:
 	{
 		struct in6_addr addr;
 
@@ -493,7 +493,7 @@ size_t vp_prints_value(char *out, size_t outlen, VALUE_PAIR const *vp, int8_t qu
 	}
 		break;
 
-	case PW_TYPE_IPV4PREFIX:
+	case PW_TYPE_IPV4_PREFIX:
 	{
 		struct in_addr addr;
 
@@ -544,16 +544,16 @@ char *vp_aprint_type(TALLOC_CTX *ctx, PW_TYPE type)
 	case PW_TYPE_DATE :
 		return talloc_typed_strdup(ctx, "0");
 
-	case PW_TYPE_IPADDR :
+	case PW_TYPE_IPV4_ADDR :
 		return talloc_typed_strdup(ctx, "?.?.?.?");
 
-	case PW_TYPE_IPV4PREFIX:
+	case PW_TYPE_IPV4_PREFIX:
 		return talloc_typed_strdup(ctx, "?.?.?.?/?");
 
-	case PW_TYPE_IPV6ADDR:
+	case PW_TYPE_IPV6_ADDR:
 		return talloc_typed_strdup(ctx, "[:?:]");
 
-	case PW_TYPE_IPV6PREFIX:
+	case PW_TYPE_IPV6_PREFIX:
 		return talloc_typed_strdup(ctx, "[:?:]/?");
 
 	case PW_TYPE_OCTETS:
@@ -918,8 +918,8 @@ char *vp_aprint_value(TALLOC_CTX *ctx, VALUE_PAIR const *vp)
 	 *
 	 *	An example is tunnelled ipv4 in ipv6 addresses.
 	 */
-	case PW_TYPE_IPADDR:
-	case PW_TYPE_IPV4PREFIX:
+	case PW_TYPE_IPV4_ADDR:
+	case PW_TYPE_IPV4_PREFIX:
 		{
 			char buff[INET_ADDRSTRLEN  + 4]; // + /prefix
 
@@ -930,8 +930,8 @@ char *vp_aprint_value(TALLOC_CTX *ctx, VALUE_PAIR const *vp)
 		}
 		break;
 
-	case PW_TYPE_IPV6ADDR:
-	case PW_TYPE_IPV6PREFIX:
+	case PW_TYPE_IPV6_ADDR:
+	case PW_TYPE_IPV6_PREFIX:
 		{
 			char buff[INET6_ADDRSTRLEN + 4]; // + /prefix
 

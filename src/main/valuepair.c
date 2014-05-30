@@ -208,16 +208,16 @@ int radius_compare_vps(REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *vp)
 			ret = vp->vp_date - check->vp_date;
 			break;
 
-		case PW_TYPE_IPADDR:
+		case PW_TYPE_IPV4_ADDR:
 			ret = ntohl(vp->vp_ipaddr) - ntohl(check->vp_ipaddr);
 			break;
 
-		case PW_TYPE_IPV6ADDR:
+		case PW_TYPE_IPV6_ADDR:
 			ret = memcmp(&vp->vp_ipv6addr, &check->vp_ipv6addr,
 				     sizeof(vp->vp_ipv6addr));
 			break;
 
-		case PW_TYPE_IPV6PREFIX:
+		case PW_TYPE_IPV6_PREFIX:
 			ret = memcmp(&vp->vp_ipv6prefix, &check->vp_ipv6prefix,
 				     sizeof(vp->vp_ipv6prefix));
 			break;

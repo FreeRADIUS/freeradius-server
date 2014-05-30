@@ -50,7 +50,7 @@ typedef struct timeval _timeval_t;
 		NULL,\
 	__builtin_choose_expr((_t == PW_TYPE_INTEGER),\
 		__builtin_choose_expr(__builtin_types_compatible_p(uint32_t *, _ct), _p, (conf_type_mismatch) 0),\
-	__builtin_choose_expr((_t == PW_TYPE_IPADDR),\
+	__builtin_choose_expr((_t == PW_TYPE_IPV4_ADDR),\
 		__builtin_choose_expr(__builtin_types_compatible_p(fr_ipaddr_t *, _ct), _p, (conf_type_mismatch) 0),\
 	__builtin_choose_expr((_t == PW_TYPE_DATE),\
 		__builtin_choose_expr(__builtin_types_compatible_p(uint32_t *, _ct), _p, (conf_type_mismatch) 0),\
@@ -60,9 +60,9 @@ typedef struct timeval _timeval_t;
 		__builtin_choose_expr(__builtin_types_compatible_p(uint8_t *, _ct), _p, (conf_type_mismatch) 0),\
 	__builtin_choose_expr((_t == PW_TYPE_IFID),\
 		__builtin_choose_expr(__builtin_types_compatible_p(uint8_t[8], _ct), _p, (conf_type_mismatch) 0),\
-	__builtin_choose_expr((_t == PW_TYPE_IPV6ADDR),\
+	__builtin_choose_expr((_t == PW_TYPE_IPV6_ADDR),\
 		__builtin_choose_expr(__builtin_types_compatible_p(fr_ipaddr_t *, _ct), _p, (conf_type_mismatch) 0),\
-	__builtin_choose_expr((_t == PW_TYPE_IPV6PREFIX),\
+	__builtin_choose_expr((_t == PW_TYPE_IPV6_PREFIX),\
 		__builtin_choose_expr(__builtin_types_compatible_p(fr_ipaddr_t *, _ct), _p, (conf_type_mismatch) 0),\
 	__builtin_choose_expr((_t == PW_TYPE_BYTE),\
 		__builtin_choose_expr(__builtin_types_compatible_p(uint8_t *, _ct), _p, (conf_type_mismatch) 0),\
@@ -72,15 +72,15 @@ typedef struct timeval _timeval_t;
 		__builtin_choose_expr(__builtin_types_compatible_p(uint8_t[6], _ct), _p, (conf_type_mismatch) 0),\
 	__builtin_choose_expr((_t == PW_TYPE_SIGNED),\
 		__builtin_choose_expr(__builtin_types_compatible_p(int32_t *, _ct), _p, (conf_type_mismatch) 0),\
-	__builtin_choose_expr((_t == PW_TYPE_COMBO_IP),\
+	__builtin_choose_expr((_t == PW_TYPE_IP_ADDR),\
 		__builtin_choose_expr(__builtin_types_compatible_p(fr_ipaddr_t *, _ct), _p, (conf_type_mismatch) 0),\
 	__builtin_choose_expr((_t == PW_TYPE_INTEGER64),\
 		__builtin_choose_expr(__builtin_types_compatible_p(uint64_t *, _ct), _p, (conf_type_mismatch) 0),\
-	__builtin_choose_expr((_t == PW_TYPE_IPV4PREFIX),\
+	__builtin_choose_expr((_t == PW_TYPE_IPV4_PREFIX),\
 		__builtin_choose_expr(__builtin_types_compatible_p(fr_ipaddr_t *, _ct), _p, (conf_type_mismatch) 0),\
 	__builtin_choose_expr((_t == PW_TYPE_TIMEVAL),\
 		__builtin_choose_expr(__builtin_types_compatible_p(_timeval_t *, _ct), _p, (conf_type_mismatch) 0),\
-	__builtin_choose_expr((_t == PW_TYPE_COMBO_IPPREFIX),\
+	__builtin_choose_expr((_t == PW_TYPE_IP_PREFIX),\
 		__builtin_choose_expr(__builtin_types_compatible_p(fr_ipaddr_t *, _ct), _p, (conf_type_mismatch) 0),\
 		(conf_type_invalid) 0\
 	))))))))))))))))))))

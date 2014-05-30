@@ -908,14 +908,14 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	 */
 	memset(&ipaddr, 0, sizeof(ipaddr));
 	ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_NONE);
-	rcode = cf_item_parse(cs, "ipaddr", FR_ITEM_POINTER(PW_TYPE_IPADDR, &ipaddr), NULL);
+	rcode = cf_item_parse(cs, "ipaddr", FR_ITEM_POINTER(PW_TYPE_IPV4_ADDR, &ipaddr), NULL);
 	if (rcode < 0) return -1;
 
 	if (rcode == 0) { /* successfully parsed IPv4 */
 		ipaddr.af = AF_INET;
 
 	} else {	/* maybe IPv6? */
-		rcode = cf_item_parse(cs, "ipv6addr", FR_ITEM_POINTER(PW_TYPE_IPV6ADDR, &ipaddr), NULL);
+		rcode = cf_item_parse(cs, "ipv6addr", FR_ITEM_POINTER(PW_TYPE_IPV6_ADDR, &ipaddr), NULL);
 		if (rcode < 0) return -1;
 
 		if (rcode == 1) {

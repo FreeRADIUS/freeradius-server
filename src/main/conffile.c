@@ -921,9 +921,9 @@ static inline int fr_item_validate_ipaddr(CONF_SECTION *cs, char const *name, PW
 	}
 
 	switch (type) {
-	case PW_TYPE_IPADDR:
-	case PW_TYPE_IPV6ADDR:
-	case PW_TYPE_COMBO_IP:
+	case PW_TYPE_IPV4_ADDR:
+	case PW_TYPE_IPV6_ADDR:
+	case PW_TYPE_IP_ADDR:
 		switch (ipaddr->af) {
 		case AF_INET:
 		if (ipaddr->prefix != 32) {
@@ -1184,8 +1184,8 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, int type, void *data, char
 		}
 		break;
 
-	case PW_TYPE_IPADDR:
-	case PW_TYPE_IPV4PREFIX:
+	case PW_TYPE_IPV4_ADDR:
+	case PW_TYPE_IPV4_PREFIX:
 		ipaddr = data;
 
 		if (fr_pton4(ipaddr, value, 0, true, false) < 0) {
@@ -1195,8 +1195,8 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, int type, void *data, char
 		if (fr_item_validate_ipaddr(cs, name, type, value, ipaddr) < 0) return -1;
 		break;
 
-	case PW_TYPE_IPV6ADDR:
-	case PW_TYPE_IPV6PREFIX:
+	case PW_TYPE_IPV6_ADDR:
+	case PW_TYPE_IPV6_PREFIX:
 		ipaddr = data;
 
 		if (fr_pton6(ipaddr, value, 0, true, false) < 0) {
@@ -1206,8 +1206,8 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, int type, void *data, char
 		if (fr_item_validate_ipaddr(cs, name, type, value, ipaddr) < 0) return -1;
 		break;
 
-	case PW_TYPE_COMBO_IP:
-	case PW_TYPE_COMBO_IPPREFIX:
+	case PW_TYPE_IP_ADDR:
+	case PW_TYPE_IP_PREFIX:
 		ipaddr = data;
 
 		if (fr_pton(ipaddr, value, 0, true) < 0) {

@@ -437,13 +437,13 @@ static int do_cast_copy(VALUE_PAIR *dst, VALUE_PAIR const *src)
 	/*
 	 *	Convert host order to network byte order.
 	 */
-	if ((dst->da->type == PW_TYPE_IPADDR) &&
+	if ((dst->da->type == PW_TYPE_IPV4_ADDR) &&
 	    ((src->da->type == PW_TYPE_INTEGER) ||
 	     (src->da->type == PW_TYPE_DATE) ||
 	     (src->da->type == PW_TYPE_SIGNED))) {
 		dst->vp_ipaddr = htonl(src->vp_integer);
 
-	} else if ((src->da->type == PW_TYPE_IPADDR) &&
+	} else if ((src->da->type == PW_TYPE_IPV4_ADDR) &&
 		   ((dst->da->type == PW_TYPE_INTEGER) ||
 		    (dst->da->type == PW_TYPE_DATE) ||
 		    (dst->da->type == PW_TYPE_SIGNED))) {

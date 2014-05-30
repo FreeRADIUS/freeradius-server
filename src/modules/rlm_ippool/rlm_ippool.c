@@ -114,13 +114,13 @@ static const CONF_PARSER module_config[] = {
 
 	{ "key", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_REQUIRED, rlm_ippool_t, key), "%{NAS-IP-Address} %{NAS-Port}" },
 
-	{ "range-start", FR_CONF_OFFSET(PW_TYPE_IPADDR | PW_TYPE_DEPRECATED, rlm_ippool_t, range_start_addr), NULL },
-	{ "range_start", FR_CONF_OFFSET(PW_TYPE_IPADDR, rlm_ippool_t, range_start_addr), "0" },
+	{ "range-start", FR_CONF_OFFSET(PW_TYPE_IPV4_ADDR | PW_TYPE_DEPRECATED, rlm_ippool_t, range_start_addr), NULL },
+	{ "range_start", FR_CONF_OFFSET(PW_TYPE_IPV4_ADDR, rlm_ippool_t, range_start_addr), "0" },
 
-	{ "range-stop", FR_CONF_OFFSET(PW_TYPE_IPADDR | PW_TYPE_DEPRECATED, rlm_ippool_t, range_stop_addr), NULL },
-	{ "range_stop", FR_CONF_OFFSET(PW_TYPE_IPADDR, rlm_ippool_t, range_stop_addr), "0" },
+	{ "range-stop", FR_CONF_OFFSET(PW_TYPE_IPV4_ADDR | PW_TYPE_DEPRECATED, rlm_ippool_t, range_stop_addr), NULL },
+	{ "range_stop", FR_CONF_OFFSET(PW_TYPE_IPV4_ADDR, rlm_ippool_t, range_stop_addr), "0" },
 
-	{ "netmask", FR_CONF_OFFSET(PW_TYPE_IPADDR, rlm_ippool_t, netmask_addr), "0" },
+	{ "netmask", FR_CONF_OFFSET(PW_TYPE_IPV4_ADDR, rlm_ippool_t, netmask_addr), "0" },
 
 	{ "cache-size", FR_CONF_OFFSET(PW_TYPE_INTEGER | PW_TYPE_DEPRECATED, rlm_ippool_t, cache_size), NULL },
 	{ "cache_size", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_ippool_t, cache_size), "1000" },

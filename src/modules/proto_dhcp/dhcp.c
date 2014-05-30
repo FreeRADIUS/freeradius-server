@@ -569,7 +569,7 @@ static int fr_dhcp_attr2vp(RADIUS_PACKET *packet, VALUE_PAIR *vp, uint8_t const 
 		vp->vp_integer = ntohl(vp->vp_integer);
 		break;
 
-	case PW_TYPE_IPADDR:
+	case PW_TYPE_IPV4_ADDR:
 		if (alen != 4) goto raw;
 		/*
 		 *	Keep value in Network Order!
@@ -675,7 +675,7 @@ ssize_t fr_dhcp_decode_options(RADIUS_PACKET *packet,
 				alen = 2;
 				break;
 
-			case PW_TYPE_IPADDR:
+			case PW_TYPE_IPV4_ADDR:
 			case PW_TYPE_INTEGER:
 			case PW_TYPE_DATE: /* ignore any trailing data */
 				num_entries = alen >> 2;
@@ -799,7 +799,7 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 			vp->length = 4;
 			break;
 
-		case PW_TYPE_IPADDR:
+		case PW_TYPE_IPV4_ADDR:
 			memcpy(&vp->vp_ipaddr, p, 4);
 			vp->length = 4;
 			break;
@@ -981,7 +981,7 @@ static ssize_t fr_dhcp_vp2attr(uint8_t *out, size_t outlen, VALUE_PAIR *vp)
 		memcpy(p, &lvalue, 4);
 		break;
 
-	case PW_TYPE_IPADDR:
+	case PW_TYPE_IPV4_ADDR:
 		memcpy(p, &vp->vp_ipaddr, 4);
 		break;
 
@@ -1428,7 +1428,7 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 				vp->vp_integer = ntohl(vp->vp_integer);
 				break;
 
-			case PW_TYPE_IPADDR:
+			case PW_TYPE_IPV4_ADDR:
 				memcpy(&vp->vp_ipaddr, p, 4);
 				break;
 
