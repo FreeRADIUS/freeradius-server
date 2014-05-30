@@ -267,7 +267,7 @@ int fr_pton(fr_ipaddr_t *out, char const *value, size_t inlen, bool resolve)
 	}
 
 	if (prefix < 32) {
-		out->ipaddr.ip4addr = fr_ipaddr_mask(&(out->ipaddr.ip4addr), prefix);
+		out->ipaddr.ip4addr = fr_inaddr_mask(&(out->ipaddr.ip4addr), prefix);
 	}
 
 	out->prefix = (uint8_t) prefix;
@@ -357,7 +357,7 @@ int fr_pton6(fr_ipaddr_t *out, char const *value, size_t inlen, bool resolve)
 	if (prefix < 128) {
 		struct in6_addr addr;
 
-		addr = fr_ipaddr_mask6(&(out->ipaddr.ip6addr), prefix);
+		addr = fr_in6addr_mask(&(out->ipaddr.ip6addr), prefix);
 		memcpy(&(out->ipaddr.ip6addr.s6_addr), &addr, sizeof(addr));
 	}
 
@@ -890,7 +890,7 @@ char const *ip_ntoh(fr_ipaddr_t const *src, char *dst, size_t cnt)
  * @param prefix Number of contiguous bits to mask.
  * @return an ipv6 address with the host portion zeroed out.
  */
-struct in_addr fr_ipaddr_mask(struct in_addr const *ipaddr, uint8_t prefix)
+struct in_addr fr_inaddr_mask(struct in_addr const *ipaddr, uint8_t prefix)
 {
 	uint32_t ret;
 
@@ -913,7 +913,7 @@ struct in_addr fr_ipaddr_mask(struct in_addr const *ipaddr, uint8_t prefix)
  * @param prefix Number of contiguous bits to mask.
  * @return an ipv6 address with the host portion zeroed out.
  */
-struct in6_addr fr_ipaddr_mask6(struct in6_addr const *ipaddr, uint8_t prefix)
+struct in6_addr fr_in6addr_mask(struct in6_addr const *ipaddr, uint8_t prefix)
 {
 	uint64_t const *p = (uint64_t const *) ipaddr;
 	uint64_t ret[2], *o = ret;
@@ -937,6 +937,29 @@ struct in6_addr fr_ipaddr_mask6(struct in6_addr const *ipaddr, uint8_t prefix)
 	*o = htonll(~((0x0000000000000001ULL << (64 - prefix)) - 1)) & *p;
 
 	return *(struct in6_addr *) &ret;
+}
+
+/** Zeroes out the host portion of an fr_ipaddr_t
+ *
+ * @param[in,out] addr to mask
+ * @param[in] prefix Length of the network portion.
+ */
+void fr_ipaddr_mask(fr_ipaddr_t *addr, uint8_t prefix)
+{
+
+	switch (addr->af) {
+	case AF_INET:
+		addr->ipaddr.ip4addr = fr_inaddr_mask(&addr->ipaddr.ip4addr, prefix);
+		break;
+
+	case AF_INET6:
+		addr->ipaddr.ip6addr = fr_in6addr_mask(&addr->ipaddr.ip6addr, prefix);
+		break;
+
+	default:
+		return;
+	}
+	addr->prefix = prefix;
 }
 
 static char const *hextab = "0123456789abcdef";

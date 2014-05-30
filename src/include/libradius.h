@@ -678,8 +678,9 @@ int		fr_ipaddr_cmp(fr_ipaddr_t const *a, fr_ipaddr_t const *b);
 
 int		ip_hton(int af, char const *src, fr_ipaddr_t *dst);
 char const	*ip_ntoh(fr_ipaddr_t const *src, char *dst, size_t cnt);
-struct in_addr	fr_ipaddr_mask(struct in_addr const *ipaddr, uint8_t prefix);
-struct in6_addr	fr_ipaddr_mask6(struct in6_addr const *ipaddr, uint8_t prefix);
+struct in_addr	fr_inaddr_mask(struct in_addr const *ipaddr, uint8_t prefix);
+struct in6_addr	fr_in6addr_mask(struct in6_addr const *ipaddr, uint8_t prefix);
+void		fr_ipaddr_mask(fr_ipaddr_t *addr, uint8_t prefix);
 int		fr_ipaddr2sockaddr(fr_ipaddr_t const *ipaddr, uint16_t port,
 				   struct sockaddr_storage *sa, socklen_t *salen);
 int		fr_sockaddr2ipaddr(struct sockaddr_storage const *sa, socklen_t salen,
