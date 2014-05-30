@@ -100,7 +100,7 @@ struct fr_connection_pool_t {
 					//!< cleanup.  Initialized to
 					//!< cleanup_interval, and decays
 					//!< from there.
-	uint32_t	max_uses;	//!< Maximum number of times a
+	uint64_t	max_uses;	//!< Maximum number of times a
 					//!< connection can be used before being
 					//!< closed.
 	uint32_t	lifetime;	//!< How long a connection can be open
@@ -173,16 +173,16 @@ struct fr_connection_pool_t {
 #endif
 
 static const CONF_PARSER connection_config[] = {
-	{ "start",    FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_connection_pool_t, start), "5" },
-	{ "min",      FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_connection_pool_t, min), "5" },
-	{ "max",      FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_connection_pool_t, max), "10" },
-	{ "spare",    FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_connection_pool_t, spare), "3" },
-	{ "uses",     FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_connection_pool_t, max_uses), "0" },
+	{ "start", FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_connection_pool_t, start), "5" },
+	{ "min", FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_connection_pool_t, min), "5" },
+	{ "max", FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_connection_pool_t, max), "10" },
+	{ "spare", FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_connection_pool_t, spare), "3" },
+	{ "uses", FR_CONF_OFFSET(PW_TYPE_INTEGER64, fr_connection_pool_t, max_uses), "0" },
 	{ "lifetime", FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_connection_pool_t, lifetime), "0" },
 	{ "cleanup_delay", FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_connection_pool_t, cleanup_interval), NULL},
 	{ "cleanup_interval", FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_connection_pool_t, cleanup_interval), "30" },
-	{ "idle_timeout",  FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_connection_pool_t, idle_timeout), "60" },
-	{ "retry_delay",  FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_connection_pool_t, retry_delay), "1" },
+	{ "idle_timeout", FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_connection_pool_t, idle_timeout), "60" },
+	{ "retry_delay", FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_connection_pool_t, retry_delay), "1" },
 	{ "spread", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_connection_pool_t, spread), "no" },
 	{ NULL, -1, 0, NULL, NULL }
 };

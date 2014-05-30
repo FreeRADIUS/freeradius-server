@@ -37,29 +37,28 @@ typedef uint32_t fr_uint_t;
 
 #ifdef WITH_STATS
 typedef struct fr_stats_t {
-	fr_uint_t		total_requests;
-	fr_uint_t		total_invalid_requests;
-	fr_uint_t		total_dup_requests;
-	fr_uint_t		total_responses;
-	fr_uint_t		total_access_accepts;
-	fr_uint_t		total_access_rejects;
-	fr_uint_t		total_access_challenges;
-	fr_uint_t		total_malformed_requests;
-	fr_uint_t		total_bad_authenticators;
-	fr_uint_t		total_packets_dropped;
-	fr_uint_t		total_no_records;
-	fr_uint_t		total_unknown_types;
-	fr_uint_t		total_timeouts;
-	time_t			last_packet;
-	fr_uint_t		elapsed[8];
+	fr_uint_t	total_requests;
+	fr_uint_t	total_invalid_requests;
+	fr_uint_t	total_dup_requests;
+	fr_uint_t	total_responses;
+	fr_uint_t	total_access_accepts;
+	fr_uint_t	total_access_rejects;
+	fr_uint_t	total_access_challenges;
+	fr_uint_t	total_malformed_requests;
+	fr_uint_t	total_bad_authenticators;
+	fr_uint_t	total_packets_dropped;
+	fr_uint_t	total_no_records;
+	fr_uint_t	total_unknown_types;
+	fr_uint_t	total_timeouts;
+	time_t		last_packet;
+	fr_uint_t	elapsed[8];
 } fr_stats_t;
 
 typedef struct fr_stats_ema_t {
-	int		window;
+	uint32_t	window;
 
-	int		f1, f10;
-	int		ema1, ema10;
-
+	uint32_t	f1, f10;
+	uint32_t	ema1, ema10;
 } fr_stats_ema_t;
 
 extern fr_stats_t	radius_auth_stats;

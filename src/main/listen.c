@@ -878,14 +878,9 @@ static CONF_PARSER limit_config[] = {
 	{ "max_pps", FR_CONF_OFFSET(PW_TYPE_INTEGER, listen_socket_t, max_rate), NULL },
 
 #ifdef WITH_TCP
-	{ "max_connections", PW_TYPE_INTEGER,
-	  offsetof(listen_socket_t, limit.max_connections), NULL,   "16" },
-
-	{ "lifetime", PW_TYPE_INTEGER,
-	  offsetof(listen_socket_t, limit.lifetime), NULL,   "0" },
-
-	{ "idle_timeout", PW_TYPE_INTEGER,
-	  offsetof(listen_socket_t, limit.idle_timeout), NULL,   "30" },
+	{ "max_connections", FR_CONF_OFFSET(PW_TYPE_INTEGER, listen_socket_t, limit.max_connections), "16" },
+	{ "lifetime", FR_CONF_OFFSET(PW_TYPE_INTEGER, listen_socket_t, limit.lifetime), "0" },
+	{ "idle_timeout", FR_CONF_OFFSET(PW_TYPE_INTEGER, listen_socket_t, limit.idle_timeout), STRINGIFY(30) },
 #endif
 
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
@@ -911,14 +906,14 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	 */
 	memset(&ipaddr, 0, sizeof(ipaddr));
 	ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_NONE);
-	rcode = cf_item_parse(cs, "ipaddr", FR_ITEM_POINTER(PW_TYPE_IPADDR, &ipaddr.ipaddr.ip4addr), NULL);
+	rcode = cf_item_parse(cs, "ipaddr", FR_ITEM_POINTER(PW_TYPE_IPADDR, &ipaddr), NULL);
 	if (rcode < 0) return -1;
 
 	if (rcode == 0) { /* successfully parsed IPv4 */
 		ipaddr.af = AF_INET;
 
 	} else {	/* maybe IPv6? */
-		rcode = cf_item_parse(cs, "ipv6addr", FR_ITEM_POINTER(PW_TYPE_IPV6ADDR, &ipaddr.ipaddr.ip6addr), NULL);
+		rcode = cf_item_parse(cs, "ipv6addr", FR_ITEM_POINTER(PW_TYPE_IPV6ADDR, &ipaddr), NULL);
 		if (rcode < 0) return -1;
 
 		if (rcode == 1) {

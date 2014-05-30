@@ -373,46 +373,35 @@ int main(void){
 struct passwd_instance {
 	struct hashtable	*ht;
 	struct mypasswd		*pwdfmt;
-	char			*filename;
-	char			*format;
-	char			*delimiter;
+	char const		*filename;
+	char const		*format;
+	char const		*delimiter;
 	bool			allow_multiple;
 	bool			ignore_nislike;
-	int			hash_size;
-	int			nfields;
-	int			keyfield;
-	int			listable;
+	uint32_t		hash_size;
+	uint32_t		nfields;
+	uint32_t		keyfield;
+	uint32_t		listable;
 	DICT_ATTR const		*keyattr;
 	bool			ignore_empty;
 };
 
 static const CONF_PARSER module_config[] = {
-	{ "filename",   PW_TYPE_FILE_INPUT | PW_TYPE_REQUIRED,
-	  offsetof(struct passwd_instance, filename), NULL,  NULL },
-	{ "format",   PW_TYPE_STRING | PW_TYPE_REQUIRED,
-	  offsetof(struct passwd_instance, format), NULL,  NULL },
-	{ "delimiter",   PW_TYPE_STRING,
-	  offsetof(struct passwd_instance, delimiter), NULL,  ":" },
+	{ "filename", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT | PW_TYPE_REQUIRED, struct passwd_instance, filename), NULL },
+	{ "format", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_REQUIRED, struct passwd_instance, format), NULL },
+	{ "delimiter", FR_CONF_OFFSET(PW_TYPE_STRING, struct passwd_instance, delimiter), ":" },
 
-	{ "ignorenislike",   PW_TYPE_BOOLEAN | PW_TYPE_DEPRECATED,
-	  offsetof(struct passwd_instance, ignore_nislike), NULL,  NULL },
-	{ "ignore_nislike",   PW_TYPE_BOOLEAN,
-	  offsetof(struct passwd_instance, ignore_nislike), NULL,  "yes" },
+	{ "ignorenislike", FR_CONF_OFFSET(PW_TYPE_BOOLEAN | PW_TYPE_DEPRECATED, struct passwd_instance, ignore_nislike), NULL },
+	{ "ignore_nislike", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, struct passwd_instance, ignore_nislike), "yes" },
 
-	{ "ignoreempty",   PW_TYPE_BOOLEAN | PW_TYPE_DEPRECATED,
-	  offsetof(struct passwd_instance, ignore_empty), NULL,  NULL },
-	{ "ignore_empty",   PW_TYPE_BOOLEAN,
-	  offsetof(struct passwd_instance, ignore_empty), NULL,  "yes" },
+	{ "ignoreempty", FR_CONF_OFFSET(PW_TYPE_BOOLEAN | PW_TYPE_DEPRECATED, struct passwd_instance, ignore_empty), NULL },
+	{ "ignore_empty",  FR_CONF_OFFSET(PW_TYPE_BOOLEAN, struct passwd_instance, ignore_empty), "yes" },
 
-	{ "allowmultiplekeys",   PW_TYPE_BOOLEAN | PW_TYPE_DEPRECATED,
-	  offsetof(struct passwd_instance, allow_multiple), NULL,  NULL },
-	{ "allow_multiple_keys",   PW_TYPE_BOOLEAN,
-	  offsetof(struct passwd_instance, allow_multiple), NULL,  "no" },
+	{ "allowmultiplekeys", FR_CONF_OFFSET(PW_TYPE_BOOLEAN | PW_TYPE_DEPRECATED, struct passwd_instance, allow_multiple), NULL },
+	{ "allow_multiple_keys", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, struct passwd_instance, allow_multiple), "no" },
 
-	{ "hashsize",   PW_TYPE_INTEGER | PW_TYPE_DEPRECATED,
-	  offsetof(struct passwd_instance, hash_size), NULL,  NULL },
-	{ "hash_size",   PW_TYPE_INTEGER,
-	  offsetof(struct passwd_instance, hash_size), NULL,  "100" },
+	{ "hashsize", FR_CONF_OFFSET(PW_TYPE_INTEGER | PW_TYPE_DEPRECATED, struct passwd_instance, hash_size), NULL },
+	{ "hash_size", FR_CONF_OFFSET(PW_TYPE_INTEGER, struct passwd_instance, hash_size), "100" },
 
 	{ NULL, -1, 0, NULL, NULL }
 };
@@ -420,7 +409,7 @@ static const CONF_PARSER module_config[] = {
 static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
 	int nfields=0, keyfield=-1, listable=0;
-	char *s;
+	char const *s;
 	char *lf=NULL; /* destination list flags temporary */
 	size_t len;
 	int i;
@@ -530,10 +519,10 @@ static int mod_detach (void *instance) {
 
 static void addresult (struct passwd_instance * inst, REQUEST *request, TALLOC_CTX *ctx, VALUE_PAIR **vps, struct mypasswd * pw, char when, char const *listname)
 {
-	int i;
+	uint32_t i;
 	VALUE_PAIR *vp;
 
-	for (i=0; i<inst->nfields; i++) {
+	for (i = 0; i < inst->nfields; i++) {
 		if (inst->pwdfmt->field[i] && *inst->pwdfmt->field[i] && pw->field[i] && i != inst->keyfield  && inst->pwdfmt->listflag[i] == when) {
 			if ( !inst->ignore_empty || pw->field[i][0] != 0 ) { /* if value in key/value pair is not empty */
 				vp = pairmake(ctx, vps, inst->pwdfmt->field[i], pw->field[i], T_OP_EQ);

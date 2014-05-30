@@ -37,19 +37,19 @@ typedef struct rlm_example_t {
 	bool		boolean;
 	uint32_t	value;
 	char const	*string;
-	struct in_addr	ipaddr;
+	fr_ipaddr_t	ipaddr;
 } rlm_example_t;
 
 /*
  *	A mapping of configuration file names to internal variables.
  */
 static const CONF_PARSER module_config[] = {
-  { "integer", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_example_t, value), "1" },
-  { "boolean", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_example_t, boolean), "no" },
-  { "string", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_example_t, string), NULL },
-  { "ipaddr", FR_CONF_OFFSET(PW_TYPE_IPADDR, rlm_example_t, ipaddr), "*" },
+	{ "integer", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_example_t, value), "1" },
+	{ "boolean", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_example_t, boolean), "no" },
+	{ "string", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_example_t, string), NULL },
+	{ "ipaddr", FR_CONF_OFFSET(PW_TYPE_IPADDR, rlm_example_t, ipaddr), "*" },
 
-  { NULL, -1, 0, NULL, NULL }		/* end the list */
+	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
 
 
