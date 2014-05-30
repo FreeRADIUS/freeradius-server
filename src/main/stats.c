@@ -602,12 +602,12 @@ void request_stats_reply(REQUEST *request)
 					vp->vp_ipaddr = client->ipaddr.ipaddr.ip4addr.s_addr;
 				}
 
-				if (client->prefix != 32) {
+				if (client->ipaddr.prefix != 32) {
 					vp = radius_paircreate(request->reply,
 							       &request->reply->vps,
 							       169, VENDORPEC_FREERADIUS);
 					if (vp) {
-						vp->vp_integer = client->prefix;
+						vp->vp_integer = client->ipaddr.prefix;
 					}
 				}
 			}
