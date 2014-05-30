@@ -745,23 +745,10 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int in_server)
 		break;
 	}
 
-	if (!c->response_window.tv_sec) {
-		uint32_t tmp = c->response_window.tv_usec; /* which isn't an integer */
-
-		FR_INTEGER_BOUND_CHECK("response_window microseconds", tmp, >=, 1000);
-		c->response_window.tv_usec = tmp;
-
-	} else {
-		int tmp = (int)c->response_window.tv_sec; /* which isn't an integer */
-
-		FR_INTEGER_BOUND_CHECK("response_window", tmp, <=, 60);
-		FR_INTEGER_BOUND_CHECK("response_window", tmp, <=, (int)main_config.max_request_time);
-
-		if (c->response_window.tv_sec != tmp) {
-			c->response_window.tv_sec = tmp;
-			c->response_window.tv_usec = 0;
-		}
-	}
+	FR_TIMEVAL_BOUND_CHECK("response_window", &c->response_window, >=, 0, 1000);
+	FR_TIMEVAL_BOUND_CHECK("response_window", &c->response_window, <=, 60, 0);
+	FR_TIMEVAL_BOUND_CHECK("response_window", &c->response_window, <=,
+				main_config.max_request_time, 0);
 
 #ifdef WITH_DYNAMIC_CLIENTS
 	if (c->client_server) {
