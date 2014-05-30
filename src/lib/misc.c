@@ -1198,6 +1198,7 @@ int fr_sockaddr2ipaddr(struct sockaddr_storage const *sa, socklen_t salen,
 
 		memcpy(&s4, sa, sizeof(s4));
 		ipaddr->af = AF_INET;
+		ipaddr->prefix = 32;
 		ipaddr->ipaddr.ip4addr = s4.sin_addr;
 		if (port) *port = ntohs(s4.sin_port);
 
@@ -1212,6 +1213,7 @@ int fr_sockaddr2ipaddr(struct sockaddr_storage const *sa, socklen_t salen,
 
 		memcpy(&s6, sa, sizeof(s6));
 		ipaddr->af = AF_INET6;
+		ipaddr->prefix = 128;
 		ipaddr->ipaddr.ip6addr = s6.sin6_addr;
 		if (port) *port = ntohs(s6.sin6_port);
 		ipaddr->scope = s6.sin6_scope_id;
