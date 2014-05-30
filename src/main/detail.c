@@ -1060,7 +1060,7 @@ int detail_parse(CONF_SECTION *cs, rad_listen_t *this)
 	memset(client, 0, sizeof(*client));
 	client->ipaddr.af = AF_INET;
 	client->ipaddr.ipaddr.ip4addr.s_addr = INADDR_NONE;
-	client->prefix = 0;
+	client->ipaddr.prefix = 0;
 	client->longname = client->shortname = data->filename;
 	client->secret = client->shortname;
 	client->nas_type = talloc_strdup(data, "none");	/* Part of 'data' not dynamically allocated */

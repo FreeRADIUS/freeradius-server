@@ -735,10 +735,10 @@ static int command_show_clients(rad_listen_t *listener, UNUSED int argc, UNUSED 
 		ip_ntoh(&client->ipaddr, buffer, sizeof(buffer));
 
 		if (((client->ipaddr.af == AF_INET) &&
-		     (client->prefix != 32)) ||
+		     (client->ipaddr.prefix != 32)) ||
 		    ((client->ipaddr.af == AF_INET6) &&
-		     (client->prefix != 128))) {
-			cprintf(listener, "\t%s/%d\n", buffer, client->prefix);
+		     (client->ipaddr.prefix != 128))) {
+			cprintf(listener, "\t%s/%d\n", buffer, client->ipaddr.prefix);
 		} else {
 			cprintf(listener, "\t%s\n", buffer);
 		}
