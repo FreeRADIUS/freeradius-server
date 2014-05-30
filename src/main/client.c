@@ -426,7 +426,8 @@ static CONF_PARSER limit_config[] = {
 #endif
 
 static const CONF_PARSER client_config[] = {
-	{ "ipaddr", FR_CONF_POINTER(PW_TYPE_IPV4PREFIX, &cl_ipaddr), NULL },
+	{ "ipaddr", FR_CONF_POINTER(PW_TYPE_COMBO_IPPREFIX, &cl_ipaddr), NULL },
+	{ "ipv4addr", FR_CONF_POINTER(PW_TYPE_IPV4PREFIX, &cl_ipaddr), NULL },
 	{ "ipv6addr", FR_CONF_POINTER(PW_TYPE_IPV6PREFIX, &cl_ipaddr), NULL },
 	{ "netmask", FR_CONF_POINTER(PW_TYPE_INTEGER, &cl_prefix), NULL },
 

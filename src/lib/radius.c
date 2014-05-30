@@ -3999,6 +3999,7 @@ ssize_t rad_vp2data(uint8_t const **out, VALUE_PAIR const *vp)
 	case PW_TYPE_ABINARY:
 	case PW_TYPE_ETHERNET:
 	case PW_TYPE_COMBO_IP:
+	case PW_TYPE_COMBO_IPPREFIX:
 	{
 		void const *p = &vp->data;
 		memcpy(out, &p, sizeof(*out));

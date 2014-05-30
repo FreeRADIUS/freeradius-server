@@ -903,6 +903,53 @@ static char const *cf_expand_variables(char const *cf, int *lineno,
 
 static char const *parse_spaces = "                                                                                                                                                                                                                                                                ";
 
+/** Validation function for ipaddr conffile types
+ *
+ */
+static inline int fr_item_validate_ipaddr(CONF_SECTION *cs, char const *name, PW_TYPE type, char const *value,
+					  fr_ipaddr_t *ipaddr)
+{
+	char ipbuf[128];
+
+	if (strcmp(value, "*") == 0) {
+		cf_log_info(cs, "%.*s\t%s = *", cs->depth, parse_spaces, name);
+	} else if (strspn(value, ".0123456789abdefABCDEF:%[]/") == strlen(value)) {
+		cf_log_info(cs, "%.*s\t%s = %s", cs->depth, parse_spaces, name, value);
+	} else {
+		cf_log_info(cs, "%.*s\t%s = %s IPv%s address [%s]", cs->depth, parse_spaces, name, value,
+			    (ipaddr->af == AF_INET ? "4" : " 6"), ip_ntoh(ipaddr, ipbuf, sizeof(ipbuf)));
+	}
+
+	switch (type) {
+	case PW_TYPE_IPADDR:
+	case PW_TYPE_IPV6ADDR:
+	case PW_TYPE_COMBO_IP:
+		switch (ipaddr->af) {
+		case AF_INET:
+		if (ipaddr->prefix != 32) {
+			ERROR("Invalid IPv4 mask length \"/%i\".  Only \"/32\" permitted for non-prefix types",
+			      ipaddr->prefix);
+
+			return -1;
+		}
+			break;
+
+		case AF_INET6:
+		if (ipaddr->prefix != 128) {
+			ERROR("Invalid IPv6 mask length \"/%i\".  Only \"/128\" permitted for non-prefix types",
+			      ipaddr->prefix);
+
+			return -1;
+		}
+			break;
+
+		default:
+			return -1;
+		}
+	default:
+		return 0;
+	}
+}
 
 /*
  *	Parses an item (not a CONF_ITEM) into the specified format,
@@ -919,6 +966,7 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, int type, void *data, char
 	char **q;
 	char const *value;
 	CONF_PAIR const *cp = NULL;
+	fr_ipaddr_t *ipaddr;
 	char buffer[8192];
 
 	if (!cs) return -1;
@@ -1138,66 +1186,35 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, int type, void *data, char
 
 	case PW_TYPE_IPADDR:
 	case PW_TYPE_IPV4PREFIX:
-	{
-		fr_ipaddr_t *ipaddr = data;
-		char ipbuf[128];
+		ipaddr = data;
 
 		if (fr_pton4(ipaddr, value, 0, true, false) < 0) {
 			ERROR("%s", fr_strerror());
 			return -1;
 		}
-
-		/*
-		 *	Debug format depends on format of input string
-		 */
-		if (strcmp(value, "*") == 0) {
-			cf_log_info(cs, "%.*s\t%s = *", cs->depth, parse_spaces, name);
-		} else if ((strspn(value, "0123456789./") == strlen(value)) ||
-			   (strspn(value, "0123456789xabcdefABCDEF/") == strlen(value))) {
-			cf_log_info(cs, "%.*s\t%s = %s", cs->depth, parse_spaces, name, value);
-		} else {
-			cf_log_info(cs, "%.*s\t%s = %s IP address [%s]",
-				    cs->depth, parse_spaces, name, value, ip_ntoh(ipaddr, ipbuf, sizeof(ipbuf)));
-		}
-
-		if ((type == PW_TYPE_IPADDR) && (ipaddr->prefix != 32)) {
-			ERROR("Invalid IPv4 mask length \"/%i\".  Only \"/32\" permitted for non-prefix types",
-			      ipaddr->prefix);
-			return -1;
-		}
-	}
+		if (fr_item_validate_ipaddr(cs, name, type, value, ipaddr) < 0) return -1;
 		break;
 
 	case PW_TYPE_IPV6ADDR:
 	case PW_TYPE_IPV6PREFIX:
-	{
-		fr_ipaddr_t *ipaddr = data;
-		char ipbuf[128];
+		ipaddr = data;
 
 		if (fr_pton6(ipaddr, value, 0, true, false) < 0) {
 			ERROR("%s", fr_strerror());
 			return -1;
 		}
+		if (fr_item_validate_ipaddr(cs, name, type, value, ipaddr) < 0) return -1;
+		break;
 
-		/*
-		 *	Debug format depends on format of input string
-		 */
-		if (strcmp(value, "*") == 0) {
-			cf_log_info(cs, "%.*s\t%s = *", cs->depth, parse_spaces, name);
-		} else if (strspn(value, "0123456789abdefABCDEF:%[]/") == strlen(value)) {
-			cf_log_info(cs, "%.*s\t%s = %s", cs->depth, parse_spaces, name, value);
-		} else {
-			cf_log_info(cs, "%.*s\t%s = %s IPv6 address [%s]", cs->depth, parse_spaces, name, value,
-				    ip_ntoh(ipaddr, ipbuf, sizeof(ipbuf)));
-		}
+	case PW_TYPE_COMBO_IP:
+	case PW_TYPE_COMBO_IPPREFIX:
+		ipaddr = data;
 
-		if ((type == PW_TYPE_IPV6ADDR) && (ipaddr->prefix != 128)) {
-			ERROR("Invalid IPv6 mask length \"/%i\".  Only \"/128\" permitted "
-			      "for non-prefix types", ipaddr->prefix);
+		if (fr_pton(ipaddr, value, 0, true) < 0) {
+			ERROR("%s", fr_strerror());
 			return -1;
 		}
-	}
-
+		if (fr_item_validate_ipaddr(cs, name, type, value, ipaddr) < 0) return -1;
 		break;
 
 	case PW_TYPE_TIMEVAL: {
