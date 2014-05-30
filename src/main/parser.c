@@ -293,7 +293,7 @@ static ssize_t condition_tokenize_cast(char const *start, DICT_ATTR const **pda,
 #ifdef WITH_ASCEND_BINARY
 	case PW_TYPE_ABINARY:
 #endif
-	case PW_TYPE_COMBO_IP:
+	case PW_TYPE_IP_ADDR:
 	case PW_TYPE_TLV:
 	case PW_TYPE_EXTENDED:
 	case PW_TYPE_LONG_EXTENDED:
@@ -732,16 +732,16 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 					/*
 					 *	ipaddr to ipv4prefix is OK
 					 */
-					if ((c->data.map->dst->vpt_da->type == PW_TYPE_IPADDR) &&
-					    (c->cast->type == PW_TYPE_IPV4PREFIX)) {
+					if ((c->data.map->dst->vpt_da->type == PW_TYPE_IPV4_ADDR) &&
+					    (c->cast->type == PW_TYPE_IPV4_PREFIX)) {
 						goto cast_ok;
 					}
 
 					/*
 					 *	ipv6addr to ipv6prefix is OK
 					 */
-					if ((c->data.map->dst->vpt_da->type == PW_TYPE_IPV6ADDR) &&
-					    (c->cast->type == PW_TYPE_IPV6PREFIX)) {
+					if ((c->data.map->dst->vpt_da->type == PW_TYPE_IPV6_ADDR) &&
+					    (c->cast->type == PW_TYPE_IPV6_PREFIX)) {
 						goto cast_ok;
 					}
 

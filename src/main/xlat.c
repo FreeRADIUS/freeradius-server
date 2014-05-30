@@ -169,10 +169,10 @@ static ssize_t xlat_integer(UNUSED void *instance, REQUEST *request,
 	 *	IP addresses are treated specially, as parsing functions assume the value
 	 *	is bigendian and will convert it for us.
 	 */
-	case PW_TYPE_IPADDR:
+	case PW_TYPE_IPV4_ADDR:
 		return snprintf(out, outlen, "%u", htonl(vp->vp_ipaddr));
 
-	case PW_TYPE_IPV4PREFIX:
+	case PW_TYPE_IPV4_PREFIX:
 		return snprintf(out, outlen, "%u", htonl((*(uint32_t *)(vp->vp_ipv4prefix + 2))));
 
 	case PW_TYPE_INTEGER:
@@ -192,10 +192,10 @@ static ssize_t xlat_integer(UNUSED void *instance, REQUEST *request,
 	case PW_TYPE_SIGNED:
 		return snprintf(out, outlen, "%i", vp->vp_signed);
 
-	case PW_TYPE_IPV6ADDR:
+	case PW_TYPE_IPV6_ADDR:
 		return fr_prints_uint128(out, outlen, ntohlll(*(uint128_t const *) &vp->vp_ipv6addr));
 
-	case PW_TYPE_IPV6PREFIX:
+	case PW_TYPE_IPV6_PREFIX:
 		return fr_prints_uint128(out, outlen, ntohlll(*(uint128_t const *) &(vp->vp_ipv6prefix[2])));
 
 	default:

@@ -444,11 +444,11 @@ static void cprint_conf_parser(rad_listen_t *listener, int indent, CONF_SECTION 
 				variables[i].name, *(int const *) data);
 			break;
 
-		case PW_TYPE_IPADDR:
+		case PW_TYPE_IPV4_ADDR:
 			inet_ntop(AF_INET, data, buffer, sizeof(buffer));
 			break;
 
-		case PW_TYPE_IPV6ADDR:
+		case PW_TYPE_IPV6_ADDR:
 			inet_ntop(AF_INET6, data, buffer, sizeof(buffer));
 			break;
 

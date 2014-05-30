@@ -84,17 +84,17 @@ static value_fixup_t *value_fixup = NULL;
 const FR_NAME_NUMBER dict_attr_types[] = {
 	{ "integer",	PW_TYPE_INTEGER },
 	{ "string",	PW_TYPE_STRING },
-	{ "ipaddr",	PW_TYPE_IPADDR },
+	{ "ipaddr",	PW_TYPE_IPV4_ADDR },
 	{ "date",	PW_TYPE_DATE },
 	{ "abinary",	PW_TYPE_ABINARY },
 	{ "octets",	PW_TYPE_OCTETS },
 	{ "ifid",	PW_TYPE_IFID },
-	{ "ipv6addr",	PW_TYPE_IPV6ADDR },
-	{ "ipv6prefix", PW_TYPE_IPV6PREFIX },
+	{ "ipv6addr",	PW_TYPE_IPV6_ADDR },
+	{ "ipv6prefix", PW_TYPE_IPV6_PREFIX },
 	{ "byte",	PW_TYPE_BYTE },
 	{ "short",	PW_TYPE_SHORT },
 	{ "ether",	PW_TYPE_ETHERNET },
-	{ "combo-ip",	PW_TYPE_COMBO_IP },
+	{ "combo-ip",	PW_TYPE_IP_ADDR },
 	{ "tlv",	PW_TYPE_TLV },
 	{ "signed",	PW_TYPE_SIGNED },
 	{ "extended",	PW_TYPE_EXTENDED },
@@ -106,8 +106,8 @@ const FR_NAME_NUMBER dict_attr_types[] = {
 	{ "int32",	PW_TYPE_SIGNED },
 	{ "integer64",	PW_TYPE_INTEGER64 },
 	{ "uint64",	PW_TYPE_INTEGER64 },
-	{ "ipv4prefix", PW_TYPE_IPV4PREFIX },
-	{ "cidr", 	PW_TYPE_IPV4PREFIX },
+	{ "ipv4prefix", PW_TYPE_IPV4_PREFIX },
+	{ "cidr", 	PW_TYPE_IPV4_PREFIX },
 	{ "vsa",	PW_TYPE_VSA },
 	{ NULL, 0 }
 };
@@ -119,24 +119,24 @@ const size_t dict_attr_sizes[PW_TYPE_MAX][2] = {
 	[PW_TYPE_INVALID]	= { ~0, 0 },
 	[PW_TYPE_STRING]	= { 0, ~0 },
 	[PW_TYPE_INTEGER]	= {4, 4 },
-	[PW_TYPE_IPADDR]	= {4, 4},
+	[PW_TYPE_IPV4_ADDR]	= {4, 4},
 	[PW_TYPE_DATE]		= {4, 4},
 	[PW_TYPE_ABINARY]	= {32, ~0},
 	[PW_TYPE_OCTETS]	= {0, ~0},
 	[PW_TYPE_IFID]		= {8, 8},
-	[PW_TYPE_IPV6ADDR]	= { 16, 16},
-	[PW_TYPE_IPV6PREFIX]	= {2, 18},
+	[PW_TYPE_IPV6_ADDR]	= { 16, 16},
+	[PW_TYPE_IPV6_PREFIX]	= {2, 18},
 	[PW_TYPE_BYTE]		= {1, 1},
 	[PW_TYPE_SHORT]		= {2, 2},
 	[PW_TYPE_ETHERNET]	= {6, 6},
 	[PW_TYPE_SIGNED]	= {4, 4},
-	[PW_TYPE_COMBO_IP]	= {4, 16},
+	[PW_TYPE_IP_ADDR]	= {4, 16},
 	[PW_TYPE_TLV]		= {2, ~0},
 	[PW_TYPE_EXTENDED]	= {2, ~0},
 	[PW_TYPE_LONG_EXTENDED]	= {3, ~0},
 	[PW_TYPE_EVS]		= {6, ~0},
 	[PW_TYPE_INTEGER64]	= {8, 8},
-	[PW_TYPE_IPV4PREFIX]	= {6, 6},
+	[PW_TYPE_IPV4_PREFIX]	= {6, 6},
 	[PW_TYPE_VSA]		= {4, ~0}
 };
 
@@ -931,7 +931,7 @@ int dict_addattr(char const *name, int attr, unsigned int vendor, PW_TYPE type,
 	/*
 	 *	Hacks for combo-IP
 	 */
-	if (n->type == PW_TYPE_COMBO_IP) {
+	if (n->type == PW_TYPE_IP_ADDR) {
 		DICT_ATTR *v4, *v6;
 
 		v4 = fr_pool_alloc(sizeof(*v4));
@@ -941,10 +941,10 @@ int dict_addattr(char const *name, int attr, unsigned int vendor, PW_TYPE type,
 		if (!v6) goto oom;
 
 		memcpy(v4, n, sizeof(*v4));
-		v4->type = PW_TYPE_IPADDR;
+		v4->type = PW_TYPE_IPV4_ADDR;
 
 		memcpy(v6, n, sizeof(*v6));
-		v6->type = PW_TYPE_IPV6ADDR;
+		v6->type = PW_TYPE_IPV6_ADDR;
 		if (!fr_hash_table_replace(attributes_combo, v4)) {
 			fr_strerror_printf("dict_addattr: Failed inserting attribute name %s - IPv4", name);
 			return -1;
@@ -1427,7 +1427,7 @@ static int process_attribute(char const* fn, int const line,
 			break;
 
 		case PW_TYPE_DATE:
-		case PW_TYPE_IPADDR:
+		case PW_TYPE_IPV4_ADDR:
 		case PW_TYPE_INTEGER:
 		case PW_TYPE_SIGNED:
 			length = 4;
@@ -1445,7 +1445,7 @@ static int process_attribute(char const* fn, int const line,
 			length = 8;
 			break;
 
-		case PW_TYPE_IPV6ADDR:
+		case PW_TYPE_IPV6_ADDR:
 			length = 16;
 			break;
 
@@ -1531,7 +1531,7 @@ static int process_attribute(char const* fn, int const line,
 				flags.array = 1;
 
 				switch (type) {
-					case PW_TYPE_IPADDR:
+					case PW_TYPE_IPV4_ADDR:
 					case PW_TYPE_BYTE:
 					case PW_TYPE_SHORT:
 					case PW_TYPE_INTEGER:

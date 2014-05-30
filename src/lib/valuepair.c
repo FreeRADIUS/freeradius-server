@@ -765,17 +765,17 @@ VALUE_PAIR *paircopyvpdata(TALLOC_CTX *ctx, DICT_ATTR const *da, VALUE_PAIR cons
 			return NULL; /* can't do it */
 
 		case PW_TYPE_INTEGER:
-		case PW_TYPE_IPADDR:
+		case PW_TYPE_IPV4_ADDR:
 		case PW_TYPE_DATE:
 		case PW_TYPE_IFID:
-		case PW_TYPE_IPV6ADDR:
-		case PW_TYPE_IPV6PREFIX:
+		case PW_TYPE_IPV6_ADDR:
+		case PW_TYPE_IPV6_PREFIX:
 		case PW_TYPE_BYTE:
 		case PW_TYPE_SHORT:
 		case PW_TYPE_ETHERNET:
 		case PW_TYPE_SIGNED:
 		case PW_TYPE_INTEGER64:
-		case PW_TYPE_IPV4PREFIX:
+		case PW_TYPE_IPV4_PREFIX:
 			break;
 		}
 
@@ -1393,7 +1393,7 @@ int pairparsevalue(VALUE_PAIR *vp, char const *value, size_t inlen)
 	}
 		goto finish;
 
-	case PW_TYPE_IPADDR:
+	case PW_TYPE_IPV4_ADDR:
 	{
 		fr_ipaddr_t addr;
 
@@ -1414,7 +1414,7 @@ int pairparsevalue(VALUE_PAIR *vp, char const *value, size_t inlen)
 	}
 		goto finish;
 
-	case PW_TYPE_IPV4PREFIX:
+	case PW_TYPE_IPV4_PREFIX:
 	{
 		fr_ipaddr_t addr;
 
@@ -1426,7 +1426,7 @@ int pairparsevalue(VALUE_PAIR *vp, char const *value, size_t inlen)
 	}
 		goto finish;
 
-	case PW_TYPE_IPV6ADDR:
+	case PW_TYPE_IPV6_ADDR:
 	{
 		fr_ipaddr_t addr;
 
@@ -1447,7 +1447,7 @@ int pairparsevalue(VALUE_PAIR *vp, char const *value, size_t inlen)
 	}
 		goto finish;
 
-	case PW_TYPE_IPV6PREFIX:
+	case PW_TYPE_IPV6_PREFIX:
 	{
 		fr_ipaddr_t addr;
 
@@ -1644,12 +1644,12 @@ int pairparsevalue(VALUE_PAIR *vp, char const *value, size_t inlen)
 	 *	These are not dynamic da, and will have the same vendor
 	 *	and attribute as the original.
 	 */
-	case PW_TYPE_COMBO_IP:
+	case PW_TYPE_IP_ADDR:
 	{
 		DICT_ATTR const *da;
 
 		if (inet_pton(AF_INET6, value, &vp->vp_ipv6addr) > 0) {
-			da = dict_attrbytype(vp->da->attr, vp->da->vendor, PW_TYPE_IPV6ADDR);
+			da = dict_attrbytype(vp->da->attr, vp->da->vendor, PW_TYPE_IPV6_ADDR);
 			if (!da) {
 				fr_strerror_printf("Cannot find ipv6addr for %s", vp->da->name);
 				return -1;
@@ -1660,7 +1660,7 @@ int pairparsevalue(VALUE_PAIR *vp, char const *value, size_t inlen)
 			fr_ipaddr_t ipaddr;
 
 			da = dict_attrbytype(vp->da->attr, vp->da->vendor,
-					     PW_TYPE_IPADDR);
+					     PW_TYPE_IPV4_ADDR);
 			if (!da) {
 				fr_strerror_printf("Cannot find ipaddr for %s", vp->da->name);
 				return -1;
@@ -2420,19 +2420,19 @@ int8_t paircmp_value(VALUE_PAIR const *one, VALUE_PAIR const *two)
 		compare = memcmp(&one->vp_ether, &two->vp_ether, sizeof(one->vp_ether));
 		break;
 
-	case PW_TYPE_IPADDR:
+	case PW_TYPE_IPV4_ADDR:
 		compare = (int64_t) ntohl(one->vp_ipaddr) - (int64_t) ntohl(two->vp_ipaddr);
 		break;
 
-	case PW_TYPE_IPV6ADDR:
+	case PW_TYPE_IPV6_ADDR:
 		compare = memcmp(&one->vp_ipv6addr, &two->vp_ipv6addr, sizeof(one->vp_ipv6addr));
 		break;
 
-	case PW_TYPE_IPV6PREFIX:
+	case PW_TYPE_IPV6_PREFIX:
 		compare = memcmp(&one->vp_ipv6prefix, &two->vp_ipv6prefix, sizeof(one->vp_ipv6prefix));
 		break;
 
-	case PW_TYPE_IPV4PREFIX:
+	case PW_TYPE_IPV4_PREFIX:
 		compare = memcmp(&one->vp_ipv4prefix, &two->vp_ipv4prefix, sizeof(one->vp_ipv4prefix));
 		break;
 
@@ -2444,8 +2444,8 @@ int8_t paircmp_value(VALUE_PAIR const *one, VALUE_PAIR const *two)
 	 *	None of the types below should be in the REQUEST
 	 */
 	case PW_TYPE_INVALID:		/* We should never see these */
-	case PW_TYPE_COMBO_IP:		/* This should of been converted into IPADDR/IPV6ADDR */
-	case PW_TYPE_COMBO_IPPREFIX:	/* This should of been converted into IPADDR/IPV6ADDR */
+	case PW_TYPE_IP_ADDR:		/* This should of been converted into IPADDR/IPV6ADDR */
+	case PW_TYPE_IP_PREFIX:	/* This should of been converted into IPADDR/IPV6ADDR */
 	case PW_TYPE_TLV:
 	case PW_TYPE_EXTENDED:
 	case PW_TYPE_LONG_EXTENDED:
@@ -2597,12 +2597,12 @@ int8_t paircmp_op(VALUE_PAIR const *a, FR_TOKEN op, VALUE_PAIR const *b)
 	if (!a || !b) return -1;
 
 	switch (a->da->type) {
-	case PW_TYPE_IPADDR:
+	case PW_TYPE_IPV4_ADDR:
 		switch (b->da->type) {
-		case PW_TYPE_IPADDR:		/* IPv4 and IPv4 */
+		case PW_TYPE_IPV4_ADDR:		/* IPv4 and IPv4 */
 			goto cmp;
 
-		case PW_TYPE_IPV4PREFIX:	/* IPv4 and IPv4 Prefix */
+		case PW_TYPE_IPV4_PREFIX:	/* IPv4 and IPv4 Prefix */
 			return paircmp_op_cidr(op, 4, 32, (uint8_t const *) &a->vp_ipaddr,
 					       b->vp_ipv4prefix[1], (uint8_t const *) &b->vp_ipv4prefix + 2);
 
@@ -2612,14 +2612,14 @@ int8_t paircmp_op(VALUE_PAIR const *a, FR_TOKEN op, VALUE_PAIR const *b)
 		}
 		break;
 
-	case PW_TYPE_IPV4PREFIX:		/* IPv4 and IPv4 Prefix */
+	case PW_TYPE_IPV4_PREFIX:		/* IPv4 and IPv4 Prefix */
 		switch (b->da->type) {
-		case PW_TYPE_IPADDR:
+		case PW_TYPE_IPV4_ADDR:
 			return paircmp_op_cidr(op, 4, a->vp_ipv4prefix[1],
 					       (uint8_t const *) &a->vp_ipv4prefix + 2,
 					       32, (uint8_t const *) &b->vp_ipaddr);
 
-		case PW_TYPE_IPV4PREFIX:	/* IPv4 Prefix and IPv4 Prefix */
+		case PW_TYPE_IPV4_PREFIX:	/* IPv4 Prefix and IPv4 Prefix */
 			return paircmp_op_cidr(op, 4, a->vp_ipv4prefix[1],
 					       (uint8_t const *) &a->vp_ipv4prefix + 2,
 					       b->vp_ipv4prefix[1], (uint8_t const *) &b->vp_ipv4prefix + 2);
@@ -2630,12 +2630,12 @@ int8_t paircmp_op(VALUE_PAIR const *a, FR_TOKEN op, VALUE_PAIR const *b)
 		}
 		break;
 
-	case PW_TYPE_IPV6ADDR:
+	case PW_TYPE_IPV6_ADDR:
 		switch (b->da->type) {
-		case PW_TYPE_IPV6ADDR:		/* IPv6 and IPv6 */
+		case PW_TYPE_IPV6_ADDR:		/* IPv6 and IPv6 */
 			goto cmp;
 
-		case PW_TYPE_IPV6PREFIX:	/* IPv6 and IPv6 Preifx */
+		case PW_TYPE_IPV6_PREFIX:	/* IPv6 and IPv6 Preifx */
 			return paircmp_op_cidr(op, 16, 128, (uint8_t const *) &a->vp_ipv6addr,
 					       b->vp_ipv6prefix[1], (uint8_t const *) &b->vp_ipv6prefix + 2);
 			break;
@@ -2646,14 +2646,14 @@ int8_t paircmp_op(VALUE_PAIR const *a, FR_TOKEN op, VALUE_PAIR const *b)
 		}
 		break;
 
-	case PW_TYPE_IPV6PREFIX:
+	case PW_TYPE_IPV6_PREFIX:
 		switch (b->da->type) {
-		case PW_TYPE_IPV6ADDR:		/* IPv6 Prefix and IPv6 */
+		case PW_TYPE_IPV6_ADDR:		/* IPv6 Prefix and IPv6 */
 			return paircmp_op_cidr(op, 16, a->vp_ipv6prefix[1],
 					       (uint8_t const *) &a->vp_ipv6prefix + 2,
 					       128, (uint8_t const *) &b->vp_ipv6addr);
 
-		case PW_TYPE_IPV6PREFIX:	/* IPv6 Prefix and IPv6 */
+		case PW_TYPE_IPV6_PREFIX:	/* IPv6 Prefix and IPv6 */
 			return paircmp_op_cidr(op, 16, a->vp_ipv6prefix[1],
 					       (uint8_t const *) &a->vp_ipv6prefix + 2,
 					       b->vp_ipv6prefix[1], (uint8_t const *) &b->vp_ipv6prefix + 2);

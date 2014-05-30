@@ -846,10 +846,10 @@ static ssize_t vp2data_any(RADIUS_PACKET const *packet,
 		break;
 
 	case PW_TYPE_IFID:
-	case PW_TYPE_IPADDR:
-	case PW_TYPE_IPV6ADDR:
-	case PW_TYPE_IPV6PREFIX:
-	case PW_TYPE_IPV4PREFIX:
+	case PW_TYPE_IPV4_ADDR:
+	case PW_TYPE_IPV6_ADDR:
+	case PW_TYPE_IPV6_PREFIX:
+	case PW_TYPE_IPV4_PREFIX:
 	case PW_TYPE_ABINARY:
 	case PW_TYPE_ETHERNET:	/* just in case */
 		data = (uint8_t const *) &vp->data;
@@ -3568,7 +3568,7 @@ ssize_t data2vp(RADIUS_PACKET *packet,
 		break;
 
 	case PW_TYPE_INTEGER:
-	case PW_TYPE_IPADDR:
+	case PW_TYPE_IPV4_ADDR:
 	case PW_TYPE_DATE:
 	case PW_TYPE_SIGNED:
 		if (datalen != 4) goto raw;
@@ -3579,11 +3579,11 @@ ssize_t data2vp(RADIUS_PACKET *packet,
 		if (datalen != 8) goto raw;
 		break;
 
-	case PW_TYPE_IPV6ADDR:
+	case PW_TYPE_IPV6_ADDR:
 		if (datalen != 16) goto raw;
 		break;
 
-	case PW_TYPE_IPV6PREFIX:
+	case PW_TYPE_IPV6_PREFIX:
 		if ((datalen < 2) || (datalen > 18)) goto raw;
 		if (data[1] > 128) goto raw;
 		break;
@@ -3600,13 +3600,13 @@ ssize_t data2vp(RADIUS_PACKET *packet,
 		if (datalen != 6) goto raw;
 		break;
 
-	case PW_TYPE_COMBO_IP:
+	case PW_TYPE_IP_ADDR:
 		if (datalen == 4) {
 			child = dict_attrbytype(da->attr, da->vendor,
-						PW_TYPE_IPADDR);
+						PW_TYPE_IPV4_ADDR);
 		} else if (datalen == 16) {
 			child = dict_attrbytype(da->attr, da->vendor,
-					     PW_TYPE_IPV6ADDR);
+					     PW_TYPE_IPV6_ADDR);
 		} else {
 			goto raw;
 		}
@@ -3614,7 +3614,7 @@ ssize_t data2vp(RADIUS_PACKET *packet,
 		da = child;	/* re-write it */
 		break;
 
-	case PW_TYPE_IPV4PREFIX:
+	case PW_TYPE_IPV4_PREFIX:
 		if (datalen != 6) goto raw;
 		if ((data[1] & 0x3f) > 32) goto raw;
 		break;
@@ -3813,7 +3813,7 @@ ssize_t data2vp(RADIUS_PACKET *packet,
 		memcpy(&vp->vp_ether, data, 6);
 		break;
 
-	case PW_TYPE_IPADDR:
+	case PW_TYPE_IPV4_ADDR:
 		memcpy(&vp->vp_ipaddr, data, 4);
 		break;
 
@@ -3821,11 +3821,11 @@ ssize_t data2vp(RADIUS_PACKET *packet,
 		memcpy(&vp->vp_ifid, data, 8);
 		break;
 
-	case PW_TYPE_IPV6ADDR:
+	case PW_TYPE_IPV6_ADDR:
 		memcpy(&vp->vp_ipv6addr, data, 16);
 		break;
 
-	case PW_TYPE_IPV6PREFIX:
+	case PW_TYPE_IPV6_PREFIX:
 		/*
 		 *	FIXME: double-check that
 		 *	(vp->vp_octets[1] >> 3) matches vp->length + 2
@@ -3837,7 +3837,7 @@ ssize_t data2vp(RADIUS_PACKET *packet,
 		}
 		break;
 
-	case PW_TYPE_IPV4PREFIX:
+	case PW_TYPE_IPV4_PREFIX:
 		/* FIXME: do the same double-check as for IPv6Prefix */
 		memcpy(&vp->vp_ipv4prefix, data, vp->length);
 
@@ -3992,14 +3992,14 @@ ssize_t rad_vp2data(uint8_t const **out, VALUE_PAIR const *vp)
 	 *	All of these values are at the same location.
 	 */
 	case PW_TYPE_IFID:
-	case PW_TYPE_IPADDR:
-	case PW_TYPE_IPV6ADDR:
-	case PW_TYPE_IPV6PREFIX:
-	case PW_TYPE_IPV4PREFIX:
+	case PW_TYPE_IPV4_ADDR:
+	case PW_TYPE_IPV6_ADDR:
+	case PW_TYPE_IPV6_PREFIX:
+	case PW_TYPE_IPV4_PREFIX:
 	case PW_TYPE_ABINARY:
 	case PW_TYPE_ETHERNET:
-	case PW_TYPE_COMBO_IP:
-	case PW_TYPE_COMBO_IPPREFIX:
+	case PW_TYPE_IP_ADDR:
+	case PW_TYPE_IP_PREFIX:
 	{
 		void const *p = &vp->data;
 		memcpy(out, &p, sizeof(*out));

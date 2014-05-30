@@ -47,7 +47,7 @@ static const CONF_PARSER module_config[] = {
 	{ "integer", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_example_t, value), "1" },
 	{ "boolean", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_example_t, boolean), "no" },
 	{ "string", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_example_t, string), NULL },
-	{ "ipaddr", FR_CONF_OFFSET(PW_TYPE_IPADDR, rlm_example_t, ipaddr), "*" },
+	{ "ipaddr", FR_CONF_OFFSET(PW_TYPE_IPV4_ADDR, rlm_example_t, ipaddr), "*" },
 
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };

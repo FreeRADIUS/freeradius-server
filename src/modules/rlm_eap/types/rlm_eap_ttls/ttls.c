@@ -307,7 +307,7 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, REQUEST *fake, SSL *ssl,
 			vp->vp_integer64 = ntohll(vp->vp_integer64);
 			break;
 
-		case PW_TYPE_IPADDR:
+		case PW_TYPE_IPV4_ADDR:
 			if (size != vp->length) {
 				RDEBUG2("Invalid length attribute %d",
 				       attr);
@@ -338,12 +338,12 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, REQUEST *fake, SSL *ssl,
 			vp->vp_signed = ntohl(vp->vp_signed);
 			break;
 
-		case PW_TYPE_IPV6ADDR:
+		case PW_TYPE_IPV6_ADDR:
 			if (size != vp->length) goto raw;
 			memcpy(&vp->vp_ipv6addr, data, vp->length);
 			break;
 
-		case PW_TYPE_IPV6PREFIX:
+		case PW_TYPE_IPV6_PREFIX:
 			if (size != vp->length) goto raw;
 			memcpy(&vp->vp_ipv6prefix, data, vp->length);
 			break;
@@ -541,7 +541,7 @@ static int vp2diameter(REQUEST *request, tls_session_t *tls_session, VALUE_PAIR 
 			length = 8;
 			break;
 
-		case PW_TYPE_IPADDR:
+		case PW_TYPE_IPV4_ADDR:
 			memcpy(p, &vp->vp_ipaddr, 4); /* network order */
 			length = 4;
 			break;

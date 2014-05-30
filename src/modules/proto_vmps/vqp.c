@@ -488,7 +488,7 @@ int vqp_decode(RADIUS_PACKET *packet)
 		}
 
 		switch (vp->da->type) {
-		case PW_TYPE_IPADDR:
+		case PW_TYPE_IPV4_ADDR:
 			if (length == 4) {
 				memcpy(&vp->vp_ipaddr, ptr, 4);
 				vp->length = 4;
@@ -691,7 +691,7 @@ int vqp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 
 		/* Data */
 		switch (vp->da->type) {
-		case PW_TYPE_IPADDR:
+		case PW_TYPE_IPV4_ADDR:
 			memcpy(ptr, &vp->vp_ipaddr, 4);
 			break;
 

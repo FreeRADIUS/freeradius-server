@@ -294,8 +294,8 @@ static CONF_PARSER home_server_coa[] = {
 #endif
 
 static CONF_PARSER home_server_config[] = {
-	{ "ipaddr", FR_CONF_POINTER(PW_TYPE_IPADDR, &hs_ip4addr), NULL },
-	{ "ipv6addr", FR_CONF_POINTER(PW_TYPE_IPV6ADDR, &hs_ip6addr), NULL },
+	{ "ipaddr", FR_CONF_POINTER(PW_TYPE_IPV4_ADDR, &hs_ip4addr), NULL },
+	{ "ipv6addr", FR_CONF_POINTER(PW_TYPE_IPV6_ADDR, &hs_ip6addr), NULL },
 	{ "virtual_server", FR_CONF_POINTER(PW_TYPE_STRING, &hs_virtual_server), NULL },
 
 	{ "port", FR_CONF_OFFSET(PW_TYPE_SHORT, home_server_t, port), "0" },
