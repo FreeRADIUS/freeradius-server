@@ -379,7 +379,7 @@ static ssize_t xlat_getclient(UNUSED void *instance, REQUEST *request, char cons
 	}
 
 	strlcpy(buffer, p, (q + 1) - p);
-	if (ip_ptonx(buffer, &ip) <= 0) {
+	if (fr_ptonx(&ip, buffer, 0, false) <= 0) {
 		REDEBUG("\"%s\" is not a valid IPv4 or IPv6 address", buffer);
 		goto error;
 	}

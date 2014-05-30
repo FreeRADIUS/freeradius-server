@@ -659,6 +659,9 @@ char const	*fr_inet_ntop(int af, void const *src);
 char const 	*ip_ntoa(char *, uint32_t);
 int		fr_pton(fr_ipaddr_t *out, char const *value, size_t inlen, bool resolve);
 int		fr_pton6(fr_ipaddr_t *out, char const *value, size_t inlen, bool resolve);
+int		fr_ptonx(fr_ipaddr_t *out, char const *value, size_t inlen, bool resolve);
+bool		is_wildcard(fr_ipaddr_t *addr);
+int		fr_ntop(char *out, size_t outlen, fr_ipaddr_t *addr);
 char		*ifid_ntoa(char *buffer, size_t size, uint8_t const *ifid);
 uint8_t		*ifid_aton(char const *ifid_str, uint8_t *ifid);
 int		rad_lockfd(int fd, int lock_len);
@@ -673,7 +676,6 @@ bool		is_zero(char const *value);
 
 int		fr_ipaddr_cmp(fr_ipaddr_t const *a, fr_ipaddr_t const *b);
 
-int		ip_ptonx(char const *src, fr_ipaddr_t *dst);
 int		ip_hton(int af, char const *src, fr_ipaddr_t *dst);
 char const	*ip_ntoh(fr_ipaddr_t const *src, char *dst, size_t cnt);
 struct in_addr	fr_ipaddr_mask(struct in_addr const *ipaddr, uint8_t prefix);
