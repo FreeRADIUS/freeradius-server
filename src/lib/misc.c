@@ -180,9 +180,10 @@ char const *ip_ntoa(char *buffer, uint32_t ipaddr)
  * @param value to parse, may be dotted quad [+ prefix], or integer, or octal number, or '*' (INADDR_ANY).
  * @param inlen Length of value, if value is \0 terminated inlen may be 0.
  * @param resolve If true and value doesn't look like an IP address, try and resolve value as a hostname.
+ * @param fallback to IPv4 resolution if no A records can be found.
  * @return 0 if ip address was parsed successfully, else -1 on error.
  */
-int fr_pton(fr_ipaddr_t *out, char const *value, size_t inlen, bool resolve)
+int fr_pton4(fr_ipaddr_t *out, char const *value, size_t inlen, bool resolve, bool fallback)
 {
 	char *p;
 	unsigned int prefix;
@@ -226,7 +227,7 @@ int fr_pton(fr_ipaddr_t *out, char const *value, size_t inlen, bool resolve)
 				fr_strerror_printf("Failed to parse IPv4 address string \"%s\"", value);
 				return -1;
 			}
-		} else if (ip_hton(AF_INET, value, out) < 0) return -1;
+		} else if (ip_hton(out, AF_INET, value, fallback) < 0) return -1;
 
 		out->prefix = 32;
 		out->af = AF_INET;
@@ -253,7 +254,7 @@ int fr_pton(fr_ipaddr_t *out, char const *value, size_t inlen, bool resolve)
 			fr_strerror_printf("Failed to parse IPv4 address string \"%s\"", value);
 			return -1;
 		}
-	} else if (ip_hton(AF_INET, buffer, out) < 0) return -1;
+	} else if (ip_hton(out, AF_INET, buffer, fallback) < 0) return -1;
 
 	prefix = strtoul(p + 1, &eptr, 10);
 	if (prefix > 32) {
@@ -282,9 +283,10 @@ int fr_pton(fr_ipaddr_t *out, char const *value, size_t inlen, bool resolve)
  * @param value to parse.
  * @param inlen Length of value, if value is \0 terminated inlen may be 0.
  * @param resolve If true and value doesn't look like an IP address, try and resolve value as a hostname.
+ * @param fallback to IPv4 resolution if no AAAA records can be found.
  * @return 0 if ip address was parsed successfully, else -1 on error.
  */
-int fr_pton6(fr_ipaddr_t *out, char const *value, size_t inlen, bool resolve)
+int fr_pton6(fr_ipaddr_t *out, char const *value, size_t inlen, bool resolve, bool fallback)
 {
 	char const *p;
 	unsigned int prefix;
@@ -317,7 +319,7 @@ int fr_pton6(fr_ipaddr_t *out, char const *value, size_t inlen, bool resolve)
 				fr_strerror_printf("Failed to parse IPv6 address string \"%s\"", value);
 				return -1;
 			}
-		} else if (ip_hton(AF_INET6, value, out) < 0) return -1;
+		} else if (ip_hton(out, AF_INET6, value, fallback) < 0) return -1;
 
 		out->prefix = 128;
 		out->af = AF_INET6;
@@ -341,7 +343,7 @@ int fr_pton6(fr_ipaddr_t *out, char const *value, size_t inlen, bool resolve)
 			fr_strerror_printf("Failed to parse IPv6 address string \"%s\"", value);
 			return -1;
 		}
-	} else if (ip_hton(AF_INET6, buffer, out) < 0) return -1;
+	} else if (ip_hton(out, AF_INET6, buffer, fallback) < 0) return -1;
 
 	prefix = strtoul(p + 1, &eptr, 10);
 	if (prefix > 128) {
@@ -375,7 +377,7 @@ int fr_pton6(fr_ipaddr_t *out, char const *value, size_t inlen, bool resolve)
  * @param resolve If true and value doesn't look like an IP address, try and resolve value as a hostname.
  * @return 0 if ip address was parsed successfully, else -1 on error.
  */
-int fr_ptonx(fr_ipaddr_t *out, char const *value, size_t inlen, bool resolve)
+int fr_pton(fr_ipaddr_t *out, char const *value, size_t inlen, bool resolve)
 {
 	char const *p;
 	int af = AF_INET;
@@ -391,10 +393,10 @@ int fr_ptonx(fr_ipaddr_t *out, char const *value, size_t inlen, bool resolve)
 
 	switch (af) {
 	case AF_INET:
-		return fr_pton(out, value, inlen, resolve);
+		return fr_pton4(out, value, inlen, resolve, true);
 
 	case AF_INET6:
-		return fr_pton6(out, value, inlen, resolve);
+		return fr_pton6(out, value, inlen, resolve, true);
 
 	default:
 		return -1;
@@ -777,23 +779,34 @@ char const *inet_ntop(int af, void const *src, char *dst, size_t cnt)
 }
 #endif
 
-/*
- *	Wrappers for IPv4/IPv6 host to IP address lookup.
- *	This API returns only one IP address, of the specified
- *	address family, or the first address (of whatever family),
- *	if AF_UNSPEC is used.
+/** Wrappers for IPv4/IPv6 host to IP address lookup
+ *
+ * This function returns only one IP address, of the specified address family,
+ * or the first address (of whatever family), if AF_UNSPEC is used.
+ *
+ * If fallback is specified and af is AF_INET, but not AF_INET records were
+ * found and a record for AF_INET6 exists that record will be returned.
+ *
+ * If fallback is specified and af is AF_INET6, and a record with AF_INET4 exists
+ * that record will be returned inseted.
+ *
+ * @param out Where to write result.
+ * @param af To search for in preference.
+ * @param hostname to search for.
+ * @param fallback to the other adress family, if no records matching af, found.
+ * @return 0 on success, else -1 on failure.
  */
-int ip_hton(int af, char const *src, fr_ipaddr_t *out)
+int ip_hton(fr_ipaddr_t *out, int af, char const *hostname, bool fallback)
 {
 	int rcode;
-	struct addrinfo hints, *ai = NULL, *res = NULL;
+	struct addrinfo hints, *ai = NULL, *alt = NULL, *res = NULL;
 
 	if (!fr_hostname_lookups) {
 #ifdef HAVE_STRUCT_SOCKADDR_IN6
 		if (af == AF_UNSPEC) {
 			char const *p;
 
-			for (p = src; *p != '\0'; p++) {
+			for (p = hostname; *p != '\0'; p++) {
 				if ((*p == ':') ||
 				    (*p == '[') ||
 				    (*p == ']')) {
@@ -806,7 +819,7 @@ int ip_hton(int af, char const *src, fr_ipaddr_t *out)
 
 		if (af == AF_UNSPEC) af = AF_INET;
 
-		if (!inet_pton(af, src, &(out->ipaddr))) {
+		if (!inet_pton(af, hostname, &(out->ipaddr))) {
 			return -1;
 		}
 
@@ -826,24 +839,25 @@ int ip_hton(int af, char const *src, fr_ipaddr_t *out)
 		/*
 		 *	If it's all numeric, avoid getaddrinfo()
 		 */
-		if (inet_pton(af, src, &out->ipaddr.ip4addr) == 1) {
+		if (inet_pton(af, hostname, &out->ipaddr.ip4addr) == 1) {
 			return 0;
 		}
 	}
 #endif
 
-	if ((rcode = getaddrinfo(src, NULL, &hints, &res)) != 0) {
+	if ((rcode = getaddrinfo(hostname, NULL, &hints, &res)) != 0) {
 		fr_strerror_printf("ip_hton: %s", gai_strerror(rcode));
 		return -1;
 	}
 
 	for (ai = res; ai; ai = ai->ai_next) {
-		if ((af == ai->ai_family) || (af == AF_UNSPEC))
-			break;
+		if ((af == ai->ai_family) || (af == AF_UNSPEC)) break;
+		if (!alt && fallback && ((ai->ai_family == AF_INET) || (ai->ai_family == AF_INET6))) alt = ai;
 	}
 
+	if (!ai) ai = alt;
 	if (!ai) {
-		fr_strerror_printf("ip_hton failed to find requested information for host %.100s", src);
+		fr_strerror_printf("ip_hton failed to find requested information for host %.100s", hostname);
 		freeaddrinfo(ai);
 		return -1;
 	}

@@ -197,7 +197,7 @@ int main(int argc, char *argv[])
 				break;
 
 			case 'i':
-				if (ip_hton(AF_UNSPEC, optarg, &main_config.myip) < 0) {
+				if (ip_hton(&main_config.myip, AF_UNSPEC, optarg, false) < 0) {
 					fprintf(stderr, "radiusd: Invalid IP Address or hostname \"%s\"\n", optarg);
 					exit(EXIT_FAILURE);
 				}

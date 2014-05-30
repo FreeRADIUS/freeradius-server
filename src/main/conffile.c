@@ -1146,7 +1146,7 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, int type, void *data, char
 		fr_ipaddr_t *ipaddr = data;
 		char ipbuf[128];
 
-		if (fr_pton(ipaddr, value, 0, true) < 0) {
+		if (fr_pton4(ipaddr, value, 0, true, false) < 0) {
 			ERROR("%s", fr_strerror());
 			return -1;
 		}
@@ -1178,7 +1178,7 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, int type, void *data, char
 		fr_ipaddr_t *ipaddr = data;
 		char ipbuf[128];
 
-		if (fr_pton6(ipaddr, value, 0, true) < 0) {
+		if (fr_pton6(ipaddr, value, 0, true, false) < 0) {
 			ERROR("%s", fr_strerror());
 			return -1;
 		}

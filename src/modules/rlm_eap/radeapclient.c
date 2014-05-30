@@ -1232,7 +1232,7 @@ int main(int argc, char **argv)
 			portname = NULL;
 		}
 
-		if (ip_hton(force_af, hostname, &req->dst_ipaddr) < 0) {
+		if (ip_hton(&req->dst_ipaddr, force_af, hostname, false) < 0) {
 			fprintf(stderr, "radclient: Failed to find IP address for host %s: %s\n", hostname, fr_syserror(errno));
 			exit(1);
 		}

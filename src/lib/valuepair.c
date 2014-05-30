@@ -1397,7 +1397,7 @@ int pairparsevalue(VALUE_PAIR *vp, char const *value, size_t inlen)
 	{
 		fr_ipaddr_t addr;
 
-		if (fr_pton(&addr, value, inlen, false) < 0) return -1;
+		if (fr_pton4(&addr, value, inlen, false, false) < 0) return -1;
 
 		/*
 		 *	We allow v4 addresses to have a /32 suffix as some databases (PostgreSQL)
@@ -1418,7 +1418,7 @@ int pairparsevalue(VALUE_PAIR *vp, char const *value, size_t inlen)
 	{
 		fr_ipaddr_t addr;
 
-		if (fr_pton(&addr, value, inlen, false) < 0) return -1;
+		if (fr_pton4(&addr, value, inlen, false, false) < 0) return -1;
 
 		vp->vp_ipv4prefix[1] = addr.prefix;
 		memcpy(vp->vp_ipv4prefix + 2, &addr.ipaddr.ip4addr.s_addr, sizeof(vp->vp_ipv4prefix) - 2);
@@ -1430,7 +1430,7 @@ int pairparsevalue(VALUE_PAIR *vp, char const *value, size_t inlen)
 	{
 		fr_ipaddr_t addr;
 
-		if (fr_pton6(&addr, value, inlen, false) < 0) return -1;
+		if (fr_pton6(&addr, value, inlen, false, false) < 0) return -1;
 
 		/*
 		 *	We allow v6 addresses to have a /128 suffix as some databases (PostgreSQL)
@@ -1451,7 +1451,7 @@ int pairparsevalue(VALUE_PAIR *vp, char const *value, size_t inlen)
 	{
 		fr_ipaddr_t addr;
 
-		if (fr_pton6(&addr, value, inlen, false) < 0) return -1;
+		if (fr_pton6(&addr, value, inlen, false, false) < 0) return -1;
 
 		vp->vp_ipv6prefix[1] = addr.prefix;
 		memcpy(vp->vp_ipv6prefix + 2, &addr.ipaddr.ip6addr.s6_addr, sizeof(vp->vp_ipv6prefix) - 2);
@@ -1666,7 +1666,7 @@ int pairparsevalue(VALUE_PAIR *vp, char const *value, size_t inlen)
 				return -1;
 			}
 
-			if (ip_hton(AF_INET, value, &ipaddr) < 0) {
+			if (ip_hton(&ipaddr, AF_INET, value, false) < 0) {
 				fr_strerror_printf("Failed to find IPv4 address for %s", value);
 				return -1;
 			}
