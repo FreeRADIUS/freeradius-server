@@ -671,23 +671,10 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 	FR_INTEGER_BOUND_CHECK("ping_interval", home->ping_interval, >=, 6);
 	FR_INTEGER_BOUND_CHECK("ping_interval", home->ping_interval, <=, 120);
 
-	if (!home->response_window.tv_sec) {
-		uint32_t tmp = home->response_window.tv_usec; /* which isn't an integer */
-
-		FR_INTEGER_BOUND_CHECK("response_window microseconds", tmp, >=, 1000);
-		home->response_window.tv_usec = tmp;
-
-	} else {
-		int tmp = (int)home->response_window.tv_sec; /* which isn't an integer */
-
-		FR_INTEGER_BOUND_CHECK("response_window", tmp, <=, 60);
-		FR_INTEGER_BOUND_CHECK("response_window", tmp, <=, (int)main_config.max_request_time);
-
-		if (home->response_window.tv_sec != tmp) {
-			home->response_window.tv_sec = tmp;
-			home->response_window.tv_usec = 0;
-		}
-	}
+	FR_TIMEVAL_BOUND_CHECK("response_window", &home->response_window, >=, 0, 1000);
+	FR_TIMEVAL_BOUND_CHECK("response_window", &home->response_window, <=, 60, 0);
+	FR_TIMEVAL_BOUND_CHECK("response_window", &home->response_window, <=,
+				main_config.max_request_time, 0);
 
 	/*
 	 *	Track the minimum response window, so that we can

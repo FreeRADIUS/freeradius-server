@@ -126,6 +126,17 @@ do {\
 
 #define FR_INTEGER_BOUND_CHECK(_name, _var, _op, _bound) FR_INTEGER_COND_CHECK(_name, _var, (_var _op _bound), _bound)
 
+#define FR_TIMEVAL_BOUND_CHECK(_name, _var, _op, _bound_sec, _bound_usec)\
+do {\
+	struct timeval _bound = {_bound_sec, _bound_usec};\
+	if (!timercmp(_var, &_bound, _op)) {\
+		WARN("WARNING: Ignoring \"" _name " = %d.%.06d\", forcing to \"" _name " = %d.%06d\"",\
+			(int)(_var)->tv_sec, (int)(_var)->tv_usec,\
+			(int)_bound.tv_sec, (int)_bound.tv_usec);\
+		*_var = _bound;\
+	}\
+} while (0)
+
 typedef struct CONF_PARSER {
 	char const	*name;
 	int		type;			//!< PW_TYPE_STRING, etc.
