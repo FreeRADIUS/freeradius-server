@@ -425,6 +425,28 @@ static struct timeval *request_response_window(REQUEST *request)
 }
 
 /*
+ * Determine initial request processing delay.
+ */
+static int request_init_delay(REQUEST *request)
+{
+	struct timeval half_response_window;
+
+	/* Allow client response window to lower initial delay */
+	if (timerisset(&request->client->response_window)) {
+		half_response_window.tv_sec = request->client->response_window.tv_sec >> 1;
+		half_response_window.tv_usec =
+			((request->client->response_window.tv_sec & 1) * USEC +
+				request->client->response_window.tv_usec) >> 1;
+		if (timercmp(&half_response_window, &request->root->init_delay, <))
+			return (int)half_response_window.tv_sec * USEC +
+				(int)half_response_window.tv_usec;
+	}
+
+	return (int)request->root->init_delay.tv_sec * USEC +
+		(int)request->root->init_delay.tv_usec;
+}
+
+/*
  *	Callback for ALL timer events related to the request.
  */
 static void request_timer(void *ctx)
@@ -986,7 +1008,7 @@ static void request_queue_or_run(UNUSED REQUEST *request,
 		/*
 		 *	(re) set the initial delay.
 		 */
-		request->delay = (main_config.init_delay.tv_sec * USEC) + main_config.init_delay.tv_usec;
+		request->delay = request_init_delay(request);
 		if (request->delay > USEC) request->delay = USEC;
 		gettimeofday(&when, NULL);
 		tv_add(&when, request->delay);
