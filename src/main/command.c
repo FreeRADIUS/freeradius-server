@@ -935,7 +935,7 @@ static RADCLIENT *get_client(rad_listen_t *listener, int argc, char *argv[])
 		return NULL;
 	}
 
-	if (ip_hton(AF_UNSPEC, argv[0], &ipaddr) < 0) {
+	if (ip_hton(&ipaddr, AF_UNSPEC, argv[0], false) < 0) {
 		cprintf(listener, "ERROR: Failed parsing IP address; %s\n",
 			fr_strerror());
 		return NULL;
@@ -980,7 +980,7 @@ static home_server_t *get_home_server(rad_listen_t *listener, int argc,
 		return NULL;
 	}
 
-	if (ip_hton(AF_UNSPEC, argv[0], &ipaddr) < 0) {
+	if (ip_hton(&ipaddr, AF_UNSPEC, argv[0], false) < 0) {
 		cprintf(listener, "ERROR: Failed parsing IP address; %s\n",
 			fr_strerror());
 		return NULL;
@@ -1151,7 +1151,7 @@ static rad_listen_t *get_socket(rad_listen_t *listener, int argc,
 		return NULL;
 	}
 
-	if (ip_hton(AF_UNSPEC, argv[0], &ipaddr) < 0) {
+	if (ip_hton(&ipaddr, AF_UNSPEC, argv[0], false) < 0) {
 		cprintf(listener, "ERROR: Failed parsing IP address; %s\n",
 			fr_strerror());
 		return NULL;
@@ -1218,7 +1218,7 @@ static int command_inject_from(rad_listen_t *listener, int argc, char *argv[])
 	}
 
 	sock->src_ipaddr.af = AF_UNSPEC;
-	if (ip_hton(AF_UNSPEC, argv[0], &sock->src_ipaddr) < 0) {
+	if (ip_hton(&sock->src_ipaddr, AF_UNSPEC, argv[0], false) < 0) {
 		cprintf(listener, "ERROR: Failed parsing IP address; %s\n",
 			fr_strerror());
 		return 0;

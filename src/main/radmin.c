@@ -204,7 +204,7 @@ static int client_socket(char const *server)
 		*p = '\0';
 	}
 
-	if (ip_hton(AF_INET, buffer, &ipaddr) < 0) {
+	if (ip_hton(&ipaddr, AF_INET, buffer, false) < 0) {
 		fprintf(stderr, "%s: Failed looking up host %s: %s\n",
 			progname, buffer, strerror(errno));
 		exit(1);

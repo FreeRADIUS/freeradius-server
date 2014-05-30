@@ -536,7 +536,7 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int in_server)
 			goto error;
 		}
 #endif
-		if (fr_ptonx(&c->ipaddr, name2, 0, true) < 0) {
+		if (fr_pton(&c->ipaddr, name2, 0, true) < 0) {
 			cf_log_err_cs(cs, "Failed parsing client name \"%s\" as ip address or hostname: %s", name2,
 				      fr_strerror());
 			goto error;
@@ -622,14 +622,14 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int in_server)
 #ifdef WITH_UDPFROMTO
 		switch (c->ipaddr.af) {
 		case AF_INET:
-			if (fr_pton(&c->src_ipaddr, cl_srcipaddr, 0, true) < 0) {
+			if (fr_pton4(&c->src_ipaddr, cl_srcipaddr, 0, true, false) < 0) {
 				cf_log_err_cs(cs, "Failed parsing src_ipaddr: %s", fr_strerror());
 				goto error;
 			}
 			break;
 
 		case AF_INET6:
-			if (fr_pton6(&c->src_ipaddr, cl_srcipaddr, 0, true) < 0) {
+			if (fr_pton6(&c->src_ipaddr, cl_srcipaddr, 0, true, false) < 0) {
 				cf_log_err_cs(cs, "Failed parsing src_ipaddr: %s", fr_strerror());
 				goto error;
 			}
@@ -996,7 +996,7 @@ RADCLIENT *client_from_query(TALLOC_CTX *ctx, char const *identifier, char const
 
 	c = talloc_zero(ctx, RADCLIENT);
 
-	if (fr_ptonx(&c->ipaddr, identifier, 0, true) < 0) {
+	if (fr_pton(&c->ipaddr, identifier, 0, true) < 0) {
 		ERROR("%s", fr_strerror());
 	error:
 		talloc_free(c);

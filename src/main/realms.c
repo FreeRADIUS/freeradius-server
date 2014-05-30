@@ -559,7 +559,7 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 		 *	address family as the destination IP.
 		 */
 		if (hs_srcipaddr) {
-			if (ip_hton(home->ipaddr.af, hs_srcipaddr, &home->src_ipaddr) < 0) {
+			if (ip_hton(&home->src_ipaddr, home->ipaddr.af, hs_srcipaddr, false) < 0) {
 				cf_log_err_cs(cs, "Failed parsing src_ipaddr");
 				goto error;
 			}
@@ -1160,7 +1160,7 @@ static int old_server_add(realm_config_t *rc, CONF_SECTION *cs,
 		}
 
 		if (!server) {
-			if (ip_hton(AF_UNSPEC, p, &home->ipaddr) < 0) {
+			if (ip_hton(&home->ipaddr, AF_UNSPEC, p, false) < 0) {
 				cf_log_err_cs(cs,
 					   "Failed looking up hostname %s.",
 					   p);
