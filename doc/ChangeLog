@@ -13,6 +13,8 @@ FreeRADIUS 3.0.4 Mon 12 May 2014 15:30:00 EDT urgency=medium
 	  to prevent issues similar to #634 occuring again.
 	* Modify pairparsevalue to deal with embedded NULLs better,
 	  and use the binary versions of attribute values in rlm_ldap.
+	* Allow 'ipaddr' and 'ipv6addr' to be specified as prefixes, and
+	  deprecate the use of 'netmask' for clients.
 
 	Bug fixes
 	* make case-insensitive regular expressions work again.
@@ -41,7 +43,11 @@ FreeRADIUS 3.0.4 Mon 12 May 2014 15:30:00 EDT urgency=medium
 	  created with unlang/ldap update blocks.
 	* Create rlm_sqlcounter attributes as integer64 types instead
 	  of integer types, so large counter values can be specified.
-
+	* Fix issue where specifying a dynamic client IP addresss using
+	  FreeRADIUS-Client-IPv6-Prefix or FreeRADIUS-Client-IP-Prefix
+	  may have caused a validation error.
+	* Don't double & attribute references.
+	
 FreeRADIUS 3.0.3 Mon 12 May 2014 15:30:00 EDT urgency=medium
 	Feature improvements
 	* Everything now builds with no warnings from the C compiler,
