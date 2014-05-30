@@ -668,8 +668,8 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 	 *	Track the minimum response window, so that we can
 	 *	correctly set the timers in process.c
 	 */
-	if (timercmp(&main_config.min_response_window, &home->response_window, >)) {
-		main_config.min_response_window = home->response_window;
+	if (timercmp(&main_config.init_delay, &home->response_window, >)) {
+		main_config.init_delay = home->response_window;
 	}
 
 	FR_INTEGER_BOUND_CHECK("zombie_period", home->zombie_period, >=, 1);
