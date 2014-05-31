@@ -13,8 +13,11 @@ FreeRADIUS 3.0.4 Mon 12 May 2014 15:30:00 EDT urgency=medium
 	  to prevent issues similar to #634 occuring again.
 	* Modify pairparsevalue to deal with embedded NULLs better,
 	  and use the binary versions of attribute values in rlm_ldap.
-	* Allow 'ipaddr' and 'ipv6addr' to be specified as prefixes, and
-	  deprecate the use of 'netmask' for clients.
+	* "ipaddr" will now use v6 if no v4 address is present.  You should
+	  use "ipv4addr" or "ipv6addr" to force v4/v6 addresses.
+	* The above applies to "listen", "home_server", and "client" sections.
+	* "client" sections will allow prefixes as "192.192.0/24".  The old
+	  "netmask" is still accepted, but the new format is preferred.
 
 	Bug fixes
 	* make case-insensitive regular expressions work again.
@@ -46,8 +49,8 @@ FreeRADIUS 3.0.4 Mon 12 May 2014 15:30:00 EDT urgency=medium
 	* Fix issue where specifying a dynamic client IP addresss using
 	  FreeRADIUS-Client-IPv6-Prefix or FreeRADIUS-Client-IP-Prefix
 	  may have caused a validation error.
-	* Don't double & attribute references.
-	
+	* Don't print two "&" for messages about attribute references
+
 FreeRADIUS 3.0.3 Mon 12 May 2014 15:30:00 EDT urgency=medium
 	Feature improvements
 	* Everything now builds with no warnings from the C compiler,
