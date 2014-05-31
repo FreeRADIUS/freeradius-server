@@ -788,11 +788,11 @@ char const *inet_ntop(int af, void const *src, char *dst, size_t cnt)
  * This function returns only one IP address, of the specified address family,
  * or the first address (of whatever family), if AF_UNSPEC is used.
  *
- * If fallback is specified and af is AF_INET, but not AF_INET records were
+ * If fallback is specified and af is AF_INET, but no AF_INET records were
  * found and a record for AF_INET6 exists that record will be returned.
  *
  * If fallback is specified and af is AF_INET6, and a record with AF_INET4 exists
- * that record will be returned inseted.
+ * that record will be returned instead.
  *
  * @param out Where to write result.
  * @param af To search for in preference.
