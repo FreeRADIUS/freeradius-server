@@ -194,7 +194,7 @@ int client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 	}
 
 	fr_ntop(buffer, sizeof(buffer), &client->ipaddr);
-	DEBUG("Adding client %s (%s)", buffer, client->longname);
+	DEBUG3("Adding client %s (%s) to prefix tree %i", buffer, client->longname, client->ipaddr.prefix);
 
 	/*
 	 *	If "clients" is NULL, it means add to the global list.
@@ -543,7 +543,6 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int in_server)
 				      fr_strerror());
 			goto error;
 		}
-		cf_log_err_cs(cs, "Wildcard client addresses are not allowed");
 
 		c->longname = talloc_typed_strdup(c, name2);
 		if (!c->shortname) c->shortname = talloc_typed_strdup(c, c->longname);
@@ -578,11 +577,6 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int in_server)
 			rad_assert(0);
 		}
 		fr_ipaddr_mask(&c->ipaddr, cl_prefix);
-	}
-
-	if ((c->ipaddr.prefix == 0) || is_wildcard(&c->ipaddr)) {
-		cf_log_err_cs(cs, "Wildcard client addresses are not allowed");
-		goto error;
 	}
 
 	c->proto = IPPROTO_UDP;
@@ -1006,12 +1000,6 @@ RADCLIENT *client_from_query(TALLOC_CTX *ctx, char const *identifier, char const
 		return NULL;
 	}
 
-	if ((c->ipaddr.prefix == 0) || is_wildcard(&c->ipaddr)) {
-		ERROR("Wildcard client addresses are not allowed");
-
-		goto error;
-	}
-
 #ifdef WITH_DYNAMIC_CLIENTS
 	c->dynamic = true;
 #endif
@@ -1142,12 +1130,6 @@ RADCLIENT *client_from_request(RADCLIENT_LIST *clients, REQUEST *request)
 		default:
 			goto error;
 		}
-	}
-
-	if ((c->ipaddr.prefix == 0) || is_wildcard(&c->ipaddr)) {
-		DEBUG("- Wildcard client addresses are not allowed");
-
-		goto error;
 	}
 
 	if (c->ipaddr.af == AF_UNSPEC) {

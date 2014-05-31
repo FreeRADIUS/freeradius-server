@@ -930,7 +930,7 @@ static inline int fr_item_validate_ipaddr(CONF_SECTION *cs, char const *name, PW
 	case PW_TYPE_IP_ADDR:
 		switch (ipaddr->af) {
 		case AF_INET:
-		if (ipaddr->prefix != 32) {
+		if (!is_wildcard(ipaddr) && (ipaddr->prefix != 32)) {
 			ERROR("Invalid IPv4 mask length \"/%i\".  Only \"/32\" permitted for non-prefix types",
 			      ipaddr->prefix);
 
@@ -939,7 +939,7 @@ static inline int fr_item_validate_ipaddr(CONF_SECTION *cs, char const *name, PW
 			break;
 
 		case AF_INET6:
-		if (ipaddr->prefix != 128) {
+		if (!is_wildcard(ipaddr) && (ipaddr->prefix != 128)) {
 			ERROR("Invalid IPv6 mask length \"/%i\".  Only \"/128\" permitted for non-prefix types",
 			      ipaddr->prefix);
 

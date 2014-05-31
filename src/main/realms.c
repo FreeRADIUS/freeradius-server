@@ -379,6 +379,10 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 	 *	Figure out which one to use.
 	 */
 	if (cf_pair_find(cs, "ipaddr") || cf_pair_find(cs, "ipv4addr") || cf_pair_find(cs, "ipv6addr")) {
+		if (is_wildcard(&hs_ipaddr)) {
+			cf_log_err_cs(cs, "Wildcard '*' addresses are not permitted for home servers");
+			goto error;
+		}
 		home->ipaddr = hs_ipaddr;
 	} else if ((cp = cf_pair_find(cs, "virtual_server")) != NULL) {
 		home->ipaddr.af = AF_UNSPEC;
