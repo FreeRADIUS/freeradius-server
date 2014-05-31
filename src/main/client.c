@@ -994,7 +994,6 @@ RADCLIENT *client_from_query(TALLOC_CTX *ctx, char const *identifier, char const
 
 	if (fr_pton(&c->ipaddr, identifier, 0, true) < 0) {
 		ERROR("%s", fr_strerror());
-	error:
 		talloc_free(c);
 
 		return NULL;
