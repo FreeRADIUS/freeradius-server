@@ -408,7 +408,6 @@ RADCLIENT *client_find_old(fr_ipaddr_t const *ipaddr)
 
 static fr_ipaddr_t cl_ipaddr;
 static char const *cl_srcipaddr = NULL;
-static uint32_t cl_prefix;
 #ifdef WITH_TCP
 static char const *hs_proto = NULL;
 #endif
@@ -429,7 +428,6 @@ static const CONF_PARSER client_config[] = {
 	{ "ipaddr", FR_CONF_POINTER(PW_TYPE_IP_PREFIX, &cl_ipaddr), NULL },
 	{ "ipv4addr", FR_CONF_POINTER(PW_TYPE_IPV4_PREFIX, &cl_ipaddr), NULL },
 	{ "ipv6addr", FR_CONF_POINTER(PW_TYPE_IPV6_PREFIX, &cl_ipaddr), NULL },
-	{ "netmask", FR_CONF_POINTER(PW_TYPE_INTEGER, &cl_prefix), NULL },
 
 	{ "src_ipaddr", FR_CONF_POINTER(PW_TYPE_STRING, &cl_srcipaddr), NULL },
 
@@ -481,7 +479,6 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int in_server)
 	c->cs = cs;
 
 	memset(&cl_ipaddr, 0, sizeof(cl_ipaddr));
-	cl_prefix = 256;
 	if (cf_section_parse(cs, c, client_config) < 0) {
 		cf_log_err_cs(cs, "Error parsing client section");
 	error:
@@ -506,7 +503,7 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int in_server)
 	 *	Newer style client definitions with either ipaddr or ipaddr6
 	 *	config items.
 	 */
-	if (cf_pair_find(cs, "ipaddr") || cf_pair_find(cs, "ipv6addr")) {
+	if (cf_pair_find(cs, "ipaddr") || cf_pair_find(cs, "ipv4addr") || cf_pair_find(cs, "ipv6addr")) {
 		char buffer[128];
 
 		/*
@@ -528,56 +525,8 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int in_server)
 	 *	No "ipaddr" or "ipv6addr", use old-style "client <ipaddr> {" syntax.
 	 */
 	} else {
-		WARN("No 'ipaddr' or 'ipv4addr' or 'ipv6addr' field found in client %s.  Please fix your configuration",
-		     name2);
-		WARN("Support for old-style clients will be removed in a future release");
-
-#ifdef WITH_TCP
-		if (cf_pair_find(cs, "proto") != NULL) {
-			cf_log_err_cs(cs, "Cannot use 'proto' inside of old-style client definition");
-			goto error;
-		}
-#endif
-		if (fr_pton(&c->ipaddr, name2, 0, true) < 0) {
-			cf_log_err_cs(cs, "Failed parsing client name \"%s\" as ip address or hostname: %s", name2,
-				      fr_strerror());
-			goto error;
-		}
-		cf_log_err_cs(cs, "Wildcard client addresses are not allowed");
-
-		c->longname = talloc_typed_strdup(c, name2);
-		if (!c->shortname) c->shortname = talloc_typed_strdup(c, c->longname);
-	}
-
-	/*
-	 *	Prefix override (this needs to die)
-	 */
-	if (cl_prefix != 256) {
-		WARN("'netmask' field found in client %s is deprecated, use CIDR notation instead.  "
-		     "Please fix your configuration", name2);
-		WARN("Support for 'netmask' will be removed in a future release");
-
-		switch (c->ipaddr.af) {
-		case AF_INET:
-			if (cl_prefix > 32) {
-				cf_log_err_cs(cs, "Invalid IPv4 mask length \"%i\".  Should be between 0-32",
-					      cl_prefix);
-				goto error;
-			}
-			break;
-
-		case AF_INET6:
-			if (cl_prefix > 128) {
-				cf_log_err_cs(cs, "Invalid IPv6 mask length \"%i\".  Should be between 0-128",
-					      cl_prefix);
-				goto error;
-			}
-			break;
-
-		default:
-			rad_assert(0);
-		}
-		fr_ipaddr_mask(&c->ipaddr, cl_prefix);
+		ERROR("No 'ipaddr' or 'ipv4addr' or 'ipv6addr' configuration directive found in client %s", name2);
+		goto error;
 	}
 
 	if ((c->ipaddr.prefix == 0) || is_wildcard(&c->ipaddr)) {
