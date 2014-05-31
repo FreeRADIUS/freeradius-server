@@ -9,7 +9,7 @@ typedef enum {
 	PW_TYPE_INVALID = 0,			//!< Invalid (uninitialised) attribute type.
 	PW_TYPE_STRING,				//!< String of printable characters.
 	PW_TYPE_INTEGER,			//!< 32 Bit unsigned integer.
-	PW_TYPE_IPV4_ADDR,				//!< 32 Bit IPv4 Address.
+	PW_TYPE_IPV4_ADDR,			//!< 32 Bit IPv4 Address.
 	PW_TYPE_DATE,				//!< 32 Bit Unix timestamp.
 	PW_TYPE_ABINARY,			//!< Ascend binary format a packed data structure.
 	PW_TYPE_OCTETS,				//!< Raw octets.
