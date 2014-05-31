@@ -193,6 +193,11 @@ int client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 		return 0;
 	}
 
+	/*
+	 *	Hack to fixup wildcard clients
+	 */
+	if (is_wildcard(&client->ipaddr)) client->ipaddr.prefix = 0;
+
 	fr_ntop(buffer, sizeof(buffer), &client->ipaddr);
 	DEBUG3("Adding client %s (%s) to prefix tree %i", buffer, client->longname, client->ipaddr.prefix);
 
