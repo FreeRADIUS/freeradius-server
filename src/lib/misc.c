@@ -214,10 +214,6 @@ int fr_pton4(fr_ipaddr_t *out, char const *value, size_t inlen, bool resolve, bo
 		 */
 		if ((value[0] == '*') && (value[1] == '\0')) {
 			out->ipaddr.ip4addr.s_addr = htonl(INADDR_ANY);
-			out->prefix = 0;
-			out->af = AF_INET;
-
-			return 0;
 		/*
 		 *	Convert things which are obviously integers to IP addresses
 		 *
@@ -318,10 +314,6 @@ int fr_pton6(fr_ipaddr_t *out, char const *value, size_t inlen, bool resolve, bo
 		 */
 		if ((value[0] == '*') && (value[1] == '\0')) {
 			memset(&out->ipaddr.ip6addr.s6_addr, 0, sizeof(out->ipaddr.ip6addr.s6_addr));
-			out->prefix = 0;
-			out->af = AF_INET6;
-
-			return 0;
 		} else if (!resolve) {
 			if (inet_pton(AF_INET6, value, &(out->ipaddr.ip6addr.s6_addr)) <= 0) {
 				fr_strerror_printf("Failed to parse IPv6 address string \"%s\"", value);
