@@ -506,7 +506,7 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int in_server)
 	 *	Newer style client definitions with either ipaddr or ipaddr6
 	 *	config items.
 	 */
-	if (cf_pair_find(cs, "ipaddr") || cf_pair_find(cs, "ipv6addr")) {
+	if (cf_pair_find(cs, "ipaddr") || cf_pair_find(cs, "ipv4addr") || cf_pair_find(cs, "ipv6addr")) {
 		char buffer[128];
 
 		/*
