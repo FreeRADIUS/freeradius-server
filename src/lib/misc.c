@@ -387,32 +387,43 @@ int fr_pton6(fr_ipaddr_t *out, char const *value, size_t inlen, bool resolve, bo
  */
 int fr_pton(fr_ipaddr_t *out, char const *value, size_t inlen, bool resolve)
 {
-	char const *p;
-	int af = AF_INET;
+	size_t len, i;
 
-	for (p = value; *p != '\0'; p++) {
-		if ((*p == ':') ||
-		    (*p == '[') ||
-		    (*p == ']')) {
-			af = AF_INET6;
-			break;
-		}
-	}
-
-	switch (af) {
-	case AF_INET:
-		return fr_pton4(out, value, inlen, resolve, true);
-
+	len = (inlen == 0) ? strlen(value) : inlen;
+	for (i = 0; i < len; i++) switch (value[i]) {
 	/*
-	 *	If we found ':' or '[' or ']' in the above string, there's
-	 *	no way this can be a hostname, so don't try to resolve.
+	 *	Chars illegal in domain names and IPv4 addresses.
+	 *	Must be v6 and cannot be a domain.
 	 */
-	case AF_INET6:
+	case ':':
+	case '[':
+	case ']':
 		return fr_pton6(out, value, inlen, false, false);
 
+	/*
+	 *	Chars which don't really tell us anything
+	 */
+	case '.':
+	case '/':
+		continue;
+
 	default:
-		return -1;
+		/*
+		 *	Outside the range of IPv4 chars, must be a domain
+		 *	Use A record in preference to AAAA record.
+		 */
+		if ((value[i] < '0') || (value[i] > '9')) {
+			if (!resolve) return -1;
+			return fr_pton4(out, value, inlen, true, true);
+		}
+		break;
 	}
+
+ 	/*
+ 	 *	All chars were in the IPv4 set [0-9/.], must be an IPv4
+ 	 *	address.
+ 	 */
+	return fr_pton4(out, value, inlen, false, false);
 }
 
 /** Check if the IP address is equivalent to INADDR_ANY
