@@ -31,6 +31,7 @@ RCSID("$Id$")
 #define PW_CACHE_STATUS_ONLY	1141
 #define PW_CACHE_MERGE		1142
 #define PW_CACHE_ENTRY_HITS	1143
+#define PW_CACHE_READ_ONLY	1144
 
 /*
  *	Define a structure for our module configuration.
@@ -374,6 +375,7 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request, char co
 			if (map->src->type == VPT_TYPE_LIST) switch (vp->da->attr) {
 			case PW_CACHE_TTL:
 			case PW_CACHE_STATUS_ONLY:
+			case PW_CACHE_READ_ONLY:
 			case PW_CACHE_MERGE:
 			case PW_CACHE_ENTRY_HITS:
 				RDEBUG2("Skipping %s", vp->da->name);
@@ -732,6 +734,12 @@ static rlm_rcode_t CC_HINT(nonnull) mod_cache_it(void *instance, REQUEST *reques
 		cache_merge(inst, request, c);
 
 		rcode = RLM_MODULE_OK;
+		goto done;
+	}
+
+	vp = pairfind(request->config_items, PW_CACHE_READ_ONLY, 0, TAG_ANY);
+	if (vp && vp->vp_integer) {
+		rcode = RLM_MODULE_NOTFOUND;
 		goto done;
 	}
 
