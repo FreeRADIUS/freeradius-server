@@ -179,10 +179,7 @@ ATTRIBUTE	Home-Server-Pool			1111	string
 
 ATTRIBUTE	FreeRADIUS-Client-IP-Address		1120	ipaddr
 ATTRIBUTE	FreeRADIUS-Client-IPv6-Address		1121	ipv6addr
-ATTRIBUTE	FreeRADIUS-Client-IP-Prefix		1150	ipv4prefix
-ATTRIBUTE	FreeRADIUS-Client-IPv6-Prefix		1151	ipv6prefix
-ATTRIBUTE	FreeRADIUS-Client-Src-IP-Address	1152	ipaddr
-ATTRIBUTE	FreeRADIUS-Client-Src-IPv6-Address	1153	ipv6addr
+# The rest of the FreeRADIUS-Client-* attributes are at 1150...
 
 ATTRIBUTE	FreeRADIUS-Client-Require-MA		1122	integer
 
@@ -265,9 +262,11 @@ VALUE	Listen-Socket-Type		coa			8
 ATTRIBUTE	Acct-Input-Octets64			1148	integer64
 ATTRIBUTE	Acct-Output-Octets64			1149	integer64
 
-# 1150 and 1151 are defined above, as FreeRADIUS-Client-...
-
+ATTRIBUTE	FreeRADIUS-Client-IP-Prefix		1150	ipv4prefix
+ATTRIBUTE	FreeRADIUS-Client-IPv6-Prefix		1151	ipv6prefix
 ATTRIBUTE  	FreeRADIUS-Response-Delay		1152	integer
+ATTRIBUTE	FreeRADIUS-Client-Src-IP-Address	1153	ipaddr
+ATTRIBUTE	FreeRADIUS-Client-Src-IPv6-Address	1154	ipv6addr
 
 #
 #	Range:	1200-1279
