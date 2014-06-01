@@ -880,7 +880,16 @@ void radius_map_debug(REQUEST *request, value_pair_map_t const *map, VALUE_PAIR 
 		 */
 		case VPT_TYPE_LIST:
 			vp_prints_value(buffer, sizeof(buffer), vp, '\'');
-			value = talloc_typed_asprintf(request, "&%s%s -> %s", map->src->name, vp->da->name, buffer);
+
+			if (map->src->vpt_request == REQUEST_OUTER) {
+				value = talloc_typed_asprintf(request, "&outer.%s:%s -> %s",
+							      fr_int2str(pair_lists, map->src->vpt_list, "<INVALID>"),
+							      vp->da->name, buffer);
+			} else {
+				value = talloc_typed_asprintf(request, "&%s:%s -> %s",
+							      fr_int2str(pair_lists, map->src->vpt_list, "<INVALID>"),
+							      vp->da->name, buffer);
+			}
 			break;
 
 		case VPT_TYPE_ATTR:
