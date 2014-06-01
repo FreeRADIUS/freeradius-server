@@ -377,7 +377,7 @@ void rlm_ldap_map_do(UNUSED const ldap_instance_t *inst, REQUEST *request, LDAP 
 		 *	a case of the dst being incorrect for the current
 		 *	request context
 		 */
-		if (radius_map2request(request, map, name, rlm_ldap_map_getvalue, &result) == -1) {
+		if (radius_map2request(request, map, rlm_ldap_map_getvalue, &result) == -1) {
 			return;	/* Fail */
 		}
 
@@ -408,7 +408,7 @@ void rlm_ldap_map_do(UNUSED const ldap_instance_t *inst, REQUEST *request, LDAP 
 					inst->valuepair_attr, values[i]);
 				continue;
 			}
-			if (radius_map2request(request, attr, NULL, radius_map2vp, NULL) < 0) {
+			if (radius_map2request(request, attr, radius_map2vp, NULL) < 0) {
 				RWDEBUG("Failed adding \"%s\" to request, skipping...", values[i]);
 			}
 			talloc_free(attr);
