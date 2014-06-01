@@ -734,8 +734,7 @@ request_refs_t radius_request_name(char const **name, request_refs_t unknown);
 
 int radius_mapexec(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *map);
 int CC_HINT(nonnull (1,2,3)) radius_map2vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *map, void *ctx);
-int radius_map2request(REQUEST *request, value_pair_map_t const *map,
-		       char const *src, radius_tmpl_getvalue_t func, void *ctx);
+int radius_map2request(REQUEST *request, value_pair_map_t const *map, radius_tmpl_getvalue_t func, void *ctx);
 
 int radius_strpair2map(value_pair_map_t **out, REQUEST *request, char const *raw,
 		       request_refs_t dst_request_def, pair_lists_t dst_list_def,

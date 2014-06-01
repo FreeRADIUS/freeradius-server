@@ -934,11 +934,9 @@ do {\
  * @param func to retrieve module specific values and convert them to
  *	VALUE_PAIRS.
  * @param ctx to be passed to func.
- * @param src name to be used in debugging if different from map value.
  * @return -1 if the operation failed, -2 in the source attribute wasn't valid, 0 on success.
  */
-int radius_map2request(REQUEST *request, value_pair_map_t const *map,
-		       UNUSED char const *src, radius_tmpl_getvalue_t func, void *ctx)
+int radius_map2request(REQUEST *request, value_pair_map_t const *map, radius_tmpl_getvalue_t func, void *ctx)
 {
 	int rcode = 0;
 	int num;

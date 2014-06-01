@@ -593,7 +593,7 @@ redo:
 
 		MOD_LOG_OPEN_BRACE("update");
 		for (map = g->map; map != NULL; map = map->next) {
-			rcode = radius_map2request(request, map, "update", radius_map2vp, NULL);
+			rcode = radius_map2request(request, map, radius_map2vp, NULL);
 			if (rcode < 0) {
 				result = (rcode == -2) ? RLM_MODULE_INVALID : RLM_MODULE_FAIL;
 				MOD_LOG_CLOSE_BRACE();
