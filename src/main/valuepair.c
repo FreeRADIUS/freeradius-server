@@ -846,7 +846,7 @@ TALLOC_CTX *radius_list_ctx(REQUEST *request, pair_lists_t list_name)
 /*
  *	Debug print a map / VP
  */
-static void CC_HINT(nonnull(1, 2)) debug_map(REQUEST *request, value_pair_map_t const *map, VALUE_PAIR const *vp)
+void radius_map_debug(REQUEST *request, value_pair_map_t const *map, VALUE_PAIR const *vp)
 {
 	char *value;
 	char buffer[1024];
@@ -999,7 +999,7 @@ int radius_map2request(REQUEST *request, value_pair_map_t const *map, radius_tmp
 		}
 		if (!head) return rcode;
 	} else {
-		if (debug_flag) debug_map(request, map, NULL);
+		if (debug_flag) radius_map_debug(request, map, NULL);
 	}
 
 	/*
@@ -1010,7 +1010,7 @@ int radius_map2request(REQUEST *request, value_pair_map_t const *map, radius_tmp
 	     vp = fr_cursor_next(&src_list)) {
 		VERIFY_VP(vp);
 
-		if (debug_flag) debug_map(request, map, vp);
+		if (debug_flag) radius_map_debug(request, map, vp);
 		(void) talloc_steal(parent, vp);
 	}
 
@@ -1619,6 +1619,22 @@ int radius_strpair2map(value_pair_map_t **out, REQUEST *request, char const *raw
 	*out = map;
 
 	return 0;
+}
+
+/** Check whether the destination of a map is currently valid
+ *
+ * @param request The current request.
+ * @param map to check.
+ * @return true if the map resolves to a request and list else false.
+ */
+bool radius_map_dst_valid(REQUEST *request, value_pair_map_t const *map)
+{
+	REQUEST *context = request;
+
+	if (radius_request(&context, map->dst->vpt_request) < 0) return false;
+	if (!radius_list(context, map->dst->vpt_list)) return false;
+
+	return true;
 }
 
 /** Return a VP from a value_pair_tmpl_t
