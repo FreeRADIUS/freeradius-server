@@ -138,7 +138,7 @@ static int radius_expand_tmpl(char **out, REQUEST *request, value_pair_tmpl_t co
 
 	case VPT_TYPE_ATTR:
 		EVAL_DEBUG("TMPL ATTR");
-		if (radius_vpt_get_vp(&vp, request, vpt) < 0) {
+		if (radius_tmpl_get_vp(&vp, request, vpt) < 0) {
 			return -2;
 		}
 		*out = vp_aprint_value(request, vp);
@@ -197,7 +197,7 @@ int radius_evaluate_tmpl(REQUEST *request, int modreturn, UNUSED int depth,
 
 	case VPT_TYPE_ATTR:
 	case VPT_TYPE_LIST:
-		if (radius_vpt_get_vp(NULL, request, vpt) == 0) {
+		if (radius_tmpl_get_vp(NULL, request, vpt) == 0) {
 			rcode = true;
 		} else {
 			rcode = false;
@@ -507,8 +507,8 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 		VALUE_PAIR *lhs_vp, *rhs_vp;
 
 		EVAL_DEBUG("ATTR to ATTR");
-		if ((radius_vpt_get_vp(&lhs_vp, request, map->dst) < 0) ||
-		    (radius_vpt_get_vp(&rhs_vp, request, map->src) < 0)) {
+		if ((radius_tmpl_get_vp(&lhs_vp, request, map->dst) < 0) ||
+		    (radius_tmpl_get_vp(&rhs_vp, request, map->src) < 0)) {
 		    return -2;
 		}
 
@@ -530,7 +530,7 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 		if (map->dst->type == VPT_TYPE_ATTR) {
 			VALUE_PAIR *cast_vp;
 
-			if (radius_vpt_get_vp(&cast_vp, request, map->dst) < 0) {
+			if (radius_tmpl_get_vp(&cast_vp, request, map->dst) < 0) {
 				return false;
 			}
 
@@ -558,7 +558,7 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 		 *	VP, and return that.
 		 */
 		if (map->src->type == VPT_TYPE_ATTR) {
-			if (radius_vpt_get_vp(&rhs_vp, request, map->src) < 0) {
+			if (radius_tmpl_get_vp(&rhs_vp, request, map->src) < 0) {
 				return -2;
 			}
 		} else {
@@ -624,7 +624,7 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 
 		EVAL_DEBUG("ATTR to DATA");
 
-		if (radius_vpt_get_vp(&lhs_vp, request, map->dst) < 0) {
+		if (radius_tmpl_get_vp(&lhs_vp, request, map->dst) < 0) {
 			return -2;
 		}
 
@@ -684,7 +684,7 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 		/*
 		 *	No LHS means no match
 		 */
-		if (radius_vpt_get_vp(&lhs_vp, request, map->dst) < 0) {
+		if (radius_tmpl_get_vp(&lhs_vp, request, map->dst) < 0) {
 			/*
 			 *	Not a real attr: might be a dynamic comparison.
 			 */

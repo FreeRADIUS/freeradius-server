@@ -1543,7 +1543,7 @@ int radius_map2vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *ma
 			return 0;
 		}
 
-		if (radius_vpt_get_vp(&found, request, map->src) < 0) {
+		if (radius_tmpl_get_vp(&found, request, map->src) < 0) {
 			REDEBUG("Attribute \"%s\" not found in request", map->src->name);
 			rcode = 0;
 			goto error;
@@ -1653,7 +1653,7 @@ bool radius_map_dst_valid(REQUEST *request, value_pair_map_t const *map)
  * @param vpt the value pair template
  * @return -1 if VP could not be found, -2 if list could not be found, -3 if context could not be found.
  */
-int radius_vpt_get_vp(VALUE_PAIR **out, REQUEST *request, value_pair_tmpl_t const *vpt)
+int radius_tmpl_get_vp(VALUE_PAIR **out, REQUEST *request, value_pair_tmpl_t const *vpt)
 {
 	VALUE_PAIR **vps, *vp;
 
@@ -1717,7 +1717,7 @@ finish:
  *	Will be NULL if the attribute couldn't be resolved.
  * @param request current request.
  * @param name attribute name including qualifiers.
- * @return -4 if either the attribute or qualifier were invalid, and the same error codes as radius_vpt_get_vp for other
+ * @return -4 if either the attribute or qualifier were invalid, and the same error codes as radius_tmpl_get_vp for other
  *	error conditions.
  */
 int radius_get_vp(VALUE_PAIR **out, REQUEST *request, char const *name)
@@ -1730,7 +1730,7 @@ int radius_get_vp(VALUE_PAIR **out, REQUEST *request, char const *name)
 		return -4;
 	}
 
-	return radius_vpt_get_vp(out, request, &vpt);
+	return radius_tmpl_get_vp(out, request, &vpt);
 }
 
 /** Copy pairs matching a VPT in the current request
@@ -1740,7 +1740,7 @@ int radius_get_vp(VALUE_PAIR **out, REQUEST *request, char const *name)
  * @param vpt the value pair template
  * @return -1 if VP could not be found, -2 if list could not be found, -3 if context could not be found.
  */
-int radius_vpt_copy_vp(VALUE_PAIR **out, REQUEST *request, value_pair_tmpl_t const *vpt)
+int radius_tmpl_copy_vp(VALUE_PAIR **out, REQUEST *request, value_pair_tmpl_t const *vpt)
 {
 	VALUE_PAIR **vps, *vp;
 	REQUEST *current = request;
@@ -1793,7 +1793,7 @@ int radius_vpt_copy_vp(VALUE_PAIR **out, REQUEST *request, value_pair_tmpl_t con
  *	Will be NULL if the attribute couldn't be resolved.
  * @param request current request.
  * @param name attribute name including qualifiers.
- * @return -4 if either the attribute or qualifier were invalid, and the same error codes as radius_vpt_get_vp for other
+ * @return -4 if either the attribute or qualifier were invalid, and the same error codes as radius_tmpl_get_vp for other
  *	error conditions.
  */
 int radius_copy_vp(VALUE_PAIR **out, REQUEST *request, char const *name)
@@ -1806,7 +1806,7 @@ int radius_copy_vp(VALUE_PAIR **out, REQUEST *request, char const *name)
 		return -4;
 	}
 
-	return radius_vpt_copy_vp(out, request, &vpt);
+	return radius_tmpl_copy_vp(out, request, &vpt);
 }
 
 void module_failure_msg(REQUEST *request, char const *fmt, ...)
