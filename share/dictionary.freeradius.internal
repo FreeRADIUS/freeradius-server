@@ -231,6 +231,7 @@ ATTRIBUTE	Cache-TTL				1140	signed
 ATTRIBUTE	Cache-Status-Only			1141	integer
 ATTRIBUTE	Cache-Merge				1142	integer
 ATTRIBUTE	Cache-Entry-Hits			1143	integer
+ATTRIBUTE	Cache-Read-Only				1144	integer
 
 VALUE	Cache-Status-Only		no			0
 VALUE	Cache-Status-Only		yes			1
@@ -238,6 +239,8 @@ VALUE	Cache-Status-Only		yes			1
 VALUE	Cache-Merge			no			0
 VALUE	Cache-Merge			yes			1
 
+VALUE	Cache-Read-Only			no			0
+VALUE	Cache-Read-Only			yes			1
 
 ATTRIBUTE	OTP-Challenge				1145	string
 ATTRIBUTE	EAP-Session-Id				1146	octets
