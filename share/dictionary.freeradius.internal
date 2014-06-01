@@ -264,7 +264,7 @@ ATTRIBUTE	Acct-Output-Octets64			1149	integer64
 
 ATTRIBUTE	FreeRADIUS-Client-IP-Prefix		1150	ipv4prefix
 ATTRIBUTE	FreeRADIUS-Client-IPv6-Prefix		1151	ipv6prefix
-ATTRIBUTE  	FreeRADIUS-Response-Delay		1152	integer
+ATTRIBUTE	FreeRADIUS-Response-Delay		1152	integer
 ATTRIBUTE	FreeRADIUS-Client-Src-IP-Address	1153	ipaddr
 ATTRIBUTE	FreeRADIUS-Client-Src-IPv6-Address	1154	ipv6addr
 
@@ -377,6 +377,7 @@ ATTRIBUTE	EAP-Type-MS-CHAP-V2			1306	octets
 #
 
 # these are PW_EAP_SIM_X + 1536
+ATTRIBUTE	EAP_Sim-Base				1536	octets
 ATTRIBUTE	EAP-Sim-RAND				1537	octets
 ATTRIBUTE	EAP-Sim-PADDING				1542	octets
 ATTRIBUTE	EAP-Sim-NONCE_MT			1543	octets
@@ -508,7 +509,7 @@ ATTRIBUTE	TLS-Cert-Subject			1913	string
 ATTRIBUTE	TLS-Cert-Common-Name			1914	string
 ATTRIBUTE	TLS-Cert-Subject-Alt-Name-Email		1915	string
 ATTRIBUTE	TLS-Cert-Subject-Alt-Name-Dns		1916	string
-ATTRIBUTE	TLS-Cert-Subject-Alt-Name-Upn   	1917	string
+ATTRIBUTE	TLS-Cert-Subject-Alt-Name-Upn		1917	string
 # 1918 - 1919: reserved for future cert attributes
 ATTRIBUTE	TLS-Client-Cert-Serial			1920	string
 ATTRIBUTE	TLS-Client-Cert-Expiration		1921	string

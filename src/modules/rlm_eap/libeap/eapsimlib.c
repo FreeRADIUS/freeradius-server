@@ -408,7 +408,7 @@ int eapsim_checkmac(TALLOC_CTX *ctx, VALUE_PAIR *rvps, uint8_t key[EAPSIM_AUTH_S
 		 */
 		attr = buffer+8;
 		while(attr < (buffer+elen)) {
-			if(attr[0] == PW_EAP_SIM_MAC) {
+			if (attr[0] == (PW_EAP_SIM_MAC - PW_EAP_SIM_BASE)) {
 				/* zero the data portion, after making sure
 				 * the size is >=5. Maybe future versions.
 				 * will use more bytes, so be liberal.

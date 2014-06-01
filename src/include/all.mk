@@ -2,6 +2,7 @@
 # Version:	$Id$
 #
 HEADERS	= \
+	attributes.h \
 	build.h \
 	conf.h \
 	conffile.h \
@@ -36,7 +37,7 @@ HEADERS	= \
 #  the server library was built with.
 #
 HEADERS_DY = src/include/features.h src/include/missing.h src/include/tls.h \
-	src/include/radpaths.h
+	src/include/radpaths.h src/include/attributes.h
 
 src/include/autoconf.sed: src/include/autoconf.h
 	@grep ^#define $< | sed 's,/\*\*/,1,;' | awk '{print "\
@@ -44,6 +45,12 @@ src/include/autoconf.sed: src/include/autoconf.h
 	s,#[[:blank:]]*ifndef[[:blank:]]*" $$2 ",#if !"$$3 ",g;\
 	s,defined(" $$2 ")," $$3 ",g;\
 	s," $$2 ","$$3 ",g;"}' > $@
+
+src/include/radius.h: | src/include/attributes.h
+
+src/include/attributes.h: share/dictionary.freeradius.internal
+	@$(ECHO) HEADER $@
+	@./scripts/dict2h.pl $< > $@
 
 src/freeradius-devel/features.h: src/include/features.h src/freeradius-devel
 
