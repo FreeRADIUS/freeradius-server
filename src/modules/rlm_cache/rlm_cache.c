@@ -708,6 +708,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_cache_it(void *instance, REQUEST *reques
 {
 	rlm_cache_entry_t *c;
 	rlm_cache_t *inst = instance;
+	vp_cursor_t cursor;
 	VALUE_PAIR *vp;
 	char buffer[1024];
 	rlm_rcode_t rcode;
@@ -746,6 +747,22 @@ static rlm_rcode_t CC_HINT(nonnull) mod_cache_it(void *instance, REQUEST *reques
 
 done:
 	PTHREAD_MUTEX_UNLOCK(&inst->cache_mutex);
+
+	/*
+	 *	Reset control attributes
+	 */
+	for (vp = fr_cursor_init(&cursor, &request->config_items);
+	     vp;
+	     vp = fr_cursor_next(&cursor)) {
+		if (vp->da->vendor == 0) switch (vp->da->attr) {
+		case PW_CACHE_TTL:
+		case PW_CACHE_READ_ONLY:
+		case PW_CACHE_MERGE:
+			fr_cursor_remove(&cursor);
+			break;
+		}
+	}
+
 	return rcode;
 }
 
