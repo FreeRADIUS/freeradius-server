@@ -416,7 +416,7 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 			strlcpy(request->password, vp->vp_strvalue,
 				sizeof(request->password));
 
-		} else if ((vp = pairfind(request->packet->vps, PW_MSCHAP_PASSWORD, 0, TAG_ANY)) != NULL) {
+		} else if ((vp = pairfind(request->packet->vps, PW_MS_CHAP_PASSWORD, 0, TAG_ANY)) != NULL) {
 			strlcpy(request->password, vp->vp_strvalue,
 				sizeof(request->password));
 		} else {
@@ -774,7 +774,7 @@ static int send_one_packet(rc_request_t *request)
 					vp->vp_octets = p;
 					vp->length = 17;
 				}
-			} else if (pairfind(request->packet->vps, PW_MSCHAP_PASSWORD, 0, TAG_ANY) != NULL) {
+			} else if (pairfind(request->packet->vps, PW_MS_CHAP_PASSWORD, 0, TAG_ANY) != NULL) {
 				mschapv1_encode(request->packet,
 						&request->packet->vps,
 						request->password);

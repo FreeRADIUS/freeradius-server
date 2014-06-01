@@ -82,25 +82,6 @@ enum eapsim_serverstates {
   eapsim_server_maxstates
 };
 
-#define PW_EAP_SIM_RAND		 1
-#define PW_EAP_SIM_PADDING	      6
-#define PW_EAP_SIM_NONCE_MT	     7
-#define PW_EAP_SIM_PERMANENT_ID_REQ    10
-#define PW_EAP_SIM_MAC		 11
-#define PW_EAP_SIM_NOTIFICATION	12
-#define PW_EAP_SIM_ANY_ID_REQ	  13
-#define PW_EAP_SIM_IDENTITY	    14
-#define PW_EAP_SIM_VERSION_LIST	15
-#define PW_EAP_SIM_SELECTED_VERSION    16
-#define PW_EAP_SIM_FULLAUTH_ID_REQ     17
-#define PW_EAP_SIM_COUNTER	     19
-#define PW_EAP_SIM_COUNTER_TOO_SMALL   20
-#define PW_EAP_SIM_NONCE_S	     21
-#define PW_EAP_SIM_IV		 129
-#define PW_EAP_SIM_ENCR_DATA	  130
-#define PW_EAP_SIM_NEXT_PSEUDONUM     132
-#define PW_EAP_SIM_NEXT_REAUTH_ID     133
-#define PW_EAP_SIM_CHECKCODE	  134
 
 /*
  * interfaces in eapsimlib.c
