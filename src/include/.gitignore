@@ -3,6 +3,7 @@ autoconf.h
 autoconf.sed
 
 # Dynamically generated headers
+attributes.h
 missing.h
 tls.h
 features.h
