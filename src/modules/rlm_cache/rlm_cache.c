@@ -240,12 +240,13 @@ static rlm_cache_entry_t *cache_find(rlm_cache_t *inst, REQUEST *request,
 	/*
 	 *	Update the expiry time based on the TTL.
 	 *	A TTL of 0 means "delete from the cache".
+	 *	A TTL < 0 means "delete from the cache and recreate the entry".
 	 */
 	vp = pairfind(request->config_items, PW_CACHE_TTL, 0, TAG_ANY);
 	if (vp) {
-		if (vp->vp_integer == 0) goto delete;
+		if (vp->vp_signed <= 0) goto delete;
 
-		ttl = vp->vp_integer;
+		ttl = vp->vp_signed;
 		c->expires = request->timestamp + ttl;
 		RDEBUG("Adding %d to the TTL", ttl);
 	}
@@ -295,14 +296,14 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request, char co
 	 *	TTL of 0 means "don't cache this entry"
 	 */
 	vp = pairfind(request->config_items, PW_CACHE_TTL, 0, TAG_ANY);
-	if (vp && (vp->vp_integer == 0)) return NULL;
+	if (vp && (vp->vp_signed == 0)) return NULL;
 
 	c = talloc_zero(inst, rlm_cache_entry_t);
 	c->key = talloc_typed_strdup(c, key);
 	c->created = c->expires = request->timestamp;
 
 	/*
-	 *	Use per-entry TTL, or globally defined one.
+	 *	Use per-entry TTL if > 0, or globally defined one.
 	 */
 	ttl = vp && (vp->vp_signed > 0) ? vp->vp_integer : inst->ttl;
 	c->expires += ttl;
