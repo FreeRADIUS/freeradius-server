@@ -534,10 +534,9 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 		} /* loop over the VP's we read in */
 
 		/*
-		 *	Automatically set the port if we don't have a global
-		 *	or packet specific one.
+		 *	Automatically set the dst port if one wasn't already set.
 		 */
-		if ((server_port == 0) && (request->packet->dst_port == 0)) {
+		if (request->packet->dst_port == 0) {
 			radclient_get_port(request->packet->code, &request->packet->dst_port);
 		}
 
