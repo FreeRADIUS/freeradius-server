@@ -320,16 +320,6 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 			continue;
 		}
 
-		fr_cursor_init(&cursor, &request->filter);
-		vp = fr_cursor_next_by_num(&cursor, PW_PACKET_TYPE, 0, TAG_ANY);
-		if (vp) {
-			fr_cursor_remove(&cursor);
-			request->packet_code = vp->vp_integer;
-			talloc_free(vp);
-		} else {
-			request->packet_code = packet_code; /* Use the default set on the command line */
-		}
-
 		/*
 		 *	Read in filter VP's.
 		 */
@@ -379,54 +369,9 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 			pairsort(&request->filter, attrtagcmp);
 		}
 
+		request->password[0] = '\0';
 		/*
-		 *	Determine the response code from the request (if not already set)
-		 */
-		if (!request->filter_code) {
-			switch (request->packet_code) {
-			case PW_CODE_AUTHENTICATION_REQUEST:
-				request->filter_code = PW_CODE_AUTHENTICATION_ACK;
-				break;
-
-			case PW_CODE_ACCOUNTING_REQUEST:
-				request->filter_code = PW_CODE_ACCOUNTING_RESPONSE;
-				break;
-
-			case PW_CODE_COA_REQUEST:
-				request->filter_code = PW_CODE_COA_ACK;
-				break;
-
-			case PW_CODE_DISCONNECT_REQUEST:
-				request->filter_code = PW_CODE_DISCONNECT_ACK;
-				break;
-
-			default:
-				break;
-			}
-		}
-
-		/*
-		 *	Keep a copy of the the User-Password attribute.
-		 */
-		if ((vp = pairfind(request->packet->vps, PW_USER_PASSWORD, 0, TAG_ANY)) != NULL) {
-			strlcpy(request->password, vp->vp_strvalue,
-				sizeof(request->password));
-		/*
-		 *	Otherwise keep a copy of the CHAP-Password attribute.
-		 */
-		} else if ((vp = pairfind(request->packet->vps, PW_CHAP_PASSWORD, 0, TAG_ANY)) != NULL) {
-			strlcpy(request->password, vp->vp_strvalue,
-				sizeof(request->password));
-
-		} else if ((vp = pairfind(request->packet->vps, PW_MS_CHAP_PASSWORD, 0, TAG_ANY)) != NULL) {
-			strlcpy(request->password, vp->vp_strvalue,
-				sizeof(request->password));
-		} else {
-			request->password[0] = '\0';
-		}
-
-		/*
-		 *	Fix up Digest-Attributes issues
+		 *	Process special attributes
 		 */
 		for (vp = fr_cursor_init(&cursor, &request->packet->vps);
 		     vp;
@@ -445,10 +390,10 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 			default:
 				break;
 
-				/*
-				 *	Allow it to set the packet type in
-				 *	the attributes read from the file.
-				 */
+			/*
+			 *	Allow it to set the packet type in
+			 *	the attributes read from the file.
+			 */
 			case PW_PACKET_TYPE:
 				request->packet->code = vp->vp_integer;
 				break;
@@ -528,9 +473,50 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 					VERIFY_VP(vp);
 				}
 
+			/*
+			 *	Keep a copy of the the password attribute.
+			 */
+			case PW_USER_PASSWORD:
+			case PW_CHAP_PASSWORD:
+			case PW_MS_CHAP_PASSWORD:
+				strlcpy(request->password, vp->vp_strvalue, sizeof(request->password));
 				break;
 			}
 		} /* loop over the VP's we read in */
+
+		 /*
+		  *	Use the default set on the command line
+		  */
+		if (request->packet_code == 0) {
+			request->packet_code = packet_code;
+		}
+
+		/*
+		 *	Automatically set the response code from the request code
+		 *	(if one wasn't already set).
+		 */
+		if (!request->filter_code) {
+			switch (request->packet_code) {
+			case PW_CODE_AUTHENTICATION_REQUEST:
+				request->filter_code = PW_CODE_AUTHENTICATION_ACK;
+				break;
+
+			case PW_CODE_ACCOUNTING_REQUEST:
+				request->filter_code = PW_CODE_ACCOUNTING_RESPONSE;
+				break;
+
+			case PW_CODE_COA_REQUEST:
+				request->filter_code = PW_CODE_COA_ACK;
+				break;
+
+			case PW_CODE_DISCONNECT_REQUEST:
+				request->filter_code = PW_CODE_DISCONNECT_ACK;
+				break;
+
+			default:
+				break;
+			}
+		}
 
 		/*
 		 *	Automatically set the port if we don't have a global
