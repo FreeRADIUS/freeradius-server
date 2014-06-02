@@ -704,8 +704,8 @@ static int send_one_packet(rc_request_t *request)
 #ifdef WITH_TCP
 			if (proto) {
 				mysockfd = fr_tcp_client_socket(NULL,
-								&server_ipaddr,
-								server_port);
+								&request->packet->dst_ipaddr,
+								request->packet->dst_port);
 			} else
 #endif
 			mysockfd = fr_socket(&client_ipaddr, 0);
@@ -714,8 +714,8 @@ static int send_one_packet(rc_request_t *request)
 				exit(1);
 			}
 			if (!fr_packet_list_socket_add(pl, mysockfd, ipproto,
-						       &server_ipaddr,
-						       server_port, NULL)) {
+						       &request->packet->dst_ipaddr,
+						       request->packet->dst_port, NULL)) {
 				ERROR("Can't add new socket");
 				exit(1);
 			}
@@ -923,12 +923,17 @@ static int recv_one_packet(int wait_time)
 	 *	udpfromto issues.  We may have bound to "*",
 	 *	and we want to find the replies that are sent to
 	 *	(say) 127.0.0.1.
+	 *
+	 *	This only works if were not using any of the
+	 *	Packet-* attributes, or running with 'auto'.
 	 */
 	reply->dst_ipaddr = client_ipaddr;
 	reply->dst_port = client_port;
 #ifdef WITH_TCP
-	reply->src_ipaddr = server_ipaddr;
-	reply->src_port = server_port;
+	if (server_port > 0) {
+		reply->src_ipaddr = server_ipaddr;
+		reply->src_port = server_port;
+	}
 #endif
 
 	packet_p = fr_packet_list_find_byreply(pl, reply);
