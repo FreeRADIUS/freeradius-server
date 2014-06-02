@@ -312,6 +312,14 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 			goto error;
 		}
 
+		/*
+		 *	Skip empty entries
+		 */
+		if (!request->packet->vps) {
+			talloc_free(request);
+			continue;
+		}
+
 		fr_cursor_init(&cursor, &request->filter);
 		vp = fr_cursor_next_by_num(&cursor, PW_PACKET_TYPE, 0, TAG_ANY);
 		if (vp) {
