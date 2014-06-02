@@ -484,6 +484,10 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 			case PW_MS_CHAP_PASSWORD:
 				strlcpy(request->password, vp->vp_strvalue, sizeof(request->password));
 				break;
+
+			case PW_RADCLIENT_TEST_NAME:
+				request->name = vp->vp_strvalue;
+				break;
 			}
 		} /* loop over the VP's we read in */
 
@@ -492,6 +496,13 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 		  */
 		if (request->packet_code == 0) {
 			request->packet_code = packet_code;
+		}
+
+		/*
+		 *	Default to the filename
+		 */
+		if (!request->name) {
+			request->name = request->files->packets;
 		}
 
 		/*
@@ -989,10 +1000,10 @@ static int recv_one_packet(int wait_time)
 	 */
 	if (request->reply->code != request->filter_code) {
 		if (is_radius_code(request->reply->code)) {
-			REDEBUG("Expected %s got %s", fr_packet_codes[request->filter_code],
+			REDEBUG("%s: Expected %s got %s", request->name, fr_packet_codes[request->filter_code],
 				fr_packet_codes[request->reply->code]);
 		} else {
-			REDEBUG("Expected %u got %i", request->filter_code,
+			REDEBUG("%s: Expected %u got %i", request->name, request->filter_code,
 				request->reply->code);
 		}
 		stats.failed++;
@@ -1006,11 +1017,11 @@ static int recv_one_packet(int wait_time)
 
 		pairsort(&request->reply->vps, attrtagcmp);
 		if (pairvalidate(failed, request->filter, request->reply->vps)) {
-			RDEBUG("Response passed filter");
+			RDEBUG("%s: Response passed filter", request->name);
 			stats.passed++;
 		} else {
 			pairvalidate_debug(request, failed);
-			REDEBUG("Response failed filter");
+			REDEBUG("%s: Response for failed filter", request->name);
 			stats.failed++;
 		}
 	}

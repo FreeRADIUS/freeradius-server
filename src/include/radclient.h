@@ -83,6 +83,8 @@ struct rc_request {
 	int		resend;
 	int		tries;
 	bool		done;		//!< Whether the request is complete.
+
+	char const	*name;		//!< Test name (as specified in the request).
 };
 
 #ifdef __cplusplus
