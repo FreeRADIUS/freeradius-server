@@ -495,8 +495,8 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 		 /*
 		  *	Use the default set on the command line
 		  */
-		if (request->packet_code == 0) {
-			request->packet_code = packet_code;
+		if (request->packet->code == 0) {
+			request->packet->code = packet_code;
 		}
 
 		/*
@@ -511,7 +511,7 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 		 *	(if one wasn't already set).
 		 */
 		if (!request->filter_code) {
-			switch (request->packet_code) {
+			switch (request->packet->code) {
 			case PW_CODE_AUTHENTICATION_REQUEST:
 				request->filter_code = PW_CODE_AUTHENTICATION_ACK;
 				break;

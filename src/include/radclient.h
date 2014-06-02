@@ -75,7 +75,6 @@ struct rc_request {
 	time_t		timestamp;
 
 	RADIUS_PACKET	*packet;	//!< The outgoing request.
-	PW_CODE		packet_code;	//!< The code in the outgoing request.
 	RADIUS_PACKET	*reply;		//!< The incoming response.
 	VALUE_PAIR	*filter;	//!< If the reply passes the filter, then the request passes.
 	PW_CODE		filter_code;	//!< Expected code of the response packet.
