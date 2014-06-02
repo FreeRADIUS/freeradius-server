@@ -371,6 +371,7 @@ rm -rf $RPM_BUILD_ROOT
 %attr(750,root,radiusd) %{_sysconfdir}/raddb/certs/bootstrap
 %dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/sites-available
 %attr(640,root,radiusd) %{_sysconfdir}/raddb/sites-available/*
+%attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/sites-available/*
 %dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/sites-enabled
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/sites-enabled/*
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/eap.conf
