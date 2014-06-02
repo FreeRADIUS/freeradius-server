@@ -497,7 +497,7 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int in_server)
 	}
 
 	/*
-	 *	Global clients can set servers to use per-server clients cannot.
+	 *	Global clients can set servers to use, per-server clients cannot.
 	 */
 	if (in_server && c->server) {
 		cf_log_err_cs(cs, "Clients inside of an server section cannot point to a server");
