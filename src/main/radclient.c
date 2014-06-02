@@ -308,7 +308,7 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 		 *	Read the request VP's.
 		 */
 		if (readvp2(&request->packet->vps, request->packet, packets, &packets_done) < 0) {
-			ERROR("Error parsing \"%s\"", files->packets);
+			REDEBUG("Error parsing \"%s\"", files->packets);
 			goto error;
 		}
 
@@ -337,23 +337,19 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 			bool filters_done;
 
 			if (readvp2(&request->filter, request, filters, &filters_done) < 0) {
-				ERROR("Error parsing \"%s\"", files->filters);
-				goto error;
-			}
-
-			if (!request->filter) {
+				REDEBUG("Error parsing \"%s\"", files->filters);
 				goto error;
 			}
 
 			if (filters_done && !packets_done) {
-				ERROR("Differing number of packets/filters in %s:%s "
-				      "(too many requests))", files->packets, files->filters);
+				REDEBUG("Differing number of packets/filters in %s:%s "
+				        "(too many requests))", files->packets, files->filters);
 				goto error;
 			}
 
 			if (!filters_done && packets_done) {
-				ERROR("Differing number of packets/filters in %s:%s "
-				      "(too many filters))", files->packets, files->filters);
+				REDEBUG("Differing number of packets/filters in %s:%s "
+				        "(too many filters))", files->packets, files->filters);
 				goto error;
 			}
 
