@@ -73,6 +73,8 @@ static int sleep_time = -1;
 static rc_request_t *request_head = NULL;
 static rc_request_t *rc_request_tail = NULL;
 
+static int rc_debug_flag;
+
 char const *radclient_version = "radclient version " RADIUSD_VERSION_STRING
 #ifdef RADIUSD_VERSION_COMMIT
 " (git #" STRINGIFY(RADIUSD_VERSION_COMMIT) ")"
@@ -1038,7 +1040,13 @@ int main(int argc, char **argv)
 	rc_request_t	*this;
 	int force_af = AF_UNSPEC;
 
-	fr_debug_flag = 2;
+	/*
+	 *	It's easier having two sets of flags to set the
+	 *	verbosity of library calls and the verbosity of
+	 *	radclient.
+	 */
+	rc_debug_flag = 1;
+	fr_debug_flag = 0;
 	fr_log_fp = stdout;
 
 #ifndef NDEBUG
@@ -1148,6 +1156,7 @@ int main(int argc, char **argv)
 			do_output = false;
 			fr_log_fp = NULL; /* no output from you, either! */
 			break;
+
 		case 'r':
 			if (!isdigit((int) *optarg))
 				usage();
@@ -1197,6 +1206,7 @@ int main(int argc, char **argv)
 			break;
 		case 'x':
 			fr_debug_flag++;
+			rc_debug_flag++;
 			break;
 		case 'h':
 		default:
