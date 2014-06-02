@@ -2152,7 +2152,7 @@ int rest_response_decode(rlm_rest_t *instance, UNUSED rlm_rest_section_t *sectio
 
 	if (!ctx->response.buffer) {
 		RDEBUG2("Skipping attribute processing, no valid body data received");
-		return ret;
+		return 0;
 	}
 
 	RDEBUG3("Processing response body");
