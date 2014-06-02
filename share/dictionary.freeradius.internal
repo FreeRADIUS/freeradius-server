@@ -548,7 +548,13 @@ ATTRIBUTE	SoH-MS-Windows-Health-Status		2120	string
 ATTRIBUTE	SoH-MS-Health-Other			2129	string
 
 #
-#	Range:	2200-2999
+#	Range:	2200-2219
+#		Utilities bundled with the server
+#
+ATTRIBUTE	Radclient-Test-Name			2200	string
+
+#
+#	Range:	2220-2999
 #		Free
 #
 #	Range:	3000-3999
