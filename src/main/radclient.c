@@ -709,7 +709,7 @@ static int send_one_packet(rc_request_t *request)
 #endif
 			mysockfd = fr_socket(&client_ipaddr, 0);
 			if (mysockfd < 0) {
-				ERROR("Can't open new socket: %s", strerror(errno));
+				ERROR("Failed opening socket");
 				exit(1);
 			}
 			if (!fr_packet_list_socket_add(pl, mysockfd, ipproto,
