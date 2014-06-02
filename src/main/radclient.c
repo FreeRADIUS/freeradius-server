@@ -346,14 +346,6 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 				goto error;
 			}
 
-			fr_cursor_init(&cursor, &request->filter);
-			vp = fr_cursor_next_by_num(&cursor, PW_PACKET_TYPE, 0, TAG_ANY);
-			if (vp) {
-				fr_cursor_remove(&cursor);
-				request->filter_code = vp->vp_integer;
-				talloc_free(vp);
-			}
-
 			/*
 			 *	xlat expansions aren't supported here
 			 */
@@ -363,6 +355,17 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 				if (vp->type == VT_XLAT) {
 					vp->type = VT_DATA;
 					vp->vp_strvalue = vp->value.xlat;
+				}
+
+				if (vp->da->vendor == 0 ) switch (vp->da->attr) {
+				case PW_RESPONSE_PACKET_TYPE:
+				case PW_PACKET_TYPE:
+					fr_cursor_remove(&cursor);	/* so we don't break the filter */
+					request->filter_code = vp->vp_integer;
+					talloc_free(vp);
+
+				default:
+					break;
 				}
 			}
 
