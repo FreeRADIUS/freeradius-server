@@ -995,7 +995,7 @@ static int recv_one_packet(int wait_time)
 	 *	packet matched that.
 	 */
 	if (request->reply->code != request->filter_code) {
-		if (is_radius_code(request->packet_code)) {
+		if (is_radius_code(request->reply->code)) {
 			REDEBUG("Expected %s got %s", fr_packet_codes[request->filter_code],
 				fr_packet_codes[request->reply->code]);
 		} else {
