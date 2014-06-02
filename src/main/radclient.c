@@ -286,7 +286,6 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 			ERROR("Out of memory");
 			goto error;
 		}
-		talloc_set_destructor(request, _rc_request_free);
 
 		request->packet = rad_alloc(request, 1);
 		if (!request->packet) {
@@ -552,6 +551,7 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 		}
 		rc_request_tail = request;
 		request->next = NULL;
+		talloc_set_destructor(request, _rc_request_free);
 
 	} while (!packets_done); /* loop until the file is done. */
 
