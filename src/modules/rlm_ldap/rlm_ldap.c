@@ -1129,18 +1129,19 @@ static rlm_rcode_t user_modify(ldap_instance_t *inst, REQUEST *request, ldap_acc
 			continue;
 		}
 
-		switch (cf_pair_value_type(cp))
-		{
-			case T_BARE_WORD:
-			case T_SINGLE_QUOTED_STRING:
+		switch (cf_pair_value_type(cp)) {
+		case T_BARE_WORD:
+		case T_SINGLE_QUOTED_STRING:
 			break;
-			case T_BACK_QUOTED_STRING:
-			case T_DOUBLE_QUOTED_STRING:
-				do_xlat = true;
+
+		case T_BACK_QUOTED_STRING:
+		case T_DOUBLE_QUOTED_STRING:
+			do_xlat = true;
 			break;
-			default:
-				rad_assert(0);
-				goto error;
+
+		default:
+			rad_assert(0);
+			goto error;
 		}
 
 		if (op == T_OP_CMP_FALSE) {
@@ -1171,8 +1172,7 @@ static rlm_rcode_t user_modify(ldap_instance_t *inst, REQUEST *request, ldap_acc
 
 		last_pass += 2;
 
-		switch (op)
-		{
+		switch (op) {
 		/*
 		 *  T_OP_EQ is *NOT* supported, it is impossible to
 		 *  support because of the lack of transactions in LDAP
@@ -1206,7 +1206,7 @@ static rlm_rcode_t user_modify(ldap_instance_t *inst, REQUEST *request, ldap_acc
 		 *	Now we know the value is ok, copy the pointers into
 		 *	the ldapmod struct.
 		 */
-		memcpy(&(mod_s[total].mod_type), &(attr), sizeof(mod_s[total].mod_type));
+		memcpy(&(mod_s[total].mod_type), &attr, sizeof(mod_s[total].mod_type));
 
 		mod_p[total] = &(mod_s[total]);
 		total++;

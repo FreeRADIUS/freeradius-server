@@ -1542,7 +1542,7 @@ static size_t rest_response_header(void *in, size_t size, size_t nmemb, void *us
 					ctx->type = ctx->force_to;
 				}
 			/*
-			 *  Assume the force_to value has already been validation.
+			 *  Assume the force_to value has already been validated.
 			 */
 			} else switch (http_body_type_supported[ctx->type]) {
 			case HTTP_BODY_UNKNOWN:

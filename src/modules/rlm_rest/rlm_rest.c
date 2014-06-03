@@ -165,7 +165,7 @@ static ssize_t rest_xlat(void *instance, REQUEST *request,
 	len = rest_uri_host_unescape(&uri, instance, request, handle, fmt);
 	if (len <= 0) {
 		outlen = -1;
-		goto end;
+		goto finish;
 	}
 
 	RDEBUG("Sending HTTP %s to \"%s\"", fr_int2str(http_method_table, section.method, NULL), uri);
@@ -195,10 +195,10 @@ static ssize_t rest_xlat(void *instance, REQUEST *request,
 	case 403:
 	case 401:
 		outlen = -1;
-		goto end;
+		goto finish;
 
 	case 204:
-		goto end;
+		goto finish;
 
 	default:
 		/*
@@ -208,10 +208,10 @@ static ssize_t rest_xlat(void *instance, REQUEST *request,
 			break;
 		} else if (hcode < 500) {
 			outlen = -2;
-			goto end;
+			goto finish;
 		} else {
 			outlen = -1;
-			goto end;
+			goto finish;
 		}
 	}
 
@@ -220,14 +220,14 @@ static ssize_t rest_xlat(void *instance, REQUEST *request,
 		REDEBUG("Insufficient space to write HTTP response, needed %zu bytes, have %zu bytes", len + 1,
 			freespace);
 		outlen = -1;
-		goto end;
+		goto finish;
 	}
 	if (len > 0) {
 		outlen = len;
 		strlcpy(out, body, len + 1);	/* strlcpy takes the size of the buffer */
 	}
 
-end:
+finish:
 	rlm_rest_cleanup(instance, &section, handle);
 
 	fr_connection_release(inst->conn_pool, handle);
@@ -257,7 +257,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 	ret = rlm_rest_perform(instance, section, handle, request, NULL, NULL);
 	if (ret < 0) {
 		rcode = RLM_MODULE_FAIL;
-		goto end;
+		goto finish;
 	}
 
 	hcode = rest_get_handle_code(handle);
@@ -305,8 +305,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 		}
 	}
 
-	end:
-
+finish:
 	rlm_rest_cleanup(instance, section, handle);
 
 	fr_connection_release(inst->conn_pool, handle);
@@ -350,7 +349,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED REQU
 	ret = rlm_rest_perform(instance, section, handle, request, username->vp_strvalue, password->vp_strvalue);
 	if (ret < 0) {
 		rcode = RLM_MODULE_FAIL;
-		goto end;
+		goto finish;
 	}
 
 	hcode = rest_get_handle_code(handle);
@@ -398,8 +397,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED REQU
 		}
 	}
 
-	end:
-
+finish:
 	rlm_rest_cleanup(instance, section, handle);
 
 	fr_connection_release(inst->conn_pool, handle);
@@ -426,7 +424,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED REQUES
 	ret = rlm_rest_perform(inst, section, handle, request, NULL, NULL);
 	if (ret < 0) {
 		rcode = RLM_MODULE_FAIL;
-		goto end;
+		goto finish;
 	}
 
 	hcode = rest_get_handle_code(handle);
@@ -443,7 +441,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED REQUES
 		rcode = RLM_MODULE_INVALID;
 	}
 
-end:
+finish:
 	rlm_rest_cleanup(inst, section, handle);
 
 	fr_connection_release(inst->conn_pool, handle);
@@ -470,7 +468,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED REQUEST
 	ret = rlm_rest_perform(inst, section, handle, request, NULL, NULL);
 	if (ret < 0) {
 		rcode = RLM_MODULE_FAIL;
-		goto end;
+		goto finish;
 	}
 
 	hcode = rest_get_handle_code(handle);
@@ -487,7 +485,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED REQUEST
 		rcode = RLM_MODULE_INVALID;
 	}
 
-end:
+finish:
 	rlm_rest_cleanup(inst, section, handle);
 
 	fr_connection_release(inst->conn_pool, handle);
@@ -560,20 +558,19 @@ static int parse_sub_section(CONF_SECTION *parent, rlm_rest_section_t *config, r
 			return -1;
 		}
 
-		switch (http_body_type_supported[config->body])
-		{
-			case HTTP_BODY_UNSUPPORTED:
-				cf_log_err_cs(cs, "Unsupported HTTP body type \"%s\", please submit patches",
-					      config->body_str);
-				return -1;
+		switch (http_body_type_supported[config->body]) {
+		case HTTP_BODY_UNSUPPORTED:
+			cf_log_err_cs(cs, "Unsupported HTTP body type \"%s\", please submit patches",
+				      config->body_str);
+			return -1;
 
-			case HTTP_BODY_INVALID:
-				cf_log_err_cs(cs, "Invalid HTTP body type.  \"%s\" is not a valid web API data "
-					      "markup format", config->body_str);
-				return -1;
+		case HTTP_BODY_INVALID:
+			cf_log_err_cs(cs, "Invalid HTTP body type.  \"%s\" is not a valid web API data "
+				      "markup format", config->body_str);
+			return -1;
 
-			default:
-				break;
+		default:
+			break;
 		}
 	/*
 	 *  We have custom body data so we set HTTP_BODY_CUSTOM, but also need to try and
