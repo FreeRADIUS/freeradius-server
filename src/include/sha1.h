@@ -24,8 +24,6 @@ void fr_SHA1Final(uint8_t digest[20], fr_SHA1_CTX *context);
 /*
  * this version implements a raw SHA1 transform, no length is appended,
  * nor any 128s out to the block size.
- *
- *	Hmm... this function doesn't appear to be used anywhere.
  */
 void fr_SHA1FinalNoLen(uint8_t digest[20], fr_SHA1_CTX* context);
 
