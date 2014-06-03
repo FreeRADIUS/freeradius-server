@@ -644,9 +644,15 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int in_server)
 		cl_srcipaddr = NULL;
 	}
 
-	FR_TIMEVAL_BOUND_CHECK("response_window", &c->response_window, >=, 0, 1000);
-	FR_TIMEVAL_BOUND_CHECK("response_window", &c->response_window, <=, 60, 0);
-	FR_TIMEVAL_BOUND_CHECK("response_window", &c->response_window, <=, main_config.max_request_time, 0);
+	/*
+	 *	A response_window of zero is OK, and means that it's
+	 *	ignored by the rest of the server timers.
+	 */
+	if (timerisset(&c->response_window)) {
+		FR_TIMEVAL_BOUND_CHECK("response_window", &c->response_window, >=, 0, 1000);
+		FR_TIMEVAL_BOUND_CHECK("response_window", &c->response_window, <=, 60, 0);
+		FR_TIMEVAL_BOUND_CHECK("response_window", &c->response_window, <=, main_config.max_request_time, 0);
+	}
 
 #ifdef WITH_DYNAMIC_CLIENTS
 	if (c->client_server) {
