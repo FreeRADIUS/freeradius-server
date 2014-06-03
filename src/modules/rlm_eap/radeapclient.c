@@ -61,8 +61,6 @@ char const *radiusd_version = "";
 #include <freeradius-devel/tls.h>
 #endif
 
-log_dst_t radlog_dest = L_DST_STDERR;
-char const *radlog_dir = NULL;
 log_debug_t debug_flag = 0;
 char password[256];
 
@@ -72,11 +70,6 @@ static void map_eap_methods(RADIUS_PACKET *req);
 static void unmap_eap_methods(RADIUS_PACKET *rep);
 static int map_eapsim_types(RADIUS_PACKET *r);
 static int unmap_eapsim_types(RADIUS_PACKET *r);
-
-void debug_pair_list(UNUSED VALUE_PAIR *vp)
-{
-	return;
-}
 
 static void NEVER_RETURNS usage(void)
 {
@@ -98,26 +91,6 @@ static void NEVER_RETURNS usage(void)
 	fprintf(stderr, "  -6	  Use IPv6 address of server.\n");
 
 	exit(1);
-}
-
-int radlog(UNUSED log_type_t lvl, char const *fmt, ...)
-{
-	va_list ap;
-	int r;
-
-	va_start(ap, fmt);
-	r = vfprintf(stderr, fmt, ap);
-	va_end(ap);
-	fputc('\n', stderr);
-
-	return r;
-}
-
-void vradlog_request(UNUSED log_type_t lvl, UNUSED log_debug_t priority,
-		     UNUSED REQUEST *request, char const *msg, va_list ap)
-{
-	vfprintf(stderr, msg, ap);
-	fputc('\n', stderr);
 }
 
 static uint16_t getport(char const *name)
@@ -1028,6 +1001,16 @@ int main(int argc, char **argv)
 	int id;
 	int force_af = AF_UNSPEC;
 
+	static fr_log_t default_log = {
+		.colourise = true,
+		.fd = STDOUT_FILENO,
+		.dst = L_DST_STDOUT,
+		.file = NULL,
+		.debug_file = NULL,
+	};
+
+	radlog_init(&default_log, false);
+
 	/*
 	 *	We probably don't want to free the talloc autofree context
 	 *	directly, so we'll allocate a new context beneath it, and
@@ -1037,8 +1020,6 @@ int main(int argc, char **argv)
 
 	id = ((int)getpid() & 0xff);
 	fr_debug_flag = 0;
-
-	radlog_dest = L_DST_STDERR;
 
 	set_radius_dir(autofree, RADIUS_DIR);
 
