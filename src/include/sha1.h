@@ -40,11 +40,8 @@ USES_APPLE_DEPRECATED_API
 
 /*
  * FIPS 186-2 PRF based upon SHA1.
- *
- *	Hmm... this is only used in src/modules/rlm_eap/libeap/
- *	why is the prototype here?
  */
-extern void fips186_2prf(uint8_t mk[20], uint8_t finalkey[160]);
+void fips186_2prf(uint8_t mk[20], uint8_t finalkey[160]);
 
 #ifdef __cplusplus
 }
