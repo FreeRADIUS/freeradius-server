@@ -824,9 +824,6 @@ static void request_process_timer(REQUEST *request)
 	switch (request->child_state) {
 	case REQUEST_QUEUED:
 	case REQUEST_RUNNING:
-#ifdef WITH_PROXY
-	case REQUEST_PROXIED:
-#endif
 		when = request->packet->timestamp;
 		when.tv_sec += request->root->max_request_time;
 
@@ -850,41 +847,54 @@ static void request_process_timer(REQUEST *request)
 #endif
 			request->master_state = REQUEST_STOP_PROCESSING;
 		}
+		goto delay;	/* sleep some more */
 
 #ifdef WITH_PROXY
-		/*
-		 *	We should wait for the proxy reply.
-		 */
-		if (request->child_state == REQUEST_PROXIED) {
-			rad_assert(request->proxy != NULL);
+	case REQUEST_PROXIED:
+		when = request->packet->timestamp;
+		when.tv_sec += request->root->max_request_time;
 
-#ifdef WITH_COA
-			/*
-			 *	Ugh.
-			 */
-			if (request->packet->code != request->proxy->code) {
-				if (request->proxy_reply) {
-					request->process = coa_running;
-				} else {
-					request->process = coa_wait_for_reply;
-				}
-				goto delay;
-			}
-#endif
-			if (request->proxy_reply) {
-				request->process = proxy_running;
-			} else {
-				request->process = proxy_wait_for_reply;
-			}
+		if (timercmp(&now, &when, >=)) {
+			RWDEBUG("No response to proxied request in 'max_request_time'.  Stopping it.");
+			request->master_state = REQUEST_STOP_PROCESSING;
+			request_done(request, FR_ACTION_DONE);
+			break;
 		}
+
+		rad_assert(request->proxy != NULL);
+#ifdef WITH_COA
+		/*
+		 *	Ugh.
+		 */
+		if (request->packet->code != request->proxy->code) {
+			if (request->proxy_reply) {
+				request->process = coa_running;
+			} else {
+				request->process = coa_wait_for_reply;
+			}
+		} else
 #endif
 
+		if (request->proxy_reply) {
+			request->process = proxy_running;
+		} else {
+			request->process = proxy_wait_for_reply;
+		}
+
+		when = request->proxy->timestamp;
+		tv_add(&when, request->delay);
+
+		if (timercmp(&now, &when, >=)) {
+			request->process(request, FR_ACTION_TIMER);
+			return;
+		}
+
 		/*
-		 *	If the request has been told to die, we wait.
-		 *	Otherwise, we wait for the child thread to
-		 *	finish it's work.
+		 *	Leave the initial delay alone.
 		 */
-		goto delay;
+		STATE_MACHINE_TIMER(FR_ACTION_TIMER);
+		return;
+#endif	/* WITH_PROXY */
 
 	case REQUEST_RESPONSE_DELAY:
 		rad_assert(request->response_delay > 0);
@@ -972,7 +982,7 @@ static void request_queue_or_run(UNUSED REQUEST *request,
 		/*
 		 *	(re) set the initial delay.
 		 */
-		request->delay =  (main_config.init_delay.tv_sec * USEC) + main_config.init_delay.tv_usec;
+		request->delay = (main_config.init_delay.tv_sec * USEC) + main_config.init_delay.tv_usec;
 		if (request->delay > USEC) request->delay = USEC;
 		gettimeofday(&when, NULL);
 		tv_add(&when, request->delay);
@@ -3360,8 +3370,11 @@ STATE_MACHINE_DECL(proxy_wait_for_reply)
 			 *	that.
 			 */
 			if (timercmp(&when, &now, >)) {
+				struct timeval diff;
+				timersub(&when, &now, &diff);
+
 				RDEBUG("Expecting proxy response no later than %d.%06d seconds from now",
-				       (int) response_window->tv_sec, (int) response_window->tv_usec);
+				       (int) diff.tv_sec, (int) diff.tv_usec);
 				STATE_MACHINE_TIMER(FR_ACTION_TIMER);
 				return;
 			}
