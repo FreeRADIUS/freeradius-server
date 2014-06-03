@@ -1001,7 +1001,7 @@ int main(int argc, char **argv)
 	int id;
 	int force_af = AF_UNSPEC;
 
-	static fr_log_t default_log = {
+	static fr_log_t radclient_log = {
 		.colourise = true,
 		.fd = STDOUT_FILENO,
 		.dst = L_DST_STDOUT,
@@ -1009,7 +1009,7 @@ int main(int argc, char **argv)
 		.debug_file = NULL,
 	};
 
-	radlog_init(&default_log, false);
+	radlog_init(&radclient_log, false);
 
 	/*
 	 *	We probably don't want to free the talloc autofree context
