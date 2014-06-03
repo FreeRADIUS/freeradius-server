@@ -124,8 +124,11 @@ HOSTINFO	= @HOSTINFO@
 #  If the system has OpenSSL, use it's version of MD4/MD5/SHA1, instead of
 #  using ours.
 #
+#  We don't use OpenSSL SHA1 by default because src/modules/rlm_eap/libeap/fips186prf.c
+#  needs access to the SHA internals.
+#
 ifeq "$(WITH_OPENSSL)" "yes"
-CFLAGS		+=  -DWITH_OPENSSL_MD4 -DWITH_OPENSSL_MD5 -DWITH_OPENSSL_SHA1
+CFLAGS		+=  -DWITH_OPENSSL_MD4 -DWITH_OPENSSL_MD5
 endif
 
 OPENSSL_LIBS	= @OPENSSL_LIBS@
