@@ -2755,13 +2755,30 @@ static int request_proxy(REQUEST *request, int retransmit)
 
 	rad_assert(request->proxy->id >= 0);
 
-	RDEBUG2("Proxying request to home server %s port %d",
-	       inet_ntop(request->proxy->dst_ipaddr.af,
-			 &request->proxy->dst_ipaddr.ipaddr,
-			 buffer, sizeof(buffer)),
-		request->proxy->dst_port);
+	if (debug_flag) {
+		struct timeval *response_window;
 
-	DEBUG_PACKET(request, request->proxy, 1);
+		response_window = request_response_window(request);
+
+#ifdef WITH_TLS
+		if (request->home_server->tls) {
+			RDEBUG2("Proxying request to home server %s port %d (TLS) timeout %d.%06d",
+				inet_ntop(request->proxy->dst_ipaddr.af,
+					  &request->proxy->dst_ipaddr.ipaddr,
+					  buffer, sizeof(buffer)),
+				request->proxy->dst_port,
+				(int) response_window->tv_sec, (int) response_window->tv_usec);
+		} else
+#endif
+			RDEBUG2("Proxying request to home server %s port %d timeout %d.%06d",
+				inet_ntop(request->proxy->dst_ipaddr.af,
+					  &request->proxy->dst_ipaddr.ipaddr,
+					  buffer, sizeof(buffer)),
+				request->proxy->dst_port,
+				(int) response_window->tv_sec, (int) response_window->tv_usec);
+
+		DEBUG_PACKET(request, request->proxy, 1);
+	}
 
 	gettimeofday(&request->proxy_retransmit, NULL);
 	if (!retransmit) {
