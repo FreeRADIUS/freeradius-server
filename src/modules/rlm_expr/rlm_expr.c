@@ -680,6 +680,29 @@ static size_t base64_to_hex_xlat(UNUSED void *instance, REQUEST *request,
 	return declen * 2;
 }
 
+/**
+ * @brief Convert string to number
+ *
+ * Example: "%{tonumber:00123}" == "123"
+ * uses OpenBSD's strtonum() for safety
+ */
+static size_t strtonum_xlat(UNUSED void *instance, REQUEST *request,
+			  char *fmt, char *out, size_t outlen,
+			  UNUSED RADIUS_ESCAPE_STRING func)
+{
+	size_t len;
+	char buffer[1024];
+
+	len = radius_xlat(buffer, sizeof(buffer), fmt, request, func);
+	if (!len) {
+		radlog(L_ERR, "rlm_expr: xlat failed.");
+		*out = '\0';
+		return 0;
+	}
+
+	len = snprintf(out, outlen, "%lld", strtonum(buffer, LONG_MIN, LONG_MAX, NULL));
+	return strlen(out);
+}
 
 /*
  *	Do any per-module initialization that is separate to each
@@ -722,6 +745,7 @@ static int expr_instantiate(CONF_SECTION *conf, void **instance)
 	xlat_register("sha1", sha1_xlat, inst);
 	xlat_register("tobase64", base64_xlat, inst);
 	xlat_register("base64tohex", base64_to_hex_xlat, inst);
+	xlat_register("tonumber", strtonum_xlat, inst);
 
 	/*
 	 * Initialize various paircompare functions
