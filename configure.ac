@@ -1357,6 +1357,49 @@ if test "x$ac_cv_type_struct_in6_pktinfo_has_ipi6_addr" = "xyes"; then
   AC_DEFINE(HAVE_IN6_PKTINFO, [], [define if you have IN6_PKTINFO (Linux)])
 fi
 
+dnl #
+dnl #  Check for htonll and htonlll
+dnl #
+AC_MSG_CHECKING([if htonll is defined])
+AC_LINK_IFELSE(
+  [AC_LANG_PROGRAM(
+    [[
+      #include <sys/types.h>
+      #include <netinet/in.h>
+    ]],
+    [[
+      return htonll(0);
+    ]]
+  )],
+  [
+      AC_MSG_RESULT(yes)
+      AC_DEFINE(HAVE_HTONLL, 1, [Define if the function (or macro) htonll exists.])
+  ],
+  [
+      AC_MSG_RESULT(no)
+  ]
+)
+
+AC_MSG_CHECKING([if htonlll is defined])
+AC_LINK_IFELSE(
+  [AC_LANG_PROGRAM(
+    [[
+      #include <sys/types.h>
+      #include <netinet/in.h>
+    ]],
+    [[
+      return htonll(0);
+    ]]
+  )],
+  [
+      AC_MSG_RESULT(yes)
+      AC_DEFINE(HAVE_HTONLLL, 1, [Define if the function (or macro) htonlll exists.])
+  ],
+  [
+      AC_MSG_RESULT(no)
+  ]
+)
+
 dnl #############################################################
 dnl #
 dnl #  6. Checks for compiler characteristics
@@ -1440,6 +1483,7 @@ dnl #
 FR_TLS
 FR_HAVE_BUILTIN_CHOOSE_EXPR
 FR_HAVE_BUILTIN_TYPES_COMPATIBLE_P
+FR_HAVE_BUILTIN_BSWAP_64
 
 dnl #############################################################
 dnl #

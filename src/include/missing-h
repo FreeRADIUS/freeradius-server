@@ -403,21 +403,31 @@ typedef struct int128_t { uint8_t v[16]; } int128_t;
 #endif
 
 /* abcd efgh -> dcba hgfe -> hgfe dcba */
-#ifdef LITTLE_ENDIAN
-#  define ntohll(x) (((uint64_t)ntohl((uint32_t)(x >> 32))) | (((uint64_t)ntohl(((uint32_t) x)) << 32)))
-
-#  ifdef HAVE_128BIT_INTEGERS
-#    define ntohlll(x) (((uint128_t)ntohll((uint64_t)(x >> 64))) | (((uint128_t)ntohll(((uint64_t) x)) << 64)))
+#ifndef HAVE_HTON_LL
+#  ifdef LITTLE_ENDIAN
+#    ifdef HAVE_BUILTIN_BSWAP64
+#      define ntohll(x) __builtin_bswap64(x)
+#    else
+#      define ntohll(x) (((uint64_t)ntohl((uint32_t)(x >> 32))) | (((uint64_t)ntohl(((uint32_t) x)) << 32)))
+#    endif
 #  else
-uint128_t ntohlll(uint128_t num);
+#    define ntohll(x) (x)
 #  endif
-#else
-#  define ntohll(x) (x)
-#  define ntohlll(x) (x)
+#  define htonll(x) ntohll(x)
 #endif
 
-#define htonll(x) ntohll(x)
-#define htonlll(x) htohlll(x)
+#ifndef HAVE_HTON_LLL
+#  ifdef LITTLE_ENDIAN
+#    ifdef HAVE_128BIT_INTEGERS
+#      define ntohlll(x) (((uint128_t)ntohll((uint64_t)(x >> 64))) | (((uint128_t)ntohll(((uint64_t) x)) << 64)))
+#    else
+uint128_t ntohlll(uint128_t num);
+#    endif
+#  else
+#    define ntohlll(x) (x)
+#  endif
+#  define htonlll(x) htohlll(x)
+#endif
 
 #ifdef __cplusplus
 }
