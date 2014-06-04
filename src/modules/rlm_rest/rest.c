@@ -311,26 +311,25 @@ void *mod_conn_create(void *instance)
 		return NULL;
 	}
 
-	if (!inst->connect_uri) {
-		ERROR("rlm_rest (%s): Skipping pre-connect, connect_uri not specified", inst->xlat_name);
-		return candle;
-	}
+	if (inst->connect_uri) {
+		/*
+		 *  re-establish TCP connection to webserver. This would usually be
+		 *  done on the first request, but we do it here to minimise
+		 *  latency.
+		 */
+		SET_OPTION(CURLOPT_CONNECT_ONLY, 1);
+		SET_OPTION(CURLOPT_URL, inst->connect_uri);
 
-	/*
-	 *  re-establish TCP connection to webserver. This would usually be
-	 *  done on the first request, but we do it here to minimise
-	 *  latency.
-	 */
-	SET_OPTION(CURLOPT_CONNECT_ONLY, 1);
-	SET_OPTION(CURLOPT_URL, inst->connect_uri);
+		DEBUG("rlm_rest (%s): Connecting to \"%s\"", inst->xlat_name, inst->connect_uri);
 
-	DEBUG("rlm_rest (%s): Connecting to \"%s\"", inst->xlat_name, inst->connect_uri);
+		ret = curl_easy_perform(candle);
+		if (ret != CURLE_OK) {
+			ERROR("rlm_rest (%s): Connection failed: %i - %s", inst->xlat_name, ret, curl_easy_strerror(ret));
 
-	ret = curl_easy_perform(candle);
-	if (ret != CURLE_OK) {
-		ERROR("rlm_rest (%s): Connection failed: %i - %s", inst->xlat_name, ret, curl_easy_strerror(ret));
-
-		goto connection_error;
+			goto connection_error;
+		}
+	} else {
+		DEBUG2("rlm_rest (%s): Skipping pre-connect, connect_uri not specified", inst->xlat_name);
 	}
 
 	/*
@@ -1831,6 +1830,7 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 
 	char buffer[512];
 
+	rad_assert(candle);
 	rad_assert((!username && !password) || (username && password));
 
 	buffer[(sizeof(buffer) - 1)] = '\0';
