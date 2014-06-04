@@ -553,11 +553,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *inst, REQUEST *request)
 	vp_cursor_t	cursor;
 
 	/*
-	 *	Just in case the admin lists EAP in post-proxy-type Fail.
-	 */
-	if (!request->proxy_reply) return RLM_MODULE_NOOP;
-
-	/*
 	 *	If there was a handler associated with this request,
 	 *	then it's a tunneled request which was proxied...
 	 */
