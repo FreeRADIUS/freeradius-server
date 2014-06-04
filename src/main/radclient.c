@@ -355,6 +355,7 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 				if (vp->type == VT_XLAT) {
 					vp->type = VT_DATA;
 					vp->vp_strvalue = vp->value.xlat;
+					vp->length = talloc_array_length(vp->vp_strvalue) - 1;
 				}
 
 				if (vp->da->vendor == 0 ) switch (vp->da->attr) {
@@ -387,9 +388,9 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 			 *	but we don't support that in request.
 			 */
 			if (vp->type == VT_XLAT) {
-				vp->vp_strvalue = vp->value.xlat;
-				vp->value.xlat = NULL;
 				vp->type = VT_DATA;
+				vp->vp_strvalue = vp->value.xlat;
+				vp->length = talloc_array_length(vp->vp_strvalue) - 1;
 			}
 
 			if (!vp->da->vendor) switch (vp->da->attr) {
