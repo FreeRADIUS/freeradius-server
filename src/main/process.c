@@ -71,7 +71,11 @@ static char const *action_codes[] = {
 };
 
 #ifdef DEBUG_STATE_MACHINE
-#define TRACE_STATE_MACHINE if (debug_flag) printf("(%u) ********\tSTATE %s action %s live M-%s C-%s\t********\n", request->number, __FUNCTION__, action_codes[action], master_state_names[request->master_state], child_state_names[request->child_state])
+#define TRACE_STATE_MACHINE if (debug_flag) do { struct timeval debug_tv; \
+						 gettimeofday(&debug_tv, NULL);\
+						 debug_tv.tv_sec -= fr_start_time;\
+						 printf("(%u) %d.%06d ********\tSTATE %s action %s live M-%s C-%s\t********\n",\
+							request->number, (int) debug_tv.tv_sec, (int) debug_tv.tv_usec,  __FUNCTION__, action_codes[action], master_state_names[request->master_state], child_state_names[request->child_state]); } while (0)
 
 static char const *master_state_names[REQUEST_MASTER_NUM_STATES] = {
 	"?",
@@ -4556,7 +4560,6 @@ int radius_event_start(CONF_SECTION *cs, bool have_children)
 		 *  radius_event_init() must be called first
 		 */
 		rad_assert(el);
-		if (fr_start_time == (time_t)-1) return 0;
 
 		pl = fr_packet_list_create(0);
 		if (!pl) return 0;	/* leak el */
