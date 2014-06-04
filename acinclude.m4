@@ -498,4 +498,27 @@ AC_DEFUN([FR_HAVE_BUILTIN_TYPES_COMPATIBLE_P],
   fi
 ])
 
+dnl #
+dnl #  Check if we have the bwsap64 builtin
+dnl #
+AC_DEFUN([FR_HAVE_BUILTIN_BSWAP_64],
+[
+dnl #
+dnl #  See if the compilation works with __thread, for thread-local storage
+dnl #
+  AC_MSG_CHECKING(for __builtin_bswap64 support in compiler)
+  AC_RUN_IFELSE(
+    [AC_LANG_SOURCE(
+      [[
+        int main(int argc, char **argv) {
+          return (__builtin_bswap64(0));
+        }
+      ]])
+    ],[have_builtin_bswap64=yes],[have_builtin_bswap64=no],[have_builtin_bswap64=no])
+  AC_MSG_RESULT($have_builtin_bswap64)
+  if test "x$have_builtin_bswap64" = "xyes"; then
+    AC_DEFINE([HAVE_BUILTIN_BSWAP_64],1,[Define if the compiler supports __builtin_types_compatible_p])
+  fi
+])
+
 AC_INCLUDE(aclocal.m4)
