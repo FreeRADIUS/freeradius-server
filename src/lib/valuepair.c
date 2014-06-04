@@ -505,14 +505,6 @@ void pairvalidate_debug(TALLOC_CTX *ctx, VALUE_PAIR const *failed[2])
 		return;
 	}
 
-#ifndef NDEBUG
-	/*
-	 *  If we got this far and can't find a difference between the VALUE_PAIRs
-	 *  there's a difference between the VALUE_PAIRs.
-	 */
-	fr_assert(paircmp_value(filter, list) != 0);
-#endif
-
 	pair = vp_aprint(ctx, filter);
 	value = vp_aprint_value(ctx, list);
 
@@ -575,7 +567,7 @@ bool pairvalidate(VALUE_PAIR const *failed[2], VALUE_PAIR *filter, VALUE_PAIR *l
 		 *	Note that the RFCs say that for attributes of
 		 *	the same type, order is important.
 		 */
-		if (paircmp(check, match) != 0) goto mismatch;
+		if (paircmp(check, match) != 1) goto mismatch;
 
 		check = fr_cursor_next(&filter_cursor);
 		match = fr_cursor_next(&list_cursor);
