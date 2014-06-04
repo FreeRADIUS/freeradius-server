@@ -555,9 +555,11 @@ bool pairvalidate(VALUE_PAIR const *failed[2], VALUE_PAIR *filter, VALUE_PAIR *l
 
 	check = fr_cursor_init(&filter_cursor, &filter);
 	match = fr_cursor_init(&list_cursor, &list);
-
-	while (true) {
-		if (!match && !check) goto mismatch;
+	while (match || check) {
+		/*
+		 *	Lists are of different lengths
+		 */
+		if ((!match && check) || (check && !match)) goto mismatch;
 
 		/*
 		 *	The lists are sorted, so if the first
@@ -577,12 +579,6 @@ bool pairvalidate(VALUE_PAIR const *failed[2], VALUE_PAIR *filter, VALUE_PAIR *l
 
 		check = fr_cursor_next(&filter_cursor);
 		match = fr_cursor_next(&list_cursor);
-
-		/*
-		 *	One list ended earlier than the others, they
-		 *	didn't match.
-		 */
-		if (!match || !check) break;
 	}
 
 	return true;
