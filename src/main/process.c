@@ -4546,13 +4546,15 @@ int radius_event_start(CONF_SECTION *cs, bool have_children)
 
 	time(&fr_start_time);
 
-	/*
-	 *  radius_event_init() must be called first
-	 */
-	rad_assert(el);
+	if (!check_config) {
+		/*
+		 *  radius_event_init() must be called first
+		 */
+		rad_assert(el);
 
-	pl = fr_packet_list_create(0);
-	if (!pl) return 0;	/* leak el */
+		pl = fr_packet_list_create(0);
+		if (!pl) return 0;	/* leak el */
+	}
 
 	request_num_counter = 0;
 
