@@ -189,7 +189,9 @@ typedef struct rad_listen_t rad_listen_t;
 typedef		void (*radlog_func_t)(int, int, REQUEST *, const char *, ...);
 
 #define REQUEST_DATA_REGEX (0xadbeef00)
-#define REQUEST_MAX_REGEX (8)
+#define REQUEST_MAX_REGEX (16)
+#define REGEX_VAR_SIZE (3) /* max length of regex group variable names %{0}..%{16}
+			      (including the terminating '\0') */
 
 struct auth_req {
 #ifndef NDEBUG

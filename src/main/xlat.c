@@ -57,10 +57,10 @@ static const char * const internal_xlat[] = {"check",
 					     "outer.control",
 					     NULL};
 
-#if REQUEST_MAX_REGEX > 8
+#if REQUEST_MAX_REGEX > 16
 #error Please fix the following line
 #endif
-static const int xlat_inst[] = { 0, 1, 2, 3, 4, 5, 6, 7, 8 };	/* up to 8 for regex */
+static const int xlat_inst[] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 };	/* up to 16 for regex */
 
 char const *radiusd_short_version = RADIUSD_VERSION_STRING;
 
@@ -664,7 +664,7 @@ static size_t xlat_dhcp_options(UNUSED void *instance, REQUEST *request,
 
 #ifdef HAVE_REGEX_H
 /*
- *	Pull %{0} to %{8} out of the packet.
+ *	Pull %{0} to %{16} out of the packet.
  */
 static size_t xlat_regex(void *instance, REQUEST *request,
 			 char *fmt, char *out, size_t outlen,
@@ -673,7 +673,7 @@ static size_t xlat_regex(void *instance, REQUEST *request,
 	char *regex;
 
 	/*
-	 *	We cheat: fmt is "0" to "8", but those numbers
+	 *	We cheat: fmt is "0" to "16", but those numbers
 	 *	are already in the "instance".
 	 */
 	fmt = fmt;		/* -Wunused */
@@ -781,7 +781,8 @@ int xlat_register(const char *module, RAD_XLAT_FUNC func, void *instance)
 	if (!xlat_root) {
 		int i;
 #ifdef HAVE_REGEX_H
-		char buffer[2];
+		char buffer[REGEX_VAR_SIZE];
+		int sz;
 #endif
 
 		xlat_root = rbtree_create(xlat_cmp, free, 0);
@@ -839,9 +840,13 @@ int xlat_register(const char *module, RAD_XLAT_FUNC func, void *instance)
 		/*
 		 *	Register xlat's for regexes.
 		 */
-		buffer[1] = '\0';
+		for (i = 0; i < REGEX_VAR_SIZE; i++)
+			buffer[i] = '\0';
 		for (i = 0; i <= REQUEST_MAX_REGEX; i++) {
-			buffer[0] = '0' + i;
+			sz = snprintf(buffer, REGEX_VAR_SIZE, "%d", i);
+			if (sz >= REGEX_VAR_SIZE) {
+				DEBUG("xlat_register: Truncation occured in regex variable.");
+			}
 			xlat_register(buffer, xlat_regex, &xlat_inst[i]);
 			c = xlat_find(buffer);
 			rad_assert(c != NULL);
@@ -1110,7 +1115,8 @@ static int decode_attribute(const char **from, char **to, int freespace,
 	 *	or regex reference.
 	 */
 	if (!module_name) {
-		if (isdigit(*p) && !p[1]) { /* regex 0..8 */
+		if ((isdigit(*p) && !p[1]) ||
+		    (isdigit(*p) && (isdigit(p[1])) && !p[2])) { /* regex 0..16 */
 			module_name = xlat_str = p;
 		} else {
 			module_name = internal_xlat[1];
