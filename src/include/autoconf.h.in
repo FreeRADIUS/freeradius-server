@@ -25,6 +25,9 @@
 /* Define to 1 if you have the <arpa/inet.h> header file. */
 #undef HAVE_ARPA_INET_H
 
+/* Define if the compiler supports __builtin_types_compatible_p */
+#undef HAVE_BUILTIN_BSWAP_64
+
 /* Define if the compiler supports __builtin_choose_expr */
 #undef HAVE_BUILTIN_CHOOSE_EXPR
 
@@ -110,6 +113,12 @@
 
 /* Define to 1 if you have the <history.h> header file. */
 #undef HAVE_HISTORY_H
+
+/* Define if the function (or macro) htonll exists. */
+#undef HAVE_HTONLL
+
+/* Define if the function (or macro) htonlll exists. */
+#undef HAVE_HTONLLL
 
 /* define if you have IN6_PKTINFO (Linux) */
 #undef HAVE_IN6_PKTINFO
