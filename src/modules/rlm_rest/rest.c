@@ -44,22 +44,23 @@ RCSID("$Id$")
  * @see http_body_type_t
  */
 const http_body_type_t http_body_type_supported[HTTP_BODY_NUM_ENTRIES] = {
-	HTTP_BODY_UNKNOWN,	// HTTP_BODY_UNKOWN
-	HTTP_BODY_UNSUPPORTED,	// HTTP_BODY_UNSUPPORTED
-	HTTP_BODY_UNSUPPORTED,  // HTTP_BODY_UNAVAILABLE
-	HTTP_BODY_UNSUPPORTED,	// HTTP_BODY_INVALID
-	HTTP_BODY_NONE,		// HTTP_BODY_NONE
-	HTTP_BODY_CUSTOM,	// HTTP_BODY_CUSTOM
-	HTTP_BODY_POST,		// HTTP_BODY_POST
+	HTTP_BODY_UNKNOWN,		// HTTP_BODY_UNKOWN
+	HTTP_BODY_UNSUPPORTED,		// HTTP_BODY_UNSUPPORTED
+	HTTP_BODY_UNSUPPORTED,  	// HTTP_BODY_UNAVAILABLE
+	HTTP_BODY_UNSUPPORTED,		// HTTP_BODY_INVALID
+	HTTP_BODY_NONE,			// HTTP_BODY_NONE
+	HTTP_BODY_CUSTOM_XLAT,		// HTTP_BODY_CUSTOM_XLAT
+	HTTP_BODY_CUSTOM_LITERAL,	// HTTP_BODY_CUSTOM_LITERAL
+	HTTP_BODY_POST,			// HTTP_BODY_POST
 #ifdef HAVE_JSON
-	HTTP_BODY_JSON,		// HTTP_BODY_JSON
+	HTTP_BODY_JSON,			// HTTP_BODY_JSON
 #else
 	HTTP_BODY_UNAVAILABLE,
 #endif
-	HTTP_BODY_UNSUPPORTED,	// HTTP_BODY_XML
-	HTTP_BODY_UNSUPPORTED,	// HTTP_BODY_YAML
-	HTTP_BODY_INVALID,	// HTTP_BODY_HTML
-	HTTP_BODY_INVALID	// HTTP_BODY_PLAIN
+	HTTP_BODY_UNSUPPORTED,		// HTTP_BODY_XML
+	HTTP_BODY_UNSUPPORTED,		// HTTP_BODY_YAML
+	HTTP_BODY_INVALID,		// HTTP_BODY_HTML
+	HTTP_BODY_INVALID		// HTTP_BODY_PLAIN
 };
 
 /*
@@ -116,11 +117,14 @@ const unsigned long http_curl_auth[HTTP_AUTH_NUM_ENTRIES] = {
  * status line of the outgoing HTTP header, by rest_response_header for decoding
  * incoming HTTP responses, and by the configuration parser.
  *
+ * @note must be kept in sync with http_method_t enum.
+ *
  * @see http_method_t
  * @see fr_str2int
  * @see fr_int2str
  */
 const FR_NAME_NUMBER http_method_table[] = {
+	{ "UNKNOWN",				HTTP_METHOD_UNKNOWN	},
 	{ "GET",				HTTP_METHOD_GET		},
 	{ "POST",				HTTP_METHOD_POST	},
 	{ "PUT",				HTTP_METHOD_PUT		},
@@ -202,7 +206,7 @@ const FR_NAME_NUMBER http_content_type_table[] = {
  *	@todo split encoders/decoders into submodules.
  */
 typedef struct rest_custom_data {
-	char *p;		//!< how much text we've sent so far.
+	char const *p;		//!< how much text we've sent so far.
 } rest_custom_data_t;
 
 #ifdef HAVE_JSON
@@ -2038,7 +2042,7 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 
 		break;
 
-	case HTTP_BODY_CUSTOM:
+	case HTTP_BODY_CUSTOM_XLAT:
 	{
 		rest_custom_data_t *data;
 		char *expanded = NULL;
@@ -2060,6 +2064,23 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 
 		break;
 	}
+
+	case HTTP_BODY_CUSTOM_LITERAL:
+	{
+		rest_custom_data_t *data;
+
+		data = talloc_zero(request, rest_custom_data_t);
+		data->p = section->data;
+
+		/* Use the encoder specific pointer to store the data we need to encode */
+		ctx->request.encoder = data;
+		if (rest_request_config_body(instance, section, request, handle,
+					     rest_encode_custom) < 0) {
+			TALLOC_FREE(ctx->request.encoder);
+			return -1;
+		}
+	}
+		break;
 
 #ifdef HAVE_JSON
 	case HTTP_BODY_JSON:
@@ -2345,7 +2366,7 @@ ssize_t rest_uri_host_unescape(char **out, UNUSED rlm_rest_t *instance, REQUEST 
 	rlm_rest_handle_t	*randle = handle;
 	CURL			*candle = randle->handle;
 
-	char const		*p;
+	char const		*p, *q;
 
 	char			*scheme;
 
@@ -2378,7 +2399,15 @@ ssize_t rest_uri_host_unescape(char **out, UNUSED rlm_rest_t *instance, REQUEST 
 		return -1;
 	}
 
-	MEM(*out = talloc_typed_asprintf(request, "%s%s", scheme, p));
+	/*
+	 *  URIs can't contain spaces, so anything after the space must
+	 *  be something else.
+	 */
+	q = strchr(p, ' ');
+	*out = q ? talloc_typed_asprintf(request, "%s%.*s", scheme, (int)(q - p), p) :
+		   talloc_typed_asprintf(request, "%s%s", scheme, p);
+
+	MEM(*out);
 	curl_free(scheme);
 
 	return talloc_array_length(*out) - 1;	/* array_length includes \0 */

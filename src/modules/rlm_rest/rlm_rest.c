@@ -27,6 +27,7 @@ RCSID("$Id$")
 #include <freeradius-devel/token.h>
 #include <freeradius-devel/rad_assert.h>
 
+#include <ctype.h>
 #include "rest.h"
 
 /*
@@ -137,18 +138,20 @@ static ssize_t rest_xlat(void *instance, REQUEST *request,
 	int		ret;
 	ssize_t		len, outlen = 0;
 	char		*uri = NULL;
+	char const	*p = fmt, *q;
 	char const	*body;
+	http_method_t	method;
 
 	/* There are no configurable parameters other than the URI */
-	static rlm_rest_section_t section = {
+	rlm_rest_section_t section = {
 		.name = "xlat",
 		.method = HTTP_METHOD_GET,
 		.body = HTTP_BODY_NONE,
+		.body_str = "application/x-www-form-urlencoded",
 		.require_auth = false,
 		.timeout = 4,
 		.force_to = HTTP_BODY_PLAIN
 	};
-
 	*out = '\0';
 
 	rad_assert(fmt);
@@ -159,13 +162,36 @@ static ssize_t rest_xlat(void *instance, REQUEST *request,
 	if (!handle) return -1;
 
 	/*
+	 *  Extract the method from the start of the format string (if there is one)
+	 */
+	method = fr_substr2int(http_method_table, p, HTTP_METHOD_UNKNOWN, -1);
+	if (method != HTTP_METHOD_UNKNOWN) {
+		section.method = method;
+		p += strlen(http_method_table[method].name);
+	}
+
+	/*
+	 *  Trim whitespace
+	 */
+	while (isspace(*p) && p++);
+
+	/*
 	 *  Unescape parts of xlat'd URI, this allows REST servers to be specified by
 	 *  request attributes.
 	 */
-	len = rest_uri_host_unescape(&uri, instance, request, handle, fmt);
+	len = rest_uri_host_unescape(&uri, instance, request, handle, p);
 	if (len <= 0) {
 		outlen = -1;
 		goto finish;
+	}
+
+	/*
+	 *  Extract freeform body data (url can't contain spaces)
+	 */
+	q = strchr(p, ' ');
+	if (q && (*++q != '\0')) {
+		section.body = HTTP_BODY_CUSTOM_LITERAL;
+		section.data = q;
 	}
 
 	RDEBUG("Sending HTTP %s to \"%s\"", fr_int2str(http_method_table, section.method, NULL), uri);
@@ -573,14 +599,14 @@ static int parse_sub_section(CONF_SECTION *parent, rlm_rest_section_t *config, r
 			break;
 		}
 	/*
-	 *  We have custom body data so we set HTTP_BODY_CUSTOM, but also need to try and
+	 *  We have custom body data so we set HTTP_BODY_CUSTOM_XLAT, but also need to try and
 	 *  figure out what content-type to use. So if they've used the canonical form we
 	 *  need to convert it back into a proper HTTP content_type value.
 	 */
 	} else {
 		http_body_type_t body;
 
-		config->body = HTTP_BODY_CUSTOM;
+		config->body = HTTP_BODY_CUSTOM_XLAT;
 
 		body = fr_str2int(http_body_type_table, config->body_str, HTTP_BODY_UNKNOWN);
 		if (body != HTTP_BODY_UNKNOWN) {
