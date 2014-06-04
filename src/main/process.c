@@ -2203,7 +2203,7 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply)
 	 *	running Post-Proxy-Type = Fail.
 	 */
 	if (reply) {
-		request->reply->vps = paircopy(request->reply, reply->vps);
+		pairadd(&request->reply->vps, paircopy(request->reply, reply->vps));
 
 		/*
 		 *	Delete the Proxy-State Attributes from
