@@ -2341,6 +2341,7 @@ int request_proxy_reply(RADIUS_PACKET *packet)
 	 */
 	if (request->home_server->state == HOME_STATE_UNKNOWN) {
 		request->home_server->state = HOME_STATE_ALIVE;
+		request->home_server->response_timeouts = 0;
 	}
 
 #ifdef WITH_STATS
@@ -2957,6 +2958,7 @@ STATE_MACHINE_DECL(request_ping)
 		 *	pings.
 		 */
 		home->state = HOME_STATE_ALIVE;
+		home->response_timeouts = 0;
 		exec_trigger(request, home->cs, "home_server.alive", false);
 		home->currently_outstanding = 0;
 		home->num_sent_pings = 0;
@@ -3202,6 +3204,7 @@ void revive_home_server(void *ctx)
 #endif
 
 	home->state = HOME_STATE_ALIVE;
+	home->response_timeouts = 0;
 	home_trigger(home, "home_server.alive");
 	home->currently_outstanding = 0;
 	gettimeofday(&home->revive_time, NULL);
@@ -3426,7 +3429,9 @@ STATE_MACHINE_DECL(proxy_wait_for_reply)
 		    && (home->proto != IPPROTO_TCP)
 #endif
 			) {
-			mark_home_server_zombie(home, &now, response_window);
+			home->response_timeouts++;
+			if (home->response_timeouts > home->max_response_timeouts)
+				mark_home_server_zombie(home, &now, response_window);
 		}
 
 		FR_STATS_TYPE_INC(home->stats.total_timeouts);
