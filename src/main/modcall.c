@@ -770,8 +770,8 @@ redo:
 		 *	MOD_GROUP.
 		 */
 		if (!g->children) {
-			RDEBUG2("%.*s%s %s { ... } # empty sub-section is ignored",
-				depth + 1, modcall_spaces, cf_section_name1(g->cs), c->name);
+			RDEBUG2("%.*s%s { ... } # empty sub-section is ignored",
+				depth + 1, modcall_spaces, c->name);
 			goto next_sibling;
 		}
 
