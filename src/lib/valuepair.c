@@ -47,7 +47,7 @@ RCSID("$Id$")
 #  endif
 #endif
 
-#define attribute_eq(_x, _y) ((_x && _y) && (_x->da == _y->da) && (_x->tag == _y->tag))
+
 
 /** Free a VALUE_PAIR
  *
@@ -566,7 +566,7 @@ bool pairvalidate(VALUE_PAIR const *failed[2], VALUE_PAIR *filter, VALUE_PAIR *l
 		 *	attributes aren't of the same type, then we're
 		 *	done.
 		 */
-		if (!attribute_eq(check, match)) goto mismatch;
+		if (!ATTRIBUTE_EQ(check, match)) goto mismatch;
 
 		/*
 		 *	They're of the same type, but don't have the
@@ -575,7 +575,7 @@ bool pairvalidate(VALUE_PAIR const *failed[2], VALUE_PAIR *filter, VALUE_PAIR *l
 		 *	Note that the RFCs say that for attributes of
 		 *	the same type, order is important.
 		 */
-		if (!paircmp(check, match)) goto mismatch;
+		if (paircmp_value(check, match) != 0) goto mismatch;
 
 		check = fr_cursor_next(&filter_cursor);
 		match = fr_cursor_next(&list_cursor);
@@ -627,7 +627,7 @@ bool pairvalidate_relaxed(VALUE_PAIR const *failed[2], VALUE_PAIR *filter, VALUE
 		/*
 		 *	Were processing check attributes of a new type.
 		 */
-		if (!attribute_eq(last_check, check)) {
+		if (!ATTRIBUTE_EQ(last_check, check)) {
 			/*
 			 *	Record the start of the matching attributes in the pair list
 			 *	For every other operator we require the match to be present
@@ -646,7 +646,7 @@ bool pairvalidate_relaxed(VALUE_PAIR const *failed[2], VALUE_PAIR *filter, VALUE
 		 *	Now iterate over all attributes of the same type.
 		 */
 		for (match = fr_cursor_first(&list_cursor);
-		     attribute_eq(match, check);
+		     ATTRIBUTE_EQ(match, check);
 		     match = fr_cursor_next(&list_cursor)) {
 			/*
 			 *	This attribute passed the filter
