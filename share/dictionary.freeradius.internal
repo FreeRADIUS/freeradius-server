@@ -251,6 +251,8 @@ ATTRIBUTE	FreeRADIUS-Response-Delay		1152	integer
 ATTRIBUTE	FreeRADIUS-Client-Src-IP-Address	1153	ipaddr
 ATTRIBUTE	FreeRADIUS-Client-Src-IPv6-Address	1154	ipv6addr
 
+ATTRIBUTE	REST-HTTP-Header			1160	string
+
 #
 #	Range:	1200-1279
 #		EAP-SIM (and other EAP type) weirdness.
