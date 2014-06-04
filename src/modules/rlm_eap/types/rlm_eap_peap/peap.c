@@ -570,12 +570,12 @@ static int CC_HINT(nonnull) eappeap_postproxy(eap_handler_t *handler, void *data
 		 *	Terrible hacks.
 		 */
 		rad_assert(!fake->packet);
-		fake->packet = request->proxy;
+		fake->packet = talloc_steal(fake, request->proxy);
 		fake->packet->src_ipaddr = request->packet->src_ipaddr;
 		request->proxy = NULL;
 
 		rad_assert(!fake->reply);
-		fake->reply = request->proxy_reply;
+		fake->reply = talloc_steal(fake, request->proxy_reply);
 		request->proxy_reply = NULL;
 
 		if ((debug_flag > 0) && fr_log_fp) {
@@ -608,9 +608,9 @@ static int CC_HINT(nonnull) eappeap_postproxy(eap_handler_t *handler, void *data
 		/*
 		 *	Terrible hacks.
 		 */
-		request->proxy = fake->packet;
+		request->proxy = talloc_steal(request, fake->packet);
 		fake->packet = NULL;
-		request->proxy_reply = fake->reply;
+		request->proxy_reply = talloc_steal(request, fake->reply);
 		fake->reply = NULL;
 
 		/*
