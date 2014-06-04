@@ -575,7 +575,7 @@ bool pairvalidate(VALUE_PAIR const *failed[2], VALUE_PAIR *filter, VALUE_PAIR *l
 		 *	Note that the RFCs say that for attributes of
 		 *	the same type, order is important.
 		 */
-		if (paircmp_value(check, match) != 0) goto mismatch;
+		if (paircmp(check, match) != 0) goto mismatch;
 
 		check = fr_cursor_next(&filter_cursor);
 		match = fr_cursor_next(&list_cursor);
