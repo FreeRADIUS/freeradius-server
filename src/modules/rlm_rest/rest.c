@@ -1825,12 +1825,15 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 	rlm_rest_curl_context_t	*ctx = randle->ctx;
 	CURL			*candle = randle->handle;
 
-	http_auth_type_t auth = section->auth;
+	http_auth_type_t	auth = section->auth;
 
-	CURLcode ret = CURLE_OK;
-	char const *option = "unknown";
-	char const *content_type;
-	long val = 1;
+	CURLcode	ret = CURLE_OK;
+	char const	*option = "unknown";
+	char const	*content_type;
+	long		val = 1;
+
+	VALUE_PAIR 	*header;
+	vp_cursor_t	headers;
 
 	char buffer[512];
 
@@ -1869,6 +1872,20 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 	RDEBUG3("\t%s", buffer);
 	ctx->headers = curl_slist_append(ctx->headers, buffer);
 	if (!ctx->headers) goto error_header;
+
+	fr_cursor_init(&headers, &request->config_items);
+	while (fr_cursor_next_by_num(&headers, PW_REST_HTTP_HEADER, 0, TAG_ANY)) {
+		header = fr_cursor_remove(&headers);
+		if (!strchr(header->vp_strvalue, ':')) {
+			RWDEBUG("Invalid HTTP header \"%s\" must be in format '<attribute>: <value>'.  Skipping...",
+				header->vp_strvalue);
+			talloc_free(header);
+			continue;
+		}
+		RDEBUG3("\t%s", header->vp_strvalue);
+		ctx->headers = curl_slist_append(ctx->headers, header->vp_strvalue);
+		talloc_free(header);
+	}
 
 	/*
 	 *	Configure HTTP verb (GET, POST, PUT, DELETE, other...)
