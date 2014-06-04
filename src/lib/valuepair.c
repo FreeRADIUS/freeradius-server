@@ -505,6 +505,14 @@ void pairvalidate_debug(TALLOC_CTX *ctx, VALUE_PAIR const *failed[2])
 		return;
 	}
 
+#ifndef NDEBUG
+	/*
+	 *  If we got this far and can't find a difference between the VALUE_PAIRs
+	 *  there's a difference between the VALUE_PAIRs.
+	 */
+	fr_assert(paircmp_value(filter, list) != 0);
+#endif
+
 	pair = vp_aprint(ctx, filter);
 	value = vp_aprint_value(ctx, list);
 
