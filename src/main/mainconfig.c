@@ -917,7 +917,7 @@ do {\
 	 * if it is less than this.
 	 */
 	main_config.init_delay.tv_sec = 0;
-	main_config.init_delay.tv_usec = 1000000 / 3;
+	main_config.init_delay.tv_usec = 2* (1000000 / 3);
 
 	/*
 	 *	Free the old configuration items, and replace them
