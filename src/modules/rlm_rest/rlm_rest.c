@@ -220,9 +220,13 @@ static ssize_t rest_xlat(void *instance, REQUEST *request,
 	case 410:
 	case 403:
 	case 401:
+	{
+error:
+		len = rest_get_handle_data(&body, handle);
+		if (len > 0) REDEBUG("%s", body);
 		outlen = -1;
 		goto finish;
-
+	}
 	case 204:
 		goto finish;
 
@@ -234,10 +238,10 @@ static ssize_t rest_xlat(void *instance, REQUEST *request,
 			break;
 		} else if (hcode < 500) {
 			outlen = -2;
-			goto finish;
+			goto error;
 		} else {
 			outlen = -1;
-			goto finish;
+			goto error;
 		}
 	}
 
