@@ -913,7 +913,7 @@ do {\
 
 	/*
 	 * Set default initial request processing delay to 1/3 of a second.
-	 * Will be updated by the lowest response window across all home servers,
+	 * Will be updated by half the lowest response window across all home servers,
 	 * if it is less than this.
 	 */
 	main_config.init_delay.tv_sec = 0;

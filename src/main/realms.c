@@ -351,6 +351,7 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 	bool dual = false;
 	CONF_PAIR *cp;
 	CONF_SECTION *tls;
+	struct timeval half_response_window;
 
 	hs_virtual_server = NULL;
 
@@ -669,8 +670,11 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 	 *	Track the minimum response window, so that we can
 	 *	correctly set the timers in process.c
 	 */
-	if (timercmp(&main_config.init_delay, &home->response_window, >)) {
-		main_config.init_delay = home->response_window;
+	half_response_window.tv_sec = home->response_window.tv_sec / 2;
+	half_response_window.tv_usec = (home->response_window.tv_sec * 500000 +
+					home->response_window.tv_usec / 2) % 1000000;
+	if (timercmp(&main_config.init_delay, &half_response_window, >)) {
+		main_config.init_delay = half_response_window;
 	}
 
 	FR_INTEGER_BOUND_CHECK("zombie_period", home->zombie_period, >=, 1);
