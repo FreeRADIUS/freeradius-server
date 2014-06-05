@@ -4583,6 +4583,17 @@ int radius_event_start(CONF_SECTION *cs, bool have_children)
 			fr_exit(1);
 		}
 #endif
+
+		/*
+		 *	The "init_delay" is set to "response_window".
+		 *	Reset it to half of "response_window" in order
+		 *	to give the event loop enough time to service
+		 *	the event before hitting "response_window".
+		 */
+		main_config.init_delay.tv_usec += (main_config.init_delay.tv_sec & 0x01) * USEC;
+		main_config.init_delay.tv_usec >>= 1;
+		main_config.init_delay.tv_sec >>= 1;
+
 	}
 #endif
 
