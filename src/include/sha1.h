@@ -9,13 +9,16 @@
 extern "C" {
 #endif
 
+#ifndef SHA1_DIGEST_LENGTH
+#  define SHA1_DIGEST_LENGTH 20
+#endif
+
 #ifndef WITH_OPENSSL_SHA1
 typedef struct {
     uint32_t state[5];
     uint32_t count[2];
     uint8_t buffer[64];
 } fr_SHA1_CTX;
-
 
 void fr_sha1_transform(uint32_t state[5], uint8_t const buffer[64]);
 void fr_sha1_init(fr_SHA1_CTX *context);
@@ -41,6 +44,11 @@ USES_APPLE_DEPRECATED_API
  * FIPS 186-2 PRF based upon SHA1.
  */
 void fips186_2prf(uint8_t mk[20], uint8_t finalkey[160]);
+
+/* hmacsha1.c */
+
+void fr_hmac_sha1(uint8_t digest[SHA1_DIGEST_LENGTH], uint8_t const *text, size_t text_len,
+		  uint8_t const *key, size_t key_len);
 
 #ifdef __cplusplus
 }

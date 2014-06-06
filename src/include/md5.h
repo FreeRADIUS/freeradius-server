@@ -34,6 +34,10 @@ RCSIDH(md5_h, "$Id$")
 extern "C" {
 #endif
 
+#ifndef MD5_DIGEST_LENGTH
+#  define MD5_DIGEST_LENGTH 16
+#endif
+
 #ifndef HAVE_OPENSSL_MD5_H
 /*  The below was retrieved from
  *  http://www.openbsd.org/cgi-bin/cvsweb/~checkout~/src/sys/crypto/md5.h?rev=1.1
@@ -55,7 +59,6 @@ extern "C" {
  */
 
 #define	MD5_BLOCK_LENGTH		64
-#define	MD5_DIGEST_LENGTH		16
 
 typedef struct FR_MD5Context {
 	uint32_t state[4];			/* state */
@@ -85,6 +88,11 @@ USES_APPLE_DEPRECATED_API
 #define fr_MD5Final	MD5_Final
 #define fr_MD5Transform MD5_Transform
 #endif
+
+/* hmac.c */
+
+void fr_hmac_md5(uint8_t digest[MD5_DIGEST_LENGTH], uint8_t const *text, size_t text_len,
+		 uint8_t const *key, size_t key_len);
 
 #ifdef __cplusplus
 }
