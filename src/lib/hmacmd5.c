@@ -39,7 +39,8 @@ RCSID("$Id$")
  * @param key_len Length of authentication key.
  *
  */
-void fr_hmac_md5(uint8_t digest[16], uint8_t const *text, size_t text_len, uint8_t const *key, size_t key_len)
+void fr_hmac_md5(uint8_t digest[MD5_DIGEST_LENGTH], uint8_t const *text, size_t text_len,
+		 uint8_t const *key, size_t key_len)
 {
 	FR_MD5_CTX context;
 	uint8_t k_ipad[65];    /* inner padding - key XORd with ipad */

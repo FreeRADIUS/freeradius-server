@@ -24,6 +24,7 @@
 #ifdef WITH_COMMAND_SOCKET
 
 #include <freeradius-devel/parser.h>
+#include <freeradius-devel/md5.h>
 
 #ifdef HAVE_INTTYPES_H
 #include <inttypes.h>

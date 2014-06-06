@@ -24,6 +24,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/md5.h>
 
 #ifdef HAVE_SYS_UN_H
 #include <sys/un.h>

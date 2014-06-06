@@ -25,7 +25,8 @@ unsigned int sha1_data_problems = 0;
  * @param key_len Length of authentication key.
 
  */
-void fr_hmac_sha1(uint8_t digest[20], uint8_t const *text, size_t text_len, uint8_t const *key, size_t key_len)
+void fr_hmac_sha1(uint8_t digest[SHA1_DIGEST_LENGTH], uint8_t const *text, size_t text_len,
+		  uint8_t const *key, size_t key_len)
 {
 	fr_SHA1_CTX context;
 	uint8_t k_ipad[65];    /* inner padding - key XORd with ipad */
