@@ -1086,8 +1086,10 @@ void pairmove(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from)
  * @param[in] ctx for talloc
  * @param[in,out] to destination list.
  * @param[in,out] from source list.
- * @param[in] attr to match, if PW_VENDOR_SPECIFIC and vendor 0, only VSAs will
- *	      be copied.  If 0 and 0, all attributes will match
+ * @param[in] attr to match. If attribute PW_VENDOR_SPECIFIC and vendor 0,
+ *	will match (and therefore copy) only VSAs.
+ *	If attribute 0 and vendor 0  will match (and therefore copy) all
+ *	attributes.
  * @param[in] vendor to match.
  * @param[in] tag to match, TAG_ANY matches any tag, TAG_NONE matches tagless VPs.
  */
