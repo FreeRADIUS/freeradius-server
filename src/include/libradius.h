@@ -479,11 +479,11 @@ void		fr_md5_calc(uint8_t *, uint8_t const *, unsigned int);
 
 /* hmac.c */
 
-void fr_hmac_md5(uint8_t const *text, size_t text_len, uint8_t const *key, size_t key_len, unsigned char *digest);
+void fr_hmac_md5(uint8_t digest[16], uint8_t const *text, size_t text_len, uint8_t const *key, size_t key_len);
 
 /* hmacsha1.c */
 
-void fr_hmac_sha1(uint8_t const *text, size_t text_len, uint8_t const *key, size_t key_len, uint8_t *digest);
+void fr_hmac_sha1(uint8_t digest[20], uint8_t const *text, size_t text_len, uint8_t const *key, size_t key_len);
 
 /* radius.c */
 int		rad_send(RADIUS_PACKET *, RADIUS_PACKET const *, char const *secret);

@@ -252,7 +252,7 @@ int map_eapsim_basictypes(RADIUS_PACKET *r, eap_packet_t *ep)
 		memcpy(&hdr->data[encoded_size+1], append, appendlen);
 
 		/* HMAC it! */
-		fr_hmac_sha1(buffer, hmaclen, vp->vp_octets, vp->length, sha1digest);
+		fr_hmac_sha1(sha1digest, buffer, hmaclen, vp->vp_octets, vp->length);
 
 		/* done with the buffer, free it */
 		talloc_free(buffer);
@@ -425,7 +425,7 @@ int eapsim_checkmac(TALLOC_CTX *ctx, VALUE_PAIR *rvps, uint8_t key[EAPSIM_AUTH_S
 	}
 
 	/* now, HMAC-SHA1 it with the key. */
-	fr_hmac_sha1(buffer, len, key, 16, calcmac);
+	fr_hmac_sha1(calcmac, buffer, len, key, 16);
 
 	ret = memcmp(&mac->vp_strvalue[2], calcmac, 16) == 0 ? 1 : 0;
  done:

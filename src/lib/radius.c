@@ -1954,9 +1954,8 @@ int rad_sign(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 		 *	into the Message-Authenticator
 		 *	attribute.
 		 */
-		fr_hmac_md5(packet->data, packet->data_len,
-			    (uint8_t const *) secret, strlen(secret),
-			    calc_auth_vector);
+		fr_hmac_md5(calc_auth_vector, packet->data, packet->data_len,
+			    (uint8_t const *) secret, strlen(secret));
 		memcpy(packet->data + packet->offset + 2,
 		       calc_auth_vector, AUTH_VECTOR_LEN);
 
@@ -2802,9 +2801,8 @@ int rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 				break;
 			}
 
-			fr_hmac_md5(packet->data, packet->data_len,
-				    (uint8_t const *) secret, strlen(secret),
-				    calc_auth_vector);
+			fr_hmac_md5(calc_auth_vector, packet->data, packet->data_len,
+				    (uint8_t const *) secret, strlen(secret));
 			if (rad_digest_cmp(calc_auth_vector, msg_auth_vector,
 				   sizeof(calc_auth_vector)) != 0) {
 				char buffer[32];
