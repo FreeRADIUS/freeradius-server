@@ -77,22 +77,22 @@ typedef struct FR_MD4Context {
 } FR_MD4_CTX;
 
 /*__BEGIN_DECLS*/
-void	 fr_MD4Init(FR_MD4_CTX *);
-void	 fr_MD4Update(FR_MD4_CTX *, uint8_t const *, size_t)
+void	 fr_md4_init(FR_MD4_CTX *);
+void	 fr_md4_update(FR_MD4_CTX *, uint8_t const *, size_t)
 /*		__attribute__((__bounded__(__string__,2,3)))*/;
-void	 fr_MD4Final(uint8_t [MD4_DIGEST_LENGTH], FR_MD4_CTX *)
+void	 fr_md4_final(uint8_t [MD4_DIGEST_LENGTH], FR_MD4_CTX *)
 /*		__attribute__((__bounded__(__minbytes__,1,MD4_DIGEST_LENGTH)))*/;
-void	 fr_MD4Transform(uint32_t [4], uint8_t const [MD4_BLOCK_LENGTH])
+void	 fr_md4_transform(uint32_t [4], uint8_t const [MD4_BLOCK_LENGTH])
 /*		__attribute__((__bounded__(__minbytes__,1,4)))
 		__attribute__((__bounded__(__minbytes__,2,MD4_BLOCK_LENGTH)))*/;
 /*__END_DECLS*/
 #else  /* HAVE_OPENSSL_MD4_H */
 USES_APPLE_DEPRECATED_API
 #define FR_MD4_CTX	MD4_CTX
-#define fr_MD4Init	MD4_Init
-#define fr_MD4Update	MD4_Update
-#define fr_MD4Final	MD4_Final
-#define fr_MD4Transform MD4_Transform
+#define fr_md4_init	MD4_Init
+#define fr_md4_update	MD4_Update
+#define fr_md4_final	MD4_Final
+#define fr_md4_transform MD4_Transform
 #endif
 
 #ifdef __cplusplus
