@@ -515,10 +515,10 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_sha(rlm_pap_t *inst, REQUEST *reque
 		return RLM_MODULE_INVALID;
 	}
 
-	fr_SHA1Init(&sha1_context);
-	fr_SHA1Update(&sha1_context, request->password->vp_octets,
+	fr_sha1_init(&sha1_context);
+	fr_sha1_update(&sha1_context, request->password->vp_octets,
 		      request->password->length);
-	fr_SHA1Final(digest,&sha1_context);
+	fr_sha1_final(digest,&sha1_context);
 
 	if (rad_digest_cmp(digest, vp->vp_octets, vp->length) != 0) {
 		REDEBUG("SHA1 digest does not match \"known good\" digest");
@@ -543,11 +543,11 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_ssha(rlm_pap_t *inst, REQUEST *requ
 		return RLM_MODULE_INVALID;
 	}
 
-	fr_SHA1Init(&sha1_context);
-	fr_SHA1Update(&sha1_context, request->password->vp_octets,
+	fr_sha1_init(&sha1_context);
+	fr_sha1_update(&sha1_context, request->password->vp_octets,
 		      request->password->length);
-	fr_SHA1Update(&sha1_context, &vp->vp_octets[20], vp->length - 20);
-	fr_SHA1Final(digest,&sha1_context);
+	fr_sha1_update(&sha1_context, &vp->vp_octets[20], vp->length - 20);
+	fr_sha1_final(digest,&sha1_context);
 
 	if (rad_digest_cmp(digest, vp->vp_octets, 20) != 0) {
 		REDEBUG("SSHA digest does not match \"known good\" digest");

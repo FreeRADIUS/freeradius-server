@@ -109,14 +109,14 @@ static void calc_sha1_digest(uint8_t *buffer, uint8_t const *challenge,
 	memset(buf, 0x36, 64);
 	for(i=0; i<64 && password[i]; i++) buf[i]^=password[i];
 	memcpy(buf+64, challenge, challen);
-	fr_SHA1Init(&context);
-	fr_SHA1Update(&context,buf,64+challen);
+	fr_sha1_init(&context);
+	fr_sha1_update(&context,buf,64+challen);
 	memset(buf, 0x5c, 64);
 	for(i=0; i<64 && password[i]; i++) buf[i]^=password[i];
-	fr_SHA1Final(buf+64,&context);
-	fr_SHA1Init(&context);
-	fr_SHA1Update(&context,buf,64+20);
-	fr_SHA1Final(buffer,&context);
+	fr_sha1_final(buf+64,&context);
+	fr_sha1_init(&context);
+	fr_sha1_update(&context,buf,64+20);
+	fr_sha1_final(buffer,&context);
 }
 
 

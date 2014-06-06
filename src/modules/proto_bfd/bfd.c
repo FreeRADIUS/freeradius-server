@@ -702,9 +702,9 @@ static void bfd_calc_sha1(bfd_state_t *session, bfd_packet_t *bfd)
 	memset(sha1->digest, 0, sizeof(sha1->digest));
 	memcpy(sha1->digest, session->secret, session->secret_len);
 
-	fr_SHA1Init(&ctx);
-	fr_SHA1Update(&ctx, (const uint8_t *) bfd, bfd->length);
-	fr_SHA1Final(sha1->digest, &ctx);
+	fr_sha1_init(&ctx);
+	fr_sha1_update(&ctx, (const uint8_t *) bfd, bfd->length);
+	fr_sha1_final(sha1->digest, &ctx);
 }
 
 static void bfd_auth_sha1(bfd_state_t *session, bfd_packet_t *bfd)

@@ -637,9 +637,9 @@ static ssize_t sha1_xlat(UNUSED void *instance, UNUSED REQUEST *request,
 		return -1;
 	}
 
-	fr_SHA1Init(&ctx);
-	fr_SHA1Update(&ctx, p, inlen);
-	fr_SHA1Final(digest, &ctx);
+	fr_sha1_init(&ctx);
+	fr_sha1_update(&ctx, p, inlen);
+	fr_sha1_final(digest, &ctx);
 
 	/*
 	 *      Each digest octet takes two hex digits, plus one for

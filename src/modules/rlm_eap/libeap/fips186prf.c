@@ -131,16 +131,16 @@ void fips186_2prf(uint8_t mk[20], uint8_t finalkey[160])
 		xval = xkey;
 
 		/*   b. w_0 = SHA1(XVAL)  */
-		fr_SHA1Init(&context);
+		fr_sha1_init(&context);
 
 		memset(zeros + 20, 0, sizeof(zeros) - 20);
 		memcpy(zeros, xval.p, 20);
 #ifndef WITH_OPENSSL_SHA1
-		fr_SHA1Transform(context.state, zeros);
+		fr_sha1_transform(context.state, zeros);
 #else
-		fr_SHA1Transform(&context, zeros);
+		fr_sha1_transform(&context, zeros);
 #endif
-		fr_SHA1FinalNoLen(w_0.p, &context);
+		fr_sha1_final_no_len(w_0.p, &context);
 
 		/*   c. XKEY = (1 + XKEY + w_0) mod 2^160 */
 		onesixty_add_mod(&sum,  &xkey, &w_0);
@@ -150,16 +150,16 @@ void fips186_2prf(uint8_t mk[20], uint8_t finalkey[160])
 		xval = xkey;
 
 		/*   e. w_1 = SHA1(XVAL)  */
-		fr_SHA1Init(&context);
+		fr_sha1_init(&context);
 
 		memset(zeros + 20, 0, sizeof(zeros) - 20);
 		memcpy(zeros, xval.p, 20);
 #ifndef WITH_OPENSSL_SHA1
-		fr_SHA1Transform(context.state, zeros);
+		fr_sha1_transform(context.state, zeros);
 #else
-		fr_SHA1Transform(&context, zeros);
+		fr_sha1_transform(&context, zeros);
 #endif
-		fr_SHA1FinalNoLen(w_1.p, &context);
+		fr_sha1_final_no_len(w_1.p, &context);
 
 		/*   f. XKEY = (1 + XKEY + w_1) mod 2^160 */
 		onesixty_add_mod(&sum,  &xkey, &w_1);

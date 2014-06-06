@@ -16,24 +16,25 @@ typedef struct {
     uint8_t buffer[64];
 } fr_SHA1_CTX;
 
-void fr_SHA1Transform(uint32_t state[5], uint8_t const buffer[64]);
-void fr_SHA1Init(fr_SHA1_CTX *context);
-void fr_SHA1Update(fr_SHA1_CTX *context, uint8_t const *data, size_t len);
-void fr_SHA1Final(uint8_t digest[20], fr_SHA1_CTX *context);
+
+void fr_sha1_transform(uint32_t state[5], uint8_t const buffer[64]);
+void fr_sha1_init(fr_SHA1_CTX *context);
+void fr_sha1_update(fr_SHA1_CTX *context, uint8_t const *data, size_t len);
+void fr_sha1_final(uint8_t digest[20], fr_SHA1_CTX *context);
 
 /*
  * this version implements a raw SHA1 transform, no length is appended,
  * nor any 128s out to the block size.
  */
-void fr_SHA1FinalNoLen(uint8_t digest[20], fr_SHA1_CTX* context);
+void fr_sha1_final_no_len(uint8_t digest[20], fr_SHA1_CTX* context);
 
 #else  /* WITH_OPENSSL_SHA1 */
 USES_APPLE_DEPRECATED_API
 #define fr_SHA1_CTX	SHA_CTX
-#define fr_SHA1Init	SHA1_Init
-#define fr_SHA1Update	SHA1_Update
-#define fr_SHA1Final	SHA1_Final
-#define fr_SHA1Transform SHA1_Transform
+#define fr_sha1_init	SHA1_Init
+#define fr_sha1_update	SHA1_Update
+#define fr_sha1_final	SHA1_Final
+#define fr_sha1_transform SHA1_Transform
 #endif
 
 /*

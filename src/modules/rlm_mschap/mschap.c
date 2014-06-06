@@ -74,12 +74,12 @@ void mschap_challenge_hash(uint8_t const *peer_challenge,
 	fr_SHA1_CTX Context;
 	uint8_t hash[20];
 
-	fr_SHA1Init(&Context);
-	fr_SHA1Update(&Context, peer_challenge, 16);
-	fr_SHA1Update(&Context, auth_challenge, 16);
-	fr_SHA1Update(&Context, (uint8_t const *) user_name,
+	fr_sha1_init(&Context);
+	fr_sha1_update(&Context, peer_challenge, 16);
+	fr_sha1_update(&Context, auth_challenge, 16);
+	fr_sha1_update(&Context, (uint8_t const *) user_name,
 		      strlen(user_name));
-	fr_SHA1Final(hash, &Context);
+	fr_sha1_final(hash, &Context);
 	memcpy(challenge, hash, 8);
 }
 
@@ -114,17 +114,17 @@ void mschap_auth_response(char const *username,
 	uint8_t challenge[8];
 	uint8_t digest[20];
 
-	fr_SHA1Init(&Context);
-	fr_SHA1Update(&Context, nt_hash_hash, 16);
-	fr_SHA1Update(&Context, ntresponse, 24);
-	fr_SHA1Update(&Context, magic1, 39);
-	fr_SHA1Final(digest, &Context);
+	fr_sha1_init(&Context);
+	fr_sha1_update(&Context, nt_hash_hash, 16);
+	fr_sha1_update(&Context, ntresponse, 24);
+	fr_sha1_update(&Context, magic1, 39);
+	fr_sha1_final(digest, &Context);
 	mschap_challenge_hash(peer_challenge, auth_challenge, username, challenge);
-	fr_SHA1Init(&Context);
-	fr_SHA1Update(&Context, digest, 20);
-	fr_SHA1Update(&Context, challenge, 8);
-	fr_SHA1Update(&Context, magic2, 41);
-	fr_SHA1Final(digest, &Context);
+	fr_sha1_init(&Context);
+	fr_sha1_update(&Context, digest, 20);
+	fr_sha1_update(&Context, challenge, 8);
+	fr_sha1_update(&Context, magic2, 41);
+	fr_sha1_final(digest, &Context);
 
 	/*
 	 *	Encode the value of 'Digest' as "S=" followed by
