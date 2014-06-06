@@ -22,9 +22,9 @@ unsigned int inlen;		     /* length of input block */
 {
 	FR_MD4_CTX	context;
 
-	fr_MD4Init(&context);
-	fr_MD4Update(&context, input, inlen);
-	fr_MD4Final(output, &context);
+	fr_md4_init(&context);
+	fr_md4_update(&context, input, inlen);
+	fr_md4_final(output, &context);
 }
 
 #ifndef HAVE_OPENSSL_MD4_H
@@ -53,8 +53,8 @@ unsigned int inlen;		     /* length of input block */
  * with every copy.
  *
  * To compute the message digest of a chunk of bytes, declare an
- * MD4Context structure, pass it to fr_MD4Init, call fr_MD4Update as
- * needed on buffers full of bytes, and then call fr_MD4Final, which
+ * MD4Context structure, pass it to fr_md4_init, call fr_md4_update as
+ * needed on buffers full of bytes, and then call fr_md4_final, which
  * will fill a supplied 16-byte array with the digest.
  */
 
@@ -127,7 +127,7 @@ unsigned int inlen;		     /* length of input block */
  * Set bit count to 0 and buffer to mysterious initialization constants.
  */
 void
-fr_MD4Init(FR_MD4_CTX *ctx)
+fr_md4_init(FR_MD4_CTX *ctx)
 {
 	ctx->count[0] = 0;
 	ctx->count[1] = 0;
@@ -142,7 +142,7 @@ fr_MD4Init(FR_MD4_CTX *ctx)
  * of bytes.
  */
 void
-fr_MD4Update(FR_MD4_CTX *ctx, unsigned char const *buf, size_t len)
+fr_md4_update(FR_MD4_CTX *ctx, unsigned char const *buf, size_t len)
 {
 	uint32_t count;
 
@@ -168,7 +168,7 @@ fr_MD4Update(FR_MD4_CTX *ctx, unsigned char const *buf, size_t len)
 		}
 		memcpy(p, buf, count);
 		htole32_16((uint32_t *)ctx->buffer);
-		fr_MD4Transform(ctx->state, ctx->buffer);
+		fr_md4_transform(ctx->state, ctx->buffer);
 		buf += count;
 		len -= count;
 	}
@@ -177,7 +177,7 @@ fr_MD4Update(FR_MD4_CTX *ctx, unsigned char const *buf, size_t len)
 	while (len >= MD4_BLOCK_LENGTH) {
 		memcpy(ctx->buffer, buf, MD4_BLOCK_LENGTH);
 		htole32_16((uint32_t *)ctx->buffer);
-		fr_MD4Transform(ctx->state, ctx->buffer);
+		fr_md4_transform(ctx->state, ctx->buffer);
 		buf += MD4_BLOCK_LENGTH;
 		len -= MD4_BLOCK_LENGTH;
 	}
@@ -191,7 +191,7 @@ fr_MD4Update(FR_MD4_CTX *ctx, unsigned char const *buf, size_t len)
  * 1 0* (64-bit count of bits processed, MSB-first)
  */
 void
-fr_MD4Final(unsigned char digest[MD4_DIGEST_LENGTH], FR_MD4_CTX *ctx)
+fr_md4_final(unsigned char digest[MD4_DIGEST_LENGTH], FR_MD4_CTX *ctx)
 {
 	uint32_t count;
 	unsigned char *p;
@@ -214,7 +214,7 @@ fr_MD4Final(unsigned char digest[MD4_DIGEST_LENGTH], FR_MD4_CTX *ctx)
 		/* Two lots of padding:  Pad the first block to 64 bytes */
 		memset(p, 0, count);
 		htole32_16((uint32_t *)ctx->buffer);
-		fr_MD4Transform(ctx->state, ctx->buffer);
+		fr_md4_transform(ctx->state, ctx->buffer);
 
 		/* Now fill the next block with 56 bytes */
 		memset(ctx->buffer, 0, 56);
@@ -228,7 +228,7 @@ fr_MD4Final(unsigned char digest[MD4_DIGEST_LENGTH], FR_MD4_CTX *ctx)
 	((uint32_t *)ctx->buffer)[14] = ctx->count[0];
 	((uint32_t *)ctx->buffer)[15] = ctx->count[1];
 
-	fr_MD4Transform(ctx->state, ctx->buffer);
+	fr_md4_transform(ctx->state, ctx->buffer);
 	htole32_4(ctx->state);
 	memcpy(digest, ctx->state, MD4_DIGEST_LENGTH);
 	memset(ctx, 0, sizeof(*ctx));	/* in case it's sensitive */
@@ -248,11 +248,11 @@ fr_MD4Final(unsigned char digest[MD4_DIGEST_LENGTH], FR_MD4_CTX *ctx)
 
 /*
  * The core of the MD4 algorithm, this alters an existing MD4 hash to
- * reflect the addition of 16 longwords of new data.  fr_MD4Update blocks
+ * reflect the addition of 16 longwords of new data.  fr_md4_update blocks
  * the data and converts bytes into longwords for this routine.
  */
 void
-fr_MD4Transform(uint32_t buf[4], unsigned char const inc[MD4_BLOCK_LENGTH])
+fr_md4_transform(uint32_t buf[4], unsigned char const inc[MD4_BLOCK_LENGTH])
 {
 	uint32_t a, b, c, d;
 	uint32_t const *in = (uint32_t const *)inc;
