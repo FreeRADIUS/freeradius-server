@@ -220,7 +220,7 @@ int fr_pton4(fr_ipaddr_t *out, char const *value, size_t inlen, bool resolve, bo
 		 *	We assume the number is the bigendian representation of the
 		 *	IP address.
 		 */
-		} else if (is_integer(value)) {
+		} else if (is_integer(value) || ((value[0] == '0') && (value[1] == 'x'))) {
 			out->ipaddr.ip4addr.s_addr = htonl(strtoul(value, NULL, 0));
 		} else if (!resolve) {
 			if (inet_pton(AF_INET, value, &(out->ipaddr.ip4addr.s_addr)) <= 0) {
