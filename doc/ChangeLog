@@ -21,9 +21,14 @@ FreeRADIUS 3.0.4 Mon 12 May 2014 15:30:00 EDT urgency=medium
 	* Allow custom HTTP headers to be set for rlm_rest requests using
 	  control:REST-HTTP-Header (attributes consumed after use).
 	* Extend format of %{rest:} expansion to allow HTTP method and POST
-	  data to be specified e.g. %{rest:POST http://example.org/api foo=bar&baz=boink}.
+	  data to be specified 
+	  e.g. %{rest:POST http://example.org/api foo=bar&baz=boink}.
 	* Add %{hmacsha1:&data &key} and %{hmacmd5:&data &key} expansions 
 	  for signing data in requests.
+	* rlm_cache now consumes it's control attributes to make runtime
+	  configuration easier.
+	* Add control:Cache-Read-Only which when set to 'yes' will make the
+	  cache module merge existing cache data, but not create new entries.
 
 	Bug fixes
 	* make case-insensitive regular expressions work again.
