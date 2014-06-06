@@ -454,10 +454,10 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_md5(rlm_pap_t *inst, REQUEST *reque
 		return RLM_MODULE_INVALID;
 	}
 
-	fr_MD5Init(&md5_context);
-	fr_MD5Update(&md5_context, request->password->vp_octets,
+	fr_md5_init(&md5_context);
+	fr_md5_update(&md5_context, request->password->vp_octets,
 		     request->password->length);
-	fr_MD5Final(digest, &md5_context);
+	fr_md5_final(digest, &md5_context);
 
 	if (rad_digest_cmp(digest, vp->vp_octets, vp->length) != 0) {
 		REDEBUG("MD5 digest does not match \"known good\" digest");
@@ -483,11 +483,11 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_smd5(rlm_pap_t *inst, REQUEST *requ
 		return RLM_MODULE_INVALID;
 	}
 
-	fr_MD5Init(&md5_context);
-	fr_MD5Update(&md5_context, request->password->vp_octets,
+	fr_md5_init(&md5_context);
+	fr_md5_update(&md5_context, request->password->vp_octets,
 		     request->password->length);
-	fr_MD5Update(&md5_context, &vp->vp_octets[16], vp->length - 16);
-	fr_MD5Final(digest, &md5_context);
+	fr_md5_update(&md5_context, &vp->vp_octets[16], vp->length - 16);
+	fr_md5_final(digest, &md5_context);
 
 	/*
 	 *	Compare only the MD5 hash results, not the salt.
@@ -728,9 +728,9 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_ns_mta_md5(UNUSED rlm_pap_t *inst, 
 		memcpy(p, &vp->vp_octets[32], 32);
 		p += 32;
 
-		fr_MD5Init(&md5_context);
-		fr_MD5Update(&md5_context, (uint8_t *) buff2, p - buff2);
-		fr_MD5Final(buff, &md5_context);
+		fr_md5_init(&md5_context);
+		fr_md5_update(&md5_context, (uint8_t *) buff2, p - buff2);
+		fr_md5_final(buff, &md5_context);
 	}
 
 	if (rad_digest_cmp(digest, buff, 16) != 0) {

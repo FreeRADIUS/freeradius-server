@@ -22,9 +22,9 @@ void fr_md5_calc(uint8_t *output, uint8_t const *input,
 {
 	FR_MD5_CTX	context;
 
-	fr_MD5Init(&context);
-	fr_MD5Update(&context, input, inlen);
-	fr_MD5Final(output, &context);
+	fr_md5_init(&context);
+	fr_md5_update(&context, input, inlen);
+	fr_md5_final(output, &context);
 }
 
 
@@ -49,8 +49,8 @@ void fr_md5_calc(uint8_t *output, uint8_t const *input,
  * with every copy.
  *
  * To compute the message digest of a chunk of bytes, declare an
- * MD5Context structure, pass it to fr_MD5Init, call fr_MD5Update as
- * needed on buffers full of bytes, and then call fr_MD5Final, which
+ * MD5Context structure, pass it to fr_md5_init, call fr_md5_update as
+ * needed on buffers full of bytes, and then call fr_md5_final, which
  * will fill a supplied 16-byte array with the digest.
  */
 
@@ -87,7 +87,7 @@ static const uint8_t PADDING[MD5_BLOCK_LENGTH] = {
  *
  * @param ctx MD5 context to be initialized.
  */
-void fr_MD5Init(FR_MD5_CTX *ctx)
+void fr_md5_init(FR_MD5_CTX *ctx)
 {
 	ctx->count[0] = 0;
 	ctx->count[1] = 0;
@@ -106,7 +106,7 @@ void fr_MD5Init(FR_MD5_CTX *ctx)
  * @param input Data to add to hash
  * @param len Data length
  */
-void fr_MD5Update(FR_MD5_CTX *ctx, unsigned char const *input, size_t len)
+void fr_md5_update(FR_MD5_CTX *ctx, unsigned char const *input, size_t len)
 {
 	size_t have, need;
 
@@ -125,7 +125,7 @@ void fr_MD5Update(FR_MD5_CTX *ctx, unsigned char const *input, size_t len)
 	if (len >= need) {
 		if (have != 0) {
 			memcpy(ctx->buffer + have, input, need);
-			fr_MD5Transform(ctx->state, ctx->buffer);
+			fr_md5_transform(ctx->state, ctx->buffer);
 			input += need;
 			len -= need;
 			have = 0;
@@ -133,7 +133,7 @@ void fr_MD5Update(FR_MD5_CTX *ctx, unsigned char const *input, size_t len)
 
 		/* Process data in MD5_BLOCK_LENGTH-byte chunks. */
 		while (len >= MD5_BLOCK_LENGTH) {
-			fr_MD5Transform(ctx->state, input);
+			fr_md5_transform(ctx->state, input);
 			input += MD5_BLOCK_LENGTH;
 			len -= MD5_BLOCK_LENGTH;
 		}
@@ -148,7 +148,7 @@ void fr_MD5Update(FR_MD5_CTX *ctx, unsigned char const *input, size_t len)
  * Final wrapup - pad to 64-byte boundary with the bit pattern
  * 1 0* (64-bit count of bits processed, MSB-first)
  */
-void fr_MD5Final(uint8_t digest[MD5_DIGEST_LENGTH], FR_MD5_CTX *ctx)
+void fr_md5_final(uint8_t digest[MD5_DIGEST_LENGTH], FR_MD5_CTX *ctx)
 {
 	uint8_t count[8];
 	size_t padlen;
@@ -162,8 +162,8 @@ void fr_MD5Final(uint8_t digest[MD5_DIGEST_LENGTH], FR_MD5_CTX *ctx)
 	    ((ctx->count[0] >> 3) & (MD5_BLOCK_LENGTH - 1));
 	if (padlen < 1 + 8)
 		padlen += MD5_BLOCK_LENGTH;
-	fr_MD5Update(ctx, PADDING, padlen - 8); /* padlen - 8 <= 64 */
-	fr_MD5Update(ctx, count, 8);
+	fr_md5_update(ctx, PADDING, padlen - 8); /* padlen - 8 <= 64 */
+	fr_md5_update(ctx, count, 8);
 
 	if (digest != NULL) {
 		for (i = 0; i < 4; i++)
@@ -186,10 +186,10 @@ void fr_MD5Final(uint8_t digest[MD5_DIGEST_LENGTH], FR_MD5_CTX *ctx)
 
 /*
  * The core of the MD5 algorithm, this alters an existing MD5 hash to
- * reflect the addition of 16 longwords of new data.  fr_MD5Update blocks
+ * reflect the addition of 16 longwords of new data.  fr_md5_update blocks
  * the data and converts bytes into longwords for this routine.
  */
-void fr_MD5Transform(uint32_t state[4], uint8_t const block[MD5_BLOCK_LENGTH])
+void fr_md5_transform(uint32_t state[4], uint8_t const block[MD5_BLOCK_LENGTH])
 {
 	uint32_t a, b, c, d, in[MD5_BLOCK_LENGTH / 4];
 

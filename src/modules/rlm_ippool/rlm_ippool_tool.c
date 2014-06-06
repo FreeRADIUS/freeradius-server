@@ -157,9 +157,9 @@ void addip(char *sessiondbname, char *indexdbname, char *ipaddress,
 
 		snprintf(md5_input_str, MAX_STRING_LEN, "%s %s", NASname, NASport);
 
-		fr_MD5Init(&md5_context);
-		fr_MD5Update(&md5_context, (uint8_t *) md5_input_str, strlen(md5_input_str));
-		fr_MD5Final(key_str, &md5_context);
+		fr_md5_init(&md5_context);
+		fr_md5_update(&md5_context, (uint8_t *) md5_input_str, strlen(md5_input_str));
+		fr_md5_final(key_str, &md5_context);
 
 		memcpy(key.key, key_str, 16);
 		fr_bin2hex(hex_str, key_str, 16);
@@ -386,9 +386,9 @@ void tonewformat(char *sessiondbname, char *newsessiondbname) {
 
 		snprintf(md5_input_str, MAX_STRING_LEN, "%s %d", old_key.nas, old_key.port);
 
-		fr_MD5Init(&md5_context);
-		fr_MD5Update(&md5_context, (uint8_t *) md5_input_str, strlen(md5_input_str));
-		fr_MD5Final(key_str, &md5_context);
+		fr_md5_init(&md5_context);
+		fr_md5_update(&md5_context, (uint8_t *) md5_input_str, strlen(md5_input_str));
+		fr_md5_final(key_str, &md5_context);
 
 		memcpy(key.key, key_str, 16);
 		fr_bin2hex(hex_str, key_str, 16);
