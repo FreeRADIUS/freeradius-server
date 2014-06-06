@@ -712,6 +712,98 @@ EVP_MD_XLAT(sha256);
 EVP_MD_XLAT(sha512);
 #endif
 
+/** Generate the HMAC-MD5 of a string or attribute
+ *
+ * Example: "%{hmacmd5:foo bar}" == "Zm9v"
+ */
+static ssize_t hmac_md5_xlat(UNUSED void *instance, UNUSED REQUEST *request,
+			     char const *fmt, char *out, size_t outlen)
+{
+	uint8_t const *data, *key;
+	char const *p;
+	ssize_t data_len, key_len;
+	uint8_t digest[MD5_DIGEST_LENGTH];
+	char data_ref[256];
+
+	if (outlen <= (sizeof(digest) * 2)) {
+		REDEBUG("Insufficient space to write digest, needed %zu bytes, have %zu bytes",
+			(sizeof(digest) * 2) + 1, outlen);
+		return -1;
+	}
+
+	p = strchr(fmt, ' ');
+	if (!p) {
+		REDEBUG("HMAC requires exactly two arguments (&data &key)");
+		return -1;
+	}
+
+	if ((size_t)(p - fmt) >= sizeof(data_ref)) {
+		REDEBUG("Insufficient space to store HMAC input data, needed %zu bytes, have %zu bytes",
+		       (p - fmt) + 1, sizeof(data_ref));
+
+		return -1;
+	}
+	strlcpy(data_ref, fmt, (p - fmt) + 1);
+
+	data_len = xlat_fmt_to_ref(&data, request, data_ref);
+	if (data_len < 0) return -1;
+
+	while (isspace(*p) && p++);
+
+	key_len = xlat_fmt_to_ref(&key, request, p);
+	if (key_len < 0) return -1;
+
+	fr_hmac_md5(digest, data, data_len, key, key_len);
+
+	return fr_bin2hex(out, digest, sizeof(digest));
+}
+
+/** Generate the HMAC-SHA1 of a string or attribute
+ *
+ * Example: "%{hmacsha1:foo bar}" == "Zm9v"
+ */
+static ssize_t hmac_sha1_xlat(UNUSED void *instance, UNUSED REQUEST *request,
+			      char const *fmt, char *out, size_t outlen)
+{
+	uint8_t const *data, *key;
+	char const *p;
+	ssize_t data_len, key_len;
+	uint8_t digest[SHA1_DIGEST_LENGTH];
+	char data_ref[256];
+
+	if (outlen <= (sizeof(digest) * 2)) {
+		REDEBUG("Insufficient space to write digest, needed %zu bytes, have %zu bytes",
+			(sizeof(digest) * 2) + 1, outlen);
+		return -1;
+	}
+
+	p = strchr(fmt, ' ');
+	if (!p) {
+		REDEBUG("HMAC requires exactly two arguments (&data &key)");
+		return -1;
+	}
+
+	if ((size_t)(p - fmt) >= sizeof(data_ref)) {
+		REDEBUG("Insufficient space to store HMAC input data, needed %zu bytes, have %zu bytes",
+		        (p - fmt) + 1, sizeof(data_ref));
+
+		return -1;
+	}
+	strlcpy(data_ref, fmt, (p - fmt) + 1);
+
+	data_len = xlat_fmt_to_ref(&data, request, data_ref);
+	if (data_len < 0) return -1;
+
+	while (isspace(*p) && p++);
+
+	key_len = xlat_fmt_to_ref(&key, request, p);
+	if (key_len < 0) return -1;
+
+	fr_hmac_sha1(digest, data, data_len, key, key_len);
+
+	return fr_bin2hex(out, digest, sizeof(digest));
+}
+
 /** Encode string or attribute as base64
  *
  * Example: "%{base64:foo}" == "Zm9v"
@@ -806,6 +898,8 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	xlat_register("sha256", sha256_xlat, NULL, inst);
 	xlat_register("sha512", sha512_xlat, NULL, inst);
 #endif
+	xlat_register("hmacmd5", hmac_md5_xlat, NULL, inst);
+	xlat_register("hmacsha1", hmac_sha1_xlat, NULL, inst);
 	xlat_register("base64", base64_xlat, NULL, inst);
 	xlat_register("base64tohex", base64_to_hex_xlat, NULL, inst);
 
