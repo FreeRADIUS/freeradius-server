@@ -5,6 +5,8 @@ update {
        control:Cleartext-Password := 'hello'
        request:Tmp-String-0 := "This is a string\n"
        request:Tmp-Octets-0 := 0x000504030201
+       request:Tmp-String-1 := "what do ya want for nothing?"
+       request:Tmp-String-2 := "Jefe"
 }
 
 update reply {
@@ -17,26 +19,26 @@ update reply {
 #
 if ("%{sha1:This is a string\n}" != 'cc7edf1ccc4bdf1e0ec8f72b95388b65218ecf0c') {
 	update reply {
-		Filter-Id += 'fail'
+		Filter-Id += 'fail 1'
 	}
 }
 
 if ("%{sha1:&Tmp-String-0}" != 'cc7edf1ccc4bdf1e0ec8f72b95388b65218ecf0c') {
 	update reply {
-		Filter-Id += 'fail'
+		Filter-Id += 'fail 2'
 	}
 }
 
 if ("%{sha1:&request:Tmp-String-0}" != 'cc7edf1ccc4bdf1e0ec8f72b95388b65218ecf0c') {
 	update reply {
-		Filter-Id += 'fail'
+		Filter-Id += 'fail 3'
 	}
 }
 
 # This differs than hashing the attribute directly, as the \n is escaped and becomes chars \ and n
 if ("%{sha1:%{Tmp-String-0}}" != 'd79c6dae2d4b3f4d78d0c044b38e23f52f376726') {
 	update reply {
-		Filter-Id += 'fail'
+		Filter-Id += 'fail 4'
 	}
 }
 
@@ -45,6 +47,15 @@ if ("%{sha1:%{Tmp-String-0}}" != 'd79c6dae2d4b3f4d78d0c044b38e23f52f376726') {
 #
 if ("%{sha1:&request:Tmp-Octets-0}" != '365b244645fe7294dff062174996572319d5a82c') {
 	update reply {
-		Filter-Id += 'fail'
+		Filter-Id += 'fail 5'
+	}
+}
+
+#
+#  SHA1 HMAC with attribute references
+#
+if ("%{hmacsha1:&Tmp-String-1 &Tmp-String-2}" != 'effcdf6ae5eb2fa2d27416d5f184df9c259a7c79') {
+	update reply {
+		Filter-Id += 'fail 6'
 	}
 }
