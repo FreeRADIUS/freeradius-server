@@ -354,9 +354,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 			return RLM_MODULE_FAIL;
 		}
 
-		fr_MD5Init(&md5_context);
-		fr_MD5Update(&md5_context, (uint8_t *)xlat_str, strlen(xlat_str));
-		fr_MD5Final(key_str, &md5_context);
+		fr_md5_init(&md5_context);
+		fr_md5_update(&md5_context, (uint8_t *)xlat_str, strlen(xlat_str));
+		fr_md5_final(key_str, &md5_context);
 
 		key_str[16] = '\0';
 		fr_bin2hex(hex_str, key_str, 16);
@@ -493,9 +493,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(UNUSED void *instance, UNUSED 
 		return RLM_MODULE_FAIL;
 	}
 
-	fr_MD5Init(&md5_context);
-	fr_MD5Update(&md5_context, (uint8_t *)xlat_str, strlen(xlat_str));
-	fr_MD5Final(key_str, &md5_context);
+	fr_md5_init(&md5_context);
+	fr_md5_update(&md5_context, (uint8_t *)xlat_str, strlen(xlat_str));
+	fr_md5_final(key_str, &md5_context);
 	key_str[16] = '\0';
 	fr_bin2hex(hex_str, key_str, 16);
 	hex_str[32] = '\0';

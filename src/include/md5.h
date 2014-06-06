@@ -69,12 +69,12 @@ typedef struct FR_MD5Context {
 /* include <sys/cdefs.h> */
 
 /* __BEGIN_DECLS */
-void	 fr_MD5Init(FR_MD5_CTX *);
-void	 fr_MD5Update(FR_MD5_CTX *, uint8_t const *, size_t)
+void	 fr_md5_init(FR_MD5_CTX *);
+void	 fr_md5_update(FR_MD5_CTX *, uint8_t const *, size_t)
 /*		__attribute__((__bounded__(__string__,2,3)))*/;
-void	 fr_MD5Final(uint8_t [MD5_DIGEST_LENGTH], FR_MD5_CTX *)
+void	 fr_md5_final(uint8_t [MD5_DIGEST_LENGTH], FR_MD5_CTX *)
 /*		__attribute__((__bounded__(__minbytes__,1,MD5_DIGEST_LENGTH)))*/;
-void	 fr_MD5Transform(uint32_t [4], uint8_t const [MD5_BLOCK_LENGTH])
+void	 fr_md5_transform(uint32_t [4], uint8_t const [MD5_BLOCK_LENGTH])
 /*		__attribute__((__bounded__(__minbytes__,1,4)))*/
 /*		__attribute__((__bounded__(__minbytes__,2,MD5_BLOCK_LENGTH)))*/;
 /* __END_DECLS */
@@ -83,10 +83,10 @@ void	 fr_MD5Transform(uint32_t [4], uint8_t const [MD5_BLOCK_LENGTH])
 
 USES_APPLE_DEPRECATED_API
 #define FR_MD5_CTX	MD5_CTX
-#define fr_MD5Init	MD5_Init
-#define fr_MD5Update	MD5_Update
-#define fr_MD5Final	MD5_Final
-#define fr_MD5Transform MD5_Transform
+#define fr_md5_init	MD5_Init
+#define fr_md5_update	MD5_Update
+#define fr_md5_final	MD5_Final
+#define fr_md5_transform MD5_Transform
 #endif
 
 /* hmac.c */

@@ -633,9 +633,9 @@ static void bfd_calc_md5(bfd_state_t *session, bfd_packet_t *bfd)
 	memset(md5->digest, 0, sizeof(md5->digest));
 	memcpy(md5->digest, session->secret, session->secret_len);
 
-	fr_MD5Init(&ctx);
-	fr_MD5Update(&ctx, (const uint8_t *) bfd, bfd->length);
-	fr_MD5Final(md5->digest, &ctx);
+	fr_md5_init(&ctx);
+	fr_md5_update(&ctx, (const uint8_t *) bfd, bfd->length);
+	fr_md5_final(md5->digest, &ctx);
 }
 
 static void bfd_auth_md5(bfd_state_t *session, bfd_packet_t *bfd)

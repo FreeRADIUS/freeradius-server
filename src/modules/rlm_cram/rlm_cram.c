@@ -51,10 +51,10 @@ static void calc_apop_digest(uint8_t *buffer, uint8_t const *challenge,
 {
 	FR_MD5_CTX context;
 
-	fr_MD5Init(&context);
-	fr_MD5Update(&context, challenge, challen);
-	fr_MD5Update(&context, (uint8_t const *) password, strlen(password));
-	fr_MD5Final(buffer, &context);
+	fr_md5_init(&context);
+	fr_md5_update(&context, challenge, challen);
+	fr_md5_update(&context, (uint8_t const *) password, strlen(password));
+	fr_md5_final(buffer, &context);
 }
 
 
@@ -68,14 +68,14 @@ static void calc_md5_digest(uint8_t *buffer, uint8_t const *challenge, size_t ch
 	memset(buf, 0x36, 64);
 	for(i=0; i<64 && password[i]; i++) buf[i]^=password[i];
 	memcpy(buf+64, challenge, challen);
-	fr_MD5Init(&context);
-	fr_MD5Update(&context, buf, 64+challen);
+	fr_md5_init(&context);
+	fr_md5_update(&context, buf, 64+challen);
 	memset(buf, 0x5c, 64);
 	for(i=0; i<64 && password[i]; i++) buf[i]^=password[i];
-	fr_MD5Final(buf+64,&context);
-	fr_MD5Init(&context);
-	fr_MD5Update(&context,buf,64+16);
-	fr_MD5Final(buffer,&context);
+	fr_md5_final(buf+64,&context);
+	fr_md5_init(&context);
+	fr_md5_update(&context,buf,64+16);
+	fr_md5_final(buffer,&context);
 }
 
 static void calc_md4_digest(uint8_t *buffer, uint8_t const *challenge, size_t challen, char const *password)

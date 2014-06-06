@@ -594,9 +594,9 @@ static ssize_t md5_xlat(UNUSED void *instance, UNUSED REQUEST *request,
 		return -1;
 	}
 
-	fr_MD5Init(&ctx);
-	fr_MD5Update(&ctx, p, inlen);
-	fr_MD5Final(digest, &ctx);
+	fr_md5_init(&ctx);
+	fr_md5_update(&ctx, p, inlen);
+	fr_md5_final(digest, &ctx);
 
 	/*
 	 *	Each digest octet takes two hex digits, plus one for

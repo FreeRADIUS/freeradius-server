@@ -52,9 +52,9 @@ void fr_hmac_md5(uint8_t digest[MD5_DIGEST_LENGTH], uint8_t const *text, size_t 
 	if (key_len > 64) {
 		FR_MD5_CTX tctx;
 
-		fr_MD5Init(&tctx);
-		fr_MD5Update(&tctx, key, key_len);
-		fr_MD5Final(tk, &tctx);
+		fr_md5_init(&tctx);
+		fr_md5_update(&tctx, key, key_len);
+		fr_md5_final(tk, &tctx);
 
 		key = tk;
 		key_len = 16;
@@ -86,20 +86,20 @@ void fr_hmac_md5(uint8_t digest[MD5_DIGEST_LENGTH], uint8_t const *text, size_t 
 	/*
 	 * perform inner MD5
 	 */
-	fr_MD5Init(&context);		   /* init context for 1st
+	fr_md5_init(&context);		   /* init context for 1st
 					      * pass */
-	fr_MD5Update(&context, k_ipad, 64);      /* start with inner pad */
-	fr_MD5Update(&context, text, text_len); /* then text of datagram */
-	fr_MD5Final(digest, &context);	  /* finish up 1st pass */
+	fr_md5_update(&context, k_ipad, 64);      /* start with inner pad */
+	fr_md5_update(&context, text, text_len); /* then text of datagram */
+	fr_md5_final(digest, &context);	  /* finish up 1st pass */
 	/*
 	 * perform outer MD5
 	 */
-	fr_MD5Init(&context);		   /* init context for 2nd
+	fr_md5_init(&context);		   /* init context for 2nd
 					      * pass */
-	fr_MD5Update(&context, k_opad, 64);     /* start with outer pad */
-	fr_MD5Update(&context, digest, 16);     /* then results of 1st
+	fr_md5_update(&context, k_opad, 64);     /* start with outer pad */
+	fr_md5_update(&context, digest, 16);     /* then results of 1st
 					      * hash */
-	fr_MD5Final(digest, &context);	  /* finish up 2nd pass */
+	fr_md5_final(digest, &context);	  /* finish up 2nd pass */
 }
 
 /*
