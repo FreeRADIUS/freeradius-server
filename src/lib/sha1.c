@@ -35,7 +35,7 @@ RCSID("$Id$")
 
 /* Hash a single 512-bit block. This is the core of the algorithm. */
 
-void fr_SHA1Transform(uint32_t state[5], uint8_t const buffer[64])
+void fr_sha1_transform(uint32_t state[5], uint8_t const buffer[64])
 {
 	uint32_t a, b, c, d, e;
 	typedef union {
@@ -91,9 +91,9 @@ void fr_SHA1Transform(uint32_t state[5], uint8_t const buffer[64])
 }
 
 
-/* fr_SHA1Init - Initialize new context */
+/* fr_sha1_init - Initialize new context */
 
-void fr_SHA1Init(fr_SHA1_CTX* context)
+void fr_sha1_init(fr_SHA1_CTX* context)
 {
 	/* SHA1 initialization constants */
 	context->state[0] = 0x67452301;
@@ -105,7 +105,7 @@ void fr_SHA1Init(fr_SHA1_CTX* context)
 }
 
 /* Run your data through this. */
-void fr_SHA1Update(fr_SHA1_CTX *context,uint8_t const *data, size_t len)
+void fr_sha1_update(fr_SHA1_CTX *context,uint8_t const *data, size_t len)
 {
 	unsigned int i, j;
 
@@ -117,9 +117,9 @@ void fr_SHA1Update(fr_SHA1_CTX *context,uint8_t const *data, size_t len)
 	context->count[1] += (len >> 29);
 	if ((j + len) > 63) {
 		memcpy(&context->buffer[j], data, (i = 64-j));
-		fr_SHA1Transform(context->state, context->buffer);
+		fr_sha1_transform(context->state, context->buffer);
 		for ( ; i + 63 < len; i += 64) {
-			fr_SHA1Transform(context->state, &data[i]);
+			fr_sha1_transform(context->state, &data[i]);
 		}
 		j = 0;
 	} else {
@@ -131,7 +131,7 @@ void fr_SHA1Update(fr_SHA1_CTX *context,uint8_t const *data, size_t len)
 
 /* Add padding and return the message digest. */
 
-void fr_SHA1Final(uint8_t digest[20], fr_SHA1_CTX* context)
+void fr_sha1_final(uint8_t digest[20], fr_SHA1_CTX *context)
 {
 	uint32_t i, j;
 	uint8_t finalcount[8];
@@ -140,12 +140,12 @@ void fr_SHA1Final(uint8_t digest[20], fr_SHA1_CTX* context)
 		finalcount[i] = (uint8_t)((context->count[(i >= 4 ? 0 : 1)] >> ((3-(i & 3)) * 8) ) & 255);  /* Endian independent */
 	}
 
-	fr_SHA1Update(context, (unsigned char const *) "\200", 1);
+	fr_sha1_update(context, (unsigned char const *) "\200", 1);
 
 	while ((context->count[0] & 504) != 448) {
-		fr_SHA1Update(context, (unsigned char const *) "\0", 1);
+		fr_sha1_update(context, (unsigned char const *) "\0", 1);
 	}
-	fr_SHA1Update(context, finalcount, 8);  /* Should cause a fr_SHA1Transform() */
+	fr_sha1_update(context, finalcount, 8);  /* Should cause a fr_sha1_transform() */
 	for (i = 0; i < 20; i++) {
 		digest[i] = (uint8_t)((context->state[i>>2] >> ((3-(i & 3)) * 8) ) & 255);
 	}
@@ -159,12 +159,12 @@ void fr_SHA1Final(uint8_t digest[20], fr_SHA1_CTX* context)
 	memset(&finalcount, 0, 8);
 #  endif
 
-#  ifdef SHA1HANDSOFF  /* make fr_SHA1Transform overwrite it's own static vars */
-	fr_SHA1Transform(context->state, context->buffer);
+#  ifdef SHA1HANDSOFF  /* make fr_sha1_transform overwrite it's own static vars */
+	fr_sha1_transform(context->state, context->buffer);
 #  endif
 }
 
-void fr_SHA1FinalNoLen(uint8_t digest[20], fr_SHA1_CTX* context)
+void fr_sha1_final_no_len(uint8_t digest[20], fr_SHA1_CTX *context)
 {
 	uint32_t i, j;
 
@@ -180,8 +180,8 @@ void fr_SHA1FinalNoLen(uint8_t digest[20], fr_SHA1_CTX* context)
 	memset(context->count, 0, 8);
 #  endif
 
-#  ifdef SHA1HANDSOFF  /* make fr_SHA1Transform overwrite it's own static vars */
-	fr_SHA1Transform(context->state, context->buffer);
+#  ifdef SHA1HANDSOFF  /* make fr_sha1_transform overwrite it's own static vars */
+	fr_sha1_transform(context->state, context->buffer);
 #  endif
 }
 #endif

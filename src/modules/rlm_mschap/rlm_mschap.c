@@ -1176,11 +1176,11 @@ static void mppe_GetMasterKey(uint8_t const *nt_hashhash,uint8_t const *nt_respo
        uint8_t digest[20];
        fr_SHA1_CTX Context;
 
-       fr_SHA1Init(&Context);
-       fr_SHA1Update(&Context,nt_hashhash,16);
-       fr_SHA1Update(&Context,nt_response,24);
-       fr_SHA1Update(&Context,magic1,27);
-       fr_SHA1Final(digest,&Context);
+       fr_sha1_init(&Context);
+       fr_sha1_update(&Context,nt_hashhash,16);
+       fr_sha1_update(&Context,nt_response,24);
+       fr_sha1_update(&Context,magic1,27);
+       fr_sha1_final(digest,&Context);
 
        memcpy(masterkey,digest,16);
 }
@@ -1201,12 +1201,12 @@ static void mppe_GetAsymmetricStartKey(uint8_t *masterkey,uint8_t *sesskey,
 	       s = magic2;
        }
 
-       fr_SHA1Init(&Context);
-       fr_SHA1Update(&Context,masterkey,16);
-       fr_SHA1Update(&Context,SHSpad1,40);
-       fr_SHA1Update(&Context,s,84);
-       fr_SHA1Update(&Context,SHSpad2,40);
-       fr_SHA1Final(digest,&Context);
+       fr_sha1_init(&Context);
+       fr_sha1_update(&Context,masterkey,16);
+       fr_sha1_update(&Context,SHSpad1,40);
+       fr_sha1_update(&Context,s,84);
+       fr_sha1_update(&Context,SHSpad2,40);
+       fr_sha1_final(digest,&Context);
 
        memcpy(sesskey,digest,keylen);
 }

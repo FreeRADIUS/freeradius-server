@@ -82,9 +82,9 @@ void eapsim_calculate_keys(struct eapsim_keys *ek)
 
 
 	/* do the master key first */
-	fr_SHA1Init(&context);
-	fr_SHA1Update(&context, buf, blen);
-	fr_SHA1Final(ek->master_key, &context);
+	fr_sha1_init(&context);
+	fr_sha1_update(&context, buf, blen);
+	fr_sha1_final(ek->master_key, &context);
 
 	/*
 	 * now use the PRF to expand it, generated K_aut, K_encr,
