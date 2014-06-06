@@ -32,13 +32,14 @@ RCSID("$Id$")
 
 /** Calculate HMAC using MD5
  *
+ * @param digest Caller digest to be filled in.
  * @param text Pointer to data stream.
  * @param text_len length of data stream.
  * @param key Pointer to authentication key.
  * @param key_len Length of authentication key.
- * @param digest Caller digest to be filled in.
+ *
  */
-void fr_hmac_md5(uint8_t const *text, size_t text_len, uint8_t const *key, size_t key_len, uint8_t *digest)
+void fr_hmac_md5(uint8_t digest[16], uint8_t const *text, size_t text_len, uint8_t const *key, size_t key_len)
 {
 	FR_MD5_CTX context;
 	uint8_t k_ipad[65];    /* inner padding - key XORd with ipad */
@@ -147,7 +148,7 @@ int main(int argc, char **argv)
   text = argv[2];
   text_len = strlen(text);
 
-  fr_hmac_md5(text, text_len, key, key_len, digest);
+  fr_hmac_md5(digest, text, text_len, key, key_len);
 
   for (i = 0; i < 16; i++) {
     printf("%02x", digest[i]);
