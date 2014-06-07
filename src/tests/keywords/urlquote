@@ -1,0 +1,32 @@
+#
+# PRE: update if
+#
+update {
+	# Some encoders replace ~ with %7E RFC3986 Section 2.4 says this should not be done.
+	request:Tmp-String-0 := '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-_.~'
+
+	# We encode * too as we don't know the context the data is being used in
+	# @fixme, something is messing up the processing of certain chars.
+#	request:Tmp-String-1 := '±§!@#$%^&*()+={[}]:;"'|\<,>?/`'
+#	request:Tmp-String-2 := '™œ¥¤'
+	reply:Filter-ID := 'filter'
+}
+
+
+if ("%{urlquote:%{request:Tmp-String-0}}" != '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-_.~') {
+	update reply {
+		Filter-Id += 'Fail 1'
+	}
+}
+
+#if ("%{urlquote:%{request:Tmp-String-1}}" != '%C2%B1%C2%A7%21%40%23%24%25%5E%26%2A%28%29%2B%3D%7B%5B%7D%5D%3A%3B%22%27%7C%5C%3C%2C%3E%3F%2F%60') {
+#	update reply {
+#		Filter-Id += 'Fail 2'
+#	}
+#}
+
+#if ("%{urlquote:%{request:Tmp-String-2}}" != '%99%9C%A5%A4') {
+#	update reply {
+#		Filter-Id += 'Fail 3'
+#	}
+#}
