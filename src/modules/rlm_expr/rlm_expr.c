@@ -468,7 +468,7 @@ static ssize_t urlquote_xlat(UNUSED void *instance, UNUSED REQUEST *request,
 				break;
 
 			/* MUST be upper case hex to be compliant */
-			snprintf(out, 4, "%%%02X", *p++); /* %XX */
+			snprintf(out, 4, "%%%02X", (uint8_t) *p++); /* %XX */
 
 			/* Already decremented */
 			freespace -= 2;
