@@ -95,6 +95,8 @@ static char randstr_salt[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmo
  */
 static char randstr_otp[] = "469ACGHJKLMNPQRUVWXYabdfhijkprstuvwxyz";
 
+static char const *hextab = "0123456789abcdef";
+
 static int get_number(REQUEST *request, char const **string, int64_t *answer)
 {
 	int		i, found;
@@ -488,8 +490,6 @@ static ssize_t urlquote_xlat(UNUSED void *instance, UNUSED REQUEST *request,
 static ssize_t urlunquote_xlat(UNUSED void *instance, UNUSED REQUEST *request,
 			       char const *fmt, char *out, size_t outlen)
 {
-	static char const *hextab = "0123456789abcdef";
-
 	char const *p;
 	char *c1, *c2;
 	size_t	freespace = outlen;
@@ -504,8 +504,9 @@ static ssize_t urlunquote_xlat(UNUSED void *instance, UNUSED REQUEST *request,
 		}
 		/* Is a % char */
 
-		if (!*p || !(c1 = memchr(hextab, tolower(*++p), 16)) ||
-		    !*p || !(c2 = memchr(hextab, tolower(*++p), 16))) {
+		/* Don't need \0 check, as it wont' be in the hextab */
+		if (!(c1 = memchr(hextab, tolower(*++p), 16)) ||
+		    !(c2 = memchr(hextab, tolower(*++p), 16))) {
 		   	REMARKER(fmt, p - fmt, "None hex char in % sequence");
 		   	return -1;
 		}
@@ -526,8 +527,8 @@ static ssize_t escape_xlat(UNUSED void *instance, UNUSED REQUEST *request,
 			   char const *fmt, char *out, size_t outlen)
 {
 	rlm_expr_t *inst = instance;
-	char const 	*p;
-	size_t	freespace = outlen;
+	char const *p;
+	size_t freespace = outlen;
 
 	if (outlen <= 1) return 0;
 
@@ -545,11 +546,55 @@ static ssize_t escape_xlat(UNUSED void *instance, UNUSED REQUEST *request,
 		if (freespace < 3)
 			break;
 
-		snprintf(out, 4, "=%02X", *p++);
+		snprintf(out, 4, "=%02X", (uint8_t)*p++);
 
 		/* Already decremented */
 		freespace -= 2;
 		out += 3;
+	}
+
+	*out = '\0';
+
+	return outlen - freespace;
+}
+
+/** Equivalent to the old safe_characters functionality in rlm_sql
+ *
+ * @verbatim Example: "%{escape:=60img=62foo.jpg=60/img=62}" == "<img>foo.jpg</img>" @endverbatim
+ */
+static ssize_t unescape_xlat(UNUSED void *instance, UNUSED REQUEST *request,
+			       char const *fmt, char *out, size_t outlen)
+{
+	rlm_expr_t *inst = instance;
+	char const *p;
+	char *c1, *c2, c3;
+	size_t	freespace = outlen;
+
+	if (outlen <= 1) return 0;
+
+	p = fmt;
+	while (*p && (--freespace > 0)) {
+		if (*p != '=') {
+		next:
+
+			*out++ = *p++;
+			continue;
+		}
+
+		/* Is a = char */
+
+		if (!(c1 = memchr(hextab, tolower(*(p + 1)), 16)) ||
+		    !(c2 = memchr(hextab, tolower(*(p + 2)), 16))) goto next;
+		c3 = ((c1 - hextab) << 4) + (c2 - hextab);
+
+		/*
+		 *	It was just random occurrence which just happens
+		 *	to match the escape sequence for a safe character.
+		 *	Copy it across verbatim.
+		 */
+		if (strchr(inst->allowed_chars, c3)) goto next;
+		*out++ = c3;
+		p += 3;
 	}
 
 	*out = '\0';
@@ -929,6 +974,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	xlat_register("urlquote", urlquote_xlat, NULL, inst);
 	xlat_register("urlunquote", urlunquote_xlat, NULL, inst);
 	xlat_register("escape", escape_xlat, NULL, inst);
+	xlat_register("unescape", unescape_xlat, NULL, inst);
 	xlat_register("tolower", lc_xlat, NULL, inst);
 	xlat_register("toupper", uc_xlat, NULL, inst);
 	xlat_register("md5", md5_xlat, NULL, inst);
