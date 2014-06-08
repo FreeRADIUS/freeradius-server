@@ -12,7 +12,7 @@ update {
 }
 
 
-if ("%{urlquote:%{request:Tmp-String-0}}" != '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-_.~') {
+if (<string>"%{urlquote:%{request:Tmp-String-0}}" != &Tmp-String-0) {
 	update reply {
 		Filter-Id += 'Fail 1'
 	}
