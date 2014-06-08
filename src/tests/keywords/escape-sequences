@@ -2,41 +2,41 @@
 #  PRE: update if xlat-attr-index
 #
 update request {
-       control:Cleartext-Password := 'hello'
-       Tmp-Octets-0 := 0x69206861766520736361727920656d626564646564207468696e67730020696e73696465206d65
-       Tmp-Octets-1 := 0x30783031013078303707307830410A307830440D222230786230b0C2b0
-       Tmp-String-0 := "i have scary embedded things\\000 inside me"
-       Tmp-String-0 += "0x01\0010x07\0070x0A\n0x0D\r\"\"0xb0\260°"
-       reply:Filter-Id := "filter"
+	control:Cleartext-Password := 'hello'
+	Tmp-Octets-0 := 0x69206861766520736361727920656d626564646564207468696e67730020696e73696465206d65
+	Tmp-Octets-1 := 0x30783031013078303707307830410A307830440D222230786230b0C2b0
+	Tmp-String-0 := "i have scary embedded things\\000 inside me"
+	Tmp-String-0 += "0x01\0010x07\0070x0A\n0x0D\r\"\"0xb0\260°"
+	reply:Filter-Id := "filter"
 }
 
 if ("%{string:Tmp-Octets-0}" != 'i have scary embedded things\\000 inside me') {
 	update reply {
-		Filter-Id := 'fail'
+		Filter-Id += 'fail 1'
 	}
 }
 
 if ("%{string:Tmp-Octets-1}" != '0x01\\0010x07\\0070x0A\\n0x0D\\r\\"\\"0xb0\\260°') {
 	update reply {
-		Filter-Id := 'fail'
+		Filter-Id += 'fail 2'
 	}
 }
 
 if ("%{Tmp-String-0[0]}" != 'i have scary embedded things\\000 inside me') {
 	update reply {
-		Filter-Id := 'fail'
+		Filter-Id += 'fail 3'
 	}
 }
 
 if ("%{Tmp-String-0[1]}" != '0x01\\0010x07\\0070x0A\\n0x0D\\r\\"\\"0xb0\\260°') {
 	update reply {
-		Filter-Id := 'fail'
+		Filter-Id += 'fail 4'
 	}
 }
 
 # And another slightly different codepath...
 if ("%{Tmp-String-0[*]}" != 'i have scary embedded things\\000 inside me,0x01\\0010x07\\0070x0A\\n0x0D\\r\\"\\"0xb0\\260°') {
 	update reply {
-		Filter-Id := 'fail'
+		Filter-Id += 'fail 5'
 	}
 }
