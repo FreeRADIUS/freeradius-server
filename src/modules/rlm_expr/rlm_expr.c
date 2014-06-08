@@ -481,6 +481,43 @@ static ssize_t urlquote_xlat(UNUSED void *instance, UNUSED REQUEST *request,
 	return outlen - freespace;
 }
 
+/** URLencode special characters
+ *
+ * Example: "%{urlunquote:http%3A%47%47example.org%47}" == "http://example.org/"
+ */
+static ssize_t urlunquote_xlat(UNUSED void *instance, UNUSED REQUEST *request,
+			       char const *fmt, char *out, size_t outlen)
+{
+	static char const *hextab = "0123456789abcdef";
+
+	char const *p;
+	char *c1, *c2;
+	size_t	freespace = outlen;
+
+	if (outlen <= 1) return 0;
+
+	p = fmt;
+	while (*p && (--freespace > 0)) {
+		if (*p != '%') {
+			*out++ = *p++;
+			continue;
+		}
+		/* Is a % char */
+
+		if (!*p || !(c1 = memchr(hextab, tolower(*++p), 16)) ||
+		    !*p || !(c2 = memchr(hextab, tolower(*++p), 16))) {
+		   	REMARKER(fmt, p - fmt, "None hex char in % sequence");
+		   	return -1;
+		}
+		p++;
+		*out++ = ((c1 - hextab) << 4) + (c2 - hextab);
+	}
+
+	*out = '\0';
+
+	return outlen - freespace;
+}
+
 /** Equivalent to the old safe_characters functionality in rlm_sql
  *
  * @verbatim Example: "%{escape:<img>foo.jpg</img>}" == "=60img=62foo.jpg=60/img=62" @endverbatim
@@ -890,6 +927,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	xlat_register("rand", rand_xlat, NULL, inst);
 	xlat_register("randstr", randstr_xlat, NULL, inst);
 	xlat_register("urlquote", urlquote_xlat, NULL, inst);
+	xlat_register("urlunquote", urlunquote_xlat, NULL, inst);
 	xlat_register("escape", escape_xlat, NULL, inst);
 	xlat_register("tolower", lc_xlat, NULL, inst);
 	xlat_register("toupper", uc_xlat, NULL, inst);
