@@ -481,7 +481,7 @@ static ssize_t urlquote_xlat(UNUSED void *instance, UNUSED REQUEST *request,
 	return outlen - freespace;
 }
 
-/** URLencode special characters
+/** URLdecode special characters
  *
  * Example: "%{urlunquote:http%3A%47%47example.org%47}" == "http://example.org/"
  */
