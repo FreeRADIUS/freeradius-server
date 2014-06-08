@@ -2,43 +2,57 @@
 #  PRE: update if xlat-attr-index
 #
 update request {
-       control:Cleartext-Password := 'hello'
-       Tmp-Octets-0 := 0x69206861766520736361727920656d626564646564207468696e67730020696e73696465206d65
-       Tmp-Octets-1 := 0x30783031013078303707307830410A307830440D222230786230b0C2b0
-       Tmp-String-0 := "i have scary embedded things\\000 inside me"
-       Tmp-String-0 += "0x01\0010x07\0070x0A\n0x0D\r\"\"0xb0\260°"
+        control:Cleartext-Password := 'hello'
        reply:Filter-Id := "filter"
+
+	Tmp-String-0 := '@abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_: /'
+	Tmp-String-1 := '±§#$%^&+={[}];<,>?`|"'
+	Tmp-String-2 := '™œ¥¤'
+	# The extra =5C is because the " is printed as \"
+	Tmp-String-3 := '=C2=B1=C2=A7=23=24=25=5E=26=2B=3D=7B=5B=7D=5D=3B=3C=2C=3E=3F=60=7C=5C=22'
+	Tmp-String-4 := '=E2=84=A2=C5=93=C2=A5=C2=A4'
+	Tmp-String-5 := '=40=61=62=63=64=65=66=67'
 }
 
-if ("%{string:Tmp-Octets-0}" != 'i have scary embedded things\\000 inside me') {
+if (<string>"%{escape:%{request:Tmp-String-0}}" != &Tmp-String-0) {
 	update reply {
-		Filter-Id := 'fail'
+		Filter-Id += 'Fail 1'
 	}
 }
 
-if ("%{string:Tmp-Octets-1}" != '0x01\\0010x07\\0070x0A\\n0x0D\\r\\"\\"0xb0\\260°') {
+if (<string>"%{escape:%{request:Tmp-String-1}}" != &Tmp-String-3) {
 	update reply {
-		Filter-Id := 'fail'
+		Filter-Id += 'Fail 2'
 	}
 }
 
-if ("%{Tmp-String-0[0]}" != 'i have scary embedded things\\000 inside me') {
+if (<string>"%{escape:%{request:Tmp-String-2}}" != &Tmp-String-4) {
 	update reply {
-		Filter-Id := 'fail'
+		Filter-Id += 'Fail 3'
 	}
 }
 
-if ("%{Tmp-String-0[1]}" != '0x01\\0010x07\\0070x0A\\n0x0D\\r\\"\\"0xb0\\260°') {
+if (<string>"%{unescape:%{request:Tmp-String-0}}" != &Tmp-String-0) {
 	update reply {
-		Filter-Id := 'fail'
+		Filter-Id += 'Fail 4'
 	}
 }
 
-# And another slightly different codepath...
-if ("%{Tmp-String-0[*]}" != 'i have scary embedded things\\000 inside me,0x01\\0010x07\\0070x0A\\n0x0D\\r\\"\\"0xb0\\260°') {
+if (<string>"%{unescape:%{request:Tmp-String-3}}" != &Tmp-String-1) {
 	update reply {
-		Filter-Id := 'fail'
+		Filter-Id += 'Fail 5'
 	}
 }
 
+if (<string>"%{unescape:%{request:Tmp-String-4}}" != &Tmp-String-2) {
+	update reply {
+		Filter-Id += 'Fail 6'
+	}
+}
 
+# All safe chars, so should not be touched.
+if (<string>"%{unescape:%{request:Tmp-String-5}}" != &Tmp-String-5) {
+	update reply {
+		Filter-Id += 'Fail 7'
+	}
+}
