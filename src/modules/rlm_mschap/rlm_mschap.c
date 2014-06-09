@@ -1373,16 +1373,32 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void * instance, REQUEST *r
 	 */
 	lm_password = pairfind(request->config_items, PW_LM_PASSWORD, 0, TAG_ANY);
 	if (lm_password) {
-		if (lm_password->length == 16) {
+		VERIFY_VP(lm_password);
+
+		switch (lm_password->length) {
+		case 16:
 			RDEBUG2("Found LM-Password");
-		} else {
-			RWDEBUG("LM-Password has not been normalized by the 'pap' module.  Authentication will fail");
+			break;
+
+		/* 0x */
+		case 34:
+		case 32:
+			RWDEBUG("LM-Password has not been normalized by the 'pap' module (likely still in hex format).  "
+				"Authentication may fail");
 			lm_password = NULL;
+			break;
+
+		default:
+			RWDEBUG("LM-Password found but incorrect length, expected 16 bytes got %zu bytes.  "
+				"Authentication may fail", lm_password->length);
+			lm_password = NULL;
+			break;
 		}
+	}
 	/*
 	 *	... or a Cleartext-Password, which we now transform into an LM-Password
 	 */
-	} else if (password) {
+	if (!lm_password && password) {
 		RDEBUG2("Found Cleartext-Password, hashing to create LM-Password");
 		lm_password = pairmake_config("LM-Password", NULL, T_OP_EQ);
 		if (!lm_password) {
@@ -1397,20 +1413,37 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void * instance, REQUEST *r
 	}
 
 	/*
-	 *	We need an NT-Password.
+	 *	or we need an NT-Password.
 	 */
 	nt_password = pairfind(request->config_items, PW_NT_PASSWORD, 0, TAG_ANY);
 	if (nt_password) {
-		if (nt_password->length == 16) {
+		VERIFY_VP(nt_password);
+
+		switch (nt_password->length) {
+		case 16:
 			RDEBUG2("Found NT-Password");
-		} else {
-			RWDEBUG("NT-Password has not been normalized by the 'pap' module.  Authentication will fail");
+			break;
+
+		/* 0x */
+		case 34:
+		case 32:
+			RWDEBUG("NT-Password has not been normalized by the 'pap' module (likely still in hex format).  "
+				"Authentication may fail");
 			nt_password = NULL;
+			break;
+
+		default:
+			RWDEBUG("NT-Password found but incorrect length, expected 16 bytes got %zu bytes.  "
+				"Authentication may fail", nt_password->length);
+			nt_password = NULL;
+			break;
 		}
+	}
+
 	/*
 	 *	... or a Cleartext-Password, which we now transform into an NT-Password
 	 */
-	} else if (password) {
+	if (!nt_password && password) {
 		RDEBUG2("Found Cleartext-Password, hashing to create NT-Password");
 		nt_password = pairmake_config("NT-Password", NULL, T_OP_EQ);
 		if (!nt_password) {
@@ -1441,6 +1474,11 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void * instance, REQUEST *r
 		int seq, new_nt_enc_len=0;
 
 		RDEBUG("MS-CHAPv2 password change request received");
+
+		if (!nt_password) {
+			REDEBUG("No valid NT-Password attribute found, can't change password");
+			return RLM_MODULE_INVALID;
+		}
 
 		if (cpw->length != 68) {
 			REDEBUG("MS-CHAP2-CPW has the wrong format: length %zu != 68", cpw->length);
