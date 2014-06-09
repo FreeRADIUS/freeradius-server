@@ -1388,7 +1388,7 @@ AC_LINK_IFELSE(
       #include <netinet/in.h>
     ]],
     [[
-      return htonll(0);
+      return htonlll(0);
     ]]
   )],
   [
