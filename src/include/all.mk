@@ -39,12 +39,15 @@ HEADERS	= \
 HEADERS_DY = src/include/features.h src/include/missing.h src/include/tls.h \
 	src/include/radpaths.h src/include/attributes.h
 
+#
+#  Solaris awk doesn't recognise [[:blank:]] hence [\t ]
+#
 src/include/autoconf.sed: src/include/autoconf.h
-	@grep ^#define $< | sed 's,/\*\*/,1,;' | awk '{print "\
-	s,#[[:blank:]]*ifdef[[:blank:]]*" $$2 ",#if "$$3 ",g;\
-	s,#[[:blank:]]*ifndef[[:blank:]]*" $$2 ",#if !"$$3 ",g;\
-	s,defined(" $$2 ")," $$3 ",g;\
-	s," $$2 ","$$3 ",g;"}' > $@
+	@grep ^#define $< | sed 's,/\*\*/,1,;' | awk '{print "'\
+	's,#[\t ]*ifdef[\t ]*" $$2 ",#if "$$3 ",g;'\
+	's,#[\t ]*ifndef[\t ]*" $$2 ",#if !"$$3 ",g;'\
+	's,defined(" $$2 ")," $$3 ",g;'\
+	's," $$2 ","$$3 ",g;"}' > $@
 
 src/include/radius.h: | src/include/attributes.h
 
