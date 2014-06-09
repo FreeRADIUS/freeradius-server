@@ -29,6 +29,8 @@ FreeRADIUS 3.0.4 Mon 12 May 2014 15:30:00 EDT urgency=medium
 	  configuration easier.
 	* Add control:Cache-Read-Only which when set to 'yes' will make the
 	  cache module merge existing cache data, but not create new entries.
+	* Add %{unescape:} and %{urlunquote:} expansions to reverse escaping
+	  and urlquoting.
 
 	Bug fixes
 	* make case-insensitive regular expressions work again.
@@ -62,6 +64,7 @@ FreeRADIUS 3.0.4 Mon 12 May 2014 15:30:00 EDT urgency=medium
 	  may have caused a validation error.
 	* Don't print two "&" for messages about attribute or list
 	  references.
+	* Fix urlquote and escape to encode Unicode characters correctly.
 
 FreeRADIUS 3.0.3 Mon 12 May 2014 15:30:00 EDT urgency=medium
 	Feature improvements
