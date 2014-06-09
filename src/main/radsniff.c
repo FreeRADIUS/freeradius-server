@@ -1619,6 +1619,7 @@ static int rs_build_filter(VALUE_PAIR **out, char const *filter)
 		if (vp->type == VT_XLAT) {
 			vp->type = VT_DATA;
 			vp->vp_strvalue = vp->value.xlat;
+			vp->length = talloc_array_length(vp->vp_strvalue) - 1;
 		}
 	}
 
