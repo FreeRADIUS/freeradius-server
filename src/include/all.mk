@@ -56,7 +56,7 @@ src/include/radius.h: | src/include/attributes.h
 
 src/include/attributes.h: share/dictionary.freeradius.internal
 	@$(ECHO) HEADER $@
-	@grep ^ATTRIBUTE $<  | awk '{print "PW_"$$2 " " $$3}' | tr 'a-z' 'A-Z' | tr -- - _ | sed 's/^/#define /' > $@
+	@grep ^ATTRIBUTE $<  | awk '{print "PW_"$$2 " " $$3}' | tr '[:lower:]' '[:upper:]' | tr -- - _ | sed 's/^/#define /' > $@
 
 src/freeradius-devel/features.h: src/include/features.h src/freeradius-devel
 
