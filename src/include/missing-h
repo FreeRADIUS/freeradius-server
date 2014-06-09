@@ -429,6 +429,10 @@ uint128_t ntohlll(uint128_t num);
 #  define htonlll(x) htohlll(x)
 #endif
 
+#ifndef HAVE_SIG_T
+typedef void(*sig_t)(int);
+#endif
+
 #ifdef __cplusplus
 }
 #endif

@@ -1215,15 +1215,6 @@ FR_CHECK_TYPE_INCLUDE(
   uint64_t, unsigned long long, [uint64_t is required for larger counters]
 )
 
-FR_CHECK_TYPE_INCLUDE(
-  [
-    #ifdef HAVE_SIGNAL_H
-    #  include <signal.h>
-    #endif
-  ],
-  sig_t, void(*sig_t)(int), [signal action callback function]
-)
-
 dnl #
 dnl #  Check for __uint128_t (compiler builtin)
 dnl #
@@ -1283,6 +1274,33 @@ AC_CHECK_TYPE(struct addrinfo, AC_DEFINE(HAVE_STRUCT_ADDRINFO, 1, [Generic DNS l
     #ifdef HAVE_NETDB_H
     #  include <netdb.h>
     #endif
+  ]
+)
+
+dnl #
+dnl #  Check for sig_t
+dnl #
+dnl #  FR_CHECK_TYPE_INCLUDE doesn't work for callbacks as it doesn't produce typedefs
+dnl #
+AC_MSG_CHECKING([if sig_t is defined])
+AC_LINK_IFELSE(
+  [AC_LANG_PROGRAM(
+    [[
+      #ifdef HAVE_SIGNAL_H
+      #  include <signal.h>
+      #endif
+    ]],
+    [[
+      sig_t func;
+      return 0;
+    ]]
+  )],
+  [
+      AC_MSG_RESULT(yes)
+      AC_DEFINE(HAVE_SIG_T, 1, [Define if the type sig_t is defined by signal.h])
+  ],
+  [
+      AC_MSG_RESULT(no)
   ]
 )
 
