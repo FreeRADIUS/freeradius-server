@@ -62,11 +62,14 @@ src/freeradius-devel/features.h: src/include/features.h src/freeradius-devel
 #  preprocessor macros from autoconf.h
 #  This means we don't need to include autoconf.h in installed headers.
 #
+#  We use simple patterns here to work with the lowest common
+#  denominator's grep (Solaris).
+#
 src/include/features.h: src/include/features-h src/include/autoconf.h
 	@$(ECHO) HEADER $@
 	@cp $< $@
-	@grep "^#define[[:blank:]]\{1,\}WITH_" src/include/autoconf.h >> $@
-	@grep "^#define[[:blank:]]\{1,\}RADIUSD_VERSION" src/include/autoconf.h >> $@
+	@grep "^#define[ ]*WITH_" src/include/autoconf.h >> $@
+	@grep "^#define[ ]*RADIUSD_VERSION" src/include/autoconf.h >> $@
 
 src/freeradius-devel/missing.h: src/include/missing.h src/freeradius-devel
 
