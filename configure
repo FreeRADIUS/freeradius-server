@@ -9257,7 +9257,7 @@ int
 main ()
 {
 
-      return htonll(0);
+      return htonlll(0);
 
 
   ;
