@@ -306,6 +306,9 @@
 /* Define to 1 if you have the `sigprocmask' function. */
 #undef HAVE_SIGPROCMASK
 
+/* Define if the type sig_t is defined by signal.h */
+#undef HAVE_SIG_T
+
 /* Define to 1 if you have the `snprintf' function. */
 #undef HAVE_SNPRINTF
 
@@ -573,9 +576,6 @@
 
 /* Define to `int' if <sys/types.h> does not define. */
 #undef pid_t
-
-/* signal action callback function */
-#undef sig_t
 
 /* Define to `unsigned int' if <sys/types.h> does not define. */
 #undef size_t
