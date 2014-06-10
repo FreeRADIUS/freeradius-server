@@ -14,6 +14,25 @@
 #include	<freeradius-devel/modules.h>
 #include	<ldap.h>
 
+/*
+ *      For compatibility with other LDAP libraries
+ */
+#if !defined(LDAP_SCOPE_BASE) && defined(LDAP_SCOPE_BASEOBJECT)
+#  define LDAP_SCOPE_BASE LDAP_SCOPE_BASEOBJECT
+#endif
+
+#if !defined(LDAP_SCOPE_ONE) && defined(LDAP_SCOPE_ONELEVEL)
+#  define LDAP_SCOPE_ONE LDAP_SCOPE_ONELEVEL
+#endif
+
+#if !defined(LDAP_SCOPE_SUB) && defined(LDAP_SCOPE_SUBTREE)
+#  define LDAP_SCOPE_SUB LDAP_SCOPE_SUBTREE
+#endif
+
+#if !defined(LDAP_OPT_RESULT_CODE) && defined(LDAP_OPT_ERROR_NUMBER)
+#  define LDAP_OPT_RESULT_CODE LDAP_OPT_ERROR_NUMBER
+#endif
+
 #define LDAP_MAX_ATTRMAP		128		//!< Maximum number of mappings between LDAP and
 							//!< FreeRADIUS attributes.
 #define LDAP_MAP_RESERVED		4		//!< Number of additional items to allocate in expanded

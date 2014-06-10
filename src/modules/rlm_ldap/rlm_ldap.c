@@ -42,8 +42,9 @@ FR_NAME_NUMBER const ldap_scope[] = {
 	{ "sub",	LDAP_SCOPE_SUB	},
 	{ "one",	LDAP_SCOPE_ONE	},
 	{ "base",	LDAP_SCOPE_BASE },
+#ifdef LDAP_SCOPE_CHILDREN
 	{ "children",	LDAP_SCOPE_CHILDREN },
-
+#endif
 	{  NULL , -1 }
 };
 
@@ -569,6 +570,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 #endif
 	}
 
+#ifdef LDAP_OPT_X_TLS_NEVER
 	/*
 	 *	Workaround for servers which support LDAPS but not START TLS
 	 */
@@ -577,6 +579,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	} else {
 		inst->tls_mode = 0;
 	}
+#endif
 
 #if LDAP_SET_REBIND_PROC_ARGS != 3
 	/*
@@ -628,7 +631,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		}
 #else
 		LDAP_ERR("Modifying 'tls.require_cert' is not supported by current version of libldap. "
-			 "Please upgrade libldap and rebuild this module");
+			 "Please upgrade or substitute current libldap and rebuild this module");
 
 		goto error;
 #endif

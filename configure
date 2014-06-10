@@ -4304,7 +4304,7 @@ fi
 
 
 if test "x$GCC" = "xyes"; then
-  CFLAGS="$CFLAGS -Wall -D_GNU_SOURCE"
+  CFLAGS="$CFLAGS -Wall -std=c99 -D_GNU_SOURCE -D_XOPEN_SOURCE=600"
 fi
 
 
