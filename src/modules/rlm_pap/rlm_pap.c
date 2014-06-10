@@ -248,14 +248,31 @@ static void normify(REQUEST *request, VALUE_PAIR *vp, size_t min_length)
 {
 	size_t decoded;
 	uint8_t buffer[256];
+	char raw[sizeof(vp->vp_strvalue) + 1];
+	char *value;
 
 	if (min_length >= sizeof(buffer)) return; /* paranoia */
+	/*
+	 *	fr_hex2bin and base64_decode don't deal well with non
+	 *	\0 terminated buffers.
+	 */
+	if (vp->type == PW_TYPE_OCTETS) {
+		if (vp->length > sizeof(raw)) return;
+
+		memcpy(raw, vp->vp_octets, vp->length);
+		raw[vp->length] = '\0';
+		value = raw;
+	} else if (vp->type == PW_TYPE_STRING) {
+		value = vp->vp_strvalue;
+	} else {
+		return;
+	}
 
 	/*
 	 *	Hex encoding.
 	 */
 	if (vp->length >= (2 * min_length)) {
-		decoded = fr_hex2bin(vp->vp_strvalue, buffer, sizeof(buffer));
+		decoded = fr_hex2bin(value, buffer, sizeof(buffer));
 		if (decoded == (vp->length >> 1)) {
 			RDEBUG2("Normalizing %s from hex encoding", vp->name);
 			memcpy(vp->vp_octets, buffer, decoded);
@@ -269,7 +286,7 @@ static void normify(REQUEST *request, VALUE_PAIR *vp, size_t min_length)
 	 *	and we want to avoid division...
 	 */
 	if (((vp->length * 3) >= ((min_length * 4))) &&
-	    ((decoded = base64_decode(vp->vp_strvalue, buffer)) > 0) &&
+	    ((decoded = base64_decode(value, buffer)) > 0) &&
 	    (decoded >= min_length)) {
 		RDEBUG2("Normalizing %s from base64 encoding", vp->name);
 		memcpy(vp->vp_octets, buffer, decoded);
@@ -371,7 +388,7 @@ static int pap_authorize(void *instance, REQUEST *request)
 			new_vp = radius_paircreate(request,
 						   &request->config_items,
 						   attr, PW_TYPE_STRING);
-			
+
 			/*
 			 *	The data after the '}' may be binary,
 			 *	so we copy it via memcpy.
