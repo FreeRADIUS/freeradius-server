@@ -32,7 +32,7 @@ if test x$with_[]modname != xno; then
 	if test "$krb5_config" != 'not-found'; then
 		AC_MSG_CHECKING([krb5-config CFLAGS])
 		SMART_CPPFLAGS=$($krb5_config --cflags)
-		SMART_CPPFLAGS=[$(echo "$SMART_CPPFLAGS" | sed 's/-I[ ]*/-isystem /g')]
+		SMART_CPPFLAGS=[$(echo "$SMART_CPPFLAGS" | sed 's/-I[ ]*/-include /g')]
 		AC_MSG_RESULT("$SMART_CPPFLAGS")
 
 		AC_MSG_CHECKING([krb5-config LDFLAGS])
@@ -53,7 +53,8 @@ if test x$with_[]modname != xno; then
 
 		AC_MSG_CHECKING([canonical API type])
 		if test "$krb5_vendor" = "Massachusetts Institute of Technology" || \
-			echo "$krb5_vendor" | grep -i 'MIT' > /dev/null 2>&1 ; then
+			echo "$krb5_vendor" | grep -i 'MIT' > /dev/null 2>&1 || \
+			echo "$krb5_version_raw" | grep -i 'MIT' > /dev/null 2>&1 ; then
 			AC_MSG_RESULT([MIT])
 			krb5_api_type='mit'
 		else

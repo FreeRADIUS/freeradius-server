@@ -52,7 +52,7 @@ INCLUDE		= -I${top_srcdir} -I${top_srcdir}/src \
 		  -include ${top_srcdir}/src/freeradius-devel/build.h \
 		  -include ${top_srcdir}/src/freeradius-devel/features.h \
 		  -include ${top_srcdir}/src/freeradius-devel/radpaths.h
-CFLAGS		= $(INCLUDE) -std=c99 -fno-strict-aliasing @CFLAGS@
+CFLAGS		= $(INCLUDE) -fno-strict-aliasing @CFLAGS@
 CPPFLAGS	= @CPPFLAGS@
 LIBPREFIX	= @LIBPREFIX@
 EXEEXT		= @EXEEXT@

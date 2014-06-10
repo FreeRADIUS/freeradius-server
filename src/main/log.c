@@ -32,6 +32,8 @@ RCSID("$Id$")
 #  include <sys/stat.h>
 #endif
 
+#include <fcntl.h>
+
 #ifdef HAVE_SYSLOG_H
 #  include <syslog.h>
 #endif
