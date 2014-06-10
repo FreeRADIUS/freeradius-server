@@ -619,7 +619,7 @@ static int CC_HINT(nonnull) eappeap_postproxy(eap_handler_t *handler, void *data
 
 		switch (rcode) {
 		case RLM_MODULE_FAIL:
-			request_free(&fake);
+			talloc_free(&fake);
 			eaptls_fail(handler, 0);
 			return 0;
 
@@ -628,7 +628,7 @@ static int CC_HINT(nonnull) eappeap_postproxy(eap_handler_t *handler, void *data
 			break;
 		}
 	}
-	request_free(&fake);	/* robust if !fake */
+	talloc_free(fake);	/* robust if !fake */
 
 	/*
 	 *	If there was no EAP-Message in the reply packet, then
@@ -825,7 +825,7 @@ rlm_rcode_t eappeap_process(eap_handler_t *handler, tls_session_t *tls_session)
 
 		if (fake->reply->code != PW_CODE_AUTHENTICATION_ACK) {
 			RDEBUG2("SoH was rejected");
-			request_free(&fake);
+			talloc_free(fake);
 			t->status = PEAP_STATUS_SENT_TLV_FAILURE;
 			eappeap_failure(handler, tls_session);
 			return RLM_MODULE_HANDLED;
@@ -835,7 +835,7 @@ rlm_rcode_t eappeap_process(eap_handler_t *handler, tls_session_t *tls_session)
 		rad_assert(!t->soh_reply_vps);
 		pairfilter(t, &t->soh_reply_vps, &fake->reply->vps, 0, 0, TAG_ANY);
 		rad_assert(!fake->reply->vps);
-		request_free(&fake);
+		talloc_free(fake);
 
 		if (t->session_resumption_state == PEAP_RESUMPTION_YES) {
 			/* we're good, send success TLV */
@@ -950,7 +950,7 @@ rlm_rcode_t eappeap_process(eap_handler_t *handler, tls_session_t *tls_session)
 		fake->packet->vps = eap2vp(request, fake->packet,
 					   eap_ds, data, data_len);
 		if (!fake->packet->vps) {
-			request_free(&fake);
+			talloc_free(fake);
 			RDEBUG2("Unable to convert tunneled EAP packet to internal server data structures");
 			return RLM_MODULE_REJECT;
 		}
@@ -1205,7 +1205,7 @@ rlm_rcode_t eappeap_process(eap_handler_t *handler, tls_session_t *tls_session)
 #ifdef WITH_PROXY
  done:
 #endif
-	request_free(&fake);
+	talloc_free(fake);
 
 	return rcode;
 }

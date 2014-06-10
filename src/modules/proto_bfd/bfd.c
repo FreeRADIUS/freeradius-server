@@ -1391,8 +1391,7 @@ static int bfd_process(bfd_state_t *session, bfd_packet_t *bfd)
 		 *	FIXME: grab attributes from the reply
 		 *	and cache them for use in the next request.
 		 */
-
-		request_free(&request);
+		talloc_free(request);
 	}
 
 	return 1;

@@ -246,12 +246,12 @@ RADCLIENT *client_listener_find(rad_listen_t *listener,
 	request->client = client;
 	request->packet = rad_recv(listener->fd, 0x02); /* MSG_PEEK */
 	if (!request->packet) {				/* badly formed, etc */
-		request_free(&request);
+		talloc_free(request);
 		goto unknown;
 	}
 	request->reply = rad_alloc_reply(request, request->packet);
 	if (!request->reply) {
-		request_free(&request);
+		talloc_free(request);
 		goto unknown;
 	}
 	gettimeofday(&request->packet->timestamp, NULL);
@@ -275,7 +275,7 @@ RADCLIENT *client_listener_find(rad_listen_t *listener,
 	DEBUG("} # server %s", request->server);
 
 	if (rcode != RLM_MODULE_OK) {
-		request_free(&request);
+		talloc_free(request);
 		goto unknown;
 	}
 
@@ -297,7 +297,7 @@ RADCLIENT *client_listener_find(rad_listen_t *listener,
 	request->server = client->server;
 	exec_trigger(request, NULL, "server.client.add", false);
 
-	request_free(&request);
+	talloc_free(request);
 
 	if (!created) goto unknown;
 
@@ -2538,7 +2538,7 @@ static int _listener_free(rad_listen_t *this)
 		 */
 		if (this->tls) {
 			if (sock->ssn) session_free(sock->ssn);
-			request_free(&sock->request);
+			TALLOC_FREE(sock->request);
 #ifdef HAVE_PTHREAD_H
 			pthread_mutex_destroy(&(sock->mutex));
 #endif

@@ -691,7 +691,7 @@ STATE_MACHINE_DECL(request_done)
 
 	if (request->ev) fr_event_delete(el, &request->ev);
 
-	request_free(&request);
+	talloc_free(request);
 }
 
 
@@ -1644,7 +1644,7 @@ skip_dup:
 		} else {
 			RDEBUG("Not sending reply");
 		}
-		request_free(&request);
+		talloc_free(request);
 		return 1;
 	}
 
@@ -1670,7 +1670,7 @@ static REQUEST *request_setup(rad_listen_t *listener, RADIUS_PACKET *packet,
 	request->reply = rad_alloc(request, 0);
 	if (!request->reply) {
 		ERROR("No memory");
-		request_free(&request);
+		talloc_free(request);
 		return NULL;
 	}
 
@@ -2746,7 +2746,7 @@ static int request_proxy(REQUEST *request, int retransmit)
 		request->proxy_reply = talloc_steal(request, fake->reply);
 		fake->reply = NULL;
 
-		request_free(&fake);
+		talloc_free(fake);
 
 		/*
 		 *	Just do the work here, rather than trying to
@@ -3067,7 +3067,7 @@ static void ping_home_server(void *ctx)
 		rad_assert(!request->in_request_hash);
 		rad_assert(!request->in_proxy_hash);
 		rad_assert(request->ev == NULL);
-		request_free(&request);
+		talloc_free(request);
 		return;
 	}
 
@@ -3502,7 +3502,7 @@ static void request_coa_originate(REQUEST *request)
 	if (vp) {
 		if (vp->vp_integer == 0) {
 		fail:
-			request_free(&request->coa);
+			TALLOC_FREE(request->coa);
 			return;
 		}
 	}
@@ -4752,7 +4752,7 @@ static int request_delete_cb(UNUSED void *ctx, void *data)
 	}
 #endif
 
-	request_free(&request);
+	talloc_free(request);
 
 	/*
 	 *	Delete it from the list, and continue;

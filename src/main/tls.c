@@ -144,7 +144,7 @@ tls_session_t *tls_new_client_session(fr_tls_server_conf_t *conf, int fd)
 		return NULL;
 	}
 
-	request = talloc_zero(ssn, REQUEST);
+	request = request_alloc(ssn);
 	SSL_set_ex_data(ssn->ssl, FR_TLS_EX_INDEX_REQUEST, (void *)request);
 
 	/*

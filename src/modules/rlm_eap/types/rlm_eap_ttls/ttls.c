@@ -854,7 +854,7 @@ static int CC_HINT(nonnull) eapttls_postproxy(eap_handler_t *handler, void *data
 
 		switch (rcode) {
 		case RLM_MODULE_FAIL:
-			request_free(&fake);
+			talloc_free(fake);
 			eaptls_fail(handler, 0);
 			return 0;
 
@@ -864,7 +864,7 @@ static int CC_HINT(nonnull) eapttls_postproxy(eap_handler_t *handler, void *data
 			break;
 		}
 	}
-	request_free(&fake);	/* robust if !fake */
+	talloc_free(fake);	/* robust if !fake */
 
 	/*
 	 *	Process the reply from the home server.
@@ -981,7 +981,7 @@ PW_CODE eapttls_process(eap_handler_t *handler, tls_session_t *tls_session)
 	 */
 	fake->packet->vps = diameter2vp(request, fake, tls_session->ssl, data, data_len);
 	if (!fake->packet->vps) {
-		request_free(&fake);
+		talloc_free(fake);
 		return PW_CODE_AUTHENTICATION_REJECT;
 	}
 
@@ -1280,7 +1280,7 @@ PW_CODE eapttls_process(eap_handler_t *handler, tls_session_t *tls_session)
 		break;
 	}
 
-	request_free(&fake);
+	talloc_free(fake);
 
 	return code;
 }

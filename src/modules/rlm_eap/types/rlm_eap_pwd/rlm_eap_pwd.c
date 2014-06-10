@@ -417,7 +417,7 @@ mod_authenticate (void *arg, eap_handler_t *handler)
 	    fake->username = pairmake_packet("User-Name", NULL, T_OP_EQ);
 	    if (!fake->username) {
 		RDEBUG("pwd unanable to create value pair for username!");
-		request_free(&fake);
+		talloc_free(fake);
 		return 0;
 	    }
 	    fake->username->length = pwd_session->peer_id_len;
@@ -466,7 +466,7 @@ mod_authenticate (void *arg, eap_handler_t *handler)
 	    if ((pw = pairfind(fake->config_items, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY)) == NULL) {
 		DEBUG2("failed to find password for %s to do pwd authentication",
 		       pwd_session->peer_id);
-		request_free(&fake);
+		talloc_free(fake);
 		return 0;
 	    }
 
@@ -476,10 +476,10 @@ mod_authenticate (void *arg, eap_handler_t *handler)
 					 pwd_session->peer_id, strlen(pwd_session->peer_id),
 					 &pwd_session->token)) {
 		DEBUG2("failed to obtain password element :-(");
-		request_free(&fake);
+		talloc_free(fake);
 		return 0;
 	    }
-	    request_free(&fake);
+	    TALLOC_FREE(fake);
 
 	    /*
 	     * compute our scalar and element

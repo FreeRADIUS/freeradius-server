@@ -189,54 +189,11 @@ void *request_data_reference(REQUEST *request,
 }
 
 /*
- *	Free a REQUEST struct.
- */
-void request_free(REQUEST **request_ptr)
-{
-	REQUEST *request;
-
-	if (!request_ptr || !*request_ptr) {
-		return;
-	}
-
-	request = *request_ptr;
-
-	rad_assert(!request->in_request_hash);
-#ifdef WITH_PROXY
-	rad_assert(!request->in_proxy_hash);
-#endif
-	rad_assert(!request->ev);
-
-#ifdef WITH_COA
-	if (request->coa) {
-		request->coa->parent = NULL;
-		request_free(&request->coa);
-	}
-
-	if (request->parent && (request->parent->coa == request)) {
-		request->parent->coa = NULL;
-	}
-#endif
-
-#ifndef NDEBUG
-	request->magic = 0x01020304;	/* set the request to be nonsense */
-#endif
-	request->client = NULL;
-#ifdef WITH_PROXY
-	request->home_server = NULL;
-#endif
-	talloc_free(request);
-	*request_ptr = NULL;
-
-	VERIFY_ALL_TALLOC;
-}
-
-/*
  *	Free a request.
  */
 int request_opaque_free(REQUEST *request)
 {
-	request_free(&request);
+	talloc_free(request);
 
 	return 0;
 }
@@ -365,6 +322,37 @@ void NEVER_RETURNS rad_assert_fail(char const *file, unsigned int line, char con
 	fr_exit_now(1);
 }
 
+/*
+ *	Free a REQUEST struct.
+ */
+static int _request_free(REQUEST *request)
+{
+	rad_assert(!request->in_request_hash);
+#ifdef WITH_PROXY
+	rad_assert(!request->in_proxy_hash);
+#endif
+	rad_assert(!request->ev);
+
+#ifdef WITH_COA
+	if (request->coa) {
+		request->coa->parent = NULL;
+	}
+
+	if (request->parent && (request->parent->coa == request)) {
+		request->parent->coa = NULL;
+	}
+#endif
+
+#ifndef NDEBUG
+	request->magic = 0x01020304;	/* set the request to be nonsense */
+#endif
+	request->client = NULL;
+#ifdef WITH_PROXY
+	request->home_server = NULL;
+#endif
+
+	return 0;
+}
 
 /*
  *	Create a new REQUEST data structure.
@@ -374,6 +362,7 @@ REQUEST *request_alloc(TALLOC_CTX *ctx)
 	REQUEST *request;
 
 	request = talloc_zero(ctx, REQUEST);
+	talloc_set_destructor(request, _request_free);
 #ifndef NDEBUG
 	request->magic = REQUEST_MAGIC;
 #endif
@@ -429,13 +418,13 @@ REQUEST *request_alloc_fake(REQUEST *request)
 
 	fake->packet = rad_alloc(fake, 1);
 	if (!fake->packet) {
-		request_free(&fake);
+		talloc_free(fake);
 		return NULL;
 	}
 
 	fake->reply = rad_alloc(fake, 0);
 	if (!fake->reply) {
-		request_free(&fake);
+		talloc_free(fake);
 		return NULL;
 	}
 
@@ -503,7 +492,7 @@ REQUEST *request_alloc_coa(REQUEST *request)
 	request->coa->child_state = REQUEST_RUNNING;
 	request->coa->proxy = rad_alloc(request->coa, 0);
 	if (!request->coa->proxy) {
-		request_free(&request->coa);
+		TALLOC_FREE(request->coa);
 		return NULL;
 	}
 
