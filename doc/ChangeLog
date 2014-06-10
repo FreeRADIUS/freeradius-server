@@ -65,7 +65,12 @@ FreeRADIUS 3.0.4 Mon 12 May 2014 15:30:00 EDT urgency=medium
 	* Don't print two "&" for messages about attribute or list
 	  references.
 	* Fix urlquote and escape to encode Unicode characters correctly.
-
+	* Fix redundant-load-balance blocks to try other modules in
+	  the group if one fails.
+	* Fix issue with rlm_pap password normalisation where
+	  'known good' password strings stored in octets type attributes,
+	  would be sometimes misnormalised as base64.
+	  
 FreeRADIUS 3.0.3 Mon 12 May 2014 15:30:00 EDT urgency=medium
 	Feature improvements
 	* Everything now builds with no warnings from the C compiler,
