@@ -181,7 +181,7 @@ static int eapleap_ntpwdhash(uint8_t *out, REQUEST *request, VALUE_PAIR *passwor
 
 		if (password->length == 32) {
 			p = talloc_array(password, uint8_t, 16);
-			password->length = fr_hex2bin(p, password->vp_strvalue, 16);
+			password->length = fr_hex2bin(p, 16, password->vp_strvalue, password->length);
 		}
 		if (password->length != 16) {
 			REDEBUG("Bad NT-Password");

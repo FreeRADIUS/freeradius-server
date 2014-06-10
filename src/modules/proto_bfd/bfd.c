@@ -443,7 +443,7 @@ static ssize_t bfd_parse_secret(CONF_SECTION *cs, uint8_t secret[20])
 			return -1;
 		}
 
-		return fr_hex2bin(secret, value + 2, (len - 2) / 2);
+		return fr_hex2bin(secret, sizeof(*secret), value + 2, (len - 2));
 	}
 
 	if (len >= 20) {

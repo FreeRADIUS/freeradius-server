@@ -996,20 +996,29 @@ static char const *hextab = "0123456789abcdef";
 /** Convert hex strings to binary data
  *
  * @param bin Buffer to write output to.
- * @param hex input string.
  * @param outlen length of output buffer (or length of input string / 2).
+ * @param hex input string.
+ * @param inlen length of the input string
  * @return length of data written to buffer.
  */
-size_t fr_hex2bin(uint8_t *bin, char const *hex, size_t outlen)
+size_t fr_hex2bin(uint8_t *bin, size_t outlen, char const *hex, size_t inlen)
 {
 	size_t i;
+	size_t len;
 	char *c1, *c2;
 
-	for (i = 0; i < outlen; i++) {
+	/*
+	 *	Smartly truncate output, caller should check number of bytes
+	 *	written.
+	 */
+	len = inlen >> 1;
+	if (len > outlen) len = outlen;
+
+	for (i = 0; i < len; i++) {
 		if(!(c1 = memchr(hextab, tolower((int) hex[i << 1]), 16)) ||
 		   !(c2 = memchr(hextab, tolower((int) hex[(i << 1) + 1]), 16)))
 			break;
-		 bin[i] = ((c1-hextab)<<4) + (c2-hextab);
+		bin[i] = ((c1-hextab)<<4) + (c2-hextab);
 	}
 
 	return i;

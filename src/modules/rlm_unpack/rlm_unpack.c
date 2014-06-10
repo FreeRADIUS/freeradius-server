@@ -111,7 +111,7 @@ static ssize_t unpack_xlat(UNUSED void *instance, REQUEST *request, char const *
 			goto nothing;
 		}
 		input = blob;
-		input_len = fr_hex2bin(blob, data_name + 2, sizeof(blob));
+		input_len = fr_hex2bin(blob, sizeof(blob), data_name + 2, len);
 
 	} else {
 		GOTO_ERROR;

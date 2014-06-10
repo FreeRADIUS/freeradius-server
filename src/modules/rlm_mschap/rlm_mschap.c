@@ -1065,6 +1065,7 @@ static int CC_HINT(nonnull (1, 2, 4, 5 ,6)) do_mschap(rlm_mschap_t *inst, REQUES
 	} else {		/* run ntlm_auth */
 		int	result;
 		char	buffer[256];
+		size_t	len;
 
 		memset(nthashhash, 0, 16);
 
@@ -1109,7 +1110,8 @@ static int CC_HINT(nonnull (1, 2, 4, 5 ,6)) do_mschap(rlm_mschap_t *inst, REQUES
 		 *	Check the length.  It should be at least 32,
 		 *	with an LF at the end.
 		 */
-		if (strlen(buffer + 8) < 32) {
+		len = strlen(buffer + 8);
+		if (len < 32) {
 			REDEBUG2("Invalid output from ntlm_auth: NT_KEY has unexpected length");
 			return -1;
 		}
@@ -1117,7 +1119,7 @@ static int CC_HINT(nonnull (1, 2, 4, 5 ,6)) do_mschap(rlm_mschap_t *inst, REQUES
 		/*
 		 *	Update the NT hash hash, from the NT key.
 		 */
-		if (fr_hex2bin(nthashhash, buffer + 8, 16) != 16) {
+		if (fr_hex2bin(nthashhash, sizeof(nthashhash), buffer + 8, len) != 16) {
 			REDEBUG("Invalid output from ntlm_auth: NT_KEY has non-hex values");
 			return -1;
 		}

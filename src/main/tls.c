@@ -101,7 +101,7 @@ static unsigned int psk_server_callback(SSL *ssl, char const *identity,
 	psk_len = strlen(conf->psk_password);
 	if (psk_len > (2 * max_psk_len)) return 0;
 
-	return fr_hex2bin(psk, conf->psk_password, psk_len);
+	return fr_hex2bin(psk, max_psk_len, conf->psk_password, psk_len);
 }
 
 static unsigned int psk_client_callback(SSL *ssl, UNUSED char const *hint,
@@ -120,7 +120,7 @@ static unsigned int psk_client_callback(SSL *ssl, UNUSED char const *hint,
 
 	strlcpy(identity, conf->psk_identity, max_identity_len);
 
-	return fr_hex2bin(psk, conf->psk_password, psk_len);
+	return fr_hex2bin(psk, max_psk_len, conf->psk_password, psk_len);
 }
 
 #endif
@@ -2153,7 +2153,7 @@ static SSL_CTX *init_tls_ctx(fr_tls_server_conf_t *conf, int client)
 			return NULL;
 		}
 
-		hex_len = fr_hex2bin((uint8_t *) buffer, conf->psk_password, psk_len);
+		hex_len = fr_hex2bin((uint8_t *) buffer, sizeof(buffer), conf->psk_password, psk_len);
 		if (psk_len != (2 * hex_len)) {
 			ERROR("psk_hexphrase is not all hex");
 			return NULL;

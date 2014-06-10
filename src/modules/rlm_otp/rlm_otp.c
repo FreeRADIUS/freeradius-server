@@ -353,7 +353,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 		 *	There are notes in otp_radstate as to why the state
 		 *	value is encoded as hexits.
 		 */
-		len = fr_hex2bin(bin_state, vp->vp_strvalue, vp->length);
+		len = fr_hex2bin(bin_state, sizeof(bin_state), vp->vp_strvalue, vp->length);
 		if (len != (vp->length / 2)) {
 			REDEBUG("bad radstate for [%s]: not hex", username);
 
