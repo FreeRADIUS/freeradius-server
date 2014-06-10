@@ -2701,7 +2701,7 @@ set_codes:
 		if (!g->children) {
 			cf_log_err_cs(g->cs, "%s sections cannot be empty",
 				      cf_section_name1(g->cs));
-			modcallable_free(&c);
+			talloc_free(c);
 			return NULL;
 		}
 	}
