@@ -728,10 +728,13 @@ redo:
 				modcall_child(request, component,
 					      depth + 1, entry, found,
 					      &result);
-				if (c->actions[result] == MOD_ACTION_RETURN) {
+				if (found->actions[result] == MOD_ACTION_RETURN) {
 					priority = -1;
 					break;
 				}
+
+				found = found->next;
+				if (!found) found = g->children;
 			}
 		}
 		MOD_LOG_CLOSE_BRACE();
