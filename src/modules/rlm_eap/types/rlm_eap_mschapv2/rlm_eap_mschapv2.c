@@ -707,7 +707,7 @@ packet_ready:
 			n = sscanf(response->vp_strvalue, "%*cE=%d R=%d C=%32s", &err, &retry, &buf[0]);
 			if (n == 3) {
 				DEBUG2("Found new challenge from MS-CHAP-Error: err=%d retry=%d challenge=%s", err, retry, buf);
-				fr_hex2bin(data->challenge, buf, 16);
+				fr_hex2bin(data->challenge, 16, buf, strlen(buf));
 			} else {
 				DEBUG2("Could not parse new challenge from MS-CHAP-Error: %d", n);
 			}

@@ -313,7 +313,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, REQU
 		 *	Set A1 to Digest-HA1 if no User-Password found
 		 */
 		if (passwd->da->attr == PW_DIGEST_HA1) {
-			if (fr_hex2bin(&a1[0], passwd->vp_strvalue, 16) != 16) {
+			if (fr_hex2bin(&a1[0], sizeof(a1), passwd->vp_strvalue, passwd->length) != 16) {
 				RDEBUG2("Invalid text in Digest-HA1");
 				return RLM_MODULE_INVALID;
 			}
@@ -552,7 +552,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, REQU
 		return RLM_MODULE_INVALID;
 	}
 
-	if (fr_hex2bin(&hash[0], vp->vp_strvalue, vp->length >> 1) != (vp->length >> 1)) {
+	if (fr_hex2bin(&hash[0], sizeof(hash), vp->vp_strvalue, vp->length) != (vp->length >> 1)) {
 		RDEBUG2("Invalid text in Digest-Response");
 		return RLM_MODULE_INVALID;
 	}

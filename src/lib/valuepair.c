@@ -1337,7 +1337,7 @@ int pairparsevalue(VALUE_PAIR *vp, char const *value, size_t inlen)
 
 		vp->length = len >> 1;
 		p = talloc_array(vp, uint8_t, vp->length);
-		if (fr_hex2bin(p, value + 2, len) != vp->length) {
+		if (fr_hex2bin(p, vp->length, value + 2, len) != vp->length) {
 			talloc_free(p);
 			fr_strerror_printf("Invalid hex data");
 			return -1;
@@ -1382,7 +1382,7 @@ int pairparsevalue(VALUE_PAIR *vp, char const *value, size_t inlen)
 			fr_strerror_printf("No memory");
 			return -1;
 		}
-		if (fr_hex2bin(p, value + 2, len) != vp->length) {
+		if (fr_hex2bin(p, vp->length, value + 2, len) != vp->length) {
 			fr_strerror_printf("Invalid hex data in TLV");
 			return -1;
 		}
@@ -1813,7 +1813,7 @@ static VALUE_PAIR *pairmake_any(TALLOC_CTX *ctx,
 	vp->length = size >> 1;
 	data = talloc_array(vp, uint8_t, vp->length);
 
-	if (fr_hex2bin(data, value + 2, size) != vp->length) {
+	if (fr_hex2bin(data, vp->length, value + 2, size) != vp->length) {
 		fr_strerror_printf("Invalid hex string");
 		talloc_free(vp);
 		return NULL;

@@ -661,7 +661,7 @@ int		rad_lockfd(int fd, int lock_len);
 int		rad_lockfd_nonblock(int fd, int lock_len);
 int		rad_unlockfd(int fd, int lock_len);
 size_t		fr_bin2hex(char *hex, uint8_t const *bin, size_t inlen);
-size_t		fr_hex2bin(uint8_t *bin, char const *hex, size_t outlen);
+size_t		fr_hex2bin(uint8_t *bin, size_t outlen, char const *hex, size_t inlen);
 uint32_t	fr_strtoul(char const *value, char **end);
 bool		is_whitespace(char const *value);
 bool		is_integer(char const *value);
