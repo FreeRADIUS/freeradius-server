@@ -1,0 +1,6 @@
+#
+#  Check that redundant blocks can't be empty
+#
+redundant {	# ERROR
+
+}

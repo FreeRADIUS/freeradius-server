@@ -915,6 +915,8 @@ redo:
 
 		g = mod_callabletogroup(c);
 		found = NULL;
+		rad_assert(g->children != NULL);
+
 		for (this = g->children; this; this = this->next) {
 			if (!found) {
 				found = this;
@@ -2513,7 +2515,8 @@ static modcallable *do_compile_modgroup(modcallable *parent,
 	c->name = cf_section_name2(cs);
 	if (!c->name) {
 		c->name = cf_section_name1(cs);
-		if (strcmp(c->name, "group") == 0) {
+		if ((strcmp(c->name, "group") == 0) ||
+		    (strcmp(c->name, "redundant") == 0)) {
 			c->name = "";
 		} else if (c->type == MOD_GROUP) {
 			c->type = MOD_POLICY;
@@ -2685,6 +2688,24 @@ set_codes:
 			} else { /* inside Auth-Type has different rules */
 				c->actions[i] = defaultactions[RLM_COMPONENT_AUTZ][parentgrouptype][i];
 			}
+		}
+	}
+
+	switch (c->type) {
+	default:
+		break;
+
+	case MOD_GROUP:
+		if (grouptype != GROUPTYPE_REDUNDANT) break;
+		/* FALL-THROUGH */
+
+	case MOD_LOAD_BALANCE:
+	case MOD_REDUNDANT_LOAD_BALANCE:
+		if (!g->children) {
+			cf_log_err_cs(g->cs, "%s sections cannot be empty",
+				      cf_section_name1(g->cs));
+			modcallable_free(&c);
+			return NULL;
 		}
 	}
 
