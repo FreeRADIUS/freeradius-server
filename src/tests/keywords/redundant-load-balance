@@ -22,43 +22,43 @@ update request {
 #  Loop 0..9
 #
 foreach &Tmp-Integer-1 {
-    redundant-load-balance {
-        group {
-	    # fail on even numbered values, succeed on odd numbered ones
-            if ("%{expr:%{Foreach-Variable-0} %% 2}" == 0) {
-                fail
-            }
-            else {
-                update request {
-                    Tmp-Integer-0 := "%{expr:%{Tmp-Integer-0} + 1}"
-		    Filter-Id += "SUCCEED ODD %{Foreach-Variable-0} %{Tmp-Integer-0}"
-                }
-                ok
-            }
-        }
-        group {
-	    # succeed on even-numbered values, fail on off-numbered ones.
-            if ("%{expr:%{Foreach-Variable-0} %% 2}" == 1) {
-	        fail
-            }
-            else {
-                update request {
-                    Tmp-Integer-0 := "%{expr:%{Tmp-Integer-0} + 1}"
-		    Filter-Id += "SUCCEED EVEN %{Foreach-Variable-0} %{Tmp-Integer-0}"
-                }
-                ok
-            }
-        }
-    }
+	redundant-load-balance {
+		group {
+			# fail on even numbered values, succeed on odd numbered ones
+			if ("%{expr:%{Foreach-Variable-0} %% 2}" == 0) {
+				fail
+			}
+			else {
+				update request {
+					Tmp-Integer-0 := "%{expr:%{Tmp-Integer-0} + 1}"
+					Filter-Id += "SUCCEED ODD %{Foreach-Variable-0} %{Tmp-Integer-0}"
+				}
+				ok
+			}
+		}
+		group {
+			# succeed on even-numbered values, fail on off-numbered ones.
+			if ("%{expr:%{Foreach-Variable-0} %% 2}" == 1) {
+				fail
+			}
+			else {
+				update request {
+					Tmp-Integer-0 := "%{expr:%{Tmp-Integer-0} + 1}"
+					Filter-Id += "SUCCEED EVEN %{Foreach-Variable-0} %{Tmp-Integer-0}"
+				}
+				ok
+			}
+		}
+	}
 }
 
 if (&Tmp-Integer-0 != "%{Tmp-Integer-1[#]}") {
-    update reply {
-        Filter-Id += "fail 2 (passed %{Tmp-Integer-0}/%{Tmp-Integer-1[#]})"
-    }
+	update reply {
+		Filter-Id += "fail 1 (passed %{Tmp-Integer-0}/%{Tmp-Integer-1[#]})"
+	}
 }
 else {
-     update reply {
-	Filter-Id := 'filter'
-     }
+	update reply {
+		Filter-Id := 'filter'
+	}
 }
