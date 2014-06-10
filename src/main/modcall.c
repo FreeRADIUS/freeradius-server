@@ -427,6 +427,7 @@ static void modcall_child(REQUEST *request, rlm_components_t component, int dept
 	return;
 }
 
+
 /*
  *	Interpret the various types of blocks.
  */
@@ -891,22 +892,20 @@ redo:
 
 	if ((c->type == MOD_LOAD_BALANCE) ||
 	    (c->type == MOD_REDUNDANT_LOAD_BALANCE)) {
-		int count = 0;
+		uint32_t count = 0;
 		modcallable *this, *found;
 		modgroup *g;
 
 		MOD_LOG_OPEN_BRACE("load-balance");
 
 		g = mod_callabletogroup(c);
-		found = NULL;
+		found = g->children;
 		rad_assert(g->children != NULL);
 
+		/*
+		 *	Choose a child at random.
+		 */
 		for (this = g->children; this; this = this->next) {
-			if (!found) {
-				found = this;
-				count = 1;
-				continue;
-			}
 			count++;
 
 			if ((count * (fr_rand() & 0xffff)) < (uint32_t) 0x10000) {
@@ -922,22 +921,20 @@ redo:
 				      &result);
 
 		} else {
-			int i;
+			this = found;
 
-			/*
-			 *	Loop over all children in this
-			 *	section.  If we get FAIL, then
-			 *	continue.  Otherwise, stop.
-			 */
-			for (i = 1; i < count; i++) {
+			do {
 				modcall_child(request, component,
-					      depth + 1, entry, found,
+					      depth + 1, entry, this,
 					      &result);
-				if (c->actions[result] == MOD_ACTION_RETURN) {
+				if (this->actions[result] == MOD_ACTION_RETURN) {
 					priority = -1;
 					break;
 				}
-			}
+
+				this = this->next;
+				if (!this) this = g->children;
+			} while (this != found);
 		}
 		MOD_LOG_CLOSE_BRACE();
 		goto calculate_result;
