@@ -22,18 +22,16 @@
  * @copyright 2013 Network RADIUS SARL <info@networkradius.com>
  * @copyright 2013 The FreeRADIUS Server Project.
  */
-#include	<freeradius-devel/radiusd.h>
-#include	<freeradius-devel/modules.h>
-#include	<freeradius-devel/rad_assert.h>
+#include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/modules.h>
+#include <freeradius-devel/rad_assert.h>
 
-#include	<stdarg.h>
-#include	<ctype.h>
+#include <stdarg.h>
+#include <ctype.h>
 
-#include	<lber.h>
-#include	<ldap.h>
-#include	"ldap.h"
-
-
+#include <lber.h>
+#include <ldap.h>
+#include "ldap.h"
 
 /** Converts "bad" strings into ones which are safe for LDAP
  *
@@ -341,8 +339,7 @@ static ldap_rcode_t rlm_ldap_result(ldap_instance_t const *inst, ldap_handle_t c
 		goto process_error;
 	}
 
-	process_error:
-
+process_error:
 	if ((lib_errno == LDAP_SUCCESS) && (srv_errno != LDAP_SUCCESS)) {
 		lib_errno = srv_errno;
 	} else if ((lib_errno != LDAP_SUCCESS) && (srv_errno == LDAP_SUCCESS)) {
@@ -612,7 +609,6 @@ ldap_rcode_t rlm_ldap_bind(ldap_instance_t const *inst, REQUEST *request, ldap_h
 	return status; /* caller closes the connection */
 }
 
-
 /** Search for something in the LDAP directory
  *
  * Binds as the administrative user and performs a search, dealing with any errors.
@@ -816,6 +812,7 @@ ldap_rcode_t rlm_ldap_modify(ldap_instance_t const *inst, REQUEST *request, ldap
 		switch (status) {
 			case LDAP_PROC_SUCCESS:
 				break;
+
 			case LDAP_PROC_RETRY:
 				*pconn = fr_connection_reconnect(inst->pool, *pconn);
 				if (*pconn) {
@@ -924,15 +921,15 @@ char const *rlm_ldap_find_user(ldap_instance_t const *inst, REQUEST *request, ld
 
 	if (radius_xlat(filter, sizeof(filter), request, inst->userobj_filter, rlm_ldap_escape_func, NULL) < 0) {
 		REDEBUG("Unable to create filter");
-
 		*rcode = RLM_MODULE_INVALID;
+
 		return NULL;
 	}
 
 	if (radius_xlat(base_dn, sizeof(base_dn), request, inst->userobj_base_dn, rlm_ldap_escape_func, NULL) < 0) {
 		REDEBUG("Unable to create base_dn");
-
 		*rcode = RLM_MODULE_INVALID;
+
 		return NULL;
 	}
 
@@ -940,9 +937,11 @@ char const *rlm_ldap_find_user(ldap_instance_t const *inst, REQUEST *request, ld
 	switch (status) {
 		case LDAP_PROC_SUCCESS:
 			break;
+
 		case LDAP_PROC_NO_RESULT:
 			*rcode = RLM_MODULE_NOTFOUND;
 			return NULL;
+
 		default:
 			*rcode = RLM_MODULE_FAIL;
 			return NULL;
@@ -1268,13 +1267,12 @@ void *mod_conn_create(void *instance)
 
 	return conn;
 
-	error:
+error:
 	if (conn->handle) ldap_unbind_s(conn->handle);
 	talloc_free(conn);
 
 	return NULL;
 }
-
 
 /** Close and delete a connection
  *
@@ -1295,7 +1293,6 @@ int mod_conn_delete(UNUSED void *instance, void *handle)
 	return 0;
 }
 
-
 /** Gets an LDAP socket from the connection pool
  *
  * Retrieve a socket from the connection pool, or NULL on error (of if no sockets are available).
@@ -1307,7 +1304,6 @@ ldap_handle_t *rlm_ldap_get_socket(ldap_instance_t const *inst, UNUSED REQUEST *
 {
 	return fr_connection_get(inst->pool);
 }
-
 
 /** Frees an LDAP socket back to the connection pool
  *
