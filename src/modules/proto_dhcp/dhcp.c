@@ -648,8 +648,7 @@ ssize_t fr_dhcp_decode_options(RADIUS_PACKET *packet,
 
 		da = dict_attrbyvalue(p[0], DHCP_MAGIC_VENDOR);
 		if (!da) {
-			fr_strerror_printf("Attribute not in our dictionary: %u",
-					   p[0]);
+			fr_strerror_printf("Attribute not in our dictionary: %u", p[0]);
 			continue;
 		}
 
@@ -698,15 +697,7 @@ ssize_t fr_dhcp_decode_options(RADIUS_PACKET *packet,
 				return -1;
 			}
 
-			/*
-			 *	Hack for ease of use.
-			 */
-			if ((da->vendor == DHCP_MAGIC_VENDOR) &&
-			    (da->attr == 61) && !da->flags.array &&
-			    (alen == 7) && (*p == 1) && (num_entries == 1)) {
-				pairmemcpy(vp, p + 1, 6);
-
-			} else if (fr_dhcp_attr2vp(packet, vp, p, alen) < 0) {
+			if (fr_dhcp_attr2vp(packet, vp, p, alen) < 0) {
 				pairfree(&vp);
 				pairfree(head);
 				return -1;
