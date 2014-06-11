@@ -322,7 +322,7 @@ static int CC_HINT(nonnull) mschap_postproxy(eap_handler_t *handler, UNUSED void
 	 *	No response, die.
 	 */
 	if (!response) {
-		REDEBUG("Proxied reply contained no MS-CHAP-Success or MS-CHAP-Error");
+		REDEBUG("Proxied reply contained no MS-CHAP2-Success or MS-CHAP-Error");
 		return 0;
 	}
 
@@ -722,7 +722,7 @@ packet_ready:
 	 *	No response, die.
 	 */
 	if (!response) {
-		REDEBUG("No MS-CHAP-Success or MS-CHAP-Error was found");
+		REDEBUG("No MS-CHAP2-Success or MS-CHAP-Error was found");
 		return 0;
 	}
 

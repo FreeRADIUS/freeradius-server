@@ -497,7 +497,7 @@ static int CC_HINT(nonnull) process_reply(eap_handler_t *handler, tls_session_t 
 
 		/*
 		 *	Handle EAP-MSCHAP-V2, where Access-Accept's
-		 *	from the home server may contain MS-CHAP-Success,
+		 *	from the home server may contain MS-CHAP2-Success,
 		 *	which the module turns into challenges, so that
 		 *	the client may respond to the challenge with
 		 *	an "ack" packet.
