@@ -461,9 +461,9 @@ int fr_dhcp_send(RADIUS_PACKET *packet)
 
 static int fr_dhcp_attr2vp(RADIUS_PACKET *packet, VALUE_PAIR *vp, uint8_t const *p, size_t alen);
 
-static int decode_tlv(RADIUS_PACKET *packet, VALUE_PAIR *tlv, uint8_t const *data, size_t data_len)
+static int fr_dhcp_decode_suboption(RADIUS_PACKET *packet, VALUE_PAIR *tlv, uint8_t const *data, size_t data_len)
 {
-	uint8_t const *p;
+	uint8_t const *p, *q;
 	VALUE_PAIR *head, *vp;
 	vp_cursor_t cursor;
 
@@ -471,11 +471,34 @@ static int decode_tlv(RADIUS_PACKET *packet, VALUE_PAIR *tlv, uint8_t const *dat
 	 *	Take a pass at parsing it.
 	 */
 	p = data;
-	while (p < (data + data_len)) {
-		if ((p + 2) > (data + data_len)) goto make_tlv;
+	q = data + data_len;
+	while (p < q) {
+		/*
+		 *	The RFC 3046 is very specific about not allowing termination
+		 *	with a 255 sub-option. But vendors are stupid, so allow it
+		 *	and the 0 padding sub-option.
+		 *	This requirement really should be a SHOULD anyway...
+		 */
+		if (*p == 0) {
+			p++;
+			continue;
+		}
+		if (*p == 255) {
+			q--;
+			break;
+		}
 
-		if ((p + p[1] + 2) > (data + data_len)) goto make_tlv;
-		p += 2 + p[1];
+		/*
+		 *	Check if reading length would take us past the end of the buffer
+		 */
+		if (++p >= q) goto malformed;
+		p += p[0];
+
+		/*
+		 *	Check if length > the length of the buffer we have left
+		 */
+		if (p >= q) goto malformed;
+		p++;
 	}
 
 	/*
@@ -485,16 +508,16 @@ static int decode_tlv(RADIUS_PACKET *packet, VALUE_PAIR *tlv, uint8_t const *dat
 	fr_cursor_init(&cursor, &head);
 
 	p = data;
-	while (p < (data + data_len)) {
+	while (p < q) {
 		vp = paircreate(packet, tlv->da->attr | (p[0] << 8), DHCP_MAGIC_VENDOR);
 		if (!vp) {
 			pairfree(&head);
-			goto make_tlv;
+			goto malformed;
 		}
 
 		if (fr_dhcp_attr2vp(packet, vp, p + 2, p[1]) < 0) {
 			pairfree(&head);
-			goto make_tlv;
+			goto malformed;
 		}
 
 		fr_cursor_insert(&cursor, vp);
@@ -522,6 +545,7 @@ static int decode_tlv(RADIUS_PACKET *packet, VALUE_PAIR *tlv, uint8_t const *dat
 			case PW_TYPE_OCTETS:
 			case PW_TYPE_TLV:
 				(void) talloc_steal(tlv, head->data.ptr);
+
 			default:
 				break;
 		}
@@ -531,7 +555,7 @@ static int decode_tlv(RADIUS_PACKET *packet, VALUE_PAIR *tlv, uint8_t const *dat
 
 	return 0;
 
-make_tlv:
+malformed:
 	tlv->vp_tlv = talloc_array(tlv, uint8_t, data_len);
 	if (!tlv->vp_tlv) {
 		fr_strerror_printf("No memory");
@@ -602,8 +626,11 @@ static int fr_dhcp_attr2vp(RADIUS_PACKET *packet, VALUE_PAIR *vp, uint8_t const 
 		pairmemcpy(vp, p, alen);
 		break;
 
+	/*
+	 *	For option 82 et al...
+	 */
 	case PW_TYPE_TLV:
-		return decode_tlv(packet, vp, p, alen);
+		return fr_dhcp_decode_suboption(packet, vp, p, alen);
 
 	default:
 		fr_strerror_printf("Internal sanity check %d %d", vp->da->type, __LINE__);
