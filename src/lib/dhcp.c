@@ -585,8 +585,11 @@ ssize_t fr_dhcp_decode_options(uint8_t *data, size_t len, VALUE_PAIR **head)
 
 		p = next;
 
-		if (*p == 0) break;
-		if (*p == 255) break; /* end of options signifier */
+		if (*p == 0) {		/* 0x00 - Padding option */
+			next++;
+			continue;
+		}
+		if (*p == 255) break;	/* 0xff - End of options signifier */
 		if ((p + 2) > (data + len)) break;
 
 		next = p + 2 + p[1];
