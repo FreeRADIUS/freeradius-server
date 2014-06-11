@@ -89,7 +89,7 @@ static int eap_sim_sendstart(eap_handler_t *handler)
 	pairadd(vps, newvp);
 
 	/* set the EAP_ID - new value */
-	newvp = paircreate(packet, ATTRIBUTE_EAP_ID, 0);
+	newvp = paircreate(packet, PW_EAP_ID, 0);
 	newvp->vp_integer = ess->sim_id++;
 	pairreplace(vps, newvp);
 
@@ -317,7 +317,7 @@ static int eap_sim_sendchallenge(eap_handler_t *handler)
 	/*
 	 *	Set the EAP_ID - new value
 	 */
-	newvp = paircreate(packet, ATTRIBUTE_EAP_ID, 0);
+	newvp = paircreate(packet, PW_EAP_ID, 0);
 	newvp->vp_integer = ess->sim_id++;
 	pairreplace(outvps, newvp);
 
@@ -396,7 +396,7 @@ static int eap_sim_sendsuccess(eap_handler_t *handler)
 	ess = (eap_sim_state_t *)handler->opaque;
 
 	/* set the EAP_ID - new value */
-	vp = paircreate(packet, ATTRIBUTE_EAP_ID, 0);
+	vp = paircreate(packet, PW_EAP_ID, 0);
 	vp->vp_integer = ess->sim_id++;
 	pairreplace(&handler->request->reply->vps, vp);
 

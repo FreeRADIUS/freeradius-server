@@ -262,15 +262,15 @@ static void cleanresp(RADIUS_PACKET *resp)
 	 * a copy of the original input and start from there again?
 	 */
 	pairdelete(&resp->vps, PW_EAP_MESSAGE, 0, TAG_ANY);
-	pairdelete(&resp->vps, ATTRIBUTE_EAP_BASE+PW_EAP_IDENTITY, 0, TAG_ANY);
+	pairdelete(&resp->vps, PW_EAP_TYPE_BASE+PW_EAP_IDENTITY, 0, TAG_ANY);
 
 	last = &resp->vps;
 	for(vp = *last; vp != NULL; vp = vpnext)
 	{
 		vpnext = vp->next;
 
-		if((vp->da->attr > ATTRIBUTE_EAP_BASE &&
-		    vp->da->attr <= ATTRIBUTE_EAP_BASE+256) ||
+		if((vp->da->attr > PW_EAP_TYPE_BASE &&
+		    vp->da->attr <= PW_EAP_TYPE_BASE+256) ||
 		   (vp->da->attr > PW_EAP_SIM_BASE &&
 		    vp->da->attr <= PW_EAP_SIM_BASE+256))
 		{
@@ -652,7 +652,7 @@ static int respond_eap_sim(RADIUS_PACKET *req,
 		return 0;
 	}
 
-	if ((eapid = paircopy2(NULL, req->vps, ATTRIBUTE_EAP_ID, 0, TAG_ANY)) == NULL)
+	if ((eapid = paircopy2(NULL, req->vps, PW_EAP_ID, 0, TAG_ANY)) == NULL)
 	{
 		return 0;
 	}
@@ -761,14 +761,14 @@ static int respond_eap_md5(RADIUS_PACKET *req,
 		return 0;
 	}
 
-	if ((id = paircopy2(NULL, req->vps, ATTRIBUTE_EAP_ID, 0, TAG_ANY)) == NULL)
+	if ((id = paircopy2(NULL, req->vps, PW_EAP_ID, 0, TAG_ANY)) == NULL)
 	{
 		fprintf(stderr, "radeapclient: no EAP-ID attribute found\n");
 		return 0;
 	}
 	identifier = id->vp_integer;
 
-	if ((vp = pairfind(req->vps, ATTRIBUTE_EAP_BASE+PW_EAP_MD5, 0, TAG_ANY)) == NULL)
+	if ((vp = pairfind(req->vps, PW_EAP_TYPE_BASE+PW_EAP_MD5, 0, TAG_ANY)) == NULL)
 	{
 		fprintf(stderr, "radeapclient: no EAP-MD5 attribute found\n");
 		return 0;
@@ -800,7 +800,7 @@ static int respond_eap_md5(RADIUS_PACKET *req,
 		uint8_t *p;
 		uint8_t lg_response;
 
-		vp = paircreate(rep, ATTRIBUTE_EAP_BASE+PW_EAP_MD5, 0);
+		vp = paircreate(rep, PW_EAP_TYPE_BASE+PW_EAP_MD5, 0);
 		vp->length = 17;
 
 		p = talloc_zero_array(vp, uint8_t, 17);
@@ -957,7 +957,7 @@ static int sendrecv_eap(RADIUS_PACKET *rep)
 		default:
 			break;
 
-		case ATTRIBUTE_EAP_BASE+PW_EAP_MD5:
+		case PW_EAP_TYPE_BASE+PW_EAP_MD5:
 			if(respond_eap_md5(req, rep) && tried_eap_md5 < 3)
 			{
 				tried_eap_md5++;
@@ -965,7 +965,7 @@ static int sendrecv_eap(RADIUS_PACKET *rep)
 			}
 			break;
 
-		case ATTRIBUTE_EAP_BASE+PW_EAP_SIM:
+		case PW_EAP_TYPE_BASE+PW_EAP_SIM:
 			if(respond_eap_sim(req, rep))
 			{
 				goto again;
@@ -1325,14 +1325,14 @@ static void map_eap_methods(RADIUS_PACKET *req)
 
 	eap_packet_t *pt_ep = talloc_zero(req, eap_packet_t);
 
-	vp = pairfind(req->vps, ATTRIBUTE_EAP_ID, 0, TAG_ANY);
+	vp = pairfind(req->vps, PW_EAP_ID, 0, TAG_ANY);
 	if(!vp) {
 		id = ((int)getpid() & 0xff);
 	} else {
 		id = vp->vp_integer;
 	}
 
-	vp = pairfind(req->vps, ATTRIBUTE_EAP_CODE, 0, TAG_ANY);
+	vp = pairfind(req->vps, PW_EAP_CODE, 0, TAG_ANY);
 	if(!vp) {
 		eapcode = PW_EAP_REQUEST;
 	} else {
@@ -1343,8 +1343,8 @@ static void map_eap_methods(RADIUS_PACKET *req)
 		/* save it in case it changes! */
 		vpnext = vp->next;
 
-		if(vp->da->attr >= ATTRIBUTE_EAP_BASE &&
-		   vp->da->attr < ATTRIBUTE_EAP_BASE+256) {
+		if(vp->da->attr >= PW_EAP_TYPE_BASE &&
+		   vp->da->attr < PW_EAP_TYPE_BASE+256) {
 			break;
 		}
 	}
@@ -1353,7 +1353,7 @@ static void map_eap_methods(RADIUS_PACKET *req)
 		return;
 	}
 
-	eap_method = vp->da->attr - ATTRIBUTE_EAP_BASE;
+	eap_method = vp->da->attr - PW_EAP_TYPE_BASE;
 
 	switch(eap_method) {
 	case PW_EAP_IDENTITY:
@@ -1407,11 +1407,11 @@ static void unmap_eap_methods(RADIUS_PACKET *rep)
 	if(!e) return;
 
 	/* create EAP-ID and EAP-CODE attributes to start */
-	eap1 = paircreate(rep, ATTRIBUTE_EAP_ID, 0);
+	eap1 = paircreate(rep, PW_EAP_ID, 0);
 	eap1->vp_integer = e->id;
 	pairadd(&(rep->vps), eap1);
 
-	eap1 = paircreate(rep, ATTRIBUTE_EAP_CODE, 0);
+	eap1 = paircreate(rep, PW_EAP_CODE, 0);
 	eap1->vp_integer = e->code;
 	pairadd(&(rep->vps), eap1);
 
@@ -1442,7 +1442,7 @@ static void unmap_eap_methods(RADIUS_PACKET *rep)
 
 		type = e->data[0];
 
-		type += ATTRIBUTE_EAP_BASE;
+		type += PW_EAP_TYPE_BASE;
 		len -= 5;
 
 		if (len > MAX_STRING_LEN) {
@@ -1483,7 +1483,7 @@ static int unmap_eapsim_types(RADIUS_PACKET *r)
 	uint8_t *eap_data;
 	int rcode_unmap;
 
-	esvp = pairfind(r->vps, ATTRIBUTE_EAP_BASE+PW_EAP_SIM, 0, TAG_ANY);
+	esvp = pairfind(r->vps, PW_EAP_TYPE_BASE+PW_EAP_SIM, 0, TAG_ANY);
 	if (!esvp) {
 		ERROR("eap: EAP-Sim attribute not found");
 		return 0;
