@@ -43,7 +43,7 @@
  * with SIM-Type/SIM-Length/Value... repeating. SIM-Length is in units
  * of 32 bits, and includes the Sim-Type/Sim-Length fields.
  *
- * The SIM-Type's are mapped to ATTRIBUTE_EAP_SIM_BASE+Sim-type and
+ * The SIM-Type's are mapped to PW_EAP_SIM_BASE+Sim-type and
  * unmapped by these functions.
  *
  */
@@ -81,7 +81,7 @@ int map_eapsim_basictypes(RADIUS_PACKET *r, eap_packet_t *ep)
 	 * it might be too big for putting into an EAP-Type-SIM
 	 *
 	 */
-	subtype = (vp = pairfind(r->vps, ATTRIBUTE_EAP_SIM_SUBTYPE, 0, TAG_ANY)) ?
+	subtype = (vp = pairfind(r->vps, PW_EAP_SIM_SUBTYPE, 0, TAG_ANY)) ?
 		vp->vp_integer : eapsim_start;
 
 	id = (vp = pairfind(r->vps, ATTRIBUTE_EAP_ID, 0, TAG_ANY)) ?
@@ -101,7 +101,7 @@ int map_eapsim_basictypes(RADIUS_PACKET *r, eap_packet_t *ep)
 		int roundedlen;
 		int vplen;
 
-		if ((vp->da->attr < ATTRIBUTE_EAP_SIM_BASE) || (vp->da->attr >= (ATTRIBUTE_EAP_SIM_BASE + 256))) {
+		if ((vp->da->attr < PW_EAP_SIM_BASE) || (vp->da->attr >= (PW_EAP_SIM_BASE + 256))) {
 			continue;
 		}
 
@@ -114,7 +114,7 @@ int map_eapsim_basictypes(RADIUS_PACKET *r, eap_packet_t *ep)
 		 *
 		 * At this point, we only care about the size.
 		 */
-		if(vp->da->attr == ATTRIBUTE_EAP_SIM_BASE + PW_EAP_SIM_MAC) {
+		if(vp->da->attr == PW_EAP_SIM_BASE + PW_EAP_SIM_MAC) {
 			vplen = 18;
 		}
 
@@ -182,8 +182,8 @@ int map_eapsim_basictypes(RADIUS_PACKET *r, eap_packet_t *ep)
 	for (vp = fr_cursor_first(&cursor); vp; vp = fr_cursor_next(&cursor)) {
 		int roundedlen;
 
-		if(vp->da->attr < ATTRIBUTE_EAP_SIM_BASE ||
-		   vp->da->attr >= ATTRIBUTE_EAP_SIM_BASE + 256) {
+		if(vp->da->attr < PW_EAP_SIM_BASE ||
+		   vp->da->attr >= PW_EAP_SIM_BASE + 256) {
 			continue;
 		}
 
@@ -195,7 +195,7 @@ int map_eapsim_basictypes(RADIUS_PACKET *r, eap_packet_t *ep)
 		 * At this point, we put in zeros, and remember where the
 		 * sixteen bytes go.
 		 */
-		if(vp->da->attr == ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_MAC) {
+		if(vp->da->attr == PW_EAP_SIM_BASE+PW_EAP_SIM_MAC) {
 			roundedlen = 20;
 			memset(&attr[2], 0, 18);
 			macspace = &attr[4];
@@ -206,7 +206,7 @@ int map_eapsim_basictypes(RADIUS_PACKET *r, eap_packet_t *ep)
 			memset(attr, 0, roundedlen);
 			memcpy(&attr[2], vp->vp_strvalue, vp->length);
 		}
-		attr[0] = vp->da->attr - ATTRIBUTE_EAP_SIM_BASE;
+		attr[0] = vp->da->attr - PW_EAP_SIM_BASE;
 		attr[1] = roundedlen >> 2;
 
 		attr += roundedlen;
@@ -222,7 +222,7 @@ int map_eapsim_basictypes(RADIUS_PACKET *r, eap_packet_t *ep)
 	 * then we should calculate the HMAC-SHA1 of the resulting EAP-SIM
 	 * packet, appended with the value of append.
 	 */
-	vp = pairfind(r->vps, ATTRIBUTE_EAP_SIM_KEY, 0, TAG_ANY);
+	vp = pairfind(r->vps, PW_EAP_SIM_KEY, 0, TAG_ANY);
 	if(macspace != NULL && vp != NULL) {
 		unsigned char		*buffer;
 		eap_packet_raw_t	*hdr;
@@ -297,7 +297,7 @@ int unmap_eapsim_basictypes(RADIUS_PACKET *r,
 		return 0;
 	}
 
-	newvp = paircreate(r, ATTRIBUTE_EAP_SIM_SUBTYPE, 0);
+	newvp = paircreate(r, PW_EAP_SIM_SUBTYPE, 0);
 	if (!newvp) {
 		return 0;
 	}
@@ -337,7 +337,7 @@ int unmap_eapsim_basictypes(RADIUS_PACKET *r,
 			       return 0;
 		}
 
-		newvp = paircreate(r, eapsim_attribute+ATTRIBUTE_EAP_SIM_BASE, 0);
+		newvp = paircreate(r, eapsim_attribute+PW_EAP_SIM_BASE, 0);
 		newvp->length = eapsim_len-2;
 		newvp->vp_octets = p = talloc_array(newvp, uint8_t, newvp->length);
 		memcpy(p, &attr[2], eapsim_len-2);
@@ -367,7 +367,7 @@ int eapsim_checkmac(TALLOC_CTX *ctx, VALUE_PAIR *rvps, uint8_t key[EAPSIM_AUTH_S
 	int elen,len;
 	VALUE_PAIR *mac;
 
-	mac = pairfind(rvps, ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_MAC, 0, TAG_ANY);
+	mac = pairfind(rvps, PW_EAP_SIM_BASE+PW_EAP_SIM_MAC, 0, TAG_ANY);
 
 	if(!mac || mac->length != 18) {
 		/* can't check a packet with no AT_MAC attribute */
