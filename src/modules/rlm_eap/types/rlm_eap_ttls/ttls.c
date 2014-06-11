@@ -234,7 +234,7 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, REQUEST *fake, SSL *ssl,
 			memcpy(buffer + 2, data, size);
 
 			vp = NULL;
-			decoded = rad_attr2vp(request, NULL, NULL, NULL,
+			decoded = rad_attr2vp(packet, NULL, NULL, NULL,
 					      buffer, size + 2, &vp);
 			if (decoded < 0) {
 				REDEBUG2("diameter2vp failed decoding attr: %s",
