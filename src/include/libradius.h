@@ -515,18 +515,16 @@ int		rad_attr_ok(RADIUS_PACKET const *packet, RADIUS_PACKET const *original,
 int		rad_tlv_ok(uint8_t const *data, size_t length,
 			   size_t dv_type, size_t dv_length);
 
-ssize_t		data2vp(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
+ssize_t		data2vp(TALLOC_CTX *ctx,
+			RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 			char const *secret,
 			DICT_ATTR const *da, uint8_t const *start,
 			size_t const attrlen, size_t const packetlen,
 			VALUE_PAIR **pvp);
 
-ssize_t		rad_attr2vp(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
+ssize_t		rad_attr2vp(TALLOC_CTX *ctx,
+			    RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 			    char const *secret,
-			    uint8_t const *data, size_t length,
-			    VALUE_PAIR **pvp);
-
-ssize_t		rad_data2vp(unsigned int attribute, unsigned int vendor,
 			    uint8_t const *data, size_t length,
 			    VALUE_PAIR **pvp);
 

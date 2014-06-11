@@ -743,9 +743,9 @@ VALUE_PAIR *paircopyvpdata(TALLOC_CTX *ctx, DICT_ATTR const *da, VALUE_PAIR cons
 
 		if (vp->da->type == PW_TYPE_OCTETS) {
 			/*
-			 *	Decode the data.  It may be wrong!
+			 *	Decode the octets buffer using the RADIUS decoder.
 			 */
-			if (rad_data2vp(da->attr, da->vendor, vp->vp_octets, vp->length, &n) < 0) {
+			if (data2vp(ctx, NULL, NULL, NULL, da, vp->vp_octets, vp->length, vp->length, &n) < 0) {
 				return NULL;
 			}
 

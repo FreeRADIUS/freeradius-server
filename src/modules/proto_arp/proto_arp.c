@@ -191,7 +191,7 @@ static const arp_decode_t header_names[] = {
 	{ NULL, 0 }
 };
 
-static int arp_socket_decode(UNUSED rad_listen_t *listener, UNUSED REQUEST *request)
+static int arp_socket_decode(UNUSED rad_listen_t *listener, REQUEST *request)
 {
 	int i;
 	arp_over_ether_t const *arp;
@@ -213,7 +213,7 @@ static int arp_socket_decode(UNUSED rad_listen_t *listener, UNUSED REQUEST *requ
 		if (!da) return 0;
 
 		vp = NULL;
-		len = data2vp(request->packet, NULL, NULL, da, p,
+		len = data2vp(request->packet, request->packet, NULL, NULL, da, p,
 			      header_names[i].len, header_names[i].len,
 			      &vp);
 		if (len <= 0) {

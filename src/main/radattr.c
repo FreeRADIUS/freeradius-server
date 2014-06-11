@@ -714,8 +714,7 @@ static void process_file(const char *root_dir, char const *filename)
 			my_len = 0;
 			while (len > 0) {
 				vp = NULL;
-				my_len = rad_attr2vp(NULL, NULL, NULL,
-						     attr, len, &vp);
+				my_len = rad_attr2vp(NULL, NULL, NULL, NULL, attr, len, &vp);
 				if (my_len < 0) {
 					pairfree(&head);
 					break;

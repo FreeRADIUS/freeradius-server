@@ -391,7 +391,7 @@ static ssize_t xlat_debug_attr(UNUSED void *instance, REQUEST *request, char con
 			if (len < 0) {
 				goto next_type;
 			}
-			if (data2vp(NULL, NULL, NULL, dac, data, len, len, &vpc) < 0) {
+			if (data2vp(request, NULL, NULL, NULL, dac, data, len, len, &vpc) < 0) {
 				goto next_type;
 			}
 
