@@ -718,8 +718,7 @@ ssize_t fr_dhcp_decode_options(RADIUS_PACKET *packet,
 		for (i = 0; i < num_entries; i++) {
 			vp = pairmake(packet, NULL, da->name, NULL, T_OP_ADD);
 			if (!vp) {
-				fr_strerror_printf("Cannot build attribute %s",
-					fr_strerror());
+				fr_strerror_printf("Cannot build attribute %s", fr_strerror());
 				pairfree(head);
 				return -1;
 			}
