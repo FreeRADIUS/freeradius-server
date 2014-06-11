@@ -181,8 +181,10 @@ static CONF_PARSER option_config[] = {
 
 	{ "rebind", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, ldap_instance_t, rebind), NULL },
 
+#ifdef LDAP_OPT_NETWORK_TIMEOUT
 	/* timeout on network activity */
 	{ "net_timeout", FR_CONF_OFFSET(PW_TYPE_INTEGER, ldap_instance_t, net_timeout), "10" },
+#endif
 
 	/* timeout for search results */
 	{ "res_timeout", FR_CONF_OFFSET(PW_TYPE_INTEGER, ldap_instance_t, res_timeout), "20" },
