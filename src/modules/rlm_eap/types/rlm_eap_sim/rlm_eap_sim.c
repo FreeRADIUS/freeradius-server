@@ -201,7 +201,7 @@ static int eap_sim_get_challenge(eap_handler_t *handler, VALUE_PAIR *vps, int id
 	vp = pairfind(vps, PW_EAP_SIM_RAND1 + idx, 0, TAG_ANY);
 	/* Hack for backwards compatibility */
 	if (!vp) {
-		vp = pairfind(request->reply->vps, PW_EAP_SIM_KC1 + idx, 0, TAG_ANY);
+		vp = pairfind(request->reply->vps, PW_EAP_SIM_RAND1 + idx, 0, TAG_ANY);
 	}
 	if (!vp) {
 		/* bad, we can't find stuff! */
@@ -218,7 +218,7 @@ static int eap_sim_get_challenge(eap_handler_t *handler, VALUE_PAIR *vps, int id
 	vp = pairfind(vps, PW_EAP_SIM_SRES1 + idx, 0, TAG_ANY);
 	/* Hack for backwards compatibility */
 	if (!vp) {
-		vp = pairfind(request->reply->vps, PW_EAP_SIM_KC1 + idx, 0, TAG_ANY);
+		vp = pairfind(request->reply->vps, PW_EAP_SIM_SRES1 + idx, 0, TAG_ANY);
 	}
 	if (!vp) {
 		/* bad, we can't find stuff! */
