@@ -83,7 +83,7 @@ static int eap_sim_sendstart(eap_handler_t *handler)
 	words[1] = htons(EAP_SIM_VERSION);
 	words[2] = 0;
 
-	newvp = paircreate(packet, ATTRIBUTE_EAP_SIM_BASE + PW_EAP_SIM_VERSION_LIST, 0);
+	newvp = paircreate(packet, PW_EAP_SIM_BASE + PW_EAP_SIM_VERSION_LIST, 0);
 	pairmemcpy(newvp, (uint8_t const *) words, sizeof(words));
 
 	pairadd(vps, newvp);
@@ -98,7 +98,7 @@ static int eap_sim_sendstart(eap_handler_t *handler)
 	memcpy(ess->keys.versionlist, words + 1, ess->keys.versionlistlen);
 
 	/* the ANY_ID attribute. We do not support re-auth or pseudonym */
-	newvp = paircreate(packet, ATTRIBUTE_EAP_SIM_BASE + PW_EAP_SIM_FULLAUTH_ID_REQ, 0);
+	newvp = paircreate(packet, PW_EAP_SIM_BASE + PW_EAP_SIM_FULLAUTH_ID_REQ, 0);
 	newvp->length = 2;
 	newvp->vp_octets = p = talloc_array(newvp, uint8_t, 2);
 
@@ -107,7 +107,7 @@ static int eap_sim_sendstart(eap_handler_t *handler)
 	pairadd(vps, newvp);
 
 	/* the SUBTYPE, set to start. */
-	newvp = paircreate(packet, ATTRIBUTE_EAP_SIM_SUBTYPE, 0);
+	newvp = paircreate(packet, PW_EAP_SIM_SUBTYPE, 0);
 	newvp->vp_integer = eapsim_start;
 	pairreplace(vps, newvp);
 
@@ -124,7 +124,7 @@ static int eap_sim_get_challenge(eap_handler_t *handler, VALUE_PAIR *vps, int id
 	/*
 	 *	Generate a new RAND value, and derive Kc and SRES from Ki
 	 */
-	ki = pairfind(vps, ATTRIBUTE_EAP_SIM_KI, 0, TAG_ANY);
+	ki = pairfind(vps, PW_EAP_SIM_KI, 0, TAG_ANY);
 	if (ki) {
 		int i;
 
@@ -132,7 +132,7 @@ static int eap_sim_get_challenge(eap_handler_t *handler, VALUE_PAIR *vps, int id
 		 *	Check to see if have a Ki for the IMSI, this allows us to generate the rest
 		 *	of the triplets.
 		 */
-		algo_version = pairfind(vps, ATTRIBUTE_EAP_SIM_ALGO_VERSION, 0, TAG_ANY);
+		algo_version = pairfind(vps, PW_EAP_SIM_ALGO_VERSION, 0, TAG_ANY);
 		if (!algo_version) {
 			REDEBUG("Found Ki, but missing EAP-Sim-Algo-Version");
 			return 0;
@@ -198,7 +198,7 @@ static int eap_sim_get_challenge(eap_handler_t *handler, VALUE_PAIR *vps, int id
 	 *	Use known RAND, SRES, and Kc values, these may of been pulled in from an AuC,
 	 *	or created by sending challenges to the SIM directly.
 	 */
-	vp = pairfind(vps, ATTRIBUTE_EAP_SIM_RAND1 + idx, 0, TAG_ANY);
+	vp = pairfind(vps, PW_EAP_SIM_RAND1 + idx, 0, TAG_ANY);
 	if (!vp) {
 		/* bad, we can't find stuff! */
 		REDEBUG("control:EAP-SIM-RAND%i not found", idx + 1);
@@ -211,7 +211,7 @@ static int eap_sim_get_challenge(eap_handler_t *handler, VALUE_PAIR *vps, int id
 	}
 	memcpy(ess->keys.rand[idx], vp->vp_octets, EAPSIM_RAND_SIZE);
 
-	vp = pairfind(vps, ATTRIBUTE_EAP_SIM_SRES1 + idx, 0, TAG_ANY);
+	vp = pairfind(vps, PW_EAP_SIM_SRES1 + idx, 0, TAG_ANY);
 	if (!vp) {
 		/* bad, we can't find stuff! */
 		REDEBUG("control:EAP-SIM-SRES%i not found", idx + 1);
@@ -224,7 +224,7 @@ static int eap_sim_get_challenge(eap_handler_t *handler, VALUE_PAIR *vps, int id
 	}
 	memcpy(ess->keys.sres[idx], vp->vp_octets, EAPSIM_SRES_SIZE);
 
-	vp = pairfind(vps, ATTRIBUTE_EAP_SIM_KC1 + idx, 0, TAG_ANY);
+	vp = pairfind(vps, PW_EAP_SIM_KC1 + idx, 0, TAG_ANY);
 	if (!vp) {
 		/* bad, we can't find stuff! */
 		REDEBUG("control:EAP-SIM-Kc%i not found", idx + 1);
@@ -249,7 +249,7 @@ static int eap_sim_get_challenge(eap_handler_t *handler, VALUE_PAIR *vps, int id
  *
  * Challenges will come from one of three places eventually:
  *
- * 1  from attributes like ATTRIBUTE_EAP_SIM_RANDx
+ * 1  from attributes like PW_EAP_SIM_RANDx
  *	    (these might be retrived from a database)
  *
  * 2  from internally implemented SIM authenticators
@@ -294,7 +294,7 @@ static int eap_sim_sendchallenge(eap_handler_t *handler)
 	/*
 	 *	Okay, we got the challenges! Put them into an attribute.
 	 */
-	newvp = paircreate(packet, ATTRIBUTE_EAP_SIM_BASE + PW_EAP_SIM_RAND, 0);
+	newvp = paircreate(packet, PW_EAP_SIM_BASE + PW_EAP_SIM_RAND, 0);
 	newvp->length = 2 + (EAPSIM_RAND_SIZE * 3);
 	newvp->vp_octets = p = talloc_array(newvp, uint8_t, newvp->length);
 
@@ -323,7 +323,7 @@ static int eap_sim_sendchallenge(eap_handler_t *handler)
 	/*
 	 *	Use the SIM identity, if available
 	 */
-	newvp = pairfind(*invps, ATTRIBUTE_EAP_SIM_BASE + PW_EAP_SIM_IDENTITY, 0, TAG_ANY);
+	newvp = pairfind(*invps, PW_EAP_SIM_BASE + PW_EAP_SIM_IDENTITY, 0, TAG_ANY);
 	if (newvp && newvp->length > 2) {
 		uint16_t len;
 
@@ -350,16 +350,16 @@ static int eap_sim_sendchallenge(eap_handler_t *handler)
 	 *	We store the NONCE_MT in the MAC for the encoder, which
 	 *	will pull it out before it does the operation.
 	 */
-	newvp = paircreate(packet, ATTRIBUTE_EAP_SIM_BASE + PW_EAP_SIM_MAC, 0);
+	newvp = paircreate(packet, PW_EAP_SIM_BASE + PW_EAP_SIM_MAC, 0);
 	pairmemcpy(newvp, ess->keys.nonce_mt, 16);
 	pairreplace(outvps, newvp);
 
-	newvp = paircreate(packet, ATTRIBUTE_EAP_SIM_KEY, 0);
+	newvp = paircreate(packet, PW_EAP_SIM_KEY, 0);
 	pairmemcpy(newvp, ess->keys.K_aut, 16);
 	pairreplace(outvps, newvp);
 
 	/* the SUBTYPE, set to challenge. */
-	newvp = paircreate(packet, ATTRIBUTE_EAP_SIM_SUBTYPE, 0);
+	newvp = paircreate(packet, PW_EAP_SIM_SUBTYPE, 0);
 	newvp->vp_integer = eapsim_challenge;
 	pairreplace(outvps, newvp);
 
@@ -498,8 +498,8 @@ static int process_eap_sim_start(eap_handler_t *handler, VALUE_PAIR *vps)
 	uint16_t simversion;
 	ess = (eap_sim_state_t *)handler->opaque;
 
-	nonce_vp = pairfind(vps, ATTRIBUTE_EAP_SIM_BASE + PW_EAP_SIM_NONCE_MT, 0, TAG_ANY);
-	selectedversion_vp = pairfind(vps, ATTRIBUTE_EAP_SIM_BASE + PW_EAP_SIM_SELECTED_VERSION, 0, TAG_ANY);
+	nonce_vp = pairfind(vps, PW_EAP_SIM_BASE + PW_EAP_SIM_NONCE_MT, 0, TAG_ANY);
+	selectedversion_vp = pairfind(vps, PW_EAP_SIM_BASE + PW_EAP_SIM_SELECTED_VERSION, 0, TAG_ANY);
 	if (!nonce_vp || !selectedversion_vp) {
 		RDEBUG2("Client did not select a version and send a NONCE");
 		eap_sim_stateenter(handler, ess, eapsim_server_start);
@@ -625,7 +625,7 @@ static int mod_authenticate(UNUSED void *arg, eap_handler_t *handler)
 	/*
 	 *	See what kind of message we have gotten
 	 */
-	vp = pairfind(vps, ATTRIBUTE_EAP_SIM_SUBTYPE, 0, TAG_ANY);
+	vp = pairfind(vps, PW_EAP_SIM_SUBTYPE, 0, TAG_ANY);
 	if (!vp) {
 		REDEBUG2("No subtype attribute was created, message dropped");
 		return 0;
