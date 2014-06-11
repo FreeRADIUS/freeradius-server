@@ -598,7 +598,7 @@ static int fr_dhcp_attr2vp(RADIUS_PACKET *packet, VALUE_PAIR *vp, uint8_t const 
 		if (pair2unknown(vp) < 0) return -1;
 
 	case PW_TYPE_OCTETS:
-		if (alen > 253) return -1;
+		if (alen > 255) return -1;
 		pairmemcpy(vp, p, alen);
 		break;
 
@@ -645,12 +645,6 @@ ssize_t fr_dhcp_decode_options(RADIUS_PACKET *packet,
 		if ((p + 2) > (data + len)) break;
 
 		next = p + 2 + p[1];
-
-		if (p[1] >= 253) {
-			fr_strerror_printf("Attribute too long %u %u",
-					   p[0], p[1]);
-			continue;
-		}
 
 		da = dict_attrbyvalue(p[0], DHCP_MAGIC_VENDOR);
 		if (!da) {
