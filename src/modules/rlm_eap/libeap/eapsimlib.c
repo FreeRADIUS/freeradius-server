@@ -84,10 +84,10 @@ int map_eapsim_basictypes(RADIUS_PACKET *r, eap_packet_t *ep)
 	subtype = (vp = pairfind(r->vps, PW_EAP_SIM_SUBTYPE, 0, TAG_ANY)) ?
 		vp->vp_integer : eapsim_start;
 
-	id = (vp = pairfind(r->vps, ATTRIBUTE_EAP_ID, 0, TAG_ANY)) ?
+	id = (vp = pairfind(r->vps, PW_EAP_ID, 0, TAG_ANY)) ?
 		vp->vp_integer : ((int)getpid() & 0xff);
 
-	eapcode = (vp = pairfind(r->vps, ATTRIBUTE_EAP_CODE, 0, TAG_ANY)) ?
+	eapcode = (vp = pairfind(r->vps, PW_EAP_CODE, 0, TAG_ANY)) ?
 		vp->vp_integer : PW_EAP_REQUEST;
 
 	/*

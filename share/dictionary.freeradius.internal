@@ -315,6 +315,7 @@ ATTRIBUTE	EAP-Sim-Algo-Version			1216	integer
 #
 #  egrep VALUE dictionary.freeradius.internal  | grep EAP-Type | awk '{print "ATTRIBUTE EAP-Type-" $3 " " 1280+$4 " octets"}' > foo;./format.pl foo
 #
+ATTRIBUTE	EAP-Type-Base				1280	octets
 ATTRIBUTE	EAP-Type-VALUE				1280	octets
 ATTRIBUTE	EAP-Type-None				1280	octets
 ATTRIBUTE	EAP-Type-Identity			1281	octets

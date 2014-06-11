@@ -34,11 +34,6 @@ RCSIDH(eap_methods_h, "$Id$")
 /* Field length and other arbitrary things */
 #define EAP_HEADER_LEN 		4
 
-/* base for dictionary values */
-#define ATTRIBUTE_EAP_ID	1020
-#define ATTRIBUTE_EAP_CODE      1021
-#define ATTRIBUTE_EAP_BASE      1280
-
 typedef enum eap_code {
 	PW_EAP_REQUEST = 1,
 	PW_EAP_RESPONSE,
