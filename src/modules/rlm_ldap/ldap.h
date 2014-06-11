@@ -33,6 +33,10 @@
 #  define LDAP_OPT_RESULT_CODE LDAP_OPT_ERROR_NUMBER
 #endif
 
+#ifndef LDAP_CONST
+#  define LDAP_CONST
+#endif
+
 #define LDAP_MAX_ATTRMAP		128		//!< Maximum number of mappings between LDAP and
 							//!< FreeRADIUS attributes.
 #define LDAP_MAP_RESERVED		4		//!< Number of additional items to allocate in expanded

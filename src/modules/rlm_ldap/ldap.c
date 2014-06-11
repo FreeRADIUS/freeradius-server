@@ -1176,10 +1176,14 @@ void *mod_conn_create(void *instance)
 		}
 	}
 
-	memset(&tv, 0, sizeof(tv));
-	tv.tv_sec = inst->net_timeout;
+#ifdef LDAP_OPT_NETWORK_TIMEOUT
+	if (inst->net_timeout) {
+		memset(&tv, 0, sizeof(tv));
+		tv.tv_sec = inst->net_timeout;
 
-	do_ldap_option(LDAP_OPT_NETWORK_TIMEOUT, "net_timeout", &tv);
+		do_ldap_option(LDAP_OPT_NETWORK_TIMEOUT, "net_timeout", &tv);
+	}
+#endif
 
 	do_ldap_option(LDAP_OPT_TIMELIMIT, "srv_timelimit", &(inst->srv_timelimit));
 
