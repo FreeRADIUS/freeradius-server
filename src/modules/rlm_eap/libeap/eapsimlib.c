@@ -293,7 +293,7 @@ int unmap_eapsim_basictypes(RADIUS_PACKET *r,
 
 	/* big enough to have even a single attribute */
 	if (attrlen < 5) {
-		ERROR("eap: EAP-Sim attribute too short: %d < 2", attrlen);
+		ERROR("eap: EAP-Sim attribute too short: %d < 5", attrlen);
 		return 0;
 	}
 
