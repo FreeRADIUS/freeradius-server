@@ -5,7 +5,6 @@ radclient
 radiusd
 radlast
 radsniff
-radtest
 radwho
 radmin
 radconf2xml
