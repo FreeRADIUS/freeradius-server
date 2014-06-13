@@ -991,7 +991,7 @@ void fr_ipaddr_mask(fr_ipaddr_t *addr, uint8_t prefix)
 	addr->prefix = prefix;
 }
 
-static char const *hextab = "0123456789abcdef";
+static char const hextab[] = "0123456789abcdef";
 
 /** Convert hex strings to binary data
  *

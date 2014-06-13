@@ -95,7 +95,7 @@ static char randstr_salt[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmo
  */
 static char randstr_otp[] = "469ACGHJKLMNPQRUVWXYabdfhijkprstuvwxyz";
 
-static char const *hextab = "0123456789abcdef";
+static char const hextab[] = "0123456789abcdef";
 
 static int get_number(REQUEST *request, char const **string, int64_t *answer)
 {

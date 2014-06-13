@@ -55,8 +55,8 @@ static const CONF_PARSER module_config[] = {
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
 
-static char const *modhextab = "cbdefghijklnrtuv";
-static char const *hextab = "0123456789abcdef";
+static char const modhextab[] = "cbdefghijklnrtuv";
+static char const hextab[] = "0123456789abcdef";
 
 #define is_modhex(x) (memchr(modhextab, tolower(x), 16))
 
