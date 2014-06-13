@@ -27,6 +27,13 @@ typedef enum {
 	RLM_SQL_DUPLICATE = 2		//!< Key constraint violation
 } sql_rcode_t;
 
+typedef enum {
+	FALL_THROUGH_DEFAULT = 0,
+	FALL_THROUGH_YES,
+	FALL_THROUGH_NO
+} sql_fall_through_t;
+
+
 typedef char **rlm_sql_row_t;
 
 /*
@@ -67,6 +74,7 @@ typedef struct sql_config {
 
 	bool		do_clients;
 	bool		read_groups;
+	bool		read_profiles;
 	char const	*logfile;
 
 	bool		deletestalesessions;

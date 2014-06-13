@@ -62,7 +62,7 @@ static const CONF_PARSER module_config[] = {
 /*
  *     See if a VALUE_PAIR list contains Fall-Through = Yes
  */
-static int fallthrough(VALUE_PAIR *vp)
+static int fall_through(VALUE_PAIR *vp)
 {
 	VALUE_PAIR *tmp;
 	tmp = pairfind(vp, PW_FALL_THROUGH, 0, TAG_ANY);
@@ -407,7 +407,7 @@ static int hints_setup(PAIR_LIST *hints, REQUEST *request)
 			 *	and xlat them.
 			 */
 			add = paircopy(request->packet, i->reply);
-			ft = fallthrough(add);
+			ft = fall_through(add);
 
 			pairdelete(&add, PW_STRIP_USER_NAME, 0, TAG_ANY);
 			pairdelete(&add, PW_FALL_THROUGH, 0, TAG_ANY);

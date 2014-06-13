@@ -51,6 +51,7 @@ static const CONF_PARSER module_config[] = {
 	{ "password", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_SECRET, rlm_sql_config_t, sql_password), "" },
 	{ "radius_db", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sql_config_t, sql_db), "radius" },
 	{ "read_groups", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_sql_config_t, read_groups), "yes" },
+	{ "read_profiles", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_sql_config_t, read_profiles), "yes" },
 	{ "readclients", FR_CONF_OFFSET(PW_TYPE_BOOLEAN | PW_TYPE_DEPRECATED, rlm_sql_config_t, do_clients), NULL },
 	{ "read_clients", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_sql_config_t, do_clients), "no" },
 	{ "deletestalesessions", FR_CONF_OFFSET(PW_TYPE_BOOLEAN | PW_TYPE_DEPRECATED, rlm_sql_config_t, deletestalesessions), NULL },
@@ -84,12 +85,12 @@ static const CONF_PARSER module_config[] = {
 /*
  *	Fall-Through checking function from rlm_files.c
  */
-static int fallthrough(VALUE_PAIR *vp)
+static sql_fall_through_t fall_through(VALUE_PAIR *vp)
 {
 	VALUE_PAIR *tmp;
 	tmp = pairfind(vp, PW_FALL_THROUGH, 0, TAG_ANY);
 
-	return tmp ? tmp->vp_integer : 0;
+	return tmp ? tmp->vp_integer : FALL_THROUGH_DEFAULT;
 }
 
 /*
@@ -548,7 +549,7 @@ static int CC_HINT(nonnull (1 ,2, 4)) sql_groupcmp(void *instance, REQUEST *requ
 }
 
 static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t *inst, REQUEST *request, rlm_sql_handle_t **handle,
-					  bool *dofallthrough)
+					  sql_fall_through_t *do_fall_through)
 {
 	rlm_rcode_t		rcode = RLM_MODULE_NOOP;
 	VALUE_PAIR		*check_tmp = NULL, *reply_tmp = NULL, *sql_group = NULL;
@@ -576,7 +577,7 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t *inst, REQUEST *request, rlm
 
 	RDEBUG2("User found in the group table");
 
-	for (entry = head; entry != NULL && (*dofallthrough != 0); entry = entry->next) {
+	for (entry = head; entry != NULL && (*do_fall_through == FALL_THROUGH_YES); entry = entry->next) {
 		/*
 		 *	Add the Sql-Group attribute to the request list so we know
 		 *	which group we're retrieving attributes for
@@ -644,7 +645,7 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t *inst, REQUEST *request, rlm
 				goto finish;
 			}
 
-			*dofallthrough = fallthrough(reply_tmp);
+			*do_fall_through = fall_through(reply_tmp);
 
 			RDEBUG2("Group \"%s\" reply items processed", entry->name);
 			rcode = RLM_MODULE_OK;
@@ -894,7 +895,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 }
 
 
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST * request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *request)
 {
 	rlm_rcode_t rcode = RLM_MODULE_NOOP;
 
@@ -906,7 +907,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST * requ
 	VALUE_PAIR *user_profile = NULL;
 
 	bool	user_found = false;
-	bool	dofallthrough = true;
+
+	sql_fall_through_t do_fall_through = FALL_THROUGH_DEFAULT;
+
 	int	rows;
 
 	char	*expanded = NULL;
@@ -915,7 +918,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST * requ
 	rad_assert(request->reply != NULL);
 
 	/*
-	 *  Set, escape, and check the user attr here
+	 *	Set, escape, and check the user attr here
 	 */
 	if (sql_set_user(inst, request, NULL) < 0) {
 		return RLM_MODULE_FAIL;
@@ -992,9 +995,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST * requ
 
 		if (rows == 0) goto skipreply;
 
-		if (!inst->config->read_groups) {
-			dofallthrough = fallthrough(reply_tmp);
-		}
+		do_fall_through = fall_through(reply_tmp);
 
 		RDEBUG2("User found in radreply table");
 		user_found = true;
@@ -1004,17 +1005,12 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST * requ
 	}
 
 skipreply:
-	/*
-	 *	dofallthrough is set to 1 by default so that if the user information
-	 *	is not found, we will still process groups.  If the user information,
-	 *	however, *is* found, Fall-Through must be set in order to process
-	 *	the groups as well.
-	 */
-	if (dofallthrough) {
+	if ((do_fall_through == FALL_THROUGH_YES) ||
+	    (inst->config->read_groups && (do_fall_through == FALL_THROUGH_DEFAULT))) {
 		rlm_rcode_t ret;
 
 		RDEBUG3("... falling-through to group processing");
-		ret = rlm_sql_process_groups(inst, request, &handle, &dofallthrough);
+		ret = rlm_sql_process_groups(inst, request, &handle, &do_fall_through);
 		switch (ret) {
 			/*
 			 *	Nothing bad happened, continue...
@@ -1043,7 +1039,8 @@ skipreply:
 	/*
 	 *	Repeat the above process with the default profile or User-Profile
 	 */
-	if (dofallthrough) {
+	if ((do_fall_through == FALL_THROUGH_YES) ||
+	    (inst->config->read_profiles && (do_fall_through == FALL_THROUGH_DEFAULT))) {
 		rlm_rcode_t ret;
 
 		/*
@@ -1068,7 +1065,7 @@ skipreply:
 			goto error;
 		}
 
-		ret = rlm_sql_process_groups(inst, request, &handle, &dofallthrough);
+		ret = rlm_sql_process_groups(inst, request, &handle, &do_fall_through);
 		switch (ret) {
 			/*
 			 *	Nothing bad happened, continue...
