@@ -1532,15 +1532,19 @@ static int process_attribute(char const* fn, int const line,
 
 				switch (type) {
 					case PW_TYPE_IPV4_ADDR:
+					case PW_TYPE_IPV6_ADDR:
 					case PW_TYPE_BYTE:
 					case PW_TYPE_SHORT:
 					case PW_TYPE_INTEGER:
 					case PW_TYPE_DATE:
+					case PW_TYPE_STRING:
 						break;
 
 					default:
-						fr_strerror_printf( "dict_init: %s[%d] Only IP addresses can have the \"array\" flag set.",
-							    fn, line);
+						fr_strerror_printf( "dict_init: %s[%d] \"%s\" type cannot have the "
+								   "\"array\" flag set",
+								   fn, line,
+								   fr_int2str(dict_attr_types, type, "<UNKNOWN>"));
 						return -1;
 				}
 

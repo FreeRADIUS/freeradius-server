@@ -12,6 +12,12 @@ VENDOR		ADSL-Forum			3561
 BEGIN-VENDOR	ADSL-Forum
 
 #
+#  Glue attribute to allow decoding of ADSL-Form vendor specific
+#  DHCP options.
+#
+ATTRIBUTE	ADSL-Forum-DHCP-Vendor-Specific		0	tlv
+
+#
 #  The first two attributes are prefixed with "ADSL-" because of
 #  conflicting names in dictionary.redback.
 #
