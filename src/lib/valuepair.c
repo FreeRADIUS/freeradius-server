@@ -1191,7 +1191,7 @@ void pairfilter(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from, unsigned in
 	}
 }
 
-static char const *hextab = "0123456789abcdef";
+static char const hextab[] = "0123456789abcdef";
 
 /** Convert string value to native attribute value
  *

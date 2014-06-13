@@ -74,7 +74,7 @@ static ssize_t xlat_test(UNUSED void *instance, UNUSED REQUEST *request,
 
 static int encode_tlv(char *buffer, uint8_t *output, size_t outlen);
 
-static char const *hextab = "0123456789abcdef";
+static char const hextab[] = "0123456789abcdef";
 
 static int encode_data_string(char *buffer,
 			      uint8_t *output, size_t outlen)
