@@ -69,7 +69,7 @@ typedef struct rlm_files_t {
 /*
  *     See if a VALUE_PAIR list contains Fall-Through = Yes
  */
-static int fallthrough(VALUE_PAIR *vp)
+static int fall_through(VALUE_PAIR *vp)
 {
 	VALUE_PAIR *tmp;
 	tmp = pairfind(vp, PW_FALL_THROUGH, 0, TAG_ANY);
@@ -444,7 +444,7 @@ static rlm_rcode_t file_common(rlm_files_t *inst, REQUEST *request,
 			/*
 			 *	Fallthrough?
 			 */
-			if (!fallthrough(pl->reply))
+			if (!fall_through(pl->reply))
 				break;
 		}
 	}

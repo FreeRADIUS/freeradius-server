@@ -109,9 +109,13 @@ sql {
 	# Table to keep group info
 	usergroup_table = "radusergroup"
 
-	# If set to 'yes' (default) we read the group tables
-	# If set to 'no' the user MUST have Fall-Through = Yes in the radreply table
-	# read_groups = yes
+	# If set to 'yes' (default) we read the group tables unless Fall-Through = no in the reply table.
+	# If set to 'no' we do not read the group tables unless Fall-Through = yes in the reply table.
+#	read_groups = yes
+
+	# If set to 'yes' (default) we read profiles unless Fall-Through = no in the groupreply table.
+	# If set to 'no' we do not read profiles unless Fall-Through = yes in the groupreply table.
+#	read_profiles = yes
 
 	# Remove stale session if checkrad does not see a double login
 	delete_stale_sessions = yes
