@@ -279,38 +279,38 @@ eap {
 	#	check_crl = yes
 		ca_path = ${cadir}
 
-	       #
-	       #  If check_cert_issuer is set, the value will
-	       #  be checked against the DN of the issuer in
-	       #  the client certificate.  If the values do not
-	       #  match, the certificate verification will fail,
-	       #  rejecting the user.
-	       #
-	       #  In 2.1.10 and later, this check can be done
-	       #  more generally by checking the value of the
-	       #  TLS-Client-Cert-Issuer attribute.  This check
-	       #  can be done via any mechanism you choose.
-	       #
-	#       check_cert_issuer = "/C=GB/ST=Berkshire/L=Newbury/O=My Company Ltd"
+		#
+		#  If check_cert_issuer is set, the value will
+		#  be checked against the DN of the issuer in
+		#  the client certificate.  If the values do not
+		#  match, the certificate verification will fail,
+		#  rejecting the user.
+		#
+		#  In 2.1.10 and later, this check can be done
+		#  more generally by checking the value of the
+		#  TLS-Client-Cert-Issuer attribute.  This check
+		#  can be done via any mechanism you choose.
+		#
+	#	check_cert_issuer = "/C=GB/ST=Berkshire/L=Newbury/O=My Company Ltd"
 
-	       #
-	       #  If check_cert_cn is set, the value will
-	       #  be xlat'ed and checked against the CN
-	       #  in the client certificate.  If the values
-	       #  do not match, the certificate verification
-	       #  will fail rejecting the user.
-	       #
-	       #  This check is done only if the previous
-	       #  "check_cert_issuer" is not set, or if
-	       #  the check succeeds.
-	       #
-	       #  In 2.1.10 and later, this check can be done
-	       #  more generally by checking the value of the
-	       #  TLS-Client-Cert-CN attribute.  This check
-	       #  can be done via any mechanism you choose.
-	       #
+		#
+		#  If check_cert_cn is set, the value will
+		#  be xlat'ed and checked against the CN
+		#  in the client certificate.  If the values
+		#  do not match, the certificate verification
+		#  will fail rejecting the user.
+		#
+		#  This check is done only if the previous
+		#  "check_cert_issuer" is not set, or if
+		#  the check succeeds.
+		#
+		#  In 2.1.10 and later, this check can be done
+		#  more generally by checking the value of the
+		#  TLS-Client-Cert-CN attribute.  This check
+		#  can be done via any mechanism you choose.
+		#
 	#	check_cert_cn = %{User-Name}
-	#
+		#
 		# Set this option to specify the allowed
 		# TLS cipher suites.  The format is listed
 		# in "man 1 ciphers".
@@ -352,66 +352,66 @@ eap {
 		#  when using fast session resumption.
 		#
 		cache {
-		      #
-		      #  Enable it.  The default is "no".
-		      #  Deleting the entire "cache" subsection
-		      #  Also disables caching.
-		      #
-		      #  You can disallow resumption for a
-		      #  particular user by adding the following
-		      #  attribute to the control item list:
-		      #
-		      #		Allow-Session-Resumption = No
-		      #
-		      #  If "enable = no" below, you CANNOT
-		      #  enable resumption for just one user
-		      #  by setting the above attribute to "yes".
-		      #
-		      enable = yes
+			#
+			#  Enable it.  The default is "no".
+			#  Deleting the entire "cache" subsection
+			#  also disables caching.
+			#
+			#  You can disallow resumption for a
+			#  particular user by adding the following
+			#  attribute to the control item list:
+			#
+			#		Allow-Session-Resumption = No
+			#
+			#  If "enable = no" below, you CANNOT
+			#  enable resumption for just one user
+			#  by setting the above attribute to "yes".
+			#
+			enable = yes
 
-		      #
-		      #  Lifetime of the cached entries, in hours.
-		      #  The sessions will be deleted after this
-		      #  time.
-		      #
-		      lifetime = 24 # hours
+			#
+			#  Lifetime of the cached entries, in hours.
+			#  The sessions will be deleted after this
+			#  time.
+			#
+			lifetime = 24 # hours
 
-		      #
-		      #  The maximum number of entries in the
-		      #  cache.  Set to "0" for "infinite".
-		      #
-		      #  This could be set to the number of users
-		      #  who are logged in... which can be a LOT.
-		      #
-		      max_entries = 255
+			#
+			#  The maximum number of entries in the
+			#  cache.  Set to "0" for "infinite".
+			#
+			#  This could be set to the number of users
+			#  who are logged in... which can be a LOT.
+			#
+			max_entries = 255
 
-		      #
-		      #  Internal "name" of the session cache.
-		      #  Used to distinguish which TLS context
-		      #  sessions belong to.
-		      #
-		      #  The server will generate a random value
-		      #  if unset. This will change across server
-		      #  restart so you MUST set the "name" if you
-		      #  want to persist sessions (see below).
-		      #
-		      #name = "EAP module"
+			#
+			#  Internal "name" of the session cache.
+			#  Used to distinguish which TLS context
+			#  sessions belong to.
+			#
+			#  The server will generate a random value
+			#  if unset. This will change across server
+			#  restart so you MUST set the "name" if you
+			#  want to persist sessions (see below).
+			#
+			#name = "EAP module"
 
-		      #
-		      #  Simple directory-based storage of sessions.
-		      #  Two files per session will be written, the SSL
-		      #  state and the cached VPs. This will persist session
-		      #  across server restarts.
-		      #
-		      #  The server will need write perms, and the directory
-		      #  should be secured from anyone else. You might want
-		      #  a script to remove old files from here periodically:
-		      #
-		      #    find ${logdir}/tlscache -mtime +2 -exec rm -f {} \;
-		      #
-		      #  This feature REQUIRES "name" option be set above.
-		      #
-		      #persist_dir = "${logdir}/tlscache"
+			#
+			#  Simple directory-based storage of sessions.
+			#  Two files per session will be written, the SSL
+			#  state and the cached VPs. This will persist session
+			#  across server restarts.
+			#
+			#  The server will need write perms, and the directory
+			#  should be secured from anyone else. You might want
+			#  a script to remove old files from here periodically:
+			#
+			#    find ${logdir}/tlscache -mtime +2 -exec rm -f {} \;
+			#
+			#  This feature REQUIRES "name" option be set above.
+			#
+			#persist_dir = "${logdir}/tlscache"
 		}
 
 		#
@@ -435,7 +435,7 @@ eap {
 			#
 			#  You should also delete all of the files
 			#  in the directory when the server starts.
-	#     		tmpdir = /tmp/radiusd
+	#		tmpdir = /tmp/radiusd
 
 			#  The command used to verify the client cert.
 			#  We recommend using the OpenSSL command-line
@@ -449,7 +449,7 @@ eap {
 			#  in PEM format.  This file is automatically
 			#  deleted by the server when the command
 			#  returns.
-	#    		client = "/path/to/openssl verify -CApath ${..ca_path} %{TLS-Client-Cert-Filename}"
+	#		client = "/path/to/openssl verify -CApath ${..ca_path} %{TLS-Client-Cert-Filename}"
 		}
 
 		#
@@ -460,72 +460,72 @@ eap {
 		#  new Certificate Revocation Lists (CRLs).
 		#
 		ocsp {
-		      #
-		      #  Enable it.  The default is "no".
-		      #  Deleting the entire "ocsp" subsection
-		      #  Also disables ocsp checking
-		      #
-		      enable = no
+			#
+			#  Enable it.  The default is "no".
+			#  Deleting the entire "ocsp" subsection
+			#  also disables ocsp checking
+			#
+			enable = no
 
-		      #
-		      #  The OCSP Responder URL can be automatically
-		      #  extracted from the certificate in question.
-		      #  To override the OCSP Responder URL set
-		      #  "override_cert_url = yes".
-		      #
-		      override_cert_url = yes
+			#
+			#  The OCSP Responder URL can be automatically
+			#  extracted from the certificate in question.
+			#  To override the OCSP Responder URL set
+			#  "override_cert_url = yes".
+			#
+			override_cert_url = yes
 
-		      #
-		      #  If the OCSP Responder address is not
-		      #  extracted from the certificate, the
-		      #  URL can be defined here.
+			#
+			#  If the OCSP Responder address is not
+			#  extracted from the certificate, the
+			#  URL can be defined here.
 
-		      #
-		      #  Limitation: Currently the HTTP
-		      #  Request is not sending the "Host: "
-		      #  information to the web-server.  This
-		      #  can be a problem if the OCSP
-		      #  Responder is running as a vhost.
-		      #
-		      url = "http://127.0.0.1/ocsp/"
+			#
+			#  Limitation: Currently the HTTP
+			#  Request is not sending the "Host: "
+			#  information to the web-server.  This
+			#  can be a problem if the OCSP
+			#  Responder is running as a vhost.
+			#
+			url = "http://127.0.0.1/ocsp/"
 
-		      #
-		      # If the OCSP Responder can not cope with nonce
-		      # in the request, then it can be disabled here.
-		      #
-		      # For security reasons, disabling this option
-		      # is not recommended as nonce protects against
-		      # replay attacks.
-		      #
-		      # Note that Microsoft AD Certificate Services OCSP
-		      # Responder does not enable nonce by default. It is
-		      # more secure to enable nonce on the responder than
-		      # to disable it in the query here.
-		      # See http://technet.microsoft.com/en-us/library/cc770413%28WS.10%29.aspx
-		      #
-		      # use_nonce = yes
+			#
+			# If the OCSP Responder can not cope with nonce
+			# in the request, then it can be disabled here.
+			#
+			# For security reasons, disabling this option
+			# is not recommended as nonce protects against
+			# replay attacks.
+			#
+			# Note that Microsoft AD Certificate Services OCSP
+			# Responder does not enable nonce by default. It is
+			# more secure to enable nonce on the responder than
+			# to disable it in the query here.
+			# See http://technet.microsoft.com/en-us/library/cc770413%28WS.10%29.aspx
+			#
+			# use_nonce = yes
 
-		      #
-		      # Number of seconds before giving up waiting
-		      # for OCSP response. 0 uses system default.
-		      #
-		      # timeout = 0
+			#
+			# Number of seconds before giving up waiting
+			# for OCSP response. 0 uses system default.
+			#
+			# timeout = 0
 
-		      #
-		      # Normally an error in querying the OCSP
-		      # responder (no response from server, server did
-		      # not understand the request, etc) will result in
-		      # a validation failure.
-		      #
-		      # To treat these errors as 'soft' failures and
-		      # still accept the certificate, enable this
-		      # option.
-		      #
-		      # Warning: this may enable clients with revoked
-		      # certificates to connect if the OCSP responder
-		      # is not available. Use with caution.
-		      #
-		      # softfail = no
+			#
+			# Normally an error in querying the OCSP
+			# responder (no response from server, server did
+			# not understand the request, etc) will result in
+			# a validation failure.
+			#
+			# To treat these errors as 'soft' failures and
+			# still accept the certificate, enable this
+			# option.
+			#
+			# Warning: this may enable clients with revoked
+			# certificates to connect if the OCSP responder
+			# is not available. Use with caution.
+			#
+			# softfail = no
 		}
 	}
 
