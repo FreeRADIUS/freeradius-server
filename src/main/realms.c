@@ -311,7 +311,7 @@ static CONF_PARSER home_server_config[] = {
 	{ "src_ipaddr", FR_CONF_POINTER(PW_TYPE_STRING, &hs_srcipaddr), NULL },
 
 	{ "response_window", FR_CONF_OFFSET(PW_TYPE_TIMEVAL, home_server_t, response_window), "30" },
-	{ "max_response_timeouts", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, max_response_timeouts), "0" },
+	{ "response_timeouts", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, max_response_timeouts), "1" },
 	{ "max_outstanding", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, max_outstanding), "65536" },
 
 	{ "zombie_period", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, zombie_period), "40" },
@@ -665,6 +665,9 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 	FR_TIMEVAL_BOUND_CHECK("response_window", &home->response_window, <=, 60, 0);
 	FR_TIMEVAL_BOUND_CHECK("response_window", &home->response_window, <=,
 				main_config.max_request_time, 0);
+
+	FR_INTEGER_BOUND_CHECK("response_timeouts", home->response_timeouts, >=, 1);
+	FR_INTEGER_BOUND_CHECK("response_timeouts", home->response_timeouts, <=, 1000);
 
 	/*
 	 *	Track the minimum response window, so that we can
