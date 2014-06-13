@@ -1015,8 +1015,8 @@ size_t fr_hex2bin(uint8_t *bin, size_t outlen, char const *hex, size_t inlen)
 	if (len > outlen) len = outlen;
 
 	for (i = 0; i < len; i++) {
-		if(!(c1 = memchr(hextab, tolower((int) hex[i << 1]), 16)) ||
-		   !(c2 = memchr(hextab, tolower((int) hex[(i << 1) + 1]), 16)))
+		if(!(c1 = memchr(hextab, tolower((int) hex[i << 1]), sizeof(hextab))) ||
+		   !(c2 = memchr(hextab, tolower((int) hex[(i << 1) + 1]), sizeof(hextab))))
 			break;
 		bin[i] = ((c1-hextab)<<4) + (c2-hextab);
 	}
