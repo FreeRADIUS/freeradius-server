@@ -1102,17 +1102,18 @@ static int CC_HINT(nonnull (1, 2, 4, 5 ,6)) do_mschap(rlm_mschap_t *inst, REQUES
 		 *	NT_KEY: 000102030405060708090a0b0c0d0e0f
 		 */
 		if (memcmp(buffer, "NT_KEY: ", 8) != 0) {
-			REDEBUG("Invalid output from ntlm_auth: expecting NT_KEY");
+			REDEBUG("Invalid output from ntlm_auth: expecting 'NT_KEY: ' prefix");
 			return -1;
 		}
 
 		/*
-		 *	Check the length.  It should be at least 32,
-		 *	with an LF at the end.
+		 *	Check the length.  It should be at least 32, with an LF at the end.
 		 */
 		len = strlen(buffer + 8);
 		if (len < 32) {
-			REDEBUG2("Invalid output from ntlm_auth: NT_KEY has unexpected length");
+			REDEBUG2("Invalid output from ntlm_auth: NT_KEY too short, expected 32 bytes got %zu bytes",
+				 len);
+
 			return -1;
 		}
 
