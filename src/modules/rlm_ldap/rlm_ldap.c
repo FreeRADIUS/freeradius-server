@@ -60,6 +60,15 @@ FR_NAME_NUMBER const ldap_tls_require_cert[] = {
 };
 #endif
 
+FR_NAME_NUMBER const ldap_dereference[] = {
+	{ "never",	LDAP_DEREF_NEVER	},
+	{ "searching",	LDAP_DEREF_SEARCHING	},
+	{ "finding",	LDAP_DEREF_FINDING	},
+	{ "always",	LDAP_DEREF_ALWAYS	}
+
+	{  NULL , -1 }
+};
+
 /*
  *	TLS Configuration
  */
@@ -176,6 +185,8 @@ static CONF_PARSER option_config[] = {
 	 *	Debugging flags to the server
 	 */
 	{ "ldap_debug", FR_CONF_OFFSET(PW_TYPE_INTEGER, ldap_instance_t, ldap_debug), "0x0000" },
+
+	{ "dereference", FR_CONF_OFFSET(PW_TYPE_STRING, ldap_instance_t, dereference_str), NULL },
 
 	{ "chase_referrals", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, ldap_instance_t, chase_referrals), NULL },
 
@@ -582,6 +593,16 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		inst->tls_mode = 0;
 	}
 #endif
+
+	/*
+	 *	Convert dereference strings to enumerated constants
+	 */
+	inst->dereference = fr_str2int(ldap_scope, inst->dereference_str, -1);
+	if (inst->dereference < 0) {
+		LDAP_ERR("Invalid 'dereference' value \"%s\", expected 'never', 'searching', 'finding' or 'always'",
+			 inst->dereference_str);
+		goto error;
+	}
 
 #if LDAP_SET_REBIND_PROC_ARGS != 3
 	/*
