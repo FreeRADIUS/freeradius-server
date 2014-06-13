@@ -1,0 +1,19 @@
+# -*- text -*-
+# Copyright (C) 2014 The FreeRADIUS Server project and contributors
+##############################################################################
+#
+#	Surfnet
+#
+#	$Id$
+#
+##############################################################################
+
+VENDOR		Surfnet				1076
+
+BEGIN-VENDOR	Surfnet
+
+ATTRIBUTE	Surfnet-AVPair				1	string
+ATTRIBUTE	Surfnet-Service-Identifier		2	string
+ATTRIBUTE	Surfnet-Service-Provider		3	string
+
+END-VENDOR	Surfnet
