@@ -619,7 +619,7 @@ wait:
 			if ((status != 0) || (ret < 0)) {
 				ERROR("Program returned code (%d) and output '%s'", status, answer);
 			} else {
-				ERROR("Program returned code (%d) and output '%s'", status, answer);
+				DEBUG2("Program returned code (%d) and output '%s'", status, answer);
 			}
 
 			return ret < 0 ? ret : status;
