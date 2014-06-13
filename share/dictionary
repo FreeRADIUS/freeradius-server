@@ -239,6 +239,7 @@ $INCLUDE dictionary.slipstream
 $INCLUDE dictionary.sonicwall
 $INCLUDE dictionary.springtide
 $INCLUDE dictionary.starent
+$INCLUDE dictionary.surfnet
 $INCLUDE dictionary.symbol
 $INCLUDE dictionary.telebit
 $INCLUDE dictionary.terena
