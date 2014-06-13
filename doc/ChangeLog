@@ -1,3 +1,15 @@
+FreeRADIUS 2.2.6 Monday 13 Jun 2014 09:05:00 EDT, urgency=medium
+	Feature improvements
+
+	Bug fixes
+	* Fix redundant-load-balance blocks to try other modules in
+	  the group if one fails.
+	* Fix potential read into uninitialised memory in rlm_pap 
+	  when normalising octet type attributes containing password
+	  hashes. This is very unlikely to happen in the wild.
+	* Don't stop decoding DHCP options if we find a padding
+	  option.
+	
 FreeRADIUS 2.2.5 Monday 28 Apr 2014 15:20:00 EDT, urgency=medium
 	Feature improvements
 	* Update dictionary.terena.
