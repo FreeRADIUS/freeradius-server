@@ -420,6 +420,10 @@ int sql_set_user(rlm_sql_t *inst, REQUEST *request, char const *username)
 	return 0;
 }
 
+/*
+ *	Do a set/unset user, so it's a bit clearer what's going on.
+ */
+#define sql_unset_user(_i, _r) pairdelete(&_r->packet->vps, _i->sql_user->attr, _i->sql_user->vendor, TAG_ANY)
 
 static int sql_get_grouplist(rlm_sql_t *inst, rlm_sql_handle_t **handle, REQUEST *request,
 			     rlm_sql_grouplist_t **phead)
@@ -1100,12 +1104,14 @@ release:
 	}
 
 	sql_release_socket(inst, handle);
+	sql_unset_user(inst, request);
 
 	return rcode;
 
 error:
 	pairfree(&check_tmp);
 	pairfree(&reply_tmp);
+	sql_unset_user(inst, request);
 
 	sql_release_socket(inst, handle);
 
@@ -1260,6 +1266,7 @@ static int acct_redundant(rlm_sql_t *inst, REQUEST *request, sql_acct_section_t 
 finish:
 	talloc_free(expanded);
 	sql_release_socket(inst, handle);
+	sql_unset_user(inst, request);
 
 	return rcode;
 }
@@ -1323,6 +1330,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_checksimul(void *instance, REQUEST * req
 	}
 
 	if (radius_axlat(&expanded, request, inst->config->simul_count_query, sql_escape_func, inst) < 0) {
+		sql_unset_user(inst, request);
 		return RLM_MODULE_FAIL;
 	}
 
@@ -1330,6 +1338,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_checksimul(void *instance, REQUEST * req
 	handle = sql_get_socket(inst);
 	if (!handle) {
 		talloc_free(expanded);
+		sql_unset_user(inst, request);
 		return RLM_MODULE_FAIL;
 	}
 
@@ -1477,6 +1486,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_checksimul(void *instance, REQUEST * req
 	(inst->module->sql_finish_select_query)(handle, inst->config);
 	sql_release_socket(inst, handle);
 	talloc_free(expanded);
+	sql_unset_user(inst, request);
 
 	/*
 	 *	The Auth module apparently looks at request->simul_count,
