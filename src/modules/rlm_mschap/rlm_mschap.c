@@ -1030,10 +1030,11 @@ ntlm_auth_err:
  */
 static int CC_HINT(nonnull (1, 2, 4, 5 ,6)) do_mschap(rlm_mschap_t *inst, REQUEST *request, VALUE_PAIR *password,
 						      uint8_t const *challenge, uint8_t const *response,
-						      uint8_t nthashhash[16], bool do_ntlm_auth)
+						      uint8_t *nthashhash, size_t nthhl, bool do_ntlm_auth)
 {
 	uint8_t	calculated[24];
 
+	memset(nthashhash, 0, nthhl);
 	/*
 	 *	Do normal authentication.
 	 */
@@ -1058,16 +1059,12 @@ static int CC_HINT(nonnull (1, 2, 4, 5 ,6)) do_mschap(rlm_mschap_t *inst, REQUES
 		 */
 		if (password && !password->da->vendor &&
 		    (password->da->attr == PW_NT_PASSWORD)) {
-			fr_md4_calc(nthashhash, password->vp_octets, 16);
-		} else {
-			memset(nthashhash, 0, sizeof(*nthashhash));
+			fr_md4_calc(nthashhash, password->vp_octets, nthhl);
 		}
 	} else {		/* run ntlm_auth */
 		int	result;
 		char	buffer[256];
 		size_t	len;
-
-		memset(nthashhash, 0, sizeof(*nthashhash));
 
 		/*
 		 *	Run the program, and expect that we get 16
@@ -1120,7 +1117,7 @@ static int CC_HINT(nonnull (1, 2, 4, 5 ,6)) do_mschap(rlm_mschap_t *inst, REQUES
 		/*
 		 *	Update the NT hash hash, from the NT key.
 		 */
-		if (fr_hex2bin(nthashhash, sizeof(*nthashhash), buffer + 8, len) != 16) {
+		if (fr_hex2bin(nthashhash, nthhl, buffer + 8, len) != 16) {
 			REDEBUG("Invalid output from ntlm_auth: NT_KEY has non-hex values");
 			return -1;
 		}
@@ -1650,7 +1647,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void * instance, REQUEST *r
 		/*
 		 *	Do the MS-CHAP authentication.
 		 */
-		if (do_mschap(inst, request, password, challenge->vp_octets, response->vp_octets + offset, nthashhash,
+		if (do_mschap(inst, request, password, challenge->vp_octets, response->vp_octets + offset, nthashhash, sizeof(nthashhash),
 			      do_ntlm_auth) < 0) {
 			REDEBUG("MS-CHAP-Response is incorrect");
 			goto do_error;
@@ -1757,7 +1754,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void * instance, REQUEST *r
 		RDEBUG2("Client is using MS-CHAPv2");
 
 		mschap_result = do_mschap(inst, request, nt_password, mschapv1_challenge,
-					  response->vp_octets + 26, nthashhash, do_ntlm_auth);
+					  response->vp_octets + 26, nthashhash, sizeof(nthashhash), do_ntlm_auth);
 		if (mschap_result == -648)
 			goto password_expired;
 
