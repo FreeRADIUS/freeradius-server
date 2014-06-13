@@ -3425,7 +3425,7 @@ STATE_MACHINE_DECL(proxy_wait_for_reply)
 #endif
 			) {
 			home->response_timeouts++;
-			if (home->response_timeouts > home->max_response_timeouts)
+			if (home->response_timeouts >= home->max_response_timeouts)
 				mark_home_server_zombie(home, &now, response_window);
 		}
 
