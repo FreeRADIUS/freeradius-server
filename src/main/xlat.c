@@ -1862,7 +1862,7 @@ finish:
 }
 
 #ifdef DEBUG_XLAT
-static const char *xlat_spaces = "                                                                                                                                                                                                                                                                ";
+static const char xlat_spaces[] = "                                                                                                                                                                                                                                                                ";
 #endif
 
 static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * const node,

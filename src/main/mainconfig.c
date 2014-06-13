@@ -229,7 +229,7 @@ static const CONF_PARSER bootstrap_config[] = {
 static size_t config_escape_func(UNUSED REQUEST *request, char *out, size_t outlen, char const *in, UNUSED void *arg)
 {
 	size_t len = 0;
-	static char const *disallowed = "%{}\\'\"`";
+	static char const disallowed[] = "%{}\\'\"`";
 
 	while (in[0]) {
 		/*

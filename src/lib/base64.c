@@ -42,8 +42,7 @@ RCSID("$Id$")
  */
 size_t fr_base64_encode(char *out, size_t outlen, uint8_t const *in, size_t inlen)
 {
-	static char const b64str[64] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklm"
-				       "nopqrstuvwxyz0123456789+/";
+	static char const b64str[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 	char *p = out;
 	if (outlen < (FR_BASE64_ENC_LENGTH(inlen) + 1)) {

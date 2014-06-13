@@ -108,7 +108,7 @@ void mschap_auth_response(char const *username,
 	 0x65, 0x20, 0x69, 0x74, 0x65, 0x72, 0x61, 0x74, 0x69, 0x6F,
 	 0x6E};
 
-	static char const hex[16] = "0123456789ABCDEF";
+	static char const hex[] = "0123456789ABCDEF";
 
 	size_t i;
 	uint8_t challenge[8];

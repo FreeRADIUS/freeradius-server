@@ -31,7 +31,7 @@ RCSID("$Id$")
 
 #include	"smbdes.h"
 
-static char const * hex = "0123456789ABCDEF";
+static char const hex[] = "0123456789ABCDEF";
 
 /*
  *	FIXME: use functions in freeradius
