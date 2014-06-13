@@ -597,11 +597,13 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	/*
 	 *	Convert dereference strings to enumerated constants
 	 */
-	inst->dereference = fr_str2int(ldap_dereference, inst->dereference_str, -1);
-	if (inst->dereference < 0) {
-		LDAP_ERR("Invalid 'dereference' value \"%s\", expected 'never', 'searching', 'finding' or 'always'",
-			 inst->dereference_str);
-		goto error;
+	if (inst->dereference_str) {
+		inst->dereference = fr_str2int(ldap_dereference, inst->dereference_str, -1);
+		if (inst->dereference < 0) {
+			LDAP_ERR("Invalid 'dereference' value \"%s\", expected 'never', 'searching', "
+				 "'finding' or 'always'", inst->dereference_str);
+			goto error;
+		}
 	}
 
 #if LDAP_SET_REBIND_PROC_ARGS != 3
