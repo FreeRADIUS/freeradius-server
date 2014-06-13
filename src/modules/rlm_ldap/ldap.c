@@ -1159,6 +1159,13 @@ void *mod_conn_create(void *instance)
 	}
 
 	/*
+	 *	Leave "dereference" unset to use the OpenLDAP default.
+	 */
+	if (inst->dereference_str) {
+		do_ldap_option(LDAP_OPT_DEREF, "dereference", &(inst->dereference));
+	}
+
+	/*
 	 *	Leave "chase_referrals" unset to use the OpenLDAP default.
 	 */
 	if (!inst->chase_referrals_unset) {

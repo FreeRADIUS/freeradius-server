@@ -72,6 +72,9 @@ typedef struct ldap_instance {
 							//!< directory.
 	char const	*password;			//!< Password used in administrative bind.
 
+	char const	*dereference_str;		//!< When to dereference (never, searching, finding, always)
+	int		dereference;			//!< libldap value specifying dereferencing behaviour.
+
 	bool		chase_referrals;		//!< If the LDAP server returns a referral to another server
 							//!< or point in the tree, follow it, establishing new
 							//!< connections and binding where necessary.

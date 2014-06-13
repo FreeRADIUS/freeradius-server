@@ -26,7 +26,7 @@ ldap {
 	#
 	#  Generic valuepair attribute
 	#
-	
+
 	#  If set, this will attribute will be retrieved in addition to any
 	#  mapped attributes.
 	#
@@ -45,7 +45,7 @@ ldap {
 	#
 	#  Mapping of LDAP directory attributes to RADIUS dictionary attributes.
 	#
-	
+
 	#  WARNING: Although this format is almost identical to the unlang
 	#  update section format, it does *NOT* mean that you can use other
 	#  unlang constructs in module configuration files.
@@ -104,7 +104,7 @@ ldap {
 	#            control:Auth-Type := ldap
 	#        }
 	#    }
-	
+
 	#
 	#  User object identification.
 	#
@@ -328,11 +328,19 @@ ldap {
 	#  These options set timeouts, keep-alives, etc. for the connections.
 	#
 	options {
+		#  Control under which situations aliases are followed.
+		#  May be one of 'never', 'searching', 'finding' or 'always'
+		#  default: libldap's default which is usually 'never'.
 		#
-		#  The following two configuration items are for Active Directory
-		#  compatibility.  If you set these to "no", then searches
-		#  will likely return "operations error", instead of a
-		#  useful result.
+		#  LDAP_OPT_DEREF is set to this value.
+#		dereference = 'always'
+
+		#
+		#  The following two configuration items control whether the
+		#  server follows references returned by LDAP directory.
+		#  They are  mostly for Active Directory compatibility.
+		#  If you set these to "no", then searches will likely return
+		#  "operations error", instead of a useful result.
 		#
 		chase_referrals = yes
 		rebind = yes
