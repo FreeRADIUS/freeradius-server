@@ -64,7 +64,7 @@ FR_NAME_NUMBER const ldap_dereference[] = {
 	{ "never",	LDAP_DEREF_NEVER	},
 	{ "searching",	LDAP_DEREF_SEARCHING	},
 	{ "finding",	LDAP_DEREF_FINDING	},
-	{ "always",	LDAP_DEREF_ALWAYS	}
+	{ "always",	LDAP_DEREF_ALWAYS	},
 
 	{  NULL , -1 }
 };
