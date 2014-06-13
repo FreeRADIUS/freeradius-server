@@ -459,25 +459,213 @@ int fr_dhcp_send(RADIUS_PACKET *packet)
 #endif
 }
 
-static int fr_dhcp_attr2vp(RADIUS_PACKET *packet, VALUE_PAIR *vp, uint8_t const *p, size_t alen);
+static int fr_dhcp_attr2vp(VALUE_PAIR **vp_p, TALLOC_CTX *ctx, uint8_t const *p, size_t alen);
 
-static int fr_dhcp_decode_suboption(RADIUS_PACKET *packet, VALUE_PAIR *tlv, uint8_t const *data, size_t data_len)
+/** Returns the number of array members for arrays with fixed element sizes
+ *
+ */
+static int fr_dhcp_array_members(size_t *len, DICT_ATTR const *da)
+{
+	int num_entries = 1;
+
+	/*
+	 *	Could be an array of bytes, integers, etc.
+	 */
+	if (da->flags.array) switch (da->type) {
+	case PW_TYPE_BYTE:
+		num_entries = *len;
+		*len = 1;
+		break;
+
+	case PW_TYPE_SHORT: /* ignore any trailing data */
+		num_entries = *len >> 1;
+		*len = 2;
+		break;
+
+	case PW_TYPE_IPV4_ADDR:
+	case PW_TYPE_INTEGER:
+	case PW_TYPE_DATE: /* ignore any trailing data */
+		num_entries = *len >> 2;
+		*len = 4;
+		break;
+
+	case PW_TYPE_IPV6_ADDR:
+		num_entries = *len >> 4;
+		*len = 16;
+		break;
+
+	default:
+		break;
+	}
+
+	return num_entries;
+}
+
+/** RFC 4243 Vendor Specific Suboptions
+ *
+ * Vendor specific suboptions are in the format.
+ @verbatim
+      0                   1                   2                   3
+      0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+     |                     Enterprise Number 0                       |
+     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+     |    Len 0      |                                               /
+     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+     /                      Suboption Data 0                         /
+     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+     |                     Enterprise Number n                       |
+     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+     |    Len n      |                                               /
+     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+     /                      Suboption Data n                         /
+     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ @endverbatim
+ *
+ * So although the vendor is identified, the format of the data isn't specified
+ * so we can't actually resolve the suboption to an attribute.
+ *
+ * To get around that, we create an attribute with a vendor matching the
+ * enterprise number, and attr 0.
+ *
+ * How the suboption data is then processed, is dependent on what type
+ * \<iana\>.0 is defined as in the dictionary.
+ *
+ * @param[in,out] tlv to decode. *tlv will be set to the head of the list of suboptions and original will be freed.
+ * @param[in] ctx context to alloc new attributes in.
+ * @param[in] data to parse.
+ * @param[in] len length of data to parse.
+ */
+static int fr_dhcp_decode_vsa(VALUE_PAIR **tlv, TALLOC_CTX *ctx, uint8_t const *data, size_t len)
+{
+	uint8_t const *p, *q;
+	vp_cursor_t cursor;
+
+	VALUE_PAIR *head;
+
+	if (len < 4) goto malformed;
+
+	p = data;
+	q = p + len;
+	while (p < q) {
+		if (p + 5 >= q) goto malformed;
+		p += sizeof(uint32_t);
+		p += p[0];
+
+		/*
+		 *	Check if length > the length of the buffer we have left
+		 */
+		if (p >= q) goto malformed;
+		p++;
+	}
+
+	head = NULL;
+	fr_cursor_init(&cursor, &head);
+
+	/*
+	 *	Now we know its sane, start decoding!
+	 */
+	p = data;
+	while (p < q) {
+		uint32_t vendor;
+		DICT_ATTR const *da;
+		VALUE_PAIR *vp;
+
+		vendor = ntohl(*((uint32_t const *) p));
+		/*
+		 *	This is pretty much all we can do.  RFC 4243 doesn't specify
+		 *	an attribute field, so it's up to vendors to figure out how
+		 *	they want to encode their attributes.
+		 */
+		da = dict_attrbyvalue(0, vendor);
+		if (!da) {
+			da = dict_attrunknown(0, vendor, true);
+			if (!da) {
+				pairfree(&head);
+				goto malformed;
+			}
+		}
+		vp = pairalloc(ctx, da);
+		if (!vp) {
+			pairfree(&head);
+			return -1;
+		}
+		vp->op = T_OP_ADD;
+
+		if (fr_dhcp_attr2vp(&vp, ctx, p + 5, p[4]) < 0) {
+			pairfree(&head);
+			return -1;
+		}
+
+		fr_cursor_insert(&cursor, vp);
+
+		p += 4 + 1 + p[4];	/* vendor id (4) + len (1) + vsa len (n) */
+	}
+
+	/*
+	 *	The caller allocated TLV, if decoding it generated additional
+	 *	attributes, we now need to free it, and write the HEAD of our
+	 *	new list of attributes in its place.
+	 */
+	if (head) {
+		vp_cursor_t tlv_cursor;
+
+		/*
+		 *	Free the old TLV attribute
+		 */
+		TALLOC_FREE(*tlv);
+
+		/*
+		 *	Cursor not necessary but means we don't have to set
+		 *	->next directly.
+		 */
+		fr_cursor_init(&tlv_cursor, tlv);
+		fr_cursor_insert(&tlv_cursor, head);
+	}
+
+	return 0;
+
+malformed:
+	(*tlv)->vp_tlv = talloc_array(*tlv, uint8_t, len);
+	if (!(*tlv)->vp_tlv) {
+		fr_strerror_printf("No memory");
+		return -1;
+	}
+	memcpy((*tlv)->vp_tlv, data, len);
+	(*tlv)->length = len;
+
+	return 0;
+}
+
+/** Decode DHCP suboptions
+ *
+ * @param[in,out] tlv to decode. *tlv will be set to the head of the list of suboptions and original will be freed.
+ * @param[in] ctx context to alloc new attributes in.
+ * @param[in] data to parse.
+ * @param[in] len length of data to parse.
+ */
+static int fr_dhcp_decode_suboption(VALUE_PAIR **tlv, TALLOC_CTX *ctx, uint8_t const *data, size_t len)
 {
 	uint8_t const *p, *q;
 	VALUE_PAIR *head, *vp;
 	vp_cursor_t cursor;
 
 	/*
+	 *	TLV must already point to a VALUE_PAIR.
+	 */
+	VERIFY_VP(*tlv);
+
+	/*
 	 *	Take a pass at parsing it.
 	 */
 	p = data;
-	q = data + data_len;
+	q = data + len;
 	while (p < q) {
 		/*
-		 *	The RFC 3046 is very specific about not allowing termination
-		 *	with a 255 sub-option. But vendors are stupid, so allow it
-		 *	and the 0 padding sub-option.
-		 *	This requirement really should be a SHOULD anyway...
+		 *	RFC 3046 is very specific about not allowing termination
+		 *	with a 255 sub-option. But it's required for decoding
+		 *	option 43, and vendors will probably screw it up
+		 *	anyway.
 		 */
 		if (*p == 0) {
 			p++;
@@ -509,108 +697,181 @@ static int fr_dhcp_decode_suboption(RADIUS_PACKET *packet, VALUE_PAIR *tlv, uint
 
 	p = data;
 	while (p < q) {
-		vp = paircreate(packet, tlv->da->attr | (p[0] << 8), DHCP_MAGIC_VENDOR);
-		if (!vp) {
-			pairfree(&head);
-			goto malformed;
+		uint8_t const	*a_p;
+		size_t		a_len;
+		int		num_entries, i;
+
+		DICT_ATTR const	*da;
+		uint32_t	attr;
+
+		/*
+		 *	The initial OID string looks like:
+		 *	<iana>.0
+		 *
+		 *	If <iana>.0 is type TLV then we attempt to decode its contents as more
+		 *	DHCP suboptions, which gives us:
+		 *	<iana>.<attr>
+		 *
+		 *	If <iana>.0 is not defined in the dictionary or is type octets, we leave
+		 *	the attribute as is.
+		 */
+		attr = (*tlv)->da->attr ? ((*tlv)->da->attr | (p[0] << 8)) : p[0];
+
+		/*
+		 *	Use the vendor of the parent TLV which is not necessarily
+		 *	DHCP_MAGIC_VENDOR.
+		 *
+		 *	Note: This does not deal with dictionary numbering clashes. If
+		 *	the vendor uses different numbers for DHCP suboptions and RADIUS
+		 *	attributes then it's time to break out %{hex:} and regular
+		 *	expressions.
+		 */
+		da = dict_attrbyvalue(attr, (*tlv)->da->vendor);
+		if (!da) {
+			da = dict_attrunknown(attr, (*tlv)->da->vendor, true);
+			if (!da) {
+				pairfree(&head);
+				return -1;
+			}
 		}
 
-		if (fr_dhcp_attr2vp(packet, vp, p + 2, p[1]) < 0) {
-			pairfree(&head);
-			goto malformed;
-		}
+		a_len = p[1];
+		a_p = p + 2;
+		num_entries = fr_dhcp_array_members(&a_len, da);
+		for (i = 0; i < num_entries; i++) {
+			vp = pairalloc(ctx, da);
+			if (!vp) {
+				pairfree(&head);
+				return -1;
+			}
+			vp->op = T_OP_ADD;
 
-		fr_cursor_insert(&cursor, vp);
-		p += 2 + p[1];
+			if (fr_dhcp_attr2vp(&vp, ctx, a_p, a_len) < 0) {
+				pairfree(&head);
+				goto malformed;
+			}
+			fr_cursor_insert(&cursor, vp);
+
+			a_p += a_len;
+		}
+		p += 2 + p[1];	/* code (1) + len (1) + suboption len (n)*/
 	}
 
 	/*
-	 *	The caller allocated TLV, so we need to copy the FIRST
-	 *	attribute over top of that.
-	 *
-	 *	This is a pretty awful hack, but we should be able to
-	 *	clean it up when we get nested VPs so lets leave it for
-	 *	now.
+	 *	The caller allocated a TLV, if decoding it generated
+	 *	additional attributes, we now need to free it, and write
+	 *	the HEAD of our new list of attributes in its place.
 	 */
 	if (head) {
-		/* Cleanup any old TLV data */
-		talloc_free(tlv->vp_tlv);
+		vp_cursor_t tlv_cursor;
 
-		/* @fixme fragile */
-		memcpy(tlv, head, sizeof(*tlv));
+		/*
+		 *	Free the old TLV attribute
+		 */
+		TALLOC_FREE(*tlv);
 
-		/* If the VP has a talloced value we need to reparent it to the original TLV attribute */
-		switch (head->da->type) {
-			case PW_TYPE_STRING:
-			case PW_TYPE_OCTETS:
-			case PW_TYPE_TLV:
-				(void) talloc_steal(tlv, head->data.ptr);
-
-			default:
-				break;
-		}
-		tlv->next = head->next;
-		talloc_free(head);
+		/*
+		 *	Cursor not necessary but means we don't have to set
+		 *	->next directly.
+		 */
+		fr_cursor_init(&tlv_cursor, tlv);
+		fr_cursor_insert(&tlv_cursor, head);
 	}
 
 	return 0;
 
 malformed:
-	tlv->vp_tlv = talloc_array(tlv, uint8_t, data_len);
-	if (!tlv->vp_tlv) {
+	(*tlv)->vp_tlv = talloc_array(*tlv, uint8_t, len);
+	if (!(*tlv)->vp_tlv) {
 		fr_strerror_printf("No memory");
 		return -1;
 	}
-	memcpy(tlv->vp_tlv, data, data_len);
-	tlv->length = data_len;
+	memcpy((*tlv)->vp_tlv, data, len);
+	(*tlv)->length = len;
 
 	return 0;
 }
 
-
 /*
  *	Decode ONE value into a VP
  */
-static int fr_dhcp_attr2vp(RADIUS_PACKET *packet, VALUE_PAIR *vp, uint8_t const *p, size_t alen)
+static int fr_dhcp_attr2vp(VALUE_PAIR **vp_p, TALLOC_CTX *ctx, uint8_t const *data, size_t len)
 {
-	char *q;
+	VALUE_PAIR *vp = *vp_p;
+	VERIFY_VP(vp);
 
 	switch (vp->da->type) {
 	case PW_TYPE_BYTE:
-		if (alen != 1) goto raw;
-		vp->vp_byte = p[0];
+		if (len != 1) goto raw;
+		vp->vp_byte = data[0];
 		break;
 
 	case PW_TYPE_SHORT:
-		if (alen != 2) goto raw;
-		memcpy(&vp->vp_short, p, 2);
+		if (len != 2) goto raw;
+		memcpy(&vp->vp_short, data, 2);
 		vp->vp_short = ntohs(vp->vp_short);
 		break;
 
 	case PW_TYPE_INTEGER:
-		if (alen != 4) goto raw;
-		memcpy(&vp->vp_integer, p, 4);
+		if (len != 4) goto raw;
+		memcpy(&vp->vp_integer, data, 4);
 		vp->vp_integer = ntohl(vp->vp_integer);
 		break;
 
 	case PW_TYPE_IPV4_ADDR:
-		if (alen != 4) goto raw;
+		if (len != 4) goto raw;
 		/*
 		 *	Keep value in Network Order!
 		 */
-		memcpy(&vp->vp_ipaddr, p , 4);
+		memcpy(&vp->vp_ipaddr, data, 4);
 		vp->length = 4;
 		break;
 
+	/*
+	 *	In DHCPv4, string options which can also be arrays,
+	 *	have their values '\0' delimited.
+	 */
 	case PW_TYPE_STRING:
-		vp->vp_strvalue = q = talloc_array(vp, char, alen + 1);
-		vp->type = VT_DATA;
-		memcpy(q, p , alen);
-		q[alen] = '\0';
+	{
+		uint8_t const *p;
+		uint8_t const *q, *end;
+		vp_cursor_t cursor;
+
+		/*
+		 *	Initialise the cursor as we may be inserting
+		 *	multiple additional VPs
+		 */
+		if (vp->da->flags.array) fr_cursor_init(&cursor, vp_p);
+
+		p = data;
+		q = end = data + len;
+		for (;;) {
+			if (vp->da->flags.array) {
+				q = memchr(p, '\0', q - p);
+				/* Malformed but recoverable */
+				if (!q) q = end;
+			}
+
+			pairstrncpy(vp, (char const *)p, q - p);
+			p = q + 1;
+
+			/* Need another VP for the next round */
+			if (p < end) {
+				vp = pairalloc(ctx, vp->da);
+				if (!vp) {
+					pairfree(vp_p);
+					return -1;
+				}
+				fr_cursor_insert(&cursor, vp);
+				continue;
+			}
+			break;
+		}
+	}
 		break;
 
 	case PW_TYPE_ETHERNET:
-		memcpy(vp->vp_ether, p, sizeof(vp->vp_ether));
+		memcpy(vp->vp_ether, data, sizeof(vp->vp_ether));
 		vp->length = sizeof(vp->vp_ether);
 		break;
 
@@ -622,113 +883,97 @@ static int fr_dhcp_attr2vp(RADIUS_PACKET *packet, VALUE_PAIR *vp, uint8_t const 
 		if (pair2unknown(vp) < 0) return -1;
 
 	case PW_TYPE_OCTETS:
-		if (alen > 255) return -1;
-		pairmemcpy(vp, p, alen);
+		if (len > 255) return -1;
+		pairmemcpy(vp, data, len);
 		break;
 
 	/*
 	 *	For option 82 et al...
 	 */
 	case PW_TYPE_TLV:
-		return fr_dhcp_decode_suboption(packet, vp, p, alen);
+		return fr_dhcp_decode_suboption(vp_p, ctx, data, len);
+
+	/*
+	 *	For option 82.9
+	 */
+	case PW_TYPE_VSA:
+		return fr_dhcp_decode_vsa(vp_p, ctx, data, len);
 
 	default:
 		fr_strerror_printf("Internal sanity check %d %d", vp->da->type, __LINE__);
 		return -1;
 	} /* switch over type */
 
-	vp->length = alen;
+	vp->length = len;
 	return 0;
 }
 
-ssize_t fr_dhcp_decode_options(RADIUS_PACKET *packet,
-			       uint8_t const *data, size_t len, VALUE_PAIR **head)
+/** Decode DHCP options
+ *
+ * @param[in,out] out Where to write the decoded options.
+ * @param[in] ctx context to alloc new attributes in.
+ * @param[in] data to parse.
+ * @param[in] len of data to parse.
+ */
+ssize_t fr_dhcp_decode_options(VALUE_PAIR **out, TALLOC_CTX *ctx, uint8_t const *data, size_t len)
 {
-	int i;
 	VALUE_PAIR *vp;
 	vp_cursor_t cursor;
-	uint8_t const *p, *next;
-	next = data;
+	uint8_t const *p, *q;
 
-	*head = NULL;
-	fr_cursor_init(&cursor, head);
+	*out = NULL;
+	fr_cursor_init(&cursor, out);
 
 	/*
 	 *	FIXME: This should also check sname && file fields.
 	 *	See the dhcp_get_option() function above.
 	 */
-	while (next < (data + len)) {
-		int num_entries, alen;
-		DICT_ATTR const *da;
+	p = data;
+	q = data + len;
+	while (p < q) {
+		uint8_t const	*a_p;
+		size_t		a_len;
+		int		num_entries, i;
 
-		p = next;
+		DICT_ATTR const	*da;
 
 		if (*p == 0) {		/* 0x00 - Padding option */
-			next++;
+			p++;
 			continue;
 		}
-		if (*p == 255) break;	/* 0xff - End of options signifier */
 
-		if ((p + 2) > (data + len)) break;
+		if (*p == 255) {	/* 0xff - End of options signifier */
+			break;
+		}
 
-		next = p + 2 + p[1];
+		if ((p + 2) > q) break;
 
 		da = dict_attrbyvalue(p[0], DHCP_MAGIC_VENDOR);
 		if (!da) {
-			fr_strerror_printf("Attribute not in our dictionary: %u", p[0]);
-			continue;
-		}
-
-		vp = NULL;
-		num_entries = 1;
-		alen = p[1];
-		p += 2;
-
-		/*
-		 *	Could be an array of bytes, integers, etc.
-		 */
-		if (da->flags.array) {
-			switch (da->type) {
-			case PW_TYPE_BYTE:
-				num_entries = alen;
-				alen = 1;
-				break;
-
-			case PW_TYPE_SHORT: /* ignore any trailing data */
-				num_entries = alen >> 1;
-				alen = 2;
-				break;
-
-			case PW_TYPE_IPV4_ADDR:
-			case PW_TYPE_INTEGER:
-			case PW_TYPE_DATE: /* ignore any trailing data */
-				num_entries = alen >> 2;
-				alen = 4;
-				break;
-
-			default:
-
-				break; /* really an internal sanity failure */
+			da = dict_attrunknown(p[0], DHCP_MAGIC_VENDOR, true);
+			if (!da) {
+				pairfree(out);
+				return -1;
 			}
+			goto next;
 		}
 
-		/*
-		 *	Loop over all of the entries, building VPs
-		 */
+		a_len = p[1];
+		a_p = p + 2;
+		num_entries = fr_dhcp_array_members(&a_len, da);
 		for (i = 0; i < num_entries; i++) {
-			vp = pairmake(packet, NULL, da->name, NULL, T_OP_ADD);
+			vp = pairalloc(ctx, da);
 			if (!vp) {
-				fr_strerror_printf("Cannot build attribute %s", fr_strerror());
-				pairfree(head);
+				pairfree(out);
 				return -1;
 			}
+			vp->op = T_OP_ADD;
 
-			if (fr_dhcp_attr2vp(packet, vp, p, alen) < 0) {
+			if (fr_dhcp_attr2vp(&vp, ctx, a_p, a_len) < 0) {
 				pairfree(&vp);
-				pairfree(head);
+				pairfree(out);
 				return -1;
 			}
-
 			fr_cursor_insert(&cursor, vp);
 
 			for (vp = fr_cursor_current(&cursor);
@@ -736,11 +981,13 @@ ssize_t fr_dhcp_decode_options(RADIUS_PACKET *packet,
 			     vp = fr_cursor_next(&cursor)) {
 				debug_pair(vp);
 			}
-			p += alen;
+			a_p += a_len;
 		} /* loop over array entries */
+	next:
+		p += 2 + p[1];	/* code (1) + len (1) + option len (n)*/
 	} /* loop over the entire packet */
 
-	return next - data;
+	return p - data;
 }
 
 int fr_dhcp_decode(RADIUS_PACKET *packet)
@@ -863,9 +1110,7 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 	{
 		VALUE_PAIR *options = NULL;
 
-		if (fr_dhcp_decode_options(packet,
-					   packet->data + 240, packet->data_len - 240,
-					   &options) < 0) {
+		if (fr_dhcp_decode_options(&options, packet, packet->data + 240, packet->data_len - 240) < 0) {
 			return -1;
 		}
 
