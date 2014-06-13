@@ -320,9 +320,12 @@ static CONF_PARSER home_server_config[] = {
 
 	{ "ping_interval", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, ping_interval), "30" },
 	{ "check_interval", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, ping_interval), "30" },
+
+	{ "check_timeout", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, ping_timeout), "4" },
+	{ "status_check_timeout", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, ping_timeout), NULL },
+
 	{ "num_answers_to_alive", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, num_pings_to_alive), "3" },
 	{ "revive_interval", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, revive_interval), "300" },
-	{ "status_check_timeout", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, ping_timeout), "4" },
 
 	{ "username", FR_CONF_OFFSET(PW_TYPE_STRING, home_server_t, ping_user_name), NULL },
 	{ "password", FR_CONF_OFFSET(PW_TYPE_STRING, home_server_t, ping_user_password), NULL },
@@ -684,8 +687,8 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 	FR_INTEGER_BOUND_CHECK("num_pings_to_alive", home->num_pings_to_alive, >=, 3);
 	FR_INTEGER_BOUND_CHECK("num_pings_to_alive", home->num_pings_to_alive, <=, 10);
 
-	FR_INTEGER_BOUND_CHECK("ping_timeout", home->ping_timeout, >=, 3);
-	FR_INTEGER_BOUND_CHECK("ping_timeout", home->ping_timeout, <=, 10);
+	FR_INTEGER_BOUND_CHECK("check_timeout", home->ping_timeout, >=, 1);
+	FR_INTEGER_BOUND_CHECK("check_timeout", home->ping_timeout, <=, 10);
 
 	FR_INTEGER_BOUND_CHECK("revive_interval", home->revive_interval, >=, 60);
 	FR_INTEGER_BOUND_CHECK("revive_interval", home->revive_interval, <=, 3600);
