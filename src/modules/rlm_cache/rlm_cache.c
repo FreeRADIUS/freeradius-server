@@ -27,12 +27,6 @@ RCSID("$Id$")
 #include <freeradius-devel/heap.h>
 #include <freeradius-devel/rad_assert.h>
 
-#define PW_CACHE_TTL		1140
-#define PW_CACHE_STATUS_ONLY	1141
-#define PW_CACHE_MERGE		1142
-#define PW_CACHE_ENTRY_HITS	1143
-#define PW_CACHE_READ_ONLY	1144
-
 /*
  *	Define a structure for our module configuration.
  *
