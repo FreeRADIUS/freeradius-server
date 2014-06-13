@@ -29,6 +29,8 @@
 #include <freeradius-devel/sha1.h>
 
 #define USEC (1000000)
+#define BFD_MAX_SECRET_LENGTH 20
+
 extern bool check_config;
 
 typedef enum bfd_session_state_t {
@@ -75,7 +77,7 @@ typedef struct bfd_state_t {
 #endif
 
 	bfd_auth_type_t auth_type;
-	uint8_t		secret[20];
+	uint8_t		secret[BFD_MAX_SECRET_LENGTH];
 	size_t		secret_len;
 
 	fr_ipaddr_t	local_ipaddr;
@@ -149,7 +151,7 @@ typedef struct bfd_auth_md5_t {
 	uint8_t		key_id;
 	uint8_t		reserved;
 	uint32_t	sequence_no;
-	uint8_t		digest[16];
+	uint8_t		digest[MD5_DIGEST_LENGTH];
 } bfd_auth_md5_t;
 
 typedef struct bfd_auth_sha1_t {
@@ -158,7 +160,7 @@ typedef struct bfd_auth_sha1_t {
 	uint8_t		key_id;
 	uint8_t		reserved;
 	uint32_t	sequence_no;
-	uint8_t		digest[20];
+	uint8_t		digest[SHA1_DIGEST_LENGTH];
 } bfd_auth_sha1_t;
 
 typedef union bfd_auth_t {
@@ -221,7 +223,7 @@ typedef struct bfd_socket_t {
 	bool		demand;
 
 	bfd_auth_type_t	auth_type;
-	uint8_t		secret[20];
+	uint8_t		secret[BFD_MAX_SECRET_LENGTH];
 	size_t		secret_len;
 
 	rbtree_t	*session_tree;
@@ -421,7 +423,7 @@ static void bfd_session_free(void *ctx)
 }
 
 
-static ssize_t bfd_parse_secret(CONF_SECTION *cs, uint8_t secret[20])
+static ssize_t bfd_parse_secret(CONF_SECTION *cs, uint8_t secret[BFD_MAX_SECRET_LENGTH])
 {
 	int rcode;
 	size_t len;
@@ -443,7 +445,7 @@ static ssize_t bfd_parse_secret(CONF_SECTION *cs, uint8_t secret[20])
 			return -1;
 		}
 
-		return fr_hex2bin(secret, sizeof(*secret), value + 2, (len - 2));
+		return fr_hex2bin(secret, BFD_MAX_SECRET_LENGTH, value + 2, (len - 2));
 	}
 
 	if (len >= 20) {
@@ -451,7 +453,7 @@ static ssize_t bfd_parse_secret(CONF_SECTION *cs, uint8_t secret[20])
 		return -1;
 	}
 
-	memset(secret, 0, 20);
+	memset(secret, 0, BFD_MAX_SECRET_LENGTH);
 	memcpy(secret, value, len);
 	return len;
 }
