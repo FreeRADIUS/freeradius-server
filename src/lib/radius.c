@@ -162,7 +162,7 @@ void fr_printf_log(char const *fmt, ...)
 	return;
 }
 
-static char const *tabs = "\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t";
+static char const tabs[] = "\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t";
 
 static void print_hex_data(uint8_t const *ptr, int attrlen, int depth)
 {

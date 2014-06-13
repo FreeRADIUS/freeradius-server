@@ -901,7 +901,7 @@ static char const *cf_expand_variables(char const *cf, int *lineno,
 	return output;
 }
 
-static char const *parse_spaces = "                                                                                                                                                                                                                                                                ";
+static char const parse_spaces[] = "                                                                                                                                                                                                                                                                ";
 
 /** Validation function for ipaddr conffile types
  *

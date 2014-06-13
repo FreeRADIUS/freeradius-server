@@ -379,7 +379,7 @@ static int command_show_config(rad_listen_t *listener, int argc, char *argv[])
 	return 1;		/* success */
 }
 
-static char const *tabs = "\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t";
+static char const tabs[] = "\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t";
 
 /*
  *	FIXME: Recurse && indent?
