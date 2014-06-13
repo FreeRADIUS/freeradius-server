@@ -467,7 +467,7 @@ static ssize_t mschap_xlat(void *instance, REQUEST *request,
 			return -1;
 		}
 
-		fr_bin2hex(out, buffer, 16);
+		fr_bin2hex(out, buffer, NT_DIGEST_LENGTH);
 		out[32] = '\0';
 		RDEBUG("NT-Hash of %s = %s", buf2, out);
 		return 32;
@@ -491,7 +491,7 @@ static ssize_t mschap_xlat(void *instance, REQUEST *request,
 		}
 
 		smbdes_lmpwdhash(buf2, buffer);
-		fr_bin2hex(out, buffer, 16);
+		fr_bin2hex(out, buffer, LM_DIGEST_LENGTH);
 		out[32] = '\0';
 		RDEBUG("LM-Hash of %s = %s", buf2, out);
 		return 32;
@@ -773,7 +773,7 @@ static int CC_HINT(nonnull (1, 2, 4, 5)) do_mschap_cpw(rlm_mschap_t *inst,
 		}
 
 		len = sprintf(buf, "old-nt-hash-blob: ");
-		fr_bin2hex(buf+len, old_nt_hash, 16);
+		fr_bin2hex(buf+len, old_nt_hash, NT_DIGEST_LENGTH);
 		buf[len+32] = '\n';
 		buf[len+33] = '\0';
 		len = strlen(buf);
@@ -870,7 +870,7 @@ ntlm_auth_err:
 		size_t passlen;
 		ssize_t result_len;
 		char result[253];
-		uint8_t nt_pass_decrypted[516], old_nt_hash_expected[16];
+		uint8_t nt_pass_decrypted[516], old_nt_hash_expected[NT_DIGEST_LENGTH];
 		RC4_KEY key;
 
 		if (!nt_password) {
@@ -916,9 +916,8 @@ ntlm_auth_err:
 		 *  The new NT hash - this should be preferred over the
 		 *  cleartext password as it avoids unicode hassles.
 		 */
-		new_hash = pairmake_packet("MS-CHAP-New-NT-Password", NULL,
-					   T_OP_EQ);
-		new_hash->length = 16;
+		new_hash = pairmake_packet("MS-CHAP-New-NT-Password", NULL, T_OP_EQ);
+		new_hash->length = NT_DIGEST_LENGTH;
 		new_hash->vp_octets = q = talloc_array(new_hash, uint8_t, new_hash->length);
 		fr_md4_calc(q, p, passlen);
 
@@ -928,7 +927,7 @@ ntlm_auth_err:
 		 */
 		smbhash(old_nt_hash_expected, nt_password->vp_octets, q);
 		smbhash(old_nt_hash_expected+8, nt_password->vp_octets+8, q + 7);
-		if (memcmp(old_nt_hash_expected, old_nt_hash, 16)!=0) {
+		if (memcmp(old_nt_hash_expected, old_nt_hash, NT_DIGEST_LENGTH)!=0) {
 			REDEBUG("Old NT hash value from client does not match our value");
 			return -1;
 		}
@@ -1030,11 +1029,11 @@ ntlm_auth_err:
  */
 static int CC_HINT(nonnull (1, 2, 4, 5 ,6)) do_mschap(rlm_mschap_t *inst, REQUEST *request, VALUE_PAIR *password,
 						      uint8_t const *challenge, uint8_t const *response,
-						      uint8_t *nthashhash, size_t nthhl, bool do_ntlm_auth)
+						      uint8_t nthashhash[NT_DIGEST_LENGTH], bool do_ntlm_auth)
 {
 	uint8_t	calculated[24];
 
-	memset(nthashhash, 0, nthhl);
+	memset(nthashhash, 0, NT_DIGEST_LENGTH);
 	/*
 	 *	Do normal authentication.
 	 */
@@ -1059,7 +1058,7 @@ static int CC_HINT(nonnull (1, 2, 4, 5 ,6)) do_mschap(rlm_mschap_t *inst, REQUES
 		 */
 		if (password && !password->da->vendor &&
 		    (password->da->attr == PW_NT_PASSWORD)) {
-			fr_md4_calc(nthashhash, password->vp_octets, nthhl);
+			fr_md4_calc(nthashhash, password->vp_octets, MD4_DIGEST_LENGTH);
 		}
 	} else {		/* run ntlm_auth */
 		int	result;
@@ -1117,7 +1116,7 @@ static int CC_HINT(nonnull (1, 2, 4, 5 ,6)) do_mschap(rlm_mschap_t *inst, REQUES
 		/*
 		 *	Update the NT hash hash, from the NT key.
 		 */
-		if (fr_hex2bin(nthashhash, nthhl, buffer + 8, len) != 16) {
+		if (fr_hex2bin(nthashhash, NT_DIGEST_LENGTH, buffer + 8, len) != NT_DIGEST_LENGTH) {
 			REDEBUG("Invalid output from ntlm_auth: NT_KEY has non-hex values");
 			return -1;
 		}
@@ -1177,7 +1176,7 @@ static void mppe_GetMasterKey(uint8_t const *nt_hashhash,uint8_t const *nt_respo
        fr_SHA1_CTX Context;
 
        fr_sha1_init(&Context);
-       fr_sha1_update(&Context,nt_hashhash,16);
+       fr_sha1_update(&Context,nt_hashhash,NT_DIGEST_LENGTH);
        fr_sha1_update(&Context,nt_response,24);
        fr_sha1_update(&Context,magic1,27);
        fr_sha1_final(digest,&Context);
@@ -1312,7 +1311,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void * instance, REQUEST *r
 	VALUE_PAIR *password = NULL;
 	VALUE_PAIR *lm_password, *nt_password, *smb_ctrl;
 	VALUE_PAIR *username;
-	uint8_t nthashhash[16];
+	uint8_t nthashhash[NT_DIGEST_LENGTH];
 	char msch2resp[42];
 	uint8_t *p;
 	char const *username_string;
@@ -1376,7 +1375,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void * instance, REQUEST *r
 		VERIFY_VP(lm_password);
 
 		switch (lm_password->length) {
-		case 16:
+		case LM_DIGEST_LENGTH:
 			RDEBUG2("Found LM-Password");
 			break;
 
@@ -1389,8 +1388,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void * instance, REQUEST *r
 			break;
 
 		default:
-			RWDEBUG("LM-Password found but incorrect length, expected 16 bytes got %zu bytes.  "
-				"Authentication may fail", lm_password->length);
+			RWDEBUG("LM-Password found but incorrect length, expected " STRINGIFY(LM_DIGEST_LENGTH)
+				" bytes got %zu bytes.  Authentication may fail", lm_password->length);
 			lm_password = NULL;
 			break;
 		}
@@ -1404,7 +1403,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void * instance, REQUEST *r
 		if (!lm_password) {
 			RERROR("No memory");
 		} else {
-			lm_password->length = 16;
+			lm_password->length = LM_DIGEST_LENGTH;
 			lm_password->vp_octets = p = talloc_array(lm_password, uint8_t, lm_password->length);
 			smbdes_lmpwdhash(password->vp_strvalue, p);
 		}
@@ -1420,7 +1419,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void * instance, REQUEST *r
 		VERIFY_VP(nt_password);
 
 		switch (nt_password->length) {
-		case 16:
+		case NT_DIGEST_LENGTH:
 			RDEBUG2("Found NT-Password");
 			break;
 
@@ -1433,8 +1432,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void * instance, REQUEST *r
 			break;
 
 		default:
-			RWDEBUG("NT-Password found but incorrect length, expected 16 bytes got %zu bytes.  "
-				"Authentication may fail", nt_password->length);
+			RWDEBUG("NT-Password found but incorrect length, expected " STRINGIFY(NT_DIGEST_LENGTH)
+				" bytes got %zu bytes.  Authentication may fail", nt_password->length);
 			nt_password = NULL;
 			break;
 		}
@@ -1450,7 +1449,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void * instance, REQUEST *r
 			RERROR("No memory");
 			return RLM_MODULE_FAIL;
 		}
-		nt_password->length = 16;
+		nt_password->length = NT_DIGEST_LENGTH;
 		nt_password->vp_octets = p = talloc_array(nt_password, uint8_t, nt_password->length);
 
 		if (mschap_ntpwdhash(p, password->vp_strvalue) < 0) {
@@ -1469,7 +1468,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void * instance, REQUEST *r
 		 * we then extract the response, add it into the request
 		 * then jump into mschap2 auth with the chal/resp
 		 */
-		uint8_t new_nt_encrypted[516], old_nt_encrypted[16];
+		uint8_t new_nt_encrypted[516], old_nt_encrypted[NT_DIGEST_LENGTH];
 		VALUE_PAIR *nt_enc=NULL;
 		int seq, new_nt_enc_len=0;
 
@@ -1647,7 +1646,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void * instance, REQUEST *r
 		/*
 		 *	Do the MS-CHAP authentication.
 		 */
-		if (do_mschap(inst, request, password, challenge->vp_octets, response->vp_octets + offset, nthashhash, sizeof(nthashhash),
+		if (do_mschap(inst, request, password, challenge->vp_octets, response->vp_octets + offset, nthashhash,
 			      do_ntlm_auth) < 0) {
 			REDEBUG("MS-CHAP-Response is incorrect");
 			goto do_error;
@@ -1754,7 +1753,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void * instance, REQUEST *r
 		RDEBUG2("Client is using MS-CHAPv2");
 
 		mschap_result = do_mschap(inst, request, nt_password, mschapv1_challenge,
-					  response->vp_octets + 26, nthashhash, sizeof(nthashhash), do_ntlm_auth);
+					  response->vp_octets + 26, nthashhash, do_ntlm_auth);
 		if (mschap_result == -648)
 			goto password_expired;
 
@@ -1868,7 +1867,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void * instance, REQUEST *r
 			 *	do_mschap cares to zero nthashhash if NT hash
 			 *	is not available.
 			 */
-			memcpy(mppe_sendkey + 8, nthashhash, 16);
+			memcpy(mppe_sendkey + 8, nthashhash, NT_DIGEST_LENGTH);
 			mppe_add_reply(request, "MS-CHAP-MPPE-Keys", mppe_sendkey, 32);
 		} else if (chap == 2) {
 			RDEBUG2("Adding MS-CHAPv2 MPPE keys");
