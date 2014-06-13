@@ -624,7 +624,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 */
 	inst->userobj_scope = fr_str2int(ldap_scope, inst->userobj_scope_str, -1);
 	if (inst->userobj_scope < 0) {
-		LDAP_ERR("Invalid 'user.scope' value \"%s\", expected 'sub', 'one'",
+		LDAP_ERR("Invalid 'user.scope' value \"%s\", expected 'sub', 'one'"
 #ifdef LDAP_SCOPE_CHILDREN
 			 ", 'base' or 'children'"
 #else
@@ -636,7 +636,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 	inst->groupobj_scope = fr_str2int(ldap_scope, inst->groupobj_scope_str, -1);
 	if (inst->groupobj_scope < 0) {
-		LDAP_ERR("Invalid 'group.scope' value \"%s\", expected 'sub', 'one'",
+		LDAP_ERR("Invalid 'group.scope' value \"%s\", expected 'sub', 'one'"
 #ifdef LDAP_SCOPE_CHILDREN
 			 ", 'base' or 'children'"
 #else
@@ -648,7 +648,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 	inst->clientobj_scope = fr_str2int(ldap_scope, inst->clientobj_scope_str, -1);
 	if (inst->clientobj_scope < 0) {
-		LDAP_ERR("Invalid 'client.scope' value \"%s\", expected 'sub', 'one'",
+		LDAP_ERR("Invalid 'client.scope' value \"%s\", expected 'sub', 'one'"
 #ifdef LDAP_SCOPE_CHILDREN
 			 ", 'base' or 'children'"
 #else
