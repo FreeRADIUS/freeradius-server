@@ -529,7 +529,6 @@ static int process_eap_challenge(RADIUS_PACKET *req, RADIUS_PACKET *rep)
 
 		ERROR("%02x", randcfgvp[rnum]->vp_octets[i]);
 	      }
-	      ERROR("");
 	    }
 	    return 0;
 	  }
