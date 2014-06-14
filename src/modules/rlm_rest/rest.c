@@ -242,6 +242,7 @@ typedef struct json_flags {
  */
 int rest_init(rlm_rest_t *instance)
 {
+	static bool version_done;
 	CURLcode ret;
 
 	/* developer sanity */
@@ -257,7 +258,19 @@ int rest_init(rlm_rest_t *instance)
 		return -1;
 	}
 
-	DEBUG("rlm_rest (%s): CURL library version: %s", instance->xlat_name, curl_version());
+	if (!version_done) {
+		curl_version_info_data *curlversion;
+
+		version_done = true;
+
+		curlversion = curl_version_info(CURLVERSION_NOW);
+		if (strcmp(LIBCURL_VERSION, curlversion->version) != 0) {
+			WARN("rlm_rest: libcurl version changed since the server was built");
+			WARN("rlm_rest: linked: %s built: %s", curlversion->version, LIBCURL_VERSION);
+		}
+
+		INFO("rlm_rest: libcurl version: %s", curl_version());
+	}
 
 	return 0;
 }

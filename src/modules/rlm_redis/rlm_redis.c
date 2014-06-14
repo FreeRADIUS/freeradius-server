@@ -262,12 +262,19 @@ int rlm_redis_finish_query(REDISSOCK *dissocket)
 
 static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
+	static bool version_done;
+
 	REDIS_INST *inst = instance;
+
+	if (!version_done) {
+		version_done = true;
+
+		INFO("rlm_redis: libhiredis version: %i.%i.%i", HIREDIS_MAJOR, HIREDIS_MINOR, HIREDIS_PATCH);
+	}
 
 	inst->xlat_name = cf_section_name2(conf);
 
-	if (!inst->xlat_name)
-		inst->xlat_name = cf_section_name1(conf);
+	if (!inst->xlat_name) inst->xlat_name = cf_section_name1(conf);
 
 	xlat_register(inst->xlat_name, redis_xlat, NULL, inst); /* FIXME! */
 

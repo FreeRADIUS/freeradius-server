@@ -533,6 +533,8 @@ static int parse_sub_section(ldap_instance_t *inst, CONF_SECTION *parent, ldap_a
  */
 static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
+	static bool version_done;
+
 	CONF_SECTION *options;
 	ldap_instance_t *inst = instance;
 
@@ -546,6 +548,32 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	inst->xlat_name = cf_section_name2(conf);
 	if (!inst->xlat_name) {
 		inst->xlat_name = cf_section_name1(conf);
+	}
+
+	/*
+	 *	Get version info from the LDAP API.
+	 */
+	if (!version_done) {
+		LDAPAPIInfo info;
+
+		version_done = true;
+
+		if (ldap_get_option(NULL, LDAP_OPT_API_INFO, &info) == LDAP_SUCCESS) {
+			if (strcmp(info.ldapai_vendor_name, LDAP_VENDOR_NAME) != 0) {
+				WARN("rlm_ldap: libldap vendor changed since the server was built");
+				WARN("rlm_ldap: linked: %s built: %s", info.ldapai_vendor_name, LDAP_VENDOR_NAME);
+			}
+
+			if (info.ldapai_vendor_version != LDAP_VENDOR_VERSION) {
+				WARN("rlm_ldap: libldap version changed since the server was built");
+				WARN("rlm_ldap: linked: %i built: %i",
+				     info.ldapai_vendor_version, LDAP_VENDOR_VERSION);
+			}
+
+			INFO("rlm_ldap: libldap vendor: %s version: %i", info.ldapai_vendor_name,
+			     info.ldapai_vendor_version);
+			ldap_memfree(info.ldapai_extensions);
+		}
 	}
 
 	/*

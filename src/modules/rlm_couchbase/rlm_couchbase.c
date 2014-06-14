@@ -53,7 +53,14 @@ static const CONF_PARSER module_config[] = {
 
 /* initialize couchbase connection */
 static int mod_instantiate(CONF_SECTION *conf, void *instance) {
+	static bool version_done;
+
 	rlm_couchbase_t *inst = instance;   /* our module instance */
+
+	if (!version_done) {
+		version_done = true;
+		INFO("rlm_couchbase: liblcouchbase version: %s", lcb_get_version(NULL));
+	}
 
 	{
 		char *server, *p;
