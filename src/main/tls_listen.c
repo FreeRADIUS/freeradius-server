@@ -264,7 +264,7 @@ app:
 		return 0;
 	}
 
-	dump_hex("TUNNELED DATA", sock->ssn->clean_out.data, sock->ssn->clean_out.used);
+	dump_hex("TUNNELED DATA > ", sock->ssn->clean_out.data, sock->ssn->clean_out.used);
 
 	/*
 	 *	If the packet is a complete RADIUS packet, return it to
@@ -454,7 +454,10 @@ int dual_tls_send(rad_listen_t *listener, REQUEST *request)
 		return 0;
 	}
 
+	dump_hex("TUNNELED DATA < ", sock->ssn->clean_out.data, sock->ssn->clean_out.used);
+
 	PTHREAD_MUTEX_LOCK(&sock->mutex);
+
 	/*
 	 *	Write the packet to the SSL buffers.
 	 */
