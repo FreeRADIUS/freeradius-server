@@ -273,11 +273,9 @@ static PerlInterpreter *rlm_perl_clone(PerlInterpreter *perl, pthread_key_t *key
 #endif
 
 /*
- *
  * This is wrapper for radlog
  * Now users can call radiusd::radlog(level,msg) wich is the same
  * calling radlog from C code.
- * Boyan
  */
 static XS(XS_radiusd_radlog)
 {
@@ -451,7 +449,6 @@ static void perl_parse_config(CONF_SECTION *cs, int lvl, HV *rad_hv)
  *	that must be referenced in later calls, store a handle to it
  *	in *instance otherwise put a null pointer there.
  *
- *	Boyan:
  *	Setup a hashes wich we will use later
  *	parse a module and give him a chance to live
  *
@@ -680,7 +677,6 @@ static int pairadd_sv(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, char 
 }
 
 /*
- *     Boyan :
  *     Gets the content from hashes
  */
 static int get_hv_content(TALLOC_CTX *ctx, REQUEST *request, HV *my_hv, VALUE_PAIR **vps)
