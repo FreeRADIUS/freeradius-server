@@ -554,11 +554,13 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 *	Get version info from the LDAP API.
 	 */
 	if (!version_done) {
+		int ldap_errno;
 		LDAPAPIInfo info;
 
 		version_done = true;
 
-		if (ldap_get_option(NULL, LDAP_OPT_API_INFO, &info) == LDAP_SUCCESS) {
+		ldap_errno = ldap_get_option(NULL, LDAP_OPT_API_INFO, &info);
+		if (ldap_errno == LDAP_OPT_SUCCESS) {
 			if (strcmp(info.ldapai_vendor_name, LDAP_VENDOR_NAME) != 0) {
 				WARN("rlm_ldap: libldap vendor changed since the server was built");
 				WARN("rlm_ldap: linked: %s built: %s", info.ldapai_vendor_name, LDAP_VENDOR_NAME);
@@ -573,6 +575,9 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 			INFO("rlm_ldap: libldap vendor: %s version: %i", info.ldapai_vendor_name,
 			     info.ldapai_vendor_version);
 			ldap_memfree(info.ldapai_extensions);
+		} else {
+			ERROR("rlm_ldap: Error getting libldap version: %s (%i)",
+			      ldap_err2string(ldap_errno), ldap_errno);
 		}
 	}
 
