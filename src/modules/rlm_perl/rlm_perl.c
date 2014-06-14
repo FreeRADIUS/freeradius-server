@@ -318,8 +318,8 @@ static size_t perl_xlat(void *instance, REQUEST *request, char *fmt, char *out,
 {
 
 	PERL_INST	*inst= (PERL_INST *) instance;
-	PerlInterpreter *perl;
-	char		params[1024], *ptr, *tmp;
+	char		params[1024], *tmp;
+	char const	*p, *q;
 	int		count;
 	size_t		ret = 0;
 	STRLEN		n_a;
@@ -349,41 +349,40 @@ static size_t perl_xlat(void *instance, REQUEST *request, char *fmt, char *out,
 #endif
 
 	{
-	dSP;
-	ENTER;SAVETMPS;
+		dSP;
+		ENTER;SAVETMPS;
 
-	ptr = strtok(params, " ");
+		PUSHMARK(SP);
 
-	PUSHMARK(SP);
+		p = fmt;
+		while ((q = strchr(p, ' '))) {
+			XPUSHs(sv_2mortal(newSVpv(p, p - q)));
 
-	while (ptr != NULL) {
-		XPUSHs(sv_2mortal(newSVpv(ptr,0)));
-		ptr = strtok(NULL, " ");
-	}
+			p = q + 1;
+		}
 
-	PUTBACK;
+		PUTBACK;
 
-	count = call_pv(inst->func_xlat, G_SCALAR | G_EVAL);
+		count = call_pv(inst->func_xlat, G_SCALAR | G_EVAL);
 
-	SPAGAIN;
-	if (SvTRUE(ERRSV)) {
-		radlog(L_ERR, "rlm_perl: perl_xlat exit %s\n",
-		       SvPV(ERRSV,n_a));
-		POPs ;
-	} else if (count > 0) {
-		tmp = POPp;
-		strlcpy(out, tmp, freespace);
-		ret = strlen(out);
+		SPAGAIN;
+		if (SvTRUE(ERRSV)) {
+			RDEBUG("ERROR: Exit %s", SvPV(ERRSV,n_a));
+			(void)POPs;
+		} else if (count > 0) {
+			tmp = POPp;
+			strlcpy(out, tmp, freespace);
+			ret = strlen(out);
 
-		radlog(L_DBG,"rlm_perl: Len is %d , out is %s freespace is %d",
-		       ret, out,freespace);
-	}
+			RDEBUG("Len is %zu , out is %s freespace is %zu", ret, out, freespace);
+		}
 
-	PUTBACK ;
-	FREETMPS ;
-	LEAVE ;
+		PUTBACK ;
+		FREETMPS ;
+		LEAVE ;
 
 	}
+
 	return ret;
 }
 /*
