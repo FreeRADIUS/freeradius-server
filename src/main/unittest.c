@@ -149,7 +149,7 @@ static REQUEST *request_setup(FILE *fp)
 	/*
 	 *	Set the defaults for IPs, etc.
 	 */
-	request->packet->code = PW_CODE_AUTHENTICATION_REQUEST;
+	request->packet->code = PW_CODE_ACCESS_REQUEST;
 
 	request->packet->src_ipaddr.af = AF_INET;
 	request->packet->src_ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_LOOPBACK);
@@ -332,7 +332,7 @@ static REQUEST *request_setup(FILE *fp)
 	/*
 	 *	FIXME: set IPs, etc.
 	 */
-	request->packet->code = PW_CODE_AUTHENTICATION_REQUEST;
+	request->packet->code = PW_CODE_ACCESS_REQUEST;
 
 	request->packet->src_ipaddr.af = AF_INET;
 	request->packet->src_ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_LOOPBACK);

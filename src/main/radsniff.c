@@ -61,9 +61,9 @@ static char const *radsniff_version = "radsniff version " RADIUSD_VERSION_STRING
 ", built on " __DATE__ " at " __TIME__;
 
 static int rs_useful_codes[] = {
-	PW_CODE_AUTHENTICATION_REQUEST,		//!< RFC2865 - Authentication request
-	PW_CODE_AUTHENTICATION_ACK,		//!< RFC2865 - Access-Accept
-	PW_CODE_AUTHENTICATION_REJECT,		//!< RFC2865 - Access-Reject
+	PW_CODE_ACCESS_REQUEST,		//!< RFC2865 - Authentication request
+	PW_CODE_ACCESS_ACCEPT,		//!< RFC2865 - Access-Accept
+	PW_CODE_ACCESS_REJECT,		//!< RFC2865 - Access-Reject
 	PW_CODE_ACCOUNTING_REQUEST,		//!< RFC2866 - Accounting-Request
 	PW_CODE_ACCOUNTING_RESPONSE,		//!< RFC2866 - Accounting-Response
 	PW_CODE_ACCESS_CHALLENGE,		//!< RFC2865 - Access-Challenge
@@ -1065,8 +1065,8 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 
 	switch (current->code) {
 	case PW_CODE_ACCOUNTING_RESPONSE:
-	case PW_CODE_AUTHENTICATION_REJECT:
-	case PW_CODE_AUTHENTICATION_ACK:
+	case PW_CODE_ACCESS_REJECT:
+	case PW_CODE_ACCESS_ACCEPT:
 	case PW_CODE_ACCESS_CHALLENGE:
 	case PW_CODE_COA_NAK:
 	case PW_CODE_COA_ACK:
@@ -1182,7 +1182,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 	}
 
 	case PW_CODE_ACCOUNTING_REQUEST:
-	case PW_CODE_AUTHENTICATION_REQUEST:
+	case PW_CODE_ACCESS_REQUEST:
 	case PW_CODE_COA_REQUEST:
 	case PW_CODE_DISCONNECT_REQUEST:
 	case PW_CODE_STATUS_SERVER:

@@ -118,8 +118,8 @@ static rlm_rcode_t sometimes_return(void *instance, RADIUS_PACKET *packet, RADIU
 	 */
 	if ((inst->rcode == RLM_MODULE_HANDLED) && reply) {
 		switch (packet->code) {
-		case PW_CODE_AUTHENTICATION_REQUEST:
-			reply->code = PW_CODE_AUTHENTICATION_ACK;
+		case PW_CODE_ACCESS_REQUEST:
+			reply->code = PW_CODE_ACCESS_ACCEPT;
 			break;
 
 		case PW_CODE_ACCOUNTING_REQUEST:

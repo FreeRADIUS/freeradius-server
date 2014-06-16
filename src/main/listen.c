@@ -333,7 +333,7 @@ int rad_status_server(REQUEST *request)
 		switch (rcode) {
 		case RLM_MODULE_OK:
 		case RLM_MODULE_UPDATED:
-			request->reply->code = PW_CODE_AUTHENTICATION_ACK;
+			request->reply->code = PW_CODE_ACCESS_ACCEPT;
 			break;
 
 		case RLM_MODULE_FAIL:
@@ -343,7 +343,7 @@ int rad_status_server(REQUEST *request)
 
 		default:
 		case RLM_MODULE_REJECT:
-			request->reply->code = PW_CODE_AUTHENTICATION_REJECT;
+			request->reply->code = PW_CODE_ACCESS_REJECT;
 			break;
 		}
 		break;
@@ -488,7 +488,7 @@ static int dual_tcp_recv(rad_listen_t *listener)
 	 *	Some sanity checks, based on the packet code.
 	 */
 	switch(packet->code) {
-	case PW_CODE_AUTHENTICATION_REQUEST:
+	case PW_CODE_ACCESS_REQUEST:
 		if (listener->type != RAD_LISTEN_AUTH) goto bad_packet;
 		FR_STATS_INC(auth, total_requests);
 		fun = rad_authenticate;
@@ -1446,7 +1446,7 @@ static int auth_socket_recv(rad_listen_t *listener)
 	 *	Some sanity checks, based on the packet code.
 	 */
 	switch(code) {
-	case PW_CODE_AUTHENTICATION_REQUEST:
+	case PW_CODE_ACCESS_REQUEST:
 		fun = rad_authenticate;
 		break;
 
@@ -1859,9 +1859,9 @@ static int proxy_socket_recv(rad_listen_t *listener)
 	 *	FIXME: Client MIB updates?
 	 */
 	switch(packet->code) {
-	case PW_CODE_AUTHENTICATION_ACK:
+	case PW_CODE_ACCESS_ACCEPT:
 	case PW_CODE_ACCESS_CHALLENGE:
-	case PW_CODE_AUTHENTICATION_REJECT:
+	case PW_CODE_ACCESS_REJECT:
 		break;
 
 #ifdef WITH_ACCOUNTING
@@ -1921,9 +1921,9 @@ static int proxy_socket_tcp_recv(rad_listen_t *listener)
 	 *	FIXME: Client MIB updates?
 	 */
 	switch(packet->code) {
-	case PW_CODE_AUTHENTICATION_ACK:
+	case PW_CODE_ACCESS_ACCEPT:
 	case PW_CODE_ACCESS_CHALLENGE:
-	case PW_CODE_AUTHENTICATION_REJECT:
+	case PW_CODE_ACCESS_REJECT:
 		break;
 
 #ifdef WITH_ACCOUNTING

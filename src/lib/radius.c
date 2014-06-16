@@ -945,8 +945,8 @@ static ssize_t vp2data_any(RADIUS_PACKET const *packet,
 		if (room < (18 + lvalue)) return 0;
 
 		switch (packet->code) {
-		case PW_CODE_AUTHENTICATION_ACK:
-		case PW_CODE_AUTHENTICATION_REJECT:
+		case PW_CODE_ACCESS_ACCEPT:
+		case PW_CODE_ACCESS_REJECT:
 		case PW_CODE_ACCESS_CHALLENGE:
 		default:
 			if (!original) {
@@ -1736,8 +1736,8 @@ int rad_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 	 *	Double-check some things based on packet code.
 	 */
 	switch (packet->code) {
-	case PW_CODE_AUTHENTICATION_ACK:
-	case PW_CODE_AUTHENTICATION_REJECT:
+	case PW_CODE_ACCESS_ACCEPT:
+	case PW_CODE_ACCESS_REJECT:
 	case PW_CODE_ACCESS_CHALLENGE:
 		if (!original) {
 			fr_strerror_printf("ERROR: Cannot sign response packet without a request packet");
@@ -1932,8 +1932,8 @@ int rad_sign(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 			break;
 
 		do_ack:
-		case PW_CODE_AUTHENTICATION_ACK:
-		case PW_CODE_AUTHENTICATION_REJECT:
+		case PW_CODE_ACCESS_ACCEPT:
+		case PW_CODE_ACCESS_REJECT:
 		case PW_CODE_ACCESS_CHALLENGE:
 			if (!original) {
 				fr_strerror_printf("ERROR: Cannot sign response packet without a request packet");
@@ -1975,7 +1975,7 @@ int rad_sign(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 		 *	Request packets are not signed, bur
 		 *	have a random authentication vector.
 		 */
-	case PW_CODE_AUTHENTICATION_REQUEST:
+	case PW_CODE_ACCESS_REQUEST:
 	case PW_CODE_STATUS_SERVER:
 		break;
 
@@ -2786,8 +2786,8 @@ int rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 				break;
 
 			do_ack:
-			case PW_CODE_AUTHENTICATION_ACK:
-			case PW_CODE_AUTHENTICATION_REJECT:
+			case PW_CODE_ACCESS_ACCEPT:
+			case PW_CODE_ACCESS_REJECT:
 			case PW_CODE_ACCESS_CHALLENGE:
 			case PW_CODE_DISCONNECT_ACK:
 			case PW_CODE_DISCONNECT_NAK:
@@ -2849,7 +2849,7 @@ int rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 		int rcode;
 		char buffer[32];
 
-		case PW_CODE_AUTHENTICATION_REQUEST:
+		case PW_CODE_ACCESS_REQUEST:
 		case PW_CODE_STATUS_SERVER:
 			/*
 			 *	The authentication vector is random
@@ -2872,8 +2872,8 @@ int rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 			break;
 
 			/* Verify the reply digest */
-		case PW_CODE_AUTHENTICATION_ACK:
-		case PW_CODE_AUTHENTICATION_REJECT:
+		case PW_CODE_ACCESS_ACCEPT:
+		case PW_CODE_ACCESS_REJECT:
 		case PW_CODE_ACCESS_CHALLENGE:
 		case PW_CODE_ACCOUNTING_RESPONSE:
 		case PW_CODE_DISCONNECT_ACK:

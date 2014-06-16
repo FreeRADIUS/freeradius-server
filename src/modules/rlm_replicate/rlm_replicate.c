@@ -69,7 +69,7 @@ static rlm_rcode_t rlm_replicate_alloc(RADIUS_PACKET **out, REQUEST *request, pa
 	/*
 	 *	For CHAP, create the CHAP-Challenge if it doesn't exist.
 	 */
-	if ((code == PW_CODE_AUTHENTICATION_REQUEST) &&
+	if ((code == PW_CODE_ACCESS_REQUEST) &&
 	    (pairfind(request->packet->vps, PW_CHAP_PASSWORD, 0, TAG_ANY) != NULL) &&
 	    (pairfind(request->packet->vps, PW_CHAP_CHALLENGE, 0, TAG_ANY) == NULL)) {
 		vp = radius_paircreate(packet, &packet->vps, PW_CHAP_CHALLENGE, 0);
@@ -139,7 +139,7 @@ static rlm_rcode_t replicate_packet(UNUSED void *instance, REQUEST *request, pai
 			rcode = RLM_MODULE_FAIL;
 			goto done;
 
-		case PW_CODE_AUTHENTICATION_REQUEST:
+		case PW_CODE_ACCESS_REQUEST:
 			pool = realm->auth_pool;
 			break;
 

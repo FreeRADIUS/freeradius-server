@@ -37,7 +37,7 @@ static int vmps_process(REQUEST *request)
 	process_post_auth(0, request);
 	DEBUG2("Done VMPS");
 
-	request->reply->code = PW_CODE_AUTHENTICATION_ACK;
+	request->reply->code = PW_CODE_ACCESS_ACCEPT;
 
 	return 0;
 }

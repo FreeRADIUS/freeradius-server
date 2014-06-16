@@ -164,7 +164,7 @@ void request_stats_final(REQUEST *request)
 	 *	this function, which makes it thread-safe.
 	 */
 	if (request->reply && (request->packet->code != PW_CODE_STATUS_SERVER)) switch (request->reply->code) {
-	case PW_CODE_AUTHENTICATION_ACK:
+	case PW_CODE_ACCESS_ACCEPT:
 		INC_AUTH(total_access_accepts);
 
 		auth_stats:
@@ -184,7 +184,7 @@ void request_stats_final(REQUEST *request)
 			   &request->reply->timestamp);
 		break;
 
-	case PW_CODE_AUTHENTICATION_REJECT:
+	case PW_CODE_ACCESS_REJECT:
 		INC_AUTH(total_access_rejects);
 		goto auth_stats;
 
@@ -237,7 +237,7 @@ void request_stats_final(REQUEST *request)
 		 *	authenticator.
 		 */
 	case 0:
-		if (request->packet->code == PW_CODE_AUTHENTICATION_REQUEST) {
+		if (request->packet->code == PW_CODE_ACCESS_REQUEST) {
 			if (request->reply->offset == -2) {
 				INC_AUTH(total_bad_authenticators);
 			} else {
@@ -260,7 +260,7 @@ void request_stats_final(REQUEST *request)
 	if (!request->proxy || !request->proxy_listener) goto done;	/* simplifies formatting */
 
 	switch (request->proxy->code) {
-	case PW_CODE_AUTHENTICATION_REQUEST:
+	case PW_CODE_ACCESS_REQUEST:
 		proxy_auth_stats.total_requests += request->num_proxied_requests;
 		request->proxy_listener->stats.total_requests += request->num_proxied_requests;
 		request->home_server->stats.total_requests += request->num_proxied_requests;
@@ -284,7 +284,7 @@ void request_stats_final(REQUEST *request)
 #define INC(_x) proxy_auth_stats._x += request->num_proxied_responses; request->proxy_listener->stats._x += request->num_proxied_responses; request->home_server->stats._x += request->num_proxied_responses;
 
 	switch (request->proxy_reply->code) {
-	case PW_CODE_AUTHENTICATION_ACK:
+	case PW_CODE_ACCESS_ACCEPT:
 		INC(total_access_accepts);
 	proxy_stats:
 		INC(total_responses);
@@ -296,7 +296,7 @@ void request_stats_final(REQUEST *request)
 			   &request->proxy_reply->timestamp);
 		break;
 
-	case PW_CODE_AUTHENTICATION_REJECT:
+	case PW_CODE_ACCESS_REJECT:
 		INC(total_access_rejects);
 		goto proxy_stats;
 

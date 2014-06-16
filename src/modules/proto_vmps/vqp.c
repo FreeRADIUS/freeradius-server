@@ -384,7 +384,7 @@ RADIUS_PACKET *vqp_recv(int sockfd)
 	/*
 	 *	This is more than a bit of a hack.
 	 */
-	packet->code = PW_CODE_AUTHENTICATION_REQUEST;
+	packet->code = PW_CODE_ACCESS_REQUEST;
 
 	memcpy(&id, packet->data + 4, 4);
 	packet->id = ntohl(id);

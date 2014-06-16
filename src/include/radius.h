@@ -36,9 +36,9 @@ typedef enum {
 
 typedef enum {
 	PW_CODE_UNDEFINED		= 0,	//!< Packet code has not been set
-	PW_CODE_AUTHENTICATION_REQUEST 	= 1,	//!< RFC2865 - Access-Request
-	PW_CODE_AUTHENTICATION_ACK	= 2,	//!< RFC2865 - Access-Accept
-	PW_CODE_AUTHENTICATION_REJECT	= 3,	//!< RFC2865 - Access-Reject
+	PW_CODE_ACCESS_REQUEST 	= 1,	//!< RFC2865 - Access-Request
+	PW_CODE_ACCESS_ACCEPT	= 2,	//!< RFC2865 - Access-Accept
+	PW_CODE_ACCESS_REJECT	= 3,	//!< RFC2865 - Access-Reject
 	PW_CODE_ACCOUNTING_REQUEST	= 4,	//!< RFC2866 - Accounting-Request
 	PW_CODE_ACCOUNTING_RESPONSE	= 5,	//!< RFC2866 - Accounting-Response
 	PW_CODE_ACCOUNTING_STATUS	= 6,	//!< RFC3575 - Reserved

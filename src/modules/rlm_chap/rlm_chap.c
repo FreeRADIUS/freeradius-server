@@ -163,7 +163,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_pre_proxy(UNUSED void *instance,
 	 *	For Access-Requests, which have CHAP-Password,
 	 *	and no CHAP-Challenge, copy it over from the request.
 	 */
-	if (request->packet->code != PW_CODE_AUTHENTICATION_REQUEST) return RLM_MODULE_NOOP;
+	if (request->packet->code != PW_CODE_ACCESS_REQUEST) return RLM_MODULE_NOOP;
 
 	if (!pairfind(request->proxy->vps, PW_CHAP_PASSWORD, 0, TAG_ANY)) return RLM_MODULE_NOOP;
 

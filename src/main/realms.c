@@ -2042,7 +2042,7 @@ void home_server_update_request(home_server_t *home, REQUEST *request)
 	 *	Access-Requests have a Message-Authenticator added,
 	 *	unless one already exists.
 	 */
-	if ((request->packet->code == PW_CODE_AUTHENTICATION_REQUEST) &&
+	if ((request->packet->code == PW_CODE_ACCESS_REQUEST) &&
 	    !pairfind(request->proxy->vps, PW_MESSAGE_AUTHENTICATOR, 0, TAG_ANY)) {
 		pairmake(request->proxy, &request->proxy->vps,
 			 "Message-Authenticator", "0x00",
@@ -2334,7 +2334,7 @@ home_server_t *home_server_ldb(char const *realmname,
 		if (!rd) return NULL;
 
 		pool = NULL;
-		if (request->packet->code == PW_CODE_AUTHENTICATION_REQUEST) {
+		if (request->packet->code == PW_CODE_ACCESS_REQUEST) {
 			pool = rd->auth_pool;
 
 		} else if (request->packet->code == PW_CODE_ACCOUNTING_REQUEST) {
