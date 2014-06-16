@@ -207,6 +207,9 @@ static int getport(char const *name)
 	return ntohs(svp->s_port);
 }
 
+/*
+ *	Set a port from the request type if we don't already have one
+ */
 static void radclient_get_port(PW_CODE type, uint16_t *port)
 {
 	switch (type) {
@@ -224,6 +227,8 @@ static void radclient_get_port(PW_CODE type, uint16_t *port)
 		return;
 
 	case PW_CODE_DISCONNECT_REQUEST:
+		if (*port == 0) *port = PW_POD_UDP_PORT;
+
 	case PW_CODE_COA_REQUEST:
 		if (*port == 0) *port = PW_COA_UDP_PORT;
 		return;
@@ -231,6 +236,23 @@ static void radclient_get_port(PW_CODE type, uint16_t *port)
 	case PW_CODE_UNDEFINED:
 		if (*port == 0) *port = 0;
 	}
+}
+
+/*
+ *	Resolve a port to a request type
+ */
+static PW_CODE radclient_get_code(port)
+{
+	if ((port == getport("radius")) || (port == PW_AUTH_UDP_PORT) || (port == PW_AUTH_UDP_PORT_ALT)) {
+		return PW_CODE_AUTHENTICATION_REQUEST;
+	}
+	if ((port == getport("radacct")) || (port == PW_ACCT_UDP_PORT) || (port == PW_ACCT_UDP_PORT_ALT)) {
+		return PW_CODE_ACCOUNTING_REQUEST;
+	}
+	if (port == PW_COA_UDP_PORT) return PW_CODE_COA_REQUEST;
+	if (port == PW_POD_UDP_PORT) return PW_CODE_DISCONNECT_REQUEST;
+
+	return PW_CODE_UNDEFINED;
 }
 
 /*
@@ -495,10 +517,10 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 			}
 		} /* loop over the VP's we read in */
 
-		 /*
-		  *	Use the default set on the command line
-		  */
-		if (request->packet->code == 0) {
+		/*
+		 *	Use the default set on the command line
+		 */
+		if (request->packet->code == PW_CODE_UNDEFINED) {
 			request->packet->code = packet_code;
 		}
 
@@ -513,7 +535,7 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 		 *	Automatically set the response code from the request code
 		 *	(if one wasn't already set).
 		 */
-		if (!request->filter_code) {
+		if (request->filter_code == PW_CODE_UNDEFINED) {
 			switch (request->packet->code) {
 			case PW_CODE_AUTHENTICATION_REQUEST:
 				request->filter_code = PW_CODE_AUTHENTICATION_ACK;
@@ -531,16 +553,74 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 				request->filter_code = PW_CODE_DISCONNECT_ACK;
 				break;
 
+			case PW_CODE_STATUS_SERVER:
+				switch (radclient_get_code(request->packet->dst_port)) {
+				case PW_CODE_AUTHENTICATION_REQUEST:
+					request->filter_code = PW_CODE_AUTHENTICATION_ACK;
+					break;
+
+				case PW_CODE_ACCOUNTING_REQUEST:
+					request->filter_code = PW_CODE_ACCOUNTING_RESPONSE;
+					break;
+
+				default:
+					REDEBUG("Can't determine expected response to Status-Server request, specify "
+					        "a well known RADIUS port, or a response filter with a "
+					        "Response-Packet-Type attribute");
+					goto error;
+				}
+
+			case PW_CODE_UNDEFINED:
+				REDEBUG("Both Packet-Type and Response-Packet-Type, specify at least one, or a well "
+					"known RADIUS port");
+				goto error;
+
 			default:
+				REDEBUG("Can't determine expected Response-Packet-Type for Packet-Type %i",
+					request->packet->code);
+				goto error;
+			}
+		/*
+		 *	Automatically set the request code from the response code
+		 *	(if one wasn't already set).
+		 */
+		} else if (request->packet->code == PW_CODE_UNDEFINED) {
+			switch (request->filter_code) {
+			case PW_CODE_AUTHENTICATION_ACK:
+			case PW_CODE_AUTHENTICATION_REJECT:
+				request->packet->code = PW_CODE_AUTHENTICATION_REQUEST;
 				break;
+
+			case PW_CODE_ACCOUNTING_RESPONSE:
+				request->packet->code = PW_CODE_ACCOUNTING_REQUEST;
+				break;
+
+			case PW_CODE_DISCONNECT_ACK:
+			case PW_CODE_DISCONNECT_NAK:
+				request->packet->code = PW_CODE_DISCONNECT_REQUEST;
+				break;
+
+			case PW_CODE_COA_ACK:
+			case PW_CODE_COA_NAK:
+				request->packet->code = PW_CODE_COA_REQUEST;
+				break;
+
+			default:
+				REDEBUG("Can't determine expected Packet-Type for Response-Packet-Type %i",
+					request->filter_code);
+				goto error;
 			}
 		}
 
 		/*
-		 *	Automatically set the dst port if one wasn't already set.
+		 *	Automatically set the dst port (if one wasn't already set).
 		 */
 		if (request->packet->dst_port == 0) {
 			radclient_get_port(request->packet->code, &request->packet->dst_port);
+			if (request->packet->dst_port == 0) {
+				REDEBUG("Can't determine destination port");
+				goto error;
+			}
 		}
 
 		/*
@@ -1308,6 +1388,11 @@ int main(int argc, char **argv)
 		 *	Strip port from hostname if needed.
 		 */
 		if (portname) server_port = atoi(portname);
+
+		/*
+		 *	Work backwards from the port to determine the packet type
+		 */
+		if (packet_code == PW_CODE_UNDEFINED) packet_code = radclient_get_code(server_port);
 	}
 
 	radclient_get_port(packet_code, &server_port);
