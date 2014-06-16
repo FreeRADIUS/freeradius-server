@@ -735,7 +735,7 @@ int fr_fault_setup(char const *cmd, char const *program)
 		mallopt(M_CHECK_ACTION, 3);
 #endif
 
-#if defined(HAVE_EXECINFO) && defined(__GNUC__) && defined(NDEBUG)
+#if defined(HAVE_EXECINFO) && defined(__GNUC__) && !defined(NDEBUG)
 	       /*
 		*  We need to pre-load lgcc_s, else we can get into a deadlock
 		*  in fr_fault, as backtrace() attempts to dlopen it.
