@@ -569,10 +569,11 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 					        "Response-Packet-Type attribute");
 					goto error;
 				}
+				break;
 
 			case PW_CODE_UNDEFINED:
-				REDEBUG("Both Packet-Type and Response-Packet-Type, specify at least one, or a well "
-					"known RADIUS port");
+				REDEBUG("Both Packet-Type and Response-Packet-Type undefined, specify at least one, "
+					"or a well known RADIUS port");
 				goto error;
 
 			default:
