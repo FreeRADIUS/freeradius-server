@@ -241,7 +241,7 @@ static void radclient_get_port(PW_CODE type, uint16_t *port)
 /*
  *	Resolve a port to a request type
  */
-static PW_CODE radclient_get_code(port)
+static PW_CODE radclient_get_code(uint16_t port)
 {
 	if ((port == getport("radius")) || (port == PW_AUTH_UDP_PORT) || (port == PW_AUTH_UDP_PORT_ALT)) {
 		return PW_CODE_ACCESS_REQUEST;
