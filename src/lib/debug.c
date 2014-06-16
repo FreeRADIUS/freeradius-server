@@ -454,8 +454,12 @@ void fr_fault(int sig)
 	/*
 	 *	Produce a simple backtrace - They've very basic but at least give us an
 	 *	idea of the area of the code we hit the issue in.
+	 *
+	 *	See below in fr_fault_setup() and
+	 *	https://sourceware.org/bugzilla/show_bug.cgi?id=16159
+	 *	for why we only print backtraces in debug builds if we're using GLIBC.
 	 */
-#ifdef HAVE_EXECINFO
+#if defined(HAVE_EXECINFO) && (!defined(NDEBUG) || !defined(__GNUC__))
 	{
 		size_t frame_count, i;
 		void *stack[MAX_BT_FRAMES];
@@ -729,6 +733,23 @@ int fr_fault_setup(char const *cmd, char const *program)
 #if defined(HAVE_MALLOPT) && !defined(NDEBUG)
 		mallopt(M_PERTURB, 0x42);
 		mallopt(M_CHECK_ACTION, 3);
+#endif
+
+#if defined(HAVE_EXECINFO) && defined(__GNUC__) && defined(NDEBUG)
+	       /*
+		*  We need to pre-load lgcc_s, else we can get into a deadlock
+		*  in fr_fault, as backtrace() attempts to dlopen it.
+		*
+		*  Apparently there's a performance impact of loading lgcc_s,
+		*  so only do it if this is a debug build.
+		*
+		*  See: https://sourceware.org/bugzilla/show_bug.cgi?id=16159
+		*/
+		{
+			void *stack[10];
+
+			backtrace(stack, 10);
+		}
 #endif
 	}
 	setup = true;
