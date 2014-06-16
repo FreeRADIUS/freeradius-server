@@ -302,7 +302,7 @@ static int CC_HINT(nonnull) mschap_postproxy(eap_handler_t *handler, UNUSED void
 	 *	There is only a limited number of possibilities.
 	 */
 	switch (request->reply->code) {
-	case PW_CODE_AUTHENTICATION_ACK:
+	case PW_CODE_ACCESS_ACCEPT:
 		RDEBUG2("Proxied authentication succeeded");
 
 		/*
@@ -313,7 +313,7 @@ static int CC_HINT(nonnull) mschap_postproxy(eap_handler_t *handler, UNUSED void
 		break;
 
 	default:
-	case PW_CODE_AUTHENTICATION_REJECT:
+	case PW_CODE_ACCESS_REJECT:
 		RDEBUG("Proxied authentication did not succeed");
 		return 0;
 	}

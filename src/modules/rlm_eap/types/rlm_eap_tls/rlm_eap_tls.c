@@ -182,7 +182,7 @@ static int CC_HINT(nonnull) mod_authenticate(void *type_arg, eap_handler_t *hand
 				  &fake->reply->vps, 0, 0, TAG_ANY);
 
 			/* reject if virtual server didn't return accept */
-			if (fake->reply->code != PW_CODE_AUTHENTICATION_ACK) {
+			if (fake->reply->code != PW_CODE_ACCESS_ACCEPT) {
 				RDEBUG2("Certificates were rejected by the virtual server");
 				talloc_free(fake);
 				eaptls_fail(handler, 0);

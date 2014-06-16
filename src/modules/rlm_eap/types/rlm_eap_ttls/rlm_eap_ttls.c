@@ -328,7 +328,7 @@ static int mod_authenticate(void *arg, eap_handler_t *handler)
 	 */
 	rcode = eapttls_process(handler, tls_session);
 	switch (rcode) {
-	case PW_CODE_AUTHENTICATION_REJECT:
+	case PW_CODE_ACCESS_REJECT:
 		eaptls_fail(handler, 0);
 		return 0;
 
@@ -342,7 +342,7 @@ static int mod_authenticate(void *arg, eap_handler_t *handler)
 		/*
 		 *	Success: Automatically return MPPE keys.
 		 */
-	case PW_CODE_AUTHENTICATION_ACK:
+	case PW_CODE_ACCESS_ACCEPT:
 		return eaptls_success(handler, 0);
 
 		/*

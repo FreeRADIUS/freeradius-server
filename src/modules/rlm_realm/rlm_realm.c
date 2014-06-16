@@ -227,7 +227,7 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 		/*
 		 *	Perhaps authentication proxying was turned off.
 		 */
-	case PW_CODE_AUTHENTICATION_REQUEST:
+	case PW_CODE_ACCESS_REQUEST:
 		if (!realm->auth_pool) {
 			RDEBUG2("Authentication realm is LOCAL");
 			return RLM_MODULE_OK;

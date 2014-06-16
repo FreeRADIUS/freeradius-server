@@ -308,7 +308,7 @@ static rlm_rcode_t CC_HINT(nonnull(1,2)) attr_filter_common(void *instance, REQU
 	pairfree(&packet->vps);
 	packet->vps = output;
 
-	if (request->packet->code == PW_CODE_AUTHENTICATION_REQUEST) {
+	if (request->packet->code == PW_CODE_ACCESS_REQUEST) {
 		request->username = pairfind(request->packet->vps, PW_STRIPPED_USER_NAME, 0, TAG_ANY);
 		if (!request->username) {
 			request->username = pairfind(request->packet->vps, PW_USER_NAME, 0, TAG_ANY);

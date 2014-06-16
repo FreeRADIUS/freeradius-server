@@ -243,9 +243,9 @@ static int send_packet(RADIUS_PACKET *req, RADIUS_PACKET **rep)
 	if (!fr_debug_flag && do_output) {
 		debug_packet(*rep, R_RECV);
 	}
-	if((*rep)->code == PW_CODE_AUTHENTICATION_ACK) {
+	if((*rep)->code == PW_CODE_ACCESS_ACCEPT) {
 		totalapp++;
-	} else if ((*rep)->code == PW_CODE_AUTHENTICATION_REJECT) {
+	} else if ((*rep)->code == PW_CODE_ACCESS_REJECT) {
 		totaldeny++;
 	}
 
@@ -1209,7 +1209,7 @@ int main(int argc, char **argv)
 	if (strcmp(argv[2], "auth") == 0) {
 		if (port == 0) port = getport("radius");
 		if (port == 0) port = PW_AUTH_UDP_PORT;
-		req->code = PW_CODE_AUTHENTICATION_REQUEST;
+		req->code = PW_CODE_ACCESS_REQUEST;
 
 	} else if (strcmp(argv[2], "acct") == 0) {
 		if (port == 0) port = getport("radacct");

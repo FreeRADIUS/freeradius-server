@@ -114,7 +114,7 @@ static void NEVER_RETURNS usage(void)
 }
 
 static const FR_NAME_NUMBER request_types[] = {
-	{ "auth",	PW_CODE_AUTHENTICATION_REQUEST },
+	{ "auth",	PW_CODE_ACCESS_REQUEST },
 	{ "challenge",	PW_CODE_ACCESS_CHALLENGE },
 	{ "acct",	PW_CODE_ACCOUNTING_REQUEST },
 	{ "status",	PW_CODE_STATUS_SERVER },
@@ -215,7 +215,7 @@ static void radclient_get_port(PW_CODE type, uint16_t *port)
 {
 	switch (type) {
 	default:
-	case PW_CODE_AUTHENTICATION_REQUEST:
+	case PW_CODE_ACCESS_REQUEST:
 	case PW_CODE_ACCESS_CHALLENGE:
 	case PW_CODE_STATUS_SERVER:
 		if (*port == 0) *port = getport("radius");
@@ -245,7 +245,7 @@ static void radclient_get_port(PW_CODE type, uint16_t *port)
 static PW_CODE radclient_get_code(port)
 {
 	if ((port == getport("radius")) || (port == PW_AUTH_UDP_PORT) || (port == PW_AUTH_UDP_PORT_ALT)) {
-		return PW_CODE_AUTHENTICATION_REQUEST;
+		return PW_CODE_ACCESS_REQUEST;
 	}
 	if ((port == getport("radacct")) || (port == PW_ACCT_UDP_PORT) || (port == PW_ACCT_UDP_PORT_ALT)) {
 		return PW_CODE_ACCOUNTING_REQUEST;
@@ -538,8 +538,8 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 		 */
 		if (request->filter_code == PW_CODE_UNDEFINED) {
 			switch (request->packet->code) {
-			case PW_CODE_AUTHENTICATION_REQUEST:
-				request->filter_code = PW_CODE_AUTHENTICATION_ACK;
+			case PW_CODE_ACCESS_REQUEST:
+				request->filter_code = PW_CODE_ACCESS_ACCEPT;
 				break;
 
 			case PW_CODE_ACCOUNTING_REQUEST:
@@ -556,8 +556,8 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 
 			case PW_CODE_STATUS_SERVER:
 				switch (radclient_get_code(request->packet->dst_port)) {
-				case PW_CODE_AUTHENTICATION_REQUEST:
-					request->filter_code = PW_CODE_AUTHENTICATION_ACK;
+				case PW_CODE_ACCESS_REQUEST:
+					request->filter_code = PW_CODE_ACCESS_ACCEPT;
 					break;
 
 				case PW_CODE_ACCOUNTING_REQUEST:
@@ -587,9 +587,9 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 		 */
 		} else if (request->packet->code == PW_CODE_UNDEFINED) {
 			switch (request->filter_code) {
-			case PW_CODE_AUTHENTICATION_ACK:
-			case PW_CODE_AUTHENTICATION_REJECT:
-				request->packet->code = PW_CODE_AUTHENTICATION_REQUEST;
+			case PW_CODE_ACCESS_ACCEPT:
+			case PW_CODE_ACCESS_REJECT:
+				request->packet->code = PW_CODE_ACCESS_REQUEST;
 				break;
 
 			case PW_CODE_ACCOUNTING_RESPONSE:
@@ -1065,7 +1065,7 @@ static int recv_one_packet(int wait_time)
 	 *	Increment counters...
 	 */
 	switch (request->reply->code) {
-	case PW_CODE_AUTHENTICATION_ACK:
+	case PW_CODE_ACCESS_ACCEPT:
 	case PW_CODE_ACCOUNTING_RESPONSE:
 	case PW_CODE_COA_ACK:
 	case PW_CODE_DISCONNECT_ACK:

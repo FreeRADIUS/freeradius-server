@@ -1285,16 +1285,16 @@ STATE_MACHINE_DECL(request_finish)
 	/*
 	 *	Catch Auth-Type := Reject BEFORE proxying the packet.
 	 */
-	else if (request->packet->code == PW_CODE_AUTHENTICATION_REQUEST) {
+	else if (request->packet->code == PW_CODE_ACCESS_REQUEST) {
 		if (request->reply->code == 0) {
 			vp = pairfind(request->config_items, PW_AUTH_TYPE, 0, TAG_ANY);
 
-			if (!vp || (vp->vp_integer != PW_CODE_AUTHENTICATION_REJECT)) {
+			if (!vp || (vp->vp_integer != PW_CODE_ACCESS_REJECT)) {
 				RDEBUG2("There was no response configured: "
 					"rejecting request");
 			}
 
-			request->reply->code = PW_CODE_AUTHENTICATION_REJECT;
+			request->reply->code = PW_CODE_ACCESS_REJECT;
 		}
 	}
 
@@ -1306,7 +1306,7 @@ STATE_MACHINE_DECL(request_finish)
 	if (vp) pairadd(&request->reply->vps, vp);
 
 	switch (request->reply->code) {
-	case PW_CODE_AUTHENTICATION_ACK:
+	case PW_CODE_ACCESS_ACCEPT:
 		rad_postauth(request);
 		break;
 	case PW_CODE_ACCESS_CHALLENGE:
@@ -1327,7 +1327,7 @@ STATE_MACHINE_DECL(request_finish)
 	 *	We do this separately so ACK and challenge can change the code
 	 *	to reject if a module returns reject.
 	 */
-	if (request->reply->code == PW_CODE_AUTHENTICATION_REJECT) {
+	if (request->reply->code == PW_CODE_ACCESS_REJECT) {
 		pairdelete(&request->config_items, PW_POST_AUTH_TYPE, 0, TAG_ANY);
 		vp = pairmake_config("Post-Auth-Type", "Reject", T_OP_SET);
 		if (vp) rad_postauth(request);
@@ -1364,7 +1364,7 @@ STATE_MACHINE_DECL(request_finish)
 	/*
 	 *	See if we need to delay an Access-Reject packet.
 	 */
-	if ((request->reply->code == PW_CODE_AUTHENTICATION_REJECT) &&
+	if ((request->reply->code == PW_CODE_ACCESS_REJECT) &&
 	    (request->root->reject_delay > 0)) {
 		request->response_delay = request->root->reject_delay;
 
@@ -1553,7 +1553,7 @@ int request_receive(rad_listen_t *listener, RADIUS_PACKET *packet,
 
 #ifdef WITH_STATS
 				switch (packet->code) {
-				case PW_CODE_AUTHENTICATION_REQUEST:
+				case PW_CODE_ACCESS_REQUEST:
 					FR_STATS_INC(auth, total_dup_requests);
 					break;
 
@@ -1712,7 +1712,7 @@ static REQUEST *request_setup(rad_listen_t *listener, RADIUS_PACKET *packet,
 
 #ifdef WITH_STATS
 	request->listener->stats.last_packet = request->packet->timestamp.tv_sec;
-	if (packet->code == PW_CODE_AUTHENTICATION_REQUEST) {
+	if (packet->code == PW_CODE_ACCESS_REQUEST) {
 		request->client->auth.last_packet = request->packet->timestamp.tv_sec;
 		radius_auth_stats.last_packet = request->packet->timestamp.tv_sec;
 #ifdef WITH_ACCOUNTING
@@ -2156,7 +2156,7 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply)
 	 *	post-proxy-type Reject
 	 */
 	if (!vp && reply &&
-	    reply->code == PW_CODE_AUTHENTICATION_REJECT) {
+	    reply->code == PW_CODE_ACCESS_REJECT) {
 		DICT_VALUE	*dval;
 
 		dval = dict_valbyname(PW_POST_PROXY_TYPE, 0, "Reject");
@@ -2342,7 +2342,7 @@ int request_proxy_reply(RADIUS_PACKET *packet)
 	request->home_server->stats.last_packet = packet->timestamp.tv_sec;
 	request->proxy_listener->stats.last_packet = packet->timestamp.tv_sec;
 
-	if (request->proxy->code == PW_CODE_AUTHENTICATION_REQUEST) {
+	if (request->proxy->code == PW_CODE_ACCESS_REQUEST) {
 		proxy_auth_stats.last_packet = packet->timestamp.tv_sec;
 #ifdef WITH_ACCOUNTING
 	} else if (request->proxy->code == PW_CODE_ACCOUNTING_REQUEST) {
@@ -2377,7 +2377,7 @@ static int setup_post_proxy_fail(REQUEST *request)
 	DICT_VALUE const *dval = NULL;
 	VALUE_PAIR *vp;
 
-	if (request->proxy->code == PW_CODE_AUTHENTICATION_REQUEST) {
+	if (request->proxy->code == PW_CODE_ACCESS_REQUEST) {
 		dval = dict_valbyname(PW_POST_PROXY_TYPE, 0,
 				      "Fail-Authentication");
 
@@ -2496,7 +2496,7 @@ static int request_will_proxy(REQUEST *request)
 		/*
 		 *	Figure out which pool to use.
 		 */
-		if (request->packet->code == PW_CODE_AUTHENTICATION_REQUEST) {
+		if (request->packet->code == PW_CODE_ACCESS_REQUEST) {
 			pool = realm->auth_pool;
 
 #ifdef WITH_ACCOUNTING
@@ -2521,7 +2521,7 @@ static int request_will_proxy(REQUEST *request)
 		if (!vp) return 0;
 
 		switch (request->packet->code) {
-		case PW_CODE_AUTHENTICATION_REQUEST:
+		case PW_CODE_ACCESS_REQUEST:
 			pool_type = HOME_TYPE_AUTH;
 			break;
 
@@ -2623,7 +2623,7 @@ static int request_will_proxy(REQUEST *request)
 	 *	since we can't use the request authenticator
 	 *	anymore - we changed it.
 	 */
-	if ((request->packet->code == PW_CODE_AUTHENTICATION_REQUEST) &&
+	if ((request->packet->code == PW_CODE_ACCESS_REQUEST) &&
 	    pairfind(request->proxy->vps, PW_CHAP_PASSWORD, 0, TAG_ANY) &&
 	    pairfind(request->proxy->vps, PW_CHAP_CHALLENGE, 0, TAG_ANY) == NULL) {
 		vp = radius_paircreate(request->proxy, &request->proxy->vps, PW_CHAP_CHALLENGE, 0);
@@ -3025,7 +3025,7 @@ static void ping_home_server(void *ctx)
 			 "Message-Authenticator", "0x00", T_OP_SET);
 
 	} else if (home->type == HOME_TYPE_AUTH) {
-		request->proxy->code = PW_CODE_AUTHENTICATION_REQUEST;
+		request->proxy->code = PW_CODE_ACCESS_REQUEST;
 
 		pairmake(request->proxy, &request->proxy->vps,
 			 "User-Name", home->ping_user_name, T_OP_SET);

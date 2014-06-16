@@ -610,15 +610,15 @@ rlm_rcode_t eap_compose(eap_handler_t *handler)
 	rcode = RLM_MODULE_OK;
 	if (!request->reply->code) switch(reply->code) {
 	case PW_EAP_RESPONSE:
-		request->reply->code = PW_CODE_AUTHENTICATION_ACK;
+		request->reply->code = PW_CODE_ACCESS_ACCEPT;
 		rcode = RLM_MODULE_HANDLED; /* leap weirdness */
 		break;
 	case PW_EAP_SUCCESS:
-		request->reply->code = PW_CODE_AUTHENTICATION_ACK;
+		request->reply->code = PW_CODE_ACCESS_ACCEPT;
 		rcode = RLM_MODULE_OK;
 		break;
 	case PW_EAP_FAILURE:
-		request->reply->code = PW_CODE_AUTHENTICATION_REJECT;
+		request->reply->code = PW_CODE_ACCESS_REJECT;
 		rcode = RLM_MODULE_REJECT;
 		break;
 	case PW_EAP_REQUEST:
@@ -637,7 +637,7 @@ rlm_rcode_t eap_compose(eap_handler_t *handler)
 
 		/* Should never enter here */
 		ERROR("rlm_eap: reply code %d is unknown, Rejecting the request.", reply->code);
-		request->reply->code = PW_CODE_AUTHENTICATION_REJECT;
+		request->reply->code = PW_CODE_ACCESS_REJECT;
 		reply->code = PW_EAP_FAILURE;
 		rcode = RLM_MODULE_REJECT;
 		break;

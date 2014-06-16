@@ -431,7 +431,7 @@ static int CC_HINT(nonnull) process_reply(eap_handler_t *handler, tls_session_t 
 	}
 
 	switch (reply->code) {
-	case PW_CODE_AUTHENTICATION_ACK:
+	case PW_CODE_ACCESS_ACCEPT:
 		RDEBUG2("Tunneled authentication was successful");
 		t->status = PEAP_STATUS_SENT_TLV_SUCCESS;
 		eappeap_success(handler, tls_session);
@@ -469,7 +469,7 @@ static int CC_HINT(nonnull) process_reply(eap_handler_t *handler, tls_session_t 
 		}
 		break;
 
-	case PW_CODE_AUTHENTICATION_REJECT:
+	case PW_CODE_ACCESS_REJECT:
 		RDEBUG2("Tunneled authentication was rejected");
 		t->status = PEAP_STATUS_SENT_TLV_FAILURE;
 		eappeap_failure(handler, tls_session);
@@ -561,7 +561,7 @@ static int CC_HINT(nonnull) eappeap_postproxy(eap_handler_t *handler, void *data
 	/*
 	 *	Do the callback, if it exists, and if it was a success.
 	 */
-	if (fake && (handler->request->proxy_reply->code == PW_CODE_AUTHENTICATION_ACK)) {
+	if (fake && (handler->request->proxy_reply->code == PW_CODE_ACCESS_ACCEPT)) {
 		peap_tunnel_t *t = tls_session->opaque;
 
 		t->home_access_accept = true;
@@ -823,7 +823,7 @@ rlm_rcode_t eappeap_process(eap_handler_t *handler, tls_session_t *tls_session)
 		RDEBUG("Got SoH reply");
 		debug_pair_list(fake->reply->vps);
 
-		if (fake->reply->code != PW_CODE_AUTHENTICATION_ACK) {
+		if (fake->reply->code != PW_CODE_ACCESS_ACCEPT) {
 			RDEBUG2("SoH was rejected");
 			talloc_free(fake);
 			t->status = PEAP_STATUS_SENT_TLV_FAILURE;
@@ -1083,7 +1083,7 @@ rlm_rcode_t eappeap_process(eap_handler_t *handler, tls_session_t *tls_session)
 					/*
 					 *	Authentication succeeded! Rah!
 					 */
-					fake->reply->code = PW_CODE_AUTHENTICATION_ACK;
+					fake->reply->code = PW_CODE_ACCESS_ACCEPT;
 					goto do_process;
 				}
 
