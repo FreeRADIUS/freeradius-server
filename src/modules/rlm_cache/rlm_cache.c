@@ -760,7 +760,8 @@ done:
 		case PW_CACHE_TTL:
 		case PW_CACHE_READ_ONLY:
 		case PW_CACHE_MERGE:
-			fr_cursor_remove(&cursor);
+			vp = fr_cursor_remove(&cursor);
+			talloc_free(vp);
 			break;
 		}
 	}
