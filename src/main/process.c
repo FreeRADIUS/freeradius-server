@@ -345,9 +345,9 @@ static void tv_add(struct timeval *tv, int usec_delay)
 }
 
 /*
- *	In daemon mode, AND this request has debug flags set.
+ *	Debug the packet if requested.
  */
-#define DEBUG_PACKET if (debug_flag && request->log.lvl && request->log.func) debug_packet
+#define DEBUG_PACKET if (request->log.lvl && request->log.func) debug_packet
 
 static void debug_packet(REQUEST *request, RADIUS_PACKET *packet, int direction)
 {
