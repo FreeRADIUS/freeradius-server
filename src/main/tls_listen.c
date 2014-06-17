@@ -454,8 +454,6 @@ int dual_tls_send(rad_listen_t *listener, REQUEST *request)
 		return 0;
 	}
 
-	dump_hex("TUNNELED DATA < ", sock->ssn->clean_out.data, sock->ssn->clean_out.used);
-
 	PTHREAD_MUTEX_LOCK(&sock->mutex);
 
 	/*
@@ -463,6 +461,8 @@ int dual_tls_send(rad_listen_t *listener, REQUEST *request)
 	 */
 	sock->ssn->record_plus(&sock->ssn->clean_in,
 			       request->reply->data, request->reply->data_len);
+
+	dump_hex("TUNNELED DATA < ", sock->ssn->clean_in.data, sock->ssn->clean_in.used);
 
 	/*
 	 *	Do SSL magic to get encrypted data.
