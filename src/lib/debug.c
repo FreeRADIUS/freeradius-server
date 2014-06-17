@@ -581,7 +581,6 @@ static void _fr_talloc_log(char const *msg)
 int fr_log_talloc_report(TALLOC_CTX *ctx)
 {
 	FILE *log;
-	char const *null_ctx = NULL;
 	int i = 0;
 	int fd;
 
@@ -598,17 +597,13 @@ int fr_log_talloc_report(TALLOC_CTX *ctx)
 	}
 
 	fprintf(log, "Current state of talloced memory:\n");
-	if (ctx) {
-		null_ctx = talloc_get_name(NULL);
-	}
-
 	if (!ctx) {
 		talloc_report_full(NULL, log);
 	} else do {
 		fprintf(log, "Context level %i", i++);
 
 		talloc_report_full(ctx, log);
-	} while ((ctx = talloc_parent(ctx)) && (talloc_get_name(ctx) != null_ctx));  /* Stop before we hit NULL ctx */
+	} while ((ctx = talloc_parent(ctx)) && talloc_parent(ctx));  /* Stop before we hit NULL ctx */
 
 	fclose(log);
 
