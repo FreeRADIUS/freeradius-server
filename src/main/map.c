@@ -726,31 +726,8 @@ size_t radius_tmpl2str(char *buffer, size_t bufsize, value_pair_tmpl_t const *vp
 
 	case VPT_TYPE_DATA:
 		if (vpt->vpt_value) {
-			VALUE_PAIR *vp;
-			TALLOC_CTX *ctx;
-
-			memcpy(&ctx, &vpt, sizeof(ctx)); /* hack */
-
-			MEM(vp = pairalloc(ctx, vpt->vpt_da));
-			memcpy(&vp->data, vpt->vpt_value, sizeof(vp->data));
-			vp->length = vpt->vpt_length;
-
-			q = vp_aprint_value(vp, vp);
-
-			if ((vpt->vpt_da->type != PW_TYPE_STRING) &&
-			    (vpt->vpt_da->type != PW_TYPE_DATE)) {
-				strlcpy(buffer, q, bufsize);
-			} else {
-				/*
-				 *	FIXME: properly escape the string...
-				 */
-				snprintf(buffer, bufsize, "\"%s\"", q);
-			}
-
-			talloc_free(q);
-			pairfree(&vp);
-			return strlen(buffer);
-
+			return vp_data_prints_value(buffer, bufsize, vpt->vpt_da,
+						    vpt->vpt_value, vpt->vpt_length, '"');
 		} else {
 			*buffer = '\0';
 			return 0;
@@ -814,7 +791,6 @@ size_t radius_tmpl2str(char *buffer, size_t bufsize, value_pair_tmpl_t const *vp
 
 	return q - buffer;
 }
-
 
 /**  Print a map to a string
  *

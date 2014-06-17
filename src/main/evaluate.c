@@ -326,8 +326,7 @@ static VALUE_PAIR *get_cast_vp(REQUEST *request, value_pair_tmpl_t const *vpt, D
 
 	if (vpt->type == VPT_TYPE_DATA) {
 		rad_assert(vp->da->type == vpt->vpt_da->type);
-		memcpy(&vp->data, vpt->vpt_value, sizeof(vp->data));
-		vp->length = vpt->vpt_length;
+		pairdatacpy(vp, vpt->vpt_da, vpt->vpt_value, vpt->vpt_length);
 		return vp;
 	}
 
@@ -337,7 +336,7 @@ static VALUE_PAIR *get_cast_vp(REQUEST *request, value_pair_tmpl_t const *vpt, D
 		return NULL;
 	}
 
-	if ((pairparsevalue(vp, str, 0) < 0)) {
+	if (pairparsevalue(vp, str, 0) < 0) {
 		talloc_free(str);
 		pairfree(&vp);
 		return NULL;

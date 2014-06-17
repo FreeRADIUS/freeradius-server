@@ -424,6 +424,8 @@ size_t		fr_print_string_len(char const *in, size_t inlen);
 
 #define		is_truncated(_ret, _max) ((_ret) >= (_max))
 #define		truncate_len(_ret, _max) (((_ret) >= (_max)) ? ((_max) - 1) : _ret)
+size_t		vp_data_prints_value(char *out, size_t outlen,
+				     DICT_ATTR const *da, value_data_t const *data, size_t data_len, int8_t quote);
 size_t   	vp_prints_value(char *out, size_t outlen, VALUE_PAIR const *vp, int8_t quote);
 size_t    	vp_prints_value_json(char *out, size_t outlen, VALUE_PAIR const *vp);
 size_t		vp_prints(char *out, size_t outlen, VALUE_PAIR const *vp);
@@ -591,7 +593,6 @@ void		pairvalidate_debug(TALLOC_CTX *ctx, VALUE_PAIR const *failed[2]);
 bool		pairvalidate(VALUE_PAIR const *failed[2], VALUE_PAIR *filter, VALUE_PAIR *list);
 bool 		pairvalidate_relaxed(VALUE_PAIR const *failed[2], VALUE_PAIR *filter, VALUE_PAIR *list);
 VALUE_PAIR	*paircopyvp(TALLOC_CTX *ctx, VALUE_PAIR const *vp);
-VALUE_PAIR	*paircopyvpdata(TALLOC_CTX *ctx, DICT_ATTR const *da, VALUE_PAIR const *vp);
 VALUE_PAIR	*paircopy(TALLOC_CTX *ctx, VALUE_PAIR *from);
 VALUE_PAIR	*paircopy2(TALLOC_CTX *ctx, VALUE_PAIR *from, unsigned int attr, unsigned int vendor, int8_t tag);
 VALUE_PAIR	*pairsteal(TALLOC_CTX *ctx, VALUE_PAIR *from);
@@ -600,6 +601,7 @@ void		pairmemsteal(VALUE_PAIR *vp, uint8_t const *src);
 void		pairstrsteal(VALUE_PAIR *vp, char const *src);
 void		pairstrcpy(VALUE_PAIR *vp, char const * src);
 void		pairstrncpy(VALUE_PAIR *vp, char const * src, size_t len);
+int		pairdatacpy(VALUE_PAIR *vp, DICT_ATTR const *da, value_data_t const *data, size_t len);
 void		pairsprintf(VALUE_PAIR *vp, char const * fmt, ...) CC_HINT(format (printf, 2, 3));
 void		pairmove(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from);
 void		pairfilter(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from,
@@ -699,7 +701,7 @@ void		fr_talloc_verify_cb(const void *ptr, int depth,
 #ifdef WITH_ASCEND_BINARY
 /* filters.c */
 int		ascend_parse_filter(VALUE_PAIR *vp, char const *value, size_t len);
-void		print_abinary(char *out, size_t outlen, VALUE_PAIR const *vp,  int8_t quote);
+void		print_abinary(char *out, size_t outlen, uint8_t const *data, size_t len, int8_t quote);
 #endif /*WITH_ASCEND_BINARY*/
 
 /* random numbers in isaac.c */
