@@ -103,7 +103,7 @@ static size_t sql_escape_func(REQUEST *, char *out, size_t outlen, char const *i
  *			SQL xlat function
  *
  *  For selects the first value of the first column will be returned,
- *  for inserts, updates and deletes the number of rows afftected will be
+ *  for inserts, updates and deletes the number of rows affected will be
  *  returned instead.
  */
 static ssize_t sql_xlat(void *instance, REQUEST *request, char const *query, char *out, size_t freespace)
