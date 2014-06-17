@@ -42,7 +42,9 @@ FreeRADIUS 3.0.4 Mon 12 May 2014 15:30:00 EDT urgency=medium
 	  RADIUS/TLS.  Fixes #646
 	* Don't double-quote strings in debugging messages
 	* Fix foreach / break.  Fixes #639
-	* Chargeable-User-Identifier should be "octets"
+	* Chargeable-User-Identifier, ADSL-Agent-Circuit-Id and
+	  ADSL-Agent-Remote-Id should be "octets" types in the default
+	  dictionary.
 	* Fix typo in mainconfig.  Fixes #634
 	* More rlm_perl fixes.  Fixes #635
 	* Free OpenSSL memory on clean exit.
