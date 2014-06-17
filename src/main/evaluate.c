@@ -337,7 +337,7 @@ static int get_cast_vp(VALUE_PAIR **out, REQUEST *request, value_pair_tmpl_t con
 		return rcode;
 	}
 
-	if ((pairparsevalue(vp, str, 0) < 0)) {
+	if (pairparsevalue(vp, str, 0) < 0) {
 		talloc_free(str);
 		pairfree(&vp);
 		return -1;
