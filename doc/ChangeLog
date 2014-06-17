@@ -71,7 +71,7 @@ FreeRADIUS 3.0.4 Mon 12 May 2014 15:30:00 EDT urgency=medium
 	* Fix issue with rlm_pap password normalisation where
 	  'known good' password strings stored in octets type attributes,
 	  would be sometimes misnormalised as base64.
-	* Don't stop processing DHCP options if we fine a 0x00 padding
+	* Don't stop processing DHCP options if we find a 0x00 padding
 	  option.
 	* Fix issue where modifying the value of an attribute created
 	  from a template with a literal value, may have resulted in the
