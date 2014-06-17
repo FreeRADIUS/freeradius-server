@@ -413,19 +413,22 @@ static struct timeval *request_response_window(REQUEST *request)
 {
 	VERIFY_REQUEST(request);
 
-	/*
-	 *	The client hasn't set the response window.  Return
-	 *	either the home server one, if set, or the global one.
-	 */
-	if (!timerisset(&request->client->response_window)) {
-		return &request->home_server->response_window;
+	if (request->client) {
+		/*
+		 *	The client hasn't set the response window.  Return
+		 *	either the home server one, if set, or the global one.
+		 */
+		if (!timerisset(&request->client->response_window)) {
+			return &request->home_server->response_window;
+		}
+
+		if (timercmp(&request->client->response_window,
+			     &request->home_server->response_window, <)) {
+			return &request->client->response_window;
+		}
 	}
 
-	if (timercmp(&request->client->response_window,
-		     &request->home_server->response_window, <)) {
-		return &request->client->response_window;
-	}
-
+	rad_assert(request->home_server != NULL);
 	return &request->home_server->response_window;
 }
 
