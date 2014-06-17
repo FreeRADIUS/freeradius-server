@@ -811,22 +811,22 @@ inline void fr_verify_vp(char const *file, int line, VALUE_PAIR const *vp)
 		TALLOC_CTX *parent;
 
 		if (!talloc_get_type(vp->data.ptr, uint8_t)) {
-			fprintf(stderr, "CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR %s data buffer type should be "
+			fprintf(stderr, "CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR \"%s\" data buffer type should be "
 				"uint8_t but is %s\n", file, line, vp->da->name, talloc_get_name(vp->data.ptr));
 			(void) talloc_get_type_abort(vp->data.ptr, uint8_t);
 		}
 
 		len = talloc_array_length(vp->vp_octets);
 		if (vp->length > len) {
-			fprintf(stderr, "CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR length %zu is greater than "
-				"uint8_t data buffer length %zu\n", file, line, vp->length, len);
+			fprintf(stderr, "CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR \"%s\" length %zu is greater than "
+				"uint8_t data buffer length %zu\n", file, line, vp->da->name, vp->length, len);
 			fr_assert(0);
 			fr_exit_now(1);
 		}
 
 		parent = talloc_parent(vp->data.ptr);
 		if (parent != vp) {
-			fprintf(stderr, "CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR %s char data buffer is not "
+			fprintf(stderr, "CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR \"%s\" char buffer is not "
 				"parented by VALUE_PAIR %p, instead parented by %p (%s)\n",
 				file, line, vp->da->name,
 				vp, parent, parent ? talloc_get_name(parent) : "NULL");
@@ -842,21 +842,21 @@ inline void fr_verify_vp(char const *file, int line, VALUE_PAIR const *vp)
 		TALLOC_CTX *parent;
 
 		if (!talloc_get_type(vp->data.ptr, char)) {
-			fprintf(stderr, "CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR %s data buffer type should be "
+			fprintf(stderr, "CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR \"%s\" data buffer type should be "
 				"char but is %s\n", file, line, vp->da->name, talloc_get_name(vp->data.ptr));
 			(void) talloc_get_type_abort(vp->data.ptr, char);
 		}
 
 		len = (talloc_array_length(vp->vp_strvalue) - 1);
 		if (vp->length > len) {
-			fprintf(stderr, "CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR %s length %zu is greater than "
+			fprintf(stderr, "CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR \"%s\" length %zu is greater than "
 				"char buffer length %zu\n", file, line, vp->da->name, vp->length, len);
 			fr_assert(0);
 			fr_exit_now(1);
 		}
 
 		if (vp->vp_strvalue[vp->length] != '\0') {
-			fprintf(stderr, "CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR %s char data buffer not \\0 "
+			fprintf(stderr, "CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR \"%s\" char buffer not \\0 "
 				"terminated\n", file, line, vp->da->name);
 			fr_assert(0);
 			fr_exit_now(1);
@@ -864,7 +864,7 @@ inline void fr_verify_vp(char const *file, int line, VALUE_PAIR const *vp)
 
 		parent = talloc_parent(vp->data.ptr);
 		if (parent != vp) {
-			fprintf(stderr, "CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR %s uint8_t data buffer is not "
+			fprintf(stderr, "CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR \"%s\" uint8_t buffer is not "
 				"parented by VALUE_PAIR %p, instead parented by %p (%s)\n",
 				file, line, vp->da->name,
 				vp, parent, parent ? talloc_get_name(parent) : "NULL");
