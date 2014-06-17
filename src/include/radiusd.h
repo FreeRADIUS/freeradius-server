@@ -174,7 +174,7 @@ typedef		int (*RAD_REQUEST_FUNP)(REQUEST *);
 #define REQUEST_MAX_REGEX (8)
 
 #if defined(WITH_VERIFY_PTR)
-#  define VERIFY_REQUEST(_x) (void) talloc_get_type_abort(_x, REQUEST)
+#  define VERIFY_REQUEST(_x) verify_request(_x)
 #else
 /*
  *  Even if were building without WITH_VERIFY_PTR
