@@ -61,7 +61,7 @@ permit_only_eap {
 		#  PEAP and EAP-FAST require EAP inside of
 		#  the tunnel, so this check is OK.
 		#  If so, then there MUST be an outer EAP message.
-		if (outer.request && outer.request:EAP-Message) {
+		if (!outer.request || !outer.request:EAP-Message) {
 			reject
 		}
 	}
