@@ -810,13 +810,13 @@ inline void fr_verify_vp(VALUE_PAIR const *vp)
 		size_t len;
 
 		if (!talloc_get_type(vp->data.ptr, uint8_t)) {
-			fr_perror("Type check failed for attribute \"%s\"", vp->da->name);
+			fprintf(stderr, "Type check failed for attribute \"%s\"", vp->da->name);
 			(void) talloc_get_type_abort(vp->data.ptr, uint8_t);
 		}
 
 		len = talloc_array_length(vp->vp_octets);
 		if (vp->length > len) {
-			fr_perror("VALUE_PAIR length %zu does not equal uint8_t buffer length %zu", vp->length, len);
+			fprintf(stderr, "VALUE_PAIR length %zu does not equal uint8_t buffer length %zu", vp->length, len);
 			fr_assert(0);
 			fr_exit_now(1);
 		}
@@ -828,19 +828,19 @@ inline void fr_verify_vp(VALUE_PAIR const *vp)
 		size_t len;
 
 		if (!talloc_get_type(vp->data.ptr, char)) {
-			fr_perror("Type check failed for attribute \"%s\"", vp->da->name);
+			fprintf(stderr, "Type check failed for attribute \"%s\"", vp->da->name);
 			(void) talloc_get_type_abort(vp->data.ptr, char);
 		}
 
 		len = (talloc_array_length(vp->vp_strvalue) - 1);
 		if (vp->length > len) {
-			fr_perror("VALUE_PAIR %s length %zu is too small for char buffer length %zu",
+			fprintf(stderr, "VALUE_PAIR %s length %zu is too small for char buffer length %zu",
 				  vp->da->name, vp->length, len);
 			fr_assert(0);
 			fr_exit_now(1);
 		}
 		if (vp->vp_strvalue[vp->length] != '\0') {
-			fr_perror("VALUE_PAIR %s buffer not \\0 terminated", vp->da->name);
+			fprintf(stderr, "VALUE_PAIR %s buffer not \\0 terminated", vp->da->name);
 			fr_assert(0);
 			fr_exit_now(1);
 		}
@@ -868,11 +868,11 @@ void fr_verify_list(TALLOC_CTX *expected, VALUE_PAIR *vps)
 
 		parent = talloc_parent(vp);
 		if (expected && (parent != expected)) {
-			fr_perror("Expected VALUE_PAIR (%s) to be parented by %p (%s), "
-				  "but parented by %p (%s)",
-				  vp->da->name,
-				  expected, talloc_get_name(expected),
-				  parent, parent ? talloc_get_name(parent) : "NULL");
+			fprintf(stderr, "Expected VALUE_PAIR (%s) to be parented by %p (%s), "
+				"but parented by %p (%s)",
+				vp->da->name,
+				expected, talloc_get_name(expected),
+				parent, parent ? talloc_get_name(parent) : "NULL");
 
 			fr_log_talloc_report(expected);
 			if (parent) fr_log_talloc_report(parent);
