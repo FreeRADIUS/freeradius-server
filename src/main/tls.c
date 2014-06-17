@@ -2684,10 +2684,10 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 				    (vp->da->attr >= 1910) &&
 				    (vp->da->attr < 1929)) {
 					pairadd(&request->packet->vps,
-						paircopyvp(request->packet, vp));
+						paircopyvp(request->reply, vp));
 				} else {
 					pairadd(&request->reply->vps,
-						paircopyvp(request->packet, vp));
+						paircopyvp(request->reply, vp));
 				}
 			}
 
