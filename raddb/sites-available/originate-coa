@@ -80,13 +80,6 @@
 #  Disconnect packets), an IP address (or IPv6 address), a
 #  destination port, and a shared secret.
 #
-#  This information *cannot* go into a "client" section.  In the future,
-#  FreeRADIUS will be able to receive, and to proxy CoA packets.
-#  Having the CoA configuration as below means that we can later do
-#  load-balancing, fail-over, etc. of CoA servers.  If the CoA
-#  configuration went into a "client" section, it would be impossible
-#  to do proper proxying of CoA requests.
-#
 home_server localhost-coa {
 	type = coa
 
