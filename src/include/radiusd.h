@@ -189,7 +189,7 @@ typedef		int (*RAD_REQUEST_FUNP)(REQUEST *);
 #define REQUEST_MAX_REGEX (8)
 
 #if defined(WITH_VERIFY_PTR)
-#  define VERIFY_REQUEST(_x) verify_request(_x)
+#  define VERIFY_REQUEST(_x) verify_request(__FILE__, __LINE__, _x)
 #else
 /*
  *  Even if were building without WITH_VERIFY_PTR
@@ -554,7 +554,7 @@ int		rad_expand_xlat(REQUEST *request, char const *cmd,
 				size_t argv_buflen, char *argv_buf);
 void		rad_regcapture(REQUEST *request, int compare, char const *value,
 			       regmatch_t rxmatch[]);
-void		verify_request(REQUEST *request);			/* only for special debug builds */
+void		verify_request(char const *file, int line, REQUEST *request);	/* only for special debug builds */
 
 /* client.c */
 RADCLIENT_LIST	*clients_init(CONF_SECTION *cs);

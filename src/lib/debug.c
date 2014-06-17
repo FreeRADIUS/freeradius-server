@@ -799,7 +799,7 @@ void fr_fault_set_log_fd(int fd)
 /*
  *	Verify a VALUE_PAIR
  */
-inline void fr_verify_vp(VALUE_PAIR const *vp)
+inline void fr_verify_vp(char const *file, int line, VALUE_PAIR const *vp)
 {
 	(void) talloc_get_type_abort(vp, VALUE_PAIR);
 
@@ -810,13 +810,15 @@ inline void fr_verify_vp(VALUE_PAIR const *vp)
 		size_t len;
 
 		if (!talloc_get_type(vp->data.ptr, uint8_t)) {
-			fprintf(stderr, "Type check failed for attribute \"%s\"", vp->da->name);
+			fprintf(stderr, "CONSISTENCY CHECK FAILED %s[%u]: Attribute \"%s\" value buffer type should be "
+				"uint8_t but is %s", file, line, vp->da->name, talloc_get_name(vp->data.ptr));
 			(void) talloc_get_type_abort(vp->data.ptr, uint8_t);
 		}
 
 		len = talloc_array_length(vp->vp_octets);
 		if (vp->length > len) {
-			fprintf(stderr, "VALUE_PAIR length %zu does not equal uint8_t buffer length %zu", vp->length, len);
+			fprintf(stderr, "CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR length %zu does not equal uint8_t "
+				"value buffer length %zu", file, line, vp->length, len);
 			fr_assert(0);
 			fr_exit_now(1);
 		}
@@ -828,19 +830,21 @@ inline void fr_verify_vp(VALUE_PAIR const *vp)
 		size_t len;
 
 		if (!talloc_get_type(vp->data.ptr, char)) {
-			fprintf(stderr, "Type check failed for attribute \"%s\"", vp->da->name);
+			fprintf(stderr, "CONSISTENCY CHECK FAILED %s[%u]: Attribute \"%s\" value buffer type should be "
+				"char but is %s", file, line, vp->da->name, talloc_get_name(vp->data.ptr));
 			(void) talloc_get_type_abort(vp->data.ptr, char);
 		}
 
 		len = (talloc_array_length(vp->vp_strvalue) - 1);
 		if (vp->length > len) {
-			fprintf(stderr, "VALUE_PAIR %s length %zu is too small for char buffer length %zu",
-				  vp->da->name, vp->length, len);
+			fprintf(stderr, "CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR %s length %zu is too small for "
+				"char buffer length %zu", file, line, vp->da->name, vp->length, len);
 			fr_assert(0);
 			fr_exit_now(1);
 		}
 		if (vp->vp_strvalue[vp->length] != '\0') {
-			fprintf(stderr, "VALUE_PAIR %s buffer not \\0 terminated", vp->da->name);
+			fprintf(stderr, "CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR %s buffer not \\0 terminated",
+				file, line, vp->da->name);
 			fr_assert(0);
 			fr_exit_now(1);
 		}
@@ -855,7 +859,7 @@ inline void fr_verify_vp(VALUE_PAIR const *vp)
 /*
  *	Verify a pair list
  */
-void fr_verify_list(TALLOC_CTX *expected, VALUE_PAIR *vps)
+void fr_verify_list(char const *file, int line, TALLOC_CTX *expected, VALUE_PAIR *vps)
 {
 	vp_cursor_t cursor;
 	VALUE_PAIR *vp;
@@ -868,9 +872,9 @@ void fr_verify_list(TALLOC_CTX *expected, VALUE_PAIR *vps)
 
 		parent = talloc_parent(vp);
 		if (expected && (parent != expected)) {
-			fprintf(stderr, "Expected VALUE_PAIR (%s) to be parented by %p (%s), "
-				"but parented by %p (%s)",
-				vp->da->name,
+			fprintf(stderr, "CONSISTENCY CHECK FAILED %s[%u]: Expected VALUE_PAIR (%s) to be parented "
+				"by %p (%s), but parented by %p (%s)",
+				file, line, vp->da->name,
 				expected, talloc_get_name(expected),
 				parent, parent ? talloc_get_name(parent) : "NULL");
 
