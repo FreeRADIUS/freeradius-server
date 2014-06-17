@@ -1156,7 +1156,7 @@ char const *rad_radacct_dir(void)
 /*
  *	Verify a packet.
  */
-static void verify_packet(REQUEST *request, RADIUS_PACKET *packet)
+static void verify_packet(char const *file, int line, REQUEST *request, RADIUS_PACKET *packet)
 {
 	TALLOC_CTX *parent;
 
@@ -1164,9 +1164,8 @@ static void verify_packet(REQUEST *request, RADIUS_PACKET *packet)
 
 	parent = talloc_parent(packet);
 	if (parent != request) {
-		ERROR("Expected RADIUS_PACKET to be parented by %p (%s), "
-		      "but parented by %p (%s)",
-		      request, talloc_get_name(request),
+		ERROR("CONSISTENCY CHECK FAILED %s[%u]: Expected RADIUS_PACKET to be parented by %p (%s), "
+		      "but parented by %p (%s)", file, line, request, talloc_get_name(request),
 		      parent, parent ? talloc_get_name(parent) : "NULL");
 
 		fr_log_talloc_report(packet);
@@ -1180,27 +1179,27 @@ static void verify_packet(REQUEST *request, RADIUS_PACKET *packet)
 	if (!packet->vps) return;
 
 #ifdef WITH_VERIFY_PTR
-	fr_verify_list(packet, packet->vps);
+	fr_verify_list(file, line, packet, packet->vps);
 #endif
 }
 /*
  *	Catch horrible talloc errors.
  */
-void verify_request(REQUEST *request)
+void verify_request(char const *file, int line, REQUEST *request)
 {
 	if (!request) return;
 
 	(void) talloc_get_type_abort(request, REQUEST);
 
 #ifdef WITH_VERIFY_PTR
-	fr_verify_list(request, request->config_items);
+	fr_verify_list(file, line, request, request->config_items);
 #endif
 
-	if (request->packet) verify_packet(request, request->packet);
-	if (request->reply) verify_packet(request, request->reply);
+	if (request->packet) verify_packet(file, line, request, request->packet);
+	if (request->reply) verify_packet(file, line, request, request->reply);
 #ifdef WITH_PROXY
-	if (request->proxy) verify_packet(request, request->proxy);
-	if (request->proxy_reply) verify_packet(request, request->proxy_reply);
+	if (request->proxy) verify_packet(file, line, request, request->proxy);
+	if (request->proxy_reply) verify_packet(file, line, request, request->proxy_reply);
 #endif
 
 #ifdef WITH_COA
@@ -1212,7 +1211,7 @@ void verify_request(REQUEST *request)
 
 		rad_assert(parent == request);
 
-		verify_request(request->coa);
+		verify_request(file, line, request->coa);
 	}
 #endif
 }
