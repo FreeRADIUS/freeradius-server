@@ -15,8 +15,8 @@ BEGIN-VENDOR	ADSL-Forum
 #  The first two attributes are prefixed with "ADSL-" because of
 #  conflicting names in dictionary.redback.
 #
-ATTRIBUTE	ADSL-Agent-Circuit-Id			1	string
-ATTRIBUTE	ADSL-Agent-Remote-Id			2	string
+ATTRIBUTE	ADSL-Agent-Circuit-Id			1	octets
+ATTRIBUTE	ADSL-Agent-Remote-Id			2	octets
 ATTRIBUTE	Actual-Data-Rate-Upstream		129	integer
 ATTRIBUTE	Actual-Data-Rate-Downstream		130	integer
 ATTRIBUTE	Minimum-Data-Rate-Upstream		131	integer
