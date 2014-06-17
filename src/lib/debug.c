@@ -865,7 +865,7 @@ inline void fr_verify_vp(char const *file, int line, VALUE_PAIR const *vp)
 		parent = talloc_parent(vp->data.ptr);
 		if (parent != vp) {
 			fprintf(stderr, "CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR %s uint8_t data buffer is not "
-				"parented by VALUE_PAIR %p, intead parented by %p (%s)\n",
+				"parented by VALUE_PAIR %p, instead parented by %p (%s)\n",
 				file, line, vp->da->name,
 				vp, parent, parent ? talloc_get_name(parent) : "NULL");
 			fr_assert(0);
