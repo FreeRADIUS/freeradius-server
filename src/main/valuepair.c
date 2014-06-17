@@ -1433,6 +1433,7 @@ int radius_map2vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *ma
 	case VPT_TYPE_XLAT_STRUCT:
 	case VPT_TYPE_LITERAL:
 	case VPT_TYPE_DATA:
+	case VPT_TYPE_ATTR:
 		vp = pairalloc(request, da);
 		if (!vp) return -1;
 		vp->op = map->op;
@@ -1550,13 +1551,9 @@ int radius_map2vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *ma
 		}
 
 		/*
-		 *	Copy the data over verbatim, assuming it's
-		 *	actually data.
+		 *	Copy the data over verbatim
 		 */
-		vp = paircopyvpdata(request, da, found);
-		if (!vp) {
-			return -1;
-		}
+		if (pairdatacpy(vp, found->da, &found->data, found->length) < 0) return -1;
 		vp->op = map->op;
 
 		break;
@@ -1565,8 +1562,9 @@ int radius_map2vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *ma
 		rad_assert(map->src && map->src->vpt_da);
 		rad_assert(map->dst && map->dst->vpt_da);
 		rad_assert(map->src->vpt_da->type == map->dst->vpt_da->type);
-		memcpy(&vp->data, map->src->vpt_value, sizeof(vp->data));
-		vp->length = map->src->vpt_length;
+
+		if (pairdatacpy(vp, map->src->vpt_da, map->src->vpt_value, map->src->vpt_length) < 0) goto error;
+		vp->op = map->op;
 		break;
 
 	/*

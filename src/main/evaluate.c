@@ -327,8 +327,7 @@ static int get_cast_vp(VALUE_PAIR **out, REQUEST *request, value_pair_tmpl_t con
 
 	if (vpt->type == VPT_TYPE_DATA) {
 		rad_assert(vp->da->type == vpt->vpt_da->type);
-		memcpy(&vp->data, vpt->vpt_value, sizeof(vp->data));
-		vp->length = vpt->vpt_length;
+		pairdatacpy(vp, vpt->vpt_da, vpt->vpt_value, vpt->vpt_length);
 		goto finish;
 	}
 
@@ -344,7 +343,7 @@ static int get_cast_vp(VALUE_PAIR **out, REQUEST *request, value_pair_tmpl_t con
 		return -1;
 	}
 
-	finish:
+finish:
 	*out = vp;
 	return 0;
 }

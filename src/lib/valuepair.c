@@ -712,118 +712,6 @@ VALUE_PAIR *paircopyvp(TALLOC_CTX *ctx, VALUE_PAIR const *vp)
 	return n;
 }
 
-/** Copy data from one VP to another
- *
- * Allocate a new pair using da, and copy over the value from the specified
- * vp.
- *
- * @todo Should be able to do type conversions.
- *
- * @param[in] ctx for talloc
- * @param[in] da of new attribute to alloc.
- * @param[in] vp to copy data from.
- * @return the new valuepair.
- */
-VALUE_PAIR *paircopyvpdata(TALLOC_CTX *ctx, DICT_ATTR const *da, VALUE_PAIR const *vp)
-{
-	VALUE_PAIR *n;
-
-	if (!vp) return NULL;
-
-	VERIFY_VP(vp);
-
-	/*
-	 *	The types have to be identical, OR the "from" VP has
-	 *	to be octets.
-	 */
-	if (da->type != vp->da->type) {
-		int length;
-		uint8_t *p;
-		VALUE_PAIR const **pvp;
-
-		if (vp->da->type == PW_TYPE_OCTETS) {
-			/*
-			 *	Decode the octets buffer using the RADIUS decoder.
-			 */
-			if (data2vp(ctx, NULL, NULL, NULL, da, vp->vp_octets, vp->length, vp->length, &n) < 0) {
-				return NULL;
-			}
-
-			n->type = VT_DATA;
-			return n;
-		}
-
-		/*
-		 *	Else the destination type is octets
-		 */
-		switch (vp->da->type) {
-		default:
-			return NULL; /* can't do it */
-
-		case PW_TYPE_INTEGER:
-		case PW_TYPE_IPV4_ADDR:
-		case PW_TYPE_DATE:
-		case PW_TYPE_IFID:
-		case PW_TYPE_IPV6_ADDR:
-		case PW_TYPE_IPV6_PREFIX:
-		case PW_TYPE_BYTE:
-		case PW_TYPE_SHORT:
-		case PW_TYPE_ETHERNET:
-		case PW_TYPE_SIGNED:
-		case PW_TYPE_INTEGER64:
-		case PW_TYPE_IPV4_PREFIX:
-			break;
-		}
-
-		n = pairalloc(ctx, da);
-		if (!n) return NULL;
-
-		p = talloc_array(n, uint8_t, dict_attr_sizes[vp->da->type][1] + 2);
-
-		pvp = &vp;
-		length = rad_vp2attr(NULL, NULL, NULL, pvp, p, dict_attr_sizes[vp->da->type][1]);
-		if (length < 0) {
-			pairfree(&n);
-			return NULL;
-		}
-
-		pairmemcpy(n, p + 2, length - 2);
-		talloc_free(p);
-		return n;
-	}
-
-	n = pairalloc(ctx, da);
-	if (!n) return NULL;
-
-	memcpy(n, vp, sizeof(*n));
-	n->da = da;
-
-	if (n->type == VT_XLAT) {
-		n->value.xlat = talloc_typed_strdup(n, n->value.xlat);
-	}
-
-	if (n->data.ptr) switch (n->da->type) {
-	case PW_TYPE_TLV:
-	case PW_TYPE_OCTETS:
-		n->vp_octets = talloc_memdup(n, vp->vp_octets, n->length);
-		talloc_set_type(n->vp_octets, uint8_t);
-		break;
-
-	case PW_TYPE_STRING:
-		n->vp_strvalue = talloc_memdup(n, vp->vp_strvalue, n->length + 1);	/* NULL byte */
-		talloc_set_type(n->vp_strvalue, char);
-		break;
-
-	default:
-		break;
-	}
-
-	n->next = NULL;
-
-	return n;
-}
-
-
 /** Copy a pairlist.
  *
  * Copy all pairs from 'from' regardless of tag, attribute or vendor.
@@ -2968,6 +2856,87 @@ void pairstrncpy(VALUE_PAIR *vp, char const *src, size_t len)
 	vp->type = VT_DATA;
 	vp->length = len;
 	pairtypeset(vp);
+}
+
+/** Copy data from one VP to another
+ *
+ * Allocate a new pair using da, and copy over the value from the specified vp.
+ *
+ * @todo Should be able to do type conversions.
+ *
+ * @param[in,out] vp to update.
+ * @param[in] da Type of data represented by data.
+ * @param[in] data to copy.
+ * @param[in] len of data to copy.
+ */
+int pairdatacpy(VALUE_PAIR *vp, DICT_ATTR const *da, value_data_t const *data, size_t len)
+{
+	void *old;
+	VERIFY_VP(vp);
+
+	/*
+	 *	The da->types have to be identical, OR the "from" da->type has
+	 *	to be octets.
+	 */
+	if (vp->da->type != da->type) {
+		/*
+		 *	Decode the octets buffer using the RADIUS decoder.
+		 */
+		if (da->type == PW_TYPE_OCTETS) {
+			if (data2vp(vp, NULL, NULL, NULL, vp->da, data->octets, len, len, &vp) < 0) return -1;
+			vp->type = VT_DATA;
+			return 0;
+		}
+
+		/*
+		 *	Else if the destination da->type is octets
+		 */
+		if (vp->da->type == PW_TYPE_OCTETS) {
+			int ret;
+			uint8_t *buff;
+			VALUE_PAIR const *pvp = vp;
+
+			buff = talloc_array(vp, uint8_t, dict_attr_sizes[da->type][1] + 2);
+
+			ret = rad_vp2rfc(NULL, NULL, NULL, &pvp, buff, dict_attr_sizes[da->type][1]);
+			if (ret < 0) return -1;
+
+			pairmemcpy(vp, buff + 2, ret - 2);
+			talloc_free(buff);
+
+			return 0;
+		}
+
+		/*
+		 *	Fixme...
+		 */
+		fr_strerror_printf("Data conversion not supported");
+		return -1;
+	}
+
+	/*
+	 *	Clear existing value if there is one
+	 */
+	memcpy(&old, &vp->data.ptr, sizeof(old));
+	talloc_free(old);
+
+	switch (vp->da->type) {
+	case PW_TYPE_TLV:
+	case PW_TYPE_OCTETS:
+		pairmemcpy(vp, data->octets, len);
+		break;
+
+	case PW_TYPE_STRING:
+		pairstrncpy(vp, data->strvalue, len);
+		break;
+
+	default:
+		memcpy(&vp->data, data, sizeof(vp->data));
+		break;
+	}
+	vp->length = len;
+
+	return 0;
 }
 
 /** Print data into an "string" data type.

@@ -1115,11 +1115,11 @@ int ascend_parse_filter(VALUE_PAIR *vp, char const *value, size_t len)
  *	Note we don't bother checking 'len' after the snprintf's.
  *	This function should ONLY be called with a large (~1k) buffer.
  */
-void print_abinary(char *out, size_t outlen, VALUE_PAIR const *vp, int8_t quote)
+void print_abinary(char *out, size_t outlen, uint8_t const *data, size_t len, int8_t quote)
 {
 	size_t 	i;
 	char	*p;
-	ascend_filter_t	*filter;
+	ascend_filter_t	const *filter;
 
 	static char const *action[] = {"drop", "forward"};
 	static char const *direction[] = {"out", "in"};
@@ -1129,14 +1129,12 @@ void print_abinary(char *out, size_t outlen, VALUE_PAIR const *vp, int8_t quote)
 	/*
 	 *  Just for paranoia: wrong size filters get printed as octets
 	 */
-	if (vp->length != sizeof(*filter)) {
-		uint8_t *f = (uint8_t *) &vp->vp_filter;
-
+	if (len != sizeof(*filter)) {
 		strcpy(p, "0x");
 		p += 2;
 		outlen -= 2;
-		for (i = 0; i < vp->length; i++) {
-			snprintf(p, outlen, "%02x", f[i]);
+		for (i = 0; i < len; i++) {
+			snprintf(p, outlen, "%02x", data[i]);
 			p += 2;
 			outlen -= 2;
 		}
@@ -1148,7 +1146,7 @@ void print_abinary(char *out, size_t outlen, VALUE_PAIR const *vp, int8_t quote)
 		outlen -= 3;			/* account for leading & trailing quotes */
 	}
 
-	filter = (ascend_filter_t *) &(vp->vp_filter);
+	filter = (ascend_filter_t const *) data;
 	i = snprintf(p, outlen, "%s %s %s", fr_int2str(filterType, filter->type, "??"),
 		     direction[filter->direction & 0x01], action[filter->forward & 0x01]);
 
@@ -1162,10 +1160,10 @@ void print_abinary(char *out, size_t outlen, VALUE_PAIR const *vp, int8_t quote)
 
 		if (filter->u.ip.srcip) {
 			i = snprintf(p, outlen, " srcip %d.%d.%d.%d/%d",
-				     ((uint8_t *) &filter->u.ip.srcip)[0],
-				     ((uint8_t *) &filter->u.ip.srcip)[1],
-				     ((uint8_t *) &filter->u.ip.srcip)[2],
-				     ((uint8_t *) &filter->u.ip.srcip)[3],
+				     ((uint8_t const *) &filter->u.ip.srcip)[0],
+				     ((uint8_t const *) &filter->u.ip.srcip)[1],
+				     ((uint8_t const *) &filter->u.ip.srcip)[2],
+				     ((uint8_t const *) &filter->u.ip.srcip)[3],
 				     filter->u.ip.srcmask);
 			p += i;
 			outlen -= i;
@@ -1173,10 +1171,10 @@ void print_abinary(char *out, size_t outlen, VALUE_PAIR const *vp, int8_t quote)
 
 		if (filter->u.ip.dstip) {
 			i = snprintf(p, outlen, " dstip %d.%d.%d.%d/%d",
-				     ((uint8_t *) &filter->u.ip.dstip)[0],
-				     ((uint8_t *) &filter->u.ip.dstip)[1],
-				     ((uint8_t *) &filter->u.ip.dstip)[2],
-				     ((uint8_t *) &filter->u.ip.dstip)[3],
+				     ((uint8_t const *) &filter->u.ip.dstip)[0],
+				     ((uint8_t const *) &filter->u.ip.dstip)[1],
+				     ((uint8_t const *) &filter->u.ip.dstip)[2],
+				     ((uint8_t const *) &filter->u.ip.dstip)[3],
 				     filter->u.ip.dstmask);
 			p += i;
 			outlen -= i;
