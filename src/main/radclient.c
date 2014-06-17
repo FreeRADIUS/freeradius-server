@@ -47,7 +47,7 @@ static bool do_output = true;
 static rc_stats_t stats;
 
 static uint16_t server_port = 0;
-static int packet_code = 0;
+static int packet_code = PW_CODE_UNDEFINED;
 static fr_ipaddr_t server_ipaddr;
 static int resend_count = 1;
 static bool done = true;
@@ -84,7 +84,7 @@ static void NEVER_RETURNS usage(void)
 {
 	fprintf(stderr, "Usage: radclient [options] server[:port] <command> [<secret>]\n");
 
-	fprintf(stderr, "  <command>              One of auth, acct, status, coa, or disconnect.\n");
+	fprintf(stderr, "  <command>              One of auth, acct, status, coa, disconnect or auto.\n");
 	fprintf(stderr, "  -4                     Use IPv4 address of server\n");
 	fprintf(stderr, "  -6                     Use IPv6 address of server.\n");
 	fprintf(stderr, "  -c <count>             Send each packet 'count' times.\n");
@@ -228,6 +228,7 @@ static void radclient_get_port(PW_CODE type, uint16_t *port)
 
 	case PW_CODE_DISCONNECT_REQUEST:
 		if (*port == 0) *port = PW_POD_UDP_PORT;
+		return;
 
 	case PW_CODE_COA_REQUEST:
 		if (*port == 0) *port = PW_COA_UDP_PORT;
@@ -235,6 +236,7 @@ static void radclient_get_port(PW_CODE type, uint16_t *port)
 
 	case PW_CODE_UNDEFINED:
 		if (*port == 0) *port = 0;
+		return;
 	}
 }
 
@@ -520,16 +522,12 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 		/*
 		 *	Use the default set on the command line
 		 */
-		if (request->packet->code == PW_CODE_UNDEFINED) {
-			request->packet->code = packet_code;
-		}
+		if (request->packet->code == PW_CODE_UNDEFINED) request->packet->code = packet_code;
 
 		/*
 		 *	Default to the filename
 		 */
-		if (!request->name) {
-			request->name = request->files->packets;
-		}
+		if (!request->name) request->name = request->files->packets;
 
 		/*
 		 *	Automatically set the response code from the request code
@@ -719,9 +717,7 @@ static int filename_walk(UNUSED void *context, void *data)
 	/*
 	 *	Read request(s) from the file.
 	 */
-	if (!radclient_init(files, files)) {
-		return -1;	/* stop walking */
-	}
+	if (!radclient_init(files, files)) return -1;	/* stop walking */
 
 	return 0;
 }
@@ -747,10 +743,7 @@ static void deallocate_id(rc_request_t *request)
 	 *	and ensure that the next packet has a unique
 	 *	authentication vector.
 	 */
-	if (request->packet->data) {
-		TALLOC_FREE(request->packet->data);
-	}
-
+	if (request->packet->data) TALLOC_FREE(request->packet->data);
 	if (request->reply) rad_free(&request->reply);
 }
 
@@ -765,9 +758,7 @@ static int send_one_packet(rc_request_t *request)
 	 *	Remember when we have to wake up, to re-send the
 	 *	request, of we didn't receive a reply.
 	 */
-	if ((sleep_time == -1) || (sleep_time > (int) timeout)) {
-		sleep_time = (int) timeout;
-	}
+	if ((sleep_time == -1) || (sleep_time > (int) timeout)) sleep_time = (int) timeout;
 
 	/*
 	 *	Haven't sent the packet yet.  Initialize it.
@@ -785,8 +776,7 @@ static int send_one_packet(rc_request_t *request)
 		 */
 	retry:
 		request->packet->src_ipaddr.af = server_ipaddr.af;
-		rcode = fr_packet_list_id_alloc(pl, ipproto,
-						&request->packet, NULL);
+		rcode = fr_packet_list_id_alloc(pl, ipproto, &request->packet, NULL);
 		if (!rcode) {
 			int mysockfd;
 
@@ -827,7 +817,6 @@ static int send_one_packet(rc_request_t *request)
 
 			if ((vp = pairfind(request->packet->vps, PW_USER_PASSWORD, 0, TAG_ANY)) != NULL) {
 				pairstrcpy(vp, request->password);
-
 			} else if ((vp = pairfind(request->packet->vps, PW_CHAP_PASSWORD, 0, TAG_ANY)) != NULL) {
 				bool already_hex = false;
 
@@ -868,9 +857,7 @@ static int send_one_packet(rc_request_t *request)
 					vp->length = 17;
 				}
 			} else if (pairfind(request->packet->vps, PW_MS_CHAP_PASSWORD, 0, TAG_ANY) != NULL) {
-				mschapv1_encode(request->packet,
-						&request->packet->vps,
-						request->password);
+				mschapv1_encode(request->packet, &request->packet->vps, request->password);
 			} else {
 				DEBUG("WARNING: No password in the request");
 			}
@@ -977,19 +964,13 @@ static int recv_one_packet(int wait_time)
 	max_fd = fr_packet_list_fd_set(pl, &set);
 	if (max_fd < 0) exit(1); /* no sockets to listen on! */
 
-	if (wait_time <= 0) {
-		tv.tv_sec = 0;
-	} else {
-		tv.tv_sec = wait_time;
-	}
+	tv.tv_sec = (wait_time <= 0) ? 0 : wait_time;
 	tv.tv_usec = 0;
 
 	/*
 	 *	No packet was received.
 	 */
-	if (select(max_fd, &set, NULL, NULL, &tv) <= 0) {
-		return 0;
-	}
+	if (select(max_fd, &set, NULL, NULL, &tv) <= 0) return 0;
 
 	/*
 	 *	Look for the packet.
@@ -1168,20 +1149,25 @@ int main(int argc, char **argv)
 		case '4':
 			force_af = AF_INET;
 			break;
+
 		case '6':
 			force_af = AF_INET6;
 			break;
+
 		case 'c':
 			if (!isdigit((int) *optarg))
 				usage();
 			resend_count = atoi(optarg);
 			break;
+
 		case 'D':
 			dict_dir = optarg;
 			break;
+
 		case 'd':
 			radius_dir = optarg;
 			break;
+
 		case 'f':
 		{
 			char const *p;
@@ -1202,9 +1188,11 @@ int main(int argc, char **argv)
 			rbtree_insert(filename_tree, (void *) files);
 		}
 			break;
+
 		case 'F':
 			print_filename = true;
 			break;
+
 		case 'i':	/* currently broken */
 			if (!isdigit((int) *optarg))
 				usage();
@@ -1253,14 +1241,15 @@ int main(int argc, char **argv)
 			break;
 
 		case 'r':
-			if (!isdigit((int) *optarg))
-				usage();
+			if (!isdigit((int) *optarg)) usage();
 			retries = atoi(optarg);
 			if ((retries == 0) || (retries > 1000)) usage();
 			break;
+
 		case 's':
 			do_summary = true;
 			break;
+
 		case 'S':
 		{
 			char *p;
@@ -1290,19 +1279,23 @@ int main(int argc, char **argv)
 			secret = filesecret;
 		}
 		       break;
+
 		case 't':
 			if (!isdigit((int) *optarg))
 				usage();
 			timeout = atof(optarg);
 			break;
+
 		case 'v':
 			DEBUG("%s", radclient_version);
 			exit(0);
 			break;
+
 		case 'x':
 			fr_debug_flag++;
 			rc_debug_flag++;
 			break;
+
 		case 'h':
 		default:
 			usage();
@@ -1333,7 +1326,6 @@ int main(int argc, char **argv)
 		return 1;
 	}
 	fr_strerror();	/* Clear the error buffer */
-
 
 	/*
 	 *	Get the request type
