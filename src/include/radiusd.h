@@ -189,9 +189,14 @@ typedef		int (*RAD_REQUEST_FUNP)(REQUEST *);
 #define REQUEST_MAX_REGEX (8)
 
 #if defined(WITH_VERIFY_PTR)
-#define VERIFY_REQUEST(_x) (void) talloc_get_type_abort(_x, REQUEST)
+#  define VERIFY_REQUEST(_x) (void) talloc_get_type_abort(_x, REQUEST)
 #else
-#define VERIFY_REQUEST(_x)
+/*
+ *  Even if were building without WITH_VERIFY_PTR
+ *  the pointer must not be NULL when these various macros are used
+ *  so we can add some sneaky asserts.
+ */
+#  define VERIFY_REQUEST(_x) rad_assert(_x)
 #endif
 
 typedef enum {
