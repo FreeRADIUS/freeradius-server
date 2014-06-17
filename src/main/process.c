@@ -408,6 +408,8 @@ static void debug_packet(REQUEST *request, RADIUS_PACKET *packet, int direction)
 
 static struct timeval *request_response_window(REQUEST *request)
 {
+	VERIFY_REQUEST(request);
+
 	/*
 	 *	The client hasn't set the response window.  Return
 	 *	either the home server one, if set, or the global one.
@@ -431,6 +433,8 @@ static int request_init_delay(REQUEST *request)
 {
 	struct timeval half_response_window;
 
+	VERIFY_REQUEST(request);
+
 	/* Allow client response window to lower initial delay */
 	if (timerisset(&request->client->response_window)) {
 		half_response_window.tv_sec = request->client->response_window.tv_sec >> 1;
@@ -451,8 +455,10 @@ static int request_init_delay(REQUEST *request)
  */
 static void request_timer(void *ctx)
 {
-	REQUEST *request = ctx;
-	int action = request->timer_action;
+	REQUEST *request = talloc_get_type_abort(ctx, REQUEST);
+	int action;
+
+	action = request->timer_action;
 
 	TRACE_STATE_MACHINE;
 
@@ -468,6 +474,8 @@ STATE_MACHINE_DECL(request_done)
 #ifdef WITH_PROXY
 	char buffer[128];
 #endif
+
+	VERIFY_REQUEST(request);
 
 	TRACE_STATE_MACHINE;
 
@@ -721,6 +729,8 @@ static void request_cleanup_delay_init(REQUEST *request, struct timeval const *p
 {
 	struct timeval now, when;
 
+	VERIFY_REQUEST(request);
+
 	if (request->packet->code == PW_CODE_ACCOUNTING_REQUEST) goto done;
 
 	if (!request->root->cleanup_delay) goto done;
@@ -768,6 +778,8 @@ static void request_process_timer(REQUEST *request)
 #ifdef DEBUG_STATE_MACHINE
 	int action = FR_ACTION_TIMER;
 #endif
+
+	VERIFY_REQUEST(request);
 
 	TRACE_STATE_MACHINE;
 	ASSERT_MASTER;
@@ -982,6 +994,8 @@ static void request_queue_or_run(UNUSED REQUEST *request,
 	int action = FR_ACTION_TIMER;
 #endif
 
+	VERIFY_REQUEST(request);
+
 	TRACE_STATE_MACHINE;
 
 	/*
@@ -1052,6 +1066,8 @@ STATE_MACHINE_DECL(request_common)
 	char buffer[128];
 #endif
 
+	VERIFY_REQUEST(request);
+
 	TRACE_STATE_MACHINE;
 	ASSERT_MASTER;
 
@@ -1116,6 +1132,8 @@ STATE_MACHINE_DECL(request_cleanup_delay)
 {
 	struct timeval when;
 
+	VERIFY_REQUEST(request);
+
 	TRACE_STATE_MACHINE;
 	ASSERT_MASTER;
 
@@ -1156,6 +1174,8 @@ STATE_MACHINE_DECL(request_cleanup_delay)
 
 STATE_MACHINE_DECL(request_response_delay)
 {
+	VERIFY_REQUEST(request);
+
 	TRACE_STATE_MACHINE;
 	ASSERT_MASTER;
 
@@ -1184,9 +1204,11 @@ STATE_MACHINE_DECL(request_response_delay)
 
 static int CC_HINT(nonnull) request_pre_handler(REQUEST *request, UNUSED int action)
 {
-	TRACE_STATE_MACHINE;
-
 	int rcode;
+
+	VERIFY_REQUEST(request);
+
+	TRACE_STATE_MACHINE;
 
 	if (request->master_state == REQUEST_STOP_PROCESSING) return 0;
 
@@ -1237,6 +1259,8 @@ static int CC_HINT(nonnull) request_pre_handler(REQUEST *request, UNUSED int act
 STATE_MACHINE_DECL(request_finish)
 {
 	VALUE_PAIR *vp;
+
+	VERIFY_REQUEST(request);
 
 	TRACE_STATE_MACHINE;
 
@@ -1418,6 +1442,8 @@ STATE_MACHINE_DECL(request_finish)
 
 STATE_MACHINE_DECL(request_running)
 {
+	VERIFY_REQUEST(request);
+
 	TRACE_STATE_MACHINE;
 
 	switch (action) {
@@ -1514,6 +1540,8 @@ int request_receive(rad_listen_t *listener, RADIUS_PACKET *packet,
 	REQUEST *request = NULL;
 	struct timeval now;
 	listen_socket_t *sock = NULL;
+
+	VERIFY_PACKET(packet);
 
 	/*
 	 *	Set the last packet received.
@@ -1789,7 +1817,7 @@ static REQUEST *request_setup(rad_listen_t *listener, RADIUS_PACKET *packet,
  */
 static void tcp_socket_timer(void *ctx)
 {
-	rad_listen_t *listener = ctx;
+	rad_listen_t *listener = talloc_get_type_abort(ctx, rad_listen_t);
 	listen_socket_t *sock = listener->data;
 	struct timeval end, now;
 	char buffer[256];
@@ -1903,7 +1931,7 @@ static void add_jitter(struct timeval *when)
  */
 static int eol_proxy_listener(void *ctx, void *data)
 {
-	rad_listen_t *this = ctx;
+	rad_listen_t *this = talloc_get_type_abort(ctx, rad_listen_t);
 	RADIUS_PACKET **proxy_p = data;
 	REQUEST *request;
 
@@ -1932,7 +1960,7 @@ static int eol_proxy_listener(void *ctx, void *data)
 
 static int eol_listener(void *ctx, void *data)
 {
-	rad_listen_t *this = ctx;
+	rad_listen_t *this = talloc_get_type_abort(ctx, rad_listen_t);
 	RADIUS_PACKET **packet_p = data;
 	REQUEST *request;
 
@@ -1957,6 +1985,8 @@ static int eol_listener(void *ctx, void *data)
  */
 static void remove_from_proxy_hash_nl(REQUEST *request, bool yank)
 {
+	VERIFY_REQUEST(request);
+
 	if (!request->in_proxy_hash) return;
 
 	fr_packet_list_id_free(proxy_list, request->proxy, yank);
@@ -2000,6 +2030,8 @@ static void remove_from_proxy_hash_nl(REQUEST *request, bool yank)
 
 static void remove_from_proxy_hash(REQUEST *request)
 {
+	VERIFY_REQUEST(request);
+
 	/*
 	 *	Check this without grabbing the mutex because it's a
 	 *	lot faster that way.
@@ -2028,6 +2060,8 @@ static int insert_into_proxy_hash(REQUEST *request)
 	char buf[128];
 	int rcode, tries;
 	void *proxy_listener;
+
+	VERIFY_REQUEST(request);
 
 	rad_assert(request->proxy != NULL);
 	rad_assert(request->home_server != NULL);
@@ -2141,6 +2175,8 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply)
 	int post_proxy_type = 0;
 	VALUE_PAIR *vp;
 
+	VERIFY_REQUEST(request);
+
 	/*
 	 *	There may be a proxy reply, but it may be too late.
 	 */
@@ -2181,6 +2217,7 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply)
 	}
 
 	if (reply) {
+		VERIFY_PACKET(reply);
 		/*
 		 *	Decode the packet.
 		 */
@@ -2258,6 +2295,8 @@ int request_proxy_reply(RADIUS_PACKET *packet)
 	REQUEST *request;
 	struct timeval now;
 	char buffer[128];
+
+	VERIFY_PACKET(packet);
 
 	PTHREAD_MUTEX_LOCK(&proxy_mutex);
 	proxy_p = fr_packet_list_find_byreply(proxy_list, packet);
@@ -2383,6 +2422,8 @@ static int setup_post_proxy_fail(REQUEST *request)
 	DICT_VALUE const *dval = NULL;
 	VALUE_PAIR *vp;
 
+	VERIFY_REQUEST(request);
+
 	if (request->proxy->code == PW_CODE_ACCESS_REQUEST) {
 		dval = dict_valbyname(PW_POST_PROXY_TYPE, 0,
 				      "Fail-Authentication");
@@ -2419,6 +2460,8 @@ static int setup_post_proxy_fail(REQUEST *request)
 
 STATE_MACHINE_DECL(proxy_no_reply)
 {
+	VERIFY_REQUEST(request);
+
 	TRACE_STATE_MACHINE;
 
 	switch (action) {
@@ -2444,6 +2487,8 @@ STATE_MACHINE_DECL(proxy_no_reply)
 
 STATE_MACHINE_DECL(proxy_running)
 {
+	VERIFY_REQUEST(request);
+
 	TRACE_STATE_MACHINE;
 
 	switch (action) {
@@ -2477,6 +2522,8 @@ static int request_will_proxy(REQUEST *request)
 	home_server_t *home;
 	REALM *realm = NULL;
 	home_pool_t *pool = NULL;
+
+	VERIFY_REQUEST(request);
 
 	if (!request->root->proxy_requests) return 0;
 	if (request->packet->dst_port == 0) return 0;
@@ -2707,6 +2754,8 @@ static int request_proxy(REQUEST *request, int retransmit)
 {
 	char buffer[128];
 
+	VERIFY_REQUEST(request);
+
 	rad_assert(request->parent == NULL);
 	rad_assert(request->home_server != NULL);
 
@@ -2838,6 +2887,8 @@ static int request_proxy_anew(REQUEST *request)
 {
 	home_server_t *home;
 
+	VERIFY_REQUEST(request);
+
 	/*
 	 *	Delete the request from the proxy list.
 	 *
@@ -2907,6 +2958,8 @@ STATE_MACHINE_DECL(request_ping)
 {
 	home_server_t *home = request->home_server;
 	char buffer[128];
+
+	VERIFY_REQUEST(request);
 
 	TRACE_STATE_MACHINE;
 	ASSERT_MASTER;
@@ -2990,7 +3043,7 @@ STATE_MACHINE_DECL(request_ping)
  */
 static void ping_home_server(void *ctx)
 {
-	home_server_t *home = ctx;
+	home_server_t *home = talloc_get_type_abort(ctx, home_server_t);
 	REQUEST *request;
 	VALUE_PAIR *vp;
 	struct timeval when, now;
@@ -3196,7 +3249,7 @@ static void mark_home_server_zombie(home_server_t *home, struct timeval *now, st
 
 void revive_home_server(void *ctx)
 {
-	home_server_t *home = ctx;
+	home_server_t *home = talloc_get_type_abort(ctx, home_server_t);
 	char buffer[128];
 
 #ifdef WITH_TCP
@@ -3273,6 +3326,8 @@ STATE_MACHINE_DECL(proxy_wait_for_reply)
 	struct timeval *response_window = NULL;
 	home_server_t *home = request->home_server;
 	char buffer[128];
+
+	VERIFY_REQUEST(request);
 
 	TRACE_STATE_MACHINE;
 
@@ -3512,7 +3567,8 @@ static void request_coa_originate(REQUEST *request)
 	fr_ipaddr_t ipaddr;
 	char buffer[256];
 
-	rad_assert(request != NULL);
+	VERIFY_REQUEST(request);
+
 	rad_assert(request->coa != NULL);
 	rad_assert(request->proxy == NULL);
 	rad_assert(!request->in_proxy_hash);
@@ -3721,6 +3777,8 @@ static void coa_timer(REQUEST *request)
 	uint32_t delay, frac;
 	struct timeval now, when, mrd;
 
+	VERIFY_REQUEST(request);
+
 	rad_assert(request->parent == NULL);
 
 	if (request->proxy_reply) return request_process_timer(request);
@@ -3842,6 +3900,8 @@ STATE_MACHINE_DECL(coa_wait_for_reply)
 {
 	rad_assert(request->parent == NULL);
 
+	VERIFY_REQUEST(request);
+
 	TRACE_STATE_MACHINE;
 
 	switch (action) {
@@ -3868,6 +3928,9 @@ static void request_coa_separate(REQUEST *request)
 #ifdef DEBUG_STATE_MACHINE
 	int action = FR_ACTION_TIMER;
 #endif
+
+	VERIFY_REQUEST(request);
+
 	TRACE_STATE_MACHINE;
 
 	rad_assert(request->parent != NULL);
@@ -3891,6 +3954,8 @@ static void request_coa_separate(REQUEST *request)
 STATE_MACHINE_DECL(coa_no_reply)
 {
 	char buffer[128];
+
+	VERIFY_REQUEST(request);
 
 	TRACE_STATE_MACHINE;
 
@@ -3923,6 +3988,8 @@ STATE_MACHINE_DECL(coa_no_reply)
 
 STATE_MACHINE_DECL(coa_running)
 {
+	VERIFY_REQUEST(request);
+
 	TRACE_STATE_MACHINE;
 
 	switch (action) {
@@ -3963,7 +4030,7 @@ STATE_MACHINE_DECL(coa_running)
  ***********************************************************************/
 static void event_socket_handler(UNUSED fr_event_list_t *xel, UNUSED int fd, void *ctx)
 {
-	rad_listen_t *listener = ctx;
+	rad_listen_t *listener = talloc_get_type_abort(ctx, rad_listen_t);
 
 	rad_assert(xel == el);
 
@@ -3995,7 +4062,7 @@ static void event_socket_handler(UNUSED fr_event_list_t *xel, UNUSED int fd, voi
 static void event_poll_detail(void *ctx)
 {
 	int delay;
-	rad_listen_t *this = ctx;
+	rad_listen_t *this = talloc_get_type_abort(ctx, rad_listen_t);
 	struct timeval when, now;
 	listen_detail_t *detail = this->data;
 
@@ -4071,7 +4138,7 @@ static void event_status(struct timeval *wake)
 #ifdef WITH_TCP
 static void listener_free_cb(void *ctx)
 {
-	rad_listen_t *this = ctx;
+	rad_listen_t *this = talloc_get_type_abort(ctx, rad_listen_t);
 	char buffer[1024];
 
 	if (this->count > 0) {
@@ -4717,6 +4784,8 @@ static int proxy_delete_cb(UNUSED void *ctx, void *data)
 {
 	REQUEST *request = fr_packet2myptr(REQUEST, proxy, data);
 
+	VERIFY_REQUEST(request);
+
 	request->master_state = REQUEST_STOP_PROCESSING;
 
 #ifdef HAVE_PTHREAD_H
@@ -4748,6 +4817,8 @@ static int proxy_delete_cb(UNUSED void *ctx, void *data)
 static int request_delete_cb(UNUSED void *ctx, void *data)
 {
 	REQUEST *request = fr_packet2myptr(REQUEST, packet, data);
+
+	VERIFY_REQUEST(request);
 
 	request->master_state = REQUEST_STOP_PROCESSING;
 
