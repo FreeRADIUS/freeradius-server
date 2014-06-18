@@ -274,7 +274,7 @@ static virtual_server_t *virtual_server_find(char const *name)
 	return server;
 }
 
-static int virtual_server_free(virtual_server_t *server)
+static int _virtual_server_free(virtual_server_t *server)
 {
 	if (server->components) rbtree_free(server->components);
 	return 0;
@@ -1090,7 +1090,7 @@ static int load_byserver(CONF_SECTION *cs)
 		ERROR("Failed to initialize components");
 		goto error;
 	}
-	talloc_set_destructor(server, virtual_server_free);
+	talloc_set_destructor(server, _virtual_server_free);
 
 	/*
 	 *	Define types first.
