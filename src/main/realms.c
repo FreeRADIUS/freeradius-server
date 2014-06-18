@@ -1765,34 +1765,34 @@ int realms_init(CONF_SECTION *config)
 
 	if (realms_byname) return 1;
 
-	realms_byname = rbtree_create(realm_name_cmp, free, 0);
+	realms_byname = rbtree_create(NULL, realm_name_cmp, free, 0);
 	if (!realms_byname) {
 		realms_free();
 		return 0;
 	}
 
 #ifdef WITH_PROXY
-	home_servers_byaddr = rbtree_create(home_server_addr_cmp, home_server_free, 0);
+	home_servers_byaddr = rbtree_create(NULL, home_server_addr_cmp, home_server_free, 0);
 	if (!home_servers_byaddr) {
 		realms_free();
 		return 0;
 	}
 
-	home_servers_byname = rbtree_create(home_server_name_cmp, NULL, 0);
+	home_servers_byname = rbtree_create(NULL, home_server_name_cmp, NULL, 0);
 	if (!home_servers_byname) {
 		realms_free();
 		return 0;
 	}
 
 #ifdef WITH_STATS
-	home_servers_bynumber = rbtree_create(home_server_number_cmp, NULL, 0);
+	home_servers_bynumber = rbtree_create(NULL, home_server_number_cmp, NULL, 0);
 	if (!home_servers_bynumber) {
 		realms_free();
 		return 0;
 	}
 #endif
 
-	home_pools_byname = rbtree_create(home_pool_name_cmp, NULL, 0);
+	home_pools_byname = rbtree_create(NULL, home_pool_name_cmp, NULL, 0);
 	if (!home_pools_byname) {
 		realms_free();
 		return 0;

@@ -1081,17 +1081,15 @@ static int load_byserver(CONF_SECTION *cs)
 			    cf_section_filename(cs));
 	}
 
-	components = rbtree_create(indexed_modcallable_cmp, NULL, 0);
-	if (!components) {
-		ERROR("Failed to initialize components\n");
-		goto error;
-	}
-
 	server = talloc_zero(cs, virtual_server_t);
 	server->name = name;
 	server->created = time(NULL);
 	server->cs = cs;
-	server->components = components;
+	server->components = components = rbtree_create(server, indexed_modcallable_cmp, NULL, 0);
+	if (!components) {
+		ERROR("Failed to initialize components");
+		goto error;
+	}
 	talloc_set_destructor(server, virtual_server_free);
 
 	/*
@@ -1554,13 +1552,13 @@ int modules_init(CONF_SECTION *config)
 	/*
 	 *	Set up the internal module struct.
 	 */
-	module_tree = rbtree_create(module_entry_cmp, NULL, 0);
+	module_tree = rbtree_create(NULL, module_entry_cmp, NULL, 0);
 	if (!module_tree) {
 		ERROR("Failed to initialize modules\n");
 		return -1;
 	}
 
-	instance_tree = rbtree_create(module_instance_cmp,
+	instance_tree = rbtree_create(NULL, module_instance_cmp,
 				      module_instance_free, 0);
 	if (!instance_tree) {
 		ERROR("Failed to initialize modules\n");

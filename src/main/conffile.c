@@ -359,7 +359,7 @@ CONF_SECTION *cf_section_alloc(CONF_SECTION *parent, char const *name1,
 		if (!cs->name2) goto error;
 	}
 
-	cs->pair_tree = rbtree_create(pair_cmp, NULL, 0);
+	cs->pair_tree = rbtree_create(cs, pair_cmp, NULL, 0);
 	if (!cs->pair_tree) goto error;
 
 	talloc_set_destructor((void *) cs, cf_section_free);
@@ -454,7 +454,7 @@ static void cf_item_add(CONF_SECTION *cs, CONF_ITEM *ci)
 				CONF_SECTION *name1_cs;
 
 				if (!cs->section_tree) {
-					cs->section_tree = rbtree_create(section_cmp, NULL, 0);
+					cs->section_tree = rbtree_create(cs, section_cmp, NULL, 0);
 					if (!cs->section_tree) {
 						ERROR("Out of memory");
 						fr_exit_now(1);
@@ -497,8 +497,7 @@ static void cf_item_add(CONF_SECTION *cs, CONF_ITEM *ci)
 				 *	sub-section based on name2.
 				 */
 				if (!name1_cs->name2_tree) {
-					name1_cs->name2_tree = rbtree_create(name2_cmp,
-									     NULL, 0);
+					name1_cs->name2_tree = rbtree_create(name1_cs, name2_cmp, NULL, 0);
 					if (!name1_cs->name2_tree) {
 						ERROR("Out of memory");
 						fr_exit_now(1);
@@ -519,7 +518,7 @@ static void cf_item_add(CONF_SECTION *cs, CONF_ITEM *ci)
 
 			case CONF_ITEM_DATA:
 				if (!cs->data_tree) {
-					cs->data_tree = rbtree_create(data_cmp, NULL, 0);
+					cs->data_tree = rbtree_create(cs, data_cmp, NULL, 0);
 				}
 				if (cs->data_tree) {
 					rbtree_insert(cs->data_tree, ci);
