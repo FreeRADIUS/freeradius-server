@@ -226,14 +226,14 @@ static int mod_instantiate(CONF_SECTION *cs, void *instance)
 	 *	Lookup sessions in the tree.  We don't free them in
 	 *	the tree, as that's taken care of elsewhere...
 	 */
-	inst->session_tree = rbtree_create(eap_handler_cmp, NULL, 0);
+	inst->session_tree = rbtree_create(inst, eap_handler_cmp, NULL, 0);
 	if (!inst->session_tree) {
 		ERROR("rlm_eap (%s): Cannot initialize tree", inst->xlat_name);
 		return -1;
 	}
 
 	if (fr_debug_flag) {
-		inst->handler_tree = rbtree_create(eap_handler_ptr_cmp, NULL, 0);
+		inst->handler_tree = rbtree_create(inst, eap_handler_ptr_cmp, NULL, 0);
 		if (!inst->handler_tree) {
 			ERROR("rlm_eap (%s): Cannot initialize tree", inst->xlat_name);
 			return -1;

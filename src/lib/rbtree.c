@@ -107,7 +107,7 @@ void rbtree_free(rbtree_t *tree)
 /** Create a new RED-BLACK tree
  *
  */
-rbtree_t *rbtree_create(rb_comparator_t compare, rb_free_t node_free, int flags)
+rbtree_t *rbtree_create(TALLOC_CTX *ctx, rb_comparator_t compare, rb_free_t node_free, int flags)
 {
 	rbtree_t *tree;
 

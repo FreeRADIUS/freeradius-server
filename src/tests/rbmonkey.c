@@ -186,7 +186,7 @@ again:
 		nextseed, thresh, mask, n);
 	nextseed = rand();
 
-	t = rbtree_create(comp, free, RBTREE_FLAG_LOCK);
+	t = rbtree_create(NULL, comp, free, RBTREE_FLAG_LOCK);
 	/* Find out the value of the NIL node */
 	NIL = t->root->left;
 

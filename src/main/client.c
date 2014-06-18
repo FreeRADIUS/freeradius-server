@@ -219,7 +219,7 @@ int client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 	 *	Create a tree for it.
 	 */
 	if (!clients->trees[client->ipaddr.prefix]) {
-		clients->trees[client->ipaddr.prefix] = rbtree_create(client_ipaddr_cmp, NULL, 0);
+		clients->trees[client->ipaddr.prefix] = rbtree_create(clients, client_ipaddr_cmp, NULL, 0);
 		if (!clients->trees[client->ipaddr.prefix]) {
 			return 0;
 		}
@@ -271,7 +271,7 @@ int client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 
 #ifdef WITH_STATS
 	if (!tree_num) {
-		tree_num = rbtree_create(client_num_cmp, NULL, 0);
+		tree_num = rbtree_create(clients, client_num_cmp, NULL, 0);
 	}
 
 #ifdef WITH_DYNAMIC_CLIENTS

@@ -462,7 +462,7 @@ fr_packet_list_t *fr_packet_list_create(int alloc_id)
 	if (!pl) return NULL;
 	memset(pl, 0, sizeof(*pl));
 
-	pl->tree = rbtree_create(packet_entry_cmp, NULL, 0);
+	pl->tree = rbtree_create(NULL, packet_entry_cmp, NULL, 0);
 	if (!pl->tree) {
 		fr_packet_list_free(pl);
 		return NULL;

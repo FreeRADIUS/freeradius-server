@@ -667,7 +667,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	/*
 	 *	The cache.
 	 */
-	inst->cache = rbtree_create(cache_entry_cmp, cache_entry_free, 0);
+	inst->cache = rbtree_create(inst, cache_entry_cmp, cache_entry_free, 0);
 	if (!inst->cache) {
 		ERROR("Failed to create cache");
 		return -1;
