@@ -820,6 +820,12 @@ void fr_fault_set_log_fd(int fd)
  */
 inline void fr_verify_vp(char const *file, int line, VALUE_PAIR const *vp)
 {
+	if (!vp) {
+		fprintf(stderr, "CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR pointer was NULL", file, line);
+		fr_assert(0);
+		fr_exit_now(0);
+	}
+
 	(void) talloc_get_type_abort(vp, VALUE_PAIR);
 
 	if (vp->data.ptr) switch (vp->da->type) {
