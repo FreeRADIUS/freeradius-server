@@ -599,20 +599,22 @@ int fr_log_talloc_report(TALLOC_CTX *ctx)
 		return -1;
 	}
 
-	fprintf(log, "Talloc chunk lineage:\n");
-	fprintf(log, "%p (%s)", ctx, talloc_get_name(ctx));
-	while ((ctx = talloc_parent(ctx))) fprintf(log, " < %p (%s)", ctx, talloc_get_name(ctx));
-	fprintf(log, "\n");
-
 	if (!ctx) {
 		fprintf(log, "Current state of talloced memory:\n");
 		talloc_report_full(talloc_null_ctx, log);
-	} else do {
-		fprintf(log, "Talloc context level %i:\n", i++);
-		talloc_report_full(ctx, log);
-	} while ((ctx = talloc_parent(ctx)) &&
-		 (talloc_parent(ctx) != talloc_autofree_ctx) &&	/* Stop before we hit the autofree ctx */
-		 (talloc_parent(ctx) != talloc_null_ctx));  	/* Stop before we hit NULL ctx */
+	} else {
+		fprintf(log, "Talloc chunk lineage:\n");
+		fprintf(log, "%p (%s)", ctx, talloc_get_name(ctx));
+		while ((ctx = talloc_parent(ctx))) fprintf(log, " < %p (%s)", ctx, talloc_get_name(ctx));
+		fprintf(log, "\n");
+
+		do {
+			fprintf(log, "Talloc context level %i:\n", i++);
+			talloc_report_full(ctx, log);
+		} while ((ctx = talloc_parent(ctx)) &&
+			 (talloc_parent(ctx) != talloc_autofree_ctx) &&	/* Stop before we hit the autofree ctx */
+			 (talloc_parent(ctx) != talloc_null_ctx));  	/* Stop before we hit NULL ctx */
+	}
 
 	fclose(log);
 
