@@ -1088,7 +1088,7 @@ static int rest_decode_post(UNUSED rlm_rest_t *instance, UNUSED rlm_rest_section
  * @return The VALUE_PAIR just created, or NULL on error.
  */
 static VALUE_PAIR *json_pairmake_leaf(UNUSED rlm_rest_t *instance, UNUSED rlm_rest_section_t *section,
-				      REQUEST *request, DICT_ATTR const *da,
+				      TALLOC_CTX *ctx, REQUEST *request, DICT_ATTR const *da,
 				      json_flags_t *flags, json_object *leaf)
 {
 	char const *value, *to_parse;
@@ -1118,7 +1118,7 @@ static VALUE_PAIR *json_pairmake_leaf(UNUSED rlm_rest_t *instance, UNUSED rlm_re
 		to_parse = value;
 	}
 
-	vp = paircreate(request, da->attr, da->vendor);
+	vp = pairalloc(ctx, da);
 	if (!vp) {
 		RWDEBUG("Failed creating valuepair, skipping...");
 		talloc_free(expanded);
@@ -1215,6 +1215,7 @@ static int json_pairmake(rlm_rest_t *instance, UNUSED rlm_rest_section_t *sectio
 	     entry = entry->next) {
 		int i = 0, elements;
 		struct json_object *value, *element, *tmp;
+		TALLOC_CTX *ctx;
 
 		char const *name = (char const *)entry->k;
 
@@ -1253,6 +1254,7 @@ static int json_pairmake(rlm_rest_t *instance, UNUSED rlm_rest_section_t *sectio
 			RWDEBUG("List not valid in this context, skipping...");
 			continue;
 		}
+		ctx = radius_list_ctx(current, dst.vpt_list);
 
 		/*
 		 *  Alternative JSON structure which allows operator,
@@ -1353,7 +1355,8 @@ static int json_pairmake(rlm_rest_t *instance, UNUSED rlm_rest_section_t *sectio
 						   request, value,
 						   level + 1, max_attrs);*/
 			} else {
-				vp = json_pairmake_leaf(instance, section, request, dst.vpt_da, &flags, element);
+				vp = json_pairmake_leaf(instance, section, ctx, request,
+							dst.vpt_da, &flags, element);
 				if (!vp) continue;
 			}
 			debug_pair(vp);
