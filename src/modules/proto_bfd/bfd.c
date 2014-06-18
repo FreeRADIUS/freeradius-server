@@ -1861,7 +1861,7 @@ static int bfd_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	}
 
 
-	sock->session_tree = rbtree_create(bfd_session_cmp, bfd_session_free, 0);
+	sock->session_tree = rbtree_create(sock, bfd_session_cmp, bfd_session_free, 0);
 	if (!sock->session_tree) {
 		ERROR("Failed creating session tree!");
 		exit(1);

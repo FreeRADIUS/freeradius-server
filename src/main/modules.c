@@ -1084,7 +1084,7 @@ static int load_byserver(CONF_SECTION *cs)
 		ERROR("Failed to initialize components");
 		goto error;
 	}
-	talloc_set_destructor(server, virtual_server_free);
+	talloc_set_destructor(server, _virtual_server_free);
 
 	/*
 	 *	Define types first.
