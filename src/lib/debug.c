@@ -745,7 +745,7 @@ int fr_fault_setup(char const *cmd, char const *program)
 		 *  uninitialised and freed memory, to make memory issues easier
 		 *  to track down.
 		 */
-		mallopt(M_PERTURB, 0x42);
+		if (!getenv(TALLOC_FREE_FILL)) mallopt(M_PERTURB, 0x42);
 		mallopt(M_CHECK_ACTION, 3);
 #endif
 
