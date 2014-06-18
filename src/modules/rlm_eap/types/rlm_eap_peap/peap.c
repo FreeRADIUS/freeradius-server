@@ -463,7 +463,7 @@ static int CC_HINT(nonnull) process_reply(eap_handler_t *handler, tls_session_t 
 			pairdelete(&reply->vps, 16, VENDORPEC_MICROSOFT, TAG_ANY);
 			pairdelete(&reply->vps, 17, VENDORPEC_MICROSOFT, TAG_ANY);
 
-			rad_assert(!t->accept_vps);
+			pairfree(&t->accept_vps); /* for proxying MS-CHAP2 */
 			pairfilter(t, &t->accept_vps, &reply->vps, 0, 0, TAG_ANY);
 			rad_assert(!reply->vps);
 		}
@@ -512,8 +512,7 @@ static int CC_HINT(nonnull) process_reply(eap_handler_t *handler, tls_session_t 
 			pairdelete(&reply->vps, PW_MESSAGE_AUTHENTICATOR, 0, TAG_ANY);
 
 			rad_assert(!t->accept_vps);
-			pairfilter(t, &t->accept_vps, &reply->vps,
-				  0, 0, TAG_ANY);
+			pairfilter(t, &t->accept_vps, &reply->vps, 0, 0, TAG_ANY);
 			rad_assert(!reply->vps);
 		}
 
