@@ -1080,6 +1080,7 @@ static int rest_decode_post(UNUSED rlm_rest_t *instance, UNUSED rlm_rest_section
  *
  * @param[in] instance configuration data.
  * @param[in] section configuration data.
+ * @param[in] ctx to allocate new VALUE_PAIRs in.
  * @param[in] request Current request.
  * @param[in] da Attribute to create.
  * @param[in] flags containing the operator other flags controlling value
