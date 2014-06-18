@@ -86,6 +86,9 @@ static int fr_debugger_present = -1;			//!< Whether were attached to by a debugg
 static struct rlimit core_limits;
 #endif
 
+static TALLOC_CTX *talloc_null_ctx;
+static TALLOC_CTX *talloc_autofree_ctx;
+
 #define FR_FAULT_LOG(fmt, ...) fr_fault_log(fmt "\n", ## __VA_ARGS__)
 
 /** Stub callback to see if the SIGTRAP handler is overriden
@@ -596,14 +599,20 @@ int fr_log_talloc_report(TALLOC_CTX *ctx)
 		return -1;
 	}
 
-	fprintf(log, "Current state of talloced memory:\n");
+	fprintf(log, "Talloc chunk lineage:\n");
+	fprintf(log, "%p (%s)", ctx, talloc_get_name(ctx));
+	while ((ctx = talloc_parent(ctx))) fprintf(log, " < %p (%s)", ctx, talloc_get_name(ctx));
+	fprintf(log, "\n");
+
 	if (!ctx) {
+		fprintf(log, "Current state of talloced memory:\n");
 		talloc_report_full(NULL, log);
 	} else do {
-		fprintf(log, "Context level %i", i++);
-
+		fprintf(log, "Talloc context level %i:\n", i++);
 		talloc_report_full(ctx, log);
-	} while ((ctx = talloc_parent(ctx)) && talloc_parent(ctx));  /* Stop before we hit NULL ctx */
+	} while ((ctx = talloc_parent(ctx)) &&
+		 (talloc_parent(ctx) != talloc_autofree_ctx) &&	/* Stop before we hit the autofree ctx */
+		 (talloc_parent(ctx) != talloc_null_ctx));  	/* Stop before we hit NULL ctx */
 
 	fclose(log);
 
@@ -706,26 +715,34 @@ int fr_fault_setup(char const *cmd, char const *program)
 
 		/*
 		 *  Needed for memory reports
-		 *
-		 *  Disable null tracking on exit, else valgrind complains
 		 */
 		{
-			TALLOC_CTX *autofree;
+			TALLOC_CTX *tmp;
 			bool *marker;
 
+			/*
+			 *  This should create a single NULL context used whenever
+			 *  something is talloced without a parent.
+			 */
 			talloc_enable_null_tracking();
+			tmp = talloc(NULL, bool);
+			talloc_null_ctx = talloc_parent(tmp);
+			talloc_free(tmp);
 
-			autofree = talloc_autofree_context();
-			marker = talloc(autofree, bool);
+			/*
+			 *  Disable null tracking on exit, else valgrind complains
+			 */
+			talloc_autofree_ctx = talloc_autofree_context();
+			marker = talloc(talloc_autofree_ctx, bool);
 			talloc_set_destructor(marker, _fr_disable_null_tracking);
 		}
 
+#if defined(HAVE_MALLOPT) && !defined(NDEBUG)
 		/*
 		 *  If were using glibc malloc > 2.4 this scribbles over
 		 *  uninitialised and freed memory, to make memory issues easier
 		 *  to track down.
 		 */
-#if defined(HAVE_MALLOPT) && !defined(NDEBUG)
 		mallopt(M_PERTURB, 0x42);
 		mallopt(M_CHECK_ACTION, 3);
 #endif
@@ -895,7 +912,7 @@ void fr_verify_list(char const *file, int line, TALLOC_CTX *expected, VALUE_PAIR
 
 		parent = talloc_parent(vp);
 		if (expected && (parent != expected)) {
-			fprintf(stderr, "CONSISTENCY CHECK FAILED %s[%u]: Expected VALUE_PAIR (%s) to be parented "
+			fprintf(stderr, "CONSISTENCY CHECK FAILED %s[%u]: Expected VALUE_PAIR \"%s\" to be parented "
 				"by %p (%s), instead parented by %p (%s)\n",
 				file, line, vp->da->name,
 				expected, talloc_get_name(expected),
