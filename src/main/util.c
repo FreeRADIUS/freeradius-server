@@ -1160,7 +1160,11 @@ static void verify_packet(char const *file, int line, REQUEST *request, RADIUS_P
 {
 	TALLOC_CTX *parent;
 
-	if (!packet) return;
+	if (!packet) {
+		fprintf(stderr, "CONSISTENCY CHECK FAILED %s[%u]: RADIUS_PACKET pointer was NULL", file, line);
+		fr_assert(0);
+		fr_exit_now(0);
+	}
 
 	parent = talloc_parent(packet);
 	if (parent != request) {
@@ -1187,7 +1191,11 @@ static void verify_packet(char const *file, int line, REQUEST *request, RADIUS_P
  */
 void verify_request(char const *file, int line, REQUEST *request)
 {
-	if (!request) return;
+	if (!request) {
+		fprintf(stderr, "CONSISTENCY CHECK FAILED %s[%u]: REQUEST pointer was NULL", file, line);
+		fr_assert(0);
+		fr_exit_now(0);
+	}
 
 	(void) talloc_get_type_abort(request, REQUEST);
 
