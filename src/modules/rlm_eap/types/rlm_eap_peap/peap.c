@@ -618,7 +618,7 @@ static int CC_HINT(nonnull) eappeap_postproxy(eap_handler_t *handler, void *data
 
 		switch (rcode) {
 		case RLM_MODULE_FAIL:
-			talloc_free(&fake);
+			talloc_free(fake);
 			eaptls_fail(handler, 0);
 			return 0;
 
