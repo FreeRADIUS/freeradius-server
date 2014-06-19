@@ -485,7 +485,7 @@ static int CC_HINT(nonnull) process_reply(eap_handler_t *handler, tls_session_t 
 		 *	Get rid of the old State, too.
 		 */
 		pairfree(&t->state);
-		pairfilter(t, &t->state, &(reply->vps), PW_STATE, 0, TAG_ANY);
+		pairfilter(t, &t->state, &reply->vps, PW_STATE, 0, TAG_ANY);
 
 		/*
 		 *	PEAP takes only EAP-Message attributes inside
@@ -493,7 +493,7 @@ static int CC_HINT(nonnull) process_reply(eap_handler_t *handler, tls_session_t 
 		 *	Access-Challenge is ignored.
 		 */
 		vp = NULL;
-		pairfilter(t, &vp, &(reply->vps), PW_EAP_MESSAGE, 0, TAG_ANY);
+		pairfilter(t, &vp, &reply->vps, PW_EAP_MESSAGE, 0, TAG_ANY);
 
 		/*
 		 *	Handle EAP-MSCHAP-V2, where Access-Accept's
@@ -1116,8 +1116,8 @@ rlm_rcode_t eappeap_process(eap_handler_t *handler, tls_session_t *tls_session)
 			 *	Tell the original request that it's going
 			 *	to be proxied.
 			 */
-			pairfilter(request, &(request->config_items),
-				   &(fake->config_items),
+			pairfilter(request, &request->config_items,
+				   &fake->config_items,
 				   PW_PROXY_TO_REALM, 0, TAG_ANY);
 
 			/*

@@ -1193,8 +1193,8 @@ PW_CODE eapttls_process(eap_handler_t *handler, tls_session_t *tls_session)
 			 *	Tell the original request that it's going
 			 *	to be proxied.
 			 */
-			pairfilter(request, &(request->config_items),
-				  &(fake->config_items),
+			pairfilter(request, &request->config_items,
+				  &fake->config_items,
 				  PW_PROXY_TO_REALM, 0, TAG_ANY);
 
 			/*
