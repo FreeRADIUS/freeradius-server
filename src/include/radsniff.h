@@ -161,6 +161,11 @@ typedef struct rs_stats {
 							//!< dropping packets, or we run out of memory.
 } rs_stats_t;
 
+typedef struct rs_capture {
+	struct pcap_pkthdr	*header;		//!< PCAP packet header.
+	uint8_t			*data;			//!< PCAP packet data.
+} rs_capture_t;
+
 /** Wrapper for RADIUS_PACKET
  *
  * Allows an event to be associated with a request packet.  This is required because we need to disarm
@@ -177,6 +182,11 @@ typedef struct rs_request {
 	RADIUS_PACKET		*expect;		//!< Request/response.
 	RADIUS_PACKET		*linked;		//!< The subsequent response or forwarded request the packet
 							//!< was linked against.
+
+
+	rs_capture_t		capture[RS_RETRANSMIT_MAX];	//!< Buffered request packets (if a response filter
+								//!< has been applied).
+	rs_capture_t		*capture_p;			//!< Next packet slot.
 
 	uint64_t		rt_req;			//!< Number of times we saw the same request packet.
 	uint64_t		rt_rsp;			//!< Number of times we saw a retransmitted response
