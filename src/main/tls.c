@@ -182,8 +182,22 @@ tls_session_t *tls_new_client_session(fr_tls_server_conf_t *conf, int fd)
 	return ssn;
 }
 
-tls_session_t *tls_new_session(fr_tls_server_conf_t *conf, REQUEST *request,
-			       int client_cert)
+static int _tls_session_free(tls_session_t *ssn)
+{
+	/*
+	 *	Free any opaque TTLS or PEAP data.
+	 */
+	if ((ssn->opaque) && (ssn->free_opaque)) {
+		ssn->free_opaque(ssn->opaque);
+		ssn->opaque = NULL;
+	}
+
+	session_close(ssn);
+
+	return 0;
+}
+
+tls_session_t *tls_new_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *conf, REQUEST *request, int client_cert)
 {
 	tls_session_t *state = NULL;
 	SSL *new_tls = NULL;
@@ -217,8 +231,9 @@ tls_session_t *tls_new_session(fr_tls_server_conf_t *conf, REQUEST *request,
 	/* We use the SSL's "app_data" to indicate a call-back */
 	SSL_set_app_data(new_tls, NULL);
 
-	state = talloc_zero(conf, tls_session_t);
+	state = talloc_zero(ctx, tls_session_t);
 	session_init(state);
+	talloc_set_destructor(state, _tls_session_free);
 
 	state->ctx = conf->ctx;
 	state->ssl = new_tls;
@@ -518,25 +533,6 @@ void session_close(tls_session_t *ssn)
 	record_close(&ssn->dirty_in);
 	record_close(&ssn->dirty_out);
 	session_init(ssn);
-}
-
-void session_free(void *ssn)
-{
-	tls_session_t *sess = (tls_session_t *)ssn;
-
-	if (!ssn) return;
-
-	/*
-	 *	Free any opaque TTLS or PEAP data.
-	 */
-	if ((sess->opaque) && (sess->free_opaque)) {
-		sess->free_opaque(sess->opaque);
-		sess->opaque = NULL;
-	}
-
-	session_close(sess);
-
-	talloc_free(sess);
 }
 
 static void record_init(record_t *rec)

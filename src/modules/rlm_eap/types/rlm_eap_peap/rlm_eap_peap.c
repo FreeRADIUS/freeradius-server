@@ -187,13 +187,12 @@ static int eappeap_initiate(void *type_arg, eap_handler_t *handler)
 		client_cert = inst->req_client_cert;
 	}
 
-	ssn = eaptls_session(inst->tls_conf, handler, client_cert);
+	ssn = eaptls_session(handler, inst->tls_conf, client_cert);
 	if (!ssn) {
 		return 0;
 	}
 
 	handler->opaque = ((void *)ssn);
-	handler->free_opaque = session_free;
 
 	/*
 	 *	Set up type-specific information.

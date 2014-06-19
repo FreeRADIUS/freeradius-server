@@ -170,7 +170,7 @@ static int tls_socket_recv(rad_listen_t *listener)
 
 		rad_assert(sock->ssn == NULL);
 
-		sock->ssn = tls_new_session(listener->tls, sock->request,
+		sock->ssn = tls_new_session(listener->tls, listener->tls, sock->request,
 					    listener->tls->require_client_cert);
 		if (!sock->ssn) {
 			TALLOC_FREE(sock->request);

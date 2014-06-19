@@ -156,8 +156,7 @@ static void ttls_free(void *p)
 /*
  *	Allocate the TTLS per-session data
  */
-static ttls_tunnel_t *ttls_alloc(rlm_eap_ttls_t *inst,
-				 eap_handler_t *handler)
+static ttls_tunnel_t *ttls_alloc(rlm_eap_ttls_t *inst, eap_handler_t *handler)
 {
 	ttls_tunnel_t *t;
 
@@ -203,13 +202,12 @@ static int eapttls_initiate(void *type_arg, eap_handler_t *handler)
 		client_cert = inst->req_client_cert;
 	}
 
-	ssn = eaptls_session(inst->tls_conf, handler, client_cert);
+	ssn = eaptls_session(handler, inst->tls_conf, client_cert);
 	if (!ssn) {
 		return 0;
 	}
 
 	handler->opaque = ((void *)ssn);
-	handler->free_opaque = session_free;
 
 	/*
 	 *	Set up type-specific information.
