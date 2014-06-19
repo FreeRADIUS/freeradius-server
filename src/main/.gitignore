@@ -4,6 +4,7 @@ checkrad
 radclient
 radiusd
 radlast
+radtest
 radsniff
 radwho
 radmin
