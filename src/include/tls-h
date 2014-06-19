@@ -297,8 +297,7 @@ int		cbtls_verify(int ok, X509_STORE_CTX *ctx);
 void		tls_global_init(void);
 int		tls_global_version_check(char const *acknowledged);
 void		tls_global_cleanup(void);
-tls_session_t	*tls_new_session(fr_tls_server_conf_t *conf, REQUEST *request,
-			       int client_cert);
+tls_session_t	*tls_new_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *conf, REQUEST *request, int client_cert);
 tls_session_t	*tls_new_client_session(fr_tls_server_conf_t *conf, int fd);
 fr_tls_server_conf_t *tls_server_conf_parse(CONF_SECTION *cs);
 fr_tls_server_conf_t *tls_client_conf_parse(CONF_SECTION *cs);
@@ -315,7 +314,6 @@ fr_tls_status_t tls_ack_handler(tls_session_t *tls_session, REQUEST *request);
 fr_tls_status_t tls_application_data(tls_session_t *ssn, REQUEST *request);
 
 /* Session */
-void 		session_free(void *ssn);
 void 		session_close(tls_session_t *ssn);
 void 		session_init(tls_session_t *ssn);
 

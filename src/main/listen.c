@@ -2537,7 +2537,7 @@ static int _listener_free(rad_listen_t *this)
 		 *	may be used by multiple listeners.
 		 */
 		if (this->tls) {
-			if (sock->ssn) session_free(sock->ssn);
+			TALLOC_FREE(sock->ssn);
 			TALLOC_FREE(sock->request);
 #ifdef HAVE_PTHREAD_H
 			pthread_mutex_destroy(&(sock->mutex));
