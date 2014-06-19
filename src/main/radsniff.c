@@ -957,7 +957,7 @@ static inline int rs_request_to_pcap(rs_event_t *event, rs_request_t *request, s
 		/* Free the old capture */
 		if (request->capture_p->header) {
 			talloc_free(request->capture_p->header);
-			talloc_free(request->capture_p->data);
+			TALLOC_FREE(request->capture_p->data);
 		}
 
 		if (!(request->capture_p->header = talloc(request, struct pcap_pkthdr))) return -1;
