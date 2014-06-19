@@ -2490,7 +2490,7 @@ int main(int argc, char *argv[])
 			}
 		}
 
-		assert(out->link_type > 0);
+		assert(out->link_type >= 0);
 
 		if (fr_pcap_open(out) < 0) {
 			ERROR("Failed opening pcap output (%s): %s", out->name, fr_strerror());
