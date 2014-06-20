@@ -31,7 +31,7 @@ RCSID("$Id$");
 #include <freeradius-devel/rad_assert.h>
 
 #include <libcouchbase/couchbase.h>
-#include <json/json.h>
+#include <json.h>
 
 #include "mod.h"
 #include "couchbase.h"
@@ -59,7 +59,8 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance) {
 
 	if (!version_done) {
 		version_done = true;
-		INFO("rlm_couchbase: liblcouchbase version: %s", lcb_get_version(NULL));
+		INFO("rlm_couchbase: json-c version: %s", json_c_version());
+		INFO("rlm_couchbase: libcouchbase version: %s", lcb_get_version(NULL));
 	}
 
 	{

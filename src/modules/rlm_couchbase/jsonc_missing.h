@@ -28,9 +28,13 @@
 
 RCSIDH(jsonc_missing_h, "$Id$");
 
-#include <json/json.h>
+#include <json.h>
 
 #include "config.h"
+
+#ifndef HAVE_JSON_C_VERSION
+	const char *json_c_version(void);
+#endif
 
 #ifndef HAVE_JSON_OBJECT_OBJECT_GET_EX
 	#include <json/json_object_private.h>
