@@ -7009,13 +7009,13 @@ smart_include_dir="/usr/local/include /opt/include"
 _smart_try_dir=
 _smart_include_dir=
 
-for prefix in $smart_prefix ""; do
-  for dir in $smart_try_dir; do
-    _smart_try_dir="${_smart_try_dir} ${dir}/${prefix}"
+for _prefix in $smart_prefix ""; do
+  for _dir in $smart_try_dir; do
+    _smart_try_dir="${_smart_try_dir} ${_dir}/${_prefix}"
   done
 
-  for dir in $smart_include_dir; do
-    _smart_include_dir="${_smart_include_dir} ${dir}/${prefix}"
+  for _dir in $smart_include_dir; do
+    _smart_include_dir="${_smart_include_dir} ${_dir}/${_prefix}"
   done
 done
 
@@ -7056,9 +7056,9 @@ rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 fi
 
 if test "x$smart_include" = "x"; then
-  for prefix in $smart_prefix; do
-    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for ${prefix}/talloc.h" >&5
-$as_echo_n "checking for ${prefix}/talloc.h... " >&6; }
+  for _prefix in $smart_prefix; do
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for ${_prefix}/talloc.h" >&5
+$as_echo_n "checking for ${_prefix}/talloc.h... " >&6; }
 
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
@@ -7074,7 +7074,7 @@ int a = 1;
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
 
-		     smart_include="-isystem ${prefix}/"
+		     smart_include="-isystem ${_prefix}/"
 		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 		     break
@@ -7130,7 +7130,7 @@ if test "x$smart_include" = "x"; then
 
 if test "x$LOCATE" != "x"; then
         DIRS=
-  file="${prefix}/${1}"
+  file="${_prefix}/${1}"
 
   for x in `${LOCATE} $file 2>/dev/null`; do
                                         base=`echo $x | sed "s%/${file}%%"`
@@ -8074,13 +8074,13 @@ smart_include_dir="/usr/local/include /opt/include"
 _smart_try_dir=
 _smart_include_dir=
 
-for prefix in $smart_prefix ""; do
-  for dir in $smart_try_dir; do
-    _smart_try_dir="${_smart_try_dir} ${dir}/${prefix}"
+for _prefix in $smart_prefix ""; do
+  for _dir in $smart_try_dir; do
+    _smart_try_dir="${_smart_try_dir} ${_dir}/${_prefix}"
   done
 
-  for dir in $smart_include_dir; do
-    _smart_include_dir="${_smart_include_dir} ${dir}/${prefix}"
+  for _dir in $smart_include_dir; do
+    _smart_include_dir="${_smart_include_dir} ${_dir}/${_prefix}"
   done
 done
 
@@ -8121,9 +8121,9 @@ rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 fi
 
 if test "x$smart_include" = "x"; then
-  for prefix in $smart_prefix; do
-    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for ${prefix}/openssl/ssl.h" >&5
-$as_echo_n "checking for ${prefix}/openssl/ssl.h... " >&6; }
+  for _prefix in $smart_prefix; do
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for ${_prefix}/openssl/ssl.h" >&5
+$as_echo_n "checking for ${_prefix}/openssl/ssl.h... " >&6; }
 
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
@@ -8139,7 +8139,7 @@ int a = 1;
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
 
-		     smart_include="-isystem ${prefix}/"
+		     smart_include="-isystem ${_prefix}/"
 		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 		     break
@@ -8195,7 +8195,7 @@ if test "x$smart_include" = "x"; then
 
 if test "x$LOCATE" != "x"; then
         DIRS=
-  file="${prefix}/${1}"
+  file="${_prefix}/${1}"
 
   for x in `${LOCATE} $file 2>/dev/null`; do
                                         base=`echo $x | sed "s%/${file}%%"`
@@ -8433,13 +8433,13 @@ smart_include_dir="/usr/local/include /opt/include"
 _smart_try_dir=
 _smart_include_dir=
 
-for prefix in $smart_prefix ""; do
-  for dir in $smart_try_dir; do
-    _smart_try_dir="${_smart_try_dir} ${dir}/${prefix}"
+for _prefix in $smart_prefix ""; do
+  for _dir in $smart_try_dir; do
+    _smart_try_dir="${_smart_try_dir} ${_dir}/${_prefix}"
   done
 
-  for dir in $smart_include_dir; do
-    _smart_include_dir="${_smart_include_dir} ${dir}/${prefix}"
+  for _dir in $smart_include_dir; do
+    _smart_include_dir="${_smart_include_dir} ${_dir}/${_prefix}"
   done
 done
 
@@ -8480,9 +8480,9 @@ rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 fi
 
 if test "x$smart_include" = "x"; then
-  for prefix in $smart_prefix; do
-    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for ${prefix}/pcap.h" >&5
-$as_echo_n "checking for ${prefix}/pcap.h... " >&6; }
+  for _prefix in $smart_prefix; do
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for ${_prefix}/pcap.h" >&5
+$as_echo_n "checking for ${_prefix}/pcap.h... " >&6; }
 
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
@@ -8498,7 +8498,7 @@ int a = 1;
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
 
-		     smart_include="-isystem ${prefix}/"
+		     smart_include="-isystem ${_prefix}/"
 		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 		     break
@@ -8554,7 +8554,7 @@ if test "x$smart_include" = "x"; then
 
 if test "x$LOCATE" != "x"; then
         DIRS=
-  file="${prefix}/${1}"
+  file="${_prefix}/${1}"
 
   for x in `${LOCATE} $file 2>/dev/null`; do
                                         base=`echo $x | sed "s%/${file}%%"`
@@ -8676,13 +8676,13 @@ smart_include_dir="/usr/local/include /opt/include"
 _smart_try_dir=
 _smart_include_dir=
 
-for prefix in $smart_prefix ""; do
-  for dir in $smart_try_dir; do
-    _smart_try_dir="${_smart_try_dir} ${dir}/${prefix}"
+for _prefix in $smart_prefix ""; do
+  for _dir in $smart_try_dir; do
+    _smart_try_dir="${_smart_try_dir} ${_dir}/${_prefix}"
   done
 
-  for dir in $smart_include_dir; do
-    _smart_include_dir="${_smart_include_dir} ${dir}/${prefix}"
+  for _dir in $smart_include_dir; do
+    _smart_include_dir="${_smart_include_dir} ${_dir}/${_prefix}"
   done
 done
 
@@ -8723,9 +8723,9 @@ rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 fi
 
 if test "x$smart_include" = "x"; then
-  for prefix in $smart_prefix; do
-    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for ${prefix}/collectd/client.h" >&5
-$as_echo_n "checking for ${prefix}/collectd/client.h... " >&6; }
+  for _prefix in $smart_prefix; do
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for ${_prefix}/collectd/client.h" >&5
+$as_echo_n "checking for ${_prefix}/collectd/client.h... " >&6; }
 
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
@@ -8741,7 +8741,7 @@ int a = 1;
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
 
-		     smart_include="-isystem ${prefix}/"
+		     smart_include="-isystem ${_prefix}/"
 		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 		     break
@@ -8797,7 +8797,7 @@ if test "x$smart_include" = "x"; then
 
 if test "x$LOCATE" != "x"; then
         DIRS=
-  file="${prefix}/${1}"
+  file="${_prefix}/${1}"
 
   for x in `${LOCATE} $file 2>/dev/null`; do
                                         base=`echo $x | sed "s%/${file}%%"`
@@ -10198,13 +10198,13 @@ smart_include_dir="/usr/local/include /opt/include"
 _smart_try_dir=
 _smart_include_dir=
 
-for prefix in $smart_prefix ""; do
-  for dir in $smart_try_dir; do
-    _smart_try_dir="${_smart_try_dir} ${dir}/${prefix}"
+for _prefix in $smart_prefix ""; do
+  for _dir in $smart_try_dir; do
+    _smart_try_dir="${_smart_try_dir} ${_dir}/${_prefix}"
   done
 
-  for dir in $smart_include_dir; do
-    _smart_include_dir="${_smart_include_dir} ${dir}/${prefix}"
+  for _dir in $smart_include_dir; do
+    _smart_include_dir="${_smart_include_dir} ${_dir}/${_prefix}"
   done
 done
 
@@ -10245,9 +10245,9 @@ rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 fi
 
 if test "x$smart_include" = "x"; then
-  for prefix in $smart_prefix; do
-    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for ${prefix}/execinfo.h" >&5
-$as_echo_n "checking for ${prefix}/execinfo.h... " >&6; }
+  for _prefix in $smart_prefix; do
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for ${_prefix}/execinfo.h" >&5
+$as_echo_n "checking for ${_prefix}/execinfo.h... " >&6; }
 
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
@@ -10263,7 +10263,7 @@ int a = 1;
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
 
-		     smart_include="-isystem ${prefix}/"
+		     smart_include="-isystem ${_prefix}/"
 		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 		     break
@@ -10319,7 +10319,7 @@ if test "x$smart_include" = "x"; then
 
 if test "x$LOCATE" != "x"; then
         DIRS=
-  file="${prefix}/${1}"
+  file="${_prefix}/${1}"
 
   for x in `${LOCATE} $file 2>/dev/null`; do
                                         base=`echo $x | sed "s%/${file}%%"`
@@ -10683,13 +10683,13 @@ smart_include_dir="/usr/local/include /opt/include"
 _smart_try_dir=
 _smart_include_dir=
 
-for prefix in $smart_prefix ""; do
-  for dir in $smart_try_dir; do
-    _smart_try_dir="${_smart_try_dir} ${dir}/${prefix}"
+for _prefix in $smart_prefix ""; do
+  for _dir in $smart_try_dir; do
+    _smart_try_dir="${_smart_try_dir} ${_dir}/${_prefix}"
   done
 
-  for dir in $smart_include_dir; do
-    _smart_include_dir="${_smart_include_dir} ${dir}/${prefix}"
+  for _dir in $smart_include_dir; do
+    _smart_include_dir="${_smart_include_dir} ${_dir}/${_prefix}"
   done
 done
 
@@ -10730,9 +10730,9 @@ rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 fi
 
 if test "x$smart_include" = "x"; then
-  for prefix in $smart_prefix; do
-    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for ${prefix}/pcreposix.h" >&5
-$as_echo_n "checking for ${prefix}/pcreposix.h... " >&6; }
+  for _prefix in $smart_prefix; do
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for ${_prefix}/pcreposix.h" >&5
+$as_echo_n "checking for ${_prefix}/pcreposix.h... " >&6; }
 
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
@@ -10748,7 +10748,7 @@ int a = 1;
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
 
-		     smart_include="-isystem ${prefix}/"
+		     smart_include="-isystem ${_prefix}/"
 		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 		     break
@@ -10804,7 +10804,7 @@ if test "x$smart_include" = "x"; then
 
 if test "x$LOCATE" != "x"; then
         DIRS=
-  file="${prefix}/${1}"
+  file="${_prefix}/${1}"
 
   for x in `${LOCATE} $file 2>/dev/null`; do
                                         base=`echo $x | sed "s%/${file}%%"`
@@ -10923,13 +10923,13 @@ smart_include_dir="/usr/local/include /opt/include"
 _smart_try_dir=
 _smart_include_dir=
 
-for prefix in $smart_prefix ""; do
-  for dir in $smart_try_dir; do
-    _smart_try_dir="${_smart_try_dir} ${dir}/${prefix}"
+for _prefix in $smart_prefix ""; do
+  for _dir in $smart_try_dir; do
+    _smart_try_dir="${_smart_try_dir} ${_dir}/${_prefix}"
   done
 
-  for dir in $smart_include_dir; do
-    _smart_include_dir="${_smart_include_dir} ${dir}/${prefix}"
+  for _dir in $smart_include_dir; do
+    _smart_include_dir="${_smart_include_dir} ${_dir}/${_prefix}"
   done
 done
 
@@ -10970,9 +10970,9 @@ rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 fi
 
 if test "x$smart_include" = "x"; then
-  for prefix in $smart_prefix; do
-    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for ${prefix}/regex.h" >&5
-$as_echo_n "checking for ${prefix}/regex.h... " >&6; }
+  for _prefix in $smart_prefix; do
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for ${_prefix}/regex.h" >&5
+$as_echo_n "checking for ${_prefix}/regex.h... " >&6; }
 
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
@@ -10988,7 +10988,7 @@ int a = 1;
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
 
-		     smart_include="-isystem ${prefix}/"
+		     smart_include="-isystem ${_prefix}/"
 		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 		     break
@@ -11044,7 +11044,7 @@ if test "x$smart_include" = "x"; then
 
 if test "x$LOCATE" != "x"; then
         DIRS=
-  file="${prefix}/${1}"
+  file="${_prefix}/${1}"
 
   for x in `${LOCATE} $file 2>/dev/null`; do
                                         base=`echo $x | sed "s%/${file}%%"`

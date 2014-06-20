@@ -225,13 +225,13 @@ _smart_try_dir=
 _smart_include_dir=
 
 dnl #  Add variants with the different prefixes and one with no prefix
-for prefix in $smart_prefix ""; do
-  for dir in $smart_try_dir; do
-    _smart_try_dir="${_smart_try_dir} ${dir}/${prefix}"
+for _prefix in $smart_prefix ""; do
+  for _dir in $smart_try_dir; do
+    _smart_try_dir="${_smart_try_dir} ${_dir}/${_prefix}"
   done
 
-  for dir in $smart_include_dir; do
-    _smart_include_dir="${_smart_include_dir} ${dir}/${prefix}"
+  for _dir in $smart_include_dir; do
+    _smart_include_dir="${_smart_include_dir} ${_dir}/${_prefix}"
   done
 done
 
@@ -263,14 +263,14 @@ dnl #
 dnl #  Try using the default includes (with prefixes).
 dnl #
 if test "x$smart_include" = "x"; then
-  for prefix in $smart_prefix; do
-    AC_MSG_CHECKING([for ${prefix}/$1])
+  for _prefix in $smart_prefix; do
+    AC_MSG_CHECKING([for ${_prefix}/$1])
 
     AC_TRY_COMPILE([$2
 		    #include <$1>],
 		   [int a = 1;],
 		   [
-		     smart_include="-isystem ${prefix}/"
+		     smart_include="-isystem ${_prefix}/"
 		     AC_MSG_RESULT(yes)
 		     break
 		   ],
@@ -307,7 +307,7 @@ dnl #
 if test "x$smart_include" = "x"; then
 
   for prefix in $smart_prefix; do
-    FR_LOCATE_DIR(_smart_include_dir,"${prefix}/${1}")
+    FR_LOCATE_DIR(_smart_include_dir,"${_prefix}/${1}")
   done
   FR_LOCATE_DIR(_smart_include_dir, $1)
 
