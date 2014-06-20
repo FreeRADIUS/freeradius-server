@@ -2278,13 +2278,13 @@ post_ca:
 	 */
 #ifdef X509_V_FLAG_CRL_CHECK
 	if (conf->check_crl) {
-	  certstore = SSL_CTX_get_cert_store(ctx);
-	  if (certstore == NULL) {
-	    ERROR("tls: SSL error %s", ERR_error_string(ERR_get_error(), NULL));
-	    ERROR("tls: Error reading Certificate Store");
-	    return NULL;
-	  }
-	  X509_STORE_set_flags(certstore, X509_V_FLAG_CRL_CHECK);
+		certstore = SSL_CTX_get_cert_store(ctx);
+		if (certstore == NULL) {
+			ERROR("tls: SSL error %s", ERR_error_string(ERR_get_error(), NULL));
+			ERROR("tls: Error reading Certificate Store");
+	    		return NULL;
+		}
+		X509_STORE_set_flags(certstore, X509_V_FLAG_CRL_CHECK);
 	}
 #endif
 
