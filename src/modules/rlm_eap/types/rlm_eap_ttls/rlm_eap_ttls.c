@@ -129,30 +129,6 @@ static int eapttls_attach(CONF_SECTION *cs, void **instance)
 	return 0;
 }
 
-
-/*
- *	Free the TTLS per-session data
- */
-static void ttls_free(void *p)
-{
-	ttls_tunnel_t *t = (ttls_tunnel_t *) p;
-
-	if (!t) return;
-
-	rad_assert(talloc_get_type_abort(t, ttls_tunnel_t) != NULL);
-
-	if (t->username) {
-		DEBUG2("rlm_eap_ttls: Freeing handler for user %s",
-		       t->username->vp_strvalue);
-	}
-
-	pairfree(&t->username);
-	pairfree(&t->state);
-	pairfree(&t->accept_vps);
-	talloc_free(t);
-}
-
-
 /*
  *	Allocate the TTLS per-session data
  */
@@ -317,8 +293,7 @@ static int mod_authenticate(void *arg, eap_handler_t *handler)
 	 *	allocate it here, if it wasn't already alloacted.
 	 */
 	if (!tls_session->opaque) {
-		tls_session->opaque = ttls_alloc(inst, handler);
-		tls_session->free_opaque = ttls_free;
+		tls_session->opaque = ttls_alloc(inst, tls_session);
 	}
 
 	/*
