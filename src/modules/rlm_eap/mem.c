@@ -116,13 +116,17 @@ eap_handler_t *eap_handler_alloc(rlm_eap_t *inst)
 
 	PTHREAD_MUTEX_LOCK(&(inst->handler_mutex));
 	handler = talloc_zero(inst, eap_handler_t);
-
 	if (inst->handler_tree) {
-		rbtree_insert(inst->handler_tree, handler);
+		if (!rbtree_insert(inst->handler_tree, handler)) {
+			ERROR("Failed inserting EAP handler into handler tree");
+			talloc_free(handler);
+			return NULL;
+		}
 	}
 	handler->inst_holder = inst;
-
 	PTHREAD_MUTEX_UNLOCK(&(inst->handler_mutex));
+
+	/* Doesn't need to be inside the critical region */
 	talloc_set_destructor(handler, _eap_handler_free);
 
 	return handler;
@@ -134,7 +138,7 @@ typedef struct check_handler_t {
 	int		trips;
 } check_handler_t;
 
-static int check_opaque_free(check_handler_t *check)
+static int _check_opaque_free(check_handler_t *check)
 {
 	bool do_warning = false;
 	uint8_t state[8];
@@ -399,7 +403,7 @@ int eaplist_add(rlm_eap_t *inst, eap_handler_t *handler)
 		check->handler = handler;
 		check->trips = handler->trips;
 
-		talloc_set_destructor(check, check_opaque_free);
+		talloc_set_destructor(check, _check_opaque_free);
 		request_data_add(request, inst, 0, check, true);
 	}
 
