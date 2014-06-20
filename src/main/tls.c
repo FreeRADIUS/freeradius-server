@@ -1023,8 +1023,10 @@ static int cbtls_new_session(SSL *ssl, SSL_SESSION *sess)
 			return 0;
 		}
 
+
+		/* Do not convert to TALLOC - Thread safety */
 		/* alloc and convert to ASN.1 */
-		sess_blob = talloc_array(conf, unsigned char, blob_len);
+		sess_blob = malloc(blob_len);
 		if (!sess_blob) {
 			ERROR("SSL: Could not allocate buffer len=%d to persist session", blob_len);
 			return 0;
@@ -1067,7 +1069,7 @@ static int cbtls_new_session(SSL *ssl, SSL_SESSION *sess)
 	}
 
 error:
-	if (sess_blob) talloc_free(sess_blob);
+	free(sess_blob);
 
 	return 0;
 }
