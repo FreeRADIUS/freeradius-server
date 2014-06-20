@@ -117,11 +117,11 @@ static int eappeap_attach(CONF_SECTION *cs, void **instance)
 /*
  *	Allocate the PEAP per-session data
  */
-static peap_tunnel_t *peap_alloc(rlm_eap_peap_t *inst, eap_handler_t *handler)
+static peap_tunnel_t *peap_alloc(TALLOC_CTX *ctx, rlm_eap_peap_t *inst)
 {
 	peap_tunnel_t *t;
 
-	t = talloc_zero(handler, peap_tunnel_t);
+	t = talloc_zero(ctx, peap_tunnel_t);
 
 	t->default_method = inst->default_method;
 	t->copy_request_to_tunnel = inst->copy_request_to_tunnel;
@@ -234,7 +234,7 @@ static int mod_authenticate(void *arg, eap_handler_t *handler)
 	 *	allocate it if it doesn't already exist.
 	 */
 	if (!tls_session->opaque) {
-		peap = tls_session->opaque = peap_alloc(inst, tls_session);
+		peap = tls_session->opaque = peap_alloc(tls_session, inst);
 	}
 
 	status = eaptls_process(handler);
@@ -293,7 +293,7 @@ static int mod_authenticate(void *arg, eap_handler_t *handler)
 	 *	allocate it here, if it wasn't already alloacted.
 	 */
 	if (!tls_session->opaque) {
-		tls_session->opaque = peap_alloc(inst, tls_session);
+		tls_session->opaque = peap_alloc(tls_session, inst);
 	}
 
 	/*
