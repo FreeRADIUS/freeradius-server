@@ -132,11 +132,11 @@ static int eapttls_attach(CONF_SECTION *cs, void **instance)
 /*
  *	Allocate the TTLS per-session data
  */
-static ttls_tunnel_t *ttls_alloc(rlm_eap_ttls_t *inst, eap_handler_t *handler)
+static ttls_tunnel_t *ttls_alloc(TALLOC_CTX *ctx, rlm_eap_ttls_t *inst)
 {
 	ttls_tunnel_t *t;
 
-	t = talloc_zero(handler, ttls_tunnel_t);
+	t = talloc_zero(ctx, ttls_tunnel_t);
 
 	t->default_method = inst->default_method;
 	t->copy_request_to_tunnel = inst->copy_request_to_tunnel;
@@ -293,7 +293,7 @@ static int mod_authenticate(void *arg, eap_handler_t *handler)
 	 *	allocate it here, if it wasn't already alloacted.
 	 */
 	if (!tls_session->opaque) {
-		tls_session->opaque = ttls_alloc(inst, tls_session);
+		tls_session->opaque = ttls_alloc(tls_session, inst);
 	}
 
 	/*
