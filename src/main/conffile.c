@@ -216,7 +216,6 @@ static CONF_PAIR *cf_pair_alloc(CONF_SECTION *parent, char const *attr,
 
 static int _cf_data_free(CONF_DATA *cd)
 {
-	cd = talloc_get_type_abort(cd, CONF_DATA);
 	if (cd->free) {
 		cd->free(cd->data);
 	}
@@ -286,8 +285,6 @@ static int data_cmp(void const *a, void const *b)
 
 static int _cf_section_free(CONF_SECTION *cs)
 {
-	cs = talloc_get_type_abort(cs, CONF_SECTION);
-
 	/*
 	 *	Name1 and name2 are allocated contiguous with
 	 *	cs.

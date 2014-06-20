@@ -71,10 +71,6 @@ static char const *eap_codes[] = {
 
 static int _eap_module_free(eap_module_t *inst)
 {
-
-
-	inst = talloc_get_type_abort(inst, eap_module_t);
-
 	/*
 	 *	We have to check inst->type as it's only allocated
 	 *	if we loaded the eap method.

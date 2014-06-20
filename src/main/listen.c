@@ -2500,8 +2500,6 @@ static int listen_bind(rad_listen_t *this)
 
 static int _listener_free(rad_listen_t *this)
 {
-	this = talloc_get_type_abort(this, rad_listen_t);
-
 	/*
 	 *	Other code may have eaten the FD.
 	 */
