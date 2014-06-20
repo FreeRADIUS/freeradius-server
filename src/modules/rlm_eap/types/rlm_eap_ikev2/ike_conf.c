@@ -28,6 +28,7 @@
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/rad_assert.h>
+
 #include "ike_conf.h"
 #include "eap.h"
 #include "logging_impl.h"
@@ -50,8 +51,6 @@ enum {
 
 };
 
-
-
 static struct config_transform config_transforms[] =
 {
 	 {"integrity",	IKEv2_TRT_INTEGRITY_ALGORITHM,		OPT_INTEGRITY},
@@ -61,8 +60,6 @@ static struct config_transform config_transforms[] =
 	 {NULL, 0, 0} /* end of list */
 
 };
-
-
 
 /*
  *	Copied from rlm_files, and NOT under the same copyright
@@ -329,7 +326,7 @@ void rad_update_shared_seclist(struct sharedSecList **list, char const *id, VALU
 	if (!vp || !vp->length) {
 		DEBUG(IKEv2_LOG_PREFIX "[%s] -- Secret not set", id);
 	} else {
-		secret = vp->vp_strvalue;
+		memcpy(&secret, &vp->vp_strvalue, sizeof(secret));
 	}
 
 	//authtype
