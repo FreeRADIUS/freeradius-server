@@ -189,16 +189,6 @@ void *request_data_reference(REQUEST *request,
 }
 
 /*
- *	Free a request.
- */
-int request_opaque_free(REQUEST *request)
-{
-	talloc_free(request);
-
-	return 0;
-}
-
-/*
  *	Create possibly many directories.
  *
  *	Note that the input directory name is NOT a constant!

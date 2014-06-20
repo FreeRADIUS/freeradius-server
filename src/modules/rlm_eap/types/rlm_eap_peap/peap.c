@@ -1166,7 +1166,6 @@ rlm_rcode_t eappeap_process(eap_handler_t *handler, tls_session_t *tls_session)
 				 *	So we associate the fake request with
 				 *	this request.
 				 */
-				talloc_set_destructor(fake, request_opaque_free);
 				rcode = request_data_add(request, request->proxy,
 							 REQUEST_DATA_EAP_MSCHAP_TUNNEL_CALLBACK,
 							 fake, true);
