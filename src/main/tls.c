@@ -197,7 +197,7 @@ static int _tls_session_free(tls_session_t *ssn)
 	return 0;
 }
 
-tls_session_t *tls_new_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *conf, REQUEST *request, int client_cert)
+tls_session_t *tls_new_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *conf, REQUEST *request, bool client_cert)
 {
 	tls_session_t *state = NULL;
 	SSL *new_tls = NULL;
