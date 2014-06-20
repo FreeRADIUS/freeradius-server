@@ -208,10 +208,8 @@ static sql_rcode_t sql_classify_error(UNUSED PGresult const *result)
 }
 #endif
 
-static int sql_socket_destructor(void *c)
+static int _sql_socket_destructor(rlm_sql_postgres_conn_t *conn)
 {
-	rlm_sql_postgres_conn_t  *conn = c;
-
 	DEBUG2("rlm_sql_postgresql: Socket destructor called, closing socket");
 
 	if (!conn->db) {
@@ -238,7 +236,7 @@ static int CC_HINT(nonnull) sql_init_socket(rlm_sql_handle_t *handle, rlm_sql_co
 	rlm_sql_postgres_conn_t *conn;
 
 	MEM(conn = handle->conn = talloc_zero(handle, rlm_sql_postgres_conn_t));
-	talloc_set_destructor((void *) conn, sql_socket_destructor);
+	talloc_set_destructor(conn, _sql_socket_destructor);
 
 	DEBUG2("rlm_sql_postgresql: Connecting using parameters: %s", driver->db_string);
 	conn->db = PQconnectdb(driver->db_string);

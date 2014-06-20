@@ -46,10 +46,8 @@ static sql_rcode_t sql_free_result(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 static int sql_affected_rows(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
 static int sql_num_fields(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
 
-static int sql_socket_destructor(void *c)
+static int _sql_socket_destructor(rlm_sql_unixodbc_conn_t *conn)
 {
-	rlm_sql_unixodbc_conn_t *conn = c;
-
 	DEBUG2("rlm_sql_unixodbc: Socket destructor called, closing socket");
 
 	if (conn->statement) {
@@ -83,7 +81,7 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 	long err_handle;
 
 	MEM(conn = handle->conn = talloc_zero(handle, rlm_sql_unixodbc_conn_t));
-	talloc_set_destructor((void *) conn, sql_socket_destructor);
+	talloc_set_destructor(conn, _sql_socket_destructor);
 
 	/* 1. Allocate environment handle and register version */
 	err_handle = SQLAllocHandle(SQL_HANDLE_ENV, SQL_NULL_HANDLE, &conn->env);

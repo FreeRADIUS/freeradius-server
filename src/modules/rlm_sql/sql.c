@@ -39,10 +39,9 @@ RCSID("$Id$")
 #ifdef HAVE_PTHREAD_H
 #endif
 
-static int sql_conn_destructor(void *conn)
+static int _sql_conn_destructor(rlm_sql_handle_t *conn)
 {
-	rlm_sql_handle_t *handle = conn;
-	rlm_sql_t *inst = handle->inst;
+	rlm_sql_t *inst = conn->inst;
 
 	rad_assert(inst);
 
@@ -71,7 +70,7 @@ static void *mod_conn_create(void *instance)
 	 *	Then we call our destructor to trigger an modules.sql.close
 	 *	event, then all the memory is freed.
 	 */
-	talloc_set_destructor((void *) handle, sql_conn_destructor);
+	talloc_set_destructor(handle, _sql_conn_destructor);
 
 	rcode = (inst->module->sql_socket_init)(handle, inst->config);
 	if (rcode != 0) {

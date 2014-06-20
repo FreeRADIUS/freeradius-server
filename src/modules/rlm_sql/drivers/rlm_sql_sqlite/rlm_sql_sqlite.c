@@ -338,10 +338,9 @@ static int mod_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
 	return 0;
 }
 
-static int sql_socket_destructor(void *c)
+static int _sql_socket_destructor(rlm_sql_sqlite_conn_t *conn)
 {
 	int status = 0;
-	rlm_sql_sqlite_conn_t * conn = c;
 
 	DEBUG2("rlm_sql_sqlite: Socket destructor called, closing socket");
 
@@ -378,7 +377,7 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 	int status;
 
 	MEM(conn = handle->conn = talloc_zero(handle, rlm_sql_sqlite_conn_t));
-	talloc_set_destructor((void *) conn, sql_socket_destructor);
+	talloc_set_destructor(conn, _sql_socket_destructor);
 
 	INFO("rlm_sql_sqlite: Opening SQLite database \"%s\"", driver->filename);
 #ifdef HAVE_SQLITE3_OPEN_V2

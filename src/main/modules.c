@@ -314,7 +314,7 @@ void virtual_servers_free(time_t when)
 	}
 }
 
-static int indexed_modcallable_free(indexed_modcallable *this)
+static int _indexed_modcallable_free(indexed_modcallable *this)
 {
 	modcallable_free(&this->modulelist);
 	return 0;
@@ -421,7 +421,7 @@ static int module_entry_cmp(void const *one, void const *two)
 /*
  *	Free a module entry.
  */
-static int module_entry_free(module_entry_t *this)
+static int _module_entry_free(module_entry_t *this)
 {
 #ifndef NDEBUG
 	/*
@@ -512,7 +512,7 @@ static module_entry_t *linkto_module(char const *module_name,
 
 	/* make room for the module type */
 	node = talloc_zero(cs, module_entry_t);
-	talloc_set_destructor(node, module_entry_free);
+	talloc_set_destructor(node, _module_entry_free);
 	strlcpy(node->name, module_name, sizeof(node->name));
 	node->module = module;
 	node->handle = handle;
@@ -767,7 +767,7 @@ static indexed_modcallable *new_sublist(CONF_SECTION *cs,
 		return NULL;
 	}
 
-	talloc_set_destructor(c, indexed_modcallable_free);
+	talloc_set_destructor(c, _indexed_modcallable_free);
 
 	return c;
 }

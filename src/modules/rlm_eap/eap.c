@@ -69,12 +69,8 @@ static char const *eap_codes[] = {
 	"failure"
 };
 
-static int eap_module_free(void *ctx)
+static int _eap_module_free(eap_module_t *inst)
 {
-	eap_module_t *inst;
-
-	inst = talloc_get_type_abort(ctx, eap_module_t);
-
 	/*
 	 *	We have to check inst->type as it's only allocated
 	 *	if we loaded the eap method.
@@ -106,7 +102,7 @@ int eap_module_load(rlm_eap_t *inst, eap_module_t **m_inst, eap_type_t num, CONF
 	*m_inst = method = talloc_zero(cs, eap_module_t);
 	if (!inst) return -1;
 
-	talloc_set_destructor((void *) method, eap_module_free);
+	talloc_set_destructor(method, _eap_module_free);
 
 	/* fill in the structure */
 	method->cs = cs;

@@ -214,11 +214,8 @@ static CONF_PAIR *cf_pair_alloc(CONF_SECTION *parent, char const *attr,
 	return cp;
 }
 
-static int cf_data_free(void *ctx)
+static int _cf_data_free(CONF_DATA *cd)
 {
-	CONF_DATA *cd;
-
-	cd = talloc_get_type_abort(ctx, CONF_DATA);
 	if (cd->free) {
 		cd->free(cd->data);
 	}
@@ -286,12 +283,8 @@ static int data_cmp(void const *a, void const *b)
 	return strcmp(one->name, two->name);
 }
 
-static int cf_section_free(void *ctx)
+static int _cf_section_free(CONF_SECTION *cs)
 {
-	CONF_SECTION *cs;
-
-	cs = talloc_get_type_abort(ctx, CONF_SECTION);
-
 	/*
 	 *	Name1 and name2 are allocated contiguous with
 	 *	cs.
@@ -362,7 +355,7 @@ CONF_SECTION *cf_section_alloc(CONF_SECTION *parent, char const *name1,
 	cs->pair_tree = rbtree_create(cs, pair_cmp, NULL, 0);
 	if (!cs->pair_tree) goto error;
 
-	talloc_set_destructor((void *) cs, cf_section_free);
+	talloc_set_destructor(cs, _cf_section_free);
 
 	/*
 	 *	Don't create a data tree, it may not be needed.
@@ -2744,7 +2737,7 @@ static CONF_DATA *cf_data_alloc(CONF_SECTION *parent, char const *name,
 	cd->free = data_free;
 
 	if (cd->free) {
-		talloc_set_destructor((void *) cd, cf_data_free);
+		talloc_set_destructor(cd, _cf_data_free);
 	}
 
 	return cd;

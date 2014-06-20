@@ -2501,12 +2501,8 @@ static int listen_bind(rad_listen_t *this)
 }
 
 
-static int listener_free(void *ctx)
+static int _listener_free(rad_listen_t *this)
 {
-	rad_listen_t *this;
-
-	this = talloc_get_type_abort(ctx, rad_listen_t);
-
 	/*
 	 *	Other code may have eaten the FD.
 	 */
@@ -2571,7 +2567,7 @@ static rad_listen_t *listen_alloc(TALLOC_CTX *ctx, RAD_LISTEN_TYPE type)
 	this->encode = master_listen[this->type].encode;
 	this->decode = master_listen[this->type].decode;
 
-	talloc_set_destructor((void *) this, listener_free);
+	talloc_set_destructor(this, _listener_free);
 
 	this->data = talloc_zero_array(this, uint8_t, master_listen[this->type].inst_size);
 

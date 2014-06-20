@@ -31,9 +31,8 @@ static int sql_affected_rows(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 static int sql_num_fields(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
 static sql_rcode_t sql_finish_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
 
-static int sql_socket_destructor(void *c)
+static int _sql_socket_destructor(rlm_sql_firebird_conn_t *conn)
 {
-	rlm_sql_firebird_conn_t *conn = c;
 	int i;
 
 	DEBUG2("rlm_sql_firebird: socket destructor called, closing socket");
@@ -77,7 +76,7 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 	long res;
 
 	MEM(conn = handle->conn = talloc_zero(handle, rlm_sql_firebird_conn_t));
-	talloc_set_destructor((void *) conn, sql_socket_destructor);
+	talloc_set_destructor(conn, _sql_socket_destructor);
 
 	res = fb_init_socket(conn);
 	if (res) {

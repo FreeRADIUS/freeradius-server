@@ -45,10 +45,8 @@ typedef struct rlm_sql_conn {
 	char *error;
 } rlm_sql_db2_conn_t;
 
-static int sql_socket_destructor(void *c)
+static int _sql_socket_destructor(rlm_sql_db2_conn_t *conn)
 {
-	rlm_sql_db2_conn_t *conn = c;
-
 	DEBUG2("rlm_sql_db2: Socket destructor called, closing socket");
 
 	if (conn->hdbc) {
@@ -76,7 +74,7 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 	rlm_sql_db2_conn_t *conn;
 
 	MEM(conn = handle->conn = talloc_zero(handle, rlm_sql_db2_conn_t));
-	talloc_set_destructor((void *) conn, sql_socket_destructor);
+	talloc_set_destructor(conn, _sql_socket_destructor);
 
 	/* allocate handles */
 	SQLAllocHandle(SQL_HANDLE_ENV, SQL_NULL_HANDLE, &(conn->henv));
