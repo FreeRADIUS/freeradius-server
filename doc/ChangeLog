@@ -78,6 +78,11 @@ FreeRADIUS 3.0.4 Mon 12 May 2014 15:30:00 EDT urgency=medium
 	* Fix issue where modifying the value of an attribute created
 	  from a template with a literal value, may have resulted in the
 	  template literal being freed.
+	* Fix parenting issues in tls code which may have resulted in
+	  memory corruption and crashes.
+	* Fix issue in radsniff where writing to PCAP files and using
+	  -R response filters, where the requests would still be written
+	  to the PCAP for non matching responses.
 
 FreeRADIUS 3.0.3 Mon 12 May 2014 15:30:00 EDT urgency=medium
 	Feature improvements
