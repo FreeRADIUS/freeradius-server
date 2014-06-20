@@ -82,12 +82,8 @@ static int eap_pwd_attach (CONF_SECTION *cs, void **instance)
 	return 0;
 }
 
-static void free_session (void *data)
+static int _free_pwd_session (pwd_session_t *session)
 {
-	pwd_session_t *session = (pwd_session_t *)data;
-
-	if (!session) return;
-
 	BN_free(session->private_value);
 	BN_free(session->peer_scalar);
 	BN_free(session->my_scalar);
@@ -98,6 +94,8 @@ static void free_session (void *data)
 	EC_POINT_free(session->pwe);
 	BN_free(session->order);
 	BN_free(session->prime);
+
+	return 0;
 }
 
 static int send_pwd_request (pwd_session_t *sess, EAP_DS *eap_ds)
@@ -201,7 +199,7 @@ static int eap_pwd_initiate (void *instance, eap_handler_t *handler)
 	}
 
 	if ((pwd_session = talloc_zero(handler, pwd_session_t)) == NULL) return -1;
-
+	talloc_set_destructor(pwd_session, _free_pwd_session);
 	/*
 	 * set things up so they can be free'd reliably
 	 */
@@ -237,7 +235,6 @@ static int eap_pwd_initiate (void *instance, eap_handler_t *handler)
 	pwd_session->in_buf = NULL;
 	pwd_session->out_buf_pos = 0;
 	handler->opaque = pwd_session;
-	handler->free_opaque = free_session;
 
 	/*
 	 * construct an EAP-pwd-ID/Request
