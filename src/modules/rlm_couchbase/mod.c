@@ -28,7 +28,7 @@ RCSID("$Id$");
 #include <freeradius-devel/radiusd.h>
 
 #include <libcouchbase/couchbase.h>
-#include <json/json.h>
+#include <json.h>
 
 #include "mod.h"
 #include "couchbase.h"
