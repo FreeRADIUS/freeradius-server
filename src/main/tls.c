@@ -2372,7 +2372,7 @@ post_ca:
  *	added to automatically free the data when the CONF_SECTION
  *	is freed.
  */
-static int tls_server_conf_free(fr_tls_server_conf_t *conf)
+static int _tls_server_conf_free(fr_tls_server_conf_t *conf)
 {
 	if (conf->ctx) SSL_CTX_free(conf->ctx);
 
@@ -2385,6 +2385,21 @@ static int tls_server_conf_free(fr_tls_server_conf_t *conf)
 	memset(conf, 0, sizeof(*conf));
 #endif
 	return 0;
+}
+
+static fr_tls_server_conf_t *tls_server_conf_alloc(TALLOC_CTX *ctx)
+{
+	fr_tls_server_conf_t *conf;
+
+	conf = talloc_zero(ctx, fr_tls_server_conf_t);
+	if (!conf) {
+		ERROR("Out of memory");
+		return NULL;
+	}
+
+	talloc_set_destructor(conf, _tls_server_conf_free);
+
+	return conf;
 }
 
 
@@ -2402,13 +2417,7 @@ fr_tls_server_conf_t *tls_server_conf_parse(CONF_SECTION *cs)
 		return conf;
 	}
 
-	conf = talloc_zero(cs, fr_tls_server_conf_t);
-	if (!conf) {
-		ERROR("Out of memory");
-		return NULL;
-	}
-
-	talloc_set_destructor(conf, tls_server_conf_free);
+	conf = tls_server_conf_alloc(cs);
 
 	if (cf_section_parse(cs, conf, tls_server_config) < 0) {
 	error:
@@ -2491,13 +2500,7 @@ fr_tls_server_conf_t *tls_client_conf_parse(CONF_SECTION *cs)
 		return conf;
 	}
 
-	conf = talloc_zero(cs, fr_tls_server_conf_t);
-	if (!conf) {
-		ERROR("Out of memory");
-		return NULL;
-	}
-
-	talloc_set_destructor(conf, tls_server_conf_free);
+	conf = tls_server_conf_alloc(cs);
 
 	if (cf_section_parse(cs, conf, tls_client_config) < 0) {
 	error:
