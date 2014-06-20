@@ -217,14 +217,30 @@ AC_DEFUN([FR_SMART_CHECK_INCLUDE], [
 ac_safe=`echo "$1" | sed 'y%./+-%__pm%'`
 old_CPPFLAGS="$CPPFLAGS"
 smart_include=
-smart_include_dir=
+dnl #  The default directories we search in (in addition to the compilers search path)
+smart_include_dir="/usr/local/include /opt/include"
+
+dnl #  Our local versions
+_smart_try_dir=
+_smart_include_dir=
+
+dnl #  Add variants with the different prefixes and one with no prefix
+for prefix in $smart_prefix ""; do
+  for dir in $smart_try_dir; do
+    _smart_try_dir="${_smart_try_dir} ${dir}/${prefix}"
+  done
+
+  for dir in $smart_include_dir; do
+    _smart_include_dir="${_smart_include_dir} ${dir}/${prefix}"
+  done
+done
 
 dnl #
-dnl #  Try first any user-specified directory, otherwise we may pick up
+dnl #  Try any user-specified directory first otherwise we may pick up
 dnl #  the wrong version.
 dnl #
-if test "x$smart_try_dir" != "x"; then
-  for try in $smart_try_dir; do
+if test "x$_smart_try_dir" != "x"; then
+  for try in $_smart_try_dir; do
     AC_MSG_CHECKING([for $1 in $try])
     CPPFLAGS="-isystem $try $old_CPPFLAGS"
     AC_TRY_COMPILE([$2
@@ -244,30 +260,58 @@ if test "x$smart_try_dir" != "x"; then
 fi
 
 dnl #
-dnl #  Try using the default includes.
+dnl #  Try using the default includes (with prefixes).
 dnl #
 if test "x$smart_include" = "x"; then
-  AC_MSG_CHECKING([for $1])
-  AC_TRY_COMPILE([$2
-		  #include <$1>],
-		 [int a = 1;],
-		 [
-		   smart_include=" "
-		   AC_MSG_RESULT(yes)
-		   break
-		 ],
-		 [
-		   smart_include=
-		   AC_MSG_RESULT(no)
-		 ])
+  for prefix in $smart_prefix; do
+    AC_MSG_CHECKING([for ${prefix}/$1])
+
+    AC_TRY_COMPILE([$2
+		    #include <$1>],
+		   [int a = 1;],
+		   [
+		     smart_include="-isystem ${prefix}/"
+		     AC_MSG_RESULT(yes)
+		     break
+		   ],
+		   [
+		     smart_include=
+		     AC_MSG_RESULT(no)
+		   ])
+  done
+fi
+
+dnl #
+dnl #  Try using the default includes (without prefixes).
+dnl #
+if test "x$smart_include" = "x"; then
+    AC_MSG_CHECKING([for $1])
+
+    AC_TRY_COMPILE([$2
+		    #include <$1>],
+		   [int a = 1;],
+		   [
+		     smart_include=" "
+		     AC_MSG_RESULT(yes)
+		     break
+		   ],
+		   [
+		     smart_include=
+		     AC_MSG_RESULT(no)
+		   ])
 fi
 
 dnl #
 dnl #  Try to guess possible locations.
 dnl #
 if test "x$smart_include" = "x"; then
-  FR_LOCATE_DIR(smart_include_dir,$1)
-  for try in $smart_include_dir /usr/local/include /opt/include; do
+
+  for prefix in $smart_prefix; do
+    FR_LOCATE_DIR(_smart_include_dir,"${prefix}/${1}")
+  done
+  FR_LOCATE_DIR(_smart_include_dir, $1)
+
+  for try in $_smart_include_dir; do
     AC_MSG_CHECKING([for $1 in $try])
     CPPFLAGS="-isystem $try $old_CPPFLAGS"
     AC_TRY_COMPILE([$2
@@ -294,6 +338,12 @@ if test "x$smart_include" != "x"; then
   CPPFLAGS="$smart_include $old_CPPFLAGS"
   SMART_CPPFLAGS="$smart_include $SMART_CPPFLAGS"
 fi
+
+dnl #
+dnl #  Consume prefix, it's not likely to be used
+dnl #  between multiple calls.
+dnl #
+smart_prefix=
 ])
 
 dnl #######################################################################
