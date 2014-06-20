@@ -98,6 +98,10 @@ static int _eap_handler_free(eap_handler_t *handler)
 	if (inst->handler_tree) {
 		rbtree_deletebydata(inst->handler_tree, handler);
 	}
+	/*
+	 *	Free operations need to be synchronised too.
+	 */
+	talloc_free(handler);
 	PTHREAD_MUTEX_UNLOCK(&(inst->handler_mutex));
 
 	return 0;
@@ -116,10 +120,10 @@ eap_handler_t *eap_handler_alloc(rlm_eap_t *inst)
 	if (inst->handler_tree) {
 		rbtree_insert(inst->handler_tree, handler);
 	}
-
 	handler->inst_holder = inst;
-	talloc_set_destructor(handler, _eap_handler_free);
+
 	PTHREAD_MUTEX_UNLOCK(&(inst->handler_mutex));
+	talloc_set_destructor(handler, _eap_handler_free);
 
 	return handler;
 }
