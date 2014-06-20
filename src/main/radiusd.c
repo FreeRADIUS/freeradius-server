@@ -301,6 +301,23 @@ int main(int argc, char *argv[])
 	}
 
 	/*
+	 *	According to the talloc peeps, no two threads
+	 *	may modify any part of a ctx tree with a common
+	 *	root without synchronisation.
+	 *
+	 *	So we can't run with a null context and threads.
+	 */
+	if (main_config.memory_report) {
+		if (spawn_flag) {
+			fprintf(stderr, "radiusd: The server cannot produce memory reports (-M) in threaded mode\n");
+			exit(EXIT_FAILURE);
+		}
+		talloc_enable_null_tracking();
+	} else {
+		talloc_disable_null_tracking();
+	}
+
+	/*
 	 *	Better here, so it doesn't matter whether we get passed
 	 *	-xv or -vx.
 	 */

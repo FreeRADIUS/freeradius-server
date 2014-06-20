@@ -722,11 +722,6 @@ int fr_fault_setup(char const *cmd, char const *program)
 			TALLOC_CTX *tmp;
 			bool *marker;
 
-			/*
-			 *  This should create a single NULL context used whenever
-			 *  something is talloced without a parent.
-			 */
-			talloc_enable_null_tracking();
 			tmp = talloc(NULL, bool);
 			talloc_null_ctx = talloc_parent(tmp);
 			talloc_free(tmp);
