@@ -968,6 +968,8 @@ void pairmove(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from)
  * Move pairs of a matching attribute number, vendor number and tag from the
  * the input list to the output list.
  *
+ * @note pairs which are moved have their parent changed to ctx.
+ *
  * @note pairfree should be called on the head of the old list to free unmoved
 	 attributes (if they're no longer needed).
  *
