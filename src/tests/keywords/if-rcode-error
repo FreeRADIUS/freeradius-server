@@ -1,0 +1,11 @@
+# PRE: if
+#
+#  return code in an "if" section.
+#
+if (User-Name == "bob") {
+	update reply {
+		Filter-Id := "filter"
+	}
+
+	ok = reject	# ERROR
+}
