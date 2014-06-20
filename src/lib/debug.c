@@ -215,12 +215,7 @@ fr_bt_marker_t *fr_backtrace_attach(fr_cbuff_t **cbuff, TALLOC_CTX *obj)
 	if (*cbuff == NULL) {
 		PTHREAD_MUTEX_LOCK(&fr_debug_init);
 		/* Check again now we hold the mutex - eww*/
-		if (*cbuff == NULL) {
-			TALLOC_CTX *ctx;
-
-			ctx = fr_autofree_ctx();
-			*cbuff = fr_cbuff_alloc(ctx, MAX_BT_CBUFF, true);
-		}
+		if (*cbuff == NULL) *cbuff = fr_cbuff_alloc(NULL, MAX_BT_CBUFF, true);
 		PTHREAD_MUTEX_UNLOCK(&fr_debug_init);
 	}
 

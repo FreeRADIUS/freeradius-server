@@ -587,12 +587,22 @@ fr_connection_pool_t *fr_connection_pool_init(CONF_SECTION *parent,
 	cs = cf_section_sub_find(parent, "pool");
 	if (!cs) cs = cf_section_sub_find(parent, "limit");
 
-	if (cs) {
-		pool = talloc_zero(cs, fr_connection_pool_t);
-	} else {
-		pool = talloc_zero(parent, fr_connection_pool_t);
-	}
+	/*
+	 *	Pool is allocated in the NULL context as
+	 *	threads are likely to allocate memory
+	 *	beneath the pool.
+	 */
+	pool = talloc_zero(NULL, fr_connection_pool_t);
 	if (!pool) return NULL;
+
+	/*
+	 *	Ensure the pool is freed at the same time
+	 *	as its parent.
+	 */
+	if (fr_link_talloc_ctx_free(cs ? cs : parent, pool) < 0) {
+		talloc_free(pool);
+		return NULL;
+	}
 
 	pool->cs = cs;
 	pool->ctx = ctx;

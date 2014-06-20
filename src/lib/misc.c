@@ -35,7 +35,6 @@ RCSID("$Id$")
 	} while (0)
 
 #ifdef HAVE_PTHREAD_H
-static pthread_mutex_t autofree_context = PTHREAD_MUTEX_INITIALIZER;
 #  define PTHREAD_MUTEX_LOCK pthread_mutex_lock
 #  define PTHREAD_MUTEX_UNLOCK pthread_mutex_unlock
 #else
@@ -52,6 +51,11 @@ static char const *months[] = {
 	"jul", "aug", "sep", "oct", "nov", "dec" };
 
 fr_thread_local_setup(char *, fr_inet_ntop_buffer);	/* macro */
+
+typedef struct fr_talloc_link {
+	bool armed;
+	TALLOC_CTX *child;
+} fr_talloc_link_t;
 
 /** Sets a signal handler using sigaction if available, else signal
  *
@@ -81,25 +85,50 @@ int fr_set_signal(int sig, sig_t func)
 	return 0;
 }
 
-/** Allocates a new talloc context from the root autofree context
- *
- * This function is threadsafe, whereas using the NULL context is not.
- *
- * @note The returned context must be freed by the caller.
- * @returns a new talloc context parented by the root autofree context.
- */
-TALLOC_CTX *fr_autofree_ctx(void)
+static int _fr_trigger_talloc_ctx_free(fr_talloc_link_t *trigger)
 {
-	static TALLOC_CTX *ctx = NULL, *child;
-	PTHREAD_MUTEX_LOCK(&autofree_context);
-	if (!ctx) {
-		ctx = talloc_autofree_context();
+	if (trigger->armed) talloc_free(trigger->child);
+
+	return 0;
+}
+
+static int _fr_disarm_talloc_ctx_free(bool **armed)
+{
+	**armed = false;
+	return 0;
+}
+
+/** Link a parent and a child context, so the child is freed before the parent
+ *
+ * @note This is not thread safe. Do not free parent before threads are joined, do not call from a child thread.
+ * @note It's OK to free the child before threads are joined, but this will leak memory until the parent is freed.
+ *
+ * @param parent who's fate the child should share.
+ * @param child bound to parent's lifecycle.
+ * @return 0 on success -1 on failure.
+ */
+int fr_link_talloc_ctx_free(TALLOC_CTX *parent, TALLOC_CTX *child)
+{
+	fr_talloc_link_t *trigger;
+	bool **disarm;
+
+	trigger = talloc(parent, fr_talloc_link_t);
+	if (!trigger) return -1;
+
+	disarm = talloc(child, bool *);
+	if (!disarm) {
+		talloc_free(trigger);
+		return -1;
 	}
 
-	child = talloc_new(ctx);
-	PTHREAD_MUTEX_UNLOCK(&autofree_context);
+	trigger->child = child;
+	trigger->armed = true;
+	*disarm = &trigger->armed;
 
-	return child;
+	talloc_set_destructor(trigger, _fr_trigger_talloc_ctx_free);
+	talloc_set_destructor(disarm, _fr_disarm_talloc_ctx_free);
+
+	return 0;
 }
 
 /*
