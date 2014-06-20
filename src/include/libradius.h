@@ -647,7 +647,7 @@ void		fr_printf_log(char const *, ...) CC_HINT(format (printf, 1, 2));
  *	Several handy miscellaneous functions.
  */
 int		fr_set_signal(int sig, sig_t func);
-TALLOC_CTX	*fr_autofree_ctx(void);
+int		fr_link_talloc_ctx_free(TALLOC_CTX *parent, TALLOC_CTX *child);
 char const	*fr_inet_ntop(int af, void const *src);
 char const 	*ip_ntoa(char *, uint32_t);
 int		fr_pton4(fr_ipaddr_t *out, char const *value, size_t inlen, bool resolve, bool fallback);
