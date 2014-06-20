@@ -51,16 +51,6 @@ static void fix_mppe_keys(eap_handler_t *handler, mschapv2_opaque_t *data)
 	pairfilter(data, &data->mppe_keys, &handler->request->reply->vps, 17, VENDORPEC_MICROSOFT, TAG_ANY);
 }
 
-static void free_data(void *ptr)
-{
-	mschapv2_opaque_t *data = ptr;
-
-	pairfree(&data->mppe_keys);
-	pairfree(&data->reply);
-	talloc_free(data);
-}
-
-
 /*
  *	Attach the module.
  */
@@ -249,7 +239,6 @@ static int mschapv2_initiate(UNUSED void *instance, eap_handler_t *handler)
 	data->reply = NULL;
 
 	handler->opaque = data;
-	handler->free_opaque = free_data;
 
 	/*
 	 *	Compose the EAP-MSCHAPV2 packet out of the data structure,
