@@ -2891,24 +2891,26 @@ fi
 
 
 	have_json="yes"
-	smart_try_dir="$jsonc_include_dir"
+	smart_try_dir="$jsonc_include_dir \
+	/usr/include/json-c /usr/local/include/json-c /opt/include/json-c \
+	/usr/include/json /usr/local/include/json /opt/include/json"
 
 
 
-ac_safe=`echo "json/json.h" | sed 'y%./+-%__pm%'`
+ac_safe=`echo "json.h" | sed 'y%./+-%__pm%'`
 old_CPPFLAGS="$CPPFLAGS"
 smart_include=
 smart_include_dir=
 
 if test "x$smart_try_dir" != "x"; then
   for try in $smart_try_dir; do
-    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for json/json.h in $try" >&5
-$as_echo_n "checking for json/json.h in $try... " >&6; }
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for json.h in $try" >&5
+$as_echo_n "checking for json.h in $try... " >&6; }
     CPPFLAGS="-isystem $try $old_CPPFLAGS"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <json/json.h>
+		    #include <json.h>
 int
 main ()
 {
@@ -2937,12 +2939,12 @@ rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 fi
 
 if test "x$smart_include" = "x"; then
-  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for json/json.h" >&5
-$as_echo_n "checking for json/json.h... " >&6; }
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for json.h" >&5
+$as_echo_n "checking for json.h... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		  #include <json/json.h>
+		  #include <json.h>
 int
 main ()
 {
@@ -2973,7 +2975,7 @@ if test "x$smart_include" = "x"; then
 
 if test "x$LOCATE" != "x"; then
 	DIRS=
-  file=json/json.h
+  file=json.h
 
   for x in `${LOCATE} $file 2>/dev/null`; do
 					base=`echo $x | sed "s%/${file}%%"`
@@ -2997,13 +2999,13 @@ fi
 eval "smart_include_dir=\"\$smart_include_dir $DIRS\""
 
   for try in $smart_include_dir /usr/local/include /opt/include; do
-    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for json/json.h in $try" >&5
-$as_echo_n "checking for json/json.h in $try... " >&6; }
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for json.h in $try" >&5
+$as_echo_n "checking for json.h in $try... " >&6; }
     CPPFLAGS="-isystem $try $old_CPPFLAGS"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <json/json.h>
+		    #include <json.h>
 int
 main ()
 {
@@ -3037,7 +3039,7 @@ if test "x$smart_include" != "x"; then
   SMART_CPPFLAGS="$smart_include $SMART_CPPFLAGS"
 fi
 
-	if test "x$ac_cv_header_json_json_h" != "xyes"; then
+	if test "x$ac_cv_header_json_h" != "xyes"; then
 		have_json="no"
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: json-c headers not found. Use --with-jsonc-include-dir=<path>." >&5
 $as_echo "$as_me: WARNING: json-c headers not found. Use --with-jsonc-include-dir=<path>." >&2;}
@@ -3219,8 +3221,7 @@ if test "x$smart_lib" != "x"; then
   SMART_LIBS="$smart_ldflags $smart_lib $SMART_LIBS"
 fi
 
-	if test "x$ac_cv_lib_json_c_json_c_version" != "xyes"
-	then
+	if test "x$ac_cv_lib_json_c_json_c_version" != "xyes"; then
 
 
 sm_lib_safe=`echo "json" | sed 'y%./+-%__p_%'`
@@ -3395,8 +3396,7 @@ if test "x$smart_lib" != "x"; then
   SMART_LIBS="$smart_ldflags $smart_lib $SMART_LIBS"
 fi
 
-		if test "x$ac_cv_lib_json_json_tokener_new" != "xyes"
-		then
+		if test "x$ac_cv_lib_json_json_tokener_new" != "xyes"; then
 			have_json="no"
 		fi
 	fi
@@ -3809,8 +3809,7 @@ if test "x$smart_lib" != "x"; then
   SMART_LIBS="$smart_ldflags $smart_lib $SMART_LIBS"
 fi
 
-	if test "x$ac_cv_lib_couchbase_lcb_get_version" != "xyes"
-	then
+	if test "x$ac_cv_lib_couchbase_lcb_get_version" != "xyes"; then
 		have_couchbase="no"
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: libcouchbase libraries not found. Use --with-libcouchbase-lib-dir=<path>." >&5
 $as_echo "$as_me: WARNING: libcouchbase libraries not found. Use --with-libcouchbase-lib-dir=<path>." >&2;}
@@ -3844,7 +3843,7 @@ $as_echo "$as_me: WARNING: FAILURE: rlm_couchbase requires: $fail." >&2;};
 fi
 
 mod_ldflags="${SMART_LIBS}"
-mod_cflags="${SMART_CFLAGS}"
+mod_cflags="${SMART_CPPFLAGS}"
 
 
 
