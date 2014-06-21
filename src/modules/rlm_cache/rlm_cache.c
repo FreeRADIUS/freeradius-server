@@ -667,11 +667,13 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	/*
 	 *	The cache.
 	 */
-	inst->cache = rbtree_create(inst, cache_entry_cmp, cache_entry_free, 0);
+
+	inst->cache = rbtree_create(NULL, cache_entry_cmp, cache_entry_free, 0);
 	if (!inst->cache) {
 		ERROR("Failed to create cache");
 		return -1;
 	}
+	fr_link_talloc_ctx_free(inst, inst->cache);
 
 	/*
 	 *	The heap of entries to expire.
