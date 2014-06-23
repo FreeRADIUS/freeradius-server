@@ -162,8 +162,6 @@ struct fr_connection_pool_t {
 					//!< connections.
 	fr_connection_alive_t	alive;	//!< Function used to check status
 					//!< of connections.
-	fr_connection_delete_t	delete;	//!< Function used to close existing
-					//!< connections.
 };
 
 #define LOG_PREFIX "rlm_%s (%s)"
@@ -445,7 +443,6 @@ static void fr_connection_close(fr_connection_pool_t *pool,
 	if (pool->trigger) exec_trigger(NULL, pool->cs, "close", true);
 
 	fr_connection_unlink(pool, this);
-	if (pool->delete) pool->delete(pool->opaque, this->connection);
 	rad_assert(pool->num > 0);
 	pool->num--;
 	talloc_free(this);
@@ -572,7 +569,6 @@ void fr_connection_pool_delete(fr_connection_pool_t *pool)
  * @param[in] opaque data pointer to pass to callbacks.
  * @param[in] c Callback to create new connections.
  * @param[in] a Callback to check the status of connections.
- * @param[in] d Callback to delete connections.
  * @param[in] prefix to prepend to all log message, if NULL will create prefix
  *	from parent conf section names.
  * @return A new connection pool or NULL on error.
@@ -581,7 +577,6 @@ fr_connection_pool_t *fr_connection_pool_init(CONF_SECTION *parent,
 					      void *opaque,
 					      fr_connection_create_t c,
 					      fr_connection_alive_t a,
-					      fr_connection_delete_t d,
 					      char *prefix)
 {
 	uint32_t i;
@@ -618,7 +613,6 @@ fr_connection_pool_t *fr_connection_pool_init(CONF_SECTION *parent,
 	pool->opaque = opaque;
 	pool->create = c;
 	pool->alive = a;
-	pool->delete = d;
 
 	pool->head = pool->tail = NULL;
 
@@ -1155,8 +1149,8 @@ void *fr_connection_reconnect(fr_connection_pool_t *pool, void *conn)
 	}
 
 	if (pool->trigger) exec_trigger(NULL, pool->cs, "close", true);
-	pool->delete(pool->opaque, conn);
 	this->connection = new_conn;
 	pthread_mutex_unlock(&pool->mutex);
+
 	return new_conn;
 }
