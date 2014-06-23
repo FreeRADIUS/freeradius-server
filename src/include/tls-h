@@ -392,6 +392,7 @@ struct fr_tls_server_conf_t {
 #ifdef PSK_MAX_IDENTITY_LEN
 	char const	*psk_identity;
 	char const	*psk_password;
+	char const	*psk_query;
 #endif
 
 };

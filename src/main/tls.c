@@ -40,6 +40,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #ifdef HAVE_UTIME_H
 #include <utime.h>
 #endif
+#include <ctype.h>
 
 #ifdef WITH_TLS
 #ifdef HAVE_OPENSSL_RAND_H
@@ -80,21 +81,92 @@ static unsigned int 	record_minus(record_t *buf, void *ptr,
 				     unsigned int size);
 
 #ifdef PSK_MAX_IDENTITY_LEN
-static unsigned int psk_server_callback(SSL *ssl, char const *identity,
+static bool identity_is_safe(const char *identity)
+{
+	char c;
+
+	if (!identity) return true;
+
+	while ((c = *(identity++)) != '\0') {
+		if (isalpha((int) c) || isdigit((int) c) || isspace((int) c) ||
+		    (c == '@') || (c == '-') || (c == '_') || (c == '.')) {
+			continue;
+		}
+
+		return false;
+	}
+
+	return true;
+}
+
+
+/*
+ *	When a client uses TLS-PSK to talk to a server, this callback
+ *	is used by the server to determine the PSK to use.
+ */
+static unsigned int psk_server_callback(SSL *ssl, const char *identity,
 					unsigned char *psk,
 					unsigned int max_psk_len)
 {
-	unsigned int psk_len;
+	unsigned int psk_len = 0;
 	fr_tls_server_conf_t *conf;
+	REQUEST *request;
 
 	conf = (fr_tls_server_conf_t *)SSL_get_ex_data(ssl,
 						       FR_TLS_EX_INDEX_CONF);
 	if (!conf) return 0;
 
+	request = (REQUEST *)SSL_get_ex_data(ssl,
+					     FR_TLS_EX_INDEX_REQUEST);
+	if (request && conf->psk_query) {
+		size_t hex_len;
+		VALUE_PAIR *vp;
+		char buffer[2 * PSK_MAX_PSK_LEN + 4]; /* allow for too-long keys */
+
+		/*
+		 *	The passed identity is weird.  Deny it.
+		 */
+		if (!identity_is_safe(identity)) {
+			RWDEBUG("Invalid characters in PSK identity %s", identity);
+			return 0;
+		}
+
+		vp = pairmake_packet("TLS-PSK-Identity", identity, T_OP_SET);
+		if (!vp) return 0;
+
+		hex_len = radius_xlat(buffer, sizeof(buffer), request, conf->psk_query,
+				      NULL, NULL);
+		if (!hex_len) {
+			RWDEBUG("PSK expansion returned an empty string.");
+			return 0;
+		}
+
+		/*
+		 *	The returned key is truncated at MORE than
+		 *	OpenSSL can handle.  That way we can detect
+		 *	the truncation, and complain about it.
+		 */
+		if (hex_len > (2 * max_psk_len)) {
+			RWDEBUG("Returned PSK is too long (%u > %u)",
+				(unsigned int) hex_len, 2 * max_psk_len);
+			return 0;
+		}
+
+		/*
+		 *	Leave the TLS-PSK-Identity in the request, and
+		 *	convert the expansion from printable string
+		 *	back to hex.
+		 */
+		return fr_hex2bin(psk, max_psk_len, buffer, hex_len);
+	}
+
 	/*
-	 *	FIXME: Look up the PSK password based on the identity!
+	 *	No REQUEST, or no dynamic query.  Just look for a
+	 *	static identity.
 	 */
 	if (strcmp(identity, conf->psk_identity) != 0) {
+		ERROR("Supplied PSK identity %s does not match configuration.  Rejecting.",
+		      identity);
 		return 0;
 	}
 
@@ -826,6 +898,7 @@ static CONF_PARSER tls_server_config[] = {
 #ifdef PSK_MAX_IDENTITY_LEN
 	{ "psk_identity", FR_CONF_OFFSET(PW_TYPE_STRING, fr_tls_server_conf_t, psk_identity), NULL },
 	{ "psk_hexphrase", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_SECRET, fr_tls_server_conf_t, psk_password), NULL },
+	{ "psk_query", FR_CONF_OFFSET(PW_TYPE_STRING, fr_tls_server_conf_t, psk_query), NULL },
 #endif
 	{ "dh_file", FR_CONF_OFFSET(PW_TYPE_STRING, fr_tls_server_conf_t, dh_file), NULL },
 	{ "random_file", FR_CONF_OFFSET(PW_TYPE_STRING, fr_tls_server_conf_t, random_file), NULL },
@@ -1997,7 +2070,7 @@ void tls_global_cleanup(void)
  *	- Load the Private key & the certificate
  *	- Set the Context options & Verify options
  */
-static SSL_CTX *init_tls_ctx(fr_tls_server_conf_t *conf, int client)
+static SSL_CTX *tls_init_ctx(fr_tls_server_conf_t *conf, int client)
 {
 	SSL_CTX *ctx;
 	X509_STORE *certstore;
@@ -2096,6 +2169,26 @@ static SSL_CTX *init_tls_ctx(fr_tls_server_conf_t *conf, int client)
 	}
 
 #ifdef PSK_MAX_IDENTITY_LEN
+	if (!client) {
+		/*
+		 *	No dynamic query exists.  There MUST be a
+		 *	statically configured identity and password.
+		 */
+		if (conf->psk_query && !*conf->psk_query) {
+			ERROR("Invalid PSK Configuration: psk_query cannot be empty");
+			return NULL;
+		}
+
+		SSL_CTX_set_psk_server_callback(ctx, psk_server_callback);
+
+	} else if (conf->psk_query) {
+		ERROR("Invalid PSK Configuration: psk_query cannot be used for outgoing connections");
+		return NULL;
+	}
+
+	/*
+	 *	Now check that if PSK is being used, the config is valid.
+	 */
 	if ((conf->psk_identity && !conf->psk_password) ||
 	    (!conf->psk_identity && conf->psk_password) ||
 	    (conf->psk_identity && !*conf->psk_identity) ||
@@ -2106,7 +2199,7 @@ static SSL_CTX *init_tls_ctx(fr_tls_server_conf_t *conf, int client)
 
 	if (conf->psk_identity) {
 		size_t psk_len, hex_len;
-		char buffer[PSK_MAX_PSK_LEN];
+		uint8_t buffer[PSK_MAX_PSK_LEN];
 
 		if (conf->certificate_file ||
 		    conf->private_key_password || conf->private_key_file ||
@@ -2118,9 +2211,6 @@ static SSL_CTX *init_tls_ctx(fr_tls_server_conf_t *conf, int client)
 		if (client) {
 			SSL_CTX_set_psk_client_callback(ctx,
 							psk_client_callback);
-		} else {
-			SSL_CTX_set_psk_server_callback(ctx,
-							psk_server_callback);
 		}
 
 		psk_len = strlen(conf->psk_password);
@@ -2130,7 +2220,11 @@ static SSL_CTX *init_tls_ctx(fr_tls_server_conf_t *conf, int client)
 			return NULL;
 		}
 
-		hex_len = fr_hex2bin((uint8_t *) buffer, sizeof(buffer), conf->psk_password, psk_len);
+		/*
+		 *	Check the password now, so that we don't have
+		 *	errors at run-time.
+		 */
+		hex_len = fr_hex2bin(buffer, sizeof(buffer), conf->psk_password, psk_len);
 		if (psk_len != (2 * hex_len)) {
 			ERROR("psk_hexphrase is not all hex");
 			return NULL;
@@ -2443,7 +2537,7 @@ fr_tls_server_conf_t *tls_server_conf_parse(CONF_SECTION *cs)
 	/*
 	 *	Initialize TLS
 	 */
-	conf->ctx = init_tls_ctx(conf, 0);
+	conf->ctx = tls_init_ctx(conf, 0);
 	if (conf->ctx == NULL) {
 		goto error;
 	}
@@ -2516,7 +2610,7 @@ fr_tls_server_conf_t *tls_client_conf_parse(CONF_SECTION *cs)
 	/*
 	 *	Initialize TLS
 	 */
-	conf->ctx = init_tls_ctx(conf, 1);
+	conf->ctx = tls_init_ctx(conf, 1);
 	if (conf->ctx == NULL) {
 		goto error;
 	}

@@ -421,6 +421,20 @@ home_server tls {
 		ca_file = ${cadir}/ca.pem
 
 		#
+		#  For TLS-PSK, the key should be specified
+		#  dynamically, instead of using a hard-coded
+		#  psk_identity and psk_hexphrase.
+		#
+		#  The input to the dynamic expansion will be the PSK
+		#  identity supplied by the client, in the
+		#  TLS-PSK-Identity attribute.  The output of the
+		#  expansion should be a hex string, of no more than
+		#  512 characters.  The string should not be prefixed
+		#  with "0x".  e.g. "abcdef" is OK.  "0xabcdef" is not.
+		#
+	#	psk_query = "%{psksql:select hex(key) from psk_keys where keyid = '%{TLS-PSK-Identity}'}"
+
+		#
 		#  For DH cipher suites to work, you have to
 		#  run OpenSSL to create the DH file first:
 		#
