@@ -527,8 +527,9 @@ ATTRIBUTE	TLS-Client-Cert-X509v3-Authority-Key-Identifier 1929	string
 ATTRIBUTE	TLS-Client-Cert-X509v3-Basic-Constraints 1930	string
 ATTRIBUTE	TLS-Client-Cert-Subject-Alt-Name-Dns	1931	string
 ATTRIBUTE	TLS-Client-Cert-Subject-Alt-Name-Upn	1932	string
+ATTRIBUTE	TLS-PSK-Identity			1933	string
 
-# 1933 - 1939: reserved for future cert attributes
+# 1934 - 1939: reserved for future cert attributes
 
 #
 #	Range:	1940-2099
