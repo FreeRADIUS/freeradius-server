@@ -134,7 +134,7 @@ void backtrace_print(fr_cbuff_t *cbuff, void *obj)
 		if ((p->obj == obj) || !obj) {
 			found = true;
 
-			fprintf(stderr, "Stacktrace for: %p\n", p->obj, p);
+			fprintf(stderr, "Stacktrace for: %p\n", p->obj);
 			backtrace_symbols_fd(p->frames, p->count, STDERR_FILENO);
 		}
 	};
