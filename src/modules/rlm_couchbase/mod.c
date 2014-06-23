@@ -35,7 +35,8 @@ RCSID("$Id$");
 #include "jsonc_missing.h"
 
 /* create new connection pool handle */
-void *mod_conn_create(void *instance) {
+void *mod_conn_create(void *instance)
+{
 	rlm_couchbase_t *inst = instance;           /* module instance pointer */
 	rlm_couchbase_handle_t *chandle = NULL;     /* connection handle pointer */
 	cookie_t *cookie = NULL;                    /* couchbase cookie */
@@ -70,7 +71,8 @@ void *mod_conn_create(void *instance) {
 }
 
 /* verify valid couchbase connection handle */
-int mod_conn_alive(UNUSED void *instance, void *handle) {
+int mod_conn_alive(UNUSED void *instance, void *handle)
+{
 	rlm_couchbase_handle_t *chandle = handle;   /* connection handle pointer */
 	lcb_t cb_inst = chandle->handle;            /* couchbase instance */
 	lcb_error_t cb_error = LCB_SUCCESS;         /* couchbase error status */
@@ -89,7 +91,8 @@ int mod_conn_alive(UNUSED void *instance, void *handle) {
 }
 
 /* free couchbase instance handle and any additional context memory */
-int mod_conn_delete(UNUSED void *instance, void *handle) {
+int mod_conn_delete(UNUSED void *instance, void *handle)
+{
 	rlm_couchbase_handle_t *chandle = handle;       /* connection instance handle */
 	lcb_t cb_inst = chandle->handle;                /* couchbase instance */
 
@@ -104,7 +107,8 @@ int mod_conn_delete(UNUSED void *instance, void *handle) {
 }
 
 /* build json object for mapping radius attributes to json elements */
-int mod_build_attribute_element_map(CONF_SECTION *conf, void *instance) {
+int mod_build_attribute_element_map(CONF_SECTION *conf, void *instance)
+{
 	rlm_couchbase_t *inst = instance;   /* our module instance */
 	CONF_SECTION *cs;                   /* module config section */
 	CONF_ITEM *ci;                      /* config item */
@@ -161,7 +165,8 @@ int mod_build_attribute_element_map(CONF_SECTION *conf, void *instance) {
 }
 
 /* map free radius attribute to user defined json element name */
-int mod_attribute_to_element(const char *name, json_object *map, void *buf) {
+int mod_attribute_to_element(const char *name, json_object *map, void *buf)
+{
 	json_object *jval;  /* json object values */
 
 	/* clear buffer */
@@ -196,7 +201,8 @@ int mod_attribute_to_element(const char *name, json_object *map, void *buf) {
 /* inject value pairs into given request
  * that are defined in the passed json object
  */
-void *mod_json_object_to_value_pairs(json_object *json, const char *section, REQUEST *request) {
+void *mod_json_object_to_value_pairs(json_object *json, const char *section, REQUEST *request)
+{
 	json_object *jobj, *jval, *jop;     /* json object pointers */
 	TALLOC_CTX *ctx;                    /* talloc context for pairmake */
 	VALUE_PAIR *vp, **ptr;              /* value pair and value pair pointer for pairmake */
@@ -284,7 +290,8 @@ void *mod_json_object_to_value_pairs(json_object *json, const char *section, REQ
 /* convert freeradius value/pair to json object
  * basic structure taken from freeradius function
  * vp_prints_value_json in src/lib/print.c */
-json_object *mod_value_pair_to_json_object(REQUEST *request, VALUE_PAIR *vp) {
+json_object *mod_value_pair_to_json_object(REQUEST *request, VALUE_PAIR *vp)
+{
 	char value[255];    /* radius attribute value */
 
 	/* add this attribute/value pair to our json output */
@@ -355,7 +362,8 @@ json_object *mod_value_pair_to_json_object(REQUEST *request, VALUE_PAIR *vp) {
 }
 
 /* check current value of start timestamp in json body and update if needed */
-int mod_ensure_start_timestamp(json_object *json, VALUE_PAIR *vps) {
+int mod_ensure_start_timestamp(json_object *json, VALUE_PAIR *vps)
+{
 	json_object *jval;      /* json object value */
 	struct tm tm;           /* struct to hold event time */
 	time_t ts = 0;          /* values to hold time in seconds */
