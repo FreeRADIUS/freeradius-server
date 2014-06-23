@@ -151,7 +151,7 @@ struct fr_connection_pool_t {
 	CONF_SECTION	*cs;		//!< Configuration section holding
 					//!< the section of parsed config file
 					//!< that relates to this pool.
-	void		*ctx;		//!< Pointer to context data that will
+	void		*opaque;	//!< Pointer to context data that will
 					//!< be passed to callbacks.
 
 	char  		*log_prefix;	//!< Log prefix to prepend to all log
@@ -291,6 +291,8 @@ static void fr_connection_link_tail(fr_connection_pool_t *pool,
 static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool,
 					    time_t now, bool in_use)
 {
+	TALLOC_CTX *ctx;
+
 	fr_connection_t *this;
 	void *conn;
 
@@ -356,12 +358,19 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool,
 	INFO("%s: Opening additional connection (%" PRIu64 ")", pool->log_prefix, pool->count);
 
 	/*
+	 *	Allocate a new top level ctx for the create callback
+	 *	to hang its memory off of.
+	 */
+	ctx = talloc_init("fr_connection_ctx");
+	if (!ctx) return NULL;
+
+	/*
 	 *	This may take a long time, which prevents other
 	 *	threads from releasing connections.  We don't care
 	 *	about other threads opening new connections, as we
 	 *	already have no free connections.
 	 */
-	conn = pool->create(pool->ctx);
+	conn = pool->create(ctx, pool->opaque);
 	if (!conn) {
 		ERROR("%s: Opening connection failed (%" PRIu64 ")", pool->log_prefix, pool->count);
 
@@ -381,6 +390,7 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool,
 		pthread_mutex_unlock(&pool->mutex);
 		return NULL;
 	}
+	fr_link_talloc_ctx_free(this, ctx);
 
 	this->created = now;
 	this->connection = conn;
@@ -435,7 +445,7 @@ static void fr_connection_close(fr_connection_pool_t *pool,
 	if (pool->trigger) exec_trigger(NULL, pool->cs, "close", true);
 
 	fr_connection_unlink(pool, this);
-	pool->delete(pool->ctx, this->connection);
+	if (pool->delete) pool->delete(pool->opaque, this->connection);
 	rad_assert(pool->num > 0);
 	pool->num--;
 	talloc_free(this);
@@ -559,7 +569,7 @@ void fr_connection_pool_delete(fr_connection_pool_t *pool)
  * @note Will call the 'start' trigger.
  *
  * @param[in] parent configuration section containing a 'pool' subsection.
- * @param[in] ctx pointer to pass to callbacks.
+ * @param[in] opaque data pointer to pass to callbacks.
  * @param[in] c Callback to create new connections.
  * @param[in] a Callback to check the status of connections.
  * @param[in] d Callback to delete connections.
@@ -568,7 +578,7 @@ void fr_connection_pool_delete(fr_connection_pool_t *pool)
  * @return A new connection pool or NULL on error.
  */
 fr_connection_pool_t *fr_connection_pool_init(CONF_SECTION *parent,
-					      void *ctx,
+					      void *opaque,
 					      fr_connection_create_t c,
 					      fr_connection_alive_t a,
 					      fr_connection_delete_t d,
@@ -582,7 +592,7 @@ fr_connection_pool_t *fr_connection_pool_init(CONF_SECTION *parent,
 	char const *cs_name1, *cs_name2;
 	time_t now = time(NULL);
 
-	if (!parent || !ctx || !c || !d) return NULL;
+	if (!parent || !opaque || !c) return NULL;
 
 	cs = cf_section_sub_find(parent, "pool");
 	if (!cs) cs = cf_section_sub_find(parent, "limit");
@@ -605,7 +615,7 @@ fr_connection_pool_t *fr_connection_pool_init(CONF_SECTION *parent,
 	}
 
 	pool->cs = cs;
-	pool->ctx = ctx;
+	pool->opaque = opaque;
 	pool->create = c;
 	pool->alive = a;
 	pool->delete = d;
@@ -1094,20 +1104,35 @@ void *fr_connection_reconnect(fr_connection_pool_t *pool, void *conn)
 	void *new_conn;
 	fr_connection_t *this;
 	uint64_t conn_number;
+	TALLOC_CTX *ctx;
 
 	if (!pool || !conn) return NULL;
 
+	/*
+	 *	If fr_connection_find is successful the pool is now locked
+	 */
 	this = fr_connection_find(pool, conn);
 	if (!this) return NULL;
 
-	/*
-	 *	The pool is now locked.
-	 */
+
 	conn_number = this->number;
+
+	/*
+	 *	Destroy any handles associated with the fr_connection_t
+	 */
+	talloc_free_children(this);
 
 	DEBUG("%s: Reconnecting (%" PRIu64 ")", pool->log_prefix, conn_number);
 
-	new_conn = pool->create(pool->ctx);
+	/*
+	 *	Allocate a new top level ctx for the create callback
+	 *	to hang its memory off of.
+	 */
+	ctx = talloc_init("fr_connection_ctx");
+	if (!ctx) return NULL;
+	fr_link_talloc_ctx_free(this, ctx);
+
+	new_conn = pool->create(ctx, pool->opaque);
 	if (!new_conn) {
 		/*
 		 *	We can't create a new connection, so close
@@ -1123,13 +1148,14 @@ void *fr_connection_reconnect(fr_connection_pool_t *pool, void *conn)
 		new_conn = fr_connection_get_internal(pool, false);
 		if (new_conn) return new_conn;
 
-		RATE_LIMIT(ERROR("%s: Failed to reconnect (%" PRIu64 "), no free connections are available", pool->log_prefix,
-				 conn_number));
+		RATE_LIMIT(ERROR("%s: Failed to reconnect (%" PRIu64 "), no free connections are available",
+				 pool->log_prefix, conn_number));
+
 		return NULL;
 	}
 
 	if (pool->trigger) exec_trigger(NULL, pool->cs, "close", true);
-	pool->delete(pool->ctx, conn);
+	pool->delete(pool->opaque, conn);
 	this->connection = new_conn;
 	pthread_mutex_unlock(&pool->mutex);
 	return new_conn;

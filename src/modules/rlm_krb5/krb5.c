@@ -89,17 +89,6 @@ char const *rlm_krb5_error(krb5_context context, krb5_error_code code)
 }
 #endif
 
-/** Frees a krb5 context
- *
- * @param instance rlm_krb5 instance.
- * @param handle to destroy.
- * @return 0 (always indicates success).
- */
-int mod_conn_delete(UNUSED void *instance, void *handle)
-{
-	return talloc_free((krb5_context *) handle);
-}
-
 /** Frees libkrb5 resources associated with the handle
  *
  * Must not be called directly.
@@ -107,7 +96,7 @@ int mod_conn_delete(UNUSED void *instance, void *handle)
  * @param conn to free.
  * @return 0 (always indicates success).
  */
-static int _free_handle(rlm_krb5_handle_t *conn) {
+static int _mod_conn_free(rlm_krb5_handle_t *conn) {
 	krb5_free_context(conn->context);
 
 	if (conn->keytab) {
@@ -129,16 +118,17 @@ static int _free_handle(rlm_krb5_handle_t *conn) {
  * by libkrb5 and that it does connection caching associated with contexts, so it's
  * worth using a connection pool to preserve connections when workers die.
  *
+ * @param ctx to allocate connection handle memory in.
  * @param instance rlm_krb5 instance instance.
  * @return A new context or NULL on error.
  */
-void *mod_conn_create(void *instance)
+void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
 {
 	rlm_krb5_t *inst = instance;
 	rlm_krb5_handle_t *conn;
 	krb5_error_code ret;
 
-	MEM(conn = talloc_zero(instance, rlm_krb5_handle_t));
+	MEM(conn = talloc_zero(ctx, rlm_krb5_handle_t));
 	ret = krb5_init_context(&conn->context);
 	if (ret) {
 		ERROR("rlm_krb5 (%s): Context initialisation failed: %s", inst->xlat_name,
@@ -146,7 +136,7 @@ void *mod_conn_create(void *instance)
 
 		return NULL;
 	}
-	talloc_set_destructor(conn, _free_handle);
+	talloc_set_destructor(conn, _mod_conn_free);
 
 	ret = inst->keytabname ?
 		krb5_kt_resolve(conn->context, inst->keytabname, &conn->keytab) :

@@ -248,11 +248,9 @@ int rest_init(rlm_rest_t *instance);
 
 void rest_cleanup(void);
 
-void *mod_conn_create(void *instance);
+void *mod_conn_create(TALLOC_CTX *ctx, void *instance);
 
 int mod_conn_alive(void *instance, void *handle);
-
-int mod_conn_delete(void *instance, void *handle);
 
 /*
  *	Request processing API

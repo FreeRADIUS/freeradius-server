@@ -346,9 +346,7 @@ void rlm_ldap_check_reply(ldap_instance_t const *inst, REQUEST *request);
 /*
  *	ldap.c - Callbacks for the connection pool API.
  */
-void *mod_conn_create(void *ctx);
-
-int mod_conn_delete(UNUSED void *instance, void *handle);
+void *mod_conn_create(TALLOC_CTX *ctx, void *instance);
 
 ldap_handle_t *rlm_ldap_get_socket(ldap_instance_t const *inst, REQUEST *request);
 

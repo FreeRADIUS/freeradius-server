@@ -40,12 +40,22 @@ typedef struct fr_connection_pool_t fr_connection_pool_t;
  * This function will be called whenever the connection pool manager needs
  * to spawn a new connection, and on reconnect.
  *
+ * Memory should be talloced in the parent context to hold the module's
+ * connection structure. The parent context is allocated in the NULL
+ * context, but will be freed when fr_connection_t is freed.
+ *
+ * There is no delete callback, so operations such as closing sockets and
+ * freeing library connection handles should be done by a destructor attached
+ * to memory allocated beneath parent.
+ *
  * @note A function pointer matching this prototype must be passed
  * to fr_connection_pool.
- * @param[in] ctx pointer passed to fr_connection_pool_init.
+ *
+ * @param[in,out] ctx to allocate memory in.
+ * @param[in] opaque pointer passed to fr_connection_pool_init.
  * @return NULL on error, else a connection handle.
  */
-typedef void *(*fr_connection_create_t)(void *ctx);
+typedef void *(*fr_connection_create_t)(TALLOC_CTX *ctx, void *opaque);
 
 /** Check a connection handle is still viable
  *
@@ -54,25 +64,25 @@ typedef void *(*fr_connection_create_t)(void *ctx);
  * @note NULL may be passed to fr_connection_init, if there is no way to check
  * the state of a connection handle.
  * @note Not currently use by connection pool manager.
- * @param[in] ctx pointer passed to fr_connection_pool_init.
+ * @param[in] opaque pointer passed to fr_connection_pool_init.
  * @param[in] connection handle returned by fr_connection_create_t.
  * @return < 0 on error or if the connection is unusable, else 0.
  */
-typedef int (*fr_connection_alive_t)(void *ctx, void *connection);
+typedef int (*fr_connection_alive_t)(void *opaque, void *connection);
 
 /** Delete a connection and free allocated memory
  *
  * Should close any sockets associated with the passed connection handle,
  * and free any memory allocated to it.
  *
- * @param[in] ctx pointer passed to fr_connection_pool_init.
+ * @param[in] opaque pointer passed to fr_connection_pool_init.
  * @param[in,out] connection handle returned by fr_connection_create_t.
  * @return < 0 on error else 0 if connection was closed successfully.
  */
-typedef int (*fr_connection_delete_t)(void *ctx, void *connection);
+typedef int (*fr_connection_delete_t)(void *opaque, void *connection);
 
 fr_connection_pool_t *fr_connection_pool_init(CONF_SECTION *cs,
-					      void *ctx,
+					      void *opaque,
 					      fr_connection_create_t c,
 					      fr_connection_alive_t a,
 					      fr_connection_delete_t d,

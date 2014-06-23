@@ -14,17 +14,14 @@
 
 /** Frees a ykclient handle
  *
- * @param[in] instance configuration data.
- * @param[in] handle rlm_yubikey_handle_t to close and free.
- * @return returns true.
+ * @param[in] yandle rlm_yubikey_handle_t to close and free.
+ * @return returns 0.
  */
-static int mod_conn_delete(UNUSED void *instance, void *handle)
+static int _mod_conn_free(ykclient_handle_t **yandle)
 {
-	ykclient_handle_t *yandle = handle;
+	ykclient_handle_done(yandle);
 
-	ykclient_handle_done(&yandle);
-
-	return true;
+	return 0;
 }
 
 /** Creates a new connection handle for use by the FR connection API.
@@ -38,15 +35,16 @@ static int mod_conn_delete(UNUSED void *instance, void *handle)
  * @see fr_connection_create_t
  * @see connection.c
  *
+ * @param[in] ctx to allocate connection data from.
  * @param[in] instance configuration data.
  * @return connection handle or NULL if the connection failed or couldn't
  *	be initialised.
  */
-static void *mod_conn_create(void *instance)
+static void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
 {
 	rlm_yubikey_t *inst = instance;
 	ykclient_rc status;
-	ykclient_handle_t *yandle;
+	ykclient_handle_t *yandle, **marker;
 
 	status = ykclient_handle_init(inst->ykc, &yandle);
 	if (status != YKCLIENT_OK) {
@@ -54,6 +52,9 @@ static void *mod_conn_create(void *instance)
 
 		return NULL;
 	}
+	marker = talloc(ctx, ykclient_handle_t *);
+	talloc_set_destructor(marker, _mod_conn_free);
+	*marker = yandle;
 
 	return yandle;
 }
@@ -137,7 +138,7 @@ init:
 	}
 
 	snprintf(prefix, sizeof(prefix), "rlm_yubikey (%s)", inst->name);
-	inst->conn_pool = fr_connection_pool_init(conf, inst, mod_conn_create, NULL, mod_conn_delete, prefix);
+	inst->conn_pool = fr_connection_pool_init(conf, inst, mod_conn_create, NULL, NULL, prefix);
 	if (!inst->conn_pool) {
 		ykclient_done(&inst->ykc);
 

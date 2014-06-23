@@ -42,8 +42,13 @@ static const CONF_PARSER module_config[] = {
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
 
+static int _mod_conn_free(int *fdp)
+{
+	close(*fdp);
+	return 0;
+}
 
-static void *mod_conn_create(void *instance)
+static void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
 {
 	int fd;
 	struct sockaddr_un sa;
@@ -67,21 +72,12 @@ static void *mod_conn_create(void *instance)
 		return NULL;
 	}
 
-	fdp = talloc_zero(instance, int);
+	fdp = talloc_zero(ctx, int);
+	talloc_set_destructor(fdp, _mod_conn_free);
 	*fdp = fd;
 
 	return fdp;
 }
-
-static int mod_conn_delete(UNUSED void *instance, void *handle)
-{
-	int *fdp = handle;
-
-	close(*fdp);
-	talloc_free(fdp);
-	return 0;
-}
-
 
 /*
  * Full read with logging, and close on failure.
@@ -176,7 +172,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	/*
 	 *	Initialize the socket pool.
 	 */
-	inst->pool = fr_connection_pool_init(conf, inst, mod_conn_create, NULL, mod_conn_delete, NULL);
+	inst->pool = fr_connection_pool_init(conf, inst, mod_conn_create, NULL, NULL, NULL);
 	if (!inst->pool) {
 		return -1;
 	}
