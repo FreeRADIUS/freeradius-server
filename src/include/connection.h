@@ -70,22 +70,10 @@ typedef void *(*fr_connection_create_t)(TALLOC_CTX *ctx, void *opaque);
  */
 typedef int (*fr_connection_alive_t)(void *opaque, void *connection);
 
-/** Delete a connection and free allocated memory
- *
- * Should close any sockets associated with the passed connection handle,
- * and free any memory allocated to it.
- *
- * @param[in] opaque pointer passed to fr_connection_pool_init.
- * @param[in,out] connection handle returned by fr_connection_create_t.
- * @return < 0 on error else 0 if connection was closed successfully.
- */
-typedef int (*fr_connection_delete_t)(void *opaque, void *connection);
-
 fr_connection_pool_t *fr_connection_pool_init(CONF_SECTION *cs,
 					      void *opaque,
 					      fr_connection_create_t c,
 					      fr_connection_alive_t a,
-					      fr_connection_delete_t d,
 					      char const *prefix);
 void fr_connection_pool_delete(fr_connection_pool_t *pool);
 

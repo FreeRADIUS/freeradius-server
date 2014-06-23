@@ -109,7 +109,7 @@ static void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
  *************************************************************************/
 int sql_socket_pool_init(rlm_sql_t * inst)
 {
-	inst->pool = fr_connection_pool_init(inst->cs, inst, mod_conn_create, NULL, NULL, NULL);
+	inst->pool = fr_connection_pool_init(inst->cs, inst, mod_conn_create, NULL, NULL);
 	if (!inst->pool) return -1;
 
 	return 1;
