@@ -484,7 +484,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 		 *	easier than searching through the entire file.
 		 */
 		if (!cache) {
-			cache = talloc_zero(inst, NAS_PORT);
+			cache = talloc_zero(NULL, NAS_PORT);
 			if (cache) {
 				cache->nasaddr = ut.nas_address;
 				cache->port = ut.nas_port;

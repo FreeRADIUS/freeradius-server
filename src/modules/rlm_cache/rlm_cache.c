@@ -292,7 +292,7 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request, char co
 	vp = pairfind(request->config_items, PW_CACHE_TTL, 0, TAG_ANY);
 	if (vp && (vp->vp_signed == 0)) return NULL;
 
-	c = talloc_zero(inst, rlm_cache_entry_t);
+	c = talloc_zero(NULL, rlm_cache_entry_t);
 	c->key = talloc_typed_strdup(c, key);
 	c->created = c->expires = request->timestamp;
 
