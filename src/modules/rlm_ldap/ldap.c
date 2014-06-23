@@ -1088,14 +1088,32 @@ static int rlm_ldap_rebind(LDAP *handle, LDAP_CONST char *url, UNUSED ber_tag_t 
 }
 #endif
 
+/** Close and delete a connection
+ *
+ * Unbinds the LDAP connection, informing the server and freeing any memory, then releases the memory used by the
+ * connection handle.
+ *
+ * @param conn to destroy.
+ * @return always indicates success.
+ */
+static int _mod_conn_free(ldap_handle_t *conn)
+{
+	DEBUG3("rlm_ldap: Closing libldap handle %p", conn->handle);
+
+	if (conn->handle) ldap_unbind_s(conn->handle);
+
+	return 0;
+}
+
 /** Create and return a new connection
  *
  * Create a new ldap connection and allocate memory for a new rlm_handle_t
  *
+ * @param ctx to allocate connection handle memory in.
  * @param instance rlm_ldap instance.
  * @return A new connection handle or NULL on error.
  */
-void *mod_conn_create(void *instance)
+void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
 {
 	ldap_rcode_t status;
 
@@ -1108,8 +1126,9 @@ void *mod_conn_create(void *instance)
 	/*
 	 *	Allocate memory for the handle.
 	 */
-	conn = talloc_zero(instance, ldap_handle_t);
+	conn = talloc_zero(ctx, ldap_handle_t);
 	if (!conn) return NULL;
+	talloc_set_destructor(conn, _mod_conn_free);
 
 	conn->inst = inst;
 	conn->rebound = false;
@@ -1135,6 +1154,7 @@ void *mod_conn_create(void *instance)
 			goto error;
 		}
 	}
+	DEBUG3("rlm_ldap: New libldap handle %p", conn->handle);
 
 	/*
 	 *	We now have a connection structure, but no actual TCP connection.
@@ -1275,29 +1295,9 @@ void *mod_conn_create(void *instance)
 	return conn;
 
 error:
-	if (conn->handle) ldap_unbind_s(conn->handle);
 	talloc_free(conn);
 
 	return NULL;
-}
-
-/** Close and delete a connection
- *
- * Unbinds the LDAP connection, informing the server and freeing any memory, then releases the memory used by the
- * connection handle.
- *
- * @param instance rlm_ldap instance.
- * @param handle to destroy.
- * @return always indicates success.
- */
-int mod_conn_delete(UNUSED void *instance, void *handle)
-{
-	ldap_handle_t *conn = handle;
-
-	ldap_unbind_s(conn->handle);
-	talloc_free(conn);
-
-	return 0;
 }
 
 /** Gets an LDAP socket from the connection pool

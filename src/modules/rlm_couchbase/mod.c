@@ -34,8 +34,20 @@ RCSID("$Id$");
 #include "couchbase.h"
 #include "jsonc_missing.h"
 
+/* free couchbase instance handle and any additional context memory */
+static int _mod_conn_free(rlm_couchbase_handle_t *chandle)
+{
+	lcb_t cb_inst = chandle->handle;                /* couchbase instance */
+
+	/* destroy/free couchbase instance */
+	lcb_destroy(cb_inst);
+
+	/* return */
+	return 0;
+}
+
 /* create new connection pool handle */
-void *mod_conn_create(void *instance)
+void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
 {
 	rlm_couchbase_t *inst = instance;           /* module instance pointer */
 	rlm_couchbase_handle_t *chandle = NULL;     /* connection handle pointer */
@@ -56,7 +68,9 @@ void *mod_conn_create(void *instance)
 	}
 
 	/* allocate memory for couchbase connection instance abstraction */
-	chandle = talloc_zero(inst, rlm_couchbase_handle_t);
+	chandle = talloc_zero(ctx, rlm_couchbase_handle_t);
+	talloc_set_destructor(chandle, _mod_conn_free);
+
 	cookie = talloc_zero(chandle, cookie_t);
 
 	/* initialize cookie error holder */
@@ -87,22 +101,6 @@ int mod_conn_alive(UNUSED void *instance, void *handle)
 		/* return false */
 		return false;
 	}
-	return true;
-}
-
-/* free couchbase instance handle and any additional context memory */
-int mod_conn_delete(UNUSED void *instance, void *handle)
-{
-	rlm_couchbase_handle_t *chandle = handle;       /* connection instance handle */
-	lcb_t cb_inst = chandle->handle;                /* couchbase instance */
-
-	/* destroy/free couchbase instance */
-	lcb_destroy(cb_inst);
-
-	/* free handle */
-	talloc_free(chandle);
-
-	/* return */
 	return true;
 }
 

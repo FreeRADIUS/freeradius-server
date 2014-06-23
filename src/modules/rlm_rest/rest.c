@@ -287,6 +287,19 @@ void rest_cleanup(void)
 	curl_global_cleanup();
 }
 
+
+/** Frees a libcurl handle, and any additional memory used by context data.
+ *
+ * @param[in] randle rlm_rest_handle_t to close and free.
+ * @return returns true.
+ */
+static int _mod_conn_free(rlm_rest_handle_t *randle)
+{
+	curl_easy_cleanup(randle->handle);
+
+	return 0;
+}
+
 /** Creates a new connection handle for use by the FR connection API.
  *
  * Matches the fr_connection_create_t function prototype, is passed to
@@ -295,14 +308,13 @@ void rest_cleanup(void)
  *
  * Creates an instances of rlm_rest_handle_t, and rlm_rest_curl_context_t
  * which hold the context data required for generating requests and parsing
- * responses. Calling mod_conn_delete will free this memory.
+ * responses.
  *
  * If instance->connect_uri is not NULL libcurl will attempt to open a
  * TCP socket to the server specified in the URI. This is done so that when the
  * socket is first used, there will already be a cached TCP connection to the
  * REST server associated with the curl handle.
  *
- * @see mod_conn_delete
  * @see fr_connection_pool_init
  * @see fr_connection_create_t
  * @see connection.c
@@ -311,12 +323,12 @@ void rest_cleanup(void)
  * @return connection handle or NULL if the connection failed or couldn't
  *	be initialised.
  */
-void *mod_conn_create(void *instance)
+void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
 {
 	rlm_rest_t *inst = instance;
 
 	rlm_rest_handle_t	*randle = NULL;
-	rlm_rest_curl_context_t	*ctx = NULL;
+	rlm_rest_curl_context_t	*curl_ctx = NULL;
 
 	CURL *candle = curl_easy_init();
 
@@ -352,14 +364,15 @@ void *mod_conn_create(void *instance)
 	/*
 	 *  Allocate memory for the connection handle abstraction.
 	 */
-	randle = talloc_zero(inst, rlm_rest_handle_t);
-	ctx = talloc_zero(randle, rlm_rest_curl_context_t);
+	randle = talloc_zero(ctx, rlm_rest_handle_t);
+	curl_ctx = talloc_zero(randle, rlm_rest_curl_context_t);
 
-	ctx->headers = NULL; /* CURL needs this to be NULL */
-	ctx->request.instance = inst;
+	curl_ctx->headers = NULL; /* CURL needs this to be NULL */
+	curl_ctx->request.instance = inst;
 
-	randle->ctx = ctx;
+	randle->ctx = curl_ctx;
 	randle->handle = candle;
+	talloc_set_destructor(randle, _mod_conn_free);
 
 	/*
 	 *  Clear any previously configured options for the first request.
@@ -415,24 +428,6 @@ int mod_conn_alive(void *instance, void *handle)
 	if (last_socket == -1) {
 		return false;
 	}
-
-	return true;
-}
-
-/** Frees a libcurl handle, and any additional memory used by context data.
- *
- * @param[in] instance configuration data.
- * @param[in] handle rlm_rest_handle_t to close and free.
- * @return returns true.
- */
-int mod_conn_delete(UNUSED void *instance, void *handle)
-{
-	rlm_rest_handle_t	*randle = handle;
-	CURL			*candle = randle->handle;
-
-	curl_easy_cleanup(candle);
-
-	talloc_free(randle);
 
 	return true;
 }

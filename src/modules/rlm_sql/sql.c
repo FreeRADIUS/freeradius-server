@@ -39,7 +39,7 @@ RCSID("$Id$")
 #ifdef HAVE_PTHREAD_H
 #endif
 
-static int _sql_conn_destructor(rlm_sql_handle_t *conn)
+static int _sql_conn_free(rlm_sql_handle_t *conn)
 {
 	rlm_sql_t *inst = conn->inst;
 
@@ -50,13 +50,18 @@ static int _sql_conn_destructor(rlm_sql_handle_t *conn)
 	return 0;
 }
 
-static void *mod_conn_create(void *instance)
+static void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
 {
 	int rcode;
 	rlm_sql_t *inst = instance;
 	rlm_sql_handle_t *handle;
 
-	handle = talloc_zero(instance, rlm_sql_handle_t);
+	/*
+	 *	Connections cannot be alloced from the inst or
+	 *	pool contexts due to threading issues.
+	 */
+	handle = talloc_zero(ctx, rlm_sql_handle_t);
+	if (!handle) return NULL;
 
 	/*
 	 *	Handle requires a pointer to the SQL inst so the
@@ -70,7 +75,7 @@ static void *mod_conn_create(void *instance)
 	 *	Then we call our destructor to trigger an modules.sql.close
 	 *	event, then all the memory is freed.
 	 */
-	talloc_set_destructor(handle, _sql_conn_destructor);
+	talloc_set_destructor(handle, _sql_conn_free);
 
 	rcode = (inst->module->sql_socket_init)(handle, inst->config);
 	if (rcode != 0) {
@@ -95,14 +100,6 @@ static void *mod_conn_create(void *instance)
 	return handle;
 }
 
-/*
- *	@todo Calls to this should eventually go away.
- */
-static int mod_conn_delete(UNUSED void *instance, void *handle)
-{
-	return talloc_free(handle);
-}
-
 /*************************************************************************
  *
  *	Function: sql_socket_pool_init
@@ -112,9 +109,7 @@ static int mod_conn_delete(UNUSED void *instance, void *handle)
  *************************************************************************/
 int sql_socket_pool_init(rlm_sql_t * inst)
 {
-	inst->pool = fr_connection_pool_init(inst->cs, inst,
-					     mod_conn_create, NULL, mod_conn_delete,
-					     NULL);
+	inst->pool = fr_connection_pool_init(inst->cs, inst, mod_conn_create, NULL, NULL, NULL);
 	if (!inst->pool) return -1;
 
 	return 1;
