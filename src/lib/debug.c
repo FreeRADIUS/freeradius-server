@@ -54,8 +54,12 @@
 #endif
 
 #ifdef HAVE_EXECINFO
-#  define MAX_BT_FRAMES 128
-#  define MAX_BT_CBUFF  65536				//!< Should be a power of 2
+#  ifndef MAX_BT_FRAMES
+#    define MAX_BT_FRAMES 128
+#  endif
+#  ifndef MAX_BT_CBUFF
+#    define MAX_BT_CBUFF  1048576			//!< Should be a power of 2
+#  endif
 
 #  ifdef HAVE_PTHREAD_H
 static pthread_mutex_t fr_debug_init = PTHREAD_MUTEX_INITIALIZER;
