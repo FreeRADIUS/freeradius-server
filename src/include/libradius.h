@@ -747,6 +747,7 @@ typedef struct fr_bt_marker fr_bt_marker_t;
 
 void		fr_debug_break(void);
 void		backtrace_print(fr_cbuff_t *cbuff, void *obj);
+int		fr_backtrace_do(fr_bt_marker_t *marker);
 fr_bt_marker_t	*fr_backtrace_attach(fr_cbuff_t **cbuff, TALLOC_CTX *obj);
 
 typedef void (*fr_fault_log_t)(char const *msg, ...) CC_HINT(format (printf, 1, 2));
