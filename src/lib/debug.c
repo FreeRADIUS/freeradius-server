@@ -120,28 +120,6 @@ void fr_debug_break(void)
 }
 
 #ifdef HAVE_EXECINFO
-/** Generate a backtrace for an object during destruction
- *
- * If this is the first entry being inserted
- */
-static int _fr_do_bt(fr_bt_marker_t *marker)
-{
-	fr_bt_info_t *bt;
-
-	if (!fr_assert(marker->obj) || !fr_assert(marker->cbuff)) {
-		return -1;
-	}
-
-	bt = talloc_zero(marker->cbuff, fr_bt_info_t);
-	if (!bt) {
-		return -1;
-	}
-	bt->count = backtrace(bt->frames, MAX_BT_FRAMES);
-	fr_cbuff_rp_insert(marker->cbuff, bt);
-
-	return 0;
-}
-
 /** Print backtrace entry for a given object
  *
  * @param cbuff to search in.
@@ -151,29 +129,40 @@ void backtrace_print(fr_cbuff_t *cbuff, void *obj)
 {
 	fr_bt_info_t *p;
 	bool found = false;
-	int i = 0;
-	char **frames;
 
 	while ((p = fr_cbuff_rp_next(cbuff, NULL))) {
-		if ((p == obj) || !obj) {
+		if ((p->obj == obj) || !obj) {
 			found = true;
-			frames = backtrace_symbols(p->frames, p->count);
 
-			fprintf(stderr, "Stacktrace for: %p\n", p);
-			for (i = 0; i < p->count; i++) {
-				fprintf(stderr, "%s\n", frames[i]);
-			}
-
-			/* We were only asked to look for one */
-			if (obj) {
-				return;
-			}
+			fprintf(stderr, "Stacktrace for: %p\n", p->obj, p);
+			backtrace_symbols_fd(p->frames, p->count, STDERR_FILENO);
 		}
 	};
 
 	if (!found) {
 		fprintf(stderr, "No backtrace available for %p", obj);
 	}
+}
+
+/** Generate a backtrace for an object
+ *
+ * If this is the first entry being inserted
+ */
+int fr_backtrace_do(fr_bt_marker_t *marker)
+{
+	fr_bt_info_t *bt;
+
+	if (!fr_assert(marker->obj) || !fr_assert(marker->cbuff)) return -1;
+
+	bt = talloc_zero(NULL, fr_bt_info_t);
+	if (!bt) return -1;
+
+	bt->obj = marker->obj;
+	bt->count = backtrace(bt->frames, MAX_BT_FRAMES);
+
+	fr_cbuff_rp_insert(marker->cbuff, bt);
+
+	return 0;
 }
 
 /** Inserts a backtrace marker into the provided context
@@ -183,7 +172,7 @@ void backtrace_print(fr_cbuff_t *cbuff, void *obj)
  * Code augmentation should look something like:
 @verbatim
 	// Create a static cbuffer pointer, the first call to backtrace_attach will initialise it
-	static fr_cbuff *my_obj_bt;
+	static fr_cbuff_t *my_obj_bt;
 
 	my_obj_t *alloc_my_obj(TALLOC_CTX *ctx) {
 		my_obj_t *this;
@@ -227,7 +216,12 @@ fr_bt_marker_t *fr_backtrace_attach(fr_cbuff_t **cbuff, TALLOC_CTX *obj)
 	marker->obj = (void *) obj;
 	marker->cbuff = *cbuff;
 
-	talloc_set_destructor(marker, _fr_do_bt);
+	fprintf(stderr, "Backtrace attached to %s %p\n", talloc_get_name(obj), obj);
+	/*
+	 *	Generate the backtrace for memory allocation
+	 */
+	fr_backtrace_do(marker);
+	talloc_set_destructor(marker, fr_backtrace_do);
 
 	return marker;
 }
