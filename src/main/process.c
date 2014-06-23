@@ -109,6 +109,22 @@ static char const *child_state_names[REQUEST_CHILD_NUM_STATES] = {
 				&when, &request->ev);
 
 
+#ifdef HAVE_PTHREAD_H
+#undef VERIFY_REQUEST
+
+#if defined(WITH_VERIFY_PTR)
+#  define VERIFY_REQUEST(_x) if (pthread_equal(pthread_self(), _x->child_pid) != 0) verify_request(__FILE__, __LINE__, _x)
+#else
+/*
+ *  Even if were building without WITH_VERIFY_PTR
+ *  the pointer must not be NULL when these various macros are used
+ *  so we can add some sneaky asserts.
+ */
+#  define VERIFY_REQUEST(_x) rad_assert(_x)
+#endif
+
+#endif
+
 
 /**
  * @section request_timeline
