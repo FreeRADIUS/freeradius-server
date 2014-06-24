@@ -140,8 +140,7 @@ static int tls_socket_recv(rad_listen_t *listener)
 		sock->packet->dst_port = sock->my_port;
 
 		if (sock->request) {
-			(void) talloc_steal(sock->request, sock->packet);
-			sock->request->packet = sock->packet;
+			sock->request->packet = talloc_steal(sock->request, sock->packet);
 		}
 	}
 
@@ -157,7 +156,7 @@ static int tls_socket_recv(rad_listen_t *listener)
 
 		rad_assert(request->packet == NULL);
 		rad_assert(sock->packet != NULL);
-		request->packet = sock->packet;
+		request->packet = talloc_steal(request, sock->packet);
 
 		request->component = "<core>";
 		request->component = "<tls-connect>";
