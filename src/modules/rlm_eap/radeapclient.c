@@ -92,6 +92,11 @@ static void NEVER_RETURNS usage(void)
 
 	exit(1);
 }
+int rad_virtual_server(REQUEST UNUSED *request)
+{
+  /*We're not the server so we cannot do this*/
+  abort();
+}
 
 static uint16_t getport(char const *name)
 {
