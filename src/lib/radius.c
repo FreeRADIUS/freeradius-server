@@ -2617,7 +2617,7 @@ RADIUS_PACKET *rad_recv(int fd, int flags)
 	/*
 	 *	Allocate the new request data structure
 	 */
-	packet = rad_alloc(NULL, 0);
+	packet = rad_alloc(NULL, false);
 	if (!packet) {
 		fr_strerror_printf("out of memory");
 		return NULL;
@@ -4602,10 +4602,10 @@ uint32_t fr_rand(void)
  *
  * @param ctx the context in which the packet is allocated. May be NULL if
  *	the packet is not associated with a REQUEST.
- * @param newvector if true a new request authenticator will be generated.
+ * @param new_vector if true a new request authenticator will be generated.
  * @return a new RADIUS_PACKET or NULL on error.
  */
-RADIUS_PACKET *rad_alloc(TALLOC_CTX *ctx, int newvector)
+RADIUS_PACKET *rad_alloc(TALLOC_CTX *ctx, bool new_vector)
 {
 	RADIUS_PACKET	*rp;
 
@@ -4617,7 +4617,7 @@ RADIUS_PACKET *rad_alloc(TALLOC_CTX *ctx, int newvector)
 	rp->id = -1;
 	rp->offset = -1;
 
-	if (newvector) {
+	if (new_vector) {
 		int i;
 		uint32_t hash, base;
 
@@ -4649,7 +4649,7 @@ RADIUS_PACKET *rad_alloc_reply(TALLOC_CTX *ctx, RADIUS_PACKET *packet)
 
 	if (!packet) return NULL;
 
-	reply = rad_alloc(ctx, 0);
+	reply = rad_alloc(ctx, false);
 	if (!reply) return NULL;
 
 	/*
@@ -4704,7 +4704,7 @@ RADIUS_PACKET *rad_copy_packet(TALLOC_CTX *ctx, RADIUS_PACKET const *in)
 {
 	RADIUS_PACKET *out;
 
-	out = rad_alloc(ctx, 0);
+	out = rad_alloc(ctx, false);
 	if (!out) return NULL;
 
 	/*

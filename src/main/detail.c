@@ -672,7 +672,7 @@ static RADIUS_PACKET *detail_poll(rad_listen_t *listener)
 	 *	Allocate the packet.  If we fail, it's a serious
 	 *	problem.
 	 */
-	packet = rad_alloc(NULL, 1);
+	packet = rad_alloc(NULL, true);
 	if (!packet) {
 		ERROR("FATAL: Failed allocating memory for detail");
 		fr_exit(1);

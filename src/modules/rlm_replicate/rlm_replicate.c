@@ -118,7 +118,7 @@ static int replicate_packet(UNUSED void *instance, REQUEST *request, pair_lists_
 		 *	we built here.
 		 */
 		if (!packet) {
-			packet = rad_alloc(request, 1);
+			packet = rad_alloc(request, true);
 			if (!packet) {
 				return RLM_MODULE_FAIL;
 			}

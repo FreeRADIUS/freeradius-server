@@ -278,7 +278,7 @@ RADIUS_PACKET *vqp_recv(int sockfd)
 	/*
 	 *	Allocate the new request data structure
 	 */
-	packet = rad_alloc(NULL, 0);
+	packet = rad_alloc(NULL, false);
 	if (!packet) {
 		fr_strerror_printf("out of memory");
 		return NULL;

@@ -107,7 +107,7 @@ static int request_init(char const *filename)
 		fp = stdin;
 	}
 
-	request = rad_alloc(NULL, 0);
+	request = rad_alloc(NULL, false);
 
 	/*
 	 *	Read the VP's.

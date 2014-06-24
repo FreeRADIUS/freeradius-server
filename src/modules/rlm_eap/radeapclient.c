@@ -1154,7 +1154,7 @@ int main(int argc, char **argv)
 		DEBUG2("Including dictionary file %s/%s", radius_dir, RADIUS_DICTIONARY);
 	}
 
-	req = rad_alloc(NULL, 1);
+	req = rad_alloc(NULL, true);
 	if (!req) {
 		ERROR("%s", fr_strerror());
 		exit(1);
@@ -1502,13 +1502,13 @@ main(int argc, char *argv[])
 		return 1;
 	}
 
-	req = rad_alloc(NULL, 1)
+	req = rad_alloc(NULL, true)
 	if (!req) {
 		ERROR("%s", fr_strerror());
 		exit(1);
 	}
 
-	req2 = rad_alloc(NULL, 1);
+	req2 = rad_alloc(NULL, true);
 	if (!req2) {
 		ERROR("%s", fr_strerror());
 		exit(1);

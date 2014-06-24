@@ -85,7 +85,7 @@ int fr_tcp_client_socket(fr_ipaddr_t *src_ipaddr,
 
 RADIUS_PACKET *fr_tcp_recv(int sockfd, int flags)
 {
-	RADIUS_PACKET *packet = rad_alloc(NULL, 0);
+	RADIUS_PACKET *packet = rad_alloc(NULL, false);
 
 	if (!packet) return NULL;
 

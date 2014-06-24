@@ -1103,7 +1103,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 	 *	recover once some requests timeout, so make an effort to deal
 	 *	with allocation failures gracefully.
 	 */
-	current = rad_alloc(conf, 0);
+	current = rad_alloc(conf, false);
 	if (!current) {
 		REDEBUG("Failed allocating memory to hold decoded packet");
 		rs_tv_add_ms(&header->ts, conf->stats.timeout, &stats->quiet);
