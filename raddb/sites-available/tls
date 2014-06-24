@@ -200,18 +200,6 @@ listen {
 		cipher_list = "DEFAULT"
 
 		#
-
-		#  This configuration entry should be deleted
-		#  once the server is running in a normal
-		#  configuration.  It is here ONLY to make
-		#  initial deployments easier.
-		#
-		#
-		#  This is enabled in eap.conf, so we don't need it here.
-		#
-#		make_cert_command = "${certdir}/bootstrap"
-
-		#
 		#  Session resumption / fast reauthentication
 		#  cache.
 		#
