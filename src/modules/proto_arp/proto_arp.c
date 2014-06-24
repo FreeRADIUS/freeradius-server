@@ -142,7 +142,7 @@ static int arp_socket_recv(rad_listen_t *listener)
 
 	if (arp->plen != 4) return 0; /* FIXME: malformed packet error */
 
-	packet = talloc_zero(listener, RADIUS_PACKET);
+	packet = talloc_zero(NULL, RADIUS_PACKET);
 	if (!packet) return 0;
 
 	packet->dst_port = 1;	/* so it's not a "fake" request */
