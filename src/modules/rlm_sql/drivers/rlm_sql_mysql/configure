@@ -157,7 +157,7 @@ $as_echo "$0: could not re-execute with $CONFIG_SHELL" >&2
 as_fn_exit 255
   fi
   # We don't want this to propagate to other subprocesses.
-	  { _as_can_reexec=; unset _as_can_reexec;}
+          { _as_can_reexec=; unset _as_can_reexec;}
 if test "x$CONFIG_SHELL" = x; then
   as_bourne_compatible="if test -n \"\${ZSH_VERSION+set}\" && (emulate sh) >/dev/null 2>&1; then :
   emulate sh
@@ -237,7 +237,7 @@ IFS=$as_save_IFS
 
       if test "x$CONFIG_SHELL" != x; then :
   export CONFIG_SHELL
-	     # We cannot yet assume a decent shell, so we have to provide a
+             # We cannot yet assume a decent shell, so we have to provide a
 # neutralization value for shells without unset; and this also
 # works around shells that cannot unset nonexistent variables.
 # Preserve -v and -x to the replacement shell.
@@ -1212,9 +1212,9 @@ Configuration:
 
 Installation directories:
   --prefix=PREFIX         install architecture-independent files in PREFIX
-			  [$ac_default_prefix]
+                          [$ac_default_prefix]
   --exec-prefix=EPREFIX   install architecture-dependent files in EPREFIX
-			  [PREFIX]
+                          [PREFIX]
 
 By default, \`make install' will install all the files in
 \`$ac_default_prefix/bin', \`$ac_default_prefix/lib' etc.  You can specify
@@ -1257,9 +1257,9 @@ Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
   --with-mysql-include-dir=DIR
-			  Directory where the mysql includes may be found
+                          Directory where the mysql includes may be found
   --with-mysql-lib-dir=DIR
-			  Directory where the mysql libraries may be found
+                          Directory where the mysql libraries may be found
   --with-mysql-dir=DIR    Base directory where mysql is installed
   --with-threads          use threads, if available. (default=yes)
 
@@ -1267,10 +1267,10 @@ Some influential environment variables:
   CC          C compiler command
   CFLAGS      C compiler flags
   LDFLAGS     linker flags, e.g. -L<lib dir> if you have libraries in a
-	      nonstandard directory <lib dir>
+              nonstandard directory <lib dir>
   LIBS        libraries to pass to the linker, e.g. -l<library>
   CPPFLAGS    (Objective) C/C++ preprocessor flags, e.g. -I<include dir> if
-	      you have headers in a nonstandard directory <include dir>
+              you have headers in a nonstandard directory <include dir>
 
 Use these variables to override the choices made by `configure' or to help
 it to find libraries and programs with nonstandard names/locations.
@@ -1798,7 +1798,7 @@ SMART_CLFAGS=
 if test x$with_rlm_sql_mysql != xno; then
 
 
-	mysql_include_dir=
+        mysql_include_dir=
 
 # Check whether --with-mysql-include-dir was given.
 if test "${with_mysql_include_dir+set}" = set; then :
@@ -1815,7 +1815,7 @@ if test "${with_mysql_include_dir+set}" = set; then :
 fi
 
 
-	mysql_lib_dir=
+        mysql_lib_dir=
 
 # Check whether --with-mysql-lib-dir was given.
 if test "${with_mysql_lib_dir+set}" = set; then :
@@ -1849,7 +1849,7 @@ if test "${with_mysql_dir+set}" = set; then :
 fi
 
 
-	mysql_with_threads=yes
+        mysql_with_threads=yes
 
 # Check whether --with-threads was given.
 if test "${with_threads+set}" = set; then :
@@ -1962,7 +1962,7 @@ else
 fi
 
 if test -z "$CC"; then
-	  if test -n "$ac_tool_prefix"; then
+          if test -n "$ac_tool_prefix"; then
     # Extract the first word of "${ac_tool_prefix}cc", so it can be a program name with args.
 set dummy ${ac_tool_prefix}cc; ac_word=$2
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
@@ -2184,7 +2184,7 @@ $as_echo "$ac_try_echo"; } >&5
   if test -s conftest.err; then
     sed '10a\
 ... rest of stderr output deleted ...
-	 10q' conftest.err >conftest.er1
+         10q' conftest.err >conftest.er1
     cat conftest.er1 >&5
   fi
   rm -f conftest.er1 conftest.err
@@ -2693,7 +2693,7 @@ fi
 
 
 
-	    if test "x$mysql_with_threads" = "xyes"; then
+            if test "x$mysql_with_threads" = "xyes"; then
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for pthread_create in -lpthread" >&5
 $as_echo_n "checking for pthread_create in -lpthread... " >&6; }
@@ -2825,7 +2825,7 @@ $as_echo "no" >&6; }
 	    fi
 	fi
 	if test "x$have_libmysqlclient_r" != "xyes"; then
-		    smart_try_dir="$mysql_lib_dir /usr/lib /usr/lib/mysql \
+	    	    smart_try_dir="$mysql_lib_dir /usr/lib /usr/lib/mysql \
 		/usr/local/lib/mysql /usr/local/mysql/lib/mysql"
 
 
@@ -2891,8 +2891,8 @@ mysql_init()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-		smart_lib="-lmysqlclient_r"
-		{ $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+	        smart_lib="-lmysqlclient_r"
+	        { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 
 else
@@ -2908,22 +2908,22 @@ if test "x$smart_lib" = "x"; then
 
 
 if test "x$LOCATE" != "x"; then
-	DIRS=
+        DIRS=
   file=libmysqlclient_r${libltdl_cv_shlibext}
 
   for x in `${LOCATE} $file 2>/dev/null`; do
-					base=`echo $x | sed "s%/${file}%%"`
+                                        base=`echo $x | sed "s%/${file}%%"`
     if test "x$x" = "x$base"; then
       continue;
     fi
 
     dir=`${DIRNAME} $x 2>/dev/null`
-		exclude=`echo ${dir} | ${GREP} /home`
+                exclude=`echo ${dir} | ${GREP} /home`
     if test "x$exclude" != "x"; then
       continue
     fi
 
-		    already=`echo \$smart_lib_dir ${DIRS} | ${GREP} ${dir}`
+                    already=`echo \$smart_lib_dir ${DIRS} | ${GREP} ${dir}`
     if test "x$already" = "x"; then
       DIRS="$DIRS $dir"
     fi
@@ -2935,22 +2935,22 @@ eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
 
 
 if test "x$LOCATE" != "x"; then
-	DIRS=
+        DIRS=
   file=libmysqlclient_r.a
 
   for x in `${LOCATE} $file 2>/dev/null`; do
-					base=`echo $x | sed "s%/${file}%%"`
+                                        base=`echo $x | sed "s%/${file}%%"`
     if test "x$x" = "x$base"; then
       continue;
     fi
 
     dir=`${DIRNAME} $x 2>/dev/null`
-		exclude=`echo ${dir} | ${GREP} /home`
+                exclude=`echo ${dir} | ${GREP} /home`
     if test "x$exclude" != "x"; then
       continue
     fi
 
-		    already=`echo \$smart_lib_dir ${DIRS} | ${GREP} ${dir}`
+                    already=`echo \$smart_lib_dir ${DIRS} | ${GREP} ${dir}`
     if test "x$already" = "x"; then
       DIRS="$DIRS $dir"
     fi
@@ -3051,7 +3051,7 @@ $as_echo "no" >&6; }
 	    fi
 	fi
 	if test "x$have_libmysqlclient" != "xyes"; then
-		    smart_try_dir="$mysql_lib_dir /usr/lib /usr/lib/mysql \
+	    	    smart_try_dir="$mysql_lib_dir /usr/lib /usr/lib/mysql \
 		/usr/local/lib/mysql /usr/local/mysql/lib/mysql"
 
 
@@ -3117,8 +3117,8 @@ mysql_init()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-		smart_lib="-lmysqlclient"
-		{ $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+	        smart_lib="-lmysqlclient"
+	        { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 
 else
@@ -3134,22 +3134,22 @@ if test "x$smart_lib" = "x"; then
 
 
 if test "x$LOCATE" != "x"; then
-	DIRS=
+        DIRS=
   file=libmysqlclient${libltdl_cv_shlibext}
 
   for x in `${LOCATE} $file 2>/dev/null`; do
-					base=`echo $x | sed "s%/${file}%%"`
+                                        base=`echo $x | sed "s%/${file}%%"`
     if test "x$x" = "x$base"; then
       continue;
     fi
 
     dir=`${DIRNAME} $x 2>/dev/null`
-		exclude=`echo ${dir} | ${GREP} /home`
+                exclude=`echo ${dir} | ${GREP} /home`
     if test "x$exclude" != "x"; then
       continue
     fi
 
-		    already=`echo \$smart_lib_dir ${DIRS} | ${GREP} ${dir}`
+                    already=`echo \$smart_lib_dir ${DIRS} | ${GREP} ${dir}`
     if test "x$already" = "x"; then
       DIRS="$DIRS $dir"
     fi
@@ -3161,22 +3161,22 @@ eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
 
 
 if test "x$LOCATE" != "x"; then
-	DIRS=
+        DIRS=
   file=libmysqlclient.a
 
   for x in `${LOCATE} $file 2>/dev/null`; do
-					base=`echo $x | sed "s%/${file}%%"`
+                                        base=`echo $x | sed "s%/${file}%%"`
     if test "x$x" = "x$base"; then
       continue;
     fi
 
     dir=`${DIRNAME} $x 2>/dev/null`
-		exclude=`echo ${dir} | ${GREP} /home`
+                exclude=`echo ${dir} | ${GREP} /home`
     if test "x$exclude" != "x"; then
       continue
     fi
 
-		    already=`echo \$smart_lib_dir ${DIRS} | ${GREP} ${dir}`
+                    already=`echo \$smart_lib_dir ${DIRS} | ${GREP} ${dir}`
     if test "x$already" = "x"; then
       DIRS="$DIRS $dir"
     fi
@@ -3311,10 +3311,23 @@ $as_echo "no" >&6; }
 ac_safe=`echo "mysql/mysql.h" | sed 'y%./+-%__pm%'`
 old_CPPFLAGS="$CPPFLAGS"
 smart_include=
-smart_include_dir=
+smart_include_dir="/usr/local/include /opt/include"
 
-if test "x$smart_try_dir" != "x"; then
-  for try in $smart_try_dir; do
+_smart_try_dir=
+_smart_include_dir=
+
+for _prefix in $smart_prefix ""; do
+  for _dir in $smart_try_dir; do
+    _smart_try_dir="${_smart_try_dir} ${_dir}/${_prefix}"
+  done
+
+  for _dir in $smart_include_dir; do
+    _smart_include_dir="${_smart_include_dir} ${_dir}/${_prefix}"
+  done
+done
+
+if test "x$_smart_try_dir" != "x"; then
+  for try in $_smart_try_dir; do
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for mysql/mysql.h in $try" >&5
 $as_echo_n "checking for mysql/mysql.h in $try... " >&6; }
     CPPFLAGS="-isystem $try $old_CPPFLAGS"
@@ -3350,12 +3363,14 @@ rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 fi
 
 if test "x$smart_include" = "x"; then
-  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for mysql/mysql.h" >&5
-$as_echo_n "checking for mysql/mysql.h... " >&6; }
-  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+  for _prefix in $smart_prefix; do
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for ${_prefix}/mysql/mysql.h" >&5
+$as_echo_n "checking for ${_prefix}/mysql/mysql.h... " >&6; }
+
+    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		  #include <mysql/mysql.h>
+		    #include <mysql/mysql.h>
 int
 main ()
 {
@@ -3366,15 +3381,49 @@ int a = 1;
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
 
-		   smart_include=" "
-		   { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		     smart_include="-isystem ${_prefix}/"
+		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
-		   break
+		     break
 
 else
 
-		   smart_include=
-		   { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		     smart_include=
+		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+  done
+fi
+
+if test "x$smart_include" = "x"; then
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for mysql/mysql.h" >&5
+$as_echo_n "checking for mysql/mysql.h... " >&6; }
+
+    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+		    #include <mysql/mysql.h>
+int
+main ()
+{
+int a = 1;
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+
+		     smart_include=" "
+		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+		     break
+
+else
+
+		     smart_include=
+		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
 
 fi
@@ -3383,33 +3432,64 @@ fi
 
 if test "x$smart_include" = "x"; then
 
+  for prefix in $smart_prefix; do
+
 
 if test "x$LOCATE" != "x"; then
-	DIRS=
-  file=mysql/mysql.h
+        DIRS=
+  file="${_prefix}/${1}"
 
   for x in `${LOCATE} $file 2>/dev/null`; do
-					base=`echo $x | sed "s%/${file}%%"`
+                                        base=`echo $x | sed "s%/${file}%%"`
     if test "x$x" = "x$base"; then
       continue;
     fi
 
     dir=`${DIRNAME} $x 2>/dev/null`
-		exclude=`echo ${dir} | ${GREP} /home`
+                exclude=`echo ${dir} | ${GREP} /home`
     if test "x$exclude" != "x"; then
       continue
     fi
 
-		    already=`echo \$smart_include_dir ${DIRS} | ${GREP} ${dir}`
+                    already=`echo \$_smart_include_dir ${DIRS} | ${GREP} ${dir}`
     if test "x$already" = "x"; then
       DIRS="$DIRS $dir"
     fi
   done
 fi
 
-eval "smart_include_dir=\"\$smart_include_dir $DIRS\""
+eval "_smart_include_dir=\"\$_smart_include_dir $DIRS\""
 
-  for try in $smart_include_dir /usr/local/include /opt/include; do
+  done
+
+
+if test "x$LOCATE" != "x"; then
+        DIRS=
+  file=mysql/mysql.h
+
+  for x in `${LOCATE} $file 2>/dev/null`; do
+                                        base=`echo $x | sed "s%/${file}%%"`
+    if test "x$x" = "x$base"; then
+      continue;
+    fi
+
+    dir=`${DIRNAME} $x 2>/dev/null`
+                exclude=`echo ${dir} | ${GREP} /home`
+    if test "x$exclude" != "x"; then
+      continue
+    fi
+
+                    already=`echo \$_smart_include_dir ${DIRS} | ${GREP} ${dir}`
+    if test "x$already" = "x"; then
+      DIRS="$DIRS $dir"
+    fi
+  done
+fi
+
+eval "_smart_include_dir=\"\$_smart_include_dir $DIRS\""
+
+
+  for try in $_smart_include_dir; do
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for mysql/mysql.h in $try" >&5
 $as_echo_n "checking for mysql/mysql.h in $try... " >&6; }
     CPPFLAGS="-isystem $try $old_CPPFLAGS"
@@ -3450,12 +3530,14 @@ if test "x$smart_include" != "x"; then
   SMART_CPPFLAGS="$smart_include $SMART_CPPFLAGS"
 fi
 
+smart_prefix=
+
 	if test "x$ac_cv_header_mysql_mysql_h" = "xyes"; then
 
 $as_echo "#define HAVE_MYSQL_MYSQL_H /**/" >>confdefs.h
 
 	else
-		    { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: MySQL headers not found. Use --with-mysql-include-dir=<path>." >&5
+	    	    { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: MySQL headers not found. Use --with-mysql-include-dir=<path>." >&5
 $as_echo "$as_me: WARNING: MySQL headers not found. Use --with-mysql-include-dir=<path>." >&2;}
 	    fail="$fail mysql.h"
 	fi
@@ -3560,11 +3642,11 @@ $as_echo "$as_me: updating cache $cache_file" >&6;}
       if test ! -f "$cache_file" || test -h "$cache_file"; then
 	cat confcache >"$cache_file"
       else
-	case $cache_file in #(
-	*/* | ?:*)
+        case $cache_file in #(
+        */* | ?:*)
 	  mv -f confcache "$cache_file"$$ &&
 	  mv -f "$cache_file"$$ "$cache_file" ;; #(
-	*)
+        *)
 	  mv -f confcache "$cache_file" ;;
 	esac
       fi
@@ -4038,13 +4120,13 @@ Usage: $0 [OPTION]... [TAG]...
   -V, --version    print version number and configuration settings, then exit
       --config     print configuration, then exit
   -q, --quiet, --silent
-		   do not print progress messages
+                   do not print progress messages
   -d, --debug      don't remove temporary files
       --recheck    update $as_me by reconfiguring in the same conditions
       --file=FILE[:TEMPLATE]
-		   instantiate the configuration file FILE
+                   instantiate the configuration file FILE
       --header=FILE[:TEMPLATE]
-		   instantiate the configuration header FILE
+                   instantiate the configuration header FILE
 
 Configuration files:
 $config_files
