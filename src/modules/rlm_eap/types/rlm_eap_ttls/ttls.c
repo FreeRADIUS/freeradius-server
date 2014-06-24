@@ -24,6 +24,7 @@
 RCSID("$Id$")
 
 #include "eap_ttls.h"
+#include "eap_chbind.h"
 
 /*
  *    0                   1                   2                   3
@@ -695,11 +696,30 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(UNUSED eap_handler_t *handler,
 			pairfree(&vp);
 		}
 
+		/* move channel binding responses; we need to send them */
+		pairfilter(tls_session, &vp, &reply->vps, PW_UKERNA_CHBIND, VENDORPEC_UKERNA, TAG_ANY);
+		if (pairfind(vp, PW_UKERNA_CHBIND, VENDORPEC_UKERNA, TAG_ANY) != NULL) {
+			t->authenticated = true;
+			/*
+			 *	Use the tunneled reply, but not now.
+			 */
+			if (t->use_tunneled_reply) {
+				rad_assert(!t->accept_vps);
+				pairfilter(t, &t->accept_vps, &reply->vps,
+					  0, 0, TAG_ANY);
+				rad_assert(!reply->vps);
+			}
+			rcode = RLM_MODULE_HANDLED;
+		}
+
 		/*
 		 *	Handle the ACK, by tunneling any necessary reply
 		 *	VP's back to the client.
 		 */
 		if (vp) {
+			RDEBUG("sending tunneled reply attributes");
+			debug_pair_list(vp);
+			RDEBUG("end tunneled reply attributes");
 			vp2diameter(request, tls_session, vp);
 			pairfree(&vp);
 		}
@@ -760,6 +780,10 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(UNUSED eap_handler_t *handler,
 		 *	it's value.
 		 */
 		pairfilter(t, &vp, &reply->vps, PW_REPLY_MESSAGE, 0, TAG_ANY);
+
+		/* also move chbind messages, if any */
+		pairfilter(t, &vp, &reply->vps, PW_UKERNA_CHBIND, VENDORPEC_UKERNA,
+			  TAG_ANY);
 
 		/*
 		 *	Handle the ACK, by tunneling any necessary reply
@@ -913,7 +937,7 @@ static int CC_HINT(nonnull) eapttls_postproxy(eap_handler_t *handler, void *data
  */
 int eapttls_process(eap_handler_t *handler, tls_session_t *tls_session)
 {
-	int code = PW_CODE_ACCESS_REJECT;
+	PW_CODE code = PW_CODE_ACCESS_REJECT;
 	rlm_rcode_t rcode;
 	REQUEST *fake;
 	VALUE_PAIR *vp;
@@ -921,6 +945,7 @@ int eapttls_process(eap_handler_t *handler, tls_session_t *tls_session)
 	uint8_t const *data;
 	size_t data_len;
 	REQUEST *request = handler->request;
+	chbind_packet_t *chbind;
 
 	/*
 	 *	Just look at the buffer directly, without doing
@@ -1152,6 +1177,43 @@ int eapttls_process(eap_handler_t *handler, tls_session_t *tls_session)
 
 	if ((debug_flag > 0) && fr_log_fp) {
 		RDEBUG("Sending tunneled request");
+	}
+
+	/*
+	 *	Process channel binding.
+	 */
+	chbind = eap_chbind_vp2packet(fake, fake->packet->vps);
+	if (chbind) {
+		PW_CODE chbind_code;
+		CHBIND_REQ *req = talloc_zero(fake, CHBIND_REQ);
+
+		RDEBUG("received chbind request");
+		req->request = chbind;
+		if (fake->username) {
+			req->username = fake->username;
+		} else {
+			req->username = NULL;
+		}
+		chbind_code = chbind_process(request, req);
+
+		/* free the chbind packet; we're done with it */
+		free(chbind);
+
+		/* encapsulate response here */
+		if (req->response) {
+			RDEBUG("sending chbind response");
+			pairadd(&fake->reply->vps,
+				eap_chbind_packet2vp(fake, req->response));
+		} else {
+			RDEBUG("no chbind response");
+		}
+
+		/* clean up chbind req */
+		talloc_free(req);
+
+		if (chbind_code != PW_CODE_ACCESS_ACCEPT) {
+			return chbind_code;
+		}
 	}
 
 	/*
