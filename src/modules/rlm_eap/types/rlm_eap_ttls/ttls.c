@@ -1152,11 +1152,6 @@ PW_CODE eapttls_process(eap_handler_t *handler, tls_session_t *tls_session)
 
 	if ((debug_flag > 0) && fr_log_fp) {
 		RDEBUG("Sending tunneled request");
-
-		debug_pair_list(fake->packet->vps);
-
-		fprintf(fr_log_fp, "server %s {\n",
-			(!fake->server) ? "" : fake->server);
 	}
 
 	/*
@@ -1164,19 +1159,6 @@ PW_CODE eapttls_process(eap_handler_t *handler, tls_session_t *tls_session)
 	 *	do PAP, CHAP, MS-CHAP, etc.
 	 */
 	rad_virtual_server(fake);
-
-	/*
-	 *	Note that we don't do *anything* with the reply
-	 *	attributes.
-	 */
-	if ((debug_flag > 0) && fr_log_fp) {
-		fprintf(fr_log_fp, "} # server %s\n",
-			(!fake->server) ? "" : fake->server);
-
-		RDEBUG("Got tunneled reply code %d", fake->reply->code);
-
-		debug_pair_list(fake->reply->vps);
-	}
 
 	/*
 	 *	Decide what to do with the reply.

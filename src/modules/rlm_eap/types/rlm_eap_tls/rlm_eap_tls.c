@@ -168,13 +168,7 @@ static int CC_HINT(nonnull) mod_authenticate(void *type_arg, eap_handler_t *hand
 			}
 
 			RDEBUG("Processing EAP-TLS Certificate check:");
-			debug_pair_list(fake->packet->vps);
-
-			RDEBUG("server %s {", fake->server);
-
 			rad_virtual_server(fake);
-
-			RDEBUG("} # server %s", fake->server);
 
 			/* copy the reply vps back to our reply */
 			pairfilter(request->reply, &request->reply->vps,

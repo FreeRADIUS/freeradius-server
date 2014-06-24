@@ -815,12 +815,7 @@ rlm_rcode_t eappeap_process(eap_handler_t *handler, tls_session_t *tls_session)
 			fake->server = t->soh_virtual_server;
 		}
 		RDEBUG("Sending SoH request to server %s", fake->server ? fake->server : "NULL");
-		debug_pair_list(fake->packet->vps);
-		RDEBUG("server %s {", fake->server);
 		rad_virtual_server(fake);
-		RDEBUG("} # server %s", fake->server);
-		RDEBUG("Got SoH reply");
-		debug_pair_list(fake->reply->vps);
 
 		if (fake->reply->code != PW_CODE_ACCESS_ACCEPT) {
 			RDEBUG2("SoH was rejected");
