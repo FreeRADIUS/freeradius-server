@@ -510,7 +510,7 @@ void fr_fault(int sig)
 
 		/*
 		 *	Here we temporarily enable the dumpable flag so if GBD or LLDB
-		 *	is called in the panic_action, they can pattach tot he running
+		 *	is called in the panic_action, they can pattach to the running
 		 *	process.
 		 */
 		if (fr_get_dumpable_flag() == 0) {
@@ -620,7 +620,7 @@ int fr_log_talloc_report(TALLOC_CTX *ctx)
  */
 static void _fr_fault_mem_report(int sig)
 {
-	fr_fault_log("CAUGHT SIGNAL: %s\n", strsignal(sig));
+	FR_FAULT_LOG("CAUGHT SIGNAL: %s", strsignal(sig));
 
 	if (fr_log_talloc_report(NULL) < 0) fr_perror("memreport");
 }
@@ -809,7 +809,7 @@ void fr_fault_set_log_fd(int fd)
 inline void fr_verify_vp(char const *file, int line, VALUE_PAIR const *vp)
 {
 	if (!vp) {
-		fprintf(stderr, "CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR pointer was NULL", file, line);
+		FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR pointer was NULL", file, line);
 		fr_assert(0);
 		fr_exit_now(0);
 	}
@@ -824,25 +824,25 @@ inline void fr_verify_vp(char const *file, int line, VALUE_PAIR const *vp)
 		TALLOC_CTX *parent;
 
 		if (!talloc_get_type(vp->data.ptr, uint8_t)) {
-			fprintf(stderr, "CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR \"%s\" data buffer type should be "
-				"uint8_t but is %s\n", file, line, vp->da->name, talloc_get_name(vp->data.ptr));
+			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR \"%s\" data buffer type should be "
+				     "uint8_t but is %s\n", file, line, vp->da->name, talloc_get_name(vp->data.ptr));
 			(void) talloc_get_type_abort(vp->data.ptr, uint8_t);
 		}
 
 		len = talloc_array_length(vp->vp_octets);
 		if (vp->length > len) {
-			fprintf(stderr, "CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR \"%s\" length %zu is greater than "
-				"uint8_t data buffer length %zu\n", file, line, vp->da->name, vp->length, len);
+			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR \"%s\" length %zu is greater than "
+				     "uint8_t data buffer length %zu\n", file, line, vp->da->name, vp->length, len);
 			fr_assert(0);
 			fr_exit_now(1);
 		}
 
 		parent = talloc_parent(vp->data.ptr);
 		if (parent != vp) {
-			fprintf(stderr, "CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR \"%s\" char buffer is not "
-				"parented by VALUE_PAIR %p, instead parented by %p (%s)\n",
-				file, line, vp->da->name,
-				vp, parent, parent ? talloc_get_name(parent) : "NULL");
+			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR \"%s\" char buffer is not "
+				     "parented by VALUE_PAIR %p, instead parented by %p (%s)\n",
+				     file, line, vp->da->name,
+				     vp, parent, parent ? talloc_get_name(parent) : "NULL");
 			fr_assert(0);
 			fr_exit_now(1);
 		}
@@ -855,32 +855,32 @@ inline void fr_verify_vp(char const *file, int line, VALUE_PAIR const *vp)
 		TALLOC_CTX *parent;
 
 		if (!talloc_get_type(vp->data.ptr, char)) {
-			fprintf(stderr, "CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR \"%s\" data buffer type should be "
-				"char but is %s\n", file, line, vp->da->name, talloc_get_name(vp->data.ptr));
+			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR \"%s\" data buffer type should be "
+				     "char but is %s\n", file, line, vp->da->name, talloc_get_name(vp->data.ptr));
 			(void) talloc_get_type_abort(vp->data.ptr, char);
 		}
 
 		len = (talloc_array_length(vp->vp_strvalue) - 1);
 		if (vp->length > len) {
-			fprintf(stderr, "CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR \"%s\" length %zu is greater than "
-				"char buffer length %zu\n", file, line, vp->da->name, vp->length, len);
+			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR \"%s\" length %zu is greater than "
+				     "char buffer length %zu\n", file, line, vp->da->name, vp->length, len);
 			fr_assert(0);
 			fr_exit_now(1);
 		}
 
 		if (vp->vp_strvalue[vp->length] != '\0') {
-			fprintf(stderr, "CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR \"%s\" char buffer not \\0 "
-				"terminated\n", file, line, vp->da->name);
+			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR \"%s\" char buffer not \\0 "
+				     "terminated\n", file, line, vp->da->name);
 			fr_assert(0);
 			fr_exit_now(1);
 		}
 
 		parent = talloc_parent(vp->data.ptr);
 		if (parent != vp) {
-			fprintf(stderr, "CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR \"%s\" uint8_t buffer is not "
-				"parented by VALUE_PAIR %p, instead parented by %p (%s)\n",
-				file, line, vp->da->name,
-				vp, parent, parent ? talloc_get_name(parent) : "NULL");
+			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR \"%s\" uint8_t buffer is not "
+				     "parented by VALUE_PAIR %p, instead parented by %p (%s)\n",
+				     file, line, vp->da->name,
+				     vp, parent, parent ? talloc_get_name(parent) : "NULL");
 			fr_assert(0);
 			fr_exit_now(1);
 		}
@@ -908,11 +908,11 @@ void fr_verify_list(char const *file, int line, TALLOC_CTX *expected, VALUE_PAIR
 
 		parent = talloc_parent(vp);
 		if (expected && (parent != expected)) {
-			fprintf(stderr, "CONSISTENCY CHECK FAILED %s[%u]: Expected VALUE_PAIR \"%s\" to be parented "
-				"by %p (%s), instead parented by %p (%s)\n",
-				file, line, vp->da->name,
-				expected, talloc_get_name(expected),
-				parent, parent ? talloc_get_name(parent) : "NULL");
+			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: Expected VALUE_PAIR \"%s\" to be parented "
+				     "by %p (%s), instead parented by %p (%s)\n",
+				     file, line, vp->da->name,
+				     expected, talloc_get_name(expected),
+				     parent, parent ? talloc_get_name(parent) : "NULL");
 
 			fr_log_talloc_report(expected);
 			if (parent) fr_log_talloc_report(parent);
@@ -923,3 +923,72 @@ void fr_verify_list(char const *file, int line, TALLOC_CTX *expected, VALUE_PAIR
 	}
 }
 #endif
+
+bool fr_assert_cond(char const *file, int line, char const *expr, bool cond)
+{
+	if (!cond) {
+		FR_FAULT_LOG("SOFT ASSERT FAILED %s[%u]: %s", file, line, expr);
+#if !defined(NDEBUG) && defined(SIGUSR1)
+		fr_fault(SIGUSR1);
+#endif
+		return false;
+	}
+
+	return cond;
+}
+
+/** Exit possibly printing a message about why we're exiting.
+ *
+ * Use the fr_exit(status) macro instead of calling this function
+ * directly.
+ *
+ * @param file where fr_exit() was called.
+ * @param line where fr_exit() was called.
+ * @param status we're exiting with.
+ */
+void NEVER_RETURNS _fr_exit(char const *file, int line, int status)
+{
+#ifndef NDEBUG
+	char const *error = fr_strerror();
+
+	if (error && (status != 0)) {
+		FR_FAULT_LOG("EXIT(%i) CALLED %s[%u].  Last error was: %s", status, file, line, error);
+	} else {
+		FR_FAULT_LOG("EXIT(%i) CALLED %s[%u]", status, file, line);
+	}
+#endif
+	fprintf(stderr, "If running under a debugger it should break <<here>>");
+	fflush(stderr);
+
+	fr_debug_break();	/* If running under GDB we'll break here */
+
+	exit(status);
+}
+
+/** Exit possibly printing a message about why we're exiting.
+ *
+ * Use the fr_exit_now(status) macro instead of calling this function
+ * directly.
+ *
+ * @param file where fr_exit_now() was called.
+ * @param line where fr_exit_now() was called.
+ * @param status we're exiting with.
+ */
+void NEVER_RETURNS _fr_exit_now(char const *file, int line, int status)
+{
+#ifndef NDEBUG
+	char const *error = fr_strerror();
+
+	if (error && (status != 0)) {
+		FR_FAULT_LOG("_EXIT(%i) CALLED %s[%u].  Last error was: %s", status, file, line, error);
+	} else {
+		FR_FAULT_LOG("_EXIT(%i) CALLED %s[%u]", status, file, line);
+	}
+#endif
+	fprintf(stderr, "If running under a debugger it should break <<here>>\n");
+	fflush(stderr);
+
+	fr_debug_break();	/* If running under GDB we'll break here */
+
+	_exit(status);
+}

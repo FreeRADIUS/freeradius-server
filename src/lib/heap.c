@@ -263,15 +263,6 @@ static int heap_cmp(void const *one, void const *two)
 
 #define ARRAY_SIZE (1024)
 
-void NEVER_RETURNS _fr_exit(char const *file, int line, int status)
-{
-#ifndef NDEBUG
-	fprintf(stderr, "EXIT CALLED %s[%u]: %i: ", file, line, status);
-#endif
-	fflush(stderr);
-	exit(status);
-}
-
 int main(int argc, char **argv)
 {
 	fr_heap_t *hp;
@@ -296,7 +287,7 @@ int main(int argc, char **argv)
 			fprintf(stderr, "Failed inserting %d\n", i);
 			fr_exit(1);
 		}
-	
+
 		if (!fr_heap_check(hp, &array[i])) {
 			fprintf(stderr, "Inserted but not in heap %d\n", i);
 			fr_exit(1);
