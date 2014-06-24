@@ -32,7 +32,7 @@ if test x$with_[]modname != xno; then
 	if test "$krb5_config" != 'not-found'; then
 		AC_MSG_CHECKING([krb5-config CFLAGS])
 		SMART_CPPFLAGS=$($krb5_config --cflags)
-		SMART_CPPFLAGS=[$(echo "$SMART_CPPFLAGS" | sed 's/-I[ ]*/-include /g')]
+		SMART_CPPFLAGS=[$(echo "$SMART_CPPFLAGS" | sed 's/-I[ ]*/-isystem /g')]
 		AC_MSG_RESULT("$SMART_CPPFLAGS")
 
 		AC_MSG_CHECKING([krb5-config LDFLAGS])
