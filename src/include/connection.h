@@ -46,10 +46,10 @@ typedef struct fr_connection_pool_t fr_connection_pool_t;
  *
  * There is no delete callback, so operations such as closing sockets and
  * freeing library connection handles should be done by a destructor attached
- * to memory allocated beneath parent.
+ * to memory allocated beneath ctx.
  *
  * @note A function pointer matching this prototype must be passed
- * to fr_connection_pool.
+ * to fr_connection_pool_init.
  *
  * @param[in,out] ctx to allocate memory in.
  * @param[in] opaque pointer passed to fr_connection_pool_init.

@@ -1098,9 +1098,10 @@ static int rlm_ldap_rebind(LDAP *handle, LDAP_CONST char *url, UNUSED ber_tag_t 
  */
 static int _mod_conn_free(ldap_handle_t *conn)
 {
-	DEBUG3("rlm_ldap: Closing libldap handle %p", conn->handle);
-
-	if (conn->handle) ldap_unbind_s(conn->handle);
+	if (conn->handle) {
+		DEBUG3("rlm_ldap: Closing libldap handle %p", conn->handle);
+		ldap_unbind_s(conn->handle);
+	}
 
 	return 0;
 }
