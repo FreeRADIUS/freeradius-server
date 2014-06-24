@@ -30,7 +30,6 @@ static int _mod_conn_free(ykclient_handle_t **yandle)
  * fr_connection_pool_init, and called when a new connection is required by the
  * connection pool API.
  *
- * @see mod_conn_delete
  * @see fr_connection_pool_init
  * @see fr_connection_create_t
  * @see connection.c
