@@ -27,7 +27,7 @@ eap {
 	#  then that EAP type takes precedence over the
 	#  default type configured here.
 	#
-	default_eap_type = md5
+	default_eap_type = ttls
 
 	#  A list is maintained to correlate EAP-Response
 	#  packets with EAP-Request packets.  After a
