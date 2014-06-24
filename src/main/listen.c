@@ -249,6 +249,7 @@ RADCLIENT *client_listener_find(rad_listen_t *listener,
 		talloc_free(request);
 		goto unknown;
 	}
+	(void) talloc_steal(request, request->packet);
 	request->reply = rad_alloc_reply(request, request->packet);
 	if (!request->reply) {
 		talloc_free(request);
