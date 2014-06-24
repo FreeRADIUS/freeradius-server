@@ -111,14 +111,14 @@ static REQUEST *request_setup(FILE *fp)
 	 */
 	request = request_alloc(NULL);
 
-	request->packet = rad_alloc(request, 0);
+	request->packet = rad_alloc(request, false);
 	if (!request->packet) {
 		ERROR("No memory");
 		talloc_free(request);
 		return NULL;
 	}
 
-	request->reply = rad_alloc(request, 0);
+	request->reply = rad_alloc(request, false);
 	if (!request->reply) {
 		ERROR("No memory");
 		talloc_free(request);

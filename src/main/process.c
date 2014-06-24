@@ -1729,7 +1729,7 @@ static REQUEST *request_setup(rad_listen_t *listener, RADIUS_PACKET *packet,
 	 *	Create and initialize the new request.
 	 */
 	request = request_alloc(NULL);
-	request->reply = rad_alloc(request, 0);
+	request->reply = rad_alloc(request, false);
 	if (!request->reply) {
 		ERROR("No memory");
 		talloc_free(request);
@@ -3086,7 +3086,7 @@ static void ping_home_server(void *ctx)
 	request->number = request_num_counter++;
 	NO_CHILD_THREAD;
 
-	request->proxy = rad_alloc(request, 1);
+	request->proxy = rad_alloc(request, true);
 	rad_assert(request->proxy != NULL);
 
 	if (home->ping_check == HOME_PING_CHECK_STATUS_SERVER) {

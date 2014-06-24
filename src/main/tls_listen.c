@@ -130,7 +130,7 @@ static int tls_socket_recv(rad_listen_t *listener)
 	RADCLIENT *client = sock->client;
 
 	if (!sock->packet) {
-		sock->packet = rad_alloc(sock, 0);
+		sock->packet = rad_alloc(sock, false);
 		if (!sock->packet) return 0;
 
 		sock->packet->sockfd = listener->fd;
@@ -165,7 +165,7 @@ static int tls_socket_recv(rad_listen_t *listener)
 		/*
 		 *	Not sure if we should do this on every packet...
 		 */
-		request->reply = rad_alloc(request, 0);
+		request->reply = rad_alloc(request, false);
 		if (!request->reply) return 0;
 
 		rad_assert(sock->ssn == NULL);
@@ -631,7 +631,7 @@ int proxy_tls_recv(rad_listen_t *listener)
 
 	data = sock->data;
 
-	packet = rad_alloc(sock, 0);
+	packet = rad_alloc(sock, false);
 	packet->sockfd = listener->fd;
 	packet->src_ipaddr = sock->other_ipaddr;
 	packet->src_port = sock->other_port;

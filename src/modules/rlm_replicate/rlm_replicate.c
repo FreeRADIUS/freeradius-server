@@ -39,7 +39,7 @@ static rlm_rcode_t rlm_replicate_alloc(RADIUS_PACKET **out, REQUEST *request, pa
 
 	*out = NULL;
 
-	packet = rad_alloc(request, 1);
+	packet = rad_alloc(request, true);
 	if (!packet) {
 		return RLM_MODULE_FAIL;
 	}

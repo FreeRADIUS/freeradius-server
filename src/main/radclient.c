@@ -312,7 +312,7 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 			goto error;
 		}
 
-		request->packet = rad_alloc(request, 1);
+		request->packet = rad_alloc(request, true);
 		if (!request->packet) {
 			ERROR("Out of memory");
 			goto error;

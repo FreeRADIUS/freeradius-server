@@ -494,7 +494,7 @@ int		rad_sign(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 			 char const *secret);
 
 int rad_digest_cmp(uint8_t const *a, uint8_t const *b, size_t length);
-RADIUS_PACKET	*rad_alloc(TALLOC_CTX *ctx, int newvector);
+RADIUS_PACKET	*rad_alloc(TALLOC_CTX *ctx, bool new_vector);
 RADIUS_PACKET	*rad_alloc_reply(TALLOC_CTX *ctx, RADIUS_PACKET *);
 RADIUS_PACKET *rad_copy_packet(TALLOC_CTX *ctx, RADIUS_PACKET const *in);
 
