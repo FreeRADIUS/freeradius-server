@@ -1056,20 +1056,20 @@ void rad_regcapture(REQUEST *request, int compare, char const *value, regmatch_t
 /*
  *	Verify a packet.
  */
-static void verify_packet(char const *file, int line, REQUEST *request, RADIUS_PACKET *packet)
+static void verify_packet(char const *file, int line, REQUEST *request, RADIUS_PACKET *packet, char const *type)
 {
 	TALLOC_CTX *parent;
 
 	if (!packet) {
-		fprintf(stderr, "CONSISTENCY CHECK FAILED %s[%u]: RADIUS_PACKET pointer was NULL", file, line);
+		fprintf(stderr, "CONSISTENCY CHECK FAILED %s[%u]: RADIUS_PACKET %s pointer was NULL", file, line, type);
 		fr_assert(0);
 		fr_exit_now(0);
 	}
 
 	parent = talloc_parent(packet);
 	if (parent != request) {
-		ERROR("CONSISTENCY CHECK FAILED %s[%u]: Expected RADIUS_PACKET to be parented by %p (%s), "
-		      "but parented by %p (%s)", file, line, request, talloc_get_name(request),
+		ERROR("CONSISTENCY CHECK FAILED %s[%u]: Expected RADIUS_PACKET %s to be parented by %p (%s), "
+		      "but parented by %p (%s)", file, line, type, request, talloc_get_name(request),
 		      parent, parent ? talloc_get_name(parent) : "NULL");
 
 		fr_log_talloc_report(packet);
@@ -1103,11 +1103,11 @@ void verify_request(char const *file, int line, REQUEST *request)
 	fr_verify_list(file, line, request, request->config_items);
 #endif
 
-	if (request->packet) verify_packet(file, line, request, request->packet);
-	if (request->reply) verify_packet(file, line, request, request->reply);
+	if (request->packet) verify_packet(file, line, request, request->packet, "request");
+	if (request->reply) verify_packet(file, line, request, request->reply, "reply");
 #ifdef WITH_PROXY
-	if (request->proxy) verify_packet(file, line, request, request->proxy);
-	if (request->proxy_reply) verify_packet(file, line, request, request->proxy_reply);
+	if (request->proxy) verify_packet(file, line, request, request->proxy, "proxy-request");
+	if (request->proxy_reply) verify_packet(file, line, request, request->proxy_reply, "proxy-reply");
 #endif
 
 #ifdef WITH_COA
