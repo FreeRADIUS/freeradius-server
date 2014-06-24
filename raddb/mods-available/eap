@@ -269,6 +269,14 @@ eap {
 		#
 	#	include_length = yes
 
+		#  This configuration entry should be deleted
+		#  once the server is running in a normal
+		#  configuration.  It is here ONLY to make
+		#  initial deployments easier.
+		#
+		#
+#		make_cert_command = "${certdir}/bootstrap"
+
 		#  Check the Certificate Revocation List
 		#
 		#  1) Copy CA certificates and CRLs to same directory.
