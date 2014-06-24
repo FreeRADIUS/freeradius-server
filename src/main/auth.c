@@ -650,6 +650,10 @@ int rad_virtual_server(REQUEST *request)
 	VALUE_PAIR *vp;
 	int result;
 
+	RDEBUG("server %s {", request->server);
+	RDEBUG("  Request:");
+	debug_pair_list(request->packet->vps);
+
 	/*
 	 *	We currently only handle AUTH packets here.
 	 *	This could be expanded to handle other packets as well if required.
@@ -668,6 +672,9 @@ int rad_virtual_server(REQUEST *request)
 		rad_postauth(request);
 	}
 
+	RDEBUG("  Reply:");
+	debug_pair_list(request->reply->vps);
+	RDEBUG("} # server %s", request->server);
+
 	return result;
 }
-
