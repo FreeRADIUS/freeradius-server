@@ -476,7 +476,6 @@ DICT_VENDOR	*dict_vendorbyvalue(int vendor);
 #endif
 
 /* md5.c */
-
 void		fr_md5_calc(uint8_t *, uint8_t const *, unsigned int);
 
 /* radius.c */
@@ -621,14 +620,6 @@ int		readvp2(VALUE_PAIR **out, TALLOC_CTX *ctx, FILE *fp, bool *pfiledone);
 void		fr_strerror_printf(char const *, ...) CC_HINT(format (printf, 1, 2));
 void		fr_perror(char const *, ...) CC_HINT(format (printf, 1, 2));
 
-extern bool fr_assert_cond(char const *file, int line, char const *expr, bool cond);
-#define fr_assert(_x) fr_assert_cond(__FILE__,  __LINE__, #_x, (_x))
-
-extern void NEVER_RETURNS _fr_exit(char const *file, int line, int status);
-#define fr_exit(_x) _fr_exit(__FILE__,  __LINE__, (_x))
-
-extern void NEVER_RETURNS _fr_exit_now(char const *file, int line, int status);
-#define fr_exit_now(_x) _fr_exit_now(__FILE__,  __LINE__, (_x))
 
 extern char const *fr_strerror(void);
 extern char const *fr_syserror(int num);
@@ -725,6 +716,7 @@ void		fr_rand_seed(void const *, size_t ); /* seed the random pool */
 int		fr_crypt_check(char const *key, char const *salt);
 
 /* cbuff.c */
+
 typedef struct fr_cbuff fr_cbuff_t;
 
 fr_cbuff_t	*fr_cbuff_alloc(TALLOC_CTX *ctx, uint32_t size, bool lock);
@@ -762,10 +754,19 @@ void		fr_fault_set_cb(fr_fault_cb_t func);
 void		fr_fault_set_log_fn(fr_fault_log_t func);
 void		fr_fault_set_log_fd(int fd);
 
-#ifdef WITH_VERIFY_PTR
+#  ifdef WITH_VERIFY_PTR
 void		fr_verify_vp(char const *file, int line, VALUE_PAIR const *vp);
 void		fr_verify_list(char const *file, int line, TALLOC_CTX *expected, VALUE_PAIR *vps);
-#endif
+#  endif
+
+bool		fr_assert_cond(char const *file, int line, char const *expr, bool cond);
+#  define	fr_assert(_x) fr_assert_cond(__FILE__,  __LINE__, #_x, (_x))
+
+void		NEVER_RETURNS _fr_exit(char const *file, int line, int status);
+#  define	fr_exit(_x) _fr_exit(__FILE__,  __LINE__, (_x))
+
+void		NEVER_RETURNS _fr_exit_now(char const *file, int line, int status);
+#  define	fr_exit_now(_x) _fr_exit_now(__FILE__,  __LINE__, (_x))
 
 /* rbtree.c */
 typedef struct rbtree_t rbtree_t;
