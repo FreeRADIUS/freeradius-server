@@ -228,6 +228,7 @@ typedef enum {
 #define VENDORPEC_MICROSOFT		311
 #define VENDORPEC_FREERADIUS		11344
 #define VENDORPEC_WIMAX			24757
+#define VENDORPEC_UKERNA		25622
 
 /*
  * Vendor specific attributes
@@ -271,3 +272,9 @@ typedef enum {
 #define PW_VQP_MAC			0x2c06
 #define PW_VQP_UNKNOWN			0x2c07
 #define PW_VQP_COOKIE			0x2c08
+
+/*
+ * JANET's code for transporting eap channel binding data over ttls
+ */
+
+#define PW_UKERNA_CHBIND		135
