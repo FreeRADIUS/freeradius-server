@@ -2924,7 +2924,7 @@ fi
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: checking krb5-config CFLAGS" >&5
 $as_echo_n "checking krb5-config CFLAGS... " >&6; }
 		SMART_CPPFLAGS=$($krb5_config --cflags)
-		SMART_CPPFLAGS=$(echo "$SMART_CPPFLAGS" | sed 's/-I[ ]*/-include /g')
+		SMART_CPPFLAGS=$(echo "$SMART_CPPFLAGS" | sed 's/-I[ ]*/-isystem /g')
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: result: \"$SMART_CPPFLAGS\"" >&5
 $as_echo "\"$SMART_CPPFLAGS\"" >&6; }
 
@@ -2970,10 +2970,23 @@ $as_echo "HEIMDAL" >&6; }
 ac_safe=`echo "krb5.h" | sed 'y%./+-%__pm%'`
 old_CPPFLAGS="$CPPFLAGS"
 smart_include=
-smart_include_dir=
+smart_include_dir="/usr/local/include /opt/include"
 
-if test "x$smart_try_dir" != "x"; then
-  for try in $smart_try_dir; do
+_smart_try_dir=
+_smart_include_dir=
+
+for _prefix in $smart_prefix ""; do
+  for _dir in $smart_try_dir; do
+    _smart_try_dir="${_smart_try_dir} ${_dir}/${_prefix}"
+  done
+
+  for _dir in $smart_include_dir; do
+    _smart_include_dir="${_smart_include_dir} ${_dir}/${_prefix}"
+  done
+done
+
+if test "x$_smart_try_dir" != "x"; then
+  for try in $_smart_try_dir; do
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for krb5.h in $try" >&5
 $as_echo_n "checking for krb5.h in $try... " >&6; }
     CPPFLAGS="-isystem $try $old_CPPFLAGS"
@@ -3009,12 +3022,14 @@ rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 fi
 
 if test "x$smart_include" = "x"; then
-  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for krb5.h" >&5
-$as_echo_n "checking for krb5.h... " >&6; }
-  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+  for _prefix in $smart_prefix; do
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for ${_prefix}/krb5.h" >&5
+$as_echo_n "checking for ${_prefix}/krb5.h... " >&6; }
+
+    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		  #include <krb5.h>
+		    #include <krb5.h>
 int
 main ()
 {
@@ -3025,15 +3040,49 @@ int a = 1;
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
 
-		   smart_include=" "
-		   { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		     smart_include="-isystem ${_prefix}/"
+		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
-		   break
+		     break
 
 else
 
-		   smart_include=
-		   { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		     smart_include=
+		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+  done
+fi
+
+if test "x$smart_include" = "x"; then
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for krb5.h" >&5
+$as_echo_n "checking for krb5.h... " >&6; }
+
+    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+		    #include <krb5.h>
+int
+main ()
+{
+int a = 1;
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+
+		     smart_include=" "
+		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+		     break
+
+else
+
+		     smart_include=
+		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
 
 fi
@@ -3041,6 +3090,36 @@ rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 fi
 
 if test "x$smart_include" = "x"; then
+
+  for prefix in $smart_prefix; do
+
+
+if test "x$LOCATE" != "x"; then
+        DIRS=
+  file="${_prefix}/${1}"
+
+  for x in `${LOCATE} $file 2>/dev/null`; do
+                                        base=`echo $x | sed "s%/${file}%%"`
+    if test "x$x" = "x$base"; then
+      continue;
+    fi
+
+    dir=`${DIRNAME} $x 2>/dev/null`
+                exclude=`echo ${dir} | ${GREP} /home`
+    if test "x$exclude" != "x"; then
+      continue
+    fi
+
+                    already=`echo \$_smart_include_dir ${DIRS} | ${GREP} ${dir}`
+    if test "x$already" = "x"; then
+      DIRS="$DIRS $dir"
+    fi
+  done
+fi
+
+eval "_smart_include_dir=\"\$_smart_include_dir $DIRS\""
+
+  done
 
 
 if test "x$LOCATE" != "x"; then
@@ -3059,16 +3138,17 @@ if test "x$LOCATE" != "x"; then
       continue
     fi
 
-                    already=`echo \$smart_include_dir ${DIRS} | ${GREP} ${dir}`
+                    already=`echo \$_smart_include_dir ${DIRS} | ${GREP} ${dir}`
     if test "x$already" = "x"; then
       DIRS="$DIRS $dir"
     fi
   done
 fi
 
-eval "smart_include_dir=\"\$smart_include_dir $DIRS\""
+eval "_smart_include_dir=\"\$_smart_include_dir $DIRS\""
 
-  for try in $smart_include_dir /usr/local/include /opt/include; do
+
+  for try in $_smart_include_dir; do
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for krb5.h in $try" >&5
 $as_echo_n "checking for krb5.h in $try... " >&6; }
     CPPFLAGS="-isystem $try $old_CPPFLAGS"
@@ -3108,6 +3188,8 @@ if test "x$smart_include" != "x"; then
   CPPFLAGS="$smart_include $old_CPPFLAGS"
   SMART_CPPFLAGS="$smart_include $SMART_CPPFLAGS"
 fi
+
+smart_prefix=
 
 		if test "$ac_cv_header_krb5_h" != "yes"; then
 			fail="$fail krb5.h"
@@ -4258,10 +4340,23 @@ fi
 ac_safe=`echo "com_err.h" | sed 'y%./+-%__pm%'`
 old_CPPFLAGS="$CPPFLAGS"
 smart_include=
-smart_include_dir=
+smart_include_dir="/usr/local/include /opt/include"
 
-if test "x$smart_try_dir" != "x"; then
-  for try in $smart_try_dir; do
+_smart_try_dir=
+_smart_include_dir=
+
+for _prefix in $smart_prefix ""; do
+  for _dir in $smart_try_dir; do
+    _smart_try_dir="${_smart_try_dir} ${_dir}/${_prefix}"
+  done
+
+  for _dir in $smart_include_dir; do
+    _smart_include_dir="${_smart_include_dir} ${_dir}/${_prefix}"
+  done
+done
+
+if test "x$_smart_try_dir" != "x"; then
+  for try in $_smart_try_dir; do
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for com_err.h in $try" >&5
 $as_echo_n "checking for com_err.h in $try... " >&6; }
     CPPFLAGS="-isystem $try $old_CPPFLAGS"
@@ -4297,12 +4392,14 @@ rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 fi
 
 if test "x$smart_include" = "x"; then
-  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for com_err.h" >&5
-$as_echo_n "checking for com_err.h... " >&6; }
-  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+  for _prefix in $smart_prefix; do
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for ${_prefix}/com_err.h" >&5
+$as_echo_n "checking for ${_prefix}/com_err.h... " >&6; }
+
+    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		  #include <com_err.h>
+		    #include <com_err.h>
 int
 main ()
 {
@@ -4313,15 +4410,49 @@ int a = 1;
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
 
-		   smart_include=" "
-		   { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		     smart_include="-isystem ${_prefix}/"
+		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
-		   break
+		     break
 
 else
 
-		   smart_include=
-		   { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		     smart_include=
+		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+  done
+fi
+
+if test "x$smart_include" = "x"; then
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for com_err.h" >&5
+$as_echo_n "checking for com_err.h... " >&6; }
+
+    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+		    #include <com_err.h>
+int
+main ()
+{
+int a = 1;
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+
+		     smart_include=" "
+		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+		     break
+
+else
+
+		     smart_include=
+		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
 
 fi
@@ -4329,6 +4460,36 @@ rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 fi
 
 if test "x$smart_include" = "x"; then
+
+  for prefix in $smart_prefix; do
+
+
+if test "x$LOCATE" != "x"; then
+        DIRS=
+  file="${_prefix}/${1}"
+
+  for x in `${LOCATE} $file 2>/dev/null`; do
+                                        base=`echo $x | sed "s%/${file}%%"`
+    if test "x$x" = "x$base"; then
+      continue;
+    fi
+
+    dir=`${DIRNAME} $x 2>/dev/null`
+                exclude=`echo ${dir} | ${GREP} /home`
+    if test "x$exclude" != "x"; then
+      continue
+    fi
+
+                    already=`echo \$_smart_include_dir ${DIRS} | ${GREP} ${dir}`
+    if test "x$already" = "x"; then
+      DIRS="$DIRS $dir"
+    fi
+  done
+fi
+
+eval "_smart_include_dir=\"\$_smart_include_dir $DIRS\""
+
+  done
 
 
 if test "x$LOCATE" != "x"; then
@@ -4347,16 +4508,17 @@ if test "x$LOCATE" != "x"; then
       continue
     fi
 
-                    already=`echo \$smart_include_dir ${DIRS} | ${GREP} ${dir}`
+                    already=`echo \$_smart_include_dir ${DIRS} | ${GREP} ${dir}`
     if test "x$already" = "x"; then
       DIRS="$DIRS $dir"
     fi
   done
 fi
 
-eval "smart_include_dir=\"\$smart_include_dir $DIRS\""
+eval "_smart_include_dir=\"\$_smart_include_dir $DIRS\""
 
-  for try in $smart_include_dir /usr/local/include /opt/include; do
+
+  for try in $_smart_include_dir; do
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for com_err.h in $try" >&5
 $as_echo_n "checking for com_err.h in $try... " >&6; }
     CPPFLAGS="-isystem $try $old_CPPFLAGS"
@@ -4397,16 +4559,31 @@ if test "x$smart_include" != "x"; then
   SMART_CPPFLAGS="$smart_include $SMART_CPPFLAGS"
 fi
 
+smart_prefix=
+
 		if test "$ac_cv_header_com_err_h" != "yes"; then
 
 
 ac_safe=`echo "et/com_err.h" | sed 'y%./+-%__pm%'`
 old_CPPFLAGS="$CPPFLAGS"
 smart_include=
-smart_include_dir=
+smart_include_dir="/usr/local/include /opt/include"
 
-if test "x$smart_try_dir" != "x"; then
-  for try in $smart_try_dir; do
+_smart_try_dir=
+_smart_include_dir=
+
+for _prefix in $smart_prefix ""; do
+  for _dir in $smart_try_dir; do
+    _smart_try_dir="${_smart_try_dir} ${_dir}/${_prefix}"
+  done
+
+  for _dir in $smart_include_dir; do
+    _smart_include_dir="${_smart_include_dir} ${_dir}/${_prefix}"
+  done
+done
+
+if test "x$_smart_try_dir" != "x"; then
+  for try in $_smart_try_dir; do
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for et/com_err.h in $try" >&5
 $as_echo_n "checking for et/com_err.h in $try... " >&6; }
     CPPFLAGS="-isystem $try $old_CPPFLAGS"
@@ -4442,12 +4619,14 @@ rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 fi
 
 if test "x$smart_include" = "x"; then
-  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for et/com_err.h" >&5
-$as_echo_n "checking for et/com_err.h... " >&6; }
-  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+  for _prefix in $smart_prefix; do
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for ${_prefix}/et/com_err.h" >&5
+$as_echo_n "checking for ${_prefix}/et/com_err.h... " >&6; }
+
+    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		  #include <et/com_err.h>
+		    #include <et/com_err.h>
 int
 main ()
 {
@@ -4458,15 +4637,49 @@ int a = 1;
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
 
-		   smart_include=" "
-		   { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		     smart_include="-isystem ${_prefix}/"
+		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
-		   break
+		     break
 
 else
 
-		   smart_include=
-		   { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		     smart_include=
+		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+  done
+fi
+
+if test "x$smart_include" = "x"; then
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for et/com_err.h" >&5
+$as_echo_n "checking for et/com_err.h... " >&6; }
+
+    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+		    #include <et/com_err.h>
+int
+main ()
+{
+int a = 1;
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+
+		     smart_include=" "
+		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+		     break
+
+else
+
+		     smart_include=
+		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
 
 fi
@@ -4474,6 +4687,36 @@ rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 fi
 
 if test "x$smart_include" = "x"; then
+
+  for prefix in $smart_prefix; do
+
+
+if test "x$LOCATE" != "x"; then
+        DIRS=
+  file="${_prefix}/${1}"
+
+  for x in `${LOCATE} $file 2>/dev/null`; do
+                                        base=`echo $x | sed "s%/${file}%%"`
+    if test "x$x" = "x$base"; then
+      continue;
+    fi
+
+    dir=`${DIRNAME} $x 2>/dev/null`
+                exclude=`echo ${dir} | ${GREP} /home`
+    if test "x$exclude" != "x"; then
+      continue
+    fi
+
+                    already=`echo \$_smart_include_dir ${DIRS} | ${GREP} ${dir}`
+    if test "x$already" = "x"; then
+      DIRS="$DIRS $dir"
+    fi
+  done
+fi
+
+eval "_smart_include_dir=\"\$_smart_include_dir $DIRS\""
+
+  done
 
 
 if test "x$LOCATE" != "x"; then
@@ -4492,16 +4735,17 @@ if test "x$LOCATE" != "x"; then
       continue
     fi
 
-                    already=`echo \$smart_include_dir ${DIRS} | ${GREP} ${dir}`
+                    already=`echo \$_smart_include_dir ${DIRS} | ${GREP} ${dir}`
     if test "x$already" = "x"; then
       DIRS="$DIRS $dir"
     fi
   done
 fi
 
-eval "smart_include_dir=\"\$smart_include_dir $DIRS\""
+eval "_smart_include_dir=\"\$_smart_include_dir $DIRS\""
 
-  for try in $smart_include_dir /usr/local/include /opt/include; do
+
+  for try in $_smart_include_dir; do
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for et/com_err.h in $try" >&5
 $as_echo_n "checking for et/com_err.h in $try... " >&6; }
     CPPFLAGS="-isystem $try $old_CPPFLAGS"
@@ -4541,6 +4785,8 @@ if test "x$smart_include" != "x"; then
   CPPFLAGS="$smart_include $old_CPPFLAGS"
   SMART_CPPFLAGS="$smart_include $SMART_CPPFLAGS"
 fi
+
+smart_prefix=
 
 			if test "$ac_cv_header_et_com_err_h" != "yes"; then
 				fail="$fail com_err.h"
