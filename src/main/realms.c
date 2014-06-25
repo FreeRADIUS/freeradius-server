@@ -691,8 +691,8 @@ int realm_home_server_add(home_server_t *home, CONF_SECTION *cs, int dual)
 	FR_TIMEVAL_BOUND_CHECK("response_window", &home->response_window, <=,
 				main_config.max_request_time, 0);
 
-	FR_INTEGER_BOUND_CHECK("response_timeouts", home->response_timeouts, >=, 1);
-	FR_INTEGER_BOUND_CHECK("response_timeouts", home->response_timeouts, <=, 1000);
+	FR_INTEGER_BOUND_CHECK("response_timeouts", home->max_response_timeouts, >=, 1);
+	FR_INTEGER_BOUND_CHECK("response_timeouts", home->max_response_timeouts, <=, 1000);
 
 	/*
 	 *	Track the minimum response window, so that we can
