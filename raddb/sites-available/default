@@ -206,6 +206,35 @@ listen {
 	}
 }
 
+# IPv6 versions of the above - read their full config to understand options
+listen {
+	type = auth
+	ipv6addr = ::	# any.  ::1 == localhost
+	port = 0
+#	interface = eth0
+#	clients = per_socket_clients
+	limit {
+	      max_connections = 16
+	      lifetime = 0
+	      idle_timeout = 30
+	}
+}
+
+listen {
+	ipv6addr = ::
+	port = 0
+	type = acct
+#	interface = eth0
+#	clients = per_socket_clients
+
+	limit {
+#		max_pps = 0
+#		idle_timeout = 0
+#		lifetime = 0
+#		max_connections = 0
+	}
+}
+
 #  Authorization. First preprocess (hints and huntgroups files),
 #  then realms, and finally look in the "users" file.
 #
