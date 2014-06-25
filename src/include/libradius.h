@@ -572,6 +572,7 @@ VALUE_PAIR	*fr_cursor_next_by_da(vp_cursor_t *cursor, DICT_ATTR const *da, int8_
 		CC_HINT(nonnull);
 
 VALUE_PAIR	*fr_cursor_next(vp_cursor_t *cursor);
+VALUE_PAIR	*fr_cursor_next_peek(vp_cursor_t *cursor);
 VALUE_PAIR	*fr_cursor_current(vp_cursor_t *cursor);
 void		fr_cursor_insert(vp_cursor_t *cursor, VALUE_PAIR *vp);
 VALUE_PAIR	*fr_cursor_remove(vp_cursor_t *cursor);
