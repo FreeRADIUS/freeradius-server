@@ -30,6 +30,8 @@ RCSID("$Id$")
 
 #include <ctype.h>
 
+#define PW_DHCP_PARAMETER_REQUEST_LIST 55
+
 /*
  *	Define a structure for our module configuration.
  *
@@ -133,9 +135,34 @@ static int mod_detach(void *instance)
 static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
 {
 	rlm_dhcp_t *inst = instance;
+	DICT_ATTR const *da;
 
 	xlat_register("dhcp_options", dhcp_options_xlat, NULL, inst);
 	xlat_register("dhcp", dhcp_xlat, NULL, inst);
+
+	/*
+	 *	Fixup dictionary entry for DHCP-Paramter-Request-List adding all the options
+	 */
+	da = dict_attrbyvalue(PW_DHCP_PARAMETER_REQUEST_LIST, DHCP_MAGIC_VENDOR);
+	if (da) {
+		DICT_ATTR const *value;
+		int i;
+
+		/* No padding or termination options */
+		DEBUG3("Adding values for %s", da->name);
+		for (i = 1; i < 255; i++) {
+			value = dict_attrbyvalue(i, DHCP_MAGIC_VENDOR);
+			if (!value) {
+				DEBUG3("No DHCP RFC space attribute at %i", i);
+				continue;
+			}
+
+			DEBUG3("Adding %s value %i %s", da->name, i, value->name);
+			if (dict_addvalue(value->name, da->name, i) < 0) {
+				DEBUG3("Failed adding value: %s", fr_strerror());
+			}
+		}
+	}
 
 	return 0;
 }
