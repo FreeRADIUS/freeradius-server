@@ -623,13 +623,13 @@ static void perl_store_vps(UNUSED TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR 
 		 */
 		switch (vp->da->type) {
 		case PW_TYPE_STRING:
-			RDEBUG("<--  %s = %s", next->da->name, next->vp_strvalue);
+			RDEBUG("<--  %s = %s", vp->da->name, vp->vp_strvalue);
 			(void)hv_store(rad_hv, name, strlen(name), newSVpv(vp->vp_strvalue, vp->length), 0);
 			break;
 
 		default:
-			len = vp_prints_value(buffer, sizeof(buffer), next, 0);
-			RDEBUG("<--  %s = %s", next->da->name, buffer);
+			len = vp_prints_value(buffer, sizeof(buffer), vp, 0);
+			RDEBUG("<--  %s = %s", vp->da->name, buffer);
 			(void)hv_store(rad_hv, name, strlen(name), newSVpv(buffer, truncate_len(len, sizeof(buffer))), 0);
 			break;
 		}
