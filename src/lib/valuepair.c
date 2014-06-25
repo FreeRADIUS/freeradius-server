@@ -373,16 +373,11 @@ int8_t attrtagcmp(void const *a, void const *b)
 	uint8_t cmp;
 
 	cmp = fr_pointer_cmp(my_a->da, my_b->da);
-
 	if (cmp != 0) return cmp;
 
-	if (my_a->tag < my_b->tag) {
-		return -1;
-	}
+	if (my_a->tag < my_b->tag) return -1;
 
-	if (my_a->tag > my_b->tag) {
-		return 1;
-	}
+	if (my_a->tag > my_b->tag) return 1;
 
 	return 0;
 }
