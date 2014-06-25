@@ -106,7 +106,7 @@ $ac_distutils_result])
 	    fi
 	fi
 	
-	RUBY_CFLAGS+="$ruby_path"
+	RUBY_CFLAGS="$RUBY_CFLAGS $ruby_path"
 	AC_MSG_RESULT([$ruby_path])
     fi
     
