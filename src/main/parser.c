@@ -633,10 +633,19 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 				 *	defined.  Create the template(s) as literals, and
 				 *	fix them up in pass2.
 				 */
-				if (*lhs == '&') {
+				if ((*lhs != '&') ||
+				    (lhs_type != T_BARE_WORD)) {
+					return_0("Syntax error");
+				}
+				c->data.map = radius_str2map(c, lhs, lhs_type + 1, op, rhs, rhs_type,
+							     REQUEST_CURRENT, PAIR_LIST_REQUEST,
+							     REQUEST_CURRENT, PAIR_LIST_REQUEST);
+				if (!c->data.map) {
 					return_0("Unknown attribute");
 				}
-				return_0("Syntax error");
+				rad_const_free(c->data.map->dst->name);
+				c->data.map->dst->name = talloc_strdup(c->data.map->dst, lhs);
+				c->pass2_fixup = PASS2_FIXUP_ATTR;
 			}
 
 			if (c->data.map->src->type == VPT_TYPE_REGEX) {
@@ -1098,7 +1107,8 @@ done:
 		 *	doesn't need to be done at run time
 		 */
 		if ((c->data.map->src->type == VPT_TYPE_LITERAL) &&
-		    (c->data.map->dst->type == VPT_TYPE_LITERAL)) {
+		    (c->data.map->dst->type == VPT_TYPE_LITERAL) &&
+		    !c->pass2_fixup) {
 			int rcode;
 
 			rad_assert(c->cast == NULL);
@@ -1107,6 +1117,9 @@ done:
 			if (rcode) {
 				c->type = COND_TYPE_TRUE;
 			} else {
+				DEBUG("OPTIMIZING %s %s --> FALSE",
+				      c->data.map->dst->name,
+				      c->data.map->src->name);
 				c->type = COND_TYPE_FALSE;
 			}
 
