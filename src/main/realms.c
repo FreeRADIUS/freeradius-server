@@ -48,11 +48,13 @@ typedef struct realm_config_t {
 	uint32_t	dead_time;
 	uint32_t	retry_count;
 	uint32_t	retry_delay;
+	bool		dynamic;
 	bool		fallback;
 	bool		wake_all_if_all_dead;
 } realm_config_t;
 
 static realm_config_t *realm_config = NULL;
+static bool realms_initialized = false;
 
 #ifdef WITH_PROXY
 static rbtree_t	*home_servers_byaddr = NULL;
@@ -73,6 +75,8 @@ static const CONF_PARSER proxy_config[] = {
 	{ "retry_count", FR_CONF_OFFSET(PW_TYPE_INTEGER, realm_config_t, retry_count), STRINGIFY(RETRY_COUNT)  },
 
 	{ "default_fallback", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, realm_config_t, fallback), "no" },
+
+	{ "dynamic", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, realm_config_t, dynamic), NULL },
 
 	{ "dead_time", FR_CONF_OFFSET(PW_TYPE_INTEGER, realm_config_t, dead_time), STRINGIFY(DEAD_TIME)  },
 
@@ -618,6 +622,15 @@ int realm_home_server_add(home_server_t *home, CONF_SECTION *cs, int dual)
 	CONF_SECTION *parent = NULL;
 
 	/*
+	 *	The structs aren't mutex protected.  Refuse to destroy
+	 *	the server.
+	 */
+	if (realms_initialized && !realm_config->dynamic) {
+		DEBUG("Must set \"dynamic = true\" in proxy.conf");
+		return 0;
+	}
+
+	/*
 	 *	Make sure that this is set.
 	 */
 	if (home->src_ipaddr.af == AF_UNSPEC) {
@@ -845,8 +858,17 @@ static int pool_check_home_server(UNUSED realm_config_t *rc, CONF_PAIR *cp,
 
 int realm_pool_add(home_pool_t *pool, UNUSED CONF_SECTION *cs)
 {
+	/*
+	 *	The structs aren't mutex protected.  Refuse to destroy
+	 *	the server.
+	 */
+	if (realms_initialized && !realm_config->dynamic) {
+		DEBUG("Must set \"dynamic = true\" in proxy.conf");
+		return 0;
+	}
+
 	if (!rbtree_insert(home_pools_byname, pool)) {
-		rad_assert("Internal sanity check failed");
+		rad_assert("Internal sanity check failed" == NULL);
 		return 0;
 	}
 
@@ -889,6 +911,7 @@ static int server_pool_add(realm_config_t *rc,
 
 		if (!pool_check_home_server(rc, cp, cf_pair_value(cp),
 					    server_type, &home)) {
+			DEBUG("SHIT %d", __LINE__);
 			return 0;
 		}
 	}
@@ -1020,11 +1043,6 @@ static int server_pool_add(realm_config_t *rc,
 	}
 
 	if (!realm_pool_add(pool, cs)) goto error;
-
-	if (!rbtree_insert(home_pools_byname, pool)) {
-		rad_assert("Internal sanity check failed");
-		goto error;
-	}
 
 	if (do_print) cf_log_info(cs, " }");
 
@@ -1295,7 +1313,7 @@ static int old_server_add(realm_config_t *rc, CONF_SECTION *cs,
 	pool->servers[0] = home;
 
 	if (!rbtree_insert(home_pools_byname, pool)) {
-		rad_assert("Internal sanity check failed");
+		rad_assert("Internal sanity check failed" == NULL);
 		return 0;
 	}
 
@@ -1661,7 +1679,9 @@ static int realm_add(realm_config_t *rc, CONF_SECTION *cs)
 		goto error;
 	}
 
-	if (!realm_realm_add(r, cs)) goto error;
+	if (!realm_realm_add(r, cs)) {
+		goto error;
+	}
 
 	cf_log_info(cs, " }");
 
@@ -1676,6 +1696,15 @@ static int realm_add(realm_config_t *rc, CONF_SECTION *cs)
 
 int realm_realm_add(REALM *r, CONF_SECTION *cs)
 {
+	/*
+	 *	The structs aren't mutex protected.  Refuse to destroy
+	 *	the server.
+	 */
+	if (realms_initialized && !realm_config->dynamic) {
+		DEBUG("Must set \"dynamic = true\" in proxy.conf");
+		return 0;
+	}
+
 #ifdef HAVE_REGEX_H
 	/*
 	 *	It's a regex.  Sanity check it, and add it to a
@@ -1716,7 +1745,7 @@ int realm_realm_add(REALM *r, CONF_SECTION *cs)
 #endif
 
 	if (!rbtree_insert(realms_byname, r)) {
-		rad_assert("Internal sanity check failed");
+		rad_assert("Internal sanity check failed" == NULL);
 		return 0;
 	}
 
@@ -1782,46 +1811,13 @@ static int pool_peek_type(CONF_SECTION *config, CONF_SECTION *cs)
 int realms_init(CONF_SECTION *config)
 {
 	CONF_SECTION *cs;
+	int flags = 0;
 #ifdef WITH_PROXY
 	CONF_SECTION *server_cs;
 #endif
-	realm_config_t *rc, *old_rc;
+	realm_config_t *rc;
 
-	if (realms_byname) return 1;
-
-	realms_byname = rbtree_create(NULL, realm_name_cmp, NULL, 0);
-	if (!realms_byname) {
-		realms_free();
-		return 0;
-	}
-
-#ifdef WITH_PROXY
-	home_servers_byaddr = rbtree_create(NULL, home_server_addr_cmp, home_server_free, 0);
-	if (!home_servers_byaddr) {
-		realms_free();
-		return 0;
-	}
-
-	home_servers_byname = rbtree_create(NULL, home_server_name_cmp, NULL, 0);
-	if (!home_servers_byname) {
-		realms_free();
-		return 0;
-	}
-
-#ifdef WITH_STATS
-	home_servers_bynumber = rbtree_create(NULL, home_server_number_cmp, NULL, 0);
-	if (!home_servers_bynumber) {
-		realms_free();
-		return 0;
-	}
-#endif
-
-	home_pools_byname = rbtree_create(NULL, home_pool_name_cmp, NULL, 0);
-	if (!home_pools_byname) {
-		realms_free();
-		return 0;
-	}
-#endif
+	if (realms_initialized) return 1;
 
 	rc = talloc_zero(NULL, realm_config_t);
 	rc->cs = config;
@@ -1837,9 +1833,28 @@ int realms_init(CONF_SECTION *config)
 		rc->dead_time = DEAD_TIME;
 		rc->retry_count = RETRY_COUNT;
 		rc->retry_delay = RETRY_DELAY;
-		rc->fallback = 0;
+		rc->fallback = false;
+		rc->dynamic = false;
 		rc->wake_all_if_all_dead= 0;
 	}
+
+	if (rc->dynamic) {
+		flags = RBTREE_FLAG_LOCK;
+	}
+
+	home_servers_byaddr = rbtree_create(NULL, home_server_addr_cmp, home_server_free, flags);
+	if (!home_servers_byaddr) goto error;
+
+	home_servers_byname = rbtree_create(NULL, home_server_name_cmp, NULL, flags);
+	if (!home_servers_byname) goto error;
+
+#ifdef WITH_STATS
+	home_servers_bynumber = rbtree_create(NULL, home_server_number_cmp, NULL, flags);
+	if (!home_servers_bynumber) goto error;
+#endif
+
+	home_pools_byname = rbtree_create(NULL, home_pool_name_cmp, NULL, flags);
+	if (!home_pools_byname) goto error;
 
 	for (cs = cf_subsection_find_next(config, NULL, "home_server");
 	     cs != NULL;
@@ -1848,8 +1863,8 @@ int realms_init(CONF_SECTION *config)
 	}
 
 	/*
-	 *	Loop over virtual servers to find homes which are
-	 *	defined in them.
+	 *	Loop over virtual servers to find home servers which
+	 *	are defined in them.
 	 */
 	for (server_cs = cf_subsection_find_next(config, NULL, "server");
 	     server_cs != NULL;
@@ -1862,13 +1877,18 @@ int realms_init(CONF_SECTION *config)
 	}
 #endif
 
+	/*
+	 *	Now create the realms, which point to the home servers
+	 *	and home server pools.
+	 */
+	realms_byname = rbtree_create(NULL, realm_name_cmp, NULL, flags);
+	if (!realms_byname) goto error;
+
 	for (cs = cf_subsection_find_next(config, NULL, "realm");
 	     cs != NULL;
 	     cs = cf_subsection_find_next(config, cs, "realm")) {
 		if (!realm_add(rc, cs)) {
-#if defined (WITH_PROXY) || defined (WITH_COA)
 		error:
-#endif
 			realms_free();
 			/*
 			 *	Must be called after realms_free as home_servers
@@ -1899,19 +1919,13 @@ int realms_init(CONF_SECTION *config)
 	}
 #endif
 
-
 #ifdef WITH_PROXY
 	xlat_register("home_server", xlat_home_server, NULL, NULL);
 	xlat_register("home_server_pool", xlat_server_pool, NULL, NULL);
 #endif
 
-	/*
-	 *	Swap pointers atomically.
-	 */
-	old_rc = realm_config;
 	realm_config = rc;
-	talloc_free(old_rc);
-
+	realms_initialized = true;
 	return 1;
 }
 
