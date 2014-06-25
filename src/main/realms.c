@@ -606,14 +606,23 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 		goto error;
 	}
 
+	hs_srcipaddr = NULL;
+
+	return realm_home_server_add(home, cs, dual);
+}
+
+
+int realm_home_server_add(home_server_t *home, CONF_SECTION *cs, int dual)
+{
+	const char *name2 = home->name;
+	CONF_SECTION *parent = NULL;
+
 	/*
 	 *	Make sure that this is set.
 	 */
 	if (home->src_ipaddr.af == AF_UNSPEC) {
 		home->src_ipaddr.af = home->ipaddr.af;
 	}
-
-	hs_srcipaddr = NULL;
 
 	if (rbtree_finddata(home_servers_byname, home) != NULL) {
 		cf_log_err_cs(cs,
@@ -721,13 +730,13 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 	if ((home->limit.lifetime > 0) && (home->limit.idle_timeout > home->limit.lifetime))
 		home->limit.idle_timeout = 0;
 
-	tls = cf_item_parent(cf_sectiontoitem(cs));
-	if (strcmp(cf_section_name1(tls), "server") == 0) {
-		home->parent_server = cf_section_name2(tls);
+	parent = cf_item_parent(cf_sectiontoitem(cs));
+	if (strcmp(cf_section_name1(parent), "server") == 0) {
+		home->parent_server = cf_section_name2(parent);
 	}
 
 	if (dual) {
-		home_server_t *home2 = talloc(rc, home_server_t);
+		home_server_t *home2 = talloc(home, home_server_t);
 
 		memcpy(home2, home, sizeof(*home2));
 
@@ -752,6 +761,7 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 				   "Internal error %d adding home server %s.",
 				   __LINE__, name2);
 			free(home2);
+		error:
 			return 0;
 		}
 
