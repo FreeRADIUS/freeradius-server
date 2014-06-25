@@ -1053,7 +1053,6 @@ size_t fr_hex2bin(uint8_t *bin, size_t outlen, char const *hex, size_t inlen)
 	return i;
 }
 
-
 /** Convert binary data to a hex string
  *
  * Ascii encoded hex string will not be prefixed with '0x'
@@ -1080,7 +1079,26 @@ size_t fr_bin2hex(char *hex, uint8_t const *bin, size_t inlen)
 	return inlen * 2;
 }
 
+/** Convert binary data to a hex string
+ *
+ * Ascii encoded hex string will not be prefixed with '0x'
+ *
+ * @param[in] ctx to alloc buffer in.
+ * @param[in] bin input.
+ * @param[in] inlen of bin input.
+ * @return length of data written to buffer.
+ */
+char *fr_abin2hex(TALLOC_CTX *ctx, uint8_t const *bin, size_t inlen)
+{
+	char *buff;
 
+	buff = talloc_array(ctx, char, (inlen << 2));
+	if (!buff) return NULL;
+
+	fr_bin2hex(buff, bin, inlen);
+
+	return buff;
+}
 
 /** Consume the integer (or hex) portion of a value string
  *

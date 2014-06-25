@@ -652,6 +652,7 @@ uint8_t		*ifid_aton(char const *ifid_str, uint8_t *ifid);
 int		rad_lockfd(int fd, int lock_len);
 int		rad_lockfd_nonblock(int fd, int lock_len);
 int		rad_unlockfd(int fd, int lock_len);
+char		*fr_abin2hex(TALLOC_CTX *ctx, uint8_t const *bin, size_t inlen);
 size_t		fr_bin2hex(char *hex, uint8_t const *bin, size_t inlen);
 size_t		fr_hex2bin(uint8_t *bin, size_t outlen, char const *hex, size_t inlen);
 uint32_t	fr_strtoul(char const *value, char **end);
