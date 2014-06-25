@@ -2930,8 +2930,8 @@ smart_prefix=
 
 $as_echo "#define HAVE_MEMBERSHIP_H 1" >>confdefs.h
 
-		mschap_sources+="opendir.c"
-		mod_ldflags+=" -framework DirectoryService"
+		mschap_sources="opendir.c"
+		mod_ldflags="-framework DirectoryService"
 	fi
 	targetname=rlm_mschap
 else

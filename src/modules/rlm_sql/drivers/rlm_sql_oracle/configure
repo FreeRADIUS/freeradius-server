@@ -1848,7 +1848,7 @@ fi
     smart_try_dir="$oracle_include_dir /usr/local/instaclient/include"
 
     if test "x$ORACLE_HOME" != "x"; then
-	smart_try_dir+="${ORACLE_HOME}/include"
+	smart_try_dir="${smart_try_dir} ${ORACLE_HOME}/include"
     fi
 
     ac_ext=c

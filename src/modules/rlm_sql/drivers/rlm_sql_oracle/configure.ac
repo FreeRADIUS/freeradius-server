@@ -64,11 +64,11 @@ if test x$with_[]modname != xno; then
     dnl ############################################################
 
     smart_try_dir="$oracle_include_dir /usr/local/instaclient/include"
-    
+
     if test "x$ORACLE_HOME" != "x"; then
-	smart_try_dir+="${ORACLE_HOME}/include"
+	smart_try_dir="${smart_try_dir} ${ORACLE_HOME}/include"
     fi
-    
+
     FR_SMART_CHECK_INCLUDE(oci.h)
     if test "x$ac_cv_header_oci_h" != "xyes"; then
 	AC_MSG_WARN([oracle headers not found. Use --with-oracle-include-dir=<path> or set ORACLE_HOME.])
@@ -80,7 +80,7 @@ if test x$with_[]modname != xno; then
     dnl ############################################################
 
     old_LIBS="$LIBS"
-    
+
     if test "x$oracle_lib_dir" != "x" ; then
 	lib_path="${oracle_lib_dir} "
     elif test "x$ORACLE_HOME" != "x" ; then
@@ -94,7 +94,7 @@ if test x$with_[]modname != xno; then
 	    else
 		AC_MSG_CHECKING([for OCIInitialize in nnz${oracle_version}])
 	    fi
-	    
+
 	    LIBS="$old_LIBS -L$path -lclntsh -lnnz${oracle_version}"
 	    AC_TRY_LINK([#include <oci.h>
 
@@ -111,12 +111,12 @@ if test x$with_[]modname != xno; then
 		int             rc;
 		char            errbuf[100];
 		int             errcode;
-	    
+
 		rc = OCIInitialize((ub4) OCI_DEFAULT, (dvoid *)0,  /* Initialize OCI */
 				   (dvoid * (*)(dvoid *, size_t)) 0,
 				   (dvoid * (*)(dvoid *, dvoid *, size_t))0,
 				   (void (*)(dvoid *, dvoid *)) 0 );
-    
+
 		],
 		[mod_ldflags="$LIBS"],
 	    )
@@ -126,7 +126,7 @@ if test x$with_[]modname != xno; then
 	    fi
 	    AC_MSG_RESULT(no)
 	done
-	
+
 	if test "x$mod_ldflags" != "x"; then
 		break
 	fi
@@ -138,7 +138,7 @@ if test x$with_[]modname != xno; then
 	AC_MSG_WARN([oracle libraries not found.  Use --with-oracle-lib-dir=<path> or set ORACLE_HOME.])
 	fail=["$fail libclntsh libnnz[9-11]"]
     fi
-    
+
     targetname=modname
 else
     targetname=
