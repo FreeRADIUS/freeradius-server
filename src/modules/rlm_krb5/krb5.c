@@ -117,10 +117,6 @@ static int _mod_conn_free(rlm_krb5_handle_t *conn) {
  * libkrb5(s) can talk to the KDC over TCP. Were assuming something sane is implemented
  * by libkrb5 and that it does connection caching associated with contexts, so it's
  * worth using a connection pool to preserve connections when workers die.
- *
- * @param ctx to allocate connection handle memory in.
- * @param instance rlm_krb5 instance instance.
- * @return A new context or NULL on error.
  */
 void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
 {
