@@ -3436,7 +3436,7 @@ $as_echo_n "checking for Ruby include path... " >&6; }
 	    fi
 	fi
 
-	RUBY_CFLAGS+="$ruby_path"
+	RUBY_CFLAGS="$RUBY_CFLAGS $ruby_path"
 	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ruby_path" >&5
 $as_echo "$ruby_path" >&6; }
     fi
