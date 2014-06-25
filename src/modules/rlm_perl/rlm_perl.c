@@ -565,10 +565,6 @@ static void perl_store_vps(UNUSED TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR 
 
 	vp_cursor_t cursor;
 
-	/*
-	 *	Copy the valuepair list so we can sort it in place
-	 *	without messing up anything else.
-	 */
 	pairsort(&vps, attrtagcmp);
 	for (vp = fr_cursor_init(&cursor, &vps);
 	     vp;
@@ -578,8 +574,6 @@ static void perl_store_vps(UNUSED TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR 
 	     	char const *name;
 		char namebuf[256];
 		char buffer[1024];
-
-		AV *av;
 
 		size_t len;
 
@@ -600,6 +594,8 @@ static void perl_store_vps(UNUSED TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR 
 		 *	same type/tag should follow on from each other.
 		 */
 		if ((next = fr_cursor_next_peek(&cursor)) && ATTRIBUTE_EQ(vp, next)) {
+			AV *av;
+
 			av = newAV();
 			for (next = fr_cursor_first(&cursor);
 			     next;
