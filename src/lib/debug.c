@@ -676,24 +676,25 @@ int fr_fault_setup(char const *cmd, char const *program)
 
 	/* Unsure what the side effects of changing the signal handler mid execution might be */
 	if (!setup) {
+		if (cmd) {
 #ifdef SIGSEGV
-		if (fr_set_signal(SIGSEGV, fr_fault) < 0) return -1;
+			if (fr_set_signal(SIGSEGV, fr_fault) < 0) return -1;
 #endif
 #ifdef SIGBUS
-		if (fr_set_signal(SIGBUS, fr_fault) < 0) return -1;
+			if (fr_set_signal(SIGBUS, fr_fault) < 0) return -1;
 #endif
 #ifdef SIGABRT
-		if (fr_set_signal(SIGABRT, fr_fault) < 0) return -1;
-		/*
-		 *  Use this instead of abort so we get a
-		 *  full backtrace with broken versions of LLDB
-		 */
-		talloc_set_abort_fn(_fr_talloc_fault);
+			if (fr_set_signal(SIGABRT, fr_fault) < 0) return -1;
+			/*
+			 *  Use this instead of abort so we get a
+			 *  full backtrace with broken versions of LLDB
+			 */
+			talloc_set_abort_fn(_fr_talloc_fault);
 #endif
 #ifdef SIGFPE
-		if (fr_set_signal(SIGFPE, fr_fault) < 0) return -1;
+			if (fr_set_signal(SIGFPE, fr_fault) < 0) return -1;
 #endif
-
+		}
 #ifdef SIGUSR1
 		if (fr_set_signal(SIGUSR1, fr_fault) < 0) return -1;
 #endif
