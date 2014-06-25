@@ -342,7 +342,7 @@ static ssize_t perl_xlat(void *instance, REQUEST *request, char const *fmt, char
 
 		p = fmt;
 		while ((q = strchr(p, ' '))) {
-			XPUSHs(sv_2mortal(newSVpv(p, p - q)));
+			XPUSHs(sv_2mortal(newSVpvn(p, p - q)));
 
 			p = q + 1;
 		}
@@ -430,7 +430,7 @@ static void perl_parse_config(CONF_SECTION *cs, int lvl, HV *rad_hv)
 				continue;
 			}
 
-			(void)hv_store(rad_hv, key, strlen(key), newSVpv(value, strlen(value)), 0);
+			(void)hv_store(rad_hv, key, strlen(key), newSVpvn(value, strlen(value)), 0);
 
 			DEBUG("%*s%s = %s", indent_item, " ", key, value);
 		}
@@ -602,14 +602,14 @@ static void perl_store_vps(UNUSED TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR 
 			     next = fr_cursor_next_by_da(&cursor, vp->da, vp->tag)) {
 			     	switch (vp->da->type) {
 			     	case PW_TYPE_STRING:
-			     		av_push(av, newSVpv(next->vp_strvalue, next->length));
-					RDEBUG("<--  %s = %s", next->da->name, next->vp_strvalue);
+			     		RDEBUG("<--  %s = %s", next->da->name, next->vp_strvalue);
+			     		av_push(av, newSVpvn(next->vp_strvalue, next->length));
 					break;
 
 				default:
 					len = vp_prints_value(buffer, sizeof(buffer), next, 0);
 					RDEBUG("<--  %s = %s", next->da->name, buffer);
-					av_push(av, newSVpv(buffer, truncate_len(len, sizeof(buffer))));
+					av_push(av, newSVpvn(buffer, truncate_len(len, sizeof(buffer))));
 					break;
 				}
 			}
@@ -624,13 +624,14 @@ static void perl_store_vps(UNUSED TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR 
 		switch (vp->da->type) {
 		case PW_TYPE_STRING:
 			RDEBUG("<--  %s = %s", vp->da->name, vp->vp_strvalue);
-			(void)hv_store(rad_hv, name, strlen(name), newSVpv(vp->vp_strvalue, vp->length), 0);
+			(void)hv_store(rad_hv, name, strlen(name), newSVpvn(vp->vp_strvalue, vp->length), 0);
 			break;
 
 		default:
 			len = vp_prints_value(buffer, sizeof(buffer), vp, 0);
 			RDEBUG("<--  %s = %s", vp->da->name, buffer);
-			(void)hv_store(rad_hv, name, strlen(name), newSVpv(buffer, truncate_len(len, sizeof(buffer))), 0);
+			(void)hv_store(rad_hv, name, strlen(name),
+				       newSVpvn(buffer, truncate_len(len, sizeof(buffer))), 0);
 			break;
 		}
 	}
