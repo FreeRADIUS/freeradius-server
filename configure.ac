@@ -929,6 +929,7 @@ AC_CHECK_HEADERS( \
   fcntl.h \
   sys/fcntl.h \
   sys/prctl.h \
+  sys/ptrace.h \
   sys/un.h \
   glob.h \
   prot.h \

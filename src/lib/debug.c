@@ -24,6 +24,7 @@
 #include <assert.h>
 #include <freeradius-devel/libradius.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
 
 #if defined(HAVE_MALLOPT) && defined(HAVE_MALLOC_H)
 #  include <malloc.h>
@@ -39,6 +40,19 @@
 
 #ifdef HAVE_SYS_PRCTL_H
 #  include <sys/prctl.h>
+#endif
+
+#ifdef HAVE_SYS_PTRACE_H
+#  include <sys/ptrace.h>
+#  if !defined(PTRACE_ATTACH) && defined(PT_ATTACH)
+#    define PTRACE_ATTACH PT_ATTACH
+#  endif
+#  if !defined(PTRACE_CONT) && defined(PT_CONTINUE)
+#    define PTRACE_CONT PT_CONTINUE
+#  endif
+#  if !defined(PTRACE_DETACH) && defined(PT_DETACH)
+#    define PTRACE_DETACH PT_DETACH
+#  endif
 #endif
 
 #ifdef HAVE_SYS_RESOURCE_H
@@ -84,7 +98,7 @@ static fr_fault_cb_t panic_cb = NULL;			//!< Callback to execute whilst panickin
 static fr_fault_log_t fr_fault_log = NULL;		//!< Function to use to process logging output.
 static int fr_fault_log_fd = STDERR_FILENO;		//!< Where to write debug output.
 
-static int fr_debugger_present = -1;			//!< Whether were attached to by a debugger.
+static int debugger_attached = -1;			//!< Whether were attached to by a debugger.
 
 #ifdef HAVE_SYS_RESOURCE_H
 static struct rlimit core_limits;
@@ -95,15 +109,96 @@ static TALLOC_CTX *talloc_autofree_ctx;
 
 #define FR_FAULT_LOG(fmt, ...) fr_fault_log(fmt "\n", ## __VA_ARGS__)
 
-/** Stub callback to see if the SIGTRAP handler is overriden
+#ifdef HAVE_SYS_PTRACE_H
+#  ifdef __linux__
+#    define _PTRACE(_x, _y) ptrace(_x, _y, NULL, NULL)
+#  else
+#    define _PTRACE(_x, _y) ptrace(_x, _y, NULL, 0)
+#  endif
+
+/** Determine if we're running under a debugger by attempting to attach using pattach
  *
- * @param signum signal raised.
+ * @return 0 if we're not, 1 if we are, -1 if we can't tell.
  */
-static void _sigtrap_handler(UNUSED int signum)
+static int fr_debugger_attached(void)
 {
-	fr_debugger_present = 0;
-	signal(SIGTRAP, SIG_DFL);
+	int pid;
+
+	int from_child[2] = {-1, -1};
+
+	if (pipe(from_child) < 0) {
+		fr_strerror_printf("Debugger check failed: Error opening internal pipe: %s", fr_syserror(errno));
+		return -1;
+	}
+
+	pid = fork();
+	if (pid == -1) {
+		fr_strerror_printf("Debugger check failed: Error forking: %s", fr_syserror(errno));
+		return -1;
+	}
+
+	/* Child */
+	if (pid == 0) {
+		int8_t ret = 0;
+      		int ppid = getppid();
+
+		/* Close parent's side */
+		close(from_child[0]);
+
+      		if (_PTRACE(PTRACE_ATTACH, ppid) == 0) {
+      			/* If we attached then we're not running under a debugger */
+      			write(from_child[1], &ret, sizeof(ret));
+
+			/* Wait for the parent to stop and continue it */
+			waitpid(ppid, NULL, 0);
+			_PTRACE(PTRACE_CONT, ppid);
+
+        		/* Detach */
+			_PTRACE(PTRACE_DETACH, ppid);
+			exit(0);
+		}
+
+		ret = 1;
+		/* Something is already attached */
+		write(from_child[1], &ret, 1);
+
+		exit(0);
+	/* Parent */
+	} else {
+		int8_t ret = -1;
+
+		/*
+		 *	The child writes a 1 if pattach failed else 0.
+		 *
+		 *	This read may be interrupted by pattach,
+		 *	which is why we need the loop.
+		 */
+		while ((read(from_child[0], &ret, 1) < 0) && (errno == EINTR));
+
+		/* Ret not updated */
+		if (ret < 0) {
+			fr_strerror_printf("Debugger check failed: Error getting status from child: %s",
+					   fr_syserror(errno));
+		}
+
+		/* Close the pipes here (if we did it above, it might race with pattach) */
+		close(from_child[1]);
+		close(from_child[0]);
+
+		/* Collect the status of the child */
+		waitpid(pid, NULL, 0);
+
+		return ret;
+	}
 }
+#else
+static int fr_debugger_attached(void)
+{
+	fr_strerror_printf("Debugger check failed: PTRACE not available");
+
+	return -1;
+}
+#endif
 
 /** Break in debugger (if were running under a debugger)
  *
@@ -114,11 +209,14 @@ static void _sigtrap_handler(UNUSED int signum)
  */
 void fr_debug_break(void)
 {
-	if (fr_debugger_present == -1) {
-		fr_debugger_present = 0;
-		signal(SIGTRAP, _sigtrap_handler);
-		raise(SIGTRAP);
-	} else if (fr_debugger_present == 1) {
+	if (debugger_attached == -1) {
+		debugger_attached = fr_debugger_attached();
+	}
+
+	if (debugger_attached == 1) {
+		fprintf(stderr, "Debugger detected, raising SIGTRAP\n");
+		fflush(stderr);
+
 		raise(SIGTRAP);
 	}
 }
@@ -676,23 +774,31 @@ int fr_fault_setup(char const *cmd, char const *program)
 
 	/* Unsure what the side effects of changing the signal handler mid execution might be */
 	if (!setup) {
-		if (cmd) {
+		debugger_attached = fr_debugger_attached();
+
+		/*
+		 *  These signals can't be properly dealt with in the debugger
+		 *  if we set our own signal handlers
+		 */
+		if (debugger_attached == 0) {
 #ifdef SIGSEGV
 			if (fr_set_signal(SIGSEGV, fr_fault) < 0) return -1;
 #endif
 #ifdef SIGBUS
 			if (fr_set_signal(SIGBUS, fr_fault) < 0) return -1;
 #endif
+#ifdef SIGFPE
+			if (fr_set_signal(SIGFPE, fr_fault) < 0) return -1;
+#endif
+
 #ifdef SIGABRT
 			if (fr_set_signal(SIGABRT, fr_fault) < 0) return -1;
+
 			/*
 			 *  Use this instead of abort so we get a
 			 *  full backtrace with broken versions of LLDB
 			 */
 			talloc_set_abort_fn(_fr_talloc_fault);
-#endif
-#ifdef SIGFPE
-			if (fr_set_signal(SIGFPE, fr_fault) < 0) return -1;
 #endif
 		}
 #ifdef SIGUSR1
@@ -958,9 +1064,6 @@ void NEVER_RETURNS _fr_exit(char const *file, int line, int status)
 		FR_FAULT_LOG("EXIT(%i) CALLED %s[%u]", status, file, line);
 	}
 #endif
-	fprintf(stderr, "If running under a debugger it should break <<here>>");
-	fflush(stderr);
-
 	fr_debug_break();	/* If running under GDB we'll break here */
 
 	exit(status);
@@ -986,9 +1089,6 @@ void NEVER_RETURNS _fr_exit_now(char const *file, int line, int status)
 		FR_FAULT_LOG("_EXIT(%i) CALLED %s[%u]", status, file, line);
 	}
 #endif
-	fprintf(stderr, "If running under a debugger it should break <<here>>\n");
-	fflush(stderr);
-
 	fr_debug_break();	/* If running under GDB we'll break here */
 
 	_exit(status);
