@@ -10,8 +10,8 @@ if test x$with_[]modname != xno; then
 	FR_SMART_CHECK_INCLUDE(membership.h)
 	if test "x$ac_cv_header_membership_h" = "xyes"; then
 		AC_DEFINE([HAVE_MEMBERSHIP_H],[1],[Build with Apple Open Directory support])
-		mschap_sources+="opendir.c"
-		mod_ldflags+=" -framework DirectoryService" 
+		mschap_sources="opendir.c"
+		mod_ldflags="-framework DirectoryService"
 	fi
 	targetname=modname
 else
@@ -24,7 +24,7 @@ if test x"$fail" != x""; then
 		AC_MSG_ERROR([set --without-]modname[ to disable it explicitly.])
 	else
 		AC_MSG_WARN([silently not building ]modname[.])
-		AC_MSG_WARN([FAILURE: ]modname[ requires: $fail.]); 
+		AC_MSG_WARN([FAILURE: ]modname[ requires: $fail.]);
 		targetname=""
 	fi
 fi
