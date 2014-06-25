@@ -33,11 +33,6 @@ static int _mod_conn_free(ykclient_handle_t **yandle)
  * @see fr_connection_pool_init
  * @see fr_connection_create_t
  * @see connection.c
- *
- * @param[in] ctx to allocate connection data from.
- * @param[in] instance configuration data.
- * @return connection handle or NULL if the connection failed or couldn't
- *	be initialised.
  */
 static void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
 {
