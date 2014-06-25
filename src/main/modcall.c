@@ -3356,7 +3356,6 @@ void modcall_debug(modcallable *mc, int depth)
 	modcallable *this;
 	modgroup *g;
 	value_pair_map_t *map;
-	const char *name1;
 	char buffer[1024];
 
 	for (this = mc; this != NULL; this = this->next) {
@@ -3430,14 +3429,8 @@ void modcall_debug(modcallable *mc, int depth)
 #endif
 		case MOD_GROUP:
 			g = mod_callabletogroup(this);
-			name1 = cf_section_name1(g->cs);
-			if (strcmp(name1, "group") == 0) {
-				DEBUG("%.*s%s {", depth, modcall_spaces,
-				      group_name[this->type]);
-			} else {
-				DEBUG("%.*s%s %s {", depth, modcall_spaces,
-				      name1, cf_section_name2(g->cs));
-			}
+			DEBUG("%.*s%s {", depth, modcall_spaces,
+			      group_name[this->type]);
 			modcall_debug(g->children, depth + 1);
 			DEBUG("%.*s}", depth, modcall_spaces);
 			break;
