@@ -557,90 +557,87 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
  *  	Example for this is Cisco-AVPair that holds multiple values.
  *  	Which will be available as array_ref in $RAD_REQUEST{'Cisco-AVPair'}
  */
-static void perl_store_vps(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR *vps, HV *rad_hv)
+static void perl_store_vps(UNUSED TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR *vps, HV *rad_hv)
 {
-	VALUE_PAIR *head, *sublist;
-	AV *av;
-	char const *name;
-	char namebuf[256];
-	char buffer[1024];
-	size_t len;
+	VALUE_PAIR *vp;
 
 	hv_undef(rad_hv);
 
-	/*
-	 *	Copy the valuepair list so we can remove attributes
-	 *	we've already processed.  This is a horrible hack to
-	 *	get around various other stupidity.
-	 */
-	head = paircopy(ctx, vps);
+	vp_cursor_t cursor;
 
-	while (head) {
-		vp_cursor_t cursor;
+	/*
+	 *	Copy the valuepair list so we can sort it in place
+	 *	without messing up anything else.
+	 */
+	pairsort(&vps, attrtagcmp);
+	for (vp = fr_cursor_init(&cursor, &vps);
+	     vp;
+	     vp = fr_cursor_next(&cursor)) {
+	     	VALUE_PAIR *next;
+
+	     	char const *name;
+		char namebuf[256];
+		char buffer[1024];
+
+		AV *av;
+
+		size_t len;
 
 		/*
 		 *	Tagged attributes are added to the hash with name
 		 *	<attribute>:<tag>, others just use the normal attribute
 		 *	name as the key.
 		 */
-		if (head->da->flags.has_tag && (head->tag != 0)) {
-			snprintf(namebuf, sizeof(namebuf), "%s:%d",
-				 head->da->name, head->tag);
+		if (vp->da->flags.has_tag && (vp->tag != TAG_ANY)) {
+			snprintf(namebuf, sizeof(namebuf), "%s:%d", vp->da->name, vp->tag);
 			name = namebuf;
 		} else {
-			name = head->da->name;
+			name = vp->da->name;
 		}
 
 		/*
-		 *	Create a new list with all the attributes like this one
-		 *	which are in the same tag group.
+		 *	We've sorted by type, then tag, so attributes of the
+		 *	same type/tag should follow on from each other.
 		 */
-		sublist = NULL;
-		pairfilter(ctx, &sublist, &head, head->da->attr, head->da->vendor, head->tag);
-
-		fr_cursor_init(&cursor, &sublist);
-
-		/*
-		 *	Attribute has multiple values
-		 */
-		if (fr_cursor_next(&cursor)) {
-			VALUE_PAIR *vp;
-
+		if ((next = fr_cursor_next_peek(&cursor)) && ATTRIBUTE_EQ(vp, next)) {
 			av = newAV();
-			for (vp = fr_cursor_first(&cursor);
-			     vp;
-			     vp = fr_cursor_next(&cursor)) {
-				if (vp->da->type != PW_TYPE_STRING) {
-					len = vp_prints_value(buffer, sizeof(buffer), vp, 0);
+			for (next = fr_cursor_first(&cursor);
+			     next;
+			     next = fr_cursor_next_by_da(&cursor, vp->da, vp->tag)) {
+			     	switch (vp->da->type) {
+			     	case PW_TYPE_STRING:
+			     		av_push(av, newSVpv(next->vp_strvalue, next->length));
+					RDEBUG("<--  %s = %s", next->da->name, next->vp_strvalue);
+					break;
+
+				default:
+					len = vp_prints_value(buffer, sizeof(buffer), next, 0);
+					RDEBUG("<--  %s = %s", next->da->name, buffer);
 					av_push(av, newSVpv(buffer, truncate_len(len, sizeof(buffer))));
-					RDEBUG("<--  %s = %s", vp->da->name, buffer);
-				} else {
-					av_push(av, newSVpv(vp->vp_strvalue, vp->length));
-					RDEBUG("<--  %s = %s", vp->da->name, vp->vp_strvalue);
+					break;
 				}
 			}
 			(void)hv_store(rad_hv, name, strlen(name), newRV_noinc((SV *)av), 0);
 
-			/*
-			 *	Attribute has a single value, so its value just gets
-			 *	added to the hash.
-			 */
-		} else if (sublist) {
-
-			if (sublist->da->type != PW_TYPE_STRING) {
-				len = vp_prints_value(buffer, sizeof(buffer), sublist, 0);
-				(void)hv_store(rad_hv, name, strlen(name), newSVpv(buffer, truncate_len(len, sizeof(buffer))), 0);
-				RDEBUG("<--  %s = %s", sublist->da->name, buffer);
-			} else {
-				(void)hv_store(rad_hv, name, strlen(name), newSVpv(sublist->vp_strvalue, sublist->length), 0);
-				RDEBUG("<--  %s = %s", sublist->da->name, sublist->vp_strvalue);
-			}
+			continue;
 		}
 
-		pairfree(&sublist);
-	}
+		/*
+		 *	It's a normal single valued attribute
+		 */
+		switch (vp->da->type) {
+		case PW_TYPE_STRING:
+			RDEBUG("<--  %s = %s", next->da->name, next->vp_strvalue);
+			(void)hv_store(rad_hv, name, strlen(name), newSVpv(vp->vp_strvalue, vp->length), 0);
+			break;
 
-	rad_assert(!head);
+		default:
+			len = vp_prints_value(buffer, sizeof(buffer), next, 0);
+			RDEBUG("<--  %s = %s", next->da->name, buffer);
+			(void)hv_store(rad_hv, name, strlen(name), newSVpv(buffer, truncate_len(len, sizeof(buffer))), 0);
+			break;
+		}
+	}
 }
 
 /*
