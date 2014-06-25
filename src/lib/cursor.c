@@ -166,6 +166,14 @@ VALUE_PAIR *fr_cursor_next(vp_cursor_t *cursor)
 	return cursor->current;
 }
 
+/** Return what's coming next without advancing the cursor
+ *
+ */
+VALUE_PAIR *fr_cursor_next_peek(vp_cursor_t *cursor)
+{
+	return cursor->next;
+}
+
 VALUE_PAIR *fr_cursor_current(vp_cursor_t *cursor)
 {
 	if (cursor->current) {
