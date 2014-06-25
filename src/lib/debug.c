@@ -95,7 +95,10 @@ struct fr_bt_marker {
 static char panic_action[512];				//!< The command to execute when panicking.
 static fr_fault_cb_t panic_cb = NULL;			//!< Callback to execute whilst panicking, before the
 							//!< panic_action.
-static fr_fault_log_t fr_fault_log = NULL;		//!< Function to use to process logging output.
+
+static void CC_HINT(format (printf, 1, 2)) _fr_fault_log(char const *msg, ...);
+
+static fr_fault_log_t fr_fault_log = _fr_fault_log;	//!< Function to use to process logging output.
 static int fr_fault_log_fd = STDERR_FILENO;		//!< Where to write debug output.
 
 static int debugger_attached = -1;			//!< Whether were attached to by a debugger.
@@ -888,7 +891,6 @@ static void CC_HINT(format (printf, 1, 2)) _fr_fault_log(char const *msg, ...)
 	va_end(ap);
 }
 
-
 /** Set a file descriptor to log panic_action output to.
  *
  * @param func to call to output log messages.
@@ -906,7 +908,6 @@ void fr_fault_set_log_fd(int fd)
 {
 	fr_fault_log_fd = fd;
 }
-
 
 #ifdef WITH_VERIFY_PTR
 
