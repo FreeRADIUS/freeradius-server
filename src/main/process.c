@@ -4224,6 +4224,20 @@ static int event_new_fd(rad_listen_t *this)
 
 		if (just_started) {
 			DEBUG("Listening on %s", buffer);
+
+#ifdef WITH_PROXY
+		} else if (this->type == RAD_LISTEN_PROXY) {
+			home_server_t *home;
+
+			home = sock->home;
+			if (!home || !home->limit.max_connections) {
+				INFO(" ... adding new socket %s", buffer);
+			} else {
+				INFO(" ... adding new socket %s (%u of %u)", buffer,
+				     home->limit.num_connections, home->limit.max_connections);
+			}
+		
+#endif
 		} else {
 			INFO(" ... adding new socket %s", buffer);
 		}
@@ -4416,8 +4430,6 @@ static int event_new_fd(rad_listen_t *this)
 #endif
 
 #ifdef WITH_TCP
-		INFO(" ... shutting down socket %s", buffer);
-
 #ifdef WITH_PROXY
 		/*
 		 *	The socket is dead.  Force all proxied packets
@@ -4425,6 +4437,16 @@ static int event_new_fd(rad_listen_t *this)
 		 *	list of outgoing sockets.
 		 */
 		if (this->type == RAD_LISTEN_PROXY) {
+			home_server_t *home;
+
+			home = sock->home;
+			if (!home || !home->limit.max_connections) {
+				INFO(" ... shutting down socket %s", buffer);
+			} else {
+				INFO(" ... shutting down socket %s (%u of %u)", buffer,
+				     home->limit.num_connections, home->limit.max_connections);
+			}
+
 			PTHREAD_MUTEX_LOCK(&proxy_mutex);
 			fr_packet_list_walk(proxy_list, this, eol_proxy_listener);
 
@@ -4437,6 +4459,8 @@ static int event_new_fd(rad_listen_t *this)
 		} else
 #endif
 		{
+			INFO(" ... shutting down socket %s", buffer);
+
 			/*
 			 *	EOL all requests using this socket.
 			 */
