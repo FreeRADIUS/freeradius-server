@@ -837,20 +837,23 @@ static int fr_dhcp_attr2vp(VALUE_PAIR **vp_p, TALLOC_CTX *ctx, uint8_t const *da
 		uint8_t const *q, *end;
 		vp_cursor_t cursor;
 
+		p = data;
+		q = end = data + len;
+
+		if (!vp->da->flags.array) {
+			pairstrncpy(vp, (char const *)p, q - p);
+			break;
+		}
+
 		/*
 		 *	Initialise the cursor as we may be inserting
 		 *	multiple additional VPs
 		 */
-		if (vp->da->flags.array) fr_cursor_init(&cursor, vp_p);
-
-		p = data;
-		q = end = data + len;
+		fr_cursor_init(&cursor, vp_p);
 		for (;;) {
-			if (vp->da->flags.array) {
-				q = memchr(p, '\0', q - p);
-				/* Malformed but recoverable */
-				if (!q) q = end;
-			}
+			q = memchr(p, '\0', q - p);
+			/* Malformed but recoverable */
+			if (!q) q = end;
 
 			pairstrncpy(vp, (char const *)p, q - p);
 			p = q + 1;
