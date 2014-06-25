@@ -1109,10 +1109,6 @@ static int _mod_conn_free(ldap_handle_t *conn)
 /** Create and return a new connection
  *
  * Create a new ldap connection and allocate memory for a new rlm_handle_t
- *
- * @param ctx to allocate connection handle memory in.
- * @param instance rlm_ldap instance.
- * @return A new connection handle or NULL on error.
  */
 void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
 {
