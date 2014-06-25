@@ -1608,29 +1608,6 @@ static int realm_add(realm_config_t *rc, CONF_SECTION *cs)
 	}
 #endif
 
-#ifdef HAVE_REGEX_H
-	if (name2[0] == '~') {
-		int rcode;
-		regex_t reg;
-
-		/*
-		 *	Include substring matches.
-		 */
-		rcode = regcomp(&reg, name2 + 1, REG_EXTENDED | REG_NOSUB | REG_ICASE);
-		if (rcode != 0) {
-			char buffer[256];
-
-			regerror(rcode, &reg, buffer, sizeof(buffer));
-
-			cf_log_err_cs(cs,
-				   "Invalid regex \"%s\": %s",
-				   name2 + 1, buffer);
-			goto error;
-		}
-		regfree(&reg);
-	}
-#endif
-
 	r = rad_malloc(sizeof(*r));
 	memset(r, 0, sizeof(*r));
 
@@ -1683,33 +1660,7 @@ static int realm_add(realm_config_t *rc, CONF_SECTION *cs)
 		goto error;
 	}
 
-#ifdef HAVE_REGEX_H
-	/*
-	 *	It's a regex.  Add it to a separate list.
-	 */
-	if (name2[0] == '~') {
-		realm_regex_t *rr, **last;
-
-		rr = rad_malloc(sizeof(*rr));
-
-		last = &realms_regex;
-		while (*last) last = &((*last)->next);  /* O(N^2)... sue me. */
-
-		r->name = name2;
-		rr->realm = r;
-		rr->next = NULL;
-
-		*last = rr;
-
-		cf_log_info(cs, " }");
-		return 1;
-	}
-#endif
-
-	if (!rbtree_insert(realms_byname, r)) {
-		rad_assert("Internal sanity check failed");
-		goto error;
-	}
+	if (!realm_realm_add(r, cs)) goto error;
 
 	cf_log_info(cs, " }");
 
@@ -1719,6 +1670,56 @@ static int realm_add(realm_config_t *rc, CONF_SECTION *cs)
 	cf_log_info(cs, " } # realm %s", name2);
 	free(r);
 	return 0;
+}
+
+
+int realm_realm_add(REALM *r, CONF_SECTION *cs)
+{
+#ifdef HAVE_REGEX_H
+	/*
+	 *	It's a regex.  Sanity check it, and add it to a
+	 *	separate list.
+	 */
+	if (r->name[0] == '~') {
+		int rcode;
+		realm_regex_t *rr, **last;
+		regex_t reg;
+
+		/*
+		 *	Include substring matches.
+		 */
+		rcode = regcomp(&reg, r->name + 1, REG_EXTENDED | REG_NOSUB | REG_ICASE);
+		if (rcode != 0) {
+			char buffer[256];
+
+			regerror(rcode, &reg, buffer, sizeof(buffer));
+
+			cf_log_err_cs(cs,
+				      "Invalid regex \"%s\": %s",
+				      r->name + 1, buffer);
+			return 0;
+		}
+		regfree(&reg);
+
+		rr = rad_malloc(sizeof(*rr));
+
+		last = &realms_regex;
+		while (*last) last = &((*last)->next);  /* O(N^2)... sue me. */
+
+		rr->realm = r;
+		rr->next = NULL;
+
+		*last = rr;
+		return 1;
+	}
+#endif
+
+	if (!rbtree_insert(realms_byname, r)) {
+		rad_assert("Internal sanity check failed");
+		return 0;
+	}
+
+	return 1;
 }
 
 #ifdef WITH_COA
