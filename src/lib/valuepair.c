@@ -232,6 +232,9 @@ VALUE_PAIR *pairfind(VALUE_PAIR *vp, unsigned int attr, unsigned int vendor, int
 	vp_cursor_t 	cursor;
 	VALUE_PAIR	*i;
 
+	/* List head may be NULL if it contains no VPs */
+	if (!vp) return NULL;
+
 	VERIFY_LIST(vp);
 
 	for (i = fr_cursor_init(&cursor, &vp);
