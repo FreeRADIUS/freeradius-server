@@ -3055,7 +3055,6 @@ static void ping_home_server(void *ctx)
 	struct timeval when, now;
 
 	if ((home->state == HOME_STATE_ALIVE) ||
-	    (home->ping_check == HOME_PING_CHECK_NONE) ||
 #ifdef WITH_TCP
 	    (home->proto == IPPROTO_TCP) ||
 #endif
@@ -3065,6 +3064,9 @@ static void ping_home_server(void *ctx)
 
 	gettimeofday(&now, NULL);
 
+	/*
+	 *	We've run out of zombie time.  Mark it dead.
+	 */
 	if (home->state == HOME_STATE_ZOMBIE) {
 		when = home->zombie_period_start;
 		when.tv_sec += home->zombie_period;
@@ -3075,6 +3077,25 @@ static void ping_home_server(void *ctx)
 			mark_home_server_dead(home, &now);
 		}
 	}
+
+	/*
+	 *	We're not supposed to be pinging it.  Just wake up
+	 *	when we're supposed to mark it dead.
+	 */
+	if (home->ping_check == HOME_PING_CHECK_NONE) {
+		if (home->state == HOME_STATE_ZOMBIE) {
+			when = home->zombie_period_start;
+			when.tv_sec += home->zombie_period;
+			INSERT_EVENT(ping_home_server, home);
+		}
+
+		/*
+		 *	Else mark_home_server_dead will set a timer
+		 *	for revive_interval.
+		 */
+		return;
+	}
+
 
 	request = request_alloc(NULL);
 	request->number = request_num_counter++;
