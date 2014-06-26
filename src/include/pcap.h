@@ -25,7 +25,6 @@
  */
 #include <freeradius-devel/libradius.h>
 #include <sys/types.h>
-#include <netinet/in.h>
 #include <pcap.h>
 
 /*
