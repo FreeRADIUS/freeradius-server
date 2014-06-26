@@ -26,7 +26,6 @@
 RCSIDH(radsniff_h, "$Id$")
 
 #include <sys/types.h>
-#include <netinet/in.h>
 
 #include <pcap/pcap.h>
 #include <freeradius-devel/libradius.h>
