@@ -83,6 +83,8 @@ FreeRADIUS 3.0.4 Mon 12 May 2014 15:30:00 EDT urgency=medium
 	* Fix issue in radsniff where writing to PCAP files and using
 	  -R response filters, where the requests would still be written
 	  to the PCAP for non matching responses.
+	* Define __APPLE_USE_RFC_2292 so that the server builds with IPv6
+	  support on OSX.
 
 FreeRADIUS 3.0.3 Mon 12 May 2014 15:30:00 EDT urgency=medium
 	Feature improvements
