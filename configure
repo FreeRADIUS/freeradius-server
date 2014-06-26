@@ -7238,6 +7238,9 @@ case "$host" in
   *-darwin*)
     CFLAGS="$CFLAGS -DDARWIN"
     LIBS="-framework DirectoryService $LIBS"
+
+$as_echo "#define __APPLE_USE_RFC_2292 1" >>confdefs.h
+
     ;;
 esac
 
