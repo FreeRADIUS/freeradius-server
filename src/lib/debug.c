@@ -165,7 +165,7 @@ static int fr_debugger_attached(void)
 
 		ret = 1;
 		/* Something is already attached */
-		if (write(from_child[1], &ret, 1) < 0) {
+		if (write(from_child[1], &ret, sizeof(ret)) < 0) {
       			fprintf(stderr, "Writing ptrace status to parent failed: %s", fr_syserror(errno));
 		}
 
@@ -180,7 +180,7 @@ static int fr_debugger_attached(void)
 		 *	This read may be interrupted by pattach,
 		 *	which is why we need the loop.
 		 */
-		while ((read(from_child[0], &ret, 1) < 0) && (errno == EINTR));
+		while ((read(from_child[0], &ret, sizeof(ret)) < 0) && (errno == EINTR));
 
 		/* Ret not updated */
 		if (ret < 0) {
