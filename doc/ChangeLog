@@ -88,6 +88,8 @@ FreeRADIUS 3.0.4 Mon 12 May 2014 15:30:00 EDT urgency=medium
 	* Fix LDAP group lookups for named rlm_ldap instances.
 	  Note that attribute references should be used when
 	  checking LDAP-Group attributes. e.g. if (&LDAP-Group == 'foo').
+	* Delayed attribute references can now be used in unlang
+	  existence checks.  i.e. if (&Attribute-Name) { ... }
 
 FreeRADIUS 3.0.3 Mon 12 May 2014 15:30:00 EDT urgency=medium
 	Feature improvements
