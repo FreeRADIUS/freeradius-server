@@ -150,7 +150,9 @@ static int fr_debugger_attached(void)
 
       		if (_PTRACE(PTRACE_ATTACH, ppid) == 0) {
       			/* If we attached then we're not running under a debugger */
-      			write(from_child[1], &ret, sizeof(ret));
+      			if (write(from_child[1], &ret, sizeof(ret)) < 0) {
+      				fprintf(stderr, "Writing ptrace status to parent failed: %s", fr_syserror(errno));
+      			}
 
 			/* Wait for the parent to stop and continue it */
 			waitpid(ppid, NULL, 0);
@@ -163,7 +165,9 @@ static int fr_debugger_attached(void)
 
 		ret = 1;
 		/* Something is already attached */
-		write(from_child[1], &ret, 1);
+		if (write(from_child[1], &ret, 1) < 0) {
+      			fprintf(stderr, "Writing ptrace status to parent failed: %s", fr_syserror(errno));
+		}
 
 		exit(0);
 	/* Parent */
