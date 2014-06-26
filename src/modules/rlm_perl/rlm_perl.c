@@ -668,10 +668,13 @@ static int pairadd_sv(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, char 
 			return 0;
 		}
 
-		if (vp->da->type != PW_TYPE_STRING) {
-			if (pairparsevalue(vp, val, 0) < 0) goto fail;
-		} else {
+		switch (vp->da->type) {
+		case PW_TYPE_STRING:
 			pairstrncpy(vp, val, len);
+			break;
+
+		default:
+			if (pairparsevalue(vp, val, len) < 0) goto fail;
 		}
 
 		RDEBUG("&%s:%s %s $%s{'%s'} -> '%s'", list_name, key, fr_int2str(fr_tokens, op, "<INVALID>"),
