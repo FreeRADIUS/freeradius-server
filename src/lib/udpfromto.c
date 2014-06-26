@@ -118,7 +118,7 @@ int udpfromto_init(int s)
 		proto = SOL_IP;
 		flag = IP_PKTINFO;
 #else
-#ifdef IP_RECVDSTADDR
+#  ifdef IP_RECVDSTADDR
 
 		/*
 		 *	Set the IP_RECVDSTADDR option (BSD).  Note:
@@ -126,9 +126,9 @@ int udpfromto_init(int s)
 		 */
 		proto = IPPROTO_IP;
 		flag = IP_RECVDSTADDR;
-#else
+#  else
 		return -1;
-#endif
+#  endif
 #endif
 
 #ifdef AF_INET6
@@ -144,6 +144,9 @@ int udpfromto_init(int s)
 		 */
 		flag = FR_IPV6_RECVPKTINFO;
 #else
+#  ifdef EPROTONOSUPPORT
+		errno = EPROTONOSUPPORT;
+#  endif
 		return -1;
 #  endif
 #endif
