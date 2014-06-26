@@ -557,7 +557,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
  *  	Example for this is Cisco-AVPair that holds multiple values.
  *  	Which will be available as array_ref in $RAD_REQUEST{'Cisco-AVPair'}
  */
-static void perl_store_vps(UNUSED TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR *vps, HV *rad_hv)
+static void perl_store_vps(UNUSED TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR *vps, HV *rad_hv, const char *hashname, const char *vpsname)
 {
 	VALUE_PAIR *vp;
 
@@ -602,13 +602,13 @@ static void perl_store_vps(UNUSED TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR 
 			     next = fr_cursor_next_by_da(&cursor, vp->da, vp->tag)) {
 			     	switch (vp->da->type) {
 			     	case PW_TYPE_STRING:
-			     		RDEBUG("<--  %s = %s", next->da->name, next->vp_strvalue);
+			     		RDEBUG("$%s{'%s'} = %s:%s -> '%s'", hashname, next->da->name, vpsname, next->da->name, next->vp_strvalue);
 			     		av_push(av, newSVpvn(next->vp_strvalue, next->length));
 					break;
 
 				default:
 					len = vp_prints_value(buffer, sizeof(buffer), next, 0);
-					RDEBUG("<--  %s = %s", next->da->name, buffer);
+					RDEBUG("$%s{'%s'} = %s:%s -> '%s'", hashname, next->da->name, vpsname, next->da->name, buffer);
 					av_push(av, newSVpvn(buffer, truncate_len(len, sizeof(buffer))));
 					break;
 				}
@@ -623,13 +623,13 @@ static void perl_store_vps(UNUSED TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR 
 		 */
 		switch (vp->da->type) {
 		case PW_TYPE_STRING:
-			RDEBUG("<--  %s = %s", vp->da->name, vp->vp_strvalue);
+			RDEBUG("$%s{'%s'} = %s:%s -> '%s'", hashname, vp->da->name, vpsname, vp->da->name, vp->vp_strvalue);
 			(void)hv_store(rad_hv, name, strlen(name), newSVpvn(vp->vp_strvalue, vp->length), 0);
 			break;
 
 		default:
 			len = vp_prints_value(buffer, sizeof(buffer), vp, 0);
-			RDEBUG("<--  %s = %s", vp->da->name, buffer);
+			RDEBUG("$%s{'%s'} = %s:%s -> '%s'", hashname, vp->da->name, vpsname, vp->da->name, buffer);
 			(void)hv_store(rad_hv, name, strlen(name),
 				       newSVpvn(buffer, truncate_len(len, sizeof(buffer))), 0);
 			break;
@@ -643,7 +643,7 @@ static void perl_store_vps(UNUSED TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR 
  *     Value Pair Format
  *
  */
-static int pairadd_sv(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, char *key, SV *sv, FR_TOKEN op)
+static int pairadd_sv(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, char *key, SV *sv, FR_TOKEN op, const char *hashname, const char *vpsname)
 {
 	char	    *val;
 	VALUE_PAIR      *vp;
@@ -654,7 +654,7 @@ static int pairadd_sv(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, char 
 		vp = pairmake(ctx, vps, key, NULL, op);
 		if (!vp) {
 		fail:
-			REDEBUG("Failed to create pair %s = %s", key, val);
+			REDEBUG("Failed to create pair %s:%s = %s", vpsname, key, val);
 			return 0;
 		}
 
@@ -664,7 +664,7 @@ static int pairadd_sv(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, char 
 			pairstrncpy(vp, val, len);
 		}
 
-		RDEBUG("-->  %s = %s", key, val);
+		RDEBUG("%s:%s = $%s{'%s'} -> '%s'", vpsname, key, hashname, key, val);
 		return 1;
 	}
 	return 0;
@@ -673,7 +673,7 @@ static int pairadd_sv(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, char 
 /*
  *     Gets the content from hashes
  */
-static int get_hv_content(TALLOC_CTX *ctx, REQUEST *request, HV *my_hv, VALUE_PAIR **vps)
+static int get_hv_content(TALLOC_CTX *ctx, REQUEST *request, HV *my_hv, VALUE_PAIR **vps, const char *hashname, const char *vpsname)
 {
 	SV		*res_sv, **av_sv;
 	AV		*av;
@@ -689,9 +689,9 @@ static int get_hv_content(TALLOC_CTX *ctx, REQUEST *request, HV *my_hv, VALUE_PA
 			len = av_len(av);
 			for (j = 0; j <= len; j++) {
 				av_sv = av_fetch(av, j, 0);
-				ret = pairadd_sv(ctx, request, vps, key, *av_sv, T_OP_ADD) + ret;
+				ret = pairadd_sv(ctx, request, vps, key, *av_sv, T_OP_ADD, hashname, vpsname) + ret;
 			}
-		} else ret = pairadd_sv(ctx, request, vps, key, res_sv, T_OP_EQ) + ret;
+		} else ret = pairadd_sv(ctx, request, vps, key, res_sv, T_OP_EQ, hashname, vpsname) + ret;
 	}
 
 	return ret;
@@ -752,23 +752,23 @@ static int do_perl(void *instance, REQUEST *request, char const *function_name)
 		rad_config_hv = get_hv("RAD_CONFIG",1);
 		rad_request_hv = get_hv("RAD_REQUEST",1);
 
-		perl_store_vps(request->reply, request, request->reply->vps, rad_reply_hv);
-		perl_store_vps(request, request, request->config_items, rad_check_hv);
-		perl_store_vps(request->packet, request, request->packet->vps, rad_request_hv);
-		perl_store_vps(request, request, request->config_items, rad_config_hv);
+		perl_store_vps(request->reply, request, request->reply->vps, rad_reply_hv, "RAD_REPLY", "reply");
+		perl_store_vps(request, request, request->config_items, rad_check_hv, "RAD_CHECK", "control");
+		perl_store_vps(request->packet, request, request->packet->vps, rad_request_hv, "RAD_REQUEST", "request");
+		perl_store_vps(request, request, request->config_items, rad_config_hv, "RAD_CONFIG", "control");
 
 #ifdef WITH_PROXY
 		rad_request_proxy_hv = get_hv("RAD_REQUEST_PROXY",1);
 		rad_request_proxy_reply_hv = get_hv("RAD_REQUEST_PROXY_REPLY",1);
 
 		if (request->proxy != NULL) {
-			perl_store_vps(request->proxy, request, request->proxy->vps, rad_request_proxy_hv);
+			perl_store_vps(request->proxy, request, request->proxy->vps, rad_request_proxy_hv, "RAD_REQUEST_PROXY", "proxy-request");
 		} else {
 			hv_undef(rad_request_proxy_hv);
 		}
 
 		if (request->proxy_reply !=NULL) {
-			perl_store_vps(request->proxy_reply, request, request->proxy_reply->vps, rad_request_proxy_reply_hv);
+			perl_store_vps(request->proxy_reply, request, request->proxy_reply->vps, rad_request_proxy_reply_hv, "RAD_REQUEST_PROXY_REPLY", "proxy-reply");
 		} else {
 			hv_undef(rad_request_proxy_reply_hv);
 		}
@@ -807,7 +807,7 @@ static int do_perl(void *instance, REQUEST *request, char const *function_name)
 		LEAVE;
 
 		vp = NULL;
-		if ((get_hv_content(request->packet, request, rad_request_hv, &vp)) > 0 ) {
+		if ((get_hv_content(request->packet, request, rad_request_hv, &vp, "RAD_REQUEST", "request")) > 0 ) {
 			pairfree(&request->packet->vps);
 			request->packet->vps = vp;
 			vp = NULL;
@@ -821,13 +821,13 @@ static int do_perl(void *instance, REQUEST *request, char const *function_name)
 				request->password = pairfind(request->packet->vps, PW_CHAP_PASSWORD, 0, TAG_ANY);
 		}
 
-		if ((get_hv_content(request->reply, request, rad_reply_hv, &vp)) > 0 ) {
+		if ((get_hv_content(request->reply, request, rad_reply_hv, &vp, "RAD_REPLY", "reply")) > 0 ) {
 			pairfree(&request->reply->vps);
 			request->reply->vps = vp;
 			vp = NULL;
 		}
 
-		if ((get_hv_content(request, request, rad_check_hv, &vp)) > 0 ) {
+		if ((get_hv_content(request, request, rad_check_hv, &vp, "RAD_CHECK", "control")) > 0 ) {
 			pairfree(&request->config_items);
 			request->config_items = vp;
 			vp = NULL;
@@ -835,14 +835,14 @@ static int do_perl(void *instance, REQUEST *request, char const *function_name)
 
 #ifdef WITH_PROXY
 		if (request->proxy &&
-		    (get_hv_content(request->proxy, request, rad_request_proxy_hv, &vp) > 0)) {
+		    (get_hv_content(request->proxy, request, rad_request_proxy_hv, &vp, "RAD_REQUEST_PROXY", "proxy-request") > 0)) {
 			pairfree(&request->proxy->vps);
 			request->proxy->vps = vp;
 			vp = NULL;
 		}
 
 		if (request->proxy_reply &&
-		    (get_hv_content(request->proxy_reply, request, rad_request_proxy_reply_hv, &vp) > 0)) {
+		    (get_hv_content(request->proxy_reply, request, rad_request_proxy_reply_hv, &vp, "RAD_REQUEST_PROXY_REPLY", "proxy-reply") > 0)) {
 			pairfree(&request->proxy_reply->vps);
 			request->proxy_reply->vps = vp;
 			vp = NULL;
