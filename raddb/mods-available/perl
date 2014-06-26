@@ -17,10 +17,10 @@ perl {
 	#  The following hashes are given to the module and
 	#  filled with value-pairs (Attribute names and values)
 	#
-	#  %RAD_CHECK		Check items
-	#  %RAD_REQUEST		Attributes from the request
-	#  %RAD_REPLY		Attributes for the reply
-	#  %RAD_REQUEST_PROXY	Attributes from the proxied request
+	#  %RAD_CHECK               Check items
+	#  %RAD_REQUEST             Attributes from the request
+	#  %RAD_REPLY               Attributes for the reply
+	#  %RAD_REQUEST_PROXY       Attributes from the proxied request
 	#  %RAD_REQUEST_PROXY_REPLY Attributes from the proxy reply
 	#
 	#  The interface between FreeRADIUS and Perl is strings.
@@ -53,7 +53,7 @@ perl {
 	#		name = "value of name from config.sub-config"
 	#	}
 	#}
-	
+
 	#
 	#  List of functions in the module to call.
 	#  Uncomment and change if you want to use function
