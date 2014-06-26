@@ -665,7 +665,7 @@ static int pairadd_sv(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, char 
 		fail:
 			REDEBUG("Failed to create pair %s:%s %s %s", list_name, key,
 				fr_int2str(fr_tokens, op, "<INVALID>"), val);
-			return 0;
+			return -1;
 		}
 
 		switch (vp->da->type) {
@@ -679,21 +679,22 @@ static int pairadd_sv(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, char 
 
 		RDEBUG("&%s:%s %s $%s{'%s'} -> '%s'", list_name, key, fr_int2str(fr_tokens, op, "<INVALID>"),
 		       hashname, key, val);
-		return 1;
+		return 0;
 	}
-	return 0;
+	return -1;
 }
 
 /*
  *     Gets the content from hashes
  */
-static int get_hv_content(TALLOC_CTX *ctx, REQUEST *request, HV *my_hv, VALUE_PAIR **vps, const char *hashname, const char *list_name)
+static int get_hv_content(TALLOC_CTX *ctx, REQUEST *request, HV *my_hv, VALUE_PAIR **vps,
+			  const char *hashname, const char *list_name)
 {
 	SV		*res_sv, **av_sv;
 	AV		*av;
 	char		*key;
 	I32		key_len, len, i, j;
-	int		ret=0;
+	int		ret = 0;
 
 	*vps = NULL;
 	for (i = hv_iterinit(my_hv); i > 0; i--) {
@@ -823,7 +824,7 @@ static int do_perl(void *instance, REQUEST *request, char const *function_name)
 		LEAVE;
 
 		vp = NULL;
-		if ((get_hv_content(request->packet, request, rad_request_hv, &vp, "RAD_REQUEST", "request")) > 0 ) {
+		if ((get_hv_content(request->packet, request, rad_request_hv, &vp, "RAD_REQUEST", "request")) == 0) {
 			pairfree(&request->packet->vps);
 			request->packet->vps = vp;
 			vp = NULL;
@@ -837,13 +838,13 @@ static int do_perl(void *instance, REQUEST *request, char const *function_name)
 				request->password = pairfind(request->packet->vps, PW_CHAP_PASSWORD, 0, TAG_ANY);
 		}
 
-		if ((get_hv_content(request->reply, request, rad_reply_hv, &vp, "RAD_REPLY", "reply")) > 0 ) {
+		if ((get_hv_content(request->reply, request, rad_reply_hv, &vp, "RAD_REPLY", "reply")) == 0) {
 			pairfree(&request->reply->vps);
 			request->reply->vps = vp;
 			vp = NULL;
 		}
 
-		if ((get_hv_content(request, request, rad_check_hv, &vp, "RAD_CHECK", "control")) > 0 ) {
+		if ((get_hv_content(request, request, rad_check_hv, &vp, "RAD_CHECK", "control")) == 0) {
 			pairfree(&request->config_items);
 			request->config_items = vp;
 			vp = NULL;
@@ -852,7 +853,7 @@ static int do_perl(void *instance, REQUEST *request, char const *function_name)
 #ifdef WITH_PROXY
 		if (request->proxy &&
 		    (get_hv_content(request->proxy, request, rad_request_proxy_hv, &vp,
-		    		    "RAD_REQUEST_PROXY", "proxy-request") > 0)) {
+		    		    "RAD_REQUEST_PROXY", "proxy-request") == 0)) {
 			pairfree(&request->proxy->vps);
 			request->proxy->vps = vp;
 			vp = NULL;
@@ -860,7 +861,7 @@ static int do_perl(void *instance, REQUEST *request, char const *function_name)
 
 		if (request->proxy_reply &&
 		    (get_hv_content(request->proxy_reply, request, rad_request_proxy_reply_hv, &vp,
-		    		    "RAD_REQUEST_PROXY_REPLY", "proxy-reply") > 0)) {
+		    		    "RAD_REQUEST_PROXY_REPLY", "proxy-reply") == 0)) {
 			pairfree(&request->proxy_reply->vps);
 			request->proxy_reply->vps = vp;
 			vp = NULL;
