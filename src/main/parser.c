@@ -472,7 +472,23 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 
 			c->data.vpt = radius_str2tmpl(c, lhs, lhs_type, REQUEST_CURRENT, PAIR_LIST_REQUEST);
 			if (!c->data.vpt) {
-				return_P("Failed creating exists");
+				/*
+				 *	If strings are T_BARE_WORD and they start with '&',
+				 *	then they refer to attributes which have not yet been
+				 *	defined.  Create the template(s) as literals, and
+				 *	fix them up in pass2.
+				 */
+				if ((*lhs != '&') ||
+				    (lhs_type != T_BARE_WORD)) {
+					return_P("Failed creating exists");
+				}
+				c->data.vpt = radius_str2tmpl(c, lhs + 1, lhs_type, REQUEST_CURRENT, PAIR_LIST_REQUEST);
+				if (!c->data.vpt) {
+					return_P("Failed creating exists");
+				}
+				rad_const_free(c->data.vpt->name);
+				c->data.vpt->name = talloc_strdup(c->data.vpt, lhs);
+				c->pass2_fixup = PASS2_FIXUP_ATTR;
 			}
 
 			rad_assert(c->data.vpt->type != VPT_TYPE_REGEX);
@@ -628,7 +644,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 						     REQUEST_CURRENT, PAIR_LIST_REQUEST);
 			if (!c->data.map) {
 				/*
-				 *	FIXME: if strings are T_BARE_WORD and they start with '&',
+				 *	If strings are T_BARE_WORD and they start with '&',
 				 *	then they refer to attributes which have not yet been
 				 *	defined.  Create the template(s) as literals, and
 				 *	fix them up in pass2.
@@ -1052,6 +1068,9 @@ done:
 		/*
 		 *	FOO =* BAR --> FOO
 		 *	FOO !* BAR --> !FOO
+		 *
+		 *	FOO may be a string, or a delayed attribute
+		 *	reference.
 		 */
 		if ((c->data.map->op == T_OP_CMP_TRUE) ||
 		    (c->data.map->op == T_OP_CMP_FALSE)) {
@@ -1182,6 +1201,11 @@ done:
 	/*
 	 *	Existence checks.  We short-circuit static strings,
 	 *	too.
+	 *
+	 *	FIXME: the data types should be in the template, too.
+	 *	So that we know where a literal came from.
+	 *
+	 *	"foo" is NOT the same as 'foo' or a bare foo.
 	 */
 	if (c->type == COND_TYPE_EXISTS) {
 		switch (c->data.vpt->type) {
@@ -1233,6 +1257,7 @@ done:
 
 			} else if (lhs_type == T_BARE_WORD) {
 				int rcode;
+				bool zeros = true;
 				char const *q;
 
 				for (q = c->data.vpt->name;
@@ -1241,6 +1266,7 @@ done:
 					if (!isdigit((int) *q)) {
 						break;
 					}
+					if (*q != '0') zeros = false;
 				}
 
 				/*
@@ -1248,8 +1274,20 @@ done:
 				 *	'true'.
 				 */
 				if (!*q) {
-					c->type = COND_TYPE_TRUE;
+					if (zeros) {
+						c->type = COND_TYPE_TRUE;
+					} else {
+						c->type = COND_TYPE_TRUE;
+					}
 					TALLOC_FREE(c->data.vpt);
+					break;
+				}
+
+				/*
+				 *	Allow &Foo-Bar where Foo-Bar is an attribute
+				 *	defined by a module.
+				 */
+				if (c->pass2_fixup == PASS2_FIXUP_ATTR) {
 					break;
 				}
 

@@ -2880,6 +2880,7 @@ static bool pass2_callback(UNUSED void *ctx, fr_cond_t *c)
 	value_pair_map_t *map;
 
 	if (c->type == COND_TYPE_EXISTS) {
+
 		if (c->data.vpt->type == VPT_TYPE_XLAT) {
 			return pass2_xlat_compile(c->ci, &c->data.vpt, true);
 		}
@@ -2887,8 +2888,21 @@ static bool pass2_callback(UNUSED void *ctx, fr_cond_t *c)
 		rad_assert(c->data.vpt->type != VPT_TYPE_REGEX);
 
 		/*
-		 *	FIXME: fix up attribute references, too!
+		 *	The existence check might have been &Foo-Bar,
+		 *	where Foo-Bar is defined by a module.
 		 */
+		if (c->pass2_fixup == PASS2_FIXUP_ATTR) {
+			value_pair_tmpl_t *vpt;
+			vpt = radius_str2tmpl(c, c->data.vpt->name, T_BARE_WORD, REQUEST_CURRENT, PAIR_LIST_REQUEST);
+			if (!vpt) {
+				cf_log_err(c->ci, "Unknown attribute '%s'", c->data.vpt->name + 1);
+				return false;
+			}
+
+			talloc_free(c->data.vpt);
+			c->data.vpt = vpt;
+			c->pass2_fixup = PASS2_FIXUP_NONE;
+		}
 		return true;
 	}
 
