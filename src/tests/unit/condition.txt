@@ -473,3 +473,11 @@ data &Tunnel-Password:1[0] == "Hello"
 
 condition &Tunnel-Password:1[3] == "Hello"
 data &Tunnel-Password:1[3] == "Hello"
+
+#
+#  This is allowed for pass2-fixups.  Foo-Bar MAY be an attribute.
+#  If so allow it so that pass2 can fix it up.  Until then,
+#  it's a literal.
+#
+condition &Foo-Bar
+data '&Foo-Bar'
