@@ -724,10 +724,7 @@ static void common_socket_free(rad_listen_t *this)
 	}
 }
 #else
-static void common_socket_free(UNUSED rad_listen_t *this)
-{
-	return;
-}
+#define common_socket_free NULL
 #endif
 
 /*
