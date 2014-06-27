@@ -43,14 +43,14 @@ RCSID("$Id$")
 #endif
 
 /*
- * glibc 2.4 and uClibc 0.9.29 introduce IPV6_RECVPKTINFO etc. and
- * change IPV6_PKTINFO This is only supported in Linux kernel >=
- * 2.6.14
+ *  glibc 2.4 and uClibc 0.9.29 introduce IPV6_RECVPKTINFO etc. and
+ *  change IPV6_PKTINFO This is only supported in Linux kernel >=
+ *  2.6.14
  *
- * This is only an approximation because the kernel version that libc
- * was compiled against could be older or newer than the one being
- * run.  But this should not be a problem -- we just keep using the
- * old kernel interface.
+ *  This is only an approximation because the kernel version that libc
+ *  was compiled against could be older or newer than the one being
+ *  run.  But this should not be a problem -- we just keep using the
+ *  old kernel interface.
  */
 #ifdef __linux__
 #  ifdef IPV6_RECVPKTINFO
@@ -67,26 +67,26 @@ RCSID("$Id$")
 #  elif defined(IPV6_2292PKTINFO)
 #      define IPV6_RECVPKTINFO IPV6_2292PKTINFO
 #  endif
-#endif
+#else
 
 /*
- *	Linux requires IPV6_RECVPKTINFO for the setsockopt() call,
- *	but sendmsg() and recvmsg() require IPV6_PKTINFO. <sigh>
+ *  For everything that's not Linux we assume RFC 3542 compliance
+ *  - setsockopt() takes IPV6_RECVPKTINFO
+ *  - cmsg_type is IPV6_PKTINFO (in sendmsg, recvmsg)
  *
- *	We want all *other* (i.e. sane) systems to use IPV6_PKTINFO
- *	for all three calls.
+ *  If we don't have IPV6_RECVPKTINFO defined but do have IPV6_PKTINFO
+ *  defined, chances are the API is RFC2292 compliant and we need to use
+ *  IPV6_PKTINFO for both.
  */
-#ifdef IPV6_PKTINFO
-#  ifdef __linux__
-#    ifdef IPV6_RECVPKTINFO
-#      define FR_IPV6_RECVPKTINFO IPV6_RECVPKTINFO
-/* Fallback to to using recvfrom */
-#    else
-#      undef IPV6_RECVPKTINFO
-#      undef IPV6_PKTINFO
-#    endif
-#  else
-#    define FR_IPV6_RECVPKTINFO IPV6_PKTINFO
+#  if !defined(IPV6_RECVPKTINFO) && defined(IPV6_PKTINFO)
+#    define IPV6_RECVPKTINFO IPV6_PKTINFO
+
+/*
+ *  Ensure IPV6_RECVPKTINFO is not defined somehow if we have we
+ *  don't have IPV6_PKTINFO.
+ */
+#  elif !defined(IPV6_PKTINFO)
+#    undef IPV6_RECVPKTINFO
 #  endif
 #endif
 
@@ -142,7 +142,7 @@ int udpfromto_init(int s)
 		/*
 		 *	Work around Linux-specific hackery.
 		 */
-		flag = FR_IPV6_RECVPKTINFO;
+		flag = IPV6_RECVPKTINFO;
 #else
 #  ifdef EPROTONOSUPPORT
 		errno = EPROTONOSUPPORT;

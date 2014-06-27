@@ -7239,7 +7239,7 @@ case "$host" in
     CFLAGS="$CFLAGS -DDARWIN"
     LIBS="-framework DirectoryService $LIBS"
 
-$as_echo "#define __APPLE_USE_RFC_2292 1" >>confdefs.h
+$as_echo "#define __APPLE_USE_RFC_3542 1" >>confdefs.h
 
     ;;
 esac

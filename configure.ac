@@ -890,7 +890,7 @@ case "$host" in
   *-darwin*)
     CFLAGS="$CFLAGS -DDARWIN"
     LIBS="-framework DirectoryService $LIBS"
-    AC_DEFINE([__APPLE_USE_RFC_2292], 1, [Force OSX >= 10.7 Lion to use RFC2292 IPv6 socket options])
+    AC_DEFINE([__APPLE_USE_RFC_3542], 1, [Force OSX >= 10.7 Lion to use RFC2292 IPv6 socket options])
     ;;
 esac
 
