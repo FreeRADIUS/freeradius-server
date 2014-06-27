@@ -915,6 +915,7 @@ AC_CHECK_HEADERS( \
   syslog.h \
   inttypes.h \
   stdint.h \
+  stdbool.h \
   stdio.h \
   netdb.h \
   semaphore.h \

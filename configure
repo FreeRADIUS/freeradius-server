@@ -7607,6 +7607,7 @@ for ac_header in \
   syslog.h \
   inttypes.h \
   stdint.h \
+  stdbool.h \
   stdio.h \
   netdb.h \
   semaphore.h \
