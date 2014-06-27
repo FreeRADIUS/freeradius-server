@@ -371,7 +371,7 @@ home_server tls {
 	ipaddr = 127.0.0.1
 	port = 2083
 	type = auth
-	secret = testing123
+	secret = radsec
 	proto = tcp
 	status_check = none
 
