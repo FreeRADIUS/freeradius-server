@@ -2050,7 +2050,7 @@ static fr_protocol_t master_listen[RAD_LISTEN_MAX] = {
 #ifdef WITH_PROXY
 	/* proxying */
 	{ RLM_MODULE_INIT, "proxy", sizeof(listen_socket_t), NULL,
-	  common_socket_parse, NULL,
+	  common_socket_parse, common_socket_free,
 	  proxy_socket_recv, proxy_socket_send,
 	  common_socket_print, proxy_socket_encode, proxy_socket_decode },
 #endif
