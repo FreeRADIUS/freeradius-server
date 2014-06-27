@@ -4186,7 +4186,8 @@ static void listener_free_cb(void *ctx)
 
 	this->print(this, buffer, sizeof(buffer));
 	DEBUG("... cleaning up socket %s", buffer);
-	listen_free(&this);
+	rad_assert(this->next == NULL);
+	talloc_free(this);
 }
 #endif
 
