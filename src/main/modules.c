@@ -1541,7 +1541,6 @@ int modules_init(CONF_SECTION *config)
 {
 	CONF_ITEM	*ci, *next;
 	CONF_SECTION	*cs, *modules;
-	rad_listen_t	*listener;
 
 	/*
 	 *	Set up the internal module struct.
@@ -1739,29 +1738,6 @@ int modules_init(CONF_SECTION *config)
 		if (!module) return -1;
 	}
 	cf_log_info(cs, " } # modules");
-
-	/*
-	 *	Loop over the listeners, figuring out which sections
-	 *	to load.
-	 */
-	for (listener = main_config.listen;
-	     listener != NULL;
-	     listener = listener->next) {
-		char buffer[256];
-
-#ifdef WITH_PROXY
-		if (listener->type == RAD_LISTEN_PROXY) continue;
-#endif
-
-		cs = cf_section_sub_find_name2(config,
-					       "server", listener->server);
-		if (!cs && (listener->server != NULL)) {
-			listener->print(listener, buffer, sizeof(buffer));
-
-			ERROR("No server has been defined for %s", buffer);
-			return -1;
-		}
-	}
 
 	if (virtual_servers_load(config) < 0) return -1;
 
