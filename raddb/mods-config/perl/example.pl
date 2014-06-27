@@ -34,14 +34,14 @@ use warnings;
 use Data::Dumper;
 
 # Bring the global hashes into the package scope
-our (%RAD_REQUEST, %RAD_REPLY, %RAD_CHECK);
+our (%RAD_REQUEST, %RAD_REPLY, %RAD_CONFIG);
 
 # This is hash wich hold original request from radius
 #my %RAD_REQUEST;
 # In this hash you add values that will be returned to NAS.
 #my %RAD_REPLY;
-#This is for check items
-#my %RAD_CHECK;
+#This is for config items (was %RAD_CHECK in earlier versions)
+#my %RAD_CONFIG;
 # This is configuration items from "config" perl module configuration section
 #my %RAD_PERLCONF;
 

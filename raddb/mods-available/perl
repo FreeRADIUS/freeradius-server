@@ -17,7 +17,7 @@ perl {
 	#  The following hashes are given to the module and
 	#  filled with value-pairs (Attribute names and values)
 	#
-	#  %RAD_CHECK		Check items
+	#  %RAD_CONFIG		Config items (was %RAD_CHECK)
 	#  %RAD_REQUEST		Attributes from the request
 	#  %RAD_REPLY		Attributes for the reply
 	#  %RAD_REQUEST_PROXY	Attributes from the proxied request

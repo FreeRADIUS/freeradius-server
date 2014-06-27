@@ -743,7 +743,7 @@ static int get_hv_content(TALLOC_CTX *ctx, REQUEST *request, HV *my_hv, VALUE_PA
 
 /*
  * 	Call the function_name inside the module
- * 	Store all vps in hashes %RAD_CHECK %RAD_REPLY %RAD_REQUEST
+ * 	Store all vps in hashes %RAD_CONFIG %RAD_REPLY %RAD_REQUEST 
  *
  */
 static int do_perl(void *instance, REQUEST *request, char const *function_name)
@@ -755,7 +755,6 @@ static int do_perl(void *instance, REQUEST *request, char const *function_name)
 	STRLEN		n_a;
 
 	HV		*rad_reply_hv;
-	HV		*rad_check_hv;
 	HV		*rad_config_hv;
 	HV		*rad_request_hv;
 #ifdef WITH_PROXY
@@ -792,12 +791,10 @@ static int do_perl(void *instance, REQUEST *request, char const *function_name)
 		SAVETMPS;
 
 		rad_reply_hv = get_hv("RAD_REPLY", 1);
-		rad_check_hv = get_hv("RAD_CHECK", 1);
 		rad_config_hv = get_hv("RAD_CONFIG", 1);
 		rad_request_hv = get_hv("RAD_REQUEST", 1);
 
 		perl_store_vps(request->reply, request, request->reply->vps, rad_reply_hv, "RAD_REPLY", "reply");
-		perl_store_vps(request, request, request->config_items, rad_check_hv, "RAD_CHECK", "control");
 		perl_store_vps(request->packet, request, request->packet->vps, rad_request_hv, "RAD_REQUEST", "request");
 		perl_store_vps(request, request, request->config_items, rad_config_hv, "RAD_CONFIG", "control");
 
@@ -825,7 +822,7 @@ static int do_perl(void *instance, REQUEST *request, char const *function_name)
 		 * This way %RAD_xx can be pushed onto stack as sub parameters.
 		 * XPUSHs( newRV_noinc((SV *)rad_request_hv) );
 		 * XPUSHs( newRV_noinc((SV *)rad_reply_hv) );
-		 * XPUSHs( newRV_noinc((SV *)rad_check_hv) );
+		 * XPUSHs( newRV_noinc((SV *)rad_config_hv) );
 		 * PUTBACK;
 		 */
 
@@ -873,7 +870,7 @@ static int do_perl(void *instance, REQUEST *request, char const *function_name)
 			vp = NULL;
 		}
 
-		if ((get_hv_content(request, request, rad_check_hv, &vp, "RAD_CHECK", "control")) == 0) {
+		if ((get_hv_content(request, request, rad_config_hv, &vp, "RAD_CONFIG", "control")) == 0) {
 			pairfree(&request->config_items);
 			request->config_items = vp;
 			vp = NULL;
