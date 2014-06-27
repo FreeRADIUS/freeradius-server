@@ -2748,6 +2748,7 @@ static rad_listen_t *listen_parse(CONF_SECTION *cs, char const *server)
 	CONF_PAIR	*cp;
 	char const	*value;
 	lt_dlhandle	handle;
+	CONF_SECTION	*server_cs;
 	char		buffer[32];
 
 	cp = cf_pair_find(cs, "type");
@@ -2858,6 +2859,15 @@ static rad_listen_t *listen_parse(CONF_SECTION *cs, char const *server)
 	 *	Call per-type parser.
 	 */
 	if (master_listen[type].parse(cs, this) < 0) {
+		listen_free(&this);
+		return NULL;
+	}
+
+
+	server_cs = cf_section_sub_find_name2(main_config.config, "server",
+					      this->server);
+	if (!server_cs) {
+		cf_log_err_cs(cs, "No such server \"%s\"", this->server);
 		listen_free(&this);
 		return NULL;
 	}
