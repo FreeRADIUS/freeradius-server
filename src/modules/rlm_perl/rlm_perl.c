@@ -699,8 +699,8 @@ static int pairadd_sv(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, char 
 			break;
 
 		case PW_TYPE_OCTETS:
-			pairmemcpy(vp, val, len);
-			break
+			pairmemcpy(vp, (uint8_t const *)val, len);
+			break;
 
 		default:
 			if (pairparsevalue(vp, val, len) < 0) goto fail;
