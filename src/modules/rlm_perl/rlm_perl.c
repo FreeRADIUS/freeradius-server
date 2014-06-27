@@ -571,9 +571,9 @@ static void perl_store_vps(UNUSED TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR 
 	for (vp = fr_cursor_init(&cursor, &vps);
 	     vp;
 	     vp = fr_cursor_next(&cursor)) {
-	     	VALUE_PAIR *next;
+		VALUE_PAIR *next;
 
-	     	char const *name;
+		char const *name;
 		char namebuf[256];
 		char buffer[1024];
 
@@ -603,11 +603,11 @@ static void perl_store_vps(UNUSED TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR 
 			for (next = fr_cursor_first(&cursor), i = 0;
 			     next;
 			     next = fr_cursor_next_by_da(&cursor, vp->da, vp->tag), i++) {
-			     	switch (vp->da->type) {
-			     	case PW_TYPE_STRING:
-			     		RDEBUG("$%s{'%s'}[%i] = &%s:%s -> '%s'", hashname, next->da->name, i,
-			     		       list_name, next->da->name, next->vp_strvalue);
-			     		av_push(av, newSVpvn(next->vp_strvalue, next->length));
+				switch (vp->da->type) {
+				case PW_TYPE_STRING:
+					RDEBUG("$%s{'%s'}[%i] = &%s:%s -> '%s'", hashname, next->da->name, i,
+					       list_name, next->da->name, next->vp_strvalue);
+					av_push(av, newSVpvn(next->vp_strvalue, next->length));
 					break;
 
 				case PW_TYPE_OCTETS:
