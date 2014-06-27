@@ -47,9 +47,6 @@
 #  if !defined(PTRACE_ATTACH) && defined(PT_ATTACH)
 #    define PTRACE_ATTACH PT_ATTACH
 #  endif
-#  if !defined(PTRACE_CONT) && defined(PT_CONTINUE)
-#    define PTRACE_CONT PT_CONTINUE
-#  endif
 #  if !defined(PTRACE_DETACH) && defined(PT_DETACH)
 #    define PTRACE_DETACH PT_DETACH
 #  endif
@@ -143,22 +140,29 @@ static int fr_debugger_attached(void)
 	/* Child */
 	if (pid == 0) {
 		int8_t ret = 0;
-      		int ppid = getppid();
+		int ppid = getppid();
 
 		/* Close parent's side */
 		close(from_child[0]);
 
-      		if (_PTRACE(PTRACE_ATTACH, ppid) == 0) {
-      			/* If we attached then we're not running under a debugger */
-      			if (write(from_child[1], &ret, sizeof(ret)) < 0) {
-      				fprintf(stderr, "Writing ptrace status to parent failed: %s", fr_syserror(errno));
-      			}
-
-			/* Wait for the parent to stop and continue it */
+		/*
+		 *	FreeBSD is extremely picky about the order of operations here
+		 *	we need to attach, wait *then* write whilst the parent is still
+		 *	suspended, then detach, continuing the process.
+		 *
+		 *	If we don't do it in that order the read in the parent triggers
+		 *	a SIGKILL.
+		 */
+		if (_PTRACE(PTRACE_ATTACH, ppid) == 0) {
+			/* Wait for the parent to stop */
 			waitpid(ppid, NULL, 0);
-			_PTRACE(PTRACE_CONT, ppid);
 
-        		/* Detach */
+			/* If we attached then we're not running under a debugger */
+			if (write(from_child[1], &ret, sizeof(ret)) < 0) {
+				fprintf(stderr, "Writing ptrace status to parent failed: %s", fr_syserror(errno));
+			}
+
+			/* Detach */
 			_PTRACE(PTRACE_DETACH, ppid);
 			exit(0);
 		}
@@ -166,7 +170,7 @@ static int fr_debugger_attached(void)
 		ret = 1;
 		/* Something is already attached */
 		if (write(from_child[1], &ret, sizeof(ret)) < 0) {
-      			fprintf(stderr, "Writing ptrace status to parent failed: %s", fr_syserror(errno));
+			fprintf(stderr, "Writing ptrace status to parent failed: %s", fr_syserror(errno));
 		}
 
 		exit(0);
@@ -185,7 +189,7 @@ static int fr_debugger_attached(void)
 		/* Ret not updated */
 		if (ret < 0) {
 			fr_strerror_printf("Debugger check failed: Error getting status from child: %s",
-					   fr_syserror(errno));
+			fr_syserror(errno));
 		}
 
 		/* Close the pipes here (if we did it above, it might race with pattach) */
