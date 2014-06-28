@@ -243,7 +243,7 @@ chbind_packet_t *eap_chbind_vp2packet(TALLOC_CTX *ctx, VALUE_PAIR *vps)
 	 *	Compute the total length of the channel binding data.
 	 */
 	length = 0;
-	for (vp =fr_cursor_init(&cursor, first);
+	for (vp =fr_cursor_init(&cursor, &first);
 	     vp != NULL;
 	     vp = fr_cursor_next_by_num(&cursor, PW_UKERNA_CHBIND, VENDORPEC_UKERNA, TAG_ANY)) {
 		length += vp->length;
@@ -264,7 +264,7 @@ chbind_packet_t *eap_chbind_vp2packet(TALLOC_CTX *ctx, VALUE_PAIR *vps)
 	 *	Copy the data over to our packet.
 	 */
 	packet = (chbind_packet_t *) ptr;
-	for (vp = fr_cursor_init(&cursor, first);
+	for (vp = fr_cursor_init(&cursor, &first);
 	     vp != NULL;
 	     vp = fr_cursor_next_by_num(&cursor, PW_UKERNA_CHBIND, VENDORPEC_UKERNA, TAG_ANY)) {
 		memcpy(ptr, vp->vp_octets, vp->length);
