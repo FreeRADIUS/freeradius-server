@@ -1196,9 +1196,6 @@ int eapttls_process(eap_handler_t *handler, tls_session_t *tls_session)
 		}
 		chbind_code = chbind_process(request, req);
 
-		/* free the chbind packet; we're done with it */
-		free(chbind);
-
 		/* encapsulate response here */
 		if (req->response) {
 			RDEBUG("sending chbind response");
