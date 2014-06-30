@@ -63,10 +63,10 @@ RCSID("$Id$")
 
 static char const *eap_codes[] = {
 	 "",				/* 0 is invalid */
-	"request",
-	"response",
-	"success",
-	"failure"
+	"Request",
+	"Response",
+	"Success",
+	"Failure"
 };
 
 static int _eap_module_free(eap_module_t *inst)
@@ -361,7 +361,7 @@ eap_rcode_t eap_method_select(rlm_eap_t *inst, eap_handler_t *handler)
 	 *	Don't trust anyone.
 	 */
 	if ((type->num == 0) || (type->num >= PW_EAP_MAX_TYPES)) {
-		REDEBUG("Peer sent type (%d), which is outside known range", type->num);
+		REDEBUG("Peer sent method %d, which is outside known range", type->num);
 
 		return EAP_INVALID;
 	}
@@ -375,7 +375,7 @@ eap_rcode_t eap_method_select(rlm_eap_t *inst, eap_handler_t *handler)
 		return EAP_INVALID;
 	}
 
-	RDEBUG2("Peer sent %s (%d)", eap_type2name(type->num), type->num);
+	RDEBUG2("Peer sent method %s (%d)", eap_type2name(type->num), type->num);
 	/*
 	 *	Figure out what to do.
 	 */
@@ -779,10 +779,11 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 	    (eap_msg->vp_octets[0] >= PW_EAP_MAX_CODES)) {
 		RDEBUG2("Unknown EAP packet");
 	} else {
-		RDEBUG2("EAP packet type %s id %d length %zu",
-		       eap_codes[eap_msg->vp_octets[0]],
-		       eap_msg->vp_octets[1],
-		       eap_msg->length);
+		RDEBUG2("Peer sent code %s (%i) ID %d length %zu",
+		        eap_codes[eap_msg->vp_octets[0]],
+		        eap_msg->vp_octets[0],
+		        eap_msg->vp_octets[1],
+		        eap_msg->length);
 	}
 
 	/*
