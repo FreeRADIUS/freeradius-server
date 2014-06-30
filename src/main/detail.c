@@ -676,7 +676,6 @@ static RADIUS_PACKET *detail_poll(rad_listen_t *listener)
 	if (!packet) {
 		ERROR("FATAL: Failed allocating memory for detail");
 		fr_exit(1);
-		_exit(1);
 	}
 
 	memset(packet, 0, sizeof(*packet));

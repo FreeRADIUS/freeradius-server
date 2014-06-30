@@ -433,7 +433,6 @@ int fr_event_loop(fr_event_list_t *el)
 			ev = fr_heap_peek(el->times);
 			if (!ev) {
 				fr_exit_now(42);
-				_exit(42);
 			}
 
 			gettimeofday(&el->now, NULL);
