@@ -609,25 +609,42 @@ int dict_addvendor(char const *name, unsigned int value)
 /*
  *	[a-zA-Z0-9_-:.]+
  */
-const int dict_attr_allowed_chars[256] = {
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1,
-	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0,
-	0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1,
-	0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
-};
+inline int dict_valid_name(char const *name)
+{
+	uint8_t const *p;
 
+	static const int dict_attr_allowed_chars[256] = {
+		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1,
+		1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0,
+		0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+		1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1,
+		0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+		1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+	};
+
+	for (p = (uint8_t const *) name; *p != '\0'; p++) {
+		if (!dict_attr_allowed_chars[*p]) {
+			char buff[5];
+
+			fr_print_string((char const *)p, 1, buff, sizeof(buff));
+			fr_strerror_printf("Invalid character '%s' in attribute", buff);
+
+			return -(p - (uint8_t const *)name);
+		}
+	}
+
+	return 0;
+}
 
 /*
  *	Add an attribute to the dictionary.
@@ -637,7 +654,6 @@ int dict_addattr(char const *name, int attr, unsigned int vendor, PW_TYPE type,
 {
 	size_t namelen;
 	static int      max_attr = 0;
-	uint8_t const *p;
 	DICT_ATTR const	*da;
 	DICT_ATTR *n;
 
@@ -647,12 +663,7 @@ int dict_addattr(char const *name, int attr, unsigned int vendor, PW_TYPE type,
 		return -1;
 	}
 
-	for (p = (uint8_t const *) name; *p != '\0'; p++) {
-		if (!dict_attr_allowed_chars[*p]) {
-			fr_strerror_printf("dict_addattr: Invalid character '%c' in attribute name", *p);
-			return -1;
-		}
-	}
+	if (dict_valid_name(name) < 0) return -1;
 
 	if (flags.has_tag &&
 	    !((type == PW_TYPE_INTEGER) || (type == PW_TYPE_STRING))) {
@@ -2738,6 +2749,8 @@ DICT_ATTR const *dict_attrunknownbyname(char const *attribute, int vp_free)
 
 	DICT_VENDOR	*dv;
 	DICT_ATTR const	*da;
+
+	if (dict_valid_name(attribute) < 0) return NULL;
 
 	/*
 	 *	Pull off vendor prefix first.
