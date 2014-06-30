@@ -707,7 +707,7 @@ static void sig_fatal(int sig)
 		/* FALL-THROUGH */
 
 	default:
-		_exit(sig);
+		fr_exit(sig);
 	}
 }
 
