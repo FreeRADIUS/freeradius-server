@@ -114,7 +114,7 @@ int map_eapsim_basictypes(RADIUS_PACKET *r, eap_packet_t *ep)
 		 *
 		 * At this point, we only care about the size.
 		 */
-		if(vp->da->attr == PW_EAP_SIM_BASE + PW_EAP_SIM_MAC) {
+		if(vp->da->attr == PW_EAP_SIM_MAC) {
 			vplen = 18;
 		}
 
@@ -195,7 +195,7 @@ int map_eapsim_basictypes(RADIUS_PACKET *r, eap_packet_t *ep)
 		 * At this point, we put in zeros, and remember where the
 		 * sixteen bytes go.
 		 */
-		if(vp->da->attr == PW_EAP_SIM_BASE+PW_EAP_SIM_MAC) {
+		if(vp->da->attr == PW_EAP_SIM_MAC) {
 			roundedlen = 20;
 			memset(&attr[2], 0, 18);
 			macspace = &attr[4];
@@ -367,7 +367,7 @@ int eapsim_checkmac(TALLOC_CTX *ctx, VALUE_PAIR *rvps, uint8_t key[EAPSIM_AUTH_S
 	int elen,len;
 	VALUE_PAIR *mac;
 
-	mac = pairfind(rvps, PW_EAP_SIM_BASE+PW_EAP_SIM_MAC, 0, TAG_ANY);
+	mac = pairfind(rvps, PW_EAP_SIM_MAC, 0, TAG_ANY);
 
 	if(!mac || mac->length != 18) {
 		/* can't check a packet with no AT_MAC attribute */
