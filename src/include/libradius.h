@@ -440,6 +440,7 @@ char		*vp_aprint(TALLOC_CTX *ctx, VALUE_PAIR const *vp);
  *	Dictionary functions.
  */
 extern const int dict_attr_allowed_chars[256];
+inline int	dict_valid_name(char const *name);
 int		str2argv(char *str, char **argv, int max_argc);
 int		dict_str2oid(char const *ptr, unsigned int *pattr,
 			     unsigned int *pvendor, int tlv_depth);
