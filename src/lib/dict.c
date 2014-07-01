@@ -627,7 +627,7 @@ const int dict_attr_allowed_chars[256] = {
 /*
  *	[a-zA-Z0-9_-:.]+
  */
-inline int dict_valid_name(char const *name)
+int dict_valid_name(char const *name)
 {
 	uint8_t const *p;
 
