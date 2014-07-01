@@ -83,7 +83,7 @@ static int eap_sim_sendstart(eap_handler_t *handler)
 	words[1] = htons(EAP_SIM_VERSION);
 	words[2] = 0;
 
-	newvp = paircreate(packet, PW_EAP_SIM_BASE + PW_EAP_SIM_VERSION_LIST, 0);
+	newvp = paircreate(packet, PW_EAP_SIM_VERSION_LIST, 0);
 	pairmemcpy(newvp, (uint8_t const *) words, sizeof(words));
 
 	pairadd(vps, newvp);
@@ -98,7 +98,7 @@ static int eap_sim_sendstart(eap_handler_t *handler)
 	memcpy(ess->keys.versionlist, words + 1, ess->keys.versionlistlen);
 
 	/* the ANY_ID attribute. We do not support re-auth or pseudonym */
-	newvp = paircreate(packet, PW_EAP_SIM_BASE + PW_EAP_SIM_FULLAUTH_ID_REQ, 0);
+	newvp = paircreate(packet, PW_EAP_SIM_FULLAUTH_ID_REQ, 0);
 	newvp->length = 2;
 	newvp->vp_octets = p = talloc_array(newvp, uint8_t, 2);
 
@@ -301,7 +301,7 @@ static int eap_sim_sendchallenge(eap_handler_t *handler)
 	/*
 	 *	Okay, we got the challenges! Put them into an attribute.
 	 */
-	newvp = paircreate(packet, PW_EAP_SIM_BASE + PW_EAP_SIM_RAND, 0);
+	newvp = paircreate(packet, PW_EAP_SIM_RAND, 0);
 	newvp->length = 2 + (EAPSIM_RAND_SIZE * 3);
 	newvp->vp_octets = p = talloc_array(newvp, uint8_t, newvp->length);
 
@@ -330,7 +330,7 @@ static int eap_sim_sendchallenge(eap_handler_t *handler)
 	/*
 	 *	Use the SIM identity, if available
 	 */
-	newvp = pairfind(*invps, PW_EAP_SIM_BASE + PW_EAP_SIM_IDENTITY, 0, TAG_ANY);
+	newvp = pairfind(*invps, PW_EAP_SIM_IDENTITY, 0, TAG_ANY);
 	if (newvp && newvp->length > 2) {
 		uint16_t len;
 
@@ -357,7 +357,7 @@ static int eap_sim_sendchallenge(eap_handler_t *handler)
 	 *	We store the NONCE_MT in the MAC for the encoder, which
 	 *	will pull it out before it does the operation.
 	 */
-	newvp = paircreate(packet, PW_EAP_SIM_BASE + PW_EAP_SIM_MAC, 0);
+	newvp = paircreate(packet, PW_EAP_SIM_MAC, 0);
 	pairmemcpy(newvp, ess->keys.nonce_mt, 16);
 	pairreplace(outvps, newvp);
 
@@ -505,8 +505,8 @@ static int process_eap_sim_start(eap_handler_t *handler, VALUE_PAIR *vps)
 	uint16_t simversion;
 	ess = (eap_sim_state_t *)handler->opaque;
 
-	nonce_vp = pairfind(vps, PW_EAP_SIM_BASE + PW_EAP_SIM_NONCE_MT, 0, TAG_ANY);
-	selectedversion_vp = pairfind(vps, PW_EAP_SIM_BASE + PW_EAP_SIM_SELECTED_VERSION, 0, TAG_ANY);
+	nonce_vp = pairfind(vps, PW_EAP_SIM_NONCE_MT, 0, TAG_ANY);
+	selectedversion_vp = pairfind(vps, PW_EAP_SIM_SELECTED_VERSION, 0, TAG_ANY);
 	if (!nonce_vp || !selectedversion_vp) {
 		RDEBUG2("Client did not select a version and send a NONCE");
 		eap_sim_stateenter(handler, ess, eapsim_server_start);
