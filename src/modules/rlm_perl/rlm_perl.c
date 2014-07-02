@@ -600,7 +600,7 @@ static void perl_store_vps(UNUSED TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR 
 			AV *av;
 
 			av = newAV();
-			for (next = fr_cursor_first(&cursor), i = 0;
+			for (next = fr_cursor_next_by_da(&cursor, vp->da, vp->tag), i = 0;
 			     next;
 			     next = fr_cursor_next_by_da(&cursor, vp->da, vp->tag), i++) {
 			     	switch (vp->da->type) {
