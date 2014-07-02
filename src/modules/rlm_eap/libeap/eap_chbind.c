@@ -30,7 +30,8 @@ RCSID("$Id$")
 
 static bool chbind_build_response(REQUEST *request, CHBIND_REQ *chbind)
 {
-	size_t length, total;
+	int length;
+	size_t total;
 	uint8_t *ptr, *end;
 	VALUE_PAIR const *vp;
 	vp_cursor_t cursor;
