@@ -45,7 +45,7 @@ static bool chbind_build_response(REQUEST *request, CHBIND_REQ *chbind)
 		if (vp->da->flags.encrypt != FLAG_ENCRYPT_NONE) continue;
 		if (!vp->da->vendor && (vp->da->attr == PW_MESSAGE_AUTHENTICATOR)) continue;
 
-		total = 2 + vp->length;
+		total += 2 + vp->length;
 	}
 
 	/*
@@ -88,8 +88,15 @@ static bool chbind_build_response(REQUEST *request, CHBIND_REQ *chbind)
 	for (vp = fr_cursor_init(&cursor, &request->reply->vps);
 	     vp != NULL;
 	     vp = fr_cursor_next(&cursor)) {
-		length = rad_vp2attr(NULL, NULL, NULL, &vp, ptr, end - ptr);
-		ptr += length;
+		/*
+		 *	Skip things which shouldn't be in channel bindings.
+		 */
+		if (vp->da->flags.encrypt != FLAG_ENCRYPT_NONE) continue;
+		if (!vp->da->vendor && (vp->da->attr == PW_MESSAGE_AUTHENTICATOR)) continue;
+		if (ptr < end) {
+			length = rad_vp2attr(NULL, NULL, NULL, &vp, ptr, end - ptr);
+			ptr += length;
+		}
 	}
 
 	return true;
@@ -282,7 +289,7 @@ VALUE_PAIR *eap_chbind_packet2vp(REQUEST *request, const chbind_packet_t *packet
 
 	vp = paircreate(request->packet, PW_UKERNA_CHBIND, VENDORPEC_UKERNA);
 	if (!vp) return NULL;
-	pairmemcpy(vp, (const uint8_t *) packet, talloc_array_length(packet));
+	pairmemcpy(vp, (const uint8_t *) packet, talloc_array_length((uint8_t *)packet));
 
 	return vp;
 }
