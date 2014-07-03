@@ -600,9 +600,9 @@ static void perl_store_vps(UNUSED TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR 
 			AV *av;
 
 			av = newAV();
-			for (next = fr_cursor_next_by_da(&cursor, vp->da, vp->tag), i = 0;
-			     next;
-			     next = fr_cursor_next_by_da(&cursor, vp->da, vp->tag), i++) {
+			for (i = 0;
+			     (next = fr_cursor_next_by_da(&cursor, vp->da, vp->tag));
+			     i++) {
 			     	switch (vp->da->type) {
 			     	case PW_TYPE_STRING:
 			     		RDEBUG("$%s{'%s'}[%i] = &%s:%s -> '%s'", hashname, next->da->name, i,
