@@ -8,14 +8,12 @@
 # experimental modules
 %bcond_with rlm_idn
 %bcond_with rlm_redis
-%bcond_with rlm_rest
 %bcond_with rlm_ruby
 %bcond_with rlm_sql_freetds
 %bcond_with rlm_sql_oracle
 %{?_with_rlm_idn: %global _with_experimental_modules --with-experimental-modules}
 %{?_with_rlm_opendirectory: %global _with_experimental_modules --with-experimental-modules}
 %{?_with_rlm_redis: %global _with_experimental_modules --with-experimental-modules}
-%{?_with_rlm_rest: %global _with_experimental_modules --with-experimental-modules}
 %{?_with_rlm_ruby: %global _with_experimental_modules --with-experimental-modules}
 %{?_with_rlm_securid: %global _with_experimental_modules --with-experimental-modules}
 %{?_with_rlm_sql_freetds: %global _with_experimental_modules --with-experimental-modules}
@@ -26,7 +24,6 @@
 %{!?_with_rlm_opendirectory: %global _without_rlm_opendirectory --without-rlm_opendirectory}
 %{!?_with_rlm_redis: %global _without_rlm_redis --without-rlm_redis}
 %{!?_with_rlm_redis: %global _without_rlm_rediswho --without-rlm_rediswho}
-%{!?_with_rlm_rest: %global _without_rlm_rest --without-rlm_rest}
 %{!?_with_rlm_ruby: %global _without_rlm_ruby --without-rlm_ruby}
 %{!?_with_rlm_securid: %global _without_rlm_securid --without-rlm_securid}
 %{!?_with_rlm_sql_freetds: %global _without_rlm_sql_freetds --without-rlm_sql_freetds}
@@ -245,7 +242,6 @@ BuildRequires: hiredis-devel
 This plugin provides Redis support for the FreeRADIUS server project.
 %endif
 
-%if %{?_with_rlm_rest:1}%{!?_with_rlm_rest:0}
 %package rest
 Summary: REST support for FreeRADIUS
 Group: System Environment/Daemons
@@ -255,7 +251,6 @@ BuildRequires: json-c-devel >= 0.11
 
 %description rest
 This plugin provides REST support for the FreeRADIUS server project.
-%endif
 
 %if %{?_with_rlm_ruby:1}%{!?_with_rlm_ruby:0}
 %package ruby
@@ -314,6 +309,8 @@ export CFLAGS="$RPM_OPT_FLAGS -fpic"
         --without-rlm_sql_iodbc \
         --without-rlm_sql_firebird \
         --without-rlm_sql_db2 \
+        --with-jsonc-lib-dir=%{_libdir} \
+        --with-jsonc-include-dir=/usr/include/json \
         %{?_with_rlm_yubikey} \
         %{?_without_rlm_yubikey} \
         %{?_with_rlm_sql_oracle} \
@@ -335,10 +332,6 @@ export CFLAGS="$RPM_OPT_FLAGS -fpic"
         %{?_with_rlm_redis} \
         %{?_without_rlm_redis} \
         %{?_without_rlm_rediswho} \
-        %{?_with_rlm_rest} \
-        %{?_with_rlm_rest: --with-jsonc-lib-dir=%{_libdir}} \
-        %{?_with_rlm_rest: --with-jsonc-include-dir=/usr/include/json} \
-        %{?_without_rlm_rest} \
         %{?_with_rlm_ruby} \
         %{?_without_rlm_ruby}
 #        --with-modules="rlm_wimax" \
@@ -714,11 +707,9 @@ fi
 %{_libdir}/freeradius/rlm_rediswho.so
 %endif
 
-%if %{?_with_rlm_rest:1}%{!?_with_rlm_rest:0}
 %files rest
 %defattr(-,root,root)
 %{_libdir}/freeradius/rlm_rest.so
-%endif
 
 %if %{?_with_rlm_ruby:1}%{!?_with_rlm_ruby:0}
 %files ruby
