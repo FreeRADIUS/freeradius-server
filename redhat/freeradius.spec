@@ -246,8 +246,8 @@ This plugin provides Redis support for the FreeRADIUS server project.
 Summary: REST support for FreeRADIUS
 Group: System Environment/Daemons
 Requires: %{name} = %{version}-%{release}
-Requires: json-c >= 0.11
-BuildRequires: json-c-devel >= 0.11
+Requires: json-c >= 0.10
+BuildRequires: json-c-devel >= 0.10
 
 %description rest
 This plugin provides REST support for the FreeRADIUS server project.
