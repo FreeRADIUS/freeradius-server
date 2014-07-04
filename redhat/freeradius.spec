@@ -383,6 +383,9 @@ rm -rf $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/mods-config/sql/ippool/oracle
 rm -rf $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/mods-config/sql/ippool-dhcp/oracle
 rm -rf $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/mods-config/sql/main/oracle
 %endif
+%if %{?_with_rlm_unbound:0}%{!?_with_rlm_unbound:1}
+rm -rf $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/mods-config/unbound
+%endif
 
 # remove header files, we don't ship a devel package and the
 # headers have multilib conflicts
@@ -545,6 +548,8 @@ fi
 %dir %attr(755,root,root) %{_libdir}/freeradius
 %{_libdir}/freeradius/proto_dhcp.so
 %{_libdir}/freeradius/proto_vmps.so
+%{_libdir}/freeradius/proto_arp.so
+%{_libdir}/freeradius/proto_bfd.so
 %{_libdir}/freeradius/rlm_always.so
 %{_libdir}/freeradius/rlm_attr_filter.so
 %{_libdir}/freeradius/rlm_cache.so
@@ -589,6 +594,7 @@ fi
 %{_libdir}/freeradius/rlm_sqlcounter.so
 %{_libdir}/freeradius/rlm_sqlippool.so
 %{_libdir}/freeradius/rlm_unix.so
+%{_libdir}/freeradius/rlm_unpack.so
 %{_libdir}/freeradius/rlm_utf8.so
 %{_libdir}/freeradius/rlm_wimax.so
 %{?_with_rlm_idn: %{_libdir}/freeradius/rlm_idn.so}
