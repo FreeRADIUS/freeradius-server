@@ -167,7 +167,7 @@ static int send_packet(RADIUS_PACKET *req, RADIUS_PACKET **rep)
 	int i;
 	struct timeval	tv;
 
-	if (!req || !rep || !*rep) return -1;
+	if (!req || !rep) return -1;
 
 	for (i = 0; i < retries; i++) {
 		fd_set		rdfdesc;
@@ -940,9 +940,9 @@ static int sendrecv_eap(RADIUS_PACKET *rep)
 	} /* there WAS a password */
 
 	/* send the response, wait for the next request */
-	send_packet(req, &rep);
-	if (!rep) {
-		ERROR("Failed getting response");
+	send_packet(rep, &req);
+	if (!req) {
+		ERROR("Failed getting response (EAP-Request from server)");
 		return -1;
 	}
 
