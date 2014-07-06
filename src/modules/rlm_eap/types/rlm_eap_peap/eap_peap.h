@@ -33,13 +33,13 @@ typedef struct peap_tunnel_t {
 	VALUE_PAIR	*state;
 	VALUE_PAIR	*accept_vps;
 	int		status;
-	int		home_access_accept;
+	bool		home_access_accept;
 	int		default_method;
-	int		copy_request_to_tunnel;
-	int		use_tunneled_reply;
-	int		proxy_tunneled_request_as_eap;
+	bool		copy_request_to_tunnel;
+	bool		use_tunneled_reply;
+	bool		proxy_tunneled_request_as_eap;
 	char const	*virtual_server;
-	int		soh;
+	bool		soh;
 	char const	*soh_virtual_server;
 	VALUE_PAIR	*soh_reply_vps;
 	int		session_resumption_state;
