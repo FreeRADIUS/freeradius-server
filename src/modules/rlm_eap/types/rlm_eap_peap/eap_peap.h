@@ -28,11 +28,28 @@ RCSIDH(eap_peap_h, "$Id$")
 #include "eap_tls.h"
 #include <freeradius-devel/soh.h>
 
+typedef enum {
+	PEAP_STATUS_INVALID,
+	PEAP_STATUS_SENT_TLV_SUCCESS,
+	PEAP_STATUS_SENT_TLV_FAILURE,
+	PEAP_STATUS_TUNNEL_ESTABLISHED,
+	PEAP_STATUS_INNER_IDENTITY_REQ_SENT,
+	PEAP_STATUS_PHASE2_INIT,
+	PEAP_STATUS_PHASE2,
+	PEAP_STATUS_WAIT_FOR_SOH_RESPONSE 
+} peap_status;
+
+typedef enum {
+	PEAP_RESUMPTION_NO,
+	PEAP_RESUMPTION_YES,
+	PEAP_RESUMPTION_MAYBE
+} peap_resumption;
+
 typedef struct peap_tunnel_t {
 	VALUE_PAIR	*username;
 	VALUE_PAIR	*state;
 	VALUE_PAIR	*accept_vps;
-	int		status;
+	peap_status	status;
 	bool		home_access_accept;
 	int		default_method;
 	bool		copy_request_to_tunnel;
@@ -42,21 +59,9 @@ typedef struct peap_tunnel_t {
 	bool		soh;
 	char const	*soh_virtual_server;
 	VALUE_PAIR	*soh_reply_vps;
-	int		session_resumption_state;
+	peap_resumption	session_resumption_state;
 } peap_tunnel_t;
 
-#define PEAP_STATUS_INVALID 0
-#define PEAP_STATUS_SENT_TLV_SUCCESS 1
-#define PEAP_STATUS_SENT_TLV_FAILURE 2
-#define PEAP_STATUS_TUNNEL_ESTABLISHED 3
-#define PEAP_STATUS_INNER_IDENTITY_REQ_SENT 4
-#define PEAP_STATUS_PHASE2_INIT 5
-#define PEAP_STATUS_PHASE2 6
-#define PEAP_STATUS_WAIT_FOR_SOH_RESPONSE 7
-
-#define PEAP_RESUMPTION_NO	(0)
-#define PEAP_RESUMPTION_YES	(1)
-#define PEAP_RESUMPTION_MAYBE	(2)
 
 #define EAP_TLV_SUCCESS (1)
 #define EAP_TLV_FAILURE (2)
