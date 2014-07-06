@@ -167,7 +167,7 @@ binary-common:
 	dh_testdir
 	dh_testroot
 	dh_installchangelogs doc/ChangeLog
-	dh_installdocs
+	dh_installdocs -Xdebian/tmp/usr/share/doc/freeradius/ChangeLog
 	dh_installexamples
 	dh_installlogrotate	
 	dh_installpam --name=radiusd 
