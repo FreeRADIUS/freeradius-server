@@ -393,10 +393,11 @@ static int rlm_ldap_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR
 	 */
 	check_is_dn = rlm_ldap_is_dn(check->vp_strvalue);
 	if ((check_is_dn && inst->cacheable_group_dn) || (!check_is_dn && inst->cacheable_group_name)) {
-		switch(rlm_ldap_check_cached(inst, request, check)) {
+		switch (rlm_ldap_check_cached(inst, request, check)) {
 			case RLM_MODULE_NOTFOUND:
 				found = false;
 				goto finish;
+
 			case RLM_MODULE_OK:
 				found = true;
 				goto finish;
@@ -428,11 +429,13 @@ static int rlm_ldap_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR
 	 *	Check groupobj user membership
 	 */
 	if (inst->groupobj_membership_filter) {
-		switch(rlm_ldap_check_groupobj_dynamic(inst, request, &conn, check)) {
+		switch (rlm_ldap_check_groupobj_dynamic(inst, request, &conn, check)) {
 			case RLM_MODULE_NOTFOUND:
 				break;
+
 			case RLM_MODULE_OK:
 				found = true;
+
 			default:
 				goto finish;
 		}
@@ -444,11 +447,13 @@ static int rlm_ldap_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR
 	 *	Check userobj group membership
 	 */
 	if (inst->userobj_membership_attr) {
-		switch(rlm_ldap_check_userobj_dynamic(inst, request, &conn, user_dn, check)) {
+		switch (rlm_ldap_check_userobj_dynamic(inst, request, &conn, user_dn, check)) {
 			case RLM_MODULE_NOTFOUND:
 				break;
+
 			case RLM_MODULE_OK:
 				found = true;
+
 			default:
 				goto finish;
 		}
@@ -456,10 +461,8 @@ static int rlm_ldap_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR
 
 	rad_assert(conn);
 
-	finish:
-	if (conn) {
-		rlm_ldap_release_socket(inst, conn);
-	}
+finish:
+	if (conn) rlm_ldap_release_socket(inst, conn);
 
 	if (!found) {
 		RDEBUG("User is not a member of specified group");
