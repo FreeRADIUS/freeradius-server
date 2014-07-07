@@ -138,6 +138,7 @@ $INCLUDE dictionary.dante
 $INCLUDE dictionary.dhcp
 $INCLUDE dictionary.dlink
 $INCLUDE dictionary.digium
+$INCLUDE dictionary.dragonwave
 $INCLUDE dictionary.efficientip
 $INCLUDE dictionary.eltex
 $INCLUDE dictionary.epygi
