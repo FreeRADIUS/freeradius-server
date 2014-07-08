@@ -140,24 +140,6 @@ static int check_module_magic(CONF_SECTION *cs, module_t const *module)
 	return 0;
 }
 
-/*
- *	Because dlopen produces really shitty and inaccurate error messages
- */
-static void check_lib_access(char const *name)
-{
-	if (access(name, R_OK) < 0) switch (errno) {
-		case EACCES:
-			WARN("Library \"%s\" exists, but we don't have permission to read", name);
-			break;
-		case ENOENT:
-			DEBUG4("Library not found at path \"%s\"", name);
-			break;
-		default:
-			DEBUG4("Possible issue accessing Library \"%s\": %s", name, fr_syserror(errno));
-			break;
-	}
-}
-
 lt_dlhandle lt_dlopenext(char const *name)
 {
 	int flags = RTLD_NOW;
@@ -183,13 +165,27 @@ lt_dlhandle lt_dlopenext(char const *name)
 	 */
 	snprintf(buffer, sizeof(buffer), "%s/%s%s", radlib_dir, name, LT_SHREXT);
 
-	DEBUG4("Loading library using absolute path");
+	DEBUG4("Loading library using absolute path \"%s\"", name);
 
 	handle = dlopen(buffer, flags);
-	if (handle) {
-		return handle;
+	if (handle) return handle;
+
+	/*
+	 *	Because dlopen produces really shitty and inaccurate error messages
+	 */
+	if (access(name, R_OK) < 0) switch (errno) {
+		case EACCES:
+			WARN("Library file found, but we don't have permission to read it");
+			break;
+
+		case ENOENT:
+			DEBUG4("Library file not found");
+			break;
+
+		default:
+			DEBUG4("Issue accessing library file: %s", fr_syserror(errno));
+			break;
 	}
-	check_lib_access(buffer);
 
 	DEBUG4("Falling back to linker search path(s)");
 	if (DEBUG_ENABLED4) {
