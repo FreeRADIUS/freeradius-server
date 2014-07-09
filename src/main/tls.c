@@ -1015,8 +1015,8 @@ static int generate_eph_rsa_key(SSL_CTX *ctx)
 /* index we use to store cached session VPs
  * needs to be dynamic so we can supply a "free" function
  */
-static int FR_TLS_EX_INDEX_VPS = -1;
-int FR_TLS_EX_INDEX_CERTS = -1;
+int fr_tls_ex_index_vps = -1;
+int fr_tls_ex_index_certs = -1;
 
 /*
  *	Print debugging messages, and free data.
@@ -1222,7 +1222,7 @@ static SSL_SESSION *cbtls_get_session(SSL *ssl,
 
 		/* cache the VPs into the session */
 		vp = paircopy(talloc_ctx, pairlist->reply);
-		SSL_SESSION_set_ex_data(sess, FR_TLS_EX_INDEX_VPS, vp);
+		SSL_SESSION_set_ex_data(sess, fr_tls_ex_index_vps, vp);
 		DEBUG2("  SSL: Successfully restored session %s", buffer);
 	}
 err:
@@ -1574,7 +1574,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 
 	request = (REQUEST *)SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST);
 	rad_assert(request != NULL);
-	certs = (VALUE_PAIR **)SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_CERTS);
+	certs = (VALUE_PAIR **)SSL_get_ex_data(ssl, fr_tls_ex_index_certs);
 
 	identity = (char **)SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_IDENTITY);
 #ifdef HAVE_OPENSSL_OCSP_H
@@ -2361,10 +2361,10 @@ post_ca:
 		SSL_CTX_sess_set_remove_cb(ctx, cbtls_remove_session);
 
 		SSL_CTX_set_quiet_shutdown(ctx, 1);
-		if (FR_TLS_EX_INDEX_VPS < 0)
-			FR_TLS_EX_INDEX_VPS = SSL_SESSION_get_ex_new_index(0, NULL, NULL, NULL, sess_free_vps);
-		if (FR_TLS_EX_INDEX_CERTS < 0)
-			FR_TLS_EX_INDEX_CERTS = SSL_SESSION_get_ex_new_index(0, NULL, NULL, NULL, sess_free_certs);
+		if (fr_tls_ex_index_vps < 0)
+			fr_tls_ex_index_vps = SSL_SESSION_get_ex_new_index(0, NULL, NULL, NULL, sess_free_vps);
+		if (fr_tls_ex_index_certs < 0)
+			fr_tls_ex_index_certs = SSL_SESSION_get_ex_new_index(0, NULL, NULL, NULL, sess_free_certs);
 	}
 
 	/*
@@ -2695,7 +2695,7 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 		vp = paircopy2(talloc_ctx, request->reply->vps, PW_CACHED_SESSION_POLICY, 0, TAG_ANY);
 		if (vp) pairadd(&vps, vp);
 
-		certs = (VALUE_PAIR **)SSL_get_ex_data(ssn->ssl, FR_TLS_EX_INDEX_CERTS);
+		certs = (VALUE_PAIR **)SSL_get_ex_data(ssn->ssl, fr_tls_ex_index_certs);
 
 		/*
 		 *	Hmm... the certs should probably be session data.
@@ -2711,7 +2711,7 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 		if (vps) {
 			RDEBUG2("Saving session %s vps %p in the cache", buffer, vps);
 			SSL_SESSION_set_ex_data(ssn->ssl->session,
-						FR_TLS_EX_INDEX_VPS, vps);
+						fr_tls_ex_index_vps, vps);
 			if (conf->session_cache_path) {
 				/* write the VPs to the cache file */
 				char filename[256], buf[1024];
@@ -2757,7 +2757,7 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 		fr_bin2hex(buffer, ssn->ssl->session->session_id, size);
 
 		vps = SSL_SESSION_get_ex_data(ssn->ssl->session,
-					     FR_TLS_EX_INDEX_VPS);
+					     fr_tls_ex_index_vps);
 		if (!vps) {
 			RWDEBUG("No information in cached session %s", buffer);
 			return -1;

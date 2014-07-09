@@ -713,9 +713,9 @@ static char const *vp_tokens[] = {
   "<`STRING`>"
 };
 
-extern int fr_attr_max_tlv;
-extern int fr_attr_shift[];
-extern int fr_attr_mask[];
+extern int const fr_attr_max_tlv;
+extern int const fr_attr_shift[];
+extern int const fr_attr_mask[];
 
 
 /** Print one attribute and value to a string
