@@ -108,7 +108,7 @@ static int eap_sim_sendstart(eap_handler_t *handler)
 
 	/* the SUBTYPE, set to start. */
 	newvp = paircreate(packet, PW_EAP_SIM_SUBTYPE, 0);
-	newvp->vp_integer = eapsim_start;
+	newvp->vp_integer = EAPSIM_START;
 	pairreplace(vps, newvp);
 
 	return 1;
@@ -367,7 +367,7 @@ static int eap_sim_sendchallenge(eap_handler_t *handler)
 
 	/* the SUBTYPE, set to challenge. */
 	newvp = paircreate(packet, PW_EAP_SIM_SUBTYPE, 0);
-	newvp->vp_integer = eapsim_challenge;
+	newvp->vp_integer = EAPSIM_CHALLENGE;
 	pairreplace(outvps, newvp);
 
 	return 1;
@@ -420,20 +420,20 @@ static void eap_sim_stateenter(eap_handler_t *handler,
 	/*
 	 * 	Send the EAP-SIM Start message, listing the versions that we support.
 	 */
-	case eapsim_server_start:
+	case EAPSIM_SERVER_START:
 		eap_sim_sendstart(handler);
 		break;
 	/*
 	 *	Send the EAP-SIM Challenge message.
 	 */
-	case eapsim_server_challenge:
+	case EAPSIM_SERVER_CHALLENGE:
 		eap_sim_sendchallenge(handler);
 		break;
 
 	/*
 	 * 	Send the EAP Success message
 	 */
-	case eapsim_server_success:
+	case EAPSIM_SERVER_SUCCESS:
 		eap_sim_sendsuccess(handler);
 		handler->eap_ds->request->code = PW_EAP_SUCCESS;
 		break;
@@ -485,7 +485,7 @@ static int eap_sim_initiate(UNUSED void *instance, eap_handler_t *handler)
 	time(&n);
 	ess->sim_id = (n & 0xff);
 
-	eap_sim_stateenter(handler, ess, eapsim_server_start);
+	eap_sim_stateenter(handler, ess, EAPSIM_SERVER_START);
 
 	return 1;
 }
@@ -509,7 +509,7 @@ static int process_eap_sim_start(eap_handler_t *handler, VALUE_PAIR *vps)
 	selectedversion_vp = pairfind(vps, PW_EAP_SIM_SELECTED_VERSION, 0, TAG_ANY);
 	if (!nonce_vp || !selectedversion_vp) {
 		RDEBUG2("Client did not select a version and send a NONCE");
-		eap_sim_stateenter(handler, ess, eapsim_server_start);
+		eap_sim_stateenter(handler, ess, EAPSIM_SERVER_START);
 
 		return 1;
 	}
@@ -546,7 +546,7 @@ static int process_eap_sim_start(eap_handler_t *handler, VALUE_PAIR *vps)
 	/*
 	 *	Everything looks good, change states
 	 */
-	eap_sim_stateenter(handler, ess, eapsim_server_challenge);
+	eap_sim_stateenter(handler, ess, EAPSIM_SERVER_CHALLENGE);
 
 	return 1;
 }
@@ -600,7 +600,7 @@ static int process_eap_sim_challenge(eap_handler_t *handler, VALUE_PAIR *vps)
 	}
 
 	/* everything looks good, change states */
-	eap_sim_stateenter(handler, ess, eapsim_server_success);
+	eap_sim_stateenter(handler, ess, EAPSIM_SERVER_SUCCESS);
 	return 1;
 }
 
@@ -643,40 +643,40 @@ static int mod_authenticate(UNUSED void *arg, eap_handler_t *handler)
 	/*
 	 *	Client error supersedes anything else.
 	 */
-	if (subtype == eapsim_client_error) {
+	if (subtype == EAPSIM_CLIENT_ERROR) {
 		return 0;
 	}
 
 	switch (ess->state) {
-	case eapsim_server_start:
+	case EAPSIM_SERVER_START:
 		switch (subtype) {
 		/*
 		 *	Pretty much anything else here is illegal, so we will retransmit the request.
 		 */
 		default:
 
-			eap_sim_stateenter(handler, ess, eapsim_server_start);
+			eap_sim_stateenter(handler, ess, EAPSIM_SERVER_START);
 			return 1;
 		/*
 		 * 	A response to our EAP-Sim/Request/Start!
 		 */
-		case eapsim_start:
+		case EAPSIM_START:
 			return process_eap_sim_start(handler, vps);
 		}
 		break;
 
-	case eapsim_server_challenge:
+	case EAPSIM_SERVER_CHALLENGE:
 		switch(subtype) {
 		/*
 		 *	Pretty much anything else here is illegal, so we will retransmit the request.
 		 */
 		default:
-			eap_sim_stateenter(handler, ess, eapsim_server_challenge);
+			eap_sim_stateenter(handler, ess, EAPSIM_SERVER_CHALLENGE);
 			return 1;
 		/*
 		 *	A response to our EAP-Sim/Request/Challenge!
 		 */
-		case eapsim_challenge:
+		case EAPSIM_CHALLENGE:
 			return process_eap_sim_challenge(handler, vps);
 		}
 		break;
