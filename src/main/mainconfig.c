@@ -50,7 +50,7 @@ RCSID("$Id$")
 #endif
 
 struct main_config_t main_config;
-char *debug_condition = NULL;
+fr_cond_t *debug_condition;
 extern bool log_dates_utc;
 
 typedef struct cached_config_t {
