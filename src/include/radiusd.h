@@ -476,10 +476,7 @@ extern log_debug_t	debug_flag;
 extern char const	*radacct_dir;
 extern char const	*radlog_dir;
 extern char const	*radlib_dir;
-extern char const	*radius_libdir;
-extern uint32_t		expiration_seconds;
 extern bool		log_stripped_names;
-extern bool		log_auth_detail;
 extern char const	*radiusd_version;
 void			radius_signal_self(int flag);
 
@@ -654,19 +651,19 @@ ssize_t		xlat_fmt_to_ref(uint8_t const **out, REQUEST *request, char const *fmt)
 void		xlat_free(void);
 
 /* threads.c */
-extern int thread_pool_init(CONF_SECTION *cs, bool *spawn_flag);
-extern void thread_pool_stop(void);
-extern int thread_pool_addrequest(REQUEST *, RAD_REQUEST_FUNP);
-extern pid_t rad_fork(void);
-extern pid_t rad_waitpid(pid_t pid, int *status);
-extern int total_active_threads(void);
-extern void thread_pool_lock(void);
-extern void thread_pool_unlock(void);
-extern void thread_pool_queue_stats(int array[RAD_LISTEN_MAX], int pps[2]);
+int	thread_pool_init(CONF_SECTION *cs, bool *spawn_flag);
+void	thread_pool_stop(void);
+int	thread_pool_addrequest(REQUEST *, RAD_REQUEST_FUNP);
+pid_t	rad_fork(void);
+pid_t	rad_waitpid(pid_t pid, int *status);
+int	total_active_threads(void);
+void	thread_pool_lock(void);
+void	thread_pool_unlock(void);
+void	thread_pool_queue_stats(int array[RAD_LISTEN_MAX], int pps[2]);
 
 #ifndef HAVE_PTHREAD_H
-#define rad_fork(n) fork()
-#define rad_waitpid(a,b) waitpid(a,b, 0)
+#  define rad_fork(n) fork()
+#  define rad_waitpid(a,b) waitpid(a,b, 0)
 #endif
 
 /* main_config.c */

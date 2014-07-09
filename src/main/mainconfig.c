@@ -30,23 +30,23 @@ RCSID("$Id$")
 #include <sys/stat.h>
 
 #ifdef HAVE_PWD_H
-#include <pwd.h>
+#  include <pwd.h>
 #endif
 
 #ifdef HAVE_GRP_H
-#include <grp.h>
+#  include <grp.h>
 #endif
 
 #ifdef HAVE_SYSLOG_H
-#	include <syslog.h>
+#  include <syslog.h>
 #endif
 
 #ifdef HAVE_SYS_STAT_H
-#include <sys/stat.h>
+#  include <sys/stat.h>
 #endif
 
 #ifdef HAVE_FCNTL_H
-#include <fcntl.h>
+#  include <fcntl.h>
 #endif
 
 struct main_config_t main_config;

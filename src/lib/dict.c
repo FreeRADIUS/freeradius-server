@@ -164,14 +164,10 @@ const size_t dict_attr_sizes[PW_TYPE_MAX][2] = {
  *	5 bits for nested TLV 3
  *	3 bits for nested TLV 4
  */
-const int fr_attr_max_tlv = MAX_TLV_NEST;
-const int fr_attr_shift[MAX_TLV_NEST + 1] = {
-  0, 8, 16, 24, 29
-};
+int const fr_attr_max_tlv = MAX_TLV_NEST;
+int const fr_attr_shift[MAX_TLV_NEST + 1] = { 0, 8, 16, 24, 29 };
 
-const int fr_attr_mask[MAX_TLV_NEST + 1] = {
-  0xff, 0xff, 0xff, 0x1f, 0x07
-};
+int const fr_attr_mask[MAX_TLV_NEST + 1] = { 0xff, 0xff, 0xff, 0x1f, 0x07 };
 
 
 /*
