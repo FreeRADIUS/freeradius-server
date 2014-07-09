@@ -744,7 +744,7 @@ int realm_home_server_add(home_server_t *home, CONF_SECTION *cs, int dual)
 		home->limit.idle_timeout = 0;
 
 	parent = cf_item_parent(cf_sectiontoitem(cs));
-	if (strcmp(cf_section_name1(parent), "server") == 0) {
+	if (parent && strcmp(cf_section_name1(parent), "server") == 0) {
 		home->parent_server = cf_section_name2(parent);
 	}
 
