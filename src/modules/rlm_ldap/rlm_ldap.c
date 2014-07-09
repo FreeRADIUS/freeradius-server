@@ -384,7 +384,7 @@ static int rlm_ldap_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR
 	RDEBUG("Searching for user in group \"%s\"", check->vp_strvalue);
 
 	if (check->length == 0) {
-		RDEBUG("Cannot do comparison (group name is empty)");
+		REDEBUG("Cannot do comparison (group name is empty)");
 		return 1;
 	}
 
