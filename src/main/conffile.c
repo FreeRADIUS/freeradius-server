@@ -63,111 +63,134 @@ typedef enum conf_type {
 } CONF_ITEM_TYPE;
 
 struct conf_item {
-	struct conf_item *next;
-	struct conf_part *parent;
-	int lineno;
-	char const *filename;
-	CONF_ITEM_TYPE type;
+	struct conf_item *next;		//!< Sibling.
+	struct conf_part *parent;	//!< Parent.
+	int lineno;			//!< The line number the config item began on.
+	char const *filename;		//!< The file the config item was parsed from.
+	CONF_ITEM_TYPE type;		//!< Whether the config item is a config_pair, conf_section or conf_data.
 };
+
+/** Configuration AVP similar to a VALUE_PAIR
+ *
+ */
 struct conf_pair {
 	CONF_ITEM item;
-	char const *attr;
-	char const *value;
-	FR_TOKEN op;
-	FR_TOKEN value_type;
-};
-struct conf_part {
-	CONF_ITEM item;
-	char const *name1;
-	char const *name2;
-	FR_TOKEN    name2_type;
-	struct conf_item *children;
-	struct conf_item *tail;	/* for speed */
-	CONF_SECTION	*template;
-	rbtree_t	*pair_tree; /* and a partridge.. */
-	rbtree_t	*section_tree; /* no jokes here */
-	rbtree_t	*name2_tree; /* for sections of the same name2 */
-	rbtree_t	*data_tree;
-	void		*base;
-	int		depth;
-	CONF_PARSER const *variables;
+	char const *attr;		//!< Attribute name
+	char const *value;		//!< Attribute value
+	FR_TOKEN op;			//!< Operator e.g. =, :=
+	FR_TOKEN value_type;		//!< Quoting style T_(DOUBLE|SINGLE|BACK)_QUOTE_STRING or T_BARE_WORD.
 };
 
-CONF_SECTION *root_config = NULL;
-
-/*
- *	Internal data that is associated with a configuration section,
- *	so that we don't have to track it separately.
+/** Internal data that is associated with a configuration section
+ *
  */
 struct conf_data {
 	CONF_ITEM  item;
 	char const *name;
 	int	   flag;
-	void	   *data;	/* user data */
-	void       (*free)(void *); /* free user data function */
+	void	   *data;		//!< User data
+	void       (*free)(void *);	//!< Free user data function
 };
 
-static int cf_data_add_internal(CONF_SECTION *cs, char const *name,
-				void *data, void (*data_free)(void *),
-				int flag);
-static void *cf_data_find_internal(CONF_SECTION const *cs, char const *name,
-				   int flag);
-static char const *cf_expand_variables(char const *cf, int *lineno,
-				       CONF_SECTION *outercs,
-				       char *output, size_t outsize,
-				       char const *input);
-static CONF_SECTION *cf_template_copy(CONF_SECTION *parent, CONF_SECTION const *template);
+struct conf_part {
+	CONF_ITEM item;
+	char const	*name1;
+	char const	*name2;
+	FR_TOKEN	name2_type;
+
+	CONF_ITEM	*children;
+	CONF_ITEM	*tail;		//!< For speed.
+	CONF_SECTION	*template;
+
+	rbtree_t	*pair_tree;	//!< and a partridge..
+	rbtree_t	*section_tree;	//!< no jokes here.
+	rbtree_t	*name2_tree;	//!< for sections of the same name2
+	rbtree_t	*data_tree;
+
+	void		*base;
+	int		depth;
+
+	CONF_PARSER const *variables;
+};
+
+CONF_SECTION *root_config = NULL;
+
+
+static int		cf_data_add_internal(CONF_SECTION *cs, char const *name, void *data,
+					     void (*data_free)(void *), int flag);
+
+static void		*cf_data_find_internal(CONF_SECTION const *cs, char const *name, int flag);
+
+static char const 	*cf_expand_variables(char const *cf, int *lineno,
+					     CONF_SECTION *outercs,
+					     char *output, size_t outsize,
+					     char const *input);
+
+static CONF_SECTION	*cf_template_copy(CONF_SECTION *parent, CONF_SECTION const *template);
 
 /*
  *	Isolate the scary casts in these tiny provably-safe functions
+ */
+
+/** Cast a CONF_ITEM to a CONF_PAIR
+ *
  */
 CONF_PAIR *cf_itemtopair(CONF_ITEM const *ci)
 {
 	CONF_PAIR *out;
 
-	if (ci == NULL) {
-		return NULL;
-	}
+	if (ci == NULL) return NULL;
+
 	rad_assert(ci->type == CONF_ITEM_PAIR);
 
 	memcpy(&out, &ci, sizeof(out));
 	return out;
 }
+
+/** Cast a CONF_ITEM to a CONF_SECTION
+ *
+ */
 CONF_SECTION *cf_itemtosection(CONF_ITEM const *ci)
 {
 	CONF_SECTION *out;
 
-	if (ci == NULL) {
-		return NULL;
-	}
+	if (ci == NULL) return NULL;
+
 	rad_assert(ci->type == CONF_ITEM_SECTION);
 
 	memcpy(&out, &ci, sizeof(out));
 	return out;
 }
+
+/** Cast a CONF_PAIR to a CONF_ITEM
+ *
+ */
 CONF_ITEM *cf_pairtoitem(CONF_PAIR const *cp)
 {
 	CONF_ITEM *out;
 
-	if (cp == NULL) {
-		return NULL;
-	}
+	if (cp == NULL) return NULL;
 
 	memcpy(&out, &cp, sizeof(out));
 	return out;
 }
+
+/** Cast a CONF_SECTION to a CONF_ITEM
+ *
+ */
 CONF_ITEM *cf_sectiontoitem(CONF_SECTION const *cs)
 {
 	CONF_ITEM *out;
 
-	if (cs == NULL) {
-		return NULL;
-	}
+	if (cs == NULL) return NULL;
 
 	memcpy(&out, &cs, sizeof(out));
 	return out;
 }
 
+/** Cast CONF_DATA to a CONF_ITEM
+ *
+ */
 static CONF_ITEM *cf_datatoitem(CONF_DATA const *cd)
 {
 	CONF_ITEM *out;
@@ -216,14 +239,10 @@ static CONF_PAIR *cf_pair_alloc(CONF_SECTION *parent, char const *attr,
 
 static int _cf_data_free(CONF_DATA *cd)
 {
-	if (cd->free) {
-		cd->free(cd->data);
-	}
+	if (cd->free) cd->free(cd->data);
 
 	return 0;
 }
-
-
 
 /*
  *	rbtree callback function
@@ -433,93 +452,94 @@ static void cf_item_add(CONF_SECTION *cs, CONF_ITEM *ci)
 		 *	added to rbtree's.
 		 */
 		switch (ci->type) {
-			case CONF_ITEM_PAIR:
-				if (!rbtree_insert(cs->pair_tree, ci)) {
-					CONF_PAIR *cp = cf_itemtopair(ci);
+		case CONF_ITEM_PAIR:
+			if (!rbtree_insert(cs->pair_tree, ci)) {
+				CONF_PAIR *cp = cf_itemtopair(ci);
 
-					if (strcmp(cp->attr, "confdir") == 0) break;
-					if (!cp->value) break; /* module name, "ok", etc. */
+				if (strcmp(cp->attr, "confdir") == 0) break;
+				if (!cp->value) break; /* module name, "ok", etc. */
+			}
+			break;
+
+		case CONF_ITEM_SECTION: {
+			CONF_SECTION *cs_new = cf_itemtosection(ci);
+			CONF_SECTION *name1_cs;
+
+			if (!cs->section_tree) {
+				cs->section_tree = rbtree_create(cs, section_cmp, NULL, 0);
+				if (!cs->section_tree) {
+					ERROR("Out of memory");
+					fr_exit_now(1);
+				}
+			}
+
+			name1_cs = rbtree_finddata(cs->section_tree, cs_new);
+			if (!name1_cs) {
+				if (!rbtree_insert(cs->section_tree, cs_new)) {
+					ERROR("Failed inserting section into tree");
+					fr_exit_now(1);
 				}
 				break;
-
-			case CONF_ITEM_SECTION: {
-				CONF_SECTION *cs_new = cf_itemtosection(ci);
-				CONF_SECTION *name1_cs;
-
-				if (!cs->section_tree) {
-					cs->section_tree = rbtree_create(cs, section_cmp, NULL, 0);
-					if (!cs->section_tree) {
-						ERROR("Out of memory");
-						fr_exit_now(1);
-					}
-				}
-
-				name1_cs = rbtree_finddata(cs->section_tree, cs_new);
-				if (!name1_cs) {
-					if (!rbtree_insert(cs->section_tree, cs_new)) {
-						ERROR("Failed inserting section into tree");
-						fr_exit_now(1);
-					}
-					break;
-				}
+			}
 
 #if 0
-				/*
-				 *	We'll ignore these checks for
-				 *	now.  Various sections can be
-				 *	duplicated, such as "listen",
-				 *	"update", "if", "else", etc.
-				 */
-				if (!name1_cs->name2 && !cs_new->name2) {
-					WARN("%s[%d] Duplicate configuration section \"%s { ...}\" %s %d",
-					     ci->filename, ci->lineno, cs_new->name1, name1_cs->item.filename, name1_cs->item.lineno);
-					break;
-				}
+			/*
+			 *	We'll ignore these checks for
+			 *	now.  Various sections can be
+			 *	duplicated, such as "listen",
+			 *	"update", "if", "else", etc.
+			 */
+			if (!name1_cs->name2 && !cs_new->name2) {
+				WARN("%s[%d] Duplicate configuration section \"%s { ...}\" %s %d",
+				     ci->filename, ci->lineno, cs_new->name1,
+				     name1_cs->item.filename, name1_cs->item.lineno);
+				break;
+			}
 
-				if ((name1_cs->name2 && cs_new->name2) &&
-				    (strcmp(name1_cs->name2, cs_new->name2) == 0)) {
-					WARN("%s[%d] Duplicate configuration section \"%s %s { ...}\"",
-					     ci->filename, ci->lineno, cs_new->name1, cs_new->name2);
-					break;
-				}
+			if ((name1_cs->name2 && cs_new->name2) &&
+			    (strcmp(name1_cs->name2, cs_new->name2) == 0)) {
+				WARN("%s[%d] Duplicate configuration section \"%s %s { ...}\"",
+				     ci->filename, ci->lineno, cs_new->name1, cs_new->name2);
+				break;
+			}
 #endif
 
-				/*
-				 *	We already have a section of
-				 *	this "name1".  Add a new
-				 *	sub-section based on name2.
-				 */
+			/*
+			 *	We already have a section of
+			 *	this "name1".  Add a new
+			 *	sub-section based on name2.
+			 */
+			if (!name1_cs->name2_tree) {
+				name1_cs->name2_tree = rbtree_create(name1_cs, name2_cmp, NULL, 0);
 				if (!name1_cs->name2_tree) {
-					name1_cs->name2_tree = rbtree_create(name1_cs, name2_cmp, NULL, 0);
-					if (!name1_cs->name2_tree) {
-						ERROR("Out of memory");
-						fr_exit_now(1);
-					}
+					ERROR("Out of memory");
+					fr_exit_now(1);
 				}
+			}
 
-				/*
-				 *	We don't care if this fails.
-				 *	If the user tries to create
-				 *	two sections of the same
-				 *	name1/name2, the duplicate
-				 *	section is just silently
-				 *	ignored.
-				 */
-				rbtree_insert(name1_cs->name2_tree, cs_new);
-				break;
-			} /* was a section */
+			/*
+			 *	We don't care if this fails.
+			 *	If the user tries to create
+			 *	two sections of the same
+			 *	name1/name2, the duplicate
+			 *	section is just silently
+			 *	ignored.
+			 */
+			rbtree_insert(name1_cs->name2_tree, cs_new);
+			break;
+		} /* was a section */
 
-			case CONF_ITEM_DATA:
-				if (!cs->data_tree) {
-					cs->data_tree = rbtree_create(cs, data_cmp, NULL, 0);
-				}
-				if (cs->data_tree) {
-					rbtree_insert(cs->data_tree, ci);
-				}
-				break;
+		case CONF_ITEM_DATA:
+			if (!cs->data_tree) {
+				cs->data_tree = rbtree_create(cs, data_cmp, NULL, 0);
+			}
+			if (cs->data_tree) {
+				rbtree_insert(cs->data_tree, ci);
+			}
+			break;
 
-			default: /* FIXME: assert & error! */
-				break;
+		default: /* FIXME: assert & error! */
+			break;
 
 		} /* switch over conf types */
 	} /* loop over ci */
@@ -1812,8 +1832,8 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 				}
 
 				if ((stat_buf.st_mode & S_IWOTH) != 0) {
-					ERROR("%s[%d]: Directory %s is globally writable.  Refusing to start due to insecure configuration.",
-					       filename, *lineno, value);
+					ERROR("%s[%d]: Directory %s is globally writable.  Refusing to start due to "
+					      "insecure configuration", filename, *lineno, value);
 					return -1;
 				}
 #endif
@@ -1885,8 +1905,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		       t2 = getword(&ptr, buf2, sizeof(buf2), true);
 
 		       if (t2 != T_EOL) {
-			       ERROR("%s[%d]: Unexpected text after $TEMPLATE",
-				      filename, *lineno);
+			       ERROR("%s[%d]: Unexpected text after $TEMPLATE", filename, *lineno);
 			       return -1;
 		       }
 
@@ -1894,27 +1913,23 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 
 		       templatecs = cf_section_sub_find(parentcs, "templates");
 		       if (!templatecs) {
-				ERROR("%s[%d]: No \"templates\" section for reference \"%s\"",
-				       filename, *lineno, buf2);
+				ERROR("%s[%d]: No \"templates\" section for reference \"%s\"", filename, *lineno, buf2);
 				return -1;
 		       }
 
 		       ci = cf_reference_item(parentcs, templatecs, buf2);
 		       if (!ci || (ci->type != CONF_ITEM_SECTION)) {
-				ERROR("%s[%d]: Reference \"%s\" not found",
-				       filename, *lineno, buf2);
+				ERROR("%s[%d]: Reference \"%s\" not found", filename, *lineno, buf2);
 				return -1;
 		       }
 
 		       if (!this) {
-				ERROR("%s[%d]: Internal sanity check error in template reference",
-				       filename, *lineno);
+				ERROR("%s[%d]: Internal sanity check error in template reference", filename, *lineno);
 				return -1;
 		       }
 
 		       if (this->template) {
-				ERROR("%s[%d]: Section already has a template",
-				       filename, *lineno);
+				ERROR("%s[%d]: Section already has a template", filename, *lineno);
 				return -1;
 		       }
 
@@ -1927,8 +1942,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		 *	with 'internal' names;
 		 */
 		if (buf1[0] == '_') {
-			ERROR("%s[%d]: Illegal configuration pair name \"%s\"",
-					filename, *lineno, buf1);
+			ERROR("%s[%d]: Illegal configuration pair name \"%s\"", filename, *lineno, buf1);
 			return -1;
 		}
 
@@ -1989,7 +2003,8 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			nextcs->item.filename = talloc_strdup(nextcs, filename);
 			nextcs->item.lineno = *lineno;
 
-			slen = fr_condition_tokenize(nextcs, cf_sectiontoitem(nextcs), ptr, &cond, &error, FR_COND_TWO_PASS);
+			slen = fr_condition_tokenize(nextcs, cf_sectiontoitem(nextcs), ptr, &cond,
+						     &error, FR_COND_TWO_PASS);
 			if (p) *p = '{';
 
 			if (slen < 0) {
@@ -2095,20 +2110,20 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			 *	Handle variable substitution via ${foo}
 			 */
 			switch (t3) {
-				case T_BARE_WORD:
-				case T_DOUBLE_QUOTED_STRING:
-				case T_BACK_QUOTED_STRING:
-					value = cf_expand_variables(filename, lineno, this, buf, sizeof(buf), buf3);
-					if (!value) return -1;
-					break;
+			case T_BARE_WORD:
+			case T_DOUBLE_QUOTED_STRING:
+			case T_BACK_QUOTED_STRING:
+				value = cf_expand_variables(filename, lineno, this, buf, sizeof(buf), buf3);
+				if (!value) return -1;
+				break;
 
-				case T_EOL:
-				case T_HASH:
-					value = NULL;
-					break;
+			case T_EOL:
+			case T_HASH:
+				value = NULL;
+				break;
 
-				default:
-					value = buf3;
+			default:
+				value = buf3;
 			}
 
 			/*
@@ -2177,13 +2192,14 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			continue;
 
 		case T_OP_INVALID:
-			ERROR("%s[%d]: Syntax error in '%s': %s",
-			      filename, *lineno, ptr, fr_strerror());
+			ERROR("%s[%d]: Syntax error in '%s': %s", filename, *lineno, ptr, fr_strerror());
+
 			return -1;
 
 		default:
 			ERROR("%s[%d]: Parse error after \"%s\": unexpected token \"%s\"",
 			      filename, *lineno, buf1, fr_int2str(fr_tokens, t2, "<INVALID>"));
+
 			return -1;
 		}
 	}
@@ -2193,8 +2209,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 	 */
 	if (feof(fp) && (this != current)) {
 		ERROR("%s[%d]: EOF reached without closing brace for section %s starting at line %d",
-		       filename, *lineno,
-		       cf_section_name1(this), cf_section_lineno(this));
+		      filename, *lineno, cf_section_name1(this), cf_section_lineno(this));
 		return -1;
 	}
 
@@ -2225,8 +2240,8 @@ int cf_file_include(CONF_SECTION *cs, char const *filename)
 #ifdef S_IWOTH
 		if ((statbuf.st_mode & S_IWOTH) != 0) {
 			fclose(fp);
-			ERROR("Configuration file %s is globally writable.  Refusing to start due to insecure configuration.",
-			       filename);
+			ERROR("Configuration file %s is globally writable.  "
+			      "Refusing to start due to insecure configuration.", filename);
 			return -1;
 		}
 #endif
@@ -2234,8 +2249,8 @@ int cf_file_include(CONF_SECTION *cs, char const *filename)
 #ifdef S_IROTH
 		if (0 && (statbuf.st_mode & S_IROTH) != 0) {
 			fclose(fp);
-			ERROR("Configuration file %s is globally readable.  Refusing to start due to insecure configuration.",
-			       filename);
+			ERROR("Configuration file %s is globally readable.  "
+			      "Refusing to start due to insecure configuration", filename);
 			return -1;
 		}
 #endif
@@ -2243,8 +2258,8 @@ int cf_file_include(CONF_SECTION *cs, char const *filename)
 
 	if (cf_data_find_internal(cs, filename, PW_TYPE_FILE_INPUT)) {
 		fclose(fp);
-		ERROR("Cannot include the same file twice: \"%s\"",
-		       filename);
+		ERROR("Cannot include the same file twice: \"%s\"", filename);
+
 		return -1;
 	}
 
