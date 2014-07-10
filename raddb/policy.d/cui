@@ -82,9 +82,9 @@ cui.post-auth {
 	#  accounting, comment out the 'cuisql' line below.
 	#
 	if (reply:Chargeable-User-Identity) {
-		# remove User-Name from the reply for security
-		update reply {
-			User-Name !* ANY
+		# Force User-Name to be the User-Name from the request
+		update {
+			reply:User-Name := &request:User-Name
 		}
 		cuisql
 	}
