@@ -309,7 +309,7 @@ static int command_hup(rad_listen_t *listener, int argc, char *argv[])
 	cs = cf_section_find("modules");
 	if (!cs) return 0;
 
-	mi = find_module_instance(cs, argv[0], 0);
+	mi = find_module_instance(cs, argv[0], false);
 	if (!mi) {
 		cprintf(listener, "ERROR: No such module \"%s\"\n", argv[0]);
 		return 0;
@@ -488,7 +488,7 @@ static int command_show_module_config(rad_listen_t *listener, int argc, char *ar
 	cs = cf_section_find("modules");
 	if (!cs) return 0;
 
-	mi = find_module_instance(cs, argv[0], 0);
+	mi = find_module_instance(cs, argv[0], false);
 	if (!mi) {
 		cprintf(listener, "ERROR: No such module \"%s\"\n", argv[0]);
 		return 0;
@@ -526,7 +526,7 @@ static int command_show_module_methods(rad_listen_t *listener, int argc, char *a
 	cs = cf_section_find("modules");
 	if (!cs) return 0;
 
-	mi = find_module_instance(cs, argv[0], 0);
+	mi = find_module_instance(cs, argv[0], false);
 	if (!mi) {
 		cprintf(listener, "ERROR: No such module \"%s\"\n", argv[0]);
 		return 0;
@@ -556,7 +556,7 @@ static int command_show_module_flags(rad_listen_t *listener, int argc, char *arg
 	cs = cf_section_find("modules");
 	if (!cs) return 0;
 
-	mi = find_module_instance(cs, argv[0], 0);
+	mi = find_module_instance(cs, argv[0], false);
 	if (!mi) {
 		cprintf(listener, "ERROR: No such module \"%s\"\n", argv[0]);
 		return 0;
@@ -591,7 +591,7 @@ static int command_show_module_status(rad_listen_t *listener, int argc, char *ar
 	cs = cf_section_find("modules");
 	if (!cs) return 0;
 
-	mi = find_module_instance(cs, argv[0], 0);
+	mi = find_module_instance(cs, argv[0], false);
 	if (!mi) {
 		cprintf(listener, "ERROR: No such module \"%s\"\n", argv[0]);
 		return 0;
@@ -626,12 +626,12 @@ static int command_show_modules(rad_listen_t *listener, UNUSED int argc, UNUSED 
 		module_instance_t *mi;
 
 		if (name2) {
-			mi = find_module_instance(cs, name2, 0);
+			mi = find_module_instance(cs, name2, false);
 			if (!mi) continue;
 
 			cprintf(listener, "\t%s (%s)\n", name2, name1);
 		} else {
-			mi = find_module_instance(cs, name1, 0);
+			mi = find_module_instance(cs, name1, false);
 			if (!mi) continue;
 
 			cprintf(listener, "\t%s\n", name1);
@@ -1493,7 +1493,7 @@ static int command_set_module_config(rad_listen_t *listener, int argc, char *arg
 	cs = cf_section_find("modules");
 	if (!cs) return 0;
 
-	mi = find_module_instance(cs, argv[0], 0);
+	mi = find_module_instance(cs, argv[0], false);
 	if (!mi) {
 		cprintf(listener, "ERROR: No such module \"%s\"\n", argv[0]);
 		return 0;
@@ -1576,7 +1576,7 @@ static int command_set_module_status(rad_listen_t *listener, int argc, char *arg
 	cs = cf_section_find("modules");
 	if (!cs) return 0;
 
-	mi = find_module_instance(cs, argv[0], 0);
+	mi = find_module_instance(cs, argv[0], false);
 	if (!mi) {
 		cprintf(listener, "ERROR: No such module \"%s\"\n", argv[0]);
 		return 0;

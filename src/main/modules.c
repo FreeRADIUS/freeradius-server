@@ -572,7 +572,7 @@ static int module_conf_parse(module_instance_t *node, void **handle)
  *	Find a module instance.
  */
 module_instance_t *find_module_instance(CONF_SECTION *modules,
-					char const *askedname, int do_link)
+					char const *askedname, bool do_link)
 {
 	bool check_config_safe = false;
 	CONF_SECTION *cs;
@@ -1699,7 +1699,7 @@ int modules_init(CONF_SECTION *config)
 
 			cp = cf_itemtopair(ci);
 			name = cf_pair_attr(cp);
-			module = find_module_instance(modules, name, 1);
+			module = find_module_instance(modules, name, true);
 			if (!module && (name[0] != '-')) {
 				return -1;
 			}
@@ -1730,7 +1730,7 @@ int modules_init(CONF_SECTION *config)
 		name = cf_section_name2(subcs);
 		if (!name) name = cf_section_name1(subcs);
 
-		module = find_module_instance(modules, name, 1);
+		module = find_module_instance(modules, name, true);
 		if (!module) return -1;
 	}
 	cf_log_info(cs, " } # modules");

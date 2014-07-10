@@ -293,7 +293,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 	inst->sincesync = 0;
 
-	sqlinst = find_module_instance(cf_section_find("modules"), (inst->sql_module_instance), 1 );
+	sqlinst = find_module_instance(cf_section_find("modules"), (inst->sql_module_instance), true);
 	if (!sqlinst) {
 		nvp_log(__LINE__, inst, L_ERR,
 			"mod_instantiate(): cannot find module instance "
