@@ -367,7 +367,7 @@ RADCLIENT *client_findbynumber(UNUSED const RADCLIENT_LIST *clients, UNUSED int 
  */
 RADCLIENT *client_find(RADCLIENT_LIST const *clients, fr_ipaddr_t const *ipaddr, int proto)
 {
-	uint32_t i, max_prefix;
+  int32_t i, max_prefix;
 	RADCLIENT myclient;
 
 	if (!clients) clients = root_clients;
@@ -387,7 +387,7 @@ RADCLIENT *client_find(RADCLIENT_LIST const *clients, fr_ipaddr_t const *ipaddr,
 		return NULL;
 	}
 
-	for (i = max_prefix; i >= clients->min_prefix; i--) {
+	for (i = max_prefix; i >= (int32_t) clients->min_prefix; i--) {
 		void *data;
 
 		myclient.ipaddr = *ipaddr;
