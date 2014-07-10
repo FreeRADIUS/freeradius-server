@@ -620,6 +620,11 @@ fr_connection_pool_t *fr_connection_pool_init(CONF_SECTION *parent,
 	pthread_mutex_init(&pool->mutex, NULL);
 #endif
 
+	/*
+	 *	If we weren't provided with an explicit prefix
+	 *	for connection pool messages, figure it out from the
+	 *	section name.
+	 */
 	if (!prefix) {
 		modules = cf_item_parent(cf_sectiontoitem(parent));
 		if (modules) {
