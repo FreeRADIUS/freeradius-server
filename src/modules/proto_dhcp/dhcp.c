@@ -1474,6 +1474,13 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 
 	/* XXX Ugly ... should be set by the caller */
 	if (packet->code == 0) packet->code = PW_DHCP_NAK;
+	
+	/* store xid */
+	if ((vp = pairfind(packet->vps, 260, DHCP_MAGIC_VENDOR, TAG_ANY))) {
+		packet->id = vp->vp_integer;
+	} else {
+		packet->id = fr_rand();
+	}
 
 #ifndef NDEBUG
 	if ((packet->code >= PW_DHCP_DISCOVER) &&
@@ -1553,11 +1560,7 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 	p++;
 
 	/* DHCP-Transaction-Id */
-	if ((vp = pairfind(packet->vps, 260, DHCP_MAGIC_VENDOR, TAG_ANY))) {
-		lvalue = htonl(vp->vp_integer);
-	} else {
-		lvalue = fr_rand();
-	}
+	lvalue = htonl(packet->id);
 	memcpy(p, &lvalue, 4);
 	p += 4;
 
