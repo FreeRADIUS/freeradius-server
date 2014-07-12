@@ -26,6 +26,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/modpriv.h>
 #include <freeradius-devel/rad_assert.h>
 
 typedef struct fr_connection fr_connection_t;
@@ -154,7 +155,7 @@ struct fr_connection_pool_t {
 	void		*opaque;	//!< Pointer to context data that will
 					//!< be passed to callbacks.
 
-	char  		*log_prefix;	//!< Log prefix to prepend to all log
+	char const	*log_prefix;	//!< Log prefix to prepend to all log
 					//!< messages created by the connection
 					//!< pool code.
 
@@ -164,7 +165,6 @@ struct fr_connection_pool_t {
 					//!< of connections.
 };
 
-#define LOG_PREFIX "rlm_%s (%s)"
 #ifndef HAVE_PTHREAD_H
 #define pthread_mutex_lock(_x)
 #define pthread_mutex_unlock(_x)
@@ -555,6 +555,116 @@ void fr_connection_pool_delete(fr_connection_pool_t *pool)
 	talloc_free(pool);
 }
 
+/** Initialise a module specific connection pool
+ *
+ * @see fr_connection_pool_init
+ *
+ * @param[in] module section.
+ * @param[in] opaque data pointer to pass to callbacks.
+ * @param[in] c Callback to create new connections.
+ * @param[in] a Callback to check the status of connections.
+ * @param[in] prefix override, if NULL will be set automatically from the module CONF_SECTION.
+ * @return A new connection pool or NULL on error.
+ */
+fr_connection_pool_t *fr_connection_pool_module_init(CONF_SECTION *module,
+						     void *opaque,
+						     fr_connection_create_t c,
+						     fr_connection_alive_t a,
+						     char const *prefix)
+{
+	CONF_SECTION *cs, *mycs;
+	char buff[128];
+
+	fr_connection_pool_t *pool;
+
+	int ret;
+
+#define CONNECTION_POOL_CF_KEY "connection_pool"
+#define parent_name(_x) cf_section_name(cf_item_parent(cf_sectiontoitem(_x)))
+
+	if (!prefix) {
+		char const *cs_name1, *cs_name2;
+		cs_name1 = cf_section_name1(module);
+		cs_name2 = cf_section_name2(module);
+		if (!cs_name2) cs_name2 = cs_name1;
+
+		snprintf(buff, sizeof(buff), "rlm_%s (%s)", cs_name1, cs_name2);
+		prefix = buff;
+	}
+
+	/*
+	 *	Get sibling's pool config section
+	 */
+	ret = find_module_sibling_section(&cs, module, "pool");
+	switch (ret) {
+	case -1:
+		return NULL;
+
+	case 1:
+		DEBUG4("%s: Using pool section from \"%s\"", prefix, parent_name(cs));
+		break;
+
+	case 0:
+		DEBUG4("%s: Using local pool section", prefix);
+		break;
+	}
+
+	/*
+	 *	Get our pool config section
+	 */
+	mycs = cf_section_sub_find(module, "pool");
+	if (!mycs) {
+		DEBUG4("%s: Adding pool section to \"%s\" to store pool references", prefix,
+		       cf_section_name(module));
+
+		mycs = cf_section_alloc(module, "pool", NULL);
+		cf_section_add(module, mycs);
+	}
+
+	/*
+	 *	Sibling didn't have a pool config section
+	 *	Use our own local pool.
+	 */
+	if (!cs) {
+		DEBUG4("%s: \"%s.pool\" section not found, using \"%s.pool\"", prefix,
+		       parent_name(cs), parent_name(mycs));
+		cs = mycs;
+	}
+
+	/*
+	 *	If fr_connection_pool_init has already been called
+	 *	for this config section, reuse the previous instance.
+	 *
+	 *	This allows modules to pass in the config sections
+	 *	they would like to use the connection pool from.
+	 */
+	pool = cf_data_find(cs, CONNECTION_POOL_CF_KEY);
+	if (!pool) {
+		DEBUG4("%s: No pool reference found in \"%s.pool\"", prefix, parent_name(cs));
+		pool = fr_connection_pool_init(module, cs, opaque, c, a, prefix);
+		if (!pool) return NULL;
+
+		DEBUG4("%s: Adding pool reference %p to \"%s.pool\"", prefix, pool, parent_name(cs));
+		cf_data_add(cs, CONNECTION_POOL_CF_KEY, pool, NULL);
+		return pool;
+	}
+
+	DEBUG4("%s: Found pool reference %p in \"%s.pool\"", prefix, pool, parent_name(cs));
+
+	/*
+	 *	We're reusing pool data add it to our local config
+	 *	section. This allows other modules to transitively
+	 *	re-use a pool through this module.
+	 */
+	if (mycs != cs) {
+		DEBUG4("%s: Copying pool reference %p from \"%s.pool\" to \"%s.pool\"", prefix, pool,
+		       parent_name(cs), parent_name(mycs));
+		cf_data_add(mycs, CONNECTION_POOL_CF_KEY, pool, NULL);
+	}
+
+	return pool;
+}
+
 /** Create a new connection pool
  *
  * Allocates structures used by the connection pool, initialises the various
@@ -565,32 +675,29 @@ void fr_connection_pool_delete(fr_connection_pool_t *pool)
  *
  * @note Will call the 'start' trigger.
  *
- * @param[in] parent configuration section containing a 'pool' subsection.
+ * @param[in] parent section.
+ * @param[in] cs pool section.
  * @param[in] opaque data pointer to pass to callbacks.
  * @param[in] c Callback to create new connections.
  * @param[in] a Callback to check the status of connections.
- * @param[in] prefix to prepend to all log message, if NULL will create prefix
- *	from parent conf section names.
+ * @param[in] prefix to prepend to all log messages.
  * @return A new connection pool or NULL on error.
  */
 fr_connection_pool_t *fr_connection_pool_init(CONF_SECTION *parent,
+					      CONF_SECTION *cs,
 					      void *opaque,
 					      fr_connection_create_t c,
 					      fr_connection_alive_t a,
-					      char *prefix)
+					      char const *prefix)
 {
 	uint32_t i;
 	fr_connection_pool_t *pool;
 	fr_connection_t *this;
-	CONF_SECTION *modules;
-	CONF_SECTION *cs;
-	char const *cs_name1, *cs_name2;
-	time_t now = time(NULL);
+	time_t now;
 
-	if (!parent || !opaque || !c) return NULL;
+	if (!parent || !cs || !opaque || !c) return NULL;
 
-	cs = cf_section_sub_find(parent, "pool");
-	if (!cs) cs = cf_section_sub_find(parent, "limit");
+	now = time(NULL);
 
 	/*
 	 *	Pool is allocated in the NULL context as
@@ -604,8 +711,9 @@ fr_connection_pool_t *fr_connection_pool_init(CONF_SECTION *parent,
 	 *	Ensure the pool is freed at the same time
 	 *	as its parent.
 	 */
-	if (fr_link_talloc_ctx_free(cs ? cs : parent, pool) < 0) {
+	if (fr_link_talloc_ctx_free(cs, pool) < 0) {
 		talloc_free(pool);
+
 		return NULL;
 	}
 
@@ -616,54 +724,16 @@ fr_connection_pool_t *fr_connection_pool_init(CONF_SECTION *parent,
 
 	pool->head = pool->tail = NULL;
 
+	pool->log_prefix = prefix ? talloc_typed_strdup(pool, prefix) : "core";
+
 #ifdef HAVE_PTHREAD_H
 	pthread_mutex_init(&pool->mutex, NULL);
 #endif
 
-	/*
-	 *	If we weren't provided with an explicit prefix
-	 *	for connection pool messages, figure it out from the
-	 *	section name.
-	 */
-	if (!prefix) {
-		modules = cf_item_parent(cf_sectiontoitem(parent));
-		if (modules) {
-			cs_name1 = cf_section_name1(modules);
-			if (cs_name1 && (strcmp(cs_name1, "modules") == 0)) {
-				cs_name1 = cf_section_name1(parent);
-				cs_name2 = cf_section_name2(parent);
-				if (!cs_name2) {
-					cs_name2 = cs_name1;
-				}
-
-				pool->log_prefix = talloc_typed_asprintf(pool, LOG_PREFIX, cs_name1,
-								   cs_name2);
-			}
-		} else {		/* not a module configuration */
-			cs_name1 = cf_section_name1(parent);
-
-			pool->log_prefix = talloc_typed_strdup(pool, cs_name1);
-		}
-	} else {
-		pool->log_prefix = talloc_typed_strdup(pool, prefix);
-	}
-
 	DEBUG("%s: Initialising connection pool", pool->log_prefix);
 
-	if (cs) {
-		if (cf_section_parse(cs, pool, connection_config) < 0) {
-			goto error;
-		}
-
-		if (cf_section_sub_find(cs, "trigger")) pool->trigger = true;
-	} else {
-		pool->start = 5;
-		pool->min = 5;
-		pool->max = 10;
-		pool->spare = 3;
-		pool->cleanup_interval = 30;
-		pool->idle_timeout = 60;
-	}
+	if (cf_section_parse(cs, pool, connection_config) < 0) goto error;
+	if (cf_section_sub_find(cs, "trigger")) pool->trigger = true;
 
 	/*
 	 *	Some simple limits
@@ -672,6 +742,7 @@ fr_connection_pool_t *fr_connection_pool_init(CONF_SECTION *parent,
 		cf_log_err_cs(cs, "Cannot set 'max' to zero");
 		goto error;
 	}
+
 	if (pool->min > pool->max) {
 		cf_log_err_cs(cs, "Cannot set 'min' to more than 'max'");
 		goto error;

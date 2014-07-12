@@ -715,6 +715,90 @@ module_instance_t *find_module_instance(CONF_SECTION *modules,
 	return node;
 }
 
+/** Resolve polymorphic item's from a module's CONF_SECTION to a subsection in another module
+ *
+ * This allows certain module sections to reference module sections in other instances
+ * of the same module and share CONF_DATA associated with them.
+ *
+ * @verbatim
+example {
+	data {
+		...
+	}
+}
+
+example inst {
+	data = example
+}
+ * @endverbatim
+ *
+ * @param out where to write the pointer to a module's config section.  May be NULL on success, indicating the config
+ *	  item was not found within the module CONF_SECTION, or the chain of module references was followed and the
+ *	  module at the end of the chain did not a subsection.
+ * @param module CONF_SECTION.
+ * @param name of the polymorphic sub-section.
+ * @return 0 on success with referenced section, 1 on success with local section, or -1 on failure.
+ */
+int find_module_sibling_section(CONF_SECTION **out, CONF_SECTION *module, char const *name)
+{
+	static bool loop = true;	/* not used, we just need a valid pointer to quiet static analysis */
+
+	CONF_PAIR *cp;
+	CONF_SECTION *cs;
+
+	module_instance_t *inst;
+	char const *inst_name;
+
+#define FIND_SIBLING_CF_KEY "find_sibling"
+
+	*out = NULL;
+
+	/*
+	 *	Is a real section (not referencing sibling module).
+	 */
+	cs = cf_section_sub_find(module, name);
+	if (cs) {
+		*out = cs;
+
+		return 0;
+	}
+
+	/*
+	 *	Item omitted completely from module config.
+	 */
+	cp = cf_pair_find(module, name);
+	if (!cp) return 0;
+
+	if (cf_data_find(module, FIND_SIBLING_CF_KEY)) {
+		cf_log_err_cp(cp, "Module reference loop found");
+
+		return -1;
+	}
+	cf_data_add(module, FIND_SIBLING_CF_KEY, &loop, NULL);
+
+	/*
+	 *	Item found, resolve it to a module instance.
+	 *	This triggers module loading, so we don't have
+	 *	instantiation order issues.
+	 */
+	inst_name = cf_pair_value(cp);
+	inst = find_module_instance(cf_item_parent(cf_sectiontoitem(module)), inst_name, true);
+
+	/*
+	 *	Remove the config data we added for loop
+	 *	detection.
+	 */
+	cf_data_remove(module, FIND_SIBLING_CF_KEY);
+	if (!inst) {
+		cf_log_err_cp(cp, "Unknown module instance \"%s\"", inst_name);
+
+		return -1;
+	}
+	*out = cf_section_sub_find(inst->cs, name);
+
+	return 1;
+}
+
 static indexed_modcallable *lookup_by_index(rbtree_t *components,
 					    rlm_components_t comp, int idx)
 {

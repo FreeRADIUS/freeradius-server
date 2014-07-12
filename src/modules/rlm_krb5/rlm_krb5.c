@@ -223,15 +223,11 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	/*
 	 *	Initialize the socket pool.
 	 */
-	inst->pool = fr_connection_pool_init(conf, inst, mod_conn_create, NULL, NULL);
-	if (!inst->pool) {
-		return -1;
-	}
+	inst->pool = fr_connection_pool_module_init(conf, inst, mod_conn_create, NULL, NULL);
+	if (!inst->pool) return -1;
 #else
 	inst->conn = mod_conn_create(inst, inst);
-	if (!inst->conn) {
-		return -1;
-	}
+	if (!inst->conn) return -1;
 #endif
 	return 0;
 }
