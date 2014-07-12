@@ -796,6 +796,17 @@ int find_module_sibling_section(CONF_SECTION **out, CONF_SECTION *module, char c
 
 		return -1;
 	}
+
+	/*
+	 *	Check the module instances are of the same type.
+	 */
+	if (strcmp(cf_section_name1(inst->cs), cf_section_name1(module)) != 0) {
+		cf_log_err_cp(cp, "Referenced module is a rlm_%s instance, must be a rlm_%s instance",
+			      cf_section_name1(inst->cs), cf_section_name1(module));
+
+		return -1;
+	}
+
 	*out = cf_section_sub_find(inst->cs, name);
 
 	return 1;
