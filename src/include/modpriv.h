@@ -54,9 +54,9 @@ typedef struct module_instance_t {
 	fr_module_hup_t	       	*mh;
 } module_instance_t;
 
-module_instance_t *find_module_instance(CONF_SECTION *, char const *instname,
-					bool do_link);
-int module_hup_module(CONF_SECTION *cs, module_instance_t *node, time_t when);
+module_instance_t	*find_module_instance(CONF_SECTION *modules, char const *askedname, bool do_link);
+int			find_module_sibling_section(CONF_SECTION **out, CONF_SECTION *module, char const *name);
+int			module_hup_module(CONF_SECTION *cs, module_instance_t *node, time_t when);
 
 #ifdef __cplusplus
 }

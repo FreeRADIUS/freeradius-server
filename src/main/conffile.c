@@ -128,6 +128,8 @@ static char const 	*cf_expand_variables(char const *cf, int *lineno,
 
 static CONF_SECTION	*cf_template_copy(CONF_SECTION *parent, CONF_SECTION const *template);
 
+static void		cf_item_add(CONF_SECTION *cs, CONF_ITEM *ci);
+
 /*
  *	Isolate the scary casts in these tiny provably-safe functions
  */
@@ -388,6 +390,11 @@ CONF_SECTION *cf_section_alloc(CONF_SECTION *parent, char const *name1,
 	if (parent) cs->depth = parent->depth + 1;
 
 	return cs;
+}
+
+void cf_section_add(CONF_SECTION *parent, CONF_SECTION *cs)
+{
+	cf_item_add(parent, &(cs->item));
 }
 
 /*
@@ -2447,6 +2454,19 @@ char const *cf_section_name2(CONF_SECTION const *cs)
 	return (cs ? cs->name2 : NULL);
 }
 
+/** Return name2 if set, else name1
+ *
+ */
+char const *cf_section_name(CONF_SECTION const *cs)
+{
+	char const *name;
+
+	name = cf_section_name2(cs);
+	if (name) return name;
+
+	return cf_section_name1(cs);
+}
+
 /*
  * Find a value in a CONF_SECTION
  */
@@ -2722,11 +2742,12 @@ int cf_pair_lineno(CONF_PAIR const *pair)
 	return pair->item.lineno;
 }
 
-int cf_item_is_section(CONF_ITEM const *item)
+bool cf_item_is_section(CONF_ITEM const *item)
 {
 	return item->type == CONF_ITEM_SECTION;
 }
-int cf_item_is_pair(CONF_ITEM const *item)
+
+bool cf_item_is_pair(CONF_ITEM const *item)
 {
 	return item->type == CONF_ITEM_PAIR;
 }
@@ -2822,6 +2843,35 @@ int cf_data_add(CONF_SECTION *cs, char const *name,
 		void *data, void (*data_free)(void *))
 {
 	return cf_data_add_internal(cs, name, data, data_free, 0);
+}
+
+/** Remove named data from a configuration section
+ *
+ */
+void *cf_data_remove(CONF_SECTION *cs, char const *name)
+{
+	CONF_DATA mycd;
+	CONF_DATA *cd;
+	void *data;
+
+	if (!cs || !name) return NULL;
+	if (!cs->data_tree) return NULL;
+
+	/*
+	 *	Find the name in the tree, for speed.
+	 */
+	mycd.name = name;
+	mycd.flag = 0;
+	cd = rbtree_finddata(cs->data_tree, &mycd);
+	if (!cd) return NULL;
+
+	talloc_set_destructor(cd, NULL);	/* Disarm the destructor */
+	rbtree_deletebydata(cs->data_tree, &mycd);
+
+	data = cd->data;
+	talloc_free(cd);
+
+	return data;
 }
 
 /*

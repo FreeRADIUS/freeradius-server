@@ -772,10 +772,8 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	/*
 	 *	Initialize the socket pool.
 	 */
-	inst->pool = fr_connection_pool_init(inst->cs, inst, mod_conn_create, NULL, NULL);
-	if (!inst->pool) {
-		return -1;
-	}
+	inst->pool = fr_connection_pool_module_init(inst->cs, inst, mod_conn_create, NULL, NULL);
+	if (!inst->pool) return -1;
 
 	/*
 	 *	Bulk load dynamic clients.
