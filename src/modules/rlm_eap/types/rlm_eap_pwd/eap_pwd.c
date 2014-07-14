@@ -282,8 +282,14 @@ int compute_scalar_element (pwd_session_t *sess, BN_CTX *bnctx) {
 		goto fail;
 	}
 
-	BN_rand_range(sess->private_value, sess->order);
-	BN_rand_range(mask, sess->order);
+	if (BN_rand_range(sess->private_value, sess->order) != 1) {
+		DEBUG2("Unable to get randomness for private_value");
+		goto fail;
+	}
+	if (BN_rand_range(mask, sess->order) != 1) {
+		DEBUG2("Unable to get randomness for mask");
+		goto fail;
+	}
 	BN_add(sess->my_scalar, sess->private_value, mask);
 	BN_mod(sess->my_scalar, sess->my_scalar, sess->order, bnctx);
 
