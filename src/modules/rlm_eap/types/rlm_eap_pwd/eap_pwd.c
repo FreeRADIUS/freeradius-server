@@ -262,9 +262,9 @@ int compute_password_element (pwd_session_t *sess, uint16_t grp_num,
 	}
 
 	/* cleanliness and order.... */
-	BN_free(cofactor);
-	BN_free(x_candidate);
-	BN_free(rnd);
+	BN_clear_free(cofactor);
+	BN_clear_free(x_candidate);
+	BN_clear_free(rnd);
 	talloc_free(prfbuf);
 
 	return ret;
@@ -300,7 +300,7 @@ int compute_scalar_element (pwd_session_t *sess, BN_CTX *bnctx) {
 	ret = 0;
 
 fail:
-	BN_free(mask);
+	BN_clear_free(mask);
 
 	return ret;
 }
@@ -389,11 +389,11 @@ int process_peer_commit (pwd_session_t *sess, uint8_t *commit, BN_CTX *bnctx)
 	res = 0;
 
 finish:
-	EC_POINT_free(K);
-	EC_POINT_free(point);
-	BN_free(cofactor);
-	BN_free(x);
-	BN_free(y);
+	EC_POINT_clear_free(K);
+	EC_POINT_clear_free(point);
+	BN_clear_free(cofactor);
+	BN_clear_free(x);
+	BN_clear_free(y);
 
 	return res;
 }
