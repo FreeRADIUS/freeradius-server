@@ -370,7 +370,7 @@ static int mod_authenticate (void *arg, eap_handler_t *handler)
 		if ((id->prf != EAP_PWD_DEF_PRF) ||
 		    (id->random_function != EAP_PWD_DEF_RAND_FUN) ||
 		    (id->prep != EAP_PWD_PREP_NONE) ||
-		    (memcmp(id->token, (char *)&pwd_session->token, 4)) ||
+		    (CRYPTO_memcmp(id->token, (char *)&pwd_session->token, 4)) ||
 		    (id->group_num != ntohs(pwd_session->group_num))) {
 			RDEBUG2("pwd id response is invalid");
 			return 0;
@@ -561,7 +561,7 @@ static int mod_authenticate (void *arg, eap_handler_t *handler)
 			RDEBUG2("pwd exchange cannot compute peer's confirm");
 			return 0;
 		}
-		if (memcmp(peer_confirm, buf, SHA256_DIGEST_LENGTH)) {
+		if (CRYPTO_memcmp(peer_confirm, buf, SHA256_DIGEST_LENGTH)) {
 			RDEBUG2("pwd exchange fails: peer confirm is incorrect!");
 			return 0;
 		}
