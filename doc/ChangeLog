@@ -34,6 +34,12 @@ FreeRADIUS 3.0.4 Mon 12 May 2014 15:30:00 EDT urgency=medium
 	* Add support for aliases in rlm_ldap.
 	* Add support for connection pool sharing to all modules that use
 	  the connection pool (pool = <instance>).
+	* "tls" sections now have a "psk_query" configuration item, for dynamic
+	  queries to discover a key from a PSK identity.
+	* Preliminary support for EAP channel bindings.
+	* Foundational work for dynamic home servers.  They do not yet work,
+	  but this is now only a matter of updating the "realm" module in
+	  a future release.
 
 	Bug fixes
 	* make case-insensitive regular expressions work again.
