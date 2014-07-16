@@ -70,13 +70,12 @@ static void NEVER_RETURNS usage(void)
 {
 	fprintf(stderr, "Usage: dhcpclient [options] server[:port] <command>\n");
 
-	fprintf(stderr, "  <command>    One of discover, request, offer\n");
-	fprintf(stderr, "  -c count    Send each packet 'count' times.\n");
-	fprintf(stderr, "  -d raddb    Set dictionary directory.\n");
-	fprintf(stderr, "  -f file     Read packets from file, not stdin.\n");
-	fprintf(stderr, "  -r retries  If timeout, retry sending the packet 'retries' times.\n");
-	fprintf(stderr, "  -v	  Show program version information.\n");
-	fprintf(stderr, "  -x	  Debugging mode.\n");
+	fprintf(stderr, "  <command>              One of discover, request, offer, decline, release, inform.\n");
+	fprintf(stderr, "  -d <raddb>             Set user dictionary directory (defaults to " RADDBDIR ").\n");
+	fprintf(stderr, "  -f <file>              Read packets from file, not stdin.\n");
+	fprintf(stderr, "  -t <timeout>           Wait 'timeout' seconds for a reply (may be a floating point number).\n");
+	fprintf(stderr, "  -v                     Show program version information.\n");
+	fprintf(stderr, "  -x                     Debugging mode.\n");
 
 	exit(1);
 }
@@ -365,6 +364,18 @@ int main(int argc, char **argv)
 		if (server_port == 0) server_port = 67;
 		packet_code = PW_DHCP_OFFER;
 
+	} else if (strcmp(argv[2], "decline") == 0) {
+		if (server_port == 0) server_port = 67;
+		packet_code = PW_DHCP_DECLINE;
+
+	} else if (strcmp(argv[2], "release") == 0) {
+		if (server_port == 0) server_port = 67;
+		packet_code = PW_DHCP_RELEASE;
+
+	} else if (strcmp(argv[2], "inform") == 0) {
+		if (server_port == 0) server_port = 67;
+		packet_code = PW_DHCP_INFORM;
+
 	} else if (isdigit((int) argv[2][0])) {
 		if (server_port == 0) server_port = 67;
 		packet_code = atoi(argv[2]);
@@ -402,6 +413,15 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
+	/*
+	 *	Set option 'receive timeout' on socket.
+	 *	Note: in case of a timeout, the error will be "Resource temporarily unavailable".
+	 */
+	struct timeval tv;
+	tv.tv_sec = (time_t)timeout;
+	tv.tv_usec = (uint64_t)(timeout * 1000000) - (tv.tv_sec * 1000000);
+	setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (char *)&tv,sizeof(struct timeval));
+	
 	request->sockfd = sockfd;
 	if (request->src_ipaddr.af == AF_UNSPEC) {
 		request->src_ipaddr = client_ipaddr;
