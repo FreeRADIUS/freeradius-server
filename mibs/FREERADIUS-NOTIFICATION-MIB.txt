@@ -43,7 +43,7 @@ serverStop NOTIFICATION-TYPE
 serverMaxRequests NOTIFICATION-TYPE
        OBJECTS { identity }
        STATUS current
-       DESCRIPTION "Notification that the server has reached the max_requests limit"
+       DESCRIPTION "Notification that the server has hit the max_requests limit"
        ::= { serverGlobal 3 }
 
 serverSignal  OBJECT IDENTIFIER ::= { serverGlobal 4 }
@@ -83,7 +83,7 @@ threadUnresponsive NOTIFICATION-TYPE
 threadMaxThreads NOTIFICATION-TYPE
        OBJECTS { identity }
        STATUS current
-       DESCRIPTION "Notification that the max_threads limit has been reached"
+       DESCRIPTION "Notification that the max_threads limit has been hit"
        ::= { serverThread 4 }
 
 serverModules  OBJECT IDENTIFIER ::= { freeRadiusNotificationMib 2 }
