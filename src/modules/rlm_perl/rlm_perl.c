@@ -951,7 +951,9 @@ static int mod_detach(void *instance)
 	rlm_perl_t	*inst = (rlm_perl_t *) instance;
 	int 		exitstatus = 0, count = 0;
 
-	hv_undef(inst->rad_perlconf_hv);
+	if (inst->rad_perlconf_hv != NULL) {
+		hv_undef(inst->rad_perlconf_hv);
+	}
 
 #if 0
 	/*
