@@ -598,11 +598,13 @@ static void perl_store_vps(UNUSED TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR 
 		if ((next = fr_cursor_next_peek(&cursor)) && ATTRIBUTE_EQ(vp, next)) {
 			int i;
 			AV *av;
+			vp_cursor_t cursor2;
 
 			av = newAV();
-			for (next = fr_cursor_next_by_da(&cursor, vp->da, vp->tag), i = 0;
-			     next;
-			     next = fr_cursor_next_by_da(&cursor, vp->da, vp->tag), i++) {
+			cursor2 = cursor;
+			for (i = 0;
+			     (next = fr_cursor_next_by_da(&cursor, vp->da, vp->tag));
+			     i++) {
 			     	switch (vp->da->type) {
 			     	case PW_TYPE_STRING:
 			     		RDEBUG("$%s{'%s'}[%i] = &%s:%s -> '%s'", hashname, next->da->name, i,
@@ -619,6 +621,8 @@ static void perl_store_vps(UNUSED TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR 
 				}
 			}
 			(void)hv_store(rad_hv, name, strlen(name), newRV_noinc((SV *)av), 0);
+			cursor = cursor2;
+			fr_cursor_next(&cursor);
 
 			continue;
 		}
