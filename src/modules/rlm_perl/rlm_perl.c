@@ -552,7 +552,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 }
 
 static void perl_vp_to_svpvn_element(REQUEST *request, AV *av, VALUE_PAIR const *vp,
-				     int *i, const char *hashname, const char *list_name)
+				     int *i, const char *hash_name, const char *list_name)
 {
 	size_t len;
 
@@ -560,7 +560,7 @@ static void perl_vp_to_svpvn_element(REQUEST *request, AV *av, VALUE_PAIR const 
 
 	switch (vp->da->type) {
 	case PW_TYPE_STRING:
-		RDEBUG("$%s{'%s'}[%i] = &%s:%s -> '%s'", hashname, vp->da->name, *i,
+		RDEBUG("$%s{'%s'}[%i] = &%s:%s -> '%s'", hash_name, vp->da->name, *i,
 		       list_name, vp->da->name, vp->vp_strvalue);
 		av_push(av, newSVpvn(vp->vp_strvalue, vp->length));
 		break;
@@ -570,7 +570,7 @@ static void perl_vp_to_svpvn_element(REQUEST *request, AV *av, VALUE_PAIR const 
 			char *hex;
 
 			hex = fr_abin2hex(request, vp->vp_octets, vp->length);
-			RDEBUG("$%s{'%s'}[%i] = &%s:%s -> 0x%s", hashname, vp->da->name, *i,
+			RDEBUG("$%s{'%s'}[%i] = &%s:%s -> 0x%s", hash_name, vp->da->name, *i,
 			       list_name, vp->da->name, hex);
 			talloc_free(hex);
 		}
@@ -579,7 +579,7 @@ static void perl_vp_to_svpvn_element(REQUEST *request, AV *av, VALUE_PAIR const 
 
 	default:
 		len = vp_prints_value(buffer, sizeof(buffer), vp, 0);
-		RDEBUG("$%s{'%s'}[%i] = &%s:%s -> '%s'", hashname, vp->da->name, *i,
+		RDEBUG("$%s{'%s'}[%i] = &%s:%s -> '%s'", hash_name, vp->da->name, *i,
 		       list_name, vp->da->name, buffer);
 		av_push(av, newSVpvn(buffer, truncate_len(len, sizeof(buffer))));
 		break;
@@ -594,7 +594,7 @@ static void perl_vp_to_svpvn_element(REQUEST *request, AV *av, VALUE_PAIR const 
  *  	Which will be available as array_ref in $RAD_REQUEST{'Cisco-AVPair'}
  */
 static void perl_store_vps(UNUSED TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR *vps, HV *rad_hv,
-			   const char *hashname, const char *list_name)
+			   const char *hash_name, const char *list_name)
 {
 	VALUE_PAIR *vp;
 
@@ -636,9 +636,9 @@ static void perl_store_vps(UNUSED TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR 
 			AV *av;
 
 			av = newAV();
-			perl_vp_to_svpvn_element(request, av, vp, &i, hashname, list_name);
+			perl_vp_to_svpvn_element(request, av, vp, &i, hash_name, list_name);
 			do {
-				perl_vp_to_svpvn_element(request, av, next, &i, hashname, list_name);
+				perl_vp_to_svpvn_element(request, av, next, &i, hash_name, list_name);
 				fr_cursor_next(&cursor);
 			} while ((next = fr_cursor_next_peek(&cursor)) && ATTRIBUTE_EQ(vp, next));
 			(void)hv_store(rad_hv, name, strlen(name), newRV_noinc((SV *)av), 0);
@@ -651,7 +651,7 @@ static void perl_store_vps(UNUSED TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR 
 		 */
 		switch (vp->da->type) {
 		case PW_TYPE_STRING:
-			RDEBUG("$%s{'%s'} = &%s:%s -> '%s'", hashname, vp->da->name, list_name,
+			RDEBUG("$%s{'%s'} = &%s:%s -> '%s'", hash_name, vp->da->name, list_name,
 			       vp->da->name, vp->vp_strvalue);
 			(void)hv_store(rad_hv, name, strlen(name), newSVpvn(vp->vp_strvalue, vp->length), 0);
 			break;
@@ -661,7 +661,7 @@ static void perl_store_vps(UNUSED TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR 
 				char *hex;
 
 				hex = fr_abin2hex(request, vp->vp_octets, vp->length);
-				RDEBUG("$%s{'%s'} = &%s:%s -> 0x%s", hashname, vp->da->name,
+				RDEBUG("$%s{'%s'} = &%s:%s -> 0x%s", hash_name, vp->da->name,
 				       list_name, vp->da->name, hex);
 				talloc_free(hex);
 			}
@@ -671,7 +671,7 @@ static void perl_store_vps(UNUSED TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR 
 
 		default:
 			len = vp_prints_value(buffer, sizeof(buffer), vp, 0);
-			RDEBUG("$%s{'%s'} = &%s:%s -> '%s'", hashname, vp->da->name,
+			RDEBUG("$%s{'%s'} = &%s:%s -> '%s'", hash_name, vp->da->name,
 			       list_name, vp->da->name, buffer);
 			(void)hv_store(rad_hv, name, strlen(name),
 				       newSVpvn(buffer, truncate_len(len, sizeof(buffer))), 0);
@@ -688,7 +688,7 @@ static void perl_store_vps(UNUSED TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR 
  *
  */
 static int pairadd_sv(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, char *key, SV *sv, FR_TOKEN op,
-		      const char *hashname, const char *list_name)
+		      const char *hash_name, const char *list_name)
 {
 	char	    *val;
 	VALUE_PAIR      *vp;
@@ -718,7 +718,7 @@ static int pairadd_sv(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, char 
 		}
 
 		RDEBUG("&%s:%s %s $%s{'%s'} -> '%s'", list_name, key, fr_int2str(fr_tokens, op, "<INVALID>"),
-		       hashname, key, val);
+		       hash_name, key, val);
 		return 0;
 	}
 	return -1;
@@ -728,7 +728,7 @@ static int pairadd_sv(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, char 
  *     Gets the content from hashes
  */
 static int get_hv_content(TALLOC_CTX *ctx, REQUEST *request, HV *my_hv, VALUE_PAIR **vps,
-			  const char *hashname, const char *list_name)
+			  const char *hash_name, const char *list_name)
 {
 	SV		*res_sv, **av_sv;
 	AV		*av;
@@ -744,9 +744,9 @@ static int get_hv_content(TALLOC_CTX *ctx, REQUEST *request, HV *my_hv, VALUE_PA
 			len = av_len(av);
 			for (j = 0; j <= len; j++) {
 				av_sv = av_fetch(av, j, 0);
-				ret = pairadd_sv(ctx, request, vps, key, *av_sv, T_OP_ADD, hashname, list_name) + ret;
+				ret = pairadd_sv(ctx, request, vps, key, *av_sv, T_OP_ADD, hash_name, list_name) + ret;
 			}
-		} else ret = pairadd_sv(ctx, request, vps, key, res_sv, T_OP_EQ, hashname, list_name) + ret;
+		} else ret = pairadd_sv(ctx, request, vps, key, res_sv, T_OP_EQ, hash_name, list_name) + ret;
 	}
 
 	return ret;
@@ -754,7 +754,7 @@ static int get_hv_content(TALLOC_CTX *ctx, REQUEST *request, HV *my_hv, VALUE_PA
 
 /*
  * 	Call the function_name inside the module
- * 	Store all vps in hashes %RAD_CONFIG %RAD_REPLY %RAD_REQUEST 
+ * 	Store all vps in hashes %RAD_CONFIG %RAD_REPLY %RAD_REQUEST
  *
  */
 static int do_perl(void *instance, REQUEST *request, char const *function_name)
@@ -805,8 +805,8 @@ static int do_perl(void *instance, REQUEST *request, char const *function_name)
 		rad_config_hv = get_hv("RAD_CONFIG", 1);
 		rad_request_hv = get_hv("RAD_REQUEST", 1);
 
-		perl_store_vps(request->reply, request, request->reply->vps, rad_reply_hv, "RAD_REPLY", "reply");
 		perl_store_vps(request->packet, request, request->packet->vps, rad_request_hv, "RAD_REQUEST", "request");
+		perl_store_vps(request->reply, request, request->reply->vps, rad_reply_hv, "RAD_REPLY", "reply");
 		perl_store_vps(request, request, request->config_items, rad_config_hv, "RAD_CONFIG", "control");
 
 #ifdef WITH_PROXY
