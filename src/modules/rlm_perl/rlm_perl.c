@@ -551,6 +551,42 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	return 0;
 }
 
+static void perl_vp_to_svpvn_element(REQUEST *request, AV *av, VALUE_PAIR const *vp,
+				     int *i, const char *hashname, const char *list_name)
+{
+	size_t len;
+
+	char buffer[1024];
+
+	switch (vp->da->type) {
+	case PW_TYPE_STRING:
+		RDEBUG("$%s{'%s'}[%i] = &%s:%s -> '%s'", hashname, vp->da->name, *i,
+		       list_name, vp->da->name, vp->vp_strvalue);
+		av_push(av, newSVpvn(vp->vp_strvalue, vp->length));
+		break;
+
+	case PW_TYPE_OCTETS:
+		if (RDEBUG_ENABLED) {
+			char *hex;
+
+			hex = fr_abin2hex(request, vp->vp_octets, vp->length);
+			RDEBUG("$%s{'%s'}[%i] = &%s:%s -> 0x%s", hashname, vp->da->name, *i,
+			       list_name, vp->da->name, hex);
+			talloc_free(hex);
+		}
+		av_push(av, newSVpvn((char const *)vp->vp_octets, vp->length));
+		break;
+
+	default:
+		len = vp_prints_value(buffer, sizeof(buffer), vp, 0);
+		RDEBUG("$%s{'%s'}[%i] = &%s:%s -> '%s'", hashname, vp->da->name, *i,
+		       list_name, vp->da->name, buffer);
+		av_push(av, newSVpvn(buffer, truncate_len(len, sizeof(buffer))));
+		break;
+	}
+	(*i)++;
+}
+
 /*
  *  	get the vps and put them in perl hash
  *  	If one VP have multiple values it is added as array_ref
@@ -596,40 +632,15 @@ static void perl_store_vps(UNUSED TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR 
 		 *	same type/tag should follow on from each other.
 		 */
 		if ((next = fr_cursor_next_peek(&cursor)) && ATTRIBUTE_EQ(vp, next)) {
-			int i;
+			int i = 0;
 			AV *av;
 
 			av = newAV();
-			for (next = fr_cursor_next_by_da(&cursor, vp->da, vp->tag), i = 0;
-			     next;
-			     next = fr_cursor_next_by_da(&cursor, vp->da, vp->tag), i++) {
-				switch (vp->da->type) {
-				case PW_TYPE_STRING:
-					RDEBUG("$%s{'%s'}[%i] = &%s:%s -> '%s'", hashname, next->da->name, i,
-					       list_name, next->da->name, next->vp_strvalue);
-					av_push(av, newSVpvn(next->vp_strvalue, next->length));
-					break;
-
-				case PW_TYPE_OCTETS:
-					if (RDEBUG_ENABLED) {
-						char *hex;
-
-						hex = fr_abin2hex(request, next->vp_octets, next->length);
-						RDEBUG("$%s{'%s'}[%i] = &%s:%s -> 0x%s", hashname, next->da->name, i,
-						       list_name, next->da->name, hex);
-						talloc_free(hex);
-					}
-					av_push(av, newSVpvn((char const *)next->vp_octets, next->length));
-					break;
-
-				default:
-					len = vp_prints_value(buffer, sizeof(buffer), next, 0);
-					RDEBUG("$%s{'%s'}[%i] = &%s:%s -> '%s'", hashname, next->da->name, i,
-					       list_name, next->da->name, buffer);
-					av_push(av, newSVpvn(buffer, truncate_len(len, sizeof(buffer))));
-					break;
-				}
-			}
+			perl_vp_to_svpvn_element(request, av, vp, &i, hashname, list_name);
+			do {
+				perl_vp_to_svpvn_element(request, av, next, &i, hashname, list_name);
+				fr_cursor_next(&cursor);
+			} while ((next = fr_cursor_next_peek(&cursor)) && ATTRIBUTE_EQ(vp, next));
 			(void)hv_store(rad_hv, name, strlen(name), newRV_noinc((SV *)av), 0);
 
 			continue;
