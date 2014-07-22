@@ -45,6 +45,11 @@ int fr_dhcp_encode(RADIUS_PACKET *packet);
 ssize_t fr_dhcp_decode_options(VALUE_PAIR **out, TALLOC_CTX *ctx, uint8_t const *data, size_t len);
 int fr_dhcp_decode(RADIUS_PACKET *packet);
 
+#include <linux/if_packet.h>
+int fr_socket_packet(int iface_index, struct sockaddr_ll *p_ll);
+int fr_dhcp_send_raw_packet(int sockfd, struct sockaddr_ll *p_ll, RADIUS_PACKET *packet);
+RADIUS_PACKET *fr_dhcp_recv_raw_packet(int sockfd, struct sockaddr_ll *p_ll, struct timeval *p_tv, RADIUS_PACKET *request);
+
 /*
  *	This is a horrible hack.
  */

@@ -39,9 +39,15 @@ RCSID("$Id$")
 
 #include <assert.h>
 
+#include <net/if.h>
+
+/* @todo: this is a hack */
+#  define DEBUG			if (fr_debug_flag && fr_log_fp) fr_printf_log
+
 static int success = 0;
 static int retries = 3;
 static float timeout = 5;
+static struct timeval tv_timeout;
 
 static uint16_t server_port = 0;
 static int packet_code = 0;
@@ -52,6 +58,10 @@ static uint16_t client_port = 0;
 
 static int sockfd;
 
+struct sockaddr_ll ll;	/* Socket address structure */
+static char *iface = NULL;
+static int iface_ind = -1;
+
 static RADIUS_PACKET *request = NULL;
 static RADIUS_PACKET *reply = NULL;
 
@@ -60,6 +70,12 @@ static RADIUS_PACKET *reply = NULL;
 #define DHCP_FILE_LEN	(128)
 #define DHCP_VEND_LEN	(308)
 #define DHCP_OPTION_MAGIC_NUMBER (0x63825363)
+
+/* structure to keep track of offered IP addresses */
+typedef struct dc_offer {
+	uint32_t server_addr;
+	uint32_t offered_addr;
+} dc_offer_t;
 
 char const *dhcpclient_version = "dhcpclient version " RADIUSD_VERSION_STRING
 #ifdef RADIUSD_VERSION_COMMIT
@@ -74,6 +90,7 @@ static void NEVER_RETURNS usage(void)
 	fprintf(stderr, "  <command>              One of discover, request, offer, decline, release, inform.\n");
 	fprintf(stderr, "  -d <raddb>             Set user dictionary directory (defaults to " RADDBDIR ").\n");
 	fprintf(stderr, "  -f <file>              Read packets from file, not stdin.\n");
+	fprintf(stderr, "  -i <interface>         Use this interface to send/receive at packet level on a raw socket.\n");
 	fprintf(stderr, "  -t <timeout>           Wait 'timeout' seconds for a reply (may be a floating point number).\n");
 	fprintf(stderr, "  -v                     Show program version information.\n");
 	fprintf(stderr, "  -x                     Debugging mode.\n");
@@ -259,6 +276,79 @@ static void print_hex(RADIUS_PACKET *packet)
 	fflush(stdout);
 }
 
+/*
+ *	Loop waiting for DHCP replies until timer expires.
+ *	Note that there may be more than one reply: multiple DHCP servers can respond to a broadcast discover.
+ *	A real client would pick one of the proposed replies.
+ *	We'll just return the first eligible reply, and display the others.
+ */
+static RADIUS_PACKET *fr_dhcp_recv_raw_loop(int lsockfd, struct sockaddr_ll *p_ll, RADIUS_PACKET *request_p)
+{
+	struct timeval tval;
+	RADIUS_PACKET *reply_p = NULL;
+	RADIUS_PACKET *cur_reply_p = NULL;
+	int nb_reply = 0;
+	int nb_offer = 0;
+	dc_offer_t *offer_list = NULL;
+
+	memcpy(&tval, &tv_timeout, sizeof(struct timeval));
+
+	/* Loop waiting for DHCP replies until timer expires */
+	while (timerisset(&tval)) {
+		DEBUG("Waiting for%sDHCP replies for: %d.%06d\n", 
+			(nb_reply>0)?" additional ":" ", (int)tval.tv_sec, (int)tval.tv_usec);
+		
+		cur_reply_p = fr_dhcp_recv_raw_packet(lsockfd, p_ll, &tval, request_p);
+		
+		if (cur_reply_p) {
+			nb_reply ++;
+			
+			if (fr_debug_flag) print_hex(cur_reply_p);
+
+			if (fr_dhcp_decode(cur_reply_p) < 0) {
+				fprintf(stderr, "dhcpclient: failed decoding reply\n");
+				return NULL;
+			}
+			
+			if (!reply_p) reply_p = cur_reply_p;
+			
+			if (cur_reply_p->code == PW_DHCP_OFFER) {
+				VALUE_PAIR *vp1 = pairfind(cur_reply_p->vps, 54,  DHCP_MAGIC_VENDOR, TAG_ANY); /* DHCP-DHCP-Server-Identifier */
+				VALUE_PAIR *vp2 = pairfind(cur_reply_p->vps, 264, DHCP_MAGIC_VENDOR, TAG_ANY); /* DHCP-Your-IP-address */
+				
+				if (vp1 && vp2) {
+					nb_offer ++;
+					offer_list = talloc_realloc(request_p, offer_list, dc_offer_t, nb_offer);
+					offer_list[nb_offer-1].server_addr = vp1->vp_ipaddr;
+					offer_list[nb_offer-1].offered_addr = vp2->vp_ipaddr;
+				}
+			}
+		}
+	}
+	
+	if (0 == nb_reply) {
+		fr_strerror_printf("No valid DHCP reply received");
+		return NULL;
+	}
+	
+	/* display offer(s) received */
+	if (nb_offer > 0 ) {
+		DEBUG("Received %d DHCP Offer(s):\n", nb_offer);
+		int i;
+		for (i=0; i<nb_reply; i++) {
+			char server_addr_buf[INET6_ADDRSTRLEN];
+			char offered_addr_buf[INET6_ADDRSTRLEN];
+			
+			DEBUG("IP address: %s offered by DHCP server: %s\n",
+				inet_ntop(AF_INET, &offer_list[i].offered_addr, offered_addr_buf, sizeof(offered_addr_buf)),
+				inet_ntop(AF_INET, &offer_list[i].server_addr, server_addr_buf, sizeof(server_addr_buf))
+			);
+		}
+	}
+	
+	return reply_p;
+}
+
 int main(int argc, char **argv)
 {
 	char *p;
@@ -268,12 +358,15 @@ int main(int argc, char **argv)
 
 	fr_debug_flag = 0;
 
-	while ((c = getopt(argc, argv, "d:f:hr:t:vx")) != EOF) switch(c) {
+	while ((c = getopt(argc, argv, "d:f:hi:r:t:vx")) != EOF) switch(c) {
 		case 'd':
 			radius_dir = optarg;
 			break;
 		case 'f':
 			filename = optarg;
+			break;
+		case 'i':
+			iface = optarg;
 			break;
 		case 'r':
 			if (!isdigit((int) *optarg))
@@ -303,6 +396,10 @@ int main(int argc, char **argv)
 	argv += (optind - 1);
 
 	if (argc < 2) usage();
+
+	/*	convert timeout to a struct timeval */
+	tv_timeout.tv_sec = (time_t)timeout;
+	tv_timeout.tv_usec = (uint64_t)(timeout * 1000000) - (tv_timeout.tv_sec * 1000000);
 
 	if (dict_init(radius_dir, RADIUS_DICTIONARY) < 0) {
 		fr_perror("dhcpclient");
@@ -408,21 +505,39 @@ int main(int argc, char **argv)
 		client_ipaddr = request->src_ipaddr;
 		client_port = request->src_port;
 	}
-	sockfd = fr_socket(&client_ipaddr, client_port);
+	
+	/* set "raw mode" if an interface is specified and if destination IP address is the broadcast address. */
+	bool dc_raw_mode = false;
+	if (iface) {
+		iface_ind = if_nametoindex(iface);
+		if (iface_ind <= 0) {
+			fprintf(stderr, "dhcpclient: unknown interface: %s\n", iface);
+			exit(1);
+		}
+		if (server_ipaddr.ipaddr.ip4addr.s_addr == 0xFFFFFFFF) {
+			DEBUG("dhcpclient: Using interface: %s (index: %d) in raw packet mode\n", iface, iface_ind);
+			dc_raw_mode = true;
+		}
+	}
+
+	if (!dc_raw_mode) {
+		sockfd = fr_socket(&client_ipaddr, client_port);
+		
+		/*
+		 *	Set option 'receive timeout' on socket.
+		 *	Note: in case of a timeout, the error will be "Resource temporarily unavailable".
+		 */
+		setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (char *)&tv_timeout, sizeof(struct timeval));
+
+	} else {
+		sockfd = fr_socket_packet(iface_ind, &ll);
+	}
+
 	if (sockfd < 0) {
 		fprintf(stderr, "dhcpclient: socket: %s\n", fr_strerror());
 		exit(1);
 	}
 
-	/*
-	 *	Set option 'receive timeout' on socket.
-	 *	Note: in case of a timeout, the error will be "Resource temporarily unavailable".
-	 */
-	struct timeval tv;
-	tv.tv_sec = (time_t)timeout;
-	tv.tv_usec = (uint64_t)(timeout * 1000000) - (tv.tv_sec * 1000000);
-	setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (char *)&tv,sizeof(struct timeval));
-	
 	request->sockfd = sockfd;
 	if (request->src_ipaddr.af == AF_UNSPEC) {
 		request->src_ipaddr = client_ipaddr;
@@ -443,22 +558,37 @@ int main(int argc, char **argv)
 	}
 	if (fr_debug_flag) print_hex(request);
 
-	if (fr_dhcp_send(request) < 0) {
-		fprintf(stderr, "dhcpclient: failed sending: %s\n",
-			fr_syserror(errno));
-		exit(1);
-	}
+	if (!dc_raw_mode) {
+		if (fr_dhcp_send(request) < 0) {
+			fprintf(stderr, "dhcpclient: failed sending: %s\n",
+				fr_syserror(errno));
+			exit(1);
+		}
 
-	reply = fr_dhcp_recv(sockfd);
-	if (!reply) {
-		fprintf(stderr, "dhcpclient: Error receiving reply %s\n", fr_strerror());
-		exit(1);
-	}
-	if (fr_debug_flag) print_hex(reply);
+		reply = fr_dhcp_recv(sockfd);
+		if (!reply) {
+			fprintf(stderr, "dhcpclient: Error receiving reply %s\n", fr_strerror());
+			exit(1);
+		}
+		if (fr_debug_flag) print_hex(reply);
 
-	if (fr_dhcp_decode(reply) < 0) {
-		fprintf(stderr, "dhcpclient: failed decoding\n");
-		return 1;
+		if (fr_dhcp_decode(reply) < 0) {
+			fprintf(stderr, "dhcpclient: failed decoding\n");
+			return 1;
+		}
+
+	} else {
+		if (fr_dhcp_send_raw_packet(sockfd, &ll, request) < 0) {
+			fprintf(stderr, "dhcpclient: failed sending (fr_dhcp_send_raw_packet): %s\n",
+				fr_syserror(errno));
+			exit(1);
+		}
+		
+		reply = fr_dhcp_recv_raw_loop(sockfd, &ll, request);
+		if (!reply) {
+			fprintf(stderr, "dhcpclient: Error receiving reply (fr_dhcp_recv_raw_loop)\n");
+			exit(1);
+		}
 	}
 
 	dict_free();
