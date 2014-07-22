@@ -326,7 +326,7 @@ static ssize_t mschap_xlat(void *instance, REQUEST *request,
 		}
 
 		/*
-		 *	For MS-CHAPv1, the NT-Response exists only
+		 *	For MS-CHAPv1, the LM-Response exists only
 		 *	if the second octet says so.
 		 */
 		if ((response->vp_octets[1] & 0x01) != 0) {
