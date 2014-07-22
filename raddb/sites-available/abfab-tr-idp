@@ -1,0 +1,214 @@
+#
+#	$Id$
+#
+######################################################################
+#
+#	Read "man radiusd" before editing this file.  See the section
+#	titled DEBUGGING.  It outlines a method where you can quickly
+#	obtain the configuration you want, without running into
+#	trouble.  See also "man unlang", which documents the format
+#	of this file.
+
+
+# This file represents a server that is implementing an identity
+# provider for GSS-EAP (RFC 7055) using the trust router protocol for
+# dynamic realm discovery.  Any ABFAB identity provider is also an
+# ABFAB relying party proxy.
+
+#This file does not include a TLS listener; see abfab-tls for a simple
+# example of a RADSEC listener for ABFAB.
+
+server abfab-idp {
+
+
+
+authorize {
+        psk_authorize
+	filter_username
+	preprocess
+		#  If you intend to use CUI and you require that the Operator-Name
+	#  be set for CUI generation and you want to generate CUI also
+	#  for your local clients then uncomment the operator-name
+	#  below and set the operator-name for your clients in clients.conf
+#	operator-name
+
+	#
+	#  If you want to generate CUI for some clients that do not
+	#  send proper CUI requests, then uncomment the
+	#  cui below and set "add_cui = yes" for these clients in clients.conf
+#	cui
+	suffix {
+	        updated = 1
+		noop = reject
+        }
+	eap {
+		ok = return
+	}
+
+	#
+	expiration
+	logintime
+#	Autz-Type Status-Server {
+#
+#	}
+}
+authenticate {
+	#
+	#  Allow EAP authentication.
+	eap
+}
+
+#  Session database, used for checking Simultaneous-Use. Either the radutmp
+#  or rlm_sql module can handle this.
+#  The rlm_sql module is *much* faster
+session {
+#	radutmp
+
+	#
+	#  See "Simultaneous Use Checking Queries" in sql.conf
+#	sql
+}
+
+
+#  Post-Authentication
+#  Once we KNOW that the user has been authenticated, there are
+#  additional steps we can take.
+post-auth {
+	#  Create the CUI value and add the attribute to Access-Accept.
+	#  Uncomment the line below if *returning* the CUI.
+#	cui
+
+	#
+	#  If you want to have a log of authentication replies,
+	#  un-comment the following line, and enable the
+	#  'detail reply_log' module.
+#	reply_log
+	#
+	#  After authenticating the user, do another SQL query.
+	#
+	#  See "Authentication Logging Queries" in sql.conf
+	-sql
+
+	#
+	#  Instead of sending the query to the SQL server,
+	#  write it into a log file.
+	#
+#	sql_log
+
+	#
+	#  Un-comment the following if you want to modify the user's object
+	#  in LDAP after a successful login.
+	#
+#	ldap
+
+	# For Exec-Program and Exec-Program-Wait
+	exec
+	#  Remove reply message if the response contains an EAP-Message
+	remove_reply_message_if_eap
+	#  Access-Reject packets are sent through the REJECT sub-section of the
+	#  post-auth section.
+	#
+	#  Add the ldap module name (or instance) if you have set
+	#  'edir_account_policy_check = yes' in the ldap module configuration
+	#
+	Post-Auth-Type REJECT {
+		# log failed authentications in SQL, too.
+		-sql
+		attr_filter.access_reject
+
+		# Insert EAP-Failure message if the request was
+		# rejected by policy instead of because of an
+		# authentication failure
+		eap
+
+		#  Remove reply message if the response contains an EAP-Message
+		remove_reply_message_if_eap
+	}
+}
+#
+#  When the server decides to proxy a request to a home server,
+#  the proxied request is first passed through the pre-proxy
+#  stage.  This stage can re-write the request, or decide to
+#  cancel the proxy.
+#
+#  Only a few modules currently have this method.
+#
+pre-proxy {
+	# Before proxing the request add an Operator-Name attribute identifying
+	# if the operator-name is found for this client.
+	# No need to uncomment this if you have already enabled this in
+	# the authorize section.
+#	operator-name
+	abfab_pre_proxy
+
+	#  The client requests the CUI by sending a CUI attribute
+	#  containing one zero byte.
+	#  Uncomment the line below if *requesting* the CUI.
+#	cui
+
+	#  Uncomment the following line if you want to change attributes
+	#  as defined in the preproxy_users file.
+#	files
+
+	#  Uncomment the following line if you want to filter requests
+	#  sent to remote servers based on the rules defined in the
+	#  'attrs.pre-proxy' file.
+#	attr_filter.pre-proxy
+
+	#  If you want to have a log of packets proxied to a home
+	#  server, un-comment the following line, and the
+	#  'detail pre_proxy_log' section, above.
+#	pre_proxy_log
+}
+#
+#  When the server receives a reply to a request it proxied
+#  to a home server, the request may be massaged here, in the
+#  post-proxy stage.
+#
+post-proxy {
+
+	#  If you want to have a log of replies from a home server,
+	#  un-comment the following line, and the 'detail post_proxy_log'
+	#  section, above.
+#	post_proxy_log
+
+	#  Uncomment the following line if you want to filter replies from
+	#  remote proxies based on the rules defined in the 'attrs' file.
+#	attr_filter.post-proxy
+
+	#
+	#  If you are proxying LEAP, you MUST configure the EAP
+	#  module, and you MUST list it here, in the post-proxy
+	#  stage.
+	#
+	#  You MUST also use the 'nostrip' option in the 'realm'
+	#  configuration.  Otherwise, the User-Name attribute
+	#  in the proxied request will not match the user name
+	#  hidden inside of the EAP packet, and the end server will
+	#  reject the EAP request.
+	#
+	eap
+
+	#
+	#  If the server tries to proxy a request and fails, then the
+	#  request is processed through the modules in this section.
+	#
+	#  The main use of this section is to permit robust proxying
+	#  of accounting packets.  The server can be configured to
+	#  proxy accounting packets as part of normal processing.
+	#  Then, if the home server goes down, accounting packets can
+	#  be logged to a local "detail" file, for processing with
+	#  radrelay.  When the home server comes back up, radrelay
+	#  will read the detail file, and send the packets to the
+	#  home server.
+	#
+	#  With this configuration, the server always responds to
+	#  Accounting-Requests from the NAS, but only writes
+	#  accounting packets to disk if the home server is down.
+	#
+#	Post-Proxy-Type Fail {
+#			detail
+#	}
+}
+}
+
