@@ -15,8 +15,13 @@ ATTRIBUTE	UKERNA-GSS-Acceptor-Host-Name		129	string
 ATTRIBUTE	UKERNA-GSS-Acceptor-Service-Specific	130	string
 ATTRIBUTE	UKERNA-GSS-Acceptor-Realm-Name		131	string
 ATTRIBUTE	SAML-AAA-Assertion		132	string
+ATTRIBUTE	MS-Windows-Auth-Data			133	octets
+ATTRIBUTE	MS-Windows-Group-Sid			134	string
 ATTRIBUTE	EAP-Channel-Binding-Message	135	octets
 ATTRIBUTE	Trust-Router-COI	136	string
 ATTRIBUTE	Trust-Router-APC	137	string
+attribute Moonshot-Host-TargetedId 138 string
+attribute  Moonshot-Realm-TargetedId 139 string
+attribute Moonshot-TR-COI-TargetedId 140 string
 
 END-VENDOR UKERNA
