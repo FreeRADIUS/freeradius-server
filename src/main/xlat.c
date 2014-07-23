@@ -375,15 +375,16 @@ static ssize_t xlat_debug_attr(UNUSED void *instance, REQUEST *request, char con
 			}
 
 			switch (type->number) {
-				case PW_TYPE_INVALID:		/* Not real type */
-				case PW_TYPE_MAX:		/* Not real type */
-				case PW_TYPE_EXTENDED:		/* Not safe/appropriate */
-				case PW_TYPE_LONG_EXTENDED:	/* Not safe/appropriate */
-				case PW_TYPE_TLV:		/* Not safe/appropriate */
-				case PW_TYPE_VSA:		/* @fixme We need special behaviour for these */
-					goto next_type;
-				default:
-					break;
+			case PW_TYPE_INVALID:		/* Not real type */
+			case PW_TYPE_MAX:		/* Not real type */
+			case PW_TYPE_EXTENDED:		/* Not safe/appropriate */
+			case PW_TYPE_LONG_EXTENDED:	/* Not safe/appropriate */
+			case PW_TYPE_TLV:		/* Not safe/appropriate */
+			case PW_TYPE_VSA:		/* @fixme We need special behaviour for these */
+				goto next_type;
+
+			default:
+				break;
 			}
 
 			dac->type = type->number;
@@ -510,17 +511,17 @@ static ssize_t xlat_string(UNUSED void *instance, REQUEST *request,
 	}
 
 	switch (vp->da->type) {
-		case PW_TYPE_OCTETS:
-			len = fr_print_string((char const *) p, vp->length, out, outlen);
-			break;
+	case PW_TYPE_OCTETS:
+		len = fr_print_string((char const *) p, vp->length, out, outlen);
+		break;
 
-		case PW_TYPE_STRING:
-			len = strlcpy(out, vp->vp_strvalue, outlen);
-			break;
+	case PW_TYPE_STRING:
+		len = strlcpy(out, vp->vp_strvalue, outlen);
+		break;
 
-		default:
-			len = fr_print_string((char const *) p, ret, out, outlen);
-			break;
+	default:
+		len = fr_print_string((char const *) p, ret, out, outlen);
+		break;
 	}
 
 	return len;
@@ -1201,53 +1202,53 @@ static ssize_t xlat_tokenize_literal(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **he
 		 *	Convert \n to it's literal representation.
 		 */
 		if (p[0] == '\\') switch (p[1]) {
-			case 't':
-				*(q++) = '\t';
-				p += 2;
-				node->len++;
-				continue;
+		case 't':
+			*(q++) = '\t';
+			p += 2;
+			node->len++;
+			continue;
 
-			case 'n':
-				*(q++) = '\n';
-				p += 2;
-				node->len++;
-				continue;
+		case 'n':
+			*(q++) = '\n';
+			p += 2;
+			node->len++;
+			continue;
 
-			case 'x':
-				p += 2;
-				if (!p[0] || !p[1]) {
-					talloc_free(node);
-					*error = "Hex expansion requires two hex digits";
-					return -(p - fmt);
-				}
-
-				if (!fr_hex2bin((uint8_t *) q, 1, p, 2)) {
-					talloc_free(node);
-					*error = "Invalid hex characters";
-					return -(p - fmt);
-				}
-
-				/*
-				 *	Don't let people shoot themselves in the foot.
-				 *	\x00 is forbidden.
-				 */
-				if (!*q) {
-					talloc_free(node);
-					*error = "Cannot add zero byte to printable string";
-					return -(p - fmt);
-				}
-
-				p += 2;
-				q++;
-				node->len++;
-				continue;
-
-			default:
-				*(q++) = *p;
-				p += 2;
-				node->len++;
-				continue;
+		case 'x':
+			p += 2;
+			if (!p[0] || !p[1]) {
+				talloc_free(node);
+				*error = "Hex expansion requires two hex digits";
+				return -(p - fmt);
 			}
+
+			if (!fr_hex2bin((uint8_t *) q, 1, p, 2)) {
+				talloc_free(node);
+				*error = "Invalid hex characters";
+				return -(p - fmt);
+			}
+
+			/*
+			 *	Don't let people shoot themselves in the foot.
+			 *	\x00 is forbidden.
+			 */
+			if (!*q) {
+				talloc_free(node);
+				*error = "Cannot add zero byte to printable string";
+				return -(p - fmt);
+			}
+
+			p += 2;
+			q++;
+			node->len++;
+			continue;
+
+		default:
+			*(q++) = *p;
+			p += 2;
+			node->len++;
+			continue;
+		}
 
 		/*
 		 *	Process the expansion.

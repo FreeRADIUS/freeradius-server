@@ -60,11 +60,11 @@ static pthread_mutex_t fr_hostbyaddr_mutex;
  * copy the data and not pointers
  *
  * struct hostent {
- *    char    *h_name;	* official name of host *
- *    char    **h_aliases;    * alias list *
- *    int     h_addrtype;     * host address type *
- *    int     h_length;       * length of address *
- *    char    **h_addr_list;  * list of addresses *
+ *	char	*h_name;	* official name of host *
+ *	char	**h_aliases;	* alias list *
+ *	int	 h_addrtype;	 * host address type *
+ *	int	 h_length;	   * length of address *
+ *	char	**h_addr_list;  * list of addresses *
  * }
  * This struct contains 3 pointers as members.
  * The data from these pointers is copied into a buffer.
@@ -78,55 +78,55 @@ static pthread_mutex_t fr_hostbyaddr_mutex;
 static int copy_hostent(struct hostent *from, struct hostent *to,
 			char *buffer, int buflen, int *error)
 {
-    int i, len;
-    char *ptr = buffer;
+	int i, len;
+	char *ptr = buffer;
 
-    *error = 0;
-    to->h_addrtype = from->h_addrtype;
-    to->h_length = from->h_length;
-    to->h_name = (char *)ptr;
+	*error = 0;
+	to->h_addrtype = from->h_addrtype;
+	to->h_length = from->h_length;
+	to->h_name = (char *)ptr;
 
-    /* copy hostname to buffer */
-    len=strlen(from->h_name)+1;
-    strcpy(ptr, from->h_name);
-    ptr += len;
+	/* copy hostname to buffer */
+	len=strlen(from->h_name)+1;
+	strcpy(ptr, from->h_name);
+	ptr += len;
 
-    /* copy aliases to buffer */
-    to->h_aliases = (char**)ptr;
-    for(i = 0; from->h_aliases[i]; i++);
-    ptr += (i+1) * sizeof(char *);
+	/* copy aliases to buffer */
+	to->h_aliases = (char**)ptr;
+	for(i = 0; from->h_aliases[i]; i++);
+	ptr += (i+1) * sizeof(char *);
 
-    for(i = 0; from->h_aliases[i]; i++) {
-       len = strlen(from->h_aliases[i])+1;
-       if ((ptr-buffer)+len < buflen) {
+	for(i = 0; from->h_aliases[i]; i++) {
+	   len = strlen(from->h_aliases[i])+1;
+	   if ((ptr-buffer)+len < buflen) {
 	   to->h_aliases[i] = ptr;
-	       strcpy(ptr, from->h_aliases[i]);
+		   strcpy(ptr, from->h_aliases[i]);
 	   ptr += len;
-       } else {
+	   } else {
 	   *error = BUFFER_OVERFLOW;
 	   return *error;
-       }
-    }
-    to->h_aliases[i] = NULL;
+	   }
+	}
+	to->h_aliases[i] = NULL;
 
-    /* copy addr_list to buffer */
-    to->h_addr_list = (char**)ptr;
-    for(i = 0; (int *)from->h_addr_list[i] != 0; i++);
-    ptr += (i+1) * sizeof(int *);
+	/* copy addr_list to buffer */
+	to->h_addr_list = (char**)ptr;
+	for(i = 0; (int *)from->h_addr_list[i] != 0; i++);
+	ptr += (i+1) * sizeof(int *);
 
-    for(i = 0; (int *)from->h_addr_list[i] != 0; i++) {
-       len = sizeof(int);
-       if ((ptr-buffer)+len < buflen) {
+	for(i = 0; (int *)from->h_addr_list[i] != 0; i++) {
+	   len = sizeof(int);
+	   if ((ptr-buffer)+len < buflen) {
 	   to->h_addr_list[i] = ptr;
 	   memcpy(ptr, from->h_addr_list[i], len);
 	   ptr += len;
-       } else {
+	   } else {
 	   *error = BUFFER_OVERFLOW;
-	    return *error;
-       }
-    }
-    to->h_addr_list[i] = 0;
-    return *error;
+		return *error;
+	   }
+	}
+	to->h_addr_list[i] = 0;
+	return *error;
 }
 #endif /* (LOCAL_GETHOSTBYNAMER == 1) || (LOCAL_GETHOSTBYADDRR == 1) */
 
@@ -135,30 +135,30 @@ static struct hostent *
 gethostbyname_r(char const *hostname, struct hostent *result,
 	   char *buffer, int buflen, int *error)
 {
-    struct hostent *hp;
+	struct hostent *hp;
 
 #ifdef HAVE_PTHREAD_H
-    if (fr_hostbyname == 0) {
+	if (fr_hostbyname == 0) {
 	pthread_mutex_init(&fr_hostbyname_mutex, NULL);
 	fr_hostbyname = 1;
-    }
-    pthread_mutex_lock(&fr_hostbyname_mutex);
+	}
+	pthread_mutex_lock(&fr_hostbyname_mutex);
 #endif
 
-    hp = gethostbyname(hostname);
-    if ((!hp) || (hp->h_addrtype != AF_INET) || (hp->h_length != 4)) {
+	hp = gethostbyname(hostname);
+	if ((!hp) || (hp->h_addrtype != AF_INET) || (hp->h_length != 4)) {
 	 *error = h_errno;
 	 hp = NULL;
-    } else {
+	} else {
 	 copy_hostent(hp, result, buffer, buflen, error);
 	 hp = result;
-    }
+	}
 
 #ifdef HAVE_PTHREAD_H
-    pthread_mutex_unlock(&fr_hostbyname_mutex);
+	pthread_mutex_unlock(&fr_hostbyname_mutex);
 #endif
 
-    return hp;
+	return hp;
 }
 #endif /* GETHOSTBYNAMERSTYLE */
 
@@ -168,30 +168,30 @@ static struct hostent *
 gethostbyaddr_r(char const *addr, int len, int type, struct hostent *result,
 		char *buffer, int buflen, int *error)
 {
-    struct hostent *hp;
+	struct hostent *hp;
 
 #ifdef HAVE_PTHREAD_H
-    if (fr_hostbyaddr == 0) {
+	if (fr_hostbyaddr == 0) {
 	pthread_mutex_init(&fr_hostbyaddr_mutex, NULL);
 	fr_hostbyaddr = 1;
-    }
-    pthread_mutex_lock(&fr_hostbyaddr_mutex);
+	}
+	pthread_mutex_lock(&fr_hostbyaddr_mutex);
 #endif
 
-    hp = gethostbyaddr(addr, len, type);
-    if ((!hp) || (hp->h_addrtype != AF_INET) || (hp->h_length != 4)) {
+	hp = gethostbyaddr(addr, len, type);
+	if ((!hp) || (hp->h_addrtype != AF_INET) || (hp->h_length != 4)) {
 	 *error = h_errno;
 	 hp = NULL;
-    } else {
+	} else {
 	 copy_hostent(hp, result, buffer, buflen, error);
 	 hp = result;
-    }
+	}
 
 #ifdef HAVE_PTHREAD_H
-    pthread_mutex_unlock(&fr_hostbyaddr_mutex);
+	pthread_mutex_unlock(&fr_hostbyaddr_mutex);
 #endif
 
-    return hp;
+	return hp;
 }
 #endif /* GETHOSTBYADDRRSTYLE */
 
@@ -206,11 +206,11 @@ gethostbyaddr_r(char const *addr, int len, int type, struct hostent *result,
 static struct addrinfo *
 malloc_ai(uint16_t port, u_long addr, int socktype, int proto)
 {
-    struct addrinfo *ai;
+	struct addrinfo *ai;
 
-    ai = (struct addrinfo *)malloc(sizeof(struct addrinfo) +
+	ai = (struct addrinfo *)malloc(sizeof(struct addrinfo) +
 				   sizeof(struct sockaddr_in));
-    if (ai) {
+	if (ai) {
 	memset(ai, 0, sizeof(struct addrinfo) + sizeof(struct sockaddr_in));
 	ai->ai_addr = (struct sockaddr *)(ai + 1);
 	ai->ai_addrlen = sizeof(struct sockaddr_in);
@@ -223,157 +223,157 @@ malloc_ai(uint16_t port, u_long addr, int socktype, int proto)
 	ai->ai_socktype = socktype;
 	ai->ai_protocol = proto;
 	return ai;
-    } else {
+	} else {
 	return NULL;
-    }
+	}
 }
 
 char const *
 gai_strerror(int ecode)
 {
-    switch (ecode) {
-    case EAI_MEMORY:
+	switch (ecode) {
+	case EAI_MEMORY:
 	return "memory allocation failure.";
-    case EAI_FAMILY:
+	case EAI_FAMILY:
 	return "ai_family not supported.";
-    case EAI_NONAME:
+	case EAI_NONAME:
 	return "hostname nor servname provided, or not known.";
-    case EAI_SERVICE:
+	case EAI_SERVICE:
 	return "servname not supported for ai_socktype.";
-    default:
+	default:
 	return "unknown error.";
-    }
+	}
 }
 
 void
 freeaddrinfo(struct addrinfo *ai)
 {
-    struct addrinfo *next;
+	struct addrinfo *next;
 
-    if (ai->ai_canonname)
+	if (ai->ai_canonname)
 	free(ai->ai_canonname);
-    do {
+	do {
 	next = ai->ai_next;
 	free(ai);
-    } while ((ai = next) != NULL);
+	} while ((ai = next) != NULL);
 }
 
 int
 getaddrinfo(char const *hostname, char const *servname,
-	    struct addrinfo const *hints, struct addrinfo **res)
+		struct addrinfo const *hints, struct addrinfo **res)
 {
-    struct addrinfo *cur, *prev = NULL;
-    struct hostent *hp;
-    struct hostent result;
-    struct in_addr in;
-    int i, socktype, proto;
-    uint16_t port = 0;
-    int error;
-    char buffer[2048];
+	struct addrinfo *cur, *prev = NULL;
+	struct hostent *hp;
+	struct hostent result;
+	struct in_addr in;
+	int i, socktype, proto;
+	uint16_t port = 0;
+	int error;
+	char buffer[2048];
 
-    if (hints && hints->ai_family != PF_INET && hints->ai_family != PF_UNSPEC)
+	if (hints && hints->ai_family != PF_INET && hints->ai_family != PF_UNSPEC)
 	return EAI_FAMILY;
 
-    socktype = (hints && hints->ai_socktype) ? hints->ai_socktype
-					     : SOCK_STREAM;
-    if (hints && hints->ai_protocol)
+	socktype = (hints && hints->ai_socktype) ? hints->ai_socktype
+						 : SOCK_STREAM;
+	if (hints && hints->ai_protocol)
 	proto = hints->ai_protocol;
-    else {
+	else {
 	switch (socktype) {
 	case SOCK_DGRAM:
-	    proto = IPPROTO_UDP;
-	    break;
+		proto = IPPROTO_UDP;
+		break;
 	case SOCK_STREAM:
-	    proto = IPPROTO_TCP;
-	    break;
+		proto = IPPROTO_TCP;
+		break;
 	default:
-	    proto = 0;
-	    break;
+		proto = 0;
+		break;
 	}
-    }
-    if (servname) {
+	}
+	if (servname) {
 	if (isdigit((int)*servname))
-	    port = htons(atoi(servname));
+		port = htons(atoi(servname));
 	else {
-	    struct servent *se;
-	    char const *pe_proto;
+		struct servent *se;
+		char const *pe_proto;
 
-	    switch (socktype) {
-	    case SOCK_DGRAM:
+		switch (socktype) {
+		case SOCK_DGRAM:
 		pe_proto = "udp";
 		break;
-	    case SOCK_STREAM:
+		case SOCK_STREAM:
 		pe_proto = "tcp";
 		break;
-	    default:
+		default:
 		pe_proto = NULL;
 		break;
-	    }
-	    if ((se = getservbyname(servname, pe_proto)) == NULL)
+		}
+		if ((se = getservbyname(servname, pe_proto)) == NULL)
 		return EAI_SERVICE;
-	    port = se->s_port;
+		port = se->s_port;
 	}
-    }
-    if (!hostname) {
+	}
+	if (!hostname) {
 	if (hints && hints->ai_flags & AI_PASSIVE)
-	    *res = malloc_ai(port, htonl(0x00000000), socktype, proto);
+		*res = malloc_ai(port, htonl(0x00000000), socktype, proto);
 	else
-	    *res = malloc_ai(port, htonl(0x7f000001), socktype, proto);
+		*res = malloc_ai(port, htonl(0x7f000001), socktype, proto);
 	if (*res)
-	    return 0;
+		return 0;
 	else
-	    return EAI_MEMORY;
-    }
-    /* Numeric IP Address */
-    if (inet_aton(hostname, &in)) {
+		return EAI_MEMORY;
+	}
+	/* Numeric IP Address */
+	if (inet_aton(hostname, &in)) {
 	*res = malloc_ai(port, in.s_addr, socktype, proto);
 	if (*res)
-	    return 0;
+		return 0;
 	else
-	    return EAI_MEMORY;
-    }
-    if (hints && hints->ai_flags & AI_NUMERICHOST)
+		return EAI_MEMORY;
+	}
+	if (hints && hints->ai_flags & AI_NUMERICHOST)
 	return EAI_NONAME;
 
-    /* DNS Lookup */
+	/* DNS Lookup */
 #ifdef GETHOSTBYNAMERSTYLE
 #if GETHOSTBYNAMERSTYLE == SYSVSTYLE
-    hp = gethostbyname_r(hostname, &result, buffer, sizeof(buffer), &error);
+	hp = gethostbyname_r(hostname, &result, buffer, sizeof(buffer), &error);
 #elif GETHOSTBYNAMERSTYLE == GNUSTYLE
-    if (gethostbyname_r(hostname, &result, buffer,
+	if (gethostbyname_r(hostname, &result, buffer,
 	 sizeof(buffer), &hp, &error) != 0) {
 		hp = NULL;
 	}
 #else
-    hp = gethostbyname_r(hostname, &result, buffer, sizeof(buffer), &error);
+	hp = gethostbyname_r(hostname, &result, buffer, sizeof(buffer), &error);
 #endif
 #else
-    hp = gethostbyname_r(hostname, &result, buffer, sizeof(buffer), &error);
+	hp = gethostbyname_r(hostname, &result, buffer, sizeof(buffer), &error);
 #endif
-    if (hp && hp->h_name && hp->h_name[0] && hp->h_addr_list[0]) {
+	if (hp && hp->h_name && hp->h_name[0] && hp->h_addr_list[0]) {
 	for (i = 0; hp->h_addr_list[i]; i++) {
-	    if ((cur = malloc_ai(port,
+		if ((cur = malloc_ai(port,
 				((struct in_addr *)hp->h_addr_list[i])->s_addr,
 				socktype, proto)) == NULL) {
 		if (*res)
-		    freeaddrinfo(*res);
+			freeaddrinfo(*res);
 		return EAI_MEMORY;
-	    }
-	    if (prev)
+		}
+		if (prev)
 		prev->ai_next = cur;
-	    else
+		else
 		*res = cur;
-	    prev = cur;
+		prev = cur;
 	}
 	if (hints && hints->ai_flags & AI_CANONNAME && *res) {
-	    if (((*res)->ai_canonname = strdup(hp->h_name)) == NULL) {
+		if (((*res)->ai_canonname = strdup(hp->h_name)) == NULL) {
 		freeaddrinfo(*res);
 		return EAI_MEMORY;
-	    }
+		}
 	}
 	return 0;
-    }
-    return EAI_NONAME;
+	}
+	return EAI_NONAME;
 }
 #endif /* HAVE_GETADDRINFO */
 
@@ -381,74 +381,74 @@ getaddrinfo(char const *hostname, char const *servname,
 #ifndef HAVE_GETNAMEINFO
 int
 getnameinfo(struct sockaddr const  *sa, socklen_t salen, char *host, size_t hostlen, char *serv, size_t servlen,
-	    unsigned int flags)
+		unsigned int flags)
 {
-    const struct sockaddr_in *sin = (struct sockaddr_in const *)sa;
-    struct hostent *hp;
-    struct hostent result;
-    char tmpserv[16];
-    char buffer[2048];
-    int error;
+	const struct sockaddr_in *sin = (struct sockaddr_in const *)sa;
+	struct hostent *hp;
+	struct hostent result;
+	char tmpserv[16];
+	char buffer[2048];
+	int error;
 
-    if (serv) {
+	if (serv) {
 	snprintf(tmpserv, sizeof(tmpserv), "%d", ntohs(sin->sin_port));
 	if (strlen(tmpserv) > servlen)
-	    return EAI_MEMORY;
-	else
-	    strcpy(serv, tmpserv);
-    }
-    if (host) {
-	if (flags & NI_NUMERICHOST) {
-	    /*  No Reverse DNS lookup */
-	    if (flags & NI_NAMEREQD)
-		return EAI_NONAME;
-	    if (strlen(inet_ntoa(sin->sin_addr)) >= hostlen)
 		return EAI_MEMORY;
-	    else {
+	else
+		strcpy(serv, tmpserv);
+	}
+	if (host) {
+	if (flags & NI_NUMERICHOST) {
+		/*  No Reverse DNS lookup */
+		if (flags & NI_NAMEREQD)
+		return EAI_NONAME;
+		if (strlen(inet_ntoa(sin->sin_addr)) >= hostlen)
+		return EAI_MEMORY;
+		else {
 		strcpy(host, inet_ntoa(sin->sin_addr));
 		return 0;
-	    }
+		}
 	} else {
 	/*  Reverse DNS lookup required */
 #ifdef GETHOSTBYADDRRSTYLE
 #if GETHOSTBYADDRRSTYLE == SYSVSTYLE
-	    hp = gethostbyaddr_r((char const *)&sin->sin_addr,
-			       salen, AF_INET,
-			       &result, buffer, sizeof(buffer), &error);
+		hp = gethostbyaddr_r((char const *)&sin->sin_addr,
+				   salen, AF_INET,
+				   &result, buffer, sizeof(buffer), &error);
 #elif GETHOSTBYADDRRSTYLE == GNUSTYLE
-	    if (gethostbyaddr_r((char const *)&sin->sin_addr,
-			       salen, AF_INET,
-				    &result, buffer, sizeof(buffer),
-				    &hp, &error) != 0) {
+		if (gethostbyaddr_r((char const *)&sin->sin_addr,
+				   salen, AF_INET,
+					&result, buffer, sizeof(buffer),
+					&hp, &error) != 0) {
 			hp = NULL;
-	     }
+		 }
 #else
-	    hp = gethostbyaddr_r((char const *)&sin->sin_addr,
-			       salen, AF_INET,
-			       &result, buffer, sizeof(buffer), &error);
+		hp = gethostbyaddr_r((char const *)&sin->sin_addr,
+				   salen, AF_INET,
+				   &result, buffer, sizeof(buffer), &error);
 #endif
 #else
-	    hp = gethostbyaddr_r((char const *)&sin->sin_addr,
-			       salen, AF_INET,
-			       &result, buffer, sizeof(buffer), &error);
+		hp = gethostbyaddr_r((char const *)&sin->sin_addr,
+				   salen, AF_INET,
+				   &result, buffer, sizeof(buffer), &error);
 #endif
-	    if (hp)
+		if (hp)
 		if (strlen(hp->h_name) >= hostlen)
-		    return EAI_MEMORY;
+			return EAI_MEMORY;
 		else {
-		    strcpy(host, hp->h_name);
-		    return 0;
+			strcpy(host, hp->h_name);
+			return 0;
 		}
-	    else if (flags & NI_NAMEREQD)
+		else if (flags & NI_NAMEREQD)
 		return EAI_NONAME;
-	    else if (strlen(inet_ntoa(sin->sin_addr)) >= hostlen)
+		else if (strlen(inet_ntoa(sin->sin_addr)) >= hostlen)
 		return EAI_MEMORY;
-	    else {
+		else {
 		strcpy(host, inet_ntoa(sin->sin_addr));
 		return 0;
-	    }
+		}
 	}
-    }
-    return 0;
+	}
+	return 0;
 }
 #endif /* HAVE_GETNAMEINFO */

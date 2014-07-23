@@ -301,12 +301,11 @@ static int mod_authenticate(UNUSED void *instance, eap_handler_t *handler)
 	switch (connection_state) {
 	case TNC_CONNECTION_STATE_HANDSHAKE:
 		code = PW_EAP_REQUEST;
-
 		break;
+
 	case TNC_CONNECTION_STATE_ACCESS_NONE:
 		code = PW_EAP_FAILURE;
 		pairmake_config("TNC-Status", "None", T_OP_SET);
-
 		break;
 
 	case TNC_CONNECTION_STATE_ACCESS_ALLOWED:
@@ -317,11 +316,10 @@ static int mod_authenticate(UNUSED void *instance, eap_handler_t *handler)
 	case TNC_CONNECTION_STATE_ACCESS_ISOLATED:
 		code = PW_EAP_SUCCESS;
 		pairmake_config("TNC-Status", "Isolate", T_OP_SET);
-
 		break;
+
 	default:
 		ERROR("rlm_eap_tnc: Invalid connection state");
-
 		return 0;
 	}
 

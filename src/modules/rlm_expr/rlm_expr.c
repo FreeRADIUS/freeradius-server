@@ -465,6 +465,7 @@ static ssize_t urlquote_xlat(UNUSED void *instance, UNUSED REQUEST *request,
 		case '~':
 			*out++ = *p++;
 			break;
+
 		default:
 			if (freespace < 3)
 				break;

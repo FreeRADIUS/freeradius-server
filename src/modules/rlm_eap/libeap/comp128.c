@@ -421,21 +421,21 @@ int main(int argc, char **argv)
 	}
 
 	switch (version) {
-		case 3:
-			comp128v23(sres, kc, key, rand, false);
-			break;
+	case 3:
+		comp128v23(sres, kc, key, rand, false);
+		break;
 
-		case 2:
-			comp128v23(sres, kc, key, rand, true);
-			break;
+	case 2:
+		comp128v23(sres, kc, key, rand, true);
+		break;
 
-		case 1:
-			comp128v1(sres, kc, key, rand);
-			break;
+	case 1:
+		comp128v1(sres, kc, key, rand);
+		break;
 
-		default:
-			fprintf(stderr, "Invalid version, must be 1, 2 or 3");
-			goto error;
+	default:
+		fprintf(stderr, "Invalid version, must be 1, 2 or 3");
+		goto error;
 	}
 
 	/* Output in vector format <Ki>,<rand>,<sres><Kc> */

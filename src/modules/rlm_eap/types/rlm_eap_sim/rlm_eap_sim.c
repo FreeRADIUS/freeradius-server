@@ -143,28 +143,28 @@ static int eap_sim_get_challenge(eap_handler_t *handler, VALUE_PAIR *vps, int id
 		}
 
 		switch (algo_version->vp_integer) {
-			case 1:
-				comp128v1(ess->keys.sres[idx], ess->keys.Kc[idx], ki->vp_octets, ess->keys.rand[idx]);
-				break;
+		case 1:
+			comp128v1(ess->keys.sres[idx], ess->keys.Kc[idx], ki->vp_octets, ess->keys.rand[idx]);
+			break;
 
-			case 2:
-				comp128v23(ess->keys.sres[idx], ess->keys.Kc[idx], ki->vp_octets, ess->keys.rand[idx],
-					   true);
-				break;
+		case 2:
+			comp128v23(ess->keys.sres[idx], ess->keys.Kc[idx], ki->vp_octets, ess->keys.rand[idx],
+				   true);
+			break;
 
-			case 3:
-				comp128v23(ess->keys.sres[idx], ess->keys.Kc[idx], ki->vp_octets, ess->keys.rand[idx],
-					   false);
-				break;
+		case 3:
+			comp128v23(ess->keys.sres[idx], ess->keys.Kc[idx], ki->vp_octets, ess->keys.rand[idx],
+				   false);
+			break;
 
-			case 4:
-				REDEBUG("Comp128-4 algorithm is not supported as details have not yet been published. "
-					"If you have details of this algorithm please contact the FreeRADIUS "
-					"maintainers");
-				return 0;
+		case 4:
+			REDEBUG("Comp128-4 algorithm is not supported as details have not yet been published. "
+				"If you have details of this algorithm please contact the FreeRADIUS "
+				"maintainers");
+			return 0;
 
-			default:
-				REDEBUG("Unknown/unsupported algorithm Comp128-%i", algo_version->vp_integer);
+		default:
+			REDEBUG("Unknown/unsupported algorithm Comp128-%i", algo_version->vp_integer);
 		}
 
 		if (RDEBUG_ENABLED2) {

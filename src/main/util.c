@@ -1001,21 +1001,21 @@ int radius_request(REQUEST **context, request_refs_t name)
 	REQUEST *request = *context;
 
 	switch (name) {
-		case REQUEST_CURRENT:
-			return 0;
+	case REQUEST_CURRENT:
+		return 0;
 
-		case REQUEST_PARENT:	/* for future use in request chaining */
-		case REQUEST_OUTER:
-			if (!request->parent) {
-				return -1;
-			}
-			*context = request->parent;
-			break;
-
-		case REQUEST_UNKNOWN:
-		default:
-			rad_assert(0);
+	case REQUEST_PARENT:	/* for future use in request chaining */
+	case REQUEST_OUTER:
+		if (!request->parent) {
 			return -1;
+		}
+		*context = request->parent;
+		break;
+
+	case REQUEST_UNKNOWN:
+	default:
+		rad_assert(0);
+		return -1;
 	}
 
 	return 0;

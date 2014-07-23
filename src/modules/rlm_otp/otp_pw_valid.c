@@ -195,7 +195,7 @@ int otp_pw_valid(REQUEST *request, int pwe, char const *challenge,
 		(void) memcpy(otp_request.pwe.u.chap.response, rvp->vp_octets,
 			      rvp->length);
 		otp_request.pwe.u.chap.rlen = rvp->length;
-	break;
+		break;
 	} /* switch (otp_request.pwe.pwe) */
 
 	/*

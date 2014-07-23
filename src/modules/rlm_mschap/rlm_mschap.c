@@ -72,64 +72,64 @@ static int pdb_decode_acct_ctrl(char const *p)
 
 	for (p++; *p && !done; p++) {
 		switch (*p) {
-			case 'N': /* 'N'o password. */
-			  acct_ctrl |= ACB_PWNOTREQ;
-			  break;
+		case 'N': /* 'N'o password. */
+			acct_ctrl |= ACB_PWNOTREQ;
+			break;
 
-			case 'D':  /* 'D'isabled. */
-			  acct_ctrl |= ACB_DISABLED ;
-			  break;
+		case 'D':  /* 'D'isabled. */
+			acct_ctrl |= ACB_DISABLED ;
+			break;
 
-			case 'H':  /* 'H'omedir required. */
-			  acct_ctrl |= ACB_HOMDIRREQ;
-			  break;
+		case 'H':  /* 'H'omedir required. */
+			acct_ctrl |= ACB_HOMDIRREQ;
+			break;
 
-			case 'T': /* 'T'emp account. */
-			  acct_ctrl |= ACB_TEMPDUP;
-			  break;
+		case 'T': /* 'T'emp account. */
+			acct_ctrl |= ACB_TEMPDUP;
+			break;
 
-			case 'U': /* 'U'ser account (normal). */
-			  acct_ctrl |= ACB_NORMAL;
-			  break;
+		case 'U': /* 'U'ser account (normal). */
+			acct_ctrl |= ACB_NORMAL;
+			break;
 
-			case 'M': /* 'M'NS logon user account. What is this? */
-			  acct_ctrl |= ACB_MNS;
-			  break;
+		case 'M': /* 'M'NS logon user account. What is this? */
+			acct_ctrl |= ACB_MNS;
+			break;
 
-			case 'W': /* 'W'orkstation account. */
-			  acct_ctrl |= ACB_WSTRUST;
-			  break;
+		case 'W': /* 'W'orkstation account. */
+			acct_ctrl |= ACB_WSTRUST;
+			break;
 
-			case 'S': /* 'S'erver account. */
-			  acct_ctrl |= ACB_SVRTRUST;
-			  break;
+		case 'S': /* 'S'erver account. */
+			acct_ctrl |= ACB_SVRTRUST;
+			break;
 
-			case 'L': /* 'L'ocked account. */
-			  acct_ctrl |= ACB_AUTOLOCK;
-			  break;
+		case 'L': /* 'L'ocked account. */
+			acct_ctrl |= ACB_AUTOLOCK;
+			break;
 
-			case 'X': /* No 'X'piry on password */
-			  acct_ctrl |= ACB_PWNOEXP;
-			  break;
+		case 'X': /* No 'X'piry on password */
+			acct_ctrl |= ACB_PWNOEXP;
+			break;
 
-			case 'I': /* 'I'nterdomain trust account. */
-			  acct_ctrl |= ACB_DOMTRUST;
-			  break;
+		case 'I': /* 'I'nterdomain trust account. */
+			acct_ctrl |= ACB_DOMTRUST;
+			break;
 
-			case 'e': /* 'e'xpired, the password has */
-			  acct_ctrl |= ACB_PW_EXPIRED;
-			  break;
+		case 'e': /* 'e'xpired, the password has */
+			acct_ctrl |= ACB_PW_EXPIRED;
+			break;
 
-			case ' ': /* ignore spaces */
-			  break;
+		case ' ': /* ignore spaces */
+			break;
 
-			case ':':
-			case '\n':
-			case '\0':
-			case ']':
-			default:
-			  done = 1;
-			  break;
+		case ':':
+		case '\n':
+		case '\0':
+		case ']':
+		default:
+			done = 1;
+			break;
 		}
 	}
 

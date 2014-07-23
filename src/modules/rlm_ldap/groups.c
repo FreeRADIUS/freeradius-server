@@ -94,14 +94,16 @@ static rlm_rcode_t rlm_ldap_group_name2dn(ldap_instance_t const *inst, REQUEST *
 	status = rlm_ldap_search(inst, request, pconn, inst->groupobj_base_dn, inst->groupobj_scope,
 				 filter, attrs, &result);
 	switch (status) {
-		case LDAP_PROC_SUCCESS:
-			break;
-		case LDAP_PROC_NO_RESULT:
-			RDEBUG("Tried to resolve group name(s) to DNs but got no results");
-			goto finish;
-		default:
-			rcode = RLM_MODULE_FAIL;
-			goto finish;
+	case LDAP_PROC_SUCCESS:
+		break;
+
+	case LDAP_PROC_NO_RESULT:
+		RDEBUG("Tried to resolve group name(s) to DNs but got no results");
+		goto finish;
+
+	default:
+		rcode = RLM_MODULE_FAIL;
+		goto finish;
 	}
 
 	entry_cnt = ldap_count_entries((*pconn)->handle, result);
@@ -195,14 +197,15 @@ static rlm_rcode_t rlm_ldap_group_dn2name(ldap_instance_t const *inst, REQUEST *
 	status = rlm_ldap_search(inst, request, pconn, dn, LDAP_SCOPE_BASE, NULL, attrs,
 				 &result);
 	switch (status) {
-		case LDAP_PROC_SUCCESS:
-			break;
-		case LDAP_PROC_NO_RESULT:
-			REDEBUG("DN \"%s\" did not resolve to an object", dn);
+	case LDAP_PROC_SUCCESS:
+		break;
 
-			return RLM_MODULE_INVALID;
-		default:
-			return RLM_MODULE_FAIL;
+	case LDAP_PROC_NO_RESULT:
+		REDEBUG("DN \"%s\" did not resolve to an object", dn);
+		return RLM_MODULE_INVALID;
+
+	default:
+		return RLM_MODULE_FAIL;
 	}
 
 	entry = ldap_first_entry((*pconn)->handle, result);
@@ -395,12 +398,14 @@ rlm_rcode_t rlm_ldap_cacheable_groupobj(ldap_instance_t const *inst, REQUEST *re
 
 	status = rlm_ldap_search(inst, request, pconn, base_dn, inst->groupobj_scope, filter, attrs, &result);
 	switch (status) {
-		case LDAP_PROC_SUCCESS:
-			break;
-		case LDAP_PROC_NO_RESULT:
-			RDEBUG2("No cacheable group memberships found in group objects");
-		default:
-			goto finish;
+	case LDAP_PROC_SUCCESS:
+		break;
+
+	case LDAP_PROC_NO_RESULT:
+		RDEBUG2("No cacheable group memberships found in group objects");
+
+	default:
+		goto finish;
 	}
 
 	entry = ldap_first_entry((*pconn)->handle, result);
@@ -521,12 +526,10 @@ rlm_rcode_t rlm_ldap_check_groupobj_dynamic(ldap_instance_t const *inst, REQUEST
 	switch (status) {
 	case LDAP_PROC_SUCCESS:
 		RDEBUG("User found in group object");
-
 		break;
 
 	case LDAP_PROC_NO_RESULT:
 		RDEBUG("Search returned not found");
-
 		return RLM_MODULE_NOTFOUND;
 
 	default:

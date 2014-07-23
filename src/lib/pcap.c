@@ -45,30 +45,30 @@ const FR_NAME_NUMBER pcap_types[] = {
  */
 static int _free_pcap(fr_pcap_t *pcap) {
 	switch (pcap->type) {
-		case PCAP_INTERFACE_IN:
-		case PCAP_INTERFACE_OUT:
-		case PCAP_FILE_IN:
-		case PCAP_STDIO_IN:
-			if (pcap->handle) {
-				pcap_close(pcap->handle);
+	case PCAP_INTERFACE_IN:
+	case PCAP_INTERFACE_OUT:
+	case PCAP_FILE_IN:
+	case PCAP_STDIO_IN:
+		if (pcap->handle) {
+			pcap_close(pcap->handle);
 
-				if (pcap->fd > 0) {
-					close(pcap->fd);
-				}
+			if (pcap->fd > 0) {
+				close(pcap->fd);
 			}
+		}
 
-			break;
+		break;
 
-		case PCAP_FILE_OUT:
-		case PCAP_STDIO_OUT:
-			if (pcap->dumper) {
-				pcap_dump_flush(pcap->dumper);
-				pcap_dump_close(pcap->dumper);
-			}
+	case PCAP_FILE_OUT:
+	case PCAP_STDIO_OUT:
+		if (pcap->dumper) {
+			pcap_dump_flush(pcap->dumper);
+			pcap_dump_close(pcap->dumper);
+		}
 
-			break;
-		case PCAP_INVALID:
-			break;
+		break;
+	case PCAP_INVALID:
+		break;
 	}
 
 	return 0;

@@ -409,7 +409,6 @@ static int do_cast_copy(VALUE_PAIR *dst, VALUE_PAIR const *src)
 			dst->vp_integer = ntohll(*(uint64_t const *) src->vp_octets);
 			break;
 
-
 		case PW_TYPE_INTEGER:
 		case PW_TYPE_DATE:
 		case PW_TYPE_SIGNED:

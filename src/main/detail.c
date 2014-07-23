@@ -363,159 +363,159 @@ static RADIUS_PACKET *detail_poll(rad_listen_t *listener)
 	listen_detail_t *data = listener->data;
 
 	switch (data->state) {
-		case STATE_UNOPENED:
-	open_file:
-			rad_assert(data->work_fd < 0);
+	case STATE_UNOPENED:
+open_file:
+		rad_assert(data->work_fd < 0);
 
-			if (!detail_open(listener)) return NULL;
+		if (!detail_open(listener)) return NULL;
 
-			rad_assert(data->state == STATE_UNLOCKED);
-			rad_assert(data->work_fd >= 0);
+		rad_assert(data->state == STATE_UNLOCKED);
+		rad_assert(data->work_fd >= 0);
 
-			/* FALL-THROUGH */
+		/* FALL-THROUGH */
 
+		/*
+		 *	Try to lock fd.  If we can't, return.
+		 *	If we can, continue.  This means that
+		 *	the server doesn't block while waiting
+		 *	for the lock to open...
+		 */
+	case STATE_UNLOCKED:
+		/*
+		 *	Note that we do NOT block waiting for
+		 *	the lock.  We've re-named the file
+		 *	above, so we've already guaranteed
+		 *	that any *new* detail writer will not
+		 *	be opening this file.  The only
+		 *	purpose of the lock is to catch a race
+		 *	condition where the execution
+		 *	"ping-pongs" between radiusd &
+		 *	radrelay.
+		 */
+		if (rad_lockfd_nonblock(data->work_fd, 0) < 0) {
 			/*
-			 *	Try to lock fd.  If we can't, return.
-			 *	If we can, continue.  This means that
-			 *	the server doesn't block while waiting
-			 *	for the lock to open...
+			 *	Close the FD.  The main loop
+			 *	will wake up in a second and
+			 *	try again.
 			 */
-		case STATE_UNLOCKED:
-			/*
-			 *	Note that we do NOT block waiting for
-			 *	the lock.  We've re-named the file
-			 *	above, so we've already guaranteed
-			 *	that any *new* detail writer will not
-			 *	be opening this file.  The only
-			 *	purpose of the lock is to catch a race
-			 *	condition where the execution
-			 *	"ping-pongs" between radiusd &
-			 *	radrelay.
-			 */
-			if (rad_lockfd_nonblock(data->work_fd, 0) < 0) {
-				/*
-				 *	Close the FD.  The main loop
-				 *	will wake up in a second and
-				 *	try again.
-				 */
-				close(data->work_fd);
-				data->work_fd = -1;
-				data->state = STATE_UNOPENED;
-				return NULL;
+			close(data->work_fd);
+			data->work_fd = -1;
+			data->state = STATE_UNOPENED;
+			return NULL;
+		}
+
+		data->fp = fdopen(data->work_fd, "r");
+		if (!data->fp) {
+			ERROR("FATAL: Failed to re-open detail file %s: %s",
+			       data->filename, fr_syserror(errno));
+			fr_exit(1);
+		}
+
+		/*
+		 *	Look for the header
+		 */
+		data->state = STATE_HEADER;
+		data->delay_time = USEC;
+		data->vps = NULL;
+
+		/* FALL-THROUGH */
+
+	case STATE_HEADER:
+	do_header:
+		data->tries = 0;
+		if (!data->fp) {
+			data->state = STATE_UNOPENED;
+			goto open_file;
+		}
+
+		{
+			struct stat buf;
+
+			if (fstat(data->work_fd, &buf) < 0) {
+				ERROR("Failed to stat "
+				       "detail file %s: %s",
+					data->filename,
+					fr_syserror(errno));
+
+				goto cleanup;
+			}
+			if (((off_t) ftell(data->fp)) == buf.st_size) {
+				goto cleanup;
+			}
+		}
+
+		/*
+		 *	End of file.  Delete it, and re-set
+		 *	everything.
+		 */
+		if (feof(data->fp)) {
+		cleanup:
+			DEBUG("Detail - unlinking %s",
+			      data->filename_work);
+			unlink(data->filename_work);
+			if (data->fp) fclose(data->fp);
+			data->fp = NULL;
+			data->work_fd = -1;
+			data->state = STATE_UNOPENED;
+			rad_assert(data->vps == NULL);
+
+			if (data->one_shot) {
+				INFO("Finished reading \"one shot\" detail file - Exiting");
+				radius_signal_self(RADIUS_SIGNAL_SELF_EXIT);
 			}
 
-			data->fp = fdopen(data->work_fd, "r");
-			if (!data->fp) {
-				ERROR("FATAL: Failed to re-open detail file %s: %s",
-				       data->filename, fr_syserror(errno));
-				fr_exit(1);
-			}
+			return NULL;
+		}
 
-			/*
-			 *	Look for the header
-			 */
-			data->state = STATE_HEADER;
-			data->delay_time = USEC;
-			data->vps = NULL;
+		/*
+		 *	Else go read something.
+		 */
+		break;
 
-			/* FALL-THROUGH */
+		/*
+		 *	Read more value-pair's, unless we're
+		 *	at EOF.  In that case, queue whatever
+		 *	we have.
+		 */
+	case STATE_READING:
+		if (data->fp && !feof(data->fp)) break;
+		data->state = STATE_QUEUED;
 
-		case STATE_HEADER:
-		do_header:
-			data->tries = 0;
-			if (!data->fp) {
-				data->state = STATE_UNOPENED;
-				goto open_file;
-			}
+		/* FALL-THROUGH */
 
-			{
-				struct stat buf;
+	case STATE_QUEUED:
+		goto alloc_packet;
 
-				if (fstat(data->work_fd, &buf) < 0) {
-					ERROR("Failed to stat "
-					       "detail file %s: %s",
-						data->filename,
-						fr_syserror(errno));
+		/*
+		 *	Periodically check what's going on.
+		 *	If the request is taking too long,
+		 *	retry it.
+		 */
+	case STATE_RUNNING:
+		if (time(NULL) < (data->running + (int)data->retry_interval)) {
+			return NULL;
+		}
 
-					goto cleanup;
-				}
-				if (((off_t) ftell(data->fp)) == buf.st_size) {
-					goto cleanup;
-				}
-			}
+		DEBUG("No response to detail request.  Retrying");
+		/* FALL-THROUGH */
 
-			/*
-			 *	End of file.  Delete it, and re-set
-			 *	everything.
-			 */
-			if (feof(data->fp)) {
-			cleanup:
-				DEBUG("Detail - unlinking %s",
-				      data->filename_work);
-				unlink(data->filename_work);
-				if (data->fp) fclose(data->fp);
-				data->fp = NULL;
-				data->work_fd = -1;
-				data->state = STATE_UNOPENED;
-				rad_assert(data->vps == NULL);
+		/*
+		 *	If there's no reply, keep
+		 *	retransmitting the current packet
+		 *	forever.
+		 */
+	case STATE_NO_REPLY:
+		data->state = STATE_QUEUED;
+		goto alloc_packet;
 
-				if (data->one_shot) {
-					INFO("Finished reading \"one shot\" detail file - Exiting");
-					radius_signal_self(RADIUS_SIGNAL_SELF_EXIT);
-				}
-
-				return NULL;
-			}
-
-			/*
-			 *	Else go read something.
-			 */
-			break;
-
-			/*
-			 *	Read more value-pair's, unless we're
-			 *	at EOF.  In that case, queue whatever
-			 *	we have.
-			 */
-		case STATE_READING:
-			if (data->fp && !feof(data->fp)) break;
-			data->state = STATE_QUEUED;
-
-			/* FALL-THROUGH */
-
-		case STATE_QUEUED:
-			goto alloc_packet;
-
-			/*
-			 *	Periodically check what's going on.
-			 *	If the request is taking too long,
-			 *	retry it.
-			 */
-		case STATE_RUNNING:
-			if (time(NULL) < (data->running + (int)data->retry_interval)) {
-				return NULL;
-			}
-
-			DEBUG("No response to detail request.  Retrying");
-			/* FALL-THROUGH */
-
-			/*
-			 *	If there's no reply, keep
-			 *	retransmitting the current packet
-			 *	forever.
-			 */
-		case STATE_NO_REPLY:
-			data->state = STATE_QUEUED;
-			goto alloc_packet;
-
-			/*
-			 *	We have a reply.  Clean up the old
-			 *	request, and go read another one.
-			 */
-		case STATE_REPLIED:
-			pairfree(&data->vps);
-			data->state = STATE_HEADER;
-			goto do_header;
+		/*
+		 *	We have a reply.  Clean up the old
+		 *	request, and go read another one.
+		 */
+	case STATE_REPLIED:
+		pairfree(&data->vps);
+		data->state = STATE_HEADER;
+		goto do_header;
 	}
 
 	fr_cursor_init(&cursor, &data->vps);

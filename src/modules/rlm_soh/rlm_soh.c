@@ -66,18 +66,21 @@ static ssize_t soh_xlat(UNUSED void *instance, REQUEST *request, char const *fmt
 				snprintf(out, outlen, "Windows unknown");
 			} else {
 				switch (vp[1]->vp_integer) {
-					case 7:
-						osname = "7";
-						break;
-					case 6:
-						osname = "Vista";
-						break;
-					case 5:
-						osname = "XP";
-						break;
-					default:
-						osname = "Other";
-						break;
+				case 7:
+					osname = "7";
+					break;
+
+				case 6:
+					osname = "Vista";
+					break;
+
+				case 5:
+					osname = "XP";
+					break;
+
+				default:
+					osname = "Other";
+					break;
 				}
 				snprintf(out, outlen, "Windows %s %d.%d.%d sp %d.%d", osname, vp[1]->vp_integer,
 						vp[2] ? vp[2]->vp_integer : 0,
@@ -145,36 +148,37 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(UNUSED void * instance, UNUSED
 			vopt = *data++;
 			vlen = *data++;
 			switch (vopt) {
-				case 220:
-					if (vlen <= 1) {
-						uint8_t *p;
+			case 220:
+				if (vlen <= 1) {
+					uint8_t *p;
 
-						RDEBUG("SoH adding NAP marker to DHCP reply");
-						/* client probe; send "NAP" in the reply */
-						vp = paircreate(request->reply, 43, DHCP_MAGIC_VENDOR);
-						vp->length = 5;
-						vp->vp_octets = p = talloc_array(vp, uint8_t, vp->length);
+					RDEBUG("SoH adding NAP marker to DHCP reply");
+					/* client probe; send "NAP" in the reply */
+					vp = paircreate(request->reply, 43, DHCP_MAGIC_VENDOR);
+					vp->length = 5;
+					vp->vp_octets = p = talloc_array(vp, uint8_t, vp->length);
 
-						p[0] = 220;
-						p[1] = 3;
-						p[4] = 'N';
-						p[3] = 'A';
-						p[2] = 'P';
+					p[0] = 220;
+					p[1] = 3;
+					p[4] = 'N';
+					p[3] = 'A';
+					p[2] = 'P';
 
-						pairadd(&request->reply->vps, vp);
+					pairadd(&request->reply->vps, vp);
 
-					} else {
-						RDEBUG("SoH decoding NAP from DHCP request");
-						/* SoH payload */
-						rcode = soh_verify(request, data, vlen);
-						if (rcode < 0) {
-							return RLM_MODULE_FAIL;
-						}
+				} else {
+					RDEBUG("SoH decoding NAP from DHCP request");
+					/* SoH payload */
+					rcode = soh_verify(request, data, vlen);
+					if (rcode < 0) {
+						return RLM_MODULE_FAIL;
 					}
-					break;
-				default:
-					/* nothing to do */
-					break;
+				}
+				break;
+
+			default:
+				/* nothing to do */
+				break;
 			}
 			data += vlen;
 		}

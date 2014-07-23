@@ -311,12 +311,14 @@ static ssize_t ldap_xlat(void *instance, REQUEST *request, char const *fmt, char
 	status = rlm_ldap_search(inst, request, &conn, ldap_url->lud_dn, ldap_url->lud_scope, ldap_url->lud_filter,
 				 attrs, &result);
 	switch (status) {
-		case LDAP_PROC_SUCCESS:
-			break;
-		case LDAP_PROC_NO_RESULT:
-			RDEBUG("Search returned not found");
-		default:
-			goto free_socket;
+	case LDAP_PROC_SUCCESS:
+		break;
+
+	case LDAP_PROC_NO_RESULT:
+		RDEBUG("Search returned not found");
+
+	default:
+		goto free_socket;
 	}
 
 	rad_assert(conn);
@@ -394,20 +396,20 @@ static int rlm_ldap_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR
 	check_is_dn = rlm_ldap_is_dn(check->vp_strvalue);
 	if ((check_is_dn && inst->cacheable_group_dn) || (!check_is_dn && inst->cacheable_group_name)) {
 		switch (rlm_ldap_check_cached(inst, request, check)) {
-			case RLM_MODULE_NOTFOUND:
-				found = false;
-				goto finish;
+		case RLM_MODULE_NOTFOUND:
+			found = false;
+			goto finish;
 
-			case RLM_MODULE_OK:
-				found = true;
-				goto finish;
-			/*
-			 *	Fallback to dynamic search on failure
-			 */
-			case RLM_MODULE_FAIL:
-			case RLM_MODULE_INVALID:
-			default:
-				break;
+		case RLM_MODULE_OK:
+			found = true;
+			goto finish;
+		/*
+		 *	Fallback to dynamic search on failure
+		 */
+		case RLM_MODULE_FAIL:
+		case RLM_MODULE_INVALID:
+		default:
+			break;
 		}
 	}
 
@@ -430,14 +432,14 @@ static int rlm_ldap_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR
 	 */
 	if (inst->groupobj_membership_filter) {
 		switch (rlm_ldap_check_groupobj_dynamic(inst, request, &conn, check)) {
-			case RLM_MODULE_NOTFOUND:
-				break;
+		case RLM_MODULE_NOTFOUND:
+			break;
 
-			case RLM_MODULE_OK:
-				found = true;
+		case RLM_MODULE_OK:
+			found = true;
 
-			default:
-				goto finish;
+		default:
+			goto finish;
 		}
 	}
 
@@ -448,14 +450,14 @@ static int rlm_ldap_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR
 	 */
 	if (inst->userobj_membership_attr) {
 		switch (rlm_ldap_check_userobj_dynamic(inst, request, &conn, user_dn, check)) {
-			case RLM_MODULE_NOTFOUND:
-				break;
+		case RLM_MODULE_NOTFOUND:
+			break;
 
-			case RLM_MODULE_OK:
-				found = true;
+		case RLM_MODULE_OK:
+			found = true;
 
-			default:
-				goto finish;
+		default:
+			goto finish;
 		}
 	}
 

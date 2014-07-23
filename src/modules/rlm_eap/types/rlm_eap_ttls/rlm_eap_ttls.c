@@ -231,13 +231,13 @@ static int mod_authenticate(void *arg, eap_handler_t *handler)
 	status = eaptls_process(handler);
 	RDEBUG2("eaptls_process returned %d\n", status);
 	switch (status) {
-		/*
-		 *	EAP-TLS handshake was successful, tell the
-		 *	client to keep talking.
-		 *
-		 *	If this was EAP-TLS, we would just return
-		 *	an EAP-TLS-Success packet here.
-		 */
+	/*
+	 *	EAP-TLS handshake was successful, tell the
+	 *	client to keep talking.
+	 *
+	 *	If this was EAP-TLS, we would just return
+	 *	an EAP-TLS-Success packet here.
+	 */
 	case FR_TLS_SUCCESS:
 		if (SSL_session_reused(tls_session->ssl)) {
 			RDEBUG("Skipping Phase2 due to session resumption");
@@ -260,24 +260,24 @@ static int mod_authenticate(void *arg, eap_handler_t *handler)
 		}
 		return 1;
 
-		/*
-		 *	The TLS code is still working on the TLS
-		 *	exchange, and it's a valid TLS request.
-		 *	do nothing.
-		 */
+	/*
+	 *	The TLS code is still working on the TLS
+	 *	exchange, and it's a valid TLS request.
+	 *	do nothing.
+	 */
 	case FR_TLS_HANDLED:
 		return 1;
 
-		/*
-		 *	Handshake is done, proceed with decoding tunneled
-		 *	data.
-		 */
+	/*
+	 *	Handshake is done, proceed with decoding tunneled
+	 *	data.
+	 */
 	case FR_TLS_OK:
 		break;
 
-		/*
-		 *	Anything else: fail.
-		 */
+	/*
+	 *	Anything else: fail.
+	 */
 	default:
 		return 0;
 	}
