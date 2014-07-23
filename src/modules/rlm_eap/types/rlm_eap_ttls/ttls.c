@@ -1134,11 +1134,11 @@ int eapttls_process(eap_handler_t *handler, tls_session_t *tls_session)
 			 *	Some attributes are handled specially.
 			 */
 			switch (vp->da->attr) {
-				/*
-				 *	NEVER copy Message-Authenticator,
-				 *	EAP-Message, or State.  They're
-				 *	only for outside of the tunnel.
-				 */
+			/*
+			 *	NEVER copy Message-Authenticator,
+			 *	EAP-Message, or State.  They're
+			 *	only for outside of the tunnel.
+			 */
 			case PW_USER_NAME:
 			case PW_USER_PASSWORD:
 			case PW_CHAP_PASSWORD:
@@ -1148,11 +1148,10 @@ int eapttls_process(eap_handler_t *handler, tls_session_t *tls_session)
 			case PW_EAP_MESSAGE:
 			case PW_STATE:
 				continue;
-				break;
 
-				/*
-				 *	By default, copy it over.
-				 */
+			/*
+			 *	By default, copy it over.
+			 */
 			default:
 				break;
 			}

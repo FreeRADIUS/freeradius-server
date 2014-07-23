@@ -174,17 +174,17 @@ lt_dlhandle lt_dlopenext(char const *name)
 	 *	Because dlopen produces really shitty and inaccurate error messages
 	 */
 	if (access(name, R_OK) < 0) switch (errno) {
-		case EACCES:
-			WARN("Library file found, but we don't have permission to read it");
-			break;
+	case EACCES:
+		WARN("Library file found, but we don't have permission to read it");
+		break;
 
-		case ENOENT:
-			DEBUG4("Library file not found");
-			break;
+	case ENOENT:
+		DEBUG4("Library file not found");
+		break;
 
-		default:
-			DEBUG4("Issue accessing library file: %s", fr_syserror(errno));
-			break;
+	default:
+		DEBUG4("Issue accessing library file: %s", fr_syserror(errno));
+		break;
 	}
 
 	DEBUG4("Falling back to linker search path(s)");

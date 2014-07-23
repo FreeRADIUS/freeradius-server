@@ -2116,10 +2116,12 @@ home_server_t *home_server_ldb(char const *realmname,
 			hash = fr_hash(&request->packet->src_ipaddr.ipaddr.ip4addr,
 					 sizeof(request->packet->src_ipaddr.ipaddr.ip4addr));
 			break;
+
 		case AF_INET6:
 			hash = fr_hash(&request->packet->src_ipaddr.ipaddr.ip6addr,
 					 sizeof(request->packet->src_ipaddr.ipaddr.ip6addr));
 			break;
+
 		default:
 			hash = 0;
 			break;
@@ -2133,10 +2135,12 @@ home_server_t *home_server_ldb(char const *realmname,
 			hash = fr_hash(&request->packet->src_ipaddr.ipaddr.ip4addr,
 					 sizeof(request->packet->src_ipaddr.ipaddr.ip4addr));
 			break;
+
 		case AF_INET6:
 			hash = fr_hash(&request->packet->src_ipaddr.ipaddr.ip6addr,
 					 sizeof(request->packet->src_ipaddr.ipaddr.ip6addr));
 			break;
+
 		default:
 			hash = 0;
 			break;

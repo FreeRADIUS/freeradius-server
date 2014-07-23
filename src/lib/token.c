@@ -179,20 +179,20 @@ static FR_TOKEN getthing(char const **ptr, char *buf, int buflen, int tok,
 	/* we got SOME form of output string, even if it is empty */
 	switch (quote) {
 	default:
-	  rcode = T_BARE_WORD;
-	  break;
+		rcode = T_BARE_WORD;
+		break;
 
 	case '\'':
-	  rcode = T_SINGLE_QUOTED_STRING;
-	  break;
+		rcode = T_SINGLE_QUOTED_STRING;
+		break;
 
 	case '"':
-	  rcode = T_DOUBLE_QUOTED_STRING;
-	  break;
+		rcode = T_DOUBLE_QUOTED_STRING;
+		break;
 
 	case '`':
-	  rcode = T_BACK_QUOTED_STRING;
-	  break;
+		rcode = T_BACK_QUOTED_STRING;
+		break;
 	}
 
 	return rcode;

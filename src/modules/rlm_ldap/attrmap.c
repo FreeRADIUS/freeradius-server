@@ -454,13 +454,15 @@ rlm_rcode_t rlm_ldap_map_profile(ldap_instance_t const *inst, REQUEST *request, 
 
 	status = rlm_ldap_search(inst, request, pconn, dn, LDAP_SCOPE_BASE, filter, expanded->attrs, &result);
 	switch (status) {
-		case LDAP_PROC_SUCCESS:
-			break;
-		case LDAP_PROC_NO_RESULT:
-			RDEBUG("Profile object \"%s\" not found", dn);
-			return RLM_MODULE_NOTFOUND;
-		default:
-			return RLM_MODULE_FAIL;
+	case LDAP_PROC_SUCCESS:
+		break;
+
+	case LDAP_PROC_NO_RESULT:
+		RDEBUG("Profile object \"%s\" not found", dn);
+		return RLM_MODULE_NOTFOUND;
+
+	default:
+		return RLM_MODULE_FAIL;
 	}
 
 	rad_assert(*pconn);

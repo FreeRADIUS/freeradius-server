@@ -176,18 +176,23 @@ size_t fr_print_string(char const *in, size_t inlen, char *out, size_t outlen)
 		case '\\':
 			sp = '\\';
 			break;
+
 		case '\r':
 			sp = 'r';
 			break;
+
 		case '\n':
 			sp = 'n';
 			break;
+
 		case '\t':
 			sp = 't';
 			break;
+
 		case '"':
 			sp = '"';
 			break;
+
 		default:
 			sp = '\0';
 			break;
@@ -582,18 +587,18 @@ size_t vp_prints_value_json(char *out, size_t outlen, VALUE_PAIR const *vp)
 
 	if (!vp->da->flags.has_tag) {
 		switch (vp->da->type) {
-			case PW_TYPE_INTEGER:
-			case PW_TYPE_BYTE:
-			case PW_TYPE_SHORT:
-				if (vp->da->flags.has_value) break;
+		case PW_TYPE_INTEGER:
+		case PW_TYPE_BYTE:
+		case PW_TYPE_SHORT:
+			if (vp->da->flags.has_value) break;
 
-				return snprintf(out, freespace, "%u", vp->vp_integer);
+			return snprintf(out, freespace, "%u", vp->vp_integer);
 
-			case PW_TYPE_SIGNED:
-				return snprintf(out, freespace, "%d", vp->vp_signed);
+		case PW_TYPE_SIGNED:
+			return snprintf(out, freespace, "%d", vp->vp_signed);
 
-			default:
-				break;
+		default:
+			break;
 		}
 	}
 
@@ -603,71 +608,71 @@ size_t vp_prints_value_json(char *out, size_t outlen, VALUE_PAIR const *vp)
 	freespace--;
 
 	switch (vp->da->type) {
-		case PW_TYPE_STRING:
-			for (q = vp->vp_strvalue; q < vp->vp_strvalue + vp->length; q++) {
-				/* Indicate truncation */
-				if (freespace < 3) return outlen + 1;
+	case PW_TYPE_STRING:
+		for (q = vp->vp_strvalue; q < vp->vp_strvalue + vp->length; q++) {
+			/* Indicate truncation */
+			if (freespace < 3) return outlen + 1;
 
-				if (*q == '"') {
-					*out++ = '\\';
-					*out++ = '"';
-					freespace -= 2;
-				} else if (*q == '\\') {
-					*out++ = '\\';
-					*out++ = '\\';
-					freespace -= 2;
-				} else if (*q == '/') {
-					*out++ = '\\';
-					*out++ = '/';
-					freespace -= 2;
-				} else if (*q >= ' ') {
-					*out++ = *q;
+			if (*q == '"') {
+				*out++ = '\\';
+				*out++ = '"';
+				freespace -= 2;
+			} else if (*q == '\\') {
+				*out++ = '\\';
+				*out++ = '\\';
+				freespace -= 2;
+			} else if (*q == '/') {
+				*out++ = '\\';
+				*out++ = '/';
+				freespace -= 2;
+			} else if (*q >= ' ') {
+				*out++ = *q;
+				freespace--;
+			} else {
+				*out++ = '\\';
+				freespace--;
+
+				switch (*q) {
+				case '\b':
+					*out++ = 'b';
 					freespace--;
-				} else {
-					*out++ = '\\';
+					break;
+
+				case '\f':
+					*out++ = 'f';
 					freespace--;
+					break;
 
-					switch (*q) {
-					case '\b':
-						*out++ = 'b';
-						freespace--;
-						break;
+				case '\n':
+					*out++ = 'b';
+					freespace--;
+					break;
 
-					case '\f':
-						*out++ = 'f';
-						freespace--;
-						break;
+				case '\r':
+					*out++ = 'r';
+					freespace--;
+					break;
 
-					case '\n':
-						*out++ = 'b';
-						freespace--;
-						break;
-
-					case '\r':
-						*out++ = 'r';
-						freespace--;
-						break;
-
-					case '\t':
-						*out++ = 't';
-						freespace--;
-						break;
-					default:
-						len = snprintf(out, freespace, "u%04X", *q);
-						if (is_truncated(len, freespace)) return (outlen - freespace) + len;
-						out += len;
-						freespace -= len;
-					}
+				case '\t':
+					*out++ = 't';
+					freespace--;
+					break;
+				default:
+					len = snprintf(out, freespace, "u%04X", *q);
+					if (is_truncated(len, freespace)) return (outlen - freespace) + len;
+					out += len;
+					freespace -= len;
 				}
 			}
-			break;
+		}
+		break;
 
-		default:
-			len = vp_prints_value(out, freespace, vp, 0);
-			if (is_truncated(len, freespace)) return (outlen - freespace) + len;
-			out += len;
-			freespace -= len;
-			break;
+	default:
+		len = vp_prints_value(out, freespace, vp, 0);
+		if (is_truncated(len, freespace)) return (outlen - freespace) + len;
+		out += len;
+		freespace -= len;
+		break;
 	}
 
 	/* Indicate truncation */

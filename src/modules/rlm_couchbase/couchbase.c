@@ -61,32 +61,35 @@ void couchbase_get_callback(lcb_t instance, const void *cookie, lcb_error_t erro
 
 	/* check error */
 	switch (error) {
-		case LCB_SUCCESS:
-			/* check for valid bytes */
-			if (bytes && nbytes > 1) {
-				/* debug */
-				DEBUG("rlm_couchbase: (get_callback) got %zu bytes", nbytes);
-				/* build json object */
-				c->jobj = json_tokener_parse_verbose(bytes, &c->jerr);
-				/* switch on current error status */
-				switch (c->jerr) {
-					case json_tokener_success:
-						/* do nothing */
-					break;
-					default:
-						/* log error */
-						ERROR("rlm_couchbase: (get_callback) JSON Tokener error: %s", json_tokener_error_desc(c->jerr));
-					break;
-				}
+	case LCB_SUCCESS:
+		/* check for valid bytes */
+		if (bytes && nbytes > 1) {
+			/* debug */
+			DEBUG("rlm_couchbase: (get_callback) got %zu bytes", nbytes);
+			/* build json object */
+			c->jobj = json_tokener_parse_verbose(bytes, &c->jerr);
+			/* switch on current error status */
+			switch (c->jerr) {
+			case json_tokener_success:
+				/* do nothing */
+				break;
+
+			default:
+				/* log error */
+				ERROR("rlm_couchbase: (get_callback) JSON Tokener error: %s", json_tokener_error_desc(c->jerr));
+				break;
 			}
+		}
 		break;
-		case LCB_KEY_ENOENT:
-			/* ignored */
-			DEBUG("rlm_couchbase: (get_callback) key does not exist");
+
+	case LCB_KEY_ENOENT:
+		/* ignored */
+		DEBUG("rlm_couchbase: (get_callback) key does not exist");
 		break;
-		default:
-			/* log error */
-			ERROR("rlm_couchbase: (get_callback) %s (0x%x)", lcb_strerror(instance, error), error);
+
+	default:
+		/* log error */
+		ERROR("rlm_couchbase: (get_callback) %s (0x%x)", lcb_strerror(instance, error), error);
 		break;
 	}
 }

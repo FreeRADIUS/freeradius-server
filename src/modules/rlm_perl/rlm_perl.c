@@ -924,7 +924,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 	}
 
 	switch (acctstatustype) {
-
 	case PW_STATUS_START:
 
 		if (((rlm_perl_t *)instance)->func_start_accounting) {
@@ -946,10 +945,10 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 				       ((rlm_perl_t *)instance)->func_accounting);
 		}
 		break;
+
 	default:
 		return do_perl(instance, request,
 			       ((rlm_perl_t *)instance)->func_accounting);
-
 	}
 }
 
