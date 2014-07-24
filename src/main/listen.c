@@ -1989,10 +1989,32 @@ static int client_socket_encode(UNUSED rad_listen_t *listener, REQUEST *request)
 
 static int client_socket_decode(UNUSED rad_listen_t *listener, REQUEST *request)
 {
+#ifdef WITH_TLS
+	listen_socket_t *sock;
+#endif
+
 	if (rad_verify(request->packet, NULL,
 		       request->client->secret) < 0) {
 		return -1;
 	}
+
+#ifdef WITH_TLS
+	sock = request->listener->data;
+	rad_assert(sock != NULL);
+
+	/*
+	 *	FIXME: Add the rest of the TLS parameters, too?  But
+	 *	how do we separate EAP-TLS parameters from RADIUS/TLS
+	 *	parameters?
+	 */
+	if (sock->ssn && sock->ssn->ssl) {
+		const char *identity = SSL_get_psk_identity(sock->ssn->ssl);
+		if (identity) {
+			RDEBUG("Retrieved psk identity: %s", identity);
+			pairmake_packet("TLS-PSK-Identity", identity, T_OP_SET);
+		}
+	}
+#endif
 
 	return rad_decode(request->packet, NULL,
 			  request->client->secret);
