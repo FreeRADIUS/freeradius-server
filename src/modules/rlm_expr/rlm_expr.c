@@ -287,7 +287,7 @@ static ssize_t expr_xlat(UNUSED void *instance, REQUEST *request, char const *fm
 		return -1;
 	}
 
-	snprintf(out, outlen, "%lld", result);
+	snprintf(out, outlen, "%lld", (long long int)result);
 	return strlen(out);
 }
 
