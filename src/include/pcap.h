@@ -25,7 +25,9 @@
  */
 #include <freeradius-devel/libradius.h>
 #include <sys/types.h>
-#include <pcap.h>
+#ifdef HAVE_LIBPCAP
+#    include <pcap.h>
+#endif
 
 /*
  *	Length of a DEC/Intel/Xerox or 802.3 Ethernet header.
@@ -137,7 +139,7 @@ typedef struct radius_packet_t {
 
 #define AUTH_HDR_LEN 20
 
-#  ifdef HAVE_LIBPCAP
+#ifdef HAVE_LIBPCAP
 typedef enum {
 	PCAP_INVALID = 0,
 	PCAP_INTERFACE_IN,
@@ -180,7 +182,7 @@ fr_pcap_t *fr_pcap_init(TALLOC_CTX *ctx, char const *name, fr_pcap_type_t type);
 int fr_pcap_open(fr_pcap_t *handle);
 int fr_pcap_apply_filter(fr_pcap_t *handle, char const *expression);
 char *fr_pcap_device_names(TALLOC_CTX *ctx, fr_pcap_t *handle, char c);
-#  endif
+#endif
 
 ssize_t fr_link_layer_offset(uint8_t const *data, size_t len, int link_type);
 uint16_t fr_udp_checksum(uint8_t const *data, uint16_t len, uint16_t checksum,
