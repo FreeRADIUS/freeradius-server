@@ -327,7 +327,6 @@ char *fr_pcap_device_names(TALLOC_CTX *ctx, fr_pcap_t *pcap, char c)
 
 	return buff;
 }
-#endif	/* HAVE_LIBPCAP */
 
 /** Returns the length of the link layer header
  *
@@ -473,3 +472,4 @@ uint16_t fr_udp_checksum(uint8_t const *data, uint16_t len, uint16_t checksum,
 
 	return ((uint16_t) ~sum);
 }
+#endif	/* HAVE_LIBPCAP */
