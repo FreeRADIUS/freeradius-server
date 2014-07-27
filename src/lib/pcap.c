@@ -24,7 +24,6 @@
 #ifdef HAVE_LIBPCAP
 
 #include <sys/ioctl.h>
-#include <pcap/pcap.h>
 #include <freeradius-devel/pcap.h>
 
 const FR_NAME_NUMBER pcap_types[] = {
