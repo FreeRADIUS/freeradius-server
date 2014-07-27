@@ -1,5 +1,6 @@
 #ifndef FR_PCAP_H
 #define FR_PCAP_H
+#ifdef HAVE_LIBPCAP
 /*
  *   This program is is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License, version 2 if the
@@ -24,30 +25,11 @@
  * @copyright 2013 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  */
 #include <freeradius-devel/libradius.h>
+#include <freeradius-devel/net.h>
 #include <sys/types.h>
-#ifdef HAVE_LIBPCAP
-#    include <pcap.h>
-#endif
+#include <pcap.h>
 
-/*
- *	Length of a DEC/Intel/Xerox or 802.3 Ethernet header.
- *	Note that some compilers may pad "struct ether_header" to
- *	a multiple of 4 *bytes, for example, so "sizeof (struct
- *	ether_header)" may not give the right answer.
- *
- *	6 Byte SRC, 6 Byte DST, 2 Byte Ether type, 4 Byte CVID, 4 Byte SVID
- */
-#define ETHER_HDRLEN	22
-#define IP_HDRLEN	60
-
-/*
- *	RADIUS packet length.
- *	RFC 2865, Section 3., subsection 'length' says:
- *	" ... and maximum length is 4096."
- */
-#define MAX_RADIUS_LEN 4096
-#define MIN_RADIUS_LEN 20
-#define SNAPLEN ETHER_HDRLEN + IP_HDRLEN + sizeof(struct udp_header) + MAX_RADIUS_LEN
+#define SNAPLEN ETHER_HDR_LEN + IP_HDR_LEN + sizeof(struct udp_header) + MAX_RADIUS_LEN
 #define PCAP_BUFFER_DEFAULT (10000)
 /*
  *	It's unclear why this differs between platforms
@@ -69,77 +51,6 @@
 #  define PCAP_NETMASK_UNKNOWN 0
 #endif
 
-/*
- *	The number of bytes in an ethernet (MAC) address.
- */
-#define ETHER_ADDR_LEN 6
-
-/*
- *	Structure of a DEC/Intel/Xerox or 802.3 Ethernet header.
- */
-struct  ethernet_header {
-	uint8_t		ether_dst[ETHER_ADDR_LEN];
-	uint8_t		ether_src[ETHER_ADDR_LEN];
-	uint16_t	ether_type;
-};
-
-/*
- *	Structure of an internet header, naked of options.
- */
-
-#define IP_V(ip)	(((ip)->ip_vhl & 0xf0) >> 4)
-#define IP_HL(ip)       ((ip)->ip_vhl & 0x0f)
-
-#define	I_DF		0x4000		//!< Dont fragment flag.
-#define IP_MF		0x2000		//!< More fragments flag.
-#define IP_OFFMASK	0x1fff		//!< Mask for fragmenting bits.
-
-typedef struct ip_header {
-	uint8_t		ip_vhl;		//!< Header length, version.
-
-	uint8_t		ip_tos;		//!< Type of service.
-	uint16_t	ip_len;		//!< Total length.
-	uint16_t	ip_id;		//!< identification.
-	uint16_t	ip_off;		//!< Fragment offset field.
-
-	uint8_t		ip_ttl;		//!< Time To Live.
-	uint8_t		ip_p;		//!< Protocol.
-	uint16_t	ip_sum;		//!< Checksum.
-	struct in_addr	ip_src, ip_dst;	//!< Src and Dst address
-} ip_header_t;
-
-typedef struct ip_header6 {
-	uint32_t	ip_vtcfl;	//!< Version, traffic class, flow label.
-	uint16_t	ip_len;		//!< Payload length
-
-	uint8_t		ip_next;	//!< Next header (protocol)
-	uint8_t		ip_hopl;	//!< IP Hop Limit
-
-	struct in6_addr ip_src, ip_dst;	//!< Src and Dst address
-} ip_header6_t;
-
-/*
- *	UDP protocol header.
- *	Per RFC 768, September, 1981.
- */
-typedef struct udp_header {
-	uint16_t	src;		//!< Source port.
-	uint16_t	dst;		//!< Destination port.
-	uint16_t	len;		//!< UDP length.
-	uint16_t	checksum;	//!< UDP checksum.
-} udp_header_t;
-
-typedef struct radius_packet_t {
-	uint8_t		code;
-	uint8_t		id;
-	uint8_t		length[2];
-	uint8_t		vector[AUTH_VECTOR_LEN];
-	uint8_t		data[1];
-} radius_packet_t;
-
-#define AUTH_HDR_LEN 20
-
-#ifdef HAVE_LIBPCAP
 typedef enum {
 	PCAP_INVALID = 0,
 	PCAP_INTERFACE_IN,
@@ -177,14 +88,9 @@ struct fr_pcap {
 	fr_pcap_t		*next;				//!< Next handle in collection.
 };
 
-
 fr_pcap_t *fr_pcap_init(TALLOC_CTX *ctx, char const *name, fr_pcap_type_t type);
 int fr_pcap_open(fr_pcap_t *handle);
 int fr_pcap_apply_filter(fr_pcap_t *handle, char const *expression);
 char *fr_pcap_device_names(TALLOC_CTX *ctx, fr_pcap_t *handle, char c);
 #endif
-
-ssize_t fr_link_layer_offset(uint8_t const *data, size_t len, int link_type);
-uint16_t fr_udp_checksum(uint8_t const *data, uint16_t len, uint16_t checksum,
-			 struct in_addr const src_addr, struct in_addr const dst_addr);
 #endif

@@ -346,7 +346,7 @@ ssize_t rad_recv_header(int sockfd, fr_ipaddr_t *src_ipaddr, uint16_t *src_port,
 		 *	The length in the packet says it's less than
 		 *	a RADIUS header length: discard it.
 		 */
-		if (packet_len < AUTH_HDR_LEN) {
+		if (packet_len < RADIUS_HDR_LEN) {
 			rad_recv_discard(sockfd);
 
 			return 1;
@@ -431,7 +431,7 @@ static ssize_t rad_recvfrom(int sockfd, RADIUS_PACKET *packet, int flags,
 		 *	The length in the packet says it's less than
 		 *	a RADIUS header length: discard it.
 		 */
-		if (len < AUTH_HDR_LEN) {
+		if (len < RADIUS_HDR_LEN) {
 			recvfrom(sockfd, header, sizeof(header), flags,
 				 (struct sockaddr *)&src, &sizeof_src);
 			return 0;
@@ -1772,7 +1772,7 @@ int rad_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 
 	memcpy(hdr->vector, packet->vector, sizeof(hdr->vector));
 
-	total_length = AUTH_HDR_LEN;
+	total_length = RADIUS_HDR_LEN;
 
 	/*
 	 *	Load up the configuration values for the user
@@ -1903,7 +1903,7 @@ int rad_sign(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 		return -1;
 	}
 
-	if (!packet->data || (packet->data_len < AUTH_HDR_LEN) ||
+	if (!packet->data || (packet->data_len < RADIUS_HDR_LEN) ||
 	    (packet->offset < 0)) {
 		fr_strerror_printf("ERROR: You must call rad_encode() before rad_sign()");
 		return -1;
@@ -2313,12 +2313,12 @@ bool rad_packet_ok(RADIUS_PACKET *packet, int flags, decode_fail_t *reason)
 	 *
 	 *	"The minimum length is 20 ..."
 	 */
-	if (packet->data_len < AUTH_HDR_LEN) {
+	if (packet->data_len < RADIUS_HDR_LEN) {
 		fr_strerror_printf("WARNING: Malformed RADIUS packet from host %s: too short (received %zu < minimum %d)",
 			   inet_ntop(packet->src_ipaddr.af,
 				     &packet->src_ipaddr.ipaddr,
 				     host_ipaddr, sizeof(host_ipaddr)),
-				     packet->data_len, AUTH_HDR_LEN);
+				     packet->data_len, RADIUS_HDR_LEN);
 		failure = DECODE_FAIL_MIN_LENGTH_PACKET;
 		goto finish;
 	}
@@ -2369,12 +2369,12 @@ bool rad_packet_ok(RADIUS_PACKET *packet, int flags, decode_fail_t *reason)
 	 *
 	 *	"The minimum length is 20 ..."
 	 */
-	if (totallen < AUTH_HDR_LEN) {
+	if (totallen < RADIUS_HDR_LEN) {
 		fr_strerror_printf("WARNING: Malformed RADIUS packet from host %s: too short (length %zu < minimum %d)",
 			   inet_ntop(packet->src_ipaddr.af,
 				     &packet->src_ipaddr.ipaddr,
 				     host_ipaddr, sizeof(host_ipaddr)),
-				     totallen, AUTH_HDR_LEN);
+				     totallen, RADIUS_HDR_LEN);
 		failure = DECODE_FAIL_MIN_LENGTH_FIELD;
 		goto finish;
 	}
@@ -2440,7 +2440,7 @@ bool rad_packet_ok(RADIUS_PACKET *packet, int flags, decode_fail_t *reason)
 	 *	to be vulnerable to this problem.
 	 */
 	attr = hdr->data;
-	count = totallen - AUTH_HDR_LEN;
+	count = totallen - RADIUS_HDR_LEN;
 	num_attributes = 0;
 
 	while (count > 0) {
@@ -2749,8 +2749,8 @@ int rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 	 *	Before we allocate memory for the attributes, do more
 	 *	sanity checking.
 	 */
-	ptr = packet->data + AUTH_HDR_LEN;
-	length = packet->data_len - AUTH_HDR_LEN;
+	ptr = packet->data + RADIUS_HDR_LEN;
+	length = packet->data_len - RADIUS_HDR_LEN;
 	while (length > 0) {
 		uint8_t	msg_auth_vector[AUTH_VECTOR_LEN];
 		uint8_t calc_auth_vector[AUTH_VECTOR_LEN];
@@ -4059,7 +4059,7 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 	 */
 	hdr = (radius_packet_t *)packet->data;
 	ptr = hdr->data;
-	packet_length = packet->data_len - AUTH_HDR_LEN;
+	packet_length = packet->data_len - RADIUS_HDR_LEN;
 
 	head = NULL;
 	tail = &head;
@@ -4116,7 +4116,7 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 	 *	Merge information from the outside world into our
 	 *	random pool.
 	 */
-	fr_rand_seed(packet->data, AUTH_HDR_LEN);
+	fr_rand_seed(packet->data, RADIUS_HDR_LEN);
 
 	/*
 	 *	There may be VP's already in the packet.  Don't
