@@ -19,6 +19,7 @@ SOURCES		:= cbuff.c \
 		   missing.c \
 		   md4.c \
 		   md5.c \
+		   net.c \
 		   pcap.c \
 		   print.c \
 		   radius.c \

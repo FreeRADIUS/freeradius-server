@@ -126,7 +126,7 @@ extern "C" {
 #define FR_MAX_VENDOR		(1 << 24) /* RFC limitations */
 
 #ifdef _LIBRADIUS
-#  define AUTH_HDR_LEN		20
+#  define RADIUS_HDR_LEN		20
 #  define VENDORPEC_USR		429
 #define VENDORPEC_LUCENT	4846
 #define VENDORPEC_STARENT	8164

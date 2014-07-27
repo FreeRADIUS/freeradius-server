@@ -1358,7 +1358,7 @@ static int stats_socket_recv(rad_listen_t *listener)
 
 	FR_STATS_INC(auth, total_requests);
 
-	if (rcode < 20) {	/* AUTH_HDR_LEN */
+	if (rcode < 20) {	/* RADIUS_HDR_LEN */
 		FR_STATS_INC(auth, total_malformed_requests);
 		return 0;
 	}
@@ -1426,7 +1426,7 @@ static int auth_socket_recv(rad_listen_t *listener)
 
 	FR_STATS_INC(auth, total_requests);
 
-	if (rcode < 20) {	/* AUTH_HDR_LEN */
+	if (rcode < 20) {	/* RADIUS_HDR_LEN */
 		FR_STATS_INC(auth, total_malformed_requests);
 		return 0;
 	}
@@ -1533,7 +1533,7 @@ static int acct_socket_recv(rad_listen_t *listener)
 
 	FR_STATS_INC(acct, total_requests);
 
-	if (rcode < 20) {	/* AUTH_HDR_LEN */
+	if (rcode < 20) {	/* RADIUS_HDR_LEN */
 		FR_STATS_INC(acct, total_malformed_requests);
 		return 0;
 	}
@@ -1781,7 +1781,7 @@ static int coa_socket_recv(rad_listen_t *listener)
 	rcode = rad_recv_header(listener->fd, &src_ipaddr, &src_port, &code);
 	if (rcode < 0) return 0;
 
-	if (rcode < 20) {	/* AUTH_HDR_LEN */
+	if (rcode < 20) {	/* RADIUS_HDR_LEN */
 		FR_STATS_INC(coa, total_requests);
 		FR_STATS_INC(coa, total_malformed_requests);
 		return 0;
