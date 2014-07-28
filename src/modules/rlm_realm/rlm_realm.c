@@ -25,6 +25,8 @@ RCSID("$Id$")
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
 
+#include "trustrouter_integ.h"
+
 #define  REALM_FORMAT_PREFIX   0
 #define  REALM_FORMAT_SUFFIX   1
 
@@ -34,6 +36,10 @@ typedef struct realm_config_t {
 	char const	*delim;
 	bool		ignore_default;
 	bool		ignore_null;
+	char		const *default_community;
+	char		const *rp_realm;
+	char const 		*trust_router;
+	unsigned int	tr_port;
 } realm_config_t;
 
 static CONF_PARSER module_config[] = {
@@ -41,6 +47,14 @@ static CONF_PARSER module_config[] = {
   { "delimiter", FR_CONF_OFFSET(PW_TYPE_STRING, realm_config_t, delim), "@" },
   { "ignore_default", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, realm_config_t, ignore_default), "no" },
   { "ignore_null", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, realm_config_t, ignore_null), "no" },
+{ "default_community", FR_CONF_OFFSET(PW_TYPE_STRING,
+    realm_config_t,default_community),  "none" },
+{ "rp_realm", FR_CONF_OFFSET(PW_TYPE_STRING,
+    realm_config_t,rp_realm),  "none" },
+{ "trust_router", FR_CONF_OFFSET(PW_TYPE_STRING,
+    realm_config_t,trust_router),  "none" },
+{ "tr_port", FR_CONF_OFFSET(PW_TYPE_INTEGER,
+    realm_config_t,tr_port),  "0" },
   { NULL, -1, 0, NULL, NULL }    /* end the list */
 };
 
@@ -153,6 +167,8 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 	 *	Allow DEFAULT realms unless told not to.
 	 */
 	realm = realm_find(realmname);
+       	if (!realm)
+	  realm = tr_query_realm(realmname, inst->default_community, inst->rp_realm, inst->trust_router, inst->tr_port);
 	if (!realm) {
 		RDEBUG2("No such realm \"%s\"",
 			(!realmname) ? "NULL" : realmname);
@@ -329,6 +345,9 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
 	struct realm_config_t *inst = instance;
 
+	/* initialize the trust router integration code */
+	if (tr_init() < 0)
+	       return -1;
 	if (strcasecmp(inst->format_string, "suffix") == 0) {
 	     inst->format = REALM_FORMAT_SUFFIX;
 
