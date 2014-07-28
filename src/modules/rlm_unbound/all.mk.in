@@ -1,13 +1,15 @@
 TARGETNAME	:= @targetname@
 
+ifneq "$(OPENSSL_LIBS)" ""
 ifneq "$(TARGETNAME)" ""
 TARGET		:= $(TARGETNAME).a
+endif
 endif
 
 SOURCES		:= $(TARGETNAME).c
 
 SRC_CFLAGS	:= @mod_cflags@
-TGT_LDLIBS	:= @mod_ldflags@
+TGT_LDLIBS	:= @mod_ldflags@ $(OPENSSL_LIBS)
 
 MAN		:= rlm_unbound.5
 
