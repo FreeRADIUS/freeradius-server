@@ -636,8 +636,8 @@ SHELL'
 ac_subst_files=''
 ac_user_opts='
 enable_option_checking
-with_rlm_eap_pwd_lib_dir
-with_rlm_eap_pwd_include_dir
+with_openssl_lib_dir
+with_openssl_include_dir
 '
       ac_precious_vars='build_alias
 host_alias
@@ -1253,8 +1253,8 @@ if test -n "$ac_init_help"; then
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
-  --with-rlm-eap-pwd-lib-dir       directory for eap-pwd libs
-  --with-rlm-eap-pwd-include-dir   directory for eap-pwd includes
+  --with-openssl-lib-dir=DIR       directory for LDAP library files
+  --with-openssl-include-dir=DIR   directory for LDAP include files
 
 Some influential environment variables:
   CC          C compiler command
@@ -1850,29 +1850,49 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
-fail=
 mod_ldflags=
 mod_cflags=
 
 if test x$with_rlm_eap_pwd != xno; then
 
+					openssl_lib_dir=
+
+# Check whether --with-openssl-lib-dir was given.
+if test "${with_openssl_lib_dir+set}" = set; then :
+  withval=$with_openssl_lib_dir;  case "$withval" in
+	    no)
+		as_fn_error $? "Need openssl-lib-dir" "$LINENO" 5
+		;;
+	    yes)
+		;;
+	    *)
+		openssl_lib_dir="$withval"
+		;;
+	  esac
+
+fi
 
 
-# Check whether --with-rlm-eap-pwd-lib-dir was given.
-if test "${with_rlm_eap_pwd_lib_dir+set}" = set; then :
-  withval=$with_rlm_eap_pwd_lib_dir; mod_ldflags="-L$withval"
+		openssl_include_dir=
+
+# Check whether --with-openssl-include-dir was given.
+if test "${with_openssl_include_dir+set}" = set; then :
+  withval=$with_openssl_include_dir;  case "$withval" in
+	    no)
+		as_fn_error $? "Need openssl-include-dir" "$LINENO" 5
+		;;
+	    yes)
+		;;
+	    *)
+		openssl_include_dir="$withval"
+		;;
+	  esac
+
 fi
 
 
 
-# Check whether --with-rlm-eap-pwd-include-dir was given.
-if test "${with_rlm_eap_pwd_include_dir+set}" = set; then :
-  withval=$with_rlm_eap_pwd_include_dir; mod_cflags="-I$withval"
-fi
-
-
-
-	smart_try_dir=$rlm_eap_pwd_include_dir
+	smart_try_dir=$openssl_include_dir
 	ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'
 ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
@@ -2893,91 +2913,215 @@ smart_prefix=
 	  fail="$fail openssl/ec.h"
 	fi
 
+	smart_try_dir=$openssl_lib_dir
 
-	{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for OpenSSL support" >&5
-$as_echo_n "checking for OpenSSL support... " >&6; }
-	if test "x$OPENSSL_LIBS" != "x"; then
-		{ $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-$as_echo "yes" >&6; }
 
-		as_ac_Lib=`$as_echo "ac_cv_lib_c $OPENSSL_LIBS''_EVP_sha256" | $as_tr_sh`
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for EVP_sha256 in -lc $OPENSSL_LIBS" >&5
-$as_echo_n "checking for EVP_sha256 in -lc $OPENSSL_LIBS... " >&6; }
-if eval \${$as_ac_Lib+:} false; then :
-  $as_echo_n "(cached) " >&6
-else
-  ac_check_lib_save_LIBS=$LIBS
-LIBS="-lc $OPENSSL_LIBS  $LIBS"
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+sm_lib_safe=`echo "crypto" | sed 'y%./+-%__p_%'`
+sm_func_safe=`echo "EVP_cleanup" | sed 'y%./+-%__p_%'`
+
+old_LIBS="$LIBS"
+old_CPPFLAGS="$CPPFLAGS"
+smart_lib=
+smart_ldflags=
+smart_lib_dir=
+
+if test "x$smart_try_dir" != "x"; then
+  for try in $smart_try_dir; do
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for EVP_cleanup in -lcrypto in $try" >&5
+$as_echo_n "checking for EVP_cleanup in -lcrypto in $try... " >&6; }
+    LIBS="-lcrypto $old_LIBS"
+    CPPFLAGS="-L$try -Wl,-rpath,$try $old_CPPFLAGS"
+    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
-
-/* Override any GCC internal prototype to avoid an error.
-   Use char because int might match the return type of a GCC
-   builtin and then its argument prototype would still apply.  */
-#ifdef __cplusplus
-extern "C"
-#endif
-char EVP_sha256 ();
+extern char EVP_cleanup();
 int
 main ()
 {
-return EVP_sha256 ();
+EVP_cleanup()
   ;
   return 0;
 }
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
-  eval "$as_ac_Lib=yes"
+
+		 smart_lib="-lcrypto"
+		 smart_ldflags="-L$try -Wl,-rpath,$try"
+		 { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+		 break
+
 else
-  eval "$as_ac_Lib=no"
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
 fi
 rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
-LIBS=$ac_check_lib_save_LIBS
+  done
+  LIBS="$old_LIBS"
+  CPPFLAGS="$old_CPPFLAGS"
 fi
-eval ac_res=\$$as_ac_Lib
-	       { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_res" >&5
-$as_echo "$ac_res" >&6; }
-if eval test \"x\$"$as_ac_Lib"\" = x"yes"; then :
 
-$as_echo "#define HAVE_OPENSSL_EVP_SHA256 1" >>confdefs.h
+if test "x$smart_lib" = "x"; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for EVP_cleanup in -lcrypto" >&5
+$as_echo_n "checking for EVP_cleanup in -lcrypto... " >&6; }
+  LIBS="-lcrypto $old_LIBS"
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+extern char EVP_cleanup();
+int
+main ()
+{
+EVP_cleanup()
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
 
+	        smart_lib="-lcrypto"
+	        { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
 
 else
-   { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: EVP_sha256 not found, may have issues wirh WiMAX certificates" >&5
-$as_echo "$as_me: WARNING: EVP_sha256 not found, may have issues wirh WiMAX certificates" >&2;}
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+  LIBS="$old_LIBS"
 fi
 
+if test "x$smart_lib" = "x"; then
 
-	else
-		{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+
+if test "x$LOCATE" != "x"; then
+        DIRS=
+  file=libcrypto${libltdl_cv_shlibext}
+
+  for x in `${LOCATE} $file 2>/dev/null`; do
+                                        base=`echo $x | sed "s%/${file}%%"`
+    if test "x$x" = "x$base"; then
+      continue;
+    fi
+
+    dir=`${DIRNAME} $x 2>/dev/null`
+                exclude=`echo ${dir} | ${GREP} /home`
+    if test "x$exclude" != "x"; then
+      continue
+    fi
+
+                    already=`echo \$smart_lib_dir ${DIRS} | ${GREP} ${dir}`
+    if test "x$already" = "x"; then
+      DIRS="$DIRS $dir"
+    fi
+  done
+fi
+
+eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
+
+
+
+if test "x$LOCATE" != "x"; then
+        DIRS=
+  file=libcrypto.a
+
+  for x in `${LOCATE} $file 2>/dev/null`; do
+                                        base=`echo $x | sed "s%/${file}%%"`
+    if test "x$x" = "x$base"; then
+      continue;
+    fi
+
+    dir=`${DIRNAME} $x 2>/dev/null`
+                exclude=`echo ${dir} | ${GREP} /home`
+    if test "x$exclude" != "x"; then
+      continue
+    fi
+
+                    already=`echo \$smart_lib_dir ${DIRS} | ${GREP} ${dir}`
+    if test "x$already" = "x"; then
+      DIRS="$DIRS $dir"
+    fi
+  done
+fi
+
+eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
+
+
+  for try in $smart_lib_dir /usr/local/lib /opt/lib; do
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for EVP_cleanup in -lcrypto in $try" >&5
+$as_echo_n "checking for EVP_cleanup in -lcrypto in $try... " >&6; }
+    LIBS="-lcrypto $old_LIBS"
+    CPPFLAGS="-L$try -Wl,-rpath,$try $old_CPPFLAGS"
+    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+extern char EVP_cleanup();
+int
+main ()
+{
+EVP_cleanup()
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+
+		  smart_lib="-lcrypto"
+		  smart_ldflags="-L$try -Wl,-rpath,$try"
+		  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+		  break
+
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
-		fail="OpenSSL"
-	fi
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+  done
+  LIBS="$old_LIBS"
+  CPPFLAGS="$old_CPPFLAGS"
+fi
 
-	if test "x$fail" != "x"; then
-	   CFLAGS="$CFLAGS -I$OPENSSL_INCLUDE"
+if test "x$smart_lib" != "x"; then
+  eval "ac_cv_lib_${sm_lib_safe}_${sm_func_safe}=yes"
+  LIBS="$smart_ldflags $smart_lib $old_LIBS"
+  SMART_LIBS="$smart_ldflags $smart_lib $SMART_LIBS"
+fi
 
-	   for ac_func in \
-	       EC_GROUP_free
-
+        if test "x$ac_cv_lib_crypto_EVP_cleanup" != "xyes"; then
+	  fail="libssl"
+        else
+          for ac_func in EVP_sha256
 do :
-  as_ac_var=`$as_echo "ac_cv_func_$ac_func" | $as_tr_sh`
-ac_fn_c_check_func "$LINENO" "$ac_func" "$as_ac_var"
-if eval test \"x\$"$as_ac_var"\" = x"yes"; then :
+  ac_fn_c_check_func "$LINENO" "EVP_sha256" "ac_cv_func_EVP_sha256"
+if test "x$ac_cv_func_EVP_sha256" = xyes; then :
   cat >>confdefs.h <<_ACEOF
-#define `$as_echo "HAVE_$ac_func" | $as_tr_cpp` 1
+#define HAVE_EVP_SHA256 1
 _ACEOF
 
 fi
 done
 
-	   if test "x$ac_cv_func_ev_group_free" != "xyes"; then
-	      fail="EC_GROUP_free"
-	   fi
+          if test "x$ac_cv_func_EVP_sha256" != "xyes"; then
+            { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: EVP_sha256 not found, may have issues with WiMAX certificates" >&5
+$as_echo "$as_me: WARNING: EVP_sha256 not found, may have issues with WiMAX certificates" >&2;}
+	  fi
+
+	  for ac_func in EC_GROUP_free
+do :
+  ac_fn_c_check_func "$LINENO" "EC_GROUP_free" "ac_cv_func_EC_GROUP_free"
+if test "x$ac_cv_func_EC_GROUP_free" = xyes; then :
+  cat >>confdefs.h <<_ACEOF
+#define HAVE_EC_GROUP_FREE 1
+_ACEOF
+
+fi
+done
+
+	  if test "x$ac_cv_func_EC_GROUP_free" != "xyes"; then
+	    fail="EC_GROUP_free"
+	  fi
 	fi
-
-
 
 	targetname=rlm_eap_pwd
 else
@@ -2993,14 +3137,6 @@ if test x"$fail" != x""; then
 $as_echo "$as_me: WARNING: silently not building rlm_eap_pwd." >&2;}
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: FAILURE: rlm_eap_pwd requires: $fail." >&5
 $as_echo "$as_me: WARNING: FAILURE: rlm_eap_pwd requires: $fail." >&2;}
-		if test x"$headersuggestion" != x; then
-			{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: $headersuggestion" >&5
-$as_echo "$as_me: WARNING: $headersuggestion" >&2;}
-		fi
-		if test x"$libsuggestion" != x; then
-			{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: $libsuggestion" >&5
-$as_echo "$as_me: WARNING: $libsuggestion" >&2;}
-		fi
 		targetname=""
 	fi
 fi
