@@ -381,7 +381,7 @@ static int process_eap_start(RADIUS_PACKET *req,
 
 	/* mark the subtype as being EAP-SIM/Response/Start */
 	newvp = paircreate(rep, PW_EAP_SIM_SUBTYPE, 0);
-	newvp->vp_integer = eapsim_start;
+	newvp->vp_integer = EAPSIM_START;
 	pairreplace(&(rep->vps), newvp);
 
 	/* insert selected version into response. */
@@ -608,7 +608,7 @@ static int process_eap_challenge(RADIUS_PACKET *req, RADIUS_PACKET *rep)
 
 	/* mark the subtype as being EAP-SIM/Response/Start */
 	newvp = paircreate(rep, PW_EAP_SIM_SUBTYPE, 0);
-	newvp->vp_integer = eapsim_challenge;
+	newvp->vp_integer = EAPSIM_CHALLENGE;
 	pairreplace(&(rep->vps), newvp);
 
 	{
@@ -667,7 +667,7 @@ static int respond_eap_sim(RADIUS_PACKET *req, RADIUS_PACKET *resp)
 	{
 		/* must be initial request */
 		statevp = paircreate(resp, PW_EAP_SIM_STATE, 0);
-		statevp->vp_integer = eapsim_client_init;
+		statevp->vp_integer = EAPSIM_CLIENT_INIT;
 		pairreplace(&(resp->vps), statevp);
 	}
 	state = statevp->vp_integer;
@@ -687,15 +687,15 @@ static int respond_eap_sim(RADIUS_PACKET *req, RADIUS_PACKET *resp)
 	 * look for the appropriate state, and process incoming message
 	 */
 	switch(state) {
-	case eapsim_client_init:
+	case EAPSIM_CLIENT_INIT:
 		switch(subtype) {
-		case eapsim_start:
+		case EAPSIM_START:
 			newstate = process_eap_start(req, resp);
 			break;
 
-		case eapsim_challenge:
-		case eapsim_notification:
-		case eapsim_reauth:
+		case EAPSIM_CHALLENGE:
+		case EAPSIM_NOTIFICATION:
+		case EAPSIM_REAUTH:
 		default:
 			ERROR("sim in state %s message %s is illegal. Reply dropped.",
 				sim_state2name(state, statenamebuf, sizeof(statenamebuf)),
@@ -705,14 +705,14 @@ static int respond_eap_sim(RADIUS_PACKET *req, RADIUS_PACKET *resp)
 		}
 		break;
 
-	case eapsim_client_start:
+	case EAPSIM_CLIENT_START:
 		switch(subtype) {
-		case eapsim_start:
+		case EAPSIM_START:
 			/* NOT SURE ABOUT THIS ONE, retransmit, I guess */
 			newstate = process_eap_start(req, resp);
 			break;
 
-		case eapsim_challenge:
+		case EAPSIM_CHALLENGE:
 			newstate = process_eap_challenge(req, resp);
 			break;
 

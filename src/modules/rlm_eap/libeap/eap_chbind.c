@@ -30,7 +30,8 @@ RCSID("$Id$")
 
 static bool chbind_build_response(REQUEST *request, CHBIND_REQ *chbind)
 {
-	size_t length, total;
+	int length;
+	size_t total;
 	uint8_t *ptr, *end;
 	VALUE_PAIR const *vp;
 	vp_cursor_t cursor;
@@ -45,7 +46,7 @@ static bool chbind_build_response(REQUEST *request, CHBIND_REQ *chbind)
 		if (vp->da->flags.encrypt != FLAG_ENCRYPT_NONE) continue;
 		if (!vp->da->vendor && (vp->da->attr == PW_MESSAGE_AUTHENTICATOR)) continue;
 
-		total = 2 + vp->length;
+		total += 2 + vp->length;
 	}
 
 	/*
@@ -88,7 +89,14 @@ static bool chbind_build_response(REQUEST *request, CHBIND_REQ *chbind)
 	for (vp = fr_cursor_init(&cursor, &request->reply->vps);
 	     vp != NULL;
 	     vp = fr_cursor_next(&cursor)) {
+		/*
+		 *	Skip things which shouldn't be in channel bindings.
+		 */
+		if (vp->da->flags.encrypt != FLAG_ENCRYPT_NONE) continue;
+		if (!vp->da->vendor && (vp->da->attr == PW_MESSAGE_AUTHENTICATOR)) continue;
+
 		length = rad_vp2attr(NULL, NULL, NULL, &vp, ptr, end - ptr);
+		if (length < 0) continue;
 		ptr += length;
 	}
 
@@ -243,7 +251,7 @@ chbind_packet_t *eap_chbind_vp2packet(TALLOC_CTX *ctx, VALUE_PAIR *vps)
 	 *	Compute the total length of the channel binding data.
 	 */
 	length = 0;
-	for (vp =fr_cursor_init(&cursor, first);
+	for (vp =fr_cursor_init(&cursor, &first);
 	     vp != NULL;
 	     vp = fr_cursor_next_by_num(&cursor, PW_UKERNA_CHBIND, VENDORPEC_UKERNA, TAG_ANY)) {
 		length += vp->length;
@@ -264,7 +272,7 @@ chbind_packet_t *eap_chbind_vp2packet(TALLOC_CTX *ctx, VALUE_PAIR *vps)
 	 *	Copy the data over to our packet.
 	 */
 	packet = (chbind_packet_t *) ptr;
-	for (vp = fr_cursor_init(&cursor, first);
+	for (vp = fr_cursor_init(&cursor, &first);
 	     vp != NULL;
 	     vp = fr_cursor_next_by_num(&cursor, PW_UKERNA_CHBIND, VENDORPEC_UKERNA, TAG_ANY)) {
 		memcpy(ptr, vp->vp_octets, vp->length);

@@ -161,23 +161,24 @@ static rs_stats_tmpl_t *rs_stats_collectd_init(TALLOC_CTX *ctx, rs_t *conf,
 
 		tmpl->value_tmpl[i] = values[i];
 		switch (tmpl->value_tmpl[i].type) {
-			case LCC_TYPE_COUNTER:
-				tmpl->value_tmpl[i].dst = &value->values[i].counter;
-				break;
+		case LCC_TYPE_COUNTER:
+			tmpl->value_tmpl[i].dst = &value->values[i].counter;
+			break;
 
-			case LCC_TYPE_GAUGE:
-				tmpl->value_tmpl[i].dst = &value->values[i].gauge;
-				break;
+		case LCC_TYPE_GAUGE:
+			tmpl->value_tmpl[i].dst = &value->values[i].gauge;
+			break;
 
-			case LCC_TYPE_DERIVE:
-				tmpl->value_tmpl[i].dst = &value->values[i].derive;
-				break;
+		case LCC_TYPE_DERIVE:
+			tmpl->value_tmpl[i].dst = &value->values[i].derive;
+			break;
 
-			case LCC_TYPE_ABSOLUTE:
-				tmpl->value_tmpl[i].dst = &value->values[i].absolute;
-				break;
-			default:
-				assert(0);
+		case LCC_TYPE_ABSOLUTE:
+			tmpl->value_tmpl[i].dst = &value->values[i].absolute;
+			break;
+
+		default:
+			assert(0);
 		}
 		value->values_types[i] = tmpl->value_tmpl[i].type;
 	}

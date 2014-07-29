@@ -377,134 +377,133 @@ static int CC_HINT(nonnull) mschapv2_authenticate(void *arg, eap_handler_t *hand
 	ccode = eap_ds->response->type.data[0];
 
 	switch (data->code) {
-		case PW_EAP_MSCHAPV2_FAILURE:
-			if (ccode == PW_EAP_MSCHAPV2_RESPONSE) {
-				RDEBUG2("authentication re-try from client after we sent a failure");
-				break;
-			}
-
-			/*
-			 * if we sent error 648 (password expired) to the client
-			 * we might get an MSCHAP-CPW packet here; turn it into a
-			 * regular MS-CHAP2-CPW packet and pass it to rlm_mschap
-			 * (or proxy it, I guess)
-			 */
-			if (ccode == PW_EAP_MSCHAPV2_CHGPASSWD) {
-				VALUE_PAIR *cpw;
-				int mschap_id = eap_ds->response->type.data[1];
-				int copied=0,seq=1;
-
-				RDEBUG2("password change packet received");
-
-				challenge = pairmake_packet("MS-CHAP-Challenge", NULL, T_OP_EQ);
-				if (!challenge) {
-					return 0;
-				}
-				pairmemcpy(challenge, data->challenge, MSCHAPV2_CHALLENGE_LEN);
-
-				cpw = pairmake_packet("MS-CHAP2-CPW", NULL, T_OP_EQ);
-				cpw->length = 68;
-
-				cpw->vp_octets = p = talloc_array(cpw, uint8_t, cpw->length);
-				p[0] = 7;
-				p[1] = mschap_id;
-				memcpy(p + 2, eap_ds->response->type.data + 520, 66);
-
-				/*
-				 * break the encoded password into VPs (3 of them)
-				 */
-				while (copied < 516) {
-					VALUE_PAIR *nt_enc;
-
-					int to_copy = 516 - copied;
-					if (to_copy > 243)
-						to_copy = 243;
-
-					nt_enc = pairmake_packet("MS-CHAP-NT-Enc-PW", NULL, T_OP_ADD);
-					nt_enc->length = 4 + to_copy;
-
-					nt_enc->vp_octets = p = talloc_array(nt_enc, uint8_t, nt_enc->length);
-
-					p[0] = 6;
-					p[1] = mschap_id;
-					p[2] = 0;
-					p[3] = seq++;
-
-					memcpy(p + 4, eap_ds->response->type.data + 4 + copied, to_copy);
-					copied += to_copy;
-				}
-
-				RDEBUG2("built change password packet");
-				debug_pair_list(request->packet->vps);
-
-				/*
-				 * jump to "authentication"
-				 */
-				goto packet_ready;
-			}
-
-			/*
-			 * we sent a failure and are expecting a failure back
-			 */
-			if (ccode != PW_EAP_MSCHAPV2_FAILURE) {
-				REDEBUG("Sent FAILURE expecting FAILURE but got %d", ccode);
-				return 0;
-			}
-
-	failure:
-			request->log.lvl &= ~RAD_REQUEST_OPTION_PROXY_EAP;
-			eap_ds->request->code = PW_EAP_FAILURE;
-			return 1;
-
-		case PW_EAP_MSCHAPV2_SUCCESS:
-			/*
-			 * we sent a success to the client; some clients send a
-			 * success back as-per the RFC, some send an ACK. Permit
-			 * both, I guess...
-			 */
-
-			switch (ccode) {
-				case PW_EAP_MSCHAPV2_SUCCESS:
-					eap_ds->request->code = PW_EAP_SUCCESS;
-
-					pairfilter(request->reply,
-						  &request->reply->vps,
-						  &data->mppe_keys, 0, 0, TAG_ANY);
-					/* fall through... */
-
-				case PW_EAP_MSCHAPV2_ACK:
-#ifdef WITH_PROXY
-					/*
-					 *	It's a success.  Don't proxy it.
-					 */
-					request->log.lvl &= ~RAD_REQUEST_OPTION_PROXY_EAP;
-#endif
-					pairfilter(request->reply,
-						  &request->reply->vps,
-						  &data->reply, 0, 0, TAG_ANY);
-					return 1;
-			}
-			REDEBUG("Sent SUCCESS expecting SUCCESS (or ACK) but got %d", ccode);
-			return 0;
-
-		case PW_EAP_MSCHAPV2_CHALLENGE:
-			if (ccode == PW_EAP_MSCHAPV2_FAILURE) goto failure;
-
-			/*
-			 * we sent a challenge, expecting a response
-			 */
-			if (ccode != PW_EAP_MSCHAPV2_RESPONSE) {
-				REDEBUG("Sent CHALLENGE expecting RESPONSE but got %d", ccode);
-				return 0;
-			}
-			/* authentication happens below */
+	case PW_EAP_MSCHAPV2_FAILURE:
+		if (ccode == PW_EAP_MSCHAPV2_RESPONSE) {
+			RDEBUG2("authentication re-try from client after we sent a failure");
 			break;
+		}
 
+		/*
+		 * if we sent error 648 (password expired) to the client
+		 * we might get an MSCHAP-CPW packet here; turn it into a
+		 * regular MS-CHAP2-CPW packet and pass it to rlm_mschap
+		 * (or proxy it, I guess)
+		 */
+		if (ccode == PW_EAP_MSCHAPV2_CHGPASSWD) {
+			VALUE_PAIR *cpw;
+			int mschap_id = eap_ds->response->type.data[1];
+			int copied=0,seq=1;
 
-		default:
-			/* should never happen */
-			REDEBUG("unknown state %d", data->code);
+			RDEBUG2("password change packet received");
+
+			challenge = pairmake_packet("MS-CHAP-Challenge", NULL, T_OP_EQ);
+			if (!challenge) {
+				return 0;
+			}
+			pairmemcpy(challenge, data->challenge, MSCHAPV2_CHALLENGE_LEN);
+
+			cpw = pairmake_packet("MS-CHAP2-CPW", NULL, T_OP_EQ);
+			cpw->length = 68;
+
+			cpw->vp_octets = p = talloc_array(cpw, uint8_t, cpw->length);
+			p[0] = 7;
+			p[1] = mschap_id;
+			memcpy(p + 2, eap_ds->response->type.data + 520, 66);
+
+			/*
+			 * break the encoded password into VPs (3 of them)
+			 */
+			while (copied < 516) {
+				VALUE_PAIR *nt_enc;
+
+				int to_copy = 516 - copied;
+				if (to_copy > 243)
+					to_copy = 243;
+
+				nt_enc = pairmake_packet("MS-CHAP-NT-Enc-PW", NULL, T_OP_ADD);
+				nt_enc->length = 4 + to_copy;
+
+				nt_enc->vp_octets = p = talloc_array(nt_enc, uint8_t, nt_enc->length);
+
+				p[0] = 6;
+				p[1] = mschap_id;
+				p[2] = 0;
+				p[3] = seq++;
+
+				memcpy(p + 4, eap_ds->response->type.data + 4 + copied, to_copy);
+				copied += to_copy;
+			}
+
+			RDEBUG2("built change password packet");
+			debug_pair_list(request->packet->vps);
+
+			/*
+			 * jump to "authentication"
+			 */
+			goto packet_ready;
+		}
+
+		/*
+		 * we sent a failure and are expecting a failure back
+		 */
+		if (ccode != PW_EAP_MSCHAPV2_FAILURE) {
+			REDEBUG("Sent FAILURE expecting FAILURE but got %d", ccode);
 			return 0;
+		}
+
+failure:
+		request->log.lvl &= ~RAD_REQUEST_OPTION_PROXY_EAP;
+		eap_ds->request->code = PW_EAP_FAILURE;
+		return 1;
+
+	case PW_EAP_MSCHAPV2_SUCCESS:
+		/*
+		 * we sent a success to the client; some clients send a
+		 * success back as-per the RFC, some send an ACK. Permit
+		 * both, I guess...
+		 */
+
+		switch (ccode) {
+		case PW_EAP_MSCHAPV2_SUCCESS:
+			eap_ds->request->code = PW_EAP_SUCCESS;
+
+			pairfilter(request->reply,
+				  &request->reply->vps,
+				  &data->mppe_keys, 0, 0, TAG_ANY);
+			/* FALL-THROUGH */
+
+		case PW_EAP_MSCHAPV2_ACK:
+#ifdef WITH_PROXY
+			/*
+			 *	It's a success.  Don't proxy it.
+			 */
+			request->log.lvl &= ~RAD_REQUEST_OPTION_PROXY_EAP;
+#endif
+			pairfilter(request->reply,
+				  &request->reply->vps,
+				  &data->reply, 0, 0, TAG_ANY);
+			return 1;
+		}
+		REDEBUG("Sent SUCCESS expecting SUCCESS (or ACK) but got %d", ccode);
+		return 0;
+
+	case PW_EAP_MSCHAPV2_CHALLENGE:
+		if (ccode == PW_EAP_MSCHAPV2_FAILURE) goto failure;
+
+		/*
+		 * we sent a challenge, expecting a response
+		 */
+		if (ccode != PW_EAP_MSCHAPV2_RESPONSE) {
+			REDEBUG("Sent CHALLENGE expecting RESPONSE but got %d", ccode);
+			return 0;
+		}
+		/* authentication happens below */
+		break;
+
+	default:
+		/* should never happen */
+		REDEBUG("unknown state %d", data->code);
+		return 0;
 	}
 
 

@@ -103,7 +103,7 @@ tls_session_t *eaptls_session(eap_handler_t *handler, fr_tls_server_conf_t *tls_
 	 */
 	SSL_set_ex_data(ssn->ssl, FR_TLS_EX_INDEX_HANDLER, (void *)handler);
 	SSL_set_ex_data(ssn->ssl, FR_TLS_EX_INDEX_CONF, (void *)tls_conf);
-	SSL_set_ex_data(ssn->ssl, FR_TLS_EX_INDEX_CERTS, (void *)&(handler->certs));
+	SSL_set_ex_data(ssn->ssl, fr_tls_ex_index_certs, (void *)&(handler->certs));
 	SSL_set_ex_data(ssn->ssl, FR_TLS_EX_INDEX_IDENTITY, (void *)&(handler->identity));
 #ifdef HAVE_OPENSSL_OCSP_H
 	SSL_set_ex_data(ssn->ssl, FR_TLS_EX_INDEX_STORE, (void *)tls_conf->ocsp_store);

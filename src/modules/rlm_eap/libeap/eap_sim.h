@@ -31,18 +31,18 @@ RCSIDH(eap_sim_h, "$Id$")
 #define EAP_SIM_VERSION 0x0001
 
 enum eapsim_subtype {
-  eapsim_start       = 10,
-  eapsim_challenge   = 11,
-  eapsim_notification= 12,
-  eapsim_reauth      = 13,
-  eapsim_client_error = 14,
-  eapsim_max_subtype = 15
+	EAPSIM_START		= 10,
+	EAPSIM_CHALLENGE	= 11,
+	EAPSIM_NOTIFICATION	= 12,
+	EAPSIM_REAUTH		= 13,
+	EAPSIM_CLIENT_ERROR	= 14,
+	EAPSIM_MAX_SUBTYPE	= 15
 };
 
 enum eapsim_clientstates {
-  eapsim_client_init = 0,
-  eapsim_client_start = 1,
-  eapsim_client_maxstates
+	EAPSIM_CLIENT_INIT	= 0,
+	EAPSIM_CLIENT_START	= 1,
+	EAPSIM_CLIENT_MAXSTATES
 };
 
 /* server states
@@ -51,21 +51,20 @@ enum eapsim_clientstates {
  *
  */
 enum eapsim_serverstates {
-  eapsim_server_start = 0,
-  eapsim_server_challenge=1,
-  eapsim_server_success=10,
-  eapsim_server_maxstates
+	EAPSIM_SERVER_START	= 0,
+	EAPSIM_SERVER_CHALLENGE	= 1,
+	EAPSIM_SERVER_SUCCESS	= 10,
+	EAPSIM_SERVER_MAXSTATES
 };
 
 
 /*
  * interfaces in eapsimlib.c
  */
-extern int map_eapsim_basictypes(RADIUS_PACKET *r, eap_packet_t *ep);
-extern char const *sim_state2name(enum eapsim_clientstates state, char *buf, int buflen);
-extern char const *sim_subtype2name(enum eapsim_subtype subtype, char *buf, int buflen);
-extern int unmap_eapsim_basictypes(RADIUS_PACKET *r,
-				   uint8_t *attr, unsigned int attrlen);
+int map_eapsim_basictypes(RADIUS_PACKET *r, eap_packet_t *ep);
+char const *sim_state2name(enum eapsim_clientstates state, char *buf, int buflen);
+char const *sim_subtype2name(enum eapsim_subtype subtype, char *buf, int buflen);
+int unmap_eapsim_basictypes(RADIUS_PACKET *r, uint8_t *attr, unsigned int attrlen);
 
 
 /************************/
@@ -77,47 +76,47 @@ extern int unmap_eapsim_basictypes(RADIUS_PACKET *r,
  *
  */
 
-#define EAPSIM_SRES_SIZE 4
-#define EAPSIM_RAND_SIZE 16
-#define EAPSIM_KC_SIZE   8
-#define EAPSIM_CALCMAC_SIZE 20
-#define EAPSIM_NONCEMT_SIZE 16
-#define EAPSIM_AUTH_SIZE    16
+#define EAPSIM_SRES_SIZE	4
+#define EAPSIM_RAND_SIZE	16
+#define EAPSIM_KC_SIZE		8
+#define EAPSIM_CALCMAC_SIZE	20
+#define EAPSIM_NONCEMT_SIZE	16
+#define EAPSIM_AUTH_SIZE	16
 
 struct eapsim_keys {
-  /* inputs */
-  unsigned char identity[MAX_STRING_LEN];
-  unsigned int  identitylen;
-  unsigned char nonce_mt[EAPSIM_NONCEMT_SIZE];
-  unsigned char rand[3][EAPSIM_RAND_SIZE];
-  unsigned char sres[3][EAPSIM_SRES_SIZE];
-  unsigned char Kc[3][EAPSIM_KC_SIZE];
-  unsigned char versionlist[MAX_STRING_LEN];
-  unsigned char versionlistlen;
-  unsigned char versionselect[2];
+	/* inputs */
+	uint8_t identity[MAX_STRING_LEN];
+	unsigned int  identitylen;
+	uint8_t nonce_mt[EAPSIM_NONCEMT_SIZE];
+	uint8_t rand[3][EAPSIM_RAND_SIZE];
+	uint8_t sres[3][EAPSIM_SRES_SIZE];
+	uint8_t Kc[3][EAPSIM_KC_SIZE];
+	uint8_t versionlist[MAX_STRING_LEN];
+	uint8_t versionlistlen;
+	uint8_t versionselect[2];
 
-  /* outputs */
-  unsigned char master_key[20];
-  unsigned char K_aut[EAPSIM_AUTH_SIZE];
-  unsigned char K_encr[16];
-  unsigned char msk[64];
-  unsigned char emsk[64];
+	/* outputs */
+	uint8_t master_key[20];
+	uint8_t K_aut[EAPSIM_AUTH_SIZE];
+	uint8_t K_encr[16];
+	uint8_t msk[64];
+	uint8_t emsk[64];
 };
 
 
 /*
  * interfaces in eapsimlib.c
  */
-extern int  eapsim_checkmac(TALLOC_CTX *ctx, VALUE_PAIR *rvps,
-			    uint8_t key[8],
-			    uint8_t *extra, int extralen,
-			    uint8_t calcmac[20]);
+int eapsim_checkmac(TALLOC_CTX *ctx, VALUE_PAIR *rvps,
+		    uint8_t key[8],
+		    uint8_t *extra, int extralen,
+		    uint8_t calcmac[20]);
 
 /*
  * in eapcrypto.c
  */
-extern void eapsim_calculate_keys(struct eapsim_keys *ek);
-extern void eapsim_dump_mk(struct eapsim_keys *ek);
+void eapsim_calculate_keys(struct eapsim_keys *ek);
+void eapsim_dump_mk(struct eapsim_keys *ek);
 
 
 #endif /* _EAP_SIM_H */

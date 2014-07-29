@@ -196,8 +196,8 @@ void fb_store_row(rlm_sql_firebird_conn_t *conn)
 
 			memmove(conn->row[i], var->sqldata, var->sqllen);
 			conn->row[i][var->sqllen] = 0;
-
 			break;
+
 		case SQL_VARYING:
 			vary = (VARY*) var->sqldata;
 			if (conn->row_sizes[i] <= vary->vary_length) {
@@ -207,72 +207,74 @@ void fb_store_row(rlm_sql_firebird_conn_t *conn)
 			}
 			memmove(conn->row[i], vary->vary_string, vary->vary_length);
 			conn->row[i][vary->vary_length] = 0;
-
 			break;
 
 		case SQL_FLOAT:
 			snprintf(conn->row[i], conn->row_sizes[i], "%15g",
 				 *(float ISC_FAR *) (var->sqldata));
 			break;
+
 		case SQL_SHORT:
 		case SQL_LONG:
 		case SQL_INT64:
-			{
-				ISC_INT64 value = 0;
-				short field_width = 0;
-				short dscale = 0;
-				char *p;
-				p = conn->row[i];
+		{
+			ISC_INT64 value = 0;
+			short field_width = 0;
+			short dscale = 0;
+			char *p;
+			p = conn->row[i];
 
-				switch (dtype) {
-				case SQL_SHORT:
-					value = (ISC_INT64) *(short *)var->sqldata;
-					field_width = 6;
-					break;
-				case SQL_LONG:
-					value = (ISC_INT64) *(int *)var->sqldata;
-					field_width = 11;
-					break;
-				case SQL_INT64:
-					value = (ISC_INT64) *(ISC_INT64 *)var->sqldata;
-					field_width = 21;
-					break;
-				}
-				dscale = var->sqlscale;
+			switch (dtype) {
+			case SQL_SHORT:
+				value = (ISC_INT64) *(short *)var->sqldata;
+				field_width = 6;
+				break;
 
-				if (dscale < 0) {
-					ISC_INT64 tens;
-					short j;
+			case SQL_LONG:
+				value = (ISC_INT64) *(int *)var->sqldata;
+				field_width = 11;
+				break;
 
-					tens = 1;
-					for (j = 0; j > dscale; j--) {
-						tens *= 10;
-					}
-
-					if (value >= 0) {
-						sprintf(p, "%*lld.%0*lld",
-							field_width - 1 + dscale,
-							(ISC_INT64) value / tens,
-							-dscale,
-							(ISC_INT64) value % tens);
-					} else if ((value / tens) != 0) {
-						sprintf (p, "%*lld.%0*lld",
-							field_width - 1 + dscale,
-							(ISC_INT64) (value / tens),
-							-dscale,
-							(ISC_INT64) -(value % tens));
-					} else {
-						sprintf(p, "%*s.%0*lld", field_width - 1 + dscale,
-							"-0", -dscale, (ISC_INT64) - (value % tens));
-					}
-				} else if (dscale) {
-					sprintf(p, "%*lld%0*d", field_width,
-						(ISC_INT64) value, dscale, 0);
-				} else {
-					sprintf(p, "%*lld", field_width,
-						(ISC_INT64) value);
-				}
+			case SQL_INT64:
+				value = (ISC_INT64) *(ISC_INT64 *)var->sqldata;
+				field_width = 21;
+				break;
 			}
+			dscale = var->sqlscale;
+
+			if (dscale < 0) {
+				ISC_INT64 tens;
+				short j;
+
+				tens = 1;
+				for (j = 0; j > dscale; j--) {
+					tens *= 10;
+				}
+
+				if (value >= 0) {
+					sprintf(p, "%*lld.%0*lld",
+						field_width - 1 + dscale,
+						(ISC_INT64) value / tens,
+						-dscale,
+						(ISC_INT64) value % tens);
+				} else if ((value / tens) != 0) {
+					sprintf (p, "%*lld.%0*lld",
+						field_width - 1 + dscale,
+						(ISC_INT64) (value / tens),
+						-dscale,
+						(ISC_INT64) -(value % tens));
+				} else {
+					sprintf(p, "%*s.%0*lld", field_width - 1 + dscale,
+						"-0", -dscale, (ISC_INT64) - (value % tens));
+				}
+			} else if (dscale) {
+				sprintf(p, "%*lld%0*d", field_width,
+					(ISC_INT64) value, dscale, 0);
+			} else {
+				sprintf(p, "%*lld", field_width,
+					(ISC_INT64) value);
+			}
+		}
 			break;
 
 		case SQL_D_FLOAT:
@@ -317,7 +319,6 @@ void fb_store_row(rlm_sql_firebird_conn_t *conn)
 			snprintf(conn->row[i], conn->row_sizes[i], "%08" ISC_LONG_FMT "x:%08" ISC_LONG_FMT "x",
 				 bid.gds_quad_high, bid.gds_quad_low);
 			break;
-
 		}
 	}
 }
@@ -490,6 +491,7 @@ int fb_sql_query(rlm_sql_firebird_conn_t *conn, char const *query) {
 			isc_dsql_execute2(conn->status, &conn->trh, &conn->stmt,
 					  SQL_DIALECT_V6, 0, conn->sqlda_out);
 			break;
+
 		default:
 			isc_dsql_execute(conn->status, &conn->trh, &conn->stmt,
 					 SQL_DIALECT_V6, 0);

@@ -117,13 +117,15 @@ int rlm_ldap_load_clients(ldap_instance_t const *inst)
 	status = rlm_ldap_search(inst, NULL, &conn, inst->clientobj_base_dn, inst->clientobj_scope,
 				 inst->clientobj_filter, attrs, &result);
 	switch (status) {
-		case LDAP_PROC_SUCCESS:
-			break;
-		case LDAP_PROC_NO_RESULT:
-			LDAP_INFO("No clients were found in the directory");
-			return 0;
-		default:
-			return -1;
+	case LDAP_PROC_SUCCESS:
+		break;
+
+	case LDAP_PROC_NO_RESULT:
+		LDAP_INFO("No clients were found in the directory");
+		return 0;
+
+	default:
+		return -1;
 	}
 
 	rad_assert(conn);

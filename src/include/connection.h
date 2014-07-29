@@ -61,7 +61,7 @@ typedef void *(*fr_connection_create_t)(TALLOC_CTX *ctx, void *opaque);
  *
  * Should check the state  of a connection handle.
  *
- * @note NULL may be passed to fr_connection_init, if there is no way to check
+ * @note NULL may be passed to fr_connection_pool_init, if there is no way to check
  * the state of a connection handle.
  * @note Not currently use by connection pool manager.
  * @param[in] opaque pointer passed to fr_connection_pool_init.
@@ -70,7 +70,14 @@ typedef void *(*fr_connection_create_t)(TALLOC_CTX *ctx, void *opaque);
  */
 typedef int (*fr_connection_alive_t)(void *opaque, void *connection);
 
-fr_connection_pool_t *fr_connection_pool_init(CONF_SECTION *cs,
+fr_connection_pool_t *fr_connection_pool_module_init(CONF_SECTION *module,
+						     void *opaque,
+						     fr_connection_create_t c,
+						     fr_connection_alive_t a,
+						     char const *prefix);
+
+fr_connection_pool_t *fr_connection_pool_init(CONF_SECTION *parent,
+					      CONF_SECTION *cs,
 					      void *opaque,
 					      fr_connection_create_t c,
 					      fr_connection_alive_t a,

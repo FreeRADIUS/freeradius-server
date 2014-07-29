@@ -82,7 +82,7 @@ int map_eapsim_basictypes(RADIUS_PACKET *r, eap_packet_t *ep)
 	 *
 	 */
 	subtype = (vp = pairfind(r->vps, PW_EAP_SIM_SUBTYPE, 0, TAG_ANY)) ?
-		vp->vp_integer : eapsim_start;
+		vp->vp_integer : EAPSIM_START;
 
 	id = (vp = pairfind(r->vps, PW_EAP_ID, 0, TAG_ANY)) ?
 		vp->vp_integer : ((int)getpid() & 0xff);
@@ -444,7 +444,7 @@ char const *sim_state2name(enum eapsim_clientstates state,
 			   char *statenamebuf,
 			   int   statenamebuflen)
 {
-	if(state >= eapsim_client_maxstates) {
+	if(state >= EAPSIM_CLIENT_MAXSTATES) {
 		snprintf(statenamebuf, statenamebuflen, "eapstate:%d", state);
 		return statenamebuf;
 	}
@@ -464,7 +464,7 @@ char const *subtypes[]={ "subtype0", "subtype1", "subtype2", "subtype3",
 
 char const *sim_subtype2name(enum eapsim_subtype subtype, char *subtypenamebuf, int subtypenamebuflen)
 {
-	if (subtype >= eapsim_max_subtype) {
+	if (subtype >= EAPSIM_MAX_SUBTYPE) {
 		snprintf(subtypenamebuf, subtypenamebuflen, "illegal-subtype:%d", subtype);
 
 		return subtypenamebuf;

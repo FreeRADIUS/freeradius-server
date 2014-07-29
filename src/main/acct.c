@@ -55,29 +55,29 @@ int rad_accounting(REQUEST *request)
 
 		result = module_preacct(request);
 		switch (result) {
-			/*
-			 *	The module has a number of OK return codes.
-			 */
-			case RLM_MODULE_NOOP:
-			case RLM_MODULE_OK:
-			case RLM_MODULE_UPDATED:
-				break;
-			/*
-			 *	The module handled the request, stop here.
-			 */
-			case RLM_MODULE_HANDLED:
-				return result;
-			/*
-			 *	The module failed, or said the request is
-			 *	invalid, therefore we stop here.
-			 */
-			case RLM_MODULE_FAIL:
-			case RLM_MODULE_INVALID:
-			case RLM_MODULE_NOTFOUND:
-			case RLM_MODULE_REJECT:
-			case RLM_MODULE_USERLOCK:
-			default:
-				return result;
+		/*
+		 *	The module has a number of OK return codes.
+		 */
+		case RLM_MODULE_NOOP:
+		case RLM_MODULE_OK:
+		case RLM_MODULE_UPDATED:
+			break;
+		/*
+		 *	The module handled the request, stop here.
+		 */
+		case RLM_MODULE_HANDLED:
+			return result;
+		/*
+		 *	The module failed, or said the request is
+		 *	invalid, therefore we stop here.
+		 */
+		case RLM_MODULE_FAIL:
+		case RLM_MODULE_INVALID:
+		case RLM_MODULE_NOTFOUND:
+		case RLM_MODULE_REJECT:
+		case RLM_MODULE_USERLOCK:
+		default:
+			return result;
 		}
 
 		/*
@@ -92,30 +92,30 @@ int rad_accounting(REQUEST *request)
 		}
 		result = process_accounting(acct_type, request);
 		switch (result) {
-			/*
-			 *	In case the accounting module returns FAIL,
-			 *	it's still useful to send the data to the
-			 *	proxy.
-			 */
-			case RLM_MODULE_FAIL:
-			case RLM_MODULE_NOOP:
-			case RLM_MODULE_OK:
-			case RLM_MODULE_UPDATED:
-				break;
-			/*
-			 *	The module handled the request, don't reply.
-			 */
-			case RLM_MODULE_HANDLED:
-				return result;
-			/*
-			 *	Neither proxy, nor reply to invalid requests.
-			 */
-			case RLM_MODULE_INVALID:
-			case RLM_MODULE_NOTFOUND:
-			case RLM_MODULE_REJECT:
-			case RLM_MODULE_USERLOCK:
-			default:
-				return result;
+		/*
+		 *	In case the accounting module returns FAIL,
+		 *	it's still useful to send the data to the
+		 *	proxy.
+		 */
+		case RLM_MODULE_FAIL:
+		case RLM_MODULE_NOOP:
+		case RLM_MODULE_OK:
+		case RLM_MODULE_UPDATED:
+			break;
+		/*
+		 *	The module handled the request, don't reply.
+		 */
+		case RLM_MODULE_HANDLED:
+			return result;
+		/*
+		 *	Neither proxy, nor reply to invalid requests.
+		 */
+		case RLM_MODULE_INVALID:
+		case RLM_MODULE_NOTFOUND:
+		case RLM_MODULE_REJECT:
+		case RLM_MODULE_USERLOCK:
+		default:
+			return result;
 		}
 
 		/*
@@ -153,26 +153,26 @@ int rad_accounting(REQUEST *request)
 	 *      Accounting-Response.
 	 */
 	switch (result) {
-		/*
-		 *	Send back an ACK to the NAS.
-		 */
-		case RLM_MODULE_OK:
-		case RLM_MODULE_UPDATED:
-			request->reply->code = PW_CODE_ACCOUNTING_RESPONSE;
-			break;
+	/*
+	 *	Send back an ACK to the NAS.
+	 */
+	case RLM_MODULE_OK:
+	case RLM_MODULE_UPDATED:
+		request->reply->code = PW_CODE_ACCOUNTING_RESPONSE;
+		break;
 
-		/*
-		 *	Failed to log or to proxy the accounting data,
-		 *	therefore don't reply to the NAS.
-		 */
-		case RLM_MODULE_FAIL:
-		case RLM_MODULE_INVALID:
-		case RLM_MODULE_NOOP:
-		case RLM_MODULE_NOTFOUND:
-		case RLM_MODULE_REJECT:
-		case RLM_MODULE_USERLOCK:
-		default:
-			break;
+	/*
+	 *	Failed to log or to proxy the accounting data,
+	 *	therefore don't reply to the NAS.
+	 */
+	case RLM_MODULE_FAIL:
+	case RLM_MODULE_INVALID:
+	case RLM_MODULE_NOOP:
+	case RLM_MODULE_NOTFOUND:
+	case RLM_MODULE_REJECT:
+	case RLM_MODULE_USERLOCK:
+	default:
+		break;
 	}
 	return result;
 }

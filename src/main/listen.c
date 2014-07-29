@@ -1356,7 +1356,7 @@ static int stats_socket_recv(rad_listen_t *listener)
 
 	FR_STATS_INC(auth, total_requests);
 
-	if (rcode < 20) {	/* AUTH_HDR_LEN */
+	if (rcode < 20) {	/* RADIUS_HDR_LEN */
 		FR_STATS_INC(auth, total_malformed_requests);
 		return 0;
 	}
@@ -1424,7 +1424,7 @@ static int auth_socket_recv(rad_listen_t *listener)
 
 	FR_STATS_INC(auth, total_requests);
 
-	if (rcode < 20) {	/* AUTH_HDR_LEN */
+	if (rcode < 20) {	/* RADIUS_HDR_LEN */
 		FR_STATS_INC(auth, total_malformed_requests);
 		return 0;
 	}
@@ -1531,7 +1531,7 @@ static int acct_socket_recv(rad_listen_t *listener)
 
 	FR_STATS_INC(acct, total_requests);
 
-	if (rcode < 20) {	/* AUTH_HDR_LEN */
+	if (rcode < 20) {	/* RADIUS_HDR_LEN */
 		FR_STATS_INC(acct, total_malformed_requests);
 		return 0;
 	}
@@ -1779,7 +1779,7 @@ static int coa_socket_recv(rad_listen_t *listener)
 	rcode = rad_recv_header(listener->fd, &src_ipaddr, &src_port, &code);
 	if (rcode < 0) return 0;
 
-	if (rcode < 20) {	/* AUTH_HDR_LEN */
+	if (rcode < 20) {	/* RADIUS_HDR_LEN */
 		FR_STATS_INC(coa, total_requests);
 		FR_STATS_INC(coa, total_malformed_requests);
 		return 0;
@@ -1989,10 +1989,32 @@ static int client_socket_encode(UNUSED rad_listen_t *listener, REQUEST *request)
 
 static int client_socket_decode(UNUSED rad_listen_t *listener, REQUEST *request)
 {
+#ifdef WITH_TLS
+	listen_socket_t *sock;
+#endif
+
 	if (rad_verify(request->packet, NULL,
 		       request->client->secret) < 0) {
 		return -1;
 	}
+
+#ifdef WITH_TLS
+	sock = request->listener->data;
+	rad_assert(sock != NULL);
+
+	/*
+	 *	FIXME: Add the rest of the TLS parameters, too?  But
+	 *	how do we separate EAP-TLS parameters from RADIUS/TLS
+	 *	parameters?
+	 */
+	if (sock->ssn && sock->ssn->ssl) {
+		const char *identity = SSL_get_psk_identity(sock->ssn->ssl);
+		if (identity) {
+			RDEBUG("Retrieved psk identity: %s", identity);
+			pairmake_packet("TLS-PSK-Identity", identity, T_OP_SET);
+		}
+	}
+#endif
 
 	return rad_decode(request->packet, NULL,
 			  request->client->secret);
@@ -2862,8 +2884,8 @@ static rad_listen_t *listen_parse(CONF_SECTION *cs, char const *server)
 
 
 	server_cs = cf_section_sub_find_name2(main_config.config, "server",
-					      this->server);
-	if (!server_cs) {
+					      this->server);	
+	if (!server_cs && this->server) {
 		cf_log_err_cs(cs, "No such server \"%s\"", this->server);
 		listen_free(&this);
 		return NULL;

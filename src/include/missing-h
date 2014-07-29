@@ -103,15 +103,15 @@ extern "C" {
  *	Functions from missing.c
  */
 #ifndef HAVE_STRNCASECMP
-extern int strncasecmp(char *s1, char *s2, int n);
+int strncasecmp(char *s1, char *s2, int n);
 #endif
 
 #ifndef HAVE_STRCASECMP
-extern int strcasecmp(char *s1, char *s2);
+int strcasecmp(char *s1, char *s2);
 #endif
 
 #ifndef HAVE_STRSEP
-extern char *strsep(char **stringp, char const *delim);
+char *strsep(char **stringp, char const *delim);
 #endif
 
 #ifndef HAVE_LOCALTIME_R
@@ -302,46 +302,45 @@ struct addrinfo
 /* Translate name of a service location and/or a service name to set of
    socket addresses. */
 #ifndef HAVE_GETADDRINFO
-extern int getaddrinfo (char const *__name,
-			char const *__service,
-			struct addrinfo const *__req,
-			struct addrinfo **__pai);
+int getaddrinfo(char const *__name, char const *__service,
+		struct addrinfo const *__req,
+		struct addrinfo **__pai);
 
 /* Free `addrinfo' structure AI including associated storage.  */
-extern void freeaddrinfo (struct addrinfo *__ai);
+void freeaddrinfo (struct addrinfo *__ai);
 
 /* Convert error return from getaddrinfo() to a string.  */
-extern char const *gai_strerror (int __ecode);
+char const *gai_strerror (int __ecode);
 #endif
 
 /* Translate a socket address to a location and service name. */
 #ifndef HAVE_GETNAMEINFO
-extern int getnameinfo (struct sockaddr const *__sa,
-			socklen_t __salen, char *__host,
-			size_t __hostlen, char *__serv,
-			size_t __servlen, unsigned int __flags);
+int getnameinfo(struct sockaddr const *__sa,
+		socklen_t __salen, char *__host,
+		size_t __hostlen, char *__serv,
+		size_t __servlen, unsigned int __flags);
 #endif
 
 /*
  *	Functions from snprintf.c
  */
 #ifndef HAVE_VSNPRINTF
-extern int vsnprintf(char *str, size_t count, char const *fmt, va_list arg);
+int vsnprintf(char *str, size_t count, char const *fmt, va_list arg);
 #endif
 
 #ifndef HAVE_SNPRINTF
-extern int snprintf(char *str, size_t count, char const *fmt, ...);
+int snprintf(char *str, size_t count, char const *fmt, ...);
 #endif
 
 /*
  *	Functions from strl{cat,cpy}.c
  */
 #ifndef HAVE_STRLCPY
-extern size_t strlcpy(char *dst, char const *src, size_t siz);
+size_t strlcpy(char *dst, char const *src, size_t siz);
 #endif
 
 #ifndef HAVE_STRLCAT
-extern size_t strlcat(char *dst, char const *src, size_t siz);
+size_t strlcat(char *dst, char const *src, size_t siz);
 #endif
 
 #ifndef INT16SZ

@@ -293,7 +293,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 	inst->sincesync = 0;
 
-	sqlinst = find_module_instance(cf_section_find("modules"), (inst->sql_module_instance), 1 );
+	sqlinst = find_module_instance(cf_section_find("modules"), (inst->sql_module_instance), true);
 	if (!sqlinst) {
 		nvp_log(__LINE__, inst, L_ERR,
 			"mod_instantiate(): cannot find module instance "
@@ -437,14 +437,15 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 			"ORDER BY (`gid_ip`.`ip_stop` - `gid_ip`.`ip_start`) ASC "
 			"LIMIT %lu, 1",
 		       inst->db_name, nasip, s_gid)) {
-			case -1:
-				nvp_log(__LINE__, inst, L_ERR,
-					"mod_post_auth(): couldn't find "
-					"any more matching host groups");
-				goto end_gid;		  /* exit the main loop */
-			case 0:
-				sql_release_socket(inst->sqlinst, sqlsock);
-				return RLM_MODULE_FAIL;
+		case -1:
+			nvp_log(__LINE__, inst, L_ERR,
+				"mod_post_auth(): couldn't find "
+				"any more matching host groups");
+			goto end_gid;		  /* exit the main loop */
+
+		case 0:
+			sql_release_socket(inst->sqlinst, sqlsock);
+			return RLM_MODULE_FAIL;
 		}
 
 		/* store the group ID and free memory occupied by results */
@@ -478,15 +479,16 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 					"ORDER BY `prio` ASC "
 					"LIMIT %lu, 1",
 				inst->db_name, gid, pname, s_prio)) {
-				case -1:
-					nvp_log(__LINE__, inst, L_DBG,
-						"mod_post_auth(): couldn't find "
-						"any more matching pools for gid = %lu",
-						gid);
-					goto end_prio;	       /* select next gid */
-				case 0:
-					sql_release_socket(inst->sqlinst, sqlsock);
-					return RLM_MODULE_FAIL;
+			case -1:
+				nvp_log(__LINE__, inst, L_DBG,
+					"mod_post_auth(): couldn't find "
+					"any more matching pools for gid = %lu",
+					gid);
+				goto end_prio;	       /* select next gid */
+
+			case 0:
+				sql_release_socket(inst->sqlinst, sqlsock);
+				return RLM_MODULE_FAIL;
 			}
 
 			/* store the prio and weights sum */
@@ -524,15 +526,16 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 						"LIMIT %lu, 1",
 					inst->db_name, gid, pname, prio,
 					weights_sum, used_sum, s_pid)) {
-					case -1:
-						nvp_log(__LINE__, inst, L_DBG,
-							"mod_post_auth(): couldn't find any more "
-							"matching pools of prio = %ld for gid = %lu",
-							prio, gid);
-						goto end_pid;	      /* select next prio */
-					case 0:
-						sql_release_socket(inst->sqlinst, sqlsock);
-						return RLM_MODULE_FAIL;
+				case -1:
+					nvp_log(__LINE__, inst, L_DBG,
+						"mod_post_auth(): couldn't find any more "
+						"matching pools of prio = %ld for gid = %lu",
+						prio, gid);
+					goto end_pid;	      /* select next prio */
+
+				case 0:
+					sql_release_socket(inst->sqlinst, sqlsock);
+					return RLM_MODULE_FAIL;
 				}
 
 				/* store the inst and free memory occupied by results */
@@ -573,15 +576,16 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 						"ORDER BY `rsv_since` DESC "
 						"LIMIT 1",
 					inst->db_name, connid)) {
-					case -1:
-						nvp_log(__LINE__, inst, L_ERR,
-							"mod_post_auth(): couldn't reserve an IP address "
-							"from pool of pid = %lu (prio = %ld, gid = %lu)",
-							pid, prio, gid);
-						continue;			    /* select next pid */
-					case 0:
-						sql_release_socket(inst->sqlinst, sqlsock);
-						return RLM_MODULE_FAIL;
+				case -1:
+					nvp_log(__LINE__, inst, L_ERR,
+						"mod_post_auth(): couldn't reserve an IP address "
+						"from pool of pid = %lu (prio = %ld, gid = %lu)",
+						pid, prio, gid);
+					continue;			    /* select next pid */
+
+				case 0:
+					sql_release_socket(inst->sqlinst, sqlsock);
+					return RLM_MODULE_FAIL;
 				}
 
 				/* update free IPs count */
@@ -689,71 +693,71 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 
 
 	switch (acct_type) {
-		case PW_STATUS_START:
-		case PW_STATUS_ALIVE:
-			vp = pairfind(request->packet->vps, PW_FRAMED_IP_ADDRESS, 0, TAG_ANY);
-			if (!vp) {
-				nvp_log(__LINE__, inst, L_ERR, "mod_accounting(): no framed IP");
-				sql_release_socket(inst->sqlinst, sqlsock);
-				return RLM_MODULE_FAIL;
-			}
+	case PW_STATUS_START:
+	case PW_STATUS_ALIVE:
+		vp = pairfind(request->packet->vps, PW_FRAMED_IP_ADDRESS, 0, TAG_ANY);
+		if (!vp) {
+			nvp_log(__LINE__, inst, L_ERR, "mod_accounting(): no framed IP");
+			sql_release_socket(inst->sqlinst, sqlsock);
+			return RLM_MODULE_FAIL;
+		}
 
-			framedip = ntohl(vp->vp_ipaddr);
+		framedip = ntohl(vp->vp_ipaddr);
 
-			if (!nvp_query(__LINE__, inst, sqlsock,
-			    "UPDATE `%s`.`ips` "
-				"SET "
-					"`rsv_until` = 0, "
-					"`rsv_by` = '%s' "
-				"WHERE `ip` = %lu",
-			    inst->db_name, sessid, framedip)) {
-				sql_release_socket(inst->sqlinst, sqlsock);
-				return RLM_MODULE_FAIL;
-			}
-			nvp_finish(inst, sqlsock);
-			break;
-
-		case PW_STATUS_STOP:
-			if (!nvp_query(__LINE__, inst, sqlsock,
-			    "UPDATE `%s`.`ips`, `%1$s`.`ip_pools` "
-				"SET "
-					"`ips`.`rsv_until` = NOW() + INTERVAL %u SECOND, "
-					"`ip_pools`.`free` = `ip_pools`.`free` + 1 "
-				"WHERE "
-					"`ips`.`rsv_by` = '%s' AND "
-					"`ips`.`ip` BETWEEN `ip_pools`.`ip_start` AND `ip_pools`.`ip_stop`",
-			    inst->db_name, inst->free_after, sessid)) {
-				sql_release_socket(inst->sqlinst, sqlsock);
-				return RLM_MODULE_FAIL;
-			}
-			nvp_finish(inst, sqlsock);
+		if (!nvp_query(__LINE__, inst, sqlsock,
+		    "UPDATE `%s`.`ips` "
+			"SET "
+				"`rsv_until` = 0, "
+				"`rsv_by` = '%s' "
+			"WHERE `ip` = %lu",
+		    inst->db_name, sessid, framedip)) {
+			sql_release_socket(inst->sqlinst, sqlsock);
+			return RLM_MODULE_FAIL;
+		}
+		nvp_finish(inst, sqlsock);
 		break;
 
-		case PW_STATUS_ACCOUNTING_OFF:
-		case PW_STATUS_ACCOUNTING_ON:
-			vp = pairfind(request->packet->vps, PW_NAS_IP_ADDRESS, 0, TAG_ANY);
-			if (!vp) {
-				nvp_log(__LINE__, inst, L_ERR, "mod_accounting(): no NAS IP");
-				sql_release_socket(inst->sqlinst, sqlsock);
-				return RLM_MODULE_FAIL;
-			}
+	case PW_STATUS_STOP:
+		if (!nvp_query(__LINE__, inst, sqlsock,
+		    "UPDATE `%s`.`ips`, `%1$s`.`ip_pools` "
+			"SET "
+				"`ips`.`rsv_until` = NOW() + INTERVAL %u SECOND, "
+				"`ip_pools`.`free` = `ip_pools`.`free` + 1 "
+			"WHERE "
+				"`ips`.`rsv_by` = '%s' AND "
+				"`ips`.`ip` BETWEEN `ip_pools`.`ip_start` AND `ip_pools`.`ip_stop`",
+		    inst->db_name, inst->free_after, sessid)) {
+			sql_release_socket(inst->sqlinst, sqlsock);
+			return RLM_MODULE_FAIL;
+		}
+		nvp_finish(inst, sqlsock);
+		break;
 
-			nasip.s_addr = vp->vp_ipaddr;
-			strlcpy(nasipstr, inet_ntoa(nasip), sizeof(nasipstr));
+	case PW_STATUS_ACCOUNTING_OFF:
+	case PW_STATUS_ACCOUNTING_ON:
+		vp = pairfind(request->packet->vps, PW_NAS_IP_ADDRESS, 0, TAG_ANY);
+		if (!vp) {
+			nvp_log(__LINE__, inst, L_ERR, "mod_accounting(): no NAS IP");
+			sql_release_socket(inst->sqlinst, sqlsock);
+			return RLM_MODULE_FAIL;
+		}
 
-			if (!nvp_query(__LINE__, inst, sqlsock,
-			    "UPDATE `%s`.`ips`, `radacct` "
-				"SET `ips`.`rsv_until` = NOW() + INTERVAL %u SECOND "
-				"WHERE "
-					"`radacct`.`nasipaddress` = '%s' AND "
-					"`ips`.`rsv_by` = `radacct`.`acctuniqueid`",
-			    inst->db_name, inst->free_after, nasipstr)) {
-				sql_release_socket(inst->sqlinst, sqlsock);
-				return RLM_MODULE_FAIL;
-			}
-			nvp_finish(inst, sqlsock);
+		nasip.s_addr = vp->vp_ipaddr;
+		strlcpy(nasipstr, inet_ntoa(nasip), sizeof(nasipstr));
 
-			break;
+		if (!nvp_query(__LINE__, inst, sqlsock,
+		    "UPDATE `%s`.`ips`, `radacct` "
+			"SET `ips`.`rsv_until` = NOW() + INTERVAL %u SECOND "
+			"WHERE "
+				"`radacct`.`nasipaddress` = '%s' AND "
+				"`ips`.`rsv_by` = `radacct`.`acctuniqueid`",
+		    inst->db_name, inst->free_after, nasipstr)) {
+			sql_release_socket(inst->sqlinst, sqlsock);
+			return RLM_MODULE_FAIL;
+		}
+		nvp_finish(inst, sqlsock);
+
+		break;
 	}
 
 	sql_release_socket(inst->sqlinst, sqlsock);

@@ -4,26 +4,48 @@ AC_REVISION($Revision$)
 AC_DEFUN(modname,[rlm_unbound])
 
 if test x$with_[]modname != xno; then
-	AC_PROG_CC
-	AC_PROG_CPP
+	dnl extra argument: --with-rlm-unbound-lib-dir
+	rlm_unbound_lib_dir=
+	AC_ARG_WITH(rlm-unbound-lib-dir,
+	[  --with-rlm-unbound-lib-dir=DIR       directory for libunbound library files []],
+	[ case "$withval" in
+	    no)
+		AC_MSG_ERROR(Need rlm-unbound-lib-dir)
+		;;
+	    yes)
+		;;
+	    *)
+		rlm_unbound_lib_dir="$withval"
+		;;
+	  esac ]
+	)
 
+	dnl extra argument: --with-rlm-unbound-include-dir
+	rlm_unbound_include_dir=
+	AC_ARG_WITH(rlm-unbound-include-dir,
+	[  --with-rlm-unbound-include-dir=DIR   directory for libunbound include files []],
+	[ case "$withval" in
+	    no)
+		AC_MSG_ERROR(Need rlm-unbound-include-dir)
+		;;
+	    yes)
+		;;
+	    *)
+		rlm_unbound_include_dir="$withval"
+		;;
+	  esac ]
+	)
+
+	smart_try_dir=$rlm_unbound_lib_dir
 	FR_SMART_CHECK_LIB(unbound, ub_ctx_create)
-		if test "x$ac_cv_lib_unbound_ub_ctx_create" != "xyes"; then
+	if test "x$ac_cv_lib_unbound_ub_ctx_create" != "xyes"; then
 		fail="$fail libunbound"
 	fi
 
+	smart_try_dir=$rlm_unbound_include_dir
 	FR_SMART_CHECK_INCLUDE(unbound.h)
 	if test "$ac_cv_header_unbound_h" != "yes"; then
 		fail="$fail unbound.h"
-	fi
-
-dnl # This needs work as libunbound could be using NSS or various other
-dnl # mixes of incompatible options and header/lib availability may occur.
-dnl # Since libunbound needs openssl locking set up, and may be
-dnl # linked against openssl even when we are not, play it safe.
-	FR_SMART_CHECK_INCLUDE(openssl/crypto.h)
-	if test "$ac_cv_header_openssl_crypto_h" != "yes"; then
-		fail="$fail openssl/crypto.h"
 	fi
 
 	targetname=modname

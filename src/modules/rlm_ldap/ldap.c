@@ -349,7 +349,6 @@ process_error:
 	switch (lib_errno) {
 	case LDAP_SUCCESS:
 		*error = "Success";
-
 		break;
 
 	case LDAP_NO_SUCH_OBJECT:
@@ -810,27 +809,27 @@ ldap_rcode_t rlm_ldap_modify(ldap_instance_t const *inst, REQUEST *request, ldap
 		RDEBUG2("Waiting for modify result...");
 		status = rlm_ldap_result(inst, *pconn, msgid, dn, NULL, &error, &extra);
 		switch (status) {
-			case LDAP_PROC_SUCCESS:
-				break;
+		case LDAP_PROC_SUCCESS:
+			break;
 
-			case LDAP_PROC_RETRY:
-				*pconn = fr_connection_reconnect(inst->pool, *pconn);
-				if (*pconn) {
-					RWDEBUG("Modify failed: %s. Got new socket, retrying...", error);
+		case LDAP_PROC_RETRY:
+			*pconn = fr_connection_reconnect(inst->pool, *pconn);
+			if (*pconn) {
+				RWDEBUG("Modify failed: %s. Got new socket, retrying...", error);
 
-					talloc_free(extra); /* don't leak debug info */
+				talloc_free(extra); /* don't leak debug info */
 
-					continue;
-				}
+				continue;
+			}
 
-				status = LDAP_PROC_ERROR;
+			status = LDAP_PROC_ERROR;
 
-				/* FALL-THROUGH */
-			default:
-				REDEBUG("Failed modifying object: %s", error);
-				REDEBUG("%s", extra);
+			/* FALL-THROUGH */
+		default:
+			REDEBUG("Failed modifying object: %s", error);
+			REDEBUG("%s", extra);
 
-				goto finish;
+			goto finish;
 		}
 
 		break;
@@ -935,16 +934,16 @@ char const *rlm_ldap_find_user(ldap_instance_t const *inst, REQUEST *request, ld
 
 	status = rlm_ldap_search(inst, request, pconn, base_dn, inst->userobj_scope, filter, attrs, result);
 	switch (status) {
-		case LDAP_PROC_SUCCESS:
-			break;
+	case LDAP_PROC_SUCCESS:
+		break;
 
-		case LDAP_PROC_NO_RESULT:
-			*rcode = RLM_MODULE_NOTFOUND;
-			return NULL;
+	case LDAP_PROC_NO_RESULT:
+		*rcode = RLM_MODULE_NOTFOUND;
+		return NULL;
 
-		default:
-			*rcode = RLM_MODULE_FAIL;
-			return NULL;
+	default:
+		*rcode = RLM_MODULE_FAIL;
+		return NULL;
 	}
 
 	rad_assert(*pconn);
