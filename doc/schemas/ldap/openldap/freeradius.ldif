@@ -62,7 +62,7 @@ olcAttributeTypes: {57}( 1.3.6.1.4.1.11344.4.3.1.58 NAME 'radiusExpiration' DESC
 olcAttributeTypes: {58}( 1.3.6.1.4.1.11344.4.3.1.59 NAME 'radiusAttribute' DESC 'controlItem: $GENERIC$' EQUALITY caseIgnoreIA5Match SYNTAX 1.3.6.1.4.1.1466.115.121.1.26 )
 olcAttributeTypes: {60}( 1.3.6.1.4.1.11344.4.3.1.61 NAME 'radiusNASIpAddress' DESC '' EQUALITY caseIgnoreIA5Match SYNTAX 1.3.6.1.4.1.1466.115.121.1.26 SINGLE-VALUE )
 olcAttributeTypes: {61}( 1.3.6.1.4.1.11344.4.3.1.62 NAME 'radiusReplyMessage' DESC 'replyItem: Reply-Message' EQUALITY caseIgnoreIA5Match SYNTAX 1.3.6.1.4.1.1466.115.121.1.26 )
-olcObjectClasses: {0}( 1.3.6.1.4.1.11344.4.3.2.1 NAME 'radiusprofile' DESC '' SUP top AUXILIARY MUST cn MAY ( radiusArapFeatures $ radiusArapSecurity $ radiusArapZoneAccess $ radiusAuthType $
+olcObjectClasses: {0}( 1.3.6.1.4.1.11344.4.3.2.1 NAME 'radiusprofile' DESC '' SUP top AUXILIARY MAY ( radiusArapFeatures $ radiusArapSecurity $ radiusArapZoneAccess $ radiusAuthType $
  radiusCallbackId $ radiusCallbackNumber $radiusCalledStationId $ radiusCallingStationId $ radiusClass $ radiusClientIPAddress $ radiusFilterId $ radiusFramedAppleTalkLink $ radiusFramedAppleTalkNetwork $
  radiusFramedAppleTalkZone $ radiusFramedCompression $ radiusFramedIPAddress $ radiusFramedIPNetmask $ radiusFramedIPXNetwork $ radiusFramedMTU $radiusFramedProtocol $ radiusAttribute $
  radiusFramedRoute $ radiusFramedRouting $ radiusIdleTimeout $ radiusGroupName $ radiusHint $ radiusHuntgroupName $ radiusLoginIPHost $ radiusLoginLATGroup $ radiusLoginLATNode $ radiusLoginLATPort $
