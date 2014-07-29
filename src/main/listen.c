@@ -2008,11 +2008,13 @@ static int client_socket_decode(UNUSED rad_listen_t *listener, REQUEST *request)
 	 *	parameters?
 	 */
 	if (sock->ssn && sock->ssn->ssl) {
+#ifdef PSK_MAX_IDENTITY_LEN
 		const char *identity = SSL_get_psk_identity(sock->ssn->ssl);
 		if (identity) {
 			RDEBUG("Retrieved psk identity: %s", identity);
 			pairmake_packet("TLS-PSK-Identity", identity, T_OP_SET);
 		}
+#endif
 	}
 #endif
 
