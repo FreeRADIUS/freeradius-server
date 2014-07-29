@@ -591,14 +591,36 @@ int main(int argc, char **argv) {
 
 	while ((ch = getopt(argc, argv, "acrvnou"))!= -1)
 	switch (ch) {
-	case 'a': aflag++;break;
-	case 'c': cflag++;break;
-	case 'r': rflag++;break;
-	case 'v': vflag = 1;break;
-	case 'n': nflag = 1;break;
-	case 'o': oflag = 1;break;
-	case 'u': uflag = 1;break;
-	default: usage(argv0);
+	case 'a':
+		aflag++;
+		break;
+
+	case 'c':
+		cflag++;
+		break;
+
+	case 'r':
+		rflag++;
+		break;
+
+	case 'v':
+		vflag = 1;
+		break;
+
+	case 'n':
+		nflag = 1;
+		break;
+
+	case 'o':
+		oflag = 1;
+		break;
+
+	case 'u':
+		uflag = 1;
+		break;
+
+	default:
+		usage(argv0);
 	}
 	argc -= optind;
 	argv += optind;

@@ -140,24 +140,6 @@ static int check_module_magic(CONF_SECTION *cs, module_t const *module)
 	return 0;
 }
 
-/*
- *	Because dlopen produces really shitty and inaccurate error messages
- */
-static void check_lib_access(char const *name)
-{
-	if (access(name, R_OK) < 0) switch (errno) {
-		case EACCES:
-			WARN("Library \"%s\" exists, but we don't have permission to read", name);
-			break;
-		case ENOENT:
-			DEBUG4("Library not found at path \"%s\"", name);
-			break;
-		default:
-			DEBUG4("Possible issue accessing Library \"%s\": %s", name, fr_syserror(errno));
-			break;
-	}
-}
-
 lt_dlhandle lt_dlopenext(char const *name)
 {
 	int flags = RTLD_NOW;
@@ -183,13 +165,27 @@ lt_dlhandle lt_dlopenext(char const *name)
 	 */
 	snprintf(buffer, sizeof(buffer), "%s/%s%s", radlib_dir, name, LT_SHREXT);
 
-	DEBUG4("Loading library using absolute path");
+	DEBUG4("Loading library using absolute path \"%s\"", name);
 
 	handle = dlopen(buffer, flags);
-	if (handle) {
-		return handle;
+	if (handle) return handle;
+
+	/*
+	 *	Because dlopen produces really shitty and inaccurate error messages
+	 */
+	if (access(name, R_OK) < 0) switch (errno) {
+	case EACCES:
+		WARN("Library file found, but we don't have permission to read it");
+		break;
+
+	case ENOENT:
+		DEBUG4("Library file not found");
+		break;
+
+	default:
+		DEBUG4("Issue accessing library file: %s", fr_syserror(errno));
+		break;
 	}
-	check_lib_access(buffer);
 
 	DEBUG4("Falling back to linker search path(s)");
 	if (DEBUG_ENABLED4) {
@@ -578,7 +574,7 @@ static int module_conf_parse(module_instance_t *node, void **handle)
  *	Find a module instance.
  */
 module_instance_t *find_module_instance(CONF_SECTION *modules,
-					char const *askedname, int do_link)
+					char const *askedname, bool do_link)
 {
 	bool check_config_safe = false;
 	CONF_SECTION *cs;
@@ -719,6 +715,101 @@ module_instance_t *find_module_instance(CONF_SECTION *modules,
 	rbtree_insert(instance_tree, node);
 
 	return node;
+}
+
+/** Resolve polymorphic item's from a module's CONF_SECTION to a subsection in another module
+ *
+ * This allows certain module sections to reference module sections in other instances
+ * of the same module and share CONF_DATA associated with them.
+ *
+ * @verbatim
+example {
+	data {
+		...
+	}
+}
+
+example inst {
+	data = example
+}
+ * @endverbatim
+ *
+ * @param out where to write the pointer to a module's config section.  May be NULL on success, indicating the config
+ *	  item was not found within the module CONF_SECTION, or the chain of module references was followed and the
+ *	  module at the end of the chain did not a subsection.
+ * @param module CONF_SECTION.
+ * @param name of the polymorphic sub-section.
+ * @return 0 on success with referenced section, 1 on success with local section, or -1 on failure.
+ */
+int find_module_sibling_section(CONF_SECTION **out, CONF_SECTION *module, char const *name)
+{
+	static bool loop = true;	/* not used, we just need a valid pointer to quiet static analysis */
+
+	CONF_PAIR *cp;
+	CONF_SECTION *cs;
+
+	module_instance_t *inst;
+	char const *inst_name;
+
+#define FIND_SIBLING_CF_KEY "find_sibling"
+
+	*out = NULL;
+
+	/*
+	 *	Is a real section (not referencing sibling module).
+	 */
+	cs = cf_section_sub_find(module, name);
+	if (cs) {
+		*out = cs;
+
+		return 0;
+	}
+
+	/*
+	 *	Item omitted completely from module config.
+	 */
+	cp = cf_pair_find(module, name);
+	if (!cp) return 0;
+
+	if (cf_data_find(module, FIND_SIBLING_CF_KEY)) {
+		cf_log_err_cp(cp, "Module reference loop found");
+
+		return -1;
+	}
+	cf_data_add(module, FIND_SIBLING_CF_KEY, &loop, NULL);
+
+	/*
+	 *	Item found, resolve it to a module instance.
+	 *	This triggers module loading, so we don't have
+	 *	instantiation order issues.
+	 */
+	inst_name = cf_pair_value(cp);
+	inst = find_module_instance(cf_item_parent(cf_sectiontoitem(module)), inst_name, true);
+
+	/*
+	 *	Remove the config data we added for loop
+	 *	detection.
+	 */
+	cf_data_remove(module, FIND_SIBLING_CF_KEY);
+	if (!inst) {
+		cf_log_err_cp(cp, "Unknown module instance \"%s\"", inst_name);
+
+		return -1;
+	}
+
+	/*
+	 *	Check the module instances are of the same type.
+	 */
+	if (strcmp(cf_section_name1(inst->cs), cf_section_name1(module)) != 0) {
+		cf_log_err_cp(cp, "Referenced module is a rlm_%s instance, must be a rlm_%s instance",
+			      cf_section_name1(inst->cs), cf_section_name1(module));
+
+		return -1;
+	}
+
+	*out = cf_section_sub_find(inst->cs, name);
+
+	return 1;
 }
 
 static indexed_modcallable *lookup_by_index(rbtree_t *components,
@@ -1709,7 +1800,7 @@ int modules_init(CONF_SECTION *config)
 
 			cp = cf_itemtopair(ci);
 			name = cf_pair_attr(cp);
-			module = find_module_instance(modules, name, 1);
+			module = find_module_instance(modules, name, true);
 			if (!module && (name[0] != '-')) {
 				return -1;
 			}
@@ -1740,7 +1831,7 @@ int modules_init(CONF_SECTION *config)
 		name = cf_section_name2(subcs);
 		if (!name) name = cf_section_name1(subcs);
 
-		module = find_module_instance(modules, name, 1);
+		module = find_module_instance(modules, name, true);
 		if (!module) return -1;
 	}
 	cf_log_info(cs, " } # modules");

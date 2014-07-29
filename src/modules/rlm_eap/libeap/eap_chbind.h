@@ -58,7 +58,7 @@ typedef struct CHBIND_REQ {
 /* Channel binding function prototypes */
 PW_CODE chbind_process(REQUEST *request, CHBIND_REQ *chbind_req);
 
-extern VALUE_PAIR *eap_chbind_packet2vp(REQUEST *request, const chbind_packet_t *packet);
-extern chbind_packet_t *eap_chbind_vp2packet(TALLOC_CTX *ctx, VALUE_PAIR *vps);
+VALUE_PAIR *eap_chbind_packet2vp(REQUEST *request, const chbind_packet_t *packet);
+chbind_packet_t *eap_chbind_vp2packet(TALLOC_CTX *ctx, VALUE_PAIR *vps);
 
 #endif /*_EAP_CHBIND_H*/

@@ -2289,7 +2289,7 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 		 *	"modules" section.
 		 */
 		if (cf_section_sub_find_name2(modules, NULL, realname)) {
-			this = find_module_instance(modules, realname, 1);
+			this = find_module_instance(modules, realname, true);
 			if (!this && (realname != modrefname)) {
 				return NULL;
 			}
@@ -2324,9 +2324,8 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 				buffer[p - modrefname] = '\0';
 				component = i;
 
-				this = find_module_instance(modules, buffer, 1);
-				if (this &&
-				    !this->entry->module->methods[i]) {
+				this = find_module_instance(modules, buffer, true);
+				if (this && !this->entry->module->methods[i]) {
 					*modname = NULL;
 					cf_log_err(ci, "Module %s has no such method %s", buffer, comp2str[i]);
 					return NULL;

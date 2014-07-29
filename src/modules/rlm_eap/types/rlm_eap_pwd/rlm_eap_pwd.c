@@ -84,16 +84,16 @@ static int eap_pwd_attach (CONF_SECTION *cs, void **instance)
 
 static int _free_pwd_session (pwd_session_t *session)
 {
-	BN_free(session->private_value);
-	BN_free(session->peer_scalar);
-	BN_free(session->my_scalar);
-	BN_free(session->k);
-	EC_POINT_free(session->my_element);
-	EC_POINT_free(session->peer_element);
+	BN_clear_free(session->private_value);
+	BN_clear_free(session->peer_scalar);
+	BN_clear_free(session->my_scalar);
+	BN_clear_free(session->k);
+	EC_POINT_clear_free(session->my_element);
+	EC_POINT_clear_free(session->peer_element);
 	EC_GROUP_free(session->group);
-	EC_POINT_free(session->pwe);
-	BN_free(session->order);
-	BN_free(session->prime);
+	EC_POINT_clear_free(session->pwe);
+	BN_clear_free(session->order);
+	BN_clear_free(session->prime);
 
 	return 0;
 }
@@ -370,7 +370,7 @@ static int mod_authenticate (void *arg, eap_handler_t *handler)
 		if ((id->prf != EAP_PWD_DEF_PRF) ||
 		    (id->random_function != EAP_PWD_DEF_RAND_FUN) ||
 		    (id->prep != EAP_PWD_PREP_NONE) ||
-		    (memcmp(id->token, (char *)&pwd_session->token, 4)) ||
+		    (CRYPTO_memcmp(id->token, (char *)&pwd_session->token, 4)) ||
 		    (id->group_num != ntohs(pwd_session->group_num))) {
 			RDEBUG2("pwd id response is invalid");
 			return 0;
@@ -485,8 +485,8 @@ static int mod_authenticate (void *arg, eap_handler_t *handler)
 		if (!EC_POINT_get_affine_coordinates_GFp(pwd_session->group, pwd_session->my_element, x, y,
 							 inst->bnctx)) {
 			DEBUG2("server point assignment failed");
-			BN_free(x);
-			BN_free(y);
+			BN_clear_free(x);
+			BN_clear_free(y);
 			return 0;
 		}
 
@@ -561,7 +561,7 @@ static int mod_authenticate (void *arg, eap_handler_t *handler)
 			RDEBUG2("pwd exchange cannot compute peer's confirm");
 			return 0;
 		}
-		if (memcmp(peer_confirm, buf, SHA256_DIGEST_LENGTH)) {
+		if (CRYPTO_memcmp(peer_confirm, buf, SHA256_DIGEST_LENGTH)) {
 			RDEBUG2("pwd exchange fails: peer confirm is incorrect!");
 			return 0;
 		}

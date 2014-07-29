@@ -441,17 +441,19 @@ int main(int argc, char **argv)
 			printf("NAS-Port = %u\n", rt.nas_port);
 
 			switch (rt.proto) {
-				case 'S':
-					printf("Service-Type = Framed-User\n");
-					printf("Framed-Protocol = SLIP\n");
-					break;
-				case 'P':
-					printf("Service-Type = Framed-User\n");
-					printf("Framed-Protocol = PPP\n");
-					break;
-				default:
-					printf("Service-type = Login-User\n");
-					break;
+			case 'S':
+				printf("Service-Type = Framed-User\n");
+				printf("Framed-Protocol = SLIP\n");
+				break;
+
+			case 'P':
+				printf("Service-Type = Framed-User\n");
+				printf("Framed-Protocol = PPP\n");
+				break;
+
+			default:
+				printf("Service-type = Login-User\n");
+				break;
 			}
 			if (rt.framed_address != INADDR_NONE) {
 				printf("Framed-IP-Address = %s\n",

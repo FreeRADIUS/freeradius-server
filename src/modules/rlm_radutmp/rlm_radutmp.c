@@ -225,51 +225,55 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 	     vp;
 	     vp = fr_cursor_next(&cursor)) {
 		if (!vp->da->vendor) switch (vp->da->attr) {
-			case PW_LOGIN_IP_HOST:
-			case PW_FRAMED_IP_ADDRESS:
-				ut.framed_address = vp->vp_ipaddr;
-				break;
-			case PW_FRAMED_PROTOCOL:
-				protocol = vp->vp_integer;
-				break;
-			case PW_NAS_IP_ADDRESS:
-				ut.nas_address = vp->vp_ipaddr;
-				break;
-			case PW_NAS_PORT:
-				ut.nas_port = vp->vp_integer;
-				port_seen = true;
-				break;
-			case PW_ACCT_DELAY_TIME:
-				ut.delay = vp->vp_integer;
-				break;
-			case PW_ACCT_SESSION_ID:
-				/*
-				 *	If length > 8, only store the
-				 *	last 8 bytes.
-				 */
-				off = vp->length - sizeof(ut.session_id);
-				/*
-				 * 	Ascend is br0ken - it adds a \0
-				 * 	to the end of any string.
-				 * 	Compensate.
-				 */
-				if (vp->length > 0 &&
-				    vp->vp_strvalue[vp->length - 1] == 0)
-					off--;
-				if (off < 0) off = 0;
-				memcpy(ut.session_id, vp->vp_strvalue + off,
-					sizeof(ut.session_id));
-				break;
-			case PW_NAS_PORT_TYPE:
-				if (vp->vp_integer <= 4)
-					ut.porttype = porttypes[vp->vp_integer];
-				break;
-			case PW_CALLING_STATION_ID:
-				if(inst->caller_id_ok)
-					strlcpy(ut.caller_id,
-						vp->vp_strvalue,
-						sizeof(ut.caller_id));
-				break;
+		case PW_LOGIN_IP_HOST:
+		case PW_FRAMED_IP_ADDRESS:
+			ut.framed_address = vp->vp_ipaddr;
+			break;
+
+		case PW_FRAMED_PROTOCOL:
+			protocol = vp->vp_integer;
+			break;
+
+		case PW_NAS_IP_ADDRESS:
+			ut.nas_address = vp->vp_ipaddr;
+			break;
+
+		case PW_NAS_PORT:
+			ut.nas_port = vp->vp_integer;
+			port_seen = true;
+			break;
+
+		case PW_ACCT_DELAY_TIME:
+			ut.delay = vp->vp_integer;
+			break;
+
+		case PW_ACCT_SESSION_ID:
+			/*
+			 *	If length > 8, only store the
+			 *	last 8 bytes.
+			 */
+			off = vp->length - sizeof(ut.session_id);
+			/*
+			 * 	Ascend is br0ken - it adds a \0
+			 * 	to the end of any string.
+			 * 	Compensate.
+			 */
+			if (vp->length > 0 &&
+			    vp->vp_strvalue[vp->length - 1] == 0)
+				off--;
+			if (off < 0) off = 0;
+			memcpy(ut.session_id, vp->vp_strvalue + off,
+				sizeof(ut.session_id));
+			break;
+
+		case PW_NAS_PORT_TYPE:
+			if (vp->vp_integer <= 4)
+				ut.porttype = porttypes[vp->vp_integer];
+			break;
+
+		case PW_CALLING_STATION_ID:
+			if (inst->caller_id_ok) strlcpy(ut.caller_id, vp->vp_strvalue, sizeof(ut.caller_id));
+			break;
 		}
 	}
 

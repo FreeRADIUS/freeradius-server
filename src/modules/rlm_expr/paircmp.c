@@ -81,21 +81,21 @@ static int presufcmp(UNUSED void *instance,
 
 	len = strlen(check->vp_strvalue);
 	if (check->da->vendor == 0) switch (check->da->attr) {
-		case PW_PREFIX:
-			ret = strncmp(name, check->vp_strvalue, len);
-			if (ret == 0)
-				strlcpy(rest, name + len, sizeof(rest));
+	case PW_PREFIX:
+		ret = strncmp(name, check->vp_strvalue, len);
+		if (ret == 0)
+			strlcpy(rest, name + len, sizeof(rest));
+		break;
+	case PW_SUFFIX:
+		namelen = strlen(name);
+		if (namelen < len)
 			break;
-		case PW_SUFFIX:
-			namelen = strlen(name);
-			if (namelen < len)
-				break;
-			ret = strcmp(name + namelen - len,
-				     check->vp_strvalue);
-			if (ret == 0) {
-				strlcpy(rest, name, namelen - len + 1);
-			}
-			break;
+		ret = strcmp(name + namelen - len,
+			     check->vp_strvalue);
+		if (ret == 0) {
+			strlcpy(rest, name, namelen - len + 1);
+		}
+		break;
 	}
 	if (ret != 0) {
 		return ret;

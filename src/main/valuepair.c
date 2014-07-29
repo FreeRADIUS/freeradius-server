@@ -445,38 +445,38 @@ int paircompare(REQUEST *request, VALUE_PAIR *req_list, VALUE_PAIR *check,
 		}
 
 		if (!check_item->da->vendor) switch (check_item->da->attr) {
-			/*
-			 *	Attributes we skip during comparison.
-			 *	These are "server" check items.
-			 */
-			case PW_CRYPT_PASSWORD:
-			case PW_AUTH_TYPE:
-			case PW_AUTZ_TYPE:
-			case PW_ACCT_TYPE:
-			case PW_SESSION_TYPE:
-			case PW_STRIP_USER_NAME:
-				continue;
-				break;
+		/*
+		 *	Attributes we skip during comparison.
+		 *	These are "server" check items.
+		 */
+		case PW_CRYPT_PASSWORD:
+		case PW_AUTH_TYPE:
+		case PW_AUTZ_TYPE:
+		case PW_ACCT_TYPE:
+		case PW_SESSION_TYPE:
+		case PW_STRIP_USER_NAME:
+			continue;
+			break;
 
-			/*
-			 *	IF the password attribute exists, THEN
-			 *	we can do comparisons against it.  If not,
-			 *	then the request did NOT contain a
-			 *	User-Password attribute, so we CANNOT do
-			 *	comparisons against it.
-			 *
-			 *	This hack makes CHAP-Password work..
-			 */
-			case PW_USER_PASSWORD:
-				if (check_item->op == T_OP_CMP_EQ) {
-					WARN("Found User-Password == \"...\"");
-					WARN("Are you sure you don't mean Cleartext-Password?");
-					WARN("See \"man rlm_pap\" for more information");
-				}
-				if (pairfind(req_list, PW_USER_PASSWORD, 0, TAG_ANY) == NULL) {
-					continue;
-				}
-				break;
+		/*
+		 *	IF the password attribute exists, THEN
+		 *	we can do comparisons against it.  If not,
+		 *	then the request did NOT contain a
+		 *	User-Password attribute, so we CANNOT do
+		 *	comparisons against it.
+		 *
+		 *	This hack makes CHAP-Password work..
+		 */
+		case PW_USER_PASSWORD:
+			if (check_item->op == T_OP_CMP_EQ) {
+				WARN("Found User-Password == \"...\"");
+				WARN("Are you sure you don't mean Cleartext-Password?");
+				WARN("See \"man rlm_pap\" for more information");
+			}
+			if (pairfind(req_list, PW_USER_PASSWORD, 0, TAG_ANY) == NULL) {
+				continue;
+			}
+			break;
 		}
 
 		/*
@@ -532,42 +532,42 @@ int paircompare(REQUEST *request, VALUE_PAIR *req_list, VALUE_PAIR *check,
 						  check_item, check, rep_list);
 
 		switch (check_item->op) {
-			case T_OP_EQ:
-			default:
-				RWDEBUG("Invalid operator '%s' for item %s: reverting to '=='",
-					fr_int2str(fr_tokens, check_item->op, "<INVALID>"), check_item->da->name);
-				/* FALL-THROUGH */
-			case T_OP_CMP_TRUE:
-			case T_OP_CMP_FALSE:
-			case T_OP_CMP_EQ:
-				if (compare != 0) result = -1;
-				break;
+		case T_OP_EQ:
+		default:
+			RWDEBUG("Invalid operator '%s' for item %s: reverting to '=='",
+				fr_int2str(fr_tokens, check_item->op, "<INVALID>"), check_item->da->name);
+			/* FALL-THROUGH */
+		case T_OP_CMP_TRUE:
+		case T_OP_CMP_FALSE:
+		case T_OP_CMP_EQ:
+			if (compare != 0) result = -1;
+			break;
 
-			case T_OP_NE:
-				if (compare == 0) result = -1;
-				break;
+		case T_OP_NE:
+			if (compare == 0) result = -1;
+			break;
 
-			case T_OP_LT:
-				if (compare >= 0) result = -1;
-				break;
+		case T_OP_LT:
+			if (compare >= 0) result = -1;
+			break;
 
-			case T_OP_GT:
-				if (compare <= 0) result = -1;
-				break;
+		case T_OP_GT:
+			if (compare <= 0) result = -1;
+			break;
 
-			case T_OP_LE:
-				if (compare > 0) result = -1;
-				break;
+		case T_OP_LE:
+			if (compare > 0) result = -1;
+			break;
 
-			case T_OP_GE:
-				if (compare < 0) result = -1;
-				break;
+		case T_OP_GE:
+			if (compare < 0) result = -1;
+			break;
 
 #ifdef HAVE_REGEX_H
-			case T_OP_REG_EQ:
-			case T_OP_REG_NE:
-				if (compare != 0) result = -1;
-				break;
+		case T_OP_REG_EQ:
+		case T_OP_REG_NE:
+			if (compare != 0) result = -1;
+			break;
 #endif
 		} /* switch over the operator of the check item */
 
@@ -725,58 +725,58 @@ VALUE_PAIR **radius_list(REQUEST *request, pair_lists_t list)
 	if (!request) return NULL;
 
 	switch (list) {
-		case PAIR_LIST_UNKNOWN:
-		default:
-			break;
+	case PAIR_LIST_UNKNOWN:
+	default:
+		break;
 
-		case PAIR_LIST_REQUEST:
-			return &request->packet->vps;
+	case PAIR_LIST_REQUEST:
+		return &request->packet->vps;
 
-		case PAIR_LIST_REPLY:
-			return &request->reply->vps;
+	case PAIR_LIST_REPLY:
+		return &request->reply->vps;
 
-		case PAIR_LIST_CONTROL:
-			return &request->config_items;
+	case PAIR_LIST_CONTROL:
+		return &request->config_items;
 
 #ifdef WITH_PROXY
-		case PAIR_LIST_PROXY_REQUEST:
-			if (!request->proxy) break;
-			return &request->proxy->vps;
+	case PAIR_LIST_PROXY_REQUEST:
+		if (!request->proxy) break;
+		return &request->proxy->vps;
 
-		case PAIR_LIST_PROXY_REPLY:
-			if (!request->proxy) break;
-			return &request->proxy_reply->vps;
+	case PAIR_LIST_PROXY_REPLY:
+		if (!request->proxy) break;
+		return &request->proxy_reply->vps;
 #endif
 #ifdef WITH_COA
-		case PAIR_LIST_COA:
-			if (request->coa &&
-			    (request->coa->proxy->code == PW_CODE_COA_REQUEST)) {
-				return &request->coa->proxy->vps;
-			}
-			break;
+	case PAIR_LIST_COA:
+		if (request->coa &&
+		    (request->coa->proxy->code == PW_CODE_COA_REQUEST)) {
+			return &request->coa->proxy->vps;
+		}
+		break;
 
-		case PAIR_LIST_COA_REPLY:
-			if (request->coa && /* match reply with request */
-			    (request->coa->proxy->code == PW_CODE_COA_REQUEST) &&
-			    request->coa->proxy_reply) {
-				return &request->coa->proxy_reply->vps;
-			}
-			break;
+	case PAIR_LIST_COA_REPLY:
+		if (request->coa && /* match reply with request */
+		    (request->coa->proxy->code == PW_CODE_COA_REQUEST) &&
+		    request->coa->proxy_reply) {
+			return &request->coa->proxy_reply->vps;
+		}
+		break;
 
-		case PAIR_LIST_DM:
-			if (request->coa &&
-			    (request->coa->proxy->code == PW_CODE_DISCONNECT_REQUEST)) {
-				return &request->coa->proxy->vps;
-			}
-			break;
+	case PAIR_LIST_DM:
+		if (request->coa &&
+		    (request->coa->proxy->code == PW_CODE_DISCONNECT_REQUEST)) {
+			return &request->coa->proxy->vps;
+		}
+		break;
 
-		case PAIR_LIST_DM_REPLY:
-			if (request->coa && /* match reply with request */
-			    (request->coa->proxy->code == PW_CODE_DISCONNECT_REQUEST) &&
-			    request->coa->proxy_reply) {
-				return &request->coa->proxy->vps;
-			}
-			break;
+	case PAIR_LIST_DM_REPLY:
+		if (request->coa && /* match reply with request */
+		    (request->coa->proxy->code == PW_CODE_DISCONNECT_REQUEST) &&
+		    request->coa->proxy_reply) {
+			return &request->coa->proxy->vps;
+		}
+		break;
 #endif
 	}
 
@@ -853,68 +853,68 @@ void radius_map_debug(REQUEST *request, value_pair_map_t const *map, VALUE_PAIR 
 	rad_assert(vp || (map->src->type == VPT_TYPE_NULL));
 
 	switch (map->src->type) {
-		/*
-		 *	Just print the value being assigned
-		 */
-		default:
-		case VPT_TYPE_LITERAL:
-			vp_prints_value(buffer, sizeof(buffer), vp, '\'');
-			value = buffer;
-			break;
+	/*
+	 *	Just print the value being assigned
+	 */
+	default:
+	case VPT_TYPE_LITERAL:
+		vp_prints_value(buffer, sizeof(buffer), vp, '\'');
+		value = buffer;
+		break;
 
-		case VPT_TYPE_XLAT:
-		case VPT_TYPE_XLAT_STRUCT:
-			vp_prints_value(buffer, sizeof(buffer), vp, '"');
-			value = buffer;
-			break;
+	case VPT_TYPE_XLAT:
+	case VPT_TYPE_XLAT_STRUCT:
+		vp_prints_value(buffer, sizeof(buffer), vp, '"');
+		value = buffer;
+		break;
 
-		case VPT_TYPE_DATA:
-			vp_prints_value(buffer, sizeof(buffer), vp, '\'');
-			value = buffer;
-			break;
+	case VPT_TYPE_DATA:
+		vp_prints_value(buffer, sizeof(buffer), vp, '\'');
+		value = buffer;
+		break;
 
-		/*
-		 *	Just printing the value doesn't make sense, but we still
-		 *	want to know what it was...
-		 */
-		case VPT_TYPE_LIST:
-			vp_prints_value(buffer, sizeof(buffer), vp, '\'');
+	/*
+	 *	Just printing the value doesn't make sense, but we still
+	 *	want to know what it was...
+	 */
+	case VPT_TYPE_LIST:
+		vp_prints_value(buffer, sizeof(buffer), vp, '\'');
 
-			if (map->src->vpt_request == REQUEST_OUTER) {
-				value = talloc_typed_asprintf(request, "&outer.%s:%s -> %s",
-							      fr_int2str(pair_lists, map->src->vpt_list, "<INVALID>"),
-							      vp->da->name, buffer);
-			} else {
-				value = talloc_typed_asprintf(request, "&%s:%s -> %s",
-							      fr_int2str(pair_lists, map->src->vpt_list, "<INVALID>"),
-							      vp->da->name, buffer);
-			}
-			break;
+		if (map->src->vpt_request == REQUEST_OUTER) {
+			value = talloc_typed_asprintf(request, "&outer.%s:%s -> %s",
+						      fr_int2str(pair_lists, map->src->vpt_list, "<INVALID>"),
+						      vp->da->name, buffer);
+		} else {
+			value = talloc_typed_asprintf(request, "&%s:%s -> %s",
+						      fr_int2str(pair_lists, map->src->vpt_list, "<INVALID>"),
+						      vp->da->name, buffer);
+		}
+		break;
 
-		case VPT_TYPE_ATTR:
-			vp_prints_value(buffer, sizeof(buffer), vp, '\'');
-			value = talloc_typed_asprintf(request, "&%s -> %s", map->src->vpt_da->name, buffer);
-			break;
+	case VPT_TYPE_ATTR:
+		vp_prints_value(buffer, sizeof(buffer), vp, '\'');
+		value = talloc_typed_asprintf(request, "&%s -> %s", map->src->vpt_da->name, buffer);
+		break;
 
-		case VPT_TYPE_NULL:
-			strcpy(buffer, "ANY");
-			value = buffer;
-			break;
+	case VPT_TYPE_NULL:
+		strcpy(buffer, "ANY");
+		value = buffer;
+		break;
 	}
 
 	switch (map->dst->type) {
-		case VPT_TYPE_LIST:
-			RDEBUG("\t%s%s %s %s", map->dst->name, vp ? vp->da->name : "",
-			       fr_int2str(fr_tokens, vp ? vp->op : map->op, "<INVALID>"), value);
-			break;
+	case VPT_TYPE_LIST:
+		RDEBUG("\t%s%s %s %s", map->dst->name, vp ? vp->da->name : "",
+		       fr_int2str(fr_tokens, vp ? vp->op : map->op, "<INVALID>"), value);
+		break;
 
-		case VPT_TYPE_ATTR:
-			RDEBUG("\t%s %s %s", map->dst->name,
-			       fr_int2str(fr_tokens, vp ? vp->op : map->op, "<INVALID>"), value);
-			break;
+	case VPT_TYPE_ATTR:
+		RDEBUG("\t%s %s %s", map->dst->name,
+		       fr_int2str(fr_tokens, vp ? vp->op : map->op, "<INVALID>"), value);
+		break;
 
-		default:
-			break;
+	default:
+		break;
 	}
 
 	if (value != buffer) talloc_free(value);
@@ -1346,8 +1346,8 @@ int radius_mapexec(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *m
 			return -2;
 		}
 		*out = output_pairs;
-
 		return 0;
+
 	case VPT_TYPE_ATTR:
 	{
 		VALUE_PAIR *vp;
@@ -1363,6 +1363,7 @@ int radius_mapexec(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *m
 
 		return 0;
 	}
+
 	default:
 		rad_assert(0);
 	}
@@ -1437,6 +1438,7 @@ int radius_map2vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *ma
 		if (!vp) return -1;
 		vp->op = map->op;
 		break;
+
 	default:
 		break;
 	}
@@ -1766,7 +1768,6 @@ int radius_tmpl_copy_vp(VALUE_PAIR **out, REQUEST *request, value_pair_tmpl_t co
 
 	case VPT_TYPE_LIST:
 		vp = paircopy(request, *vps);
-
 		break;
 
 	default:

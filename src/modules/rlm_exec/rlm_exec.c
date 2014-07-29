@@ -407,13 +407,14 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 
 	finish:
 	switch (rcode) {
-		case RLM_MODULE_FAIL:
-		case RLM_MODULE_INVALID:
-		case RLM_MODULE_REJECT:
-			request->reply->code = PW_CODE_ACCESS_REJECT;
-			break;
-		default:
-			break;
+	case RLM_MODULE_FAIL:
+	case RLM_MODULE_INVALID:
+	case RLM_MODULE_REJECT:
+		request->reply->code = PW_CODE_ACCESS_REJECT;
+		break;
+
+	default:
+		break;
 	}
 
 	return rcode;

@@ -164,14 +164,10 @@ const size_t dict_attr_sizes[PW_TYPE_MAX][2] = {
  *	5 bits for nested TLV 3
  *	3 bits for nested TLV 4
  */
-const int fr_attr_max_tlv = MAX_TLV_NEST;
-const int fr_attr_shift[MAX_TLV_NEST + 1] = {
-  0, 8, 16, 24, 29
-};
+int const fr_attr_max_tlv = MAX_TLV_NEST;
+int const fr_attr_shift[MAX_TLV_NEST + 1] = { 0, 8, 16, 24, 29 };
 
-const int fr_attr_mask[MAX_TLV_NEST + 1] = {
-  0xff, 0xff, 0xff, 0x1f, 0x07
-};
+int const fr_attr_mask[MAX_TLV_NEST + 1] = { 0xff, 0xff, 0xff, 0x1f, 0x07 };
 
 
 /*
@@ -1035,36 +1031,36 @@ int dict_addvalue(char const *namestr, char const *attrstr, int value)
 		 *	Don't worry about fixups...
 		 */
 		switch (da->type) {
-			case PW_TYPE_BYTE:
-				if (value > 255) {
-					fr_pool_free(dval);
-					fr_strerror_printf("dict_addvalue: ATTRIBUTEs of type 'byte' cannot have VALUEs larger than 255");
-					return -1;
-				}
-				break;
-			case PW_TYPE_SHORT:
-				if (value > 65535) {
-					fr_pool_free(dval);
-					fr_strerror_printf("dict_addvalue: ATTRIBUTEs of type 'short' cannot have VALUEs larger than 65535");
-					return -1;
-				}
-				break;
-
-				/*
-				 *	Allow octets for now, because
-				 *	of dictionary.cablelabs
-				 */
-			case PW_TYPE_OCTETS:
-
-			case PW_TYPE_INTEGER:
-				break;
-
-			case PW_TYPE_INTEGER64:
-			default:
+		case PW_TYPE_BYTE:
+			if (value > 255) {
 				fr_pool_free(dval);
-				fr_strerror_printf("dict_addvalue: VALUEs cannot be defined for attributes of type '%s'",
-					   fr_int2str(dict_attr_types, da->type, "?Unknown?"));
+				fr_strerror_printf("dict_addvalue: ATTRIBUTEs of type 'byte' cannot have VALUEs larger than 255");
 				return -1;
+			}
+			break;
+		case PW_TYPE_SHORT:
+			if (value > 65535) {
+				fr_pool_free(dval);
+				fr_strerror_printf("dict_addvalue: ATTRIBUTEs of type 'short' cannot have VALUEs larger than 65535");
+				return -1;
+			}
+			break;
+
+			/*
+			 *	Allow octets for now, because
+			 *	of dictionary.cablelabs
+			 */
+		case PW_TYPE_OCTETS:
+
+		case PW_TYPE_INTEGER:
+			break;
+
+		case PW_TYPE_INTEGER64:
+		default:
+			fr_pool_free(dval);
+			fr_strerror_printf("dict_addvalue: VALUEs cannot be defined for attributes of type '%s'",
+				   fr_int2str(dict_attr_types, da->type, "?Unknown?"));
+			return -1;
 		}
 	} else {
 		value_fixup_t *fixup;
@@ -1541,21 +1537,21 @@ static int process_attribute(char const* fn, int const line,
 				flags.array = 1;
 
 				switch (type) {
-					case PW_TYPE_IPV4_ADDR:
-					case PW_TYPE_IPV6_ADDR:
-					case PW_TYPE_BYTE:
-					case PW_TYPE_SHORT:
-					case PW_TYPE_INTEGER:
-					case PW_TYPE_DATE:
-					case PW_TYPE_STRING:
-						break;
+				case PW_TYPE_IPV4_ADDR:
+				case PW_TYPE_IPV6_ADDR:
+				case PW_TYPE_BYTE:
+				case PW_TYPE_SHORT:
+				case PW_TYPE_INTEGER:
+				case PW_TYPE_DATE:
+				case PW_TYPE_STRING:
+					break;
 
-					default:
-						fr_strerror_printf( "dict_init: %s[%d] \"%s\" type cannot have the "
-								   "\"array\" flag set",
-								   fn, line,
-								   fr_int2str(dict_attr_types, type, "<UNKNOWN>"));
-						return -1;
+				default:
+					fr_strerror_printf( "dict_init: %s[%d] \"%s\" type cannot have the "
+							   "\"array\" flag set",
+							   fn, line,
+							   fr_int2str(dict_attr_types, type, "<UNKNOWN>"));
+					return -1;
 				}
 
 			} else if (strncmp(key, "concat", 6) == 0) {

@@ -961,7 +961,9 @@ struct in_addr fr_inaddr_mask(struct in_addr const *ipaddr, uint8_t prefix)
 		return *ipaddr;
 	}
 
-	ret = htonl(~((0x00000001UL << (32 - prefix)) - 1)) & ipaddr->s_addr;
+	if (prefix == 0)
+		ret = 0;
+	else ret = htonl(~((0x00000001UL << (32 - prefix)) - 1)) & ipaddr->s_addr;
 	return (*(struct in_addr *)&ret);
 }
 

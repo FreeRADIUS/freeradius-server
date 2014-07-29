@@ -3,7 +3,7 @@
 #  $Id$
 
 #
-#  Kerberos.  See doc/rlm_krb5 for minimal docs.
+#  Kerberos.  See doc/modules/rlm_krb5 for minimal docs.
 #
 krb5 {
 	keytab = /path/to/keytab

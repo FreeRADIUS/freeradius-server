@@ -375,6 +375,7 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request, char co
 			case PW_CACHE_ENTRY_HITS:
 				RDEBUG2("Skipping %s", vp->da->name);
 				continue;
+
 			default:
 				break;
 			}

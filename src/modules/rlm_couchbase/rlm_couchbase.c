@@ -100,7 +100,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance) {
 	}
 
 	/* initiate connection pool */
-	inst->pool = fr_connection_pool_init(conf, inst, mod_conn_create, mod_conn_alive, NULL);
+	inst->pool = fr_connection_pool_module_init(conf, inst, mod_conn_create, mod_conn_alive, NULL);
 
 	/* check connection pool */
 	if (!inst->pool) {
@@ -327,7 +327,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 				/* add to json object */
 				json_object_object_add(cookie->jobj, "startTimestamp", mod_value_pair_to_json_object(request, vp));
 			}
-		break;
+			break;
+
 		case PW_STATUS_STOP:
 			/* add stop time */
 			if ((vp = pairfind(request->packet->vps, PW_EVENT_TIMESTAMP, 0, TAG_ANY)) != NULL) {
@@ -336,11 +337,13 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 			}
 			/* check start timestamp and adjust if needed */
 			mod_ensure_start_timestamp(cookie->jobj, request->packet->vps);
-		break;
+			break;
+
 		case PW_STATUS_ALIVE:
 			/* check start timestamp and adjust if needed */
 			mod_ensure_start_timestamp(cookie->jobj, request->packet->vps);
-		break;
+			break;
+
 		default:
 			/* we shouldn't get here - free json object */
 			if (cookie->jobj) {

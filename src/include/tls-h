@@ -325,7 +325,7 @@ void 		session_init(tls_session_t *ssn);
 #define FR_TLS_EX_INDEX_SSN	 (15)
 #define FR_TLS_EX_INDEX_TALLOC	 (16)
 
-extern int FR_TLS_EX_INDEX_CERTS;
+extern int fr_tls_ex_index_certs;
 
 /* configured values goes right here */
 struct fr_tls_server_conf_t {

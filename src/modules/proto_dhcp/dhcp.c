@@ -26,6 +26,7 @@ RCSID("$Id$")
 #include <freeradius-devel/libradius.h>
 #include <freeradius-devel/udpfromto.h>
 #include <freeradius-devel/dhcp.h>
+#include <freeradius-devel/net.h>
 
 #ifndef __MINGW32__
 #include <sys/ioctl.h>
@@ -43,7 +44,6 @@ RCSID("$Id$")
 #endif
 
 #include <netinet/ip.h>
-#include <netinet/udp.h>
 #include <netinet/ether.h>
 
 #define DHCP_CHADDR_LEN	(16)
@@ -68,16 +68,6 @@ RCSID("$Id$")
 					vp_print(fr_log_fp, vp); \
 				     } \
 				} while(0)
-
-/*
- *  Ethernet II header
- */
-struct ethernet_hdr
-{
-    u_int8_t  ether_dhost[ETH_ADDR_LEN];  /* destination ethernet address */
-    u_int8_t  ether_shost[ETH_ADDR_LEN];  /* source ethernet address */
-    u_int16_t ether_type;                 /* protocol */
-};
 
 static uint8_t eth_bcast[ETH_ADDR_LEN] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
 
@@ -1920,53 +1910,6 @@ int fr_socket_packet(int iface_index, struct sockaddr_ll *p_ll)
 }
 
 /*
- *	IP checksum function - Calculates the IP checksum
- */
-static u_int16_t ip_sum(u_int16_t *buff, int words) 
-{
-	unsigned int sum = 0;
-	int i;
-
-	for(i = 0; i < words; i++) {
-		sum = sum + *(buff + i);
-	}
-	sum = (sum >> 16) + sum;
-	return (u_int16_t)~sum;
-}
-
-/*
- *	TCP/UDP checksum function
- */
-static u_int16_t l4_sum(u_int16_t *buff, int words, u_int16_t *srcaddr, u_int16_t *dstaddr, u_int16_t proto, u_int16_t len) 
-{
-	unsigned int sum, last_word = 0;
-	int i;
-    
-	/* Checksum enhancement - Support for odd byte packets */
-	if ((htons(len) % 2) == 1) {
-		last_word = *((u_int8_t *)buff + ntohs(len) - 1);
-		last_word = (htons(last_word) << 8);
-		sum = 0;
-		for(i = 0;i < words; i++){
-			sum = sum + *(buff + i);
-		}
-		sum = sum + last_word;
-		sum = sum + *(srcaddr) + *(srcaddr + 1) + *(dstaddr) + *(dstaddr + 1) + proto + len;
-		sum = (sum >> 16) + sum;
-		return ~sum;
-    } else {
-		/* Original checksum function */
-		sum = 0;
-		for(i = 0; i < words; i++){
-			sum = sum + *(buff + i);
-		}
-		sum = sum + *(srcaddr) + *(srcaddr + 1) + *(dstaddr) + *(dstaddr + 1) + proto + len;
-		sum = (sum >> 16) + sum;
-		return ~sum;
-	}
-}
-
-/*
  *	Encode and send a DHCP packet on a raw packet socket.
  */
 int fr_dhcp_send_raw_packet(int sockfd, struct sockaddr_ll *p_ll, RADIUS_PACKET *packet)
@@ -1983,9 +1926,9 @@ int fr_dhcp_send_raw_packet(int sockfd, struct sockaddr_ll *p_ll, RADIUS_PACKET 
 	}
 
 	/* fill in Ethernet layer (L2) */
-	struct ethernet_hdr *ethhdr = (struct ethernet_hdr *)dhcp_packet;
-	memcpy(ethhdr->ether_dhost, eth_bcast, ETH_ADDR_LEN);
-	memcpy(ethhdr->ether_shost, dhmac, ETH_ADDR_LEN);
+	struct ethernet_header *ethhdr = (struct ethernet_header *)dhcp_packet;
+	memcpy(ethhdr->ether_dst, eth_bcast, ETH_ADDR_LEN);
+	memcpy(ethhdr->ether_src, dhmac, ETH_ADDR_LEN);
 	ethhdr->ether_type = htons(ETH_TYPE_IP);
 
 	/* fill in IP layer (L3) */
@@ -2006,24 +1949,27 @@ int fr_dhcp_send_raw_packet(int sockfd, struct sockaddr_ll *p_ll, RADIUS_PACKET 
 	/* daddr: packet destination IP addr (should be 255.255.255.255 for broadcast). */
 	iph->daddr = packet->dst_ipaddr.ipaddr.ip4addr.s_addr;
 
-	iph->check = ip_sum((u_int16_t *)(dhcp_packet + ETH_HDR_SIZE), iph->ihl << 1);
+	/* IP header checksum */
+	iph->check = fr_iph_checksum((uint8_t const *)iph, iph->ihl);
 
 	/* fill in UDP layer (L4) */
-	struct udphdr *uh = (struct udphdr *) (dhcp_packet + ETH_HDR_SIZE + IP_HDR_SIZE);
-	uh->source = htons(68);
-	uh->dest = htons(67);
-	u_int16_t l4_proto = 17;
+	//struct udphdr *uh = (struct udphdr *) (dhcp_packet + ETH_HDR_SIZE + IP_HDR_SIZE);
+	udp_header_t *uh = (udp_header_t *) (dhcp_packet + ETH_HDR_SIZE + IP_HDR_SIZE);
+
+	uh->src = htons(68);
+	uh->dst = htons(67);
 	u_int16_t l4_len = (UDP_HDR_SIZE + packet->data_len);
 	uh->len = htons(l4_len);
-	uh->check = 0; /* UDP checksum will be done after dhcp header */
+	uh->checksum = 0; /* UDP checksum will be done after dhcp header */
 
 	/* DHCP layer (L7) */
-	struct dhcp_packet_t *dhpointer = (struct dhcp_packet_t *)(dhcp_packet + ETH_HDR_SIZE + IP_HDR_SIZE + UDP_HDR_SIZE);
+	dhcp_packet_t *dhpointer = (dhcp_packet_t *)(dhcp_packet + ETH_HDR_SIZE + IP_HDR_SIZE + UDP_HDR_SIZE);
 	/* just copy what FreeRADIUS has encoded for us. */
 	memcpy(dhpointer, packet->data, packet->data_len);
-	
+
 	/* UDP checksum is done here */
-	uh->check = l4_sum((u_int16_t *) (dhcp_packet + ETH_HDR_SIZE + IP_HDR_SIZE), ((packet->data_len + UDP_HDR_SIZE) / 2), (u_int16_t *)&iph->saddr, (u_int16_t *)&iph->daddr, htons(l4_proto), htons(l4_len));
+	uh->checksum = fr_udp_checksum((uint8_t const *)(dhcp_packet + ETH_HDR_SIZE + IP_HDR_SIZE), ntohs(uh->len), uh->checksum,
+					packet->src_ipaddr.ipaddr.ip4addr, packet->dst_ipaddr.ipaddr.ip4addr);
 
 	if (fr_debug_flag > 1) {
 		char type_buf[64];
@@ -2063,10 +2009,10 @@ RADIUS_PACKET *fr_dhcp_recv_raw_packet(int sockfd, struct sockaddr_ll *p_ll, str
 	ssize_t			data_len;
 
 	uint8_t *raw_packet;
-	struct ethernet_hdr *ph_eth;
+	ethernet_header_t *ph_eth;
 	struct iphdr *ph_ip;
-	struct udphdr *ph_udp;
-	struct dhcp_packet_t *ph_dhcp;
+	udp_header_t *ph_udp;
+	dhcp_packet_t *ph_dhcp;
 	uint16_t udp_src_port;
 	uint16_t udp_dst_port;
 	unsigned int dhcp_data_len;
@@ -2122,10 +2068,10 @@ RADIUS_PACKET *fr_dhcp_recv_raw_packet(int sockfd, struct sockaddr_ll *p_ll, str
 			if (data_len <= data_offset) DISCARD_RP("Payload (%d) smaller than required for layers 2+3+4", (int)data_len);
 
 			/* map raw packet to packet header of the different layers (Ethernet, IP, UDP) */
-			ph_eth = (struct ethernet_hdr *)raw_packet;
+			ph_eth = (ethernet_header_t *)raw_packet;
 			ph_ip = (struct iphdr *)(raw_packet + ETH_HDR_SIZE);
-			ph_udp = (struct udphdr *)(raw_packet + ETH_HDR_SIZE + IP_HDR_SIZE);
-			ph_dhcp = (struct dhcp_packet_t *)(raw_packet + ETH_HDR_SIZE + IP_HDR_SIZE + UDP_HDR_SIZE);
+			ph_udp = (udp_header_t *)(raw_packet + ETH_HDR_SIZE + IP_HDR_SIZE);
+			ph_dhcp = (dhcp_packet_t *)(raw_packet + ETH_HDR_SIZE + IP_HDR_SIZE + UDP_HDR_SIZE);
 
 			/* a. Check Ethernet layer data (L2) */
 			if (ntohs(ph_eth->ether_type) != ETH_TYPE_IP) DISCARD_RP("Ethernet type (%d) != IP", ntohs(ph_eth->ether_type));
@@ -2133,15 +2079,15 @@ RADIUS_PACKET *fr_dhcp_recv_raw_packet(int sockfd, struct sockaddr_ll *p_ll, str
 			/* If Ethernet destination is not broadcast (ff:ff:ff:ff:ff:ff)
 			 * Check if it matches the source HW address used (DHCP-Client-Hardware-Address = 267)
 			 */
-			if ( (memcmp(&eth_bcast, &ph_eth->ether_dhost, ETH_ADDR_LEN) != 0) &&
+			if ( (memcmp(&eth_bcast, &ph_eth->ether_dst, ETH_ADDR_LEN) != 0) &&
 					(vp = pairfind(request->vps, 267, DHCP_MAGIC_VENDOR, TAG_ANY)) &&
 					(vp->length == sizeof(vp->vp_ether)) &&
-					(memcmp(vp->vp_ether, &ph_eth->ether_dhost, ETH_ADDR_LEN) != 0) ) {
+					(memcmp(vp->vp_ether, &ph_eth->ether_dst, ETH_ADDR_LEN) != 0) ) {
 				/* No match. */
 				char eth_dest[17+1];
 				char eth_req_src[17+1];
 				DISCARD_RP("Ethernet destination (%s) is not broadcast and doesn't match request source (%s)", 
-					ether_ntoa_r((struct ether_addr*)&ph_eth->ether_dhost, eth_dest),
+					ether_ntoa_r((struct ether_addr*)&ph_eth->ether_dst, eth_dest),
 					ether_ntoa_r((struct ether_addr*)vp->vp_ether, eth_req_src));
 			}
 
@@ -2152,8 +2098,8 @@ RADIUS_PACKET *fr_dhcp_recv_raw_packet(int sockfd, struct sockaddr_ll *p_ll, str
 			 */
 
 			/* c. Check UDP layer data (L4) */
-			udp_src_port = ntohs(ph_udp->source);
-			udp_dst_port = ntohs(ph_udp->dest);
+			udp_src_port = ntohs(ph_udp->src);
+			udp_dst_port = ntohs(ph_udp->dst);
 			/* A DHCP server will always respond to port 68 (to a client) or 67 (to a relay).
 			 * Just check that both ports are 67 or 68.
 			 */

@@ -37,8 +37,8 @@ USES_APPLE_DEPRECATED_API
 /*
  *	In rlm_mschap.c
  */
-extern void mschap_add_reply(REQUEST *request, VALUE_PAIR** vp, unsigned char ident,
-			     char const* name, char const* value, int len);
+void mschap_add_reply(REQUEST *request, VALUE_PAIR** vp, unsigned char ident,
+		      char const* name, char const* value, int len);
 
 /*
  *	Only used by rlm_mschap.c

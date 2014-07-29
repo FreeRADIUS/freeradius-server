@@ -87,11 +87,13 @@ static int rediswho_command(char const *fmt, REDISSOCK **dissocket_p,
 		if (dissocket->reply->integer > 0)
 			result = dissocket->reply->integer;
 		break;
+
 	case REDIS_REPLY_STATUS:
 	case REDIS_REPLY_STRING:
 		DEBUG("rediswho_command: query response %s\n",
 		      dissocket->reply->str);
 		break;
+
 	default:
 		break;
 	}
@@ -114,7 +116,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	inst->cs = conf;
 
 	modinst = find_module_instance(cf_section_find("modules"),
-				       inst->redis_instance_name, 1);
+				       inst->redis_instance_name, true);
 	if (!modinst) {
 		ERROR("rediswho: failed to find module instance \"%s\"",
 		       inst->redis_instance_name);

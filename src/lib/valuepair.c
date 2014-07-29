@@ -859,99 +859,99 @@ void pairmove(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from)
 		 */
 
 		switch (i->op) {
+		/*
+		 *	Anything else are operators which
+		 *	shouldn't occur.  We ignore them, and
+		 *	leave them in place.
+		 */
+		default:
+			tail_from = &(i->next);
+			continue;
+
+		/*
+		 *	Add it to the "to" list, but only if
+		 *	it doesn't already exist.
+		 */
+		case T_OP_EQ:
+			found = pairfind(*to, i->da->attr, i->da->vendor, TAG_ANY);
+			if (!found) goto do_add;
+
+			tail_from = &(i->next);
+			continue;
+
+		/*
+		 *	Add it to the "to" list, and delete any attribute
+		 *	of the same vendor/attr which already exists.
+		 */
+		case T_OP_SET:
+			found = pairfind(*to, i->da->attr, i->da->vendor, TAG_ANY);
+			if (!found) goto do_add;
+
 			/*
-			 *	Anything else are operators which
-			 *	shouldn't occur.  We ignore them, and
-			 *	leave them in place.
+			 *	Do NOT call pairdelete() here,
+			 *	due to issues with re-writing
+			 *	"request->username".
+			 *
+			 *	Everybody calls pairmove, and
+			 *	expects it to work.  We can't
+			 *	update request->username here,
+			 *	so instead we over-write the
+			 *	vp that it's pointing to.
 			 */
+			switch (found->da->type) {
+				VALUE_PAIR *j;
+
 			default:
-				tail_from = &(i->next);
-				continue;
+				j = found->next;
+				memcpy(found, i, sizeof(*found));
+				found->next = j;
+				break;
+
+			case PW_TYPE_TLV:
+				pairmemsteal(found, i->vp_tlv);
+				i->vp_tlv = NULL;
+				break;
+
+			case PW_TYPE_OCTETS:
+				pairmemsteal(found, i->vp_octets);
+				i->vp_octets = NULL;
+				break;
+
+			case PW_TYPE_STRING:
+				pairstrsteal(found, i->vp_strvalue);
+				i->vp_strvalue = NULL;
+				found->tag = i->tag;
+				break;
+			}
 
 			/*
-			 *	Add it to the "to" list, but only if
-			 *	it doesn't already exist.
+			 *	Delete *all* of the attributes
+			 *	of the same number.
 			 */
-			case T_OP_EQ:
-				found = pairfind(*to, i->da->attr, i->da->vendor, TAG_ANY);
-				if (!found) goto do_add;
-
-				tail_from = &(i->next);
-				continue;
+			pairdelete(&found->next,
+				   found->da->attr,
+				   found->da->vendor, TAG_ANY);
 
 			/*
-			 *	Add it to the "to" list, and delete any attribute
-			 *	of the same vendor/attr which already exists.
+			 *	Remove this attribute from the
+			 *	"from" list.
 			 */
-			case T_OP_SET:
-				found = pairfind(*to, i->da->attr, i->da->vendor, TAG_ANY);
-				if (!found) goto do_add;
+			*tail_from = i->next;
+			i->next = NULL;
+			pairfree(&i);
+			continue;
 
-				/*
-				 *	Do NOT call pairdelete() here,
-				 *	due to issues with re-writing
-				 *	"request->username".
-				 *
-				 *	Everybody calls pairmove, and
-				 *	expects it to work.  We can't
-				 *	update request->username here,
-				 *	so instead we over-write the
-				 *	vp that it's pointing to.
-				 */
-				switch (found->da->type) {
-					VALUE_PAIR *j;
-
-					default:
-						j = found->next;
-						memcpy(found, i, sizeof(*found));
-						found->next = j;
-						break;
-
-					case PW_TYPE_TLV:
-						pairmemsteal(found, i->vp_tlv);
-						i->vp_tlv = NULL;
-						break;
-
-					case PW_TYPE_OCTETS:
-						pairmemsteal(found, i->vp_octets);
-						i->vp_octets = NULL;
-						break;
-
-					case PW_TYPE_STRING:
-						pairstrsteal(found, i->vp_strvalue);
-						i->vp_strvalue = NULL;
-						found->tag = i->tag;
-						break;
-				}
-
-				/*
-				 *	Delete *all* of the attributes
-				 *	of the same number.
-				 */
-				pairdelete(&found->next,
-					   found->da->attr,
-					   found->da->vendor, TAG_ANY);
-
-				/*
-				 *	Remove this attribute from the
-				 *	"from" list.
-				 */
-				*tail_from = i->next;
-				i->next = NULL;
-				pairfree(&i);
-				continue;
-
-			/*
-			 *	Move it from the old list and add it
-			 *	to the new list.
-			 */
-			case T_OP_ADD:
-		do_add:
-				*tail_from = i->next;
-				i->next = NULL;
-				*tail_new = talloc_steal(ctx, i);
-				tail_new = &(i->next);
-				continue;
+		/*
+		 *	Move it from the old list and add it
+		 *	to the new list.
+		 */
+		case T_OP_ADD:
+	do_add:
+			*tail_from = i->next;
+			i->next = NULL;
+			*tail_new = talloc_steal(ctx, i);
+			tail_new = &(i->next);
+			continue;
 		}
 	} /* loop over the "from" list. */
 

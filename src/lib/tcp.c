@@ -147,7 +147,7 @@ int fr_tcp_read_packet(RADIUS_PACKET *packet, int flags)
 
 		packet_len = (packet->vector[2] << 8) | packet->vector[3];
 
-		if (packet_len < AUTH_HDR_LEN) {
+		if (packet_len < RADIUS_HDR_LEN) {
 			fr_strerror_printf("Discarding packet: Smaller than RFC minimum of 20 bytes");
 			return -1;
 		}

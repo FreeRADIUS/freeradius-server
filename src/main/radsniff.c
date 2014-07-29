@@ -1026,7 +1026,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 		rs_time_print(timestr, sizeof(timestr), &header->ts);
 	}
 
-	len = fr_pcap_link_layer_offset(data, header->caplen, event->in->link_type);
+	len = fr_link_layer_offset(data, header->caplen, event->in->link_type);
 	if (len < 0) {
 		REDEBUG("Failed determining link layer header offset");
 		return;
