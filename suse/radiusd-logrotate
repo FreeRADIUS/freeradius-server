@@ -26,6 +26,7 @@
     create
     postrotate
 	kill -HUP `cat /var/run/radiusd/radiusd.pid`
+    endscript
 }
 
 /var/log/radius/radwatch.log {
