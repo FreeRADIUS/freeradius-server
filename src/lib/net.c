@@ -174,7 +174,7 @@ uint16_t fr_udp_checksum(uint8_t const *data, uint16_t len, uint16_t checksum,
  * Zero out IP header checksum in IP header before calling fr_iph_checksum to get 'expected' checksum.
  *
  * @param data Pointer to the start of the IP header
- * @param len value of ip header length field (number of 32 bit words)
+ * @param ihl value of ip header length field (number of 32 bit words)
  */
 uint16_t fr_iph_checksum(uint8_t const *data, uint8_t ihl)
 {
