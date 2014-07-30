@@ -42,7 +42,7 @@ attributeTypes: ( 1.3.6.1.4.1.11344.4.3.1.27 NAME 'radiusLoginService' DESC '' E
 attributeTypes: ( 1.3.6.1.4.1.11344.4.3.1.28 NAME 'radiusLoginTCPPort' DESC '' EQUALITY caseIgnoreIA5Match SYNTAX 1.3.6.1.4.1.1466.115.121.1.26 SINGLE-VALUE )
 attributeTypes: ( 1.3.6.1.4.1.11344.4.3.1.29 NAME 'radiusPasswordRetry' DESC '' EQUALITY caseIgnoreIA5Match SYNTAX 1.3.6.1.4.1.1466.115.121.1.26 SINGLE-VALUE )
 attributeTypes: ( 1.3.6.1.4.1.11344.4.3.1.30 NAME 'radiusPortLimit' DESC '' EQUALITY caseIgnoreIA5Match SYNTAX 1.3.6.1.4.1.1466.115.121.1.26 SINGLE-VALUE )
-attributeTypes: ( 1.3.6.1.4.1.11344.4.3.1.49 NAME 'radiusProfileDn' DESC '' EQUALITY distinguishedNameMatch SYNTAX 1.3.6.1.4.1.1466.115.121.1.12 )
+attributeTypes: ( 1.3.6.1.4.1.11344.4.3.1.49 NAME 'radiusProfileDN' DESC '' EQUALITY distinguishedNameMatch SYNTAX 1.3.6.1.4.1.1466.115.121.1.12 )
 attributeTypes: ( 1.3.6.1.4.1.11344.4.3.1.31 NAME 'radiusPrompt' DESC '' EQUALITY caseIgnoreIA5Match SYNTAX 1.3.6.1.4.1.1466.115.121.1.26 SINGLE-VALUE )
 attributeTypes: ( 1.3.6.1.4.1.11344.4.3.1.50 NAME 'radiusProxyToRealm' DESC '' EQUALITY caseIgnoreIA5Match SYNTAX 1.3.6.1.4.1.1466.115.121.1.26 SINGLE-VALUE )
 attributeTypes: ( 1.3.6.1.4.1.11344.4.3.1.51 NAME 'radiusReplicateToRealm' DESC '' EQUALITY caseIgnoreIA5Match SYNTAX 1.3.6.1.4.1.1466.115.121.1.26 SINGLE-VALUE )

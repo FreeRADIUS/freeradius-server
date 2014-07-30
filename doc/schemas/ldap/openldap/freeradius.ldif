@@ -36,7 +36,7 @@ olcAttributeTypes: {31}( 1.3.6.1.4.1.11344.4.3.1.27 NAME 'radiusLoginService' DE
 olcAttributeTypes: {32}( 1.3.6.1.4.1.11344.4.3.1.28 NAME 'radiusLoginTCPPort' DESC 'replyItem: Login-TCP-Port' EQUALITY caseIgnoreIA5Match SYNTAX 1.3.6.1.4.1.1466.115.121.1.26 SINGLE-VALUE )
 olcAttributeTypes: {33}( 1.3.6.1.4.1.11344.4.3.1.29 NAME 'radiusPasswordRetry' DESC '' EQUALITY caseIgnoreIA5Match SYNTAX 1.3.6.1.4.1.1466.115.121.1.26 SINGLE-VALUE )
 olcAttributeTypes: {34}( 1.3.6.1.4.1.11344.4.3.1.30 NAME 'radiusPortLimit' DESC 'replyItem: Port-Limit' EQUALITY caseIgnoreIA5Match SYNTAX 1.3.6.1.4.1.1466.115.121.1.26 SINGLE-VALUE )
-olcAttributeTypes: {35}( 1.3.6.1.4.1.11344.4.3.1.49 NAME 'radiusProfileDn' DESC '' EQUALITY distinguishedNameMatch SYNTAX 1.3.6.1.4.1.1466.115.121.1.12 )
+olcAttributeTypes: {35}( 1.3.6.1.4.1.11344.4.3.1.49 NAME 'radiusProfileDN' DESC '' EQUALITY distinguishedNameMatch SYNTAX 1.3.6.1.4.1.1466.115.121.1.12 )
 olcAttributeTypes: {36}( 1.3.6.1.4.1.11344.4.3.1.31 NAME 'radiusPrompt' DESC ''EQUALITY caseIgnoreIA5Match SYNTAX 1.3.6.1.4.1.1466.115.121.1.26 SINGLE-VALUE )
 olcAttributeTypes: {37}( 1.3.6.1.4.1.11344.4.3.1.50 NAME 'radiusProxyToRealm' DESC '' EQUALITY caseIgnoreIA5Match SYNTAX 1.3.6.1.4.1.1466.115.121.1.26 SINGLE-VALUE )
 olcAttributeTypes: {38}( 1.3.6.1.4.1.11344.4.3.1.51 NAME 'radiusReplicateToRealm' DESC '' EQUALITY caseIgnoreIA5Match SYNTAX 1.3.6.1.4.1.1466.115.121.1.26 SINGLE-VALUE )
@@ -67,7 +67,7 @@ olcObjectClasses: {0}( 1.3.6.1.4.1.11344.4.3.2.1 NAME 'radiusprofile' DESC '' SU
  radiusFramedAppleTalkZone $ radiusFramedCompression $ radiusFramedIPAddress $ radiusFramedIPNetmask $ radiusFramedIPXNetwork $ radiusFramedMTU $radiusFramedProtocol $ radiusAttribute $
  radiusFramedRoute $ radiusFramedRouting $ radiusIdleTimeout $ radiusGroupName $ radiusHint $ radiusHuntgroupName $ radiusLoginIPHost $ radiusLoginLATGroup $ radiusLoginLATNode $ radiusLoginLATPort $
  radiusLoginLATService $ radiusLoginService $ radiusLoginTCPPort $ radiusLoginTime $ radiusPasswordRetry $ radiusPortLimit $ radiusPrompt $ radiusProxyToRealm $ radiusRealm $ radiusReplicateToRealm $
- radiusServiceType $ radiusSessionTimeout $ radiusStripUserName $ radiusTerminationAction $ radiusTunnelClientEndpoint $ radiusProfileDn $ radiusSimultaneousUse $ radiusTunnelAssignmentId $
+ radiusServiceType $ radiusSessionTimeout $ radiusStripUserName $ radiusTerminationAction $ radiusTunnelClientEndpoint $ radiusProfileDN $ radiusSimultaneousUse $ radiusTunnelAssignmentId $
  radiusTunnelMediumType $ radiusTunnelPassword $ radiusTunnelPreference $ radiusTunnelPrivateGroupId $ radiusTunnelServerEndpoint $ radiusTunnelType $ radiusUserCategory $ radiusVSA $ radiusExpiration $
  dialupAccess $ radiusNASIpAddress $ radiusReplyMessage ) )
 olcObjectClasses: {1}( 1.3.6.1.4.1.11344.4.3.2.2 NAME 'radiusObjectProfile' DESC 'A Container Objectclass to be used for creating radius profile object' SUP top STRUCTURAL MUST cn MAY ( uid $ userPassword $ description ) )
