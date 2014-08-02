@@ -32,6 +32,9 @@ RCSID("$Id$")
 #include <fcntl.h>
 
 static rbtree_t *realms_byname = NULL;
+#ifdef WITH_TCP
+bool home_servers_udp = false;
+#endif
 
 #ifdef HAVE_REGEX_H
 typedef struct realm_regex_t {
@@ -508,9 +511,13 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 
 	home->proto = IPPROTO_UDP;
 #ifdef WITH_TCP
-	if (hs_proto) {
+	if (!hs_proto) {
+		home_servers_udp = true;
+
+	} else {
 		if (strcmp(hs_proto, "udp") == 0) {
 			hs_proto = NULL;
+			home_servers_udp = true;
 
 		} else if (strcmp(hs_proto, "tcp") == 0) {
 			hs_proto = NULL;

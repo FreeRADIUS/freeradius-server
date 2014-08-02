@@ -3211,6 +3211,16 @@ add_sockets:
 		}
 	}
 
+#ifdef WITH_TCP
+	/*
+	 *	We want to avoid opening a UDP proxy listener
+	 *	when all of the home servers are TCP.
+	 */
+	extern bool home_servers_udp;
+
+	if (!home_servers_udp) defined_proxy = true;
+#endif
+
 	/*
 	 *	If we're proxying requests, open the proxy FD.
 	 *	Otherwise, don't do anything.
@@ -3225,7 +3235,7 @@ add_sockets:
 		memset(&home, 0, sizeof(home));
 
 		/*
-		 *
+		 *	Open a default UDP port
 		 */
 		home.proto = IPPROTO_UDP;
 		home.src_ipaddr = server_ipaddr;
