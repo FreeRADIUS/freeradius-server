@@ -448,7 +448,6 @@ static ssize_t mschap_xlat(void *instance, REQUEST *request,
 		 */
 	} else if (strncasecmp(fmt, "NT-Hash ", 8) == 0) {
 		char const *p;
-		char buf2[1024];
 
 		p = fmt + 8;	/* 7 is the length of 'NT-Hash' */
 		if ((p == '\0')	 || (outlen <= 32))
@@ -456,12 +455,7 @@ static ssize_t mschap_xlat(void *instance, REQUEST *request,
 
 		while (isspace(*p)) p++;
 
-		if (radius_xlat(buf2, sizeof(buf2), request, p, NULL, NULL) < 0) {
-			*buffer = '\0';
-			return 0;
-		}
-
-		if (mschap_ntpwdhash(buffer, buf2) < 0) {
+		if (mschap_ntpwdhash(buffer, p) < 0) {
 			REDEBUG("Failed generating NT-Password");
 			*buffer = '\0';
 			return -1;
@@ -469,7 +463,7 @@ static ssize_t mschap_xlat(void *instance, REQUEST *request,
 
 		fr_bin2hex(out, buffer, NT_DIGEST_LENGTH);
 		out[32] = '\0';
-		RDEBUG("NT-Hash of %s = %s", buf2, out);
+		RDEBUG("NT-Hash of %s = %s", p, out);
 		return 32;
 
 		/*
@@ -477,7 +471,6 @@ static ssize_t mschap_xlat(void *instance, REQUEST *request,
 		 */
 	} else if (strncasecmp(fmt, "LM-Hash ", 8) == 0) {
 		char const *p;
-		char buf2[1024];
 
 		p = fmt + 8;	/* 7 is the length of 'LM-Hash' */
 		if ((p == '\0') || (outlen <= 32))
@@ -485,15 +478,10 @@ static ssize_t mschap_xlat(void *instance, REQUEST *request,
 
 		while (isspace(*p)) p++;
 
-		if (radius_xlat(buf2, sizeof(buf2), request, p, NULL, NULL) < 0) {
-			*buffer = '\0';
-			return 0;
-		}
-
-		smbdes_lmpwdhash(buf2, buffer);
+		smbdes_lmpwdhash(p, buffer);
 		fr_bin2hex(out, buffer, LM_DIGEST_LENGTH);
 		out[32] = '\0';
-		RDEBUG("LM-Hash of %s = %s", buf2, out);
+		RDEBUG("LM-Hash of %s = %s", p, out);
 		return 32;
 	} else {
 		REDEBUG("Unknown expansion string '%s'", fmt);
