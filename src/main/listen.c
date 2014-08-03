@@ -76,6 +76,14 @@ static int last_listener = RAD_LISTEN_MAX;
 #define MAX_LISTENER (256)
 static fr_protocol_t master_listen[MAX_LISTENER];
 
+#ifdef WITH_TCP
+/*
+ *	We want to avoid opening a UDP proxy listener
+ *	when all of the home servers are TCP.
+ */
+extern bool home_servers_udp;
+#endif
+
 /*
  *	Xlat for %{listen:foo}
  */
@@ -3254,12 +3262,6 @@ add_sockets:
 	}
 
 #ifdef WITH_TCP
-	/*
-	 *	We want to avoid opening a UDP proxy listener
-	 *	when all of the home servers are TCP.
-	 */
-	extern bool home_servers_udp;
-
 	if (!home_servers_udp) defined_proxy = true;
 #endif
 
