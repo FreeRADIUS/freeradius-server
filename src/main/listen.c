@@ -72,6 +72,14 @@ static int command_tcp_send(rad_listen_t *listener, REQUEST *request);
 static int command_write_magic(int newfd, listen_socket_t *sock);
 #endif
 
+#ifdef WITH_TCP
+/*
+ *	We want to avoid opening a UDP proxy listener
+ *	when all of the home servers are TCP.
+ */
+extern bool home_servers_udp;
+#endif
+
 static fr_protocol_t master_listen[RAD_LISTEN_MAX];
 
 /*
@@ -3212,12 +3220,6 @@ add_sockets:
 	}
 
 #ifdef WITH_TCP
-	/*
-	 *	We want to avoid opening a UDP proxy listener
-	 *	when all of the home servers are TCP.
-	 */
-	extern bool home_servers_udp;
-
 	if (!home_servers_udp) defined_proxy = true;
 #endif
 
