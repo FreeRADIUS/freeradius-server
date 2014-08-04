@@ -1669,10 +1669,10 @@ int radius_tmpl_get_vp(VALUE_PAIR **out, REQUEST *request, value_pair_tmpl_t con
 	}
 
 	switch (vpt->type) {
-		/*
-		 *	May not may not be found, but it *is* a known
-		 *	name.
-		 */
+	/*
+	 *	May not may not be found, but it *is* a known
+	 *	name.
+	 */
 	case VPT_TYPE_ATTR:
 	{
 		int num;
@@ -1686,9 +1686,9 @@ int radius_tmpl_get_vp(VALUE_PAIR **out, REQUEST *request, value_pair_tmpl_t con
 
 		(void) fr_cursor_init(&cursor, vps);
 		num = vpt->vpt_num;
-		while((vp = fr_cursor_next_by_da(&cursor, vpt->vpt_da, vpt->vpt_tag))) {
+		while ((vp = fr_cursor_next_by_da(&cursor, vpt->vpt_da, vpt->vpt_tag))) {
 			VERIFY_VP(vp);
-			if (num-- == 0) goto finish;
+			if (num-- <= 0) goto finish;
 		}
 		return -1;
 	}
@@ -1740,10 +1740,11 @@ int radius_get_vp(VALUE_PAIR **out, REQUEST *request, char const *name)
  * @param vpt the value pair template
  * @return -1 if VP could not be found, -2 if list could not be found, -3 if context could not be found.
  */
-int radius_tmpl_copy_vp(VALUE_PAIR **out, REQUEST *request, value_pair_tmpl_t const *vpt)
+int radius_tmpl_copy_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, value_pair_tmpl_t const *vpt)
 {
 	VALUE_PAIR **vps, *vp;
 	REQUEST *current = request;
+	vp_cursor_t from, to;
 
 	if (out) *out = NULL;
 
@@ -1761,14 +1762,56 @@ int radius_tmpl_copy_vp(VALUE_PAIR **out, REQUEST *request, value_pair_tmpl_t co
 	 *	May not may not be found, but it *is* a known name.
 	 */
 	case VPT_TYPE_ATTR:
-		vp = paircopy_by_num(request, *vps, vpt->vpt_da->attr, vpt->vpt_da->vendor, vpt->vpt_tag);
-		if (!vp) {
-			return -1;
+	{
+		int num;
+
+		(void) fr_cursor_init(&to, out);
+		(void) fr_cursor_init(&from, vps);
+
+		vp = fr_cursor_next_by_da(&from, vpt->vpt_da, vpt->vpt_tag);
+		if (!vp) return -1;
+
+		switch (vpt->vpt_num) {
+		/* Copy all pairs of this type (and tag) */
+		case NUM_ALL:
+			do {
+				VERIFY_VP(vp);
+				vp = paircopyvp(ctx, vp);
+				if (!vp) {
+					pairfree(out);
+					return -4;
+				}
+				fr_cursor_insert(&to, vp);
+			} while ((vp = fr_cursor_next_by_da(&from, vpt->vpt_da, vpt->vpt_tag)));
+			break;
+
+		/* Specific attribute number */
+		default:
+			for (num = vpt->vpt_num;
+			     num && vp;
+			     num--, vp = fr_cursor_next_by_da(&from, vpt->vpt_da, vpt->vpt_tag)) {
+			     VERIFY_VP(vp);
+			}
+			if (!vp) return -1;
+			/* FALL-THROUGH */
+
+		/* Just copy the first pair */
+		case NUM_ANY:
+			vp = paircopyvp(ctx, vp);
+			if (!vp) {
+				pairfree(out);
+				return -4;
+			}
+			fr_cursor_insert(&to, vp);
 		}
+	}
 		break;
 
 	case VPT_TYPE_LIST:
-		vp = paircopy(request, *vps);
+		vp = paircopy(ctx, *vps);
+		if (!vp) return 0;
+
+		fr_cursor_insert(&to, vp);
 		break;
 
 	default:
@@ -1779,15 +1822,12 @@ int radius_tmpl_copy_vp(VALUE_PAIR **out, REQUEST *request, value_pair_tmpl_t co
 		return -1;
 	}
 
-	if (out) {
-		*out = vp;
-	}
-
 	return 0;
 }
 
-/** Copy a VP from the specified request.
+/** Copy VP(s) from the specified request.
  *
+ * @param ctx to alloc new VALUE_PAIRs in.
  * @param out where to write the pointer to the copied VP.
  *	Will be NULL if the attribute couldn't be resolved.
  * @param request current request.
@@ -1795,7 +1835,7 @@ int radius_tmpl_copy_vp(VALUE_PAIR **out, REQUEST *request, value_pair_tmpl_t co
  * @return -4 if either the attribute or qualifier were invalid, and the same error codes as radius_tmpl_get_vp for other
  *	error conditions.
  */
-int radius_copy_vp(VALUE_PAIR **out, REQUEST *request, char const *name)
+int radius_copy_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, char const *name)
 {
 	value_pair_tmpl_t vpt;
 
@@ -1805,7 +1845,7 @@ int radius_copy_vp(VALUE_PAIR **out, REQUEST *request, char const *name)
 		return -4;
 	}
 
-	return radius_tmpl_copy_vp(out, request, &vpt);
+	return radius_tmpl_copy_vp(ctx, out, request, &vpt);
 }
 
 void module_failure_msg(REQUEST *request, char const *fmt, ...)
