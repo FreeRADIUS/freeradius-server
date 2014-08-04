@@ -391,7 +391,7 @@ value_pair_map_t *radius_cp2map(TALLOC_CTX *ctx, CONF_PAIR *cp,
 	 */
 	map->dst = radius_attr2tmpl(map, attr, dst_request_def, dst_list_def);
 	if (!map->dst) {
-		cf_log_err(ci, "Syntax error in attribute definition");
+		cf_log_err(ci, "%s", fr_strerror());
 		goto error;
 	}
 
@@ -401,6 +401,7 @@ value_pair_map_t *radius_cp2map(TALLOC_CTX *ctx, CONF_PAIR *cp,
 	type = cf_pair_value_type(cp);
 	map->src = radius_str2tmpl(map, value, type, src_request_def, src_list_def);
 	if (!map->src) {
+		cf_log_err(ci, "%s", fr_strerror());
 		goto error;
 	}
 
