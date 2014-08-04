@@ -743,8 +743,8 @@ int radius_strpair2map(value_pair_map_t **out, REQUEST *request, char const *raw
 bool radius_map_dst_valid(REQUEST *request, value_pair_map_t const *map);
 int radius_tmpl_get_vp(VALUE_PAIR **out, REQUEST *request, value_pair_tmpl_t const *vpt);
 int radius_get_vp(VALUE_PAIR **out, REQUEST *request, char const *name);
-int radius_tmpl_copy_vp(VALUE_PAIR **out, REQUEST *request, value_pair_tmpl_t const *vpt);
-int radius_copy_vp(VALUE_PAIR **out, REQUEST *request, char const *name);
+int radius_tmpl_copy_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, value_pair_tmpl_t const *vpt);
+int radius_copy_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, char const *name);
 
 #ifdef WITH_TLS
 /*

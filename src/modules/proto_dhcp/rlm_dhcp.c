@@ -93,7 +93,7 @@ static ssize_t dhcp_xlat(UNUSED void *instance, REQUEST *request, char const *fm
 
 	while (isspace((int) *fmt)) fmt++;
 
-	if ((radius_copy_vp(&vp, request, fmt) < 0) || !vp) {
+	if ((radius_copy_vp(request, &vp, request, fmt) < 0) || !vp) {
 		 *out = '\0';
 		 return 0;
 	}
