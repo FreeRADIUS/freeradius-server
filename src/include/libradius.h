@@ -150,7 +150,7 @@ extern "C" {
 #define ATTRIBUTE_EQ(_x, _y) ((_x && _y) && (_x->da == _y->da) && (!_x->da->flags.has_tag || TAG_EQ(_x->tag, _y->tag)))
 
 #define NUM_ANY			INT_MIN
-#define NUM_JOIN		(INT_MIN + 1)
+#define NUM_ALL			(INT_MIN + 1)
 #define NUM_COUNT		(INT_MIN + 2)
 
 #define PAD(_x, _y)		(_y - ((_x) % _y))
@@ -595,7 +595,7 @@ bool		pairvalidate(VALUE_PAIR const *failed[2], VALUE_PAIR *filter, VALUE_PAIR *
 bool 		pairvalidate_relaxed(VALUE_PAIR const *failed[2], VALUE_PAIR *filter, VALUE_PAIR *list);
 VALUE_PAIR	*paircopyvp(TALLOC_CTX *ctx, VALUE_PAIR const *vp);
 VALUE_PAIR	*paircopy(TALLOC_CTX *ctx, VALUE_PAIR *from);
-VALUE_PAIR	*paircopy2(TALLOC_CTX *ctx, VALUE_PAIR *from, unsigned int attr, unsigned int vendor, int8_t tag);
+VALUE_PAIR	*paircopy_by_num(TALLOC_CTX *ctx, VALUE_PAIR *from, unsigned int attr, unsigned int vendor, int8_t tag);
 VALUE_PAIR	*pairsteal(TALLOC_CTX *ctx, VALUE_PAIR *from);
 void		pairmemcpy(VALUE_PAIR *vp, uint8_t const * src, size_t len);
 void		pairmemsteal(VALUE_PAIR *vp, uint8_t const *src);

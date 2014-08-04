@@ -1337,7 +1337,7 @@ STATE_MACHINE_DECL(request_finish)
 	/*
 	 *	Copy Proxy-State from the request to the reply.
 	 */
-	vp = paircopy2(request->reply, request->packet->vps,
+	vp = paircopy_by_num(request->reply, request->packet->vps,
 		       PW_PROXY_STATE, 0, TAG_ANY);
 	if (vp) pairadd(&request->reply->vps, vp);
 

@@ -1055,7 +1055,7 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 			p++;
 
 		} else if (*p == '*') {
-			node->num = NUM_JOIN;
+			node->num = NUM_ALL;
 			p++;
 
 		} else if (isdigit((int) *p)) {
@@ -1326,7 +1326,7 @@ static void xlat_tokenize_debug(xlat_exp_t const *node, int lvl)
 				if (node->num != NUM_ANY) {
 					if (node->num == NUM_COUNT) {
 						DEBUG("%.*s[#]", lvl + 1, xlat_tabs);
-					} else if (node->num == NUM_JOIN) {
+					} else if (node->num == NUM_ALL) {
 						DEBUG("%.*s[*]", lvl + 1, xlat_tabs);
 					} else {
 						DEBUG("%.*s[%d]", lvl + 1, xlat_tabs, node->num);
@@ -1430,7 +1430,7 @@ size_t xlat_sprint(char *buffer, size_t bufsize, xlat_exp_t const *node)
 					*(p++) = '#';
 					break;
 
-				case NUM_JOIN:
+				case NUM_ALL:
 					*(p++) = '*';
 					break;
 
@@ -1777,7 +1777,7 @@ static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, pair_lists_t list, DI
 		/*
 		 *	[*] means only one.
 		 */
-		case NUM_JOIN:
+		case NUM_ALL:
 			break;
 
 		/*
@@ -1819,7 +1819,7 @@ do_print:
 		/*
 		 *	Ugly, but working.
 		 */
-		case NUM_JOIN:
+		case NUM_ALL:
 		{
 			char *p, *q;
 
@@ -2249,7 +2249,7 @@ value_pair_tmpl_t *radius_xlat2tmpl(TALLOC_CTX *ctx, xlat_exp_t *xlat)
 	 * @todo it should be possible to emulate the concat and count operations in the
 	 * map code.
 	 */
-	if ((xlat->num == NUM_COUNT) || (xlat->num == NUM_JOIN)) return NULL;
+	if ((xlat->num == NUM_COUNT) || (xlat->num == NUM_ALL)) return NULL;
 
 	vpt = talloc(ctx, value_pair_tmpl_t);
 	if (!vpt) return NULL;
