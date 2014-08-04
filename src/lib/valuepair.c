@@ -752,8 +752,7 @@ VALUE_PAIR *paircopy(TALLOC_CTX *ctx, VALUE_PAIR *from)
  * @param[in] tag to match, TAG_ANY matches any tag, TAG_NONE matches tagless VPs.
  * @return the head of the new VALUE_PAIR list or NULL on error.
  */
-VALUE_PAIR *paircopy2(TALLOC_CTX *ctx, VALUE_PAIR *from,
-		      unsigned int attr, unsigned int vendor, int8_t tag)
+VALUE_PAIR *paircopy_by_num(TALLOC_CTX *ctx, VALUE_PAIR *from, unsigned int attr, unsigned int vendor, int8_t tag)
 {
 	vp_cursor_t src, dst;
 
