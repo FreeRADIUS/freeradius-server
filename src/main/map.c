@@ -150,19 +150,25 @@ int radius_parse_attr(value_pair_tmpl_t *vpt, char const *name, request_refs_t r
 		fr_strerror_printf("Unexpected text after tag in '%s'", name);
 		return -2;
 	}
+	p++;
 
-	num = strtoul(p + 1, &q, 10);
-	if (num > 1000) {
-		fr_strerror_printf("Invalid array reference '%u' (should be between 0-1000)", (unsigned int) num);
-		return -2;
+	if (*p != '*') {
+		num = strtoul(p, &q, 10);
+		if (num > 1000) {
+			fr_strerror_printf("Invalid array reference '%u' (should be between 0-1000)", (unsigned int) num);
+			return -2;
+		}
+		vpt->vpt_num = num;
+		p = q;
+	} else {
+		vpt->vpt_num = NUM_ALL;
+		p++;
 	}
 
-	if ((*q != ']') || (q[1] != '\0')) {
+	if ((*p != ']') || (p[1] != '\0')) {
 		fr_strerror_printf("Unexpected text after array in '%s'", name);
 		return -2;
 	}
-
-	vpt->vpt_num = num;
 
 	return 0;
 }
