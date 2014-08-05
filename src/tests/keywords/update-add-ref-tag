@@ -1,0 +1,118 @@
+#
+#  PRE: update array
+#
+
+update request {
+	reply:Filter-Id := "filter"
+	request:Tunnel-Server-Endpoint += '192.0.1.1'
+	request:Tunnel-Server-Endpoint += '192.0.1.2'
+	request:Tunnel-Server-Endpoint:1 += '192.0.1.1'
+	request:Tunnel-Server-Endpoint:2 += '192.0.2.1'
+	request:Tunnel-Server-Endpoint:2 += '192.0.2.2'
+	request:Tunnel-Server-Endpoint:3 += '192.0.3.1'
+}
+
+#
+#  Copy all Tunnel-Server-Endpoint attributes
+#
+update request {
+       control:Tunnel-Server-Endpoint += &Tunnel-Server-Endpoint[*]
+}
+
+if ((&control:Tunnel-Server-Endpoint[0] != '192.0.1.1') || \
+    (&control:Tunnel-Server-Endpoint[1] != '192.0.1.2') || \
+    (&control:Tunnel-Server-Endpoint[2] != '192.0.1.1') || \
+    (&control:Tunnel-Server-Endpoint[3] != '192.0.2.1') || \
+    (&control:Tunnel-Server-Endpoint[4] != '192.0.2.2') || \
+    (&control:Tunnel-Server-Endpoint[5] != '192.0.3.1') || \
+    &control:Tunnel-Server-Endpoint[6]) {
+	update reply {
+		Filter-Id := "fail 0"
+	}
+}
+
+#
+#  Clear out control attributes...
+#
+update control {
+	Tunnel-Server-Endpoint !* ANY
+}
+
+#
+#  Copy all Tunnel-Server-Endpoint attributes with tag 2
+#
+update request {
+       control:Tunnel-Server-Endpoint += &Tunnel-Server-Endpoint:2[*]
+}
+
+if ((&control:Tunnel-Server-Endpoint[0] != '192.0.2.1') || \
+    (&control:Tunnel-Server-Endpoint[1] != '192.0.2.2') || \
+    &control:Tunnel-Server-Endpoint[2]) {
+	update reply {
+		Filter-Id := "fail 1"
+	}
+}
+
+#
+#  Clear out control attributes...
+#
+update control {
+	Tunnel-Server-Endpoint !* ANY
+}
+
+#
+#  Copy all Tunnel-Server-Endpoint attributes with no tag
+#
+update request {
+       control:Tunnel-Server-Endpoint += &Tunnel-Server-Endpoint:0[*]
+}
+
+if ((&control:Tunnel-Server-Endpoint[0] != '192.0.1.1') || \
+    (&control:Tunnel-Server-Endpoint[1] != '192.0.1.2') || \
+    &control:Tunnel-Server-Endpoint[2]) {
+	update reply {
+		Filter-Id := "fail 2"
+	}
+}
+
+#
+#  Clear out control attributes...
+#
+update control {
+	Tunnel-Server-Endpoint !* ANY
+}
+
+#
+#  Copy the first attribute with tag 2 (implicit)
+#
+update request {
+       control:Tunnel-Server-Endpoint += &Tunnel-Server-Endpoint:2
+}
+
+if ((&control:Tunnel-Server-Endpoint[0] != '192.0.2.1') || \
+    &control:Tunnel-Server-Endpoint[1]) {
+	update reply {
+		Filter-Id := "fail 3"
+	}
+}
+
+#
+#  Clear out control attributes...
+#
+update control {
+	Tunnel-Server-Endpoint !* ANY
+}
+
+#
+#  Copy the first attribute with tag 2 (explicit)
+#
+update request {
+       control:Tunnel-Server-Endpoint += &Tunnel-Server-Endpoint:2[0]
+}
+
+if ((&control:Tunnel-Server-Endpoint[0] != '192.0.2.1') || \
+    &control:Tunnel-Server-Endpoint[1]) {
+	update reply {
+		Filter-Id := "fail 4"
+	}
+}

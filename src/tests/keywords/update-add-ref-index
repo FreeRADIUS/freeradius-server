@@ -1,0 +1,118 @@
+#
+#  PRE: update array
+#
+
+update request {
+       reply:Filter-Id := "filter"
+       Class := 0x01020304
+       Class += 0x05060708
+       Class += 0x090a0b0c
+}
+
+#
+#  Copy all the class attributes to Proxy-State
+#
+update request {
+       Proxy-State += &Class[*]
+}
+
+if (&Proxy-State[0] != 0x01020304) {
+	update reply {
+		Filter-Id := "fail 0a"
+	}
+}
+
+#  Must be the same as above
+if (&Proxy-State[1] != 0x05060708) {
+	update reply {
+		Filter-Id += "fail 0b"
+	}
+}
+
+if (&Proxy-State[2] != 0x090a0b0c) {
+	update reply {
+		Filter-Id += "fail 0c"
+	}
+}
+
+# must not exist
+if (&Proxy-State[3]) {
+	update reply {
+		Filter-Id += "fail 1"
+	}
+}
+
+# Remove all the Proxy-State attributes
+update request {
+	Proxy-State !* ANY
+}
+
+#
+#  Copy the first instance (implicitly) of class
+#
+update request {
+	Proxy-State += &Class
+}
+
+if (&Proxy-State[0] != 0x01020304) {
+	update reply {
+		Filter-Id := "fail 2a"
+	}
+}
+
+#  Must be the same as above
+if (&Proxy-State[1]) {
+	update reply {
+		Filter-Id += "fail 2b"
+	}
+}
+
+# Remove all the Proxy-State attributes
+update request {
+	Proxy-State !* ANY
+}
+
+#
+#  Copy the first instance (explicitly) of class
+#
+update request {
+	Proxy-State += &Class[0]
+}
+
+if (&Proxy-State[0] != 0x01020304) {
+	update reply {
+		Filter-Id := "fail 3a"
+	}
+}
+
+#  Must be the same as above
+if (&Proxy-State[1]) {
+	update reply {
+		Filter-Id += "fail 3b"
+	}
+}
+
+# Remove all the Proxy-State attributes
+update request {
+	Proxy-State !* ANY
+}
+
+#
+#  Copy the second instance of class
+#
+update request {
+	Proxy-State += &Class[1]
+}
+
+if (&Proxy-State[0] != 0x05060708) {
+	update reply {
+		Filter-Id := "fail 4a"
+	}
+}
+
+#  Must be the same as above
+if (&Proxy-State[1]) {
+	update reply {
+		Filter-Id += "fail 4b"
+	}
+}

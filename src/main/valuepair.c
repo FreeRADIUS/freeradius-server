@@ -1382,7 +1382,7 @@ int radius_mapexec(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *m
 int radius_map2vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *map, UNUSED void *ctx)
 {
 	int rcode = 0;
-	VALUE_PAIR *vp = NULL, *found, **from = NULL;
+	VALUE_PAIR *vp = NULL, *new, *found = NULL;
 	DICT_ATTR const *da;
 	REQUEST *context = request;
 	vp_cursor_t cursor;
@@ -1400,6 +1400,8 @@ int radius_map2vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *ma
 	 *	the op.
 	 */
 	if ((map->dst->type == VPT_TYPE_LIST) && (map->src->type == VPT_TYPE_LIST)) {
+		VALUE_PAIR **from = NULL;
+
 		if (radius_request(&context, map->src->vpt_request) == 0) {
 			from = radius_list(context, map->src->vpt_list);
 		}
@@ -1428,22 +1430,6 @@ int radius_map2vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *ma
 	 */
 	da = map->dst->vpt_da ? map->dst->vpt_da : map->src->vpt_da;
 
-	switch (map->src->type) {
-	case VPT_TYPE_XLAT:
-	case VPT_TYPE_XLAT_STRUCT:
-	case VPT_TYPE_LITERAL:
-	case VPT_TYPE_DATA:
-	case VPT_TYPE_ATTR:
-		vp = pairalloc(request, da);
-		if (!vp) return -1;
-		vp->op = map->op;
-		break;
-
-	default:
-		break;
-	}
-
-
 	/*
 	 *	And parse the RHS
 	 */
@@ -1454,6 +1440,9 @@ int radius_map2vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *ma
 	case VPT_TYPE_XLAT_STRUCT:
 		rad_assert(map->dst->vpt_da);	/* Need to know where were going to write the new attribute */
 		rad_assert(map->src->vpt_xlat != NULL);
+
+		new = pairalloc(request, da);
+		if (!new) return -1;
 
 		str = NULL;
 		slen = radius_axlat_struct(&str, request, map->src->vpt_xlat, NULL, NULL);
@@ -1470,16 +1459,21 @@ int radius_map2vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *ma
 		RDEBUG2("EXPAND %s", map->src->name);
 		RDEBUG2("   --> %s", str);
 
-		rcode = pairparsevalue(vp, str, 0);
+		rcode = pairparsevalue(new, str, 0);
 		talloc_free(str);
 		if (rcode < 0) {
-			pairfree(&vp);
+			pairfree(&new);
 			goto error;
 		}
+		new->op = map->op;
+		*out = new;
 		break;
 
 	case VPT_TYPE_XLAT:
 		rad_assert(map->dst->vpt_da);	/* Need to know where were going to write the new attribute */
+
+		new = pairalloc(request, da);
+		if (!new) return -1;
 
 		str = NULL;
 		slen = radius_axlat(&str, request, map->src->name, NULL, NULL);
@@ -1487,76 +1481,80 @@ int radius_map2vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *ma
 			rcode = slen;
 			goto error;
 		}
-		rcode = pairparsevalue(vp, str, 0);
+
+		rcode = pairparsevalue(new, str, 0);
 		talloc_free(str);
 		if (rcode < 0) {
-			pairfree(&vp);
+			pairfree(&new);
 			goto error;
 		}
+		new->op = map->op;
+		*out = new;
 		break;
 
 	case VPT_TYPE_LITERAL:
-		if (pairparsevalue(vp, map->src->name, 0) < 0) {
+		new = pairalloc(request, da);
+		if (!new) return -1;
+
+		if (pairparsevalue(new, map->src->name, 0) < 0) {
 			rcode = 0;
 			goto error;
 		}
+		new->op = map->op;
+		*out = new;
 		break;
 
 	case VPT_TYPE_ATTR:
+	{
+		vp_cursor_t from;
+
 		rad_assert(!map->dst->vpt_da ||
 			   (map->src->vpt_da->type == map->dst->vpt_da->type) ||
 			   (map->src->vpt_da->type == PW_TYPE_OCTETS) ||
 			   (map->dst->vpt_da->type == PW_TYPE_OCTETS));
 
 		/*
-		 *	Special case, destination is a list, found all instance of an attribute.
+		 * @todo should log error, and return -1 for v3.1 (causes update to fail)
 		 */
-		if (map->dst->type == VPT_TYPE_LIST) {
-			context = request;
+		if (radius_tmpl_copy_vp(request, &found, request, map->src) < 0) return 0;
 
-			if (radius_request(&context, map->src->vpt_request) == 0) {
-				from = radius_list(context, map->src->vpt_list);
+		vp = fr_cursor_init(&from, &found);
+		/*
+		 *  Src/Dst attributes don't match, convert src attributes
+		 *  to match dst.
+		 */
+		if (map->src->vpt_da->type != map->dst->vpt_da->type) {
+			vp_cursor_t to;
+
+			(void) fr_cursor_init(&to, out);
+			for (; vp; vp = fr_cursor_next(&from)) {
+				new = pairalloc(request, da);
+				if (!new) return -1;
+				if (pairdatacpy(new, vp->da, &vp->data, vp->length) < 0) {
+					REDEBUG("Attribute conversion failed: %s", fr_strerror());
+					pairfree(&found);
+					pairfree(&new);
+					return -1;
+				}
+				vp = fr_cursor_remove(&from);
+				talloc_free(vp);
+
+				new->op = map->op;
+				fr_cursor_insert(&to, new);
 			}
-
-			/*
-			 *	Can't add the attribute if the list isn't
-			 *	valid.
-			 */
-			if (!from) {
-				rcode = 0;
-				goto error;
-			}
-
-			found = paircopy_by_num(request, *from, map->src->vpt_da->attr, map->src->vpt_da->vendor,
-					  map->src->vpt_tag);
-			if (!found) {
-				REDEBUG("Attribute \"%s\" not found in request", map->src->name);
-				rcode = 0;
-				goto error;
-			}
-
-			for (vp = fr_cursor_init(&cursor, &found);
-			     vp;
-			     vp = fr_cursor_next(&cursor)) {
-				vp->op = T_OP_ADD;
-			}
-
-			*out = found;
 			return 0;
 		}
 
-		if (radius_tmpl_get_vp(&found, request, map->src) < 0) {
-			REDEBUG("Attribute \"%s\" not found in request", map->src->name);
-			rcode = 0;
-			goto error;
-		}
-
 		/*
-		 *	Copy the data over verbatim
+		 *   Otherwise we just need to fixup the attribute types
+		 *   and operators
 		 */
-		if (pairdatacpy(vp, found->da, &found->data, found->length) < 0) return -1;
-		vp->op = map->op;
-
+		for (; vp; vp = fr_cursor_next(&from)) {
+			vp->da = da;
+			vp->op = map->op;
+		}
+		*out = found;
+	}
 		break;
 
 	case VPT_TYPE_DATA:
@@ -1564,8 +1562,12 @@ int radius_map2vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *ma
 		rad_assert(map->dst && map->dst->vpt_da);
 		rad_assert(map->src->vpt_da->type == map->dst->vpt_da->type);
 
-		if (pairdatacpy(vp, map->src->vpt_da, map->src->vpt_value, map->src->vpt_length) < 0) goto error;
-		vp->op = map->op;
+		new = pairalloc(request, da);
+		if (!new) return -1;
+
+		if (pairdatacpy(new, map->src->vpt_da, map->src->vpt_value, map->src->vpt_length) < 0) goto error;
+		new->op = map->op;
+		*out = new;
 		break;
 
 	/*
@@ -1577,14 +1579,15 @@ int radius_map2vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *ma
 	 */
 	case VPT_TYPE_EXEC:
 		return radius_mapexec(out, request, map);
+
 	default:
 		rad_assert(0);	/* Should have been caught at parse time */
+
 	error:
 		pairfree(&vp);
 		return rcode;
 	}
 
-	*out = vp;
 	return 0;
 }
 
