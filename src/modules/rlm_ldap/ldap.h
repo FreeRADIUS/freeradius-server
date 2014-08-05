@@ -336,7 +336,7 @@ ldap_rcode_t rlm_ldap_modify(ldap_instance_t const *inst, REQUEST *request, ldap
 			     char const *dn, LDAPMod *mods[]);
 
 char const *rlm_ldap_find_user(ldap_instance_t const *inst, REQUEST *request, ldap_handle_t **pconn,
-			       char const *attrs[], int force, LDAPMessage **result, rlm_rcode_t *rcode);
+			       char const *attrs[], bool force, LDAPMessage **result, rlm_rcode_t *rcode);
 
 rlm_rcode_t rlm_ldap_check_access(ldap_instance_t const *inst, REQUEST *request, ldap_handle_t const *conn,
 				  LDAPMessage *entry);
