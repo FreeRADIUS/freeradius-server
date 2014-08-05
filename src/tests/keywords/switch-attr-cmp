@@ -15,15 +15,21 @@ switch &User-Name {
 		}
 	}
 
+	case "bob" {
+		update reply {
+			Filter-Id := "failed 0"
+		}
+	}
+
 	case "doug" {
 		update reply {
-			Filter-Id := "doug"
+			Filter-Id := "failed 1"
 		}
 	}
 
 	case {
 		update reply {
-			Filter-Id := "default"
+			Filter-Id := "failed 2"
 		}
 	}
 
