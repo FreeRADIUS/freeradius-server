@@ -864,7 +864,7 @@ finish:
  * @return The user's DN or NULL on error.
  */
 char const *rlm_ldap_find_user(ldap_instance_t const *inst, REQUEST *request, ldap_handle_t **pconn,
-			       char const *attrs[], int force, LDAPMessage **result, rlm_rcode_t *rcode)
+			       char const *attrs[], bool force, LDAPMessage **result, rlm_rcode_t *rcode)
 {
 	static char const *tmp_attrs[] = { NULL };
 
