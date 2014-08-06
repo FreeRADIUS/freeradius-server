@@ -1737,6 +1737,7 @@ int radius_get_vp(VALUE_PAIR **out, REQUEST *request, char const *name)
 
 /** Copy pairs matching a VPT in the current request
  *
+ * @param ctx to allocate new VALUE_PAIRs under.
  * @param out where to write the copied vps.
  * @param request current request.
  * @param vpt the value pair template
@@ -1761,7 +1762,7 @@ int radius_tmpl_copy_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, val
 
 	switch (vpt->type) {
 	/*
-	 *	May not may not be found, but it *is* a known name.
+	 *	May not be found, but it *is* a known name.
 	 */
 	case VPT_TYPE_ATTR:
 	{
