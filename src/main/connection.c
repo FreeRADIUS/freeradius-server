@@ -419,7 +419,6 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool,
  *
  * @param[in,out] pool to modify.
  * @param[in,out] this Connection to delete.
-
  */
 static void fr_connection_close(fr_connection_pool_t *pool,
 				fr_connection_t *this)
@@ -997,16 +996,14 @@ static int fr_connection_pool_check(fr_connection_pool_t *pool)
 static void *fr_connection_get_internal(fr_connection_pool_t *pool, int spawn)
 {
 	time_t now;
-	fr_connection_t *this, *next;
+	fr_connection_t *this;
 
 	if (!pool) return NULL;
 
 	pthread_mutex_lock(&pool->mutex);
 
 	now = time(NULL);
-	for (this = pool->head; this != NULL; this = next) {
-		next = this->next;
-
+	for (this = pool->head; this != NULL; this = this->next) {
 		if (!this->in_use) goto do_return;
 	}
 
