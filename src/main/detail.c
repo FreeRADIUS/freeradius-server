@@ -626,7 +626,7 @@ open_file:
 		vp = NULL;
 		if ((userparse(data, buffer, &vp) > 0) &&
 		    (vp != NULL)) {
-			fr_cursor_insert(&cursor, vp);
+			fr_cursor_merge(&cursor, vp);
 		}
 	}
 

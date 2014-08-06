@@ -88,7 +88,7 @@ static int rlm_ldap_map_getvalue(VALUE_PAIR **out, REQUEST *request, value_pair_
 				goto next_pair;
 			}
 
-			fr_cursor_insert(&cursor, vp);
+			fr_cursor_merge(&cursor, vp);
 			talloc_free(attr);
 		}
 		break;

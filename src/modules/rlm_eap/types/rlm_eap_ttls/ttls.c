@@ -249,7 +249,7 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, REQUEST *fake, SSL *ssl,
 				goto do_octets;
 			}
 
-			fr_cursor_insert(&out, vp);
+			fr_cursor_merge(&out, vp);
 
 			goto next_attr;
 		}

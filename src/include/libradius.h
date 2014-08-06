@@ -576,6 +576,7 @@ VALUE_PAIR	*fr_cursor_next(vp_cursor_t *cursor);
 VALUE_PAIR	*fr_cursor_next_peek(vp_cursor_t *cursor);
 VALUE_PAIR	*fr_cursor_current(vp_cursor_t *cursor);
 void		fr_cursor_insert(vp_cursor_t *cursor, VALUE_PAIR *vp);
+void		fr_cursor_merge(vp_cursor_t *cursor, VALUE_PAIR *vp);
 VALUE_PAIR	*fr_cursor_remove(vp_cursor_t *cursor);
 VALUE_PAIR	*fr_cursor_replace(vp_cursor_t *cursor, VALUE_PAIR *new);
 void		pairdelete(VALUE_PAIR **, unsigned int attr, unsigned int vendor, int8_t tag);

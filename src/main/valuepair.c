@@ -1238,7 +1238,7 @@ int radius_map2request(REQUEST *request, value_pair_map_t const *map, radius_tmp
 		 */
 		if (!dst) {
 			RDEBUG3("No existing attribute to filter, adding instead");
-			fr_cursor_insert(&dst_list, head);
+			fr_cursor_merge(&dst_list, head);
 			head = NULL;
 			goto finish;
 		}
@@ -1813,7 +1813,7 @@ int radius_tmpl_copy_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, val
 		vp = paircopy(ctx, *vps);
 		if (!vp) return 0;
 
-		fr_cursor_insert(&to, vp);
+		fr_cursor_merge(&to, vp);
 		break;
 
 	default:

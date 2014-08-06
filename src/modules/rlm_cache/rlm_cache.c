@@ -380,7 +380,6 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request, char co
 				break;
 			}
 
-			RDEBUG2("Adding to cache entry:");
 			if (debug_flag) radius_map_debug(request, map, vp);
 			(void) talloc_steal(c, vp);
 
