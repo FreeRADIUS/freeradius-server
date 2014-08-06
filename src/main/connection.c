@@ -313,9 +313,7 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool,
 	if (pool->spawning) {
 		pthread_mutex_unlock(&pool->mutex);
 
-		ERROR("%s: Cannot open new connection, "
-		      "connection spawning already in "
-		      "progress", pool->log_prefix);
+		ERROR("%s: Cannot open new connection, connection spawning already in progress", pool->log_prefix);
 		return NULL;
 	}
 
@@ -844,7 +842,7 @@ static int fr_connection_manage(fr_connection_pool_t *pool,
 }
 
 
-/** Check whether any connections needs to be removed from the pool
+/** Check whether any connections need to be removed from the pool
  *
  * Maintains the number of connections in the pool as per the configuration
  * parameters for the connection pool.
@@ -936,6 +934,7 @@ static int fr_connection_pool_check(fr_connection_pool_t *pool)
 	}
 
 	if (spawn) {
+		INFO("%s: %i of %u connections in use.  Need more spares", pool->log_prefix, pool->active, pool->num);
 		pthread_mutex_unlock(&pool->mutex);
 		fr_connection_spawn(pool, now, false); /* ignore return code */
 		pthread_mutex_lock(&pool->mutex);
@@ -1035,6 +1034,8 @@ static void *fr_connection_get_internal(fr_connection_pool_t *pool, int spawn)
 
 	if (!spawn) return NULL;
 
+	WARN("%s: %i of %u connections in use.  You probably need to increase \"spare\"", pool->log_prefix,
+	     pool->active, pool->num);
 	this = fr_connection_spawn(pool, now, true); /* MY connection! */
 	if (!this) return NULL;
 	pthread_mutex_lock(&pool->mutex);
