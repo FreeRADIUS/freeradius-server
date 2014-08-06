@@ -2208,7 +2208,7 @@ int readvp2(VALUE_PAIR **out, TALLOC_CTX *ctx, FILE *fp, bool *pfiledone)
 			break;
 		}
 
-		fr_cursor_insert(&cursor, vp);
+		fr_cursor_merge(&cursor, vp);
 		buf[0] = '\0';
 	}
 

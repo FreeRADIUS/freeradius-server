@@ -183,7 +183,7 @@ VALUE_PAIR *fr_cursor_current(vp_cursor_t *cursor)
 	return cursor->current;
 }
 
-/** Insert a VP
+/** Insert a single VP
  *
  * @todo don't use with pairdelete
  */
@@ -196,6 +196,11 @@ void fr_cursor_insert(vp_cursor_t *cursor, VALUE_PAIR *add)
 	}
 
 	VERIFY_VP(add);
+
+	/*
+	 *	Only allow one VP to by inserted at a time
+	 */
+	add->next = NULL;
 
 	/*
 	 *	Cursor was initialised with a pointer to a NULL value_pair
@@ -245,6 +250,26 @@ void fr_cursor_insert(vp_cursor_t *cursor, VALUE_PAIR *add)
 	}
 
 	cursor->last->next = add;
+}
+
+/** Merges two sets of VPs
+ *
+ * The list represented by cursor will hold the union of cursor and
+ * add lists.
+ *
+ * @param cursor to insert VALUE_PAIRs with
+ * @param add one or more VALUE_PAIRs.
+ */
+void fr_cursor_merge(vp_cursor_t *cursor, VALUE_PAIR *add)
+{
+	vp_cursor_t from;
+	VALUE_PAIR *vp;
+
+	for (vp = fr_cursor_init(&from, &add);
+	     vp;
+	     vp = fr_cursor_next(&from)) {
+	 	fr_cursor_insert(cursor, vp);
+	}
 }
 
 /** Remove the current pair

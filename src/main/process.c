@@ -2672,7 +2672,7 @@ static int request_will_proxy(REQUEST *request)
 			/* Insert at the START of the list */
 			/* FIXME: Can't make assumptions about ordering */
 			fr_cursor_init(&cursor, &vp);
-			fr_cursor_insert(&cursor, request->proxy->vps);
+			fr_cursor_merge(&cursor, request->proxy->vps);
 			request->proxy->vps = vp;
 		}
 		pairstrcpy(vp, strippedname->vp_strvalue);
@@ -4267,7 +4267,7 @@ static int event_new_fd(rad_listen_t *this)
 				INFO(" ... adding new socket %s (%u of %u)", buffer,
 				     home->limit.num_connections, home->limit.max_connections);
 			}
-		
+
 #endif
 		} else {
 			INFO(" ... adding new socket %s", buffer);
