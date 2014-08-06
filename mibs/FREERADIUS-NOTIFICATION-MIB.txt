@@ -80,12 +80,6 @@ threadUnresponsive NOTIFICATION-TYPE
        DESCRIPTION "Notification that a child thread is unresponsive"
        ::= { serverThread 3 }
 
-threadMaxThreads NOTIFICATION-TYPE
-       OBJECTS { identity }
-       STATUS current
-       DESCRIPTION "Notification that the max_threads limit has been hit"
-       ::= { serverThread 4 }
-
 serverModules  OBJECT IDENTIFIER ::= { freeRadiusNotificationMib 2 }
 
 serverModuleGeneric  OBJECT IDENTIFIER ::= { serverModules 1 }
