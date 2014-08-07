@@ -83,7 +83,7 @@ threadUnresponsive NOTIFICATION-TYPE
 threadMaxThreads NOTIFICATION-TYPE
        OBJECTS { identity }
        STATUS current
-       DESCRIPTION "Notification that the max_threads limit has been hit"
+       DESCRIPTION "Notification that the max_threads limit has been reached"
        ::= { serverThread 4 }
 
 serverModules  OBJECT IDENTIFIER ::= { freeRadiusNotificationMib 2 }
