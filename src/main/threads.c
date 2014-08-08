@@ -82,23 +82,16 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 /*
  *  A data structure which contains the information about
  *  the current thread.
- *
- *  pthread_id     pthread id
- *  thread_num     server thread number, 1...number of threads
- *  semaphore     used to block the thread until a request comes in
- *  status	is the thread running or exited?
- *  request_count the number of requests that this thread has handled
- *  timestamp     when the thread started executing.
  */
 typedef struct THREAD_HANDLE {
-	struct THREAD_HANDLE *prev;
-	struct THREAD_HANDLE *next;
-	pthread_t	    pthread_id;
-	int		  thread_num;
-	int		  status;
-	unsigned int	 request_count;
-	time_t	       timestamp;
-	REQUEST		     *request;
+	struct THREAD_HANDLE	*prev;		//!< Previous thread handle (in the linked list).
+	struct THREAD_HANDLE	*next;		//!< Next thread handle (int the linked list).
+	pthread_t		pthread_id;	//!< pthread_id.
+	int			thread_num;	//!< Server thread number, 1...number of threads.
+	int			status;		//!< Is the thread running or exited?
+	unsigned int		request_count;	//!< The number of requests that this thread has handled.
+	time_t			timestamp;	//!< When the thread started executing.
+	REQUEST			*request;
 } THREAD_HANDLE;
 
 #endif	/* WITH_GCD */
@@ -597,7 +590,7 @@ static int request_dequeue(REQUEST **prequest)
  */
 static void *request_handler_thread(void *arg)
 {
-	THREAD_HANDLE	  *self = (THREAD_HANDLE *) arg;
+	THREAD_HANDLE *self = (THREAD_HANDLE *) arg;
 
 	/*
 	 *	Loop forever, until told to exit.
@@ -630,7 +623,7 @@ static void *request_handler_thread(void *arg)
 		/*
 		 *	Clear the error queue for the current thread.
 		 */
-		ERR_clear_error ();
+		ERR_clear_error();
 #endif
 
 		/*
@@ -810,8 +803,7 @@ static THREAD_HANDLE *spawn_thread(time_t now, int do_trigger)
 	 *	Note that the function returns non-zero on error, NOT
 	 *	-1.  The return code is the error, and errno isn't set.
 	 */
-	rcode = pthread_create(&handle->pthread_id, 0,
-			request_handler_thread, handle);
+	rcode = pthread_create(&handle->pthread_id, 0, request_handler_thread, handle);
 	if (rcode != 0) {
 		free(handle);
 		ERROR("Thread create failed: %s",
