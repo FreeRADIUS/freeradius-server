@@ -134,8 +134,7 @@ struct fr_connection_pool_t {
 	uint64_t	count;		//!< Number of connections spawned over
 					//!< the lifetime of the pool.
 	uint32_t       	num;		//!< Number of connections in the pool.
-	int		active;	 	//!< Number of currently reserved
-					//!< connections.
+	uint32_t	active;	 	//!< Number of currently reserved connections.
 
 	fr_connection_t	*head;		//!< Start of the connection list.
 	fr_connection_t *tail;		//!< End of the connection list.
@@ -433,7 +432,7 @@ static void fr_connection_close(fr_connection_pool_t *pool,
 #endif
 		this->in_use = false;
 
-		rad_assert(pool->active > 0);
+		rad_assert(pool->active != 0);
 		pool->active--;
 	}
 
@@ -1129,7 +1128,7 @@ void fr_connection_release(fr_connection_pool_t *pool, void *conn)
 		}
 	}
 
-	rad_assert(pool->active > 0);
+	rad_assert(pool->active != 0);
 	pool->active--;
 
 	DEBUG("%s: Released connection (%" PRIu64 ")", pool->log_prefix, this->number);
