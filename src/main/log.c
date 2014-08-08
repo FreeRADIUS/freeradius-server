@@ -54,6 +54,7 @@ static const FR_NAME_NUMBER levels[] = {
 	{ ": Auth: ",		L_AUTH		},
 	{ ": Proxy: ",		L_PROXY		},
 	{ ": Info: ",		L_INFO		},
+	{ ": Warning: ",	L_WARN		},
 	{ ": Acct: ",		L_ACCT		},
 	{ ": Error: ",		L_ERR		},
 	{ ": WARNING: ",	L_DBG_WARN	},
