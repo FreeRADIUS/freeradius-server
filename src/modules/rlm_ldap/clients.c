@@ -106,7 +106,8 @@ int rlm_ldap_load_clients(ldap_instance_t const *inst)
 	if (conn->rebound) {
 		status = rlm_ldap_bind(inst, NULL, &conn, inst->admin_dn, inst->password, true);
 		if (status != LDAP_PROC_SUCCESS) {
-			return -1;
+			ret = -1;
+			goto finish;
 		}
 
 		rad_assert(conn);
@@ -122,10 +123,12 @@ int rlm_ldap_load_clients(ldap_instance_t const *inst)
 
 	case LDAP_PROC_NO_RESULT:
 		LDAP_INFO("No clients were found in the directory");
-		return 0;
+		ret = 0;
+		goto finish;
 
 	default:
-		return -1;
+		ret = -1;
+		goto finish;
 	}
 
 	rad_assert(conn);
@@ -223,12 +226,12 @@ int rlm_ldap_load_clients(ldap_instance_t const *inst)
 		if (secret)	ldap_value_free(secret);
 		if (type)	ldap_value_free(type);
 		if (server)	ldap_value_free(server);
-	} while((entry = ldap_next_entry(conn->handle, entry)));
+	} while ((entry = ldap_next_entry(conn->handle, entry)));
 
-	finish:
-	if (result) {
-		ldap_msgfree(result);
-	}
+finish:
+	if (result) ldap_msgfree(result);
+
+	rlm_ldap_release_socket(inst, conn);
 
 	return ret;
 }
