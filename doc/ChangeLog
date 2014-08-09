@@ -40,10 +40,13 @@ FreeRADIUS 3.0.4 Mon 12 May 2014 15:30:00 EDT urgency=medium
 	* Foundational work for dynamic home servers.  They do not yet work,
 	  but this is now only a matter of updating the "realm" module in
 	  a future release.
+	* Support &attr[*] syntax to copy all instances of an attribute when
+	  used with the += operator in an update section. May be qualified with
+	  a tag.
 
 	Bug fixes
-	* make case-insensitive regular expressions work again.
-	* Added tests for the above
+	* make case-insensitive regular expressions work again, and add tests
+	  for them.
 	* A few more talloc parenting issues
 	* Fix delayed proxy reply handling.  Closes #637
 	* Fix OpenSSL initialization order when using
@@ -57,7 +60,7 @@ FreeRADIUS 3.0.4 Mon 12 May 2014 15:30:00 EDT urgency=medium
 	* More rlm_perl fixes.  Fixes #635
 	* Free OpenSSL memory on clean exit.
 	* Fix <attr>[0] !* ANY - Was removing all instances of <attr>
-	* Fix case where multiple attributes were returned from LHS of
+	* Fix case where multiple attributes were returned from RHS of
 	  mapping, as with rlm_ldap. Fixes #652
 	* Fix corner case in cursor where using fr_cursor_next_by_da
 	  after calling fr_cursor_remove may of resulted in a read of
@@ -101,6 +104,7 @@ FreeRADIUS 3.0.4 Mon 12 May 2014 15:30:00 EDT urgency=medium
 	* Fix issues in EAP-PWD.  CVE-2014-4731, CVE-2014-4732, and
 	  CVE-2014-4733.  There is no external authentication bypass.
 	* Fix a number of uses of the talloc parent/child reference.
+	* Release connection used for reading bulk clients in rlm_ldap.
 
 FreeRADIUS 3.0.3 Mon 12 May 2014 15:30:00 EDT urgency=medium
 	Feature improvements
