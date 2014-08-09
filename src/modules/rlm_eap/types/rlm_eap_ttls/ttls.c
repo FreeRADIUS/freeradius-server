@@ -816,8 +816,8 @@ static int eapttls_postproxy(EAP_HANDLER *handler, void *data)
 			fprintf(fr_log_fp, "} # server %s\n",
 				(fake->server == NULL) ? "" : fake->server);
 			
-			RDEBUG("Final reply from tunneled session code %d",
-			       fake->reply->code);
+			RDEBUG("Final reply from tunneled session code %s",
+			       fr_packet_codes[fake->reply->code]);
 			debug_pair_list(fake->reply->vps);
 		}
 
@@ -1164,7 +1164,8 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 		fprintf(fr_log_fp, "} # server %s\n",
 			(fake->server == NULL) ? "" : fake->server);
 
-		RDEBUG("Got tunneled reply code %d", fake->reply->code);
+		RDEBUG("Got tunneled reply code %s",
+		       fr_packet_codes[fake->reply->code]);
 		
 		debug_pair_list(fake->reply->vps);
 	}

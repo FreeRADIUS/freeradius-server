@@ -420,8 +420,8 @@ static int process_reply(EAP_HANDLER *handler, tls_session_t *tls_session,
 	peap_tunnel_t *t = tls_session->opaque;
 
 	if ((debug_flag > 0) && fr_log_fp) {
-		RDEBUG("Got tunneled reply RADIUS code %d",
-		       reply->code);
+		RDEBUG("Got tunneled reply RADIUS code %s",
+		       fr_packet_codes[reply->code]);
 
 		debug_pair_list(reply->vps);
 	}
@@ -592,8 +592,8 @@ static int eappeap_postproxy(EAP_HANDLER *handler, void *data)
 		if ((debug_flag > 0) && fr_log_fp) {
 			fprintf(fr_log_fp, "} # server %s\n", fake->server);
 			
-			RDEBUG("Final reply from tunneled session code %d",
-			       fake->reply->code);
+			RDEBUG("Final reply from tunneled session code %s",
+			       fr_packet_codes[fake->reply->code]);
 		
 			debug_pair_list(fake->reply->vps);
 		}
