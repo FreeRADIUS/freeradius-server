@@ -28,7 +28,7 @@ RCSIDH(rad_assert_h, "$Id$")
 extern "C" {
 #endif
 
-void rad_assert_fail(char const *file, unsigned int line, char const *expr);
+void rad_assert_fail(char const *file, unsigned int line, char const *expr) CC_HINT(noreturn);
 
 #ifdef NDEBUG
 	#define rad_assert(expr) ((void) (0))
