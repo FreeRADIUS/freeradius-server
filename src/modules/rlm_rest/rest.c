@@ -1236,17 +1236,17 @@ static int json_pairmake(rlm_rest_t *instance, UNUSED rlm_rest_section_t *sectio
 			continue;
 		}
 
-		if (radius_request(&current, dst.vpt_request) < 0) {
+		if (radius_request(&current, dst.tmpl_request) < 0) {
 			RWDEBUG("Attribute name refers to outer request but not in a tunnel, skipping...");
 			continue;
 		}
 
-		vps = radius_list(current, dst.vpt_list);
+		vps = radius_list(current, dst.tmpl_list);
 		if (!vps) {
 			RWDEBUG("List not valid in this context, skipping...");
 			continue;
 		}
-		ctx = radius_list_ctx(current, dst.vpt_list);
+		ctx = radius_list_ctx(current, dst.tmpl_list);
 
 		/*
 		 *  Alternative JSON structure which allows operator,
@@ -1348,7 +1348,7 @@ static int json_pairmake(rlm_rest_t *instance, UNUSED rlm_rest_section_t *sectio
 						   level + 1, max_attrs);*/
 			} else {
 				vp = json_pairmake_leaf(instance, section, ctx, request,
-							dst.vpt_da, &flags, element);
+							dst.tmpl_da, &flags, element);
 				if (!vp) continue;
 			}
 			debug_pair(vp);

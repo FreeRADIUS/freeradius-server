@@ -839,7 +839,7 @@ redo:
 		 *	The attribute doesn't exist.  We can skip
 		 *	directly to the default 'case' statement.
 		 */
-		if ((g->vpt->type == VPT_TYPE_ATTR) &&
+		if ((g->vpt->type == TMPL_TYPE_ATTR) &&
 		    (radius_tmpl_get_vp(&vp, request, g->vpt) < 0)) {
 			for (this = g->children; this; this = this->next) {
 				rad_assert(this->type == MOD_CASE);
@@ -877,17 +877,17 @@ redo:
 			 *	the case statement, then cast the data
 			 *	to the type of the attribute.
 			 */
-			if ((g->vpt->type == VPT_TYPE_ATTR) &&
-			    (h->vpt->type != VPT_TYPE_DATA)) {
+			if ((g->vpt->type == TMPL_TYPE_ATTR) &&
+			    (h->vpt->type != TMPL_TYPE_DATA)) {
 				map.src = g->vpt;
 				map.dst = h->vpt;
-				cond.cast = g->vpt->vpt_da;
+				cond.cast = g->vpt->tmpl_da;
 
 				/*
 				 *	Remove unnecessary casting.
 				 */
-				if ((h->vpt->type == VPT_TYPE_ATTR) &&
-				    (g->vpt->vpt_da->type == h->vpt->vpt_da->type)) {
+				if ((h->vpt->type == TMPL_TYPE_ATTR) &&
+				    (g->vpt->tmpl_da->type == h->vpt->tmpl_da->type)) {
 					cond.cast = NULL;
 				}
 			} else {
@@ -1606,9 +1606,9 @@ static modcallable *do_compile_modupdate(modcallable *parent, UNUSED rlm_compone
 		 *	The only exception is where were using a unary
 		 *	operator like !*.
 		 */
-		if ((map->dst->type == VPT_TYPE_LIST) &&
+		if ((map->dst->type == TMPL_TYPE_LIST) &&
 		    (map->op != T_OP_CMP_FALSE) &&
-		    ((map->src->type == VPT_TYPE_XLAT) || (map->src->type == VPT_TYPE_LITERAL))) {
+		    ((map->src->type == TMPL_TYPE_XLAT) || (map->src->type == TMPL_TYPE_LITERAL))) {
 			cf_log_err(map->ci, "Can't copy value into list (we don't know which attribute to create)");
 			talloc_free(head);
 			return NULL;
@@ -1616,13 +1616,13 @@ static modcallable *do_compile_modupdate(modcallable *parent, UNUSED rlm_compone
 
 		/*
 		 *	If LHS is an attribute, and RHS is a literal, we can
-		 *	preparse the information into a VPT_TYPE_DATA.
+		 *	preparse the information into a TMPL_TYPE_DATA.
 		 *
 		 *	Unless it's a unary operator in which case we
 		 *	ignore map->src.
 		 */
-		if ((map->dst->type == VPT_TYPE_ATTR) && (map->op != T_OP_CMP_FALSE) &&
-		    (map->src->type == VPT_TYPE_LITERAL)) {
+		if ((map->dst->type == TMPL_TYPE_ATTR) && (map->op != T_OP_CMP_FALSE) &&
+		    (map->src->type == TMPL_TYPE_LITERAL)) {
 			CONF_PAIR *cp;
 
 			cp = cf_itemtopair(ci);
@@ -1632,21 +1632,21 @@ static modcallable *do_compile_modupdate(modcallable *parent, UNUSED rlm_compone
 			 *	It's a literal string, just copy it.
 			 *	Don't escape anything.
 			 */
-			if ((map->dst->vpt_da->type == PW_TYPE_STRING) &&
+			if ((map->dst->tmpl_da->type == PW_TYPE_STRING) &&
 			    (cf_pair_value_type(cp) == T_SINGLE_QUOTED_STRING)) {
 				value_data_t *vpd;
 
-				map->src->vpt_value = vpd = talloc_zero(map->src, value_data_t);
+				map->src->tmpl_value = vpd = talloc_zero(map->src, value_data_t);
 				rad_assert(vpd != NULL);
 
 				vpd->strvalue = talloc_typed_strdup(vpd, map->src->name);
 				rad_assert(vpd->strvalue != NULL);
 
-				map->src->type = VPT_TYPE_DATA;
-				map->src->vpt_da = map->dst->vpt_da;
-				map->src->vpt_length = talloc_array_length(vpd->strvalue) - 1;
+				map->src->type = TMPL_TYPE_DATA;
+				map->src->tmpl_da = map->dst->tmpl_da;
+				map->src->tmpl_length = talloc_array_length(vpd->strvalue) - 1;
 			} else {
-				if (!radius_cast_tmpl(map->src, map->dst->vpt_da)) {
+				if (!radius_cast_tmpl(map->src, map->dst->tmpl_da)) {
 					cf_log_err(map->ci, "%s", fr_strerror());
 					talloc_free(head);
 					return NULL;
@@ -1879,7 +1879,7 @@ static modcallable *do_compile_modforeach(modcallable *parent,
 		return NULL;
 	}
 
-	if (vpt && (vpt->type != VPT_TYPE_ATTR)) {
+	if (vpt && (vpt->type != TMPL_TYPE_ATTR)) {
 		cf_log_err_cs(cs, "MUST use attribute reference in 'foreach'");
 		return NULL;
 	}
@@ -2759,7 +2759,7 @@ static bool pass2_xlat_compile(CONF_ITEM const *ci, value_pair_tmpl_t **pvpt, bo
 
 	vpt = *pvpt;
 
-	rad_assert(vpt->type == VPT_TYPE_XLAT);
+	rad_assert(vpt->type == TMPL_TYPE_XLAT);
 
 	fmt = talloc_typed_strdup(vpt, vpt->name);
 	slen = xlat_tokenize(vpt, fmt, &head, &error);
@@ -2814,8 +2814,8 @@ static bool pass2_xlat_compile(CONF_ITEM const *ci, value_pair_tmpl_t **pvpt, bo
 	/*
 	 *	Re-write it to be a pre-parsed XLAT structure.
 	 */
-	vpt->type = VPT_TYPE_XLAT_STRUCT;
-	vpt->vpt_xlat = head;
+	vpt->type = TMPL_TYPE_XLAT_STRUCT;
+	vpt->tmpl_xlat = head;
 
 	return true;
 }
@@ -2833,7 +2833,7 @@ static bool pass2_regex_compile(CONF_ITEM const *ci, value_pair_tmpl_t *vpt)
 	int rcode;
 	regex_t *preg;
 
-	rad_assert(vpt->type == VPT_TYPE_REGEX);
+	rad_assert(vpt->type == TMPL_TYPE_REGEX);
 
 	/*
 	 *	Expanded at run-time.  We can't precompile it.
@@ -2844,7 +2844,7 @@ static bool pass2_regex_compile(CONF_ITEM const *ci, value_pair_tmpl_t *vpt)
 	talloc_set_destructor(preg, _free_compiled_regex);
 	if (!preg) return false;
 
-	rcode = regcomp(preg, vpt->name, REG_EXTENDED | (vpt->vpt_iflag ? REG_ICASE : 0));
+	rcode = regcomp(preg, vpt->name, REG_EXTENDED | (vpt->tmpl_iflag ? REG_ICASE : 0));
 	if (rcode != 0) {
 		char buffer[256];
 		regerror(rcode, preg, buffer, sizeof(buffer));
@@ -2854,8 +2854,8 @@ static bool pass2_regex_compile(CONF_ITEM const *ci, value_pair_tmpl_t *vpt)
 		return false;
 	}
 
-	vpt->type = VPT_TYPE_REGEX_STRUCT;
-	vpt->vpt_preg = preg;
+	vpt->type = TMPL_TYPE_REGEX_STRUCT;
+	vpt->tmpl_preg = preg;
 
 	return true;
 }
@@ -2867,11 +2867,11 @@ static bool pass2_callback(UNUSED void *ctx, fr_cond_t *c)
 
 	if (c->type == COND_TYPE_EXISTS) {
 
-		if (c->data.vpt->type == VPT_TYPE_XLAT) {
+		if (c->data.vpt->type == TMPL_TYPE_XLAT) {
 			return pass2_xlat_compile(c->ci, &c->data.vpt, true);
 		}
 
-		rad_assert(c->data.vpt->type != VPT_TYPE_REGEX);
+		rad_assert(c->data.vpt->type != TMPL_TYPE_REGEX);
 
 		/*
 		 *	The existence check might have been &Foo-Bar,
@@ -2913,11 +2913,11 @@ static bool pass2_callback(UNUSED void *ctx, fr_cond_t *c)
 	 *	Where "foo" is dynamically defined.
 	 */
 	if (c->pass2_fixup == PASS2_FIXUP_TYPE) {
-		if (!dict_valbyname(map->dst->vpt_da->attr,
-				    map->dst->vpt_da->vendor,
+		if (!dict_valbyname(map->dst->tmpl_da->attr,
+				    map->dst->tmpl_da->vendor,
 				    map->src->name)) {
 			cf_log_err(map->ci, "Invalid reference to non-existent %s %s { ... }",
-				   map->dst->vpt_da->name,
+				   map->dst->tmpl_da->name,
 				   map->src->name);
 			return false;
 		}
@@ -2971,19 +2971,19 @@ check_paircmp:
 	/*
 	 *	Precompile xlat's
 	 */
-	if (map->dst->type == VPT_TYPE_XLAT) {
+	if (map->dst->type == TMPL_TYPE_XLAT) {
 		/*
 		 *	Don't compile the LHS to an attribute
 		 *	reference for now.  When we do that, we've got
 		 *	to check the RHS for type-specific data, and
-		 *	parse it to a VPT_TYPE_DATA.
+		 *	parse it to a TMPL_TYPE_DATA.
 		 */
 		if (!pass2_xlat_compile(map->ci, &map->dst, false)) {
 			return false;
 		}
 	}
 
-	if (map->src->type == VPT_TYPE_XLAT) {
+	if (map->src->type == TMPL_TYPE_XLAT) {
 		/*
 		 *	Convert the RHS to an attribute reference only
 		 *	if the LHS is an attribute reference, too.
@@ -2993,7 +2993,7 @@ check_paircmp:
 		 *	on the RHS.  For now, the code in parser.c
 		 *	forbids this.
 		 */
-		if (!pass2_xlat_compile(map->ci, &map->src, (map->dst->type == VPT_TYPE_ATTR))) {
+		if (!pass2_xlat_compile(map->ci, &map->src, (map->dst->type == TMPL_TYPE_ATTR))) {
 			return false;
 		}
 	}
@@ -3001,7 +3001,7 @@ check_paircmp:
 	/*
 	 *	Convert bare refs to %{Foreach-Variable-N}
 	 */
-	if ((map->dst->type == VPT_TYPE_LITERAL) &&
+	if ((map->dst->type == TMPL_TYPE_LITERAL) &&
 	    (strncmp(map->dst->name, "Foreach-Variable-", 17) == 0)) {
 		char *fmt;
 		value_pair_tmpl_t *vpt;
@@ -3018,12 +3018,12 @@ check_paircmp:
 	}
 
 #ifdef HAVE_REGEX_H
-	if (map->src->type == VPT_TYPE_REGEX) {
+	if (map->src->type == TMPL_TYPE_REGEX) {
 		if (!pass2_regex_compile(map->ci, map->src)) {
 			return false;
 		}
 	}
-	rad_assert(map->dst->type != VPT_TYPE_REGEX);
+	rad_assert(map->dst->type != TMPL_TYPE_REGEX);
 #endif
 
 	/*
@@ -3031,21 +3031,21 @@ check_paircmp:
 	 *	they can only be with the current REQUEST, and only
 	 *	with the request pairs.
 	 */
-	if ((map->dst->type != VPT_TYPE_ATTR) ||
-	    (map->dst->vpt_request != REQUEST_CURRENT) ||
-	    (map->dst->vpt_list != PAIR_LIST_REQUEST)) {
+	if ((map->dst->type != TMPL_TYPE_ATTR) ||
+	    (map->dst->tmpl_request != REQUEST_CURRENT) ||
+	    (map->dst->tmpl_list != PAIR_LIST_REQUEST)) {
 		return true;
 	}
 
-	if (!radius_find_compare(map->dst->vpt_da)) return true;
+	if (!radius_find_compare(map->dst->tmpl_da)) return true;
 
-	if (map->src->type == VPT_TYPE_ATTR) {
+	if (map->src->type == TMPL_TYPE_ATTR) {
 		cf_log_err(map->ci, "Cannot compare virtual attribute %s to another attribute",
 			   map->dst->name);
 		return false;
 	}
 
-	if (map->src->type == VPT_TYPE_REGEX) {
+	if (map->src->type == TMPL_TYPE_REGEX) {
 		cf_log_err(map->ci, "Cannot compare virtual attribute %s via a regex",
 			   map->dst->name);
 		return false;
@@ -3081,8 +3081,8 @@ static bool modcall_pass2_update(modgroup *g)
 	value_pair_map_t *map;
 
 	for (map = g->map; map != NULL; map = map->next) {
-		if (map->src->type == VPT_TYPE_XLAT) {
-			rad_assert(map->src->vpt_xlat == NULL);
+		if (map->src->type == TMPL_TYPE_XLAT) {
+			rad_assert(map->src->tmpl_xlat == NULL);
 
 			/*
 			 *	FIXME: compile to attribute && handle
@@ -3093,7 +3093,7 @@ static bool modcall_pass2_update(modgroup *g)
 			}
 		}
 
-		rad_assert(map->src->type != VPT_TYPE_REGEX);
+		rad_assert(map->src->type != TMPL_TYPE_REGEX);
 	}
 
 	return true;
@@ -3181,7 +3181,7 @@ bool modcall_pass2(modcallable *mc)
 			/*
 			 *	Statically compile xlats
 			 */
-			if (g->vpt->type == VPT_TYPE_XLAT) goto do_case_xlat;
+			if (g->vpt->type == TMPL_TYPE_XLAT) goto do_case_xlat;
 
 			/*
 			 *	We may have: switch Foo-Bar {
@@ -3192,13 +3192,13 @@ bool modcall_pass2(modcallable *mc)
 			 *	we can parse it as an attribute,
 			 *	switch to using that.
 			 */
-			if (g->vpt->type == VPT_TYPE_LITERAL) {
+			if (g->vpt->type == TMPL_TYPE_LITERAL) {
 				value_pair_tmpl_t *vpt;
 
 				vpt = radius_str2tmpl(g->cs, this->name,
 						      cf_section_name2_type(g->cs),
 						      REQUEST_CURRENT, PAIR_LIST_REQUEST);
-				if (vpt->type == VPT_TYPE_ATTR) {
+				if (vpt->type == TMPL_TYPE_ATTR) {
 					talloc_free(g->vpt);
 					g->vpt = vpt;
 				}
@@ -3210,7 +3210,7 @@ bool modcall_pass2(modcallable *mc)
 			 *	DEPRECATED: switch User-Name { ...
 			 *	ALLOWED   : switch &User-Name { ...
 			 */
-			if ((g->vpt->type == VPT_TYPE_ATTR) &&
+			if ((g->vpt->type == TMPL_TYPE_ATTR) &&
 			    (this->name[0] != '&')) {
 				WARN("%s[%d]: Please change %s to &%s",
 				       cf_section_filename(g->cs),
@@ -3249,7 +3249,7 @@ bool modcall_pass2(modcallable *mc)
 			/*
 			 *	Do type-specific checks on the case statement
 			 */
-			if (g->vpt && (g->vpt->type == VPT_TYPE_LITERAL)) {
+			if (g->vpt && (g->vpt->type == TMPL_TYPE_LITERAL)) {
 				modgroup *f;
 
 				rad_assert(this->parent != NULL);
@@ -3263,10 +3263,10 @@ bool modcall_pass2(modcallable *mc)
 				 *	attribute.  Check that the
 				 *	values match.
 				 */
-				if (f->vpt->type == VPT_TYPE_ATTR) {
-					rad_assert(f->vpt->vpt_da != NULL);
+				if (f->vpt->type == TMPL_TYPE_ATTR) {
+					rad_assert(f->vpt->tmpl_da != NULL);
 
-					if (!radius_cast_tmpl(g->vpt, f->vpt->vpt_da)) {
+					if (!radius_cast_tmpl(g->vpt, f->vpt->tmpl_da)) {
 						cf_log_err_cs(g->cs, "Invalid argument for case statement: %s",
 							      fr_strerror());
 						return false;
@@ -3280,7 +3280,7 @@ bool modcall_pass2(modcallable *mc)
 			 *	expansions.
 			 */
 			if (g->vpt &&
-			    (g->vpt->type == VPT_TYPE_XLAT) &&
+			    (g->vpt->type == TMPL_TYPE_XLAT) &&
 			    (!pass2_xlat_compile(cf_sectiontoitem(g->cs),
 						 &g->vpt, true))) {
 				return false;
@@ -3323,8 +3323,8 @@ bool modcall_pass2(modcallable *mc)
 			}
 
 		check_children:
-			rad_assert(g->vpt->type == VPT_TYPE_ATTR);
-			if (g->vpt->vpt_num != NUM_ANY) {
+			rad_assert(g->vpt->type == TMPL_TYPE_ATTR);
+			if (g->vpt->tmpl_num != NUM_ANY) {
 				cf_log_err_cs(g->cs, "MUST NOT use array references in 'foreach'");
 				return false;
 			}

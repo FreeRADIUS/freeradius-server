@@ -68,6 +68,27 @@ RCSIDH(missing_h, "$Id$")
 #  include <errno.h>
 #endif
 
+#ifdef HAVE_PCREPOSIX_H
+#  include <pcreposix.h>
+#else
+#  ifdef HAVE_REGEX_H
+#    include <regex.h>
+
+/*
+ *  For POSIX Regular expressions.
+ *  (0) Means no extended regular expressions.
+ *  REG_EXTENDED means use extended regular expressions.
+ */
+#    ifndef REG_EXTENDED
+#      define REG_EXTENDED (0)
+#    endif
+
+#    ifndef REG_NOSUB
+#      define REG_NOSUB (0)
+#    endif
+#  endif
+#endif
+
 /*
  *  Check for inclusion of <time.h>, versus <sys/time.h>
  *  Taken verbatim from the autoconf manual.
