@@ -1,3 +1,12 @@
-TARGET := libfreeradius-server.a
+TARGET	:= libfreeradius-server.a
 
-SOURCES := conffile.c parser.c valuepair.c map.c evaluate.c xlat.c log.c util.c exec.c
+SOURCES	:=	conffile.c \
+		evaluate.c \
+		exec.c \
+		log.c \
+		parser.c \
+		map.c \
+		tmpl.c \
+		util.c \
+		valuepair.c \
+		xlat.c

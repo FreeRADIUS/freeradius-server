@@ -23,6 +23,9 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/libradius.h>
+
+typedef struct REQUEST REQUEST;
+
 #include <freeradius-devel/parser.h>
 #include <freeradius-devel/conf.h>
 #include <freeradius-devel/radpaths.h>
@@ -34,8 +37,6 @@ RCSID("$Id$")
 #endif
 
 #include <assert.h>
-
-typedef struct REQUEST REQUEST;
 
 #include <freeradius-devel/log.h>
 log_debug_t debug_flag = 0;
