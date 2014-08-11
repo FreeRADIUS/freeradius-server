@@ -281,6 +281,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 	int rcode = RLM_MODULE_OK;
 	int ret;
 
+	if (!section->name) return RLM_MODULE_FAIL;
+
 	handle = fr_connection_get(inst->conn_pool);
 	if (!handle) return RLM_MODULE_FAIL;
 
@@ -358,6 +360,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED REQU
 
 	VALUE_PAIR const *username;
 	VALUE_PAIR const *password;
+
+	if (!section->name) return RLM_MODULE_FAIL;
 
 	username = request->username;
 	if (!request->username) {
@@ -448,6 +452,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED REQUES
 	int rcode = RLM_MODULE_OK;
 	int ret;
 
+	if (!section->name) return RLM_MODULE_FAIL;
+
 	handle = fr_connection_get(inst->conn_pool);
 	if (!handle) return RLM_MODULE_FAIL;
 
@@ -492,6 +498,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED REQUEST
 	int rcode = RLM_MODULE_OK;
 	int ret;
 
+	if (!section->name) return RLM_MODULE_FAIL;
+
 	handle = fr_connection_get(inst->conn_pool);
 	if (!handle) return RLM_MODULE_FAIL;
 
@@ -531,11 +539,12 @@ static int parse_sub_section(CONF_SECTION *parent, rlm_rest_section_t *config, r
 
 	cs = cf_section_sub_find(parent, name);
 	if (!cs) {
-		/* TODO: Should really setup section with default values */
+		config->name = NULL;
 		return 0;
 	}
 
 	if (cf_section_parse(cs, config, section_config) < 0) {
+		config->name = NULL;
 		return -1;
 	}
 
