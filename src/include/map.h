@@ -57,42 +57,35 @@ typedef struct value_pair_map {
 
 typedef int (*radius_map_getvalue_t)(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *map, void *ctx);
 
-int		radius_parse_attr(value_pair_tmpl_t *vpt, char const *name,
-				  request_refs_t request_def,
-				  pair_lists_t list_def);
+value_pair_map_t *map_from_cp(TALLOC_CTX *ctx, CONF_PAIR *cp,
+			      request_refs_t dst_request_def, pair_lists_t dst_list_def,
+			      request_refs_t src_request_def, pair_lists_t src_list_def);
 
-int		radius_attrmap(CONF_SECTION *cs, value_pair_map_t **head,
-			       pair_lists_t dst_list_def, pair_lists_t src_list_def,
-			       unsigned int max);
+value_pair_map_t *map_from_str(TALLOC_CTX *ctx, char const *lhs, FR_TOKEN lhs_type,
+			       FR_TOKEN op, char const *rhs, FR_TOKEN rhs_type,
+			       request_refs_t dst_request_def, pair_lists_t dst_list_def,
+			       request_refs_t src_request_def, pair_lists_t src_list_def);
 
-value_pair_map_t *radius_cp2map(TALLOC_CTX *ctx, CONF_PAIR *cp,
-				request_refs_t dst_request_def, pair_lists_t dst_list_def,
-				request_refs_t src_request_def, pair_lists_t src_list_def);
+int		map_from_cs(CONF_SECTION *cs, value_pair_map_t **head,
+			    pair_lists_t dst_list_def, pair_lists_t src_list_def,
+			    unsigned int max);
 
-value_pair_map_t *radius_str2map(TALLOC_CTX *ctx, char const *lhs, FR_TOKEN lhs_type,
-				 FR_TOKEN op, char const *rhs, FR_TOKEN rhs_type,
+int		map_from_pairstr(value_pair_map_t **out, REQUEST *request, char const *raw,
 				 request_refs_t dst_request_def, pair_lists_t dst_list_def,
 				 request_refs_t src_request_def, pair_lists_t src_list_def);
 
-int		radius_strpair2map(value_pair_map_t **out, REQUEST *request, char const *raw,
-				   request_refs_t dst_request_def, pair_lists_t dst_list_def,
-				   request_refs_t src_request_def, pair_lists_t src_list_def);
+int		map_to_vp(VALUE_PAIR **out, REQUEST *request,
+			  value_pair_map_t const *map, void *ctx) CC_HINT(nonnull (1,2,3));
 
-size_t		radius_map2str(char *buffer, size_t bufsize, value_pair_map_t const *map);
+int		map_to_request(REQUEST *request, value_pair_map_t const *map,
+			       radius_map_getvalue_t func, void *ctx);
 
-int		radius_mapexec(VALUE_PAIR **out, REQUEST *request,
-			       value_pair_map_t const *map);
+bool		map_dst_valid(REQUEST *request, value_pair_map_t const *map);
 
-int		radius_map2vp(VALUE_PAIR **out, REQUEST *request,
-			      value_pair_map_t const *map, void *ctx) CC_HINT(nonnull (1,2,3));
+size_t		map_print(char *buffer, size_t bufsize, value_pair_map_t const *map);
 
-void		radius_map_debug(REQUEST *request, value_pair_map_t const *map,
-				 VALUE_PAIR const *vp) CC_HINT(nonnull(1, 2));
-
-int		radius_map2request(REQUEST *request, value_pair_map_t const *map,
-				   radius_map_getvalue_t func, void *ctx);
-
-bool		radius_map_dst_valid(REQUEST *request, value_pair_map_t const *map);
+void		map_debug_log(REQUEST *request, value_pair_map_t const *map,
+			      VALUE_PAIR const *vp) CC_HINT(nonnull(1, 2));
 #ifdef __cplusplus
 }
 #endif

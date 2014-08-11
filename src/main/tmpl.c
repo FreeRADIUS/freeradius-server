@@ -378,6 +378,131 @@ int radius_request(REQUEST **context, request_refs_t name)
 	return 0;
 }
 
+/** Parse qualifiers to convert attrname into a value_pair_tmpl_t.
+ *
+ * VPTs are used in various places where we need to pre-parse configuration
+ * sections into attribute mappings.
+ *
+ * Note: name field is just a copy of the input pointer, if you know that
+ * string might be freed before you're done with the vpt use radius_attr2tmpl
+ * instead.
+ *
+ * The special return code of -2 is used only by radius_str2tmpl, which allow
+ * bare words which might (or might not) be an attribute reference.
+ *
+ * @param[out] vpt to modify.
+ * @param[in] name attribute name including qualifiers.
+ * @param[in] request_def The default request to insert unqualified attributes into.
+ * @param[in] list_def The default list to insert unqualified attributes into.
+ * @return -2 on partial parse followed by error, -1 on other error, or 0 on success
+ */
+int radius_parse_attr(value_pair_tmpl_t *vpt, char const *name, request_refs_t request_def, pair_lists_t list_def)
+{
+	int error = -1;
+	char const *p;
+	size_t len;
+	unsigned long num;
+	char *q;
+	DICT_ATTR const *da;
+
+	memset(vpt, 0, sizeof(*vpt));
+	vpt->name = name;
+	p = name;
+
+	if (*p == '&') {
+		error = -2;
+		p++;
+	}
+
+	vpt->tmpl_request = radius_request_name(&p, request_def);
+	len = p - name;
+	if (vpt->tmpl_request == REQUEST_UNKNOWN) {
+		fr_strerror_printf("Invalid request qualifier \"%.*s\"", (int) len, name);
+		return error;
+	}
+	name += len;
+
+	vpt->tmpl_list = radius_list_name(&p, list_def);
+	if (vpt->tmpl_list == PAIR_LIST_UNKNOWN) {
+		len = p - name;
+		fr_strerror_printf("Invalid list qualifier \"%.*s\"", (int) len, name);
+		return error;
+	}
+
+	if (*p == '\0') {
+		vpt->type = TMPL_TYPE_LIST;
+		return 0;
+	}
+
+	da = dict_attrbytagged_name(p);
+	if (!da) {
+		da = dict_attrunknownbyname(p, false);
+		if (!da) {
+			fr_strerror_printf("Unknown attribute \"%s\"", p);
+			return error;
+		}
+	}
+	vpt->tmpl_da = da;
+	vpt->type = TMPL_TYPE_ATTR;
+	vpt->tmpl_tag = TAG_ANY;
+	vpt->tmpl_num = NUM_ANY;
+
+	/*
+	 *	After this point, we return -2 to indicate that parts
+	 *	of the string were parsed as an attribute, but others
+	 *	weren't.
+	 */
+	while (*p) {
+		if (*p == ':') break;
+		if (*p == '[') break;
+		p++;
+	}
+
+	if (*p == ':') {
+		if (!da->flags.has_tag) {
+			fr_strerror_printf("Attribute '%s' cannot have a tag", da->name);
+			return -2;
+		}
+
+		num = strtoul(p + 1, &q, 10);
+		if (num > 0x1f) {
+			fr_strerror_printf("Invalid tag value '%u' (should be between 0-31)", (unsigned int) num);
+			return -2;
+		}
+
+		vpt->tmpl_tag = num;
+		p = q;
+	}
+
+	if (!*p) return 0;
+
+	if (*p != '[') {
+		fr_strerror_printf("Unexpected text after tag in '%s'", name);
+		return -2;
+	}
+	p++;
+
+	if (*p != '*') {
+		num = strtoul(p, &q, 10);
+		if (num > 1000) {
+			fr_strerror_printf("Invalid array reference '%u' (should be between 0-1000)", (unsigned int) num);
+			return -2;
+		}
+		vpt->tmpl_num = num;
+		p = q;
+	} else {
+		vpt->tmpl_num = NUM_ALL;
+		p++;
+	}
+
+	if ((*p != ']') || (p[1] != '\0')) {
+		fr_strerror_printf("Unexpected text after array in '%s'", name);
+		return -2;
+	}
+
+	return 0;
+}
+
 /** Release memory allocated to value pair template.
  *
  * @param[in,out] tmpl to free.

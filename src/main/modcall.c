@@ -614,7 +614,7 @@ redo:
 
 		MOD_LOG_OPEN_BRACE("update");
 		for (map = g->map; map != NULL; map = map->next) {
-			rcode = radius_map2request(request, map, radius_map2vp, NULL);
+			rcode = map_to_request(request, map, map_to_vp, NULL);
 			if (rcode < 0) {
 				result = (rcode == -2) ? RLM_MODULE_INVALID : RLM_MODULE_FAIL;
 				MOD_LOG_CLOSE_BRACE();
@@ -1587,7 +1587,7 @@ static modcallable *do_compile_modupdate(modcallable *parent, UNUSED rlm_compone
 	/*
 	 *	This looks at cs->name2 to determine which list to update
 	 */
-	rcode = radius_attrmap(cs, &head, PAIR_LIST_REQUEST, PAIR_LIST_REQUEST, 128);
+	rcode = map_from_cs(cs, &head, PAIR_LIST_REQUEST, PAIR_LIST_REQUEST, 128);
 	if (rcode < 0) return NULL; /* message already printed */
 
 	if (!head) {
@@ -2947,7 +2947,7 @@ static bool pass2_callback(UNUSED void *ctx, fr_cond_t *c)
 		/*
 		 *	Re-parse the LHS as an attribute.
 		 */
-		map = radius_str2map(c, old->dst->name, T_BARE_WORD, old->op,
+		map = map_from_str(c, old->dst->name, T_BARE_WORD, old->op,
 				     old->src->name, T_BARE_WORD,
 				     REQUEST_CURRENT, PAIR_LIST_REQUEST,
 				     REQUEST_CURRENT, PAIR_LIST_REQUEST);
@@ -3086,7 +3086,7 @@ static bool modcall_pass2_update(modgroup *g)
 
 			/*
 			 *	FIXME: compile to attribute && handle
-			 *	the conversion in radius_map2vp().
+			 *	the conversion in map_to_vp().
 			 */
 			if (!pass2_xlat_compile(map->ci, &map->src, false)) {
 				return false;
@@ -3378,7 +3378,7 @@ void modcall_debug(modcallable *mc, int depth)
 				group_name[this->type]);
 
 			for (map = g->map; map != NULL; map = map->next) {
-				radius_map2str(buffer, sizeof(buffer), map);
+				map_print(buffer, sizeof(buffer), map);
 				DEBUG("%.*s%s", depth + 1, modcall_spaces, buffer);
 			}
 
