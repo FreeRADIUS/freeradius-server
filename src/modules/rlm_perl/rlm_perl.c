@@ -518,7 +518,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	exitstatus = perl_parse(inst->perl, xs_init, argc, embed, NULL);
 
 	end_AV = PL_endav;
-	PL_endav = Nullav;
+	PL_endav = (AV *)NULL;
 
 	if(!exitstatus) {
 		perl_run(inst->perl);
