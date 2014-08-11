@@ -169,6 +169,10 @@ request_refs_t		radius_request_name(char const **name, request_refs_t unknown);
 
 
 /* Template manipulation and execution */
+int			radius_parse_attr(value_pair_tmpl_t *vpt, char const *name,
+					  request_refs_t request_def,
+					  pair_lists_t list_def);
+
 void			radius_tmplfree(value_pair_tmpl_t **tmpl);
 
 value_pair_tmpl_t	*radius_attr2tmpl(TALLOC_CTX *ctx, char const *name,

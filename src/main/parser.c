@@ -83,7 +83,7 @@ next:
 			p += len;
 		}
 
-		len = radius_map2str(p, end - p, c->data.map);
+		len = map_print(p, end - p, c->data.map);
 		p += len;
 #if 0
 		*(p++) = ']';
@@ -639,7 +639,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 				return_P("Unexpected regular expression");
 			}
 
-			c->data.map = radius_str2map(c, lhs, lhs_type, op, rhs, rhs_type,
+			c->data.map = map_from_str(c, lhs, lhs_type, op, rhs, rhs_type,
 						     REQUEST_CURRENT, PAIR_LIST_REQUEST,
 						     REQUEST_CURRENT, PAIR_LIST_REQUEST);
 			if (!c->data.map) {
@@ -653,7 +653,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 				    (lhs_type != T_BARE_WORD)) {
 					return_0("Syntax error");
 				}
-				c->data.map = radius_str2map(c, lhs, lhs_type + 1, op, rhs, rhs_type,
+				c->data.map = map_from_str(c, lhs, lhs_type + 1, op, rhs, rhs_type,
 							     REQUEST_CURRENT, PAIR_LIST_REQUEST,
 							     REQUEST_CURRENT, PAIR_LIST_REQUEST);
 				if (!c->data.map) {

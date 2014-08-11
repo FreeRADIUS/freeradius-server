@@ -26,11 +26,11 @@
 #include <freeradius-devel/rad_assert.h>
 #include "ldap.h"
 
-/** Callback for radius_map2request
+/** Callback for map_to_request
  *
- * Performs exactly the same job as radius_map2vp, but pulls attribute values from LDAP entries
+ * Performs exactly the same job as map_to_vp, but pulls attribute values from LDAP entries
  *
- * @see radius_map2vp
+ * @see map_to_vp
  */
 static int rlm_ldap_map_getvalue(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *map, void *ctx)
 {
@@ -58,7 +58,7 @@ static int rlm_ldap_map_getvalue(VALUE_PAIR **out, REQUEST *request, value_pair_
 			value_pair_map_t *attr = NULL;
 
 			RDEBUG3("Parsing valuepair string \"%s\"", self->values[i]->bv_val);
-			if (radius_strpair2map(&attr, request, self->values[i]->bv_val,
+			if (map_from_pairstr(&attr, request, self->values[i]->bv_val,
 					       map->dst->tmpl_request, map->dst->tmpl_list,
 					       REQUEST_CURRENT, PAIR_LIST_REQUEST) < 0) {
 				RWDEBUG("Failed parsing \"%s\" as valuepair, skipping...", self->values[i]->bv_val);
@@ -83,7 +83,7 @@ static int rlm_ldap_map_getvalue(VALUE_PAIR **out, REQUEST *request, value_pair_
 				goto next_pair;
 			}
 
-			if (radius_map2vp(&vp, request, attr, NULL) < 0) {
+			if (map_to_vp(&vp, request, attr, NULL) < 0) {
 				RWDEBUG("Failed creating attribute for \"%s\", skipping...", self->values[i]->bv_val);
 				goto next_pair;
 			}
@@ -130,7 +130,7 @@ int rlm_ldap_map_verify(ldap_instance_t *inst, value_pair_map_t **head)
 {
 	value_pair_map_t *map;
 
-	if (radius_attrmap(cf_section_sub_find(inst->cs, "update"),
+	if (map_from_cs(cf_section_sub_find(inst->cs, "update"),
 			   head, PAIR_LIST_REPLY,
 			   PAIR_LIST_REQUEST, LDAP_MAX_ATTRMAP) < 0) {
 		return -1;
@@ -377,7 +377,7 @@ void rlm_ldap_map_do(UNUSED const ldap_instance_t *inst, REQUEST *request, LDAP 
 		 *	a case of the dst being incorrect for the current
 		 *	request context
 		 */
-		if (radius_map2request(request, map, rlm_ldap_map_getvalue, &result) == -1) {
+		if (map_to_request(request, map, rlm_ldap_map_getvalue, &result) == -1) {
 			return;	/* Fail */
 		}
 
@@ -401,14 +401,14 @@ void rlm_ldap_map_do(UNUSED const ldap_instance_t *inst, REQUEST *request, LDAP 
 			value_pair_map_t *attr;
 
 			RDEBUG3("Parsing attribute string '%s'", values[i]);
-			if (radius_strpair2map(&attr, request, values[i],
+			if (map_from_pairstr(&attr, request, values[i],
 					       REQUEST_CURRENT, PAIR_LIST_REPLY,
 					       REQUEST_CURRENT, PAIR_LIST_REQUEST) < 0) {
 				RWDEBUG("Failed parsing '%s' value \"%s\" as valuepair, skipping...",
 					inst->valuepair_attr, values[i]);
 				continue;
 			}
-			if (radius_map2request(request, attr, radius_map2vp, NULL) < 0) {
+			if (map_to_request(request, attr, map_to_vp, NULL) < 0) {
 				RWDEBUG("Failed adding \"%s\" to request, skipping...", values[i]);
 			}
 			talloc_free(attr);

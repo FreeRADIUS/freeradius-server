@@ -250,7 +250,7 @@ static rlm_cache_entry_t *cache_find(rlm_cache_t *inst, REQUEST *request,
 }
 
 
-/** Callback for radius_map2request
+/** Callback for map_to_request
  *
  * Simplifies merging VALUE_PAIRs into the current request.
  */
@@ -259,7 +259,7 @@ static int _cache_add(VALUE_PAIR **out, REQUEST *request, UNUSED value_pair_map_
 	VALUE_PAIR *vp;
 
 	vp = talloc_get_type_abort(ctx, VALUE_PAIR);
-	/* radius_map2request will reparent */
+	/* map_to_request will reparent */
 	*out = paircopy(request, vp);
 
 	if (!*out) return -1;
@@ -322,7 +322,7 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request, char co
 
 		rad_assert(map->dst && map->src);
 
-		if (radius_map2vp(&to_cache, request, map, NULL) < 0) {
+		if (map_to_vp(&to_cache, request, map, NULL) < 0) {
 			RDEBUG("Skipping %s", map->src->name);
 			continue;
 		}
@@ -356,7 +356,7 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request, char co
 		}
 
 		/*
-		 *	Reparent the VPs radius_map2vp may return multiple.
+		 *	Reparent the VPs map_to_vp may return multiple.
 		 */
 		for (vp = fr_cursor_init(&src_list, &to_cache);
 		     vp;
@@ -380,7 +380,7 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request, char co
 				break;
 			}
 
-			if (debug_flag) radius_map_debug(request, map, vp);
+			if (debug_flag) map_debug_log(request, map, vp);
 			(void) talloc_steal(c, vp);
 
 			vp->op = map->op;
@@ -402,10 +402,10 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request, char co
 				rad_assert(0);	/* should have been caught by validation */
 			}
 
-			if (do_merge && radius_map_dst_valid(request, map)) {
+			if (do_merge && map_dst_valid(request, map)) {
 				/* There's no reason for this to fail (we checked the dst was valid) */
 				RDEBUG2("Adding to request:");
-				if (radius_map2request(request, map, _cache_add, vp) < 0) rad_assert(0);
+				if (map_to_request(request, map, _cache_add, vp) < 0) rad_assert(0);
 			}
 		}
 	}
@@ -434,7 +434,7 @@ static int cache_verify(rlm_cache_t *inst, value_pair_map_t **head)
 {
 	value_pair_map_t *map;
 
-	if (radius_attrmap(cf_section_sub_find(inst->cs, "update"),
+	if (map_from_cs(cf_section_sub_find(inst->cs, "update"),
 			   head, PAIR_LIST_REQUEST,
 			   PAIR_LIST_REQUEST, MAX_ATTRMAP) < 0) {
 		return -1;
