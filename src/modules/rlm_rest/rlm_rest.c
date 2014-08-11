@@ -281,7 +281,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 	int rcode = RLM_MODULE_OK;
 	int ret;
 
-	if (!section->name) return RLM_MODULE_FAIL;
+	if (!section->name) return RLM_MODULE_NOOP;
 
 	handle = fr_connection_get(inst->conn_pool);
 	if (!handle) return RLM_MODULE_FAIL;
@@ -361,7 +361,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED REQU
 	VALUE_PAIR const *username;
 	VALUE_PAIR const *password;
 
-	if (!section->name) return RLM_MODULE_FAIL;
+	if (!section->name) return RLM_MODULE_NOOP;
 
 	username = request->username;
 	if (!request->username) {
@@ -452,7 +452,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED REQUES
 	int rcode = RLM_MODULE_OK;
 	int ret;
 
-	if (!section->name) return RLM_MODULE_FAIL;
+	if (!section->name) return RLM_MODULE_NOOP;
 
 	handle = fr_connection_get(inst->conn_pool);
 	if (!handle) return RLM_MODULE_FAIL;
@@ -498,7 +498,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED REQUEST
 	int rcode = RLM_MODULE_OK;
 	int ret;
 
-	if (!section->name) return RLM_MODULE_FAIL;
+	if (!section->name) return RLM_MODULE_NOOP;
 
 	handle = fr_connection_get(inst->conn_pool);
 	if (!handle) return RLM_MODULE_FAIL;
