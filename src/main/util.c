@@ -92,9 +92,7 @@ struct request_data_t {
  *	and the unique integer allows the caller to have multiple
  *	opaque data associated with a REQUEST.
  */
-int request_data_add(REQUEST *request,
-		     void *unique_ptr, int unique_int,
-		     void *opaque, bool free_opaque)
+int request_data_add(REQUEST *request, void *unique_ptr, int unique_int, void *opaque, bool free_opaque)
 {
 	request_data_t *this, **last, *next;
 
@@ -104,61 +102,67 @@ int request_data_add(REQUEST *request,
 	if (!request || !opaque) return -1;
 
 	this = next = NULL;
-	for (last = &(request->data); *last != NULL; last = &((*last)->next)) {
+	for (last = &(request->data);
+	     *last != NULL;
+	     last = &((*last)->next)) {
 		if (((*last)->unique_ptr == unique_ptr) &&
 		    ((*last)->unique_int == unique_int)) {
 			this = *last;
-
 			next = this->next;
 
 			/*
 			 *	If caller requires custom behaviour on free
 			 *	they must set a destructor.
 			 */
-			if (this->opaque && this->free_opaque) {
-				talloc_free(this->opaque);
-			}
-			break;				/* replace the existing entry */
+			if (this->opaque && this->free_opaque) talloc_free(this->opaque);
+
+			break;	/* replace the existing entry */
 		}
 	}
 
+	/*
+	 *	Only alloc new memory if we're not replacing
+	 *	an existing entry.
+	 */
 	if (!this) this = talloc_zero(request, request_data_t);
 
 	this->next = next;
 	this->unique_ptr = unique_ptr;
 	this->unique_int = unique_int;
 	this->opaque = opaque;
-	if (free_opaque) {
-		this->free_opaque = free_opaque;
-	}
+	this->free_opaque = free_opaque;
 
 	*last = this;
 
 	return 0;
 }
 
-
 /*
  *	Get opaque data from a request.
  */
-void *request_data_get(REQUEST *request,
-		       void *unique_ptr, int unique_int)
+void *request_data_get(REQUEST *request, void *unique_ptr, int unique_int)
 {
 	request_data_t **last;
 
 	if (!request) return NULL;
 
-	for (last = &(request->data); *last != NULL; last = &((*last)->next)) {
+	for (last = &(request->data);
+	     *last != NULL;
+	     last = &((*last)->next)) {
 		if (((*last)->unique_ptr == unique_ptr) &&
 		    ((*last)->unique_int == unique_int)) {
-			request_data_t *this = *last;
-			void *ptr = this->opaque;
+			request_data_t *this;
+			void *ptr;
+
+			this = *last;
+			ptr = this->opaque;
 
 			/*
 			 *	Remove the entry from the list, and free it.
 			 */
 			*last = this->next;
 			talloc_free(this);
+
 			return ptr; 		/* don't free it, the caller does that */
 		}
 	}
@@ -166,22 +170,19 @@ void *request_data_get(REQUEST *request,
 	return NULL;		/* wasn't found, too bad... */
 }
 
-
 /*
  *	Get opaque data from a request without removing it.
  */
-void *request_data_reference(REQUEST *request,
-		       void *unique_ptr, int unique_int)
+void *request_data_reference(REQUEST *request, void *unique_ptr, int unique_int)
 {
 	request_data_t **last;
 
-	for (last = &(request->data); *last != NULL; last = &((*last)->next)) {
+	for (last = &(request->data);
+	     *last != NULL;
+	     last = &((*last)->next)) {
 		if (((*last)->unique_ptr == unique_ptr) &&
 		    ((*last)->unique_int == unique_int)) {
-			request_data_t *this = *last;
-			void *ptr = this->opaque;
-
-			return ptr;
+			return (*last)->opaque;
 		}
 	}
 
