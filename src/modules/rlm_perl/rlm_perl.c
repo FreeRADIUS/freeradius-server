@@ -385,11 +385,9 @@ static void perl_parse_config(CONF_SECTION *cs, int lvl, HV *rad_hv)
 
 	DEBUG("%*s%s {", indent_section, " ", cf_section_name1(cs));
 
-	CONF_ITEM *ci;
+	CONF_ITEM *ci = NULL;
 
-	for (ci = cf_item_find_next(cs, NULL);
-	     ci;
-	     ci = cf_item_find_next(cs, ci)) {
+	while ((ci = cf_item_find_next(cs, ci))) {
 		/*
 		 *  This is a section.
 		 *  Create a new HV, store it as a reference in current HV,
