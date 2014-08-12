@@ -523,6 +523,8 @@ size_t vp_data_prints_value(char *out, size_t outlen,
  */
 size_t vp_prints_value(char *out, size_t outlen, VALUE_PAIR const *vp, int8_t quote)
 {
+	VERIFY_VP(vp);
+
 	return vp_data_prints_value(out, outlen, vp->da, &vp->data, vp->length, quote);
 }
 
