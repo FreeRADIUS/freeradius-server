@@ -1,0 +1,43 @@
+update {
+	control:Tmp-String-0 := "ssid=ABCDEF"
+	control:Tmp-String-0 += "ssid=GHIJKL"
+	reply:Filter-Id := "filter"
+}
+
+if (User-Name) {
+	foreach &control:Tmp-String-0 {
+		if ("%{Foreach-Variable-0}" =~ /(.*)/) {
+			update control {
+				Tmp-String-1 := "%{1}"
+			}
+		}
+	}
+}
+
+if (&control:Tmp-String-1 != 'ssid=GHIJKL') {
+	update reply {
+		Filter-Id += 'fail 0'
+	}
+}
+
+update control {
+	Tmp-String-1 !* ANY
+}
+
+foreach &control:Tmp-String-0 {
+	if ("%{Foreach-Variable-0}" =~ /(.*)/) {
+		update control {
+			Tmp-String-1 := "%{1}"
+		}
+	}
+}
+
+if (&control:Tmp-String-1 != 'ssid=GHIJKL') {
+	update reply {
+		Filter-Id += 'fail 1'
+	}
+}
+
+update control {
+	Tmp-String-1 !* ANY
+}

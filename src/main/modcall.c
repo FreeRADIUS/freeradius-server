@@ -724,7 +724,13 @@ redo:
 			}
 		} /* loop over VPs */
 
+		/*
+		 *	Free the copied vps and the request data
+		 *	If we don't remove the request data, something could call
+		 *	the xlat outside of a foreach loop and trigger a segv.
+		 */
 		pairfree(&vps);
+		request_data_get(request, radius_get_vp, foreach_depth);
 
 		rad_assert(next != NULL);
 		result = next->result;
