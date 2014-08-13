@@ -574,6 +574,7 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t *inst, REQUEST *request, rlm
 		rcode = RLM_MODULE_NOTFOUND;
 		goto finish;
 	}
+	rad_assert(head);
 
 	RDEBUG2("User found in the group table");
 
@@ -659,8 +660,7 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t *inst, REQUEST *request, rlm
 		entry = entry->next;
 	} while (entry != NULL && (*do_fall_through == FALL_THROUGH_YES));
 
-	finish:
-
+finish:
 	talloc_free(head);
 	pairdelete(&request->packet->vps, PW_SQL_GROUP, 0, TAG_ANY);
 
