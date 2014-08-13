@@ -577,7 +577,8 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t *inst, REQUEST *request, rlm
 
 	RDEBUG2("User found in the group table");
 
-	for (entry = head; entry != NULL && (*do_fall_through == FALL_THROUGH_YES); entry = entry->next) {
+	entry = head;
+	do {
 		/*
 		 *	Add the Sql-Group attribute to the request list so we know
 		 *	which group we're retrieving attributes for
@@ -655,7 +656,8 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t *inst, REQUEST *request, rlm
 		}
 
 		pairdelete(&request->packet->vps, PW_SQL_GROUP, 0, TAG_ANY);
-	}
+		entry = entry->next;
+	} while (entry != NULL && (*do_fall_through == FALL_THROUGH_YES));
 
 	finish:
 
