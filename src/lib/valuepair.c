@@ -676,13 +676,6 @@ VALUE_PAIR *paircopyvp(TALLOC_CTX *ctx, VALUE_PAIR const *vp)
 
 	memcpy(n, vp, sizeof(*n));
 
-	/*
-	 *	Now copy the value
-	 */
-	if (vp->type == VT_XLAT) {
-		n->value.xlat = talloc_typed_strdup(n, n->value.xlat);
-	}
-
 	n->da = dict_attr_copy(vp->da, true);
 	if (!n->da) {
 		talloc_free(n);
@@ -690,6 +683,15 @@ VALUE_PAIR *paircopyvp(TALLOC_CTX *ctx, VALUE_PAIR const *vp)
 	}
 
 	n->next = NULL;
+
+	/*
+	 *	If it's an xlat, copy the raw string and return early,
+	 *	so we don't pre-expand or otherwise mangle the VALUE_PAIR.
+	 */
+	if (vp->type == VT_XLAT) {
+		n->value.xlat = talloc_typed_strdup(n, n->value.xlat);
+		return n;
+	}
 
 	switch (vp->da->type) {
 	case PW_TYPE_TLV:
