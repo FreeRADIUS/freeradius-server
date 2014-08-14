@@ -147,7 +147,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 {
 	rlm_logintime_t *inst = instance;
 	VALUE_PAIR *ends, *timeout;
-	uint32_t left;
+	int left;
 
 	ends = pairfind(request->config_items, PW_LOGIN_TIME, 0, TAG_ANY);
 	if (!ends) {
@@ -163,6 +163,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 	 *	Compare the time the request was received with the current Login-Time value
 	 */
 	left = timestr_match(ends->vp_strvalue, request->timestamp);
+	if (left < 0) return RLM_MODULE_USERLOCK; /* outside of the allowed time */
 
 	/*
 	 *      Do nothing, login time is not controlled (unendsed).
@@ -177,7 +178,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 	 *
 	 *	We don't know were going to get another chance to lock out the user, so we need to do it now.
 	 */
-	if (left < inst->min_time) {
+	if (left < (int) inst->min_time) {
 		REDEBUG("Login outside of allowed time-slot (session end %s, with lockout %i seconds before)",
 			ends->vp_strvalue, inst->min_time);
 
@@ -190,7 +191,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 	 *	There's time left in the users session, inform the NAS by including a Session-Timeout
 	 *	attribute in the reply, or modifying the existing one.
 	 */
-	RDEBUG("Login within allowed time-slot, %i seconds left in this session", left);
+	RDEBUG("Login within allowed time-slot, %d seconds left in this session", left);
 
 	timeout = pairfind(request->reply->vps, PW_SESSION_TIMEOUT, 0, TAG_ANY);
 	if (timeout) {	/* just update... */
@@ -202,7 +203,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 		timeout->vp_integer = left;
 	}
 
-	RDEBUG("reply:Session-Timeout set to %i", left);
+	RDEBUG("reply:Session-Timeout set to %d", left);
 
 	return RLM_MODULE_OK;
 }
