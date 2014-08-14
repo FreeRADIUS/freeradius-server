@@ -33,43 +33,41 @@ RCSID("$Id$")
  */
 static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, REQUEST *request)
 {
-	VALUE_PAIR *vp, *check_item = NULL;
+	VALUE_PAIR *vp, *check_item;
+	char date[50];
 
 	check_item = pairfind(request->config_items, PW_EXPIRATION, 0, TAG_ANY);
-	if (check_item != NULL) {
-		char date[50];
-		/*
-		*      Has this user's password expired?
-		*
-		*      If so, remove ALL reply attributes,
-		*      and add our own Reply-Message, saying
-		*      why they're being rejected.
-		*/
-		if (((time_t) check_item->vp_date) <= request->timestamp) {
-			vp_prints_value(date, sizeof(date), check_item, 0);
-			REDEBUG("Account expired at '%s'", date);
+	if (!check_item) return RLM_MODULE_NOOP;
 
-			return RLM_MODULE_USERLOCK;
-		} else {
-			if (RDEBUG_ENABLED) {
-				vp_prints_value(date, sizeof(date), check_item, 0);
-				RDEBUG("Account will expire at '%s'", date);
-			}
-		}
-
-		/*
-		 *	Else the account hasn't expired, but it may do so
-		 *	in the future.  Set Session-Timeout.
-		 */
-		vp = pairfind(request->reply->vps, PW_SESSION_TIMEOUT, 0, TAG_ANY);
-		if (!vp) {
-			vp = radius_paircreate(request->reply, &request->reply->vps, PW_SESSION_TIMEOUT, 0);
-			vp->vp_date = (uint32_t) (((time_t) check_item->vp_date) - request->timestamp);
-		} else if (vp->vp_date > ((uint32_t) (((time_t) check_item->vp_date) - request->timestamp))) {
-			vp->vp_date = (uint32_t) (((time_t) check_item->vp_date) - request->timestamp);
-		}
+	/*
+	 *      Has this user's password expired?
+	 *
+	 *      If so, remove ALL reply attributes,
+	 *      and add our own Reply-Message, saying
+	 *      why they're being rejected.
+	 */
+	if (((time_t) check_item->vp_date) <= request->timestamp) {
+		vp_prints_value(date, sizeof(date), check_item, 0);
+		REDEBUG("Account expired at '%s'", date);
+		
+		return RLM_MODULE_USERLOCK;
 	} else {
-		return RLM_MODULE_NOOP;
+		if (RDEBUG_ENABLED) {
+			vp_prints_value(date, sizeof(date), check_item, 0);
+			RDEBUG("Account will expire at '%s'", date);
+		}
+	}
+
+	/*
+	 *	Else the account hasn't expired, but it may do so
+	 *	in the future.  Set Session-Timeout.
+	 */
+	vp = pairfind(request->reply->vps, PW_SESSION_TIMEOUT, 0, TAG_ANY);
+	if (!vp) {
+		vp = radius_paircreate(request->reply, &request->reply->vps, PW_SESSION_TIMEOUT, 0);
+		vp->vp_date = (uint32_t) (((time_t) check_item->vp_date) - request->timestamp);
+	} else if (vp->vp_date > ((uint32_t) (((time_t) check_item->vp_date) - request->timestamp))) {
+		vp->vp_date = (uint32_t) (((time_t) check_item->vp_date) - request->timestamp);
 	}
 
 	return RLM_MODULE_OK;
