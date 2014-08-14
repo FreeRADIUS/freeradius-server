@@ -1993,6 +1993,17 @@ FR_TOKEN pairread(char const **ptr, VALUE_PAIR_RAW *raw)
 			break;
 		}
 
+		/*
+		 *	Attribute:=value is NOT
+		 *
+		 *	Attribute:
+		 *	=
+		 *	value
+		 */
+		if ((*p == ':') && (!isdigit((int) p[1]))) {
+			break;
+		}
+
 		*(q++) = *(p++);
 	}
 
