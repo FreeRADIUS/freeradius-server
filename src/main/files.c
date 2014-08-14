@@ -83,7 +83,7 @@ int pairlist_read(TALLOC_CTX *ctx, char const *file, PAIR_LIST **list, int compl
 	/*
 	 *	Read the entire file into memory for speed.
 	 */
-	while(fgets(buffer, sizeof(buffer), fp) != NULL) {
+	while (fgets(buffer, sizeof(buffer), fp) != NULL) {
 		lineno++;
 		if (!feof(fp) && (strchr(buffer, '\n') == NULL)) {
 			fclose(fp);
