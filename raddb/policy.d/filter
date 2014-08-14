@@ -16,17 +16,15 @@ deny_realms {
 #  what constitutes a user name.
 #
 filter_username {
-	
-
-	if (!User-Name) {
+	if (!&User-Name) {
 		noop
 	}
 
 	#
 	#  reject mixed case e.g. "UseRNaMe"
 	#
-	
-	#if (User-Name != "%{tolower:%{User-Name}}") {
+
+	#if (&User-Name != "%{tolower:%{User-Name}}") {
 	#	reject
 	#}
 
@@ -34,7 +32,7 @@ filter_username {
 	#  reject all whitespace
 	#  e.g. "user@ site.com", or "us er", or " user", or "user "
 	#
-	if (User-Name =~ / /) {
+	if (&User-Name =~ / /) {
 		update reply {
 			Reply-Message += "Rejected: Username contains whitespace"
 		}
@@ -45,7 +43,7 @@ filter_username {
 	#  reject Multiple @'s
 	#  e.g. "user@site.com@site.com"
 	#
-	if(User-Name =~ /@.*@/ ) {
+	if (&User-Name =~ /@.*@/ ) {
 		update reply {
 			Reply-Message += "Rejected: Multiple @ in username"
 		}
@@ -56,7 +54,7 @@ filter_username {
 	#  reject double dots
 	#  e.g. "user@site..com"
 	#
-	if (User-Name =~ /\\.\\./ ) {
+	if (&User-Name =~ /\\.\\./ ) {
 		update reply {
 			Reply-Message += "Rejected: Username contains ..s"
 		}
@@ -67,7 +65,7 @@ filter_username {
 	#  must have at least 1 string-dot-string after @
 	#  e.g. "user@site.com"
 	#
-	if ((User-Name =~ /@/) && (User-Name !~ /@(.+)\\.(.+)$/))  {
+	if ((&User-Name =~ /@/) && (&User-Name !~ /@(.+)\\.(.+)$/))  {
 		update reply {
 			Reply-Message += "Rejected: Realm does not have at least one dot separator"
 		}
@@ -78,7 +76,7 @@ filter_username {
 	#  Realm ends with a dot
 	#  e.g. "user@site.com."
 	#
-	if (User-Name =~ /\\.$/)  {
+	if (&User-Name =~ /\\.$/)  {
 		update reply {
 			Reply-Message += "Rejected: Realm ends with a dot"
 		}
@@ -89,11 +87,10 @@ filter_username {
 	#  Realm begins with a dot
 	#  e.g. "user@.site.com"
 	#
-	if (User-Name =~ /@\\./)  {
+	if (&User-Name =~ /@\\./)  {
 		update reply {
 			Reply-Message += "Rejected: Realm begins with a dot"
 		}
 		reject
 	}
 }
-

@@ -7,7 +7,7 @@ Xeap.authorize {
 		#
 		#	Expire previous cache entry
 		#
-		if (control:State) {
+		if (&control:State) {
 			update control {
 				Cache-TTL := 0
 			}
@@ -47,7 +47,7 @@ Xeap.authenticate {
 #       into the "authorize" section.
 #
 forbid_eap {
-	if (EAP-Message) {
+	if (&EAP-Message) {
 		reject
 	}
 }
@@ -56,7 +56,7 @@ forbid_eap {
 #       Forbid all non-EAP types outside of an EAP tunnel.
 #
 permit_only_eap {
-	if (!EAP-Message) {
+	if (!&EAP-Message) {
 		#  We MAY be inside of a TTLS tunnel.
 		#  PEAP and EAP-FAST require EAP inside of
 		#  the tunnel, so this check is OK.
@@ -74,7 +74,7 @@ permit_only_eap {
 #  not be present in the same response.
 #
 remove_reply_message_if_eap {
-	if(reply:EAP-Message && reply:Reply-Message) {
+	if (&reply:EAP-Message && reply:Reply-Message) {
 		update reply {
 			Reply-Message !* ANY
 		}
