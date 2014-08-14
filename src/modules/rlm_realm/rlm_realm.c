@@ -103,8 +103,7 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 
 	switch(inst->format) {
 	case REALM_FORMAT_SUFFIX:
-
-	  /* DEBUG2("  rlm_realm: Checking for suffix after \"%c\"", inst->delim[0]); */
+		RDEBUG2("Checking for suffix after \"%c\"", inst->delim[0]);
 		ptr = strrchr(username, inst->delim[0]);
 		if (ptr) {
 			*ptr = '\0';
@@ -113,15 +112,13 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 		break;
 
 	case REALM_FORMAT_PREFIX:
-
-		/* DEBUG2("  rlm_realm: Checking for prefix before \"%c\"", inst->delim[0]); */
-
+		RDEBUG2("Checking for prefix before \"%c\"", inst->delim[0]);
 		ptr = strchr(username, inst->delim[0]);
 		if (ptr) {
 			*ptr = '\0';
-		     ptr++;
-		     realmname = username;
-		     username = ptr;
+			ptr++;
+			realmname = username;
+			username = ptr;
 		}
 		break;
 
@@ -146,7 +143,7 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 			return RLM_MODULE_NOOP;
 		}
 		RDEBUG2("No '%c' in User-Name = \"%s\", looking up realm NULL",
-		       inst->delim[0], request->username->vp_strvalue);
+			inst->delim[0], request->username->vp_strvalue);
 	}
 
 	/*
@@ -154,13 +151,12 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 	 */
 	realm = realm_find(realmname);
 	if (!realm) {
-		RDEBUG2("No such realm \"%s\"",
-			(!realmname) ? "NULL" : realmname);
+		RDEBUG2("No such realm \"%s\"", (!realmname) ? "NULL" : realmname);
 		talloc_free(namebuf);
 		return RLM_MODULE_NOOP;
 	}
-	if( inst->ignore_default &&
-	    (strcmp(realm->name, "DEFAULT")) == 0) {
+
+	if (inst->ignore_default && (strcmp(realm->name, "DEFAULT")) == 0) {
 		RDEBUG2("Found DEFAULT, but skipping due to config");
 		talloc_free(namebuf);
 		return RLM_MODULE_NOOP;
