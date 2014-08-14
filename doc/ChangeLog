@@ -43,6 +43,8 @@ FreeRADIUS 3.0.4 Mon 12 May 2014 15:30:00 EDT urgency=medium
 	* Support &attr[*] syntax to copy all instances of an attribute when
 	  used with the += operator in an update section. May be qualified with
 	  a tag.
+	* The logintime and expiration modules can now be listed in the
+	  post-auth section.  This makes some configurations simpler.
 
 	Bug fixes
 	* make case-insensitive regular expressions work again, and add tests
@@ -105,6 +107,8 @@ FreeRADIUS 3.0.4 Mon 12 May 2014 15:30:00 EDT urgency=medium
 	  CVE-2014-4733.  There is no external authentication bypass.
 	* Fix a number of uses of the talloc parent/child reference.
 	* Release connection used for reading bulk clients in rlm_ldap.
+	* rlm_rest is now fail-safe if it's used without any configuration
+	* Pull in build fixes for FreeBSD from ports.
 
 FreeRADIUS 3.0.3 Mon 12 May 2014 15:30:00 EDT urgency=medium
 	Feature improvements
