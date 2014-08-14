@@ -1033,7 +1033,8 @@ void fr_verify_list(char const *file, int line, TALLOC_CTX *expected, VALUE_PAIR
 			fr_log_talloc_report(expected);
 			if (parent) fr_log_talloc_report(parent);
 
-			assert(0);
+			fr_assert(0);
+			fr_exit_now(0);
 		}
 
 	}
