@@ -268,6 +268,6 @@ module_t rlm_logintime = {
 		NULL,			/* checksimul */
 		NULL,			/* pre-proxy */
 		NULL,			/* post-proxy */
-		NULL			/* post-auth */
+		mod_authorize  		/* post-auth */
 	},
 };
