@@ -3480,6 +3480,8 @@ fi
 
 		if test "x$ac_cv_lib_json_json_tokener_new" != "xyes"; then
 			have_json="no"
+			{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: json-c libraries not found. Use --with-jsonc-lib-dir=<path>." >&5
+$as_echo "$as_me: WARNING: json-c libraries not found. Use --with-jsonc-lib-dir=<path>." >&2;}
 		fi
 	fi
 
@@ -3979,11 +3981,7 @@ fi
 $as_echo "$as_me: WARNING: libcouchbase libraries not found. Use --with-libcouchbase-lib-dir=<path>." >&2;}
 	fi
 
-	if test "x$have_couchbase" != "xyes"; then
-		fail="$fail json-c"
-	fi
-
-	if test "x$have_couchbase" = "xno"; then
+	if test x"$have_couchbase" != x"yes"; then
 		fail="$fail libcouchbase"
 	fi
 
