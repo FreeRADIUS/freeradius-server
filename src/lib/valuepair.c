@@ -2477,7 +2477,7 @@ static int paircmp_op_cidr(FR_TOKEN op, int bytes,
  */
 int8_t paircmp_op(VALUE_PAIR const *a, FR_TOKEN op, VALUE_PAIR const *b)
 {
-	int compare;
+	int compare = 0;
 
 	if (!a || !b) return -1;
 
