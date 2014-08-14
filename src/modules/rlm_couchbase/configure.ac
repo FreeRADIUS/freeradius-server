@@ -93,6 +93,7 @@ if test x$with_[]modname != xno; then
 		FR_SMART_CHECK_LIB([json], [json_tokener_new])
 		if test "x$ac_cv_lib_json_json_tokener_new" != "xyes"; then
 			have_json="no"
+			AC_MSG_WARN([json-c libraries not found. Use --with-jsonc-lib-dir=<path>.])
 		fi
 	fi
 
@@ -189,11 +190,7 @@ if test x$with_[]modname != xno; then
 		AC_MSG_WARN([libcouchbase libraries not found. Use --with-libcouchbase-lib-dir=<path>.])
 	fi
 
-	if test "x$have_couchbase" != "xyes"; then
-		fail="$fail json-c"
-	fi
-
-	if test "x$have_couchbase" = "xno"; then
+	if test x"$have_couchbase" != x"yes"; then
 		fail="$fail libcouchbase"
 	fi
 
