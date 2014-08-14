@@ -211,6 +211,6 @@ module_t rlm_expiration = {
 		NULL,			/* checksimul */
 		NULL,			/* pre-proxy */
 		NULL,			/* post-proxy */
-		NULL			/* post-auth */
+		expiration_authorize   	/* post-auth */
 	},
 };
