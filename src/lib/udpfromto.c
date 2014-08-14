@@ -338,7 +338,7 @@ int sendfromto(int s, void *buf, size_t len, int flags,
 		break;
 
 	case AF_INET6:
-		if (!IN6_IS_ADDR_UNSPECIFIED(&((struct sockaddr_in6 *) &bound)->sin6_addr))) {
+		if (!IN6_IS_ADDR_UNSPECIFIED(&((struct sockaddr_in6 *) &bound)->sin6_addr)) {
 			from = NULL;
 		}
 		break;
