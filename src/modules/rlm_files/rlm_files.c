@@ -363,7 +363,7 @@ static rlm_rcode_t file_common(rlm_files_t *inst, REQUEST *request, char const *
 	VALUE_PAIR	*check_tmp;
 	VALUE_PAIR	*reply_tmp;
 	PAIR_LIST const *user_pl, *default_pl;
-	int		found = 0;
+	bool		found = false;
 	PAIR_LIST	my_pl;
 	char		buffer[256];
 
@@ -432,7 +432,7 @@ static rlm_rcode_t file_common(rlm_files_t *inst, REQUEST *request, char const *
 
 		if (paircompare(request, request_packet->vps, pl->check, &reply_packet->vps) == 0) {
 			RDEBUG2("%s: Matched entry %s at line %d", filename, match, pl->lineno);
-			found = 1;
+			found = true;
 
 			/* ctx may be reply or proxy */
 			reply_tmp = paircopy(reply_packet, pl->reply);
