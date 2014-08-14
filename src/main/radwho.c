@@ -329,15 +329,19 @@ int main(int argc, char **argv)
 	snprintf(buffer, sizeof(buffer), "%.200s/radiusd.conf", raddb_dir);
 	maincs = cf_file_read(buffer);
 	if (!maincs) {
-		fprintf(stderr, "%s: Error reading or parsing radiusd.conf.\n", argv[0]);
+		fprintf(stderr, "%s: Error reading or parsing radiusd.conf\n", argv[0]);
 		exit(1);
 	}
 
+	cs = cf_section_sub_find(maincs, "modules");
+	if (!cs) {
+		fprintf(stderr, "%s: No modules section found in radiusd.conf\n", argv[0]);
+		exit(1);
+	}
 	/* Read the radutmp section of radiusd.conf */
-	cs = cf_section_find_name2(cf_section_sub_find(maincs, "modules"), "radutmp", NULL);
-	if(!cs) {
-		fprintf(stderr, "%s: No configuration information in radutmp section of radiusd.conf!\n",
-			argv[0]);
+	cs = cf_section_sub_find_name2(cs, "radutmp", NULL);
+	if (!cs) {
+		fprintf(stderr, "%s: No configuration information in radutmp section of radiusd.conf\n", argv[0]);
 		exit(1);
 	}
 
