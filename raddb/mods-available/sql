@@ -44,7 +44,7 @@ sql {
 #		# If the file above does not exist and bootstrap is set
 #		# a new database file will be created, and the SQL statements
 #		# contained within the file will be executed.
-#		bootstrap = "${modconfdir}/${.:name}/main/sqlite/schema.sql"
+#		bootstrap = "${modconfdir}/${..:name}/main/sqlite/schema.sql"
 # 	}
 #
 #	mysql {
@@ -70,7 +70,7 @@ sql {
 	#
 	# If you're using rlm_sql_null, then it should be the type of
 	# database the logged queries are going to be executed against.
-	dialect = "mysql"
+	dialect = "sqlite"
 
 	# Connection info:
 	#
