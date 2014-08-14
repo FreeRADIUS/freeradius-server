@@ -277,7 +277,7 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 	/*
 	 *	Determine where to read the VP's from.
 	 */
-	if (strcmp(files->packets, "stdin") != 0) {
+	if (strcmp(files->packets, "-") != 0) {
 		packets = fopen(files->packets, "r");
 		if (!packets) {
 			ERROR("Error opening %s: %s", files->packets, strerror(errno));
@@ -1407,7 +1407,7 @@ int main(int argc, char **argv)
 		rc_file_pair_t *files;
 
 		files = talloc_zero(talloc_autofree_context(), rc_file_pair_t);
-		files->packets = "stdin";
+		files->packets = "-";
 		if (!radclient_init(files, files)) {
 			exit(1);
 		}
