@@ -66,22 +66,22 @@ cui.pre-proxy {
 #  use_tunneled_reply parameter MUST be set to yes
 #
 cui.post-auth {
-	if (!control:Proxy-To-Realm && Chargeable-User-Identity && !reply:Chargeable-User-Identity && \
-	    (Operator-Name || ('${policy.cui_require_operator_name}' != 'yes')) ) {
+	if (!&control:Proxy-To-Realm && &Chargeable-User-Identity && !&reply:Chargeable-User-Identity && \
+	    (&Operator-Name || ('${policy.cui_require_operator_name}' != 'yes')) ) {
 		update reply {
 			Chargeable-User-Identity = "%{sha1:${policy.cui_hash_key}%{tolower:%{User-Name}%{%{Operator-Name}:-}}}"
 		}
 	}
 
 	#
-	#  The section below will store a CUI for the User in the DB and remove the 
+	#  The section below will store a CUI for the User in the DB and remove the
 	#  User-Name attribute from the reply if a CUI is present.
 	#
 	#  You need to configure the cuisql module and your database for this to work.
 	#  If your NAS can do CUI based accounting themselves or you do not care about
 	#  accounting, comment out the 'cuisql' line below.
 	#
-	if (reply:Chargeable-User-Identity) {
+	if (&reply:Chargeable-User-Identity) {
 		# Force User-Name to be the User-Name from the request
 		update {
 			reply:User-Name := &request:User-Name
@@ -92,8 +92,8 @@ cui.post-auth {
 
 
 cui-inner.post-auth {
-	if (outer.request:Chargeable-User-Identity && \
-	    (outer.request:Operator-Name || ('${policy.cui_require_operator_name}' != 'yes'))) {
+	if (&outer.request:Chargeable-User-Identity && \
+	    (&outer.request:Operator-Name || ('${policy.cui_require_operator_name}' != 'yes'))) {
 		update reply {
 			Chargeable-User-Identity := "%{sha1:${policy.cui_hash_key}%{tolower:%{User-Name}%{%{outer.request:Operator-Name}:-}}}"
 		}
@@ -111,7 +111,7 @@ cui.accounting {
 	#  If the CUI isn't in the packet, see if we can find it
 	#  in the DB.
 	#
-	if (!Chargeable-User-Identity) {
+	if (!&Chargeable-User-Identity) {
 		update request {
 			Chargeable-User-Identity := "%{cuisql:\
 				SELECT cui FROM cui \
@@ -125,7 +125,7 @@ cui.accounting {
 	#  If it exists now, then write out when we last saw
 	#  this CUI.
 	#
-	if (Chargeable-User-Identity && (Chargeable-User-Identity != '')) {
+	if (&Chargeable-User-Identity && (&Chargeable-User-Identity != '')) {
 		cuisql
 	}
 }
