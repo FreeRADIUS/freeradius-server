@@ -139,6 +139,23 @@ sql {
 	# When the server is not threaded, the connection pool
 	# limits are ignored, and only one connection is used.
 	#
+	# If you want to have multiple SQL modules re-use the same
+	# connection pool, use "pool = name" instead of a "pool"
+	# section.  e.g.
+	#
+	#	sql1 {
+	#	    ...
+	#	    pool {
+	#	    	 ...
+	#	    }
+	#	}
+	#
+	#	# sql2 will use the connection pool from sql1
+	#	sql2 {
+	#	     ...
+	#	     pool = sql1
+	#	}
+	#
 	pool {
 		# Number of connections to start
 		start = 5
