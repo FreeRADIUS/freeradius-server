@@ -1029,7 +1029,8 @@ EAP_HANDLER *eap_handler(rlm_eap_t *inst, eap_packet_t **eap_packet_p,
 			*/
                        if (strncmp(handler->identity, vp->vp_strvalue,
 				   MAX_STRING_LEN) != 0) {
-                               RDEBUG("Identity does not match User-Name.  Authentication failed.");
+                               RDEBUG("Identity (%s) does not match User-Name (%s).  Authentication failed.",
+				      handler->identity, vp->vp_strvalue);
                                free(*eap_packet_p);
                                *eap_packet_p = NULL;
                                return NULL;
@@ -1085,7 +1086,8 @@ EAP_HANDLER *eap_handler(rlm_eap_t *inst, eap_packet_t **eap_packet_p,
 			*/
                        if (strncmp(handler->identity, vp->vp_strvalue,
 				   MAX_STRING_LEN) != 0) {
-                               RDEBUG("Identity does not match User-Name, setting from EAP Identity.");
+                               RDEBUG("Identity (%s) does not match User-Name (%s).  Authentication failed.",
+				      handler->identity, vp->vp_strvalue);
                                free(*eap_packet_p);
                                *eap_packet_p = NULL;
                                eap_handler_free(inst, handler);
