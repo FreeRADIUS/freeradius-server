@@ -13,7 +13,7 @@ listen {
 	type = coa
 	ipaddr = *
 	port = 3799
-	server = coa
+	virtual_server = coa
 }
 
 server coa {
