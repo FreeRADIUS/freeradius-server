@@ -427,7 +427,10 @@ static void cprint_conf_parser(rad_listen_t *listener, int indent, CONF_SECTION 
 			data = (((char const *)base) + variables[i].offset);
 		}
 
-		switch (variables[i].type) {
+		/*
+		 *	Ignore the various flags
+		 */
+		switch (variables[i].type & 0xff) {
 		default:
 			cprintf(listener, "%.*s%s = ?\n", indent, tabs,
 				variables[i].name);
