@@ -808,6 +808,7 @@ redo:
 		modgroup *g, *h;
 		fr_cond_t cond;
 		value_pair_map_t map;
+		value_pair_tmpl_t vpt;
 
 		MOD_LOG_OPEN_BRACE("switch");
 
@@ -831,6 +832,7 @@ redo:
 		 *	directly to the default 'case' statement.
 		 */
 		if ((g->vpt->type == TMPL_TYPE_ATTR) && (radius_tmpl_get_vp(NULL, request, g->vpt) < 0)) {
+		find_null_case:
 			for (this = g->children; this; this = this->next) {
 				rad_assert(this->type == MOD_CASE);
 
@@ -842,6 +844,20 @@ redo:
 			}
 
 			goto do_null_case;
+		}
+
+		/*
+		 *	Expand the template if necessary, so that it
+		 *	is evaluated once instead of for each 'case'
+		 *	statement.
+		 */
+		if ((g->vpt->type == TMPL_TYPE_XLAT_STRUCT) ||
+		    (g->vpt->type == TMPL_TYPE_XLAT) ||
+		    (g->vpt->type == TMPL_TYPE_EXEC)) {
+			vpt.type = TMPL_TYPE_LITERAL;
+			if (radius_expand_tmpl(&vpt.name, request, g->vpt) < 0) {
+				goto find_null_case;
+			}
 		}
 
 		/*
@@ -880,6 +896,20 @@ redo:
 				    (g->vpt->tmpl_da->type == h->vpt->tmpl_da->type)) {
 					cond.cast = NULL;
 				}
+
+				/*
+				 *	Use the pre-expanded string.
+				 */
+			} else if ((g->vpt->type == TMPL_TYPE_XLAT_STRUCT) ||
+				   (g->vpt->type == TMPL_TYPE_XLAT) ||
+				   (g->vpt->type == TMPL_TYPE_EXEC)) {
+				map.src = h->vpt;
+				map.dst = &vpt;
+				cond.cast = NULL;
+
+				/*
+				 *	Else evaluate the 'switch' statement.
+				 */
 			} else {
 				map.src = h->vpt;
 				map.dst = g->vpt;
