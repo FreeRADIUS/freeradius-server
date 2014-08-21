@@ -109,6 +109,9 @@ FreeRADIUS 3.0.4 Mon 12 May 2014 15:30:00 EDT urgency=medium
 	* Release connection used for reading bulk clients in rlm_ldap.
 	* rlm_rest is now fail-safe if it's used without any configuration
 	* Pull in build fixes for FreeBSD from ports.
+	* Fix error in sqlite postauth query
+	* Evaluate argument to "switch" statements once, instead of for each
+	  "case" statement.
 
 FreeRADIUS 3.0.3 Mon 12 May 2014 15:30:00 EDT urgency=medium
 	Feature improvements
