@@ -85,7 +85,7 @@ static int all_digits(char const *string)
  * @param vpt to evaluate.
  * @return -1 on error, else 0.
  */
-static int radius_expand_tmpl(char **out, REQUEST *request, value_pair_tmpl_t const *vpt)
+int radius_expand_tmpl(char **out, REQUEST *request, value_pair_tmpl_t const *vpt)
 {
 	VALUE_PAIR *vp;
 	*out = NULL;
