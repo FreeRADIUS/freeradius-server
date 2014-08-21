@@ -868,10 +868,13 @@ redo:
 		if ((g->vpt->type == TMPL_TYPE_XLAT_STRUCT) ||
 		    (g->vpt->type == TMPL_TYPE_XLAT) ||
 		    (g->vpt->type == TMPL_TYPE_EXEC)) {
+			char *buffer;
+
 			vpt.type = TMPL_TYPE_LITERAL;
-			if (radius_expand_tmpl(&vpt.name, request, g->vpt) < 0) {
+			if (radius_expand_tmpl(&buffer, request, g->vpt) < 0) {
 				goto find_null_case;
 			}
+			vpt.name = buffer;
 		}
 
 		/*
