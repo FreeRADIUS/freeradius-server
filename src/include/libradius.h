@@ -98,6 +98,10 @@ RCSIDH(libradius_h, "$Id$")
 extern "C" {
 #endif
 
+#ifndef HAVE_SIG_T
+typedef void (*sig_t)(int);
+#endif
+
 #if defined(WITH_VERIFY_PTR)
 #  define FREE_MAGIC (0xF4EEF4EE)
 
