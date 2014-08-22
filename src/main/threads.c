@@ -784,7 +784,6 @@ static THREAD_HANDLE *spawn_thread(time_t now, int do_trigger)
 	 */
 	if (thread_pool.total_threads >= thread_pool.max_threads) {
 		DEBUG2("Thread spawn failed.  Maximum number of threads (%d) already running.", thread_pool.max_threads);
-		exec_trigger(NULL, NULL, "server.thread.max_threads", true);
 		return NULL;
 	}
 
@@ -839,6 +838,12 @@ static THREAD_HANDLE *spawn_thread(time_t now, int do_trigger)
 	 *	Update the time we last spawned a thread.
 	 */
 	thread_pool.time_last_spawned = now;
+
+	/*
+	 * Fire trigger if maximum number of threads reached
+	 */
+	if (thread_pool.total_threads >= thread_pool.max_threads)
+		exec_trigger(NULL, NULL, "server.thread.max_threads", true);
 
 	/*
 	 *	And return the new handle to the caller.
