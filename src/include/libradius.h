@@ -71,6 +71,10 @@ RCSIDH(libradius_h, "$Id$")
 extern "C" {
 #endif
 
+#ifndef HAVE_SIG_T
+typedef void (*sig_t)(int);
+#endif
+
 #define EAP_START               2
 
 #define AUTH_VECTOR_LEN		16

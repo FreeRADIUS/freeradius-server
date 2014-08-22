@@ -951,14 +951,11 @@ FR_CHECK_TYPE_INCLUDE([
 #endif
 ],uint32_t, unsigned int, [uint32_t should be the canonical 'network integer])
 
-FR_CHECK_TYPE_INCLUDE(
-  [
+AC_CHECK_TYPE(sig_t, AC_DEFINE(HAVE_SIG_T, 1, [signal action callback function]), [], [
     #ifdef HAVE_SIGNAL_H
     #  include <signal.h>
     #endif
-  ],
-  sig_t, void(*sig_t)(int), [signal action callback function]
-)
+])
 
 AC_CHECK_TYPE(struct in6_addr, AC_DEFINE(HAVE_STRUCT_IN6_ADDR, 1, [IPv6 address structure]), [], [
 #ifdef HAVE_NETINET_IN_H
