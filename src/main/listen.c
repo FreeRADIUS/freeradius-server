@@ -2641,6 +2641,8 @@ rad_listen_t *proxy_new_listener(home_server_t *home, uint16_t src_port)
 	sock->other_ipaddr = home->ipaddr;
 	sock->other_port = home->port;
 	sock->home = home;
+	if (home->name) /*Not the default proxy listener*/
+		talloc_reference(sock, sock->home); /*In case dynamic home server is freed*/
 
 	sock->my_ipaddr = home->src_ipaddr;
 	sock->my_port = src_port;
