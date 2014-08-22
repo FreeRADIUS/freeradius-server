@@ -1,0 +1,10 @@
+#Module for PSK authorizations from ABFAb trust router
+sql psksql {
+
+        driver = "rlm_sql_sqlite"
+
+	sqlite {
+	        filename = "/var/lib/trust_router/keys"
+		}
+
+	}

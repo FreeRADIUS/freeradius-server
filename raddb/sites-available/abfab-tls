@@ -1,0 +1,38 @@
+listen {
+	ipaddr = *
+	port = 2083
+	type = auth
+	proto = tcp
+
+	clients = radsec-abfab
+	tls {
+		private_key_password = whatever
+		# Moonshot tends to distribute certs separate from keys
+		private_key_file = ${certdir}/server.key
+		certificate_file = ${certdir}/server.pem
+		ca_file = ${cadir}/ca.pem
+		dh_file = ${certdir}/dh
+		fragment_size = 8192
+		ca_path = ${cadir}
+		cipher_list = "DEFAULT"
+		cache {
+		  enable = no
+		  lifetime = 24 # hours
+		  max_entries = 255
+		  }
+
+		  require_client_cert = yes
+		  verify {
+	}
+		  psk_query = "%{psksql:select hex(key) from psk_keys where keyid = '%{tls-psk-identity}';}"
+		}
+	virtual_server = abfab-idp
+}
+	clients radsec-abfab {
+	        client default {
+		        ipaddr = 0.0.0.0/0
+
+			proto = tls
+
+	}
+}

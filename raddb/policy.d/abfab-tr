@@ -1,0 +1,72 @@
+#
+# Verify rp parameters
+#
+psk_authorize {
+	if (tls-psk-identity =* ANY) {
+		# TODO: may need to check moonshot-apc as well
+		if ("%{psksql:select distinct keyid from authorizations_keys where keyid = '%{tls-psk-identity}' and '%{trust-router-coi}' like coi and '%{gss-acceptor-realm-name}' like acceptor_realm and '%{gss-acceptor-host-name}' like hostname;}") {
+		}
+		else {
+			reject
+		}
+	}
+}
+
+abfab_pre_proxy {
+	# check acceptor host name is correct
+	if ("%{client:gss_acceptor_host_name}" && "%{gss-acceptor-host-name}") {
+		if ("%{client:gss_acceptor_host_name}" != "%{gss-acceptor-host-name}") {
+			reject
+		}
+	}
+	# set trust-router-coi attribute from client configuration
+	if ("%{client:trust_router_coi}") {
+		update proxy-request {
+			trust-router-coi := "%{client:trust_router_coi}"
+		}
+	}
+	# set gss-acceptor-realm-name attribute from client configuration
+	if ("%{client:gss_acceptor_realm_name}") {
+		update proxy-request {
+			gss-acceptor-realm-name := "%{client:gss_acceptor_realm_name}"
+		}
+	}
+}
+
+#
+#  A virtual server which is used to validate channel-bindings.
+#
+abfab_channel_bindings {
+	if (GSS-Acceptor-Service-Name && (outer.request:GSS-Acceptor-Service-Name != GSS-Acceptor-Service-Name)) {
+		reject
+	}
+	if (GSS-Acceptor-Host-Name && outer.request:GSS-Acceptor-Host-Name != GSS-Acceptor-Host-Name ) {
+		reject
+	}
+	if (GSS-Acceptor-Realm-Name && outer.request:GSS-Acceptor-Realm-Name != GSS-Acceptor-Realm-Name ) {
+		reject
+	}
+
+	if (GSS-Acceptor-Service-Name || GSS-Acceptor-Realm-Name || GSS-Acceptor-Host-Name) {
+		update control {
+			Chbind-Response-Code := success
+		}
+
+		#
+		#  ACK the attributes in the request.
+		#
+		#  If any one of these attributes don't exist in the request,
+		#  then they won't be copied to the reply.
+		#
+		update reply {
+			GSS-Acceptor-Service-Name = &GSS-Acceptor-Service-Name
+			GSS-Acceptor-Host-Name = &GSS-Acceptor-Host-Name
+			GSS-Acceptor-Realm-Name = &GSS-Acceptor-Realm-Name
+		}
+	}
+
+	#
+	#  Return "handled" so that the "authenticate" section isn't used.
+	#
+	handled
+}
