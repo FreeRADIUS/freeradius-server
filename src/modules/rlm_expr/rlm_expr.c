@@ -486,7 +486,8 @@ static ssize_t urlquote_xlat(UNUSED void *instance, UNUSED REQUEST *request,
 
 /** URLdecode special characters
  *
- * Example: "%{urlunquote:http%3A%47%47example.org%47}" == "http://example.org/"
+ * Example: "%{urlunquote:http%%3A%%47%%47example.org%%47}" == "http://example.org/"
+ * Mind the double % in the quoted string, otherwise unlang would start parsing it
  */
 static ssize_t urlunquote_xlat(UNUSED void *instance, UNUSED REQUEST *request,
 			       char const *fmt, char *out, size_t outlen)
@@ -505,7 +506,7 @@ static ssize_t urlunquote_xlat(UNUSED void *instance, UNUSED REQUEST *request,
 		}
 		/* Is a % char */
 
-		/* Don't need \0 check, as it wont' be in the hextab */
+		/* Don't need \0 check, as it won't be in the hextab */
 		if (!(c1 = memchr(hextab, tolower(*++p), 16)) ||
 		    !(c2 = memchr(hextab, tolower(*++p), 16))) {
 		   	REMARKER(fmt, p - fmt, "None hex char in % sequence");
@@ -524,7 +525,7 @@ static ssize_t urlunquote_xlat(UNUSED void *instance, UNUSED REQUEST *request,
  *
  * @verbatim Example: "%{escape:<img>foo.jpg</img>}" == "=60img=62foo.jpg=60/img=62" @endverbatim
  */
-static ssize_t escape_xlat(UNUSED void *instance, UNUSED REQUEST *request,
+static ssize_t escape_xlat(void *instance, UNUSED REQUEST *request,
 			   char const *fmt, char *out, size_t outlen)
 {
 	rlm_expr_t *inst = instance;
@@ -561,9 +562,9 @@ static ssize_t escape_xlat(UNUSED void *instance, UNUSED REQUEST *request,
 
 /** Equivalent to the old safe_characters functionality in rlm_sql
  *
- * @verbatim Example: "%{escape:=60img=62foo.jpg=60/img=62}" == "<img>foo.jpg</img>" @endverbatim
+ * @verbatim Example: "%{unescape:=60img=62foo.jpg=60/img=62}" == "<img>foo.jpg</img>" @endverbatim
  */
-static ssize_t unescape_xlat(UNUSED void *instance, UNUSED REQUEST *request,
+static ssize_t unescape_xlat(void *instance, UNUSED REQUEST *request,
 			       char const *fmt, char *out, size_t outlen)
 {
 	rlm_expr_t *inst = instance;
@@ -605,7 +606,7 @@ static ssize_t unescape_xlat(UNUSED void *instance, UNUSED REQUEST *request,
 
 /** Convert a string to lowercase
  *
- * Example "%{tolower:Bar}" == "bar"
+ * Example: "%{tolower:Bar}" == "bar"
  *
  * Probably only works for ASCII
  */
