@@ -3,7 +3,7 @@
 #	realms.
 #
 deny_realms {
-	if (User-Name && (User-Name =~ /@|\\/)) {
+	if (&User-Name && (&User-Name =~ /@|\\/)) {
 		reject
 	}
 }
