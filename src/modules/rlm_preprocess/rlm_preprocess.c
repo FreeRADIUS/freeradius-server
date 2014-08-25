@@ -554,6 +554,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 	int r;
 	rlm_preprocess_t *inst = instance;
 
+	VALUE_PAIR *vp;
+
 	/*
 	 *	Mangle the username, to get rid of stupid implementation
 	 *	bugs.
@@ -623,8 +625,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 	 */
 	if (pairfind(request->packet->vps, PW_CHAP_PASSWORD, 0, TAG_ANY) &&
 	    pairfind(request->packet->vps, PW_CHAP_CHALLENGE, 0, TAG_ANY) == NULL) {
-		VALUE_PAIR *vp;
-
 		vp = radius_paircreate(request->packet, &request->packet->vps, PW_CHAP_CHALLENGE, 0);
 		pairmemcpy(vp, request->packet->vector, AUTH_VECTOR_LEN);
 	}
