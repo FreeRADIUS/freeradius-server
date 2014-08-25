@@ -369,7 +369,7 @@ value_pair_map_t *map_from_str(TALLOC_CTX *ctx, char const *lhs, FR_TOKEN lhs_ty
 	return map;
 }
 
-/** Convert a valuepair string to valuepair map
+/** Convert a value pair string to valuepair map
  *
  * Takes a valuepair string with list and request qualifiers and converts it into a
  * value_pair_map_t.
@@ -383,9 +383,9 @@ value_pair_map_t *map_from_str(TALLOC_CTX *ctx, char const *lhs, FR_TOKEN lhs_ty
  * @param src_list_def to use if attribute isn't qualified.
  * @return 0 on success, < 0 on error.
  */
-int map_from_pairstr(value_pair_map_t **out, REQUEST *request, char const *raw,
-		     request_refs_t dst_request_def, pair_lists_t dst_list_def,
-		     request_refs_t src_request_def, pair_lists_t src_list_def)
+int map_from_vp_str(value_pair_map_t **out, REQUEST *request, char const *raw,
+		    request_refs_t dst_request_def, pair_lists_t dst_list_def,
+		    request_refs_t src_request_def, pair_lists_t src_list_def)
 {
 	char const *p = raw;
 	FR_TOKEN ret;
