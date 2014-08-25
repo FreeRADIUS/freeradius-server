@@ -70,7 +70,7 @@ int		map_from_cs(CONF_SECTION *cs, value_pair_map_t **head,
 			    pair_lists_t dst_list_def, pair_lists_t src_list_def,
 			    unsigned int max);
 
-int		map_from_pairstr(value_pair_map_t **out, REQUEST *request, char const *raw,
+int		map_from_vp_str(value_pair_map_t **out, REQUEST *request, char const *raw,
 				 request_refs_t dst_request_def, pair_lists_t dst_list_def,
 				 request_refs_t src_request_def, pair_lists_t src_list_def);
 
