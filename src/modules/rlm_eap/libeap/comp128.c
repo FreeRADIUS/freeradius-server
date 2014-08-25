@@ -29,6 +29,7 @@
  *
  * Comp128v2 & v3 is a port of the python code from:
  *   http://www.hackingprojects.net/
+ * The author of the original code is Tamas Jos <tamas.jos@skelsec.com>
  *
  * @note The above GPL license only applies to comp128v1, the license for comp128v2 and comp128v3 is unknown.
  *
