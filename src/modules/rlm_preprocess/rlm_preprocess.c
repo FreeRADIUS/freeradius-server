@@ -595,6 +595,16 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 	}
 
 	/*
+	 *	Add an event timestamp. Means Event-Timestamp can be used
+	 *	consistently instead of one letter expansions.
+	 */
+	vp = pairfind(request->packet->vps, PW_EVENT_TIMESTAMP, 0, TAG_ANY);
+	if (!vp) {
+		vp = radius_paircreate(request->packet, &request->packet->vps, PW_EVENT_TIMESTAMP, 0);
+		vp->vp_date = request->packet->timestamp.tv_sec;
+	}
+
+	/*
 	 *	Note that we add the Request-Src-IP-Address to the request
 	 *	structure BEFORE checking huntgroup access.  This allows
 	 *	the Request-Src-IP-Address to be used for huntgroup
