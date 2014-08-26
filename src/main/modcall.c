@@ -622,7 +622,7 @@ redo:
 		int i, foreach_depth = -1;
 		VALUE_PAIR *vps, *vp;
 		modcall_stack_entry_t *next = NULL;
-		vp_cursor_t cursor, copy;
+		vp_cursor_t copy;
 		modgroup *g = mod_callabletogroup(c);
 
 		if (depth >= MODCALL_STACK_MAX) {
@@ -648,36 +648,22 @@ redo:
 			goto calculate_result;
 		}
 
-		if (tmpl_find_vp(&vp, request, g->vpt) < 0) {	/* nothing to loop over */
+		/*
+		 *	Copy the VPs from the original request, this ensures deterministic
+		 *	behaviour if someone decides to add or remove VPs in the set were
+		 *	iterating over.
+		 */
+		if (tmpl_copy_vps(request, &vps, request, g->vpt) < 0) {	/* nothing to loop over */
 			MOD_LOG_OPEN_BRACE("foreach");
 			result = RLM_MODULE_NOOP;
 			MOD_LOG_CLOSE_BRACE();
 			goto calculate_result;
 		}
 
-		/*
-		 *	Copy the VPs from the original request, this ensures deterministic
-		 *	behaviour if someone decides to add or remove VPs in the set were
-		 *	iterating over.
-		 */
-		vps = NULL;
-
-		fr_cursor_init(&cursor, &vp);
-
-		/* Prime the cursor. */
-		cursor.found = cursor.current;
-		for (fr_cursor_init(&copy, &vps);
-		     vp;
-		     vp = fr_cursor_next_by_da(&cursor, vp->da, g->vpt->attribute.tag)) {
-		     VALUE_PAIR *tmp;
-
-		     MEM(tmp = paircopyvp(request, vp));
-		     fr_cursor_insert(&copy, tmp);
-		}
+		rad_assert(vps != NULL);
+		fr_cursor_init(&copy, &vps);
 
 		RDEBUG2("%.*sforeach %s ", depth + 1, modcall_spaces, c->name);
-
-		rad_assert(vps != NULL);
 
 		/*
 		 *	This is the actual body of the foreach loop
@@ -1909,6 +1895,13 @@ static modcallable *do_compile_modforeach(modcallable *parent,
 		cf_log_err_cs(cs, "MUST use attribute reference in 'foreach'");
 		return NULL;
 	}
+
+	/*
+	 *	Fix up the template to iterate over all instances of
+	 *	the attribute. In a perfect consistent world, users would do
+	 *	foreach &attr[*], but that's taking the consistency thing a bit far.
+	 */
+	vpt->tmpl_num = NUM_ALL;
 
 	csingle = do_compile_modgroup(parent, component, cs,
 				      GROUPTYPE_SIMPLE, GROUPTYPE_SIMPLE,
@@ -3376,8 +3369,8 @@ bool modcall_pass2(modcallable *mc)
 
 		check_children:
 			rad_assert(g->vpt->type == TMPL_TYPE_ATTR);
-			if (g->vpt->tmpl_num != NUM_ANY) {
-				cf_log_err_cs(g->cs, "MUST NOT use array references in 'foreach'");
+			if (g->vpt->tmpl_num != NUM_ALL) {
+				cf_log_err_cs(g->cs, "MUST NOT use instance selectors in 'foreach'");
 				return false;
 			}
 			if (!modcall_pass2(g->children)) return false;
