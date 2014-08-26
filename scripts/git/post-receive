@@ -67,11 +67,11 @@ conf_check () {
 
 daemon_restart () {
 	echo -n "Restarting server... "
-	
+
 	$DAEMON_REST > /dev/null 2>&1; ret=$?
 
 	status $ret
-	return $ret 
+	return $ret
 }
 
 # Reset the current working directory state
@@ -121,12 +121,12 @@ else
 
 		if ! daemon_restart; then
 			echo "WARNING: Manually verify $DAEMON_DESC status immediately!"
-			exit 64	
+			exit 64
 		fi
 
 		exit 64
 	fi
-	
+
 	$GIT_EXEC tag -f $STABLE_TAG $newrev
 fi
 
