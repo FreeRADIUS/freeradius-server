@@ -82,7 +82,7 @@ value_pair_map_t *map_from_cp(TALLOC_CTX *ctx, CONF_PAIR *cp,
 	/*
 	 *	LHS must always be an attribute reference.
 	 */
-	map->dst = radius_attr2tmpl(map, attr, dst_request_def, dst_list_def);
+	map->dst = tmpl_afrom_attr_str(map, attr, dst_request_def, dst_list_def);
 	if (!map->dst) {
 		cf_log_err(ci, "%s", fr_strerror());
 		goto error;
@@ -92,7 +92,7 @@ value_pair_map_t *map_from_cp(TALLOC_CTX *ctx, CONF_PAIR *cp,
 	 *	RHS might be an attribute reference.
 	 */
 	type = cf_pair_value_type(cp);
-	map->src = radius_str2tmpl(map, value, type, src_request_def, src_list_def);
+	map->src = tmpl_afrom_str(map, value, type, src_request_def, src_list_def);
 	if (!map->src) {
 		cf_log_err(ci, "%s", fr_strerror());
 		goto error;
@@ -125,7 +125,7 @@ value_pair_map_t *map_from_cp(TALLOC_CTX *ctx, CONF_PAIR *cp,
 			WARN("%s[%d] Wildcard deletion MUST use '!* ANY'", cf_pair_filename(cp), cf_pair_lineno(cp));
 		}
 
-		radius_tmplfree(&map->src);
+		tmpl_free(&map->src);
 
 		map->src = talloc_zero(map, value_pair_tmpl_t);
 		map->src->type = TMPL_TYPE_NULL;
@@ -354,7 +354,7 @@ value_pair_map_t *map_from_str(TALLOC_CTX *ctx, char const *lhs, FR_TOKEN lhs_ty
 
 	map = talloc_zero(ctx, value_pair_map_t);
 
-	map->dst = radius_str2tmpl(map, lhs, lhs_type, dst_request_def, dst_list_def);
+	map->dst = tmpl_afrom_str(map, lhs, lhs_type, dst_request_def, dst_list_def);
 	if (!map->dst) {
 	error:
 		talloc_free(map);
@@ -363,7 +363,7 @@ value_pair_map_t *map_from_str(TALLOC_CTX *ctx, char const *lhs, FR_TOKEN lhs_ty
 
 	map->op = op;
 
-	map->src = radius_str2tmpl(map, rhs, rhs_type, src_request_def, src_list_def);
+	map->src = tmpl_afrom_str(map, rhs, rhs_type, src_request_def, src_list_def);
 	if (!map->src) goto error;
 
 	return map;
@@ -631,7 +631,7 @@ int map_to_vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *map, U
 		/*
 		 * @todo should log error, and return -1 for v3.1 (causes update to fail)
 		 */
-		if (radius_tmpl_copy_vp(request, &found, request, map->src) < 0) return 0;
+		if (tmpl_copy_vps(request, &found, request, map->src) < 0) return 0;
 
 		vp = fr_cursor_init(&from, &found);
 		/*
@@ -1110,7 +1110,7 @@ size_t map_print(char *buffer, size_t bufsize, value_pair_map_t const *map)
 	char *p = buffer;
 	char *end = buffer + bufsize;
 
-	len = radius_tmpl2str(buffer, bufsize, map->dst);
+	len = tmpl_prints(buffer, bufsize, map->dst);
 	p += len;
 
 	*(p++) = ' ';
@@ -1134,12 +1134,12 @@ size_t map_print(char *buffer, size_t bufsize, value_pair_map_t const *map)
 	    (map->dst->tmpl_da->type == PW_TYPE_STRING) &&
 	    (map->src->type == TMPL_TYPE_LITERAL)) {
 		*(p++) = '\'';
-		len = radius_tmpl2str(p, end - p, map->src);
+		len = tmpl_prints(p, end - p, map->src);
 		p += len;
 		*(p++) = '\'';
 		*p = '\0';
 	} else {
-		len = radius_tmpl2str(p, end - p, map->src);
+		len = tmpl_prints(p, end - p, map->src);
 		p += len;
 	}
 

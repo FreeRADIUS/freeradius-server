@@ -142,7 +142,7 @@ int radius_expand_tmpl(char **out, REQUEST *request, value_pair_tmpl_t const *vp
 
 	case TMPL_TYPE_ATTR:
 		EVAL_DEBUG("TMPL ATTR");
-		ret = radius_tmpl_get_vp(&vp, request, vpt);
+		ret = tmpl_find_vp(&vp, request, vpt);
 		if (ret < 0) return ret;
 
 		*out = vp_aprint_value(request, vp);
@@ -201,7 +201,7 @@ int radius_evaluate_tmpl(REQUEST *request, int modreturn, UNUSED int depth,
 
 	case TMPL_TYPE_ATTR:
 	case TMPL_TYPE_LIST:
-		if (radius_tmpl_get_vp(NULL, request, vpt) < 0) {
+		if (tmpl_find_vp(NULL, request, vpt) < 0) {
 			rcode = false;
 		} else {
 			rcode = true;
@@ -310,40 +310,6 @@ finish:
 	if (preg == &reg) regfree(&reg);
 
 	return ret;
-}
-
-/*
- *	Expand a template to a string, parse it as type of "cast", and
- *	create a VP from the data.
- */
-static VALUE_PAIR *get_cast_vp(REQUEST *request, value_pair_tmpl_t const *vpt, DICT_ATTR const *cast)
-{
-	int rcode;
-	VALUE_PAIR *vp;
-	char *str;
-
-	vp = pairalloc(request, cast);
-	if (!vp) return NULL;
-
-	if (vpt->type == TMPL_TYPE_DATA) {
-		rad_assert(vp->da->type == vpt->tmpl_da->type);
-		pairdatacpy(vp, vpt->tmpl_da, vpt->tmpl_value, vpt->tmpl_length);
-		return vp;
-	}
-
-	rcode = radius_expand_tmpl(&str, request, vpt);
-	if (rcode < 0) {
-		pairfree(&vp);
-		return NULL;
-	}
-
-	if (pairparsevalue(vp, str, 0) < 0) {
-		talloc_free(str);
-		pairfree(&vp);
-		return NULL;
-	}
-
-	return vp;
 }
 
 /*
@@ -480,7 +446,7 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 	rad_assert(map->dst->type != TMPL_TYPE_REGEX);
 	rad_assert(map->dst->type != TMPL_TYPE_REGEX_STRUCT);
 
-	EVAL_DEBUG("Map %s ? %s",
+	EVAL_DEBUG("MAP TYPES LHS: %s, RHS: %s",
 		   fr_int2str(template_names, map->dst->type, "???"),
 		   fr_int2str(template_names, map->src->type, "???"));
 
@@ -503,8 +469,8 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 		VALUE_PAIR *lhs_vp, *rhs_vp;
 
 		EVAL_DEBUG("ATTR to ATTR");
-		if ((radius_tmpl_get_vp(&lhs_vp, request, map->dst) < 0) ||
-		    (radius_tmpl_get_vp(&rhs_vp, request, map->src) < 0)) return false;
+		if ((tmpl_find_vp(&lhs_vp, request, map->dst) < 0) ||
+		    (tmpl_find_vp(&rhs_vp, request, map->src) < 0)) return false;
 
 		return paircmp_op(lhs_vp, map->op, rhs_vp);
 	}
@@ -524,7 +490,7 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 		if (map->dst->type == TMPL_TYPE_ATTR) {
 			VALUE_PAIR *cast_vp;
 
-			if (radius_tmpl_get_vp(&cast_vp, request, map->dst) < 0) return false;
+			if (tmpl_find_vp(&cast_vp, request, map->dst) < 0) return false;
 
 			lhs_vp = pairalloc(request, c->cast);
 			if (!lhs_vp) return false;
@@ -538,18 +504,17 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 			}
 
 		} else {
-			lhs_vp = get_cast_vp(request, map->dst, c->cast);
+			if (tmpl_cast_to_vp(&lhs_vp, request, map->dst, c->cast) < 0) return false;
 		}
-		if (!lhs_vp) return false;
 
 		/*
 		 *	Get either a real VP, or parse the RHS into a
 		 *	VP, and return that.
 		 */
 		if (map->src->type == TMPL_TYPE_ATTR) {
-			if (radius_tmpl_get_vp(&rhs_vp, request, map->src) < 0) return false;
+			if (tmpl_find_vp(&rhs_vp, request, map->src) < 0) return false;
 		} else {
-			rhs_vp = get_cast_vp(request, map->src, c->cast);
+			if (tmpl_cast_to_vp(&rhs_vp, request, map->src, c->cast) < 0) return false;
 		}
 
 		if (!rhs_vp) return false;
@@ -578,8 +543,7 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 
 		EVAL_DEBUG("virtual ATTR to DATA");
 
-		lhs_vp = get_cast_vp(request, map->src, map->dst->tmpl_da);
-		if (!lhs_vp) return false;
+		if (tmpl_cast_to_vp(&lhs_vp, request, map->src, map->dst->tmpl_da) < 0) return false;
 
 		/*
 		 *	paircompare requires the operator be set for the
@@ -605,10 +569,8 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 
 		EVAL_DEBUG("ATTR to DATA");
 
-		if (radius_tmpl_get_vp(&lhs_vp, request, map->dst) < 0) return false;
-
-		rhs_vp = get_cast_vp(request, map->src, map->dst->tmpl_da);
-		if (!rhs_vp) return false;
+		if (tmpl_find_vp(&lhs_vp, request, map->dst) < 0) return false;
+		if (tmpl_cast_to_vp(&rhs_vp, request, map->src, map->dst->tmpl_da) < 0) return false;
 
 #ifdef WITH_EVAL_DEBUG
 		debug_pair(lhs_vp);
@@ -660,7 +622,7 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 		/*
 		 *	No LHS means no match
 		 */
-		if (radius_tmpl_get_vp(&lhs_vp, request, map->dst) < 0) {
+		if (tmpl_find_vp(&lhs_vp, request, map->dst) < 0) {
 			/*
 			 *	Not a real attr: might be a dynamic comparison.
 			 */
