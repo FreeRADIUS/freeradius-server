@@ -85,8 +85,8 @@ if $ABORT_UNTRACKED && [ `$GIT_EXEC status --porcelain | wc -l` -gt 0 ]; then
 	echo "committed or added to .gitignore and $DAEMON_DESC restarted manually."
 	$GIT_EXEC status --short
 
-	if ! conf_check
-		then exit 64
+	if ! conf_check; then
+		exit 64
 	fi
 
 	echo "WARNING: $DAEMON_DESC found errors in the configuration,"
@@ -106,7 +106,7 @@ if ! $GIT_EXEC reset --hard
 fi
 
 # Check if the server finds any errors in the new config
-if ! conf_check then
+if ! conf_check; then
 	echo "WARNING: $DAEMON_DESC found errors in the configuration,"
 	echo "please fix the errors and push the corrected configuration."
 
