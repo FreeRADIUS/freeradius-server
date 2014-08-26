@@ -362,7 +362,7 @@ void realm_home_server_sanitize(home_server_t *home, CONF_SECTION *cs)
 {
 	CONF_SECTION *parent = NULL;
 
-  	FR_INTEGER_BOUND_CHECK("max_outstanding", home->max_outstanding, >=, 8);
+	FR_INTEGER_BOUND_CHECK("max_outstanding", home->max_outstanding, >=, 8);
 	FR_INTEGER_BOUND_CHECK("max_outstanding", home->max_outstanding, <=, 65536*16);
 
 	FR_INTEGER_BOUND_CHECK("ping_interval", home->ping_interval, >=, 6);
@@ -702,7 +702,6 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 int realm_home_server_add(home_server_t *home, CONF_SECTION *cs, int dual)
 {
 	const char *name2 = home->name;
-	CONF_SECTION *parent = NULL;
 
 	/*
 	 *	The structs aren't mutex protected.  Refuse to destroy
