@@ -63,6 +63,7 @@ BuildRequires: net-snmp-utils
 BuildRequires: readline-devel
 BuildRequires: libpcap-devel
 BuildRequires: libtalloc-devel
+BuildRequires: libcurl-devel
 
 Requires(pre): shadow-utils glibc-common
 Requires(post): /sbin/chkconfig
