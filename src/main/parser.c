@@ -68,7 +68,7 @@ next:
 			p += len;
 		}
 
-		len = radius_tmpl2str(p, end - p, c->data.vpt);
+		len = tmpl_prints(p, end - p, c->data.vpt);
 		p += len;
 		break;
 
@@ -470,7 +470,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 			c->type = COND_TYPE_EXISTS;
 			c->ci = ci;
 
-			c->data.vpt = radius_str2tmpl(c, lhs, lhs_type, REQUEST_CURRENT, PAIR_LIST_REQUEST);
+			c->data.vpt = tmpl_afrom_str(c, lhs, lhs_type, REQUEST_CURRENT, PAIR_LIST_REQUEST);
 			if (!c->data.vpt) {
 				/*
 				 *	If strings are T_BARE_WORD and they start with '&',
@@ -482,7 +482,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 				    (lhs_type != T_BARE_WORD)) {
 					return_P("Failed creating exists");
 				}
-				c->data.vpt = radius_str2tmpl(c, lhs + 1, lhs_type, REQUEST_CURRENT, PAIR_LIST_REQUEST);
+				c->data.vpt = tmpl_afrom_str(c, lhs + 1, lhs_type, REQUEST_CURRENT, PAIR_LIST_REQUEST);
 				if (!c->data.vpt) {
 					return_P("Failed creating exists");
 				}
@@ -712,7 +712,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 				 *	Cast it to the appropriate data type.
 				 */
 				if ((c->data.map->dst->type == TMPL_TYPE_LITERAL) &&
-				    !radius_cast_tmpl(c->data.map->dst, c->cast)) {
+				    !tmpl_cast_in_place(c->data.map->dst, c->cast)) {
 					*error = "Failed to parse field";
 					if (lhs) talloc_free(lhs);
 					if (rhs) talloc_free(rhs);
@@ -726,7 +726,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 				 */
 				if ((c->data.map->dst->type == TMPL_TYPE_DATA) &&
 				    (c->data.map->src->type == TMPL_TYPE_LITERAL) &&
-				    !radius_cast_tmpl(c->data.map->src, c->data.map->dst->tmpl_da)) {
+				    !tmpl_cast_in_place(c->data.map->src, c->data.map->dst->tmpl_da)) {
 					return_rhs("Failed to parse field");
 				}
 
@@ -865,7 +865,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 				 *	literal.  Cast the RHS to the type of the cast.
 				 */
 				if (c->cast && (c->data.map->src->type == TMPL_TYPE_LITERAL) &&
-				    !radius_cast_tmpl(c->data.map->src, c->cast)) {
+				    !tmpl_cast_in_place(c->data.map->src, c->cast)) {
 					return_rhs("Failed to parse field");
 				}
 
@@ -875,7 +875,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 				 */
 				if ((c->data.map->dst->type == TMPL_TYPE_ATTR) &&
 				    (c->data.map->src->type == TMPL_TYPE_LITERAL) &&
-				    !radius_cast_tmpl(c->data.map->src, c->data.map->dst->tmpl_da)) {
+				    !tmpl_cast_in_place(c->data.map->src, c->data.map->dst->tmpl_da)) {
 					DICT_ATTR const *da = c->data.map->dst->tmpl_da;
 
 					if ((da->vendor == 0) &&

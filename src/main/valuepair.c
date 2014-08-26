@@ -717,7 +717,7 @@ void rdebug_pair_list(int level, REQUEST *request, VALUE_PAIR *vp)
  *	Will be NULL if the attribute couldn't be resolved.
  * @param request current request.
  * @param name attribute name including qualifiers.
- * @return -4 if either the attribute or qualifier were invalid, and the same error codes as radius_tmpl_get_vp for other
+ * @return -4 if either the attribute or qualifier were invalid, and the same error codes as tmpl_find_vp for other
  *	error conditions.
  */
 int radius_get_vp(VALUE_PAIR **out, REQUEST *request, char const *name)
@@ -726,11 +726,11 @@ int radius_get_vp(VALUE_PAIR **out, REQUEST *request, char const *name)
 
 	*out = NULL;
 
-	if (radius_parse_attr(&vpt, name, REQUEST_CURRENT, PAIR_LIST_REQUEST) < 0) {
+	if (tmpl_from_attr_str(&vpt, name, REQUEST_CURRENT, PAIR_LIST_REQUEST) < 0) {
 		return -4;
 	}
 
-	return radius_tmpl_get_vp(out, request, &vpt);
+	return tmpl_find_vp(out, request, &vpt);
 }
 
 /** Copy VP(s) from the specified request.
@@ -740,7 +740,7 @@ int radius_get_vp(VALUE_PAIR **out, REQUEST *request, char const *name)
  *	Will be NULL if the attribute couldn't be resolved.
  * @param request current request.
  * @param name attribute name including qualifiers.
- * @return -4 if either the attribute or qualifier were invalid, and the same error codes as radius_tmpl_get_vp for other
+ * @return -4 if either the attribute or qualifier were invalid, and the same error codes as tmpl_find_vp for other
  *	error conditions.
  */
 int radius_copy_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, char const *name)
@@ -749,11 +749,11 @@ int radius_copy_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, char con
 
 	*out = NULL;
 
-	if (radius_parse_attr(&vpt, name, REQUEST_CURRENT, PAIR_LIST_REQUEST) < 0) {
+	if (tmpl_from_attr_str(&vpt, name, REQUEST_CURRENT, PAIR_LIST_REQUEST) < 0) {
 		return -4;
 	}
 
-	return radius_tmpl_copy_vp(ctx, out, request, &vpt);
+	return tmpl_copy_vps(ctx, out, request, &vpt);
 }
 
 void module_failure_msg(REQUEST *request, char const *fmt, ...)

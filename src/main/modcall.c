@@ -660,8 +660,7 @@ redo:
 			goto calculate_result;
 		}
 
-		if ((radius_tmpl_get_vp(&vp, request, g->vpt) < 0) || /* nothing to loop over */
-		    !vp) {
+		if ((tmpl_find_vp(&vp, request, g->vpt) < 0) || !vp) { /* nothing to loop over */
 			MOD_LOG_OPEN_BRACE("foreach");
 			result = RLM_MODULE_NOOP;
 			MOD_LOG_CLOSE_BRACE();
@@ -845,7 +844,7 @@ redo:
 		 *	The attribute doesn't exist.  We can skip
 		 *	directly to the default 'case' statement.
 		 */
-		if ((g->vpt->type == TMPL_TYPE_ATTR) && (radius_tmpl_get_vp(NULL, request, g->vpt) < 0)) {
+		if ((g->vpt->type == TMPL_TYPE_ATTR) && (tmpl_find_vp(NULL, request, g->vpt) < 0)) {
 		find_null_case:
 			for (this = g->children; this; this = this->next) {
 				rad_assert(this->type == MOD_CASE);
@@ -1683,7 +1682,7 @@ static modcallable *do_compile_modupdate(modcallable *parent, UNUSED rlm_compone
 				map->src->tmpl_da = map->dst->tmpl_da;
 				map->src->tmpl_length = talloc_array_length(vpd->strvalue) - 1;
 			} else {
-				if (!radius_cast_tmpl(map->src, map->dst->tmpl_da)) {
+				if (!tmpl_cast_in_place(map->src, map->dst->tmpl_da)) {
 					cf_log_err(map->ci, "%s", fr_strerror());
 					talloc_free(head);
 					return NULL;
@@ -1747,7 +1746,7 @@ static modcallable *do_compile_modswitch(modcallable *parent, rlm_components_t c
 	 *	will fix it up.
 	 */
 	type = cf_section_name2_type(cs);
-	vpt = radius_str2tmpl(cs, name2, type, REQUEST_CURRENT, PAIR_LIST_REQUEST);
+	vpt = tmpl_afrom_str(cs, name2, type, REQUEST_CURRENT, PAIR_LIST_REQUEST);
 	if (!vpt && ((type != T_BARE_WORD) || (name2[0] != '&'))) {
 		cf_log_err_cs(cs, "Syntax error in '%s': %s", name2, fr_strerror());
 		return NULL;
@@ -1836,7 +1835,7 @@ static modcallable *do_compile_modcase(modcallable *parent, rlm_components_t com
 
 		type = cf_section_name2_type(cs);
 
-		vpt = radius_str2tmpl(cs, name2, type, REQUEST_CURRENT, PAIR_LIST_REQUEST);
+		vpt = tmpl_afrom_str(cs, name2, type, REQUEST_CURRENT, PAIR_LIST_REQUEST);
 		if (!vpt && ((type != T_BARE_WORD) || (name2[0] != '&'))) {
 			cf_log_err_cs(cs, "Syntax error in '%s': %s", name2, fr_strerror());
 			return NULL;
@@ -1910,7 +1909,7 @@ static modcallable *do_compile_modforeach(modcallable *parent,
 	 *	will fix it up.
 	 */
 	type = cf_section_name2_type(cs);
-	vpt = radius_str2tmpl(cs, name2, type, REQUEST_CURRENT, PAIR_LIST_REQUEST);
+	vpt = tmpl_afrom_str(cs, name2, type, REQUEST_CURRENT, PAIR_LIST_REQUEST);
 	if (!vpt && ((type != T_BARE_WORD) || (name2[0] != '&'))) {
 		cf_log_err_cs(cs, "Syntax error in '%s': %s", name2, fr_strerror());
 		return NULL;
@@ -2916,7 +2915,7 @@ static bool pass2_callback(UNUSED void *ctx, fr_cond_t *c)
 		 */
 		if (c->pass2_fixup == PASS2_FIXUP_ATTR) {
 			value_pair_tmpl_t *vpt;
-			vpt = radius_str2tmpl(c, c->data.vpt->name, T_BARE_WORD, REQUEST_CURRENT, PAIR_LIST_REQUEST);
+			vpt = tmpl_afrom_str(c, c->data.vpt->name, T_BARE_WORD, REQUEST_CURRENT, PAIR_LIST_REQUEST);
 			if (!vpt) {
 				cf_log_err(c->ci, "Unknown attribute '%s'", c->data.vpt->name + 1);
 				return false;
@@ -2975,7 +2974,7 @@ static bool pass2_callback(UNUSED void *ctx, fr_cond_t *c)
 		/*
 		 *	It's still not an attribute.  Ignore it.
 		 */
-		if (radius_parse_attr(&vpt, map->dst->name, REQUEST_CURRENT, PAIR_LIST_REQUEST) < 0) {
+		if (tmpl_from_attr_str(&vpt, map->dst->name, REQUEST_CURRENT, PAIR_LIST_REQUEST) < 0) {
 			cf_log_err(old->ci, "Failed parsing condition: %s", fr_strerror());
 			c->pass2_fixup = PASS2_FIXUP_NONE;
 			return true;
@@ -3044,7 +3043,7 @@ check_paircmp:
 		value_pair_tmpl_t *vpt;
 
 		fmt = talloc_asprintf(map->dst, "%%{%s}", map->dst->name);
-		vpt = radius_str2tmpl(map, fmt, T_DOUBLE_QUOTED_STRING, REQUEST_CURRENT, PAIR_LIST_REQUEST);
+		vpt = tmpl_afrom_str(map, fmt, T_DOUBLE_QUOTED_STRING, REQUEST_CURRENT, PAIR_LIST_REQUEST);
 		if (!vpt) {
 			cf_log_err(map->ci, "Failed compiling %s", map->dst->name);
 			talloc_free(fmt);
@@ -3232,7 +3231,7 @@ bool modcall_pass2(modcallable *mc)
 			if (g->vpt->type == TMPL_TYPE_LITERAL) {
 				value_pair_tmpl_t *vpt;
 
-				vpt = radius_str2tmpl(g->cs, this->name,
+				vpt = tmpl_afrom_str(g->cs, this->name,
 						      cf_section_name2_type(g->cs),
 						      REQUEST_CURRENT, PAIR_LIST_REQUEST);
 				if (vpt->type == TMPL_TYPE_ATTR) {
@@ -3273,7 +3272,7 @@ bool modcall_pass2(modcallable *mc)
 			if (!g->vpt && this->name &&
 			    (this->name[0] == '&') &&
 			    (cf_section_name2_type(g->cs) == T_BARE_WORD)) {
-				g->vpt = radius_str2tmpl(g->cs, this->name,
+				g->vpt = tmpl_afrom_str(g->cs, this->name,
 							 cf_section_name2_type(g->cs),
 							 REQUEST_CURRENT, PAIR_LIST_REQUEST);
 				if (!g->vpt) {
@@ -3303,7 +3302,7 @@ bool modcall_pass2(modcallable *mc)
 				if (f->vpt->type == TMPL_TYPE_ATTR) {
 					rad_assert(f->vpt->tmpl_da != NULL);
 
-					if (!radius_cast_tmpl(g->vpt, f->vpt->tmpl_da)) {
+					if (!tmpl_cast_in_place(g->vpt, f->vpt->tmpl_da)) {
 						cf_log_err_cs(g->cs, "Invalid argument for case statement: %s",
 							      fr_strerror());
 						return false;
@@ -3350,7 +3349,7 @@ bool modcall_pass2(modcallable *mc)
 			 *	all of the modules have been loaded.
 			 *	Check for that now.
 			 */
-			g->vpt = radius_str2tmpl(g->cs, this->name,
+			g->vpt = tmpl_afrom_str(g->cs, this->name,
 						 cf_section_name2_type(g->cs),
 						 REQUEST_CURRENT, PAIR_LIST_REQUEST);
 			if (!g->vpt) {
@@ -3443,7 +3442,7 @@ void modcall_debug(modcallable *mc, int depth)
 		case MOD_SWITCH:
 		case MOD_CASE:
 			g = mod_callabletogroup(this);
-			radius_tmpl2str(buffer, sizeof(buffer), g->vpt);
+			tmpl_prints(buffer, sizeof(buffer), g->vpt);
 			DEBUG("%.*s%s %s {", depth, modcall_spaces,
 				group_name[this->type], buffer);
 			modcall_debug(g->children, depth + 1);

@@ -169,26 +169,29 @@ request_refs_t		radius_request_name(char const **name, request_refs_t unknown);
 
 
 /* Template manipulation and execution */
-int			radius_parse_attr(value_pair_tmpl_t *vpt, char const *name,
+int			tmpl_from_attr_str(value_pair_tmpl_t *vpt, char const *name,
 					  request_refs_t request_def,
 					  pair_lists_t list_def);
 
-void			radius_tmplfree(value_pair_tmpl_t **tmpl);
+void			tmpl_free(value_pair_tmpl_t **tmpl);
 
-value_pair_tmpl_t	*radius_attr2tmpl(TALLOC_CTX *ctx, char const *name,
-					  request_refs_t request_def,
-					  pair_lists_t list_def);
+value_pair_tmpl_t	*tmpl_afrom_attr_str(TALLOC_CTX *ctx, char const *name,
+					     request_refs_t request_def,
+					     pair_lists_t list_def);
 
-value_pair_tmpl_t	*radius_str2tmpl(TALLOC_CTX *ctx, char const *name, FR_TOKEN type,
-					 request_refs_t request_def,
-					 pair_lists_t list_def);
+value_pair_tmpl_t	*tmpl_afrom_str(TALLOC_CTX *ctx, char const *name, FR_TOKEN type,
+					request_refs_t request_def,
+					pair_lists_t list_def);
 
-bool			radius_cast_tmpl(value_pair_tmpl_t *vpt, DICT_ATTR const *da);
+bool			tmpl_cast_in_place(value_pair_tmpl_t *vpt, DICT_ATTR const *da);
 
-size_t			radius_tmpl2str(char *buffer, size_t bufsize, value_pair_tmpl_t const *vpt);
+size_t			tmpl_prints(char *buffer, size_t bufsize, value_pair_tmpl_t const *vpt);
 
-int			radius_tmpl_get_vp(VALUE_PAIR **out, REQUEST *request, value_pair_tmpl_t const *vpt);
+int			tmpl_find_vp(VALUE_PAIR **out, REQUEST *request, value_pair_tmpl_t const *vpt);
 
-int			radius_tmpl_copy_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request,
-					    value_pair_tmpl_t const *vpt);
+int			tmpl_cast_to_vp(VALUE_PAIR **out, REQUEST *request,
+					value_pair_tmpl_t const *vpt, DICT_ATTR const *cast);
+
+int			tmpl_copy_vps(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request,
+				      value_pair_tmpl_t const *vpt);
 #endif	/* TMPL_H */

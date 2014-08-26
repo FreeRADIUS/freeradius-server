@@ -384,10 +384,10 @@ int radius_request(REQUEST **context, request_refs_t name)
  * sections into attribute mappings.
  *
  * Note: name field is just a copy of the input pointer, if you know that
- * string might be freed before you're done with the vpt use radius_attr2tmpl
+ * string might be freed before you're done with the vpt use tmpl_afrom_attr_str
  * instead.
  *
- * The special return code of -2 is used only by radius_str2tmpl, which allow
+ * The special return code of -2 is used only by tmpl_afrom_str, which allow
  * bare words which might (or might not) be an attribute reference.
  *
  * @param[out] vpt to modify.
@@ -396,7 +396,7 @@ int radius_request(REQUEST **context, request_refs_t name)
  * @param[in] list_def The default list to insert unqualified attributes into.
  * @return -2 on partial parse followed by error, -1 on other error, or 0 on success
  */
-int radius_parse_attr(value_pair_tmpl_t *vpt, char const *name, request_refs_t request_def, pair_lists_t list_def)
+int tmpl_from_attr_str(value_pair_tmpl_t *vpt, char const *name, request_refs_t request_def, pair_lists_t list_def)
 {
 	int error = -1;
 	char const *p;
@@ -503,11 +503,42 @@ int radius_parse_attr(value_pair_tmpl_t *vpt, char const *name, request_refs_t r
 	return 0;
 }
 
+/** Parse qualifiers to convert attrname into a value_pair_tmpl_t.
+ *
+ * VPTs are used in various places where we need to pre-parse configuration
+ * sections into attribute mappings.
+ *
+ * @param[in] ctx for talloc
+ * @param[in] name attribute name including qualifiers.
+ * @param[in] request_def The default request to insert unqualified
+ *	attributes into.
+ * @param[in] list_def The default list to insert unqualified attributes into.
+ * @return pointer to a value_pair_tmpl_t struct (must be freed with
+ *	tmpl_free) or NULL on error.
+ */
+value_pair_tmpl_t *tmpl_afrom_attr_str(TALLOC_CTX *ctx, char const *name, request_refs_t request_def,
+				       pair_lists_t list_def)
+{
+	value_pair_tmpl_t *vpt;
+	char const *copy;
+
+	vpt = talloc(ctx, value_pair_tmpl_t); /* parse_attr zeroes it */
+	copy = talloc_typed_strdup(vpt, name);
+
+	if (tmpl_from_attr_str(vpt, copy, request_def, list_def) < 0) {
+		ERROR("%s", fr_strerror());
+		tmpl_free(&vpt);
+		return NULL;
+	}
+
+	return vpt;
+}
+
 /** Release memory allocated to value pair template.
  *
  * @param[in,out] tmpl to free.
  */
-void radius_tmplfree(value_pair_tmpl_t **tmpl)
+void tmpl_free(value_pair_tmpl_t **tmpl)
 {
 	if (*tmpl == NULL) return;
 
@@ -525,7 +556,7 @@ void radius_tmplfree(value_pair_tmpl_t **tmpl)
  * @param[in] vpt to print
  * @return the size of the string printed
  */
-size_t radius_tmpl2str(char *buffer, size_t bufsize, value_pair_tmpl_t const *vpt)
+size_t tmpl_prints(char *buffer, size_t bufsize, value_pair_tmpl_t const *vpt)
 {
 	size_t len;
 	char c;
@@ -695,8 +726,8 @@ size_t radius_tmpl2str(char *buffer, size_t bufsize, value_pair_tmpl_t const *vp
  * @param[in] list_def The default list to insert unqualified attributes into.
  * @return pointer to new VPT.
  */
-value_pair_tmpl_t *radius_str2tmpl(TALLOC_CTX *ctx, char const *name, FR_TOKEN type,
-				   request_refs_t request_def, pair_lists_t list_def)
+value_pair_tmpl_t *tmpl_afrom_str(TALLOC_CTX *ctx, char const *name, FR_TOKEN type,
+				  request_refs_t request_def, pair_lists_t list_def)
 {
 	int rcode;
 	char const *p;
@@ -712,7 +743,7 @@ value_pair_tmpl_t *radius_str2tmpl(TALLOC_CTX *ctx, char const *name, FR_TOKEN t
 		 *	If we can parse it as an attribute, it's an attribute.
 		 *	Otherwise, treat it as a literal.
 		 */
-		rcode = radius_parse_attr(vpt, vpt->name, request_def, list_def);
+		rcode = tmpl_from_attr_str(vpt, vpt->name, request_def, list_def);
 		if (rcode == -2) {
 			talloc_free(vpt);
 			return NULL;
@@ -766,50 +797,18 @@ value_pair_tmpl_t *radius_str2tmpl(TALLOC_CTX *ctx, char const *name, FR_TOKEN t
 		return NULL;
 	}
 
-	radius_tmpl2str(buffer, sizeof(buffer), vpt);
+	tmpl_prints(buffer, sizeof(buffer), vpt);
 
 	return vpt;
 }
 
-/** Parse qualifiers to convert attrname into a value_pair_tmpl_t.
- *
- * VPTs are used in various places where we need to pre-parse configuration
- * sections into attribute mappings.
- *
- * @param[in] ctx for talloc
- * @param[in] name attribute name including qualifiers.
- * @param[in] request_def The default request to insert unqualified
- *	attributes into.
- * @param[in] list_def The default list to insert unqualified attributes into.
- * @return pointer to a value_pair_tmpl_t struct (must be freed with
- *	radius_tmplfree) or NULL on error.
- */
-value_pair_tmpl_t *radius_attr2tmpl(TALLOC_CTX *ctx, char const *name,
-				    request_refs_t request_def,
-				    pair_lists_t list_def)
-{
-	value_pair_tmpl_t *vpt;
-	char const *copy;
-
-	vpt = talloc(ctx, value_pair_tmpl_t); /* parse_attr zeroes it */
-	copy = talloc_typed_strdup(vpt, name);
-
-	if (radius_parse_attr(vpt, copy, request_def, list_def) < 0) {
-		ERROR("%s", fr_strerror());
-		radius_tmplfree(&vpt);
-		return NULL;
-	}
-
-	return vpt;
-}
-
-/** Cast a literal vpt to a value_data_t
+/** Convert a tmpl containing literal data, to the type specified by da.
  *
  * @param[in,out] vpt the template to modify
  * @param[in] da the dictionary attribute to case it to
  * @return true for success, false for failure.
  */
-bool radius_cast_tmpl(value_pair_tmpl_t *vpt, DICT_ATTR const *da)
+bool tmpl_cast_in_place(value_pair_tmpl_t *vpt, DICT_ATTR const *da)
 {
 	VALUE_PAIR *vp;
 	value_data_t *data;
@@ -845,6 +844,44 @@ bool radius_cast_tmpl(value_pair_tmpl_t *vpt, DICT_ATTR const *da)
 	return true;
 }
 
+/** Expand a template to a string, parse it as type of "cast", and create a VP from the data.
+ */
+int tmpl_cast_to_vp(VALUE_PAIR **out, REQUEST *request,
+		    value_pair_tmpl_t const *vpt, DICT_ATTR const *cast)
+{
+	int rcode;
+	VALUE_PAIR *vp;
+	char *str;
+
+	*out = NULL;
+
+	vp = pairalloc(request, cast);
+	if (!vp) return -1;
+
+	if (vpt->type == TMPL_TYPE_DATA) {
+		rad_assert(vp->da->type == vpt->tmpl_da->type);
+		pairdatacpy(vp, vpt->tmpl_da, vpt->tmpl_value, vpt->tmpl_length);
+		*out = vp;
+		return 0;
+	}
+
+	rcode = radius_expand_tmpl(&str, request, vpt);
+	if (rcode < 0) {
+		pairfree(&vp);
+		return rcode;
+	}
+
+	if (pairparsevalue(vp, str, 0) < 0) {
+		talloc_free(str);
+		pairfree(&vp);
+		return rcode;
+	}
+
+	*out = vp;
+	return 0;
+}
+
+
 /** Copy pairs matching a VPT in the current request
  *
  * @param ctx to allocate new VALUE_PAIRs under.
@@ -853,7 +890,7 @@ bool radius_cast_tmpl(value_pair_tmpl_t *vpt, DICT_ATTR const *da)
  * @param vpt the value pair template
  * @return -1 if VP could not be found, -2 if list could not be found, -3 if context could not be found.
  */
-int radius_tmpl_copy_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, value_pair_tmpl_t const *vpt)
+int tmpl_copy_vps(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, value_pair_tmpl_t const *vpt)
 {
 	VALUE_PAIR **vps, *vp;
 	REQUEST *current = request;
@@ -943,7 +980,7 @@ int radius_tmpl_copy_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, val
  * @param vpt the value pair template
  * @return -1 if VP could not be found, -2 if list could not be found, -3 if context could not be found.
  */
-int radius_tmpl_get_vp(VALUE_PAIR **out, REQUEST *request, value_pair_tmpl_t const *vpt)
+int tmpl_find_vp(VALUE_PAIR **out, REQUEST *request, value_pair_tmpl_t const *vpt)
 {
 	VALUE_PAIR **vps, *vp;
 
