@@ -881,121 +881,38 @@ int tmpl_cast_to_vp(VALUE_PAIR **out, REQUEST *request,
 	return 0;
 }
 
-
-/** Copy pairs matching a VPT in the current request
+/** Initialise a vp_cursor_t to the VALUE_PAIR specified by a value_pair_tmpl_t
  *
- * @param ctx to allocate new VALUE_PAIRs under.
- * @param out where to write the copied vps.
- * @param request current request.
- * @param vpt the value pair template
- * @return -1 if VP could not be found, -2 if list could not be found, -3 if context could not be found.
- */
-int tmpl_copy_vps(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, value_pair_tmpl_t const *vpt)
-{
-	VALUE_PAIR **vps, *vp;
-	REQUEST *current = request;
-	vp_cursor_t from, to;
-
-	rad_assert((vpt->type == TMPL_TYPE_ATTR) || (vpt->type == TMPL_TYPE_LIST));
-
-	if (out) *out = NULL;
-
-	if (radius_request(&current, vpt->tmpl_request) < 0) {
-		return -3;
-	}
-
-	vps = radius_list(request, vpt->tmpl_list);
-	if (!vps) {
-		return -2;
-	}
-
-	switch (vpt->type) {
-	/*
-	 *	May not be found, but it *is* a known name.
-	 */
-	case TMPL_TYPE_ATTR:
-	{
-		int num;
-
-		(void) fr_cursor_init(&to, out);
-		(void) fr_cursor_init(&from, vps);
-
-		vp = fr_cursor_next_by_da(&from, vpt->tmpl_da, vpt->tmpl_tag);
-		if (!vp) return -1;
-
-		switch (vpt->tmpl_num) {
-		/* Copy all pairs of this type (and tag) */
-		case NUM_ALL:
-			do {
-				VERIFY_VP(vp);
-				vp = paircopyvp(ctx, vp);
-				if (!vp) {
-					pairfree(out);
-					return -4;
-				}
-				fr_cursor_insert(&to, vp);
-			} while ((vp = fr_cursor_next_by_da(&from, vpt->tmpl_da, vpt->tmpl_tag)));
-			break;
-
-		/* Specific attribute number */
-		default:
-			for (num = vpt->tmpl_num;
-			     num && vp;
-			     num--, vp = fr_cursor_next_by_da(&from, vpt->tmpl_da, vpt->tmpl_tag)) {
-			     VERIFY_VP(vp);
-			}
-			if (!vp) return -1;
-			/* FALL-THROUGH */
-
-		/* Just copy the first pair */
-		case NUM_ANY:
-			vp = paircopyvp(ctx, vp);
-			if (!vp) {
-				pairfree(out);
-				return -4;
-			}
-			fr_cursor_insert(&to, vp);
-		}
-	}
-		break;
-
-	case TMPL_TYPE_LIST:
-		vp = paircopy(ctx, *vps);
-		if (!vp) return 0;
-
-		fr_cursor_merge(&to, vp);
-		break;
-
-	default:
-		rad_assert(0);
-	}
-
-	return 0;
-}
-
-/** Return a VP from a value_pair_tmpl_t
+ * This makes iterating over the one or more VALUE_PAIRs specified by a value_pair_tmpl_t
+ * significantly easier.
  *
- * @param out where to write the retrieved vp.
- * @param request current request.
- * @param vpt the value pair template
- * @return -1 if VP could not be found, -2 if list could not be found, -3 if context could not be found.
+ * @see tmpl_cursor_next
+ *
+ * @param err Will be set to -1 if VP could not be found, -2 if list could not be found,
+ *	-3 if context could not be found and NULL will be returned. Will be 0 on success.
+ * @param cursor to store iterator state.
+ * @param vpt specifying the VALUE_PAIRs to iterate over.
+ * @return the first VALUE_PAIR specified by the value_pair_tmpl_t, NULL if no matching VALUE_PAIRs exist,
+ * 	and NULL on error.
  */
-int tmpl_find_vp(VALUE_PAIR **out, REQUEST *request, value_pair_tmpl_t const *vpt)
+VALUE_PAIR *tmpl_cursor_init(int *err, vp_cursor_t *cursor, REQUEST *request, value_pair_tmpl_t const *vpt)
 {
 	VALUE_PAIR **vps, *vp;
 
 	rad_assert((vpt->type == TMPL_TYPE_ATTR) || (vpt->type == TMPL_TYPE_LIST));
 
-	if (out) *out = NULL;
+	if (err) *err = 0;
 
 	if (radius_request(&request, vpt->tmpl_request) < 0) {
-		return -3;
+		if (err) *err = -3;
+		return NULL;
 	}
-
 	vps = radius_list(request, vpt->tmpl_list);
 	if (!vps) {
-		return -2;
+		if (err) *err = -2;
+		return NULL;
 	}
+	(void) fr_cursor_init(cursor, vps);
 
 	switch (vpt->type) {
 	/*
@@ -1004,25 +921,30 @@ int tmpl_find_vp(VALUE_PAIR **out, REQUEST *request, value_pair_tmpl_t const *vp
 	case TMPL_TYPE_ATTR:
 	{
 		int num;
-		vp_cursor_t cursor;
 
 		if (vpt->tmpl_num == NUM_ANY) {
-			vp = pairfind(*vps, vpt->tmpl_da->attr, vpt->tmpl_da->vendor, vpt->tmpl_tag);
-			if (!vp) return -1;
+			vp = fr_cursor_next_by_da(cursor, vpt->tmpl_da, vpt->tmpl_tag);
+			if (!vp) {
+				if (err) *err = -1;
+				return NULL;
+			}
+			VERIFY_VP(vp);
 			break;
 		}
 
-		(void) fr_cursor_init(&cursor, vps);
+		(void) fr_cursor_init(cursor, vps);
 		num = vpt->tmpl_num;
-		while ((vp = fr_cursor_next_by_da(&cursor, vpt->tmpl_da, vpt->tmpl_tag))) {
+		while ((vp = fr_cursor_next_by_da(cursor, vpt->tmpl_da, vpt->tmpl_tag))) {
 			VERIFY_VP(vp);
 			if (num-- <= 0) goto finish;
 		}
-		return -1;
+
+		if (err) *err = -1;
+		return NULL;
 	}
 
 	case TMPL_TYPE_LIST:
-		vp = *vps;
+		vp = fr_cursor_init(cursor, vps);
 		break;
 
 	default:
@@ -1030,8 +952,89 @@ int tmpl_find_vp(VALUE_PAIR **out, REQUEST *request, value_pair_tmpl_t const *vp
 	}
 
 finish:
-	if (out) *out = vp;
-
-	return 0;
+	return vp;
 }
 
+/** Gets the next VALUE_PAIR specified by value_pair_tmpl_t
+ *
+ * Returns the next VALUE_PAIR matching a value_pair_tmpl_t
+ *
+ * @param cursor initialised with tmpl_cursor_init.
+ * @param vpt specifying the VALUE_PAIRs to iterate over.
+ * @return NULL if no more matching VALUE_PAIRs found.
+ */
+VALUE_PAIR *tmpl_cursor_next(vp_cursor_t *cursor, value_pair_tmpl_t const *vpt)
+{
+	rad_assert((vpt->type == TMPL_TYPE_ATTR) || (vpt->type == TMPL_TYPE_LIST));
+
+	switch (vpt->type) {
+	/*
+	 *	May not may not be found, but it *is* a known name.
+	 */
+	case TMPL_TYPE_ATTR:
+		if (vpt->tmpl_num != NUM_ALL) return NULL;
+		return fr_cursor_next_by_da(cursor, vpt->tmpl_da, vpt->tmpl_tag);
+
+	case TMPL_TYPE_LIST:
+		return fr_cursor_next(cursor);
+
+	default:
+		rad_assert(0);
+	}
+}
+
+/** Copy pairs matching a VPT in the current request
+ *
+ * @param ctx to allocate new VALUE_PAIRs under.
+ * @param out Where to write the copied vps.
+ * @param request current request.
+ * @param vpt specifying the VALUE_PAIRs to iterate over.
+ * @return -1 if VP could not be found, -2 if list could not be found, -3 if context could not be found,
+ *	-4 on memory allocation error.
+ */
+int tmpl_copy_vps(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, value_pair_tmpl_t const *vpt)
+{
+	VALUE_PAIR *vp;
+	vp_cursor_t from, to;
+
+	int err;
+
+	rad_assert((vpt->type == TMPL_TYPE_ATTR) || (vpt->type == TMPL_TYPE_LIST));
+
+	*out = NULL;
+
+	fr_cursor_init(&to, out);
+
+	for (vp = tmpl_cursor_init(&err, &from, request, vpt);
+	     vp;
+	     vp = tmpl_cursor_next(&from, vpt)) {
+		vp = paircopyvp(ctx, vp);
+		if (!vp) {
+			pairfree(out);
+			return -4;
+		}
+		fr_cursor_insert(&to, vp);
+	}
+
+	return err;
+}
+
+/** Gets the first VP from a value_pair_tmpl_t
+ *
+ * @param out where to write the retrieved vp.
+ * @param request current request.
+ * @param vpt specifying the VALUE_PAIRs to iterate over.
+ * @return -1 if VP could not be found, -2 if list could not be found, -3 if context could not be found.
+ */
+int tmpl_find_vp(VALUE_PAIR **out, REQUEST *request, value_pair_tmpl_t const *vpt)
+{
+	vp_cursor_t cursor;
+	VALUE_PAIR *vp;
+
+	int err;
+
+	vp = tmpl_cursor_init(&err, &cursor, request, vpt);
+	if (out) *out = vp;
+
+	return err;
+}

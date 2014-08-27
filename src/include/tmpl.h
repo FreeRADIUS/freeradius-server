@@ -187,11 +187,16 @@ bool			tmpl_cast_in_place(value_pair_tmpl_t *vpt, DICT_ATTR const *da);
 
 size_t			tmpl_prints(char *buffer, size_t bufsize, value_pair_tmpl_t const *vpt);
 
-int			tmpl_find_vp(VALUE_PAIR **out, REQUEST *request, value_pair_tmpl_t const *vpt);
-
 int			tmpl_cast_to_vp(VALUE_PAIR **out, REQUEST *request,
 					value_pair_tmpl_t const *vpt, DICT_ATTR const *cast);
 
+VALUE_PAIR		*tmpl_cursor_init(int *err, vp_cursor_t *cursor, REQUEST *request,
+					  value_pair_tmpl_t const *vpt);
+
+VALUE_PAIR		*tmpl_cursor_next(vp_cursor_t *cursor, value_pair_tmpl_t const *vpt);
+
 int			tmpl_copy_vps(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request,
 				      value_pair_tmpl_t const *vpt);
+
+int			tmpl_find_vp(VALUE_PAIR **out, REQUEST *request, value_pair_tmpl_t const *vpt);
 #endif	/* TMPL_H */
