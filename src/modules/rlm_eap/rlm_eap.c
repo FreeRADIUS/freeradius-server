@@ -682,9 +682,14 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *inst, REQUEST *request)
 	 *
 	 *	Note that the session key is *binary*, and therefore
 	 *	may contain embedded zeros.  So we have to use memdup.
+	 *	However, Cisco-AVPair is a "string", so the rest of the
+	 *	code assumes that it's terminated by a trailing '\0'.
+	 *
+	 *	So... be sure to (a) use memdup, and (b) include the last
+	 *	zero byte.
 	 */
 	i = 34;
-	p = talloc_memdup(vp, vp->vp_octets, vp->length);
+	p = talloc_memdup(vp, vp->vp_strvalue, vp->length + 1);	
 	talloc_set_type(p, uint8_t);
 	len = rad_tunnel_pwdecode((uint8_t *)p + 17, &i, request->home_server->secret, request->proxy->vector);
 
