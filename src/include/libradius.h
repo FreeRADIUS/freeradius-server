@@ -586,10 +586,10 @@ VALUE_PAIR	*fr_cursor_replace(vp_cursor_t *cursor, VALUE_PAIR *new);
 void		pairdelete(VALUE_PAIR **, unsigned int attr, unsigned int vendor, int8_t tag);
 void		pairadd(VALUE_PAIR **, VALUE_PAIR *);
 void		pairreplace(VALUE_PAIR **first, VALUE_PAIR *add);
-int8_t		paircmp_value(VALUE_PAIR const *a, VALUE_PAIR const *b);
-int8_t		paircmp_op(VALUE_PAIR const *a, FR_TOKEN op, VALUE_PAIR const *b);
-int8_t		paircmp(VALUE_PAIR *a, VALUE_PAIR *b);
-int8_t		pairlistcmp(VALUE_PAIR *a, VALUE_PAIR *b);
+int		paircmp_value(VALUE_PAIR const *a, VALUE_PAIR const *b);
+int		paircmp_op(VALUE_PAIR const *a, FR_TOKEN op, VALUE_PAIR const *b);
+int		paircmp(VALUE_PAIR *a, VALUE_PAIR *b);
+int		pairlistcmp(VALUE_PAIR *a, VALUE_PAIR *b);
 
 typedef int8_t (*fr_cmp_t)(void const *a, void const *b);
 int8_t		attrcmp(void const *a, void const *b);

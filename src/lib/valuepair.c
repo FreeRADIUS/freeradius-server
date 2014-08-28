@@ -2242,7 +2242,7 @@ error:
  * @param[in] two the second attribute.
  * @return -1 if one is less than two, 0 if both are equal, 1 if one is more than two, < -1 on error.
  */
-int8_t paircmp_value(VALUE_PAIR const *one, VALUE_PAIR const *two)
+int paircmp_value(VALUE_PAIR const *one, VALUE_PAIR const *two)
 {
 	int64_t compare = 0;
 
@@ -2488,7 +2488,7 @@ static int paircmp_op_cidr(FR_TOKEN op, int bytes,
  * @param[in] b the second attribute
  * @return 1 if true, 0 if false, -1 on error.
  */
-int8_t paircmp_op(VALUE_PAIR const *a, FR_TOKEN op, VALUE_PAIR const *b)
+int paircmp_op(VALUE_PAIR const *a, FR_TOKEN op, VALUE_PAIR const *b)
 {
 	int compare = 0;
 
@@ -2609,7 +2609,7 @@ int8_t paircmp_op(VALUE_PAIR const *a, FR_TOKEN op, VALUE_PAIR const *b)
  * @param[in] b the second attribute
  * @return 1 if true, 0 if false, -1 on error.
  */
-int8_t paircmp(VALUE_PAIR *a, VALUE_PAIR *b)
+int paircmp(VALUE_PAIR *a, VALUE_PAIR *b)
 {
 	if (!a) return -1;
 
@@ -2682,7 +2682,7 @@ int8_t paircmp(VALUE_PAIR *a, VALUE_PAIR *b)
  * @param b second list of VALUE_PAIRs.
  * @return -1 if a < b, 0 if the two lists are equal, 1 if a > b, -2 on error.
  */
-int8_t pairlistcmp(VALUE_PAIR *a, VALUE_PAIR *b)
+int pairlistcmp(VALUE_PAIR *a, VALUE_PAIR *b)
 {
 	vp_cursor_t a_cursor, b_cursor;
 	VALUE_PAIR *a_p, *b_p;
