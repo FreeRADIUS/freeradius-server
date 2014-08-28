@@ -807,6 +807,55 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 				if ((c->data.map->src->type == TMPL_TYPE_ATTR) &&
 				    (c->data.map->dst->type == TMPL_TYPE_ATTR) &&
 				    (c->data.map->dst->tmpl_da->type != c->data.map->src->tmpl_da->type)) {
+
+					/*
+					 *	SOME integer mismatch is OK.  If the LHS has a large type,
+					 *	and the RHS has a small type, it's OK.
+					 *
+					 *	If the LHS has a small type, and the RHS has a large type,
+					 *	then add a cast to the LHS.
+					 */
+					if (c->data.map->dst->tmpl_da->type == PW_TYPE_INTEGER64) {
+						if ((c->data.map->src->tmpl_da->type == PW_TYPE_INTEGER) ||
+						    (c->data.map->src->tmpl_da->type == PW_TYPE_SHORT) ||
+						    (c->data.map->src->tmpl_da->type == PW_TYPE_BYTE)) {
+							goto keep_going;
+						}
+					}
+
+					if (c->data.map->dst->tmpl_da->type == PW_TYPE_INTEGER) {
+						if ((c->data.map->src->tmpl_da->type == PW_TYPE_SHORT) ||
+						    (c->data.map->src->tmpl_da->type == PW_TYPE_BYTE)) {
+							goto keep_going;
+						}
+
+						if (c->data.map->src->tmpl_da->type == PW_TYPE_INTEGER64) {
+							c->cast = c->data.map->src->tmpl_da;
+							goto keep_going;
+						}
+					}
+
+					if (c->data.map->dst->tmpl_da->type == PW_TYPE_SHORT) {
+						if (c->data.map->src->tmpl_da->type == PW_TYPE_BYTE) {
+							goto keep_going;
+						}
+
+						if ((c->data.map->src->tmpl_da->type == PW_TYPE_INTEGER64) ||
+						    (c->data.map->src->tmpl_da->type == PW_TYPE_INTEGER)) {
+							c->cast = c->data.map->src->tmpl_da;
+							goto keep_going;
+						}
+					}
+
+					if (c->data.map->dst->tmpl_da->type == PW_TYPE_BYTE) {
+						if ((c->data.map->src->tmpl_da->type == PW_TYPE_INTEGER64) ||
+						    (c->data.map->src->tmpl_da->type == PW_TYPE_INTEGER) ||
+						    (c->data.map->src->tmpl_da->type == PW_TYPE_SHORT)) {
+							c->cast = c->data.map->src->tmpl_da;
+							goto keep_going;
+						}
+					}
+
 				same_type:
 					return_0("Attribute comparisons must be of the same data type");
 				}
@@ -901,6 +950,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 				}
 			}
 
+		keep_going:
 			p += slen;
 
 			while (isspace((int) *p)) p++; /* skip spaces after RHS */
