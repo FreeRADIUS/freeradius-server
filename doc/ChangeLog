@@ -45,6 +45,7 @@ FreeRADIUS 3.0.4 Mon 12 May 2014 15:30:00 EDT urgency=medium
 	  a tag.
 	* The logintime and expiration modules can now be listed in the
 	  post-auth section.  This makes some configurations simpler.
+	* Allow integer comparisons in conditions, without casts.
 
 	Bug fixes
 	* make case-insensitive regular expressions work again, and add tests
@@ -112,6 +113,11 @@ FreeRADIUS 3.0.4 Mon 12 May 2014 15:30:00 EDT urgency=medium
 	* Fix error in sqlite postauth query
 	* Evaluate argument to "switch" statements once, instead of for each
 	  "case" statement.
+	* Define sig_t on systems without it.  Closes #765.
+	* Fix boundary issue with rlm_rest.  Closes #768
+	* Optimize "%{Attribute-Name}" in comparisons only if the dictionary
+	  types match.
+	* Don't do chmod() in rad_mkdir()
 
 FreeRADIUS 3.0.3 Mon 12 May 2014 15:30:00 EDT urgency=medium
 	Feature improvements
