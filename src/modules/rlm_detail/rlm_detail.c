@@ -190,6 +190,7 @@ static void detail_vp_print(TALLOC_CTX *ctx, FILE *out, VALUE_PAIR const *stacke
 	if (!vp) return;
 
 	memcpy(vp, stacked, sizeof(*vp));
+	vp->op = T_OP_EQ;
 	vp_print(out, vp);
 	talloc_free(vp);
 }
@@ -241,7 +242,6 @@ static int detail_write(FILE *out, detail_instance_t *inst, REQUEST *request, RA
 
 		memset(&src_vp, 0, sizeof(src_vp));
 		memset(&dst_vp, 0, sizeof(dst_vp));
-		src_vp.op = dst_vp.op = T_OP_EQ;
 
 		switch (packet->src_ipaddr.af) {
 		case AF_INET:
@@ -283,8 +283,9 @@ static int detail_write(FILE *out, detail_instance_t *inst, REQUEST *request, RA
 		for (vp = fr_cursor_init(&cursor, &packet->vps);
 		     vp;
 		     vp = fr_cursor_next(&cursor)) {
-			if (inst->ht &&
-			    fr_hash_table_finddata(inst->ht, vp->da)) continue;
+			FR_TOKEN op;
+
+			if (inst->ht && fr_hash_table_finddata(inst->ht, vp->da)) continue;
 
 			/*
 			 *	Don't print passwords in old format...
@@ -292,9 +293,12 @@ static int detail_write(FILE *out, detail_instance_t *inst, REQUEST *request, RA
 			if (compat && !vp->da->vendor && (vp->da->attr == PW_USER_PASSWORD)) continue;
 
 			/*
-			 *	Print all of the attributes.
+			 *	Print all of the attributes, operator should always be '='.
 			 */
+			op = vp->op;
+			vp->op = T_OP_EQ;
 			vp_print(out, vp);
+			vp->op = op;
 		}
 	}
 
