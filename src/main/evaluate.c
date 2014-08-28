@@ -206,10 +206,6 @@ int radius_evaluate_tmpl(REQUEST *request, int modreturn, UNUSED int depth,
 		}
 		break;
 
-		/*
-		 *	FIXME: expand the strings
-		 *	if not empty, return!
-		 */
 	case TMPL_TYPE_XLAT_STRUCT:
 	case TMPL_TYPE_XLAT:
 	case TMPL_TYPE_EXEC:
@@ -228,11 +224,11 @@ int radius_evaluate_tmpl(REQUEST *request, int modreturn, UNUSED int depth,
 		 */
 	case TMPL_TYPE_REGEX:
 	case TMPL_TYPE_REGEX_STRUCT:
-		EVAL_DEBUG("FAIL %d", __LINE__);
 		rad_assert(0 == 1);
 		/* FALL-THROUGH */
 
 	default:
+		EVAL_DEBUG("FAIL %d", __LINE__);
 		rcode = -1;
 		break;
 	}
@@ -356,6 +352,77 @@ static int do_cast_copy(VALUE_PAIR *dst, VALUE_PAIR const *src)
 	}
 
 	/*
+	 *	For integers, we allow the casting of a SMALL type to
+	 *	a larger type, but not vice-versa.
+	 */
+	if (dst->da->type == PW_TYPE_INTEGER64) {
+		switch (src->da->type) {
+		case PW_TYPE_BYTE:
+			dst->vp_integer64 = src->vp_byte;
+			break;
+
+		case PW_TYPE_SHORT:
+			dst->vp_integer64 = src->vp_short;
+			break;
+
+		case PW_TYPE_INTEGER:
+			dst->vp_integer64 = src->vp_integer;
+			break;
+
+		case PW_TYPE_OCTETS:
+			goto do_octets;
+
+		default:
+			EVAL_DEBUG("Invalid cast to integer64");
+			return -1;
+
+		}
+		return 0;
+	}
+
+	/*
+	 *	We can compare LONG integers to SHORTER ones, so long
+	 *	as the long one is on the LHS.
+	 */
+	if (dst->da->type == PW_TYPE_INTEGER) {
+		switch (src->da->type) {
+		case PW_TYPE_BYTE:
+			dst->vp_integer = src->vp_byte;
+			break;
+
+		case PW_TYPE_SHORT:
+			dst->vp_integer = src->vp_short;
+			break;
+
+		case PW_TYPE_OCTETS:
+			goto do_octets;
+
+		default:
+			EVAL_DEBUG("Invalid cast to integer");
+			return -1;
+
+		}
+		return 0;
+	}
+
+	if (dst->da->type == PW_TYPE_SHORT) {
+		switch (src->da->type) {
+		case PW_TYPE_BYTE:
+			dst->vp_short = src->vp_byte;
+			break;
+
+		case PW_TYPE_OCTETS:
+			goto do_octets;
+
+		default:
+			EVAL_DEBUG("Invalid cast to short");
+			return -1;
+
+		}
+		return 0;
+	}
+
+	/*
 	 *	The attribute we've found has to have a size which is
 	 *	compatible with the type of the destination cast.
 	 */
@@ -366,6 +433,7 @@ static int do_cast_copy(VALUE_PAIR *dst, VALUE_PAIR const *src)
 	}
 
 	if (src->da->type == PW_TYPE_OCTETS) {
+	do_octets:
 		switch (dst->da->type) {
 		case PW_TYPE_INTEGER64:
 			dst->vp_integer = ntohll(*(uint64_t const *) src->vp_octets);
@@ -464,14 +532,42 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 	 *	LHS is DST.  RHS is SRC <sigh>
 	 */
 	if (!c->cast && (map->src->type == TMPL_TYPE_ATTR) && (map->dst->type == TMPL_TYPE_ATTR)) {
-		VALUE_PAIR *lhs_vp, *rhs_vp;
+		VALUE_PAIR *lhs_vp, *rhs_vp, *cast_vp;
 
 		EVAL_DEBUG("ATTR to ATTR");
 
 		if ((tmpl_find_vp(&lhs_vp, request, map->dst) < 0) ||
 		    (tmpl_find_vp(&rhs_vp, request, map->src) < 0)) return -1;
 
-		return paircmp_op(lhs_vp, map->op, rhs_vp);
+		if (map->dst->attribute.da->type == map->src->attribute.da->type) {
+			return paircmp_op(lhs_vp, map->op, rhs_vp);
+		}
+
+		/*
+		 *	Compare a large integer (lhs) to a small integer (rhs).
+		 *	We allow this without a cast.
+		 */
+		rad_assert((map->dst->attribute.da->type == PW_TYPE_INTEGER64) ||
+			   (map->dst->attribute.da->type == PW_TYPE_INTEGER) ||
+			   (map->dst->attribute.da->type == PW_TYPE_SHORT));
+		rad_assert((map->src->attribute.da->type == PW_TYPE_INTEGER) ||
+			   (map->src->attribute.da->type == PW_TYPE_SHORT) ||
+			   (map->src->attribute.da->type == PW_TYPE_BYTE));
+
+		cast_vp = pairalloc(request, lhs_vp->da);
+		if (!cast_vp) return false;
+
+		/*
+		 *	Copy the RHS to the casted type.
+		 */
+		if (do_cast_copy(cast_vp, rhs_vp) < 0) {
+			talloc_free(cast_vp);
+			return false;
+		}
+
+		rcode = paircmp_op(lhs_vp, map->op, cast_vp);
+		talloc_free(cast_vp);
+		return rcode;
 	}
 
 	/*
