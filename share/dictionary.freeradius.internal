@@ -275,6 +275,7 @@ ATTRIBUTE	FreeRADIUS-Client-Src-IP-Address	1153	ipaddr
 ATTRIBUTE	FreeRADIUS-Client-Src-IPv6-Address	1154	ipv6addr
 
 ATTRIBUTE	REST-HTTP-Header			1160	string
+ATTRIBUTE	REST-HTTP-Body				1161	string
 
 #
 #	Range:	1200-1279

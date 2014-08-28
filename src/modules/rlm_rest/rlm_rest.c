@@ -60,6 +60,7 @@ static const CONF_PARSER section_config[] = {
 	{ "method", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_rest_section_t, method_str), "GET" },
 	{ "body", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_rest_section_t, body_str), "none" },
 	{ "data", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_rest_section_t, data), NULL },
+	{ "force_to", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_rest_section_t, force_to_str), NULL },
 
 	/* User authentication */
 	{ "auth", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_rest_section_t, auth_str), "none" },
@@ -665,6 +666,33 @@ static int parse_sub_section(CONF_SECTION *parent, rlm_rest_section_t *config, r
 		body = fr_str2int(http_body_type_table, config->body_str, HTTP_BODY_UNKNOWN);
 		if (body != HTTP_BODY_UNKNOWN) {
 			config->body_str = fr_int2str(http_content_type_table, body, config->body_str);
+		}
+	}
+
+	if (config->force_to_str) {
+		config->force_to = fr_str2int(http_body_type_table, config->body_str, HTTP_BODY_UNKNOWN);
+		if (config->force_to == HTTP_BODY_UNKNOWN) {
+			config->force_to = fr_str2int(http_content_type_table, config->body_str, HTTP_BODY_UNKNOWN);
+		}
+
+		if (config->force_to == HTTP_BODY_UNKNOWN) {
+			cf_log_err_cs(cs, "Unknown response body type '%s'", config->body_str);
+			return -1;
+		}
+
+		switch (http_body_type_supported[config->force_to]) {
+		case HTTP_BODY_UNSUPPORTED:
+			cf_log_err_cs(cs, "Unsupported response body type \"%s\", please submit patches",
+				      config->body_str);
+			return -1;
+
+		case HTTP_BODY_INVALID:
+			cf_log_err_cs(cs, "Invalid HTTP response body type.  \"%s\" is not a valid web API data "
+				      "markup format", config->body_str);
+			return -1;
+
+		default:
+			break;
 		}
 	}
 
