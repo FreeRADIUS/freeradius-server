@@ -51,6 +51,13 @@ rest {
 	#    method       - HTTP method to use, one of 'get', 'post', 'put', 'delete'.
 	#    body         - The format of the HTTP body sent to the remote server.
 	#                   May be 'none', 'post' or 'json', defaults to 'none'.
+	#    data         - Send custom freeform data in the HTTP body. Content-type
+	#                   may be specified with 'body'. Will be expanded.
+	#                   Values from expansion will not be escaped, this should be
+	#                   done using the appropriate xlat method e.g. %{urlencode:<attr>}.
+	#    force_to     - Force the response to be decoded with this decoder.
+	#                   May be 'plain' (created reply:REST-HTTP-Body), 'post'
+	#                   or 'json'.
 	#    tls          - TLS settings for HTTPS.
 	#    auth         - HTTP auth method to use, one of 'none', 'srp', 'basic',
 	#                   'digest', 'digest-ie', 'gss-negotiate', 'ntlm',
@@ -59,6 +66,13 @@ rest {
 	#    password     - Password to use for authentication, will be expanded.
 	#    require_auth - Require HTTP authentication.
 	#    timeout      - HTTP request timeout in seconds, defaults to 4.
+	#
+	#  Additional HTTP headers may be specified with control:REST-HTTP-Header.
+	#  The values of those attributes should be in the format:
+	#    <attribute>: <value>
+	#
+	#  control:REST-HTTP-Header attributes will be consumed after each call
+	#  to the rest module, and each %{rest:} expansion.
 	#
 	authorize {
 		uri = "${..connect_uri}/user/%{User-Name}/mac/%{Called-Station-ID}?section=authorize"
