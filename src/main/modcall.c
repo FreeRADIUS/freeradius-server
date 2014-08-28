@@ -2778,7 +2778,8 @@ void add_to_modcallable(modcallable *parent, modcallable *this)
 #ifdef WITH_UNLANG
 static char const spaces[] = "                                                                                                                        ";
 
-static bool pass2_xlat_compile(CONF_ITEM const *ci, value_pair_tmpl_t **pvpt, bool convert)
+static bool pass2_xlat_compile(CONF_ITEM const *ci, value_pair_tmpl_t **pvpt, bool convert,
+			       DICT_ATTR const *da)
 {
 	ssize_t slen;
 	char *fmt;
@@ -2821,6 +2822,15 @@ static bool pass2_xlat_compile(CONF_ITEM const *ci, value_pair_tmpl_t **pvpt, bo
 
 		attr = radius_xlat2tmpl(talloc_parent(vpt), head);
 		if (attr) {
+			/*
+			 *	If the attribute is of incompatible
+			 *	type, leave it alone.
+			 */
+			if (da && (da->type != attr->attribute.da->type)) {
+				talloc_free(attr);
+				return true;
+			}
+
 			if (cf_item_is_pair(ci)) {
 				CONF_PAIR *cp = cf_itemtopair(ci);
 
@@ -2897,7 +2907,7 @@ static bool pass2_callback(UNUSED void *ctx, fr_cond_t *c)
 	if (c->type == COND_TYPE_EXISTS) {
 
 		if (c->data.vpt->type == TMPL_TYPE_XLAT) {
-			return pass2_xlat_compile(c->ci, &c->data.vpt, true);
+			return pass2_xlat_compile(c->ci, &c->data.vpt, true, NULL);
 		}
 
 		rad_assert(c->data.vpt->type != TMPL_TYPE_REGEX);
@@ -3007,7 +3017,7 @@ check_paircmp:
 		 *	to check the RHS for type-specific data, and
 		 *	parse it to a TMPL_TYPE_DATA.
 		 */
-		if (!pass2_xlat_compile(map->ci, &map->dst, false)) {
+		if (!pass2_xlat_compile(map->ci, &map->dst, false, NULL)) {
 			return false;
 		}
 	}
@@ -3015,15 +3025,23 @@ check_paircmp:
 	if (map->src->type == TMPL_TYPE_XLAT) {
 		/*
 		 *	Convert the RHS to an attribute reference only
-		 *	if the LHS is an attribute reference, too.
+		 *	if the LHS is an attribute reference, AND is
+		 *	of the same type as the RHS.
 		 *
 		 *	We can fix this when the code in evaluate.c
 		 *	can handle strings on the LHS, and attributes
 		 *	on the RHS.  For now, the code in parser.c
 		 *	forbids this.
 		 */
-		if (!pass2_xlat_compile(map->ci, &map->src, (map->dst->type == TMPL_TYPE_ATTR))) {
-			return false;
+		if (map->dst->type == TMPL_TYPE_ATTR) {
+			if (!pass2_xlat_compile(map->ci, &map->src, true, map->dst->attribute.da)) {
+				return false;
+			}
+
+		} else {
+			if (!pass2_xlat_compile(map->ci, &map->src, false, NULL)) {
+				return false;
+			}
 		}
 	}
 
@@ -3117,7 +3135,7 @@ static bool modcall_pass2_update(modgroup *g)
 			 *	FIXME: compile to attribute && handle
 			 *	the conversion in map_to_vp().
 			 */
-			if (!pass2_xlat_compile(map->ci, &map->src, false)) {
+			if (!pass2_xlat_compile(map->ci, &map->src, false, NULL)) {
 				return false;
 			}
 		}
@@ -3204,13 +3222,30 @@ bool modcall_pass2(modcallable *mc)
 				rad_assert(this->name != NULL);
 				rad_assert(this->name[0] == '&');
 				rad_assert(cf_section_name2_type(g->cs) == T_BARE_WORD);
-				goto do_case;
+
+				g->vpt = tmpl_afrom_str(g->cs, this->name,
+							cf_section_name2_type(g->cs),
+							 REQUEST_CURRENT, PAIR_LIST_REQUEST);
+				if (!g->vpt) {
+					cf_log_err_cs(g->cs, "Syntax error in '%s': %s",
+						      this->name, fr_strerror());
+					return false;
+				}
+
+				goto do_children;
 			}
 
 			/*
 			 *	Statically compile xlats
 			 */
-			if (g->vpt->type == TMPL_TYPE_XLAT) goto do_case_xlat;
+			if (g->vpt->type == TMPL_TYPE_XLAT) {
+				if (!pass2_xlat_compile(cf_sectiontoitem(g->cs),
+							&g->vpt, true, NULL)) {
+					return false;
+				}
+
+				goto do_children;
+			}
 
 			/*
 			 *	We may have: switch Foo-Bar {
@@ -3231,6 +3266,8 @@ bool modcall_pass2(modcallable *mc)
 					talloc_free(g->vpt);
 					g->vpt = vpt;
 				}
+
+				goto do_children;
 			}
 
 			/*
@@ -3247,6 +3284,7 @@ bool modcall_pass2(modcallable *mc)
 				       this->name, this->name);
 			}
 
+		do_children:
 			if (!modcall_pass2(g->children)) return false;
 			g->done_pass2 = true;
 			break;
@@ -3255,7 +3293,9 @@ bool modcall_pass2(modcallable *mc)
 			g = mod_callabletogroup(this);
 			if (g->done_pass2) return true;
 
-		do_case:
+			rad_assert(this->parent != NULL);
+			rad_assert(this->parent->type == MOD_SWITCH);
+
 			/*
 			 *	The statement may refer to an
 			 *	attribute which doesn't exist until
@@ -3276,13 +3316,17 @@ bool modcall_pass2(modcallable *mc)
 			}
 
 			/*
+			 *	We have "case {...}".  There's no
+			 *	argument, so we don't need to check
+			 *	it.
+			 */
+			if (!g->vpt) goto do_children;
+
+			/*
 			 *	Do type-specific checks on the case statement
 			 */
-			if (g->vpt && (g->vpt->type == TMPL_TYPE_LITERAL)) {
+			if (g->vpt->type == TMPL_TYPE_LITERAL) {
 				modgroup *f;
-
-				rad_assert(this->parent != NULL);
-				rad_assert(this->parent->type == MOD_SWITCH);
 
 				f = mod_callabletogroup(mc->parent);
 				rad_assert(f->vpt != NULL);
@@ -3301,18 +3345,35 @@ bool modcall_pass2(modcallable *mc)
 						return false;
 					}
 				}
+
+				goto do_children;
 			}
 
-		do_case_xlat:
 			/*
 			 *	Compile and sanity check xlat
 			 *	expansions.
 			 */
-			if (g->vpt &&
-			    (g->vpt->type == TMPL_TYPE_XLAT) &&
-			    (!pass2_xlat_compile(cf_sectiontoitem(g->cs),
-						 &g->vpt, true))) {
-				return false;
+			if (g->vpt->type == TMPL_TYPE_XLAT) {
+				modgroup *f;
+
+				f = mod_callabletogroup(mc->parent);
+				rad_assert(f->vpt != NULL);
+
+				/*
+				 *	Don't expand xlat's into an
+				 *	attribute of a different type.
+				 */
+				if (f->vpt->type == TMPL_TYPE_ATTR) {
+					if (!pass2_xlat_compile(cf_sectiontoitem(g->cs),
+								&g->vpt, true, f->vpt->attribute.da)) {
+						return false;
+					}
+				} else {
+					if (!pass2_xlat_compile(cf_sectiontoitem(g->cs),
+								&g->vpt, true, NULL)) {
+						return false;
+					}
+				}
 			}
 
 			if (!modcall_pass2(g->children)) return false;

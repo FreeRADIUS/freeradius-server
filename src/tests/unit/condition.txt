@@ -481,3 +481,17 @@ data &Tunnel-Password:1[3] == "Hello"
 #
 condition &Foo-Bar
 data '&Foo-Bar'
+
+#  Same types are optimized
+#
+#  FIXME: the tests don't currently run the "pass2" checks.
+#  This test should really be:
+#
+#	data &Acct-Input-Octets > &Session-Timeout
+#
+condition &Acct-Input-Octets > "%{Session-Timeout}"
+data &Acct-Input-Octets > "%{Session-Timeout}"
+
+#  Separate types aren't optimized
+condition &Acct-Input-Octets-64 > "%{Session-Timeout}"
+data &Acct-Input-Octets-64 > "%{Session-Timeout}"
