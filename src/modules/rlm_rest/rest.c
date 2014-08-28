@@ -762,6 +762,7 @@ static size_t rest_encode_json(void *out, size_t size, size_t nmemb, void *userd
 		}
 
 		if (ctx->state == READ_STATE_ATTR_END) {
+			next = fr_cursor_current(&ctx->cursor);
 			if (freespace < 2) goto no_space;
 			*p++ = ']';
 			*p++ = '}';
