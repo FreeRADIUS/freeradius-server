@@ -2237,7 +2237,17 @@ int rest_response_decode(rlm_rest_t *instance, UNUSED rlm_rest_section_t *sectio
 		return 0;
 	}
 
-	RDEBUG3("Processing response body");
+	if (RDEBUG_ENABLED3) {
+		char const *p, *q;
+
+		RDEBUG3("Processing response body");
+		p = ctx->response.buffer;
+		while ((q = strchr(p, '\n'))) {
+			RDEBUG3("%.*s", (int) (q - p), p);
+			p = q + 1;
+		}
+		if (*p != '\0') RDEBUG3("%s", p);
+	}
 
 	switch (ctx->response.type) {
 	case HTTP_BODY_NONE:
