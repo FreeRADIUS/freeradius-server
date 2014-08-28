@@ -2015,7 +2015,8 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 
 			if (slen < 0) {
 				size_t offset;
-				char *spbuf;
+				char *spbuf, *q;
+				const char *s;
 
 				offset = -slen;
 				offset += ptr - start;
@@ -2026,6 +2027,18 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 
 				ERROR("%s[%d]: Parse error in condition",
 				       filename, *lineno);
+
+				/*
+				 *	If the condition has leading
+				 *	tabs, ensure that the error
+				 *	message has leading tabs, too.
+				 */
+				s = start;
+				q = spbuf;
+
+				while ((*s == ' ') || (*s == '\t')) {
+					*(q++) = *(s++);
+				}
 
 				ERROR("%s", start);
 				ERROR("%.*s^ %s", (int) offset, spbuf, error);
