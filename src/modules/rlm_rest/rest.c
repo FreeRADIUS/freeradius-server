@@ -695,11 +695,11 @@ static size_t rest_encode_json(void *out, size_t size, size_t nmemb, void *userd
 		 *  We've encoded all the VPs
 		 */
 		if (!vp) {
-			ctx->state = READ_STATE_END;
-
 			if (freespace < 1) goto no_space;
 			*p++ = '}';
 			freespace--;
+
+			ctx->state = READ_STATE_END;
 
 			break;
 		}
@@ -708,6 +708,7 @@ static size_t rest_encode_json(void *out, size_t size, size_t nmemb, void *userd
 		 *  New attribute, write name, type, and beginning of value array.
 		 */
 		RDEBUG2("Encoding attribute \"%s\"", vp->da->name);
+
 		if (ctx->state == READ_STATE_ATTR_BEGIN) {
 			type = fr_int2str(dict_attr_types, vp->da->type, "<INVALID>");
 
@@ -725,54 +726,59 @@ static size_t rest_encode_json(void *out, size_t size, size_t nmemb, void *userd
 			ctx->state = READ_STATE_ATTR_CONT;
 		}
 
-		for (;;) {
-			len = vp_prints_value_json(p, freespace, vp);
-			if (is_truncated(len, freespace)) goto no_space;
+		if (ctx->state == READ_STATE_ATTR_CONT) {
+			for (;;) {
+				len = vp_prints_value_json(p, freespace, vp);
+				if (is_truncated(len, freespace)) goto no_space;
 
-			/*
-			 *  Show actual value length minus quotes
-			 */
-			RDEBUG3("\tLength : %zu", (size_t) (*p == '"') ? (len - 2) : len);
-			RDEBUG3("\tValue  : %s", p);
+				/*
+				 *  Show actual value length minus quotes
+				 */
+				RDEBUG3("\tLength : %zu", (size_t) (*p == '"') ? (len - 2) : len);
+				RDEBUG3("\tValue  : %s", p);
 
-			p += len;
-			freespace -= len;
+				p += len;
+				freespace -= len;
 
-			/*
-			 *  Multivalued attribute, we sorted all the attributes earlier, so multiple
-			 *  instances should occur in a contiguous block.
-			 */
-			if ((next = fr_cursor_next(&ctx->cursor)) && (vp->da == next->da)) {
+				/*
+				 *  Multivalued attribute, we sorted all the attributes earlier, so multiple
+				 *  instances should occur in a contiguous block.
+				 */
+				if ((next = fr_cursor_next(&ctx->cursor)) && (vp->da == next->da)) {
+					if (freespace < 1) goto no_space;
+					*p++ = ',';
+					freespace--;
+
+					/*
+					 *  We wrote one attribute value, record progress.
+					 */
+					encoded = p;
+					vp = next;
+					continue;
+				}
+				break;
+			}
+			ctx->state = READ_STATE_ATTR_END;
+		}
+
+		if (ctx->state == READ_STATE_ATTR_END) {
+			if (freespace < 2) goto no_space;
+			*p++ = ']';
+			*p++ = '}';
+			freespace -= 2;
+
+			if (next) {
 				if (freespace < 1) goto no_space;
 				*p++ = ',';
 				freespace--;
-
-				/*
-				 *  We wrote one attribute value, record progress.
-				 */
-				encoded = p;
-				vp = next;
-				continue;
 			}
-			break;
+
+			/*
+			 *  We wrote one full attribute value pair, record progress.
+			 */
+			encoded = p;
+			ctx->state = READ_STATE_ATTR_BEGIN;
 		}
-
-		if (freespace < 2) goto no_space;
-		*p++ = ']';
-		*p++ = '}';
-		freespace -= 2;
-
-		if (next) {
-			if (freespace < 1) goto no_space;
-			*p++ = ',';
-			freespace--;
-		}
-
-		/*
-		 *  We wrote one full attribute value pair, record progress.
-		 */
-		encoded = p;
-		ctx->state = READ_STATE_ATTR_BEGIN;
 	}
 
 	*p = '\0';
