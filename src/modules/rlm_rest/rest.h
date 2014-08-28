@@ -114,6 +114,7 @@ typedef struct rlm_rest_section_t {
 	char const		*body_str;	//!< The string version of the encoding/content type.
 	http_body_type_t	body;		//!< What encoding type should be used.
 
+	char const		*force_to_str;	//!< Force decoding with this decoder.
 	http_body_type_t	force_to;	//!< Override the Content-Type header in the response
 						//!< to force decoding as a particular type.
 
