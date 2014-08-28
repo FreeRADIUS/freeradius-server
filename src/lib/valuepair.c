@@ -2244,7 +2244,7 @@ error:
  */
 int paircmp_value(VALUE_PAIR const *one, VALUE_PAIR const *two)
 {
-	int64_t compare = 0;
+	int compare = 0;
 
 	VERIFY_VP(one);
 	VERIFY_VP(two);
@@ -2291,35 +2291,53 @@ int paircmp_value(VALUE_PAIR const *one, VALUE_PAIR const *two)
 		compare = strcmp(one->vp_strvalue, two->vp_strvalue);
 		break;
 
-	case PW_TYPE_BOOLEAN:
+		/*
+		 *	Short-hand for simplicity.
+		 */
+#define CHECK(_type) if (one->vp_##_type < two->vp_##_type)   { compare = -1; \
+		} else if (one->vp_##_type > two->vp_##_type) { compare = +1; }
+
+	case PW_TYPE_BOOLEAN:	/* this isn't a RADIUS type, and shouldn't really ever be used */
 	case PW_TYPE_BYTE:
+		CHECK(byte);
+		break;
+
+
 	case PW_TYPE_SHORT:
-	case PW_TYPE_INTEGER:
+		CHECK(short);
+		break;
+
 	case PW_TYPE_DATE:
-		compare = (int64_t) one->vp_integer - (int64_t) two->vp_integer;
+		CHECK(date);
+		break;
+
+	case PW_TYPE_INTEGER:
+		CHECK(integer);
 		break;
 
 	case PW_TYPE_SIGNED:
-		compare = one->vp_signed - two->vp_signed;
+		CHECK(signed);
 		break;
 
 	case PW_TYPE_INTEGER64:
-		/*
-		 *	Don't want integer overflow!
-		 */
-		if (one->vp_integer64 < two->vp_integer64) {
-			compare = -1;
-		} else if (one->vp_integer64 > two->vp_integer64) {
-			compare = 1;
-		}
+		CHECK(integer64);
 		break;
 
 	case PW_TYPE_ETHERNET:
 		compare = memcmp(&one->vp_ether, &two->vp_ether, sizeof(one->vp_ether));
 		break;
 
-	case PW_TYPE_IPV4_ADDR:
-		compare = (int64_t) ntohl(one->vp_ipaddr) - (int64_t) ntohl(two->vp_ipaddr);
+	case PW_TYPE_IPV4_ADDR: {
+			uint32_t a, b;
+
+			a = ntohl(one->vp_ipaddr);
+			b = ntohl(two->vp_ipaddr);
+			if (a < b) {
+				compare = -1;
+			} else if (a > b) {
+				compare = +1;
+			}
+		}
 		break;
 
 	case PW_TYPE_IPV6_ADDR:
@@ -2342,8 +2360,8 @@ int paircmp_value(VALUE_PAIR const *one, VALUE_PAIR const *two)
 	 *	None of the types below should be in the REQUEST
 	 */
 	case PW_TYPE_INVALID:		/* We should never see these */
-	case PW_TYPE_IP_ADDR:		/* This should of been converted into IPADDR/IPV6ADDR */
-	case PW_TYPE_IP_PREFIX:	/* This should of been converted into IPADDR/IPV6ADDR */
+	case PW_TYPE_IP_ADDR:		/* This should have been converted into IPADDR/IPV6ADDR */
+	case PW_TYPE_IP_PREFIX:		/* This should have been converted into IPADDR/IPV6ADDR */
 	case PW_TYPE_TLV:
 	case PW_TYPE_EXTENDED:
 	case PW_TYPE_LONG_EXTENDED:
