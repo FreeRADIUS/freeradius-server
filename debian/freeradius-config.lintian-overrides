@@ -1,0 +1,3 @@
+freeradius-config: breaks-without-version
+freeradius-config: package-relation-with-self
+freeradius-config: python-script-but-no-python-dep etc/freeradius/mods-config/python/*.py
