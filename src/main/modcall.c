@@ -3246,8 +3246,8 @@ bool modcall_pass2(modcallable *mc)
 				rad_assert(this->name[0] == '&');
 				rad_assert(cf_section_name2_type(g->cs) == T_BARE_WORD);
 
-				g->vpt = tmpl_afrom_str(g->cs, this->name,
-							cf_section_name2_type(g->cs),
+				g->vpt = radius_str2tmpl(g->cs, this->name,
+							 cf_section_name2_type(g->cs),
 							 REQUEST_CURRENT, PAIR_LIST_REQUEST);
 				if (!g->vpt) {
 					cf_log_err_cs(g->cs, "Syntax error in '%s': %s",
