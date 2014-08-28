@@ -3050,7 +3050,11 @@ check_paircmp:
 		 *	forbids this.
 		 */
 		if (map->dst->type == TMPL_TYPE_ATTR) {
-			if (!pass2_xlat_compile(map->ci, &map->src, true, map->dst->attribute.da)) {
+			DICT_ATTR const *da = c->cast;
+
+			if (!c->cast) da = map->dst->attribute.da;
+
+			if (!pass2_xlat_compile(map->ci, &map->src, true, da)) {
 				return false;
 			}
 
