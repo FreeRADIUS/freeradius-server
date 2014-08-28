@@ -537,6 +537,18 @@ void fr_fault(int sig)
 	int code;
 
 	/*
+	 *	If a debugger is attached, we don't want to run the panic action,
+	 *	as it may interfere with the operation of the debugger.
+	 *	If something calls us directly we just raise the signal and let
+	 *	the debugger handle it how it wants.
+	 */
+	if (debugger_attached) {
+		FR_FAULT_LOG("RAISING SIGNAL: %s", strsignal(sig));
+		raise(sig);
+		goto finish;
+	}
+
+	/*
 	 *	Makes the backtraces slightly cleaner
 	 */
 	memset(cmd, 0, sizeof(cmd));
