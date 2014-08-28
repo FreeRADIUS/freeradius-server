@@ -239,7 +239,10 @@ int rad_mkdir(char *directory, mode_t mode)
 		if (rcode < 0) return rcode;
 	} /* else we successfully created the directory */
 
-	return chmod(directory, mode);
+	/*
+	 *	Assume that the permissions are correct.
+	 */
+	return 0;
 }
 
 
