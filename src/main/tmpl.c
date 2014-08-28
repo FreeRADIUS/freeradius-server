@@ -891,6 +891,7 @@ int tmpl_cast_to_vp(VALUE_PAIR **out, REQUEST *request,
  * @param err Will be set to -1 if VP could not be found, -2 if list could not be found,
  *	-3 if context could not be found and NULL will be returned. Will be 0 on success.
  * @param cursor to store iterator state.
+ * @param request The current request.
  * @param vpt specifying the VALUE_PAIRs to iterate over.
  * @return the first VALUE_PAIR specified by the value_pair_tmpl_t, NULL if no matching VALUE_PAIRs exist,
  * 	and NULL on error.
