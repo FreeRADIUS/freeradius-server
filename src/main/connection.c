@@ -610,7 +610,7 @@ fr_connection_pool_t *fr_connection_pool_module_init(CONF_SECTION *module,
 	 */
 	mycs = cf_section_sub_find(module, "pool");
 	if (!mycs) {
-		DEBUG4("%s: Adding pool section to \"%s\" to store pool references", prefix,
+		DEBUG4("%s: Adding pool section to config item \"%s\" to store pool references", prefix,
 		       cf_section_name(module));
 
 		mycs = cf_section_alloc(module, "pool", NULL);
@@ -636,16 +636,16 @@ fr_connection_pool_t *fr_connection_pool_module_init(CONF_SECTION *module,
 	 */
 	pool = cf_data_find(cs, CONNECTION_POOL_CF_KEY);
 	if (!pool) {
-		DEBUG4("%s: No pool reference found in \"%s.pool\"", prefix, parent_name(cs));
+		DEBUG4("%s: No pool reference found for config item \"%s.pool\"", prefix, parent_name(cs));
 		pool = fr_connection_pool_init(module, cs, opaque, c, a, prefix);
 		if (!pool) return NULL;
 
-		DEBUG4("%s: Adding pool reference %p to \"%s.pool\"", prefix, pool, parent_name(cs));
+		DEBUG4("%s: Adding pool reference %p to config item \"%s.pool\"", prefix, pool, parent_name(cs));
 		cf_data_add(cs, CONNECTION_POOL_CF_KEY, pool, NULL);
 		return pool;
 	}
 
-	DEBUG4("%s: Found pool reference %p in \"%s.pool\"", prefix, pool, parent_name(cs));
+	DEBUG4("%s: Found pool reference %p in config item \"%s.pool\"", prefix, pool, parent_name(cs));
 
 	/*
 	 *	We're reusing pool data add it to our local config
@@ -653,8 +653,8 @@ fr_connection_pool_t *fr_connection_pool_module_init(CONF_SECTION *module,
 	 *	re-use a pool through this module.
 	 */
 	if (mycs != cs) {
-		DEBUG4("%s: Copying pool reference %p from \"%s.pool\" to \"%s.pool\"", prefix, pool,
-		       parent_name(cs), parent_name(mycs));
+		DEBUG4("%s: Copying pool reference %p from config item \"%s.pool\" to config item \"%s.pool\"",
+		       prefix, pool, parent_name(cs), parent_name(mycs));
 		cf_data_add(mycs, CONNECTION_POOL_CF_KEY, pool, NULL);
 	}
 
