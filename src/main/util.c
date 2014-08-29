@@ -209,7 +209,7 @@ int rad_mkdir(char *directory, mode_t mode)
 	rcode = mkdir(directory, mode & 0777);
 	if (rcode < 0) {
 		if (errno == EEXIST) {
-			return chmod(directory, mode);
+			return 0; /* don't change permissions */
 		}
 
 		if (errno != ENOENT) {
@@ -240,9 +240,9 @@ int rad_mkdir(char *directory, mode_t mode)
 	} /* else we successfully created the directory */
 
 	/*
-	 *	Assume that the permissions are correct.
+	 *	Set the permissions on the created directory.
 	 */
-	return 0;
+	return chmod(directory, mode);
 }
 
 
