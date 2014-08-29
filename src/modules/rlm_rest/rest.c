@@ -1734,6 +1734,30 @@ static size_t rest_response_body(void *ptr, size_t size, size_t nmemb, void *use
 	return t;
 }
 
+/** Print out the response text as error lines
+ *
+ * @param request The Current request.
+ * @param handle rlm_rest_handle_t used to execute the previous request.
+ */
+void rest_response_error(REQUEST *request, rlm_rest_handle_t *handle)
+{
+	char const *p, *q;
+	size_t len;
+
+	len = rest_get_handle_data(&p, handle);
+	if (len == 0) {
+		RERROR("Server returned no data");
+		return;
+	}
+
+	RERROR("Server returned:");
+	while ((q = strchr(p, '\n'))) {
+		RERROR("%.*s", (int) (q - p), p);
+		p = q + 1;
+	}
+	if (*p != '\0') RERROR("%s", p);
+}
+
 /** (Re-)Initialises the data in a rlm_rest_response_t.
  *
  * This resets the values of the a rlm_rest_response_t to their defaults.
@@ -2234,18 +2258,6 @@ int rest_response_decode(rlm_rest_t *instance, UNUSED rlm_rest_section_t *sectio
 	if (!ctx->response.buffer) {
 		RDEBUG2("Skipping attribute processing, no valid body data received");
 		return 0;
-	}
-
-	if (RDEBUG_ENABLED3) {
-		char const *p, *q;
-
-		RDEBUG3("Processing response body");
-		p = ctx->response.buffer;
-		while ((q = strchr(p, '\n'))) {
-			RDEBUG3("%.*s", (int) (q - p), p);
-			p = q + 1;
-		}
-		if (*p != '\0') RDEBUG3("%s", p);
 	}
 
 	switch (ctx->response.type) {

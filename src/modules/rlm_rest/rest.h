@@ -271,6 +271,8 @@ int rest_response_decode(rlm_rest_t *instance,
 			UNUSED rlm_rest_section_t *section, REQUEST *request,
 			void *handle);
 
+void rest_response_error(REQUEST *request, rlm_rest_handle_t *handle);
+
 void rest_request_cleanup(rlm_rest_t *instance, rlm_rest_section_t *section,
 			  void *handle);
 
