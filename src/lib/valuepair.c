@@ -2261,6 +2261,7 @@ int paircmp_value(VALUE_PAIR const *one, VALUE_PAIR const *two)
 	switch (one->da->type) {
 	case PW_TYPE_ABINARY:
 	case PW_TYPE_OCTETS:
+	case PW_TYPE_STRING:	/* We use memcmp to be \0 safe */
 	{
 		size_t length;
 
@@ -2283,12 +2284,6 @@ int paircmp_value(VALUE_PAIR const *one, VALUE_PAIR const *two)
 		 */
 		compare = one->length - two->length;
 	}
-		break;
-
-	case PW_TYPE_STRING:
-		fr_assert(one->vp_strvalue);
-		fr_assert(two->vp_strvalue);
-		compare = strcmp(one->vp_strvalue, two->vp_strvalue);
 		break;
 
 		/*
