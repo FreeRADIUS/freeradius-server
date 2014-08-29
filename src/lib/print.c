@@ -824,8 +824,12 @@ void vp_printlist(FILE *fp, VALUE_PAIR const *vp)
 }
 
 
-/*
- *	vp_prints_value for talloc
+/** Print one attribute value to a string
+ *
+ * @param ctx to allocate string in.
+ * @param vp to print.
+ * @param escape PW_TYPE_STRING attribute values.
+ * @return a talloced buffer with the attribute operator and value.
  */
 char *vp_aprint_value(TALLOC_CTX *ctx, VALUE_PAIR const *vp, bool escape)
 {
@@ -973,6 +977,7 @@ char *vp_aprint_value(TALLOC_CTX *ctx, VALUE_PAIR const *vp, bool escape)
  *
  * @param ctx to allocate string in.
  * @param vp to print.
+ * @param escape PW_TYPE_STRING attribute values.
  * @return a talloced buffer with the attribute operator and value.
  */
 char *vp_aprint(TALLOC_CTX *ctx, VALUE_PAIR const *vp, bool escape)
