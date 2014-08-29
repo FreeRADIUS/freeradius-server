@@ -222,8 +222,7 @@ static ssize_t rest_xlat(void *instance, REQUEST *request,
 	case 401:
 	{
 error:
-		len = rest_get_handle_data(&body, handle);
-		if (len > 0) REDEBUG("%s", body);
+		rest_response_error(request, handle);
 		outlen = -1;
 		goto finish;
 	}
@@ -338,6 +337,17 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 	}
 
 finish:
+	switch (rcode) {
+	case RLM_MODULE_INVALID:
+	case RLM_MODULE_FAIL:
+	case RLM_MODULE_USERLOCK:
+		rest_response_error(request, handle);
+		break;
+
+	default:
+		break;
+	}
+
 	rlm_rest_cleanup(instance, section, handle);
 
 	fr_connection_release(inst->conn_pool, handle);
@@ -432,6 +442,17 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED REQU
 	}
 
 finish:
+	switch (rcode) {
+	case RLM_MODULE_INVALID:
+	case RLM_MODULE_FAIL:
+	case RLM_MODULE_USERLOCK:
+		rest_response_error(request, handle);
+		break;
+
+	default:
+		break;
+	}
+
 	rlm_rest_cleanup(instance, section, handle);
 
 	fr_connection_release(inst->conn_pool, handle);
@@ -478,6 +499,16 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED REQUES
 	}
 
 finish:
+	switch (rcode) {
+	case RLM_MODULE_INVALID:
+	case RLM_MODULE_FAIL:
+		rest_response_error(request, handle);
+		break;
+
+	default:
+		break;
+	}
+
 	rlm_rest_cleanup(inst, section, handle);
 
 	fr_connection_release(inst->conn_pool, handle);
@@ -524,6 +555,16 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED REQUEST
 	}
 
 finish:
+	switch (rcode) {
+	case RLM_MODULE_INVALID:
+	case RLM_MODULE_FAIL:
+		rest_response_error(request, handle);
+		break;
+
+	default:
+		break;
+	}
+
 	rlm_rest_cleanup(inst, section, handle);
 
 	fr_connection_release(inst->conn_pool, handle);
