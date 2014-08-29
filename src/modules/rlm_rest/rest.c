@@ -342,6 +342,8 @@ void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
 		 *  done on the first request, but we do it here to minimise
 		 *  latency.
 		 */
+		SET_OPTION(CURLOPT_SSL_VERIFYPEER, 0);
+		SET_OPTION(CURLOPT_SSL_VERIFYHOST, 0);
 		SET_OPTION(CURLOPT_CONNECT_ONLY, 1);
 		SET_OPTION(CURLOPT_URL, inst->connect_uri);
 
@@ -2014,11 +2016,8 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 		SET_OPTION(CURLOPT_RANDOM_FILE, section->tls_random_file);
 	}
 
-	if (section->tls_check_cert) {
-		SET_OPTION(CURLOPT_SSL_VERIFYHOST, (section->tls_check_cert_cn == true) ? 2 : 0);
-	} else {
-		SET_OPTION(CURLOPT_SSL_VERIFYPEER, 0);
-	}
+	SET_OPTION(CURLOPT_SSL_VERIFYPEER, (section->tls_check_cert == true) ? 1 : 0);
+	SET_OPTION(CURLOPT_SSL_VERIFYHOST, (section->tls_check_cert_cn == true) ? 2 : 0);
 
 	/*
 	 *	Tell CURL how to get HTTP body content, and how to process incoming data.
