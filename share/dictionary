@@ -115,6 +115,7 @@ $INCLUDE dictionary.azaire
 $INCLUDE dictionary.ascend
 $INCLUDE dictionary.bay
 $INCLUDE dictionary.bintec
+$INCLUDE dictionary.bluecoat
 $INCLUDE dictionary.broadsoft
 $INCLUDE dictionary.brocade
 $INCLUDE dictionary.bskyb
@@ -131,6 +132,7 @@ $INCLUDE dictionary.cisco
 #$INCLUDE dictionary.cisco.vpn3000
 $INCLUDE dictionary.cisco.vpn5000
 $INCLUDE dictionary.cisco.bbsm
+$INCLUDE dictionary.citrix
 $INCLUDE dictionary.clavister
 $INCLUDE dictionary.colubris
 $INCLUDE dictionary.cosine
@@ -204,6 +206,7 @@ $INCLUDE dictionary.quiconnect
 $INCLUDE dictionary.quintum
 $INCLUDE dictionary.redback
 $INCLUDE dictionary.redcreek
+$INCLUDE dictionary.riverbed
 $INCLUDE dictionary.riverstone
 $INCLUDE dictionary.roaringpenguin
 $INCLUDE dictionary.shasta

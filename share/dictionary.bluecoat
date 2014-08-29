@@ -1,0 +1,22 @@
+# -*- text -*-
+# Copyright (C) 2014 The FreeRADIUS Server project and contributors
+##############################################################################
+#
+#	BlueCoat VSAs
+#
+#	$Id$
+#
+##############################################################################
+
+VENDOR		BlueCoat			14501
+
+BEGIN-VENDOR	BlueCoat
+
+ATTRIBUTE	Blue-Coat-Group				1	string
+ATTRIBUTE	Blue-Coat-Authorization			2	integer
+
+VALUE	Blue-Coat-Authorization		No-Access		0
+VALUE	Blue-Coat-Authorization		Read-Only-Access	1
+VALUE	Blue-Coat-Authorization		Read-Write-Access	2
+
+END-VENDOR      BlueCoat
