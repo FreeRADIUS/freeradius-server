@@ -4,6 +4,8 @@
 #
 #	BlueCoat VSAs
 #
+#	See also dictionary.packeteer for former Packeteer products.
+#
 #	$Id$
 #
 ##############################################################################
@@ -12,6 +14,7 @@ VENDOR		BlueCoat			14501
 
 BEGIN-VENDOR	BlueCoat
 
+# Accepts multiple groups as comma-separated list.
 ATTRIBUTE	Blue-Coat-Group				1	string
 ATTRIBUTE	Blue-Coat-Authorization			2	integer
 
