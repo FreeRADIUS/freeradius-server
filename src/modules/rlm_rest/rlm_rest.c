@@ -670,25 +670,25 @@ static int parse_sub_section(CONF_SECTION *parent, rlm_rest_section_t *config, r
 	}
 
 	if (config->force_to_str) {
-		config->force_to = fr_str2int(http_body_type_table, config->body_str, HTTP_BODY_UNKNOWN);
+		config->force_to = fr_str2int(http_body_type_table, config->force_to_str, HTTP_BODY_UNKNOWN);
 		if (config->force_to == HTTP_BODY_UNKNOWN) {
-			config->force_to = fr_str2int(http_content_type_table, config->body_str, HTTP_BODY_UNKNOWN);
+			config->force_to = fr_str2int(http_content_type_table, config->force_to_str, HTTP_BODY_UNKNOWN);
 		}
 
 		if (config->force_to == HTTP_BODY_UNKNOWN) {
-			cf_log_err_cs(cs, "Unknown response body type '%s'", config->body_str);
+			cf_log_err_cs(cs, "Unknown forced response body type '%s'", config->force_to_str);
 			return -1;
 		}
 
 		switch (http_body_type_supported[config->force_to]) {
 		case HTTP_BODY_UNSUPPORTED:
-			cf_log_err_cs(cs, "Unsupported response body type \"%s\", please submit patches",
-				      config->body_str);
+			cf_log_err_cs(cs, "Unsupported forced response body type \"%s\", please submit patches",
+				      config->force_to_str);
 			return -1;
 
 		case HTTP_BODY_INVALID:
-			cf_log_err_cs(cs, "Invalid HTTP response body type.  \"%s\" is not a valid web API data "
-				      "markup format", config->body_str);
+			cf_log_err_cs(cs, "Invalid HTTP forced response body type.  \"%s\" is not a valid web API data "
+				      "markup format", config->force_to_str);
 			return -1;
 
 		default:
