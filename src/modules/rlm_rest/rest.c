@@ -60,7 +60,7 @@ const http_body_type_t http_body_type_supported[HTTP_BODY_NUM_ENTRIES] = {
 	HTTP_BODY_UNSUPPORTED,		// HTTP_BODY_XML
 	HTTP_BODY_UNSUPPORTED,		// HTTP_BODY_YAML
 	HTTP_BODY_INVALID,		// HTTP_BODY_HTML
-	HTTP_BODY_INVALID		// HTTP_BODY_PLAIN
+	HTTP_BODY_PLAIN			// HTTP_BODY_PLAIN
 };
 
 /*
@@ -924,6 +924,8 @@ static int rest_decode_plain(UNUSED rlm_rest_t *instance, UNUSED rlm_rest_sectio
 	 */
 	vp = pairmake_reply("REST-HTTP-Body", NULL, T_OP_ADD);
 	pairstrncpy(vp, raw, rawlen);
+
+	RDEBUG2("Adding reply:REST-HTTP-Body += \"%s\"", vp->vp_strvalue);
 
 	return 1;
 }
