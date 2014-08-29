@@ -160,7 +160,7 @@ server home.example.com {
 		# You may want accounting policies here...
 
 		update control {
-			Proxy-To-Realm := "acct_realm.example.com"
+			&Proxy-To-Realm := "acct_realm.example.com"
 		}
 	}
 

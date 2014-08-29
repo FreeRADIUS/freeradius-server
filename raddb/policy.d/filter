@@ -34,7 +34,7 @@ filter_username {
 	#
 	if (&User-Name =~ / /) {
 		update reply {
-			Reply-Message += "Rejected: Username contains whitespace"
+			&Reply-Message += 'Rejected: Username contains whitespace'
 		}
 		reject
 	}
@@ -45,7 +45,7 @@ filter_username {
 	#
 	if (&User-Name =~ /@.*@/ ) {
 		update reply {
-			Reply-Message += "Rejected: Multiple @ in username"
+			&Reply-Message += 'Rejected: Multiple @ in username'
 		}
 		reject
 	}
@@ -56,7 +56,7 @@ filter_username {
 	#
 	if (&User-Name =~ /\\.\\./ ) {
 		update reply {
-			Reply-Message += "Rejected: Username contains ..s"
+			&Reply-Message += 'Rejected: Username contains ..s'
 		}
 		reject
 	}
@@ -67,7 +67,7 @@ filter_username {
 	#
 	if ((&User-Name =~ /@/) && (&User-Name !~ /@(.+)\\.(.+)$/))  {
 		update reply {
-			Reply-Message += "Rejected: Realm does not have at least one dot separator"
+			&Reply-Message += 'Rejected: Realm does not have at least one dot separator'
 		}
 		reject
 	}
@@ -78,7 +78,7 @@ filter_username {
 	#
 	if (&User-Name =~ /\\.$/)  {
 		update reply {
-			Reply-Message += "Rejected: Realm ends with a dot"
+			&Reply-Message += 'Rejected: Realm ends with a dot'
 		}
 		reject
 	}
@@ -89,7 +89,7 @@ filter_username {
 	#
 	if (&User-Name =~ /@\\./)  {
 		update reply {
-			Reply-Message += "Rejected: Realm begins with a dot"
+			&Reply-Message += 'Rejected: Realm begins with a dot'
 		}
 		reject
 	}

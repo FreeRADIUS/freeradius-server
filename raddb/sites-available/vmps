@@ -51,15 +51,15 @@ server vmps {
 		#
 		#  Some requests may not have a MAC address.  Try to
 		#  create one using other attributes.
-		if (!VMPS-Mac) {
-			if (VMPS-Ethernet-Frame =~ /0x.{12}(..)(..)(..)(..)(..)(..).*/) {
+		if (!&VMPS-Mac) {
+			if (&VMPS-Ethernet-Frame =~ /0x.{12}(..)(..)(..)(..)(..)(..).*/) {
 				update request {
-					VMPS-Mac = "%{1}:%{2}:%{3}:%{4}:%{5}:%{6}"
+					&VMPS-Mac = "%{1}:%{2}:%{3}:%{4}:%{5}:%{6}"
 				}
 			}
 			else {
 				update request {
-					VMPS-Mac = "%{VMPS-Cookie}"
+					&VMPS-Mac = &VMPS-Cookie
 				}
 			}
 		}
@@ -73,23 +73,23 @@ server vmps {
 
 		# required VMPS reply attributes
 		update reply {
-			VMPS-Packet-Type = VMPS-Join-Response
-			VMPS-Cookie = "%{VMPS-Mac}"
+			&VMPS-Packet-Type = VMPS-Join-Response
+			&VMPS-Cookie = &VMPS-Mac
 
-			VMPS-VLAN-Name = "please_use_real_vlan_here"
+			&VMPS-VLAN-Name = "please_use_real_vlan_here"
 
 			#
 			#  If you have VLAN's in a database, you can select
 			#  the VLAN name based on the MAC address.
 			#
-			#VMPS-VLAN-Name = "%{sql:select ... where mac='%{VMPS-Mac}'}"
+			#&VMPS-VLAN-Name = "%{sql:select ... where mac='%{VMPS-Mac}'}"
 		}
 
 		# correct reply packet type for reconfirmation requests
 		#
-		if (VMPS-Packet-Type == VMPS-Reconfirm-Request){
+		if (&VMPS-Packet-Type == VMPS-Reconfirm-Request){
 			update reply {
-				VMPS-Packet-Type := VMPS-Reconfirm-Response
+				&VMPS-Packet-Type := VMPS-Reconfirm-Response
 			}
 		}
 	}

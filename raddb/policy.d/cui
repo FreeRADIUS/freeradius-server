@@ -41,7 +41,7 @@ cui_require_operator_name = "no"
 cui.authorize {
 	if ("%{client:add_cui}" == 'yes') {
 		update request {
-			Chargeable-User-Identity := 0x00
+			&Chargeable-User-Identity := 0x00
 		}
 	}
 }
@@ -53,7 +53,7 @@ cui.authorize {
 cui.pre-proxy {
 	if (("%{request:Packet-Type}" == 'Access-Request') && ("%{client:add_cui}" == 'yes')) {
 		update proxy-request {
-			Chargeable-User-Identity = 0x00
+			&Chargeable-User-Identity = 0x00
 		}
 	}
 }
@@ -69,7 +69,7 @@ cui.post-auth {
 	if (!&control:Proxy-To-Realm && &Chargeable-User-Identity && !&reply:Chargeable-User-Identity && \
 	    (&Operator-Name || ('${policy.cui_require_operator_name}' != 'yes')) ) {
 		update reply {
-			Chargeable-User-Identity = "%{sha1:${policy.cui_hash_key}%{tolower:%{User-Name}%{%{Operator-Name}:-}}}"
+			&Chargeable-User-Identity = "%{sha1:${policy.cui_hash_key}%{tolower:%{User-Name}%{%{Operator-Name}:-}}}"
 		}
 	}
 
@@ -84,7 +84,7 @@ cui.post-auth {
 	if (&reply:Chargeable-User-Identity) {
 		# Force User-Name to be the User-Name from the request
 		update {
-			reply:User-Name := &request:User-Name
+			&reply:User-Name := &request:User-Name
 		}
 		cuisql
 	}
@@ -95,7 +95,7 @@ cui-inner.post-auth {
 	if (&outer.request:Chargeable-User-Identity && \
 	    (&outer.request:Operator-Name || ('${policy.cui_require_operator_name}' != 'yes'))) {
 		update reply {
-			Chargeable-User-Identity := "%{sha1:${policy.cui_hash_key}%{tolower:%{User-Name}%{%{outer.request:Operator-Name}:-}}}"
+			&Chargeable-User-Identity := "%{sha1:${policy.cui_hash_key}%{tolower:%{User-Name}%{%{outer.request:Operator-Name}:-}}}"
 		}
 	}
 }
@@ -113,7 +113,7 @@ cui.accounting {
 	#
 	if (!&Chargeable-User-Identity) {
 		update request {
-			Chargeable-User-Identity := "%{cuisql:\
+			&Chargeable-User-Identity := "%{cuisql:\
 				SELECT cui FROM cui \
 				WHERE clientipaddress = '%{%{Packet-Src-IPv6-Address}:-%{Packet-Src-IP-Address}}' \
 				AND callingstationid = '%{Calling-Station-Id}' \

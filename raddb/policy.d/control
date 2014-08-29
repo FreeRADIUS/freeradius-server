@@ -4,7 +4,7 @@
 #
 do_not_respond {
 	update control {
-		Response-Packet-Type := Do-Not-Respond
+		&Response-Packet-Type := Do-Not-Respond
 	}
 
 	handled
@@ -17,6 +17,6 @@ do_not_respond {
 #
 accept.authorize {
 	update control {
-		Auth-Type := accept
+		&Auth-Type := accept
 	}
 }

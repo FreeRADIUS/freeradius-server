@@ -92,9 +92,9 @@ server example {
 		#
 		#  Some example policies.  See "man unlang" for more.
 		#
-		if ("%{User-Name}" == "bob") {
+		if (&User-Name == 'bob') {
 			update control {
-				Cleartext-Password := "bob"
+				&Cleartext-Password := 'bob'
 			}
 		}
 
@@ -114,7 +114,7 @@ server example {
 
 		Post-Auth-Type Reject {
 			update reply {
-				Reply-Message = "This is only an example."
+				&Reply-Message = 'This is only an example.'
 			}
 		}
 	}

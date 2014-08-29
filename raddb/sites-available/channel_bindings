@@ -10,13 +10,13 @@ server channel_bindings {
 #  Only the "authorize" section is needed.
 #
 authorize {
-	if (GSS-Acceptor-Service-Name && (outer.request:GSS-Acceptor-Service-Name != GSS-Acceptor-Service-Name)) {
+	if (&GSS-Acceptor-Service-Name && (&outer.request:GSS-Acceptor-Service-Name != &GSS-Acceptor-Service-Name)) {
 		reject
 	}
 
-	if (GSS-Acceptor-Service-Name || GSS-Acceptor-Realm-Name || GSS-Acceptor-Host-Name) {
+	if (&GSS-Acceptor-Service-Name || &GSS-Acceptor-Realm-Name || &GSS-Acceptor-Host-Name) {
 		update control {
-			Chbind-Response-Code := success
+			&Chbind-Response-Code := success
 		}
 
 		#
@@ -26,9 +26,9 @@ authorize {
 		#  then they won't be copied to the reply.
 		#
 		update reply {
-			GSS-Acceptor-Service-Name = &GSS-Acceptor-Service-Name
-			GSS-Acceptor-Host-Name = &GSS-Acceptor-Host-Name
-			GSS-Acceptor-Realm-Name = &GSS-Acceptor-Realm-Name
+			&GSS-Acceptor-Service-Name = &GSS-Acceptor-Service-Name
+			&GSS-Acceptor-Host-Name = &GSS-Acceptor-Host-Name
+			&GSS-Acceptor-Realm-Name = &GSS-Acceptor-Realm-Name
 		}
 	}
 

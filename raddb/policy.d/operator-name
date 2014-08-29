@@ -28,7 +28,7 @@
 operator-name.authorize {
 	if ("%{client:Operator-Name}") {
 		update request {
-			Operator-Name = "%{client:Operator-Name}"
+			&Operator-Name = "%{client:Operator-Name}"
 		}
 	}
 }
@@ -40,7 +40,7 @@ operator-name.authorize {
 operator-name.pre-proxy {
 	if (("%{request:Packet-Type}" == 'Access-Request') && "%{client:Operator-Name}") {
 		update proxy-request {
-			Operator-Name := "%{client:Operator-Name}"
+			&Operator-Name := "%{client:Operator-Name}"
 		}
 	}
 }
