@@ -101,7 +101,7 @@ authorize {
 	#  the next few lines.
 	#
 	update control {
-	       Proxy-To-Realm := LOCAL
+		&Proxy-To-Realm := LOCAL
 	}
 
 	#
@@ -324,7 +324,7 @@ post-auth {
 	#  to use  Chargeable-User-Identity attribute from RFC 4372.
 	#  See further on.
 	#update outer.reply {
-	#  User-Name = "%{request:User-Name}"
+	#	&User-Name = &request:User-Name
 	#}
 	#
 }
