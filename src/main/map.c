@@ -709,8 +709,8 @@ int map_to_vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *map, U
 #define DEBUG_OVERWRITE(_old, _new) \
 do {\
 	if (RDEBUG_ENABLED3) {\
-		char *old = vp_aprint_value(request, _old);\
-		char *new = vp_aprint_value(request, _new);\
+		char *old = vp_aprint_value(request, _old, true);\
+		char *new = vp_aprint_value(request, _new, true);\
 		RDEBUG3("Overwriting value \"%s\" with \"%s\"", old, new);\
 		talloc_free(old);\
 		talloc_free(new);\
