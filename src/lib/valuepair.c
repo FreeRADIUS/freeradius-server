@@ -503,8 +503,8 @@ void pairvalidate_debug(TALLOC_CTX *ctx, VALUE_PAIR const *failed[2])
 		return;
 	}
 
-	pair = vp_aprint(ctx, filter);
-	value = vp_aprint_value(ctx, list);
+	pair = vp_aprint(ctx, filter, true);
+	value = vp_aprint_value(ctx, list, true);
 
 	fr_strerror_printf("Attribute value \"%s\" didn't match filter \"%s\"", value, pair);
 
