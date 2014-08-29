@@ -827,7 +827,7 @@ void vp_printlist(FILE *fp, VALUE_PAIR const *vp)
 /*
  *	vp_prints_value for talloc
  */
-char *vp_aprint_value(TALLOC_CTX *ctx, VALUE_PAIR const *vp)
+char *vp_aprint_value(TALLOC_CTX *ctx, VALUE_PAIR const *vp, bool escape)
 {
 	char *p;
 
@@ -835,6 +835,13 @@ char *vp_aprint_value(TALLOC_CTX *ctx, VALUE_PAIR const *vp)
 	case PW_TYPE_STRING:
 	{
 		size_t len, ret;
+
+		if (!escape) {
+			p = talloc_memdup(ctx, vp->vp_strvalue, vp->length + 1);
+			if (!p) return NULL;
+			talloc_set_type(p, char);
+			return p;
+		}
 
 		/* Gets us the size of the buffer we need to alloc */
 		len = fr_print_string_len(vp->vp_strvalue, vp->length);
@@ -968,7 +975,7 @@ char *vp_aprint_value(TALLOC_CTX *ctx, VALUE_PAIR const *vp)
  * @param vp to print.
  * @return a talloced buffer with the attribute operator and value.
  */
-char *vp_aprint(TALLOC_CTX *ctx, VALUE_PAIR const *vp)
+char *vp_aprint(TALLOC_CTX *ctx, VALUE_PAIR const *vp, bool escape)
 {
 	char const	*token = NULL;
 	char 		*pair, *value;
@@ -983,7 +990,7 @@ char *vp_aprint(TALLOC_CTX *ctx, VALUE_PAIR const *vp)
 		token = "<INVALID-TOKEN>";
 	}
 
-	value = vp_aprint_value(ctx, vp);
+	value = vp_aprint_value(ctx, vp, escape);
 	pair = vp->da->flags.has_tag ?
 	       talloc_asprintf(ctx, "%s:%d %s %s", vp->da->name, vp->tag, token, value) :
 	       talloc_asprintf(ctx, "%s %s %s", vp->da->name, token, value);
