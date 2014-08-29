@@ -1,18 +1,21 @@
 # -*- text -*-
 # Copyright (C) 2014 The FreeRADIUS Server project and contributors
+##############################################################################
 #
-#	Blue Coat Dictionary
+#	BlueCoat VSAs
 #
 #	See also dictionary.packeteer for former Packeteer products.
 #
+#	$Id$
+#
+##############################################################################
 
 VENDOR		BlueCoat			14501
 
 BEGIN-VENDOR	BlueCoat
 
-ATTRIBUTE	Blue-Coat-Group				1	string
 # Accepts multiple groups as comma-separated list.
-
+ATTRIBUTE	Blue-Coat-Group				1	string
 ATTRIBUTE	Blue-Coat-Authorization			2	integer
 
 VALUE	Blue-Coat-Authorization		No-Access		0
