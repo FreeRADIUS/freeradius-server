@@ -4,7 +4,8 @@ FreeRADIUS 3.0.4 Mon 12 May 2014 15:30:00 EDT urgency=medium
 	  second.  See proxy.conf.
 	* radmin now supports "show module status", as the counterpart
 	  to "set module status"
-	* Added dictionary ericsson.packet.ccore.networks
+	* Added dictionary ericsson.packet.ccore.networks, bluecoat,
+	  citrix, and riverbed.
 	* Add %{tag:} expansion to get the tag value of an attribute.
 	* Report 'application_name' in connections to PostgreSQL servers.
 	  FreeRADIUS connections will now appear as
