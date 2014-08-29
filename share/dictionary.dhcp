@@ -189,7 +189,7 @@ ATTRIBUTE	DHCP-DHCP-Server-Identifier		54	ipaddr
 # Array of 1-byte numbers indicating which options the client
 # would like to see in the response.
 ATTRIBUTE	DHCP-Parameter-Request-List		55	byte array
-ATTRIBUTE	DHCP-DHCP-Error-Message			56	octets
+ATTRIBUTE	DHCP-DHCP-Error-Message			56	string
 ATTRIBUTE	DHCP-DHCP-Maximum-Msg-Size		57	short
 ATTRIBUTE	DHCP-Renewal-Time			58	integer
 ATTRIBUTE	DHCP-Rebinding-Time			59	integer
