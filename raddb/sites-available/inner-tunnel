@@ -305,6 +305,12 @@ post-auth {
 	#  tunnel request", and "outer.reply" means "outer tunnel
 	#  reply attributes".
 	#
+	#  Updating the outer reply works ONLY when you have set
+	#  "use_tunneled_reply = no".  If you set that to "yes",
+	#  then the outer reply will be replaced by the inner
+	#  tunneled reply.  Any modifications you made to the outer
+	#  reply will be lost.
+	#
 	#  This example is most useful when the outer session contains
 	#  a User-Name of "anonymous@....", or a MAC address.  If it
 	#  is enabled, the NAS SHOULD use the inner tunnel User-Name
