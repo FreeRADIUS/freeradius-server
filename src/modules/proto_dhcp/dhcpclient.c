@@ -71,7 +71,7 @@ static void NEVER_RETURNS usage(void)
 	fprintf(stderr, "Usage: dhcpclient [options] server[:port] <command>\n");
 
 	fprintf(stderr, "  <command>              One of discover, request, offer, decline, release, inform.\n");
-	fprintf(stderr, "  -d <raddb>             Set user dictionary directory (defaults to " RADDBDIR ").\n");
+	fprintf(stderr, "  -d <directory>         Set the directory where the dictionaries are stored (defaults to " RADDBDIR ").\n");
 	fprintf(stderr, "  -f <file>              Read packets from file, not stdin.\n");
 	fprintf(stderr, "  -t <timeout>           Wait 'timeout' seconds for a reply (may be a floating point number).\n");
 	fprintf(stderr, "  -v                     Show program version information.\n");
@@ -264,6 +264,7 @@ int main(int argc, char **argv)
 	int c;
 	char const *radius_dir = RADDBDIR;
 	char const *filename = NULL;
+	DICT_ATTR const *da;
 
 	fr_debug_flag = 0;
 
@@ -306,6 +307,18 @@ int main(int argc, char **argv)
 	if (dict_init(radius_dir, RADIUS_DICTIONARY) < 0) {
 		fr_perror("dhcpclient");
 		return 1;
+	}
+
+	/*
+	 *	Ensure that dictionary.dhcp is loaded.
+	 */
+	da = dict_attrbyname("DHCP-Message-Type");
+	if (!da) {
+		if (dict_read(radius_dir, "dictionary.dhcp") < 0) {
+			fprintf(stderr, "Failed reading dictionary.dhcp: %s",
+				fr_strerror());
+			return -1;
+		}
 	}
 
 	/*
