@@ -127,12 +127,12 @@ dhcp DHCP-Discover {
 
 	#  The contents here are invented.  Change them!
 	update reply {
-		DHCP-Domain-Name-Server = 127.0.0.1
-		DHCP-Domain-Name-Server = 127.0.0.2
-		DHCP-Subnet-Mask = 255.255.255.0
-		DHCP-Router-Address = 192.0.2.1
-		DHCP-IP-Address-Lease-Time = 86400
-		DHCP-DHCP-Server-Identifier = 192.0.2.1
+		&DHCP-Domain-Name-Server = 127.0.0.1
+		&DHCP-Domain-Name-Server = 127.0.0.2
+		&DHCP-Subnet-Mask = 255.255.255.0
+		&DHCP-Router-Address = 192.0.2.1
+		&DHCP-IP-Address-Lease-Time = 86400
+		&DHCP-DHCP-Server-Identifier = 192.0.2.1
 	}
 
 	#  Do a simple mapping of MAC to assigned IP.
@@ -152,7 +152,7 @@ dhcp DHCP-Discover {
 	#  Or, allocate IPs from the DHCP pool in SQL. You may need to
 	#  set the pool name here if you haven't set it elsewhere.
 #	update control {
-#		Pool-Name := "local"
+#		&Pool-Name := "local"
 #	}
 #	dhcp_sqlippool
 
@@ -168,17 +168,17 @@ dhcp DHCP-Request {
 
 	# Response packet type. See DHCP-Discover section above.
 	update reply {
-	       DHCP-Message-Type = DHCP-Ack
+	       &DHCP-Message-Type = DHCP-Ack
 	}
 
 	#  The contents here are invented.  Change them!
 	update reply {
-		DHCP-Domain-Name-Server = 127.0.0.1
-		DHCP-Domain-Name-Server = 127.0.0.2
-		DHCP-Subnet-Mask = 255.255.255.0
-		DHCP-Router-Address = 192.0.2.1
-		DHCP-IP-Address-Lease-Time = 86400
-		DHCP-DHCP-Server-Identifier = 192.0.2.1
+		&DHCP-Domain-Name-Server = 127.0.0.1
+		&DHCP-Domain-Name-Server = 127.0.0.2
+		&DHCP-Subnet-Mask = 255.255.255.0
+		&DHCP-Router-Address = 192.0.2.1
+		&DHCP-IP-Address-Lease-Time = 86400
+		&DHCP-DHCP-Server-Identifier = 192.0.2.1
 	}
 
 	#  Do a simple mapping of MAC to assigned IP.
@@ -198,7 +198,7 @@ dhcp DHCP-Request {
 	#  Or, allocate IPs from the DHCP pool in SQL. You may need to
 	#  set the pool name here if you haven't set it elsewhere.
 #	update control {
-#		Pool-Name := "local"
+#		&Pool-Name := "local"
 #	}
 #	dhcp_sqlippool
 
@@ -220,21 +220,21 @@ dhcp DHCP-Request {
 
 dhcp DHCP-Decline {
 	update reply {
-	       DHCP-Message-Type = DHCP-Do-Not-Respond
+	       &DHCP-Message-Type = DHCP-Do-Not-Respond
 	}
 	reject
 }
 
 dhcp DHCP-Inform {
 	update reply {
-	       DHCP-Message-Type = DHCP-Do-Not-Respond
+	       &DHCP-Message-Type = DHCP-Do-Not-Respond
 	}
 	reject
 }
 
 dhcp DHCP-Release {
 	update reply {
-	       DHCP-Message-Type = DHCP-Do-Not-Respond
+	       &DHCP-Message-Type = DHCP-Do-Not-Respond
 	}
 	reject
 }

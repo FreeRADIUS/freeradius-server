@@ -25,9 +25,9 @@
 #  "coa" list:
 #
 #	update coa {
-#	       User-Name = "%{User-Name}"
-#	       Acct-Session-Id = "%{Acct-Session-Id}"
-#	       NAS-IP-Address = "%{NAS-IP-Address}"
+#	       &User-Name = "%{User-Name}"
+#	       &Acct-Session-Id = "%{Acct-Session-Id}"
+#	       &NAS-IP-Address = "%{NAS-IP-Address}"
 #	}
 #
 #  And the CoA packet will be sent.  You can also send Disconnect
@@ -45,7 +45,7 @@
 #  CoA packet:
 #
 #	update control {
-#		Send-CoA-Request = No
+#		&Send-CoA-Request = No
 #	}
 #
 #  The default destination of a CoA packet is the NAS (or client)
@@ -135,7 +135,7 @@ home_server_pool coa {
 server originate-coa.example.com {
   pre-proxy {
 	update proxy-request {
-		NAS-IP-Address = 127.0.0.1
+		&NAS-IP-Address = 127.0.0.1
 	}
   }
 

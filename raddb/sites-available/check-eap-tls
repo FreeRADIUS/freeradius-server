@@ -34,7 +34,7 @@ authorize {
 	# By default, we just accept the request:
 	#
 	update config {
-		Auth-Type := Accept
+		&Auth-Type := Accept
 	}
 
 
@@ -42,17 +42,17 @@ authorize {
 	# Check the client certificate matches a string, and reject otherwise
 	#
 
-#	if ("%{TLS-Client-Cert-Common-Name}" == "client.example.com") {
+#	if ("%{TLS-Client-Cert-Common-Name}" == 'client.example.com') {
 #		update config {
-#			Auth-Type := Accept
+#			&Auth-Type := Accept
 #		}
 #	}
 #	else {
 #		update config {
-#			Auth-Type := Reject
+#			&Auth-Type := Reject
 #		}
 #		update reply {
-#			Reply-Message := "Your certificate is not valid."
+#			&Reply-Message := "Your certificate is not valid."
 #		}
 #	}
 
@@ -60,14 +60,14 @@ authorize {
 	#
 	# Check the client certificate common name against the supplied User-Name
 	#
-#	if ("host/%{TLS-Client-Cert-Common-Name}" == "%{User-Name}") {
+#	if ("host/%{TLS-Client-Cert-Common-Name}" == &User-Name) {
 #		update config {
-#			Auth-Type := Accept
+#			&Auth-Type := Accept
 #		}
 #	}
 #	else {
 #		update config {
-#			Auth-Type := Reject
+#			&Auth-Type := Reject
 #		}
 #	}
 
@@ -96,7 +96,7 @@ authorize {
 
 #	if (!(Ldap-Group == "Permitted-Laptops")) {
 #		update config {
-#			Auth-Type := Reject
+#			&Auth-Type := Reject
 #		}
 #	}
 
@@ -124,8 +124,5 @@ authorize {
 	auth_log
 
 }
-
-
-
 }
 

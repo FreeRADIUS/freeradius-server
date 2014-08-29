@@ -9,13 +9,12 @@ Xeap.authorize {
 		#
 		if (&control:State) {
 			update control {
-				Cache-TTL := 0
+				&Cache-TTL := 0
 			}
 			cache_eap
 
 			update control {
-				Cache-TTL !* ANY
-				State !* ANY
+				&State !* ANY
 			}
 		}
 
@@ -76,7 +75,7 @@ permit_only_eap {
 remove_reply_message_if_eap {
 	if (&reply:EAP-Message && &reply:Reply-Message) {
 		update reply {
-			Reply-Message !* ANY
+			&Reply-Message !* ANY
 		}
 	}
 	else {

@@ -24,7 +24,7 @@ authorize {
 
 	update control {
 		#  You should update this to be one of your realms.
-		Proxy-To-Realm := "example.com"
+		&Proxy-To-Realm := "example.com"
 	}
 }
 

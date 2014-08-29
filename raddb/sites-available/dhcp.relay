@@ -22,11 +22,11 @@ server dhcp.eth1 {
 	dhcp DHCP-Discover {
 		update config {
 			# IP Address of the DHCP server
-			DHCP-Relay-To-IP-Address := 192.0.2.2
+			&DHCP-Relay-To-IP-Address := 192.0.2.2
 		}
 		update request {
 			# IP Address of the DHCP relay (ourselves)
-			DHCP-Gateway-IP-Address := 192.0.2.1
+			&DHCP-Gateway-IP-Address := 192.0.2.1
 		}
 		ok
 	}
@@ -34,10 +34,10 @@ server dhcp.eth1 {
 	dhcp DHCP-Request {
 		update config {
 			# IP Address of the DHCP server
-			DHCP-Relay-To-IP-Address := 192.0.2.2
+			&DHCP-Relay-To-IP-Address := 192.0.2.2
 		}
 		update request {
-			DHCP-Gateway-IP-Address := 192.0.2.2
+			&DHCP-Gateway-IP-Address := 192.0.2.2
 		}
 		ok
 	}
