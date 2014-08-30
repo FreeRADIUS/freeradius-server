@@ -245,11 +245,16 @@ static int mod_authenticate(void *arg, eap_handler_t *handler)
 		}
 
 		if (t && t->authenticated) {
-			RDEBUG2("Using saved attributes from the original Access-Accept");
-			debug_pair_list(t->accept_vps);
-			pairfilter(handler->request->reply,
-				  &handler->request->reply->vps,
-				  &t->accept_vps, 0, 0, TAG_ANY);
+			if (t->accept_vps) {
+				RDEBUG2("Using saved attributes from the original Access-Accept");
+				debug_pair_list(t->accept_vps);
+				pairfilter(handler->request->reply,
+					   &handler->request->reply->vps,
+					   &t->accept_vps, 0, 0, TAG_ANY);
+			} else if (t->use_tunneled_reply) {
+				RDEBUG2("No saved attributes in the original Access-Accept");
+			}
+
 		do_keys:
 			/*
 			 *	Success: Automatically return MPPE keys.
