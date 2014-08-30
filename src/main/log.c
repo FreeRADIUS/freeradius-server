@@ -331,15 +331,6 @@ int vradlog(log_type_t type, char const *fmt, va_list ap)
 	int colourise = default_log.colourise;
 
 	/*
-	 *	NOT debugging, and trying to log debug messages.
-	 *
-	 *	Throw the message away.
-	 */
-	if (!debug_flag && ((type & L_DBG) != 0)) {
-		return 0;
-	}
-
-	/*
 	 *	If we don't want any messages, then
 	 *	throw them away.
 	 */
@@ -481,6 +472,27 @@ int vradlog(log_type_t type, char const *fmt, va_list ap)
 }
 
 int radlog(log_type_t type, char const *msg, ...)
+{
+	va_list ap;
+	int r = 0;
+
+	va_start(ap, msg);
+
+	/*
+	 *	Non-debug message, or debugging is enabled.  Log it.
+	 */
+	if (((type & L_DBG) == 0) || (debug_flag > 0)) {
+		r = vradlog(type, msg, ap);
+	}
+	va_end(ap);
+
+	return r;
+}
+
+/*
+ *	Always log.
+ */
+static int CC_HINT(format (printf, 2, 3)) radlog_always(log_type_t type, char const *msg, ...)
 {
 	va_list ap;
 	int r;
@@ -676,9 +688,9 @@ void vradlog_request(log_type_t type, log_debug_t lvl, REQUEST *request, char co
 			indent = request->log.indent > sizeof(spaces) ?
 				 sizeof(spaces) :
 				 request->log.indent;
-			radlog(type, "(%u) %.*s%s%s", request->number, indent, spaces, extra, buffer);
+			radlog_always(type, "(%u) %.*s%s%s", request->number, indent, spaces, extra, buffer);
 		} else {
-			radlog(type, "%s%s", extra, buffer);
+			radlog_always(type, "%s%s", extra, buffer);
 		}
 	} else {
 		if (request) {
