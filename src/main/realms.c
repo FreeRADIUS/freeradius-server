@@ -915,7 +915,6 @@ static int server_pool_add(realm_config_t *rc,
 
 		if (!pool_check_home_server(rc, cp, cf_pair_value(cp),
 					    server_type, &home)) {
-			DEBUG("SHIT %d", __LINE__);
 			return 0;
 		}
 	}
