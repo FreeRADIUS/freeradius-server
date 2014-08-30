@@ -328,6 +328,8 @@ static int mod_authenticate(void *arg, eap_handler_t *handler)
 			pairfilter(handler->request->reply,
 				  &handler->request->reply->vps,
 				  &peap->accept_vps, 0, 0, TAG_ANY);
+		} else if (peap->use_tunneled_reply) {
+			RDEBUG2("No saved attributes in the original Access-Accept");
 		}
 
 		/*
