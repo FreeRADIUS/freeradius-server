@@ -118,7 +118,8 @@ FreeRADIUS 3.0.4 Mon 12 May 2014 15:30:00 EDT urgency=medium
 	* Fix boundary issue with rlm_rest.  Closes #768
 	* Optimize "%{Attribute-Name}" in comparisons only if the dictionary
 	  types match.
-	* Don't do chmod() in rad_mkdir()
+	* Don't do chmod() in rad_mkdir() if the directory already exists.
+	  We might not have permission to change it.
 
 FreeRADIUS 3.0.3 Mon 12 May 2014 15:30:00 EDT urgency=medium
 	Feature improvements
