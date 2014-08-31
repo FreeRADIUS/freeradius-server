@@ -538,7 +538,7 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 		if ((tmpl_find_vp(&lhs_vp, request, map->dst) < 0) ||
 		    (tmpl_find_vp(&rhs_vp, request, map->src) < 0)) return false;
 
-		if (map->dst->attribute.da->type == map->src->attribute.da->type) {
+		if (map->dst->tmpl_da->type == map->src->tmpl_da->type) {
 			return paircmp_op(lhs_vp, map->op, rhs_vp);
 		}
 
@@ -546,12 +546,12 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 		 *	Compare a large integer (lhs) to a small integer (rhs).
 		 *	We allow this without a cast.
 		 */
-		rad_assert((map->dst->attribute.da->type == PW_TYPE_INTEGER64) ||
-			   (map->dst->attribute.da->type == PW_TYPE_INTEGER) ||
-			   (map->dst->attribute.da->type == PW_TYPE_SHORT));
-		rad_assert((map->src->attribute.da->type == PW_TYPE_INTEGER) ||
-			   (map->src->attribute.da->type == PW_TYPE_SHORT) ||
-			   (map->src->attribute.da->type == PW_TYPE_BYTE));
+		rad_assert((map->dst->tmpl_da->type == PW_TYPE_INTEGER64) ||
+			   (map->dst->tmpl_da->type == PW_TYPE_INTEGER) ||
+			   (map->dst->tmpl_da->type == PW_TYPE_SHORT));
+		rad_assert((map->src->tmpl_da->type == PW_TYPE_INTEGER) ||
+			   (map->src->tmpl_da->type == PW_TYPE_SHORT) ||
+			   (map->src->tmpl_da->type == PW_TYPE_BYTE));
 
 		cast_vp = pairalloc(request, lhs_vp->da);
 		if (!cast_vp) return false;
