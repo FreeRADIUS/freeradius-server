@@ -44,14 +44,15 @@ int session_zap(REQUEST *request, uint32_t nasaddr, uint32_t nas_port,
 	int ret;
 
 	stopreq = request_alloc_fake(request);
+	rad_assert(stopreq != NULL);
+	rad_assert(stopreq->packet != NULL);
 	stopreq->packet->code = PW_CODE_ACCOUNTING_REQUEST; /* just to be safe */
 	stopreq->listener = request->listener;
-	rad_assert(stopreq != NULL);
 
 	/* Hold your breath */
 #define PAIR(n,v,e) do { \
 		if(!(vp = paircreate(stopreq->packet,n, 0))) {	\
-			TALLOC_FREE(stopreq); \
+			talloc_free(stopreq); \
 			ERROR("no memory"); \
 			pairfree(&(stopreq->packet->vps)); \
 			return 0; \
@@ -66,7 +67,7 @@ int session_zap(REQUEST *request, uint32_t nasaddr, uint32_t nas_port,
 
 #define STRINGPAIR(n,v) do { \
 	  if(!(vp = paircreate(stopreq->packet,n, 0))) {	\
-		TALLOC_FREE(stopreq); \
+		talloc_free(stopreq); \
 		ERROR("no memory"); \
 		pairfree(&(stopreq->packet->vps)); \
 		return 0; \
