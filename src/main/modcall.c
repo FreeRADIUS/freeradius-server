@@ -2849,7 +2849,7 @@ static bool pass2_xlat_compile(CONF_ITEM const *ci, value_pair_tmpl_t **pvpt, bo
 			 *	If the attribute is of incompatible
 			 *	type, leave it alone.
 			 */
-			if (da && (da->type != attr->attribute.da->type)) {
+			if (da && (da->type != attr->tmpl_da->type)) {
 				talloc_free(attr);
 				return true;
 			}
@@ -3059,7 +3059,7 @@ check_paircmp:
 		if (map->dst->type == TMPL_TYPE_ATTR) {
 			DICT_ATTR const *da = c->cast;
 
-			if (!c->cast) da = map->dst->attribute.da;
+			if (!c->cast) da = map->dst->tmpl_da;
 
 			if (!pass2_xlat_compile(map->ci, &map->src, true, da)) {
 				return false;
@@ -3392,7 +3392,7 @@ bool modcall_pass2(modcallable *mc)
 				 */
 				if (f->vpt->type == TMPL_TYPE_ATTR) {
 					if (!pass2_xlat_compile(cf_sectiontoitem(g->cs),
-								&g->vpt, true, f->vpt->attribute.da)) {
+								&g->vpt, true, f->vpt->tmpl_da)) {
 						return false;
 					}
 				} else {
