@@ -135,6 +135,7 @@ $INCLUDE dictionary.cisco.bbsm
 $INCLUDE dictionary.citrix
 $INCLUDE dictionary.clavister
 $INCLUDE dictionary.colubris
+$INCLUDE dictionary.compatible
 $INCLUDE dictionary.cosine
 $INCLUDE dictionary.dante
 $INCLUDE dictionary.dhcp
@@ -209,6 +210,7 @@ $INCLUDE dictionary.redcreek
 $INCLUDE dictionary.riverbed
 $INCLUDE dictionary.riverstone
 $INCLUDE dictionary.roaringpenguin
+$INCLUDE dictionary.ruckus
 $INCLUDE dictionary.shasta
 $INCLUDE dictionary.sg
 $INCLUDE dictionary.shiva
