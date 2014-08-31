@@ -60,7 +60,7 @@ const http_body_type_t http_body_type_supported[HTTP_BODY_NUM_ENTRIES] = {
 	HTTP_BODY_UNSUPPORTED,		// HTTP_BODY_XML
 	HTTP_BODY_UNSUPPORTED,		// HTTP_BODY_YAML
 	HTTP_BODY_INVALID,		// HTTP_BODY_HTML
-	HTTP_BODY_PLAIN			// HTTP_BODY_PLAIN
+	HTTP_BODY_INVALID		// HTTP_BODY_PLAIN
 };
 
 /*
@@ -899,40 +899,6 @@ static void rest_request_init(REQUEST *request, rlm_rest_request_t *ctx, bool so
 	fr_cursor_init(&ctx->cursor, &request->packet->vps);
 }
 
-<<<<<<< HEAD
-=======
-/** Converts plain response into a single VALUE_PAIR
- *
- * @param[in] instance configuration data.
- * @param[in] section configuration data.
- * @param[in] handle rlm_rest_handle_t to use.
- * @param[in] request Current request.
- * @param[in] raw buffer containing POST data.
- * @param[in] rawlen Length of data in raw buffer.
- * @return the number of VALUE_PAIRs processed or -1 on unrecoverable error.
- */
-static int rest_decode_plain(UNUSED rlm_rest_t *instance, UNUSED rlm_rest_section_t *section,
-			     REQUEST *request, UNUSED void *handle, char *raw, size_t rawlen)
-{
-	VALUE_PAIR *vp;
-
-	/*
-	 *  Empty response?
-	 */
-	if (*raw == '\0') return 0;
-
-	/*
-	 *  Use rawlen to protect against overrun, and to cope with any binary data
-	 */
-	vp = pairmake_reply("REST-HTTP-Body", NULL, T_OP_ADD);
-	pairstrncpy(vp, raw, rawlen);
-
-	RDEBUG2("Adding reply:REST-HTTP-Body += \"%s\"", vp->vp_strvalue);
-
-	return 1;
-}
-
->>>>>>> bf4d10a... Allow 'plain' as a valid WEB API type
 /** Converts POST response into VALUE_PAIRs and adds them to the request
  *
  * Accepts VALUE_PAIRS in the same format as rest_encode_post, but with the
