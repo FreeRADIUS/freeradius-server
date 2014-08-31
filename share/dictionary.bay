@@ -103,11 +103,11 @@ VALUE	Passport-Access-Priority	L3-Read-Write-Access	4
 VALUE	Passport-Access-Priority	Read-Write-Access	5
 VALUE	Passport-Access-Priority	Read-Write-All-Access	6
 
-ATTRIBUTE	Cli-Commands				193	string
-ATTRIBUTE	Command-Access				194	integer
+ATTRIBUTE	Annex-Cli-Commands			193	string
+ATTRIBUTE	Annex-Command-Access			194	integer
 
-VALUE	Command-Access			False			0
-VALUE	Command-Access			True			1
+VALUE	Annex-Command-Access		False			0
+VALUE	Annex-Command-Access		True			1
 
 ATTRIBUTE	Commands				195	string
 
