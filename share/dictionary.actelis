@@ -8,10 +8,10 @@
 #
 ##############################################################################
 
-VENDOR		Actelis			5468
+VENDOR		Actelis				5468
 
 BEGIN-VENDOR	Actelis
 
-ATTRIBUTE	Actelis-Privilege	1	string
+ATTRIBUTE	Actelis-Privilege			1	string
 
 END-VENDOR	Actelis

@@ -98,7 +98,7 @@ ATTRIBUTE	outgoing-req-uri			147	string
 ATTRIBUTE	next-hop-ip				148	string
 ATTRIBUTE	next-hop-dn				149	string
 ATTRIBUTE	sip-hdr					150	string
-ATTRIBUTE	dsp-id                                  151     string
+ATTRIBUTE	dsp-id					151	string
 
 #
 #	Extra attributes sent by the Cisco, if you configure
@@ -152,9 +152,9 @@ VALUE	Cisco-Disconnect-Cause		Password-Fail		25
 VALUE	Cisco-Disconnect-Cause		Raw-TCP-Disabled	26
 VALUE	Cisco-Disconnect-Cause		Control-C-Detected	27
 VALUE	Cisco-Disconnect-Cause		EXEC-Program-Destroyed	28
-VALUE	Cisco-Disconnect-Cause		Close-Virtual-Connection	29
+VALUE	Cisco-Disconnect-Cause		Close-Virtual-Connection 29
 VALUE	Cisco-Disconnect-Cause		End-Virtual-Connection	30
-VALUE	Cisco-Disconnect-Cause		Exit-Rlogin 		31
+VALUE	Cisco-Disconnect-Cause		Exit-Rlogin		31
 VALUE	Cisco-Disconnect-Cause		Invalid-Rlogin-Option	32
 VALUE	Cisco-Disconnect-Cause		Insufficient-Resources	33
 VALUE	Cisco-Disconnect-Cause		Timeout-PPP-LCP		40
@@ -178,7 +178,7 @@ VALUE	Cisco-Disconnect-Cause		Timeout-TCP		62
 VALUE	Cisco-Disconnect-Cause		Foreign-Host-Close-TCP	63
 VALUE	Cisco-Disconnect-Cause		TCP-Network-Unreachable	64
 VALUE	Cisco-Disconnect-Cause		TCP-Host-Unreachable	65
-VALUE	Cisco-Disconnect-Cause		TCP-Network-Admin-Unreachable	66
+VALUE	Cisco-Disconnect-Cause		TCP-Network-Admin-Unreachable 66
 VALUE	Cisco-Disconnect-Cause		TCP-Port-Unreachable	67
 VALUE	Cisco-Disconnect-Cause		Session-Timeout		100
 VALUE	Cisco-Disconnect-Cause		Session-Failed-Security	101
@@ -188,7 +188,7 @@ VALUE	Cisco-Disconnect-Cause		RADIUS-Disconnect	150
 VALUE	Cisco-Disconnect-Cause		Local-Admin-Disconnect	151
 VALUE	Cisco-Disconnect-Cause		SNMP-Disconnect		152
 VALUE	Cisco-Disconnect-Cause		V110-Retries		160
-VALUE	Cisco-Disconnect-Cause		PPP-Authentication-Timeout	170
+VALUE	Cisco-Disconnect-Cause		PPP-Authentication-Timeout 170
 VALUE	Cisco-Disconnect-Cause		Local-Hangup		180
 VALUE	Cisco-Disconnect-Cause		Remote-Hangup		185
 VALUE	Cisco-Disconnect-Cause		T1-Quiesced		190
