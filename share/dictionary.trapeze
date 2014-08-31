@@ -3,10 +3,10 @@
 #
 #	dictionary.trapeze
 #
-#	For use with FreeRadius and Trapeze Networks MSS software 1.1
-#	or greater.
+#	For use with FreeRadius and Trapeze/Juniper MSS software
+#	1.1 or greater.
 #
-#	For assistance, email support@trapezenetworks.com.
+#	Trapeze Networks has been acquired by Juniper in 2010.
 #
 #	$Id$
 #
@@ -34,5 +34,6 @@ ATTRIBUTE	Trapeze-User-Group-Name			9	string
 ATTRIBUTE	Trapeze-QoS-Profile			10	string
 ATTRIBUTE	Trapeze-Simultaneous-Logins		11	string
 ATTRIBUTE	Trapeze-CoA-Username			12	string
+ATTRIBUTE	Trapeze-Audit				13	string
 
 END-VENDOR	Trapeze
