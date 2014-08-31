@@ -222,9 +222,9 @@ static ssize_t rest_xlat(void *instance, REQUEST *request,
 	case 403:
 	case 401:
 	{
+		outlen = -1;
 error:
 		rest_response_error(request, handle);
-		outlen = -1;
 		goto finish;
 	}
 	case 204:
