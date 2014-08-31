@@ -49,7 +49,7 @@ ATTRIBUTE	H3C-Input-Interval-Packets		203	integer
 ATTRIBUTE	H3C-Output-Interval-Packets		204	integer
 ATTRIBUTE	H3C-Input-Interval-Gigawords		205	integer
 ATTRIBUTE	H3C-Output-Interval-Gigawords		206	integer
-ATTRIBUTE	H3C-Backup-NAS-IP			207 	ipaddr
+ATTRIBUTE	H3C-Backup-NAS-IP			207	ipaddr
 ATTRIBUTE	H3C-Product-ID				255	string
 
 END-VENDOR	H3C
