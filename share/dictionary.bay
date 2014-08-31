@@ -7,8 +7,11 @@
 #	From MegaZone <megazone@megazone.org>, as posted to the bay-isp list.
 #	Modified for libradius by Alan DeKok <aland@ox.org>
 #
+#   Bay Networks was acquired by Nortel in 1998. Some Avaya products continue
+#   to use attributes from this dictionary as result of the Nortel acquisitions.
+#
 
-VENDOR		Bay-Networks			1584		# now Nortel
+VENDOR		Bay-Networks			1584
 
 BEGIN-VENDOR	Bay-Networks
 #	Bay Networks Extensions
@@ -99,6 +102,14 @@ VALUE	Passport-Access-Priority	L2-Read-Write-Access	3
 VALUE	Passport-Access-Priority	L3-Read-Write-Access	4
 VALUE	Passport-Access-Priority	Read-Write-Access	5
 VALUE	Passport-Access-Priority	Read-Write-All-Access	6
+
+ATTRIBUTE	Cli-Commands				193	string
+ATTRIBUTE	Command-Access				194	integer
+
+VALUE	Command-Access			False			0
+VALUE	Command-Access			True			1
+
+ATTRIBUTE	Commands				195	string
 
 #	Annex Tunnel Authen Type Values
 
