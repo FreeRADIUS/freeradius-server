@@ -1911,7 +1911,9 @@ static modcallable *do_compile_modforeach(modcallable *parent,
 	 *	the attribute. In a perfect consistent world, users would do
 	 *	foreach &attr[*], but that's taking the consistency thing a bit far.
 	 */
-	vpt->tmpl_num = NUM_ALL;
+	if (vpt && (vpt->type == TMPL_TYPE_ATTR)) {
+		vpt->tmpl_num = NUM_ALL;
+	}
 
 	csingle = do_compile_modgroup(parent, component, cs,
 				      GROUPTYPE_SIMPLE, GROUPTYPE_SIMPLE,
