@@ -221,10 +221,10 @@ static ssize_t rest_xlat(void *instance, REQUEST *request,
 	case 403:
 	case 401:
 	{
+		outlen = -1;
 error:
 		len = rest_get_handle_data(&body, handle);
 		if (len > 0) REDEBUG("%s", body);
-		outlen = -1;
 		goto finish;
 	}
 	case 204:
