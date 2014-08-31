@@ -151,60 +151,9 @@ LIBRADIUS += $(OPENSSL_LIBS)
 endif
 endif
 
-#  http://clang.llvm.org/StaticAnalysis.html
-#
-#  $ make SCAN=/path/to/checker/
-#
-ifneq ($(SCAN),)
-CC		:= $(SCAN)/scan-build gcc -DFR_SCAN_BUILD
-LIBTOOL		:=
-endif
-
-#
-#  Portability cruft.  This is for replacing libtroll && libltdl
-#  with gcc and dlopen().
-#
-ifeq "$(USE_SHARED_LIBS)" "yes"
-LINK_MODE.exe	= -export-dynamic
-CFLAGS		+= -fPIC
-else
-LINK_MODE.exe	= -static
-endif
-
-ifneq "$(LIBTOOL)" ""
-COMPILE.c	:= $(LIBTOOL) --quiet --mode=compile $(CC)
-LINK.lib	:= $(LIBTOOL) --quiet --mode=link $(CC) -rpath $(libdir) -o
-LO		:= lo
-LA		:= la
-else
-COMPILE.c	:= $(CC)
-LO		:= o
-
-ifeq "$(USE_SHARED_LIBS)" "yes"
-LINK.lib	:= $(CC) -shared -o
-LA		:= so
-else
-LINK.lib	:= $(AR) cru
-LA		:= a
-endif
-
-endif
-
-ifeq "$(LA)" "so"
-ifneq "$(findstring Darwin,$(shell uname -a))" ""
-LA		:= dylib
-endif
-endif
-
 # Path to clang, setting this enables the 'scan.*' build targets
 # which perform static analysis on various server components.
 ANALYZE.c       := @clang_path@
-
-ifeq "${CC}" "clang"
-    ifeq "${ANALYZE.c}" ""
-        ANALYZE.c := "${CC}"
-    endif
-endif
 
 #
 #  With shared libs, the test binaries are in a different place
