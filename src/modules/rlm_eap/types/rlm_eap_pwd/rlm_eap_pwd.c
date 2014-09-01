@@ -248,7 +248,7 @@ static int eap_pwd_initiate (void *instance, eap_handler_t *handler)
 	pack->group_num = htons(pwd_session->group_num);
 	pack->random_function = EAP_PWD_DEF_RAND_FUN;
 	pack->prf = EAP_PWD_DEF_PRF;
-	pwd_session->token = random();
+	pwd_session->token = fr_rand();
 	memcpy(pack->token, (char *)&pwd_session->token, 4);
 	pack->prep = EAP_PWD_PREP_NONE;
 	strcpy(pack->identity, inst->conf->server_id);
