@@ -2112,7 +2112,7 @@ static int command_socket_parse_unix(CONF_SECTION *cs, rad_listen_t *this)
 	if (sock->uid_name) {
 		struct passwd *pw;
 
-		pw = getpwnam(sock->uid_name);
+		pw = rad_getpwnam(sock->uid_name);
 		if (!pw) {
 			ERROR("Failed getting uid for %s: %s", sock->uid_name, fr_syserror(errno));
 			return -1;
@@ -2126,7 +2126,7 @@ static int command_socket_parse_unix(CONF_SECTION *cs, rad_listen_t *this)
 	if (sock->gid_name) {
 		struct group *gr;
 
-		gr = getgrnam(sock->gid_name);
+		gr = rad_getgrnam(sock->gid_name);
 		if (!gr) {
 			ERROR("Failed getting gid for %s: %s", sock->gid_name, fr_syserror(errno));
 			return -1;

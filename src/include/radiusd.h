@@ -42,6 +42,9 @@ typedef struct rad_request REQUEST;
 #  include <sys/wait.h>
 #endif
 
+#include <pwd.h>
+#include <grp.h>
+
 #ifndef NDEBUG
 #  define REQUEST_MAGIC (0xdeadbeef)
 #endif
@@ -543,6 +546,8 @@ char const	*rad_default_raddb_dir(void);
 char const	*rad_default_run_dir(void);
 char const	*rad_default_sbin_dir(void);
 char const	*rad_radacct_dir(void);
+struct passwd	*rad_getpwnam(const char *name);
+struct group	*rad_getgrnam(const char *name);
 void		verify_request(char const *file, int line, REQUEST *request);	/* only for special debug builds */
 
 /* client.c */
