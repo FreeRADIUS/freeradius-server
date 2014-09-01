@@ -44,6 +44,8 @@ typedef struct rlm_sqlippool_t {
 	rlm_sql_t *sql_inst;
 
 	char const *pool_name;
+	bool		ipv6;		//!< Whether or not we do IPv6 pools.
+	int		framed_ip_address; //!< the attribute number for Framed-IP(v6)-Address
 
 	time_t last_clear;		//!< So we only do it once a second.
 	char const *allocate_begin;	//!< SQL query to begin.
@@ -123,6 +125,8 @@ static CONF_PARSER module_config[] = {
 	{ "default-pool", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_DEPRECATED, rlm_sqlippool_t, defaultpool), NULL },
 	{ "default_pool", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sqlippool_t, defaultpool), "main_pool" },
 
+
+	{ "ipv6", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_sqlippool_t, ipv6), NULL},
 
 	{ "allocate-begin", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_DEPRECATED, rlm_sqlippool_t, allocate_begin), NULL },
 	{ "allocate_begin", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sqlippool_t, allocate_begin), "START TRANSACTION" },
@@ -417,6 +421,12 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		return -1;
 	}
 
+	if (!inst->ipv6) {
+		inst->framed_ip_address = PW_FRAMED_IP_ADDRESS;
+	} else {
+		inst->framed_ip_address = PW_FRAMED_IPV6_PREFIX;
+	}
+
 	if (strcmp(sqlinst->entry->name, "rlm_sql") != 0) {
 		cf_log_err_cs(conf, "Module \"%s\""
 		       " is not an instance of the rlm_sql module",
@@ -459,16 +469,14 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 	rlm_sqlippool_t *inst = (rlm_sqlippool_t *) instance;
 	char allocation[MAX_STRING_LEN];
 	int allocation_len;
-	uint32_t ip_allocation;
 	VALUE_PAIR *vp;
 	rlm_sql_handle_t *handle;
-	fr_ipaddr_t ipaddr;
 	time_t now;
 
 	/*
 	 *	If there is a Framed-IP-Address attribute in the reply do nothing
 	 */
-	if (pairfind(request->reply->vps, PW_FRAMED_IP_ADDRESS, 0, TAG_ANY) != NULL) {
+	if (pairfind(request->reply->vps, inst->framed_ip_address, 0, TAG_ANY) != NULL) {
 		RDEBUG("Framed-IP-Address already exists");
 
 		return do_logging(request, inst->log_exists, RLM_MODULE_NOOP);
@@ -566,10 +574,11 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 	}
 
 	/*
-	 *	FIXME: Make it work with the ipv6 addresses
+	 *	See if we can create the VP from the returned data.  If not,
+	 *	error out.  If so, add it to the list.
 	 */
-	if ((ip_hton(&ipaddr, AF_INET, allocation, false) < 0) ||
-	    ((ip_allocation = ipaddr.ipaddr.ip4addr.s_addr) == INADDR_NONE)) {
+	vp = paircreate(request->reply, inst->framed_ip_address, 0);
+	if (pairparsevalue(vp, allocation, allocation_len) < 0) {
 		DO(allocate_commit);
 
 		RDEBUG("Invalid IP number [%s] returned from instbase query.", allocation);
@@ -577,18 +586,14 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 		return do_logging(request, inst->log_failed, RLM_MODULE_NOOP);
 	}
 
+	RDEBUG("Allocated IP %s", allocation);
+	pairadd(&request->reply->vps, vp);
+
 	/*
 	 *	UPDATE
 	 */
 	sqlippool_command(inst->allocate_update, handle, inst, request,
 			  allocation, allocation_len);
-
-	RDEBUG("Allocated IP %s [%08x]", allocation, ip_allocation);
-
-	vp = radius_paircreate(request->reply, &request->reply->vps,
-			       PW_FRAMED_IP_ADDRESS, 0);
-	vp->vp_ipaddr = ip_allocation;
-	vp->length = 4;
 
 	DO(allocate_commit);
 
