@@ -902,13 +902,13 @@ int ip_hton(fr_ipaddr_t *out, int af, char const *hostname, bool fallback)
 	if (!ai) ai = alt;
 	if (!ai) {
 		fr_strerror_printf("ip_hton failed to find requested information for host %.100s", hostname);
-		freeaddrinfo(ai);
+		freeaddrinfo(res);
 		return -1;
 	}
 
 	rcode = fr_sockaddr2ipaddr((struct sockaddr_storage *)ai->ai_addr,
 				   ai->ai_addrlen, out, NULL);
-	freeaddrinfo(ai);
+	freeaddrinfo(res);
 	if (!rcode) return -1;
 
 	return 0;
