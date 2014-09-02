@@ -2142,23 +2142,11 @@ static int command_socket_parse_unix(CONF_SECTION *cs, rad_listen_t *this)
 	}
 
 	if (sock->gid_name) {
-		struct group *grp;
-#ifdef HAVE_GETGRNAM_R
-		struct group	my_group;
-		char		group_buffer[1024];
-
-		if (getgrnam_r(sock->gid_name, &my_group, group_buffer, sizeof(group_buffer), &grp) != 0) {
-			grp = NULL;
-		}
-#else
-		grp = getgrnam(sock->gid_name);
-#endif
-		if (!grp) {
+		if (!fr_getgid(sock->gid_name, &sock->gid)) {
 			ERROR("Failed getting gid for %s: %s",
-			       sock->gid_name, fr_syserror(errno));
+			      sock->gid_name, fr_syserror(errno));
 			return -1;
 		}
-		sock->gid = grp->gr_gid;
 	} else {
 		sock->gid = -1;
 	}
