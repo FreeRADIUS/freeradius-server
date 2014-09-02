@@ -35,7 +35,7 @@ VALUE	F5-LTM-User-Role		Fraud-Protection-Manager 480
 VALUE	F5-LTM-User-Role		Certificate-Manager	500
 VALUE	F5-LTM-User-Role		IRule-Manager		510
 VALUE	F5-LTM-User-Role		Guest			700
-VALUE	F5-LTM-User-Role		Policy-Editor		800
+VALUE	F5-LTM-User-Role		Web-Application-Security-Administrator 800
 VALUE	F5-LTM-User-Role		Web-Application-Security-Editor 810
 VALUE	F5-LTM-User-Role		Acceleration-Policy-Editor 850
 VALUE	F5-LTM-User-Role		No-Access		900
