@@ -29,6 +29,21 @@ RCSID("$Id$")
 
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <unistd.h>
+#include <pwd.h>
+#include <grp.h>
+
+struct pwgrnam_buffer {
+	struct passwd pwd;
+	char *pwbuffer;
+	int pwsize;
+
+	struct group grp;
+	char *grbuffer;
+	int grsize;
+};
+
+fr_thread_local_setup(struct pwgrnam_buffer *, fr_pwgrnam_buffer); /* macro */
 
 /*
  *	The signal() function in Solaris 2.5.1 sets SA_NODEFER in
@@ -1007,3 +1022,133 @@ void verify_request(char const *file, int line, REQUEST *request)
 #endif
 }
 #endif
+
+/*
+ *	Explicitly cleanup the memory allocated to the pwgrnam
+ *	buffer.
+ */
+static void _fr_pwgrnam_free(void *arg)
+{
+	struct pwgrnam_buffer *p = (struct pwgrnam_buffer *)arg;
+	free(p->pwbuffer);
+	free(p->grbuffer);
+	free(p);
+}
+
+/*
+ *	Allocate buffers for our getpwnam/getgrnam wrappers.
+ */
+static struct pwgrnam_buffer *init_pwgrnam_buffer(void) {
+	struct pwgrnam_buffer *p;
+	int ret;
+
+	p = fr_thread_local_init(fr_pwgrnam_buffer, _fr_pwgrnam_free);
+	if (p)
+		return p;
+
+	p = malloc(sizeof(struct pwgrnam_buffer));
+	if (!p) {
+		fr_perror("Failed allocating pwnam/grnam buffer");
+		return NULL;
+	}
+
+#ifdef _SC_GETPW_R_SIZE_MAX
+	p->pwsize = sysconf(_SC_GETPW_R_SIZE_MAX);
+	if (p->pwsize <= 0)
+#endif
+		p->pwsize = 16384;
+
+#ifdef _SC_GETGR_R_SIZE_MAX
+	p->grsize = sysconf(_SC_GETGR_R_SIZE_MAX);
+	if (p->grsize <= 0)
+#endif
+		p->grsize = 16384;
+
+	p->pwbuffer = malloc(p->pwsize);
+	if (!p->pwbuffer) {
+		fr_perror("Failed allocating pwnam buffer");
+		free(p);
+		return NULL;
+	}
+
+	p->grbuffer = malloc(p->grsize);
+	if (!p->grbuffer) {
+		fr_perror("Failed allocating grnam buffer");
+		free(p->pwbuffer);
+		free(p);
+		return NULL;
+	}
+
+	ret = fr_thread_local_set(fr_pwgrnam_buffer, p);
+	if (ret != 0) {
+		fr_perror("Failed setting up TLS for pwnam buffer: %s", fr_syserror(ret));
+		_fr_pwgrnam_free(p);
+		return NULL;
+	}
+
+	return p;
+}
+
+/** Wrapper around getpwnam, search user database for a name
+ *
+ * getpwnam is not threadsafe so provide a thread-safe variant that
+ * uses TLS.
+ *
+ * @param name then username to search for
+ * @return NULL on error or not found, else pointer to thread local struct passwd buffer
+ */
+struct passwd *rad_getpwnam(const char *name)
+{
+	struct pwgrnam_buffer *p;
+	struct passwd *result;
+	int ret;
+
+	p = init_pwgrnam_buffer();
+	if (!p)
+		return NULL;
+
+	while ((ret = getpwnam_r(name, &p->pwd, p->pwbuffer, p->pwsize, &result)) == ERANGE) {
+		char *tmp = realloc(p->pwbuffer, p->pwsize * 2);
+		if (!tmp) {
+			fr_perror("Failed reallocating pwnam buffer");
+			return NULL;
+		}
+		p->pwsize *= 2;
+		p->pwbuffer = tmp;
+	}
+	if (ret < 0 || result == NULL)
+		return NULL;
+	return result;
+}
+
+/** Wrapper around getgrnam, search group database for a name
+ *
+ * getgrnam is not threadsafe so provide a thread-safe variant that
+ * uses TLS.
+ *
+ * @param name the name to search for
+ * @return NULL on error or not found, else pointer to thread local struct group buffer
+ */
+struct group *rad_getgrnam(const char *name)
+{
+	struct pwgrnam_buffer *p;
+	struct group *result;
+	int ret;
+
+	p = init_pwgrnam_buffer();
+	if (!p)
+		return NULL;
+
+	while ((ret = getgrnam_r(name, &p->grp, p->grbuffer, p->grsize, &result)) == ERANGE) {
+		char *tmp = realloc(p->grbuffer, p->grsize * 2);
+		if (!tmp) {
+			fr_perror("Failed reallocating pwnam buffer");
+			return NULL;
+		}
+		p->grsize *= 2;
+		p->grbuffer = tmp;
+	}
+	if (ret < 0 || result == NULL)
+		return NULL;
+	return result;
+}

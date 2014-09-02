@@ -89,11 +89,11 @@ static int groupcmp(UNUSED void *instance, REQUEST *req, UNUSED VALUE_PAIR *requ
 		return -1;
 	}
 
-	pwd = getpwnam(req->username->vp_strvalue);
+	pwd = rad_getpwnam(req->username->vp_strvalue);
 	if (!pwd)
 		return -1;
 
-	grp = getgrnam(check->vp_strvalue);
+	grp = rad_getgrnam(check->vp_strvalue);
 	if (!grp)
 		return -1;
 
@@ -198,7 +198,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, REQUEST
 		return RLM_MODULE_USERLOCK;
 	}
 #else /* OSFC2 */
-	if ((pwd = getpwnam(name)) == NULL) {
+	if ((pwd = rad_getpwnam(name)) == NULL) {
 		return RLM_MODULE_NOTFOUND;
 	}
 	encrypted_pass = pwd->pw_passwd;
