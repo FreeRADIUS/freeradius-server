@@ -61,6 +61,10 @@ typedef struct rad_request REQUEST;
 #include <freeradius-devel/realms.h>
 #include <freeradius-devel/map.h>
 
+#ifdef HAVE_GRP_H
+#include <grp.h>
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -544,6 +548,9 @@ char const	*rad_default_run_dir(void);
 char const	*rad_default_sbin_dir(void);
 char const	*rad_radacct_dir(void);
 void		verify_request(char const *file, int line, REQUEST *request);	/* only for special debug builds */
+#ifdef HAVE_GRP_H
+bool		fr_getgid(char const *name, gid_t *gid);
+#endif
 
 /* client.c */
 RADCLIENT_LIST	*clients_init(CONF_SECTION *cs);
