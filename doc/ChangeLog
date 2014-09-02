@@ -120,6 +120,8 @@ FreeRADIUS 3.0.4 Mon 12 May 2014 15:30:00 EDT urgency=medium
 	  types match.
 	* Don't do chmod() in rad_mkdir() if the directory already exists.
 	  We might not have permission to change it.
+	* Use getpwnam_r() and getgrnam_r() on systems which support it.
+	  Closes #775.
 
 FreeRADIUS 3.0.3 Mon 12 May 2014 15:30:00 EDT urgency=medium
 	Feature improvements
