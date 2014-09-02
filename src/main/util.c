@@ -917,3 +917,51 @@ void verify_request(char const *file, int line, REQUEST *request)
 #endif
 }
 #endif
+
+#ifdef HAVE_GRP_H
+#ifndef HAVE_GETGRNAM_R
+bool fr_getgid(char const *name, gid_t *gid)
+{
+	struct group grp;
+
+	grp =  getgrnam(name);
+	if (!grp) return false;
+
+	*gid = grp->gr_gid;
+
+	return true;
+}
+#else  /* getgrnam_r() exists */
+
+bool fr_getgid(char const *name, gid_t *gid)
+{
+	struct group	*grp, my_group;
+	char		*group_buffer;
+	size_t		group_size = 1024;
+
+	grp = NULL;
+	group_buffer = talloc_array(NULL, char, group_size);
+	while (group_buffer) {
+		int err;
+
+		err = getgrnam_r(name, &my_group, group_buffer, group_size, &grp);
+		if (err == ERANGE) {
+			group_size *= 2;
+			group_buffer = talloc_realloc(NULL, group_buffer, char, group_size);
+			continue;
+		}
+
+		if (err) errno = err; /* so the caller knows what went wrong */
+
+		break;
+	}
+
+	talloc_free(group_buffer);
+
+	if (!grp) return false;
+
+	*gid = grp->gr_gid;
+	return true;
+}
+#endif	/* HAVE_GETGRNAM_R */
+#endif	/* HAVE_GRP_H */
