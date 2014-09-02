@@ -282,7 +282,16 @@ static rlm_rcode_t CC_HINT(nonnull) mod_do_linelog(void *instance, REQUEST *requ
 		if (inst->group != NULL) {
 			gid = strtol(inst->group, &endptr, 10);
 			if (*endptr != '\0') {
+#ifdef HAVE_GETGRNAM_R
+				char group_buffer[1024];
+				struct group my_group;
+
+				if (getgrnam_r(inst->group, &my_group, group_buffer, sizeof(group_buffer), &grp) != 0) {
+					grp = NULL;
+				}
+#else
 				grp = getgrnam(inst->group);
+#endif
 				if (!grp) {
 					RDEBUG2("Unable to find system group \"%s\"", inst->group);
 					goto skip_group;

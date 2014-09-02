@@ -81,6 +81,14 @@ static int groupcmp(UNUSED void *instance, REQUEST *req, UNUSED VALUE_PAIR *requ
 	struct group	*grp;
 	char		**member;
 	int		retval;
+#ifdef HAVE_GETGRNAM_R
+	struct group	my_group;
+	char		group_buffer[1024]; /* if we care, try to re-use this buffer for pwd_buffer */
+#endif
+#ifdef HAVE_GETPWNAM_R
+	struct passwd	my_pwd;
+	char		pwd_buffer[1024];
+#endif
 
 	/*
 	 *	No user name, doesn't compare.
@@ -89,11 +97,23 @@ static int groupcmp(UNUSED void *instance, REQUEST *req, UNUSED VALUE_PAIR *requ
 		return -1;
 	}
 
+#ifdef HAVE_GETPWNAM_R
+	if (getpwnam_r(req->username->vp_strvalue, &my_pwd, pwd_buffer, sizeof(pwd_buffer), &pwd) != 0) {
+		pwd = NULL;
+	}
+#else
 	pwd = getpwnam(req->username->vp_strvalue);
+#endif
 	if (!pwd)
 		return -1;
 
+#ifdef HAVE_GETGRNAM_R
+	if (getgrnam_r(check->vp_strvalue, &my_group, group_buffer, sizeof(group_buffer), &grp) != 0) {
+		grp = NULL;
+	}
+#else
 	grp = getgrnam(check->vp_strvalue);
+#endif
 	if (!grp)
 		return -1;
 
