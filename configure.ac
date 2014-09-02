@@ -1861,6 +1861,52 @@ if test "x$gethostbynamerstyle" = "xBSD"; then
 fi
 
 dnl #
+dnl #  Check for thread-safe getpwnam_r and getgrnam_r
+dnl #
+if test "x$ac_cv_header_pwd_h" = "xyes"; then
+  AC_MSG_CHECKING([getpwnam_r])
+  AC_TRY_LINK(
+    [
+      #include <stdlib.h>
+      #include <sys/types.h>
+      #include <pwd.h>
+    ],
+    [ getpwnam_r(NULL, NULL, NULL, 0, NULL) ],
+    [
+      AC_MSG_RESULT([yes])
+      AC_DEFINE(HAVE_GETPWNAM_R, 1,
+                [Define to 1 if you have the getpwnam_r.]
+                )
+    ],
+    [
+        AC_MSG_RESULT(no)
+    ]
+  )
+fi
+
+if test "x$ac_cv_header_grp_h" = "xyes"; then
+  AC_MSG_CHECKING([getgrnam_r])
+  AC_TRY_LINK(
+    [
+      #include <stdlib.h>
+      #include <sys/types.h>
+      #include <grp.h>
+    ],
+    [ getgrnam_r(NULL, NULL, NULL, 0, NULL) ],
+    [
+      AC_MSG_RESULT([yes])
+      AC_DEFINE(HAVE_GETGRNAM_R, 1,
+                [Define to 1 if you have the getgrnam_r.]
+                )
+    ],
+    [
+        AC_MSG_RESULT(no)
+    ]
+  )
+fi
+
+
+dnl #
 dnl #  Check for non-posix solaris ctime_r (extra buflen int arg)
 dnl #
 AC_DEFINE(POSIXSTYLE, [1], [Posix-Style ctime_r])
