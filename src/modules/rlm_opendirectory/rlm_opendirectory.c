@@ -343,7 +343,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, REQU
 static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, REQUEST *request)
 {
 	struct passwd *userdata = NULL;
-	struct group *groupdata = NULL;
 	int ismember = 0;
 	RADCLIENT *rad_client = NULL;
 	uuid_t uuid;
@@ -351,9 +350,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, REQUEST
 	uuid_t guid_nasgroup;
 	int err;
 	char host_ipaddr[128] = {0};
-#ifdef HAVE_GETGRNAM_R
-	struct group	my_group;
-	char		group_buffer[1024];
+#ifdef HAVE_GRP_H
+	gid_t gid;
 #endif
 #ifdef HAVE_GETPWNAM_R
 	struct passwd my_pwd;
@@ -368,15 +366,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, REQUEST
 	/* resolve SACL */
 	uuid_clear(guid_sacl);
 
-#ifdef HAVE_GETGRNAM_R
-	if (getgrnam_r(kRadiusSACLName, &my_group, group_buffer, sizeof(group_buffer), &groupdata) != 0) {
-		groupdata = NULL;
-	}
-#else
-	groupdata = getgrnam(kRadiusSACLName);
-#endif
-	if (groupdata != NULL) {
-		err = mbr_gid_to_uuid(groupdata->gr_gid, guid_sacl);
+#ifdef HAVE_GRP_H
+	if (fr_getgid(kRadiusSACLName, &gid)) {
+		err = mbr_gid_to_uuid(gid, guid_sacl);
 		if (err != 0) {
 			ERROR("rlm_opendirectory: The group \"%s\" does not have a GUID.", kRadiusSACLName);
 			return RLM_MODULE_FAIL;
@@ -385,6 +377,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, REQUEST
 	else {
 		RDEBUG("The SACL group \"%s\" does not exist on this system.", kRadiusSACLName);
 	}
+#endif	/* HAVE_GRP_H */
 
 	/* resolve client access list */
 	uuid_clear(guid_nasgroup);
