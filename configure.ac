@@ -1665,15 +1665,23 @@ FR_SMART_CHECK_INCLUDE(pcreposix.h)
 if test "x$ac_cv_header_pcreposix_h" = "xyes"; then
   AC_DEFINE(HAVE_REGEX_H, [1], [define if we have any regex])
   AC_DEFINE(HAVE_PCREPOSIX_H, [1], [define this if we have the <pcreposix.h> header file])
-  REGEX=yes
-  REGEX_EXTENDED=yes
-  REGEX_PCRE=yes
-  LIBS="-lpcre -lpcreposix $LIBS"
+
+  AC_CHECK_LIB(pcre, pcre_compile,
+      [
+	AC_DEFINE(HAVE_LIBPCRE, 1, [Define to use libpcre library])
+        REGEX=yes
+        REGEX_EXTENDED=yes
+        REGEX_PCRE=yes
+        LIBS="-lpcre -lpcreposix $LIBS"
+      ]
+  )
 
 dnl #
-dnl #  Then fallback to POSIX regular expressions
+dnl #  If no pcre, fallback to POSIX regular expressions
 dnl #
-else
+fi
+
+if test "x$REGEX" != "xyes"; then
   smart_try_dir=
   FR_SMART_CHECK_INCLUDE(regex.h)
   if test "x$ac_cv_header_regex_h" = "xyes"; then
