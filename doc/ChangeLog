@@ -122,6 +122,9 @@ FreeRADIUS 3.0.4 Mon 12 May 2014 15:30:00 EDT urgency=medium
 	  We might not have permission to change it.
 	* Use getpwnam_r() and getgrnam_r() on systems which support it.
 	  Closes #775.
+	* When clients are loaded from SQL, allow them to be tied
+	  to a virtual server.
+	* Check for -lpcre.  The system might have pcre.h without -lpcre.
 
 FreeRADIUS 3.0.3 Mon 12 May 2014 15:30:00 EDT urgency=medium
 	Feature improvements
