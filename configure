@@ -11418,6 +11418,81 @@ if test "x$gethostbynamerstyle" = "xBSD"; then
 $as_echo "$as_me: WARNING:  ****** BSD-style gethostbyname might NOT be thread-safe! ****** " >&2;}
 fi
 
+if test "x$ac_cv_header_pwd_h" = "xyes"; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking getpwnam_r" >&5
+$as_echo_n "checking getpwnam_r... " >&6; }
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+      #include <stdlib.h>
+      #include <sys/types.h>
+      #include <pwd.h>
+
+int
+main ()
+{
+ getpwnam_r(NULL, NULL, NULL, 0, NULL)
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+
+      { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+
+$as_echo "#define HAVE_GETPWNAM_R 1" >>confdefs.h
+
+
+else
+
+        { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+
+
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+fi
+
+if test "x$ac_cv_header_grp_h" = "xyes"; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking getgrnam_r" >&5
+$as_echo_n "checking getgrnam_r... " >&6; }
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+      #include <stdlib.h>
+      #include <sys/types.h>
+      #include <grp.h>
+
+int
+main ()
+{
+ getgrnam_r(NULL, NULL, NULL, 0, NULL)
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+
+      { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+
+$as_echo "#define HAVE_GETGRNAM_R 1" >>confdefs.h
+
+
+else
+
+        { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+
+
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+fi
+
+
 
 $as_echo "#define POSIXSTYLE 1" >>confdefs.h
 
