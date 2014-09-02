@@ -70,6 +70,35 @@ static const CONF_PARSER module_config[] = {
 };
 
 
+#ifndef HAVE_GETGRNAM_R
+#define fr_getgrnam getgrnam
+#else
+static struct group *fr_getgrnam(char const *name)
+{
+	struct group	*grp, my_group;
+	char		*group_buffer;
+	size_t		group_size = 1024;
+
+	grp = NULL;
+	group_buffer = talloc_array(NULL, char, group_size);
+	while (group_buffer) {
+		int err;
+
+		err = getgrnam_r(name, &my_group, group_buffer, group_size, &grp);
+		if (err == ERANGE) {
+			group_size *= 2;
+			group_buffer = talloc_realloc(NULL, group_buffer, char, group_size);
+			continue;
+		}
+
+		if (err) errno = err; /* so the caller knows what went wrong */
+		break;
+	}
+
+	return grp;
+}
+#endif	/* HAVE_GETGRNAM_R */
+
 /*
  *	The Group = handler.
  */
@@ -81,10 +110,6 @@ static int groupcmp(UNUSED void *instance, REQUEST *req, UNUSED VALUE_PAIR *requ
 	struct group	*grp;
 	char		**member;
 	int		retval;
-#ifdef HAVE_GETGRNAM_R
-	struct group	my_group;
-	char		group_buffer[1024]; /* if we care, try to re-use this buffer for pwd_buffer */
-#endif
 #ifdef HAVE_GETPWNAM_R
 	struct passwd	my_pwd;
 	char		pwd_buffer[1024];
@@ -107,13 +132,7 @@ static int groupcmp(UNUSED void *instance, REQUEST *req, UNUSED VALUE_PAIR *requ
 	if (!pwd)
 		return -1;
 
-#ifdef HAVE_GETGRNAM_R
-	if (getgrnam_r(check->vp_strvalue, &my_group, group_buffer, sizeof(group_buffer), &grp) != 0) {
-		grp = NULL;
-	}
-#else
-	grp = getgrnam(check->vp_strvalue);
-#endif
+	grp = fr_getgrnam(check->vp_strvalue);
 	if (!grp)
 		return -1;
 
@@ -124,6 +143,11 @@ static int groupcmp(UNUSED void *instance, REQUEST *req, UNUSED VALUE_PAIR *requ
 				retval = 0;
 		}
 	}
+
+#ifdef HAVE_GETGRNAM_R
+	talloc_free(grp);
+#endif
+
 	return retval;
 }
 
