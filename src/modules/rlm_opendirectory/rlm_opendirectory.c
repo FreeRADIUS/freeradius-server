@@ -351,6 +351,14 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, REQUEST
 	uuid_t guid_nasgroup;
 	int err;
 	char host_ipaddr[128] = {0};
+#ifdef HAVE_GETGRNAM_R
+	struct group	my_group;
+	char		group_buffer[1024];
+#endif
+#ifdef HAVE_GETPWNAM_R
+	struct passwd my_pwd;
+	char pwd_buffer[1024];
+#endif
 
 	if (!request->username) {
 		RDEBUG("OpenDirectory requires a User-Name attribute");
@@ -359,7 +367,14 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, REQUEST
 
 	/* resolve SACL */
 	uuid_clear(guid_sacl);
+
+#ifdef HAVE_GETGRNAM_R
+	if (getgrnam_r(kRadiusSACLName, &my_group, group_buffer, sizeof(group_buffer), &groupdata) != 0) {
+		groupdata = NULL;
+	}
+#else
 	groupdata = getgrnam(kRadiusSACLName);
+#endif
 	if (groupdata != NULL) {
 		err = mbr_gid_to_uuid(groupdata->gr_gid, guid_sacl);
 		if (err != 0) {
@@ -423,7 +438,13 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, REQUEST
 	/* resolve user */
 	uuid_clear(uuid);
 
+#ifdef HAVE_GETPWNAM_R
+	if (getpwnam_r(request->username->vp_strvalue, &my_pwd, pwd_buffer, sizeof(pwd_buffer), &userdata) != 0) {
+		userdata = NULL;
+	}
+#else
 	userdata = getpwnam(request->username->vp_strvalue);
+#endif
 	if (userdata != NULL) {
 		err = mbr_uid_to_uuid(userdata->pw_uid, uuid);
 		if (err != 0)

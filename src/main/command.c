@@ -2110,28 +2110,46 @@ static int command_socket_parse_unix(CONF_SECTION *cs, rad_listen_t *this)
 
 #if defined(HAVE_GETPEEREID) || defined (SO_PEERCRED)
 	if (sock->uid_name) {
-		struct passwd *pw;
+		struct passwd *pwd;
+#ifdef HAVE_GETPWNAM_R
+		struct passwd my_pwd;
+		char pwd_buffer[1024];
 
-		pw = getpwnam(sock->uid_name);
-		if (!pw) {
-			ERROR("Failed getting uid for %s: %s", sock->uid_name, fr_syserror(errno));
+		if (getpwnam_r(sock->uid_name, &my_pwd, pwd_buffer, sizeof(pwd_buffer), &pwd) != 0) {
+			pwd = NULL;
+		}
+#else
+		pwd = getpwnam(sock->uid_name);
+#endif
+		if (!pwd) {
+			ERROR("Failed getting uid for %s: %s",
+			       sock->uid_name, fr_syserror(errno));
 			return -1;
 		}
 
-		sock->uid = pw->pw_uid;
+		sock->uid = pwd->pw_uid;
 	} else {
 		sock->uid = -1;
 	}
 
 	if (sock->gid_name) {
-		struct group *gr;
+		struct group *grp;
+#ifdef HAVE_GETGRNAM_R
+		struct group	my_group;
+		char		group_buffer[1024];
 
-		gr = getgrnam(sock->gid_name);
-		if (!gr) {
-			ERROR("Failed getting gid for %s: %s", sock->gid_name, fr_syserror(errno));
+		if (getgrnam_r(sock->gid_name, &my_group, group_buffer, sizeof(group_buffer), &grp) != 0) {
+			grp = NULL;
+		}
+#else
+		grp = getgrnam(sock->gid_name);
+#endif
+		if (!grp) {
+			ERROR("Failed getting gid for %s: %s",
+			       sock->gid_name, fr_syserror(errno));
 			return -1;
 		}
-		sock->gid = gr->gr_gid;
+		sock->gid = grp->gr_gid;
 	} else {
 		sock->gid = -1;
 	}
@@ -2172,13 +2190,27 @@ static int command_socket_parse_unix(CONF_SECTION *cs, rad_listen_t *this)
 	 *	Do chown it from (possibly) root to non-root.
 	 */
 	if ((sock->uid != (uid_t) -1) || (sock->gid != (gid_t) -1)) {
-		fr_suid_up();
-		if (fchown(this->fd, sock->uid, sock->gid) < 0) {
-			ERROR("Failed setting ownership of %s: %s", sock->path, fr_syserror(errno));
-			fr_suid_down();
+		struct stat buf;
+
+		/*
+		 *	Don't do chown if it's already owned by us.
+		 */
+		if (fstat(this->fd, &buf) < 0) {
+			ERROR("Failed reading %s: %s",
+			      sock->path, fr_syserror(errno));
 			return -1;
 		}
-		fr_suid_down();
+
+		if ((buf.st_uid != sock->uid) || (buf.st_gid != sock->gid)) {
+			fr_suid_up();
+			if (fchown(this->fd, sock->uid, sock->gid) < 0) {
+				ERROR("Failed setting ownership of %s to (%d, %d): %s",
+				      sock->path, sock->uid, sock->gid, fr_syserror(errno));
+				fr_suid_down();
+				return -1;
+			}
+			fr_suid_down();
+		}
 	}
 #endif
 
@@ -2688,6 +2720,7 @@ static int command_domain_accept(rad_listen_t *listener)
 				close(newfd);
 				return 0;
 			}
+
 		} while (0);
 	}
 #endif
