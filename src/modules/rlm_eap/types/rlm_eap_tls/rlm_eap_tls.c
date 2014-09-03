@@ -490,6 +490,7 @@ ocsp_end:
 	free(port);
 	free(path);
 	BIO_free_all(cbio);
+	if (bio_out) BIO_free(bio_out);
 	OCSP_BASICRESP_free(bresp);
 
 ocsp_skip:
