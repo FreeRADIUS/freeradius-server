@@ -1012,7 +1012,7 @@ void verify_request(char const *file, int line, REQUEST *request)
 #ifndef HAVE_GETGRNAM_R
 bool fr_getgid(char const *name, gid_t *gid)
 {
-	struct group grp;
+	struct group *grp;
 
 	grp =  getgrnam(name);
 	if (!grp) return false;
