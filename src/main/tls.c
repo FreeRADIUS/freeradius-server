@@ -2116,13 +2116,13 @@ void tls_global_cleanup(void)
 }
 
 /*
- *	Create Global context SSL and use it in every new session
+ *	Create SSL context
  *
  *	- Load the trusted CAs
  *	- Load the Private key & the certificate
  *	- Set the Context options & Verify options
  */
-static SSL_CTX *tls_init_ctx(fr_tls_server_conf_t *conf, int client)
+SSL_CTX *tls_init_ctx(fr_tls_server_conf_t *conf, int client)
 {
 	SSL_CTX *ctx;
 	X509_STORE *certstore;
