@@ -264,6 +264,8 @@ void realms_free(void)
 	}
 #endif
 
+	realm_pool_free(NULL);
+
 	talloc_free(realm_config);
 	realm_config = NULL;
 }
@@ -868,6 +870,104 @@ static int pool_check_home_server(UNUSED realm_config_t *rc, CONF_PAIR *cp,
 	return 0;
 }
 
+
+#ifndef HAVE_PTHREAD_H
+void realm_pool_free(home_pool_t *pool)
+{
+	if (!realms_initialized) return;
+	if (!realm_config->dynamic) return;
+
+	talloc_free(pool);
+}
+#else  /* HAVE_PTHREAD_H */
+typedef struct pool_list_t pool_list_t;
+
+struct pool_list_t {
+	pool_list_t	*next;
+	home_pool_t	*pool;
+	time_t		when;
+};
+
+static bool		pool_free_init = false;
+static pthread_mutex_t	pool_free_mutex;
+static pool_list_t	*pool_list = NULL;
+
+void realm_pool_free(home_pool_t *pool)
+{
+	int i;
+	time_t now;
+	pool_list_t *this, **last;
+
+	if (!realms_initialized) return;
+	if (!realm_config->dynamic) return;
+
+	if (pool) {
+		/*
+		 *	Double-check that the realm wasn't loaded from the
+		 *	configuration files.
+		 */
+		for (i = 0; i < pool->num_home_servers; i++) {
+			if (pool->servers[i]->cs) {
+				rad_assert(0 == 1);
+				return;
+			}
+		}
+	}
+
+	if (!pool_free_init) {
+		pthread_mutex_init(&pool_free_mutex, NULL);
+		pool_free_init = true;
+	}
+
+	pthread_mutex_lock(&pool_free_mutex);
+
+	/*
+	 *	Free all of the pools.
+	 */
+	if (!pool) {
+		while ((this = pool_list) != NULL) {
+			pool_list = this->next;
+			talloc_free(this->pool);
+			talloc_free(this);
+		}
+		pthread_mutex_lock(&pool_free_mutex);
+		return;
+	}
+
+	now = time(NULL);
+
+	/*
+	 *	Free the oldest pool(s)
+	 */
+	while ((this = pool_list) != NULL) {
+		if (this->when > now) break;
+
+		pool_list = this->next;
+		talloc_free(this->pool);
+		talloc_free(this);
+	}
+
+	/*
+	 *	Add this pool to the end of the list.
+	 */
+	for (last = &pool_list;
+	     *last != NULL;
+	     last = &((*last))->next) {
+		/* do nothing */
+	}
+
+	*last = this = talloc(NULL, pool_list_t);
+	if (!this) {
+		talloc_free(pool); /* hope for the best */
+		pthread_mutex_unlock(&pool_free_mutex);
+		return;
+	}
+
+	this->next = NULL;
+	this->when = now + 60;
+	this->pool = pool;
+}
+#endif	/* HAVE_PTHREAD_H */
 
 int realm_pool_add(home_pool_t *pool, UNUSED CONF_SECTION *cs)
 {
