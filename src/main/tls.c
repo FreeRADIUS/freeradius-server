@@ -1386,7 +1386,14 @@ static int ocsp_check(X509_STORE *store, X509 *issuer_cert, X509 *client_cert,
 	/* Setup BIO socket to OCSP responder */
 	cbio = BIO_new_connect(host);
 
-	bio_out = BIO_new_fp(stdout, BIO_NOCLOSE);
+	bio_out = NULL;
+	if (debug_flag) {
+		if (default_log.dst == L_DST_STDOUT) {
+			bio_out = BIO_new_fp(stdout, BIO_NOCLOSE);
+		} else if (default_log.dst == L_DST_STDERR) {
+			bio_out = BIO_new_fp(stderr, BIO_NOCLOSE);
+		}
+	}
 
 	BIO_set_conn_port(cbio, port);
 #if OPENSSL_VERSION_NUMBER < 0x1000003f
@@ -1469,17 +1476,23 @@ static int ocsp_check(X509_STORE *store, X509 *issuer_cert, X509 *client_cert,
 	}
 
 	if (!OCSP_check_validity(thisupd, nextupd, nsec, maxage)) {
-		BIO_puts(bio_out, "WARNING: Status times invalid.\n");
-		ERR_print_errors(bio_out);
+		if (bio_out) {
+			BIO_puts(bio_out, "WARNING: Status times invalid.\n");
+			ERR_print_errors(bio_out);
+		}
 		goto ocsp_end;
 	}
-	BIO_puts(bio_out, "\tThis Update: ");
-	ASN1_GENERALIZEDTIME_print(bio_out, thisupd);
-	BIO_puts(bio_out, "\n");
-	if (nextupd) {
-		BIO_puts(bio_out, "\tNext Update: ");
-		ASN1_GENERALIZEDTIME_print(bio_out, nextupd);
+
+
+	if (bio_out) {
+		BIO_puts(bio_out, "\tThis Update: ");
+		ASN1_GENERALIZEDTIME_print(bio_out, thisupd);
 		BIO_puts(bio_out, "\n");
+		if (nextupd) {
+			BIO_puts(bio_out, "\tNext Update: ");
+			ASN1_GENERALIZEDTIME_print(bio_out, nextupd);
+			BIO_puts(bio_out, "\n");
+		}
 	}
 
 	switch (status) {
@@ -1493,9 +1506,12 @@ static int ocsp_check(X509_STORE *store, X509 *issuer_cert, X509 *client_cert,
 		DEBUG2("[ocsp] --> Cert status: %s",OCSP_cert_status_str(status));
 		if (reason != -1)
 			DEBUG2("[ocsp] --> Reason: %s", OCSP_crl_reason_str(reason));
-		BIO_puts(bio_out, "\tRevocation Time: ");
-		ASN1_GENERALIZEDTIME_print(bio_out, rev);
-		BIO_puts(bio_out, "\n");
+
+		if (bio_out) {
+			BIO_puts(bio_out, "\tRevocation Time: ");
+			ASN1_GENERALIZEDTIME_print(bio_out, rev);
+			BIO_puts(bio_out, "\n");
+		}
 		break;
 	}
 
