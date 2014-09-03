@@ -292,13 +292,10 @@ static void tr_response_func( TIDC_INSTANCE *inst,
 		}
 		nr->auth_pool = new_pool;
 
-		/*	FIXME: Really we want to free this a few
-		  *	seconds from now, so that anyone who is load
-		  *	balancing in the new pool has gotten this
-		  *	update to avoid the race or at least make it
-		  *	basically unlikely to ever happen.
+		/*
+		 *	Mark the old pool as "to be freed"
 		 */
-		talloc_free(old_pool);
+		realm_pool_free(old_pool);
 	}
 
 	opaque->output_realm = nr;
@@ -326,7 +323,7 @@ static bool update_required(REALM const *r)
 
 	pool = r->auth_pool;
 
-	for (i = 0; i < pool->num_home_servers; i++) {
+	for (i = 0; i < pool->num_home_servers; i++) {w
 		server = pool->servers[i];
 
 		/*
