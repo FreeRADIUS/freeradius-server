@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2011 The FreeRADIUS Server project and contributors
+# Copyright (C) 2014 The FreeRADIUS Server project and contributors
 ##############################################################################
 #
 #	F5 VSAs
@@ -20,15 +20,23 @@ ATTRIBUTE	F5-LTM-User-Context-1			10	integer
 ATTRIBUTE	F5-LTM-User-Context-2			11	integer
 ATTRIBUTE	F5-LTM-User-Info-1			12	string
 ATTRIBUTE	F5-LTM-User-Info-2			13	string
+ATTRIBUTE	F5-LTM-Audit-Msg			14	string
 
 VALUE	F5-LTM-User-Role		Administrator		0
 VALUE	F5-LTM-User-Role		Resource-Admin		20
 VALUE	F5-LTM-User-Role		User-Manager		40
 VALUE	F5-LTM-User-Role		Manager			100
 VALUE	F5-LTM-User-Role		App-Editor		300
+VALUE	F5-LTM-User-Role		Advanced-Operator	350
 VALUE	F5-LTM-User-Role		Operator		400
+VALUE	F5-LTM-User-Role		Firewall-Manager	450
+VALUE	F5-LTM-User-Role		Fraud-Protection-Manager 480
+VALUE	F5-LTM-User-Role		Certificate-Manager	500
+VALUE	F5-LTM-User-Role		IRule-Manager		510
 VALUE	F5-LTM-User-Role		Guest			700
-VALUE	F5-LTM-User-Role		Policy-Editor		800
+VALUE	F5-LTM-User-Role		Web-Application-Security-Administrator 800
+VALUE	F5-LTM-User-Role		Web-Application-Security-Editor 810
+VALUE	F5-LTM-User-Role		Acceleration-Policy-Editor 850
 VALUE	F5-LTM-User-Role		No-Access		900
 
 VALUE	F5-LTM-User-Role-Universal	Disabled		0
