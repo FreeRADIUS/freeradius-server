@@ -1514,7 +1514,7 @@ STATE_MACHINE_DECL(request_running)
 			 *	up the post proxy fail
 			 *	handler.
 			 */
-			if (request_proxy(request, 0) < 0) goto finished;
+			if (request_proxy(request, 0) < 0) goto req_finished;
 		} else
 #endif
 		{
@@ -1532,7 +1532,7 @@ STATE_MACHINE_DECL(request_running)
 #endif
 
 #ifdef WITH_PROXY
-		finished:
+		req_finished:
 #endif
 			request_finish(request, action);
 		}
