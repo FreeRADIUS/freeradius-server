@@ -854,14 +854,14 @@ static void verify_packet(char const *file, int line, REQUEST *request, RADIUS_P
 	TALLOC_CTX *parent;
 
 	if (!packet) {
-		fprintf(stderr, "CONSISTENCY CHECK FAILED %s[%u]: RADIUS_PACKET %s pointer was NULL", file, line, type);
+		fprintf(stderr, "CONSISTENCY CHECK FAILED %s[%i]: RADIUS_PACKET %s pointer was NULL", file, line, type);
 		fr_assert(0);
 		fr_exit_now(0);
 	}
 
 	parent = talloc_parent(packet);
 	if (parent != request) {
-		ERROR("CONSISTENCY CHECK FAILED %s[%u]: Expected RADIUS_PACKET %s to be parented by %p (%s), "
+		ERROR("CONSISTENCY CHECK FAILED %s[%i]: Expected RADIUS_PACKET %s to be parented by %p (%s), "
 		      "but parented by %p (%s)", file, line, type, request, talloc_get_name(request),
 		      parent, parent ? talloc_get_name(parent) : "NULL");
 
@@ -885,7 +885,7 @@ static void verify_packet(char const *file, int line, REQUEST *request, RADIUS_P
 void verify_request(char const *file, int line, REQUEST *request)
 {
 	if (!request) {
-		fprintf(stderr, "CONSISTENCY CHECK FAILED %s[%u]: REQUEST pointer was NULL", file, line);
+		fprintf(stderr, "CONSISTENCY CHECK FAILED %s[%i]: REQUEST pointer was NULL", file, line);
 		fr_assert(0);
 		fr_exit_now(0);
 	}
