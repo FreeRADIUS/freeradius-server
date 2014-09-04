@@ -1321,11 +1321,11 @@ done:
 
 				/*
 				 *	It's all digits, and therefore
-				 *	'true'.
+				 *	'false' if zero, and 'true' otherwise.
 				 */
 				if (!*q) {
 					if (zeros) {
-						c->type = COND_TYPE_TRUE;
+						c->type = COND_TYPE_FALSE;
 					} else {
 						c->type = COND_TYPE_TRUE;
 					}
