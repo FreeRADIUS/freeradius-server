@@ -2974,7 +2974,7 @@ fr_tls_status_t tls_ack_handler(tls_session_t *ssn, REQUEST *request)
 		return FR_TLS_FAIL;
 
 	case handshake:
-		if ((ssn->info.handshake_type == finished) &&
+		if ((ssn->info.handshake_type == handshake_finished) &&
 		    (ssn->dirty_out.used == 0)) {
 			RDEBUG2("ACK handshake is finished");
 
