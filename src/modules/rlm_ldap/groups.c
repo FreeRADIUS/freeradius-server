@@ -281,7 +281,7 @@ rlm_rcode_t rlm_ldap_cacheable_userobj(ldap_instance_t const *inst, REQUEST *req
 		return RLM_MODULE_OK;
 	}
 
-	for (i = 0; (vals[i] != NULL) && (i < LDAP_MAX_CACHEABLE); i++) {
+	for (i = 0; (i < LDAP_MAX_CACHEABLE) && (vals[i] != NULL); i++) {
 		is_dn = rlm_ldap_is_dn(vals[i]);
 
 		if (inst->cacheable_group_dn) {
