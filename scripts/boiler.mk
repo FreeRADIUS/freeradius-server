@@ -288,7 +288,7 @@ endif
 define ANALYZE_C_CMDS
 	$(Q)mkdir -p $(dir $@)
 	$(Q)$(ECHO) SCAN $<
-	${Q}$(strip ${ANALYZE.c} --analyze -Xanalyzer -analyzer-output=html -c $< -o $@ ${CPPFLAGS} \
+	$(Q)$(strip ${ANALYZE.c} --analyze -Xanalyzer -analyzer-output=html -c $< -o $@ ${CPPFLAGS} \
 	    ${CFLAGS} ${SRC_CFLAGS} ${INCDIRS} $(addprefix -I,${SRC_INCDIRS}) ${SRC_DEFS} ${DEFS}) || (rm -f $@ && false)
 	$(Q)touch $@
 endef
@@ -441,14 +441,13 @@ define INCLUDE_SUBMAKEFILE
         $${OBJS}: SRC_CFLAGS := $${SRC_CFLAGS}
         $${OBJS}: SRC_CXXFLAGS := $${SRC_CXXFLAGS}
         $${OBJS}: SRC_DEFS := $$(addprefix -D,$${SRC_DEFS})
-#        $${OBJS}: SRC_INCDIRS := $$(addprefix -Ix,$${SRC_INCDIRS})
         $${OBJS}: SRC_INCDIRS := $${SRC_INCDIRS}
         $${OBJS}: ${1}
 
         $${PLISTS}: SRC_CFLAGS := $${SRC_CFLAGS}
         $${PLISTS}: SRC_CXXFLAGS := $${SRC_CXXFLAGS}
         $${PLISTS}: SRC_DEFS := $$(addprefix -D,$${SRC_DEFS})
-        $${PLISTS}: SRC_INCDIRS := $$(addprefix -I,$${SRC_INCDIRS})
+        $${PLISTS}: SRC_INCDIRS := $${SRC_INCDIRS}
         $${PLISTS}: ${1}
     endif
     endif
