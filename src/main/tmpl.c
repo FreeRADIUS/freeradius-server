@@ -641,7 +641,7 @@ size_t tmpl_prints(char *buffer, size_t bufsize, value_pair_tmpl_t const *vpt)
 		}
 
 		if (vpt->tmpl_num != NUM_ANY) {
-			snprintf(q, bufsize, "[%u]", vpt->tmpl_num);
+			snprintf(q, bufsize, "[%i]", vpt->tmpl_num);
 			len = strlen(q);
 			q += len;
 		}

@@ -353,7 +353,7 @@ static void rs_packet_print_csv(uint64_t count, rs_status_t status, fr_pcap_t *h
 		len = snprintf(p, s, "%s,%s,%s,%i,%s,%i,%i,", fr_packet_codes[packet->code], handle->name,
 			       src, packet->src_port, dst, packet->dst_port, packet->id);
 	} else {
-		len = snprintf(p, s, "%i,%s,%s,%i,%s,%i,%i,", packet->code, handle->name,
+		len = snprintf(p, s, "%u,%s,%s,%i,%s,%i,%i,", packet->code, handle->name,
 			       src, packet->src_port, dst, packet->dst_port, packet->id);
 	}
 	p += len;
@@ -443,7 +443,7 @@ static void rs_packet_print_fancy(uint64_t count, rs_status_t status, fr_pcap_t 
 			       response ? src : dst ,
 			       response ? packet->src_port : packet->dst_port);
 	} else {
-		len = snprintf(p, s, "%i Id %i %s:%s:%i %s %s:%i ",
+		len = snprintf(p, s, "%u Id %i %s:%s:%i %s %s:%i ",
 			       packet->code,
 			       packet->id,
 			       handle->name,

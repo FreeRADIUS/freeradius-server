@@ -1514,7 +1514,7 @@ size_t xlat_sprint(char *buffer, size_t bufsize, xlat_exp_t const *node)
 					break;
 
 				default:
-					snprintf(p, end - p, "%u", node->num);
+					snprintf(p, end - p, "%i", node->num);
 					p += strlen(p);
 				}
 				*(p++) = ']';
@@ -1523,7 +1523,7 @@ size_t xlat_sprint(char *buffer, size_t bufsize, xlat_exp_t const *node)
 			break;
 #ifdef HAVE_REGEX_H
 		case XLAT_REGEX:
-			snprintf(p, end - p, "%%{%u}", node->num);
+			snprintf(p, end - p, "%%{%i}", node->num);
 			p += strlen(p);
 			break;
 #endif
@@ -2004,7 +2004,7 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 			break;
 
 		case 'n': /* Request Number*/
-			snprintf(str, freespace, "%i", request->number);
+			snprintf(str, freespace, "%u", request->number);
 			break;
 
 		case 't': /* request timestamp */
