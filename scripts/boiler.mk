@@ -260,12 +260,29 @@ $(patsubst ${CURDIR}/%,%,$(abspath ${1}))
 endef
 
 # COMPILE_C_CMDS - Commands for compiling C source code.
+ifeq "$(CPPCHECK)" ""
 define COMPILE_C_CMDS
 	$(Q)mkdir -p $(dir $@)
 	$(Q)$(ECHO) CC $<
 	$(Q)$(strip ${COMPILE.c} -o $@ -c -MD ${CPPFLAGS} ${CFLAGS} ${SRC_CFLAGS} ${INCDIRS} \
 	    ${SRC_INCDIRS} ${SRC_DEFS} ${DEFS} $<)
 endef
+else
+#
+#  do cppcheck AND compilation, so that we have correct dependencies
+#  Suppress variable scope warnings for now.  They're style, and don't really
+#  affect anything.
+#
+define COMPILE_C_CMDS
+	$(Q)mkdir -p $(dir $@)
+	$(Q)$(ECHO) CC $<
+	$(Q)$(strip ${COMPILE.c} -o $@ -c -MD ${CPPFLAGS} ${CFLAGS} ${SRC_CFLAGS} ${INCDIRS} \
+             ${SRC_INCDIRS} ${SRC_DEFS} ${DEFS} $<)
+	$(Q)cppcheck --enable=style -q ${CPPFLAGS} ${CHECKFLAGS} $(filter -isystem%,${SRC_CFLAGS}) \
+	     $(filter -I%,${SRC_CFLAGS}) $(filter -D%,${SRC_CFLAGS}) ${INCDIRS} \
+	     ${SRC_INCDIRS} ${SRC_DEFS} ${DEFS} --suppress=variableScope $<
+endef
+endif
 
 # ANALYZE_C_CMDS - Commands for analyzing C source code with clang.
 define ANALYZE_C_CMDS
@@ -596,6 +613,10 @@ top_makedir := $(dir $(lastword ${MAKEFILE_LIST}))
 
 -include ${top_makedir}/install.mk
 -include ${top_makedir}/libtool.mk
+
+ifneq "${CPPCHECK}" ""
+CHECKFLAGS := $(filter -isystem%,$(CFLAGS)) $(filter -I%,$(CFLAGS)) $(filter -D%,$(CFLAGS)) 
+endif
 
 # Include the main user-supplied submakefile. This also recursively includes
 # all other user-supplied submakefiles.
