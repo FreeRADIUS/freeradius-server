@@ -130,7 +130,7 @@ ifeq "${CPP_MAKEDEPEND}" "yes"
 define ADD_OBJECT_RULE
 $${BUILD_DIR}/objs/%.${OBJ_EXT} $${BUILD_DIR}/objs/%.d: ${1} ${JLIBTOOL}
 	${2}
-	$${CPP} $${CPPFLAGS} $${SRC_INCDIRS} $${SRC_DEFS} $$< | sed \
+	$${CPP} $${CPPFLAGS} $$(addprefix -I,$${SRC_INCDIRS}) $${SRC_DEFS} $$< | sed \
 	  -n 's,^\# *[0-9][0-9]* *"\([^"]*\)".*,$$@: \1,p' > $${BUILD_DIR}/objs/$$*.d
 ${FILTER_DEPENDS}
 endef
@@ -265,7 +265,7 @@ define COMPILE_C_CMDS
 	$(Q)mkdir -p $(dir $@)
 	$(Q)$(ECHO) CC $<
 	$(Q)$(strip ${COMPILE.c} -o $@ -c -MD ${CPPFLAGS} ${CFLAGS} ${SRC_CFLAGS} ${INCDIRS} \
-	    ${SRC_INCDIRS} ${SRC_DEFS} ${DEFS} $<)
+	    $(addprefix -I, ${SRC_INCDIRS}) ${SRC_DEFS} ${DEFS} $<)
 endef
 else
 #
@@ -277,10 +277,10 @@ define COMPILE_C_CMDS
 	$(Q)mkdir -p $(dir $@)
 	$(Q)$(ECHO) CC $<
 	$(Q)$(strip ${COMPILE.c} -o $@ -c -MD ${CPPFLAGS} ${CFLAGS} ${SRC_CFLAGS} ${INCDIRS} \
-             ${SRC_INCDIRS} ${SRC_DEFS} ${DEFS} $<)
+             $(addprefix -I,${SRC_INCDIRS}) ${SRC_DEFS} ${DEFS} $<)
 	$(Q)cppcheck --enable=style -q ${CPPFLAGS} ${CHECKFLAGS} $(filter -isystem%,${SRC_CFLAGS}) \
 	     $(filter -I%,${SRC_CFLAGS}) $(filter -D%,${SRC_CFLAGS}) ${INCDIRS} \
-	     ${SRC_INCDIRS} ${SRC_DEFS} ${DEFS} --suppress=variableScope $<
+	     $(addprefix -I,${SRC_INCDIRS}) ${SRC_DEFS} ${DEFS} --suppress=variableScope $<
 endef
 endif
 
@@ -289,7 +289,7 @@ define ANALYZE_C_CMDS
 	$(Q)mkdir -p $(dir $@)
 	$(Q)$(ECHO) SCAN $<
 	${Q}$(strip ${ANALYZE.c} --analyze -Xanalyzer -analyzer-output=html -c $< -o $@ ${CPPFLAGS} \
-	    ${CFLAGS} ${SRC_CFLAGS} ${INCDIRS} ${SRC_INCDIRS} ${SRC_DEFS} ${DEFS}) || (rm -f $@ && false)
+	    ${CFLAGS} ${SRC_CFLAGS} ${INCDIRS} $(addprefix -I,${SRC_INCDIRS}) ${SRC_DEFS} ${DEFS}) || (rm -f $@ && false)
 	$(Q)touch $@
 endef
 
@@ -297,7 +297,7 @@ endef
 define COMPILE_CXX_CMDS
 	$(Q)mkdir -p $(dir $@)
 	$(Q)$(strip ${COMPILE.cxx} -o $@ -c -MD ${CPPFLAGS} ${CXXFLAGS} ${SRC_CXXFLAGS} ${INCDIRS} \
-	    ${SRC_INCDIRS} ${SRC_DEFS} ${DEFS} $<)
+	    $(addprefix -I,${SRC_INCDIRS}) ${SRC_DEFS} ${DEFS} $<)
 endef
 
 # INCLUDE_SUBMAKEFILE - Parameterized "function" that includes a new
@@ -441,7 +441,8 @@ define INCLUDE_SUBMAKEFILE
         $${OBJS}: SRC_CFLAGS := $${SRC_CFLAGS}
         $${OBJS}: SRC_CXXFLAGS := $${SRC_CXXFLAGS}
         $${OBJS}: SRC_DEFS := $$(addprefix -D,$${SRC_DEFS})
-        $${OBJS}: SRC_INCDIRS := $$(addprefix -I,$${SRC_INCDIRS})
+#        $${OBJS}: SRC_INCDIRS := $$(addprefix -Ix,$${SRC_INCDIRS})
+        $${OBJS}: SRC_INCDIRS := $${SRC_INCDIRS}
         $${OBJS}: ${1}
 
         $${PLISTS}: SRC_CFLAGS := $${SRC_CFLAGS}
