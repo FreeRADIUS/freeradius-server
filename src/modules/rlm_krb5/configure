@@ -4115,13 +4115,13 @@ fi
 done
 
 	if test "x$ac_cv_func_krb5_get_error_message" == xyes; then
-		krb5mod_cflags="${krb5mod_cflags} -D HAVE_KRB5_GET_ERROR_MESSAGE"
+		krb5mod_cflags="${krb5mod_cflags} -DHAVE_KRB5_GET_ERROR_MESSAGE"
 	fi
 	if test "x$ac_cv_func_krb5_free_error_message" == xyes; then
-		krb5mod_cflags="${krb5mod_cflags} -D HAVE_KRB5_FREE_ERROR_MESSAGE"
+		krb5mod_cflags="${krb5mod_cflags} -DHAVE_KRB5_FREE_ERROR_MESSAGE"
 	fi
 	if test "x$ac_cv_func_krb5_free_error_string" == xyes; then
-		krb5mod_cflags="${krb5mod_cflags} -D HAVE_KRB5_FREE_ERROR_STRING"
+		krb5mod_cflags="${krb5mod_cflags} -DHAVE_KRB5_FREE_ERROR_STRING"
 	fi
 
 				if test "$krb5threadsafe" != "no"; then
