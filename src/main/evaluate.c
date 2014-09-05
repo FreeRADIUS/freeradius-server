@@ -717,7 +717,7 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 	rad_assert(map->src->type != TMPL_TYPE_DATA);
 	rad_assert(map->dst->type != TMPL_TYPE_DATA);
 
-#ifdef HAVE_REGEX_H
+#ifdef HAVE_REGEX
 	/*
 	 *	Parse regular expressions.
 	 */

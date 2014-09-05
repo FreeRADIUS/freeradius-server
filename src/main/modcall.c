@@ -2883,7 +2883,7 @@ static bool pass2_xlat_compile(CONF_ITEM const *ci, value_pair_tmpl_t **pvpt, bo
 }
 
 
-#ifdef HAVE_REGEX_H
+#ifdef HAVE_REGEX
 static int _free_compiled_regex(regex_t *preg)
 {
 	regfree(preg);
@@ -3091,7 +3091,7 @@ check_paircmp:
 		map->dst = vpt;
 	}
 
-#ifdef HAVE_REGEX_H
+#ifdef HAVE_REGEX
 	if (map->src->type == TMPL_TYPE_REGEX) {
 		if (!pass2_regex_compile(map->ci, map->src)) {
 			return false;

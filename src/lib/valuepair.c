@@ -26,10 +26,10 @@ RCSID("$Id$")
 
 #include <ctype.h>
 
-#ifdef HAVE_PCREPOSIX_H
+#ifdef HAVE_PCRE
 #  define WITH_REGEX
 #  include <pcreposix.h>
-#elif defined(HAVE_REGEX_H)
+#elif defined(HAVE_REGEX)
 #  include <regex.h>
 #  define WITH_REGEX
 
