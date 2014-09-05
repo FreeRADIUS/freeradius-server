@@ -68,10 +68,10 @@ RCSIDH(missing_h, "$Id$")
 #  include <errno.h>
 #endif
 
-#ifdef HAVE_PCREPOSIX_H
+#ifdef HAVE_PCRE
 #  include <pcreposix.h>
 #else
-#  ifdef HAVE_REGEX_H
+#  ifdef HAVE_REGEX
 #    include <regex.h>
 
 /*

@@ -75,7 +75,7 @@ int radius_compare_vps(REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *vp)
 	if (check->op == T_OP_CMP_TRUE)  return 0;
 	if (check->op == T_OP_CMP_FALSE) return 1;
 
-#ifdef HAVE_REGEX_H
+#ifdef HAVE_REGEX
 	if (check->op == T_OP_REG_EQ) {
 		int compare;
 		regex_t reg;
@@ -564,7 +564,7 @@ int paircompare(REQUEST *request, VALUE_PAIR *req_list, VALUE_PAIR *check,
 			if (compare < 0) result = -1;
 			break;
 
-#ifdef HAVE_REGEX_H
+#ifdef HAVE_REGEX
 		case T_OP_REG_EQ:
 		case T_OP_REG_NE:
 			if (compare != 0) result = -1;

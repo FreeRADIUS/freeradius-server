@@ -47,7 +47,7 @@ typedef enum {
 	XLAT_MODULE,		//!< xlat module
 	XLAT_VIRTUAL,		//!< virtual attribute
 	XLAT_ATTRIBUTE,		//!< xlat attribute
-#ifdef HAVE_REGEX_H
+#ifdef HAVE_REGEX
 	XLAT_REGEX,		//!< regex reference
 #endif
 	XLAT_ALTERNATE		//!< xlat conditional syntax :-
@@ -905,7 +905,7 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 	attrname = node->fmt = fmt + 2;
 	node->len = 0;
 
-#ifdef HAVE_REGEX_H
+#ifdef HAVE_REGEX
 	/*
 	 *	Handle regex's specially.
 	 */
@@ -924,7 +924,7 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 		*head = node;
 		return 4;
 	}
-#endif /* HAVE_REGEX_H */
+#endif /* HAVE_REGEX */
 
 	/*
 	 *	%{Attr-Name}
@@ -1431,7 +1431,7 @@ static void xlat_tokenize_debug(xlat_exp_t const *node, int lvl)
 			}
 			break;
 
-#ifdef HAVE_REGEX_H
+#ifdef HAVE_REGEX
 		case XLAT_REGEX:
 			DEBUG("%.*sregex-var --> %d", lvl, xlat_tabs, node->num);
 			break;
@@ -1521,7 +1521,7 @@ size_t xlat_sprint(char *buffer, size_t bufsize, xlat_exp_t const *node)
 			}
 			*(p++) = '}';
 			break;
-#ifdef HAVE_REGEX_H
+#ifdef HAVE_REGEX
 		case XLAT_REGEX:
 			snprintf(p, end - p, "%%{%i}", node->num);
 			p += strlen(p);
@@ -2112,7 +2112,7 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 		}
 		break;
 
-#ifdef HAVE_REGEX_H
+#ifdef HAVE_REGEX
 	case XLAT_REGEX:
 		XLAT_DEBUG("xlat_aprint REGEX");
 		child = request_data_reference(request, request,

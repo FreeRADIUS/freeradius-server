@@ -231,10 +231,10 @@ void version(void)
 #ifdef WITH_PROXY
 	DEBUG3("  proxy");
 #endif
-#ifdef HAVE_PCREPOSIX_H
+#ifdef HAVE_PCRE
 	DEBUG3("  regex-pcre");
 #else
-#ifdef HAVE_REGEX_H
+#ifdef HAVE_REGEX
 	DEBUG3("  regex-posix");
 #endif
 #endif

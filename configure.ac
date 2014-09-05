@@ -1654,59 +1654,67 @@ AC_ARG_WITH(pcre-include-dir,
 )
 
 REGEX=no
-REGEX_EXTENDED=no
-REGEX_PCRE=no
-
 dnl #
 dnl #  First look for PCRE
 dnl #
 smart_try_dir=$pcre_include_dir
 FR_SMART_CHECK_INCLUDE(pcreposix.h)
 if test "x$ac_cv_header_pcreposix_h" = "xyes"; then
-  AC_DEFINE(HAVE_REGEX_H, [1], [define if we have any regex])
-  AC_DEFINE(HAVE_PCREPOSIX_H, [1], [define this if we have the <pcreposix.h> header file])
+  smart_try_dir=$pcre_lib_dir
+  FR_SMART_CHECK_LIB(pcre, pcre_compile)
+  if test "x$ac_cv_lib_pcre_pcre_compile" = "xyes"; then
+    REGEX=yes
 
-  AC_CHECK_LIB(pcre, pcre_compile,
-      [
-	AC_DEFINE(HAVE_LIBPCRE, 1, [Define to use libpcre library])
-        REGEX=yes
-        REGEX_EXTENDED=yes
-        REGEX_PCRE=yes
-        LIBS="-lpcre -lpcreposix $LIBS"
-      ]
-  )
-
-dnl #
-dnl #  If no pcre, fallback to POSIX regular expressions
-dnl #
+    smart_try_dir=$pcre_lib_dir
+    AC_DEFINE(HAVE_PCRE, [1], [define this if we have libpcre])
+    
+    dnl #
+    dnl #  Hack to get -L<path> and -lpcreposix at the start
+    dnl #  of the linker arguments.
+    dnl #
+    LIBS=$(echo "$LIBS" | sed -e 's/-lpcre/-lpcre -lpcreposix/')
+  fi
 fi
-
+dnl #
+dnl #  If no PCRE, fallback to POSIX regular expressions
+dnl #
 if test "x$REGEX" != "xyes"; then
   smart_try_dir=
   FR_SMART_CHECK_INCLUDE(regex.h)
   if test "x$ac_cv_header_regex_h" = "xyes"; then
-    AC_DEFINE(HAVE_REGEX_H, [1], [define if we have any regex])
     REGEX=yes
+    AC_MSG_CHECKING([for extended regular expressions])
     AC_EGREP_CPP(yes,
       [
         #include <regex.h>
         #ifdef REG_EXTENDED
         yes
         #endif
-       ],
-    [AC_DEFINE(HAVE_REG_EXTENDED, [1], [define this if we have REG_EXTENDED (from <regex.h>)]) REGEX_EXTENDED=yes]
+      ],
+      [
+        AC_MSG_RESULT(yes)
+        REGEX_EXTENDED=yes
+        AC_DEFINE(HAVE_REG_EXTENDED, [1], [define this if we have REG_EXTENDED (from <regex.h>)])
+      ],
+      [
+        AC_MSG_RESULT(no)
+      ]
     )
-dnl #
-dnl # Fixme, this is needed for mingw builds, but not available on some Linux systems
-dnl # despite the presence of regex.h
-dnl #
-dnl # LIBS="$LIBS -lregex"
+
+    dnl #
+    dnl #  Some platforms require the regex library to be linked explicitly
+    dnl #
+    AC_CHECK_LIB(regex, regcomp,
+      [
+        LIBS="-lregex $LIBS"
+      ]
+    )
   fi
 fi
 
-AC_SUBST(REGEX)
-AC_SUBST(REGEX_PCRE)
-AC_SUBST(REGEX_EXTENDED)
+if test "x$REGEX" = "xyes"; then
+  AC_DEFINE(HAVE_REGEX, 1, [Define if we have any regular expression library])
+fi
 
 dnl #
 dnl #  Check the style of gethostbyaddr, in order of preference
