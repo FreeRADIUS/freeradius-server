@@ -125,6 +125,8 @@ FreeRADIUS 3.0.4 Mon 12 May 2014 15:30:00 EDT urgency=medium
 	* When clients are loaded from SQL, allow them to be tied
 	  to a virtual server.
 	* Check for -lpcre.  The system might have pcre.h without -lpcre.
+	* When proxying to a virtual server, use the proxy_reply instead
+	  of ignoring it.
 
 FreeRADIUS 3.0.3 Mon 12 May 2014 15:30:00 EDT urgency=medium
 	Feature improvements
