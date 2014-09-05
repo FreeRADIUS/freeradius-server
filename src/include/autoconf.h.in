@@ -159,9 +159,6 @@
 /* Define to 1 if you have the `pcap' library (-lpcap). */
 #undef HAVE_LIBPCAP
 
-/* Define to use libpcre library */
-#undef HAVE_LIBPCRE
-
 /* Define if you have a readline compatible library */
 #undef HAVE_LIBREADLINE
 
@@ -246,8 +243,8 @@
 /* Define to 1 if you have the <pcap.h> header file. */
 #undef HAVE_PCAP_H
 
-/* define this if we have the <pcreposix.h> header file */
-#undef HAVE_PCREPOSIX_H
+/* define this if we have libpcre */
+#undef HAVE_PCRE
 
 /* Define to 1 if you have the <prot.h> header file. */
 #undef HAVE_PROT_H
@@ -273,8 +270,8 @@
 /* Define to 1 if you have the <readline/readline.h> header file. */
 #undef HAVE_READLINE_READLINE_H
 
-/* define if we have any regex */
-#undef HAVE_REGEX_H
+/* Define if we have any regular expression library */
+#undef HAVE_REGEX
 
 /* define this if we have REG_EXTENDED (from <regex.h>) */
 #undef HAVE_REG_EXTENDED
