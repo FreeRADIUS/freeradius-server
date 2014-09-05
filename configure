@@ -764,6 +764,7 @@ with_execinfo_lib_dir
 with_execinfo_include_dir
 with_pcre_lib_dir
 with_pcre_include_dir
+with_regex
 '
       ac_precious_vars='build_alias
 host_alias
@@ -1450,6 +1451,8 @@ Optional Packages:
   --with-pcre-lib-dir=DIR directory in which to look for pcre library files
   --with-pcre-include-dir=DIR
                           directory in which to look for pcre include files
+  --with-regex            Whether to build with regular expressions
+                          (default=yes)
 
 Some influential environment variables:
   CC          C compiler command
@@ -10670,8 +10673,23 @@ if test "${with_pcre_include_dir+set}" = set; then :
 fi
 
 
-REGEX=no
-smart_try_dir=$pcre_include_dir
+REGEX=
+
+# Check whether --with-regex was given.
+if test "${with_regex+set}" = set; then :
+  withval=$with_regex;  case "$withval" in
+    no)
+	REGEX=no
+	;;
+    *)
+	;;
+  esac
+
+fi
+
+
+if test "x$REGEX" = "x"; then
+  smart_try_dir=$pcre_include_dir
 
 
 ac_safe=`echo "pcreposix.h" | sed 'y%./+-%__pm%'`
@@ -10898,8 +10916,8 @@ fi
 
 smart_prefix=
 
-if test "x$ac_cv_header_pcreposix_h" = "xyes"; then
-  smart_try_dir=$pcre_lib_dir
+  if test "x$ac_cv_header_pcreposix_h" = "xyes"; then
+    smart_try_dir=$pcre_lib_dir
 
 
 sm_lib_safe=`echo "pcre" | sed 'y%./+-%__p_%'`
@@ -11074,18 +11092,20 @@ if test "x$smart_lib" != "x"; then
   SMART_LIBS="$smart_ldflags $smart_lib $SMART_LIBS"
 fi
 
-  if test "x$ac_cv_lib_pcre_pcre_compile" = "xyes"; then
-    REGEX=yes
+    if test "x$ac_cv_lib_pcre_pcre_compile" = "xyes"; then
+      REGEX=yes
 
-    smart_try_dir=$pcre_lib_dir
+      smart_try_dir=$pcre_lib_dir
 
 $as_echo "#define HAVE_PCRE 1" >>confdefs.h
 
 
-                    LIBS=$(echo "$LIBS" | sed -e 's/-lpcre/-lpcre -lpcreposix/')
+                              LIBS=$(echo "$LIBS" | sed -e 's/-lpcre/-lpcre -lpcreposix/')
+    fi
   fi
 fi
-if test "x$REGEX" != "xyes"; then
+
+if test "x$REGEX" = "x"; then
   smart_try_dir=
 
 
@@ -11331,7 +11351,6 @@ if (eval "$ac_cpp conftest.$ac_ext") 2>&5 |
 
         { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
-        REGEX_EXTENDED=yes
 
 $as_echo "#define HAVE_REG_EXTENDED 1" >>confdefs.h
 

@@ -234,9 +234,13 @@ void version(void)
 #ifdef HAVE_PCRE
 	DEBUG3("  regex-pcre");
 #else
-#ifdef HAVE_REGEX
+#  ifdef HAVE_REGEX
+#    ifdef HAVE_REG_EXTENDED
+	DEBUG3("  regex-posix-extended");
+#    else
 	DEBUG3("  regex-posix");
-#endif
+#    endif
+#  endif
 #endif
 
 #ifdef WITH_SESSION_MGMT

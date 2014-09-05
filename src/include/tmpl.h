@@ -135,10 +135,12 @@ typedef struct value_pair_tmpl_t {
 			size_t			length;		//!< of the vpd data
 		} literal;
 		xlat_exp_t	*xlat;	 //!< pre-parsed xlat_exp_t
+#ifdef HAVE_REGEX
 		struct {
 			regex_t			*comp;		//!< pre-parsed regex_t
 			bool			iflag;		//!< Case insensitive
 		} preg;
+#endif
 	} data;
 } value_pair_tmpl_t;
 
@@ -150,8 +152,10 @@ typedef struct value_pair_tmpl_t {
 
 #define tmpl_xlat	data.xlat
 
-#define tmpl_preg	data.preg.comp
-#define tmpl_iflag	data.preg.iflag
+#ifdef HAVE_REGEX
+#  define tmpl_preg	data.preg.comp
+#  define tmpl_iflag	data.preg.iflag
+#endif
 
 #define tmpl_value	data.literal.value
 #define tmpl_length	data.literal.length

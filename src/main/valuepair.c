@@ -65,7 +65,11 @@ static struct cmp *cmp;
  * @return 0 if check and vp are equal, -1 if vp value is less than check value, 1 is vp value is more than check
  *	value, -2 on error.
  */
+#ifdef HAVE_REGEX
 int radius_compare_vps(REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *vp)
+#else
+int radius_compare_vps(UNUSED REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *vp)
+#endif
 {
 	int ret = 0;
 
