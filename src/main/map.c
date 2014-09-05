@@ -623,10 +623,18 @@ int map_to_vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *map, U
 	{
 		vp_cursor_t from;
 
-		rad_assert(!map->dst->tmpl_da ||
-			   (map->src->tmpl_da->type == map->dst->tmpl_da->type) ||
-			   (map->src->tmpl_da->type == PW_TYPE_OCTETS) ||
-			   (map->dst->tmpl_da->type == PW_TYPE_OCTETS));
+		if (map->dst->type != TMPL_TYPE_ATTR) {
+			rad_assert(map->dst->tmpl_da == NULL);
+		} else {
+			rad_assert(map->dst->tmpl_da != NULL);
+
+			/*
+			 *	Matching type, OR src/dst is octets.
+			 */
+			rad_assert((map->src->tmpl_da->type == map->dst->tmpl_da->type) ||
+				   (map->src->tmpl_da->type == PW_TYPE_OCTETS) ||
+				   (map->dst->tmpl_da->type == PW_TYPE_OCTETS));
+		}
 
 		/*
 		 * @todo should log error, and return -1 for v3.1 (causes update to fail)
@@ -634,11 +642,13 @@ int map_to_vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *map, U
 		if (radius_tmpl_copy_vp(request, &found, request, map->src) < 0) return 0;
 
 		vp = fr_cursor_init(&from, &found);
+
 		/*
 		 *  Src/Dst attributes don't match, convert src attributes
 		 *  to match dst.
 		 */
-		if (map->src->tmpl_da->type != map->dst->tmpl_da->type) {
+		if ((map->dst->type == TMPL_TYPE_ATTR) &&
+		    (map->src->tmpl_da->type != map->dst->tmpl_da->type)) {
 			vp_cursor_t to;
 
 			(void) fr_cursor_init(&to, out);
