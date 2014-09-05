@@ -2192,7 +2192,7 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply)
 	/*
 	 *	There may be a proxy reply, but it may be too late.
 	 */
-	if (!request->proxy_listener) return 0;
+	if (!request->home_server->server && !request->proxy_listener) return 0;
 
 	/*
 	 *	Delete any reply we had accumulated until now.
@@ -2230,21 +2230,26 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply)
 
 	if (reply) {
 		VERIFY_PACKET(reply);
-		/*
-		 *	Decode the packet.
-		 */
-		rcode = request->proxy_listener->decode(request->proxy_listener, request);
-		DEBUG_PACKET(request, reply, 0);
 
 		/*
-		 *	Pro-actively remove it from the proxy hash.
-		 *	This is later than in 2.1.x, but it means that
-		 *	the replies are authenticated before being
-		 *	removed from the hash.
+		 *	Decode the packet if required.
 		 */
-		if ((rcode == 0) &&
-		    (request->num_proxied_requests <= request->num_proxied_responses)) {
-			remove_from_proxy_hash(request);
+		if (request->proxy_listener) {
+			rcode = request->proxy_listener->decode(request->proxy_listener, request);
+			DEBUG_PACKET(request, reply, 0);
+
+			/*
+			 *	Pro-actively remove it from the proxy hash.
+			 *	This is later than in 2.1.x, but it means that
+			 *	the replies are authenticated before being
+			 *	removed from the hash.
+			 */
+			if ((rcode == 0) &&
+			    (request->num_proxied_requests <= request->num_proxied_responses)) {
+				remove_from_proxy_hash(request);
+			}
+		} else {
+			rad_assert(!request->in_proxy_hash);
 		}
 	} else {
 		remove_from_proxy_hash(request);
