@@ -49,6 +49,13 @@ else
 	confflags += --build $(DEB_BUILD_GNU_TYPE) --host $(DEB_HOST_GNU_TYPE)
 endif
 
+# Add dependency on distribution specific version of openssl that fixes Heartbleed (CVE-2014-0160).
+ifeq ($(shell dpkg-vendor --derives-from Ubuntu && echo yes),yes)
+       SUBSTVARS = -Vdist:Depends="libssl1.0.0 (>= 1.0.1f-1ubuntu2)"
+else
+       SUBSTVARS = -Vdist:Depends="libssl1.0.0 (>= 1.0.1e-2+deb7u5)"
+endif
+
 include /usr/share/quilt/quilt.make
 
 config.status: configure
@@ -178,7 +185,7 @@ binary-common:
 	dh_compress -Xexamples
 	dh_fixperms
 	dh_installdeb
-	dh_gencontrol
+	dh_gencontrol -- $(SUBSTVARS)
 	dh_md5sums
 	dh_builddeb
 

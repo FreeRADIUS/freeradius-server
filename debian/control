@@ -31,7 +31,7 @@ Homepage: http://www.freeradius.org/
 
 Package: freeradius
 Architecture: any
-Depends: lsb-base (>= 3.1-23.2), ${shlibs:Depends}, ${misc:Depends}, freeradius-common, freeradius-config, libfreeradius3 (= ${binary:Version}), ssl-cert, adduser
+Depends: lsb-base (>= 3.1-23.2), ${shlibs:Depends}, ${misc:Depends}, ${dist:Depends}, freeradius-common, freeradius-config, libfreeradius3 (= ${binary:Version}), ssl-cert, adduser
 Provides: radius-server
 Recommends: freeradius-utils
 Suggests: freeradius-ldap, freeradius-postgresql, freeradius-mysql, freeradius-krb5
@@ -65,7 +65,7 @@ Package: freeradius-utils
 Architecture: any
 Replaces: freeradius (<< 3)
 Conflicts: radiusd-livingston, yardradius
-Depends: ${shlibs:Depends}, ${misc:Depends}, freeradius-common, freeradius-config, libfreeradius3 (= ${binary:Version})
+Depends: ${shlibs:Depends}, ${misc:Depends}, ${dist:Depends}, freeradius-common, freeradius-config, libfreeradius3 (= ${binary:Version})
 Recommends: libdbi-perl
 Description: FreeRADIUS client utilities
  This package contains various client programs and utilities from
@@ -83,7 +83,7 @@ Description: FreeRADIUS client utilities
 
 Package: libfreeradius3
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}
+Depends: ${shlibs:Depends}, ${misc:Depends}, ${dist:Depends}
 Description: FreeRADIUS shared library
  The FreeRADIUS projects' libfreeradius-radius and libfreeradius-eap, used by
  the FreeRADIUS server and some of the utilities.
@@ -91,7 +91,7 @@ Description: FreeRADIUS shared library
 Package: libfreeradius-dev
 Architecture: any
 Section: libdevel
-Depends: ${shlibs:Depends}, ${misc:Depends}, libfreeradius3 (= ${binary:Version})
+Depends: ${shlibs:Depends}, ${misc:Depends}, ${dist:Depends}, libfreeradius3 (= ${binary:Version})
 Description: FreeRADIUS shared library development files
  The FreeRADIUS projects' libfreeradius-radius and libfreeradius-eap, used by
  the FreeRADIUS server and some of the utilities.
@@ -100,42 +100,42 @@ Description: FreeRADIUS shared library development files
 
 Package: freeradius-krb5
 Architecture: any
-Depends: freeradius (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
+Depends: freeradius (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}, ${dist:Depends}
 Description: kerberos module for FreeRADIUS server
  The FreeRADIUS server can use Kerberos to authenticate users, and this module
  is necessary for that.
 
 Package: freeradius-ldap
 Architecture: any
-Depends: freeradius (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
+Depends: freeradius (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}, ${dist:Depends}
 Description: LDAP module for FreeRADIUS server
  The FreeRADIUS server can use LDAP to authenticate users, and this module
  is necessary for that.
 
 Package: freeradius-rest
 Architecture: any
-Depends: freeradius (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
+Depends: freeradius (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}, ${dist:Depends}
 Description: REST module for FreeRADIUS server
  The FreeRADIUS server can make calls to remote web APIs, and this module
  is necessary for that.
 
 Package: freeradius-postgresql
 Architecture: any
-Depends: freeradius (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
+Depends: freeradius (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}, ${dist:Depends}
 Description: PostgreSQL module for FreeRADIUS server
  The FreeRADIUS server can use PostgreSQL to authenticate users and do
  accounting, and this module is necessary for that.
 
 Package: freeradius-mysql
 Architecture: any
-Depends: freeradius (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
+Depends: freeradius (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}, ${dist:Depends}
 Description: MySQL module for FreeRADIUS server
  The FreeRADIUS server can use MySQL to authenticate users and do accounting,
  and this module is necessary for that.
 
 Package: freeradius-iodbc
 Architecture: any
-Depends: freeradius (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
+Depends: freeradius (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}, ${dist:Depends}
 Description: iODBC module for FreeRADIUS server
  The FreeRADIUS server can use iODBC to access databases to authenticate users
  and do accounting, and this module is necessary for that.
@@ -144,7 +144,7 @@ Package: freeradius-dbg
 Architecture: any
 Section: debug
 Priority: extra
-Depends: freeradius (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
+Depends: freeradius (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}, ${dist:Depends}
 Description: debug symbols for the FreeRADIUS packages
  FreeRADIUS is a modular, high performance and feature-rich RADIUS server.
  This package contains the detached debugging symbols for the Debian FreeRADIUS
