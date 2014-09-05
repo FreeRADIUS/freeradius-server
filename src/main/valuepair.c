@@ -692,6 +692,8 @@ void rdebug_pair_list(int level, REQUEST *request, VALUE_PAIR *vp)
 	char buffer[256];
 	if (!vp || !request || !request->log.func) return;
 
+	if (!radlog_debug_enabled(L_DBG, level, request)) return;
+
 	for (vp = fr_cursor_init(&cursor, &vp);
 	     vp;
 	     vp = fr_cursor_next(&cursor)) {
