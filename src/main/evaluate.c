@@ -236,12 +236,12 @@ int radius_evaluate_tmpl(REQUEST *request, int modreturn, UNUSED int depth,
 	return rcode;
 }
 
-
+#ifdef HAVE_REGEX
 static int do_regex(REQUEST *request, value_pair_map_t const *map)
 {
 	int compare, rcode, ret;
-	regex_t reg, *preg;
-	char *lhs, *rhs;
+	regex_t reg, *preg = NULL;
+	char *lhs = NULL, *rhs = NULL;
 	regmatch_t rxmatch[REQUEST_MAX_REGEX + 1];
 
 	/*
@@ -265,9 +265,9 @@ static int do_regex(REQUEST *request, value_pair_map_t const *map)
 				ERROR("Failed compiling regular expression: %s", errbuf);
 			}
 			EVAL_DEBUG("FAIL %d", __LINE__);
-			return -1;
+			ret = -1;
+			goto finish;
 		}
-
 		preg = &reg;
 		break;
 
@@ -277,7 +277,8 @@ static int do_regex(REQUEST *request, value_pair_map_t const *map)
 
 	default:
 		rad_assert(0);
-		return -1;
+		ret = -1;
+		goto finish;
 	}
 
 	rcode = radius_expand_tmpl(&lhs, request, map->dst);
@@ -297,14 +298,18 @@ static int do_regex(REQUEST *request, value_pair_map_t const *map)
 	ret = (compare == 0);
 
 finish:
+	talloc_free(rhs);
+	talloc_free(lhs);
+
 	/*
 	 *  regcomp allocs extra memory for the expression, so if the
 	 *  result wasn't cached we need to free it here.
 	 */
-	if (preg == &reg) regfree(&reg);
+	if (preg && (preg == &reg)) regfree(&reg);
 
 	return ret;
 }
+#endif
 
 /*
  *	Expand a template to a string, parse it as type of "cast", and
