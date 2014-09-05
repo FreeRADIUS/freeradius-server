@@ -1,0 +1,15 @@
+--- a/raddb/radiusd.conf.in
++++ b/raddb/radiusd.conf.in
+@@ -483,7 +483,11 @@
+ 	#  and may not reflect patches applied to libssl by
+ 	#  distribution maintainers.
+ 	#
+-	allow_vulnerable_openssl = no
++	#  This version of FreeRADIUS is built as a Debian (or Ubuntu) package that
++	#  depends on the right version of OpenSSL, so this is set by
++	#  default to allow the server to start.
++	#
++	allow_vulnerable_openssl = 'CVE-2014-0160'
+ }
+ 
+ # PROXY CONFIGURATION
