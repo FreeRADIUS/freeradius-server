@@ -4253,6 +4253,7 @@ static int event_new_fd(rad_listen_t *this)
 	if (this->status == RAD_LISTEN_STATUS_INIT) {
 		listen_socket_t *sock = this->data;
 
+		rad_assert(sock != NULL);
 		if (just_started) {
 			DEBUG("Listening on %s", buffer);
 
@@ -4301,6 +4302,8 @@ static int event_new_fd(rad_listen_t *this)
 		 */
 		case RAD_LISTEN_PROXY:
 #ifdef WITH_TCP
+			rad_assert(sock->home != NULL);
+
 			/*
 			 *	Add timers to outgoing child sockets, if necessary.
 			 */
