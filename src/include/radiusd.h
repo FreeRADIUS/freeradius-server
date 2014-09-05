@@ -538,8 +538,10 @@ uint32_t	rad_pps(uint32_t *past, uint32_t *present, time_t *then, struct timeval
 int		rad_expand_xlat(REQUEST *request, char const *cmd,
 				int max_argc, char *argv[], bool can_fail,
 				size_t argv_buflen, char *argv_buf);
+#ifdef HAVE_REGEX
 void		rad_regcapture(REQUEST *request, int compare, char const *value,
 			       regmatch_t rxmatch[]);
+#endif
 
 char const	*rad_default_log_dir(void);
 char const	*rad_default_lib_dir(void);
@@ -547,6 +549,7 @@ char const	*rad_default_raddb_dir(void);
 char const	*rad_default_run_dir(void);
 char const	*rad_default_sbin_dir(void);
 char const	*rad_radacct_dir(void);
+
 void		verify_request(char const *file, int line, REQUEST *request);	/* only for special debug builds */
 #ifdef HAVE_GRP_H
 bool		fr_getgid(char const *name, gid_t *gid);

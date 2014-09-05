@@ -640,8 +640,8 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 			}
 
 			c->data.map = map_from_str(c, lhs, lhs_type, op, rhs, rhs_type,
-						     REQUEST_CURRENT, PAIR_LIST_REQUEST,
-						     REQUEST_CURRENT, PAIR_LIST_REQUEST);
+						   REQUEST_CURRENT, PAIR_LIST_REQUEST,
+						   REQUEST_CURRENT, PAIR_LIST_REQUEST);
 			if (!c->data.map) {
 				/*
 				 *	If strings are T_BARE_WORD and they start with '&',
@@ -665,7 +665,11 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 			}
 
 			if (c->data.map->src->type == TMPL_TYPE_REGEX) {
+#ifdef HAVE_REGEX
 				c->data.map->src->tmpl_iflag = i_flag;
+#else
+				return_0("Server was built without support for regular expressions");
+#endif
 			}
 
 			/*

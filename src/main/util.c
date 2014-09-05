@@ -814,6 +814,7 @@ int rad_expand_xlat(REQUEST *request, char const *cmd,
 	return argc;
 }
 
+#ifdef HAVE_REGEX
 /** Adds subcapture values to request data
  *
  * Allows use of %{n} expansions.
@@ -874,6 +875,7 @@ void rad_regcapture(REQUEST *request, int compare, char const *value, regmatch_t
 		request_data_add(request, request, REQUEST_DATA_REGEX | i, p, true);
 	}
 }
+#endif
 
 /** Return the default log dir
  *

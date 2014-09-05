@@ -1808,8 +1808,11 @@ static int realm_add(realm_config_t *rc, CONF_SECTION *cs)
 	return 0;
 }
 
-
+#ifdef HAVE_REGEX
 int realm_realm_add(REALM *r, CONF_SECTION *cs)
+#else
+int realm_realm_add(REALM *r, UNUSED CONF_SECTION *cs)
+#endif
 {
 	/*
 	 *	The structs aren't mutex protected.  Refuse to destroy
