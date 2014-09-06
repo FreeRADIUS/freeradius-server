@@ -1,0 +1,84 @@
+#
+#  ABFAB Trust router policies.
+#
+#	$Id$
+#
+
+
+#
+# Verify rp parameters
+#
+psk_authorize {
+	if (TLS-PSK-Identity) {
+		# TODO: may need to check moonshot-apc as well
+		if ("%{psksql:select distinct keyid from authorizations_keys where keyid = '%{tls-psk-identity}' and '%{moonshot-coi}' like coi and '%{gss-acceptor-realm-name}' like acceptor_realm and '%{gss-acceptor-host-name}' like hostname;}") {
+			# do things here
+		}
+		else {
+			reject
+		}
+	}
+}
+
+abfab_pre_proxy {
+	# check that the acceptor host name is correct
+	if ("%{client:gss_acceptor_host_name}" && "%{gss-acceptor-host-name}") {
+		if ("%{client:gss_acceptor_host_name}" != "%{gss-acceptor-host-name}") {
+			reject
+		}
+	}
+
+	# set moonshot-coi attribute from the client configuration
+	if ("%{client:moonshot_coi}") {
+		update proxy-request {
+			Moonshot-COI := "%{client:moonshot_coi}"
+		}
+	}
+
+	# set gss-acceptor-realm-name attribute from the client configuration
+	if ("%{client:gss_acceptor_realm_name}") {
+		update proxy-request {
+			GSS-Acceptor-Realm-Name := "%{client:gss_acceptor_realm_name}"
+		}
+	}
+}
+
+#
+#  A policy which is used to validate channel-bindings.
+#
+abfab_channel_bindings {
+	if (GSS-Acceptor-Service-Name && (outer.request:GSS-Acceptor-Service-Name != GSS-Acceptor-Service-Name)) {
+		reject
+	}
+
+	if (GSS-Acceptor-Host-Name && outer.request:GSS-Acceptor-Host-Name != GSS-Acceptor-Host-Name ) {
+		reject
+	}
+
+	if (GSS-Acceptor-Realm-Name && outer.request:GSS-Acceptor-Realm-Name != GSS-Acceptor-Realm-Name ) {
+		reject
+	}
+
+	if (GSS-Acceptor-Service-Name || GSS-Acceptor-Realm-Name || GSS-Acceptor-Host-Name) {
+		update control {
+			Chbind-Response-Code := success
+		}
+
+		#
+		#  ACK the attributes in the request.
+		#
+		#  If any one of these attributes don't exist in the request,
+		#  then they won't be copied to the reply.
+		#
+		update reply {
+			GSS-Acceptor-Service-Name = &GSS-Acceptor-Service-Name
+			GSS-Acceptor-Host-Name = &GSS-Acceptor-Host-Name
+			GSS-Acceptor-Realm-Name = &GSS-Acceptor-Realm-Name
+		}
+	}
+
+	#
+	#  Return "handled" so that the "authenticate" section isn't used.
+	#
+	handled
+}
