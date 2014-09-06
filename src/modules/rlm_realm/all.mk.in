@@ -1,4 +1,9 @@
-TARGET		:=  @targetname@
+TARGETNAME	:= @targetname@
+
+ifneq "$(TARGETNAME)" ""
+TARGET		:= $(TARGETNAME).a
+endif
+
 SOURCES		:= rlm_realm.c
 
 TRUSTROUTER	= @trustrouter@
