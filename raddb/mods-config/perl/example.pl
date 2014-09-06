@@ -185,9 +185,6 @@ sub xlat {
 sub detach {
 	# For debugging purposes only
 #	log_request_attributes();
-
-	# Do some logging.
-	radiusd::radlog(L_DBG,"rlm_perl::Detaching. Reloading. Done");
 }
 
 #
