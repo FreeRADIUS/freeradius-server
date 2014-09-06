@@ -10,8 +10,8 @@
 #
 psk_authorize {
 	if (TLS-PSK-Identity) {
-		# TODO: may need to check moonshot-apc as well
-		if ("%{psksql:select distinct keyid from authorizations_keys where keyid = '%{tls-psk-identity}' and '%{moonshot-coi}' like coi and '%{gss-acceptor-realm-name}' like acceptor_realm and '%{gss-acceptor-host-name}' like hostname;}") {
+		# TODO: may need to check trust-router-apc as well
+		if ("%{psksql:select distinct keyid from authorizations_keys where keyid = '%{tls-psk-identity}' and '%{trust-router-coi}' like coi and '%{gss-acceptor-realm-name}' like acceptor_realm and '%{gss-acceptor-host-name}' like hostname;}") {
 			# do things here
 		}
 		else {
@@ -28,10 +28,10 @@ abfab_pre_proxy {
 		}
 	}
 
-	# set moonshot-coi attribute from the client configuration
-	if ("%{client:moonshot_coi}") {
+	# set trust-router-coi attribute from the client configuration
+	if ("%{client:trust-router_coi}") {
 		update proxy-request {
-			Moonshot-COI := "%{client:moonshot_coi}"
+			Trust-Router-COI := "%{client:moonshot_coi}"
 		}
 	}
 
