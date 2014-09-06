@@ -323,7 +323,7 @@ static bool update_required(REALM const *r)
 
 	pool = r->auth_pool;
 
-	for (i = 0; i < pool->num_home_servers; i++) {w
+	for (i = 0; i < pool->num_home_servers; i++) {
 		server = pool->servers[i];
 
 		/*
