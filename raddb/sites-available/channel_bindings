@@ -3,44 +3,15 @@
 #
 #	$Id$
 #
-#
-#
 server channel_bindings {
-#
-#  Only the "authorize" section is needed.
-#
-authorize {
-	if (&GSS-Acceptor-Service-Name && (&outer.request:GSS-Acceptor-Service-Name != &GSS-Acceptor-Service-Name)) {
-		reject
-	}
-	if (GSS-Acceptor-Host-Name && outer.request:GSS-Acceptor-Host-Name != GSS-Acceptor-Host-Name ) {
-		reject
-	}
-	if (GSS-Acceptor-Realm-Name && outer.request:GSS-Acceptor-Realm-Name != GSS-Acceptor-Realm-Name ) {
-		reject
-	}
-
-	if (&GSS-Acceptor-Service-Name || &GSS-Acceptor-Realm-Name || &GSS-Acceptor-Host-Name) {
-		update control {
-			&Chbind-Response-Code := success
-		}
-
-		#
-		#  ACK the attributes in the request.
-		#
-		#  If any one of these attributes don't exist in the request,
-		#  then they won't be copied to the reply.
-		#
-		update reply {
-			&GSS-Acceptor-Service-Name = &GSS-Acceptor-Service-Name
-			&GSS-Acceptor-Host-Name = &GSS-Acceptor-Host-Name
-			&GSS-Acceptor-Realm-Name = &GSS-Acceptor-Realm-Name
-		}
-	}
-
 	#
-	#  Return "handled" so that the "authenticate" section isn't used.
+	#  Only the "authorize" section is needed.
 	#
-	handled
-}
+	authorize {
+		#  In general this section should include a policy for each type
+		#  of channel binding that may be in use.  For example each lower
+		#  layer such as GSS-EAP (RFC 7055) or IEEE 802.11I is likely to
+		#  need a separate channel binding policy.
+		abfab_channel_bindings
+	}
 }
