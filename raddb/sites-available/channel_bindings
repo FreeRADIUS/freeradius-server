@@ -13,6 +13,12 @@ authorize {
 	if (&GSS-Acceptor-Service-Name && (&outer.request:GSS-Acceptor-Service-Name != &GSS-Acceptor-Service-Name)) {
 		reject
 	}
+	if (GSS-Acceptor-Host-Name && outer.request:GSS-Acceptor-Host-Name != GSS-Acceptor-Host-Name ) {
+		reject
+	}
+	if (GSS-Acceptor-Realm-Name && outer.request:GSS-Acceptor-Realm-Name != GSS-Acceptor-Realm-Name ) {
+		reject
+	}
 
 	if (&GSS-Acceptor-Service-Name || &GSS-Acceptor-Realm-Name || &GSS-Acceptor-Host-Name) {
 		update control {
