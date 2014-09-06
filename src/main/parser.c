@@ -495,8 +495,9 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 
 		} else { /* it's an operator */
 			bool regex;
+#ifdef HAVE_REGEX
 			bool i_flag = false;
-
+#endif
 			/*
 			 *	The next thing should now be a comparison operator.
 			 */
