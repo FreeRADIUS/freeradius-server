@@ -8,11 +8,11 @@ if test x$with_[]modname != xno; then
 	AC_PROG_CPP
 
 	FR_SMART_CHECK_LIB(tr_tid, tidc_create)
-	FR_SMART_CHECK_INCLUDE(trust_router/tr_dh)
+	FR_SMART_CHECK_INCLUDE(trust_router/tr_dh.h)
 
-	if test "x$ac_cv_have_tr_tid_tidc_create" != "x"; then
-		if test "x$ac_cv_have_trust_router_tr_dh" != "x"; then
-			SMART_CPPFLAGS="$SMART_CPPFLAGS} -DHAVE_TRUSTROUTER_TR_DH_H"
+	if test "x$ac_cv_lib_tr_tid_tidc_create" != "x"; then
+		if test "x$ac_cv_header_trust_router_tr_dh_h" != "x"; then
+			SMART_CPPFLAGS="$SMART_CPPFLAGS -DHAVE_TRUSTROUTER_TR_DH_H"
 			trustrouter=yes
 		fi
 	fi

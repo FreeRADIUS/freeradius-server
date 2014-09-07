@@ -290,7 +290,7 @@ VALUE_PAIR *eap_chbind_packet2vp(REQUEST *request, const chbind_packet_t *packet
 
 	vp = paircreate(request->packet, PW_UKERNA_CHBIND, VENDORPEC_UKERNA);
 	if (!vp) return NULL;
-	pairmemcpy(vp, (const uint8_t *) packet, talloc_array_length(packet));
+	pairmemcpy(vp, (const uint8_t *) packet, talloc_array_length((uint8_t *)packet));
 
 	return vp;
 }
