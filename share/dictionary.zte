@@ -51,8 +51,8 @@ ATTRIBUTE	ZTE-VPN-ID				190	string
 # 0 (lowest) - 15 (highest) privilege level
 #ATTRIBUTE	ZTE-SW-Privilege			191	integer
 
-ATTRIBUTE	ZTE_Rate-Bust-DPIR              	191     integer
-ATTRIBUTE	ZTE_Rate-Bust-UPIR             	 	192     integer
+ATTRIBUTE	ZTE_Rate-Bust-DPIR			191	integer
+ATTRIBUTE	ZTE_Rate-Bust-UPIR			192	integer
 
 ATTRIBUTE	ZTE-Rate-Ctrl-PBS-Down			202	integer
 ATTRIBUTE	ZTE-Rate-Ctrl-PBS-Up			203	integer
