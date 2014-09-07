@@ -2921,7 +2921,7 @@ fi
 
 
 
-ac_safe=`echo "trust_router/tr_dh" | sed 'y%./+-%__pm%'`
+ac_safe=`echo "trust_router/tr_dh.h" | sed 'y%./+-%__pm%'`
 old_CPPFLAGS="$CPPFLAGS"
 smart_include=
 smart_include_dir="/usr/local/include /opt/include"
@@ -2941,13 +2941,13 @@ done
 
 if test "x$_smart_try_dir" != "x"; then
   for try in $_smart_try_dir; do
-    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for trust_router/tr_dh in $try" >&5
-$as_echo_n "checking for trust_router/tr_dh in $try... " >&6; }
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for trust_router/tr_dh.h in $try" >&5
+$as_echo_n "checking for trust_router/tr_dh.h in $try... " >&6; }
     CPPFLAGS="-isystem $try $old_CPPFLAGS"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <trust_router/tr_dh>
+		    #include <trust_router/tr_dh.h>
 int
 main ()
 {
@@ -2977,13 +2977,13 @@ fi
 
 if test "x$smart_include" = "x"; then
   for _prefix in $smart_prefix; do
-    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for ${_prefix}/trust_router/tr_dh" >&5
-$as_echo_n "checking for ${_prefix}/trust_router/tr_dh... " >&6; }
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for ${_prefix}/trust_router/tr_dh.h" >&5
+$as_echo_n "checking for ${_prefix}/trust_router/tr_dh.h... " >&6; }
 
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <trust_router/tr_dh>
+		    #include <trust_router/tr_dh.h>
 int
 main ()
 {
@@ -3011,13 +3011,13 @@ rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 fi
 
 if test "x$smart_include" = "x"; then
-    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for trust_router/tr_dh" >&5
-$as_echo_n "checking for trust_router/tr_dh... " >&6; }
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for trust_router/tr_dh.h" >&5
+$as_echo_n "checking for trust_router/tr_dh.h... " >&6; }
 
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <trust_router/tr_dh>
+		    #include <trust_router/tr_dh.h>
 int
 main ()
 {
@@ -3078,7 +3078,7 @@ eval "_smart_include_dir=\"\$_smart_include_dir $DIRS\""
 
 if test "x$LOCATE" != "x"; then
         DIRS=
-  file=trust_router/tr_dh
+  file=trust_router/tr_dh.h
 
   for x in `${LOCATE} $file 2>/dev/null`; do
                                         base=`echo $x | sed "s%/${file}%%"`
@@ -3103,13 +3103,13 @@ eval "_smart_include_dir=\"\$_smart_include_dir $DIRS\""
 
 
   for try in $_smart_include_dir; do
-    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for trust_router/tr_dh in $try" >&5
-$as_echo_n "checking for trust_router/tr_dh in $try... " >&6; }
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for trust_router/tr_dh.h in $try" >&5
+$as_echo_n "checking for trust_router/tr_dh.h in $try... " >&6; }
     CPPFLAGS="-isystem $try $old_CPPFLAGS"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <trust_router/tr_dh>
+		    #include <trust_router/tr_dh.h>
 int
 main ()
 {
@@ -3146,9 +3146,9 @@ fi
 smart_prefix=
 
 
-	if test "x$ac_cv_have_tr_tid_tidc_create" != "x"; then
-		if test "x$ac_cv_have_trust_router_tr_dh" != "x"; then
-			SMART_CPPFLAGS="$SMART_CPPFLAGS} -DHAVE_TRUSTROUTER_TR_DH_H"
+	if test "x$ac_cv_lib_tr_tid_tidc_create" != "x"; then
+		if test "x$ac_cv_header_trust_router_tr_dh_h" != "x"; then
+			SMART_CPPFLAGS="$SMART_CPPFLAGS -DHAVE_TRUSTROUTER_TR_DH_H"
 			trustrouter=yes
 		fi
 	fi
