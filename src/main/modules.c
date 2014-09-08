@@ -1387,11 +1387,6 @@ static int load_byserver(CONF_SECTION *cs)
 		cf_log_info(cs, "} # server");
 	}
 
-	if (!found && name) {
-		WARN("Server %s is empty, and will do nothing!",
-		      name);
-	}
-
 	if (debug_flag == 0) {
 		INFO("Loaded virtual server %s",
 		       (name != NULL) ? name : "<default>");
