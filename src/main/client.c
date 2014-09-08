@@ -279,8 +279,8 @@ int client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 		if (client->server != NULL) {
 			CONF_SECTION *cs;
 
-			cs = cf_section_find_name2(mainconfig.config,
-						   "server", client->server);
+			cs = cf_section_sub_find_name2(mainconfig.config,
+						       "server", client->server);
 			if (!cs) {
 				radlog(L_ERR, "Failed to find virtual server %s",
 				       client->server);
