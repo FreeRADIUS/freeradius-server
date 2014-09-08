@@ -945,7 +945,7 @@ int radius_tmpl_copy_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, val
  */
 int radius_tmpl_get_vp(VALUE_PAIR **out, REQUEST *request, value_pair_tmpl_t const *vpt)
 {
-	VALUE_PAIR **vps, *vp;
+	VALUE_PAIR **vps, *vp = NULL;
 
 	rad_assert((vpt->type == TMPL_TYPE_ATTR) || (vpt->type == TMPL_TYPE_LIST));
 
