@@ -1203,6 +1203,11 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 		}
 	} /* else there was no "clients = " entry. */
 
+	/*
+	 *	The "listen" section wasn't given an explicit client list.
+	 *	Look for (a) clients in this virtual server, or
+	 *	(b) the global client list.
+	 */
 	if (!client_cs) {
 		CONF_SECTION *server_cs;
 
