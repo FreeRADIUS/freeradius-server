@@ -282,7 +282,7 @@ chbind_packet_t *eap_chbind_vp2packet(TALLOC_CTX *ctx, VALUE_PAIR *vps)
 	return packet;
 }
 
-VALUE_PAIR *eap_chbind_packet2vp(REQUEST *request, const chbind_packet_t *packet)
+VALUE_PAIR *eap_chbind_packet2vp(REQUEST *request, chbind_packet_t *packet)
 {
 	VALUE_PAIR	*vp;
 
@@ -290,7 +290,7 @@ VALUE_PAIR *eap_chbind_packet2vp(REQUEST *request, const chbind_packet_t *packet
 
 	vp = paircreate(request->packet, PW_UKERNA_CHBIND, VENDORPEC_UKERNA);
 	if (!vp) return NULL;
-	pairmemcpy(vp, (const uint8_t *) packet, talloc_array_length((uint8_t *)packet));
+	pairmemcpy(vp, (uint8_t *) packet, talloc_array_length((uint8_t *)packet));
 
 	return vp;
 }
