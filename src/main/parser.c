@@ -1191,9 +1191,10 @@ done:
 			if (rcode) {
 				c->type = COND_TYPE_TRUE;
 			} else {
-				DEBUG("OPTIMIZING %s %s --> FALSE",
-				      c->data.map->dst->name,
-				      c->data.map->src->name);
+				DEBUG3("OPTIMIZING (%s %s %s) --> FALSE",
+				       c->data.map->dst->name,
+				       fr_int2str(fr_tokens, c->data.map->op, "??"),
+				       c->data.map->src->name);
 				c->type = COND_TYPE_FALSE;
 			}
 
