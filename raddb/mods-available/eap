@@ -198,11 +198,6 @@ eap {
 		#  In that case, this CA file should contain
 		#  *one* CA certificate.
 		#
-		#  This parameter is used only for EAP-TLS,
-		#  when you issue client certificates.  If you do
-		#  not use client certificates, and you do not want
-		#  to permit EAP-TLS authentication, then delete
-		#  this configuration item.
 		ca_file = ${cadir}/ca.pem
 
 		#
