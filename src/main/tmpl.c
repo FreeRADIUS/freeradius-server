@@ -898,7 +898,7 @@ int tmpl_cast_to_vp(VALUE_PAIR **out, REQUEST *request,
  */
 VALUE_PAIR *tmpl_cursor_init(int *err, vp_cursor_t *cursor, REQUEST *request, value_pair_tmpl_t const *vpt)
 {
-	VALUE_PAIR **vps, *vp;
+	VALUE_PAIR **vps, *vp = NULL;
 
 	rad_assert((vpt->type == TMPL_TYPE_ATTR) || (vpt->type == TMPL_TYPE_LIST));
 
