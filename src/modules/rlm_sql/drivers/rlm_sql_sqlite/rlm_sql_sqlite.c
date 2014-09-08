@@ -55,12 +55,10 @@ typedef struct rlm_sql_sqlite_conn {
 
 typedef struct rlm_sql_sqlite_config {
 	char const *filename;
-	char const *bootstrap;
 } rlm_sql_sqlite_config_t;
 
 static const CONF_PARSER driver_config[] = {
 	{ "filename", FR_CONF_OFFSET(PW_TYPE_FILE_OUTPUT | PW_TYPE_REQUIRED, rlm_sql_sqlite_config_t, filename), NULL },
-	{ "bootstrap", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT, rlm_sql_sqlite_config_t, bootstrap), NULL },
 
 	{NULL, -1, 0, NULL, NULL}
 };
@@ -260,13 +258,14 @@ static int mod_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
 		return -1;
 	}
 
-	if (driver->bootstrap && !exists) {
+	if (cf_pair_find(conf, "bootstrap") && !exists) {
 #  ifdef HAVE_SQLITE3_OPEN_V2
 		int status;
 		int ret;
-		char *p;
+		char const *p;
 		char *buff;
 		sqlite3 *db = NULL;
+		CONF_PAIR *cp;
 
 		INFO("rlm_sql_sqlite: Database doesn't exist, creating it and loading schema");
 
@@ -290,13 +289,13 @@ static int mod_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
 
 		status = sqlite3_open_v2(driver->filename, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL);
 		if (!db) {
-#  ifdef HAVE_SQLITE3_ERRSTR
+#    ifdef HAVE_SQLITE3_ERRSTR
 			ERROR("rlm_sql_sqlite: Failed creating opening/creating SQLite database: %s",
 			      sqlite3_errstr(status));
-#  else
+#    else
 			ERROR("rlm_sql_sqlite: Failed creating opening/creating SQLite database, got code (%i)",
 			      status);
-#  endif
+#    endif
 
 			goto unlink;
 		}
@@ -307,7 +306,19 @@ static int mod_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
 			goto unlink;
 		}
 
-		ret = sql_loadfile(conf, db, driver->bootstrap);
+		/*
+		 *	Execute multiple bootstrap SQL files in order
+		 */
+		for (cp = cf_pair_find(conf, "bootstrap");
+		     cp;
+		     cp = cf_pair_find_next(conf, cp, "bootstrap")) {
+			p = cf_pair_value(cp);
+			if (!p) continue;
+
+			ret = sql_loadfile(conf, db, p);
+			if (ret < 0) goto unlink;
+		}
+
 		status = sqlite3_close(db);
 		if (status != SQLITE_OK) {
 		/*
@@ -321,6 +332,7 @@ static int mod_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
 
 			goto unlink;
 		}
+
 		if (ret < 0) {
 		unlink:
 			if ((unlink(driver->filename) < 0) && (errno != ENOENT)) {
