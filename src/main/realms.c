@@ -780,7 +780,7 @@ int realm_home_server_add(realm_config_t *rc, home_server_t *home, CONF_SECTION 
 			cf_log_err_cs(cs,
 				   "Internal error %d adding home server %s.",
 				   __LINE__, name2);
-			free(home2);
+			talloc_free(home2);
 			return 0;
 		}
 
@@ -790,7 +790,7 @@ int realm_home_server_add(realm_config_t *rc, home_server_t *home, CONF_SECTION 
 			cf_log_err_cs(cs,
 				   "Internal error %d adding home server %s.",
 				   __LINE__, name2);
-			free(home2);
+			talloc_free(home2);
 		error:
 			return 0;
 		}
@@ -805,7 +805,7 @@ int realm_home_server_add(realm_config_t *rc, home_server_t *home, CONF_SECTION 
 			cf_log_err_cs(cs,
 				   "Internal error %d adding home server %s.",
 				   __LINE__, name2);
-			free(home2);
+			talloc_free(home2);
 			return 0;
 		}
 #endif
