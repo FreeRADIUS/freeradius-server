@@ -99,6 +99,8 @@ static int realm_name_cmp(void const *one, void const *two)
 
 
 #ifdef WITH_PROXY
+static int realm_home_server_add(realm_config_t *rc, home_server_t *home, CONF_SECTION *cs, int dual);
+
 static void home_server_free(void *data)
 {
 	home_server_t *home = data;
@@ -619,11 +621,11 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 
 	hs_srcipaddr = NULL;
 
-	return realm_home_server_add(home, cs, dual);
+	return realm_home_server_add(rc, home, cs, dual);
 }
 
 
-int realm_home_server_add(home_server_t *home, CONF_SECTION *cs, int dual)
+static int realm_home_server_add(realm_config_t *rc, home_server_t *home, CONF_SECTION *cs, int dual)
 {
 	const char *name2 = home->name;
 	CONF_SECTION *parent = NULL;
@@ -756,7 +758,7 @@ int realm_home_server_add(home_server_t *home, CONF_SECTION *cs, int dual)
 	}
 
 	if (dual) {
-		home_server_t *home2 = talloc(home, home_server_t);
+		home_server_t *home2 = talloc(rc, home_server_t);
 
 		memcpy(home2, home, sizeof(*home2));
 
