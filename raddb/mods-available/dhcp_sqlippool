@@ -5,7 +5,7 @@
 ##  $Id$
 
 sqlippool dhcp_sqlippool {
-	sql_instance_name = "sql"
+	sql_module_instance = "sql"
 
 	ippool_table = "radippool"
 
