@@ -83,7 +83,7 @@ next:
 			p += len;
 		}
 
-		len = map_print(p, end - p, c->data.map);
+		len = map_prints(p, end - p, c->data.map);
 		p += len;
 #if 0
 		*(p++) = ']';

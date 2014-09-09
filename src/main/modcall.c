@@ -3490,7 +3490,7 @@ void modcall_debug(modcallable *mc, int depth)
 				group_name[this->type]);
 
 			for (map = g->map; map != NULL; map = map->next) {
-				map_print(buffer, sizeof(buffer), map);
+				map_prints(buffer, sizeof(buffer), map);
 				DEBUG("%.*s%s", depth + 1, modcall_spaces, buffer);
 			}
 
