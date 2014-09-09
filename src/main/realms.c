@@ -700,7 +700,7 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 	return realm_home_server_add(rc, home, cs, dual);
 }
 
-int realm_home_server_add(realm_config_t *rc, home_server_t *home, CONF_SECTION *cs, int dual)
+int realm_home_server_add(realm_config_t *rc, home_server_t *home, CONF_SECTION *cs, bool dual)
 {
 	const char *name2 = home->name;
 
