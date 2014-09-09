@@ -191,7 +191,7 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 	/*
 	 *	If we've been told to strip the realm off, then do so.
 	 */
-	if (realm->striprealm) {
+	if (realm->strip_realm) {
 		/*
 		 *	Create the Stripped-User-Name attribute, if it
 		 *	doesn't exist.
