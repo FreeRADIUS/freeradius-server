@@ -559,8 +559,8 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 *	Get version info from the LDAP API.
 	 */
 	if (!version_done) {
+		static LDAPAPIInfo info;	/* static to quiet valgrind about this being uninitialised */
 		int ldap_errno;
-		LDAPAPIInfo info;
 
 		version_done = true;
 
