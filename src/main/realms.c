@@ -1746,7 +1746,7 @@ static int realm_add(realm_config_t *rc, CONF_SECTION *cs)
 	if (!r) return 0;
 
 	r->name = name2;
-	r->striprealm = 1;
+	r->strip_realm = true;
 #ifdef WITH_PROXY
 	r->auth_pool = auth_pool;
 	r->acct_pool = acct_pool;
@@ -1768,7 +1768,7 @@ static int realm_add(realm_config_t *rc, CONF_SECTION *cs)
 
 	cp = cf_pair_find(cs, "nostrip");
 	if (cp && (cf_pair_value(cp) == NULL)) {
-		r->striprealm = 0;
+		r->strip_realm = false;
 		cf_log_info(cs, "\tnostrip");
 	}
 
