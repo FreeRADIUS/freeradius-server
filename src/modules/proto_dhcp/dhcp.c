@@ -951,13 +951,35 @@ ssize_t fr_dhcp_decode_options(VALUE_PAIR **out, TALLOC_CTX *ctx, uint8_t const 
 
 		if ((p + 2) > q) break;
 
+		a_len = p[1];
+		a_p = p + 2;
+
+		/*
+		 *	Unknown attribute, create an octets type
+		 *	attribute with the contents of the sub-option.
+		 */
 		da = dict_attrbyvalue(p[0], DHCP_MAGIC_VENDOR);
 		if (!da) {
+			da = dict_attrunknown(p[0], DHCP_MAGIC_VENDOR, true);
+			if (!da) {
+				pairfree(out);
+				return -1;
+			}
+			vp = pairalloc(ctx, da);
+			if (!vp) {
+				pairfree(out);
+				return -1;
+			}
+			pairmemcpy(vp, a_p, a_len);
+			fr_cursor_insert(&cursor, vp);
+
 			goto next;
 		}
 
-		a_len = p[1];
-		a_p = p + 2;
+		/*
+		 *	Array type sub-option create a new VALUE_PAIR
+		 *	for each array element.
+		 */
 		num_entries = fr_dhcp_array_members(&a_len, da);
 		for (i = 0; i < num_entries; i++) {
 			vp = pairalloc(ctx, da);
