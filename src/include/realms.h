@@ -146,7 +146,7 @@ typedef struct home_pool_t {
 typedef struct _realm {
 	char const		*name;
 
-	int			striprealm;
+	bool			strip_realm;
 
 	home_pool_t		*auth_pool;
 	home_pool_t		*acct_pool;
