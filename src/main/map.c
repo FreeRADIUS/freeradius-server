@@ -1114,7 +1114,7 @@ bool map_dst_valid(REQUEST *request, value_pair_map_t const *map)
  * @param[in] map to print
  * @return the size of the string printed
  */
-size_t map_print(char *buffer, size_t bufsize, value_pair_map_t const *map)
+size_t map_prints(char *buffer, size_t bufsize, value_pair_map_t const *map)
 {
 	size_t len;
 	char *p = buffer;
