@@ -906,6 +906,7 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	char const	*section_name = NULL;
 	CONF_SECTION	*client_cs, *parentcs;
 	CONF_SECTION	*subcs;
+	CONF_PAIR	*cp;
 
 	this->cs = cs;
 
@@ -1113,12 +1114,9 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	 *	If we can bind to interfaces, do so,
 	 *	else don't.
 	 */
-	if (cf_pair_find(cs, "interface")) {
-		char const *value;
-		CONF_PAIR *cp = cf_pair_find(cs, "interface");
-
-		rad_assert(cp != NULL);
-		value = cf_pair_value(cp);
+	cp = cf_pair_find(cs, "interface");
+	if (cp) {
+		char const *value = cf_pair_value(cp);
 		if (!value) {
 			cf_log_err_cs(cs,
 				   "No interface name given");
@@ -1131,23 +1129,20 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	/*
 	 *	If we can do broadcasts..
 	 */
-	if (cf_pair_find(cs, "broadcast")) {
+	cp = cf_pair_find(cs, "broadcast");
+	if (cp) {
 #ifndef SO_BROADCAST
 		cf_log_err_cs(cs,
 			   "System does not support broadcast sockets.  Delete this line from the configuration file");
 		return -1;
 #else
-		char const *value;
-		CONF_PAIR *cp = cf_pair_find(cs, "broadcast");
-
 		if (this->type != RAD_LISTEN_DHCP) {
 			cf_log_err_cp(cp,
 				   "Broadcast can only be set for DHCP listeners.  Delete this line from the configuration file");
 			return -1;
 		}
 
-		rad_assert(cp != NULL);
-		value = cf_pair_value(cp);
+		char const *value = cf_pair_value(cp);
 		if (!value) {
 			cf_log_err_cs(cs,
 				   "No broadcast value given");
