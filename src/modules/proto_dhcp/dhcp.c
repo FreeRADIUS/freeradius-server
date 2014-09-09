@@ -1320,7 +1320,7 @@ static VALUE_PAIR *fr_dhcp_vp2suboption(TALLOC_CTX *ctx, vp_cursor_t *cursor)
 		tlv->length += vp->length;
 	}
 
-	tlv->vp_tlv = talloc_array(tlv, uint8_t, tlv->length);
+	tlv->vp_tlv = talloc_zero_array(tlv, uint8_t, tlv->length);
 	if (!tlv->vp_tlv) {
 		talloc_free(tlv);
 		return NULL;
