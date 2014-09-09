@@ -73,7 +73,7 @@ else
 endif
 	ln -s /usr/share/misc/config.sub config.sub
 	ln -s /usr/share/misc/config.guess config.guess
-	
+
 
 	./configure $(confflags) \
 		--config-cache \
@@ -101,12 +101,12 @@ endif
 	rm config.sub
 	mv config.sub.dist config.sub
 
-#Architecture 
+#Architecture
 build: patch build-arch build-indep
 
 build-arch: build-arch-stamp patch
 build-arch-stamp: config.status
-	$(MAKE) 
+	$(MAKE)
 	touch $@
 
 build-indep: build-indep-stamp
@@ -116,10 +116,10 @@ build-indep-stamp: config.status
 clean: unpatch
 	dh_testdir
 	dh_testroot
-	rm -f build-arch-stamp build-indep-stamp 
+	rm -f build-arch-stamp build-indep-stamp
 	rm -f config.cache config.log
 	rm -f src/freeradius-devel
-	
+
 	[ ! -d src/modules/lib ] || rm -fr src/modules/lib || true
 	[ ! -d src/binary ] || rm -fr src/binary || true
 
@@ -135,7 +135,7 @@ ifeq (config.guess.dist,$(wildcard config.guess.dist))
 	rm -f config.guess
 	mv config.guess.dist config.guess
 endif
-	dh_clean 
+	dh_clean
 
 install: install-arch
 
@@ -146,11 +146,11 @@ install-arch: build-arch-stamp
 	test -d $(freeradius_dir)/usr/lib/freeradius || mkdir -p $(freeradius_dir)/usr/lib/freeradius
 	ln -fs rlm_sql.so $(freeradius_dir)/usr/lib/freeradius/librlm_sql.so
 	$(MAKE) install R=$(freeradius_dir)
-	
+
 	# rename radius binary to play nicely with others
 	mv $(freeradius_dir)/usr/sbin/radiusd $(freeradius_dir)/usr/sbin/$(package)
 	mv $(freeradius_dir)/$(mandir)/man8/radiusd.8 $(freeradius_dir)/$(mandir)/man8/$(package).8
-	
+
 	dh_install -i --sourcedir=$(freeradius_dir)
 	dh_install --sourcedir=$(freeradius_dir) -p libfreeradius3
 	dh_install --sourcedir=$(freeradius_dir) -p libfreeradius-dev
@@ -164,7 +164,7 @@ install-arch: build-arch-stamp
 
 	dh_install --sourcedir=$(freeradius_dir) -p freeradius-utils
 	dh_install --sourcedir=$(freeradius_dir) -p freeradius
-	
+
 	dh_strip -a --dbg-package=freeradius-dbg
 
 	dh_makeshlibs -a -n
@@ -176,8 +176,8 @@ binary-common:
 	dh_installchangelogs doc/ChangeLog
 	dh_installdocs -Xdebian/tmp/usr/share/doc/freeradius/ChangeLog
 	dh_installexamples
-	dh_installlogrotate	
-	dh_installpam --name=radiusd 
+	dh_installlogrotate
+	dh_installpam --name=radiusd
 	dh_installinit --noscripts
 	dh_installman
 	dh_lintian
@@ -198,4 +198,4 @@ binary-arch: build-arch install-arch
 	$(MAKE) -f debian/rules DH_OPTIONS=-s binary-common
 
 binary: binary-arch binary-indep
-.PHONY: build clean binary-indep binary-arch binary install install-indep install-arch 
+.PHONY: build clean binary-indep binary-arch binary install install-indep install-arch
