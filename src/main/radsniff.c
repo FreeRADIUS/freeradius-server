@@ -931,7 +931,9 @@ static inline int rs_response_to_pcap(rs_event_t *event, rs_request_t *request, 
 			TALLOC_FREE(request->capture_p->data);
 
 			/* Reset the pointer to the start of the circular buffer */
-			if (request->capture_p++ >= (request->capture + sizeof(request->capture))) {
+			if (request->capture_p++ >=
+					(request->capture +
+					 sizeof(request->capture) / sizeof(*request->capture))) {
 				request->capture_p = request->capture;
 			}
 		} while (request->capture_p != start);
@@ -969,7 +971,9 @@ static inline int rs_request_to_pcap(rs_event_t *event, rs_request_t *request, s
 		memcpy(request->capture_p->data, data, header->caplen);
 
 		/* Reset the pointer to the start of the circular buffer */
-		if (++request->capture_p >= (request->capture + sizeof(request->capture))) {
+		if (++request->capture_p >=
+				(request->capture +
+				 sizeof(request->capture) / sizeof(*request->capture))) {
 			request->capture_p = request->capture;
 		}
 		return 0;
