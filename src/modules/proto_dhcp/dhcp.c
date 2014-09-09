@@ -953,11 +953,6 @@ ssize_t fr_dhcp_decode_options(VALUE_PAIR **out, TALLOC_CTX *ctx, uint8_t const 
 
 		da = dict_attrbyvalue(p[0], DHCP_MAGIC_VENDOR);
 		if (!da) {
-			da = dict_attrunknown(p[0], DHCP_MAGIC_VENDOR, true);
-			if (!da) {
-				pairfree(out);
-				return -1;
-			}
 			goto next;
 		}
 
