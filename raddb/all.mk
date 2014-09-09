@@ -112,6 +112,7 @@ $(R)$(raddbdir)/users: $(R)$(modconfdir)/files/authorize
 	@[ -e $@ ] || echo LN-S $(patsubst $(R)$(raddbdir)/%,raddb/%,$@)
 	@[ -e $@ ] || ln -s $(patsubst $(R)$(raddbdir)/%,./%,$<) $@
 
+ifeq ("$(PACKAGE)","")
 $(LOCAL_CERT_PRODUCTS):
 	@echo BOOTSTRAP raddb/certs/
 	@$(MAKE) -C $(R)$(raddbdir)/certs/
@@ -120,6 +121,11 @@ $(LOCAL_CERT_PRODUCTS):
 $(R)$(raddbdir)/certs/bootstrap: | raddb/certs/bootstrap $(LOCAL_CERT_PRODUCTS)
 	@echo INSTALL $(patsubst $(R)$(raddbdir)/%,raddb/%,$@)
 	@$(INSTALL) -m 750 $(patsubst $(R)$(raddbdir)/%,raddb/%,$@) $@
+else
+$(R)$(raddbdir)/certs/bootstrap:
+	@echo INSTALL $(patsubst $(R)$(raddbdir)/%,raddb/%,$@)
+	@$(INSTALL) -m 750 $(patsubst $(R)$(raddbdir)/%,raddb/%,$@) $@
+endif
 
 #  List directories before the file targets.
 #  It's not clear why GNU Make doesn't deal well with this.

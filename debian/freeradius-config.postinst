@@ -18,6 +18,9 @@ case "$1" in
           if ! dpkg-statoverride --list | grep -qw /etc/freeradius/dictionary$; then
             dpkg-statoverride --add --update root freerad 0644 /etc/freeradius/dictionary
           fi
+
+          # Create snakoil certificates on initial install
+          make -C /etc/freeradius/certs/
         fi
         ;;
 esac
