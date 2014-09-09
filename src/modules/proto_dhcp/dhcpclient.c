@@ -433,7 +433,11 @@ int main(int argc, char **argv)
 	struct timeval tv;
 	tv.tv_sec = (time_t)timeout;
 	tv.tv_usec = (uint64_t)(timeout * 1000000) - (tv.tv_sec * 1000000);
-	setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (char *)&tv,sizeof(struct timeval));
+	if (setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (char *)&tv,sizeof(struct timeval)) == -1) {
+		fprintf(stderr, "dhcpclient: failed setting socket timeout: %s\n",
+			fr_syserror(errno));
+		exit(1);
+	}
 	
 	request->sockfd = sockfd;
 	if (request->src_ipaddr.af == AF_UNSPEC) {
