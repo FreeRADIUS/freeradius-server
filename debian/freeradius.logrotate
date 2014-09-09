@@ -1,6 +1,9 @@
 /var/log/freeradius/*.log {
         weekly
         rotate 52
+        postrotate
+                service freeradius reload > /dev/null
+        endscript
         compress
         notifempty
 }
