@@ -1891,12 +1891,15 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 
 		while (conf->verify_client_cert_cmd) {
 			char filename[256];
+			mode_t orig_umask;
 			int fd;
 			FILE *fp;
 
 			snprintf(filename, sizeof(filename), "%s/%s.client.XXXXXXXX",
 				 conf->verify_tmp_dir, progname);
+			orig_umask = umask(S_IRWXG | S_IRWXO);
 			fd = mkstemp(filename);
+			umask(orig_umask);
 			if (fd < 0) {
 				RDEBUG("Failed creating file in %s: %s",
 				       conf->verify_tmp_dir, fr_syserror(errno));

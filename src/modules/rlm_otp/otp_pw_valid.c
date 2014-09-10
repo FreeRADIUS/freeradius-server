@@ -78,16 +78,20 @@ int otp_pw_valid(REQUEST *request, int pwe, char const *challenge,
 	char const	*username = request->username->vp_strvalue;
 	int		rc;
 
-	if (request->username->length > OTP_MAX_USERNAME_LEN) {
+	otp_request.version = 2;
+
+	if (strlcpy(otp_request.username, username,
+			sizeof(otp_request.username)) >=
+		sizeof(otp_request.username)) {
 		AUTH("rlm_otp: username [%s] too long", username);
 		return RLM_MODULE_REJECT;
 	}
-
-	/* we already know challenge is short enough */
-	otp_request.version = 2;
-
-	strcpy(otp_request.username, username);
-	strcpy(otp_request.challenge, challenge);
+	if (strlcpy(otp_request.challenge, challenge,
+			sizeof(otp_request.challenge)) >=
+		sizeof(otp_request.challenge)) {
+		AUTH("rlm_otp: challenge for [%s] too long", username);
+		return RLM_MODULE_REJECT;
+	}
 
 	otp_request.pwe.pwe = pwe;
 
@@ -112,14 +116,14 @@ int otp_pw_valid(REQUEST *request, int pwe, char const *challenge,
 	 */
 	switch (otp_request.pwe.pwe) {
 	case PWE_PAP:
-		if (rvp->length >= sizeof(otp_request.pwe.u.pap.passcode)) {
+		if (strlcpy(otp_request.pwe.u.pap.passcode, rvp->vp_strvalue,
+				sizeof(otp_request.pwe.u.pap.passcode)) >=
+			sizeof(otp_request.pwe.u.pap.passcode)) {
 			AUTH("rlm_otp: passcode for [%s] too long",
 			       username);
 
 			return RLM_MODULE_REJECT;
 		}
-
-		(void) strcpy(otp_request.pwe.u.pap.passcode, rvp->vp_strvalue);
 		break;
 
 	case PWE_CHAP:
