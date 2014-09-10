@@ -340,11 +340,30 @@ static ssize_t perl_xlat(void *instance, REQUEST *request, char const *fmt, char
 
 		PUSHMARK(SP);
 
-		p = fmt;
-		while ((q = strchr(p, ' '))) {
-			XPUSHs(sv_2mortal(newSVpvn(p, p - q)));
+		p = q = fmt;
+		while (*p == ' ') {
+			p++;
+			q++;
+		}
+		while (*q) {
+			if (*q == ' ') {
+				XPUSHs(sv_2mortal(newSVpvn(p, q - p)));
+				p = q + 1;
 
-			p = q + 1;
+				/*
+				 *	Don't use an empty string
+				 */
+				while (*p == ' ') p++;
+				q = p;
+			}
+			q++;
+		}
+
+		/*
+		 *	And the last bit.
+		 */
+		if (*p) {
+			XPUSHs(sv_2mortal(newSVpvn(p, strlen(p))));
 		}
 
 		PUTBACK;
