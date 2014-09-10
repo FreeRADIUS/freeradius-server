@@ -46,7 +46,14 @@ FreeRADIUS 3.0.4 Mon 12 May 2014 15:30:00 EDT urgency=medium
 	  a tag.
 	* The logintime and expiration modules can now be listed in the
 	  post-auth section.  This makes some configurations simpler.
-	* Allow integer comparisons in conditions, without casts.
+	* Allow comparison of integer attributes of different sizes,
+	  without requiring a cast.
+	* rlm_sqlippool is now IPV6 capable.  Set "ipv6 = yes" to get
+	  Framed-IPv6-Prefix returned.  The SQL queries have NOT been updated.
+	  Please submit patches.
+	* The debian build now checks for the OpenSSL package with the heartbleed
+	  fix, and if found, sets: allow_vulnerable_openssl = 'CVE-2014-0160'
+	* allow bootstrap from multiple files in sqlite driver.
 
 	Bug fixes
 	* make case-insensitive regular expressions work again, and add tests
@@ -122,11 +129,13 @@ FreeRADIUS 3.0.4 Mon 12 May 2014 15:30:00 EDT urgency=medium
 	  We might not have permission to change it.
 	* Use getpwnam_r() and getgrnam_r() on systems which support it.
 	  Closes #775.
-	* When clients are loaded from SQL, allow them to be tied
-	  to a virtual server.
+	* Clients loaded from SQL are now tied to the "listen" section
+	  of a virtual server, instead of being global.
 	* Check for -lpcre.  The system might have pcre.h without -lpcre.
 	* When proxying to a virtual server, use the proxy_reply instead
 	  of ignoring it.
+	* Fixed typos in DHCP SQL IPPool.
+	* Fix crash when passing multiple arguments to Perl xlat.
 
 FreeRADIUS 3.0.3 Mon 12 May 2014 15:30:00 EDT urgency=medium
 	Feature improvements
