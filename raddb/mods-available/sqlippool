@@ -24,6 +24,9 @@ sqlippool {
 	# IP lease duration. (Leases expire even if Acct Stop packet is lost)
 	lease_duration = 3600
 
+	# protocol to use.  The default is IPv4.
+#	ipv6 = yes
+
 	# Attribute which should be considered unique per NAS
 	#
 	#  Using NAS-Port gives behaviour similar to rlm_ippool. (And ACS)
