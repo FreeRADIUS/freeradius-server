@@ -24,7 +24,10 @@ freeradius (3.0.4) stable; urgency=medium
 	- Foundational work for dynamic home servers.  They do not yet work, but this is now only a matter of updating the "realm" module in a future release.
 	- Support &attr[*] syntax to copy all instances of an attribute when used with the += operator in an update section. May be qualified with a tag.
 	- The logintime and expiration modules can now be listed in the post-auth section.  This makes some configurations simpler.
-	- Allow integer comparisons in conditions, without casts.
+	- Allow comparison of integer attributes of different sizes without requiring a cast.
+	- rlm_sqlippool is now IPV6 capable.  Set "ipv6 = yes" to get Framed-IPv6-Prefix returned.  The SQL queries have NOT been updated. Please submit patches.
+	- The debian build now checks for the OpenSSL package with the heartbleed fix, and if found, sets: allow_vulnerable_openssl = 'CVE-2014-0160'
+	- allow bootstrap from multiple files in sqlite driver.
   * Bug fixes
 	- make case-insensitive regular expressions work again, and add tests for them.
 	- A few more talloc parenting issues
@@ -70,8 +73,10 @@ freeradius (3.0.4) stable; urgency=medium
 	- When clients are loaded from SQL, allow them to be tied to a virtual server.
 	- Check for -lpcre.  The system might have pcre.h without -lpcre.
 	- When proxying to a virtual server, use the proxy_reply instead of ignoring it.
+	- Fixed typos in DHCP SQL IPPool.
+	- Fix crash when passing multiple arguments to Perl xlat.
 
- -- Alan DeKok <aland@freeradius.org>  Tue, 09 Sep 2014 12:00:00 -0400
+ -- Alan DeKok <aland@freeradius.org>  Wed, 10 Sep 2014 12:00:00 -0400
 
 freeradius (3.0.3+git) unstable; urgency=medium
 
