@@ -2107,7 +2107,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		case T_OP_EQ:
 		case T_OP_SET:
 			t3 = getstring(&ptr, buf3, sizeof(buf3), true);
-			if (t3 == T_OP_INVALID) {
+			if (t3 == T_INVALID) {
 				ERROR("%s[%d]: Parse error: %s",
 				       filename, *lineno,
 				       fr_strerror());
@@ -2202,7 +2202,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			/*
 			 *	There may not be a name2
 			 */
-			css->name2_type = (t2 == T_LCBRACE) ? T_OP_INVALID : t2;
+			css->name2_type = (t2 == T_LCBRACE) ? T_INVALID : t2;
 
 			/*
 			 *	The current section is now the child section.
@@ -2210,7 +2210,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			this = css;
 			continue;
 
-		case T_OP_INVALID:
+		case T_INVALID:
 			ERROR("%s[%d]: Syntax error in '%s': %s", filename, *lineno, ptr, fr_strerror());
 
 			return -1;
@@ -2393,17 +2393,17 @@ char const *cf_pair_value(CONF_PAIR const *pair)
 
 FR_TOKEN cf_pair_operator(CONF_PAIR const *pair)
 {
-	return (pair ? pair->op : T_OP_INVALID);
+	return (pair ? pair->op : T_INVALID);
 }
 
 /*
  * Return the value type, should be one of the following:
  * T_BARE_WORD, T_SINGLE_QUOTED_STRING, T_BACK_QUOTED_STRING
- * T_DOUBLE_QUOTED_STRING or T_OP_INVALID if the pair is NULL.
+ * T_DOUBLE_QUOTED_STRING or T_INVALID if the pair is NULL.
  */
 FR_TOKEN cf_pair_value_type(CONF_PAIR const *pair)
 {
-	return (pair ? pair->value_type : T_OP_INVALID);
+	return (pair ? pair->value_type : T_INVALID);
 }
 
 /*
@@ -2983,7 +2983,7 @@ const CONF_PARSER *cf_section_parse_table(CONF_SECTION *cs)
  */
 FR_TOKEN cf_section_name2_type(CONF_SECTION const *cs)
 {
-	if (!cs) return T_OP_INVALID;
+	if (!cs) return T_INVALID;
 
 	return cs->name2_type;
 }

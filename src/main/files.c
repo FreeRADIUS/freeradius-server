@@ -179,7 +179,7 @@ parse_again:
 			reply_tmp = NULL;
 			old_lineno = lineno;
 			parsecode = userparse(ctx, ptr, &check_tmp);
-			if (parsecode == T_OP_INVALID) {
+			if (parsecode == T_INVALID) {
 				pairlist_free(&pl);
 				ERROR("%s[%d]: Parse error (check) for entry %s: %s",
 					file, lineno, entry, fr_strerror());

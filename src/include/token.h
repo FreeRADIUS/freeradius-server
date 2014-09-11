@@ -32,7 +32,7 @@ extern "C" {
 #endif
 
 typedef enum fr_token_t {
-	T_OP_INVALID = 0,		/* invalid token */
+	T_INVALID = 0,			/* invalid token */
 	T_EOL,				/* end of line */
 	T_LCBRACE,			/* { */
 	T_RCBRACE,			/* } */

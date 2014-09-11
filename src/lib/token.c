@@ -168,7 +168,7 @@ static FR_TOKEN getthing(char const **ptr, char *buf, int buflen, int tok,
 
 	if (quote && !end) {
 		fr_strerror_printf("Unterminated string");
-		return T_OP_INVALID;
+		return T_INVALID;
 	}
 
 	/* Skip whitespace again. */
@@ -223,7 +223,7 @@ FR_TOKEN getstring(char const **ptr, char *buf, int buflen, bool unescape)
 {
 	char const *p;
 
-	if (!ptr || !*ptr || !buf) return T_OP_INVALID;
+	if (!ptr || !*ptr || !buf) return T_INVALID;
 
 	p = *ptr;
 
