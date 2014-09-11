@@ -354,7 +354,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 
 	rad_assert(c != NULL);
 	lhs = rhs = NULL;
-	lhs_type = rhs_type = T_OP_INVALID;
+	lhs_type = rhs_type = T_INVALID;
 
 	while (isspace((int) *p)) p++; /* skip spaces before condition */
 
@@ -1355,7 +1355,7 @@ done:
 			}
 
 			/*
-			 *	Else lhs_type==T_OP_INVALID, and this
+			 *	Else lhs_type==T_INVALID, and this
 			 *	node was made by promoting a child
 			 *	which had already been normalized.
 			 */

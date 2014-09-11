@@ -1688,7 +1688,7 @@ static int rs_build_filter(VALUE_PAIR **out, char const *filter)
 	FR_TOKEN code;
 
 	code = userparse(conf, filter, out);
-	if (code == T_OP_INVALID) {
+	if (code == T_INVALID) {
 		ERROR("Invalid RADIUS filter \"%s\" (%s)", filter, fr_strerror());
 		return -1;
 	}

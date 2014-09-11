@@ -1935,12 +1935,12 @@ FR_TOKEN pairread(char const **ptr, VALUE_PAIR_RAW *raw)
 {
 	char const	*p;
 	char *q;
-	FR_TOKEN	ret = T_OP_INVALID, next, quote;
+	FR_TOKEN	ret = T_INVALID, next, quote;
 	char		buf[8];
 
 	if (!ptr || !*ptr || !raw) {
 		fr_strerror_printf("Invalid arguments");
-		return T_OP_INVALID;
+		return T_INVALID;
 	}
 
 	/*
@@ -1952,7 +1952,7 @@ FR_TOKEN pairread(char const **ptr, VALUE_PAIR_RAW *raw)
 	if (!*p) {
 		fr_strerror_printf("No token read where we expected "
 				   "an attribute name");
-		return T_OP_INVALID;
+		return T_INVALID;
 	}
 
 	if (*p == '#') {
@@ -1972,7 +1972,7 @@ FR_TOKEN pairread(char const **ptr, VALUE_PAIR_RAW *raw)
 		if (q >= (raw->l_opand + sizeof(raw->l_opand))) {
 		too_long:
 			fr_strerror_printf("Attribute name too long");
-			return T_OP_INVALID;
+			return T_INVALID;
 		}
 
 		/*
@@ -1981,7 +1981,7 @@ FR_TOKEN pairread(char const **ptr, VALUE_PAIR_RAW *raw)
 		if ((*t < 32) || (*t >= 128)) {
 		invalid:
 			fr_strerror_printf("Invalid attribute name");
-			return T_OP_INVALID;
+			return T_INVALID;
 		}
 
 		/*
@@ -2038,7 +2038,7 @@ FR_TOKEN pairread(char const **ptr, VALUE_PAIR_RAW *raw)
 	if (raw->op  < T_EQSTART || raw->op  > T_EQEND) {
 		fr_strerror_printf("Expecting operator");
 
-		return T_OP_INVALID;
+		return T_INVALID;
 	}
 
 	/*
@@ -2048,7 +2048,7 @@ FR_TOKEN pairread(char const **ptr, VALUE_PAIR_RAW *raw)
 	if (quote == T_EOL) {
 		fr_strerror_printf("Failed to get value");
 
-		return T_OP_INVALID;
+		return T_INVALID;
 	}
 
 	/*
@@ -2068,7 +2068,7 @@ FR_TOKEN pairread(char const **ptr, VALUE_PAIR_RAW *raw)
 
 	default:
 		fr_strerror_printf("Expected end of line or comma");
-		return T_OP_INVALID;
+		return T_INVALID;
 	}
 	ret = next;
 
@@ -2102,19 +2102,19 @@ FR_TOKEN pairread(char const **ptr, VALUE_PAIR_RAW *raw)
  *
  * The line may specify multiple attributes separated by commas.
  *
- * @note If the function returns T_OP_INVALID, an error has occurred and
+ * @note If the function returns T_INVALID, an error has occurred and
  * @note the valuepair list should probably be freed.
  *
  * @param ctx for talloc
  * @param buffer to read valuepairs from.
  * @param list where the parsed VALUE_PAIRs will be appended.
- * @return the last token parsed, or T_OP_INVALID
+ * @return the last token parsed, or T_INVALID
  */
 FR_TOKEN userparse(TALLOC_CTX *ctx, char const *buffer, VALUE_PAIR **list)
 {
 	VALUE_PAIR	*vp, *head, **tail;
 	char const	*p;
-	FR_TOKEN	last_token = T_OP_INVALID;
+	FR_TOKEN	last_token = T_INVALID;
 	FR_TOKEN	previous_token;
 	VALUE_PAIR_RAW	raw;
 
@@ -2136,23 +2136,23 @@ FR_TOKEN userparse(TALLOC_CTX *ctx, char const *buffer, VALUE_PAIR **list)
 		previous_token = last_token;
 
 		last_token = pairread(&p, &raw);
-		if (last_token == T_OP_INVALID) break;
+		if (last_token == T_INVALID) break;
 
 		if (raw.quote == T_DOUBLE_QUOTED_STRING) {
 			vp = pairmake(ctx, NULL, raw.l_opand, NULL, raw.op);
 			if (!vp) {
-				last_token = T_OP_INVALID;
+				last_token = T_INVALID;
 				break;
 			}
 			if (pairmark_xlat(vp, raw.r_opand) < 0) {
 				talloc_free(vp);
-				last_token = T_OP_INVALID;
+				last_token = T_INVALID;
 				break;
 			}
 		} else {
 			vp = pairmake(ctx, NULL, raw.l_opand, raw.r_opand, raw.op);
 			if (!vp) {
-				last_token = T_OP_INVALID;
+				last_token = T_INVALID;
 				break;
 			}
 		}
@@ -2168,7 +2168,7 @@ FR_TOKEN userparse(TALLOC_CTX *ctx, char const *buffer, VALUE_PAIR **list)
 		last_token = previous_token;
 	}
 
-	if (last_token == T_OP_INVALID) {
+	if (last_token == T_INVALID) {
 		pairfree(&head);
 	} else {
 		pairadd(list, head);
