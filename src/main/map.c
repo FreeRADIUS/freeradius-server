@@ -376,26 +376,45 @@ value_pair_map_t *map_from_fields(TALLOC_CTX *ctx, char const *lhs, FR_TOKEN lhs
  *
  * @param out Where to write the new map (must be freed with talloc_free()).
  * @param request Current request.
- * @param raw string to parse.
+ * @param vp_str string to parse.
  * @param dst_request_def to use if attribute isn't qualified.
  * @param dst_list_def to use if attribute isn't qualified.
  * @param src_request_def to use if attribute isn't qualified.
  * @param src_list_def to use if attribute isn't qualified.
  * @return 0 on success, < 0 on error.
  */
-int map_from_vp_str(value_pair_map_t **out, REQUEST *request, char const *raw,
+int map_from_vp_str(value_pair_map_t **out, REQUEST *request, char const *vp_str,
 		    request_refs_t dst_request_def, pair_lists_t dst_list_def,
 		    request_refs_t src_request_def, pair_lists_t src_list_def)
 {
-	char const *p = raw;
-	FR_TOKEN ret;
+	char const *p = vp_str;
+	FR_TOKEN quote;
 
-	VALUE_PAIR_RAW tokens;
+	VALUE_PAIR_RAW raw;
 	value_pair_map_t *map;
 
-	ret = pairread(&p, &tokens);
-	if (ret != T_EOL) {
+	quote = gettoken(&p, raw.l_opand, sizeof(raw.l_opand), false);
+	switch (quote) {
+	case T_BARE_WORD:
+		break;
+
+	case T_INVALID:
+	error:
 		REDEBUG("Failed tokenising attribute string: %s", fr_strerror());
+		return -1;
+
+	default:
+		REDEBUG("Failed tokenising attribute string: Left operand must be an attribute");
+		return -1;
+	}
+
+	raw.op = getop(&p);
+	if (raw.op == T_INVALID) goto error;
+
+	raw.quote = gettoken(&p, raw.r_opand, sizeof(raw.r_opand), false);
+	if (raw.quote == T_INVALID) goto error;
+	if (!fr_str_tok[raw.quote]) {
+		REDEBUG("Failed tokenising attribute string: Right operand must be an attribute or string");
 		return -1;
 	}
 

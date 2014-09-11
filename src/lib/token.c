@@ -119,6 +119,39 @@ const bool fr_equality_op[] = {
 	false
 };
 
+const bool fr_str_tok[] = {
+	false,		/* invalid token */
+	false,		/* end of line */
+	false,		/* { */
+	false,		/* } */
+	false,		/* ( */
+	false,		/* ) 		 5 */
+	false,		/* , */
+	false,		/* ; */
+
+	false,		/* ++ */
+	false,		/* += */
+	false,		/* -=  		10 */
+	false,		/* := */
+	false,		/* = */
+	false,		/* != */
+	false,		/* >= */
+	false,		/* > 		15 */
+	false,		/* <= */
+	false,		/* < */
+	false,		/* =~ */
+	false,		/* !~ */
+	false,		/* =* 		20 */
+	false,		/* !* */
+	false,		/* == */
+	false,				/* # */
+	true,		/* bare word */
+	true,		/* "foo" 	25 */
+	true,		/* 'foo' */
+	true,		/* `foo` */
+	false
+};
+
 /*
  *	This works only as long as special tokens
  *	are max. 2 characters, but it's fast.
