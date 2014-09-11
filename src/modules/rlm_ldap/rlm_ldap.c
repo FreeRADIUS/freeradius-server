@@ -115,7 +115,7 @@ static CONF_PARSER profile_config[] = {
  *	User configuration
  */
 static CONF_PARSER user_config[] = {
-	{ "filter", FR_CONF_OFFSET(PW_TYPE_STRING, ldap_instance_t, userobj_filter), "(uid=%u)" },
+	{ "filter", FR_CONF_OFFSET(PW_TYPE_STRING, ldap_instance_t, userobj_filter), NULL },
 	{ "scope", FR_CONF_OFFSET(PW_TYPE_STRING, ldap_instance_t, userobj_scope_str), "sub" },
 	{ "base_dn", FR_CONF_OFFSET(PW_TYPE_STRING, ldap_instance_t, userobj_base_dn), "" },
 

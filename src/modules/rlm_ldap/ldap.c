@@ -874,6 +874,7 @@ char const *rlm_ldap_find_user(ldap_instance_t const *inst, REQUEST *request, ld
 	int		ldap_errno;
 	char		*dn = NULL;
 	char	    	filter[LDAP_MAX_FILTER_STR_LEN];
+	char		*filter_p = NULL;
 	char	    	base_dn[LDAP_MAX_DN_STR_LEN];
 
 	bool freeit = false;					//!< Whether the message should
@@ -918,11 +919,16 @@ char const *rlm_ldap_find_user(ldap_instance_t const *inst, REQUEST *request, ld
 		(*pconn)->rebound = false;
 	}
 
-	if (radius_xlat(filter, sizeof(filter), request, inst->userobj_filter, rlm_ldap_escape_func, NULL) < 0) {
-		REDEBUG("Unable to create filter");
-		*rcode = RLM_MODULE_INVALID;
+	if (inst->userobj_filter) {
+		if (radius_xlat(filter, sizeof(filter), request, inst->userobj_filter,
+				rlm_ldap_escape_func, NULL) < 0) {
+			REDEBUG("Unable to create filter");
+			*rcode = RLM_MODULE_INVALID;
 
-		return NULL;
+			return NULL;
+		}
+
+		filter_p = filter;
 	}
 
 	if (radius_xlat(base_dn, sizeof(base_dn), request, inst->userobj_base_dn, rlm_ldap_escape_func, NULL) < 0) {
@@ -932,7 +938,7 @@ char const *rlm_ldap_find_user(ldap_instance_t const *inst, REQUEST *request, ld
 		return NULL;
 	}
 
-	status = rlm_ldap_search(inst, request, pconn, base_dn, inst->userobj_scope, filter, attrs, result);
+	status = rlm_ldap_search(inst, request, pconn, base_dn, inst->userobj_scope, filter_p, attrs, result);
 	switch (status) {
 	case LDAP_PROC_SUCCESS:
 		break;
