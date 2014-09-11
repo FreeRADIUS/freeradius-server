@@ -34,12 +34,10 @@
 #
 #  Define a network where clients may be dynamically defined.
 client dynamic {
-	ipaddr = 192.0.2.0
-
 	#
 	#  You MUST specify a netmask!
 	#  IPv4 /32 or IPv6 /128 are NOT allowed!
-	netmask = 24
+	ipaddr = 192.0.2.0/24
 
 	#
 	#  Any other configuration normally found in a "client"
