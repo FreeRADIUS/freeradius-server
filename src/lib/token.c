@@ -68,7 +68,7 @@ const FR_NAME_NUMBER fr_tokens[] = {
  *	At end-of-line, buf[0] is set to '\0'.
  *	Returns 0 or special token value.
  */
-static FR_TOKEN getthing(char const **ptr, char *buf, int buflen, int tok,
+static FR_TOKEN getthing(char const **ptr, char *buf, int buflen, bool tok,
 			 FR_NAME_NUMBER const *tokenlist, bool unescape)
 {
 	char			*s;
@@ -204,7 +204,7 @@ static FR_TOKEN getthing(char const **ptr, char *buf, int buflen, int tok,
  */
 int getword(char const **ptr, char *buf, int buflen, bool unescape)
 {
-	return getthing(ptr, buf, buflen, 0, fr_tokens, unescape) == T_EOL ? 0 : 1;
+	return getthing(ptr, buf, buflen, false, fr_tokens, unescape) == T_EOL ? 0 : 1;
 }
 
 
@@ -213,7 +213,7 @@ int getword(char const **ptr, char *buf, int buflen, bool unescape)
  */
 FR_TOKEN gettoken(char const **ptr, char *buf, int buflen, bool unescape)
 {
-	return getthing(ptr, buf, buflen, 1, fr_tokens, unescape);
+	return getthing(ptr, buf, buflen, true, fr_tokens, unescape);
 }
 
 /*
