@@ -400,7 +400,7 @@ int map_from_vp_str(value_pair_map_t **out, REQUEST *request, char const *raw,
 	}
 
 	map = map_from_str(request, tokens.l_opand, T_BARE_WORD, tokens.op, tokens.r_opand, tokens.quote,
-			     dst_request_def, dst_list_def, src_request_def, src_list_def);
+			   dst_request_def, dst_list_def, src_request_def, src_list_def);
 	if (!map) {
 		REDEBUG("Failed parsing attribute string: %s", fr_strerror());
 		return -1;
