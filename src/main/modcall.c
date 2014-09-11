@@ -2988,10 +2988,10 @@ static bool pass2_callback(UNUSED void *ctx, fr_cond_t *c)
 		/*
 		 *	Re-parse the LHS as an attribute.
 		 */
-		map = map_from_str(c, old->dst->name, T_BARE_WORD, old->op,
-				     old->src->name, T_BARE_WORD,
-				     REQUEST_CURRENT, PAIR_LIST_REQUEST,
-				     REQUEST_CURRENT, PAIR_LIST_REQUEST);
+		map = map_from_fields(c, old->dst->name, T_BARE_WORD, old->op,
+				      old->src->name, T_BARE_WORD,
+				      REQUEST_CURRENT, PAIR_LIST_REQUEST,
+				      REQUEST_CURRENT, PAIR_LIST_REQUEST);
 		if (!map) {
 			cf_log_err(old->ci, "Failed parsing condition");
 			return false;

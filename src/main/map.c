@@ -343,12 +343,12 @@ error:
  *	in.
  * @return value_pair_map_t if successful or NULL on error.
  */
-value_pair_map_t *map_from_str(TALLOC_CTX *ctx, char const *lhs, FR_TOKEN lhs_type,
-			       FR_TOKEN op, char const *rhs, FR_TOKEN rhs_type,
-			       request_refs_t dst_request_def,
-			       pair_lists_t dst_list_def,
-			       request_refs_t src_request_def,
-			       pair_lists_t src_list_def)
+value_pair_map_t *map_from_fields(TALLOC_CTX *ctx, char const *lhs, FR_TOKEN lhs_type,
+			          FR_TOKEN op, char const *rhs, FR_TOKEN rhs_type,
+			          request_refs_t dst_request_def,
+			          pair_lists_t dst_list_def,
+			          request_refs_t src_request_def,
+			          pair_lists_t src_list_def)
 {
 	value_pair_map_t *map;
 
@@ -399,8 +399,8 @@ int map_from_vp_str(value_pair_map_t **out, REQUEST *request, char const *raw,
 		return -1;
 	}
 
-	map = map_from_str(request, tokens.l_opand, T_BARE_WORD, tokens.op, tokens.r_opand, tokens.quote,
-			   dst_request_def, dst_list_def, src_request_def, src_list_def);
+	map = map_from_fields(request, raw.l_opand, T_BARE_WORD, raw.op, raw.r_opand, raw.quote,
+			      dst_request_def, dst_list_def, src_request_def, src_list_def);
 	if (!map) {
 		REDEBUG("Failed parsing attribute string: %s", fr_strerror());
 		return -1;

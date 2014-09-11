@@ -61,10 +61,10 @@ value_pair_map_t *map_from_cp(TALLOC_CTX *ctx, CONF_PAIR *cp,
 			      request_refs_t dst_request_def, pair_lists_t dst_list_def,
 			      request_refs_t src_request_def, pair_lists_t src_list_def);
 
-value_pair_map_t *map_from_str(TALLOC_CTX *ctx, char const *lhs, FR_TOKEN lhs_type,
-			       FR_TOKEN op, char const *rhs, FR_TOKEN rhs_type,
-			       request_refs_t dst_request_def, pair_lists_t dst_list_def,
-			       request_refs_t src_request_def, pair_lists_t src_list_def);
+value_pair_map_t *map_from_fields(TALLOC_CTX *ctx, char const *lhs, FR_TOKEN lhs_type,
+				  FR_TOKEN op, char const *rhs, FR_TOKEN rhs_type,
+				  request_refs_t dst_request_def, pair_lists_t dst_list_def,
+				  request_refs_t src_request_def, pair_lists_t src_list_def);
 
 int		map_from_cs(CONF_SECTION *cs, value_pair_map_t **head,
 			    pair_lists_t dst_list_def, pair_lists_t src_list_def,
