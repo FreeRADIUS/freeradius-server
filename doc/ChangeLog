@@ -1,4 +1,11 @@
-FreeRADIUS 3.0.4 Mon 12 May 2014 15:30:00 EDT urgency=medium
+FreeRADIUS 3.0.5 Mon 15 Sep 2014 15:30:00 EDT urgency=medium
+	Feature improvements
+	
+	Bug fixes
+	* Parse list qualifiers in generic LDAP 'valuepair_attribute'
+	  attributes correctly.
+	  
+FreeRADIUS 3.0.4 Mon 09 Sep 2014 15:30:00 EDT urgency=medium
 	Feature improvements
 	* Home server "response_window" can now take fractions of a
 	  second.  See proxy.conf.
