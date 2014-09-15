@@ -230,7 +230,7 @@ typedef struct json_flags {
 
 /** Initialises libcurl.
  *
- * Allocates global variables and memory required for libcurl to fundtion.
+ * Allocates global variables and memory required for libcurl to function.
  * MUST only be called once per module instance.
  *
  * rest_cleanup must not be called if rest_init fails.
