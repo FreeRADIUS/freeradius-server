@@ -56,10 +56,10 @@ void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
 	lcb_error_t cb_error = LCB_SUCCESS;         /* couchbase error status */
 
 	/* create instance */
-	cb_inst = couchbase_init_connection(inst->server, inst->bucket, inst->password);
+	cb_error = couchbase_init_connection(&cb_inst, inst->server, inst->bucket, inst->password);
 
-	/* check couchbase instance status */
-	if ((cb_error = lcb_get_last_error(cb_inst)) != LCB_SUCCESS) {
+	/* check couchbase instance */
+	if (cb_error != LCB_SUCCESS) {
 		ERROR("rlm_couchbase: failed to initiate couchbase connection: %s (0x%x)", lcb_strerror(NULL, cb_error), cb_error);
 		/* destroy/free couchbase instance */
 		lcb_destroy(cb_inst);
@@ -91,13 +91,10 @@ int mod_conn_alive(UNUSED void *instance, void *handle)
 	lcb_t cb_inst = chandle->handle;            /* couchbase instance */
 	lcb_error_t cb_error = LCB_SUCCESS;         /* couchbase error status */
 
-	/* attempt to get server list */
-	const char *const *servers = lcb_get_server_list(cb_inst);
-
-	/* check error state and server list return */
-	if (((cb_error = lcb_get_last_error(cb_inst)) != LCB_SUCCESS) || (servers == NULL)) {
+	/* attempt to get server stats */
+	if ((cb_error = couchbase_server_stats(cb_inst, NULL)) != LCB_SUCCESS) {
 		/* log error */
-		ERROR("rlm_couchbase: failed to get couchbase server topology: %s (0x%x)", lcb_strerror(NULL, cb_error), cb_error);
+		ERROR("rlm_couchbase: failed to get couchbase server stats: %s (0x%x)", lcb_strerror(NULL, cb_error), cb_error);
 		/* return false */
 		return false;
 	}
