@@ -1065,6 +1065,7 @@ RADCLIENT *client_from_request(RADCLIENT_LIST *clients, REQUEST *request)
 #ifdef WITH_UDPFROMTO
 				c->src_ipaddr.af = AF_INET;
 				c->src_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
+				c->ipaddr.prefix = 32;
 #else
 				WARN("Server not built with udpfromto, ignoring FreeRADIUS-Client-Src-IP-Address");
 #endif
@@ -1081,6 +1082,7 @@ RADCLIENT *client_from_request(RADCLIENT_LIST *clients, REQUEST *request)
 #ifdef WITH_UDPFROMTO
 				c->src_ipaddr.af = AF_INET6;
 				c->src_ipaddr.ipaddr.ip6addr = vp->vp_ipv6addr;
+				c->ipaddr.prefix = 128;
 #else
 				WARN("Server not built with udpfromto, ignoring FreeRADIUS-Client-Src-IPv6-Address");
 #endif
