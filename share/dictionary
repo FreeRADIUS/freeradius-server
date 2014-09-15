@@ -111,6 +111,7 @@ $INCLUDE dictionary.rfc6911
 $INCLUDE dictionary.rfc6929
 $INCLUDE dictionary.rfc6930
 $INCLUDE dictionary.rfc7055
+$INCLUDE dictionary.rfc7155
 $INCLUDE dictionary.rfc7268
 
 #
