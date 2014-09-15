@@ -7004,7 +7004,7 @@ smart_try_dir="$talloc_include_dir"
 ac_safe=`echo "talloc.h" | sed 'y%./+-%__pm%'`
 old_CPPFLAGS="$CPPFLAGS"
 smart_include=
-smart_include_dir="/usr/local/include /opt/include"
+smart_include_dir="/usr/local/include /opt/include /usr/include"
 
 _smart_try_dir=
 _smart_include_dir=
@@ -7056,41 +7056,6 @@ rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 fi
 
 if test "x$smart_include" = "x"; then
-  for _prefix in $smart_prefix; do
-    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for ${_prefix}/talloc.h" >&5
-$as_echo_n "checking for ${_prefix}/talloc.h... " >&6; }
-
-    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-		    #include <talloc.h>
-int
-main ()
-{
-int a = 1;
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_compile "$LINENO"; then :
-
-		     smart_include="-isystem ${_prefix}/"
-		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-$as_echo "yes" >&6; }
-		     break
-
-else
-
-		     smart_include=
-		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
-$as_echo "no" >&6; }
-
-fi
-rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
-  done
-fi
-
-if test "x$smart_include" = "x"; then
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for talloc.h" >&5
 $as_echo_n "checking for talloc.h... " >&6; }
 
@@ -7124,7 +7089,6 @@ rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 fi
 
 if test "x$smart_include" = "x"; then
-
   for prefix in $smart_prefix; do
 
 
@@ -8074,7 +8038,7 @@ See \`config.log' for more details" "$LINENO" 5; }
 ac_safe=`echo "openssl/ssl.h" | sed 'y%./+-%__pm%'`
 old_CPPFLAGS="$CPPFLAGS"
 smart_include=
-smart_include_dir="/usr/local/include /opt/include"
+smart_include_dir="/usr/local/include /opt/include /usr/include"
 
 _smart_try_dir=
 _smart_include_dir=
@@ -8126,41 +8090,6 @@ rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 fi
 
 if test "x$smart_include" = "x"; then
-  for _prefix in $smart_prefix; do
-    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for ${_prefix}/openssl/ssl.h" >&5
-$as_echo_n "checking for ${_prefix}/openssl/ssl.h... " >&6; }
-
-    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-		    #include <openssl/ssl.h>
-int
-main ()
-{
-int a = 1;
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_compile "$LINENO"; then :
-
-		     smart_include="-isystem ${_prefix}/"
-		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-$as_echo "yes" >&6; }
-		     break
-
-else
-
-		     smart_include=
-		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
-$as_echo "no" >&6; }
-
-fi
-rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
-  done
-fi
-
-if test "x$smart_include" = "x"; then
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for openssl/ssl.h" >&5
 $as_echo_n "checking for openssl/ssl.h... " >&6; }
 
@@ -8194,7 +8123,6 @@ rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 fi
 
 if test "x$smart_include" = "x"; then
-
   for prefix in $smart_prefix; do
 
 
@@ -8433,7 +8361,7 @@ else
 ac_safe=`echo "pcap.h" | sed 'y%./+-%__pm%'`
 old_CPPFLAGS="$CPPFLAGS"
 smart_include=
-smart_include_dir="/usr/local/include /opt/include"
+smart_include_dir="/usr/local/include /opt/include /usr/include"
 
 _smart_try_dir=
 _smart_include_dir=
@@ -8485,41 +8413,6 @@ rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 fi
 
 if test "x$smart_include" = "x"; then
-  for _prefix in $smart_prefix; do
-    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for ${_prefix}/pcap.h" >&5
-$as_echo_n "checking for ${_prefix}/pcap.h... " >&6; }
-
-    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-		    #include <pcap.h>
-int
-main ()
-{
-int a = 1;
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_compile "$LINENO"; then :
-
-		     smart_include="-isystem ${_prefix}/"
-		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-$as_echo "yes" >&6; }
-		     break
-
-else
-
-		     smart_include=
-		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
-$as_echo "no" >&6; }
-
-fi
-rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
-  done
-fi
-
-if test "x$smart_include" = "x"; then
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for pcap.h" >&5
 $as_echo_n "checking for pcap.h... " >&6; }
 
@@ -8553,7 +8446,6 @@ rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 fi
 
 if test "x$smart_include" = "x"; then
-
   for prefix in $smart_prefix; do
 
 
@@ -8676,7 +8568,7 @@ else
 ac_safe=`echo "collectd/client.h" | sed 'y%./+-%__pm%'`
 old_CPPFLAGS="$CPPFLAGS"
 smart_include=
-smart_include_dir="/usr/local/include /opt/include"
+smart_include_dir="/usr/local/include /opt/include /usr/include"
 
 _smart_try_dir=
 _smart_include_dir=
@@ -8728,41 +8620,6 @@ rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 fi
 
 if test "x$smart_include" = "x"; then
-  for _prefix in $smart_prefix; do
-    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for ${_prefix}/collectd/client.h" >&5
-$as_echo_n "checking for ${_prefix}/collectd/client.h... " >&6; }
-
-    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-		    #include <collectd/client.h>
-int
-main ()
-{
-int a = 1;
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_compile "$LINENO"; then :
-
-		     smart_include="-isystem ${_prefix}/"
-		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-$as_echo "yes" >&6; }
-		     break
-
-else
-
-		     smart_include=
-		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
-$as_echo "no" >&6; }
-
-fi
-rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
-  done
-fi
-
-if test "x$smart_include" = "x"; then
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for collectd/client.h" >&5
 $as_echo_n "checking for collectd/client.h... " >&6; }
 
@@ -8796,7 +8653,6 @@ rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 fi
 
 if test "x$smart_include" = "x"; then
-
   for prefix in $smart_prefix; do
 
 
@@ -10198,7 +10054,7 @@ smart_try_dir=$execinfo_include_dir
 ac_safe=`echo "execinfo.h" | sed 'y%./+-%__pm%'`
 old_CPPFLAGS="$CPPFLAGS"
 smart_include=
-smart_include_dir="/usr/local/include /opt/include"
+smart_include_dir="/usr/local/include /opt/include /usr/include"
 
 _smart_try_dir=
 _smart_include_dir=
@@ -10250,41 +10106,6 @@ rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 fi
 
 if test "x$smart_include" = "x"; then
-  for _prefix in $smart_prefix; do
-    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for ${_prefix}/execinfo.h" >&5
-$as_echo_n "checking for ${_prefix}/execinfo.h... " >&6; }
-
-    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-		    #include <execinfo.h>
-int
-main ()
-{
-int a = 1;
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_compile "$LINENO"; then :
-
-		     smart_include="-isystem ${_prefix}/"
-		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-$as_echo "yes" >&6; }
-		     break
-
-else
-
-		     smart_include=
-		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
-$as_echo "no" >&6; }
-
-fi
-rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
-  done
-fi
-
-if test "x$smart_include" = "x"; then
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for execinfo.h" >&5
 $as_echo_n "checking for execinfo.h... " >&6; }
 
@@ -10318,7 +10139,6 @@ rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 fi
 
 if test "x$smart_include" = "x"; then
-
   for prefix in $smart_prefix; do
 
 
@@ -10695,7 +10515,7 @@ if test "x$REGEX" = "x"; then
 ac_safe=`echo "pcreposix.h" | sed 'y%./+-%__pm%'`
 old_CPPFLAGS="$CPPFLAGS"
 smart_include=
-smart_include_dir="/usr/local/include /opt/include"
+smart_include_dir="/usr/local/include /opt/include /usr/include"
 
 _smart_try_dir=
 _smart_include_dir=
@@ -10747,41 +10567,6 @@ rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 fi
 
 if test "x$smart_include" = "x"; then
-  for _prefix in $smart_prefix; do
-    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for ${_prefix}/pcreposix.h" >&5
-$as_echo_n "checking for ${_prefix}/pcreposix.h... " >&6; }
-
-    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-		    #include <pcreposix.h>
-int
-main ()
-{
-int a = 1;
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_compile "$LINENO"; then :
-
-		     smart_include="-isystem ${_prefix}/"
-		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-$as_echo "yes" >&6; }
-		     break
-
-else
-
-		     smart_include=
-		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
-$as_echo "no" >&6; }
-
-fi
-rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
-  done
-fi
-
-if test "x$smart_include" = "x"; then
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for pcreposix.h" >&5
 $as_echo_n "checking for pcreposix.h... " >&6; }
 
@@ -10815,7 +10600,6 @@ rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 fi
 
 if test "x$smart_include" = "x"; then
-
   for prefix in $smart_prefix; do
 
 
@@ -11112,7 +10896,7 @@ if test "x$REGEX" = "x"; then
 ac_safe=`echo "regex.h" | sed 'y%./+-%__pm%'`
 old_CPPFLAGS="$CPPFLAGS"
 smart_include=
-smart_include_dir="/usr/local/include /opt/include"
+smart_include_dir="/usr/local/include /opt/include /usr/include"
 
 _smart_try_dir=
 _smart_include_dir=
@@ -11164,41 +10948,6 @@ rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 fi
 
 if test "x$smart_include" = "x"; then
-  for _prefix in $smart_prefix; do
-    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for ${_prefix}/regex.h" >&5
-$as_echo_n "checking for ${_prefix}/regex.h... " >&6; }
-
-    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-		    #include <regex.h>
-int
-main ()
-{
-int a = 1;
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_compile "$LINENO"; then :
-
-		     smart_include="-isystem ${_prefix}/"
-		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-$as_echo "yes" >&6; }
-		     break
-
-else
-
-		     smart_include=
-		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
-$as_echo "no" >&6; }
-
-fi
-rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
-  done
-fi
-
-if test "x$smart_include" = "x"; then
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for regex.h" >&5
 $as_echo_n "checking for regex.h... " >&6; }
 
@@ -11232,7 +10981,6 @@ rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 fi
 
 if test "x$smart_include" = "x"; then
-
   for prefix in $smart_prefix; do
 
 

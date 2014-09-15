@@ -218,7 +218,7 @@ ac_safe=`echo "$1" | sed 'y%./+-%__pm%'`
 old_CPPFLAGS="$CPPFLAGS"
 smart_include=
 dnl #  The default directories we search in (in addition to the compilers search path)
-smart_include_dir="/usr/local/include /opt/include"
+smart_include_dir="/usr/local/include /opt/include /usr/include"
 
 dnl #  Our local versions
 _smart_try_dir=
@@ -260,29 +260,7 @@ if test "x$_smart_try_dir" != "x"; then
 fi
 
 dnl #
-dnl #  Try using the default includes (with prefixes).
-dnl #
-if test "x$smart_include" = "x"; then
-  for _prefix in $smart_prefix; do
-    AC_MSG_CHECKING([for ${_prefix}/$1])
-
-    AC_TRY_COMPILE([$2
-		    #include <$1>],
-		   [int a = 1;],
-		   [
-		     smart_include="-isystem ${_prefix}/"
-		     AC_MSG_RESULT(yes)
-		     break
-		   ],
-		   [
-		     smart_include=
-		     AC_MSG_RESULT(no)
-		   ])
-  done
-fi
-
-dnl #
-dnl #  Try using the default includes (without prefixes).
+dnl #  Try using the default includes.
 dnl #
 if test "x$smart_include" = "x"; then
     AC_MSG_CHECKING([for $1])
@@ -302,10 +280,9 @@ if test "x$smart_include" = "x"; then
 fi
 
 dnl #
-dnl #  Try to guess possible locations.
+dnl #  Try to guess possible locations (with prefixes).
 dnl #
 if test "x$smart_include" = "x"; then
-
   for prefix in $smart_prefix; do
     FR_LOCATE_DIR(_smart_include_dir,"${_prefix}/${1}")
   done
