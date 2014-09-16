@@ -2,7 +2,7 @@
         weekly
         rotate 52
         postrotate
-                service freeradius reload > /dev/null
+                radmin -r 'HUP main.log'
         endscript
         compress
         notifempty
