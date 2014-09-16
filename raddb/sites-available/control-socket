@@ -69,5 +69,5 @@ listen {
 	#	ro = read only access (default)
 	#	rw = read/write access.
 	#
-#	mode = rw
+	mode = rw
 }
