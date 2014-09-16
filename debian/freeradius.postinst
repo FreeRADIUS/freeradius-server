@@ -68,7 +68,7 @@ case "$1" in
         
         # If link for control-socket doesn't exist, then create it
         # This is needed for logrotate HUP
-        if [ -e /etc/freeradius/sites-enabled/control-socket ]; then
+        if [ ! -e /etc/freeradius/sites-enabled/control-socket ]; then
           ln -s ../sites-available/control-socket /etc/freeradius/sites-enabled/control-socket
         fi
 
