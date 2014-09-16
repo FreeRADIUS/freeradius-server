@@ -30,7 +30,7 @@ RCSID("$Id$")
 #define  REALM_FORMAT_PREFIX   0
 #define  REALM_FORMAT_SUFFIX   1
 
-typedef struct realm_config_t {
+typedef struct rlm_realm_t {
 	int		format;
 	char const	*format_string;
 	char const	*delim;
@@ -43,19 +43,19 @@ typedef struct realm_config_t {
 	char const	*trust_router;
 	uint32_t	tr_port;
 #endif
-} realm_config_t;
+} rlm_realm_t;
 
 static CONF_PARSER module_config[] = {
-  { "format", FR_CONF_OFFSET(PW_TYPE_STRING, realm_config_t, format_string), "suffix" },
-  { "delimiter", FR_CONF_OFFSET(PW_TYPE_STRING, realm_config_t, delim), "@" },
-  { "ignore_default", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, realm_config_t, ignore_default), "no" },
-  { "ignore_null", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, realm_config_t, ignore_null), "no" },
+  { "format", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_realm_t, format_string), "suffix" },
+  { "delimiter", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_realm_t, delim), "@" },
+  { "ignore_default", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_realm_t, ignore_default), "no" },
+  { "ignore_null", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_realm_t, ignore_null), "no" },
 
 #ifdef HAVE_TRUST_ROUTER_TR_DH_H
-  { "default_community", FR_CONF_OFFSET(PW_TYPE_STRING, realm_config_t,default_community),  "none" },
-  { "rp_realm", FR_CONF_OFFSET(PW_TYPE_STRING, realm_config_t,rp_realm),  "none" },
-  { "trust_router", FR_CONF_OFFSET(PW_TYPE_STRING, realm_config_t,trust_router),  "none" },
-  { "tr_port", FR_CONF_OFFSET(PW_TYPE_INTEGER, realm_config_t,tr_port),  "0" },
+  { "default_community", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_realm_t,default_community),  "none" },
+  { "rp_realm", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_realm_t,rp_realm),  "none" },
+  { "trust_router", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_realm_t,trust_router),  "none" },
+  { "tr_port", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_realm_t,tr_port),  "0" },
 #endif
 
   { NULL, -1, 0, NULL, NULL }    /* end the list */
@@ -76,7 +76,7 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 	VALUE_PAIR *vp;
 	REALM *realm;
 
-	struct realm_config_t *inst = instance;
+	struct rlm_realm_t *inst = instance;
 
 	/* initiate returnrealm */
 	*returnrealm = NULL;
@@ -190,7 +190,7 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 	/*
 	 *	If we've been told to strip the realm off, then do so.
 	 */
-	if (realm->striprealm) {
+	if (realm->strip_realm) {
 		/*
 		 *	Create the Stripped-User-Name attribute, if it
 		 *	doesn't exist.
@@ -346,7 +346,7 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 
 static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
-	struct realm_config_t *inst = instance;
+	struct rlm_realm_t *inst = instance;
 
 	if (strcasecmp(inst->format_string, "suffix") == 0) {
 		inst->format = REALM_FORMAT_SUFFIX;
@@ -495,7 +495,7 @@ module_t rlm_realm = {
 	RLM_MODULE_INIT,
 	"realm",
 	RLM_TYPE_HUP_SAFE,   	/* type */
-	sizeof(struct realm_config_t),
+	sizeof(struct rlm_realm_t),
 	module_config,
 	mod_instantiate,	       	/* instantiation */
 	NULL,				/* detach */

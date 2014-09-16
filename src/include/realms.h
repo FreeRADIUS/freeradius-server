@@ -146,7 +146,7 @@ typedef struct home_pool_t {
 typedef struct _realm {
 	char const		*name;
 
-	int			striprealm;
+	bool			strip_realm;
 
 	home_pool_t		*auth_pool;
 	home_pool_t		*acct_pool;
@@ -155,12 +155,14 @@ typedef struct _realm {
 #endif
 } REALM;
 
+typedef struct realm_config realm_config_t;
+
 int realms_init(CONF_SECTION *config);
 void realms_free(void);
 REALM *realm_find(char const *name); /* name is from a packet */
 REALM *realm_find2(char const *name); /* ... with name taken from realm_find */
 void realm_home_server_sanitize(home_server_t *home, CONF_SECTION *cs);
-int realm_home_server_add(home_server_t *home, CONF_SECTION *cs, int dual);
+int realm_home_server_add(realm_config_t *rc, home_server_t *home, CONF_SECTION *cs, bool dual);
 int realm_pool_add(home_pool_t *pool, CONF_SECTION *cs);
 void realm_pool_free(home_pool_t *pool);
 int realm_realm_add( REALM *r, CONF_SECTION *cs);

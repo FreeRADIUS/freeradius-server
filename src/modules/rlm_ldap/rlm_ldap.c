@@ -115,7 +115,7 @@ static CONF_PARSER profile_config[] = {
  *	User configuration
  */
 static CONF_PARSER user_config[] = {
-	{ "filter", FR_CONF_OFFSET(PW_TYPE_STRING, ldap_instance_t, userobj_filter), "(uid=%u)" },
+	{ "filter", FR_CONF_OFFSET(PW_TYPE_STRING, ldap_instance_t, userobj_filter), NULL },
 	{ "scope", FR_CONF_OFFSET(PW_TYPE_STRING, ldap_instance_t, userobj_scope_str), "sub" },
 	{ "base_dn", FR_CONF_OFFSET(PW_TYPE_STRING, ldap_instance_t, userobj_base_dn), "" },
 
@@ -559,8 +559,8 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 *	Get version info from the LDAP API.
 	 */
 	if (!version_done) {
+		static LDAPAPIInfo info;	/* static to quiet valgrind about this being uninitialised */
 		int ldap_errno;
-		LDAPAPIInfo info;
 
 		version_done = true;
 
@@ -582,8 +582,8 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 			ldap_memfree(info.ldapai_vendor_name);
 			ldap_memfree(info.ldapai_extensions);
 		} else {
-			WARN("rlm_ldap: Falling back to build time libldap version info.  Query for LDAP_OPT_API_INFO "
-			     "returned: %i", ldap_errno);
+			DEBUG("rlm_ldap: Falling back to build time libldap version info.  Query for LDAP_OPT_API_INFO "
+			      "returned: %i", ldap_errno);
 			INFO("rlm_ldap: libldap vendor: %s version: %i", LDAP_VENDOR_NAME, LDAP_VENDOR_VERSION);
 		}
 	}

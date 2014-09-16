@@ -37,16 +37,20 @@ bool home_servers_udp = false;
 #endif
 
 #ifdef HAVE_REGEX
-typedef struct realm_regex_t {
-	REALM	*realm;
-	struct realm_regex_t *next;
-} realm_regex_t;
+typedef struct realm_regex realm_regex_t;
 
+/** Regular expression associated with a realm
+ *
+ */
+struct realm_regex {
+	REALM		*realm;		//!< The realm this regex matches.
+	regex_t		reg;		//!< The pre-compiled regular expression.
+	realm_regex_t	*next;		//!< The next realm in the list of regular expressions.
+};
 static realm_regex_t *realms_regex = NULL;
-
 #endif /* HAVE_REGEX */
 
-typedef struct realm_config_t {
+struct realm_config {
 	CONF_SECTION	*cs;
 	uint32_t	dead_time;
 	uint32_t	retry_count;
@@ -54,7 +58,7 @@ typedef struct realm_config_t {
 	bool		dynamic;
 	bool		fallback;
 	bool		wake_all_if_all_dead;
-} realm_config_t;
+};
 
 static realm_config_t *realm_config = NULL;
 static bool realms_initialized = false;
@@ -233,10 +237,10 @@ static ssize_t CC_HINT(nonnull) xlat_server_pool(UNUSED void *instance, REQUEST 
 void realms_free(void)
 {
 #ifdef WITH_PROXY
-#ifdef WITH_STATS
+#  ifdef WITH_STATS
 	rbtree_free(home_servers_bynumber);
 	home_servers_bynumber = NULL;
-#endif
+#  endif
 
 	rbtree_free(home_servers_byname);
 	home_servers_byname = NULL;
@@ -250,19 +254,6 @@ void realms_free(void)
 
 	rbtree_free(realms_byname);
 	realms_byname = NULL;
-
-#ifdef HAVE_REGEX
-	if (realms_regex) {
-		realm_regex_t *this, *next;
-
-		for (this = realms_regex; this != NULL; this = next) {
-			next = this->next;
-			talloc_free(this->realm);
-			talloc_free(this);
-		}
-		realms_regex = NULL;
-	}
-#endif
 
 	realm_pool_free(NULL);
 
@@ -697,11 +688,10 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 
 	hs_srcipaddr = NULL;
 
-	return realm_home_server_add(home, cs, dual);
+	return realm_home_server_add(rc, home, cs, dual);
 }
 
-
-int realm_home_server_add(home_server_t *home, CONF_SECTION *cs, int dual)
+int realm_home_server_add(realm_config_t *rc, home_server_t *home, CONF_SECTION *cs, bool dual)
 {
 	const char *name2 = home->name;
 
@@ -767,7 +757,7 @@ int realm_home_server_add(home_server_t *home, CONF_SECTION *cs, int dual)
 	realm_home_server_sanitize(home, cs);
 
 	if (dual) {
-		home_server_t *home2 = talloc(home, home_server_t);
+		home_server_t *home2 = talloc(rc, home_server_t);
 
 		memcpy(home2, home, sizeof(*home2));
 
@@ -1746,7 +1736,7 @@ static int realm_add(realm_config_t *rc, CONF_SECTION *cs)
 	if (!r) return 0;
 
 	r->name = name2;
-	r->striprealm = 1;
+	r->strip_realm = true;
 #ifdef WITH_PROXY
 	r->auth_pool = auth_pool;
 	r->acct_pool = acct_pool;
@@ -1768,7 +1758,7 @@ static int realm_add(realm_config_t *rc, CONF_SECTION *cs)
 
 	cp = cf_pair_find(cs, "nostrip");
 	if (cp && (cf_pair_value(cp) == NULL)) {
-		r->striprealm = 0;
+		r->strip_realm = false;
 		cf_log_info(cs, "\tnostrip");
 	}
 
@@ -1809,6 +1799,11 @@ static int realm_add(realm_config_t *rc, CONF_SECTION *cs)
 }
 
 #ifdef HAVE_REGEX
+static int _realm_regex_free(realm_regex_t *rr)
+{
+	regfree(&(rr->reg));
+	return 0;
+}
 int realm_realm_add(REALM *r, CONF_SECTION *cs)
 #else
 int realm_realm_add(REALM *r, UNUSED CONF_SECTION *cs)
@@ -1831,25 +1826,22 @@ int realm_realm_add(REALM *r, UNUSED CONF_SECTION *cs)
 	if (r->name[0] == '~') {
 		int rcode;
 		realm_regex_t *rr, **last;
-		regex_t reg;
+
+		rr = talloc(r, realm_regex_t);
+		talloc_set_destructor(rr, _realm_regex_free);
 
 		/*
 		 *	Include substring matches.
 		 */
-		rcode = regcomp(&reg, r->name + 1, REG_EXTENDED | REG_NOSUB | REG_ICASE);
+		rcode = regcomp(&(rr->reg), r->name + 1, REG_EXTENDED | REG_NOSUB | REG_ICASE);
 		if (rcode != 0) {
 			char buffer[256];
 
-			regerror(rcode, &reg, buffer, sizeof(buffer));
+			regerror(rcode, &(rr->reg), buffer, sizeof(buffer));
+			cf_log_err_cs(cs, "Invalid regex \"%s\": %s", r->name + 1, buffer);
 
-			cf_log_err_cs(cs,
-				      "Invalid regex \"%s\": %s",
-				      r->name + 1, buffer);
 			return 0;
 		}
-		regfree(&reg);
-
-		rr = talloc_zero(NULL, realm_regex_t);
 
 		last = &realms_regex;
 		while (*last) last = &((*last)->next);  /* O(N^2)... sue me. */
@@ -2099,20 +2091,12 @@ REALM *realm_find(char const *name)
 	if (realms_regex) {
 		realm_regex_t *this;
 
-		for (this = realms_regex; this != NULL; this = this->next) {
+		for (this = realms_regex;
+		     this != NULL;
+		     this = this->next) {
 			int compare;
-			regex_t reg;
 
-			/*
-			 *	Include substring matches.
-			 */
-			if (regcomp(&reg, this->realm->name + 1, REG_EXTENDED | REG_NOSUB | REG_ICASE) != 0) {
-				continue;
-			}
-
-			compare = regexec(&reg, name, 0, NULL, 0);
-			regfree(&reg);
-
+			compare = regexec(&(this->reg), name, 0, NULL, 0);
 			if (compare == 0) return this->realm;
 		}
 	}

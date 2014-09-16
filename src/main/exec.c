@@ -586,7 +586,7 @@ int radius_exec_program(REQUEST *request, char const *cmd, bool exec_wait, bool 
 			answer[--len] = '\0';
 		}
 
-		if (userparse(request, answer, output_pairs) == T_OP_INVALID) {
+		if (userparse(request, answer, output_pairs) == T_INVALID) {
 			ERROR("Failed parsing output from: %s: %s", cmd, fr_strerror());
 			strlcpy(user_msg, answer, len);
 			ret = -1;

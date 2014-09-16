@@ -690,7 +690,7 @@ size_t vp_prints_value_json(char *out, size_t outlen, VALUE_PAIR const *vp)
  *  This is a hack, and has to be kept in sync with tokens.h
  */
 static char const *vp_tokens[] = {
-  "?",				/* T_OP_INVALID */
+  "?",				/* T_INVALID */
   "EOL",			/* T_EOL */
   "{",
   "}",
@@ -750,7 +750,7 @@ size_t vp_prints(char *out, size_t outlen, VALUE_PAIR const *vp)
 
 	VERIFY_VP(vp);
 
-	if ((vp->op > T_OP_INVALID) && (vp->op < T_TOKEN_LAST)) {
+	if ((vp->op > T_INVALID) && (vp->op < T_TOKEN_LAST)) {
 		token = vp_tokens[vp->op];
 	} else {
 		token = "<INVALID-TOKEN>";
@@ -989,7 +989,7 @@ char *vp_aprint(TALLOC_CTX *ctx, VALUE_PAIR const *vp, bool escape)
 
 	VERIFY_VP(vp);
 
-	if ((vp->op > T_OP_INVALID) && (vp->op < T_TOKEN_LAST)) {
+	if ((vp->op > T_INVALID) && (vp->op < T_TOKEN_LAST)) {
 		token = vp_tokens[vp->op];
 	} else {
 		token = "<INVALID-TOKEN>";

@@ -1192,6 +1192,9 @@ int fr_ipaddr_cmp(fr_ipaddr_t const *a, fr_ipaddr_t const *b)
 	if (a->af < b->af) return -1;
 	if (a->af > b->af) return +1;
 
+	if (a->prefix < b->prefix) return -1;
+	if (a->prefix > b->prefix) return +1;
+
 	switch (a->af) {
 	case AF_INET:
 		return memcmp(&a->ipaddr.ip4addr,

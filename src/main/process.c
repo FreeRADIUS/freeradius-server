@@ -2653,7 +2653,7 @@ static int request_will_proxy(REQUEST *request)
 	 *	Doing it here catches the case of proxied tunneled
 	 *	requests.
 	 */
-	if (realm && (realm->striprealm == true) &&
+	if (realm && (realm->strip_realm == true) &&
 	   (strippedname = pairfind(request->proxy->vps, PW_STRIPPED_USER_NAME, 0, TAG_ANY)) != NULL) {
 		/*
 		 *	If there's a Stripped-User-Name attribute in

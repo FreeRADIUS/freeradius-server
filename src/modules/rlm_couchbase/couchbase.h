@@ -44,8 +44,9 @@ typedef union cookie_u {
 	void *data;
 } cookie_u;
 
-/* general error callback */
-void couchbase_error_callback(lcb_t instance, lcb_error_t error, const char *errinfo);
+/* couchbase statistics callback */
+void couchbase_stat_callback(lcb_t instance, const void *cookie, lcb_error_t error,
+	const lcb_server_stat_resp_t *resp);
 
 /* store a key/document in couchbase */
 void couchbase_store_callback(lcb_t instance, const void *cookie, lcb_storage_t operation,
@@ -56,7 +57,10 @@ void couchbase_get_callback(lcb_t instance, const void *cookie, lcb_error_t erro
 	const lcb_get_resp_t *item);
 
 /* create a couchbase instance and connect to the cluster */
-lcb_t couchbase_init_connection(const char *host, const char *bucket, const char *pass);
+lcb_error_t couchbase_init_connection(lcb_t *instance, const char *host, const char *bucket, const char *pass);
+
+/* get server statistics */
+lcb_error_t couchbase_server_stats(lcb_t instance, const void *cookie);
 
 /* store document/key in couchbase */
 lcb_error_t couchbase_set_key(lcb_t instance, const char *key, const char *document, int expire);

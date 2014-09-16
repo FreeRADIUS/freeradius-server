@@ -83,7 +83,7 @@ next:
 			p += len;
 		}
 
-		len = map_print(p, end - p, c->data.map);
+		len = map_prints(p, end - p, c->data.map);
 		p += len;
 #if 0
 		*(p++) = ']';
@@ -354,7 +354,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 
 	rad_assert(c != NULL);
 	lhs = rhs = NULL;
-	lhs_type = rhs_type = T_OP_INVALID;
+	lhs_type = rhs_type = T_INVALID;
 
 	while (isspace((int) *p)) p++; /* skip spaces before condition */
 
@@ -640,9 +640,9 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 				return_P("Unexpected regular expression");
 			}
 
-			c->data.map = map_from_str(c, lhs, lhs_type, op, rhs, rhs_type,
-						   REQUEST_CURRENT, PAIR_LIST_REQUEST,
-						   REQUEST_CURRENT, PAIR_LIST_REQUEST);
+			c->data.map = map_from_fields(c, lhs, lhs_type, op, rhs, rhs_type,
+						      REQUEST_CURRENT, PAIR_LIST_REQUEST,
+						      REQUEST_CURRENT, PAIR_LIST_REQUEST);
 			if (!c->data.map) {
 				/*
 				 *	If strings are T_BARE_WORD and they start with '&',
@@ -654,9 +654,9 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 				    (lhs_type != T_BARE_WORD)) {
 					return_0("Syntax error");
 				}
-				c->data.map = map_from_str(c, lhs, lhs_type + 1, op, rhs, rhs_type,
-							     REQUEST_CURRENT, PAIR_LIST_REQUEST,
-							     REQUEST_CURRENT, PAIR_LIST_REQUEST);
+				c->data.map = map_from_fields(c, lhs, lhs_type + 1, op, rhs, rhs_type,
+							      REQUEST_CURRENT, PAIR_LIST_REQUEST,
+							      REQUEST_CURRENT, PAIR_LIST_REQUEST);
 				if (!c->data.map) {
 					return_0("Unknown attribute");
 				}
@@ -1355,7 +1355,7 @@ done:
 			}
 
 			/*
-			 *	Else lhs_type==T_OP_INVALID, and this
+			 *	Else lhs_type==T_INVALID, and this
 			 *	node was made by promoting a child
 			 *	which had already been normalized.
 			 */

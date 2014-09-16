@@ -125,7 +125,7 @@ This plugin provides LDAP support for the FreeRADIUS server project.
 Summary: Kerberos 5 support for FreeRADIUS
 Group: System Environment/Daemons
 Requires: %{name} = %{version}-%{release}
-Requires: krb5
+Requires: krb5-libs
 BuildRequires: krb5-devel
 
 %description krb5
