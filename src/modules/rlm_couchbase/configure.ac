@@ -70,9 +70,7 @@ if test x$with_[]modname != xno; then
 	dnl ############################################################
 
 	have_json="yes"
-
-	smart_prefix="json-c json"
-	smart_try_dir="$jsonc_include_dir"
+	smart_try_dir="$jsonc_include_dir /usr/local/include/json-c /usr/local/include/json /usr/include/json-c /usr/include/json"
 	FR_SMART_CHECK_INCLUDE([json.h])
 	if test "x$ac_cv_header_json_h" != "xyes"; then
 		have_json="no"

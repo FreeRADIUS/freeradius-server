@@ -2891,9 +2891,7 @@ fi
 
 
 	have_json="yes"
-
-	smart_prefix="json-c json"
-	smart_try_dir="$jsonc_include_dir"
+	smart_try_dir="$jsonc_include_dir /usr/local/include/json-c /usr/local/include/json /usr/include/json-c /usr/include/json"
 
 
 
