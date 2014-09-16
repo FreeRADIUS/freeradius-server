@@ -65,6 +65,12 @@ case "$1" in
             fi
           done
         fi
+        
+        # If link for control-socket doesn't exist, then create it
+        # This is needed for logrotate HUP
+        if [ -e /etc/freeradius/sites-enabled/control-socket ]; then
+          ln -s ../sites-available/control-socket /etc/freeradius/sites-enabled/control-socket
+        fi
 
         if [ -x "`which invoke-rc.d 2>/dev/null`" ]; then
           invoke-rc.d freeradius $action || true
