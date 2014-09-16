@@ -33,10 +33,15 @@ RCSID("$Id$");
 #include "couchbase.h"
 #include "jsonc_missing.h"
 
-/* general couchbase error callback */
-void couchbase_error_callback(lcb_t instance, lcb_error_t error, const char *errinfo) {
-	/* log error */
-	ERROR("rlm_couchbase: (error_callback) %s (0x%x), %s", lcb_strerror(instance, error), error, errinfo);
+/* couchbase statistics callback */
+void couchbase_stat_callback(lcb_t instance, const void *cookie, lcb_error_t error, const lcb_server_stat_resp_t *resp) {
+	if (error != LCB_SUCCESS) {
+		/* log error */
+		ERROR("rlm_couchbase: (stats_callback) %s (0x%x)", lcb_strerror(instance, error), error);
+	}
+	/* silent compiler */
+	(void)cookie;
+	(void)resp;
 }
 
 /* couchbase value store callback */
@@ -95,8 +100,7 @@ void couchbase_get_callback(lcb_t instance, const void *cookie, lcb_error_t erro
 }
 
 /* connect to couchbase */
-lcb_t couchbase_init_connection(const char *host, const char *bucket, const char *pass) {
-	lcb_t instance;                         /* couchbase instance */
+lcb_error_t couchbase_init_connection(lcb_t *instance, const char *host, const char *bucket, const char *pass) {
 	lcb_error_t error;                      /* couchbase command return */
 	struct lcb_create_st options;           /* init create struct */
 
@@ -114,28 +118,50 @@ lcb_t couchbase_init_connection(const char *host, const char *bucket, const char
 	}
 
 	/* create couchbase connection instance */
-	if ((error = lcb_create(&instance, &options)) != LCB_SUCCESS) {
-		/* log error and return */
-		ERROR("rlm_couchbase: failed to create couchbase instance: %s (0x%x)", lcb_strerror(NULL, error), error);
-		/* return instance */
-		return instance;
+	if ((error = lcb_create(instance, &options)) != LCB_SUCCESS) {
+		/* return error */
+		return error;
 	}
 
 	/* initiate connection */
-	if ((error = lcb_connect(instance)) == LCB_SUCCESS) {
+	if ((error = lcb_connect(*instance)) == LCB_SUCCESS) {
 		/* set general method callbacks */
-		lcb_set_error_callback(instance, couchbase_error_callback);
-		lcb_set_get_callback(instance, couchbase_get_callback);
-		lcb_set_store_callback(instance, couchbase_store_callback);
+		lcb_set_stat_callback(*instance, couchbase_stat_callback);
+		lcb_set_get_callback(*instance, couchbase_get_callback);
+		lcb_set_store_callback(*instance, couchbase_store_callback);
 		/* wait on connection */
-		lcb_wait(instance);
+		lcb_wait(*instance);
 	} else {
-		/* log error */
-		ERROR("rlm_couchbase: Failed to initiate couchbase connection: %s (0x%x)", lcb_strerror(NULL, error), error);
+		/* return error */
+		return error;
 	}
 
 	/* return instance */
-	return instance;
+	return error;
+}
+
+/* get server statistics */
+lcb_error_t couchbase_server_stats(lcb_t instance, const void *cookie) {
+	lcb_error_t error;                         /* couchbase command return */
+	lcb_server_stats_cmd_t cmd;                /* server stats command stuct */
+	const lcb_server_stats_cmd_t *commands[1]; /* server stats commands array */
+
+	/* init commands */
+	commands[0] = &cmd;
+	memset(&cmd, 0, sizeof(cmd));
+
+	/* populate command struct */
+	cmd.v.v0.name = "tap";
+	cmd.v.v0.nname = strlen(cmd.v.v0.name);
+
+	/* get statistics */
+	if ((error = lcb_server_stats(instance, cookie, 1, commands)) == LCB_SUCCESS) {
+		/* enter event look on sucess */
+		lcb_wait(instance);
+	}
+
+	/* return error */
+	return error;
 }
 
 /* store document/key in couchbase */
