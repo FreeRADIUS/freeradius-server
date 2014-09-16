@@ -1148,7 +1148,9 @@ static VALUE_PAIR *json_pairmake_leaf(UNUSED rlm_rest_t *instance, UNUSED rlm_re
 	}
 
 	RDEBUG3("\tType   : %s", fr_int2str(dict_attr_types, da->type, "<INVALID>"));
-	RDEBUG3("\tLength : %zu", strlen(value));
+	if (value != NULL) {
+		RDEBUG3("\tLength : %zu", strlen(value));
+	}
 	RDEBUG3("\tValue  : \"%s\"", value);
 
 	if (flags->do_xlat) {
