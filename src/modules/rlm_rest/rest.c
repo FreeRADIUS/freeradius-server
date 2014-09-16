@@ -1129,12 +1129,23 @@ static VALUE_PAIR *json_pairmake_leaf(UNUSED rlm_rest_t *instance, UNUSED rlm_re
 
 	VALUE_PAIR *vp;
 
+	if (json_object_is_type(leaf, json_type_null)) {
+		RDEBUG3("Got null value for attribute \"%s\", skipping...", da->name);
+
+		return NULL;
+	}
+
 	/*
 	 *	Should encode any nested JSON structures into JSON strings.
 	 *
 	 *	"I knew you liked JSON so I put JSON in your JSON!"
 	 */
 	value = json_object_get_string(leaf);
+	if (!value) {
+		RWDEBUG("Failed getting string value for attribute \"%s\", skipping...", da->name);
+
+		return NULL;
+	}
 
 	RDEBUG3("\tType   : %s", fr_int2str(dict_attr_types, da->type, "<INVALID>"));
 	RDEBUG3("\tLength : %zu", strlen(value));
@@ -1152,7 +1163,7 @@ static VALUE_PAIR *json_pairmake_leaf(UNUSED rlm_rest_t *instance, UNUSED rlm_re
 
 	vp = pairalloc(ctx, da);
 	if (!vp) {
-		RWDEBUG("Failed creating valuepair, skipping...");
+		RWDEBUG("Failed creating valuepair for attribute \"%s\", skipping...", da->name);
 		talloc_free(expanded);
 
 		return NULL;
@@ -1163,7 +1174,7 @@ static VALUE_PAIR *json_pairmake_leaf(UNUSED rlm_rest_t *instance, UNUSED rlm_re
 	ret = pairparsevalue(vp, to_parse, 0);
 	talloc_free(expanded);
 	if (ret < 0) {
-		RWDEBUG("Incompatible value assignment, skipping...");
+		RWDEBUG("Incompatible value assignment for attribute \"%s\", skipping...", da->name);
 		talloc_free(vp);
 
 		return NULL;
