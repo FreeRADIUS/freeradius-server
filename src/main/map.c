@@ -33,6 +33,103 @@ RCSID("$Id$")
 
 #include <ctype.h>
 
+static bool map_cast_from_hex(value_pair_map_t *map, FR_TOKEN rhs_type, char const *rhs)
+{
+	size_t len;
+	ssize_t rlen;
+	uint8_t *ptr;
+	DICT_ATTR const *da;
+	VALUE_PAIR *vp;
+	value_data_t *data;
+	value_pair_tmpl_t *vpt;
+
+	rad_assert(map != NULL);
+	rad_assert(map->dst != NULL);
+	rad_assert(map->src == NULL);
+	rad_assert(rhs != NULL);
+
+	/*
+	 *	If the attribute is still unknown, go parse the RHS.
+	 */
+	da = dict_attrbyvalue(map->dst->tmpl_da->attr, map->dst->tmpl_da->vendor);
+	if (!da || da->flags.is_unknown) return false;
+
+	/*
+	 *	If the RHS is something OTHER than an octet
+	 *	string, go parse it as that.
+	 */
+	if (rhs_type != T_BARE_WORD) return false;
+	if ((rhs[0] != '0') || (tolower((int)rhs[1]) != 'x')) return false;
+	if (!rhs[2]) return false;
+
+	len = strlen(rhs + 2);
+
+	ptr = talloc_array(map, uint8_t, len >> 1);
+	if (!ptr) return false;
+
+	len = fr_hex2bin(ptr, len >> 1, rhs + 2, len);
+
+	/*
+	 *	If we can't parse it, or if it's malformed,
+	 *	it's still unknown.
+	 */
+	rlen = data2vp(NULL, NULL, NULL, NULL, da, ptr, len, len, &vp);
+	talloc_free(ptr);
+
+	if (rlen < 0) return false;
+
+	if ((size_t) rlen < len) {
+	free_vp:
+		pairfree(&vp);
+		return false;
+	}
+
+	/*
+	 *	Was still parsed as an unknown attribute.
+	 */
+	if (vp->da->flags.is_unknown) goto free_vp;
+
+	/*
+	 *	Manually create a value_template_t
+	 */
+	map->src = vpt = talloc_zero(map, value_pair_tmpl_t);
+	if (!map->src) goto free_vp;
+
+	vpt->type = TMPL_TYPE_DATA;
+	vpt->tmpl_da = da;
+
+	vpt->tmpl_length = vp->length;
+	vpt->tmpl_value = data = talloc(vpt, value_data_t);
+
+	if (!vpt->tmpl_value) goto free_vp;
+
+	if (vp->da->flags.is_pointer) {
+		data->ptr = talloc_memdup(vpt, vp->data.ptr, vp->length);
+	} else {
+		memcpy(data, &vp->data, sizeof(*data));
+	}
+
+	/*
+	 *	Set the RHS to the PARSED name, not the crap
+	 *	octet string which was input.
+	 */
+	vpt->name = vp_aprint_value(vpt, vp, true);
+
+	dict_attr_free(&map->dst->tmpl_da);
+
+	/*
+	 *	Set the LHS to the REAL attribute name.
+	 */
+	memcpy(&ptr, &map->dst->name, sizeof(ptr));
+	talloc_free(ptr);
+	map->dst->tmpl_da = da;
+	map->dst->name = talloc_strdup(map->dst, map->dst->tmpl_da->name);
+
+	pairfree(&vp);
+
+	return true;
+}
+
 /** Convert CONFIG_PAIR (which may contain refs) to value_pair_map_t.
  *
  * Treats the left operand as an attribute reference
@@ -92,7 +189,14 @@ value_pair_map_t *map_from_cp(TALLOC_CTX *ctx, CONF_PAIR *cp,
 	 *	RHS might be an attribute reference.
 	 */
 	type = cf_pair_value_type(cp);
-	map->src = tmpl_afrom_str(map, value, type, src_request_def, src_list_def);
+
+	if ((type == T_BARE_WORD) && (value[0] == '0') && (tolower((int)value[1] == 'x')) &&
+	    map_cast_from_hex(map, type, value)) {
+		/* do nothing */
+
+	} else {
+		map->src = tmpl_afrom_str(map, value, type, src_request_def, src_list_def);
+	}
 	if (!map->src) {
 		cf_log_err(ci, "%s", fr_strerror());
 		goto error;
@@ -364,97 +468,11 @@ value_pair_map_t *map_from_fields(TALLOC_CTX *ctx, char const *lhs, FR_TOKEN lhs
 	map->op = op;
 
 	if ((map->dst->type == TMPL_TYPE_ATTR) &&
-	    map->dst->tmpl_da->flags.is_unknown) {
-		size_t len;
-		ssize_t rlen;
-		uint8_t *ptr;
-		DICT_ATTR const *da;
-		VALUE_PAIR *vp;
-		value_data_t *data;
-		value_pair_tmpl_t *vpt;
-
-		/*
-		 *	If the attribute is still unknown, go parse the RHS.
-		 */
-		da = dict_attrbyvalue(map->dst->tmpl_da->attr, map->dst->tmpl_da->vendor);
-		if (!da) goto do_rhs;
-
-		/*
-		 *	If the RHS is something OTHER than an octet
-		 *	string, go parse it as that.
-		 */
-		if (rhs_type != T_BARE_WORD) goto do_rhs;
-		if ((rhs[0] != '0') || (tolower((int)rhs[1]) != 'x')) goto do_rhs;
-		if (!rhs[2]) goto do_rhs;
-
-		len = strlen(rhs + 2);
-
-		ptr = talloc_array(map, uint8_t, len >> 1);
-		if (!ptr) goto error;
-
-		len = fr_hex2bin(ptr, len >> 1, rhs + 2, len);
-
-		/*
-		 *	If we can't parse it, or if it's malformed,
-		 *	it's still unknown.
-		 */
-		rlen = data2vp(NULL, NULL, NULL, NULL, da, ptr, len, len, &vp);
-		talloc_free(ptr);
-
-		if (rlen < 0) goto do_rhs;
-
-		if ((size_t) rlen < len) {
-			pairfree(&vp);
-			goto do_rhs;
-		}
-
-		/*
-		 *	Manually create a value_template_t
-		 */
-		map->src = vpt = talloc_zero(map, value_pair_tmpl_t);
-		if (!map->src) {
-		free_vp:
-			pairfree(&vp);
-			goto error;
-		}
-
-		vpt->type = TMPL_TYPE_DATA;
-		vpt->tmpl_da = da;
-
-		vpt->tmpl_length = vp->length;
-		vpt->tmpl_value = data = talloc(vpt, value_data_t);
-
-		if (!vpt->tmpl_value) goto free_vp;
-
-		if (vp->da->flags.is_pointer) {
-			data->ptr = talloc_steal(vpt, vp->data.ptr);
-			vp->data.ptr = NULL;
-		} else {
-			memcpy(data, &vp->data, sizeof(*data));
-		}
-
-		/*
-		 *	Set the RHS to the PARSED name, not the crap
-		 *	octet string which was input.
-		 */
-		vpt->name = vp_aprint_value(vpt, vp, true);
-		fprintf(stderr, "GOT OUTPUT %s\n", vpt->name);
-
-		dict_attr_free(&map->dst->tmpl_da);
-
-		/*
-		 *	Set the LHS to the REAL attribute name.
-		 */
-		memcpy(&ptr, &map->dst->name, sizeof(ptr));
-		talloc_free(ptr);
-		map->dst->tmpl_da = da;
-		map->dst->name = talloc_strdup(map->dst, map->dst->tmpl_da->name);
-
-		pairfree(&vp);
+	    map->dst->tmpl_da->flags.is_unknown &&
+	    map_cast_from_hex(map, rhs_type, rhs)) {
 		return map;
 	}
 
-do_rhs:
 	map->src = tmpl_afrom_str(map, rhs, rhs_type, src_request_def, src_list_def);
 	if (!map->src) goto error;
 
