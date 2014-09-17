@@ -495,3 +495,13 @@ data &Acct-Input-Octets > "%{Session-Timeout}"
 #  Separate types aren't optimized
 condition &Acct-Input-Octets-64 > "%{Session-Timeout}"
 data &Acct-Input-Octets-64 > "%{Session-Timeout}"
+
+#
+#  Parse OIDs into known attributes, where possible.
+#
+condition &Attr-26.24757.84.9.5.4 == 0x1a99
+data &WiMAX-PFDv2-Src-Port == 6809
+
+#  This one is really unknown
+condition &Attr-26.24757.84.9.5.15 == 0x1a99
+data &Attr-26.24757.84.9.5.15 == 0x1a99
