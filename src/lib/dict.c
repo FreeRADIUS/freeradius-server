@@ -2610,40 +2610,6 @@ void dict_attr_free(DICT_ATTR const **da)
 	*tmp = NULL;
 }
 
-/** Copies a dictionary attr
- *
- * If the attr is dynamically allocated (unknown attribute), then it will be
- * copied to a new attr.
- *
- * If the attr is known, a pointer to the da will be returned.
- *
- * @param da to copy.
- * @param vp_free if true, da will be freed at the same time as the
- *	VALUE_PAIR which contains it.
- * @return return a copy of the da.
- */
-DICT_ATTR const *dict_attr_copy(DICT_ATTR const *da, int vp_free)
-{
-	DICT_ATTR *copy;
-
-	if (!da) return NULL;
-
-	if (!da->flags.is_unknown) {
-		return da;
-	}
-
-	copy = malloc(DICT_ATTR_SIZE);
-	if (!copy) {
-		fr_strerror_printf("Out of memory");
-		return NULL;
-	}
-
-	memcpy(copy, da, DICT_ATTR_SIZE);
-	copy->flags.vp_free = (vp_free != 0);
-
-	return copy;
-}
-
 
 /** Allocs an dictionary attr for unknown attributes
  *
@@ -2652,32 +2618,31 @@ DICT_ATTR const *dict_attr_copy(DICT_ATTR const *da, int vp_free)
  *
  * @note Must be freed with dict_attr_free if not used as part of a valuepair.
  *
+ * @param[in] ctx for talloc
  * @param[in] attr number.
  * @param[in] vendor number.
- * @param[in] vp_free if > 0 DICT_ATTR will be freed on VALUE_PAIR free.
  * @return new dictionary attribute.
  */
-DICT_ATTR const *dict_attrunknown(unsigned int attr, unsigned int vendor,
-				  int vp_free)
+DICT_ATTR const *dict_attrunknown(TALLOC_CTX *ctx, unsigned int attr, unsigned int vendor)
 {
 	DICT_ATTR *da;
-	char *p;
+	char *p, *q;
 	int dv_type = 1;
 	size_t len = 0;
 	size_t bufsize = DICT_ATTR_MAX_NAME_LEN;
 
-	da = malloc(DICT_ATTR_SIZE);
-	if (!da) {
+	q = talloc_zero_array(ctx, char, DICT_ATTR_SIZE);
+	if (!q) {
 		fr_strerror_printf("Out of memory");
 		return NULL;
 	}
-	memset(da, 0, DICT_ATTR_SIZE);
 
+	da = (DICT_ATTR *) q;
+	talloc_set_type(q, DICT_ATTR);
 	da->attr = attr;
 	da->vendor = vendor;
 	da->type = PW_TYPE_OCTETS;
 	da->flags.is_unknown = true;
-	da->flags.vp_free = (vp_free != 0);
 
 	/*
 	 *	Unknown attributes of the "WiMAX" vendor get marked up
@@ -2733,11 +2698,11 @@ DICT_ATTR const *dict_attrunknown(unsigned int attr, unsigned int vendor,
  *
  * @todo should check attr/vendor against dictionary and return the real da.
  *
+ * @param[in] ctx for talloc
  * @param[in] attribute name.
- * @param[in] vp_free if > 0 DICT_ATTR will be freed on VALUE_PAIR free.
  * @return new da or NULL on error.
  */
-DICT_ATTR const *dict_attrunknownbyname(char const *attribute, int vp_free)
+DICT_ATTR const *dict_attrunknownbyname(TALLOC_CTX *ctx, char const *attribute)
 {
 	unsigned int   	attr, vendor = 0;
 	unsigned int    dv_type = 1;	/* The type of vendor field */
@@ -2932,7 +2897,7 @@ DICT_ATTR const *dict_attrunknownbyname(char const *attribute, int vp_free)
 		}
 	}
 
-	return dict_attrunknown(attr, vendor, vp_free);
+	return dict_attrunknown(ctx, attr, vendor);
 }
 
 /*

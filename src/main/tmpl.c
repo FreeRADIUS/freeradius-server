@@ -436,7 +436,7 @@ int tmpl_from_attr_str(value_pair_tmpl_t *vpt, char const *name, request_refs_t 
 
 	da = dict_attrbytagged_name(p);
 	if (!da) {
-		da = dict_attrunknownbyname(p, false);
+		da = dict_attrunknownbyname(vpt, p);
 		if (!da) {
 			fr_strerror_printf("Unknown attribute \"%s\"", p);
 			return error;

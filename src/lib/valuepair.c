@@ -142,7 +142,7 @@ VALUE_PAIR *paircreate(TALLOC_CTX *ctx, unsigned int attr, unsigned int vendor)
 
 	da = dict_attrbyvalue(attr, vendor);
 	if (!da) {
-		da = dict_attrunknown(attr, vendor, true);
+		da = dict_attrunknown(ctx, attr, vendor);
 		if (!da) {
 			return NULL;
 		}
@@ -188,7 +188,7 @@ int pair2unknown(VALUE_PAIR *vp)
 		return 0;
 	}
 
-	da = dict_attrunknown(vp->da->attr, vp->da->vendor, true);
+	da = dict_attrunknown(vp, vp->da->attr, vp->da->vendor);
 	if (!da) {
 		return -1;
 	}
@@ -676,10 +676,12 @@ VALUE_PAIR *paircopyvp(TALLOC_CTX *ctx, VALUE_PAIR const *vp)
 
 	memcpy(n, vp, sizeof(*n));
 
-	n->da = dict_attr_copy(vp->da, true);
-	if (!n->da) {
-		talloc_free(n);
-		return NULL;
+	/*
+	 *	If the DA is unknown, steal "n" to "ctx".  This does
+	 *	nothing for "n", but will also copy the unknown "da".
+	 */
+	if (n->da->flags.is_unknown) {
+		pairsteal(ctx, n);
 	}
 
 	n->next = NULL;
@@ -793,6 +795,30 @@ VALUE_PAIR *paircopy_by_num(TALLOC_CTX *ctx, VALUE_PAIR *from, unsigned int attr
 void pairsteal(TALLOC_CTX *ctx, VALUE_PAIR *vp)
 {
 	(void) talloc_steal(ctx, vp);
+
+	/*
+	 *	The DA may be unknown.  If we're stealing the VPs to a
+	 *	different context, copy the unknown DA.  We use the VP
+	 *	as a context here instead of "ctx", so that when the
+	 *	VP is freed, so is the DA.
+	 *
+	 *	Since we have no introspection into OTHER VPs using
+	 *	the same DA, we can't have multiple VPs use the same
+	 *	DA.  So we might as well tie it to this VP.
+	 */
+	if (vp->da->flags.is_unknown) {
+		DICT_ATTR *da;
+		char *p;
+		size_t size;
+
+		size = talloc_get_size(vp->da);
+
+		p = talloc_zero_array(vp, char, size);
+		da = (DICT_ATTR *) p;
+		talloc_set_type(p, DICT_ATTR);
+		memcpy(da, vp->da, size);
+		vp->da = da;
+	}
 }
 
 /** Move pairs from source list to destination list respecting operator
@@ -941,7 +967,8 @@ void pairmove(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from)
 	do_add:
 			*tail_from = i->next;
 			i->next = NULL;
-			*tail_new = talloc_steal(ctx, i);
+			*tail_new = i;
+			pairsteal(ctx, i);
 			tail_new = &(i->next);
 			continue;
 		}
@@ -1004,7 +1031,7 @@ void pairfilter(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from, unsigned in
 		}
 
 		for (i = *from; i; i = i->next) {
-			(void) talloc_steal(ctx, i);
+			pairsteal(ctx, i);
 		}
 
 		*from = NULL;
@@ -1067,7 +1094,7 @@ void pairfilter(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from, unsigned in
 			*to = i;
 		to_tail = i;
 		i->next = NULL;
-		(void) talloc_steal(ctx, i);
+		pairsteal(ctx, i);
 	}
 }
 
@@ -1660,7 +1687,7 @@ static VALUE_PAIR *pairmake_any(TALLOC_CTX *ctx,
 	uint8_t 	*data;
 	size_t		size;
 
-	da = dict_attrunknownbyname(attribute, true);
+	da = dict_attrunknownbyname(ctx, attribute);
 	if (!da) return NULL;
 
 	/*
