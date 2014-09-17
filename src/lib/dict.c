@@ -2643,6 +2643,7 @@ DICT_ATTR const *dict_attrunknown(TALLOC_CTX *ctx, unsigned int attr, unsigned i
 	da->vendor = vendor;
 	da->type = PW_TYPE_OCTETS;
 	da->flags.is_unknown = true;
+	da->flags.is_pointer = true;
 
 	/*
 	 *	Unknown attributes of the "WiMAX" vendor get marked up
