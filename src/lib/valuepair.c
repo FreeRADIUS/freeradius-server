@@ -785,23 +785,14 @@ VALUE_PAIR *paircopy_by_num(TALLOC_CTX *ctx, VALUE_PAIR *from, unsigned int attr
 	return out;
 }
 
-/** Steal all members of a VALUE_PAIR list
+/** Steal one VP
  *
- * @param[in] ctx to move VALUE_PAIRs into
- * @param[in] from VALUE_PAIRs to move into the new context.
+ * @param[in] ctx to move VALUE_PAIR into
+ * @param[in] vp VALUE_PAIR to move into the new context.
  */
-VALUE_PAIR *pairsteal(TALLOC_CTX *ctx, VALUE_PAIR *from)
+void pairsteal(TALLOC_CTX *ctx, VALUE_PAIR *vp)
 {
-	vp_cursor_t cursor;
-	VALUE_PAIR *vp;
-
-	for (vp = fr_cursor_init(&cursor, &from);
-	     vp;
-	     vp = fr_cursor_next(&cursor)) {
-		(void) talloc_steal(ctx, vp);
-	}
-
-	return from;
+	(void) talloc_steal(ctx, vp);
 }
 
 /** Move pairs from source list to destination list respecting operator

@@ -1424,7 +1424,15 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			original->expect = talloc_steal(original, search.expect);
 
 			if (search.link_vps) {
-				original->link_vps = pairsteal(original, search.link_vps);
+				vp_cursor_t cursor;
+				VALUE_PAIR *vp;
+
+				for (vp = fr_cursor_init(&cursor, &search.link_vps);
+				     vp;
+				     vp = fr_cursor_next(&cursor)) {
+					pairsteal(original, search.link_vps);
+				}				
+				original->link_vps = search.link_vps;
 
 				/* We should never have conflicts */
 				assert(rbtree_insert(link_tree, original));
