@@ -601,7 +601,7 @@ bool 		pairvalidate_relaxed(VALUE_PAIR const *failed[2], VALUE_PAIR *filter, VAL
 VALUE_PAIR	*paircopyvp(TALLOC_CTX *ctx, VALUE_PAIR const *vp);
 VALUE_PAIR	*paircopy(TALLOC_CTX *ctx, VALUE_PAIR *from);
 VALUE_PAIR	*paircopy_by_num(TALLOC_CTX *ctx, VALUE_PAIR *from, unsigned int attr, unsigned int vendor, int8_t tag);
-VALUE_PAIR	*pairsteal(TALLOC_CTX *ctx, VALUE_PAIR *from);
+void		pairsteal(TALLOC_CTX *ctx, VALUE_PAIR *vp);
 void		pairmemcpy(VALUE_PAIR *vp, uint8_t const * src, size_t len);
 void		pairmemsteal(VALUE_PAIR *vp, uint8_t const *src);
 void		pairstrsteal(VALUE_PAIR *vp, char const *src);
