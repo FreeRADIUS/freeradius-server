@@ -355,7 +355,6 @@ static ssize_t xlat_debug_attr(UNUSED void *instance, REQUEST *request, char con
 		dac = talloc_memdup(request, vp->da, sizeof(DICT_ATTR));
 		if (!dac) return -1;
 		talloc_set_type(dac, DICT_ATTR);
-		dac->flags.vp_free = 0;
 
 	next_vp:
 		talloc_free(dac);

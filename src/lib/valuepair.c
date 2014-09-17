@@ -57,21 +57,6 @@ RCSID("$Id$")
  * @return 0
  */
 static int _pairfree(VALUE_PAIR *vp) {
-	/*
-	 *	The lack of DA means something has gone wrong
-	 */
-	if (!vp->da) {
-		fr_strerror_printf("VALUE_PAIR has NULL DICT_ATTR pointer (probably already freed)");
-	/*
-	 *	Only free the DICT_ATTR if it was dynamically allocated
-	 *	and was marked for free when the VALUE_PAIR is freed.
-	 *
-	 *	@fixme This is an awful hack and needs to be removed once DICT_ATTRs are allocated by talloc.
-	 */
-	} else if (vp->da->flags.vp_free) {
-		dict_attr_free(&(vp->da));
-	}
-
 #ifndef NDEBUG
 	vp->vp_integer = 0xf4eef4ee;
 #endif
