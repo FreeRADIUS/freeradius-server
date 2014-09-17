@@ -363,6 +363,98 @@ value_pair_map_t *map_from_fields(TALLOC_CTX *ctx, char const *lhs, FR_TOKEN lhs
 
 	map->op = op;
 
+	if ((map->dst->type == TMPL_TYPE_ATTR) &&
+	    map->dst->tmpl_da->flags.is_unknown) {
+		size_t len;
+		ssize_t rlen;
+		uint8_t *ptr;
+		DICT_ATTR const *da;
+		VALUE_PAIR *vp;
+		value_data_t *data;
+		value_pair_tmpl_t *vpt;
+
+		/*
+		 *	If the attribute is still unknown, go parse the RHS.
+		 */
+		da = dict_attrbyvalue(map->dst->tmpl_da->attr, map->dst->tmpl_da->vendor);
+		if (!da) goto do_rhs;
+
+		/*
+		 *	If the RHS is something OTHER than an octet
+		 *	string, go parse it as that.
+		 */
+		if (rhs_type != T_BARE_WORD) goto do_rhs;
+		if ((rhs[0] != '0') || (tolower((int)rhs[1]) != 'x')) goto do_rhs;
+		if (!rhs[2]) goto do_rhs;
+
+		len = strlen(rhs + 2);
+
+		ptr = talloc_array(map, uint8_t, len >> 1);
+		if (!ptr) goto error;
+
+		len = fr_hex2bin(ptr, len >> 1, rhs + 2, len);
+
+		/*
+		 *	If we can't parse it, or if it's malformed,
+		 *	it's still unknown.
+		 */
+		rlen = data2vp(NULL, NULL, NULL, NULL, da, ptr, len, len, &vp);
+		talloc_free(ptr);
+
+		if (rlen < 0) goto do_rhs;
+
+		if ((size_t) rlen < len) {
+			pairfree(&vp);
+			goto do_rhs;
+		}
+
+		/*
+		 *	Manually create a value_template_t
+		 */
+		map->src = vpt = talloc_zero(map, value_pair_tmpl_t);
+		if (!map->src) {
+		free_vp:
+			pairfree(&vp);
+			goto error;
+		}
+
+		vpt->type = TMPL_TYPE_DATA;
+		vpt->tmpl_da = da;
+
+		vpt->tmpl_length = vp->length;
+		vpt->tmpl_value = data = talloc(vpt, value_data_t);
+
+		if (!vpt->tmpl_value) goto free_vp;
+
+		if (vp->da->flags.is_pointer) {
+			data->ptr = talloc_steal(vpt, vp->data.ptr);
+			vp->data.ptr = NULL;
+		} else {
+			memcpy(data, &vp->data, sizeof(*data));
+		}
+
+		/*
+		 *	Set the RHS to the PARSED name, not the crap
+		 *	octet string which was input.
+		 */
+		vpt->name = vp_aprint_value(vpt, vp, true);
+		fprintf(stderr, "GOT OUTPUT %s\n", vpt->name);
+
+		dict_attr_free(&map->dst->tmpl_da);
+
+		/*
+		 *	Set the LHS to the REAL attribute name.
+		 */
+		memcpy(&ptr, &map->dst->name, sizeof(ptr));
+		talloc_free(ptr);
+		map->dst->tmpl_da = da;
+		map->dst->name = talloc_strdup(map->dst, map->dst->tmpl_da->name);
+
+		pairfree(&vp);
+		return map;
+	}
+
+do_rhs:
 	map->src = tmpl_afrom_str(map, rhs, rhs_type, src_request_def, src_list_def);
 	if (!map->src) goto error;
 
