@@ -834,7 +834,7 @@ int map_to_request(REQUEST *request, value_pair_map_t const *map, radius_map_get
 		VERIFY_VP(vp);
 
 		if (debug_flag) map_debug_log(request, map, vp);
-		(void) talloc_steal(parent, vp);
+		pairsteal(parent, vp);
 	}
 
 	/*
