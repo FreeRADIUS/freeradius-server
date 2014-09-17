@@ -2602,7 +2602,7 @@ void dict_attr_free(DICT_ATTR const **da)
 	}
 
 	memcpy(&tmp, &da, sizeof(*tmp));
-	free(*tmp);
+	talloc_free(*tmp);
 
 	*tmp = NULL;
 }
