@@ -1,9 +1,20 @@
 FreeRADIUS 3.0.5 Mon 15 Sep 2014 15:30:00 EDT urgency=medium
 	Feature improvements
+	* Large update to Huawei dictionary.
 	
 	Bug fixes
 	* Parse list qualifiers in generic LDAP 'valuepair_attribute'
 	  attributes correctly.
+	* Fix issue where prefix length would be ignored for dynamic
+	  or static clients if the address matched INADDR_ANY 
+	  (0.0.0.0).
+	* Allow null user object filter in rlm_ldap, it's valid to 
+	  specify a complete object DN and use the base scope.
+	* Don't SEGV if a received attribute value in a JSON structure
+	  is null, or a value can't be stringified.
+	* Set CURLOPT_NOSIGNAL to prevent curl from handling signals
+	  and causing a longjmp error when the server was running with
+	  threads.
 	  
 FreeRADIUS 3.0.4 Mon 09 Sep 2014 15:30:00 EDT urgency=medium
 	Feature improvements
