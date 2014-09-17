@@ -1976,20 +1976,11 @@ FR_TOKEN pairread(char const **ptr, VALUE_PAIR_RAW *raw)
 		}
 
 		/*
-		 *	Only ASCII is allowed, and only a subset of that.
-		 */
-		if ((*t < 32) || (*t >= 128)) {
-		invalid:
-			fr_strerror_printf("Invalid attribute name");
-			return T_INVALID;
-		}
-
-		/*
 		 *	This is arguably easier than trying to figure
 		 *	out which operators come after the attribute
 		 *	name.  Yes, our "lexer" is bad.
 		 */
-		if (!dict_attr_allowed_chars[(int) *t]) {
+		if (!dict_attr_allowed_chars[(unsigned int) *t]) {
 			break;
 		}
 
@@ -2008,9 +1999,12 @@ FR_TOKEN pairread(char const **ptr, VALUE_PAIR_RAW *raw)
 	}
 
 	/*
-	 *	ASCII, but not a valid attribute name.
+	 *	Haven't found any valid characters in the name.
 	 */
-	if (!*raw->l_opand) goto invalid;
+	if (!*raw->l_opand) {
+		fr_strerror_printf("Invalid attribute name");
+		return T_INVALID;
+	}
 
 	/*
 	 *	Look for tag (:#).  This is different from :=, which
