@@ -649,6 +649,7 @@ static int fr_dhcp_decode_suboption(VALUE_PAIR **tlv, TALLOC_CTX *ctx, uint8_t c
 	uint8_t const *p, *q;
 	VALUE_PAIR *head, *vp;
 	vp_cursor_t cursor;
+	bool da_allocated;
 
 	/*
 	 *	TLV must already point to a VALUE_PAIR.
@@ -727,12 +728,15 @@ static int fr_dhcp_decode_suboption(VALUE_PAIR **tlv, TALLOC_CTX *ctx, uint8_t c
 		 *	expressions.
 		 */
 		da = dict_attrbyvalue(attr, (*tlv)->da->vendor);
-		if (!da) {
+		if (da) {
+			da_allocated = false;
+		} else {
 			da = dict_attrunknown(attr, (*tlv)->da->vendor, true);
 			if (!da) {
 				pairfree(&head);
 				return -1;
 			}
+			da_allocated = true;
 		}
 
 		a_len = p[1];
@@ -742,6 +746,9 @@ static int fr_dhcp_decode_suboption(VALUE_PAIR **tlv, TALLOC_CTX *ctx, uint8_t c
 			vp = pairalloc(ctx, da);
 			if (!vp) {
 				pairfree(&head);
+				if (i == 0 && da_allocated) {
+					dict_attr_free(&da);
+				}
 				return -1;
 			}
 			vp->op = T_OP_ADD;
@@ -754,6 +761,10 @@ static int fr_dhcp_decode_suboption(VALUE_PAIR **tlv, TALLOC_CTX *ctx, uint8_t c
 
 			a_p += a_len;
 		}
+		if (i == 0 && da_allocated) {
+			dict_attr_free(&da);
+		}
+
 		p += 2 + p[1];	/* code (1) + len (1) + suboption len (n)*/
 	}
 
