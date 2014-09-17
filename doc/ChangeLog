@@ -15,6 +15,9 @@ FreeRADIUS 3.0.5 Mon 15 Sep 2014 15:30:00 EDT urgency=medium
 	* Set CURLOPT_NOSIGNAL to prevent curl from handling signals
 	  and causing a longjmp error when the server was running with
 	  threads
+	* Allow tabs after attribute names in the "users" file.
+	  Closes #796
+	* Free unknown DICT_ATTRs.  Closes #795
 
 FreeRADIUS 3.0.4 Wed 10 Sep 2014 12:00:00 EDT urgency=medium
 	Feature improvements
