@@ -732,7 +732,6 @@ value_pair_tmpl_t *tmpl_afrom_str(TALLOC_CTX *ctx, char const *name, FR_TOKEN ty
 	int rcode;
 	char const *p;
 	value_pair_tmpl_t *vpt;
-	char buffer[1024];
 
 	vpt = talloc_zero(ctx, value_pair_tmpl_t);
 	vpt->name = talloc_typed_strdup(vpt, name);
@@ -796,8 +795,6 @@ value_pair_tmpl_t *tmpl_afrom_str(TALLOC_CTX *ctx, char const *name, FR_TOKEN ty
 		rad_assert(0);
 		return NULL;
 	}
-
-	tmpl_prints(buffer, sizeof(buffer), vpt);
 
 	return vpt;
 }
