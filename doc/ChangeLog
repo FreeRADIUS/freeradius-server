@@ -1,28 +1,29 @@
 FreeRADIUS 3.0.5 Mon 15 Sep 2014 15:30:00 EDT urgency=medium
 	Feature improvements
 	* Large update to Huawei dictionary.
-	
+
 	Bug fixes
 	* Parse list qualifiers in generic LDAP 'valuepair_attribute'
 	  attributes correctly.
 	* Fix issue where prefix length would be ignored for dynamic
-	  or static clients if the address matched INADDR_ANY 
+	  or static clients if the address matched INADDR_ANY
 	  (0.0.0.0).
-	* Allow null user object filter in rlm_ldap, it's valid to 
+	* Allow null user object filter in rlm_ldap, it's valid to
 	  specify a complete object DN and use the base scope.
 	* Don't SEGV if a received attribute value in a JSON structure
 	  is null, or a value can't be stringified.
 	* Set CURLOPT_NOSIGNAL to prevent curl from handling signals
 	  and causing a longjmp error when the server was running with
-	  threads.
-	  
-FreeRADIUS 3.0.4 Mon 09 Sep 2014 15:30:00 EDT urgency=medium
+	  threads
+
+FreeRADIUS 3.0.4 Wed 10 Sep 2014 12:00:00 EDT urgency=medium
 	Feature improvements
 	* Home server "response_window" can now take fractions of a
 	  second.  See proxy.conf.
 	* radmin now supports "show module status", as the counterpart
 	  to "set module status"
-	* Added dictionary ericsson.packet.ccore.networks
+	* Added dictionary ericsson.packet.ccore.networks, bluecoat,
+	  citrix, compatible, riverbed, ruckus, and RFC 7268.
 	* Add %{tag:} expansion to get the tag value of an attribute.
 	* Report 'application_name' in connections to PostgreSQL servers.
 	  FreeRADIUS connections will now appear as
@@ -63,7 +64,14 @@ FreeRADIUS 3.0.4 Mon 09 Sep 2014 15:30:00 EDT urgency=medium
 	  a tag.
 	* The logintime and expiration modules can now be listed in the
 	  post-auth section.  This makes some configurations simpler.
-	* Allow integer comparisons in conditions, without casts.
+	* Allow comparison of integer attributes of different sizes,
+	  without requiring a cast.
+	* rlm_sqlippool is now IPV6 capable.  Set "ipv6 = yes" to get
+	  Framed-IPv6-Prefix returned.  The SQL queries have NOT been updated.
+	  Please submit patches.
+	* The debian build now checks for the OpenSSL package with the heartbleed
+	  fix, and if found, sets: allow_vulnerable_openssl = 'CVE-2014-0160'
+	* allow bootstrap from multiple files in sqlite driver.
 
 	Bug fixes
 	* make case-insensitive regular expressions work again, and add tests
@@ -135,7 +143,17 @@ FreeRADIUS 3.0.4 Mon 09 Sep 2014 15:30:00 EDT urgency=medium
 	* Fix boundary issue with rlm_rest.  Closes #768
 	* Optimize "%{Attribute-Name}" in comparisons only if the dictionary
 	  types match.
-	* Don't do chmod() in rad_mkdir()
+	* Don't do chmod() in rad_mkdir() if the directory already exists.
+	  We might not have permission to change it.
+	* Use getpwnam_r() and getgrnam_r() on systems which support it.
+	  Closes #775.
+	* Clients loaded from SQL are now tied to the "listen" section
+	  of a virtual server, instead of being global.
+	* Check for -lpcre.  The system might have pcre.h without -lpcre.
+	* When proxying to a virtual server, use the proxy_reply instead
+	  of ignoring it.
+	* Fixed typos in DHCP SQL IPPool.
+	* Fix crash when passing multiple arguments to Perl xlat.
 
 FreeRADIUS 3.0.3 Mon 12 May 2014 15:30:00 EDT urgency=medium
 	Feature improvements
