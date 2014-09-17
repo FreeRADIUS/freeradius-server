@@ -1,0 +1,13 @@
+update control {
+       Cleartext-Password := 'hello'
+}
+
+update request {
+	WiMAX-PFDv2-Src-Port = 6809
+}
+
+if (WiMAX-PFDv2-Src-Port == 6809) {
+	update reply {
+		Filter-Id := "filter"
+	}
+}
