@@ -1648,6 +1648,33 @@ finish:
 }
 
 
+static VALUE_PAIR *pair_unknown2known(VALUE_PAIR *vp, DICT_ATTR const *da)
+{
+	ssize_t len;
+	VALUE_PAIR *vp2;
+
+	len = data2vp(NULL, NULL, NULL, NULL, da,
+		      vp->vp_octets, vp->length, vp->length,
+		      &vp2);
+	if (len < 0) return vp; /* it's really unknown */
+
+	/*
+	 *	Didn't parse all of it.  Return the "unknown" one.
+	 *
+	 *	FIXME: it COULD have parsed 2 attributes and
+	 *	then not the third, so returning 2 "knowns"
+	 *	and 1 "unknown" is likely preferable.
+	 */
+	if ((size_t) len < vp->length) {
+		pairfree(&vp2);
+		return vp;
+	}
+
+	pairsteal(talloc_parent(vp), vp2);
+	pairfree(&vp);
+	return vp2;
+}
+
 /** Create a valuepair from an ASCII attribute and value
  *
  * Where the attribute name is in the form:
@@ -1713,6 +1740,15 @@ static VALUE_PAIR *pairmake_any(TALLOC_CTX *ctx,
 
 	vp->vp_octets = data;
 	vp->type = VT_DATA;
+
+	/*
+	 *	Convert unknowns to knowns
+	 */
+	da = dict_attrbyvalue(vp->da->attr, vp->da->vendor);
+	if (da) {
+		return pair_unknown2known(vp, da);
+	}
+
 	return vp;
 }
 
