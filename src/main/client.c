@@ -189,14 +189,26 @@ int client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 	RADCLIENT *old;
 	char buffer[INET6_ADDRSTRLEN + 3];
 
-	if (!client) {
-		return 0;
-	}
+	if (!client) return 0;
 
 	/*
 	 *	Hack to fixup wildcard clients
+	 *
+	 *	If the IP is all zeros, with a 32 or 128 bit netmask
+	 *	assume the user meant to configure 0.0.0.0/0 instead
+	 *	of 0.0.0.0/32 - which would require the src IP of
+	 *	the client to be all zeros.
 	 */
-	if (is_wildcard(&client->ipaddr)) client->ipaddr.prefix = 0;
+	if (is_wildcard(&client->ipaddr)) switch (client->ipaddr.af) {
+	case AF_INET:
+		if (client->ipaddr.prefix == 32) client->ipaddr.prefix = 0;
+
+	case AF_INET6:
+		if (client->ipaddr.prefix == 128) client->ipaddr.prefix = 0;;
+
+	default:
+		rad_assert(0);
+	}
 
 	fr_ntop(buffer, sizeof(buffer), &client->ipaddr);
 	DEBUG3("Adding client %s (%s) to prefix tree %i", buffer, client->longname, client->ipaddr.prefix);
