@@ -447,28 +447,6 @@ int fr_pton(fr_ipaddr_t *out, char const *value, size_t inlen, bool resolve)
 	return fr_pton4(out, value, inlen, false, false);
 }
 
-/** Check if the IP address is equivalent to INADDR_ANY
- *
- * @param addr to chec.
- * @return true if IP address matches INADDR_ANY or INADDR6_ANY (assumed to be 0), else false.
- */
-bool is_wildcard(fr_ipaddr_t *addr)
-{
-	static struct in6_addr in6_addr;
-
-	switch (addr->af) {
-	case AF_INET:
-		return (addr->ipaddr.ip4addr.s_addr == htons(INADDR_ANY));
-
-	case AF_INET6:
-		return (memcmp(addr->ipaddr.ip6addr.s6_addr, in6_addr.s6_addr, sizeof(in6_addr.s6_addr)) == 0) ? true :false;
-
-	default:
-		fr_assert(0);
-		return false;
-	}
-}
-
 int fr_ntop(char *out, size_t outlen, fr_ipaddr_t *addr)
 {
 	char buffer[INET6_ADDRSTRLEN];
