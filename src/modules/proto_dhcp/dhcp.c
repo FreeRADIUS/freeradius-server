@@ -591,13 +591,16 @@ static int fr_dhcp_decode_vsa(VALUE_PAIR **tlv, TALLOC_CTX *ctx, uint8_t const *
 			return -1;
 		}
 		vp->op = T_OP_ADD;
+		pairsteal(ctx, vp); /* for unknown attributes hack */
 
 		if (fr_dhcp_attr2vp(&vp, ctx, p + 5, p[4]) < 0) {
+			dict_attr_free(&da);
 			pairfree(&head);
 			return -1;
 		}
 
 		fr_cursor_merge(&cursor, vp);
+		dict_attr_free(&da); /* for unknown attributes hack */
 
 		p += 4 + 1 + p[4];	/* vendor id (4) + len (1) + vsa len (n) */
 	}
@@ -745,8 +748,10 @@ static int fr_dhcp_decode_suboption(VALUE_PAIR **tlv, TALLOC_CTX *ctx, uint8_t c
 				return -1;
 			}
 			vp->op = T_OP_ADD;
+			pairsteal(ctx, vp); /* for unknown attributes hack */
 
 			if (fr_dhcp_attr2vp(&vp, ctx, a_p, a_len) < 0) {
+				dict_attr_free(&da);
 				pairfree(&head);
 				goto malformed;
 			}
@@ -754,6 +759,9 @@ static int fr_dhcp_decode_suboption(VALUE_PAIR **tlv, TALLOC_CTX *ctx, uint8_t c
 
 			a_p += a_len;
 		}
+
+		dict_attr_free(&da); /* for unknown attributes hack */
+
 		p += 2 + p[1];	/* code (1) + len (1) + suboption len (n)*/
 	}
 
