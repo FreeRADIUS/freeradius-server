@@ -944,6 +944,12 @@ inline void fr_verify_vp(char const *file, int line, VALUE_PAIR const *vp)
 
 	(void) talloc_get_type_abort(vp, VALUE_PAIR);
 
+	if (!vp->da) {
+		FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR da pointer was NULL", file, line);
+		fr_assert(0);
+		fr_exit_now(0);
+	}
+
 	if (vp->data.ptr) switch (vp->da->type) {
 	case PW_TYPE_OCTETS:
 	case PW_TYPE_TLV:
@@ -1017,6 +1023,20 @@ inline void fr_verify_vp(char const *file, int line, VALUE_PAIR const *vp)
 
 	default:
 		break;
+	}
+
+	if (vp->da->flags.is_unknown) {
+		(void) talloc_get_type_abort(vp->da, DICT_ATTR);
+	} else {
+		DICT_ATTR const *da;
+
+		da = dict_attrbyvalue(vp->da->attr, vp->da->vendor);
+		if (da != vp->da) {
+			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR has invalid dictionary entry",
+				     file, line);
+			fr_assert(0);
+			fr_exit_now(1);
+		}
 	}
 }
 
