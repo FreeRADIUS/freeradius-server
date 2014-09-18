@@ -1030,7 +1030,7 @@ inline void fr_verify_vp(char const *file, int line, VALUE_PAIR const *vp)
 	} else {
 		DICT_ATTR const *da;
 
-		da = dict_attrbyvalue(vp->da->attr, vp->da->vendor);
+		da = dict_attrbyname(vp->da->name);
 		if (da != vp->da) {
 			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR has invalid dictionary entry",
 				     file, line);
