@@ -640,9 +640,9 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 				return_P("Unexpected regular expression");
 			}
 
-			c->data.map = map_from_fields(c, lhs, lhs_type, op, rhs, rhs_type,
-						      REQUEST_CURRENT, PAIR_LIST_REQUEST,
-						      REQUEST_CURRENT, PAIR_LIST_REQUEST);
+			c->data.map = map_from_fields_unknown(c, lhs, lhs_type, op, rhs, rhs_type,
+							      REQUEST_CURRENT, PAIR_LIST_REQUEST,
+							      REQUEST_CURRENT, PAIR_LIST_REQUEST);
 			if (!c->data.map) {
 				/*
 				 *	If strings are T_BARE_WORD and they start with '&',

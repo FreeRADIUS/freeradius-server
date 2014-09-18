@@ -149,6 +149,24 @@ static bool map_cast_from_hex(value_pair_map_t *map, FR_TOKEN rhs_type, char con
 	return true;
 }
 
+static bool fixup_unknown(value_pair_tmpl_t *vpt)
+{
+	DICT_ATTR const *da;
+
+	if (!vpt) return true;
+
+	if ((vpt->type != TMPL_TYPE_ATTR) &&
+	    (vpt->type != TMPL_TYPE_DATA)) {
+		return true;
+	}
+
+	if (!vpt->tmpl_da->flags.is_unknown) return true;
+
+	da = dict_addunknown(vpt->tmpl_da);
+	vpt->tmpl_da = da;
+	return true;
+}
+
 /** Convert CONFIG_PAIR (which may contain refs) to value_pair_map_t.
  *
  * Treats the left operand as an attribute reference
@@ -204,6 +222,12 @@ value_pair_map_t *map_from_cp(TALLOC_CTX *ctx, CONF_PAIR *cp,
 		goto error;
 	}
 
+	if (!fixup_unknown(map->dst)) {
+		cf_log_err(ci, "Failed creating attribute %s: %s",
+			   map->dst->name, fr_strerror());
+		goto error;
+	}
+
 	/*
 	 *	RHS might be an attribute reference.
 	 */
@@ -215,6 +239,12 @@ value_pair_map_t *map_from_cp(TALLOC_CTX *ctx, CONF_PAIR *cp,
 
 	} else {
 		map->src = tmpl_afrom_str(map, value, type, src_request_def, src_list_def);
+
+		if (!fixup_unknown(map->src)) {
+			cf_log_err(ci, "Failed creating attribute %s: %s",
+				   map->src->name, fr_strerror());
+			goto error;
+		}
 	}
 	if (!map->src) {
 		cf_log_err(ci, "%s", fr_strerror());
@@ -441,6 +471,74 @@ int map_from_cs(CONF_SECTION *cs, value_pair_map_t **head,
 error:
 	TALLOC_FREE(*head);
 	return -1;
+}
+
+/** Convert strings to value_pair_map_t with unknown attributes
+ *
+ *  Is a clone of map_from_fields(), except it adds unknown
+ *  attributes to the dictionary.
+ *
+ * Return must be freed with talloc_free
+ *
+ * @param[in] ctx for talloc
+ * @param[in] lhs of the operation
+ * @param[in] lhs_type type of the LHS string
+ * @param[in] op the operation to perform
+ * @param[in] rhs of the operation
+ * @param[in] rhs_type type of the RHS string
+ * @param[in] dst_request_def The default request to insert unqualified
+ *	attributes into.
+ * @param[in] dst_list_def The default list to insert unqualified attributes
+ *	into.
+ * @param[in] src_request_def The default request to resolve attribute
+ *	references in.
+ * @param[in] src_list_def The default list to resolve unqualified attributes
+ *	in.
+ * @return value_pair_map_t if successful or NULL on error.
+ */
+value_pair_map_t *map_from_fields_unknown(TALLOC_CTX *ctx, char const *lhs, FR_TOKEN lhs_type,
+					  FR_TOKEN op, char const *rhs, FR_TOKEN rhs_type,
+					  request_refs_t dst_request_def,
+					  pair_lists_t dst_list_def,
+					  request_refs_t src_request_def,
+					  pair_lists_t src_list_def)
+{
+	value_pair_map_t *map;
+
+	map = talloc_zero(ctx, value_pair_map_t);
+
+	map->dst = tmpl_afrom_str(map, lhs, lhs_type, dst_request_def, dst_list_def);
+	if (!map->dst) {
+	error:
+		talloc_free(map);
+		return NULL;
+	}
+
+	if (!fixup_unknown(map->src)) {
+		fr_strerror_printf("Failed creating attribute %s",
+				   map->src->name);
+		goto error;
+	}
+
+	map->op = op;
+
+	if ((map->dst->type == TMPL_TYPE_ATTR) &&
+	    map->dst->tmpl_da->flags.is_unknown &&
+	    map_cast_from_hex(map, rhs_type, rhs)) {
+		return map;
+	}
+
+	map->src = tmpl_afrom_str(map, rhs, rhs_type, src_request_def, src_list_def);
+	if (!map->src) goto error;
+
+	if (!fixup_unknown(map->dst)) {
+		fr_strerror_printf("Failed creating attribute %s",
+				   map->dst->name);
+		goto error;
+	}
+
+	VERIFY_MAP(map);
+	return map;
 }
 
 /** Convert strings to value_pair_map_t

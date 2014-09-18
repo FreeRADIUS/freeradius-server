@@ -504,11 +504,12 @@ condition &Attr-26.24757.84.9.5.4 == 0x1a99
 data &WiMAX-PFDv2-Src-Port == 6809
 
 #
-#  This OID is known, but the attribute is "byte".
-#  So the condition should be parsed as an unknown OID
+#  This OID is known, but the data is malformed.
+#  This is disallowed.  Fix the configuration so that
+#  it works.
 #
 condition &Attr-26.24757.84.9.5.7 == 0x1a99
-data &Attr-26.24757.84.9.5.7 == 0x1a99
+data ERROR offset 27 Failed to parse value for attribute
 
 #  This one is really unknown
 condition &Attr-26.24757.84.9.5.15 == 0x1a99
