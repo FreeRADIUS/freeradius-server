@@ -487,7 +487,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 					return_P("Failed creating exists");
 				}
 				rad_const_free(c->data.vpt->name);
-				c->data.vpt->name = talloc_strdup(c->data.vpt, lhs);
+				c->data.vpt->name = talloc_typed_strdup(c->data.vpt, lhs);
 				c->pass2_fixup = PASS2_FIXUP_ATTR;
 			}
 
@@ -661,7 +661,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 					return_0("Unknown attribute");
 				}
 				rad_const_free(c->data.map->dst->name);
-				c->data.map->dst->name = talloc_strdup(c->data.map->dst, lhs);
+				c->data.map->dst->name = talloc_typed_strdup(c->data.map->dst, lhs);
 				c->pass2_fixup = PASS2_FIXUP_ATTR;
 			}
 
