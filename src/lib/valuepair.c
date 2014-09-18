@@ -1658,6 +1658,11 @@ static VALUE_PAIR *pair_unknown2known(VALUE_PAIR *vp, DICT_ATTR const *da)
 		      &vp2);
 	if (len < 0) return vp; /* it's really unknown */
 
+	if (vp2->da->flags.is_unknown) {
+		pairfree(&vp2);
+		return vp;
+	}
+
 	/*
 	 *	Didn't parse all of it.  Return the "unknown" one.
 	 *
