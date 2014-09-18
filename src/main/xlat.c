@@ -290,9 +290,17 @@ static ssize_t xlat_debug_attr(UNUSED void *instance, REQUEST *request, char con
 {
 	VALUE_PAIR *vp, **vps;
 	REQUEST *current;
-	value_pair_tmpl_t vpt;
 	vp_cursor_t cursor;
 	char buffer[1024];
+
+	value_pair_tmpl_t *vpt;
+#ifndef WITH_VERIFY_PTR
+	value_pair_tmpl_t my_vpt;
+
+	vpt = &my_vpt;
+#else
+	vpt = talloc_zero(request, value_pair_tmpl_t);
+#endif
 
 	if (!RDEBUG_ENABLED2) {
 		*out = '\0';
@@ -301,15 +309,15 @@ static ssize_t xlat_debug_attr(UNUSED void *instance, REQUEST *request, char con
 
 	while (isspace((int) *fmt)) fmt++;
 
-	if (tmpl_from_attr_str(&vpt, fmt, REQUEST_CURRENT, PAIR_LIST_REQUEST) < 0) {
+	if (tmpl_from_attr_str(vpt, fmt, REQUEST_CURRENT, PAIR_LIST_REQUEST) < 0) {
 		RDEBUG("%s", fr_strerror());
 		return -1;
 	}
 
 	current = request;
-	if (radius_request(&current, vpt.tmpl_request) < 0) return -2;
+	if (radius_request(&current, vpt->tmpl_request) < 0) return -2;
 
-	vps = radius_list(current, vpt.tmpl_list);
+	vps = radius_list(current, vpt->tmpl_list);
 	if (!vps) {
 		return -2;
 	}
@@ -317,8 +325,8 @@ static ssize_t xlat_debug_attr(UNUSED void *instance, REQUEST *request, char con
 	RIDEBUG("Attributes matching \"%s\"", fmt);
 	vp = fr_cursor_init(&cursor, vps);
 
-	if (vpt.tmpl_da) {
-		vp = fr_cursor_next_by_da(&cursor, vpt.tmpl_da, TAG_ANY);
+	if (vpt->tmpl_da) {
+		vp = fr_cursor_next_by_da(&cursor, vpt->tmpl_da, TAG_ANY);
 	}
 	while (vp) {
 		DICT_ATTR *dac = NULL;
@@ -328,14 +336,14 @@ static ssize_t xlat_debug_attr(UNUSED void *instance, REQUEST *request, char con
 
 		if (vp->da->flags.has_tag) {
 			RIDEBUG2("\t%s:%s:%i %s %s",
-				fr_int2str(pair_lists, vpt.tmpl_list, "<INVALID>"),
+				fr_int2str(pair_lists, vpt->tmpl_list, "<INVALID>"),
 				vp->da->name,
 				vp->tag,
 				fr_int2str(fr_tokens, vp->op, "<INVALID>"),
 				buffer);
 		} else {
 			RIDEBUG2("\t%s:%s %s %s",
-				fr_int2str(pair_lists, vpt.tmpl_list, "<INVALID>"),
+				fr_int2str(pair_lists, vpt->tmpl_list, "<INVALID>"),
 				vp->da->name,
 				fr_int2str(fr_tokens, vp->op, "<INVALID>"),
 				buffer);
@@ -359,8 +367,8 @@ static ssize_t xlat_debug_attr(UNUSED void *instance, REQUEST *request, char con
 	next_vp:
 		talloc_free(dac);
 
-		if (vpt.tmpl_da) {
-			vp = fr_cursor_next_by_da(&cursor, vpt.tmpl_da, TAG_ANY);
+		if (vpt->tmpl_da) {
+			vp = fr_cursor_next_by_da(&cursor, vpt->tmpl_da, TAG_ANY);
 		} else {
 			vp = fr_cursor_next(&cursor);
 		}
