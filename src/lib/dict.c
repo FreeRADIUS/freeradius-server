@@ -3185,3 +3185,41 @@ DICT_VENDOR *dict_vendorbyvalue(int vendorpec)
 
 	return fr_hash_table_finddata(vendors_byvalue, &dv);
 }
+
+/*
+ *	Converts an unknown to a known by adding it to the internal
+ *	dictionaries.
+ */
+DICT_ATTR const *dict_addunknown(DICT_ATTR const *old)
+{
+	DICT_ATTR const *da, *parent;
+	ATTR_FLAGS flags;
+
+	if (!old) return NULL;
+
+	if (!old->flags.is_unknown) return old;
+
+	da = dict_attrbyvalue(old->attr, old->vendor);
+	if (da) goto free_old;
+
+	memcpy(&flags, &old->flags, sizeof(flags));
+	flags.is_unknown = false;
+
+	parent = dict_parent(old->attr, old->vendor);
+	if (parent) {
+		if (parent->flags.has_tlv) flags.is_tlv = true;
+		flags.evs = parent->flags.evs;
+		flags.extended = parent->flags.extended;
+		flags.long_extended = parent->flags.long_extended;
+	}
+
+	if (dict_addattr(old->name, old->attr, old->vendor, old->type, flags) < 0) {
+		return NULL;
+	}
+
+	da = dict_attrbyvalue(old->attr, old->vendor);
+
+free_old:
+	dict_attr_free(&old);
+	return da;
+}

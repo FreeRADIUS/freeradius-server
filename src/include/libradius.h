@@ -456,6 +456,7 @@ int		dict_read(char const *dir, char const *filename);
 void 		dict_attr_free(DICT_ATTR const **da);
 DICT_ATTR const	*dict_attrunknown(TALLOC_CTX *ctx, unsigned int attr, unsigned int vendor);
 DICT_ATTR const	*dict_attrunknownbyname(TALLOC_CTX *ctx, char const *attribute);
+DICT_ATTR const *dict_addunknown(DICT_ATTR const *old);
 DICT_ATTR const	*dict_attrbyvalue(unsigned int attr, unsigned int vendor);
 DICT_ATTR const	*dict_attrbyname(char const *attr);
 DICT_ATTR const *dict_attrbytagged_name(char const *name);
