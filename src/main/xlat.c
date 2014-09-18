@@ -2254,7 +2254,7 @@ value_pair_tmpl_t *radius_xlat2tmpl(TALLOC_CTX *ctx, xlat_exp_t *xlat)
 	if (!vpt) return NULL;
 
 	vpt->type = TMPL_TYPE_ATTR;
-	vpt->name = talloc_strdup(vpt, xlat->fmt);
+	vpt->name = talloc_typed_strdup(vpt, xlat->fmt);
 	vpt->tmpl_request = xlat->ref;
 	vpt->tmpl_list = xlat->list;
 	vpt->tmpl_da = xlat->da;
