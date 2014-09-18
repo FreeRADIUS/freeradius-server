@@ -651,7 +651,7 @@ size_t tmpl_prints(char *buffer, size_t bufsize, value_pair_tmpl_t const *vpt)
 	case TMPL_TYPE_DATA:
 		if (vpt->tmpl_value) {
 			return vp_data_prints_value(buffer, bufsize, vpt->tmpl_da,
-						    vpt->tmpl_value, vpt->tmpl_length, '"');
+						    vpt->tmpl_value, vpt->tmpl_length, '\'');
 		} else {
 			*buffer = '\0';
 			return 0;
