@@ -202,9 +202,11 @@ int client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 	if (fr_inaddr_any(&client->ipaddr) == 1) switch (client->ipaddr.af) {
 	case AF_INET:
 		if (client->ipaddr.prefix == 32) client->ipaddr.prefix = 0;
+		break;
 
 	case AF_INET6:
 		if (client->ipaddr.prefix == 128) client->ipaddr.prefix = 0;;
+		break;
 
 	default:
 		rad_assert(0);
