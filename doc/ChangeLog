@@ -1,6 +1,7 @@
 FreeRADIUS 3.0.5 Mon 15 Sep 2014 15:30:00 EDT urgency=medium
 	Feature improvements
 	* Large update to Huawei dictionary.
+	* Added dictionary.rfc7155
 
 	Bug fixes
 	* Parse list qualifiers in generic LDAP 'valuepair_attribute'
@@ -18,6 +19,8 @@ FreeRADIUS 3.0.5 Mon 15 Sep 2014 15:30:00 EDT urgency=medium
 	* Allow tabs after attribute names in the "users" file.
 	  Closes #796
 	* Free unknown DICT_ATTRs.  Closes #795
+	* Handle unknown attributes in the conditions and "update"
+	  sections.  e.g. Attr-1.2.3.4 = foo
 
 FreeRADIUS 3.0.4 Wed 10 Sep 2014 12:00:00 EDT urgency=medium
 	Feature improvements
