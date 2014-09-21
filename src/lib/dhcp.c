@@ -1204,9 +1204,6 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 
 	/* DHCP-Server-IP-Address */
 	vp = pairfind(packet->vps, DHCP2ATTR(265));
-
-	/* DHCP-DHCP-Server-Identifier */
-	if (!vp) vp = pairfind(packet->vps, DHCP2ATTR(54));
 	if (vp) {
 		lvalue = vp->vp_ipaddr;
 	} else {
