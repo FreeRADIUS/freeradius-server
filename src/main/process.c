@@ -50,7 +50,7 @@ extern fr_cond_t *debug_condition;
 static bool spawn_flag = false;
 static bool just_started = true;
 time_t fr_start_time = (time_t)-1;
-static fr_packet_list_t *pl = NULL;
+static rbtree_t *pl = NULL;
 static fr_event_list_t *el = NULL;
 
 fr_event_list_t *radius_event_list_corral(UNUSED event_corral_t hint) {
@@ -635,7 +635,7 @@ STATE_MACHINE_DECL(request_done)
 	 */
 	if (request->in_request_hash) {
 		ASSERT_MASTER;
-		if (!fr_packet_list_yank(pl, request->packet)) {
+		if (!rbtree_deletebydata(pl, &request->packet)) {
 			rad_assert(0 == 1);
 		}
 		request->in_request_hash = false;
@@ -1574,7 +1574,7 @@ int request_receive(rad_listen_t *listener, RADIUS_PACKET *packet,
 	 */
 	if (listener->nodup) goto skip_dup;
 
-	packet_p = fr_packet_list_find(pl, packet);
+	packet_p = rbtree_finddata(pl, &packet);
 	if (packet_p) {
 		request = fr_packet2myptr(REQUEST, packet, packet_p);
 		rad_assert(request->in_request_hash);
@@ -1649,7 +1649,7 @@ int request_receive(rad_listen_t *listener, RADIUS_PACKET *packet,
 	 *	Quench maximum number of outstanding requests.
 	 */
 	if (main_config.max_requests &&
-	    ((count = fr_packet_list_num_elements(pl)) > main_config.max_requests)) {
+	    ((count = rbtree_num_elements(pl)) > main_config.max_requests)) {
 		RATE_LIMIT(ERROR("Dropping request (%d is too many): from client %s port %d - ID: %d", count,
 				 client->shortname,
 				 packet->src_port, packet->id);
@@ -1682,7 +1682,7 @@ skip_dup:
 	 *	Remember the request in the list.
 	 */
 	if (!listener->nodup) {
-		if (!fr_packet_list_insert(pl, &request->packet)) {
+		if (!rbtree_insert(pl, &request->packet)) {
 			RERROR("Failed to insert request in the list of live requests: discarding it");
 			request_done(request, FR_ACTION_DONE);
 			return 1;
@@ -4503,7 +4503,7 @@ static int event_new_fd(rad_listen_t *this)
 			/*
 			 *	EOL all requests using this socket.
 			 */
-			fr_packet_list_walk(pl, this, eol_listener);
+			rbtree_walk(pl, RBTREE_DELETE_ORDER, eol_listener, this);
 		}
 
 		/*
@@ -4707,6 +4707,15 @@ int radius_event_init(TALLOC_CTX *ctx) {
 	return 1;
 }
 
+static int packet_entry_cmp(void const *one, void const *two)
+{
+	RADIUS_PACKET const * const *a = one;
+	RADIUS_PACKET const * const *b = two;
+
+	return fr_packet_cmp(*a, *b);
+}
+
+
 int radius_event_start(CONF_SECTION *cs, bool have_children)
 {
 	rad_listen_t *head = NULL;
@@ -4721,7 +4730,7 @@ int radius_event_start(CONF_SECTION *cs, bool have_children)
 		 */
 		rad_assert(el);
 
-		pl = fr_packet_list_create(0);
+		pl = rbtree_create(NULL, packet_entry_cmp, NULL, 0);
 		if (!pl) return 0;	/* leak el */
 	}
 
@@ -4939,7 +4948,7 @@ void radius_event_free(void)
 	}
 #endif
 
-	fr_packet_list_walk(pl, NULL, request_delete_cb);
+	rbtree_walk(pl, RBTREE_DELETE_ORDER,  request_delete_cb, NULL);
 
 	if (spawn_flag) {
 		/*
@@ -4967,15 +4976,15 @@ void radius_event_free(void)
 			}
 #endif
 
-			fr_packet_list_walk(pl, NULL, request_delete_cb);
-			num = fr_packet_list_num_elements(pl);
+			rbtree_walk(pl, RBTREE_DELETE_ORDER, NULL, request_delete_cb);
+			num = rbtree_num_elements(pl);
 			if (num > 0) {
 				ERROR("Request list has %d requests still in it.", num);
 			}
 		}
 	}
 
-	fr_packet_list_free(pl);
+	rbtree_free(pl);
 	pl = NULL;
 
 #ifdef WITH_PROXY
