@@ -445,7 +445,7 @@ static int dhcp_process(REQUEST *request)
 	 *	identifier, use it.
 	 */
 	if (request->reply->src_ipaddr.ipaddr.ip4addr.s_addr == INADDR_ANY) {
-		vp = pairfind(request->reply->vps, 265, DHCP_MAGIC_VENDOR, TAG_ANY); /* DHCP-Server-IP-Address */
+		vp = pairfind(request->reply->vps, PW_PACKET_SRC_IP_ADDRESS, 0, TAG_ANY);
 		if (!vp) vp = pairfind(request->reply->vps, 54, DHCP_MAGIC_VENDOR, TAG_ANY); /* DHCP-DHCP-Server-Identifier */
 		if (vp) {
 			request->reply->src_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;

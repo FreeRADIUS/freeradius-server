@@ -1618,9 +1618,7 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 
 	/* DHCP-Server-IP-Address */
 	vp = pairfind(packet->vps, 265, DHCP_MAGIC_VENDOR, TAG_ANY);
-
-	/* DHCP-DHCP-Server-Identifier */
-	if (!vp && (vp = pairfind(packet->vps, 54, DHCP_MAGIC_VENDOR, TAG_ANY))) {
+	if (vp) {
 		lvalue = vp->vp_ipaddr;
 	} else {
 		lvalue = htonl(INADDR_ANY);
