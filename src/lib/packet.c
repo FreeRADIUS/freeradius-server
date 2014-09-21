@@ -41,22 +41,43 @@ int fr_packet_cmp(RADIUS_PACKET const *a, RADIUS_PACKET const *b)
 {
 	int rcode;
 
+	/*
+	 *	256-way fanout.
+	 */
 	rcode = a->id - b->id;
 	if (rcode != 0) return rcode;
 
+	/*
+	 *	Source ports are pretty much random.
+	 */
 	rcode = (int) a->src_port - (int) b->src_port;
 	if (rcode != 0) return rcode;
 
+	/*
+	 *	Usually many client IPs, and few server IPs
+	 */
+	rcode = fr_ipaddr_cmp(&a->src_ipaddr, &b->src_ipaddr);
+	if (rcode != 0) return rcode;
+
+	/*
+	 *	One socket can receive packets for multiple
+	 *	destination IPs, so we check that before checking the
+	 *	file descriptor.
+	 */
+	rcode = fr_ipaddr_cmp(&a->dst_ipaddr, &b->dst_ipaddr);
+	if (rcode != 0) return rcode;
+
+	/*
+	 *	At this point, the order of comparing socket FDs
+	 *	and/or destination ports doesn't matter.  One of those
+	 *	fields will make the socket unique, and the other is
+	 *	pretty much redundant.
+	 */
 	rcode = (int) a->dst_port - (int) b->dst_port;
 	if (rcode != 0) return rcode;
 
 	rcode = a->sockfd - b->sockfd;
-	if (rcode != 0) return rcode;
-
-	rcode = fr_ipaddr_cmp(&a->src_ipaddr, &b->src_ipaddr);
-	if (rcode != 0) return rcode;
-
-	return fr_ipaddr_cmp(&a->dst_ipaddr, &b->dst_ipaddr);
+	return rcode;
 }
 
 int fr_inaddr_any(fr_ipaddr_t *ipaddr)
