@@ -1440,6 +1440,82 @@ int cf_section_parse(CONF_SECTION *cs, void *base,
 }
 
 
+/*
+ *	Check XLAT things in pass 2.  But don't cache the xlat stuff anywhere.
+ */
+int cf_section_parse_pass2(CONF_SECTION *cs, UNUSED void *base,
+			   CONF_PARSER const *variables)
+{
+	int i;
+	ssize_t slen;
+	char const *error;
+	char *value = NULL;
+	xlat_exp_t *xlat;
+
+	/*
+	 *	Handle the known configuration parameters.
+	 */
+	for (i = 0; variables[i].name != NULL; i++) {
+		CONF_PAIR *cp;
+
+		/*
+		 *	Handle subsections specially
+		 */
+		if (variables[i].type == PW_TYPE_SUBSECTION) {
+			CONF_SECTION *subcs;
+			subcs = cf_section_sub_find(cs, variables[i].name);
+
+			if (cf_section_parse_pass2(subcs, base,
+						   (CONF_PARSER const *) variables[i].dflt) < 0) {
+				goto error;
+			}
+			continue;
+		} /* else it's a CONF_PAIR */
+
+		/*
+		 *	Ignore everything but xlat expansions.
+		 */
+		if ((variables[i].type & PW_TYPE_XLAT) == 0) continue;
+
+		cp = cf_pair_find(cs, variables[i].name);
+		if (!cp || !cp->value) continue;
+
+		if ((cp->value_type != T_DOUBLE_QUOTED_STRING) &&
+		    (cp->value_type != T_BARE_WORD)) continue;
+
+		value = talloc_strdup(cs, cp->value); /* modified by xlat_tokenize */
+		xlat = NULL;
+
+		slen = xlat_tokenize(cs, value, &xlat, &error);
+		if (slen < 0) {
+			char const *prefix = "";
+			char const *p = cp->value;
+			size_t indent = -slen;
+
+			if (indent >= sizeof(parse_spaces)) {
+				size_t offset = (indent - (sizeof(parse_spaces) - 1)) + (sizeof(parse_spaces) * 0.75);
+				indent -= offset;
+				p += offset;
+
+				prefix = "...";
+			}
+
+			cf_log_err(&cp->item, "Failed parsing expanded string:");
+			cf_log_err(&cp->item, "%s%s", prefix, p);
+			cf_log_err(&cp->item, "%s%.*s^ %s", prefix, (int) indent, parse_spaces, error);
+		error:
+			talloc_free(value);
+			talloc_free(xlat);
+			return -1;
+		}
+
+		talloc_free(value);
+		talloc_free(xlat);
+	} /* for all variables in the configuration section */
+
+	return 0;
+}
+
 static CONF_SECTION *cf_template_copy(CONF_SECTION *parent, CONF_SECTION const *template)
 {
 	CONF_ITEM *ci;
