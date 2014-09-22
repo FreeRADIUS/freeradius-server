@@ -3148,7 +3148,7 @@ smart_prefix=
 
 	if test "x$ac_cv_lib_tr_tid_tidc_create" != "x"; then
 		if test "x$ac_cv_header_trust_router_tr_dh_h" != "x"; then
-			SMART_CPPFLAGS="$SMART_CPPFLAGS -DHAVE_TRUSTROUTER_TR_DH_H"
+			SMART_CPPFLAGS="$SMART_CPPFLAGS -DHAVE_TRUST_ROUTER_TR_DH_H"
 			trustrouter=yes
 		fi
 	fi
