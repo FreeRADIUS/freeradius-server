@@ -1422,6 +1422,20 @@ static int pass2_cb(UNUSED void *ctx, void *data)
 	return 0;
 }
 
+static int pass2_instance_cb(UNUSED void *ctx, void *data)
+{
+	module_instance_t *node = data;
+
+	if (!node->entry->module->config || !node->cs) return 0;
+
+	if (cf_section_parse_pass2(node->cs, node->insthandle,
+				   node->entry->module->config) < 0) {
+		return -1;
+	}
+
+	return 0;
+}
+
 /*
  *	Load all of the virtual servers.
  */
@@ -1486,6 +1500,14 @@ int virtual_servers_load(CONF_SECTION *config)
 			if (!first_time) continue;
 			return -1;
 		}
+	}
+
+	/*
+	 *	Check all of the module config items which are xlat expanded.
+	 */
+	if (rbtree_walk(instance_tree, RBTREE_IN_ORDER,
+			pass2_instance_cb, NULL) != 0) {
+		return -1;
 	}
 
 	/*
