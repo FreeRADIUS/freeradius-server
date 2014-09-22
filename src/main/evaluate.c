@@ -109,8 +109,9 @@ int radius_expand_tmpl(char **out, REQUEST *request, value_pair_tmpl_t const *vp
 
 	case TMPL_TYPE_REGEX:
 		EVAL_DEBUG("TMPL REGEX");
+		rad_assert(vpt->tmpl_xlat != NULL);
 		/* Error in expansion, this is distinct from zero length expansion */
-		if (radius_axlat(out, request, vpt->name, NULL, NULL) < 0) {
+		if (radius_axlat_struct(out, request, vpt->tmpl_xlat, NULL, NULL) < 0) {
 			rad_assert(!*out);
 			return -1;
 		}

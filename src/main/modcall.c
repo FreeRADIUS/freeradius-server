@@ -2877,9 +2877,22 @@ static bool pass2_regex_compile(CONF_ITEM const *ci, value_pair_tmpl_t *vpt)
 	rad_assert(vpt->type == TMPL_TYPE_REGEX);
 
 	/*
-	 *	Expanded at run-time.  We can't precompile it.
+	 *	It's a dynamic expansion.  We can't expand the string,
+	 *	but we can pre-parse it as an xlat struct.  In that
+	 *	case, we convert it to a pre-compiled XLAT.
+	 *
+	 *	This is a little more complicated than it needs to be
+	 *	because radius_evaluate_map() keys off of the src
+	 *	template type, instead of the operators.  And, the
+	 *	pass2_xlat_compile() function expects to get passed an
+	 *	XLAT instead of a REGEX.
 	 */
-	if (strchr(vpt->name, '%')) return true;
+	if (strchr(vpt->name, '%')) {
+		vpt->type = TMPL_TYPE_XLAT;
+		rcode = pass2_xlat_compile(ci, &vpt, false, NULL);
+		vpt->type = TMPL_TYPE_REGEX;
+		return rcode;
+	}
 
 	preg = talloc_zero(vpt, regex_t);
 	talloc_set_destructor(preg, _free_compiled_regex);
