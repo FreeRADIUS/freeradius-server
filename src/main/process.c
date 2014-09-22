@@ -1284,31 +1284,6 @@ STATE_MACHINE_DECL(request_finish)
 	}
 
 	/*
-	 *	Don't send replies if there are none to send.
-	 */
-	if (!request->in_request_hash) {
-#ifdef WITH_TCP
-		if ((request->listener->type == RAD_LISTEN_AUTH)
-#ifdef WITH_ACCOUNTING
-		    || (request->listener->type == RAD_LISTEN_ACCT)
-#endif
-			) {
-			listen_socket_t *sock = request->listener->data;
-
-			if (sock->proto == IPPROTO_UDP) return;
-
-			/*
-			 *	TCP packets aren't in the request
-			 *	hash.
-			 */
-		}
-#else
-		NO_CHILD_THREAD;
-		return;
-#endif
-	}
-
-	/*
 	 *	Override the response code if a control:Response-Packet-Type attribute is present.
 	 */
 	vp = pairfind(request->config_items, PW_RESPONSE_PACKET_TYPE, 0, TAG_ANY);
@@ -1392,10 +1367,45 @@ STATE_MACHINE_DECL(request_finish)
 	gettimeofday(&request->reply->timestamp, NULL);
 
 	/*
+	 *	Fake packets get marked as "done", and have the
+	 *	proxy-reply section deal with the reply attributes.
+	 *	We therefore don't free the reply attributes.
+	 */
+	if (request->packet->dst_port == 0) {
+		RDEBUG("Finished internally proxied request.");
+		NO_CHILD_THREAD;
+		request->child_state = REQUEST_DONE;
+		return;
+	}
+
+	/*
 	 *	Ignore all "do not respond" packets.
 	 */
 	if (!request->reply->code) {
-		RDEBUG("Not sending reply");
+		RDEBUG("Not sending reply to client.");
+		goto done;
+	}
+
+	/*
+	 *	If it's not in the request hash, we MIGHT not want to
+	 *	send a reply.
+	 *
+	 *	If duplicate packets are allowed, then then only
+	 *	reason to NOT be in the request hash is because we
+	 *	don't want to send a reply.
+	 *
+	 *	FIXME: this is crap.  The rest of the state handling
+	 *	should use a different field so that we don't have two
+	 *	meanings for it.
+	 *
+	 *	Otherwise duplicates are forbidden, and the request is
+	 *	SUPPOSED to avoid the request hash.
+	 *
+	 *	In that case, we need to send a reply.
+	 */
+	if (!request->in_request_hash &&
+	    !request->listener->nodup) {
+		RDEBUG("Suppressing reply to client.");
 		goto done;
 	}
 
