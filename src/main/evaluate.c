@@ -111,16 +111,6 @@ int radius_expand_tmpl(char **out, REQUEST *request, value_pair_tmpl_t const *vp
 		}
 		break;
 
-	case TMPL_TYPE_REGEX:
-		EVAL_DEBUG("TMPL REGEX");
-		rad_assert(vpt->tmpl_xlat != NULL);
-		/* Error in expansion, this is distinct from zero length expansion */
-		if (radius_axlat_struct(out, request, vpt->tmpl_xlat, NULL, NULL) < 0) {
-			rad_assert(!*out);
-			return -1;
-		}
-		break;
-
 	case TMPL_TYPE_XLAT:
 		EVAL_DEBUG("TMPL XLAT");
 		/* Error in expansion, this is distinct from zero length expansion */
@@ -150,7 +140,11 @@ int radius_expand_tmpl(char **out, REQUEST *request, value_pair_tmpl_t const *vp
 		if (!*out) return -1;
 		break;
 
+		/*
+		 *	We should never be expanding these.
+		 */
 	case TMPL_TYPE_DATA:
+	case TMPL_TYPE_REGEX:
 	case TMPL_TYPE_REGEX_STRUCT:
 		rad_assert(0 == 1);
 		/* FALL-THROUGH */
@@ -249,7 +243,7 @@ static int do_regex(REQUEST *request, value_pair_map_t const *map)
 	 *  Expand and then compile it.
 	 */
 	switch (map->src->type) {
-	case TMPL_TYPE_REGEX:
+	case TMPL_TYPE_XLAT_STRUCT: /* pre-compiled to an xlat thing */
 		rcode = radius_expand_tmpl(&rhs, request, map->src);
 		if (rcode < 0) {
 			EVAL_DEBUG("FAIL %d", __LINE__);
@@ -272,7 +266,7 @@ static int do_regex(REQUEST *request, value_pair_map_t const *map)
 		preg = &reg;
 		break;
 
-	case TMPL_TYPE_REGEX_STRUCT:
+	case TMPL_TYPE_REGEX_STRUCT: /* pre-compiled to a regex */
 		preg = map->src->tmpl_preg;
 		break;
 
@@ -515,22 +509,13 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 	rad_assert(map->src->type != TMPL_TYPE_UNKNOWN);
 	rad_assert(map->dst->type != TMPL_TYPE_LIST);
 	rad_assert(map->src->type != TMPL_TYPE_LIST);
+	rad_assert(map->src->type != TMPL_TYPE_REGEX);
 	rad_assert(map->dst->type != TMPL_TYPE_REGEX);
 	rad_assert(map->dst->type != TMPL_TYPE_REGEX_STRUCT);
 
 	EVAL_DEBUG("MAP TYPES LHS: %s, RHS: %s",
 		   fr_int2str(template_names, map->dst->type, "???"),
 		   fr_int2str(template_names, map->src->type, "???"));
-
-	/*
-	 *	Verify regexes.
-	 */
-	if ((map->src->type == TMPL_TYPE_REGEX) ||
-	    (map->src->type == TMPL_TYPE_REGEX_STRUCT)) {
-		rad_assert(map->op == T_OP_REG_EQ);
-	} else {
-		rad_assert(!((map->op == T_OP_REG_EQ) || (map->op == T_OP_REG_NE)));
-	}
 
 	/*
 	 *	They're both attributes.  Do attribute-specific work.
@@ -635,8 +620,7 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 	 *	Might be a virtual comparison
 	 */
 	if ((map->dst->type == TMPL_TYPE_ATTR) &&
-	    (map->src->type != TMPL_TYPE_REGEX) &&
-	    (map->src->type != TMPL_TYPE_REGEX_STRUCT) &&
+	    (map->op != T_OP_REG_EQ) &&
 	    (c->pass2_fixup == PASS2_PAIRCOMPARE)) {
 		int ret;
 		VALUE_PAIR *lhs_vp;
@@ -689,8 +673,7 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 	/*
 	 *	Parse regular expressions.
 	 */
-	if ((map->src->type == TMPL_TYPE_REGEX) ||
-	    (map->src->type == TMPL_TYPE_REGEX_STRUCT)) {
+	if (map->op == T_OP_REG_EQ) {
 		return do_regex(request, map);
 	}
 #endif

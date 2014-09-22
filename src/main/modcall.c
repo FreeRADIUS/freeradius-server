@@ -2905,9 +2905,7 @@ static bool pass2_regex_compile(CONF_ITEM const *ci, value_pair_tmpl_t *vpt)
 	 */
 	if (strchr(vpt->name, '%')) {
 		vpt->type = TMPL_TYPE_XLAT;
-		rcode = pass2_xlat_compile(ci, &vpt, false, NULL);
-		vpt->type = TMPL_TYPE_REGEX;
-		return rcode;
+		return pass2_xlat_compile(ci, &vpt, false, NULL);
 	}
 
 	preg = talloc_zero(vpt, regex_t);
