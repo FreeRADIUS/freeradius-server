@@ -119,6 +119,8 @@ typedef struct timeval _timeval_t;
 #define PW_TYPE_FILE_INPUT	((1 << 14) | PW_TYPE_STRING)
 #define PW_TYPE_FILE_OUTPUT	((1 << 15) | PW_TYPE_STRING)
 
+#define PW_TYPE_XLAT		(1 << 16)	//!< string will be dynamically expanded
+
 #define FR_INTEGER_COND_CHECK(_name, _var, _cond, _new)\
 do {\
 	if (!(_cond)) {\
@@ -153,6 +155,7 @@ void		cf_section_add(CONF_SECTION *parent, CONF_SECTION *cs);
 int		cf_pair_replace(CONF_SECTION *cs, CONF_PAIR *cp, char const *value);
 int		cf_item_parse(CONF_SECTION *cs, char const *name, int type, void *data, char const *dflt);
 int		cf_section_parse(CONF_SECTION *, void *base, CONF_PARSER const *variables);
+int		cf_section_parse_pass2(CONF_SECTION *, void *base, CONF_PARSER const *variables);
 const CONF_PARSER *cf_section_parse_table(CONF_SECTION *cs);
 CONF_SECTION	*cf_file_read(char const *file);
 void		cf_file_free(CONF_SECTION *cs);
