@@ -194,6 +194,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void * instance, REQUEST * re
 	dissocket = fr_connection_get(inst->redis_inst->pool);
 	if (!dissocket) return RLM_MODULE_FAIL;
 
+	/*
+	 *	FIXME: pre-parse these into PW_TYPE_XLAT
+	 */
 	insert = cf_pair_value(cf_pair_find(cs, "insert"));
 	trim = cf_pair_value(cf_pair_find(cs, "trim"));
 	expire = cf_pair_value(cf_pair_find(cs, "expire"));

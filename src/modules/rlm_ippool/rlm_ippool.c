@@ -112,7 +112,7 @@ static const CONF_PARSER module_config[] = {
 	{ "ip-index", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_DEPRECATED, rlm_ippool_t, ip_index), NULL },
 	{ "ip_index", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_REQUIRED, rlm_ippool_t, ip_index), NULL },
 
-	{ "key", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_REQUIRED, rlm_ippool_t, key), "%{NAS-IP-Address} %{NAS-Port}" },
+	{ "key", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_REQUIRED | PW_TYPE_XLAT, rlm_ippool_t, key), "%{NAS-IP-Address} %{NAS-Port}" },
 
 	{ "range-start", FR_CONF_OFFSET(PW_TYPE_IPV4_ADDR | PW_TYPE_DEPRECATED, rlm_ippool_t, range_start_addr), NULL },
 	{ "range_start", FR_CONF_OFFSET(PW_TYPE_IPV4_ADDR, rlm_ippool_t, range_start_addr), "0" },
