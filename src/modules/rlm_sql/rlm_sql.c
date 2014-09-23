@@ -36,9 +36,38 @@ RCSID("$Id$")
 
 #include "rlm_sql.h"
 
+/*
+ *	So we can do pass2 xlat checks on the queries.
+ */
+static const CONF_PARSER query_config[] = {
+
+	{ "query", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT | PW_TYPE_MULTI, rlm_sql_config_t, accounting.query), NULL },
+
+	{NULL, -1, 0, NULL, NULL}
+};
+
+/*
+ *	For now hard-code the subsections.  This isn't perfect, but it
+ *	helps the average case.
+ */
+static const CONF_PARSER type_config[] = {
+
+	{ "accounting-on", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) query_config },
+	{ "accounting-off", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) query_config },
+	{ "start", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) query_config },
+	{ "interim-update", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) query_config },
+	{ "stop", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) query_config },
+
+	{NULL, -1, 0, NULL, NULL}
+};
+
+
+
 static const CONF_PARSER acct_config[] = {
 	{ "reference", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_sql_config_t, accounting.reference), ".query" },
 	{ "logfile", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sql_config_t, accounting.logfile), NULL },
+
+	{ "type", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) type_config },
 
 	{NULL, -1, 0, NULL, NULL}
 };
@@ -46,6 +75,8 @@ static const CONF_PARSER acct_config[] = {
 static const CONF_PARSER postauth_config[] = {
 	{ "reference", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_sql_config_t, postauth.reference), ".query" },
 	{ "logfile", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sql_config_t, postauth.logfile), NULL },
+
+	{ "query", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT | PW_TYPE_MULTI, rlm_sql_config_t, postauth.query), NULL },
 
 	{NULL, -1, 0, NULL, NULL}
 };
