@@ -1700,7 +1700,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 {
 	CONF_SECTION *this, *css, *nextcs;
 	CONF_PAIR *cpn;
-	char const *ptr, *start;
+	char const *ptr;
 	char const *value;
 	char buf[8192];
 	char buf1[8192];
@@ -2040,6 +2040,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			ssize_t slen;
 			char const *error = NULL;
 			char *p;
+			char const *start;
 			CONF_SECTION *server;
 
 			/*
