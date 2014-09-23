@@ -1478,6 +1478,8 @@ int cf_section_parse_pass2(CONF_SECTION *cs, UNUSED void *base,
 		if ((variables[i].type & PW_TYPE_XLAT) == 0) continue;
 
 		cp = cf_pair_find(cs, variables[i].name);
+
+	redo:
 		if (!cp || !cp->value) continue;
 
 		if ((cp->value_type != T_DOUBLE_QUOTED_STRING) &&
@@ -1505,6 +1507,14 @@ int cf_section_parse_pass2(CONF_SECTION *cs, UNUSED void *base,
 
 		talloc_free(value);
 		talloc_free(xlat);
+
+		/*
+		 *	If the "multi" flag is set, check all of them.
+		 */
+		if ((variables[i].type & PW_TYPE_MULTI) != 0) {
+			cp = cf_pair_find_next(cs, cp, cp->attr);
+			goto redo;
+		}
 	} /* for all variables in the configuration section */
 
 	return 0;
