@@ -120,6 +120,7 @@ typedef struct timeval _timeval_t;
 #define PW_TYPE_FILE_OUTPUT	((1 << 15) | PW_TYPE_STRING)
 
 #define PW_TYPE_XLAT		(1 << 16)	//!< string will be dynamically expanded
+#define PW_TYPE_MULTI		(1 << 17)	//!< CONF_PAIR can have multiple copies
 
 #define FR_INTEGER_COND_CHECK(_name, _var, _cond, _new)\
 do {\
