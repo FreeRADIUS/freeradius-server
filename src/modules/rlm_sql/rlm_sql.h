@@ -47,6 +47,8 @@ typedef struct sql_acct_section {
 	bool		reference_cp;
 
 	char const	*logfile;
+
+	char const	*query;	/* for xlat parsing */
 } sql_acct_section_t;
 
 typedef struct sql_config {
