@@ -36,9 +36,16 @@ RCSID("$Id$")
 
 #include "rlm_sql.h"
 
-static const CONF_PARSER acct_section_config[] = {
-	{ "reference", FR_CONF_OFFSET(PW_TYPE_STRING, sql_acct_section_t, reference), ".query" },
-	{ "logfile", FR_CONF_OFFSET(PW_TYPE_STRING, sql_acct_section_t, logfile), NULL },
+static const CONF_PARSER acct_config[] = {
+	{ "reference", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_sql_config_t, accounting.reference), NULL },
+	{ "logfile", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sql_config_t, accounting.logfile), NULL },
+
+	{NULL, -1, 0, NULL, NULL}
+};
+
+static const CONF_PARSER postauth_config[] = {
+	{ "reference", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_sql_config_t, postauth.reference), NULL },
+	{ "logfile", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sql_config_t, postauth.logfile), NULL },
 
 	{NULL, -1, 0, NULL, NULL}
 };
@@ -80,6 +87,10 @@ static const CONF_PARSER module_config[] = {
 	 *	This only works for a few drivers.
 	 */
 	{ "query_timeout", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_sql_config_t, query_timeout), NULL },
+
+	{ "accounting", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) acct_config },
+
+	{ "post-auth", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) postauth_config },
 
 	{NULL, -1, 0, NULL, NULL}
 };
@@ -690,37 +701,6 @@ static int mod_detach(void *instance)
 	return 0;
 }
 
-static int parse_sub_section(CONF_SECTION *parent,
-			     rlm_sql_t *inst,
-			     sql_acct_section_t **config,
-			     rlm_components_t comp)
-{
-	CONF_SECTION *cs;
-
-	char const *name = section_type_value[comp].section;
-
-	cs = cf_section_sub_find(parent, name);
-	if (!cs) {
-		INFO("rlm_sql (%s): Couldn't find configuration for "
-		       "%s, will return NOOP for calls from this section",
-		       inst->config->xlat_name, name);
-
-		return 0;
-	}
-
-	*config = talloc_zero(parent, sql_acct_section_t);
-	if (cf_section_parse(cs, *config, acct_section_config) < 0) {
-		ERROR("rlm_sql (%s): Couldn't find configuration for "
-		       "%s, will return NOOP for calls from this section",
-		       inst->config->xlat_name, name);
-		return -1;
-	}
-
-	(*config)->cs = cs;
-
-	return 0;
-}
-
 static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
 	rlm_sql_t *inst = instance;
@@ -773,13 +753,11 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	rad_assert(inst->config->xlat_name);
 
 	/*
-	 *	If the configuration parameters can't be parsed, then fail.
+	 *	This will always exist, as cf_section_parse_init() will create it
+	 *	if it doesn't exist.
 	 */
-	if ((parse_sub_section(conf, inst, &inst->config->accounting, RLM_COMPONENT_ACCT) < 0) ||
-	    (parse_sub_section(conf, inst, &inst->config->postauth, RLM_COMPONENT_POST_AUTH) < 0)) {
-		cf_log_err_cs(conf, "Invalid configuration");
-		return -1;
-	}
+	inst->config->accounting.cs = cf_section_sub_find(conf, "accounting");
+	inst->config->postauth.cs = cf_section_sub_find(conf, "post-auth");
 
 	/*
 	 *	Cache the SQL-User-Name DICT_ATTR, so we can be slightly
@@ -1280,8 +1258,8 @@ finish:
 static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST * request) {
 	rlm_sql_t *inst = instance;
 
-	if (inst->config->accounting) {
-		return acct_redundant(inst, request, inst->config->accounting);
+	if (inst->config->accounting.reference) {
+		return acct_redundant(inst, request, &inst->config->accounting);
 	}
 
 	return RLM_MODULE_NOOP;
@@ -1504,8 +1482,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_checksimul(void *instance, REQUEST * req
 static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST * request) {
 	rlm_sql_t *inst = instance;
 
-	if (inst->config->postauth) {
-		return acct_redundant(inst, request, inst->config->postauth);
+	if (inst->config->postauth.reference) {
+		return acct_redundant(inst, request, &inst->config->postauth);
 	}
 
 	return RLM_MODULE_NOOP;

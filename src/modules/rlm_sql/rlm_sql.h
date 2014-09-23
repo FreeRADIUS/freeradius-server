@@ -92,8 +92,8 @@ typedef struct sql_config {
 	/*
 	 *	Section configurations
 	 */
-	sql_acct_section_t	*postauth;
-	sql_acct_section_t	*accounting;
+	sql_acct_section_t	postauth;
+	sql_acct_section_t	accounting;
 } rlm_sql_config_t;
 
 typedef struct sql_inst rlm_sql_t;
