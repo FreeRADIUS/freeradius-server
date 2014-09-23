@@ -2794,8 +2794,6 @@ void modcallable_free(modcallable **pc)
 
 
 #ifdef WITH_UNLANG
-static char const spaces[] = "                                                                                                                        ";
-
 static bool pass2_xlat_compile(CONF_ITEM const *ci, value_pair_tmpl_t **pvpt, bool convert,
 			       DICT_ATTR const *da)
 {
@@ -2813,22 +2811,16 @@ static bool pass2_xlat_compile(CONF_ITEM const *ci, value_pair_tmpl_t **pvpt, bo
 	slen = xlat_tokenize(vpt, fmt, &head, &error);
 
 	if (slen < 0) {
-		char const *prefix = "";
-		char const *p = vpt->name;
-		size_t indent = -slen;
+		char *spaces, *text;
 
-		if (indent >= sizeof(spaces)) {
-			size_t offset = (indent - (sizeof(spaces) - 1)) + (sizeof(spaces) * 0.75);
-			indent -= offset;
-			p += offset;
-
-			prefix = "...";
-		}
-
+		fr_canonicalize_error(vpt, slen, &spaces, &text, vpt->name);
+		
 		cf_log_err(ci, "Failed parsing expanded string:");
-		cf_log_err(ci, "%s%s", prefix, p);
-		cf_log_err(ci, "%s%.*s^ %s", prefix, (int) indent, spaces, error);
+		cf_log_err(ci, "%s", text);
+		cf_log_err(ci, "%s^ %s", spaces, error);
 
+		talloc_free(spaces);
+		talloc_free(text);
 		return false;
 	}
 
