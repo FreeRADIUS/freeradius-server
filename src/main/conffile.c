@@ -2039,7 +2039,6 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			ssize_t slen;
 			char const *error = NULL;
 			char *p;
-			char const *start;
 			CONF_SECTION *server;
 
 			/*
@@ -2057,9 +2056,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			/*
 			 *	If there's a ${...}.  If so, expand it.
 			 */
-			start = buf;
 			if (strchr(ptr, '$') != NULL) {
-				start = buf3;
 				ptr = cf_expand_variables(filename, lineno,
 							  this,
 							  buf3, sizeof(buf3),
