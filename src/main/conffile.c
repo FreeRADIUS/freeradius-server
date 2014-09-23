@@ -1467,7 +1467,7 @@ int cf_section_parse_pass2(CONF_SECTION *cs, UNUSED void *base,
 
 			if (cf_section_parse_pass2(subcs, base,
 						   (CONF_PARSER const *) variables[i].dflt) < 0) {
-				goto error;
+				return -1;
 			}
 			continue;
 		} /* else it's a CONF_PAIR */
@@ -1503,7 +1503,7 @@ int cf_section_parse_pass2(CONF_SECTION *cs, UNUSED void *base,
 			cf_log_err(&cp->item, "Failed parsing expanded string:");
 			cf_log_err(&cp->item, "%s%s", prefix, p);
 			cf_log_err(&cp->item, "%s%.*s^ %s", prefix, (int) indent, parse_spaces, error);
-		error:
+
 			talloc_free(value);
 			talloc_free(xlat);
 			return -1;
