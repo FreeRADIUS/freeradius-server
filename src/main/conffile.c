@@ -1488,22 +1488,16 @@ int cf_section_parse_pass2(CONF_SECTION *cs, UNUSED void *base,
 
 		slen = xlat_tokenize(cs, value, &xlat, &error);
 		if (slen < 0) {
-			char const *prefix = "";
-			char const *p = cp->value;
-			size_t indent = -slen;
+			char *spaces, *text;
 
-			if (indent >= sizeof(parse_spaces)) {
-				size_t offset = (indent - (sizeof(parse_spaces) - 1)) + (sizeof(parse_spaces) * 0.75);
-				indent -= offset;
-				p += offset;
-
-				prefix = "...";
-			}
+			fr_canonicalize_error(cs, slen, &spaces, &text, cp->value);
 
 			cf_log_err(&cp->item, "Failed parsing expanded string:");
-			cf_log_err(&cp->item, "%s%s", prefix, p);
-			cf_log_err(&cp->item, "%s%.*s^ %s", prefix, (int) indent, parse_spaces, error);
+			cf_log_err(&cp->item, "%s", text);
+			cf_log_err(&cp->item, "%s^ %s", spaces, error);
 
+			talloc_free(spaces);
+			talloc_free(text);
 			talloc_free(value);
 			talloc_free(xlat);
 			return -1;
@@ -1702,7 +1696,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 	char buf2[8192];
 	char buf3[8192];
 	FR_TOKEN t1, t2, t3;
-	bool spaces = false;
+	bool has_spaces = false;
 	char *cbuf = buf;
 	size_t len;
 	fr_cond_t *cond = NULL;
@@ -1736,7 +1730,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			return -1;
 		}
 
-		if (spaces) {
+		if (has_spaces) {
 			ptr = cbuf;
 			while (isspace((int) *ptr)) ptr++;
 
@@ -1777,8 +1771,8 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			/*
 			 *	Check for "suppress spaces" magic.
 			 */
-			if (!spaces && (len > 2) && (cbuf[len - 2] == '"')) {
-				spaces = true;
+			if (!has_spaces && (len > 2) && (cbuf[len - 2] == '"')) {
+				has_spaces = true;
 			}
 
 			cbuf[len - 1] = '\0';
@@ -1787,7 +1781,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		}
 
 		ptr = cbuf = buf;
-		spaces = false;
+		has_spaces = false;
 
 		/*
 		 *	The parser is getting to be evil.
@@ -2090,36 +2084,18 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			if (p) *p = '{';
 
 			if (slen < 0) {
-				size_t offset;
-				char *spbuf, *q;
-				const char *s;
+				char *spaces, *text;
 
-				offset = -slen;
-				offset += ptr - start;
-
-				spbuf = malloc(offset + 1);
-				memset(spbuf, ' ', offset);
-				spbuf[offset] = '\0';
+				fr_canonicalize_error(nextcs, slen, &spaces, &text, ptr);
 
 				ERROR("%s[%d]: Parse error in condition",
-				       filename, *lineno);
+				      filename, *lineno);
+				ERROR("%s", text);
+				ERROR("%s^ %s", spaces, error);
 
-				/*
-				 *	If the condition has leading
-				 *	tabs, ensure that the error
-				 *	message has leading tabs, too.
-				 */
-				s = start;
-				q = spbuf;
-
-				while ((*s == ' ') || (*s == '\t')) {
-					*(q++) = *(s++);
-				}
-
-				ERROR("%s", start);
-				ERROR("%.*s^ %s", (int) offset, spbuf, error);
+				talloc_free(spaces);
+				talloc_free(text);
 				talloc_free(nextcs);
-				free(spbuf);
 				return -1;
 			}
 
