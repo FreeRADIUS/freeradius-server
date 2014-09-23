@@ -2,6 +2,10 @@ FreeRADIUS 3.0.5 Mon 15 Sep 2014 15:30:00 EDT urgency=medium
 	Feature improvements
 	* Large update to Huawei dictionary.
 	* Added dictionary.rfc7155
+	* Regular expressions like /%{User-Name}/ are now parsed
+	  and validated when the server starts.
+	* All configuration items which are dynamically expanded
+	  are now parsed and validated when the server starts.
 
 	Bug fixes
 	* Parse list qualifiers in generic LDAP 'valuepair_attribute'
