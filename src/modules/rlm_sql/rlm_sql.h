@@ -44,6 +44,7 @@ typedef struct sql_acct_section {
 	CONF_SECTION	*cs;
 
 	char const	*reference;
+	bool		reference_cp;
 
 	char const	*logfile;
 } sql_acct_section_t;

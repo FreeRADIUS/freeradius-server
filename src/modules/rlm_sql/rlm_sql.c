@@ -37,14 +37,14 @@ RCSID("$Id$")
 #include "rlm_sql.h"
 
 static const CONF_PARSER acct_config[] = {
-	{ "reference", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_sql_config_t, accounting.reference), NULL },
+	{ "reference", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_sql_config_t, accounting.reference), ".query" },
 	{ "logfile", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sql_config_t, accounting.logfile), NULL },
 
 	{NULL, -1, 0, NULL, NULL}
 };
 
 static const CONF_PARSER postauth_config[] = {
-	{ "reference", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_sql_config_t, postauth.reference), NULL },
+	{ "reference", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_sql_config_t, postauth.reference), ".query" },
 	{ "logfile", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sql_config_t, postauth.logfile), NULL },
 
 	{NULL, -1, 0, NULL, NULL}
@@ -753,11 +753,17 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	rad_assert(inst->config->xlat_name);
 
 	/*
-	 *	This will always exist, as cf_section_parse_init() will create it
-	 *	if it doesn't exist.
+	 *	This will always exist, as cf_section_parse_init()
+	 *	will create it if it doesn't exist.  However, the
+	 *	"reference" config item won't exist in an auto-created
+	 *	configuration.  So if that doesn't exist, we ignore
+	 *	the whole subsection.
 	 */
 	inst->config->accounting.cs = cf_section_sub_find(conf, "accounting");
+	inst->config->accounting.reference_cp = (cf_pair_find(inst->config->accounting.cs, "reference") != NULL);
+
 	inst->config->postauth.cs = cf_section_sub_find(conf, "post-auth");
+	inst->config->postauth.reference_cp = (cf_pair_find(inst->config->postauth.cs, "reference") != NULL);
 
 	/*
 	 *	Cache the SQL-User-Name DICT_ATTR, so we can be slightly
@@ -1258,7 +1264,7 @@ finish:
 static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST * request) {
 	rlm_sql_t *inst = instance;
 
-	if (inst->config->accounting.reference) {
+	if (inst->config->accounting.reference_cp) {
 		return acct_redundant(inst, request, &inst->config->accounting);
 	}
 
@@ -1482,7 +1488,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_checksimul(void *instance, REQUEST * req
 static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST * request) {
 	rlm_sql_t *inst = instance;
 
-	if (inst->config->postauth.reference) {
+	if (inst->config->postauth.reference_cp) {
 		return acct_redundant(inst, request, &inst->config->postauth);
 	}
 
