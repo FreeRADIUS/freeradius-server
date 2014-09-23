@@ -1504,3 +1504,48 @@ bool fr_condition_walk(fr_cond_t *c, bool (*callback)(void *, fr_cond_t *), void
 
 	return true;
 }
+
+void fr_canonicalize_error(TALLOC_CTX *ctx, ssize_t slen, char **spaces, char **text, char const *msg)
+{
+	size_t offset, skip = 0;
+	char *spbuf, *p;
+	char *value;
+
+	offset = -slen;
+
+	/*
+	 *	Ensure that the error isn't indented
+	 *	too far.
+	 */
+	if (offset > 45) {
+		skip = offset - 40;
+		offset -= skip;
+		value = talloc_strdup(ctx, msg + skip);
+		memcpy(value, "...", 3);
+
+	} else {
+		value = talloc_strdup(ctx, msg);
+	}
+
+	spbuf = talloc_array(ctx, char, offset + 1);
+	memset(spbuf, ' ', offset);
+	spbuf[offset] = '\0';
+
+	/*
+	 *	Smash tabs to spaces for the input string.
+	 */
+	for (p = value; *p != '\0'; p++) {
+		if (*p == '\t') *p = ' ';
+	}
+
+
+	/*
+	 *	Ensure that there isn't too much text after the error.
+	 */
+	if (strlen(value) > 100) {
+		memcpy(value + 95, "... ", 5);
+	}
+
+	*spaces = spbuf;
+	*text = value;
+}
