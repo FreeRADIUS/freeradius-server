@@ -396,7 +396,7 @@ void tmpl_verify(value_pair_tmpl_t const *vpt)
 		if (vpt->tmpl_da->flags.is_unknown) {
 			(void) talloc_get_type_abort(vpt->tmpl_da, DICT_ATTR);
 		} else {
-			DICT_ATTR const *da;
+			UNUSED DICT_ATTR const *da;
 
 			da = dict_attrbyvalue(vpt->tmpl_da->attr, vpt->tmpl_da->vendor);
 			rad_assert(da = vpt->tmpl_da);
