@@ -1,0 +1,6 @@
+#
+#  PRE: update
+#
+#  This gives the game away.
+#
+update { control:Cleartext-Password := 'hello', reply:Filter-Id := "filter" }
