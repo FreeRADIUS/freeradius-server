@@ -1668,6 +1668,7 @@ static char const *cf_local_file(char const *base, char const *filename,
 	return buffer;
 }
 
+
 /*
  *	Read a part of the config file.
  */
@@ -2033,6 +2034,36 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			}
 
 			/*
+			 *	Skip (...) to find the {
+			 */
+			slen = fr_condition_tokenize(nextcs, cf_sectiontoitem(nextcs), ptr, &cond,
+						     &error, FR_COND_TWO_PASS);
+			memcpy(&p, &ptr, sizeof(p));
+
+			if (slen < 0) {
+				if (p[-slen] != '{') goto cond_error;
+				slen = -slen;
+			}
+			TALLOC_FREE(cond);
+
+			/*
+			 *	This hack is so that the NEXT stage
+			 *	doesn't go "too far" in expanding the
+			 *	variable.  We can parse the conditions
+			 *	without expanding the ${...} stuff.
+			 *	BUT we don't want to expand all of the
+			 *	stuff AFTER the condition.  So we do
+			 *	two passes.
+			 *
+			 *	The first pass is to discover the end
+			 *	of the condition.  We then expand THAT
+			 *	string, and do a second pass parsing
+			 *	the expanded condition.
+			 */
+			p += slen;
+			*p = '\0';
+
+			/*
 			 *	If there's a ${...}.  If so, expand it.
 			 */
 			if (strchr(ptr, '$') != NULL) {
@@ -2046,9 +2077,6 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 					return -1;
 				}
 			} /* else leave it alone */
-
-			p = strrchr(ptr, '{'); /* ugh */
-			if (p) *p = '\0';
 
 			server = this->item.parent;
 			while ((strcmp(server->name1, "server") != 0) &&
@@ -2068,8 +2096,9 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 
 			slen = fr_condition_tokenize(nextcs, cf_sectiontoitem(nextcs), ptr, &cond,
 						     &error, FR_COND_TWO_PASS);
-			if (p) *p = '{';
+			*p = '{'; /* put it back */
 
+		cond_error:
 			if (slen < 0) {
 				char *spaces, *text;
 
@@ -2093,15 +2122,24 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 				return -1;
 			}
 
+			/*
+			 *	Copy the expanded and parsed condition
+			 *	into buf2.  Then, parse the text after
+			 *	the condition, which now MUST be a '{.
+			 *
+			 *	If it wasn't '{' it would have been
+			 *	caught in the first pass of
+			 *	conditional parsing, above.
+			 */
 			memcpy(buf2, ptr, slen);
 			buf2[slen] = '\0';
-			ptr += slen;
+			ptr = p;
 			t2 = T_BARE_WORD;
 
-			if (gettoken(&ptr, buf3, sizeof(buf3), true) != T_LCBRACE) {
+			if ((t3 = gettoken(&ptr, buf3, sizeof(buf3), true)) != T_LCBRACE) {
 				talloc_free(nextcs);
-				ERROR("%s[%d]: Expected '{'",
-				       filename, *lineno);
+				ERROR("%s[%d]: Expected '{' %d",
+				      filename, *lineno, t3);
 				return -1;
 			}
 
