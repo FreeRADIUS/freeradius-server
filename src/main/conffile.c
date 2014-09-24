@@ -2123,6 +2123,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		switch (t2) {
 		case T_EOL:
 		case T_HASH:
+		case T_COMMA:
 		do_bare_word:
 			t3 = t2;
 			t2 = T_OP_EQ;
