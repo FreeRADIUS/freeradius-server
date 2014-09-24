@@ -260,6 +260,7 @@ static FR_TOKEN getthing(char const **ptr, char *buf, int buflen, bool tok,
 				if (t->name != NULL)
 					break;
 			}
+			if (*p == ',') break; /* hack */
 		}
 		*s++ = *p++;
 	}
