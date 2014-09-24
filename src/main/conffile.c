@@ -1668,29 +1668,6 @@ static char const *cf_local_file(char const *base, char const *filename,
 	return buffer;
 }
 
-static int seen_too_much(char const *filename, int lineno, char const *ptr)
-{
-	while (*ptr) {
-		if (isspace(*ptr)) {
-			ptr++;
-			continue;
-		}
-
-		if (*ptr == '#') return false;
-
-		break;
-	}
-
-	if (*ptr) {
-		ERROR("%s[%d] Unexpected text %s.  See \"man unlang\"",
-		       filename, lineno, ptr);
-		return true;
-	}
-
-	return false;
-}
-
-
 /*
  *	Read a part of the config file.
  */
@@ -1706,6 +1683,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 	char buf1[8192];
 	char buf2[8192];
 	char buf3[8192];
+	char buf4[8192];
 	FR_TOKEN t1, t2, t3;
 	bool has_spaces = false;
 	char *cbuf = buf;
@@ -1794,6 +1772,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		ptr = cbuf = buf;
 		has_spaces = false;
 
+	get_more:
 		/*
 		 *	The parser is getting to be evil.
 		 */
@@ -1855,9 +1834,8 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		       }
 
 		       this = this->item.parent;
-		       if (seen_too_much(filename, *lineno, ptr)) return -1;
-		       continue;
-		}
+		       goto check_for_more;
+	       }
 
 		/*
 		 *	Allow for $INCLUDE files
@@ -1878,7 +1856,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 
 			if (buf2[0] == '$') relative = false;
 
-			value = cf_expand_variables(filename, lineno, this, buf, sizeof(buf), buf2);
+			value = cf_expand_variables(filename, lineno, this, buf4, sizeof(buf4), buf2);
 			if (!value) return -1;
 
 			if (!FR_DIR_IS_RELATIVE(value)) relative = false;
@@ -2193,7 +2171,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			case T_BARE_WORD:
 			case T_DOUBLE_QUOTED_STRING:
 			case T_BACK_QUOTED_STRING:
-				value = cf_expand_variables(filename, lineno, this, buf, sizeof(buf), buf3);
+				value = cf_expand_variables(filename, lineno, this, buf4, sizeof(buf4), buf3);
 				if (!value) return -1;
 				break;
 
@@ -2204,6 +2182,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 
 			default:
 				value = buf3;
+				break;
 			}
 
 			/*
@@ -2215,7 +2194,22 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			cpn->item.filename = talloc_strdup(cpn, filename);
 			cpn->item.lineno = *lineno;
 			cf_item_add(this, &(cpn->item));
-			continue;
+
+			/*
+			 *	Require a comma, unless there's a comment.
+			 */
+			while (isspace(*ptr)) ptr++;
+
+			if (*ptr == ',') {
+				ptr++;
+				break;
+			}
+
+			if (!*ptr || (*ptr == '#') || (*ptr == '}')) break;
+
+			ERROR("%s[%d]: Syntax error: Expected comma after '%s': %s",
+			      filename, *lineno, value, ptr);
+			return -1;
 
 			/*
 			 *	No '=', must be a section or sub-section.
@@ -2233,11 +2227,6 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 
 		case T_LCBRACE:
 		section_alloc:
-			if (seen_too_much(filename, *lineno, ptr)) {
-				if (cond) talloc_free(cond);
-				return -1;
-			}
-
 			if (!cond) {
 				css = cf_section_alloc(this, buf1,
 						       t2 == T_LCBRACE ? NULL : buf2);
@@ -2269,7 +2258,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			 *	The current section is now the child section.
 			 */
 			this = css;
-			continue;
+			break;
 
 		case T_INVALID:
 			ERROR("%s[%d]: Syntax error in '%s': %s", filename, *lineno, ptr, fr_strerror());
@@ -2282,6 +2271,20 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 
 			return -1;
 		}
+
+	check_for_more:
+		/*
+		 *	Done parsing one thing.  Skip to EOL if possible.
+		 */
+		while (isspace(*ptr)) ptr++;
+
+		if (*ptr == '#') continue;
+
+		if (*ptr) {
+			DEBUG("XXXXX ::%s::\n", ptr);
+			goto get_more;
+		}
+
 	}
 
 	/*
