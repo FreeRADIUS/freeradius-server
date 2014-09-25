@@ -438,11 +438,7 @@ int tmpl_from_attr_str(value_pair_tmpl_t *vpt, char const *name, request_refs_t 
 	DICT_ATTR const *da;
 
 	memset(vpt, 0, sizeof(*vpt));
-#ifndef WITH_VERIFY_PTR
 	vpt->name = name;
-#else
-	vpt->name = talloc_typed_strdup(vpt, name);
-#endif
 	p = name;
 
 	if (*p == '&') {
@@ -536,8 +532,6 @@ int tmpl_from_attr_str(value_pair_tmpl_t *vpt, char const *name, request_refs_t 
 		return -2;
 	}
 
-	VERIFY_TMPL(vpt);
-
 	return 0;
 }
 
@@ -568,8 +562,6 @@ value_pair_tmpl_t *tmpl_afrom_attr_str(TALLOC_CTX *ctx, char const *name, reques
 		tmpl_free(&vpt);
 		return NULL;
 	}
-
-	VERIFY_TMPL(vpt);
 
 	return vpt;
 }
@@ -610,8 +602,6 @@ size_t tmpl_prints(char *buffer, size_t bufsize, value_pair_tmpl_t const *vpt)
 		*buffer = '\0';
 		return 0;
 	}
-
-	VERIFY_TMPL(vpt);
 
 	switch (vpt->type) {
 	default:
@@ -858,8 +848,6 @@ bool tmpl_cast_in_place(value_pair_tmpl_t *vpt, DICT_ATTR const *da)
 	rad_assert(da != NULL);
 	rad_assert(vpt->type == TMPL_TYPE_LITERAL);
 
-	VERIFY_TMPL(vpt);
-
 	vp = pairalloc(vpt, da);
 	if (!vp) return false;
 
@@ -903,7 +891,6 @@ int tmpl_cast_to_vp(VALUE_PAIR **out, REQUEST *request,
 
 	if (vpt->type == TMPL_TYPE_DATA) {
 		VERIFY_VP(vp);
-		VERIFY_TMPL(vpt);
 		rad_assert(vp->da->type == vpt->tmpl_da->type);
 		pairdatacpy(vp, vpt->tmpl_da, vpt->tmpl_value, vpt->tmpl_length);
 		*out = vp;
@@ -948,8 +935,6 @@ VALUE_PAIR *tmpl_cursor_init(int *err, vp_cursor_t *cursor, REQUEST *request, va
 	rad_assert((vpt->type == TMPL_TYPE_ATTR) || (vpt->type == TMPL_TYPE_LIST));
 
 	if (err) *err = 0;
-
-	VERIFY_TMPL(vpt);
 
 	if (radius_request(&request, vpt->tmpl_request) < 0) {
 		if (err) *err = -3;
@@ -1015,8 +1000,6 @@ VALUE_PAIR *tmpl_cursor_next(vp_cursor_t *cursor, value_pair_tmpl_t const *vpt)
 {
 	rad_assert((vpt->type == TMPL_TYPE_ATTR) || (vpt->type == TMPL_TYPE_LIST));
 
-	VERIFY_TMPL(vpt);
-
 	switch (vpt->type) {
 	/*
 	 *	May not may not be found, but it *is* a known name.
@@ -1050,8 +1033,6 @@ int tmpl_copy_vps(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, value_pai
 	int err;
 
 	rad_assert((vpt->type == TMPL_TYPE_ATTR) || (vpt->type == TMPL_TYPE_LIST));
-
-	VERIFY_TMPL(vpt);
 
 	*out = NULL;
 

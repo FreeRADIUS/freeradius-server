@@ -729,25 +729,16 @@ void rdebug_pair_list(int level, REQUEST *request, VALUE_PAIR *vp)
 int radius_get_vp(VALUE_PAIR **out, REQUEST *request, char const *name)
 {
 	int rcode;
-	value_pair_tmpl_t *vpt;
-#ifndef WITH_VERIFY_PTR
-	value_pair_tmpl_t my_vpt;
-
-	vpt = &my_vpt;
-#else
-	vpt = talloc_zero(request, value_pair_tmpl_t);
-#endif
+	value_pair_tmpl_t vpt;
 
 	*out = NULL;
 
-	if (tmpl_from_attr_str(vpt, name, REQUEST_CURRENT, PAIR_LIST_REQUEST) < 0) {
+	if (tmpl_from_attr_str(&vpt, name, REQUEST_CURRENT, PAIR_LIST_REQUEST) < 0) {
 		return -4;
 	}
 
-	rcode = tmpl_find_vp(out, request, vpt);
-#ifdef WITH_VERIFY_PTR
-	talloc_free(vpt);
-#endif
+	rcode = tmpl_find_vp(out, request, &vpt);
+
 	return rcode;
 }
 
