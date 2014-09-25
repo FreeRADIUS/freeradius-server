@@ -2388,9 +2388,12 @@ static int listen_bind(rad_listen_t *this)
 #endif /* HAVE_STRUCT_SOCKADDR_IN6 */
 
 	if (sock->my_ipaddr.af == AF_INET) {
-		UNUSED int flag;
+#if (defined(IP_MTU_DISCOVER) && defined(IP_PMTUDISC_DONT)) || defined(IP_DONTFRAG)
+		int flag;
+#endif
 
 #if defined(IP_MTU_DISCOVER) && defined(IP_PMTUDISC_DONT)
+
 		/*
 		 *	Disable PMTU discovery.  On Linux, this
 		 *	also makes sure that the "don't fragment"
