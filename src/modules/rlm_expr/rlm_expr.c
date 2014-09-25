@@ -889,6 +889,64 @@ static ssize_t hmac_sha1_xlat(UNUSED void *instance, UNUSED REQUEST *request,
 	return fr_bin2hex(out, digest, sizeof(digest));
 }
 
+/** Encode attributes as a series of string attribute/value pairs
+ *
+ * This is intended to serialize one or more attributes as a comma
+ * delimited string.
+ *
+ * Example: "%{pairs:request:}" == "User-Name = 'foo', User-Password = 'bar'"
+ */
+static ssize_t pairs_xlat(UNUSED void *instance, UNUSED REQUEST *request,
+			  char const *fmt, char *out, size_t outlen)
+{
+	value_pair_tmpl_t vpt;
+	vp_cursor_t cursor;
+	size_t len, freespace = outlen;
+	char *p = out;
+
+	VALUE_PAIR *vp;
+
+	if (tmpl_from_attr_str(&vpt, fmt, REQUEST_CURRENT, PAIR_LIST_REQUEST) < 0) {
+		REDEBUG("%s", fr_strerror());
+		return -1;
+	}
+
+	for (vp = tmpl_cursor_init(NULL, &cursor, request, &vpt);
+	     vp;
+	     vp = tmpl_cursor_next(&cursor, &vpt)) {
+	     	FR_TOKEN op = vp->op;
+
+	     	vp->op = T_OP_EQ;
+		len = vp_prints(p, freespace, vp);
+		vp->op = op;
+
+		if (is_truncated(len, freespace)) {
+		no_space:
+			REDEBUG("Insufficient space to store pair string, needed %zu bytes have %zu bytes",
+				len, freespace);
+			*out = '\0';
+			return -1;
+		}
+		p += len;
+		freespace -= len;
+
+		if (freespace < 2) {
+			len = 2;
+			goto no_space;
+		}
+
+		*p++ = ',';
+		*p++ = ' ';
+		freespace -= 2;
+	}
+
+	/* Trim the trailing ', ' */
+	if (p != out) p -= 2;
+	*p = '\0';
+
+	return (p - out);
+}
+
 /** Encode string or attribute as base64
  *
  * Example: "%{base64:foo}" == "Zm9v"
@@ -987,6 +1045,8 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 #endif
 	xlat_register("hmacmd5", hmac_md5_xlat, NULL, inst);
 	xlat_register("hmacsha1", hmac_sha1_xlat, NULL, inst);
+	xlat_register("pairs", pairs_xlat, NULL, inst);
+
 	xlat_register("base64", base64_xlat, NULL, inst);
 	xlat_register("base64tohex", base64_to_hex_xlat, NULL, inst);
 
