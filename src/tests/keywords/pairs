@@ -1,0 +1,42 @@
+#
+# PRE: update if
+#
+update {
+       control:Cleartext-Password := 'hello'
+       request:Tmp-String-0 := "This is a string"
+       request:Tmp-String-0 += "This is another one"
+       request:Tmp-Octets-0 := 0x000504030201
+       request:Tmp-Integer-0 := 7331
+       request:Tunnel-Private-Group-Id:5 = 127.0.0.1
+       reply:Filter-Id = 'filter'
+}
+
+if ("%{pairs:request:}" != "User-Name = 'bob', User-Password = 'hello', Tmp-String-0 = 'This is a string', Tmp-String-0 = 'This is another one', Tmp-Octets-0 = 0x000504030201, Tmp-Integer-0 = 7331, Tunnel-Private-Group-Id:5 = '127.0.0.1'") {
+	update reply {
+		Filter-Id += 'fail 1'
+	}
+}
+
+if ("%{pairs:Tmp-String-0}" != "Tmp-String-0 = 'This is a string'") {
+	update reply {
+		Filter-Id += 'fail 2'
+	}
+}
+
+if ("%{pairs:Tmp-String-0[*]}" != "Tmp-String-0 = 'This is a string', Tmp-String-0 = 'This is another one'") {
+	update reply {
+		Filter-Id += 'fail 3'
+	}
+}
+
+if ("%{pairs:control:}" != "Cleartext-Password = 'hello'") {
+	update reply {
+		Filter-Id += 'fail 4'
+	}
+}
+
+if ("%{pairs:control:User-Name}" != '') {
+	update reply {
+		Filter-Id += 'fail 5'
+	}
+}
