@@ -1340,7 +1340,6 @@ static int load_byserver(CONF_SECTION *cs)
 			c = lookup_by_index(components,
 					    RLM_COMPONENT_POST_AUTH, 0);
 			if (c) server->mc[RLM_COMPONENT_POST_AUTH] = c->modulelist;
-			found = 1;
 			break;
 		}
 #endif
@@ -1374,7 +1373,6 @@ static int load_byserver(CONF_SECTION *cs)
 			c = lookup_by_index(components,
 					    RLM_COMPONENT_POST_AUTH, 0);
 			if (c) server->mc[RLM_COMPONENT_POST_AUTH] = c->modulelist;
-			found = 1;
 
 			subcs = cf_subsection_find_next(cs, subcs, "dhcp");
 		}
