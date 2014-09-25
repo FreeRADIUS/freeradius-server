@@ -1806,7 +1806,7 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 	if ((fr_debug_flag > 2) && fr_log_fp) {
 		fprintf(fr_log_fp, "DHCP Sending %zu bytes\n", packet->data_len);
 		for (i = 0; i < packet->data_len; i++) {
-			if ((i & 0x0f) == 0x00) fprintf(fr_log_fp, "%d: ", i);
+			if ((i & 0x0f) == 0x00) fprintf(fr_log_fp, "%d: ", (int) i);
 			fprintf(fr_log_fp, "%02x ", packet->data[i]);
 			if ((i & 0x0f) == 0x0f) fprintf(fr_log_fp, "\n");
 		}
