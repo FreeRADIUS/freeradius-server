@@ -108,11 +108,12 @@ typedef struct xlat_exp xlat_exp_t;
  * @see value_pair_map_t
  */
 typedef struct value_pair_tmpl_t {
-	tmpl_type_t		type;	 //!< What type of value tmpl refers to.
-	char const		*name;   //!< Original attribute ref string, or
-					 //!< where this refers to a none FR
-					 //!< attribute, just the string id for
-					 //!< the attribute.
+	tmpl_type_t	type;		//!< What type of value tmpl refers to.
+	char const	*name;		//!< Original attribute ref string, or
+					//!< where this refers to a none FR
+					//!< attribute, just the string id for
+					//!< the attribute.
+	size_t		len;		//!< Name length.
 
 	/*
 	 * @todo This should be moved into the union, but some code currently
