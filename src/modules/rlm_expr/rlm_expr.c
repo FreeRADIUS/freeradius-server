@@ -923,7 +923,7 @@ static ssize_t pairs_xlat(UNUSED void *instance, UNUSED REQUEST *request,
 		if (is_truncated(len, freespace)) {
 		no_space:
 			REDEBUG("Insufficient space to store pair string, needed %zu bytes have %zu bytes",
-				len, freespace);
+				(p - out) + len, outlen);
 			*out = '\0';
 			return -1;
 		}
