@@ -101,7 +101,7 @@ static const CONF_PARSER module_config[] = {
 	{ "client_query", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sql_config_t, client_query), "SELECT id,nasname,shortname,type,secret FROM nas" },
 	{ "open_query", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sql_config_t, open_query), NULL },
 
-	{ "authorize_check_query", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_sql_config_t, authorize_check_query), "" },
+	{ "authorize_check_query", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_sql_config_t, authorize_check_query), NULL },
 	{ "authorize_reply_query", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_sql_config_t, authorize_reply_query), NULL },
 
 	{ "authorize_group_check_query", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_sql_config_t, authorize_group_check_query), "" },
@@ -936,6 +936,13 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 	rad_assert(request->packet != NULL);
 	rad_assert(request->reply != NULL);
 
+	if (!inst->config->authorize_check_query && !inst->config->authorize_reply_query &&
+	    !inst->config->read_groups && !inst->config->read_profiles) {
+	 	RWDEBUG("No authorization checks configured, returning noop");
+
+	 	return RLM_MODULE_NOOP;
+	}
+
 	/*
 	 *	Set, escape, and check the user attr here
 	 */
@@ -958,7 +965,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 	/*
 	 *	Query the check table to find any conditions associated with this user/realm/whatever...
 	 */
-	if (inst->config->authorize_check_query && (inst->config->authorize_check_query[0] != '\0')) {
+	if (inst->config->authorize_check_query) {
 		if (radius_axlat(&expanded, request, inst->config->authorize_check_query,
 				 sql_escape_func, inst) < 0) {
 			REDEBUG("Error generating query");
@@ -993,7 +1000,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 		check_tmp = NULL;
 	}
 
-	if (inst->config->authorize_reply_query && (inst->config->authorize_reply_query[0] != '\0')) {
+	if (inst->config->authorize_reply_query) {
 		/*
 		 *	Now get the reply pairs since the paircompare matched
 		 */
