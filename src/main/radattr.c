@@ -657,7 +657,7 @@ static void process_file(const char *root_dir, char const *filename)
 
 		if (strncmp(p, "data ", 5) == 0) {
 			if (strcmp(p + 5, output) != 0) {
-				fprintf(stderr, "Mismatch in line %d of %s, got: %s expected: %s\n",
+				fprintf(stderr, "Mismatch at line %d of %s\n\tgot      : %s\n\texpected : %s\n",
 					lineno, directory, output, p + 5);
 				exit(1);
 			}
