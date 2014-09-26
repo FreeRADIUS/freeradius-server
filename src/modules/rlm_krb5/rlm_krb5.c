@@ -175,15 +175,13 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 *	Not necessarily the same as the config item
 	 */
 	DEBUG("rlm_krb5 (%s): Using service principal \"%s\"", inst->xlat_name, princ_name);
-
 	krb5_free_unparsed_name(inst->context, princ_name);
 
 	/*
 	 *	Setup options for getting credentials and verifying them
 	 */
-
-	/* For some reason the 'init' version of this function is deprecated */
-	ret = krb5_get_init_creds_opt_alloc(inst->context, &(inst->gic_options));
+	ret = krb5_get_init_creds_opt_alloc(inst->context, &(inst->gic_options)); /* For some reason the 'init' version
+										    of this function is deprecated */
 	if (ret) {
 		ERROR("rlm_krb5 (%s): Couldn't allocated inital credential options: %s", inst->xlat_name,
 		      rlm_krb5_error(inst->context, ret));
