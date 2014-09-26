@@ -2007,8 +2007,8 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 
 	case XLAT_VIRTUAL:
 		XLAT_DEBUG("xlat_aprint VIRTUAL");
-		str = talloc_array(ctx, char, 1024); /* FIXME: have the module call talloc_typed_asprintf */
-		rcode = node->xlat->func(node->xlat->instance, request, NULL, str, 1024);
+		str = talloc_array(ctx, char, 2048); /* FIXME: have the module call talloc_typed_asprintf */
+		rcode = node->xlat->func(node->xlat->instance, request, NULL, str, 2048);
 		if (rcode < 0) {
 			talloc_free(str);
 			return NULL;
@@ -2024,10 +2024,10 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 		XLAT_DEBUG("%.*sEXPAND mod %s %s", lvl, xlat_spaces, node->fmt, node->child->fmt);
 		XLAT_DEBUG("%.*s      ---> %s", lvl, xlat_spaces, child);
 
-		str = talloc_array(ctx, char, 1024); /* FIXME: have the module call talloc_typed_asprintf */
+		str = talloc_array(ctx, char, 2048); /* FIXME: have the module call talloc_typed_asprintf */
 		*str = '\0';	/* Be sure the string is NULL terminated, we now only free on error */
 
-		rcode = node->xlat->func(node->xlat->instance, request, child, str, 1024);
+		rcode = node->xlat->func(node->xlat->instance, request, child, str, 2048);
 		talloc_free(child);
 		if (rcode < 0) {
 			talloc_free(str);
@@ -2065,8 +2065,8 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 	if (str && escape) {
 		char *escaped;
 
-		escaped = talloc_array(ctx, char, 1024); /* FIXME: do something intelligent */
-		escape(request, escaped, 1024, str, escape_ctx);
+		escaped = talloc_array(ctx, char, 2048); /* FIXME: do something intelligent */
+		escape(request, escaped, 2038, str, escape_ctx);
 		talloc_free(str);
 		str = escaped;
 	}
