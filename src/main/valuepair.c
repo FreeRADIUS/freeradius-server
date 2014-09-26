@@ -83,17 +83,21 @@ int radius_compare_vps(UNUSED REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *v
 	if (check->op == T_OP_REG_EQ) {
 		int compare;
 		regex_t reg;
-		char value[1024];
+		char buffer[1024];
+		char const *value = &buffer[0];
 		regmatch_t rxmatch[REQUEST_MAX_REGEX + 1];
 
-		vp_prints_value(value, sizeof(value), vp, -1);
+		if (vp->da->type == PW_TYPE_STRING) {
+			value = vp->vp_strvalue;
+		} else {
+			vp_prints_value(buffer, sizeof(buffer), vp, '\0');
+		}
 
 		/*
 		 *	Include substring matches.
 		 */
 		compare = regcomp(&reg, check->vp_strvalue, REG_EXTENDED);
 		if (compare != 0) {
-			char buffer[256];
 			regerror(compare, &reg, buffer, sizeof(buffer));
 
 			RDEBUG("Invalid regular expression %s: %s", check->vp_strvalue, buffer);
@@ -112,17 +116,21 @@ int radius_compare_vps(UNUSED REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *v
 	if (check->op == T_OP_REG_NE) {
 		int compare;
 		regex_t reg;
-		char value[1024];
+		char buffer[1024];
+		char const *value = &buffer[0];
 		regmatch_t rxmatch[REQUEST_MAX_REGEX + 1];
 
-		vp_prints_value(value, sizeof(value), vp, -1);
+		if (vp->da->type == PW_TYPE_STRING) {
+			value = vp->vp_strvalue;
+		} else {
+			vp_prints_value(buffer, sizeof(buffer), vp, '\0');
+		}
 
 		/*
 		 *	Include substring matches.
 		 */
 		compare = regcomp(&reg, check->vp_strvalue, REG_EXTENDED);
 		if (compare != 0) {
-			char buffer[256];
 			regerror(compare, &reg, buffer, sizeof(buffer));
 
 			RDEBUG("Invalid regular expression %s: %s", check->vp_strvalue, buffer);
