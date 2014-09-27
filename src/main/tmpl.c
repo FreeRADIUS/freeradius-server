@@ -466,14 +466,9 @@ int tmpl_from_attr_str(value_pair_tmpl_t *vpt, char const *name, request_refs_t 
 		return 0;
 	}
 
-	da = dict_attrbytagged_name(p);
-	if (!da) {
-		da = dict_attrunknownbyname(vpt, p);
-		if (!da) {
-			fr_strerror_printf("Unknown attribute \"%s\"", p);
-			return error;
-		}
-	}
+	da = dict_attrbyname_substr(vpt, &p);
+	if (!da) return error;
+
 	vpt->tmpl_da = da;
 	vpt->type = TMPL_TYPE_ATTR;
 	vpt->tmpl_tag = TAG_ANY;

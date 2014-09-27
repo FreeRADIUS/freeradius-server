@@ -3055,39 +3055,63 @@ DICT_ATTR const *dict_attrbyname(char const *name)
 	return fr_hash_table_finddata(attributes_byname, da);
 }
 
-/*
- *	Get an attribute by its name, where the name might have a tag
- *	or something else after it.
+/** Look up a dictionary attribute by name embedded in another string
+ *
+ * Find the first invalid attribute name char in the string pointed
+ * to by name.
+ *
+ * Copy the characters between the start of the name string and the first
+ * none dict_attr_allowed_char to a buffer and perform a dictionary lookup
+ * using that value.
+ *
+ * If the attribute exists, advance the pointer pointed to by name
+ * to the first none dict_attr_allowed_char char, and return the DA.
+ *
+ * If the attribute does not exist, don't advance the pointer and return
+ * NULL.
+ *
+ * @param[in] ctx to allocate unknown attributes in.
+ * @param[in,out] name string start.
+ * @return NULL if no attributes matching the name could be found, else
  */
-DICT_ATTR const *dict_attrbytagged_name(char const *name)
+DICT_ATTR const *dict_attrbyname_substr(TALLOC_CTX *ctx, char const **name)
 {
-	DICT_ATTR *da;
-	char *p;
-	uint32_t buffer[(sizeof(*da) + DICT_ATTR_MAX_NAME_LEN + 3)/4];
+	DICT_ATTR *find;
+	DICT_ATTR const *da;
+	char const *p;
+	size_t len;
+	uint32_t buffer[(sizeof(*find) + DICT_ATTR_MAX_NAME_LEN + 3)/4];
 
-	if (!name) return NULL;
+	if (!name || !*name) return NULL;
 
-	da = (DICT_ATTR *) buffer;
-	strlcpy(da->name, name, DICT_ATTR_MAX_NAME_LEN + 1);
+	find = (DICT_ATTR *) buffer;
 
 	/*
-	 *	The name might have a tag or array reference.  That
-	 *	isn't properly part of the name, and can be ignored on
-	 *	lookup.
+	 *	Advance p until we get something that's not part of
+	 *	the dictionary attribute name.
 	 */
-	for (p = &da->name[0]; *p; p++) {
-		if (*p == ':') {
-			*p = '\0';
-			break;
-		}
+	for (p = *name; dict_attr_allowed_chars[(int) *p]; p++);
 
-		if (*p == '[') {
-			*p = '\0';
-			break;
+	len = p - *name;
+	if (len > DICT_ATTR_MAX_NAME_LEN) {
+		fr_strerror_printf("Attribute name too long");
+
+		return NULL;
+	}
+	strlcpy(find->name, *name, len + 1);
+
+	da = fr_hash_table_finddata(attributes_byname, find);
+	if (!da) {
+		da = dict_attrunknownbyname(ctx, find->name);
+		if (!da) {
+			fr_strerror_printf("Unknown attribute \"%s\"", find->name);
+
+			return NULL;
 		}
 	}
+	*name = p;
 
-	return fr_hash_table_finddata(attributes_byname, da);
+	return da;
 }
 
 /*

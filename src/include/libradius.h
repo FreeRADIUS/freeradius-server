@@ -459,7 +459,7 @@ DICT_ATTR const	*dict_attrunknownbyname(TALLOC_CTX *ctx, char const *attribute);
 DICT_ATTR const *dict_addunknown(DICT_ATTR const *old);
 DICT_ATTR const	*dict_attrbyvalue(unsigned int attr, unsigned int vendor);
 DICT_ATTR const	*dict_attrbyname(char const *attr);
-DICT_ATTR const *dict_attrbytagged_name(char const *name);
+DICT_ATTR const *dict_attrbyname_substr(TALLOC_CTX *ctx, char const **name);
 DICT_ATTR const	*dict_attrbytype(unsigned int attr, unsigned int vendor,
 				 PW_TYPE type);
 DICT_ATTR const	*dict_attrbyparent(DICT_ATTR const *parent, unsigned int attr,
