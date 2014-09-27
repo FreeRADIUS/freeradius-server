@@ -127,7 +127,7 @@ VALUE_PAIR *paircreate(TALLOC_CTX *ctx, unsigned int attr, unsigned int vendor)
 
 	da = dict_attrbyvalue(attr, vendor);
 	if (!da) {
-		da = dict_attrunknown(ctx, attr, vendor);
+		da = dict_unknown_afrom_fields(ctx, attr, vendor);
 		if (!da) {
 			return NULL;
 		}
@@ -173,7 +173,7 @@ int pair2unknown(VALUE_PAIR *vp)
 		return 0;
 	}
 
-	da = dict_attrunknown(vp, vp->da->attr, vp->da->vendor);
+	da = dict_unknown_afrom_fields(vp, vp->da->attr, vp->da->vendor);
 	if (!da) {
 		return -1;
 	}
@@ -1704,7 +1704,7 @@ static VALUE_PAIR *pairmake_any(TALLOC_CTX *ctx,
 	uint8_t 	*data;
 	size_t		size;
 
-	da = dict_attrunknownbyname(ctx, attribute);
+	da = dict_unknown_afrom_str(ctx, attribute);
 	if (!da) return NULL;
 
 	/*

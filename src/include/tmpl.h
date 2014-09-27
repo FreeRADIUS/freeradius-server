@@ -125,9 +125,10 @@ typedef struct value_pair_tmpl_t {
 		request_refs_t		request; //!< Request to search or insert in.
 		pair_lists_t		list;	 //!< List to search or insert in.
 
-		DICT_ATTR const		*da;	 //!< Resolved dictionary attribute.
-		int			num;	 //!< for array references
-		int8_t			tag;     //!< for tag references
+		DICT_ATTR const		*da;			 //!< Resolved dictionary attribute.
+		uint8_t			unknown[DICT_ATTR_SIZE]; //!< Unknown dictionary attribute buffer.
+		int			num;			 //!< for array references
+		int8_t			tag;			 //!< for tag references.
 	} attribute;
 
 	union {
@@ -148,6 +149,7 @@ typedef struct value_pair_tmpl_t {
 #define tmpl_request	attribute.request
 #define tmpl_list	attribute.list
 #define tmpl_da		attribute.da
+#define tmpl_unknown	attribute.unknown
 #define tmpl_num	attribute.num
 #define tmpl_tag	attribute.tag
 

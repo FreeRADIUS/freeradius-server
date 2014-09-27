@@ -579,7 +579,7 @@ static int fr_dhcp_decode_vsa(VALUE_PAIR **tlv, TALLOC_CTX *ctx, uint8_t const *
 		 */
 		da = dict_attrbyvalue(0, vendor);
 		if (!da) {
-			da = dict_attrunknown(ctx, 0, vendor);
+			da = dict_unknown_afrom_fields(ctx, 0, vendor);
 			if (!da) {
 				pairfree(&head);
 				goto malformed;
@@ -731,7 +731,7 @@ static int fr_dhcp_decode_suboption(VALUE_PAIR **tlv, TALLOC_CTX *ctx, uint8_t c
 		 */
 		da = dict_attrbyvalue(attr, (*tlv)->da->vendor);
 		if (!da) {
-			da = dict_attrunknown(ctx, attr, (*tlv)->da->vendor);
+			da = dict_unknown_afrom_fields(ctx, attr, (*tlv)->da->vendor);
 			if (!da) {
 				pairfree(&head);
 				return -1;
@@ -968,7 +968,7 @@ ssize_t fr_dhcp_decode_options(VALUE_PAIR **out, TALLOC_CTX *ctx, uint8_t const 
 		 */
 		da = dict_attrbyvalue(p[0], DHCP_MAGIC_VENDOR);
 		if (!da) {
-			da = dict_attrunknown(ctx, p[0], DHCP_MAGIC_VENDOR);
+			da = dict_unknown_afrom_fields(ctx, p[0], DHCP_MAGIC_VENDOR);
 			if (!da) {
 				pairfree(out);
 				return -1;
@@ -1065,7 +1065,7 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 		 *	it as an opaque type (octets).
 		 */
 		if ((i == 11) && (packet->data[1] == 1) && (packet->data[2] != sizeof(vp->vp_ether))) {
-			DICT_ATTR const *da = dict_attrunknown(packet, vp->da->attr, vp->da->vendor);
+			DICT_ATTR const *da = dict_unknown_afrom_fields(packet, vp->da->attr, vp->da->vendor);
 			if (!da) {
 				return -1;
 			}

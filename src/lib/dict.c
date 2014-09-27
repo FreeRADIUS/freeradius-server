@@ -37,13 +37,6 @@ RCSID("$Id$")
 #include	<sys/stat.h>
 #endif
 
-
-#define DICT_VALUE_MAX_NAME_LEN (128)
-#define DICT_VENDOR_MAX_NAME_LEN (128)
-#define DICT_ATTR_MAX_NAME_LEN (128)
-
-#define DICT_ATTR_SIZE sizeof(DICT_ATTR) + DICT_ATTR_MAX_NAME_LEN
-
 static fr_hash_table_t *vendors_byname = NULL;
 static fr_hash_table_t *vendors_byvalue = NULL;
 
@@ -2609,34 +2602,25 @@ void dict_attr_free(DICT_ATTR const **da)
 }
 
 
-/** Allocs an dictionary attr for unknown attributes
+/** Initialises a dictionary attr for unknown attributes
  *
- * Allocates a dict attr for an unknown attribute/vendor/type
- * without adding it to dictionary pools/hashes.
+ * Initialises a dict attr for an unknown attribute/vendor/type without adding
+ * it to dictionary pools/hashes.
  *
- * @note Must be freed with dict_attr_free if not used as part of a valuepair.
- *
- * @param[in] ctx for talloc
+ * @param[in,out] da struct to initialise, must be at least DICT_ATTR_SIZE bytes.
  * @param[in] attr number.
  * @param[in] vendor number.
- * @return new dictionary attribute.
+ * @return 0 on success.
  */
-DICT_ATTR const *dict_attrunknown(TALLOC_CTX *ctx, unsigned int attr, unsigned int vendor)
+int dict_unknown_from_fields(DICT_ATTR *da, unsigned int attr, unsigned int vendor)
 {
-	DICT_ATTR *da;
-	char *p, *q;
+	char *p;
 	int dv_type = 1;
 	size_t len = 0;
 	size_t bufsize = DICT_ATTR_MAX_NAME_LEN;
 
-	q = talloc_zero_array(ctx, char, DICT_ATTR_SIZE);
-	if (!q) {
-		fr_strerror_printf("Out of memory");
-		return NULL;
-	}
+	memset(da, 0, DICT_ATTR_SIZE);
 
-	da = (DICT_ATTR *) q;
-	talloc_set_type(q, DICT_ATTR);
 	da->attr = attr;
 	da->vendor = vendor;
 	da->type = PW_TYPE_OCTETS;
@@ -2684,6 +2668,37 @@ DICT_ATTR const *dict_attrunknown(TALLOC_CTX *ctx, unsigned int attr, unsigned i
 
 	print_attr_oid(p, bufsize , attr, dv_type);
 
+	return 0;
+}
+
+/** Allocs a dictionary attr for unknown attributes
+ *
+ * Allocs a dict attr for an unknown attribute/vendor/type without adding
+ * it to dictionary pools/hashes.
+ *
+ * @param[in] ctx to allocate DA in.
+ * @param[in] attr number.
+ * @param[in] vendor number.
+ * @return 0 on success.
+ */
+DICT_ATTR const *dict_unknown_afrom_fields(TALLOC_CTX *ctx, unsigned int attr, unsigned int vendor)
+{
+	uint8_t *p;
+	DICT_ATTR *da;
+
+	p = talloc_zero_array(ctx, uint8_t, DICT_ATTR_SIZE);
+	if (!p) {
+		fr_strerror_printf("Out of memory");
+		return NULL;
+	}
+	da = (DICT_ATTR *) p;
+	talloc_set_type(da, DICT_ATTR);
+
+	if (dict_unknown_from_fields(da, attr, vendor) < 0) {
+		talloc_free(p);
+		return NULL;
+	}
+
 	return da;
 }
 
@@ -2697,22 +2712,22 @@ DICT_ATTR const *dict_attrunknown(TALLOC_CTX *ctx, unsigned int attr, unsigned i
  *
  * @todo should check attr/vendor against dictionary and return the real da.
  *
- * @param[in] ctx for talloc
- * @param[in] attribute name.
- * @return new da or NULL on error.
+ * @param[in] da to initialise.
+ * @param[in] name of attribute.
+ * @return 0 on success -1 on failure.
  */
-DICT_ATTR const *dict_attrunknownbyname(TALLOC_CTX *ctx, char const *attribute)
+int dict_unknown_from_str(DICT_ATTR *da, char const *name)
 {
 	unsigned int   	attr, vendor = 0;
 	unsigned int    dv_type = 1;	/* The type of vendor field */
 
-	char const	*p = attribute;
+	char const	*p = name;
 	char		*q;
 
 	DICT_VENDOR	*dv;
-	DICT_ATTR const	*da;
+	DICT_ATTR const	*found;
 
-	if (dict_valid_name(attribute) < 0) return NULL;
+	if (dict_valid_name(name) < 0) return -1;;
 
 	/*
 	 *	Pull off vendor prefix first.
@@ -2721,10 +2736,9 @@ DICT_ATTR const *dict_attrunknownbyname(TALLOC_CTX *ctx, char const *attribute)
 		if (strncasecmp(p, "Vendor-", 7) == 0) {
 			vendor = (int) strtol(p + 7, &q, 10);
 			if ((vendor == 0) || (vendor > FR_MAX_VENDOR)) {
-				fr_strerror_printf("Invalid vendor value in "
-						   "attribute name \"%s\"",
-						   attribute);
-				return NULL;
+				fr_strerror_printf("Invalid vendor value in attribute name \"%s\"", name);
+
+				return -1;;
 			}
 
 			p = q;
@@ -2736,17 +2750,14 @@ DICT_ATTR const *dict_attrunknownbyname(TALLOC_CTX *ctx, char const *attribute)
 			q = strchr(p, '-');
 
 			if (!q) {
-				fr_strerror_printf("Invalid vendor name in "
-						   "attribute name \"%s\"",
-						   attribute);
-				return NULL;
+				fr_strerror_printf("Invalid vendor name in attribute name \"%s\"", name);
+				return -1;;
 			}
 
 			if ((size_t) (q - p) >= sizeof(buffer)) {
-				fr_strerror_printf("Vendor name too long "
-						   "in attribute name \"%s\"",
-						   attribute);
-				return NULL;
+				fr_strerror_printf("Vendor name too long in attribute name \"%s\"", name);
+
+				return -1;;
 			}
 
 			memcpy(buffer, p, (q - p));
@@ -2754,19 +2765,18 @@ DICT_ATTR const *dict_attrunknownbyname(TALLOC_CTX *ctx, char const *attribute)
 
 			vendor = dict_vendorbyname(buffer);
 			if (!vendor) {
-				fr_strerror_printf("Unknown attribute \"%s\"",
-						   attribute);
-				return NULL;
+				fr_strerror_printf("Unknown name \"%s\"", name);
+
+				return -1;;
 			}
 
 			p = q;
 		}
 
 		if (*p != '-') {
-			fr_strerror_printf("Invalid text following vendor "
-					   "definition in attribute name "
-					   "\"%s\"", attribute);
-			return NULL;
+			fr_strerror_printf("Invalid text following vendor definition in attribute name \"%s\"", name);
+
+			return -1;;
 		}
 		p++;
 	}
@@ -2775,20 +2785,20 @@ DICT_ATTR const *dict_attrunknownbyname(TALLOC_CTX *ctx, char const *attribute)
 	 *	Attr-%d
 	 */
 	if (strncasecmp(p, "Attr-", 5) != 0) {
-		fr_strerror_printf("Unknown attribute \"%s\"",
-				   attribute);
-		return NULL;
+		fr_strerror_printf("Unknown attribute \"%s\"", name);
+
+		return -1;;
 	}
 
 	attr = strtol(p + 5, &q, 10);
 
 	/*
-	 *	Invalid attribute.
+	 *	Invalid name.
 	 */
 	if (attr == 0) {
-		fr_strerror_printf("Invalid value in attribute name \"%s\"",
-				   attribute);
-		return NULL;
+		fr_strerror_printf("Invalid value in attribute name \"%s\"", name);
+
+		return -1;;
 	}
 
 	p = q;
@@ -2805,7 +2815,7 @@ DICT_ATTR const *dict_attrunknownbyname(TALLOC_CTX *ctx, char const *attribute)
 	    ((vendor == 0) && *p && (*p != '.'))) {
 	invalid:
 		fr_strerror_printf("Invalid OID");
-		return NULL;
+		return -1;;
 	}
 
 	/*
@@ -2815,43 +2825,42 @@ DICT_ATTR const *dict_attrunknownbyname(TALLOC_CTX *ctx, char const *attribute)
 	 *
 	 *	This section parses the Vendor-Id portion of
 	 *	Attr-%d.%d.  where the first number is 26, *or* an
-	 *	extended attribute of the "evs" data type.
+	 *	extended name of the "evs" foundta type.
 	 */
 	if (*p == '.') {
-		da = dict_attrbyvalue(attr, 0);
-		if (!da) {
-			fr_strerror_printf("Cannot parse attributes without "
-					   "dictionaries");
-			return NULL;
+		found = dict_attrbyvalue(attr, 0);
+		if (!found) {
+			fr_strerror_printf("Cannot parse names without dictionaries");
+
+			return -1;;
 		}
 
 		if ((attr != PW_VENDOR_SPECIFIC) &&
-		    !(da->flags.extended || da->flags.long_extended)) {
-			fr_strerror_printf("Standard attributes cannot use "
-					   "OIDs");
-			return NULL;
+		    !(found->flags.extended || found->flags.long_extended)) {
+			fr_strerror_printf("Standard attributes cannot use OIDs");
+
+			return -1;;
 		}
 
-		if ((attr == PW_VENDOR_SPECIFIC) || da->flags.evs) {
+		if ((attr == PW_VENDOR_SPECIFIC) || found->flags.evs) {
 			vendor = strtol(p + 1, &q, 10);
 			if ((vendor == 0) || (vendor > FR_MAX_VENDOR)) {
 				fr_strerror_printf("Invalid vendor");
-				return NULL;
+
+				return -1;;
 			}
 
 			if (*q != '.') goto invalid;
 
 			p = q;
 
-			if (da->flags.evs) {
-				vendor |= attr * FR_MAX_VENDOR;
-			}
+			if (found->flags.evs) vendor |= attr * FR_MAX_VENDOR;
 			attr = 0;
 		} /* else the second number is a TLV number */
 	}
 
 	/*
-	 *	Get the expected maximum size of the attribute.
+	 *	Get the expected maximum size of the name.
 	 */
 	if (vendor) {
 		dv = dict_vendorbyvalue(vendor & (FR_MAX_VENDOR - 1));
@@ -2868,8 +2877,8 @@ DICT_ATTR const *dict_attrunknownbyname(TALLOC_CTX *ctx, char const *attribute)
 	if (*p == '.') {
 		attr = strtol(p + 1, &q, 10);
 		if (attr == 0) {
-			fr_strerror_printf("Invalid attribute number");
-			return NULL;
+			fr_strerror_printf("Invalid name number");
+			return -1;;
 		}
 
 		if (*q) {
@@ -2886,17 +2895,103 @@ DICT_ATTR const *dict_attrunknownbyname(TALLOC_CTX *ctx, char const *attribute)
 	}
 
 	/*
-	 *	Enforce a maximum value on the attribute number.
+	 *	Enforce a maximum value on the name number.
 	 */
 	if (attr >= (unsigned) (1 << (dv_type << 3))) goto invalid;
 
 	if (*p == '.') {
 		if (dict_str2oid(p + 1, &attr, &vendor, 1) < 0) {
-			return NULL;
+			return -1;;
 		}
 	}
 
-	return dict_attrunknown(ctx, attr, vendor);
+	/*
+	 *	If the caller doesn't provide a DICT_ATTR
+	 *	we can't call dict_unknown_from_fields.
+	 */
+	if (!da) {
+		fr_strerror_printf("Unknown attributes disallowed");
+		return -1;;
+	}
+
+	return dict_unknown_from_fields(da, attr, vendor);
+}
+
+/** Create a DICT_ATTR from an ASCII attribute and value
+ *
+ * Where the attribute name is in the form:
+ *  - Attr-%d
+ *  - Attr-%d.%d.%d...
+ *  - Vendor-%d-Attr-%d
+ *  - VendorName-Attr-%d
+ *
+ * @todo should check attr/vendor against dictionary and return the real da.
+ *
+ * @param[in] ctx to alloc new attribute in.
+ * @param[in] name of attribute.
+ * @return 0 on success -1 on failure.
+ */
+DICT_ATTR const *dict_unknown_afrom_str(TALLOC_CTX *ctx, char const *name)
+{
+	uint8_t *p;
+	DICT_ATTR *da;
+
+	p = talloc_zero_array(ctx, uint8_t, DICT_ATTR_SIZE);
+	if (!p) {
+		fr_strerror_printf("Out of memory");
+		return NULL;
+	}
+	da = (DICT_ATTR *) p;
+	talloc_set_type(da, DICT_ATTR);
+
+	if (dict_unknown_from_str(da, name) < 0) {
+		talloc_free(p);
+		return NULL;
+	}
+
+	return da;
+}
+
+/** Create a dictionary attribute by name embedded in another string
+ *
+ * Find the first invalid attribute name char in the string pointed
+ * to by name.
+ *
+ * Copy the characters between the start of the name string and the first
+ * none dict_attr_allowed_char to a buffer and initialise da as an
+ * unknown attribute.
+ *
+ * @param[out] da to initialise.
+ * @param[in,out] name string start.
+ * @return 0 on success or -1 on error;
+ */
+int dict_unknown_from_substr(DICT_ATTR *da, char const **name)
+{
+	char const *p;
+	size_t len;
+	char buffer[DICT_ATTR_MAX_NAME_LEN + 1];
+
+	if (!name || !*name) return -1;
+
+	/*
+	 *	Advance p until we get something that's not part of
+	 *	the dictionary attribute name.
+	 */
+	for (p = *name; dict_attr_allowed_chars[(int) *p] || (*p == '.' ) || (*p == '-'); p++);
+
+	len = p - *name;
+	if (len > DICT_ATTR_MAX_NAME_LEN) {
+		fr_strerror_printf("Attribute name too long");
+
+		return -1;
+	}
+	strlcpy(buffer, *name, len + 1);
+
+	if (dict_unknown_from_str(da, buffer) < 0) return -1;
+
+	*name = p;
+
+	return 0;
 }
 
 /*
@@ -3068,11 +3163,10 @@ DICT_ATTR const *dict_attrbyname(char const *name)
  * If the attribute does not exist, don't advance the pointer and return
  * NULL.
  *
- * @param[in] ctx to allocate unknown attributes in.
  * @param[in,out] name string start.
  * @return NULL if no attributes matching the name could be found, else
  */
-DICT_ATTR const *dict_attrbyname_substr(TALLOC_CTX *ctx, char const **name)
+DICT_ATTR const *dict_attrbyname_substr(char const **name)
 {
 	DICT_ATTR *find;
 	DICT_ATTR const *da;
@@ -3100,12 +3194,8 @@ DICT_ATTR const *dict_attrbyname_substr(TALLOC_CTX *ctx, char const **name)
 
 	da = fr_hash_table_finddata(attributes_byname, find);
 	if (!da) {
-		da = dict_attrunknownbyname(ctx, find->name);
-		if (!da) {
-			fr_strerror_printf("Unknown attribute \"%s\"", find->name);
-
-			return NULL;
-		}
+		fr_strerror_printf("Unknown attribute \"%s\"", find->name);
+		return NULL;
 	}
 	*name = p;
 
@@ -3211,11 +3301,15 @@ DICT_VENDOR *dict_vendorbyvalue(int vendorpec)
 	return fr_hash_table_finddata(vendors_byvalue, &dv);
 }
 
-/*
- *	Converts an unknown to a known by adding it to the internal
- *	dictionaries.
+/** Converts an unknown to a known by adding it to the internal dictionaries.
+ *
+ * Does not free old DICT_ATTR, that is left up to the caller.
+ *
+ * @param old unknown attribute to add.
+ * @return existing DICT_ATTR if old was found in a dictionary, else the new entry in the dictionary
+ * 	   representing old.
  */
-DICT_ATTR const *dict_addunknown(DICT_ATTR const *old)
+DICT_ATTR const *dict_unknown_add(DICT_ATTR const *old)
 {
 	DICT_ATTR const *da, *parent;
 	ATTR_FLAGS flags;
@@ -3225,7 +3319,7 @@ DICT_ATTR const *dict_addunknown(DICT_ATTR const *old)
 	if (!old->flags.is_unknown) return old;
 
 	da = dict_attrbyvalue(old->attr, old->vendor);
-	if (da) goto free_old;
+	if (da) return da;
 
 	memcpy(&flags, &old->flags, sizeof(flags));
 	flags.is_unknown = false;
@@ -3243,8 +3337,5 @@ DICT_ATTR const *dict_addunknown(DICT_ATTR const *old)
 	}
 
 	da = dict_attrbyvalue(old->attr, old->vendor);
-
-free_old:
-	dict_attr_free(&old);
 	return da;
 }

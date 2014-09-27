@@ -433,7 +433,6 @@ int tmpl_from_attr_substr(value_pair_tmpl_t *vpt, char const **name, request_ref
 	size_t len;
 	unsigned long num;
 	char *q;
-	DICT_ATTR const *da;
 
 	memset(vpt, 0, sizeof(*vpt));
 	vpt->name = *name;
@@ -464,10 +463,11 @@ int tmpl_from_attr_substr(value_pair_tmpl_t *vpt, char const **name, request_ref
 		goto finish;
 	}
 
-	da = dict_attrbyname_substr(vpt, &p);
-	if (!da) return error;
-
-	vpt->tmpl_da = da;
+	vpt->tmpl_da = dict_attrbyname_substr(&p);
+	if (!vpt->tmpl_da) {
+		if (dict_unknown_from_substr((DICT_ATTR *)&vpt->tmpl_unknown, &p) < 0) return error;
+		vpt->tmpl_da = (DICT_ATTR *)&vpt->tmpl_unknown;
+	}
 	vpt->type = TMPL_TYPE_ATTR;
 	vpt->tmpl_tag = TAG_ANY;
 	vpt->tmpl_num = NUM_ANY;
@@ -484,8 +484,8 @@ int tmpl_from_attr_substr(value_pair_tmpl_t *vpt, char const **name, request_ref
 	}
 
 	if (*p == ':') {
-		if (!da->flags.has_tag) {
-			fr_strerror_printf("Attribute '%s' cannot have a tag", da->name);
+		if (!vpt->tmpl_da->flags.has_tag) {
+			fr_strerror_printf("Attribute '%s' cannot have a tag", vpt->tmpl_da->name);
 			return -2;
 		}
 
@@ -583,8 +583,8 @@ value_pair_tmpl_t *tmpl_afrom_attr_substr(TALLOC_CTX *ctx, char const **name, re
 	vpt = talloc(ctx, value_pair_tmpl_t); /* parse_attr zeroes it */
 
 	if (tmpl_from_attr_substr(vpt, name, request_def, list_def) < 0) {
-		ERROR("%s", fr_strerror());
 		tmpl_free(&vpt);
+
 		return NULL;
 	}
 	vpt->name = talloc_strndup(vpt, vpt->name, vpt->len);
