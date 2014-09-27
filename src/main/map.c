@@ -194,7 +194,7 @@ value_pair_map_t *map_from_cp(TALLOC_CTX *ctx, CONF_PAIR *cp,
 			      request_refs_t src_request_def, pair_lists_t src_list_def)
 {
 	value_pair_map_t *map;
-	char const *attr;
+	char const *attr, *p;
 	char const *value;
 	FR_TOKEN type;
 	CONF_ITEM *ci = cf_pairtoitem(cp);
@@ -205,7 +205,7 @@ value_pair_map_t *map_from_cp(TALLOC_CTX *ctx, CONF_PAIR *cp,
 	map->op = cf_pair_operator(cp);
 	map->ci = ci;
 
-	attr = cf_pair_attr(cp);
+	p = attr = cf_pair_attr(cp);
 	value = cf_pair_value(cp);
 	if (!value) {
 		cf_log_err(ci, "Missing attribute value");
@@ -215,9 +215,14 @@ value_pair_map_t *map_from_cp(TALLOC_CTX *ctx, CONF_PAIR *cp,
 	/*
 	 *	LHS must always be an attribute reference.
 	 */
-	map->dst = tmpl_afrom_attr_str(map, attr, dst_request_def, dst_list_def);
+	map->dst = tmpl_afrom_attr_substr(map, &p, dst_request_def, dst_list_def);
 	if (!map->dst) {
 		cf_log_err(ci, "%s", fr_strerror());
+		goto error;
+	}
+	if (*p != '\0') {
+		/* @FIXME should output error marker^ */
+		cf_log_err(ci, "Invalid attribute name");
 		goto error;
 	}
 

@@ -174,11 +174,19 @@ request_refs_t		radius_request_name(char const **name, request_refs_t unknown);
 
 
 /* Template manipulation and execution */
+int			tmpl_from_attr_substr(value_pair_tmpl_t *vpt, char const **name,
+					      request_refs_t request_def,
+					      pair_lists_t list_def);
+
 int			tmpl_from_attr_str(value_pair_tmpl_t *vpt, char const *name,
-					  request_refs_t request_def,
-					  pair_lists_t list_def);
+					   request_refs_t request_def,
+					   pair_lists_t list_def);
 
 void			tmpl_free(value_pair_tmpl_t **tmpl);
+
+value_pair_tmpl_t	*tmpl_afrom_attr_substr(TALLOC_CTX *ctx, char const **name,
+						request_refs_t request_def,
+						pair_lists_t list_def);
 
 value_pair_tmpl_t	*tmpl_afrom_attr_str(TALLOC_CTX *ctx, char const *name,
 					     request_refs_t request_def,

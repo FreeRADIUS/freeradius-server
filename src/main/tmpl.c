@@ -415,20 +415,18 @@ void tmpl_verify(value_pair_tmpl_t const *vpt)
  * VPTs are used in various places where we need to pre-parse configuration
  * sections into attribute mappings.
  *
- * Note: name field is just a copy of the input pointer, if you know that
+ * @note The name field is just a copy of the input pointer, if you know that
  * string might be freed before you're done with the vpt use tmpl_afrom_attr_str
  * instead.
  *
- * The special return code of -2 is used only by tmpl_afrom_str, which allow
- * bare words which might (or might not) be an attribute reference.
- *
  * @param[out] vpt to modify.
- * @param[in] name attribute name including qualifiers.
+ * @param[in,out] name of attribute including qualifiers. Will be advanced to the
+ *	end of the attribute ref string on success.
  * @param[in] request_def The default request to insert unqualified attributes into.
  * @param[in] list_def The default list to insert unqualified attributes into.
- * @return -2 on partial parse followed by error, -1 on other error, or 0 on success
+ * @return -2 on partial parse error, -1 on other error, or 0 on success
  */
-int tmpl_from_attr_str(value_pair_tmpl_t *vpt, char const *name, request_refs_t request_def, pair_lists_t list_def)
+int tmpl_from_attr_substr(value_pair_tmpl_t *vpt, char const **name, request_refs_t request_def, pair_lists_t list_def)
 {
 	int error = -1;
 	char const *p;
@@ -438,8 +436,8 @@ int tmpl_from_attr_str(value_pair_tmpl_t *vpt, char const *name, request_refs_t 
 	DICT_ATTR const *da;
 
 	memset(vpt, 0, sizeof(*vpt));
-	vpt->name = name;
-	p = name;
+	vpt->name = *name;
+	p = *name;
 
 	if (*p == '&') {
 		error = -2;
@@ -447,23 +445,23 @@ int tmpl_from_attr_str(value_pair_tmpl_t *vpt, char const *name, request_refs_t 
 	}
 
 	vpt->tmpl_request = radius_request_name(&p, request_def);
-	len = p - name;
+	len = p - *name;
 	if (vpt->tmpl_request == REQUEST_UNKNOWN) {
-		fr_strerror_printf("Invalid request qualifier \"%.*s\"", (int) len, name);
+		fr_strerror_printf("Invalid request qualifier \"%.*s\"", (int) len, p);
 		return error;
 	}
-	name += len;
+	*name += len;
 
 	vpt->tmpl_list = radius_list_name(&p, list_def);
 	if (vpt->tmpl_list == PAIR_LIST_UNKNOWN) {
-		len = p - name;
-		fr_strerror_printf("Invalid list qualifier \"%.*s\"", (int) len, name);
-		return error;
+		len = p - *name;
+		fr_strerror_printf("Invalid list qualifier \"%.*s\"", (int) len, p);
+		return -1;
 	}
 
 	if (*p == '\0') {
 		vpt->type = TMPL_TYPE_LIST;
-		return 0;
+		goto finish;
 	}
 
 	da = dict_attrbyname_substr(vpt, &p);
@@ -501,10 +499,10 @@ int tmpl_from_attr_str(value_pair_tmpl_t *vpt, char const *name, request_refs_t 
 		p = q;
 	}
 
-	if (!*p) return 0;
+	if (!*p) goto finish;
 
 	if (*p != '[') {
-		fr_strerror_printf("Unexpected text after tag in '%s'", name);
+		fr_strerror_printf("Unexpected text after tag: %s", p);
 		return -2;
 	}
 	p++;
@@ -523,8 +521,42 @@ int tmpl_from_attr_str(value_pair_tmpl_t *vpt, char const *name, request_refs_t 
 	}
 
 	if ((*p != ']') || (p[1] != '\0')) {
-		fr_strerror_printf("Unexpected text after array in '%s'", name);
+		fr_strerror_printf("Unexpected text after array: %s", p);
 		return -2;
+	}
+	p++;
+finish:
+	vpt->len = p - *name;
+	*name = p;
+
+	return 0;
+}
+
+/** Parse qualifiers to convert an attrname into a value_pair_tmpl_t.
+ *
+ * VPTs are used in various places where we need to pre-parse configuration
+ * sections into attribute mappings.
+ *
+ * @note The name field is just a copy of the input pointer, if you know that
+ * string might be freed before you're done with the vpt use tmpl_afrom_attr_str
+ * instead.
+ *
+ * @param[out] vpt to modify.
+ * @param[in] name attribute name including qualifiers.
+ * @param[in] request_def The default request to insert unqualified attributes into.
+ * @param[in] list_def The default list to insert unqualified attributes into.
+ * @return -2 on partial parse, -1 on other error, or 0 on success
+ */
+int tmpl_from_attr_str(value_pair_tmpl_t *vpt, char const *name, request_refs_t request_def, pair_lists_t list_def)
+{
+	char const *p = name;
+	int ret;
+
+	ret = tmpl_from_attr_substr(vpt, &p, request_def, list_def);
+	if (ret < 0) return ret;
+	if (*p != '\0') {
+		fr_strerror_printf("Trailing characters after attribute string: %s", p);
+		return -2;	/* Failed to parse entire string */
 	}
 
 	return 0;
@@ -543,20 +575,19 @@ int tmpl_from_attr_str(value_pair_tmpl_t *vpt, char const *name, request_refs_t 
  * @return pointer to a value_pair_tmpl_t struct (must be freed with
  *	tmpl_free) or NULL on error.
  */
-value_pair_tmpl_t *tmpl_afrom_attr_str(TALLOC_CTX *ctx, char const *name, request_refs_t request_def,
-				       pair_lists_t list_def)
+value_pair_tmpl_t *tmpl_afrom_attr_substr(TALLOC_CTX *ctx, char const **name, request_refs_t request_def,
+					  pair_lists_t list_def)
 {
 	value_pair_tmpl_t *vpt;
-	char const *copy;
 
 	vpt = talloc(ctx, value_pair_tmpl_t); /* parse_attr zeroes it */
-	copy = talloc_typed_strdup(vpt, name);
 
-	if (tmpl_from_attr_str(vpt, copy, request_def, list_def) < 0) {
+	if (tmpl_from_attr_substr(vpt, name, request_def, list_def) < 0) {
 		ERROR("%s", fr_strerror());
 		tmpl_free(&vpt);
 		return NULL;
 	}
+	vpt->name = talloc_strndup(vpt, vpt->name, vpt->len);
 
 	return vpt;
 }
