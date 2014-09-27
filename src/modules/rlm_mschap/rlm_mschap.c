@@ -923,20 +923,14 @@ ntlm_auth_err:
 		/*
 		 *  The new cleartext password, which is utf-16 do some unpleasant vileness
 		 *  to turn it into utf8 without pulling in libraries like iconv.
+		 *
+		 *  First pass: get the length of the converted string.
 		 */
 		new_pass = pairmake_packet("MS-CHAP-New-Cleartext-Password", NULL, T_OP_EQ);
 		new_pass->length = 0;
-		new_pass->vp_strvalue = x = talloc_array(new_pass, char, 254);
+
 		i = 0;
-		while (i<passlen) {
-			/*
-			 *  The client-supplied password is utf-16.
-			 *  We really must perform a proper conversion to utf8 here,
-			 *  and the same in the other direction when we calculate
-			 *  NT-Password below, else non-ascii characters will fail -
-			 *  I know from experience that UK pound and Euro symbols
-			 *  are common in users passwords (money obsessed!)
-			 */
+		while (i < passlen) {
 			int c;
 
 			c = p[i++];
@@ -946,34 +940,44 @@ ntlm_auth_err:
 			 *  Gah. nasty. maybe we should just pull in iconv?
 			 */
 			if (c < 0x7f) {
-				/* ascii char */
-				if (new_pass->length >= 253) {
-					RWDEBUG("Ran out of room turning new password into utf8 at %zu, "
-						"cleartext will be truncated!", i);
-					break;
-				}
-				x[new_pass->length++] = c;
+				new_pass->length++;
 			} else if (c < 0x7ff) {
-				/* 2-byte */
-				if (new_pass->length >= 252) {
-					RWDEBUG("Ran out of room turning new password into utf8 at %zu, "
-						"cleartext will be truncated!", i);
-					break;
-				}
+				new_pass->length += 2;
+			} else {
+				new_pass->length += 3;
+			}
+		}
+
+		new_pass->vp_strvalue = x = talloc_array(new_pass, char, new_pass->length + 1);
+
+		/*
+		 *	Second pass: convert the characters from UTF-16 to UTF-8.
+		 */
+		i = 0;
+		while (i < passlen) {
+			int c;
+
+			c = p[i++];
+			c += p[i++] << 8;
+
+			/*
+			 *  Gah. nasty. maybe we should just pull in iconv?
+			 */
+			if (c < 0x7f) {
+				x[new_pass->length++] = c;
+
+			} else if (c < 0x7ff) {
 				x[new_pass->length++] = 0xc0 + (c >> 6);
 				x[new_pass->length++] = 0x80 + (c & 0x3f);
+
 			} else {
-				/* 3-byte */
-				if (new_pass->length >= 251) {
-					RWDEBUG("Ran out of room turning new password into utf8 at %zu, "
-						"cleartext will be truncated!", i);
-					break;
-				}
 				x[new_pass->length++] = 0xe0 + (c >> 12);
 				x[new_pass->length++] = 0x80 + ((c>>6) & 0x3f);
 				x[new_pass->length++] = 0x80 + (c & 0x3f);
 			}
 		}
+
+		x[new_pass->length] = '\0';
 
 		/* Perform the xlat */
 		result_len = radius_xlat(result, sizeof(result), request, inst->local_cpw, NULL, NULL);
