@@ -133,8 +133,6 @@ static bool map_cast_from_hex(value_pair_map_t *map, FR_TOKEN rhs_type, char con
 	 */
 	vpt->name = vp_aprint_value(vpt, vp, true);
 
-	dict_attr_free(&map->dst->tmpl_da);
-
 	/*
 	 *	Set the LHS to the REAL attribute name.
 	 */
@@ -161,7 +159,7 @@ static bool fixup_unknown(value_pair_tmpl_t *vpt)
 
 	if (!vpt->tmpl_da->flags.is_unknown) return true;
 
-	da = dict_addunknown(vpt->tmpl_da);
+	da = dict_unknown_add(vpt->tmpl_da);
 	vpt->tmpl_da = da;
 	return true;
 }

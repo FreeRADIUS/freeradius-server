@@ -442,6 +442,12 @@ char		*vp_aprint(TALLOC_CTX *ctx, VALUE_PAIR const *vp, bool escape);
 /*
  *	Dictionary functions.
  */
+#define DICT_VALUE_MAX_NAME_LEN (128)
+#define DICT_VENDOR_MAX_NAME_LEN (128)
+#define DICT_ATTR_MAX_NAME_LEN (128)
+
+#define DICT_ATTR_SIZE sizeof(DICT_ATTR) + DICT_ATTR_MAX_NAME_LEN
+
 extern const int dict_attr_allowed_chars[256];
 int		dict_valid_name(char const *name);
 int		str2argv(char *str, char **argv, int max_argc);
@@ -453,13 +459,18 @@ int		dict_addvalue(char const *namestr, char const *attrstr, int value);
 int		dict_init(char const *dir, char const *fn);
 void		dict_free(void);
 int		dict_read(char const *dir, char const *filename);
+
 void 		dict_attr_free(DICT_ATTR const **da);
-DICT_ATTR const	*dict_attrunknown(TALLOC_CTX *ctx, unsigned int attr, unsigned int vendor);
-DICT_ATTR const	*dict_attrunknownbyname(TALLOC_CTX *ctx, char const *attribute);
-DICT_ATTR const *dict_addunknown(DICT_ATTR const *old);
+int		dict_unknown_from_fields(DICT_ATTR *da, unsigned int attr, unsigned int vendor);
+DICT_ATTR const *dict_unknown_afrom_fields(TALLOC_CTX *ctx, unsigned int attr, unsigned int vendor);
+int		dict_unknown_from_str(DICT_ATTR *da, char const *name);
+int		dict_unknown_from_substr(DICT_ATTR *da, char const **name);
+DICT_ATTR const *dict_unknown_afrom_str(TALLOC_CTX *ctx, char const *name);
+DICT_ATTR const *dict_unknown_add(DICT_ATTR const *old);
+
 DICT_ATTR const	*dict_attrbyvalue(unsigned int attr, unsigned int vendor);
 DICT_ATTR const	*dict_attrbyname(char const *attr);
-DICT_ATTR const *dict_attrbyname_substr(TALLOC_CTX *ctx, char const **name);
+DICT_ATTR const *dict_attrbyname_substr(char const **name);
 DICT_ATTR const	*dict_attrbytype(unsigned int attr, unsigned int vendor,
 				 PW_TYPE type);
 DICT_ATTR const	*dict_attrbyparent(DICT_ATTR const *parent, unsigned int attr,

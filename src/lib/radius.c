@@ -3008,7 +3008,7 @@ static ssize_t data2vp_tlvs(TALLOC_CTX *ctx,
 				return -1;
 			}
 
-			child = dict_attrunknown(ctx, my_attr, my_vendor);
+			child = dict_unknown_afrom_fields(ctx, my_attr, my_vendor);
 			if (!child) {
 				pairfree(&head);
 				return -1;
@@ -3103,7 +3103,7 @@ static ssize_t data2vp_vsa(TALLOC_CTX *ctx, RADIUS_PACKET *packet,
 	 *	See if the VSA is known.
 	 */
 	da = dict_attrbyvalue(attribute, dv->vendorpec);
-	if (!da) da = dict_attrunknown(ctx, attribute, dv->vendorpec);
+	if (!da) da = dict_unknown_afrom_fields(ctx, attribute, dv->vendorpec);
 	if (!da) return -1;
 
 	my_len = data2vp(ctx, packet, original, secret, da,
@@ -3647,7 +3647,7 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 			if ((data[0] != PW_VENDOR_SPECIFIC) ||
 			    (datalen < (3 + 4 + 1))) {
 				/* da->attr < 255, da->vendor == 0 */
-				child = dict_attrunknown(ctx, data[0], da->attr * FR_MAX_VENDOR);
+				child = dict_unknown_afrom_fields(ctx, data[0], da->attr * FR_MAX_VENDOR);
 			} else {
 				/*
 				 *	Try to find the VSA.
@@ -3657,7 +3657,7 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 
 				if (vendor == 0) goto raw;
 
-				child = dict_attrunknown(ctx, data[7], vendor | (da->attr * FR_MAX_VENDOR));
+				child = dict_unknown_afrom_fields(ctx, data[7], vendor | (da->attr * FR_MAX_VENDOR));
 			}
 
 			if (!child) {
@@ -3694,11 +3694,11 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 		vendor = ntohl(vendor);
 		dv = dict_vendorbyvalue(vendor);
 		if (!dv) {
-			child = dict_attrunknown(ctx, data[4], da->vendor | vendor);
+			child = dict_unknown_afrom_fields(ctx, data[4], da->vendor | vendor);
 		} else {
 			child = dict_attrbyparent(da, data[4], vendor);
 			if (!child) {
-				child = dict_attrunknown(ctx, data[4], da->vendor | vendor);
+				child = dict_unknown_afrom_fields(ctx, data[4], da->vendor | vendor);
 			}
 		}
 		if (!child) goto raw;
@@ -3736,7 +3736,7 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 		 *	therefore of type "octets", and will be
 		 *	handled below.
 		 */
-		da = dict_attrunknown(ctx, da->attr, da->vendor);
+		da = dict_unknown_afrom_fields(ctx, da->attr, da->vendor);
 		if (!da) {
 			fr_strerror_printf("Internal sanity check %d", __LINE__);
 			return -1;
@@ -3893,7 +3893,7 @@ ssize_t rad_attr2vp(TALLOC_CTX *ctx,
 	}
 
 	da = dict_attrbyvalue(data[0], 0);
-	if (!da) da = dict_attrunknown(ctx, data[0], 0);
+	if (!da) da = dict_unknown_afrom_fields(ctx, data[0], 0);
 	if (!da) return -1;
 
 	/*
