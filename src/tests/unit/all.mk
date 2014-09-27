@@ -21,7 +21,10 @@ $(BUILD_DIR)/tests/unit:
 #
 $(BUILD_DIR)/tests/unit/%: $(DIR)/% $(TESTBINDIR)/radattr | $(BUILD_DIR)/tests/unit
 	@echo UNIT-TEST $(notdir $@)
-	@$(TESTBIN)/radattr -D $(top_srcdir)/share $<
+	@if ! $(TESTBIN)/radattr -D $(top_srcdir)/share $<; then \
+		echo "$(TESTBIN)/radattr -D $(top_srcdir)/share $<"; \
+		exit 1; \
+	fi
 	@touch $@
 
 #
