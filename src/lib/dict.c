@@ -2895,7 +2895,7 @@ int dict_unknown_from_str(DICT_ATTR *da, char const *name)
 	}
 
 	/*
-	 *	Enforce a maximum value on the name number.
+	 *	Enforce a maximum value on the attribute number.
 	 */
 	if (attr >= (unsigned) (1 << (dv_type << 3))) goto invalid;
 
