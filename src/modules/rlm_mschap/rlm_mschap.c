@@ -964,20 +964,20 @@ ntlm_auth_err:
 			 *  Gah. nasty. maybe we should just pull in iconv?
 			 */
 			if (c < 0x7f) {
-				x[new_pass->length++] = c;
+				*x++ = c;
 
 			} else if (c < 0x7ff) {
-				x[new_pass->length++] = 0xc0 + (c >> 6);
-				x[new_pass->length++] = 0x80 + (c & 0x3f);
+				*x++ = 0xc0 + (c >> 6);
+				*x++ = 0x80 + (c & 0x3f);
 
 			} else {
-				x[new_pass->length++] = 0xe0 + (c >> 12);
-				x[new_pass->length++] = 0x80 + ((c>>6) & 0x3f);
-				x[new_pass->length++] = 0x80 + (c & 0x3f);
+				*x++ = 0xe0 + (c >> 12);
+				*x++ = 0x80 + ((c>>6) & 0x3f);
+				*x++ = 0x80 + (c & 0x3f);
 			}
 		}
 
-		x[new_pass->length] = '\0';
+		*x = '\0';
 
 		/* Perform the xlat */
 		result_len = radius_xlat(result, sizeof(result), request, inst->local_cpw, NULL, NULL);
