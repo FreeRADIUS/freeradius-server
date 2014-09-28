@@ -2926,40 +2926,41 @@ void pairstrncpy(VALUE_PAIR *vp, char const *src, size_t len)
  * @todo Should be able to do type conversions.
  *
  * @param[in,out] vp to update.
- * @param[in] da Type of data represented by data.
+ * @param[in] type of data represented by data.
  * @param[in] data to copy.
  * @param[in] len of data to copy.
+ * @return 0 on success -1 on failure.
  */
-int pairdatacpy(VALUE_PAIR *vp, DICT_ATTR const *da, value_data_t const *data, size_t len)
+int pairdatacpy(VALUE_PAIR *vp, PW_TYPE type, value_data_t const *data, size_t len)
 {
 	void *old;
 	VERIFY_VP(vp);
 
 	/*
-	 *	The da->types have to be identical, OR the "from" da->type has
+	 *	The types have to be identical, OR the "from" type has
 	 *	to be octets.
 	 */
-	if (vp->da->type != da->type) {
+	if (vp->da->type != type) {
 		/*
 		 *	Decode the octets buffer using the RADIUS decoder.
 		 */
-		if (da->type == PW_TYPE_OCTETS) {
+		if (type == PW_TYPE_OCTETS) {
 			if (data2vp(vp, NULL, NULL, NULL, vp->da, data->octets, len, len, &vp) < 0) return -1;
 			vp->type = VT_DATA;
 			return 0;
 		}
 
 		/*
-		 *	Else if the destination da->type is octets
+		 *	Else if the destination type is octets
 		 */
 		if (vp->da->type == PW_TYPE_OCTETS) {
 			int ret;
 			uint8_t *buff;
 			VALUE_PAIR const *pvp = vp;
 
-			buff = talloc_array(vp, uint8_t, dict_attr_sizes[da->type][1] + 2);
+			buff = talloc_array(vp, uint8_t, dict_attr_sizes[type][1] + 2);
 
-			ret = rad_vp2rfc(NULL, NULL, NULL, &pvp, buff, dict_attr_sizes[da->type][1]);
+			ret = rad_vp2rfc(NULL, NULL, NULL, &pvp, buff, dict_attr_sizes[type][1]);
 			if (ret < 0) return -1;
 
 			pairmemcpy(vp, buff + 2, ret - 2);

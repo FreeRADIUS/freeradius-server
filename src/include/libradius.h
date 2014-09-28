@@ -617,7 +617,7 @@ void		pairmemsteal(VALUE_PAIR *vp, uint8_t const *src);
 void		pairstrsteal(VALUE_PAIR *vp, char const *src);
 void		pairstrcpy(VALUE_PAIR *vp, char const * src);
 void		pairstrncpy(VALUE_PAIR *vp, char const * src, size_t len);
-int		pairdatacpy(VALUE_PAIR *vp, DICT_ATTR const *da, value_data_t const *data, size_t len);
+int		pairdatacpy(VALUE_PAIR *vp, PW_TYPE type, value_data_t const *data, size_t len);
 void		pairsprintf(VALUE_PAIR *vp, char const * fmt, ...) CC_HINT(format (printf, 2, 3));
 void		pairmove(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from);
 void		pairfilter(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from,

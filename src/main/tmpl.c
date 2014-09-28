@@ -918,7 +918,7 @@ int tmpl_cast_to_vp(VALUE_PAIR **out, REQUEST *request,
 	if (vpt->type == TMPL_TYPE_DATA) {
 		VERIFY_VP(vp);
 		rad_assert(vp->da->type == vpt->tmpl_da->type);
-		pairdatacpy(vp, vpt->tmpl_da, vpt->tmpl_value, vpt->tmpl_length);
+		pairdatacpy(vp, vpt->tmpl_da->type, vpt->tmpl_value, vpt->tmpl_length);
 		*out = vp;
 		return 0;
 	}
