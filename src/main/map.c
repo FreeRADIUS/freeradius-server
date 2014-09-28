@@ -902,7 +902,7 @@ int map_to_vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *map, U
 			for (; vp; vp = fr_cursor_next(&from)) {
 				new = pairalloc(request, da);
 				if (!new) return -1;
-				if (pairdatacpy(new, vp->da, &vp->data, vp->length) < 0) {
+				if (pairdatacpy(new, vp->da->type, &vp->data, vp->length) < 0) {
 					REDEBUG("Attribute conversion failed: %s", fr_strerror());
 					pairfree(&found);
 					pairfree(&new);
@@ -937,7 +937,7 @@ int map_to_vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *map, U
 		new = pairalloc(request, da);
 		if (!new) return -1;
 
-		if (pairdatacpy(new, map->rhs->tmpl_da, map->rhs->tmpl_value, map->rhs->tmpl_length) < 0) goto error;
+		if (pairdatacpy(new, map->rhs->tmpl_da->type, map->rhs->tmpl_value, map->rhs->tmpl_length) < 0) goto error;
 		new->op = map->op;
 		*out = new;
 		break;
