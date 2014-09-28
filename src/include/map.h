@@ -40,9 +40,9 @@ RCSIDH(map_h, "$Id$")
  * @see value_pair_tmpl_t
  */
 typedef struct value_pair_map {
-	value_pair_tmpl_t	*dst;	//!< Typically describes the attribute
+	value_pair_tmpl_t	*lhs;	//!< Typically describes the attribute
 					//!< to add or modify.
-	value_pair_tmpl_t	*src;   //!< Typically describes a value or a
+	value_pair_tmpl_t	*rhs;   //!< Typically describes a value or a
 					//!< src attribute to copy.
 
 	FR_TOKEN		op; 	//!< The operator that controls
