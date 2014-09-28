@@ -522,7 +522,7 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 	 *
 	 *	LHS is DST.  RHS is SRC <sigh>
 	 */
-	if (!c->cast && (map->rhs->type == TMPL_TYPE_ATTR) && (map->lhs->type == TMPL_TYPE_ATTR)) {
+	if (!c->cast && (map->lhs->type == TMPL_TYPE_ATTR) && (map->rhs->type == TMPL_TYPE_ATTR)) {
 		VALUE_PAIR *lhs_vp, *rhs_vp, *cast_vp;
 
 		EVAL_DEBUG("ATTR to ATTR");
