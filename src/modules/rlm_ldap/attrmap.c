@@ -41,7 +41,7 @@ static int rlm_ldap_map_getvalue(VALUE_PAIR **out, REQUEST *request, value_pair_
 
 	fr_cursor_init(&cursor, &head);
 
-	switch (map->dst->type) {
+	switch (map->lhs->type) {
 	/*
 	 *	This is a mapping in the form of:
 	 *		<list>: += <ldap attr>
@@ -59,27 +59,27 @@ static int rlm_ldap_map_getvalue(VALUE_PAIR **out, REQUEST *request, value_pair_
 
 			RDEBUG3("Parsing valuepair string \"%s\"", self->values[i]->bv_val);
 			if (map_from_vp_str(&attr, request, self->values[i]->bv_val,
-					    map->dst->tmpl_request, map->dst->tmpl_list,
+					    map->lhs->tmpl_request, map->lhs->tmpl_list,
 					    REQUEST_CURRENT, PAIR_LIST_REQUEST) < 0) {
 				RWDEBUG("Failed parsing \"%s\" as valuepair, skipping...", self->values[i]->bv_val);
 				continue;
 			}
 
-			if (attr->dst->tmpl_request != map->dst->tmpl_request) {
+			if (attr->lhs->tmpl_request != map->lhs->tmpl_request) {
 				RWDEBUG("valuepair \"%s\" has conflicting request qualifier (%s vs %s), skipping...",
 					self->values[i]->bv_val,
-					fr_int2str(request_refs, attr->dst->tmpl_request, "<INVALID>"),
-					fr_int2str(request_refs, map->dst->tmpl_request, "<INVALID>"));
+					fr_int2str(request_refs, attr->lhs->tmpl_request, "<INVALID>"),
+					fr_int2str(request_refs, map->lhs->tmpl_request, "<INVALID>"));
 			next_pair:
 				talloc_free(attr);
 				continue;
 			}
 
-			if ((attr->dst->tmpl_list != map->dst->tmpl_list)) {
+			if ((attr->lhs->tmpl_list != map->lhs->tmpl_list)) {
 				RWDEBUG("valuepair \"%s\" has conflicting list qualifier (%s vs %s), skipping...",
 					self->values[i]->bv_val,
-					fr_int2str(pair_lists, attr->dst->tmpl_list, "<INVALID>"),
-					fr_int2str(pair_lists, map->dst->tmpl_list, "<INVALID>"));
+					fr_int2str(pair_lists, attr->lhs->tmpl_list, "<INVALID>"),
+					fr_int2str(pair_lists, map->lhs->tmpl_list, "<INVALID>"));
 				goto next_pair;
 			}
 
@@ -102,11 +102,11 @@ static int rlm_ldap_map_getvalue(VALUE_PAIR **out, REQUEST *request, value_pair_
 		for (i = 0; i < self->count; i++) {
 			if (!self->values[i]->bv_len) continue;
 
-			vp = pairalloc(request, map->dst->tmpl_da);
+			vp = pairalloc(request, map->lhs->tmpl_da);
 			rad_assert(vp);
 
 			if (pairparsevalue(vp, self->values[i]->bv_val, self->values[i]->bv_len) < 0) {
-				RDEBUG("Failed parsing value for \"%s\"", map->dst->tmpl_da->name);
+				RDEBUG("Failed parsing value for \"%s\"", map->lhs->tmpl_da->name);
 
 				talloc_free(vp);
 				continue;
@@ -140,7 +140,7 @@ int rlm_ldap_map_verify(ldap_instance_t *inst, value_pair_map_t **head)
 	 *	to do rlm_ldap specific checks here.
 	 */
 	for (map = *head; map != NULL; map = map->next) {
-		switch (map->dst->type) {
+		switch (map->lhs->type) {
 		case TMPL_TYPE_LIST:
 			if (map->op != T_OP_ADD) {
 				cf_log_err(map->ci, "Only '+=' operator is permitted for valuepair to list mapping");
@@ -155,7 +155,7 @@ int rlm_ldap_map_verify(ldap_instance_t *inst, value_pair_map_t **head)
 			return -1;
 		}
 
-		switch (map->src->type) {
+		switch (map->rhs->type) {
 		case TMPL_TYPE_LIST:
 			cf_log_err(map->ci, "LDAP attribute name cannot be derived from a list");
 			return -1;
@@ -170,8 +170,8 @@ int rlm_ldap_map_verify(ldap_instance_t *inst, value_pair_map_t **head)
 		 *	and has no idea what they're doing, or they're authenticating the user using a different
 		 *	method.
 		 */
-		if (!inst->expect_password && map->dst->tmpl_da && (map->dst->type == TMPL_TYPE_ATTR)) {
-			switch (map->dst->tmpl_da->attr) {
+		if (!inst->expect_password && map->lhs->tmpl_da && (map->lhs->type == TMPL_TYPE_ATTR)) {
+			switch (map->lhs->tmpl_da->attr) {
 			case PW_CLEARTEXT_PASSWORD:
 			case PW_NT_PASSWORD:
 			case PW_USER_PASSWORD:
@@ -181,14 +181,14 @@ int rlm_ldap_map_verify(ldap_instance_t *inst, value_pair_map_t **head)
 				 *	Because you just know someone is going to map NT-Password to the
 				 *	request list, and then complain it's not working...
 				 */
-				if (map->dst->tmpl_list != PAIR_LIST_CONTROL) {
+				if (map->lhs->tmpl_list != PAIR_LIST_CONTROL) {
 					LDAP_DBGW("Mapping LDAP (%s) attribute to \"known good\" password attribute "
 						  "(%s) in %s list. This is probably *NOT* the correct list, "
 						  "you should prepend \"control:\" to password attribute "
 						  "(control:%s)",
-						  map->src->name, map->dst->tmpl_da->name,
-						  fr_int2str(pair_lists, map->dst->tmpl_list, "<invalid>"),
-						  map->dst->tmpl_da->name);
+						  map->rhs->name, map->lhs->tmpl_da->name,
+						  fr_int2str(pair_lists, map->lhs->tmpl_list, "<invalid>"),
+						  map->lhs->tmpl_da->name);
 				}
 
 				inst->expect_password = true;
@@ -197,7 +197,7 @@ int rlm_ldap_map_verify(ldap_instance_t *inst, value_pair_map_t **head)
 			}
 		}
 
-		switch (map->src->type) {
+		switch (map->rhs->type) {
 		/*
 		 *	Only =, :=, += and -= operators are supported for
 		 *	cache entries.
@@ -215,7 +215,7 @@ int rlm_ldap_map_verify(ldap_instance_t *inst, value_pair_map_t **head)
 			default:
 				cf_log_err(map->ci, "Operator \"%s\" not allowed for %s values",
 					   fr_int2str(fr_tokens, map->op, "<INVALID>"),
-					   fr_int2str(vpt_types, map->src->type, "<INVALID>"));
+					   fr_int2str(vpt_types, map->rhs->type, "<INVALID>"));
 				return -1;
 			}
 		default:
@@ -239,7 +239,7 @@ void rlm_ldap_map_xlat_free(rlm_ldap_map_xlat_t const *expanded)
 		name = expanded->attrs[total++];
 		if (!name) return;
 
-		switch (map->src->type) {
+		switch (map->rhs->type) {
 		case TMPL_TYPE_EXEC:
 		case TMPL_TYPE_XLAT:
 		case TMPL_TYPE_ATTR:
@@ -263,15 +263,15 @@ int rlm_ldap_map_xlat(REQUEST *request, value_pair_map_t const *maps, rlm_ldap_m
 	REQUEST *context;
 
 	for (map = maps; map != NULL; map = map->next) {
-		switch (map->src->type) {
+		switch (map->rhs->type) {
 		case TMPL_TYPE_XLAT:
 		{
 			ssize_t len;
 			char *exp = NULL;
 
-			len = radius_axlat(&exp, request, map->src->name, NULL, NULL);
+			len = radius_axlat(&exp, request, map->rhs->name, NULL, NULL);
 			if (len < 0) {
-				RDEBUG("Expansion of LDAP attribute \"%s\" failed", map->src->name);
+				RDEBUG("Expansion of LDAP attribute \"%s\" failed", map->rhs->name);
 
 				goto error;
 			}
@@ -283,12 +283,12 @@ int rlm_ldap_map_xlat(REQUEST *request, value_pair_map_t const *maps, rlm_ldap_m
 		case TMPL_TYPE_ATTR:
 			context = request;
 
-			if (radius_request(&context, map->src->tmpl_request) == 0) {
-				from = radius_list(context, map->src->tmpl_list);
+			if (radius_request(&context, map->rhs->tmpl_request) == 0) {
+				from = radius_list(context, map->rhs->tmpl_list);
 			}
 			if (!from) continue;
 
-			found = pairfind(*from, map->src->tmpl_da->attr, map->src->tmpl_da->vendor, TAG_ANY);
+			found = pairfind(*from, map->rhs->tmpl_da->attr, map->rhs->tmpl_da->vendor, TAG_ANY);
 			if (!found) continue;
 
 			expanded->attrs[total++] = talloc_typed_strdup(request, found->vp_strvalue);
@@ -301,7 +301,7 @@ int rlm_ldap_map_xlat(REQUEST *request, value_pair_map_t const *maps, rlm_ldap_m
 			int result;
 
 			input_pairs = radius_list(request, PAIR_LIST_REQUEST);
-			result = radius_exec_program(request, map->src->name, true, true, answer,
+			result = radius_exec_program(request, map->rhs->name, true, true, answer,
 						     sizeof(answer), EXEC_TIMEOUT,
 						     input_pairs ? *input_pairs : NULL, NULL);
 			if (result != 0) {
@@ -313,7 +313,7 @@ int rlm_ldap_map_xlat(REQUEST *request, value_pair_map_t const *maps, rlm_ldap_m
 			break;
 
 		case TMPL_TYPE_LITERAL:
-			expanded->attrs[total++] = map->src->name;
+			expanded->attrs[total++] = map->rhs->name;
 			break;
 
 		default:

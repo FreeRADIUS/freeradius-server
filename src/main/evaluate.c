@@ -242,16 +242,16 @@ static int do_regex(REQUEST *request, value_pair_map_t const *map)
 	/*
 	 *  Expand and then compile it.
 	 */
-	switch (map->src->type) {
+	switch (map->rhs->type) {
 	case TMPL_TYPE_XLAT_STRUCT: /* pre-compiled to an xlat thing */
-		rcode = radius_expand_tmpl(&rhs, request, map->src);
+		rcode = radius_expand_tmpl(&rhs, request, map->rhs);
 		if (rcode < 0) {
 			EVAL_DEBUG("FAIL %d", __LINE__);
 			return -1;
 		}
 		rad_assert(rhs != NULL);
 
-		compare = regcomp(&reg, rhs, REG_EXTENDED | (map->src->tmpl_iflag ? REG_ICASE : 0));
+		compare = regcomp(&reg, rhs, REG_EXTENDED | (map->rhs->tmpl_iflag ? REG_ICASE : 0));
 		if (compare != 0) {
 			if (debug_flag) {
 				char errbuf[128];
@@ -267,7 +267,7 @@ static int do_regex(REQUEST *request, value_pair_map_t const *map)
 		break;
 
 	case TMPL_TYPE_REGEX_STRUCT: /* pre-compiled to a regex */
-		preg = map->src->tmpl_preg;
+		preg = map->rhs->tmpl_preg;
 		break;
 
 	default:
@@ -276,7 +276,7 @@ static int do_regex(REQUEST *request, value_pair_map_t const *map)
 		goto finish;
 	}
 
-	rcode = radius_expand_tmpl(&lhs, request, map->dst);
+	rcode = radius_expand_tmpl(&lhs, request, map->lhs);
 	if (rcode < 0) {
 		EVAL_DEBUG("FAIL %d", __LINE__);
 		ret = -1;
@@ -505,32 +505,31 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 	rad_assert(c->type == COND_TYPE_MAP);
 	map = c->data.map;
 
-	rad_assert(map->dst->type != TMPL_TYPE_UNKNOWN);
-	rad_assert(map->src->type != TMPL_TYPE_UNKNOWN);
-	rad_assert(map->dst->type != TMPL_TYPE_LIST);
-	rad_assert(map->src->type != TMPL_TYPE_LIST);
-	rad_assert(map->src->type != TMPL_TYPE_REGEX);
-	rad_assert(map->dst->type != TMPL_TYPE_REGEX);
-	rad_assert(map->dst->type != TMPL_TYPE_REGEX_STRUCT);
+	rad_assert(map->lhs->type != TMPL_TYPE_UNKNOWN);
+	rad_assert(map->rhs->type != TMPL_TYPE_UNKNOWN);
+	rad_assert(map->lhs->type != TMPL_TYPE_LIST);
+	rad_assert(map->rhs->type != TMPL_TYPE_LIST);
+	rad_assert(map->rhs->type != TMPL_TYPE_REGEX);
+	rad_assert(map->lhs->type != TMPL_TYPE_REGEX);
+	rad_assert(map->lhs->type != TMPL_TYPE_REGEX_STRUCT);
 
 	EVAL_DEBUG("MAP TYPES LHS: %s, RHS: %s",
-		   fr_int2str(template_names, map->dst->type, "???"),
-		   fr_int2str(template_names, map->src->type, "???"));
+		   fr_int2str(template_names, map->lhs->type, "???"),
+		   fr_int2str(template_names, map->rhs->type, "???"));
 
 	/*
 	 *	They're both attributes.  Do attribute-specific work.
 	 *
 	 *	LHS is DST.  RHS is SRC <sigh>
 	 */
-	if (!c->cast && (map->src->type == TMPL_TYPE_ATTR) && (map->dst->type == TMPL_TYPE_ATTR)) {
+	if (!c->cast && (map->rhs->type == TMPL_TYPE_ATTR) && (map->lhs->type == TMPL_TYPE_ATTR)) {
 		VALUE_PAIR *lhs_vp, *rhs_vp, *cast_vp;
 
 		EVAL_DEBUG("ATTR to ATTR");
+		if ((tmpl_find_vp(&lhs_vp, request, map->lhs) < 0) ||
+		    (tmpl_find_vp(&rhs_vp, request, map->rhs) < 0)) return -1;
 
-		if ((tmpl_find_vp(&lhs_vp, request, map->dst) < 0) ||
-		    (tmpl_find_vp(&rhs_vp, request, map->src) < 0)) return -1;
-
-		if (map->dst->tmpl_da->type == map->src->tmpl_da->type) {
+		if (map->lhs->tmpl_da->type == map->rhs->tmpl_da->type) {
 			return paircmp_op(lhs_vp, map->op, rhs_vp);
 		}
 
@@ -538,12 +537,12 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 		 *	Compare a large integer (lhs) to a small integer (rhs).
 		 *	We allow this without a cast.
 		 */
-		rad_assert((map->dst->tmpl_da->type == PW_TYPE_INTEGER64) ||
-			   (map->dst->tmpl_da->type == PW_TYPE_INTEGER) ||
-			   (map->dst->tmpl_da->type == PW_TYPE_SHORT));
-		rad_assert((map->src->tmpl_da->type == PW_TYPE_INTEGER) ||
-			   (map->src->tmpl_da->type == PW_TYPE_SHORT) ||
-			   (map->src->tmpl_da->type == PW_TYPE_BYTE));
+		rad_assert((map->lhs->tmpl_da->type == PW_TYPE_INTEGER64) ||
+			   (map->lhs->tmpl_da->type == PW_TYPE_INTEGER) ||
+			   (map->lhs->tmpl_da->type == PW_TYPE_SHORT));
+		rad_assert((map->rhs->tmpl_da->type == PW_TYPE_INTEGER) ||
+			   (map->rhs->tmpl_da->type == PW_TYPE_SHORT) ||
+			   (map->rhs->tmpl_da->type == PW_TYPE_BYTE));
 
 		cast_vp = pairalloc(request, lhs_vp->da);
 		if (!cast_vp) return false;
@@ -573,10 +572,10 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 		 *	casted, instead of printing it to a string and
 		 *	then re-parsing it.
 		 */
-		if (map->dst->type == TMPL_TYPE_ATTR) {
+		if (map->lhs->type == TMPL_TYPE_ATTR) {
 			VALUE_PAIR *cast_vp;
 
-			if (tmpl_find_vp(&cast_vp, request, map->dst) < 0) return false;
+			if (tmpl_find_vp(&cast_vp, request, map->lhs) < 0) return false;
 
 			lhs_vp = pairalloc(request, c->cast);
 			if (!lhs_vp) return -1;
@@ -590,10 +589,8 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 			}
 
 		} else {
-			rcode = tmpl_cast_to_vp(&lhs_vp, request, map->dst, c->cast);
-			if (rcode < 0) {
-				return rcode;
-			}
+			rcode = tmpl_cast_to_vp(&lhs_vp, request, map->lhs, c->cast);
+			if (rcode < 0) return rcode;
 		}
 		rad_assert(lhs_vp);
 
@@ -601,12 +598,12 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 		 *	Get either a real VP, or parse the RHS into a
 		 *	VP, and return that.
 		 */
-		if (map->src->type == TMPL_TYPE_ATTR) {
-			if (tmpl_find_vp(&rhs_vp, request, map->src) < 0) {
+		if (map->rhs->type == TMPL_TYPE_ATTR) {
+			if (tmpl_find_vp(&rhs_vp, request, map->rhs) < 0) {
 				return -2;
 			}
 		} else {
-			rcode = tmpl_cast_to_vp(&rhs_vp, request, map->src, c->cast);
+			rcode = tmpl_cast_to_vp(&rhs_vp, request, map->rhs, c->cast);
 			if (rcode < 0) {
 				return rcode;
 			}
@@ -620,7 +617,7 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 
 		rcode = paircmp_op(lhs_vp, map->op, rhs_vp);
 		pairfree(&lhs_vp);
-		if (map->src->type != TMPL_TYPE_ATTR) {
+		if (map->rhs->type != TMPL_TYPE_ATTR) {
 			pairfree(&rhs_vp);
 		}
 		return rcode;
@@ -629,7 +626,7 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 	/*
 	 *	Might be a virtual comparison
 	 */
-	if ((map->dst->type == TMPL_TYPE_ATTR) &&
+	if ((map->lhs->type == TMPL_TYPE_ATTR) &&
 	    (map->op != T_OP_REG_EQ) &&
 	    (c->pass2_fixup == PASS2_PAIRCOMPARE)) {
 		int ret;
@@ -637,7 +634,7 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 
 		EVAL_DEBUG("virtual ATTR to DATA");
 
-		rcode = tmpl_cast_to_vp(&lhs_vp, request, map->src, map->dst->tmpl_da);
+		rcode = tmpl_cast_to_vp(&lhs_vp, request, map->rhs, map->lhs->tmpl_da);
 		if (rcode < 0) return rcode;
 		rad_assert(lhs_vp);
 
@@ -659,15 +656,15 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 	 *	RHS has been pre-parsed into binary data.  Go check
 	 *	that.
 	 */
-	if ((map->dst->type == TMPL_TYPE_ATTR) &&
-	    (map->src->type == TMPL_TYPE_DATA)) {
+	if ((map->lhs->type == TMPL_TYPE_ATTR) &&
+	    (map->rhs->type == TMPL_TYPE_DATA)) {
 		VALUE_PAIR *lhs_vp, *rhs_vp;
 
 		EVAL_DEBUG("ATTR to DATA");
 
-		if (tmpl_find_vp(&lhs_vp, request, map->dst) < 0) return -2;
+		if (tmpl_find_vp(&lhs_vp, request, map->lhs) < 0) return -2;
 
-		rcode = tmpl_cast_to_vp(&rhs_vp, request, map->src, map->dst->tmpl_da);
+		rcode = tmpl_cast_to_vp(&rhs_vp, request, map->rhs, map->lhs->tmpl_da);
 		if (rcode < 0) return rcode;
 		rad_assert(rhs_vp);
 
@@ -681,8 +678,8 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 		return rcode;
 	}
 
-	rad_assert(map->src->type != TMPL_TYPE_DATA);
-	rad_assert(map->dst->type != TMPL_TYPE_DATA);
+	rad_assert(map->rhs->type != TMPL_TYPE_DATA);
+	rad_assert(map->lhs->type != TMPL_TYPE_DATA);
 
 #ifdef HAVE_REGEX
 	/*
@@ -696,7 +693,7 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 	/*
 	 *	The RHS now needs to be expanded into a string.
 	 */
-	rcode = radius_expand_tmpl(&rhs, request, map->src);
+	rcode = radius_expand_tmpl(&rhs, request, map->rhs);
 	if (rcode < 0) {
 		EVAL_DEBUG("FAIL %d", __LINE__);
 		return rcode;
@@ -712,7 +709,7 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 	 *
 	 *	The LHS may be a virtual attribute, too.
 	 */
-	if (map->dst->type == TMPL_TYPE_ATTR) {
+	if (map->lhs->type == TMPL_TYPE_ATTR) {
 		VALUE_PAIR *lhs_vp, *rhs_vp;
 
 		EVAL_DEBUG("ATTR to non-REGEX");
@@ -720,14 +717,14 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 		/*
 		 *	No LHS means no match
 		 */
-		if (tmpl_find_vp(&lhs_vp, request, map->dst) < 0) {
+		if (tmpl_find_vp(&lhs_vp, request, map->lhs) < 0) {
 			/*
 			 *	Not a real attr: might be a dynamic comparison.
 			 */
-			if ((map->dst->type == TMPL_TYPE_ATTR) &&
-			    (map->dst->tmpl_da->vendor == 0) &&
-			    radius_find_compare(map->dst->tmpl_da)) {
-				rhs_vp = pairalloc(request, map->dst->tmpl_da);
+			if ((map->lhs->type == TMPL_TYPE_ATTR) &&
+			    (map->lhs->tmpl_da->vendor == 0) &&
+			    radius_find_compare(map->lhs->tmpl_da)) {
+				rhs_vp = pairalloc(request, map->lhs->tmpl_da);
 				rad_assert(rhs_vp != NULL);
 				if (pairparsevalue(rhs_vp, rhs, 0) < 0) {
 					talloc_free(rhs);
@@ -747,7 +744,7 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 		/*
 		 *	Get VP for RHS
 		 */
-		rhs_vp = pairalloc(request, map->dst->tmpl_da);
+		rhs_vp = pairalloc(request, map->lhs->tmpl_da);
 		rad_assert(rhs_vp != NULL);
 		if (pairparsevalue(rhs_vp, rhs, 0) < 0) {
 			talloc_free(rhs);
@@ -765,7 +762,7 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 	/*
 	 *	The LHS is a string.  Expand it.
 	 */
-	rcode = radius_expand_tmpl(&lhs, request, map->dst);
+	rcode = radius_expand_tmpl(&lhs, request, map->lhs);
 	if (rcode < 0) {
 		EVAL_DEBUG("FAIL %d", __LINE__);
 		return rcode;

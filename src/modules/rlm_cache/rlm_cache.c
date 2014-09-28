@@ -320,10 +320,10 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request, char co
 	for (map = inst->maps; map != NULL; map = map->next) {
 		bool do_merge = merge;
 
-		rad_assert(map->dst && map->src);
+		rad_assert(map->lhs && map->rhs);
 
 		if (map_to_vp(&to_cache, request, map, NULL) < 0) {
-			RDEBUG("Skipping %s", map->src->name);
+			RDEBUG("Skipping %s", map->rhs->name);
 			continue;
 		}
 
@@ -337,18 +337,18 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request, char co
 		 *
 		 *	 Unless Cache-Merge = no
 		 */
-		if (do_merge) switch (map->src->type) {
+		if (do_merge) switch (map->rhs->type) {
 		case TMPL_TYPE_LITERAL:
 		case TMPL_TYPE_XLAT:
 		case TMPL_TYPE_EXEC:
 			break;
 
 		case TMPL_TYPE_LIST:
-			if (map->src->tmpl_list == map->dst->tmpl_list) do_merge = false;
+			if (map->rhs->tmpl_list == map->lhs->tmpl_list) do_merge = false;
 			break;
 
 		case TMPL_TYPE_ATTR:
-			if (map->src->tmpl_da == map->dst->tmpl_da) do_merge = false;
+			if (map->rhs->tmpl_da == map->lhs->tmpl_da) do_merge = false;
 			break;
 
 		default:
@@ -367,7 +367,7 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request, char co
 			 *	Prevent people from accidentally caching
 			 *	cache control attributes.
 			 */
-			if (map->src->type == TMPL_TYPE_LIST) switch (vp->da->attr) {
+			if (map->rhs->type == TMPL_TYPE_LIST) switch (vp->da->attr) {
 			case PW_CACHE_TTL:
 			case PW_CACHE_STATUS_ONLY:
 			case PW_CACHE_READ_ONLY:
@@ -385,7 +385,7 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request, char co
 
 			vp->op = map->op;
 
-			switch (map->dst->tmpl_list) {
+			switch (map->lhs->tmpl_list) {
 			case PAIR_LIST_REQUEST:
 				fr_cursor_insert(&cached_request, vp);
 				break;
@@ -449,8 +449,8 @@ static int cache_verify(rlm_cache_t *inst, value_pair_map_t **head)
 	}
 
 	for (map = *head; map != NULL; map = map->next) {
-		if ((map->dst->type != TMPL_TYPE_ATTR) &&
-		    (map->dst->type != TMPL_TYPE_LIST)) {
+		if ((map->lhs->type != TMPL_TYPE_ATTR) &&
+		    (map->lhs->type != TMPL_TYPE_LIST)) {
 			cf_log_err(map->ci, "Left operand must be an attribute "
 				   "ref or a list");
 
@@ -465,15 +465,15 @@ static int cache_verify(rlm_cache_t *inst, value_pair_map_t **head)
 		 *	The only exception is where were using a unary
 		 *	operator like !*.
 		 */
-		if ((map->dst->type == TMPL_TYPE_LIST) &&
+		if ((map->lhs->type == TMPL_TYPE_LIST) &&
 		    (map->op != T_OP_CMP_FALSE) &&
-		    ((map->src->type == TMPL_TYPE_XLAT) || (map->src->type == TMPL_TYPE_LITERAL))) {
+		    ((map->rhs->type == TMPL_TYPE_XLAT) || (map->rhs->type == TMPL_TYPE_LITERAL))) {
 			cf_log_err(map->ci, "Can't copy value into list (we don't know which attribute to create)");
 
 			return -1;
 		}
 
-		switch (map->src->type) {
+		switch (map->rhs->type) {
 		case TMPL_TYPE_EXEC:
 			cf_log_err(map->ci, "Exec values are not allowed");
 
@@ -488,14 +488,14 @@ static int cache_verify(rlm_cache_t *inst, value_pair_map_t **head)
 			 *	@fixme: This should be moved into a common function
 			 *	with the check in do_compile_modupdate.
 			 */
-			if (map->dst->type == TMPL_TYPE_ATTR) {
+			if (map->lhs->type == TMPL_TYPE_ATTR) {
 				VALUE_PAIR *vp;
 				int ret;
 
-				MEM(vp = pairalloc(map->dst, map->dst->tmpl_da));
+				MEM(vp = pairalloc(map->lhs, map->lhs->tmpl_da));
 				vp->op = map->op;
 
-				ret = pairparsevalue(vp, map->src->name, 0);
+				ret = pairparsevalue(vp, map->rhs->name, 0);
 				talloc_free(vp);
 				if (ret < 0) {
 					cf_log_err(map->ci, "%s", fr_strerror());
@@ -518,7 +518,7 @@ static int cache_verify(rlm_cache_t *inst, value_pair_map_t **head)
 					   "allowed for %s values",
 					   fr_int2str(fr_tokens, map->op,
 						      "<INVALID>"),
-					   fr_int2str(vpt_types, map->src->type,
+					   fr_int2str(vpt_types, map->rhs->type,
 						      "<INVALID>"));
 				return -1;
 			}
