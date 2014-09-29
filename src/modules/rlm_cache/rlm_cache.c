@@ -348,6 +348,7 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request, char co
 			break;
 
 		case TMPL_TYPE_ATTR:
+			rad_assert(map->lhs->type == TMPL_TYPE_ATTR);
 			if (map->rhs->tmpl_da == map->lhs->tmpl_da) do_merge = false;
 			break;
 
