@@ -731,7 +731,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 				 */
 				if ((c->data.map->lhs->type == TMPL_TYPE_DATA) &&
 				    (c->data.map->rhs->type == TMPL_TYPE_LITERAL) &&
-				    !tmpl_cast_in_place(c->data.map->rhs, c->data.map->lhs->tmpl_da)) {
+				    !tmpl_cast_in_place(c->data.map->rhs, c->cast)) {
 					return_rhs("Failed to parse field");
 				}
 

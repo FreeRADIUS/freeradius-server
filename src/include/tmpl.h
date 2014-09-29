@@ -115,28 +115,32 @@ typedef struct value_pair_tmpl_t {
 					//!< the attribute.
 	size_t		len;		//!< Name length.
 
-	/*
-	 * @todo This should be moved into the union, but some code currently
-	 * uses value_pair_tmpl_t's to describe both the value and the attribute.
-	 * This is wrong, and the code that does this should be converted to use
-	 * maps.
-	 */
-	struct {
-		request_refs_t		request; //!< Request to search or insert in.
-		pair_lists_t		list;	 //!< List to search or insert in.
-
-		DICT_ATTR const		*da;			 //!< Resolved dictionary attribute.
-		uint8_t			unknown[DICT_ATTR_SIZE]; //!< Unknown dictionary attribute buffer.
-		int			num;			 //!< for array references
-		int8_t			tag;			 //!< for tag references.
-	} attribute;
-
 	union {
+		/*
+		 *  Attribute reference. Either an attribute currently in the request
+		 *  or an attribute to create.
+		 */
 		struct {
-			value_data_t const	*value;		//!< actual data
-			size_t			length;		//!< of the vpd data
+			request_refs_t		request;		//!< Request to search or insert in.
+			pair_lists_t		list;			//!< List to search or insert in.
+
+			DICT_ATTR const		*da;			 //!< Resolved dictionary attribute.
+			uint8_t			unknown[DICT_ATTR_SIZE]; //!< Unknown dictionary attribute buffer.
+			int			num;			 //!< for array references
+			int8_t			tag;			 //!< for tag references.
+		} attribute;
+
+		/*
+		 *  Attribute value. Typically used as the RHS of an update map.
+		 */
+		struct {
+			PW_TYPE			type;			 //!< Type of data.
+			size_t			len;			 //!< of the vpd data.
+			value_data_t const	*value;			 //!< actual data.
 		} literal;
+
 		xlat_exp_t	*xlat;	 //!< pre-parsed xlat_exp_t
+
 #ifdef HAVE_REGEX
 		struct {
 			regex_t			*comp;		//!< pre-parsed regex_t
@@ -146,22 +150,23 @@ typedef struct value_pair_tmpl_t {
 	} data;
 } value_pair_tmpl_t;
 
-#define tmpl_request	attribute.request
-#define tmpl_list	attribute.list
-#define tmpl_da		attribute.da
-#define tmpl_unknown	attribute.unknown
-#define tmpl_num	attribute.num
-#define tmpl_tag	attribute.tag
+#define tmpl_request	data.attribute.request
+#define tmpl_list	data.attribute.list
+#define tmpl_da		data.attribute.da
+#define tmpl_unknown	data.attribute.unknown
+#define tmpl_num	data.attribute.num
+#define tmpl_tag	data.attribute.tag
 
 #define tmpl_xlat	data.xlat
+
+#define tmpl_data_type	data.literal.type
+#define tmpl_data_len	data.literal.len
+#define tmpl_data	data.literal.value
 
 #ifdef HAVE_REGEX
 #  define tmpl_preg	data.preg.comp
 #  define tmpl_iflag	data.preg.iflag
 #endif
-
-#define tmpl_value	data.literal.value
-#define tmpl_length	data.literal.length
 
 /* Attribute qualifier parsing */
 VALUE_PAIR		**radius_list(REQUEST *request, pair_lists_t list);

@@ -1646,15 +1646,15 @@ static modcallable *do_compile_modupdate(modcallable *parent, UNUSED rlm_compone
 			    (cf_pair_value_type(cp) == T_SINGLE_QUOTED_STRING)) {
 				value_data_t *vpd;
 
-				map->rhs->tmpl_value = vpd = talloc_zero(map->rhs, value_data_t);
+				map->rhs->tmpl_data = vpd = talloc_zero(map->rhs, value_data_t);
 				rad_assert(vpd != NULL);
 
 				vpd->strvalue = talloc_typed_strdup(vpd, map->rhs->name);
 				rad_assert(vpd->strvalue != NULL);
 
 				map->rhs->type = TMPL_TYPE_DATA;
-				map->rhs->tmpl_da = map->lhs->tmpl_da;
-				map->rhs->tmpl_length = talloc_array_length(vpd->strvalue) - 1;
+				map->rhs->tmpl_data_type = map->lhs->tmpl_da->type;
+				map->rhs->tmpl_data_len = talloc_array_length(vpd->strvalue) - 1;
 			} else {
 				if (!tmpl_cast_in_place(map->rhs, map->lhs->tmpl_da)) {
 					cf_log_err(map->ci, "%s", fr_strerror());

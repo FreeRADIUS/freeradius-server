@@ -170,7 +170,7 @@ int rlm_ldap_map_verify(ldap_instance_t *inst, value_pair_map_t **head)
 		 *	and has no idea what they're doing, or they're authenticating the user using a different
 		 *	method.
 		 */
-		if (!inst->expect_password && map->lhs->tmpl_da && (map->lhs->type == TMPL_TYPE_ATTR)) {
+		if (!inst->expect_password && (map->lhs->type == TMPL_TYPE_ATTR) && map->lhs->tmpl_da) {
 			switch (map->lhs->tmpl_da->attr) {
 			case PW_CLEARTEXT_PASSWORD:
 			case PW_NT_PASSWORD:

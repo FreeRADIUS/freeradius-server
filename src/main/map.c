@@ -51,6 +51,13 @@ static void UNUSED map_verify(value_pair_map_t const *map)
 }
 #endif
 
+/** re-parse a map where the lhs is an unknown attribute.
+ *
+ *
+ * @param map to process.
+ * @param rhs_type quotation type around rhs.
+ * @param rhs string to re-parse.
+ */
 static bool map_cast_from_hex(value_pair_map_t *map, FR_TOKEN rhs_type, char const *rhs)
 {
 	size_t len;
@@ -62,7 +69,10 @@ static bool map_cast_from_hex(value_pair_map_t *map, FR_TOKEN rhs_type, char con
 	value_pair_tmpl_t *vpt;
 
 	rad_assert(map != NULL);
+
 	rad_assert(map->lhs != NULL);
+	rad_assert(map->lhs->type == TMPL_TYPE_ATTR);
+
 	rad_assert(map->rhs == NULL);
 	rad_assert(rhs != NULL);
 
@@ -114,12 +124,11 @@ static bool map_cast_from_hex(value_pair_map_t *map, FR_TOKEN rhs_type, char con
 	if (!map->rhs) goto free_vp;
 
 	vpt->type = TMPL_TYPE_DATA;
-	vpt->tmpl_da = da;
+	vpt->tmpl_data_type = da->type;
+	vpt->tmpl_data_len = vp->length;
+	vpt->tmpl_data = data = talloc(vpt, value_data_t);
 
-	vpt->tmpl_length = vp->length;
-	vpt->tmpl_value = data = talloc(vpt, value_data_t);
-
-	if (!vpt->tmpl_value) goto free_vp;
+	if (!vpt->tmpl_data) goto free_vp;
 
 	if (vp->da->flags.is_pointer) {
 		data->ptr = talloc_memdup(vpt, vp->data.ptr, vp->length);
@@ -294,12 +303,44 @@ value_pair_map_t *map_from_cp(TALLOC_CTX *ctx, CONF_PAIR *cp,
 	 *	We don't support implicit type conversion,
 	 *	except for "octets"
 	 */
-	if (map->lhs->tmpl_da && map->rhs->tmpl_da &&
-	    (map->rhs->tmpl_da->type != map->lhs->tmpl_da->type) &&
-	    (map->rhs->tmpl_da->type != PW_TYPE_OCTETS) &&
-	    (map->lhs->tmpl_da->type != PW_TYPE_OCTETS)) {
-		cf_log_err(ci, "Attribute type mismatch");
-		goto error;
+	if (((map->lhs->type == TMPL_TYPE_ATTR) || (map->lhs->type == TMPL_TYPE_DATA)) &&
+	    ((map->rhs->type == TMPL_TYPE_ATTR) || (map->rhs->type == TMPL_TYPE_DATA))) {
+		PW_TYPE rhs_type;
+		PW_TYPE lhs_type;
+
+		switch (map->lhs->type) {
+		case TMPL_TYPE_ATTR:
+			lhs_type = map->lhs->tmpl_da->type;
+			break;
+
+		case TMPL_TYPE_DATA:
+			lhs_type = map->lhs->tmpl_data_type;
+			break;
+
+		default:
+			rad_assert(0);
+		}
+
+		switch (map->rhs->type) {
+		case TMPL_TYPE_ATTR:
+			rhs_type = map->rhs->tmpl_da->type;
+			break;
+
+		case TMPL_TYPE_DATA:
+			rhs_type = map->rhs->tmpl_data_type;
+			break;
+
+		default:
+			rad_assert(0);
+		}
+
+
+		if ((lhs_type != rhs_type) &&
+		    (lhs_type != PW_TYPE_OCTETS) &&
+		    (rhs_type != PW_TYPE_OCTETS)) {
+			cf_log_err(ci, "Attribute type mismatch");
+			goto error;
+		}
 	}
 
 	/*
@@ -745,11 +786,12 @@ int map_to_vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *map, U
 {
 	int rcode = 0;
 	VALUE_PAIR *vp = NULL, *new, *found = NULL;
-	DICT_ATTR const *da;
 	REQUEST *context = request;
 	vp_cursor_t cursor;
 
 	*out = NULL;
+
+	rad_assert((map->lhs->type == TMPL_TYPE_LIST) || (map->lhs->type == TMPL_TYPE_ATTR));
 
 	/*
 	 *	Special case for !*, we don't need to parse RHS as this is a unary operator.
@@ -788,11 +830,6 @@ int map_to_vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *map, U
 	}
 
 	/*
-	 *	Deal with all non-list operations.
-	 */
-	da = map->lhs->tmpl_da ? map->lhs->tmpl_da : map->rhs->tmpl_da;
-
-	/*
 	 *	And parse the RHS
 	 */
 	switch (map->rhs->type) {
@@ -800,10 +837,11 @@ int map_to_vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *map, U
 		char *str;
 
 	case TMPL_TYPE_XLAT_STRUCT:
-		rad_assert(map->lhs->tmpl_da);	/* Need to know where were going to write the new attribute */
+		rad_assert(map->lhs->type == TMPL_TYPE_ATTR);
+		rad_assert(map->lhs->tmpl_da);	/* We need to know which attribute to create */
 		rad_assert(map->rhs->tmpl_xlat != NULL);
 
-		new = pairalloc(request, da);
+		new = pairalloc(request, map->lhs->tmpl_da);
 		if (!new) return -1;
 
 		str = NULL;
@@ -832,9 +870,10 @@ int map_to_vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *map, U
 		break;
 
 	case TMPL_TYPE_XLAT:
-		rad_assert(map->lhs->tmpl_da);	/* Need to know where were going to write the new attribute */
+		rad_assert(map->lhs->type == TMPL_TYPE_ATTR);
+		rad_assert(map->lhs->tmpl_da);	/* We need to know which attribute to create */
 
-		new = pairalloc(request, da);
+		new = pairalloc(request, map->lhs->tmpl_da);
 		if (!new) return -1;
 
 		str = NULL;
@@ -855,7 +894,10 @@ int map_to_vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *map, U
 		break;
 
 	case TMPL_TYPE_LITERAL:
-		new = pairalloc(request, da);
+		rad_assert(map->lhs->type == TMPL_TYPE_ATTR);
+		rad_assert(map->lhs->tmpl_da);	/* We need to know which attribute to create */
+
+		new = pairalloc(request, map->lhs->tmpl_da);
 		if (!new) return -1;
 
 		if (pairparsevalue(new, map->rhs->name, 0) < 0) {
@@ -870,14 +912,13 @@ int map_to_vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *map, U
 	{
 		vp_cursor_t from;
 
-		if (map->lhs->type != TMPL_TYPE_ATTR) {
-			rad_assert(map->lhs->tmpl_da == NULL);
-		} else {
-			rad_assert(map->lhs->tmpl_da != NULL);
+		rad_assert(((map->lhs->type == TMPL_TYPE_ATTR) && map->lhs->tmpl_da) ||
+			   ((map->lhs->type == TMPL_TYPE_LIST) && !map->lhs->tmpl_da));
 
-			/*
-			 *	Matching type, OR src/dst is octets.
-			 */
+		/*
+		 *	Matching type, OR src/dst is octets.
+		 */
+		if (map->lhs->type == TMPL_TYPE_ATTR) {
 			rad_assert((map->rhs->tmpl_da->type == map->lhs->tmpl_da->type) ||
 				   (map->rhs->tmpl_da->type == PW_TYPE_OCTETS) ||
 				   (map->lhs->tmpl_da->type == PW_TYPE_OCTETS));
@@ -900,7 +941,7 @@ int map_to_vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *map, U
 
 			(void) fr_cursor_init(&to, out);
 			for (; vp; vp = fr_cursor_next(&from)) {
-				new = pairalloc(request, da);
+				new = pairalloc(request, map->lhs->tmpl_da);
 				if (!new) return -1;
 				if (pairdatacpy(new, vp->da->type, &vp->data, vp->length) < 0) {
 					REDEBUG("Attribute conversion failed: %s", fr_strerror());
@@ -922,7 +963,7 @@ int map_to_vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *map, U
 		 *   and operators
 		 */
 		for (; vp; vp = fr_cursor_next(&from)) {
-			vp->da = da;
+			vp->da = map->lhs->tmpl_da;
 			vp->op = map->op;
 		}
 		*out = found;
@@ -930,14 +971,14 @@ int map_to_vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *map, U
 		break;
 
 	case TMPL_TYPE_DATA:
-		rad_assert(map->rhs && map->rhs->tmpl_da);
-		rad_assert(map->lhs && map->lhs->tmpl_da);
-		rad_assert(map->rhs->tmpl_da->type == map->lhs->tmpl_da->type);
+		rad_assert(map->lhs->tmpl_da);
+		rad_assert(map->lhs->type == TMPL_TYPE_ATTR);
+		rad_assert(map->lhs->tmpl_da->type == map->rhs->tmpl_data_type);
 
-		new = pairalloc(request, da);
+		new = pairalloc(request, map->lhs->tmpl_da);
 		if (!new) return -1;
 
-		if (pairdatacpy(new, map->rhs->tmpl_da->type, map->rhs->tmpl_value, map->rhs->tmpl_length) < 0) goto error;
+		if (pairdatacpy(new, map->rhs->tmpl_data_type, map->rhs->tmpl_data, map->rhs->tmpl_data_len) < 0) goto error;
 		new->op = map->op;
 		*out = new;
 		break;

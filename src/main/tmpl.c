@@ -392,7 +392,7 @@ void tmpl_verify(value_pair_tmpl_t const *vpt)
 		(void) talloc_get_type_abort(vpt->name, char);
 	}
 
-	if ((vpt->type == TMPL_TYPE_ATTR) || (vpt->type == TMPL_TYPE_DATA)) {
+	if (vpt->type == TMPL_TYPE_ATTR) {
 		if (vpt->tmpl_da->flags.is_unknown) {
 			(void) talloc_get_type_abort(vpt->tmpl_da, DICT_ATTR);
 		} else {
@@ -710,9 +710,9 @@ size_t tmpl_prints(char *buffer, size_t bufsize, value_pair_tmpl_t const *vpt, D
 		return (q - buffer);
 
 	case TMPL_TYPE_DATA:
-		if (vpt->tmpl_value) {
-			return vp_data_prints_value(buffer, bufsize, vpt->tmpl_da->type,
-						    vpt->tmpl_value, vpt->tmpl_length, values, '\'');
+		if (vpt->tmpl_data) {
+			return vp_data_prints_value(buffer, bufsize, vpt->tmpl_data_type,
+						    vpt->tmpl_data, vpt->tmpl_data_len, values, '\'');
 		} else {
 			*buffer = '\0';
 			return 0;
@@ -883,12 +883,12 @@ bool tmpl_cast_in_place(value_pair_tmpl_t *vpt, DICT_ATTR const *da)
 		return false;
 	}
 
-	vpt->tmpl_length = vp->length;
-	vpt->tmpl_value = data = talloc(vpt, value_data_t);
-	if (!vpt->tmpl_value) return false;
+	vpt->tmpl_data = data = talloc(vpt, value_data_t);
+	if (!vpt->tmpl_data) return false;
 
 	vpt->type = TMPL_TYPE_DATA;
-	vpt->tmpl_da = da;
+	vpt->tmpl_data_len = vp->length;
+	vpt->tmpl_data_type = da->type;
 
 	if (vp->da->flags.is_pointer) {
 		data->ptr = talloc_steal(vpt, vp->data.ptr);
@@ -918,8 +918,8 @@ int tmpl_cast_to_vp(VALUE_PAIR **out, REQUEST *request,
 
 	if (vpt->type == TMPL_TYPE_DATA) {
 		VERIFY_VP(vp);
-		rad_assert(vp->da->type == vpt->tmpl_da->type);
-		pairdatacpy(vp, vpt->tmpl_da->type, vpt->tmpl_value, vpt->tmpl_length);
+		rad_assert(vp->da->type == vpt->tmpl_data_type);
+		pairdatacpy(vp, vpt->tmpl_data_type, vpt->tmpl_data, vpt->tmpl_data_len);
 		*out = vp;
 		return 0;
 	}
