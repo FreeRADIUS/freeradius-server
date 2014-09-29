@@ -519,8 +519,6 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 
 	/*
 	 *	They're both attributes.  Do attribute-specific work.
-	 *
-	 *	LHS is DST.  RHS is SRC <sigh>
 	 */
 	if (!c->cast && (map->lhs->type == TMPL_TYPE_ATTR) && (map->rhs->type == TMPL_TYPE_ATTR)) {
 		VALUE_PAIR *lhs_vp, *rhs_vp, *cast_vp;
