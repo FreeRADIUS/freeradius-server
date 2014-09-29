@@ -428,7 +428,8 @@ size_t		fr_print_string_len(char const *in, size_t inlen);
 #define		is_truncated(_ret, _max) ((_ret) >= (_max))
 #define		truncate_len(_ret, _max) (((_ret) >= (_max)) ? ((_max) - 1) : _ret)
 size_t		vp_data_prints_value(char *out, size_t outlen,
-				     DICT_ATTR const *da, value_data_t const *data, size_t data_len, int8_t quote);
+				     PW_TYPE type, value_data_t const *data, size_t data_len,
+				     DICT_ATTR const *values, int8_t quote);
 size_t   	vp_prints_value(char *out, size_t outlen, VALUE_PAIR const *vp, int8_t quote);
 size_t    	vp_prints_value_json(char *out, size_t outlen, VALUE_PAIR const *vp);
 size_t		vp_prints(char *out, size_t outlen, VALUE_PAIR const *vp);
