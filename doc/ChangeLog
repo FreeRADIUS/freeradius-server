@@ -25,6 +25,9 @@ FreeRADIUS 3.0.5 Mon 15 Sep 2014 15:30:00 EDT urgency=medium
 	* Free unknown DICT_ATTRs.  Closes #795
 	* Handle unknown attributes in the conditions and "update"
 	  sections.  e.g. Attr-1.2.3.4 = foo
+	* Use correct array size for MS-CHAP new password.
+	* In rlm_rest, check for older versions of libraries at start
+	  time, rather than when a packet comes in.
 
 FreeRADIUS 3.0.4 Wed 10 Sep 2014 12:00:00 EDT urgency=medium
 	Feature improvements
