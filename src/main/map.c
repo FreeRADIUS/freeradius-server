@@ -1048,7 +1048,10 @@ int map_to_request(REQUEST *request, value_pair_map_t const *map, radius_map_get
 			rad_assert(!head);
 			return rcode;
 		}
-		if (!head) return rcode;
+		if (!head) {
+			RDEBUG2("No attributes updated");
+			return rcode;
+		}
 	} else {
 		if (debug_flag) map_debug_log(request, map, NULL);
 	}
