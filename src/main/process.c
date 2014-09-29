@@ -3222,16 +3222,17 @@ static void ping_home_server(void *ctx)
 
 static void home_trigger(home_server_t *home, char const *trigger)
 {
-	REQUEST my_request;
-	RADIUS_PACKET my_packet;
+	REQUEST *my_request;
+	RADIUS_PACKET *my_packet;
 
-	memset(&my_request, 0, sizeof(my_request));
-	memset(&my_packet, 0, sizeof(my_packet));
-	my_request.proxy = &my_packet;
-	my_packet.dst_ipaddr = home->ipaddr;
-	my_packet.src_ipaddr = home->src_ipaddr;
+	my_request = talloc_zero(NULL, REQUEST);
+	my_packet = talloc_zero(my_request, RADIUS_PACKET);
+	my_request->proxy = my_packet;
+	my_packet->dst_ipaddr = home->ipaddr;
+	my_packet->src_ipaddr = home->src_ipaddr;
 
-	exec_trigger(&my_request, home->cs, trigger, false);
+	exec_trigger(my_request, home->cs, trigger, false);
+	talloc_free(my_request);
 }
 
 static void mark_home_server_zombie(home_server_t *home, struct timeval *now, struct timeval *response_window)
