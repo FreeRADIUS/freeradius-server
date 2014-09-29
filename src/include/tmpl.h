@@ -200,7 +200,8 @@ value_pair_tmpl_t	*tmpl_afrom_str(TALLOC_CTX *ctx, char const *name, FR_TOKEN ty
 
 bool			tmpl_cast_in_place(value_pair_tmpl_t *vpt, DICT_ATTR const *da);
 
-size_t			tmpl_prints(char *buffer, size_t bufsize, value_pair_tmpl_t const *vpt);
+size_t			tmpl_prints(char *buffer, size_t bufsize, value_pair_tmpl_t const *vpt,
+				    DICT_ATTR const *values);
 
 int			tmpl_cast_to_vp(VALUE_PAIR **out, REQUEST *request,
 					value_pair_tmpl_t const *vpt, DICT_ATTR const *cast);

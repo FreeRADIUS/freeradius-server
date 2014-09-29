@@ -614,9 +614,10 @@ void tmpl_free(value_pair_tmpl_t **tmpl)
  * @param[out] buffer for the output string
  * @param[in] bufsize of the buffer
  * @param[in] vpt to print
- * @return the size of the string printed
+ * @param[in] values Used for integer attributes only. DICT_ATTR to use when mapping integer values to strings.
+ * @return the size of the string written to the output buffer.
  */
-size_t tmpl_prints(char *buffer, size_t bufsize, value_pair_tmpl_t const *vpt)
+size_t tmpl_prints(char *buffer, size_t bufsize, value_pair_tmpl_t const *vpt, DICT_ATTR const *values)
 {
 	size_t len;
 	char c;
@@ -710,8 +711,8 @@ size_t tmpl_prints(char *buffer, size_t bufsize, value_pair_tmpl_t const *vpt)
 
 	case TMPL_TYPE_DATA:
 		if (vpt->tmpl_value) {
-			return vp_data_prints_value(buffer, bufsize, vpt->tmpl_da,
-						    vpt->tmpl_value, vpt->tmpl_length, '\'');
+			return vp_data_prints_value(buffer, bufsize, vpt->tmpl_da->type,
+						    vpt->tmpl_value, vpt->tmpl_length, values, '\'');
 		} else {
 			*buffer = '\0';
 			return 0;

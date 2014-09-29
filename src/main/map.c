@@ -1364,10 +1364,13 @@ bool map_dst_valid(REQUEST *request, value_pair_map_t const *map)
 size_t map_prints(char *buffer, size_t bufsize, value_pair_map_t const *map)
 {
 	size_t len;
+	DICT_ATTR const *da = NULL;
 	char *p = buffer;
 	char *end = buffer + bufsize;
 
-	len = tmpl_prints(buffer, bufsize, map->lhs);
+	if (map->lhs->type == TMPL_TYPE_ATTR) da = map->lhs->tmpl_da;
+
+	len = tmpl_prints(buffer, bufsize, map->lhs, da);
 	p += len;
 
 	*(p++) = ' ';
@@ -1391,12 +1394,12 @@ size_t map_prints(char *buffer, size_t bufsize, value_pair_map_t const *map)
 	    (map->lhs->tmpl_da->type == PW_TYPE_STRING) &&
 	    (map->rhs->type == TMPL_TYPE_LITERAL)) {
 		*(p++) = '\'';
-		len = tmpl_prints(p, end - p, map->rhs);
+		len = tmpl_prints(p, end - p, map->rhs, da);
 		p += len;
 		*(p++) = '\'';
 		*p = '\0';
 	} else {
-		len = tmpl_prints(p, end - p, map->rhs);
+		len = tmpl_prints(p, end - p, map->rhs, da);
 		p += len;
 	}
 

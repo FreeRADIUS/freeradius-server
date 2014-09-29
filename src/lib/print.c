@@ -307,7 +307,8 @@ size_t fr_print_string_len(char const *in, size_t inlen)
  *
  */
 size_t vp_data_prints_value(char *out, size_t outlen,
-			    DICT_ATTR const *da, value_data_t const *data, size_t data_len, int8_t quote)
+			    PW_TYPE type, value_data_t const *data, size_t data_len,
+			    DICT_ATTR const *values, int8_t quote)
 {
 	DICT_VALUE	*v;
 	char		buf[1024];	/* Interim buffer to use with poorly behaved printing functions */
@@ -317,12 +318,14 @@ size_t vp_data_prints_value(char *out, size_t outlen,
 
 	size_t		len = 0, freespace = outlen;
 
+	fr_assert(!values || (values->type == type));
+
 	if (!data) return 0;
 	if (outlen == 0) return data_len;
 
 	*out = '\0';
 
-	switch (da->type) {
+	switch (type) {
 	case PW_TYPE_STRING:
 		/* need to copy the escaped value, but quoted */
 		if (quote > 0) {
@@ -368,7 +371,7 @@ size_t vp_data_prints_value(char *out, size_t outlen,
 	case PW_TYPE_BYTE:
 	case PW_TYPE_SHORT:
 		/* Normal, non-tagged attribute */
-		if ((v = dict_valbyattr(da->attr, da->vendor, data->integer)) != NULL) {
+		if (values && (v = dict_valbyattr(values->attr, values->vendor, data->integer)) != NULL) {
 			a = v->name;
 			len = strlen(a);
 		} else {
@@ -525,7 +528,7 @@ size_t vp_prints_value(char *out, size_t outlen, VALUE_PAIR const *vp, int8_t qu
 {
 	VERIFY_VP(vp);
 
-	return vp_data_prints_value(out, outlen, vp->da, &vp->data, vp->length, quote);
+	return vp_data_prints_value(out, outlen, vp->da->type, &vp->data, vp->length, vp->da, quote);
 }
 
 char *vp_aprint_type(TALLOC_CTX *ctx, PW_TYPE type)

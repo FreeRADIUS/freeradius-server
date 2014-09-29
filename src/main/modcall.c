@@ -3521,7 +3521,7 @@ void modcall_debug(modcallable *mc, int depth)
 		case MOD_SWITCH:
 		case MOD_CASE:
 			g = mod_callabletogroup(this);
-			tmpl_prints(buffer, sizeof(buffer), g->vpt);
+			tmpl_prints(buffer, sizeof(buffer), g->vpt, NULL);
 			DEBUG("%.*s%s %s {", depth, modcall_spaces,
 				group_name[this->type], buffer);
 			modcall_debug(g->children, depth + 1);

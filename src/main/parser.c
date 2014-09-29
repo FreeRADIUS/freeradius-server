@@ -68,7 +68,7 @@ next:
 			p += len;
 		}
 
-		len = tmpl_prints(p, end - p, c->data.vpt);
+		len = tmpl_prints(p, end - p, c->data.vpt, NULL);
 		p += len;
 		break;
 
