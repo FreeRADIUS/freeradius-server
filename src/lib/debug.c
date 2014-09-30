@@ -95,7 +95,7 @@ static fr_fault_cb_t panic_cb = NULL;			//!< Callback to execute whilst panickin
 
 static void CC_HINT(format (printf, 1, 2)) _fr_fault_log(char const *msg, ...);
 
-static fr_fault_log_t fr_fault_log = _fr_fault_log;	//!< Function to use to process logging output.
+fr_fault_log_t fr_fault_log = _fr_fault_log;		//!< Function to use to process logging output.
 static int fr_fault_log_fd = STDERR_FILENO;		//!< Where to write debug output.
 
 static int debugger_attached = -1;			//!< Whether were attached to by a debugger.
@@ -106,8 +106,6 @@ static struct rlimit core_limits;
 
 static TALLOC_CTX *talloc_null_ctx;
 static TALLOC_CTX *talloc_autofree_ctx;
-
-#define FR_FAULT_LOG(fmt, ...) fr_fault_log(fmt "\n", ## __VA_ARGS__)
 
 #ifdef HAVE_SYS_PTRACE_H
 #  ifdef __linux__
