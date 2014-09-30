@@ -224,7 +224,7 @@ static rs_stats_tmpl_t *rs_stats_collectd_init(TALLOC_CTX *ctx, rs_t *conf,
 
 	return tmpl;
 
-	error:
+error:
 	talloc_free(tmpl);
 	return NULL;
 }
