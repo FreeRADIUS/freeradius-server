@@ -100,6 +100,8 @@ size_t		map_prints(char *buffer, size_t bufsize, value_pair_map_t const *map);
 
 void		map_debug_log(REQUEST *request, value_pair_map_t const *map,
 			      VALUE_PAIR const *vp) CC_HINT(nonnull(1, 2));
+
+bool map_cast_from_hex(value_pair_map_t *map, FR_TOKEN rhs_type, char const *rhs);
 #ifdef __cplusplus
 }
 #endif
