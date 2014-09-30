@@ -2244,12 +2244,8 @@ value_pair_tmpl_t *radius_xlat2tmpl(TALLOC_CTX *ctx, xlat_exp_t *node)
 	 */
 	if ((node->attr.tmpl_num == NUM_COUNT) || (node->attr.tmpl_num == NUM_ALL)) return NULL;
 
-	vpt = talloc(ctx, value_pair_tmpl_t);
+	vpt = tmpl_alloc(ctx, TMPL_TYPE_ATTR, node->fmt, -1);
 	if (!vpt) return NULL;
-
-	vpt->type = TMPL_TYPE_ATTR;
-	vpt->name = talloc_typed_strdup(vpt, node->fmt);
-	vpt->len = talloc_array_length(vpt->name) - 1;
 	vpt->tmpl_request = node->attr.tmpl_request;
 	vpt->tmpl_list = node->attr.tmpl_list;
 	vpt->tmpl_da = node->attr.tmpl_da;
