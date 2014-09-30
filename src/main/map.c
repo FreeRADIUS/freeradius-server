@@ -40,7 +40,7 @@ RCSID("$Id$")
  * @param rhs_type quotation type around rhs.
  * @param rhs string to re-parse.
  */
-static bool map_cast_from_hex(value_pair_map_t *map, FR_TOKEN rhs_type, char const *rhs)
+bool map_cast_from_hex(value_pair_map_t *map, FR_TOKEN rhs_type, char const *rhs)
 {
 	size_t len;
 	ssize_t rlen;
