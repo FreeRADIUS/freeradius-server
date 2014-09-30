@@ -3235,7 +3235,7 @@ bool modcall_pass2(modcallable *mc)
 
 				g->vpt = tmpl_afrom_str(g->cs, this->name,
 							cf_section_name2_type(g->cs),
-							 REQUEST_CURRENT, PAIR_LIST_REQUEST);
+							REQUEST_CURRENT, PAIR_LIST_REQUEST);
 				if (!g->vpt) {
 					cf_log_err_cs(g->cs, "Syntax error in '%s': %s",
 						      this->name, fr_strerror());
@@ -3270,8 +3270,8 @@ bool modcall_pass2(modcallable *mc)
 				value_pair_tmpl_t *vpt;
 
 				vpt = tmpl_afrom_str(g->cs, this->name,
-						      cf_section_name2_type(g->cs),
-						      REQUEST_CURRENT, PAIR_LIST_REQUEST);
+						     cf_section_name2_type(g->cs),
+						     REQUEST_CURRENT, PAIR_LIST_REQUEST);
 				if (vpt->type == TMPL_TYPE_ATTR) {
 					talloc_free(g->vpt);
 					g->vpt = vpt;
