@@ -114,8 +114,8 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	inst->facility |= LOG_INFO;
 #endif
 
-	if (!inst->line) {
-		cf_log_err_cs(conf, "Must specify a log format");
+	if (!inst->line && !inst->reference) {
+		cf_log_err_cs(conf, "Must specify a log format, or reference");
 		return -1;
 	}
 
