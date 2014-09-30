@@ -699,25 +699,27 @@ int tmpl_from_attr_substr(value_pair_tmpl_t *vpt, char const **name, request_ref
 	unsigned long num;
 	char *q;
 
-	memset(vpt, 0, sizeof(*vpt));
-	vpt->name = *name;
-	p = *name;
+	value_pair_tmpl_attr_t attr;	/* So we don't fill the tmpl with junk and then error out */
 
+	memset(vpt, 0, sizeof(*vpt));
+	memset(&attr, 0, sizeof(attr));
+
+	p = *name;
 	if (*p == '&') {
 		error = -2;
 		p++;
 	}
 
-	vpt->tmpl_request = radius_request_name(&p, request_def);
+	attr.request = radius_request_name(&p, request_def);
 	len = p - *name;
-	if (vpt->tmpl_request == REQUEST_UNKNOWN) {
+	if (attr.request == REQUEST_UNKNOWN) {
 		fr_strerror_printf("Invalid request qualifier \"%.*s\"", (int) len, p);
 		return error;
 	}
 	*name += len;
 
-	vpt->tmpl_list = radius_list_name(&p, list_def);
-	if (vpt->tmpl_list == PAIR_LIST_UNKNOWN) {
+	attr.list = radius_list_name(&p, list_def);
+	if (attr.list == PAIR_LIST_UNKNOWN) {
 		len = p - *name;
 		fr_strerror_printf("Invalid list qualifier \"%.*s\"", (int) len, p);
 		return -1;
@@ -728,14 +730,13 @@ int tmpl_from_attr_substr(value_pair_tmpl_t *vpt, char const **name, request_ref
 		goto finish;
 	}
 
-	vpt->tmpl_da = dict_attrbyname_substr(&p);
-	if (!vpt->tmpl_da) {
-		if (dict_unknown_from_substr((DICT_ATTR *)&vpt->tmpl_unknown, &p) < 0) return error;
-		vpt->tmpl_da = (DICT_ATTR *)&vpt->tmpl_unknown;
+	attr.da = dict_attrbyname_substr(&p);
+	if (!attr.da) {
+		if (dict_unknown_from_substr((DICT_ATTR *)&attr.unknown, &p) < 0) return error;
+		attr.da = (DICT_ATTR *)&attr.unknown;
 	}
-	vpt->type = TMPL_TYPE_ATTR;
-	vpt->tmpl_tag = TAG_ANY;
-	vpt->tmpl_num = NUM_ANY;
+	attr.tag = TAG_ANY;
+	attr.num = NUM_ANY;
 
 	/*
 	 *	After this point, we return -2 to indicate that parts
@@ -749,8 +750,8 @@ int tmpl_from_attr_substr(value_pair_tmpl_t *vpt, char const **name, request_ref
 	}
 
 	if (*p == ':') {
-		if (!vpt->tmpl_da->flags.has_tag) {
-			fr_strerror_printf("Attribute '%s' cannot have a tag", vpt->tmpl_da->name);
+		if (!attr.da->flags.has_tag) {
+			fr_strerror_printf("Attribute '%s' cannot have a tag", attr.da->name);
 			return -2;
 		}
 
@@ -760,12 +761,14 @@ int tmpl_from_attr_substr(value_pair_tmpl_t *vpt, char const **name, request_ref
 			return -2;
 		}
 
-		vpt->tmpl_tag = num;
+		attr.tag = num;
 		p = q;
 	}
 
-	if (!*p) goto finish;
-
+	if (!*p) {
+		vpt->type = TMPL_TYPE_ATTR;
+		goto finish;
+	}
 	if (*p != '[') {
 		fr_strerror_printf("Unexpected text after tag: %s", p);
 		return -2;
@@ -778,10 +781,10 @@ int tmpl_from_attr_substr(value_pair_tmpl_t *vpt, char const **name, request_ref
 			fr_strerror_printf("Invalid array reference '%u' (should be between 0-1000)", (unsigned int) num);
 			return -2;
 		}
-		vpt->tmpl_num = num;
+		attr.num = num;
 		p = q;
 	} else {
-		vpt->tmpl_num = NUM_ALL;
+		attr.num = NUM_ALL;
 		p++;
 	}
 
@@ -790,9 +793,21 @@ int tmpl_from_attr_substr(value_pair_tmpl_t *vpt, char const **name, request_ref
 		return -2;
 	}
 	p++;
+	vpt->type = TMPL_TYPE_ATTR;
+
 finish:
+	vpt->name = *name;
 	vpt->len = p - *name;
 	*name = p;
+
+	/*
+	 *	Copy over the attribute definition, now we're
+	 *	sure what we were passed is valid.
+	 */
+	memcpy(&vpt->data.attribute, &attr, sizeof(vpt->data.attribute));
+	if ((vpt->type == TMPL_TYPE_ATTR) && attr.da->flags.is_unknown) {
+		vpt->tmpl_da = (DICT_ATTR *)&vpt->data.attribute.unknown;
+	}
 
 	return 0;
 }
