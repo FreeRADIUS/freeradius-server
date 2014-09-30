@@ -237,4 +237,7 @@ int			tmpl_copy_vps(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request,
 				      value_pair_tmpl_t const *vpt);
 
 int			tmpl_find_vp(VALUE_PAIR **out, REQUEST *request, value_pair_tmpl_t const *vpt);
+
+bool			tmpl_define_unknown_attr(value_pair_tmpl_t *vpt);
+
 #endif	/* TMPL_H */

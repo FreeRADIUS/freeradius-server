@@ -1425,3 +1425,24 @@ int tmpl_find_vp(VALUE_PAIR **out, REQUEST *request, value_pair_tmpl_t const *vp
 
 	return err;
 }
+
+bool tmpl_define_unknown_attr(value_pair_tmpl_t *vpt)
+{
+	DICT_ATTR const *da;
+
+	if (!vpt) return false;
+
+	VERIFY_TMPL(vpt);
+
+	if ((vpt->type != TMPL_TYPE_ATTR) &&
+	    (vpt->type != TMPL_TYPE_DATA)) {
+		return true;
+	}
+
+	if (!vpt->tmpl_da->flags.is_unknown) return true;
+
+	da = dict_unknown_add(vpt->tmpl_da);
+	if (!da) return false;
+	vpt->tmpl_da = da;
+	return true;
+}
