@@ -869,6 +869,37 @@ value_pair_tmpl_t *tmpl_afrom_attr_substr(TALLOC_CTX *ctx, char const **name, re
 	}
 	vpt->name = talloc_strndup(vpt, vpt->name, vpt->len);
 
+/** Parse qualifiers to convert attrname into a value_pair_tmpl_t.
+ *
+ * VPTs are used in various places where we need to pre-parse configuration
+ * sections into attribute mappings.
+ *
+ * @param[in] ctx for talloc
+ * @param[in] name attribute name including qualifiers.
+ * @param[in] request_def The default request to insert unqualified
+ *	attributes into.
+ * @param[in] list_def The default list to insert unqualified attributes into.
+ * @return pointer to a value_pair_tmpl_t struct (must be freed with
+ *	tmpl_free) or NULL on error.
+ */
+value_pair_tmpl_t *tmpl_afrom_attr_str(TALLOC_CTX *ctx, char const *name, request_refs_t request_def,
+				       pair_lists_t list_def)
+{
+	value_pair_tmpl_t *vpt;
+
+	char const *p = name;
+
+	vpt = talloc(ctx, value_pair_tmpl_t); /* tmpl_from_attr_substr zeros it */
+
+	if (tmpl_from_attr_substr(vpt, &p, request_def, list_def) < 0) {
+		tmpl_free(&vpt);
+
+		return NULL;
+	}
+	vpt->name = talloc_strndup(vpt, vpt->name, vpt->len);
+
+	VERIFY_TMPL(vpt);
+
 	return vpt;
 }
 
