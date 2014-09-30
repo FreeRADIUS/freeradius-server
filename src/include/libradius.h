@@ -752,6 +752,10 @@ void		*fr_cbuff_rp_next(fr_cbuff_t *cbuff, TALLOC_CTX *ctx);
  * @param signum signal raised.
  * @return 0 on success < 0 on failure.
  */
+#define FR_FAULT_LOG(fmt, ...) fr_fault_log(fmt "\n", ## __VA_ARGS__)
+typedef void (*fr_fault_log_t)(char const *msg, ...) CC_HINT(format (printf, 1, 2));
+extern fr_fault_log_t fr_fault_log;
+
 typedef int (*fr_fault_cb_t)(int signum);
 typedef struct fr_bt_marker fr_bt_marker_t;
 
@@ -759,8 +763,6 @@ void		fr_debug_break(void);
 void		backtrace_print(fr_cbuff_t *cbuff, void *obj);
 int		fr_backtrace_do(fr_bt_marker_t *marker);
 fr_bt_marker_t	*fr_backtrace_attach(fr_cbuff_t **cbuff, TALLOC_CTX *obj);
-
-typedef void (*fr_fault_log_t)(char const *msg, ...) CC_HINT(format (printf, 1, 2));
 
 void		fr_panic_on_free(TALLOC_CTX *ctx);
 int		fr_set_dumpable_init(void);
