@@ -92,6 +92,8 @@ int radius_expand_tmpl(char **out, REQUEST *request, value_pair_tmpl_t const *vp
 
 	rad_assert(vpt->type != TMPL_TYPE_LIST);
 
+	VERIFY_TMPL(vpt);
+
 	switch (vpt->type) {
 	case TMPL_TYPE_LITERAL:
 		EVAL_DEBUG("TMPL LITERAL");

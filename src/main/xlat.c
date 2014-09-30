@@ -2336,6 +2336,8 @@ value_pair_tmpl_t *radius_xlat2tmpl(TALLOC_CTX *ctx, xlat_exp_t *node)
 	vpt->tmpl_num = node->attr.tmpl_num;
 	vpt->tmpl_tag = node->attr.tmpl_tag;
 
+	VERIFY_TMPL(vpt);
+
 	return vpt;
 }
 
