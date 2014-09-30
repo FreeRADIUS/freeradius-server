@@ -937,7 +937,7 @@ inline void fr_verify_vp(char const *file, int line, VALUE_PAIR const *vp)
 	if (!vp) {
 		FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR pointer was NULL", file, line);
 		fr_assert(0);
-		fr_exit_now(0);
+		fr_exit_now(1);
 	}
 
 	(void) talloc_get_type_abort(vp, VALUE_PAIR);
@@ -945,7 +945,7 @@ inline void fr_verify_vp(char const *file, int line, VALUE_PAIR const *vp)
 	if (!vp->da) {
 		FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR da pointer was NULL", file, line);
 		fr_assert(0);
-		fr_exit_now(0);
+		fr_exit_now(1);
 	}
 
 	if (vp->data.ptr) switch (vp->da->type) {
@@ -1064,7 +1064,7 @@ void fr_verify_list(char const *file, int line, TALLOC_CTX *expected, VALUE_PAIR
 			if (parent) fr_log_talloc_report(parent);
 
 			fr_assert(0);
-			fr_exit_now(0);
+			fr_exit_now(1);
 		}
 
 	}
