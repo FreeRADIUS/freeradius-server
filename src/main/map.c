@@ -45,6 +45,7 @@ static bool map_cast_from_hex(value_pair_map_t *map, FR_TOKEN rhs_type, char con
 	size_t len;
 	ssize_t rlen;
 	uint8_t *ptr;
+
 	DICT_ATTR const *da;
 	VALUE_PAIR *vp;
 	value_data_t *data;
@@ -57,6 +58,8 @@ static bool map_cast_from_hex(value_pair_map_t *map, FR_TOKEN rhs_type, char con
 
 	rad_assert(map->rhs == NULL);
 	rad_assert(rhs != NULL);
+
+	VERIFY_MAP(map);
 
 	/*
 	 *	If the attribute is still unknown, go parse the RHS.
@@ -128,6 +131,8 @@ static bool map_cast_from_hex(value_pair_map_t *map, FR_TOKEN rhs_type, char con
 	map->lhs = vpt;
 
 	pairfree(&vp);
+
+	VERIFY_MAP(map);
 
 	return true;
 }
@@ -396,6 +401,8 @@ value_pair_map_t *map_from_cp(TALLOC_CTX *ctx, CONF_PAIR *cp,
 		}
 	}
 
+	VERIFY_MAP(map);
+
 	return map;
 
 error:
@@ -479,6 +486,7 @@ int map_from_cs(CONF_SECTION *cs, value_pair_map_t **head,
 		if (!map) {
 			goto error;
 		}
+		VERIFY_MAP(map);
 
 		ctx = *tail = map;
 		tail = &(map->next);
@@ -554,6 +562,8 @@ value_pair_map_t *map_from_fields_unknown(TALLOC_CTX *ctx, char const *lhs, FR_T
 		goto error;
 	}
 
+	VERIFY_MAP(map);
+
 	return map;
 }
 
@@ -610,6 +620,8 @@ value_pair_map_t *map_from_fields(TALLOC_CTX *ctx, char const *lhs, FR_TOKEN lhs
 
 	map->rhs = tmpl_afrom_str(map, rhs, rhs_type, src_request_def, src_list_def);
 	if (!map->rhs) goto error;
+
+	VERIFY_MAP(map);
 
 	return map;
 }
@@ -671,6 +683,8 @@ int map_from_vp_str(value_pair_map_t **out, REQUEST *request, char const *vp_str
 	}
 	*out = map;
 
+	VERIFY_MAP(map);
+
 	return 0;
 }
 
@@ -693,6 +707,8 @@ static int map_exec_to_vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t c
 	VALUE_PAIR *output_pairs = NULL;
 
 	*out = NULL;
+
+	VERIFY_MAP(map);
 
 	rad_assert(map->rhs->type == TMPL_TYPE_EXEC);
 	rad_assert((map->lhs->type == TMPL_TYPE_ATTR) || (map->lhs->type == TMPL_TYPE_LIST));
@@ -766,6 +782,8 @@ int map_to_vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *map, U
 	vp_cursor_t cursor;
 
 	*out = NULL;
+
+	VERIFY_MAP(map);
 
 	rad_assert((map->lhs->type == TMPL_TYPE_LIST) || (map->lhs->type == TMPL_TYPE_ATTR));
 
@@ -958,6 +976,7 @@ int map_to_vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *map, U
 				map->rhs->tmpl_data_length) < 0) goto error;
 		new->op = map->op;
 		*out = new;
+		VERIFY_MAP(map);
 		break;
 
 	/*
@@ -1015,6 +1034,8 @@ int map_to_request(REQUEST *request, value_pair_map_t const *map, radius_map_get
 	REQUEST *context;
 	TALLOC_CTX *parent;
 	vp_cursor_t dst_list, src_list;
+
+	VERIFY_MAP(map);
 
 	/*
 	 *	Sanity check inputs.  We can have a list or attribute
@@ -1369,6 +1390,8 @@ bool map_dst_valid(REQUEST *request, value_pair_map_t const *map)
 {
 	REQUEST *context = request;
 
+	VERIFY_MAP(map);
+
 	if (radius_request(&context, map->lhs->tmpl_request) < 0) return false;
 	if (!radius_list(context, map->lhs->tmpl_list)) return false;
 
@@ -1388,6 +1411,8 @@ size_t map_prints(char *buffer, size_t bufsize, value_pair_map_t const *map)
 	DICT_ATTR const *da = NULL;
 	char *p = buffer;
 	char *end = buffer + bufsize;
+
+	VERIFY_MAP(map);
 
 	if (map->lhs->type == TMPL_TYPE_ATTR) da = map->lhs->tmpl_da;
 
@@ -1434,6 +1459,8 @@ void map_debug_log(REQUEST *request, value_pair_map_t const *map, VALUE_PAIR con
 {
 	char *value;
 	char buffer[1024];
+
+	VERIFY_MAP(map);
 
 	rad_assert(vp || (map->rhs->type == TMPL_TYPE_NULL));
 
