@@ -2906,6 +2906,23 @@ static bool pass2_regex_compile(CONF_ITEM const *ci, value_pair_tmpl_t *vpt)
 }
 #endif
 
+static bool pass2_fixup_unknown(CONF_ITEM const *ci, value_pair_tmpl_t *vpt)
+{
+	DICT_ATTR const *da;
+
+	rad_assert(vpt->type == TMPL_TYPE_ATTR_UNKNOWN);
+
+	da = dict_attrbyname(vpt->tmpl_unknown_name);
+	if (!da) {
+		cf_log_err(ci, "Unknown attribute '%s'", vpt->tmpl_unknown_name);
+		return false;
+	}
+
+	vpt->tmpl_da = da;
+	vpt->type = TMPL_TYPE_ATTR;
+	return true;
+}
+
 static bool pass2_callback(UNUSED void *ctx, fr_cond_t *c)
 {
 	value_pair_map_t *map;
@@ -2923,15 +2940,7 @@ static bool pass2_callback(UNUSED void *ctx, fr_cond_t *c)
 		 *	where Foo-Bar is defined by a module.
 		 */
 		if (c->pass2_fixup == PASS2_FIXUP_ATTR) {
-			value_pair_tmpl_t *vpt;
-			vpt = tmpl_afrom_str(c, c->data.vpt->name, T_BARE_WORD, REQUEST_CURRENT, PAIR_LIST_REQUEST);
-			if (!vpt) {
-				cf_log_err(c->ci, "Unknown attribute '%s'", c->data.vpt->name + 1);
-				return false;
-			}
-
-			talloc_free(c->data.vpt);
-			c->data.vpt = vpt;
+			if (!pass2_fixup_unknown(c->ci, c->data.vpt)) return false;
 			c->pass2_fixup = PASS2_FIXUP_NONE;
 		}
 		return true;
@@ -2975,34 +2984,14 @@ static bool pass2_callback(UNUSED void *ctx, fr_cond_t *c)
 	}
 
 	if (c->pass2_fixup == PASS2_FIXUP_ATTR) {
-		value_pair_map_t *old;
-		value_pair_tmpl_t vpt;
-
-		old = c->data.map;
-
-		/*
-		 *	It's still not an attribute.  Ignore it.
-		 */
-		if (tmpl_from_attr_str(&vpt, map->lhs->name, REQUEST_CURRENT, PAIR_LIST_REQUEST) < 0) {
-			cf_log_err(old->ci, "Failed parsing condition: %s", fr_strerror());
-			c->pass2_fixup = PASS2_FIXUP_NONE;
-			return true;
+		if (map->lhs->type == TMPL_TYPE_ATTR_UNKNOWN) {
+			if (!pass2_fixup_unknown(map->ci, map->lhs)) return false;
 		}
 
-		/*
-		 *	Re-parse the LHS as an attribute.
-		 */
-		map = map_from_fields(c, old->lhs->name, T_BARE_WORD, old->op,
-				      old->rhs->name, T_BARE_WORD,
-				      REQUEST_CURRENT, PAIR_LIST_REQUEST,
-				      REQUEST_CURRENT, PAIR_LIST_REQUEST);
-		if (!map) {
-			cf_log_err(old->ci, "Failed parsing condition");
-			return false;
+		if (map->rhs->type == TMPL_TYPE_ATTR_UNKNOWN) {
+			if (!pass2_fixup_unknown(map->ci, map->rhs)) return false;
 		}
-		map->ci = old->ci;
-		talloc_free(old);
-		c->data.map = map;
+
 		c->pass2_fixup = PASS2_FIXUP_NONE;
 	}
 

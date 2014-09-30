@@ -71,6 +71,7 @@ typedef enum tmpl_type {
 	TMPL_TYPE_LITERAL,		//!< Is a literal string.
 	TMPL_TYPE_XLAT,			//!< Needs to be expanded.
 	TMPL_TYPE_ATTR,			//!< Is a dictionary attribute.
+	TMPL_TYPE_ATTR_UNKNOWN,		//!< Is an unknown dictionary attribute.
 	TMPL_TYPE_LIST,			//!< Is a list.
 	TMPL_TYPE_REGEX,		//!< Is a regex.
 	TMPL_TYPE_EXEC,			//!< Needs to be executed.
@@ -89,7 +90,10 @@ typedef struct {
 	pair_lists_t		list;			//!< List to search or insert in.
 
 	DICT_ATTR const		*da;			 //!< Resolved dictionary attribute.
-	uint8_t			unknown[DICT_ATTR_SIZE]; //!< Unknown dictionary attribute buffer.
+	union {
+		uint8_t			unknown[DICT_ATTR_SIZE]; //!< Unknown dictionary attribute buffer.
+		char			name[DICT_ATTR_SIZE];    //!< more retarded things
+	} fugly;
 	int			num;			 //!< for array references
 	int8_t			tag;			 //!< for tag references.
 } value_pair_tmpl_attr_t;
@@ -156,7 +160,8 @@ typedef struct value_pair_tmpl_t {
 #define tmpl_request		data.attribute.request
 #define tmpl_list		data.attribute.list
 #define tmpl_da			data.attribute.da
-#define tmpl_unknown		data.attribute.unknown
+#define tmpl_unknown		data.attribute.fugly.unknown
+#define tmpl_unknown_name      	data.attribute.fugly.name
 #define tmpl_num		data.attribute.num
 #define tmpl_tag		data.attribute.tag
 
