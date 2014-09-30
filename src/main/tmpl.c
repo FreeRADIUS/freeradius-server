@@ -389,7 +389,7 @@ static uint8_t const *not_zeroed(uint8_t const *ptr, size_t len)
 
 	return NULL;
 }
-#define CHECK_ZEROED(_x) not_zeroed((uint8_t *)&_x + sizeof(_x), sizeof(vpt->data) - sizeof(_x))
+#define CHECK_ZEROED(_x) not_zeroed((uint8_t const *)&_x + sizeof(_x), sizeof(vpt->data) - sizeof(_x))
 
 
 /** Verify fields of a value_pair_tmpl_t make sense
@@ -421,7 +421,7 @@ void tmpl_verify(char const *file, int line, value_pair_tmpl_t const *vpt)
 	 */
 	switch (vpt->type) {
 	case TMPL_TYPE_NULL:
-		if (not_zeroed((uint8_t *)&vpt->data, sizeof(vpt->data))) {
+		if (not_zeroed((uint8_t const *)&vpt->data, sizeof(vpt->data))) {
 			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_NULL "
 				     "has non-zero bytes in its data union", file, line);
 			fr_assert(0);
@@ -430,7 +430,7 @@ void tmpl_verify(char const *file, int line, value_pair_tmpl_t const *vpt)
 		break;
 
 	case TMPL_TYPE_LITERAL:
-		if (not_zeroed((uint8_t *)&vpt->data, sizeof(vpt->data))) {
+		if (not_zeroed((uint8_t const *)&vpt->data, sizeof(vpt->data))) {
 			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_LITERAL "
 				     "has non-zero bytes in its data union", file, line);
 			fr_assert(0);
@@ -444,7 +444,7 @@ void tmpl_verify(char const *file, int line, value_pair_tmpl_t const *vpt)
 
 /* @todo When regexes get converted to xlat the flags field of the regex union is used
 	case TMPL_TYPE_XLAT:
-		if (not_zeroed((uint8_t *)&vpt->data, sizeof(vpt->data))) {
+		if (not_zeroed((uint8_t const *)&vpt->data, sizeof(vpt->data))) {
 			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_XLAT "
 				     "has non-zero bytes in its data union", file, line);
 			fr_assert(0);
@@ -463,7 +463,7 @@ void tmpl_verify(char const *file, int line, value_pair_tmpl_t const *vpt)
 */
 
 	case TMPL_TYPE_EXEC:
-		if (not_zeroed((uint8_t *)&vpt->data, sizeof(vpt->data))) {
+		if (not_zeroed((uint8_t const *)&vpt->data, sizeof(vpt->data))) {
 			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_EXEC "
 				     "has non-zero bytes in its data union", file, line);
 			fr_assert(0);
@@ -648,7 +648,7 @@ value_pair_tmpl_t *tmpl_init(value_pair_tmpl_t *vpt, tmpl_type_t type, char cons
 	if (name) {
 		vpt->name = name;
 		vpt->len = len < 0 ? strlen(name) :
-				     len;
+				     (size_t) len;
 	}
 	return vpt;
 }
