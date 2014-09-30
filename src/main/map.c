@@ -138,6 +138,8 @@ static bool fixup_unknown(value_pair_tmpl_t *vpt)
 
 	if (!vpt) return true;
 
+	VERIFY_TMPL(vpt);
+
 	if ((vpt->type != TMPL_TYPE_ATTR) &&
 	    (vpt->type != TMPL_TYPE_DATA)) {
 		return true;

@@ -809,6 +809,8 @@ finish:
 		vpt->tmpl_da = (DICT_ATTR *)&vpt->data.attribute.unknown;
 	}
 
+	VERIFY_TMPL(vpt);
+
 	return 0;
 }
 
@@ -839,6 +841,8 @@ int tmpl_from_attr_str(value_pair_tmpl_t *vpt, char const *name, request_refs_t 
 		return -2;	/* Failed to parse entire string */
 	}
 
+	VERIFY_TMPL(vpt);
+
 	return 0;
 }
 
@@ -868,6 +872,11 @@ value_pair_tmpl_t *tmpl_afrom_attr_substr(TALLOC_CTX *ctx, char const **name, re
 		return NULL;
 	}
 	vpt->name = talloc_strndup(vpt, vpt->name, vpt->len);
+
+	VERIFY_TMPL(vpt);
+
+	return vpt;
+}
 
 /** Parse qualifiers to convert attrname into a value_pair_tmpl_t.
  *
@@ -911,7 +920,7 @@ void tmpl_free(value_pair_tmpl_t **tmpl)
 {
 	if (*tmpl == NULL) return;
 
-	VERIFY_TMPL(*tmpl);
+	if ((*tmpl)->type != TMPL_TYPE_UNKNOWN) VERIFY_TMPL(*tmpl);
 
 	dict_attr_free(&((*tmpl)->tmpl_da));
 
@@ -940,6 +949,8 @@ size_t tmpl_prints(char *buffer, size_t bufsize, value_pair_tmpl_t const *vpt, D
 		*buffer = '\0';
 		return 0;
 	}
+
+	VERIFY_TMPL(vpt);
 
 	switch (vpt->type) {
 	default:
@@ -1162,6 +1173,8 @@ value_pair_tmpl_t *tmpl_afrom_str(TALLOC_CTX *ctx, char const *name, FR_TOKEN ty
 		return NULL;
 	}
 
+	VERIFY_TMPL(vpt);
+
 	return vpt;
 }
 
@@ -1175,6 +1188,8 @@ bool tmpl_cast_in_place(value_pair_tmpl_t *vpt, DICT_ATTR const *da)
 {
 	VALUE_PAIR *vp;
 	value_data_t *data;
+
+	VERIFY_TMPL(vpt);
 
 	rad_assert(vpt != NULL);
 	rad_assert(da != NULL);
@@ -1205,6 +1220,8 @@ bool tmpl_cast_in_place(value_pair_tmpl_t *vpt, DICT_ATTR const *da)
 
 	pairfree(&vp);
 
+	VERIFY_TMPL(vpt);
+
 	return true;
 }
 
@@ -1216,6 +1233,8 @@ int tmpl_cast_to_vp(VALUE_PAIR **out, REQUEST *request,
 	int rcode;
 	VALUE_PAIR *vp;
 	char *str;
+
+	VERIFY_TMPL(vpt);
 
 	*out = NULL;
 
@@ -1264,6 +1283,8 @@ int tmpl_cast_to_vp(VALUE_PAIR **out, REQUEST *request,
 VALUE_PAIR *tmpl_cursor_init(int *err, vp_cursor_t *cursor, REQUEST *request, value_pair_tmpl_t const *vpt)
 {
 	VALUE_PAIR **vps, *vp = NULL;
+
+	VERIFY_TMPL(vpt);
 
 	rad_assert((vpt->type == TMPL_TYPE_ATTR) || (vpt->type == TMPL_TYPE_LIST));
 
@@ -1333,6 +1354,8 @@ VALUE_PAIR *tmpl_cursor_next(vp_cursor_t *cursor, value_pair_tmpl_t const *vpt)
 {
 	rad_assert((vpt->type == TMPL_TYPE_ATTR) || (vpt->type == TMPL_TYPE_LIST));
 
+	VERIFY_TMPL(vpt);
+
 	switch (vpt->type) {
 	/*
 	 *	May not may not be found, but it *is* a known name.
@@ -1362,6 +1385,8 @@ int tmpl_copy_vps(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, value_pai
 {
 	VALUE_PAIR *vp;
 	vp_cursor_t from, to;
+
+	VERIFY_TMPL(vpt);
 
 	int err;
 
@@ -1396,6 +1421,8 @@ int tmpl_find_vp(VALUE_PAIR **out, REQUEST *request, value_pair_tmpl_t const *vp
 {
 	vp_cursor_t cursor;
 	VALUE_PAIR *vp;
+
+	VERIFY_TMPL(vpt);
 
 	int err;
 
