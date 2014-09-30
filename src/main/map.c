@@ -137,26 +137,6 @@ static bool map_cast_from_hex(value_pair_map_t *map, FR_TOKEN rhs_type, char con
 	return true;
 }
 
-static bool fixup_unknown(value_pair_tmpl_t *vpt)
-{
-	DICT_ATTR const *da;
-
-	if (!vpt) return true;
-
-	VERIFY_TMPL(vpt);
-
-	if ((vpt->type != TMPL_TYPE_ATTR) &&
-	    (vpt->type != TMPL_TYPE_DATA)) {
-		return true;
-	}
-
-	if (!vpt->tmpl_da->flags.is_unknown) return true;
-
-	da = dict_unknown_add(vpt->tmpl_da);
-	vpt->tmpl_da = da;
-	return true;
-}
-
 /** Convert CONFIG_PAIR (which may contain refs) to value_pair_map_t.
  *
  * Treats the left operand as an attribute reference
@@ -217,7 +197,7 @@ value_pair_map_t *map_from_cp(TALLOC_CTX *ctx, CONF_PAIR *cp,
 		goto error;
 	}
 
-	if (!fixup_unknown(map->lhs)) {
+	if (!tmpl_define_unknown_attr(map->lhs)) {
 		cf_log_err(ci, "Failed creating attribute %s: %s",
 			   map->lhs->name, fr_strerror());
 		goto error;
@@ -235,7 +215,7 @@ value_pair_map_t *map_from_cp(TALLOC_CTX *ctx, CONF_PAIR *cp,
 	} else {
 		map->rhs = tmpl_afrom_str(map, value, type, src_request_def, src_list_def);
 
-		if (!fixup_unknown(map->rhs)) {
+		if (!tmpl_define_unknown_attr(map->rhs)) {
 			cf_log_err(ci, "Failed creating attribute %s: %s",
 				   map->rhs->name, fr_strerror());
 			goto error;
@@ -539,7 +519,7 @@ value_pair_map_t *map_from_fields_unknown(TALLOC_CTX *ctx, char const *lhs, FR_T
 		return NULL;
 	}
 
-	if (!fixup_unknown(map->rhs)) {
+	if (!tmpl_define_unknown_attr(map->rhs)) {
 		fr_strerror_printf("Failed creating attribute %s",
 				   map->rhs->name);
 		goto error;
@@ -556,7 +536,7 @@ value_pair_map_t *map_from_fields_unknown(TALLOC_CTX *ctx, char const *lhs, FR_T
 	map->rhs = tmpl_afrom_str(map, rhs, rhs_type, src_request_def, src_list_def);
 	if (!map->rhs) goto error;
 
-	if (!fixup_unknown(map->lhs)) {
+	if (!tmpl_define_unknown_attr(map->lhs)) {
 		fr_strerror_printf("Failed creating attribute %s",
 				   map->lhs->name);
 		goto error;
