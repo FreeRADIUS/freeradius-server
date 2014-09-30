@@ -73,6 +73,7 @@ typedef struct rlm_perl_t {
 	char const	*xlat_name;
 	char const	*perl_flags;
 	PerlInterpreter	*perl;
+	bool             perl_parsed;
 	pthread_key_t	*thread_key;
 
 #ifdef USE_ITHREADS
@@ -538,6 +539,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	PL_endav = (AV *)NULL;
 
 	if(!exitstatus) {
+		inst->perl_parsed = true;
 		perl_run(inst->perl);
 	} else {
 		ERROR("rlm_perl: perl_parse failed: %s not found or has syntax errors. \n", inst->module);
@@ -1037,7 +1039,7 @@ static int mod_detach(void *instance)
 	}
 #endif
 
-	if (inst->func_detach) {
+	if (inst->perl_parsed && inst->func_detach) {
 		dTHXa(inst->perl);
 		PERL_SET_CONTEXT(inst->perl);
 		{
