@@ -378,37 +378,302 @@ int radius_request(REQUEST **context, request_refs_t name)
 	return 0;
 }
 
-#ifndef WITH_VERIFY_PTR
-#define VERIFY_TMPL(_x)
-#else
-#define VERIFY_TMPL(_x) tmpl_verify(_x)
-void tmpl_verify(value_pair_tmpl_t const *vpt);
-
-void tmpl_verify(value_pair_tmpl_t const *vpt)
+#ifdef WITH_VERIFY_PTR
+static uint8_t const *not_zeroed(uint8_t const *ptr, size_t len)
 {
-	(void) talloc_get_type_abort(vpt, value_pair_tmpl_t);
+	size_t i;
 
-	if (vpt->type != TMPL_TYPE_NULL) {
-		(void) talloc_get_type_abort(vpt->name, char);
+	for (i = 0; i < len; i++) {
+		if (ptr[i] != 0x00) return ptr + i;
 	}
 
-	if (vpt->type == TMPL_TYPE_ATTR) {
+	return NULL;
+}
+#define CHECK_ZEROED(_x) not_zeroed((uint8_t *)&_x + sizeof(_x), sizeof(vpt->data) - sizeof(_x))
+
+
+/** Verify fields of a value_pair_tmpl_t make sense
+ *
+ */
+void tmpl_verify(char const *file, int line, value_pair_tmpl_t const *vpt)
+{
+	if (vpt->type == TMPL_TYPE_UNKNOWN) {
+		FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: value_pair_tmpl_t type was "
+			     "TMPL_TYPE_UNKNOWN (uninitialised)", file, line);
+		fr_assert(0);
+		fr_exit_now(1);
+	}
+
+	if (vpt->type > TMPL_TYPE_NULL) {
+		FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: value_pair_tmpl_t type was %i "
+			     "(outside range of TMPL_TYPEs)", file, line, vpt->type);
+		fr_assert(0);
+		fr_exit_now(1);
+	}
+
+	/*
+	 *  Do a memcmp of the bytes after where the space allocated for
+	 *  the union member should have ended and the end of the union.
+	 *  These should always be zero if the union has been initialised
+	 *  properly.
+	 *
+	 *  If they're still all zero, do TMPL_TYPE specific checks.
+	 */
+	switch (vpt->type) {
+	case TMPL_TYPE_NULL:
+		if (not_zeroed((uint8_t *)&vpt->data, sizeof(vpt->data))) {
+			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_NULL "
+				     "has non-zero bytes in its data union", file, line);
+			fr_assert(0);
+			fr_exit_now(1);
+		}
+		break;
+
+	case TMPL_TYPE_LITERAL:
+		if (not_zeroed((uint8_t *)&vpt->data, sizeof(vpt->data))) {
+			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_LITERAL "
+				     "has non-zero bytes in its data union", file, line);
+			fr_assert(0);
+			fr_exit_now(1);
+		}
+		break;
+
+	case TMPL_TYPE_XLAT:
+	case TMPL_TYPE_XLAT_STRUCT:
+		break;
+
+/* @todo When regexes get converted to xlat the flags field of the regex union is used
+	case TMPL_TYPE_XLAT:
+		if (not_zeroed((uint8_t *)&vpt->data, sizeof(vpt->data))) {
+			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_XLAT "
+				     "has non-zero bytes in its data union", file, line);
+			fr_assert(0);
+			fr_exit_now(1);
+		}
+		break;
+
+	case TMPL_TYPE_XLAT_STRUCT:
+		if (CHECK_ZEROED(vpt->data.xlat)) {
+			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_XLAT_STRUCT "
+				     "has non-zero bytes after the data.xlat pointer in the union", file, line);
+			fr_assert(0);
+			fr_exit_now(1);
+		}
+		break;
+*/
+
+	case TMPL_TYPE_EXEC:
+		if (not_zeroed((uint8_t *)&vpt->data, sizeof(vpt->data))) {
+			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_EXEC "
+				     "has non-zero bytes in its data union", file, line);
+			fr_assert(0);
+			fr_exit_now(1);
+		}
+		break;
+
+	case TMPL_TYPE_ATTR:
+		if (CHECK_ZEROED(vpt->data.attribute)) {
+			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_ATTR "
+				     "has non-zero bytes after the data.attribute struct in the union",
+				     file, line);
+			fr_assert(0);
+			fr_exit_now(1);
+		}
+
 		if (vpt->tmpl_da->flags.is_unknown) {
-			(void) talloc_get_type_abort(vpt->tmpl_da, DICT_ATTR);
+			if (vpt->tmpl_da != (DICT_ATTR *)&vpt->data.attribute.unknown) {
+				FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_ATTR "
+					     "da is marked as unknown, but does not point to the template's "
+					     "unknown da buffer", file, line);
+				fr_assert(0);
+				fr_exit_now(1);
+			}
+
 		} else {
-			UNUSED DICT_ATTR const *da;
+			DICT_ATTR const *da;
 
 			da = dict_attrbyvalue(vpt->tmpl_da->attr, vpt->tmpl_da->vendor);
-			rad_assert(da = vpt->tmpl_da);
+			if (da != vpt->tmpl_da) {
+				FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_ATTR "
+					     "da pointer and global dictionary pointer for attribute \"%s\" differ",
+					     vpt->tmpl_da->name, file, line);
+				fr_assert(0);
+				fr_exit_now(1);
+			}
+		}
+		break;
+
+	case TMPL_TYPE_LIST:
+		if (CHECK_ZEROED(vpt->data.attribute)) {
+			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_LIST"
+				     "has non-zero bytes after the data.attribute struct in the union", file, line);
+			fr_assert(0);
+			fr_exit_now(1);
+		}
+
+		if (vpt->tmpl_da != NULL) {
+			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_LIST da pointer was NULL", file, line);
+			fr_assert(0);
+			fr_exit_now(1);
+		}
+		break;
+
+	case TMPL_TYPE_DATA:
+		if (CHECK_ZEROED(vpt->data.literal)) {
+			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_DATA "
+				     "has non-zero bytes after the data.literal struct in the union",
+				     file, line);
+			fr_assert(0);
+			fr_exit_now(1);
+		}
+
+		if (vpt->tmpl_data_type == PW_TYPE_INVALID) {
+			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_DATA type was "
+				     "PW_TYPE_INVALID (uninitialised)", file, line);
+			fr_assert(0);
+			fr_exit_now(1);
+		}
+
+		if (vpt->tmpl_data_type >= PW_TYPE_MAX) {
+			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_DATA type was "
+				     "%i (outside the range of PW_TYPEs)", file, line, vpt->tmpl_data_type);
+			fr_assert(0);
+			fr_exit_now(1);
+		}
+
+		if (vpt->tmpl_data_value == NULL) {
+			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_DATA has a NULL data field",
+				     file, line);
+			fr_assert(0);
+			fr_exit_now(1);
 		}
 
 		/*
-		 *	FIXME: separate out fr_verify_data() from fr_verify_vp()
+		 *	Unlike VALUE_PAIRs we can't guarantee that VALUE_PAIR_TMPL buffers will
+		 *	be talloced. They may be allocated on the stack or in global variables.
 		 */
+		switch (vpt->tmpl_data_type) {
+		case PW_TYPE_STRING:
+		if (vpt->tmpl_data_value->strvalue[vpt->tmpl_data_length] != '\0') {
+			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_DATA char buffer not \\0 "
+				     "terminated", file, line);
+			fr_assert(0);
+			fr_exit_now(1);
+		}
+			break;
+
+		case PW_TYPE_TLV:
+		case PW_TYPE_OCTETS:
+			break;
+
+		default:
+			if (vpt->tmpl_data_length == 0) {
+				FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_DATA data pointer not NULL "
+				             "but len field is zero", file, line);
+				fr_assert(0);
+				fr_exit_now(1);
+			}
+		}
+
+		break;
+
+	case TMPL_TYPE_REGEX:
+		/*
+		 *	iflag field is used for non compiled regexes too.
+		 */
+		if (CHECK_ZEROED(vpt->data.preg)) {
+			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_REGEX "
+				     "has non-zero bytes after the data.preg struct in the union", file, line);
+			fr_assert(0);
+			fr_exit_now(1);
+		}
+
+		if (vpt->tmpl_preg != NULL) {
+			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_REGEX "
+				     "preg field was not nULL", file, line);
+			fr_assert(0);
+			fr_exit_now(1);
+		}
+
+		if ((vpt->tmpl_iflag != true) && (vpt->tmpl_iflag != false)) {
+			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_REGEX "
+				     "iflag field was neither true or false", file, line);
+			fr_assert(0);
+			fr_exit_now(1);
+		}
+
+		break;
+
+	case TMPL_TYPE_REGEX_STRUCT:
+		if (CHECK_ZEROED(vpt->data.preg)) {
+			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_REGEX_STRUCT "
+				     "has non-zero bytes after the data.preg struct in the union", file, line);
+			fr_assert(0);
+			fr_exit_now(1);
+		}
+
+		if (vpt->tmpl_preg == NULL) {
+			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_REGEX_STRUCT "
+				     "comp field was NULL", file, line);
+			fr_assert(0);
+			fr_exit_now(1);
+		}
+
+		if ((vpt->tmpl_iflag != true) && (vpt->tmpl_iflag != false)) {
+			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_REGEX_STRUCT "
+				     "iflag field was neither true or false", file, line);
+			fr_assert(0);
+			fr_exit_now(1);
+		}
+		break;
+
+	case TMPL_TYPE_UNKNOWN:
+		rad_assert(0);
 	}
 }
 #endif
 
+/** Initialise stack allocated value_pair_tmpl_t
+ *
+ */
+value_pair_tmpl_t *tmpl_init(value_pair_tmpl_t *vpt, tmpl_type_t type, char const *name, ssize_t len)
+{
+	rad_assert(vpt);
+	rad_assert(type != TMPL_TYPE_UNKNOWN);
+	rad_assert(type <= TMPL_TYPE_NULL);
+
+	memset(vpt, 0, sizeof(value_pair_tmpl_t));
+	vpt->type = type;
+
+	if (name) {
+		vpt->name = name;
+		vpt->len = len < 0 ? strlen(name) :
+				     len;
+	}
+	return vpt;
+}
+
+/** Allocate and initialise heap allocated value_pair_tmpl_t
+ *
+ */
+value_pair_tmpl_t *tmpl_alloc(TALLOC_CTX *ctx, tmpl_type_t type, char const *name, ssize_t len)
+{
+	value_pair_tmpl_t *vpt;
+
+	rad_assert(type != TMPL_TYPE_UNKNOWN);
+	rad_assert(type <= TMPL_TYPE_NULL);
+
+	vpt = talloc_zero(ctx, value_pair_tmpl_t);
+	if (!vpt) return NULL;
+	vpt->type = type;
+	if (name) {
+		vpt->name = len < 0 ? talloc_strdup(ctx, name) :
+				      talloc_strndup(ctx, name, len);
+		len = talloc_array_length(vpt->name) - 1;
+	}
+
+	return vpt;
+}
 
 /** Parse qualifiers to convert attrname into a value_pair_tmpl_t.
  *

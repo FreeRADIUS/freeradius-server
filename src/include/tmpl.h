@@ -183,6 +183,12 @@ request_refs_t		radius_request_name(char const **name, request_refs_t unknown);
 
 
 /* Template manipulation and execution */
+value_pair_tmpl_t	*tmpl_init(value_pair_tmpl_t *vpt, tmpl_type_t type,
+				   char const *name, ssize_t len);
+
+value_pair_tmpl_t	*tmpl_alloc(TALLOC_CTX *ctx, tmpl_type_t type, char const *name,
+				    ssize_t len);
+
 int			tmpl_from_attr_substr(value_pair_tmpl_t *vpt, char const **name,
 					      request_refs_t request_def,
 					      pair_lists_t list_def);
