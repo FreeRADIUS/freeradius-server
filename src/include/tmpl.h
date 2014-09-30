@@ -84,6 +84,16 @@ extern const FR_NAME_NUMBER vpt_types[];
 
 typedef struct xlat_exp xlat_exp_t;
 
+typedef struct {
+	request_refs_t		request;		//!< Request to search or insert in.
+	pair_lists_t		list;			//!< List to search or insert in.
+
+	DICT_ATTR const		*da;			 //!< Resolved dictionary attribute.
+	uint8_t			unknown[DICT_ATTR_SIZE]; //!< Unknown dictionary attribute buffer.
+	int			num;			 //!< for array references
+	int8_t			tag;			 //!< for tag references.
+} value_pair_tmpl_attr_t;
+
 /** A pre-parsed template attribute
  *
  * Is used as both the RHS and LHS of a map (both update, and conditional types)
@@ -120,15 +130,7 @@ typedef struct value_pair_tmpl_t {
 		 *  Attribute reference. Either an attribute currently in the request
 		 *  or an attribute to create.
 		 */
-		struct {
-			request_refs_t		request;		//!< Request to search or insert in.
-			pair_lists_t		list;			//!< List to search or insert in.
-
-			DICT_ATTR const		*da;			 //!< Resolved dictionary attribute.
-			uint8_t			unknown[DICT_ATTR_SIZE]; //!< Unknown dictionary attribute buffer.
-			int			num;			 //!< for array references
-			int8_t			tag;			 //!< for tag references.
-		} attribute;
+		value_pair_tmpl_attr_t attribute;
 
 		/*
 		 *  Attribute value. Typically used as the RHS of an update map.
