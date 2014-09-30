@@ -60,6 +60,7 @@ typedef struct rad_request REQUEST;
 
 #include <freeradius-devel/stats.h>
 #include <freeradius-devel/realms.h>
+#include <freeradius-devel/tmpl.h>
 #include <freeradius-devel/map.h>
 
 #ifdef HAVE_GRP_H

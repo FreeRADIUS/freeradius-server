@@ -33,24 +33,6 @@ RCSID("$Id$")
 
 #include <ctype.h>
 
-#ifndef WITH_VERIFY_PTR
-#  define VERIFY_MAP(_x)
-#else
-# define VERIFY_MAP(_x) map_verify(_x)
-extern void tmpl_verify(value_pair_tmpl_t const *vpt);
-
-static void UNUSED map_verify(value_pair_map_t const *map)
-{
-	(void) talloc_get_type_abort(map, value_pair_map_t);
-
-	tmpl_verify(map->lhs);
-
-	if (map->rhs) {
-		tmpl_verify(map->rhs);
-	}
-}
-#endif
-
 /** re-parse a map where the lhs is an unknown attribute.
  *
  *
