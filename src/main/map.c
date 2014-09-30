@@ -468,14 +468,12 @@ int map_from_cs(CONF_SECTION *cs, value_pair_map_t **head,
 		}
 
 		if (!cf_item_is_pair(ci)) {
-			cf_log_err(ci, "Entry is not in \"attribute = "
-				       "value\" format");
+			cf_log_err(ci, "Entry is not in \"attribute = value\" format");
 			goto error;
 		}
 
 		cp = cf_itemtopair(ci);
-		map = map_from_cp(ctx, cp, request_def, dst_list_def,
-				    REQUEST_CURRENT, src_list_def);
+		map = map_from_cp(ctx, cp, request_def, dst_list_def, REQUEST_CURRENT, src_list_def);
 		if (!map) {
 			goto error;
 		}
