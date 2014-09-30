@@ -864,7 +864,7 @@ value_pair_tmpl_t *tmpl_afrom_attr_substr(TALLOC_CTX *ctx, char const **name, re
 {
 	value_pair_tmpl_t *vpt;
 
-	vpt = talloc(ctx, value_pair_tmpl_t); /* parse_attr zeroes it */
+	vpt = talloc(ctx, value_pair_tmpl_t); /* tmpl_from_attr_substr zeros it */
 
 	if (tmpl_from_attr_substr(vpt, name, request_def, list_def) < 0) {
 		tmpl_free(&vpt);
