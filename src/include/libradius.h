@@ -425,6 +425,7 @@ size_t		fr_print_string(char const *in, size_t inlen,
 				 char *out, size_t outlen);
 size_t		fr_print_string_len(char const *in, size_t inlen);
 
+unsigned int	vp_to_uint(const VALUE_PAIR *vp);
 #define		is_truncated(_ret, _max) ((_ret) >= (_max))
 #define		truncate_len(_ret, _max) (((_ret) >= (_max)) ? ((_max) - 1) : _ret)
 size_t		vp_data_prints_value(char *out, size_t outlen,

@@ -370,16 +370,24 @@ size_t vp_data_prints_value(char *out, size_t outlen,
 	case PW_TYPE_INTEGER:
 	case PW_TYPE_BYTE:
 	case PW_TYPE_SHORT:
+	{
+		unsigned int i = (type == PW_TYPE_INTEGER)
+					? data->integer
+					: ((type == PW_TYPE_SHORT)
+						? data->ushort
+						: data->byte);
+
 		/* Normal, non-tagged attribute */
-		if (values && (v = dict_valbyattr(values->attr, values->vendor, data->integer)) != NULL) {
+		if (values && (v = dict_valbyattr(values->attr, values->vendor, i)) != NULL) {
 			a = v->name;
 			len = strlen(a);
 		} else {
 			/* should never be truncated */
-			len = snprintf(buf, sizeof(buf), "%u", data->integer);
+			len = snprintf(buf, sizeof(buf), "%u", i);
 			a = buf;
 		}
 		break;
+	}
 
 	case PW_TYPE_INTEGER64:
 		return snprintf(out, outlen, "%" PRIu64, data->integer64);
@@ -515,6 +523,29 @@ size_t vp_data_prints_value(char *out, size_t outlen,
 	return len;	/* Return the number of bytes we would of written (for truncation detection) */
 }
 
+/** Retrieve an integer VALUE_PAIR value converted to an unsigned int.
+ *
+ * @param[in]   vp  VALUE_PAIR to retrieve value of.
+ *
+ * @return VALUE_PAIR value converted to an unsigned int.
+ */
+unsigned int vp_to_uint(const VALUE_PAIR *vp)
+{
+	fr_assert(vp != NULL);
+	fr_assert(vp->da != NULL);
+	switch (vp->da->type) {
+	case PW_TYPE_BYTE:
+		return vp->vp_byte;
+	case PW_TYPE_SHORT:
+		return vp->vp_short;
+	case PW_TYPE_INTEGER:
+		return vp->vp_integer;
+	default:
+		fr_assert(0);
+		fr_exit_now(1);
+	}
+}
+
 /** Print the value of an attribute to a string
  *
  * @param[out] out Where to write the string.
@@ -597,7 +628,7 @@ size_t vp_prints_value_json(char *out, size_t outlen, VALUE_PAIR const *vp)
 		case PW_TYPE_SHORT:
 			if (vp->da->flags.has_value) break;
 
-			return snprintf(out, freespace, "%u", vp->vp_integer);
+			return snprintf(out, freespace, "%u", vp_to_uint(vp));
 
 		case PW_TYPE_SIGNED:
 			return snprintf(out, freespace, "%d", vp->vp_signed);
@@ -870,11 +901,11 @@ char *vp_aprint_value(TALLOC_CTX *ctx, VALUE_PAIR const *vp, bool escape)
 			DICT_VALUE *dv;
 
 			dv = dict_valbyattr(vp->da->attr, vp->da->vendor,
-					    vp->vp_integer);
+					    vp_to_uint(vp));
 			if (dv) {
 				p = talloc_typed_strdup(ctx, dv->name);
 			} else {
-				p = talloc_typed_asprintf(ctx, "%u", vp->vp_integer);
+				p = talloc_typed_asprintf(ctx, "%u", vp_to_uint(vp));
 			}
 		}
 		break;

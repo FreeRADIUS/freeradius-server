@@ -303,12 +303,12 @@ json_object *mod_value_pair_to_json_object(REQUEST *request, VALUE_PAIR *vp)
 			/* debug */
 			RDEBUG3("creating new int64 for unsigned 32 bit int/byte/short '%s'", vp->da->name);
 			/* return as 64 bit int - JSON spec does not support unsigned ints */
-			return json_object_new_int64(vp->vp_integer);
+			return json_object_new_int64(vp_to_uint(vp));
 #else
 			/* debug */
 			RDEBUG3("creating new int for unsigned 32 bit int/byte/short '%s'", vp->da->name);
 			/* return as 64 bit int - JSON spec does not support unsigned ints */
-			return json_object_new_int(vp->vp_integer);
+			return json_object_new_int(vp_to_uint(vp));
 #endif
 		break;
 		case PW_TYPE_SIGNED:
