@@ -118,37 +118,32 @@ static bool map_cast_from_hex(value_pair_map_t *map, FR_TOKEN rhs_type, char con
 	if (vp->da->flags.is_unknown) goto free_vp;
 
 	/*
-	 *	Manually create a value_template_t
+	 *	Set the RHS to the PARSED name, not the crap octet
+	 *	string which was input.
 	 */
-	map->rhs = vpt = talloc_zero(map, value_pair_tmpl_t);
+	map->rhs = tmpl_alloc(map, TMPL_TYPE_DATA, NULL, 0);
 	if (!map->rhs) goto free_vp;
 
-	vpt->type = TMPL_TYPE_DATA;
-	vpt->tmpl_data_type = da->type;
-	vpt->tmpl_data_len = vp->length;
-	vpt->tmpl_data = data = talloc(vpt, value_data_t);
-
-	if (!vpt->tmpl_data) goto free_vp;
-
+	map->rhs->tmpl_data_type = da->type;
+	map->rhs->tmpl_data_length = vp->length;
+	map->rhs->tmpl_data_value = data = talloc(map->rhs, value_data_t);
+	if (!map->rhs->tmpl_data_value) goto free_vp;
 	if (vp->da->flags.is_pointer) {
-		data->ptr = talloc_memdup(vpt, vp->data.ptr, vp->length);
+		data->ptr = talloc_memdup(map->rhs, vp->data.ptr, vp->length);
 	} else {
 		memcpy(data, &vp->data, sizeof(*data));
 	}
-
-	/*
-	 *	Set the RHS to the PARSED name, not the crap
-	 *	octet string which was input.
-	 */
-	vpt->name = vp_aprint_value(vpt, vp, true);
+	map->rhs->name = vp_aprint_value(map->rhs, vp, true);
 
 	/*
 	 *	Set the LHS to the REAL attribute name.
 	 */
-	memcpy(&ptr, &map->lhs->name, sizeof(ptr));
-	talloc_free(ptr);
-	map->lhs->tmpl_da = da;
-	map->lhs->name = talloc_typed_strdup(map->lhs, map->lhs->tmpl_da->name);
+	vpt = tmpl_alloc(map, TMPL_TYPE_ATTR, map->lhs->tmpl_da->name, -1);
+	memcpy(&vpt->data.attribute, &map->lhs->data.attribute, sizeof(vpt->data.attribute));
+	vpt->tmpl_da = da;
+
+	talloc_free(map->lhs);
+	map->lhs = vpt;
 
 	pairfree(&vp);
 
@@ -291,8 +286,7 @@ value_pair_map_t *map_from_cp(TALLOC_CTX *ctx, CONF_PAIR *cp,
 
 		tmpl_free(&map->rhs);
 
-		map->rhs = talloc_zero(map, value_pair_tmpl_t);
-		map->rhs->type = TMPL_TYPE_NULL;
+		map->rhs = tmpl_alloc(map, TMPL_TYPE_NULL, NULL, 0);
 	}
 
 	/*
@@ -978,7 +972,8 @@ int map_to_vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *map, U
 		new = pairalloc(request, map->lhs->tmpl_da);
 		if (!new) return -1;
 
-		if (pairdatacpy(new, map->rhs->tmpl_data_type, map->rhs->tmpl_data, map->rhs->tmpl_data_len) < 0) goto error;
+		if (pairdatacpy(new, map->rhs->tmpl_data_type, map->rhs->tmpl_data_value,
+				map->rhs->tmpl_data_length) < 0) goto error;
 		new->op = map->op;
 		*out = new;
 		break;
