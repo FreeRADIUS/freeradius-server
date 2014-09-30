@@ -171,6 +171,12 @@ typedef struct value_pair_tmpl_t {
 #  define tmpl_preg		data.preg.comp
 #  define tmpl_iflag		data.preg.iflag
 #endif
+
+#ifndef WITH_VERIFY_PTR
+#  define VERIFY_TMPL(_x)
+#else
+#  define VERIFY_TMPL(_x) tmpl_verify(__FILE__,  __LINE__, _x)
+void tmpl_verify(char const *file, int line, value_pair_tmpl_t const *vpt);
 #endif
 
 /* Attribute qualifier parsing */

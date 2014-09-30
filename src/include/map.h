@@ -55,6 +55,15 @@ typedef struct value_pair_map {
 	struct value_pair_map	*next;	//!< The next valuepair map.
 } value_pair_map_t;
 
+#ifndef WITH_VERIFY_PTR
+#  define VERIFY_MAP(_x)
+#else
+#  define VERIFY_MAP(_x) do { \
+	VERIFY_TMPL((_x)->lhs); \
+	if ((_x)->rhs) VERIFY_TMPL((_x)->rhs); \
+} while (0)
+#endif
+
 typedef int (*radius_map_getvalue_t)(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *map, void *ctx);
 
 value_pair_map_t *map_from_cp(TALLOC_CTX *ctx, CONF_PAIR *cp,
