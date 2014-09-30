@@ -1021,9 +1021,9 @@ size_t tmpl_prints(char *buffer, size_t bufsize, value_pair_tmpl_t const *vpt, D
 		return (q - buffer);
 
 	case TMPL_TYPE_DATA:
-		if (vpt->tmpl_data) {
+		if (vpt->tmpl_data_value) {
 			return vp_data_prints_value(buffer, bufsize, vpt->tmpl_data_type,
-						    vpt->tmpl_data, vpt->tmpl_data_len, values, '\'');
+						    vpt->tmpl_data_value, vpt->tmpl_data_length, values, '\'');
 		} else {
 			*buffer = '\0';
 			return 0;
@@ -1187,12 +1187,13 @@ bool tmpl_cast_in_place(value_pair_tmpl_t *vpt, DICT_ATTR const *da)
 		pairfree(&vp);
 		return false;
 	}
+	memset(&vpt->data, 0, sizeof(vpt->data));
 
-	vpt->tmpl_data = data = talloc(vpt, value_data_t);
-	if (!vpt->tmpl_data) return false;
+	vpt->tmpl_data_value = data = talloc(vpt, value_data_t);
+	if (!vpt->tmpl_data_value) return false;
 
 	vpt->type = TMPL_TYPE_DATA;
-	vpt->tmpl_data_len = vp->length;
+	vpt->tmpl_data_length = vp->length;
 	vpt->tmpl_data_type = da->type;
 
 	if (vp->da->flags.is_pointer) {
@@ -1224,7 +1225,7 @@ int tmpl_cast_to_vp(VALUE_PAIR **out, REQUEST *request,
 	if (vpt->type == TMPL_TYPE_DATA) {
 		VERIFY_VP(vp);
 		rad_assert(vp->da->type == vpt->tmpl_data_type);
-		pairdatacpy(vp, vpt->tmpl_data_type, vpt->tmpl_data, vpt->tmpl_data_len);
+		pairdatacpy(vp, vpt->tmpl_data_type, vpt->tmpl_data_value, vpt->tmpl_data_length);
 		*out = vp;
 		return 0;
 	}

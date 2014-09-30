@@ -840,13 +840,14 @@ redo:
 		if ((g->vpt->type == TMPL_TYPE_XLAT_STRUCT) ||
 		    (g->vpt->type == TMPL_TYPE_XLAT) ||
 		    (g->vpt->type == TMPL_TYPE_EXEC)) {
-			char *buffer;
+			char *name;
 
-			vpt.type = TMPL_TYPE_LITERAL;
-			if (radius_expand_tmpl(&buffer, request, g->vpt) < 0) {
+			if (radius_expand_tmpl(&name, request, g->vpt) < 0) {
 				goto find_null_case;
 			}
-			vpt.name = buffer;
+			tmpl_init(&vpt, TMPL_TYPE_LITERAL, name, talloc_array_length(name) - 1);
+
+			talloc_free(name);
 		}
 
 		/*
@@ -1646,7 +1647,7 @@ static modcallable *do_compile_modupdate(modcallable *parent, UNUSED rlm_compone
 			    (cf_pair_value_type(cp) == T_SINGLE_QUOTED_STRING)) {
 				value_data_t *vpd;
 
-				map->rhs->tmpl_data = vpd = talloc_zero(map->rhs, value_data_t);
+				map->rhs->tmpl_data_value = vpd = talloc_zero(map->rhs, value_data_t);
 				rad_assert(vpd != NULL);
 
 				vpd->strvalue = talloc_typed_strdup(vpd, map->rhs->name);
@@ -1654,7 +1655,7 @@ static modcallable *do_compile_modupdate(modcallable *parent, UNUSED rlm_compone
 
 				map->rhs->type = TMPL_TYPE_DATA;
 				map->rhs->tmpl_data_type = map->lhs->tmpl_da->type;
-				map->rhs->tmpl_data_len = talloc_array_length(vpd->strvalue) - 1;
+				map->rhs->tmpl_data_length = talloc_array_length(vpd->strvalue) - 1;
 			} else {
 				if (!tmpl_cast_in_place(map->rhs, map->lhs->tmpl_da)) {
 					cf_log_err(map->ci, "%s", fr_strerror());

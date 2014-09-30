@@ -137,8 +137,9 @@ typedef struct value_pair_tmpl_t {
 		 */
 		struct {
 			PW_TYPE			type;			 //!< Type of data.
-			size_t			len;			 //!< of the vpd data.
-			value_data_t const	*value;			 //!< actual data.
+			size_t			length;			 //!< of the vpd data.
+			value_data_t const	*data;			 //!< actual data (allows reuse of
+									 //!< vp_<type> macros)
 		} literal;
 
 		xlat_exp_t	*xlat;	 //!< pre-parsed xlat_exp_t
@@ -152,22 +153,24 @@ typedef struct value_pair_tmpl_t {
 	} data;
 } value_pair_tmpl_t;
 
-#define tmpl_request	data.attribute.request
-#define tmpl_list	data.attribute.list
-#define tmpl_da		data.attribute.da
-#define tmpl_unknown	data.attribute.unknown
-#define tmpl_num	data.attribute.num
-#define tmpl_tag	data.attribute.tag
+#define tmpl_request		data.attribute.request
+#define tmpl_list		data.attribute.list
+#define tmpl_da			data.attribute.da
+#define tmpl_unknown		data.attribute.unknown
+#define tmpl_num		data.attribute.num
+#define tmpl_tag		data.attribute.tag
 
-#define tmpl_xlat	data.xlat
+#define tmpl_xlat		data.xlat
 
-#define tmpl_data_type	data.literal.type
-#define tmpl_data_len	data.literal.len
-#define tmpl_data	data.literal.value
+#define tmpl_data		data.literal
+#define tmpl_data_type		data.literal.type
+#define tmpl_data_length	data.literal.length
+#define tmpl_data_value		data.literal.data
 
 #ifdef HAVE_REGEX
-#  define tmpl_preg	data.preg.comp
-#  define tmpl_iflag	data.preg.iflag
+#  define tmpl_preg		data.preg.comp
+#  define tmpl_iflag		data.preg.iflag
+#endif
 #endif
 
 /* Attribute qualifier parsing */
