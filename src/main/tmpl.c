@@ -471,6 +471,10 @@ void tmpl_verify(char const *file, int line, value_pair_tmpl_t const *vpt)
 		}
 		break;
 
+	case TMPL_TYPE_ATTR_UNKNOWN:
+		rad_assert(vpt->tmpl_da == NULL);
+		break;
+
 	case TMPL_TYPE_ATTR:
 		if (CHECK_ZEROED(vpt->data.attribute)) {
 			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_ATTR "
@@ -481,7 +485,7 @@ void tmpl_verify(char const *file, int line, value_pair_tmpl_t const *vpt)
 		}
 
 		if (vpt->tmpl_da->flags.is_unknown) {
-			if (vpt->tmpl_da != (DICT_ATTR *)&vpt->data.attribute.unknown) {
+			if (vpt->tmpl_da != (DICT_ATTR *)&vpt->data.attribute.fugly.unknown) {
 				FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_ATTR "
 					     "da is marked as unknown, but does not point to the template's "
 					     "unknown da buffer", file, line);
@@ -694,10 +698,12 @@ value_pair_tmpl_t *tmpl_alloc(TALLOC_CTX *ctx, tmpl_type_t type, char const *nam
 int tmpl_from_attr_substr(value_pair_tmpl_t *vpt, char const **name, request_refs_t request_def, pair_lists_t list_def)
 {
 	int error = -1;
+	bool force_attr = false;
 	char const *p;
 	size_t len;
 	unsigned long num;
 	char *q;
+	tmpl_type_t type = TMPL_TYPE_ATTR;
 
 	value_pair_tmpl_attr_t attr;	/* So we don't fill the tmpl with junk and then error out */
 
@@ -706,6 +712,7 @@ int tmpl_from_attr_substr(value_pair_tmpl_t *vpt, char const **name, request_ref
 
 	p = *name;
 	if (*p == '&') {
+		force_attr = true;
 		p++;
 	}
 
@@ -729,20 +736,48 @@ int tmpl_from_attr_substr(value_pair_tmpl_t *vpt, char const **name, request_ref
 		goto finish;
 	}
 
-	attr.da = dict_attrbyname_substr(&p);
-	if (!attr.da) {
-		if (dict_unknown_from_substr((DICT_ATTR *)&attr.unknown, &p) < 0) return error;
-		attr.da = (DICT_ATTR *)&attr.unknown;
-	}
 	attr.tag = TAG_ANY;
 	attr.num = NUM_ANY;
 
-	while (*p) {
-		if (*p == ':') break;
-		if (*p == '[') break;
-		p++;
+	attr.da = dict_attrbyname_substr(&p);
+	if (!attr.da) {
+		/*
+		 *	Attr-1.2.3.4 is OK.
+		 */
+		if (dict_unknown_from_substr((DICT_ATTR *)&attr.fugly.unknown, &p) == 0) {
+			attr.da = (DICT_ATTR *)&attr.fugly.unknown;
+			goto skip_tag; /* unknown attributes can't have tags */
+		}
+
+		/*
+		 *	Can't parse it as an attribute, it must be a literal string.
+		 */
+		if (!force_attr) return error;
+
+		type = TMPL_TYPE_ATTR_UNKNOWN;
+
+		q = attr.fugly.name;
+
+		/*
+		 *	Copy the name to a field.
+		 */
+		while (*p) {
+			if (*p == '[') break;
+			*q++ = *p++;
+
+			if (q >= (attr.fugly.name + sizeof(attr.fugly.name) - 1)) {
+				fr_strerror_printf("Attribute name is too long");
+				return -1;
+			}
+		}
+
+		*q = '\0';
+		goto skip_tag;
 	}
 
+	/*
+	 *	The string MIGHT have a tag.
+	 */
 	if (*p == ':') {
 		if (!attr.da->flags.has_tag) {
 			fr_strerror_printf("Attribute '%s' cannot have a tag", attr.da->name);
@@ -759,14 +794,17 @@ int tmpl_from_attr_substr(value_pair_tmpl_t *vpt, char const **name, request_ref
 		p = q;
 	}
 
+skip_tag:
 	if (!*p) {
-		vpt->type = TMPL_TYPE_ATTR;
+		vpt->type = type;
 		goto finish;
 	}
+
 	if (*p != '[') {
-		fr_strerror_printf("Unexpected text after tag: %s", p);
+		fr_strerror_printf("Unexpected text after attribute name: %s", p);
 		return -1;
 	}
+
 	p++;
 
 	if (*p != '*') {
@@ -800,7 +838,7 @@ finish:
 	 */
 	memcpy(&vpt->data.attribute, &attr, sizeof(vpt->data.attribute));
 	if ((vpt->type == TMPL_TYPE_ATTR) && attr.da->flags.is_unknown) {
-		vpt->tmpl_da = (DICT_ATTR *)&vpt->data.attribute.unknown;
+		vpt->tmpl_da = (DICT_ATTR *)&vpt->data.attribute.fugly.unknown;
 	}
 
 	VERIFY_TMPL(vpt);
@@ -1025,6 +1063,41 @@ size_t tmpl_prints(char *buffer, size_t bufsize, value_pair_tmpl_t const *vpt, D
 
 		return (q - buffer);
 
+	case TMPL_TYPE_ATTR_UNKNOWN:
+		buffer[0] = '&';
+		if (vpt->tmpl_request == REQUEST_CURRENT) {
+			if (vpt->tmpl_list == PAIR_LIST_REQUEST) {
+				strlcpy(buffer + 1, vpt->tmpl_unknown_name, bufsize - 1);
+			} else {
+				snprintf(buffer + 1, bufsize - 1, "%s:%s",
+					 fr_int2str(pair_lists, vpt->tmpl_list, ""),
+					 vpt->tmpl_unknown_name);
+			}
+
+		} else {
+			snprintf(buffer + 1, bufsize - 1, "%s.%s:%s",
+				 fr_int2str(request_refs, vpt->tmpl_request, ""),
+				 fr_int2str(pair_lists, vpt->tmpl_list, ""),
+				 vpt->tmpl_unknown_name);
+		}
+
+		len = strlen(buffer);
+
+		if (vpt->tmpl_num == NUM_ANY) {
+			return len;
+		}
+
+		q = buffer + len;
+		bufsize -= len;
+
+		if (vpt->tmpl_num != NUM_ANY) {
+			snprintf(q, bufsize, "[%i]", vpt->tmpl_num);
+			len = strlen(q);
+			q += len;
+		}
+
+		return (q - buffer);
+
 	case TMPL_TYPE_DATA:
 		if (vpt->tmpl_data_value) {
 			return vp_data_prints_value(buffer, bufsize, vpt->tmpl_data_type,
@@ -1116,11 +1189,8 @@ value_pair_tmpl_t *tmpl_afrom_str(TALLOC_CTX *ctx, char const *name, FR_TOKEN ty
 		 *	Otherwise, treat it as a literal.
 		 */
 		vpt = tmpl_afrom_attr_str(ctx, name, request_def, list_def);
-		if (!vpt) {
-			if (*name == '&') return NULL;
-		} else {
-			break;
-		}
+		if (vpt) break;
+		if (*name == '&') return NULL;
 		/* FALL-THROUGH */
 
 	case T_SINGLE_QUOTED_STRING:

@@ -517,3 +517,18 @@ data ERROR offset 27 Failed to parse value for attribute
 #  This one is really unknown
 condition &Attr-26.24757.84.9.5.15 == 0x1a99
 data &Attr-26.24757.84.9.5.15 == 0x1a99
+
+#
+#  Invalid array references.
+#
+condition &User-Name[a] == 'bob'
+data ERROR offset 0 Syntax error
+
+condition &User-Name == &Filter-Id[a]
+data ERROR offset 14 Syntax error
+
+#
+#  This one is still wrong.
+#
+condition User-Name[a] == 'bob'
+data false

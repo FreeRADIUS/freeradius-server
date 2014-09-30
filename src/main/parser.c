@@ -472,32 +472,22 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 
 			c->data.vpt = tmpl_afrom_str(c, lhs, lhs_type, REQUEST_CURRENT, PAIR_LIST_REQUEST);
 			if (!c->data.vpt) {
-				/*
-				 *	If strings are T_BARE_WORD and they start with '&',
-				 *	then they refer to attributes which have not yet been
-				 *	defined.  Create the template(s) as literals, and
-				 *	fix them up in pass2.
-				 */
-				if ((*lhs != '&') ||
-				    (lhs_type != T_BARE_WORD)) {
-					return_P("Failed creating exists");
-				}
-				c->data.vpt = tmpl_afrom_str(c, lhs + 1, lhs_type, REQUEST_CURRENT, PAIR_LIST_REQUEST);
-				if (!c->data.vpt) {
-					return_P("Failed creating exists");
-				}
-				rad_const_free(c->data.vpt->name);
-				c->data.vpt->name = talloc_typed_strdup(c->data.vpt, lhs);
-				c->pass2_fixup = PASS2_FIXUP_ATTR;
+				return_P("Failed creating exists");
 			}
 
 			rad_assert(c->data.vpt->type != TMPL_TYPE_REGEX);
+
+			if (c->data.vpt->type == TMPL_TYPE_ATTR_UNKNOWN) {
+				c->pass2_fixup = PASS2_FIXUP_ATTR;
+			}
 
 		} else { /* it's an operator */
 			bool regex;
 #ifdef HAVE_REGEX
 			bool i_flag = false;
 #endif
+			value_pair_map_t *map;
+
 			/*
 			 *	The next thing should now be a comparison operator.
 			 */
@@ -640,28 +630,49 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 				return_P("Unexpected regular expression");
 			}
 
-			c->data.map = map_from_fields_unknown(c, lhs, lhs_type, op, rhs, rhs_type,
-							      REQUEST_CURRENT, PAIR_LIST_REQUEST,
-							      REQUEST_CURRENT, PAIR_LIST_REQUEST);
-			if (!c->data.map) {
-				/*
-				 *	If strings are T_BARE_WORD and they start with '&',
-				 *	then they refer to attributes which have not yet been
-				 *	defined.  Create the template(s) as literals, and
-				 *	fix them up in pass2.
-				 */
-				if ((*lhs != '&') ||
-				    (lhs_type != T_BARE_WORD)) {
-					return_0("Syntax error");
+			/*
+			 *	Duplicate map_from_fields here, as we
+			 *	want to separate parse errors in the
+			 *	LHS from ones in the RHS.
+			 */
+			c->data.map = map = talloc_zero(c, value_pair_map_t);
+
+			map->lhs = tmpl_afrom_str(map, lhs, lhs_type, REQUEST_CURRENT, PAIR_LIST_REQUEST);
+			if (!map->lhs) {
+			return_lhs:
+				*error = "Syntax error";
+				if (lhs) talloc_free(lhs);
+				if (rhs) talloc_free(rhs);
+				talloc_free(c);
+				return -(lhs_p - start);
+			}
+
+			if (!tmpl_define_unknown_attr(map->lhs)) {
+				return_lhs("Failed defining attribute");
+			}
+
+			map->op = op;
+
+			if ((map->lhs->type == TMPL_TYPE_ATTR) &&
+			    map->lhs->tmpl_da->flags.is_unknown &&
+			    map_cast_from_hex(map, rhs_type, rhs)) {
+				/* do nothing */
+			} else {
+				map->rhs = tmpl_afrom_str(map, rhs, rhs_type, REQUEST_CURRENT, PAIR_LIST_REQUEST);
+				if (!map->rhs) {
+					return_rhs("Syntax error");
 				}
-				c->data.map = map_from_fields(c, lhs, lhs_type + 1, op, rhs, rhs_type,
-							      REQUEST_CURRENT, PAIR_LIST_REQUEST,
-							      REQUEST_CURRENT, PAIR_LIST_REQUEST);
-				if (!c->data.map) {
-					return_0("Unknown attribute");
+
+				if (!tmpl_define_unknown_attr(map->rhs)) {
+					return_rhs("Failed defining attribute");
 				}
-				rad_const_free(c->data.map->lhs->name);
-				c->data.map->lhs->name = talloc_typed_strdup(c->data.map->lhs, lhs);
+			}
+
+			/*
+			 *	Unknown attributes get marked up for pass2.
+			 */
+			if ((c->data.map->lhs->type == TMPL_TYPE_ATTR_UNKNOWN) ||
+			    (c->data.map->rhs->type == TMPL_TYPE_ATTR_UNKNOWN)) {
 				c->pass2_fixup = PASS2_FIXUP_ATTR;
 			}
 
@@ -671,15 +682,6 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 #else
 				return_0("Server was built without support for regular expressions");
 #endif
-			}
-
-			/*
-			 *	Could have been a reference to an attribute which is registered later.
-			 *	Mark it as being checked in pass2.
-			 */
-			if ((lhs_type == T_BARE_WORD) &&
-			    (c->data.map->lhs->type == TMPL_TYPE_LITERAL)) {
-				c->pass2_fixup = PASS2_FIXUP_ATTR;
 			}
 
 			/*
@@ -1243,7 +1245,7 @@ done:
 				break;
 
 			default:
-				return_0("Internal sanity check failed");
+				return_0("Internal sanity check failed 1");
 			}
 
 			/*
@@ -1267,6 +1269,7 @@ done:
 		switch (c->data.vpt->type) {
 		case TMPL_TYPE_XLAT:
 		case TMPL_TYPE_ATTR:
+		case TMPL_TYPE_ATTR_UNKNOWN:
 		case TMPL_TYPE_LIST:
 		case TMPL_TYPE_EXEC:
 			break;
@@ -1365,7 +1368,7 @@ done:
 			return_0("Cannot use data here");
 
 		default:
-			return_0("Internal sanity check failed");
+			return_0("Internal sanity check failed 2");
 		}
 	}
 
