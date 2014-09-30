@@ -689,7 +689,7 @@ value_pair_tmpl_t *tmpl_alloc(TALLOC_CTX *ctx, tmpl_type_t type, char const *nam
  *	end of the attribute ref string on success.
  * @param[in] request_def The default request to insert unqualified attributes into.
  * @param[in] list_def The default list to insert unqualified attributes into.
- * @return -2 on partial parse error, -1 on other error, or 0 on success
+ * @return -1 on error, or 0 on success
  */
 int tmpl_from_attr_substr(value_pair_tmpl_t *vpt, char const **name, request_refs_t request_def, pair_lists_t list_def)
 {
@@ -706,7 +706,6 @@ int tmpl_from_attr_substr(value_pair_tmpl_t *vpt, char const **name, request_ref
 
 	p = *name;
 	if (*p == '&') {
-		error = -2;
 		p++;
 	}
 
@@ -738,11 +737,6 @@ int tmpl_from_attr_substr(value_pair_tmpl_t *vpt, char const **name, request_ref
 	attr.tag = TAG_ANY;
 	attr.num = NUM_ANY;
 
-	/*
-	 *	After this point, we return -2 to indicate that parts
-	 *	of the string were parsed as an attribute, but others
-	 *	weren't.
-	 */
 	while (*p) {
 		if (*p == ':') break;
 		if (*p == '[') break;
@@ -752,13 +746,13 @@ int tmpl_from_attr_substr(value_pair_tmpl_t *vpt, char const **name, request_ref
 	if (*p == ':') {
 		if (!attr.da->flags.has_tag) {
 			fr_strerror_printf("Attribute '%s' cannot have a tag", attr.da->name);
-			return -2;
+			return -1;
 		}
 
 		num = strtoul(p + 1, &q, 10);
 		if (num > 0x1f) {
 			fr_strerror_printf("Invalid tag value '%u' (should be between 0-31)", (unsigned int) num);
-			return -2;
+			return -1;
 		}
 
 		attr.tag = num;
@@ -771,7 +765,7 @@ int tmpl_from_attr_substr(value_pair_tmpl_t *vpt, char const **name, request_ref
 	}
 	if (*p != '[') {
 		fr_strerror_printf("Unexpected text after tag: %s", p);
-		return -2;
+		return -1;
 	}
 	p++;
 
@@ -779,7 +773,7 @@ int tmpl_from_attr_substr(value_pair_tmpl_t *vpt, char const **name, request_ref
 		num = strtoul(p, &q, 10);
 		if (num > 1000) {
 			fr_strerror_printf("Invalid array reference '%u' (should be between 0-1000)", (unsigned int) num);
-			return -2;
+			return -1;
 		}
 		attr.num = num;
 		p = q;
@@ -790,7 +784,7 @@ int tmpl_from_attr_substr(value_pair_tmpl_t *vpt, char const **name, request_ref
 
 	if ((*p != ']') || (p[1] != '\0')) {
 		fr_strerror_printf("Unexpected text after array: %s", p);
-		return -2;
+		return -1;
 	}
 	p++;
 	vpt->type = TMPL_TYPE_ATTR;
@@ -827,7 +821,7 @@ finish:
  * @param[in] name attribute name including qualifiers.
  * @param[in] request_def The default request to insert unqualified attributes into.
  * @param[in] list_def The default list to insert unqualified attributes into.
- * @return -2 on partial parse, -1 on other error, or 0 on success
+ * @return -1 on error, or 0 on success
  */
 int tmpl_from_attr_str(value_pair_tmpl_t *vpt, char const *name, request_refs_t request_def, pair_lists_t list_def)
 {
@@ -838,7 +832,7 @@ int tmpl_from_attr_str(value_pair_tmpl_t *vpt, char const *name, request_refs_t 
 	if (ret < 0) return ret;
 	if (*p != '\0') {
 		fr_strerror_printf("Trailing characters after attribute string: %s", p);
-		return -2;	/* Failed to parse entire string */
+		return -1;
 	}
 
 	VERIFY_TMPL(vpt);
