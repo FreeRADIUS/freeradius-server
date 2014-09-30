@@ -496,7 +496,7 @@ void tmpl_verify(char const *file, int line, value_pair_tmpl_t const *vpt)
 			if (da != vpt->tmpl_da) {
 				FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_ATTR "
 					     "da pointer and global dictionary pointer for attribute \"%s\" differ",
-					     vpt->tmpl_da->name, file, line);
+					     file, line, vpt->tmpl_da->name);
 				fr_assert(0);
 				fr_exit_now(1);
 			}
