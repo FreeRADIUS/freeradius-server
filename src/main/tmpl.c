@@ -1101,12 +1101,8 @@ size_t tmpl_prints(char *buffer, size_t bufsize, value_pair_tmpl_t const *vpt, D
 value_pair_tmpl_t *tmpl_afrom_str(TALLOC_CTX *ctx, char const *name, FR_TOKEN type,
 				  request_refs_t request_def, pair_lists_t list_def)
 {
-	int rcode;
 	char const *p;
 	value_pair_tmpl_t *vpt;
-
-	vpt = talloc_zero(ctx, value_pair_tmpl_t);
-	vpt->name = talloc_typed_strdup(vpt, name);
 
 	switch (type) {
 	case T_BARE_WORD:
@@ -1114,18 +1110,16 @@ value_pair_tmpl_t *tmpl_afrom_str(TALLOC_CTX *ctx, char const *name, FR_TOKEN ty
 		 *	If we can parse it as an attribute, it's an attribute.
 		 *	Otherwise, treat it as a literal.
 		 */
-		rcode = tmpl_from_attr_str(vpt, vpt->name, request_def, list_def);
-		if (rcode == -2) {
-			talloc_free(vpt);
-			return NULL;
-		}
-		if (rcode == 0) {
+		vpt = tmpl_afrom_attr_str(ctx, name, request_def, list_def);
+		if (!vpt) {
+			if (*name == '&') return NULL;
+		} else {
 			break;
 		}
 		/* FALL-THROUGH */
 
 	case T_SINGLE_QUOTED_STRING:
-		vpt->type = TMPL_TYPE_LITERAL;
+		vpt = tmpl_alloc(ctx, TMPL_TYPE_LITERAL, name, -1);
 		break;
 
 	case T_DOUBLE_QUOTED_STRING:
@@ -1149,18 +1143,18 @@ value_pair_tmpl_t *tmpl_afrom_str(TALLOC_CTX *ctx, char const *name, FR_TOKEN ty
 		 *	literal.
 		 */
 		if (*p) {
-			vpt->type = TMPL_TYPE_XLAT;
+			vpt = tmpl_alloc(ctx, TMPL_TYPE_XLAT, name, -1);
 		} else {
-			vpt->type = TMPL_TYPE_LITERAL;
+			vpt = tmpl_alloc(ctx, TMPL_TYPE_LITERAL, name, -1);
 		}
 		break;
 
 	case T_BACK_QUOTED_STRING:
-		vpt->type = TMPL_TYPE_EXEC;
+		vpt = tmpl_alloc(ctx, TMPL_TYPE_EXEC, name, -1);
 		break;
 
 	case T_OP_REG_EQ: /* hack */
-		vpt->type = TMPL_TYPE_REGEX;
+		vpt = tmpl_alloc(ctx, TMPL_TYPE_REGEX, name, -1);
 		break;
 
 	default:
