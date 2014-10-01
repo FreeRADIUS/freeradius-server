@@ -1631,6 +1631,15 @@ static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, pair_lists_t list, DI
 	if (vp) goto do_print;
 
 	/*
+	 *	We didn't find the VP in a list.  It MIGHT be a
+	 *	virtual one, in which case we do lots more checks
+	 *	below.  However, if we're looking for a normal
+	 *	attribute, it must exist, and therefore not finding it
+	 *	means we return NULL.
+	 */
+	if (!da->flags.virtual) return NULL;
+
+	/*
 	 *	Some non-packet expansions
 	 */
 	switch (da->attr) {

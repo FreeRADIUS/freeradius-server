@@ -1548,13 +1548,28 @@ static int process_attribute(char const* fn, int const line,
 					return -1;
 				}
 
-			} else if (strncmp(key, "concat", 6) == 0) {
+			} else if (strncmp(key, "concat", 7) == 0) {
 				flags.concat = 1;
 
 				if (type != PW_TYPE_OCTETS) {
-						fr_strerror_printf( "dict_init: %s[%d] Only \"octets\" type can have the \"concat\" flag set.",
+					fr_strerror_printf( "dict_init: %s[%d] Only \"octets\" type can have the \"concat\" flag set.",
 							    fn, line);
-						return -1;
+					return -1;
+				}
+
+			} else if (strncmp(key, "virtual", 8) == 0) {
+				flags.virtual = 1;
+
+				if (vendor != 0) {
+					fr_strerror_printf( "dict_init: %s[%d] VSAs cannot have the \"virtual\" flag set.",
+							    fn, line);
+					return -1;
+				}
+
+				if (value < 256) {
+					fr_strerror_printf( "dict_init: %s[%d] Standard attributes cannot have the \"virtual\" flag set.",
+							    fn, line);
+					return -1;
 				}
 
 				/*
