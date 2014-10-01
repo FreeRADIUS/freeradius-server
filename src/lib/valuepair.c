@@ -1373,30 +1373,33 @@ int pairparsevalue(VALUE_PAIR *vp, char const *value, size_t inlen)
 	{
 		char *p;
 		unsigned int i;
-		vp->length = 1;
 
 		/*
 		 *	Note that ALL integers are unsigned!
 		 */
 		i = fr_strtoul(value, &p);
-		vp->vp_byte = i;
-		if (!*p) {
-			if (i > 255) {
-				fr_strerror_printf("Byte value \"%s\" is larger than 255", value);
-				return -1;
-			}
-			break;
-		}
-		if (is_whitespace(p)) break;
+
 		/*
 		 *	Look for the named value for the given
 		 *	attribute.
 		 */
-		if ((dval = dict_valbyname(vp->da->attr, vp->da->vendor, value)) == NULL) {
-			fr_strerror_printf("Unknown value '%s' for attribute '%s'", value, vp->da->name);
-			return -1;
+		if (*p && !is_whitespace(p)) {
+			if ((dval = dict_valbyname(vp->da->attr, vp->da->vendor, value)) == NULL) {
+				fr_strerror_printf("Unknown value '%s' for attribute '%s'", value, vp->da->name);
+				return -1;
+			}
+
+			vp->vp_byte = dval->value;
+		} else {
+			if (i > 255) {
+				fr_strerror_printf("Byte value \"%s\" is larger than 255", value);
+				return -1;
+			}
+
+			vp->vp_byte = i;
 		}
-		vp->vp_byte = dval->value;
+
+		vp->length = 1;
 		break;
 	}
 
@@ -1409,49 +1412,60 @@ int pairparsevalue(VALUE_PAIR *vp, char const *value, size_t inlen)
 		 *	Note that ALL integers are unsigned!
 		 */
 		i = fr_strtoul(value, &p);
-		vp->vp_short = i;
-		vp->length = 2;
-		if (!*p) {
-			if (i > 65535) {
-				fr_strerror_printf("Byte value \"%s\" is larger than 65535", value);
-				return -1;
-			}
-			break;
-		}
-		if (is_whitespace(p)) break;
+
 		/*
 		 *	Look for the named value for the given
 		 *	attribute.
 		 */
-		if ((dval = dict_valbyname(vp->da->attr, vp->da->vendor, value)) == NULL) {
-			fr_strerror_printf("Unknown value '%s' for attribute '%s'", value, vp->da->name);
-			return -1;
+		if (*p && !is_whitespace(p)) {
+			if ((dval = dict_valbyname(vp->da->attr, vp->da->vendor, value)) == NULL) {
+				fr_strerror_printf("Unknown value '%s' for attribute '%s'", value, vp->da->name);
+				return -1;
+			}
+
+			vp->vp_short = dval->value;
+		} else {
+			if (i > 65535) {
+				fr_strerror_printf("Short value \"%s\" is larger than 65535", value);
+				return -1;
+			}
+
+			vp->vp_short = i;
 		}
-		vp->vp_short = dval->value;
+
+		vp->length = 2;
 		break;
 	}
 
 	case PW_TYPE_INTEGER:
 	{
 		char *p;
+		unsigned int i;
 
 		/*
 		 *	Note that ALL integers are unsigned!
 		 */
-		vp->vp_integer = fr_strtoul(value, &p);
-		vp->length = 4;
-		if (!*p) break;
-		if (is_whitespace(p)) break;
+		i = fr_strtoul(value, &p);
 
 		/*
 		 *	Look for the named value for the given
 		 *	attribute.
 		 */
-		if ((dval = dict_valbyname(vp->da->attr, vp->da->vendor, value)) == NULL) {
-			fr_strerror_printf("Unknown value '%s' for attribute '%s'", value, vp->da->name);
-			return -1;
+		if (*p && !is_whitespace(p)) {
+			if ((dval = dict_valbyname(vp->da->attr, vp->da->vendor, value)) == NULL) {
+				fr_strerror_printf("Unknown value '%s' for attribute '%s'", value, vp->da->name);
+				return -1;
+			}
+
+			vp->vp_integer = dval->value;
+		} else {
+			/*
+			 *	Value is always within the limits
+			 */
+			vp->vp_integer = i;
 		}
-		vp->vp_integer = dval->value;
+
+		vp->length = 4;
 	}
 		break;
 

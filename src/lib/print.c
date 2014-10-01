@@ -315,6 +315,7 @@ size_t vp_data_prints_value(char *out, size_t outlen,
 	char const	*a = NULL;
 	time_t		t;
 	struct tm	s_tm;
+	unsigned int	i;
 
 	size_t		len = 0, freespace = outlen;
 
@@ -368,15 +369,17 @@ size_t vp_data_prints_value(char *out, size_t outlen,
 		return fr_print_string(data->strvalue, data_len, out, outlen);
 
 	case PW_TYPE_INTEGER:
-	case PW_TYPE_BYTE:
-	case PW_TYPE_SHORT:
-	{
-		unsigned int i = (type == PW_TYPE_INTEGER)
-					? data->integer
-					: ((type == PW_TYPE_SHORT)
-						? data->ushort
-						: data->byte);
+		i = data->integer;
+		goto print_int;
 
+	case PW_TYPE_SHORT:
+		i = data->ushort;
+		goto print_int;
+
+	case PW_TYPE_BYTE:
+		i = data->byte;
+
+print_int:
 		/* Normal, non-tagged attribute */
 		if (values && (v = dict_valbyattr(values->attr, values->vendor, i)) != NULL) {
 			a = v->name;
@@ -387,7 +390,6 @@ size_t vp_data_prints_value(char *out, size_t outlen,
 			a = buf;
 		}
 		break;
-	}
 
 	case PW_TYPE_INTEGER64:
 		return snprintf(out, outlen, "%" PRIu64, data->integer64);
@@ -601,11 +603,19 @@ size_t vp_prints_value_json(char *out, size_t outlen, VALUE_PAIR const *vp)
 	if (!vp->da->flags.has_tag) {
 		switch (vp->da->type) {
 		case PW_TYPE_INTEGER:
-		case PW_TYPE_BYTE:
-		case PW_TYPE_SHORT:
 			if (vp->da->flags.has_value) break;
 
 			return snprintf(out, freespace, "%u", vp->vp_integer);
+
+		case PW_TYPE_SHORT:
+			if (vp->da->flags.has_value) break;
+
+			return snprintf(out, freespace, "%u", (unsigned int) vp->vp_short);
+
+		case PW_TYPE_BYTE:
+			if (vp->da->flags.has_value) break;
+
+			return snprintf(out, freespace, "%u", (unsigned int) vp->vp_byte);
 
 		case PW_TYPE_SIGNED:
 			return snprintf(out, freespace, "%d", vp->vp_signed);
@@ -845,6 +855,8 @@ void vp_printlist(FILE *fp, VALUE_PAIR const *vp)
 char *vp_aprint_value(TALLOC_CTX *ctx, VALUE_PAIR const *vp, bool escape)
 {
 	char *p;
+	unsigned int i;
+	DICT_VALUE const *dv;
 
 	switch (vp->da->type) {
 	case PW_TYPE_STRING:
@@ -871,19 +883,23 @@ char *vp_aprint_value(TALLOC_CTX *ctx, VALUE_PAIR const *vp, bool escape)
 		break;
 	}
 
-	case PW_TYPE_BYTE:
-	case PW_TYPE_SHORT:
 	case PW_TYPE_INTEGER:
-		{
-			DICT_VALUE *dv;
+		i = vp->vp_integer;
+		goto print_int;
 
-			dv = dict_valbyattr(vp->da->attr, vp->da->vendor,
-					    vp->vp_integer);
-			if (dv) {
-				p = talloc_typed_strdup(ctx, dv->name);
-			} else {
-				p = talloc_typed_asprintf(ctx, "%u", vp->vp_integer);
-			}
+	case PW_TYPE_SHORT:
+		i = vp->vp_short;
+		goto print_int;
+
+	case PW_TYPE_BYTE:
+		i = vp->vp_byte;
+
+	print_int:
+		dv = dict_valbyattr(vp->da->attr, vp->da->vendor, i);
+		if (dv) {
+			p = talloc_typed_strdup(ctx, dv->name);
+		} else {
+			p = talloc_typed_asprintf(ctx, "%u", i);
 		}
 		break;
 

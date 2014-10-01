@@ -293,22 +293,33 @@ json_object *mod_value_pair_to_json_object(REQUEST *request, VALUE_PAIR *vp)
 
 	/* add this attribute/value pair to our json output */
 	if (!vp->da->flags.has_tag) {
+		unsigned int i;
+
 		switch (vp->da->type) {
 		case PW_TYPE_INTEGER:
-		case PW_TYPE_BYTE:
+			i = vp->vp_integer;
+			goto print_int;
+
 		case PW_TYPE_SHORT:
+			i = vp->vp_short;
+			goto print_int;
+
+		case PW_TYPE_BYTE:
+			i = vp->vp_byte;
+
+		print_int:
 			/* skip if we have flags */
 			if (vp->da->flags.has_value) break;
 #ifdef HAVE_JSON_OBJECT_NEW_INT64
 			/* debug */
 			RDEBUG3("creating new int64 for unsigned 32 bit int/byte/short '%s'", vp->da->name);
 			/* return as 64 bit int - JSON spec does not support unsigned ints */
-			return json_object_new_int64(vp->vp_integer);
+			return json_object_new_int64(i);
 #else
 			/* debug */
 			RDEBUG3("creating new int for unsigned 32 bit int/byte/short '%s'", vp->da->name);
 			/* return as 64 bit int - JSON spec does not support unsigned ints */
-			return json_object_new_int(vp->vp_integer);
+			return json_object_new_int(i);
 #endif
 		break;
 		case PW_TYPE_SIGNED:
