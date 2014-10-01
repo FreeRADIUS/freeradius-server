@@ -171,9 +171,11 @@ static ssize_t xlat_integer(UNUSED void *instance, REQUEST *request,
 
 	case PW_TYPE_INTEGER:
 	case PW_TYPE_DATE:
-	case PW_TYPE_BYTE:
-	case PW_TYPE_SHORT:
 		return snprintf(out, outlen, "%u", vp->vp_integer);
+	case PW_TYPE_BYTE:
+		return snprintf(out, outlen, "%hhu", vp->vp_byte);
+	case PW_TYPE_SHORT:
+		return snprintf(out, outlen, "%hu", vp->vp_short);
 
 	/*
 	 *	Ethernet is weird... It's network related, so we assume to it should be

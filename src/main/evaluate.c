@@ -448,11 +448,11 @@ static int do_cast_copy(VALUE_PAIR *dst, VALUE_PAIR const *src)
 			break;
 
 		case PW_TYPE_SHORT:
-			dst->vp_integer = ntohs(*(uint16_t const *) src->vp_octets);
+			dst->vp_short = ntohs(*(uint16_t const *) src->vp_octets);
 			break;
 
 		case PW_TYPE_BYTE:
-			dst->vp_integer = src->vp_octets[0];
+			dst->vp_byte = src->vp_octets[0];
 			break;
 
 		default:
