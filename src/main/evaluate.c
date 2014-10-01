@@ -438,7 +438,7 @@ static int do_cast_copy(VALUE_PAIR *dst, VALUE_PAIR const *src)
 	do_octets:
 		switch (dst->da->type) {
 		case PW_TYPE_INTEGER64:
-			dst->vp_integer = ntohll(*(uint64_t const *) src->vp_octets);
+			dst->vp_integer64 = ntohll(*(uint64_t const *) src->vp_octets);
 			break;
 
 		case PW_TYPE_INTEGER:
@@ -448,11 +448,11 @@ static int do_cast_copy(VALUE_PAIR *dst, VALUE_PAIR const *src)
 			break;
 
 		case PW_TYPE_SHORT:
-			dst->vp_integer = ntohs(*(uint16_t const *) src->vp_octets);
+			dst->vp_short = ntohs(*(uint16_t const *) src->vp_octets);
 			break;
 
 		case PW_TYPE_BYTE:
-			dst->vp_integer = src->vp_octets[0];
+			dst->vp_byte = src->vp_octets[0];
 			break;
 
 		default:

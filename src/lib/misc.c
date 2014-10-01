@@ -1351,6 +1351,13 @@ size_t fr_prints_uint128(char *out, size_t outlen, uint128_t const num)
 	uint64_t n[2];
 	char *p = buff;
 	int i;
+#ifdef RADIUS_LITTLE_ENDIAN
+	const size_t l = 0;
+	const size_t h = 1;
+#else
+	const size_t l = 1;
+	const size_t h = 0;
+#endif
 
 	memset(buff, '0', sizeof(buff) - 1);
 	buff[sizeof(buff) - 1] = '\0';
@@ -1361,11 +1368,11 @@ size_t fr_prints_uint128(char *out, size_t outlen, uint128_t const num)
 		ssize_t j;
 		int carry;
 
-		carry = (n[1] >= 0x8000000000000000);
+		carry = (n[h] >= 0x8000000000000000);
 
 		// Shift n[] left, doubling it
-		n[1] = ((n[1] << 1) & 0xffffffffffffffff) + (n[0] >= 0x8000000000000000);
-		n[0] = ((n[0] << 1) & 0xffffffffffffffff);
+		n[h] = ((n[h] << 1) & 0xffffffffffffffff) + (n[l] >= 0x8000000000000000);
+		n[l] = ((n[l] << 1) & 0xffffffffffffffff);
 
 		// Add s[] to itself in decimal, doubling it
 		for (j = sizeof(buff) - 2; j >= 0; j--) {
