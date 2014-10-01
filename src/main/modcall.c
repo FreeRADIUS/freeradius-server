@@ -2818,6 +2818,15 @@ static bool pass2_xlat_compile(CONF_ITEM const *ci, value_pair_tmpl_t **pvpt, bo
 		attr = radius_xlat2tmpl(talloc_parent(vpt), head);
 		if (attr) {
 			/*
+			 *	If it's a virtual attribute, leave it
+			 *	alone.
+			 */
+			if (attr->tmpl_da->flags.virtual) {
+				talloc_free(attr);
+				return true;
+			}
+
+			/*
 			 *	If the attribute is of incompatible
 			 *	type, leave it alone.
 			 */
