@@ -276,9 +276,9 @@ void version(void)
 	DEBUG3("  0x%llx", (unsigned long long) libmagic);
 
 	DEBUG3("Endianess:");
-#if defined(LITTLE_ENDIAN)
+#if defined(RADIUS_LITTLE_ENDIAN)
 	DEBUG3("  little");
-#elif defined(BIG_ENDIAN)
+#elif defined(RADIUS_BIG_ENDIAN)
 	DEBUG3("  big");
 #else
 	DEBUG3("  unknown");
