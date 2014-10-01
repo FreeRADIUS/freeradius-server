@@ -3,10 +3,6 @@
 /* Define if building universal (internal helper macro) */
 #undef AC_APPLE_UNIVERSAL_BUILD
 
-/* Define if your processor stores words with the most significant byte first
-   */
-#undef BIG_ENDIAN
-
 /* BSD-Style get*byaddr_r */
 #undef BSDSTYLE
 
@@ -443,10 +439,6 @@
 /* compiler specific 128 bit unsigned integer */
 #undef HAVE___UINT128_T
 
-/* Define if your processor stores words with the least significant byte first
-   */
-#undef LITTLE_ENDIAN
-
 /* define if you have OSFC2 authentication */
 #undef OSFC2
 
@@ -482,6 +474,14 @@
 
 /* Raw version string from VERSION file */
 #undef RADIUSD_VERSION_STRING
+
+/* Define if your processor stores words with the most significant byte first
+   */
+#undef RADIUS_BIG_ENDIAN
+
+/* Define if your processor stores words with the least significant byte first
+   */
+#undef RADIUS_LITTLE_ENDIAN
 
 /* Define as the return type of signal handlers (`int' or `void'). */
 #undef RETSIGTYPE
