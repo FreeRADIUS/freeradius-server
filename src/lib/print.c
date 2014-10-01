@@ -127,9 +127,10 @@ int fr_utf8_char(uint8_t const *str)
  * @param[in] inlen length of string to escape (lets us deal with embedded NULLs)
  * @param[out] out where to write the escaped string.
  * @param[out] outlen the length of the buffer pointed to by out.
+ * @param[in] quote the quotation character
  * @return the number of bytes written to the out buffer, or a number > outlen if truncation has occurred.
  */
-size_t fr_print_string(char const *in, size_t inlen, char *out, size_t outlen)
+size_t fr_print_string(char const *in, size_t inlen, char *out, size_t outlen, UNUSED char quote)
 {
 	uint8_t const	*p = (uint8_t const *) in;
 	int		sp = 0;
@@ -244,9 +245,10 @@ finish:
  *
  * @param in string to calculate the escaped length for.
  * @param inlen length of the input string, if 0 strlen will be used to check the length.
+ * @param[in] quote the quotation character
  * @return the size of buffer required to hold the escaped string excluding the NULL byte.
  */
-size_t fr_print_string_len(char const *in, size_t inlen)
+size_t fr_print_string_len(char const *in, size_t inlen, UNUSED char quote)
 {
 	uint8_t const	*p = (uint8_t const *) in;
 	size_t		outlen = 0;
@@ -328,8 +330,11 @@ size_t vp_data_prints_value(char *out, size_t outlen,
 
 	switch (type) {
 	case PW_TYPE_STRING:
-		/* need to copy the escaped value, but quoted */
-		if (quote > 0) {
+
+		/*
+		 *	Ensure that WE add the quotation marks around the string.
+		 */
+		if (quote) {
 			if (freespace < 3) {
 				return data_len + 2;
 			}
@@ -337,7 +342,7 @@ size_t vp_data_prints_value(char *out, size_t outlen,
 			*out++ = (char) quote;
 			freespace--;
 
-			len = fr_print_string(data->strvalue, data_len, out, freespace);
+			len = fr_print_string(data->strvalue, data_len, out, freespace, quote);
 			/* always terminate the quoted string with another quote */
 			if (len >= (freespace - 1)) {
 				out[outlen - 2] = (char) quote;
@@ -354,19 +359,7 @@ size_t vp_data_prints_value(char *out, size_t outlen,
 			return len + 2;
 		}
 
-		/* xlat.c - need to copy raw value verbatim */
-		else if (quote < 0) {
-			if (outlen > data_len) {
-				memcpy(out, data->strvalue, data_len + 1);
-				return data_len;
-			}
-
-			memcpy(out, data->strvalue, outlen);
-			out[outlen - 1] = '\0';
-			return data_len;	/* not a typo */
-		}
-
-		return fr_print_string(data->strvalue, data_len, out, outlen);
+		return fr_print_string(data->strvalue, data_len, out, outlen, quote);
 
 	case PW_TYPE_INTEGER:
 		i = data->integer;
@@ -849,10 +842,10 @@ void vp_printlist(FILE *fp, VALUE_PAIR const *vp)
  *
  * @param ctx to allocate string in.
  * @param vp to print.
- * @param escape PW_TYPE_STRING attribute values.
+ * @param[in] quote the quotation character
  * @return a talloced buffer with the attribute operator and value.
  */
-char *vp_aprint_value(TALLOC_CTX *ctx, VALUE_PAIR const *vp, bool escape)
+char *vp_aprint_value(TALLOC_CTX *ctx, VALUE_PAIR const *vp, char quote)
 {
 	char *p;
 	unsigned int i;
@@ -863,7 +856,7 @@ char *vp_aprint_value(TALLOC_CTX *ctx, VALUE_PAIR const *vp, bool escape)
 	{
 		size_t len, ret;
 
-		if (!escape) {
+		if (!quote) {
 			p = talloc_memdup(ctx, vp->vp_strvalue, vp->length + 1);
 			if (!p) return NULL;
 			talloc_set_type(p, char);
@@ -871,11 +864,11 @@ char *vp_aprint_value(TALLOC_CTX *ctx, VALUE_PAIR const *vp, bool escape)
 		}
 
 		/* Gets us the size of the buffer we need to alloc */
-		len = fr_print_string_len(vp->vp_strvalue, vp->length);
+		len = fr_print_string_len(vp->vp_strvalue, vp->length, quote);
 		p = talloc_array(ctx, char, len + 1); 	/* +1 for '\0' */
 		if (!p) return NULL;
 
-		ret = fr_print_string(vp->vp_strvalue, vp->length, p, len + 1);
+		ret = fr_print_string(vp->vp_strvalue, vp->length, p, len + 1, quote);
 		if (!fr_assert(ret == len)) {
 			talloc_free(p);
 			return NULL;
@@ -1004,10 +997,10 @@ char *vp_aprint_value(TALLOC_CTX *ctx, VALUE_PAIR const *vp, bool escape)
  *
  * @param ctx to allocate string in.
  * @param vp to print.
- * @param escape PW_TYPE_STRING attribute values.
+ * @param[in] quote the quotation character
  * @return a talloced buffer with the attribute operator and value.
  */
-char *vp_aprint(TALLOC_CTX *ctx, VALUE_PAIR const *vp, bool escape)
+char *vp_aprint(TALLOC_CTX *ctx, VALUE_PAIR const *vp, char quote)
 {
 	char const	*token = NULL;
 	char 		*str, *value;
@@ -1022,17 +1015,17 @@ char *vp_aprint(TALLOC_CTX *ctx, VALUE_PAIR const *vp, bool escape)
 		token = "<INVALID-TOKEN>";
 	}
 
-	value = vp_aprint_value(ctx, vp, escape);
+	value = vp_aprint_value(ctx, vp, quote);
 
 	if (vp->da->flags.has_tag) {
-		if (escape && (vp->da->type == PW_TYPE_STRING)) {
-			str = talloc_asprintf(ctx, "%s:%d %s \"%s\"", vp->da->name, vp->tag, token, value);
+		if (quote && (vp->da->type == PW_TYPE_STRING)) {
+			str = talloc_asprintf(ctx, "%s:%d %s %c%s%c", vp->da->name, vp->tag, token, quote, value, quote);
 		} else {
 			str = talloc_asprintf(ctx, "%s:%d %s %s", vp->da->name, vp->tag, token, value);
 		}
 	} else {
-		if (escape && (vp->da->type == PW_TYPE_STRING)) {
-			str = talloc_asprintf(ctx, "%s %s \"%s\"", vp->da->name, token, value);
+		if (quote && (vp->da->type == PW_TYPE_STRING)) {
+			str = talloc_asprintf(ctx, "%s %s %c%s%c", vp->da->name, token, quote, value, quote);
 		} else {
 			str = talloc_asprintf(ctx, "%s %s %s", vp->da->name, token, value);
 		}

@@ -102,7 +102,7 @@ static int rad_authlog(char const *msg, REQUEST *request, int goodpass)
 	} else {
 		fr_print_string(username->vp_strvalue,
 				username->length,
-				clean_username, sizeof(clean_username));
+				clean_username, sizeof(clean_username), '\0');
 	}
 
 	/*
@@ -126,7 +126,7 @@ static int rad_authlog(char const *msg, REQUEST *request, int goodpass)
 		} else {
 			fr_print_string(request->password->vp_strvalue,
 					 request->password->length,
-					 clean_password, sizeof(clean_password));
+					clean_password, sizeof(clean_password), '\0');
 		}
 	}
 

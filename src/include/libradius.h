@@ -422,8 +422,8 @@ int		fr_check_lib_magic(uint64_t magic);
  */
 int		fr_utf8_char(uint8_t const *str);
 size_t		fr_print_string(char const *in, size_t inlen,
-				 char *out, size_t outlen);
-size_t		fr_print_string_len(char const *in, size_t inlen);
+				char *out, size_t outlen, char quote);
+	size_t		fr_print_string_len(char const *in, size_t inlen, char quote);
 
 #define		is_truncated(_ret, _max) ((_ret) >= (_max))
 #define		truncate_len(_ret, _max) (((_ret) >= (_max)) ? ((_max) - 1) : _ret)
@@ -436,8 +436,8 @@ size_t		vp_prints(char *out, size_t outlen, VALUE_PAIR const *vp);
 void		vp_print(FILE *, VALUE_PAIR const *);
 void		vp_printlist(FILE *, VALUE_PAIR const *);
 char		*vp_aprint_type(TALLOC_CTX *ctx, PW_TYPE type);
-char     	*vp_aprint_value(TALLOC_CTX *ctx, VALUE_PAIR const *vp, bool escape);
-char		*vp_aprint(TALLOC_CTX *ctx, VALUE_PAIR const *vp, bool escape);
+char     	*vp_aprint_value(TALLOC_CTX *ctx, VALUE_PAIR const *vp, char quote);
+char		*vp_aprint(TALLOC_CTX *ctx, VALUE_PAIR const *vp, char quote);
 #define		fprint_attr_val vp_print
 
 /*

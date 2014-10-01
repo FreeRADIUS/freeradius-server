@@ -465,7 +465,7 @@ void pairvalidate_debug(TALLOC_CTX *ctx, VALUE_PAIR const *failed[2])
 	VALUE_PAIR const *filter = failed[0];
 	VALUE_PAIR const *list = failed[1];
 
-	char *value, *pair;
+	char *value, *str;
 
 	(void) fr_strerror();	/* Clear any existing messages */
 
@@ -488,12 +488,12 @@ void pairvalidate_debug(TALLOC_CTX *ctx, VALUE_PAIR const *failed[2])
 		return;
 	}
 
-	pair = vp_aprint(ctx, filter, true);
-	value = vp_aprint_value(ctx, list, true);
+	str = vp_aprint(ctx, filter, '"');
+	value = vp_aprint_value(ctx, list, '"');
 
-	fr_strerror_printf("Attribute value \"%s\" didn't match filter \"%s\"", value, pair);
+	fr_strerror_printf("Attribute value \"%s\" didn't match filter \"%s\"", value, str);
 
-	talloc_free(pair);
+	talloc_free(str);
 	talloc_free(value);
 
 	return;
