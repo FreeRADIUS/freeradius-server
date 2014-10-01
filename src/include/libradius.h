@@ -182,6 +182,8 @@ typedef struct attr_flags {
 	unsigned int	concat : 1;				//!< concatenate multiple instances
 	unsigned int	is_pointer : 1;				//!< data is a pointer
 
+	unsigned int	virtual : 1;				//!< for dynamic expansion
+
 	uint8_t		encrypt;      				//!< Ecryption method.
 	uint8_t		length;
 } ATTR_FLAGS;
