@@ -130,7 +130,7 @@ int fr_utf8_char(uint8_t const *str)
  * @param[in] quote the quotation character
  * @return the number of bytes written to the out buffer, or a number > outlen if truncation has occurred.
  */
-size_t fr_print_string(char const *in, size_t inlen, char *out, size_t outlen, UNUSED char quote)
+size_t fr_print_string(char const *in, size_t inlen, char *out, size_t outlen, char quote)
 {
 	uint8_t const	*p = (uint8_t const *) in;
 	int		sp = 0;
@@ -173,6 +173,11 @@ size_t fr_print_string(char const *in, size_t inlen, char *out, size_t outlen, U
 			inlen--;
 			break;
 		}
+
+		if (quote && (*p == quote)) {
+			sp = quote;
+		} else		/* do the switch statement */
+
 		switch (*p) {
 		case '\\':
 			sp = '\\';
@@ -188,10 +193,6 @@ size_t fr_print_string(char const *in, size_t inlen, char *out, size_t outlen, U
 
 		case '\t':
 			sp = 't';
-			break;
-
-		case '"':
-			sp = '"';
 			break;
 
 		default:
@@ -248,7 +249,7 @@ finish:
  * @param[in] quote the quotation character
  * @return the size of buffer required to hold the escaped string excluding the NULL byte.
  */
-size_t fr_print_string_len(char const *in, size_t inlen, UNUSED char quote)
+size_t fr_print_string_len(char const *in, size_t inlen, char quote)
 {
 	uint8_t const	*p = (uint8_t const *) in;
 	size_t		outlen = 0;
@@ -272,12 +273,18 @@ size_t fr_print_string_len(char const *in, size_t inlen, UNUSED char quote)
 			break;
 		}
 
+		if (quote && (*p == quote)) {
+			outlen += 2;
+			p++;
+			inlen--;
+			continue;
+		} else
+
 		switch (*p) {
 		case '\\':
 		case '\r':
 		case '\n':
 		case '\t':
-		case '"':
 			outlen += 2;
 			p++;
 			inlen--;
@@ -310,7 +317,7 @@ size_t fr_print_string_len(char const *in, size_t inlen, UNUSED char quote)
  */
 size_t vp_data_prints_value(char *out, size_t outlen,
 			    PW_TYPE type, value_data_t const *data, size_t data_len,
-			    DICT_ATTR const *values, int8_t quote)
+			    DICT_ATTR const *values, char quote)
 {
 	DICT_VALUE	*v;
 	char		buf[1024];	/* Interim buffer to use with poorly behaved printing functions */
@@ -339,7 +346,7 @@ size_t vp_data_prints_value(char *out, size_t outlen,
 				return data_len + 2;
 			}
 
-			*out++ = (char) quote;
+			*out++ = quote;
 			freespace--;
 
 			len = fr_print_string(data->strvalue, data_len, out, freespace, quote);
@@ -527,7 +534,7 @@ print_int:
  *	added.
  * @return the length of data written to out, or a value >= outlen on truncation.
  */
-size_t vp_prints_value(char *out, size_t outlen, VALUE_PAIR const *vp, int8_t quote)
+size_t vp_prints_value(char *out, size_t outlen, VALUE_PAIR const *vp, char quote)
 {
 	VERIFY_VP(vp);
 
