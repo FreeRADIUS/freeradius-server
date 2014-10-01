@@ -1,0 +1,39 @@
+#
+#  PRE: update switch
+#
+
+#
+#  This is a virtual attribute.
+#  It is NOT optimized to
+#
+#	switch &Request-Processing-Stage
+#
+#  because it doesn't really exist.
+#  The xlat expansion code will take care of
+#  returning the string value of the "attribute"
+#
+switch "%{Request-Processing-Stage}" {
+	case authorize {
+		update reply {
+			Filter-Id := "filter"
+		}
+	}
+
+	case authenticate {
+		update reply {
+			Filter-Id := "authenticate"
+		}
+	}
+
+	case bob {
+		update reply {
+			Filter-Id := "bob"
+		}
+	}
+
+	case {
+		update reply {
+			Filter-Id := "default"
+		}
+	}
+}
