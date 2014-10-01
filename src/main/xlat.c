@@ -439,7 +439,7 @@ static ssize_t xlat_string(UNUSED void *instance, REQUEST *request,
 
 	switch (vp->da->type) {
 	case PW_TYPE_OCTETS:
-		len = fr_print_string((char const *) p, vp->length, out, outlen);
+		len = fr_print_string((char const *) p, vp->length, out, outlen, '\0');
 		break;
 
 	case PW_TYPE_STRING:
@@ -447,7 +447,7 @@ static ssize_t xlat_string(UNUSED void *instance, REQUEST *request,
 		break;
 
 	default:
-		len = fr_print_string((char const *) p, ret, out, outlen);
+		len = fr_print_string((char const *) p, ret, out, outlen, '\0');
 		break;
 	}
 
@@ -1823,10 +1823,10 @@ do_print:
 			vp = fr_cursor_next_by_da(&cursor, da, tag);
 			if (!vp) return NULL;
 
-			p = vp_aprint_value(ctx, vp, true);
+			p = vp_aprint_value(ctx, vp, '"');
 			if (!p) return NULL;
 			while ((vp = fr_cursor_next_by_da(&cursor, da, tag)) != NULL) {
-				q = vp_aprint_value(ctx, vp, true);
+				q = vp_aprint_value(ctx, vp, '"');
 				if (!q) return NULL;
 				p = talloc_strdup_append(p, ",");
 				p = talloc_strdup_append(p, q);
@@ -1850,7 +1850,7 @@ do_print:
 	}
 
 print:
-	ret = vp_aprint_value(ctx, vp, true);
+	ret = vp_aprint_value(ctx, vp, '"');
 
 finish:
 	talloc_free(myvp);

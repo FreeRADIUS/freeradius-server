@@ -1659,7 +1659,7 @@ malformed:
 	{
 		char escaped[1024];
 
-		fr_print_string((char *) in, t, escaped, sizeof(escaped));
+		fr_print_string((char *) in, t, escaped, sizeof(escaped), '\0');
 
 		REDEBUG("Received %zu bytes of response data: %s", t, escaped);
 		ctx->code = -1;

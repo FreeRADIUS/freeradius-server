@@ -138,7 +138,7 @@ int radius_expand_tmpl(char **out, REQUEST *request, value_pair_tmpl_t const *vp
 		ret = tmpl_find_vp(&vp, request, vpt);
 		if (ret < 0) return ret;
 
-		*out = vp_aprint_value(request, vp, false);
+		*out = vp_aprint_value(request, vp, '\0');
 		if (!*out) return -1;
 		break;
 
@@ -317,8 +317,8 @@ static int do_cast_copy(VALUE_PAIR *dst, VALUE_PAIR const *src)
 	rad_assert(dst->da->type != src->da->type);
 
 	if (dst->da->type == PW_TYPE_STRING) {
-		dst->vp_strvalue = vp_aprint_value(dst, src, false);
-		dst->length = strlen(dst->vp_strvalue);
+		dst->vp_strvalue = vp_aprint_value(dst, src, '\0');
+		dst->length = strlen(dst->vp_strvalue); /* FIXME: talloc_array_length? */
 		return 0;
 	}
 
