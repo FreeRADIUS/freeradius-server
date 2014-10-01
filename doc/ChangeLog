@@ -28,6 +28,9 @@ FreeRADIUS 3.0.5 Mon 15 Sep 2014 15:30:00 EDT urgency=medium
 	* Use correct array size for MS-CHAP new password.
 	* In rlm_rest, check for older versions of libraries at start
 	  time, rather than when a packet comes in.
+	* Don't call detach on parse error in rlm_perl.  Closes #802.
+	* Integer fixes for big-endian systems.  Closes #803.
+	* Don't optimize %{Packet-Src-IP-Address}.  Closes #804.
 
 FreeRADIUS 3.0.4 Wed 10 Sep 2014 12:00:00 EDT urgency=medium
 	Feature improvements
