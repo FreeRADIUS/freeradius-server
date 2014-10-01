@@ -325,12 +325,12 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, REQUEST *fake, SSL *ssl,
 
 		case PW_TYPE_BYTE:
 			if (size != vp->length) goto raw;
-			vp->vp_integer = data[0];
+			vp->vp_byte = data[0];
 			break;
 
 		case PW_TYPE_SHORT:
 			if (size != vp->length) goto raw;
-			vp->vp_integer = (data[0] * 256) + data[1];
+			vp->vp_short = (data[0] * 256) + data[1];
 			break;
 
 		case PW_TYPE_SIGNED:

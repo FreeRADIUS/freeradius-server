@@ -188,7 +188,11 @@ int radius_compare_vps(UNUSED REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *v
 			break;
 
 		case PW_TYPE_BYTE:
+			ret = vp->vp_byte - check->vp_byte;
+			break;
 		case PW_TYPE_SHORT:
+			ret = vp->vp_short - check->vp_short;
+			break;
 		case PW_TYPE_INTEGER:
 			ret = vp->vp_integer - check->vp_integer;
 			break;

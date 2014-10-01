@@ -370,16 +370,24 @@ size_t vp_data_prints_value(char *out, size_t outlen,
 	case PW_TYPE_INTEGER:
 	case PW_TYPE_BYTE:
 	case PW_TYPE_SHORT:
+	{
+		unsigned int i = (type == PW_TYPE_INTEGER)
+					? data->integer
+					: ((type == PW_TYPE_SHORT)
+						? data->ushort
+						: data->byte);
+
 		/* Normal, non-tagged attribute */
-		if (values && (v = dict_valbyattr(values->attr, values->vendor, data->integer)) != NULL) {
+		if (values && (v = dict_valbyattr(values->attr, values->vendor, i)) != NULL) {
 			a = v->name;
 			len = strlen(a);
 		} else {
 			/* should never be truncated */
-			len = snprintf(buf, sizeof(buf), "%u", data->integer);
+			len = snprintf(buf, sizeof(buf), "%u", i);
 			a = buf;
 		}
 		break;
+	}
 
 	case PW_TYPE_INTEGER64:
 		return snprintf(out, outlen, "%" PRIu64, data->integer64);
