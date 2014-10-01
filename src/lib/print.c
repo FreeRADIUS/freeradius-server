@@ -1010,7 +1010,7 @@ char *vp_aprint_value(TALLOC_CTX *ctx, VALUE_PAIR const *vp, bool escape)
 char *vp_aprint(TALLOC_CTX *ctx, VALUE_PAIR const *vp, bool escape)
 {
 	char const	*token = NULL;
-	char 		*pair, *value;
+	char 		*str, *value;
 
 	if (!vp || !vp->da) return 0;
 
@@ -1023,12 +1023,24 @@ char *vp_aprint(TALLOC_CTX *ctx, VALUE_PAIR const *vp, bool escape)
 	}
 
 	value = vp_aprint_value(ctx, vp, escape);
-	pair = vp->da->flags.has_tag ?
-	       talloc_asprintf(ctx, "%s:%d %s %s", vp->da->name, vp->tag, token, value) :
-	       talloc_asprintf(ctx, "%s %s %s", vp->da->name, token, value);
+
+	if (vp->da->flags.has_tag) {
+		if (escape && (vp->da->type == PW_TYPE_STRING)) {
+			str = talloc_asprintf(ctx, "%s:%d %s \"%s\"", vp->da->name, vp->tag, token, value);
+		} else {
+			str = talloc_asprintf(ctx, "%s:%d %s %s", vp->da->name, vp->tag, token, value);
+		}
+	} else {
+		if (escape && (vp->da->type == PW_TYPE_STRING)) {
+			str = talloc_asprintf(ctx, "%s %s \"%s\"", vp->da->name, token, value);
+		} else {
+			str = talloc_asprintf(ctx, "%s %s %s", vp->da->name, token, value);
+		}
+	}
+
 	talloc_free(value);
 
-	return pair;
+	return str;
 }
 
 
