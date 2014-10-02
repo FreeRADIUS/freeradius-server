@@ -493,22 +493,23 @@ int radius_readfrom_program(REQUEST *request, int fd, pid_t pid, int timeout,
 
 /** Execute a program.
  *
+ * @param[out] out buffer to append plaintext (non valuepair) output.
+ * @param[in] outlen length of out buffer.
+ * @param[out] output_pairs list of value pairs - child stdout will be parsed and added into this list
+ *	of value pairs.
  * @param[in] request Current request (may be NULL).
  * @param[in] cmd Command to execute. This is parsed into argv[] parts, then each individual argv part
  *	is xlat'ed.
+ * @param[in] input_pairs list of value pairs - these will be available in the environment of the child.
  * @param[in] exec_wait set to 1 if you want to read from or write to child.
  * @param[in] shell_escape values before passing them as arguments.
- * @param[in] user_msg buffer to append plaintext (non valuepair) output.
- * @param[in] msg_len length of user_msg buffer.
  * @param[in] timeout amount of time to wait, in seconds.
- * @param[in] input_pairs list of value pairs - these will be available in the environment of the child.
- * @param[out] output_pairs list of value pairs - child stdout will be parsed and added into this list
- *	of value pairs.
+
  * @return 0 if exec_wait==0, exit code if exec_wait!=0, -1 on error.
  */
-int radius_exec_program(REQUEST *request, char const *cmd, bool exec_wait, bool shell_escape,
-			char *user_msg, size_t msg_len, int timeout,
-			VALUE_PAIR *input_pairs, VALUE_PAIR **output_pairs)
+int radius_exec_program(char *out, size_t outlen, VALUE_PAIR **output_pairs,
+			REQUEST *request, char const *cmd, VALUE_PAIR *input_pairs,
+			bool exec_wait, bool shell_escape, int timeout)
 
 {
 	pid_t pid;
@@ -524,7 +525,7 @@ int radius_exec_program(REQUEST *request, char const *cmd, bool exec_wait, bool 
 
 	RDEBUG2("Executing: %s:", cmd);
 
-	if (user_msg) *user_msg = '\0';
+	if (out) *out = '\0';
 
 	pid = radius_start_program(cmd, request, exec_wait, NULL, &from_child, input_pairs, shell_escape);
 	if (pid < 0) {
@@ -588,17 +589,17 @@ int radius_exec_program(REQUEST *request, char const *cmd, bool exec_wait, bool 
 
 		if (userparse(request, answer, output_pairs) == T_INVALID) {
 			RERROR("Failed parsing output from: %s: %s", cmd, fr_strerror());
-			strlcpy(user_msg, answer, len);
+			strlcpy(out, answer, len);
 			ret = -1;
 		}
 	/*
 	 *	We've not been told to extract output pairs,
-	 *	just copy the programs output to the user_msg
+	 *	just copy the programs output to the out
 	 *	buffer.
 	 */
 
-	} else if (user_msg) {
-		strlcpy(user_msg, answer, msg_len);
+	} else if (out) {
+		strlcpy(out, answer, outlen);
 	}
 
 	/*
