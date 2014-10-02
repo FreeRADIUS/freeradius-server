@@ -44,3 +44,5 @@ if (&request:Reply-Message[1] != "I am #literally a comment #") {
 
 ok # I'm a comment after a module call
 ok # I'm a comment # after a module {} call
+
+ok, ok, ok, ok, ok
