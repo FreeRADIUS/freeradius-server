@@ -1508,13 +1508,35 @@ bool fr_condition_walk(fr_cond_t *c, bool (*callback)(void *, fr_cond_t *), void
 	return true;
 }
 
-void fr_canonicalize_error(char **spaces, char **text, TALLOC_CTX *ctx, ssize_t slen, char const *msg)
+/** Canonicalize error strings, removing tabs, and generate spaces for error marker
+ *
+ * @note talloc_free must be called on the buffer returned in spaces and text
+ *
+ * Used to produce error messages such as this:
+@verbatim
+I'm a string with a parser # error
+                           ^ Unexpected character in string
+@endverbatim
+ *
+ * With code resembling this:
+@verbatim
+ERROR("%s", parsed_str);
+ERROR("%s^ %s", space, text);
+@endverbatim
+ *
+ * @param spaces Where to write a dynamically allocated buffer of spaces used to indent the error text.
+ * @param text Where to write the canonicalized version of msg (the error text).
+ * @param ctx to allocate the spaces and text buffers in.
+ * @param soffset of error marker. Expects negative integer value, as returned by parse functions.
+ * @param msg to canonicalize.
+ */
+void fr_canonicalize_error(char **spaces, char **text, TALLOC_CTX *ctx, ssize_t soffset, char const *msg)
 {
 	size_t offset, skip = 0;
 	char *spbuf, *p;
 	char *value;
 
-	offset = -slen;
+	offset = -soffset;
 
 	/*
 	 *	Ensure that the error isn't indented
