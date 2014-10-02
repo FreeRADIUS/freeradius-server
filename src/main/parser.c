@@ -343,7 +343,7 @@ static ssize_t condition_tokenize_cast(char const *start, DICT_ATTR const **pda,
 static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *start, int brace,
 				  fr_cond_t **pcond, char const **error, int flags)
 {
-	ssize_t slen;
+	ssize_t slen, tlen;
 	char const *p = start;
 	char const *lhs_p, *rhs_p;
 	fr_cond_t *c;
@@ -470,9 +470,10 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 			c->type = COND_TYPE_EXISTS;
 			c->ci = ci;
 
-			c->data.vpt = tmpl_afrom_str(c, lhs, lhs_type, REQUEST_CURRENT, PAIR_LIST_REQUEST);
-			if (!c->data.vpt) {
-				return_P("Failed creating exists");
+			tlen = tmpl_afrom_str(&c->data.vpt, c, lhs, lhs_type, REQUEST_CURRENT, PAIR_LIST_REQUEST);
+			if (tlen < 0) {
+				p = lhs_p - tlen;
+				return_P(fr_strerror());
 			}
 
 			rad_assert(c->data.vpt->type != TMPL_TYPE_REGEX);
@@ -637,18 +638,19 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 			 */
 			c->data.map = map = talloc_zero(c, value_pair_map_t);
 
-			map->lhs = tmpl_afrom_str(map, lhs, lhs_type, REQUEST_CURRENT, PAIR_LIST_REQUEST);
-			if (!map->lhs) {
-			return_lhs:
-				*error = "Syntax error";
-				if (lhs) talloc_free(lhs);
-				if (rhs) talloc_free(rhs);
-				talloc_free(c);
-				return -(lhs_p - start);
+			tlen = tmpl_afrom_str(&map->lhs, map, lhs, lhs_type, REQUEST_CURRENT, PAIR_LIST_REQUEST);
+			if (tlen < 0) {
+				p = lhs_p - tlen;
+				return_P(fr_strerror());
 			}
 
 			if (!tmpl_define_unknown_attr(map->lhs)) {
 				return_lhs("Failed defining attribute");
+			return_lhs:
+				if (lhs) talloc_free(lhs);
+				if (rhs) talloc_free(rhs);
+				talloc_free(c);
+				return -(lhs_p - start);
 			}
 
 			map->op = op;
@@ -658,9 +660,11 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 			    map_cast_from_hex(map, rhs_type, rhs)) {
 				/* do nothing */
 			} else {
-				map->rhs = tmpl_afrom_str(map, rhs, rhs_type, REQUEST_CURRENT, PAIR_LIST_REQUEST);
-				if (!map->rhs) {
-					return_rhs("Syntax error");
+				tlen = tmpl_afrom_str(&map->rhs, map, rhs, rhs_type,
+						      REQUEST_CURRENT, PAIR_LIST_REQUEST);
+				if (tlen < 0) {
+					p = rhs_p - tlen;
+					return_P(fr_strerror());
 				}
 
 				if (!tmpl_define_unknown_attr(map->rhs)) {
@@ -1506,71 +1510,4 @@ bool fr_condition_walk(fr_cond_t *c, bool (*callback)(void *, fr_cond_t *), void
 	}
 
 	return true;
-}
-
-/** Canonicalize error strings, removing tabs, and generate spaces for error marker
- *
- * @note talloc_free must be called on the buffer returned in spaces and text
- *
- * Used to produce error messages such as this:
-@verbatim
-I'm a string with a parser # error
-                           ^ Unexpected character in string
-@endverbatim
- *
- * With code resembling this:
-@verbatim
-ERROR("%s", parsed_str);
-ERROR("%s^ %s", space, text);
-@endverbatim
- *
- * @param spaces Where to write a dynamically allocated buffer of spaces used to indent the error text.
- * @param text Where to write the canonicalized version of msg (the error text).
- * @param ctx to allocate the spaces and text buffers in.
- * @param soffset of error marker. Expects negative integer value, as returned by parse functions.
- * @param msg to canonicalize.
- */
-void fr_canonicalize_error(char **spaces, char **text, TALLOC_CTX *ctx, ssize_t soffset, char const *msg)
-{
-	size_t offset, skip = 0;
-	char *spbuf, *p;
-	char *value;
-
-	offset = -soffset;
-
-	/*
-	 *	Ensure that the error isn't indented
-	 *	too far.
-	 */
-	if (offset > 45) {
-		skip = offset - 40;
-		offset -= skip;
-		value = talloc_strdup(ctx, msg + skip);
-		memcpy(value, "...", 3);
-
-	} else {
-		value = talloc_strdup(ctx, msg);
-	}
-
-	spbuf = talloc_array(ctx, char, offset + 1);
-	memset(spbuf, ' ', offset);
-	spbuf[offset] = '\0';
-
-	/*
-	 *	Smash tabs to spaces for the input string.
-	 */
-	for (p = value; *p != '\0'; p++) {
-		if (*p == '\t') *p = ' ';
-	}
-
-
-	/*
-	 *	Ensure that there isn't too much text after the error.
-	 */
-	if (strlen(value) > 100) {
-		memcpy(value + 95, "... ", 5);
-	}
-
-	*spaces = spbuf;
-	*text = value;
 }

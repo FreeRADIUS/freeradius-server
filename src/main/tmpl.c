@@ -673,7 +673,7 @@ value_pair_tmpl_t *tmpl_alloc(TALLOC_CTX *ctx, tmpl_type_t type, char const *nam
 	if (name) {
 		vpt->name = len < 0 ? talloc_strdup(ctx, name) :
 				      talloc_strndup(ctx, name, len);
-		len = talloc_array_length(vpt->name) - 1;
+		vpt->len = talloc_array_length(vpt->name) - 1;
 	}
 
 	return vpt;
@@ -689,15 +689,14 @@ value_pair_tmpl_t *tmpl_alloc(TALLOC_CTX *ctx, tmpl_type_t type, char const *nam
  * instead.
  *
  * @param[out] vpt to modify.
- * @param[in,out] name of attribute including qualifiers. Will be advanced to the
- *	end of the attribute ref string on success.
+ * @param[in] name of attribute including qualifiers.
  * @param[in] request_def The default request to insert unqualified attributes into.
  * @param[in] list_def The default list to insert unqualified attributes into.
- * @return -1 on error, or 0 on success
+ * @return <= 0 on error (offset as negative integer), > 0 on success (number of bytes parsed)
  */
-int tmpl_from_attr_substr(value_pair_tmpl_t *vpt, char const **name, request_refs_t request_def, pair_lists_t list_def)
+ssize_t tmpl_from_attr_substr(value_pair_tmpl_t *vpt, char const *name,
+			      request_refs_t request_def, pair_lists_t list_def)
 {
-	int error = -1;
 	bool force_attr = false;
 	char const *p;
 	size_t len;
@@ -710,29 +709,28 @@ int tmpl_from_attr_substr(value_pair_tmpl_t *vpt, char const **name, request_ref
 	memset(vpt, 0, sizeof(*vpt));
 	memset(&attr, 0, sizeof(attr));
 
-	p = *name;
+	p = name;
 	if (*p == '&') {
 		force_attr = true;
 		p++;
 	}
 
 	attr.request = radius_request_name(&p, request_def);
-	len = p - *name;
+	len = p - name;
 	if (attr.request == REQUEST_UNKNOWN) {
 		fr_strerror_printf("Invalid request qualifier \"%.*s\"", (int) len, p);
-		return error;
+		return -(p - name);
 	}
-	*name += len;
 
 	attr.list = radius_list_name(&p, list_def);
 	if (attr.list == PAIR_LIST_UNKNOWN) {
-		len = p - *name;
+		len = p - name;
 		fr_strerror_printf("Invalid list qualifier \"%.*s\"", (int) len, p);
-		return -1;
+		return -(p - name);
 	}
 
 	if (*p == '\0') {
-		vpt->type = TMPL_TYPE_LIST;
+		type = TMPL_TYPE_LIST;
 		goto finish;
 	}
 
@@ -752,28 +750,27 @@ int tmpl_from_attr_substr(value_pair_tmpl_t *vpt, char const **name, request_ref
 		/*
 		 *	Can't parse it as an attribute, it must be a literal string.
 		 */
-		if (!force_attr) return error;
-
-		type = TMPL_TYPE_ATTR_UNKNOWN;
-
-		q = attr.fugly.name;
-
-		/*
-		 *	Copy the name to a field.
-		 */
-		while (*p) {
-			if (*p == '[') break;
-			*q++ = *p++;
-
-			if (q >= (attr.fugly.name + sizeof(attr.fugly.name) - 1)) {
-				fr_strerror_printf("Attribute name is too long");
-				return -1;
-			}
+		if (!force_attr) {
+			fr_strerror_printf("Should be re-parsed as bare word (shouldn't see me)", name);
+			return -(p - name);
 		}
 
+
+		/*
+		 *	Copy the name to a field for later evaluation
+		 */
+		type = TMPL_TYPE_ATTR_UNKNOWN;
+		for (q = attr.fugly.name; dict_attr_allowed_chars[(int) *p]; *q++ = *p++) {
+			if (q >= (attr.fugly.name + sizeof(attr.fugly.name) - 1)) {
+				fr_strerror_printf("Attribute name is too long");
+				return -(p - name);
+			}
+		}
 		*q = '\0';
+
 		goto skip_tag;
 	}
+	type = TMPL_TYPE_ATTR;
 
 	/*
 	 *	The string MIGHT have a tag.
@@ -781,13 +778,13 @@ int tmpl_from_attr_substr(value_pair_tmpl_t *vpt, char const **name, request_ref
 	if (*p == ':') {
 		if (!attr.da->flags.has_tag) {
 			fr_strerror_printf("Attribute '%s' cannot have a tag", attr.da->name);
-			return -1;
+			return -(p - name);
 		}
 
 		num = strtoul(p + 1, &q, 10);
 		if (num > 0x1f) {
 			fr_strerror_printf("Invalid tag value '%u' (should be between 0-31)", (unsigned int) num);
-			return -1;
+			return -((p + 1)- name);
 		}
 
 		attr.tag = num;
@@ -795,23 +792,25 @@ int tmpl_from_attr_substr(value_pair_tmpl_t *vpt, char const **name, request_ref
 	}
 
 skip_tag:
-	if (!*p) {
-		vpt->type = type;
-		goto finish;
-	}
+	if (*p == '\0') goto finish;
 
 	if (*p != '[') {
-		fr_strerror_printf("Unexpected text after attribute name: %s", p);
-		return -1;
+		fr_strerror_printf("Unexpected text after attribute name");
+		return -(p - name);
 	}
 
 	p++;
 
 	if (*p != '*') {
 		num = strtoul(p, &q, 10);
+		if (p == q) {
+			fr_strerror_printf("Array index is not an integer");
+			return -(p - name);
+		}
+
 		if (num > 1000) {
 			fr_strerror_printf("Invalid array reference '%u' (should be between 0-1000)", (unsigned int) num);
-			return -1;
+			return -(p - name);
 		}
 		attr.num = num;
 		p = q;
@@ -821,16 +820,16 @@ skip_tag:
 	}
 
 	if ((*p != ']') || (p[1] != '\0')) {
-		fr_strerror_printf("Unexpected text after array: %s", p);
-		return -1;
+		fr_strerror_printf("Unexpected text after array index");
+		return -(p - name);
 	}
 	p++;
-	vpt->type = TMPL_TYPE_ATTR;
 
 finish:
-	vpt->name = *name;
-	vpt->len = p - *name;
-	*name = p;
+	vpt->type = type;
+	vpt->name = name;
+	vpt->len = p - name;
+	name = p;
 
 	/*
 	 *	Copy over the attribute definition, now we're
@@ -843,7 +842,7 @@ finish:
 
 	VERIFY_TMPL(vpt);
 
-	return 0;
+	return vpt->len;
 }
 
 /** Parse qualifiers to convert an attrname into a value_pair_tmpl_t.
@@ -859,23 +858,23 @@ finish:
  * @param[in] name attribute name including qualifiers.
  * @param[in] request_def The default request to insert unqualified attributes into.
  * @param[in] list_def The default list to insert unqualified attributes into.
- * @return -1 on error, or 0 on success
+ * @return <= 0 on error (offset as negative integer), > 0 on success (number of bytes parsed)
  */
-ssize_t tmpl_from_attr_str(value_pair_tmpl_t *vpt, char const *name, request_refs_t request_def, pair_lists_t list_def)
+ssize_t tmpl_from_attr_str(value_pair_tmpl_t *vpt, char const *name, request_refs_t request_def,
+			   pair_lists_t list_def)
 {
-	char const *p = name;
-	int ret;
+	ssize_t slen;
 
-	ret = tmpl_from_attr_substr(vpt, &p, request_def, list_def);
-	if (ret < 0) return ret;
-	if (*p != '\0') {
-		fr_strerror_printf("Trailing characters after attribute string: %s", p);
-		return -(p - name);
+	slen = tmpl_from_attr_substr(vpt, name, request_def, list_def);
+	if (slen <= 0) return slen;
+	if (name[slen] != '\0') {
+		fr_strerror_printf("Trailing characters after attribute string");
+		return -slen;
 	}
 
 	VERIFY_TMPL(vpt);
 
-	return 0;
+	return slen;
 }
 
 /** Parse qualifiers to convert attrname into a value_pair_tmpl_t.
@@ -883,69 +882,39 @@ ssize_t tmpl_from_attr_str(value_pair_tmpl_t *vpt, char const *name, request_ref
  * VPTs are used in various places where we need to pre-parse configuration
  * sections into attribute mappings.
  *
+ * @param[out] out Where to write the pointer to the new value_pair_tmpl_t.
  * @param[in] ctx for talloc
  * @param[in] name attribute name including qualifiers.
  * @param[in] request_def The default request to insert unqualified
  *	attributes into.
  * @param[in] list_def The default list to insert unqualified attributes into.
- * @return pointer to a value_pair_tmpl_t struct (must be freed with
- *	tmpl_free) or NULL on error.
+ * @return <= 0 on error (offset as negative integer), > 0 on success (number of bytes parsed)
  */
-ssize_t tmpl_afrom_attr_substr(value_pair_tmpl_t **out, TALLOC_CTX *ctx, char const **name,
-			       request_refs_t request_def, pair_lists_t list_def)
+ssize_t tmpl_afrom_attr_str(value_pair_tmpl_t **out, TALLOC_CTX *ctx, char const *name,
+			    request_refs_t request_def, pair_lists_t list_def)
 {
-	ssize_t ret;
+	ssize_t slen;
 	value_pair_tmpl_t *vpt;
 
 	MEM(vpt = talloc(ctx, value_pair_tmpl_t)); /* tmpl_from_attr_substr zeros it */
 
-	ret = tmpl_from_attr_substr(vpt, name, request_def, list_def);
-	if (ret < 0) {
+	slen = tmpl_from_attr_substr(vpt, name, request_def, list_def);
+	if (slen <= 0) {
 		tmpl_free(&vpt);
-		return ret;
+		return slen;
 	}
-
+	if (name[slen] != '\0') {
+		fr_strerror_printf("Trailing characters dafter attribute string");
+		tmpl_free(&vpt);
+		return -slen;
+	}
 	vpt->name = talloc_strndup(vpt, vpt->name, vpt->len);
 
 	VERIFY_TMPL(vpt);
 
 	*out = vpt;
 
-	return 0;
-}
-
-/** Parse qualifiers to convert attrname into a value_pair_tmpl_t.
- *
- * VPTs are used in various places where we need to pre-parse configuration
- * sections into attribute mappings.
- *
- * @param[in] ctx for talloc
- * @param[in] name attribute name including qualifiers.
- * @param[in] request_def The default request to insert unqualified
- *	attributes into.
- * @param[in] list_def The default list to insert unqualified attributes into.
- * @return pointer to a value_pair_tmpl_t struct (must be freed with
- *	tmpl_free) or NULL on error.
- */
-value_pair_tmpl_t *tmpl_afrom_attr_str(TALLOC_CTX *ctx, char const *name, request_refs_t request_def,
-				       pair_lists_t list_def)
-{
-	value_pair_tmpl_t *vpt;
-
-	char const *p = name;
-
-	vpt = talloc(ctx, value_pair_tmpl_t); /* tmpl_from_attr_substr zeros it */
-
-	if (tmpl_from_attr_substr(vpt, &p, request_def, list_def) < 0) {
-		tmpl_free(&vpt);
-
-		return NULL;
-	}
-	vpt->name = talloc_strndup(vpt, vpt->name, vpt->len);
-
-	VERIFY_TMPL(vpt);
-
-	return vpt;
+	return slen;
 }
 
 /** Release memory allocated to value pair template.
@@ -1172,18 +1141,22 @@ size_t tmpl_prints(char *buffer, size_t bufsize, value_pair_tmpl_t const *vpt, D
 
 /** Convert module specific attribute id to value_pair_tmpl_t.
  *
- * @param[in] ctx for talloc
+ * @note Unlike tmpl_afrom_attr_str return code 0 doesn't indicate failure, just means it parsed a 0 length string.
+ *
+ * @param[out] out Where to write the pointer to the new value_pait_tmpl_t.
+ * @param[in] ctx for talloc.
  * @param[in] name string to convert.
  * @param[in] type Type of quoting around value.
  * @param[in] request_def The default request to insert unqualified
  *	attributes into.
  * @param[in] list_def The default list to insert unqualified attributes into.
- * @return pointer to new VPT.
+ * @return < 0 on error (offset as negative integer), >= 0 on success (number of bytes parsed)
  */
-value_pair_tmpl_t *tmpl_afrom_str(TALLOC_CTX *ctx, char const *name, FR_TOKEN type,
-				  request_refs_t request_def, pair_lists_t list_def)
+ssize_t tmpl_afrom_str(value_pair_tmpl_t **out, TALLOC_CTX *ctx, char const *name, FR_TOKEN type,
+		       request_refs_t request_def, pair_lists_t list_def)
 {
 	char const *p;
+	ssize_t slen;
 	value_pair_tmpl_t *vpt;
 
 	switch (type) {
@@ -1192,13 +1165,14 @@ value_pair_tmpl_t *tmpl_afrom_str(TALLOC_CTX *ctx, char const *name, FR_TOKEN ty
 		 *	If we can parse it as an attribute, it's an attribute.
 		 *	Otherwise, treat it as a literal.
 		 */
-		vpt = tmpl_afrom_attr_str(ctx, name, request_def, list_def);
-		if (vpt) break;
-		if (*name == '&') return NULL;
+		slen = tmpl_afrom_attr_str(&vpt, ctx, name, request_def, list_def);
+		if ((name[0] == '&') && (slen <= 0)) return slen;
+		if (slen > 0) break;
 		/* FALL-THROUGH */
 
 	case T_SINGLE_QUOTED_STRING:
 		vpt = tmpl_alloc(ctx, TMPL_TYPE_LITERAL, name, -1);
+		slen = vpt->len;
 		break;
 
 	case T_DOUBLE_QUOTED_STRING:
@@ -1226,24 +1200,29 @@ value_pair_tmpl_t *tmpl_afrom_str(TALLOC_CTX *ctx, char const *name, FR_TOKEN ty
 		} else {
 			vpt = tmpl_alloc(ctx, TMPL_TYPE_LITERAL, name, -1);
 		}
+		slen = vpt->len;
 		break;
 
 	case T_BACK_QUOTED_STRING:
 		vpt = tmpl_alloc(ctx, TMPL_TYPE_EXEC, name, -1);
+		slen = vpt->len;
 		break;
 
 	case T_OP_REG_EQ: /* hack */
 		vpt = tmpl_alloc(ctx, TMPL_TYPE_REGEX, name, -1);
+		slen = vpt->len;
 		break;
 
 	default:
 		rad_assert(0);
-		return NULL;
+		return 0;	/* 0 is an error here too */
 	}
 
 	VERIFY_TMPL(vpt);
 
-	return vpt;
+	*out = vpt;
+
+	return slen;
 }
 
 /** Convert a tmpl containing literal data, to the type specified by da.

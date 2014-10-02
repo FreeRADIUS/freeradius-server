@@ -1702,6 +1702,7 @@ static modcallable *do_compile_modswitch(modcallable *parent, rlm_components_t c
 	bool had_seen_default = false;
 	modcallable *csingle;
 	modgroup *g;
+	ssize_t slen;
 	value_pair_tmpl_t *vpt;
 
 	name2 = cf_section_name2(cs);
@@ -1723,9 +1724,19 @@ static modcallable *do_compile_modswitch(modcallable *parent, rlm_components_t c
 	 *	will fix it up.
 	 */
 	type = cf_section_name2_type(cs);
-	vpt = tmpl_afrom_str(cs, name2, type, REQUEST_CURRENT, PAIR_LIST_REQUEST);
-	if (!vpt && ((type != T_BARE_WORD) || (name2[0] != '&'))) {
-		cf_log_err_cs(cs, "Syntax error in '%s': %s", name2, fr_strerror());
+	slen = tmpl_afrom_str(&vpt, cs, name2, type, REQUEST_CURRENT, PAIR_LIST_REQUEST);
+	if ((slen < 0) && ((type != T_BARE_WORD) || (name2[0] != '&'))) {
+		char *spaces, *text;
+
+		fr_canonicalize_error(&spaces, &text, cs, slen, fr_strerror());
+
+		cf_log_err_cs(cs, "Syntax error");
+		cf_log_err_cs(cs, "%s", name2);
+		cf_log_err_cs(cs, "%s^ %s", spaces, text);
+
+		talloc_free(spaces);
+		talloc_free(text);
+
 		return NULL;
 	}
 
@@ -1808,13 +1819,24 @@ static modcallable *do_compile_modcase(modcallable *parent, rlm_components_t com
 	 */
 	name2 = cf_section_name2(cs);
 	if (name2) {
+		ssize_t slen;
 		FR_TOKEN type;
 
 		type = cf_section_name2_type(cs);
 
-		vpt = tmpl_afrom_str(cs, name2, type, REQUEST_CURRENT, PAIR_LIST_REQUEST);
-		if (!vpt && ((type != T_BARE_WORD) || (name2[0] != '&'))) {
-			cf_log_err_cs(cs, "Syntax error in '%s': %s", name2, fr_strerror());
+		slen = tmpl_afrom_str(&vpt, cs, name2, type, REQUEST_CURRENT, PAIR_LIST_REQUEST);
+		if ((slen < 0) && ((type != T_BARE_WORD) || (name2[0] != '&'))) {
+			char *spaces, *text;
+
+			fr_canonicalize_error(&spaces, &text, cs, slen, fr_strerror());
+
+			cf_log_err_cs(cs, "Syntax error");
+			cf_log_err_cs(cs, "%s", name2);
+			cf_log_err_cs(cs, "%s^ %s", spaces, text);
+
+			talloc_free(spaces);
+			talloc_free(text);
+
 			return NULL;
 		}
 
@@ -1865,6 +1887,7 @@ static modcallable *do_compile_modforeach(modcallable *parent,
 	char const *name2;
 	modcallable *csingle;
 	modgroup *g;
+	ssize_t slen;
 	value_pair_tmpl_t *vpt;
 
 	name2 = cf_section_name2(cs);
@@ -1886,9 +1909,19 @@ static modcallable *do_compile_modforeach(modcallable *parent,
 	 *	will fix it up.
 	 */
 	type = cf_section_name2_type(cs);
-	vpt = tmpl_afrom_str(cs, name2, type, REQUEST_CURRENT, PAIR_LIST_REQUEST);
-	if (!vpt && ((type != T_BARE_WORD) || (name2[0] != '&'))) {
-		cf_log_err_cs(cs, "Syntax error in '%s': %s", name2, fr_strerror());
+	slen = tmpl_afrom_str(&vpt, cs, name2, type, REQUEST_CURRENT, PAIR_LIST_REQUEST);
+	if ((slen < 0) && ((type != T_BARE_WORD) || (name2[0] != '&'))) {
+		char *spaces, *text;
+
+		fr_canonicalize_error(&spaces, &text, cs, slen, fr_strerror());
+
+		cf_log_err_cs(cs, "Syntax error");
+		cf_log_err_cs(cs, "%s", name2);
+		cf_log_err_cs(cs, "%s^ %s", spaces, text);
+
+		talloc_free(spaces);
+		talloc_free(text);
+
 		return NULL;
 	}
 
@@ -3075,13 +3108,24 @@ check_paircmp:
 	if ((map->lhs->type == TMPL_TYPE_LITERAL) &&
 	    (strncmp(map->lhs->name, "Foreach-Variable-", 17) == 0)) {
 		char *fmt;
+		ssize_t slen;
 		value_pair_tmpl_t *vpt;
 
 		fmt = talloc_asprintf(map->lhs, "%%{%s}", map->lhs->name);
-		vpt = tmpl_afrom_str(map, fmt, T_DOUBLE_QUOTED_STRING, REQUEST_CURRENT, PAIR_LIST_REQUEST);
-		if (!vpt) {
-			cf_log_err(map->ci, "Failed compiling %s", map->lhs->name);
+		slen = tmpl_afrom_str(&vpt, map, fmt, T_DOUBLE_QUOTED_STRING, REQUEST_CURRENT, PAIR_LIST_REQUEST);
+		if (slen < 0) {
+			char *spaces, *text;
+
+			fr_canonicalize_error(&spaces, &text, map->ci, slen, fr_strerror());
+
+			cf_log_err(map->ci, "Failed converting %s to xlat", map->lhs->name);
+			cf_log_err(map->ci, "%s", fmt);
+			cf_log_err(map->ci, "%s^ %s", spaces, text);
+
+			talloc_free(spaces);
+			talloc_free(text);
 			talloc_free(fmt);
+
 			return false;
 		}
 		talloc_free(map->lhs);
@@ -3176,6 +3220,7 @@ static bool modcall_pass2_update(modgroup *g)
  */
 bool modcall_pass2(modcallable *mc)
 {
+	ssize_t slen;
 	modcallable *this;
 	modgroup *g;
 
@@ -3247,12 +3292,22 @@ bool modcall_pass2(modcallable *mc)
 				rad_assert(this->name[0] == '&');
 				rad_assert(cf_section_name2_type(g->cs) == T_BARE_WORD);
 
-				g->vpt = tmpl_afrom_str(g->cs, this->name,
-							cf_section_name2_type(g->cs),
-							REQUEST_CURRENT, PAIR_LIST_REQUEST);
-				if (!g->vpt) {
-					cf_log_err_cs(g->cs, "Syntax error in '%s': %s",
-						      this->name, fr_strerror());
+				slen = tmpl_afrom_str(&g->vpt, g->cs, this->name,
+						      cf_section_name2_type(g->cs),
+						      REQUEST_CURRENT, PAIR_LIST_REQUEST);
+				if (slen < 0) {
+					char *spaces, *text;
+
+				parse_error:
+					fr_canonicalize_error(&spaces, &text, g->cs, slen, fr_strerror());
+
+					cf_log_err_cs(g->cs, "Syntax error");
+					cf_log_err_cs(g->cs, "%s", this->name);
+					cf_log_err_cs(g->cs, "%s^ %s", spaces, text);
+
+					talloc_free(spaces);
+					talloc_free(text);
+
 					return false;
 				}
 
@@ -3283,9 +3338,9 @@ bool modcall_pass2(modcallable *mc)
 			if (g->vpt->type == TMPL_TYPE_LITERAL) {
 				value_pair_tmpl_t *vpt;
 
-				vpt = tmpl_afrom_str(g->cs, this->name,
-						     cf_section_name2_type(g->cs),
-						     REQUEST_CURRENT, PAIR_LIST_REQUEST);
+				slen = tmpl_afrom_str(&vpt, g->cs, this->name, cf_section_name2_type(g->cs),
+						      REQUEST_CURRENT, PAIR_LIST_REQUEST);
+				if (slen < 0) goto parse_error;
 				if (vpt->type == TMPL_TYPE_ATTR) {
 					talloc_free(g->vpt);
 					g->vpt = vpt;
@@ -3329,14 +3384,10 @@ bool modcall_pass2(modcallable *mc)
 			if (!g->vpt && this->name &&
 			    (this->name[0] == '&') &&
 			    (cf_section_name2_type(g->cs) == T_BARE_WORD)) {
-				g->vpt = tmpl_afrom_str(g->cs, this->name,
-							 cf_section_name2_type(g->cs),
-							 REQUEST_CURRENT, PAIR_LIST_REQUEST);
-				if (!g->vpt) {
-					cf_log_err_cs(g->cs, "Syntax error in '%s': %s",
-						      this->name, fr_strerror());
-					return false;
-				}
+				slen = tmpl_afrom_str(&g->vpt, g->cs, this->name,
+						      cf_section_name2_type(g->cs),
+						      REQUEST_CURRENT, PAIR_LIST_REQUEST);
+				if (slen < 0) goto parse_error;
 			}
 
 			/*
@@ -3427,14 +3478,9 @@ bool modcall_pass2(modcallable *mc)
 			 *	all of the modules have been loaded.
 			 *	Check for that now.
 			 */
-			g->vpt = tmpl_afrom_str(g->cs, this->name,
-						 cf_section_name2_type(g->cs),
-						 REQUEST_CURRENT, PAIR_LIST_REQUEST);
-			if (!g->vpt) {
-				cf_log_err_cs(g->cs, "Syntax error in '%s': %s",
-					      this->name, fr_strerror());
-				return false;
-			}
+			slen = tmpl_afrom_str(&g->vpt, g->cs, this->name, cf_section_name2_type(g->cs),
+					      REQUEST_CURRENT, PAIR_LIST_REQUEST);
+			if (slen < 0) goto parse_error;
 
 		check_children:
 			rad_assert(g->vpt->type == TMPL_TYPE_ATTR);

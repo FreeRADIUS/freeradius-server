@@ -103,8 +103,6 @@ size_t fr_cond_sprint(char *buffer, size_t bufsize, fr_cond_t const *c);
 
 bool fr_condition_walk(fr_cond_t *head, bool (*callback)(void *, fr_cond_t *), void *ctx);
 
-void fr_canonicalize_error(char **spaces, char **text, TALLOC_CTX *ctx, ssize_t slen, char const *msg);
-
 /*
  *	In xlat.c for now
  */

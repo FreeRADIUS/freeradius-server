@@ -298,7 +298,7 @@ static ssize_t xlat_debug_attr(UNUSED void *instance, REQUEST *request, char con
 
 	while (isspace((int) *fmt)) fmt++;
 
-	if (tmpl_from_attr_str(&vpt, fmt, REQUEST_CURRENT, PAIR_LIST_REQUEST) < 0) {
+	if (tmpl_from_attr_str(&vpt, fmt, REQUEST_CURRENT, PAIR_LIST_REQUEST) <= 0) {
 		RDEBUG("%s", fr_strerror());
 		return -1;
 	}

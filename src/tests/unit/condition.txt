@@ -522,10 +522,10 @@ data &Attr-26.24757.84.9.5.15 == 0x1a99
 #  Invalid array references.
 #
 condition &User-Name[a] == 'bob'
-data ERROR offset 0 Syntax error
+data ERROR offset 11 Array index is not an integer
 
 condition &User-Name == &Filter-Id[a]
-data ERROR offset 14 Syntax error
+data ERROR offset 25 Array index is not an integer
 
 #
 #  This one is still wrong.
