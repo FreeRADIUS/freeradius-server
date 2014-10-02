@@ -699,7 +699,6 @@ ssize_t tmpl_from_attr_substr(value_pair_tmpl_t *vpt, char const *name,
 {
 	bool force_attr = false;
 	char const *p;
-	size_t len;
 	unsigned long num;
 	char *q;
 	tmpl_type_t type = TMPL_TYPE_ATTR;
@@ -716,16 +715,14 @@ ssize_t tmpl_from_attr_substr(value_pair_tmpl_t *vpt, char const *name,
 	}
 
 	attr.request = radius_request_name(&p, request_def);
-	len = p - name;
 	if (attr.request == REQUEST_UNKNOWN) {
-		fr_strerror_printf("Invalid request qualifier \"%.*s\"", (int) len, p);
+		fr_strerror_printf("Invalid request qualifier");
 		return -(p - name);
 	}
 
 	attr.list = radius_list_name(&p, list_def);
 	if (attr.list == PAIR_LIST_UNKNOWN) {
-		len = p - name;
-		fr_strerror_printf("Invalid list qualifier \"%.*s\"", (int) len, p);
+		fr_strerror_printf("Invalid list qualifier");
 		return -(p - name);
 	}
 
