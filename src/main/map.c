@@ -638,10 +638,9 @@ static int map_exec_to_vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t c
 	 *	if dst is an attribute, then we create an attribute of that type and then
 	 *	call pairparsevalue on the output of the script.
 	 */
-	result = radius_exec_program(request, map->rhs->name, true, true,
-				     answer, sizeof(answer), EXEC_TIMEOUT,
-				     input_pairs ? *input_pairs : NULL,
-				     (map->lhs->type == TMPL_TYPE_LIST) ? &output_pairs : NULL);
+	result = radius_exec_program(answer, sizeof(answer), (map->lhs->type == TMPL_TYPE_LIST) ? &output_pairs : NULL,
+				     request, map->rhs->name, input_pairs ? *input_pairs : NULL,
+				     true, true, EXEC_TIMEOUT);
 	talloc_free(expanded);
 	if (result != 0) {
 		talloc_free(output_pairs);

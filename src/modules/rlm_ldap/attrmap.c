@@ -301,9 +301,9 @@ int rlm_ldap_map_xlat(REQUEST *request, value_pair_map_t const *maps, rlm_ldap_m
 			int result;
 
 			input_pairs = radius_list(request, PAIR_LIST_REQUEST);
-			result = radius_exec_program(request, map->rhs->name, true, true, answer,
-						     sizeof(answer), EXEC_TIMEOUT,
-						     input_pairs ? *input_pairs : NULL, NULL);
+			result = radius_exec_program(answer, sizeof(answer), NULL, request,
+						     map->rhs->name, input_pairs ? *input_pairs : NULL,
+						     true, true, EXEC_TIMEOUT);
 			if (result != 0) {
 				return -1;
 			}
