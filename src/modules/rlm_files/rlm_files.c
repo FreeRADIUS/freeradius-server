@@ -204,9 +204,9 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, fr_hash_table_t *
 					 *	become ==
 					 */
 					if ((vp->da->attr >= 0x100) &&
-							(vp->da->attr <= 0xffff) &&
-							(vp->da->attr != PW_HINT) &&
-							(vp->da->attr != PW_HUNTGROUP_NAME)) {
+					    (vp->da->attr <= 0xffff) &&
+					    (vp->da->attr != PW_HINT) &&
+					    (vp->da->attr != PW_HUNTGROUP_NAME)) {
 						DEBUG("\tChanging '%s =' to '%s +='", vp->da->name, vp->da->name);
 
 						vp->op = T_OP_ADD;
@@ -216,7 +216,6 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, fr_hash_table_t *
 						vp->op = T_OP_CMP_EQ;
 					}
 				}
-
 			} /* end of loop over check items */
 
 			/*
