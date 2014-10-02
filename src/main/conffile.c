@@ -2244,7 +2244,13 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 				break;
 			}
 
-			if (!*ptr || (*ptr == '#') || (*ptr == '}')) break;
+			if (!*ptr || (*ptr == '}')) break;
+
+			/*
+			 *	module # stuff!
+			 *	foo = bar # other stuff
+			 */
+			if ((t3 == T_HASH) || (*ptr == '#')) continue;
 
 			ERROR("%s[%d]: Syntax error: Expected comma after '%s': %s",
 			      filename, *lineno, value, ptr);
@@ -2320,7 +2326,6 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		if (*ptr == '#') continue;
 
 		if (*ptr) {
-			DEBUG("XXXXX ::%s::\n", ptr);
 			goto get_more;
 		}
 

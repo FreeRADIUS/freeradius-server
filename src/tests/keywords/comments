@@ -42,6 +42,5 @@ if (&request:Reply-Message[1] != "I am #literally a comment #") {
 	}
 }
 
-# @todo Fix these!
-#ok # Im a comment after a module call
-#ok # I'm a comment # after a module {} call
+ok # I'm a comment after a module call
+ok # I'm a comment # after a module {} call
