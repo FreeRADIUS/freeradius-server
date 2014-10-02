@@ -532,3 +532,63 @@ data ERROR offset 25 Array index is not an integer
 #
 condition User-Name[a] == 'bob'
 data false
+
+#
+#  Bounds checks...
+#
+condition &User-Name[1001] == 'bob'
+data ERROR offset 11 Invalid array reference '1001' (should be between 0-1000)
+
+condition &User-Name[-1] == 'bob'
+data ERROR offset 11 Invalid array reference '-1' (should be between 0-1000)
+
+#
+#  Tags
+#
+condition &Tunnel-Private-Group-Id:10 == 'test'
+data &Tunnel-Private-Group-Id:10 == 'test'
+
+condition &User-Name:10 == 'test'
+data ERROR offset 10 Attribute 'User-Name' cannot have a tag
+
+#
+#  Tag zero is technically allowed for non-tagged attributes
+#  but should be ignored.
+#
+condition &User-Name:0 == 'test'
+data &User-Name == 'test'
+
+#
+#  Bounds checks...
+#
+condition &Tunnel-Private-Group-Id:32 == 'test'
+data ERROR offset 25 Invalid tag value '32' (should be between 0-31)
+
+condition &request:Tunnel-Private-Group-Id:-1 == 'test'
+data ERROR offset 33 Invalid tag value '-1' (should be between 0-31)
+
+#
+#  Sometimes the attribute/condition parser needs to fallback to bare words
+#
+condition request:Foo == 'request:Foo'
+data true
+
+condition request:Foo+Bar == request:Foo+Bar
+data true
+
+condition &request:Foo+Bar == 'request:Foo+Bar'
+data ERROR offset 12 Unexpected text after attribute name
+
+condition 'request:Foo+d' == &request:Foo+Bar
+data ERROR offset 31 Unexpected text after attribute name
+
+#  Attribute tags are not allowed for unknown attributes
+condition &request:FooBar:0 == &request:FooBar
+data ERROR offset 15 Unexpected text after attribute name
+
+condition &not-a-list:User-Name == &not-a-list:User-Name
+data ERROR offset 1 Invalid list qualifier
+
+# . is a valid dictionary name attribute, so we can't error out in pass1
+condition &not-a-packet.User-Name == &not-a-packet.User-Name
+data &not-a-packet.User-Name == &not-a-packet.User-Name
