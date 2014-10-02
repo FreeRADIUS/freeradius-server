@@ -699,7 +699,7 @@ ssize_t tmpl_from_attr_substr(value_pair_tmpl_t *vpt, char const *name,
 {
 	bool force_attr = false;
 	char const *p;
-	unsigned long num;
+	long num;
 	char *q;
 	tmpl_type_t type = TMPL_TYPE_ATTR;
 
@@ -773,15 +773,18 @@ ssize_t tmpl_from_attr_substr(value_pair_tmpl_t *vpt, char const *name,
 	 *	The string MIGHT have a tag.
 	 */
 	if (*p == ':') {
-		if (!attr.da->flags.has_tag) {
-			fr_strerror_printf("Attribute '%s' cannot have a tag", attr.da->name);
-			return -(p - name);
+		num = strtol(p + 1, &q, 10);
+		if ((num > 0x1f) || (num < 0)) {
+			fr_strerror_printf("Invalid tag value '%li' (should be between 0-31)", num);
+			return -((p + 1)- name);
 		}
 
-		num = strtoul(p + 1, &q, 10);
-		if (num > 0x1f) {
-			fr_strerror_printf("Invalid tag value '%u' (should be between 0-31)", (unsigned int) num);
-			return -((p + 1)- name);
+		if (!attr.da->flags.has_tag) {
+			if (num != TAG_NONE) {
+				fr_strerror_printf("Attribute '%s' cannot have a tag", attr.da->name);
+				return -(p - name);
+			}
+			num = TAG_ANY;
 		}
 
 		attr.tag = num;
@@ -799,14 +802,14 @@ skip_tag:
 	p++;
 
 	if (*p != '*') {
-		num = strtoul(p, &q, 10);
+		num = strtol(p, &q, 10);
 		if (p == q) {
 			fr_strerror_printf("Array index is not an integer");
 			return -(p - name);
 		}
 
-		if (num > 1000) {
-			fr_strerror_printf("Invalid array reference '%u' (should be between 0-1000)", (unsigned int) num);
+		if ((num > 1000) || (num < 0)) {
+			fr_strerror_printf("Invalid array reference '%li' (should be between 0-1000)", num);
 			return -(p - name);
 		}
 		attr.num = num;
