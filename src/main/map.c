@@ -160,9 +160,8 @@ value_pair_map_t *map_from_cp(TALLOC_CTX *ctx, CONF_PAIR *cp,
 			      request_refs_t src_request_def, pair_lists_t src_list_def)
 {
 	value_pair_map_t *map;
-	char const *attr, *p;
-	char const *value;
-	ssize_t ret;
+	char const *attr, *value;
+	ssize_t slen;
 	FR_TOKEN type;
 	CONF_ITEM *ci = cf_pairtoitem(cp);
 
@@ -172,7 +171,7 @@ value_pair_map_t *map_from_cp(TALLOC_CTX *ctx, CONF_PAIR *cp,
 	map->op = cf_pair_operator(cp);
 	map->ci = ci;
 
-	p = attr = cf_pair_attr(cp);
+	attr = cf_pair_attr(cp);
 	value = cf_pair_value(cp);
 	if (!value) {
 		cf_log_err(ci, "Missing attribute value");
@@ -182,11 +181,11 @@ value_pair_map_t *map_from_cp(TALLOC_CTX *ctx, CONF_PAIR *cp,
 	/*
 	 *	LHS must always be an attribute reference.
 	 */
-	ret = tmpl_afrom_attr_substr(&map->lhs, ctx, &p, dst_request_def, dst_list_def);
-	if (ret < 0) {
+	slen = tmpl_afrom_attr_str(&map->lhs, ctx, attr, dst_request_def, dst_list_def);
+	if (slen <= 0) {
 		char *spaces, *text;
 
-		fr_canonicalize_error(&spaces, &text, ctx, ret, attr);
+		fr_canonicalize_error(&spaces, &text, ctx, slen, attr);
 
 		cf_log_err(ci, "Failed parsing attribute reference:");
 		cf_log_err(ci, "%s", text);
@@ -213,8 +212,20 @@ value_pair_map_t *map_from_cp(TALLOC_CTX *ctx, CONF_PAIR *cp,
 		/* do nothing */
 
 	} else {
-		map->rhs = tmpl_afrom_str(map, value, type, src_request_def, src_list_def);
+		slen = tmpl_afrom_str(&map->rhs, map, value, type, src_request_def, src_list_def);
+		if (slen < 0) {
+			char *spaces, *text;
 
+			fr_canonicalize_error(&spaces, &text, ctx, slen, value);
+
+			cf_log_err(ci, "%s", text);
+			cf_log_err(ci, "%s^ %s", spaces, fr_strerror());
+
+			talloc_free(spaces);
+			talloc_free(text);
+
+			goto error;
+		}
 		if (!tmpl_define_unknown_attr(map->rhs)) {
 			cf_log_err(ci, "Failed creating attribute %s: %s",
 				   map->rhs->name, fr_strerror());
@@ -507,12 +518,13 @@ value_pair_map_t *map_from_fields(TALLOC_CTX *ctx, char const *lhs, FR_TOKEN lhs
 			          request_refs_t src_request_def,
 			          pair_lists_t src_list_def)
 {
+	ssize_t slen;
 	value_pair_map_t *map;
 
 	map = talloc_zero(ctx, value_pair_map_t);
 
-	map->lhs = tmpl_afrom_str(map, lhs, lhs_type, dst_request_def, dst_list_def);
-	if (!map->lhs) {
+	slen = tmpl_afrom_str(&map->lhs, map, lhs, lhs_type, dst_request_def, dst_list_def);
+	if (slen < 0) {
 	error:
 		talloc_free(map);
 		return NULL;
@@ -526,8 +538,8 @@ value_pair_map_t *map_from_fields(TALLOC_CTX *ctx, char const *lhs, FR_TOKEN lhs
 		return map;
 	}
 
-	map->rhs = tmpl_afrom_str(map, rhs, rhs_type, src_request_def, src_list_def);
-	if (!map->rhs) goto error;
+	slen = tmpl_afrom_str(&map->rhs, map, rhs, rhs_type, src_request_def, src_list_def);
+	if (slen < 0) goto error;
 
 	return map;
 }

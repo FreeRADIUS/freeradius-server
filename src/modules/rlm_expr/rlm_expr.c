@@ -906,7 +906,7 @@ static ssize_t pairs_xlat(UNUSED void *instance, UNUSED REQUEST *request,
 
 	VALUE_PAIR *vp;
 
-	if (tmpl_from_attr_str(&vpt, fmt, REQUEST_CURRENT, PAIR_LIST_REQUEST) < 0) {
+	if (tmpl_from_attr_str(&vpt, fmt, REQUEST_CURRENT, PAIR_LIST_REQUEST) <= 0) {
 		REDEBUG("%s", fr_strerror());
 		return -1;
 	}

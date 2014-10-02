@@ -203,27 +203,31 @@ value_pair_tmpl_t	*tmpl_init(value_pair_tmpl_t *vpt, tmpl_type_t type,
 value_pair_tmpl_t	*tmpl_alloc(TALLOC_CTX *ctx, tmpl_type_t type, char const *name,
 				    ssize_t len);
 
-int			tmpl_from_attr_substr(value_pair_tmpl_t *vpt, char const **name,
-					      request_refs_t request_def,
-					      pair_lists_t list_def);
+/*
+ *	The following three functions parse attribute name strings into templates
+ *
+ *	The 'str' variants will error out if the entire string isn't parsed.
+ *	The 'afrom' variant will alloc a new tmpl structure.
+ *
+ */
+ssize_t			tmpl_from_attr_substr(value_pair_tmpl_t *vpt, char const *name,
+					      request_refs_t request_def, pair_lists_t list_def);
 
 ssize_t			tmpl_from_attr_str(value_pair_tmpl_t *vpt, char const *name,
 					   request_refs_t request_def,
 					   pair_lists_t list_def);
 
+ssize_t			tmpl_afrom_attr_str(value_pair_tmpl_t **out, TALLOC_CTX *ctx, char const *name,
+					    request_refs_t request_def,
+					    pair_lists_t list_def);
+
+/*
+ *	Parses any type of string into a template
+ */
+ssize_t			tmpl_afrom_str(value_pair_tmpl_t **out, TALLOC_CTX *ctx, char const *name,
+				       FR_TOKEN type, request_refs_t request_def, pair_lists_t list_def);
+
 void			tmpl_free(value_pair_tmpl_t **tmpl);
-
-ssize_t			tmpl_afrom_attr_substr(value_pair_tmpl_t **out, TALLOC_CTX *ctx, char const **name,
-					       request_refs_t request_def,
-					       pair_lists_t list_def);
-
-value_pair_tmpl_t	*tmpl_afrom_attr_str(TALLOC_CTX *ctx, char const *name,
-					     request_refs_t request_def,
-					     pair_lists_t list_def);
-
-value_pair_tmpl_t	*tmpl_afrom_str(TALLOC_CTX *ctx, char const *name, FR_TOKEN type,
-					request_refs_t request_def,
-					pair_lists_t list_def);
 
 bool			tmpl_cast_in_place(value_pair_tmpl_t *vpt, DICT_ATTR const *da);
 
