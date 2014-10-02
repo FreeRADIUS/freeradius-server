@@ -1385,10 +1385,10 @@ static void unmap_eap_methods(RADIUS_PACKET *rep)
 
 	/* find eap message */
 	e = eap_vp2packet(NULL, rep->vps);
-
-	/* nothing to do! */
-	if(!e) return;
-
+	if (!e) {
+		ERROR("%s", fr_strerror());
+		return;
+	}
 	/* create EAP-ID and EAP-CODE attributes to start */
 	eap1 = paircreate(rep, PW_EAP_ID, 0);
 	eap1->vp_integer = e->id;
