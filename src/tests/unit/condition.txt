@@ -552,11 +552,10 @@ condition &User-Name:10 == 'test'
 data ERROR offset 10 Attribute 'User-Name' cannot have a tag
 
 #
-#  Tag zero is technically allowed for non-tagged attributes
-#  but should be ignored.
+#  Tags are always wrong for attributes which aren't tagged.
 #
 condition &User-Name:0 == 'test'
-data &User-Name == 'test'
+data ERROR offset 10 Attribute 'User-Name' cannot have a tag
 
 #
 #  Bounds checks...
