@@ -2106,8 +2106,8 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 
 				ERROR("%s[%d]: Parse error in condition",
 				      filename, *lineno);
-				ERROR("%s", text);
-				ERROR("%s^ %s", spaces, error);
+				ERROR("%s[%d]: %s", filename, *lineno, text);
+				ERROR("%s[%d]: %s^ %s", filename, *lineno, spaces, error);
 
 				talloc_free(spaces);
 				talloc_free(text);
