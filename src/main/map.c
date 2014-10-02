@@ -167,6 +167,7 @@ value_pair_map_t *map_from_cp(TALLOC_CTX *ctx, CONF_PAIR *cp,
 	value_pair_map_t *map;
 	char const *attr, *p;
 	char const *value;
+	ssize_t ret;
 	FR_TOKEN type;
 	CONF_ITEM *ci = cf_pairtoitem(cp);
 
@@ -186,14 +187,18 @@ value_pair_map_t *map_from_cp(TALLOC_CTX *ctx, CONF_PAIR *cp,
 	/*
 	 *	LHS must always be an attribute reference.
 	 */
-	map->lhs = tmpl_afrom_attr_substr(map, &p, dst_request_def, dst_list_def);
-	if (!map->lhs) {
-		cf_log_err(ci, "%s", fr_strerror());
-		goto error;
-	}
-	if (*p != '\0') {
-		/* @FIXME should output error marker^ */
-		cf_log_err(ci, "Invalid attribute name");
+	ret = tmpl_afrom_attr_substr(&map->lhs, ctx, &p, dst_request_def, dst_list_def);
+	if (ret < 0) {
+		char *spaces, *text;
+
+		fr_canonicalize_error(&spaces, &text, ctx, ret, attr);
+
+		cf_log_err(ci, "Failed parsing attribute reference:");
+		cf_log_err(ci, "%s", text);
+		cf_log_err(ci, "%s^ %s", spaces, fr_strerror());
+
+		talloc_free(spaces);
+		talloc_free(text);
 		goto error;
 	}
 
