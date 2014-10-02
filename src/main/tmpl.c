@@ -748,7 +748,7 @@ ssize_t tmpl_from_attr_substr(value_pair_tmpl_t *vpt, char const *name,
 		 *	Can't parse it as an attribute, it must be a literal string.
 		 */
 		if (!force_attr) {
-			fr_strerror_printf("Should be re-parsed as bare word (shouldn't see me)", name);
+			fr_strerror_printf("Should be re-parsed as bare word (shouldn't see me)");
 			return -(p - name);
 		}
 
