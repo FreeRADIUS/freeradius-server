@@ -1135,7 +1135,7 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 			num = strtoul(p, &end, 10);
 			if (num > 1000) {
 				talloc_free(node);
-				*error = "Invalid array reference";
+				*error = "Invalid array index";
 				return - (p - fmt);
 			}
 			p = end;
@@ -1144,7 +1144,7 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 
 		} else {
 			talloc_free(node);
-			*error = "Invalid array reference";
+			*error = "Invalid array index";
 			return - (p - fmt);
 		}
 
