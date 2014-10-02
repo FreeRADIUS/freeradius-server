@@ -3550,12 +3550,27 @@ STATE_MACHINE_DECL(proxy_wait_for_reply)
 		 *	the request.  If the client retransmitted, it
 		 *	may have failed over to another home server.
 		 *	But that one may be dead, too.
+		 *
+		 * 	The extra verbose message if we have a username,
+		 *	is extremely useful if the proxy is part of a chain
+		 *	and the final home server, is not the one we're
+		 *	proxying to.
 		 */
-		RERROR("Failing proxied request, due to lack of any response from home server %s port %d",
+		if (request->username) {
+			RERROR("Failing proxied request for user \"%s\", due to lack of any response from home "
+			       "server %s port %d",
+			       request->username->vp_strvalue,
 			       inet_ntop(request->proxy->dst_ipaddr.af,
 					 &request->proxy->dst_ipaddr.ipaddr,
 					 buffer, sizeof(buffer)),
 			       request->proxy->dst_port);
+		} else {
+			RERROR("Failing proxied request, due to lack of any response from home server %s port %d",
+			       inet_ntop(request->proxy->dst_ipaddr.af,
+					 &request->proxy->dst_ipaddr.ipaddr,
+					 buffer, sizeof(buffer)),
+			       request->proxy->dst_port);
+		}
 
 		if (setup_post_proxy_fail(request)) {
 			request_queue_or_run(request, proxy_no_reply);
