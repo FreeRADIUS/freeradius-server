@@ -472,7 +472,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 		key_vp = pairfind(request->packet->vps, inst->key_attr->attr, inst->key_attr->vendor, TAG_ANY);
 	}
 	if (!key_vp) {
-		RWDEBUG2("Couldn't find key attribute 'request:%s'", inst->key_attr->name);
+		RWDEBUG2("Couldn't find key attribute, request:%s, doing nothing...", inst->key_attr->name);
 		return rcode;
 	}
 
@@ -485,7 +485,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 
 	limit = pairfind(request->config_items, da->attr, da->vendor, TAG_ANY);
 	if (limit == NULL) {
-		RWDEBUG2("Couldn't find control attribute 'control:%s'", inst->limit_name);
+		/* Yes this really is 'check' as distinct from control */
+		RWDEBUG2("Couldn't find check attribute, control:%s, doing nothing...", inst->limit_name);
 		return rcode;
 	}
 
