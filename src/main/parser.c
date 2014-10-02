@@ -1508,7 +1508,7 @@ bool fr_condition_walk(fr_cond_t *c, bool (*callback)(void *, fr_cond_t *), void
 	return true;
 }
 
-void fr_canonicalize_error(TALLOC_CTX *ctx, ssize_t slen, char **spaces, char **text, char const *msg)
+void fr_canonicalize_error(char **spaces, char **text, TALLOC_CTX *ctx, ssize_t slen, char const *msg)
 {
 	size_t offset, skip = 0;
 	char *spbuf, *p;

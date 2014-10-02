@@ -2798,7 +2798,7 @@ static bool pass2_xlat_compile(CONF_ITEM const *ci, value_pair_tmpl_t **pvpt, bo
 	if (slen < 0) {
 		char *spaces, *text;
 
-		fr_canonicalize_error(vpt, slen, &spaces, &text, vpt->name);
+		fr_canonicalize_error(&spaces, &text, vpt, slen, vpt->name);
 
 		cf_log_err(ci, "Failed parsing expanded string:");
 		cf_log_err(ci, "%s", text);
