@@ -1492,7 +1492,7 @@ int cf_section_parse_pass2(CONF_SECTION *cs, UNUSED void *base,
 		if (slen < 0) {
 			char *spaces, *text;
 
-			fr_canonicalize_error(cs, slen, &spaces, &text, cp->value);
+			fr_canonicalize_error(&spaces, &text, cs, slen, cp->value);
 
 			cf_log_err(&cp->item, "Failed parsing expanded string:");
 			cf_log_err(&cp->item, "%s", text);
@@ -2102,7 +2102,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			if (slen < 0) {
 				char *spaces, *text;
 
-				fr_canonicalize_error(nextcs, slen, &spaces, &text, ptr);
+				fr_canonicalize_error(&spaces, &text, nextcs, slen, ptr);
 
 				ERROR("%s[%d]: Parse error in condition",
 				      filename, *lineno);
