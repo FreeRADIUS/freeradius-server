@@ -66,14 +66,14 @@ typedef struct value_pair_map {
 
 typedef int (*radius_map_getvalue_t)(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *map, void *ctx);
 
-value_pair_map_t *map_afrom_cp(TALLOC_CTX *ctx, CONF_PAIR *cp,
-			       request_refs_t dst_request_def, pair_lists_t dst_list_def,
-			       request_refs_t src_request_def, pair_lists_t src_list_def);
+int		map_afrom_cp(TALLOC_CTX *ctx, value_pair_map_t **out, CONF_PAIR *cp,
+			     request_refs_t dst_request_def, pair_lists_t dst_list_def,
+			     request_refs_t src_request_def, pair_lists_t src_list_def);
 
-value_pair_map_t *map_afrom_fields(TALLOC_CTX *ctx, char const *lhs, FR_TOKEN lhs_type,
-				   FR_TOKEN op, char const *rhs, FR_TOKEN rhs_type,
-				   request_refs_t dst_request_def, pair_lists_t dst_list_def,
-				   request_refs_t src_request_def, pair_lists_t src_list_def);
+int		map_afrom_fields(TALLOC_CTX *ctx, value_pair_map_t **out, char const *lhs, FR_TOKEN lhs_type,
+				 FR_TOKEN op, char const *rhs, FR_TOKEN rhs_type,
+				 request_refs_t dst_request_def, pair_lists_t dst_list_def,
+				 request_refs_t src_request_def, pair_lists_t src_list_def);
 
 int		map_afrom_cs(value_pair_map_t **out, CONF_SECTION *cs,
 			     pair_lists_t dst_list_def, pair_lists_t src_list_def,
