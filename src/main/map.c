@@ -160,7 +160,7 @@ bool map_cast_from_hex(value_pair_map_t *map, FR_TOKEN rhs_type, char const *rhs
  *	in.
  * @return value_pair_map_t if successful or NULL on error.
  */
-value_pair_map_t *map_from_cp(TALLOC_CTX *ctx, CONF_PAIR *cp,
+value_pair_map_t *map_afrom_cp(TALLOC_CTX *ctx, CONF_PAIR *cp,
 			      request_refs_t dst_request_def, pair_lists_t dst_list_def,
 			      request_refs_t src_request_def, pair_lists_t src_list_def)
 {
@@ -411,7 +411,7 @@ error:
  * Uses 'name2' of section to set default request and lists.
  *
  * @param[in] cs the update section
- * @param[out] head Where to store the head of the map.
+ * @param[out] out Where to store the head of the map.
  * @param[in] dst_list_def The default destination list, usually dictated by
  * 	the section the module is being called in.
  * @param[in] src_list_def The default source list, usually dictated by the
@@ -419,9 +419,8 @@ error:
  * @param[in] max number of mappings to process.
  * @return -1 on error, else 0.
  */
-int map_from_cs(CONF_SECTION *cs, value_pair_map_t **head,
-		pair_lists_t dst_list_def, pair_lists_t src_list_def,
-		unsigned int max)
+int map_afrom_cs(value_pair_map_t **out, CONF_SECTION *cs, pair_lists_t dst_list_def, pair_lists_t src_list_def,
+		 unsigned int max)
 {
 	char const *cs_list, *p;
 
@@ -434,8 +433,8 @@ int map_from_cs(CONF_SECTION *cs, value_pair_map_t **head,
 	value_pair_map_t **tail, *map;
 	TALLOC_CTX *ctx;
 
-	*head = NULL;
-	tail = head;
+	*out = NULL;
+	tail = out;
 
 	if (!cs) return 0;
 
@@ -478,7 +477,7 @@ int map_from_cs(CONF_SECTION *cs, value_pair_map_t **head,
 		}
 
 		cp = cf_itemtopair(ci);
-		map = map_from_cp(ctx, cp, request_def, dst_list_def, REQUEST_CURRENT, src_list_def);
+		map = map_afrom_cp(ctx, cp, request_def, dst_list_def, REQUEST_CURRENT, src_list_def);
 		if (!map) {
 			goto error;
 		}
@@ -490,7 +489,7 @@ int map_from_cs(CONF_SECTION *cs, value_pair_map_t **head,
 
 	return 0;
 error:
-	TALLOC_FREE(*head);
+	TALLOC_FREE(*out);
 	return -1;
 }
 
@@ -520,12 +519,12 @@ error:
  *	in.
  * @return value_pair_map_t if successful or NULL on error.
  */
-value_pair_map_t *map_from_fields(TALLOC_CTX *ctx, char const *lhs, FR_TOKEN lhs_type,
-			          FR_TOKEN op, char const *rhs, FR_TOKEN rhs_type,
-			          request_refs_t dst_request_def,
-			          pair_lists_t dst_list_def,
-			          request_refs_t src_request_def,
-			          pair_lists_t src_list_def)
+value_pair_map_t *map_afrom_fields(TALLOC_CTX *ctx, char const *lhs, FR_TOKEN lhs_type,
+			           FR_TOKEN op, char const *rhs, FR_TOKEN rhs_type,
+			           request_refs_t dst_request_def,
+			           pair_lists_t dst_list_def,
+			           request_refs_t src_request_def,
+			           pair_lists_t src_list_def)
 {
 	ssize_t slen;
 	value_pair_map_t *map;
@@ -569,9 +568,9 @@ value_pair_map_t *map_from_fields(TALLOC_CTX *ctx, char const *lhs, FR_TOKEN lhs
  * @param src_list_def to use if attribute isn't qualified.
  * @return 0 on success, < 0 on error.
  */
-int map_from_vp_str(value_pair_map_t **out, REQUEST *request, char const *vp_str,
-		    request_refs_t dst_request_def, pair_lists_t dst_list_def,
-		    request_refs_t src_request_def, pair_lists_t src_list_def)
+int map_afrom_vp_str(value_pair_map_t **out, REQUEST *request, char const *vp_str,
+		     request_refs_t dst_request_def, pair_lists_t dst_list_def,
+		     request_refs_t src_request_def, pair_lists_t src_list_def)
 {
 	char const *p = vp_str;
 	FR_TOKEN quote;
@@ -604,8 +603,8 @@ int map_from_vp_str(value_pair_map_t **out, REQUEST *request, char const *vp_str
 		return -1;
 	}
 
-	map = map_from_fields(request, raw.l_opand, T_BARE_WORD, raw.op, raw.r_opand, raw.quote,
-			      dst_request_def, dst_list_def, src_request_def, src_list_def);
+	map = map_afrom_fields(request, raw.l_opand, T_BARE_WORD, raw.op, raw.r_opand, raw.quote,
+			       dst_request_def, dst_list_def, src_request_def, src_list_def);
 	if (!map) {
 		REDEBUG("Failed parsing attribute string: %s", fr_strerror());
 		return -1;
