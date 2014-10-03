@@ -773,18 +773,15 @@ ssize_t tmpl_from_attr_substr(value_pair_tmpl_t *vpt, char const *name,
 	 *	The string MIGHT have a tag.
 	 */
 	if (*p == ':') {
+		if (!attr.da->flags.has_tag) {
+			fr_strerror_printf("Attribute '%s' cannot have a tag", attr.da->name);
+			return -(p - name);
+		}
+
 		num = strtol(p + 1, &q, 10);
 		if ((num > 0x1f) || (num < 0)) {
 			fr_strerror_printf("Invalid tag value '%li' (should be between 0-31)", num);
 			return -((p + 1)- name);
-		}
-
-		if (!attr.da->flags.has_tag) {
-			if (num != TAG_NONE) {
-				fr_strerror_printf("Attribute '%s' cannot have a tag", attr.da->name);
-				return -(p - name);
-			}
-			num = TAG_ANY;
 		}
 
 		attr.tag = num;
