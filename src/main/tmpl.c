@@ -1162,7 +1162,7 @@ ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, value_pair_tmpl_t **out, char const *nam
 		 *	If we can parse it as an attribute, it's an attribute.
 		 *	Otherwise, treat it as a literal.
 		 */
-		slen = tmpl_afrom_attr_str(&vpt, ctx, name, request_def, list_def);
+		slen = tmpl_afrom_attr_str(ctx, &vpt, name, request_def, list_def);
 		if ((name[0] == '&') && (slen <= 0)) return slen;
 		if (slen > 0) break;
 		/* FALL-THROUGH */
