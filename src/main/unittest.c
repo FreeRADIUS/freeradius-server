@@ -140,7 +140,7 @@ static REQUEST *request_setup(FILE *fp)
 	/*
 	 *	Read packet from fp
 	 */
-	if (readvp2(&request->packet->vps, request->packet, fp, &filedone) < 0) {
+	if (readvp2(request->packet, &request->packet->vps, fp, &filedone) < 0) {
 		fr_perror("unittest");
 		talloc_free(request);
 		return NULL;
@@ -587,7 +587,7 @@ int main(int argc, char *argv[])
 		}
 
 
-		if (readvp2(&filter_vps, request, fp, &filedone) < 0) {
+		if (readvp2(request, &filter_vps, fp, &filedone) < 0) {
 			fprintf(stderr, "Failed reading attributes from %s: %s\n",
 				filter_file, fr_strerror());
 			rcode = EXIT_FAILURE;

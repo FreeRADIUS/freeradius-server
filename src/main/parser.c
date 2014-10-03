@@ -134,8 +134,8 @@ next:
 }
 
 
-static ssize_t condition_tokenize_string(TALLOC_CTX *ctx, char const *start, char **out,
-					 FR_TOKEN *op, char const **error)
+static ssize_t condition_tokenize_string(TALLOC_CTX *ctx, char **out, char const **error, char const *start,
+					 FR_TOKEN *op)
 {
 	char const *p = start;
 	char *q;
@@ -213,7 +213,7 @@ static ssize_t condition_tokenize_word(TALLOC_CTX *ctx, char const *start, char 
 	char const *p = start;
 
 	if ((*p == '"') || (*p == '\'') || (*p == '`') || (*p == '/')) {
-		return condition_tokenize_string(ctx, start, out, op, error);
+		return condition_tokenize_string(ctx, out, error, start, op);
 	}
 
 	*op = T_BARE_WORD;
@@ -470,7 +470,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 			c->type = COND_TYPE_EXISTS;
 			c->ci = ci;
 
-			tlen = tmpl_afrom_str(&c->data.vpt, c, lhs, lhs_type, REQUEST_CURRENT, PAIR_LIST_REQUEST);
+			tlen = tmpl_afrom_str(c, &c->data.vpt, lhs, lhs_type, REQUEST_CURRENT, PAIR_LIST_REQUEST);
 			if (tlen < 0) {
 				p = lhs_p - tlen;
 				return_P(fr_strerror());
@@ -638,7 +638,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 			 */
 			c->data.map = map = talloc_zero(c, value_pair_map_t);
 
-			tlen = tmpl_afrom_str(&map->lhs, map, lhs, lhs_type, REQUEST_CURRENT, PAIR_LIST_REQUEST);
+			tlen = tmpl_afrom_str(map, &map->lhs, lhs, lhs_type, REQUEST_CURRENT, PAIR_LIST_REQUEST);
 			if (tlen < 0) {
 				p = lhs_p - tlen;
 				return_P(fr_strerror());
@@ -660,7 +660,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 			    map_cast_from_hex(map, rhs_type, rhs)) {
 				/* do nothing */
 			} else {
-				tlen = tmpl_afrom_str(&map->rhs, map, rhs, rhs_type,
+				tlen = tmpl_afrom_str(map, &map->rhs, rhs, rhs_type,
 						      REQUEST_CURRENT, PAIR_LIST_REQUEST);
 				if (tlen < 0) {
 					p = rhs_p - tlen;

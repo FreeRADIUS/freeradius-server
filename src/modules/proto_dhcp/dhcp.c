@@ -459,7 +459,7 @@ int fr_dhcp_send(RADIUS_PACKET *packet)
 #endif
 }
 
-static int fr_dhcp_attr2vp(VALUE_PAIR **vp_p, TALLOC_CTX *ctx, uint8_t const *p, size_t alen);
+static int fr_dhcp_attr2vp(TALLOC_CTX *ctx, VALUE_PAIR **vp_p, uint8_t const *p, size_t alen);
 
 /** Returns the number of array members for arrays with fixed element sizes
  *
@@ -536,7 +536,7 @@ static int fr_dhcp_array_members(size_t *len, DICT_ATTR const *da)
  * @param[in] data to parse.
  * @param[in] len length of data to parse.
  */
-static int fr_dhcp_decode_vsa(VALUE_PAIR **tlv, TALLOC_CTX *ctx, uint8_t const *data, size_t len)
+static int fr_dhcp_decode_vsa(TALLOC_CTX *ctx, VALUE_PAIR **tlv, uint8_t const *data, size_t len)
 {
 	uint8_t const *p, *q;
 	vp_cursor_t cursor;
@@ -593,7 +593,7 @@ static int fr_dhcp_decode_vsa(VALUE_PAIR **tlv, TALLOC_CTX *ctx, uint8_t const *
 		vp->op = T_OP_ADD;
 		pairsteal(ctx, vp); /* for unknown attributes hack */
 
-		if (fr_dhcp_attr2vp(&vp, ctx, p + 5, p[4]) < 0) {
+		if (fr_dhcp_attr2vp(ctx, &vp, p + 5, p[4]) < 0) {
 			dict_attr_free(&da);
 			pairfree(&head);
 			return -1;
@@ -647,7 +647,7 @@ malformed:
  * @param[in] data to parse.
  * @param[in] len length of data to parse.
  */
-static int fr_dhcp_decode_suboption(VALUE_PAIR **tlv, TALLOC_CTX *ctx, uint8_t const *data, size_t len)
+static int fr_dhcp_decode_suboption(TALLOC_CTX *ctx, VALUE_PAIR **tlv, uint8_t const *data, size_t len)
 {
 	uint8_t const *p, *q;
 	VALUE_PAIR *head, *vp;
@@ -750,7 +750,7 @@ static int fr_dhcp_decode_suboption(VALUE_PAIR **tlv, TALLOC_CTX *ctx, uint8_t c
 			vp->op = T_OP_ADD;
 			pairsteal(ctx, vp); /* for unknown attributes hack */
 
-			if (fr_dhcp_attr2vp(&vp, ctx, a_p, a_len) < 0) {
+			if (fr_dhcp_attr2vp(ctx, &vp, a_p, a_len) < 0) {
 				dict_attr_free(&da);
 				pairfree(&head);
 				goto malformed;
@@ -803,7 +803,7 @@ malformed:
 /*
  *	Decode ONE value into a VP
  */
-static int fr_dhcp_attr2vp(VALUE_PAIR **vp_p, TALLOC_CTX *ctx, uint8_t const *data, size_t len)
+static int fr_dhcp_attr2vp(TALLOC_CTX *ctx, VALUE_PAIR **vp_p, uint8_t const *data, size_t len)
 {
 	VALUE_PAIR *vp = *vp_p;
 	VERIFY_VP(vp);
@@ -902,13 +902,13 @@ static int fr_dhcp_attr2vp(VALUE_PAIR **vp_p, TALLOC_CTX *ctx, uint8_t const *da
 	 *	For option 82 et al...
 	 */
 	case PW_TYPE_TLV:
-		return fr_dhcp_decode_suboption(vp_p, ctx, data, len);
+		return fr_dhcp_decode_suboption(ctx, vp_p, data, len);
 
 	/*
 	 *	For option 82.9
 	 */
 	case PW_TYPE_VSA:
-		return fr_dhcp_decode_vsa(vp_p, ctx, data, len);
+		return fr_dhcp_decode_vsa(ctx, vp_p, data, len);
 
 	default:
 		fr_strerror_printf("Internal sanity check %d %d", vp->da->type, __LINE__);
@@ -926,7 +926,7 @@ static int fr_dhcp_attr2vp(VALUE_PAIR **vp_p, TALLOC_CTX *ctx, uint8_t const *da
  * @param[in] data to parse.
  * @param[in] len of data to parse.
  */
-ssize_t fr_dhcp_decode_options(VALUE_PAIR **out, TALLOC_CTX *ctx, uint8_t const *data, size_t len)
+ssize_t fr_dhcp_decode_options(TALLOC_CTX *ctx, VALUE_PAIR **out, uint8_t const *data, size_t len)
 {
 	VALUE_PAIR *vp;
 	vp_cursor_t cursor;
@@ -997,7 +997,7 @@ ssize_t fr_dhcp_decode_options(VALUE_PAIR **out, TALLOC_CTX *ctx, uint8_t const 
 			}
 			vp->op = T_OP_ADD;
 
-			if (fr_dhcp_attr2vp(&vp, ctx, a_p, a_len) < 0) {
+			if (fr_dhcp_attr2vp(ctx, &vp, a_p, a_len) < 0) {
 				pairfree(&vp);
 				pairfree(out);
 				return -1;
@@ -1138,7 +1138,7 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 	{
 		VALUE_PAIR *options = NULL;
 
-		if (fr_dhcp_decode_options(&options, packet, packet->data + 240, packet->data_len - 240) < 0) {
+		if (fr_dhcp_decode_options(packet, &options, packet->data + 240, packet->data_len - 240) < 0) {
 			return -1;
 		}
 
@@ -1390,7 +1390,7 @@ static VALUE_PAIR *fr_dhcp_vp2suboption(TALLOC_CTX *ctx, vp_cursor_t *cursor)
  * @param cursor with current VP set to the option to be encoded. Will be advanced to the next option to encode.
  * @return > 0 length of data written, < 0 error, 0 not valid option (skipping).
  */
-ssize_t fr_dhcp_encode_option(uint8_t *out, size_t outlen, TALLOC_CTX *ctx, vp_cursor_t *cursor)
+ssize_t fr_dhcp_encode_option(TALLOC_CTX *ctx, uint8_t *out, size_t outlen, vp_cursor_t *cursor)
 {
 	VALUE_PAIR *vp;
 	DICT_ATTR const *previous;
@@ -1771,7 +1771,7 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 	 *  and sub options.
 	 */
 	while ((vp = fr_cursor_current(&cursor))) {
-		len = fr_dhcp_encode_option(p, packet->data_len - (p - packet->data), packet, &cursor);
+		len = fr_dhcp_encode_option(packet, p, packet->data_len - (p - packet->data), &cursor);
 		if (len < 0) break;
 		if (len > 0) debug_pair(vp);
 		p += len;

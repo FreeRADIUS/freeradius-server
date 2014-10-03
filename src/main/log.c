@@ -815,7 +815,7 @@ ERROR("%s^ %s", space, text);
  * @param slen of error marker. Expects negative integer value, as returned by parse functions.
  * @param msg to canonicalize.
  */
-void fr_canonicalize_error(char **sp, char **text, TALLOC_CTX *ctx, ssize_t slen, char const *msg)
+void fr_canonicalize_error(TALLOC_CTX *ctx, char **sp, char **text, ssize_t slen, char const *msg)
 {
 	size_t offset, skip = 0;
 	char *spbuf, *p;

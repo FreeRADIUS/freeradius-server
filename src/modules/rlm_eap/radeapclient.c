@@ -1270,7 +1270,7 @@ int main(int argc, char **argv)
 
 	while (!filedone) {
 		if (req->vps) pairfree(&req->vps);
-		if (readvp2(&req->vps, NULL, fp, &filedone) < 0) {
+		if (readvp2(NULL, &req->vps, fp, &filedone) < 0) {
 			ERROR("%s", fr_strerror());
 			break;
 		}
@@ -1523,7 +1523,7 @@ main(int argc, char *argv[])
 		if (req->vps) pairfree(&req->vps);
 		if (req2->vps) pairfree(&req2->vps);
 
-		if (readvp2(&req->vps, NULL, stdin, &filedone) < 0) {
+		if (readvp2(NULL, &req->vps, stdin, &filedone) < 0) {
 			ERROR("%s", fr_strerror());
 			break;
 		}

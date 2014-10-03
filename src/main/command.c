@@ -1288,7 +1288,7 @@ static int command_inject_file(rad_listen_t *listener, int argc, char *argv[])
 		return 0;
 	}
 
-	ret = readvp2(&vp, NULL, fp, &filedone);
+	ret = readvp2(NULL, &vp, fp, &filedone);
 	fclose(fp);
 	if (ret < 0) {
 		cprintf(listener, "ERROR: Failed reading attributes from %s: %s\n",

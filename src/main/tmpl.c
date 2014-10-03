@@ -773,15 +773,18 @@ ssize_t tmpl_from_attr_substr(value_pair_tmpl_t *vpt, char const *name,
 	 *	The string MIGHT have a tag.
 	 */
 	if (*p == ':') {
-		if (!attr.da->flags.has_tag) {
-			fr_strerror_printf("Attribute '%s' cannot have a tag", attr.da->name);
-			return -(p - name);
-		}
-
 		num = strtol(p + 1, &q, 10);
 		if ((num > 0x1f) || (num < 0)) {
 			fr_strerror_printf("Invalid tag value '%li' (should be between 0-31)", num);
 			return -((p + 1)- name);
+		}
+
+		if (!attr.da->flags.has_tag) {
+			if (num != TAG_NONE) {
+				fr_strerror_printf("Attribute '%s' cannot have a tag", attr.da->name);
+				return -(p - name);
+			}
+			num = TAG_ANY;
 		}
 
 		attr.tag = num;
@@ -879,15 +882,15 @@ ssize_t tmpl_from_attr_str(value_pair_tmpl_t *vpt, char const *name, request_ref
  * VPTs are used in various places where we need to pre-parse configuration
  * sections into attribute mappings.
  *
- * @param[out] out Where to write the pointer to the new value_pair_tmpl_t.
  * @param[in] ctx for talloc
+ * @param[out] out Where to write the pointer to the new value_pair_tmpl_t.
  * @param[in] name attribute name including qualifiers.
  * @param[in] request_def The default request to insert unqualified
  *	attributes into.
  * @param[in] list_def The default list to insert unqualified attributes into.
  * @return <= 0 on error (offset as negative integer), > 0 on success (number of bytes parsed)
  */
-ssize_t tmpl_afrom_attr_str(value_pair_tmpl_t **out, TALLOC_CTX *ctx, char const *name,
+ssize_t tmpl_afrom_attr_str(TALLOC_CTX *ctx, value_pair_tmpl_t **out, char const *name,
 			    request_refs_t request_def, pair_lists_t list_def)
 {
 	ssize_t slen;
@@ -1140,8 +1143,8 @@ size_t tmpl_prints(char *buffer, size_t bufsize, value_pair_tmpl_t const *vpt, D
  *
  * @note Unlike tmpl_afrom_attr_str return code 0 doesn't indicate failure, just means it parsed a 0 length string.
  *
- * @param[out] out Where to write the pointer to the new value_pait_tmpl_t.
  * @param[in] ctx for talloc.
+ * @param[out] out Where to write the pointer to the new value_pait_tmpl_t.
  * @param[in] name string to convert.
  * @param[in] type Type of quoting around value.
  * @param[in] request_def The default request to insert unqualified
@@ -1149,7 +1152,7 @@ size_t tmpl_prints(char *buffer, size_t bufsize, value_pair_tmpl_t const *vpt, D
  * @param[in] list_def The default list to insert unqualified attributes into.
  * @return < 0 on error (offset as negative integer), >= 0 on success (number of bytes parsed)
  */
-ssize_t tmpl_afrom_str(value_pair_tmpl_t **out, TALLOC_CTX *ctx, char const *name, FR_TOKEN type,
+ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, value_pair_tmpl_t **out, char const *name, FR_TOKEN type,
 		       request_refs_t request_def, pair_lists_t list_def)
 {
 	char const *p;
