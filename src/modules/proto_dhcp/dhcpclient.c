@@ -110,7 +110,7 @@ static int request_init(char const *filename)
 	/*
 	 *	Read the VP's.
 	 */
-	if (readvp2(&request->vps, NULL, fp, &filedone) < 0) {
+	if (readvp2(NULL, &request->vps, fp, &filedone) < 0) {
 		fr_perror("dhcpclient");
 		rad_free(&request);
 		if (fp != stdin) fclose(fp);
@@ -438,7 +438,7 @@ int main(int argc, char **argv)
 			fr_syserror(errno));
 		exit(1);
 	}
-	
+
 	request->sockfd = sockfd;
 	if (request->src_ipaddr.af == AF_UNSPEC) {
 		request->src_ipaddr = client_ipaddr;

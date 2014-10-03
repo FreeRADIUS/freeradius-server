@@ -181,11 +181,11 @@ value_pair_map_t *map_from_cp(TALLOC_CTX *ctx, CONF_PAIR *cp,
 	/*
 	 *	LHS must always be an attribute reference.
 	 */
-	slen = tmpl_afrom_attr_str(&map->lhs, ctx, attr, dst_request_def, dst_list_def);
+	slen = tmpl_afrom_attr_str(ctx, &map->lhs, attr, dst_request_def, dst_list_def);
 	if (slen <= 0) {
 		char *spaces, *text;
 
-		fr_canonicalize_error(&spaces, &text, ctx, slen, attr);
+		fr_canonicalize_error(ctx, &spaces, &text, slen, attr);
 
 		cf_log_err(ci, "Failed parsing attribute reference:");
 		cf_log_err(ci, "%s", text);
@@ -212,11 +212,11 @@ value_pair_map_t *map_from_cp(TALLOC_CTX *ctx, CONF_PAIR *cp,
 		/* do nothing */
 
 	} else {
-		slen = tmpl_afrom_str(&map->rhs, map, value, type, src_request_def, src_list_def);
+		slen = tmpl_afrom_str(map, &map->rhs, value, type, src_request_def, src_list_def);
 		if (slen < 0) {
 			char *spaces, *text;
 
-			fr_canonicalize_error(&spaces, &text, ctx, slen, value);
+			fr_canonicalize_error(ctx, &spaces, &text, slen, value);
 
 			cf_log_err(ci, "%s", text);
 			cf_log_err(ci, "%s^ %s", spaces, fr_strerror());
@@ -523,7 +523,7 @@ value_pair_map_t *map_from_fields(TALLOC_CTX *ctx, char const *lhs, FR_TOKEN lhs
 
 	map = talloc_zero(ctx, value_pair_map_t);
 
-	slen = tmpl_afrom_str(&map->lhs, map, lhs, lhs_type, dst_request_def, dst_list_def);
+	slen = tmpl_afrom_str(map, &map->lhs, lhs, lhs_type, dst_request_def, dst_list_def);
 	if (slen < 0) {
 	error:
 		talloc_free(map);
@@ -538,7 +538,7 @@ value_pair_map_t *map_from_fields(TALLOC_CTX *ctx, char const *lhs, FR_TOKEN lhs
 		return map;
 	}
 
-	slen = tmpl_afrom_str(&map->rhs, map, rhs, rhs_type, src_request_def, src_list_def);
+	slen = tmpl_afrom_str(map, &map->rhs, rhs, rhs_type, src_request_def, src_list_def);
 	if (slen < 0) goto error;
 
 	return map;

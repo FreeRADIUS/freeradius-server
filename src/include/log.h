@@ -106,7 +106,7 @@ void	radlog_request_marker(log_type_t type, log_debug_t lvl, REQUEST *request,
 			      char const *fmt, size_t indent, char const *error)
 	CC_HINT(nonnull);
 
-void	fr_canonicalize_error(char **spaces, char **text, TALLOC_CTX *ctx, ssize_t slen, char const *msg);
+void	fr_canonicalize_error(TALLOC_CTX *ctx, char **spaces, char **text, ssize_t slen, char const *msg);
 
 /*
  *	Multiple threads logging to one or more files.

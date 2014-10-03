@@ -1734,11 +1734,11 @@ static modcallable *do_compile_modswitch(modcallable *parent, rlm_components_t c
 	 *	will fix it up.
 	 */
 	type = cf_section_name2_type(cs);
-	slen = tmpl_afrom_str(&vpt, cs, name2, type, REQUEST_CURRENT, PAIR_LIST_REQUEST);
+	slen = tmpl_afrom_str(cs, &vpt, name2, type, REQUEST_CURRENT, PAIR_LIST_REQUEST);
 	if ((slen < 0) && ((type != T_BARE_WORD) || (name2[0] != '&'))) {
 		char *spaces, *text;
 
-		fr_canonicalize_error(&spaces, &text, cs, slen, fr_strerror());
+		fr_canonicalize_error(cs, &spaces, &text, slen, fr_strerror());
 
 		cf_log_err_cs(cs, "Syntax error");
 		cf_log_err_cs(cs, "%s", name2);
@@ -1834,11 +1834,11 @@ static modcallable *do_compile_modcase(modcallable *parent, rlm_components_t com
 
 		type = cf_section_name2_type(cs);
 
-		slen = tmpl_afrom_str(&vpt, cs, name2, type, REQUEST_CURRENT, PAIR_LIST_REQUEST);
+		slen = tmpl_afrom_str(cs, &vpt, name2, type, REQUEST_CURRENT, PAIR_LIST_REQUEST);
 		if ((slen < 0) && ((type != T_BARE_WORD) || (name2[0] != '&'))) {
 			char *spaces, *text;
 
-			fr_canonicalize_error(&spaces, &text, cs, slen, fr_strerror());
+			fr_canonicalize_error(cs, &spaces, &text, slen, fr_strerror());
 
 			cf_log_err_cs(cs, "Syntax error");
 			cf_log_err_cs(cs, "%s", name2);
@@ -1919,11 +1919,11 @@ static modcallable *do_compile_modforeach(modcallable *parent,
 	 *	will fix it up.
 	 */
 	type = cf_section_name2_type(cs);
-	slen = tmpl_afrom_str(&vpt, cs, name2, type, REQUEST_CURRENT, PAIR_LIST_REQUEST);
+	slen = tmpl_afrom_str(cs, &vpt, name2, type, REQUEST_CURRENT, PAIR_LIST_REQUEST);
 	if ((slen < 0) && ((type != T_BARE_WORD) || (name2[0] != '&'))) {
 		char *spaces, *text;
 
-		fr_canonicalize_error(&spaces, &text, cs, slen, fr_strerror());
+		fr_canonicalize_error(cs, &spaces, &text, slen, fr_strerror());
 
 		cf_log_err_cs(cs, "Syntax error");
 		cf_log_err_cs(cs, "%s", name2);
@@ -2831,7 +2831,7 @@ static bool pass2_xlat_compile(CONF_ITEM const *ci, value_pair_tmpl_t **pvpt, bo
 	if (slen < 0) {
 		char *spaces, *text;
 
-		fr_canonicalize_error(&spaces, &text, vpt, slen, vpt->name);
+		fr_canonicalize_error(vpt, &spaces, &text, slen, vpt->name);
 
 		cf_log_err(ci, "Failed parsing expanded string:");
 		cf_log_err(ci, "%s", text);
@@ -3096,11 +3096,11 @@ check_paircmp:
 		value_pair_tmpl_t *vpt;
 
 		fmt = talloc_asprintf(map->lhs, "%%{%s}", map->lhs->name);
-		slen = tmpl_afrom_str(&vpt, map, fmt, T_DOUBLE_QUOTED_STRING, REQUEST_CURRENT, PAIR_LIST_REQUEST);
+		slen = tmpl_afrom_str(map, &vpt, fmt, T_DOUBLE_QUOTED_STRING, REQUEST_CURRENT, PAIR_LIST_REQUEST);
 		if (slen < 0) {
 			char *spaces, *text;
 
-			fr_canonicalize_error(&spaces, &text, map->ci, slen, fr_strerror());
+			fr_canonicalize_error(map->ci, &spaces, &text, slen, fr_strerror());
 
 			cf_log_err(map->ci, "Failed converting %s to xlat", map->lhs->name);
 			cf_log_err(map->ci, "%s", fmt);
@@ -3276,14 +3276,14 @@ bool modcall_pass2(modcallable *mc)
 				rad_assert(this->name[0] == '&');
 				rad_assert(cf_section_name2_type(g->cs) == T_BARE_WORD);
 
-				slen = tmpl_afrom_str(&g->vpt, g->cs, this->name,
+				slen = tmpl_afrom_str(g->cs, &g->vpt, this->name,
 						      cf_section_name2_type(g->cs),
 						      REQUEST_CURRENT, PAIR_LIST_REQUEST);
 				if (slen < 0) {
 					char *spaces, *text;
 
 				parse_error:
-					fr_canonicalize_error(&spaces, &text, g->cs, slen, fr_strerror());
+					fr_canonicalize_error(g->cs, &spaces, &text, slen, fr_strerror());
 
 					cf_log_err_cs(g->cs, "Syntax error");
 					cf_log_err_cs(g->cs, "%s", this->name);
@@ -3322,7 +3322,7 @@ bool modcall_pass2(modcallable *mc)
 			if (g->vpt->type == TMPL_TYPE_LITERAL) {
 				value_pair_tmpl_t *vpt;
 
-				slen = tmpl_afrom_str(&vpt, g->cs, this->name, cf_section_name2_type(g->cs),
+				slen = tmpl_afrom_str(g->cs, &vpt, this->name, cf_section_name2_type(g->cs),
 						      REQUEST_CURRENT, PAIR_LIST_REQUEST);
 				if (slen < 0) goto parse_error;
 				if (vpt->type == TMPL_TYPE_ATTR) {
@@ -3368,7 +3368,7 @@ bool modcall_pass2(modcallable *mc)
 			if (!g->vpt && this->name &&
 			    (this->name[0] == '&') &&
 			    (cf_section_name2_type(g->cs) == T_BARE_WORD)) {
-				slen = tmpl_afrom_str(&g->vpt, g->cs, this->name,
+				slen = tmpl_afrom_str(g->cs, &g->vpt, this->name,
 						      cf_section_name2_type(g->cs),
 						      REQUEST_CURRENT, PAIR_LIST_REQUEST);
 				if (slen < 0) goto parse_error;
@@ -3462,7 +3462,7 @@ bool modcall_pass2(modcallable *mc)
 			 *	all of the modules have been loaded.
 			 *	Check for that now.
 			 */
-			slen = tmpl_afrom_str(&g->vpt, g->cs, this->name, cf_section_name2_type(g->cs),
+			slen = tmpl_afrom_str(g->cs, &g->vpt, this->name, cf_section_name2_type(g->cs),
 					      REQUEST_CURRENT, PAIR_LIST_REQUEST);
 			if (slen < 0) goto parse_error;
 

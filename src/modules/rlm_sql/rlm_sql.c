@@ -646,7 +646,7 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t *inst, REQUEST *request, rlm
 				goto finish;
 			}
 
-			rows = sql_getvpdata(inst, handle, request, &check_tmp, expanded);
+			rows = sql_getvpdata(request, inst, handle, &check_tmp, expanded);
 			TALLOC_FREE(expanded);
 			if (rows < 0) {
 				REDEBUG("Error retrieving check pairs for group %s", entry->name);
@@ -683,7 +683,7 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t *inst, REQUEST *request, rlm
 				goto finish;
 			}
 
-			rows = sql_getvpdata(inst, handle, request->reply, &reply_tmp, expanded);
+			rows = sql_getvpdata(request->reply, inst, handle, &reply_tmp, expanded);
 			TALLOC_FREE(expanded);
 			if (rows < 0) {
 				REDEBUG("Error retrieving reply pairs for group %s", entry->name);
@@ -973,7 +973,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 			goto error;
 		}
 
-		rows = sql_getvpdata(inst, &handle, request, &check_tmp, expanded);
+		rows = sql_getvpdata(request, inst, &handle, &check_tmp, expanded);
 		TALLOC_FREE(expanded);
 		if (rows < 0) {
 			REDEBUG("SQL query error");
@@ -1011,7 +1011,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 			goto error;
 		}
 
-		rows = sql_getvpdata(inst, &handle, request->reply, &reply_tmp, expanded);
+		rows = sql_getvpdata(request->reply, inst, &handle, &reply_tmp, expanded);
 		TALLOC_FREE(expanded);
 		if (rows < 0) {
 			REDEBUG("SQL query error");

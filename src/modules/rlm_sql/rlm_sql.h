@@ -159,7 +159,7 @@ rlm_sql_handle_t *sql_get_socket(rlm_sql_t *inst);
 int		sql_release_socket(rlm_sql_t *inst, rlm_sql_handle_t *handle);
 int		sql_userparse(TALLOC_CTX *ctx, VALUE_PAIR **first_pair, rlm_sql_row_t row);
 int		sql_read_realms(rlm_sql_handle_t *handle);
-int		sql_getvpdata(rlm_sql_t *inst, rlm_sql_handle_t **handle, TALLOC_CTX *ctx, VALUE_PAIR **pair, char const *query);
+int		sql_getvpdata(TALLOC_CTX *ctx, rlm_sql_t *inst, rlm_sql_handle_t **handle, VALUE_PAIR **pair, char const *query);
 int		sql_read_naslist(rlm_sql_handle_t *handle);
 int		sql_read_clients(rlm_sql_handle_t *handle);
 int		sql_dict_init(rlm_sql_handle_t *handle);

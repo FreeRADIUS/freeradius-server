@@ -217,14 +217,14 @@ ssize_t			tmpl_from_attr_str(value_pair_tmpl_t *vpt, char const *name,
 					   request_refs_t request_def,
 					   pair_lists_t list_def);
 
-ssize_t			tmpl_afrom_attr_str(value_pair_tmpl_t **out, TALLOC_CTX *ctx, char const *name,
+ssize_t			tmpl_afrom_attr_str(TALLOC_CTX *ctx, value_pair_tmpl_t **out, char const *name,
 					    request_refs_t request_def,
 					    pair_lists_t list_def);
 
 /*
  *	Parses any type of string into a template
  */
-ssize_t			tmpl_afrom_str(value_pair_tmpl_t **out, TALLOC_CTX *ctx, char const *name,
+ssize_t			tmpl_afrom_str(TALLOC_CTX *ctx, value_pair_tmpl_t **out, char const *name,
 				       FR_TOKEN type, request_refs_t request_def, pair_lists_t list_def);
 
 void			tmpl_free(value_pair_tmpl_t **tmpl);

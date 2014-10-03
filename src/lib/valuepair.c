@@ -2256,7 +2256,7 @@ FR_TOKEN userparse(TALLOC_CTX *ctx, char const *buffer, VALUE_PAIR **list)
 /*
  *	Read valuepairs from the fp up to End-Of-File.
  */
-int readvp2(VALUE_PAIR **out, TALLOC_CTX *ctx, FILE *fp, bool *pfiledone)
+int readvp2(TALLOC_CTX *ctx, VALUE_PAIR **out, FILE *fp, bool *pfiledone)
 {
 	char buf[8192];
 	FR_TOKEN last_token = T_EOL;

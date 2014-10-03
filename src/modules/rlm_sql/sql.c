@@ -477,8 +477,8 @@ sql_rcode_t rlm_sql_select_query(rlm_sql_handle_t **handle, rlm_sql_t *inst, cha
  *	Purpose: Get any group check or reply pairs
  *
  *************************************************************************/
-int sql_getvpdata(rlm_sql_t * inst, rlm_sql_handle_t **handle,
-		  TALLOC_CTX *ctx, VALUE_PAIR **pair, char const *query)
+int sql_getvpdata(TALLOC_CTX *ctx, rlm_sql_t *inst, rlm_sql_handle_t **handle,
+		  VALUE_PAIR **pair, char const *query)
 {
 	rlm_sql_row_t row;
 	int     rows = 0;
