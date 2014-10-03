@@ -1610,7 +1610,7 @@ static modcallable *do_compile_modupdate(modcallable *parent, UNUSED rlm_compone
 	/*
 	 *	This looks at cs->name2 to determine which list to update
 	 */
-	rcode = map_from_cs(cs, &head, PAIR_LIST_REQUEST, PAIR_LIST_REQUEST, 128);
+	rcode = map_afrom_cs(&head, cs, PAIR_LIST_REQUEST, PAIR_LIST_REQUEST, 128);
 	if (rcode < 0) return NULL; /* message already printed */
 
 	if (!head) {
