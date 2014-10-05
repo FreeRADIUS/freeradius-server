@@ -71,21 +71,29 @@ static char const hextab[] = "0123456789abcdef";
 typedef enum expr_token_t {
 	TOKEN_NONE = 0,
 	TOKEN_INTEGER,
+
 	TOKEN_AND,
 	TOKEN_OR,
+
+	TOKEN_LSHIFT,
+	TOKEN_RSHIFT,
+
 	TOKEN_ADD,
 	TOKEN_SUBTRACT,
+
 	TOKEN_DIVIDE,
 	TOKEN_REMAINDER,
 	TOKEN_MULTIPLY,
+
 	TOKEN_POWER,
 	TOKEN_LAST
 } expr_token_t;
 
 static int precedence[TOKEN_LAST + 1] = {
-	0, 0, 1, 1,
-	2, 2, 3, 3,
-	3, 4, 0
+	0, 0, 1, 1,		/* and or */
+	2, 2, 3, 3,		/* shift add */
+	4, 4, 4, 5,		/* mul, pow */
+	0
 };
 
 typedef struct expr_map_t {
@@ -257,19 +265,43 @@ static bool calc_result(REQUEST *request, int64_t lhs, expr_token_t op, int64_t 
 		break;
 
 	case TOKEN_DIVIDE:
-		if (rhs == 0) return false;
+		if (rhs == 0) {
+			RDEBUG("Division by zero!");
+			return false;
+		}
 
 		*answer = lhs / rhs;
 		break;
 
 	case TOKEN_REMAINDER:
-		if (rhs == 0) return false;
+		if (rhs == 0) {
+			RDEBUG("Division by zero!");
+			return false;
+		}
 
 		*answer = lhs % rhs;
 		break;
 
 	case TOKEN_MULTIPLY:
 		*answer = lhs * rhs;
+		break;
+
+	case TOKEN_LSHIFT:
+		if (rhs > 63) {
+			RDEBUG("Shift must be less than 63 (was %lld)", (long long int) rhs);
+			return false;
+		}
+
+		*answer = lhs << rhs;
+		break;
+
+	case TOKEN_RSHIFT:
+		if (rhs > 63) {
+			RDEBUG("Shift must be less than 63 (was %lld)", (long long int) rhs);
+			return false;
+		}
+
+		*answer = lhs >> rhs;
 		break;
 
 	case TOKEN_AND:
@@ -282,7 +314,7 @@ static bool calc_result(REQUEST *request, int64_t lhs, expr_token_t op, int64_t 
 
 	case TOKEN_POWER:
 		if (rhs > 255) {
-			REDEBUG("Exponent must be between 0-255");
+			REDEBUG("Exponent must be between 0-255 (was %lld)", (long long int) rhs);
 			return false;
 		}
 		*answer = fr_pow((int32_t) lhs, (uint8_t) rhs);
@@ -306,6 +338,18 @@ static bool get_operator(REQUEST *request, char const **string, expr_token_t *op
 			*string = p + 1;
 			return true;
 		}
+	}
+
+	if ((p[0] == '<') && (p[1] == '<')) {
+		*op = TOKEN_LSHIFT;
+		*string = p + 2;
+		return true;
+	}
+
+	if ((p[0] == '>') && (p[1] == '>')) {
+		*op = TOKEN_RSHIFT;
+		*string = p + 2;
+		return true;
 	}
 
 	RDEBUG("Expected operator at \"%s\"", p);
@@ -393,7 +437,7 @@ static ssize_t expr_xlat(UNUSED void *instance, REQUEST *request, char const *fm
 		return -1;
 	}
 
-	snprintf(out, outlen, "%lld", (long long int)result);
+	snprintf(out, outlen, "%lld", (long long int) result);
 	return strlen(out);
 }
 

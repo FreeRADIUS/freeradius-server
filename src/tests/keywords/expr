@@ -77,3 +77,9 @@ if ("%{expr: 2 - -1}" != 3) {
 		Filter-Id := "fail-9"
 	}
 }
+
+if ("%{expr: 1 << 2 | 1}" != 5) {
+	update reply {
+		Filter-Id := "fail-10"
+	}
+}
