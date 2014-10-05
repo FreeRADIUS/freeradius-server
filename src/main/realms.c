@@ -923,7 +923,7 @@ void realm_pool_free(home_pool_t *pool)
 			talloc_free(this->pool);
 			talloc_free(this);
 		}
-		pthread_mutex_lock(&pool_free_mutex);
+		pthread_mutex_unlock(&pool_free_mutex);
 		return;
 	}
 
