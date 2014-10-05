@@ -63,10 +63,12 @@ insert_acct_class {
 #
 #	Merges Acct-[Input|Output]-Octets and Acct-[Input|Output]-Gigawords into Acct-[Input|Output]-Octets64
 #
+#	If the &Attr-Foo doesn't exist, it's value is taken as zero.
+#
 acct_counters64.preacct {
 	update request {
-		&Acct-Input-Octets64 = "%{expr:(%{%{Acct-Input-Gigawords}:-0} << 32) | %{%{Acct-Input-Octets}:-0}}"
-		&Acct-Output-Octets64 = "%{expr:(%{%{Acct-Output-Gigawords}:-0} << 32) | %{%{Acct-Output-Octets}:-0}}"
+		&Acct-Input-Octets64 = "%{expr:(&Acct-Input-Gigawords << 32) | &Acct-Input-Octets}"
+		&Acct-Output-Octets64 = "%{expr:(&Acct-Output-Gigawords << 32) | &Acct-Output-Octets}"
 	}
 }
 
