@@ -51,19 +51,42 @@ static const CONF_PARSER module_config[] = {
 	{NULL, -1, 0, NULL, NULL}
 };
 
+/*
+ *	Lookup tables for randstr char classes
+ */
+static char randstr_punc[] = "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~";
+static char randstr_salt[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmopqrstuvwxyz/.";
+
+/*
+ *	Characters humans rarely confuse. Reduces char set considerably
+ *	should only be used for things such as one time passwords.
+ */
+static char randstr_otp[] = "469ACGHJKLMNPQRUVWXYabdfhijkprstuvwxyz";
+
+static char const hextab[] = "0123456789abcdef";
+
+/*
+ *	Start of expression calculator.
+ */
 typedef enum expr_token_t {
 	TOKEN_NONE = 0,
 	TOKEN_INTEGER,
+	TOKEN_AND,
+	TOKEN_OR,
 	TOKEN_ADD,
 	TOKEN_SUBTRACT,
 	TOKEN_DIVIDE,
 	TOKEN_REMAINDER,
 	TOKEN_MULTIPLY,
-	TOKEN_AND,
-	TOKEN_OR,
 	TOKEN_POWER,
 	TOKEN_LAST
 } expr_token_t;
+
+static int precedence[TOKEN_LAST + 1] = {
+	0, 0, 1, 1,
+	2, 2, 3, 3,
+	3, 4, 0
+};
 
 typedef struct expr_map_t {
 	char op;
@@ -83,184 +106,271 @@ static expr_map_t map[] =
 	{0,	TOKEN_LAST}
 };
 
-/*
- *	Lookup tables for randstr char classes
- */
-static char randstr_punc[] = "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~";
-static char randstr_salt[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmopqrstuvwxyz/.";
+static bool get_expression(REQUEST *request, char const **string, int64_t *answer, expr_token_t prev);
 
-/*
- *	Characters humans rarely confuse. Reduces char set considerably
- *	should only be used for things such as one time passwords.
- */
-static char randstr_otp[] = "469ACGHJKLMNPQRUVWXYabdfhijkprstuvwxyz";
-
-static char const hextab[] = "0123456789abcdef";
-
-static int get_number(REQUEST *request, char const **string, int64_t *answer)
+static bool get_number(REQUEST *request, char const **string, int64_t *answer)
 {
-	int		i, found;
-	int64_t		result;
-	int64_t		x;
-	char const 	*p;
-	expr_token_t	this;
+	int64_t x;
+	bool invert = false;
+	bool negative = false;
+	char const *p = *string;
 
 	/*
-	 *  Loop over the input.
+	 *	Look for a number.
 	 */
-	result = 0;
-	this = TOKEN_NONE;
+	while (isspace((int) *p)) p++;
 
-	for (p = *string; *p != '\0'; /* nothing */) {
-		if ((*p == ' ') ||
-		    (*p == '\t')) {
-			p++;
-			continue;
-		}
-
-		/*
-		 *  Discover which token it is.
-		 */
-		found = false;
-		for (i = 0; map[i].token != TOKEN_LAST; i++) {
-			if (*p == map[i].op) {
-				if (this != TOKEN_NONE) {
-					RDEBUG2("Invalid operator at \"%s\"", p);
-					return -1;
-				}
-				this = map[i].token;
-				p++;
-				found = true;
-				break;
-			}
-		}
-
-		/*
-		 *  Found the algebraic operator.  Get the next number.
-		 */
-		if (found) {
-			continue;
-		}
-
-		/*
-		 *  End of a group.  Stop.
-		 */
-		if (*p == ')') {
-			if (this != TOKEN_NONE) {
-				RDEBUG2("Trailing operator before end sub-expression at \"%s\"", p);
-				return -1;
-			}
-			p++;
-			break;
-		}
-
-		/*
-		 *  Start of a group.  Call ourselves recursively.
-		 */
-		if (*p == '(') {
-			p++;
-
-			found = get_number(request, &p, &x);
-			if (found < 0) {
-				return -1;
-			}
-		} else {
-			/*
-			 *  No algrebraic operator found, the next thing
-			 *  MUST be a number.
-			 *
-			 *  If it isn't, then we die.
-			 */
-			if ((*p == '0') && (p[1] == 'x')) {
-				char *end;
-
-				x = strtoul(p, &end, 16);
-				p = end;
-				goto calc;
-			}
-
-
-			if ((*p < '0') || (*p > '9')) {
-				RDEBUG2("Not a number at \"%s\"", p);
-				return -1;
-			}
-
-			/*
-			 *  This is doing it the hard way, but it also allows
-			 *  us to increment 'p'.
-			 */
-			x = 0;
-			while ((*p >= '0') && (*p <= '9')) {
-				x *= 10;
-				x += (*p - '0');
-				p++;
-			}
-		}
-
-	calc:
-		switch (this) {
-		default:
-		case TOKEN_NONE:
-			result = x;
-			break;
-
-		case TOKEN_ADD:
-			result += x;
-			break;
-
-		case TOKEN_SUBTRACT:
-			result -= x;
-			break;
-
-		case TOKEN_DIVIDE:
-			if (x == 0) {
-				result = 0; /* we don't have NaN for integers */
-			} else {
-				result /= x;
-			}
-			break;
-
-		case TOKEN_REMAINDER:
-			if (x == 0) {
-				result = 0; /* we don't have NaN for integers */
-				break;
-			}
-			result %= x;
-			break;
-
-		case TOKEN_MULTIPLY:
-			result *= x;
-			break;
-
-		case TOKEN_AND:
-			result &= x;
-			break;
-
-		case TOKEN_OR:
-			result |= x;
-			break;
-
-		case TOKEN_POWER:
-			if ((x > 255) || (x < 0)) {
-				REDEBUG("Exponent must be between 0-255");
-				return -1;
-			}
-			x = fr_pow((int32_t) result, (uint8_t) x);
-			break;
-		}
-
-		/*
-		 *  We've used this token.
-		 */
-		this = TOKEN_NONE;
+	/*
+	 *	!1 == 0xff...ffe
+	 */
+	if (*p == '!') {
+		invert = true;
+		p++;
 	}
 
 	/*
-	 *  And return the answer to the caller.
+	 *  No algrebraic operator found, the next thing
+	 *  MUST be a number.
+	 *
+	 *  If it isn't, then we die.
 	 */
+	if ((*p == '0') && (p[1] == 'x')) {
+		char *end;
+
+		x = strtoul(p, &end, 16);
+		p = end;
+		goto done;
+	}
+
+	/*
+	 *	Look for an attribute.
+	 */
+	if (*p == '&') {
+		ssize_t slen;
+		VALUE_PAIR *vp;
+		value_pair_tmpl_t vpt;
+
+		slen = tmpl_from_attr_substr(&vpt, p, REQUEST_CURRENT, PAIR_LIST_REQUEST);
+		if (slen < 0) {
+			RDEBUG("Failed parsing attribute name '%s': %s",
+			       p, fr_strerror());
+			return false;
+		}
+
+		p += slen;
+
+		if (tmpl_find_vp(&vp, request, &vpt) < 0) {
+			RDEBUG("Can't find VP");
+			x = 0;
+			goto done;
+		}
+
+		switch (vp->da->type) {
+		default:
+			RDEBUG("WARNING: Non-integer attribute %s", vp->da->name);
+			x = 0;
+			break;
+
+		case PW_TYPE_INTEGER64:
+			/*
+			 *	FIXME: error out if the number is too large.
+			 */
+			x = vp->vp_integer64;
+			break;
+
+		case PW_TYPE_INTEGER:
+			x = vp->vp_integer;
+			break;
+
+		case PW_TYPE_SIGNED:
+			x = vp->vp_signed;
+			break;
+
+		case PW_TYPE_SHORT:
+			x = vp->vp_short;
+			break;
+
+		case PW_TYPE_BYTE:
+			x = vp->vp_byte;
+			break;
+		}
+
+		goto done;
+	}
+
+	/*
+	 *	Do brackets recursively
+	 */
+	if (*p == '(') {
+		p++;
+		if (!get_expression(request, &p, &x, TOKEN_NONE)) return false;
+
+		if (*p != ')') {
+			RDEBUG("No trailing ')'");
+			return false;
+		}
+		p++;
+		goto done;
+	}
+
+	if (*p == '-') {
+		negative = true;
+		p++;
+	}
+
+	if ((*p < '0') || (*p > '9')) {
+		RDEBUG2("Not a number at \"%s\"", p);
+		return false;
+	}
+
+	/*
+	 *  This is doing it the hard way, but it also allows
+	 *  us to increment 'p'.
+	 */
+	x = 0;
+	while ((*p >= '0') && (*p <= '9')) {
+		x *= 10;
+		x += (*p - '0');
+		p++;
+	}
+
+	if (negative) x = -x;
+
+	if (invert) x = ~x;
+
+done:
 	*string = p;
-	*answer = result;
-	return 0;
+	*answer = x;
+	return true;
+}
+
+static bool calc_result(REQUEST *request, int64_t lhs, expr_token_t op, int64_t rhs, int64_t *answer)
+{
+	switch (op) {
+	default:
+	case TOKEN_ADD:
+		*answer = lhs + rhs;
+		break;
+
+	case TOKEN_SUBTRACT:
+		*answer = lhs - rhs;
+		break;
+
+	case TOKEN_DIVIDE:
+		if (rhs == 0) return false;
+
+		*answer = lhs / rhs;
+		break;
+
+	case TOKEN_REMAINDER:
+		if (rhs == 0) return false;
+
+		*answer = lhs % rhs;
+		break;
+
+	case TOKEN_MULTIPLY:
+		*answer = lhs * rhs;
+		break;
+
+	case TOKEN_AND:
+		*answer = lhs & rhs;
+		break;
+
+	case TOKEN_OR:
+		*answer = lhs | rhs;
+		break;
+
+	case TOKEN_POWER:
+		if (rhs > 255) {
+			REDEBUG("Exponent must be between 0-255");
+			return false;
+		}
+		*answer = fr_pow((int32_t) lhs, (uint8_t) rhs);
+		break;
+	}
+
+	return true;
+}
+
+static bool get_operator(REQUEST *request, char const **string, expr_token_t *op)
+{
+	int		i;
+	char const	*p = *string;
+
+	/*
+	 *	All tokens are one character.
+	 */
+	for (i = 0; map[i].token != TOKEN_LAST; i++) {
+		if (*p == map[i].op) {
+			*op = map[i].token;
+			*string = p + 1;
+			return true;
+		}
+	}
+
+	RDEBUG("Expected operator at \"%s\"", p);
+	return false;
+}
+
+
+static bool get_expression(REQUEST *request, char const **string, int64_t *answer, expr_token_t prev)
+{
+	int64_t		lhs, rhs;
+	char const 	*p, *op_p;
+	expr_token_t	this;
+
+	p = *string;
+
+	if (!get_number(request, &p, &lhs)) return false;
+
+redo:
+	while (isspace((int) *p)) p++;
+
+	/*
+	 *	A number by itself is OK.
+	 */
+	if (!*p || (*p == ')')) {
+		*answer = lhs;
+		*string = p;
+		return true;
+	}
+
+	/*
+	 *	Peek at the operator.
+	 */
+	op_p = p;
+	if (!get_operator(request, &p, &this)) return false;
+
+	/*
+	 *	a + b + c ... = (a + b) + c ...
+	 *	a * b + c ... = (a * b) + c ...
+	 *
+	 *	Feed the current number to the caller, who will take
+	 *	care of continuing.
+	 */
+	if (precedence[this] <= precedence[prev]) {
+		*answer = lhs;
+		*string = op_p;
+		return true;
+	}
+
+	/*
+	 *	a + b * c ... = a + (b * c) ...
+	 */
+	if (!get_expression(request, &p, &rhs, this)) return false;
+
+	if (!calc_result(request, lhs, this, rhs, answer)) return false;
+
+	/*
+	 *	There may be more to calculate.  The answer we
+	 *	calculated here is now the LHS of the lower priority
+	 *	operation which follows the current expression.  e.g.
+	 *
+	 *	a * b + c ... = (a * b) + c ...
+	 *	              =       d + c ...
+	 */
+	lhs = *answer;
+	goto redo;
 }
 
 /*
@@ -269,21 +379,17 @@ static int get_number(REQUEST *request, char const **string, int64_t *answer)
 static ssize_t expr_xlat(UNUSED void *instance, REQUEST *request, char const *fmt,
 			 char *out, size_t outlen)
 {
-	int		rcode;
 	int64_t		result;
 	char const 	*p;
 
 	p = fmt;
-	rcode = get_number(request, &p, &result);
-	if (rcode < 0) {
+
+	if (!get_expression(request, &p, &result, TOKEN_NONE)) {
 		return -1;
 	}
 
-	/*
-	 *  We MUST have eaten the entire input string.
-	 */
-	if (*p != '\0') {
-		RDEBUG2("Failed at %s", p);
+	if (*p) {
+		RDEBUG("Invalid text after expression: %s", p);
 		return -1;
 	}
 
