@@ -65,8 +65,8 @@ insert_acct_class {
 #
 acct_counters64.preacct {
 	update request {
-		&Acct-Input-Octets64 = "%{expr:(%{%{Acct-Input-Gigawords}:-0} * 4294967296) + %{%{Acct-Input-Octets}:-0}}"
-		&Acct-Output-Octets64 = "%{expr:(%{%{Acct-Output-Gigawords}:-0} * 4294967296) + %{%{Acct-Output-Octets}:-0}}"
+		&Acct-Input-Octets64 = "%{expr:(%{%{Acct-Input-Gigawords}:-0} << 32) | %{%{Acct-Input-Octets}:-0}}"
+		&Acct-Output-Octets64 = "%{expr:(%{%{Acct-Output-Gigawords}:-0} << 32) | %{%{Acct-Output-Octets}:-0}}"
 	}
 }
 
