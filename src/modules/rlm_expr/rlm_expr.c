@@ -168,7 +168,7 @@ static bool get_number(REQUEST *request, char const **string, int64_t *answer)
 		p += slen;
 
 		if (tmpl_find_vp(&vp, request, &vpt) < 0) {
-			RDEBUG("Can't find VP");
+			RDEBUG("Can't find &%s", vpt.tmpl_da->name);
 			x = 0;
 			goto done;
 		}
