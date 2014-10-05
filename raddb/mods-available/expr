@@ -7,12 +7,14 @@
 #
 #	Attribute-Name = "%{expr:2 + 3 + &NAS-Port}"
 #
-#  It supports the following operators:
+#  It supports the following operators (in order of precedence)
 #
-#	+	addition
-#	-	subtraction
 #	&	binary AND
 #	|	binary OR
+#	<<	left shift
+#	>>	right shift
+#	+	addition
+#	-	subtraction
 #	*	multiply
 #	/	divide
 #	%%	remainder
