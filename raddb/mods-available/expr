@@ -45,8 +45,8 @@
 #  Attribute references are supported for integer attributes.
 #  e.g. &NAS-Port.  The benefit of using attribute references
 #  is that the expression is calculated directly on the
-#  attribute.  It skips the step so "print to string, and then
-#  parse to number".
+#  attribute.  It skips the step of "print to string, and then
+#  parse to number".  This means it's a little faster.
 #
 #  Otherwise, all numbers are decimal.
 #
