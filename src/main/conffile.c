@@ -985,7 +985,7 @@ static inline int fr_item_validate_ipaddr(CONF_SECTION *cs, char const *name, PW
 int cf_item_parse(CONF_SECTION *cs, char const *name, int type, void *data, char const *dflt)
 {
 	int rcode;
-	bool deprecated, required, attribute, secret;
+	bool deprecated, required, attribute, secret, input;
 	char **q;
 	char const *value;
 	CONF_PAIR const *cp = NULL;
@@ -998,6 +998,7 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, int type, void *data, char
 	required = (type & PW_TYPE_REQUIRED);
 	attribute = (type & PW_TYPE_ATTRIBUTE);
 	secret = (type & PW_TYPE_SECRET);
+	input = (type == PW_TYPE_FILE_INPUT); /* check, not and */
 
 	type &= 0xff;		/* normal types are small */
 	rcode = 0;
@@ -1157,46 +1158,14 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, int type, void *data, char
 				    cs->depth, parse_spaces, name, value ? value : "(null)");
 		}
 		*q = value ? talloc_typed_strdup(cs, value) : NULL;
-		break;
 
 		/*
-		 *	This is the same as PW_TYPE_STRING,
-		 *	except that we also "stat" the file, and
-		 *	cache the result.
+		 *	If there's data AND it's an input file, check
+		 *	that we can read it.  This check allows errors
+		 *	to be caught as early as possible, during
+		 *	server startup.
 		 */
-	case PW_TYPE_FILE_INPUT:
-	case PW_TYPE_FILE_OUTPUT:
-		q = (char **) data;
-		if (*q != NULL) {
-			free(*q);
-		}
-
-		/*
-		 *	Expand variables which haven't already been
-		 *	expanded automagically when the configuration
-		 *	file was read.
-		 */
-		if ((value == dflt) && cs) {
-			int lineno = 0;
-
-			value = cf_expand_variables("?",
-						    &lineno,
-						    cs, buffer, sizeof(buffer),
-						    value);
-			if (!value) return -1;
-		}
-
-		if (required && (!value || !*value)) goto is_required;
-
-		cf_log_info(cs, "%.*s\t%s = \"%s\"",
-			    cs->depth, parse_spaces, name, value);
-		*q = value ? talloc_typed_strdup(cs, value) : NULL;
-
-		/*
-		 *	If the filename exists and we're supposed to
-		 *	read it, check it.
-		 */
-		if (*q && (type == PW_TYPE_FILE_INPUT)) {
+		if (*q && input) {
 			struct stat buf;
 
 			if (stat(*q, &buf) < 0) {
