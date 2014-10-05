@@ -75,20 +75,20 @@ static const CONF_PARSER module_config[] = {
 #else
 static struct group *fr_getgrnam(TALLOC_CTX *ctx, char const *name)
 {
-	struct group	*grp, my_group;
+	struct group	*grp, *result;
 	char		*group_buffer;
 	size_t		group_size = 1024;
 
-	grp = NULL;
-	group_buffer = talloc_array(ctx, char, group_size);
+	grp = talloc(ctx, struct group);
+	group_buffer = talloc_array(grp, char, group_size);
 	while (group_buffer) {
 		int err;
 
-		err = getgrnam_r(name, &my_group, group_buffer, group_size, &grp);
+		err = getgrnam_r(name, grp, group_buffer, group_size, &result);
 		if (err == ERANGE) {
 			group_size *= 2;
 			talloc_free(group_buffer);
-			group_buffer = talloc_array(ctx, char, group_size);
+			group_buffer = talloc_array(grp, char, group_size);
 			continue;
 		}
 
@@ -144,6 +144,10 @@ static int groupcmp(UNUSED void *instance, REQUEST *req, UNUSED VALUE_PAIR *requ
 				retval = 0;
 		}
 	}
+
+#ifdef HAVE_GETGRNAM_R
+	talloc_free(grp);
+#endif
 
 	return retval;
 }
