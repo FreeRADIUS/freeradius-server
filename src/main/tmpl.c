@@ -791,36 +791,33 @@ ssize_t tmpl_from_attr_substr(value_pair_tmpl_t *vpt, char const *name,
 skip_tag:
 	if (*p == '\0') goto finish;
 
-	if (*p != '[') {
-		fr_strerror_printf("Unexpected text after attribute name");
-		return -(p - name);
-	}
+	if (*p == '[') {
+		p++;
 
-	p++;
+		if (*p != '*') {
+			num = strtol(p, &q, 10);
+			if (p == q) {
+				fr_strerror_printf("Array index is not an integer");
+				return -(p - name);
+			}
 
-	if (*p != '*') {
-		num = strtol(p, &q, 10);
-		if (p == q) {
-			fr_strerror_printf("Array index is not an integer");
-			return -(p - name);
+			if ((num > 1000) || (num < 0)) {
+				fr_strerror_printf("Invalid array reference '%li' (should be between 0-1000)", num);
+				return -(p - name);
+			}
+			attr.num = num;
+			p = q;
+		} else {
+			attr.num = NUM_ALL;
+			p++;
 		}
 
-		if ((num > 1000) || (num < 0)) {
-			fr_strerror_printf("Invalid array reference '%li' (should be between 0-1000)", num);
+		if (*p != ']') {
+			fr_strerror_printf("No closing ']' for array index");
 			return -(p - name);
 		}
-		attr.num = num;
-		p = q;
-	} else {
-		attr.num = NUM_ALL;
 		p++;
 	}
-
-	if ((*p != ']') || (p[1] != '\0')) {
-		fr_strerror_printf("Unexpected text after array index");
-		return -(p - name);
-	}
-	p++;
 
 finish:
 	vpt->type = type;
@@ -865,7 +862,7 @@ ssize_t tmpl_from_attr_str(value_pair_tmpl_t *vpt, char const *name, request_ref
 	slen = tmpl_from_attr_substr(vpt, name, request_def, list_def);
 	if (slen <= 0) return slen;
 	if (name[slen] != '\0') {
-		fr_strerror_printf("Trailing characters after attribute string");
+		fr_strerror_printf("Unexpected text after attribute name");
 		return -slen;
 	}
 
@@ -901,7 +898,7 @@ ssize_t tmpl_afrom_attr_str(TALLOC_CTX *ctx, value_pair_tmpl_t **out, char const
 		return slen;
 	}
 	if (name[slen] != '\0') {
-		fr_strerror_printf("Trailing characters dafter attribute string");
+		fr_strerror_printf("Unexpected text after attribute name");
 		tmpl_free(&vpt);
 		return -slen;
 	}
