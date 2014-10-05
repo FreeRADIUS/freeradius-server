@@ -97,15 +97,6 @@ typedef struct {
 	char *xlat_name;
 } modxlat;
 
-/*
-static const FR_NAME_NUMBER grouptype_table[] = {
-	{ "", GROUPTYPE_SIMPLE },
-	{ "redundant ", GROUPTYPE_REDUNDANT },
-	{ "append ", GROUPTYPE_APPEND },
-	{ NULL, -1 }
-};
-*/
-
 /* Simple conversions: modsingle and modgroup are subclasses of modcallable,
  * so we often want to go back and forth between them. */
 static modsingle *mod_callabletosingle(modcallable *p)
