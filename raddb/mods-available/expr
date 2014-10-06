@@ -29,7 +29,7 @@
 #  precedence.
 #
 #  It also allows unary negation:	-1
-#  And logical invert:			!1
+#  And twos complement:			~1
 #
 #  All calculations are done on signed 63-bit integers.
 #  e.g. int64_t.  This should be sufficient for all normal
