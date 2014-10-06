@@ -542,6 +542,16 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		xlat_register(xlat_name, perl_xlat, NULL, inst);
 	}
 
+	exitstatus = perl_parse(inst->perl, xs_init, argc, embed, NULL);
+
+	end_AV = PL_endav;
+	PL_endav = (AV *)NULL;
+
+	if (exitstatus) {
+		ERROR("rlm_perl: perl_parse failed: %s not found or has syntax errors. \n", inst->module);
+		return -1;
+	}
+
 	/* parse perl configuration sub-section */
 	cs = cf_section_sub_find(conf, "config");
 	if (cs) {
@@ -553,18 +563,8 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		DEBUG("rlm_perl (%s): done parsing 'config'.", xlat_name);
 	}
 
-	exitstatus = perl_parse(inst->perl, xs_init, argc, embed, NULL);
-
-	end_AV = PL_endav;
-	PL_endav = (AV *)NULL;
-
-	if(!exitstatus) {
-		inst->perl_parsed = true;
-		perl_run(inst->perl);
-	} else {
-		ERROR("rlm_perl: perl_parse failed: %s not found or has syntax errors. \n", inst->module);
-		return (-1);
-	}
+	inst->perl_parsed = true;
+	perl_run(inst->perl);
 
 	PL_endav = end_AV;
 
