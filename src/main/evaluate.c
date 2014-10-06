@@ -335,6 +335,13 @@ static int do_cast_copy(VALUE_PAIR *dst, VALUE_PAIR const *src)
 		return pairparsevalue(dst, src->vp_strvalue, 0);
 	}
 
+	if ((src->da->type == PW_TYPE_IFID) &&
+	    (dst->da->type == PW_TYPE_INTEGER64)) {
+		memcpy(&dst->vp_integer64, &src->vp_ifid, sizeof(src->vp_ifid));
+		dst->vp_integer64 = htonll(dst->vp_integer64);
+		return 0;
+	}
+
 	if ((src->da->type == PW_TYPE_INTEGER64) &&
 	    (dst->da->type == PW_TYPE_ETHERNET)) {
 		uint8_t array[8];
