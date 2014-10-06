@@ -65,6 +65,90 @@ static char randstr_otp[] = "469ACGHJKLMNPQRUVWXYabdfhijkprstuvwxyz";
 
 static char const hextab[] = "0123456789abcdef";
 
+/** Calculate powers
+ *
+ * @author Orson Peters
+ * @note Borrowed from the gist here: https://gist.github.com/nightcracker/3551590.
+ *
+ * @param base a 32bit signed integer.
+ * @param exp amount to raise base by.
+ * @return base ^ pow, or 0 on underflow/overflow.
+ */
+static int64_t fr_pow(int32_t base, uint8_t exp) {
+	static const uint8_t highest_bit_set[] = {
+		0, 1, 2, 2, 3, 3, 3, 3,
+		4, 4, 4, 4, 4, 4, 4, 4,
+		5, 5, 5, 5, 5, 5, 5, 5,
+		5, 5, 5, 5, 5, 5, 5, 5,
+		6, 6, 6, 6, 6, 6, 6, 6,
+		6, 6, 6, 6, 6, 6, 6, 6,
+		6, 6, 6, 6, 6, 6, 6, 6,
+		6, 6, 6, 6, 6, 6, 6, 255, // anything past 63 is a guaranteed overflow with base > 1
+		255, 255, 255, 255, 255, 255, 255, 255,
+		255, 255, 255, 255, 255, 255, 255, 255,
+		255, 255, 255, 255, 255, 255, 255, 255,
+		255, 255, 255, 255, 255, 255, 255, 255,
+		255, 255, 255, 255, 255, 255, 255, 255,
+		255, 255, 255, 255, 255, 255, 255, 255,
+		255, 255, 255, 255, 255, 255, 255, 255,
+		255, 255, 255, 255, 255, 255, 255, 255,
+		255, 255, 255, 255, 255, 255, 255, 255,
+		255, 255, 255, 255, 255, 255, 255, 255,
+		255, 255, 255, 255, 255, 255, 255, 255,
+		255, 255, 255, 255, 255, 255, 255, 255,
+		255, 255, 255, 255, 255, 255, 255, 255,
+		255, 255, 255, 255, 255, 255, 255, 255,
+		255, 255, 255, 255, 255, 255, 255, 255,
+		255, 255, 255, 255, 255, 255, 255, 255,
+		255, 255, 255, 255, 255, 255, 255, 255,
+		255, 255, 255, 255, 255, 255, 255, 255,
+		255, 255, 255, 255, 255, 255, 255, 255,
+		255, 255, 255, 255, 255, 255, 255, 255,
+		255, 255, 255, 255, 255, 255, 255, 255,
+		255, 255, 255, 255, 255, 255, 255, 255,
+		255, 255, 255, 255, 255, 255, 255, 255,
+		255, 255, 255, 255, 255, 255, 255, 255,
+	};
+
+	uint64_t result = 1;
+
+	switch (highest_bit_set[exp]) {
+	case 255: // we use 255 as an overflow marker and return 0 on overflow/underflow
+		if (base == 1) {
+			return 1;
+		}
+
+		if (base == -1) {
+			return 1 - 2 * (exp & 1);
+		}
+		return 0;
+	case 6:
+		if (exp & 1) result *= base;
+		exp >>= 1;
+		base *= base;
+	case 5:
+		if (exp & 1) result *= base;
+		exp >>= 1;
+		base *= base;
+	case 4:
+		if (exp & 1) result *= base;
+		exp >>= 1;
+		base *= base;
+	case 3:
+		if (exp & 1) result *= base;
+		exp >>= 1;
+		base *= base;
+	case 2:
+		if (exp & 1) result *= base;
+		exp >>= 1;
+		base *= base;
+	case 1:
+		if (exp & 1) result *= base;
+	default:
+		return result;
+	}
+}
+
 /*
  *	Start of expression calculator.
  */
@@ -313,10 +397,16 @@ static bool calc_result(REQUEST *request, int64_t lhs, expr_token_t op, int64_t 
 		break;
 
 	case TOKEN_POWER:
-		if (rhs > 255) {
-			REDEBUG("Exponent must be between 0-255 (was %lld)", (long long int) rhs);
+		if (rhs > 63) {
+			REDEBUG("Exponent must be between 0-63 (was %lld)", (long long int) rhs);
 			return false;
 		}
+
+		if (lhs > 65535) {
+			REDEBUG("Base must be between 0-65535 (was %lld)", (long long int) lhs);
+			return false;
+		}
+
 		*answer = fr_pow((int32_t) lhs, (uint8_t) rhs);
 		break;
 	}

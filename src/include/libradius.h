@@ -691,7 +691,6 @@ int		fr_sockaddr2ipaddr(struct sockaddr_storage const *sa, socklen_t salen,
 				   fr_ipaddr_t *ipaddr, uint16_t *port);
 ssize_t		fr_utf8_to_ucs2(uint8_t *out, size_t outlen, char const *in, size_t inlen);
 size_t		fr_prints_uint128(char *out, size_t outlen, uint128_t const num);
-int64_t		fr_pow(int32_t base, uint8_t exp);
 int		fr_get_time(char const *date_str, time_t *date);
 int8_t		fr_pointer_cmp(void const *a, void const *b);
 void		fr_quick_sort(void const *to_sort[], int min_idx, int max_idx, fr_cmp_t cmp);
