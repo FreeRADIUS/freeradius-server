@@ -482,6 +482,8 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	char const *xlat_name;
 	int exitstatus = 0, argc=0;
 
+	CONF_SECTION *cs;
+
 	MEM(embed_c = talloc_zero_array(inst, char const *, 4));
 	memcpy(&embed, &embed_c, sizeof(embed));
 	/*
@@ -533,6 +535,24 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	PL_exit_flags |= PERL_EXIT_DESTRUCT_END;
 #endif
 
+	xlat_name = cf_section_name2(conf);
+	if (!xlat_name)
+		xlat_name = cf_section_name1(conf);
+	if (xlat_name) {
+		xlat_register(xlat_name, perl_xlat, NULL, inst);
+	}
+
+	/* parse perl configuration sub-section */
+	cs = cf_section_sub_find(conf, "config");
+	if (cs) {
+		DEBUG("rlm_perl (%s): parsing 'config' section...", xlat_name);
+
+		inst->rad_perlconf_hv = get_hv("RAD_PERLCONF",1);
+		perl_parse_config(cs, 0, inst->rad_perlconf_hv);
+
+		DEBUG("rlm_perl (%s): done parsing 'config'.", xlat_name);
+	}
+
 	exitstatus = perl_parse(inst->perl, xs_init, argc, embed, NULL);
 
 	end_AV = PL_endav;
@@ -547,25 +567,6 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	}
 
 	PL_endav = end_AV;
-
-	xlat_name = cf_section_name2(conf);
-	if (!xlat_name)
-		xlat_name = cf_section_name1(conf);
-	if (xlat_name) {
-		xlat_register(xlat_name, perl_xlat, NULL, inst);
-	}
-
-	/* parse perl configuration sub-section */
-	CONF_SECTION *cs;
-	cs = cf_section_sub_find(conf, "config");
-	if (cs) {
-		DEBUG("rlm_perl (%s): parsing 'config' section...", xlat_name);
-
-		inst->rad_perlconf_hv = get_hv("RAD_PERLCONF",1);
-		perl_parse_config(cs, 0, inst->rad_perlconf_hv);
-
-		DEBUG("rlm_perl (%s): done parsing 'config'.", xlat_name);
-	}
 
 	return 0;
 }
