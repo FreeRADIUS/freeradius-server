@@ -54,13 +54,13 @@ if ("%{expr: 1 + 2 * (&Tmp-Integer-1 + &Tmp-Integer-2)}" != 15) {
 	}
 }
 
-if ("%{expr: 1 & !1}" != 0) {
+if ("%{expr: 1 & ~1}" != 0) {
 	update reply {
 		Filter-Id := "fail-6"
 	}
 }
 
-if ("%{expr: 1 & !2}" != 1) {
+if ("%{expr: 1 & ~2}" != 1) {
 	update reply {
 		Filter-Id := "fail-7"
 	}

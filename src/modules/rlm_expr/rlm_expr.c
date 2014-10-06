@@ -129,9 +129,9 @@ static bool get_number(REQUEST *request, char const **string, int64_t *answer)
 	while (isspace((int) *p)) p++;
 
 	/*
-	 *	!1 == 0xff...ffe
+	 *	~1 == 0xff...ffe
 	 */
-	if (*p == '!') {
+	if (*p == '~') {
 		invert = true;
 		p++;
 	}
