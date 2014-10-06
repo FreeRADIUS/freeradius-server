@@ -263,6 +263,7 @@ int main(int argc, char **argv)
 	char *p;
 	int c;
 	char const *radius_dir = RADDBDIR;
+	char const *dict_dir = DICTDIR;
 	char const *filename = NULL;
 	DICT_ATTR const *da;
 
@@ -314,7 +315,7 @@ int main(int argc, char **argv)
 	 */
 	da = dict_attrbyname("DHCP-Message-Type");
 	if (!da) {
-		if (dict_read(radius_dir, "dictionary.dhcp") < 0) {
+		if (dict_read(dict_dir, "dictionary.dhcp") < 0) {
 			fprintf(stderr, "Failed reading dictionary.dhcp: %s",
 				fr_strerror());
 			return -1;
