@@ -766,6 +766,14 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 					}
 
 					/*
+					 *	ifid to integer64 is OK
+					 */
+					if ((c->data.map->lhs->tmpl_da->type == PW_TYPE_IFID) &&
+					    (c->cast->type == PW_TYPE_INTEGER64)) {
+						goto cast_ok;
+					}
+
+					/*
 					 *	ipaddr to ipv4prefix is OK
 					 */
 					if ((c->data.map->lhs->tmpl_da->type == PW_TYPE_IPV4_ADDR) &&
