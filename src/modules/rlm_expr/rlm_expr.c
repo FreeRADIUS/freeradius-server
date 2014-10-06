@@ -74,7 +74,8 @@ static char const hextab[] = "0123456789abcdef";
  * @param exp amount to raise base by.
  * @return base ^ pow, or 0 on underflow/overflow.
  */
-static int64_t fr_pow(int32_t base, uint8_t exp) {
+static int64_t fr_pow(int64_t base, int64_t exp)
+{
 	static const uint8_t highest_bit_set[] = {
 		0, 1, 2, 2, 3, 3, 3, 3,
 		4, 4, 4, 4, 4, 4, 4, 4,
@@ -83,37 +84,12 @@ static int64_t fr_pow(int32_t base, uint8_t exp) {
 		6, 6, 6, 6, 6, 6, 6, 6,
 		6, 6, 6, 6, 6, 6, 6, 6,
 		6, 6, 6, 6, 6, 6, 6, 6,
-		6, 6, 6, 6, 6, 6, 6, 255, // anything past 63 is a guaranteed overflow with base > 1
-		255, 255, 255, 255, 255, 255, 255, 255,
-		255, 255, 255, 255, 255, 255, 255, 255,
-		255, 255, 255, 255, 255, 255, 255, 255,
-		255, 255, 255, 255, 255, 255, 255, 255,
-		255, 255, 255, 255, 255, 255, 255, 255,
-		255, 255, 255, 255, 255, 255, 255, 255,
-		255, 255, 255, 255, 255, 255, 255, 255,
-		255, 255, 255, 255, 255, 255, 255, 255,
-		255, 255, 255, 255, 255, 255, 255, 255,
-		255, 255, 255, 255, 255, 255, 255, 255,
-		255, 255, 255, 255, 255, 255, 255, 255,
-		255, 255, 255, 255, 255, 255, 255, 255,
-		255, 255, 255, 255, 255, 255, 255, 255,
-		255, 255, 255, 255, 255, 255, 255, 255,
-		255, 255, 255, 255, 255, 255, 255, 255,
-		255, 255, 255, 255, 255, 255, 255, 255,
-		255, 255, 255, 255, 255, 255, 255, 255,
-		255, 255, 255, 255, 255, 255, 255, 255,
-		255, 255, 255, 255, 255, 255, 255, 255,
-		255, 255, 255, 255, 255, 255, 255, 255,
-		255, 255, 255, 255, 255, 255, 255, 255,
-		255, 255, 255, 255, 255, 255, 255, 255,
-		255, 255, 255, 255, 255, 255, 255, 255,
-		255, 255, 255, 255, 255, 255, 255, 255,
+		6, 6, 6, 6, 6, 6, 6 // anything past 63 is a guaranteed overflow with base > 1
 	};
 
-	uint64_t result = 1;
+	int64_t result = 1;
 
-	switch (highest_bit_set[exp]) {
-	case 255: // we use 255 as an overflow marker and return 0 on overflow/underflow
+	if (exp > 63) {
 		if (base == 1) {
 			return 1;
 		}
@@ -121,7 +97,10 @@ static int64_t fr_pow(int32_t base, uint8_t exp) {
 		if (base == -1) {
 			return 1 - 2 * (exp & 1);
 		}
-		return 0;
+		return 0;	/* overflow */
+	}
+
+	switch (highest_bit_set[exp]) {
 	case 6:
 		if (exp & 1) result *= base;
 		exp >>= 1;
@@ -407,7 +386,7 @@ static bool calc_result(REQUEST *request, int64_t lhs, expr_token_t op, int64_t 
 			return false;
 		}
 
-		*answer = fr_pow((int32_t) lhs, (uint8_t) rhs);
+		*answer = fr_pow(lhs, rhs);
 		break;
 	}
 
