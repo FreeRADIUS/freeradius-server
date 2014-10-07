@@ -2261,7 +2261,7 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply)
 		} else {
 			rad_assert(!request->in_proxy_hash);
 		}
-	} else {
+	} else if (request->in_proxy_hash) {
 		remove_from_proxy_hash(request);
 	}
 
@@ -2848,12 +2848,26 @@ static int request_proxy(REQUEST *request, int retransmit)
 		talloc_free(fake);
 
 		/*
+		 *	No reply code, toss the reply we have,
+		 *	and do post-proxy-type Fail.
+		 */
+		if (!request->proxy_reply->code) {
+			TALLOC_FREE(request->proxy_reply);
+			setup_post_proxy_fail(request);
+		}
+
+		/*
 		 *	Just do the work here, rather than trying to
 		 *	run the "decode proxy reply" stuff...
 		 */
 		process_proxy_reply(request, request->proxy_reply);
 
-		request->handle(request); /* to do more post-proxy stuff */
+		/*
+		 *	If we have a reply, run it through the handler.
+		 */
+		if (request->proxy_reply) {
+			request->handle(request); /* to do more post-proxy stuff */
+		}
 
 		return -1;	/* so we call request_finish */
 	}
