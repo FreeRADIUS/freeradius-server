@@ -19,14 +19,17 @@ FreeRADIUS 3.0.5 Mon 15 Sep 2014 15:30:00 EDT urgency=medium
 	  specify a complete object DN and use the base scope.
 	* Don't SEGV if a received attribute value in a JSON structure
 	  is null, or a value can't be stringified.
+	* Don't assert if the server returns a JSON content-type and
+	  the server hasn't been built with support for JSON.
+	  Closes #808.
 	* Set CURLOPT_NOSIGNAL to prevent curl from handling signals
 	  and causing a longjmp error when the server was running with
-	  threads
+	  threads.
 	* Allow tabs after attribute names in the "users" file.
-	  Closes #796
+	  Closes #796.
 	* Free unknown DICT_ATTRs.  Closes #795
 	* Handle unknown attributes in the conditions and "update"
-	  sections.  e.g. Attr-1.2.3.4 = foo
+	  sections.  e.g. Attr-1.2.3.4 = foo.
 	* Use correct array size for MS-CHAP new password.
 	* In rlm_rest, check for older versions of libraries at start
 	  time, rather than when a packet comes in.
@@ -35,7 +38,7 @@ FreeRADIUS 3.0.5 Mon 15 Sep 2014 15:30:00 EDT urgency=medium
 	* Don't optimize %{Packet-Src-IP-Address}.  Closes #804.
 	* dhcpclient loads dictionaries correclty.  Closes #805.
 	* double quotes are no longer escapted in single-quoted
-	  strings.  e.g. 'foo "hello" bar'
+	  strings.  e.g. 'foo "hello" bar'.
 
 FreeRADIUS 3.0.4 Wed 10 Sep 2014 12:00:00 EDT urgency=medium
 	Feature improvements
