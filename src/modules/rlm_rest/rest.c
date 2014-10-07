@@ -1596,7 +1596,7 @@ static size_t rest_response_header(void *in, size_t size, size_t nmemb, void *us
 				(int) len, p);
 
 			/*
-			 *  Figure out if the type is supported by one of the decoders.
+			 *  Assume the force_to value has already been validated.
 			 */
 			if (ctx->force_to != HTTP_BODY_UNKNOWN) {
 				if (ctx->force_to != ctx->type) {
@@ -1605,36 +1605,35 @@ static size_t rest_response_header(void *in, size_t size, size_t nmemb, void *us
 					ctx->type = ctx->force_to;
 				}
 			/*
-			 *  Assume the force_to value has already been validated.
+			 *  Figure out if the type is supported by one of the decoders.
 			 */
-			} else switch (http_body_type_supported[ctx->type]) {
-			case HTTP_BODY_UNKNOWN:
-				RWDEBUG("Couldn't determine type, using the request's type \"%s\".",
-					fr_int2str(http_body_type_table, ctx->type, "<INVALID>"));
-				break;
+			} else {
+				ctx->type = http_body_type_supported[type];
+				switch (ctx->type) {
+				case HTTP_BODY_UNKNOWN:
+					RWDEBUG("Couldn't determine type, using the request's type \"%s\".",
+						fr_int2str(http_body_type_table, type, "<INVALID>"));
+					break;
 
-			case HTTP_BODY_UNSUPPORTED:
-				REDEBUG("Type \"%s\" is currently unsupported",
-					fr_int2str(http_body_type_table, ctx->type, "<INVALID>"));
-				ctx->type = HTTP_BODY_UNSUPPORTED;
-				break;
+				case HTTP_BODY_UNSUPPORTED:
+					REDEBUG("Type \"%s\" is currently unsupported",
+						fr_int2str(http_body_type_table, type, "<INVALID>"));
+					break;
 
-			case HTTP_BODY_UNAVAILABLE:
-				REDEBUG("Type \"%s\" is unavailable, please rebuild this module with the required "
-					"library", fr_int2str(http_body_type_table, ctx->type, "<INVALID>"));
-				ctx->type = HTTP_BODY_UNAVAILABLE;
-				break;
+				case HTTP_BODY_UNAVAILABLE:
+					REDEBUG("Type \"%s\" is unavailable, please rebuild this module with the required "
+						"library", fr_int2str(http_body_type_table, type, "<INVALID>"));
+					break;
 
-			case HTTP_BODY_INVALID:
-				REDEBUG("Type \"%s\" is not a valid web API data markup format",
-					fr_int2str(http_body_type_table, ctx->type, "<INVALID>"));
-				ctx->type = HTTP_BODY_INVALID;
-				break;
+				case HTTP_BODY_INVALID:
+					REDEBUG("Type \"%s\" is not a valid web API data markup format",
+						fr_int2str(http_body_type_table, type, "<INVALID>"));
+					break;
 
-			/* supported type */
-			default:
-				ctx->type = type;
-				break;
+				/* supported type */
+				default:
+					break;
+				}
 			}
 		}
 		break;
@@ -2296,10 +2295,6 @@ int rest_response_decode(rlm_rest_t *instance, UNUSED rlm_rest_section_t *sectio
 	case HTTP_BODY_UNSUPPORTED:
 	case HTTP_BODY_UNAVAILABLE:
 	case HTTP_BODY_INVALID:
-#ifndef HAVE_JSON
-	case HTTP_BODY_JSON:
-		RERROR("Received JSON data, JSON is not available in this build");
-#endif
 		return -1;
 
 	default:

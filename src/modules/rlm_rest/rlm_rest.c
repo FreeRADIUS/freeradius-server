@@ -650,12 +650,10 @@ static int parse_sub_section(CONF_SECTION *parent, rlm_rest_section_t *config, r
 				      "markup format", config->body_str);
 			return -1;
 
-#ifndef HAVE_JSON
 		case HTTP_BODY_UNAVAILABLE:
 			cf_log_err_cs(cs, "Unavailable HTTP body type.  \"%s\" is not available in this "
 				      "build", config->body_str);
 			return -1;
-#endif
 
 		default:
 			break;
