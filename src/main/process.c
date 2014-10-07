@@ -1380,8 +1380,14 @@ STATE_MACHINE_DECL(request_finish)
 
 	/*
 	 *	Ignore all "do not respond" packets.
+	 *	Except for the detail ones, which need to ping
+	 *	the detail file reader so that it will retransmit.
 	 */
-	if (!request->reply->code) {
+	if (!request->reply->code
+#ifdef WITH_DETAIL
+	    && (request->listener->type != RAD_LISTEN_DETAIL)
+#endif
+		) {
 		RDEBUG("Not sending reply to client.");
 		goto done;
 	}
