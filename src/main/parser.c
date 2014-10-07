@@ -483,7 +483,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 			}
 
 		} else { /* it's an operator */
-#ifdef HAVE_REGEX_H
+#ifdef HAVE_REGEX
 			bool regex = false;
 			bool i_flag = false;
 #endif
@@ -504,7 +504,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 					op = T_OP_NE;
 					p += 2;
 
-#ifdef HAVE_REGEX_H
+#ifdef HAVE_REGEX
 				} else if (p[1] == '~') {
 					regex = true;
 
@@ -530,7 +530,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 					op = T_OP_CMP_EQ;
 					p += 2;
 
-#ifdef HAVE_REGEX_H
+#ifdef HAVE_REGEX
 				} else if (p[1] == '~') {
 					regex = true;
 
@@ -614,7 +614,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 				return_SLEN;
 			}
 
-#ifdef HAVE_REGEX_H
+#ifdef HAVE_REGEX
 			/*
 			 *	Sanity checks for regexes.
 			 */
@@ -685,7 +685,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 				c->pass2_fixup = PASS2_FIXUP_ATTR;
 			}
 
-#ifdef HAVE_REGEX_H
+#ifdef HAVE_REGEX
 			if (c->data.map->rhs->type == TMPL_TYPE_REGEX) {
 				c->data.map->rhs->tmpl_iflag = i_flag;
 			}
@@ -717,7 +717,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 					goto same_type;
 				}
 
-#ifdef HAVE_REGEX_H
+#ifdef HAVE_REGEX
 				if (c->data.map->rhs->type == TMPL_TYPE_REGEX) {
 					return_0("Cannot use cast with regex comparison");
 				}
