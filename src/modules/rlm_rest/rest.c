@@ -2296,6 +2296,10 @@ int rest_response_decode(rlm_rest_t *instance, UNUSED rlm_rest_section_t *sectio
 	case HTTP_BODY_UNSUPPORTED:
 	case HTTP_BODY_UNAVAILABLE:
 	case HTTP_BODY_INVALID:
+#ifndef HAVE_JSON
+	case HTTP_BODY_JSON:
+		RERROR("Received JSON data, JSON is not available in this build");
+#endif
 		return -1;
 
 	default:
