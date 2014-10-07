@@ -483,8 +483,8 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 			}
 
 		} else { /* it's an operator */
-			bool regex;
-#ifdef HAVE_REGEX
+#ifdef HAVE_REGEX_H
+			bool regex = false;
 			bool i_flag = false;
 #endif
 			value_pair_map_t *map;
@@ -492,7 +492,6 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 			/*
 			 *	The next thing should now be a comparison operator.
 			 */
-			regex = false;
 			c->type = COND_TYPE_MAP;
 			c->ci = ci;
 
@@ -505,11 +504,13 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 					op = T_OP_NE;
 					p += 2;
 
+#ifdef HAVE_REGEX_H
 				} else if (p[1] == '~') {
-				regex = true;
+					regex = true;
 
-				op = T_OP_REG_NE;
-				p += 2;
+					op = T_OP_REG_NE;
+					p += 2;
+#endif
 
 				} else if (p[1] == '*') {
 					if (lhs_type != T_BARE_WORD) {
@@ -529,11 +530,13 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 					op = T_OP_CMP_EQ;
 					p += 2;
 
+#ifdef HAVE_REGEX_H
 				} else if (p[1] == '~') {
 					regex = true;
 
 					op = T_OP_REG_EQ;
 					p += 2;
+#endif
 
 				} else if (p[1] == '*') {
 					if (lhs_type != T_BARE_WORD) {
@@ -611,6 +614,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 				return_SLEN;
 			}
 
+#ifdef HAVE_REGEX_H
 			/*
 			 *	Sanity checks for regexes.
 			 */
@@ -623,9 +627,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 				 *	Allow /foo/i
 				 */
 				if (p[slen] == 'i') {
-#ifdef HAVE_REGEX
 					i_flag = true;
-#endif
 					slen++;
 				}
 
@@ -633,6 +635,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 				return_P("Unexpected regular expression");
 			}
 
+#endif
 			/*
 			 *	Duplicate map_from_fields here, as we
 			 *	want to separate parse errors in the
@@ -682,13 +685,11 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 				c->pass2_fixup = PASS2_FIXUP_ATTR;
 			}
 
+#ifdef HAVE_REGEX_H
 			if (c->data.map->rhs->type == TMPL_TYPE_REGEX) {
-#ifdef HAVE_REGEX
 				c->data.map->rhs->tmpl_iflag = i_flag;
-#else
-				return_0("Server was built without support for regular expressions");
-#endif
 			}
+#endif
 
 			/*
 			 *	Save the CONF_ITEM for later.
@@ -716,9 +717,11 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 					goto same_type;
 				}
 
+#ifdef HAVE_REGEX_H
 				if (c->data.map->rhs->type == TMPL_TYPE_REGEX) {
 					return_0("Cannot use cast with regex comparison");
 				}
+#endif
 
 				/*
 				 *	The LHS is a literal which has been cast to a data type.
