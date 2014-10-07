@@ -1214,9 +1214,7 @@ int pairparsevalue(VALUE_PAIR *vp, char const *value, size_t inlen)
 		}
 
 
-#ifdef WITH_ASCEND_BINARY
 	do_octets:
-#endif
 		len -= 2;
 
 		/*
