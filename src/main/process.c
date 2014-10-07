@@ -1568,19 +1568,20 @@ int request_receive(rad_listen_t *listener, RADIUS_PACKET *packet,
 	 */
 	gettimeofday(&now, NULL);
 
+	packet->timestamp = now;
+
 #ifdef WITH_ACCOUNTING
 	if (listener->type != RAD_LISTEN_DETAIL)
 #endif
 	{
 		sock = listener->data;
 		sock->last_packet = now.tv_sec;
-	}
-	packet->timestamp = now;
 
-	/*
-	 *	Skip everything if required.
-	 */
-	if (listener->nodup) goto skip_dup;
+		/*
+		 *	Skip everything if required.
+		 */
+		if (listener->nodup) goto skip_dup;
+	}
 
 	packet_p = rbtree_finddata(pl, &packet);
 	if (packet_p) {
@@ -1686,6 +1687,10 @@ skip_dup:
 	request = request_setup(listener, packet, client, fun);
 	if (!request) return 1;
 
+#ifdef WITH_ACCOUNTING
+	if (listener->type == RAD_LISTEN_DETAIL) goto do_queue_or_run;
+#endif
+
 	/*
 	 *	Remember the request in the list.
 	 */
@@ -1718,6 +1723,7 @@ skip_dup:
 		return 1;
 	}
 
+do_queue_or_run:
 	/*
 	 *	Otherwise, insert it into the state machine.
 	 *	The child threads will take care of processing it.
