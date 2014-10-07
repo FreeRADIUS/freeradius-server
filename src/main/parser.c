@@ -623,7 +623,9 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 				 *	Allow /foo/i
 				 */
 				if (p[slen] == 'i') {
+#ifdef HAVE_REGEX
 					i_flag = true;
+#endif
 					slen++;
 				}
 
