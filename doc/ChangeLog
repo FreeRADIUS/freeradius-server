@@ -6,6 +6,8 @@ FreeRADIUS 3.0.5 Mon 15 Sep 2014 15:30:00 EDT urgency=medium
 	  and validated when the server starts.
 	* All configuration items which are dynamically expanded
 	  are now parsed and validated when the server starts.
+	* %{expr:...} expressions can now do bit shifting and more.
+	  See raddb/mods-available/expr.
 
 	Bug fixes
 	* Parse list qualifiers in generic LDAP 'valuepair_attribute'
@@ -31,6 +33,9 @@ FreeRADIUS 3.0.5 Mon 15 Sep 2014 15:30:00 EDT urgency=medium
 	* Don't call detach on parse error in rlm_perl.  Closes #802.
 	* Integer fixes for big-endian systems.  Closes #803.
 	* Don't optimize %{Packet-Src-IP-Address}.  Closes #804.
+	* dhcpclient loads dictionaries correclty.  Closes #805.
+	* double quotes are no longer escapted in single-quoted
+	  strings.  e.g. 'foo "hello" bar'
 
 FreeRADIUS 3.0.4 Wed 10 Sep 2014 12:00:00 EDT urgency=medium
 	Feature improvements
