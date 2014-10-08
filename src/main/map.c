@@ -977,7 +977,8 @@ int map_to_request(REQUEST *request, value_pair_map_t const *map, radius_map_get
 	 */
 	if ((map->lhs->type != TMPL_TYPE_LIST) &&
 	    (map->lhs->type != TMPL_TYPE_ATTR)) {
-		REDEBUG("Invalid mapping destination");
+		REDEBUG("Mapping LHS should be an attr or list but is an %s",
+			fr_int2str(template_names, map->lhs->type, "<INVALID>"));
 		return -2;
 	}
 
