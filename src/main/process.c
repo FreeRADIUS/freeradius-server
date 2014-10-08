@@ -4350,7 +4350,7 @@ static int event_new_fd(rad_listen_t *this)
 		 */
 		case RAD_LISTEN_PROXY:
 #ifdef WITH_TCP
-			rad_assert(sock->home != NULL);
+			rad_assert((sock->proto == IPPROTO_UDP) || (sock->home != NULL));
 
 			/*
 			 *	Add timers to outgoing child sockets, if necessary.
