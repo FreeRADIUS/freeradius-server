@@ -1436,10 +1436,24 @@ STATE_MACHINE_DECL(request_finish)
 	 *	Send the reply.
 	 */
 	if (!request->response_delay) {
-		DEBUG_PACKET(request, request->reply, 1);
-		request->listener->send(request->listener,
-					request);
+		/*
+		 *	Don't print a reply if there's none to send.
+		 */
+		if (request->reply->code != 0) {
+			DEBUG_PACKET(request, request->reply, 1);
+		}
 
+		/*
+		 *	The detail listener still needs to be told about the packet.
+		 */
+		if ((request->reply->code != 0)
+#ifdef WITH_DETAIL
+		    || (request->listener->type == RAD_LISTEN_DETAIL)
+#endif
+			) {
+			request->listener->send(request->listener,
+						request);
+		}
 	done:
 		pairfree(&request->reply->vps);
 
