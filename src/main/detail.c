@@ -82,8 +82,8 @@ int detail_send(rad_listen_t *listener, REQUEST *request)
 		data->signal = 1;
 		data->state = STATE_NO_REPLY;
 
-		RDEBUG("Detail - No response configured for request %d.  Will retry in %d seconds",
-		       request->number, data->retry_interval);
+		RDEBUG("Detail - No response to request.  Will retry in %d seconds",
+		       data->retry_interval);
 	} else {
 		int rtt;
 		struct timeval now;
@@ -1016,6 +1016,9 @@ int detail_parse(CONF_SECTION *cs, rad_listen_t *this)
 	if (check_config) return 0;
 
 	if (data->max_outstanding == 0) data->max_outstanding = 1;
+
+	FR_INTEGER_BOUND_CHECK("retry_interval", data->retry_interval, >=, 4);
+	FR_INTEGER_BOUND_CHECK("retry_interval", data->retry_interval, <=, 3600);
 
 	/*
 	 *	If the filename is a glob, use "detail.work" as the
