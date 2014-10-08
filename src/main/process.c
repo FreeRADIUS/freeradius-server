@@ -1598,12 +1598,12 @@ int request_receive(rad_listen_t *listener, RADIUS_PACKET *packet,
 	{
 		sock = listener->data;
 		sock->last_packet = now.tv_sec;
-
-		/*
-		 *	Skip everything if required.
-		 */
-		if (listener->nodup) goto skip_dup;
 	}
+
+	/*
+	 *	Skip everything if required.
+	 */
+	if (listener->nodup) goto skip_dup;
 
 	packet_p = rbtree_finddata(pl, &packet);
 	if (packet_p) {
@@ -1709,10 +1709,6 @@ skip_dup:
 	request = request_setup(listener, packet, client, fun);
 	if (!request) return 1;
 
-#ifdef WITH_ACCOUNTING
-	if (listener->type == RAD_LISTEN_DETAIL) goto do_queue_or_run;
-#endif
-
 	/*
 	 *	Remember the request in the list.
 	 */
@@ -1730,6 +1726,10 @@ skip_dup:
 	 *	Process it.  Send a response, and free it.
 	 */
 	if (listener->synchronous) {
+#ifdef WITH_DETAIL
+		rad_assert(listener->type != RAD_LISTEN_DETAIL);
+#endif
+
 		request->listener->decode(request->listener, request);
 		request->username = pairfind(request->packet->vps, PW_USER_NAME, 0, TAG_ANY);
 		request->password = pairfind(request->packet->vps, PW_USER_PASSWORD, 0, TAG_ANY);
@@ -1745,7 +1745,6 @@ skip_dup:
 		return 1;
 	}
 
-do_queue_or_run:
 	/*
 	 *	Otherwise, insert it into the state machine.
 	 *	The child threads will take care of processing it.
@@ -4138,11 +4137,13 @@ static void event_socket_handler(UNUSED fr_event_list_t *xel, UNUSED int fd, voi
 
 	rad_assert(xel == el);
 
-	if (
+	if ((listener->fd < 0)
 #ifdef WITH_DETAIL
-	    (listener->type != RAD_LISTEN_DETAIL) &&
+#ifndef WITH_DETAIL_THREAD
+	    && (listener->type != RAD_LISTEN_DETAIL)
 #endif
-	    (listener->fd < 0)) {
+#endif
+		) {
 		char buffer[256];
 
 		listener->print(listener, buffer, sizeof(buffer));
