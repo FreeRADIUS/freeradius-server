@@ -88,16 +88,16 @@ typedef struct radclient {
 	char const		*password;
 	char const 		*server;
 	int			number;	/* internal use only */
-	CONF_SECTION const 	*cs;
+	CONF_SECTION	 	*cs;
 #ifdef WITH_STATS
 	fr_stats_t		auth;
-#ifdef WITH_ACCOUNTING
+#  ifdef WITH_ACCOUNTING
 	fr_stats_t		acct;
-#endif
-#ifdef WITH_COA
+#  endif
+#  ifdef WITH_COA
 	fr_stats_t		coa;
 	fr_stats_t		dsc;
-#endif
+#  endif
 #endif
 
 	struct timeval		response_window;
