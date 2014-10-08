@@ -31,34 +31,37 @@ RCSID("$Id$")
 #include <ctype.h>
 
 #ifdef WITH_UNLANG
-
 #ifdef WITH_EVAL_DEBUG
-#define EVAL_DEBUG(fmt, ...) printf("EVAL: ");printf(fmt, ## __VA_ARGS__);printf("\n");fflush(stdout)
-
-static FR_NAME_NUMBER const template_names[] = {
-	{ "literal",	TMPL_TYPE_LITERAL },
-	{ "xlat",	TMPL_TYPE_XLAT },
-	{ "attr",	TMPL_TYPE_ATTR },
-	{ "list",	TMPL_TYPE_LIST },
-	{ "regex",	TMPL_TYPE_REGEX },
-	{ "exec",	TMPL_TYPE_EXEC },
-	{ "data",	TMPL_TYPE_DATA },
-	{ NULL, 0 }
-};
+#  define EVAL_DEBUG(fmt, ...) printf("EVAL: ");printf(fmt, ## __VA_ARGS__);printf("\n");fflush(stdout)
 #else
-#define EVAL_DEBUG(...)
+#  define EVAL_DEBUG(...)
 #endif
 
+FR_NAME_NUMBER const template_names[] = {
+	{ "literal",		TMPL_TYPE_LITERAL 	},
+	{ "xlat",		TMPL_TYPE_XLAT		},
+	{ "attr",		TMPL_TYPE_ATTR		},
+	{ "unknonwn attr",	TMPL_TYPE_ATTR_UNKNOWN	},
+	{ "list",		TMPL_TYPE_LIST		},
+	{ "regex",		TMPL_TYPE_REGEX		},
+	{ "exec",		TMPL_TYPE_EXEC		},
+	{ "data",		TMPL_TYPE_DATA		},
+	{ "parsed xlat",	TMPL_TYPE_XLAT_STRUCT	},
+	{ "parsed regex",	TMPL_TYPE_REGEX_STRUCT	},
+	{ "null",		TMPL_TYPE_NULL		},
+	{ NULL, 0 }
+};
+
 FR_NAME_NUMBER const modreturn_table[] = {
-	{ "reject",     RLM_MODULE_REJECT       },
-	{ "fail",       RLM_MODULE_FAIL	 	},
-	{ "ok",		RLM_MODULE_OK	   	},
-	{ "handled",    RLM_MODULE_HANDLED      },
-	{ "invalid",    RLM_MODULE_INVALID      },
-	{ "userlock",   RLM_MODULE_USERLOCK     },
-	{ "notfound",   RLM_MODULE_NOTFOUND     },
-	{ "noop",       RLM_MODULE_NOOP	 	},
-	{ "updated",    RLM_MODULE_UPDATED      },
+	{ "reject",		RLM_MODULE_REJECT       },
+	{ "fail",		RLM_MODULE_FAIL	 	},
+	{ "ok",			RLM_MODULE_OK	   	},
+	{ "handled",		RLM_MODULE_HANDLED      },
+	{ "invalid",		RLM_MODULE_INVALID      },
+	{ "userlock",		RLM_MODULE_USERLOCK     },
+	{ "notfound", 		RLM_MODULE_NOTFOUND     },
+	{ "noop",		RLM_MODULE_NOOP	 	},
+	{ "updated",		RLM_MODULE_UPDATED      },
 	{ NULL, 0 }
 };
 
