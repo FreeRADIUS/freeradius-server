@@ -954,6 +954,9 @@ static void *detail_handler_thread(void *arg)
 			}
 
 			if (data->delay_time > 0) usleep(data->delay_time);
+
+			packet = detail_poll(this);
+			if (!packet) break;
 		} while (data->state != STATE_REPLIED);
 	}
 
