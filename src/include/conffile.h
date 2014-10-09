@@ -151,8 +151,11 @@ typedef struct CONF_PARSER {
 	const void	*dflt;			//!< Default as it would appear in radiusd.conf.
 } CONF_PARSER;
 
+CONF_PAIR	*cf_pair_alloc(CONF_SECTION *parent, char const *attr, char const *value,
+			       FR_TOKEN op, FR_TOKEN value_type);
 CONF_SECTION	*cf_section_alloc(CONF_SECTION *parent, char const *name1, char const *name2);
 void		cf_section_add(CONF_SECTION *parent, CONF_SECTION *cs);
+void		cf_item_add(CONF_SECTION *cs, CONF_ITEM *ci);
 int		cf_pair_replace(CONF_SECTION *cs, CONF_PAIR *cp, char const *value);
 int		cf_item_parse(CONF_SECTION *cs, char const *name, int type, void *data, char const *dflt);
 int		cf_section_parse(CONF_SECTION *, void *base, CONF_PARSER const *variables);
@@ -211,6 +214,7 @@ void cf_log_err_cp(CONF_PAIR const *cp, char const *fmt, ...)		CC_HINT(format (p
 void cf_log_info(CONF_SECTION const *cs, char const *fmt, ...)		CC_HINT(format (printf, 2, 3));
 void cf_log_module(CONF_SECTION const *cs, char const *fmt, ...)	CC_HINT(format (printf, 2, 3));
 
+void cf_item_add(CONF_SECTION *cs, CONF_ITEM *ci);
 CONF_ITEM *cf_reference_item(CONF_SECTION const *parentcs,
 			     CONF_SECTION *outercs,
 			     char const *ptr);

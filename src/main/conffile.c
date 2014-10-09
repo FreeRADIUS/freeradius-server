@@ -128,8 +128,6 @@ static char const 	*cf_expand_variables(char const *cf, int *lineno,
 
 static CONF_SECTION	*cf_template_copy(CONF_SECTION *parent, CONF_SECTION const *template);
 
-static void		cf_item_add(CONF_SECTION *cs, CONF_ITEM *ci);
-
 /*
  *	Isolate the scary casts in these tiny provably-safe functions
  */
@@ -203,40 +201,6 @@ static CONF_ITEM *cf_datatoitem(CONF_DATA const *cd)
 
 	memcpy(&out, &cd, sizeof(out));
 	return out;
-}
-
-/*
- *	Create a new CONF_PAIR
- */
-static CONF_PAIR *cf_pair_alloc(CONF_SECTION *parent, char const *attr,
-				char const *value, FR_TOKEN op,
-				FR_TOKEN value_type)
-{
-	CONF_PAIR *cp;
-
-	if (!attr) return NULL;
-
-	cp = talloc_zero(parent, CONF_PAIR);
-	if (!cp) return NULL;
-
-	cp->item.type = CONF_ITEM_PAIR;
-	cp->item.parent = parent;
-	cp->value_type = value_type;
-	cp->op = op;
-
-	cp->attr = talloc_typed_strdup(cp, attr);
-	if (!cp->attr) {
-	error:
-		talloc_free(cp);
-		return NULL;
-	}
-
-	if (value) {
-		cp->value = talloc_typed_strdup(cp, value);
-		if (!cp->value) goto error;
-	}
-
-	return cp;
 }
 
 static int _cf_data_free(CONF_DATA *cd)
@@ -330,6 +294,38 @@ static int _cf_section_free(CONF_SECTION *cs)
 	return 0;
 }
 
+/*
+ *	Create a new CONF_PAIR
+ */
+CONF_PAIR *cf_pair_alloc(CONF_SECTION *parent, char const *attr, char const *value,
+			 FR_TOKEN op, FR_TOKEN value_type)
+{
+	CONF_PAIR *cp;
+
+	if (!attr) return NULL;
+
+	cp = talloc_zero(parent, CONF_PAIR);
+	if (!cp) return NULL;
+
+	cp->item.type = CONF_ITEM_PAIR;
+	cp->item.parent = parent;
+	cp->value_type = value_type;
+	cp->op = op;
+
+	cp->attr = talloc_typed_strdup(cp, attr);
+	if (!cp->attr) {
+	error:
+		talloc_free(cp);
+		return NULL;
+	}
+
+	if (value) {
+		cp->value = talloc_typed_strdup(cp, value);
+		if (!cp->value) goto error;
+	}
+
+	return cp;
+}
 
 /*
  *	Allocate a CONF_SECTION
@@ -436,7 +432,7 @@ int cf_pair_replace(CONF_SECTION *cs, CONF_PAIR *cp, char const *value)
 /*
  *	Add an item to a configuration section.
  */
-static void cf_item_add(CONF_SECTION *cs, CONF_ITEM *ci)
+void cf_item_add(CONF_SECTION *cs, CONF_ITEM *ci)
 {
 	if (!cs || !ci) return;
 
