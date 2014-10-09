@@ -1031,7 +1031,7 @@ inline void fr_verify_vp(char const *file, int line, VALUE_PAIR const *vp)
 		da = dict_attrbyname(vp->da->name);
 		if (!da) {
 			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR has invalid dictionary entry.  "
-				     "VALUE_PAIR dictionary was %p \"%s\", but this attribute is not defined in ",
+				     "VALUE_PAIR dictionary was %p \"%s\", but this attribute is not defined in "
 				     "the main dictionary\n",
 				     file, line, vp->da, vp->da->name);
 			fr_assert(0);
