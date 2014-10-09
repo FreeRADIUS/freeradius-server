@@ -283,11 +283,17 @@ void pairadd(VALUE_PAIR **first, VALUE_PAIR *add)
 		*first = add;
 		return;
 	}
-	for(i = *first; i->next; i = i->next) {
+#ifdef WITH_VERIFY_PTR
+	for (i = *first; i->next; i = i->next) {
 		VERIFY_VP(i);
-		if(i == add)
-			return;
+		/*
+		 *	The same VP should never by added multiple times
+		 *	to the same list.
+		 */
+		fr_assert(i != add);
 	}
+#endif
+
 	i->next = add;
 }
 
