@@ -1029,9 +1029,18 @@ inline void fr_verify_vp(char const *file, int line, VALUE_PAIR const *vp)
 		DICT_ATTR const *da;
 
 		da = dict_attrbyname(vp->da->name);
+		if (!da) {
+			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR has invalid dictionary entry.  "
+				     "VALUE_PAIR dictionary was %p \"%s\", but this attribute is not defined in ",
+				     "the main dictionary\n",
+				     file, line, vp->da, vp->da->name);
+			fr_assert(0);
+			fr_exit_now(1);
+		}
 		if (da != vp->da) {
-			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR has invalid dictionary entry",
-				     file, line);
+			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR has invalid dictionary entry.  "
+				     "VALUE_PAIR dictionary was %p \"%s\", but resolved to %p \"%s\"\n",
+				     file, line, vp->da, vp->da->name, da, da->name);
 			fr_assert(0);
 			fr_exit_now(1);
 		}
