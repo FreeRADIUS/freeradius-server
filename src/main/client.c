@@ -1027,12 +1027,21 @@ RADCLIENT *client_from_query(TALLOC_CTX *ctx, char const *identifier, char const
 	return c;
 }
 
+/** Create a new client, consuming all attributes in the control list of the request
+ *
+ * @param clients list to add new client to.
+ * @param request Fake request.
+ * @return a new client on success, else NULL on error.
+ */
 RADCLIENT *client_from_request(RADCLIENT_LIST *clients, REQUEST *request)
 {
 	int i, *pi;
 	char **p;
 	RADCLIENT *c;
 	char buffer[128];
+
+	vp_cursor_t cursor;
+	VALUE_PAIR *vp = NULL;
 
 	if (!clients || !request) return NULL;
 
@@ -1041,46 +1050,60 @@ RADCLIENT *client_from_request(RADCLIENT_LIST *clients, REQUEST *request)
 	c->ipaddr.af = AF_UNSPEC;
 	c->src_ipaddr.af = AF_UNSPEC;
 
+	fr_cursor_init(&cursor, &request->config_items);
+
+	RDEBUG2("Converting control list to client fields");
+	RINDENT();
 	for (i = 0; dynamic_config[i].name != NULL; i++) {
 		DICT_ATTR const *da;
-		VALUE_PAIR *vp;
+		char *strvalue;
 
 		da = dict_attrbyname(dynamic_config[i].name);
 		if (!da) {
-			ERROR("Cannot add client %s: attribute \"%s\" is not in the dictionary",
-			      ip_ntoh(&request->packet->src_ipaddr, buffer, sizeof(buffer)),
-			      dynamic_config[i].name);
+			RERROR("Cannot add client %s: attribute \"%s\" is not in the dictionary",
+			       ip_ntoh(&request->packet->src_ipaddr, buffer, sizeof(buffer)),
+			       dynamic_config[i].name);
 		error:
+			REXDENT();
+			talloc_free(vp);
 			client_free(c);
 			return NULL;
 		}
 
-		vp = pairfind(request->config_items, da->attr, da->vendor, TAG_ANY);
-		if (!vp) {
+		fr_cursor_first(&cursor);
+		if (!fr_cursor_next_by_da(&cursor, da, TAG_ANY)) {
 			/*
 			 *	Not required.  Skip it.
 			 */
 			if (!dynamic_config[i].dflt) continue;
 
-			ERROR("Cannot add client %s: Required attribute \"%s\" is missing",
-			      ip_ntoh(&request->packet->src_ipaddr, buffer, sizeof(buffer)),
-			      dynamic_config[i].name);
+			RERROR("Cannot add client %s: Required attribute \"%s\" is missing",
+			       ip_ntoh(&request->packet->src_ipaddr, buffer, sizeof(buffer)),
+			       dynamic_config[i].name);
 			goto error;
 		}
+		vp = fr_cursor_remove(&cursor);
+
+		/*
+		 *	Freed at the same time as the vp.
+		 */
+		if (RDEBUG_ENABLED2) strvalue = vp_aprint_value(vp, vp, '\'');
 
 		switch (dynamic_config[i].type) {
 		case PW_TYPE_IPV4_ADDR:
 			if (da->attr == PW_FREERADIUS_CLIENT_IP_ADDRESS) {
+				RDEBUG2("ipaddr = %s", strvalue);
 				c->ipaddr.af = AF_INET;
 				c->ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
 				c->ipaddr.prefix = 32;
 			} else if (da->attr == PW_FREERADIUS_CLIENT_SRC_IP_ADDRESS) {
 #ifdef WITH_UDPFROMTO
+				RDEBUG2("src_ipaddr = %s", strvalue);
 				c->src_ipaddr.af = AF_INET;
 				c->src_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
 				c->src_ipaddr.prefix = 32;
 #else
-				WARN("Server not built with udpfromto, ignoring FreeRADIUS-Client-Src-IP-Address");
+				RWARN("Server not built with udpfromto, ignoring FreeRADIUS-Client-Src-IP-Address");
 #endif
 			}
 
@@ -1088,16 +1111,18 @@ RADCLIENT *client_from_request(RADCLIENT_LIST *clients, REQUEST *request)
 
 		case PW_TYPE_IPV6_ADDR:
 			if (da->attr == PW_FREERADIUS_CLIENT_IPV6_ADDRESS) {
+				RDEBUG2("ipaddr = %s", strvalue);
 				c->ipaddr.af = AF_INET6;
 				c->ipaddr.ipaddr.ip6addr = vp->vp_ipv6addr;
 				c->ipaddr.prefix = 128;
 			} else if (da->attr == PW_FREERADIUS_CLIENT_SRC_IPV6_ADDRESS) {
 #ifdef WITH_UDPFROMTO
+				RDEBUG2("src_ipaddr = %s", strvalue);
 				c->src_ipaddr.af = AF_INET6;
 				c->src_ipaddr.ipaddr.ip6addr = vp->vp_ipv6addr;
 				c->src_ipaddr.prefix = 128;
 #else
-				WARN("Server not built with udpfromto, ignoring FreeRADIUS-Client-Src-IPv6-Address");
+				RWARN("Server not built with udpfromto, ignoring FreeRADIUS-Client-Src-IPv6-Address");
 #endif
 			}
 
@@ -1105,6 +1130,7 @@ RADCLIENT *client_from_request(RADCLIENT_LIST *clients, REQUEST *request)
 
 		case PW_TYPE_IPV4_PREFIX:
 			if (da->attr == PW_FREERADIUS_CLIENT_IP_PREFIX) {
+				RDEBUG2("ipaddr = %s", strvalue);
 				c->ipaddr.af = AF_INET;
 				memcpy(&c->ipaddr.ipaddr.ip4addr.s_addr, &(vp->vp_ipv4prefix[2]), sizeof(c->ipaddr.ipaddr.ip4addr.s_addr));
 				fr_ipaddr_mask(&c->ipaddr, (vp->vp_ipv4prefix[1] & 0x3f));
@@ -1114,6 +1140,7 @@ RADCLIENT *client_from_request(RADCLIENT_LIST *clients, REQUEST *request)
 
 		case PW_TYPE_IPV6_PREFIX:
 			if (da->attr == PW_FREERADIUS_CLIENT_IPV6_PREFIX) {
+				RDEBUG2("ipaddr = %s", strvalue);
 				c->ipaddr.af = AF_INET6;
 				memcpy(&c->ipaddr.ipaddr.ip6addr, &(vp->vp_ipv6prefix[2]), sizeof(c->ipaddr.ipaddr.ip6addr));
 				fr_ipaddr_mask(&c->ipaddr, vp->vp_ipv6prefix[1]);
@@ -1122,6 +1149,9 @@ RADCLIENT *client_from_request(RADCLIENT_LIST *clients, REQUEST *request)
 			break;
 
 		case PW_TYPE_STRING:
+		{
+			CONF_PARSER const *cp;
+
 			p = (char **) ((char *) c + dynamic_config[i].offset);
 			if (*p) talloc_free(*p);
 			if (vp->vp_strvalue[0]) {
@@ -1129,21 +1159,61 @@ RADCLIENT *client_from_request(RADCLIENT_LIST *clients, REQUEST *request)
 			} else {
 				*p = NULL;
 			}
+
+			if (RDEBUG_ENABLED2) for (cp = client_config; cp->name; cp++) {
+				if (cp->offset == dynamic_config[i].offset) RDEBUG2("%s = '%s'", cp->name, strvalue);
+			}
+		}
 			break;
 
 		case PW_TYPE_BOOLEAN:
+		{
+			CONF_PARSER const *cp;
+
 			pi = (int *) ((bool *) ((char *) c + dynamic_config[i].offset));
 			*pi = vp->vp_integer;
+
+			if (RDEBUG_ENABLED2) for (cp = client_config; cp->name; cp++) {
+				if (cp->offset == dynamic_config[i].offset) RDEBUG2("%s = %s", cp->name, strvalue);
+			}
+		}
 			break;
 
 		default:
 			goto error;
 		}
+
+		talloc_free(vp);
 	}
 
+	fr_cursor_first(&cursor);
+	vp = fr_cursor_remove(&cursor);
+	if (vp) {
+		do {
+			CONF_PAIR *cp;
+			CONF_ITEM *ci;
+			char *value;
+
+			value = vp_aprint_value(vp, vp, '\'');
+			if (!value) {
+				ERROR("Failed stringifying value of &control:%s", vp->da->name);
+				goto error;
+			}
+
+			RDEBUG2("%s = '%s'", vp->da->name, value);
+
+			cp = cf_pair_alloc(c->cs, vp->da->name, value, T_OP_SET, T_SINGLE_QUOTED_STRING);
+			ci = cf_pairtoitem(cp);
+			cf_item_add(c->cs, ci);
+
+			talloc_free(vp);
+		} while ((vp = fr_cursor_remove(&cursor)));
+	}
+	REXDENT();
+
 	if (c->ipaddr.af == AF_UNSPEC) {
-		ERROR("Cannot add client %s: No IP address was specified.",
-		      ip_ntoh(&request->packet->src_ipaddr, buffer, sizeof(buffer)));
+		RERROR("Cannot add client %s: No IP address was specified.",
+		       ip_ntoh(&request->packet->src_ipaddr, buffer, sizeof(buffer)));
 
 		goto error;
 	}
@@ -1161,16 +1231,16 @@ RADCLIENT *client_from_request(RADCLIENT_LIST *clients, REQUEST *request)
 		if (fr_ipaddr_cmp(&addr, &c->ipaddr) != 0) {
 			char buf2[128];
 
-			ERROR("Cannot add client %s: Not in specified subnet %s/%i",
-			      ip_ntoh(&request->packet->src_ipaddr, buffer, sizeof(buffer)),
-			      ip_ntoh(&c->ipaddr, buf2, sizeof(buf2)), c->ipaddr.prefix);
+			RERROR("Cannot add client %s: Not in specified subnet %s/%i",
+			       ip_ntoh(&request->packet->src_ipaddr, buffer, sizeof(buffer)),
+			       ip_ntoh(&c->ipaddr, buf2, sizeof(buf2)), c->ipaddr.prefix);
 			goto error;
 		}
 	}
 
 	if (!c->secret || !*c->secret) {
-		ERROR("Cannot add client %s: No secret was specified",
-		      ip_ntoh(&request->packet->src_ipaddr, buffer, sizeof(buffer)));
+		RERROR("Cannot add client %s: No secret was specified",
+		       ip_ntoh(&request->packet->src_ipaddr, buffer, sizeof(buffer)));
 		goto error;
 	}
 
@@ -1179,8 +1249,8 @@ RADCLIENT *client_from_request(RADCLIENT_LIST *clients, REQUEST *request)
 	}
 
 	if ((c->src_ipaddr.af != AF_UNSPEC) && (c->src_ipaddr.af != c->ipaddr.af)) {
-		ERROR("Cannot add client %s: Client IP and src address are different IP version",
-		      ip_ntoh(&request->packet->src_ipaddr, buffer, sizeof(buffer)));
+		RERROR("Cannot add client %s: Client IP and src address are different IP version",
+		       ip_ntoh(&request->packet->src_ipaddr, buffer, sizeof(buffer)));
 
 		goto error;
 	}
