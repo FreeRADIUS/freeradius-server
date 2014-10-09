@@ -155,7 +155,6 @@ CONF_PAIR	*cf_pair_alloc(CONF_SECTION *parent, char const *attr, char const *val
 			       FR_TOKEN op, FR_TOKEN value_type);
 CONF_SECTION	*cf_section_alloc(CONF_SECTION *parent, char const *name1, char const *name2);
 void		cf_section_add(CONF_SECTION *parent, CONF_SECTION *cs);
-void		cf_item_add(CONF_SECTION *cs, CONF_ITEM *ci);
 int		cf_pair_replace(CONF_SECTION *cs, CONF_PAIR *cp, char const *value);
 int		cf_item_parse(CONF_SECTION *cs, char const *name, int type, void *data, char const *dflt);
 int		cf_section_parse(CONF_SECTION *, void *base, CONF_PARSER const *variables);
