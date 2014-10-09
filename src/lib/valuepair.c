@@ -283,8 +283,11 @@ void pairadd(VALUE_PAIR **first, VALUE_PAIR *add)
 		*first = add;
 		return;
 	}
-	for(i = *first; i->next; i = i->next)
+	for(i = *first; i->next; i = i->next) {
 		VERIFY_VP(i);
+		if(i == add)
+			return;
+	}
 	i->next = add;
 }
 
