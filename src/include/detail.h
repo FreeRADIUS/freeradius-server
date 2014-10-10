@@ -55,6 +55,11 @@ typedef struct listen_detail_t {
 	time_t		running;
 	fr_ipaddr_t	client_ip;
 
+	off_t		last_offset;
+	off_t		timestamp_offset;
+	bool		done_entry;	/* are we done reading this entry? */
+	bool		track;	/* do we track progress through the file? */
+
 	uint32_t	load_factor; /* 1..100 */
 	uint32_t	poll_interval;
 	uint32_t	retry_interval;

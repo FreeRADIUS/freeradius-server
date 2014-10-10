@@ -269,9 +269,10 @@ static int detail_open(rad_listen_t *this)
 
 	data->client_ip.af = AF_UNSPEC;
 	data->timestamp = 0;
-	data->offset = 0;
+	data->offset = data->last_offset = data->timestamp_offset = 0;
 	data->packets = 0;
 	data->tries = 0;
+	data->done_entry = false;
 
 	return 1;
 }
@@ -422,6 +423,9 @@ open_file:
 
 	case STATE_HEADER:
 	do_header:
+		data->done_entry = false;
+		data->timestamp_offset = 0;
+
 		data->tries = 0;
 		if (!data->fp) {
 			data->state = STATE_UNOPENED;
@@ -513,6 +517,14 @@ open_file:
 		 *	request, and go read another one.
 		 */
 	case STATE_REPLIED:
+		if (data->track) {
+			rad_assert(data->fp != NULL);
+			fseek(data->fp, data->timestamp_offset, SEEK_SET);
+			fwrite("\tDone", 1, 5, data->fp);
+			fflush(data->fp);
+			fseek(data->fp, data->offset, SEEK_SET);
+		}
+
 		pairfree(&data->vps);
 		data->state = STATE_HEADER;
 		goto do_header;
@@ -524,6 +536,7 @@ open_file:
 	 *	Read a header, OR a value-pair.
 	 */
 	while (fgets(buffer, sizeof(buffer), data->fp)) {
+		data->last_offset = data->offset;
 		data->offset = ftell(data->fp); /* for statistics */
 
 		/*
@@ -577,6 +590,8 @@ open_file:
 		 */
 		if (!strchr(op, '=')) continue;
 
+		DEBUG("READ %s %s", key, value);
+
 		/*
 		 *	Skip non-protocol attributes.
 		 */
@@ -607,6 +622,7 @@ open_file:
 		 */
 		if (!strcasecmp(key, "Timestamp")) {
 			data->timestamp = atoi(value);
+			data->timestamp_offset = data->last_offset;
 
 			vp = paircreate(data, PW_PACKET_ORIGINAL_TIMESTAMP, 0);
 			if (vp) {
@@ -614,6 +630,12 @@ open_file:
 				vp->type = VT_DATA;
 				fr_cursor_insert(&cursor, vp);
 			}
+			continue;
+		}
+
+		if (!strcasecmp(key, "Donestamp")) {
+			data->timestamp = atoi(value);
+			data->done_entry = true;
 			continue;
 		}
 
@@ -645,6 +667,13 @@ open_file:
 	 *	Process the packet.
 	 */
  alloc_packet:
+	if (data->done_entry) {
+		DEBUG2("Skipping record for timestamp %lu", data->timestamp);
+		pairfree(&data->vps);
+		data->state = STATE_HEADER;
+		goto do_header;
+	}
+
 	data->tries++;
 
 	/*
@@ -972,6 +1001,7 @@ static const CONF_PARSER detail_config[] = {
 	{ "poll_interval", FR_CONF_OFFSET(PW_TYPE_INTEGER, listen_detail_t, poll_interval), STRINGIFY(1) },
 	{ "retry_interval", FR_CONF_OFFSET(PW_TYPE_INTEGER, listen_detail_t, retry_interval), STRINGIFY(30) },
 	{ "one_shot", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, listen_detail_t, one_shot), NULL },
+	{ "track", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, listen_detail_t, track), NULL },
 	{ "max_outstanding", FR_CONF_OFFSET(PW_TYPE_INTEGER, listen_detail_t, load_factor), NULL },
 
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */

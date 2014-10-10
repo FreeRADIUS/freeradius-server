@@ -73,6 +73,16 @@ detail {
 #	locking = yes
 
 	#
+	#  Track progress through the detail file.  When the detail
+	#  file is large, and the server is re-started, it will
+	#  read from the START of the file.
+	#
+	#  Setting "track = yes" means it will skip packets which
+	#  have already been processed.  The default is "no".
+	#
+#	track = yes
+
+	#
 	#  Log the Packet src/dst IP/port.  This is disabled by
 	#  default, as that information isn't used by many people.
 	#
