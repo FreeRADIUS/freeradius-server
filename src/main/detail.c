@@ -300,6 +300,7 @@ int detail_recv(rad_listen_t *listener)
 {
 	RADIUS_PACKET *packet;
 	listen_detail_t *data = listener->data;
+	RAD_REQUEST_FUNP fun = NULL;
 
 	/*
 	 *	We may be in the main thread.  It needs to update the
@@ -310,10 +311,17 @@ int detail_recv(rad_listen_t *listener)
 	packet = detail_poll(listener);
 	if (!packet) return -1;
 
-	/*
-	 *	If it's not an accounting request, ignore it.
-	 */
-	if (packet->code != PW_CODE_ACCOUNTING_REQUEST) {
+	switch (packet->code) {
+	case PW_CODE_ACCOUNTING_REQUEST:
+		fun = rad_accounting;
+		break;
+
+	case PW_CODE_COA_REQUEST:
+	case PW_CODE_DISCONNECT_REQUEST:
+		fun = rad_coa_recv;
+		break;
+
+	default:
 		rad_free(&packet);
 		data->state = STATE_REPLIED;
 		return 0;
@@ -323,7 +331,7 @@ int detail_recv(rad_listen_t *listener)
 	 *	Don't bother doing limit checks, etc.
 	 */
 	if (!request_receive(listener, packet, &data->detail_client,
-			     rad_accounting)) {
+			     fun)) {
 		rad_free(&packet);
 		data->state = STATE_NO_REPLY;	/* try again later */
 		return 0;
