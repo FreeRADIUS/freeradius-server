@@ -502,6 +502,8 @@ typedef enum {
 /* acct.c */
 int		rad_accounting(REQUEST *);
 
+int		rad_coa_recv(REQUEST *request);
+
 /* session.c */
 int		rad_check_ts(uint32_t nasaddr, uint32_t nas_port, char const *user, char const *sessionid);
 int		session_zap(REQUEST *request, uint32_t nasaddr,
