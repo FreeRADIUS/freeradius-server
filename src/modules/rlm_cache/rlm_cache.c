@@ -518,7 +518,7 @@ static int cache_verify(rlm_cache_t *inst, value_pair_map_t **head)
 					   "allowed for %s values",
 					   fr_int2str(fr_tokens, map->op,
 						      "<INVALID>"),
-					   fr_int2str(vpt_types, map->rhs->type,
+					   fr_int2str(tmpl_types, map->rhs->type,
 						      "<INVALID>"));
 				return -1;
 			}

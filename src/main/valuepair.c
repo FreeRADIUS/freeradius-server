@@ -34,7 +34,7 @@ RCSID("$Id$")
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/rad_assert.h>
 
-const FR_NAME_NUMBER vpt_types[] = {
+const FR_NAME_NUMBER tmpl_types[] = {
 	{"unknown",		TMPL_TYPE_UNKNOWN },
 	{"literal",		TMPL_TYPE_LITERAL },
 	{"expanded",		TMPL_TYPE_XLAT },
