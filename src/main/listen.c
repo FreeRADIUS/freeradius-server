@@ -1631,7 +1631,7 @@ static int do_proxy(REQUEST *request)
 /*
  *	Receive a CoA packet.
  */
-static int rad_coa_recv(REQUEST *request)
+int rad_coa_recv(REQUEST *request)
 {
 	int rcode = RLM_MODULE_OK;
 	int ack, nak;
