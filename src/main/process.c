@@ -2619,11 +2619,8 @@ static int request_will_proxy(REQUEST *request)
 			return 0;
 		}
 
-	} else {
+	} else if ((vp = pairfind(request->config_items, PW_HOME_SERVER_POOL, 0, TAG_ANY)) != NULL) {
 		int pool_type;
-
-		vp = pairfind(request->config_items, PW_HOME_SERVER_POOL, 0, TAG_ANY);
-		if (!vp) return 0;
 
 		switch (request->packet->code) {
 		case PW_CODE_ACCESS_REQUEST:
@@ -2648,6 +2645,48 @@ static int request_will_proxy(REQUEST *request)
 		}
 
 		pool = home_pool_byname(vp->vp_strvalue, pool_type);
+
+		/*
+		 *	Send it directly to a home server (i.e. NAS)
+		 */
+	} else if (((vp = pairfind(request->config_items, PW_PACKET_DST_IP_ADDRESS, 0, TAG_ANY)) != NULL) ||
+		   ((vp = pairfind(request->config_items, PW_PACKET_DST_IPV6_ADDRESS, 0, TAG_ANY)) != NULL)) {
+		VALUE_PAIR *port;
+		uint16_t dst_port;
+		fr_ipaddr_t dst_ipaddr;
+
+		if (vp->da->attr == PW_PACKET_DST_IP_ADDRESS) {
+			dst_ipaddr.af = AF_INET;
+			dst_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
+		} else {
+			dst_ipaddr.af = AF_INET6;
+			memcpy(&dst_ipaddr.ipaddr.ip6addr, &vp->vp_ipv6addr, sizeof(vp->vp_ipv6addr));
+		}
+
+		port = pairfind(request->config_items, PW_PACKET_DST_PORT, 0, TAG_ANY);
+		if (!port) {
+		dst_port = PW_COA_UDP_PORT;
+		} else {
+			dst_port = vp->vp_integer;
+		}
+
+		/*
+		 *	Nothing does CoA over TCP.
+		 */
+		home = home_server_find(&dst_ipaddr, dst_port, IPPROTO_UDP);
+		if (!home) {
+			char buffer[256];
+
+			WARN("No such CoA home server %s port %u",
+			     inet_ntop(dst_ipaddr.af, &dst_ipaddr.ipaddr, buffer, sizeof(buffer)),
+			     (unsigned int) port);
+			return 0;
+		}
+
+		goto do_home;
+
+	} else {
+		return 0;
 	}
 
 	if (!pool) {
@@ -2663,10 +2702,13 @@ static int request_will_proxy(REQUEST *request)
 	request->home_pool = pool;
 
 	home = home_server_ldb(realmname, pool, request);
+
 	if (!home) {
 		REDEBUG2("Failed to find live home server: Cancelling proxy");
 		return 0;
 	}
+
+do_home:
 	home_server_update_request(home, request);
 
 #ifdef WITH_COA
