@@ -1056,7 +1056,7 @@ RADCLIENT *client_from_request(RADCLIENT_LIST *clients, REQUEST *request)
 	RINDENT();
 	for (i = 0; dynamic_config[i].name != NULL; i++) {
 		DICT_ATTR const *da;
-		char *strvalue;
+		char *strvalue = NULL;
 
 		da = dict_attrbyname(dynamic_config[i].name);
 		if (!da) {
