@@ -311,6 +311,15 @@ int detail_recv(rad_listen_t *listener)
 	if (!packet) return -1;
 
 	/*
+	 *	If it's not an accounting request, ignore it.
+	 */
+	if (packet->code != PW_CODE_ACCOUNTING_REQUEST) {
+		rad_free(&packet);
+		data->state = STATE_REPLIED;
+		return 0;
+	}
+
+	/*
 	 *	Don't bother doing limit checks, etc.
 	 */
 	if (!request_receive(listener, packet, &data->detail_client,
@@ -711,7 +720,11 @@ open_file:
 	packet->sockfd = -1;
 	packet->src_ipaddr.af = AF_INET;
 	packet->src_ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_NONE);
+
 	packet->code = PW_CODE_ACCOUNTING_REQUEST;
+	vp = pairfind(packet->vps, PW_PACKET_TYPE, 0, TAG_ANY);
+	if (vp) packet->code = vp->vp_integer;
+
 	gettimeofday(&packet->timestamp, NULL);
 
 	/*
