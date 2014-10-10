@@ -8,6 +8,12 @@ FreeRADIUS 3.0.5 Mon 15 Sep 2014 15:30:00 EDT urgency=medium
 	  are now parsed and validated when the server starts.
 	* %{expr:...} expressions can now do bit shifting and more.
 	  See raddb/mods-available/expr.
+	* The detail file reader can now track packets which have
+	  had replies, so they are never re-transmitted.  See
+	  raddb/mods-available/detail, the "track" config item.
+	* CoA and Disconnect packets can now be sent to a specific
+	  home server by setting control:Packet-Dst-IP-Address and
+	  (optionally) control:Packet-Dst-Port.
 
 	Bug fixes
 	* Parse list qualifiers in generic LDAP 'valuepair_attribute'
