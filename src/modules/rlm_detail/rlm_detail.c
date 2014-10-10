@@ -315,9 +315,8 @@ static int detail_write(FILE *out, detail_instance_t *inst, REQUEST *request, RA
 			WRITE("\tFreeradius-Proxied-To = %s\n", proxy_buffer);
 		}
 #endif
-
-		WRITE("\tTimestamp = %ld\n", (unsigned long) request->timestamp);
 	}
+	WRITE("\tTimestamp = %ld\n", (unsigned long) request->timestamp);
 
 	WRITE("\n");
 
