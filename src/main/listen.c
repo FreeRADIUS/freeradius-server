@@ -293,14 +293,14 @@ RADCLIENT *client_listener_find(rad_listen_t *listener,
 	 *	don't create the client from attribute-value pairs.
 	 */
 	if (request->client == client) {
-		created = client_from_request(clients, request);
+		created = client_afrom_request(clients, request);
 	} else {
 		created = request->client;
 
 		/*
 		 *	This frees the client if it isn't valid.
 		 */
-		if (!client_validate(clients, client, created)) goto unknown;
+		if (!client_add_dynamic(clients, client, created)) goto unknown;
 	}
 
 	request->server = client->server;

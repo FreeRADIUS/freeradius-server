@@ -567,9 +567,11 @@ void		client_free(RADCLIENT *client);
 int		client_add(RADCLIENT_LIST *clients, RADCLIENT *client);
 #ifdef WITH_DYNAMIC_CLIENTS
 void		client_delete(RADCLIENT_LIST *clients, RADCLIENT *client);
-RADCLIENT	*client_from_request(RADCLIENT_LIST *clients, REQUEST *request);
+RADCLIENT	*client_afrom_request(RADCLIENT_LIST *clients, REQUEST *request);
 #endif
-RADCLIENT	*client_from_query(TALLOC_CTX *ctx, char const *identifier, char const *secret, char const *shortname,
+
+RADCLIENT	*client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, bool in_server);
+RADCLIENT	*client_afrom_query(TALLOC_CTX *ctx, char const *identifier, char const *secret, char const *shortname,
 				   char const *type, char const *server, bool require_ma) CC_HINT(nonnull(2, 3));
 
 RADCLIENT	*client_find(RADCLIENT_LIST const *clients,
@@ -578,7 +580,7 @@ RADCLIENT	*client_find(RADCLIENT_LIST const *clients,
 RADCLIENT	*client_findbynumber(RADCLIENT_LIST const *clients,
 				     int number);
 RADCLIENT	*client_find_old(fr_ipaddr_t const *ipaddr);
-bool		client_validate(RADCLIENT_LIST *clients, RADCLIENT *master, RADCLIENT *c);
+bool		client_add_dynamic(RADCLIENT_LIST *clients, RADCLIENT *master, RADCLIENT *c);
 RADCLIENT	*client_read(char const *filename, int in_server, int flag);
 
 

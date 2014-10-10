@@ -341,7 +341,7 @@ static int generate_sql_clients(rlm_sql_t *inst)
 		      row[1], row[2], server ? server : "global");
 
 		/* FIXME: We should really pass a proper ctx */
-		c = client_from_query(NULL,
+		c = client_afrom_query(NULL,
 				      row[1],	/* identifier */
 				      row[4],	/* secret */
 				      row[2],	/* shortname */

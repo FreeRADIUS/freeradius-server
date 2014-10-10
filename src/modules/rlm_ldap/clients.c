@@ -199,7 +199,7 @@ int rlm_ldap_load_clients(ldap_instance_t const *inst)
 		}
 
 		/* FIXME: We should really pass a proper ctx */
-		c = client_from_query(NULL,
+		c = client_afrom_query(NULL,
 				      identifier[0],
 				      secret[0],
 				      shortname ? shortname[0] : NULL,
