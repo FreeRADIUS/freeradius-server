@@ -418,6 +418,13 @@ void realm_home_server_sanitize(home_server_t *home, CONF_SECTION *cs)
 	if ((home->limit.lifetime > 0) && (home->limit.idle_timeout > home->limit.lifetime))
 		home->limit.idle_timeout = 0;
 
+	/*
+	 *	Make sure that this is set.
+	 */
+	if (home->src_ipaddr.af == AF_UNSPEC) {
+		home->src_ipaddr.af = home->ipaddr.af;
+	}
+
 	parent = cf_item_parent(cf_sectiontoitem(cs));
 	if (parent && strcmp(cf_section_name1(parent), "server") == 0) {
 		home->parent_server = cf_section_name2(parent);
@@ -688,12 +695,7 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 
 	hs_srcipaddr = NULL;
 
-	/*
-	 *	Make sure that this is set.
-	 */
-	if (home->src_ipaddr.af == AF_UNSPEC) {
-		home->src_ipaddr.af = home->ipaddr.af;
-	}
+	realm_home_server_sanitize(home, cs);
 
 	if (rbtree_finddata(home_servers_byname, home) != NULL) {
 		cf_log_err_cs(cs,
@@ -737,8 +739,6 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 		goto error;
 	}
 #endif
-
-	realm_home_server_sanitize(home, cs);
 
 	if (dual) {
 		home_server_t *home2 = talloc(rc, home_server_t);
