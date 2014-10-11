@@ -688,22 +688,6 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 
 	hs_srcipaddr = NULL;
 
-	return realm_home_server_add(rc, home, cs, dual);
-}
-
-int realm_home_server_add(realm_config_t *rc, home_server_t *home, CONF_SECTION *cs, bool dual)
-{
-	const char *name2 = home->name;
-
-	/*
-	 *	The structs aren't mutex protected.  Refuse to destroy
-	 *	the server.
-	 */
-	if (realms_initialized && !realm_config->dynamic) {
-		DEBUG("Must set \"dynamic = true\" in proxy.conf");
-		return 0;
-	}
-
 	/*
 	 *	Make sure that this is set.
 	 */
@@ -782,8 +766,7 @@ int realm_home_server_add(realm_config_t *rc, home_server_t *home, CONF_SECTION 
 				   "Internal error %d adding home server %s.",
 				   __LINE__, name2);
 			talloc_free(home2);
-		error:
-			return 0;
+			goto error;
 		}
 
 #ifdef WITH_STATS
@@ -797,7 +780,7 @@ int realm_home_server_add(realm_config_t *rc, home_server_t *home, CONF_SECTION 
 				   "Internal error %d adding home server %s.",
 				   __LINE__, name2);
 			talloc_free(home2);
-			return 0;
+			goto error;
 		}
 #endif
 	}
@@ -806,6 +789,13 @@ int realm_home_server_add(realm_config_t *rc, home_server_t *home, CONF_SECTION 
 	 *	Mark it as already processed
 	 */
 	cf_data_add(cs, "home_server", null_free, null_free);
+
+	hs_type = NULL;
+	hs_check = NULL;
+	hs_srcipaddr = NULL;
+#ifdef WITH_TCP
+	hs_proto = NULL;
+#endif
 
 	return 1;
 }
