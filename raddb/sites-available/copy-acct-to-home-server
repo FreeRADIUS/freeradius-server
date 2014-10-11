@@ -91,6 +91,17 @@ server copy-acct-to-home-server {
 		#  causing databases to go into overload.
 		#
 		load_factor = 10
+
+		#
+		#  Track progress through the detail file.  When the detail
+		#  file is large, and the server is re-started, it will
+		#  read from the START of the file.
+		#
+		#  Setting "track = yes" means it will skip packets which
+		#  have already been processed.  The default is "no".
+		#
+	#	track = yes
+
 	}
 
 	#
