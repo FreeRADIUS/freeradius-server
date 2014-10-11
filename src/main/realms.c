@@ -431,6 +431,42 @@ void realm_home_server_sanitize(home_server_t *home, CONF_SECTION *cs)
 	}
 }
 
+
+static bool home_server_insert(home_server_t *home, CONF_SECTION *cs)
+{
+	if (!rbtree_insert(home_servers_byname, home)) {
+		cf_log_err_cs(cs,
+			   "Internal error %d adding home server %s.",
+			   __LINE__, home->name);
+		return false;
+	}
+
+	if (!home->server &&
+	    !rbtree_insert(home_servers_byaddr, home)) {
+		rbtree_deletebydata(home_servers_byname, home);
+		cf_log_err_cs(cs,
+			   "Internal error %d adding home server %s.",
+			   __LINE__, home->name);
+		return false;;
+	}
+
+#ifdef WITH_STATS
+	home->number = home_server_max_number++;
+	if (!rbtree_insert(home_servers_bynumber, home)) {
+		rbtree_deletebydata(home_servers_byname, home);
+		if (home->ipaddr.af != AF_UNSPEC) {
+			rbtree_deletebydata(home_servers_byname, home);
+		}
+		cf_log_err_cs(cs,
+			   "Internal error %d adding home server %s.",
+			   __LINE__, home->name);
+		return false;
+	}
+#endif
+
+	return true;
+}
+
 static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 {
 	char const *name2;
@@ -498,6 +534,7 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 	} else {
 		cf_log_err_cs(cs, "No ipaddr, ipv4addr, ipv6addr, or virtual_server defined for home server \"%s\"", name2);
 	error:
+		talloc_free(home);
 		hs_type = NULL;
 		hs_check = NULL;
 		hs_srcipaddr = NULL;
@@ -710,35 +747,7 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 		goto error;
 	}
 
-	if (!rbtree_insert(home_servers_byname, home)) {
-		cf_log_err_cs(cs,
-			   "Internal error %d adding home server %s.",
-			   __LINE__, name2);
-		goto error;
-	}
-
-	if (!home->server &&
-	    !rbtree_insert(home_servers_byaddr, home)) {
-		rbtree_deletebydata(home_servers_byname, home);
-		cf_log_err_cs(cs,
-			   "Internal error %d adding home server %s.",
-			   __LINE__, name2);
-		goto error;
-	}
-
-#ifdef WITH_STATS
-	home->number = home_server_max_number++;
-	if (!rbtree_insert(home_servers_bynumber, home)) {
-		rbtree_deletebydata(home_servers_byname, home);
-		if (home->ipaddr.af != AF_UNSPEC) {
-			rbtree_deletebydata(home_servers_byname, home);
-		}
-		cf_log_err_cs(cs,
-			   "Internal error %d adding home server %s.",
-			   __LINE__, name2);
-		goto error;
-	}
-#endif
+	if (!home_server_insert(home, cs)) goto error;
 
 	if (dual) {
 		home_server_t *home2 = talloc(rc, home_server_t);
@@ -751,38 +760,10 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 		home2->cs = cs;
 		home2->parent_server = home->parent_server;
 
-		if (!rbtree_insert(home_servers_byname, home2)) {
-			cf_log_err_cs(cs,
-				   "Internal error %d adding home server %s.",
-				   __LINE__, name2);
-			talloc_free(home2);
-			return 0;
-		}
-
-		if (!home->server &&
-		    !rbtree_insert(home_servers_byaddr, home2)) {
-			rbtree_deletebydata(home_servers_byname, home2);
-			cf_log_err_cs(cs,
-				   "Internal error %d adding home server %s.",
-				   __LINE__, name2);
+		if (!home_server_insert(home2, cs)) {
 			talloc_free(home2);
 			goto error;
 		}
-
-#ifdef WITH_STATS
-		home2->number = home_server_max_number++;
-		if (!rbtree_insert(home_servers_bynumber, home2)) {
-			rbtree_deletebydata(home_servers_byname, home2);
-			if (!home2->server) {
-				rbtree_deletebydata(home_servers_byname, home2);
-			}
-			cf_log_err_cs(cs,
-				   "Internal error %d adding home server %s.",
-				   __LINE__, name2);
-			talloc_free(home2);
-			goto error;
-		}
-#endif
 	}
 
 	/*
