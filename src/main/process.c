@@ -2679,7 +2679,7 @@ static int request_will_proxy(REQUEST *request)
 
 			WARN("No such CoA home server %s port %u",
 			     inet_ntop(dst_ipaddr.af, &dst_ipaddr.ipaddr, buffer, sizeof(buffer)),
-			     (unsigned int) port);
+			     (unsigned int) dst_port);
 			return 0;
 		}
 
