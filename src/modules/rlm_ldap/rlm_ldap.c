@@ -143,25 +143,10 @@ static CONF_PARSER group_config[] = {
 	{ NULL, -1, 0, NULL, NULL }
 };
 
-/*
- *	Client configuration
- */
-static CONF_PARSER client_attribute[] = {
-	{ "identifier", FR_CONF_OFFSET(PW_TYPE_STRING, ldap_instance_t, clientobj_identifier), "host" },
-	{ "shortname", FR_CONF_OFFSET(PW_TYPE_STRING, ldap_instance_t, clientobj_shortname), "cn" },
-	{ "nas_type", FR_CONF_OFFSET(PW_TYPE_STRING, ldap_instance_t, clientobj_type), NULL },
-	{ "secret", FR_CONF_OFFSET(PW_TYPE_STRING, ldap_instance_t, clientobj_secret), NULL },
-	{ "virtual_server", FR_CONF_OFFSET(PW_TYPE_STRING, ldap_instance_t, clientobj_server), NULL },
-	{ "require_message_authenticator", FR_CONF_OFFSET(PW_TYPE_STRING, ldap_instance_t, clientobj_require_ma), NULL },
-
-	{ NULL, -1, 0, NULL, NULL }
-};
-
 static CONF_PARSER client_config[] = {
 	{ "filter", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, ldap_instance_t, clientobj_filter), NULL },
 	{ "scope", FR_CONF_OFFSET(PW_TYPE_STRING, ldap_instance_t, clientobj_scope_str), "sub" },
 	{ "base_dn", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, ldap_instance_t, clientobj_base_dn), "" },
-	{ "attribute", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) client_attribute },
 
 	{ NULL, -1, 0, NULL, NULL }
 };
@@ -764,7 +749,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		if (dict_addattr(inst->cache_attribute, -1, 0, PW_TYPE_STRING, flags) < 0) {
 			LDAP_ERR("Error creating cache attribute: %s", fr_strerror());
 
-			return -1;
+			goto error;
 		}
 		inst->cache_da = dict_attrbyname(inst->cache_attribute);
 	} else {
@@ -775,13 +760,27 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 *	Initialize the socket pool.
 	 */
 	inst->pool = fr_connection_pool_module_init(inst->cs, inst, mod_conn_create, NULL, NULL);
-	if (!inst->pool) return -1;
+	if (!inst->pool) goto error;
 
 	/*
 	 *	Bulk load dynamic clients.
 	 */
 	if (inst->do_clients) {
-		if (rlm_ldap_load_clients(inst) < 0) {
+		CONF_SECTION *cs;
+
+		cs = cf_section_sub_find(inst->cs, "client");
+		if (!cs) {
+			LDAP_ERR("Told to load clients but no client section found");
+			goto error;
+		}
+
+		cs = cf_section_sub_find(cs, "attribute");
+		if (!cs) {
+			LDAP_ERR("Told to load clients but no attribute section found");
+			goto error;
+		}
+
+		if (rlm_ldap_load_clients(inst, cs) < 0) {
 			LDAP_ERR("Error loading clients");
 
 			return -1;
