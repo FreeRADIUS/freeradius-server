@@ -535,7 +535,7 @@ static int sql_get_grouplist(rlm_sql_t *inst, rlm_sql_handle_t **handle, REQUEST
  * username will then be checked with the passed check string.
  */
 
-static int CC_HINT(nonnull (1 ,2, 4)) sql_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR *request_vp,
+static int CC_HINT(nonnull (1, 2, 4)) sql_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR *request_vp,
 						   VALUE_PAIR *check, UNUSED VALUE_PAIR *check_pairs,
 						   UNUSED VALUE_PAIR **reply_pairs)
 {
