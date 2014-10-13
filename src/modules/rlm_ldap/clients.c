@@ -48,6 +48,7 @@ int rlm_ldap_load_clients(ldap_instance_t const *inst, CONF_SECTION *cs)
 
 	LDAPMessage	*result = NULL;
 	LDAPMessage	*entry;
+	char		*dn = NULL;
 
 	RADCLIENT	*c;
 
@@ -143,7 +144,7 @@ int rlm_ldap_load_clients(ldap_instance_t const *inst, CONF_SECTION *cs)
 
 	do {
 		CONF_SECTION *cc;
-		char *dn = NULL, *id;
+		char *id;
 
 		char **value;
 
