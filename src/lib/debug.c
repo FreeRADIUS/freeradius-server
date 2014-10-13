@@ -802,15 +802,6 @@ int fr_fault_setup(char const *cmd, char const *program)
 		 *  if we set our own signal handlers
 		 */
 		if (debugger_attached == 0) {
-#ifdef SIGSEGV
-			if (fr_set_signal(SIGSEGV, fr_fault) < 0) return -1;
-#endif
-#ifdef SIGBUS
-			if (fr_set_signal(SIGBUS, fr_fault) < 0) return -1;
-#endif
-#ifdef SIGFPE
-			if (fr_set_signal(SIGFPE, fr_fault) < 0) return -1;
-#endif
 
 #ifdef SIGABRT
 			if (fr_set_signal(SIGABRT, fr_fault) < 0) return -1;
@@ -821,6 +812,17 @@ int fr_fault_setup(char const *cmd, char const *program)
 			 */
 			talloc_set_abort_fn(_fr_talloc_fault);
 #endif
+#ifdef SIGILL
+			if (fr_set_signal(SIGILL, fr_fault) < 0) return -1;
+#endif
+#ifdef SIGFPE
+			if (fr_set_signal(SIGFPE, fr_fault) < 0) return -1;
+#endif
+#ifdef SIGSEGV
+			if (fr_set_signal(SIGSEGV, fr_fault) < 0) return -1;
+#endif
+
+
 		}
 #ifdef SIGUSR1
 		if (fr_set_signal(SIGUSR1, fr_fault) < 0) return -1;
