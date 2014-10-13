@@ -30,6 +30,7 @@
  /** Load clients from LDAP on server start
   *
   * @param[in] inst rlm_ldap configuration.
+  * @param[in] cs to load client attribute/LDAP attribute mappings from.
   * @return -1 on error else 0.
   */
 int rlm_ldap_load_clients(ldap_instance_t const *inst, CONF_SECTION *cs)

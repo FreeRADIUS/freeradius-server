@@ -767,6 +767,7 @@ error:
 
 /** Allocate a new client from a config section
  *
+ * @param ctx to allocate new clients in.
  * @param cs to process as a client.
  * @param in_server Whether the client should belong to a specific virtual server.
  * @return new RADCLIENT struct.
