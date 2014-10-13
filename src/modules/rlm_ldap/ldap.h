@@ -154,13 +154,6 @@ typedef struct ldap_instance {
 	char const	*clientobj_scope_str;		//!< Scope (sub, one, base).
 	int		clientobj_scope;		//!< Search scope.
 
-	char const	*clientobj_identifier;		//!< IP/FQDN/IP Prefix for the NAS.
-	char const	*clientobj_shortname;		//!< Short/Friendly name to assign.
-	char const	*clientobj_type;		//!< Type of NAS (not usually used).
-	char const	*clientobj_secret;		//!< RADIUS secret.
-	char const	*clientobj_server;		//!< Virtual server to associate the client with.
-	char const	*clientobj_require_ma;		//!< Require message-authenticator.
-
 	bool		do_clients;			//!< If true, attempt to load clients on instantiation.
 
 	/*
@@ -387,7 +380,7 @@ rlm_rcode_t rlm_ldap_map_profile(ldap_instance_t const *inst, REQUEST *request, 
 /*
  *	clients.c - Dynamic clients (bulk load).
  */
-int  rlm_ldap_load_clients(ldap_instance_t const *inst);
+int  rlm_ldap_load_clients(ldap_instance_t const *inst, CONF_SECTION *cs);
 
 /*
  *	edir.c - Magic extensions for Novell
