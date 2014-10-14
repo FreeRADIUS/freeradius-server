@@ -273,7 +273,7 @@ static int ldap_map_afrom_cs(value_pair_map_t **out, CONF_SECTION *cs, pair_list
 
 				fr_canonicalize_error(ctx, &spaces, &text, slen, value);
 				
-				cf_log_err(ci, "Failed parsing list reference");
+				cf_log_err(ci, "Failed parsing string");
 				cf_log_err(ci, "%s", text);
 				cf_log_err(ci, "%s^ %s", spaces, fr_strerror());
 
