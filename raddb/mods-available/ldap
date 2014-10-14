@@ -21,7 +21,7 @@ ldap {
 
 	#  Unless overridden in another section, the dn from which all
 	#  searches will start from.
-#	base_dn = "dc=example,dc=org"
+	base_dn = "dc=example,dc=org"
 
 	#
 	#  Generic valuepair attribute
@@ -81,8 +81,8 @@ ldap {
 		#  Where only a list is specified as the RADIUS attribute,
 		#  the value of the LDAP attribute is parsed as a valuepair
 		#  in the same format as the 'valuepair_attribute' (above).
-#		control:			+= 'radiusCheckAttributes'
-#		reply:				+= 'radiusReplyAttributes'
+		control:			+= 'radiusCheckAttributes'
+		reply:				+= 'radiusReplyAttributes'
 	}
 
 	#  Set to yes if you have eDirectory and want to use the universal
