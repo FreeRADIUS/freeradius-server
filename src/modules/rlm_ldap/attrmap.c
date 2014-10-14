@@ -126,13 +126,190 @@ static int rlm_ldap_map_getvalue(VALUE_PAIR **out, REQUEST *request, value_pair_
 	return 0;
 }
 
+/** Convert an 'update' config section into an attribute map.
+ *
+ * Uses 'name2' of section to set default request and lists.
+ * Copied from map_afrom_cs, except that list assignments can have the RHS
+ * be a bare word.
+ *
+ * @param[in] cs the update section
+ * @param[out] out Where to store the head of the map.
+ * @param[in] dst_list_def The default destination list, usually dictated by
+ * 	the section the module is being called in.
+ * @param[in] src_list_def The default source list, usually dictated by the
+ *	section the module is being called in.
+ * @param[in] max number of mappings to process.
+ * @return -1 on error, else 0.
+ */
+static int ldap_map_afrom_cs(value_pair_map_t **out, CONF_SECTION *cs, pair_lists_t dst_list_def, pair_lists_t src_list_def,
+			     unsigned int max)
+{
+	char const *cs_list, *p;
+
+	request_refs_t request_def = REQUEST_CURRENT;
+
+	CONF_ITEM *ci;
+	CONF_PAIR *cp;
+
+	unsigned int total = 0;
+	value_pair_map_t **tail, *map;
+	TALLOC_CTX *ctx;
+
+	*out = NULL;
+	tail = out;
+
+	if (!cs) return 0;
+
+	/*
+	 *	The first map has cs as the parent.
+	 *	The rest have the previous map as the parent.
+	 */
+	ctx = cs;
+
+	ci = cf_sectiontoitem(cs);
+
+	cs_list = p = cf_section_name2(cs);
+	if (cs_list) {
+		request_def = radius_request_name(&p, REQUEST_CURRENT);
+		if (request_def == REQUEST_UNKNOWN) {
+			cf_log_err(ci, "Default request specified "
+				   "in mapping section is invalid");
+			return -1;
+		}
+
+		dst_list_def = fr_str2int(pair_lists, p, PAIR_LIST_UNKNOWN);
+		if (dst_list_def == PAIR_LIST_UNKNOWN) {
+			cf_log_err(ci, "Default list \"%s\" specified "
+				   "in mapping section is invalid", p);
+			return -1;
+		}
+	}
+
+	for (ci = cf_item_find_next(cs, NULL);
+	     ci != NULL;
+	     ci = cf_item_find_next(cs, ci)) {
+		char const *attr;
+		FR_TOKEN type;
+
+		type = cf_pair_value_type(cp);
+
+		if (total++ == max) {
+			cf_log_err(ci, "Map size exceeded");
+			goto error;
+		}
+
+		if (!cf_item_is_pair(ci)) {
+			cf_log_err(ci, "Entry is not in \"attribute = value\" format");
+			goto error;
+		}
+
+		cp = cf_itemtopair(ci);
+
+		/*
+		 *	Look for "list: OP BARE_WORD".  If it exists,
+		 *	we can make the RHS a bare word.  Otherwise,
+		 *	just call map_afrom_cp()
+		 *
+		 *	Otherwise, the map functions check the RHS of
+		 *	list assignments, and complain that the RHS
+		 *	isn't another list.
+		 */
+		attr = cf_pair_attr(cp);
+
+		p = strrchr(attr, ':');
+		if (!p || (p[1] != '\0') || (type == T_DOUBLE_QUOTED_STRING)) {
+			if (map_afrom_cp(ctx, &map, cp, request_def, dst_list_def, REQUEST_CURRENT, src_list_def) < 0) {
+				goto error;
+			}
+		} else {
+			ssize_t slen;
+			char const *value;
+
+			map = talloc_zero(ctx, value_pair_map_t);
+			map->op = cf_pair_operator(cp);
+			map->ci = cf_pairtoitem(cp);
+
+			slen = tmpl_afrom_attr_str(ctx, &map->lhs, attr, request_def, dst_list_def);
+			if (slen <= 0) {
+				char *spaces, *text;
+
+				fr_canonicalize_error(ctx, &spaces, &text, slen, attr);
+				
+				cf_log_err(ci, "Failed parsing list reference");
+				cf_log_err(ci, "%s", text);
+				cf_log_err(ci, "%s^ %s", spaces, fr_strerror());
+
+				talloc_free(spaces);
+				talloc_free(text);
+				goto error;
+			}
+		      
+			if (map->lhs->type != TMPL_TYPE_LIST) {
+				cf_log_err(map->ci, "Invalid list name");
+				goto error;
+			}
+			
+			if (map->op != T_OP_ADD) {
+				cf_log_err(map->ci, "Only '+=' operator is permitted for valuepair to list mapping");
+				goto error;
+			}
+
+			value = cf_pair_value(cp);
+			if (!value) {
+				cf_log_err(map->ci, "No value specified for list assignment");
+				goto error;
+			}
+
+			/*
+			 *	the RHS type is a bare word or single
+			 *	quoted string.  We don't want it being
+			 *	interpreted as a list or attribute
+			 *	reference, so we force the RHS to be a
+			 *	literal.
+			 */
+			slen = tmpl_afrom_str(ctx, &map->rhs, value, T_SINGLE_QUOTED_STRING, request_def, dst_list_def);
+			if (slen <= 0) {
+				char *spaces, *text;
+
+				fr_canonicalize_error(ctx, &spaces, &text, slen, value);
+				
+				cf_log_err(ci, "Failed parsing list reference");
+				cf_log_err(ci, "%s", text);
+				cf_log_err(ci, "%s^ %s", spaces, fr_strerror());
+
+				talloc_free(spaces);
+				talloc_free(text);
+				goto error;
+			}
+
+			/*
+			 *	And unlike map_afrom_cp(), we do NOT
+			 *	try to parse the RHS as a list
+			 *	reference.  It's a literal, and we
+			 *	leave it as a literal.
+			 */
+			rad_assert(map->rhs->type == TMPL_TYPE_LITERAL);
+		}
+
+		ctx = *tail = map;
+		tail = &(map->next);
+	}
+
+	return 0;
+error:
+	TALLOC_FREE(*out);
+	return -1;
+}
+
+
+
 int rlm_ldap_map_verify(ldap_instance_t *inst, value_pair_map_t **head)
 {
 	value_pair_map_t *map;
 
-	if (map_afrom_cs(head, cf_section_sub_find(inst->cs, "update"),
-			 PAIR_LIST_REPLY,
-			 PAIR_LIST_REQUEST, LDAP_MAX_ATTRMAP) < 0) {
+	if (ldap_map_afrom_cs(head, cf_section_sub_find(inst->cs, "update"),
+			      PAIR_LIST_REPLY,
+			      PAIR_LIST_REQUEST, LDAP_MAX_ATTRMAP) < 0) {
 		return -1;
 	}
 	/*
@@ -142,12 +319,16 @@ int rlm_ldap_map_verify(ldap_instance_t *inst, value_pair_map_t **head)
 	for (map = *head; map != NULL; map = map->next) {
 		switch (map->lhs->type) {
 		case TMPL_TYPE_LIST:
-			if (map->op != T_OP_ADD) {
-				cf_log_err(map->ci, "Only '+=' operator is permitted for valuepair to list mapping");
-				return -1;
-			}
+			break;	/* parsed specially above */
 
 		case TMPL_TYPE_ATTR:
+			/*
+			 *	"update" sections in LDAP are for reading LDAP attributes, not other attributes.
+			 */
+			if (map->rhs->type == TMPL_TYPE_ATTR) {
+				cf_log_err(map->ci, "Cannot assign from a RADIUS attribute when reading data from LDAP.");
+				return -1;
+			}
 			break;
 
 		default:
