@@ -149,7 +149,6 @@ static int ldap_map_afrom_cs(value_pair_map_t **out, CONF_SECTION *cs, pair_list
 	request_refs_t request_def = REQUEST_CURRENT;
 
 	CONF_ITEM *ci;
-	CONF_PAIR *cp;
 
 	unsigned int total = 0;
 	value_pair_map_t **tail, *map;
@@ -190,6 +189,9 @@ static int ldap_map_afrom_cs(value_pair_map_t **out, CONF_SECTION *cs, pair_list
 	     ci = cf_item_find_next(cs, ci)) {
 		char const *attr;
 		FR_TOKEN type;
+		CONF_PAIR *cp;
+
+		cp = cf_itemtopair(ci);
 
 		type = cf_pair_value_type(cp);
 
