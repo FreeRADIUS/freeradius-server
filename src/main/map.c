@@ -368,7 +368,8 @@ int map_afrom_cp(TALLOC_CTX *ctx, value_pair_map_t **out, CONF_PAIR *cp,
 		case T_OP_ADD:
 			if ((map->rhs->type != TMPL_TYPE_LIST) &&
 			    (map->rhs->type != TMPL_TYPE_EXEC)) {
-				cf_log_err(ci, "Invalid source for list '+='");
+				cf_log_err(ci, "Invalid source for list assignment '%s += ...'",
+					   map->lhs->name);
 				goto error;
 			}
 			break;
@@ -381,14 +382,16 @@ int map_afrom_cp(TALLOC_CTX *ctx, value_pair_map_t **out, CONF_PAIR *cp,
 			}
 
 			if (map->rhs->type != TMPL_TYPE_LIST) {
-				cf_log_err(ci, "Invalid source for ':=' operator");
+				cf_log_err(ci, "Invalid source for list assignment '%s := ...'",
+					   map->lhs->name);
 				goto error;
 			}
 			break;
 
 		case T_OP_EQ:
 			if (map->rhs->type != TMPL_TYPE_EXEC) {
-				cf_log_err(ci, "Invalid source for '=' operator");
+				cf_log_err(ci, "Invalid source for list assignment '%s = ...'",
+					   map->lhs->name);
 				goto error;
 			}
 			break;
