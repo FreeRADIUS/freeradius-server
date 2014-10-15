@@ -103,16 +103,16 @@ pid_t radius_start_program(char const *cmd, REQUEST *request, bool exec_wait,
 
 	argc = rad_expand_xlat(request, cmd, MAX_ARGV, argv, true, sizeof(argv_buf), argv_buf);
 	if (argc <= 0) {
-		RDEBUG("invalid command line '%s'.", cmd);
+		DEBUG("invalid command line '%s'.", cmd);
 		return -1;
 	}
 
 
 #ifndef NDEBUG
 	if (debug_flag > 2) {
-		RDEBUG3("executing cmd %s", cmd);
+		DEBUG3("executing cmd %s", cmd);
 		for (i = 0; i < argc; i++) {
-			RDEBUG3("\t[%d] %s", i, argv[i]);
+			DEBUG3("\t[%d] %s", i, argv[i]);
 		}
 	}
 #endif
@@ -124,13 +124,13 @@ pid_t radius_start_program(char const *cmd, REQUEST *request, bool exec_wait,
 	if (exec_wait) {
 		if (input_fd) {
 			if (pipe(to_child) != 0) {
-				RDEBUG("Couldn't open pipe to child: %s", fr_syserror(errno));
+				DEBUG("Couldn't open pipe to child: %s", fr_syserror(errno));
 				return -1;
 			}
 		}
 		if (output_fd) {
 			if (pipe(from_child) != 0) {
-				RDEBUG("Couldn't open pipe from child: %s", fr_syserror(errno));
+				DEBUG("Couldn't open pipe from child: %s", fr_syserror(errno));
 				/* safe because these either need closing or are == -1 */
 				close(to_child[0]);
 				close(to_child[1]);
@@ -206,7 +206,7 @@ pid_t radius_start_program(char const *cmd, REQUEST *request, bool exec_wait,
 		 */
 		devnull = open("/dev/null", O_RDWR);
 		if (devnull < 0) {
-			RDEBUG("Failed opening /dev/null: %s\n", fr_syserror(errno));
+			DEBUG("Failed opening /dev/null: %s\n", fr_syserror(errno));
 
 			/*
 			 *	Where the status code is interpreted as a module rcode
@@ -287,7 +287,7 @@ pid_t radius_start_program(char const *cmd, REQUEST *request, bool exec_wait,
 	 *	Parent process.
 	 */
 	if (pid < 0) {
-		RDEBUG("Couldn't fork %s: %s", argv[0], fr_syserror(errno));
+		DEBUG("Couldn't fork %s: %s", argv[0], fr_syserror(errno));
 		if (exec_wait) {
 			/* safe because these either need closing or are == -1 */
 			close(to_child[0]);
@@ -320,7 +320,7 @@ pid_t radius_start_program(char const *cmd, REQUEST *request, bool exec_wait,
 	return pid;
 #else
 	if (exec_wait) {
-		RDEBUG("Wait is not supported");
+		DEBUG("Wait is not supported");
 		return -1;
 	}
 
@@ -366,7 +366,7 @@ pid_t radius_start_program(char const *cmd, REQUEST *request, bool exec_wait,
  * @param left length of buffer.
  * @return -1 on error, or length of output.
  */
-int radius_readfrom_program(REQUEST *request, int fd, pid_t pid, int timeout,
+int radius_readfrom_program(int fd, pid_t pid, int timeout,
 			    char *answer, int left)
 {
 	int done = 0;
@@ -422,7 +422,7 @@ int radius_readfrom_program(REQUEST *request, int fd, pid_t pid, int timeout,
 		rcode = select(fd + 1, &fds, NULL, NULL, &wake);
 		if (rcode == 0) {
 		too_long:
-			RDEBUG("Child PID %u is taking too much time: forcing failure and killing child.", pid);
+			DEBUG("Child PID %u is taking too much time: forcing failure and killing child.", pid);
 			kill(pid, SIGTERM);
 			close(fd); /* should give SIGPIPE to child, too */
 
@@ -537,7 +537,7 @@ int radius_exec_program(char *out, size_t outlen, VALUE_PAIR **output_pairs,
 	}
 
 #ifndef __MINGW32__
-	len = radius_readfrom_program(request, from_child, pid, timeout, answer, sizeof(answer));
+	len = radius_readfrom_program(from_child, pid, timeout, answer, sizeof(answer));
 	if (len < 0) {
 		/*
 		 *	Failure - radius_readfrom_program will
