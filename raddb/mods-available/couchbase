@@ -25,7 +25,7 @@ couchbase {
 	# Map attribute names to json element names for accounting.
 	#
 	# Configuration items are in the format:
-	# <element name> = '<radius attribute>'
+	#  <element name> = '<radius attribute>'
 	#
 	# Attribute names should be single quoted.
 	#
@@ -61,6 +61,47 @@ couchbase {
 
 	# Couchbase document key for user documents (unlang supported)
 	user_key = "raduser_%{md5:%{tolower:%{%{Stripped-User-Name}:-%{User-Name}}}}"
+
+	# Set to 'yes' to read radius clients from the Couchbase view specified below.
+	# NOTE: Clients will ONLY be read on server startup.
+	#read_clients = no
+
+	#
+	#  Map attribute names to json element names when loading clients.
+	#
+	#  Configuration follows the same rules as the accounting map above.
+	#
+	client {
+		# Couchbase view that should return all available client documents.
+		view = "_design/client/_view/by_id"
+
+		#
+		# Client mappings are in the format:
+		#  <client attribute> = '<element name>'
+		#
+		# Element names should be single quoted.
+		#
+		# The following attributes are required:
+		#  * ipaddr | ipv4addr | ipv6addr - Client IP Address.
+		#  * secret - RADIUS shared secret.
+		#
+		# All attributes usually supported in a client
+		# definition are also supported here.
+		#
+		attribute {
+			ipaddr                          = 'clientIdentifier'
+			secret                          = 'clientSecret'
+			shortname                       = 'clientShortname'
+			nas_type                        = 'nasType'
+			virtual_server                  = 'virtualServer'
+			require_message_authenticator   = 'requireMessageAuthenticator'
+			limit {
+				max_connections             = 'maxConnections'
+				lifetime                    = 'clientLifetime'
+				idle_timeout                = 'idleTimeout'
+			}
+		}
+	}
 
 	#
 	#  The connection pool is new for 3.0, and will be used in many
