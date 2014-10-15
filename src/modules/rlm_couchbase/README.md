@@ -4,14 +4,14 @@ rlm_couchbase
 General
 -------
 
-This module allows you to write accounting data directly to Couchbase as JSON documents and authorize users from JSON documents stored within Couchbase.  It was tested to handle thousands of radius requests per second from several thousand Aerohive access points using a FreeRADIUS installation with this module for accounting and authorization.  You should list the ```couchbase``` module in both the ```accounting``` and ```authorization``` sections of your site configuration if you are planning to use it for both purposes.  You should also have ```pap``` enabled for authenticating users based on cleartext or hashed password attributes.  As always YMMV.
+This module allows you to write accounting data directly to Couchbase as JSON documents and authorize users from JSON documents stored within Couchbase.  It was tested to handle thousands of RADIUS requests per second from several thousand Aerohive access points using a FreeRADIUS installation with this module for accounting and authorization.  You should list the ```couchbase``` module in both the ```accounting``` and ```authorization``` sections of your site configuration if you are planning to use it for both purposes.  You should also have ```pap``` enabled for authenticating users based on cleartext or hashed password attributes.  In addition to authorization and accounting this module also allows the loading of RADIUS client entries directly from Couchbase.
 
 Accounting
 ----------
 
-You can use any radius attribute available in the accounting request to build the key for storing the accounting documents. The default configuration will try to use 'Acct-Unique-Session-Id' and fallback to 'Acct-Session-Id' if 'Acct-Unique-Session-Id' is not present.  You will need to have the ```acct_unique``` policy in the ```preacct``` section of your configuration to generate the unique id attribute.   Different status types (start/stop/update) are merged into a single document to facilitate querying and reporting via views.  When everything is configured correctly you will see accounting requests recorded as JSON documents in your Couchbaase cluster.  You have full control over what attributes are recorded and how those attributes are mapped to JSON element names via the configuration descibed later in this document.
+You can use any RADIUS attribute available in the accounting request to build the key for storing the accounting documents. The default configuration will try to use 'Acct-Unique-Session-Id' and fallback to 'Acct-Session-Id' if 'Acct-Unique-Session-Id' is not present.  You will need to have the ```acct_unique``` policy in the ```preacct``` section of your configuration to generate the unique id attribute.   Different status types (start/stop/update) are merged into a single document to facilitate querying and reporting via views.  When everything is configured correctly you will see accounting requests recorded as JSON documents in your Couchbaase cluster.  You have full control over what attributes are recorded and how those attributes are mapped to JSON element names via the configuration descibed later in this document.
 
-This exmaple is from an Aerohive wireless access point.
+This example is from an Aerohive wireless access point.
 
 ```
 {
@@ -79,11 +79,11 @@ You can then reference this policy in both the ```preacct``` and ```authorizatio
 Authorization
 -------------
 
-The authorization funcionality relies on the user documents being stored with deterministic keys based on information available in the authorization request.  The format of those keys may be specified in unlang like the example below:
+The authorization functionality relies on the user documents being stored with deterministic keys based on information available in the authorization request.  The format of those keys may be specified in unlang like the example below:
 
 ```user_key = "raduser_%{md5:%{tolower:%{%{Stripped-User-Name}:-%{User-Name}}}}"```
 
-This will create an md5 hash of the lowercase 'Stripped-User-Name' attribute or the 'User-Name' attribute if 'Stripped-User-Name' doesn't exist.  The module will then attempt to fetch the resulting key from the configured couchbase bucket.
+This will create an md5 hash of the lowercase 'Stripped-User-Name' attribute or the 'User-Name' attribute if 'Stripped-User-Name' doesn't exist.  The module will then attempt to fetch the resulting key from the configured Couchbase bucket.
 
 The document structure is straight forward and flexible:
 
@@ -106,7 +106,40 @@ The document structure is straight forward and flexible:
 }
 ```
 
-You may specify any valid combination of attributes and operations in the JSON document.
+You may specify any valid combination of attributes and operators in the JSON document ```config``` and ```reply``` sections.  All other elements present in the user document will not be parsed and are ignored by the module.
+
+Clients
+-------
+
+The client functionality depends on a combination of client documents and a simple view that returns those document keys.  Client documents are only loaded ONCE on server startup so there should be no performance penalty using a view for this purpose.
+
+To enable the client loading functionality you will need to set the ```read_clients``` config option to 'yes' and specify a fully qualified view path in the ```client_view``` option.
+
+Example client document:
+
+```json
+{
+	"docType": "radclient",
+	"clientIdentifier": "13.0.0.0/8",
+	"clientSecret": "testing123"
+}
+```
+
+The element names and the client attributes to which they map are completely configurable. Elements present in the document that are not enumerated in the module configuration will be ignored.  In addition to this document you will also need a view that returns the keys of all client documents you wish to load.
+
+Example client view:
+
+```
+function (doc, meta) {
+  if (doc.docType && doc.docType == "radclient" && doc.clientName) {
+    emit(null, null);
+  }
+}
+```
+
+This is the simplest possible view that would return all documents in the specified bucket having a ```docType``` element with the ```radclient```` value.  The module only reads the ```id``` element in the returned view thus no additional output is needed and any additional output would be ignored.
+
+To have the module load only a subset of the client documents contained within the bucket you could add additional elements to the client documents and then filter based on those elements within your view.
 
 To Use
 ------
@@ -184,6 +217,47 @@ couchbase {
 
 	# Couchbase document key for user documents (unlang supported)
 	user_key = "raduser_%{md5:%{tolower:%{%{Stripped-User-Name}:-%{User-Name}}}}"
+
+	# Set to 'yes' to read radius clients from the Couchbase view specified below.
+	# NOTE: Clients will ONLY be read on server startup.
+	#read_clients = no
+
+	#
+	#  Map attribute names to json element names when loading clients.
+	#
+	#  Configuration follows the same rules as the accounting map above.
+	#
+	client {
+		# Couchbase view that should return all available client documents.
+		view = "_design/client/_view/by_id"
+
+		#
+		# Client mappings are in the format:
+		#  <client attribute> = '<element name>'
+		#
+		# Element names should be single quoted.
+		#
+		# The following attributes are required:
+		#  * ipaddr | ipv4addr | ipv6addr - Client IP Address.
+		#  * secret - RADIUS shared secret.
+		#
+		# All attributes usually supported in a client
+		# definition are also supported here.
+		#
+		attribute {
+			ipaddr                          = 'clientIdentifier'
+			secret                          = 'clientSecret'
+			shortname                       = 'clientShortname'
+			nas_type                        = 'nasType'
+			virtual_server                  = 'virtualServer'
+			require_message_authenticator   = 'requireMessageAuthenticator'
+			limit {
+				max_connections             = 'maxConnections'
+				lifetime                    = 'clientLifetime'
+				idle_timeout                = 'idleTimeout'
+			}
+		}
+	}
 
 	#
 	#  The connection pool is new for 3.0, and will be used in many
