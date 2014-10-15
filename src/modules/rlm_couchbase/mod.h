@@ -20,7 +20,8 @@
  * @brief Function prototypes and datatypes used in the module.
  * @file mod.h
  *
- * @copyright 2013-2014 Aaron Hurt <ahurt@anbcs.com>
+ * @author Aaron Hurt <ahurt@anbcs.com>
+ * @copyright 2013-2014 The FreeRADIUS Server Project.
  */
 
 #ifndef _mod_h_
@@ -41,24 +42,35 @@ RCSIDH(mod_h, "$Id$");
 /* maximum length of a document key */
 #define MAX_KEY_SIZE 250
 
-/* configuration struct */
+/**
+ * @brief The main module instance.
+ *
+ * This struct contains the core module configuration.
+ */
 typedef struct rlm_couchbase_t {
-	char const *acct_key;		//!< Accounting document key.
-	char const *doctype;		//!< Value of 'docType' element name.
-	char const *server_raw;		//!< Raw server string before parsing.
-	char const *server;		//!< Couchbase server list.
-	char const *bucket;		//!< Couchbase bucket.
-	char const *password;		//!< Couchbase bucket password.
-	uint32_t expire;		//!< Document expire time in seconds.
-	const char *user_key;		//!< User document key.
-	json_object *map;		//!< Json object to hold user defined attribute map.
-	fr_connection_pool_t *pool;	//!< Connection pool.
+	char const *acct_key;       //!< Accounting document key.
+	char const *doctype;        //!< Value of 'docType' element name.
+	char const *server_raw;     //!< Raw server string before parsing.
+	char const *server;         //!< Couchbase server list.
+	char const *bucket;         //!< Couchbase bucket.
+	char const *password;       //!< Couchbase bucket password.
+	uint32_t expire;            //!< Document expire time in seconds.
+	const char *user_key;       //!< User document key.
+	bool read_clients;          //!< Toggle for loading client records.
+	const char *client_view;    //!< Couchbase view that returns client documents.
+	json_object *map;           //!< Json object to hold user defined attribute map.
+	fr_connection_pool_t *pool; //!< Connection pool.
 } rlm_couchbase_t;
 
-/* connection pool handle struct */
+/**
+ * @brief Couchbase instance specific information.
+ *
+ * This struct contains the Couchbase connection handle as well as a
+ * cookie pointer to store fetched document payloads.
+ */
 typedef struct rlm_couchbase_handle_t {
-	void *handle;			//!< Real couchbase instance.
-	void *cookie;			//!< Couchbase cookie.
+	void *handle;    //!< Real couchbase instance.
+	void *cookie;    //!< Couchbase cookie (@p cookie_u @p cookie_t).
 } rlm_couchbase_handle_t;
 
 /* define functions */
@@ -75,5 +87,7 @@ void *mod_json_object_to_value_pairs(json_object *json, const char *section, REQ
 json_object *mod_value_pair_to_json_object(REQUEST *request, VALUE_PAIR *vp);
 
 int mod_ensure_start_timestamp(json_object *json, VALUE_PAIR *vps);
+
+int mod_load_client_documents(rlm_couchbase_t *inst, CONF_SECTION *cs);
 
 #endif /* _mod_h_ */
