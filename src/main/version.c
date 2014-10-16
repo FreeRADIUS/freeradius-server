@@ -91,8 +91,8 @@ int ssl_check_consistency(void)
  */
 char const *ssl_version_by_num(uint32_t v)
 {
-	/* 2 (%s) + 1 (.) + 2 (%i) + 1 (.) + 2 (%i) + 1 (c) + 1 (-) + 2 (%i) + \0 */
-	static char buffer[13];
+	/* 2 (%s) + 1 (.) + 2 (%i) + 1 (.) + 2 (%i) + 1 (c) + 8 (%s) + \0 */
+	static char buffer[18];
 	char *p = buffer;
 
 	p += sprintf(p, "%u.%u.%u",
@@ -104,7 +104,21 @@ char const *ssl_version_by_num(uint32_t v)
 		*p++ =  (char) (0x60 + ((0x00000ff0 & v) >> 4));
 	}
 
-	sprintf(p, "%x", 0x0000000f & v);
+	*p++ = ' ';
+
+	/*
+	 *	Development (0)
+	 */
+	if ((0x0000000f & v) == 0) {
+		strcpy(p, "dev");
+	/*
+	 *	Beta (1-14)
+	 */
+	} else if ((0x0000000f & v) <= 14) {
+		sprintf(p, "beta %u", 0x0000000f & v);
+	} else {
+		strcpy(p, "release");
+	}
 
 	return buffer;
 }
