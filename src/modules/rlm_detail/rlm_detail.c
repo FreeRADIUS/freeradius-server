@@ -233,7 +233,7 @@ static int detail_write(FILE *out, detail_instance_t *inst, REQUEST *request, RA
 		if (is_radius_code(packet->code)) {
 			WRITE("\tPacket-Type = %s\n", fr_packet_codes[packet->code]);
 		} else {
-			WRITE("\tPacket-Type = %d\n", packet->code);
+			WRITE("\tPacket-Type = %u\n", packet->code);
 		}
 	}
 
