@@ -635,7 +635,7 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t *inst, REQUEST *request, rlm
 			goto finish;
 		}
 
-		if (inst->config->authorize_group_check_query && (inst->config->authorize_group_check_query != '\0')) {
+		if (inst->config->authorize_group_check_query && (*inst->config->authorize_group_check_query != '\0')) {
 			/*
 			 *	Expand the group query
 			 */
@@ -672,7 +672,7 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t *inst, REQUEST *request, rlm
 			check_tmp = NULL;
 		}
 
-		if (inst->config->authorize_group_reply_query && (inst->config->authorize_group_reply_query != '\0')) {
+		if (inst->config->authorize_group_reply_query && (*inst->config->authorize_group_reply_query != '\0')) {
 			/*
 			 *	Now get the reply pairs since the paircompare matched
 			 */
