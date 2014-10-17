@@ -102,7 +102,7 @@ error:
  */
 static rlm_rcode_t replicate_packet(UNUSED void *instance, REQUEST *request, pair_lists_t list, PW_CODE code)
 {
-	int rcode = RLM_MODULE_NOOP;
+	int rcode;
 	bool pass1 = true;
 
 	vp_cursor_t cursor;
