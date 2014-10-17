@@ -823,7 +823,6 @@ finish:
 	vpt->type = type;
 	vpt->name = name;
 	vpt->len = p - name;
-	name = p;
 
 	/*
 	 *	Copy over the attribute definition, now we're
