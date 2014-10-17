@@ -154,7 +154,7 @@ static int ub_common_wait(rlm_unbound_t *inst, REQUEST *request, char const *tag
 	iv = inst->timeout > 64 ? 64000 : inst->timeout * 1000;
 	ub_process(inst->ub);
 
-	for (waited = 0; (void*)*ub == (void *)inst; waited += iv, iv += iv) {
+	for (waited = 0; (void*)*ub == (void *)inst; waited += iv, iv *= 2) {
 
 		if (waited + iv > (useconds_t)inst->timeout * 1000) {
 			usleep(inst->timeout * 1000 - waited);
