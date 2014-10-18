@@ -1002,7 +1002,7 @@ ssize_t fr_dhcp_decode_options(TALLOC_CTX *ctx, VALUE_PAIR **out, uint8_t const 
 				pairfree(out);
 				return -1;
 			}
-			fr_cursor_insert(&cursor, vp);
+			fr_cursor_merge(&cursor, vp);
 
 			for (vp = fr_cursor_current(&cursor);
 			     vp;
