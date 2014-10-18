@@ -544,7 +544,7 @@ bool pairvalidate(VALUE_PAIR const *failed[2], VALUE_PAIR *filter, VALUE_PAIR *l
 		/*
 		 *	Lists are of different lengths
 		 */
-		if ((!match && check) || (check && !match)) goto mismatch;
+		if (!match || !check) goto mismatch;
 
 		/*
 		 *	The lists are sorted, so if the first

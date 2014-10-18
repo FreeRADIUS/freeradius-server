@@ -260,7 +260,6 @@ static struct mypasswd * get_next(char *name, struct hashtable *ht,
 	struct mypasswd * passwd;
 	struct mypasswd * hashentry;
 	char buffer[1024];
-	int len;
 	char *list, *nextlist;
 
 	if (ht->tablesize > 0) {
@@ -281,7 +280,7 @@ static struct mypasswd * get_next(char *name, struct hashtable *ht,
 	passwd = (struct mypasswd *) ht->buffer;
 
 	while (fgets(buffer, 1024,ht->fp)) {
-		if(*buffer && *buffer!='\n' && (len = string_to_entry(buffer, ht->nfields, ht->delimiter, passwd, sizeof(ht->buffer)-1)) &&
+		if(*buffer && *buffer!='\n' && string_to_entry(buffer, ht->nfields, ht->delimiter, passwd, sizeof(ht->buffer)-1) &&
 		   (!ht->ignorenis || (*buffer !='-' && *buffer != '+') ) ){
 			if(!ht->islist) {
 				if(!strcmp(passwd->field[ht->keyfield], name))
