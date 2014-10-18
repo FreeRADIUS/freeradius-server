@@ -423,7 +423,7 @@ typedef struct int128_t { uint8_t v[16]; } int128_t;
 #endif
 
 /* abcd efgh -> dcba hgfe -> hgfe dcba */
-#ifndef HAVE_HTON_LL
+#ifndef HAVE_HTONLL
 #  ifdef RADIUS_LITTLE_ENDIAN
 #    ifdef HAVE_BUILTIN_BSWAP64
 #      define ntohll(x) __builtin_bswap64(x)
@@ -436,7 +436,7 @@ typedef struct int128_t { uint8_t v[16]; } int128_t;
 #  define htonll(x) ntohll(x)
 #endif
 
-#ifndef HAVE_HTON_LLL
+#ifndef HAVE_HTONLLL
 #  ifdef RADIUS_LITTLE_ENDIAN
 #    ifdef HAVE_128BIT_INTEGERS
 #      define ntohlll(x) (((uint128_t)ntohll((uint64_t)(x >> 64))) | (((uint128_t)ntohll(((uint64_t) x)) << 64)))
