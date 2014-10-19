@@ -2655,6 +2655,8 @@ static int request_will_proxy(REQUEST *request)
 		uint16_t dst_port;
 		fr_ipaddr_t dst_ipaddr;
 
+		memset(&dst_ipaddr, 0, sizeof(dst_ipaddr));
+
 		if (vp->da->attr == PW_PACKET_DST_IP_ADDRESS) {
 			dst_ipaddr.af = AF_INET;
 			dst_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
