@@ -169,7 +169,6 @@ int map_afrom_cp(TALLOC_CTX *ctx, value_pair_map_t **out, CONF_PAIR *cp,
 	char const *attr, *value;
 	ssize_t slen;
 	FR_TOKEN type;
-	CONF_ITEM *ci = cf_pairtoitem(cp);
 
 	*out = NULL;
 
@@ -177,12 +176,12 @@ int map_afrom_cp(TALLOC_CTX *ctx, value_pair_map_t **out, CONF_PAIR *cp,
 
 	map = talloc_zero(ctx, value_pair_map_t);
 	map->op = cf_pair_operator(cp);
-	map->ci = ci;
+	map->ci = cf_pairtoitem(cp);
 
 	attr = cf_pair_attr(cp);
 	value = cf_pair_value(cp);
 	if (!value) {
-		cf_log_err(ci, "Missing attribute value");
+		cf_log_err_cp(cp, "Missing attribute value");
 		goto error;
 	}
 
@@ -195,9 +194,9 @@ int map_afrom_cp(TALLOC_CTX *ctx, value_pair_map_t **out, CONF_PAIR *cp,
 
 		fr_canonicalize_error(ctx, &spaces, &text, slen, attr);
 
-		cf_log_err(ci, "Failed parsing attribute reference");
-		cf_log_err(ci, "%s", text);
-		cf_log_err(ci, "%s^ %s", spaces, fr_strerror());
+		cf_log_err_cp(cp, "Failed parsing attribute reference");
+		cf_log_err_cp(cp, "%s", text);
+		cf_log_err_cp(cp, "%s^ %s", spaces, fr_strerror());
 
 		talloc_free(spaces);
 		talloc_free(text);
@@ -205,8 +204,8 @@ int map_afrom_cp(TALLOC_CTX *ctx, value_pair_map_t **out, CONF_PAIR *cp,
 	}
 
 	if (!tmpl_define_unknown_attr(map->lhs)) {
-		cf_log_err(ci, "Failed creating attribute %s: %s",
-			   map->lhs->name, fr_strerror());
+		cf_log_err_cp(cp, "Failed creating attribute %s: %s",
+			      map->lhs->name, fr_strerror());
 		goto error;
 	}
 
@@ -226,8 +225,8 @@ int map_afrom_cp(TALLOC_CTX *ctx, value_pair_map_t **out, CONF_PAIR *cp,
 
 			fr_canonicalize_error(ctx, &spaces, &text, slen, value);
 
-			cf_log_err(ci, "%s", text);
-			cf_log_err(ci, "%s^ %s", spaces, fr_strerror());
+			cf_log_err_cp(cp, "%s", text);
+			cf_log_err_cp(cp, "%s^ %s", spaces, fr_strerror());
 
 			talloc_free(spaces);
 			talloc_free(text);
@@ -235,13 +234,12 @@ int map_afrom_cp(TALLOC_CTX *ctx, value_pair_map_t **out, CONF_PAIR *cp,
 			goto error;
 		}
 		if (!tmpl_define_unknown_attr(map->rhs)) {
-			cf_log_err(ci, "Failed creating attribute %s: %s",
-				   map->rhs->name, fr_strerror());
+			cf_log_err_cp(cp, "Failed creating attribute %s: %s", map->rhs->name, fr_strerror());
 			goto error;
 		}
 	}
 	if (!map->rhs) {
-		cf_log_err(ci, "%s", fr_strerror());
+		cf_log_err_cp(cp, "%s", fr_strerror());
 		goto error;
 	}
 
