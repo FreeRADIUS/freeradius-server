@@ -1590,6 +1590,7 @@ defaultactions[RLM_COMPONENT_COUNT][GROUPTYPE_COUNT][RLM_MODULE_NUMCODES] =
 /** Validate and fixup a map that's part of an update section.
  *
  * @param map to validate.
+ * @param ctx data to pass to fixup function (currently unused).
  * @return 0 if valid else -1.
  */
 int modcall_fixup_update(value_pair_map_t *map, UNUSED void *ctx)
