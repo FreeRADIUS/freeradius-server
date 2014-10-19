@@ -365,7 +365,7 @@ rlm_rcode_t rlm_ldap_check_cached(ldap_instance_t const *inst, REQUEST *request,
 /*
  *	attrmap.c - Attribute mapping code.
  */
-int rlm_ldap_map_verify(ldap_instance_t *inst, value_pair_map_t **head);
+int rlm_ldap_map_verify(value_pair_map_t *map, void *instance);
 
 void rlm_ldap_map_xlat_free(rlm_ldap_map_xlat_t const *expanded);
 

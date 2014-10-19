@@ -243,164 +243,6 @@ int map_afrom_cp(TALLOC_CTX *ctx, value_pair_map_t **out, CONF_PAIR *cp,
 		goto error;
 	}
 
-	/*
-	 *	Anal-retentive checks.
-	 */
-	if (debug_flag > 2) {
-		if ((map->lhs->type == TMPL_TYPE_ATTR) && (*attr != '&')) {
-			WARN("%s[%d]: Please change attribute reference to '&%s %s ...'",
-			       cf_pair_filename(cp), cf_pair_lineno(cp),
-			       attr, fr_int2str(fr_tokens, map->op, "<INVALID>"));
-		}
-
-		if ((map->rhs->type == TMPL_TYPE_ATTR) && (*value != '&')) {
-			WARN("%s[%d]: Please change attribute reference to '... %s &%s'",
-			       cf_pair_filename(cp), cf_pair_lineno(cp),
-			       fr_int2str(fr_tokens, map->op, "<INVALID>"), value);
-		}
-	}
-
-	/*
-	 *	Values used by unary operators should be literal ANY
-	 *
-	 *	We then free the template and alloc a NULL one instead.
-	 */
-	if (map->op == T_OP_CMP_FALSE) {
-	 	if ((map->rhs->type != TMPL_TYPE_LITERAL) || (strcmp(map->rhs->name, "ANY") != 0)) {
-			WARN("%s[%d] Wildcard deletion MUST use '!* ANY'", cf_pair_filename(cp), cf_pair_lineno(cp));
-		}
-
-		tmpl_free(&map->rhs);
-
-		map->rhs = tmpl_alloc(map, TMPL_TYPE_NULL, NULL, 0);
-	}
-
-	/*
-	 *	Lots of sanity checks for insane people...
-	 */
-
-	/*
-	 *	We don't support implicit type conversion,
-	 *	except for "octets"
-	 */
-	if (((map->lhs->type == TMPL_TYPE_ATTR) || (map->lhs->type == TMPL_TYPE_DATA)) &&
-	    ((map->rhs->type == TMPL_TYPE_ATTR) || (map->rhs->type == TMPL_TYPE_DATA))) {
-		PW_TYPE rhs_type;
-		PW_TYPE lhs_type;
-
-		switch (map->lhs->type) {
-		case TMPL_TYPE_ATTR:
-			lhs_type = map->lhs->tmpl_da->type;
-			break;
-
-		case TMPL_TYPE_DATA:
-			lhs_type = map->lhs->tmpl_data_type;
-			break;
-
-		default:
-			rad_assert(0);
-		}
-
-		switch (map->rhs->type) {
-		case TMPL_TYPE_ATTR:
-			rhs_type = map->rhs->tmpl_da->type;
-			break;
-
-		case TMPL_TYPE_DATA:
-			rhs_type = map->rhs->tmpl_data_type;
-			break;
-
-		default:
-			rad_assert(0);
-		}
-
-
-		if ((lhs_type != rhs_type) &&
-		    (lhs_type != PW_TYPE_OCTETS) &&
-		    (rhs_type != PW_TYPE_OCTETS)) {
-			cf_log_err(ci, "Attribute type mismatch");
-			goto error;
-		}
-	}
-
-	/*
-	 *	What exactly where you expecting to happen here?
-	 */
-	if ((map->lhs->type == TMPL_TYPE_ATTR) &&
-	    (map->rhs->type == TMPL_TYPE_LIST)) {
-		cf_log_err(ci, "Can't copy list into an attribute");
-		goto error;
-	}
-
-	/*
-	 *	Depending on the attribute type, some operators are
-	 *	disallowed.
-	 */
-	if (map->lhs->type == TMPL_TYPE_ATTR) {
-		switch (map->op) {
-		default:
-			cf_log_err(ci, "Invalid operator for attribute");
-			goto error;
-
-		case T_OP_EQ:
-		case T_OP_CMP_EQ:
-		case T_OP_ADD:
-		case T_OP_SUB:
-		case T_OP_LE:
-		case T_OP_GE:
-		case T_OP_CMP_FALSE:
-		case T_OP_SET:
-			break;
-		}
-	}
-
-	if (map->lhs->type == TMPL_TYPE_LIST) {
-		/*
-		 *	Only += and :=, and !* operators are supported
-		 *	for lists.
-		 */
-		switch (map->op) {
-		case T_OP_CMP_FALSE:
-			break;
-
-		case T_OP_ADD:
-			if ((map->rhs->type != TMPL_TYPE_LIST) &&
-			    (map->rhs->type != TMPL_TYPE_EXEC)) {
-				cf_log_err(ci, "Invalid source for list assignment '%s += ...'",
-					   map->lhs->name);
-				goto error;
-			}
-			break;
-
-		case T_OP_SET:
-			if (map->rhs->type == TMPL_TYPE_EXEC) {
-				WARN("%s[%d] Please change ':=' to '=' for list assignment",
-				       cf_pair_filename(cp), cf_pair_lineno(cp));
-				break;
-			}
-
-			if (map->rhs->type != TMPL_TYPE_LIST) {
-				cf_log_err(ci, "Invalid source for list assignment '%s := ...'",
-					   map->lhs->name);
-				goto error;
-			}
-			break;
-
-		case T_OP_EQ:
-			if (map->rhs->type != TMPL_TYPE_EXEC) {
-				cf_log_err(ci, "Invalid source for list assignment '%s = ...'",
-					   map->lhs->name);
-				goto error;
-			}
-			break;
-
-		default:
-			cf_log_err(ci, "Operator \"%s\" not allowed for list assignment",
-				   fr_int2str(fr_tokens, map->op, "<INVALID>"));
-			goto error;
-		}
-	}
-
 	VERIFY_MAP(map);
 
 	*out = map;
@@ -422,10 +264,14 @@ error:
  * 	the section the module is being called in.
  * @param[in] src_list_def The default source list, usually dictated by the
  *	section the module is being called in.
+ * @param[in] validate map using this callback (may be NULL).
+ * @param[in] ctx to pass to callback.
  * @param[in] max number of mappings to process.
  * @return -1 on error, else 0.
  */
-int map_afrom_cs(value_pair_map_t **out, CONF_SECTION *cs, pair_lists_t dst_list_def, pair_lists_t src_list_def,
+int map_afrom_cs(value_pair_map_t **out, CONF_SECTION *cs,
+		 pair_lists_t dst_list_def, pair_lists_t src_list_def,
+		 map_validate_t validate, void *ctx,
 		 unsigned int max)
 {
 	char const *cs_list, *p;
@@ -437,7 +283,7 @@ int map_afrom_cs(value_pair_map_t **out, CONF_SECTION *cs, pair_lists_t dst_list
 
 	unsigned int total = 0;
 	value_pair_map_t **tail, *map;
-	TALLOC_CTX *ctx;
+	TALLOC_CTX *parent;
 
 	*out = NULL;
 	tail = out;
@@ -448,7 +294,7 @@ int map_afrom_cs(value_pair_map_t **out, CONF_SECTION *cs, pair_lists_t dst_list
 	 *	The first map has cs as the parent.
 	 *	The rest have the previous map as the parent.
 	 */
-	ctx = cs;
+	parent = cs;
 
 	ci = cf_sectiontoitem(cs);
 
@@ -483,13 +329,18 @@ int map_afrom_cs(value_pair_map_t **out, CONF_SECTION *cs, pair_lists_t dst_list
 		}
 
 		cp = cf_itemtopair(ci);
-		if (map_afrom_cp(ctx, &map, cp, request_def, dst_list_def, REQUEST_CURRENT, src_list_def) < 0) {
+		if (map_afrom_cp(parent, &map, cp, request_def, dst_list_def, REQUEST_CURRENT, src_list_def) < 0) {
 			goto error;
 		}
 
 		VERIFY_MAP(map);
 
-		ctx = *tail = map;
+		/*
+		 *	Check the types in the map are valid
+		 */
+		if (validate && (validate(map, ctx) < 0)) goto error;
+
+		parent = *tail = map;
 		tail = &(map->next);
 	}
 

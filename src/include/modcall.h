@@ -21,6 +21,8 @@ extern "C" {
  */
 typedef struct modcallable modcallable;
 
+int modcall_fixup_update(value_pair_map_t *map, void *ctx);
+
 int modcall(rlm_components_t component, modcallable *c, REQUEST *request);
 
 /* Parse a module-method's config section (e.g. authorize{}) into a tree that
@@ -43,7 +45,7 @@ bool modcall_pass2(modcallable *mc);
 void add_to_modcallable(modcallable *parent, modcallable *this);
 
 void modcall_debug(modcallable *mc, int depth);
-	
+
 #ifdef __cplusplus
 }
 #endif

@@ -704,8 +704,10 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	/*
 	 *	Build the attribute map
 	 */
-	if (rlm_ldap_map_verify(inst, &(inst->user_map)) < 0) {
-		goto error;
+	if (map_afrom_cs(&inst->user_map, cf_section_sub_find(inst->cs, "update"),
+			 PAIR_LIST_REPLY, PAIR_LIST_REQUEST, rlm_ldap_map_verify, inst,
+			 LDAP_MAX_ATTRMAP) < 0) {
+		return -1;
 	}
 
 	/*

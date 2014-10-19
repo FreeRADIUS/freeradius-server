@@ -24,6 +24,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
+#include <freeradius-devel/modcall.h>
 #include <freeradius-devel/heap.h>
 #include <freeradius-devel/rad_assert.h>
 
@@ -428,104 +429,47 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request, char co
 	return c;
 }
 
-/*
- *	Verify that the cache section makes sense.
+/** Verify that a map in the cache section makes sense
+ *
  */
-static int cache_verify(rlm_cache_t *inst, value_pair_map_t **head)
+static int cache_verify(value_pair_map_t *map, UNUSED void *ctx)
 {
-	value_pair_map_t *map;
+	if (modcall_fixup_update(map, ctx) < 0) return -1;
 
-	if (map_afrom_cs(head, cf_section_sub_find(inst->cs, "update"),
-			 PAIR_LIST_REQUEST, PAIR_LIST_REQUEST, MAX_ATTRMAP) < 0) {
+	if ((map->lhs->type != TMPL_TYPE_ATTR) &&
+	    (map->lhs->type != TMPL_TYPE_LIST)) {
+		cf_log_err(map->ci, "Left operand must be an attribute ref or a list");
 		return -1;
 	}
 
-	if (!*head) {
-		cf_log_err_cs(inst->cs,
-			   "Cache config must contain an update section, and "
-			   "that section must not be empty");
-
+	switch (map->rhs->type) {
+	case TMPL_TYPE_EXEC:
+		cf_log_err(map->ci, "Exec values are not allowed");
 		return -1;
-	}
-
-	for (map = *head; map != NULL; map = map->next) {
-		if ((map->lhs->type != TMPL_TYPE_ATTR) &&
-		    (map->lhs->type != TMPL_TYPE_LIST)) {
-			cf_log_err(map->ci, "Left operand must be an attribute "
-				   "ref or a list");
-
-			return -1;
-		}
-
-		/*
-		 *	Can't copy an xlat expansion or literal into a list,
-		 *	we don't know what type of attribute we'd need
-		 *	to create.
-		 *
-		 *	The only exception is where were using a unary
-		 *	operator like !*.
-		 */
-		if ((map->lhs->type == TMPL_TYPE_LIST) &&
-		    (map->op != T_OP_CMP_FALSE) &&
-		    ((map->rhs->type == TMPL_TYPE_XLAT) || (map->rhs->type == TMPL_TYPE_LITERAL))) {
-			cf_log_err(map->ci, "Can't copy value into list (we don't know which attribute to create)");
-
-			return -1;
-		}
-
-		switch (map->rhs->type) {
-		case TMPL_TYPE_EXEC:
-			cf_log_err(map->ci, "Exec values are not allowed");
-
-			return -1;
-
-		/*
-		 *	Only =, :=, += and -= operators are supported for
-		 *	cache entries.
-		 */
-		case TMPL_TYPE_LITERAL:
-			/*
-			 *	@fixme: This should be moved into a common function
-			 *	with the check in do_compile_modupdate.
-			 */
-			if (map->lhs->type == TMPL_TYPE_ATTR) {
-				VALUE_PAIR *vp;
-				int ret;
-
-				MEM(vp = pairalloc(map->lhs, map->lhs->tmpl_da));
-				vp->op = map->op;
-
-				ret = pairparsevalue(vp, map->rhs->name, 0);
-				talloc_free(vp);
-				if (ret < 0) {
-					cf_log_err(map->ci, "%s", fr_strerror());
-					return -1;
-				}
-			}
-			/* FALL-THROUGH */
-
-		case TMPL_TYPE_XLAT:
-		case TMPL_TYPE_ATTR:
-			switch (map->op) {
-			case T_OP_SET:
-			case T_OP_EQ:
-			case T_OP_SUB:
-			case T_OP_ADD:
-				break;
-
-			default:
-				cf_log_err(map->ci, "Operator \"%s\" not "
-					   "allowed for %s values",
-					   fr_int2str(fr_tokens, map->op,
-						      "<INVALID>"),
-					   fr_int2str(tmpl_types, map->rhs->type,
-						      "<INVALID>"));
-				return -1;
-			}
-		default:
+	/*
+	 *	Only =, :=, += and -= operators are supported for
+	 *	cache entries.
+	 */
+	case TMPL_TYPE_LITERAL:
+	case TMPL_TYPE_XLAT:
+	case TMPL_TYPE_ATTR:
+		switch (map->op) {
+		case T_OP_SET:
+		case T_OP_EQ:
+		case T_OP_SUB:
+		case T_OP_ADD:
 			break;
+
+		default:
+			cf_log_err(map->ci, "Operator \"%s\" not allowed for %s values",
+				   fr_int2str(fr_tokens, map->op, "<INVALID>"),
+				   fr_int2str(tmpl_types, map->rhs->type, "<INVALID>"));
+			return -1;
 		}
+	default:
+		break;
 	}
+
 	return 0;
 }
 
@@ -688,7 +632,15 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	/*
 	 *	Make sure the users don't screw up too badly.
 	 */
-	if (cache_verify(inst, &inst->maps) < 0) {
+	if (map_afrom_cs(&inst->maps, cf_section_sub_find(inst->cs, "update"),
+			 PAIR_LIST_REQUEST, PAIR_LIST_REQUEST, cache_verify, NULL, MAX_ATTRMAP) < 0) {
+		return -1;
+	}
+
+	if (!inst->maps) {
+		cf_log_err_cs(inst->cs, "Cache config must contain an update section, and "
+			      "that section must not be empty");
+
 		return -1;
 	}
 
