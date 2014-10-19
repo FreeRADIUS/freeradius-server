@@ -126,285 +126,91 @@ static int rlm_ldap_map_getvalue(VALUE_PAIR **out, REQUEST *request, value_pair_
 	return 0;
 }
 
-/** Convert an 'update' config section into an attribute map.
- *
- * Uses 'name2' of section to set default request and lists.
- * Copied from map_afrom_cs, except that list assignments can have the RHS
- * be a bare word.
- *
- * @param[in] cs the update section
- * @param[out] out Where to store the head of the map.
- * @param[in] dst_list_def The default destination list, usually dictated by
- * 	the section the module is being called in.
- * @param[in] src_list_def The default source list, usually dictated by the
- *	section the module is being called in.
- * @param[in] max number of mappings to process.
- * @return -1 on error, else 0.
- */
-static int ldap_map_afrom_cs(value_pair_map_t **out, CONF_SECTION *cs, pair_lists_t dst_list_def, pair_lists_t src_list_def,
-			     unsigned int max)
+int rlm_ldap_map_verify(value_pair_map_t *map, void *instance)
 {
-	char const *cs_list, *p;
-
-	request_refs_t request_def = REQUEST_CURRENT;
-
-	CONF_ITEM *ci;
-
-	unsigned int total = 0;
-	value_pair_map_t **tail, *map;
-	TALLOC_CTX *ctx;
-
-	*out = NULL;
-	tail = out;
-
-	if (!cs) return 0;
+	ldap_instance_t *inst = instance;
 
 	/*
-	 *	The first map has cs as the parent.
-	 *	The rest have the previous map as the parent.
+	 *	Destinations where we can put the VALUE_PAIRs we
+	 *	create using LDAP values.
 	 */
-	ctx = cs;
+	switch (map->lhs->type) {
+	case TMPL_TYPE_LIST:
+	case TMPL_TYPE_ATTR:
+		break;
 
-	ci = cf_sectiontoitem(cs);
-
-	cs_list = p = cf_section_name2(cs);
-	if (cs_list) {
-		request_def = radius_request_name(&p, REQUEST_CURRENT);
-		if (request_def == REQUEST_UNKNOWN) {
-			cf_log_err(ci, "Default request specified "
-				   "in mapping section is invalid");
-			return -1;
-		}
-
-		dst_list_def = fr_str2int(pair_lists, p, PAIR_LIST_UNKNOWN);
-		if (dst_list_def == PAIR_LIST_UNKNOWN) {
-			cf_log_err(ci, "Default list \"%s\" specified "
-				   "in mapping section is invalid", p);
-			return -1;
-		}
-	}
-
-	for (ci = cf_item_find_next(cs, NULL);
-	     ci != NULL;
-	     ci = cf_item_find_next(cs, ci)) {
-		char const *attr;
-		FR_TOKEN type;
-		CONF_PAIR *cp;
-
-		cp = cf_itemtopair(ci);
-
-		type = cf_pair_value_type(cp);
-
-		if (total++ == max) {
-			cf_log_err(ci, "Map size exceeded");
-			goto error;
-		}
-
-		if (!cf_item_is_pair(ci)) {
-			cf_log_err(ci, "Entry is not in \"attribute = value\" format");
-			goto error;
-		}
-
-		cp = cf_itemtopair(ci);
-
-		/*
-		 *	Look for "list: OP BARE_WORD".  If it exists,
-		 *	we can make the RHS a bare word.  Otherwise,
-		 *	just call map_afrom_cp()
-		 *
-		 *	Otherwise, the map functions check the RHS of
-		 *	list assignments, and complain that the RHS
-		 *	isn't another list.
-		 */
-		attr = cf_pair_attr(cp);
-
-		p = strrchr(attr, ':');
-		if (!p || (p[1] != '\0') || (type == T_DOUBLE_QUOTED_STRING)) {
-			if (map_afrom_cp(ctx, &map, cp, request_def, dst_list_def, REQUEST_CURRENT, src_list_def) < 0) {
-				goto error;
-			}
-		} else {
-			ssize_t slen;
-			char const *value;
-
-			map = talloc_zero(ctx, value_pair_map_t);
-			map->op = cf_pair_operator(cp);
-			map->ci = cf_pairtoitem(cp);
-
-			slen = tmpl_afrom_attr_str(ctx, &map->lhs, attr, request_def, dst_list_def);
-			if (slen <= 0) {
-				char *spaces, *text;
-
-				fr_canonicalize_error(ctx, &spaces, &text, slen, attr);
-				
-				cf_log_err(ci, "Failed parsing list reference");
-				cf_log_err(ci, "%s", text);
-				cf_log_err(ci, "%s^ %s", spaces, fr_strerror());
-
-				talloc_free(spaces);
-				talloc_free(text);
-				goto error;
-			}
-		      
-			if (map->lhs->type != TMPL_TYPE_LIST) {
-				cf_log_err(map->ci, "Invalid list name");
-				goto error;
-			}
-			
-			if (map->op != T_OP_ADD) {
-				cf_log_err(map->ci, "Only '+=' operator is permitted for valuepair to list mapping");
-				goto error;
-			}
-
-			value = cf_pair_value(cp);
-			if (!value) {
-				cf_log_err(map->ci, "No value specified for list assignment");
-				goto error;
-			}
-
-			/*
-			 *	the RHS type is a bare word or single
-			 *	quoted string.  We don't want it being
-			 *	interpreted as a list or attribute
-			 *	reference, so we force the RHS to be a
-			 *	literal.
-			 */
-			slen = tmpl_afrom_str(ctx, &map->rhs, value, T_SINGLE_QUOTED_STRING, request_def, dst_list_def);
-			if (slen <= 0) {
-				char *spaces, *text;
-
-				fr_canonicalize_error(ctx, &spaces, &text, slen, value);
-				
-				cf_log_err(ci, "Failed parsing string");
-				cf_log_err(ci, "%s", text);
-				cf_log_err(ci, "%s^ %s", spaces, fr_strerror());
-
-				talloc_free(spaces);
-				talloc_free(text);
-				goto error;
-			}
-
-			/*
-			 *	And unlike map_afrom_cp(), we do NOT
-			 *	try to parse the RHS as a list
-			 *	reference.  It's a literal, and we
-			 *	leave it as a literal.
-			 */
-			rad_assert(map->rhs->type == TMPL_TYPE_LITERAL);
-		}
-
-		ctx = *tail = map;
-		tail = &(map->next);
-	}
-
-	return 0;
-error:
-	TALLOC_FREE(*out);
-	return -1;
-}
-
-
-
-int rlm_ldap_map_verify(ldap_instance_t *inst, value_pair_map_t **head)
-{
-	value_pair_map_t *map;
-
-	if (ldap_map_afrom_cs(head, cf_section_sub_find(inst->cs, "update"),
-			      PAIR_LIST_REPLY,
-			      PAIR_LIST_REQUEST, LDAP_MAX_ATTRMAP) < 0) {
+	default:
+		cf_log_err(map->ci, "RADIUS (RHS) of map must be an attribute or list, not %s",
+			   fr_int2str(tmpl_types, map->lhs->type, "<INVALID>"));
 		return -1;
 	}
+
 	/*
-	 *	Attrmap only performs some basic validation checks, we need
-	 *	to do rlm_ldap specific checks here.
+	 *	Sources we can use to get the name of the attribute
+	 *	we're retrieving from LDAP.
 	 */
-	for (map = *head; map != NULL; map = map->next) {
-		switch (map->lhs->type) {
-		case TMPL_TYPE_LIST:
-			break;	/* parsed specially above */
+	switch (map->rhs->type) {
+	case TMPL_TYPE_XLAT:
+	case TMPL_TYPE_ATTR:
+	case TMPL_TYPE_EXEC:
+	case TMPL_TYPE_LITERAL:
+		break;
 
-		case TMPL_TYPE_ATTR:
+	default:
+		cf_log_err(map->ci, "LDAP (LHS) of map must be an xlat, attribute, exec, or literal, not %s",
+			   fr_int2str(tmpl_types, map->rhs->type, "<INVALID>"));
+		return -1;
+	}
+
+	/*
+	 *	Only =, :=, += and -= operators are supported for LDAP mappings.
+	 */
+	switch (map->op) {
+	case T_OP_SET:
+	case T_OP_EQ:
+	case T_OP_SUB:
+	case T_OP_ADD:
+		break;
+
+	default:
+		cf_log_err(map->ci, "Operator \"%s\" not allowed for LDAP mappings",
+			   fr_int2str(fr_tokens, map->op, "<INVALID>"));
+		return -1;
+	}
+
+	/*
+	 *	Be smart about whether we warn the user about missing passwords.
+	 *	If there are no password attributes in the mapping, then the user's either an idiot
+	 *	and has no idea what they're doing, or they're authenticating the user using a different
+	 *	method.
+	 */
+	if (!inst->expect_password && (map->lhs->type == TMPL_TYPE_ATTR) && map->lhs->tmpl_da) {
+		switch (map->lhs->tmpl_da->attr) {
+		case PW_CLEARTEXT_PASSWORD:
+		case PW_NT_PASSWORD:
+		case PW_USER_PASSWORD:
+		case PW_PASSWORD_WITH_HEADER:
+		case PW_CRYPT_PASSWORD:
 			/*
-			 *	"update" sections in LDAP are for reading LDAP attributes, not other attributes.
+			 *	Because you just know someone is going to map NT-Password to the
+			 *	request list, and then complain it's not working...
 			 */
-			if (map->rhs->type == TMPL_TYPE_ATTR) {
-				cf_log_err(map->ci, "Cannot assign from a RADIUS attribute when reading data from LDAP.");
-				return -1;
+			if (map->lhs->tmpl_list != PAIR_LIST_CONTROL) {
+				LDAP_DBGW("Mapping LDAP (%s) attribute to \"known good\" password attribute "
+					  "(%s) in %s list. This is probably *NOT* the correct list, "
+					  "you should prepend \"control:\" to password attribute "
+					  "(control:%s)",
+					  map->rhs->name, map->lhs->tmpl_da->name,
+					  fr_int2str(pair_lists, map->lhs->tmpl_list, "<invalid>"),
+					  map->lhs->tmpl_da->name);
 			}
-			break;
 
-		default:
-			cf_log_err(map->ci, "valuepair destination must be an attribute or list");
-			return -1;
-		}
-
-		switch (map->rhs->type) {
-		case TMPL_TYPE_LIST:
-			cf_log_err(map->ci, "LDAP attribute name cannot be derived from a list");
-			return -1;
-
-		default:
-			break;
-		}
-
-		/*
-		 *	Be smart about whether we warn the user about missing passwords.
-		 *	If there are no password attributes in the mapping, then the user's either an idiot
-		 *	and has no idea what they're doing, or they're authenticating the user using a different
-		 *	method.
-		 */
-		if (!inst->expect_password && (map->lhs->type == TMPL_TYPE_ATTR) && map->lhs->tmpl_da) {
-			switch (map->lhs->tmpl_da->attr) {
-			case PW_CLEARTEXT_PASSWORD:
-			case PW_NT_PASSWORD:
-			case PW_USER_PASSWORD:
-			case PW_PASSWORD_WITH_HEADER:
-			case PW_CRYPT_PASSWORD:
-				/*
-				 *	Because you just know someone is going to map NT-Password to the
-				 *	request list, and then complain it's not working...
-				 */
-				if (map->lhs->tmpl_list != PAIR_LIST_CONTROL) {
-					LDAP_DBGW("Mapping LDAP (%s) attribute to \"known good\" password attribute "
-						  "(%s) in %s list. This is probably *NOT* the correct list, "
-						  "you should prepend \"control:\" to password attribute "
-						  "(control:%s)",
-						  map->rhs->name, map->lhs->tmpl_da->name,
-						  fr_int2str(pair_lists, map->lhs->tmpl_list, "<invalid>"),
-						  map->lhs->tmpl_da->name);
-				}
-
-				inst->expect_password = true;
-			default:
-				break;
-			}
-		}
-
-		switch (map->rhs->type) {
-		/*
-		 *	Only =, :=, += and -= operators are supported for
-		 *	cache entries.
-		 */
-		case TMPL_TYPE_LITERAL:
-		case TMPL_TYPE_XLAT:
-		case TMPL_TYPE_ATTR:
-			switch (map->op) {
-			case T_OP_SET:
-			case T_OP_EQ:
-			case T_OP_SUB:
-			case T_OP_ADD:
-				break;
-
-			default:
-				cf_log_err(map->ci, "Operator \"%s\" not allowed for %s values",
-					   fr_int2str(fr_tokens, map->op, "<INVALID>"),
-					   fr_int2str(tmpl_types, map->rhs->type, "<INVALID>"));
-				return -1;
-			}
+			inst->expect_password = true;
 		default:
 			break;
 		}
 	}
+
 	return 0;
 }
 

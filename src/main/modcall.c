@@ -1575,31 +1575,127 @@ defaultactions[RLM_COMPONENT_COUNT][GROUPTYPE_COUNT][RLM_MODULE_NUMCODES] =
 #endif
 };
 
-
-#ifdef WITH_UNLANG
-static modcallable *do_compile_modupdate(modcallable *parent, UNUSED rlm_components_t component,
-					 CONF_SECTION *cs, char const *name2)
+/** Validate and fixup a map that's part of an update section.
+ *
+ * @param map to validate.
+ * @return 0 if valid else -1.
+ */
+int modcall_fixup_update(value_pair_map_t *map, UNUSED void *ctx)
 {
-	int rcode;
-	modgroup *g;
-	modcallable *csingle;
-	value_pair_map_t *map, *head = NULL;
-	CONF_ITEM *ci;
+	CONF_PAIR *cp = cf_itemtopair(map->ci);
 
 	/*
-	 *	This looks at cs->name2 to determine which list to update
+	 *	Anal-retentive checks.
 	 */
-	rcode = map_afrom_cs(&head, cs, PAIR_LIST_REQUEST, PAIR_LIST_REQUEST, 128);
-	if (rcode < 0) return NULL; /* message already printed */
+	if (DEBUG_ENABLED2) {
+		if ((map->lhs->type == TMPL_TYPE_ATTR) && (map->lhs->name[0] != '&')) {
+			WARN("%s[%d]: Please change attribute reference to '&%s %s ...'",
+			     cf_pair_filename(cp), cf_pair_lineno(cp),
+			     map->lhs->name, fr_int2str(fr_tokens, map->op, "<INVALID>"));
+		}
 
-	if (!head) {
-		cf_log_err_cs(cs, "'update' sections cannot be empty");
-		return NULL;
+		if ((map->rhs->type == TMPL_TYPE_ATTR) && (map->rhs->name[0] != '&')) {
+			WARN("%s[%d]: Please change attribute reference to '... %s &%s'",
+			     cf_pair_filename(cp), cf_pair_lineno(cp),
+			     fr_int2str(fr_tokens, map->op, "<INVALID>"), map->rhs->name);
+		}
 	}
 
-	for (map = head, ci = cf_item_find_next(cs, NULL);
-	     map != NULL;
-	     map = map->next, ci = cf_item_find_next(cs, ci)) {
+	/*
+	 *	Values used by unary operators should be literal ANY
+	 *
+	 *	We then free the template and alloc a NULL one instead.
+	 */
+	if (map->op == T_OP_CMP_FALSE) {
+	 	if ((map->rhs->type != TMPL_TYPE_LITERAL) || (strcmp(map->rhs->name, "ANY") != 0)) {
+			WARN("%s[%d] Wildcard deletion MUST use '!* ANY'",
+			     cf_pair_filename(cp), cf_pair_lineno(cp));
+		}
+
+		tmpl_free(&map->rhs);
+
+		map->rhs = tmpl_alloc(map, TMPL_TYPE_NULL, NULL, 0);
+	}
+
+	/*
+	 *	Lots of sanity checks for insane people...
+	 */
+
+	/*
+	 *	We don't support implicit type conversion,
+	 *	except for "octets"
+	 */
+	if (((map->lhs->type == TMPL_TYPE_ATTR) || (map->lhs->type == TMPL_TYPE_DATA)) &&
+	    ((map->rhs->type == TMPL_TYPE_ATTR) || (map->rhs->type == TMPL_TYPE_DATA))) {
+		PW_TYPE rhs_type;
+		PW_TYPE lhs_type;
+
+		switch (map->lhs->type) {
+		case TMPL_TYPE_ATTR:
+			lhs_type = map->lhs->tmpl_da->type;
+			break;
+
+		case TMPL_TYPE_DATA:
+			lhs_type = map->lhs->tmpl_data_type;
+			break;
+
+		default:
+			rad_assert(0);
+		}
+
+		switch (map->rhs->type) {
+		case TMPL_TYPE_ATTR:
+			rhs_type = map->rhs->tmpl_da->type;
+			break;
+
+		case TMPL_TYPE_DATA:
+			rhs_type = map->rhs->tmpl_data_type;
+			break;
+
+		default:
+			rad_assert(0);
+		}
+
+
+		if ((lhs_type != rhs_type) &&
+		    (lhs_type != PW_TYPE_OCTETS) &&
+		    (rhs_type != PW_TYPE_OCTETS)) {
+			cf_log_err(map->ci, "Attribute type mismatch");
+			return -1;
+		}
+	}
+
+	/*
+	 *	What exactly where you expecting to happen here?
+	 */
+	if ((map->lhs->type == TMPL_TYPE_ATTR) &&
+	    (map->rhs->type == TMPL_TYPE_LIST)) {
+		cf_log_err(map->ci, "Can't copy list into an attribute");
+		return -1;
+	}
+
+	/*
+	 *	Depending on the attribute type, some operators are disallowed.
+	 */
+	if (map->lhs->type == TMPL_TYPE_ATTR) {
+		switch (map->op) {
+		default:
+			cf_log_err(map->ci, "Invalid operator for attribute");
+			return -1;
+
+		case T_OP_EQ:
+		case T_OP_CMP_EQ:
+		case T_OP_ADD:
+		case T_OP_SUB:
+		case T_OP_LE:
+		case T_OP_GE:
+		case T_OP_CMP_FALSE:
+		case T_OP_SET:
+			break;
+		}
+	}
+
+	if (map->lhs->type == TMPL_TYPE_LIST) {
 		/*
 		 *	Can't copy an xlat expansion or literal into a list,
 		 *	we don't know what type of attribute we'd need
@@ -1608,54 +1704,115 @@ static modcallable *do_compile_modupdate(modcallable *parent, UNUSED rlm_compone
 		 *	The only exception is where were using a unary
 		 *	operator like !*.
 		 */
-		if ((map->lhs->type == TMPL_TYPE_LIST) &&
-		    (map->op != T_OP_CMP_FALSE) &&
-		    ((map->rhs->type == TMPL_TYPE_XLAT) || (map->rhs->type == TMPL_TYPE_LITERAL))) {
+	    	if (map->op != T_OP_CMP_FALSE) switch (map->rhs->type) {
+	    	case TMPL_TYPE_XLAT:
+	    	case TMPL_TYPE_LITERAL:
 			cf_log_err(map->ci, "Can't copy value into list (we don't know which attribute to create)");
-			talloc_free(head);
-			return NULL;
+			return -1;
+
+		default:
+			break;
 		}
 
 		/*
-		 *	If LHS is an attribute, and RHS is a literal, we can
-		 *	preparse the information into a TMPL_TYPE_DATA.
-		 *
-		 *	Unless it's a unary operator in which case we
-		 *	ignore map->rhs.
+		 *	Only += and :=, and !* operators are supported
+		 *	for lists.
 		 */
-		if ((map->lhs->type == TMPL_TYPE_ATTR) && (map->op != T_OP_CMP_FALSE) &&
-		    (map->rhs->type == TMPL_TYPE_LITERAL)) {
-			CONF_PAIR *cp;
+		switch (map->op) {
+		case T_OP_CMP_FALSE:
+			break;
 
-			cp = cf_itemtopair(ci);
-			rad_assert(cp != NULL);
-
-			/*
-			 *	It's a literal string, just copy it.
-			 *	Don't escape anything.
-			 */
-			if ((map->lhs->tmpl_da->type == PW_TYPE_STRING) &&
-			    (cf_pair_value_type(cp) == T_SINGLE_QUOTED_STRING)) {
-				value_data_t *vpd;
-
-				map->rhs->tmpl_data_value = vpd = talloc_zero(map->rhs, value_data_t);
-				rad_assert(vpd != NULL);
-
-				vpd->strvalue = talloc_typed_strdup(vpd, map->rhs->name);
-				rad_assert(vpd->strvalue != NULL);
-
-				map->rhs->type = TMPL_TYPE_DATA;
-				map->rhs->tmpl_data_type = map->lhs->tmpl_da->type;
-				map->rhs->tmpl_data_length = talloc_array_length(vpd->strvalue) - 1;
-			} else {
-				if (!tmpl_cast_in_place(map->rhs, map->lhs->tmpl_da)) {
-					cf_log_err(map->ci, "%s", fr_strerror());
-					talloc_free(head);
-					return NULL;
-				}
+		case T_OP_ADD:
+			if ((map->rhs->type != TMPL_TYPE_LIST) &&
+			    (map->rhs->type != TMPL_TYPE_EXEC)) {
+				cf_log_err(map->ci, "Invalid source for list assignment '%s += ...'", map->lhs->name);
+				return -1;
 			}
-		} /* else we can't precompile the data */
-	} /* loop over the conf_pairs in the update section */
+			break;
+
+		case T_OP_SET:
+			if (map->rhs->type == TMPL_TYPE_EXEC) {
+				WARN("%s[%d] Please change ':=' to '=' for list assignment",
+				     cf_pair_filename(cp), cf_pair_lineno(cp));
+			}
+
+			if (map->rhs->type != TMPL_TYPE_LIST) {
+				cf_log_err(map->ci, "Invalid source for list assignment '%s := ...'", map->lhs->name);
+				return -1;
+			}
+			break;
+
+		case T_OP_EQ:
+			if (map->rhs->type != TMPL_TYPE_EXEC) {
+				cf_log_err(map->ci, "Invalid source for list assignment '%s = ...'", map->lhs->name);
+				return -1;
+			}
+			break;
+
+		default:
+			cf_log_err(map->ci, "Operator \"%s\" not allowed for list assignment",
+				   fr_int2str(fr_tokens, map->op, "<INVALID>"));
+			return -1;
+		}
+	}
+
+	/*
+	 *	If LHS is an attribute, and RHS is a literal, we can
+	 *	preparse the information into a TMPL_TYPE_DATA.
+	 *
+	 *	Unless it's a unary operator in which case we
+	 *	ignore map->rhs.
+	 */
+	if ((map->lhs->type == TMPL_TYPE_ATTR) && (map->rhs->type == TMPL_TYPE_LITERAL) &&
+	    (map->op != T_OP_CMP_FALSE)) {
+		/*
+		 *	It's a literal string, just copy it.
+		 *	Don't escape anything.
+		 */
+		if ((map->lhs->tmpl_da->type == PW_TYPE_STRING) &&
+		    (cf_pair_value_type(cp) == T_SINGLE_QUOTED_STRING)) {
+			value_data_t *vpd;
+
+			map->rhs->tmpl_data_value = vpd = talloc_zero(map->rhs, value_data_t);
+			rad_assert(vpd != NULL);
+
+			vpd->strvalue = talloc_typed_strdup(vpd, map->rhs->name);
+			rad_assert(vpd->strvalue != NULL);
+
+			map->rhs->type = TMPL_TYPE_DATA;
+			map->rhs->tmpl_data_type = map->lhs->tmpl_da->type;
+			map->rhs->tmpl_data_length = talloc_array_length(vpd->strvalue) - 1;
+		} else {
+			if (!tmpl_cast_in_place(map->rhs, map->lhs->tmpl_da)) {
+				cf_log_err(map->ci, "%s", fr_strerror());
+				return -1;
+			}
+		}
+	} /* else we can't precompile the data */
+
+	return 0;
+}
+
+
+#ifdef WITH_UNLANG
+static modcallable *do_compile_modupdate(modcallable *parent, UNUSED rlm_components_t component,
+					 CONF_SECTION *cs, char const *name2)
+{
+	int rcode;
+	modgroup *g;
+	modcallable *csingle;
+
+	value_pair_map_t *head;
+
+	/*
+	 *	This looks at cs->name2 to determine which list to update
+	 */
+	rcode = map_afrom_cs(&head, cs, PAIR_LIST_REQUEST, PAIR_LIST_REQUEST, modcall_fixup_update, NULL, 128);
+	if (rcode < 0) return NULL; /* message already printed */
+	if (!head) {
+		cf_log_err_cs(cs, "'update' sections cannot be empty");
+		return NULL;
+	}
 
 	g = rad_malloc(sizeof(*g)); /* never fails */
 	memset(g, 0, sizeof(*g));
