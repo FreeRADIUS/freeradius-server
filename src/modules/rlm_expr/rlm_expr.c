@@ -84,7 +84,7 @@ static int64_t fr_pow(int64_t base, int64_t exp)
 		6, 6, 6, 6, 6, 6, 6, 6,
 		6, 6, 6, 6, 6, 6, 6, 6,
 		6, 6, 6, 6, 6, 6, 6, 6,
-		6, 6, 6, 6, 6, 6, 6 // anything past 63 is a guaranteed overflow with base > 1
+		6, 6, 6, 6, 6, 6, 6, 6 // anything past 63 is a guaranteed overflow with base > 1
 	};
 
 	int64_t result = 1;
