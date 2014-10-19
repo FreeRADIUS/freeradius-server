@@ -51,6 +51,11 @@ src/include/autoconf.sed: src/include/autoconf.h
 	's,#[\\t ]*ifndef[\\t ]*" $$2 "$$,#if !"$$3 ",g;'\
 	's,defined(" $$2 ")," $$3 ",g;"}' > $@
 
+	@grep -o '#undef [^ ]*' $< | sed 's,/#undef /,,;' | awk '{print "'\
+	's,#[\\t ]*ifdef[\\t ]*" $$2 "$$,#if 0,g;'\
+	's,#[\\t ]*ifndef[\\t ]*" $$2 "$$,#if 1,g;'\
+	's,defined(" $$2 "),0,g;"}' >> $@
+
 src/include/radius.h: | src/include/attributes.h
 
 src/include/attributes.h: share/dictionary.freeradius.internal
