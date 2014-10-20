@@ -782,7 +782,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 			goto error;
 		}
 
-		if (rlm_ldap_load_clients(inst, cs) < 0) {
+		if (rlm_ldap_client_load(inst, cs) < 0) {
 			LDAP_ERR("Error loading clients");
 
 			return -1;

@@ -27,24 +27,115 @@
 
 #include	"ldap.h"
 
+/** Iterate over pairs in mapping section recording their values in an array
+ *
+ * This array is the list of attributes we retrieve from LDAP, and is NULL
+ * terminated.
+ *
+ * If we hit a CONF_SECTION we recurse and process its CONF_PAIRS too.
+ *
+ * @param values array of char pointers.
+ * @param idx records current array offset.
+ * @param cs to iterate over.
+ * @return 0 on success else -1 on error.
+ */
+static CC_HINT(nonnull) int rlm_ldap_client_get_attrs(char const **values, int *idx, CONF_SECTION const *cs)
+{
+	CONF_ITEM const *ci;
+
+	for (ci = cf_item_find_next(cs, NULL);
+	     ci != NULL;
+	     ci = cf_item_find_next(cs, ci)) {
+	     	char const *value;
+
+		if (cf_item_is_section(ci)) {
+			if (rlm_ldap_client_get_attrs(values, idx, cf_itemtosection(ci)) < 0) return -1;
+			continue;
+		}
+
+		value = cf_pair_value(cf_itemtopair(ci));
+		if (!value) return -1;
+
+		values[(*idx)++] = value;
+	}
+
+	values[*idx] = NULL;
+
+	return 0;
+}
+
+/** Iterate over pairs in mapping section creating equivalent client pairs from LDAP values
+ *
+ * If we hit a CONF_SECTION we recurse and process its CONF_PAIRS too.
+ *
+ * @param client config section.
+ * @param map section.
+ * @param conn LDAP connection.
+ * @param entry returned from search.
+ * @return 0 on success else -1 on error.
+ */
+static CC_HINT(nonnull) int rlm_ldap_client_map_section(ldap_instance_t const *inst, CONF_SECTION *client,
+							CONF_SECTION const *map, ldap_handle_t *conn,
+							LDAPMessage *entry)
+{
+	CONF_ITEM const *ci;
+
+	for (ci = cf_item_find_next(map, NULL);
+	     ci != NULL;
+	     ci = cf_item_find_next(map, ci)) {
+	     	CONF_PAIR const *cp;
+	     	char **value;
+		char const *attr;
+
+		/*
+		 *	Recursively process map subsection
+		 */
+		if (cf_item_is_section(ci)) {
+			CONF_SECTION *cs, *cc;
+
+			cs = cf_itemtosection(ci);
+			cc = cf_section_alloc(client, cf_section_name1(cs), cf_section_name2(cs));
+			if (!cc) return -1;
+
+			cf_section_add(client, cc);
+
+			if (rlm_ldap_client_map_section(inst, cc, cs, conn, entry) < 0) return -1;
+			continue;
+		}
+
+		cp = cf_itemtopair(ci);
+		attr = cf_pair_attr(cp);
+
+		value = ldap_get_values(conn->handle, entry, cf_pair_value(cp));
+		if (!value) continue;
+
+		cp = cf_pair_alloc(client, attr, value[0], T_OP_SET, T_SINGLE_QUOTED_STRING);
+		if (!cp) {
+			LDAP_ERR("Failed allocing pair \"%s\" = \"%s\"", attr, value[0]);
+			return -1;
+		}
+		cf_item_add(client, cf_pairtoitem(cp));
+	}
+
+	return 0;
+}
+
  /** Load clients from LDAP on server start
   *
   * @param[in] inst rlm_ldap configuration.
   * @param[in] cs to load client attribute/LDAP attribute mappings from.
   * @return -1 on error else 0.
   */
-int rlm_ldap_load_clients(ldap_instance_t const *inst, CONF_SECTION *cs)
+int CC_HINT(nonnull) rlm_ldap_client_load(ldap_instance_t const *inst, CONF_SECTION *cs)
 {
 	int 		ret = 0;
 	ldap_rcode_t	status;
 	ldap_handle_t	*conn = NULL;
 
 	char const	**attrs = NULL;
-	char const	**attrs_p;
 
-	CONF_ITEM	*ci;
 	CONF_PAIR	*cp;
-	int		count = 1;	/* +1 for NULL termination */
+	int		count = 0, idx = 0;
 
 	LDAPMessage	*result = NULL;
 	LDAPMessage	*entry;
@@ -62,38 +153,14 @@ int rlm_ldap_load_clients(ldap_instance_t const *inst, CONF_SECTION *cs)
 		return -1;
 	}
 
-	for (ci = cf_item_find_next(cs, NULL);
-	     ci != NULL;
-	     ci = cf_item_find_next(cs, ci)) {
-
-		if (!cf_item_is_pair(ci)) {
-			cf_log_err(ci, "Entry is not in \"attribute = value\" format");
-			return -1;
-		}
-
-		count++;
-	}
+	count = cf_pair_count(cs);
+	count++;
 
 	/*
 	 *	Create an array of LDAP attributes to feed to rlm_ldap_search.
 	 */
-	attrs_p = attrs = talloc_array(inst, char const *, count);
-	for (ci = cf_item_find_next(cs, NULL);
-	     ci != NULL;
-	     ci = cf_item_find_next(cs, ci)) {
-	     	char const *value;
-
-		cp = cf_itemtopair(ci);
-		value = cf_pair_value(cp);
-		if (!value) {
-			cf_log_err(ci, "Failed getting LDAP attribute name");
-			talloc_free(attrs);
-			return -1;
-		}
-
-		*attrs_p++ = value;
-	}
-	*attrs_p = NULL;
+	attrs = talloc_array(inst, char const *, count);
+	if (rlm_ldap_client_get_attrs(attrs, &idx, cs) < 0) return -1;
 
 	conn = rlm_ldap_get_socket(inst, NULL);
 	if (!conn) return -1;
@@ -130,7 +197,6 @@ int rlm_ldap_load_clients(ldap_instance_t const *inst, CONF_SECTION *cs)
 	}
 
 	rad_assert(conn);
-
 	entry = ldap_first_entry(conn->handle, result);
 	if (!entry) {
 		int ldap_errno;
@@ -155,30 +221,18 @@ int rlm_ldap_load_clients(ldap_instance_t const *inst, CONF_SECTION *cs)
 			if (value) id = value[0];
 		}
 
+		/*
+		 *	Iterate over mapping sections
+		 */
 		cc = cf_section_alloc(NULL, "client", id);
-
-		for (ci = cf_item_find_next(cs, NULL);
-		     ci != NULL;
-		     ci = cf_item_find_next(cs, ci)) {
-		     	char const *attr;
-
-			cp = cf_itemtopair(ci);
-		     	attr = cf_pair_attr(cp);
-
-			value = ldap_get_values(conn->handle, entry, cf_pair_value(cp));
-			if (!value) continue;
-
-			cp = cf_pair_alloc(cc, attr, value[0], T_OP_SET, T_SINGLE_QUOTED_STRING);
-			if (!cp) {
-				LDAP_ERR("Failed allocing pair \"%s\" = \"%s\"", attr, value[0]);
-				ret = -1;
-				goto finish;
-			}
-			cf_item_add(cc, cf_pairtoitem(cp));
+		if (rlm_ldap_client_map_section(inst, cc, cs, conn, entry) < 0) {
+			talloc_free(cc);
+			ret = -1;
+			goto finish;
 		}
 
 		/*
-		 * @todo these should be parented from something
+		 *@todo these should be parented from something
 		 */
 		c = client_afrom_cs(NULL, cc, false);
 		if (!c) {
@@ -202,6 +256,7 @@ int rlm_ldap_load_clients(ldap_instance_t const *inst, CONF_SECTION *cs)
 		LDAP_DBG("Client \"%s\" added", dn);
 
 		ldap_memfree(dn);
+		dn = NULL;
 	} while ((entry = ldap_next_entry(conn->handle, entry)));
 
 finish:

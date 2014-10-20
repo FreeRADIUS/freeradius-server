@@ -199,6 +199,7 @@ int cf_pair_lineno(CONF_PAIR const *pair);
 char const *cf_pair_filename(CONF_PAIR const *pair);
 char const *cf_section_filename(CONF_SECTION const *section);
 CONF_ITEM *cf_item_find_next(CONF_SECTION const *section, CONF_ITEM const *item);
+int cf_pair_count(CONF_SECTION const *cs);
 CONF_SECTION *cf_item_parent(CONF_ITEM const *ci);
 bool cf_item_is_section(CONF_ITEM const *item);
 bool cf_item_is_pair(CONF_ITEM const *item);

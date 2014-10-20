@@ -2780,10 +2780,9 @@ CONF_SECTION *cf_section_find_next(CONF_SECTION const *section,
 	return cf_subsection_find_next(section->item.parent, subsection, name1);
 }
 
-/*
- * Return the next item after a CONF_ITEM.
+/** Return the next item after a CONF_ITEM.
+ *
  */
-
 CONF_ITEM *cf_item_find_next(CONF_SECTION const *section, CONF_ITEM const *item)
 {
 	if (!section) return NULL;
@@ -2798,6 +2797,37 @@ CONF_ITEM *cf_item_find_next(CONF_SECTION const *section, CONF_ITEM const *item)
 	} else {
 		return item->next;
 	}
+}
+
+static void _pair_count(int *count, CONF_SECTION const *cs)
+{
+	CONF_ITEM const *ci;
+
+	for (ci = cf_item_find_next(cs, NULL);
+	     ci != NULL;
+	     ci = cf_item_find_next(cs, ci)) {
+
+		if (cf_item_is_section(ci)) {
+			_pair_count(count, cf_itemtosection(ci));
+			continue;
+		}
+
+		(*count)++;
+	}
+}
+
+/** Count the number of conf pairs beneath a section
+ *
+ * @param[in] cs to search for items in.
+ * @return number of pairs nested within section.
+ */
+int cf_pair_count(CONF_SECTION const *cs)
+{
+	int count = 0;
+
+	_pair_count(&count, cs);
+
+	return count;
 }
 
 CONF_SECTION *cf_item_parent(CONF_ITEM const *ci)
