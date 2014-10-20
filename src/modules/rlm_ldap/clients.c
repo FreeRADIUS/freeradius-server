@@ -34,9 +34,9 @@
  *
  * If we hit a CONF_SECTION we recurse and process its CONF_PAIRS too.
  *
- * @param values array of char pointers.
- * @param idx records current array offset.
- * @param cs to iterate over.
+ * @param[out] values array of char pointers.
+ * @param[in,out] idx records current array offset.
+ * @param[in] cs to iterate over.
  * @return 0 on success else -1 on error.
  */
 static CC_HINT(nonnull) int rlm_ldap_client_get_attrs(char const **values, int *idx, CONF_SECTION const *cs)
@@ -68,10 +68,11 @@ static CC_HINT(nonnull) int rlm_ldap_client_get_attrs(char const **values, int *
  *
  * If we hit a CONF_SECTION we recurse and process its CONF_PAIRS too.
  *
- * @param client config section.
- * @param map section.
- * @param conn LDAP connection.
- * @param entry returned from search.
+ * @param[in] inst rlm_ldap configuration.
+ * @param[out] client config section.
+ * @param[in] map section.
+ * @param[in] conn LDAP connection.
+ * @param[in] entry returned from search.
  * @return 0 on success else -1 on error.
  */
 static CC_HINT(nonnull) int rlm_ldap_client_map_section(ldap_instance_t const *inst, CONF_SECTION *client,
