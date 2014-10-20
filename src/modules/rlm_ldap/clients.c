@@ -39,7 +39,7 @@
  * @param[in] cs to iterate over.
  * @return 0 on success else -1 on error.
  */
-static CC_HINT(nonnull) int rlm_ldap_client_get_attrs(char const **values, int *idx, CONF_SECTION const *cs)
+static int CC_HINT(nonnull) rlm_ldap_client_get_attrs(char const **values, int *idx, CONF_SECTION const *cs)
 {
 	CONF_ITEM const *ci;
 
@@ -75,7 +75,7 @@ static CC_HINT(nonnull) int rlm_ldap_client_get_attrs(char const **values, int *
  * @param[in] entry returned from search.
  * @return 0 on success else -1 on error.
  */
-static CC_HINT(nonnull) int rlm_ldap_client_map_section(ldap_instance_t const *inst, CONF_SECTION *client,
+static int CC_HINT(nonnull) rlm_ldap_client_map_section(ldap_instance_t const *inst, CONF_SECTION *client,
 							CONF_SECTION const *map, ldap_handle_t *conn,
 							LDAPMessage *entry)
 {
