@@ -703,6 +703,7 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 	/*
 	 *	The RHS now needs to be expanded into a string.
 	 */
+	EVAL_DEBUG("TMPL RHS is %s", map->rhs->name);
 	rcode = radius_expand_tmpl(&rhs, request, map->rhs);
 	if (rcode < 0) {
 		EVAL_DEBUG("FAIL %d", __LINE__);
@@ -772,6 +773,7 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 	/*
 	 *	The LHS is a string.  Expand it.
 	 */
+	EVAL_DEBUG("TMPL LHS is %s", map->lhs->name);
 	rcode = radius_expand_tmpl(&lhs, request, map->lhs);
 	if (rcode < 0) {
 		EVAL_DEBUG("FAIL %d", __LINE__);
@@ -780,6 +782,7 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 	rad_assert(lhs != NULL);
 
 	EVAL_DEBUG("LHS is %s", lhs);
+	EVAL_DEBUG("RHS is %s", rhs);
 
 	/*
 	 *	Loop over the string, doing comparisons
