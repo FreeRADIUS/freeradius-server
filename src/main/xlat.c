@@ -1139,7 +1139,6 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 				return - (p - fmt);
 			}
 			p = end;
-			DEBUG("END %s", p);
 			node->attr.tmpl_num = num;
 
 		} else {
