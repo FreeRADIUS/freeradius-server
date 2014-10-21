@@ -439,7 +439,9 @@ typedef struct main_config_t {
 #endif
 	uint32_t	reject_delay;
 	bool		status_server;
+#ifdef ENABLE_OPENSSL_VERSION_CHECK
 	char const	*allow_vulnerable_openssl;
+#endif
 
 	uint32_t	max_request_time;
 	uint32_t	cleanup_delay;

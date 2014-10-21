@@ -51,6 +51,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include <openssl/ocsp.h>
 #endif
 
+#ifdef ENABLE_OPENSSL_VERSION_CHECK
 typedef struct libssl_defect {
 	uint64_t	high;
 	uint64_t	low;
@@ -71,6 +72,7 @@ static libssl_defect_t libssl_defects[] =
 		.comment	= "For more information see http://heartbleed.com"
 	}
 };
+#endif
 
 /* record */
 static void 		record_init(record_t *buf);
@@ -2064,6 +2066,7 @@ void tls_global_init(void)
 	OPENSSL_config(NULL);
 }
 
+#ifdef ENABLE_OPENSSL_VERSION_CHECK
 /** Check for vulnerable versions of libssl
  *
  * @param acknowledged The highest CVE number a user has confirmed is not present in the system's libssl.
@@ -2102,6 +2105,7 @@ int tls_global_version_check(char const *acknowledged)
 
 	return 0;
 }
+#endif
 
 /** Free any memory alloced by libssl
  *
