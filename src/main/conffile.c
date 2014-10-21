@@ -114,6 +114,7 @@ struct conf_part {
 };
 
 CONF_SECTION *root_config = NULL;
+bool cf_new_escape = false;
 
 
 static int		cf_data_add_internal(CONF_SECTION *cs, char const *name, void *data,
@@ -2149,7 +2150,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 
 		case T_OP_EQ:
 		case T_OP_SET:
-			t3 = getstring(&ptr, buf3, sizeof(buf3), true);
+			t3 = getstring(&ptr, buf3, sizeof(buf3), !cf_new_escape);
 			if (t3 == T_INVALID) {
 				ERROR("%s[%d]: Parse error: %s",
 				       filename, *lineno,
