@@ -175,30 +175,42 @@ static ssize_t condition_tokenize_string(TALLOC_CTX *ctx, char **out, char const
 		}
 
 		if (*p == '\\') {
-			p++;
-			if (!*p) {
+			if (!p[1]) {
+				p++;
 				*error = "End of string after escape";
 				return -(p - start);
 			}
 
-			switch (*p) {
-			case 'r':
-				*q++ = '\r';
-				break;
-			case 'n':
-				*q++ = '\n';
-				break;
-			case 't':
-				*q++ = '\t';
-				break;
-			default:
-				*q++ = *p;
-				break;
-			}
-			p++;
-			continue;
-		}
+			/*
+			 *	Hacks for backwards compatibility
+			 */
+			if (cf_new_escape) {
+				if (p[1] == start[0]) { /* Convert '\'' --> ' */
+					p++;
+				} else {
+					*(q++) = *(p++);
+				}
 
+			} else {
+				switch (*p) {
+				case 'r':
+					*q++ = '\r';
+					break;
+				case 'n':
+					*q++ = '\n';
+					break;
+				case 't':
+					*q++ = '\t';
+					break;
+				default:
+					*q++ = *p;
+					break;
+				}
+				p++;
+				continue;
+			}
+
+		}
 		*(q++) = *(p++);
 	}
 
