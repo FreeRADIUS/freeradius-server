@@ -218,21 +218,15 @@ int mod_attribute_to_element(const char *name, json_object *map, void *buf)
 
 	/* attempt to map attribute */
 	if (json_object_object_get_ex(map, name, &jval)) {
-		int length;     /* json value length */
-		/* get value length */
-		length = json_object_get_string_len(jval);
-		/* check buffer size */
-		if (length > MAX_KEY_SIZE -1) {
+		/* copy and check size */
+		if (strlcpy(buf, json_object_get_string(jval), MAX_KEY_SIZE) >= MAX_KEY_SIZE) {
 			/* oops ... this value is bigger than our buffer ... error out */
 			ERROR("rlm_couchbase: json map value larger than MAX_KEY_SIZE - %d", MAX_KEY_SIZE);
 			/* return fail */
 			return -1;
-		} else {
-			/* copy string value to buffer */
-			strncpy(buf, json_object_get_string(jval), length);
-			/* return good */
-			return 0;
 		}
+		/* looks good */
+		return 0;
 	}
 
 	/* debugging */
@@ -610,9 +604,8 @@ static CC_HINT(nonnull) int _mod_client_map_section(CONF_SECTION *client, CONF_S
 int mod_load_client_documents(rlm_couchbase_t *inst, CONF_SECTION *cs)
 {
 	void *handle = NULL;                   /* connection pool handle */
-	char vpath[256], docid[256];           /* view path and document id */
+	char vpath[256], docid[MAX_KEY_SIZE];  /* view path and document id */
 	char error[512];                       /* view error return */
-	size_t length;                         /* string length buffer */
 	int idx = 0;                           /* row array index counter */
 	int retval = 0;                        /* return value */
 	lcb_error_t cb_error = LCB_SUCCESS;    /* couchbase error holder */
@@ -689,23 +682,14 @@ int mod_load_client_documents(rlm_couchbase_t *inst, CONF_SECTION *cs)
 
 	/* check for error in json object */
 	if (json_object_object_get_ex(cookie->jobj, "error", &json)) {
-		/* get length */
-		length = json_object_get_string_len(json);
-		/* check length and copy to error buffer */
-		if (length < sizeof(error) -1) {
-			strncpy(error, json_object_get_string(json), length);
-		}
+		/* build initial error buffer */
+		strlcpy(error, json_object_get_string(json), sizeof(error));
 		/* get error reason */
 		if (json_object_object_get_ex(cookie->jobj, "reason", &json)) {
-			/* get length */
-			length = json_object_get_string_len(json);
-			/* check length and add to error buffer */
-			if (length + strlen(error) < sizeof(error) -4) {
-				/* add spacing */
-				strncat(error, " - ", 3);
-				/* append reason */
-				strncat(error, json_object_get_string(json), length);
-			}
+			/* append divider */
+			strlcat(error, " - ", sizeof(error));
+			/* append reason */
+			strlcat(error, json_object_get_string(json), sizeof(error));
 		}
 		/* log error */
 		ERROR("rlm_couchbase: view request failed with error: %s", error);
@@ -753,19 +737,21 @@ int mod_load_client_documents(rlm_couchbase_t *inst, CONF_SECTION *cs)
 		if (json_object_object_get_ex(json, "id", &jval)) {
 			/* clear docid */
 			memset(docid, 0, sizeof(docid));
-			/* get length */
-			length = json_object_get_string_len(jval);
-			/* check length and copy string */
-			if (length < sizeof(docid) -1) {
-				strncpy(docid, json_object_get_string(jval), length);
+			/* copy and check length */
+			if (strlcpy(docid, json_object_get_string(jval), sizeof(docid)) >= sizeof(docid)) {
+				ERROR("rlm_couchbase: document id from row longer than MAX_KEY_SIZE (%d)", MAX_KEY_SIZE);
+				continue;
 			}
 		}
 
 		/* check for valid doc id */
-		if (!docid) {
+		if (docid[0] == 0) {
 			WARN("rlm_couchbase: failed to fetch document id from row - skipping");
 			continue;
 		}
+
+		/* debugging */
+		DEBUG("rlm_couchbase: preparing to fetch docid '%s'", docid);
 
 		/* reset  cookie error status */
 		cookie->jerr = json_tokener_success;
