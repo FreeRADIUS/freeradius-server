@@ -1770,7 +1770,8 @@ int modcall_fixup_update(value_pair_map_t *map, UNUSED void *ctx)
 		 *	It's a literal string, just copy it.
 		 *	Don't escape anything.
 		 */
-		if ((map->lhs->tmpl_da->type == PW_TYPE_STRING) &&
+		if (!cf_new_escape &&
+		    (map->lhs->tmpl_da->type == PW_TYPE_STRING) &&
 		    (cf_pair_value_type(cp) == T_SINGLE_QUOTED_STRING)) {
 			value_data_t *vpd;
 
