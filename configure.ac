@@ -576,6 +576,32 @@ AC_ARG_WITH(openssl-include-dir,
   esac ]
 )
 
+dnl #
+dnl #  extra argument: --disable-openssl-version-check
+dnl #
+AC_ARG_ENABLE(openssl-version-check,
+[AS_HELP_STRING([--disable-openssl-version-check],
+                [disable vulnerable OpenSSL version check])]
+)
+if test "x$enable_openssl_version_check" != "xno"; then
+  AC_DEFINE(ENABLE_OPENSSL_VERSION_CHECK, [1],
+            [Define to 1 to have OpenSSL version check enabled])
+  openssl_version_check_config="\
+	#
+	#  allow_vulnerable_openssl: Allow the server to start with
+	#  versions of OpenSSL known to have critical vulnerabilities.
+	#
+	#  This check is based on the version number reported by libssl
+	#  and may not reflect patches applied to libssl by
+	#  distribution maintainers.
+	#
+	allow_vulnerable_openssl = no"
+else
+  openssl_version_check_config=
+fi
+AC_SUBST([openssl_version_check_config])
+
+
 dnl #############################################################
 dnl #
 dnl #  1. Checks for programs
