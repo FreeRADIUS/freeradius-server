@@ -2201,6 +2201,15 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			cf_item_add(this, &(cpn->item));
 
 			/*
+			 *	Hacks for escaping
+			 */
+			if (!cf_new_escape && !this->item.parent && value &&
+			    (strcmp(buf1, "correct_escapes") == 0) &&
+			    (strcmp(value, "true") == 0)) {
+				cf_new_escape = true;
+			}
+
+			/*
 			 *	Require a comma, unless there's a comment.
 			 */
 			while (isspace(*ptr)) ptr++;
