@@ -2123,7 +2123,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		/*
 		 *	Grab the next token.
 		 */
-		t2 = gettoken(&ptr, buf2, sizeof(buf2), true);
+		t2 = gettoken(&ptr, buf2, sizeof(buf2), !cf_new_escape);
 		switch (t2) {
 		case T_EOL:
 		case T_HASH:
