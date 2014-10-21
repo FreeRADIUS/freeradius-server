@@ -131,7 +131,7 @@ Example client view:
 
 ```
 function (doc, meta) {
-  if (doc.docType && doc.docType == "radclient" && doc.clientName) {
+  if (doc.docType && doc.docType == "radclient") {
     emit(null, null);
   }
 }

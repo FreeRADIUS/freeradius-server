@@ -442,8 +442,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 		}
 	}
 
-	/* make sure we have enough room in our document buffer */
-	if ((unsigned int) json_object_get_string_len(cookie->jobj) > sizeof(document) - 1) {
+	/* copy json string to document and check size */
+	if (strlcpy(document, json_object_to_json_string(cookie->jobj), sizeof(document)) >= sizeof(document)) {
 		/* this isn't good */
 		RERROR("could not write json document - insufficient buffer space");
 		/* free json output */
@@ -456,13 +456,11 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 		}
 		/* return */
 		return RLM_MODULE_FAIL;
-	} else {
-		/* copy json string to document */
-		strlcpy(document, json_object_to_json_string(cookie->jobj), sizeof(document));
-		/* free json output */
-		if (cookie->jobj) {
-			json_object_put(cookie->jobj);
-		}
+	}
+
+	/* free json output */
+	if (cookie->jobj) {
+		json_object_put(cookie->jobj);
 	}
 
 	/* debugging */
