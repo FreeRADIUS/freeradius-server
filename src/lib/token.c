@@ -245,6 +245,24 @@ static FR_TOKEN getthing(char const **ptr, char *buf, int buflen, bool tok,
 			p++;
 			continue;
 		}
+
+		/*
+		 *	Deal with quotes and escapes, but don't mash
+		 *	escaped characters into their non-escaped
+		 *	equivalent.
+		 */
+		if (!unescape && quote && (*p == '\\')) {
+			if (!p[1]) continue; /* force end of string */
+
+			if (p[1] == quote) { /* convert '\'' --> ' */
+				p++;
+			} else {
+				*(s++) = *(p++);
+			}
+			*(s++) = *(p++);
+			continue;
+		}
+
 		if (quote && (*p == quote)) {
 			end = true;
 			p++;
