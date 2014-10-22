@@ -278,7 +278,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
  * @param  request  The accounting request object.
  * @return          Returns operation status (@p rlm_rcode_t).
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *request) {
+CC_HINT(nonnull) static rlm_rcode_t mod_accounting(void *instance, REQUEST *request) {
 	rlm_couchbase_t *inst = instance;   /* our module instance */
 	void *handle = NULL;                /* connection pool handle */
 	VALUE_PAIR *vp;                     /* radius value pair linked list */
