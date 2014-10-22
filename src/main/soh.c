@@ -84,8 +84,7 @@ typedef struct {
 	uint16_t tlv_len;
 } soh_tlv;
 
-/**
- * @brief read big-endian 2-byte unsigned from p
+/** Read big-endian 2-byte unsigned from p
  *
  * caller must ensure enough data exists at "p"
  */
@@ -97,8 +96,8 @@ uint16_t soh_pull_be_16(uint8_t const *p) {
 
 	return r;
 }
-/**
- * @brief read big-endian 3-byte unsigned from p
+
+/** Read big-endian 3-byte unsigned from p
  *
  * caller must ensure enough data exists at "p"
  */
@@ -111,8 +110,8 @@ uint32_t soh_pull_be_24(uint8_t const *p) {
 
 	return r;
 }
-/**
- * @brief read big-endian 4-byte unsigned from p
+
+/** Read big-endian 4-byte unsigned from p
  *
  * caller must ensure enough data exists at "p"
  */
@@ -127,9 +126,9 @@ uint32_t soh_pull_be_32(uint8_t const *p) {
 	return r;
 }
 
-/**
- * @brief Parses the MS-SOH type/value (note: NOT type/length/value) data and
- * 	update the sohvp list
+static int eapsoh_mstlv(REQUEST *request, uint8_t const *p, unsigned int data_len) CC_HINT(nonnull);
+
+/** Parses the MS-SOH type/value (note: NOT type/length/value) data and update the sohvp list
  *
  * See section 2.2.4 of MS-SOH. Because there's no "length" field we CANNOT just skip
  * unknown types; we need to know their length ahead of time. Therefore, we abort
@@ -141,7 +140,8 @@ uint32_t soh_pull_be_32(uint8_t const *p) {
  * @param data_len length of blob
  * @return 1 on success, 0 on failure
  */
-static int CC_HINT(nonnull) eapsoh_mstlv(REQUEST *request, uint8_t const *p, unsigned int data_len) {
+static int eapsoh_mstlv(REQUEST *request, uint8_t const *p, unsigned int data_len)
+{
 	VALUE_PAIR *vp;
 	uint8_t c;
 	int t;
@@ -309,9 +309,9 @@ static int CC_HINT(nonnull) eapsoh_mstlv(REQUEST *request, uint8_t const *p, uns
 	}
 	return 1;
 }
-/**
- * @brief Convert windows Health Class status into human-readable
- * 	string. Tedious, really, really tedious...
+/** Convert windows Health Class status into human-readable string
+ *
+ * Tedious, really, really tedious...
  */
 static char const* clientstatus2str(uint32_t hcstatus) {
 	switch (hcstatus) {
@@ -350,8 +350,8 @@ static char const* clientstatus2str(uint32_t hcstatus) {
 	return NULL;
 }
 
-/**
- * @brief convert a Health Class into a string
+/** Convert a Health Class into a string
+ *
  */
 static char const* healthclass2str(uint8_t hc) {
 	switch (hc) {
@@ -373,8 +373,7 @@ static char const* healthclass2str(uint8_t hc) {
 	return NULL;
 }
 
-/**
- * @brief Parse the MS-SOH response in data and update sohvp.
+/**  Parse the MS-SOH response in data and update sohvp
  *
  * Note that sohvp might still have been updated in event of a failure.
  *

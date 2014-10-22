@@ -62,8 +62,7 @@ static const CONF_PARSER module_config[] = {
 	{NULL, -1, 0, NULL, NULL}     /* end the list */
 };
 
-/**
- * @brief Initialize the rlm_couchbase module.
+/** Initialize the rlm_couchbase module
  *
  * Intialize the module and create the initial Couchbase connection pool.
  *
@@ -163,8 +162,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance) {
 	return 0;
 }
 
-/**
- * @brief Handle authorization requests using Couchbase document data.
+/** Handle authorization requests using Couchbase document data
  *
  * Attempt to fetch the document assocaited with the requested user by
  * using the deterministic key defined in the configuration.  When a valid
@@ -267,8 +265,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 	return RLM_MODULE_OK;
 }
 
-/**
- * @brief Write accounting data to Couchbase documents.
+/**  Write accounting data to Couchbase documents
  *
  * Handle accounting requests and store the associated data into JSON documents
  * in couchbase mapping attribute names to JSON element names per the module configuration.
@@ -483,8 +480,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 	return RLM_MODULE_OK;
 }
 
-/**
- * @brief Detach the module.
+/** Detach the module
  *
  * Detach the module instance and free any allocated resources.
  *

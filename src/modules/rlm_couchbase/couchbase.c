@@ -34,8 +34,8 @@ RCSID("$Id$");
 #include "couchbase.h"
 #include "jsonc_missing.h"
 
-/**
- * @brief Couchbase callback for cluster statistics requests.
+/** Couchbase callback for cluster statistics requests
+ *
  * @param instance Couchbase connection instance.
  * @param cookie   Couchbase cookie for returning information from callbacks.
  * @param error    Couchbase error object.
@@ -51,8 +51,8 @@ void couchbase_stat_callback(lcb_t instance, const void *cookie, lcb_error_t err
 	(void)resp;
 }
 
-/**
- * @brief Couchbase callback for store (write) operations.
+/** Couchbase callback for store (write) operations
+ *
  * @param instance  Couchbase connection instance.
  * @param cookie    Couchbase cookie for returning information from callbacks.
  * @param operation Couchbase storage operation object.
@@ -70,8 +70,8 @@ void couchbase_store_callback(lcb_t instance, const void *cookie, lcb_storage_t 
 	(void)resp;
 }
 
-/**
- * @brief Couchbase callback for get (read) operations.
+/** Couchbase callback for get (read) operations
+ *
  * @param instance Couchbase connection instance.
  * @param cookie   Couchbase cookie for returning information from callbacks.
  * @param error    Couchbase error object.
@@ -121,8 +121,8 @@ void couchbase_get_callback(lcb_t instance, const void *cookie, lcb_error_t erro
 	}
 }
 
-/**
- * @brief Couchbase callback for http (view) operations.
+/** Couchbase callback for http (view) operations
+ *
  * @param request  Couchbase http request object.
  * @param instance Couchbase connection instance.
  * @param cookie   Couchbase cookie for returning information from callbacks.
@@ -170,16 +170,15 @@ void couchbase_http_data_callback(lcb_http_request_t request, lcb_t instance, co
 	(void)request;
 }
 
-/**
- * @brief Initialize a Couchbase connection instance.
+/** Initialize a Couchbase connection instance
  *
  * Initialize all information relating to a Couchbase instance and configure available method callbacks.
  * This function forces synchronous operation and will wait for a connection or timeout.
  *
- * @param  instance Empty (un-allocated) Couchbase instance object.
- * @param  host     The Couchbase server or list of servers.
- * @param  bucket   The Couchbase bucket to associate with the instance.
- * @param  pass     The Couchbase bucket password (NULL if none).
+ * @param instance Empty (un-allocated) Couchbase instance object.
+ * @param host     The Couchbase server or list of servers.
+ * @param bucket   The Couchbase bucket to associate with the instance.
+ * @param pass     The Couchbase bucket password (NULL if none).
  * @return          Couchbase error object.
  */
 lcb_error_t couchbase_init_connection(lcb_t *instance, const char *host, const char *bucket, const char *pass) {
@@ -223,8 +222,7 @@ lcb_error_t couchbase_init_connection(lcb_t *instance, const char *host, const c
 	return error;
 }
 
-/**
- * @brief Request Couchbase server statistics.
+/** Request Couchbase server statistics
  *
  * Setup and execute a request for cluster statistics and wait for the result.
  *
@@ -255,8 +253,7 @@ lcb_error_t couchbase_server_stats(lcb_t instance, const void *cookie) {
 	return error;
 }
 
-/**
- * @brief Store a document by key in Couchbase.
+/** Store a document by key in Couchbase
  *
  * Setup and execute a Couchbase set operation and wait for the result.
  *
@@ -293,8 +290,7 @@ lcb_error_t couchbase_set_key(lcb_t instance, const char *key, const char *docum
 	return error;
 }
 
-/**
- * @brief Retrieve a document by key from Couchbase.
+/** Retrieve a document by key from Couchbase
  *
  * Setup and execute a Couchbase get request and wait for the result.
  *
@@ -326,8 +322,7 @@ lcb_error_t couchbase_get_key(lcb_t instance, const void *cookie, const char *ke
 	return error;
 }
 
-/**
- * @brief Query a Couchbase design document view.
+/** Query a Couchbase design document view
  *
  * Setup and execute a Couchbase view request and wait for the result.
  *
