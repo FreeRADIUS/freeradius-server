@@ -521,8 +521,8 @@ int mod_ensure_start_timestamp(json_object *json, VALUE_PAIR *vps)
  * @param  json   JSON object representation of a client document fetched from Couchbase.
  * @return        Returns 0 on success, -1 on error.
  */
-static CC_HINT(nonnull) int _mod_client_map_section(CONF_SECTION *client, CONF_SECTION const *map,
-	json_object *json, char const *docid)
+CC_HINT(nonnull) static int _mod_client_map_section(CONF_SECTION *client, CONF_SECTION const *map,
+						    json_object *json, char const *docid)
 {
 	CONF_ITEM const *ci;
 
