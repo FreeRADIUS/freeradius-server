@@ -39,7 +39,7 @@
  * @param[in] cs to iterate over.
  * @return 0 on success else -1 on error.
  */
-static int CC_HINT(nonnull) rlm_ldap_client_get_attrs(char const **values, int *idx, CONF_SECTION const *cs)
+CC_HINT(nonnull) static int rlm_ldap_client_get_attrs(char const **values, int *idx, CONF_SECTION const *cs)
 {
 	CONF_ITEM const *ci;
 
@@ -75,7 +75,7 @@ static int CC_HINT(nonnull) rlm_ldap_client_get_attrs(char const **values, int *
  * @param[in] entry returned from search.
  * @return 0 on success else -1 on error.
  */
-static int CC_HINT(nonnull) rlm_ldap_client_map_section(ldap_instance_t const *inst, CONF_SECTION *client,
+CC_HINT(nonnull) static int rlm_ldap_client_map_section(ldap_instance_t const *inst, CONF_SECTION *client,
 							CONF_SECTION const *map, ldap_handle_t *conn,
 							LDAPMessage *entry)
 {
@@ -121,13 +121,13 @@ static int CC_HINT(nonnull) rlm_ldap_client_map_section(ldap_instance_t const *i
 	return 0;
 }
 
- /** Load clients from LDAP on server start
-  *
-  * @param[in] inst rlm_ldap configuration.
-  * @param[in] cs to load client attribute/LDAP attribute mappings from.
-  * @return -1 on error else 0.
-  */
-int CC_HINT(nonnull) rlm_ldap_client_load(ldap_instance_t const *inst, CONF_SECTION *cs)
+/** Load clients from LDAP on server start
+ *
+ * @param[in] inst rlm_ldap configuration.
+ * @param[in] cs to load client attribute/LDAP attribute mappings from.
+ * @return -1 on error else 0.
+ */
+CC_HINT(nonnull) int rlm_ldap_client_load(ldap_instance_t const *inst, CONF_SECTION *cs)
 {
 	int 		ret = 0;
 	ldap_rcode_t	status;

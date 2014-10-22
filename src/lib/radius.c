@@ -245,9 +245,8 @@ void rad_print_hex(RADIUS_PACKET *packet)
 	fflush(stdout);
 }
 
-/**
- * @brief Wrapper for sendto which handles sendfromto, IPv6, and all
- *	possible combinations.
+/** Wrapper for sendto which handles sendfromto, IPv6, and all possible combinations
+ *
  */
 static int rad_sendto(int sockfd, void *data, size_t data_len, int flags,
 #ifdef WITH_UDPFROMTO
@@ -381,9 +380,9 @@ ssize_t rad_recv_header(int sockfd, fr_ipaddr_t *src_ipaddr, uint16_t *src_port,
 }
 
 
-/**
- * @brief wrapper for recvfrom, which handles recvfromto, IPv6, and all
- *	possible combinations.
+/** Wrapper for recvfrom, which handles recvfromto, IPv6, and all possible combinations
+ *
+
  */
 static ssize_t rad_recvfrom(int sockfd, RADIUS_PACKET *packet, int flags,
 			    fr_ipaddr_t *src_ipaddr, uint16_t *src_port,
@@ -492,14 +491,12 @@ static ssize_t rad_recvfrom(int sockfd, RADIUS_PACKET *packet, int flags,
 
 
 #define AUTH_PASS_LEN (AUTH_VECTOR_LEN)
-/**
- * @brief Build an encrypted secret value to return in a reply packet
+/** Build an encrypted secret value to return in a reply packet
  *
- *	       The secret is hidden by xoring with a MD5 digest
- *	       created from the shared secret and the authentication
- *	       vector.  We put them into MD5 in the reverse order from
- *	       that used when encrypting passwords to RADIUS.
- *
+ * The secret is hidden by xoring with a MD5 digest created from
+ * the shared secret and the authentication vector.
+ * We put them into MD5 in the reverse order from that used when
+ * encrypting passwords to RADIUS.
  */
 static void make_secret(uint8_t *digest, uint8_t const *vector,
 			char const *secret, uint8_t const *value)
@@ -722,10 +719,10 @@ static ssize_t vp2attr_rfc(RADIUS_PACKET const *packet,
 			   char const *secret, VALUE_PAIR const **pvp,
 			   unsigned int attribute, uint8_t *ptr, size_t room);
 
-/**
- * @brief This is really a sub-function of vp2data_any().  It encodes
- *	the *data* portion of the TLV, and assumes that the encapsulating
- *	attribute has already been encoded.
+/** Encode the *data* portion of the TLV
+ *
+ * This is really a sub-function of vp2data_any().  It encodes the *data* portion
+ * of the TLV, and assumes that the encapsulating attribute has already been encoded.
  */
 static ssize_t vp2data_tlvs(RADIUS_PACKET const *packet,
 			    RADIUS_PACKET const *original,
@@ -793,8 +790,8 @@ static ssize_t vp2data_tlvs(RADIUS_PACKET const *packet,
 	return ptr - start;
 }
 
-/**
- * @brief Encodes the data portion of an attribute.
+/** Encodes the data portion of an attribute
+ *
  * @return -1 on error, or the length of the data portion.
  */
 static ssize_t vp2data_any(RADIUS_PACKET const *packet,
@@ -1058,8 +1055,7 @@ static ssize_t attr_shift(uint8_t const *start, uint8_t const *end,
 }
 
 
-/**
- * @brief Encode an "extended" attribute.
+/** Encode an "extended" attribute
  */
 int rad_vp2extended(RADIUS_PACKET const *packet,
 		    RADIUS_PACKET const *original,
@@ -1174,8 +1170,8 @@ int rad_vp2extended(RADIUS_PACKET const *packet,
 }
 
 
-/**
- * @brief Encode a WiMAX attribute.
+/** Encode a WiMAX attribute
+ *
  */
 int rad_vp2wimax(RADIUS_PACKET const *packet,
 		 RADIUS_PACKET const *original,
@@ -1249,11 +1245,10 @@ int rad_vp2wimax(RADIUS_PACKET const *packet,
 	return (ptr + ptr[1]) - start;
 }
 
-/**
- * @brief Encode an RFC format attribute, with the "concat" flag set.
+/** Encode an RFC format attribute, with the "concat" flag set
  *
- *	If there isn't enough room in the packet, the data is
- *	truncated to fit.
+ * If there isn't enough room in the packet, the data is
+ * truncated to fit.
  */
 static ssize_t vp2attr_concat(UNUSED RADIUS_PACKET const *packet,
 			      UNUSED RADIUS_PACKET const *original,
@@ -1305,13 +1300,11 @@ static ssize_t vp2attr_concat(UNUSED RADIUS_PACKET const *packet,
 	return ptr - start;
 }
 
-/**
- * @brief Encode an RFC format TLV.
+/** Encode an RFC format TLV.
  *
- * 	This could be a standard attribute,
- *	or a TLV data type.  If it's a standard attribute, then
- *	vp->da->attr == attribute.  Otherwise, attribute may be
- *	something else.
+ * This could be a standard attribute, or a TLV data type.
+ * If it's a standard attribute, then vp->da->attr == attribute.
+ * Otherwise, attribute may be something else.
  */
 static ssize_t vp2attr_rfc(RADIUS_PACKET const *packet,
 			   RADIUS_PACKET const *original,
@@ -1343,9 +1336,9 @@ static ssize_t vp2attr_rfc(RADIUS_PACKET const *packet,
 }
 
 
-/**
- * @brief Encode a VSA which is a TLV.  If it's in the RFC format, call
- *	vp2attr_rfc.  Otherwise, encode it here.
+/** Encode a VSA which is a TLV
+ *
+ * If it's in the RFC format, call vp2attr_rfc.  Otherwise, encode it here.
  */
 static ssize_t vp2attr_vsa(RADIUS_PACKET const *packet,
 			   RADIUS_PACKET const *original,
@@ -1473,8 +1466,8 @@ static ssize_t vp2attr_vsa(RADIUS_PACKET const *packet,
 }
 
 
-/**
- * @brief Encode a Vendor-Specific attribute.
+/** Encode a Vendor-Specific attribute
+ *
  */
 int rad_vp2vsa(RADIUS_PACKET const *packet, RADIUS_PACKET const *original,
 		char const *secret, VALUE_PAIR const **pvp, uint8_t *ptr,
@@ -1535,8 +1528,8 @@ int rad_vp2vsa(RADIUS_PACKET const *packet, RADIUS_PACKET const *original,
 }
 
 
-/**
- * @brief Encode an RFC standard attribute 1..255
+/** Encode an RFC standard attribute 1..255
+ *
  */
 int rad_vp2rfc(RADIUS_PACKET const *packet,
 	       RADIUS_PACKET const *original,
@@ -1646,8 +1639,8 @@ static ssize_t rad_vp2rfctlv(RADIUS_PACKET const *packet,
 	return start[1];
 }
 
-/**
- * @brief Parse a data structure into a RADIUS attribute.
+/** Parse a data structure into a RADIUS attribute
+ *
  */
 int rad_vp2attr(RADIUS_PACKET const *packet, RADIUS_PACKET const *original,
 		char const *secret, VALUE_PAIR const **pvp, uint8_t *start,
@@ -1695,8 +1688,8 @@ int rad_vp2attr(RADIUS_PACKET const *packet, RADIUS_PACKET const *original,
 }
 
 
-/**
- * @brief Encode a packet.
+/** Encode a packet
+ *
  */
 int rad_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 	       char const *secret)
@@ -1887,8 +1880,8 @@ int rad_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 }
 
 
-/**
- * @brief Sign a previously encoded packet.
+/** Sign a previously encoded packet
+ *
  */
 int rad_sign(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 	     char const *secret)
@@ -2003,9 +1996,9 @@ int rad_sign(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 	return 0;
 }
 
-/**
- * @brief Reply to the request.  Also attach
- *	reply attribute value pairs and any user message provided.
+/** Reply to the request
+ *
+ * Also attach reply attribute value pairs and any user message provided.
  */
 int rad_send(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 	     char const *secret)
@@ -2098,15 +2091,12 @@ int rad_send(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 			  &packet->dst_ipaddr, packet->dst_port);
 }
 
-/**
- * @brief Do a comparison of two authentication digests by comparing
- *	the FULL digest.
+/** Do a comparison of two authentication digests by comparing the FULL digest
  *
- *	Otherwise, the server can be subject to
- *	timing attacks that allow attackers find a valid message
- *	authenticator.
+ * Otherwise, the server can be subject to timing attacks that allow attackers
+ * find a valid message authenticator.
  *
- *	http://www.cs.rice.edu/~dwallach/pub/crosby-timing2009.pdf
+ * http://www.cs.rice.edu/~dwallach/pub/crosby-timing2009.pdf
  */
 int rad_digest_cmp(uint8_t const *a, uint8_t const *b, size_t length)
 {
@@ -2121,9 +2111,9 @@ int rad_digest_cmp(uint8_t const *a, uint8_t const *b, size_t length)
 }
 
 
-/**
- * @brief Validates the requesting client NAS.  Calculates the
- *	Request Authenticator based on the clients private key.
+/** Validates the requesting client NAS
+ *
+ * Calculates the request Authenticator based on the clients private key.
  */
 static int calc_acctdigest(RADIUS_PACKET *packet, char const *secret)
 {
@@ -2154,9 +2144,10 @@ static int calc_acctdigest(RADIUS_PACKET *packet, char const *secret)
 }
 
 
-/**
- * @brief Validates the requesting client NAS.  Calculates the
- *	Response Authenticator based on the clients private key.
+/** Validates the requesting client NAS
+ *
+ * Calculates the response Authenticator based on the clients
+ * private key.
  */
 static int calc_replydigest(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 			    char const *secret)
@@ -2196,9 +2187,8 @@ static int calc_replydigest(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 	return 0;
 }
 
-
-/**
- * @brief Check if a set of RADIUS formatted TLVs are OK.
+/** Check if a set of RADIUS formatted TLVs are OK
+ *
  */
 int rad_tlv_ok(uint8_t const *data, size_t length,
 	       size_t dv_type, size_t dv_length)
@@ -2604,9 +2594,8 @@ bool rad_packet_ok(RADIUS_PACKET *packet, int flags, decode_fail_t *reason)
 }
 
 
-/**
- * @brief Receive UDP client requests, and fill in
- *	the basics of a RADIUS_PACKET structure.
+/** Receive UDP client requests, and fill in the basics of a RADIUS_PACKET structure
+ *
  */
 RADIUS_PACKET *rad_recv(int fd, int flags)
 {
@@ -2732,9 +2721,8 @@ RADIUS_PACKET *rad_recv(int fd, int flags)
 }
 
 
-/**
- * @brief Verify the Request/Response Authenticator
- * 	(and Message-Authenticator if present) of a packet.
+/** Verify the Request/Response Authenticator (and Message-Authenticator if present) of a packet
+ *
  */
 int rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 	       char const *secret)
@@ -2908,8 +2896,8 @@ int rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 }
 
 
-/**
- * @brief convert a "concatenated" attribute to one long VP.
+/** Convert a "concatenated" attribute to one long VP
+ *
  */
 static ssize_t data2vp_concat(TALLOC_CTX *ctx,
 			      DICT_ATTR const *da, uint8_t const *start,
@@ -2964,8 +2952,8 @@ static ssize_t data2vp_concat(TALLOC_CTX *ctx,
 }
 
 
-/**
- * @brief convert TLVs to one or more VPs
+/** Convert TLVs to one or more VPs
+ *
  */
 static ssize_t data2vp_tlvs(TALLOC_CTX *ctx,
 			    RADIUS_PACKET *packet, RADIUS_PACKET const *original,
@@ -3029,10 +3017,9 @@ static ssize_t data2vp_tlvs(TALLOC_CTX *ctx,
 	return length;
 }
 
-/**
- * @brief Convert a top-level VSA to a VP.
+/** Convert a top-level VSA to a VP.
  *
- *	"length" can be LONGER than just this sub-vsa
+ * "length" can be LONGER than just this sub-vsa.
  */
 static ssize_t data2vp_vsa(TALLOC_CTX *ctx, RADIUS_PACKET *packet,
 			   RADIUS_PACKET const *original,
@@ -3117,19 +3104,17 @@ static ssize_t data2vp_vsa(TALLOC_CTX *ctx, RADIUS_PACKET *packet,
 }
 
 
-/**
- * @brief Convert a fragmented extended attr to a VP
+/** Convert a fragmented extended attr to a VP
  *
- *	Format is:
+ * Format is:
  *
- *	attr
- *	length
- *	extended-attr
- *	flag
- *	data...
+ * attr
+ * length
+ * extended-attr
+ * flag
+ * data...
  *
- *	But for the first fragment, we get passed a pointer to the
- *	"extended-attr".
+ * But for the first fragment, we get passed a pointer to the "extended-attr"
  */
 static ssize_t data2vp_extended(TALLOC_CTX *ctx, RADIUS_PACKET *packet,
 				RADIUS_PACKET const *original,
@@ -3207,10 +3192,9 @@ static ssize_t data2vp_extended(TALLOC_CTX *ctx, RADIUS_PACKET *packet,
 	return end - data;
 }
 
-/**
- * @brief Convert a Vendor-Specific WIMAX to vps
+/** Convert a Vendor-Specific WIMAX to vps
  *
- *	Called ONLY for Vendor-Specific
+ * @note Called ONLY for Vendor-Specific
  */
 static ssize_t data2vp_wimax(TALLOC_CTX *ctx,
 			     RADIUS_PACKET *packet, RADIUS_PACKET const *original,
@@ -3307,8 +3291,8 @@ static ssize_t data2vp_wimax(TALLOC_CTX *ctx,
 }
 
 
-/**
- * @brief Convert a top-level VSA to one or more VPs
+/** Convert a top-level VSA to one or more VPs
+ *
  */
 static ssize_t data2vp_vsas(TALLOC_CTX *ctx, RADIUS_PACKET *packet,
 			    RADIUS_PACKET const *original,
@@ -3378,14 +3362,12 @@ static ssize_t data2vp_vsas(TALLOC_CTX *ctx, RADIUS_PACKET *packet,
 	return total;
 }
 
-
-/**
- * @brief Create any kind of VP from the attribute contents.
+/** Create any kind of VP from the attribute contents
  *
- *	"length" is AT LEAST the length of this attribute, as we
- *	expect the caller to have verified the data with
- *	rad_packet_ok().  "length" may be up to the length of the
- *	packet.
+ * "length" is AT LEAST the length of this attribute, as we
+ * expect the caller to have verified the data with
+ * rad_packet_ok().  "length" may be up to the length of the
+ * packet.
  *
  * @return -1 on error, or "length".
  */
@@ -3874,8 +3856,8 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 }
 
 
-/**
- * @brief Create a "normal" VALUE_PAIR from the given data.
+/** Create a "normal" VALUE_PAIR from the given data
+ *
  */
 ssize_t rad_attr2vp(TALLOC_CTX *ctx,
 		    RADIUS_PACKET *packet, RADIUS_PACKET const *original,
@@ -4041,8 +4023,8 @@ ssize_t rad_vp2data(uint8_t const **out, VALUE_PAIR const *vp)
 	return vp->length;
 }
 
-/**
- * @brief Calculate/check digest, and decode radius attributes.
+/** Calculate/check digest, and decode radius attributes
+ *
  * @return -1 on decoding error, 0 on success
  */
 int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
@@ -4132,16 +4114,15 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 }
 
 
-/**
- * @brief Encode password.
+/** Encode password
  *
- *	We assume that the passwd buffer passed is big enough.
- *	RFC2138 says the password is max 128 chars, so the size
- *	of the passwd buffer must be at least 129 characters.
- *	Preferably it's just MAX_STRING_LEN.
+ * We assume that the passwd buffer passed is big enough.
+ * RFC2138 says the password is max 128 chars, so the size
+ * of the passwd buffer must be at least 129 characters.
+ * Preferably it's just MAX_STRING_LEN.
  *
- *	int *pwlen is updated to the new length of the encrypted
- *	password - a multiple of 16 bytes.
+ * int *pwlen is updated to the new length of the encrypted
+ * password - a multiple of 16 bytes.
  */
 int rad_pwencode(char *passwd, size_t *pwlen, char const *secret,
 		 uint8_t const *vector)
@@ -4205,8 +4186,8 @@ int rad_pwencode(char *passwd, size_t *pwlen, char const *secret,
 	return 0;
 }
 
-/**
- * @brief Decode password.
+/** Decode password
+ *
  */
 int rad_pwdecode(char *passwd, size_t pwlen, char const *secret,
 		 uint8_t const *vector)
@@ -4271,14 +4252,13 @@ int rad_pwdecode(char *passwd, size_t pwlen, char const *secret,
 }
 
 
-/**
- * @brief Encode Tunnel-Password attributes when sending them out on the wire.
+/** Encode Tunnel-Password attributes when sending them out on the wire
  *
- *	int *pwlen is updated to the new length of the encrypted
- *	password - a multiple of 16 bytes.
+ * int *pwlen is updated to the new length of the encrypted
+ * password - a multiple of 16 bytes.
  *
- *      This is per RFC-2868 which adds a two char SALT to the initial intermediate
- *      value MD5 hash.
+ * This is per RFC-2868 which adds a two char SALT to the initial intermediate
+ * value MD5 hash.
  */
 int rad_tunnel_pwencode(char *passwd, size_t *pwlen, char const *secret,
 			uint8_t const *vector)
@@ -4356,12 +4336,11 @@ int rad_tunnel_pwencode(char *passwd, size_t *pwlen, char const *secret,
 	return 0;
 }
 
-/**
- * @brief Decode Tunnel-Password encrypted attributes.
+/** Decode Tunnel-Password encrypted attributes
  *
- *      Defined in RFC-2868, this uses a two char SALT along with the
- *      initial intermediate value, to differentiate it from the
- *      above.
+ * Defined in RFC-2868, this uses a two char SALT along with the
+ * initial intermediate value, to differentiate it from the
+ * above.
  */
 int rad_tunnel_pwdecode(uint8_t *passwd, size_t *pwlen, char const *secret,
 			uint8_t const *vector)
@@ -4462,12 +4441,11 @@ int rad_tunnel_pwdecode(uint8_t *passwd, size_t *pwlen, char const *secret,
 	return reallen;
 }
 
-/**
- * @brief Encode a CHAP password
+/** Encode a CHAP password
  *
- *	@bug FIXME: might not work with Ascend because
- *	we use vp->length, and Ascend gear likes
- *	to send an extra '\0' in the string!
+ * @bug FIXME: might not work with Ascend because
+ * we use vp->length, and Ascend gear likes
+ * to send an extra '\0' in the string!
  */
 int rad_chap_encode(RADIUS_PACKET *packet, uint8_t *output, int id,
 		    VALUE_PAIR *password)
@@ -4520,10 +4498,9 @@ int rad_chap_encode(RADIUS_PACKET *packet, uint8_t *output, int id,
 }
 
 
-/**
- * @brief Seed the random number generator.
+/** Seed the random number generator
  *
- *	May be called any number of times.
+ * May be called any number of times.
  */
 void fr_rand_seed(void const *data, size_t size)
 {
@@ -4574,8 +4551,8 @@ void fr_rand_seed(void const *data, size_t size)
 }
 
 
-/**
- * @brief Return a 32-bit random number.
+/** Return a 32-bit random number
+ *
  */
 uint32_t fr_rand(void)
 {
@@ -4675,8 +4652,8 @@ RADIUS_PACKET *rad_alloc_reply(TALLOC_CTX *ctx, RADIUS_PACKET *packet)
 }
 
 
-/**
- * @brief Free a RADIUS_PACKET
+/** Free a RADIUS_PACKET
+ *
  */
 void rad_free(RADIUS_PACKET **radius_packet_ptr)
 {

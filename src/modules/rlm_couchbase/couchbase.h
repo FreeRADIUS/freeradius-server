@@ -32,8 +32,7 @@ RCSIDH(couchbase_h, "$Id$");
 #include <libcouchbase/couchbase.h>
 #include <json.h>
 
-/**
- * @brief Information relating to the parsing of Couchbase document payloads.
+/** Information relating to the parsing of Couchbase document payloads
  *
  * This structure holds various references to json-c objects used when parsing
  * Couchbase document payloads.
@@ -44,8 +43,7 @@ typedef struct cookie_t {
 	enum json_tokener_error jerr;   //!< Error values produced by the json-c library.
 } cookie_t;
 
-/**
- * @brief Union of constant and non-constant pointers.
+/** Union of constant and non-constant pointers
  *
  * This is used to squelch compiler warnings about casting when passing data
  * between functions expecting different data types.
