@@ -35,8 +35,7 @@ RCSID("$Id$");
 #include "couchbase.h"
 #include "jsonc_missing.h"
 
-/**
- * @brief Delete a conneciton pool handle and free related resources.
+/** Delete a conneciton pool handle and free related resources
  *
  * Destroys the underlying Couchbase connection handle freeing any related
  * resources and closes the socket connection.
@@ -55,8 +54,7 @@ static int _mod_conn_free(rlm_couchbase_handle_t *chandle)
 	return 0;
 }
 
-/**
- * @brief Create a new connection pool handle.
+/** Create a new connection pool handle
  *
  * Create a new connection to Couchbase within the pool and initialize
  * information associatd with the connection instance such as the cookie
@@ -103,8 +101,7 @@ void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
 	return chandle;
 }
 
-/**
- * @brief Check the health of a connection handle.
+/** Check the health of a connection handle
  *
  * Attempt to determing the state of the Couchbase connection by requesting
  * a cluster statistics report.  Mark the connection as failed if the request
@@ -130,8 +127,7 @@ int mod_conn_alive(UNUSED void *instance, void *handle)
 	return 0;
 }
 
-/**
- * @brief Build a JSON object map from the configuration "map" section.
+/** Build a JSON object map from the configuration "map" section
  *
  * Parse the "map" section from the module configuration file and store this
  * as a JSON object (key/value list) in the module instance.  This map will be
@@ -198,8 +194,7 @@ int mod_build_attribute_element_map(CONF_SECTION *conf, void *instance)
 	return 0;
 }
 
-/**
- * @brief Map attributes to JSON element names.
+/** Map attributes to JSON element names
  *
  * Attempt to map the passed attribute name to the configured JSON element
  * name using the JSON object map mod_build_attribute_element_map().
@@ -236,8 +231,7 @@ int mod_attribute_to_element(const char *name, json_object *map, void *buf)
 	return -1;
 }
 
-/**
- * @brief Build value pairs from the passed JSON object and add to the request.
+/** Build value pairs from the passed JSON object and add to the request
  *
  * Parse the passed JSON object and create value pairs that will be injected into
  * the given request for authorization.
@@ -354,8 +348,7 @@ void *mod_json_object_to_value_pairs(json_object *json, const char *section, REQ
 	return NULL;
 }
 
-/**
- * @brief Convert value pairs to json objects.
+/** Convert value pairs to json objects
  *
  * Take the passed value pair and convert it to a json-c JSON object.
  * This code is heavily based on the vp_prints_value_json() function
@@ -447,8 +440,7 @@ json_object *mod_value_pair_to_json_object(REQUEST *request, VALUE_PAIR *vp)
 	}
 }
 
-/**
- * @brief Ensure accounting documents always contain a valid timestamp.
+/** Ensure accounting documents always contain a valid timestamp
  *
  * Inspect the given JSON object representation of an accounting document
  * fetched from Couchbase and ensuse it contains a valid (non NULL) timestamp value.
@@ -519,8 +511,7 @@ int mod_ensure_start_timestamp(json_object *json, VALUE_PAIR *vps)
 	return 0;
 }
 
-/**
- * @brief Iterate over all client attribute pairs and create client pair data using JSON element names.
+/** Iterate over all client attribute pairs and create client pair data using JSON element names
  *
  * If we hit a CONF_SECTION we recurse and process its CONF_PAIRS as well to support nested
  * configurations sections.
@@ -588,8 +579,7 @@ static CC_HINT(nonnull) int _mod_client_map_section(CONF_SECTION *client, CONF_S
 	return 0;
 }
 
-/**
- * @brief Load client entries from Couchbase client documents on startup.
+/** Load client entries from Couchbase client documents on startup
  *
  * This function executes the view defined in the module configuration and loops
  * through all returned rows.  The view is called with "stale=false" to ensure the

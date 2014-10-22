@@ -42,8 +42,7 @@ RCSIDH(mod_h, "$Id$");
 /* maximum length of a document key */
 #define MAX_KEY_SIZE 250
 
-/**
- * @brief The main module instance.
+/** The main module instance
  *
  * This struct contains the core module configuration.
  */
@@ -62,8 +61,7 @@ typedef struct rlm_couchbase_t {
 	fr_connection_pool_t *pool; //!< Connection pool.
 } rlm_couchbase_t;
 
-/**
- * @brief Couchbase instance specific information.
+/** Couchbase instance specific information
  *
  * This struct contains the Couchbase connection handle as well as a
  * cookie pointer to store fetched document payloads.
