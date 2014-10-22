@@ -20,7 +20,8 @@
  * @brief Utillity functions used in the module.
  * @file mod.c
  *
- * @copyright 2013-2014 Aaron Hurt <ahurt@anbcs.com>
+ * @author Aaron Hurt <ahurt@anbcs.com>
+ * @copyright 2013-2014 The FreeRADIUS Server Project.
  */
 
 RCSID("$Id$");
@@ -34,7 +35,15 @@ RCSID("$Id$");
 #include "couchbase.h"
 #include "jsonc_missing.h"
 
-/* free couchbase instance handle and any additional context memory */
+/**
+ * @brief Delete a conneciton pool handle and free related resources.
+ *
+ * Destroys the underlying Couchbase connection handle freeing any related
+ * resources and closes the socket connection.
+ *
+ * @param  chandle The connection handle to destroy.
+ * @return         Always returns 0 (success) in all conditions.
+ */
 static int _mod_conn_free(rlm_couchbase_handle_t *chandle)
 {
 	lcb_t cb_inst = chandle->handle;                /* couchbase instance */
@@ -46,7 +55,17 @@ static int _mod_conn_free(rlm_couchbase_handle_t *chandle)
 	return 0;
 }
 
-/* create new connection pool handle */
+/**
+ * @brief Create a new connection pool handle.
+ *
+ * Create a new connection to Couchbase within the pool and initialize
+ * information associatd with the connection instance such as the cookie
+ * payload and json tokener error value.
+ *
+ * @param  ctx      The connection parent context.
+ * @param  instance The module instance.
+ * @return          The new connection handle or NULL on error.
+ */
 void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
 {
 	rlm_couchbase_t *inst = instance;           /* module instance pointer */
@@ -84,7 +103,17 @@ void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
 	return chandle;
 }
 
-/* verify valid couchbase connection handle */
+/**
+ * @brief Check the health of a connection handle.
+ *
+ * Attempt to determing the state of the Couchbase connection by requesting
+ * a cluster statistics report.  Mark the connection as failed if the request
+ * returns anything other than success.
+ *
+ * @param  instance The module instance (currently unused).
+ * @param  handle   The connection handle.
+ * @return          Returns 0 on success (alive) and -1 on error (unavailable).
+ */
 int mod_conn_alive(UNUSED void *instance, void *handle)
 {
 	rlm_couchbase_handle_t *chandle = handle;   /* connection handle pointer */
@@ -95,13 +124,23 @@ int mod_conn_alive(UNUSED void *instance, void *handle)
 	if ((cb_error = couchbase_server_stats(cb_inst, NULL)) != LCB_SUCCESS) {
 		/* log error */
 		ERROR("rlm_couchbase: failed to get couchbase server stats: %s (0x%x)", lcb_strerror(NULL, cb_error), cb_error);
-		/* return false */
-		return false;
+		/* error out */
+		return -1;
 	}
-	return true;
+	return 0;
 }
 
-/* build json object for mapping radius attributes to json elements */
+/**
+ * @brief Build a JSON object map from the configuration "map" section.
+ *
+ * Parse the "map" section from the module configuration file and store this
+ * as a JSON object (key/value list) in the module instance.  This map will be
+ * used to lookup and map attributes for all incoming accounting requests.
+ *
+ * @param  conf     Configuration section.
+ * @param  instance The module instance.
+ * @return          Returns 0 on success, -1 on error.
+ */
 int mod_build_attribute_element_map(CONF_SECTION *conf, void *instance)
 {
 	rlm_couchbase_t *inst = instance;   /* our module instance */
@@ -159,7 +198,17 @@ int mod_build_attribute_element_map(CONF_SECTION *conf, void *instance)
 	return 0;
 }
 
-/* map free radius attribute to user defined json element name */
+/**
+ * @brief Map attributes to JSON element names.
+ *
+ * Attempt to map the passed attribute name to the configured JSON element
+ * name using the JSON object map mod_build_attribute_element_map().
+ *
+ * @param  name The character name of the requested attribute.
+ * @param  map  The JSON object map to use for the lookup.
+ * @param  buf  The buffer where the given element will be stored if found.
+ * @return      Returns 0 on success, -1 on error.
+ */
 int mod_attribute_to_element(const char *name, json_object *map, void *buf)
 {
 	json_object *jval;  /* json object values */
@@ -169,21 +218,15 @@ int mod_attribute_to_element(const char *name, json_object *map, void *buf)
 
 	/* attempt to map attribute */
 	if (json_object_object_get_ex(map, name, &jval)) {
-		int length;     /* json value length */
-		/* get value length */
-		length = json_object_get_string_len(jval);
-		/* check buffer size */
-		if (length > MAX_KEY_SIZE -1) {
+		/* copy and check size */
+		if (strlcpy(buf, json_object_get_string(jval), MAX_KEY_SIZE) >= MAX_KEY_SIZE) {
 			/* oops ... this value is bigger than our buffer ... error out */
 			ERROR("rlm_couchbase: json map value larger than MAX_KEY_SIZE - %d", MAX_KEY_SIZE);
 			/* return fail */
 			return -1;
-		} else {
-			/* copy string value to buffer */
-			strncpy(buf, json_object_get_string(jval), length);
-			/* return good */
-			return 0;
 		}
+		/* looks good */
+		return 0;
 	}
 
 	/* debugging */
@@ -193,8 +236,35 @@ int mod_attribute_to_element(const char *name, json_object *map, void *buf)
 	return -1;
 }
 
-/* inject value pairs into given request
- * that are defined in the passed json object
+/**
+ * @brief Build value pairs from the passed JSON object and add to the request.
+ *
+ * Parse the passed JSON object and create value pairs that will be injected into
+ * the given request for authorization.
+ *
+ * Example JSON document structure:
+ * @code{.json}
+ * {
+ *   "docType": "raduser",
+ *   "userName": "test",
+ *   "config": {
+ *     "SHA-Password": {
+ *       "value": "a94a8fe5ccb19ba61c4c0873d391e987982fbbd3",
+ *       "op": ":="
+ *     }
+ *   },
+ *   "reply": {
+ *     "Reply-Message": {
+ *       "value": "Hidey Ho!",
+ *       "op": "="
+ *     }
+ *   }
+ * }
+ * @endcode
+ *
+ * @param  json    The JSON object representation of the user documnent.
+ * @param  section The pair section ("config" or "reply").
+ * @param  request The request to which the generated pairs should be added.
  */
 void *mod_json_object_to_value_pairs(json_object *json, const char *section, REQUEST *request)
 {
@@ -284,9 +354,17 @@ void *mod_json_object_to_value_pairs(json_object *json, const char *section, REQ
 	return NULL;
 }
 
-/* convert freeradius value/pair to json object
- * basic structure taken from freeradius function
- * vp_prints_value_json in src/lib/print.c */
+/**
+ * @brief Convert value pairs to json objects.
+ *
+ * Take the passed value pair and convert it to a json-c JSON object.
+ * This code is heavily based on the vp_prints_value_json() function
+ * from src/lib/print.c.
+ *
+ * @param  request The request object.
+ * @param  vp      The value pair to convert.
+ * @return         Returns a JSON object.
+ */
 json_object *mod_value_pair_to_json_object(REQUEST *request, VALUE_PAIR *vp)
 {
 	char value[255];    /* radius attribute value */
@@ -369,7 +447,16 @@ json_object *mod_value_pair_to_json_object(REQUEST *request, VALUE_PAIR *vp)
 	}
 }
 
-/* check current value of start timestamp in json body and update if needed */
+/**
+ * @brief Ensure accounting documents always contain a valid timestamp.
+ *
+ * Inspect the given JSON object representation of an accounting document
+ * fetched from Couchbase and ensuse it contains a valid (non NULL) timestamp value.
+ *
+ * @param  json JSON object representation of an accounting document.
+ * @param  vps  The value pairs associated with the current accounting request.
+ * @return      Returns 0 on success, -1 on error.
+ */
 int mod_ensure_start_timestamp(json_object *json, VALUE_PAIR *vps)
 {
 	json_object *jval;      /* json object value */
@@ -430,4 +517,327 @@ int mod_ensure_start_timestamp(json_object *json, VALUE_PAIR *vps)
 
 	/* default return */
 	return 0;
+}
+
+/**
+ * @brief Iterate over all client attribute pairs and create client pair data using JSON element names.
+ *
+ * If we hit a CONF_SECTION we recurse and process its CONF_PAIRS as well to support nested
+ * configurations sections.
+ *
+ * @param  client The new client config section using the mapped names.
+ * @param  map    The client attribute section from the module configuration.
+ * @param  json   JSON object representation of a client document fetched from Couchbase.
+ * @return        Returns 0 on success, -1 on error.
+ */
+static CC_HINT(nonnull) int _mod_client_map_section(CONF_SECTION *client, CONF_SECTION const *map,
+	json_object *json, char const *docid)
+{
+	CONF_ITEM const *ci;
+
+	for (ci = cf_item_find_next(map, NULL); ci != NULL; ci = cf_item_find_next(map, ci)) {
+		CONF_PAIR const *cp;
+		char const *attribute;
+		char const *element;
+		json_object *jval;
+
+		/*
+		 * Recursively process map subsection
+		 */
+		if (cf_item_is_section(ci)) {
+			CONF_SECTION *cs, *cc;    /* local scoped for new section */
+
+			cs = cf_itemtosection(ci);
+			cc = cf_section_alloc(client, cf_section_name1(cs), cf_section_name2(cs));
+			if (!cc) return -1;
+
+			cf_section_add(client, cc);
+
+			if (_mod_client_map_section(cc, cs, json, docid) != 0) {
+				return -1;
+			}
+			/* continue on to the next item */
+			continue;
+		}
+
+		/* create pair from item and get attribute name and value */
+		cp = cf_itemtopair(ci);
+		attribute = cf_pair_attr(cp);
+		element = cf_pair_value(cp);
+
+		/* attempt to find element in json object */
+		if (!json_object_object_get_ex(json, element, &jval)) {
+			/* skip this item */
+			continue;
+		}
+
+		/* allocate config pair */
+		cp = cf_pair_alloc(client, attribute, json_object_get_string(jval), T_OP_SET, T_SINGLE_QUOTED_STRING);
+
+		/* check pair */
+		if (!cp) {
+			ERROR("rlm_couchbase: failed allocating config pair '%s' = '%s'", attribute, json_object_get_string(jval));
+			return -1;
+		}
+
+		/* add pair to section */
+		cf_item_add(client, cf_pairtoitem(cp));
+	}
+
+	/* return success */
+	return 0;
+}
+
+/**
+ * @brief Load client entries from Couchbase client documents on startup.
+ *
+ * This function executes the view defined in the module configuration and loops
+ * through all returned rows.  The view is called with "stale=false" to ensure the
+ * most accurate data available when the view is called.  This will force an index
+ * rebuild on this design document in Couchbase.  However, since this function is only
+ * run once at sever startup this should not be a concern.
+ *
+ * @param  inst The module instance.
+ * @param  cs   The client attribute configuration section.
+ * @return      Returns 0 on success, -1 on error.
+ */
+int mod_load_client_documents(rlm_couchbase_t *inst, CONF_SECTION *cs)
+{
+	void *handle = NULL;                   /* connection pool handle */
+	char vpath[256], docid[MAX_KEY_SIZE];  /* view path and document id */
+	char error[512];                       /* view error return */
+	int idx = 0;                           /* row array index counter */
+	int retval = 0;                        /* return value */
+	lcb_error_t cb_error = LCB_SUCCESS;    /* couchbase error holder */
+	json_object *json, *jval;              /* json object holders */
+	json_object *jrows = NULL;             /* json object to hold view rows */
+	CONF_SECTION *client;                  /* freeradius config section */
+	RADCLIENT *c;                          /* freeradius client */
+
+	/* get handle */
+	handle = fr_connection_get(inst->pool);
+
+	/* check handle */
+	if (!handle) return -1;
+
+	/* set handle pointer */
+	rlm_couchbase_handle_t *handle_t = handle;
+
+	/* set couchbase instance */
+	lcb_t cb_inst = handle_t->handle;
+
+	/* set cookie */
+	cookie_t *cookie = handle_t->cookie;
+
+	/* check cookie */
+	if (cookie) {
+		/* clear cookie */
+		memset(cookie, 0, sizeof(cookie_t));
+	} else {
+		/* log error */
+		ERROR("rlm_couchbase: cookie not usable - possibly not allocated");
+		/* set return */
+		retval = -1;
+		/* return */
+		goto free_and_return;
+	}
+
+	/* build view path */
+	snprintf(vpath, sizeof(vpath), "%s?stale=false", inst->client_view);
+
+	/* init cookie error status */
+	cookie->jerr = json_tokener_success;
+
+	/* setup cookie tokener */
+	cookie->jtok = json_tokener_new();
+
+	/* query view for document */
+	cb_error = couchbase_query_view(cb_inst, cookie, vpath, NULL);
+
+	/* free json token */
+	json_tokener_free(cookie->jtok);
+
+	/* check error */
+	if (cb_error != LCB_SUCCESS || cookie->jerr != json_tokener_success) {
+		/* log error */
+		ERROR("rlm_couchbase: failed to execute view request or parse return");
+		/* set return */
+		retval = -1;
+		/* return */
+		goto free_and_return;
+	}
+
+	/* debugging */
+	DEBUG("rlm_couchbase: cookie->jobj == %s", json_object_to_json_string(cookie->jobj));
+
+	/* check cookie */
+	if (!cookie->jobj) {
+		/* log error */
+		ERROR("rlm_couchbase: failed to fetch view");
+		/* set return */
+		retval = -1;
+		/* return */
+		goto free_and_return;
+	}
+
+	/* check for error in json object */
+	if (json_object_object_get_ex(cookie->jobj, "error", &json)) {
+		/* build initial error buffer */
+		strlcpy(error, json_object_get_string(json), sizeof(error));
+		/* get error reason */
+		if (json_object_object_get_ex(cookie->jobj, "reason", &json)) {
+			/* append divider */
+			strlcat(error, " - ", sizeof(error));
+			/* append reason */
+			strlcat(error, json_object_get_string(json), sizeof(error));
+		}
+		/* log error */
+		ERROR("rlm_couchbase: view request failed with error: %s", error);
+		/* set return */
+		retval = -1;
+		/* return */
+		goto free_and_return;
+	}
+
+	/* check for document id in return */
+	if (!json_object_object_get_ex(cookie->jobj, "rows", &json)) {
+		/* log error */
+		ERROR("rlm_couchbase: failed to fetch rows from view payload");
+		/* set return */
+		retval = -1;
+		/* return */
+		goto free_and_return;
+	}
+
+	/* get and hold rows */
+	jrows = json_object_get(json);
+
+	/* free cookie object */
+	json_object_put(cookie->jobj);
+
+	/* debugging */
+	DEBUG("rlm_couchbase: jrows == %s", json_object_to_json_string(jrows));
+
+	/* check for valid row value */
+	if (!json_object_is_type(jrows, json_type_array) && json_object_array_length(jrows) < 1) {
+		/* log error */
+		ERROR("rlm_couchbase: couldn't find valid rows in view return");
+		/* set return */
+		retval = -1;
+		/* return */
+		goto free_and_return;
+	}
+
+	/* loop across all row elements */
+	for (idx = 0; idx < json_object_array_length(jrows); idx++) {
+		/* fetch current index */
+		json = json_object_array_get_idx(jrows, idx);
+
+		/* get document id */
+		if (json_object_object_get_ex(json, "id", &jval)) {
+			/* clear docid */
+			memset(docid, 0, sizeof(docid));
+			/* copy and check length */
+			if (strlcpy(docid, json_object_get_string(jval), sizeof(docid)) >= sizeof(docid)) {
+				ERROR("rlm_couchbase: document id from row longer than MAX_KEY_SIZE (%d)", MAX_KEY_SIZE);
+				continue;
+			}
+		}
+
+		/* check for valid doc id */
+		if (docid[0] == 0) {
+			WARN("rlm_couchbase: failed to fetch document id from row - skipping");
+			continue;
+		}
+
+		/* debugging */
+		DEBUG("rlm_couchbase: preparing to fetch docid '%s'", docid);
+
+		/* reset  cookie error status */
+		cookie->jerr = json_tokener_success;
+
+		/* fetch document */
+		cb_error = couchbase_get_key(cb_inst, cookie, docid);
+
+		/* check error */
+		if (cb_error != LCB_SUCCESS || cookie->jerr != json_tokener_success) {
+			/* log error */
+			ERROR("rlm_couchbase: failed to execute get request or parse return");
+			/* set return */
+			retval = -1;
+			/* return */
+			goto free_and_return;
+		}
+
+		/* debugging */
+		DEBUG("rlm_couchbase: cookie->jobj == %s", json_object_to_json_string(cookie->jobj));
+
+		/* allocate conf section */
+		client = cf_section_alloc(NULL, "client", docid);
+
+		if (_mod_client_map_section(client, cs, cookie->jobj, docid) != 0) {
+			/* free config setion */
+			talloc_free(client);
+			/* set return */
+			retval = -1;
+			/* return */
+			goto free_and_return;
+		}
+
+		/*
+		 * @todo These should be parented from something.
+		 */
+		c = client_afrom_cs(NULL, client, false);
+		if (!c) {
+			ERROR("rlm_couchbase: failed to allocate client");
+			/* free config setion */
+			talloc_free(client);
+			/* set return */
+			retval = -1;
+			/* return */
+			goto free_and_return;
+		}
+
+		/*
+		 * Client parents the CONF_SECTION which defined it.
+		 */
+		talloc_steal(c, client);
+
+		/* attempt to add client */
+		if (!client_add(NULL, c)) {
+			ERROR("rlm_couchbase: failed to add client from %s, possible duplicate?", docid);
+			/* free client */
+			client_free(c);
+			/* set return */
+			retval = -1;
+			/* return */
+			goto free_and_return;
+		}
+
+		/* debugging */
+		DEBUG("rlm_couchbase: client '%s' added", c->longname);
+
+		/* free json object */
+		json_object_put(cookie->jobj);
+	}
+
+	free_and_return:
+
+	/* free json object */
+	if (cookie->jobj) {
+		json_object_put(cookie->jobj);
+	}
+
+	/* free rows */
+	if (jrows) {
+		json_object_put(jrows);
+	}
+
+	/* release handle */
+	if (handle) {
+		fr_connection_release(inst->pool, handle);
+	}
+
+	/* return */
+	return retval;
 }

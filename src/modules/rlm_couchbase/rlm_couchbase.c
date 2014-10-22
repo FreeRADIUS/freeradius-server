@@ -20,7 +20,8 @@
  * @brief Integrate FreeRADIUS with the Couchbase document database.
  * @file rlm_couchbase.c
  *
- * @copyright 2013-2014 Aaron Hurt <ahurt@anbcs.com>
+ * @author Aaron Hurt <ahurt@anbcs.com>
+ * @copyright 2013-2014 The FreeRADIUS Server Project.
  */
 
 RCSID("$Id$");
@@ -38,6 +39,14 @@ RCSID("$Id$");
 #include "jsonc_missing.h"
 
 /**
+ * Client Configuration
+ */
+static const CONF_PARSER client_config[] = {
+	{ "view", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_couchbase_t, client_view), "_design/client/_view/by_name" },
+	{NULL, -1, 0, NULL, NULL}     /* end the list */
+};
+
+/**
  * Module Configuration
  */
 static const CONF_PARSER module_config[] = {
@@ -47,11 +56,21 @@ static const CONF_PARSER module_config[] = {
 	{ "bucket", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_REQUIRED, rlm_couchbase_t, bucket), NULL },
 	{ "password", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_couchbase_t, password), NULL },
 	{ "expire", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_couchbase_t, expire), 0 },
-	{ "user_key", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_REQUIRED | PW_TYPE_XLAT, rlm_couchbase_t, user_key), "raduser_%{md5:%{tolower:%{%{Stripped-User-Name}:-%{User-Name}}}}" },
+	{ "user_key", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_couchbase_t, user_key), "raduser_%{md5:%{tolower:%{%{Stripped-User-Name}:-%{User-Name}}}}" },
+	{ "read_clients", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_couchbase_t, read_clients), NULL }, /* NULL defaults to "no" */
+	{ "client", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) client_config },
 	{NULL, -1, 0, NULL, NULL}     /* end the list */
 };
 
-/* initialize couchbase connection */
+/**
+ * @brief Initialize the rlm_couchbase module.
+ *
+ * Intialize the module and create the initial Couchbase connection pool.
+ *
+ * @param  conf     The module configuration.
+ * @param  instance The module instance.
+ * @return          Returns 0 on success, -1 on error.
+ */
 static int mod_instantiate(CONF_SECTION *conf, void *instance) {
 	static bool version_done;
 
@@ -109,11 +128,53 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance) {
 		return -1;
 	}
 
+	/* load clients if requested */
+	if (inst->read_clients) {
+		CONF_SECTION *cs; /* conf section */
+
+		/* attempt to find client section */
+		cs = cf_section_sub_find(conf, "client");
+		if (!cs) {
+			ERROR("rlm_couchbase: failed to find client section while loading clients");
+			/* fail */
+			return -1;
+		}
+
+
+		/* attempt to find attribute subsection */
+		cs = cf_section_sub_find(cs, "attribute");
+		if (!cs) {
+			ERROR("rlm_couchbase: failed to find attribute subsection while loading clients");
+			/* fail */
+			return -1;
+		}
+
+		/* debugging */
+		DEBUG("rlm_couchbase: preparing to load client documents");
+
+		/* attempt to load clients */
+		if (mod_load_client_documents(inst, cs) != 0) {
+			/* fail */
+			return -1;
+		}
+	}
+
 	/* return okay */
 	return 0;
 }
 
-/* authorize users via couchbase */
+/**
+ * @brief Handle authorization requests using Couchbase document data.
+ *
+ * Attempt to fetch the document assocaited with the requested user by
+ * using the deterministic key defined in the configuration.  When a valid
+ * document is found it will be parsed and the containing value pairs will be
+ * injected into the request.
+ *
+ * @param  instance The module instance.
+ * @param  request  The authorization request.
+ * @return          Returns operation status (@p rlm_rcode_t).
+ */
 static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *request) {
 	rlm_couchbase_t *inst = instance;       /* our module instance */
 	void *handle = NULL;                    /* connection pool handle */
@@ -206,7 +267,20 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 	return RLM_MODULE_OK;
 }
 
-/* write accounting data to couchbase */
+/**
+ * @brief Write accounting data to Couchbase documents.
+ *
+ * Handle accounting requests and store the associated data into JSON documents
+ * in couchbase mapping attribute names to JSON element names per the module configuration.
+ *
+ * When an existing document already exists for the same accounting section the new attributes
+ * will be merged with the currently existing data.  When conflicts arrise the new attribute
+ * value will replace or be added to the existing value.
+ *
+ * @param  instance The module instance.
+ * @param  request  The accounting request object.
+ * @return          Returns operation status (@p rlm_rcode_t).
+ */
 static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *request) {
 	rlm_couchbase_t *inst = instance;   /* our module instance */
 	void *handle = NULL;                /* connection pool handle */
@@ -368,8 +442,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 		}
 	}
 
-	/* make sure we have enough room in our document buffer */
-	if ((unsigned int) json_object_get_string_len(cookie->jobj) > sizeof(document) - 1) {
+	/* copy json string to document and check size */
+	if (strlcpy(document, json_object_to_json_string(cookie->jobj), sizeof(document)) >= sizeof(document)) {
 		/* this isn't good */
 		RERROR("could not write json document - insufficient buffer space");
 		/* free json output */
@@ -382,13 +456,11 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 		}
 		/* return */
 		return RLM_MODULE_FAIL;
-	} else {
-		/* copy json string to document */
-		strlcpy(document, json_object_to_json_string(cookie->jobj), sizeof(document));
-		/* free json output */
-		if (cookie->jobj) {
-			json_object_put(cookie->jobj);
-		}
+	}
+
+	/* free json output */
+	if (cookie->jobj) {
+		json_object_put(cookie->jobj);
 	}
 
 	/* debugging */
@@ -411,7 +483,14 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 	return RLM_MODULE_OK;
 }
 
-/* free any memory we allocated */
+/**
+ * @brief Detach the module.
+ *
+ * Detach the module instance and free any allocated resources.
+ *
+ * @param  instance The module instance.
+ * @return          Returns 0 (success) in all conditions.
+ */
 static int mod_detach(void *instance) {
 	rlm_couchbase_t *inst = instance;  /* instance struct */
 
@@ -429,7 +508,9 @@ static int mod_detach(void *instance) {
 	return 0;
 }
 
-/* hook the module into freeradius */
+/*
+ * Hook into the FreeRADIUS module system.
+ */
 module_t rlm_couchbase = {
 	RLM_MODULE_INIT,
 	"rlm_couchbase",
