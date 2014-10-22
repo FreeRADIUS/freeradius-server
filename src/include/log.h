@@ -15,7 +15,7 @@
  */
 #ifndef FR_LOG_H
 #define FR_LOG_H
-/*
+/**
  * $Id$
  *
  * @file log.h

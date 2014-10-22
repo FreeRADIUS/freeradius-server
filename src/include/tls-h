@@ -17,7 +17,7 @@
 #define FR_TLS_H
 
 #ifdef WITH_TLS
-/*
+/**
  * $Id$
  *
  * @file tls.h
