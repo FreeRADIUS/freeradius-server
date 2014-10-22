@@ -16,7 +16,7 @@
 #ifndef FR_TOKEN_H
 #define FR_TOKEN_H
 
-/*
+/**
  * $Id$
  *
  * @file token.h

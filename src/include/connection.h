@@ -15,7 +15,7 @@
  */
 #ifndef FR_CONNECTION_H
 #define FR_CONNECTION_H
-/*
+/**
  * $Id$
  *
  * @file connection.h

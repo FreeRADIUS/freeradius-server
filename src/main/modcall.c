@@ -1103,9 +1103,9 @@ next_sibling:
 }
 
 
-/**
- * @brief Call a module, iteratively, with a local stack, rather than
- *	recursively.  What did Paul Graham say about Lisp...?
+/** Call a module, iteratively, with a local stack, rather than recursively
+ *
+ * What did Paul Graham say about Lisp...?
  */
 int modcall(rlm_components_t component, modcallable *c, REQUEST *request)
 {

@@ -14,7 +14,7 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/*
+/**
  * $Id$
  *
  * @file radius.c
@@ -382,7 +382,6 @@ ssize_t rad_recv_header(int sockfd, fr_ipaddr_t *src_ipaddr, uint16_t *src_port,
 
 /** Wrapper for recvfrom, which handles recvfromto, IPv6, and all possible combinations
  *
-
  */
 static ssize_t rad_recvfrom(int sockfd, RADIUS_PACKET *packet, int flags,
 			    fr_ipaddr_t *src_ipaddr, uint16_t *src_port,

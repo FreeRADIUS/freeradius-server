@@ -58,7 +58,7 @@ typedef struct pair_list {
 	struct pair_list	*lastdefault;
 } PAIR_LIST;
 
-/*
+/**
  * $Id$
  *
  * @file map.h

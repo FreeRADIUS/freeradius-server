@@ -16,7 +16,7 @@
 #ifndef FR_VQP_H
 #define FR_VQP_H
 
-/*
+/**
  * $Id$
  *
  * @file vqp.h

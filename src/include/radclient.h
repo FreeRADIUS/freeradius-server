@@ -15,7 +15,7 @@
  */
 #ifndef _RADCLIENT_H
 #define _RADCLIENT_H
-/*
+/**
  * $Id$
  *
  * @file radclient.h
