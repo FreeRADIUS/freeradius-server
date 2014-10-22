@@ -15,7 +15,7 @@
  */
 #ifndef RADIUSD_H
 #define RADIUSD_H
-/*
+/**
  * $Id$
  *
  * @file radiusd.h

@@ -15,7 +15,7 @@
  */
 #ifndef FR_TCP_H
 #define FR_TCP_H
-/*
+/**
  * $Id$
  *
  * @file tcp.h

@@ -3025,10 +3025,9 @@ DICT_ATTR const *dict_attrbyvalue(unsigned int attr, unsigned int vendor)
 }
 
 
-/**
- * @brief Get an attribute by its numerical value. and data type
+/** Get an attribute by its numerical value and data type
  *
- *	Used only for COMBO_IP
+ * Used only for COMBO_IP
  *
  * @return The attribute, or NULL if not found
  */
@@ -3044,8 +3043,8 @@ DICT_ATTR const *dict_attrbytype(unsigned int attr, unsigned int vendor,
 	return fr_hash_table_finddata(attributes_combo, &da);
 }
 
-/**
- * @brief Using a parent and attr/vendor, find a child attr/vendor
+/** Using a parent and attr/vendor, find a child attr/vendor
+ *
  */
 int dict_attr_child(DICT_ATTR const *parent,
 		    unsigned int *pattr, unsigned int *pvendor)

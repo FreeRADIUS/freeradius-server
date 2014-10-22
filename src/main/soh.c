@@ -14,7 +14,7 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/*
+/**
  * $Id$
  *
  * @file soh.c
@@ -373,7 +373,7 @@ static char const* healthclass2str(uint8_t hc) {
 	return NULL;
 }
 
-/**  Parse the MS-SOH response in data and update sohvp
+/** Parse the MS-SOH response in data and update sohvp
  *
  * Note that sohvp might still have been updated in event of a failure.
  *

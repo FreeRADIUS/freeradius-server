@@ -1,4 +1,4 @@
-/*
+/**
  * $Id$
  *
  * @brief Source control functions

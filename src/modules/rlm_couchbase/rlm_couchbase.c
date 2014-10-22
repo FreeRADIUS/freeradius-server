@@ -14,7 +14,7 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/*
+/**
  * $Id$
  *
  * @brief Integrate FreeRADIUS with the Couchbase document database.
@@ -265,7 +265,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 	return RLM_MODULE_OK;
 }
 
-/**  Write accounting data to Couchbase documents
+/** Write accounting data to Couchbase documents
  *
  * Handle accounting requests and store the associated data into JSON documents
  * in couchbase mapping attribute names to JSON element names per the module configuration.
