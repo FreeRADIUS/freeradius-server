@@ -70,7 +70,8 @@ static const CONF_PARSER module_config[] = {
  * @param  instance The module instance.
  * @return          Returns 0 on success, -1 on error.
  */
-static int mod_instantiate(CONF_SECTION *conf, void *instance) {
+static int mod_instantiate(CONF_SECTION *conf, void *instance)
+{
 	static bool version_done;
 
 	rlm_couchbase_t *inst = instance;   /* our module instance */
@@ -173,7 +174,8 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance) {
  * @param  request  The authorization request.
  * @return          Returns operation status (@p rlm_rcode_t).
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *request) {
+static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
+{
 	rlm_couchbase_t *inst = instance;       /* our module instance */
 	void *handle = NULL;                    /* connection pool handle */
 	char dockey[MAX_KEY_SIZE];              /* our document key */
@@ -274,11 +276,12 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
  * will be merged with the currently existing data.  When conflicts arrise the new attribute
  * value will replace or be added to the existing value.
  *
- * @param  instance The module instance.
- * @param  request  The accounting request object.
- * @return          Returns operation status (@p rlm_rcode_t).
+ * @param instance The module instance.
+ * @param request  The accounting request object.
+ * @return Returns operation status (@p rlm_rcode_t).
  */
-CC_HINT(nonnull) static rlm_rcode_t mod_accounting(void *instance, REQUEST *request) {
+static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
+{
 	rlm_couchbase_t *inst = instance;   /* our module instance */
 	void *handle = NULL;                /* connection pool handle */
 	VALUE_PAIR *vp;                     /* radius value pair linked list */
@@ -396,7 +399,8 @@ CC_HINT(nonnull) static rlm_rcode_t mod_accounting(void *instance, REQUEST *requ
 			/* add start time */
 			if ((vp = pairfind(request->packet->vps, PW_EVENT_TIMESTAMP, 0, TAG_ANY)) != NULL) {
 				/* add to json object */
-				json_object_object_add(cookie->jobj, "startTimestamp", mod_value_pair_to_json_object(request, vp));
+				json_object_object_add(cookie->jobj, "startTimestamp",
+						       mod_value_pair_to_json_object(request, vp));
 			}
 			break;
 
@@ -404,7 +408,8 @@ CC_HINT(nonnull) static rlm_rcode_t mod_accounting(void *instance, REQUEST *requ
 			/* add stop time */
 			if ((vp = pairfind(request->packet->vps, PW_EVENT_TIMESTAMP, 0, TAG_ANY)) != NULL) {
 				/* add to json object */
-				json_object_object_add(cookie->jobj, "stopTimestamp", mod_value_pair_to_json_object(request, vp));
+				json_object_object_add(cookie->jobj, "stopTimestamp",
+						       mod_value_pair_to_json_object(request, vp));
 			}
 			/* check start timestamp and adjust if needed */
 			mod_ensure_start_timestamp(cookie->jobj, request->packet->vps);
@@ -487,7 +492,8 @@ CC_HINT(nonnull) static rlm_rcode_t mod_accounting(void *instance, REQUEST *requ
  * @param  instance The module instance.
  * @return          Returns 0 (success) in all conditions.
  */
-static int mod_detach(void *instance) {
+static int mod_detach(void *instance)
+{
 	rlm_couchbase_t *inst = instance;  /* instance struct */
 
 	/* free json object attribute map */

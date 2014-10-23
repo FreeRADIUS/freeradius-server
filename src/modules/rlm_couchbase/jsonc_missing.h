@@ -18,7 +18,7 @@
  * $Id$
  *
  * @brief Function prototypes for missing functions in older json-c libraries.
- * @file json_missing.h
+ * @file jsonc_missing.h
  *
  * @author Aaron Hurt <ahurt@anbcs.com>
  * @copyright 2013-2014 The FreeRADIUS Server Project.
