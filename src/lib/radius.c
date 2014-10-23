@@ -2240,7 +2240,7 @@ int rad_tlv_ok(uint8_t const *data, size_t length,
 			return 0;
 
 		case 2:
-			if (data[dv_type + 1] != 0) {
+			if (data[dv_type] != 0) {
 				fr_strerror_printf("Attribute is longer than 256 octets");
 				return -1;
 			}
