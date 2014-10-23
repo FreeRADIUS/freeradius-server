@@ -175,6 +175,7 @@ $INCLUDE dictionary.eltex
 $INCLUDE dictionary.epygi
 $INCLUDE dictionary.equallogic
 $INCLUDE dictionary.ericsson
+$INCLUDE dictionary.ericsson.ab
 $INCLUDE dictionary.ericsson.packet.core.networks
 $INCLUDE dictionary.extreme
 $INCLUDE dictionary.f5
@@ -232,7 +233,6 @@ $INCLUDE dictionary.proxim
 $INCLUDE dictionary.purewave
 $INCLUDE dictionary.quiconnect
 $INCLUDE dictionary.quintum
-$INCLUDE dictionary.redback
 $INCLUDE dictionary.redcreek
 $INCLUDE dictionary.riverbed
 $INCLUDE dictionary.riverstone
