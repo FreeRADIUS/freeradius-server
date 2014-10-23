@@ -519,6 +519,7 @@ int mod_ensure_start_timestamp(json_object *json, VALUE_PAIR *vps)
  * @param client The new client config section using the mapped names.
  * @param map    The client attribute section from the module configuration.
  * @param json   JSON object representation of a client document fetched from Couchbase.
+ * @param docid  Document id.
  * @return       Returns 0 on success, -1 on error.
  */
 int _mod_client_map_section(CONF_SECTION *client, CONF_SECTION const *map,
