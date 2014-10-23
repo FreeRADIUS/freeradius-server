@@ -532,7 +532,8 @@ int		session_zap(REQUEST *request, uint32_t nasaddr,
 #undef debug_pair
 void		debug_pair(VALUE_PAIR *);
 void		debug_pair_list(VALUE_PAIR *);
-void 		rdebug_pair_list(int, REQUEST *, VALUE_PAIR *);
+void		rdebug_pair(int level, REQUEST *, VALUE_PAIR *);
+void 		rdebug_pair_list(int level, REQUEST *, VALUE_PAIR *);
 int		log_err (char *);
 
 /* util.c */
