@@ -222,7 +222,7 @@ static rlm_cache_entry_t *cache_find(rlm_cache_t *inst, REQUEST *request,
 	if ((c->expires < request->timestamp) ||
 	    (c->created < inst->epoch)) {
 	delete:
-		RDEBUG("Entry has expired, removing");
+		RDEBUG("Removing expired entry");
 
 		fr_heap_extract(inst->heap, c);
 		rbtree_deletebydata(inst->cache, c);

@@ -463,7 +463,7 @@ static ssize_t mschap_xlat(void *instance, REQUEST *request,
 
 		fr_bin2hex(out, buffer, NT_DIGEST_LENGTH);
 		out[32] = '\0';
-		RDEBUG("NT-Hash of %s = %s", p, out);
+		RDEBUG("NT-Hash of \"known-good\" password: %s", p, out);
 		return 32;
 
 		/*
