@@ -652,6 +652,7 @@ RUSERS
 SNMPWALK
 SNMPGET
 PERL
+openssl_version_check_config
 modconfdir
 dictdir
 raddbdir
@@ -754,6 +755,7 @@ with_rlm_FOO_include_dir
 with_openssl
 with_openssl_lib_dir
 with_openssl_include_dir
+enable_openssl_version_check
 with_talloc_lib_dir
 with_talloc_include_dir
 with_pcap_lib_dir
@@ -1396,6 +1398,9 @@ Optional Features:
   --disable-largefile     omit support for large files
   --enable-strict-dependencies  fail configure on lack of module dependancy.
   --enable-werror         causes the build to fail if any warnings are generated.
+  --disable-openssl-version-check
+                          disable vulnerable OpenSSL version check
+
 
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
@@ -5428,6 +5433,31 @@ if test "${with_openssl_include_dir+set}" = set; then :
   esac
 
 fi
+
+
+# Check whether --enable-openssl-version-check was given.
+if test "${enable_openssl_version_check+set}" = set; then :
+  enableval=$enable_openssl_version_check;
+fi
+
+if test "x$enable_openssl_version_check" != "xno"; then
+
+$as_echo "#define ENABLE_OPENSSL_VERSION_CHECK 1" >>confdefs.h
+
+  openssl_version_check_config="\
+	#
+	#  allow_vulnerable_openssl: Allow the server to start with
+	#  versions of OpenSSL known to have critical vulnerabilities.
+	#
+	#  This check is based on the version number reported by libssl
+	#  and may not reflect patches applied to libssl by
+	#  distribution maintainers.
+	#
+	allow_vulnerable_openssl = no"
+else
+  openssl_version_check_config=
+fi
+
 
 
 

@@ -295,7 +295,9 @@ int		cbtls_verify(int ok, X509_STORE_CTX *ctx);
 
 /* TLS */
 void		tls_global_init(void);
+#ifdef ENABLE_OPENSSL_VERSION_CHECK
 int		tls_global_version_check(char const *acknowledged);
+#endif
 void		tls_global_cleanup(void);
 tls_session_t	*tls_new_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *conf, REQUEST *request, bool client_cert);
 tls_session_t	*tls_new_client_session(fr_tls_server_conf_t *conf, int fd);
