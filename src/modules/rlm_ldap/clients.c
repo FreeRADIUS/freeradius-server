@@ -75,9 +75,9 @@ CC_HINT(nonnull) static int rlm_ldap_client_get_attrs(char const **values, int *
  * @param[in] entry returned from search.
  * @return 0 on success else -1 on error.
  */
-CC_HINT(nonnull) static int rlm_ldap_client_map_section(ldap_instance_t const *inst, CONF_SECTION *client,
-							CONF_SECTION const *map, ldap_handle_t *conn,
-							LDAPMessage *entry)
+static int rlm_ldap_client_map_section(ldap_instance_t const *inst, CONF_SECTION *client,
+				       CONF_SECTION const *map, ldap_handle_t *conn,
+				       LDAPMessage *entry)
 {
 	CONF_ITEM const *ci;
 
@@ -127,7 +127,7 @@ CC_HINT(nonnull) static int rlm_ldap_client_map_section(ldap_instance_t const *i
  * @param[in] cs to load client attribute/LDAP attribute mappings from.
  * @return -1 on error else 0.
  */
-CC_HINT(nonnull) int rlm_ldap_client_load(ldap_instance_t const *inst, CONF_SECTION *cs)
+int rlm_ldap_client_load(ldap_instance_t const *inst, CONF_SECTION *cs)
 {
 	int 		ret = 0;
 	ldap_rcode_t	status;
