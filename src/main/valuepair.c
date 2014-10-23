@@ -689,6 +689,23 @@ void debug_pair_list(VALUE_PAIR *vp)
 	fflush(fr_log_fp);
 }
 
+/** Print a single valuepair to stderr or error log.
+ *
+ * @param[in] level Debug level (1-4).
+ * @param[in] request to read logging params from.
+ * @param[in] vp to print.
+ */
+void rdebug_pair(int level, REQUEST *request, VALUE_PAIR *vp)
+{
+	char buffer[256];
+	if (!vp || !request || !request->log.func) return;
+
+	if (!radlog_debug_enabled(L_DBG, level, request)) return;
+
+	vp_prints(buffer, sizeof(buffer), vp);
+	RDEBUGX(level, "%s", buffer);
+}
+
 /** Print a list of valuepairs to the request list.
  *
  * @param[in] level Debug level (1-4).
@@ -706,18 +723,10 @@ void rdebug_pair_list(int level, REQUEST *request, VALUE_PAIR *vp)
 	for (vp = fr_cursor_init(&cursor, &vp);
 	     vp;
 	     vp = fr_cursor_next(&cursor)) {
-		/*
-		 *	Take this opportunity to verify all the VALUE_PAIRs are still valid.
-		 */
-		if (!talloc_get_type(vp, VALUE_PAIR)) {
-			REDEBUG("Expected VALUE_PAIR pointer got \"%s\"", talloc_get_name(vp));
-
-			fr_log_talloc_report(vp);
-			rad_assert(0);
-		}
+		VERIFY_VP(vp);
 
 		vp_prints(buffer, sizeof(buffer), vp);
-		RDEBUGX(level, "\t%s", buffer);
+		RDEBUGX(level, "%s", buffer);
 	}
 }
 

@@ -636,6 +636,9 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t *inst, REQUEST *request, rlm
 		}
 
 		if (inst->config->authorize_group_check_query && (*inst->config->authorize_group_check_query != '\0')) {
+			vp_cursor_t cursor;
+			VALUE_PAIR *vp;
+
 			/*
 			 *	Expand the group query
 			 */
@@ -665,9 +668,19 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t *inst, REQUEST *request, rlm
 				continue;
 			}
 
-			RDEBUG2("Group \"%s\" check items matched", entry->name);
+			RDEBUG2("Group \"%s\": Conditional check items matched", entry->name);
 			rcode = RLM_MODULE_OK;
 
+			RDEBUG2("Group \"%s\": Merging assignment check items", entry->name);
+			RINDENT();
+			for (vp = fr_cursor_init(&cursor, &check_tmp);
+			     vp;
+			     vp = fr_cursor_next(&cursor)) {
+			 	if (!fr_assignment_op[vp->op]) continue;
+
+			 	rdebug_pair(2, request, vp);
+			}
+			REXDENT();
 			radius_pairmove(request, &request->config_items, check_tmp, true);
 			check_tmp = NULL;
 		}
@@ -690,11 +703,14 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t *inst, REQUEST *request, rlm
 				rcode = RLM_MODULE_FAIL;
 				goto finish;
 			}
-
 			*do_fall_through = fall_through(reply_tmp);
 
-			RDEBUG2("Group \"%s\" reply items processed", entry->name);
+			RDEBUG2("Group \"%s\": Merging reply items", entry->name);
 			rcode = RLM_MODULE_OK;
+
+			RINDENT();
+			rdebug_pair_list(2, request, reply_tmp);
+			REXDENT();
 
 			radius_pairmove(request, &request->reply->vps, reply_tmp, true);
 			reply_tmp = NULL;
@@ -966,6 +982,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 	 *	Query the check table to find any conditions associated with this user/realm/whatever...
 	 */
 	if (inst->config->authorize_check_query) {
+		vp_cursor_t cursor;
+		VALUE_PAIR *vp;
+
 		if (radius_axlat(&expanded, request, inst->config->authorize_check_query,
 				 sql_escape_func, inst) < 0) {
 			REDEBUG("Error generating query");
@@ -994,8 +1013,18 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 			goto skipreply;
 		}
 
-		RDEBUG2("Check items matched");
+		RDEBUG2("Conditional check items matched, merging assignment check items");
+		RINDENT();
+		for (vp = fr_cursor_init(&cursor, &check_tmp);
+		     vp;
+		     vp = fr_cursor_next(&cursor)) {
+			if (!fr_assignment_op[vp->op]) continue;
+
+			rdebug_pair(2, request, vp);
+		}
+		REXDENT();
 		radius_pairmove(request, &request->config_items, check_tmp, true);
+
 		rcode = RLM_MODULE_OK;
 		check_tmp = NULL;
 	}
@@ -1023,9 +1052,15 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 
 		do_fall_through = fall_through(reply_tmp);
 
-		RDEBUG2("User found in radreply table");
+		RDEBUG2("User found in radreply table, merging reply items");
 		user_found = true;
+
+		RINDENT();
+		rdebug_pair_list(2, request, reply_tmp);
+		REXDENT();
+
 		radius_pairmove(request, &request->reply->vps, reply_tmp, true);
+
 		rcode = RLM_MODULE_OK;
 		reply_tmp = NULL;
 	}
