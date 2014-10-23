@@ -41,7 +41,8 @@ RCSID("$Id$");
  * @param error    Couchbase error object.
  * @param resp     Couchbase statistics response object.
  */
-void couchbase_stat_callback(lcb_t instance, const void *cookie, lcb_error_t error, const lcb_server_stat_resp_t *resp) {
+void couchbase_stat_callback(lcb_t instance, const void *cookie, lcb_error_t error, const lcb_server_stat_resp_t *resp)
+{
 	if (error != LCB_SUCCESS) {
 		/* log error */
 		ERROR("rlm_couchbase: (stats_callback) %s (0x%x)", lcb_strerror(instance, error), error);
@@ -59,7 +60,9 @@ void couchbase_stat_callback(lcb_t instance, const void *cookie, lcb_error_t err
  * @param error     Couchbase error object.
  * @param resp      Couchbase store operation response object.
  */
-void couchbase_store_callback(lcb_t instance, const void *cookie, lcb_storage_t operation, lcb_error_t error, const lcb_store_resp_t *resp) {
+void couchbase_store_callback(lcb_t instance, const void *cookie, lcb_storage_t operation,
+			      lcb_error_t error, const lcb_store_resp_t *resp)
+{
 	if (error != LCB_SUCCESS) {
 		/* log error */
 		ERROR("rlm_couchbase: (store_callback) %s (0x%x)", lcb_strerror(instance, error), error);
@@ -77,7 +80,8 @@ void couchbase_store_callback(lcb_t instance, const void *cookie, lcb_storage_t 
  * @param error    Couchbase error object.
  * @param resp     Couchbase get operation response object.
  */
-void couchbase_get_callback(lcb_t instance, const void *cookie, lcb_error_t error, const lcb_get_resp_t *resp) {
+void couchbase_get_callback(lcb_t instance, const void *cookie, lcb_error_t error, const lcb_get_resp_t *resp)
+{
 	cookie_u cu;                            /* union of const and non const pointers */
 	cu.cdata = cookie;                      /* set const union member to cookie passed from couchbase */
 	cookie_t *c = (cookie_t *) cu.data;     /* set our cookie struct using non-const member */
@@ -103,7 +107,8 @@ void couchbase_get_callback(lcb_t instance, const void *cookie, lcb_error_t erro
 				break;
 			default:
 				/* log error */
-				ERROR("rlm_couchbase: (get_callback) JSON Tokener error: %s", json_tokener_error_desc(c->jerr));
+				ERROR("rlm_couchbase: (get_callback) JSON Tokener error: %s",
+				      json_tokener_error_desc(c->jerr));
 				break;
 			}
 		}
@@ -129,7 +134,9 @@ void couchbase_get_callback(lcb_t instance, const void *cookie, lcb_error_t erro
  * @param error    Couchbase error object.
  * @param resp     Couchbase http response object.
  */
-void couchbase_http_data_callback(lcb_http_request_t request, lcb_t instance, const void *cookie, lcb_error_t error, const lcb_http_resp_t *resp) {
+void couchbase_http_data_callback(lcb_http_request_t request, lcb_t instance, const void *cookie,
+				  lcb_error_t error, const lcb_http_resp_t *resp)
+{
 	cookie_u cu;                            /* union of const and non const pointers */
 	cu.cdata = cookie;                      /* set const union member to cookie passed from couchbase */
 	cookie_t *c = (cookie_t *) cu.data;     /* set our cookie struct using non-const member */
@@ -155,7 +162,8 @@ void couchbase_http_data_callback(lcb_http_request_t request, lcb_t instance, co
 				break;
 			default:
 				/* log error */
-				ERROR("rlm_couchbase: (http_data_callback) JSON Tokener error: %s", json_tokener_error_desc(c->jerr));
+				ERROR("rlm_couchbase: (http_data_callback) JSON Tokener error: %s",
+				      json_tokener_error_desc(c->jerr));
 				break;
 			}
 		}
@@ -181,7 +189,8 @@ void couchbase_http_data_callback(lcb_http_request_t request, lcb_t instance, co
  * @param pass     The Couchbase bucket password (NULL if none).
  * @return          Couchbase error object.
  */
-lcb_error_t couchbase_init_connection(lcb_t *instance, const char *host, const char *bucket, const char *pass) {
+lcb_error_t couchbase_init_connection(lcb_t *instance, const char *host, const char *bucket, const char *pass)
+{
 	lcb_error_t error;                      /* couchbase command return */
 	struct lcb_create_st options;           /* init create struct */
 
@@ -230,7 +239,8 @@ lcb_error_t couchbase_init_connection(lcb_t *instance, const char *host, const c
  * @param  cookie   Couchbase cookie for returning information from callbacks.
  * @return          Couchbase error object.
  */
-lcb_error_t couchbase_server_stats(lcb_t instance, const void *cookie) {
+lcb_error_t couchbase_server_stats(lcb_t instance, const void *cookie)
+s{
 	lcb_error_t error;                         /* couchbase command return */
 	lcb_server_stats_cmd_t cmd;                /* server stats command stuct */
 	const lcb_server_stats_cmd_t *commands[1]; /* server stats commands array */
@@ -263,7 +273,8 @@ lcb_error_t couchbase_server_stats(lcb_t instance, const void *cookie) {
  * @param  expire   Expiration time for the document (0 = never)
  * @return          Couchbase error object.
  */
-lcb_error_t couchbase_set_key(lcb_t instance, const char *key, const char *document, int expire) {
+lcb_error_t couchbase_set_key(lcb_t instance, const char *key, const char *document, int expire)
+{
 	lcb_error_t error;                  /* couchbase command return */
 	lcb_store_cmd_t cmd;                /* store command stuct */
 	const lcb_store_cmd_t *commands[1]; /* store commands array */
@@ -299,7 +310,8 @@ lcb_error_t couchbase_set_key(lcb_t instance, const char *key, const char *docum
  * @param  key      Document key to fetch.
  * @return          Couchbase error object.
  */
-lcb_error_t couchbase_get_key(lcb_t instance, const void *cookie, const char *key) {
+lcb_error_t couchbase_get_key(lcb_t instance, const void *cookie, const char *key)
+{
 	lcb_error_t error;                  /* couchbase command return */
 	lcb_get_cmd_t cmd;                  /* get command struct */
 	const lcb_get_cmd_t *commands[1];   /* get commands array */
@@ -332,7 +344,8 @@ lcb_error_t couchbase_get_key(lcb_t instance, const void *cookie, const char *ke
  * @param  post     The post payload (NULL for none).
  * @return          Couchbase error object.
  */
-lcb_error_t couchbase_query_view(lcb_t instance, const void *cookie, const char *path, const char *post) {
+lcb_error_t couchbase_query_view(lcb_t instance, const void *cookie, const char *path, const char *post)
+{
 	lcb_error_t error;                   /* couchbase command return */
 	lcb_http_cmd_t cmd;                  /* http command struct */
 	const lcb_http_cmd_t *commands;      /* http commands array */

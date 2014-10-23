@@ -516,13 +516,13 @@ int mod_ensure_start_timestamp(json_object *json, VALUE_PAIR *vps)
  * If we hit a CONF_SECTION we recurse and process its CONF_PAIRS as well to support nested
  * configurations sections.
  *
- * @param  client The new client config section using the mapped names.
- * @param  map    The client attribute section from the module configuration.
- * @param  json   JSON object representation of a client document fetched from Couchbase.
- * @return        Returns 0 on success, -1 on error.
+ * @param client The new client config section using the mapped names.
+ * @param map    The client attribute section from the module configuration.
+ * @param json   JSON object representation of a client document fetched from Couchbase.
+ * @return       Returns 0 on success, -1 on error.
  */
-CC_HINT(nonnull) static int _mod_client_map_section(CONF_SECTION *client, CONF_SECTION const *map,
-						    json_object *json, char const *docid)
+int _mod_client_map_section(CONF_SECTION *client, CONF_SECTION const *map,
+			    json_object *json, char const *docid)
 {
 	CONF_ITEM const *ci;
 
