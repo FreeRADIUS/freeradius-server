@@ -37,7 +37,7 @@ RCSID("$Id$")
 #endif
 
 #if 0
-#define VP_TRACE if (fr_debug_flag) printf
+#define VP_TRACE printf
 
 static void VP_HEXDUMP(char const *msg, uint8_t const *data, size_t len)
 {
@@ -50,6 +50,7 @@ static void VP_HEXDUMP(char const *msg, uint8_t const *data, size_t len)
 		if ((i & 0x0f) == 0x0f) printf("\n");
 	}
 	if ((len == 0x0f) || ((len & 0x0f) != 0x0f)) printf("\n");
+	fflush(stdout);
 }
 
 #else
@@ -2194,6 +2195,10 @@ int rad_tlv_ok(uint8_t const *data, size_t length,
 {
 	uint8_t const *end = data + length;
 
+	VP_TRACE("checking TLV %u/%u\n", (unsigned int) dv_type, (unsigned int) dv_length);
+
+	VP_HEXDUMP("tlv_ok", data, length);
+
 	if ((dv_length > 2) || (dv_type == 0) || (dv_type > 4)) {
 		fr_strerror_printf("rad_tlv_ok: Invalid arguments");
 		return -1;
@@ -3030,6 +3035,8 @@ static ssize_t data2vp_vsa(TALLOC_CTX *ctx, RADIUS_PACKET *packet,
 	ssize_t attrlen, my_len;
 	DICT_ATTR const *da;
 
+	VP_TRACE("data2vp_vsa: length %u\n", (unsigned int) length);
+
 #ifndef NDEBUG
 	if (length <= (dv->type + dv->length)) {
 		fr_strerror_printf("data2vp_vsa: Failure to call rad_tlv_ok");
@@ -3309,10 +3316,15 @@ static ssize_t data2vp_vsas(TALLOC_CTX *ctx, RADIUS_PACKET *packet,
 	if (attrlen < 5) return -1; /* vid, value */
 	if (data[0] != 0) return -1; /* we require 24-bit VIDs */
 
+	VP_TRACE("data2vp_vsas\n");
+
 	memcpy(&vendor, data, 4);
 	vendor = ntohl(vendor);
 	dv = dict_vendorbyvalue(vendor);
-	if (!dv) return -1;
+	if (!dv) {
+		VP_TRACE("unknown vendor %04x", vendor);
+		return -1;
+	}
 
 	/*
 	 *	WiMAX craziness
@@ -3327,7 +3339,10 @@ static ssize_t data2vp_vsas(TALLOC_CTX *ctx, RADIUS_PACKET *packet,
 	 *	VSAs should normally be in TLV format.
 	 */
 	if (rad_tlv_ok(data + 4, attrlen - 4,
-		       dv->type, dv->length) < 0) return -1;
+		       dv->type, dv->length) < 0) {
+		VP_TRACE("data2vp_vsas: tlvs not OK: %s\n", fr_strerror());
+		return -1;
+	}
 
 	/*
 	 *	There may be more than one VSA in the
@@ -3465,6 +3480,7 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 	 *	Decrypt the attribute.
 	 */
 	if (secret && packet && (da->flags.encrypt != FLAG_ENCRYPT_NONE)) {
+		VP_TRACE("data2vp: decrypting type %u\n", da->flags.encrypt);
 		/*
 		 *	Encrypted attributes can only exist for the
 		 *	old-style format.  Extended attributes CANNOT
@@ -3537,6 +3553,7 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 	 *	Double-check the length after decrypting the
 	 *	attribute.
 	 */
+	VP_TRACE("data2vp: type %u\n", da->type);
 	switch (da->type) {
 	case PW_TYPE_STRING:
 	case PW_TYPE_OCTETS:
@@ -3874,13 +3891,17 @@ ssize_t rad_attr2vp(TALLOC_CTX *ctx,
 	}
 
 	da = dict_attrbyvalue(data[0], 0);
-	if (!da) da = dict_unknown_afrom_fields(ctx, data[0], 0);
+	if (!da) {
+		VP_TRACE("attr2vp: unknown attribute %u\n", data[0]);
+		da = dict_unknown_afrom_fields(ctx, data[0], 0);
+	}
 	if (!da) return -1;
 
 	/*
 	 *	Pass the entire thing to the decoding function
 	 */
 	if (da->flags.concat) {
+		VP_TRACE("attr2vp: concat attribute\n");
 		return data2vp_concat(ctx, da, data, length, pvp);
 	}
 
