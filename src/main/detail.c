@@ -607,8 +607,6 @@ open_file:
 		 */
 		if (!strchr(op, '=')) continue;
 
-		DEBUG("READ %s %s", key, value);
-
 		/*
 		 *	Skip non-protocol attributes.
 		 */
