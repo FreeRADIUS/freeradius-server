@@ -350,7 +350,6 @@ static ssize_t xlat_client(UNUSED void *instance, REQUEST *request, char const *
 			strlcpy(out, request->client->shortname, outlen);
 			return strlen(out);
 		}
-		RDEBUG("Client does not contain config item \"%s\"", fmt);
 		*out = '\0';
 		return 0;
 	}
@@ -401,7 +400,6 @@ static ssize_t xlat_getclient(UNUSED void *instance, REQUEST *request, char cons
 			strlcpy(out, request->client->shortname, outlen);
 			return strlen(out);
 		}
-		RDEBUG("Client does not contain config item \"%s\"", fmt);
 		*out = '\0';
 		return 0;
 	}
