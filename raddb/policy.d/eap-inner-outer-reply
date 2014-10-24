@@ -1,0 +1,30 @@
+#  This policy checks which reply we need to update
+#
+eap-inner_outer_reply.post-auth {
+	# if EAP-TTLS and using the tunneled reply, set control flag to 0
+	if ( ("%{outer.request:EAP-Type}" == 'TTLS') && ("${modules.eap.ttls.use_tunneled_reply}" == 'yes') ) {
+		update control {
+			Use-Outer-Reply := 0
+		}
+	} 
+	# if EAP-TTLS and NOT using the tunneled reply, set control flag to 1
+	elsif ( ("%{outer.request:EAP-Type}" == 'TTLS') && ("${modules.eap.ttls.use_tunneled_reply}" == 'no') ) {
+		update control {
+			Use-Outer-Reply := 1
+		}
+	}
+	# if PEAP and using the tunneled reply, set control flag to 0
+	elsif ( ("%{outer.request:EAP-Type}" == 'PEAP') && ("${modules.eap.peap.use_tunneled_reply}" == 'yes') ) {
+		update control {
+			Use-Outer-Reply := 0
+		}
+	}
+	# if PEAP and NOT using the tunneled reply, set control flag to 1
+	elsif ( ("%{outer.request:EAP-Type}" == 'PEAP') && ("${modules.eap.peap.use_tunneled_reply}" == 'no') ) {
+		update control {
+			Use-Outer-Reply := 1
+		}
+	}
+}
+
+
