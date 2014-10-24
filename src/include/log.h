@@ -162,38 +162,36 @@ int fr_logfile_unlock(fr_logfile_t *lf, int fd);
  *
  *	If a REQUEST * is available, these functions should be used.
  */
-#define _RLOG(_l, _p, _f, ...)		radlog_request(_l, _p, request, _f, ## __VA_ARGS__)
-#define _RMOD(_l, _p, _f, ...)		radlog_request_error(_l, _p, request, _f, ## __VA_ARGS__)
-#define _RMKR(_l, _p, _m, _i, _e)	radlog_request_marker(_l, _p, request, _m, _i, _e)
-
 #define RDEBUG_ENABLED		radlog_debug_enabled(L_DBG, L_DBG_LVL_1, request)
 #define RDEBUG_ENABLED2		radlog_debug_enabled(L_DBG, L_DBG_LVL_2, request)
+#define _RMKR(_l, _p, _m, _i, _e)	radlog_request_marker(_l, _p, request, _m, _i, _e)
+
 #define RDEBUG_ENABLED3		radlog_debug_enabled(L_DBG, L_DBG_LVL_3, request)
 #define RDEBUG_ENABLED4		radlog_debug_enabled(L_DBG, L_DBG_LVL_MAX, request)
 
-#define RAUTH(fmt, ...)		_RLOG(L_AUTH, L_DBG_LVL_OFF, fmt, ## __VA_ARGS__)
-#define RACCT(fmt, ...)		_RLOG(L_ACCT, L_DBG_LVL_OFF, fmt, ## __VA_ARGS__)
-#define RPROXY(fmt, ...)	_RLOG(L_PROXY, L_DBG_LVL_OFF, fmt, ## __VA_ARGS__)
+#define RAUTH(fmt, ...)		radlog_request(L_AUTH, L_DBG_LVL_OFF, request, fmt, ## __VA_ARGS__)
+#define RACCT(fmt, ...)		radlog_request(L_ACCT, L_DBG_LVL_OFF, request, fmt, ## __VA_ARGS__)
+#define RPROXY(fmt, ...)	radlog_request(L_PROXY, L_DBG_LVL_OFF, request, fmt, ## __VA_ARGS__)
 
-#define RDEBUGX(_l, fmt, ...)	_RLOG(L_DBG, _l, fmt, ## __VA_ARGS__)
-#define RDEBUG(fmt, ...)	_RLOG(L_DBG, L_DBG_LVL_1, fmt, ## __VA_ARGS__)
-#define RDEBUG2(fmt, ...)	_RLOG(L_DBG, L_DBG_LVL_2, fmt, ## __VA_ARGS__)
-#define RDEBUG3(fmt, ...)	_RLOG(L_DBG, L_DBG_LVL_3, fmt, ## __VA_ARGS__)
-#define RDEBUG4(fmt, ...)	_RLOG(L_DBG, L_DBG_LVL_MAX, fmt, ## __VA_ARGS__)
+#define RDEBUGX(_l, fmt, ...)	radlog_request(L_DBG, _l, request, fmt, ## __VA_ARGS__)
+#define RDEBUG(fmt, ...)	radlog_request(L_DBG, L_DBG_LVL_1, request, fmt, ## __VA_ARGS__)
+#define RDEBUG2(fmt, ...)	radlog_request(L_DBG, L_DBG_LVL_2, request, fmt, ## __VA_ARGS__)
+#define RDEBUG3(fmt, ...)	radlog_request(L_DBG, L_DBG_LVL_3, request, fmt, ## __VA_ARGS__)
+#define RDEBUG4(fmt, ...)	radlog_request(L_DBG, L_DBG_LVL_MAX, request, fmt, ## __VA_ARGS__)
 
-#define RINFO(fmt, ...)		_RLOG(L_INFO, L_DBG_LVL_OFF, fmt, ## __VA_ARGS__)
-#define RIDEBUG(fmt, ...)	_RLOG(L_INFO, L_DBG_LVL_1, fmt, ## __VA_ARGS__)
-#define RIDEBUG2(fmt, ...)	_RLOG(L_INFO, L_DBG_LVL_2, fmt, ## __VA_ARGS__)
+#define RINFO(fmt, ...)		radlog_request(L_INFO, L_DBG_LVL_OFF, request, fmt, ## __VA_ARGS__)
+#define RIDEBUG(fmt, ...)	radlog_request(L_INFO, L_DBG_LVL_1, request, fmt, ## __VA_ARGS__)
+#define RIDEBUG2(fmt, ...)	radlog_request(L_INFO, L_DBG_LVL_2, request, fmt, ## __VA_ARGS__)
 
-#define RWARN(fmt, ...)		_RLOG(L_DBG_WARN, L_DBG_LVL_OFF, fmt, ## __VA_ARGS__)
-#define RWDEBUG(fmt, ...)	_RLOG(L_DBG_WARN, L_DBG_LVL_1, fmt, ## __VA_ARGS__)
-#define RWDEBUG2(fmt, ...)	_RLOG(L_DBG_WARN, L_DBG_LVL_2, fmt, ## __VA_ARGS__)
+#define RWARN(fmt, ...)		radlog_request(L_DBG_WARN, L_DBG_LVL_OFF, request, fmt, ## __VA_ARGS__)
+#define RWDEBUG(fmt, ...)	radlog_request(L_DBG_WARN, L_DBG_LVL_1, request, fmt, ## __VA_ARGS__)
+#define RWDEBUG2(fmt, ...)	radlog_request(L_DBG_WARN, L_DBG_LVL_2, request, fmt, ## __VA_ARGS__)
 
-#define RERROR(fmt, ...)	_RMOD(L_DBG_ERR, L_DBG_LVL_OFF, fmt, ## __VA_ARGS__)
-#define REDEBUG(fmt, ...)	_RMOD(L_DBG_ERR, L_DBG_LVL_1, fmt, ## __VA_ARGS__)
-#define REDEBUG2(fmt, ...)	_RMOD(L_DBG_ERR, L_DBG_LVL_2, fmt, ## __VA_ARGS__)
-#define REDEBUG3(fmt, ...)	_RMOD(L_DBG_ERR, L_DBG_LVL_3, fmt, ## __VA_ARGS__)
-#define REDEBUG4(fmt, ...)	_RMOD(L_DBG_ERR, L_DBG_LVL_MAX, fmt, ## __VA_ARGS__)
+#define RERROR(fmt, ...)	radlog_request_error(L_DBG_ERR, L_DBG_LVL_OFF, request, fmt, ## __VA_ARGS__)
+#define REDEBUG(fmt, ...)	radlog_request_error(L_DBG_ERR, L_DBG_LVL_1, request, fmt, ## __VA_ARGS__)
+#define REDEBUG2(fmt, ...)	radlog_request_error(L_DBG_ERR, L_DBG_LVL_2, request, fmt, ## __VA_ARGS__)
+#define REDEBUG3(fmt, ...)	radlog_request_error(L_DBG_ERR, L_DBG_LVL_3, request, fmt, ## __VA_ARGS__)
+#define REDEBUG4(fmt, ...)	radlog_request_error(L_DBG_ERR, L_DBG_LVL_MAX, request, fmt, ## __VA_ARGS__)
 
 #define RINDENT()		(request->log.indent++)
 #define REXDENT()		(request->log.indent--)
