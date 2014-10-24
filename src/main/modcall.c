@@ -316,17 +316,16 @@ static rlm_rcode_t CC_HINT(nonnull) call_modsingle(rlm_components_t component, m
 		goto fail;
 	}
 
-	safe_lock(sp->modinst);
-
 	/*
 	 *	For logging unresponsive children.
 	 */
 	request->module = sp->modinst->name;
 
+	safe_lock(sp->modinst);
 	request->rcode = sp->modinst->entry->module->methods[component](sp->modinst->insthandle, request);
+	safe_unlock(sp->modinst);
 
 	request->module = "";
-	safe_unlock(sp->modinst);
 
 	/*
 	 *	Wasn't blocked, and now is.  Complain!
