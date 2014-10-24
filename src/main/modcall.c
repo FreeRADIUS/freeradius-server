@@ -60,7 +60,7 @@ struct modcallable {
 
 #define MOD_LOG_OPEN_BRACE(_name) \
 do {\
-	if (_name && (_name != c->name)) {\
+	if (_name && (strcmp(_name,c->name) != 0)) {\
 		RDEBUG2("%s %s {", _name, c->name);\
 	} else {\
 		RDEBUG2("%s {", c->name);\
@@ -69,7 +69,7 @@ do {\
 
 #define MOD_LOG_CLOSE_BRACE() \
 do {\
-	if (cf_section_name1(g->cs) && (cf_section_name1(g->cs) != c->name)) { \
+	if (cf_section_name1(g->cs) && (strcmp(cf_section_name1(g->cs), c->name) != 0)) { \
 		RDEBUG2("} # %s %s = %s", cf_section_name1(g->cs), c->name, \
 			fr_int2str(mod_rcode_table, result, "<invalid>"));\
 	} else {\
@@ -780,7 +780,7 @@ redo:
 		if (c->name) {
 			MOD_LOG_OPEN_BRACE(cf_section_name1(g->cs));
 		} else {
-			RDEBUG2("%s {", modcall_spaces, cf_section_name1(g->cs));
+			RDEBUG2("%s {", cf_section_name1(g->cs));
 		}
 		modcall_child(request, component,
 			      depth + 1, entry, g->children,
