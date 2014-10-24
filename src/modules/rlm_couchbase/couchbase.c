@@ -240,7 +240,7 @@ lcb_error_t couchbase_init_connection(lcb_t *instance, const char *host, const c
  * @return          Couchbase error object.
  */
 lcb_error_t couchbase_server_stats(lcb_t instance, const void *cookie)
-s{
+{
 	lcb_error_t error;                         /* couchbase command return */
 	lcb_server_stats_cmd_t cmd;                /* server stats command stuct */
 	const lcb_server_stats_cmd_t *commands[1]; /* server stats commands array */
