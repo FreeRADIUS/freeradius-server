@@ -110,10 +110,6 @@ struct fr_connection_pool_t {
 	uint32_t       	idle_timeout;	//!< How long a connection can be idle
 					//!< before being closed.
 
-	bool		trigger;	//!< If true execute connection triggers
-					//!< associated with the connection
-					//!< pool.
-
 	bool		spread;		//!< If true requests will be spread
 					//!< across all connections, instead of
 					//!< re-using the most recently used
@@ -157,6 +153,11 @@ struct fr_connection_pool_t {
 	char const	*log_prefix;	//!< Log prefix to prepend to all log
 					//!< messages created by the connection
 					//!< pool code.
+
+	char const	*trigger_prefix;	//!< Prefix to prepend to
+						//!< names of all triggers
+						//!< fired by the connection
+						//!< pool code.
 
 	fr_connection_create_t	create;	//!< Function used to create new
 					//!< connections.
@@ -271,6 +272,20 @@ static void fr_connection_link_tail(fr_connection_pool_t *pool,
 	}
 }
 
+/** Send a connection pool trigger.
+ *
+ * @param[in] pool to send trigger for.
+ * @param[in] name_suffix trigger name suffix.
+ */
+static void fr_connection_exec_trigger(fr_connection_pool_t *pool,
+					char const *name_suffix)
+{
+	char name[64];
+	rad_assert(pool != NULL);
+	rad_assert(name_suffix != NULL);
+	snprintf(name, sizeof(name), "%s%s", pool->trigger_prefix, name_suffix);
+	exec_trigger(NULL, pool->cs, name, true);
+}
 
 /** Spawns a new connection
  *
@@ -403,7 +418,7 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool,
 
 	pthread_mutex_unlock(&pool->mutex);
 
-	if (pool->trigger) exec_trigger(NULL, pool->cs, "open", true);
+	fr_connection_exec_trigger(pool, "open");
 
 	return this;
 }
@@ -436,7 +451,7 @@ static void fr_connection_close(fr_connection_pool_t *pool,
 		pool->active--;
 	}
 
-	if (pool->trigger) exec_trigger(NULL, pool->cs, "close", true);
+	fr_connection_exec_trigger(pool, "close");
 
 	fr_connection_unlink(pool, this);
 	rad_assert(pool->num > 0);
@@ -542,7 +557,7 @@ void fr_connection_pool_delete(fr_connection_pool_t *pool)
 		fr_connection_close(pool, this);
 	}
 
-	if (pool->trigger) exec_trigger(NULL, pool->cs, "stop", true);
+	fr_connection_exec_trigger(pool, "stop");
 
 	rad_assert(pool->head == NULL);
 	rad_assert(pool->tail == NULL);
@@ -559,33 +574,36 @@ void fr_connection_pool_delete(fr_connection_pool_t *pool)
  * @param[in] opaque data pointer to pass to callbacks.
  * @param[in] c Callback to create new connections.
  * @param[in] a Callback to check the status of connections.
- * @param[in] prefix override, if NULL will be set automatically from the module CONF_SECTION.
+ * @param[in] log_prefix override, if NULL will be set automatically from the module CONF_SECTION.
  * @return A new connection pool or NULL on error.
  */
 fr_connection_pool_t *fr_connection_pool_module_init(CONF_SECTION *module,
 						     void *opaque,
 						     fr_connection_create_t c,
 						     fr_connection_alive_t a,
-						     char const *prefix)
+						     char const *log_prefix)
 {
 	CONF_SECTION *cs, *mycs;
 	char buff[128];
+	char trigger_prefix[64];
 
 	fr_connection_pool_t *pool;
+	char const *cs_name1, *cs_name2;
 
 	int ret;
 
 #define CONNECTION_POOL_CF_KEY "connection_pool"
 #define parent_name(_x) cf_section_name(cf_item_parent(cf_sectiontoitem(_x)))
 
-	if (!prefix) {
-		char const *cs_name1, *cs_name2;
-		cs_name1 = cf_section_name1(module);
-		cs_name2 = cf_section_name2(module);
-		if (!cs_name2) cs_name2 = cs_name1;
+	cs_name1 = cf_section_name1(module);
+	cs_name2 = cf_section_name2(module);
+	if (!cs_name2) cs_name2 = cs_name1;
 
+	snprintf(trigger_prefix, sizeof(trigger_prefix), "modules.%s.", cs_name1);
+
+	if (!log_prefix) {
 		snprintf(buff, sizeof(buff), "rlm_%s (%s)", cs_name1, cs_name2);
-		prefix = buff;
+		log_prefix = buff;
 	}
 
 	/*
@@ -597,11 +615,11 @@ fr_connection_pool_t *fr_connection_pool_module_init(CONF_SECTION *module,
 		return NULL;
 
 	case 1:
-		DEBUG4("%s: Using pool section from \"%s\"", prefix, parent_name(cs));
+		DEBUG4("%s: Using pool section from \"%s\"", log_prefix, parent_name(cs));
 		break;
 
 	case 0:
-		DEBUG4("%s: Using local pool section", prefix);
+		DEBUG4("%s: Using local pool section", log_prefix);
 		break;
 	}
 
@@ -610,7 +628,7 @@ fr_connection_pool_t *fr_connection_pool_module_init(CONF_SECTION *module,
 	 */
 	mycs = cf_section_sub_find(module, "pool");
 	if (!mycs) {
-		DEBUG4("%s: Adding pool section to config item \"%s\" to store pool references", prefix,
+		DEBUG4("%s: Adding pool section to config item \"%s\" to store pool references", log_prefix,
 		       cf_section_name(module));
 
 		mycs = cf_section_alloc(module, "pool", NULL);
@@ -622,7 +640,7 @@ fr_connection_pool_t *fr_connection_pool_module_init(CONF_SECTION *module,
 	 *	Use our own local pool.
 	 */
 	if (!cs) {
-		DEBUG4("%s: \"%s.pool\" section not found, using \"%s.pool\"", prefix,
+		DEBUG4("%s: \"%s.pool\" section not found, using \"%s.pool\"", log_prefix,
 		       parent_name(cs), parent_name(mycs));
 		cs = mycs;
 	}
@@ -636,16 +654,16 @@ fr_connection_pool_t *fr_connection_pool_module_init(CONF_SECTION *module,
 	 */
 	pool = cf_data_find(cs, CONNECTION_POOL_CF_KEY);
 	if (!pool) {
-		DEBUG4("%s: No pool reference found for config item \"%s.pool\"", prefix, parent_name(cs));
-		pool = fr_connection_pool_init(module, cs, opaque, c, a, prefix);
+		DEBUG4("%s: No pool reference found for config item \"%s.pool\"", log_prefix, parent_name(cs));
+		pool = fr_connection_pool_init(module, cs, opaque, c, a, log_prefix, trigger_prefix);
 		if (!pool) return NULL;
 
-		DEBUG4("%s: Adding pool reference %p to config item \"%s.pool\"", prefix, pool, parent_name(cs));
+		DEBUG4("%s: Adding pool reference %p to config item \"%s.pool\"", log_prefix, pool, parent_name(cs));
 		cf_data_add(cs, CONNECTION_POOL_CF_KEY, pool, NULL);
 		return pool;
 	}
 
-	DEBUG4("%s: Found pool reference %p in config item \"%s.pool\"", prefix, pool, parent_name(cs));
+	DEBUG4("%s: Found pool reference %p in config item \"%s.pool\"", log_prefix, pool, parent_name(cs));
 
 	/*
 	 *	We're reusing pool data add it to our local config
@@ -654,7 +672,7 @@ fr_connection_pool_t *fr_connection_pool_module_init(CONF_SECTION *module,
 	 */
 	if (mycs != cs) {
 		DEBUG4("%s: Copying pool reference %p from config item \"%s.pool\" to config item \"%s.pool\"",
-		       prefix, pool, parent_name(cs), parent_name(mycs));
+		       log_prefix, pool, parent_name(cs), parent_name(mycs));
 		cf_data_add(mycs, CONNECTION_POOL_CF_KEY, pool, NULL);
 	}
 
@@ -676,7 +694,8 @@ fr_connection_pool_t *fr_connection_pool_module_init(CONF_SECTION *module,
  * @param[in] opaque data pointer to pass to callbacks.
  * @param[in] c Callback to create new connections.
  * @param[in] a Callback to check the status of connections.
- * @param[in] prefix to prepend to all log messages.
+ * @param[in] log_prefix prefix to prepend to all log messages.
+ * @param[in] trigger_prefix prefix to prepend to all trigger names.
  * @return A new connection pool or NULL on error.
  */
 fr_connection_pool_t *fr_connection_pool_init(CONF_SECTION *parent,
@@ -684,7 +703,8 @@ fr_connection_pool_t *fr_connection_pool_init(CONF_SECTION *parent,
 					      void *opaque,
 					      fr_connection_create_t c,
 					      fr_connection_alive_t a,
-					      char const *prefix)
+					      char const *log_prefix,
+					      char const *trigger_prefix)
 {
 	uint32_t i;
 	fr_connection_pool_t *pool;
@@ -720,7 +740,9 @@ fr_connection_pool_t *fr_connection_pool_init(CONF_SECTION *parent,
 
 	pool->head = pool->tail = NULL;
 
-	pool->log_prefix = prefix ? talloc_typed_strdup(pool, prefix) : "core";
+	pool->log_prefix = log_prefix ? talloc_typed_strdup(pool, log_prefix) : "core";
+	pool->trigger_prefix = trigger_prefix ?
+					talloc_typed_strdup(pool, trigger_prefix) : "";
 
 #ifdef HAVE_PTHREAD_H
 	pthread_mutex_init(&pool->mutex, NULL);
@@ -729,7 +751,6 @@ fr_connection_pool_t *fr_connection_pool_init(CONF_SECTION *parent,
 	DEBUG("%s: Initialising connection pool", pool->log_prefix);
 
 	if (cf_section_parse(cs, pool, connection_config) < 0) goto error;
-	if (cf_section_sub_find(cs, "trigger")) pool->trigger = true;
 
 	/*
 	 *	Some simple limits
@@ -780,7 +801,7 @@ fr_connection_pool_t *fr_connection_pool_init(CONF_SECTION *parent,
 		}
 	}
 
-	if (pool->trigger) exec_trigger(NULL, pool->cs, "start", true);
+	fr_connection_exec_trigger(pool, "start");
 
 	return pool;
 }
@@ -1222,7 +1243,7 @@ void *fr_connection_reconnect(fr_connection_pool_t *pool, void *conn)
 		return NULL;
 	}
 
-	if (pool->trigger) exec_trigger(NULL, pool->cs, "close", true);
+	fr_connection_exec_trigger(pool, "close");
 	this->connection = new_conn;
 	pthread_mutex_unlock(&pool->mutex);
 
