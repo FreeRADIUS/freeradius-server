@@ -1303,12 +1303,12 @@ void map_debug_log(REQUEST *request, value_pair_map_t const *map, VALUE_PAIR con
 
 	switch (map->lhs->type) {
 	case TMPL_TYPE_LIST:
-		RDEBUG("\t%s%s %s %s", map->lhs->name, vp ? vp->da->name : "",
+		RDEBUG("%s%s %s %s", map->lhs->name, vp ? vp->da->name : "",
 		       fr_int2str(fr_tokens, vp ? vp->op : map->op, "<INVALID>"), value);
 		break;
 
 	case TMPL_TYPE_ATTR:
-		RDEBUG("\t%s %s %s", map->lhs->name,
+		RDEBUG("%s %s %s", map->lhs->name,
 		       fr_int2str(fr_tokens, vp ? vp->op : map->op, "<INVALID>"), value);
 		break;
 

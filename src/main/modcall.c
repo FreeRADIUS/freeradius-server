@@ -58,10 +58,24 @@ struct modcallable {
 	int actions[RLM_MODULE_NUMCODES];
 };
 
-#define MOD_LOG_OPEN_BRACE(_name) RDEBUG2("%.*s%s %s {", depth + 1, modcall_spaces, _name ? _name : "", c->name)
-#define MOD_LOG_CLOSE_BRACE() RDEBUG2("%.*s} # %s %s = %s", depth + 1, modcall_spaces, \
-				      cf_section_name1(g->cs) ? cf_section_name1(g->cs) : "", c->name ? c->name : "", \
-				      fr_int2str(mod_rcode_table, result, "<invalid>"))
+#define MOD_LOG_OPEN_BRACE(_name) \
+do {\
+	if (_name && (_name != c->name)) {\
+		RDEBUG2("%s %s {", _name, c->name);\
+	} else {\
+		RDEBUG2("%s {", c->name);\
+	}\
+} while (0)
+
+#define MOD_LOG_CLOSE_BRACE() \
+do {\
+	if (cf_section_name1(g->cs) && (cf_section_name1(g->cs) != c->name)) { \
+		RDEBUG2("} # %s %s = %s", cf_section_name1(g->cs), c->name, \
+			fr_int2str(mod_rcode_table, result, "<invalid>"));\
+	} else {\
+		RDEBUG2("} # %s = %s", c->name, fr_int2str(mod_rcode_table, result, "<invalid>"));\
+	}\
+} while (0)
 
 typedef struct {
 	modcallable		mc;		/* self */
@@ -282,6 +296,7 @@ static void safe_unlock(module_instance_t *instance)
 static rlm_rcode_t CC_HINT(nonnull) call_modsingle(rlm_components_t component, modsingle *sp, REQUEST *request)
 {
 	int blocked;
+	int indent = request->log.indent;
 
 	/*
 	 *	If the request should stop, refuse to do anything.
@@ -289,10 +304,10 @@ static rlm_rcode_t CC_HINT(nonnull) call_modsingle(rlm_components_t component, m
 	blocked = (request->master_state == REQUEST_STOP_PROCESSING);
 	if (blocked) return RLM_MODULE_NOOP;
 
-	RINDENT();
 	RDEBUG3("modsingle[%s]: calling %s (%s) for request %d",
-	       comp2str[component], sp->modinst->name,
-	       sp->modinst->entry->name, request->number);
+		comp2str[component], sp->modinst->name,
+		sp->modinst->entry->name, request->number);
+	request->log.indent = 0;
 
 	if (sp->modinst->force) {
 		request->rcode = sp->modinst->code;
@@ -320,7 +335,7 @@ static rlm_rcode_t CC_HINT(nonnull) call_modsingle(rlm_components_t component, m
 	}
 
  fail:
-	REXDENT();
+	request->log.indent = indent;
 	RDEBUG3("modsingle[%s]: returned from %s (%s) for request %d",
 	       comp2str[component], sp->modinst->name,
 	       sp->modinst->entry->name, request->number);
@@ -440,6 +455,7 @@ static bool modcall_recurse(REQUEST *request, rlm_components_t component, int de
 
 	was_if = if_taken = false;
 	result = RLM_MODULE_UNKNOWN;
+	RINDENT();
 
 redo:
 	priority = -1;
@@ -449,7 +465,7 @@ redo:
 	 *	Nothing more to do.  Return the code and priority
 	 *	which was set by the caller.
 	 */
-	if (!c) return true;
+	if (!c) goto finish;
 
 	/*
 	 *	We've been asked to stop.  Do so.
@@ -459,7 +475,7 @@ redo:
 	     (request->parent->master_state == REQUEST_STOP_PROCESSING))) {
 		entry->result = RLM_MODULE_FAIL;
 		entry->priority = 9999;
-		return true;
+		goto finish;
 	}
 
 #ifdef WITH_UNLANG
@@ -474,15 +490,14 @@ redo:
 		g = mod_callabletogroup(c);
 		rad_assert(g->cond != NULL);
 
-		RDEBUG2("%.*s %s %s", depth + 1, modcall_spaces,
-			group_name[c->type], c->name);
+		RDEBUG2("%s %s{", group_name[c->type], c->name);
 
 		condition = radius_evaluate_cond(request, result, 0, g->cond);
 		if (condition < 0) {
 			condition = false;
 			REDEBUG("Failed retrieving values required to evaluate condition");
 		} else {
-			RDEBUG2("%.*s %s %s -> %s", depth + 1, modcall_spaces,
+			RDEBUG2("%s %s -> %s",
 				group_name[c->type],
 				c->name, condition ? "TRUE" : "FALSE");
 		}
@@ -515,8 +530,7 @@ redo:
 		 *	Like MOD_ELSE, but allow for a later "else"
 		 */
 		if (if_taken) {
-			RDEBUG2("%.*s ... skipping %s for request %d: Preceding \"if\" was taken",
-				depth + 1, modcall_spaces,
+			RDEBUG2("... skipping %s for request %d: Preceding \"if\" was taken",
 				group_name[c->type], request->number);
 			was_if = true;
 			if_taken = true;
@@ -535,15 +549,13 @@ redo:
 	if (c->type == MOD_ELSE) {
 		if (!was_if) { /* error */
 		elsif_error:
-			RDEBUG2("%.*s ... skipping %s for request %d: No preceding \"if\"",
-				depth + 1, modcall_spaces,
+			RDEBUG2("... skipping %s for request %d: No preceding \"if\"",
 				group_name[c->type], request->number);
 			goto next_sibling;
 		}
 
 		if (if_taken) {
-			RDEBUG2("%.*s ... skipping %s for request %d: Preceding \"if\" was taken",
-				depth + 1, modcall_spaces,
+			RDEBUG2("... skipping %s for request %d: Preceding \"if\" was taken",
 				group_name[c->type], request->number);
 			was_if = false;
 			if_taken = false;
@@ -576,7 +588,7 @@ redo:
 		sp = mod_callabletosingle(c);
 
 		result = call_modsingle(c->method, sp, request);
-		RDEBUG2("%.*s[%s] = %s", depth + 1, modcall_spaces, c->name ? c->name : "",
+		RDEBUG2("[%s] = %s", c->name ? c->name : "",
 			fr_int2str(mod_rcode_table, result, "<invalid>"));
 		goto calculate_result;
 	} /* MOD_SINGLE */
@@ -590,17 +602,18 @@ redo:
 		modgroup *g = mod_callabletogroup(c);
 		value_pair_map_t *map;
 
-
 		MOD_LOG_OPEN_BRACE("update");
+		RINDENT();
 		for (map = g->map; map != NULL; map = map->next) {
 			rcode = map_to_request(request, map, map_to_vp, NULL);
 			if (rcode < 0) {
 				result = (rcode == -2) ? RLM_MODULE_INVALID : RLM_MODULE_FAIL;
+				REXDENT();
 				MOD_LOG_CLOSE_BRACE();
 				goto calculate_result;
 			}
 		}
-
+		REXDENT();
 		result = RLM_MODULE_NOOP;
 		MOD_LOG_CLOSE_BRACE();
 		goto calculate_result;
@@ -654,7 +667,7 @@ redo:
 		rad_assert(vps != NULL);
 		fr_cursor_init(&copy, &vps);
 
-		RDEBUG2("%.*sforeach %s ", depth + 1, modcall_spaces, c->name);
+		RDEBUG2("foreach %s ", c->name);
 
 		/*
 		 *	This is the actual body of the foreach loop
@@ -667,8 +680,7 @@ redo:
 				char buffer[1024];
 
 				vp_prints_value(buffer, sizeof(buffer), vp, '"');
-				RDEBUG2("%.*s #  Foreach-Variable-%d = %s", depth + 1,
-					modcall_spaces, foreach_depth, buffer);
+				RDEBUG2("# Foreach-Variable-%d = %s", foreach_depth, buffer);
 			}
 #endif
 
@@ -726,7 +738,7 @@ redo:
 		for (i = 8; i >= 0; i--) {
 			copy_p = request_data_get(request, radius_get_vp, i);
 			if (copy_p) {
-				RDEBUG2("%.*s # break Foreach-Variable-%d", depth + 1, modcall_spaces, i);
+				RDEBUG2("# break Foreach-Variable-%d", i);
 				break;
 			}
 		}
@@ -735,7 +747,7 @@ redo:
 		 *	Leave result / priority on the stack, and stop processing the section.
 		 */
 		entry->unwind = MOD_FOREACH;
-		return true;
+		goto finish;
 	} /* MOD_BREAK */
 #endif	  /* WITH_PROXY */
 
@@ -762,15 +774,14 @@ redo:
 		 *	MOD_GROUP.
 		 */
 		if (!g->children) {
-			RDEBUG2("%.*s%s { ... } # empty sub-section is ignored",
-				depth + 1, modcall_spaces, c->name);
+			RDEBUG2("%s { ... } # empty sub-section is ignored", c->name);
 			goto next_sibling;
 		}
 
 		if (c->name) {
 			MOD_LOG_OPEN_BRACE(cf_section_name1(g->cs));
 		} else {
-			RDEBUG2("%.*s%s {", depth + 1, modcall_spaces, cf_section_name1(g->cs));
+			RDEBUG2("%s {", modcall_spaces, cf_section_name1(g->cs));
 		}
 		modcall_child(request, component,
 			      depth + 1, entry, g->children,
@@ -1031,7 +1042,7 @@ calculate_result:
 	if ((c->actions[result] == MOD_ACTION_RETURN) &&
 	    (priority <= 0)) {
 		entry->result = result;
-		return true;
+		goto finish;
 	}
 
 	/*
@@ -1040,7 +1051,7 @@ calculate_result:
 	 */
 	if (c->actions[result] == MOD_ACTION_REJECT) {
 		entry->result = RLM_MODULE_REJECT;
-		return true;
+		goto finish;
 	}
 
 	/*
@@ -1065,7 +1076,7 @@ calculate_result:
 	 *	If we're processing a "case" statement, we return once
 	 *	it's done, rather than going to the next "case" statement.
 	 */
-	if (c->type == MOD_CASE) return true;
+	if (c->type == MOD_CASE) goto finish;
 #endif
 
 	/*
@@ -1073,10 +1084,9 @@ calculate_result:
 	 *	it, do so.
 	 */
 	if (entry->unwind != 0) {
-		RDEBUG2("%.*s # unwind to enclosing %s", depth + 1, modcall_spaces,
-			group_name[entry->unwind]);
+		RDEBUG2("# unwind to enclosing %s", group_name[entry->unwind]);
 		entry->unwind = 0;
-		return true;
+		goto finish;
 	}
 
 next_sibling:
@@ -1084,9 +1094,11 @@ next_sibling:
 
 	if (entry->c) goto redo;
 
+finish:
 	/*
 	 *	And we're done!
 	 */
+	REXDENT();
 	return true;
 }
 

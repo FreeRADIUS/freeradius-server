@@ -193,8 +193,8 @@ int fr_logfile_unlock(fr_logfile_t *lf, int fd);
 #define REDEBUG3(fmt, ...)	radlog_request_error(L_DBG_ERR, L_DBG_LVL_3, request, fmt, ## __VA_ARGS__)
 #define REDEBUG4(fmt, ...)	radlog_request_error(L_DBG_ERR, L_DBG_LVL_MAX, request, fmt, ## __VA_ARGS__)
 
-#define RINDENT()		(request->log.indent++)
-#define REXDENT()		(request->log.indent--)
+#define RINDENT()		(request->log.indent += 2)
+#define REXDENT()		(request->log.indent -= 2)
 
 /*
  * Output string with error marker, showing where format error occurred.
