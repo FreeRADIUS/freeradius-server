@@ -536,7 +536,7 @@ inline bool rate_limit_enabled(void)
 inline bool radlog_debug_enabled(log_type_t type, log_debug_t lvl, REQUEST *request)
 {
 	/*
-	 *	It's a debug class message, not this doesn't mean it's a debug type message.
+	 *	It's a debug class message, note this doesn't mean it's a debug type message.
 	 *
 	 *	For example it could be a RIDEBUG message, which would be an informational message,
 	 *	instead of an RDEBUG message which would be a debug debug message.
@@ -562,6 +562,7 @@ void vradlog_request(log_type_t type, log_debug_t lvl, REQUEST *request, char co
 	char buffer[10240];	/* The largest config item size, then extra for prefixes and suffixes */
 	char *p;
 	char const *extra = "";
+	uint8_t indent;
 	va_list aq;
 
 	rad_assert(request);
@@ -587,7 +588,7 @@ void vradlog_request(log_type_t type, log_debug_t lvl, REQUEST *request, char co
 		filename = default_log.file;
 	}
 
-	if (request && filename) {
+	if (filename) {
 		radlog_func_t rl = request->log.func;
 
 		request->log.func = NULL;
@@ -645,11 +646,6 @@ void vradlog_request(log_type_t type, log_debug_t lvl, REQUEST *request, char co
 		if (len >= sizeof(buffer)) goto finish;
 	}
 
-	if (request && request->module[0]) {
-		len = snprintf(buffer + len, sizeof(buffer) - len, "%s : ", request->module);
-		if (len >= sizeof(buffer)) goto finish;
-	}
-
 	/*
 	 *  If we don't copy the original ap we get a segfault from vasprintf. This is apparently
 	 *  due to ap sometimes being implemented with a stack offset which is invalidated if
@@ -663,7 +659,7 @@ void vradlog_request(log_type_t type, log_debug_t lvl, REQUEST *request, char co
 	vsnprintf(buffer + len, sizeof(buffer) - len, msg, aq);
 	va_end(aq);
 
-	finish:
+finish:
 	switch (type) {
 	case L_DBG_WARN:
 		extra = "WARNING: ";
@@ -678,27 +674,36 @@ void vradlog_request(log_type_t type, log_debug_t lvl, REQUEST *request, char co
 		break;
 	}
 
-	if (!fp) {
+	indent = request->log.indent > sizeof(spaces) ?
+		 sizeof(spaces) :
+		 request->log.indent;
 
-		if (debug_flag > 2) extra = "";
-
-		if (request) {
-			uint8_t indent;
-
-			indent = request->log.indent > sizeof(spaces) ?
-				 sizeof(spaces) :
-				 request->log.indent;
-			radlog_always(type, "(%u) %.*s%s%s", request->number, indent, spaces, extra, buffer);
+	/*
+	 *	Logging to a file descriptor
+	 */
+	if (fp) {
+		if (request->module && (request->module[0] != '\0')) {
+			fprintf(fp, "(%u) %s: %.*s%s%s\n", request->number,
+				request->module, indent, spaces, extra, buffer);
 		} else {
-			radlog_always(type, "%s%s", extra, buffer);
+			fprintf(fp, "(%u) %.*s%s%s\n", request->number,
+				indent, spaces, extra, buffer);
 		}
-	} else {
-		if (request) {
-			fprintf(fp, "(%u) %s", request->number, extra);
-		}
-		fputs(buffer, fp);
-		fputc('\n', fp);
 		fclose(fp);
+		return;
+	}
+
+	/*
+	 *	Logging everywhere else
+	 */
+	if (debug_flag > 2) extra = "";
+
+	if (request->module && (request->module[0] != '\0')) {
+		radlog_always(type, "(%u) %s: %.*s%s%s", request->number,
+			      request->module, indent, spaces, extra, buffer);
+	} else {
+		radlog_always(type, "(%u) %.*s%s%s", request->number,
+			      indent, spaces, extra, buffer);
 	}
 }
 
