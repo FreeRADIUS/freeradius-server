@@ -69,7 +69,9 @@ do {\
 
 #define MOD_LOG_CLOSE_BRACE() \
 do {\
-	if (cf_section_name1(g->cs) && (strcmp(cf_section_name1(g->cs), c->name) != 0)) { \
+        if (!c->name) { \
+		RDEBUG2("} # %s = %s", group_name[c->type], fr_int2str(mod_rcode_table, result, "<invalid>"));\
+	} else if (cf_section_name1(g->cs) && (strcmp(cf_section_name1(g->cs), c->name) != 0)) { \
 		RDEBUG2("} # %s %s = %s", cf_section_name1(g->cs), c->name, \
 			fr_int2str(mod_rcode_table, result, "<invalid>"));\
 	} else {\
