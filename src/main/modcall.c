@@ -48,6 +48,7 @@ struct modcallable {
 	modcallable *parent;
 	struct modcallable *next;
 	char const *name;
+	char const *debug_name;
 	enum { MOD_SINGLE = 1, MOD_GROUP, MOD_LOAD_BALANCE, MOD_REDUNDANT_LOAD_BALANCE,
 #ifdef WITH_UNLANG
 	       MOD_IF, MOD_ELSE, MOD_ELSIF, MOD_UPDATE, MOD_SWITCH, MOD_CASE,
@@ -58,26 +59,9 @@ struct modcallable {
 	int actions[RLM_MODULE_NUMCODES];
 };
 
-#define MOD_LOG_OPEN_BRACE(_name) \
-do {\
-	if (_name && (strcmp(_name,c->name) != 0)) {\
-		RDEBUG2("%s %s {", _name, c->name);\
-	} else {\
-		RDEBUG2("%s {", c->name);\
-	}\
-} while (0)
+#define MOD_LOG_OPEN_BRACE RDEBUG2("%s {", c->debug_name)
 
-#define MOD_LOG_CLOSE_BRACE() \
-do {\
-        if (!c->name) { \
-		RDEBUG2("} # %s = %s", group_name[c->type], fr_int2str(mod_rcode_table, result, "<invalid>"));\
-	} else if (cf_section_name1(g->cs) && (strcmp(cf_section_name1(g->cs), c->name) != 0)) { \
-		RDEBUG2("} # %s %s = %s", cf_section_name1(g->cs), c->name, \
-			fr_int2str(mod_rcode_table, result, "<invalid>"));\
-	} else {\
-		RDEBUG2("} # %s = %s", c->name, fr_int2str(mod_rcode_table, result, "<invalid>"));\
-	}\
-} while (0)
+#define MOD_LOG_CLOSE_BRACE RDEBUG2("} # %s = %s", c->debug_name, fr_int2str(mod_rcode_table, result, "<invalid>"))
 
 typedef struct {
 	modcallable		mc;		/* self */
@@ -605,20 +589,20 @@ redo:
 		modgroup *g = mod_callabletogroup(c);
 		value_pair_map_t *map;
 
-		MOD_LOG_OPEN_BRACE("update");
+		MOD_LOG_OPEN_BRACE;
 		RINDENT();
 		for (map = g->map; map != NULL; map = map->next) {
 			rcode = map_to_request(request, map, map_to_vp, NULL);
 			if (rcode < 0) {
 				result = (rcode == -2) ? RLM_MODULE_INVALID : RLM_MODULE_FAIL;
 				REXDENT();
-				MOD_LOG_CLOSE_BRACE();
+				MOD_LOG_CLOSE_BRACE;
 				goto calculate_result;
 			}
 		}
 		REXDENT();
 		result = RLM_MODULE_NOOP;
-		MOD_LOG_CLOSE_BRACE();
+		MOD_LOG_CLOSE_BRACE;
 		goto calculate_result;
 	} /* MOD_IF */
 
@@ -661,9 +645,9 @@ redo:
 		 *	iterating over.
 		 */
 		if (tmpl_copy_vps(request, &vps, request, g->vpt) < 0) {	/* nothing to loop over */
-			MOD_LOG_OPEN_BRACE("foreach");
+			MOD_LOG_OPEN_BRACE;
 			result = RLM_MODULE_NOOP;
-			MOD_LOG_CLOSE_BRACE();
+			MOD_LOG_CLOSE_BRACE;
 			goto calculate_result;
 		}
 
@@ -727,7 +711,7 @@ redo:
 		rad_assert(next != NULL);
 		result = next->result;
 		priority = next->priority;
-		MOD_LOG_CLOSE_BRACE();
+		MOD_LOG_CLOSE_BRACE;
 		goto calculate_result;
 	} /* MOD_FOREACH */
 
@@ -781,15 +765,11 @@ redo:
 			goto next_sibling;
 		}
 
-		if (c->name) {
-			MOD_LOG_OPEN_BRACE(cf_section_name1(g->cs));
-		} else {
-			RDEBUG2("%s {", cf_section_name1(g->cs));
-		}
+		MOD_LOG_OPEN_BRACE;
 		modcall_child(request, component,
 			      depth + 1, entry, g->children,
 			      &result);
-		MOD_LOG_CLOSE_BRACE();
+		MOD_LOG_CLOSE_BRACE;
 		goto calculate_result;
 	} /* MOD_GROUP */
 
@@ -801,7 +781,7 @@ redo:
 		value_pair_map_t map;
 		value_pair_tmpl_t vpt;
 
-		MOD_LOG_OPEN_BRACE("switch");
+		MOD_LOG_OPEN_BRACE;
 
 		g = mod_callabletogroup(c);
 
@@ -924,7 +904,7 @@ redo:
 		modcall_child(request, component,
 			      depth + 1, entry, found,
 			      &result);
-		MOD_LOG_CLOSE_BRACE();
+		MOD_LOG_CLOSE_BRACE;
 		goto calculate_result;
 	} /* MOD_SWITCH */
 #endif
@@ -935,7 +915,7 @@ redo:
 		modcallable *this, *found;
 		modgroup *g;
 
-		MOD_LOG_OPEN_BRACE("load-balance");
+		MOD_LOG_OPEN_BRACE;
 
 		g = mod_callabletogroup(c);
 		found = g->children;
@@ -952,7 +932,7 @@ redo:
 			}
 		}
 
-		MOD_LOG_OPEN_BRACE(group_name[c->type]);
+		MOD_LOG_OPEN_BRACE;
 
 		if (c->type == MOD_LOAD_BALANCE) {
 			modcall_child(request, component,
@@ -975,7 +955,7 @@ redo:
 				if (!this) this = g->children;
 			} while (this != found);
 		}
-		MOD_LOG_CLOSE_BRACE();
+		MOD_LOG_CLOSE_BRACE;
 		goto calculate_result;
 	} /* MOD_LOAD_BALANCE */
 
@@ -3358,19 +3338,27 @@ static bool modcall_pass2_update(modgroup *g)
 bool modcall_pass2(modcallable *mc)
 {
 	ssize_t slen;
-	modcallable *this;
+	char const *name2;
+	modcallable *c;
 	modgroup *g;
 
-	for (this = mc; this != NULL; this = this->next) {
-		switch (this->type) {
+	for (c = mc; c != NULL; c = c->next) {
+		switch (c->type) {
 		default:
 			rad_assert(0 == 1);
 			break;
 
 #ifdef WITH_UNLANG
 		case MOD_UPDATE:
-			g = mod_callabletogroup(this);
+			g = mod_callabletogroup(c);
 			if (g->done_pass2) return true;
+
+			name2 = cf_section_name2(g->cs);
+			if (!name2) {
+				c->debug_name = group_name[c->type];
+			} else {
+				c->debug_name = talloc_asprintf(c, "update %s", name2);
+			}
 
 			if (!modcall_pass2_update(g)) {
 				return false;
@@ -3389,8 +3377,11 @@ bool modcall_pass2(modcallable *mc)
 #ifdef WITH_UNLANG
 		case MOD_IF:
 		case MOD_ELSIF:
-			g = mod_callabletogroup(this);
+			g = mod_callabletogroup(c);
 			if (g->done_pass2) return true;
+
+			name2 = cf_section_name2(g->cs);
+			c->debug_name = talloc_asprintf(c, "%s %s", group_name[c->type], name2);
 
 			/*
 			 *	Don't walk over these.
@@ -3417,19 +3408,22 @@ bool modcall_pass2(modcallable *mc)
 
 #ifdef WITH_UNLANG
 		case MOD_SWITCH:
-			g = mod_callabletogroup(this);
+			g = mod_callabletogroup(c);
 			if (g->done_pass2) return true;
+
+			name2 = cf_section_name2(g->cs);
+			c->debug_name = talloc_asprintf(c, "%s %s", group_name[c->type], name2);
 
 			/*
 			 *	We had &Foo-Bar, where Foo-Bar is
 			 *	defined by a module.
 			 */
 			if (!g->vpt) {
-				rad_assert(this->name != NULL);
-				rad_assert(this->name[0] == '&');
+				rad_assert(c->name != NULL);
+				rad_assert(c->name[0] == '&');
 				rad_assert(cf_section_name2_type(g->cs) == T_BARE_WORD);
 
-				slen = tmpl_afrom_str(g->cs, &g->vpt, this->name,
+				slen = tmpl_afrom_str(g->cs, &g->vpt, c->name,
 						      cf_section_name2_type(g->cs),
 						      REQUEST_CURRENT, PAIR_LIST_REQUEST);
 				if (slen < 0) {
@@ -3439,7 +3433,7 @@ bool modcall_pass2(modcallable *mc)
 					fr_canonicalize_error(g->cs, &spaces, &text, slen, fr_strerror());
 
 					cf_log_err_cs(g->cs, "Syntax error");
-					cf_log_err_cs(g->cs, "%s", this->name);
+					cf_log_err_cs(g->cs, "%s", c->name);
 					cf_log_err_cs(g->cs, "%s^ %s", spaces, text);
 
 					talloc_free(spaces);
@@ -3475,7 +3469,7 @@ bool modcall_pass2(modcallable *mc)
 			if (g->vpt->type == TMPL_TYPE_LITERAL) {
 				value_pair_tmpl_t *vpt;
 
-				slen = tmpl_afrom_str(g->cs, &vpt, this->name, cf_section_name2_type(g->cs),
+				slen = tmpl_afrom_str(g->cs, &vpt, c->name, cf_section_name2_type(g->cs),
 						      REQUEST_CURRENT, PAIR_LIST_REQUEST);
 				if (slen < 0) goto parse_error;
 				if (vpt->type == TMPL_TYPE_ATTR) {
@@ -3493,11 +3487,11 @@ bool modcall_pass2(modcallable *mc)
 			 *	ALLOWED   : switch &User-Name { ...
 			 */
 			if ((g->vpt->type == TMPL_TYPE_ATTR) &&
-			    (this->name[0] != '&')) {
+			    (c->name[0] != '&')) {
 				WARN("%s[%d]: Please change %s to &%s",
 				       cf_section_filename(g->cs),
 				       cf_section_lineno(g->cs),
-				       this->name, this->name);
+				       c->name, c->name);
 			}
 
 		do_children:
@@ -3506,11 +3500,18 @@ bool modcall_pass2(modcallable *mc)
 			break;
 
 		case MOD_CASE:
-			g = mod_callabletogroup(this);
+			g = mod_callabletogroup(c);
 			if (g->done_pass2) return true;
 
-			rad_assert(this->parent != NULL);
-			rad_assert(this->parent->type == MOD_SWITCH);
+			name2 = cf_section_name2(g->cs);
+			if (!name2) {
+				c->debug_name = group_name[c->type];
+			} else {
+				c->debug_name = talloc_asprintf(c, "%s %s", group_name[c->type], name2);
+			}
+
+			rad_assert(c->parent != NULL);
+			rad_assert(c->parent->type == MOD_SWITCH);
 
 			/*
 			 *	The statement may refer to an
@@ -3518,10 +3519,10 @@ bool modcall_pass2(modcallable *mc)
 			 *	all of the modules have been loaded.
 			 *	Check for that now.
 			 */
-			if (!g->vpt && this->name &&
-			    (this->name[0] == '&') &&
+			if (!g->vpt && c->name &&
+			    (c->name[0] == '&') &&
 			    (cf_section_name2_type(g->cs) == T_BARE_WORD)) {
-				slen = tmpl_afrom_str(g->cs, &g->vpt, this->name,
+				slen = tmpl_afrom_str(g->cs, &g->vpt, c->name,
 						      cf_section_name2_type(g->cs),
 						      REQUEST_CURRENT, PAIR_LIST_REQUEST);
 				if (slen < 0) goto parse_error;
@@ -3593,8 +3594,11 @@ bool modcall_pass2(modcallable *mc)
 			break;
 
 		case MOD_FOREACH:
-			g = mod_callabletogroup(this);
+			g = mod_callabletogroup(c);
 			if (g->done_pass2) return true;
+
+			name2 = cf_section_name2(g->cs);
+			c->debug_name = talloc_asprintf(c, "%s %s", group_name[c->type], name2);
 
 			/*
 			 *	Already parsed, handle the children.
@@ -3605,8 +3609,8 @@ bool modcall_pass2(modcallable *mc)
 			 *	We had &Foo-Bar, where Foo-Bar is
 			 *	defined by a module.
 			 */
-			rad_assert(this->name != NULL);
-			rad_assert(this->name[0] == '&');
+			rad_assert(c->name != NULL);
+			rad_assert(c->name[0] == '&');
 			rad_assert(cf_section_name2_type(g->cs) == T_BARE_WORD);
 
 			/*
@@ -3615,7 +3619,7 @@ bool modcall_pass2(modcallable *mc)
 			 *	all of the modules have been loaded.
 			 *	Check for that now.
 			 */
-			slen = tmpl_afrom_str(g->cs, &g->vpt, this->name, cf_section_name2_type(g->cs),
+			slen = tmpl_afrom_str(g->cs, &g->vpt, c->name, cf_section_name2_type(g->cs),
 					      REQUEST_CURRENT, PAIR_LIST_REQUEST);
 			if (slen < 0) goto parse_error;
 
@@ -3630,14 +3634,24 @@ bool modcall_pass2(modcallable *mc)
 			break;
 
 		case MOD_ELSE:
+			c->debug_name = group_name[c->type];
+			goto do_recurse;
+
 		case MOD_POLICY:
-			/* FALL-THROUGH */
+			g = mod_callabletogroup(c);
+			c->debug_name = talloc_asprintf(c, "%s %s", group_name[c->type], cf_section_name1(g->cs));
+			goto do_recurse;
 #endif
 
 		case MOD_GROUP:
 		case MOD_LOAD_BALANCE:
 		case MOD_REDUNDANT_LOAD_BALANCE:
-			g = mod_callabletogroup(this);
+			c->debug_name = group_name[c->type];
+
+#ifdef WITH_UNLANG
+		do_recurse:
+#endif
+			g = mod_callabletogroup(c);
 			if (g->done_pass2) return true;
 			if (!modcall_pass2(g->children)) return false;
 			g->done_pass2 = true;
