@@ -160,6 +160,8 @@ static void add_child(modgroup *g, modcallable *c)
 {
 	if (!c) return;
 
+	(void) talloc_steal(g, c);
+
 	if (!g->children) {
 		g->children = g->tail = c;
 	} else {
@@ -486,7 +488,7 @@ redo:
 	if (c->type == MOD_IF) {
 		int condition;
 		modgroup *g;
-
+		
 	mod_if:
 		g = mod_callabletogroup(c);
 		rad_assert(g->cond != NULL);
@@ -1829,9 +1831,7 @@ static modcallable *do_compile_modupdate(modcallable *parent, UNUSED rlm_compone
 		return NULL;
 	}
 
-	g = rad_malloc(sizeof(*g)); /* never fails */
-	memset(g, 0, sizeof(*g));
-
+	g = talloc_zero(parent, modgroup);
 	csingle = mod_grouptocallable(g);
 
 	csingle->parent = parent;
@@ -1851,7 +1851,7 @@ static modcallable *do_compile_modupdate(modcallable *parent, UNUSED rlm_compone
 	g->grouptype = GROUPTYPE_SIMPLE;
 	g->children = NULL;
 	g->cs = cs;
-	g->map = head;
+	g->map = talloc_steal(g, head);
 
 	return csingle;
 }
@@ -1958,7 +1958,7 @@ static modcallable *do_compile_modswitch(modcallable *parent, rlm_components_t c
 	}
 
 	g = mod_callabletogroup(csingle);
-	g->vpt = vpt;
+	g->vpt = talloc_steal(g, vpt);
 
 	return csingle;
 }
@@ -2029,7 +2029,7 @@ static modcallable *do_compile_modcase(modcallable *parent, rlm_components_t com
 	csingle->name = name2;
 
 	g = mod_callabletogroup(csingle);
-	g->vpt = vpt;
+	g->vpt = talloc_steal(g, vpt);
 
 	/*
 	 *	Set all of it's codes to return, so that
@@ -2158,8 +2158,7 @@ static modcallable *do_compile_modserver(modcallable *parent,
 		return NULL;
 	}
 
-	mr = rad_malloc(sizeof(*mr));
-	memset(mr, 0, sizeof(*mr));
+	mr = talloc_zero(parent, modref);
 
 	csingle = mod_reftocallable(mr);
 	csingle->parent = parent;
@@ -2183,8 +2182,7 @@ static modcallable *do_compile_modxlat(modcallable *parent,
 	modcallable *csingle;
 	modxlat *mx;
 
-	mx = rad_malloc(sizeof(*mx));
-	memset(mx, 0, sizeof(*mx));
+	mx = talloc_zero(parent, modxlat);
 
 	csingle = mod_xlattocallable(mx);
 	csingle->parent = parent;
@@ -2599,8 +2597,7 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 	 *	We know it's all OK, allocate the structures, and fill
 	 *	them in.
 	 */
-	single = rad_malloc(sizeof(*single));
-	memset(single, 0, sizeof(*single));
+	single = talloc_zero(parent, modsingle);
 	csingle = mod_singletocallable(single);
 	csingle->parent = parent;
 	csingle->next = NULL;
@@ -2632,14 +2629,14 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 
 			if (cf_item_is_section(csi)) {
 				cf_log_err(csi, "Subsection of module instance call not allowed");
-				modcallable_free(&csingle);
+				talloc_free(csingle);
 				return NULL;
 			}
 
 			if (!cf_item_is_pair(csi)) continue;
 
 			if (!compile_action(csingle, cf_itemtopair(csi))) {
-				modcallable_free(&csingle);
+				talloc_free(csingle);
 				return NULL;
 			}
 		}
@@ -2652,7 +2649,7 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 	if (!this->entry->module->methods[component]) {
 		cf_log_err(ci, "\"%s\" modules aren't allowed in '%s' sections -- they have no such method.", this->entry->module->name,
 		       comp2str[component]);
-		modcallable_free(&csingle);
+		talloc_free(csingle);
 		return NULL;
 	}
 
@@ -2661,7 +2658,8 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 	return csingle;
 }
 
-modcallable *compile_modsingle(modcallable **parent,
+modcallable *compile_modsingle(TALLOC_CTX *ctx,
+			       modcallable **parent,
 			       rlm_components_t component, CONF_ITEM *ci,
 			       char const **modname)
 {
@@ -2672,7 +2670,7 @@ modcallable *compile_modsingle(modcallable **parent,
 		modgroup *g;
 		CONF_SECTION *parentcs;
 
-		g = rad_malloc(sizeof *g);
+		g = talloc_zero(ctx, modgroup);
 		memset(g, 0, sizeof(*g));
 		g->grouptype = GROUPTYPE_SIMPLE;
 		c = mod_grouptocallable(g);
@@ -2714,8 +2712,7 @@ static modcallable *do_compile_modgroup(modcallable *parent,
 	modcallable *c;
 	CONF_ITEM *ci;
 
-	g = rad_malloc(sizeof(*g));
-	memset(g, 0, sizeof(*g));
+	g = talloc_zero(parent, modgroup);
 	g->grouptype = grouptype;
 	g->children = NULL;
 	g->cs = cs;
@@ -2848,7 +2845,7 @@ static modcallable *do_compile_modgroup(modcallable *parent,
 			if (!single) {
 				cf_log_err(ci, "Failed to parse \"%s\" subsection.",
 				       cf_section_name1(subcs));
-				modcallable_free(&c);
+				talloc_free(c);
 				return NULL;
 			}
 			add_child(g, single);
@@ -2886,7 +2883,7 @@ static modcallable *do_compile_modgroup(modcallable *parent,
 					cf_log_err(ci,
 						   "Failed to parse \"%s\" entry.",
 						   attr);
-					modcallable_free(&c);
+					talloc_free(c);
 					return NULL;
 				}
 				add_child(g, single);
@@ -2895,7 +2892,7 @@ static modcallable *do_compile_modgroup(modcallable *parent,
 				 *	Or a module instance with action.
 				 */
 			} else if (!compile_action(c, cp)) {
-				modcallable_free(&c);
+				talloc_free(c);
 				return NULL;
 			} /* else it worked */
 		}
@@ -2929,7 +2926,7 @@ set_codes:
 		if (!g->children) {
 			cf_log_err_cs(g->cs, "%s sections cannot be empty",
 				      cf_section_name1(g->cs));
-			modcallable_free(&c);
+			talloc_free(c);
 			return NULL;
 		}
 	}
@@ -2964,29 +2961,6 @@ void add_to_modcallable(modcallable *parent, modcallable *this)
 	g = mod_callabletogroup(parent);
 
 	add_child(g, this);
-}
-
-void modcallable_free(modcallable **pc)
-{
-	modcallable *c, *loop, *next;
-
-	if (!pc || !*pc) return;
-
-	c = *pc;
-
-	if ((c->type > MOD_SINGLE) && (c->type <= MOD_POLICY)) {
-		modgroup *g = mod_callabletogroup(c);
-
-		if (g->children) for (loop = g->children;
-		    loop ;
-		    loop = next) {
-			next = loop->next;
-			modcallable_free(&loop);
-		}
-		talloc_free(g->map);
-	}
-	free(c);
-	*pc = NULL;
 }
 
 

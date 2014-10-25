@@ -310,12 +310,6 @@ void virtual_servers_free(time_t when)
 	}
 }
 
-static int _indexed_modcallable_free(indexed_modcallable *this)
-{
-	modcallable_free(&this->modulelist);
-	return 0;
-}
-
 static int indexed_modcallable_cmp(void const *one, void const *two)
 {
 	indexed_modcallable const *a = one;
@@ -858,8 +852,6 @@ static indexed_modcallable *new_sublist(CONF_SECTION *cs,
 		return NULL;
 	}
 
-	talloc_set_destructor(c, _indexed_modcallable_free);
-
 	return c;
 }
 
@@ -952,13 +944,11 @@ static int load_subcomponent_section(modcallable *parent, CONF_SECTION *cs,
 		cf_log_err_cs(cs,
 			   "%s %s Not previously configured",
 			   section_type_value[comp].typename, name2);
-		modcallable_free(&ml);
 		return 0;
 	}
 
 	subcomp = new_sublist(cs, components, comp, dval->value);
 	if (!subcomp) {
-		modcallable_free(&ml);
 		return 1;
 	}
 
@@ -1110,7 +1100,7 @@ static int load_component_section(CONF_SECTION *cs,
 		/*
 		 *	Try to compile one entry.
 		 */
-		this = compile_modsingle(&subcomp->modulelist, comp, modref, &modname);
+		this = compile_modsingle(subcomp, &subcomp->modulelist, comp, modref, &modname);
 
 		/*
 		 *	It's OK for the module to not exist.
