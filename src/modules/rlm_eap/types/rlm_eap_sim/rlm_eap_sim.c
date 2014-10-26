@@ -173,23 +173,25 @@ static int eap_sim_get_challenge(eap_handler_t *handler, VALUE_PAIR *vps, int id
 
 			RDEBUG2("Generated following triplets for round %i:", idx);
 
+			RINDENT();
 			p = buffer;
 			for (i = 0; i < EAPSIM_RAND_SIZE; i++) {
 				p += sprintf(p, "%02x", ess->keys.rand[idx][i]);
 			}
-			RDEBUG2("\tRAND : 0x%s", buffer);
+			RDEBUG2("RAND : 0x%s", buffer);
 
 			p = buffer;
 			for (i = 0; i < EAPSIM_SRES_SIZE; i++) {
 				p += sprintf(p, "%02x", ess->keys.sres[idx][i]);
 			}
-			RDEBUG2("\tSRES : 0x%s", buffer);
+			RDEBUG2("SRES : 0x%s", buffer);
 
 			p = buffer;
 			for (i = 0; i < EAPSIM_KC_SIZE; i++) {
 				p += sprintf(p, "%02x", ess->keys.Kc[idx][i]);
 			}
-			RDEBUG2("\tKc   : 0x%s", buffer);
+			RDEBUG2("Kc   : 0x%s", buffer);
+			REXDENT();
 		}
 		return 1;
 	}
