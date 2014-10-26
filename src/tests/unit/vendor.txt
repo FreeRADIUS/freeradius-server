@@ -3,3 +3,9 @@ data 1a 0d 00 00 1f e4 00 02 00 07 66 6f 6f
 
 decode 1a 0d 00 00 1f e4 00 02 00 07 66 6f 6f
 data SN-VPN-Name = 'foo'
+
+encode USR-Event-Id = 1234
+data 1a 0e 00 00 01 ad 00 00 bf be 00 00 04 d2
+
+decode 1a 0e 00 00 01 ad 00 00 bf be 00 00 04 d2
+data USR-Event-Id = 1234
