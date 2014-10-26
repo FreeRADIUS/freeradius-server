@@ -507,6 +507,18 @@ STATE_MACHINE_DECL(request_done)
 	}
 #endif
 
+#ifdef WITH_DETAIL
+	/*
+	 *	Tell the detail listener that we're done.
+	 */
+	if ((request->listener->type == RAD_LISTEN_DETAIL) &&
+	    (request->simul_max != 1)) {
+		request->simul_max = 1;
+		request->listener->send(request->listener,
+					request);
+	}
+#endif
+
 #ifdef HAVE_PTHREAD_H
 	/*
 	 *	If called from a child thread, mark ourselves as done,
@@ -1277,6 +1289,14 @@ STATE_MACHINE_DECL(request_finish)
 	(void) action;	/* -Wunused */
 
 	if (request->master_state == REQUEST_STOP_PROCESSING) {
+#ifdef WITH_DETAIL
+		/*
+		 *	Always send a reply to the detail listener.
+		 */
+		if (request->listener->type == RAD_LISTEN_DETAIL) {
+			goto do_detail;
+		}
+#endif
 		NO_CHILD_THREAD;
 		return;
 	}
@@ -1376,16 +1396,32 @@ STATE_MACHINE_DECL(request_finish)
 		return;
 	}
 
+#ifdef WITH_DETAIL
+	/*
+	 *	Always send the reply to the detail listener.
+	 */
+	if (request->listener->type == RAD_LISTEN_DETAIL) {
+	do_detail:
+		/*
+		 *	But only print the reply if there is one.
+		 */
+		if (request->reply->code != 0) {
+			DEBUG_PACKET(request, request->reply, 1);
+		}
+
+		request->simul_max = 1;
+		request->listener->send(request->listener,
+					request);
+		goto done;
+	}
+#endif
+
 	/*
 	 *	Ignore all "do not respond" packets.
 	 *	Except for the detail ones, which need to ping
 	 *	the detail file reader so that it will retransmit.
 	 */
-	if (!request->reply->code
-#ifdef WITH_DETAIL
-	    && (request->listener->type != RAD_LISTEN_DETAIL)
-#endif
-		) {
+	if (!request->reply->code) {
 		RDEBUG("Not sending reply to client.");
 		goto done;
 	}
@@ -1429,7 +1465,6 @@ STATE_MACHINE_DECL(request_finish)
 			request->response_delay = 0;
 		}
 #endif
-
 	}
 
 	/*
@@ -1441,16 +1476,6 @@ STATE_MACHINE_DECL(request_finish)
 		 */
 		if (request->reply->code != 0) {
 			DEBUG_PACKET(request, request->reply, 1);
-		}
-
-		/*
-		 *	The detail listener still needs to be told about the packet.
-		 */
-		if ((request->reply->code != 0)
-#ifdef WITH_DETAIL
-		    || (request->listener->type == RAD_LISTEN_DETAIL)
-#endif
-			) {
 			request->listener->send(request->listener,
 						request);
 		}
@@ -1460,6 +1485,20 @@ STATE_MACHINE_DECL(request_finish)
 		RDEBUG2("Finished request");
 #ifdef WITH_ACCOUNTING
 		if (request->packet->code == PW_CODE_ACCOUNTING_REQUEST) {
+			NO_CHILD_THREAD;
+			request->child_state = REQUEST_DONE;
+		} else
+#endif
+
+#ifdef WITH_COA
+		/*
+		 *	If we've originated this CoA request, it gets
+		 *	cleaned up now.
+		 */
+	        if (request->proxy &&
+		    ((request->proxy->code == PW_CODE_COA_REQUEST) ||
+		     (request->proxy->code == PW_CODE_DISCONNECT_REQUEST)) &&
+		    (request->packet->code != request->proxy->code)) {
 			NO_CHILD_THREAD;
 			request->child_state = REQUEST_DONE;
 		} else
