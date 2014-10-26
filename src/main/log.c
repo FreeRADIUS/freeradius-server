@@ -504,21 +504,6 @@ static int CC_HINT(format (printf, 2, 3)) radlog_always(log_type_t type, char co
 	return r;
 }
 
-/*
- *      Dump a whole list of attributes to DEBUG2
- */
-void vp_listdebug(VALUE_PAIR *vp)
-{
-	vp_cursor_t cursor;
-	char tmpPair[70];
-	for (vp = fr_cursor_init(&cursor, &vp);
-	     vp;
-	     vp = fr_cursor_next(&cursor)) {
-		vp_prints(tmpPair, sizeof(tmpPair), vp);
-		DEBUG2("     %s", tmpPair);
-	}
-}
-
 inline bool debug_enabled(log_type_t type, log_debug_t lvl)
 {
 	if ((type & L_DBG) && (debug_flag != 0) && (lvl > debug_flag)) return true;

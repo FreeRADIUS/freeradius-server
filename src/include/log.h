@@ -79,8 +79,6 @@ extern fr_log_t default_log;
 
 int	radlog_init(fr_log_t *log, bool daemonize);
 
-void 	vp_listdebug(VALUE_PAIR *vp);
-
 int	vradlog(log_type_t lvl, char const *fmt, va_list ap)
 	CC_HINT(format (printf, 2, 0)) CC_HINT(nonnull);
 int	radlog(log_type_t lvl, char const *fmt, ...)
