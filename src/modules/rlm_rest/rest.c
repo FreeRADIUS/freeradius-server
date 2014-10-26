@@ -550,7 +550,9 @@ static size_t rest_encode_post(void *out, size_t size, size_t nmemb, void *userd
 		len = vp_prints_value(p, freespace, vp, 0);
 		if (is_truncated(len, freespace)) goto no_space;
 
-		RDEBUG3("\tLength : %zd", len);
+		RINDENT();
+		RDEBUG3("Length : %zd", len);
+		REXDENT();
 		if (len > 0) {
 			escaped = curl_escape(p, len);
 			if (!escaped) {
@@ -568,7 +570,9 @@ static size_t rest_encode_post(void *out, size_t size, size_t nmemb, void *userd
 
 			curl_free(escaped);
 
-			RDEBUG3("\tValue  : %s", p);
+			RINDENT();
+			RDEBUG3("Value  : %s", p);
+			REXDENT();
 
 			p += len;
 			freespace -= len;
@@ -720,8 +724,9 @@ static size_t rest_encode_json(void *out, size_t size, size_t nmemb, void *userd
 			p += len;
 			freespace -= len;
 
-			RDEBUG3("\tType   : %s", type);
-
+			RINDENT();
+			RDEBUG3("Type   : %s", type);
+			REXDENT();
 			/*
 			 *  We wrote the attribute header, record progress
 			 */
@@ -737,8 +742,10 @@ static size_t rest_encode_json(void *out, size_t size, size_t nmemb, void *userd
 				/*
 				 *  Show actual value length minus quotes
 				 */
-				RDEBUG3("\tLength : %zu", (size_t) (*p == '"') ? (len - 2) : len);
-				RDEBUG3("\tValue  : %s", p);
+				RINDENT();
+				RDEBUG3("Length : %zu", (size_t) (*p == '"') ? (len - 2) : len);
+				RDEBUG3("Value  : %s", p);
+				REXDENT();
 
 				p += len;
 				freespace -= len;
@@ -1038,7 +1045,8 @@ static int rest_decode_post(UNUSED rlm_rest_t *instance, UNUSED rlm_rest_section
 		vps = radius_list(reference, list_name);
 		rad_assert(vps);
 
-		RDEBUG3("\tType  : %s", fr_int2str(dict_attr_types, da->type, "<INVALID>"));
+		RINDENT();
+		RDEBUG3("Type  : %s", fr_int2str(dict_attr_types, da->type, "<INVALID>"));
 
 		ctx = radius_list_ctx(reference, list_name);
 
@@ -1054,8 +1062,9 @@ static int rest_decode_post(UNUSED rlm_rest_t *instance, UNUSED rlm_rest_section
 		 */
 		p += (!q) ? len : (len + 1);
 
-		RDEBUG3("\tLength : %i", curl_len);
-		RDEBUG3("\tValue  : \"%s\"", value);
+		RDEBUG3("Length : %i", curl_len);
+		RDEBUG3("Value  : \"%s\"", value);
+		REXDENT();
 
 		RDEBUG2("Performing xlat expansion of response value");
 
@@ -1148,9 +1157,11 @@ static VALUE_PAIR *json_pairmake_leaf(UNUSED rlm_rest_t *instance, UNUSED rlm_re
 		return NULL;
 	}
 
-	RDEBUG3("\tType   : %s", fr_int2str(dict_attr_types, da->type, "<INVALID>"));
-	RDEBUG3("\tLength : %zu", strlen(value));
-	RDEBUG3("\tValue  : \"%s\"", value);
+	RINDENT();
+	RDEBUG3("Type   : %s", fr_int2str(dict_attr_types, da->type, "<INVALID>"));
+	RDEBUG3("Length : %zu", strlen(value));
+	RDEBUG3("Value  : \"%s\"", value);
+	REXDENT();
 
 	if (flags->do_xlat) {
 		if (radius_axlat(&expanded, request, value, NULL, NULL) < 0) {
@@ -1554,6 +1565,7 @@ static size_t rest_response_header(void *in, size_t size, size_t nmemb, void *us
 		/*
 		 *  Process reason_phrase (if present).
 		 */
+		RINDENT();
 		if (p[3] == ' ') {
 			p += 4;
 			s -= 4;
@@ -1563,10 +1575,11 @@ static size_t rest_response_header(void *in, size_t size, size_t nmemb, void *us
 
 			len = (q - p);
 
-			RDEBUG2("\tStatus : %i (%.*s)", ctx->code, (int) len, p);
+			RDEBUG2("Status : %i (%.*s)", ctx->code, (int) len, p);
 		} else {
-			RDEBUG2("\tStatus : %i", ctx->code);
+			RDEBUG2("Status : %i", ctx->code);
 		}
+		REXDENT();
 
 		ctx->state = WRITE_STATE_PARSE_HEADERS;
 
@@ -1591,9 +1604,10 @@ static size_t rest_response_header(void *in, size_t size, size_t nmemb, void *us
 			len = !q ? s : (size_t) (q - p);
 			type = fr_substr2int(http_content_type_table, p, HTTP_BODY_UNKNOWN, len);
 
-
-			RDEBUG2("\tType   : %s (%.*s)", fr_int2str(http_body_type_table, type, "<INVALID>"),
+			RINDENT();
+			RDEBUG2("Type   : %s (%.*s)", fr_int2str(http_body_type_table, type, "<INVALID>"),
 				(int) len, p);
+			REXDENT();
 
 			/*
 			 *  Assume the force_to value has already been validated.
@@ -1947,13 +1961,14 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 	 *	FreeRADIUS custom headers
 	 */
 	RDEBUG3("Adding custom headers:");
+	RINDENT();
 	snprintf(buffer, sizeof(buffer), "X-FreeRADIUS-Section: %s", section->name);
-	RDEBUG3("\t%s", buffer);
+	RDEBUG3("%s", buffer);
 	ctx->headers = curl_slist_append(ctx->headers, buffer);
 	if (!ctx->headers) goto error_header;
 
 	snprintf(buffer, sizeof(buffer), "X-FreeRADIUS-Server: %s", request->server);
-	RDEBUG3("\t%s", buffer);
+	RDEBUG3("%s", buffer);
 	ctx->headers = curl_slist_append(ctx->headers, buffer);
 	if (!ctx->headers) goto error_header;
 
@@ -1966,10 +1981,11 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 			talloc_free(header);
 			continue;
 		}
-		RDEBUG3("\t%s", header->vp_strvalue);
+		RDEBUG3("%s", header->vp_strvalue);
 		ctx->headers = curl_slist_append(ctx->headers, header->vp_strvalue);
 		talloc_free(header);
 	}
+	REXDENT();
 
 	/*
 	 *	Configure HTTP verb (GET, POST, PUT, DELETE, other...)
@@ -2218,6 +2234,7 @@ error:
 
 error_header:
 	REDEBUG("Failed creating header");
+	REXDENT();
 	return -1;
 }
 
