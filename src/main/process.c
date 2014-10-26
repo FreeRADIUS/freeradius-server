@@ -403,12 +403,14 @@ static void debug_packet(REQUEST *request, RADIUS_PACKET *packet, int direction)
 		       packet->code, packet->id, packet->data_len);
 	}
 
+	RINDENT();
 	for (vp = fr_cursor_init(&cursor, &packet->vps);
 	     vp;
 	     vp = fr_cursor_next(&cursor)) {
 		vp_prints(buffer, sizeof(buffer), vp);
-		RDEBUG("\t%s", buffer);
+		RDEBUG("%s", buffer);
 	}
+	REXDENT();
 }
 
 

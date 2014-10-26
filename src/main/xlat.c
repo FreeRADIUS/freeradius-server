@@ -323,31 +323,35 @@ static ssize_t xlat_debug_attr(UNUSED void *instance, REQUEST *request, char con
 
 		vp_prints_value(buffer, sizeof(buffer), vp, '\'');
 
+		RINDENT();
 		if (vp->da->flags.has_tag) {
-			RIDEBUG2("\t%s:%s:%i %s %s",
+			RIDEBUG2("%s:%s:%i %s %s",
 				fr_int2str(pair_lists, vpt.tmpl_list, "<INVALID>"),
 				vp->da->name,
 				vp->tag,
 				fr_int2str(fr_tokens, vp->op, "<INVALID>"),
 				buffer);
 		} else {
-			RIDEBUG2("\t%s:%s %s %s",
+			RIDEBUG2("%s:%s %s %s",
 				fr_int2str(pair_lists, vpt.tmpl_list, "<INVALID>"),
 				vp->da->name,
 				fr_int2str(fr_tokens, vp->op, "<INVALID>"),
 				buffer);
 		}
+		REXDENT();
 
-		if (!RDEBUG_ENABLED3) {
-			goto next_vp;
-		}
+		if (!RDEBUG_ENABLED3) goto next_vp;
 
+		RINDENT();
+		RINDENT();
 		if (vp->da->vendor) {
 			dv = dict_vendorbyvalue(vp->da->vendor);
-			RDEBUG3("\t\tvendor        : %i (%s)", vp->da->vendor, dv ? dv->name : "unknown");
+			RDEBUG3("Vendor : %i (%s)", vp->da->vendor, dv ? dv->name : "unknown");
 		}
-		RDEBUG3("\t\ttype          : %s", fr_int2str(dict_attr_types, vp->da->type, "<INVALID>"));
-		RDEBUG3("\t\tlength        : %zu", vp->length);
+		RDEBUG3("Type   : %s", fr_int2str(dict_attr_types, vp->da->type, "<INVALID>"));
+		RDEBUG3("Length : %zu", vp->length);
+		REXDENT();
+		REXDENT();
 
 		dac = talloc_memdup(request, vp->da, sizeof(DICT_ATTR));
 		if (!dac) return -1;
