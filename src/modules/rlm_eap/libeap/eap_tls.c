@@ -363,7 +363,7 @@ static fr_tls_status_t eaptls_verify(eap_handler_t *handler)
 	 *	We send TLS_START, but do not receive it.
 	 */
 	if (TLS_START(eaptls_packet->flags)) {
-		RDEBUG("Received unexpected EAP-TLS Start message");
+		REDEBUG("Received unexpected EAP-TLS Start message");
 		return FR_TLS_INVALID;
 	}
 
@@ -381,7 +381,7 @@ static fr_tls_status_t eaptls_verify(eap_handler_t *handler)
 	 *	from a fragment acknowledgement.
 	 */
 	if (TLS_LENGTH_INCLUDED(eaptls_packet->flags)) {
-		DEBUG2("  TLS Length %d",
+		RDEBUG2("TLS Length %d",
 		       eaptls_packet->data[2] * 256 | eaptls_packet->data[3]);
 		if (TLS_MORE_FRAGMENTS(eaptls_packet->flags)) {
 			/*
