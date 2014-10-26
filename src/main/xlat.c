@@ -26,12 +26,13 @@
 
 RCSID("$Id$")
 
-#include	<freeradius-devel/radiusd.h>
-#include	<freeradius-devel/parser.h>
-#include	<freeradius-devel/rad_assert.h>
-#include	<freeradius-devel/base64.h>
+#include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/parser.h>
+#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/base64.h>
 
-#include	<ctype.h>
+#include <ctype.h>
+
 typedef struct xlat_t {
 	char			name[MAX_STRING_LEN];	//!< Name of the xlat expansion.
 	int			length;			//!< Length of name.
@@ -89,7 +90,7 @@ static char const * const xlat_foreach_names[] = {"Foreach-Variable-0",
 #endif
 
 #if REQUEST_MAX_REGEX > 8
-#error Please fix the following line
+#  error Please fix the following line
 #endif
 static int xlat_inst[] = { 0, 1, 2, 3, 4, 5, 6, 7, 8 };	/* up to 8 for regex */
 
@@ -723,9 +724,9 @@ void xlat_free(void)
 
 
 #ifdef DEBUG_XLAT
-#define XLAT_DEBUG DEBUG3
+#  define XLAT_DEBUG DEBUG3
 #else
-#define XLAT_DEBUG(...)
+#  define XLAT_DEBUG(...)
 #endif
 
 static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **head,
