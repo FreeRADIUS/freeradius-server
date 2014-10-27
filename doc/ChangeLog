@@ -14,6 +14,19 @@ FreeRADIUS 3.0.5 Mon 15 Sep 2014 15:30:00 EDT urgency=medium
 	* CoA and Disconnect packets can now be sent to a specific
 	  home server by setting control:Packet-Dst-IP-Address and
 	  (optionally) control:Packet-Dst-Port.
+	* Allow CoA and Disconnect packets to be read from the
+	  detail file.
+	* Allow LDAP to specify arbitrary attributes for dynamic
+	  clients.
+	* Allow one level of backslashes (finally).  See radiusd.conf,
+	  "correct_escapes" setting.
+	* Rename dictionary.redback to dictionary.ericsson.ab
+	* Add --disable-openssl-version-check option to configure.
+	  So vendors can disable the check.  Patch from
+	  Nikolai Kondrashov.
+	* Do context-specific indenting in debug messages.  This makes
+	  the debug output easier to read.
+	* Make configuration a separate RPM, just like for Debian.
 
 	Bug fixes
 	* Parse list qualifiers in generic LDAP 'valuepair_attribute'
@@ -47,6 +60,15 @@ FreeRADIUS 3.0.5 Mon 15 Sep 2014 15:30:00 EDT urgency=medium
 	  strings.  e.g. 'foo "hello" bar'.
 	* Fixes for proxying to virtual servers broke the detail file
 	  reader.  Now they both work.
+	* Typos and fixes from Nikolai Kondrashov.
+	* Fixes to OpenSSL version checks, for cross-platform issues.
+	* cppcheck fixes from Herwin Weststrate.
+	* Fix build for OSX Yosemite
+	* Merge DHCP sub-options.  Closes #812.
+	* Fix decoding of Starent attributes.
+	* When a module asks for a connection, don't return idle
+	  connections.
+	* LDAP connection timeouts trigger a retry.
 
 FreeRADIUS 3.0.4 Wed 10 Sep 2014 12:00:00 EDT urgency=medium
 	Feature improvements
