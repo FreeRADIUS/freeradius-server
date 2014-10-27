@@ -1105,7 +1105,7 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 static ssize_t xlat_tokenize_literal(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **head,
 				     int brace, char const **error)
 {
-	char *p, *q;
+	char *p;
 	xlat_exp_t *node;
 
 	if (!*fmt) return 0;
@@ -1118,58 +1118,15 @@ static ssize_t xlat_tokenize_literal(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **he
 	node->type = XLAT_LITERAL;
 
 	p = fmt;
-	q = fmt;
 
 	while (*p) {
-		/*
-		 *	Convert \n to it's literal representation.
-		 */
-		if (p[0] == '\\') switch (p[1]) {
-		case 't':
-			*(q++) = '\t';
-			p += 2;
-			node->len++;
-			continue;
-
-		case 'n':
-			*(q++) = '\n';
-			p += 2;
-			node->len++;
-			continue;
-
-		case 'x':
-			p += 2;
-			if (!p[0] || !p[1]) {
+		if (*p == '\\') {
+			if (!p[1]) {
 				talloc_free(node);
-				*error = "Hex expansion requires two hex digits";
+				*error = "Invalid escape at end of string";
 				return -(p - fmt);
 			}
-
-			if (!fr_hex2bin((uint8_t *) q, 1, p, 2)) {
-				talloc_free(node);
-				*error = "Invalid hex characters";
-				return -(p - fmt);
-			}
-
-			/*
-			 *	Don't let people shoot themselves in the foot.
-			 *	\x00 is forbidden.
-			 */
-			if (!*q) {
-				talloc_free(node);
-				*error = "Cannot add zero byte to printable string";
-				return -(p - fmt);
-			}
-
 			p += 2;
-			q++;
-			node->len++;
-			continue;
-
-		default:
-			*(q++) = *p;
-			p += 2;
-			node->len++;
 			continue;
 		}
 
@@ -1269,12 +1226,12 @@ static ssize_t xlat_tokenize_literal(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **he
 		 *	If required, eat the brace.
 		 */
 		if (brace && (*p == '}')) {
-			*q = '\0';
+			*p = '\0';
 			p++;
 			break;
 		}
 
-		*(q++) = *(p++);
+		p++;
 		node->len++;
 	}
 
@@ -2028,6 +1985,10 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 
 		str = talloc_array(ctx, char, 2048); /* FIXME: have the module call talloc_typed_asprintf */
 		*str = '\0';	/* Be sure the string is NULL terminated, we now only free on error */
+
+		/*
+		 *	Convert \n --> CR if requested.
+		 */
 
 		rcode = node->xlat->func(node->xlat->instance, request, child, str, 2048);
 		talloc_free(child);
