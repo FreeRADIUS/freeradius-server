@@ -125,3 +125,6 @@ data "%{reply:3GPP-IMSI}"
 
 xlat "%{reply:3GPP-IMSI[2]}"
 data "%{reply:3GPP-IMSI[2]}"
+
+xlat /([A-Z0-9\-]*)_%{Calling-Station-Id}/
+data /([A-Z0-9\-]*)_%{Calling-Station-Id}/
