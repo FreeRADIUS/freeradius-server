@@ -2577,6 +2577,7 @@ static int pairdata_cidr_cmp_op(FR_TOKEN op, int bytes,
 
 /** Compare two attributes using an operator
  *
+ * @param[in] op to use in comparison.
  * @param[in] a_type of data to compare.
  * @param[in] a_len of data to compare.
  * @param[in] a Value to compare.
