@@ -961,7 +961,7 @@ rlm_rcode_t eappeap_process(eap_handler_t *handler, tls_session_t *tls_session)
 
 	RDEBUG2("Got tunneled request");
 	RINDENT();
-	rdebug_pair_list(2, request, fake->packet->vps);
+	rdebug_pair_list(L_DBG_LVL_2, request, fake->packet->vps);
 	REXDENT();
 
 	/*
@@ -1011,7 +1011,7 @@ rlm_rcode_t eappeap_process(eap_handler_t *handler, tls_session_t *tls_session)
 		RDEBUG2("Sending tunnelled request");
 	}
 	RINDENT();
-	rdebug_pair_list(2, request, fake->packet->vps);
+	rdebug_pair_list(L_DBG_LVL_2, request, fake->packet->vps);
 	REXDENT();
 
 	/*
@@ -1026,7 +1026,7 @@ rlm_rcode_t eappeap_process(eap_handler_t *handler, tls_session_t *tls_session)
 	 */
 	RDEBUG2("Got tunneled reply code %d", fake->reply->code);
 	RINDENT();
-	rdebug_pair_list(2, request, fake->reply->vps);
+	rdebug_pair_list(L_DBG_LVL_2, request, fake->reply->vps);
 	REXDENT();
 
 	/*
