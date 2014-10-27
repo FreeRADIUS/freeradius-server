@@ -1917,6 +1917,8 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 {
 	ssize_t rcode;
 	char *str = NULL, *child;
+	char *q;
+	char const *p;
 	REQUEST *ref;
 
 	XLAT_DEBUG("%.*sxlat aprint %d", lvl, xlat_spaces, node->type);
@@ -1934,7 +1936,6 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 		 */
 	case XLAT_PERCENT:
 	{
-		char const *p;
 		char *nl;
 		size_t freespace = 256;
 		struct tm ts;
@@ -2069,12 +2070,38 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 		XLAT_DEBUG("%.*sEXPAND mod %s %s", lvl, xlat_spaces, node->fmt, node->child->fmt);
 		XLAT_DEBUG("%.*s      ---> %s", lvl, xlat_spaces, child);
 
+		/*
+		 *	Smash \n --> CR.
+		 *
+		 *	The OUTPUT of xlat is a printable string.  The INPUT might not be...
+		 *
+		 *	This is really the reverse of fr_print_string().
+		 */
+		p = q = child;
+		while (*p) {
+			if (*p == '\\') switch (p[1]) {
+				default:
+					*(q++) = p[1];
+					p += 2;
+					continue;
+
+				case 'n':
+					*(q++) = '\n';
+					p += 2;
+					continue;
+
+				case 't':
+					*(q++) = '\t';
+					p += 2;
+					continue;
+			}
+
+			*(q++) = *(p++);
+		}
+		*q = '\0';
+
 		str = talloc_array(ctx, char, 2048); /* FIXME: have the module call talloc_typed_asprintf */
 		*str = '\0';	/* Be sure the string is NULL terminated, we now only free on error */
-
-		/*
-		 *	Convert \n --> CR if requested.
-		 */
 
 		rcode = node->xlat->func(node->xlat->instance, request, child, str, 2048);
 		talloc_free(child);
