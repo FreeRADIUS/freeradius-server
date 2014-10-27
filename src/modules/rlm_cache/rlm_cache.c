@@ -151,7 +151,7 @@ static void CC_HINT(nonnull) cache_merge(rlm_cache_t *inst, REQUEST *request, rl
 		RDEBUG2("Merging cached control list:");
 
 		RINDENT();
-		rdebug_pair_list(2, request, c->control);
+		rdebug_pair_list(L_DBG_LVL_2, request, c->control);
 		REXDENT();
 
 		pairadd(&request->config_items, paircopy(request, c->control));
@@ -161,7 +161,7 @@ static void CC_HINT(nonnull) cache_merge(rlm_cache_t *inst, REQUEST *request, rl
 		RDEBUG2("Merging cached request list:");
 
 		RINDENT();
-		rdebug_pair_list(2, request, c->packet);
+		rdebug_pair_list(L_DBG_LVL_2, request, c->packet);
 		REXDENT();
 
 		pairadd(&request->packet->vps,
@@ -172,7 +172,7 @@ static void CC_HINT(nonnull) cache_merge(rlm_cache_t *inst, REQUEST *request, rl
 		RDEBUG2("Merging cached reply list:");
 
 		RINDENT();
-		rdebug_pair_list(2, request, c->reply);
+		rdebug_pair_list(L_DBG_LVL_2, request, c->reply);
 		REXDENT();
 
 		pairadd(&request->reply->vps,

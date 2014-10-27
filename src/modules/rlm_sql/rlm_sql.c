@@ -709,7 +709,7 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t *inst, REQUEST *request, rlm
 			rcode = RLM_MODULE_OK;
 
 			RINDENT();
-			rdebug_pair_list(2, request, reply_tmp);
+			rdebug_pair_list(L_DBG_LVL_2, request, reply_tmp);
 			REXDENT();
 
 			radius_pairmove(request, &request->reply->vps, reply_tmp, true);
@@ -1056,7 +1056,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 		user_found = true;
 
 		RINDENT();
-		rdebug_pair_list(2, request, reply_tmp);
+		rdebug_pair_list(L_DBG_LVL_2, request, reply_tmp);
 		REXDENT();
 
 		radius_pairmove(request, &request->reply->vps, reply_tmp, true);
