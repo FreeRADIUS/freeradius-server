@@ -537,7 +537,7 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 		    (tmpl_find_vp(&rhs_vp, request, map->rhs) < 0)) return false;
 
 		if (map->lhs->tmpl_da->type == map->rhs->tmpl_da->type) {
-			return paircmp_op(lhs_vp, map->op, rhs_vp);
+			return paircmp_op(map->op, lhs_vp, rhs_vp);
 		}
 
 		/*
@@ -562,7 +562,7 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 			return false;
 		}
 
-		rcode = paircmp_op(lhs_vp, map->op, cast_vp);
+		rcode = paircmp_op(map->op, lhs_vp, cast_vp);
 		talloc_free(cast_vp);
 		return rcode;
 	}
@@ -615,7 +615,7 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 			   fr_int2str(dict_attr_types,
 				      c->cast->type, "?Unknown?"));
 
-		rcode = paircmp_op(lhs_vp, map->op, rhs_vp);
+		rcode = paircmp_op(map->op, lhs_vp, rhs_vp);
 		pairfree(&lhs_vp);
 		if (map->rhs->type != TMPL_TYPE_ATTR) {
 			pairfree(&rhs_vp);
@@ -668,7 +668,7 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 		debug_pair(rhs_vp);
 #endif
 
-		rcode = paircmp_op(lhs_vp, map->op, rhs_vp);
+		rcode = paircmp_op(map->op, lhs_vp, rhs_vp);
 		pairfree(&rhs_vp);
 		return rcode;
 	}
@@ -749,7 +749,7 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 			return -1;
 		}
 
-		rcode = paircmp_op(lhs_vp, map->op, rhs_vp);
+		rcode = paircmp_op(map->op, lhs_vp, rhs_vp);
 		talloc_free(rhs);
 		pairfree(&rhs_vp);
 		return rcode;
