@@ -380,24 +380,20 @@ process_error:
 		status = LDAP_PROC_NOT_PERMITTED;
 		break;
 
-	case LDAP_TIMEOUT:
-		exec_trigger(NULL, inst->cs, "modules.ldap.timeout", true);
-
-		*error = "Timed out while waiting for server to respond";
-
-		status = LDAP_PROC_ERROR;
-		break;
-
 	case LDAP_FILTER_ERROR:
 		*error = "Bad search filter";
 
 		status = LDAP_PROC_ERROR;
 		break;
 
-	case LDAP_TIMELIMIT_EXCEEDED:
-		exec_trigger(NULL, inst->cs, "modules.ldap.timeout", true);
+	case LDAP_TIMEOUT:
+		*error = "Timed out while waiting for server to respond";
+		goto timeout;
 
+	case LDAP_TIMELIMIT_EXCEEDED:
 		*error = "Time limit exceeded";
+	timeout:
+		exec_trigger(NULL, inst->cs, "modules.ldap.timeout", true);
 		/* FALL-THROUGH */
 
 	case LDAP_BUSY:
