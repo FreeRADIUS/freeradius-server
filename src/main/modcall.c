@@ -2398,7 +2398,7 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 		modrefname = cf_pair_attr(cp);
 
 		/*
-		 *	Actions (ok = 1), etc. are orthoganal to just
+		 *	Actions (ok = 1), etc. are orthogonal to just
 		 *	about everything else.
 		 */
 		if (cf_pair_value(cp) != NULL) {
