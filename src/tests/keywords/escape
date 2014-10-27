@@ -9,7 +9,7 @@ update request {
 	Tmp-String-1 := '±§#$%^&+={[}];<,>?`|"'
 	Tmp-String-2 := '™œ¥¤'
 	# The extra =5C is because the " is printed as \"
-	Tmp-String-3 := '=C2=B1=C2=A7=23=24=25=5E=26=2B=3D=7B=5B=7D=5D=3B=3C=2C=3E=3F=60=7C=5C=22'
+	Tmp-String-3 := '=C2=B1=C2=A7=23=24=25=5E=26=2B=3D=7B=5B=7D=5D=3B=3C=2C=3E=3F=60=7C=22'
 	Tmp-String-4 := '=E2=84=A2=C5=93=C2=A5=C2=A4'
 	Tmp-String-5 := '=40=61=62=63=64=65=66=67'
 }

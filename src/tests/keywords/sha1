@@ -35,8 +35,7 @@ if ("%{sha1:&request:Tmp-String-0}" != 'cc7edf1ccc4bdf1e0ec8f72b95388b65218ecf0c
 	}
 }
 
-# This differs than hashing the attribute directly, as the \n is escaped and becomes chars \ and n
-if ("%{sha1:%{Tmp-String-0}}" != 'd79c6dae2d4b3f4d78d0c044b38e23f52f376726') {
+if ("%{sha1:%{Tmp-String-0}}" != 'cc7edf1ccc4bdf1e0ec8f72b95388b65218ecf0c') {
 	update reply {
 		Filter-Id += 'fail 4'
 	}
