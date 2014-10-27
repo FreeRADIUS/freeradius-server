@@ -1,2 +1,2 @@
-cp ./org.freeradius.radius.plist /System/Library/LaunchDaemons
-launchctl load -w /System/Library/LaunchDaemons/org.freeradius.radiusd.plist
+cp ./org.freeradius.radius.plist /Library/LaunchDaemons
+launchctl load -w Library/LaunchDaemons/org.freeradius.radiusd.plist
