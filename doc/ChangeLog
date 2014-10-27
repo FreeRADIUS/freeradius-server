@@ -56,7 +56,7 @@ FreeRADIUS 3.0.5 Mon 15 Sep 2014 15:30:00 EDT urgency=medium
 	* Integer fixes for big-endian systems.  Closes #803.
 	* Don't optimize %{Packet-Src-IP-Address}.  Closes #804.
 	* dhcpclient loads dictionaries correclty.  Closes #805.
-	* double quotes are no longer escapted in single-quoted
+	* double quotes are no longer escaped in single-quoted
 	  strings.  e.g. 'foo "hello" bar'.
 	* Fixes for proxying to virtual servers broke the detail file
 	  reader.  Now they both work.
