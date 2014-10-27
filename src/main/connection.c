@@ -1003,6 +1003,8 @@ static void *fr_connection_get_internal(fr_connection_pool_t *pool, int spawn)
 
 	now = time(NULL);
 	for (this = pool->head; this != NULL; this = this->next) {
+		if (!fr_connection_manage(pool, this, now)) continue;
+
 		if (!this->in_use) goto do_return;
 	}
 	rad_assert(pool->active == pool->num);
