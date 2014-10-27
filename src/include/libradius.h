@@ -601,9 +601,9 @@ void		pairadd(VALUE_PAIR **, VALUE_PAIR *);
 void		pairreplace(VALUE_PAIR **first, VALUE_PAIR *add);
 int		pairdata_cmp(PW_TYPE type_one, size_t length_one, value_data_t const *value_one,
 			     PW_TYPE type_two, size_t length_two, value_data_t const *value_two);
-#define		paircmp_op(_a, _op, _b) pairdata_cmp_op(_a->da->type, _a->length, &_a->data, _op, _b->da->type, _b->length, &_b->data)
-int		pairdata_cmp_op(PW_TYPE type_a, size_t length_a, value_data_t const *a,
-				FR_TOKEN op,
+#define		paircmp_op(_op, _a, _b) pairdata_cmp_op(_op, _a->da->type, _a->length, &_a->data, _b->da->type, _b->length, &_b->data)
+int		pairdata_cmp_op(FR_TOKEN op,
+				PW_TYPE type_a, size_t length_a, value_data_t const *a,
 				PW_TYPE type_b, size_t length_b, value_data_t const *b);
 int		paircmp(VALUE_PAIR *a, VALUE_PAIR *b);
 int		pairlistcmp(VALUE_PAIR *a, VALUE_PAIR *b);

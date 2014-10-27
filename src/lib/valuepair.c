@@ -2585,8 +2585,8 @@ static int pairdata_cidr_cmp_op(FR_TOKEN op, int bytes,
  * @param[in] b Value to compare.
  * @return 1 if true, 0 if false, -1 on error.
  */
-int pairdata_cmp_op(PW_TYPE a_type, size_t a_len, value_data_t const *a,
-		    FR_TOKEN op,
+int pairdata_cmp_op(FR_TOKEN op,
+		    PW_TYPE a_type, size_t a_len, value_data_t const *a,
 		    PW_TYPE b_type, size_t b_len, value_data_t const *b)
 {
 	int compare = 0;
@@ -2771,7 +2771,7 @@ int paircmp(VALUE_PAIR *a, VALUE_PAIR *b)
 		break;
 	}
 
-	return paircmp_op(b, a->op, a);
+	return paircmp_op(a->op, b, a);
 }
 
 /** Determine equality of two lists
