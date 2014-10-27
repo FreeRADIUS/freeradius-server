@@ -162,6 +162,11 @@ static unsigned int psk_server_callback(SSL *ssl, const char *identity,
 		return fr_hex2bin(psk, max_psk_len, buffer, hex_len);
 	}
 
+	if (!conf->psk_identity) {
+		DEBUG("No static PSK identity set.  Rejecting the user");
+		return 0;
+	}
+
 	/*
 	 *	No REQUEST, or no dynamic query.  Just look for a
 	 *	static identity.
@@ -2237,7 +2242,12 @@ SSL_CTX *tls_init_ctx(fr_tls_server_conf_t *conf, int client)
 			return NULL;
 		}
 
-		SSL_CTX_set_psk_server_callback(ctx, psk_server_callback);
+		/*
+		 *	Set the callback only if we can check things.
+		 */
+		if (conf->psk_identity || conf->psk_query) {
+			SSL_CTX_set_psk_server_callback(ctx, psk_server_callback);
+		}
 
 	} else if (conf->psk_query) {
 		ERROR("Invalid PSK Configuration: psk_query cannot be used for outgoing connections");
