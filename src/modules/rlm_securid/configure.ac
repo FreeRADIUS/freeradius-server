@@ -64,6 +64,7 @@ if test x$with_[]modname != xno; then
     dnl # Check for header files
     dnl ############################################################
     
+    smart_try_dir="$securid_include_dir"
     FR_SMART_CHECK_INCLUDE(acexport.h)
     if test "x$ac_cv_header_acexport_h" != "xyes"; then
       AC_MSG_WARN([securid headers not found. Use --with-securid-include-dir=<path>.])
