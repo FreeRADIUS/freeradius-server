@@ -995,14 +995,15 @@ static int fr_connection_pool_check(fr_connection_pool_t *pool)
 static void *fr_connection_get_internal(fr_connection_pool_t *pool, int spawn)
 {
 	time_t now;
-	fr_connection_t *this;
+	fr_connection_t *this, *next;
 
 	if (!pool) return NULL;
 
 	pthread_mutex_lock(&pool->mutex);
 
 	now = time(NULL);
-	for (this = pool->head; this != NULL; this = this->next) {
+	for (this = pool->head; this != NULL; this = next) {
+		next = this->next;
 		if (!fr_connection_manage(pool, this, now)) continue;
 
 		if (!this->in_use) goto do_return;
