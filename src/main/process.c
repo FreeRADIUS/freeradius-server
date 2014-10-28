@@ -363,26 +363,12 @@ static void debug_packet(REQUEST *request, RADIUS_PACKET *packet, int direction)
 	vp_cursor_t cursor;
 	VALUE_PAIR *vp;
 	char buffer[1024];
-	char const *received, *from;
-	fr_ipaddr_t const *ip;
-	uint16_t port;
+	char src_ipaddr[128];
+	char dst_ipaddr[128];
 
 	if (!packet) return;
 
 	rad_assert(request->log.func != NULL);
-
-	if (direction == 0) {
-		received = "Received";
-		from = "from";	/* what else? */
-		ip = &packet->src_ipaddr;
-		port = packet->src_port;
-
-	} else {
-		received = "Sending";
-		from = "to";	/* hah! */
-		ip = &packet->dst_ipaddr;
-		port = packet->dst_port;
-	}
 
 	/*
 	 *	Client-specific debugging re-prints the input
@@ -391,16 +377,33 @@ static void debug_packet(REQUEST *request, RADIUS_PACKET *packet, int direction)
 	 *	This really belongs in a utility library
 	 */
 	if (is_radius_code(packet->code)) {
-		RDEBUG("%s %s packet %s host %s port %i, id=%i, length=%zu",
-		       received, fr_packet_codes[packet->code], from,
-		       inet_ntop(ip->af, &ip->ipaddr, buffer, sizeof(buffer)),
-		       port, packet->id, packet->data_len);
+		RDEBUG("%s %s Id %i from %s:%i to %s:%i length %zu",
+		       direction == 0 ? "Received" : "Sending",
+		       fr_packet_codes[packet->code],
+		       packet->id,
+		       inet_ntop(packet->src_ipaddr.af,
+				 &packet->src_ipaddr.ipaddr,
+				 src_ipaddr, sizeof(src_ipaddr)),
+		       packet->src_port,
+		       inet_ntop(packet->dst_ipaddr.af,
+				 &packet->dst_ipaddr.ipaddr,
+				 dst_ipaddr, sizeof(dst_ipaddr)),
+		       packet->dst_port,
+		       packet->data_len);
 	} else {
-		RDEBUG("%s packet %s host %s port %d code=%d, id=%d, length=%zu",
-		       received, from,
-		       inet_ntop(ip->af, &ip->ipaddr, buffer, sizeof(buffer)),
-		       port,
-		       packet->code, packet->id, packet->data_len);
+		RDEBUG("%s code %i Id %i from %s:%i to %s:%i length %zu",
+		       direction == 0 ? "Received" : "Sending",
+		       packet->code,
+		       packet->id,
+		       inet_ntop(packet->src_ipaddr.af,
+				 &packet->src_ipaddr.ipaddr,
+				 src_ipaddr, sizeof(src_ipaddr)),
+		       packet->src_port,
+		       inet_ntop(packet->dst_ipaddr.af,
+				 &packet->dst_ipaddr.ipaddr,
+				 dst_ipaddr, sizeof(dst_ipaddr)),
+		       packet->dst_port,
+		       packet->data_len);
 	}
 
 	RINDENT();
