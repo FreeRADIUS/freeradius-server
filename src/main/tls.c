@@ -1743,7 +1743,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 							 (char *) ASN1_STRING_data(name->d.otherName->value->value.utf8string), T_OP_SET);
 						break;
 					    } else {
-						RWARN("Invalid UPN in Subject Alt Name (should be UTF-8)\n");
+						RWARN("Invalid UPN in Subject Alt Name (should be UTF-8)");
 						break;
 					    }
 					}
@@ -1771,8 +1771,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 
 	if (!my_ok) {
 		char const *p = X509_verify_cert_error_string(err);
-		ERROR("--> verify error:num=%d:%s\n",err, p);
-		REDEBUG("SSL says error %d : %s", err, p);
+		RERROR("SSL says error %d : %s", err, p);
 		return my_ok;
 	}
 
@@ -1824,7 +1823,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 			}
 
 			vp = pairmake(talloc_ctx, certs, attribute, value, T_OP_ADD);
-			if (vp) debug_pair_list(vp);
+			if (vp) rdebug_pair_list(L_DBG_LVL_2, request, vp);
 		}
 
 		BIO_free_all(out);
@@ -1832,12 +1831,12 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 
 	switch (ctx->error) {
 	case X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT:
-		ERROR("issuer= %s\n", issuer);
+		RERROR("issuer=%s", issuer);
 		break;
 
 	case X509_V_ERR_CERT_NOT_YET_VALID:
 	case X509_V_ERR_ERROR_IN_CERT_NOT_BEFORE_FIELD:
-		ERROR("notBefore=");
+		RERROR("notBefore=");
 #if 0
 		ASN1_TIME_print(bio_err, X509_get_notBefore(ctx->current_cert));
 #endif
@@ -1845,7 +1844,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 
 	case X509_V_ERR_CERT_HAS_EXPIRED:
 	case X509_V_ERR_ERROR_IN_CERT_NOT_AFTER_FIELD:
-		ERROR("notAfter=");
+		RERROR("notAfter=");
 #if 0
 		ASN1_TIME_print(bio_err, X509_get_notAfter(ctx->current_cert));
 #endif
@@ -1890,7 +1889,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 		if (my_ok && conf->ocsp_enable){
 			RDEBUG2("--> Starting OCSP Request");
 			if (X509_STORE_CTX_get1_issuer(&issuer_cert, ctx, client_cert) != 1) {
-				ERROR("Couldn't get issuer_cert for %s", common_name);
+				RERROR("Couldn't get issuer_cert for %s", common_name);
 			} else {
 				my_ok = ocsp_check(ocsp_store, issuer_cert, client_cert, conf);
 			}
@@ -2834,8 +2833,7 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 			vp_cursor_t cursor;
 
 			RDEBUG("Adding cached attributes for session %s:", buffer);
-			debug_pair_list(vps);
-
+			rdebug_pair_list(L_DBG_LVL_1, request, vps);
 			for (vp = fr_cursor_init(&cursor, &vps);
 			     vp;
 			     vp = fr_cursor_next(&cursor)) {

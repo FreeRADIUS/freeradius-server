@@ -275,11 +275,11 @@ RADCLIENT *client_listener_find(rad_listen_t *listener,
 	 *
 	 *	and create the RADCLIENT structure from that.
 	 */
-	DEBUG("server %s {", request->server);
+	RDEBUG("server %s {", request->server);
 
 	rcode = process_authorize(0, request);
 
-	DEBUG("} # server %s", request->server);
+	RDEBUG("} # server %s", request->server);
 
 	if (rcode != RLM_MODULE_OK) {
 		talloc_free(request);
@@ -2897,7 +2897,7 @@ static rad_listen_t *listen_parse(CONF_SECTION *cs, char const *server)
 
 
 	server_cs = cf_section_sub_find_name2(main_config.config, "server",
-					      this->server);	
+					      this->server);
 	if (!server_cs && this->server) {
 		cf_log_err_cs(cs, "No such server \"%s\"", this->server);
 		listen_free(&this);

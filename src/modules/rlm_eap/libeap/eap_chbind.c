@@ -78,10 +78,8 @@ static bool chbind_build_response(REQUEST *request, CHBIND_REQ *chbind)
 	ptr[2] = total & 0xff;
 	ptr[3] = CHBIND_NSID_RADIUS;
 
-	if ((debug_flag > 0) && fr_log_fp) {
-		RDEBUG("Sending chbind response: code %i", (int )(ptr[0]));
-		debug_pair_list(request->reply->vps);
-	}
+	RDEBUG("Sending chbind response: code %i", (int )(ptr[0]));
+	rdebug_pair_list(L_DBG_LVL_1, request, request->reply->vps);
 
 	/* Encode the chbind attributes into the response */
 	ptr += 4;
