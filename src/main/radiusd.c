@@ -594,13 +594,19 @@ int main(int argc, char *argv[])
 		INFO("Exiting normally");
 	}
 
-	exec_trigger(NULL, NULL, "server.stop", false);
-
 	/*
 	 *	Ignore the TERM signal: we're
 	 *	about to die.
 	 */
 	signal(SIGTERM, SIG_IGN);
+
+	/*
+	 * Fire signal and stop triggers after ignoring SIGTERM, so handlers are
+	 * not killed with the rest of the process group, below.
+	 */
+	if (status == 2)
+		exec_trigger(NULL, NULL, "server.signal.term", true);
+	exec_trigger(NULL, NULL, "server.stop", false);
 
 	/*
 	 *	Send a TERM signal to all
