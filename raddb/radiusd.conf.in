@@ -473,6 +473,9 @@ security {
 	#  rejects will be sent at 'cleanup_delay' time, when the request
 	#  is deleted from the internal cache of requests.
 	#
+	#  As of Version 3.0.5, "reject_delay" has sub-second resolution.
+	#  e.g. "reject_delay =  1.4" seconds is possible.
+	#
 	#  Useful ranges: 1 to 5
 	reject_delay = 1
 

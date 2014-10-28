@@ -264,7 +264,7 @@ struct rad_request {
 	rad_child_state_t	child_state;
 	RAD_LISTEN_TYPE		priority;
 
-	int			response_delay;
+	struct timeval		response_delay;
 	int			timer_action;
 	fr_event_t		*ev;
 
@@ -422,7 +422,7 @@ typedef struct main_config_t {
 #ifdef WITH_PROXY
 	bool		proxy_requests;
 #endif
-	uint32_t	reject_delay;
+	struct timeval	reject_delay;
 	bool		status_server;
 #ifdef ENABLE_OPENSSL_VERSION_CHECK
 	char const	*allow_vulnerable_openssl;

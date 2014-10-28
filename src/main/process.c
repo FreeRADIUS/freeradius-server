@@ -955,7 +955,7 @@ static void request_process_timer(REQUEST *request)
 #endif	/* WITH_PROXY */
 
 	case REQUEST_RESPONSE_DELAY:
-		rad_assert(request->response_delay > 0);
+		rad_assert((request->response_delay.tv_sec > 0) && (request->response_delay.tv_usec > 0));
 #ifdef WITH_COA
 		rad_assert(!request->proxy || (request->packet->code == request->proxy->code));
 #endif
@@ -964,7 +964,8 @@ static void request_process_timer(REQUEST *request)
 
 		when = request->reply->timestamp;
 
-		tv_add(&when, request->response_delay * USEC);
+		tv_add(&when, request->response_delay.tv_sec * USEC);
+		tv_add(&when, request->response_delay.tv_usec);
 
 		if (timercmp(&when, &now, >)) {
 #ifdef DEBUG_STATE_MACHINE
@@ -1449,7 +1450,7 @@ STATE_MACHINE_DECL(request_finish)
 	 *	See if we need to delay an Access-Reject packet.
 	 */
 	if ((request->reply->code == PW_CODE_ACCESS_REJECT) &&
-	    (request->root->reject_delay > 0)) {
+	    (request->root->reject_delay.tv_sec > 0)) {
 		request->response_delay = request->root->reject_delay;
 
 #ifdef WITH_PROXY
@@ -1458,7 +1459,8 @@ STATE_MACHINE_DECL(request_finish)
 		 *	the reject any more.
 		 */
 		if (request->proxy && !request->proxy_reply) {
-			request->response_delay = 0;
+			request->response_delay.tv_sec = 0;
+			request->response_delay.tv_usec = 0;
 		}
 #endif
 	}
@@ -1466,7 +1468,7 @@ STATE_MACHINE_DECL(request_finish)
 	/*
 	 *	Send the reply.
 	 */
-	if (!request->response_delay) {
+	if (!request->response_delay.tv_sec) {
 		/*
 		 *	Don't print a reply if there's none to send.
 		 */
@@ -1507,8 +1509,8 @@ STATE_MACHINE_DECL(request_finish)
 			request->child_state = REQUEST_CLEANUP_DELAY;
 		}
 	} else {
-		RDEBUG2("Delaying response for %d seconds",
-			request->response_delay);
+		RDEBUG2("Delaying response for %d.%06d seconds",
+			(int) request->response_delay.tv_sec, (int) request->response_delay.tv_usec);
 		NO_CHILD_THREAD;
 		request->child_state = REQUEST_RESPONSE_DELAY;
 	}
