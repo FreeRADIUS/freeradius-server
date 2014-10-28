@@ -273,6 +273,7 @@ ATTRIBUTE	FreeRADIUS-Client-IPv6-Prefix		1151	ipv6prefix
 ATTRIBUTE	FreeRADIUS-Response-Delay		1152	integer
 ATTRIBUTE	FreeRADIUS-Client-Src-IP-Address	1153	ipaddr
 ATTRIBUTE	FreeRADIUS-Client-Src-IPv6-Address	1154	ipv6addr
+ATTRIBUTE	FreeRADIUS-Response-Delay-USec		1155	integer
 
 ATTRIBUTE	REST-HTTP-Header			1160	string
 ATTRIBUTE	REST-HTTP-Body				1161	string

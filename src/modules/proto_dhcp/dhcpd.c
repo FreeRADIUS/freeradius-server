@@ -431,6 +431,18 @@ static int dhcp_process(REQUEST *request)
 				request->response_delay.tv_sec = 10;
 				request->response_delay.tv_usec = 0;
 			}
+		} else {
+#define USEC 1000000
+			vp = pairfind(request->reply->vps, PW_FREERADIUS_RESPONSE_DELAY_USEC, 0, TAG_ANY);
+			if (vp) {
+				if (vp->vp_integer <= 10 * USEC) {
+					request->response_delay.tv_sec = vp->vp_integer / USEC;
+					request->response_delay.tv_usec = vp->vp_integer % USEC;
+				} else {
+					request->response_delay.tv_sec = 10;
+					request->response_delay.tv_usec = 0;
+				}
+			}
 		}
 	}
 
