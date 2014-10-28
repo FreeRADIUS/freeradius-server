@@ -4680,7 +4680,6 @@ static void handle_signal_self(int flag)
 			fr_event_loop_exit(el, 1);
 		} else {
 			INFO("Signalled to terminate");
-			exec_trigger(NULL, NULL, "server.signal.term", true);
 			fr_event_loop_exit(el, 2);
 		}
 
