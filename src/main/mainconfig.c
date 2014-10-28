@@ -97,7 +97,7 @@ static char const	*radius_dir = NULL;	//!< Path to raddb directory
  */
 static const CONF_PARSER security_config[] = {
 	{ "max_attributes",  FR_CONF_POINTER(PW_TYPE_INTEGER, &fr_max_attributes), STRINGIFY(0) },
-	{ "reject_delay",  FR_CONF_POINTER(PW_TYPE_INTEGER, &main_config.reject_delay), STRINGIFY(0) },
+	{ "reject_delay",  FR_CONF_POINTER(PW_TYPE_TIMEVAL, &main_config.reject_delay), STRINGIFY(0) },
 	{ "status_server", FR_CONF_POINTER(PW_TYPE_BOOLEAN, &main_config.status_server), "no"},
 #ifdef ENABLE_OPENSSL_VERSION_CHECK
 	{ "allow_vulnerable_openssl", FR_CONF_POINTER(PW_TYPE_STRING, &main_config.allow_vulnerable_openssl), "no"},
@@ -908,7 +908,15 @@ do {\
 	fr_debug_flag = debug_flag;
 
 	FR_INTEGER_COND_CHECK("max_request_time", main_config.max_request_time, (main_config.max_request_time != 0), 100);
-	FR_INTEGER_BOUND_CHECK("reject_delay", main_config.reject_delay, <=, 10);
+
+	/*
+	 *	reject_delay can be zero.  OR 1 though 10.
+	 */
+	if ((main_config.reject_delay.tv_sec != 0) || (main_config.reject_delay.tv_usec != 0)) {
+		FR_TIMEVAL_BOUND_CHECK("reject_delay", &main_config.reject_delay, >=, 1, 0);
+	}
+	FR_TIMEVAL_BOUND_CHECK("reject_delay", &main_config.reject_delay, <=, 10, 0);
+
 	FR_INTEGER_BOUND_CHECK("cleanup_delay", main_config.cleanup_delay, <=, 10);
 
 	/*
@@ -955,7 +963,7 @@ do {\
 	 *	Sanity check the configuration for internal
 	 *	consistency.
 	 */
-	FR_INTEGER_BOUND_CHECK("reject_delay", main_config.reject_delay, <=, main_config.cleanup_delay);
+	FR_TIMEVAL_BOUND_CHECK("reject_delay", &main_config.reject_delay, <=, main_config.cleanup_delay, 0);
 
 	if (chroot_dir) {
 		if (chdir(radlog_dir) < 0) {
