@@ -10,7 +10,7 @@
 .RE
 .sp
 ..
-.TH unlang 5 "15 April 2014" "" "FreeRADIUS Processing un-language"
+.TH unlang 5 "28 October 2014" "" "FreeRADIUS Processing un-language"
 .SH NAME
 unlang \- FreeRADIUS Processing un\-language
 .SH DESCRIPTION
@@ -290,6 +290,30 @@ or update an attribute list.
 		ldap1	# 50%, unless ldap2 is down, then 100%
 .br
 		ldap2	# 50%, unless ldap1 is down, then 100%
+.br
+	}
+.DE
+
+.IP return
+.br
+Returns from the current top-level section, e.g. "authorize" or
+"authenticate".  This keyword is mainly used to avoid layers of nested
+"if" and "else" statements.
+
+.DS
+	authorize {
+.br
+		if (...) {
+.br
+			...
+.br
+			return
+.br
+		}
+.br
+		...  # this is never reached when the "if"
+.br
+		...  # statement is executed
 .br
 	}
 .DE
