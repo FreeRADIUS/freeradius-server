@@ -636,9 +636,9 @@ SHELL'
 ac_subst_files=''
 ac_user_opts='
 enable_option_checking
-with_securid_include_dir
-with_securid_lib_dir
-with_securid_dir
+with_rlm_securid_include_dir
+with_rlm_securid_lib_dir
+with_rlm_securid_dir
 '
       ac_precious_vars='build_alias
 host_alias
@@ -1254,11 +1254,12 @@ if test -n "$ac_init_help"; then
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
-  --with-securid-include-dir=DIR
+  --with-rlm-securid-include-dir=DIR
                           Directory where the securid includes may be found
-  --with-securid-lib-dir=DIR
+  --with-rlm-securid-lib-dir=DIR
                           Directory where the securid libraries may be found
-  --with-securid-dir=DIR  Base directory where securid is installed
+  --with-rlm-securid-dir=DIR
+                          Base directory where securid is installed
 
 Some influential environment variables:
   CC          C compiler command
@@ -1795,11 +1796,11 @@ if test x$with_rlm_securid != xno; then
 
         securid_include_dir=
 
-# Check whether --with-securid-include-dir was given.
-if test "${with_securid_include_dir+set}" = set; then :
-  withval=$with_securid_include_dir; case "$withval" in
+# Check whether --with-rlm-securid-include-dir was given.
+if test "${with_rlm_securid_include_dir+set}" = set; then :
+  withval=$with_rlm_securid_include_dir; case "$withval" in
 	    no)
-		as_fn_error $? "Need securid-include-dir" "$LINENO" 5
+		as_fn_error $? "Need rlm-securid-include-dir" "$LINENO" 5
 		;;
 	    yes)
 		;;
@@ -1812,11 +1813,11 @@ fi
 
         securid_lib_dir=
 
-# Check whether --with-securid-lib-dir was given.
-if test "${with_securid_lib_dir+set}" = set; then :
-  withval=$with_securid_lib_dir; case "$withval" in
+# Check whether --with-rlm-securid-lib-dir was given.
+if test "${with_rlm_securid_lib_dir+set}" = set; then :
+  withval=$with_rlm_securid_lib_dir; case "$withval" in
 	    no)
-		as_fn_error $? "Need securid-lib-dir" "$LINENO" 5
+		as_fn_error $? "Need rlm-securid-lib-dir" "$LINENO" 5
 		;;
 	    yes)
 		;;
@@ -1828,23 +1829,24 @@ fi
 
 
 
-# Check whether --with-securid-dir was given.
-if test "${with_securid_dir+set}" = set; then :
-  withval=$with_securid_dir; case "$withval" in
+# Check whether --with-rlm-securid-dir was given.
+if test "${with_rlm_securid_dir+set}" = set; then :
+  withval=$with_rlm_securid_dir; case "$withval" in
 	    no)
-		as_fn_error $? "Need securid-dir" "$LINENO" 5
+		as_fn_error $? "Need rlm-securid-dir" "$LINENO" 5
 		;;
 	    yes)
 		;;
 	    *)
 		securid_lib_dir="$withval/lib"
-		securid_include_dir="$withval/include"
+		securid_include_dir="$withval/inc"
 		;;
 	esac
 fi
 
 
 
+    smart_try_dir="$securid_include_dir"
     ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'
 ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
