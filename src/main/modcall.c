@@ -52,7 +52,7 @@ struct modcallable {
 	enum { MOD_SINGLE = 1, MOD_GROUP, MOD_LOAD_BALANCE, MOD_REDUNDANT_LOAD_BALANCE,
 #ifdef WITH_UNLANG
 	       MOD_IF, MOD_ELSE, MOD_ELSIF, MOD_UPDATE, MOD_SWITCH, MOD_CASE,
-	       MOD_FOREACH, MOD_BREAK,
+	       MOD_FOREACH, MOD_BREAK, MOD_RETURN,
 #endif
 	       MOD_POLICY, MOD_REFERENCE, MOD_XLAT } type;
 	rlm_components_t method;
@@ -362,6 +362,7 @@ static char const *group_name[] = {
 	"case",
 	"foreach",
 	"break",
+	"return",
 #endif
 	"policy",
 	"reference",
@@ -701,13 +702,18 @@ redo:
 			}
 
 			/*
-			 *	If we've been told to stop processing
-			 *	it, do so.
+			 *	We've unwound to the enclosing
+			 *	"foreach".  Stop the unwinding.
 			 */
 			if (entry->unwind == MOD_FOREACH) {
 				entry->unwind = 0;
 				break;
 			}
+
+			/*
+			 *	Unwind all the way.
+			 */
+			if (entry->unwind == MOD_RETURN) break;
 		} /* loop over VPs */
 
 		/*
@@ -746,7 +752,19 @@ redo:
 		entry->unwind = MOD_FOREACH;
 		goto finish;
 	} /* MOD_BREAK */
-#endif	  /* WITH_PROXY */
+
+	/*
+	 *	Stop processing the current section, no matter how
+	 *	deeply the current processing is.
+	 */
+	if (c->type == MOD_RETURN) {
+		/*
+		 *	Leave result / priority on the stack, and stop processing the section.
+		 */
+		entry->unwind = MOD_RETURN;
+		goto finish;
+	} /* MOD_BREAK */
+#endif	  /* WITH_UNLANG */
 
 	/*
 	 *	Child is a group that has children of it's own.
@@ -1076,11 +1094,13 @@ calculate_result:
 	 *	If we've been told to stop processing
 	 *	it, do so.
 	 */
-	if (entry->unwind != 0) {
+	if (entry->unwind == MOD_FOREACH) {
 		RDEBUG2("# unwind to enclosing %s", group_name[entry->unwind]);
 		entry->unwind = 0;
 		goto finish;
 	}
+
+	if (entry->unwind == MOD_RETURN) goto finish;
 
 next_sibling:
 	entry->c = entry->c->next;
@@ -2488,6 +2508,12 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 	if (strcmp(modrefname, "break") == 0) {
 		return do_compile_modbreak(parent, component, ci);
 	}
+
+	if (strcmp(modrefname, "return") == 0) {
+		return do_compile_modgroup(parent, component, NULL,
+					   GROUPTYPE_SIMPLE, GROUPTYPE_SIMPLE,
+					   MOD_RETURN);
+	}
 #endif
 
 	/*
@@ -2713,7 +2739,7 @@ static modcallable *do_compile_modgroup(modcallable *parent,
 	c->next = NULL;
 	memset(c->actions, 0, sizeof(c->actions));
 
-	if (!cs) {		/* only for "break" */
+	if (!cs) {		/* only for "break" and "return" */
 		c->name = "";
 		goto set_codes;
 	}
@@ -3377,8 +3403,9 @@ bool modcall_pass2(modcallable *mc)
 			break;
 
 		case MOD_XLAT:   /* @todo: pre-parse xlat's */
-		case MOD_BREAK:
 		case MOD_REFERENCE:
+		case MOD_BREAK:
+		case MOD_RETURN:
 #endif
 
 		case MOD_SINGLE:
