@@ -3689,6 +3689,16 @@ bool modcall_pass2(modcallable *mc)
 		do_recurse:
 #endif
 			g = mod_callabletogroup(c);
+			if (!g->cs) {
+				c->debug_name = mc->name; /* for authorize, etc. */
+			} else {
+				char const *name1 = cf_section_name1(g->cs);
+
+				if (strcmp(name1, group_name[c->type]) != 0) {
+					c->debug_name = talloc_asprintf(c, "%s %s", name1, cf_section_name2(g->cs));
+				}
+			}
+
 			if (g->done_pass2) return true;
 			if (!modcall_pass2(g->children)) return false;
 			g->done_pass2 = true;
