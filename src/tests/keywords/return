@@ -1,33 +1,13 @@
-#
-#  PRE: update if
-#
-update control {
-	Cleartext-Password := 'hello'
+update {
+	control:Auth-Type = 'Accept'
+	reply:Reply-Message = 'pass'
 }
 
-if (User-Name == "bob") {
-	update reply {
-		Filter-Id := "filter"
-	}
+# Section should exit after this statement
+ok {
+	ok = return
+}
 
-	#
-	#  We need this because the "return" below
-	#  will prevent the "pap" module from being run
-	#  in the "authorize" section.
-	#
-	update control {
-		Auth-Type := PAP
-	}
-
-	#
-	#  Stop processing "authorize", and go to the next section.
-	#
-	return
-
-	#
-	#  Shouldn't reach this
-	#
-	update reply {
-		Filter-Id := "fail"
-	}
+update {
+	reply:Reply-Message := 'fail'
 }
