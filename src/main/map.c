@@ -1160,9 +1160,40 @@ int map_to_request(REQUEST *request, value_pair_map_t const *map, radius_map_get
 finish:
 	rad_assert(!head);
 
+	/*
+	 *	Update the cached username && password.  This is code
+	 *	we execute on EVERY update (sigh) so that SOME modules
+	 *	MIGHT NOT have to do the search themselves.
+	 *
+	 *	TBH, we should probably make each module just do the
+	 *	search themselves.
+	 */
 	if (map->lhs->tmpl_list == PAIR_LIST_REQUEST) {
-		context->username = pairfind(*list, PW_USER_NAME, 0, TAG_ANY);
-		context->password = pairfind(*list, PW_USER_PASSWORD, 0, TAG_ANY);
+		context->username = NULL;
+		context->password = NULL;
+
+		for (vp = fr_cursor_init(&src_list, list);
+		     vp;
+		     vp = fr_cursor_next(&src_list)) {
+
+			if (vp->da->vendor != 0) continue;
+			if (vp->da->flags.has_tag) continue;
+
+			if (!context->username && (vp->da->attr == PW_USER_NAME)) {
+				context->username = vp;
+				continue;
+			}
+
+			if (vp->da->attr == PW_STRIPPED_USER_NAME) {
+				context->username = vp;
+				continue;
+			}
+
+			if (vp->da->attr == PW_USER_PASSWORD) {
+				context->password = vp;
+				continue;
+			}
+		}
 	}
 	return 0;
 }
