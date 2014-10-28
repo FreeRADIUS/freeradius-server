@@ -3399,6 +3399,7 @@ bool modcall_pass2(modcallable *mc)
 #endif
 
 		case MOD_SINGLE:
+			c->debug_name = c->name;
 			break;	/* do nothing */
 
 #ifdef WITH_UNLANG
@@ -3681,7 +3682,8 @@ bool modcall_pass2(modcallable *mc)
 			g = mod_callabletogroup(c);
 			if (!g->cs) {
 				c->debug_name = mc->name; /* for authorize, etc. */
-			} else {
+
+			} else if (c->type == MOD_GROUP) { /* for Auth-Type, etc. */
 				char const *name1 = cf_section_name1(g->cs);
 
 				if (strcmp(name1, group_name[c->type]) != 0) {
