@@ -689,7 +689,7 @@ void rdebug_pair(int level, REQUEST *request, VALUE_PAIR *vp)
 	RDEBUGX(level, "%s", buffer);
 }
 
-/** Print a list of valuepairs to the request list.
+/** Print a list of VALUE_PAIRs.
  *
  * @param[in] level Debug level (1-4).
  * @param[in] request to read logging params from.
@@ -709,6 +709,33 @@ void rdebug_pair_list(int level, REQUEST *request, VALUE_PAIR *vp)
 	     vp = fr_cursor_next(&cursor)) {
 		VERIFY_VP(vp);
 
+		vp_prints(buffer, sizeof(buffer), vp);
+		RDEBUGX(level, "%s", buffer);
+	}
+	REXDENT();
+}
+
+/** Print a list of protocol VALUE_PAIRs.
+ *
+ * @param[in] level Debug level (1-4).
+ * @param[in] request to read logging params from.
+ * @param[in] vp to print.
+ */
+void rdebug_proto_pair_list(int level, REQUEST *request, VALUE_PAIR *vp)
+{
+	vp_cursor_t cursor;
+	char buffer[256];
+	if (!vp || !request || !request->log.func) return;
+
+	if (!radlog_debug_enabled(L_DBG, level, request)) return;
+
+	RINDENT();
+	for (vp = fr_cursor_init(&cursor, &vp);
+	     vp;
+	     vp = fr_cursor_next(&cursor)) {
+		VERIFY_VP(vp);
+		if ((vp->da->vendor == 0) &&
+		    ((vp->da->attr & 0xFFFF) > 0xff)) continue;
 		vp_prints(buffer, sizeof(buffer), vp);
 		RDEBUGX(level, "%s", buffer);
 	}

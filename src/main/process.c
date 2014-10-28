@@ -353,19 +353,13 @@ static void tv_add(struct timeval *tv, int usec_delay)
 /*
  *	In daemon mode, AND this request has debug flags set.
  */
-#define DEBUG_PACKET if (debug_flag && request->log.lvl && request->log.func) debug_packet
-
-static void debug_packet(REQUEST *request, RADIUS_PACKET *packet, int direction)
+static void debug_packet(REQUEST *request, RADIUS_PACKET *packet, bool received)
 {
-	vp_cursor_t cursor;
-	VALUE_PAIR *vp;
-	char buffer[1024];
 	char src_ipaddr[128];
 	char dst_ipaddr[128];
 
 	if (!packet) return;
-
-	rad_assert(request->log.func != NULL);
+	if (!RDEBUG_ENABLED) return;
 
 	/*
 	 *	Client-specific debugging re-prints the input
@@ -375,7 +369,7 @@ static void debug_packet(REQUEST *request, RADIUS_PACKET *packet, int direction)
 	 */
 	if (is_radius_code(packet->code)) {
 		RDEBUG("%s %s Id %i from %s:%i to %s:%i length %zu",
-		       direction == 0 ? "Received" : "Sending",
+		       received ? "Received" : "Sent",
 		       fr_packet_codes[packet->code],
 		       packet->id,
 		       inet_ntop(packet->src_ipaddr.af,
@@ -389,7 +383,7 @@ static void debug_packet(REQUEST *request, RADIUS_PACKET *packet, int direction)
 		       packet->data_len);
 	} else {
 		RDEBUG("%s code %i Id %i from %s:%i to %s:%i length %zu",
-		       direction == 0 ? "Received" : "Sending",
+		       received ? "Received" : "Sent",
 		       packet->code,
 		       packet->id,
 		       inet_ntop(packet->src_ipaddr.af,
@@ -403,14 +397,11 @@ static void debug_packet(REQUEST *request, RADIUS_PACKET *packet, int direction)
 		       packet->data_len);
 	}
 
-	RINDENT();
-	for (vp = fr_cursor_init(&cursor, &packet->vps);
-	     vp;
-	     vp = fr_cursor_next(&cursor)) {
-		vp_prints(buffer, sizeof(buffer), vp);
-		RDEBUG("%s", buffer);
+	if (received) {
+		rdebug_pair_list(L_DBG_LVL_1, request, packet->vps);
+	} else {
+		rdebug_proto_pair_list(L_DBG_LVL_1, request, packet->vps);
 	}
-	REXDENT();
 }
 
 
@@ -984,8 +975,8 @@ static void request_process_timer(REQUEST *request)
 		} /* else it's time to send the reject */
 
 		RDEBUG2("Sending delayed response");
-		DEBUG_PACKET(request, request->reply, 1);
 		request->listener->send(request->listener, request);
+		debug_packet(request, request->reply, false);
 		request->child_state = REQUEST_CLEANUP_DELAY;
 		/* FALL-THROUGH */
 
@@ -1267,7 +1258,7 @@ static int CC_HINT(nonnull) request_pre_handler(REQUEST *request, UNUSED int act
 		}
 #endif
 
-		DEBUG_PACKET(request, request->packet, 0);
+		debug_packet(request, request->packet, true);
 	} else {
 		rcode = 0;
 	}
@@ -1409,16 +1400,14 @@ STATE_MACHINE_DECL(request_finish)
 	 */
 	if (request->listener->type == RAD_LISTEN_DETAIL) {
 	do_detail:
+		request->simul_max = 1;
+		request->listener->send(request->listener, request);
 		/*
 		 *	But only print the reply if there is one.
 		 */
 		if (request->reply->code != 0) {
-			DEBUG_PACKET(request, request->reply, 1);
+			debug_packet(request, request->reply, false);
 		}
-
-		request->simul_max = 1;
-		request->listener->send(request->listener,
-					request);
 		goto done;
 	}
 #endif
@@ -1482,9 +1471,8 @@ STATE_MACHINE_DECL(request_finish)
 		 *	Don't print a reply if there's none to send.
 		 */
 		if (request->reply->code != 0) {
-			DEBUG_PACKET(request, request->reply, 1);
-			request->listener->send(request->listener,
-						request);
+			request->listener->send(request->listener, request);
+			debug_packet(request, request->reply, false);
 		}
 	done:
 		pairfree(&request->reply->vps);
@@ -2315,7 +2303,7 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply)
 		 */
 		if (request->proxy_listener) {
 			rcode = request->proxy_listener->decode(request->proxy_listener, request);
-			DEBUG_PACKET(request, reply, 0);
+			debug_packet(request, reply, true);
 
 			/*
 			 *	Pro-actively remove it from the proxy hash.
@@ -3017,7 +3005,7 @@ static int request_proxy(REQUEST *request, int retransmit)
 				request->proxy->dst_port,
 				(int) response_window->tv_sec, (int) response_window->tv_usec);
 
-		DEBUG_PACKET(request, request->proxy, 1);
+
 	}
 
 	gettimeofday(&request->proxy_retransmit, NULL);
@@ -3029,8 +3017,8 @@ static int request_proxy(REQUEST *request, int retransmit)
 	FR_STATS_TYPE_INC(request->home_server->stats.total_requests);
 	NO_CHILD_THREAD;
 	request->child_state = REQUEST_PROXIED;
-	request->proxy_listener->send(request->proxy_listener,
-				      request);
+	request->proxy_listener->send(request->proxy_listener, request);
+	debug_packet(request, request->proxy, false);
 	return 1;
 }
 
@@ -3587,12 +3575,11 @@ STATE_MACHINE_DECL(proxy_wait_for_reply)
 		request->num_proxied_requests++;
 
 		rad_assert(request->proxy_listener != NULL);;
-		DEBUG_PACKET(request, request->proxy, 1);
 		FR_STATS_TYPE_INC(home->stats.total_requests);
 		home->last_packet_sent = now.tv_sec;
 		request->proxy_retransmit = now;
-		request->proxy_listener->send(request->proxy_listener,
-					      request);
+		request->proxy_listener->send(request->proxy_listener, request);
+		debug_packet(request, request->proxy, false);
 		break;
 
 	case FR_ACTION_TIMER:
@@ -3944,8 +3931,6 @@ static void request_coa_originate(REQUEST *request)
 	coa->packet->timestamp = coa->proxy->timestamp; /* for max_request_time */
 	coa->delay = 0;		/* need to calculate a new delay */
 
-	DEBUG_PACKET(coa, coa->proxy, 1);
-
 	coa->process = coa_wait_for_reply;
 #ifdef DEBUG_STATE_MACHINE
 	if (debug_flag) printf("(%u) ********\tSTATE %s C-%s -> C-%s\t********\n", request->number, __FUNCTION__,
@@ -3960,6 +3945,7 @@ static void request_coa_originate(REQUEST *request)
 	FR_STATS_TYPE_INC(coa->home_server->stats.total_requests);
 	coa->home_server->last_packet_sent = coa->proxy->timestamp.tv_sec;
 	coa->proxy_listener->send(coa->proxy_listener, coa);
+	debug_packet(coa, coa->proxy, false);
 }
 
 

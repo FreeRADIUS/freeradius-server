@@ -824,8 +824,6 @@ static ssize_t vp2data_any(RADIUS_PACKET const *packet,
 				    start, room);
 	}
 
-	debug_pair(vp);
-
 	/*
 	 *	Set up the default sources for the data.
 	 */
@@ -1262,8 +1260,6 @@ static ssize_t vp2attr_concat(UNUSED RADIUS_PACKET const *packet,
 
 	VERIFY_VP(vp);
 
-	debug_pair(vp);
-
 	p = vp->vp_octets;
 	len = vp->length;
 
@@ -1569,7 +1565,6 @@ int rad_vp2rfc(RADIUS_PACKET const *packet,
 	if (vp->da->attr == PW_MESSAGE_AUTHENTICATOR) {
 		if (room < 18) return -1;
 
-		debug_pair(vp);
 		ptr[0] = PW_MESSAGE_AUTHENTICATOR;
 		ptr[1] = 18;
 		memset(ptr + 2, 0, 16);
@@ -1699,31 +1694,11 @@ int rad_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 	uint16_t		total_length;
 	int			len;
 	VALUE_PAIR const	*reply;
-	char const		*what;
-	char			ip_src_buffer[INET6_ADDRSTRLEN];
-	char			ip_dst_buffer[INET6_ADDRSTRLEN];
 
 	/*
 	 *	A 4K packet, aligned on 64-bits.
 	 */
 	uint64_t	data[MAX_PACKET_LEN / sizeof(uint64_t)];
-
-	if (is_radius_code(packet->code)) {
-		what = fr_packet_codes[packet->code];
-	} else {
-		what = "Reply";
-	}
-
-	DEBUG("Sending %s Id %d from %s:%u to %s:%u\n",
-	      what, packet->id,
-	      inet_ntop(packet->src_ipaddr.af,
-			&packet->src_ipaddr.ipaddr,
-			ip_src_buffer, sizeof(ip_src_buffer)),
-	      packet->src_port,
-	      inet_ntop(packet->dst_ipaddr.af,
-			&packet->dst_ipaddr.ipaddr,
-			ip_dst_buffer, sizeof(ip_dst_buffer)),
-	      packet->dst_port);
 
 	/*
 	 *	Double-check some things based on packet code.
@@ -2003,22 +1978,11 @@ int rad_sign(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 int rad_send(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 	     char const *secret)
 {
-	VALUE_PAIR		*reply;
-	char const		*what;
-	char			ip_src_buffer[128];
-	char			ip_dst_buffer[128];
-
 	/*
 	 *	Maybe it's a fake packet.  Don't send it.
 	 */
 	if (!packet || (packet->sockfd < 0)) {
 		return 0;
-	}
-
-	if (is_radius_code(packet->code)) {
-		what = fr_packet_codes[packet->code];
-	} else {
-		what = "Reply";
 	}
 
 	/*
@@ -2044,21 +2008,6 @@ int rad_send(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 		 *	If packet->data points to data, then we print out
 		 *	the VP list again only for debugging.
 		 */
-	} else if (fr_debug_flag) {
-		DEBUG("Sending %s Id %d from %s:%u to %s:%u\n", what,
-		      packet->id,
-		      inet_ntop(packet->src_ipaddr.af, &packet->src_ipaddr.ipaddr,
-				ip_src_buffer, sizeof(ip_src_buffer)),
-		      packet->src_port,
-		      inet_ntop(packet->dst_ipaddr.af, &packet->dst_ipaddr.ipaddr,
-				ip_dst_buffer, sizeof(ip_dst_buffer)),
-		      packet->dst_port);
-
-		for (reply = packet->vps; reply; reply = reply->next) {
-			if ((reply->da->vendor == 0) &&
-			    ((reply->da->attr & 0xFFFF) > 0xff)) continue;
-			debug_pair(reply);
-		}
 	}
 
 #ifndef NDEBUG
@@ -2683,39 +2632,6 @@ RADIUS_PACKET *rad_recv(int fd, int flags)
 	 *	Explicitely set the VP list to empty.
 	 */
 	packet->vps = NULL;
-
-	if (fr_debug_flag) {
-		char src_ipaddr[128];
-		char dst_ipaddr[128];
-
-		if (is_radius_code(packet->code)) {
-			DEBUG("Received %s Id %d from %s:%d to %s:%d length %d\n",
-			      fr_packet_codes[packet->code],
-			      packet->id,
-			      inet_ntop(packet->src_ipaddr.af,
-					&packet->src_ipaddr.ipaddr,
-					src_ipaddr, sizeof(src_ipaddr)),
-			      packet->src_port,
-			      inet_ntop(packet->dst_ipaddr.af,
-					&packet->dst_ipaddr.ipaddr,
-					dst_ipaddr, sizeof(dst_ipaddr)),
-			      packet->dst_port,
-			      (int) packet->data_len);
-		} else {
-			DEBUG("Received code %d Id %d from %s:%d to %s:%d length %d\n",
-			      packet->code,
-			      packet->id,
-			      inet_ntop(packet->src_ipaddr.af,
-					&packet->src_ipaddr.ipaddr,
-					src_ipaddr, sizeof(src_ipaddr)),
-			      packet->src_port,
-			      inet_ntop(packet->dst_ipaddr.af,
-					&packet->dst_ipaddr.ipaddr,
-					dst_ipaddr, sizeof(dst_ipaddr)),
-			      packet->dst_port,
-			      (int) packet->data_len);
-		}
-	}
 
 #ifndef NDEBUG
 	if ((fr_debug_flag > 3) && fr_log_fp) rad_print_hex(packet);
@@ -4086,7 +4002,6 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 		*tail = vp;
 		while (vp) {
 			num_attributes++;
-			debug_pair(vp);
 			tail = &(vp->next);
 			vp = vp->next;
 		}
