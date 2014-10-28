@@ -672,23 +672,6 @@ void debug_pair(VALUE_PAIR *vp)
 	vp_print(fr_log_fp, vp);
 }
 
-/** Print a list of valuepairs to stderr or error log.
- *
- * @param[in] vp to print.
- */
-void debug_pair_list(VALUE_PAIR *vp)
-{
-	vp_cursor_t cursor;
-	if (!vp || !debug_flag || !fr_log_fp) return;
-
-	for (vp = fr_cursor_init(&cursor, &vp);
-	     vp;
-	     vp = fr_cursor_next(&cursor)) {
-		vp_print(fr_log_fp, vp);
-	}
-	fflush(fr_log_fp);
-}
-
 /** Print a single valuepair to stderr or error log.
  *
  * @param[in] level Debug level (1-4).
@@ -720,6 +703,7 @@ void rdebug_pair_list(int level, REQUEST *request, VALUE_PAIR *vp)
 
 	if (!radlog_debug_enabled(L_DBG, level, request)) return;
 
+	RINDENT();
 	for (vp = fr_cursor_init(&cursor, &vp);
 	     vp;
 	     vp = fr_cursor_next(&cursor)) {
@@ -728,6 +712,7 @@ void rdebug_pair_list(int level, REQUEST *request, VALUE_PAIR *vp)
 		vp_prints(buffer, sizeof(buffer), vp);
 		RDEBUGX(level, "%s", buffer);
 	}
+	REXDENT();
 }
 
 /** Return a VP from the specified request.

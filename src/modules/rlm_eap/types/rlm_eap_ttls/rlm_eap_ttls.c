@@ -247,7 +247,7 @@ static int mod_authenticate(void *arg, eap_handler_t *handler)
 		if (t && t->authenticated) {
 			if (t->accept_vps) {
 				RDEBUG2("Using saved attributes from the original Access-Accept");
-				debug_pair_list(t->accept_vps);
+				rdebug_pair_list(L_DBG_LVL_2, request, t->accept_vps);
 				pairfilter(handler->request->reply,
 					   &handler->request->reply->vps,
 					   &t->accept_vps, 0, 0, TAG_ANY);

@@ -289,8 +289,8 @@ static int eap_sim_sendchallenge(eap_handler_t *handler)
 	outvps = &packet->vps;
 
 	if (RDEBUG_ENABLED2) {
-		RDEBUG2("EAP-SIM decoded packet:");
-		debug_pair_list(*invps);
+		RDEBUG2("EAP-SIM decoded packet");
+		rdebug_pair_list(L_DBG_LVL_2, request, *invps);
 	}
 
 	/*

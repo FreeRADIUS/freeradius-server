@@ -148,32 +148,22 @@ static void CC_HINT(nonnull) cache_merge(rlm_cache_t *inst, REQUEST *request, rl
 	}
 
 	if (c->control) {
-		RDEBUG2("Merging cached control list:");
-
-		RINDENT();
+		RDEBUG2("Merging cached control list");
 		rdebug_pair_list(L_DBG_LVL_2, request, c->control);
-		REXDENT();
-
 		pairadd(&request->config_items, paircopy(request, c->control));
 	}
 
 	if (c->packet && request->packet) {
-		RDEBUG2("Merging cached request list:");
-
-		RINDENT();
+		RDEBUG2("Merging cached request list");
 		rdebug_pair_list(L_DBG_LVL_2, request, c->packet);
-		REXDENT();
 
 		pairadd(&request->packet->vps,
 			paircopy(request->packet, c->packet));
 	}
 
 	if (c->reply && request->reply) {
-		RDEBUG2("Merging cached reply list:");
-
-		RINDENT();
+		RDEBUG2("Merging cached reply list");
 		rdebug_pair_list(L_DBG_LVL_2, request, c->reply);
-		REXDENT();
 
 		pairadd(&request->reply->vps,
 			paircopy(request->reply, c->reply));
