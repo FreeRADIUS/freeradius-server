@@ -1,5 +1,6 @@
 FreeRADIUS 2.2.6 Monday 13 Jun 2014 09:05:00 EDT, urgency=medium
 	Feature improvements
+	* None.
 
 	Bug fixes
 	* Fix redundant-load-balance blocks to try other modules in
@@ -12,6 +13,8 @@ FreeRADIUS 2.2.6 Monday 13 Jun 2014 09:05:00 EDT, urgency=medium
 	* Define sig_t on systems which don't have it.  Closes #765
 	* When clients are loaded from SQL, allow them to be tied
 	  to a virtual server.
+	* Prevent race conditions between fork and wait for child.
+	  Patch from James Rouzier.
 
 FreeRADIUS 2.2.5 Monday 28 Apr 2014 15:20:00 EDT, urgency=medium
 	Feature improvements
