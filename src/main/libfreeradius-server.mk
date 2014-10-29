@@ -8,5 +8,5 @@ SOURCES	:=	conffile.c \
 		map.c \
 		tmpl.c \
 		util.c \
-		valuepair.c \
+		pair.c \
 		xlat.c
