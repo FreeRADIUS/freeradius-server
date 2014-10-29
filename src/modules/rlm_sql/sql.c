@@ -367,7 +367,7 @@ static void rlm_sql_query_debug(rlm_sql_handle_t *handle, rlm_sql_t *inst)
 sql_rcode_t rlm_sql_query(rlm_sql_handle_t **handle, rlm_sql_t *inst, char const *query)
 {
 	int ret = RLM_SQL_ERROR;
-	int i;
+	int i, count;
 
 	/* There's no query to run, return an error */
 	if (query[0] == '\0') return RLM_SQL_QUERY_ERROR;
@@ -375,8 +375,16 @@ sql_rcode_t rlm_sql_query(rlm_sql_handle_t **handle, rlm_sql_t *inst, char const
 	/* There's no handle, we need a new one */
 	if (!*handle) return RLM_SQL_RECONNECT;
 
-	/* For sanity, for when no connections are viable, and we can't make a new one */
-	for (i = fr_connection_get_num(inst->pool); i >= 0; i--) {
+	/*
+	 *  inst->pool may be NULL is this function is called by mod_conn_create.
+	 */
+	count = inst->pool ? fr_connection_get_num(inst->pool) : 0;
+
+	/*
+	 *  Here we try with each of the existing connections, then try to create
+	 *  a new connection, then give up.
+	 */
+	for (i = 0; i < (count + 1); i++) {
 		DEBUG("rlm_sql (%s): Executing query: '%s'", inst->config->xlat_name, query);
 
 		ret = (inst->module->sql_query)(*handle, inst->config, query);
@@ -426,7 +434,7 @@ sql_rcode_t rlm_sql_query(rlm_sql_handle_t **handle, rlm_sql_t *inst, char const
 sql_rcode_t rlm_sql_select_query(rlm_sql_handle_t **handle, rlm_sql_t *inst, char const *query)
 {
 	int ret = RLM_SQL_ERROR;
-	int i;
+	int i, count;
 
 	/* There's no query to run, return an error */
 	if (query[0] == '\0') return RLM_SQL_QUERY_ERROR;
@@ -434,8 +442,15 @@ sql_rcode_t rlm_sql_select_query(rlm_sql_handle_t **handle, rlm_sql_t *inst, cha
 	/* There's no handle, we need a new one */
 	if (!*handle) return RLM_SQL_RECONNECT;
 
-	/* For sanity, for when no connections are viable, and we can't make a new one */
-	for (i = fr_connection_get_num(inst->pool); i >= 0; i--) {
+	/*
+	 *  inst->pool may be NULL is this function is called by mod_conn_create.
+	 */
+	count = inst->pool ? fr_connection_get_num(inst->pool) : 0;
+
+	/*
+	 *  For sanity, for when no connections are viable, and we can't make a new one
+	 */
+	for (i = 0; i < (count + 1); i++) {
 		DEBUG("rlm_sql (%s): Executing query: '%s'", inst->config->xlat_name, query);
 
 		ret = (inst->module->sql_select_query)(*handle, inst->config, query);
