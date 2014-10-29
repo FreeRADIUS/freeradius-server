@@ -3227,6 +3227,7 @@ static ssize_t data2vp_vsas(TALLOC_CTX *ctx, RADIUS_PACKET *packet,
 	uint32_t vendor;
 	DICT_VENDOR *dv;
 	VALUE_PAIR *head, **tail;
+	DICT_VENDOR my_dv;
 
 	if (attrlen > packetlen) return -1;
 	if (attrlen < 5) return -1; /* vid, value */
@@ -3238,8 +3239,28 @@ static ssize_t data2vp_vsas(TALLOC_CTX *ctx, RADIUS_PACKET *packet,
 	vendor = ntohl(vendor);
 	dv = dict_vendorbyvalue(vendor);
 	if (!dv) {
-		VP_TRACE("unknown vendor %04x", vendor);
-		return -1;
+		/*
+		 *	RFC format is 1 octet type, 1 octet length
+		 */
+		if (rad_tlv_ok(data + 4, attrlen - 4, 1, 1) < 0) {
+			VP_TRACE("data2vp_vsas: unknown tlvs not OK: %s\n", fr_strerror());
+			return -1;
+		}
+
+		/*
+		 *	It's a known unknown.
+		 */
+		memset(&my_dv, 0, sizeof(my_dv));
+		dv = &my_dv;
+
+		/*
+		 *	Fill in the fields.  Note that the name is empty!
+		 */
+		dv->vendorpec = vendor;
+		dv->type = 1;
+		dv->length = 1;
+
+		goto create_attrs;
 	}
 
 	/*
@@ -3264,6 +3285,7 @@ static ssize_t data2vp_vsas(TALLOC_CTX *ctx, RADIUS_PACKET *packet,
 	 *	There may be more than one VSA in the
 	 *	Vendor-Specific.  If so, loop over them all.
 	 */
+create_attrs:
 	data += 4;
 	attrlen -= 4;
 	packetlen -= 4;
