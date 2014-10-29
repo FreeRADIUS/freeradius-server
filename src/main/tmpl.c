@@ -1409,6 +1409,7 @@ VALUE_PAIR *tmpl_cursor_next(vp_cursor_t *cursor, value_pair_tmpl_t const *vpt)
 
 	default:
 		rad_assert(0);
+		return NULL;	/* Older versions of GCC flag the lack of return as an error */
 	}
 }
 
