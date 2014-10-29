@@ -43,7 +43,7 @@ ATTRIBUTE	3GPP-Teardown-Indicator			19	byte
 ATTRIBUTE	3GPP-IMEISV				20	string
 ATTRIBUTE	3GPP-RAT-Type				21	byte
 ATTRIBUTE	3GPP-Location-Info			22	octets
-ATTRIBUTE	3GPP-MS-Time-Zone			23	integer
+ATTRIBUTE	3GPP-MS-Time-Zone			23	octets
 ATTRIBUTE	3GPP-Camel-Charging-Info		24	octets
 ATTRIBUTE	3GPP-Packet-Filter			25	octets
 ATTRIBUTE	3GPP-Negotiated-DSCP			26	byte
