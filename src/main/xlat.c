@@ -757,6 +757,20 @@ void xlat_unregister(char const *name, UNUSED RAD_XLAT_FUNC func, void *instance
 	rbtree_deletebydata(xlat_root, c);
 }
 
+static int xlat_unregister_callback(void *instance, void *data)
+{
+	xlat_t *c = (xlat_t *) data;
+
+	if (c->instance != instance) return 0; /* keep walking */
+
+	return 2;		/* delete it */
+}
+
+void xlat_unregister_module(void *instance)
+{
+	rbtree_walk(xlat_root, RBTREE_DELETE_ORDER, xlat_unregister_callback, instance);
+}
+
 
 /** Crappy temporary function to add attribute ref support to xlats
  *

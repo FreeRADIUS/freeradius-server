@@ -670,6 +670,7 @@ typedef ssize_t (*RAD_XLAT_FUNC)(void *instance, REQUEST *, char const *, char *
 int		xlat_register(char const *module, RAD_XLAT_FUNC func, RADIUS_ESCAPE_STRING escape,
 			      void *instance);
 void		xlat_unregister(char const *module, RAD_XLAT_FUNC func, void *instance);
+void		xlat_unregister_module(void *instance);
 ssize_t		xlat_fmt_to_ref(uint8_t const **out, REQUEST *request, char const *fmt);
 void		xlat_free(void);
 
