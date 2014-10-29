@@ -638,6 +638,7 @@ COLLECTDC_LDFLAGS
 COLLECTDC_LIBS
 PCAP_LDFLAGS
 PCAP_LIBS
+OPENSSL_CPPFLAGS
 OPENSSL_LDFLAGS
 OPENSSL_LIBS
 LIBREADLINE
@@ -8346,7 +8347,7 @@ if eval test \"x\$"$as_ac_Header"\" = x"yes"; then :
   cat >>confdefs.h <<_ACEOF
 #define `$as_echo "HAVE_$ac_header" | $as_tr_cpp` 1
 _ACEOF
-
+  OPENSSL_CPPFLAGS="$smart_include"
 else
 
         { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
@@ -8391,7 +8392,7 @@ rm -f conftest*
 
 
                         old_CPPFLAGS="$CPPFLAGS"
-    CPPFLAGS="$OPENSSL_LDFLAGS $CPPFLAGS"
+    CPPFLAGS="$OPENSSL_CPPFLAGS $CPPFLAGS"
 
                 { $as_echo "$as_me:${as_lineno-$LINENO}: checking OpenSSL library and header version consistency" >&5
 $as_echo_n "checking OpenSSL library and header version consistency... " >&6; }
@@ -8450,7 +8451,8 @@ fi
   LIBS="$OLD_LIBS"
 
 
-  export OPENSSL_LIBS OPENSSL_LDFLAGS
+
+  export OPENSSL_LIBS OPENSSL_LDFLAGS OPENSSL_CPPFLAGS
 fi
 
 if test "x$PCAP_LIBS" = x; then

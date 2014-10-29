@@ -1045,7 +1045,7 @@ if test "x$WITH_OPENSSL" = xyes; then
       openssl/sha.h \
       openssl/ocsp.h \
       openssl/engine.h,
-      [],
+      [ OPENSSL_CPPFLAGS="$smart_include" ],
       [
         AC_MSG_FAILURE([failed locating OpenSSL headers. Use --with-openssl-include-dir=<path>, or --with-openssl=no (builds without OpenSSL)])
       ]
@@ -1073,7 +1073,7 @@ if test "x$WITH_OPENSSL" = xyes; then
     dnl #  library location we discovered previously.
     dnl #
     old_CPPFLAGS="$CPPFLAGS"
-    CPPFLAGS="$OPENSSL_LDFLAGS $CPPFLAGS"
+    CPPFLAGS="$OPENSSL_CPPFLAGS $CPPFLAGS"
 
     dnl #
     dnl #  Now check that the header versions match the library
@@ -1109,7 +1109,8 @@ if test "x$WITH_OPENSSL" = xyes; then
   LIBS="$OLD_LIBS"
   AC_SUBST(OPENSSL_LIBS)
   AC_SUBST(OPENSSL_LDFLAGS)
-  export OPENSSL_LIBS OPENSSL_LDFLAGS
+  AC_SUBST(OPENSSL_CPPFLAGS)
+  export OPENSSL_LIBS OPENSSL_LDFLAGS OPENSSL_CPPFLAGS
 fi
 
 dnl #
