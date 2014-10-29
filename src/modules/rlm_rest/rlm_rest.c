@@ -771,8 +771,6 @@ static int mod_detach(void *instance)
 
 	fr_connection_pool_delete(inst->conn_pool);
 
-	xlat_unregister(inst->xlat_name, rest_xlat, instance);
-
 	/* Free any memory used by libcurl */
 	rest_cleanup();
 

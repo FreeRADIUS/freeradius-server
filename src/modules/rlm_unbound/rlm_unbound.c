@@ -697,9 +697,6 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	    xlat_register(inst->xlat_aaaa_name, xlat_aaaa, NULL, inst) ||
 	    xlat_register(inst->xlat_ptr_name, xlat_ptr, NULL, inst)) {
 		ERROR("rlm_unbound (%s): Failed registering xlats", inst->name);
-		xlat_unregister(inst->xlat_a_name, xlat_a, inst);
-		xlat_unregister(inst->xlat_aaaa_name, xlat_aaaa, inst);
-		xlat_unregister(inst->xlat_ptr_name, xlat_ptr, inst);
 		goto error_nores;
 	}
 	return 0;
@@ -716,10 +713,6 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 static int mod_detach(UNUSED void *instance)
 {
 	rlm_unbound_t *inst = instance;
-
-	xlat_unregister(inst->xlat_a_name, xlat_a, inst);
-	xlat_unregister(inst->xlat_aaaa_name, xlat_aaaa, inst);
-	xlat_unregister(inst->xlat_ptr_name, xlat_ptr, inst);
 
 	if (inst->log_fd >= 0) {
 		fr_event_fd_delete(inst->el, 0, inst->log_fd);

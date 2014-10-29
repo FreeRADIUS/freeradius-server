@@ -390,6 +390,13 @@ static void module_instance_free(void *data)
 
 	xlat_unregister(this->name, NULL, this->insthandle);
 
+	/*
+	 *	Remove all xlat's registered to this instance.
+	 */
+	if (this->insthandle) {
+		xlat_unregister_module(this->insthandle);
+	}
+
 #ifndef NDEBUG
 	memset(this, 0, sizeof(*this));
 #endif
