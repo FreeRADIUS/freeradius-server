@@ -952,7 +952,11 @@ static int fr_connection_pool_check(fr_connection_pool_t *pool)
 		/* leave extra alone from above */
 	}
 
-	if (spawn) {
+	/*
+	 *	Only try to open spares if we're not already attempting to open
+	 *	a connection. Avoids spurious log messages.
+	 */
+	if (spawn && !pool->spawning) {
 		INFO("%s: %i of %u connections in use.  Need more spares", pool->log_prefix, pool->active, pool->num);
 		pthread_mutex_unlock(&pool->mutex);
 		fr_connection_spawn(pool, now, false); /* ignore return code */
