@@ -117,17 +117,6 @@ static ssize_t dhcp_xlat(UNUSED void *instance, REQUEST *request, char const *fm
 	return fr_bin2hex(out, binbuf, len);
 }
 
-/*
- *	Only free memory we allocated.  The strings allocated via
- *	cf_section_parse() do not need to be freed.
- */
-static int mod_detach(void *instance)
-{
-	xlat_unregister("dhcp_options", dhcp_options_xlat, instance);
-	xlat_unregister("dhcp", dhcp_xlat, instance);
-	return 0;
-}
-
 
 /*
  *	Instantiate the module.
@@ -184,7 +173,7 @@ module_t rlm_dhcp = {
 	sizeof(rlm_dhcp_t),
 	NULL,				/* CONF_PARSER */
 	mod_instantiate,		/* instantiation */
-	mod_detach,			/* detach */
+	NULL,				/* detach */
 	{
 		NULL,			/* authentication */
 		NULL,			/* authorization */
