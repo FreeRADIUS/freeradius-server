@@ -646,7 +646,7 @@ int xlat_register(char const *name, RAD_XLAT_FUNC func, RADIUS_ESCAPE_STRING esc
 		int i;
 #endif
 
-		xlat_root = rbtree_create(NULL, xlat_cmp, NULL, 0);
+		xlat_root = rbtree_create(NULL, xlat_cmp, NULL, RBTREE_FLAG_REPLACE);
 		if (!xlat_root) {
 			DEBUG("xlat_register: Failed to create tree");
 			return -1;
