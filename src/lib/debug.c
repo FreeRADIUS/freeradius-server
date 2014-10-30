@@ -1030,19 +1030,39 @@ inline void fr_verify_vp(char const *file, int line, VALUE_PAIR const *vp)
 	} else {
 		DICT_ATTR const *da;
 
+		/*
+		 *	Attribute may be present with multiple names
+		 */
 		da = dict_attrbyname(vp->da->name);
 		if (!da) {
-			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR has invalid dictionary entry.  "
-				     "VALUE_PAIR dictionary was %p \"%s\", but this attribute is not defined in "
-				     "the main dictionary\n",
-				     file, line, vp->da, vp->da->name);
+			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR attribute %p \"%s\" (%s) "
+				     "not found in global dictionary",
+				     file, line, vp->da, vp->da->name,
+				     fr_int2str(dict_attr_types, vp->da->type, "<INVALID>"));
 			fr_assert(0);
 			fr_exit_now(1);
 		}
+
+		if (da->type == PW_TYPE_COMBO_IP_ADDR) {
+			da = dict_attrbytype(vp->da->attr, vp->da->vendor, vp->da->type);
+			if (!da) {
+				FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR attribute %p \"%s\" "
+					     "variant (%s) not found in global dictionary",
+					     file, line, vp->da, vp->da->name,
+					     fr_int2str(dict_attr_types, vp->da->type, "<INVALID>"));
+				fr_assert(0);
+				fr_exit_now(1);
+			}
+		}
+
+
 		if (da != vp->da) {
-			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR has invalid dictionary entry.  "
-				     "VALUE_PAIR dictionary was %p \"%s\", but resolved to %p \"%s\"\n",
-				     file, line, vp->da, vp->da->name, da, da->name);
+			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR "
+				     "dictionary pointer %p \"%s\" (%s) "
+				     "and global dictionary pointer %p \"%s\" (%s) differ",
+				     file, line, vp->da, vp->da->name,
+				     fr_int2str(dict_attr_types, vp->da->type, "<INVALID>"),
+				     da, da->name, fr_int2str(dict_attr_types, da->type, "<INVALID>"));
 			fr_assert(0);
 			fr_exit_now(1);
 		}

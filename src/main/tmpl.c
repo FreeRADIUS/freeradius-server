@@ -496,11 +496,40 @@ void tmpl_verify(char const *file, int line, value_pair_tmpl_t const *vpt)
 		} else {
 			DICT_ATTR const *da;
 
-			da = dict_attrbyvalue(vpt->tmpl_da->attr, vpt->tmpl_da->vendor);
+			/*
+			 *	Attribute may be present with multiple names
+			 */
+			da = dict_attrbyname(vpt->tmpl_da->name);
+			if (!da) {
+				FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_ATTR "
+					     "attribute \"%s\" (%s) not found in global dictionary",
+					     file, line, vpt->tmpl_da->name,
+					     fr_int2str(dict_attr_types, vpt->tmpl_da->type, "<INVALID>"));
+				fr_assert(0);
+				fr_exit_now(1);
+			}
+
+			if ((da->type == PW_TYPE_COMBO_IP_ADDR) && (da->type != vpt->tmpl_da->type)) {
+				da = dict_attrbytype(vpt->tmpl_da->attr, vpt->tmpl_da->vendor, vpt->tmpl_da->type);
+				if (!da) {
+					FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_ATTR "
+						     "attribute \"%s\" variant (%s) not found in global dictionary",
+						     file, line, vpt->tmpl_da->name,
+						     fr_int2str(dict_attr_types, vpt->tmpl_da->type, "<INVALID>"));
+					fr_assert(0);
+					fr_exit_now(1);
+				}
+			}
+
 			if (da != vpt->tmpl_da) {
 				FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_ATTR "
-					     "da pointer and global dictionary pointer for attribute \"%s\" differ",
-					     file, line, vpt->tmpl_da->name);
+					     "dictionary pointer %p \"%s\" (%s) "
+					     "and global dictionary pointer %p \"%s\" (%s) differ",
+					     file, line,
+					     vpt->tmpl_da, vpt->tmpl_da->name,
+					     fr_int2str(dict_attr_types, vpt->tmpl_da->type, "<INVALID>"),
+					     da, da->name,
+					     fr_int2str(dict_attr_types, da->type, "<INVALID>"));
 				fr_assert(0);
 				fr_exit_now(1);
 			}
