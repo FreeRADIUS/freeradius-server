@@ -959,29 +959,47 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 				 *	RHS to the data type of the LHS.
 				 */
 				if ((c->data.map->lhs->type == TMPL_TYPE_ATTR) &&
-				    (c->data.map->rhs->type == TMPL_TYPE_LITERAL) &&
-				    !tmpl_cast_in_place(c->data.map->rhs, c->data.map->lhs->tmpl_da)) {
-					DICT_ATTR const *da = c->data.map->lhs->tmpl_da;
+				    (c->data.map->rhs->type == TMPL_TYPE_LITERAL)) {
+					if (!tmpl_cast_in_place(c->data.map->rhs, c->data.map->lhs->tmpl_da)) {
+						DICT_ATTR const *da = c->data.map->lhs->tmpl_da;
 
-					if ((da->vendor == 0) &&
-					    ((da->attr == PW_AUTH_TYPE) ||
-					     (da->attr == PW_AUTZ_TYPE) ||
-					     (da->attr == PW_ACCT_TYPE) ||
-					     (da->attr == PW_SESSION_TYPE) ||
-					     (da->attr == PW_POST_AUTH_TYPE) ||
-					     (da->attr == PW_PRE_PROXY_TYPE) ||
-					     (da->attr == PW_POST_PROXY_TYPE) ||
-					     (da->attr == PW_PRE_ACCT_TYPE) ||
-					     (da->attr == PW_RECV_COA_TYPE) ||
-					     (da->attr == PW_SEND_COA_TYPE))) {
-						/*
-						 *	The types for these attributes are dynamically allocated
-						 *	by modules.c, so we can't enforce strictness here.
-						 */
-						c->pass2_fixup = PASS2_FIXUP_TYPE;
+						if ((da->vendor == 0) &&
+						    ((da->attr == PW_AUTH_TYPE) ||
+						     (da->attr == PW_AUTZ_TYPE) ||
+						     (da->attr == PW_ACCT_TYPE) ||
+						     (da->attr == PW_SESSION_TYPE) ||
+						     (da->attr == PW_POST_AUTH_TYPE) ||
+						     (da->attr == PW_PRE_PROXY_TYPE) ||
+						     (da->attr == PW_POST_PROXY_TYPE) ||
+						     (da->attr == PW_PRE_ACCT_TYPE) ||
+						     (da->attr == PW_RECV_COA_TYPE) ||
+						     (da->attr == PW_SEND_COA_TYPE))) {
+							/*
+							 *	The types for these attributes are dynamically allocated
+							 *	by modules.c, so we can't enforce strictness here.
+							 */
+							c->pass2_fixup = PASS2_FIXUP_TYPE;
 
-					} else {
-						return_rhs("Failed to parse value for attribute");
+						} else {
+							return_rhs("Failed to parse value for attribute");
+						}
+					}
+
+					/*
+					 *	Stupid WiMAX shit.
+					 *	Cast the LHS to the
+					 *	type of the RHS.
+					 */
+					if (c->data.map->lhs->tmpl_da->type == PW_TYPE_COMBO_IP_ADDR) {
+						DICT_ATTR const *da;
+
+						da = dict_attrbytype(c->data.map->lhs->tmpl_da->attr,
+								     c->data.map->lhs->tmpl_da->vendor,
+								     c->data.map->rhs->tmpl_data_type);
+						if (!da) {
+							return_rhs("Cannot find type for attribute");
+						}
+						c->data.map->lhs->tmpl_da = da;
 					}
 				}
 			}
