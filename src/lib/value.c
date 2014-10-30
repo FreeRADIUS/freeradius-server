@@ -412,17 +412,17 @@ static char const hextab[] = "0123456789abcdef";
 
 /** Convert string value to a value_data_t type
  *
- * @param ctx to alloc strings in.
- * @param out where to write parsed value.
- * @param type of value data to create.
- * @param enumv DICT_ATTR with string aliases for integer values.
- * @param value String to convert. Binary safe for variable length values if len is provided.
- * @param inlen may be < 0 in which case strlen(len) is used to determine length, else inlen
+ * @param[in] ctx to alloc strings in.
+ * @param[out] out where to write parsed value.
+ * @param[in,out] type of value data to create/type of value created.
+ * @param[in] enumv DICT_ATTR with string aliases for integer values.
+ * @param[in] value String to convert. Binary safe for variable length values if len is provided.
+ * @param[in] inlen may be < 0 in which case strlen(len) is used to determine length, else inlen
  *	  should be the length of the string or sub string to parse.
  * @return length of data written to out or -1 on parse error.
  */
 ssize_t value_data_from_str(TALLOC_CTX *ctx, value_data_t *out,
-			    PW_TYPE type, DICT_ATTR const *enumv,
+			    PW_TYPE *type, DICT_ATTR const *enumv,
 			    char const *value, ssize_t inlen)
 {
 	DICT_VALUE	*dval;
@@ -437,13 +437,13 @@ ssize_t value_data_from_str(TALLOC_CTX *ctx, value_data_t *out,
 	/*
 	 *	Set size for all fixed length attributes.
 	 */
-	ret = dict_attr_sizes[type][1];	/* Max length */
+	ret = dict_attr_sizes[*type][1];	/* Max length */
 
 	/*
 	 *	It's a variable ret type so we just alloc a new buffer
 	 *	of size len and copy.
 	 */
-	switch (type) {
+	switch (*type) {
 	case PW_TYPE_STRING:
 	{
 		size_t		p_len;
@@ -692,7 +692,7 @@ ssize_t value_data_from_str(TALLOC_CTX *ctx, value_data_t *out,
 		value = buffer;
 	}
 
-	switch(type) {
+	switch(*type) {
 	case PW_TYPE_BYTE:
 	{
 		char *p;
@@ -881,31 +881,20 @@ ssize_t value_data_from_str(TALLOC_CTX *ctx, value_data_t *out,
 	 */
 	case PW_TYPE_IP_ADDR:
 	{
-		DICT_ATTR const *da;
-
 		if (inet_pton(AF_INET6, value, &out->ipv6addr) > 0) {
-			da = dict_attrbytype(enumv->attr, enumv->vendor, PW_TYPE_IPV6_ADDR);
-			if (!da) {
-				fr_strerror_printf("Cannot find ipv6addr for %s", enumv->name);
-				return -1;
-			}
-			ret = dict_attr_sizes[PW_TYPE_IP_ADDR][1]; /* ret of IPv6 address */
+			*type = PW_TYPE_IPV6_ADDR;
+			ret = dict_attr_sizes[PW_TYPE_IP_ADDR][1]; /* size of IPv6 address */
 		} else {
 			fr_ipaddr_t ipaddr;
-
-			da = dict_attrbytype(enumv->attr, enumv->vendor, PW_TYPE_IPV4_ADDR);
-			if (!da) {
-				fr_strerror_printf("Cannot find ipaddr for %s", enumv->name);
-				return -1;
-			}
 
 			if (ip_hton(&ipaddr, AF_INET, value, false) < 0) {
 				fr_strerror_printf("Failed to find IPv4 address for %s", value);
 				return -1;
 			}
 
+			*type = PW_TYPE_IPV4_ADDR;
 			out->ipaddr.s_addr = ipaddr.ipaddr.ip4addr.s_addr;
-			ret = dict_attr_sizes[PW_TYPE_IP_ADDR][0];
+			ret = dict_attr_sizes[PW_TYPE_IP_ADDR][0]; /* size of IPv4 address */
 		}
 	}
 		break;
@@ -919,7 +908,7 @@ ssize_t value_data_from_str(TALLOC_CTX *ctx, value_data_t *out,
 		 *  Anything else.
 		 */
 	default:
-		fr_strerror_printf("unknown attribute type %d", type);
+		fr_strerror_printf("Unknown attribute type %d", *type);
 		return -1;
 	}
 

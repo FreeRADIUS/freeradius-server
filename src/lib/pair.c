@@ -1104,13 +1104,31 @@ void pairfilter(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from, unsigned in
 int pairparsevalue(VALUE_PAIR *vp, char const *value, size_t inlen)
 {
 	ssize_t ret;
-
+	PW_TYPE type;
 	VERIFY_VP(vp);
 
 	if (!value) return -1;
 
-	ret = value_data_from_str(vp, &vp->data, vp->da->type, vp->da, value, inlen);
+	type = vp->da->type;
+
+	ret = value_data_from_str(vp, &vp->data, &type, vp->da, value, inlen);
 	if (ret < 0) return -1;
+
+	/*
+	 *	If we parsed to a different type than the DA associated with
+	 *	the VALUE_PAIR we now need to fixup the DA.
+	 */
+	if (type != vp->da->type) {
+		DICT_ATTR const *da;
+
+		da = dict_attrbytype(vp->da->attr, vp->da->vendor, type);
+		if (!da) {
+			fr_strerror_printf("Cannot find %s variant of attribute \"%s\"",
+					   fr_int2str(dict_attr_types, type, "<INVALID>"), da->name);
+			return -1;
+		}
+		vp->da = da;
+	}
 
 	vp->length = ret;
 	vp->type = VT_DATA;

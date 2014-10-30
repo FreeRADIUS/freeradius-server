@@ -1228,6 +1228,7 @@ bool tmpl_cast_in_place(value_pair_tmpl_t *vpt, DICT_ATTR const *da)
 {
 	value_data_t *data;
 	ssize_t ret;
+	PW_TYPE type;
 
 	VERIFY_TMPL(vpt);
 
@@ -1235,8 +1236,13 @@ bool tmpl_cast_in_place(value_pair_tmpl_t *vpt, DICT_ATTR const *da)
 	rad_assert(da != NULL);
 	rad_assert(vpt->type == TMPL_TYPE_LITERAL);
 
+	vpt->tmpl_data_type = da->type;
+
 	data = talloc_zero(vpt, value_data_t);
-	ret = value_data_from_str(vpt, data, da->type, da, vpt->name, vpt->len);
+	/*
+	 *	Why do we pass a pointer to the tmpl type? Goddamn WiMAX.
+	 */
+	ret = value_data_from_str(vpt, data, &vpt->tmpl_data_type, da, vpt->name, vpt->len);
 	if (ret < 0) {
 		talloc_free(data);
 		return false;
@@ -1245,7 +1251,6 @@ bool tmpl_cast_in_place(value_pair_tmpl_t *vpt, DICT_ATTR const *da)
 	vpt->type = TMPL_TYPE_DATA;
 	vpt->tmpl_data_value = data;
 	vpt->tmpl_data_length = (size_t) ret;
-	vpt->tmpl_data_type = da->type;
 
 	VERIFY_TMPL(vpt);
 
