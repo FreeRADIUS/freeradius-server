@@ -37,6 +37,11 @@ extern "C" {
 #endif
 
 /*
+ *	struct field size
+ */
+#define SIZEOF_MEMBER(_t, _m) sizeof(((_t *)0)->_m)
+
+/*
  *	Only use GCC __attribute__ if were building with a GCClike
  *	compiler.
  */
