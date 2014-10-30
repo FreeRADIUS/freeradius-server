@@ -414,6 +414,8 @@ static char const hextab[] = "0123456789abcdef";
  *
  * @param ctx to alloc strings in.
  * @param out where to write parsed value.
+ * @param type of value data to create.
+ * @param enumv DICT_ATTR with string aliases for integer values.
  * @param value String to convert. Binary safe for variable length values if len is provided.
  * @param inlen may be < 0 in which case strlen(len) is used to determine length, else inlen
  *	  should be the length of the string or sub string to parse.

@@ -1066,8 +1066,8 @@ size_t tmpl_prints(char *buffer, size_t bufsize, value_pair_tmpl_t const *vpt, D
 
 	case TMPL_TYPE_DATA:
 		if (vpt->tmpl_data_value) {
-			return vp_data_prints_value(buffer, bufsize, vpt->tmpl_data_type,
-						    vpt->tmpl_data_value, vpt->tmpl_data_length, values, '\'');
+			return vp_data_prints_value(buffer, bufsize, vpt->tmpl_data_type, values,
+						    vpt->tmpl_data_value, vpt->tmpl_data_length, '\'');
 		} else {
 			*buffer = '\0';
 			return 0;
