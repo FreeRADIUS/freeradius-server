@@ -306,10 +306,8 @@ static ssize_t xlat_tag(UNUSED void *instance, REQUEST *request,
 static ssize_t xlat_debug_attr(UNUSED void *instance, REQUEST *request, char const *fmt,
 			       char *out, UNUSED size_t outlen)
 {
-	VALUE_PAIR *vp, **vps;
-	REQUEST *current;
+	VALUE_PAIR *vp;
 	vp_cursor_t cursor;
-	char buffer[1024];
 
 	value_pair_tmpl_t vpt;
 
@@ -325,70 +323,52 @@ static ssize_t xlat_debug_attr(UNUSED void *instance, REQUEST *request, char con
 		return -1;
 	}
 
-	current = request;
-	if (radius_request(&current, vpt.tmpl_request) < 0) return -2;
-
-	vps = radius_list(current, vpt.tmpl_list);
-	if (!vps) {
-		return -2;
-	}
-
 	RIDEBUG("Attributes matching \"%s\"", fmt);
-	vp = fr_cursor_init(&cursor, vps);
 
-	if (vpt.tmpl_da) {
-		vp = fr_cursor_next_by_da(&cursor, vpt.tmpl_da, TAG_ANY);
-	}
-	while (vp) {
-		DICT_ATTR *dac = NULL;
-		DICT_VENDOR *dv;
-		VALUE_PAIR *vpc = NULL;
+	RINDENT();
+	for (vp = tmpl_cursor_init(NULL, &cursor, request, &vpt);
+	     vp;
+	     vp = tmpl_cursor_next(&cursor, &vpt)) {
 		FR_NAME_NUMBER const *type;
+		char *value;
 
-		vp_prints_value(buffer, sizeof(buffer), vp, '\'');
-
-		RINDENT();
+		value = vp_aprints_value(vp, vp, '\'');
 		if (vp->da->flags.has_tag) {
-			RIDEBUG2("%s:%s:%i %s %s",
+			RIDEBUG2("&%s:%s:%i %s %s",
 				fr_int2str(pair_lists, vpt.tmpl_list, "<INVALID>"),
 				vp->da->name,
 				vp->tag,
 				fr_int2str(fr_tokens, vp->op, "<INVALID>"),
-				buffer);
+				value);
 		} else {
-			RIDEBUG2("%s:%s %s %s",
+			RIDEBUG2("&%s:%s %s %s",
 				fr_int2str(pair_lists, vpt.tmpl_list, "<INVALID>"),
 				vp->da->name,
 				fr_int2str(fr_tokens, vp->op, "<INVALID>"),
-				buffer);
+				value);
 		}
-		REXDENT();
+		talloc_free(value);
 
-		if (!RDEBUG_ENABLED3) goto next_vp;
+		if (!RDEBUG_ENABLED3) continue;
 
-		RINDENT();
-		RINDENT();
 		if (vp->da->vendor) {
+			DICT_VENDOR *dv;
+
 			dv = dict_vendorbyvalue(vp->da->vendor);
-			RDEBUG3("Vendor : %i (%s)", vp->da->vendor, dv ? dv->name : "unknown");
+			RIDEBUG2("Vendor : %i (%s)", vp->da->vendor, dv ? dv->name : "unknown");
 		}
-		RDEBUG3("Type   : %s", fr_int2str(dict_attr_types, vp->da->type, "<INVALID>"));
-		RDEBUG3("Length : %zu", vp->length);
-		REXDENT();
-		REXDENT();
+		RIDEBUG2("Type   : %s", fr_int2str(dict_attr_types, vp->da->type, "<INVALID>"));
+		RIDEBUG2("Length : %zu", vp->length);
 
-		dac = talloc_memdup(request, vp->da, sizeof(DICT_ATTR));
-		if (!dac) return -1;
-		talloc_set_type(dac, DICT_ATTR);
-
-		if (!RDEBUG_ENABLED4) goto next_vp;
+		if (!RDEBUG_ENABLED4) continue;
 
 		type = dict_attr_types;
 		while (type->name) {
 			int pad;
-			ssize_t len;
-			uint8_t const *data = NULL;
-			vpc = NULL;
+
+			value_data_t *dst = NULL;
+
+			ssize_t ret;
 
 			if ((PW_TYPE) type->number == vp->da->type) {
 				goto next_type;
@@ -400,63 +380,37 @@ static ssize_t xlat_debug_attr(UNUSED void *instance, REQUEST *request, char con
 			case PW_TYPE_EXTENDED:		/* Not safe/appropriate */
 			case PW_TYPE_LONG_EXTENDED:	/* Not safe/appropriate */
 			case PW_TYPE_TLV:		/* Not safe/appropriate */
+			case PW_TYPE_EVS:		/* Not safe/appropriate */
 			case PW_TYPE_VSA:		/* @fixme We need special behaviour for these */
+			case PW_TYPE_COMBO_IP_ADDR:	/* Covered by IPv4 address IPv6 address */
+			case PW_TYPE_COMBO_IP_PREFIX:	/* Covered by IPv4 address IPv6 address */
+			case PW_TYPE_TIMEVAL:		/* Not a VALUE_PAIR type */
+
 				goto next_type;
 
 			default:
 				break;
 			}
 
-			dac->type = type->number;
-			len = rad_vp2data(&data, vp);
-			if (len < 0) {
-				goto next_type;
-			}
-			if (data2vp(request, NULL, NULL, NULL, dac, data, len, len, &vpc) < 0) {
-				goto next_type;
-			}
+			dst = talloc_zero(vp, value_data_t);
+			ret = value_data_cast(dst, dst, type->number, NULL, vp->da->type, vp->da,
+					      &vp->data, vp->length);
+			if (ret < 0) goto next_type;	/* We expect some to fail */
 
-			/*
-			 *	data2vp has knowledge of expected format lengths, if the length
-			 *	from rad_vp2data doesn't match, it encodes the attribute
-			 *	as raw octets. This results in many useless debug lines with
-			 *	the same hex string.
-			 */
-			if ((type->number != PW_TYPE_OCTETS) && (vpc->da->type == PW_TYPE_OCTETS)) {
-				goto next_type;
-			}
-
-			if (!vp_prints_value(buffer, sizeof(buffer), vpc, '\'')) {
-				goto next_type;
-			}
+			value = vp_data_aprints_value(dst, type->number, NULL, dst, (size_t)ret, '\'');
+			if (!value) goto next_type;
 
 			if ((pad = (11 - strlen(type->name))) < 0) {
 				pad = 0;
 			}
 
-			/*
-			 *	@fixme: if the value happens to decode as a VSA
-			 *	(someone put a VSA into a VSA?), we probably to print
-			 *	extended info for that/reparse
-			 */
 			RINDENT();
-			RINDENT();
-			RDEBUG4("as %s%*s: %s", type->name, pad, " ", buffer);
-			REXDENT();
+			RDEBUG2("as %s%*s: %s", type->name, pad, " ", value);
 			REXDENT();
 
 		next_type:
-			talloc_free(vpc);
+			talloc_free(dst);
 			type++;
-		}
-
-	next_vp:
-		talloc_free(dac);
-
-		if (vpt.tmpl_da) {
-			vp = fr_cursor_next_by_da(&cursor, vpt.tmpl_da, TAG_ANY);
-		} else {
-			vp = fr_cursor_next(&cursor);
 		}
 	}
 
