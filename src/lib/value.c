@@ -536,9 +536,9 @@ ssize_t value_data_from_str(TALLOC_CTX *ctx, value_data_t *out,
 		 *	No 0x prefix, just copy verbatim.
 		 */
 		if ((len < 2) || (strncasecmp(value, "0x", 2) != 0)) {
-			out->octets = talloc_memdup(ctx, (uint8_t const *)value, len + 1);
+			out->octets = talloc_memdup(ctx, (uint8_t const *)value, len);
 			talloc_set_type(out->octets, uint8_t);
-			ret = len + 1;
+			ret = len;
 			goto finish;
 		}
 
