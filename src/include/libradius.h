@@ -433,12 +433,18 @@ size_t		vp_data_prints_value(char *out, size_t outlen,
 				     PW_TYPE type, DICT_ATTR const *enumv,
 				     value_data_t const *data, size_t inlen, char quote);
 size_t   	vp_prints_value(char *out, size_t outlen, VALUE_PAIR const *vp, char quote);
+
+char		*vp_data_aprints_value(TALLOC_CTX *ctx,
+				       PW_TYPE type, DICT_ATTR const *enumv, value_data_t const *data,
+				       size_t inlen, char quote);
+char     	*vp_aprint_value(TALLOC_CTX *ctx, VALUE_PAIR const *vp, char quote);
+
 size_t    	vp_prints_value_json(char *out, size_t outlen, VALUE_PAIR const *vp);
 size_t		vp_prints(char *out, size_t outlen, VALUE_PAIR const *vp);
 void		vp_print(FILE *, VALUE_PAIR const *);
 void		vp_printlist(FILE *, VALUE_PAIR const *);
 char		*vp_aprint_type(TALLOC_CTX *ctx, PW_TYPE type);
-char     	*vp_aprint_value(TALLOC_CTX *ctx, VALUE_PAIR const *vp, char quote);
+
 char		*vp_aprint(TALLOC_CTX *ctx, VALUE_PAIR const *vp, char quote);
 #define		fprint_attr_val vp_print
 
