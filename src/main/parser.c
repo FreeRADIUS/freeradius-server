@@ -305,7 +305,7 @@ static ssize_t condition_tokenize_cast(char const *start, DICT_ATTR const **pda,
 #ifdef WITH_ASCEND_BINARY
 	case PW_TYPE_ABINARY:
 #endif
-	case PW_TYPE_IP_ADDR:
+	case PW_TYPE_COMBO_IP_ADDR:
 	case PW_TYPE_TLV:
 	case PW_TYPE_EXTENDED:
 	case PW_TYPE_LONG_EXTENDED:

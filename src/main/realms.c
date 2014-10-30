@@ -293,7 +293,7 @@ static CONF_PARSER home_server_coa[] = {
 #endif
 
 static CONF_PARSER home_server_config[] = {
-	{ "ipaddr", FR_CONF_POINTER(PW_TYPE_IP_ADDR, &hs_ipaddr), NULL },
+	{ "ipaddr", FR_CONF_POINTER(PW_TYPE_COMBO_IP_ADDR, &hs_ipaddr), NULL },
 	{ "ipv4addr", FR_CONF_POINTER(PW_TYPE_IPV4_ADDR, &hs_ipaddr), NULL },
 	{ "ipv6addr", FR_CONF_POINTER(PW_TYPE_IPV6_ADDR, &hs_ipaddr), NULL },
 	{ "virtual_server", FR_CONF_POINTER(PW_TYPE_STRING, &hs_virtual_server), NULL },

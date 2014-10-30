@@ -146,7 +146,7 @@ int value_data_cmp(PW_TYPE a_type, size_t a_len, value_data_t const *a,
 	 *	Na of the types below should be in the REQUEST
 	 */
 	case PW_TYPE_INVALID:		/* We should never see these */
-	case PW_TYPE_IP_ADDR:		/* This should have been converted into IPADDR/IPV6ADDR */
+	case PW_TYPE_COMBO_IP_ADDR:		/* This should have been converted into IPADDR/IPV6ADDR */
 	case PW_TYPE_IP_PREFIX:		/* This should have been converted into IPADDR/IPV6ADDR */
 	case PW_TYPE_TLV:
 	case PW_TYPE_EXTENDED:
@@ -879,11 +879,11 @@ ssize_t value_data_from_str(TALLOC_CTX *ctx, value_data_t *out,
 	 *	These are not dynamic da, and will have the same vendor
 	 *	and attribute as the original.
 	 */
-	case PW_TYPE_IP_ADDR:
+	case PW_TYPE_COMBO_IP_ADDR:
 	{
 		if (inet_pton(AF_INET6, value, &out->ipv6addr) > 0) {
 			*type = PW_TYPE_IPV6_ADDR;
-			ret = dict_attr_sizes[PW_TYPE_IP_ADDR][1]; /* size of IPv6 address */
+			ret = dict_attr_sizes[PW_TYPE_COMBO_IP_ADDR][1]; /* size of IPv6 address */
 		} else {
 			fr_ipaddr_t ipaddr;
 
@@ -894,7 +894,7 @@ ssize_t value_data_from_str(TALLOC_CTX *ctx, value_data_t *out,
 
 			*type = PW_TYPE_IPV4_ADDR;
 			out->ipaddr.s_addr = ipaddr.ipaddr.ip4addr.s_addr;
-			ret = dict_attr_sizes[PW_TYPE_IP_ADDR][0]; /* size of IPv4 address */
+			ret = dict_attr_sizes[PW_TYPE_COMBO_IP_ADDR][0]; /* size of IPv4 address */
 		}
 	}
 		break;
