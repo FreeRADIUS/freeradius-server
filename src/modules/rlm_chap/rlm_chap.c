@@ -121,7 +121,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance,
 
 		fr_bin2hex(buffer, p, length);
 		RINDENT();
-		RDEBUG3("CHAP challenge :  %s", buffer);
+		RDEBUG3("CHAP challenge : %s", buffer);
 
 		fr_bin2hex(buffer, chap->vp_octets + 1, CHAP_VALUE_LENGTH);
 		RDEBUG3("Client sent    : %s", buffer);
