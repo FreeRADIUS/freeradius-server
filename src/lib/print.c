@@ -695,6 +695,10 @@ char *vp_data_aprints_value(TALLOC_CTX *ctx,
 					  (data->ifid[6] << 8) | data->ifid[7]);
 		break;
 
+	case PW_TYPE_BOOLEAN:
+		p = talloc_typed_strdup(ctx, data->byte ? "yes" : "no");
+		break;
+
 	/*
 	 *	Don't add default here
 	 */
@@ -707,7 +711,6 @@ char *vp_data_aprints_value(TALLOC_CTX *ctx,
 	case PW_TYPE_EVS:
 	case PW_TYPE_VSA:
 	case PW_TYPE_TIMEVAL:
-	case PW_TYPE_BOOLEAN:
 	case PW_TYPE_MAX:
 		fr_assert(0);
 		return NULL;
