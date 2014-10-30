@@ -23,7 +23,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/libradius.h>
-
+#include <ctype.h>
 
 /** Compare two values
  *
@@ -407,3 +407,520 @@ int value_data_cmp_op(FR_TOKEN op,
 		return 0;
 	}
 }
+
+static char const hextab[] = "0123456789abcdef";
+
+/** Convert string value to a value_data_t type
+ *
+ * @param ctx to alloc strings in.
+ * @param out where to write parsed value.
+ * @param value String to convert. Binary safe for variable length values if len is provided.
+ * @param inlen may be < 0 in which case strlen(len) is used to determine length, else inlen
+ *	  should be the length of the string or sub string to parse.
+ * @return length of data written to out or -1 on parse error.
+ */
+ssize_t value_data_from_str(TALLOC_CTX *ctx, value_data_t *out,
+			    PW_TYPE type, DICT_ATTR const *enumv,
+			    char const *value, ssize_t inlen)
+{
+	DICT_VALUE	*dval;
+	size_t		len;
+	ssize_t		ret;
+	char		buffer[256];
+
+	if (!value) return -1;
+
+	len = (inlen < 0) ? strlen(value) : inlen;
+
+	/*
+	 *	Set size for all fixed length attributes.
+	 */
+	ret = dict_attr_sizes[type][1];	/* Max length */
+
+	/*
+	 *	It's a variable ret type so we just alloc a new buffer
+	 *	of size len and copy.
+	 */
+	switch (type) {
+	case PW_TYPE_STRING:
+	{
+		size_t		p_len;
+		char const	*cp;
+		char		*p;
+		int		x;
+
+		/*
+		 *	Do escaping here
+		 */
+		out->strvalue = p = talloc_memdup(ctx, value, len + 1);
+		p[len] = '\0';
+		talloc_set_type(p, char);
+
+		cp = value;
+		p_len = 0;
+		while (*cp) {
+			char c = *cp++;
+
+			if (c == '\\') switch (*cp) {
+			case 'r':
+				c = '\r';
+				cp++;
+				break;
+			case 'n':
+				c = '\n';
+				cp++;
+				break;
+			case 't':
+				c = '\t';
+				cp++;
+				break;
+			case '"':
+				c = '"';
+				cp++;
+				break;
+			case '\'':
+				c = '\'';
+				cp++;
+				break;
+			case '\\':
+				c = '\\';
+				cp++;
+				break;
+			case '`':
+				c = '`';
+				cp++;
+				break;
+			case '\0':
+				c = '\\'; /* no cp++ */
+				break;
+			default:
+				if ((cp[0] >= '0') &&
+				    (cp[0] <= '9') &&
+				    (cp[1] >= '0') &&
+				    (cp[1] <= '9') &&
+				    (cp[2] >= '0') &&
+				    (cp[2] <= '9') &&
+				    (sscanf(cp, "%3o", &x) == 1)) {
+					c = x;
+					cp += 3;
+
+				} else if (cp[0]) {
+					/*
+					 *	\p --> p
+					 */
+					c = *cp++;
+				} /* else at EOL \ --> \ */
+			}
+			*p++ = c;
+			p_len++;
+		}
+		*p = '\0';
+		ret = p_len;
+	}
+		goto finish;
+
+	/* raw octets: 0x01020304... */
+	case PW_TYPE_VSA:
+		if (strcmp(value, "ANY") == 0) {
+			ret = 0;
+			goto finish;
+		} /* else it's hex */
+
+	case PW_TYPE_OCTETS:
+	{
+		uint8_t	*p;
+
+		/*
+		 *	No 0x prefix, just copy verbatim.
+		 */
+		if ((len < 2) || (strncasecmp(value, "0x", 2) != 0)) {
+			out->octets = talloc_memdup(ctx, (uint8_t const *)value, len + 1);
+			ret = len + 1;
+			goto finish;
+		}
+
+
+	do_octets:
+		len -= 2;
+
+		/*
+		 *	Invalid.
+		 */
+		if ((len & 0x01) != 0) {
+			fr_strerror_printf("Length of Hex String is not even, got %zu bytes", ret);
+			return -1;
+		}
+
+		ret = len >> 1;
+		p = talloc_array(ctx, uint8_t, ret);
+		if (fr_hex2bin(p, ret, value + 2, len) != (size_t)ret) {
+			talloc_free(p);
+			fr_strerror_printf("Invalid hex data");
+			return -1;
+		}
+
+		out->octets = p;
+	}
+		goto finish;
+
+	case PW_TYPE_ABINARY:
+#ifdef WITH_ASCEND_BINARY
+		if ((len > 1) && (strncasecmp(value, "0x", 2) == 0)) goto do_octets;
+
+		if (ascend_parse_filter(out, value, len) < 0 ) {
+			/* Allow ascend_parse_filter's strerror to bubble up */
+			return -1;
+		}
+		ret = sizeof(out->filter);
+		goto finish;
+#else
+		/*
+		 *	If Ascend binary is NOT defined,
+		 *	then fall through to raw octets, so that
+		 *	the user can at least make them by hand...
+		 */
+	 	goto do_octets;
+#endif
+
+	/* don't use this! */
+	case PW_TYPE_TLV:
+	{
+		uint8_t	*p;
+
+		if ((len < 2) || (len & 0x01) || (strncasecmp(value, "0x", 2) != 0)) {
+			fr_strerror_printf("Invalid TLV specification");
+			return -1;
+		}
+		len -= 2;
+
+		ret = len >> 1;
+		p = talloc_array(ctx, uint8_t, ret);
+		if (!p) {
+			fr_strerror_printf("No memory");
+			return -1;
+		}
+		if (fr_hex2bin(p, ret, value + 2, len) != (size_t)ret) {
+			fr_strerror_printf("Invalid hex data in TLV");
+			return -1;
+		}
+
+		out->tlv = p;
+	}
+		goto finish;
+
+	case PW_TYPE_IPV4_ADDR:
+	{
+		fr_ipaddr_t addr;
+
+		if (fr_pton4(&addr, value, inlen, fr_hostname_lookups, false) < 0) return -1;
+
+		/*
+		 *	We allow v4 addresses to have a /32 suffix as some databases (PostgreSQL)
+		 *	print them this way.
+		 */
+		if (addr.prefix != 32) {
+			fr_strerror_printf("Invalid IPv4 mask length \"/%i\".  Only \"/32\" permitted "
+					   "for non-prefix types", addr.prefix);
+			return -1;
+		}
+
+		out->ipaddr.s_addr = addr.ipaddr.ip4addr.s_addr;
+	}
+		goto finish;
+
+	case PW_TYPE_IPV4_PREFIX:
+	{
+		fr_ipaddr_t addr;
+
+		if (fr_pton4(&addr, value, inlen, fr_hostname_lookups, false) < 0) return -1;
+
+		out->ipv4prefix[1] = addr.prefix;
+		memcpy(out->ipv4prefix + 2, &addr.ipaddr.ip4addr.s_addr, sizeof(out->ipv4prefix) - 2);
+	}
+		goto finish;
+
+	case PW_TYPE_IPV6_ADDR:
+	{
+		fr_ipaddr_t addr;
+
+		if (fr_pton6(&addr, value, inlen, fr_hostname_lookups, false) < 0) return -1;
+
+		/*
+		 *	We allow v6 addresses to have a /128 suffix as some databases (PostgreSQL)
+		 *	print them this way.
+		 */
+		if (addr.prefix != 128) {
+			fr_strerror_printf("Invalid IPv6 mask length \"/%i\".  Only \"/128\" permitted "
+					   "for non-prefix types", addr.prefix);
+			return -1;
+		}
+
+		memcpy(&out->ipv6addr, &addr.ipaddr.ip6addr.s6_addr, sizeof(out->ipv6addr));
+	}
+		goto finish;
+
+	case PW_TYPE_IPV6_PREFIX:
+	{
+		fr_ipaddr_t addr;
+
+		if (fr_pton6(&addr, value, inlen, fr_hostname_lookups, false) < 0) return -1;
+
+		out->ipv6prefix[1] = addr.prefix;
+		memcpy(out->ipv6prefix + 2, &addr.ipaddr.ip6addr.s6_addr, sizeof(out->ipv6prefix) - 2);
+	}
+		goto finish;
+
+	default:
+		break;
+	}
+
+	/*
+	 *	It's a fixed size type, copy to a temporary buffer and
+	 *	\0 terminate if insize >= 0.
+	 */
+	if (inlen > 0) {
+		if (len >= sizeof(buffer)) {
+			fr_strerror_printf("Temporary buffer too small");
+			return -1;
+		}
+
+		memcpy(buffer, value, inlen);
+		buffer[inlen] = '\0';
+		value = buffer;
+	}
+
+	switch(type) {
+	case PW_TYPE_BYTE:
+	{
+		char *p;
+		unsigned int i;
+
+		/*
+		 *	Note that ALL integers are unsigned!
+		 */
+		i = fr_strtoul(value, &p);
+
+		/*
+		 *	Look for the named value for the given
+		 *	attribute.
+		 */
+		if (enumv && *p && !is_whitespace(p)) {
+			if ((dval = dict_valbyname(enumv->attr, enumv->vendor, value)) == NULL) {
+				fr_strerror_printf("Unknown value '%s' for attribute '%s'", value, enumv->name);
+				return -1;
+			}
+
+			out->byte = dval->value;
+		} else {
+			if (i > 255) {
+				fr_strerror_printf("Byte value \"%s\" is larger than 255", value);
+				return -1;
+			}
+
+			out->byte = i;
+		}
+		break;
+	}
+
+	case PW_TYPE_SHORT:
+	{
+		char *p;
+		unsigned int i;
+
+		/*
+		 *	Note that ALL integers are unsigned!
+		 */
+		i = fr_strtoul(value, &p);
+
+		/*
+		 *	Look for the named value for the given
+		 *	attribute.
+		 */
+		if (enumv && *p && !is_whitespace(p)) {
+			if ((dval = dict_valbyname(enumv->attr, enumv->vendor, value)) == NULL) {
+				fr_strerror_printf("Unknown value '%s' for attribute '%s'", value, enumv->name);
+				return -1;
+			}
+
+			out->ushort = dval->value;
+		} else {
+			if (i > 65535) {
+				fr_strerror_printf("Short value \"%s\" is larger than 65535", value);
+				return -1;
+			}
+
+			out->ushort = i;
+		}
+		break;
+	}
+
+	case PW_TYPE_INTEGER:
+	{
+		char *p;
+		unsigned int i;
+
+		/*
+		 *	Note that ALL integers are unsigned!
+		 */
+		i = fr_strtoul(value, &p);
+
+		/*
+		 *	Look for the named value for the given
+		 *	attribute.
+		 */
+		if (enumv && *p && !is_whitespace(p)) {
+			if ((dval = dict_valbyname(enumv->attr, enumv->vendor, value)) == NULL) {
+				fr_strerror_printf("Unknown value '%s' for attribute '%s'", value, enumv->name);
+				return -1;
+			}
+
+			out->integer = dval->value;
+		} else {
+			/*
+			 *	Value is always within the limits
+			 */
+			out->integer = i;
+		}
+	}
+		break;
+
+	case PW_TYPE_INTEGER64:
+	{
+		uint64_t i;
+
+		/*
+		 *	Note that ALL integers are unsigned!
+		 */
+		if (sscanf(value, "%" PRIu64, &i) != 1) {
+			fr_strerror_printf("Invalid value '%s' for attribute '%s'",
+					   value, enumv->name);
+			return -1;
+		}
+		out->integer64 = i;
+	}
+		break;
+
+	case PW_TYPE_DATE:
+	{
+		/*
+		 *	time_t may be 64 bits, whule vp_date MUST be 32-bits.  We need an
+		 *	intermediary variable to handle the conversions.
+		 */
+		time_t date;
+
+		if (fr_get_time(value, &date) < 0) {
+			fr_strerror_printf("failed to parse time string \"%s\"", value);
+			return -1;
+		}
+
+		out->date = date;
+	}
+
+		break;
+
+	case PW_TYPE_IFID:
+		if (ifid_aton(value, (void *) &out->ifid) == NULL) {
+			fr_strerror_printf("Failed to parse interface-id string \"%s\"", value);
+			return -1;
+		}
+		break;
+
+	case PW_TYPE_ETHERNET:
+	{
+		char const *c1, *c2, *cp;
+		size_t p_len = 0;
+
+		/*
+		 *	Convert things which are obviously integers to Ethernet addresses
+		 *
+		 *	We assume the number is the bigendian representation of the
+		 *	ethernet address.
+		 */
+		if (is_integer(value)) {
+			uint64_t integer = htonll(atoll(value));
+
+			memcpy(&out->ether, &integer, sizeof(out->ether));
+			break;
+		}
+
+		cp = value;
+		while (*cp) {
+			if (cp[1] == ':') {
+				c1 = hextab;
+				c2 = memchr(hextab, tolower((int) cp[0]), 16);
+				cp += 2;
+			} else if ((cp[1] != '\0') && ((cp[2] == ':') || (cp[2] == '\0'))) {
+				c1 = memchr(hextab, tolower((int) cp[0]), 16);
+				c2 = memchr(hextab, tolower((int) cp[1]), 16);
+				cp += 2;
+				if (*cp == ':') cp++;
+			} else {
+				c1 = c2 = NULL;
+			}
+			if (!c1 || !c2 || (p_len >= sizeof(out->ether))) {
+				fr_strerror_printf("failed to parse Ethernet address \"%s\"", value);
+				return -1;
+			}
+			out->ether[p_len] = ((c1-hextab)<<4) + (c2-hextab);
+			p_len++;
+		}
+	}
+		break;
+
+	/*
+	 *	Crazy polymorphic (IPv4/IPv6) attribute type for WiMAX.
+	 *
+	 *	We try and make is saner by replacing the original
+	 *	da, with either an IPv4 or IPv6 da type.
+	 *
+	 *	These are not dynamic da, and will have the same vendor
+	 *	and attribute as the original.
+	 */
+	case PW_TYPE_IP_ADDR:
+	{
+		DICT_ATTR const *da;
+
+		if (inet_pton(AF_INET6, value, &out->ipv6addr) > 0) {
+			da = dict_attrbytype(enumv->attr, enumv->vendor, PW_TYPE_IPV6_ADDR);
+			if (!da) {
+				fr_strerror_printf("Cannot find ipv6addr for %s", enumv->name);
+				return -1;
+			}
+			ret = dict_attr_sizes[PW_TYPE_IP_ADDR][1]; /* ret of IPv6 address */
+		} else {
+			fr_ipaddr_t ipaddr;
+
+			da = dict_attrbytype(enumv->attr, enumv->vendor, PW_TYPE_IPV4_ADDR);
+			if (!da) {
+				fr_strerror_printf("Cannot find ipaddr for %s", enumv->name);
+				return -1;
+			}
+
+			if (ip_hton(&ipaddr, AF_INET, value, false) < 0) {
+				fr_strerror_printf("Failed to find IPv4 address for %s", value);
+				return -1;
+			}
+
+			out->ipaddr.s_addr = ipaddr.ipaddr.ip4addr.s_addr;
+			ret = dict_attr_sizes[PW_TYPE_IP_ADDR][0];
+		}
+	}
+		break;
+
+	case PW_TYPE_SIGNED:
+		/* Damned code for 1 WiMAX attribute */
+		out->sinteger = (int32_t)strtol(value, NULL, 10);
+		break;
+
+		/*
+		 *  Anything else.
+		 */
+	default:
+		fr_strerror_printf("unknown attribute type %d", type);
+		return -1;
+	}
+
+finish:
+	return ret;
+}
+

@@ -255,7 +255,7 @@ int sql_userparse(TALLOC_CTX *ctx, VALUE_PAIR **head, rlm_sql_row_t row)
 			return -1;
 		}
 	} else {
-		if (pairparsevalue(vp, value, 0) < 0) {
+		if (pairparsevalue(vp, value, -1) < 0) {
 			ERROR("rlm_sql: Error parsing value: %s", fr_strerror());
 
 			talloc_free(vp);

@@ -341,6 +341,23 @@ typedef struct value_pair_raw {
 	FR_TOKEN op;						//!< Operator.
 } VALUE_PAIR_RAW;
 
+#define vd_strvalue	strvalue
+#define vd_integer	integer
+#define vd_ipaddr	ipaddr.s_addr
+#define vd_date		date
+#define vd_filter	filter
+#define vd_octets	octets
+#define vd_ifid		ifid
+#define vd_ipv6addr	data.ipv6addr
+#define vd_ipv6prefix	data.ipv6prefix
+#define vd_byte		data.byte
+#define vd_short	data.ushort
+#define vd_ether	data.ether
+#define vd_signed	data.sinteger
+#define vd_integer64	data.integer64
+#define vd_ipv4prefix	data.ipv4prefix
+#define vd_tlv		data.tlv
+
 #define vp_strvalue	data.strvalue
 #define vp_integer	data.integer
 #define vp_ipaddr	data.ipaddr.s_addr
@@ -571,7 +588,7 @@ int		rad_vp2attr(RADIUS_PACKET const *packet,
 			    RADIUS_PACKET const *original, char const *secret,
 			    VALUE_PAIR const **pvp, uint8_t *ptr, size_t room);
 
-/* valuepair.c */
+/* pair.c */
 VALUE_PAIR	*pairalloc(TALLOC_CTX *ctx, DICT_ATTR const *da);
 VALUE_PAIR	*paircreate(TALLOC_CTX *ctx, unsigned int attr, unsigned int vendor);
 int		pair2unknown(VALUE_PAIR *vp);
@@ -599,12 +616,6 @@ VALUE_PAIR	*fr_cursor_replace(vp_cursor_t *cursor, VALUE_PAIR *new);
 void		pairdelete(VALUE_PAIR **, unsigned int attr, unsigned int vendor, int8_t tag);
 void		pairadd(VALUE_PAIR **, VALUE_PAIR *);
 void		pairreplace(VALUE_PAIR **first, VALUE_PAIR *add);
-int		value_data_cmp(PW_TYPE type_one, size_t length_one, value_data_t const *value_one,
-			     PW_TYPE type_two, size_t length_two, value_data_t const *value_two);
-#define		paircmp_op(_op, _a, _b) value_data_cmp_op(_op, _a->da->type, _a->length, &_a->data, _b->da->type, _b->length, &_b->data)
-int		value_data_cmp_op(FR_TOKEN op,
-				PW_TYPE type_a, size_t length_a, value_data_t const *a,
-				PW_TYPE type_b, size_t length_b, value_data_t const *b);
 int		paircmp(VALUE_PAIR *a, VALUE_PAIR *b);
 int		pairlistcmp(VALUE_PAIR *a, VALUE_PAIR *b);
 
@@ -638,6 +649,20 @@ FR_TOKEN 	pairread(char const **ptr, VALUE_PAIR_RAW *raw);
 FR_TOKEN	userparse(TALLOC_CTX *ctx, char const *buffer, VALUE_PAIR **head);
 int		readvp2(TALLOC_CTX *ctx, VALUE_PAIR **out, FILE *fp, bool *pfiledone);
 
+#define		paircmp_op(_op, _a, _b)		value_data_cmp_op(_op, _a->da->type, _a->length, &_a->data, _b->da->type, _b->length, &_b->data)
+
+/* value.c */
+int		value_data_cmp(PW_TYPE a_type, size_t a_length, value_data_t const *a,
+			       PW_TYPE b_type, size_t b_length, value_data_t const *b);
+
+int		value_data_cmp_op(FR_TOKEN op,
+				  PW_TYPE a_type, size_t a_length, value_data_t const *a,
+				  PW_TYPE b_type, size_t b_length, value_data_t const *b);
+
+ssize_t		value_data_from_str(TALLOC_CTX *ctx, value_data_t *out,
+				    PW_TYPE type, DICT_ATTR const *enumv,
+				    char const *value, ssize_t inlen);
+
 /*
  *	Error functions.
  */
@@ -665,9 +690,9 @@ int		fr_set_signal(int sig, sig_t func);
 int		fr_link_talloc_ctx_free(TALLOC_CTX *parent, TALLOC_CTX *child);
 char const	*fr_inet_ntop(int af, void const *src);
 char const 	*ip_ntoa(char *, uint32_t);
-int		fr_pton4(fr_ipaddr_t *out, char const *value, size_t inlen, bool resolve, bool fallback);
-int		fr_pton6(fr_ipaddr_t *out, char const *value, size_t inlen, bool resolve, bool fallback);
-int		fr_pton(fr_ipaddr_t *out, char const *value, size_t inlen, bool resolve);
+int		fr_pton4(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resolve, bool fallback);
+int		fr_pton6(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resolve, bool fallback);
+int		fr_pton(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resolve);
 int		fr_ntop(char *out, size_t outlen, fr_ipaddr_t *addr);
 char		*ifid_ntoa(char *buffer, size_t size, uint8_t const *ifid);
 uint8_t		*ifid_aton(char const *ifid_str, uint8_t *ifid);
@@ -714,7 +739,7 @@ void		fr_talloc_verify_cb(const void *ptr, int depth,
 
 #ifdef WITH_ASCEND_BINARY
 /* filters.c */
-int		ascend_parse_filter(VALUE_PAIR *vp, char const *value, size_t len);
+int		ascend_parse_filter(value_data_t *out, char const *value, size_t len);
 void		print_abinary(char *out, size_t outlen, uint8_t const *data, size_t len, int8_t quote);
 #endif /*WITH_ASCEND_BINARY*/
 

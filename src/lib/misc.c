@@ -207,12 +207,12 @@ char const *ip_ntoa(char *buffer, uint32_t ipaddr)
  *
  * @param out Where to write the ip address value.
  * @param value to parse, may be dotted quad [+ prefix], or integer, or octal number, or '*' (INADDR_ANY).
- * @param inlen Length of value, if value is \0 terminated inlen may be 0.
+ * @param inlen Length of value, if value is \0 terminated inlen may be -1.
  * @param resolve If true and value doesn't look like an IP address, try and resolve value as a hostname.
  * @param fallback to IPv4 resolution if no A records can be found.
  * @return 0 if ip address was parsed successfully, else -1 on error.
  */
-int fr_pton4(fr_ipaddr_t *out, char const *value, size_t inlen, bool resolve, bool fallback)
+int fr_pton4(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resolve, bool fallback)
 {
 	char *p;
 	unsigned int prefix;
@@ -224,8 +224,8 @@ int fr_pton4(fr_ipaddr_t *out, char const *value, size_t inlen, bool resolve, bo
 	/*
 	 *	Copy to intermediary buffer if we were given a length
 	 */
-	if (inlen > 0) {
-		if (inlen >= sizeof(buffer)) {
+	if (inlen >= 0) {
+		if (inlen >= (ssize_t)sizeof(buffer)) {
 			fr_strerror_printf("Invalid IPv4 address string \"%s\"", value);
 			return -1;
 		}
@@ -275,7 +275,7 @@ int fr_pton4(fr_ipaddr_t *out, char const *value, size_t inlen, bool resolve, bo
 	/*
 	 *	Copy the IP portion into a temporary buffer if we haven't already.
 	 */
-	if (inlen == 0) memcpy(buffer, value, p - value);
+	if (inlen < 0) memcpy(buffer, value, p - value);
 	buffer[p - value] = '\0';
 
 	if (!resolve) {
@@ -310,12 +310,12 @@ int fr_pton4(fr_ipaddr_t *out, char const *value, size_t inlen, bool resolve, bo
  *
  * @param out Where to write the ip address value.
  * @param value to parse.
- * @param inlen Length of value, if value is \0 terminated inlen may be 0.
+ * @param inlen Length of value, if value is \0 terminated inlen may be -1.
  * @param resolve If true and value doesn't look like an IP address, try and resolve value as a hostname.
  * @param fallback to IPv4 resolution if no AAAA records can be found.
  * @return 0 if ip address was parsed successfully, else -1 on error.
  */
-int fr_pton6(fr_ipaddr_t *out, char const *value, size_t inlen, bool resolve, bool fallback)
+int fr_pton6(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resolve, bool fallback)
 {
 	char const *p;
 	unsigned int prefix;
@@ -327,8 +327,8 @@ int fr_pton6(fr_ipaddr_t *out, char const *value, size_t inlen, bool resolve, bo
 	/*
 	 *	Copy to intermediary buffer if we were given a length
 	 */
-	if (inlen > 0) {
-		if (inlen >= sizeof(buffer)) {
+	if (inlen >= 0) {
+		if (inlen >= (ssize_t)sizeof(buffer)) {
 			fr_strerror_printf("Invalid IPv6 address string \"%s\"", value);
 			return -1;
 		}
@@ -364,7 +364,7 @@ int fr_pton6(fr_ipaddr_t *out, char const *value, size_t inlen, bool resolve, bo
 	/*
 	 *	Copy string to temporary buffer if we didn't do it earlier
 	 */
-	if (inlen == 0) memcpy(buffer, value, p - value);
+	if (inlen < 0) memcpy(buffer, value, p - value);
 	buffer[p - value] = '\0';
 
 	if (!resolve) {
@@ -402,15 +402,15 @@ int fr_pton6(fr_ipaddr_t *out, char const *value, size_t inlen, bool resolve, bo
  *
  * @param out Where to write the ip address value.
  * @param value to parse.
- * @param inlen Length of value, if value is \0 terminated inlen may be 0.
+ * @param inlen Length of value, if value is \0 terminated inlen may be -1.
  * @param resolve If true and value doesn't look like an IP address, try and resolve value as a hostname.
  * @return 0 if ip address was parsed successfully, else -1 on error.
  */
-int fr_pton(fr_ipaddr_t *out, char const *value, size_t inlen, bool resolve)
+int fr_pton(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resolve)
 {
 	size_t len, i;
 
-	len = (inlen == 0) ? strlen(value) : inlen;
+	len = (inlen < 0) ? strlen(value) : inlen;
 	for (i = 0; i < len; i++) switch (value[i]) {
 	/*
 	 *	Chars illegal in domain names and IPv4 addresses.

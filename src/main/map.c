@@ -536,7 +536,7 @@ static int map_exec_to_vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t c
 		vp = pairalloc(request, map->lhs->tmpl_da);
 		if (!vp) return -1;
 		vp->op = map->op;
-		if (pairparsevalue(vp, answer, 0) < 0) {
+		if (pairparsevalue(vp, answer, -1) < 0) {
 			pairfree(&vp);
 			return -2;
 		}
@@ -639,7 +639,7 @@ int map_to_vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *map, U
 		RDEBUG2("EXPAND %s", map->rhs->name);
 		RDEBUG2("   --> %s", str);
 
-		rcode = pairparsevalue(new, str, 0);
+		rcode = pairparsevalue(new, str, -1);
 		talloc_free(str);
 		if (rcode < 0) {
 			pairfree(&new);
@@ -663,7 +663,7 @@ int map_to_vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *map, U
 			goto error;
 		}
 
-		rcode = pairparsevalue(new, str, 0);
+		rcode = pairparsevalue(new, str, -1);
 		talloc_free(str);
 		if (rcode < 0) {
 			pairfree(&new);
@@ -680,7 +680,7 @@ int map_to_vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *map, U
 		new = pairalloc(request, map->lhs->tmpl_da);
 		if (!new) return -1;
 
-		if (pairparsevalue(new, map->rhs->name, 0) < 0) {
+		if (pairparsevalue(new, map->rhs->name, -1) < 0) {
 			rcode = 0;
 			goto error;
 		}
