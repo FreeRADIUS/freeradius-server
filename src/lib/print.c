@@ -561,7 +561,7 @@ char *vp_data_aprints_value(TALLOC_CTX *ctx,
 			    PW_TYPE type, DICT_ATTR const *enumv, value_data_t const *data,
 			    size_t inlen, char quote)
 {
-	char *p;
+	char *p = NULL;
 	unsigned int i;
 
 	switch (type) {
@@ -712,7 +712,6 @@ char *vp_data_aprints_value(TALLOC_CTX *ctx,
 		fr_assert(0);
 		return NULL;
 	}
-
 
 	return p;
 }
