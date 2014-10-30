@@ -514,10 +514,22 @@ print_int:
 				data->ether[2], data->ether[3],
 				data->ether[4], data->ether[5]);
 
-	default:
-		a = "UNKNOWN-TYPE";
-		len = strlen(a);
-		break;
+	/*
+	 *	Don't add default here
+	 */
+	case PW_TYPE_INVALID:
+	case PW_TYPE_COMBO_IP_ADDR:
+	case PW_TYPE_IP_PREFIX:
+	case PW_TYPE_EXTENDED:
+	case PW_TYPE_LONG_EXTENDED:
+	case PW_TYPE_EVS:
+	case PW_TYPE_VSA:
+	case PW_TYPE_TIMEVAL:
+	case PW_TYPE_BOOLEAN:
+	case PW_TYPE_MAX:
+		fr_assert(0);
+		*out = '\0';
+		return 0;
 	}
 
 	if (a) strlcpy(out, a, outlen);
@@ -539,6 +551,184 @@ size_t vp_prints_value(char *out, size_t outlen, VALUE_PAIR const *vp, char quot
 	VERIFY_VP(vp);
 
 	return vp_data_prints_value(out, outlen, vp->da->type, vp->da, &vp->data, vp->length, quote);
+}
+
+
+/** Print one attribute value to a string
+ *
+ */
+char *vp_data_aprints_value(TALLOC_CTX *ctx,
+			    PW_TYPE type, DICT_ATTR const *enumv, value_data_t const *data,
+			    size_t inlen, char quote)
+{
+	char *p;
+	unsigned int i;
+
+	switch (type) {
+	case PW_TYPE_STRING:
+	{
+		size_t len, ret;
+
+		if (!quote) {
+			p = talloc_memdup(ctx, data->strvalue, inlen + 1);
+			if (!p) return NULL;
+			talloc_set_type(p, char);
+			return p;
+		}
+
+		/* Gets us the size of the buffer we need to alloc */
+		len = fr_print_string_len(data->strvalue, inlen, quote);
+		p = talloc_array(ctx, char, len + 1); 	/* +1 for '\0' */
+		if (!p) return NULL;
+
+		ret = fr_print_string(data->strvalue, inlen, p, len + 1, quote);
+		if (!fr_assert(ret == len)) {
+			talloc_free(p);
+			return NULL;
+		}
+		break;
+	}
+
+	case PW_TYPE_INTEGER:
+		i = data->integer;
+		goto print_int;
+
+	case PW_TYPE_SHORT:
+		i = data->ushort;
+		goto print_int;
+
+	case PW_TYPE_BYTE:
+		i = data->byte;
+
+	print_int:
+	{
+		DICT_VALUE const *dv;
+
+		if (enumv && (dv = dict_valbyattr(enumv->attr, enumv->vendor, i))) {
+			p = talloc_typed_strdup(ctx, dv->name);
+		} else {
+			p = talloc_typed_asprintf(ctx, "%u", i);
+		}
+	}
+		break;
+
+	case PW_TYPE_SIGNED:
+		p = talloc_typed_asprintf(ctx, "%d", data->sinteger);
+		break;
+
+	case PW_TYPE_INTEGER64:
+		p = talloc_typed_asprintf(ctx, "%" PRIu64 , data->integer64);
+		break;
+
+	case PW_TYPE_ETHERNET:
+		p = talloc_typed_asprintf(ctx, "%02x:%02x:%02x:%02x:%02x:%02x",
+					  data->ether[0], data->ether[1],
+					  data->ether[2], data->ether[3],
+					  data->ether[4], data->ether[5]);
+		break;
+
+	case PW_TYPE_ABINARY:
+#ifdef WITH_ASCEND_BINARY
+		p = talloc_array(ctx, char, 128);
+		if (!p) return NULL;
+		print_abinary(p, 128, (uint8_t *) &data->filter, inlen, 0);
+		break;
+#else
+		  /* FALL THROUGH */
+#endif
+
+	case PW_TYPE_OCTETS:
+		p = talloc_array(ctx, char, 1 + inlen * 2);
+		if (!p) return NULL;
+		fr_bin2hex(p, data->octets, inlen);
+		break;
+
+	case PW_TYPE_DATE:
+	{
+		time_t t;
+		struct tm s_tm;
+
+		t = data->date;
+
+		p = talloc_array(ctx, char, 64);
+		strftime(p, 64, "%b %e %Y %H:%M:%S %Z",
+			 localtime_r(&t, &s_tm));
+		break;
+	}
+
+	/*
+	 *	We need to use the proper inet_ntop functions for IP
+	 *	addresses, else the output might not match output of
+	 *	other functions, which makes testing difficult.
+	 *
+	 *	An example is tunnelled ipv4 in ipv6 addresses.
+	 */
+	case PW_TYPE_IPV4_ADDR:
+	case PW_TYPE_IPV4_PREFIX:
+	{
+		char buff[INET_ADDRSTRLEN  + 4]; // + /prefix
+
+		buff[0] = '\0';
+		vp_data_prints_value(buff, sizeof(buff), type, enumv, data, inlen, '\0');
+
+		p = talloc_typed_strdup(ctx, buff);
+	}
+	break;
+
+	case PW_TYPE_IPV6_ADDR:
+	case PW_TYPE_IPV6_PREFIX:
+	{
+		char buff[INET6_ADDRSTRLEN + 4]; // + /prefix
+
+		buff[0] = '\0';
+		vp_data_prints_value(buff, sizeof(buff), type, enumv, data, inlen, '\0');
+
+		p = talloc_typed_strdup(ctx, buff);
+	}
+	break;
+
+	case PW_TYPE_IFID:
+		p = talloc_typed_asprintf(ctx, "%x:%x:%x:%x",
+					  (data->ifid[0] << 8) | data->ifid[1],
+					  (data->ifid[2] << 8) | data->ifid[3],
+					  (data->ifid[4] << 8) | data->ifid[5],
+					  (data->ifid[6] << 8) | data->ifid[7]);
+		break;
+
+	/*
+	 *	Don't add default here
+	 */
+	case PW_TYPE_INVALID:
+	case PW_TYPE_COMBO_IP_ADDR:
+	case PW_TYPE_IP_PREFIX:
+	case PW_TYPE_TLV:
+	case PW_TYPE_EXTENDED:
+	case PW_TYPE_LONG_EXTENDED:
+	case PW_TYPE_EVS:
+	case PW_TYPE_VSA:
+	case PW_TYPE_TIMEVAL:
+	case PW_TYPE_BOOLEAN:
+	case PW_TYPE_MAX:
+		fr_assert(0);
+		return NULL;
+	}
+
+
+	return p;
+}
+
+/** Print one attribute value to a string
+ *
+ * @param ctx to allocate string in.
+ * @param vp to print.
+ * @param[in] quote the quotation character
+ * @return a talloced buffer with the attribute operator and value.
+ */
+char *vp_aprint_value(TALLOC_CTX *ctx, VALUE_PAIR const *vp, char quote)
+{
+	VERIFY_VP(vp);
+
+	return vp_data_aprints_value(ctx, vp->da->type, vp->da, &vp->data, vp->length, quote);
 }
 
 char *vp_aprint_type(TALLOC_CTX *ctx, PW_TYPE type)
@@ -842,156 +1032,6 @@ void vp_printlist(FILE *fp, VALUE_PAIR const *vp)
 	for (vp = fr_cursor_init(&cursor, &vp); vp; vp = fr_cursor_next(&cursor)) {
 		vp_print(fp, vp);
 	}
-}
-
-
-/** Print one attribute value to a string
- *
- * @param ctx to allocate string in.
- * @param vp to print.
- * @param[in] quote the quotation character
- * @return a talloced buffer with the attribute operator and value.
- */
-char *vp_aprint_value(TALLOC_CTX *ctx, VALUE_PAIR const *vp, char quote)
-{
-	char *p;
-	unsigned int i;
-	DICT_VALUE const *dv;
-
-	switch (vp->da->type) {
-	case PW_TYPE_STRING:
-	{
-		size_t len, ret;
-
-		if (!quote) {
-			p = talloc_memdup(ctx, vp->vp_strvalue, vp->length + 1);
-			if (!p) return NULL;
-			talloc_set_type(p, char);
-			return p;
-		}
-
-		/* Gets us the size of the buffer we need to alloc */
-		len = fr_print_string_len(vp->vp_strvalue, vp->length, quote);
-		p = talloc_array(ctx, char, len + 1); 	/* +1 for '\0' */
-		if (!p) return NULL;
-
-		ret = fr_print_string(vp->vp_strvalue, vp->length, p, len + 1, quote);
-		if (!fr_assert(ret == len)) {
-			talloc_free(p);
-			return NULL;
-		}
-		break;
-	}
-
-	case PW_TYPE_INTEGER:
-		i = vp->vp_integer;
-		goto print_int;
-
-	case PW_TYPE_SHORT:
-		i = vp->vp_short;
-		goto print_int;
-
-	case PW_TYPE_BYTE:
-		i = vp->vp_byte;
-
-	print_int:
-		dv = dict_valbyattr(vp->da->attr, vp->da->vendor, i);
-		if (dv) {
-			p = talloc_typed_strdup(ctx, dv->name);
-		} else {
-			p = talloc_typed_asprintf(ctx, "%u", i);
-		}
-		break;
-
-	case PW_TYPE_SIGNED:
-		p = talloc_typed_asprintf(ctx, "%d", vp->vp_signed);
-		break;
-
-	case PW_TYPE_INTEGER64:
-		p = talloc_typed_asprintf(ctx, "%" PRIu64 , vp->vp_integer64);
-		break;
-
-	case PW_TYPE_ETHERNET:
-		p = talloc_typed_asprintf(ctx, "%02x:%02x:%02x:%02x:%02x:%02x",
-				    vp->vp_ether[0], vp->vp_ether[1],
-				    vp->vp_ether[2], vp->vp_ether[3],
-				    vp->vp_ether[4], vp->vp_ether[5]);
-		break;
-
-	case PW_TYPE_ABINARY:
-#ifdef WITH_ASCEND_BINARY
-		p = talloc_array(ctx, char, 128);
-		if (!p) return NULL;
-		print_abinary(p, 128, (uint8_t *) &vp->vp_filter, vp->length, 0);
-		break;
-#else
-		  /* FALL THROUGH */
-#endif
-
-	case PW_TYPE_OCTETS:
-		p = talloc_array(ctx, char, 1 + vp->length * 2);
-		if (!p) return NULL;
-		fr_bin2hex(p, vp->vp_octets, vp->length);
-		break;
-
-	case PW_TYPE_DATE:
-	{
-		time_t t;
-		struct tm s_tm;
-
-		t = vp->vp_date;
-
-		p = talloc_array(ctx, char, 64);
-		strftime(p, 64, "%b %e %Y %H:%M:%S %Z",
-			 localtime_r(&t, &s_tm));
-		break;
-	}
-
-	/*
-	 *	We need to use the proper inet_ntop functions for IP
-	 *	addresses, else the output might not match output of
-	 *	other functions, which makes testing difficult.
-	 *
-	 *	An example is tunnelled ipv4 in ipv6 addresses.
-	 */
-	case PW_TYPE_IPV4_ADDR:
-	case PW_TYPE_IPV4_PREFIX:
-		{
-			char buff[INET_ADDRSTRLEN  + 4]; // + /prefix
-
-			buff[0] = '\0';
-			vp_prints_value(buff, sizeof(buff), vp, 0);
-
-			p = talloc_typed_strdup(ctx, buff);
-		}
-		break;
-
-	case PW_TYPE_IPV6_ADDR:
-	case PW_TYPE_IPV6_PREFIX:
-		{
-			char buff[INET6_ADDRSTRLEN + 4]; // + /prefix
-
-			buff[0] = '\0';
-			vp_prints_value(buff, sizeof(buff), vp, 0);
-
-			p = talloc_typed_strdup(ctx, buff);
-		}
-		break;
-
-	case PW_TYPE_IFID:
-		p = talloc_typed_asprintf(ctx, "%x:%x:%x:%x",
-				    (vp->vp_ifid[0] << 8) | vp->vp_ifid[1],
-				    (vp->vp_ifid[2] << 8) | vp->vp_ifid[3],
-				    (vp->vp_ifid[4] << 8) | vp->vp_ifid[5],
-				    (vp->vp_ifid[6] << 8) | vp->vp_ifid[7]);
-		break;
-
-	default:
-		p = NULL;
-		break;
-	}
-
-	return p;
 }
 
 /** Print one attribute and value to a string
