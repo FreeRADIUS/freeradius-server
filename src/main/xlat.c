@@ -306,10 +306,8 @@ static ssize_t xlat_tag(UNUSED void *instance, REQUEST *request,
 static ssize_t xlat_debug_attr(UNUSED void *instance, REQUEST *request, char const *fmt,
 			       char *out, UNUSED size_t outlen)
 {
-	VALUE_PAIR *vp, **vps;
-	REQUEST *current;
+	VALUE_PAIR *vp;
 	vp_cursor_t cursor;
-	char buffer[1024];
 
 	value_pair_tmpl_t vpt;
 
@@ -325,67 +323,94 @@ static ssize_t xlat_debug_attr(UNUSED void *instance, REQUEST *request, char con
 		return -1;
 	}
 
-	current = request;
-	if (radius_request(&current, vpt.tmpl_request) < 0) return -2;
-
-	vps = radius_list(current, vpt.tmpl_list);
-	if (!vps) {
-		return -2;
-	}
-
 	RIDEBUG("Attributes matching \"%s\"", fmt);
-	vp = fr_cursor_init(&cursor, vps);
 
-	if (vpt.tmpl_da) {
-		vp = fr_cursor_next_by_da(&cursor, vpt.tmpl_da, TAG_ANY);
-	}
-	while (vp) {
-		DICT_ATTR *dac = NULL;
-		DICT_VENDOR *dv;
+	RINDENT();
+	for (vp = tmpl_cursor_init(NULL, &cursor, request, &vpt);
+	     vp;
+	     vp = tmpl_cursor_next(&cursor, &vpt)) {
+		FR_NAME_NUMBER const *type;
+		char *value;
 
-		vp_prints_value(buffer, sizeof(buffer), vp, '\'');
-
-		RINDENT();
+		value = vp_aprints_value(vp, vp, '\'');
 		if (vp->da->flags.has_tag) {
-			RIDEBUG2("%s:%s:%i %s %s",
+			RIDEBUG2("&%s:%s:%i %s %s",
 				fr_int2str(pair_lists, vpt.tmpl_list, "<INVALID>"),
 				vp->da->name,
 				vp->tag,
 				fr_int2str(fr_tokens, vp->op, "<INVALID>"),
-				buffer);
+				value);
 		} else {
-			RIDEBUG2("%s:%s %s %s",
+			RIDEBUG2("&%s:%s %s %s",
 				fr_int2str(pair_lists, vpt.tmpl_list, "<INVALID>"),
 				vp->da->name,
 				fr_int2str(fr_tokens, vp->op, "<INVALID>"),
-				buffer);
+				value);
 		}
-		REXDENT();
+		talloc_free(value);
 
-		if (!RDEBUG_ENABLED3) goto next_vp;
+		if (!RDEBUG_ENABLED3) continue;
 
-		RINDENT();
-		RINDENT();
 		if (vp->da->vendor) {
+			DICT_VENDOR *dv;
+
 			dv = dict_vendorbyvalue(vp->da->vendor);
-			RDEBUG3("Vendor : %i (%s)", vp->da->vendor, dv ? dv->name : "unknown");
+			RIDEBUG2("Vendor : %i (%s)", vp->da->vendor, dv ? dv->name : "unknown");
 		}
-		RDEBUG3("Type   : %s", fr_int2str(dict_attr_types, vp->da->type, "<INVALID>"));
-		RDEBUG3("Length : %zu", vp->length);
-		REXDENT();
-		REXDENT();
+		RIDEBUG2("Type   : %s", fr_int2str(dict_attr_types, vp->da->type, "<INVALID>"));
+		RIDEBUG2("Length : %zu", vp->length);
 
-		dac = talloc_memdup(request, vp->da, sizeof(DICT_ATTR));
-		if (!dac) return -1;
-		talloc_set_type(dac, DICT_ATTR);
+		if (!RDEBUG_ENABLED4) continue;
 
-	next_vp:
-		talloc_free(dac);
+		type = dict_attr_types;
+		while (type->name) {
+			int pad;
 
-		if (vpt.tmpl_da) {
-			vp = fr_cursor_next_by_da(&cursor, vpt.tmpl_da, TAG_ANY);
-		} else {
-			vp = fr_cursor_next(&cursor);
+			value_data_t *dst = NULL;
+
+			ssize_t ret;
+
+			if ((PW_TYPE) type->number == vp->da->type) {
+				goto next_type;
+			}
+
+			switch (type->number) {
+			case PW_TYPE_INVALID:		/* Not real type */
+			case PW_TYPE_MAX:		/* Not real type */
+			case PW_TYPE_EXTENDED:		/* Not safe/appropriate */
+			case PW_TYPE_LONG_EXTENDED:	/* Not safe/appropriate */
+			case PW_TYPE_TLV:		/* Not safe/appropriate */
+			case PW_TYPE_EVS:		/* Not safe/appropriate */
+			case PW_TYPE_VSA:		/* @fixme We need special behaviour for these */
+			case PW_TYPE_COMBO_IP_ADDR:	/* Covered by IPv4 address IPv6 address */
+			case PW_TYPE_COMBO_IP_PREFIX:	/* Covered by IPv4 address IPv6 address */
+			case PW_TYPE_TIMEVAL:		/* Not a VALUE_PAIR type */
+
+				goto next_type;
+
+			default:
+				break;
+			}
+
+			dst = talloc_zero(vp, value_data_t);
+			ret = value_data_cast(dst, dst, type->number, NULL, vp->da->type, vp->da,
+					      &vp->data, vp->length);
+			if (ret < 0) goto next_type;	/* We expect some to fail */
+
+			value = vp_data_aprints_value(dst, type->number, NULL, dst, (size_t)ret, '\'');
+			if (!value) goto next_type;
+
+			if ((pad = (11 - strlen(type->name))) < 0) {
+				pad = 0;
+			}
+
+			RINDENT();
+			RDEBUG2("as %s%*s: %s", type->name, pad, " ", value);
+			REXDENT();
+
+		next_type:
+			talloc_free(dst);
+			type++;
 		}
 	}
 
@@ -576,8 +601,8 @@ static xlat_t *xlat_find(char const *name)
  */
 int xlat_register(char const *name, RAD_XLAT_FUNC func, RADIUS_ESCAPE_STRING escape, void *instance)
 {
-	xlat_t	 *c;
-	xlat_t	 my_xlat;
+	xlat_t	*c;
+	xlat_t	my_xlat;
 	rbnode_t *node;
 
 	if (!name || !*name) {
@@ -596,7 +621,7 @@ int xlat_register(char const *name, RAD_XLAT_FUNC func, RADIUS_ESCAPE_STRING esc
 		int i;
 #endif
 
-		xlat_root = rbtree_create(NULL, xlat_cmp, free, RBTREE_FLAG_REPLACE);
+		xlat_root = rbtree_create(NULL, xlat_cmp, NULL, RBTREE_FLAG_REPLACE);
 		if (!xlat_root) {
 			DEBUG("xlat_register: Failed to create tree");
 			return -1;
@@ -654,8 +679,7 @@ int xlat_register(char const *name, RAD_XLAT_FUNC func, RADIUS_ESCAPE_STRING esc
 	/*
 	 *	Doesn't exist.  Create it.
 	 */
-	c = rad_malloc(sizeof(*c));
-	memset(c, 0, sizeof(*c));
+	c = talloc_zero(xlat_root, xlat_t);
 
 	c->func = func;
 	c->escape = escape;
@@ -669,6 +693,15 @@ int xlat_register(char const *name, RAD_XLAT_FUNC func, RADIUS_ESCAPE_STRING esc
 		return -1;
 	}
 
+	/*
+	 *	Ensure that the data is deleted when the node is
+	 *	deleted.
+	 *
+	 *	@todo: Maybe this should be the other way around...
+	 *	when a thing IN the tree is deleted, it's automatically
+	 *	removed from the tree.  But for now, this works.
+	 */
+	(void) talloc_steal(node, c);
 	return 0;
 }
 
@@ -1275,8 +1308,10 @@ static ssize_t xlat_tokenize_literal(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **he
 	 */
 	if (node->len > 0) {
 		*head = node;
+
 	} else {
-		*head = talloc_steal(ctx, node->next);
+		(void) talloc_steal(ctx, node->next);
+		*head = node->next;
 		talloc_free(node);
 	}
 
@@ -1912,7 +1947,7 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 			break;
 
 		case 'd': /* request day */
-			(void) localtime_r(&when, &ts);
+			if (!localtime_r(&when, &ts)) goto error;
 			strftime(str, freespace, "%d", &ts);
 			break;
 
@@ -1922,7 +1957,7 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 			break;
 
 		case 'm': /* request month */
-			(void) localtime_r(&when, &ts);
+			if (!localtime_r(&when, &ts)) goto error;
 			strftime(str, freespace, "%m", &ts);
 			break;
 
@@ -1937,17 +1972,17 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 			break;
 
 		case 'D': /* request date */
-			(void) localtime_r(&when, &ts);
+			if (!localtime_r(&when, &ts)) goto error;
 			strftime(str, freespace, "%Y%m%d", &ts);
 			break;
 
 		case 'G': /* request minute */
-			(void) localtime_r(&when, &ts);
+			if (!localtime_r(&when, &ts)) goto error;
 			strftime(str, freespace, "%M", &ts);
 			break;
 
 		case 'H': /* request hour */
-			(void) localtime_r(&when, &ts);
+			if (!localtime_r(&when, &ts)) goto error;
 			strftime(str, freespace, "%H", &ts);
 			break;
 
@@ -1958,17 +1993,22 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 			break;
 
 		case 'S': /* request timestamp in SQL format*/
-			(void) localtime_r(&when, &ts);
+			if (!localtime_r(&when, &ts)) goto error;
 			strftime(str, freespace, "%Y-%m-%d %H:%M:%S", &ts);
 			break;
 
 		case 'T': /* request timestamp */
-			(void) localtime_r(&when, &ts);
+			if (!localtime_r(&when, &ts)) goto error;
 			strftime(str, freespace, "%Y-%m-%d-%H.%M.%S.000000", &ts);
 			break;
 
 		case 'Y': /* request year */
-			(void) localtime_r(&when, &ts);
+			if (!localtime_r(&when, &ts)) {
+				error:
+				REDEBUG("Failed converting packet timestamp to localtime: %s", fr_syserror(errno));
+				talloc_free(str);
+				return NULL;
+			}
 			strftime(str, freespace, "%Y", &ts);
 			break;
 
@@ -2234,8 +2274,8 @@ static ssize_t xlat_expand(char **out, size_t outlen, REQUEST *request, char con
  * @param[in] escape_ctx pointer to pass to escape function.
  * @return length of string written @bug should really have -1 for failure
  */
-static ssize_t CC_HINT(nonnull (1, 3, 4)) xlat_expand(char **out, size_t outlen, REQUEST *request, char const *fmt,
-						      RADIUS_ESCAPE_STRING escape, void *escape_ctx)
+static ssize_t xlat_expand(char **out, size_t outlen, REQUEST *request, char const *fmt,
+			   RADIUS_ESCAPE_STRING escape, void *escape_ctx)
 {
 	ssize_t len;
 	xlat_exp_t *node;
