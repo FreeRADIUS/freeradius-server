@@ -1084,6 +1084,23 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 							return_rhs("Failed to parse value for attribute");
 						}
 					}
+
+					/*
+					 *	Stupid WiMAX shit.
+					 *	Cast the LHS to the
+					 *	type of the RHS.
+					 */
+					if (c->data.map->lhs->tmpl_da->type == PW_TYPE_COMBO_IP_ADDR) {
+						DICT_ATTR const *da;
+
+						da = dict_attrbytype(c->data.map->lhs->tmpl_da->attr,
+								     c->data.map->lhs->tmpl_da->vendor,
+								     c->data.map->rhs->tmpl_data_type);
+						if (!da) {
+							return_rhs("Cannot find type for attribute");
+						}
+						c->data.map->lhs->tmpl_da = da;
+					}
 				}
 			}
 
