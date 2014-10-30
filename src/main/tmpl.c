@@ -1228,7 +1228,6 @@ bool tmpl_cast_in_place(value_pair_tmpl_t *vpt, DICT_ATTR const *da)
 {
 	value_data_t *data;
 	ssize_t ret;
-	PW_TYPE type;
 
 	VERIFY_TMPL(vpt);
 
