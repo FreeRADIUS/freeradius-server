@@ -711,34 +711,34 @@ size_t vp_prints_value_json(char *out, size_t outlen, VALUE_PAIR const *vp)
  *  This is a hack, and has to be kept in sync with tokens.h
  */
 static char const *vp_tokens[] = {
-  "?",				/* T_INVALID */
-  "EOL",			/* T_EOL */
-  "{",
-  "}",
-  "(",
-  ")",
-  ",",
-  ";",
-  "++",
-  "+=",
-  "-=",
-  ":=",
-  "=",
-  "!=",
-  ">=",
-  ">",
-  "<=",
-  "<",
-  "=~",
-  "!~",
-  "=*",
-  "!*",
-  "==",
-  "#",
-  "<BARE-WORD>",
-  "<\"STRING\">",
-  "<'STRING'>",
-  "<`STRING`>"
+	"?",			/* T_INVALID */
+	"EOL",			/* T_EOL */
+	"{",
+	"}",
+	"(",
+	")",
+	",",
+	";",
+	"++",
+	"+=",
+	"-=",
+	":=",
+	"=",
+	"!=",
+	">=",
+	">",
+	"<=",
+	"<",
+	"=~",
+	"!~",
+	"=*",
+	"!*",
+	"==",
+	"#",
+	"<BARE-WORD>",
+	"<\"STRING\">",
+	"<'STRING'>",
+	"<`STRING`>"
 };
 
 extern int const fr_attr_max_tlv;
