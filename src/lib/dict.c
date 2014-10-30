@@ -934,16 +934,16 @@ int dict_addattr(char const *name, int attr, unsigned int vendor, PW_TYPE type,
 	if (n->type == PW_TYPE_COMBO_IP_ADDR) {
 		DICT_ATTR *v4, *v6;
 
-		v4 = fr_pool_alloc(sizeof(*v4));
+		v4 = fr_pool_alloc(sizeof(*v4) + namelen);
 		if (!v4) goto oom;
 
-		v6 = fr_pool_alloc(sizeof(*v6));
+		v6 = fr_pool_alloc(sizeof(*v6) + namelen);
 		if (!v6) goto oom;
 
-		memcpy(v4, n, sizeof(*v4));
+		memcpy(v4, n, sizeof(*v4) + namelen);
 		v4->type = PW_TYPE_IPV4_ADDR;
 
-		memcpy(v6, n, sizeof(*v6));
+		memcpy(v6, n, sizeof(*v6) + namelen);
 		v6->type = PW_TYPE_IPV6_ADDR;
 		if (!fr_hash_table_replace(attributes_combo, v4)) {
 			fr_strerror_printf("dict_addattr: Failed inserting attribute name %s - IPv4", name);
