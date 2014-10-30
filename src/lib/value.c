@@ -432,7 +432,7 @@ ssize_t value_data_from_str(TALLOC_CTX *ctx, value_data_t *out,
 
 	if (!value) return -1;
 
-	len = (inlen < 0) ? strlen(value) : inlen;
+	len = (inlen < 0) ? strlen(value) : (size_t)inlen;
 
 	/*
 	 *	Set size for all fixed length attributes.
