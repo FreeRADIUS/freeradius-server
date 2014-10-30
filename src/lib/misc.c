@@ -410,7 +410,7 @@ int fr_pton(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resolve)
 {
 	size_t len, i;
 
-	len = (inlen < 0) ? strlen(value) : inlen;
+	len = (inlen >= 0) ? inlen : strlen(value);
 	for (i = 0; i < len; i++) switch (value[i]) {
 	/*
 	 *	Chars illegal in domain names and IPv4 addresses.
