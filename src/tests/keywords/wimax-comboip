@@ -1,0 +1,19 @@
+update control {
+       Cleartext-Password := 'hello'
+}
+
+update request {
+	WiMAX-DHCPv4-Server := 192.0.2.23
+}
+
+if (WiMAX-DHCPv4-Server != 192.0.2.23) {
+	update reply {
+		Filter-Id := "fail-1"
+	}
+}
+
+if (!reply:Filter-Id) {
+	update reply {
+		Filter-Id := "filter"
+	}
+}
