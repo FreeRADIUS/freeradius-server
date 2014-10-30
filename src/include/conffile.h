@@ -80,7 +80,7 @@ typedef struct timeval _timeval_t;
 		__builtin_choose_expr(__builtin_types_compatible_p(fr_ipaddr_t *, _ct), _p, (conf_type_mismatch) 0),\
 	__builtin_choose_expr((_t == PW_TYPE_TIMEVAL),\
 		__builtin_choose_expr(__builtin_types_compatible_p(_timeval_t *, _ct), _p, (conf_type_mismatch) 0),\
-	__builtin_choose_expr((_t == PW_TYPE_IP_PREFIX),\
+	__builtin_choose_expr((_t == PW_TYPE_COMBO_IP_PREFIX),\
 		__builtin_choose_expr(__builtin_types_compatible_p(fr_ipaddr_t *, _ct), _p, (conf_type_mismatch) 0),\
 		(conf_type_invalid) 0\
 	))))))))))))))))))))
