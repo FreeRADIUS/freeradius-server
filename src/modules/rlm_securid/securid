@@ -1,6 +1,5 @@
 #
 #  This is the configuration for the "securid" module.
-#  It should be copied to raddb/modules/
 #
 
 securid {
