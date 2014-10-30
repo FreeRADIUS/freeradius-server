@@ -109,15 +109,15 @@ const FR_NAME_NUMBER dict_attr_types[] = {
  *	Map data types to min / max data sizes.
  */
 const size_t dict_attr_sizes[PW_TYPE_MAX][2] = {
-	[PW_TYPE_INVALID]	= { ~0, 0 },
-	[PW_TYPE_STRING]	= { 0, ~0 },
+	[PW_TYPE_INVALID]	= {~0, 0},
+	[PW_TYPE_STRING]	= {0, ~0},
 	[PW_TYPE_INTEGER]	= {4, 4 },
 	[PW_TYPE_IPV4_ADDR]	= {4, 4},
 	[PW_TYPE_DATE]		= {4, 4},
 	[PW_TYPE_ABINARY]	= {32, ~0},
 	[PW_TYPE_OCTETS]	= {0, ~0},
 	[PW_TYPE_IFID]		= {8, 8},
-	[PW_TYPE_IPV6_ADDR]	= { 16, 16},
+	[PW_TYPE_IPV6_ADDR]	= {16, 16},
 	[PW_TYPE_IPV6_PREFIX]	= {2, 18},
 	[PW_TYPE_BYTE]		= {1, 1},
 	[PW_TYPE_SHORT]		= {2, 2},
