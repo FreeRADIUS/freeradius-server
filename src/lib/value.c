@@ -923,19 +923,19 @@ static void value_data_hton(value_data_t *dst, PW_TYPE type, void const *src, si
 	/* 8 byte integers */
 	switch (type) {
 	case PW_TYPE_INTEGER64:
-		dst->integer64 = htonll(*(uint64_t *)src);
+		dst->integer64 = htonll(*(uint64_t const *)src);
 		break;
 
 	/* 4 byte integers */
 	case PW_TYPE_INTEGER:
 	case PW_TYPE_DATE:
 	case PW_TYPE_SIGNED:
-		dst->integer = htonl(*(uint32_t *)src);
+		dst->integer = htonl(*(uint32_t const *)src);
 		break;
 
 	/* 2 byte integers */
 	case PW_TYPE_SHORT:
-		dst->ushort = htons(*(uint16_t *)src);
+		dst->ushort = htons(*(uint16_t const *)src);
 		break;
 
 	case PW_TYPE_OCTETS:
