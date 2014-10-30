@@ -316,8 +316,8 @@ size_t fr_print_string_len(char const *in, size_t inlen, char quote)
  *
  */
 size_t vp_data_prints_value(char *out, size_t outlen,
-			    PW_TYPE type, value_data_t const *data, size_t data_len,
-			    DICT_ATTR const *values, char quote)
+			    PW_TYPE type, DICT_ATTR const *enumv, value_data_t const *data,
+			    size_t inlen, char quote)
 {
 	DICT_VALUE	*v;
 	char		buf[1024];	/* Interim buffer to use with poorly behaved printing functions */
@@ -328,10 +328,10 @@ size_t vp_data_prints_value(char *out, size_t outlen,
 
 	size_t		len = 0, freespace = outlen;
 
-	fr_assert(!values || (values->type == type));
+	fr_assert(!enumv || (enumv->type == type));
 
 	if (!data) return 0;
-	if (outlen == 0) return data_len;
+	if (outlen == 0) return inlen;
 
 	*out = '\0';
 
@@ -343,13 +343,13 @@ size_t vp_data_prints_value(char *out, size_t outlen,
 		 */
 		if (quote) {
 			if (freespace < 3) {
-				return data_len + 2;
+				return inlen + 2;
 			}
 
 			*out++ = quote;
 			freespace--;
 
-			len = fr_print_string(data->strvalue, data_len, out, freespace, quote);
+			len = fr_print_string(data->strvalue, inlen, out, freespace, quote);
 			/* always terminate the quoted string with another quote */
 			if (len >= (freespace - 1)) {
 				out[outlen - 2] = (char) quote;
@@ -366,7 +366,7 @@ size_t vp_data_prints_value(char *out, size_t outlen,
 			return len + 2;
 		}
 
-		return fr_print_string(data->strvalue, data_len, out, outlen, quote);
+		return fr_print_string(data->strvalue, inlen, out, outlen, quote);
 
 	case PW_TYPE_INTEGER:
 		i = data->integer;
@@ -381,7 +381,7 @@ size_t vp_data_prints_value(char *out, size_t outlen,
 
 print_int:
 		/* Normal, non-tagged attribute */
-		if (values && (v = dict_valbyattr(values->attr, values->vendor, i)) != NULL) {
+		if (enumv && (v = dict_valbyattr(enumv->attr, enumv->vendor, i)) != NULL) {
 			a = v->name;
 			len = strlen(a);
 		} else {
@@ -432,7 +432,7 @@ print_int:
 		size_t max;
 
 		/* Return the number of bytes we would have written */
-		len = (data_len * 2) + 2;
+		len = (inlen * 2) + 2;
 		if (freespace <= 1) {
 			return len;
 		}
@@ -454,7 +454,7 @@ print_int:
 
 		/* Get maximum number of bytes we can encode given freespace */
 		max = ((freespace % 2) ? freespace - 1 : freespace - 2) / 2;
-		fr_bin2hex(out, data->octets, (data_len > max) ? max : data_len);
+		fr_bin2hex(out, data->octets, (inlen > max) ? max : inlen);
 	}
 		return len;
 
@@ -538,7 +538,7 @@ size_t vp_prints_value(char *out, size_t outlen, VALUE_PAIR const *vp, char quot
 {
 	VERIFY_VP(vp);
 
-	return vp_data_prints_value(out, outlen, vp->da->type, &vp->data, vp->length, vp->da, quote);
+	return vp_data_prints_value(out, outlen, vp->da->type, vp->da, &vp->data, vp->length, quote);
 }
 
 char *vp_aprint_type(TALLOC_CTX *ctx, PW_TYPE type)
@@ -585,7 +585,7 @@ char *vp_aprint_type(TALLOC_CTX *ctx, PW_TYPE type)
 	return talloc_typed_strdup(ctx, "<UNKNOWN-TYPE>");
 }
 
-/**  Prints attribute values escaped suitably for use as JSON values
+/**  Prints attribute enumv escaped suitably for use as JSON enumv
  *
  *  Returns < 0 if the buffer may be (or have been) too small to write the encoded
  *  JSON value to.
@@ -831,7 +831,7 @@ void vp_print(FILE *fp, VALUE_PAIR const *vp)
 }
 
 
-/** Print a list of attributes and values
+/** Print a list of attributes and enumv
  *
  * @param fp to output to.
  * @param vp to print.
