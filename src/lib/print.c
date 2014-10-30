@@ -519,7 +519,7 @@ print_int:
 	 */
 	case PW_TYPE_INVALID:
 	case PW_TYPE_COMBO_IP_ADDR:
-	case PW_TYPE_IP_PREFIX:
+	case PW_TYPE_COMBO_IP_PREFIX:
 	case PW_TYPE_EXTENDED:
 	case PW_TYPE_LONG_EXTENDED:
 	case PW_TYPE_EVS:
@@ -700,7 +700,7 @@ char *vp_data_aprints_value(TALLOC_CTX *ctx,
 	 */
 	case PW_TYPE_INVALID:
 	case PW_TYPE_COMBO_IP_ADDR:
-	case PW_TYPE_IP_PREFIX:
+	case PW_TYPE_COMBO_IP_PREFIX:
 	case PW_TYPE_TLV:
 	case PW_TYPE_EXTENDED:
 	case PW_TYPE_LONG_EXTENDED:

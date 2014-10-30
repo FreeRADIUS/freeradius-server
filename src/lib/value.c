@@ -147,7 +147,7 @@ int value_data_cmp(PW_TYPE a_type, size_t a_len, value_data_t const *a,
 	 */
 	case PW_TYPE_INVALID:		/* We should never see these */
 	case PW_TYPE_COMBO_IP_ADDR:		/* This should have been converted into IPADDR/IPV6ADDR */
-	case PW_TYPE_IP_PREFIX:		/* This should have been converted into IPADDR/IPV6ADDR */
+	case PW_TYPE_COMBO_IP_PREFIX:		/* This should have been converted into IPADDR/IPV6ADDR */
 	case PW_TYPE_TLV:
 	case PW_TYPE_EXTENDED:
 	case PW_TYPE_LONG_EXTENDED:
