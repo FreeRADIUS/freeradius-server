@@ -473,7 +473,7 @@ redo:
 	if (c->type == MOD_IF) {
 		int condition;
 		modgroup *g;
-		
+
 	mod_if:
 		g = mod_callabletogroup(c);
 		rad_assert(g->cond != NULL);
@@ -1773,14 +1773,19 @@ int modcall_fixup_update(value_pair_map_t *map, UNUSED void *ctx)
 	}
 
 	/*
+	 *	If the map has a unary operator there's no further
+	 *	processing we need to, as RHS is unused.
+	 */
+	if (map->op == T_OP_CMP_FALSE) return 0;
+
+	/*
 	 *	If LHS is an attribute, and RHS is a literal, we can
 	 *	preparse the information into a TMPL_TYPE_DATA.
 	 *
 	 *	Unless it's a unary operator in which case we
 	 *	ignore map->rhs.
 	 */
-	if ((map->lhs->type == TMPL_TYPE_ATTR) && (map->rhs->type == TMPL_TYPE_LITERAL) &&
-	    (map->op != T_OP_CMP_FALSE)) {
+	if ((map->lhs->type == TMPL_TYPE_ATTR) && (map->rhs->type == TMPL_TYPE_LITERAL)) {
 		/*
 		 *	It's a literal string, just copy it.
 		 *	Don't escape anything.
@@ -1788,17 +1793,7 @@ int modcall_fixup_update(value_pair_map_t *map, UNUSED void *ctx)
 		if (!cf_new_escape &&
 		    (map->lhs->tmpl_da->type == PW_TYPE_STRING) &&
 		    (cf_pair_value_type(cp) == T_SINGLE_QUOTED_STRING)) {
-			value_data_t *vpd;
-
-			map->rhs->tmpl_data_value = vpd = talloc_zero(map->rhs, value_data_t);
-			rad_assert(vpd != NULL);
-
-			vpd->strvalue = talloc_typed_strdup(vpd, map->rhs->name);
-			rad_assert(vpd->strvalue != NULL);
-
-			map->rhs->type = TMPL_TYPE_DATA;
-			map->rhs->tmpl_data_type = map->lhs->tmpl_da->type;
-			map->rhs->tmpl_data_length = talloc_array_length(vpd->strvalue) - 1;
+			tmpl_cast_in_place_str(map->rhs);
 		} else {
 			if (!tmpl_cast_in_place(map->rhs, map->lhs->tmpl_da)) {
 				cf_log_err(map->ci, "%s", fr_strerror());

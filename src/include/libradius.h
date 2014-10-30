@@ -341,23 +341,6 @@ typedef struct value_pair_raw {
 	FR_TOKEN op;						//!< Operator.
 } VALUE_PAIR_RAW;
 
-#define vd_strvalue	strvalue
-#define vd_integer	integer
-#define vd_ipaddr	ipaddr.s_addr
-#define vd_date		date
-#define vd_filter	filter
-#define vd_octets	octets
-#define vd_ifid		ifid
-#define vd_ipv6addr	data.ipv6addr
-#define vd_ipv6prefix	data.ipv6prefix
-#define vd_byte		data.byte
-#define vd_short	data.ushort
-#define vd_ether	data.ether
-#define vd_signed	data.sinteger
-#define vd_integer64	data.integer64
-#define vd_ipv4prefix	data.ipv4prefix
-#define vd_tlv		data.tlv
-
 #define vp_strvalue	data.strvalue
 #define vp_integer	data.integer
 #define vp_ipaddr	data.ipaddr.s_addr
