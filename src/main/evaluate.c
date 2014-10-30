@@ -318,7 +318,7 @@ static int do_cast_copy(VALUE_PAIR *dst, VALUE_PAIR const *src)
 
 	if (dst->da->type == PW_TYPE_STRING) {
 		dst->vp_strvalue = vp_aprints_value(dst, src, '\0');
-		dst->length = strlen(dst->vp_strvalue); /* FIXME: talloc_array_length? */
+		dst->length = talloc_array_length(dst->vp_strvalue) - 1;
 		return 0;
 	}
 
