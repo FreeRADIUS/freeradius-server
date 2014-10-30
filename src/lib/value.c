@@ -916,3 +916,226 @@ finish:
 	return ret;
 }
 
+/** Performs byte order reversal for types that need it
+ *
+ */
+static void value_data_hton(value_data_t *dst, PW_TYPE type, void const *src, size_t src_len)
+{
+	/* 8 byte integers */
+	switch (type) {
+	case PW_TYPE_INTEGER64:
+		dst->integer64 = htonll(*(uint64_t *)src);
+		break;
+
+	/* 4 byte integers */
+	case PW_TYPE_INTEGER:
+	case PW_TYPE_DATE:
+	case PW_TYPE_SIGNED:
+		dst->integer = htonl(*(uint32_t *)src);
+		break;
+
+	/* 2 byte integers */
+	case PW_TYPE_SHORT:
+		dst->ushort = htons(*(uint16_t *)src);
+		break;
+
+	case PW_TYPE_OCTETS:
+	case PW_TYPE_STRING:
+		fr_assert(0);
+
+	default:
+		memcpy(dst, src, src_len);
+	}
+}
+
+/** Convert one type of value_data_t to another
+ *
+ * @note This should be the canonical function used to convert between data types.
+ *
+ * @param ctx to allocate buffers in (usually the same as dst)
+ * @param dst Where to write result of casting.
+ * @param dst_type to cast to.
+ * @param dst_enumv Enumerated values used to converts strings to integers.
+ * @param src_type to cast from.
+ * @param src_enumv Enumerated values used to convert integers to strings.
+ * @param src Input data.
+ * @param src_len Input data len.
+ * @return the length of data in the dst.
+ */
+ssize_t value_data_cast(TALLOC_CTX *ctx, value_data_t *dst,
+			PW_TYPE dst_type, DICT_ATTR const *dst_enumv,
+			PW_TYPE src_type, DICT_ATTR const *src_enumv,
+			value_data_t const *src, size_t src_len)
+{
+	if (!fr_assert(dst_type != src_type)) return -1;
+
+	/*
+	 *	Converts the src data to octets with no processing.
+	 */
+	if (dst_type == PW_TYPE_OCTETS) {
+		if (src_type == PW_TYPE_STRING) {
+			dst->octets = talloc_memdup(ctx, src->strvalue, src_len);
+		} else {
+			value_data_hton(dst, src_type, src, src_len);
+			dst->octets = talloc_memdup(ctx, dst, src_len);
+		}
+		talloc_set_type(dst->octets, uint8_t);
+		return talloc_array_length(dst->strvalue);
+	}
+
+	/*
+	 *	Serialise a value_data_t
+	 */
+	if (dst_type == PW_TYPE_STRING) {
+		dst->strvalue = vp_data_aprints_value(ctx, src_type, src_enumv, src, src_len, '\0');
+		return talloc_array_length(dst->strvalue) - 1;
+	}
+
+	/*
+	 *	Deserialise a value_data_t
+	 */
+	if (src_type == PW_TYPE_STRING) {
+		return value_data_from_str(ctx, dst, &dst_type, dst_enumv, src->strvalue, src_len);
+	}
+
+	if ((src_type == PW_TYPE_IFID) &&
+	    (dst_type == PW_TYPE_INTEGER64)) {
+		memcpy(&dst->integer64, &src->ifid, sizeof(src->ifid));
+		dst->integer64 = htonll(dst->integer64);
+	fixed_length:
+		return dict_attr_sizes[dst_type][0];
+	}
+
+	if ((src_type == PW_TYPE_INTEGER64) &&
+	    (dst_type == PW_TYPE_ETHERNET)) {
+		uint8_t array[8];
+		uint64_t i;
+
+		i = htonll(src->integer64);
+		memcpy(array, &i, 8);
+
+		/*
+		 *	For OUIs in the DB.
+		 */
+		if ((array[0] != 0) || (array[1] != 0)) return -1;
+
+		memcpy(&dst->ether, &array[2], 6);
+		goto fixed_length;
+	}
+
+	/*
+	 *	For integers, we allow the casting of a SMALL type to
+	 *	a larger type, but not vice-versa.
+	 */
+	if (dst_type == PW_TYPE_INTEGER64) {
+		switch (src_type) {
+		case PW_TYPE_BYTE:
+			dst->integer64 = src->byte;
+			break;
+
+		case PW_TYPE_SHORT:
+			dst->integer64 = src->ushort;
+			break;
+
+		case PW_TYPE_INTEGER:
+			dst->integer64 = src->integer;
+			break;
+
+		case PW_TYPE_OCTETS:
+			goto do_octets;
+
+		default:
+		invalid_cast:
+			fr_strerror_printf("Invalid cast from %s to %s",
+					   fr_int2str(dict_attr_types, src_type, "<INVALID>"),
+					   fr_int2str(dict_attr_types, dst_type, "<INVALID>"));
+			return -1;
+
+		}
+		goto fixed_length;
+	}
+
+	/*
+	 *	We can cast LONG integers to SHORTER ones, so long
+	 *	as the long one is on the LHS.
+	 */
+	if (dst_type == PW_TYPE_INTEGER) {
+		switch (src_type) {
+		case PW_TYPE_BYTE:
+			dst->integer = src->byte;
+			break;
+
+		case PW_TYPE_SHORT:
+			dst->integer = src->ushort;
+			break;
+
+		case PW_TYPE_OCTETS:
+			goto do_octets;
+
+		default:
+			goto invalid_cast;
+		}
+		goto fixed_length;
+	}
+
+	if (dst_type == PW_TYPE_SHORT) {
+		switch (src_type) {
+		case PW_TYPE_BYTE:
+			dst->ushort = src->byte;
+			break;
+
+		case PW_TYPE_OCTETS:
+			goto do_octets;
+
+		default:
+			goto invalid_cast;
+		}
+		goto fixed_length;
+	}
+
+	/*
+	 *	The attribute we've found has to have a size which is
+	 *	compatible with the type of the destination cast.
+	 */
+	if ((src_len < dict_attr_sizes[dst_type][0]) ||
+	    (src_len > dict_attr_sizes[dst_type][1])) {
+	    	char const *src_type_name;
+
+	    	src_type_name =  fr_int2str(dict_attr_types, src_type, "<INVALID>");
+		fr_strerror_printf("Invalid cast from %s to %s. Length should be between %zu and %zu but is %zu",
+				   src_type_name,
+				   fr_int2str(dict_attr_types, dst_type, "<INVALID>"),
+				   dict_attr_sizes[dst_type][0], dict_attr_sizes[dst_type][1],
+				   src_len);
+		return -1;
+	}
+
+	if (src_type == PW_TYPE_OCTETS) {
+	do_octets:
+		value_data_hton(dst, dst_type, src->octets, src_len);
+		return src_len;
+	}
+
+	/*
+	 *	Convert host order to network byte order.
+	 */
+	if ((dst_type == PW_TYPE_IPV4_ADDR) &&
+	    ((src_type == PW_TYPE_INTEGER) ||
+	     (src_type == PW_TYPE_DATE) ||
+	     (src_type == PW_TYPE_SIGNED))) {
+		dst->ipaddr.s_addr = htonl(src->integer);
+
+	} else if ((src_type == PW_TYPE_IPV4_ADDR) &&
+		   ((dst_type == PW_TYPE_INTEGER) ||
+		    (dst_type == PW_TYPE_DATE) ||
+		    (dst_type == PW_TYPE_SIGNED))) {
+		dst->integer = htonl(src->ipaddr.s_addr);
+
+	} else {		/* they're of the same byte order */
+		memcpy(&dst, &src, src_len);
+	}
+
+	return src_len;
+}
+
+
