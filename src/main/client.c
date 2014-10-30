@@ -1095,7 +1095,7 @@ RADCLIENT *client_afrom_request(RADCLIENT_LIST *clients, REQUEST *request)
 		/*
 		 *	Freed at the same time as the vp.
 		 */
-		if (RDEBUG_ENABLED2) strvalue = vp_aprint_value(vp, vp, '\'');
+		if (RDEBUG_ENABLED2) strvalue = vp_aprints_value(vp, vp, '\'');
 
 		switch (dynamic_config[i].type) {
 		case PW_TYPE_IPV4_ADDR:
@@ -1202,7 +1202,7 @@ RADCLIENT *client_afrom_request(RADCLIENT_LIST *clients, REQUEST *request)
 			CONF_ITEM *ci;
 			char *value;
 
-			value = vp_aprint_value(vp, vp, '\'');
+			value = vp_aprints_value(vp, vp, '\'');
 			if (!value) {
 				ERROR("Failed stringifying value of &control:%s", vp->da->name);
 				goto error;

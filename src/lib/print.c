@@ -724,7 +724,7 @@ char *vp_data_aprints_value(TALLOC_CTX *ctx,
  * @param[in] quote the quotation character
  * @return a talloced buffer with the attribute operator and value.
  */
-char *vp_aprint_value(TALLOC_CTX *ctx, VALUE_PAIR const *vp, char quote)
+char *vp_aprints_value(TALLOC_CTX *ctx, VALUE_PAIR const *vp, char quote)
 {
 	VERIFY_VP(vp);
 
@@ -1062,7 +1062,7 @@ char *vp_aprint(TALLOC_CTX *ctx, VALUE_PAIR const *vp, char quote)
 		token = "<INVALID-TOKEN>";
 	}
 
-	value = vp_aprint_value(ctx, vp, quote);
+	value = vp_aprints_value(ctx, vp, quote);
 
 	if (vp->da->flags.has_tag) {
 		if (quote && (vp->da->type == PW_TYPE_STRING)) {

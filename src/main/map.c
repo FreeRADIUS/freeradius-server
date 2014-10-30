@@ -115,7 +115,7 @@ bool map_cast_from_hex(value_pair_map_t *map, FR_TOKEN rhs_type, char const *rhs
 	} else {
 		memcpy(&map->rhs->tmpl_data_value, &vp->data, sizeof(map->rhs->tmpl_data_value));
 	}
-	map->rhs->name = vp_aprint_value(map->rhs, vp, '"');
+	map->rhs->name = vp_aprints_value(map->rhs, vp, '"');
 
 	/*
 	 *	Set the LHS to the REAL attribute name.
@@ -786,8 +786,8 @@ int map_to_vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *map, U
 #define DEBUG_OVERWRITE(_old, _new) \
 do {\
 	if (RDEBUG_ENABLED3) {\
-		char *old = vp_aprint_value(request, _old, '"');\
-		char *new = vp_aprint_value(request, _new, '"');\
+		char *old = vp_aprints_value(request, _old, '"');\
+		char *new = vp_aprints_value(request, _new, '"');\
 		RDEBUG3("Overwriting value \"%s\" with \"%s\"", old, new);\
 		talloc_free(old);\
 		talloc_free(new);\

@@ -1888,10 +1888,10 @@ do_print:
 			vp = fr_cursor_next_by_da(&cursor, da, tag);
 			if (!vp) return NULL;
 
-			p = vp_aprint_value(ctx, vp, '"');
+			p = vp_aprints_value(ctx, vp, '"');
 			if (!p) return NULL;
 			while ((vp = fr_cursor_next_by_da(&cursor, da, tag)) != NULL) {
-				q = vp_aprint_value(ctx, vp, '"');
+				q = vp_aprints_value(ctx, vp, '"');
 				if (!q) return NULL;
 				p = talloc_strdup_append(p, ",");
 				p = talloc_strdup_append(p, q);
@@ -1915,7 +1915,7 @@ do_print:
 	}
 
 print:
-	ret = vp_aprint_value(ctx, vp, '"');
+	ret = vp_aprints_value(ctx, vp, '"');
 
 finish:
 	talloc_free(myvp);
