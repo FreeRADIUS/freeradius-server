@@ -72,7 +72,7 @@ typedef struct timeval _timeval_t;
 		__builtin_choose_expr(__builtin_types_compatible_p(uint8_t[6], _ct), _p, (conf_type_mismatch) 0),\
 	__builtin_choose_expr((_t == PW_TYPE_SIGNED),\
 		__builtin_choose_expr(__builtin_types_compatible_p(int32_t *, _ct), _p, (conf_type_mismatch) 0),\
-	__builtin_choose_expr((_t == PW_TYPE_IP_ADDR),\
+	__builtin_choose_expr((_t == PW_TYPE_COMBO_IP_ADDR),\
 		__builtin_choose_expr(__builtin_types_compatible_p(fr_ipaddr_t *, _ct), _p, (conf_type_mismatch) 0),\
 	__builtin_choose_expr((_t == PW_TYPE_INTEGER64),\
 		__builtin_choose_expr(__builtin_types_compatible_p(uint64_t *, _ct), _p, (conf_type_mismatch) 0),\

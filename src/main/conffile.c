@@ -943,7 +943,7 @@ static inline int fr_item_validate_ipaddr(CONF_SECTION *cs, char const *name, PW
 	switch (type) {
 	case PW_TYPE_IPV4_ADDR:
 	case PW_TYPE_IPV6_ADDR:
-	case PW_TYPE_IP_ADDR:
+	case PW_TYPE_COMBO_IP_ADDR:
 		switch (ipaddr->af) {
 		case AF_INET:
 		if (ipaddr->prefix != 32) {
@@ -1195,7 +1195,7 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, int type, void *data, char
 		if (fr_item_validate_ipaddr(cs, name, type, value, ipaddr) < 0) return -1;
 		break;
 
-	case PW_TYPE_IP_ADDR:
+	case PW_TYPE_COMBO_IP_ADDR:
 	case PW_TYPE_IP_PREFIX:
 		ipaddr = data;
 

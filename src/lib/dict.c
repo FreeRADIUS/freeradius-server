@@ -87,7 +87,7 @@ const FR_NAME_NUMBER dict_attr_types[] = {
 	{ "byte",	PW_TYPE_BYTE },
 	{ "short",	PW_TYPE_SHORT },
 	{ "ether",	PW_TYPE_ETHERNET },
-	{ "combo-ip",	PW_TYPE_IP_ADDR },
+	{ "combo-ip",	PW_TYPE_COMBO_IP_ADDR },
 	{ "tlv",	PW_TYPE_TLV },
 	{ "signed",	PW_TYPE_SIGNED },
 	{ "extended",	PW_TYPE_EXTENDED },
@@ -123,7 +123,7 @@ const size_t dict_attr_sizes[PW_TYPE_MAX][2] = {
 	[PW_TYPE_SHORT]		= {2, 2},
 	[PW_TYPE_ETHERNET]	= {6, 6},
 	[PW_TYPE_SIGNED]	= {4, 4},
-	[PW_TYPE_IP_ADDR]	= {4, 16},
+	[PW_TYPE_COMBO_IP_ADDR]	= {4, 16},
 	[PW_TYPE_TLV]		= {2, ~0},
 	[PW_TYPE_EXTENDED]	= {2, ~0},
 	[PW_TYPE_LONG_EXTENDED]	= {3, ~0},
@@ -931,7 +931,7 @@ int dict_addattr(char const *name, int attr, unsigned int vendor, PW_TYPE type,
 	/*
 	 *	Hacks for combo-IP
 	 */
-	if (n->type == PW_TYPE_IP_ADDR) {
+	if (n->type == PW_TYPE_COMBO_IP_ADDR) {
 		DICT_ATTR *v4, *v6;
 
 		v4 = fr_pool_alloc(sizeof(*v4) + namelen);

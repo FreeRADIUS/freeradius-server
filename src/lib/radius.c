@@ -3534,7 +3534,7 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 		if (datalen != 6) goto raw;
 		break;
 
-	case PW_TYPE_IP_ADDR:
+	case PW_TYPE_COMBO_IP_ADDR:
 		if (datalen == 4) {
 			child = dict_attrbytype(da->attr, da->vendor,
 						PW_TYPE_IPV4_ADDR);
@@ -3915,7 +3915,7 @@ ssize_t rad_vp2data(uint8_t const **out, VALUE_PAIR const *vp)
 	case PW_TYPE_IPV4_PREFIX:
 	case PW_TYPE_ABINARY:
 	case PW_TYPE_ETHERNET:
-	case PW_TYPE_IP_ADDR:
+	case PW_TYPE_COMBO_IP_ADDR:
 	case PW_TYPE_IP_PREFIX:
 	{
 		void const *p = &vp->data;

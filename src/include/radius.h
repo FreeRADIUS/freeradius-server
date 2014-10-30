@@ -20,7 +20,7 @@ typedef enum {
 	PW_TYPE_SHORT,				//!< 16 Bit unsigned integer.
 	PW_TYPE_ETHERNET,			//!< 48 Bit Mac-Address.
 	PW_TYPE_SIGNED,				//!< 32 Bit signed integer.
-	PW_TYPE_IP_ADDR,			//!< WiMAX IPv4 or IPv6 address depending on length.
+	PW_TYPE_COMBO_IP_ADDR,			//!< WiMAX IPv4 or IPv6 address depending on length.
 	PW_TYPE_TLV,				//!< Contains nested attributes.
 	PW_TYPE_EXTENDED,			//!< Extended attribute space attribute.
 	PW_TYPE_LONG_EXTENDED,			//!< Long extended attribute space attribute.
