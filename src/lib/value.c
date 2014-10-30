@@ -795,8 +795,7 @@ ssize_t value_data_from_str(TALLOC_CTX *ctx, value_data_t *out,
 		 *	Note that ALL integers are unsigned!
 		 */
 		if (sscanf(value, "%" PRIu64, &i) != 1) {
-			fr_strerror_printf("Invalid value '%s' for attribute '%s'",
-					   value, enumv->name);
+			fr_strerror_printf("Failed parsing \"%s\" as unsigned 64bit integer", value);
 			return -1;
 		}
 		out->integer64 = i;
