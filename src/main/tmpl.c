@@ -544,21 +544,13 @@ void tmpl_verify(char const *file, int line, value_pair_tmpl_t const *vpt)
 			fr_assert(0);
 			fr_exit_now(1);
 		}
-
-		if (vpt->tmpl_data_value == NULL) {
-			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_DATA has a NULL data field",
-				     file, line);
-			fr_assert(0);
-			fr_exit_now(1);
-		}
-
 		/*
 		 *	Unlike VALUE_PAIRs we can't guarantee that VALUE_PAIR_TMPL buffers will
 		 *	be talloced. They may be allocated on the stack or in global variables.
 		 */
 		switch (vpt->tmpl_data_type) {
 		case PW_TYPE_STRING:
-		if (vpt->tmpl_data_value->strvalue[vpt->tmpl_data_length] != '\0') {
+		if (vpt->tmpl_data.vp_strvalue[vpt->tmpl_data_length] != '\0') {
 			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_DATA char buffer not \\0 "
 				     "terminated", file, line);
 			fr_assert(0);
@@ -1065,13 +1057,8 @@ size_t tmpl_prints(char *buffer, size_t bufsize, value_pair_tmpl_t const *vpt, D
 		return (q - buffer);
 
 	case TMPL_TYPE_DATA:
-		if (vpt->tmpl_data_value) {
-			return vp_data_prints_value(buffer, bufsize, vpt->tmpl_data_type, values,
-						    vpt->tmpl_data_value, vpt->tmpl_data_length, '\'');
-		} else {
-			*buffer = '\0';
-			return 0;
-		}
+		return vp_data_prints_value(buffer, bufsize, vpt->tmpl_data_type, values,
+					    &vpt->tmpl_data_value, vpt->tmpl_data_length, '\'');
 	}
 
 	if (bufsize <= 3) {
@@ -1226,7 +1213,6 @@ ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, value_pair_tmpl_t **out, char const *nam
  */
 bool tmpl_cast_in_place(value_pair_tmpl_t *vpt, DICT_ATTR const *da)
 {
-	value_data_t *data;
 	ssize_t ret;
 
 	VERIFY_TMPL(vpt);
@@ -1237,23 +1223,34 @@ bool tmpl_cast_in_place(value_pair_tmpl_t *vpt, DICT_ATTR const *da)
 
 	vpt->tmpl_data_type = da->type;
 
-	data = talloc_zero(vpt, value_data_t);
 	/*
 	 *	Why do we pass a pointer to the tmpl type? Goddamn WiMAX.
 	 */
-	ret = value_data_from_str(vpt, data, &vpt->tmpl_data_type, da, vpt->name, vpt->len);
-	if (ret < 0) {
-		talloc_free(data);
-		return false;
-	}
+	ret = value_data_from_str(vpt, &vpt->tmpl_data_value, &vpt->tmpl_data_type, da, vpt->name, vpt->len);
+	if (ret < 0) return false;
 
 	vpt->type = TMPL_TYPE_DATA;
-	vpt->tmpl_data_value = data;
 	vpt->tmpl_data_length = (size_t) ret;
 
 	VERIFY_TMPL(vpt);
 
 	return true;
+}
+
+/** Convert a tmpl of TMPL_TYPE_LITERAL to TMPL_TYPE_DATA
+ *
+ */
+void tmpl_cast_in_place_str(value_pair_tmpl_t *vpt)
+{
+	rad_assert(vpt != NULL);
+	rad_assert(vpt->type == TMPL_TYPE_LITERAL);
+
+	vpt->tmpl_data.vp_strvalue = talloc_typed_strdup(vpt, vpt->name);
+	rad_assert(vpt->tmpl_data.vp_strvalue != NULL);
+
+	vpt->type = TMPL_TYPE_DATA;
+	vpt->tmpl_data_type = PW_TYPE_STRING;
+	vpt->tmpl_data_length = talloc_array_length(vpt->tmpl_data.vp_strvalue) - 1;
 }
 
 /** Expand a template to a string, parse it as type of "cast", and create a VP from the data.
@@ -1275,7 +1272,7 @@ int tmpl_cast_to_vp(VALUE_PAIR **out, REQUEST *request,
 	if (vpt->type == TMPL_TYPE_DATA) {
 		VERIFY_VP(vp);
 		rad_assert(vp->da->type == vpt->tmpl_data_type);
-		pairdatacpy(vp, vpt->tmpl_data_type, vpt->tmpl_data_value, vpt->tmpl_data_length);
+		pairdatacpy(vp, vpt->tmpl_data_type, &vpt->tmpl_data_value, vpt->tmpl_data_length);
 		*out = vp;
 		return 0;
 	}

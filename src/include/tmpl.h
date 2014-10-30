@@ -142,8 +142,7 @@ typedef struct value_pair_tmpl_t {
 		struct {
 			PW_TYPE			type;			 //!< Type of data.
 			size_t			length;			 //!< of the vpd data.
-			value_data_t const	*data;			 //!< actual data (allows reuse of
-									 //!< vp_<type> macros)
+			value_data_t		data;			 //!< Value data.
 		} literal;
 
 		xlat_exp_t	*xlat;	 //!< pre-parsed xlat_exp_t
@@ -230,6 +229,8 @@ ssize_t			tmpl_afrom_str(TALLOC_CTX *ctx, value_pair_tmpl_t **out, char const *n
 void			tmpl_free(value_pair_tmpl_t **tmpl);
 
 bool			tmpl_cast_in_place(value_pair_tmpl_t *vpt, DICT_ATTR const *da);
+
+void			tmpl_cast_in_place_str(value_pair_tmpl_t *vpt);
 
 size_t			tmpl_prints(char *buffer, size_t bufsize, value_pair_tmpl_t const *vpt,
 				    DICT_ATTR const *values);

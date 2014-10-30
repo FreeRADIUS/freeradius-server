@@ -48,7 +48,6 @@ bool map_cast_from_hex(value_pair_map_t *map, FR_TOKEN rhs_type, char const *rhs
 
 	DICT_ATTR const *da;
 	VALUE_PAIR *vp;
-	value_data_t *data;
 	value_pair_tmpl_t *vpt;
 
 	rad_assert(map != NULL);
@@ -111,12 +110,10 @@ bool map_cast_from_hex(value_pair_map_t *map, FR_TOKEN rhs_type, char const *rhs
 
 	map->rhs->tmpl_data_type = da->type;
 	map->rhs->tmpl_data_length = vp->length;
-	map->rhs->tmpl_data_value = data = talloc(map->rhs, value_data_t);
-	if (!map->rhs->tmpl_data_value) goto free_vp;
 	if (vp->da->flags.is_pointer) {
-		data->ptr = talloc_memdup(map->rhs, vp->data.ptr, vp->length);
+		map->rhs->tmpl_data_value.ptr = talloc_memdup(map->rhs, vp->data.ptr, vp->length);
 	} else {
-		memcpy(data, &vp->data, sizeof(*data));
+		memcpy(&map->rhs->tmpl_data_value, &vp->data, sizeof(map->rhs->tmpl_data_value));
 	}
 	map->rhs->name = vp_aprint_value(map->rhs, vp, '"');
 
@@ -758,7 +755,7 @@ int map_to_vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *map, U
 		new = pairalloc(request, map->lhs->tmpl_da);
 		if (!new) return -1;
 
-		if (pairdatacpy(new, map->rhs->tmpl_data_type, map->rhs->tmpl_data_value,
+		if (pairdatacpy(new, map->rhs->tmpl_data_type, &map->rhs->tmpl_data_value,
 				map->rhs->tmpl_data_length) < 0) goto error;
 		new->op = map->op;
 		*out = new;
