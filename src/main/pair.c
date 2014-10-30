@@ -632,7 +632,7 @@ int radius_xlat_do(REQUEST *request, VALUE_PAIR *vp)
 	/*
 	 *	Parse the string into a new value.
 	 */
-	if (pairparsevalue(vp, buffer, 0) < 0){
+	if (pairparsevalue(vp, buffer, -1) < 0){
 		return -2;
 	}
 

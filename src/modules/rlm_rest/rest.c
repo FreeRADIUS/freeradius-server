@@ -1080,7 +1080,7 @@ static int rest_decode_post(UNUSED rlm_rest_t *instance, UNUSED rlm_rest_section
 			goto error;
 		}
 
-		ret = pairparsevalue(vp, expanded, 0);
+		ret = pairparsevalue(vp, expanded, -1);
 		TALLOC_FREE(expanded);
 		if (ret < 0) {
 			RWDEBUG("Incompatible value assignment, skipping");
@@ -1183,7 +1183,7 @@ static VALUE_PAIR *json_pairmake_leaf(UNUSED rlm_rest_t *instance, UNUSED rlm_re
 
 	vp->op = flags->op;
 
-	ret = pairparsevalue(vp, to_parse, 0);
+	ret = pairparsevalue(vp, to_parse, -1);
 	talloc_free(expanded);
 	if (ret < 0) {
 		RWDEBUG("Incompatible value assignment for attribute \"%s\", skipping...", da->name);
@@ -1414,7 +1414,7 @@ static int json_pairmake(rlm_rest_t *instance, UNUSED rlm_rest_section_t *sectio
 							dst.tmpl_da, &flags, element);
 				if (!vp) continue;
 			}
-			debug_pair(vp);
+			rdebug_pair(2, request, vp);
 			radius_pairmove(current, vps, vp, false);
 		/*
 		 *  If we call json_object_array_get_idx on something that's not an array

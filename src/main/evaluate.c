@@ -332,7 +332,7 @@ static int do_cast_copy(VALUE_PAIR *dst, VALUE_PAIR const *src)
 	}
 
 	if (src->da->type == PW_TYPE_STRING) {
-		return pairparsevalue(dst, src->vp_strvalue, 0);
+		return pairparsevalue(dst, src->vp_strvalue, -1);
 	}
 
 	if ((src->da->type == PW_TYPE_IFID) &&
@@ -722,7 +722,7 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 			    radius_find_compare(map->lhs->tmpl_da)) {
 				rhs_vp = pairalloc(request, map->lhs->tmpl_da);
 				rad_assert(rhs_vp != NULL);
-				if (pairparsevalue(rhs_vp, rhs, 0) < 0) {
+				if (pairparsevalue(rhs_vp, rhs, -1) < 0) {
 					talloc_free(rhs);
 					EVAL_DEBUG("FAIL %d", __LINE__);
 					return -1;
@@ -742,7 +742,7 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 		 */
 		rhs_vp = pairalloc(request, map->lhs->tmpl_da);
 		rad_assert(rhs_vp != NULL);
-		if (pairparsevalue(rhs_vp, rhs, 0) < 0) {
+		if (pairparsevalue(rhs_vp, rhs, -1) < 0) {
 			talloc_free(rhs);
 			pairfree(&rhs_vp);
 			EVAL_DEBUG("FAIL %d", __LINE__);

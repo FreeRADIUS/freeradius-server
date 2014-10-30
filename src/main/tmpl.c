@@ -1221,13 +1221,13 @@ ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, value_pair_tmpl_t **out, char const *nam
 /** Convert a tmpl containing literal data, to the type specified by da.
  *
  * @param[in,out] vpt the template to modify
- * @param[in] da the dictionary attribute to case it to
+ * @param[in] da the dictionary attribute to cast it to
  * @return true for success, false for failure.
  */
 bool tmpl_cast_in_place(value_pair_tmpl_t *vpt, DICT_ATTR const *da)
 {
-	VALUE_PAIR *vp;
 	value_data_t *data;
+	ssize_t ret;
 
 	VERIFY_TMPL(vpt);
 
@@ -1235,30 +1235,17 @@ bool tmpl_cast_in_place(value_pair_tmpl_t *vpt, DICT_ATTR const *da)
 	rad_assert(da != NULL);
 	rad_assert(vpt->type == TMPL_TYPE_LITERAL);
 
-	vp = pairalloc(vpt, da);
-	if (!vp) return false;
-
-	if (pairparsevalue(vp, vpt->name, 0) < 0) {
-		pairfree(&vp);
+	data = talloc_zero(vpt, value_data_t);
+	ret = value_data_from_str(vpt, data, da->type, da, vpt->name, vpt->len);
+	if (ret < 0) {
+		talloc_free(data);
 		return false;
 	}
-	memset(&vpt->data, 0, sizeof(vpt->data));
-
-	vpt->tmpl_data_value = data = talloc(vpt, value_data_t);
-	if (!vpt->tmpl_data_value) return false;
 
 	vpt->type = TMPL_TYPE_DATA;
-	vpt->tmpl_data_length = vp->length;
+	vpt->tmpl_data_value = data;
+	vpt->tmpl_data_length = (size_t) ret;
 	vpt->tmpl_data_type = da->type;
-
-	if (vp->da->flags.is_pointer) {
-		data->ptr = talloc_steal(vpt, vp->data.ptr);
-		vp->data.ptr = NULL;
-	} else {
-		memcpy(data, &vp->data, sizeof(*data));
-	}
-
-	pairfree(&vp);
 
 	VERIFY_TMPL(vpt);
 
@@ -1295,7 +1282,7 @@ int tmpl_cast_to_vp(VALUE_PAIR **out, REQUEST *request,
 		return rcode;
 	}
 
-	if (pairparsevalue(vp, str, 0) < 0) {
+	if (pairparsevalue(vp, str, -1) < 0) {
 		talloc_free(str);
 		pairfree(&vp);
 		return rcode;
