@@ -217,31 +217,52 @@ static ssize_t xlat_hex(UNUSED void *instance, REQUEST *request,
 	uint8_t const *p;
 	ssize_t	ret;
 	size_t	len;
+	value_data_t dst;
+	uint8_t const *buff = NULL;
 
 	while (isspace((int) *fmt)) fmt++;
 
 	if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) {
+	error:
 		*out = '\0';
 		return -1;
 	}
 
-	ret = rad_vp2data(&p, vp);
-	if (ret < 0) {
-		return ret;
+	/*
+	 *	The easy case.
+	 */
+	if (vp->da->type == PW_TYPE_OCTETS) {
+		p = vp->vp_octets;
+		len = vp->length;
+	/*
+	 *	Cast the value_data_t of the VP to an octets string and
+	 *	print that as hex.
+	 */
+	} else {
+		ret = value_data_cast(request, &dst, PW_TYPE_OCTETS, NULL, vp->da->type,
+				      NULL, &vp->data, vp->length);
+		if (ret < 0) {
+			REDEBUG("%s", fr_strerror());
+			goto error;
+		}
+		len = (size_t) ret;
+		p = buff = dst.octets;
 	}
-	len = (size_t) ret;
+
+	rad_assert(p);
 
 	/*
 	 *	Don't truncate the data.
 	 */
-	if ((ret < 0 ) || (outlen < (len * 2))) {
-		*out = 0;
-		return 0;
+	if (outlen < (len * 2)) {
+		rad_const_free(buff);
+		goto error;
 	}
 
 	for (i = 0; i < len; i++) {
 		snprintf(out + 2*i, 3, "%02x", p[i]);
 	}
+	rad_const_free(buff);
 
 	return len * 2;
 }
