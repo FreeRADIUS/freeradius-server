@@ -507,7 +507,8 @@ STATE_MACHINE_DECL(request_done)
 	/*
 	 *	Tell the detail listener that we're done.
 	 */
-	if ((request->listener->type == RAD_LISTEN_DETAIL) &&
+	if (request->listener &&
+	    (request->listener->type == RAD_LISTEN_DETAIL) &&
 	    (request->simul_max != 1)) {
 		request->simul_max = 1;
 		request->listener->send(request->listener,
