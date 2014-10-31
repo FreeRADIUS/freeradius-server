@@ -623,7 +623,7 @@ ssize_t value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 		 */
 		if (addr.prefix != 32) {
 			fr_strerror_printf("Invalid IPv4 mask length \"/%i\".  Only \"/32\" permitted "
-					   "for non-prefix src_types", addr.prefix);
+					   "for non-prefix types", addr.prefix);
 			return -1;
 		}
 
@@ -654,7 +654,7 @@ ssize_t value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 		 */
 		if (addr.prefix != 128) {
 			fr_strerror_printf("Invalid IPv6 mask length \"/%i\".  Only \"/128\" permitted "
-					   "for non-prefix src_types", addr.prefix);
+					   "for non-prefix types", addr.prefix);
 			return -1;
 		}
 
@@ -709,14 +709,14 @@ ssize_t value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 		 */
 		if (src_enumv && *p && !is_whitespace(p)) {
 			if ((dval = dict_valbyname(src_enumv->attr, src_enumv->vendor, src)) == NULL) {
-				fr_strerror_printf("Unknown src '%s' for attribute '%s'", src, src_enumv->name);
+				fr_strerror_printf("Unknown value \"%s\" for attribute '%s'", src, src_enumv->name);
 				return -1;
 			}
 
 			dst->byte = dval->value;
 		} else {
 			if (i > 255) {
-				fr_strerror_printf("Byte src \"%s\" is larger than 255", src);
+				fr_strerror_printf("Byte value \"%s\" is larger than 255", src);
 				return -1;
 			}
 
@@ -741,14 +741,14 @@ ssize_t value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 		 */
 		if (src_enumv && *p && !is_whitespace(p)) {
 			if ((dval = dict_valbyname(src_enumv->attr, src_enumv->vendor, src)) == NULL) {
-				fr_strerror_printf("Unknown src '%s' for attribute '%s'", src, src_enumv->name);
+				fr_strerror_printf("Unknown value \"%s\" for attribute '%s'", src, src_enumv->name);
 				return -1;
 			}
 
 			dst->ushort = dval->value;
 		} else {
 			if (i > 65535) {
-				fr_strerror_printf("Short src \"%s\" is larger than 65535", src);
+				fr_strerror_printf("Short value \"%s\" is larger than 65535", src);
 				return -1;
 			}
 
@@ -773,7 +773,7 @@ ssize_t value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 		 */
 		if (src_enumv && *p && !is_whitespace(p)) {
 			if ((dval = dict_valbyname(src_enumv->attr, src_enumv->vendor, src)) == NULL) {
-				fr_strerror_printf("Unknown src '%s' for attribute '%s'", src, src_enumv->name);
+				fr_strerror_printf("Unknown value \"%s\" for attribute \"%s\"", src, src_enumv->name);
 				return -1;
 			}
 
@@ -907,7 +907,7 @@ ssize_t value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 		 *  Anything else.
 		 */
 	default:
-		fr_strerror_printf("Unknown attribute src_type %d", *src_type);
+		fr_strerror_printf("Unknown attribute type %d", *src_type);
 		return -1;
 	}
 
