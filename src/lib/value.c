@@ -35,8 +35,8 @@ RCSID("$Id$")
  * @param[in] b Value to compare.
  * @return -1 if a is less than b, 0 if both are equal, 1 if a is more than b, < -1 on error.
  */
-int value_data_cmp(PW_TYPE a_type, size_t a_len, value_data_t const *a,
-		   PW_TYPE b_type, size_t b_len, value_data_t const *b)
+int value_data_cmp(PW_TYPE a_type, value_data_t const *a, size_t a_len,
+		   PW_TYPE b_type, value_data_t const *b, size_t b_len)
 {
 	int compare = 0;
 
@@ -297,8 +297,8 @@ static int value_data_cidr_cmp_op(FR_TOKEN op, int bytes,
  * @return 1 if true, 0 if false, -1 on error.
  */
 int value_data_cmp_op(FR_TOKEN op,
-		      PW_TYPE a_type, size_t a_len, value_data_t const *a,
-		      PW_TYPE b_type, size_t b_len, value_data_t const *b)
+		      PW_TYPE a_type, value_data_t const *a, size_t a_len,
+		      PW_TYPE b_type, value_data_t const *b, size_t b_len)
 {
 	int compare = 0;
 
@@ -374,8 +374,8 @@ int value_data_cmp_op(FR_TOKEN op,
 
 	default:
 	cmp:
-		compare = value_data_cmp(a_type, a_len, a,
-				       b_type, b_len, b);
+		compare = value_data_cmp(a_type, a, a_len,
+					 b_type, b, b_len);
 		if (compare < -1) {	/* comparison error */
 			return -1;
 		}
@@ -413,37 +413,37 @@ static char const hextab[] = "0123456789abcdef";
 /** Convert string value to a value_data_t type
  *
  * @param[in] ctx to alloc strings in.
- * @param[out] out where to write parsed value.
- * @param[in,out] type of value data to create/type of value created.
- * @param[in] enumv DICT_ATTR with string aliases for integer values.
- * @param[in] value String to convert. Binary safe for variable length values if len is provided.
- * @param[in] inlen may be < 0 in which case strlen(len) is used to determine length, else inlen
+ * @param[out] dst where to write parsed value.
+ * @param[in,out] src_type of value data to create/type of value created.
+ * @param[in] src_enumv DICT_ATTR with string aliases for integer values.
+ * @param[in] src String to convert. Binary safe for variable length values if len is provided.
+ * @param[in] src_len may be < 0 in which case strlen(len) is used to determine length, else src_len
  *	  should be the length of the string or sub string to parse.
  * @return length of data written to out or -1 on parse error.
  */
-ssize_t value_data_from_str(TALLOC_CTX *ctx, value_data_t *out,
-			    PW_TYPE *type, DICT_ATTR const *enumv,
-			    char const *value, ssize_t inlen)
+ssize_t value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
+			    PW_TYPE *src_type, DICT_ATTR const *src_enumv,
+			    char const *src, ssize_t src_len)
 {
 	DICT_VALUE	*dval;
 	size_t		len;
 	ssize_t		ret;
 	char		buffer[256];
 
-	if (!value) return -1;
+	if (!src) return -1;
 
-	len = (inlen < 0) ? strlen(value) : (size_t)inlen;
+	len = (src_len < 0) ? strlen(src) : (size_t)src_len;
 
 	/*
 	 *	Set size for all fixed length attributes.
 	 */
-	ret = dict_attr_sizes[*type][1];	/* Max length */
+	ret = dict_attr_sizes[*src_type][1];	/* Max length */
 
 	/*
-	 *	It's a variable ret type so we just alloc a new buffer
+	 *	It's a variable ret src_type so we just alloc a new buffer
 	 *	of size len and copy.
 	 */
-	switch (*type) {
+	switch (*src_type) {
 	case PW_TYPE_STRING:
 	{
 		size_t		p_len;
@@ -454,11 +454,11 @@ ssize_t value_data_from_str(TALLOC_CTX *ctx, value_data_t *out,
 		/*
 		 *	Do escaping here
 		 */
-		out->strvalue = p = talloc_memdup(ctx, value, len + 1);
+		dst->strvalue = p = talloc_memdup(ctx, src, len + 1);
 		p[len] = '\0';
 		talloc_set_type(p, char);
 
-		cp = value;
+		cp = src;
 		p_len = 0;
 		while (*cp) {
 			char c = *cp++;
@@ -523,7 +523,7 @@ ssize_t value_data_from_str(TALLOC_CTX *ctx, value_data_t *out,
 
 	/* raw octets: 0x01020304... */
 	case PW_TYPE_VSA:
-		if (strcmp(value, "ANY") == 0) {
+		if (strcmp(src, "ANY") == 0) {
 			ret = 0;
 			goto finish;
 		} /* else it's hex */
@@ -535,9 +535,9 @@ ssize_t value_data_from_str(TALLOC_CTX *ctx, value_data_t *out,
 		/*
 		 *	No 0x prefix, just copy verbatim.
 		 */
-		if ((len < 2) || (strncasecmp(value, "0x", 2) != 0)) {
-			out->octets = talloc_memdup(ctx, (uint8_t const *)value, len);
-			talloc_set_type(out->octets, uint8_t);
+		if ((len < 2) || (strncasecmp(src, "0x", 2) != 0)) {
+			dst->octets = talloc_memdup(ctx, (uint8_t const *)src, len);
+			talloc_set_type(dst->octets, uint8_t);
 			ret = len;
 			goto finish;
 		}
@@ -556,25 +556,25 @@ ssize_t value_data_from_str(TALLOC_CTX *ctx, value_data_t *out,
 
 		ret = len >> 1;
 		p = talloc_array(ctx, uint8_t, ret);
-		if (fr_hex2bin(p, ret, value + 2, len) != (size_t)ret) {
+		if (fr_hex2bin(p, ret, src + 2, len) != (size_t)ret) {
 			talloc_free(p);
 			fr_strerror_printf("Invalid hex data");
 			return -1;
 		}
 
-		out->octets = p;
+		dst->octets = p;
 	}
 		goto finish;
 
 	case PW_TYPE_ABINARY:
 #ifdef WITH_ASCEND_BINARY
-		if ((len > 1) && (strncasecmp(value, "0x", 2) == 0)) goto do_octets;
+		if ((len > 1) && (strncasecmp(src, "0x", 2) == 0)) goto do_octets;
 
-		if (ascend_parse_filter(out, value, len) < 0 ) {
+		if (ascend_parse_filter(dst, src, len) < 0 ) {
 			/* Allow ascend_parse_filter's strerror to bubble up */
 			return -1;
 		}
-		ret = sizeof(out->filter);
+		ret = sizeof(dst->filter);
 		goto finish;
 #else
 		/*
@@ -590,7 +590,7 @@ ssize_t value_data_from_str(TALLOC_CTX *ctx, value_data_t *out,
 	{
 		uint8_t	*p;
 
-		if ((len < 2) || (len & 0x01) || (strncasecmp(value, "0x", 2) != 0)) {
+		if ((len < 2) || (len & 0x01) || (strncasecmp(src, "0x", 2) != 0)) {
 			fr_strerror_printf("Invalid TLV specification");
 			return -1;
 		}
@@ -602,12 +602,12 @@ ssize_t value_data_from_str(TALLOC_CTX *ctx, value_data_t *out,
 			fr_strerror_printf("No memory");
 			return -1;
 		}
-		if (fr_hex2bin(p, ret, value + 2, len) != (size_t)ret) {
+		if (fr_hex2bin(p, ret, src + 2, len) != (size_t)ret) {
 			fr_strerror_printf("Invalid hex data in TLV");
 			return -1;
 		}
 
-		out->tlv = p;
+		dst->tlv = p;
 	}
 		goto finish;
 
@@ -615,7 +615,7 @@ ssize_t value_data_from_str(TALLOC_CTX *ctx, value_data_t *out,
 	{
 		fr_ipaddr_t addr;
 
-		if (fr_pton4(&addr, value, inlen, fr_hostname_lookups, false) < 0) return -1;
+		if (fr_pton4(&addr, src, src_len, fr_hostname_lookups, false) < 0) return -1;
 
 		/*
 		 *	We allow v4 addresses to have a /32 suffix as some databases (PostgreSQL)
@@ -623,11 +623,11 @@ ssize_t value_data_from_str(TALLOC_CTX *ctx, value_data_t *out,
 		 */
 		if (addr.prefix != 32) {
 			fr_strerror_printf("Invalid IPv4 mask length \"/%i\".  Only \"/32\" permitted "
-					   "for non-prefix types", addr.prefix);
+					   "for non-prefix src_types", addr.prefix);
 			return -1;
 		}
 
-		out->ipaddr.s_addr = addr.ipaddr.ip4addr.s_addr;
+		dst->ipaddr.s_addr = addr.ipaddr.ip4addr.s_addr;
 	}
 		goto finish;
 
@@ -635,10 +635,10 @@ ssize_t value_data_from_str(TALLOC_CTX *ctx, value_data_t *out,
 	{
 		fr_ipaddr_t addr;
 
-		if (fr_pton4(&addr, value, inlen, fr_hostname_lookups, false) < 0) return -1;
+		if (fr_pton4(&addr, src, src_len, fr_hostname_lookups, false) < 0) return -1;
 
-		out->ipv4prefix[1] = addr.prefix;
-		memcpy(out->ipv4prefix + 2, &addr.ipaddr.ip4addr.s_addr, sizeof(out->ipv4prefix) - 2);
+		dst->ipv4prefix[1] = addr.prefix;
+		memcpy(dst->ipv4prefix + 2, &addr.ipaddr.ip4addr.s_addr, sizeof(dst->ipv4prefix) - 2);
 	}
 		goto finish;
 
@@ -646,7 +646,7 @@ ssize_t value_data_from_str(TALLOC_CTX *ctx, value_data_t *out,
 	{
 		fr_ipaddr_t addr;
 
-		if (fr_pton6(&addr, value, inlen, fr_hostname_lookups, false) < 0) return -1;
+		if (fr_pton6(&addr, src, src_len, fr_hostname_lookups, false) < 0) return -1;
 
 		/*
 		 *	We allow v6 addresses to have a /128 suffix as some databases (PostgreSQL)
@@ -654,11 +654,11 @@ ssize_t value_data_from_str(TALLOC_CTX *ctx, value_data_t *out,
 		 */
 		if (addr.prefix != 128) {
 			fr_strerror_printf("Invalid IPv6 mask length \"/%i\".  Only \"/128\" permitted "
-					   "for non-prefix types", addr.prefix);
+					   "for non-prefix src_types", addr.prefix);
 			return -1;
 		}
 
-		memcpy(&out->ipv6addr, &addr.ipaddr.ip6addr.s6_addr, sizeof(out->ipv6addr));
+		memcpy(&dst->ipv6addr, &addr.ipaddr.ip6addr.s6_addr, sizeof(dst->ipv6addr));
 	}
 		goto finish;
 
@@ -666,10 +666,10 @@ ssize_t value_data_from_str(TALLOC_CTX *ctx, value_data_t *out,
 	{
 		fr_ipaddr_t addr;
 
-		if (fr_pton6(&addr, value, inlen, fr_hostname_lookups, false) < 0) return -1;
+		if (fr_pton6(&addr, src, src_len, fr_hostname_lookups, false) < 0) return -1;
 
-		out->ipv6prefix[1] = addr.prefix;
-		memcpy(out->ipv6prefix + 2, &addr.ipaddr.ip6addr.s6_addr, sizeof(out->ipv6prefix) - 2);
+		dst->ipv6prefix[1] = addr.prefix;
+		memcpy(dst->ipv6prefix + 2, &addr.ipaddr.ip6addr.s6_addr, sizeof(dst->ipv6prefix) - 2);
 	}
 		goto finish;
 
@@ -678,21 +678,21 @@ ssize_t value_data_from_str(TALLOC_CTX *ctx, value_data_t *out,
 	}
 
 	/*
-	 *	It's a fixed size type, copy to a temporary buffer and
+	 *	It's a fixed size src_type, copy to a temporary buffer and
 	 *	\0 terminate if insize >= 0.
 	 */
-	if (inlen > 0) {
+	if (src_len > 0) {
 		if (len >= sizeof(buffer)) {
 			fr_strerror_printf("Temporary buffer too small");
 			return -1;
 		}
 
-		memcpy(buffer, value, inlen);
-		buffer[inlen] = '\0';
-		value = buffer;
+		memcpy(buffer, src, src_len);
+		buffer[src_len] = '\0';
+		src = buffer;
 	}
 
-	switch(*type) {
+	switch(*src_type) {
 	case PW_TYPE_BYTE:
 	{
 		char *p;
@@ -701,26 +701,26 @@ ssize_t value_data_from_str(TALLOC_CTX *ctx, value_data_t *out,
 		/*
 		 *	Note that ALL integers are unsigned!
 		 */
-		i = fr_strtoul(value, &p);
+		i = fr_strtoul(src, &p);
 
 		/*
-		 *	Look for the named value for the given
+		 *	Look for the named src for the given
 		 *	attribute.
 		 */
-		if (enumv && *p && !is_whitespace(p)) {
-			if ((dval = dict_valbyname(enumv->attr, enumv->vendor, value)) == NULL) {
-				fr_strerror_printf("Unknown value '%s' for attribute '%s'", value, enumv->name);
+		if (src_enumv && *p && !is_whitespace(p)) {
+			if ((dval = dict_valbyname(src_enumv->attr, src_enumv->vendor, src)) == NULL) {
+				fr_strerror_printf("Unknown src '%s' for attribute '%s'", src, src_enumv->name);
 				return -1;
 			}
 
-			out->byte = dval->value;
+			dst->byte = dval->value;
 		} else {
 			if (i > 255) {
-				fr_strerror_printf("Byte value \"%s\" is larger than 255", value);
+				fr_strerror_printf("Byte src \"%s\" is larger than 255", src);
 				return -1;
 			}
 
-			out->byte = i;
+			dst->byte = i;
 		}
 		break;
 	}
@@ -733,26 +733,26 @@ ssize_t value_data_from_str(TALLOC_CTX *ctx, value_data_t *out,
 		/*
 		 *	Note that ALL integers are unsigned!
 		 */
-		i = fr_strtoul(value, &p);
+		i = fr_strtoul(src, &p);
 
 		/*
-		 *	Look for the named value for the given
+		 *	Look for the named src for the given
 		 *	attribute.
 		 */
-		if (enumv && *p && !is_whitespace(p)) {
-			if ((dval = dict_valbyname(enumv->attr, enumv->vendor, value)) == NULL) {
-				fr_strerror_printf("Unknown value '%s' for attribute '%s'", value, enumv->name);
+		if (src_enumv && *p && !is_whitespace(p)) {
+			if ((dval = dict_valbyname(src_enumv->attr, src_enumv->vendor, src)) == NULL) {
+				fr_strerror_printf("Unknown src '%s' for attribute '%s'", src, src_enumv->name);
 				return -1;
 			}
 
-			out->ushort = dval->value;
+			dst->ushort = dval->value;
 		} else {
 			if (i > 65535) {
-				fr_strerror_printf("Short value \"%s\" is larger than 65535", value);
+				fr_strerror_printf("Short src \"%s\" is larger than 65535", src);
 				return -1;
 			}
 
-			out->ushort = i;
+			dst->ushort = i;
 		}
 		break;
 	}
@@ -765,24 +765,24 @@ ssize_t value_data_from_str(TALLOC_CTX *ctx, value_data_t *out,
 		/*
 		 *	Note that ALL integers are unsigned!
 		 */
-		i = fr_strtoul(value, &p);
+		i = fr_strtoul(src, &p);
 
 		/*
-		 *	Look for the named value for the given
+		 *	Look for the named src for the given
 		 *	attribute.
 		 */
-		if (enumv && *p && !is_whitespace(p)) {
-			if ((dval = dict_valbyname(enumv->attr, enumv->vendor, value)) == NULL) {
-				fr_strerror_printf("Unknown value '%s' for attribute '%s'", value, enumv->name);
+		if (src_enumv && *p && !is_whitespace(p)) {
+			if ((dval = dict_valbyname(src_enumv->attr, src_enumv->vendor, src)) == NULL) {
+				fr_strerror_printf("Unknown src '%s' for attribute '%s'", src, src_enumv->name);
 				return -1;
 			}
 
-			out->integer = dval->value;
+			dst->integer = dval->value;
 		} else {
 			/*
 			 *	Value is always within the limits
 			 */
-			out->integer = i;
+			dst->integer = i;
 		}
 	}
 		break;
@@ -794,11 +794,11 @@ ssize_t value_data_from_str(TALLOC_CTX *ctx, value_data_t *out,
 		/*
 		 *	Note that ALL integers are unsigned!
 		 */
-		if (sscanf(value, "%" PRIu64, &i) != 1) {
-			fr_strerror_printf("Failed parsing \"%s\" as unsigned 64bit integer", value);
+		if (sscanf(src, "%" PRIu64, &i) != 1) {
+			fr_strerror_printf("Failed parsing \"%s\" as unsigned 64bit integer", src);
 			return -1;
 		}
-		out->integer64 = i;
+		dst->integer64 = i;
 	}
 		break;
 
@@ -810,19 +810,19 @@ ssize_t value_data_from_str(TALLOC_CTX *ctx, value_data_t *out,
 		 */
 		time_t date;
 
-		if (fr_get_time(value, &date) < 0) {
-			fr_strerror_printf("failed to parse time string \"%s\"", value);
+		if (fr_get_time(src, &date) < 0) {
+			fr_strerror_printf("failed to parse time string \"%s\"", src);
 			return -1;
 		}
 
-		out->date = date;
+		dst->date = date;
 	}
 
 		break;
 
 	case PW_TYPE_IFID:
-		if (ifid_aton(value, (void *) &out->ifid) == NULL) {
-			fr_strerror_printf("Failed to parse interface-id string \"%s\"", value);
+		if (ifid_aton(src, (void *) &dst->ifid) == NULL) {
+			fr_strerror_printf("Failed to parse interface-id string \"%s\"", src);
 			return -1;
 		}
 		break;
@@ -838,14 +838,14 @@ ssize_t value_data_from_str(TALLOC_CTX *ctx, value_data_t *out,
 		 *	We assume the number is the bigendian representation of the
 		 *	ethernet address.
 		 */
-		if (is_integer(value)) {
-			uint64_t integer = htonll(atoll(value));
+		if (is_integer(src)) {
+			uint64_t integer = htonll(atoll(src));
 
-			memcpy(&out->ether, &integer, sizeof(out->ether));
+			memcpy(&dst->ether, &integer, sizeof(dst->ether));
 			break;
 		}
 
-		cp = value;
+		cp = src;
 		while (*cp) {
 			if (cp[1] == ':') {
 				c1 = hextab;
@@ -859,40 +859,40 @@ ssize_t value_data_from_str(TALLOC_CTX *ctx, value_data_t *out,
 			} else {
 				c1 = c2 = NULL;
 			}
-			if (!c1 || !c2 || (p_len >= sizeof(out->ether))) {
-				fr_strerror_printf("failed to parse Ethernet address \"%s\"", value);
+			if (!c1 || !c2 || (p_len >= sizeof(dst->ether))) {
+				fr_strerror_printf("failed to parse Ethernet address \"%s\"", src);
 				return -1;
 			}
-			out->ether[p_len] = ((c1-hextab)<<4) + (c2-hextab);
+			dst->ether[p_len] = ((c1-hextab)<<4) + (c2-hextab);
 			p_len++;
 		}
 	}
 		break;
 
 	/*
-	 *	Crazy polymorphic (IPv4/IPv6) attribute type for WiMAX.
+	 *	Crazy polymorphic (IPv4/IPv6) attribute src_type for WiMAX.
 	 *
 	 *	We try and make is saner by replacing the original
-	 *	da, with either an IPv4 or IPv6 da type.
+	 *	da, with either an IPv4 or IPv6 da src_type.
 	 *
 	 *	These are not dynamic da, and will have the same vendor
 	 *	and attribute as the original.
 	 */
 	case PW_TYPE_COMBO_IP_ADDR:
 	{
-		if (inet_pton(AF_INET6, value, &out->ipv6addr) > 0) {
-			*type = PW_TYPE_IPV6_ADDR;
+		if (inet_pton(AF_INET6, src, &dst->ipv6addr) > 0) {
+			*src_type = PW_TYPE_IPV6_ADDR;
 			ret = dict_attr_sizes[PW_TYPE_COMBO_IP_ADDR][1]; /* size of IPv6 address */
 		} else {
 			fr_ipaddr_t ipaddr;
 
-			if (ip_hton(&ipaddr, AF_INET, value, false) < 0) {
-				fr_strerror_printf("Failed to find IPv4 address for %s", value);
+			if (ip_hton(&ipaddr, AF_INET, src, false) < 0) {
+				fr_strerror_printf("Failed to find IPv4 address for %s", src);
 				return -1;
 			}
 
-			*type = PW_TYPE_IPV4_ADDR;
-			out->ipaddr.s_addr = ipaddr.ipaddr.ip4addr.s_addr;
+			*src_type = PW_TYPE_IPV4_ADDR;
+			dst->ipaddr.s_addr = ipaddr.ipaddr.ip4addr.s_addr;
 			ret = dict_attr_sizes[PW_TYPE_COMBO_IP_ADDR][0]; /* size of IPv4 address */
 		}
 	}
@@ -900,14 +900,14 @@ ssize_t value_data_from_str(TALLOC_CTX *ctx, value_data_t *out,
 
 	case PW_TYPE_SIGNED:
 		/* Damned code for 1 WiMAX attribute */
-		out->sinteger = (int32_t)strtol(value, NULL, 10);
+		dst->sinteger = (int32_t)strtol(src, NULL, 10);
 		break;
 
 		/*
 		 *  Anything else.
 		 */
 	default:
-		fr_strerror_printf("Unknown attribute type %d", *type);
+		fr_strerror_printf("Unknown attribute src_type %d", *src_type);
 		return -1;
 	}
 

@@ -262,7 +262,7 @@ typedef union value_data {
 	uint8_t			ipv4prefix[6];			//!< IPv4 prefix (should be struct?).
 
 	uint8_t			*tlv;				//!< Nested TLV (should go away).
-	void const		*ptr;				//!< generic pointer.
+	void			*ptr;				//!< generic pointer.
 } value_data_t;
 
 /** The type of value a VALUE_PAIR contains
@@ -638,19 +638,19 @@ FR_TOKEN 	pairread(char const **ptr, VALUE_PAIR_RAW *raw);
 FR_TOKEN	userparse(TALLOC_CTX *ctx, char const *buffer, VALUE_PAIR **head);
 int		readvp2(TALLOC_CTX *ctx, VALUE_PAIR **out, FILE *fp, bool *pfiledone);
 
-#define		paircmp_op(_op, _a, _b)		value_data_cmp_op(_op, _a->da->type, _a->length, &_a->data, _b->da->type, _b->length, &_b->data)
+#define		paircmp_op(_op, _a, _b)	value_data_cmp_op(_op, _a->da->type, &_a->data, _a->length, _b->da->type, &_b->data, _b->length)
 
 /* value.c */
-int		value_data_cmp(PW_TYPE a_type, size_t a_length, value_data_t const *a,
-			       PW_TYPE b_type, size_t b_length, value_data_t const *b);
+int		value_data_cmp(PW_TYPE a_type, value_data_t const *a, size_t a_len,
+			       PW_TYPE b_type, value_data_t const *b, size_t b_len);
 
 int		value_data_cmp_op(FR_TOKEN op,
-				  PW_TYPE a_type, size_t a_length, value_data_t const *a,
-				  PW_TYPE b_type, size_t b_length, value_data_t const *b);
+				  PW_TYPE a_type, value_data_t const *a, size_t a_len,
+				  PW_TYPE b_type, value_data_t const *b, size_t b_len);
 
-ssize_t		value_data_from_str(TALLOC_CTX *ctx, value_data_t *out,
-				    PW_TYPE *type, DICT_ATTR const *enumv,
-				    char const *value, ssize_t inlen);
+ssize_t		value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
+				    PW_TYPE *src_type, DICT_ATTR const *src_enumv,
+				    char const *src, ssize_t src_len);
 
 ssize_t		value_data_cast(TALLOC_CTX *ctx, value_data_t *dst,
 				PW_TYPE dst_type, DICT_ATTR const *dst_enumv,

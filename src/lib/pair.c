@@ -1935,8 +1935,8 @@ int pairlistcmp(VALUE_PAIR *a, VALUE_PAIR *b)
 			return 1;
 		}
 
-		ret = value_data_cmp(a_p->da->type, a_p->length, &a_p->data,
-				   b_p->da->type, b_p->length, &b_p->data);
+		ret = value_data_cmp(a_p->da->type, &a_p->data, a_p->length,
+				     b_p->da->type, &b_p->data, b_p->length);
 		if (ret != 0) {
 			fr_assert(ret >= -1); 	/* Comparison error */
 			return ret;
