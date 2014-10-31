@@ -25,6 +25,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
+#include <freeradius-devel/state.h>
 #include <freeradius-devel/rad_assert.h>
 
 #ifdef HAVE_GETOPT_H
@@ -524,6 +525,8 @@ int main(int argc, char *argv[])
 		goto finish;
 	}
 
+	fr_state_init();
+
 	/* Set the panic action (if required) */
 	if (main_config.panic_action &&
 #ifndef NDEBUG
@@ -647,6 +650,8 @@ finish:
 	modules_free();
 
 	xlat_free();		/* modules may have xlat's */
+
+	fr_state_delete();
 
 	/*
 	 *	Free the configuration items.

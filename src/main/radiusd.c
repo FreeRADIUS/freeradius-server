@@ -29,6 +29,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
+#include <freeradius-devel/state.h>
 #include <freeradius-devel/rad_assert.h>
 
 #include <sys/file.h>
@@ -578,6 +579,8 @@ int main(int argc, char *argv[])
 	 */
 	fr_strerror();
 
+	fr_state_init();
+
 	/*
 	 *	Process requests until HUP or exit.
 	 */
@@ -636,6 +639,8 @@ cleanup:
 	modules_free();
 
 	xlat_free();		/* modules may have xlat's */
+
+	fr_state_delete();
 
 	/*
 	 *	Free the configuration items.

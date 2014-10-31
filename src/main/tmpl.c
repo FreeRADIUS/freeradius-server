@@ -36,6 +36,7 @@ const FR_NAME_NUMBER pair_lists[] = {
 	{ "reply",		PAIR_LIST_REPLY },
 	{ "control",		PAIR_LIST_CONTROL },		/* New name should have priority */
 	{ "config",		PAIR_LIST_CONTROL },
+	{ "session-state",	PAIR_LIST_STATE },
 #ifdef WITH_PROXY
 	{ "proxy-request",	PAIR_LIST_PROXY_REQUEST },
 	{ "proxy-reply",	PAIR_LIST_PROXY_REPLY },
@@ -188,6 +189,9 @@ VALUE_PAIR **radius_list(REQUEST *request, pair_lists_t list)
 	case PAIR_LIST_CONTROL:
 		return &request->config_items;
 
+	case PAIR_LIST_STATE:
+		return &request->state;
+
 #ifdef WITH_PROXY
 	case PAIR_LIST_PROXY_REQUEST:
 		if (!request->proxy) break;
@@ -256,6 +260,9 @@ TALLOC_CTX *radius_list_ctx(REQUEST *request, pair_lists_t list_name)
 		return request->reply;
 
 	case PAIR_LIST_CONTROL:
+		return request;
+
+	case PAIR_LIST_STATE:
 		return request;
 
 #ifdef WITH_PROXY
