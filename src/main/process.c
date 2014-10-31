@@ -956,7 +956,7 @@ static void request_process_timer(REQUEST *request)
 #endif	/* WITH_PROXY */
 
 	case REQUEST_RESPONSE_DELAY:
-		rad_assert((request->response_delay.tv_sec > 0) && (request->response_delay.tv_usec > 0));
+		rad_assert(request->response_delay.tv_sec > 0);
 #ifdef WITH_COA
 		rad_assert(!request->proxy || (request->packet->code == request->proxy->code));
 #endif
@@ -1469,7 +1469,9 @@ STATE_MACHINE_DECL(request_finish)
 	/*
 	 *	Send the reply.
 	 */
-	if (!request->response_delay.tv_sec) {
+	if (request->response_delay.tv_sec == 0) {
+		rad_assert(request->response_delay.tv_usec == 0);
+
 		/*
 		 *	Don't print a reply if there's none to send.
 		 */
