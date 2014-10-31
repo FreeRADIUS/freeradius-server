@@ -533,7 +533,9 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 	 *	They're both attributes.  Do attribute-specific work.
 	 */
 	if (!c->cast && (map->lhs->type == TMPL_TYPE_ATTR) && (map->rhs->type == TMPL_TYPE_ATTR)) {
-		VALUE_PAIR *lhs_vp, *rhs_vp, *cast_vp;
+		VALUE_PAIR *lhs_vp, *rhs_vp;
+		ssize_t ret;
+		value_data_t cast_data;
 
 		EVAL_DEBUG("ATTR to ATTR");
 		if ((tmpl_find_vp(&lhs_vp, request, map->lhs) < 0) ||
@@ -554,19 +556,17 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 			   (map->rhs->tmpl_da->type == PW_TYPE_SHORT) ||
 			   (map->rhs->tmpl_da->type == PW_TYPE_BYTE));
 
-		cast_vp = pairalloc(request, lhs_vp->da);
-		if (!cast_vp) return false;
+		ret = value_data_cast(rhs_vp, &cast_data,
+				      lhs_vp->da->type, lhs_vp->da,
+				      rhs_vp->da->type, rhs_vp->da,
+				      &rhs_vp->data, rhs_vp->length);
+		if (ret < 0) return -1;
 
-		/*
-		 *	Copy the RHS to the casted type.
-		 */
-		if (do_cast_copy(cast_vp, rhs_vp) < 0) {
-			talloc_free(cast_vp);
-			return false;
-		}
+		rcode = value_data_cmp_op(map->op,
+					  lhs_vp->da->type, &lhs_vp->data, lhs_vp->length,
+					  lhs_vp->da->type, &cast_data, (size_t)ret);
+		if (lhs_vp->da->flags.is_pointer) talloc_free(cast_data.ptr);
 
-		rcode = paircmp_op(map->op, lhs_vp, cast_vp);
-		talloc_free(cast_vp);
 		return rcode;
 	}
 
