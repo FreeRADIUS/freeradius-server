@@ -222,6 +222,8 @@ struct rad_request {
 #endif
 	VALUE_PAIR		*config_items;	//!< VALUE_PAIRs used to set per request parameters
 						//!< for modules and the server core at runtime.
+	VALUE_PAIR		*state;		//!< VALUE_PAIRs used to set session parameters
+						//!< for multiple packets, e.g. EAP.
 	VALUE_PAIR		*username;	//!< Cached username VALUE_PAIR.
 	VALUE_PAIR		*password;	//!< Cached password VALUE_PAIR.
 

@@ -25,6 +25,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
+#include <freeradius-devel/state.h>
 #include <freeradius-devel/rad_assert.h>
 
 #include <ctype.h>
@@ -313,6 +314,7 @@ int rad_postauth(REQUEST *request)
 	case RLM_MODULE_USERLOCK:
 	default:
 		request->reply->code = PW_CODE_ACCESS_REJECT;
+		fr_state_discard(request, request->packet);
 		result = RLM_MODULE_REJECT;
 		break;
 	/*
@@ -329,6 +331,12 @@ int rad_postauth(REQUEST *request)
 	case RLM_MODULE_OK:
 	case RLM_MODULE_UPDATED:
 		result = RLM_MODULE_OK;
+
+		if (request->reply->code == PW_CODE_ACCESS_CHALLENGE) {
+			fr_state_put_vps(request, request->packet, request->reply);
+		} else if (request->reply->code == PW_CODE_ACCESS_ACCEPT) {
+			fr_state_discard(request, request->packet);
+		}
 		break;
 	}
 	return result;
@@ -414,6 +422,11 @@ int rad_authenticate(REQUEST *request)
 	if (!request->password) {
 		request->password = pairfind(request->packet->vps, PW_CHAP_PASSWORD, 0, TAG_ANY);
 	}
+
+	/*
+	 *	Grab the VPS associated with the State attribute.
+	 */
+	fr_state_get_vps(request, request->packet);
 
 	/*
 	 *	Get the user's authorization information from the database

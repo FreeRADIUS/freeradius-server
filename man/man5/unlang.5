@@ -191,8 +191,9 @@ the current block.
 .DE
 
 The <list> can be one of "request", "reply", "proxy-request",
-"proxy-reply", "coa", "disconnect", or "control".  As of Version 3,
-the <list> can be omitted, in which case "request" is assumed.
+"proxy-reply", "coa", "disconnect", "session-state", or "control".  As
+of Version 3, the <list> can be omitted, in which case "request" is
+assumed.
 
 The "control" list is the list of attributes maintainted internally by
 the server that controls how the server processes the request.  Any
@@ -214,6 +215,11 @@ list causes server to originate a CoA-Request or Disconnect-Request
 packet.  That packet is sent when the current Access-Request or
 Accounting-Request has been finished, and a reply sent to the NAS.
 See raddb/sites-available/originate-coa for additional information.
+
+The "session-state" list is primarily used for EAP.  Attributes put
+into the "session-state" list are saved for the next packet in the
+session.  They are automatically retreived when the next packet is
+received.
 
 The only contents permitted in an "update" section are attributes and
 values.  The contents of the "update" section are described in the
