@@ -740,7 +740,7 @@ static ssize_t urlunquote_xlat(UNUSED void *instance, UNUSED REQUEST *request,
 	return outlen - freespace;
 }
 
-/** Equivalent to the old safe_characters functionality in rlm_sql
+/** Equivalent to the old safe_characters functionality in rlm_sql but with utf8 support
  *
  * @verbatim Example: "%{escape:<img>foo.jpg</img>}" == "=60img=62foo.jpg=60/img=62" @endverbatim
  */
@@ -748,32 +748,58 @@ static ssize_t escape_xlat(void *instance, UNUSED REQUEST *request,
 			   char const *fmt, char *out, size_t outlen)
 {
 	rlm_expr_t *inst = instance;
-	char const *p;
+	char const *p = fmt;
 	size_t freespace = outlen;
 
-	if (outlen <= 1) return 0;
+	while (p[0]) {
+		int chr_len = 1;
+		int ret;
 
-	p = fmt;
-	while (*p && (--freespace > 0)) {
-		/*
-		 *	Non-printable characters get replaced with their
-		 *	mime-encoded equivalents.
-		 */
-		if ((*p > 31) && strchr(inst->allowed_chars, *p)) {
-			*out++ = *p++;
+		if (fr_utf8_strchr(&chr_len, inst->allowed_chars, p) == NULL) {
+			/*
+			 *	'=' 1 + ([hex]{2}) * chr_len)
+			 */
+			if (freespace <= (size_t)(1 + (chr_len * 3))) break;
+
+			switch (chr_len) {
+			case 4:
+				ret = snprintf(out, freespace, "=%02X=%02X=%02X=%02X",
+					       (uint8_t)p[0], (uint8_t)p[1], (uint8_t)p[2], (uint8_t)p[3]);
+				break;
+
+			case 3:
+				ret = snprintf(out, freespace, "=%02X=%02X=%02X",
+					       (uint8_t)p[0], (uint8_t)p[1], (uint8_t)p[2]);
+				break;
+
+			case 2:
+				ret = snprintf(out, freespace, "=%02X=%02X", (uint8_t)p[0], (uint8_t)p[1]);
+				break;
+
+			case 1:
+				ret = snprintf(out, freespace, "=%02X", (uint8_t)p[0]);
+				break;
+			}
+
+			p += chr_len;
+			out += ret;
+			freespace -= ret;
 			continue;
 		}
 
-		if (freespace < 3)
-			break;
+		/*
+		 *	Only one byte left.
+		 */
+		if (freespace <= 1) break;
 
-		snprintf(out, 4, "=%02X", (uint8_t)*p++);
-
-		/* Already decremented */
-		freespace -= 2;
-		out += 3;
+		/*
+		 *	Allowed character (copy whole mb chars at once)
+		 */
+		memcpy(out, p, chr_len);
+		out += chr_len;
+		p += chr_len;
+		freespace -= chr_len;
 	}
-
 	*out = '\0';
 
 	return outlen - freespace;
@@ -783,10 +809,9 @@ static ssize_t escape_xlat(void *instance, UNUSED REQUEST *request,
  *
  * @verbatim Example: "%{unescape:=60img=62foo.jpg=60/img=62}" == "<img>foo.jpg</img>" @endverbatim
  */
-static ssize_t unescape_xlat(void *instance, UNUSED REQUEST *request,
-			       char const *fmt, char *out, size_t outlen)
+static ssize_t unescape_xlat(UNUSED void *instance, UNUSED REQUEST *request,
+			     char const *fmt, char *out, size_t outlen)
 {
-	rlm_expr_t *inst = instance;
 	char const *p;
 	char *c1, *c2, c3;
 	size_t	freespace = outlen;
@@ -808,12 +833,6 @@ static ssize_t unescape_xlat(void *instance, UNUSED REQUEST *request,
 		    !(c2 = memchr(hextab, tolower(*(p + 2)), 16))) goto next;
 		c3 = ((c1 - hextab) << 4) + (c2 - hextab);
 
-		/*
-		 *	It was just random occurrence which just happens
-		 *	to match the escape sequence for a safe character.
-		 *	Copy it across verbatim.
-		 */
-		if (strchr(inst->allowed_chars, c3)) goto next;
 		*out++ = c3;
 		p += 3;
 	}

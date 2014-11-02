@@ -121,6 +121,40 @@ int fr_utf8_char(uint8_t const *str)
 	return 0;
 }
 
+/** Return a pointer to the first UTF8 char in a string.
+ *
+ * @param[out] chr_len Where to write the length of the multibyte char passed in chr (may be NULL).
+ * @param[in] str Haystack.
+ * @param[in] chr Multibyte needle.
+ * @return The position of chr in str or NULL if not found.
+ */
+char *fr_utf8_strchr(int *chr_len, const char *str, const char *chr)
+{
+	int cchr;
+	char *out;
+
+	cchr = fr_utf8_char((uint8_t const *)chr);
+	if (cchr == 0) cchr = 1;
+	if (chr_len) *chr_len = cchr;
+
+	while (str[0]) {
+		int schr;
+
+		schr = fr_utf8_char((uint8_t const *)chr);
+		if (schr == 0) schr = 1;
+		if (schr != cchr) goto next;
+
+		if (memcmp(str, chr, schr) == 0) {
+			memcpy(&out, &str, sizeof(out));
+			return out;
+		}
+	next:
+		str += schr;
+	}
+
+	return NULL;
+}
+
 /** Escape any non printable or non-UTF8 characters in the input string
  *
  * @param[in] in string to escape.
