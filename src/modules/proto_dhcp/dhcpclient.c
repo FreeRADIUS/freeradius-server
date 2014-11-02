@@ -73,6 +73,7 @@ static void NEVER_RETURNS usage(void)
 
 	fprintf(stderr, "  <command>              One of discover, request, offer, decline, release, inform.\n");
 	fprintf(stderr, "  -d <directory>         Set the directory where the dictionaries are stored (defaults to " RADDBDIR ").\n");
+	fprintf(stderr, "  -D <dictdir>           Set main dictionary directory (defaults to " DICTDIR ").\n");
 	fprintf(stderr, "  -f <file>              Read packets from file, not stdin.\n");
 	fprintf(stderr, "  -t <timeout>           Wait 'timeout' seconds for a reply (may be a floating point number).\n");
 	fprintf(stderr, "  -v                     Show program version information.\n");
@@ -270,7 +271,11 @@ int main(int argc, char **argv)
 
 	fr_debug_flag = 0;
 
-	while ((c = getopt(argc, argv, "d:f:hr:t:vx")) != EOF) switch(c) {
+	while ((c = getopt(argc, argv, "d:D:f:hr:t:vx")) != EOF) switch(c) {
+		case 'D':
+			dict_dir = optarg;
+			break;
+
 		case 'd':
 			radius_dir = optarg;
 			break;
