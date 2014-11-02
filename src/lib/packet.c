@@ -44,8 +44,8 @@ int fr_packet_cmp(RADIUS_PACKET const *a, RADIUS_PACKET const *b)
 	/*
 	 *	256-way fanout.
 	 */
-	rcode = a->id - b->id;
-	if (rcode != 0) return rcode;
+	if (a->id < b->id) return -1;
+	if (a->id > b->id) return +1;
 
 	/*
 	 *	Source ports are pretty much random.
