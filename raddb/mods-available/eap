@@ -588,6 +588,17 @@ eap {
 		#
 		copy_request_to_tunnel = no
 
+		#
+		#  As of version 3.0.5, this configuration item
+		#  is deprecated.  Instead, you should use
+		#
+		# 	update outer.session-state {
+		#		...
+		#
+		#	}
+		#
+		#  This will cache attributes for the final Access-Accept.
+		#
 		#  The reply attributes sent to the NAS are usually
 		#  based on the name of the user 'outside' of the
 		#  tunnel (usually 'anonymous').  If you want to send
@@ -700,6 +711,18 @@ eap {
 		#  items, which are the same as for TTLS.
 		#
 		copy_request_to_tunnel = no
+
+		#
+		#  As of version 3.0.5, this configuration item
+		#  is deprecated.  Instead, you should use
+		#
+		# 	update outer.session-state {
+		#		...
+		#
+		#	}
+		#
+		#  This will cache attributes for the final Access-Accept.
+		#
 		use_tunneled_reply = no
 
 		#  When the tunneled session is proxied, the

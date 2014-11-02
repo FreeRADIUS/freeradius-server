@@ -650,6 +650,19 @@ session {
 #  Once we KNOW that the user has been authenticated, there are
 #  additional steps we can take.
 post-auth {
+	#
+	#  For EAP-TTLS and PEAP, add the cached attributes to the reply.
+	#  The "session-state" attributes are automatically cached when
+	#  an Access-Challenge is sent, and automatically retrieved
+	#  when an Access-Request is received.
+	#
+	#  The session-state attributes are automatically deleted after
+	#  an Access-Reject or Access-Accept is sent.
+	#
+	update {
+		&reply: += &session-state:
+	}
+
 	#  Get an address from the IP Pool.
 #	main_pool
 
@@ -768,6 +781,8 @@ post-auth {
 	#
 	#  Add the ldap module name (or instance) if you have set
 	#  'edir_account_policy_check = yes' in the ldap module configuration
+	#
+	#  The "session-state" attributes are not available here.
 	#
 	Post-Auth-Type REJECT {
 		# log failed authentications in SQL, too.
