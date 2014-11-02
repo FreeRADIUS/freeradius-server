@@ -294,6 +294,14 @@ post-auth {
 	#
 #	ldap
 
+
+	#
+	#  Instead of "use_tunneled_reply", do this:
+	#
+#	update {
+#		&outer.session-state: := &reply:
+#	}
+
 	#
 	#  Access-Reject packets are sent through the REJECT sub-section of the
 	#  post-auth section.
