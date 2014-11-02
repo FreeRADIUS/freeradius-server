@@ -326,6 +326,12 @@ int main(int argc, char **argv)
 				fr_strerror());
 			return -1;
 		}
+
+		if (dict_read(dict_dir, "dictionary.freeradius.internal") < 0) {
+			fprintf(stderr, "Failed reading dictionary.freeradius.internal: %s",
+				fr_strerror());
+			return -1;
+		}
 	}
 
 	/*
