@@ -753,7 +753,7 @@ static ssize_t escape_xlat(void *instance, UNUSED REQUEST *request,
 
 	while (p[0]) {
 		int chr_len = 1;
-		int ret;
+		int ret = 1;	/* -Werror=uninitialized */
 
 		if (fr_utf8_strchr(&chr_len, inst->allowed_chars, p) == NULL) {
 			/*
