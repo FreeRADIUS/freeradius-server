@@ -188,9 +188,6 @@ static int fr_debugger_attached(void)
 		if (ret < 0) {
 			fr_strerror_printf("Debugger check failed: Error getting status from child: %s",
 					   fr_syserror(errno));
-		} else if (ret == EPERM) {
-			fr_strerror_printf("Got EPERM attaching to process, may mean process is running under debugger "
-					   "or tracee does not have permission to attach");
 		} else {
 			fr_strerror_printf("Failed attaching to process: %s", fr_syserror(errno));
 		}
@@ -773,12 +770,14 @@ int fr_fault_setup(char const *cmd, char const *program)
 	static bool setup = false;
 
 	char *out = panic_action;
-	size_t left = sizeof(panic_action), ret;
+	size_t left = sizeof(panic_action);
 
 	char const *p = cmd;
 	char const *q;
 
 	if (cmd) {
+		size_t ret;
+
 		/* Substitute %e for the current program */
 		while ((q = strstr(p, "%e"))) {
 			out += ret = snprintf(out, left, "%.*s%s", (int) (q - p), p, program ? program : "");
@@ -803,6 +802,8 @@ int fr_fault_setup(char const *cmd, char const *program)
 
 	/* Unsure what the side effects of changing the signal handler mid execution might be */
 	if (!setup) {
+		int ret;
+
 		/*
 		 *  Setup the default logger
 		 */
@@ -812,6 +813,7 @@ int fr_fault_setup(char const *cmd, char const *program)
 		/*
 		 *  Figure out if we were started under a debugger
 		 */
+
 		ret = fr_debugger_attached();
 
 		/*
