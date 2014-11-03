@@ -128,25 +128,23 @@ int fr_utf8_char(uint8_t const *str)
  * @param[in] chr Multibyte needle.
  * @return The position of chr in str or NULL if not found.
  */
-char *fr_utf8_strchr(int *chr_len, const char *str, const char *chr)
+char const *fr_utf8_strchr(int *chr_len, char const *str, char const *chr)
 {
 	int cchr;
-	char *out;
 
 	cchr = fr_utf8_char((uint8_t const *)chr);
 	if (cchr == 0) cchr = 1;
 	if (chr_len) *chr_len = cchr;
 
-	while (str[0]) {
+	while (*str) {
 		int schr;
 
-		schr = fr_utf8_char((uint8_t const *)chr);
+		schr = fr_utf8_char((uint8_t const *) str);
 		if (schr == 0) schr = 1;
 		if (schr != cchr) goto next;
 
 		if (memcmp(str, chr, schr) == 0) {
-			memcpy(&out, &str, sizeof(out));
-			return out;
+			return (char const *) str;
 		}
 	next:
 		str += schr;
