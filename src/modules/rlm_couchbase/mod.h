@@ -80,11 +80,15 @@ int mod_build_attribute_element_map(CONF_SECTION *conf, void *instance);
 
 int mod_attribute_to_element(const char *name, json_object *map, void *buf);
 
-void *mod_json_object_to_value_pairs(json_object *json, const char *section, REQUEST *request);
+void *mod_json_object_to_value_pairs(json_object *json, const char *section,
+	REQUEST *request);
 
 json_object *mod_value_pair_to_json_object(REQUEST *request, VALUE_PAIR *vp);
 
 int mod_ensure_start_timestamp(json_object *json, VALUE_PAIR *vps);
+
+int mod_client_map_section(CONF_SECTION *client, CONF_SECTION const *map,
+	json_object *json, char const *docid);
 
 int mod_load_client_documents(rlm_couchbase_t *inst, CONF_SECTION *cs);
 
