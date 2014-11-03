@@ -165,6 +165,8 @@ static int fr_debugger_attached(void)
 			exit(0);
 		}
 
+		fr_strerror_printf("Couldn't attach to process: %s", fr_syserror(errno));
+
 		ret = 1;
 		/* Tell the parent what happened */
 		if (write(from_child[1], &ret, sizeof(ret)) < 0) {
@@ -798,6 +800,15 @@ int fr_fault_setup(char const *cmd, char const *program)
 
 	/* Unsure what the side effects of changing the signal handler mid execution might be */
 	if (!setup) {
+		/*
+		 *  Setup the default logger
+		 */
+		if (!fr_fault_log) fr_fault_set_log_fn(NULL);
+		talloc_set_log_fn(_fr_talloc_log);
+
+		/*
+		 *  Figure out if we were started under a debugger
+		 */
 		debugger_attached = fr_debugger_attached();
 
 		/*
@@ -826,6 +837,8 @@ int fr_fault_setup(char const *cmd, char const *program)
 #endif
 
 
+		} else {
+			FR_FAULT_LOG("Not registering panic action signal handlers: %s", fr_strerror());
 		}
 #ifdef SIGUSR1
 		if (fr_set_signal(SIGUSR1, fr_fault) < 0) return -1;
@@ -834,12 +847,6 @@ int fr_fault_setup(char const *cmd, char const *program)
 #ifdef SIGUSR2
 		if (fr_set_signal(SIGUSR2, _fr_fault_mem_report) < 0) return -1;
 #endif
-
-		/*
-		 *  Setup the default logger
-		 */
-		if (!fr_fault_log) fr_fault_set_log_fn(NULL);
-		talloc_set_log_fn(_fr_talloc_log);
 
 		/*
 		 *  Needed for memory reports
