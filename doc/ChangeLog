@@ -15,6 +15,7 @@ FreeRADIUS 2.2.6 Monday 13 Jun 2014 09:05:00 EDT, urgency=medium
 	  to a virtual server.
 	* Prevent race conditions between fork and wait for child.
 	  Patch from James Rouzier.
+	* Allow UTF-8 characters in SQL.
 
 FreeRADIUS 2.2.5 Monday 28 Apr 2014 15:20:00 EDT, urgency=medium
 	Feature improvements
