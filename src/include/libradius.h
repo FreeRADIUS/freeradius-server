@@ -423,7 +423,7 @@ int		fr_check_lib_magic(uint64_t magic);
  *	Printing functions.
  */
 int		fr_utf8_char(uint8_t const *str);
-char		*fr_utf8_strchr(int *chr_len, const char *str, const char *chr);
+char const     	*fr_utf8_strchr(int *chr_len, char const *str, char const *chr);
 size_t		fr_print_string(char const *in, size_t inlen,
 				char *out, size_t outlen, char quote);
 	size_t		fr_print_string_len(char const *in, size_t inlen, char quote);
