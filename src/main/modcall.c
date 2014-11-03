@@ -1667,6 +1667,7 @@ int modcall_fixup_update(value_pair_map_t *map, UNUSED void *ctx)
 
 		default:
 			rad_assert(0);
+			return -1;
 		}
 
 		switch (map->rhs->type) {
@@ -1680,6 +1681,7 @@ int modcall_fixup_update(value_pair_map_t *map, UNUSED void *ctx)
 
 		default:
 			rad_assert(0);
+			return -1;
 		}
 
 
