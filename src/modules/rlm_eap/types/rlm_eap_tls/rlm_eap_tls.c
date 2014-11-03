@@ -1032,7 +1032,7 @@ static SSL_CTX *init_tls_ctx(EAP_TLS_CONF *conf)
 	EVP_add_digest(EVP_sha256());
 #endif
 
-	meth = TLSv1_method();
+	meth = SSLv23_method();	/* which is really "all known SSL / TLS methods".  Idiots. */
 	ctx = SSL_CTX_new(meth);
 
 	/*
