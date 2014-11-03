@@ -767,11 +767,18 @@ void		fr_cbuff_rp_insert(fr_cbuff_t *cbuff, void *obj);
 void		*fr_cbuff_rp_next(fr_cbuff_t *cbuff, TALLOC_CTX *ctx);
 
 /* debug.c */
-
+typedef enum {
+	DEBUG_STATE_UNKNOWN_NO_PTRACE		= -3,	//!< We don't have ptrace so can't check.
+	DEBUG_STATE_UNKNOWN_NO_PTRACE_CAP	= -2,	//!< CAP_SYS_PTRACE not set for the process.
+	DEBUG_STATE_UNKNOWN			= -1,	//!< Unknown, likely fr_get_debug_state() not called yet.
+	DEBUG_STATE_NOT_ATTACHED		= 0,	//!< We can attach, so a debugger must not be.
+	DEBUG_STATE_ATTACHED			= 1	//!< We can't attach, it's likely a debugger is already tracing.
+} fr_debug_state_t;
 
 #define FR_FAULT_LOG(fmt, ...) fr_fault_log(fmt "\n", ## __VA_ARGS__)
 typedef void (*fr_fault_log_t)(char const *msg, ...) CC_HINT(format (printf, 1, 2));
 extern fr_fault_log_t fr_fault_log;
+extern fr_debug_state_t fr_debug_state;
 
 /** Optional callback passed to fr_fault_setup
  *
@@ -785,6 +792,8 @@ extern fr_fault_log_t fr_fault_log;
 typedef int (*fr_fault_cb_t)(int signum);
 typedef struct fr_bt_marker fr_bt_marker_t;
 
+void		fr_store_debug_state(void);
+char const	*fr_debug_state_to_msg(fr_debug_state_t state);
 void		fr_debug_break(void);
 void		backtrace_print(fr_cbuff_t *cbuff, void *obj);
 int		fr_backtrace_do(fr_bt_marker_t *marker);

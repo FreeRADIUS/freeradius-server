@@ -106,17 +106,6 @@ int main(int argc, char *argv[])
 	 */
 	TALLOC_CTX *autofree = talloc_init("main");
 
-	/*
-	 *	If the server was built with debugging enabled always install
-	 *	the basic fatal signal handlers.
-	 */
-#ifndef NDEBUG
-	if (fr_fault_setup(getenv("PANIC_ACTION"), argv[0]) < 0) {
-		fr_perror("radiusd");
-		exit(EXIT_FAILURE);
-	}
-#endif
-
 #ifdef OSFC2
 	set_auth_parameters(argc,argv);
 #endif
@@ -333,9 +322,14 @@ int main(int argc, char *argv[])
 		exit(EXIT_SUCCESS);
 	}
 
-	if (debug_flag) {
-		version();
-	}
+	if (debug_flag) version();
+
+	/*
+	 *  Under linux CAP_SYS_PTRACE is usually only available before
+	 *  setuid/setguid, so we need to check whether we can attach before
+	 *  calling those functions (in main_config_init()).
+	 */
+	fr_store_debug_state();
 
 	/*
 	 *  Initialising OpenSSL once, here, is safer than having individual
@@ -357,6 +351,9 @@ int main(int argc, char *argv[])
 	if (main_config_init() < 0) {
 		exit(EXIT_FAILURE);
 	}
+
+	/*  This is very useful in figuring out why the panic_action didn't fire */
+	DEBUG("radiusd: #### %s ####", fr_debug_state_to_msg(fr_debug_state));
 
 	/*  Check for vulnerabilities in the version of libssl were linked against */
 #ifdef HAVE_OPENSSL_CRYPTO_H

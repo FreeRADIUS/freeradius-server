@@ -887,6 +887,50 @@ fi
 dnl Set by FR_SMART_CHECKLIB
 LIBS="${old_LIBS}"
 
+dnl Check for cap
+dnl extra argument: --with-cap-lib-dir=DIR
+cap_lib_dir=
+AC_ARG_WITH(cap-lib-dir,
+  [AS_HELP_STRING([--with-cap-lib-dir=DIR],
+  [directory in which to look for cap library files])],
+  [case "$withval" in
+    no)
+      AC_MSG_ERROR([Need cap-lib-dir])
+      ;;
+    yes)
+      ;;
+    *)
+      cap_lib_dir="$withval"
+      ;;
+  esac])
+
+dnl extra argument: --with-cap-include-dir=DIR
+cap_include_dir=
+AC_ARG_WITH(cap-include-dir,
+  [AS_HELP_STRING([--with-cap-include-dir=DIR],
+  [directory in which to look for cap include files])],
+  [case "$withval" in
+    no)
+      AC_MSG_ERROR([Need cap-include-dir])
+      ;;
+    yes)
+      ;;
+    *)
+      cap_include_dir="$withval"
+      ;;
+  esac])
+
+smart_try_dir="$cap_lib_dir"
+FR_SMART_CHECK_LIB(cap, cap_get_proc)
+if test "x$ac_cv_lib_cap_cap_get_proc" != "xyes"; then
+  AC_MSG_WARN([cap library not found, debugger checks will not be enabled. Use --with-cap-lib-dir=<path>.])
+else
+  AC_DEFINE(HAVE_LIBCAP, 1,
+    [Define to 1 if you have the `cap' library (-lcap).]
+  )
+  HAVE_LIBCAP=1
+fi
+
 VL_LIB_READLINE
 
 dnl #############################################################
@@ -1148,6 +1192,24 @@ else
     AC_SUBST(COLLECTDC_LDFLAGS)
   else
     AC_MSG_WARN([collectdclient headers not found. Use --with-collectdclient-include-dir=<path>.])
+  fi
+fi
+
+dnl #
+dnl #  Check the CAP includes for debugger checks
+dnl #
+if test "x$HAVE_LIBCAP" = x; then
+  AC_MSG_NOTICE([skipping test for cap.h.])
+else
+  dnl #
+  dnl # Check for CAP header files
+  dnl #
+  smart_try_dir="$cap_include_dir"
+  FR_SMART_CHECK_INCLUDE([sys/capability.h])
+  if test "x$ac_cv_header_sys_capability_h" == "xyes"; then
+    AC_DEFINE(HAVE_CAPABILITY_H, 1, [Define to 1 if you have the <sys/capability.h> header file.])
+  else
+    AC_MSG_WARN([cap headers not found, will not perform debugger checks. Use --with-cap-include-dir=<path>.])
   fi
 fi
 
