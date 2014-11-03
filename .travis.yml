@@ -43,6 +43,7 @@ before_install:
       libcollectdclient-dev
       firebird-dev
       freetds-dev
+      libcap-dev
       libcouchbase2-libevent
       libcouchbase-dev
       libcurl4-openssl-dev
