@@ -2171,7 +2171,7 @@ SSL_CTX *tls_init_ctx(fr_tls_server_conf_t *conf, int client)
 	EVP_add_digest(EVP_sha256());
 #endif
 
-	ctx = SSL_CTX_new(TLSv1_method());
+	ctx = SSL_CTX_new(SSLv23_method()); /* which is really "all known SSL / TLS methods".  Idiots. */
 	if (!ctx) {
 		int err;
 		while ((err = ERR_get_error())) {
