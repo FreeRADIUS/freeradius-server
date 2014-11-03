@@ -803,7 +803,6 @@ int fr_fault_setup(char const *cmd, char const *program)
 
 	/* Unsure what the side effects of changing the signal handler mid execution might be */
 	if (!setup) {
-		int ret;
 		/*
 		 *  Setup the default logger
 		 */
