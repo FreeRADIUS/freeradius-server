@@ -192,7 +192,7 @@ static int fr_debugger_attached(void)
 			fr_strerror_printf("Got EPERM attaching to process, may mean process is running under debugger "
 					   "or tracee does not have permission to attach");
 		} else {
-			fr_Strerror_printf("Failed attaching to process: %s", fr_syerror(errno));
+			fr_strerror_printf("Failed attaching to process: %s", fr_syserror(errno));
 		}
 
 		/* Close the pipes here (if we did it above, it might race with pattach) */
