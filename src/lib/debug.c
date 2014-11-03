@@ -539,8 +539,11 @@ void fr_fault(int sig)
 	 *	as it may interfere with the operation of the debugger.
 	 *	If something calls us directly we just raise the signal and let
 	 *	the debugger handle it how it wants.
+	 *
+	 *	The only exception are SIGUSR1 and SIGUSR2 which print out various
+	 *	debugging info, and should be allowed to continue.
 	 */
-	if (debugger_attached) {
+	if (debugger_attached && (sig != SIGUSR1) && (sig != SIGUSR2)) {
 		FR_FAULT_LOG("RAISING SIGNAL: %s", strsignal(sig));
 		raise(sig);
 		goto finish;
