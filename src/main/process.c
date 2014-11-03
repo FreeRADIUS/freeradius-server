@@ -1481,6 +1481,9 @@ STATE_MACHINE_DECL(request_finish)
 		pairfree(&request->reply->vps);
 
 		RDEBUG2("Finished request");
+		request->component = "<core>";
+		request->module = "<done>";
+
 #ifdef WITH_ACCOUNTING
 		if (request->packet->code == PW_CODE_ACCOUNTING_REQUEST) {
 			NO_CHILD_THREAD;
@@ -1654,9 +1657,12 @@ int request_receive(rad_listen_t *listener, RADIUS_PACKET *packet,
 			    sizeof(packet->vector)) == 0)) {
 
 			/*
-			 *	If the request is running, it'
+			 *	If the request is running, don't muck
+			 *	with it.
 			 */
-			if (request->child_state != REQUEST_DONE) {
+			if ((request->child_state != REQUEST_DONE) &&
+			    (request->child_state != REQUEST_RESPONSE_DELAY) &&
+			    (request->child_state != REQUEST_CLEANUP_DELAY)) {
 				request->process(request, FR_ACTION_DUP);
 
 #ifdef WITH_STATS
