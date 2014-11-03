@@ -116,7 +116,7 @@ static TALLOC_CTX *talloc_autofree_ctx;
 
 /** Determine if we're running under a debugger by attempting to attach using pattach
  *
- * @return 0 if we're not, 1 if we are, -1 if we can't tell.
+ * @return 0 if we're not, EPERM if we are, -1 if we can't tell.
  */
 static int fr_debugger_attached(void)
 {
@@ -137,7 +137,7 @@ static int fr_debugger_attached(void)
 
 	/* Child */
 	if (pid == 0) {
-		int8_t ret = 0;
+		int ret = 0;
 		int ppid = getppid();
 
 		/* Close parent's side */
@@ -165,9 +165,7 @@ static int fr_debugger_attached(void)
 			exit(0);
 		}
 
-		fr_strerror_printf("Couldn't attach to process: %s", fr_syserror(errno));
-
-		ret = 1;
+		ret = errno;
 		/* Tell the parent what happened */
 		if (write(from_child[1], &ret, sizeof(ret)) < 0) {
 			fprintf(stderr, "Writing ptrace status to parent failed: %s", fr_syserror(errno));
@@ -176,10 +174,10 @@ static int fr_debugger_attached(void)
 		exit(0);
 	/* Parent */
 	} else {
-		int8_t ret = -1;
+		int ret = -1;
 
 		/*
-		 *	The child writes a 1 if pattach failed else 0.
+		 *	The child writes errno (reason) if pattach failed else 0.
 		 *
 		 *	This read may be interrupted by pattach,
 		 *	which is why we need the loop.
@@ -189,7 +187,12 @@ static int fr_debugger_attached(void)
 		/* Ret not updated */
 		if (ret < 0) {
 			fr_strerror_printf("Debugger check failed: Error getting status from child: %s",
-			fr_syserror(errno));
+					   fr_syserror(errno));
+		} else if (ret == EPERM) {
+			fr_strerror_printf("Got EPERM attaching to process, may mean process is running under debugger "
+					   "or tracee does not have permission to attach");
+		} else {
+			fr_Strerror_printf("Failed attaching to process: %s", fr_syerror(errno));
 		}
 
 		/* Close the pipes here (if we did it above, it might race with pattach) */
@@ -800,6 +803,7 @@ int fr_fault_setup(char const *cmd, char const *program)
 
 	/* Unsure what the side effects of changing the signal handler mid execution might be */
 	if (!setup) {
+		int ret;
 		/*
 		 *  Setup the default logger
 		 */
@@ -809,14 +813,14 @@ int fr_fault_setup(char const *cmd, char const *program)
 		/*
 		 *  Figure out if we were started under a debugger
 		 */
-		debugger_attached = fr_debugger_attached();
+		ret = fr_debugger_attached();
 
 		/*
 		 *  These signals can't be properly dealt with in the debugger
 		 *  if we set our own signal handlers
 		 */
-		if (debugger_attached == 0) {
-
+		if (ret == 0) {
+			debugger_attached = 0;
 #ifdef SIGABRT
 			if (fr_set_signal(SIGABRT, fr_fault) < 0) return -1;
 
@@ -838,7 +842,9 @@ int fr_fault_setup(char const *cmd, char const *program)
 
 
 		} else {
-			FR_FAULT_LOG("Not registering panic action signal handlers: %s", fr_strerror());
+			debugger_attached = 1;
+
+			FR_FAULT_LOG("Not enabling panic action signal handlers: %s", fr_strerror());
 		}
 #ifdef SIGUSR1
 		if (fr_set_signal(SIGUSR1, fr_fault) < 0) return -1;
