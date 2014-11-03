@@ -49,10 +49,6 @@ RCSIDH(jsonc_missing_h, "$Id$");
 	int json_object_object_get_ex(struct json_object* jso, const char *key, struct json_object **value);
 #endif
 
-#ifndef HAVE_JSON_TOKENER_PARSE_VERBOSE
-	struct json_object* json_tokener_parse_verbose(const char *str, enum json_tokener_error *error);
-#endif
-
 #ifndef HAVE_JSON_TOKENER_ERROR_DESC
 	const char *json_tokener_error_desc(enum json_tokener_error jerr);
 #endif

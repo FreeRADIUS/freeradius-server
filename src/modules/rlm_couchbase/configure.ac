@@ -107,7 +107,6 @@ if test x$with_[]modname != xno; then
 			json_object_get_string_len \
 			json_object_object_get_ex \
 			json_object_new_int64 \
-			json_tokener_parse_verbose \
 			json_tokener_error_desc \
 			json_tokener_get_error
 		)
