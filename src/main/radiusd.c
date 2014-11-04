@@ -100,14 +100,14 @@ int main(int argc, char *argv[])
 	int from_child[2] = {-1, -1};
 
 	/*
-	 *	We probably don't want to free the talloc autofree context
-	 *	directly, so we'll allocate a new context beneath it, and
-	 *	free that before any leak reports.
+	 *  We probably don't want to free the talloc autofree context
+	 *  directly, so we'll allocate a new context beneath it, and
+	 *  free that before any leak reports.
 	 */
 	TALLOC_CTX *autofree = talloc_init("main");
 
 #ifdef OSFC2
-	set_auth_parameters(argc,argv);
+	set_auth_parameters(argc, argv);
 #endif
 
 	if ((progname = strrchr(argv[0], FR_DIR_SEP)) == NULL)
@@ -264,25 +264,21 @@ int main(int argc, char *argv[])
 	}
 
 	/*
-	 *	Mismatch between the binary and the libraries it depends on
+	 *  Mismatch between the binary and the libraries it depends on.
 	 */
 	if (fr_check_lib_magic(RADIUSD_MAGIC_NUMBER) < 0) {
 		fr_perror("radiusd");
 		exit(EXIT_FAILURE);
 	}
 
-	if (rad_check_lib_magic(RADIUSD_MAGIC_NUMBER) < 0) {
-		exit(EXIT_FAILURE);
-	}
+	if (rad_check_lib_magic(RADIUSD_MAGIC_NUMBER) < 0) exit(EXIT_FAILURE);
 
 	/*
-	 *	Mismatch between build time OpenSSL and linked SSL,
-	 *	better to die here than segfault later.
+	 *  Mismatch between build time OpenSSL and linked SSL, better to die
+	 *  here than segfault later.
 	 */
 #ifdef HAVE_OPENSSL_CRYPTO_H
-	if (ssl_check_consistency() < 0) {
-		exit(EXIT_FAILURE);
-	}
+	if (ssl_check_consistency() < 0) exit(EXIT_FAILURE);
 #endif
 
 	if (flag && (flag != 0x03)) {
@@ -291,11 +287,10 @@ int main(int argc, char *argv[])
 	}
 
 	/*
-	 *	According to the talloc peeps, no two threads
-	 *	may modify any part of a ctx tree with a common
-	 *	root without synchronisation.
+	 *  According to the talloc peeps, no two threads may modify any part of
+	 *  a ctx tree with a common root without synchronisation.
 	 *
-	 *	So we can't run with a null context and threads.
+	 *  So we can't run with a null context and threads.
 	 */
 	if (main_config.memory_report) {
 		if (spawn_flag) {
@@ -308,8 +303,7 @@ int main(int argc, char *argv[])
 	}
 
 	/*
-	 *	Better here, so it doesn't matter whether we get passed
-	 *	-xv or -vx.
+	 *  Better here, so it doesn't matter whether we get passed -xv or -vx.
 	 */
 	if (display_version) {
 		/* Don't print timestamps */
@@ -325,53 +319,50 @@ int main(int argc, char *argv[])
 	if (debug_flag) version();
 
 	/*
-	 *  Under linux CAP_SYS_PTRACE is usually only available before
-	 *  setuid/setguid, so we need to check whether we can attach before
-	 *  calling those functions (in main_config_init()).
+	 *  Under linux CAP_SYS_PTRACE is usually only available before setuid/setguid,
+	 *  so we need to check whether we can attach before calling those functions
+	 *  (in main_config_init()).
 	 */
 	fr_store_debug_state();
 
 	/*
-	 *  Initialising OpenSSL once, here, is safer than having individual
-	 *  modules do it.
+	 *  Initialising OpenSSL once, here, is safer than having individual modules do it.
 	 */
 #ifdef HAVE_OPENSSL_CRYPTO_H
 	tls_global_init();
 #endif
 
 	/*
-	 *  Initialize any event loops just enough so module instantiations
-	 *  can add fd/event to them, but do not start them yet.
+	 *  Initialize any event loops just enough so module instantiations can
+	 *  add fd/event to them, but do not start them yet.
 	 */
-	if (!radius_event_init(autofree)) {
-		exit(EXIT_FAILURE);
-	}
+	if (!radius_event_init(autofree)) exit(EXIT_FAILURE);
 
-	/*  Read the configuration files, BEFORE doing anything else.  */
-	if (main_config_init() < 0) {
-		exit(EXIT_FAILURE);
-	}
+	/*
+	 *  Read the configuration files, BEFORE doing anything else.
+	 */
+	if (main_config_init() < 0) exit(EXIT_FAILURE);
 
-	/*  This is very useful in figuring out why the panic_action didn't fire */
-	INFO("Debug state: %s", fr_debug_state_to_msg(fr_debug_state));
+	/*
+	 *  This is very useful in figuring out why the panic_action didn't fire.
+	 */
+	INFO("%s", fr_debug_state_to_msg(fr_debug_state));
 
-	/*  Check for vulnerabilities in the version of libssl were linked against */
-#ifdef HAVE_OPENSSL_CRYPTO_H
-#ifdef ENABLE_OPENSSL_VERSION_CHECK
-	if (tls_global_version_check(main_config.allow_vulnerable_openssl) < 0) {
-		exit(EXIT_FAILURE);
-	}
-#endif
+	/*
+	 *  Check for vulnerabilities in the version of libssl were linked against.
+	 */
+#if defined(HAVE_OPENSSL_CRYPTO_H) && defined(ENABLE_OPENSSL_VERSION_CHECK)
+	if (tls_global_version_check(main_config.allow_vulnerable_openssl) < 0) exit(EXIT_FAILURE);
 #endif
 
 	/*
-	 *  Load the modules
+	 *   Load the modules
 	 */
-	if (modules_init(main_config.config) < 0) {
-		exit(EXIT_FAILURE);
-	}
+	if (modules_init(main_config.config) < 0) exit(EXIT_FAILURE);
 
-	/* Set the panic action (if required) */
+	/*
+	 *  Set the panic action (if required)
+	 */
 	if (main_config.panic_action &&
 #ifndef NDEBUG
 	    !getenv("PANIC_ACTION") &&
@@ -382,8 +373,6 @@ int main(int argc, char *argv[])
 	}
 
 #ifndef __MINGW32__
-
-
 	/*
 	 *  Disconnect from session
 	 */
@@ -432,8 +421,8 @@ int main(int argc, char *argv[])
 			close(from_child[1]);
 
 			/*
-			 *	The child writes a 0x01 byte on
-			 *	success, and closes the pipe on error.
+			 *  The child writes a 0x01 byte on success, and closes
+			 *  the pipe on error.
 			 */
 			if ((read(from_child[0], &ret, 1) < 0)) {
 				ret = 0;
@@ -460,13 +449,13 @@ int main(int argc, char *argv[])
 #endif
 
 	/*
-	 *	Ensure that we're using the CORRECT pid after forking,
-	 *	NOT the one we started with.
+	 *  Ensure that we're using the CORRECT pid after forking, NOT the one
+	 *  we started with.
 	 */
 	radius_pid = getpid();
 
 	/*
-	 *	Redirect stderr/stdout as appropriate.
+	 *  Redirect stderr/stdout as appropriate.
 	 */
 	if (radlog_init(&default_log, main_config.daemonize) < 0) {
 		ERROR("%s", fr_strerror());
@@ -474,14 +463,14 @@ int main(int argc, char *argv[])
 	}
 
 	/*
-	 *	Start the event loop(s) and threads.
+	 *  Start the event loop(s) and threads.
 	 */
 	radius_event_start(main_config.config, spawn_flag);
 
 	/*
-	 *	Now that we've set everything up, we can install the signal
-	 *	handlers.  Before this, if we get any signal, we don't know
-	 *	what to do, so we might as well do the default, and die.
+	 *  Now that we've set everything up, we can install the signal
+	 *  handlers.  Before this, if we get any signal, we don't know
+	 *  what to do, so we might as well do the default, and die.
 	 */
 #ifdef SIGPIPE
 	signal(SIGPIPE, SIG_IGN);
@@ -494,9 +483,9 @@ int main(int argc, char *argv[])
 	}
 
 	/*
-	 *	If we're debugging, then a CTRL-C will cause the
-	 *	server to die immediately.  Use SIGTERM to shut down
-	 *	the server cleanly in that case.
+	 *  If we're debugging, then a CTRL-C will cause the server to die
+	 *  immediately.  Use SIGTERM to shut down the server cleanly in
+	 *  that case.
 	 */
 	if (main_config.debug_memory || (debug_flag == 0)) {
 		if ((fr_set_signal(SIGINT, sig_fatal) < 0)
@@ -510,15 +499,13 @@ int main(int argc, char *argv[])
 	}
 
 	/*
-	 *	Everything seems to have loaded OK, exit gracefully.
+	 *  Everything seems to have loaded OK, exit gracefully.
 	 */
 	if (check_config) {
 		DEBUG("Configuration appears to be OK");
 
 		/* for -C -m|-M */
-		if (main_config.debug_memory) {
-			goto cleanup;
-		}
+		if (main_config.debug_memory) goto cleanup;
 
 		exit(EXIT_SUCCESS);
 	}
@@ -528,13 +515,12 @@ int main(int argc, char *argv[])
 #endif
 
 	/*
-	 *	Write the PID always if we're running as a daemon.
+	 *  Write the PID always if we're running as a daemon.
 	 */
 	if (main_config.daemonize) write_pid = true;
 
 	/*
-	 *	Write the PID after we've forked, so that we write the
-	 *	correct one.
+	 *  Write the PID after we've forked, so that we write the correct one.
 	 */
 	if (write_pid) {
 		FILE *fp;
@@ -542,14 +528,13 @@ int main(int argc, char *argv[])
 		fp = fopen(main_config.pid_file, "w");
 		if (fp != NULL) {
 			/*
-			 *	FIXME: What about following symlinks,
-			 *	and having it over-write a normal file?
+			 *  @fixme What about following symlinks,
+			 *  and having it over-write a normal file?
 			 */
 			fprintf(fp, "%d\n", (int) radius_pid);
 			fclose(fp);
 		} else {
-			ERROR("Failed creating PID file %s: %s\n",
-			       main_config.pid_file, fr_syserror(errno));
+			ERROR("Failed creating PID file %s: %s", main_config.pid_file, fr_syserror(errno));
 			exit(EXIT_FAILURE);
 		}
 	}
@@ -557,11 +542,10 @@ int main(int argc, char *argv[])
 	exec_trigger(NULL, NULL, "server.start", false);
 
 	/*
-	 *	Inform the parent (who should still be waiting) that
-	 *	the rest of initialisation went OK, and that it should
-	 *	exit with a 0 status.  If we don't get this far, then
-	 *	we just close the pipe on exit, and the parent gets a
-	 *	read failure.
+	 *  Inform the parent (who should still be waiting) that the rest of
+	 *  initialisation went OK, and that it should exit with a 0 status.
+	 *  If we don't get this far, then we just close the pipe on exit, and the
+	 *  parent gets a read failure.
 	 */
 	if (main_config.daemonize) {
 		if (write(from_child[1], "\001", 1) < 0) {
@@ -572,14 +556,17 @@ int main(int argc, char *argv[])
 	}
 
 	/*
-	 *	Clear the libfreeradius error buffer
+	 *  Clear the libfreeradius error buffer.
 	 */
 	fr_strerror();
 
+	/*
+	 *  Initialise the state rbtree (used to link multiple rounds of challenges).
+	 */
 	fr_state_init();
 
 	/*
-	 *	Process requests until HUP or exit.
+	 *  Process requests until HUP or exit.
 	 */
 	while ((status = radius_event_process()) == 0x80) {
 #ifdef WITH_STATS
@@ -595,43 +582,36 @@ int main(int argc, char *argv[])
 	}
 
 	/*
-	 *	Ignore the TERM signal: we're
-	 *	about to die.
+	 *  Ignore the TERM signal: we're about to die.
 	 */
 	signal(SIGTERM, SIG_IGN);
 
 	/*
-	 * Fire signal and stop triggers after ignoring SIGTERM, so handlers are
-	 * not killed with the rest of the process group, below.
+	 *   Fire signal and stop triggers after ignoring SIGTERM, so handlers are
+	 *   not killed with the rest of the process group, below.
 	 */
-	if (status == 2)
-		exec_trigger(NULL, NULL, "server.signal.term", true);
+	if (status == 2) exec_trigger(NULL, NULL, "server.signal.term", true);
 	exec_trigger(NULL, NULL, "server.stop", false);
 
 	/*
-	 *	Send a TERM signal to all
-	 *	associated processes
-	 *	(including us, which gets
-	 *	ignored.)
+	 *  Send a TERM signal to all associated processes
+	 *  (including us, which gets ignored.)
 	 */
 #ifndef __MINGW32__
 	if (spawn_flag) kill(-radius_pid, SIGTERM);
 #endif
 
 	/*
-	 *	We're exiting, so we can delete the PID
-	 *	file.  (If it doesn't exist, we can ignore
-	 *	the error returned by unlink)
+	 *  We're exiting, so we can delete the PID file.
+	 *  (If it doesn't exist, we can ignore the error returned by unlink)
 	 */
-	if (main_config.daemonize) {
-		unlink(main_config.pid_file);
-	}
+	if (main_config.daemonize) unlink(main_config.pid_file);
 
 	radius_event_free();
 
 cleanup:
 	/*
-	 *	Detach any modules.
+	 *  Detach any modules.
 	 */
 	modules_free();
 
@@ -640,7 +620,7 @@ cleanup:
 	fr_state_delete();
 
 	/*
-	 *	Free the configuration items.
+	 *  Free the configuration items.
 	 */
 	main_config_free();
 
@@ -652,7 +632,7 @@ cleanup:
 	tls_global_cleanup();
 #endif
 	/*
-	 *	So we don't see autofreed memory in the talloc report
+	 *  So we don't see autofreed memory in the talloc report
 	 */
 	talloc_free(autofree);
 
