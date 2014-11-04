@@ -353,7 +353,7 @@ int main(int argc, char *argv[])
 	}
 
 	/*  This is very useful in figuring out why the panic_action didn't fire */
-	DEBUG("radiusd: #### %s ####", fr_debug_state_to_msg(fr_debug_state));
+	INFO("Debug state: %s", fr_debug_state_to_msg(fr_debug_state));
 
 	/*  Check for vulnerabilities in the version of libssl were linked against */
 #ifdef HAVE_OPENSSL_CRYPTO_H
