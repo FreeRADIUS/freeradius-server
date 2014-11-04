@@ -29,6 +29,7 @@ RCSID("$Id$")
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/process.h>
 #include <freeradius-devel/modules.h>
+#include <freeradius-devel/state.h>
 
 #include <freeradius-devel/rad_assert.h>
 
@@ -3942,6 +3943,12 @@ static void request_coa_originate(REQUEST *request)
 	coa->packet->timestamp = coa->proxy->timestamp; /* for max_request_time */
 	coa->delay = 0;		/* need to calculate a new delay */
 
+	/*
+	 *	If requested, put a State attribute into the packet,
+	 *	and cache the VPS.
+	 */
+	fr_state_put_vps(coa, NULL, coa->packet);
+
 	coa->process = coa_wait_for_reply;
 #ifdef DEBUG_STATE_MACHINE
 	if (debug_flag) printf("(%u) ********\tSTATE %s C-%s -> C-%s\t********\n", request->number, __FUNCTION__,
@@ -4102,6 +4109,16 @@ STATE_MACHINE_DECL(coa_wait_for_reply)
 
 	case FR_ACTION_PROXY_REPLY:
 		rad_assert(request->parent == NULL);
+
+		/*
+		 *	Do NOT get the session-state VPs.  The request
+		 *	already contains the packet and the reply, so
+		 *	there's no more state we need to maintain.
+		 *
+		 *	The state for "originate CoA" is for the next
+		 *	Access-Request, not for the CoA ACK/BAK
+		 */
+
 		request_queue_or_run(request, coa_running);
 		break;
 
