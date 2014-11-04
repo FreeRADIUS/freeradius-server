@@ -1149,7 +1149,7 @@ int main(int argc, char **argv)
 #ifdef WITH_TCP
 		"P:"
 #endif
-			   )) != EOF) switch(c) {
+			   )) != EOF) switch (c) {
 		case '4':
 			force_af = AF_INET;
 			break;

@@ -340,7 +340,7 @@ static sql_rcode_t sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *
 		 *	Use the retrieved length of dname to allocate an output buffer, and then define the output
 		 *	variable (but only for char/string type columns).
 		 */
-		switch(dtype) {
+		switch (dtype) {
 #ifdef SQLT_AFC
 		case SQLT_AFC:	/* ansii fixed char */
 #endif

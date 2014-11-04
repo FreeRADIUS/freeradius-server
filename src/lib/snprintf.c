@@ -465,7 +465,7 @@ struct DATA * p;
 	p->pad = ' ';
 
 	for(;s && *s ;s++) {
-		switch(*s) {
+		switch (*s) {
 			case ' ': p->space = FOUND; break;
 			case '#': p->square = FOUND; break;
 			case '*': if (p->width == NOT_FOUND)

@@ -478,7 +478,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	res = ub_ctx_debuglevel(inst->ub, log_level);
 	if (res) goto error;
 
-	switch(default_log.dst) {
+	switch (default_log.dst) {
 	case L_DST_STDOUT:
 		if (!debug_flag) {
 			log_dst = L_DST_NULL;

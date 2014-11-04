@@ -411,7 +411,7 @@ static void eap_sim_stateenter(eap_handler_t *handler,
 			       eap_sim_state_t *ess,
 			       enum eapsim_serverstates newstate)
 {
-	switch(newstate) {
+	switch (newstate) {
 	/*
 	 * 	Send the EAP-SIM Start message, listing the versions that we support.
 	 */
@@ -660,7 +660,7 @@ static int mod_authenticate(UNUSED void *arg, eap_handler_t *handler)
 		break;
 
 	case EAPSIM_SERVER_CHALLENGE:
-		switch(subtype) {
+		switch (subtype) {
 		/*
 		 *	Pretty much anything else here is illegal, so we will retransmit the request.
 		 */

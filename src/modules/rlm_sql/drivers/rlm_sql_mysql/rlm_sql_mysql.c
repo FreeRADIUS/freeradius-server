@@ -216,7 +216,7 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
  *************************************************************************/
 static sql_rcode_t sql_check_error(int error)
 {
-	switch(error) {
+	switch (error) {
 	case 0:
 		return RLM_SQL_OK;
 

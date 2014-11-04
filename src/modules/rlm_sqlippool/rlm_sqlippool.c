@@ -238,7 +238,7 @@ static int sqlippool_expand(char * out, int outlen, char const * fmt,
 		}
 
 		if (c == '%') {
-			switch(*p) {
+			switch (*p) {
 			case 'P': /* pool name */
 				strlcpy(q, data->pool_name, freespace);
 				q += strlen(q);

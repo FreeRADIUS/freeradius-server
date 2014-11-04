@@ -229,7 +229,7 @@ int main(int argc, char **argv)
 
 	talloc_set_log_stderr();
 
-	while((c = getopt(argc, argv, "d:fF:nN:sSipP:crRu:U:Z")) != EOF) switch(c) {
+	while((c = getopt(argc, argv, "d:fF:nN:sSipP:crRu:U:Z")) != EOF) switch (c) {
 		case 'd':
 			raddb_dir = optarg;
 			break;

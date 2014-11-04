@@ -827,7 +827,7 @@ int main(int argc, char *argv[])
 	}
 #endif
 
-	while ((c = getopt(argc, argv, "d:D:xM")) != EOF) switch(c) {
+	while ((c = getopt(argc, argv, "d:D:xM")) != EOF) switch (c) {
 		case 'd':
 			radius_dir = optarg;
 			break;

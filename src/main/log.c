@@ -433,7 +433,7 @@ int vradlog(log_type_t type, char const *fmt, va_list ap)
 
 #ifdef HAVE_SYSLOG_H
 	case L_DST_SYSLOG:
-		switch(type) {
+		switch (type) {
 		case L_DBG:
 		case L_WARN:
 		case L_DBG_WARN:

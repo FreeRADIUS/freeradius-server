@@ -407,7 +407,7 @@ static int int_ssl_check(REQUEST *request, SSL *s, int ret, char const *text)
 	}
 	e = SSL_get_error(s, ret);
 
-	switch(e) {
+	switch (e) {
 		/*
 		 *	These seem to be harmless and already "dealt
 		 *	with" by our non-blocking environment. NB:

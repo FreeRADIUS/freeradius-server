@@ -692,7 +692,7 @@ ssize_t value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 		src = buffer;
 	}
 
-	switch(*src_type) {
+	switch (*src_type) {
 	case PW_TYPE_BYTE:
 	{
 		char *p;

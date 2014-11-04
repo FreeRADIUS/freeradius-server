@@ -1963,7 +1963,7 @@ static void pairtypeset(VALUE_PAIR *vp)
 {
 	if (!vp->data.ptr) return;
 
-	switch(vp->da->type) {
+	switch (vp->da->type) {
 	case PW_TYPE_OCTETS:
 	case PW_TYPE_TLV:
 		talloc_set_type(vp->data.ptr, uint8_t);

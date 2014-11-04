@@ -829,7 +829,7 @@ static ssize_t vp2data_any(RADIUS_PACKET const *packet,
 	 */
 	len = vp->length;
 
-	switch(vp->da->type) {
+	switch (vp->da->type) {
 	case PW_TYPE_STRING:
 	case PW_TYPE_OCTETS:
 	case PW_TYPE_TLV:
@@ -3898,7 +3898,7 @@ ssize_t rad_vp2data(uint8_t const **out, VALUE_PAIR const *vp)
 
 	VERIFY_VP(vp);
 
-	switch(vp->da->type) {
+	switch (vp->da->type) {
 	case PW_TYPE_STRING:
 	case PW_TYPE_OCTETS:
 	case PW_TYPE_TLV:

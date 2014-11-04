@@ -501,7 +501,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 	 *	We therefore send an EAP Identity request.
 	 */
 	status = eap_start(inst, request);
-	switch(status) {
+	switch (status) {
 	case EAP_NOOP:
 		return RLM_MODULE_NOOP;
 	case EAP_FAIL:

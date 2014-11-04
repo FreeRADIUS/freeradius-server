@@ -34,7 +34,7 @@
 void vxlogf(int iklevel, char const * fmt,va_list ap)
 {
     int level;
-    switch(iklevel) {
+    switch (iklevel) {
 	case I2L_DBG:
 	    level=L_DBG;
 	    break;
