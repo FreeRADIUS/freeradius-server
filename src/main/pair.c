@@ -45,7 +45,7 @@ const FR_NAME_NUMBER tmpl_types[] = {
 };
 
 struct cmp {
-	DICT_ATTR const *da;
+	DICT_ATTR const *attribute;
 	DICT_ATTR const *from;
 	bool	first_only;
 	void *instance; /* module instance */
@@ -80,66 +80,61 @@ int radius_compare_vps(UNUSED REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *v
 	if (check->op == T_OP_CMP_FALSE) return 1;
 
 #ifdef HAVE_REGEX
-	if (check->op == T_OP_REG_EQ) {
+	if ((check->op == T_OP_REG_EQ) || (check->op == T_OP_REG_NE)) {
 		int compare;
 		regex_t reg;
-		char buffer[1024];
-		char const *value = &buffer[0];
 		regmatch_t rxmatch[REQUEST_MAX_REGEX + 1];
 
-		if (vp->da->type == PW_TYPE_STRING) {
-			value = vp->vp_strvalue;
+		char *expr = NULL, *value = NULL;
+		char const *expr_p, *value_p;
+
+		if (check->da->type == PW_TYPE_STRING) {
+			expr_p = check->vp_strvalue;
 		} else {
-			vp_prints_value(buffer, sizeof(buffer), vp, '\0');
+			expr_p = expr = vp_aprints_value(check, check, '\0');
+		}
+
+		if (vp->da->type == PW_TYPE_STRING) {
+			value_p = vp->vp_strvalue;
+		} else {
+			value_p = value = vp_aprints_value(vp, vp, '\0');
+		}
+
+		if (!expr_p || !value_p) {
+			REDEBUG("Error stringifying operand for regular expression");
+
+		regex_error:
+			talloc_free(expr);
+			talloc_free(value);
+			return -2;
 		}
 
 		/*
 		 *	Include substring matches.
 		 */
-		compare = regcomp(&reg, check->vp_strvalue, REG_EXTENDED);
+		compare = regcomp(&reg, expr_p, REG_EXTENDED);
 		if (compare != 0) {
+			char buffer[256];
 			regerror(compare, &reg, buffer, sizeof(buffer));
 
-			RDEBUG("Invalid regular expression %s: %s", check->vp_strvalue, buffer);
-			return -2;
+			REDEBUG("Invalid regular expression %s: %s", expr_p, buffer);
+			goto regex_error;
 		}
 
 		memset(&rxmatch, 0, sizeof(rxmatch));	/* regexec does not seem to initialise unused elements */
 		compare = regexec(&reg, value, REQUEST_MAX_REGEX + 1, rxmatch, 0);
 		regfree(&reg);
-		rad_regcapture(request, compare, value, rxmatch);
 
-		ret = (compare == 0) ? 0 : -1;
-		goto finish;
-	}
-
-	if (check->op == T_OP_REG_NE) {
-		int compare;
-		regex_t reg;
-		char buffer[1024];
-		char const *value = &buffer[0];
-		regmatch_t rxmatch[REQUEST_MAX_REGEX + 1];
-
-		if (vp->da->type == PW_TYPE_STRING) {
-			value = vp->vp_strvalue;
+		if (check->op == T_OP_REG_EQ) {
+			rad_regcapture(request, compare, value, rxmatch);
+			ret = (compare == 0) ? 0 : -1;
 		} else {
-			vp_prints_value(buffer, sizeof(buffer), vp, '\0');
+			ret = (compare != 0) ? 0 : -1;
 		}
 
-		/*
-		 *	Include substring matches.
-		 */
-		compare = regcomp(&reg, check->vp_strvalue, REG_EXTENDED);
-		if (compare != 0) {
-			regerror(compare, &reg, buffer, sizeof(buffer));
-
-			RDEBUG("Invalid regular expression %s: %s", check->vp_strvalue, buffer);
-			return -2;
-		}
-		compare = regexec(&reg, value,  REQUEST_MAX_REGEX + 1, rxmatch, 0);
-		regfree(&reg);
-
-		ret = (compare != 0) ? 0 : -1;
+		talloc_free(expr);
+		talloc_free(value);
+		goto finish;
 	}
 #endif
 
@@ -165,7 +160,7 @@ int radius_compare_vps(UNUSED REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *v
 	/*
 	 *	Not a regular expression, compare the types.
 	 */
-	switch(check->da->type) {
+	switch (check->da->type) {
 #ifdef WITH_ASCEND_BINARY
 		/*
 		 *	Ascend binary attributes can be treated
@@ -247,13 +242,9 @@ int radius_compare_vps(UNUSED REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *v
 			break;
 	}
 
-	finish:
-	if (ret > 0) {
-		return 1;
-	}
-	if (ret < 0) {
-		return -1;
-	}
+finish:
+	if (ret > 0) return 1;
+	if (ret < 0) return -1;
 	return 0;
 }
 
@@ -289,7 +280,7 @@ int radius_callback_compare(REQUEST *request, VALUE_PAIR *req,
 	 *	FIXME: use new RB-Tree code.
 	 */
 	for (c = cmp; c; c = c->next) {
-		if (c->da == check->da) {
+		if (c->attribute == check->da) {
 			return (c->compare)(c->instance, request, req, check,
 				check_pairs, reply_pairs);
 		}
@@ -303,15 +294,16 @@ int radius_callback_compare(REQUEST *request, VALUE_PAIR *req,
 
 /** Find a comparison function for two attributes.
  *
- * @param da to find comparison function for.
+ * @todo this should probably take DA's.
+ * @param attribute to find comparison function for.
  * @return true if a comparison function was found, else false.
  */
-int radius_find_compare(DICT_ATTR const *da)
+int radius_find_compare(DICT_ATTR const *attribute)
 {
 	struct cmp *c;
 
 	for (c = cmp; c; c = c->next) {
-		if (c->da == da) {
+		if (c->attribute == attribute) {
 			return true;
 		}
 	}
@@ -322,28 +314,28 @@ int radius_find_compare(DICT_ATTR const *da)
 
 /** See what attribute we want to compare with.
  *
- * @param da to find comparison function for.
+ * @param attribute to find comparison function for.
  * @param from reference to compare with
  * @return true if the comparison callback require a matching attribue in the request, else false.
  */
-static bool otherattr(DICT_ATTR const *da, DICT_ATTR const **from)
+static bool otherattr(DICT_ATTR const *attribute, DICT_ATTR const **from)
 {
 	struct cmp *c;
 
 	for (c = cmp; c; c = c->next) {
-		if (c->da == da) {
+		if (c->attribute == attribute) {
 			*from = c->from;
 			return c->first_only;
 		}
 	}
 
-	*from = da;
+	*from = attribute;
 	return false;
 }
 
 /** Register a function as compare function.
  *
- * @param da to register comparison function for.
+ * @param attribute to register comparison function for.
  * @param from the attribute we want to compare with. Normally this is the same as attribute.
  *  If null call the comparison function on every attributes in the request if first_only is false
  * @param first_only will decide if we loop over the request attributes or stop on the first one
@@ -351,19 +343,19 @@ static bool otherattr(DICT_ATTR const *da, DICT_ATTR const **from)
  * @param instance argument to comparison function
  * @return 0
  */
-int paircompare_register(DICT_ATTR const *da, DICT_ATTR const *from,
+int paircompare_register(DICT_ATTR const *attribute, DICT_ATTR const *from,
 			 bool first_only, RAD_COMPARE_FUNC func, void *instance)
 {
 	struct cmp *c;
 
-	rad_assert(da != NULL);
+	rad_assert(attribute != NULL);
 
-	paircompare_unregister(da, func);
+	paircompare_unregister(attribute, func);
 
 	c = rad_malloc(sizeof(struct cmp));
 
 	c->compare   = func;
-	c->da = da;
+	c->attribute = attribute;
 	c->from = from;
 	c->first_only = first_only;
 	c->instance  = instance;
@@ -375,16 +367,16 @@ int paircompare_register(DICT_ATTR const *da, DICT_ATTR const *from,
 
 /** Unregister comparison function for an attribute
  *
- * @param da dict reference to unregister for.
+ * @param attribute dict reference to unregister for.
  * @param func comparison function to remove.
  */
-void paircompare_unregister(DICT_ATTR const *da, RAD_COMPARE_FUNC func)
+void paircompare_unregister(DICT_ATTR const *attribute, RAD_COMPARE_FUNC func)
 {
 	struct cmp *c, *last;
 
 	last = NULL;
 	for (c = cmp; c; c = c->next) {
-		if (c->da == da && c->compare == func) {
+		if (c->attribute == attribute && c->compare == func) {
 			break;
 		}
 		last = c;
