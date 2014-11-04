@@ -85,7 +85,7 @@ FreeRADIUS 3.0.5 Mon 15 Sep 2014 15:30:00 EDT urgency=medium
 	* Build with newer versions of libmysqlclient.
 	* make the %{escape:} and %{unescape:} xlat functions UTF8
 	  safe.
-	* Don't escape UTF8 chars in MySQL query strings.
+	* Don't escape UTF8 chars in SQL query strings.
 
 FreeRADIUS 3.0.4 Wed 10 Sep 2014 12:00:00 EDT urgency=medium
 	Feature improvements
