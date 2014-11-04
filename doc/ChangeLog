@@ -1,6 +1,7 @@
 FreeRADIUS 2.2.6 Monday 13 Jun 2014 09:05:00 EDT, urgency=medium
 	Feature improvements
-	* None.
+	* When supported by OpenSSL, allow TLS 1.1 and TLS 1.2
+	  in EAP methods.
 
 	Bug fixes
 	* Fix redundant-load-balance blocks to try other modules in
