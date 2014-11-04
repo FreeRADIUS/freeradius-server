@@ -429,7 +429,7 @@ static rlm_rcode_t file_common(rlm_files_t *inst, REQUEST *request, char const *
 			}
 		}
 
-		if (paircompare(request, request_packet->vps, pl->check, &reply_packet->vps) == 0) {
+		if (paircompare(request, request_packet->vps, check_tmp, &reply_packet->vps) == 0) {
 			RDEBUG2("%s: Matched entry %s at line %d", filename, match, pl->lineno);
 			found = true;
 
