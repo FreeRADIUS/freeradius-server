@@ -31,11 +31,11 @@
  */
 VALUE_PAIR *_fr_cursor_init(vp_cursor_t *cursor, VALUE_PAIR const * const *node)
 {
-	memset(cursor, 0, sizeof(*cursor));
-
 	if (!node || !cursor) {
 		return NULL;
 	}
+
+	memset(cursor, 0, sizeof(*cursor));
 
 	/*
 	 *  Useful check to see if uninitialised memory is pointed
