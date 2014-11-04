@@ -80,58 +80,61 @@ int radius_compare_vps(UNUSED REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *v
 	if (check->op == T_OP_CMP_FALSE) return 1;
 
 #ifdef HAVE_REGEX
-	if (check->op == T_OP_REG_EQ) {
+	if ((check->op == T_OP_REG_EQ) || (check->op == T_OP_REG_NE)) {
 		int compare;
 		regex_t reg;
-		char value[1024];
 		regmatch_t rxmatch[REQUEST_MAX_REGEX + 1];
 
-		vp_prints_value(value, sizeof(value), vp, -1);
+		char *expr = NULL, *value = NULL;
+		char const *expr_p, *value_p;
+
+		if (check->da->type == PW_TYPE_STRING) {
+			expr_p = check->vp_strvalue;
+		} else {
+			expr_p = expr = vp_aprints_value(check, check, '\0');
+		}
+
+		if (vp->da->type == PW_TYPE_STRING) {
+			value_p = vp->vp_strvalue;
+		} else {
+			value_p = value = vp_aprints_value(vp, vp, '\0');
+		}
+
+		if (!expr_p || !value_p) {
+			REDEBUG("Error stringifying operand for regular expression");
+
+		regex_error:
+			talloc_free(expr);
+			talloc_free(value);
+			return -2;
+		}
 
 		/*
 		 *	Include substring matches.
 		 */
-		compare = regcomp(&reg, check->vp_strvalue, REG_EXTENDED);
+		compare = regcomp(&reg, expr_p, REG_EXTENDED);
 		if (compare != 0) {
 			char buffer[256];
 			regerror(compare, &reg, buffer, sizeof(buffer));
 
-			RDEBUG("Invalid regular expression %s: %s", check->vp_strvalue, buffer);
-			return -2;
+			REDEBUG("Invalid regular expression %s: %s", expr_p, buffer);
+			goto regex_error;
 		}
 
 		memset(&rxmatch, 0, sizeof(rxmatch));	/* regexec does not seem to initialise unused elements */
 		compare = regexec(&reg, value, REQUEST_MAX_REGEX + 1, rxmatch, 0);
 		regfree(&reg);
-		rad_regcapture(request, compare, value, rxmatch);
 
-		ret = (compare == 0) ? 0 : -1;
-		goto finish;
-	}
-
-	if (check->op == T_OP_REG_NE) {
-		int compare;
-		regex_t reg;
-		char value[1024];
-		regmatch_t rxmatch[REQUEST_MAX_REGEX + 1];
-
-		vp_prints_value(value, sizeof(value), vp, -1);
-
-		/*
-		 *	Include substring matches.
-		 */
-		compare = regcomp(&reg, check->vp_strvalue, REG_EXTENDED);
-		if (compare != 0) {
-			char buffer[256];
-			regerror(compare, &reg, buffer, sizeof(buffer));
-
-			RDEBUG("Invalid regular expression %s: %s", check->vp_strvalue, buffer);
-			return -2;
+		if (check->op == T_OP_REG_EQ) {
+			rad_regcapture(request, compare, value, rxmatch);
+			ret = (compare == 0) ? 0 : -1;
+		} else {
+			ret = (compare != 0) ? 0 : -1;
 		}
-		compare = regexec(&reg, value,  REQUEST_MAX_REGEX + 1, rxmatch, 0);
-		regfree(&reg);
 
-		ret = (compare != 0) ? 0 : -1;
+		talloc_free(expr);
+		talloc_free(value);
+		goto finish;
 	}
 #endif
 
@@ -157,7 +160,7 @@ int radius_compare_vps(UNUSED REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *v
 	/*
 	 *	Not a regular expression, compare the types.
 	 */
-	switch(check->da->type) {
+	switch (check->da->type) {
 #ifdef WITH_ASCEND_BINARY
 		/*
 		 *	Ascend binary attributes can be treated
@@ -239,13 +242,9 @@ int radius_compare_vps(UNUSED REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *v
 			break;
 	}
 
-	finish:
-	if (ret > 0) {
-		return 1;
-	}
-	if (ret < 0) {
-		return -1;
-	}
+finish:
+	if (ret > 0) return 1;
+	if (ret < 0) return -1;
 	return 0;
 }
 
