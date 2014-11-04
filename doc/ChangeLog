@@ -18,6 +18,11 @@ FreeRADIUS 3.0.5 Mon 15 Sep 2014 15:30:00 EDT urgency=medium
 	  detail file.
 	* Allow LDAP to specify arbitrary attributes for dynamic
 	  clients.
+	* Convert all unused attributes in the control: list to config
+	  pairs in dynamic clients. This allows arbitrary client
+	  attributes to be set for dynamic clients too.
+	* rlm_couchbase now supports bulk loading of clients on startup
+	  in a similar way to rlm_ldap. Contributed by Aaron Hurt.
 	* Allow one level of backslashes (finally).  See radiusd.conf,
 	  "correct_escapes" setting.
 	* Rename dictionary.redback to dictionary.ericsson.ab
