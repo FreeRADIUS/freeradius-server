@@ -96,9 +96,9 @@ void couchbase_get_callback(lcb_t instance, const void *cookie, lcb_error_t erro
 			/* debug */
 			DEBUG("rlm_couchbase: (get_callback) got %zu bytes", nbytes);
 			/* build json object */
-			c->jobj = json_tokener_parse_verbose(bytes, &c->jerr);
+			c->jobj = json_tokener_parse_ex(c->jtok, bytes, nbytes);
 			/* switch on current error status */
-			switch (c->jerr) {
+			switch ((c->jerr = json_tokener_get_error(c->jtok))) {
 			case json_tokener_continue:
 				/* do nothing */
 				break;
@@ -312,9 +312,12 @@ lcb_error_t couchbase_set_key(lcb_t instance, const char *key, const char *docum
  */
 lcb_error_t couchbase_get_key(lcb_t instance, const void *cookie, const char *key)
 {
-	lcb_error_t error;                  /* couchbase command return */
-	lcb_get_cmd_t cmd;                  /* get command struct */
-	const lcb_get_cmd_t *commands[1];   /* get commands array */
+	cookie_u cu;                         /* union of const and non const pointers */
+	cu.cdata = cookie;                   /* set const union member to cookie passed from couchbase */
+	cookie_t *c = (cookie_t *) cu.data;  /* set our cookie struct using non-const member */
+	lcb_error_t error;                   /* couchbase command return */
+	lcb_get_cmd_t cmd;                   /* get command struct */
+	const lcb_get_cmd_t *commands[1];    /* get commands array */
 
 	/* init commands */
 	commands[0] = &cmd;
@@ -324,11 +327,17 @@ lcb_error_t couchbase_get_key(lcb_t instance, const void *cookie, const char *ke
 	cmd.v.v0.key = key;
 	cmd.v.v0.nkey = strlen(cmd.v.v0.key);
 
+	/* allocate token */
+	c->jtok = json_tokener_new();
+
 	/* get document */
-	if ((error = lcb_get(instance, cookie, 1, commands)) == LCB_SUCCESS) {
+	if ((error = lcb_get(instance, c, 1, commands)) == LCB_SUCCESS) {
 		/* enter event loop on success */
 		lcb_wait(instance);
 	}
+
+	/* free token */
+	json_tokener_free(c->jtok);
 
 	/* return error */
 	return error;
@@ -346,6 +355,9 @@ lcb_error_t couchbase_get_key(lcb_t instance, const void *cookie, const char *ke
  */
 lcb_error_t couchbase_query_view(lcb_t instance, const void *cookie, const char *path, const char *post)
 {
+	cookie_u cu;                         /* union of const and non const pointers */
+	cu.cdata = cookie;                   /* set const union member to cookie passed from couchbase */
+	cookie_t *c = (cookie_t *) cu.data;  /* set our cookie struct using non-const member */
 	lcb_error_t error;                   /* couchbase command return */
 	lcb_http_cmd_t cmd;                  /* http command struct */
 	const lcb_http_cmd_t *commands;      /* http commands array */
@@ -362,11 +374,17 @@ lcb_error_t couchbase_query_view(lcb_t instance, const void *cookie, const char 
 	cmd.v.v0.chunked = 1;
 	cmd.v.v0.content_type = "application/json";
 
+	/* allocate token */
+	c->jtok = json_tokener_new();
+
 	/* query the view */
-	if ((error = lcb_make_http_request(instance, cookie, LCB_HTTP_TYPE_VIEW, commands, NULL)) == LCB_SUCCESS) {
+	if ((error = lcb_make_http_request(instance, c, LCB_HTTP_TYPE_VIEW, commands, NULL)) == LCB_SUCCESS) {
 		/* enter event loop on success */
 		lcb_wait(instance);
 	}
+
+	/* free token */
+	json_tokener_free(c->jtok);
 
 	/* return error */
 	return error;

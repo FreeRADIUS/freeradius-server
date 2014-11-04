@@ -522,7 +522,7 @@ int mod_ensure_start_timestamp(json_object *json, VALUE_PAIR *vps)
  * @param docid  Document id.
  * @return       Returns 0 on success, -1 on error.
  */
-int _mod_client_map_section(CONF_SECTION *client, CONF_SECTION const *map,
+int mod_client_map_section(CONF_SECTION *client, CONF_SECTION const *map,
 			    json_object *json, char const *docid)
 {
 	CONF_ITEM const *ci;
@@ -545,7 +545,7 @@ int _mod_client_map_section(CONF_SECTION *client, CONF_SECTION const *map,
 
 			cf_section_add(client, cc);
 
-			if (_mod_client_map_section(cc, cs, json, docid) != 0) {
+			if (mod_client_map_section(cc, cs, json, docid) != 0) {
 				return -1;
 			}
 			/* continue on to the next item */
@@ -639,14 +639,8 @@ int mod_load_client_documents(rlm_couchbase_t *inst, CONF_SECTION *cs)
 	/* init cookie error status */
 	cookie->jerr = json_tokener_success;
 
-	/* setup cookie tokener */
-	cookie->jtok = json_tokener_new();
-
 	/* query view for document */
 	cb_error = couchbase_query_view(cb_inst, cookie, vpath, NULL);
-
-	/* free json token */
-	json_tokener_free(cookie->jtok);
 
 	/* check error */
 	if (cb_error != LCB_SUCCESS || cookie->jerr != json_tokener_success) {
@@ -766,7 +760,7 @@ int mod_load_client_documents(rlm_couchbase_t *inst, CONF_SECTION *cs)
 		/* allocate conf section */
 		client = cf_section_alloc(NULL, "client", docid);
 
-		if (_mod_client_map_section(client, cs, cookie->jobj, docid) != 0) {
+		if (mod_client_map_section(client, cs, cookie->jobj, docid) != 0) {
 			/* free config setion */
 			talloc_free(client);
 			/* set return */
