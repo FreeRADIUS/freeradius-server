@@ -857,8 +857,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 *	Sanity check for crazy people.
 	 */
 	if (strncmp(inst->config->sql_driver_name, "rlm_sql_", 8) != 0) {
-		ERROR("rlm_sql (%s): \"%s\" is NOT an SQL driver!",
-		       inst->config->xlat_name, inst->config->sql_driver_name);
+		ERROR("rlm_sql (%s): \"%s\" is NOT an SQL driver!", inst->config->xlat_name, inst->config->sql_driver_name);
 		return -1;
 	}
 
@@ -867,20 +866,15 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 */
 	inst->handle = lt_dlopenext(inst->config->sql_driver_name);
 	if (!inst->handle) {
-		ERROR("Could not link driver %s: %s",
-		       inst->config->sql_driver_name,
-		       dlerror());
-		ERROR("Make sure it (and all its dependent libraries!)"
-		       "are in the search path of your system's ld");
+		ERROR("Could not link driver %s: %s", inst->config->sql_driver_name, dlerror());
+		ERROR("Make sure it (and all its dependent libraries!) are in the search path of your system's ld");
 		return -1;
 	}
 
 	inst->module = (rlm_sql_module_t *) dlsym(inst->handle,
 						  inst->config->sql_driver_name);
 	if (!inst->module) {
-		ERROR("Could not link symbol %s: %s",
-		       inst->config->sql_driver_name,
-		       dlerror());
+		ERROR("Could not link symbol %s: %s", inst->config->sql_driver_name, dlerror());
 		return -1;
 	}
 
@@ -917,15 +911,13 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		return -1;
 	}
 
-	INFO("rlm_sql (%s): Driver %s (module %s) loaded and linked",
-	       inst->config->xlat_name, inst->config->sql_driver_name,
-	       inst->module->name);
+	INFO("rlm_sql (%s): Driver %s (module %s) loaded and linked", inst->config->xlat_name,
+	     inst->config->sql_driver_name, inst->module->name);
 
 	/*
 	 *	Initialise the connection pool for this instance
 	 */
-	INFO("rlm_sql (%s): Attempting to connect to database \"%s\"",
-	       inst->config->xlat_name, inst->config->sql_db);
+	INFO("rlm_sql (%s): Attempting to connect to database \"%s\"", inst->config->xlat_name, inst->config->sql_db);
 
 	if (sql_socket_pool_init(inst) < 0) return -1;
 
