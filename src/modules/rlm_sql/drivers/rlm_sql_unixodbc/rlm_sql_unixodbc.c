@@ -395,7 +395,7 @@ static sql_rcode_t sql_state(long err_handle, rlm_sql_handle_t *handle, UNUSED r
 		 error, 256, &length);
 
 	if(state[0] == '0') {
-		switch(state[1]) {
+		switch (state[1]) {
 		/* SQLSTATE 01 class contains info and warning messages */
 		case '1':
 			INFO("rlm_sql_unixodbc: %s %s", state, error);

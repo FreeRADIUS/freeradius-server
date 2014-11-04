@@ -494,7 +494,7 @@ static int dual_tcp_recv(rad_listen_t *listener)
 	/*
 	 *	Some sanity checks, based on the packet code.
 	 */
-	switch(packet->code) {
+	switch (packet->code) {
 	case PW_CODE_ACCESS_REQUEST:
 		if (listener->type != RAD_LISTEN_AUTH) goto bad_packet;
 		FR_STATS_INC(auth, total_requests);
@@ -1449,7 +1449,7 @@ static int auth_socket_recv(rad_listen_t *listener)
 	/*
 	 *	Some sanity checks, based on the packet code.
 	 */
-	switch(code) {
+	switch (code) {
 	case PW_CODE_ACCESS_REQUEST:
 		fun = rad_authenticate;
 		break;
@@ -1556,7 +1556,7 @@ static int acct_socket_recv(rad_listen_t *listener)
 	/*
 	 *	Some sanity checks, based on the packet code.
 	 */
-	switch(code) {
+	switch (code) {
 	case PW_CODE_ACCOUNTING_REQUEST:
 		fun = rad_accounting;
 		break;
@@ -1804,7 +1804,7 @@ static int coa_socket_recv(rad_listen_t *listener)
 	/*
 	 *	Some sanity checks, based on the packet code.
 	 */
-	switch(code) {
+	switch (code) {
 	case PW_CODE_COA_REQUEST:
 		FR_STATS_INC(coa, total_requests);
 		fun = rad_coa_recv;
@@ -1862,7 +1862,7 @@ static int proxy_socket_recv(rad_listen_t *listener)
 	/*
 	 *	FIXME: Client MIB updates?
 	 */
-	switch(packet->code) {
+	switch (packet->code) {
 	case PW_CODE_ACCESS_ACCEPT:
 	case PW_CODE_ACCESS_CHALLENGE:
 	case PW_CODE_ACCESS_REJECT:
@@ -1924,7 +1924,7 @@ static int proxy_socket_tcp_recv(rad_listen_t *listener)
 	/*
 	 *	FIXME: Client MIB updates?
 	 */
-	switch(packet->code) {
+	switch (packet->code) {
 	case PW_CODE_ACCESS_ACCEPT:
 	case PW_CODE_ACCESS_CHALLENGE:
 	case PW_CODE_ACCESS_REJECT:

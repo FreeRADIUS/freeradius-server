@@ -66,7 +66,7 @@ static const CONF_PARSER driver_config[] = {
 static int sql_check_error(sqlite3 *db)
 {
 	int error = sqlite3_errcode(db);
-	switch(error) {
+	switch (error) {
 	/*
 	 *	Not errors
 	 */

@@ -152,7 +152,7 @@ static home_server_t *srvr_blk_to_home_server(TALLOC_CTX *ctx,
 
 	rad_assert(blk != NULL);
 	tid_srvr_get_address(blk, &sa, &sa_len);
-	switch(sa->sa_family) {
+	switch (sa->sa_family) {
 
 	case AF_INET: {
 		const struct sockaddr_in *sin = (const struct sockaddr_in *) sa;

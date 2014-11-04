@@ -148,7 +148,7 @@ int main(int argc, char *argv[])
 	/*  Process the options.  */
 	while ((argval = getopt(argc, argv, "Cd:D:fhi:l:mMn:p:PstvxX")) != EOF) {
 
-		switch(argval) {
+		switch (argval) {
 			case 'C':
 				check_config = true;
 				spawn_flag = false;
@@ -702,7 +702,7 @@ static void sig_fatal(int sig)
 {
 	if (getpid() != radius_pid) _exit(sig);
 
-	switch(sig) {
+	switch (sig) {
 	case SIGTERM:
 		radius_signal_self(RADIUS_SIGNAL_SELF_TERM);
 		break;

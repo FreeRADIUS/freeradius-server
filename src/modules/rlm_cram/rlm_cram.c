@@ -145,7 +145,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void * instance, REQ
 		AUTH("rlm_cram: Required attribute Sandy-Mail-Response missed");
 		return RLM_MODULE_INVALID;
 	}
-	switch(authtype->vp_integer){
+	switch (authtype->vp_integer){
 		case 2:				/*	CRAM-MD5	*/
 			if(challenge->length < 5 || response->length != 16) {
 				AUTH("rlm_cram: invalid MD5 challenge/response length");

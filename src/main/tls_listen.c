@@ -353,7 +353,7 @@ int dual_tls_recv(rad_listen_t *listener)
 	 *	"auth+acct" are marked as "auth", with the "dual" flag
 	 *	set.
 	 */
-	switch(packet->code) {
+	switch (packet->code) {
 	case PW_CODE_ACCESS_REQUEST:
 		if (listener->type != RAD_LISTEN_AUTH) goto bad_packet;
 		FR_STATS_INC(auth, total_requests);
@@ -645,7 +645,7 @@ int proxy_tls_recv(rad_listen_t *listener)
 	/*
 	 *	FIXME: Client MIB updates?
 	 */
-	switch(packet->code) {
+	switch (packet->code) {
 	case PW_CODE_ACCESS_ACCEPT:
 	case PW_CODE_ACCESS_CHALLENGE:
 	case PW_CODE_ACCESS_REJECT:

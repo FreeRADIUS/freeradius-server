@@ -443,7 +443,7 @@ int main(int argc, char *argv[])
 	/*  Process the options.  */
 	while ((argval = getopt(argc, argv, "d:D:f:hi:mMn:o:xX")) != EOF) {
 
-		switch(argval) {
+		switch (argval) {
 			case 'd':
 				set_radius_dir(NULL, optarg);
 				break;

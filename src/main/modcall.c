@@ -1872,7 +1872,7 @@ static modcallable *do_compile_modupdate(modcallable *parent, UNUSED rlm_compone
 }
 
 
-static modcallable *do_compile_modswitch(modcallable *parent, rlm_components_t component, CONF_SECTION *cs)
+static modcallable *do_compile_modswitch (modcallable *parent, rlm_components_t component, CONF_SECTION *cs)
 {
 	CONF_ITEM *ci;
 	FR_TOKEN type;
@@ -2405,7 +2405,7 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 		} else 	if (strcmp(modrefname, "switch") == 0) {
 			*modname = name2;
 
-			return do_compile_modswitch(parent, component, cs);
+			return do_compile_modswitch (parent, component, cs);
 
 		} else 	if (strcmp(modrefname, "case") == 0) {
 			*modname = name2;

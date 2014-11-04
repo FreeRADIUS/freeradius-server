@@ -398,7 +398,7 @@ int main(int argc, char **argv)
 	}
 
 	while ((argval = getopt(argc, argv, "d:D:hi:e:Ef:n:o:qs:S")) != EOF) {
-		switch(argval) {
+		switch (argval) {
 		case 'd':
 			if (file) {
 				fprintf(stderr, "%s: -d and -f cannot be used together.\n", progname);

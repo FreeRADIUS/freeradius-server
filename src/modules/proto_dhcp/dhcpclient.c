@@ -271,7 +271,7 @@ int main(int argc, char **argv)
 
 	fr_debug_flag = 0;
 
-	while ((c = getopt(argc, argv, "d:D:f:hr:t:vx")) != EOF) switch(c) {
+	while ((c = getopt(argc, argv, "d:D:f:hr:t:vx")) != EOF) switch (c) {
 		case 'D':
 			dict_dir = optarg;
 			break;

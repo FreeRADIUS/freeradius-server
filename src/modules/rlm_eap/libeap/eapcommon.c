@@ -223,7 +223,7 @@ int eap_basic_compose(RADIUS_PACKET *packet, eap_packet_t *reply)
 
 	/* Set request reply code, but only if it's not already set. */
 	rcode = RLM_MODULE_OK;
-	if (!packet->code) switch(reply->code) {
+	if (!packet->code) switch (reply->code) {
 	case PW_EAP_RESPONSE:
 	case PW_EAP_SUCCESS:
 		packet->code = PW_CODE_ACCESS_ACCEPT;

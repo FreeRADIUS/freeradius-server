@@ -219,7 +219,7 @@ static FR_TOKEN getthing(char const **ptr, char *buf, int buflen, bool tok,
 		if (unescape && quote && (*p == '\\')) {
 			p++;
 
-			switch(*p) {
+			switch (*p) {
 				case 'r':
 					*s++ = '\r';
 					break;

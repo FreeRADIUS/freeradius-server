@@ -379,7 +379,7 @@ eap_rcode_t eap_method_select(rlm_eap_t *inst, eap_handler_t *handler)
 	/*
 	 *	Figure out what to do.
 	 */
-	switch(type->num) {
+	switch (type->num) {
 	case PW_EAP_IDENTITY:
 		/*
 		 *	Allow per-user configuration of EAP types.
@@ -604,7 +604,7 @@ rlm_rcode_t eap_compose(eap_handler_t *handler)
 
 	/* Set request reply code, but only if it's not already set. */
 	rcode = RLM_MODULE_OK;
-	if (!request->reply->code) switch(reply->code) {
+	if (!request->reply->code) switch (reply->code) {
 	case PW_EAP_RESPONSE:
 		request->reply->code = PW_CODE_ACCESS_ACCEPT;
 		rcode = RLM_MODULE_HANDLED; /* leap weirdness */
