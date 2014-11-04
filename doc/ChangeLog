@@ -33,6 +33,8 @@ FreeRADIUS 3.0.5 Mon 15 Sep 2014 15:30:00 EDT urgency=medium
 	  the debug output easier to read.
 	* Make configuration a separate RPM, just like for Debian.
 	* better decoding of unknown VSAs
+	* When supported by OpenSSL, allow TLS 1.1 and TLS 1.2
+	  in EAP methods.
 
 	Bug fixes
 	* Parse list qualifiers in generic LDAP 'valuepair_attribute'
