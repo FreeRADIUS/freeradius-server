@@ -89,7 +89,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	}
 
 	if (dict_addattr("Example-Paircmp", -1, 0, PW_TYPE_STRING, flags) < 0) {
-		ERROR("Failed creating paircmp attribute", fr_strerror());
+		ERROR("Failed creating paircmp attribute: %s", fr_strerror());
 
 		return -1;
 	}
