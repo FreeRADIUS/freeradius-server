@@ -180,11 +180,11 @@ static int eap_module_call(eap_module_t *module, eap_handler_t *handler)
 
 	char const *caller = request->module;
 
+	rad_assert(module != NULL);
+
 	RDEBUG2("Calling %s to process EAP data", module->type->name);
 
 	request->module = module->type->name;
-
-	rad_assert(module != NULL);
 
 	switch (handler->stage) {
 	case INITIATE:

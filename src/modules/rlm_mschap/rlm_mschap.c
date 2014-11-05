@@ -1048,7 +1048,7 @@ static int CC_HINT(nonnull (1, 2, 4, 5 ,6)) do_mschap(rlm_mschap_t *inst, REQUES
 		 *	then calculate the hash of the NT hash.  Doing this
 		 *	here minimizes work for later.
 		 */
-		if (password && !password->da->vendor &&
+		if (!password->da->vendor &&
 		    (password->da->attr == PW_NT_PASSWORD)) {
 			fr_md4_calc(nthashhash, password->vp_octets, MD4_DIGEST_LENGTH);
 		}
