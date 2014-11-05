@@ -67,9 +67,15 @@ if ("%{integer:Tmp-String-2}" != '') {
 update request {
 	Tmp-Integer-0 := "%{integer:Tmp-Octets-0}"
 }
-if ((Tmp-Octets-0 != "0x%{hex:Tmp-Integer-0}") || (Tmp-Integer-0 != 959985457)) {
+if (Tmp-Octets-0 != "0x%{hex:Tmp-Integer-0}") {
 	update reply {
-		Filter-Id += 'fail 4'
+		Filter-Id += 'fail 4a'
+	}
+}
+
+if (Tmp-Integer-0 != 959985457) {
+	update reply {
+		Filter-Id += 'fail 4b'
 	}
 }
 
@@ -77,9 +83,15 @@ if ((Tmp-Octets-0 != "0x%{hex:Tmp-Integer-0}") || (Tmp-Integer-0 != 959985457)) 
 update request {
 	Tmp-Integer64-0 := "%{integer:Tmp-Octets-1}"
 }
-if ((Tmp-Octets-1 != "0x%{hex:Tmp-Integer64-0}") || (Tmp-Integer64-0 != 4123106143410599729)) {
+if (Tmp-Octets-1 != "0x%{hex:Tmp-Integer64-0}") {
 	update reply {
-		Filter-Id += 'fail 5'
+		Filter-Id += 'fail 5a'
+	}
+}
+
+if (Tmp-Integer64-0 != 4123106143410599729) {
+	update reply {
+		Filter-Id += 'fail 5b'
 	}
 }
 
