@@ -1049,10 +1049,27 @@ size_t tmpl_prints(char *buffer, size_t bufsize, value_pair_tmpl_t const *vpt, D
 			bufsize -= len;
 		}
 
-		if (vpt->tmpl_num != NUM_ANY) {
+		switch (vpt->tmpl_num) {
+		case NUM_ANY:
+			break;
+
+		case NUM_ALL:
+			snprintf(q, bufsize, "[*]");
+			len = strlen(q);
+			q += len;
+			break;
+
+		case NUM_COUNT:
+			snprintf(q, bufsize, "[#]");
+			len = strlen(q);
+			q += len;
+			break;
+
+		default:
 			snprintf(q, bufsize, "[%i]", vpt->tmpl_num);
 			len = strlen(q);
 			q += len;
+			break;
 		}
 
 		return (q - buffer);
