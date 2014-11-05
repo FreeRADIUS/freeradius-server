@@ -66,11 +66,13 @@ FR_NAME_NUMBER const modreturn_table[] = {
 };
 
 
-static int all_digits(char const *string)
+static bool all_digits(char const *string)
 {
 	char const *p = string;
 
 	rad_assert(p != NULL);
+
+	if (*p == '\0') return false;
 
 	if (*p == '-') p++;
 
@@ -88,9 +90,10 @@ static int all_digits(char const *string)
  * @param vpt to evaluate.
  * @return -1 on error, else 0.
  */
-int radius_expand_tmpl(char **out, REQUEST *request, value_pair_tmpl_t const *vpt)
+ssize_t radius_expand_tmpl(char **out, REQUEST *request, value_pair_tmpl_t const *vpt)
 {
 	VALUE_PAIR *vp;
+	ssize_t slen;
 	*out = NULL;
 
 	rad_assert(vpt->type != TMPL_TYPE_LIST);
@@ -99,35 +102,42 @@ int radius_expand_tmpl(char **out, REQUEST *request, value_pair_tmpl_t const *vp
 
 	switch (vpt->type) {
 	case TMPL_TYPE_LITERAL:
-		EVAL_DEBUG("TMPL LITERAL");
+		EVAL_DEBUG("EXPAND TMPL LITERAL");
 		*out = talloc_typed_strdup(request, vpt->name);
+		slen = talloc_array_length(*out) - 1;
 		break;
 
 	case TMPL_TYPE_EXEC:
-		EVAL_DEBUG("TMPL EXEC");
+		EVAL_DEBUG("EXPAND TMPL EXEC");
 		*out = talloc_array(request, char, 1024);
 		if (radius_exec_program(*out, 1024, NULL, request, vpt->name, NULL, true, false, EXEC_TIMEOUT) != 0) {
 			TALLOC_FREE(*out);
 			return -1;
 		}
+		slen = strlen(*out);
 		break;
 
 	case TMPL_TYPE_XLAT:
-		EVAL_DEBUG("TMPL XLAT");
+		EVAL_DEBUG("EXPAND TMPL XLAT");
 		/* Error in expansion, this is distinct from zero length expansion */
-		if (radius_axlat(out, request, vpt->name, NULL, NULL) < 0) {
+		slen = radius_axlat(out, request, vpt->name, NULL, NULL);
+		if (slen < 0) {
 			rad_assert(!*out);
-			return -1;
+			return slen;
 		}
+		slen = strlen(*out);
 		break;
 
 	case TMPL_TYPE_XLAT_STRUCT:
-		EVAL_DEBUG("TMPL XLAT_STRUCT");
+		EVAL_DEBUG("EXPAND TMPL XLAT STRUCT");
 		/* Error in expansion, this is distinct from zero length expansion */
-		if (radius_axlat_struct(out, request, vpt->tmpl_xlat, NULL, NULL) < 0) {
+		slen = radius_axlat_struct(out, request, vpt->tmpl_xlat, NULL, NULL);
+		if (slen < 0) {
 			rad_assert(!*out);
-			return -1;
+			return slen;
 		}
+		slen = strlen(*out);
+
 		RDEBUG2("EXPAND %s", vpt->name); /* xlat_struct doesn't do this */
 		RDEBUG2("   --> %s", *out);
 		break;
@@ -136,33 +146,38 @@ int radius_expand_tmpl(char **out, REQUEST *request, value_pair_tmpl_t const *vp
 	{
 		int ret;
 
-		EVAL_DEBUG("TMPL ATTR");
+		EVAL_DEBUG("EXPANDTMPL ATTR");
 		ret = tmpl_find_vp(&vp, request, vpt);
 		if (ret < 0) return -2;
 
 		*out = vp_aprints_value(request, vp, '\0');
 		if (!*out) return -1;
+		slen = talloc_array_length(*out) - 1;
 	}
 		break;
 
-		/*
-		 *	We should never be expanding these.
-		 */
+	/*
+	 *	We should never be expanding these.
+	 */
 	case TMPL_TYPE_DATA:
 	case TMPL_TYPE_REGEX:
 	case TMPL_TYPE_REGEX_STRUCT:
 		rad_assert(0 == 1);
+		slen = -1;
 		/* FALL-THROUGH */
 
 	default:
+		slen = 0;
 		break;
 	}
 
-	EVAL_DEBUG("Expand tmpl --> %s", *out);
-	return 0;
+	EVAL_DEBUG("   --> %s", *out);
+	return slen;
 }
 
 /** Evaluate a template
+ *
+ * Converts a value_pair_tmpl_t to a boolean value.
  *
  * @param[in] request the REQUEST
  * @param[in] modreturn the previous module return code
@@ -170,8 +185,7 @@ int radius_expand_tmpl(char **out, REQUEST *request, value_pair_tmpl_t const *vp
  * @param[in] vpt the template to evaluate
  * @return -1 on error, 0 for "no match", 1 for "match".
  */
-int radius_evaluate_tmpl(REQUEST *request, int modreturn, UNUSED int depth,
-			 value_pair_tmpl_t const *vpt)
+int radius_evaluate_tmpl(REQUEST *request, int modreturn, UNUSED int depth, value_pair_tmpl_t const *vpt)
 {
 	int rcode;
 	int modcode;
@@ -237,31 +251,37 @@ int radius_evaluate_tmpl(REQUEST *request, int modreturn, UNUSED int depth,
 }
 
 #ifdef HAVE_REGEX
-static int do_regex(REQUEST *request, value_pair_map_t const *map)
+/** Perform a regular expressions comparison between two operands
+ *
+ * @return -1 on error, 0 for "no match", 1 for "match".
+ */
+static int cond_do_regex(REQUEST *request, fr_cond_t const *c,
+		         PW_TYPE lhs_type, value_data_t const *lhs, UNUSED size_t lhs_len,
+		         PW_TYPE rhs_type, value_data_t const *rhs, UNUSED size_t rhs_len)
 {
-	int compare, rcode, ret;
+	value_pair_map_t const *map = c->data.map;
+
+	int compare, ret;
 	regex_t reg, *preg = NULL;
-	char *lhs = NULL, *rhs = NULL;
 	regmatch_t rxmatch[REQUEST_MAX_REGEX + 1];
 
-	/*
-	 *  Expand and then compile it.
-	 */
-	switch (map->rhs->type) {
-	case TMPL_TYPE_XLAT_STRUCT: /* pre-compiled to an xlat thing */
-		rcode = radius_expand_tmpl(&rhs, request, map->rhs);
-		if (rcode < 0) {
-			EVAL_DEBUG("FAIL %d", __LINE__);
-			return -1;
-		}
-		rad_assert(rhs != NULL);
+	rad_assert(lhs_type == PW_TYPE_STRING);
 
-		compare = regcomp(&reg, rhs, REG_EXTENDED | (map->rhs->tmpl_iflag ? REG_ICASE : 0));
-		if (compare != 0) {
+	EVAL_DEBUG("CMP WITH REGEX %s", map->rhs->tmpl_iflag ? "CASE INSENSITIVE" : "CASE SENSITIVE");
+
+	switch (map->rhs->type) {
+	case TMPL_TYPE_REGEX_STRUCT: /* pre-compiled to a regex */
+		preg = map->rhs->tmpl_preg;
+		break;
+
+	default:
+		rad_assert(rhs_type == PW_TYPE_STRING);
+		ret = regcomp(&reg, rhs->strvalue, REG_EXTENDED | (map->rhs->tmpl_iflag ? REG_ICASE : 0));
+		if (ret != 0) {
 			if (debug_flag) {
 				char errbuf[128];
 
-				regerror(compare, &reg, errbuf, sizeof(errbuf));
+				regerror(ret, &reg, errbuf, sizeof(errbuf));
 				ERROR("Failed compiling regular expression: %s", errbuf);
 			}
 			EVAL_DEBUG("FAIL %d", __LINE__);
@@ -270,37 +290,17 @@ static int do_regex(REQUEST *request, value_pair_map_t const *map)
 		}
 		preg = &reg;
 		break;
-
-	case TMPL_TYPE_REGEX_STRUCT: /* pre-compiled to a regex */
-		preg = map->rhs->tmpl_preg;
-		break;
-
-	default:
-		rad_assert(0);
-		ret = -1;
-		goto finish;
 	}
-
-	rcode = radius_expand_tmpl(&lhs, request, map->lhs);
-	if (rcode < 0) {
-		EVAL_DEBUG("FAIL %d", __LINE__);
-		ret = -1;
-		goto finish;
-	}
-	rad_assert(lhs != NULL);
 
 	/*
 	 *  regexec doesn't initialise unused elements
 	 */
 	memset(&rxmatch, 0, sizeof(rxmatch));
-	compare = regexec(preg, lhs, REQUEST_MAX_REGEX + 1, rxmatch, 0);
-	rad_regcapture(request, compare, lhs, rxmatch);
+	compare = regexec(preg, lhs->strvalue, REQUEST_MAX_REGEX + 1, rxmatch, 0);
+	rad_regcapture(request, compare, lhs->strvalue, rxmatch);
 	ret = (compare == 0);
 
 finish:
-	talloc_free(rhs);
-	talloc_free(lhs);
-
 	/*
 	 *  regcomp allocs extra memory for the expression, so if the
 	 *  result wasn't cached we need to free it here.
@@ -311,193 +311,307 @@ finish:
 }
 #endif
 
-/*
- *	Copy data from src to dst, where the attributes are of
- *	different type.
- */
-static int do_cast_copy(VALUE_PAIR *dst, VALUE_PAIR const *src)
+#ifdef WITH_EVAL_DEBUG
+static void cond_print_operands(REQUEST *request,
+			   	PW_TYPE lhs_type, value_data_t const *lhs, size_t lhs_len,
+			   	PW_TYPE rhs_type, value_data_t const *rhs, size_t rhs_len)
 {
-	rad_assert(dst->da->type != src->da->type);
-
-	if (dst->da->type == PW_TYPE_STRING) {
-		dst->vp_strvalue = vp_aprints_value(dst, src, '\0');
-		dst->length = talloc_array_length(dst->vp_strvalue) - 1;
-		return 0;
-	}
-
-	if (dst->da->type == PW_TYPE_OCTETS) {
-		if (src->da->type == PW_TYPE_STRING) {
-			pairmemcpy(dst, src->vp_octets, src->length);	/* Copy embedded NULLs */
+	if (lhs) {
+		if (lhs_type == PW_TYPE_STRING) {
+			EVAL_DEBUG("LHS: \"%s\" (%zu)" , lhs->strvalue, lhs_len);
 		} else {
-			pairmemcpy(dst, (uint8_t const *) &src->data, src->length);
+			char *lhs_hex;
+
+			lhs_hex = talloc_array(request, char, (lhs_len * 2) + 1);
+			fr_bin2hex(lhs_hex, (uint8_t const *)lhs, lhs_len);
+
+			EVAL_DEBUG("LHS: 0x%s (%zu)", lhs_hex, lhs_len);
+
+			talloc_free(lhs_hex);
 		}
-		return 0;
+	} else {
+		EVAL_DEBUG("LHS: VIRTUAL");
 	}
 
-	if (src->da->type == PW_TYPE_STRING) {
-		return pairparsevalue(dst, src->vp_strvalue, -1);
+	if (rhs) {
+		if (rhs_type == PW_TYPE_STRING) {
+			EVAL_DEBUG("RHS: \"%s\" (%zu)" , rhs->strvalue, rhs_len);
+		} else {
+			char *rhs_hex;
+
+			rhs_hex = talloc_array(request, char, (rhs_len * 2) + 1);
+			fr_bin2hex(rhs_hex, (uint8_t const *)rhs, rhs_len);
+
+			EVAL_DEBUG("RHS: 0x%s (%zu)", rhs_hex, rhs_len);
+
+			talloc_free(rhs_hex);
+		}
+	} else {
+		EVAL_DEBUG("RHS: COMPILED");
 	}
+}
+#endif
 
-	if ((src->da->type == PW_TYPE_IFID) &&
-	    (dst->da->type == PW_TYPE_INTEGER64)) {
-		memcpy(&dst->vp_integer64, &src->vp_ifid, sizeof(src->vp_ifid));
-		dst->vp_integer64 = htonll(dst->vp_integer64);
-		return 0;
+/** Call the correct data comparison function for the condition
+ *
+ * Deals with regular expression comparisons, virtual attribute
+ * comparisons, and data comparisons.
+ *
+ * @return -1 on error, 0 for "no match", 1 for "match".
+ */
+static int cond_cmp_values(REQUEST *request, fr_cond_t const *c,
+			   PW_TYPE lhs_type, value_data_t const *lhs, size_t lhs_len,
+			   PW_TYPE rhs_type, value_data_t const *rhs, size_t rhs_len)
+{
+	value_pair_map_t const *map = c->data.map;
+	int rcode;
+
+#ifdef WITH_EVAL_DEBUG
+		EVAL_DEBUG("CMP OPERANDS");
+		cond_print_operands(request, lhs_type, lhs, lhs_len, rhs_type, rhs, rhs_len);
+#endif
+
+#ifdef HAVE_REGEX
+	/*
+	 *	Regex comparison
+	 */
+	if (map->op == T_OP_REG_EQ) {
+		rcode = cond_do_regex(request, c, lhs_type, lhs, lhs_len, rhs_type, rhs, rhs_len);
+		goto finish;
 	}
+#endif
+	/*
+	 *	Virtual attribute comparison.
+	 */
+	if (c->pass2_fixup == PASS2_PAIRCOMPARE) {
+		VALUE_PAIR *vp;
 
-	if ((src->da->type == PW_TYPE_INTEGER64) &&
-	    (dst->da->type == PW_TYPE_ETHERNET)) {
-		uint8_t array[8];
-		uint64_t i;
+		EVAL_DEBUG("CMP WITH PAIRCOMPARE");
+		rad_assert(map->lhs->type == TMPL_TYPE_ATTR);
 
-		i = htonll(src->vp_integer64);
-		memcpy(array, &i, 8);
+		vp = pairalloc(request, map->lhs->tmpl_da);
+		vp->op = c->data.map->op;
+		pairdatacpy(vp, rhs_type, rhs, rhs_len);
 
-		/*
-		 *	For OUIs in the DB.
-		 */
-		if ((array[0] != 0) || (array[1] != 0)) return -1;
-
-		memcpy(&dst->vp_ether, &array[2], 6);
-		dst->length = 6;
-		return 0;
+		rcode = paircompare(request, request->packet->vps, vp, NULL);
+		rcode = (rcode == 0) ? 1 : 0;
+		talloc_free(vp);
+		goto finish;
 	}
 
 	/*
-	 *	For integers, we allow the casting of a SMALL type to
-	 *	a larger type, but not vice-versa.
+	 *	At this point both operands should have been normalised
+	 *	to the same type, and there's no special comparisons
+	 *	left.
 	 */
-	if (dst->da->type == PW_TYPE_INTEGER64) {
-		switch (src->da->type) {
-		case PW_TYPE_BYTE:
-			dst->vp_integer64 = src->vp_byte;
-			break;
+	rad_assert(lhs_type == rhs_type);
 
-		case PW_TYPE_SHORT:
-			dst->vp_integer64 = src->vp_short;
-			break;
+	EVAL_DEBUG("CMP WITH VALUE DATA");
+	rcode = value_data_cmp_op(map->op, lhs_type, lhs, lhs_len, rhs_type, rhs, rhs_len);
+finish:
+	switch (rcode) {
+	case 0:
+		EVAL_DEBUG("FALSE");
+		break;
 
-		case PW_TYPE_INTEGER:
-			dst->vp_integer64 = src->vp_integer;
-			break;
+	case 1:
+		EVAL_DEBUG("TRUE");
+		break;
 
-		case PW_TYPE_OCTETS:
-			goto do_octets;
-
-		default:
-			EVAL_DEBUG("Invalid cast to integer64");
-			return -1;
-
-		}
-		return 0;
+	default:
+		EVAL_DEBUG("ERROR %i", rcode);
+		break;
 	}
 
-	/*
-	 *	We can compare LONG integers to SHORTER ones, so long
-	 *	as the long one is on the LHS.
-	 */
-	if (dst->da->type == PW_TYPE_INTEGER) {
-		switch (src->da->type) {
-		case PW_TYPE_BYTE:
-			dst->vp_integer = src->vp_byte;
-			break;
-
-		case PW_TYPE_SHORT:
-			dst->vp_integer = src->vp_short;
-			break;
-
-		case PW_TYPE_OCTETS:
-			goto do_octets;
-
-		default:
-			EVAL_DEBUG("Invalid cast to integer");
-			return -1;
-
-		}
-		return 0;
-	}
-
-	if (dst->da->type == PW_TYPE_SHORT) {
-		switch (src->da->type) {
-		case PW_TYPE_BYTE:
-			dst->vp_short = src->vp_byte;
-			break;
-
-		case PW_TYPE_OCTETS:
-			goto do_octets;
-
-		default:
-			EVAL_DEBUG("Invalid cast to short");
-			return -1;
-
-		}
-		return 0;
-	}
-
-	/*
-	 *	The attribute we've found has to have a size which is
-	 *	compatible with the type of the destination cast.
-	 */
-	if ((src->length < dict_attr_sizes[dst->da->type][0]) ||
-	    (src->length > dict_attr_sizes[dst->da->type][1])) {
-		EVAL_DEBUG("Casted attribute is wrong size (%u)", (unsigned int) src->length);
-		return -1;
-	}
-
-	if (src->da->type == PW_TYPE_OCTETS) {
-	do_octets:
-		switch (dst->da->type) {
-		case PW_TYPE_INTEGER64:
-			dst->vp_integer64 = ntohll(*(uint64_t const *) src->vp_octets);
-			break;
-
-		case PW_TYPE_INTEGER:
-		case PW_TYPE_DATE:
-		case PW_TYPE_SIGNED:
-			dst->vp_integer = ntohl(*(uint32_t const *) src->vp_octets);
-			break;
-
-		case PW_TYPE_SHORT:
-			dst->vp_short = ntohs(*(uint16_t const *) src->vp_octets);
-			break;
-
-		case PW_TYPE_BYTE:
-			dst->vp_byte = src->vp_octets[0];
-			break;
-
-		default:
-			memcpy(&dst->data, src->vp_octets, src->length);
-			break;
-		}
-
-		dst->length = src->length;
-		return 0;
-	}
-
-	/*
-	 *	Convert host order to network byte order.
-	 */
-	if ((dst->da->type == PW_TYPE_IPV4_ADDR) &&
-	    ((src->da->type == PW_TYPE_INTEGER) ||
-	     (src->da->type == PW_TYPE_DATE) ||
-	     (src->da->type == PW_TYPE_SIGNED))) {
-		dst->vp_ipaddr = htonl(src->vp_integer);
-
-	} else if ((src->da->type == PW_TYPE_IPV4_ADDR) &&
-		   ((dst->da->type == PW_TYPE_INTEGER) ||
-		    (dst->da->type == PW_TYPE_DATE) ||
-		    (dst->da->type == PW_TYPE_SIGNED))) {
-		dst->vp_integer = htonl(src->vp_ipaddr);
-
-	} else {		/* they're of the same byte order */
-		memcpy(&dst->data, &src->data, src->length);
-	}
-
-	dst->length = src->length;
-
-	return 0;
+	return rcode;
 }
 
+
+
+/** Convert both operands to the same type
+ *
+ * If casting is successful, we call cond_cmp_values to do the comparison
+ *
+ * @return -1 on error, 0 for "no match", 1 for "match".
+ */
+static int cond_normalise_values(REQUEST *request, fr_cond_t const *c,
+				 PW_TYPE lhs_type, DICT_ATTR const *lhs_enumv, value_data_t const *lhs, size_t lhs_len)
+{
+	value_pair_map_t const *map = c->data.map;
+
+	DICT_ATTR const *cast = NULL;
+	PW_TYPE cast_type = PW_TYPE_STRING;
+
+	int rcode;
+
+	PW_TYPE rhs_type = PW_TYPE_INVALID;
+	DICT_ATTR const *rhs_enumv = NULL;
+	value_data_t const *rhs = NULL;
+	size_t rhs_len;
+
+	value_data_t lhs_cast, rhs_cast;
+	void *lhs_cast_buff = NULL, *rhs_cast_buff = NULL;
+
+	/*
+	 *	Cast operand to correct type.
+	 *
+	 *	With hack for strings that look like integers, to cast them
+	 *	to 64 bit unsigned integers.
+	 *
+	 * @fixme For things like this it'd be useful to have a 64bit signed type.
+	 */
+#define CAST(_s) \
+do {\
+	if (!cast && lhs && rhs && (lhs_type == PW_TYPE_STRING) && (rhs_type == PW_TYPE_STRING) &&\
+	    all_digits(lhs->strvalue) && all_digits(rhs->strvalue)) cast_type = PW_TYPE_INTEGER64;\
+	if ((cast_type != _s ## _type) && (_s ## _type != PW_TYPE_INVALID)) {\
+		ssize_t r;\
+		EVAL_DEBUG("CASTING " #_s " FROM %s TO %s",\
+			   fr_int2str(dict_attr_types, _s ## _type, "<INVALID>"),\
+			   fr_int2str(dict_attr_types, cast_type, "<INVALID>"));\
+		r = value_data_cast(request, &_s ## _cast, cast_type, cast, _s ## _type, _s ## _enumv, _s, _s ## _len);\
+		if (r < 0) {\
+			REDEBUG("Failed casting " #_s " operand: %s", fr_strerror());\
+			rcode = -1;\
+			goto finish;\
+		}\
+		if (cast && cast->flags.is_pointer) _s ## _cast_buff = _s ## _cast.ptr;\
+		_s ## _type = cast_type;\
+		_s ## _len = (size_t)r;\
+		_s = &_s ## _cast;\
+	}\
+} while (0)
+
+	/*
+	 *	Regular expressions need both operands to be strings
+	 */
+#ifdef HAVE_REGEX
+	if (map->op == T_OP_REG_EQ) cast_type = PW_TYPE_STRING;
+	else
+#endif
+	/*
+	 *	If it's a pair comparison, data gets cast to the
+	 *	type of the pair comparison attribute.
+	 *
+	 *	Magic attribute is always the LHS.
+	 */
+	if (c->pass2_fixup == PASS2_PAIRCOMPARE) {
+		rad_assert(!c->cast);
+		rad_assert(map->lhs->type == TMPL_TYPE_ATTR);
+#ifndef NDEBUG
+		/* expensive assert */
+		rad_assert((map->rhs->type != TMPL_TYPE_ATTR) || !radius_find_compare(map->rhs->tmpl_da));
+#endif
+		cast = map->lhs->tmpl_da;
+		cast_type = cast->type;
+	/*
+	 *	Otherwise we use the explicit cast, or implicit
+	 *	cast (from an attribute reference).
+	 *	We already have the data for the lhs, so we convert
+	 *	it here.
+	 */
+	} else if (c->cast) cast = c->cast;
+	else if (map->lhs->type == TMPL_TYPE_ATTR) cast = map->lhs->tmpl_da;
+	else if (map->rhs->type == TMPL_TYPE_ATTR) cast = map->rhs->tmpl_da;
+	else if (map->lhs->type == TMPL_TYPE_DATA) cast_type = map->lhs->tmpl_data_type;
+	else if (map->rhs->type == TMPL_TYPE_DATA) cast_type = map->rhs->tmpl_data_type;
+	if (cast) cast_type = cast->type;
+
+	EVAL_DEBUG("NORMALISATION TYPE %s", fr_int2str(dict_attr_types, cast_type, "<INVALID>"));
+
+	switch (map->rhs->type) {
+	case TMPL_TYPE_ATTR:
+	{
+		VALUE_PAIR *vp;
+		vp_cursor_t cursor;
+
+		for (vp = tmpl_cursor_init(&rcode, &cursor, request, map->rhs);
+		     vp;
+	     	     vp = tmpl_cursor_next(&cursor, map->rhs)) {
+			rhs_type = vp->da->type;
+			rhs_enumv = vp->da;
+			rhs = &vp->data;
+			rhs_len = vp->length;
+
+			CAST(lhs);
+			CAST(rhs);
+
+			rcode = cond_cmp_values(request, c, lhs_type, lhs, lhs_len, rhs_type, rhs, rhs_len);
+			if (rcode != 0) break;
+
+			TALLOC_FREE(rhs_cast_buff);
+		}
+	}
+		break;
+
+	case TMPL_TYPE_DATA:
+		rhs_type = map->rhs->tmpl_data_type;
+		rhs = &map->rhs->tmpl_data_value;
+		rhs_len = map->rhs->tmpl_data_length;
+
+		CAST(lhs);
+		CAST(rhs);
+
+		rcode = cond_cmp_values(request, c, lhs_type, lhs, lhs_len, rhs_type, rhs, rhs_len);
+		break;
+
+	/*
+	 *	Expanded types start as strings, then get converted
+	 *	to the type of the attribute or the explicit cast.
+	 */
+	case TMPL_TYPE_LITERAL:
+	case TMPL_TYPE_EXEC:
+	case TMPL_TYPE_XLAT:
+	case TMPL_TYPE_XLAT_STRUCT:
+	{
+		ssize_t ret;
+		value_data_t data;
+
+		ret = radius_expand_tmpl((char **)&data.ptr, request, map->rhs);
+		if (ret < 0) {
+			EVAL_DEBUG("FAIL [%i]", __LINE__);
+			rcode = -1;
+			goto finish;
+		}
+		rhs_len = ret;
+		rhs_type = PW_TYPE_STRING;
+		rhs = &data;
+
+		CAST(lhs);
+		CAST(rhs);
+
+		rcode = cond_cmp_values(request, c, lhs_type, lhs, lhs_len, rhs_type, rhs, rhs_len);
+		talloc_free(data.ptr);
+
+		break;
+	}
+
+	/*
+	 *	RHS is a compiled regex, we don't need to do anything with it.
+	 */
+	case TMPL_TYPE_REGEX_STRUCT:
+		CAST(lhs);
+		rcode = cond_cmp_values(request, c, lhs_type, lhs, lhs_len, PW_TYPE_INVALID, NULL, 0);
+		break;
+	/*
+	 *	Unsupported types (should have been parse errors)
+	 */
+	case TMPL_TYPE_NULL:
+	case TMPL_TYPE_LIST:
+	case TMPL_TYPE_UNKNOWN:
+	case TMPL_TYPE_ATTR_UNKNOWN:
+	case TMPL_TYPE_REGEX:	/* Should now be a TMPL_TYPE_REGEX_STRUCT or TMPL_TYPE_XLAT_STRUCT */
+		rad_assert(0);
+		rcode = -1;
+		break;
+	}
+
+finish:
+	talloc_free(lhs_cast_buff);
+	talloc_free(rhs_cast_buff);
+
+	return rcode;
+}
 
 /** Evaluate a map
  *
@@ -507,353 +621,91 @@ static int do_cast_copy(VALUE_PAIR *dst, VALUE_PAIR const *src)
  * @param[in] c the condition to evaluate
  * @return -1 on error, 0 for "no match", 1 for "match".
  */
-int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth,
-			fr_cond_t const *c)
+int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth, fr_cond_t const *c)
 {
-	int rcode;
-	char *lhs, *rhs;
-	value_pair_map_t *map;
+	int rcode = 0;
 
-	rad_assert(c->type == COND_TYPE_MAP);
-	map = c->data.map;
+	value_pair_map_t const *map = c->data.map;
 
-	rad_assert(map->lhs->type != TMPL_TYPE_UNKNOWN);
-	rad_assert(map->rhs->type != TMPL_TYPE_UNKNOWN);
-	rad_assert(map->lhs->type != TMPL_TYPE_LIST);
-	rad_assert(map->rhs->type != TMPL_TYPE_LIST);
-	rad_assert(map->rhs->type != TMPL_TYPE_REGEX);
-	rad_assert(map->lhs->type != TMPL_TYPE_REGEX);
-	rad_assert(map->lhs->type != TMPL_TYPE_REGEX_STRUCT);
-
-	EVAL_DEBUG("MAP TYPES LHS: %s, RHS: %s",
+	EVAL_DEBUG(">>> MAP TYPES LHS: %s, RHS: %s",
 		   fr_int2str(template_names, map->lhs->type, "???"),
 		   fr_int2str(template_names, map->rhs->type, "???"));
 
+	switch (map->lhs->type) {
 	/*
-	 *	They're both attributes.  Do attribute-specific work.
+	 *	LHS is an attribute or list
 	 */
-	if (!c->cast && (map->lhs->type == TMPL_TYPE_ATTR) && (map->rhs->type == TMPL_TYPE_ATTR)) {
-		VALUE_PAIR *lhs_vp, *rhs_vp;
+	case TMPL_TYPE_LIST:
+	case TMPL_TYPE_ATTR:
+	{
+		VALUE_PAIR *vp;
+		vp_cursor_t cursor;
+		/*
+		 *	Legacy paircompare call, skip processing the magic attribute
+		 *	if it's the LHS and cast RHS to the same type.
+		 */
+		if ((c->pass2_fixup == PASS2_PAIRCOMPARE) && (map->op != T_OP_REG_EQ)) {
+#ifndef NDEBUG
+			rad_assert(radius_find_compare(map->lhs->tmpl_da)); /* expensive assert */
+#endif
+			rcode = cond_normalise_values(request, c, PW_TYPE_INVALID, NULL, NULL, 0);
+			break;
+		}
+		for (vp = tmpl_cursor_init(&rcode, &cursor, request, map->lhs);
+		     vp;
+	     	     vp = tmpl_cursor_next(&cursor, map->lhs)) {
+			/*
+			 *	Evaluate all LHS values, condition evaluates to true
+			 *	if we get at least one set of operands that
+			 *	evaluates to true.
+			 */
+	     		rcode = cond_normalise_values(request, c, vp->da->type, vp->da, &vp->data, vp->length);
+	     		if (rcode != 0) break;
+		}
+	}
+		break;
+
+	case TMPL_TYPE_DATA:
+		rcode = cond_normalise_values(request, c,
+					      map->lhs->tmpl_data_type, NULL, &map->lhs->tmpl_data_value,
+					      map->lhs->tmpl_data_length);
+		break;
+
+	case TMPL_TYPE_LITERAL:
+	case TMPL_TYPE_EXEC:
+	case TMPL_TYPE_XLAT:
+	case TMPL_TYPE_XLAT_STRUCT:
+	{
 		ssize_t ret;
-		value_data_t cast_data;
+		value_data_t data;
 
-		EVAL_DEBUG("ATTR to ATTR");
-		if ((tmpl_find_vp(&lhs_vp, request, map->lhs) < 0) ||
-		    (tmpl_find_vp(&rhs_vp, request, map->rhs) < 0)) return -1;
-
-		if (map->lhs->tmpl_da->type == map->rhs->tmpl_da->type) {
-			return paircmp_op(map->op, lhs_vp, rhs_vp);
+		ret = radius_expand_tmpl((char **)&data.ptr, request, map->lhs);
+		if (ret < 0) {
+			EVAL_DEBUG("FAIL [%i]", __LINE__);
+			return ret;
 		}
-
-		/*
-		 *	Compare a large integer (lhs) to a small integer (rhs).
-		 *	We allow this without a cast.
-		 */
-		rad_assert((map->lhs->tmpl_da->type == PW_TYPE_INTEGER64) ||
-			   (map->lhs->tmpl_da->type == PW_TYPE_INTEGER) ||
-			   (map->lhs->tmpl_da->type == PW_TYPE_SHORT));
-		rad_assert((map->rhs->tmpl_da->type == PW_TYPE_INTEGER) ||
-			   (map->rhs->tmpl_da->type == PW_TYPE_SHORT) ||
-			   (map->rhs->tmpl_da->type == PW_TYPE_BYTE));
-
-		ret = value_data_cast(rhs_vp, &cast_data,
-				      lhs_vp->da->type, lhs_vp->da,
-				      rhs_vp->da->type, rhs_vp->da,
-				      &rhs_vp->data, rhs_vp->length);
-		if (ret < 0) return -1;
-
-		rcode = value_data_cmp_op(map->op,
-					  lhs_vp->da->type, &lhs_vp->data, lhs_vp->length,
-					  lhs_vp->da->type, &cast_data, (size_t)ret);
-		if (lhs_vp->da->flags.is_pointer) talloc_free(cast_data.ptr);
-
-		return rcode;
+		rcode = cond_normalise_values(request, c, PW_TYPE_STRING, NULL, &data, ret);
+		talloc_free(data.ptr);
 	}
+		break;
 
 	/*
-	 *	LHS is a cast.  Do type-specific comparisons, as if
-	 *	the LHS was a real attribute.
+	 *	Unsupported types (should have been parse errors)
 	 */
-	if (c->cast) {
-		VALUE_PAIR *lhs_vp, *rhs_vp;
-
-		/*
-		 *	Try to copy data from the VP which is being
-		 *	casted, instead of printing it to a string and
-		 *	then re-parsing it.
-		 */
-		if (map->lhs->type == TMPL_TYPE_ATTR) {
-			VALUE_PAIR *cast_vp;
-
-			if (tmpl_find_vp(&cast_vp, request, map->lhs) < 0) return false;
-
-			lhs_vp = pairalloc(request, c->cast);
-			if (!lhs_vp) return -1;
-
-			/*
-			 *	In a separate function for clarity
-			 */
-			if (do_cast_copy(lhs_vp, cast_vp) < 0) {
-				talloc_free(lhs_vp);
-				return -1;
-			}
-
-		} else {
-			rcode = tmpl_cast_to_vp(&lhs_vp, request, map->lhs, c->cast);
-			if (rcode < 0) return rcode;
-		}
-		rad_assert(lhs_vp);
-
-		/*
-		 *	Get either a real VP, or parse the RHS into a
-		 *	VP, and return that.
-		 */
-		if (map->rhs->type == TMPL_TYPE_ATTR) {
-			if (tmpl_find_vp(&rhs_vp, request, map->rhs) < 0) {
-				return -2;
-			}
-		} else {
-			rcode = tmpl_cast_to_vp(&rhs_vp, request, map->rhs, c->cast);
-			if (rcode < 0) {
-				return rcode;
-			}
-			rad_assert(rhs_vp);
-		}
-		if (!rhs_vp) return -2;
-
-		EVAL_DEBUG("CAST to %s",
-			   fr_int2str(dict_attr_types,
-				      c->cast->type, "?Unknown?"));
-
-		rcode = paircmp_op(map->op, lhs_vp, rhs_vp);
-		pairfree(&lhs_vp);
-		if (map->rhs->type != TMPL_TYPE_ATTR) {
-			pairfree(&rhs_vp);
-		}
-		return rcode;
+	case TMPL_TYPE_NULL:
+	case TMPL_TYPE_ATTR_UNKNOWN:
+	case TMPL_TYPE_UNKNOWN:
+	case TMPL_TYPE_REGEX:		/* should now be a TMPL_TYPE_REGEX_STRUCT or TMPL_TYPE_XLAT_STRUCT */
+	case TMPL_TYPE_REGEX_STRUCT:	/* not allowed as LHS */
+		rad_assert(0);
+		rcode = -1;
+		break;
 	}
 
-	/*
-	 *	Might be a virtual comparison
-	 */
-	if ((map->lhs->type == TMPL_TYPE_ATTR) &&
-	    (map->op != T_OP_REG_EQ) &&
-	    (c->pass2_fixup == PASS2_PAIRCOMPARE)) {
-		int ret;
-		VALUE_PAIR *lhs_vp;
+	EVAL_DEBUG("<<<");
 
-		EVAL_DEBUG("virtual ATTR to DATA");
-
-		rcode = tmpl_cast_to_vp(&lhs_vp, request, map->rhs, map->lhs->tmpl_da);
-		if (rcode < 0) return rcode;
-		rad_assert(lhs_vp);
-
-		/*
-		 *	paircompare requires the operator be set for the
-		 *	check attribute.
-		 */
-		lhs_vp->op = map->op;
-		ret = paircompare(request, request->packet->vps, lhs_vp, NULL);
-		talloc_free(lhs_vp);
-		if (ret == 0) {
-			return true;
-		}
-		return false;
-	}
-	rad_assert(c->pass2_fixup != PASS2_PAIRCOMPARE);
-
-	/*
-	 *	RHS has been pre-parsed into binary data.  Go check
-	 *	that.
-	 */
-	if ((map->lhs->type == TMPL_TYPE_ATTR) &&
-	    (map->rhs->type == TMPL_TYPE_DATA)) {
-		VALUE_PAIR *lhs_vp, *rhs_vp;
-
-		EVAL_DEBUG("ATTR to DATA");
-
-		if (tmpl_find_vp(&lhs_vp, request, map->lhs) < 0) return -2;
-
-		rcode = tmpl_cast_to_vp(&rhs_vp, request, map->rhs, map->lhs->tmpl_da);
-		if (rcode < 0) return rcode;
-		rad_assert(rhs_vp);
-
-#ifdef WITH_EVAL_DEBUG
-		debug_pair(lhs_vp);
-		debug_pair(rhs_vp);
-#endif
-
-		rcode = paircmp_op(map->op, lhs_vp, rhs_vp);
-		pairfree(&rhs_vp);
-		return rcode;
-	}
-
-	rad_assert(map->rhs->type != TMPL_TYPE_DATA);
-	rad_assert(map->lhs->type != TMPL_TYPE_DATA);
-
-#ifdef HAVE_REGEX
-	/*
-	 *	Parse regular expressions.
-	 */
-	if (map->op == T_OP_REG_EQ) {
-		return do_regex(request, map);
-	}
-#endif
-
-	/*
-	 *	The RHS now needs to be expanded into a string.
-	 */
-	EVAL_DEBUG("TMPL RHS is %s", map->rhs->name);
-	rcode = radius_expand_tmpl(&rhs, request, map->rhs);
-	if (rcode < 0) {
-		EVAL_DEBUG("FAIL %d", __LINE__);
-		return rcode;
-	}
-	rad_assert(rhs != NULL);
-
-	/*
-	 *	User-Name == FOO
-	 *
-	 *	Parse the RHS to be the same DA as the LHS.  do
-	 *	comparisons.  So long as it's not a regex, which does
-	 *	string comparisons.
-	 *
-	 *	The LHS may be a virtual attribute, too.
-	 */
-	if (map->lhs->type == TMPL_TYPE_ATTR) {
-		VALUE_PAIR *lhs_vp, *rhs_vp;
-
-		EVAL_DEBUG("ATTR to non-REGEX");
-
-		/*
-		 *	No LHS means no match
-		 */
-		if (tmpl_find_vp(&lhs_vp, request, map->lhs) < 0) {
-			/*
-			 *	Not a real attr: might be a dynamic comparison.
-			 */
-			if ((map->lhs->type == TMPL_TYPE_ATTR) &&
-			    (map->lhs->tmpl_da->vendor == 0) &&
-			    radius_find_compare(map->lhs->tmpl_da)) {
-				rhs_vp = pairalloc(request, map->lhs->tmpl_da);
-				rad_assert(rhs_vp != NULL);
-				if (pairparsevalue(rhs_vp, rhs, -1) < 0) {
-					talloc_free(rhs);
-					EVAL_DEBUG("FAIL %d", __LINE__);
-					return -1;
-				}
-				talloc_free(rhs);
-
-				rcode = (radius_callback_compare(request, NULL, rhs_vp, NULL, NULL) == 0);
-				pairfree(&rhs_vp);
-				return rcode;
-			}
-
-			return -2;
-		}
-
-		/*
-		 *	Get VP for RHS
-		 */
-		rhs_vp = pairalloc(request, map->lhs->tmpl_da);
-		rad_assert(rhs_vp != NULL);
-		if (pairparsevalue(rhs_vp, rhs, -1) < 0) {
-			talloc_free(rhs);
-			pairfree(&rhs_vp);
-			EVAL_DEBUG("FAIL %d", __LINE__);
-			return -1;
-		}
-
-		rcode = paircmp_op(map->op, lhs_vp, rhs_vp);
-		talloc_free(rhs);
-		pairfree(&rhs_vp);
-		return rcode;
-	}
-
-	/*
-	 *	The LHS is a string.  Expand it.
-	 */
-	EVAL_DEBUG("TMPL LHS is %s", map->lhs->name);
-	rcode = radius_expand_tmpl(&lhs, request, map->lhs);
-	if (rcode < 0) {
-		EVAL_DEBUG("FAIL %d", __LINE__);
-		return rcode;
-	}
-	rad_assert(lhs != NULL);
-
-	EVAL_DEBUG("LHS is %s", lhs);
-	EVAL_DEBUG("RHS is %s", rhs);
-
-	/*
-	 *	Loop over the string, doing comparisons
-	 */
-	if (all_digits(lhs) && all_digits(rhs)) {
-		int lint, rint;
-
-		lint = strtoul(lhs, NULL, 0);
-		rint = strtoul(rhs, NULL, 0);
-		talloc_free(lhs);
-		talloc_free(rhs);
-
-		switch (map->op) {
-		case T_OP_CMP_EQ:
-			return (lint == rint);
-
-		case T_OP_NE:
-			return (lint != rint);
-
-		case T_OP_LT:
-			return (lint < rint);
-
-		case T_OP_GT:
-			return (lint > rint);
-
-		case T_OP_LE:
-			return (lint <= rint);
-
-		case T_OP_GE:
-			return (lint >= rint);
-
-		default:
-			break;
-		}
-
-	} else {
-		rad_assert(lhs != NULL);
-		rad_assert(rhs != NULL);
-
-		rcode = strcmp(lhs, rhs);
-		talloc_free(lhs);
-		talloc_free(rhs);
-
-		switch (map->op) {
-		case T_OP_CMP_EQ:
-			return (rcode == 0);
-
-		case T_OP_NE:
-			return (rcode != 0);
-
-		case T_OP_LT:
-			return (rcode < 0);
-
-		case T_OP_GT:
-			return (rcode > 0);
-
-		case T_OP_LE:
-			return (rcode <= 0);
-
-		case T_OP_GE:
-			return (rcode >= 0);
-
-		default:
-			break;
-		}
-	}
-
-	EVAL_DEBUG("FAIL %d", __LINE__);
-	return -1;
+	return rcode;
 }
-
 
 /** Evaluate a fr_cond_t;
  *
@@ -863,8 +715,7 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
  * @param[in] c the condition to evaluate
  * @return -1 on failure, -2 on attribute not found, 0 for "no match", 1 for "match".
  */
-int radius_evaluate_cond(REQUEST *request, int modreturn, int depth,
-			 fr_cond_t const *c)
+int radius_evaluate_cond(REQUEST *request, int modreturn, int depth, fr_cond_t const *c)
 {
 	int rcode = -1;
 #ifdef WITH_EVAL_DEBUG

@@ -542,7 +542,6 @@ ssize_t value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 			goto finish;
 		}
 
-
 	do_octets:
 		len -= 2;
 
@@ -969,6 +968,13 @@ ssize_t value_data_cast(TALLOC_CTX *ctx, value_data_t *dst,
 	if (!fr_assert(dst_type != src_type)) return -1;
 
 	/*
+	 *	Deserialise a value_data_t
+	 */
+	if (src_type == PW_TYPE_STRING) {
+		return value_data_from_str(ctx, dst, &dst_type, dst_enumv, src->strvalue, src_len);
+	}
+
+	/*
 	 *	Converts the src data to octets with no processing.
 	 */
 	if (dst_type == PW_TYPE_OCTETS) {
@@ -988,13 +994,6 @@ ssize_t value_data_cast(TALLOC_CTX *ctx, value_data_t *dst,
 	if (dst_type == PW_TYPE_STRING) {
 		dst->strvalue = vp_data_aprints_value(ctx, src_type, src_enumv, src, src_len, '\0');
 		return talloc_array_length(dst->strvalue) - 1;
-	}
-
-	/*
-	 *	Deserialise a value_data_t
-	 */
-	if (src_type == PW_TYPE_STRING) {
-		return value_data_from_str(ctx, dst, &dst_type, dst_enumv, src->strvalue, src_len);
 	}
 
 	if ((src_type == PW_TYPE_IFID) &&

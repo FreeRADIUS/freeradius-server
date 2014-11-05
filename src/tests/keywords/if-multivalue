@@ -1,0 +1,173 @@
+#
+# PRE: update if
+#
+update {
+       control:Cleartext-Password := 'hello'
+       reply:Filter-Id := 'filter'
+}
+
+update request {
+	Tmp-String-0 := 'foo'
+	Tmp-String-0 += 'bar'
+	Tmp-String-0 += 'baz'
+
+	Tmp-String-1 := 'GROUP ADMINISTRATORS'
+	Tmp-String-1 += 'GROUP STUDENTS'
+	Tmp-String-1 += 'GROUP PEONS'
+
+	Tmp-String-2 := 'PEONS'
+	Tmp-String-2 += 'STUDENTS'
+	Tmp-String-2 += 'ADMINISTRATORS'
+
+	Tmp-String-3 := 'no'
+	Tmp-String-3 += 'no'
+	Tmp-String-3 += 'yes'
+
+	Tmp-Integer-0 := 1
+	Tmp-Integer-0 += 2
+	Tmp-Integer-0 += 5
+}
+
+update control {
+	Tmp-String-0 := 'foo'
+	Tmp-String-0 += 'bar'
+	Tmp-String-0 += 'baz'
+
+	Tmp-String-1 := 'boink'
+	Tmp-String-1 += 'tard'
+	Tmp-String-1 += 'dink'
+	Tmp-String-1 += 'slink'
+
+	Tmp-Integer-0 := 01
+	Tmp-Integer-0 += 02
+	Tmp-Integer-0 += 05
+	Tmp-Integer-0 += 04
+
+	Tmp-Integer-1 := 10
+	Tmp-Integer-1 += 20
+	Tmp-Integer-1 += 30
+}
+
+#
+#  Mmmm O(N^2)
+#
+if (&request:Tmp-String-0[*] != &control:Tmp-String-0[*]) {
+	update reply {
+		Filter-Id += 'fail 0'
+	}
+}
+
+if (&request:Tmp-String-0[*] == &control:Tmp-String-1[*]) {
+	update reply {
+		Filter-Id += 'fail 1'
+	}
+}
+
+if (&request:Tmp-String-1[*] == &control:Tmp-String-0[*]) {
+	update reply {
+		Filter-Id += 'fail 2'
+	}
+}
+
+#
+#  Integer comparison and normalisation
+#
+if (&request:Tmp-Integer-0 != &control:Tmp-Integer-0) {
+	update reply {
+		Filter-Id += 'fail 3'
+	}
+}
+
+#
+#  if any value of request:Tmp-Integer-0 > any value of
+#  request:Tmp-Integer-1 then evaluate to true
+#
+if (&request:Tmp-Integer-0[*] > &control:Tmp-Integer-1[*]) {
+	update reply {
+		Filter-Id += 'fail 4'
+	}
+}
+
+#
+#  Compiled reqex comparisons
+#
+if (&request:Tmp-String-1[*] !~ /PEONS$/) {
+	update reply {
+		Filter-Id += 'fail 5'
+	}
+}
+
+if (&control:Tmp-String-1 =~ /PEONS$/) {
+	update reply {
+		Filter-Id += 'fail 6'
+	}
+}
+
+if (&control:Tmp-String-1 =~ /DINKS$/) {
+	update reply {
+		Filter-Id += 'fail 7'
+	}
+}
+
+#
+#  Dynamic reqex comparisons
+#
+if (&request:Tmp-String-1[*] !~ /%{Tmp-String-2[0]}$/) {
+	update reply {
+		Filter-Id += 'fail 8'
+	}
+}
+
+if (&request:Tmp-String-1 =~ /%{Tmp-String-2[1]}$/) {
+	update reply {
+		Filter-Id += 'fail 9'
+	}
+}
+
+if (&request:Tmp-String-1 !~ /%{Tmp-String-2[2]}$/) {
+	update reply {
+		Filter-Id += 'fail 10'
+	}
+}
+
+if (&request:Tmp-String-1 =~ /%{Tmp-String-2[#]}$/) {
+	update reply {
+		Filter-Id += 'fail 11'
+	}
+}
+
+#
+#  XLAT virtual comparisons
+#
+if (&control:Tmp-Integer-0[*] != "%{control:Tmp-Integer-0[#]}") {
+	update reply {
+		Filter-Id += 'fail 12'
+	}
+}
+
+#
+#  Literal comparisons
+#
+if (&control:Tmp-String-1[*] != 'boink') {
+	update reply {
+		Filter-Id += 'fail 13'
+	}
+}
+
+if (&control:Tmp-String-1[*] == 'foo') {
+	update reply {
+		Filter-Id += 'fail 14'
+	}
+}
+
+if (&request:Tmp-Integer-0[*] > 10) {
+	update reply {
+		Filter-Id += 'fail 15'
+	}
+}
+
+if (!(&request:Tmp-Integer-0[*] < 10)) {
+	update reply {
+		Filter-Id += 'fail 16'
+	}
+}
