@@ -440,7 +440,7 @@ static int cond_normalise_values(REQUEST *request, fr_cond_t const *c,
 	value_pair_map_t const *map = c->data.map;
 
 	DICT_ATTR const *cast = NULL;
-	PW_TYPE cast_type = PW_TYPE_STRING;
+	PW_TYPE cast_type = PW_TYPE_INVALID;
 
 	int rcode;
 
@@ -462,9 +462,7 @@ static int cond_normalise_values(REQUEST *request, fr_cond_t const *c,
 	 */
 #define CAST(_s) \
 do {\
-	if (!cast && lhs && rhs && (lhs_type == PW_TYPE_STRING) && (rhs_type == PW_TYPE_STRING) &&\
-	    all_digits(lhs->strvalue) && all_digits(rhs->strvalue)) cast_type = PW_TYPE_INTEGER64;\
-	if ((cast_type != _s ## _type) && (_s ## _type != PW_TYPE_INVALID)) {\
+	if ((cast_type != PW_TYPE_INVALID) && (_s ## _type != PW_TYPE_INVALID) && (cast_type != _s ## _type)) {\
 		ssize_t r;\
 		EVAL_DEBUG("CASTING " #_s " FROM %s TO %s",\
 			   fr_int2str(dict_attr_types, _s ## _type, "<INVALID>"),\
@@ -479,6 +477,17 @@ do {\
 		_s ## _type = cast_type;\
 		_s ## _len = (size_t)r;\
 		_s = &_s ## _cast;\
+	}\
+} while (0)
+
+#define CHECK_INT_CAST(_l, _r) \
+do {\
+	if ((cast_type == PW_TYPE_INVALID) &&\
+	    _l && (_l ## _type == PW_TYPE_STRING) &&\
+	    _r && (_r ## _type == PW_TYPE_STRING) &&\
+	    all_digits(lhs->strvalue) && all_digits(rhs->strvalue)) {\
+	    	cast_type = PW_TYPE_INTEGER64;\
+	    	EVAL_DEBUG("OPERANDS ARE NUMBER STRINGS, SETTING CAST TO integer64");\
 	}\
 } while (0)
 
@@ -533,6 +542,7 @@ do {\
 			rhs = &vp->data;
 			rhs_len = vp->length;
 
+			CHECK_INT_CAST(lhs, rhs);
 			CAST(lhs);
 			CAST(rhs);
 
@@ -549,6 +559,7 @@ do {\
 		rhs = &map->rhs->tmpl_data_value;
 		rhs_len = map->rhs->tmpl_data_length;
 
+		CHECK_INT_CAST(lhs, rhs);
 		CAST(lhs);
 		CAST(rhs);
 
@@ -577,6 +588,7 @@ do {\
 		rhs_type = PW_TYPE_STRING;
 		rhs = &data;
 
+		CHECK_INT_CAST(lhs, rhs);
 		CAST(lhs);
 		CAST(rhs);
 
