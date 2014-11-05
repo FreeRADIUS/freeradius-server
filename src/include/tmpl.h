@@ -131,6 +131,7 @@ typedef struct value_pair_tmpl_t {
 					//!< attribute, just the string id for
 					//!< the attribute.
 	size_t		len;		//!< Name length.
+	bool		iflag;		//!< Case insensitive (if operand is used in regex comparison)
 
 	union {
 		/*
@@ -151,10 +152,7 @@ typedef struct value_pair_tmpl_t {
 		xlat_exp_t	*xlat;	 //!< pre-parsed xlat_exp_t
 
 #ifdef HAVE_REGEX
-		struct {
-			regex_t			*comp;		//!< pre-parsed regex_t
-			bool			iflag;		//!< Case insensitive
-		} preg;
+		regex_t		*preg;		//!< pre-parsed regex_t
 #endif
 	} data;
 } value_pair_tmpl_t;
@@ -175,8 +173,8 @@ typedef struct value_pair_tmpl_t {
 #define tmpl_data_value		data.literal.data
 
 #ifdef HAVE_REGEX
-#  define tmpl_preg		data.preg.comp
-#  define tmpl_iflag		data.preg.iflag
+#  define tmpl_preg		data.preg
+#  define tmpl_iflag		iflag
 #endif
 
 #ifndef WITH_VERIFY_PTR
