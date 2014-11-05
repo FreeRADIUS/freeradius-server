@@ -1595,7 +1595,7 @@ static ssize_t xlat_tokenize_request(REQUEST *request, char const *fmt, xlat_exp
 static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, pair_lists_t list, DICT_ATTR const *da,
 			int8_t tag, int num, bool return_null)
 {
-	VALUE_PAIR *vp, *vps = NULL, *myvp = NULL;
+	VALUE_PAIR *vp = NULL, *vps = NULL, *myvp = NULL;
 	RADIUS_PACKET *packet = NULL;
 	DICT_VALUE *dv;
 	char *ret = NULL;
@@ -1649,6 +1649,11 @@ static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, pair_lists_t list, DI
 
 #endif
 	}
+
+	/*
+	 *	Counting attributes doesn't require us to search for them
+	 */
+	if (!da->flags.virtual && (num == NUM_COUNT)) goto do_print;
 
 	/*
 	 *	Now we have the list, check to see if we have an attribute in
@@ -1846,10 +1851,9 @@ do_print:
 		 *	Return a count of the VPs.
 		 */
 		case NUM_COUNT:
-			fr_cursor_init(&cursor, &vp);
-			while (fr_cursor_next_by_da(&cursor, da, tag) != NULL) {
-				count++;
-			}
+			fr_cursor_init(&cursor, &vps);
+			while (fr_cursor_next_by_da(&cursor, da, tag) != NULL) count++;
+
 			return talloc_typed_asprintf(ctx, "%d", count);
 
 		/*
@@ -1859,7 +1863,7 @@ do_print:
 		{
 			char *p, *q;
 
-			(void) fr_cursor_init(&cursor, &vp);
+			(void) fr_cursor_init(&cursor, &vps);
 			vp = fr_cursor_next_by_da(&cursor, da, tag);
 			if (!vp) return NULL;
 
@@ -1876,7 +1880,7 @@ do_print:
 		}
 
 		default:
-			fr_cursor_init(&cursor, &vp);
+			fr_cursor_init(&cursor, &vps);
 			while ((vp = fr_cursor_next_by_da(&cursor, da, tag)) != NULL) {
 				if (count++ == num) break;
 			}
