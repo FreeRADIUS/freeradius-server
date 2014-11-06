@@ -309,10 +309,10 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool,
 	rad_assert(pool != NULL);
 
 	/*
-	 *	Prevent all threads from blocking if the resource
-	 *	were managing connections for appears to be unavailable.
+	 *	If we have NO connections, don't open multiple
+	 *	connections until we successfully open at least one.
 	 */
-	if (pool->num == 0) {
+	if ((pool->num == 0) && pool->pending) {
 		return NULL;
 	}
 
