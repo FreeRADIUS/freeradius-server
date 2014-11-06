@@ -87,6 +87,7 @@ struct fr_connection_pool_t {
 	uint32_t       	max;		//!< Maximum number of concurrent
 					//!< connections to allow.
 	uint32_t       	spare;		//!< Number of spare connections to try
+	uint32_t	pending;	//!< Number of pending open connections
 	uint32_t       	retry_delay;	//!< seconds to delay re-open
 					//!< after a failed open.
 	uint32_t       	cleanup_interval; //!< Initial timer for how
@@ -134,9 +135,6 @@ struct fr_connection_pool_t {
 
 	fr_connection_t	*head;		//!< Start of the connection list.
 	fr_connection_t *tail;		//!< End of the connection list.
-
-	bool		spawning;	//!< Whether we are currently attempting
-					//!< to spawn a new connection.
 
 #ifdef HAVE_PTHREAD_H
 	pthread_mutex_t	mutex;		//!< Mutex used to keep consistent state
@@ -314,7 +312,7 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool,
 	 *	Prevent all threads from blocking if the resource
 	 *	were managing connections for appears to be unavailable.
 	 */
-	if ((pool->num == 0) && pool->spawning) {
+	if (pool->num == 0) {
 		return NULL;
 	}
 
@@ -322,12 +320,12 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool,
 	rad_assert(pool->num <= pool->max);
 
 	/*
-	 *	Don't spawn multiple connections at the same time.
+	 *	Don't spawn too many connections at the same time.
 	 */
-	if (pool->spawning) {
+	if ((pool->num + pool->pending) >= pool->max) {
 		pthread_mutex_unlock(&pool->mutex);
 
-		ERROR("%s: Cannot open new connection, connection spawning already in progress", pool->log_prefix);
+		ERROR("%s: Cannot open new connection, already at max", pool->log_prefix);
 		return NULL;
 	}
 
@@ -354,7 +352,7 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool,
 		return NULL;
 	}
 
-	pool->spawning = true;
+	pool->pending++;
 
 	/*
 	 *	Unlock the mutex while we try to open a new
@@ -385,7 +383,9 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool,
 		ERROR("%s: Opening connection failed (%" PRIu64 ")", pool->log_prefix, pool->count);
 
 		pool->last_failed = now;
-		pool->spawning = false;
+		pthread_mutex_lock(&pool->mutex);
+		pool->pending--;
+		pthread_mutex_unlock(&pool->mutex);
 		return NULL;
 	}
 
@@ -410,7 +410,9 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool,
 	this->last_used = now;
 	fr_connection_link_head(pool, this);
 	pool->num++;
-	pool->spawning = false;
+
+	rad_assert(pool->pending > 0);
+	pool->pending--;
 	pool->last_spawned = time(NULL);
 	pool->delay_interval = pool->cleanup_interval;
 	pool->next_delay = pool->cleanup_interval;
@@ -904,8 +906,15 @@ static int fr_connection_pool_check(fr_connection_pool_t *pool)
 	 *	connections to enforce "min".
 	 */
 	if (pool->num <= pool->min) {
-		if (pool->spawning) {
-			spawn = 0;
+		/*
+		 *	We're already opening sockets, don't open too many.
+		 */
+		if (pool->pending) {
+			if ((pool->num + pool->pending) >= pool->min) {
+				spawn = 0;
+			} else {
+				spawn = pool->min - (pool->num + pool->pending);
+			}
 		} else {
 			spawn = pool->min - pool->num;
 		}
@@ -956,7 +965,7 @@ static int fr_connection_pool_check(fr_connection_pool_t *pool)
 	 *	Only try to open spares if we're not already attempting to open
 	 *	a connection. Avoids spurious log messages.
 	 */
-	if (spawn && !pool->spawning) {
+	if (spawn) {
 		INFO("%s: %i of %u connections in use.  Need more spares", pool->log_prefix, pool->active, pool->num);
 		pthread_mutex_unlock(&pool->mutex);
 		fr_connection_spawn(pool, now, false); /* ignore return code */
