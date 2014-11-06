@@ -905,22 +905,15 @@ static int fr_connection_pool_check(fr_connection_pool_t *pool)
 	 *	have fewer than "min".  When that happens, open more
 	 *	connections to enforce "min".
 	 */
-	if (pool->num <= pool->min) {
-		/*
-		 *	We're already opening sockets, don't open too many.
-		 */
-		if (pool->pending) {
-			if ((pool->num + pool->pending) >= pool->min) {
-				spawn = 0;
-			} else {
-				spawn = pool->min - (pool->num + pool->pending);
-			}
-		} else {
-			spawn = pool->min - pool->num;
-		}
+	if ((pool->num + pool->pending) <= pool->min) {
+		spawn = pool->min - (pool->num + pool->pending);
 		extra = 0;
 
-	} else if (pool->num >= pool->max) {
+		/*
+		 *	If we're about to create more than "max",
+		 *	don't create more.
+		 */
+	} else if ((pool->num + pool->pending) >= pool->max) {
 		/*
 		 *	Ensure we don't spawn more connections.  If
 		 *	there are extra idle connections, we can
@@ -929,6 +922,12 @@ static int fr_connection_pool_check(fr_connection_pool_t *pool)
 		spawn = 0;
 		/* leave extra alone from above */
 
+		/*
+		 *	min < num < max
+		 *
+		 *	AND we don't have enough idle connections.
+		 *	Open some more.
+		 */
 	} else if (idle <= pool->spare) {
 		/*
 		 *	Not enough spare connections.  Spawn a few.
@@ -937,17 +936,26 @@ static int fr_connection_pool_check(fr_connection_pool_t *pool)
 		spawn = pool->spare - idle;
 		extra = 0;
 
-		if ((pool->num + spawn) > pool->max) {
-			spawn = pool->max - pool->num;
+		if ((pool->num + pool->pending + spawn) > pool->max) {
+			spawn = pool->max - (pool->num + pool->pending);
 		}
 
-	} else if ((pool->min + extra) >= pool->num) {
 		/*
-		 *	If closing the extra connections would take us
-		 *	below "min", then don't do that.  Cap the
-		 *	spare connections at the ones which will take
-		 *	us exactly to "min".
+		 *	min < num < max
+		 *
+		 *	We have more than enough idle connections, AND
+		 *	some are pending.  Don't open or close any.
 		 */
+	} else if (pool->pending) {
+		spawn = 0;
+		extra = 0;
+
+		/*
+		 *	We have too many idle connections, but closing
+		 *	some would take us below "min", so we only
+		 *	close enough to take us to "min".
+		 */
+	} else if ((pool->min + extra) >= pool->num) {
 		spawn = 0;
 		extra = pool->num - pool->min;
 
