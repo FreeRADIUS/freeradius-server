@@ -45,6 +45,7 @@ Source103: freeradius-pam-conf
 
 Obsoletes: freeradius-devel
 Obsoletes: freeradius-libs
+Obsoletes: freeradius < 3.1.0-1%{?dist}
 
 %define docdir %{_docdir}/freeradius-%{version}
 %define initddir %{?_initddir:%{_initddir}}%{!?_initddir:%{_initrddir}}
@@ -101,6 +102,7 @@ done when adding or deleting new users.
 Group: System Environment/Daemons
 Summary: FreeRADIUS config files
 Provides: freeradius-config
+Obsoletes: freeradius < 3.1.0-1%{?dist}
 
 %description config
 FreeRADIUS default config files
