@@ -717,6 +717,11 @@ rlm_rcode_t rlm_ldap_check_cached(ldap_instance_t const *inst, REQUEST *request,
 	vp_cursor_t	cursor;
 
 	fr_cursor_init(&cursor, &request->config_items);
+
+	/*
+	 *	We return RLM_MODULE_INVALID here as an indication
+	 *	the caller should try a dynamic group lookup instead.
+	 */
 	vp = fr_cursor_next_by_num(&cursor, inst->cache_da->attr, inst->cache_da->vendor, TAG_ANY);
 	if (!vp) return RLM_MODULE_INVALID;
 	fr_cursor_first(&cursor);
