@@ -626,7 +626,7 @@ void fr_fault(int sig)
 	 *	The only exception are SIGUSR1 and SIGUSR2 which print out various
 	 *	debugging info, and should be allowed to continue.
 	 */
-	if (fr_debug_state && (sig != SIGUSR1) && (sig != SIGUSR2)) {
+	if ((fr_debug_state == DEBUG_STATE_ATTACHED) && (sig != SIGUSR1) && (sig != SIGUSR2)) {
 		FR_FAULT_LOG("RAISING SIGNAL: %s", strsignal(sig));
 		raise(sig);
 		goto finish;
@@ -883,6 +883,9 @@ int fr_fault_setup(char const *cmd, char const *program)
 
 	/* Unsure what the side effects of changing the signal handler mid execution might be */
 	if (!setup) {
+		char *env;
+		fr_debug_state_t debug_state;
+
 		/*
 		 *  Setup the default logger
 		 */
@@ -890,22 +893,35 @@ int fr_fault_setup(char const *cmd, char const *program)
 		talloc_set_log_fn(_fr_talloc_log);
 
 		/*
-		 *  Figure out if we were started under a debugger
+		 *  Installing signal handlers interferes with some debugging
+		 *  operations.  Give the developer control over whether the
+		 *  signal handlers are installed or not.
 		 */
-		if (fr_debug_state < 0) fr_debug_state = fr_get_debug_state();
+		env = getenv("DEBUG");
+		if (!env || (strcmp(env, "no") == 0)) {
+			debug_state = DEBUG_STATE_NOT_ATTACHED;
+		} else if (strcmp(env, "auto") == 0) {
+			/*
+			 *  Figure out if we were started under a debugger
+			 */
+			if (fr_debug_state < 0) fr_debug_state = fr_get_debug_state();
+			debug_state = fr_debug_state;
+		} else {
+			debug_state = DEBUG_STATE_ATTACHED;
+		}
 
 		/*
 		 *  These signals can't be properly dealt with in the debugger
 		 *  if we set our own signal handlers.
 		 */
-		switch (fr_debug_state) {
+		switch (debug_state) {
 		default:
 #ifndef NDEBUG
 			FR_FAULT_LOG("Debugger check failed: %s", fr_strerror());
 			FR_FAULT_LOG("Signal processing in debuggers may not work as expected");
 #endif
 
-		case 0:
+		case DEBUG_STATE_NOT_ATTACHED:
 #ifdef SIGABRT
 			if (fr_set_signal(SIGABRT, fr_fault) < 0) return -1;
 
@@ -926,7 +942,7 @@ int fr_fault_setup(char const *cmd, char const *program)
 #endif
 			break;
 
-		case 1:
+		case DEBUG_STATE_ATTACHED:
 			break;
 		}
 #ifdef SIGUSR1
