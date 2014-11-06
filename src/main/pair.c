@@ -605,28 +605,37 @@ int paircompare(REQUEST *request, VALUE_PAIR *req_list, VALUE_PAIR *check,
  */
 int radius_xlat_do(REQUEST *request, VALUE_PAIR *vp)
 {
-	ssize_t len;
+	ssize_t slen;
 
-	char buffer[1024];
-
+	char *expanded = NULL;
 	if (vp->type != VT_XLAT) return 0;
 
 	vp->type = VT_DATA;
 
-	len = radius_xlat(buffer, sizeof(buffer), request, vp->value.xlat, NULL, NULL);
-
+	slen = radius_axlat(&expanded, request, vp->value.xlat, NULL, NULL);
 	rad_const_free(vp->value.xlat);
 	vp->value.xlat = NULL;
-	if (len < 0) {
+	if (slen < 0) {
 		return -1;
 	}
 
 	/*
 	 *	Parse the string into a new value.
+	 *
+	 *	If the VALUE_PAIR is being used in a regular expression
+	 *	then we just want to copy the new value in unmolested.
 	 */
-	if (pairparsevalue(vp, buffer, -1) < 0){
+	if ((vp->op == T_OP_REG_EQ) || (vp->op == T_OP_REG_NE)) {
+		pairstrsteal(vp, expanded);
+		return 0;
+	}
+
+	if (pairparsevalue(vp, expanded, -1) < 0){
+		talloc_free(expanded);
 		return -2;
 	}
+
+	talloc_free(expanded);
 
 	return 0;
 }
