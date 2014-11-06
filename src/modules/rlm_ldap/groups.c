@@ -719,6 +719,7 @@ rlm_rcode_t rlm_ldap_check_cached(ldap_instance_t const *inst, REQUEST *request,
 	fr_cursor_init(&cursor, &request->config_items);
 	vp = fr_cursor_next_by_num(&cursor, inst->cache_da->attr, inst->cache_da->vendor, TAG_ANY);
 	if (!vp) return RLM_MODULE_INVALID;
+	fr_cursor_first(&cursor);
 
 	while ((vp = fr_cursor_next_by_num(&cursor, inst->cache_da->attr, inst->cache_da->vendor, TAG_ANY))) {
 		ret = paircmp_op(T_OP_CMP_EQ, vp, check);
