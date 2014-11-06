@@ -718,13 +718,11 @@ rlm_rcode_t rlm_ldap_check_cached(ldap_instance_t const *inst, REQUEST *request,
 
 	fr_cursor_init(&cursor, &request->config_items);
 	vp = fr_cursor_next_by_num(&cursor, inst->cache_da->attr, inst->cache_da->vendor, TAG_ANY);
-	if (!vp) {
-		return RLM_MODULE_INVALID;
-	}
+	if (!vp) return RLM_MODULE_INVALID;
 
 	while ((vp = fr_cursor_next_by_num(&cursor, inst->cache_da->attr, inst->cache_da->vendor, TAG_ANY))) {
-		ret = radius_compare_vps(request, check, vp);
-		if (ret == 0) {
+		ret = paircmp_op(T_OP_CMP_EQ, vp, check);
+		if (ret == 1) {
 			RDEBUG2("User found. Matched cached membership");
 			return RLM_MODULE_OK;
 		}
@@ -734,6 +732,6 @@ rlm_rcode_t rlm_ldap_check_cached(ldap_instance_t const *inst, REQUEST *request,
 		}
 	}
 
-	RDEBUG2("Membership not found");
+	RDEBUG2("Cached membership not found");
 	return RLM_MODULE_NOTFOUND;
 }
