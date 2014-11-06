@@ -808,6 +808,8 @@ redo:
 		fr_cond_t cond;
 		value_pair_map_t map;
 		value_pair_tmpl_t vpt;
+		char *expanded = NULL;
+
 
 		MOD_LOG_OPEN_BRACE;
 
@@ -853,14 +855,8 @@ redo:
 		if ((g->vpt->type == TMPL_TYPE_XLAT_STRUCT) ||
 		    (g->vpt->type == TMPL_TYPE_XLAT) ||
 		    (g->vpt->type == TMPL_TYPE_EXEC)) {
-			char *name;
-
-			if (radius_expand_tmpl(&name, request, g->vpt) < 0) {
-				goto find_null_case;
-			}
-			tmpl_init(&vpt, TMPL_TYPE_LITERAL, name, talloc_array_length(name) - 1);
-
-			talloc_free(name);
+			if (radius_expand_tmpl(&expanded, request, g->vpt) < 0) goto find_null_case;
+			tmpl_init(&vpt, TMPL_TYPE_LITERAL, expanded, talloc_array_length(expanded) - 1);
 		}
 
 		/*
@@ -925,6 +921,7 @@ redo:
 				break;
 			}
 		}
+		talloc_free(expanded);
 
 		if (!found) found = null_case;
 
