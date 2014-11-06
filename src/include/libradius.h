@@ -639,6 +639,11 @@ FR_TOKEN 	pairread(char const **ptr, VALUE_PAIR_RAW *raw);
 FR_TOKEN	userparse(TALLOC_CTX *ctx, char const *buffer, VALUE_PAIR **head);
 int		readvp2(TALLOC_CTX *ctx, VALUE_PAIR **out, FILE *fp, bool *pfiledone);
 
+
+/** Compare two attributes using and operator.
+ *
+ * @return 1 if equal, 0 if not eaqual, -1 on error.
+ */
 #define		paircmp_op(_op, _a, _b)	value_data_cmp_op(_op, _a->da->type, &_a->data, _a->length, _b->da->type, &_b->data, _b->length)
 
 /* value.c */
