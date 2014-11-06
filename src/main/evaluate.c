@@ -526,7 +526,7 @@ do {\
 	else if (map->rhs->type == TMPL_TYPE_DATA) cast_type = map->rhs->tmpl_data_type;
 	if (cast) cast_type = cast->type;
 
-	EVAL_DEBUG("NORMALISATION TYPE %s", fr_int2str(dict_attr_types, cast_type, "<INVALID>"));
+	EVAL_DEBUG("NORMALISATION TYPE %s", fr_int2str(dict_attr_types, cast_type, "none"));
 
 	switch (map->rhs->type) {
 	case TMPL_TYPE_ATTR:
@@ -578,13 +578,19 @@ do {\
 		ssize_t ret;
 		value_data_t data;
 
-		ret = radius_expand_tmpl((char **)&data.ptr, request, map->rhs);
-		if (ret < 0) {
-			EVAL_DEBUG("FAIL [%i]", __LINE__);
-			rcode = -1;
-			goto finish;
+		if (map->rhs->type != TMPL_TYPE_LITERAL) {
+			ret = radius_expand_tmpl((char **)&data.ptr, request, map->rhs);
+			if (ret < 0) {
+				EVAL_DEBUG("FAIL [%i]", __LINE__);
+				rcode = -1;
+				goto finish;
+			}
+			rhs_len = ret;
+
+		} else {
+			data.strvalue = map->rhs->name;
+			rhs_len = map->rhs->len;
 		}
-		rhs_len = ret;
 		rhs_type = PW_TYPE_STRING;
 		rhs = &data;
 
@@ -593,7 +599,7 @@ do {\
 		CAST(rhs);
 
 		rcode = cond_cmp_values(request, c, lhs_type, lhs, lhs_len, rhs_type, rhs, rhs_len);
-		talloc_free(data.ptr);
+		if (map->rhs->type != TMPL_TYPE_LITERAL)talloc_free(data.ptr);
 
 		break;
 	}
@@ -691,13 +697,19 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 		ssize_t ret;
 		value_data_t data;
 
-		ret = radius_expand_tmpl((char **)&data.ptr, request, map->lhs);
-		if (ret < 0) {
-			EVAL_DEBUG("FAIL [%i]", __LINE__);
-			return ret;
+		if (map->lhs->type != TMPL_TYPE_LITERAL) {
+			ret = radius_expand_tmpl((char **)&data.ptr, request, map->lhs);
+			if (ret < 0) {
+				EVAL_DEBUG("FAIL [%i]", __LINE__);
+				return ret;
+			}
+		} else {
+			data.strvalue = map->lhs->name;
+			ret = map->lhs->len;
 		}
+
 		rcode = cond_normalise_values(request, c, PW_TYPE_STRING, NULL, &data, ret);
-		talloc_free(data.ptr);
+		if (map->lhs->type != TMPL_TYPE_LITERAL) talloc_free(data.ptr);
 	}
 		break;
 
