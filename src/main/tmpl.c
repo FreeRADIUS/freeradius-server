@@ -701,6 +701,7 @@ value_pair_tmpl_t *tmpl_alloc(TALLOC_CTX *ctx, tmpl_type_t type, char const *nam
 	if (name) {
 		vpt->name = len < 0 ? talloc_strdup(vpt, name) :
 				      talloc_strndup(vpt, name, len);
+		talloc_set_type(vpt->name, char);
 		vpt->len = talloc_array_length(vpt->name) - 1;
 	}
 
