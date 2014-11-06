@@ -928,10 +928,8 @@ redo:
 
 		if (!found) found = null_case;
 
-		do_null_case:
-		modcall_child(request, component,
-			      depth + 1, entry, found,
-			      &result);
+	do_null_case:
+		modcall_child(request, component, depth + 1, entry, found, &result);
 		MOD_LOG_CLOSE_BRACE;
 		goto calculate_result;
 	} /* MOD_SWITCH */
@@ -1895,8 +1893,7 @@ static modcallable *do_compile_modswitch (modcallable *parent, rlm_components_t 
 
 	name2 = cf_section_name2(cs);
 	if (!name2) {
-		cf_log_err_cs(cs,
-			   "You must specify a variable to switch over for 'switch'");
+		cf_log_err_cs(cs, "You must specify a variable to switch over for 'switch'");
 		return NULL;
 	}
 
@@ -1937,9 +1934,9 @@ static modcallable *do_compile_modswitch (modcallable *parent, rlm_components_t 
 	 *	Walk through the children of the switch section,
 	 *	ensuring that they're all 'case' statements
 	 */
-	for (ci=cf_item_find_next(cs, NULL);
+	for (ci = cf_item_find_next(cs, NULL);
 	     ci != NULL;
-	     ci=cf_item_find_next(cs, ci)) {
+	     ci = cf_item_find_next(cs, ci)) {
 		CONF_SECTION *subcs;
 		char const *name1;
 
@@ -2037,10 +2034,10 @@ static modcallable *do_compile_modcase(modcallable *parent, rlm_components_t com
 		vpt = NULL;
 	}
 
-	csingle= do_compile_modgroup(parent, component, cs,
-				     GROUPTYPE_SIMPLE,
-				     GROUPTYPE_SIMPLE,
-				     MOD_CASE);
+	csingle = do_compile_modgroup(parent, component, cs,
+				      GROUPTYPE_SIMPLE,
+				      GROUPTYPE_SIMPLE,
+				      MOD_CASE);
 	if (!csingle) {
 		talloc_free(vpt);
 		return NULL;
