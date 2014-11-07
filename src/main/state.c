@@ -363,7 +363,10 @@ void fr_state_get_vps(REQUEST *request, RADIUS_PACKET *packet)
 	/*
 	 *	No State, don't do anything.
 	 */
-	if (!pairfind(request->packet->vps, PW_STATE, 0, TAG_ANY)) return;
+	if (!pairfind(request->packet->vps, PW_STATE, 0, TAG_ANY)) {
+		RDEBUG("session-state: No State attribute");
+		return;
+	}
 
 	PTHREAD_MUTEX_LOCK(&state_mutex);
 	entry = fr_state_find(packet);
@@ -374,6 +377,11 @@ void fr_state_get_vps(REQUEST *request, RADIUS_PACKET *packet)
 	 */
 	if (entry) {
 		pairfilter(request, &request->state, &entry->vps, 0, 0, TAG_ANY);
+		RDEBUG("session-state: Found cached attributes");
+		rdebug_pair_list(L_DBG_LVL_1, request, request->state);
+
+	} else {
+		RDEBUG("session-state: No cached attributes");
 	}
 
 	PTHREAD_MUTEX_UNLOCK(&state_mutex);
@@ -390,7 +398,13 @@ bool fr_state_put_vps(REQUEST *request, RADIUS_PACKET *original, RADIUS_PACKET *
 {
 	state_entry_t *entry, *old;
 
-	if (!request->state) return true; /* do nothing */
+	if (!request->state) {
+		RDEBUG("session-state: Nothing to cache");
+		return true;
+	}
+
+	RDEBUG("session-state: Saving cached attributes");
+	rdebug_pair_list(L_DBG_LVL_1, request, request->state);
 
 	PTHREAD_MUTEX_LOCK(&state_mutex);
 
