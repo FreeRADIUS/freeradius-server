@@ -298,6 +298,19 @@ void version(void)
 	DEBUG3("  unknown");
 #endif
 
+	DEBUG3("Compilation flags:");
+#ifdef BUILT_WITH_CPPFLAGS
+	DEBUG3("  cppflags : " BUILT_WITH_CPPFLAGS);
+#endif
+#ifdef BUILT_WITH_CFLAGS
+	DEBUG3("  cflags   : " BUILT_WITH_CFLAGS);
+#endif
+#ifdef BUILT_WITH_LDFLAGS
+	DEBUG3("  ldflags  : " BUILT_WITH_LDFLAGS);
+#endif
+#ifdef BUILT_WITH_LIBS
+	DEBUG3("  libs     : " BUILT_WITH_LIBS);
+#endif
 	INFO("Copyright (C) 1999-2014 The FreeRADIUS server project and contributors");
 	INFO("There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A");
 	INFO("PARTICULAR PURPOSE");
