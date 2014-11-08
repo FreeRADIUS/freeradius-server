@@ -896,6 +896,7 @@ void verify_request(char const *file, int line, REQUEST *request)
 
 #ifdef WITH_VERIFY_PTR
 	fr_verify_list(file, line, request, request->config_items);
+	fr_verify_list(file, line, request, request->state);
 #endif
 
 	if (request->packet) verify_packet(file, line, request, request->packet, "request");
