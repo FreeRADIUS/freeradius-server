@@ -115,7 +115,9 @@ static void state_entry_free(state_entry_t *entry)
 		entry->free_opaque(entry->opaque);
 	}
 
-	talloc_get_type_abort(entry, state_entry_t);
+#ifdef WITH_VERIFY_PTR
+	(void) talloc_get_type_abort(entry, state_entry_t);
+#endif
 	rbtree_deletebydata(state_tree, entry);
 	talloc_free(entry);
 }
