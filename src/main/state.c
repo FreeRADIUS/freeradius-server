@@ -82,46 +82,42 @@ static int state_entry_cmp(void const *one, void const *two)
  *
  *	Note that 
  */
-static int _state_entry_free(state_entry_t *entry)
+static void state_entry_free(state_entry_t *entry)
 {
+	state_entry_t *prev, *next;
+
 	/*
 	 *	If we're deleting the whole tree, don't bother doing
 	 *	all of the fixups.
 	 */
-	if (!state_tree) return 0;
+	if (!state_tree) return;
 
-	if (state_head == entry) {
-		rad_assert(entry->prev == NULL);
-		state_head = entry->next;
+	prev = entry->prev;
+	next = entry->next;
 
-	} else {
-		rad_assert(entry->prev != NULL);
-		entry->prev->next = entry->next;
+	if (prev) {
+		rad_assert(state_tail != entry);
+		prev->next = next;
+	} else if (state_head) {
+		rad_assert(state_head == entry);
+		state_head = next;
 	}
 
-	if (entry->next) {
-		entry->next->prev = entry->prev;
-	}
-
-	if (state_tail == entry) {
-		rad_assert(entry->next == NULL);
-		state_tail = entry->prev;
-
-	} else {
-		rad_assert(entry->next != NULL);
-		entry->next->prev = entry->prev;
-	}
-
-	if (entry->prev) {
-		entry->prev->next = entry->next;
+	if (next) {
+		rad_assert(state_tail != entry);
+		next->prev = prev;
+	} else if (state_tail) {
+		rad_assert(state_tail == entry);
+		state_tail = prev;
 	}
 
 	if (entry->opaque) {
 		entry->free_opaque(entry->opaque);
 	}
 
+	talloc_get_type_abort(entry, state_entry_t);
 	rbtree_deletebydata(state_tree, entry);
-	return 0;
+	talloc_free(entry);
 }
 
 bool fr_state_init(void)
@@ -166,29 +162,30 @@ static state_entry_t *fr_state_create(RADIUS_PACKET *packet, state_entry_t *old)
 	uint32_t x;
 	time_t now = time(NULL);
 	VALUE_PAIR *vp;
-	state_entry_t *entry;
+	state_entry_t *entry, *next;
 
 	/*
-	 *	Clean up old entries.  The callback will take care of
-	 *	removing them from the rbtree, and unlinking them from
-	 *	the cleanup list.
+	 *	Clean up old entries.
 	 */
-	while (state_head) {
-		entry = state_head;
+	for (entry = state_head; entry != NULL; entry = next) {
+		next = entry->next;
+
+		if (entry == old) continue;
 
 		/*
 		 *	Too old, we can delete it.
 		 */
 		if (entry->cleanup < now) {
-			talloc_free(entry);
+			state_entry_free(entry);
 			continue;
 		}
 
 		/*
-		 *	Unused.  We can delete it.
+		 *	Unused.  We can delete it, even if now isn't
+		 *	the time to clean it up.
 		 */
 		if (!entry->vps && !entry->opaque) {
-			talloc_free(entry);
+			state_entry_free(entry);
 			continue;
 		}
 
@@ -199,7 +196,7 @@ static state_entry_t *fr_state_create(RADIUS_PACKET *packet, state_entry_t *old)
 	 *	Limit the size of the cache based on how many requests
 	 *	we can handle at the same time.
 	 */
-	if (rbtree_num_elements(state_tree) >= main_config.max_requests * 10) {
+	if (rbtree_num_elements(state_tree) >= main_config.max_requests * 2) {
 		return NULL;
 	}
 
@@ -246,7 +243,7 @@ static state_entry_t *fr_state_create(RADIUS_PACKET *packet, state_entry_t *old)
 		/*
 		 *	The old one isn't used any more, so we can free it.
 		 */
-		if (!old->opaque) talloc_free(old);
+		if (!old->opaque) state_entry_free(old);
 
 	} else if (!vp) {
 		/*
@@ -270,6 +267,7 @@ static state_entry_t *fr_state_create(RADIUS_PACKET *packet, state_entry_t *old)
 	} else {
 		vp = paircreate(packet, PW_STATE, 0);
 		pairmemcpy(vp, entry->state, sizeof(entry->state));
+		pairadd(&packet->vps, vp);
 	}
 
 	if (!rbtree_insert(state_tree, entry)) {
@@ -294,18 +292,6 @@ static state_entry_t *fr_state_create(RADIUS_PACKET *packet, state_entry_t *old)
 		state_tail = entry;
 	}
 
-	/*
-	 *	Now that it's all linked in, set the destructor.
-	 */
-	talloc_set_destructor(entry, _state_entry_free);
-
-	/*
-	 *	Copy the token to the State attribute, and add it to
-	 *	the packet.
-	 */
-	pairmemcpy(vp, entry->state, sizeof(entry->state));
-	pairadd(&packet->vps, vp);
-
 	return entry;
 }
 
@@ -316,7 +302,7 @@ static state_entry_t *fr_state_create(RADIUS_PACKET *packet, state_entry_t *old)
 static state_entry_t *fr_state_find(RADIUS_PACKET *packet)
 {
 	VALUE_PAIR *vp;
-	state_entry_t my_entry;
+	state_entry_t *entry, my_entry;
 
 	vp = pairfind(packet->vps, PW_STATE, 0, TAG_ANY);
 	if (!vp) return NULL;
@@ -325,7 +311,13 @@ static state_entry_t *fr_state_find(RADIUS_PACKET *packet)
 
 	memcpy(my_entry.state, vp->vp_octets, sizeof(my_entry.state));
 
-	return rbtree_finddata(state_tree, &my_entry);
+	entry = rbtree_finddata(state_tree, &my_entry);
+
+#ifdef WITH_VERIFY_PTR
+	if (entry)  (void) talloc_get_type_abort(entry, state_entry_t);
+#endif
+
+	return entry;
 }
 
 /*
@@ -336,7 +328,7 @@ void fr_state_discard(REQUEST *request, RADIUS_PACKET *original)
 {
 	state_entry_t *entry;
 
-	talloc_free(request->state);
+	pairfree(&request->state);
 	request->state = NULL;
 
 	PTHREAD_MUTEX_LOCK(&state_mutex);
@@ -346,7 +338,7 @@ void fr_state_discard(REQUEST *request, RADIUS_PACKET *original)
 		return;
 	}
 
-	talloc_free(entry);
+	state_entry_free(entry);
 	PTHREAD_MUTEX_UNLOCK(&state_mutex);
 	return;
 }
@@ -385,6 +377,8 @@ void fr_state_get_vps(REQUEST *request, RADIUS_PACKET *packet)
 	}
 
 	PTHREAD_MUTEX_UNLOCK(&state_mutex);
+
+	VERIFY_REQUEST(request);
 	return;
 }
 
@@ -426,6 +420,9 @@ bool fr_state_put_vps(REQUEST *request, RADIUS_PACKET *original, RADIUS_PACKET *
 	 */
 	pairfilter(entry, &entry->vps, &request->state, 0, 0, TAG_ANY);
 	PTHREAD_MUTEX_UNLOCK(&state_mutex);
+
+	rad_assert(request->state == NULL);
+	VERIFY_REQUEST(request);
 	return true;
 }
 
