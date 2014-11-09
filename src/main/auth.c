@@ -334,7 +334,8 @@ int rad_postauth(REQUEST *request)
 
 		if (request->reply->code == PW_CODE_ACCESS_CHALLENGE) {
 			fr_state_put_vps(request, request->packet, request->reply);
-		} else if (request->reply->code == PW_CODE_ACCESS_ACCEPT) {
+
+		} else {
 			fr_state_discard(request, request->packet);
 		}
 		break;
@@ -433,7 +434,7 @@ int rad_authenticate(REQUEST *request)
 	 */
 autz_redo:
 	result = process_authorize(autz_type, request);
-switch (result) {
+	switch (result) {
 	case RLM_MODULE_NOOP:
 	case RLM_MODULE_NOTFOUND:
 	case RLM_MODULE_OK:
@@ -515,9 +516,18 @@ switch (result) {
 	do {
 		result = rad_check_password(request);
 		if (result > 0) {
-			/* don't reply! */
+			/*
+			 *	We presume that the reply has been set by someone.
+			 */
+			if (request->reply->code == PW_CODE_ACCESS_CHALLENGE) {
+				fr_state_put_vps(request, request->packet, request->reply);
+
+			} else {
+				fr_state_discard(request, request->packet);
+			}
 			return RLM_MODULE_HANDLED;
 		}
+
 	} while(0);
 
 	/*
@@ -664,7 +674,6 @@ int rad_virtual_server(REQUEST *request)
 {
 	VALUE_PAIR *vp;
 	int result;
-
 
 	RDEBUG("Virtual server received request");
 	rdebug_pair_list(L_DBG_LVL_1, request, request->packet->vps);
