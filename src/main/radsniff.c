@@ -366,7 +366,7 @@ static void rs_packet_print_csv(uint64_t count, rs_status_t status, fr_pcap_t *h
 		VALUE_PAIR *vp;
 
 		for (i = 0; i < conf->list_da_num; i++) {
-			vp = pairfind_da(packet->vps, conf->list_da[i], TAG_ANY);
+			vp = pair_find_by_da(packet->vps, conf->list_da[i], TAG_ANY);
 			if (vp && (vp->length > 0)) {
 				if (conf->list_da[i]->type == PW_TYPE_STRING) {
 					*p++ = '"';
