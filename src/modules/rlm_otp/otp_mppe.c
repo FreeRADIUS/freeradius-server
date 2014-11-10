@@ -46,8 +46,8 @@ void otp_mppe(REQUEST *request, otp_pwe_t pwe, rlm_otp_t const *opt, char const 
 {
 	VALUE_PAIR *cvp, *rvp;
 
-	cvp = pairfind(request->packet->vps, pwattr[pwe - 1]->attr, pwattr[pwe - 1]->vendor, TAG_ANY);
-	rvp = pairfind(request->packet->vps, pwattr[pwe]->attr, pwattr[pwe]->vendor, TAG_ANY);
+	cvp = pairfind_da(request->packet->vps, pwattr[pwe - 1], TAG_ANY);
+	rvp = pairfind_da(request->packet->vps, pwattr[pwe], TAG_ANY);
 	if (!cvp || !rvp) {
 		return;
 	}

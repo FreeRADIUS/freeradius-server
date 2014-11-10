@@ -886,7 +886,7 @@ void pairmove(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from)
 		 *	it doesn't already exist.
 		 */
 		case T_OP_EQ:
-			found = pairfind(*to, i->da->attr, i->da->vendor, TAG_ANY);
+			found = pairfind_da(*to, i->da, TAG_ANY);
 			if (!found) goto do_add;
 
 			tail_from = &(i->next);
@@ -897,7 +897,7 @@ void pairmove(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from)
 		 *	of the same vendor/attr which already exists.
 		 */
 		case T_OP_SET:
-			found = pairfind(*to, i->da->attr, i->da->vendor, TAG_ANY);
+			found = pairfind_da(*to, i->da, TAG_ANY);
 			if (!found) goto do_add;
 
 			/*
