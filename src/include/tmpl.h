@@ -11,10 +11,20 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
+ *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA 
  */
 #ifndef TMPL_H
 #define TMPL_H
+/**
+ * $Id$
+ *
+ * @file tmpl.h
+ * @brief Structures and prototypes for templates
+ *
+ * @copyright 2014  The FreeRADIUS server project
+ */
+
+RCSIDH(tmpl_h, "$Id$")
 
 #ifdef __cplusplus
 extern "C" {
@@ -59,14 +69,6 @@ typedef struct pair_list {
 	struct pair_list	*lastdefault;
 } PAIR_LIST;
 
-/**
- * $Id$
- *
- * @file map.h
- * @brief Structures and prototypes for templates / maps
- *
- * @copyright 2014  The FreeRADIUS server project
- */
 typedef enum tmpl_type {
 	TMPL_TYPE_UNKNOWN = 0,
 	TMPL_TYPE_LITERAL,		//!< Is a literal string.
