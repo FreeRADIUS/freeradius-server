@@ -26,6 +26,9 @@ RCSID("$Id$")
 
 typedef struct REQUEST REQUEST;
 
+#include <freeradius-devel/tmpl.h>
+#include <freeradius-devel/map.h>
+
 #include <freeradius-devel/parser.h>
 #include <freeradius-devel/conf.h>
 

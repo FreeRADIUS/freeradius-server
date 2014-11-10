@@ -24,8 +24,6 @@
 
 RCSIDH(parser_h, "$Id$");
 
-#include <freeradius-devel/map.h>
-
 #ifdef __cplusplus
 extern "C" {
 #endif
