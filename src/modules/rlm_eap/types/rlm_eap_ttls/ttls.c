@@ -1122,7 +1122,7 @@ PW_CODE eapttls_process(eap_handler_t *handler, tls_session_t *tls_session)
 			 *	AND attributes which are copied there
 			 *	from below.
 			 */
-			if (pairfind(fake->packet->vps, vp->da->attr, vp->da->vendor, TAG_ANY)) {
+			if (pairfind_da(fake->packet->vps, vp->da, TAG_ANY)) {
 				continue;
 			}
 

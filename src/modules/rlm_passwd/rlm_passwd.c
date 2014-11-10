@@ -543,7 +543,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_passwd_map(void *instance, REQUEST *requ
 	struct mypasswd * pw, *last_found;
 	vp_cursor_t cursor;
 
-	key = pairfind(request->packet->vps, inst->keyattr->attr, inst->keyattr->vendor, TAG_ANY);
+	key = pairfind_da(request->packet->vps, inst->keyattr, TAG_ANY);
 	if (!key) {
 		return RLM_MODULE_NOTFOUND;
 	}

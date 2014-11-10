@@ -1250,9 +1250,7 @@ static int CC_HINT(nonnull) setup_fake_request(REQUEST *request, REQUEST *fake, 
 			 *	AND attributes which are copied there
 			 *	from below.
 			 */
-			if (pairfind(fake->packet->vps, vp->da->attr, vp->da->vendor, TAG_ANY)) {
-				continue;
-			}
+			if (pairfind_da(fake->packet->vps, vp->da, TAG_ANY)) continue;
 
 			/*
 			 *	Some attributes are handled specially.
