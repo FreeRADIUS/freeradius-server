@@ -19,7 +19,7 @@
  * $Id$
  *
  * @file map.h
- * @brief Structures and prototypes for templates / maps
+ * @brief Structures and prototypes for maps
  *
  * @copyright 2013  The FreeRADIUS server project
  */
@@ -28,6 +28,10 @@ RCSIDH(map_h, "$Id$")
 
 #include <freeradius-devel/conffile.h>
 #include <freeradius-devel/tmpl.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /** Value pair map
  *
