@@ -471,16 +471,8 @@ eap {
 			override_cert_url = yes
 
 			#
-			#  If the OCSP Responder address is not
-			#  extracted from the certificate, the
-			#  URL can be defined here.
-
-			#
-			#  Limitation: Currently the HTTP
-			#  Request is not sending the "Host: "
-			#  information to the web-server.  This
-			#  can be a problem if the OCSP
-			#  Responder is running as a vhost.
+			#  If the OCSP Responder address is not extracted from
+			#  the certificate, the URL can be defined here.
 			#
 			url = "http://127.0.0.1/ocsp/"
 

@@ -1342,6 +1342,7 @@ static int ocsp_check(X509_STORE *store, X509 *issuer_cert, X509 *client_cert,
 	char *host = NULL;
 	char *port = NULL;
 	char *path = NULL;
+	char hostheader[1024];
 	int use_ssl = -1;
 	long nsec = MAX_VALIDITY_PERIOD, maxage = -1;
 	BIO *cbio, *bio_out;
@@ -1390,6 +1391,13 @@ static int ocsp_check(X509_STORE *store, X509 *issuer_cert, X509 *client_cert,
 
 	DEBUG2("[ocsp] --> Responder URL = http://%s:%s%s", host, port, path);
 
+	/* Check host and port length are sane, then create Host: HTTP header */
+	if ((strlen(host) + strlen(port) + 2) > sizeof(hostheader)) {
+		ERROR("OCSP Host and port too long");
+		goto ocsp_skip;
+	}
+	snprintf(hostheader, sizeof(hostheader), "%s:%s", host, port);
+
 	/* Setup BIO socket to OCSP responder */
 	cbio = BIO_new_connect(host);
 
@@ -1424,9 +1432,21 @@ static int ocsp_check(X509_STORE *store, X509 *issuer_cert, X509 *client_cert,
 		goto ocsp_end;
 	}
 
-	ctx = OCSP_sendreq_new(cbio, path, req, -1);
+	ctx = OCSP_sendreq_new(cbio, path, NULL, -1);
 	if (!ctx) {
-		ERROR("Couldn't send OCSP request");
+		ERROR("Couldn't create OCSP request");
+		ocsp_ok = 2;
+		goto ocsp_end;
+	}
+
+	if (!OCSP_REQ_CTX_add1_header(ctx, "Host", hostheader)) {
+		ERROR("Couldn't set Host header");
+		ocsp_ok = 2;
+		goto ocsp_end;
+	}
+
+	if (!OCSP_REQ_CTX_set1_req(ctx, req)) {
+		ERROR("Couldn't add data to OCSP request");
 		ocsp_ok = 2;
 		goto ocsp_end;
 	}
