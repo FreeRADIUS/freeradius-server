@@ -125,7 +125,7 @@ VALUE_PAIR *fr_cursor_next_by_da(vp_cursor_t *cursor, DICT_ATTR const *da, int8_
 {
 	VALUE_PAIR *i;
 
-	i = pairfind_da(!cursor->found ? cursor->current : cursor->found->next, da, tag);
+	i = pair_find_by_da(!cursor->found ? cursor->current : cursor->found->next, da, tag);
 	if (!i) {
 		cursor->next = NULL;
 		cursor->current = NULL;

@@ -277,7 +277,7 @@ int rlm_ldap_map_xlat(REQUEST *request, value_pair_map_t const *maps, rlm_ldap_m
 			}
 			if (!from) continue;
 
-			found = pairfind_da(*from, map->rhs->tmpl_da, TAG_ANY);
+			found = pair_find_by_da(*from, map->rhs->tmpl_da, TAG_ANY);
 			if (!found) continue;
 
 			expanded->attrs[total++] = talloc_typed_strdup(request, found->vp_strvalue);

@@ -186,7 +186,7 @@ int pair2unknown(VALUE_PAIR *vp)
 /** Find the pair with the matching DAs
  *
  */
-VALUE_PAIR *pairfind_da(VALUE_PAIR *vp, DICT_ATTR const *da, int8_t tag)
+VALUE_PAIR *pair_find_by_da(VALUE_PAIR *vp, DICT_ATTR const *da, int8_t tag)
 {
 	vp_cursor_t 	cursor;
 	VALUE_PAIR	*i;
@@ -886,7 +886,7 @@ void pairmove(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from)
 		 *	it doesn't already exist.
 		 */
 		case T_OP_EQ:
-			found = pairfind_da(*to, i->da, TAG_ANY);
+			found = pair_find_by_da(*to, i->da, TAG_ANY);
 			if (!found) goto do_add;
 
 			tail_from = &(i->next);
@@ -897,7 +897,7 @@ void pairmove(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from)
 		 *	of the same vendor/attr which already exists.
 		 */
 		case T_OP_SET:
-			found = pairfind_da(*to, i->da, TAG_ANY);
+			found = pair_find_by_da(*to, i->da, TAG_ANY);
 			if (!found) goto do_add;
 
 			/*

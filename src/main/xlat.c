@@ -1663,7 +1663,7 @@ static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, pair_lists_t list, DI
 	 *	This allows users to manipulate virtual attributes as if they
 	 *	were real ones.
 	 */
-	vp = pairfind_da(vps, da, tag);
+	vp = pair_find_by_da(vps, da, tag);
 	if (vp) goto do_print;
 
 	/*
