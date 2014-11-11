@@ -494,6 +494,9 @@
 /* Define to 1 if you need to in order for `stat' and other things to work. */
 #undef _POSIX_SOURCE
 
+/* Force OSX >= 10.7 Lion to use RFC2292 IPv6 socket options */
+#undef __APPLE_USE_RFC_3542
+
 /* Define to empty if `const' does not conform to ANSI C. */
 #undef const
 
