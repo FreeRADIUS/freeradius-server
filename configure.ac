@@ -1012,7 +1012,8 @@ AC_CHECK_HEADERS( \
   sia.h \
   siad.h \
   features.h \
-  limits.h
+  limits.h \
+  sys/event.h
 )
 
 dnl #
@@ -1434,7 +1435,8 @@ AC_CHECK_FUNCS( \
   setresuid \
   getresuid \
   strlcat \
-  strlcpy
+  strlcpy \
+  kqueue
 )
 
 AC_TYPE_SIGNAL
