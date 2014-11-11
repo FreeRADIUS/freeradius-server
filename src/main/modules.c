@@ -920,7 +920,7 @@ rlm_rcode_t indexed_modcall(rlm_components_t comp, int idx, REQUEST *request)
  *	Load a sub-module list, as found inside an Auth-Type foo {}
  *	block
  */
-static int load_subcomponent_section(modcallable *parent, CONF_SECTION *cs,
+static int load_subcomponent_section(CONF_SECTION *cs,
 				     rbtree_t *components,
 				     DICT_ATTR const *da, rlm_components_t comp)
 {
@@ -939,7 +939,7 @@ static int load_subcomponent_section(modcallable *parent, CONF_SECTION *cs,
 	/*
 	 *	Compile the group.
 	 */
-	ml = compile_modgroup(parent, comp, cs);
+	ml = compile_modgroup(NULL, comp, cs);
 	if (!ml) {
 		return 0;
 	}
@@ -952,8 +952,10 @@ static int load_subcomponent_section(modcallable *parent, CONF_SECTION *cs,
 	 */
 	dval = dict_valbyname(da->attr, da->vendor, name2);
 	if (!dval) {
-		cf_log_err_cs(cs, "%s %s Not previously configured", section_type_value[comp].typename, name2);
 		talloc_free(ml);
+		cf_log_err_cs(cs,
+			   "%s %s Not previously configured",
+			   section_type_value[comp].typename, name2);
 		return 0;
 	}
 
@@ -1045,7 +1047,7 @@ static int load_component_section(CONF_SECTION *cs,
 
 			if (strcmp(name1,
 				   section_type_value[comp].typename) == 0) {
-				if (!load_subcomponent_section(NULL, scs,
+				if (!load_subcomponent_section(scs,
 							       components,
 							       da,
 							       comp)) {
@@ -1365,7 +1367,7 @@ static int load_byserver(CONF_SECTION *cs)
 			} else {
 				cf_log_module(cs, "Loading dhcp {...}");
 			}
-			if (!load_subcomponent_section(NULL, subcs,
+			if (!load_subcomponent_section(subcs,
 						       components,
 						       da,
 						       RLM_COMPONENT_POST_AUTH)) {
