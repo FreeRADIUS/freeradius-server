@@ -730,7 +730,18 @@ STATE_MACHINE_DECL(request_done)
 	 */
 	request_stats_final(request);
 #ifdef WITH_TCP
-	if (request->listener) request->listener->count--;
+	if (request->listener) {
+		request->listener->count--;
+
+		/*
+		 *	If we're the last one, remove the listener now.
+		 */
+		if ((request->listener->count == 0) &&
+		    (request->listener->status == RAD_LISTEN_STATUS_EOL)) {
+			request->listener->status = RAD_LISTEN_STATUS_REMOVE_NOW;
+			event_new_fd(request->listener);
+		}
+	}
 #endif
 
 	if (request->packet) {
