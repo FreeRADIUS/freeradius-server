@@ -734,38 +734,32 @@ redo:
 	} /* MOD_FOREACH */
 
 	/*
-	 *	Break out of a "foreach" loop.
+	 *	Break out of a "foreach" loop, or return from a nested
+	 *	group.
 	 */
-	if (c->type == MOD_BREAK) {
+	if ((c->type == MOD_BREAK) || (c->type == MOD_RETURN)) {
 		int i;
 		VALUE_PAIR **copy_p;
+
+		RDEBUG2("%s", group_name[c->type]);
 
 		for (i = 8; i >= 0; i--) {
 			copy_p = request_data_get(request, radius_get_vp, i);
 			if (copy_p) {
-				RDEBUG2("# break Foreach-Variable-%d", i);
-				break;
+				if (c->type == MOD_BREAK) {
+					RDEBUG2("# break Foreach-Variable-%d", i);
+					break;
+				}
 			}
 		}
 
 		/*
 		 *	Leave result / priority on the stack, and stop processing the section.
 		 */
-		entry->unwind = MOD_FOREACH;
+		entry->unwind = c->type;
 		goto finish;
 	} /* MOD_BREAK */
 
-	/*
-	 *	Stop processing the current section, no matter how
-	 *	deeply the current processing is.
-	 */
-	if (c->type == MOD_RETURN) {
-		/*
-		 *	Leave result / priority on the stack, and stop processing the section.
-		 */
-		entry->unwind = MOD_RETURN;
-		goto finish;
-	} /* MOD_BREAK */
 #endif	  /* WITH_UNLANG */
 
 	/*
@@ -1091,13 +1085,15 @@ calculate_result:
 	 *	If we've been told to stop processing
 	 *	it, do so.
 	 */
-	if (entry->unwind == MOD_FOREACH) {
-		RDEBUG2("# unwind to enclosing %s", group_name[entry->unwind]);
+	if (entry->unwind == MOD_BREAK) {
+		RDEBUG2("# unwind to enclosing foreach");
 		entry->unwind = 0;
 		goto finish;
 	}
 
-	if (entry->unwind == MOD_RETURN) goto finish;
+	if (entry->unwind == MOD_RETURN) {
+		goto finish;
+	}
 
 next_sibling:
 	entry->c = entry->c->next;

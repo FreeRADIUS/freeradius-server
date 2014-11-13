@@ -11,10 +11,13 @@ update control {
 update request {
 	Filter-Id := "1"
 	Filter-Id += "2"
+	Filter-Id += "3"
+	Filter-Id += "4"
+	Filter-Id += "5"
 }
 
 foreach &Filter-Id {
-	if ("%{Foreach-Variable-0}" == "1") {
+	if ("%{Foreach-Variable-0}" == "3") {
 		update reply {
 			Filter-Id := "filter"
 		}
@@ -38,6 +41,12 @@ foreach &Filter-Id {
 		#
 		update reply {
 			Filter-Id := "fail"
+		}
+	}
+
+	if ("%{Foreach-Variable-0}" == "4") {
+		update reply {
+			Filter-Id := "fail-4"
 		}
 	}
 }
