@@ -705,15 +705,17 @@ redo:
 			 *	We've unwound to the enclosing
 			 *	"foreach".  Stop the unwinding.
 			 */
-			if (entry->unwind == MOD_FOREACH) {
-				entry->unwind = 0;
+			if (next->unwind == MOD_FOREACH) {
 				break;
 			}
 
 			/*
 			 *	Unwind all the way.
 			 */
-			if (entry->unwind == MOD_RETURN) break;
+			if (next->unwind == MOD_RETURN) {
+				entry->unwind = MOD_RETURN;
+				break;
+			}
 		} /* loop over VPs */
 
 		/*
