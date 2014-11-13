@@ -30,8 +30,6 @@ RCSID("$Id$")
 
 #include "rlm_cache.h"
 
-#define MAX_ATTRMAP	128
-
 /*
  *	A mapping of configuration file names to internal variables.
  *
@@ -45,7 +43,7 @@ static const CONF_PARSER module_config[] = {
 	{ "driver", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_cache_t, driver_name), "rlm_cache_rbtree" },
 	{ "key", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_REQUIRED | PW_TYPE_XLAT, rlm_cache_t, key), NULL },
 	{ "ttl", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_cache_t, ttl), "500" },
-	{ "max_entries", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_cache_t, max_entries), "16384" },
+	{ "max_entries", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_cache_t, max_entries), "0" },
 
 	/* Should be a type which matches time_t, @fixme before 2038 */
 	{ "epoch", FR_CONF_OFFSET(PW_TYPE_SIGNED, rlm_cache_t, epoch), "0" },
@@ -74,6 +72,43 @@ static int cache_reconnect(rlm_cache_t *inst, REQUEST *request, rlm_cache_handle
 	rad_assert(inst->module->reconnect);
 
 	return inst->module->reconnect(inst, request, handle);
+}
+
+/** Allocate a cache entry
+ *
+ *  This is used so that drivers may use their own allocation functions
+ *  to allocate structures larger than the normal rlm_cache_entry_t.
+ *
+ *  If the driver doesn't specify a custom allocation function, the cache
+ *  entry is talloced in the NULL ctx.
+ */
+static rlm_cache_entry_t *cache_alloc(rlm_cache_t *inst, REQUEST *request)
+{
+	if (inst->module->alloc) return inst->module->alloc(inst, request);
+
+	return talloc_zero(NULL, rlm_cache_entry_t);
+}
+
+/** Free memory associated with a cache entry
+ *
+ * This does not necessarily remove the entry from the cache, cache_expire
+ * should be used for that.
+ *
+ * This function should be called when an entry that is known to have been
+ * retrieved or inserted into a data store successfully, is no longer needed.
+ *
+ * Some drivers (like rlm_cache_rbtree) don't register a free function.
+ * This means that the cache entry never needs to be explicitly freed.
+ *
+ * @param c Cache entry to free.
+ * @param inst Module instance.
+ */
+static void cache_free(rlm_cache_t *inst, rlm_cache_entry_t **c)
+{
+	if (!*c || !inst->module->free) return;
+
+	inst->module->free(*c);
+	*c = NULL;
 }
 
 /*
@@ -163,6 +198,7 @@ static rlm_rcode_t cache_find(rlm_cache_entry_t **out, rlm_cache_t *inst, REQUES
 		RDEBUG("Removing expired entry");
 
 		inst->module->expire(inst, request, handle, c);
+		cache_free(inst, &c);
 		return RLM_MODULE_NOTFOUND;	/* Couldn't find a non-expired entry */
 	}
 
@@ -174,6 +210,9 @@ static rlm_rcode_t cache_find(rlm_cache_entry_t **out, rlm_cache_t *inst, REQUES
 	return RLM_MODULE_OK;
 }
 
+/** Expire a cache entry (removing it from the datastore)
+ *
+ */
 static void cache_expire(rlm_cache_t *inst, REQUEST *request, rlm_cache_handle_t **handle, rlm_cache_entry_t **c)
 {
 	rad_assert(*c);
@@ -184,7 +223,7 @@ static void cache_expire(rlm_cache_t *inst, REQUEST *request, rlm_cache_handle_t
 
 	/* FALL-THROUGH */
 	default:
-		TALLOC_FREE(*c);
+		cache_free(inst, c);
 		*c = NULL;
 		return;
 	}
@@ -205,21 +244,20 @@ static rlm_rcode_t cache_insert(rlm_cache_t *inst, REQUEST *request, rlm_cache_h
 	bool merge = false;
 	rlm_cache_entry_t *c;
 
-	if (inst->module->count(inst, request, handle) >= inst->max_entries) {
+	if ((inst->max_entries > 0) && inst->module->count &&
+	    (inst->module->count(inst, request, handle) > inst->max_entries)) {
 		RWDEBUG("Cache is full: %d entries", inst->max_entries);
 		return RLM_MODULE_FAIL;
 	}
 
-	if (inst->module->alloc) {
-		if (inst->module->alloc(&c, inst, request) < 0) return CACHE_ERROR;
-	} else {
-		c = talloc_zero(NULL, rlm_cache_entry_t);
-	}
+	c = cache_alloc(inst, request);
+	if (!c) return RLM_MODULE_FAIL;
+
 	c->key = talloc_typed_strdup(c, key);
 	c->created = c->expires = request->timestamp;
 	c->expires += ttl;
 
-	RDEBUG("Creating new cache entry", key);
+	RDEBUG("Creating new cache entry");
 
 	fr_cursor_init(&cached_request, &c->packet);
 	fr_cursor_init(&cached_reply, &c->reply);
@@ -299,15 +337,16 @@ static rlm_rcode_t cache_insert(rlm_cache_t *inst, REQUEST *request, rlm_cache_h
 		switch (ret) {
 		case CACHE_RECONNECT:
 			if (cache_reconnect(inst, request, handle) == 0) continue;
-			return RLM_MODULE_OK;
+			return RLM_MODULE_FAIL;
 
 		case CACHE_OK:
 			RDEBUG("Commited entry, TTL %d seconds", ttl);
+			cache_free(inst, &c);
 			return merge ? RLM_MODULE_UPDATED :
 				       RLM_MODULE_OK;
 
 		default:
-			talloc_free(c);
+			talloc_free(c);	/* Failed insertion - use talloc_free not the driver free */
 			return RLM_MODULE_FAIL;
 		}
 	}
@@ -445,6 +484,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_cache_it(void *instance, REQUEST *reques
 	 */
 	cache_merge(inst, request, c);
 	rcode = RLM_MODULE_UPDATED;
+
 	goto finish;
 
 insert:
@@ -465,6 +505,7 @@ insert:
 	rad_assert(handle);
 
 finish:
+	cache_free(inst, &c);
 	cache_release(inst, request, &handle);
 
 	/*
@@ -565,6 +606,7 @@ static ssize_t cache_xlat(void *instance, REQUEST *request,
 	}
 
 finish:
+	cache_free(inst, &c);
 	cache_release(inst, request, &handle);
 
 	return ret;
@@ -612,7 +654,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 *	Sanity check for crazy people.
 	 */
 	if (strncmp(inst->driver_name, "rlm_cache_", 8) != 0) {
-		ERROR("\"%s\" is NOT an Cache driver!", inst->xlat_name, inst->driver_name);
+		ERROR("%s: \"%s\" is NOT an Cache driver!", inst->xlat_name, inst->driver_name);
 		return -1;
 	}
 
@@ -641,7 +683,6 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	rad_assert(inst->module->find);
 	rad_assert(inst->module->insert);
 	rad_assert(inst->module->expire);
-	rad_assert(inst->module->count);
 
 	if (inst->module->mod_instantiate) {
 		CONF_SECTION *cs;

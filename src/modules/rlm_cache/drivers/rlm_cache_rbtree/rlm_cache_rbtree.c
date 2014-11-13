@@ -155,27 +155,26 @@ static int mod_instantiate(UNUSED CONF_SECTION *conf, rlm_cache_t *inst)
  *
  * Allows allocation of cache entry structures with additional fields.
  *
- * @param out Where to write memory for the new handle.
  * @param inst main rlm_cache instance.
  * @param request The current request.
  * @return 0 on success, -1 on failure.
  */
-static int cache_entry_alloc(rlm_cache_entry_t **out, UNUSED rlm_cache_t *inst, REQUEST *request)
+static rlm_cache_entry_t *cache_entry_alloc(UNUSED rlm_cache_t *inst, REQUEST *request)
 {
 	rlm_cache_rbtree_entry_t *c;
 
 	c = talloc_zero(NULL, rlm_cache_rbtree_entry_t);
 	if (!c) {
 		REDEBUG("Failed allocating cache entry");
-		return -1;
+		return NULL;
 	}
-	*out = (rlm_cache_entry_t *)c;
 
-	return 0;
+	return (rlm_cache_entry_t *)c;
 }
 
 /** Locate a cache entry
-*
+ *
+ * @param out Where to write the search result.
  * @param inst main rlm_cache instance.
  * @param request The current request.
  * @param handle Dummy handle (not used).
@@ -251,7 +250,7 @@ static cache_status_t cache_entry_insert(rlm_cache_t *inst, REQUEST *request, rl
  * @param inst main rlm_cache instance.
  * @param request The current request.
  * @param handle Dummy handle (not used).
- * @param c entry to expire. Must be freed by caller.
+ * @param c entry to expire
  * @return CACHE_OK.
  */
 static cache_status_t cache_entry_expire(rlm_cache_t *inst, REQUEST *request, rlm_cache_handle_t **handle,
@@ -263,6 +262,7 @@ static cache_status_t cache_entry_expire(rlm_cache_t *inst, REQUEST *request, rl
 
 	fr_heap_extract(driver->heap, c);
 	rbtree_deletebydata(driver->cache, c);
+	talloc_free(c);
 
 	return CACHE_OK;
 }
@@ -271,6 +271,8 @@ static cache_status_t cache_entry_expire(rlm_cache_t *inst, REQUEST *request, rl
  *
  * @param inst main rlm_cache instance.
  * @param request The current request.
+ * @param handle Dummy handle (not used).
+ * @return the number of entries in the cache.
  */
 static uint32_t cache_entry_count(rlm_cache_t *inst, REQUEST *request, rlm_cache_handle_t **handle)
 {
@@ -287,9 +289,16 @@ static uint32_t cache_entry_count(rlm_cache_t *inst, REQUEST *request, rlm_cache
  * @param inst rlm_cache instance.
  * @param request The current request.
  */
+
+#ifdef HAVE_PTHREAD_H
 static int cache_acquire(rlm_cache_handle_t **out, rlm_cache_t *inst, REQUEST *request)
+#else
+static int cache_acquire(rlm_cache_handle_t **out, UNUSED rlm_cache_t *inst, REQUEST *request)
+#endif
 {
+#ifdef HAVE_PTHREAD_H
 	rlm_cache_rbtree_t *driver = inst->driver;
+#endif
 
 	PTHREAD_MUTEX_LOCK(&driver->mutex);
 
@@ -306,9 +315,15 @@ static int cache_acquire(rlm_cache_handle_t **out, rlm_cache_t *inst, REQUEST *r
  * @param request The current request.
  * @param handle The dummy handle created by cache_acquire.
  */
+#ifdef HAVE_PTHREAD_H
 static void cache_release(rlm_cache_t *inst, REQUEST *request, rlm_cache_handle_t **handle)
+#else
+static void cache_release(UNUSED rlm_cache_t *inst, REQUEST *request, rlm_cache_handle_t **handle)
+#endif
 {
+#ifdef HAVE_PTHREAD_H
 	rlm_cache_rbtree_t *driver = inst->driver;
+#endif
 
 	rad_assert(*handle == request);
 
@@ -323,6 +338,7 @@ cache_module_t rlm_cache_rbtree = {
 	"rlm_cache_rbtree",
 	mod_instantiate,
 	cache_entry_alloc,
+	NULL,			/* free */
 	cache_entry_find,
 	cache_entry_insert,
 	cache_entry_expire,

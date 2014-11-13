@@ -84,11 +84,20 @@ if test x$with_[]modname != xno; then
 	smart_try_dir="$libmemcached_lib_dir"
 	dnl # Use a libmemcached specific function which is only
 	dnl # available in newer versions.
-	FR_SMART_CHECK_LIB([memcached], [memcached_create])
-	if test "x$ac_cv_lib_memcached_memcached_create" != "xyes"
+	FR_SMART_CHECK_LIB([memcached], [memcached])
+	if test "x$ac_cv_lib_memcached_memcached" != "xyes"
 	then
 		AC_MSG_WARN([libmemcached libraries not found. Use --with-libmemcached-lib-dir=<path>.])
 		fail="libmemcached $fail"
+	else
+		AC_CHECK_FUNCS(\
+            memcached \
+            memcached_free \
+            memcached_get \
+            memcached_set \
+            memcached_delete \
+            libmemcached_check_configuration \
+        ,, [fail="memached functions"])
 	fi
 
 	targetname=modname
