@@ -84,7 +84,7 @@ int		map_afrom_cs(value_pair_map_t **out, CONF_SECTION *cs,
 			     pair_lists_t dst_list_def, pair_lists_t src_list_def,
 			     map_validate_t validate, void *ctx, unsigned int max) CC_HINT(nonnull(1, 2));
 
-int		map_afrom_vp_str(value_pair_map_t **out, REQUEST *request, char const *raw,
+int		map_afrom_attr_str(TALLOC_CTX *ctx, value_pair_map_t **out, char const *raw,
 				 request_refs_t dst_request_def, pair_lists_t dst_list_def,
 				 request_refs_t src_request_def, pair_lists_t src_list_def);
 
