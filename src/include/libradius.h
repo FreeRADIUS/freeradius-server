@@ -444,9 +444,9 @@ size_t    	vp_prints_value_json(char *out, size_t outlen, VALUE_PAIR const *vp);
 size_t		vp_prints(char *out, size_t outlen, VALUE_PAIR const *vp);
 void		vp_print(FILE *, VALUE_PAIR const *);
 void		vp_printlist(FILE *, VALUE_PAIR const *);
-char		*vp_aprint_type(TALLOC_CTX *ctx, PW_TYPE type);
+char		*vp_aprints_type(TALLOC_CTX *ctx, PW_TYPE type);
 
-char		*vp_aprint(TALLOC_CTX *ctx, VALUE_PAIR const *vp, char quote);
+char		*vp_aprints(TALLOC_CTX *ctx, VALUE_PAIR const *vp, char quote);
 #define		fprint_attr_val vp_print
 
 /*
