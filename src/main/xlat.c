@@ -1606,7 +1606,7 @@ static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, pair_lists_t list, DI
 	switch (list) {
 	default:
 		if (return_null) return NULL;
-		return vp_aprint_type(ctx, da->type);
+		return vp_aprints_type(ctx, da->type);
 
 	case PAIR_LIST_CONTROL:
 		vps = request->config_items;
@@ -1714,7 +1714,7 @@ static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, pair_lists_t list, DI
 	 */
 	if (!packet) {
 		if (return_null) return NULL;
-		return vp_aprint_type(ctx, da->type);
+		return vp_aprints_type(ctx, da->type);
 	}
 
 	vp = NULL;
@@ -1890,7 +1890,7 @@ do_print:
 
 	if (!vp) {
 		if (return_null) return NULL;
-		return vp_aprint_type(ctx, da->type);
+		return vp_aprints_type(ctx, da->type);
 	}
 
 print:

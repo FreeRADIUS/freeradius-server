@@ -765,7 +765,7 @@ char *vp_aprints_value(TALLOC_CTX *ctx, VALUE_PAIR const *vp, char quote)
 	return vp_data_aprints_value(ctx, vp->da->type, vp->da, &vp->data, vp->length, quote);
 }
 
-char *vp_aprint_type(TALLOC_CTX *ctx, PW_TYPE type)
+char *vp_aprints_type(TALLOC_CTX *ctx, PW_TYPE type)
 {
 	switch (type) {
 	case PW_TYPE_STRING :
@@ -1081,7 +1081,7 @@ void vp_printlist(FILE *fp, VALUE_PAIR const *vp)
  * @param[in] quote the quotation character
  * @return a talloced buffer with the attribute operator and value.
  */
-char *vp_aprint(TALLOC_CTX *ctx, VALUE_PAIR const *vp, char quote)
+char *vp_aprints(TALLOC_CTX *ctx, VALUE_PAIR const *vp, char quote)
 {
 	char const	*token = NULL;
 	char 		*str, *value;
