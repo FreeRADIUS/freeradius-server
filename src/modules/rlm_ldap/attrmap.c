@@ -58,10 +58,11 @@ static int rlm_ldap_map_getvalue(VALUE_PAIR **out, REQUEST *request, value_pair_
 			value_pair_map_t *attr = NULL;
 
 			RDEBUG3("Parsing valuepair string \"%s\"", self->values[i]->bv_val);
-			if (map_afrom_vp_str(&attr, request, self->values[i]->bv_val,
+			if (map_afrom_attr_str(request, &attr, self->values[i]->bv_val,
 					     map->lhs->tmpl_request, map->lhs->tmpl_list,
 					     REQUEST_CURRENT, PAIR_LIST_REQUEST) < 0) {
-				RWDEBUG("Failed parsing \"%s\" as valuepair, skipping...", self->values[i]->bv_val);
+				RWDEBUG("Failed parsing \"%s\" as valuepair (%s), skipping...", fr_strerror(),
+					self->values[i]->bv_val);
 				continue;
 			}
 
@@ -390,11 +391,11 @@ void rlm_ldap_map_do(UNUSED const ldap_instance_t *inst, REQUEST *request, LDAP 
 			value_pair_map_t *attr;
 
 			RDEBUG3("Parsing attribute string '%s'", values[i]);
-			if (map_afrom_vp_str(&attr, request, values[i],
+			if (map_afrom_attr_str(request, &attr, values[i],
 					     REQUEST_CURRENT, PAIR_LIST_REPLY,
 					     REQUEST_CURRENT, PAIR_LIST_REQUEST) < 0) {
-				RWDEBUG("Failed parsing '%s' value \"%s\" as valuepair, skipping...",
-					inst->valuepair_attr, values[i]);
+				RWDEBUG("Failed parsing '%s' value \"%s\" as valuepair (%s), skipping...",
+					fr_strerror(), inst->valuepair_attr, values[i]);
 				continue;
 			}
 			if (map_to_request(request, attr, map_to_vp, NULL) < 0) {

@@ -416,8 +416,8 @@ int map_afrom_fields(TALLOC_CTX *ctx, value_pair_map_t **out, char const *lhs, F
  * Takes a valuepair string with list and request qualifiers and converts it into a
  * value_pair_map_t.
  *
+ * @param ctx where to allocate the map.
  * @param out Where to write the new map (must be freed with talloc_free()).
- * @param request Current request.
  * @param vp_str string to parse.
  * @param dst_request_def to use if attribute isn't qualified.
  * @param dst_list_def to use if attribute isn't qualified.
@@ -425,9 +425,9 @@ int map_afrom_fields(TALLOC_CTX *ctx, value_pair_map_t **out, char const *lhs, F
  * @param src_list_def to use if attribute isn't qualified.
  * @return 0 on success, < 0 on error.
  */
-int map_afrom_vp_str(value_pair_map_t **out, REQUEST *request, char const *vp_str,
-		     request_refs_t dst_request_def, pair_lists_t dst_list_def,
-		     request_refs_t src_request_def, pair_lists_t src_list_def)
+int map_afrom_attr_str(TALLOC_CTX *ctx, value_pair_map_t **out, char const *vp_str,
+		       request_refs_t dst_request_def, pair_lists_t dst_list_def,
+		       request_refs_t src_request_def, pair_lists_t src_list_def)
 {
 	char const *p = vp_str;
 	FR_TOKEN quote;
@@ -442,11 +442,10 @@ int map_afrom_vp_str(value_pair_map_t **out, REQUEST *request, char const *vp_st
 
 	case T_INVALID:
 	error:
-		REDEBUG("Failed tokenising attribute string: %s", fr_strerror());
 		return -1;
 
 	default:
-		REDEBUG("Failed tokenising attribute string: Left operand must be an attribute");
+		fr_strerror_printf("Left operand must be an attribute");
 		return -1;
 	}
 
@@ -456,13 +455,12 @@ int map_afrom_vp_str(value_pair_map_t **out, REQUEST *request, char const *vp_st
 	raw.quote = gettoken(&p, raw.r_opand, sizeof(raw.r_opand), false);
 	if (raw.quote == T_INVALID) goto error;
 	if (!fr_str_tok[raw.quote]) {
-		REDEBUG("Failed tokenising attribute string: Right operand must be an attribute or string");
+		fr_strerror_printf("Right operand must be an attribute or string");
 		return -1;
 	}
 
-	if (map_afrom_fields(request, &map, raw.l_opand, T_BARE_WORD, raw.op, raw.r_opand, raw.quote,
+	if (map_afrom_fields(ctx, &map, raw.l_opand, T_BARE_WORD, raw.op, raw.r_opand, raw.quote,
 			     dst_request_def, dst_list_def, src_request_def, src_list_def) < 0) {
-		REDEBUG("Failed parsing attribute string: %s", fr_strerror());
 		return -1;
 	}
 	*out = map;
