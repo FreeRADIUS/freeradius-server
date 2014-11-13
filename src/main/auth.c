@@ -676,7 +676,7 @@ int rad_virtual_server(REQUEST *request)
 	int result;
 
 	RDEBUG("Virtual server received request");
-	rdebug_pair_list(L_DBG_LVL_1, request, request->packet->vps);
+	rdebug_pair_list(L_DBG_LVL_1, request, request->packet->vps, NULL);
 
 	RDEBUG("server %s {", request->server);
 	RINDENT();
@@ -703,7 +703,7 @@ int rad_virtual_server(REQUEST *request)
 	RDEBUG("} # server %s", request->server);
 
 	RDEBUG("Virtual server sending reply");
-	rdebug_pair_list(L_DBG_LVL_1, request, request->reply->vps);
+	rdebug_pair_list(L_DBG_LVL_1, request, request->reply->vps, NULL);
 
 	return result;
 }

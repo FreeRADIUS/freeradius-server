@@ -718,7 +718,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(UNUSED eap_handler_t *handler,
 		 */
 		if (vp) {
 			RDEBUG("Sending tunneled reply attributes");
-			rdebug_pair_list(L_DBG_LVL_1, request, vp);
+			rdebug_pair_list(L_DBG_LVL_1, request, vp, NULL);
 
 			vp2diameter(request, tls_session, vp);
 			pairfree(&vp);
@@ -860,7 +860,7 @@ static int CC_HINT(nonnull) eapttls_postproxy(eap_handler_t *handler, void *data
 				(!fake->server) ? "" : fake->server);
 
 			RDEBUG("Final reply from tunneled session code %d", fake->reply->code);
-			rdebug_pair_list(L_DBG_LVL_1, request, fake->reply->vps);
+			rdebug_pair_list(L_DBG_LVL_1, request, fake->reply->vps, NULL);
 		}
 
 		/*
@@ -1015,7 +1015,7 @@ int eapttls_process(eap_handler_t *handler, tls_session_t *tls_session)
 	pairmake_packet("Freeradius-Proxied-To", "127.0.0.1", T_OP_EQ);
 
 	RDEBUG("Got tunneled request");
-	rdebug_pair_list(L_DBG_LVL_1, request, fake->packet->vps);
+	rdebug_pair_list(L_DBG_LVL_1, request, fake->packet->vps, NULL);
 
 	/*
 	 *	Update other items in the REQUEST data structure.

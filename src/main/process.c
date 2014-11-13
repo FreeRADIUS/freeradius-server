@@ -402,7 +402,7 @@ static void debug_packet(REQUEST *request, RADIUS_PACKET *packet, bool received)
 	}
 
 	if (received) {
-		rdebug_pair_list(L_DBG_LVL_1, request, packet->vps);
+		rdebug_pair_list(L_DBG_LVL_1, request, packet->vps, NULL);
 	} else {
 		rdebug_proto_pair_list(L_DBG_LVL_1, request, packet->vps);
 	}

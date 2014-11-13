@@ -422,7 +422,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_handler_t *handler, tls_se
 
 	if ((debug_flag > 0) && fr_log_fp) {
 		RDEBUG("Got tunneled reply RADIUS code %d", reply->code);
-		rdebug_pair_list(L_DBG_LVL_1, request, reply->vps);
+		rdebug_pair_list(L_DBG_LVL_1, request, reply->vps, NULL);
 	}
 
 	switch (reply->code) {
@@ -594,7 +594,7 @@ static int CC_HINT(nonnull) eappeap_postproxy(eap_handler_t *handler, void *data
 			fprintf(fr_log_fp, "} # server %s\n", fake->server);
 
 			RDEBUG("Final reply from tunneled session code %d", fake->reply->code);
-			rdebug_pair_list(L_DBG_LVL_1, request, fake->reply->vps);
+			rdebug_pair_list(L_DBG_LVL_1, request, fake->reply->vps, NULL);
 		}
 
 		/*
@@ -956,7 +956,7 @@ rlm_rcode_t eappeap_process(eap_handler_t *handler, tls_session_t *tls_session)
 	}
 
 	RDEBUG2("Got tunneled request");
-	rdebug_pair_list(L_DBG_LVL_2, request, fake->packet->vps);
+	rdebug_pair_list(L_DBG_LVL_2, request, fake->packet->vps, NULL);
 
 	/*
 	 *	Update other items in the REQUEST data structure.
@@ -1004,7 +1004,7 @@ rlm_rcode_t eappeap_process(eap_handler_t *handler, tls_session_t *tls_session)
 	} else {
 		RDEBUG2("Sending tunnelled request");
 	}
-	rdebug_pair_list(L_DBG_LVL_2, request, fake->packet->vps);
+	rdebug_pair_list(L_DBG_LVL_2, request, fake->packet->vps, NULL);
 
 	/*
 	 *	Call authentication recursively, which will
@@ -1017,7 +1017,7 @@ rlm_rcode_t eappeap_process(eap_handler_t *handler, tls_session_t *tls_session)
 	 *	attributes.
 	 */
 	RDEBUG2("Got tunneled reply code %d", fake->reply->code);
-	rdebug_pair_list(L_DBG_LVL_2, request, fake->reply->vps);
+	rdebug_pair_list(L_DBG_LVL_2, request, fake->reply->vps, NULL);
 
 	/*
 	 *	Decide what to do with the reply.
