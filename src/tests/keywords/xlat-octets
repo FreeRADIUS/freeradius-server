@@ -17,19 +17,19 @@ update request {
 	Tmp-Octets-0 += 0x0706050403020100
 }
 
-if ("%{Tmp-Octets-0}" != '0001020304050607') {
+if ("%{Tmp-Octets-0}" != '0x0001020304050607') {
 	update {
 		reply:Filter-Id := 'fail 1'
 	}
 }
 
-if ("%{Tmp-Octets-0[0]}" != '0001020304050607') {
+if ("%{Tmp-Octets-0[0]}" != '0x0001020304050607') {
 	update {
 		reply:Filter-Id += 'fail 2'
 	}
 }
 
-if ("%{Tmp-Octets-0[*]}" != '0001020304050607,0706050403020100') {
+if ("%{Tmp-Octets-0[*]}" != '0x0001020304050607,0x0706050403020100') {
 	update {
 		reply:Filter-Id += 'fail 3'
 	}

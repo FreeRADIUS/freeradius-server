@@ -90,14 +90,14 @@ if (Tmp-Integer-0 != 4084) {
 }
 
 # Octets are expanded to 8168 hexits
-if ("%{Tmp-Octets-0}" !~ /^[0-9a-f]{8168}$/) {
+if ("%{Tmp-Octets-0}" !~ /^0x[0-9a-f]{8168}$/) {
 	update reply {
 		Filter-Id += 'fail'
 	}
 }
 
 # Octets are expanded to 8168 hexits
-if (Tmp-Octets-0 !~ /^[0-9a-f]{8168}$/) {
+if (Tmp-Octets-0 !~ /^0x[0-9a-f]{8168}$/) {
 	update reply {
 		Filter-Id += 'fail'
 	}
