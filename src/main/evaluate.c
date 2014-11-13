@@ -146,7 +146,7 @@ ssize_t radius_expand_tmpl(char **out, REQUEST *request, value_pair_tmpl_t const
 	{
 		int ret;
 
-		EVAL_DEBUG("EXPANDTMPL ATTR");
+		EVAL_DEBUG("EXPAND TMPL ATTR");
 		ret = tmpl_find_vp(&vp, request, vpt);
 		if (ret < 0) return -2;
 

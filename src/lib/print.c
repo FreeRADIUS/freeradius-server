@@ -670,9 +670,12 @@ char *vp_data_aprints_value(TALLOC_CTX *ctx,
 #endif
 
 	case PW_TYPE_OCTETS:
-		p = talloc_array(ctx, char, 1 + inlen * 2);
+		p = talloc_array(ctx, char, 2 + 1 + inlen * 2);
 		if (!p) return NULL;
-		fr_bin2hex(p, data->octets, inlen);
+		p[0] = '0';
+		p[1] = 'x';
+
+		fr_bin2hex(p + 2, data->octets, inlen);
 		break;
 
 	case PW_TYPE_DATE:
