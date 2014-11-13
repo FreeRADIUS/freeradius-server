@@ -224,11 +224,6 @@ ATTRIBUTE	MS-CHAP-New-NT-Password			1137	octets
 
 ATTRIBUTE	Stripped-User-Domain			1138	string
 ATTRIBUTE	Called-Station-SSID			1139	string
-ATTRIBUTE	Cache-TTL				1140	signed
-ATTRIBUTE	Cache-Status-Only			1141	integer
-ATTRIBUTE	Cache-Merge				1142	integer
-ATTRIBUTE	Cache-Entry-Hits			1143	integer
-ATTRIBUTE	Cache-Read-Only				1144	integer
 
 VALUE	Cache-Status-Only		no			0
 VALUE	Cache-Status-Only		yes			1
@@ -277,6 +272,14 @@ ATTRIBUTE	FreeRADIUS-Response-Delay-USec		1155	integer
 
 ATTRIBUTE	REST-HTTP-Header			1160	string
 ATTRIBUTE	REST-HTTP-Body				1161	string
+
+ATTRIBUTE	Cache-Expires				1170	date
+ATTRIBUTE	Cache-Created				1171	date
+ATTRIBUTE	Cache-TTL				1172	signed
+ATTRIBUTE	Cache-Status-Only			1173	integer
+ATTRIBUTE	Cache-Merge				1174	integer
+ATTRIBUTE	Cache-Entry-Hits			1175	integer
+ATTRIBUTE	Cache-Read-Only				1176	integer
 
 #
 #	Range:	1200-1279

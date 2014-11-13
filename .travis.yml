@@ -55,6 +55,7 @@ before_install:
       libjson0-dev
       libkrb5-dev
       libldap2-dev
+      libmemcached-dev
       libpam0g-dev
       libpcap-dev
       libpcre3-dev

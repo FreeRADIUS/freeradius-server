@@ -24,6 +24,8 @@ typedef struct cache_module cache_module_t;
 
 typedef void rlm_cache_handle_t;
 
+#define MAX_ATTRMAP	128
+
 typedef enum {
 	CACHE_RECONNECT	= -2,				//!< Handle needs to be reconnected
 	CACHE_ERROR	= -1,				//!< Fatal error
@@ -68,26 +70,29 @@ typedef struct rlm_cache_entry_t {
 	VALUE_PAIR		*reply;			//!< Cached reply list.
 } rlm_cache_entry_t;
 
-typedef int		(*mod_instantiate_t)(CONF_SECTION *conf, rlm_cache_t *inst);
-typedef int		(*cache_entry_alloc_t)(rlm_cache_entry_t **out, rlm_cache_t *inst, REQUEST *request);
+typedef int			(*mod_instantiate_t)(CONF_SECTION *conf, rlm_cache_t *inst);
+typedef rlm_cache_entry_t	*(*cache_entry_alloc_t)(rlm_cache_t *inst, REQUEST *request);
+typedef void			(*cache_entry_free_t)(rlm_cache_entry_t *c);
 
-typedef cache_status_t	(*cache_entry_find_t)(rlm_cache_entry_t **out, rlm_cache_t *inst, REQUEST *request,
-					      rlm_cache_handle_t **handle, char const *key);
-typedef cache_status_t	(*cache_entry_insert_t)(rlm_cache_t *inst, REQUEST *request, rlm_cache_handle_t **handle,
-						rlm_cache_entry_t *c);
-typedef cache_status_t	(*cache_entry_expire_t)(rlm_cache_t *inst, REQUEST *request, rlm_cache_handle_t **handle,
-						rlm_cache_entry_t *entry);
-typedef uint32_t	(*cache_entry_count_t)(rlm_cache_t *inst, REQUEST *request, rlm_cache_handle_t **handle);
+typedef cache_status_t		(*cache_entry_find_t)(rlm_cache_entry_t **out, rlm_cache_t *inst, REQUEST *request,
+						      rlm_cache_handle_t **handle, char const *key);
+typedef cache_status_t		(*cache_entry_insert_t)(rlm_cache_t *inst, REQUEST *request,
+							rlm_cache_handle_t **handle, rlm_cache_entry_t *c);
+typedef cache_status_t		(*cache_entry_expire_t)(rlm_cache_t *inst, REQUEST *request,
+							rlm_cache_handle_t **handle, rlm_cache_entry_t *entry);
+typedef uint32_t		(*cache_entry_count_t)(rlm_cache_t *inst, REQUEST *request,
+						       rlm_cache_handle_t **handle);
 
-typedef int		(*cache_acquire_t)(rlm_cache_handle_t **out, rlm_cache_t *inst, REQUEST *request);
-typedef void		(*cache_release_t)(rlm_cache_t *inst, REQUEST *request, rlm_cache_handle_t **handle);
-typedef int		(*cache_reconnect_t)(rlm_cache_t *inst, REQUEST *request, rlm_cache_handle_t **handle);
+typedef int			(*cache_acquire_t)(rlm_cache_handle_t **out, rlm_cache_t *inst, REQUEST *request);
+typedef void			(*cache_release_t)(rlm_cache_t *inst, REQUEST *request, rlm_cache_handle_t **handle);
+typedef int			(*cache_reconnect_t)(rlm_cache_t *inst, REQUEST *request, rlm_cache_handle_t **handle);
 
 struct cache_module {
 	char const		*name;			//!< Driver name.
 
 	mod_instantiate_t	mod_instantiate;	//!< (optional) Instantiate a driver.
 	cache_entry_alloc_t	alloc;			//!< (optional) Allocate a new entry.
+	cache_entry_free_t	free;			//!< (optional) Free memory used by an entry.
 
 	cache_entry_find_t	find;			//!< Retrieve an existing cache entry.
 	cache_entry_insert_t	insert;			//!< Add a new entry.
