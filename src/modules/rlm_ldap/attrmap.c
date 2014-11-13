@@ -343,7 +343,10 @@ void rlm_ldap_map_do(UNUSED const ldap_instance_t *inst, REQUEST *request, LDAP 
 	rlm_ldap_result_t	result;
 	char const		*name;
 
+	RINDENT();
 	for (map = expanded->maps; map != NULL; map = map->next) {
+		int ret;
+
 		name = expanded->attrs[total++];
 
 		/*
@@ -367,14 +370,13 @@ void rlm_ldap_map_do(UNUSED const ldap_instance_t *inst, REQUEST *request, LDAP 
 		 *	a case of the dst being incorrect for the current
 		 *	request context
 		 */
-		if (map_to_request(request, map, rlm_ldap_map_getvalue, &result) == -1) {
-			return;	/* Fail */
-		}
+		ret = map_to_request(request, map, rlm_ldap_map_getvalue, &result);
+		if (ret == -1) return;	/* Fail */
 
-		next:
-
+	next:
 		ldap_value_free_len(result.values);
 	}
+	REXDENT();
 
 	/*
 	 *	Retrieve any valuepair attributes from the result, these are generic values specifying
@@ -387,6 +389,7 @@ void rlm_ldap_map_do(UNUSED const ldap_instance_t *inst, REQUEST *request, LDAP 
 		values = ldap_get_values(handle, entry, inst->valuepair_attr);
 		count = ldap_count_values(values);
 
+		RINDENT();
 		for (i = 0; i < count; i++) {
 			value_pair_map_t *attr;
 
@@ -403,7 +406,7 @@ void rlm_ldap_map_do(UNUSED const ldap_instance_t *inst, REQUEST *request, LDAP 
 			}
 			talloc_free(attr);
 		}
-
+		REXDENT();
 		ldap_value_free(values);
 	}
 }

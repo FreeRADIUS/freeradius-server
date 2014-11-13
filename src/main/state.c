@@ -80,7 +80,7 @@ static int state_entry_cmp(void const *one, void const *two)
  *	When an entry is free'd, it's removed from the linked list of
  *	cleanup times.
  *
- *	Note that 
+ *	Note that
  */
 static void state_entry_free(state_entry_t *entry)
 {
@@ -372,7 +372,7 @@ void fr_state_get_vps(REQUEST *request, RADIUS_PACKET *packet)
 	if (entry) {
 		pairfilter(request, &request->state, &entry->vps, 0, 0, TAG_ANY);
 		RDEBUG("session-state: Found cached attributes");
-		rdebug_pair_list(L_DBG_LVL_1, request, request->state);
+		rdebug_pair_list(L_DBG_LVL_1, request, request->state, NULL);
 
 	} else {
 		RDEBUG("session-state: No cached attributes");
@@ -400,7 +400,7 @@ bool fr_state_put_vps(REQUEST *request, RADIUS_PACKET *original, RADIUS_PACKET *
 	}
 
 	RDEBUG("session-state: Saving cached attributes");
-	rdebug_pair_list(L_DBG_LVL_1, request, request->state);
+	rdebug_pair_list(L_DBG_LVL_1, request, request->state, NULL);
 
 	PTHREAD_MUTEX_LOCK(&state_mutex);
 

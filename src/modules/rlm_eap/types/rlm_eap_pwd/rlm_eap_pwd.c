@@ -422,7 +422,7 @@ static int mod_authenticate (void *arg, eap_handler_t *handler)
 		} /* else fake->server == request->server */
 
 		RDEBUG("Sending tunneled request");
-		rdebug_pair_list(L_DBG_LVL_1, request, fake->packet->vps);
+		rdebug_pair_list(L_DBG_LVL_1, request, fake->packet->vps, NULL);
 
 		if (fake->server) {
 			RDEBUG("server %s {", fake->server);
@@ -449,7 +449,7 @@ static int mod_authenticate (void *arg, eap_handler_t *handler)
 		}
 
 		RDEBUG("Got tunneled reply code %d", fake->reply->code);
-		rdebug_pair_list(L_DBG_LVL_1, request, fake->reply->vps);
+		rdebug_pair_list(L_DBG_LVL_1, request, fake->reply->vps, NULL);
 
 		if ((pw = pairfind(fake->config_items, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY)) == NULL) {
 			DEBUG2("failed to find password for %s to do pwd authentication",

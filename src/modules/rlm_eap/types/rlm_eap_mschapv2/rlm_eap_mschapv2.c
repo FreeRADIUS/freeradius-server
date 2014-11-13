@@ -435,7 +435,7 @@ static int CC_HINT(nonnull) mschapv2_authenticate(void *arg, eap_handler_t *hand
 			}
 
 			RDEBUG2("Built change password packet");
-			rdebug_pair_list(L_DBG_LVL_2, request, request->packet->vps);
+			rdebug_pair_list(L_DBG_LVL_2, request, request->packet->vps, NULL);
 
 			/*
 			 * jump to "authentication"

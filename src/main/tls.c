@@ -1865,7 +1865,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 			}
 
 			vp = pairmake(talloc_ctx, certs, attribute, value, T_OP_ADD);
-			if (vp) rdebug_pair_list(L_DBG_LVL_2, request, vp);
+			if (vp) rdebug_pair_list(L_DBG_LVL_2, request, vp, NULL);
 		}
 
 		BIO_free_all(out);
@@ -2875,7 +2875,7 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 			vp_cursor_t cursor;
 
 			RDEBUG("Adding cached attributes for session %s:", buffer);
-			rdebug_pair_list(L_DBG_LVL_1, request, vps);
+			rdebug_pair_list(L_DBG_LVL_1, request, vps, NULL);
 			for (vp = fr_cursor_init(&cursor, &vps);
 			     vp;
 			     vp = fr_cursor_next(&cursor)) {

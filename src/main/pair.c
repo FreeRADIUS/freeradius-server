@@ -702,8 +702,9 @@ void rdebug_pair(int level, REQUEST *request, VALUE_PAIR *vp)
  * @param[in] level Debug level (1-4).
  * @param[in] request to read logging params from.
  * @param[in] vp to print.
+ * @param[in] prefix (optional).
  */
-void rdebug_pair_list(int level, REQUEST *request, VALUE_PAIR *vp)
+void rdebug_pair_list(int level, REQUEST *request, VALUE_PAIR *vp, char const *prefix)
 {
 	vp_cursor_t cursor;
 	char buffer[256];
@@ -718,7 +719,7 @@ void rdebug_pair_list(int level, REQUEST *request, VALUE_PAIR *vp)
 		VERIFY_VP(vp);
 
 		vp_prints(buffer, sizeof(buffer), vp);
-		RDEBUGX(level, "%s", buffer);
+		RDEBUGX(level, "%s%s", prefix ? prefix : "",  buffer);
 	}
 	REXDENT();
 }
