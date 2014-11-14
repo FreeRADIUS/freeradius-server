@@ -403,7 +403,7 @@ finish:
  */
 static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
-	module_instance_t *sqlinst;
+	module_instance_t *sql_inst;
 	rlm_sqlippool_t *inst = instance;
 	char const *pool_name = NULL;
 
@@ -413,9 +413,9 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	} else {
 		inst->pool_name = talloc_typed_strdup(inst, "ippool");
 	}
-	sqlinst = find_module_instance(cf_section_find("modules"),
+	sql_inst = find_module_instance(cf_section_find("modules"),
 				       inst->sql_instance_name, true);
-	if (!sqlinst) {
+	if (!sql_inst) {
 		cf_log_err_cs(conf, "failed to find sql instance named %s",
 			   inst->sql_instance_name);
 		return -1;
@@ -427,14 +427,14 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		inst->framed_ip_address = PW_FRAMED_IPV6_PREFIX;
 	}
 
-	if (strcmp(sqlinst->entry->name, "rlm_sql") != 0) {
+	if (strcmp(sql_inst->entry->name, "rlm_sql") != 0) {
 		cf_log_err_cs(conf, "Module \"%s\""
 		       " is not an instance of the rlm_sql module",
 		       inst->sql_instance_name);
 		return -1;
 	}
 
-	inst->sql_inst = (rlm_sql_t *) sqlinst->insthandle;
+	inst->sql_inst = (rlm_sql_t *) sql_inst->insthandle;
 	return 0;
 }
 
@@ -488,7 +488,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 		return do_logging(request, inst->log_nopool, RLM_MODULE_NOOP);
 	}
 
-	handle = inst->sql_inst->sql_get_socket(inst->sql_inst);
+	handle = fr_connection_get(inst->sql_inst->pool);
 	if (!handle) {
 		REDEBUG("cannot get sql connection");
 		return RLM_MODULE_FAIL;
@@ -539,7 +539,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 							  inst->pool_check, handle, inst, request,
 							  (char *) NULL, 0);
 
-			inst->sql_inst->sql_release_socket(inst->sql_inst, handle);
+			fr_connection_release(inst->sql_inst->pool, handle);
 
 			if (allocation_len) {
 
@@ -567,7 +567,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 
 		}
 
-		inst->sql_inst->sql_release_socket(inst->sql_inst, handle);
+		fr_connection_release(inst->sql_inst->pool, handle);
 
 		RDEBUG("IP address could not be allocated");
 		return do_logging(request, inst->log_failed, RLM_MODULE_NOOP);
@@ -582,7 +582,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 		DO(allocate_commit);
 
 		RDEBUG("Invalid IP number [%s] returned from instbase query.", allocation);
-		inst->sql_inst->sql_release_socket(inst->sql_inst, handle);
+		fr_connection_release(inst->sql_inst->pool, handle);
 		return do_logging(request, inst->log_failed, RLM_MODULE_NOOP);
 	}
 
@@ -597,7 +597,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 
 	DO(allocate_commit);
 
-	inst->sql_inst->sql_release_socket(inst->sql_inst, handle);
+	fr_connection_release(inst->sql_inst->pool, handle);
 
 	return do_logging(request, inst->log_success, RLM_MODULE_OK);
 }
@@ -684,7 +684,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 		return RLM_MODULE_NOOP;
 	}
 
-	handle = inst->sql_inst->sql_get_socket(inst->sql_inst);
+	handle = fr_connection_get(inst->sql_inst->pool);
 	if (!handle) {
 		RDEBUG("Cannot allocate sql connection");
 		return RLM_MODULE_FAIL;
@@ -716,7 +716,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 		break;
 	}
 
-	inst->sql_inst->sql_release_socket(inst->sql_inst, handle);
+	fr_connection_release(inst->sql_inst->pool, handle);
 
 	return rcode;
 }

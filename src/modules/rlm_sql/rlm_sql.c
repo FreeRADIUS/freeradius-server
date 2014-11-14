@@ -165,7 +165,7 @@ static ssize_t sql_xlat(void *instance, REQUEST *request, char const *query, cha
 	 */
 	sql_set_user(inst, request, NULL);
 
-	handle = sql_get_socket(inst);
+	handle = fr_connection_get(inst->pool);
 	if (!handle) {
 		return 0;
 	}
@@ -274,7 +274,7 @@ static ssize_t sql_xlat(void *instance, REQUEST *request, char const *query, cha
 	(inst->module->sql_finish_select_query)(handle, inst->config);
 
 finish:
-	sql_release_socket(inst, handle);
+	fr_connection_release(inst->pool, handle);
 
 	return ret;
 }
@@ -292,7 +292,7 @@ static int generate_sql_clients(rlm_sql_t *inst)
 	DEBUG("rlm_sql (%s) in generate_sql_clients: query is %s",
 	      inst->config->xlat_name, inst->config->client_query);
 
-	handle = sql_get_socket(inst);
+	handle = fr_connection_get(inst->pool);
 	if (!handle) {
 		return -1;
 	}
@@ -364,7 +364,7 @@ static int generate_sql_clients(rlm_sql_t *inst)
 	}
 
 	(inst->module->sql_finish_select_query)(handle, inst->config);
-	sql_release_socket(inst, handle);
+	fr_connection_release(inst->pool, handle);
 
 	return 0;
 }
@@ -577,7 +577,7 @@ static int CC_HINT(nonnull (1, 2, 4)) sql_groupcmp(void *instance, REQUEST *requ
 	/*
 	 *	Get a socket for this lookup
 	 */
-	handle = sql_get_socket(inst);
+	handle = fr_connection_get(inst->pool);
 	if (!handle) {
 		return 1;
 	}
@@ -587,7 +587,7 @@ static int CC_HINT(nonnull (1, 2, 4)) sql_groupcmp(void *instance, REQUEST *requ
 	 */
 	if (sql_get_grouplist(inst, &handle, request, &head) < 0) {
 		REDEBUG("Error getting group membership");
-		sql_release_socket(inst, handle);
+		fr_connection_release(inst->pool, handle);
 		return 1;
 	}
 
@@ -596,14 +596,14 @@ static int CC_HINT(nonnull (1, 2, 4)) sql_groupcmp(void *instance, REQUEST *requ
 			RDEBUG("sql_groupcmp finished: User is a member of group %s",
 			       check->vp_strvalue);
 			talloc_free(head);
-			sql_release_socket(inst, handle);
+			fr_connection_release(inst->pool, handle);
 			return 0;
 		}
 	}
 
 	/* Free the grouplist */
 	talloc_free(head);
-	sql_release_socket(inst, handle);
+	fr_connection_release(inst->pool, handle);
 
 	RDEBUG("sql_groupcmp finished: User is NOT a member of group %s", check->vp_strvalue);
 
@@ -748,9 +748,7 @@ static int mod_detach(void *instance)
 {
 	rlm_sql_t *inst = instance;
 
-	if (inst->config) {
-		if (inst->pool) sql_poolfree(inst);
-	}
+	if (inst->config) if (inst->pool) fr_connection_pool_delete(inst->pool);
 
 	if (inst->handle) {
 #if 0
@@ -841,8 +839,6 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 *	Export these methods, too.  This avoids RTDL_GLOBAL.
 	 */
 	inst->sql_set_user		= sql_set_user;
-	inst->sql_get_socket		= sql_get_socket;
-	inst->sql_release_socket	= sql_release_socket;
 	inst->sql_escape_func		= sql_escape_func;
 	inst->sql_query			= rlm_sql_query;
 	inst->sql_select_query		= rlm_sql_select_query;
@@ -919,7 +915,8 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 */
 	INFO("rlm_sql (%s): Attempting to connect to database \"%s\"", inst->config->xlat_name, inst->config->sql_db);
 
-	if (sql_socket_pool_init(inst) < 0) return -1;
+	inst->pool = fr_connection_pool_module_init(inst->cs, inst, mod_conn_create, NULL, NULL);
+	if (!inst->pool) return -1;
 
 	if (inst->config->groupmemb_query &&
 	    inst->config->groupmemb_query[0]) {
@@ -980,7 +977,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 	 *	After this point use goto error or goto release to cleanup socket temporary pairlists and
 	 *	temporary attributes.
 	 */
-	handle = sql_get_socket(inst);
+	handle = fr_connection_get(inst->pool);
 	if (!handle) {
 		rcode = RLM_MODULE_FAIL;
 		goto error;
@@ -1167,7 +1164,7 @@ release:
 		rcode = RLM_MODULE_NOTFOUND;
 	}
 
-	sql_release_socket(inst, handle);
+	fr_connection_release(inst->pool, handle);
 	sql_unset_user(inst, request);
 
 	return rcode;
@@ -1177,7 +1174,7 @@ error:
 	pairfree(&reply_tmp);
 	sql_unset_user(inst, request);
 
-	sql_release_socket(inst, handle);
+	fr_connection_release(inst->pool, handle);
 
 	return rcode;
 }
@@ -1240,7 +1237,7 @@ static int acct_redundant(rlm_sql_t *inst, REQUEST *request, sql_acct_section_t 
 
 	RDEBUG2("Using query template '%s'", attr);
 
-	handle = sql_get_socket(inst);
+	handle = fr_connection_get(inst->pool);
 	if (!handle) {
 		rcode = RLM_MODULE_FAIL;
 
@@ -1281,7 +1278,7 @@ static int acct_redundant(rlm_sql_t *inst, REQUEST *request, sql_acct_section_t 
 		 *
 		 *  If we get RLM_SQL_RECONNECT it means all connections in the pool
 		 *  were exhausted, and we couldn't create a new connection,
-		 *  so we do not need to call sql_release_socket.
+		 *  so we do not need to call fr_connection_release.
 		 */
 		sql_ret = rlm_sql_query(&handle, inst, expanded);
 		TALLOC_FREE(expanded);
@@ -1329,7 +1326,7 @@ static int acct_redundant(rlm_sql_t *inst, REQUEST *request, sql_acct_section_t 
 
 finish:
 	talloc_free(expanded);
-	sql_release_socket(inst, handle);
+	fr_connection_release(inst->pool, handle);
 	sql_unset_user(inst, request);
 
 	return rcode;
@@ -1399,7 +1396,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_checksimul(void *instance, REQUEST * req
 	}
 
 	/* initialize the sql socket */
-	handle = sql_get_socket(inst);
+	handle = fr_connection_get(inst->pool);
 	if (!handle) {
 		talloc_free(expanded);
 		sql_unset_user(inst, request);
@@ -1548,7 +1545,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_checksimul(void *instance, REQUEST * req
 	finish:
 
 	(inst->module->sql_finish_select_query)(handle, inst->config);
-	sql_release_socket(inst, handle);
+	fr_connection_release(inst->pool, handle);
 	talloc_free(expanded);
 	sql_unset_user(inst, request);
 

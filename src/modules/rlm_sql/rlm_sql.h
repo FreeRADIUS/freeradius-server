@@ -139,8 +139,6 @@ struct sql_inst {
 	rlm_sql_module_t *module;
 
 	int (*sql_set_user)(rlm_sql_t *inst, REQUEST *request, char const *username);
-	rlm_sql_handle_t *(*sql_get_socket)(rlm_sql_t *inst);
-	int (*sql_release_socket)(rlm_sql_t *inst, rlm_sql_handle_t *handle);
 	size_t (*sql_escape_func)(REQUEST *, char *out, size_t outlen, char const *in, void *arg);
 	sql_rcode_t (*sql_query)(rlm_sql_handle_t **handle, rlm_sql_t *inst, char const *query);
 	sql_rcode_t (*sql_select_query)(rlm_sql_handle_t **handle, rlm_sql_t *inst, char const *query);
@@ -152,11 +150,7 @@ typedef struct sql_grouplist {
 	struct sql_grouplist	*next;
 } rlm_sql_grouplist_t;
 
-int		sql_socket_pool_init(rlm_sql_t *inst);
-void		sql_poolfree(rlm_sql_t *inst);
-int		sql_close_socket(rlm_sql_t *inst, rlm_sql_handle_t *handle);
-rlm_sql_handle_t *sql_get_socket(rlm_sql_t *inst);
-int		sql_release_socket(rlm_sql_t *inst, rlm_sql_handle_t *handle);
+void		*mod_conn_create(TALLOC_CTX *ctx, void *instance);
 int		sql_userparse(TALLOC_CTX *ctx, VALUE_PAIR **first_pair, rlm_sql_row_t row);
 int		sql_read_realms(rlm_sql_handle_t *handle);
 int		sql_getvpdata(TALLOC_CTX *ctx, rlm_sql_t *inst, rlm_sql_handle_t **handle, VALUE_PAIR **pair, char const *query);
