@@ -39,7 +39,7 @@ RCSID("$Id$")
 #ifdef HAVE_PTHREAD_H
 #endif
 
-static int _sql_conn_free(rlm_sql_handle_t *conn)
+static int _mod_conn_free(rlm_sql_handle_t *conn)
 {
 	rlm_sql_t *inst = conn->inst;
 
@@ -50,7 +50,7 @@ static int _sql_conn_free(rlm_sql_handle_t *conn)
 	return 0;
 }
 
-static void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
+void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
 {
 	int rcode;
 	rlm_sql_t *inst = instance;
@@ -75,7 +75,7 @@ static void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
 	 *	Then we call our destructor to trigger an modules.sql.close
 	 *	event, then all the memory is freed.
 	 */
-	talloc_set_destructor(handle, _sql_conn_free);
+	talloc_set_destructor(handle, _mod_conn_free);
 
 	rcode = (inst->module->sql_socket_init)(handle, inst->config);
 	if (rcode != 0) {
@@ -99,60 +99,6 @@ static void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
 	exec_trigger(NULL, inst->cs, "modules.sql.open", false);
 	return handle;
 }
-
-/*************************************************************************
- *
- *	Function: sql_socket_pool_init
- *
- *	Purpose: Connect to the sql server, if possible
- *
- *************************************************************************/
-int sql_socket_pool_init(rlm_sql_t * inst)
-{
-	inst->pool = fr_connection_pool_module_init(inst->cs, inst, mod_conn_create, NULL, NULL);
-	if (!inst->pool) return -1;
-
-	return 1;
-}
-
-/*************************************************************************
- *
- *     Function: sql_poolfree
- *
- *     Purpose: Clean up and free sql pool
- *
- *************************************************************************/
-void sql_poolfree(rlm_sql_t * inst)
-{
-	fr_connection_pool_delete(inst->pool);
-}
-
-
-/*************************************************************************
- *
- *	Function: sql_get_socket
- *
- *	Purpose: Return a SQL handle from the connection pool
- *
- *************************************************************************/
-rlm_sql_handle_t * sql_get_socket(rlm_sql_t * inst)
-{
-	return fr_connection_get(inst->pool);
-}
-
-/*************************************************************************
- *
- *	Function: sql_release_socket
- *
- *	Purpose: Frees a SQL handle back to the connection pool
- *
- *************************************************************************/
-int sql_release_socket(rlm_sql_t * inst, rlm_sql_handle_t * handle)
-{
-	fr_connection_release(inst->pool, handle);
-	return 0;
-}
-
 
 /*************************************************************************
  *
