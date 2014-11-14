@@ -1305,7 +1305,7 @@ error:
  * @param inst rlm_ldap configuration.
  * @param request Current request (may be NULL).
  */
-ldap_handle_t *rlm_ldap_get_socket(ldap_instance_t const *inst, UNUSED REQUEST *request)
+ldap_handle_t *mod_conn_get(ldap_instance_t const *inst, UNUSED REQUEST *request)
 {
 	return fr_connection_get(inst->pool);
 }
@@ -1318,7 +1318,7 @@ ldap_handle_t *rlm_ldap_get_socket(ldap_instance_t const *inst, UNUSED REQUEST *
  * @param inst rlm_ldap configuration.
  * @param conn to release.
  */
-void rlm_ldap_release_socket(ldap_instance_t const *inst, ldap_handle_t *conn)
+void mod_conn_release(ldap_instance_t const *inst, ldap_handle_t *conn)
 {
 	/*
 	 *	Could have already been free'd due to a previous error.

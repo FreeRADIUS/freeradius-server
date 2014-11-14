@@ -341,9 +341,9 @@ void rlm_ldap_check_reply(ldap_instance_t const *inst, REQUEST *request);
  */
 void *mod_conn_create(TALLOC_CTX *ctx, void *instance);
 
-ldap_handle_t *rlm_ldap_get_socket(ldap_instance_t const *inst, REQUEST *request);
+ldap_handle_t *mod_conn_get(ldap_instance_t const *inst, REQUEST *request);
 
-void rlm_ldap_release_socket(ldap_instance_t const *inst, ldap_handle_t *conn);
+void mod_conn_release(ldap_instance_t const *inst, ldap_handle_t *conn);
 
 /*
  *	groups.c - Group membership functions.
