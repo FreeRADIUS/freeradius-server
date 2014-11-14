@@ -1792,7 +1792,7 @@ int modules_init(CONF_SECTION *config)
 	 *  sections.
 	 */
 	cs = cf_section_sub_find(config, "instantiate");
-	if (cs != NULL) {
+	if (cs) {
 		CONF_PAIR *cp;
 		module_instance_t *module;
 		char const *name;
@@ -1811,17 +1811,66 @@ int modules_init(CONF_SECTION *config)
 			 *	Sections will be handled later, if
 			 *	they're referenced at all...
 			 */
-			if (!cf_item_is_pair(ci)) {
-				continue;
+			if (cf_item_is_pair(ci)) {
+				cp = cf_itemtopair(ci);
+				name = cf_pair_attr(cp);
+
+				module = find_module_instance(modules, name, true);
+				if (!module && (name[0] != '-')) {
+					return -1;
+				}
 			}
 
-			cp = cf_itemtopair(ci);
-			name = cf_pair_attr(cp);
-			module = find_module_instance(modules, name, true);
-			if (!module && (name[0] != '-')) {
-				return -1;
-			}
-		} /* loop over items in the subsection */
+			/*
+			 *	Can only be "redundant" or
+			 *	"load-balance" or
+			 *	"redundant-load-balance"
+			 */
+			if (cf_item_is_section(ci)) {
+				CONF_SECTION *subcs;
+				CONF_ITEM *subci;
+
+				subcs = cf_itemtosection(ci);
+				name = cf_section_name1(subcs);
+				if (!((strcmp(name, "redundant") == 0) ||
+				      (strcmp(name, "redundant-load-balance") == 0) ||
+				      strcmp(name, "load-balance") == 0)) {
+					cf_log_err_cs(subcs, "Invalid subsection");
+					return -1;
+				}
+
+				name = cf_section_name2(subcs);
+				if (!name) {
+					cf_log_err_cs(subcs, "Subsection must have a name");
+					return -1;
+				}
+
+				/*
+				 *	Ensure that the modules we reference here exist.
+				 */
+				for (subci=cf_item_find_next(subcs, NULL);
+				     subci != NULL;
+				     subci=cf_item_find_next(subcs, subci)) {
+					if (cf_item_is_pair(subci)) {
+						cp = cf_itemtopair(subci);
+						if (cf_pair_value(cp)) {
+							cf_log_err(subci, "Cannot set return codes in a %s block",
+								   cf_section_name1(subcs));
+							return -1;
+						}
+
+						module = find_module_instance(modules, cf_pair_attr(cp), true);
+						if (!module) {
+							return -1;
+						}
+					}
+
+					/*
+					 *	Don't check subsections for now.
+					 */
+				} /* loop over modules in a "redundant foo" section */
+			}  /* handle subsections */
+		} /* loop over the "instantiate" section */
 
 		cf_log_info(cs, " }");
 	} /* if there's an 'instantiate' section. */
