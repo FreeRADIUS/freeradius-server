@@ -906,11 +906,18 @@ bool xlat_register_redundant(CONF_SECTION *cs)
 		     ci != NULL;
 		     ci = cf_item_find_next(cs, ci)) {
 			if (!cf_item_is_pair(ci)) continue;
+
+			if (!xlat_find(cf_pair_attr(cf_itemtopair(ci)))) {
+				talloc_free(xr);
+				return false;
+			}
+
 			xr->count++;
 		}
 	}
 
 	if (xlat_register(name2, xlat_redundant, NULL, xr) < 0) {
+		talloc_free(xr);
 		return false;
 	}
 
