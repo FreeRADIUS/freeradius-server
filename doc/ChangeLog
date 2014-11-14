@@ -91,12 +91,15 @@ FreeRADIUS 3.0.5 Mon 15 Sep 2014 15:30:00 EDT urgency=medium
 	* Fix issue in cached LDAP group comparisons, which caused
 	  checks to sometimes fail.
 	* Fix use after free issue in unlang switch evaluation.
+	* Respect operators in rlm_cache when merging into the current
+	  request.
+	* Update Cache-Entry-Hits each time rlm_cache is called.ee
 
 FreeRADIUS 3.0.4 Wed 10 Sep 2014 12:00:00 EDT urgency=medium
 	Feature improvements
 	* Home server "response_window" can now take fractions of a
 	  second.  See proxy.conf.
-	* radmin now supports "show module status", as the counterpart
+	* radmin now supports "show module status", as thee counterpart
 	  to "set module status"
 	* Added dictionary ericsson.packet.ccore.networks, bluecoat,
 	  citrix, compatible, riverbed, ruckus, and RFC 7268.
