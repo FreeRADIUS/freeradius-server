@@ -746,6 +746,177 @@ void xlat_unregister_module(void *instance)
 	rbtree_walk(xlat_root, RBTREE_DELETE_ORDER, xlat_unregister_callback, instance);
 }
 
+/*
+ *	Internal redundant handler for xlats
+ */
+typedef enum xlat_redundant_type_t {
+	XLAT_INVALID = 0,
+	XLAT_REDUNDANT,
+	XLAT_LOAD_BALANCE,
+	XLAT_REDUNDANT_LOAD_BALANCE,
+} xlat_redundant_type_t;
+
+typedef struct xlat_redundant_t {
+	xlat_redundant_type_t type;
+	uint32_t	count;
+	CONF_SECTION *cs;
+} xlat_redundant_t;
+
+static ssize_t xlat_redundant(void *instance, REQUEST *request,
+			      char const *fmt, char *out, size_t outlen)
+{
+	uint32_t count = 0;
+	xlat_redundant_t *xr = instance;
+	CONF_ITEM *ci;
+	CONF_ITEM *found = NULL;
+	char const *name;
+	xlat_t *xlat;
+
+	/*
+	 *	Pick the first one which succeeds
+	 */
+	if (xr->type == XLAT_REDUNDANT) {
+		for (ci = cf_item_find_next(xr->cs, NULL);
+		     ci != NULL;
+		     ci = cf_item_find_next(xr->cs, ci)) {
+			ssize_t rcode;
+
+			if (!cf_item_is_pair(ci)) continue;
+
+			name = cf_pair_attr(cf_itemtopair(ci));
+			rad_assert(name != NULL);
+
+			xlat = xlat_find(name);
+			if (!xlat) continue;
+
+			rcode = xlat->func(xlat->instance, request, fmt, out, outlen);
+			if (rcode <= 0) continue;
+			return rcode;
+		}
+
+		/*
+		 *	Everything failed.  Oh well.
+		 */
+		*out  = 0;
+		return 0;
+	}
+
+	/*
+	 *	Choose a child at random.
+	 */
+	for (ci = cf_item_find_next(xr->cs, NULL);
+	     ci != NULL;
+	     ci = cf_item_find_next(xr->cs, ci)) {
+		if (!cf_item_is_pair(ci)) continue;
+
+		if (!found) found = ci; /* always pick the first one */
+
+		count++;
+
+		/*
+		 *	Replace the previously found one with a random
+		 *	new one.
+		 */
+		if ((count * (fr_rand() & 0xffff)) < (uint32_t) 0x10000) {
+			found = ci;
+		}
+	}
+
+	/*
+	 *	Plain load balancing: pick a child at random.
+	 */
+	if (xr->type == XLAT_LOAD_BALANCE) {
+		name = cf_pair_attr(cf_itemtopair(found));
+		rad_assert(name != NULL);
+
+		xlat = xlat_find(name);
+		if (!xlat) return -1;
+
+		return xlat->func(xlat->instance, request, fmt, out, outlen);
+	}
+
+	rad_assert(xr->type == XLAT_REDUNDANT_LOAD_BALANCE);
+
+	/*
+	 *	Try the random one we found.  If it fails, keep going
+	 *	through the rest of the children.
+	 */
+	ci = found;
+	do {
+		name = cf_pair_attr(cf_itemtopair(ci));
+		rad_assert(name != NULL);
+
+		xlat = xlat_find(name);
+		if (xlat) {
+			ssize_t rcode;
+
+			rcode = xlat->func(xlat->instance, request, fmt, out, outlen);
+			if (rcode > 0) return rcode;
+		}
+
+		/*
+		 *	Go to the next one, wrapping around at the end.
+		 */
+		ci = cf_item_find_next(xr->cs, ci);
+		if (!ci) ci = cf_item_find_next(xr->cs, NULL);
+	} while (ci != found);
+
+	return -1;
+}
+
+
+bool xlat_register_redundant(CONF_SECTION *cs)
+{
+	char const *name1, *name2;
+	xlat_redundant_t *xr;
+
+	name1 = cf_section_name1(cs);
+	name2 = cf_section_name2(cs);
+
+	if (xlat_find(name2)) {
+		cf_log_err_cs(cs, "An expansion is already registered for this name");
+		return false;
+	}
+
+	xr = talloc_zero(cs, xlat_redundant_t);
+	if (!xr) return false;
+
+	if (strcmp(name1, "redundant") == 0) {
+		xr->type = XLAT_REDUNDANT;
+
+	} else if (strcmp(name1, "redundant-load-balance") == 0) {
+		xr->type = XLAT_REDUNDANT_LOAD_BALANCE;
+
+	} else if (strcmp(name1, "load-balance") == 0) {
+		xr->type = XLAT_LOAD_BALANCE;
+
+	} else {
+		return false;
+	}
+
+	xr->cs = cs;
+
+	/*
+	 *	Get the number of children for load balancing.
+	 */
+	if (xr->type != XLAT_REDUNDANT) {
+		CONF_ITEM *ci;
+
+		for (ci = cf_item_find_next(cs, NULL);
+		     ci != NULL;
+		     ci = cf_item_find_next(cs, ci)) {
+			if (!cf_item_is_pair(ci)) continue;
+			xr->count++;
+		}
+	}
+
+	if (xlat_register(name2, xlat_redundant, NULL, xr) < 0) {
+		return false;
+	}
+
+	return true;
+}
+
 
 /** Crappy temporary function to add attribute ref support to xlats
  *

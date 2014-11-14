@@ -683,6 +683,7 @@ int		xlat_register(char const *module, RAD_XLAT_FUNC func, RADIUS_ESCAPE_STRING 
 			      void *instance);
 void		xlat_unregister(char const *module, RAD_XLAT_FUNC func, void *instance);
 void		xlat_unregister_module(void *instance);
+bool		xlat_register_redundant(CONF_SECTION *cs);
 ssize_t		xlat_fmt_to_ref(uint8_t const **out, REQUEST *request, char const *fmt);
 void		xlat_free(void);
 

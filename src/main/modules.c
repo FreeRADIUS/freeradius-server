@@ -1810,6 +1810,8 @@ int modules_init(CONF_SECTION *config)
 			 *	"redundant-load-balance"
 			 */
 			if (cf_item_is_section(ci)) {
+				bool all_same = true;
+				module_t const *last = NULL;
 				CONF_SECTION *subcs;
 				CONF_ITEM *subci;
 
@@ -1848,12 +1850,33 @@ int modules_init(CONF_SECTION *config)
 						if (!module) {
 							return -1;
 						}
+
+						if (all_same) {
+							if (!last) {
+								last = module->entry->module;
+							} else if (last != module->entry->module) {
+								last = NULL;
+								all_same = false;
+							}
+						}
+					} else {
+						all_same = false;
 					}
 
 					/*
 					 *	Don't check subsections for now.
 					 */
 				} /* loop over modules in a "redundant foo" section */
+
+				/*
+				 *	Register a redundant xlat
+				 */
+				if (all_same) {
+					if (!xlat_register_redundant(cf_itemtosection(ci))) {
+						cf_log_err(ci, "Failed registering xlat");
+						return -1;
+					}
+				}
 			}  /* handle subsections */
 		} /* loop over the "instantiate" section */
 
