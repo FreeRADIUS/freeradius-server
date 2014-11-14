@@ -147,35 +147,31 @@ static void CC_HINT(nonnull) cache_merge(rlm_cache_t *inst, REQUEST *request, rl
 		return;
 	}
 
+	RDEBUG2("Merging cache entry into request");
+
 	if (c->control) {
 		RDEBUG2("Merging cached control list");
-		rdebug_pair_list(L_DBG_LVL_2, request, c->control);
-		pairadd(&request->config_items, paircopy(request, c->control));
+		radius_pairmove(request, &request->config_items, paircopy(request, c->control), false);
 	}
 
 	if (c->packet && request->packet) {
 		RDEBUG2("Merging cached request list");
-		rdebug_pair_list(L_DBG_LVL_2, request, c->packet);
-
-		pairadd(&request->packet->vps,
-			paircopy(request->packet, c->packet));
+		radius_pairmove(request, &request->packet->vps, paircopy(request->packet, c->packet), false);
 	}
 
 	if (c->reply && request->reply) {
 		RDEBUG2("Merging cached reply list");
-		rdebug_pair_list(L_DBG_LVL_2, request, c->reply);
-
-		pairadd(&request->reply->vps,
-			paircopy(request->reply, c->reply));
+		radius_pairmove(request, &request->reply->vps, paircopy(request->reply, c->reply), false);
 	}
 
 	if (inst->stats) {
-		vp = paircreate(request->packet, PW_CACHE_ENTRY_HITS, 0);
-		rad_assert(vp != NULL);
-
+		vp = pairfind(request->packet->vps, PW_CACHE_ENTRY_HITS, 0, TAG_ANY);
+		if (!vp) {
+			vp = paircreate(request->packet, PW_CACHE_ENTRY_HITS, 0);
+			rad_assert(vp != NULL);
+			pairadd(&request->packet->vps, vp);
+		}
 		vp->vp_integer = c->hits;
-
-		pairadd(&request->packet->vps, vp);
 	}
 }
 
