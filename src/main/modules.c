@@ -1873,8 +1873,9 @@ int modules_init(CONF_SECTION *config)
 				 */
 				if (all_same) {
 					if (!xlat_register_redundant(cf_itemtosection(ci))) {
-						cf_log_err(ci, "Failed registering xlat");
-						return -1;
+						WARN("%s[%d] Not registering expansions for %s",
+						     cf_section_filename(subcs), cf_section_lineno(subcs),
+						     cf_section_name2(subcs));
 					}
 				}
 			}  /* handle subsections */
