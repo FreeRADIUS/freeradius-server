@@ -288,7 +288,7 @@ static ssize_t ldap_xlat(void *instance, REQUEST *request, char const *fmt, char
 		goto free_urldesc;
 	}
 
-	conn = rlm_ldap_get_socket(inst, request);
+	conn = mod_conn_get(inst, request);
 	if (!conn) goto free_urldesc;
 
 	memcpy(&attrs, &ldap_url->lud_attrs, sizeof(attrs));
@@ -335,7 +335,7 @@ free_vals:
 free_result:
 	ldap_msgfree(result);
 free_socket:
-	rlm_ldap_release_socket(inst, conn);
+	mod_conn_release(inst, conn);
 free_urldesc:
 	ldap_free_urldesc(ldap_url);
 
@@ -398,7 +398,7 @@ static int rlm_ldap_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR
 		}
 	}
 
-	conn = rlm_ldap_get_socket(inst, request);
+	conn = mod_conn_get(inst, request);
 	if (!conn) return 1;
 
 	/*
@@ -406,7 +406,7 @@ static int rlm_ldap_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR
 	 */
 	user_dn = rlm_ldap_find_user(inst, request, &conn, NULL, false, NULL, &rcode);
 	if (!user_dn) {
-		rlm_ldap_release_socket(inst, conn);
+		mod_conn_release(inst, conn);
 		return 1;
 	}
 
@@ -449,7 +449,7 @@ static int rlm_ldap_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR
 	rad_assert(conn);
 
 finish:
-	if (conn) rlm_ldap_release_socket(inst, conn);
+	if (conn) mod_conn_release(inst, conn);
 
 	if (!found) {
 		RDEBUG("User is not a member of specified group");
@@ -835,7 +835,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 
 	RDEBUG("Login attempt by \"%s\"", request->username->vp_strvalue);
 
-	conn = rlm_ldap_get_socket(inst, request);
+	conn = mod_conn_get(inst, request);
 	if (!conn) return RLM_MODULE_FAIL;
 
 	/*
@@ -843,7 +843,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	 */
 	dn = rlm_ldap_find_user(inst, request, &conn, NULL, false, NULL, &rcode);
 	if (!dn) {
-		rlm_ldap_release_socket(inst, conn);
+		mod_conn_release(inst, conn);
 
 		return rcode;
 	}
@@ -880,7 +880,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 		break;
 	};
 
-	rlm_ldap_release_socket(inst, conn);
+	mod_conn_release(inst, conn);
 
 	return rcode;
 }
@@ -918,7 +918,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 		return RLM_MODULE_FAIL;
 	}
 
-	conn = rlm_ldap_get_socket(inst, request);
+	conn = mod_conn_get(inst, request);
 	if (!conn) return RLM_MODULE_FAIL;
 
 	/*
@@ -1102,7 +1102,7 @@ finish:
 	if (result) {
 		ldap_msgfree(result);
 	}
-	rlm_ldap_release_socket(inst, conn);
+	mod_conn_release(inst, conn);
 
 	return rcode;
 }
@@ -1301,7 +1301,7 @@ static rlm_rcode_t user_modify(ldap_instance_t *inst, REQUEST *request, ldap_acc
 
 	mod_p[total] = NULL;
 
-	conn = rlm_ldap_get_socket(inst, request);
+	conn = mod_conn_get(inst, request);
 	if (!conn) return RLM_MODULE_FAIL;
 
 
@@ -1334,7 +1334,7 @@ static rlm_rcode_t user_modify(ldap_instance_t *inst, REQUEST *request, ldap_acc
 		talloc_free(expanded[i]);
 	}
 
-	rlm_ldap_release_socket(inst, conn);
+	mod_conn_release(inst, conn);
 
 	return rcode;
 }

@@ -163,7 +163,7 @@ int rlm_ldap_client_load(ldap_instance_t const *inst, CONF_SECTION *cs)
 	attrs = talloc_array(inst, char const *, count);
 	if (rlm_ldap_client_get_attrs(attrs, &idx, cs) < 0) return -1;
 
-	conn = rlm_ldap_get_socket(inst, NULL);
+	conn = mod_conn_get(inst, NULL);
 	if (!conn) return -1;
 
 	/*
@@ -265,7 +265,7 @@ finish:
 	if (dn) ldap_memfree(dn);
 	if (result) ldap_msgfree(result);
 
-	rlm_ldap_release_socket(inst, conn);
+	mod_conn_release(inst, conn);
 
 	return ret;
 }
