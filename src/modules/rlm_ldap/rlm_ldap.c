@@ -2238,7 +2238,6 @@ static int ldap_postauth(void *instance, REQUEST * request)
 						ldap_unbind_s(conn->ld);
 					}
 					if ((conn->ld = ldap_connect(instance, (char *)vp_fdn->vp_strvalue, password, 0, &res, &error_msg)) == NULL) {
-						// Log message changed: Lars Kollstedt 18.3.2014
 						radlog(L_ERR, "  [%s] eDirectory account policy check for %s failed.", inst->xlat_name,(char *)vp_fdn->vp_strvalue);
 
 						if (error_msg != NULL) {
@@ -2259,7 +2258,6 @@ static int ldap_postauth(void *instance, REQUEST * request)
 					}
 					RDEBUG("eDirectory account policy check failed.");
 					
-					// Log message added: Lars Kollstedt 18.3.2014
 					radlog(L_ERR, "  [%s] eDirectory account policy check for %s failed.", inst->xlat_name,(char *)vp_fdn->vp_strvalue);
 					
 					ldap_get_option(conn->ld, LDAP_OPT_ERROR_STRING, &error_msg);
