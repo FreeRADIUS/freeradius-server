@@ -427,10 +427,10 @@ static inline void ldap_release_apc_conn(int i, ldap_instance *inst)
 {
 	LDAP_CONN *conns = inst->apc_conns;
 
-	DEBUG("  [%s] ldap_release_conn: Release Id: %d", inst->xlat_name, i);
+	DEBUG("  [%s] ldap_release_apc_conn: Release Id: %d", inst->xlat_name, i);
 	if ((inst->max_uses > 0) && (conns[i].uses >= inst->max_uses)) {
 		if (conns[i].ld){
-			DEBUG("  [%s] rlm_ndsldap: ndsldap_release_conn: Hit max usage limit, closing Id: %d", inst->xlat_name, i);
+			DEBUG("  [%s] ldap_release_apc_conn: Hit max usage limit, closing Id: %d", inst->xlat_name, i);
 			ldap_unbind_s(conns[i].ld);
 
 			conns[i].ld = NULL;
