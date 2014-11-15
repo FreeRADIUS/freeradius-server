@@ -230,7 +230,7 @@ static int _sql_socket_destructor(rlm_sql_postgres_conn_t *conn)
  *	Purpose: Establish connection to the db
  *
  *************************************************************************/
-static int CC_HINT(nonnull) sql_init_socket(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
+static int CC_HINT(nonnull) sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 {
 	rlm_sql_postgres_config_t *driver = config->driver;
 	rlm_sql_postgres_conn_t *conn;
@@ -483,7 +483,7 @@ static int sql_affected_rows(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t 
 rlm_sql_module_t rlm_sql_postgresql = {
 	.name				= "rlm_sql_postgresql",
 	.mod_instantiate		= mod_instantiate,
-	.sql_socket_init		= sql_init_socket,
+	.sql_socket_init		= sql_socket_init,
 	.sql_query			= sql_query,
 	.sql_select_query		= sql_select_query,
 	.sql_num_fields			= sql_num_fields,
