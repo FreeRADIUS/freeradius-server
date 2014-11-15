@@ -483,7 +483,7 @@ static int sql_affected_rows(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t 
 rlm_sql_module_t rlm_sql_postgresql = {
 	.name				= "rlm_sql_postgresql",
 	.mod_instantiate		= mod_instantiate,
-	.sql_init_socket		= sql_init_socket,
+	.sql_socket_init		= sql_init_socket,
 	.sql_query			= sql_query,
 	.sql_select_query		= sql_select_query,
 	.sql_num_fields			= sql_num_fields,
