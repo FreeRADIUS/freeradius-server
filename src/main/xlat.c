@@ -762,7 +762,47 @@ typedef struct xlat_redundant_t {
 	CONF_SECTION *cs;
 } xlat_redundant_t;
 
+
 static ssize_t xlat_redundant(void *instance, REQUEST *request,
+			      char const *fmt, char *out, size_t outlen)
+{
+	xlat_redundant_t *xr = instance;
+	CONF_ITEM *ci;
+	char const *name;
+	xlat_t *xlat;
+
+	rad_assert(xr->type == XLAT_REDUNDANT);
+
+	/*
+	 *	Pick the first xlat which succeeds
+	 */
+	for (ci = cf_item_find_next(xr->cs, NULL);
+	     ci != NULL;
+	     ci = cf_item_find_next(xr->cs, ci)) {
+		ssize_t rcode;
+
+		if (!cf_item_is_pair(ci)) continue;
+
+		name = cf_pair_attr(cf_itemtopair(ci));
+		rad_assert(name != NULL);
+
+		xlat = xlat_find(name);
+		if (!xlat) continue;
+
+		rcode = xlat->func(xlat->instance, request, fmt, out, outlen);
+		if (rcode <= 0) continue;
+		return rcode;
+	}
+
+	/*
+	 *	Everything failed.  Oh well.
+	 */
+	*out  = 0;
+	return 0;
+}
+
+
+static ssize_t xlat_load_balance(void *instance, REQUEST *request,
 			      char const *fmt, char *out, size_t outlen)
 {
 	uint32_t count = 0;
@@ -773,44 +813,12 @@ static ssize_t xlat_redundant(void *instance, REQUEST *request,
 	xlat_t *xlat;
 
 	/*
-	 *	Pick the first one which succeeds
-	 */
-	if (xr->type == XLAT_REDUNDANT) {
-		for (ci = cf_item_find_next(xr->cs, NULL);
-		     ci != NULL;
-		     ci = cf_item_find_next(xr->cs, ci)) {
-			ssize_t rcode;
-
-			if (!cf_item_is_pair(ci)) continue;
-
-			name = cf_pair_attr(cf_itemtopair(ci));
-			rad_assert(name != NULL);
-
-			xlat = xlat_find(name);
-			if (!xlat) continue;
-
-			rcode = xlat->func(xlat->instance, request, fmt, out, outlen);
-			if (rcode <= 0) continue;
-			return rcode;
-		}
-
-		/*
-		 *	Everything failed.  Oh well.
-		 */
-		*out  = 0;
-		return 0;
-	}
-
-	/*
 	 *	Choose a child at random.
 	 */
 	for (ci = cf_item_find_next(xr->cs, NULL);
 	     ci != NULL;
 	     ci = cf_item_find_next(xr->cs, ci)) {
 		if (!cf_item_is_pair(ci)) continue;
-
-		if (!found) found = ci; /* always pick the first one */
-
 		count++;
 
 		/*
@@ -823,7 +831,7 @@ static ssize_t xlat_redundant(void *instance, REQUEST *request,
 	}
 
 	/*
-	 *	Plain load balancing: pick a child at random.
+	 *	Plain load balancing: do one child, and only one child.
 	 */
 	if (xr->type == XLAT_LOAD_BALANCE) {
 		name = cf_pair_attr(cf_itemtopair(found));
@@ -899,7 +907,13 @@ bool xlat_register_redundant(CONF_SECTION *cs)
 	/*
 	 *	Get the number of children for load balancing.
 	 */
-	if (xr->type != XLAT_REDUNDANT) {
+	if (xr->type == XLAT_REDUNDANT) {
+		if (xlat_register(name2, xlat_redundant, NULL, xr) < 0) {
+			talloc_free(xr);
+			return false;
+		}
+
+	} else {
 		CONF_ITEM *ci;
 
 		for (ci = cf_item_find_next(cs, NULL);
@@ -914,11 +928,11 @@ bool xlat_register_redundant(CONF_SECTION *cs)
 
 			xr->count++;
 		}
-	}
 
-	if (xlat_register(name2, xlat_redundant, NULL, xr) < 0) {
-		talloc_free(xr);
-		return false;
+		if (xlat_register(name2, xlat_load_balance, NULL, xr) < 0) {
+			talloc_free(xr);
+			return false;
+		}
 	}
 
 	return true;
