@@ -112,16 +112,22 @@ typedef struct rlm_sql_module_t {
 
 	sql_rcode_t (*mod_instantiate)(CONF_SECTION *conf, rlm_sql_config_t *config);
 	sql_rcode_t (*sql_socket_init)(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
+
 	sql_rcode_t (*sql_query)(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char const *query);
 	sql_rcode_t (*sql_select_query)(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char const *query);
 	sql_rcode_t (*sql_store_result)(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
+
 	int (*sql_num_fields)(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
 	int (*sql_num_rows)(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
+
 	sql_rcode_t (*sql_fetch_row)(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
 	sql_rcode_t (*sql_free_result)(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
+
 	char const *(*sql_error)(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
+
 	sql_rcode_t (*sql_finish_query)(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
 	sql_rcode_t (*sql_finish_select_query)(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
+
 	int (*sql_affected_rows)(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
 } rlm_sql_module_t;
 
