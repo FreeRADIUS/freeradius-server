@@ -350,6 +350,8 @@ struct fr_tls_server_conf_t {
 	uint32_t	verify_depth;
 	bool		file_type;
 	bool		include_length;
+	bool		disable_tlsv1_1;
+	bool		disable_tlsv1_2;
 
 	/*
 	 *	Always < 4096 (due to radius limit), 0 by default = 2048

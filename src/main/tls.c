@@ -956,6 +956,9 @@ static CONF_PARSER tls_server_config[] = {
 #endif
 #endif
 
+	{ "disable_tlsv1_1", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, disable_tlsv1_1), NULL },
+	{ "disable_tlsv1_2", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, disable_tlsv1_2), NULL },
+
 	{ "cache", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) cache_config },
 
 	{ "verify", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) verify_config },
@@ -994,6 +997,9 @@ static CONF_PARSER tls_client_config[] = {
 	{ "ecdh_curve", FR_CONF_OFFSET(PW_TYPE_STRING, fr_tls_server_conf_t, ecdh_curve), "prime256v1" },
 #endif
 #endif
+
+	{ "disable_tlsv1_1", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, disable_tlsv1_1), NULL },
+	{ "disable_tlsv1_2", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, disable_tlsv1_2), NULL },
 
 	{ NULL, -1, 0, NULL, NULL }	   /* end the list */
 };
@@ -2404,10 +2410,18 @@ post_ca:
 #endif
 
 	/*
-	 *	Set ctx_options
+	 *	We never want SSLv2 or SSLv3.
 	 */
 	ctx_options |= SSL_OP_NO_SSLv2;
 	ctx_options |= SSL_OP_NO_SSLv3;
+
+	/*
+	 *	As of 3.0.5, we always allow TLSv1.1 and TLSv1.2.
+	 *	Though they can be *globally* disabled if necessary.x
+	 */
+	if (conf->disable_tlsv1_1) ctx_options |= SSL_OP_NO_TLSv1_1;
+	if (conf->disable_tlsv1_2) ctx_options |= SSL_OP_NO_TLSv1_2;
+
 #ifdef SSL_OP_NO_TICKET
 	ctx_options |= SSL_OP_NO_TICKET ;
 #endif
