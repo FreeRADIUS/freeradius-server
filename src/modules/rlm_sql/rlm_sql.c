@@ -748,16 +748,13 @@ static int mod_detach(void *instance)
 {
 	rlm_sql_t *inst = instance;
 
-	if (inst->config) if (inst->pool) fr_connection_pool_delete(inst->pool);
+	if (inst->pool) fr_connection_pool_delete(inst->pool);
 
-	if (inst->handle) {
-#if 0
-		/*
-		 *	FIXME: Call the modules 'destroy' function?
-		 */
-		dlclose(inst->handle);	/* ignore any errors */
-#endif
-	}
+	/*
+	 *  Decrements the reference count. The driver object won't be unloaded
+	 *  until all instances of rlm_sql that use it have been destroyed.
+	 */
+	if (inst->handle) dlclose(inst->handle);
 
 	return 0;
 }
