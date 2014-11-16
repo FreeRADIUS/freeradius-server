@@ -1000,8 +1000,12 @@ static CONF_PARSER tls_client_config[] = {
 #endif
 #endif
 
+#ifdef SSL_OP_NO_TLSv1_1
 	{ "disable_tlsv1_1", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, disable_tlsv1_1), NULL },
+#endif
+#ifdef SSL_OP_NO_TLSv1_2
 	{ "disable_tlsv1_2", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, disable_tlsv1_2), NULL },
+#endif
 
 	{ NULL, -1, 0, NULL, NULL }	   /* end the list */
 };
@@ -2397,8 +2401,12 @@ post_ca:
 	 *	As of 3.0.5, we always allow TLSv1.1 and TLSv1.2.
 	 *	Though they can be *globally* disabled if necessary.x
 	 */
+#ifdef SSL_OP_NO_TLSv1_1
 	if (conf->disable_tlsv1_1) ctx_options |= SSL_OP_NO_TLSv1_1;
+#endif
+#ifdef SSL_OP_NO_TLSv1_2
 	if (conf->disable_tlsv1_2) ctx_options |= SSL_OP_NO_TLSv1_2;
+#endif
 
 #ifdef SSL_OP_NO_TICKET
 	ctx_options |= SSL_OP_NO_TICKET ;
