@@ -76,7 +76,8 @@ static int _sql_socket_destructor(rlm_sql_unixodbc_conn_t *conn)
  *	Purpose: Establish connection to the db
  *
  *************************************************************************/
-static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
+static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
+{
 	rlm_sql_unixodbc_conn_t *conn;
 	long err_handle;
 
@@ -139,7 +140,8 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
  *	       the database.
  *
  *************************************************************************/
-static sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char const *query) {
+static sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char const *query)
+{
 	rlm_sql_unixodbc_conn_t *conn = handle->conn;
 	long err_handle;
 	int state;
@@ -168,7 +170,8 @@ static sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config,
  *	Purpose: Issue a select query to the database
  *
  *************************************************************************/
-static sql_rcode_t sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char const *query) {
+static sql_rcode_t sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char const *query)
+{
 	rlm_sql_unixodbc_conn_t *conn = handle->conn;
 	SQLINTEGER i;
 	SQLLEN len;
@@ -206,7 +209,8 @@ static sql_rcode_t sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *
  *	       set for the query.
  *
  *************************************************************************/
-static sql_rcode_t sql_store_result(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config) {
+static sql_rcode_t sql_store_result(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
+{
 	/* Not used */
 	return 0;
 }
@@ -220,7 +224,8 @@ static sql_rcode_t sql_store_result(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_
  *	       of columns from query
  *
  *************************************************************************/
-static int sql_num_fields(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
+static int sql_num_fields(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
+{
 	rlm_sql_unixodbc_conn_t *conn = handle->conn;
 	long err_handle;
 	SQLSMALLINT num_fields = 0;
@@ -242,7 +247,8 @@ static int sql_num_fields(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
  *	       query
  *
  *************************************************************************/
-static int sql_num_rows(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
+static int sql_num_rows(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
+{
 	return sql_affected_rows(handle, config);
 }
 
@@ -256,7 +262,8 @@ static int sql_num_rows(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
  *		 0 on success, -1 on failure, RLM_SQL_RECONNECT if 'database is down'.
  *
  *************************************************************************/
-static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
+static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
+{
 	rlm_sql_unixodbc_conn_t *conn = handle->conn;
 	long err_handle;
 	int state;
@@ -288,7 +295,8 @@ static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t *con
  *	Purpose: End the select query, such as freeing memory or result
  *
  *************************************************************************/
-static sql_rcode_t sql_finish_select_query(rlm_sql_handle_t * handle, rlm_sql_config_t *config) {
+static sql_rcode_t sql_finish_select_query(rlm_sql_handle_t * handle, rlm_sql_config_t *config)
+{
 	rlm_sql_unixodbc_conn_t *conn = handle->conn;
 
 	sql_free_result(handle, config);
@@ -317,7 +325,8 @@ static sql_rcode_t sql_finish_select_query(rlm_sql_handle_t * handle, rlm_sql_co
  *	Purpose: End the query, such as freeing memory
  *
  *************************************************************************/
-static sql_rcode_t sql_finish_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config) {
+static sql_rcode_t sql_finish_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
+{
 	rlm_sql_unixodbc_conn_t *conn = handle->conn;
 
 	SQLFreeStmt(conn->statement, SQL_CLOSE);
@@ -333,7 +342,8 @@ static sql_rcode_t sql_finish_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_con
  *	       for a result set
  *
  *************************************************************************/
-static sql_rcode_t sql_free_result(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config) {
+static sql_rcode_t sql_free_result(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
+{
 	rlm_sql_unixodbc_conn_t *conn = handle->conn;
 
 	TALLOC_FREE(conn->row);
@@ -349,7 +359,8 @@ static sql_rcode_t sql_free_result(rlm_sql_handle_t *handle, UNUSED rlm_sql_conf
  *	       connection
  *
  *************************************************************************/
-static char const *sql_error(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config) {
+static char const *sql_error(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
+{
 	SQLCHAR state[256];
 	SQLCHAR error[256];
 	SQLINTEGER errornum = 0;
@@ -376,7 +387,8 @@ static char const *sql_error(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *
  *	       connection related or -1 for other errors
  *
  *************************************************************************/
-static sql_rcode_t sql_state(long err_handle, rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config) {
+static sql_rcode_t sql_state(long err_handle, rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
+{
 	SQLCHAR state[256];
 	SQLCHAR error[256];
 	SQLINTEGER errornum = 0;
@@ -429,7 +441,8 @@ static sql_rcode_t sql_state(long err_handle, rlm_sql_handle_t *handle, UNUSED r
  *	       or insert)
  *
  *************************************************************************/
-static int sql_affected_rows(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
+static int sql_affected_rows(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
+{
 	rlm_sql_unixodbc_conn_t *conn = handle->conn;
 	long err_handle;
 	SQLLEN affected_rows;
