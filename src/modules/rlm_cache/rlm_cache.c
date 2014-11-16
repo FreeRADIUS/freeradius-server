@@ -580,6 +580,12 @@ static int mod_detach(void *instance)
 
 	talloc_free(inst->maps);
 
+	/*
+	 *  Decrements the reference count. The driver object won't be unloaded
+	 *  until all instances of rlm_cache that use it have been destroyed.
+	 */
+	if (inst->handle) dlclose(inst->handle);
+
 	return 0;
 }
 
