@@ -140,10 +140,14 @@ static CONF_PARSER module_config[] = {
 #endif
 #endif
 
+#ifdef SSL_OP_NO_TLSv1_1
 	{ "disable_tlsv1_1", PW_TYPE_BOOLEAN,
 	  offsetof(EAP_TLS_CONF, disable_tlsv1_1), NULL, NULL },
+#endif
+#ifdef SSL_OP_NO_TLSv1_2
 	{ "disable_tlsv1_2", PW_TYPE_BOOLEAN,
 	  offsetof(EAP_TLS_CONF, disable_tlsv1_2), NULL, NULL },
+#endif
 
 	{ "cache", PW_TYPE_SUBSECTION, 0, NULL, (const void *) cache_config },
 
@@ -1151,8 +1155,12 @@ static SSL_CTX *init_tls_ctx(EAP_TLS_CONF *conf)
 	ctx_options |= SSL_OP_NO_SSLv2;
    	ctx_options |= SSL_OP_NO_SSLv3;
 
+#ifdef SSL_OP_NO_TLSv1_1
 	if (conf->disable_tlsv1_1) ctx_options |= SSL_OP_NO_TLSv1_1;
+#endif
+#ifdef SSL_OP_NO_TLSv1_2
 	if (conf->disable_tlsv1_2) ctx_options |= SSL_OP_NO_TLSv1_2;
+#endif
 
 #ifdef SSL_OP_NO_TICKET
 	ctx_options |= SSL_OP_NO_TICKET ;
