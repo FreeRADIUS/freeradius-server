@@ -641,9 +641,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	inst->cs = conf;
 
 	inst->xlat_name = cf_section_name2(conf);
-	if (!inst->xlat_name) {
-		inst->xlat_name = cf_section_name1(conf);
-	}
+	if (!inst->xlat_name) inst->xlat_name = cf_section_name1(conf);
 
 	/*
 	 *	Register the cache xlat function

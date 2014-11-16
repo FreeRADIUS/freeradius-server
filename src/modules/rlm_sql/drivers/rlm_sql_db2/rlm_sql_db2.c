@@ -319,10 +319,10 @@ rlm_sql_module_t rlm_sql_db2 = {
 	.sql_query			= sql_query,
 	.sql_select_query		= sql_select_query,
 	.sql_num_fields			= sql_num_fields,
+	.sql_affected_rows		= sql_affected_rows,
 	.sql_fetch_row			= sql_fetch_row,
 	.sql_free_result		= sql_free_result,
 	.sql_error			= sql_error,
 	.sql_finish_query		= sql_finish_query,
-	.sql_finish_select_query	= sql_finish_select_query,
-	.sql_affected_rows		= sql_affected_rows
+	.sql_finish_select_query	= sql_finish_select_query
 };

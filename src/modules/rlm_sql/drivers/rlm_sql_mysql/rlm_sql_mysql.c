@@ -581,10 +581,10 @@ rlm_sql_module_t rlm_sql_mysql = {
 	.sql_store_result		= sql_store_result,
 	.sql_num_fields			= sql_num_fields,
 	.sql_num_rows			= sql_num_rows,
+	.sql_affected_rows		= sql_affected_rows,
 	.sql_fetch_row			= sql_fetch_row,
 	.sql_free_result		= sql_free_result,
 	.sql_error			= sql_error,
 	.sql_finish_query		= sql_finish_query,
-	.sql_finish_select_query	= sql_finish_select_query,
-	.sql_affected_rows		= sql_affected_rows
+	.sql_finish_select_query	= sql_finish_select_query
 };
