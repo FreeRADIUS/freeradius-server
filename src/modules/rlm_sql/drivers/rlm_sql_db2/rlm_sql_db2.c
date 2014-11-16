@@ -96,8 +96,7 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 				    password, SQL_NTS);
 	}
 
-
-	if(retval != SQL_SUCCESS) {
+	if (retval != SQL_SUCCESS) {
 		ERROR("could not connect to DB2 server %s", config->sql_server);
 
 		return RLM_SQL_ERROR;
