@@ -372,7 +372,7 @@ int fr_event_fd_insert(fr_event_list_t *el, int type, int fd,
 		 */
 		EV_SET(&evset, fd, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, &el->readers[j]);
 		if (kevent(el->kq, &evset, 1, NULL, 0, NULL) < 0) {
-			fprintf(stderr, "SHIT %d %s\n", __LINE__, strerror(errno));
+			fr_strerror_printf("Failed inserting event for FD %i: %s", fd, fr_syserror(errno));
 			return 0;
 		}
 
