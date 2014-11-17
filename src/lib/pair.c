@@ -1124,7 +1124,7 @@ int pairparsevalue(VALUE_PAIR *vp, char const *value, size_t inlen)
 		da = dict_attrbytype(vp->da->attr, vp->da->vendor, type);
 		if (!da) {
 			fr_strerror_printf("Cannot find %s variant of attribute \"%s\"",
-					   fr_int2str(dict_attr_types, type, "<INVALID>"), da->name);
+					   fr_int2str(dict_attr_types, type, "<INVALID>"), vp->da->name);
 			return -1;
 		}
 		vp->da = da;
