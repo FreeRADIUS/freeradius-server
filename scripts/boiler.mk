@@ -278,7 +278,7 @@ define COMPILE_C_CMDS
 	$(Q)$(ECHO) CC $<
 	$(Q)$(strip ${COMPILE.c} -o $@ -c -MD ${CPPFLAGS} ${CFLAGS} ${SRC_CFLAGS} ${INCDIRS} \
              $(addprefix -I,${SRC_INCDIRS}) ${SRC_DEFS} ${DEFS} $<)
-	$(Q)cppcheck --enable=style -q ${CPPFLAGS} ${CHECKFLAGS} $(filter -isystem%,${SRC_CFLAGS}) \
+	$(Q)cppcheck --enable=style -q ${CHECKFLAGS} $(filter -isystem%,${SRC_CFLAGS}) \
 	     $(filter -I%,${SRC_CFLAGS}) $(filter -D%,${SRC_CFLAGS}) ${INCDIRS} \
 	     $(addprefix -I,${SRC_INCDIRS}) ${SRC_DEFS} ${DEFS} --suppress=variableScope $<
 endef
@@ -615,7 +615,7 @@ top_makedir := $(dir $(lastword ${MAKEFILE_LIST}))
 -include ${top_makedir}/libtool.mk
 
 ifneq "${CPPCHECK}" ""
-CHECKFLAGS := $(filter -isystem%,$(CFLAGS)) $(filter -I%,$(CFLAGS)) $(filter -D%,$(CFLAGS)) 
+CHECKFLAGS := $(filter -isystem%,$(CPPFLAGS) $(CFLAGS)) $(filter -I%,$(CPPFLAGS) $(CFLAGS)) $(filter -D%,$(CPPFLAGS) $(CFLAGS))
 endif
 
 # Include the main user-supplied submakefile. This also recursively includes
