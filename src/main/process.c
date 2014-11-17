@@ -4982,32 +4982,28 @@ int radius_event_start(CONF_SECTION *cs, bool have_children)
 	 *	signal handlers.
 	 */
 	if (pipe(self_pipe) < 0) {
-		ERROR("radiusd: Error opening internal pipe: %s",
-		       fr_syserror(errno));
+		ERROR("Error opening internal pipe: %s", fr_syserror(errno));
 		fr_exit(1);
 	}
 	if ((fcntl(self_pipe[0], F_SETFL, O_NONBLOCK) < 0) ||
 	    (fcntl(self_pipe[0], F_SETFD, FD_CLOEXEC) < 0)) {
-		ERROR("radiusd: Error setting internal flags: %s",
-		       fr_syserror(errno));
+		ERROR("Error setting internal flags: %s", fr_syserror(errno));
 		fr_exit(1);
 	}
 	if ((fcntl(self_pipe[1], F_SETFL, O_NONBLOCK) < 0) ||
 	    (fcntl(self_pipe[1], F_SETFD, FD_CLOEXEC) < 0)) {
-		ERROR("radiusd: Error setting internal flags: %s",
-		       fr_syserror(errno));
+		ERROR("Error setting internal flags: %s", fr_syserror(errno));
 		fr_exit(1);
 	}
+	DEBUG4("Created signal pipe.  Read end FD %i, write end FD %i", self_pipe[0], self_pipe[1]);
 
-	if (!fr_event_fd_insert(el, 0, self_pipe[0],
-				  event_signal_handler, el)) {
-		ERROR("Failed creating handler for signals");
+	if (!fr_event_fd_insert(el, 0, self_pipe[0], event_signal_handler, el)) {
+		ERROR("Failed creating signal pipe handler: %s", fr_strerror());
 		fr_exit(1);
 	}
 #endif
 
-       DEBUG("%s: #### Opening IP addresses and Ports ####",
-	       main_config.name);
+       DEBUG("%s: #### Opening IP addresses and Ports ####", main_config.name);
 
        /*
 	*	The server temporarily switches to an unprivileged
