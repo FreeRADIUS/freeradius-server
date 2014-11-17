@@ -165,6 +165,7 @@ static void CC_HINT(nonnull) cache_merge(rlm_cache_t *inst, REQUEST *request, rl
 	}
 
 	if (inst->stats) {
+		rad_assert(request->packet != NULL);
 		vp = pairfind(request->packet->vps, PW_CACHE_ENTRY_HITS, 0, TAG_ANY);
 		if (!vp) {
 			vp = paircreate(request->packet, PW_CACHE_ENTRY_HITS, 0);
