@@ -2156,14 +2156,15 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			 *	New parser: non-quoted strings are
 			 *	bare words, and we parse everything
 			 *	until the next newline, or the next
-			 *	semicolon.
+			 *	comma.  If they have { or } in a bare
+			 *	word, well... too bad.
 			 */
 			if (cf_new_escape && (*ptr != '"') && (*ptr != '\'')
 			    && (*ptr != '`') && (*ptr != '/')) {
 				const char *q = ptr;
 
 				t3 = T_BARE_WORD;
-				while (*q && (*q >= ' ') && (*q != ';') &&
+				while (*q && (*q >= ' ') && (*q != ',') &&
 				       !isspace(*q)) q++;
 
 				if ((size_t) (q - ptr) >= sizeof(buf3)) {
