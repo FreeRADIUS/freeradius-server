@@ -8,7 +8,7 @@ ifneq ($(OPENSSL_LIBS),)
 SOURCES	+= cb.c tls.c tls_listen.c
 endif
 
-SRC_CFLAGS	:= -DHOSTINFO=\"${HOSTINFO}\"
+SRC_CFLAGS	:= -DHOSTINFO=\"${HOSTINFO}\" -DBUILT_WITH_CPPFLAGS=\"$(CPPFLAGS)\" -DBUILT_WITH_CFLAGS=\"$(CFLAGS)\" -DBUILT_WITH_LDFLAGS=\"$(LDFLAGS)\" -DBUILT_WITH_LIBS=\"$(LIBS)\"
 TGT_INSTALLDIR  := ${sbindir}
 TGT_LDLIBS	:= $(LIBS) $(OPENSSL_LIBS) $(LCRYPT)
 TGT_PREREQS	:= libfreeradius-server.a libfreeradius-radius.a
