@@ -333,12 +333,6 @@ int main(int argc, char *argv[])
 #endif
 
 	/*
-	 *  Initialize any event loops just enough so module instantiations can
-	 *  add fd/event to them, but do not start them yet.
-	 */
-	if (!radius_event_init(autofree)) exit(EXIT_FAILURE);
-
-	/*
 	 *  Read the configuration files, BEFORE doing anything else.
 	 */
 	if (main_config_init() < 0) exit(EXIT_FAILURE);
@@ -354,11 +348,6 @@ int main(int argc, char *argv[])
 #if defined(HAVE_OPENSSL_CRYPTO_H) && defined(ENABLE_OPENSSL_VERSION_CHECK)
 	if (tls_global_version_check(main_config.allow_vulnerable_openssl) < 0) exit(EXIT_FAILURE);
 #endif
-
-	/*
-	 *   Load the modules
-	 */
-	if (modules_init(main_config.config) < 0) exit(EXIT_FAILURE);
 
 	/*
 	 *  Set the panic action (if required)
@@ -453,6 +442,20 @@ int main(int argc, char *argv[])
 	 *  we started with.
 	 */
 	radius_pid = getpid();
+
+	/*
+	 *  Initialize any event loops just enough so module instantiations can
+	 *  add fd/event to them, but do not start them yet.
+	 *
+	 *  This has to be done post-fork in case we're using kqueue, where the
+	 *  queue isn't inherited by the child process.
+	 */
+	if (!radius_event_init(autofree)) exit(EXIT_FAILURE);
+
+	/*
+	 *   Load the modules
+	 */
+	if (modules_init(main_config.config) < 0) exit(EXIT_FAILURE);
 
 	/*
 	 *  Redirect stderr/stdout as appropriate.
