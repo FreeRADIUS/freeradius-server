@@ -444,8 +444,7 @@ int modules_free(void)
 /*
  *	Find a module on disk or in memory, and link to it.
  */
-static module_entry_t *linkto_module(char const *module_name,
-				     CONF_SECTION *cs)
+static module_entry_t *linkto_module(char const *module_name, CONF_SECTION *cs)
 {
 	module_entry_t myentry;
 	module_entry_t *node;
@@ -471,23 +470,15 @@ static module_entry_t *linkto_module(char const *module_name,
 	 */
 	handle = lt_dlopenext(module_name);
 	if (!handle) {
-		cf_log_err_cs(cs,
-			   "Failed to link to module '%s': %s\n",
-			   module_name, dlerror());
+		cf_log_err_cs(cs, "Failed to link to module '%s': %s", module_name, dlerror());
 		return NULL;
 	}
 
-	DEBUG3("    (Loaded %s, checking if it's valid)", module_name);
+	DEBUG3("Loaded %s, checking if it's valid", module_name);
 
-	/*
-	 *	libltld MAY core here, if the handle it gives us contains
-	 *	garbage data.
-	 */
 	module = dlsym(handle, module_name);
 	if (!module) {
-		cf_log_err_cs(cs,
-			   "Failed linking to %s structure: %s\n",
-			   module_name, dlerror());
+		cf_log_err_cs(cs, "Failed linking to %s structure: %s", module_name, dlerror());
 		dlclose(handle);
 		return NULL;
 	}
