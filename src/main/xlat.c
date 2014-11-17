@@ -1540,7 +1540,7 @@ static ssize_t xlat_tokenize_request(REQUEST *request, char const *fmt, xlat_exp
 {
 	ssize_t slen;
 	char *tokens;
-	char const *error;
+	char const *error = NULL;
 
 	*head = NULL;
 
