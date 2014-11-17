@@ -737,7 +737,7 @@ static size_t rest_encode_json(void *out, size_t size, size_t nmemb, void *userd
 		if (ctx->state == READ_STATE_ATTR_CONT) {
 			for (;;) {
 				len = vp_prints_value_json(p, freespace, vp);
-				if (is_truncated(len, freespace)) goto no_space;
+				if (len+2 >= freespace) goto no_space;
 
 				/*
 				 *  Show actual value length minus quotes
