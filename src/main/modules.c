@@ -334,8 +334,7 @@ static int module_instance_cmp(void const *one, void const *two)
 }
 
 
-static void module_instance_free_old(UNUSED CONF_SECTION *cs, module_instance_t *node,
-				     time_t when)
+static void module_instance_free_old(UNUSED CONF_SECTION *cs, module_instance_t *node, time_t when)
 {
 	fr_module_hup_t *mh, **last;
 
@@ -367,40 +366,33 @@ static void module_instance_free_old(UNUSED CONF_SECTION *cs, module_instance_t 
  */
 static void module_instance_free(void *data)
 {
-	module_instance_t *this = data;
+	module_instance_t *module = talloc_get_type_abort(data, module_instance_t);
 
-	module_instance_free_old(this->cs, this, time(NULL) + 100);
+	module_instance_free_old(module->cs, module, time(NULL) + 100);
 
 #ifdef HAVE_PTHREAD_H
-	if (this->mutex) {
+	if (module->mutex) {
 		/*
 		 *	FIXME
 		 *	The mutex MIGHT be locked...
 		 *	we'll check for that later, I guess.
 		 */
-		pthread_mutex_destroy(this->mutex);
-		talloc_free(this->mutex);
+		pthread_mutex_destroy(module->mutex);
+		talloc_free(module->mutex);
 	}
 #endif
 
 	/*
 	 *	Remove any registered paircompares.
 	 */
-	paircompare_unregister_instance(this->insthandle);
+	paircompare_unregister_instance(module->insthandle);
 
-	xlat_unregister(this->name, NULL, this->insthandle);
-
+	xlat_unregister(module->name, NULL, module->insthandle);
 	/*
-	 *	Remove all xlat's registered to this instance.
+	 *	Remove all xlat's registered to module instance.
 	 */
-	if (this->insthandle) {
-		xlat_unregister_module(this->insthandle);
-	}
-
-#ifndef NDEBUG
-	memset(this, 0, sizeof(*this));
-#endif
-	talloc_free(this);
+	if (module->insthandle) xlat_unregister_module(module->insthandle);
+	talloc_free(module);
 }
 
 
