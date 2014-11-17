@@ -1857,6 +1857,8 @@ int paircmp(VALUE_PAIR *a, VALUE_PAIR *b)
 #ifndef WITH_REGEX
 		return -1;
 #else
+		if (!b) return false;
+
 		{
 			int compare;
 			regex_t reg;
@@ -1893,6 +1895,7 @@ int paircmp(VALUE_PAIR *a, VALUE_PAIR *b)
 #endif
 
 	default:		/* we're OK */
+		if (!b) return false;
 		break;
 	}
 
