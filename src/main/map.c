@@ -433,7 +433,7 @@ int map_afrom_attr_str(TALLOC_CTX *ctx, value_pair_map_t **out, char const *vp_s
 	FR_TOKEN quote;
 
 	VALUE_PAIR_RAW raw;
-	value_pair_map_t *map;
+	value_pair_map_t *map = NULL;
 
 	quote = gettoken(&p, raw.l_opand, sizeof(raw.l_opand), false);
 	switch (quote) {
@@ -463,6 +463,8 @@ int map_afrom_attr_str(TALLOC_CTX *ctx, value_pair_map_t **out, char const *vp_s
 			     dst_request_def, dst_list_def, src_request_def, src_list_def) < 0) {
 		return -1;
 	}
+
+	rad_assert(map != NULL);
 	*out = map;
 
 	VERIFY_MAP(map);
@@ -565,6 +567,8 @@ int map_to_vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *map, U
 	*out = NULL;
 
 	VERIFY_MAP(map);
+	rad_assert(map->lhs != NULL);
+	rad_assert(map->rhs != NULL);
 
 	rad_assert((map->lhs->type == TMPL_TYPE_LIST) || (map->lhs->type == TMPL_TYPE_ATTR));
 
@@ -817,6 +821,8 @@ int map_to_request(REQUEST *request, value_pair_map_t const *map, radius_map_get
 	vp_cursor_t dst_list, src_list;
 
 	VERIFY_MAP(map);
+	rad_assert(map->lhs != NULL);
+	rad_assert(map->rhs != NULL);
 
 	/*
 	 *	Sanity check inputs.  We can have a list or attribute
@@ -1274,6 +1280,8 @@ void map_debug_log(REQUEST *request, value_pair_map_t const *map, VALUE_PAIR con
 	char buffer[1024];
 
 	VERIFY_MAP(map);
+	rad_assert(map->lhs != NULL);
+	rad_assert(map->rhs != NULL);
 
 	rad_assert(vp || (map->rhs->type == TMPL_TYPE_NULL));
 
