@@ -623,6 +623,16 @@ static int mod_detach(void *instance)
 	talloc_free(inst->maps);
 
 	/*
+	 *  We need to explicitly free all children, so if the driver
+	 *  parented any memory off the instance, their destructors
+	 *  run before we unload the bytecode for them.
+	 *
+	 *  If we don't do this, we get a SEGV deep inside the talloc code
+	 *  when it tries to call a destructor that no longer exists.
+	 */
+	talloc_free_children(inst);
+
+	/*
 	 *  Decrements the reference count. The driver object won't be unloaded
 	 *  until all instances of rlm_cache that use it have been destroyed.
 	 */
