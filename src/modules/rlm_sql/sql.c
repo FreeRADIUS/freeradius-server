@@ -316,7 +316,10 @@ sql_rcode_t rlm_sql_query(rlm_sql_handle_t **handle, rlm_sql_t *inst, char const
 	int i, count;
 
 	/* There's no query to run, return an error */
-	if (query[0] == '\0') return RLM_SQL_QUERY_ERROR;
+	if (query[0] == '\0') {
+		ERROR("rlm_sql (%s): Zero length query", inst->config->xlat_name);
+		return RLM_SQL_QUERY_ERROR;
+	}
 
 	/* There's no handle, we need a new one */
 	if (!*handle) return RLM_SQL_RECONNECT;
@@ -383,10 +386,10 @@ sql_rcode_t rlm_sql_select_query(rlm_sql_handle_t **handle, rlm_sql_t *inst, cha
 	int i, count;
 
 	/* There's no query to run, return an error */
-	if (query[0] == '\0') return RLM_SQL_QUERY_ERROR;
-
-	/* There's no handle, we need a new one */
-	if (!*handle) return RLM_SQL_RECONNECT;
+	if (query[0] == '\0') {
+		ERROR("rlm_sql (%s): Zero length SELECT query", inst->config->xlat_name);
+		return RLM_SQL_QUERY_ERROR;
+	}
 
 	/*
 	 *  inst->pool may be NULL is this function is called by mod_conn_create.
@@ -438,25 +441,21 @@ sql_rcode_t rlm_sql_select_query(rlm_sql_handle_t **handle, rlm_sql_t *inst, cha
  *	Purpose: Get any group check or reply pairs
  *
  *************************************************************************/
-int sql_getvpdata(TALLOC_CTX *ctx, rlm_sql_t *inst, rlm_sql_handle_t **handle,
+int sql_getvpdata(TALLOC_CTX *ctx, rlm_sql_t *inst, REQUEST *request, rlm_sql_handle_t **handle,
 		  VALUE_PAIR **pair, char const *query)
 {
-	rlm_sql_row_t row;
-	int     rows = 0;
-	sql_rcode_t rcode;
+	rlm_sql_row_t	row;
+	int		rows = 0;
+	sql_rcode_t	rcode;
 
 	rcode = rlm_sql_select_query(handle, inst, query);
-	if (!rcode) {
-		ERROR("rlm_sql (%s): Failed in SELECT query: %d", inst->config->xlat_name, rcode);
-		return -1;
-	}
+	if (!rcode) return -1; /* error handled by rlm_sql_select_query */
 
 	while (rlm_sql_fetch_row(handle, inst) == 0) {
 		row = (*handle)->row;
-		if (!row)
-			break;
+		if (!row) break;
 		if (sql_userparse(ctx, pair, row) != 0) {
-			ERROR("rlm_sql (%s): Error parsing user data from database result", inst->config->xlat_name);
+			REDEBUG("Error parsing user data from database result");
 
 			(inst->module->sql_finish_select_query)(*handle, inst->config);
 

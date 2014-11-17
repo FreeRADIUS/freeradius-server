@@ -225,10 +225,8 @@ static ssize_t sql_xlat(void *instance, REQUEST *request, char const *query, cha
 		goto finish;
 	} /* else it's a SELECT statement */
 
-	if (rlm_sql_select_query(&handle, inst, query) != RLM_SQL_OK){
-		char const *error = (inst->module->sql_error)(handle, inst->config);
-		REDEBUG("SQL query failed: %s", error);
-		ret = -1;
+	if (rlm_sql_select_query(&handle, inst, query) != RLM_SQL_OK) {
+		ret = -1;  /* error handled by rlm_sql_select_query */
 
 		goto finish;
 	}
@@ -297,9 +295,7 @@ static int generate_sql_clients(rlm_sql_t *inst)
 		return -1;
 	}
 
-	if (rlm_sql_select_query(&handle, inst, inst->config->client_query) != RLM_SQL_OK){
-		return -1;
-	}
+	if (rlm_sql_select_query(&handle, inst, inst->config->client_query) != RLM_SQL_OK) return -1;
 
 	while ((rlm_sql_fetch_row(&handle, inst) == 0) && (row = handle->row)) {
 		char *server = NULL;
@@ -511,9 +507,7 @@ static int sql_get_grouplist(rlm_sql_t *inst, rlm_sql_handle_t **handle, REQUEST
 
 	ret = rlm_sql_select_query(handle, inst, expanded);
 	talloc_free(expanded);
-	if (ret != RLM_SQL_OK) {
-		return -1;
-	}
+	if (ret != RLM_SQL_OK) return -1;
 
 	while (rlm_sql_fetch_row(handle, inst) == 0) {
 		row = (*handle)->row;
@@ -667,7 +661,7 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t *inst, REQUEST *request, rlm
 				goto finish;
 			}
 
-			rows = sql_getvpdata(request, inst, handle, &check_tmp, expanded);
+			rows = sql_getvpdata(request, inst, request, handle, &check_tmp, expanded);
 			TALLOC_FREE(expanded);
 			if (rows < 0) {
 				REDEBUG("Error retrieving check pairs for group %s", entry->name);
@@ -714,7 +708,7 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t *inst, REQUEST *request, rlm
 				goto finish;
 			}
 
-			rows = sql_getvpdata(request->reply, inst, handle, &reply_tmp, expanded);
+			rows = sql_getvpdata(request->reply, inst, request, handle, &reply_tmp, expanded);
 			TALLOC_FREE(expanded);
 			if (rows < 0) {
 				REDEBUG("Error retrieving reply pairs for group %s", entry->name);
@@ -1004,7 +998,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 			goto error;
 		}
 
-		rows = sql_getvpdata(request, inst, &handle, &check_tmp, expanded);
+		rows = sql_getvpdata(request, inst, request, &handle, &check_tmp, expanded);
 		TALLOC_FREE(expanded);
 		if (rows < 0) {
 			REDEBUG("SQL query error getting check attributes");
@@ -1052,7 +1046,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 			goto error;
 		}
 
-		rows = sql_getvpdata(request->reply, inst, &handle, &reply_tmp, expanded);
+		rows = sql_getvpdata(request->reply, inst, request, &handle, &reply_tmp, expanded);
 		TALLOC_FREE(expanded);
 		if (rows < 0) {
 			REDEBUG("SQL query error getting reply attributes");
@@ -1453,9 +1447,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_checksimul(void *instance, REQUEST * req
 		goto finish;
 	}
 
-	if (rlm_sql_select_query(&handle, inst, expanded) != RLM_SQL_OK) {
-		goto finish;
-	}
+	if (rlm_sql_select_query(&handle, inst, expanded) != RLM_SQL_OK) goto finish;
 
 	/*
 	 *      Setup some stuff, like for MPP detection.

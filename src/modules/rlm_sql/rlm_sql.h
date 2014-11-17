@@ -159,7 +159,7 @@ typedef struct sql_grouplist {
 void		*mod_conn_create(TALLOC_CTX *ctx, void *instance);
 int		sql_userparse(TALLOC_CTX *ctx, VALUE_PAIR **first_pair, rlm_sql_row_t row);
 int		sql_read_realms(rlm_sql_handle_t *handle);
-int		sql_getvpdata(TALLOC_CTX *ctx, rlm_sql_t *inst, rlm_sql_handle_t **handle, VALUE_PAIR **pair, char const *query);
+int		sql_getvpdata(TALLOC_CTX *ctx, rlm_sql_t *inst, REQUEST *request, rlm_sql_handle_t **handle, VALUE_PAIR **pair, char const *query);
 int		sql_read_naslist(rlm_sql_handle_t *handle);
 int		sql_read_clients(rlm_sql_handle_t *handle);
 int		sql_dict_init(rlm_sql_handle_t *handle);
