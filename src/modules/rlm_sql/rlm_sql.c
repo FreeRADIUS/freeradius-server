@@ -1007,7 +1007,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 		rows = sql_getvpdata(request, inst, &handle, &check_tmp, expanded);
 		TALLOC_FREE(expanded);
 		if (rows < 0) {
-			REDEBUG("SQL query error");
+			REDEBUG("SQL query error getting check attributes");
 			rcode = RLM_MODULE_FAIL;
 			goto error;
 		}
@@ -1055,7 +1055,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 		rows = sql_getvpdata(request->reply, inst, &handle, &reply_tmp, expanded);
 		TALLOC_FREE(expanded);
 		if (rows < 0) {
-			REDEBUG("SQL query error");
+			REDEBUG("SQL query error getting reply attributes");
 			rcode = RLM_MODULE_FAIL;
 			goto error;
 		}

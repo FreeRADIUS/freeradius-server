@@ -443,8 +443,11 @@ int sql_getvpdata(TALLOC_CTX *ctx, rlm_sql_t *inst, rlm_sql_handle_t **handle,
 {
 	rlm_sql_row_t row;
 	int     rows = 0;
+	sql_rcode_t rcode;
 
-	if (rlm_sql_select_query(handle, inst, query)) {
+	rcode = rlm_sql_select_query(handle, inst, query);
+	if (!rcode) {
+		ERROR("rlm_sql (%s): Failed in SELECT query: %d", inst->config->xlat_name, rcode);
 		return -1;
 	}
 
