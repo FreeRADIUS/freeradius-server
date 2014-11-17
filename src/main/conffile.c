@@ -2150,7 +2150,36 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 
 		case T_OP_EQ:
 		case T_OP_SET:
-			t3 = getstring(&ptr, buf3, sizeof(buf3), !cf_new_escape);
+			while (isspace((int) *ptr)) ptr++;
+
+			/*
+			 *	New parser: non-quoted strings are
+			 *	bare words, and we parse everything
+			 *	until the next newline, or the next
+			 *	semicolon.
+			 */
+			if (cf_new_escape && (*ptr != '"') && (*ptr != '\'')
+			    && (*ptr != '`') && (*ptr != '/')) {
+				const char *q = ptr;
+
+				t3 = T_BARE_WORD;
+				while (*q && (*q >= ' ') && (*q != ';') &&
+				       !isspace(*q)) q++;
+
+				if ((size_t) (q - ptr) >= sizeof(buf3)) {
+					ERROR("%s[%d]: Parse error: value too long",
+					      filename, *lineno);
+					return -1;
+				}
+
+				memcpy(buf3, ptr, (q - ptr));
+				buf3[q - ptr] = '\0';
+				ptr = q;
+
+			} else {
+				t3 = getstring(&ptr, buf3, sizeof(buf3), !cf_new_escape);
+			}
+
 			if (t3 == T_INVALID) {
 				ERROR("%s[%d]: Parse error: %s",
 				       filename, *lineno,
