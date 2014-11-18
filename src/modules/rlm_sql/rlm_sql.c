@@ -960,9 +960,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 
 	if (!inst->config->authorize_check_query && !inst->config->authorize_reply_query &&
 	    !inst->config->read_groups && !inst->config->read_profiles) {
-	 	RWDEBUG("No authorization checks configured, returning noop");
+		RWDEBUG("No authorization checks configured, returning noop");
 
-	 	return RLM_MODULE_NOOP;
+		return RLM_MODULE_NOOP;
 	}
 
 	/*
@@ -987,7 +987,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 	/*
 	 *	Query the check table to find any conditions associated with this user/realm/whatever...
 	 */
-	if (inst->config->authorize_check_query) {
+	if (inst->config->authorize_check_query && *inst->config->authorize_check_query) {
 		vp_cursor_t cursor;
 		VALUE_PAIR *vp;
 
@@ -1035,7 +1035,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 		check_tmp = NULL;
 	}
 
-	if (inst->config->authorize_reply_query) {
+	if (inst->config->authorize_reply_query && *inst->config->authorize_reply_query) {
 		/*
 		 *	Now get the reply pairs since the paircompare matched
 		 */
