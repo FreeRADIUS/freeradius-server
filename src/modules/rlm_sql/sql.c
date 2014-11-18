@@ -224,9 +224,9 @@ int sql_userparse(TALLOC_CTX *ctx, VALUE_PAIR **head, rlm_sql_row_t row)
  *	Purpose: call the module's sql_fetch_row and implement re-connect
  *
  *************************************************************************/
-int rlm_sql_fetch_row(rlm_sql_handle_t **handle, rlm_sql_t *inst)
+sql_rcode_t rlm_sql_fetch_row(rlm_sql_row_t *out, rlm_sql_handle_t **handle, rlm_sql_t *inst)
 {
-	int ret;
+	sql_rcode_t ret;
 
 	if (!*handle || !(*handle)->conn) {
 		return -1;
@@ -237,7 +237,7 @@ int rlm_sql_fetch_row(rlm_sql_handle_t **handle, rlm_sql_t *inst)
 	 * the original connection to free up queries or result sets associated with
 	 * that connection.
 	 */
-	ret = (inst->module->sql_fetch_row)(*handle, inst->config);
+	ret = (inst->module->sql_fetch_row)(out, *handle, inst->config);
 	if (ret < 0) {
 		char const *error = (inst->module->sql_error)(*handle, inst->config);
 		ERROR("rlm_sql (%s): Error fetching row: %s",
@@ -451,8 +451,7 @@ int sql_getvpdata(TALLOC_CTX *ctx, rlm_sql_t *inst, REQUEST *request, rlm_sql_ha
 	rcode = rlm_sql_select_query(handle, inst, query);
 	if (!rcode) return -1; /* error handled by rlm_sql_select_query */
 
-	while (rlm_sql_fetch_row(handle, inst) == 0) {
-		row = (*handle)->row;
+	while (rlm_sql_fetch_row(&row, handle, inst) == 0) {
 		if (!row) break;
 		if (sql_userparse(ctx, pair, row) != 0) {
 			REDEBUG("Error parsing user data from database result");

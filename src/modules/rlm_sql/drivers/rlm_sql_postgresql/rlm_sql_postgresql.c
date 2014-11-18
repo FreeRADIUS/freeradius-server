@@ -378,12 +378,13 @@ static sql_rcode_t sql_select_query(rlm_sql_handle_t * handle, rlm_sql_config_t 
  *	0 on success, -1 on failure, RLM_SQL_RECONNECT if 'database is down'.
  *
  *************************************************************************/
-static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
+static sql_rcode_t sql_fetch_row(rlm_sql_row_t *out, rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
 {
 
 	int records, i, len;
 	rlm_sql_postgres_conn_t *conn = handle->conn;
 
+	*out = NULL;
 	handle->row = NULL;
 
 	if (conn->cur_row >= PQntuples(conn->result))
@@ -402,7 +403,7 @@ static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle, UNUSED rlm_sql_config
 			strlcpy(conn->row[i], PQgetvalue(conn->result, conn->cur_row, i), len + 1);
 		}
 		conn->cur_row++;
-		handle->row = conn->row;
+		*out = handle->row = conn->row;
 	}
 
 	return 0;

@@ -263,7 +263,7 @@ static int sql_num_rows(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
  *		 0 on success, -1 on failure, RLM_SQL_RECONNECT if 'database is down'.
  *
  *************************************************************************/
-static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
+static sql_rcode_t sql_fetch_row(rlm_sql_row_t *out, rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 {
 	rlm_sql_unixodbc_conn_t *conn = handle->conn;
 	long err_handle;
@@ -272,19 +272,16 @@ static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t *con
 	handle->row = NULL;
 
 	err_handle = SQLFetch(conn->statement);
-	if(err_handle == SQL_NO_DATA_FOUND) {
-		return 0;
-	}
+	if (err_handle == SQL_NO_DATA_FOUND) return 0;
 
 	if ((state = sql_state(err_handle, handle, config))) {
-		if(state == RLM_SQL_RECONNECT) {
-			DEBUG("rlm_sql_unixodbc: rlm_sql will attempt to reconnect");
-		}
+		if (state == RLM_SQL_RECONNECT) DEBUG("rlm_sql_unixodbc: rlm_sql will attempt to reconnect");
 
 		return state;
 	}
 
-	handle->row = conn->row;
+	*out = handle->row = conn->row;
+
 	return 0;
 }
 

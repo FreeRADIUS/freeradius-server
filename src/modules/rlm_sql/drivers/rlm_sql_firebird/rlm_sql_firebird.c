@@ -197,31 +197,29 @@ static int sql_num_rows(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 /** Returns an individual row.
  *
  */
-static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
+static sql_rcode_t sql_fetch_row(rlm_sql_row_t *out, rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
 {
 	rlm_sql_firebird_conn_t *conn = handle->conn;
 	int res;
 
+	*out = NULL;
 	handle->row = NULL;
 
 	if (conn->statement_type != isc_info_sql_stmt_exec_procedure) {
 		res = fb_fetch(conn);
-		if (res == 100) {
-			return 0;
-		}
-
+		if (res == 100) return 0;
 		if (res) {
 			ERROR("rlm_sql_firebird. Fetch problem: %s", conn->error);
 
 			return -1;
 		}
 	} else {
-		conn->statement_type=0;
+		conn->statement_type = 0;
 	}
 
 	fb_store_row(conn);
 
-	handle->row = conn->row;
+	*out = handle->row = conn->row;
 
 	return 0;
 }

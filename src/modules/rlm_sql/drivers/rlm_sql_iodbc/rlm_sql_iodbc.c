@@ -274,19 +274,17 @@ static int sql_num_rows(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t
  *		 0 on success, -1 on failure, RLM_SQL_RECONNECT if 'database is down'
  *
  *************************************************************************/
-static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
+static sql_rcode_t sql_fetch_row(rlm_sql_row_t *out, rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
 {
 	SQLRETURN rc;
 	rlm_sql_iodbc_conn_t *conn = handle->conn;
 
-	handle->row = NULL;
+	*out = handle->row = NULL;
 
-	if((rc = SQLFetch(conn->stmt_handle)) == SQL_NO_DATA_FOUND) {
-		return 0;
-	}
+	if ((rc = SQLFetch(conn->stmt_handle)) == SQL_NO_DATA_FOUND) return 0;
 	/* XXX Check rc for database down, if so, return RLM_SQL_RECONNECT */
 
-	handle->row = conn->row;
+	*out = handle->row = conn->row;
 	return 0;
 }
 

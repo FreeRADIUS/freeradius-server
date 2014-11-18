@@ -140,7 +140,7 @@ static int nvp_finish(rlm_sqlhpwippool_t *data, rlm_sql_handle_t *sqlsock)
  * -1 on no results
  *  0 on db error
  *  1 on success */
-static int nvp_select(unsigned int line, rlm_sqlhpwippool_t *data,
+static int nvp_select(rlm_sql_row_t *row, unsigned int line, rlm_sqlhpwippool_t *data,
 		      rlm_sql_handle_t *sqlsock, char const *fmt, ...)
 {
 	va_list ap;
@@ -165,7 +165,7 @@ static int nvp_select(unsigned int line, rlm_sqlhpwippool_t *data,
 		return -1;
 	}
 
-	if ((data->db->sql_fetch_row)(sqlsock, data->sql_inst->config)) {
+	if ((data->db->sql_fetch_row)(row, sqlsock, data->sql_inst->config)) {
 		nvp_log(__LINE__, data, L_ERR, "nvp_select(): couldn't fetch row "
 					       "from results of query from line %u",
 			line);
@@ -333,6 +333,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 		      pid,	  /* as above */
 		      weights_sum, used_sum, ip_start, ip_stop, connid;
 	long prio;
+	rlm_sql_row_t row;
 
 	rlm_sqlhpwippool_t *inst = (rlm_sqlhpwippool_t *) instance;
 
@@ -380,14 +381,14 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 	}
 
 	/* get connection id as temporary unique integer */
-	if (nvp_select(__LINE__, inst, sqlsock, "SELECT CONNECTION_ID()") < 1) {
+	if (nvp_select(&row, __LINE__, inst, sqlsock, "SELECT CONNECTION_ID()") < 1) {
 		nvp_log(__LINE__, inst, L_ERR, "mod_post_auth(): WTF ;-)!");
 		nvp_select_finish(inst, sqlsock);
 		fr_connection_release(inst->sql_inst->pool, sqlsock);
 		return RLM_MODULE_FAIL;
 	}
 
-	connid = strtoul(sqlsock->row[0], (char **) NULL, 10);
+	connid = strtoul(row[0], (char **) NULL, 10);
 	nvp_select_finish(inst, sqlsock);
 
 	/* synchronize with radacct db, if needed */
@@ -423,7 +424,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 			s_gid);
 
 		/* find the most specific group which NAS belongs to */
-		switch (nvp_select(__LINE__, inst, sqlsock,
+		switch (nvp_select(&row, __LINE__, inst, sqlsock,
 		       "SELECT `host_groups`.`gid` "
 			"FROM "
 				"`%s`.`host_groups`, "
@@ -449,7 +450,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 		}
 
 		/* store the group ID and free memory occupied by results */
-		gid = strtoul(sqlsock->row[0], (char **) NULL, 10);
+		gid = strtoul(row[0], (char **) NULL, 10);
 		nvp_select_finish(inst, sqlsock);
 
 		for (s_prio = 0; s_prio < RLM_NETVIM_MAX_ROWS && !(ip.s_addr); s_prio++) {
@@ -458,7 +459,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 				s_prio);
 
 			/* prepare to search for best fit pool */
-			switch (nvp_select(__LINE__, inst, sqlsock,
+			switch (nvp_select(&row, __LINE__, inst, sqlsock,
 				"SELECT "
 					"`ip_pools`.`prio`, "
 					"SUM(`ip_pools`.`weight`) AS `weights_sum`, "
@@ -492,9 +493,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 			}
 
 			/* store the prio and weights sum */
-			prio = strtol(sqlsock->row[0], (char **) NULL, 10);
-			weights_sum = strtoul(sqlsock->row[1], (char **) NULL, 10);
-			used_sum = strtoul(sqlsock->row[2], (char **) NULL, 10);
+			prio = strtol(row[0], (char **) NULL, 10);
+			weights_sum = strtoul(row[1], (char **) NULL, 10);
+			used_sum = strtoul(row[2], (char **) NULL, 10);
 
 			/* free memory */
 			nvp_select_finish(inst, sqlsock);
@@ -505,7 +506,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 					s_pid);
 
 				/* search for best fit pool */
-				switch (nvp_select(__LINE__, inst, sqlsock,
+				switch (nvp_select(&row, __LINE__, inst, sqlsock,
 					"SELECT "
 						"`ip_pools`.`pid`, "
 						"`ip_pools`.`ip_start`, "
@@ -539,9 +540,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 				}
 
 				/* store the inst and free memory occupied by results */
-				pid = strtoul(sqlsock->row[0], (char **) NULL, 10);
-				ip_start = strtoul(sqlsock->row[1], (char **) NULL, 10);
-				ip_stop = strtoul(sqlsock->row[2], (char **) NULL, 10);
+				pid = strtoul(row[0], (char **) NULL, 10);
+				ip_start = strtoul(row[1], (char **) NULL, 10);
+				ip_stop = strtoul(row[2], (char **) NULL, 10);
 				nvp_select_finish(inst, sqlsock);
 
 				/* reserve an IP address */
@@ -569,7 +570,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 				}
 
 				/* select assigned IP address */
-				switch (nvp_select(__LINE__, inst, sqlsock,
+				switch (nvp_select(&row, __LINE__, inst, sqlsock,
 					"SELECT `ip` "
 						"FROM `%s`.`ips` "
 						"WHERE `rsv_by` = '" RLM_NETVIM_TMP_PREFIX "%lu' "
@@ -605,7 +606,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 				}
 
 				/* get assigned IP and free memory */
-				ip.s_addr = htonl(strtoul(sqlsock->row[0], (char **) NULL, 10));
+				ip.s_addr = htonl(strtoul(row[0], (char **) NULL, 10));
 				nvp_select_finish(inst, sqlsock);
 			} /* pid */
 end_pid: continue;	   /* stupid */

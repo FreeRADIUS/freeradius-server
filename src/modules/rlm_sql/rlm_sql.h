@@ -121,7 +121,7 @@ typedef struct rlm_sql_module_t {
 	int (*sql_num_rows)(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
 	int (*sql_affected_rows)(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
 
-	sql_rcode_t (*sql_fetch_row)(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
+	sql_rcode_t (*sql_fetch_row)(rlm_sql_row_t *out, rlm_sql_handle_t *handle, rlm_sql_config_t *config);
 	sql_rcode_t (*sql_fields)(char const **out[], rlm_sql_handle_t *handle, rlm_sql_config_t *config);
 	sql_rcode_t (*sql_free_result)(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
 
@@ -148,7 +148,7 @@ struct sql_inst {
 	size_t (*sql_escape_func)(REQUEST *, char *out, size_t outlen, char const *in, void *arg);
 	sql_rcode_t (*sql_query)(rlm_sql_handle_t **handle, rlm_sql_t *inst, char const *query);
 	sql_rcode_t (*sql_select_query)(rlm_sql_handle_t **handle, rlm_sql_t *inst, char const *query);
-	sql_rcode_t (*sql_fetch_row)(rlm_sql_handle_t **handle, rlm_sql_t *inst);
+	sql_rcode_t (*sql_fetch_row)(rlm_sql_row_t *out, rlm_sql_handle_t **handle, rlm_sql_t *inst);
 };
 
 typedef struct sql_grouplist {
@@ -166,6 +166,6 @@ int		sql_dict_init(rlm_sql_handle_t *handle);
 void 		CC_HINT(nonnull (1, 2, 4)) rlm_sql_query_log(rlm_sql_t *inst, REQUEST *request, sql_acct_section_t *section, char const *query);
 sql_rcode_t	CC_HINT(nonnull) rlm_sql_select_query(rlm_sql_handle_t **handle, rlm_sql_t *inst, char const *query);
 sql_rcode_t	CC_HINT(nonnull) rlm_sql_query(rlm_sql_handle_t **handle, rlm_sql_t *inst, char const *query);
-int		rlm_sql_fetch_row(rlm_sql_handle_t **handle, rlm_sql_t *inst);
+sql_rcode_t 	rlm_sql_fetch_row(rlm_sql_row_t *out, rlm_sql_handle_t **handle, rlm_sql_t *inst);
 int		sql_set_user(rlm_sql_t *inst, REQUEST *request, char const *username);
 #endif

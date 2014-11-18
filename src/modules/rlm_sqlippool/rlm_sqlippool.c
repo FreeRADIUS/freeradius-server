@@ -341,6 +341,8 @@ static int CC_HINT(nonnull (1, 3, 4, 5)) sqlippool_query1(char *out, int outlen,
 
 	int rlen, retval;
 
+	rlm_sql_row_t row;
+
 	/*
 	 *	@todo this needs to die (should just be done in xlat expansion)
 	 */
@@ -362,28 +364,28 @@ static int CC_HINT(nonnull (1, 3, 4, 5)) sqlippool_query1(char *out, int outlen,
 		return 0;
 	}
 
-	if (data->sql_inst->sql_fetch_row(&handle, data->sql_inst) < 0) {
+	if (data->sql_inst->sql_fetch_row(&row, &handle, data->sql_inst) < 0) {
 		REDEBUG("Failed fetching query result");
 		goto finish;
 	}
 
-	if (!handle->row) {
+	if (!row) {
 		REDEBUG("SQL query did not return any results");
 		goto finish;
 	}
 
-	if (!handle->row[0]) {
+	if (!row[0]) {
 		REDEBUG("The first column of the result was NULL");
 		goto finish;
 	}
 
-	rlen = strlen(handle->row[0]);
+	rlen = strlen(row[0]);
 	if (rlen >= outlen) {
 		RDEBUG("insufficient string space");
 		goto finish;
 	}
 
-	strcpy(out, handle->row[0]);
+	strcpy(out, row[0]);
 	retval = rlen;
 finish:
 	(data->sql_inst->module->sql_finish_select_query)(handle, data->sql_inst->config);

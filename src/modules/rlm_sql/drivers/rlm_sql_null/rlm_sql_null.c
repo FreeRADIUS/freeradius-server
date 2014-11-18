@@ -123,7 +123,8 @@ static int sql_num_rows(UNUSED rlm_sql_handle_t * handle, UNUSED rlm_sql_config_
  *		 0 on success, -1 on failure, RLM_SQL_RECONNECT if database is down.
  *
  *************************************************************************/
-static sql_rcode_t sql_fetch_row(UNUSED rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config)
+static sql_rcode_t sql_fetch_row(UNUSED rlm_sql_row_t *out, UNUSED rlm_sql_handle_t *handle,
+				 UNUSED rlm_sql_config_t *config)
 {
 	return 0;
 }

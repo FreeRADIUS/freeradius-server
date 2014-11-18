@@ -231,7 +231,7 @@ static ssize_t sql_xlat(void *instance, REQUEST *request, char const *query, cha
 		goto finish;
 	}
 
-	ret = rlm_sql_fetch_row(&handle, inst);
+	ret = rlm_sql_fetch_row(&row, &handle, inst);
 	if (ret) {
 		REDEBUG("SQL query failed");
 		(inst->module->sql_finish_select_query)(handle, inst->config);
@@ -240,7 +240,6 @@ static ssize_t sql_xlat(void *instance, REQUEST *request, char const *query, cha
 		goto finish;
 	}
 
-	row = handle->row;
 	if (!row) {
 		RDEBUG("SQL query returned no results");
 		(inst->module->sql_finish_select_query)(handle, inst->config);
@@ -297,9 +296,11 @@ static int generate_sql_clients(rlm_sql_t *inst)
 
 	if (rlm_sql_select_query(&handle, inst, inst->config->client_query) != RLM_SQL_OK) return -1;
 
-	while ((rlm_sql_fetch_row(&handle, inst) == 0) && (row = handle->row)) {
+	while (rlm_sql_fetch_row(&row, &handle, inst) == 0) {
 		char *server = NULL;
 		i++;
+
+		if (!row) break;
 
 		/*
 		 *  The return data for each row MUST be in the following order:
@@ -504,10 +505,8 @@ static int sql_get_grouplist(rlm_sql_t *inst, rlm_sql_handle_t **handle, REQUEST
 	talloc_free(expanded);
 	if (ret != RLM_SQL_OK) return -1;
 
-	while (rlm_sql_fetch_row(handle, inst) == 0) {
-		row = (*handle)->row;
-		if (!row)
-			break;
+	while (rlm_sql_fetch_row(&row, handle, inst) == 0) {
+		if (!row) break;
 
 		if (!row[0]){
 			RDEBUG("row[0] returned NULL");
@@ -1400,13 +1399,11 @@ static rlm_rcode_t CC_HINT(nonnull) mod_checksimul(void *instance, REQUEST * req
 		goto finish;
 	}
 
-	ret = rlm_sql_fetch_row(&handle, inst);
+	ret = rlm_sql_fetch_row(&row, &handle, inst);
 	if (ret != 0) {
 		rcode = RLM_MODULE_FAIL;
 		goto finish;
 	}
-
-	row = handle->row;
 	if (!row) {
 		rcode = RLM_MODULE_FAIL;
 		goto finish;
@@ -1453,11 +1450,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_checksimul(void *instance, REQUEST * req
 		call_num = vp->vp_strvalue;
 	}
 
-	while (rlm_sql_fetch_row(&handle, inst) == 0) {
-		row = handle->row;
-		if (!row) {
-			break;
-		}
+	while (rlm_sql_fetch_row(&row, &handle, inst) == 0) {
+		if (!row) break;
 
 		if (!row[2]){
 			RDEBUG("Cannot zap stale entry. No username present in entry");
