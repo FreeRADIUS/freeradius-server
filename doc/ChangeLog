@@ -1,4 +1,4 @@
-FreeRADIUS 2.2.6 Monday 13 Jun 2014 09:05:00 EDT, urgency=medium
+FreeRADIUS 2.2.6 Tuesday 18 Nov 2014 15:00:00 EST, urgency=medium
 	Feature improvements
 	* When supported by OpenSSL, allow TLS 1.1 and TLS 1.2
 	  in EAP methods.
