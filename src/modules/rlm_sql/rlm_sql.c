@@ -647,7 +647,7 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t *inst, REQUEST *request, rlm
 			goto finish;
 		}
 
-		if (inst->config->authorize_group_check_query && (*inst->config->authorize_group_check_query != '\0')) {
+		if (inst->config->authorize_group_check_query && *inst->config->authorize_group_check_query) {
 			vp_cursor_t cursor;
 			VALUE_PAIR *vp;
 
@@ -697,7 +697,7 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t *inst, REQUEST *request, rlm
 			check_tmp = NULL;
 		}
 
-		if (inst->config->authorize_group_reply_query && (*inst->config->authorize_group_reply_query != '\0')) {
+		if (inst->config->authorize_group_reply_query && *inst->config->authorize_group_reply_query) {
 			/*
 			 *	Now get the reply pairs since the paircompare matched
 			 */
@@ -813,6 +813,16 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	}
 
 	rad_assert(inst->config->xlat_name);
+
+	/*
+	 *	Complain if the strings exist, but are empty.
+	 */
+#define CHECK_STRING(_x) if (inst->config->_x && !inst->config->_x) WARN("rlm_sql (%s): " STRINGIFY(_x) " is empty.  Please delete it from the configuration", inst->config->xlat_name)
+
+	CHECK_STRING(authorize_check_query);
+	CHECK_STRING(authorize_reply_query);
+	CHECK_STRING(authorize_group_check_query);
+	CHECK_STRING(authorize_group_reply_query);
 
 	/*
 	 *	This will always exist, as cf_section_parse_init()
