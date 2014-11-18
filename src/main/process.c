@@ -4146,7 +4146,7 @@ static void request_coa_separate(REQUEST *request)
 	rad_assert(!request->in_request_hash);
 	rad_assert(request->coa == NULL);
 
-	rad_assert(request->proxy_listener != NULL);
+	rad_assert(request->proxy_reply || request->proxy_listener);
 
 	(void) talloc_steal(NULL, request);
 	request->parent->coa = NULL;
