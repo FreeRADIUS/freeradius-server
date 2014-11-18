@@ -60,7 +60,7 @@ typedef struct value_pair_map {
 } value_pair_map_t;
 
 #ifndef WITH_VERIFY_PTR
-#  define VERIFY_MAP(_x)
+#  define VERIFY_MAP(_x) rad_assert((_x)->lhs)
 #else
 #  define VERIFY_MAP(_x) do { \
 	VERIFY_TMPL((_x)->lhs); \
