@@ -492,7 +492,7 @@ void tmpl_verify(char const *file, int line, value_pair_tmpl_t const *vpt)
 		}
 
 		if (vpt->tmpl_da->flags.is_unknown) {
-			if (vpt->tmpl_da != (DICT_ATTR *)&vpt->data.attribute.fugly.unknown) {
+			if (vpt->tmpl_da != (DICT_ATTR *)&vpt->data.attribute.unknown.da) {
 				FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_ATTR "
 					     "da is marked as unknown, but does not point to the template's "
 					     "unknown da buffer", file, line);
@@ -768,8 +768,8 @@ ssize_t tmpl_from_attr_substr(value_pair_tmpl_t *vpt, char const *name,
 		/*
 		 *	Attr-1.2.3.4 is OK.
 		 */
-		if (dict_unknown_from_substr((DICT_ATTR *)&attr.fugly.unknown, &p) == 0) {
-			attr.da = (DICT_ATTR *)&attr.fugly.unknown;
+		if (dict_unknown_from_substr((DICT_ATTR *)&attr.unknown.da, &p) == 0) {
+			attr.da = (DICT_ATTR *)&attr.unknown.da;
 			goto skip_tag; /* unknown attributes can't have tags */
 		}
 
@@ -786,8 +786,8 @@ ssize_t tmpl_from_attr_substr(value_pair_tmpl_t *vpt, char const *name,
 		 *	Copy the name to a field for later evaluation
 		 */
 		type = TMPL_TYPE_ATTR_UNKNOWN;
-		for (q = attr.fugly.name; dict_attr_allowed_chars[(int) *p]; *q++ = *p++) {
-			if (q >= (attr.fugly.name + sizeof(attr.fugly.name) - 1)) {
+		for (q = attr.unknown.name; dict_attr_allowed_chars[(int) *p]; *q++ = *p++) {
+			if (q >= (attr.unknown.name + sizeof(attr.unknown.name) - 1)) {
 				fr_strerror_printf("Attribute name is too long");
 				return -(p - name);
 			}
@@ -859,7 +859,7 @@ finish:
 	 */
 	memcpy(&vpt->data.attribute, &attr, sizeof(vpt->data.attribute));
 	if ((vpt->type == TMPL_TYPE_ATTR) && attr.da->flags.is_unknown) {
-		vpt->tmpl_da = (DICT_ATTR *)&vpt->data.attribute.fugly.unknown;
+		vpt->tmpl_da = (DICT_ATTR *)&vpt->data.attribute.unknown.da;
 	}
 
 	VERIFY_TMPL(vpt);
