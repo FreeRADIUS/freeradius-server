@@ -1,3 +1,8 @@
+FreeRADIUS 2.2.7 Tuesday 18 Nov 2014 14:00:00 EST, urgency=medium
+	Feature improvements
+
+	Bug fixes
+
 FreeRADIUS 2.2.6 Tuesday 18 Nov 2014 15:00:00 EST, urgency=medium
 	Feature improvements
 	* When supported by OpenSSL, allow TLS 1.1 and TLS 1.2
