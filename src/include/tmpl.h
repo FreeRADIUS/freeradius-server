@@ -11,7 +11,7 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA 
+ *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 #ifndef TMPL_H
 #define TMPL_H
@@ -92,13 +92,13 @@ typedef struct {
 	request_refs_t		request;		//!< Request to search or insert in.
 	pair_lists_t		list;			//!< List to search or insert in.
 
-	DICT_ATTR const		*da;			 //!< Resolved dictionary attribute.
+	DICT_ATTR const		*da;			//!< Resolved dictionary attribute.
 	union {
-		uint8_t			unknown[DICT_ATTR_SIZE]; //!< Unknown dictionary attribute buffer.
-		char			name[DICT_ATTR_SIZE];    //!< more retarded things
-	} fugly;
-	int			num;			 //!< for array references
-	int8_t			tag;			 //!< for tag references.
+		uint8_t			da[DICT_ATTR_SIZE];	//!< Unknown dictionary attribute buffer.
+		char			name[DICT_ATTR_SIZE];	//!< Raw unknown dictionary name.
+	} unknown;
+	int			num;			 //!< For array references.
+	int8_t			tag;			 //!< For tag references.
 } value_pair_tmpl_attr_t;
 
 /** A pre-parsed template attribute
@@ -160,8 +160,8 @@ typedef struct value_pair_tmpl_t {
 #define tmpl_request		data.attribute.request
 #define tmpl_list		data.attribute.list
 #define tmpl_da			data.attribute.da
-#define tmpl_unknown		data.attribute.fugly.unknown
-#define tmpl_unknown_name      	data.attribute.fugly.name
+#define tmpl_unknown		data.attribute.unknown.da
+#define tmpl_unknown_name      	data.attribute.unknown.name
 #define tmpl_num		data.attribute.num
 #define tmpl_tag		data.attribute.tag
 
