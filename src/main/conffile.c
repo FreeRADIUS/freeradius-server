@@ -982,7 +982,7 @@ static inline int fr_item_validate_ipaddr(CONF_SECTION *cs, char const *name, PW
 int cf_item_parse(CONF_SECTION *cs, char const *name, int type, void *data, char const *dflt)
 {
 	int rcode;
-	bool deprecated, required, attribute, secret, input;
+	bool deprecated, required, attribute, secret, input, cant_be_empty;
 	char **q;
 	char const *value;
 	CONF_PAIR const *cp = NULL;
@@ -995,14 +995,14 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, int type, void *data, char
 	required = (type & PW_TYPE_REQUIRED);
 	attribute = (type & PW_TYPE_ATTRIBUTE);
 	secret = (type & PW_TYPE_SECRET);
-	input = (type == PW_TYPE_FILE_INPUT); /* check, not and */
+	input = (type == PW_TYPE_FILE_INPUT);	/* check, not and */
+	cant_be_empty = (type & PW_TYPE_NOT_EMPTY);
 
-	type &= 0xff;		/* normal types are small */
+	if (attribute) required = true;
+	if (required) cant_be_empty = true;	/* May want to review this in the future... */
+
+	type &= 0xff;				/* normal types are small */
 	rcode = 0;
-
-	if (attribute) {
-		required = true;
-	}
 
 	cp = cf_pair_find(cs, name);
 	if (cp) {
@@ -1014,18 +1014,25 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, int type, void *data, char
 
 	if (!value) {
 		if (required) {
-			cf_log_err(&(cs->item), "Configuration item '%s' must have a value", name);
+		is_required:
+			if (!cp) {
+				cf_log_err(&(cs->item), "Configuration item '%s' must have a value", name);
+			} else {
+				cf_log_err(&(cp->item), "Configuration item '%s' must have a value", name);
+			}
 			return -1;
 		}
 		return rcode;
 	}
 
-	if (!*value && required) {
-	is_required:
+	if ((value[0] == '\0') && cant_be_empty) {
+	cant_be_empty:
 		if (!cp) {
-			cf_log_err(&(cs->item), "Configuration item '%s' must not be empty", name);
+			cf_log_err(&(cs->item), "Configuration item '%s' must not be empty (zero length)", name);
+			if (!required) cf_log_err(&(cs->item), "Comment item to silence this message");
 		} else {
-			cf_log_err(&(cp->item), "Configuration item '%s' must not be empty", name);
+			cf_log_err(&(cp->item), "Configuration item '%s' must not be empty (zero length)", name);
+			if (!required) cf_log_err(&(cp->item), "Comment item to silence this message");
 		}
 		return -1;
 	}
@@ -1129,16 +1136,16 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, int type, void *data, char
 			}
 		}
 
-		if (required && (!value || !*value)) goto is_required;
+		if (required && !value) goto is_required;
+		if (cant_be_empty && (value[0] == '\0')) goto cant_be_empty;
 
 		if (attribute) {
 			if (!dict_attrbyname(value)) {
 				if (!cp) {
 					cf_log_err(&(cs->item), "No such attribute '%s' for configuration '%s'",
-						      value, name);
+						   value, name);
 				} else {
-					cf_log_err(&(cp->item), "No such attribute '%s'",
-						   value);
+					cf_log_err(&(cp->item), "No such attribute '%s'", value);
 				}
 				return -1;
 			}

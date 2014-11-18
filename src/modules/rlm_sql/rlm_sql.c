@@ -101,15 +101,15 @@ static const CONF_PARSER module_config[] = {
 	{ "client_query", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sql_config_t, client_query), "SELECT id,nasname,shortname,type,secret FROM nas" },
 	{ "open_query", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sql_config_t, open_query), NULL },
 
-	{ "authorize_check_query", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_sql_config_t, authorize_check_query), NULL },
-	{ "authorize_reply_query", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_sql_config_t, authorize_reply_query), NULL },
+	{ "authorize_check_query", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT | PW_TYPE_NOT_EMPTY, rlm_sql_config_t, authorize_check_query), NULL },
+	{ "authorize_reply_query", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT | PW_TYPE_NOT_EMPTY, rlm_sql_config_t, authorize_reply_query), NULL },
 
-	{ "authorize_group_check_query", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_sql_config_t, authorize_group_check_query), "" },
-	{ "authorize_group_reply_query", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_sql_config_t, authorize_group_reply_query), "" },
-	{ "group_membership_query", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_sql_config_t, groupmemb_query), NULL },
+	{ "authorize_group_check_query", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT | PW_TYPE_NOT_EMPTY, rlm_sql_config_t, authorize_group_check_query), NULL },
+	{ "authorize_group_reply_query", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT | PW_TYPE_NOT_EMPTY, rlm_sql_config_t, authorize_group_reply_query), NULL },
+	{ "group_membership_query", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT | PW_TYPE_NOT_EMPTY, rlm_sql_config_t, groupmemb_query), NULL },
 #ifdef WITH_SESSION_MGMT
-	{ "simul_count_query", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_sql_config_t, simul_count_query), "" },
-	{ "simul_verify_query", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_sql_config_t, simul_verify_query), "" },
+	{ "simul_count_query", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT | PW_TYPE_NOT_EMPTY, rlm_sql_config_t, simul_count_query), NULL },
+	{ "simul_verify_query", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT | PW_TYPE_NOT_EMPTY, rlm_sql_config_t, simul_verify_query), NULL },
 #endif
 	{ "safe-characters", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_DEPRECATED, rlm_sql_config_t, allowed_chars), NULL },
 	{ "safe_characters", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sql_config_t, allowed_chars), "@abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_: /" },
@@ -497,13 +497,8 @@ static int sql_get_grouplist(rlm_sql_t *inst, rlm_sql_handle_t **handle, REQUEST
 
 	entry = *phead = NULL;
 
-	if (!inst->config->groupmemb_query || (inst->config->groupmemb_query[0] == 0)) {
-		return 0;
-	}
-
-	if (radius_axlat(&expanded, request, inst->config->groupmemb_query, sql_escape_func, inst) < 0) {
-		return -1;
-	}
+	if (!inst->config->groupmemb_query) return 0;\
+	if (radius_axlat(&expanded, request, inst->config->groupmemb_query, sql_escape_func, inst) < 0) return -1;
 
 	ret = rlm_sql_select_query(handle, inst, expanded);
 	talloc_free(expanded);
@@ -647,7 +642,7 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t *inst, REQUEST *request, rlm
 			goto finish;
 		}
 
-		if (inst->config->authorize_group_check_query && *inst->config->authorize_group_check_query) {
+		if (inst->config->authorize_group_check_query) {
 			vp_cursor_t cursor;
 			VALUE_PAIR *vp;
 
@@ -697,7 +692,7 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t *inst, REQUEST *request, rlm
 			check_tmp = NULL;
 		}
 
-		if (inst->config->authorize_group_reply_query && *inst->config->authorize_group_reply_query) {
+		if (inst->config->authorize_group_reply_query) {
 			/*
 			 *	Now get the reply pairs since the paircompare matched
 			 */
@@ -803,8 +798,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 			return -1;
 		}
 
-		if (inst->config->groupmemb_query &&
-		    inst->config->groupmemb_query[0]) {
+		if (inst->config->groupmemb_query) {
 			DEBUG("rlm_sql (%s): Registering sql_groupcmp for %s",
 			      inst->config->xlat_name, group_name);
 			paircompare_register(da, dict_attrbyvalue(PW_USER_NAME, 0),
@@ -813,16 +807,6 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	}
 
 	rad_assert(inst->config->xlat_name);
-
-	/*
-	 *	Complain if the strings exist, but are empty.
-	 */
-#define CHECK_STRING(_x) if (inst->config->_x && !inst->config->_x) WARN("rlm_sql (%s): " STRINGIFY(_x) " is empty.  Please delete it from the configuration", inst->config->xlat_name)
-
-	CHECK_STRING(authorize_check_query);
-	CHECK_STRING(authorize_reply_query);
-	CHECK_STRING(authorize_group_check_query);
-	CHECK_STRING(authorize_group_reply_query);
 
 	/*
 	 *	This will always exist, as cf_section_parse_init()
@@ -929,10 +913,9 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	inst->pool = fr_connection_pool_module_init(inst->cs, inst, mod_conn_create, NULL, NULL);
 	if (!inst->pool) return -1;
 
-	if (inst->config->groupmemb_query &&
-	    inst->config->groupmemb_query[0]) {
+	if (inst->config->groupmemb_query) {
 		paircompare_register(dict_attrbyvalue(PW_SQL_GROUP, 0),
-				dict_attrbyvalue(PW_USER_NAME, 0), false, sql_groupcmp, inst);
+				     dict_attrbyvalue(PW_USER_NAME, 0), false, sql_groupcmp, inst);
 	}
 
 	if (inst->config->do_clients) {
@@ -997,7 +980,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 	/*
 	 *	Query the check table to find any conditions associated with this user/realm/whatever...
 	 */
-	if (inst->config->authorize_check_query && *inst->config->authorize_check_query) {
+	if (inst->config->authorize_check_query) {
 		vp_cursor_t cursor;
 		VALUE_PAIR *vp;
 
@@ -1045,7 +1028,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 		check_tmp = NULL;
 	}
 
-	if (inst->config->authorize_reply_query && *inst->config->authorize_reply_query) {
+	if (inst->config->authorize_reply_query) {
 		/*
 		 *	Now get the reply pairs since the paircompare matched
 		 */
@@ -1386,11 +1369,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_checksimul(void *instance, REQUEST * req
 	char 			*expanded = NULL;
 
 	/* If simul_count_query is not defined, we don't do any checking */
-	if (!inst->config->simul_count_query || (inst->config->simul_count_query[0] == '\0')) {
-		return RLM_MODULE_NOOP;
-	}
+	if (!inst->config->simul_count_query) return RLM_MODULE_NOOP;
 
-	if((!request->username) || (request->username->length == '\0')) {
+	if ((!request->username) || (request->username->length == '\0')) {
 		REDEBUG("Zero Length username not permitted");
 
 		return RLM_MODULE_INVALID;
@@ -1445,7 +1426,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_checksimul(void *instance, REQUEST * req
 	 *	Looks like too many sessions, so let's start verifying
 	 *	them, unless told to rely on count query only.
 	 */
-	if (!inst->config->simul_verify_query || (inst->config->simul_verify_query[0] == '\0')) {
+	if (!inst->config->simul_verify_query) {
 		rcode = RLM_MODULE_OK;
 
 		goto finish;
