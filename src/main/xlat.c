@@ -1117,7 +1117,6 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 	 *	%{request:Tunnel-Password:1[#]}
 	 *	%{mod:foo}
 	 */
-	brace = NULL;
 
 	/*
 	 *	This is for efficiency, so we don't search for an xlat,
@@ -1129,10 +1128,7 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 
 		if (isspace((int) *q)) break;
 
-		if (*q == '[') {
-			is_attr = true;
-			continue;
-		}
+		if (*q == '[') continue;
 
 		if (*q == '}') break;
 	}
@@ -1142,7 +1138,7 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 	 */
 	if ((*q == '}') && (q == p)) {
 		*error = "Empty expression is invalid";
-		return -(q - fmt);
+		return -(p - fmt);
 	}
 
 	/*
@@ -1216,7 +1212,7 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 
 		talloc_free(node);
 		*error = "Unknown attribute";
-		return -(node->fmt - fmt);
+		return -(p - fmt);
 	}
 
 	node->type = XLAT_ATTRIBUTE;
