@@ -1,0 +1,25 @@
+# PRE: switch
+#
+update request {
+	Filter-Id := ""
+}
+
+switch &Filter-Id {
+	case "" {
+		update reply {
+			Filter-Id := "filter"
+		}
+	}
+
+	case "doug" {
+		update reply {
+			Filter-Id := "doug"
+		}
+	}
+
+	case {
+		update reply {
+			Filter-Id := "default"
+		}
+	}
+}

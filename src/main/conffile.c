@@ -365,7 +365,7 @@ CONF_SECTION *cf_section_alloc(CONF_SECTION *parent, char const *name1,
 		return NULL;
 	}
 
-	if (name2 && *name2) {
+	if (name2) {
 		cs->name2 = talloc_typed_strdup(cs, name2);
 		if (!cs->name2) goto error;
 	}

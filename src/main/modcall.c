@@ -1943,13 +1943,13 @@ static modcallable *do_compile_modswitch (modcallable *parent, rlm_components_t 
 		}
 
 		name2 = cf_section_name2(subcs);
-		if (!name2 && !had_seen_default) {
-			had_seen_default = true;
-			continue;
-		}
+		if (!name2) {
+			if (!had_seen_default) {
+				had_seen_default = true;
+				continue;
+			}
 
-		if (!name2 || (name2[0] == '\0')) {
-			cf_log_err(ci, "\"case\" sections must have a name");
+			cf_log_err(ci, "Cannot have two 'default' case statements");
 			talloc_free(vpt);
 			return NULL;
 		}
