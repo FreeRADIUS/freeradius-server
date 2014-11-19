@@ -878,8 +878,7 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 				       char const **error)
 {
 	ssize_t slen;
-	char *p, *q, *brace;
-	bool is_attr = false;
+	char *p, *q;
 	xlat_exp_t *node;
 
 	rad_assert(fmt[0] == '%');
