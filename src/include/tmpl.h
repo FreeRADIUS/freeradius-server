@@ -189,11 +189,11 @@ VALUE_PAIR		**radius_list(REQUEST *request, pair_lists_t list);
 
 TALLOC_CTX		*radius_list_ctx(REQUEST *request, pair_lists_t list_name);
 
-pair_lists_t		radius_list_name(char const **name, pair_lists_t unknown);
+size_t			radius_list_name(pair_lists_t *out, char const *name, pair_lists_t default_list);
 
 int			radius_request(REQUEST **request, request_refs_t name);
 
-request_refs_t		radius_request_name(char const **name, request_refs_t unknown);
+size_t			radius_request_name(request_refs_t *out, char const *name, request_refs_t unknown);
 
 
 /* Template manipulation and execution */
@@ -211,15 +211,15 @@ value_pair_tmpl_t	*tmpl_alloc(TALLOC_CTX *ctx, tmpl_type_t type, char const *nam
  *
  */
 ssize_t			tmpl_from_attr_substr(value_pair_tmpl_t *vpt, char const *name,
-					      request_refs_t request_def, pair_lists_t list_def);
+					      request_refs_t request_def, pair_lists_t list_def, bool allow_unknown);
 
 ssize_t			tmpl_from_attr_str(value_pair_tmpl_t *vpt, char const *name,
 					   request_refs_t request_def,
-					   pair_lists_t list_def);
+					   pair_lists_t list_def, bool allow_unknown);
 
 ssize_t			tmpl_afrom_attr_str(TALLOC_CTX *ctx, value_pair_tmpl_t **out, char const *name,
 					    request_refs_t request_def,
-					    pair_lists_t list_def);
+					    pair_lists_t list_def, bool allow_unknown);
 
 /*
  *	Parses any type of string into a template

@@ -318,7 +318,7 @@ static ssize_t xlat_debug_attr(UNUSED void *instance, REQUEST *request, char con
 
 	while (isspace((int) *fmt)) fmt++;
 
-	if (tmpl_from_attr_str(&vpt, fmt, REQUEST_CURRENT, PAIR_LIST_REQUEST) <= 0) {
+	if (tmpl_from_attr_str(&vpt, fmt, REQUEST_CURRENT, PAIR_LIST_REQUEST, false) <= 0) {
 		RDEBUG("%s", fr_strerror());
 		return -1;
 	}
@@ -992,7 +992,7 @@ void xlat_free(void)
 static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **head,
 				       char const **error);
 static ssize_t xlat_tokenize_literal(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **head,
-				     int brace, char const **error);
+				     bool brace, char const **error);
 static size_t xlat_process(char **out, REQUEST *request, xlat_exp_t const * const head,
 			   RADIUS_ESCAPE_STRING escape, void *escape_ctx);
 
@@ -1071,7 +1071,7 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 {
 	ssize_t slen;
 	char *p, *q, *brace;
-	char const *attrname;
+	bool is_attr = false;
 	xlat_exp_t *node;
 
 	rad_assert(fmt[0] == '%');
@@ -1080,13 +1080,11 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 	/*
 	 *	%{%{...}:-bar}
 	 */
-	if ((fmt[2] == '%') && (fmt[3] == '{')) {
-		return xlat_tokenize_alternation(ctx, fmt, head, error);
-	}
+	if ((fmt[2] == '%') && (fmt[3] == '{')) return xlat_tokenize_alternation(ctx, fmt, head, error);
 
 	XLAT_DEBUG("EXPANSION <-- %s", fmt);
 	node = talloc_zero(ctx, xlat_exp_t);
-	attrname = node->fmt = fmt + 2;
+	node->fmt = fmt + 2;
 	node->len = 0;
 
 #ifdef HAVE_REGEX
@@ -1120,250 +1118,125 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 	 *	%{request:Tunnel-Password:1[#]}
 	 *	%{mod:foo}
 	 */
-	 brace = NULL;
-	for (p = fmt + 2; *p != '\0'; p++) {
-		if (*p == ':') break;
+	brace = NULL;
 
-		if (isspace((int) *p)) break;
+	/*
+	 *	This is for efficiency, so we don't search for an xlat,
+	 *	when what's being referenced is obviously an attribute.
+	 */
+	p = fmt + 2;
+	for (q = p; *q != '\0'; q++) {
+		if (*q == ':') break;
 
-		if (*p == '[') break;
+		if (isspace((int) *q)) break;
 
-		if (*p == '}') break;
+		if (*q == '[') {
+			is_attr = true;
+			continue;
+		}
+
+		if (*q == '}') break;
 	}
 
-	if (*p != ':') p = NULL;
+	/*
+	 *	Check for empty expressions %{}
+	 */
+	if ((*q == '}') && (q == p)) {
+		*error = "Empty expression is invalid";
+		return -(q - fmt);
+	}
 
 	/*
 	 *	Might be a module name reference.
+	 *
+	 *	If it's not, it's an attribute or parse error.
 	 */
-	if (p) {
-		*p = '\0';
-
-		/*
-		 *	%{mod:foo}
-		 */
+	if (*q == ':') {
+		*q = '\0';
 		node->xlat = xlat_find(node->fmt);
 		if (node->xlat) {
+			/*
+			 *	%{mod:foo}
+			 */
 			node->type = XLAT_MODULE;
 
-			XLAT_DEBUG("MOD <-- %s ... %s", node->fmt, p + 1);
+			p = q + 1;
+			XLAT_DEBUG("MOD <-- %s ... %s", node->fmt, p);
 
-			slen = xlat_tokenize_literal(node, p + 1, &node->child, true, error);
+			slen = xlat_tokenize_literal(node, p, &node->child, true, error);
 			if (slen <= 0) {
 				talloc_free(node);
 				return slen - (p - fmt);
 			}
-			p += slen + 1;
+			p += slen;
 
 			*head = node;
 			rad_assert(node->next == NULL);
+
 			return p - fmt;
 		}
+		*q = ':';	/* Avoids a strdup */
+	}
 
+	/*
+	 *	The first token ends with:
+	 *	- '[' - Which is an attribute index, so it must be an attribute.
+	 *      - '}' - The end of the expansion, which means it was a bareword.
+	 */
+	slen = tmpl_from_attr_substr(&node->attr, p, REQUEST_CURRENT, PAIR_LIST_REQUEST, true);
+	if (slen <= 0) {
 		/*
-		 *	Modules can have '}' in their RHS, so we
-		 *	didn't check for that until now.
-		 *
-		 *	As of now, node->fmt MUST be a reference to an
-		 *	attribute, however complicated.  So it MUST have a closing brace.
+		 *	If the parse error occurred before the ':'
+		 *	then the error is changed to 'Unknown module',
+		 *	as it was more likely to be a bad module name,
+		 *	than a request qualifier.
 		 */
-		brace = strchr(p + 1, '}');
-		if (!brace) goto no_brace;
-		*brace = '\0';
-
-		/*
-		 *	%{User-Name}
-		 *	%{User-Name[1]}
-		 *	%{Tunnel-Password:1}
-		 *	%{request:Tunnel-Password:1}
-		 *
-		 *	<sigh>  The syntax is fairly poor.
-		 */
-		XLAT_DEBUG("Looking for list in '%s'", attrname);
-
-		/*
-		 *	Not a module.  Has to be an attribute
-		 *	reference.
-		 *
-		 *	As of v3, we've removed %{request: ..>} as
-		 *	internally registered xlats.
-		 */
-		*p = ':';
-		node->attr.tmpl_request = radius_request_name(&attrname, REQUEST_CURRENT);
-		rad_assert(node->attr.tmpl_request != REQUEST_UNKNOWN);
-
-		node->attr.tmpl_list = radius_list_name(&attrname, PAIR_LIST_REQUEST);
-		if (node->attr.tmpl_list == PAIR_LIST_UNKNOWN) {
-			talloc_free(node);
+		if ((*q == ':') && ((p + (slen * -1)) < q)) {
 			*error = "Unknown module";
-			return -2;
+		} else {
+			*error = fr_strerror();
 		}
-
-		/*
-		 *	Check for a trailing tag.
-		 */
-		p = strchr(attrname, ':');
-		if (p) *p = '\0';
-
-	} else {
-		brace = strchr(attrname, '}');
-		if (!brace) {
-		no_brace:
-			talloc_free(node);
-			*error = "No matching closing brace";
-			return -1;	/* second character of format string */
-		}
-		*brace = '\0';
-
-		node->attr.tmpl_request = REQUEST_CURRENT;
-		node->attr.tmpl_list = PAIR_LIST_REQUEST;
-	}
-
-	*brace = '\0';
-
-	XLAT_DEBUG("Looking for attribute name in %s", attrname);
-
-	/*
-	 *	Allow for an array reference.  They come AFTER the
-	 *	tag, if the tag exists.  Otherwise, they come after
-	 *	the attribute name.
-	 */
-	if (p) {
-		q = strchr(p + 1, '[');
-	} else {
-		q = strchr(attrname, '[');
-	}
-	if (q) *(q++) = '\0';
-
-	if (!*attrname) {
-		talloc_free(node);
-		*error = "Empty expression is invalid";
-		return -(attrname - fmt);
+		return slen - (p - fmt);
 	}
 
 	/*
-	 *	It's either an attribute name, or a Tunnel-Password:TAG
-	 *	with the ':' already set to NULL.
+	 *	Might be a virtual XLAT attribute
 	 */
-	node->attr.tmpl_da = dict_attrbyname(attrname);
-	if (!node->attr.tmpl_da) {
-		/*
-		 *	Foreach.  Maybe other stuff, too.
-		 */
-		node->xlat = xlat_find(attrname);
+	if (node->attr.type == TMPL_TYPE_ATTR_UNKNOWN) {
+		node->xlat = xlat_find(node->attr.tmpl_unknown_name);
 		if (node->xlat) {
 			node->type = XLAT_VIRTUAL;
-			node->fmt = attrname;
+			node->fmt = node->attr.tmpl_unknown_name;
 
 			XLAT_DEBUG("VIRTUAL <-- %s", node->fmt);
 			*head = node;
 			rad_assert(node->next == NULL);
-			brace++;
-			return brace - fmt;
+			q++;
+			return q - fmt;
 		}
 
 		talloc_free(node);
 		*error = "Unknown attribute";
-		return -(attrname - fmt);
+		return -(node->fmt - fmt);
 	}
-
-	/*
-	 *	Parse the tag.
-	 */
-	if (p) {
-		unsigned long tag;
-		char *end;
-
-		if (!node->attr.tmpl_da->flags.has_tag) {
-			talloc_free(node);
-			*error = "Attribute cannot have a tag";
-			return - (p - fmt);
-		}
-
-		tag = strtoul(p + 1, &end, 10);
-		p++;
-
-		if (tag == ULONG_MAX) {
-			talloc_free(node);
-			*error = "Invalid tag value";
-			return - (p - fmt);
-		}
-
-		node->attr.tmpl_tag = tag;
-		p = end;
-
-		if (*p) {
-			talloc_free(node);
-			*error = "Unexpected text after tag";
-			return - (p - fmt);
-		}
-
-	} else {
-		node->attr.tmpl_tag = TAG_ANY;
-		/* leave p alone */
-	}
-
-	/*
-	 *	Check for array reference
-	 */
-	if (q) {
-		unsigned long num;
-		char *end;
-
-		p = q;
-		if (*p== '#') {
-			node->attr.tmpl_num = NUM_COUNT;
-			p++;
-
-		} else if (*p == '*') {
-			node->attr.tmpl_num = NUM_ALL;
-			p++;
-
-		} else if (isdigit((int) *p)) {
-			num = strtoul(p, &end, 10);
-			if (num > 1000) {
-				talloc_free(node);
-				*error = "Invalid array index";
-				return - (p - fmt);
-			}
-			p = end;
-			node->attr.tmpl_num = num;
-
-		} else {
-			talloc_free(node);
-			*error = "Invalid array index";
-			return - (p - fmt);
-		}
-
-		if (*p != ']') {
-			talloc_free(node);
-			*error = "Expected ']'";
-			return - (p - fmt);
-		}
-
-		p++;
-		if (*p) {
-			talloc_free(node);
-			*error = "Unexpected text after array reference";
-			return - (p - fmt);
-		}
-	} else {
-		node->attr.tmpl_num = NUM_ANY;
-	}
-
-	rad_assert(!p || (p == brace));
 
 	node->type = XLAT_ATTRIBUTE;
-	p = brace + 1;
-
+	p += slen;
+	if (*p != '}') {
+		talloc_free(node);
+		*error = "No matching closing brace";
+		return -1;	/* second character of format string */
+	}
+	p++;
 	*head = node;
 	rad_assert(node->next == NULL);
+
 	return p - fmt;
 }
 
 
 static ssize_t xlat_tokenize_literal(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **head,
-				     int brace, char const **error)
+				     bool brace, char const **error)
 {
 	char *p;
 	xlat_exp_t *node;

@@ -1007,7 +1007,7 @@ static int rest_decode_post(UNUSED rlm_rest_t *instance, UNUSED rlm_rest_section
 		 *  the string after the list qualifier.
 		 */
 		attribute = name;
-		request_name = radius_request_name(&attribute, REQUEST_CURRENT);
+		attribute += radius_request_name(&request_name, attribute, REQUEST_CURRENT);
 		if (request_name == REQUEST_UNKNOWN) {
 			RWDEBUG("Invalid request qualifier, skipping");
 
@@ -1024,10 +1024,9 @@ static int rest_decode_post(UNUSED rlm_rest_t *instance, UNUSED rlm_rest_section
 			continue;
 		}
 
-		list_name = radius_list_name(&attribute, PAIR_LIST_REPLY);
+		attribute += radius_list_name(&list_name, attribute, PAIR_LIST_REPLY);
 		if (list_name == PAIR_LIST_UNKNOWN) {
 			RWDEBUG("Invalid list qualifier, skipping");
-
 			curl_free(name);
 
 			continue;
@@ -1294,7 +1293,7 @@ static int json_pairmake(rlm_rest_t *instance, UNUSED rlm_rest_section_t *sectio
 		 */
 		RDEBUG2("Parsing attribute \"%s\"", name);
 
-		if (tmpl_from_attr_str(&dst, name, REQUEST_CURRENT, PAIR_LIST_REPLY) <= 0) {
+		if (tmpl_from_attr_str(&dst, name, REQUEST_CURRENT, PAIR_LIST_REPLY, false) <= 0) {
 			RWDEBUG("Failed parsing attribute: %s, skipping...", fr_strerror());
 			continue;
 		}

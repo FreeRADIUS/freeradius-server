@@ -220,7 +220,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 	if (inst->input) {
 		p = inst->input;
-		inst->input_list = radius_list_name(&p, PAIR_LIST_UNKNOWN);
+		p += radius_list_name(&inst->input_list, p, PAIR_LIST_UNKNOWN);
 		if ((inst->input_list == PAIR_LIST_UNKNOWN) || (*p != '\0')) {
 			cf_log_err_cs(conf, "Invalid input list '%s'", inst->input);
 			return -1;
@@ -229,7 +229,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 	if (inst->output) {
 		p = inst->output;
-		inst->output_list = radius_list_name(&p, PAIR_LIST_UNKNOWN);
+		p += radius_list_name(&inst->output_list, p, PAIR_LIST_UNKNOWN);
 		if ((inst->output_list == PAIR_LIST_UNKNOWN) || (*p != '\0')) {
 			cf_log_err_cs(conf, "Invalid output list '%s'", inst->output);
 			return -1;
@@ -240,8 +240,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 *	Sanity check the config.  If we're told to NOT wait,
 	 *	then the output pairs must not be defined.
 	 */
-	if (!inst->wait &&
-	    (inst->output != NULL)) {
+	if (!inst->wait && (inst->output != NULL)) {
 		cf_log_err_cs(conf, "Cannot read output pairs if wait = no");
 		return -1;
 	}

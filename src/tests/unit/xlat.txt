@@ -102,7 +102,7 @@ xlat %{}
 data ERROR offset 2 'Empty expression is invalid'
 
 xlat %{ }
-data ERROR offset 2 'Unknown attribute'
+data ERROR offset 2 'Invalid attribute name'
 
 xlat %{%{User-Name}:-}
 data %{%{User-Name}:-}

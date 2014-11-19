@@ -546,7 +546,12 @@ static ssize_t cache_xlat(void *instance, REQUEST *request,
 	size_t			len;
 	int			ret = 0;
 
-	list = radius_list_name(&p, PAIR_LIST_REQUEST);
+	p += radius_list_name(&list, p, PAIR_LIST_REQUEST);
+	if (list == PAIR_LIST_UNKNOWN) {
+		REDEBUG("Unknown list qualifier in \"%s\"", fmt);
+		ret = -1;
+		goto finish;
+	}
 
 	target = dict_attrbyname(p);
 	if (!target) {
@@ -582,9 +587,6 @@ static ssize_t cache_xlat(void *instance, REQUEST *request,
 		break;
 
 	case PAIR_LIST_UNKNOWN:
-		REDEBUG("Unknown list qualifier in \"%s\"", fmt);
-		ret = -1;
-		goto finish;
 
 	default:
 		REDEBUG("Unsupported list \"%s\"", fr_int2str(pair_lists, list, "<UNKNOWN>"));

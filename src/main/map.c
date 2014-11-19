@@ -185,7 +185,7 @@ int map_afrom_cp(TALLOC_CTX *ctx, value_pair_map_t **out, CONF_PAIR *cp,
 	/*
 	 *	LHS must always be an attribute reference.
 	 */
-	slen = tmpl_afrom_attr_str(ctx, &map->lhs, attr, dst_request_def, dst_list_def);
+	slen = tmpl_afrom_attr_str(ctx, &map->lhs, attr, dst_request_def, dst_list_def, true);
 	if (slen <= 0) {
 		char *spaces, *text;
 
@@ -297,10 +297,9 @@ int map_afrom_cs(value_pair_map_t **out, CONF_SECTION *cs,
 
 	cs_list = p = cf_section_name2(cs);
 	if (cs_list) {
-		request_def = radius_request_name(&p, REQUEST_CURRENT);
+		p += radius_request_name(&request_def, p, REQUEST_CURRENT);
 		if (request_def == REQUEST_UNKNOWN) {
-			cf_log_err(ci, "Default request specified "
-				   "in mapping section is invalid");
+			cf_log_err(ci, "Default request specified in mapping section is invalid");
 			return -1;
 		}
 
