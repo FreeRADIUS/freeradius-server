@@ -59,106 +59,86 @@ const FR_NAME_NUMBER request_refs[] = {
 
 /** Resolve attribute name to a list.
  *
- * Check the name string for qualifiers that specify a list and return
- * an pair_lists_t value for that list. This value may be passed to
+ * Check the name string for qualifiers that specify a list and write
+ * a pair_lists_t value for that list to out. This value may be passed to
  * radius_list, along with the current request, to get a pointer to the
  * actual list in the request.
  *
- * If qualifiers were consumed, write a new pointer into name to the
- * char after the last qualifier to be consumed.
+ * If we're sure we've definitely found a list qualifier token delimiter
+ * but the string doesn't match a list qualifier, return 0 and write
+ * PAIR_LIST_UNKNOWN to out.
  *
  * radius_list_name should be called before passing a name string that
  * may contain qualifiers to dict_attrbyname.
  *
  * @see dict_attrbyname
  *
- * @param[in,out] name of attribute.
- * @param[in] default_list the list to return if no qualifiers were found.
- * @return PAIR_LIST_UNKOWN if qualifiers couldn't be resolved to a list.
+ * @param[out] out Where to write the list qualifier.
+ * @param[in] name String containing list qualifiers to parse.
+ * @param[in] def the list to return if no qualifiers were found.
+ * @return 0 if no valid list qualifier could be found, else the number of
+ *	bytes consumed.
  */
-pair_lists_t radius_list_name(char const **name, pair_lists_t default_list)
+size_t radius_list_name(pair_lists_t *out, char const *name, pair_lists_t def)
 {
-	char const *p = *name;
+	char const *p = name;
 	char const *q;
-	pair_lists_t output;
 
-	/* This should never be a NULL pointer or zero length string */
-	rad_assert(name && *name);
+	/* This should never be a NULL pointer */
+	rad_assert(name);
 
 	/*
-	 *	Unfortunately, ':' isn't a definitive separator for
-	 *	the list name.  We may have numeric tags, too.
+	 *	Try and determine the end of the token
 	 */
-	q = strchr(p, ':');
-	if (q) {
-		/*
-		 *	Check for tagged attributes.  They have
-		 *	"name:tag", where tag is a decimal number.
-		 *	Valid tags are invalid attributes, so that's
-		 *	OK.
-		 *
-		 *	Also allow "name:tag[#]" as a tag.
-		 *
-		 *	However, "request:" is allowed, too, and
-		 *	shouldn't be interpreted as a tag.
-		 *
-		 *	We do this check first rather than just
-		 *	looking up the request name, because this
-		 *	check is cheap, and looking up the request
-		 *	name is expensive.
-		 */
-		if (isdigit((int) q[1])) {
-			char const *d = q + 1;
+	for (q = p; dict_attr_allowed_chars[(uint8_t) *q]; q++);
 
-			while (isdigit((int) *d)) {
-				d++;
-			}
+	switch (*q) {
+	/*
+	 *	It's a bareword made up entirely of dictionary chars
+	 *	check and see if it's a list qualifier, and if it's
+	 *	not, return the def and say we couldn't parse
+	 *	anything.
+	 */
+	case '\0':
+		*out = fr_substr2int(pair_lists, p, PAIR_LIST_UNKNOWN, (q - p));
+		if (*out != PAIR_LIST_UNKNOWN) return q - p;
+		*out = def;
+		return 0;
+
+	/*
+	 *	It may be a list qualifier delimiter. Because of tags
+	 *	We need to check that it doesn't look like a tag suffix.
+	 *	We do this by looking at the chars between ':' and the
+	 *	next token delimiter, and seeing if they're all digits.
+	 */
+	case ':':
+	{
+		char const *d = q + 1;
+
+		if (isdigit((int) *d)) {
+			while (isdigit((int) *d)) d++;
 
 			/*
-			 *	Return the DEFAULT list as supplied by
-			 *	the caller.  This is usually
-			 *	PAIRLIST_REQUEST.
+			 *	Char after the number string
+			 *	was a token delimiter, so this is a
+			 *	tag, not a list qualifier.
 			 */
-			if (!*d || (*d == '[')) {
-				return default_list;
+			if (!dict_attr_allowed_chars[(uint8_t) *d]) {
+				*out = def;
+				return 0;
 			}
 		}
 
-		/*
-		 *	If the first part is a list name, then treat
-		 *	it as a list.  This means that we CANNOT have
-		 *	an attribute which is named "request",
-		 *	"reply", etc.  Allowing a tagged attribute
-		 *	"request:3" would just be insane.
-		 */
-		output = fr_substr2int(pair_lists, p, PAIR_LIST_UNKNOWN, (q - p));
-		if (output != PAIR_LIST_UNKNOWN) {
-			*name = (q + 1);	/* Consume the list and delimiter */
-			return output;
-		}
+		*out = fr_substr2int(pair_lists, p, PAIR_LIST_UNKNOWN, (q - p));
+		if (*out == PAIR_LIST_UNKNOWN) return 0;
 
-		/*
-		 *	It's not a known list, say so.
-		 */
-		return PAIR_LIST_UNKNOWN;
+		return (q + 1) - name; /* Consume the list and delimiter */
 	}
 
-	/*
-	 *	The input string may be just a list name,
-	 *	e.g. "request".  Check for that.
-	 */
-	q = (p + strlen(p));
-	output = fr_substr2int(pair_lists, p, PAIR_LIST_UNKNOWN, (q - p));
-	if (output != PAIR_LIST_UNKNOWN) {
-		*name = q;
-		return output;
+	default:
+		*out = def;
+		return 0;
 	}
-
-	/*
-	 *	It's just an attribute name.  Return the default list
-	 *	as supplied by the caller.
-	 */
-	return default_list;
 }
 
 /** Resolve attribute pair_lists_t value to an attribute list.
@@ -308,47 +288,46 @@ TALLOC_CTX *radius_list_ctx(REQUEST *request, pair_lists_t list_name)
 
 /** Resolve attribute name to a request.
  *
- * Check the name string for qualifiers that reference a parent request and
- * write the pointer to this request to 'request'.
+ * Check the name string for qualifiers that reference a parent request.
  *
- * If qualifiers were consumed, write a new pointer into name to the
- * char after the last qualifier to be consumed.
+ * If we find a string that matches a request, then return the number of
+ * chars we consumed.
  *
- * radius_ref_request should be called before radius_list_name.
+ * If we find a string that looks like a request qualifier but isn't,
+ * return 0 and set out to REQUEST_UNKNOWN.
+ *
+ * If we can't find a string that looks like a request qualifier, set out
+ * to def, and return 0.
  *
  * @see radius_list_name
- * @param[in,out] name of attribute.
+ * @param[out] out request ref.
+ * @param[in] name of attribute.
  * @param[in] def default request ref to return if no request qualifier is present.
- * @return one of the REQUEST_* definitions or REQUEST_UNKOWN
+ * @return 0 if no valid request qualifier could be found, else the number of
+ *	bytes consumed.
  */
-request_refs_t radius_request_name(char const **name, request_refs_t def)
+size_t radius_request_name(request_refs_t *out, char const *name, request_refs_t def)
 {
-	char *p;
-	int request;
+	char const *p, *q;
 
-	p = strchr(*name, '.');
-	if (!p) {
-		return def;
+	p = name;
+	/*
+	 *	Try and determine the end of the token
+	 */
+	for (q = p; dict_attr_allowed_chars[(uint8_t) *q] && (*q != '.') && (*q != '-'); q++);
+
+	/*
+	 *	First token delimiter wasn't a '.'
+	 */
+	if (*q != '.') {
+		*out = def;
+		return 0;
 	}
 
-	/*
-	 *	We may get passed "127.0.0.1".
-	 */
-	request = fr_substr2int(request_refs, *name, REQUEST_UNKNOWN, p - *name);
+	*out = fr_substr2int(request_refs, name, REQUEST_UNKNOWN, q - p);
+	if (*out == REQUEST_UNKNOWN) return 0;
 
-	/*
-	 *	If we get a valid name, skip it.
-	 */
-	if (request != REQUEST_UNKNOWN) {
-		*name = p + 1;
-		return request;
-	}
-
-	/*
-	 *	Otherwise leave it alone, and return the caller's
-	 *	default.
-	 */
-	return def;
+	return (q + 1) - p;
 }
 
 /** Resolve request to a request.
@@ -721,12 +700,13 @@ value_pair_tmpl_t *tmpl_alloc(TALLOC_CTX *ctx, tmpl_type_t type, char const *nam
  * @param[in] name of attribute including qualifiers.
  * @param[in] request_def The default request to insert unqualified attributes into.
  * @param[in] list_def The default list to insert unqualified attributes into.
+ * @param[in] allow_unknown If true, we don't generate a parse error on unknown
+ *	attributes, and instead set type to TMPL_TYPE_ATTR_UNKNOWN.
  * @return <= 0 on error (offset as negative integer), > 0 on success (number of bytes parsed)
  */
 ssize_t tmpl_from_attr_substr(value_pair_tmpl_t *vpt, char const *name,
-			      request_refs_t request_def, pair_lists_t list_def)
+			      request_refs_t request_def, pair_lists_t list_def, bool allow_unknown)
 {
-	bool force_attr = false;
 	char const *p;
 	long num;
 	char *q;
@@ -738,18 +718,19 @@ ssize_t tmpl_from_attr_substr(value_pair_tmpl_t *vpt, char const *name,
 	memset(&attr, 0, sizeof(attr));
 
 	p = name;
-	if (*p == '&') {
-		force_attr = true;
-		p++;
-	}
 
-	attr.request = radius_request_name(&p, request_def);
+	if (*p == '&') p++;
+
+	p += radius_request_name(&attr.request, p, request_def);
 	if (attr.request == REQUEST_UNKNOWN) {
 		fr_strerror_printf("Invalid request qualifier");
 		return -(p - name);
 	}
 
-	attr.list = radius_list_name(&p, list_def);
+	/*
+	 *	Finding a list qualifier is optional
+	 */
+	p += radius_list_name(&attr.list, p, list_def);
 	if (attr.list == PAIR_LIST_UNKNOWN) {
 		fr_strerror_printf("Invalid list qualifier");
 		return -(p - name);
@@ -776,14 +757,13 @@ ssize_t tmpl_from_attr_substr(value_pair_tmpl_t *vpt, char const *name,
 		/*
 		 *	Can't parse it as an attribute, it must be a literal string.
 		 */
-		if (!force_attr) {
-			fr_strerror_printf("Should be re-parsed as bare word (shouldn't see me)");
+		if (!allow_unknown) {
+			fr_strerror_printf("Unknown attribute");
 			return -(p - name);
 		}
 
-
 		/*
-		 *	Copy the name to a field for later evaluation
+		 *	Copy the name to a field for later resolution
 		 */
 		type = TMPL_TYPE_ATTR_UNKNOWN;
 		for (q = attr.unknown.name; dict_attr_allowed_chars[(int) *p]; *q++ = *p++) {
@@ -823,7 +803,18 @@ skip_tag:
 	if (*p == '[') {
 		p++;
 
-		if (*p != '*') {
+		switch (*p) {
+		case '#':
+			attr.num = NUM_COUNT;
+			p++;
+			break;
+
+		case '*':
+			attr.num = NUM_ALL;
+			p++;
+			break;
+
+		default:
 			num = strtol(p, &q, 10);
 			if (p == q) {
 				fr_strerror_printf("Array index is not an integer");
@@ -836,9 +827,7 @@ skip_tag:
 			}
 			attr.num = num;
 			p = q;
-		} else {
-			attr.num = NUM_ALL;
-			p++;
+			break;
 		}
 
 		if (*p != ']') {
@@ -880,14 +869,16 @@ finish:
  * @param[in] name attribute name including qualifiers.
  * @param[in] request_def The default request to insert unqualified attributes into.
  * @param[in] list_def The default list to insert unqualified attributes into.
+ * @param[in] allow_unknown If true, we don't generate a parse error on unknown
+ *	attributes, and instead set type to TMPL_TYPE_ATTR_UNKNOWN.
  * @return <= 0 on error (offset as negative integer), > 0 on success (number of bytes parsed)
  */
 ssize_t tmpl_from_attr_str(value_pair_tmpl_t *vpt, char const *name, request_refs_t request_def,
-			   pair_lists_t list_def)
+			   pair_lists_t list_def, bool allow_unknown)
 {
 	ssize_t slen;
 
-	slen = tmpl_from_attr_substr(vpt, name, request_def, list_def);
+	slen = tmpl_from_attr_substr(vpt, name, request_def, list_def, allow_unknown);
 	if (slen <= 0) return slen;
 	if (name[slen] != '\0') {
 		fr_strerror_printf("Unexpected text after attribute name");
@@ -910,17 +901,19 @@ ssize_t tmpl_from_attr_str(value_pair_tmpl_t *vpt, char const *name, request_ref
  * @param[in] request_def The default request to insert unqualified
  *	attributes into.
  * @param[in] list_def The default list to insert unqualified attributes into.
+ * @param[in] allow_unknown If true, we don't generate a parse error on unknown
+ *	attributes, and instead set type to TMPL_TYPE_ATTR_UNKNOWN.
  * @return <= 0 on error (offset as negative integer), > 0 on success (number of bytes parsed)
  */
 ssize_t tmpl_afrom_attr_str(TALLOC_CTX *ctx, value_pair_tmpl_t **out, char const *name,
-			    request_refs_t request_def, pair_lists_t list_def)
+			    request_refs_t request_def, pair_lists_t list_def, bool allow_unknown)
 {
 	ssize_t slen;
 	value_pair_tmpl_t *vpt;
 
 	MEM(vpt = talloc(ctx, value_pair_tmpl_t)); /* tmpl_from_attr_substr zeros it */
 
-	slen = tmpl_from_attr_substr(vpt, name, request_def, list_def);
+	slen = tmpl_from_attr_substr(vpt, name, request_def, list_def, allow_unknown);
 	if (slen <= 0) {
 		tmpl_free(&vpt);
 		return slen;
@@ -1199,7 +1192,7 @@ ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, value_pair_tmpl_t **out, char const *nam
 		 *	If we can parse it as an attribute, it's an attribute.
 		 *	Otherwise, treat it as a literal.
 		 */
-		slen = tmpl_afrom_attr_str(ctx, &vpt, name, request_def, list_def);
+		slen = tmpl_afrom_attr_str(ctx, &vpt, name, request_def, list_def, (name[0] == '&'));
 		if ((name[0] == '&') && (slen <= 0)) return slen;
 		if (slen > 0) break;
 		/* FALL-THROUGH */

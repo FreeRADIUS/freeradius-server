@@ -484,7 +484,11 @@ static ssize_t cache_xlat(void *instance, REQUEST *request,
 	size_t			len;
 	int			ret = 0;
 
-	list = radius_list_name(&p, PAIR_LIST_REQUEST);
+	p += radius_list_name(&list, p, PAIR_LIST_REQUEST);
+	if (list == PAIR_LIST_UNKNOWN) {
+		REDEBUG("Unknown list qualifier in \"%s\"", fmt);
+		return -1;
+	}
 
 	target = dict_attrbyname(p);
 	if (!target) {
@@ -513,11 +517,6 @@ static ssize_t cache_xlat(void *instance, REQUEST *request,
 	case PAIR_LIST_CONTROL:
 		vps = c->control;
 		break;
-
-	case PAIR_LIST_UNKNOWN:
-		PTHREAD_MUTEX_UNLOCK(&inst->cache_mutex);
-		REDEBUG("Unknown list qualifier in \"%s\"", fmt);
-		return -1;
 
 	default:
 		PTHREAD_MUTEX_UNLOCK(&inst->cache_mutex);
