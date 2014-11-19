@@ -3000,6 +3000,10 @@ int dict_unknown_from_substr(DICT_ATTR *da, char const **name)
 
 		return -1;
 	}
+	if (len == 0) {
+		fr_strerror_printf("Invalid attribute name");
+		return -1;
+	}
 	strlcpy(buffer, *name, len + 1);
 
 	if (dict_unknown_from_str(da, buffer) < 0) return -1;
