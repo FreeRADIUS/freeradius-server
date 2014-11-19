@@ -468,30 +468,37 @@ ssize_t value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 				c = '\r';
 				cp++;
 				break;
+
 			case 'n':
 				c = '\n';
 				cp++;
 				break;
+
 			case 't':
 				c = '\t';
 				cp++;
 				break;
+
 			case '"':
 				c = '"';
 				cp++;
 				break;
+
 			case '\'':
 				c = '\'';
 				cp++;
 				break;
+
 			case '\\':
 				c = '\\';
 				cp++;
 				break;
+
 			case '`':
 				c = '`';
 				cp++;
 				break;
+
 			case '\0':
 				c = '\\'; /* no cp++ */
 				break;
@@ -505,13 +512,14 @@ ssize_t value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 				    (sscanf(cp, "%3o", &x) == 1)) {
 					c = x;
 					cp += 3;
+				}
 
-				} else if (cp[0]) {
-					/*
-					 *	\p --> p
-					 */
-					c = *cp++;
-				} /* else at EOL \ --> \ */
+				/*
+				 *	Else It's not a recognised escape sequence DON'T
+				 *	consume the backslash. This is identical
+				 *	behaviour to bash and most other things that
+				 *	use backslash escaping.
+				 */
 			}
 			*p++ = c;
 			p_len++;
