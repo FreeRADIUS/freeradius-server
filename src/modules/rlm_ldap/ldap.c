@@ -969,13 +969,22 @@ char const *rlm_ldap_find_user(ldap_instance_t const *inst, REQUEST *request, ld
 		goto finish;
 	}
 
+	/*
+	 *	We can't use pairmake here to copy the value into the
+	 *	attribute, as the dn must be copied into the attribute
+	 *	verbatim (without de-escaping).
+	 *
+	 *	Special chars are pre-escaped by libldap, and because
+	 *	we pass the string back to libldap we must not alter it.
+	 */
 	RDEBUG("User object found at DN \"%s\"", dn);
-	vp = pairmake(request, &request->config_items, "LDAP-UserDN", dn, T_OP_EQ);
+	vp = pairmake(request, &request->config_items, "LDAP-UserDN", NULL, T_OP_EQ);
 	if (vp) {
+		pairstrcpy(vp, dn);
 		*rcode = RLM_MODULE_OK;
 	}
 
-	finish:
+finish:
 	ldap_memfree(dn);
 
 	if ((freeit || (*rcode != RLM_MODULE_OK)) && *result) {
