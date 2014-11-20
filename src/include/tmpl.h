@@ -187,6 +187,8 @@ void tmpl_verify(char const *file, int line, value_pair_tmpl_t const *vpt);
 /* Attribute qualifier parsing */
 VALUE_PAIR		**radius_list(REQUEST *request, pair_lists_t list);
 
+RADIUS_PACKET		*radius_packet(REQUEST *request, pair_lists_t list_name);
+
 TALLOC_CTX		*radius_list_ctx(REQUEST *request, pair_lists_t list_name);
 
 size_t			radius_list_name(pair_lists_t *out, char const *name, pair_lists_t default_list);

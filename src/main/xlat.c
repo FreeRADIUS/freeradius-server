@@ -1652,117 +1652,68 @@ static ssize_t xlat_tokenize_request(REQUEST *request, char const *fmt, xlat_exp
 }
 
 
-static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, pair_lists_t list, DICT_ATTR const *da,
-			int8_t tag, int num, bool return_null)
+static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, value_pair_tmpl_t const *vpt, bool return_null)
 {
-	VALUE_PAIR *vp = NULL, *vps = NULL, *myvp = NULL;
+	VALUE_PAIR *vp = NULL, *virtual = NULL;
 	RADIUS_PACKET *packet = NULL;
 	DICT_VALUE *dv;
 	char *ret = NULL;
+	int err;
+
+	vp_cursor_t cursor;
 
 	/*
-	 *	Arg.  Too much abstraction is annoying.
-	 */
-	switch (list) {
-	default:
-		if (return_null) return NULL;
-		return vp_aprints_type(ctx, da->type);
-
-	case PAIR_LIST_CONTROL:
-		vps = request->config_items;
-		break;
-
-	case PAIR_LIST_REQUEST:
-		packet = request->packet;
-		if (packet) vps = packet->vps;
-		break;
-
-	case PAIR_LIST_REPLY:
-		packet = request->reply;
-		if (packet) vps = packet->vps;
-		break;
-
-#ifdef WITH_PROXY
-	case PAIR_LIST_PROXY_REQUEST:
-		packet = request->proxy;
-		if (packet) vps = packet->vps;
-		break;
-
-	case PAIR_LIST_PROXY_REPLY:
-		packet = request->proxy_reply;
-		if (packet) vps = packet->vps;
-		break;
-#endif
-
-#ifdef WITH_COA
-	case PAIR_LIST_COA:
-	case PAIR_LIST_DM:
-		if (request->coa) packet = request->coa->packet;
-		if (packet) vps = packet->vps;
-		break;
-
-	case PAIR_LIST_COA_REPLY:
-	case PAIR_LIST_DM_REPLY:
-		if (request->coa) packet = request->coa->reply;
-		if (packet) vps = packet->vps;
-		break;
-
-#endif
-	}
-
-	/*
-	 *	Counting attributes doesn't require us to search for them
-	 */
-	if (!da->flags.virtual && (num == NUM_COUNT)) goto do_print;
-
-	/*
-	 *	Now we have the list, check to see if we have an attribute in
-	 *	the request, if we do, it takes precedence over the virtual
-	 *	attributes.
+	 *	See if we're dealing with an attribute in the request
 	 *
-	 *	This allows users to manipulate virtual attributes as if they
-	 *	were real ones.
+	 *	This allows users to manipulate virtual attributes as if
+	 *	they were real ones.
 	 */
-	vp = pair_find_by_da(vps, da, tag);
+	vp = tmpl_cursor_init(&err, &cursor, request, vpt);
 	if (vp) goto do_print;
 
 	/*
-	 *	We didn't find the VP in a list.  It MIGHT be a
-	 *	virtual one, in which case we do lots more checks
-	 *	below.  However, if we're looking for a normal
-	 *	attribute, it must exist, and therefore not finding it
-	 *	means we return NULL.
+	 *	We didn't find the VP in a list.
+	 *	If it's not a virtual one, and we're not meant to
+	 *	be counting it, return.
 	 */
-	if (!da->flags.virtual) return NULL;
+	if (!vpt->tmpl_da->flags.virtual) {
+		if (vpt->tmpl_num == NUM_COUNT) goto do_print;
+		return NULL;
+	}
+
+	/*
+	 *	Switch out the request to the one specified by the template
+	 */
+	if (radius_request(&request, vpt->tmpl_request) < 0) return NULL;
 
 	/*
 	 *	Some non-packet expansions
 	 */
-	switch (da->attr) {
+	switch (vpt->tmpl_da->attr) {
 	default:
 		break;		/* ignore them */
 
 	case PW_CLIENT_SHORTNAME:
-		if (num == NUM_COUNT) goto count;
+		if (vpt->tmpl_num == NUM_COUNT) goto count_virtual;
 		if (request->client && request->client->shortname) {
 			return talloc_typed_strdup(ctx, request->client->shortname);
 		}
 		return talloc_typed_strdup(ctx, "<UNKNOWN-CLIENT>");
 
 	case PW_REQUEST_PROCESSING_STAGE:
-		if (num == NUM_COUNT) goto count;
+		if (vpt->tmpl_num == NUM_COUNT) goto count_virtual;
 		if (request->component) {
 			return talloc_typed_strdup(ctx, request->component);
 		}
 		return talloc_typed_strdup(ctx, "server_core");
 
 	case PW_VIRTUAL_SERVER:
-		if (num == NUM_COUNT) goto count;
+		if (vpt->tmpl_num == NUM_COUNT) goto count_virtual;
 		if (!request->server) return NULL;
 		return talloc_typed_strdup(ctx, request->server);
 
 	case PW_MODULE_RETURN_CODE:
-		if (num == NUM_COUNT) goto count;
+		if (vpt->tmpl_num == NUM_COUNT) goto count_virtual;
 		if (!request->rcode) return NULL;
 		return talloc_typed_strdup(ctx, fr_int2str(modreturn_table, request->rcode, ""));
 	}
@@ -1772,13 +1723,14 @@ static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, pair_lists_t list, DI
 	 *	If there's no packet, we can't print any attribute
 	 *	referencing it.
 	 */
+	packet = radius_packet(request, vpt->tmpl_list);
 	if (!packet) {
 		if (return_null) return NULL;
-		return vp_aprints_type(ctx, da->type);
+		return vp_aprints_type(ctx, vpt->tmpl_da->type);
 	}
 
 	vp = NULL;
-	switch (da->attr) {
+	switch (vpt->tmpl_da->attr) {
 	default:
 		break;
 
@@ -1810,66 +1762,66 @@ static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, pair_lists_t list, DI
 	 *	various VP functions.
 	 */
 	case PW_PACKET_AUTHENTICATION_VECTOR:
-		myvp = pairalloc(ctx, da);
-		pairmemcpy(myvp, packet->vector, sizeof(packet->vector));
-		vp = myvp;
+		virtual = pairalloc(ctx, vpt->tmpl_da);
+		pairmemcpy(virtual, packet->vector, sizeof(packet->vector));
+		vp = virtual;
 		break;
 
 	case PW_CLIENT_IP_ADDRESS:
 	case PW_PACKET_SRC_IP_ADDRESS:
 		if (packet->src_ipaddr.af == AF_INET) {
-			myvp = pairalloc(ctx, da);
-			myvp->vp_ipaddr = packet->src_ipaddr.ipaddr.ip4addr.s_addr;
-			vp = myvp;
+			virtual = pairalloc(ctx, vpt->tmpl_da);
+			virtual->vp_ipaddr = packet->src_ipaddr.ipaddr.ip4addr.s_addr;
+			vp = virtual;
 		}
 		break;
 
 	case PW_PACKET_DST_IP_ADDRESS:
 		if (packet->dst_ipaddr.af == AF_INET) {
-			myvp = pairalloc(ctx, da);
-			myvp->vp_ipaddr = packet->dst_ipaddr.ipaddr.ip4addr.s_addr;
-			vp = myvp;
+			virtual = pairalloc(ctx, vpt->tmpl_da);
+			virtual->vp_ipaddr = packet->dst_ipaddr.ipaddr.ip4addr.s_addr;
+			vp = virtual;
 		}
 		break;
 
 	case PW_PACKET_SRC_IPV6_ADDRESS:
 		if (packet->src_ipaddr.af == AF_INET6) {
-			myvp = pairalloc(ctx, da);
-			memcpy(&myvp->vp_ipv6addr,
+			virtual = pairalloc(ctx, vpt->tmpl_da);
+			memcpy(&virtual->vp_ipv6addr,
 			       &packet->src_ipaddr.ipaddr.ip6addr,
 			       sizeof(packet->src_ipaddr.ipaddr.ip6addr));
-			vp = myvp;
+			vp = virtual;
 		}
 		break;
 
 	case PW_PACKET_DST_IPV6_ADDRESS:
 		if (packet->dst_ipaddr.af == AF_INET6) {
-			myvp = pairalloc(ctx, da);
-			memcpy(&myvp->vp_ipv6addr,
+			virtual = pairalloc(ctx, vpt->tmpl_da);
+			memcpy(&virtual->vp_ipv6addr,
 			       &packet->dst_ipaddr.ipaddr.ip6addr,
 			       sizeof(packet->dst_ipaddr.ipaddr.ip6addr));
-			vp = myvp;
+			vp = virtual;
 		}
 		break;
 
 	case PW_PACKET_SRC_PORT:
-		myvp = pairalloc(ctx, da);
-		myvp->vp_integer = packet->src_port;
-		vp = myvp;
+		virtual = pairalloc(ctx, vpt->tmpl_da);
+		virtual->vp_integer = packet->src_port;
+		vp = virtual;
 		break;
 
 	case PW_PACKET_DST_PORT:
-		myvp = pairalloc(ctx, da);
-		myvp->vp_integer = packet->dst_port;
-		vp = myvp;
+		virtual = pairalloc(ctx, vpt->tmpl_da);
+		virtual->vp_integer = packet->dst_port;
+		vp = virtual;
 		break;
 	}
 
 	/*
 	 *	Fake various operations for virtual attributes.
 	 */
-	if (myvp) {
-		if (num != NUM_ANY) switch (num) {
+	if (virtual) {
+		if (vpt->tmpl_num != NUM_ANY) switch (vpt->tmpl_num) {
 		/*
 		 *	[n] is NULL (we only have [0])
 		 */
@@ -1885,7 +1837,7 @@ static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, pair_lists_t list, DI
 		 *	[#] means 1 (as there's only one)
 		 */
 		case NUM_COUNT:
-		count:
+		count_virtual:
 			ret = talloc_strdup(ctx, "1");
 			goto finish;
 
@@ -1899,65 +1851,62 @@ static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, pair_lists_t list, DI
 	}
 
 do_print:
+	switch (vpt->tmpl_num) {
 	/*
-	 *	We want the N'th VP.
+	 *	Return a count of the VPs.
 	 */
-	if (num != NUM_ANY) {
+	case NUM_COUNT:
+	{
 		int count = 0;
-		vp_cursor_t cursor;
 
-		switch (num) {
-		/*
-		 *	Return a count of the VPs.
-		 */
-		case NUM_COUNT:
-			fr_cursor_init(&cursor, &vps);
-			while (fr_cursor_next_by_da(&cursor, da, tag) != NULL) count++;
+		fr_cursor_first(&cursor);
+		while (fr_cursor_next_by_da(&cursor, vpt->tmpl_da, vpt->tmpl_tag)) count++;
 
-			return talloc_typed_asprintf(ctx, "%d", count);
+		return talloc_typed_asprintf(ctx, "%d", count);
+	}
 
-		/*
-		 *	Ugly, but working.
-		 */
-		case NUM_ALL:
-		{
-			char *p, *q;
 
-			(void) fr_cursor_init(&cursor, &vps);
-			vp = fr_cursor_next_by_da(&cursor, da, tag);
-			if (!vp) return NULL;
+	/*
+	 *	Concatenate all values together,
+	 *	separated by commas.
+	 */
+	case NUM_ALL:
+	{
+		char *p, *q;
 
-			p = vp_aprints_value(ctx, vp, '"');
-			if (!p) return NULL;
-			while ((vp = fr_cursor_next_by_da(&cursor, da, tag)) != NULL) {
-				q = vp_aprints_value(ctx, vp, '"');
-				if (!q) return NULL;
-				p = talloc_strdup_append(p, ",");
-				p = talloc_strdup_append(p, q);
-			}
+		if (!fr_cursor_current(&cursor)) return NULL;
+		p = vp_aprints_value(ctx, vp, '"');
+		if (!p) return NULL;
 
-			return p;
+		while ((vp = tmpl_cursor_next(&cursor, vpt)) != NULL) {
+			q = vp_aprints_value(ctx, vp, '"');
+			if (!q) return NULL;
+			p = talloc_strdup_append(p, ",");
+			p = talloc_strdup_append(p, q);
 		}
 
-		default:
-			fr_cursor_init(&cursor, &vps);
-			while ((vp = fr_cursor_next_by_da(&cursor, da, tag)) != NULL) {
-				if (count++ == num) break;
-			}
-			break;
-		}
+		return p;
+	}
+
+	default:
+		/*
+		 *	The cursor was set to the correct
+		 *	position above by tmpl_cursor_init.
+		 */
+		vp = fr_cursor_current(&cursor);
+		break;
 	}
 
 	if (!vp) {
 		if (return_null) return NULL;
-		return vp_aprints_type(ctx, da->type);
+		return vp_aprints_type(ctx, vpt->tmpl_da->type);
 	}
 
 print:
 	ret = vp_aprints_value(ctx, vp, '"');
 
 finish:
-	talloc_free(myvp);
+	talloc_free(virtual);
 	return ret;
 }
 
@@ -1972,7 +1921,6 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 	char *str = NULL, *child;
 	char *q;
 	char const *p;
-	REQUEST *ref;
 
 	XLAT_DEBUG("%.*sxlat aprint %d", lvl, xlat_spaces, node->type);
 
@@ -2089,15 +2037,11 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 
 	case XLAT_ATTRIBUTE:
 		XLAT_DEBUG("xlat_aprint ATTRIBUTE");
-		ref = request;
-		if (radius_request(&ref, node->attr.tmpl_request) < 0) {
-			return NULL;
-		}
 
 		/*
 		 *	Some attributes are virtual <sigh>
 		 */
-		str = xlat_getvp(ctx, ref, node->attr.tmpl_list, node->attr.tmpl_da, node->attr.tmpl_tag, node->attr.tmpl_num, true);
+		str = xlat_getvp(ctx, request, &node->attr, true);
 		if (str) {
 			XLAT_DEBUG("EXPAND attr %s", node->attr.tmpl_da->name);
 			XLAT_DEBUG("       ---> %s", str);
