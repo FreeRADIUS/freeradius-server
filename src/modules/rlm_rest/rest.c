@@ -44,7 +44,7 @@ RCSID("$Id$")
  * @see http_body_type_t
  */
 const http_body_type_t http_body_type_supported[HTTP_BODY_NUM_ENTRIES] = {
-	HTTP_BODY_UNKNOWN,		// HTTP_BODY_UNKOWN
+	HTTP_BODY_UNKNOWN,		// HTTP_BODY_UNKNOWN
 	HTTP_BODY_UNSUPPORTED,		// HTTP_BODY_UNSUPPORTED
 	HTTP_BODY_UNSUPPORTED,  	// HTTP_BODY_UNAVAILABLE
 	HTTP_BODY_UNSUPPORTED,		// HTTP_BODY_INVALID
@@ -737,7 +737,7 @@ static size_t rest_encode_json(void *out, size_t size, size_t nmemb, void *userd
 		if (ctx->state == READ_STATE_ATTR_CONT) {
 			for (;;) {
 				len = vp_prints_value_json(p, freespace, vp);
-				if (is_truncated(len, freespace)) goto no_space;
+				if (len+2 >= freespace) goto no_space;
 
 				/*
 				 *  Show actual value length minus quotes
