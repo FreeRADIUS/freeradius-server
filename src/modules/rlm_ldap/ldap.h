@@ -314,6 +314,8 @@ size_t rlm_ldap_escape_func(UNUSED REQUEST *request, char *out, size_t outlen, c
 
 int rlm_ldap_is_dn(char const *str);
 
+size_t rlm_ldap_normalise_dn(char *out, char const *in);
+
 ssize_t rlm_ldap_xlat_filter(REQUEST *request, char const **sub, size_t sublen, char *out, size_t outlen);
 
 ldap_rcode_t rlm_ldap_bind(ldap_instance_t const *inst, REQUEST *request, ldap_handle_t **pconn, char const *dn,

@@ -137,13 +137,22 @@ static rlm_rcode_t rlm_ldap_group_name2dn(ldap_instance_t const *inst, REQUEST *
 
 	do {
 		*dn = ldap_get_dn((*pconn)->handle, entry);
+		if (!*dn) {
+			ldap_get_option((*pconn)->handle, LDAP_OPT_RESULT_CODE, &ldap_errno);
+			REDEBUG("Retrieving object DN from entry failed: %s", ldap_err2string(ldap_errno));
+
+			rcode = RLM_MODULE_FAIL;
+			goto finish;
+		}
+		rlm_ldap_normalise_dn(*dn, *dn);
+
 		RDEBUG("Got group DN \"%s\"", *dn);
 		dn++;
 	} while((entry = ldap_next_entry((*pconn)->handle, entry)));
 
 	*dn = NULL;
 
-	finish:
+finish:
 	talloc_free(filter);
 	if (result) {
 		ldap_msgfree(result);
@@ -430,6 +439,14 @@ rlm_rcode_t rlm_ldap_cacheable_groupobj(ldap_instance_t const *inst, REQUEST *re
 	do {
 		if (inst->cacheable_group_dn) {
 			dn = ldap_get_dn((*pconn)->handle, entry);
+			if (!dn) {
+				ldap_get_option((*pconn)->handle, LDAP_OPT_RESULT_CODE, &ldap_errno);
+				REDEBUG("Retrieving object DN from entry failed: %s", ldap_err2string(ldap_errno));
+
+				goto finish;
+			}
+			rlm_ldap_normalise_dn(dn, dn);
+
 			MEM(vp = pairmake_config(inst->cache_da->name, NULL, T_OP_ADD));
 			pairstrcpy(vp, dn);
 

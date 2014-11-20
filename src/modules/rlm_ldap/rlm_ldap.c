@@ -379,6 +379,13 @@ static int rlm_ldap_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR
 	 *	Check if we can do cached membership verification
 	 */
 	check_is_dn = rlm_ldap_is_dn(check->vp_strvalue);
+	if (check_is_dn) {
+		char *norm;
+
+		MEM(norm = talloc_memdup(check, check->vp_strvalue, talloc_array_length(check->vp_strvalue)));
+		rlm_ldap_normalise_dn(norm, check->vp_strvalue);
+		pairstrsteal(check, norm);
+	}
 	if ((check_is_dn && inst->cacheable_group_dn) || (!check_is_dn && inst->cacheable_group_name)) {
 		switch (rlm_ldap_check_cached(inst, request, check)) {
 		case RLM_MODULE_NOTFOUND:
