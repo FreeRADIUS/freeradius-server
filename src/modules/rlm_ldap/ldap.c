@@ -101,6 +101,77 @@ int rlm_ldap_is_dn(char const *str)
 	return strrchr(str, ',') == NULL ? false : true;
 }
 
+/** Normalise escape sequences in a DN
+ *
+ * Characters in a DN can either be escaped as
+ * @verbatim \<hex><hex> @endverbatim or @verbatim \<special> @endverbatim
+ *
+ * The LDAP directory chooses how characters are escaped, which can make
+ * local comparisons of DNs difficult.
+ *
+ * Here we search for hex sequences that match special chars, and convert
+ * them to the @verbatim \<special> @endverbatim form.
+ *
+ * @note the resulting output string will only ever be shorter than the
+ *       input, so it's fine to use the same buffer for both out and in.
+ *
+ * @param out Where to write the normalised DN.
+ * @param in The input DN.
+ * @return The number of bytes written to out.
+ */
+size_t rlm_ldap_normalise_dn(char *out, char const *in)
+{
+	char const *p;
+	char *o = out;
+
+	for (p = in; *p != '\0'; p++) {
+		if (p[0] == '\\') {
+			char c;
+
+			/*
+			 *	Double backslashes get processed specially
+			 */
+			if (p[1] == '\\') {
+				p += 1;
+				*o++ = p[0];
+				*o++ = p[1];
+				continue;
+			}
+
+			/*
+			 *	Hex encodings that have an alternative
+			 *	special encoding, get rewritten to the
+			 *	special encoding.
+			 */
+			if (fr_hex2bin((uint8_t *) &c, 1, p + 1, 2) == 1) {
+				switch (c) {
+				case ' ':
+				case '#':
+				case '=':
+				case '"':
+				case '+':
+				case ',':
+				case ';':
+				case '<':
+				case '>':
+				case '\'':
+					*o++ = '\\';
+					*o++ = c;
+					p += 2;
+					continue;
+
+				default:
+					break;
+				}
+			}
+		}
+		*o++ = *p;
+	}
+	*o = '\0';
+
+	return o - out;
+}
+
 /** Find the place at which the two DN strings diverge
  *
  * Returns the length of the non matching string in full.
@@ -962,12 +1033,11 @@ char const *rlm_ldap_find_user(ldap_instance_t const *inst, REQUEST *request, ld
 	dn = ldap_get_dn((*pconn)->handle, entry);
 	if (!dn) {
 		ldap_get_option((*pconn)->handle, LDAP_OPT_RESULT_CODE, &ldap_errno);
-
-		REDEBUG("Retrieving object DN from entry failed: %s",
-			ldap_err2string(ldap_errno));
+		REDEBUG("Retrieving object DN from entry failed: %s", ldap_err2string(ldap_errno));
 
 		goto finish;
 	}
+	rlm_ldap_normalise_dn(dn, dn);
 
 	/*
 	 *	We can't use pairmake here to copy the value into the

@@ -216,6 +216,16 @@ int rlm_ldap_client_load(ldap_instance_t const *inst, CONF_SECTION *cs)
 		char **value;
 
 		id = dn = ldap_get_dn(conn->handle, entry);
+		if (!dn) {
+			int ldap_errno;
+
+			ldap_get_option(conn->handle, LDAP_OPT_RESULT_CODE, &ldap_errno);
+			LDAP_ERR("Retrieving object DN from entry failed: %s", ldap_err2string(ldap_errno));
+
+			goto finish;
+		}
+		rlm_ldap_normalise_dn(dn, dn);
+
 		cp = cf_pair_find(cs, "identifier");
 		if (cp) {
 			value = ldap_get_values(conn->handle, entry, cf_pair_value(cp));
