@@ -1652,13 +1652,16 @@ static ssize_t xlat_tokenize_request(REQUEST *request, char const *fmt, xlat_exp
 }
 
 
-static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, value_pair_tmpl_t const *vpt, bool return_null)
+static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, value_pair_tmpl_t const *vpt,
+			bool escape, bool return_null)
 {
 	VALUE_PAIR *vp = NULL, *virtual = NULL;
 	RADIUS_PACKET *packet = NULL;
 	DICT_VALUE *dv;
 	char *ret = NULL;
 	int err;
+
+	char quote = escape ? '"' : '\0';
 
 	vp_cursor_t cursor;
 
@@ -1875,11 +1878,11 @@ do_print:
 		char *p, *q;
 
 		if (!fr_cursor_current(&cursor)) return NULL;
-		p = vp_aprints_value(ctx, vp, '"');
+		p = vp_aprints_value(ctx, vp, quote);
 		if (!p) return NULL;
 
 		while ((vp = tmpl_cursor_next(&cursor, vpt)) != NULL) {
-			q = vp_aprints_value(ctx, vp, '"');
+			q = vp_aprints_value(ctx, vp, quote);
 			if (!q) return NULL;
 			p = talloc_strdup_append(p, ",");
 			p = talloc_strdup_append(p, q);
@@ -1903,7 +1906,7 @@ do_print:
 	}
 
 print:
-	ret = vp_aprints_value(ctx, vp, '"');
+	ret = vp_aprints_value(ctx, vp, quote);
 
 finish:
 	talloc_free(virtual);
@@ -2041,7 +2044,7 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 		/*
 		 *	Some attributes are virtual <sigh>
 		 */
-		str = xlat_getvp(ctx, request, &node->attr, true);
+		str = xlat_getvp(ctx, request, &node->attr, escape ? false : true, true);
 		if (str) {
 			XLAT_DEBUG("EXPAND attr %s", node->attr.tmpl_da->name);
 			XLAT_DEBUG("       ---> %s", str);
