@@ -156,8 +156,8 @@ VALUE_PAIR **radius_list(REQUEST *request, pair_lists_t list)
 	if (!request) return NULL;
 
 	switch (list) {
+	/* Don't add default */
 	case PAIR_LIST_UNKNOWN:
-	default:
 		break;
 
 	case PAIR_LIST_REQUEST:
@@ -220,6 +220,50 @@ VALUE_PAIR **radius_list(REQUEST *request, pair_lists_t list)
 	return NULL;
 }
 
+/** Resolve a list name to the packet that parents the vps
+ *
+ * Returns the packet for an attribute list.
+ * @param[in] request containing the target lists.
+ * @param[in] list_name pair_list_t value to resolve to RADIUS_PACKET.
+ * @return a RADIUS_PACKET on success, else NULL
+ */
+RADIUS_PACKET *radius_packet(REQUEST *request, pair_lists_t list_name)
+{
+	switch (list_name) {
+	/* Don't add default */
+	case PAIR_LIST_STATE:
+	case PAIR_LIST_CONTROL:
+	case PAIR_LIST_UNKNOWN:
+		return NULL;
+
+	case PAIR_LIST_REQUEST:
+		return request->packet;
+
+	case PAIR_LIST_REPLY:
+		return request->reply;
+
+#ifdef WITH_PROXY
+	case PAIR_LIST_PROXY_REQUEST:
+		return request->proxy;
+
+	case PAIR_LIST_PROXY_REPLY:
+		return request->proxy_reply;
+#endif
+
+#ifdef WITH_COA
+	case PAIR_LIST_COA:
+	case PAIR_LIST_DM:
+		return request->coa->packet;
+
+	case PAIR_LIST_COA_REPLY:
+	case PAIR_LIST_DM_REPLY:
+		return request->coa->reply;
+#endif
+	}
+
+	return NULL;
+}
+
 /** Get the correct TALLOC ctx for a list
  *
  * Returns the talloc context associated with an attribute list.
@@ -278,8 +322,8 @@ TALLOC_CTX *radius_list_ctx(REQUEST *request, pair_lists_t list_name)
 		if (request->coa->proxy->code != PW_CODE_DISCONNECT_REQUEST) return NULL;
 		return request->coa->proxy_reply;
 #endif
-
-	default:
+	/* Don't add default */
+	case PAIR_LIST_UNKNOWN:
 		break;
 	}
 
