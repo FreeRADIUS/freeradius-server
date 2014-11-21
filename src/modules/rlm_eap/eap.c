@@ -627,7 +627,8 @@ rlm_rcode_t eap_compose(eap_handler_t *handler)
 		 *	we do so WITHOUT setting a reply code, as the
 		 *	request is being proxied.
 		 */
-		if (request->log.lvl & RAD_REQUEST_OPTION_PROXY_EAP) {
+		if (request->parent &&
+		    (request->packet->offset & RAD_REQUEST_OPTION_PROXY_EAP)) {
 			return RLM_MODULE_HANDLED;
 		}
 
