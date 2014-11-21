@@ -3014,7 +3014,7 @@ static bool pass2_xlat_compile(CONF_ITEM const *ci, value_pair_tmpl_t **pvpt, bo
 	if (convert) {
 		value_pair_tmpl_t *attr;
 
-		attr = radius_xlat2tmpl(talloc_parent(vpt), head);
+		attr = xlat_to_tmpl_attr(talloc_parent(vpt), head);
 		if (attr) {
 			/*
 			 *	If it's a virtual attribute, leave it
@@ -3131,12 +3131,33 @@ static bool pass2_fixup_undefined(CONF_ITEM const *ci, value_pair_tmpl_t *vpt)
 	return true;
 }
 
+/** Convert an &attr[*] reference to an XLAT
+ *
+ * @param vpt to convert
+ * @return true if conversion was successful, else false.
+ */
+static bool pass2_fixup_attr_count(value_pair_tmpl_t *vpt)
+{
+	xlat_exp_t *node;
+
+	rad_assert(vpt->type == TMPL_TYPE_ATTR);
+	rad_assert(vpt->tmpl_num == NUM_COUNT);
+
+	node = xlat_from_tmpl_attr(vpt, vpt);
+	if (!node) return false;
+
+	memset(&vpt->data, 0, sizeof(vpt->data));
+	vpt->type = TMPL_TYPE_XLAT_STRUCT;
+	vpt->data.xlat = node;
+
+	return true;
+}
+
 static bool pass2_callback(UNUSED void *ctx, fr_cond_t *c)
 {
 	value_pair_map_t *map;
 
 	if (c->type == COND_TYPE_EXISTS) {
-
 		if (c->data.vpt->type == TMPL_TYPE_XLAT) {
 			return pass2_xlat_compile(c->ci, &c->data.vpt, true, NULL);
 		}
@@ -3150,6 +3171,10 @@ static bool pass2_callback(UNUSED void *ctx, fr_cond_t *c)
 		if (c->pass2_fixup == PASS2_FIXUP_ATTR) {
 			if (!pass2_fixup_undefined(c->ci, c->data.vpt)) return false;
 			c->pass2_fixup = PASS2_FIXUP_NONE;
+		}
+
+		if ((c->data.vpt->type == TMPL_TYPE_ATTR) && (c->data.vpt->tmpl_num == NUM_COUNT)) {
+			return pass2_fixup_attr_count(c->data.vpt);
 		}
 		return true;
 	}
@@ -3209,6 +3234,13 @@ check_paircmp:
 	 */
 	rad_assert((c->pass2_fixup == PASS2_FIXUP_NONE) ||
 		   (c->pass2_fixup == PASS2_PAIRCOMPARE));
+
+	if ((map->lhs->type == TMPL_TYPE_ATTR) && (map->lhs->tmpl_num == NUM_COUNT)) {
+		if (!pass2_fixup_attr_count(map->lhs)) return false;
+	}
+	if ((map->rhs->type == TMPL_TYPE_ATTR) && (map->rhs->tmpl_num == NUM_COUNT)) {
+		if (!pass2_fixup_attr_count(map->rhs)) return false;
+	}
 
 	/*
 	 *	Precompile xlat's

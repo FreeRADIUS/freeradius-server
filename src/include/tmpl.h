@@ -74,11 +74,11 @@ typedef enum tmpl_type {
 	TMPL_TYPE_LITERAL,		//!< Is a literal string.
 	TMPL_TYPE_XLAT,			//!< Needs to be expanded.
 	TMPL_TYPE_ATTR,			//!< Is a dictionary attribute.
-	TMPL_TYPE_ATTR_UNDEFINED,		//!< Is an unknown dictionary attribute.
+	TMPL_TYPE_ATTR_UNDEFINED,	//!< Is an attribute not found in the global dictionary.
 	TMPL_TYPE_LIST,			//!< Is a list.
 	TMPL_TYPE_REGEX,		//!< Is a regex.
 	TMPL_TYPE_EXEC,			//!< Needs to be executed.
-	TMPL_TYPE_DATA,			//!< is a value_data_t
+	TMPL_TYPE_DATA,			//!< Is a value_data_t
 	TMPL_TYPE_XLAT_STRUCT,	      	//!< pre-parsed xlat_exp_t
 	TMPL_TYPE_REGEX_STRUCT,	      	//!< pre-parsed regex_t
 	TMPL_TYPE_NULL			//!< VPT has no value
