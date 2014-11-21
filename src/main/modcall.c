@@ -3124,7 +3124,7 @@ static bool pass2_regex_compile(CONF_ITEM const *ci, value_pair_tmpl_t *vpt)
 }
 #endif
 
-static bool pass2_fixup_unknown(CONF_ITEM const *ci, value_pair_tmpl_t *vpt)
+static bool pass2_fixup_undefined(CONF_ITEM const *ci, value_pair_tmpl_t *vpt)
 {
 	DICT_ATTR const *da;
 
@@ -3158,7 +3158,7 @@ static bool pass2_callback(UNUSED void *ctx, fr_cond_t *c)
 		 *	where Foo-Bar is defined by a module.
 		 */
 		if (c->pass2_fixup == PASS2_FIXUP_ATTR) {
-			if (!pass2_fixup_unknown(c->ci, c->data.vpt)) return false;
+			if (!pass2_fixup_undefined(c->ci, c->data.vpt)) return false;
 			c->pass2_fixup = PASS2_FIXUP_NONE;
 		}
 		return true;
@@ -3203,11 +3203,11 @@ static bool pass2_callback(UNUSED void *ctx, fr_cond_t *c)
 
 	if (c->pass2_fixup == PASS2_FIXUP_ATTR) {
 		if (map->lhs->type == TMPL_TYPE_ATTR_UNDEFINED) {
-			if (!pass2_fixup_unknown(map->ci, map->lhs)) return false;
+			if (!pass2_fixup_undefined(map->ci, map->lhs)) return false;
 		}
 
 		if (map->rhs->type == TMPL_TYPE_ATTR_UNDEFINED) {
-			if (!pass2_fixup_unknown(map->ci, map->rhs)) return false;
+			if (!pass2_fixup_undefined(map->ci, map->rhs)) return false;
 		}
 
 		c->pass2_fixup = PASS2_FIXUP_NONE;
