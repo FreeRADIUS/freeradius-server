@@ -676,7 +676,7 @@ static size_t rest_encode_json(void *out, size_t size, size_t nmemb, void *userd
 	char const *type;
 
 	size_t len = 0;
-	size_t freespace = (size * nmemb) - 1;
+	size_t freespace = (size * nmemb) - 1;		/* account for the \0 byte here */
 
 	rad_assert(freespace > 0);
 
@@ -736,8 +736,25 @@ static size_t rest_encode_json(void *out, size_t size, size_t nmemb, void *userd
 
 		if (ctx->state == READ_STATE_ATTR_CONT) {
 			for (;;) {
-				len = vp_prints_value_json(p, freespace, vp);
-				if (is_truncated(len, freespace)) goto no_space;
+				size_t attr_space;
+
+				/*
+				 *  We need at least a single byte to write out the
+				 *  shortest attribute value.
+				 */
+				if (freespace < 1) goto no_space;
+
+				/*
+				 *  Code below expects length of the buffer, so we
+				 *  add +1 to freespace.
+				 *
+				 *  If we know we need a comma after the value, we
+				 *  need to -1 to make sure we have enough room to
+				 *  write that out.
+				 */
+				attr_space = fr_cursor_next_peek(&ctx->cursor) ? freespace - 1 : freespace;
+				len = vp_prints_value_json(p, attr_space + 1, vp);
+				if (is_truncated(len, attr_space + 1)) goto no_space;
 
 				/*
 				 *  Show actual value length minus quotes
