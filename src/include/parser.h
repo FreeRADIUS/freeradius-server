@@ -35,14 +35,14 @@ extern "C" {
 typedef struct fr_cond_t fr_cond_t;
 #endif
 
-typedef enum cond_op_t {
+typedef enum {
 	COND_NONE = 0,
 	COND_AND = '&',
 	COND_OR = '|'
-} cond_op_t;
+} fr_cond_op_t;
 
 
-typedef enum fr_cond_type_t {
+typedef enum {
 	COND_TYPE_INVALID = 0,
 	COND_TYPE_TRUE,
 	COND_TYPE_FALSE,
@@ -51,6 +51,12 @@ typedef enum fr_cond_type_t {
 	COND_TYPE_CHILD
 } fr_cond_type_t;
 
+typedef enum {
+	PASS2_FIXUP_NONE = 0,
+	PASS2_FIXUP_ATTR,
+	PASS2_FIXUP_TYPE,
+	PASS2_PAIRCOMPARE
+} fr_cond_pass2_t;
 
 /*
  *	Allow for the following structures:
@@ -71,20 +77,15 @@ struct fr_cond_t {
 		fr_cond_t  	*child;
 	} data;
 
-	int		negate;
-	int		pass2_fixup;
+	bool		negate;
+	fr_cond_pass2_t	pass2_fixup;
 
 	DICT_ATTR const *cast;
 
-	cond_op_t	next_op;
+	fr_cond_op_t	next_op;
 	fr_cond_t	*next;
 };
 
-
-#define PASS2_FIXUP_NONE  (0)
-#define PASS2_FIXUP_ATTR  (1)
-#define PASS2_FIXUP_TYPE  (2)
-#define PASS2_PAIRCOMPARE (3)
 
 /*
  *	One pass over the conditions means that all references must
