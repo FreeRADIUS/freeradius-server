@@ -51,7 +51,7 @@ To generate the 'calledStationSSID' fields you will need to use the ```rewrite_c
 
 ```
 ## simple nt domain regex
-simple_nt_regexp = "^([^\\\\\\\\]*)(\\\\\\\\(.*))$"
+simple_nt_regexp = "^([^\\]*)(\\(.*))$"
 
 ## simple nai regex
 simple_nai_regexp = "^([^@]*)(@(.*))$"
@@ -60,14 +60,14 @@ simple_nai_regexp = "^([^@]*)(@(.*))$"
 strip_user_domain {
 	if(User-Name && (User-Name =~ /${policy.simple_nt_regexp}/)){
 		update request {
-			Stripped-User-Domain = "%{1}"
-			Stripped-User-Name = "%{3}"
+			&Stripped-User-Domain = "%{1}"
+			&Stripped-User-Name = "%{3}"
 		}
 	}
 	elsif(User-Name && (User-Name =~ /${policy.simple_nai_regexp}/)){
 		update request {
-			Stripped-User-Name = "%{1}"
-			Stripped-User-Domain = "%{3}"
+			&Stripped-User-Name = "%{1}"
+			&Stripped-User-Domain = "%{3}"
 		}
 	}
 	else {
@@ -131,17 +131,17 @@ The element names and the client attributes to which they map are completely con
 
 Example client view:
 
-```
+```js
 function (doc, meta) {
   if (doc.docType && doc.docType == "radclient") {
-    emit(null, null);
+    emit(meta.id, null);
   }
 }
 ```
 
-This is the simplest possible view that would return all documents in the specified bucket having a ```docType``` element with the ```radclient```` value.  The module only reads the ```id``` element in the returned view thus no additional output is needed and any additional output would be ignored.
+This is the simplest possible view that would return all documents in the specified bucket having a ```docType``` element withmeta.id ```radclient``` value.  The module only reads the ```id``` element in the returned view thus no additional output is needed and any additional output would be ignored.
 
-To have the module load only a subset of the client documents contained within the bucket you could add additional elements to the client documents and then filter based on those elements within your view.
+To have the module load only a subset of the client documents contained within the bucket you could add additional elements to the client documents and then filter based on those elements within your view
 
 Simultaneous Use
 ----------------
@@ -150,15 +150,21 @@ The simultaneous use function relies on data stored in the accounting documents.
 
 Example check view:
 
-```
+```js
 function (doc, meta) {
   if (doc.docType && doc.docType == "radacct" && doc.userName && !doc.stopTimestamp) {
-    emit(doc.userName, null);
+    if (doc.strippedUserName) {
+      emit(doc.strippedUserName.toLowerCase(), null);
+    } else {
+      emit(doc.userName.toLowerCase(), null);
+    }
   }
 }
 ```
 
-When the total number of keys (sessions) returned is greater than or equal to the ```Simultaneous-Use``` config section value of the current user, the user will be denied access.  When verification is also enabled, each returned key will be fetched and the appropriate information will be passed onto the ```checkrad``` utillity to verify the session status.  If ```checkrad``` determines the session is no longer valid (stale) the session will be updated and closed in Couchbase (if configured) and that session will not be counted against the users login limit.  Further information is available in the configuration file shown below.
+The key (first emitted field) will need to match *EXACTLY* what you set for ```simul_vkey``` in the module configuration described below.  The default xlat value will attempt to return the lower case 'Stripped-User-Name' attribute or 'User-Name' if the stripped version is not available.
+
+When the total number of keys (sessions) returned is greater than or equal to the ```Simultaneous-Use``` config section value of the current user, the user will be denied access.  When verification is also enabled, each returned key will be fetched and the appropriate information will be passed on to the ```checkrad``` utillity to verify the session status.  If ```checkrad``` determines the session is no longer valid (stale) the session will be updated and closed in Couchbase (if configured) and that session will not be counted against the users login limit.  Further information is available in the configuration file shown below.
 
 To Use
 ------
@@ -286,6 +292,10 @@ couchbase {
 
 	# Couchbase view that should return all account documents keyed by username.
 	#simul_view = "_design/acct/_view/by_user"
+
+	# The key to the above view.
+	# NOTE: This will need to match EXACTLY what you emit from your view.
+	#simul_vkey = "%{tolower:%{%{Stripped-User-Name}:-%{User-Name}}}"
 
 	# Set to 'yes' to enable verification of the results returned from the above view.
 	# NOTE: This may be an additional performance penalty to the actual check and
