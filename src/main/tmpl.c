@@ -501,7 +501,7 @@ void tmpl_verify(char const *file, int line, value_pair_tmpl_t const *vpt)
 		}
 		break;
 
-	case TMPL_TYPE_ATTR_UNKNOWN:
+	case TMPL_TYPE_ATTR_UNDEFINED:
 		rad_assert(vpt->tmpl_da == NULL);
 		break;
 
@@ -744,12 +744,12 @@ value_pair_tmpl_t *tmpl_alloc(TALLOC_CTX *ctx, tmpl_type_t type, char const *nam
  * @param[in] name of attribute including qualifiers.
  * @param[in] request_def The default request to insert unqualified attributes into.
  * @param[in] list_def The default list to insert unqualified attributes into.
- * @param[in] allow_unknown If true, we don't generate a parse error on unknown
- *	attributes, and instead set type to TMPL_TYPE_ATTR_UNKNOWN.
+ * @param[in] allow_undefined If true, we don't generate a parse error on attributes
+ *	that are not in the global dictionary, and are not in unknown attribute format.
  * @return <= 0 on error (offset as negative integer), > 0 on success (number of bytes parsed)
  */
 ssize_t tmpl_from_attr_substr(value_pair_tmpl_t *vpt, char const *name,
-			      request_refs_t request_def, pair_lists_t list_def, bool allow_unknown)
+			      request_refs_t request_def, pair_lists_t list_def, bool allow_undefined)
 {
 	char const *p;
 	long num;
@@ -799,9 +799,10 @@ ssize_t tmpl_from_attr_substr(value_pair_tmpl_t *vpt, char const *name,
 		}
 
 		/*
-		 *	Can't parse it as an attribute, it must be a literal string.
+		 *	Can't parse it as an attribute, might be a literal string
+		 *	let the caller decide.
 		 */
-		if (!allow_unknown) {
+		if (!allow_undefined) {
 			fr_strerror_printf("Unknown attribute");
 			return -(p - name);
 		}
@@ -809,7 +810,7 @@ ssize_t tmpl_from_attr_substr(value_pair_tmpl_t *vpt, char const *name,
 		/*
 		 *	Copy the name to a field for later resolution
 		 */
-		type = TMPL_TYPE_ATTR_UNKNOWN;
+		type = TMPL_TYPE_ATTR_UNDEFINED;
 		for (q = attr.unknown.name; dict_attr_allowed_chars[(int) *p]; *q++ = *p++) {
 			if (q >= (attr.unknown.name + sizeof(attr.unknown.name) - 1)) {
 				fr_strerror_printf("Attribute name is too long");
@@ -913,16 +914,16 @@ finish:
  * @param[in] name attribute name including qualifiers.
  * @param[in] request_def The default request to insert unqualified attributes into.
  * @param[in] list_def The default list to insert unqualified attributes into.
- * @param[in] allow_unknown If true, we don't generate a parse error on unknown
- *	attributes, and instead set type to TMPL_TYPE_ATTR_UNKNOWN.
+ * @param[in] allow_undefined If true, we don't generate a parse error on unknown
+ *	attributes, and instead set type to TMPL_TYPE_ATTR_UNDEFINED.
  * @return <= 0 on error (offset as negative integer), > 0 on success (number of bytes parsed)
  */
 ssize_t tmpl_from_attr_str(value_pair_tmpl_t *vpt, char const *name, request_refs_t request_def,
-			   pair_lists_t list_def, bool allow_unknown)
+			   pair_lists_t list_def, bool allow_undefined)
 {
 	ssize_t slen;
 
-	slen = tmpl_from_attr_substr(vpt, name, request_def, list_def, allow_unknown);
+	slen = tmpl_from_attr_substr(vpt, name, request_def, list_def, allow_undefined);
 	if (slen <= 0) return slen;
 	if (name[slen] != '\0') {
 		fr_strerror_printf("Unexpected text after attribute name");
@@ -945,19 +946,19 @@ ssize_t tmpl_from_attr_str(value_pair_tmpl_t *vpt, char const *name, request_ref
  * @param[in] request_def The default request to insert unqualified
  *	attributes into.
  * @param[in] list_def The default list to insert unqualified attributes into.
- * @param[in] allow_unknown If true, we don't generate a parse error on unknown
- *	attributes, and instead set type to TMPL_TYPE_ATTR_UNKNOWN.
+ * @param[in] allow_undefined If true, we don't generate a parse error on unknown
+ *	attributes, and instead set type to TMPL_TYPE_ATTR_UNDEFINED.
  * @return <= 0 on error (offset as negative integer), > 0 on success (number of bytes parsed)
  */
 ssize_t tmpl_afrom_attr_str(TALLOC_CTX *ctx, value_pair_tmpl_t **out, char const *name,
-			    request_refs_t request_def, pair_lists_t list_def, bool allow_unknown)
+			    request_refs_t request_def, pair_lists_t list_def, bool allow_undefined)
 {
 	ssize_t slen;
 	value_pair_tmpl_t *vpt;
 
 	MEM(vpt = talloc(ctx, value_pair_tmpl_t)); /* tmpl_from_attr_substr zeros it */
 
-	slen = tmpl_from_attr_substr(vpt, name, request_def, list_def, allow_unknown);
+	slen = tmpl_from_attr_substr(vpt, name, request_def, list_def, allow_undefined);
 	if (slen <= 0) {
 		tmpl_free(&vpt);
 		return slen;
@@ -1112,7 +1113,7 @@ size_t tmpl_prints(char *buffer, size_t bufsize, value_pair_tmpl_t const *vpt, D
 
 		return (q - buffer);
 
-	case TMPL_TYPE_ATTR_UNKNOWN:
+	case TMPL_TYPE_ATTR_UNDEFINED:
 		buffer[0] = '&';
 		if (vpt->tmpl_request == REQUEST_CURRENT) {
 			if (vpt->tmpl_list == PAIR_LIST_REQUEST) {

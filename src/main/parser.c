@@ -490,7 +490,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 
 			rad_assert(c->data.vpt->type != TMPL_TYPE_REGEX);
 
-			if (c->data.vpt->type == TMPL_TYPE_ATTR_UNKNOWN) {
+			if (c->data.vpt->type == TMPL_TYPE_ATTR_UNDEFINED) {
 				c->pass2_fixup = PASS2_FIXUP_ATTR;
 			}
 
@@ -692,8 +692,8 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 			/*
 			 *	Unknown attributes get marked up for pass2.
 			 */
-			if ((c->data.map->lhs->type == TMPL_TYPE_ATTR_UNKNOWN) ||
-			    (c->data.map->rhs->type == TMPL_TYPE_ATTR_UNKNOWN)) {
+			if ((c->data.map->lhs->type == TMPL_TYPE_ATTR_UNDEFINED) ||
+			    (c->data.map->rhs->type == TMPL_TYPE_ATTR_UNDEFINED)) {
 				c->pass2_fixup = PASS2_FIXUP_ATTR;
 			}
 
@@ -1316,7 +1316,7 @@ done:
 		switch (c->data.vpt->type) {
 		case TMPL_TYPE_XLAT:
 		case TMPL_TYPE_ATTR:
-		case TMPL_TYPE_ATTR_UNKNOWN:
+		case TMPL_TYPE_ATTR_UNDEFINED:
 		case TMPL_TYPE_LIST:
 		case TMPL_TYPE_EXEC:
 			break;

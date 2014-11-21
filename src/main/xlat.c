@@ -1005,7 +1005,7 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 	/*
 	 *	Might be a virtual XLAT attribute
 	 */
-	if (node->attr.type == TMPL_TYPE_ATTR_UNKNOWN) {
+	if (node->attr.type == TMPL_TYPE_ATTR_UNDEFINED) {
 		node->xlat = xlat_find(node->attr.tmpl_unknown_name);
 		if (node->xlat) {
 			node->type = XLAT_VIRTUAL;
