@@ -1103,8 +1103,10 @@ static void no_response_to_proxied_request(void *ctx)
 
 		post_proxy_fail_handler(request);
 	} else {
+		/*
+		 *	Do nothing, and let the request time out.
+		 */
 		rad_assert(request->ev == NULL);
-		request->child_state = REQUEST_RUNNING;
 		wait_a_bit(request);
 	}
 
