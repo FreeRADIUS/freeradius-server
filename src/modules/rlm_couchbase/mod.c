@@ -57,8 +57,7 @@ static int _mod_conn_free(rlm_couchbase_handle_t *chandle)
 /** Create a new connection pool handle
  *
  * Create a new connection to Couchbase within the pool and initialize
- * information associatd with the connection instance such as the cookie
- * payload and json tokener error value.
+ * information associated with the connection instance.
  *
  * @param  ctx      The connection parent context.
  * @param  instance The module instance.
@@ -88,12 +87,14 @@ void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
 	chandle = talloc_zero(ctx, rlm_couchbase_handle_t);
 	talloc_set_destructor(chandle, _mod_conn_free);
 
+	/* allocate cookie off handle */
 	cookie = talloc_zero(chandle, cookie_t);
 
-	/* initialize cookie error holder */
+	/* init tokener error and json object */
 	cookie->jerr = json_tokener_success;
+	cookie->jobj = NULL;
 
-	/* populate handle with allocated structs */
+	/* populate handle */
 	chandle->cookie = cookie;
 	chandle->handle = cb_inst;
 
@@ -184,11 +185,11 @@ int mod_build_attribute_element_map(CONF_SECTION *conf, void *instance)
 		json_object_object_add(inst->map, attribute, json_object_new_string(element));
 
 		/* debugging */
-		DEBUG("rlm_couchbase: added attribute '%s' to element '%s' map to object", attribute, element);
+		DEBUG3("rlm_couchbase: added attribute '%s' to element '%s' map to object", attribute, element);
 	}
 
 	/* debugging */
-	DEBUG("rlm_couchbase: built attribute to element map %s", json_object_to_json_string(inst->map));
+	DEBUG3("rlm_couchbase: built attribute to element map %s", json_object_to_json_string(inst->map));
 
 	/* return */
 	return 0;
@@ -466,7 +467,7 @@ int mod_ensure_start_timestamp(json_object *json, VALUE_PAIR *vps)
 	}
 
 	/* check the value */
-	if (strcmp(json_object_get_string(jval), "null") != 0) {
+	if (strcmp(json_object_get_string(jval), "") != 0) {
 		/* debugging */
 		DEBUG("rlm_couchbase: start timestamp looks good - nothing to do");
 		/* already set - nothing else to do */
@@ -594,7 +595,7 @@ int mod_client_map_section(CONF_SECTION *client, CONF_SECTION const *map,
  */
 int mod_load_client_documents(rlm_couchbase_t *inst, CONF_SECTION *cs)
 {
-	void *handle = NULL;                   /* connection pool handle */
+	rlm_couchbase_handle_t *handle = NULL; /* connection pool handle */
 	char vpath[256], docid[MAX_KEY_SIZE];  /* view path and document id */
 	char error[512];                       /* view error return */
 	int idx = 0;                           /* row array index counter */
@@ -611,39 +612,20 @@ int mod_load_client_documents(rlm_couchbase_t *inst, CONF_SECTION *cs)
 	/* check handle */
 	if (!handle) return -1;
 
-	/* set handle pointer */
-	rlm_couchbase_handle_t *handle_t = handle;
-
 	/* set couchbase instance */
-	lcb_t cb_inst = handle_t->handle;
+	lcb_t cb_inst = handle->handle;
 
 	/* set cookie */
-	cookie_t *cookie = handle_t->cookie;
-
-	/* check cookie */
-	if (cookie) {
-		/* clear cookie */
-		memset(cookie, 0, sizeof(cookie_t));
-	} else {
-		/* log error */
-		ERROR("rlm_couchbase: cookie not usable - possibly not allocated");
-		/* set return */
-		retval = -1;
-		/* return */
-		goto free_and_return;
-	}
+	cookie_t *cookie = handle->cookie;
 
 	/* build view path */
 	snprintf(vpath, sizeof(vpath), "%s?stale=false", inst->client_view);
 
-	/* init cookie error status */
-	cookie->jerr = json_tokener_success;
-
 	/* query view for document */
 	cb_error = couchbase_query_view(cb_inst, cookie, vpath, NULL);
 
-	/* check error */
-	if (cb_error != LCB_SUCCESS || cookie->jerr != json_tokener_success) {
+	/* check error and object */
+	if (cb_error != LCB_SUCCESS || cookie->jerr != json_tokener_success || !cookie->jobj) {
 		/* log error */
 		ERROR("rlm_couchbase: failed to execute view request or parse return");
 		/* set return */
@@ -653,17 +635,7 @@ int mod_load_client_documents(rlm_couchbase_t *inst, CONF_SECTION *cs)
 	}
 
 	/* debugging */
-	DEBUG("rlm_couchbase: cookie->jobj == %s", json_object_to_json_string(cookie->jobj));
-
-	/* check cookie */
-	if (!cookie->jobj) {
-		/* log error */
-		ERROR("rlm_couchbase: failed to fetch view");
-		/* set return */
-		retval = -1;
-		/* return */
-		goto free_and_return;
-	}
+	DEBUG3("rlm_couchbase: cookie->jobj == %s", json_object_to_json_string(cookie->jobj));
 
 	/* check for error in json object */
 	if (json_object_object_get_ex(cookie->jobj, "error", &json)) {
@@ -698,15 +670,18 @@ int mod_load_client_documents(rlm_couchbase_t *inst, CONF_SECTION *cs)
 	jrows = json_object_get(json);
 
 	/* free cookie object */
-	json_object_put(cookie->jobj);
+	if (cookie->jobj) {
+		json_object_put(cookie->jobj);
+		cookie->jobj = NULL;
+	}
 
 	/* debugging */
-	DEBUG("rlm_couchbase: jrows == %s", json_object_to_json_string(jrows));
+	DEBUG3("rlm_couchbase: jrows == %s", json_object_to_json_string(jrows));
 
 	/* check for valid row value */
-	if (!json_object_is_type(jrows, json_type_array) && json_object_array_length(jrows) < 1) {
+	if (!json_object_is_type(jrows, json_type_array) || json_object_array_length(jrows) < 1) {
 		/* log error */
-		ERROR("rlm_couchbase: couldn't find valid rows in view return");
+		ERROR("rlm_couchbase: no valid rows returned from view: %s", vpath);
 		/* set return */
 		retval = -1;
 		/* return */
@@ -735,17 +710,11 @@ int mod_load_client_documents(rlm_couchbase_t *inst, CONF_SECTION *cs)
 			continue;
 		}
 
-		/* debugging */
-		DEBUG("rlm_couchbase: preparing to fetch docid '%s'", docid);
-
-		/* reset  cookie error status */
-		cookie->jerr = json_tokener_success;
-
 		/* fetch document */
 		cb_error = couchbase_get_key(cb_inst, cookie, docid);
 
-		/* check error */
-		if (cb_error != LCB_SUCCESS || cookie->jerr != json_tokener_success) {
+		/* check error and object */
+		if (cb_error != LCB_SUCCESS || cookie->jerr != json_tokener_success || !cookie->jobj) {
 			/* log error */
 			ERROR("rlm_couchbase: failed to execute get request or parse return");
 			/* set return */
@@ -755,7 +724,7 @@ int mod_load_client_documents(rlm_couchbase_t *inst, CONF_SECTION *cs)
 		}
 
 		/* debugging */
-		DEBUG("rlm_couchbase: cookie->jobj == %s", json_object_to_json_string(cookie->jobj));
+		DEBUG3("rlm_couchbase: cookie->jobj == %s", json_object_to_json_string(cookie->jobj));
 
 		/* allocate conf section */
 		client = cf_section_alloc(NULL, "client", docid);
@@ -803,19 +772,23 @@ int mod_load_client_documents(rlm_couchbase_t *inst, CONF_SECTION *cs)
 		DEBUG("rlm_couchbase: client '%s' added", c->longname);
 
 		/* free json object */
-		json_object_put(cookie->jobj);
+		if (cookie->jobj) {
+			json_object_put(cookie->jobj);
+			cookie->jobj = NULL;
+		}
 	}
 
 	free_and_return:
 
-	/* free json object */
-	if (cookie->jobj) {
-		json_object_put(cookie->jobj);
-	}
-
 	/* free rows */
 	if (jrows) {
 		json_object_put(jrows);
+	}
+
+	/* free json object */
+	if (cookie->jobj) {
+		json_object_put(cookie->jobj);
+		cookie->jobj = NULL;
 	}
 
 	/* release handle */

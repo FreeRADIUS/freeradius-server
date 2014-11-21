@@ -46,6 +46,7 @@ couchbase {
 		calledStationId     = 'Called-Station-Id'
 		calledStationSSID   = 'Called-Station-SSID'
 		callingStationId    = 'Calling-Station-Id'
+		framedProtocol      = 'Framed-Protocol'
 		framedIpAddress     = 'Framed-IP-Address'
 		nasPortType         = 'NAS-Port-Type'
 		connectInfo         = 'Connect-Info'
@@ -102,6 +103,24 @@ couchbase {
 			}
 		}
 	}
+
+	# Set to 'yes' to enable simultaneous use checking (multiple logins).
+	# NOTE: This will cause the execution of a view request on every check
+	# and may be a performance penalty.
+	#check_simul = no
+
+	# Couchbase view that should return all account documents keyed by username.
+	#simul_view = "_design/acct/_view/by_user"
+
+	# Set to 'yes' to enable verification of the results returned from the above view.
+	# NOTE: This may be an additional performance penalty to the actual check and
+	# should be avoided unless absolutely neccessary.
+	#verify_simul = no
+
+	# Remove stale session if checkrad does not see a double login.
+	# NOTE: This will only be executed if both check_simul and verify_simul
+	# are set to 'yes' above.
+	#delete_stale_sessions = yes
 
 	#
 	#  The connection pool is new for 3.0, and will be used in many

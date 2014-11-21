@@ -4,7 +4,9 @@ rlm_couchbase
 General
 -------
 
-This module allows you to write accounting data directly to Couchbase as JSON documents and authorize users from JSON documents stored within Couchbase.  It was tested to handle thousands of RADIUS requests per second from several thousand Aerohive access points using a FreeRADIUS installation with this module for accounting and authorization.  You should list the ```couchbase``` module in both the ```accounting``` and ```authorization``` sections of your site configuration if you are planning to use it for both purposes.  You should also have ```pap``` enabled for authenticating users based on cleartext or hashed password attributes.  In addition to authorization and accounting this module also allows the loading of RADIUS client entries directly from Couchbase.
+This module supports accounting, authorization, dynamic clients and simultaneous use checking.  Accounting data is written directly to Couchbase as JSON documents and user authorization information is read from JSON documents stored within Couchbase.    You should list the ```couchbase``` module in both the ```accounting``` and ```authorization``` sections of your site configuration if you are planning to use it for both purposes.  You should also have ```pap``` enabled for authenticating users based on cleartext or hashed password attributes.  To enable simultanous use checking you will need to modify the configuration parameters described below and list the ```couchbase``` module in the ```session`` and ```accounting``` sections of your site configuration.
+
+It was tested to handle thousands of RADIUS requests per second from several thousand Aerohive access points using a FreeRADIUS installation with this module for accounting and authorization.
 
 Accounting
 ----------
@@ -141,6 +143,23 @@ This is the simplest possible view that would return all documents in the specif
 
 To have the module load only a subset of the client documents contained within the bucket you could add additional elements to the client documents and then filter based on those elements within your view.
 
+Simultaneous Use
+----------------
+
+The simultaneous use function relies on data stored in the accounting documents.  When a user attempts to authenticate a view request is made to return all accounting type documents for the current user that do not contain a populates ```stopTimestamp``` value.
+
+Example check view:
+
+```
+function (doc, meta) {
+  if (doc.docType && doc.docType == "radacct" && doc.userName && !doc.stopTimestamp) {
+    emit(doc.userName, null);
+  }
+}
+```
+
+When the total number of keys (sessions) returned is greater than or equal to the ```Simultaneous-Use``` config section value of the current user, the user will be denied access.  When verification is also enabled, each returned key will be fetched and the appropriate information will be passed onto the ```checkrad``` utillity to verify the session status.  If ```checkrad``` determines the session is no longer valid (stale) the session will be updated and closed in Couchbase (if configured) and that session will not be counted against the users login limit.  Further information is available in the configuration file shown below.
+
 To Use
 ------
 
@@ -202,6 +221,7 @@ couchbase {
 		calledStationId     = 'Called-Station-Id'
 		calledStationSSID   = 'Called-Station-SSID'
 		callingStationId    = 'Calling-Station-Id'
+		framedProtocol      = 'Framed-Protocol'
 		framedIpAddress     = 'Framed-IP-Address'
 		nasPortType         = 'NAS-Port-Type'
 		connectInfo         = 'Connect-Info'
@@ -258,6 +278,24 @@ couchbase {
 			}
 		}
 	}
+
+	# Set to 'yes' to enable simultaneous use checking (multiple logins).
+	# NOTE: This will cause the execution of a view request on every check
+	# and may be a performance penalty.
+	#check_simul = no
+
+	# Couchbase view that should return all account documents keyed by username.
+	#simul_view = "_design/acct/_view/by_user"
+
+	# Set to 'yes' to enable verification of the results returned from the above view.
+	# NOTE: This may be an additional performance penalty to the actual check and
+	# should be avoided unless absolutely neccessary.
+	#verify_simul = no
+
+	# Remove stale session if checkrad does not see a double login.
+	# NOTE: This will only be executed if both check_simul and verify_simul
+	# are set to 'yes' above.
+	#delete_stale_sessions = yes
 
 	#
 	#  The connection pool is new for 3.0, and will be used in many

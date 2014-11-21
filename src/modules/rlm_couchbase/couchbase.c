@@ -95,19 +95,22 @@ void couchbase_get_callback(lcb_t instance, const void *cookie, lcb_error_t erro
 		if (bytes && nbytes > 1) {
 			/* debug */
 			DEBUG("rlm_couchbase: (get_callback) got %zu bytes", nbytes);
-			/* build json object */
+			/* parse string to json object */
 			c->jobj = json_tokener_parse_ex(c->jtok, bytes, nbytes);
-			/* switch on current error status */
+			/* switch on tokener error */
 			switch ((c->jerr = json_tokener_get_error(c->jtok))) {
 			case json_tokener_continue:
-				/* do nothing */
+				/* check object - should be null */
+				if (c->jobj != NULL) {
+					ERROR("rlm_couchbase: (get_callback) object not null on continue!");
+				}
 				break;
 			case json_tokener_success:
 				/* do nothing */
 				break;
 			default:
 				/* log error */
-				ERROR("rlm_couchbase: (get_callback) JSON Tokener error: %s",
+				ERROR("rlm_couchbase: (get_callback) json parsing error: %s",
 				      json_tokener_error_desc(c->jerr));
 				break;
 			}
@@ -150,29 +153,32 @@ void couchbase_http_data_callback(lcb_http_request_t request, lcb_t instance, co
 		if (bytes && nbytes > 1) {
 			/* debug */
 			DEBUG("rlm_couchbase: (http_data_callback) got %zu bytes", nbytes);
-			/* build json object */
+			/* parse string to json object */
 			c->jobj = json_tokener_parse_ex(c->jtok, bytes, nbytes);
-			/* switch on current error status */
+			/* switch on tokener error */
 			switch ((c->jerr = json_tokener_get_error(c->jtok))) {
 			case json_tokener_continue:
-				/* do nothing */
+				/* check object - should be null */
+				if (c->jobj != NULL) {
+					ERROR("rlm_couchbase: (http_data_callback) object not null on continue!");
+				}
 				break;
 			case json_tokener_success:
 				/* do nothing */
 				break;
 			default:
 				/* log error */
-				ERROR("rlm_couchbase: (http_data_callback) JSON Tokener error: %s",
+				ERROR("rlm_couchbase: (http_data_callback) json parsing error: %s",
 				      json_tokener_error_desc(c->jerr));
 				break;
 			}
 		}
 		break;
 
-		default:
-			/* log error */
-			ERROR("rlm_couchbase: (http_data_callback) %s (0x%x)", lcb_strerror(instance, error), error);
-			break;
+	default:
+		/* log error */
+		ERROR("rlm_couchbase: (http_data_callback) %s (0x%x)", lcb_strerror(instance, error), error);
+		break;
 	}
 	/* silent compiler */
 	(void)request;
@@ -327,8 +333,17 @@ lcb_error_t couchbase_get_key(lcb_t instance, const void *cookie, const char *ke
 	cmd.v.v0.key = key;
 	cmd.v.v0.nkey = strlen(cmd.v.v0.key);
 
-	/* allocate token */
+	/* clear cookie */
+	memset(c, 0, sizeof(cookie_t));
+
+	/* init tokener error */
+	c->jerr = json_tokener_success;
+
+	/* create token */
 	c->jtok = json_tokener_new();
+
+	/* debugging */
+	DEBUG3("rlm_couchbase: fetching document %s", key);
 
 	/* get document */
 	if ((error = lcb_get(instance, c, 1, commands)) == LCB_SUCCESS) {
@@ -374,8 +389,17 @@ lcb_error_t couchbase_query_view(lcb_t instance, const void *cookie, const char 
 	cmd.v.v0.chunked = 1;
 	cmd.v.v0.content_type = "application/json";
 
-	/* allocate token */
+	/* clear cookie */
+	memset(c, 0, sizeof(cookie_t));
+
+	/* init tokener error */
+	c->jerr = json_tokener_success;
+
+	/* create token */
 	c->jtok = json_tokener_new();
+
+	/* debugging */
+	DEBUG3("rlm_couchbase: fetching view %s", path);
 
 	/* query the view */
 	if ((error = lcb_make_http_request(instance, c, LCB_HTTP_TYPE_VIEW, commands, NULL)) == LCB_SUCCESS) {
