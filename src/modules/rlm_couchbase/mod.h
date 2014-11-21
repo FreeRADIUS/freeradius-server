@@ -48,15 +48,19 @@ RCSIDH(mod_h, "$Id$");
  */
 typedef struct rlm_couchbase_t {
 	char const *acct_key;       //!< Accounting document key.
-	char const *doctype;        //!< Value of 'docType' element name.
+	char const *doctype;        //!< Value of accounting 'docType' element name.
+	uint32_t expire;            //!< Accounting document expire time in seconds.
 	char const *server_raw;     //!< Raw server string before parsing.
 	char const *server;         //!< Couchbase server list.
 	char const *bucket;         //!< Couchbase bucket.
 	char const *password;       //!< Couchbase bucket password.
-	uint32_t expire;            //!< Document expire time in seconds.
 	const char *user_key;       //!< User document key.
 	bool read_clients;          //!< Toggle for loading client records.
 	const char *client_view;    //!< Couchbase view that returns client documents.
+	bool check_simul;           //!< Toggle to enable simultaneous use checking.
+	const char *simul_view;     //!< Couchbase view that returns accounting documents.
+	bool verify_simul;          //!< Toggle to enable user login state verification.
+	bool delete_stale_sessions; //!< Toggle to trigger zapping of stale sessions.
 	json_object *map;           //!< Json object to hold user defined attribute map.
 	fr_connection_pool_t *pool; //!< Connection pool.
 } rlm_couchbase_t;

@@ -80,18 +80,4 @@ RCSIDH(jsonc_missing_h, "$Id$");
 		val = (struct json_object *)ctn.data, entry) : 0); entry = entry->next)
 #endif /* defined(__GNUC__) && !defined(__STRICT_ANSI__) */
 
-
-/* correct poor const handling within json-c library */
-#ifdef json_object_object_foreachC
-	#undef json_object_object_foreachC
-#endif
-
-/* redefine with correct const handling */
-#define json_object_object_foreachC(obj,iter) \
-	union ctn_u {const void *cdata; void *data; } ctn; \
-	for (iter.entry = json_object_get_object(obj)->head; \
-		(iter.entry ? (iter.key = (char *)iter.entry->k, \
-		ctn.cdata = iter.entry->v, iter.val = (struct json_object*) ctn.data, iter.entry) : 0); \
-		iter.entry = iter.entry->next)
-
 #endif  /* _jsonc_missing_h_ */
