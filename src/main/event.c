@@ -3230,9 +3230,6 @@ REQUEST *received_proxy_response(RADIUS_PACKET *packet)
 	switch (request->child_state) {
 	case REQUEST_QUEUED:
 	case REQUEST_RUNNING:
-		radlog(L_ERR, "Internal sanity check failed for child state");
-		/* FALL-THROUGH */
-
 	case REQUEST_REJECT_DELAY:
 	case REQUEST_CLEANUP_DELAY:
 	case REQUEST_DONE:
