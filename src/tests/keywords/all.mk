@@ -65,7 +65,7 @@ $(BUILD_DIR)/tests/keywords/%.attrs: $(DIR)/%.attrs | $(BUILD_DIR)/tests/keyword
 #
 .PRECIOUS: $(BUILD_DIR)/tests/keywords/%.attrs
 
-KEYWORD_MODULES := $(shell grep -- mods-enabled src/tests/keywords/radiusd.conf  | sed 's,.*/,,')
+KEYWORD_MODULES := "$(shell grep -- mods-enabled src/tests/keywords/radiusd.conf  | sed 's,.*/,,') example"
 KEYWORD_RADDB	:= $(addprefix raddb/mods-enabled/,$(KEYWORD_MODULES))
 KEYWORD_LIBS	:= $(addsuffix .la,$(addprefix rlm_,$(KEYWORD_MODULES)))
 
