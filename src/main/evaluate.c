@@ -41,7 +41,7 @@ FR_NAME_NUMBER const template_names[] = {
 	{ "literal",		TMPL_TYPE_LITERAL 	},
 	{ "xlat",		TMPL_TYPE_XLAT		},
 	{ "attr",		TMPL_TYPE_ATTR		},
-	{ "unknonwn attr",	TMPL_TYPE_ATTR_UNKNOWN	},
+	{ "unknonwn attr",	TMPL_TYPE_ATTR_UNDEFINED	},
 	{ "list",		TMPL_TYPE_LIST		},
 	{ "regex",		TMPL_TYPE_REGEX		},
 	{ "exec",		TMPL_TYPE_EXEC		},
@@ -617,7 +617,7 @@ do {\
 	case TMPL_TYPE_NULL:
 	case TMPL_TYPE_LIST:
 	case TMPL_TYPE_UNKNOWN:
-	case TMPL_TYPE_ATTR_UNKNOWN:
+	case TMPL_TYPE_ATTR_UNDEFINED:
 	case TMPL_TYPE_REGEX:	/* Should now be a TMPL_TYPE_REGEX_STRUCT or TMPL_TYPE_XLAT_STRUCT */
 		rad_assert(0);
 		rcode = -1;
@@ -717,7 +717,7 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 	 *	Unsupported types (should have been parse errors)
 	 */
 	case TMPL_TYPE_NULL:
-	case TMPL_TYPE_ATTR_UNKNOWN:
+	case TMPL_TYPE_ATTR_UNDEFINED:
 	case TMPL_TYPE_UNKNOWN:
 	case TMPL_TYPE_REGEX:		/* should now be a TMPL_TYPE_REGEX_STRUCT or TMPL_TYPE_XLAT_STRUCT */
 	case TMPL_TYPE_REGEX_STRUCT:	/* not allowed as LHS */
