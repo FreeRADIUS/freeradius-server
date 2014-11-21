@@ -1,4 +1,4 @@
-FreeRADIUS 3.0.5 Mon 15 Sep 2014 15:30:00 EDT urgency=medium
+FreeRADIUS 3.0.5 Fri 21 Nov 2014 15:30:00 EDT urgency=medium
 	Feature improvements
 	* Large update to Huawei dictionary.
 	* Added dictionary.rfc7155
@@ -37,6 +37,10 @@ FreeRADIUS 3.0.5 Mon 15 Sep 2014 15:30:00 EDT urgency=medium
 	  in EAP methods.
 	* Allow multiple new connections to be spawned simultaneously
 	  in the connection pool, to cope with spikes in traffic.
+	* Document retry_delay in connection pools.
+	* Allow checksimul in rlm_couchbase.
+	* Use kqueue on systems which support it.  This allows for
+	  better scaling when using many sockets.
 
 	Bug fixes
 	* Parse list qualifiers in generic LDAP 'valuepair_attribute'
@@ -94,6 +98,17 @@ FreeRADIUS 3.0.5 Mon 15 Sep 2014 15:30:00 EDT urgency=medium
 	* Respect operators in rlm_cache when merging into the current
 	  request.
 	* Update Cache-Entry-Hits each time rlm_cache is called.
+	* Produce WARN messages if SQL queries are empty strings.
+	* Fix invalid assertion when proxying CoA requests.
+	* Allow empty strings in "case" statements.  Closes #836.
+	* Normalize escaping for string expansions.  i.e. don't do
+	  double escaping in rare situations.
+	* Normalize LDAP escaping.  LDAP servers have multiple ways
+	  to escape things, so the data has to be normalized before
+	  we can compare two LDAP DNs.
+	* Don't go to high debug level if we're proxying inner EAP
+	  as EAP.  Closes #839.
+	* Fix rlm_rest state handling.  Closes #835.
 
 FreeRADIUS 3.0.4 Wed 10 Sep 2014 12:00:00 EDT urgency=medium
 	Feature improvements
