@@ -112,6 +112,10 @@ couchbase {
 	# Couchbase view that should return all account documents keyed by username.
 	#simul_view = "_design/acct/_view/by_user"
 
+	# The key to the above view.
+	# NOTE: This will need to match EXACTLY what you emit from your view.
+	#simul_vkey = "%{tolower:%{%{Stripped-User-Name}:-%{User-Name}}}"
+
 	# Set to 'yes' to enable verification of the results returned from the above view.
 	# NOTE: This may be an additional performance penalty to the actual check and
 	# should be avoided unless absolutely neccessary.

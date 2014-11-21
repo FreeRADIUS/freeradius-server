@@ -64,6 +64,7 @@ static const CONF_PARSER module_config[] = {
 #ifdef WITH_SESSION_MGMT
 	{ "check_simul", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_couchbase_t, check_simul), NULL }, /* NULL defaults to "no" */
 	{ "simul_view", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_couchbase_t, simul_view), "_design/acct/_view/by_user" },
+	{ "simul_vkey", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_couchbase_t, simul_vkey), "%{tolower:%{%{Stripped-User-Name}:-%{User-Name}}}" },
 	{ "verify_simul", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_couchbase_t, verify_simul), NULL }, /* NULL defaults to "no" */
 #endif
 	{NULL, -1, 0, NULL, NULL}     /* end the list */
@@ -350,9 +351,9 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 		cookie->jobj = json_object_new_object();
 		/* set 'docType' element for new document */
 		json_object_object_add(cookie->jobj, "docType", json_object_new_string(inst->doctype));
-		/* set start and stop times ... ensure we always have these elements */
-		json_object_object_add(cookie->jobj, "startTimestamp", json_object_new_string(""));
-		json_object_object_add(cookie->jobj, "stopTimestamp", json_object_new_string(""));
+		/* default startTimestamp and stopTimestamp to null values */
+		json_object_object_add(cookie->jobj, "startTimestamp", NULL);
+		json_object_object_add(cookie->jobj, "stopTimestamp", NULL);
 	}
 
 	/* status specific replacements for start/stop time */
@@ -456,7 +457,8 @@ static rlm_rcode_t mod_checksimul(void *instance, REQUEST *request) {
 	rlm_couchbase_t *inst = instance;      /* our module instance */
 	rlm_rcode_t rcode = RLM_MODULE_OK;     /* return code */
 	rlm_couchbase_handle_t *handle = NULL; /* connection pool handle */
-	char vpath[256], docid[MAX_KEY_SIZE];  /* view path and document id */
+	char vpath[256], vkey[MAX_KEY_SIZE];   /* view path and query key */
+	char docid[MAX_KEY_SIZE];              /* document id returned from view */
 	char error[512];                       /* view error return */
 	int idx = 0;                           /* row array index counter */
 	char element[MAX_KEY_SIZE];            /* mapped radius attribute to element name */
@@ -487,6 +489,14 @@ static rlm_rcode_t mod_checksimul(void *instance, REQUEST *request) {
 		return RLM_MODULE_INVALID;
 	}
 
+	/* attempt to build view key */
+	if (radius_xlat(vkey, sizeof(vkey), request, inst->simul_vkey, NULL, NULL) < 0) {
+		/* log error */
+		RERROR("could not find simultaneous use view key attribute (%s) in packet", inst->simul_vkey);
+		/* return */
+		return RLM_MODULE_FAIL;
+	}
+
 	/* get handle */
 	handle = fr_connection_get(inst->pool);
 
@@ -501,7 +511,7 @@ static rlm_rcode_t mod_checksimul(void *instance, REQUEST *request) {
 
 	/* build view path */
 	snprintf(vpath, sizeof(vpath), "%s?key=\"%s\"&stale=update_after",
-		 inst->simul_view, request->username->vp_strvalue);
+		 inst->simul_view, vkey);
 
 	/* query view for document */
 	cb_error = couchbase_query_view(cb_inst, cookie, vpath, NULL);
@@ -573,6 +583,9 @@ static rlm_rcode_t mod_checksimul(void *instance, REQUEST *request) {
 	/* set the count */
 	request->simul_count = json_object_array_length(jrows);
 
+	/* debugging */
+	RDEBUG("found %d open sessions for %s", request->simul_count, request->username->vp_strvalue);
+
 	/* check count */
 	if (request->simul_count < request->simul_max) {
 		rcode = RLM_MODULE_OK;
@@ -587,6 +600,9 @@ static rlm_rcode_t mod_checksimul(void *instance, REQUEST *request) {
 		rcode = RLM_MODULE_OK;
 		goto free_and_return;
 	}
+
+	/* debugging */
+	RDEBUG("verifying session count");
 
 	/* reset the count */
 	request->simul_count = 0;
@@ -760,12 +776,6 @@ static rlm_rcode_t mod_checksimul(void *instance, REQUEST *request) {
 				request->simul_mpp = 2;
 			}
 
-			/* free tallocs */
-			if (cs_id) {
-				talloc_free(cs_id);
-				cs_id = NULL;
-			}
-
 		} else {
 			/* check failed - return error */
 			REDEBUG("failed to check the terminal server for user '%s'", user_name);
@@ -798,10 +808,11 @@ static rlm_rcode_t mod_checksimul(void *instance, REQUEST *request) {
 		}
 	}
 
-	free_and_return:
-
 	/* debugging */
-	RDEBUG("final simultaneous session count: %d", request->simul_count);
+	RDEBUG("retained %d open sessions for %s after verification",
+	       request->simul_count, request->username->vp_strvalue);
+
+	free_and_return:
 
 	/* free document user name talloc */
 	if (user_name) {
