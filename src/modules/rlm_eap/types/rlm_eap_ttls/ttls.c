@@ -851,7 +851,7 @@ static int CC_HINT(nonnull) eapttls_postproxy(eap_handler_t *handler, void *data
 		 *	Perform a post-auth stage for the tunneled
 		 *	session.
 		 */
-		fake->log.lvl &= ~RAD_REQUEST_OPTION_PROXY_EAP;
+		fake->packet->offset &= ~RAD_REQUEST_OPTION_PROXY_EAP;
 		rcode = rad_postauth(fake);
 		RDEBUG2("post-auth returns %d", rcode);
 
