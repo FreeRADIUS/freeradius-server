@@ -2318,32 +2318,51 @@ static ssize_t xlat_expand(char **out, size_t outlen, REQUEST *request, char con
 	return len;
 }
 
-/*
- *	Try to convert an xlat to a tmpl for efficiency
+/** Try to convert an xlat to a tmpl for efficiency
+ *
+ * @param ctx to allocate new value_pair_tmpl_t in.
+ * @param node to convert.
+ * @return NULL if unable to convert (not necessarily error), or a new value_pair_tmpl_t.
  */
-value_pair_tmpl_t *radius_xlat2tmpl(TALLOC_CTX *ctx, xlat_exp_t *node)
+value_pair_tmpl_t *xlat_to_tmpl_attr(TALLOC_CTX *ctx, xlat_exp_t *node)
 {
 	value_pair_tmpl_t *vpt;
 
 	if (node->next || (node->type != XLAT_ATTRIBUTE)) return NULL;
 
 	/*
-	 * @todo it should be possible to emulate the concat and count operations in the
-	 * map code.
+	 *   Concat means something completely different as an attribute reference
+	 *   Count isn't implemented.
 	 */
 	if ((node->attr.tmpl_num == NUM_COUNT) || (node->attr.tmpl_num == NUM_ALL)) return NULL;
 
 	vpt = tmpl_alloc(ctx, TMPL_TYPE_ATTR, node->fmt, -1);
 	if (!vpt) return NULL;
-	vpt->tmpl_request = node->attr.tmpl_request;
-	vpt->tmpl_list = node->attr.tmpl_list;
-	vpt->tmpl_da = node->attr.tmpl_da;
-	vpt->tmpl_num = node->attr.tmpl_num;
-	vpt->tmpl_tag = node->attr.tmpl_tag;
+	memcpy(&vpt->data, &node->attr.data, sizeof(vpt->data));
 
 	VERIFY_TMPL(vpt);
 
 	return vpt;
+}
+
+/** Try to convert attr tmpl to an xlat for &attr[*] and artificially constructing expansions
+ *
+ * @param ctx to allocate new xlat_expt_t in.
+ * @param vpt to convert.
+ * @return NULL if unable to convert (not necessarily error), or a new value_pair_tmpl_t.
+ */
+xlat_exp_t *xlat_from_tmpl_attr(TALLOC_CTX *ctx, value_pair_tmpl_t *vpt)
+{
+	xlat_exp_t *node;
+
+	if (vpt->type != TMPL_TYPE_ATTR) return NULL;
+
+	node = talloc_zero(ctx, xlat_exp_t);
+	node->fmt = talloc_memdup(node, vpt->name, vpt->len);
+	tmpl_init(&node->attr, TMPL_TYPE_ATTR, node->fmt, talloc_array_length(node->fmt) - 1);
+	memcpy(&node->attr.data, &vpt->data, sizeof(vpt->data));
+
+	return node;
 }
 
 ssize_t radius_xlat(char *out, size_t outlen, REQUEST *request, char const *fmt, RADIUS_ESCAPE_STRING escape, void *ctx)

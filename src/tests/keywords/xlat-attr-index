@@ -64,4 +64,10 @@ if (Tmp-Integer-0 != 2) {
 	}
 }
 
+if (&Tmp-IP-Address-0[#] != 2) {
+	update {
+		reply:Filter-Id += 'fail 7'
+	}
+}
+
 
