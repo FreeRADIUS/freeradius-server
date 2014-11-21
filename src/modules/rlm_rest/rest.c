@@ -700,8 +700,12 @@ static size_t rest_encode_json(void *out, size_t size, size_t nmemb, void *userd
 
 		/*
 		 *  We've encoded all the VPs
+		 *
+		 *  The check for READ_STATE_ATTR_BEGIN is needed as we might be in
+		 *  READ_STATE_ATTR_END, and need to close out the current attribute
+		 *  array.
 		 */
-		if (!vp) {
+		if (!vp && (ctx->state == READ_STATE_ATTR_BEGIN)) {
 			if (freespace < 1) goto no_space;
 			*p++ = '}';
 			freespace--;
@@ -711,12 +715,12 @@ static size_t rest_encode_json(void *out, size_t size, size_t nmemb, void *userd
 			break;
 		}
 
-		/*
-		 *  New attribute, write name, type, and beginning of value array.
-		 */
-		RDEBUG2("Encoding attribute \"%s\"", vp->da->name);
-
 		if (ctx->state == READ_STATE_ATTR_BEGIN) {
+			/*
+			 *  New attribute, write name, type, and beginning of value array.
+			 */
+			RDEBUG2("Encoding attribute \"%s\"", vp->da->name);
+
 			type = fr_int2str(dict_attr_types, vp->da->type, "<INVALID>");
 
 			len = snprintf(p, freespace + 1, "\"%s\":{\"type\":\"%s\",\"value\":[", vp->da->name, type);
