@@ -142,6 +142,7 @@ static void CC_HINT(nonnull) cache_merge(rlm_cache_t *inst, REQUEST *request, rl
 	}
 
 	if (inst->stats) {
+		rad_assert(request->packet != NULL);
 		vp = pairfind(request->packet->vps, PW_CACHE_ENTRY_HITS, 0, TAG_ANY);
 		if (!vp) {
 			vp = paircreate(request->packet, PW_CACHE_ENTRY_HITS, 0);
@@ -545,7 +546,12 @@ static ssize_t cache_xlat(void *instance, REQUEST *request,
 	size_t			len;
 	int			ret = 0;
 
-	list = radius_list_name(&p, PAIR_LIST_REQUEST);
+	p += radius_list_name(&list, p, PAIR_LIST_REQUEST);
+	if (list == PAIR_LIST_UNKNOWN) {
+		REDEBUG("Unknown list qualifier in \"%s\"", fmt);
+		ret = -1;
+		goto finish;
+	}
 
 	target = dict_attrbyname(p);
 	if (!target) {
@@ -581,9 +587,6 @@ static ssize_t cache_xlat(void *instance, REQUEST *request,
 		break;
 
 	case PAIR_LIST_UNKNOWN:
-		REDEBUG("Unknown list qualifier in \"%s\"", fmt);
-		ret = -1;
-		goto finish;
 
 	default:
 		REDEBUG("Unsupported list \"%s\"", fr_int2str(pair_lists, list, "<UNKNOWN>"));
@@ -623,6 +626,16 @@ static int mod_detach(void *instance)
 	talloc_free(inst->maps);
 
 	/*
+	 *  We need to explicitly free all children, so if the driver
+	 *  parented any memory off the instance, their destructors
+	 *  run before we unload the bytecode for them.
+	 *
+	 *  If we don't do this, we get a SEGV deep inside the talloc code
+	 *  when it tries to call a destructor that no longer exists.
+	 */
+	talloc_free_children(inst);
+
+	/*
 	 *  Decrements the reference count. The driver object won't be unloaded
 	 *  until all instances of rlm_cache that use it have been destroyed.
 	 */
@@ -641,9 +654,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	inst->cs = conf;
 
 	inst->xlat_name = cf_section_name2(conf);
-	if (!inst->xlat_name) {
-		inst->xlat_name = cf_section_name1(conf);
-	}
+	if (!inst->xlat_name) inst->xlat_name = cf_section_name1(conf);
 
 	/*
 	 *	Register the cache xlat function
