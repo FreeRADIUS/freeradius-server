@@ -76,7 +76,8 @@ void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
 
 	/* check couchbase instance */
 	if (cb_error != LCB_SUCCESS) {
-		ERROR("rlm_couchbase: failed to initiate couchbase connection: %s (0x%x)", lcb_strerror(NULL, cb_error), cb_error);
+		ERROR("rlm_couchbase: failed to initiate couchbase connection: %s (0x%x)",
+		      lcb_strerror(NULL, cb_error), cb_error);
 		/* destroy/free couchbase instance */
 		lcb_destroy(cb_inst);
 		/* fail */
@@ -121,7 +122,8 @@ int mod_conn_alive(UNUSED void *instance, void *handle)
 	/* attempt to get server stats */
 	if ((cb_error = couchbase_server_stats(cb_inst, NULL)) != LCB_SUCCESS) {
 		/* log error */
-		ERROR("rlm_couchbase: failed to get couchbase server stats: %s (0x%x)", lcb_strerror(NULL, cb_error), cb_error);
+		ERROR("rlm_couchbase: failed to get couchbase server stats: %s (0x%x)",
+		      lcb_strerror(NULL, cb_error), cb_error);
 		/* error out */
 		return -1;
 	}
@@ -295,12 +297,14 @@ void *mod_json_object_to_value_pairs(json_object *json, const char *section, REQ
 			/* check for appropriate type in value and op */
 			if (!json_object_is_type(json_vp, json_type_object)) {
 				/* log error */
-				RERROR("invalid json type for '%s' attribute - attributes must be json objects", attribute);
+				RERROR("invalid json type for '%s' attribute - attributes must be json objects",
+				       attribute);
 				/* return */
 				return NULL;
 			}
 			/* debugging */
-			RDEBUG("parsing '%s' attribute: %s => %s", section, attribute, json_object_to_json_string(json_vp));
+			RDEBUG("parsing '%s' attribute: %s => %s", section, attribute,
+			       json_object_to_json_string(json_vp));
 			/* create pair from json object */
 			if (json_object_object_get_ex(json_vp, "value", &jval) &&
 				json_object_object_get_ex(json_vp, "op", &jop)) {
@@ -316,7 +320,8 @@ void *mod_json_object_to_value_pairs(json_object *json, const char *section, REQ
 						fr_str2int(fr_tokens, json_object_get_string(jop), 0));
 					/* check pair */
 					if (!vp) {
-						RERROR("could not build value pair for '%s' attribute (%s)", attribute, fr_strerror());
+						RERROR("could not build value pair for '%s' attribute (%s)",
+						       attribute, fr_strerror());
 						/* return */
 						return NULL;
 					}
@@ -567,7 +572,8 @@ int mod_client_map_section(CONF_SECTION *client, CONF_SECTION const *map,
 
 		/* check pair */
 		if (!cp) {
-			ERROR("rlm_couchbase: failed allocating config pair '%s' = '%s'", attribute, json_object_get_string(jval));
+			ERROR("rlm_couchbase: failed allocating config pair '%s' = '%s'", attribute,
+			      json_object_get_string(jval));
 			return -1;
 		}
 
@@ -697,7 +703,8 @@ int mod_load_client_documents(rlm_couchbase_t *inst, CONF_SECTION *cs)
 			memset(docid, 0, sizeof(docid));
 			/* copy and check length */
 			if (strlcpy(docid, json_object_get_string(jval), sizeof(docid)) >= sizeof(docid)) {
-				ERROR("rlm_couchbase: document id from row longer than MAX_KEY_SIZE (%d)", MAX_KEY_SIZE);
+				ERROR("rlm_couchbase: document id from row longer than MAX_KEY_SIZE (%d)",
+				      MAX_KEY_SIZE);
 				continue;
 			}
 		}

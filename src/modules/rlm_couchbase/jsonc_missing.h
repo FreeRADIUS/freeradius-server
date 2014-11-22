@@ -34,37 +34,37 @@ RCSIDH(jsonc_missing_h, "$Id$");
 #include "config.h"
 
 #ifndef HAVE_JSON_C_VERSION
-	const char *json_c_version(void);
+const char *json_c_version(void);
 #endif
 
 #ifndef HAVE_JSON_OBJECT_OBJECT_GET_EX
-	#include <json/json_object_private.h>
+#  include <json/json_object_private.h>
 #endif
 
 #ifndef HAVE_JSON_OBJECT_GET_STRING_LEN
-	int json_object_get_string_len(struct json_object *obj);
+int json_object_get_string_len(struct json_object *obj);
 #endif
 
 #ifndef HAVE_JSON_OBJECT_OBJECT_GET_EX
-	int json_object_object_get_ex(struct json_object* jso, const char *key, struct json_object **value);
+int json_object_object_get_ex(struct json_object* jso, const char *key, struct json_object **value);
 #endif
 
 #ifndef HAVE_JSON_TOKENER_ERROR_DESC
-	const char *json_tokener_error_desc(enum json_tokener_error jerr);
+const char *json_tokener_error_desc(enum json_tokener_error jerr);
 #endif
 
 #ifndef HAVE_JSON_TOKENER_GET_ERROR
-	enum json_tokener_error json_tokener_get_error(json_tokener *tok);
+enum json_tokener_error json_tokener_get_error(json_tokener *tok);
 #endif
 
 /* correct poor const handling within json-c library */
 #ifdef json_object_object_foreach
-	#undef json_object_object_foreach
+#  undef json_object_object_foreach
 #endif
 
 /* redefine with correct handling of const pointers */
 #if defined(__GNUC__) && !defined(__STRICT_ANSI__)
-	#define json_object_object_foreach(obj, key, val) \
+#  define json_object_object_foreach(obj, key, val) \
 	char *key; struct json_object *val; \
 	union ctn_u {const void *cdata; void *data; } ctn; \
 	for (struct lh_entry *entry = json_object_get_object(obj)->head; \
@@ -72,12 +72,11 @@ RCSIDH(jsonc_missing_h, "$Id$");
 		val = (struct json_object *)ctn.data; }; entry; }); \
 		entry = entry->next)
 #else /* ANSI C or MSC */
-	#define json_object_object_foreach(obj,key,val) \
+#  define json_object_object_foreach(obj,key,val) \
 	char *key; struct json_object *val; struct lh_entry *entry; \
 	union ctn_u {const void *cdata; void *data; } ctn; \
 	for (entry = json_object_get_object(obj)->head; \
 		(entry ? (key = (char *)entry->k, ctn.cdata = entry->v, \
 		val = (struct json_object *)ctn.data, entry) : 0); entry = entry->next)
 #endif /* defined(__GNUC__) && !defined(__STRICT_ANSI__) */
-
-#endif  /* _jsonc_missing_h_ */
+#endif /* _jsonc_missing_h_ */
