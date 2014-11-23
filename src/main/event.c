@@ -1103,10 +1103,21 @@ static void no_response_to_proxied_request(void *ctx)
 
 		post_proxy_fail_handler(request);
 	} else {
+		struct timeval when;
+
 		/*
 		 *	Do nothing, and let the request time out.
 		 */
 		rad_assert(request->ev == NULL);
+
+		when = request->received;
+		when.tv_sec += request->root->max_request_time;
+
+		request->next_when = when;
+		request->next_callback = cleanup_delay;
+
+		if (request->in_proxy_hash) remove_from_proxy_hash(request);
+
 		wait_a_bit(request);
 	}
 
