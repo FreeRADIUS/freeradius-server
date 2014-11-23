@@ -1113,6 +1113,7 @@ static void no_response_to_proxied_request(void *ctx)
 		when = request->received;
 		when.tv_sec += request->root->max_request_time;
 
+		request->child_state = REQUEST_DONE;
 		request->next_when = when;
 		request->next_callback = cleanup_delay;
 
