@@ -899,7 +899,7 @@ static int command_debug_condition(UNUSED rad_listen_t *listener, int argc, char
 		ERROR("%s", p);
 		ERROR("%s^ %s", spaces, error);
 
-		cprintf(listener, "Parse error in condition: %s\n", p);
+		cprintf(listener, "Parse error in condition \"%s\": %s\n", p, error);
 
 		talloc_free(spaces);
 		talloc_free(text);

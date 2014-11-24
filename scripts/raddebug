@@ -107,7 +107,10 @@ trap '$radmin -e "debug condition" -e "debug file"; rm -f $outfile;kill -TERM $T
 #
 #  Set the debug condition
 #
-$radmin -e "debug condition \"$condition\""
+$radmin -e "debug condition \"$condition\"" | grep -I 'error'
+if [ $? -eq 0 ]; then
+    exit 1
+fi
 
 #
 #  Print the output, and wait for "timeout".  Then, stop printing.
