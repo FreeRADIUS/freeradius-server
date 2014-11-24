@@ -1815,18 +1815,19 @@ int modules_init(CONF_SECTION *config)
 
 				subcs = cf_itemtosection(ci);
 				name = cf_section_name1(subcs);
-				if (!((strcmp(name, "group") == 0) ||
-				      (strcmp(name, "redundant") == 0) ||
-				      (strcmp(name, "redundant-load-balance") == 0) ||
-				      strcmp(name, "load-balance") == 0)) {
-					cf_log_err_cs(subcs, "Invalid subsection");
-					return -1;
-				}
 
-				name = cf_section_name2(subcs);
-				if (!name) {
-					cf_log_err_cs(subcs, "Subsection must have a name");
-					return -1;
+				/*
+				 *	Groups, etc. must have a name.
+				 */
+				if (((strcmp(name, "group") == 0) ||
+				     (strcmp(name, "redundant") == 0) ||
+				     (strcmp(name, "redundant-load-balance") == 0) ||
+				     strcmp(name, "load-balance") == 0)) {
+					name = cf_section_name2(subcs);
+					if (!name) {
+						cf_log_err_cs(subcs, "Subsection must have a name");
+						return -1;
+					}
 				}
 
 				/*
