@@ -183,7 +183,7 @@ the current block.
 .DS
 	update <list> {
 .br
-		Attribute-Reference = value
+		&Attribute-Reference = value
 .br
 		...
 .br
@@ -327,11 +327,11 @@ Returns from the current top-level section, e.g. "authorize" or
 
 Attributes may be referenced via the following syntax:
 .DS
-	Attribute-Name
-	Attribute-Name:TAG
-	Attribute-Name[NUM]
-	<list>:Attribute-Name
-	<list>:Attribute-Name:TAG[NUM]
+	&Attribute-Name
+	&Attribute-Name:TAG
+	&Attribute-Name[NUM]
+	&<list>:Attribute-Name
+	&<list>:Attribute-Name:TAG[NUM]
 .DE
 Where <list> is one of "request", "reply", "control", "proxy-request",
 "proxy-reply", or "outer.request", "outer.reply", "outer.control",
@@ -535,15 +535,15 @@ Using attribute references permits limited type-specific comparisons,
 as seen in the examples below.
 
 .DS
-	if (User-Name == "bob") {
+	if (&User-Name == "bob") {
 .br
 		...
 .br
-	if (Framed-IP-Address > 127.0.0.1) {
+	if (&Framed-IP-Address > 127.0.0.1) {
 .br
 		...
 .br
-	if (Service-Type == Login-User) { 
+	if (&Service-Type == Login-User) {
 .DE
 .RE
 .IP """strings"""
