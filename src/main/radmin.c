@@ -360,7 +360,6 @@ static int do_connect(int *out, char const *file, char const *server)
 	char buffer[65536];
 	ssize_t	len, size;
 	int sockfd;
-	int set = 1;
 
 	uint32_t magic, needed;
 
