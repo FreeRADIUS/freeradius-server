@@ -348,6 +348,12 @@ name in a list.  The "Attribute-Name" reference will return the first
 attribute.  Using an array offset allows the policy to refer to the
 second and subsequent attributes.
 
+If '#' is used in the NUM portion, it evaluates to the number of times
+the attribute appears in the request.
+
+If '*' is used in the NUM portion, it evaluates to all instances of
+the attribute in the request.
+
 When an attribute name is encountered, the given list is examined for
 an attribute of the given name.  Some examples are:
 .DS
@@ -695,13 +701,15 @@ the following, with the given meaning.
 .IP =
 Add the attribute to the list, if and only if an attribute of the same
 name is not already present in that list.
-.IP := 
+.IP :=
 Add the attribute to the list.  If any attribute of the same name is
 already present in that list, its value is replaced with the value of
 the current attribute.
 .IP +=
 Add the attribute to the tail of the list, even if attributes of the
-same name are already present in the list.
+same name are already present in the list. When the right hand side
+of the expression resolves to multiple values, it means add all values
+to the tail of the list.
 .RE
 .PP
 Enforcement and Filtering Operators
