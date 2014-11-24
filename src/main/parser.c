@@ -347,12 +347,12 @@ static ssize_t condition_tokenize_cast(char const *start, DICT_ATTR const **pda,
  *  @param[in] ci for CONF_ITEM
  *  @param[in] start the start of the string to process.  Should be "(..."
  *  @param[in] brace look for a closing brace
- *  @param[in] flags do one/two pass
  *  @param[out] pcond pointer to the returned condition structure
  *  @param[out] error the parse error (if any)
+ *  @param[in] flags do one/two pass
  *  @return length of the string skipped, or when negative, the offset to the offending error
  */
-static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *start, int brace,
+static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *start, bool brace,
 				  fr_cond_t **pcond, char const **error, int flags)
 {
 	ssize_t slen, tlen;
