@@ -3801,11 +3801,11 @@ static void request_coa_originate(REQUEST *request)
 	if (vp) {
 		ipaddr.af = AF_INET;
 		ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
-
+		ipaddr.prefix = 32;
 	} else if ((vp = pairfind(coa->proxy->vps, PW_PACKET_DST_IPV6_ADDRESS, 0, TAG_ANY)) != NULL) {
 		ipaddr.af = AF_INET6;
 		ipaddr.ipaddr.ip6addr = vp->vp_ipv6addr;
-
+		ipaddr.prefix = 128;
 	} else if ((vp = pairfind(coa->proxy->vps, PW_HOME_SERVER_POOL, 0, TAG_ANY)) != NULL) {
 		coa->home_pool = home_pool_byname(vp->vp_strvalue,
 						  HOME_TYPE_COA);
