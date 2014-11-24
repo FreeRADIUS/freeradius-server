@@ -2053,7 +2053,8 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 
 			server = this->item.parent;
 			while ((strcmp(server->name1, "server") != 0) &&
-			       (strcmp(server->name1, "policy") != 0)) {
+			       (strcmp(server->name1, "policy") != 0) &&
+			       (strcmp(server->name1, "instantiate") != 0)) {
 				server = server->item.parent;
 				if (!server) goto invalid_location;
 			}
