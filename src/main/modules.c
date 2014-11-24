@@ -1815,7 +1815,8 @@ int modules_init(CONF_SECTION *config)
 
 				subcs = cf_itemtosection(ci);
 				name = cf_section_name1(subcs);
-				if (!((strcmp(name, "redundant") == 0) ||
+				if (!((strcmp(name, "group") == 0) ||
+				      (strcmp(name, "redundant") == 0) ||
 				      (strcmp(name, "redundant-load-balance") == 0) ||
 				      strcmp(name, "load-balance") == 0)) {
 					cf_log_err_cs(subcs, "Invalid subsection");
