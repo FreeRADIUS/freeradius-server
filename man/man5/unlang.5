@@ -183,7 +183,7 @@ the current block.
 .DS
 	update <list> {
 .br
-		Attribute-Reference = value
+		&Attribute-Reference = value
 .br
 		...
 .br
@@ -326,19 +326,13 @@ Returns from the current top-level section, e.g. "authorize" or
 .SH ATTRIBUTE REFERENCES
 
 Attributes may be referenced via the following syntax:
-
 .DS
-	Attribute-Name
-.br
-	Attribute-Name:TAG
-.br
-	Attribute-Name[NUM]
-.br
-	<list>:Attribute-Name
-.br
-	<list>:Attribute-Name:TAG[NUM]
+	&Attribute-Name
+	&Attribute-Name:TAG
+	&Attribute-Name[NUM]
+	&<list>:Attribute-Name
+	&<list>:Attribute-Name:TAG[NUM]
 .DE
-
 Where <list> is one of "request", "reply", "control", "proxy-request",
 "proxy-reply", or "outer.request", "outer.reply", "outer.control",
 "outer.proxy-request", or "outer.proxy-reply". just as with the
@@ -356,7 +350,6 @@ second and subsequent attributes.
 
 When an attribute name is encountered, the given list is examined for
 an attribute of the given name.  Some examples are:
-
 .DS
 	User-Name
 .br
@@ -370,7 +363,6 @@ an attribute of the given name.  Some examples are:
 .br
 	outer.request:User-Name # from inside of a TTLS/PEAP tunnel
 .DE
-
 Note that unlike C, there is no way to define new attributes at
 run-time.  They MUST be declared in a dictionary file, and loaded when
 the server starts.
@@ -543,15 +535,15 @@ Using attribute references permits limited type-specific comparisons,
 as seen in the examples below.
 
 .DS
-	if (User-Name == "bob") {
+	if (&User-Name == "bob") {
 .br
 		...
 .br
-	if (Framed-IP-Address > 127.0.0.1) {
+	if (&Framed-IP-Address > 127.0.0.1) {
 .br
 		...
 .br
-	if (Service-Type == Login-User) { 
+	if (&Service-Type == Login-User) {
 .DE
 .RE
 .IP """strings"""
@@ -757,6 +749,13 @@ reference.  The "Attribute-Name" is an attribute name, such as
 used, both attributes must have the same data type.  For example,
 "User-Name := &NAS-Port" is invalid, because "User-Name" is a string,
 and "NAS-Port" is an integer.
+
+We recommend using the form "Attribute-1 = &Attribute-2" for updates,
+instead of "Attribute-1 = "%{Attribute-2}".  The first version will
+copy the attribute data, no matter what its form.  The second
+version will print the Attribute-2 to a string, and then parse it to
+create the value for Attribute-1.  This second version is slower
+and more fragile than the first one.
 
 When the value is an attribute-specific string, it can be a string,
 integer, IP address, etc.  The value may be expanded as described
