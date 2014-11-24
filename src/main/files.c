@@ -63,6 +63,10 @@ int pairlist_read(TALLOC_CTX *ctx, char const *file, PAIR_LIST **list, int compl
 	int lineno = 0;
 	int old_lineno = 0;
 	FR_TOKEN parsecode;
+#ifdef HAVE_REGEX_H
+	VALUE_PAIR *vp;
+	vp_cursor_t cursor;
+#endif
 	char newfile[8192];
 
 	DEBUG2("reading pairlist file %s", file);
@@ -192,6 +196,26 @@ parse_again:
 				fclose(fp);
 				return -1;
 			}
+
+#ifdef HAVE_REGEX_H
+			/*
+			 *	Do some more sanity checks.
+			 */
+			for (vp = fr_cursor_init(&cursor, &check_tmp);
+			     vp;
+			     vp = fr_cursor_next(&cursor)) {
+				if (((vp->op == T_OP_REG_EQ) ||
+				     (vp->op == T_OP_REG_NE)) &&
+				    (vp->da->type != PW_TYPE_STRING)) {
+					ERROR("%s[%d]: Cannot use regular expressions for non-string attributes in entry %s",
+					      file, lineno, entry);
+					fclose(fp);
+					return -1;
+				}
+			}
+#endif
+
+
 			mode = FIND_MODE_REPLY;
 			parsecode = T_COMMA;
 		}
