@@ -27,37 +27,37 @@ RCSID("$Id$")
 #include <freeradius-devel/md5.h>
 
 #ifdef HAVE_SYS_UN_H
-#include <sys/un.h>
-#ifndef SUN_LEN
-#define SUN_LEN(su)  (sizeof(*(su)) - sizeof((su)->sun_path) + strlen((su)->sun_path))
-#endif
+#  include <sys/un.h>
+#  ifndef SUN_LEN
+#    define SUN_LEN(su)  (sizeof(*(su)) - sizeof((su)->sun_path) + strlen((su)->sun_path))
+#  endif
 #endif
 
 #ifdef HAVE_GETOPT_H
-#include <getopt.h>
+#  include <getopt.h>
 #endif
 
 #ifdef HAVE_SYS_STAT_H
-#include <sys/stat.h>
+#  include <sys/stat.h>
 #endif
 
 #ifdef HAVE_LIBREADLINE
 
 #if defined(HAVE_READLINE_READLINE_H)
-#include <readline/readline.h>
-#define USE_READLINE (1)
+#  include <readline/readline.h>
+#  define USE_READLINE (1)
 #elif defined(HAVE_READLINE_H)
-#include <readline.h>
-#define USE_READLINE (1)
+#  include <readline.h>
+#  define USE_READLINE (1)
 #endif /* !defined(HAVE_READLINE_H) */
 
 #ifdef HAVE_READLINE_HISTORY
-#if defined(HAVE_READLINE_HISTORY_H)
-#include <readline/history.h>
-#define USE_READLINE_HISTORY (1)
-#elif defined(HAVE_HISTORY_H)
-#include <history.h>
-#define USE_READLINE_HISTORY (1)
+#  if defined(HAVE_READLINE_HISTORY_H)
+#    include <readline/history.h>
+#    define USE_READLINE_HISTORY (1)
+#  elif defined(HAVE_HISTORY_H)
+#    include <history.h>
+#    define USE_READLINE_HISTORY (1)
 #endif /* defined(HAVE_READLINE_HISTORY_H) */
 
 #endif /* HAVE_READLINE_HISTORY */
