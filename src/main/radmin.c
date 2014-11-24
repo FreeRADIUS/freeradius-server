@@ -136,7 +136,7 @@ static int fr_domain_socket(char const *path)
 
 	if ((sockfd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
 		fprintf(stderr, "%s: Failed creating socket: %s\n",
-			progname, strerror(errno));
+			progname, fr_syserror(errno));
 		return -1;
 	}
 
@@ -150,7 +150,7 @@ static int fr_domain_socket(char const *path)
 
 		close(sockfd);
 		fprintf(stderr, "%s: Failed connecting to %s: %s\n",
-			progname, path, strerror(errno));
+			progname, path, fr_syserror(errno));
 
 		/*
 		 *	The file doesn't exist.  Tell the user how to
@@ -170,7 +170,7 @@ static int fr_domain_socket(char const *path)
 
 		if ((flags = fcntl(sockfd, F_GETFL, NULL)) < 0)  {
 			fprintf(stderr, "%s: Failure getting socket flags: %s",
-				progname, strerror(errno));
+				progname, fr_syserror(errno));
 			close(sockfd);
 			return -1;
 		}
@@ -178,7 +178,7 @@ static int fr_domain_socket(char const *path)
 		flags |= O_NONBLOCK;
 		if( fcntl(sockfd, F_SETFL, flags) < 0) {
 			fprintf(stderr, "%s: Failure setting socket flags: %s",
-				progname, strerror(errno));
+				progname, fr_syserror(errno));
 			close(sockfd);
 			return -1;
 		}
@@ -207,14 +207,14 @@ static int client_socket(char const *server)
 
 	if (ip_hton(&ipaddr, AF_INET, buffer, false) < 0) {
 		fprintf(stderr, "%s: Failed looking up host %s: %s\n",
-			progname, buffer, strerror(errno));
+			progname, buffer, fr_syserror(errno));
 		exit(1);
 	}
 
 	sockfd = fr_tcp_client_socket(NULL, &ipaddr, port);
 	if (sockfd < 0) {
 		fprintf(stderr, "%s: Failed opening socket %s: %s\n",
-			progname, server, strerror(errno));
+			progname, server, fr_syserror(errno));
 		exit(1);
 	}
 
@@ -242,7 +242,7 @@ static void do_challenge(int sockfd)
 			if (errno == EINTR) continue;
 
 			fprintf(stderr, "%s: Failed reading data: %s\n",
-				progname, strerror(errno));
+				progname, fr_syserror(errno));
 			exit(1);
 		}
 		total += r;
@@ -254,7 +254,7 @@ static void do_challenge(int sockfd)
 
 	if (write(sockfd, challenge, sizeof(challenge)) < 0) {
 		fprintf(stderr, "%s: Failed writing challenge data: %s\n",
-			progname, strerror(errno));
+			progname, fr_syserror(errno));
 	}
 }
 
@@ -294,14 +294,14 @@ static ssize_t run_command(int sockfd, char const *command,
 			if (errno == EINTR) continue;
 
 			fprintf(stderr, "%s: Failed selecting: %s\n",
-				progname, strerror(errno));
-			exit(1);
+				progname, fr_syserror(errno));
+			return -1;
 		}
 
 		if (rcode == 0) {
 			fprintf(stderr, "%s: Server closed the connection.\n",
 				progname);
-			exit(1);
+			return -1;
 		}
 
 #ifdef MSG_DONTWAIT
@@ -322,8 +322,8 @@ static ssize_t run_command(int sockfd, char const *command,
 			}
 
 			fprintf(stderr, "%s: Error reading socket: %s\n",
-				progname, strerror(errno));
-			exit(1);
+				progname, fr_syserror(errno));
+			return -1;
 		}
 		if (len == 0) return 0;	/* clean exit */
 
@@ -355,6 +355,82 @@ static ssize_t run_command(int sockfd, char const *command,
 	return 2;
 }
 
+static int do_connect(int *out, char const *file, char const *server)
+{
+	char buffer[65536];
+	ssize_t	len, size;
+	int sockfd;
+	int set = 1;
+
+	uint32_t magic, needed;
+
+	/*
+	 *	Close stale file descriptors
+	 */
+	if (*out != -1) {
+		close(*out);
+		*out = -1;
+	}
+
+	if (file) {
+		/*
+		 *	FIXME: Get destination from command line, if possible?
+		 */
+		sockfd = fr_domain_socket(file);
+		if (sockfd < 0) return -1;
+	} else {
+		sockfd = client_socket(server);
+	}
+
+	/*
+	 *	Only works for BSD, but Linux allows us
+	 *	to mask SIGPIPE, so that's fine.
+	 */
+#ifdef SO_NOSIGPIPE
+	setsockopt(sockfd, SOL_SOCKET, SO_NOSIGPIPE, (void *)&set, sizeof(int));
+#endif
+
+	/*
+	 *	Read initial magic && version information.
+	 */
+	for (size = 0; size < 8; size += len) {
+		len = read(sockfd, buffer + size, 8 - size);
+		if (len < 0) {
+			fprintf(stderr, "%s: Error reading initial data from socket: %s\n",
+				progname, fr_syserror(errno));
+			return -1;
+		}
+	}
+
+	memcpy(&magic, buffer, 4);
+	magic = ntohl(magic);
+	if (magic != 0xf7eead15) {
+		fprintf(stderr, "%s: Socket %s is not FreeRADIUS administration socket\n", progname, file);
+		return -1;
+	}
+
+	memcpy(&magic, buffer + 4, 4);
+	magic = ntohl(magic);
+
+	if (!server) {
+		needed = 1;
+	} else {
+		needed = 2;
+	}
+
+	if (magic != needed) {
+		fprintf(stderr, "%s: Socket version mismatch: Need %d, got %d\n",
+			progname, needed, magic);
+		return -1;
+	}
+
+	if (server && secret) do_challenge(sockfd);
+
+	*out = sockfd;
+
+	return 0;
+}
+
 #define MAX_COMMANDS (4)
 
 int main(int argc, char **argv)
@@ -362,10 +438,9 @@ int main(int argc, char **argv)
 	int		argval;
 	bool		quiet = false;
 	bool		done_license = false;
-	int		sockfd;
-	uint32_t	magic, needed;
+	int		sockfd = -1;
 	char		*line = NULL;
-	ssize_t		len, size;
+	ssize_t		len;
 	char const	*file = NULL;
 	char const	*name = "radiusd";
 	char		*p, buffer[65536];
@@ -549,7 +624,7 @@ int main(int argc, char **argv)
 	if (input_file) {
 		inputfp = fopen(input_file, "r");
 		if (!inputfp) {
-			fprintf(stderr, "%s: Failed opening %s: %s\n", progname, input_file, strerror(errno));
+			fprintf(stderr, "%s: Failed opening %s: %s\n", progname, input_file, fr_syserror(errno));
 			exit(1);
 		}
 	}
@@ -557,7 +632,7 @@ int main(int argc, char **argv)
 	if (output_file) {
 		outputfp = fopen(output_file, "w");
 		if (!outputfp) {
-			fprintf(stderr, "%s: Failed creating %s: %s\n", progname, output_file, strerror(errno));
+			fprintf(stderr, "%s: Failed creating %s: %s\n", progname, output_file, fr_syserror(errno));
 			exit(1);
 		}
 	}
@@ -582,54 +657,10 @@ int main(int argc, char **argv)
 	}
 #endif
 
- reconnect:
-	if (file) {
-		/*
-		 *	FIXME: Get destination from command line, if possible?
-		 */
-		sockfd = fr_domain_socket(file);
-		if (sockfd < 0) {
-			exit(1);
-		}
-	} else {
-		sockfd = client_socket(server);
-	}
-
 	/*
-	 *	Read initial magic && version information.
+	 *	Prevent SIGPIPEs from terminating the process
 	 */
-	for (size = 0; size < 8; size += len) {
-		len = read(sockfd, buffer + size, 8 - size);
-		if (len < 0) {
-			fprintf(stderr, "%s: Error reading initial data from socket: %s\n",
-				progname, strerror(errno));
-			exit(1);
-		}
-	}
-
-	memcpy(&magic, buffer, 4);
-	magic = ntohl(magic);
-	if (magic != 0xf7eead15) {
-		fprintf(stderr, "%s: Socket %s is not FreeRADIUS administration socket\n", progname, file);
-		exit(1);
-	}
-
-	memcpy(&magic, buffer + 4, 4);
-	magic = ntohl(magic);
-
-	if (!server) {
-		needed = 1;
-	} else {
-		needed = 2;
-	}
-
-	if (magic != needed) {
-		fprintf(stderr, "%s: Socket version mismatch: Need %d, got %d\n",
-			progname, needed, magic);
-		exit(1);
-	}
-
-	if (server && secret) do_challenge(sockfd);
+	signal(SIGPIPE, SIG_IGN);
 
 	/*
 	 *	Run one command.
@@ -638,9 +669,8 @@ int main(int argc, char **argv)
 		int i;
 
 		for (i = 0; i <= num_commands; i++) {
-			size = run_command(sockfd, commands[i],
-					   buffer, sizeof(buffer));
-			if (size < 0) exit(1);
+			len = run_command(sockfd, commands[i], buffer, sizeof(buffer));
+			if (len < 0) exit(1);
 
 			if (buffer[0]) {
 				fputs(buffer, outputfp);
@@ -737,9 +767,9 @@ int main(int argc, char **argv)
 		}
 
 		if (strcmp(line, "reconnect") == 0) {
-			close(sockfd);
+			if (do_connect(&sockfd, file, server) < 0) exit(1);
 			line = NULL;
-			goto reconnect;
+			continue;
 		}
 
 		if (memcmp(line, "secret ", 7) == 0) {
@@ -765,10 +795,12 @@ int main(int argc, char **argv)
 			continue;
 		}
 
-		size = run_command(sockfd, line, buffer, sizeof(buffer));
-		if (size <= 0) break; /* error, or clean exit */
-
-		if (size == 1) continue; /* no output. */
+		len = run_command(sockfd, line, buffer, sizeof(buffer));
+		if ((len < 0) && (do_connect(&sockfd, file, server) < 0)) {
+			fprintf(stderr, "Reconnecting...");
+			exit(1);
+		} else if (len == 0) break;
+		else if (len == 1) continue; /* no output. */
 
 		fputs(buffer, outputfp);
 		fflush(outputfp);
