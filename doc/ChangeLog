@@ -1,5 +1,21 @@
 FreeRADIUS 3.0.5 Fri 21 Nov 2014 15:30:00 EDT urgency=medium
 	Feature improvements
+	* radmin / raddebug conditional errors are printed
+	  to the output, instead of being discarded.
+	* radmin auto-reconnects if the connection to the
+	  server has gone away.
+	* rlm_cache now has submodule support.  See
+	  raddb/mods-available/cache
+	* Add support for &Attribute-Name[*] in conditions.
+	  See "man unlang" for details.
+
+	Bug fixes
+	* PEAP works again.  As does proxying EAP-MSCHAPv2
+	  from inside of a PEAP tunnel.
+	* "group" is allowed inside of "instantiate" sections.
+
+FreeRADIUS 3.0.5 Fri 21 Nov 2014 15:30:00 EDT urgency=medium
+	Feature improvements
 	* Large update to Huawei dictionary.
 	* Added dictionary.rfc7155
 	* Regular expressions like /%{User-Name}/ are now parsed
