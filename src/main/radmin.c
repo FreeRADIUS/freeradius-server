@@ -387,7 +387,11 @@ static int do_connect(int *out, char const *file, char const *server)
 	 *	to mask SIGPIPE, so that's fine.
 	 */
 #ifdef SO_NOSIGPIPE
-	setsockopt(sockfd, SOL_SOCKET, SO_NOSIGPIPE, (void *)&set, sizeof(int));
+	{
+		int set = 1;
+
+		setsockopt(sockfd, SOL_SOCKET, SO_NOSIGPIPE, (void *)&set, sizeof(int));
+	}
 #endif
 
 	/*
@@ -661,6 +665,8 @@ int main(int argc, char **argv)
 	 *	Prevent SIGPIPEs from terminating the process
 	 */
 	signal(SIGPIPE, SIG_IGN);
+
+	if (do_connect(&sockfd, file, server) < 0) exit(1);
 
 	/*
 	 *	Run one command.
