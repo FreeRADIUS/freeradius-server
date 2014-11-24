@@ -15,7 +15,7 @@
 #	If you want different things cached for authorize and post-auth,
 #	you will need to define two instances of the "cache" module.
 #
-#	The module returns "ok" if it found or cache entry.
+#	The module returns "ok" if it found or created a cache entry.
 #	The module returns "updated" if it merged a cached entry.
 #	The module returns "noop" if it did nothing.
 #	The module returns "fail" on error.
