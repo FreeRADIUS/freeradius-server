@@ -1138,7 +1138,7 @@ rlm_rcode_t eappeap_process(eap_handler_t *handler, tls_session_t *tls_session)
 			 *	We're not proxying it as EAP, so we've got
 			 *	to do the callback later.
 			 */
-			if ((fake->packet->offset & RAD_REQUEST_OPTION_PROXY_EAP) != 0) {
+			if ((request->proxy->offset & RAD_REQUEST_OPTION_PROXY_EAP) != 0) {
 				RDEBUG2("Remembering to do EAP-MS-CHAP-V2 post-proxy");
 
 				/*
