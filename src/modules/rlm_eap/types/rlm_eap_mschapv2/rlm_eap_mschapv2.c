@@ -252,7 +252,7 @@ static int mschapv2_initiate(UNUSED void *instance, eap_handler_t *handler)
 	 *	The EAP session doesn't have enough information to
 	 *	proxy the "inside EAP" protocol.  Disable EAP proxying.
 	 */
-	handler->request->packet->offset &= ~RAD_REQUEST_OPTION_PROXY_EAP;
+	handler->request->options &= ~RAD_REQUEST_OPTION_PROXY_EAP;
 #endif
 
 	/*
@@ -318,7 +318,7 @@ static int CC_HINT(nonnull) mschap_postproxy(eap_handler_t *handler, UNUSED void
 	/*
 	 *	Done doing EAP proxy stuff.
 	 */
-	request->packet->offset &= ~RAD_REQUEST_OPTION_PROXY_EAP;
+	request->options &= ~RAD_REQUEST_OPTION_PROXY_EAP;
 	eapmschapv2_compose(handler, response);
 	data->code = PW_EAP_MSCHAPV2_SUCCESS;
 
@@ -452,7 +452,7 @@ static int CC_HINT(nonnull) mschapv2_authenticate(void *arg, eap_handler_t *hand
 		}
 
 failure:
-		request->packet->offset &= ~RAD_REQUEST_OPTION_PROXY_EAP;
+		request->options &= ~RAD_REQUEST_OPTION_PROXY_EAP;
 		eap_ds->request->code = PW_EAP_FAILURE;
 		return 1;
 
@@ -477,7 +477,7 @@ failure:
 			/*
 			 *	It's a success.  Don't proxy it.
 			 */
-			request->packet->offset &= ~RAD_REQUEST_OPTION_PROXY_EAP;
+			request->options &= ~RAD_REQUEST_OPTION_PROXY_EAP;
 #endif
 			pairfilter(request->reply,
 				  &request->reply->vps,
@@ -595,7 +595,7 @@ packet_ready:
 	 *	EAP attributes, and proxy the MS-CHAP attributes to a
 	 *	home server.
 	 */
-	if (request->packet->offset & RAD_REQUEST_OPTION_PROXY_EAP) {
+	if (request->options & RAD_REQUEST_OPTION_PROXY_EAP) {
 		char *username = NULL;
 		eap_tunnel_data_t *tunnel;
 
