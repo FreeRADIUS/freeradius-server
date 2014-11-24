@@ -312,6 +312,8 @@ struct rad_request {
 						//!< when a request has been exdented too much.
 	} log;
 
+	uint32_t		options;	//!< mainly for proxying EAP-MSCHAPv2.
+
 #ifdef WITH_COA
 	REQUEST			*coa;		//!< CoA request originated by this request.
 	uint32_t		num_coa_requests;//!< Counter for number of requests sent including

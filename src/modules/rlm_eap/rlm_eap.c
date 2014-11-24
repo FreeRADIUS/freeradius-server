@@ -319,8 +319,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	/*
 	 *	If we're doing horrible tunneling work, remember it.
 	 */
-	if (request->parent &&
-	    (request->packet->offset & RAD_REQUEST_OPTION_PROXY_EAP) != 0) {
+	if ((request->options & RAD_REQUEST_OPTION_PROXY_EAP) != 0) {
 		RDEBUG2("No EAP proxy set.  Not composing EAP");
 		/*
 		 *	Add the handle to the proxied list, so that we
