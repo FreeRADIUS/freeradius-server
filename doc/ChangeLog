@@ -3,7 +3,7 @@ FreeRADIUS 3.0.6 Fri 21 Nov 2014 15:30:00 EDT urgency=medium
 	* radmin / raddebug conditional errors are printed
 	  to the output, instead of being discarded.
 	* raddebug will exit if condition set with -c was invalid.
-	* radmin auto-reconnects if the connection to the server 
+	* radmin auto-reconnects if the connection to the server
 	  has gone away.
 	* rlm_cache now has submodule support.  See
 	  raddb/mods-available/cache
@@ -18,10 +18,10 @@ FreeRADIUS 3.0.6 Fri 21 Nov 2014 15:30:00 EDT urgency=medium
 	* PEAP works again.  As does proxying EAP-MSCHAPv2
 	  from inside of a PEAP tunnel.
 	* "group" is allowed inside of "instantiate" sections.
-	* update disconnect {} with 
+	* update disconnect {} with
 	  disconnect:Packet-Dst-IP-Address now works correctly.
 	* Regular expression comparisons of non string attributes
-	  are now disallowed in the files module.  Previously 
+	  are now disallowed in the files module.  Previously
 	  they would silently fail or produce undefined behaviour.
 
 FreeRADIUS 3.0.5 Fri 21 Nov 2014 15:30:00 EDT urgency=medium
