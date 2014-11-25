@@ -770,13 +770,14 @@ static size_t rest_encode_json(void *out, size_t size, size_t nmemb, void *userd
 
 				p += len;
 				freespace -= len;
+				encoded = p;
 
 				/*
 				 *  Multivalued attribute, we sorted all the attributes earlier, so multiple
 				 *  instances should occur in a contiguous block.
 				 */
 				if ((next = fr_cursor_next(&ctx->cursor)) && (vp->da == next->da)) {
-					if (freespace < 1) goto no_space;
+					rad_assert(freespace >= 1);
 					*p++ = ',';
 					freespace--;
 
