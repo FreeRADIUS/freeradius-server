@@ -560,23 +560,25 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		if (ldap_errno == LDAP_OPT_SUCCESS) {
 			if (strcmp(info.ldapai_vendor_name, LDAP_VENDOR_NAME) != 0) {
 				WARN("rlm_ldap: libldap vendor changed since the server was built");
-				WARN("rlm_ldap: linked: %s built: %s", info.ldapai_vendor_name, LDAP_VENDOR_NAME);
+				WARN("rlm_ldap: linked: %s, built: %s", info.ldapai_vendor_name, LDAP_VENDOR_NAME);
 			}
 
 			if (info.ldapai_vendor_version != LDAP_VENDOR_VERSION) {
 				WARN("rlm_ldap: libldap version changed since the server was built");
-				WARN("rlm_ldap: linked: %i built: %i",
+				WARN("rlm_ldap: linked: %i, built: %i",
 				     info.ldapai_vendor_version, LDAP_VENDOR_VERSION);
 			}
 
-			INFO("rlm_ldap: libldap vendor: %s version: %i", info.ldapai_vendor_name,
+			INFO("rlm_ldap: libldap vendor: %s, version: %i", info.ldapai_vendor_name,
 			     info.ldapai_vendor_version);
+
 			ldap_memfree(info.ldapai_vendor_name);
 			ldap_memfree(info.ldapai_extensions);
 		} else {
 			DEBUG("rlm_ldap: Falling back to build time libldap version info.  Query for LDAP_OPT_API_INFO "
 			      "returned: %i", ldap_errno);
-			INFO("rlm_ldap: libldap vendor: %s version: %i", LDAP_VENDOR_NAME, LDAP_VENDOR_VERSION);
+			INFO("rlm_ldap: libldap vendor: %s, version: %i.%i.%i", LDAP_VENDOR_NAME,
+			     LDAP_VENDOR_VERSION_MAJOR, LDAP_VENDOR_VERSION_MINOR, LDAP_VENDOR_VERSION_PATCH);
 		}
 	}
 
