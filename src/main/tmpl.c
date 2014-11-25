@@ -436,7 +436,7 @@ void tmpl_verify(char const *file, int line, value_pair_tmpl_t const *vpt)
 
 	if (vpt->type > TMPL_TYPE_NULL) {
 		FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: value_pair_tmpl_t type was %i "
-			     "(outside range of TMPL_TYPEs)", file, line, vpt->type);
+			     "(outside range of template_names)", file, line, vpt->type);
 		fr_assert(0);
 		fr_exit_now(1);
 	}

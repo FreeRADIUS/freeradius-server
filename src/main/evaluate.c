@@ -41,7 +41,7 @@ FR_NAME_NUMBER const template_names[] = {
 	{ "literal",		TMPL_TYPE_LITERAL 	},
 	{ "xlat",		TMPL_TYPE_XLAT		},
 	{ "attr",		TMPL_TYPE_ATTR		},
-	{ "unknonwn attr",	TMPL_TYPE_ATTR_UNDEFINED	},
+	{ "unknown attr",	TMPL_TYPE_ATTR_UNDEFINED	},
 	{ "list",		TMPL_TYPE_LIST		},
 	{ "regex",		TMPL_TYPE_REGEX		},
 	{ "exec",		TMPL_TYPE_EXEC		},

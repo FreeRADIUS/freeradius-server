@@ -141,8 +141,8 @@ int rlm_ldap_map_verify(value_pair_map_t *map, void *instance)
 		break;
 
 	default:
-		cf_log_err(map->ci, "RADIUS (RHS) of map must be an attribute or list, not %s",
-			   fr_int2str(tmpl_types, map->lhs->type, "<INVALID>"));
+		cf_log_err(map->ci, "Left hand side of map must be an attribute or list, not a %s",
+			   fr_int2str(template_names, map->lhs->type, "<INVALID>"));
 		return -1;
 	}
 
@@ -158,8 +158,8 @@ int rlm_ldap_map_verify(value_pair_map_t *map, void *instance)
 		break;
 
 	default:
-		cf_log_err(map->ci, "LDAP (LHS) of map must be an xlat, attribute, exec, or literal, not %s",
-			   fr_int2str(tmpl_types, map->rhs->type, "<INVALID>"));
+		cf_log_err(map->ci, "Right hand side of map must be an xlat, attribute, exec, or literal, not a %s",
+			   fr_int2str(template_names, map->rhs->type, "<INVALID>"));
 		return -1;
 	}
 
