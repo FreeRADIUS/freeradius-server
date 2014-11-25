@@ -665,7 +665,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 *	Sanity check for crazy people.
 	 */
 	if (strncmp(inst->driver_name, "rlm_cache_", 8) != 0) {
-		ERROR("%s: \"%s\" is NOT an Cache driver!", inst->xlat_name, inst->driver_name);
+		ERROR("rlm_cache (%s): \"%s\" is NOT an Cache driver!", inst->xlat_name, inst->driver_name);
 		return -1;
 	}
 
@@ -674,18 +674,20 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 */
 	inst->handle = lt_dlopenext(inst->driver_name);
 	if (!inst->handle) {
-		ERROR("Could not link driver %s: %s", inst->driver_name, dlerror());
-		ERROR("Make sure it (and all its dependent libraries!) are in the search path of your system's ld");
+		ERROR("rlm_cache (%s): Could not link driver %s: %s", inst->xlat_name, inst->driver_name, dlerror());
+		ERROR("rlm_cache (%s): Make sure it (and all its dependent libraries!) are in the search path"
+		      "of your system's ld", inst->xlat_name);
 		return -1;
 	}
 
 	inst->module = (cache_module_t *) dlsym(inst->handle, inst->driver_name);
 	if (!inst->module) {
-		ERROR("Could not link symbol %s: %s", inst->driver_name, dlerror());
+		ERROR("rlm_cache (%s): Could not link symbol %s: %s", inst->xlat_name, inst->driver_name, dlerror());
 		return -1;
 	}
 
-	DEBUG3("Driver %s loaded successfully", inst->module->name);
+	INFO("rlm_cahe (%s): Driver %s (module %s) loaded and linked", inst->xlat_name,
+	     inst->driver_name, inst->module->name);
 
 	/*
 	 *	Non optional fields and callbacks
