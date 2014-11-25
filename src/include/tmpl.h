@@ -84,7 +84,7 @@ typedef enum tmpl_type {
 	TMPL_TYPE_NULL			//!< VPT has no value
 } tmpl_type_t;
 
-extern const FR_NAME_NUMBER tmpl_types[];
+extern const FR_NAME_NUMBER template_names[];
 
 typedef struct xlat_exp xlat_exp_t;
 

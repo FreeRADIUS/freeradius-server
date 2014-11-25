@@ -34,16 +34,6 @@ RCSID("$Id$")
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/rad_assert.h>
 
-const FR_NAME_NUMBER tmpl_types[] = {
-	{"unknown",		TMPL_TYPE_UNKNOWN },
-	{"literal",		TMPL_TYPE_LITERAL },
-	{"expanded",		TMPL_TYPE_XLAT },
-	{"attribute ref",	TMPL_TYPE_ATTR },
-	{"list",		TMPL_TYPE_LIST },
-	{"exec",		TMPL_TYPE_EXEC },
-	{"value-pair-data",	TMPL_TYPE_DATA }
-};
-
 struct cmp {
 	DICT_ATTR const *attribute;
 	DICT_ATTR const *from;
