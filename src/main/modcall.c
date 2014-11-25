@@ -2613,6 +2613,7 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 
 		*modname = NULL;
 		cf_log_err(ci, "Failed to find \"%s\" in the \"modules\" section.", modrefname);
+		cf_log_err(ci, "Please verify that the configuration exists in the file %s/mods-enabled/%s.", get_radius_dir(), modrefname);
 		return NULL;
 	} while (0);
 
