@@ -37,21 +37,6 @@ RCSID("$Id$")
 #  define EVAL_DEBUG(...)
 #endif
 
-FR_NAME_NUMBER const template_names[] = {
-	{ "literal",		TMPL_TYPE_LITERAL 	},
-	{ "xlat",		TMPL_TYPE_XLAT		},
-	{ "attr",		TMPL_TYPE_ATTR		},
-	{ "unknown attr",	TMPL_TYPE_ATTR_UNDEFINED	},
-	{ "list",		TMPL_TYPE_LIST		},
-	{ "regex",		TMPL_TYPE_REGEX		},
-	{ "exec",		TMPL_TYPE_EXEC		},
-	{ "data",		TMPL_TYPE_DATA		},
-	{ "parsed xlat",	TMPL_TYPE_XLAT_STRUCT	},
-	{ "parsed regex",	TMPL_TYPE_REGEX_STRUCT	},
-	{ "null",		TMPL_TYPE_NULL		},
-	{ NULL, 0 }
-};
-
 FR_NAME_NUMBER const modreturn_table[] = {
 	{ "reject",		RLM_MODULE_REJECT       },
 	{ "fail",		RLM_MODULE_FAIL	 	},
@@ -646,8 +631,8 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 	value_pair_map_t const *map = c->data.map;
 
 	EVAL_DEBUG(">>> MAP TYPES LHS: %s, RHS: %s",
-		   fr_int2str(template_names, map->lhs->type, "???"),
-		   fr_int2str(template_names, map->rhs->type, "???"));
+		   fr_int2str(tmpl_names, map->lhs->type, "???"),
+		   fr_int2str(tmpl_names, map->rhs->type, "???"));
 
 	switch (map->lhs->type) {
 	/*
