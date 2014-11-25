@@ -177,7 +177,6 @@ typedef enum rlm_rcodes {
 	RLM_MODULE_UNKNOWN	//!< Error resolving rcode (should not be
 				//!< returned by modules).
 } rlm_rcode_t;
-extern const FR_NAME_NUMBER template_names[];
 extern const FR_NAME_NUMBER modreturn_table[];
 
 /*

@@ -31,6 +31,21 @@ RCSID("$Id$")
 
 #include <ctype.h>
 
+FR_NAME_NUMBER const tmpl_names[] = {
+	{ "literal",		TMPL_TYPE_LITERAL 	},
+	{ "xlat",		TMPL_TYPE_XLAT		},
+	{ "attr",		TMPL_TYPE_ATTR		},
+	{ "unknown attr",	TMPL_TYPE_ATTR_UNDEFINED	},
+	{ "list",		TMPL_TYPE_LIST		},
+	{ "regex",		TMPL_TYPE_REGEX		},
+	{ "exec",		TMPL_TYPE_EXEC		},
+	{ "data",		TMPL_TYPE_DATA		},
+	{ "parsed xlat",	TMPL_TYPE_XLAT_STRUCT	},
+	{ "parsed regex",	TMPL_TYPE_REGEX_STRUCT	},
+	{ "null",		TMPL_TYPE_NULL		},
+	{ NULL, 0 }
+};
+
 const FR_NAME_NUMBER pair_lists[] = {
 	{ "request",		PAIR_LIST_REQUEST },
 	{ "reply",		PAIR_LIST_REPLY },
@@ -436,7 +451,7 @@ void tmpl_verify(char const *file, int line, value_pair_tmpl_t const *vpt)
 
 	if (vpt->type > TMPL_TYPE_NULL) {
 		FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: value_pair_tmpl_t type was %i "
-			     "(outside range of template_names)", file, line, vpt->type);
+			     "(outside range of tmpl_names)", file, line, vpt->type);
 		fr_assert(0);
 		fr_exit_now(1);
 	}

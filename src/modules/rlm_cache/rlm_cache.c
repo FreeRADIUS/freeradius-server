@@ -386,7 +386,7 @@ static int cache_verify(value_pair_map_t *map, UNUSED void *ctx)
 		default:
 			cf_log_err(map->ci, "Operator \"%s\" not allowed for %s values",
 				   fr_int2str(fr_tokens, map->op, "<INVALID>"),
-				   fr_int2str(template_names, map->rhs->type, "<INVALID>"));
+				   fr_int2str(tmpl_names, map->rhs->type, "<INVALID>"));
 			return -1;
 		}
 	default:
