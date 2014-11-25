@@ -544,7 +544,9 @@ void vradlog_request(log_type_t type, log_debug_t lvl, REQUEST *request, char co
 	size_t len = 0;
 	char const *filename = default_log.file;
 	FILE *fp = NULL;
+
 	char buffer[10240];	/* The largest config item size, then extra for prefixes and suffixes */
+
 	char *p;
 	char const *extra = "";
 	uint8_t indent;
@@ -603,35 +605,6 @@ void vradlog_request(log_type_t type, log_debug_t lvl, REQUEST *request, char co
 	}
 
 	/*
-	 *	Print timestamps to the file.
-	 */
-	if (fp) {
-		time_t timeval;
-		timeval = time(NULL);
-
-#ifdef HAVE_GMTIME_R
-		if (log_dates_utc) {
-			struct tm utc;
-			gmtime_r(&timeval, &utc);
-			ASCTIME_R(&utc, buffer, sizeof(buffer) - 1);
-		} else
-#endif
-		{
-			CTIME_R(&timeval, buffer, sizeof(buffer) - 1);
-		}
-
-		len = strlen(buffer);
-		p = strrchr(buffer, '\n');
-		if (p) {
-			p[0] = ' ';
-			p[1] = '\0';
-		}
-
-		len += strlcpy(buffer + len, fr_int2str(levels, type, ": "), sizeof(buffer) - len);
-		if (len >= sizeof(buffer)) goto finish;
-	}
-
-	/*
 	 *  If we don't copy the original ap we get a segfault from vasprintf. This is apparently
 	 *  due to ap sometimes being implemented with a stack offset which is invalidated if
 	 *  ap is passed into another function. See here:
@@ -644,8 +617,53 @@ void vradlog_request(log_type_t type, log_debug_t lvl, REQUEST *request, char co
 	vsnprintf(buffer + len, sizeof(buffer) - len, msg, aq);
 	va_end(aq);
 
-finish:
-	switch (type) {
+	indent = request->log.indent > sizeof(spaces) ?
+		 sizeof(spaces) :
+		 request->log.indent;
+
+	/*
+	 *	Logging to a file descriptor
+	 */
+	if (fp) {
+		char time_buff[64];	/* The current timestamp */
+
+		time_t timeval;
+		timeval = time(NULL);
+
+#ifdef HAVE_GMTIME_R
+		if (log_dates_utc) {
+			struct tm utc;
+			gmtime_r(&timeval, &utc);
+			ASCTIME_R(&utc, time_buff, sizeof(time_buff));
+		} else
+#endif
+		{
+			CTIME_R(&timeval, time_buff, sizeof(time_buff));
+		}
+
+		/*
+		 *	Strip trailing new lines
+		 */
+		p = strrchr(time_buff, '\n');
+		if (p) p[0] = '\0';
+
+		if (request->module && (request->module[0] != '\0')) {
+			fprintf(fp, "(%u) %s%s%s: %.*s%s\n",
+				request->number, time_buff, fr_int2str(levels, type, ""),
+				request->module, indent, spaces, buffer);
+		} else {
+			fprintf(fp, "(%u) %s%s%.*s%s\n",
+				request->number, time_buff, fr_int2str(levels, type, ""),
+				indent, spaces, buffer);
+		}
+		fclose(fp);
+		return;
+	}
+
+	/*
+	 *	Logging everywhere else
+	 */
+	if (!DEBUG_ENABLED3) switch (type) {
 	case L_DBG_WARN:
 		extra = "WARNING: ";
 		type = L_DBG_WARN_REQ;
@@ -658,30 +676,6 @@ finish:
 	default:
 		break;
 	}
-
-	indent = request->log.indent > sizeof(spaces) ?
-		 sizeof(spaces) :
-		 request->log.indent;
-
-	/*
-	 *	Logging to a file descriptor
-	 */
-	if (fp) {
-		if (request->module && (request->module[0] != '\0')) {
-			fprintf(fp, "(%u) %s: %.*s%s%s\n", request->number,
-				request->module, indent, spaces, extra, buffer);
-		} else {
-			fprintf(fp, "(%u) %.*s%s%s\n", request->number,
-				indent, spaces, extra, buffer);
-		}
-		fclose(fp);
-		return;
-	}
-
-	/*
-	 *	Logging everywhere else
-	 */
-	if (debug_flag > 2) extra = "";
 
 	if (request->module && (request->module[0] != '\0')) {
 		radlog_always(type, "(%u) %s: %.*s%s%s", request->number,
