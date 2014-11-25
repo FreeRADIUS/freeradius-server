@@ -242,7 +242,7 @@ static rlm_rcode_t cache_insert(rlm_cache_t *inst, REQUEST *request, rlm_cache_h
 
 	value_pair_map_t const *map;
 
-	bool merge = false;
+	bool merge = true;
 	rlm_cache_entry_t *c;
 
 	if ((inst->max_entries > 0) && inst->module->count &&
@@ -327,7 +327,7 @@ static rlm_rcode_t cache_insert(rlm_cache_t *inst, REQUEST *request, rlm_cache_h
 	 *	Check to see if we need to merge the entry into the request
 	 */
 	vp = pairfind(request->config_items, PW_CACHE_MERGE, 0, TAG_ANY);
-	if (vp && (vp->vp_integer > 0)) merge = true;
+	if (vp && (vp->vp_integer == 0)) merge = false;
 
 	if (merge) cache_merge(inst, request, c);
 
@@ -343,8 +343,7 @@ static rlm_rcode_t cache_insert(rlm_cache_t *inst, REQUEST *request, rlm_cache_h
 		case CACHE_OK:
 			RDEBUG("Commited entry, TTL %d seconds", ttl);
 			cache_free(inst, &c);
-			return merge ? RLM_MODULE_UPDATED :
-				       RLM_MODULE_OK;
+			return RLM_MODULE_UPDATED;
 
 		default:
 			talloc_free(c);	/* Failed insertion - use talloc_free not the driver free */
@@ -484,7 +483,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_cache_it(void *instance, REQUEST *reques
 	 *	and return. No need to add a new entry.
 	 */
 	cache_merge(inst, request, c);
-	rcode = RLM_MODULE_UPDATED;
+	rcode = RLM_MODULE_OK;
 
 	goto finish;
 

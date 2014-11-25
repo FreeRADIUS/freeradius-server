@@ -16,17 +16,9 @@ update control {
 }
 
 cache
-if (!ok) {
+if (!updated) {
 	update reply {
 		Filter-Id := 'fail 0'
-	}
-	reject
-}
-
-# Check the module didn't perform a merge
-if (&request:Tmp-String-1) {
-	update reply {
-		Filter-Id := 'fail 1'
 	}
 	reject
 }
@@ -52,7 +44,7 @@ if (&control:Cache-Status-Only) {
 
 # Retrieve the entry (should be copied to request list)
 cache
-if (!updated) {
+if (!ok) {
 	update reply {
 		Filter-Id := 'fail 3a'
 	}
@@ -71,7 +63,7 @@ update request {
 }
 
 cache
-if (!updated) {
+if (!ok) {
 	update reply {
 		Filter-Id := 'fail 4a'
 	}
@@ -152,7 +144,7 @@ update control {
 	Cache-TTL := -1
 }
 cache
-if (!ok) {
+if (!updated) {
 	update reply {
 		Filter-Id := 'fail 8a'
 	}
@@ -160,7 +152,7 @@ if (!ok) {
 }
 
 cache
-if (!updated) {
+if (!ok) {
 	update reply {
 		Filter-Id := 'fail 8b'
 	}
@@ -190,7 +182,7 @@ update control {
 	Cache-TTL := 30
 }
 cache
-if (!updated) {
+if (!ok) {
 	update reply {
 		Filter-Id := 'fail 9a'
 	}
@@ -210,55 +202,9 @@ update control {
 	Cache-TTL := -1
 }
 cache
-if (!ok) {
+if (!updated) {
 	update reply {
 		Filter-Id := 'fail 10a'
-	}
-	reject
-}
-
-# Request Tmp-String-1 still shouldn't have been updated yet
-if (&request:Tmp-String-1 == &control:Tmp-String-1) {
-	update reply {
-		Filter-Id := 'fail 10b'
-	}
-	reject
-}
-
-cache
-if (!updated) {
-	update reply {
-		Filter-Id := 'fail 10c'
-	}
-	reject
-}
-
-# Request Tmp-String-1 should now have been updated
-if (&request:Tmp-String-1 != &control:Tmp-String-1) {
-	update reply {
-		Filter-Id := 'fail 10d'
-	}
-	reject
-}
-
-# Check Cache-Merge = yes works as expected (should update current request)
-update control {
-	Tmp-String-1 := 'cache me3'
-	Cache-TTL := -1
-	Cache-Merge := yes
-}
-cache
-if (!updated) {
-	update reply {
-		Filter-Id := 'fail 11a'
-	}
-	reject
-}
-
-# Request Tmp-String-1 should now have been updated
-if (&request:Tmp-String-1 != &control:Tmp-String-1) {
-	update reply {
-		Filter-Id := 'fail 11b'
 	}
 	reject
 }
