@@ -25,7 +25,7 @@
     missingok
     create
     postrotate
-	kill -HUP `cat /var/run/radiusd/radiusd.pid`
+        radmin -e 'hup main.log'
     endscript
 }
 
