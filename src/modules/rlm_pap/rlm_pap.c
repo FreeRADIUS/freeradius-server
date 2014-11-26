@@ -128,9 +128,10 @@ static void CC_HINT(nonnull) normify(REQUEST *request, VALUE_PAIR *vp, size_t mi
 	rad_assert((vp->da->type == PW_TYPE_OCTETS) || (vp->da->type == PW_TYPE_STRING));
 
 	/*
-	 *	Hex encoding.
+	 *	Hex encoding. Length is even, and it's greater than
+	 *	twice the minimum length.
 	 */
-	if (vp->length >= (2 * min_length)) {
+	if (!(vp->length & 0x01) && vp->length >= (2 * min_length)) {
 		size_t decoded;
 
 		decoded = fr_hex2bin(buffer, sizeof(buffer), vp->vp_strvalue, vp->length);
@@ -163,6 +164,128 @@ static void CC_HINT(nonnull) normify(REQUEST *request, VALUE_PAIR *vp, size_t mi
 	 */
 }
 
+/** Convert a Password-With-Header attribute to the correct type
+ *
+ * Attribute may be base64 encoded, in which case it will be decoded
+ * first, then evaluated.
+ *
+ * @note The buffer for octets types\ attributes is extended by one byte
+ *	and '\0' terminated, to allow it to be used as a char buff.
+ *
+ * @param request Current request.
+ * @param vp Password-With-Header attribute to convert.
+ * @return a new VALUE_PAIR on success, NULL on error.
+ */
+static VALUE_PAIR *normify_with_header(REQUEST *request, VALUE_PAIR *vp)
+{
+	int		attr;
+	char const	*p, *q;
+	size_t		len;
+
+	uint8_t		digest[129];	/* +1 for \0 */
+	ssize_t		decoded;
+
+	char		buffer[128];
+
+	VALUE_PAIR	*new;
+
+	VERIFY_VP(vp);
+
+redo:
+	p = vp->vp_strvalue;
+	len = vp->length;
+
+	/*
+	 *	Has a header {...} prefix
+	 */
+	q = strchr(p, '}');
+	if (q) {
+		size_t hlen;
+
+		hlen = (q + 1) - p;
+		if (hlen >= sizeof(buffer)) {
+			REDEBUG("Password header too long.  Got %zu bytes must be less than %zu bytes",
+				hlen, sizeof(buffer));
+			return NULL;
+		}
+
+		memcpy(buffer, p, hlen);
+		buffer[hlen] = '\0';
+
+		attr = fr_str2int(header_names, buffer, 0);
+		if (!attr) {
+			if (RDEBUG_ENABLED3) {
+				RDEBUG3("Unknown header {%s} in Password-With-Header = \"%s\", re-writing to "
+					"Cleartext-Password", buffer, vp->vp_strvalue);
+			} else {
+				RDEBUG("Unknown header {%s} in Password-With-Header, re-writing to "
+				       "Cleartext-Password", buffer);
+			}
+			goto unknown_header;
+		}
+
+		/*
+		 *	The data after the '}' may be binary, so we copy it via
+		 *	memcpy.  BUT it might be a string (or used as one), so
+		 *	we ensure that there's a trailing zero, too.
+		 */
+		new = paircreate(request, attr, 0);
+		if (new->da->type == PW_TYPE_OCTETS) {
+			pairmemcpy(new, (uint8_t const *) q + 1, (len - hlen) + 1);
+			new->length = (len - hlen);	/* lie about the length */
+		} else {
+			pairstrcpy(new, q + 1);
+		}
+
+		if (RDEBUG_ENABLED3) {
+			char *old_value, *new_value;
+
+			old_value = vp_aprints_value(request, vp, '\'');
+			new_value = vp_aprints_value(request, new, '\'');
+			RDEBUG3("Converted: %s = '%s' -> %s = '%s'", vp->da->name, old_value, new->da->name, new_value);
+			talloc_free(old_value);
+			talloc_free(new_value);
+		} else {
+			RDEBUG2("Converted: %s -> %s", vp->da->name, new->da->name);
+		}
+
+		return new;
+	}
+
+	/*
+	 *	Doesn't have a header {...} prefix
+	 *
+	 *	See if it's base64, if it is, decode it and check again!
+	 */
+	decoded = fr_base64_decode(digest, sizeof(digest) - 1, vp->vp_strvalue, len);
+	if ((decoded > 0) && (digest[0] == '{') && (memchr(digest, '}', decoded) != NULL)) {
+		RDEBUG2("Normalizing %s from base64 encoding, %zu bytes -> %zu bytes",
+			vp->da->name, vp->length, decoded);
+		/*
+		 *	Password-With-Header is a string attribute.
+		 *	Even though we're handling binary data, the buffer
+		 *	must be \0 terminated.
+		 */
+		digest[decoded] = '\0';
+		pairmemcpy(vp, digest, decoded + 1);
+		vp->length = decoded;		/* lie about the length */
+
+		goto redo;
+	}
+
+	if (RDEBUG_ENABLED3) {
+		RDEBUG3("No {...} in Password-With-Header = \"%s\", re-writing to "
+			"Cleartext-Password", vp->vp_strvalue);
+	} else {
+		RDEBUG("No {...} in Password-With-Header, re-writing to Cleartext-Password");
+	}
+
+unknown_header:
+	new = paircreate(request, PW_CLEARTEXT_PASSWORD, 0);
+	pairstrcpy(new, vp->vp_strvalue);
+
+	return new;
+}
 
 /*
  *	Authorize the user for PAP authentication.
@@ -181,6 +304,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 	for (vp = fr_cursor_init(&cursor, &request->config_items);
 	     vp;
 	     vp = fr_cursor_next(&cursor)) {
+	     	VERIFY_VP(vp);
+	next:
 		switch (vp->da->attr) {
 		case PW_USER_PASSWORD: /* deprecated */
 			RWDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
@@ -191,96 +316,30 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 			RWDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 			break;
 
-		case PW_PASSWORD_WITH_HEADER: /* preferred */
+		case PW_PASSWORD_WITH_HEADER:	/* preferred */
 		{
-			int attr;
-			char *p;
-			char const *data;
-			size_t length;
-			uint8_t digest[128];
-			char charbuf[128];
-			VALUE_PAIR *new_vp;
+			VALUE_PAIR *new;
 
 			/*
-			 *	Password already exists: use
-			 *	that instead of this one.
+			 *	Password already exists: use that instead of this one.
 			 */
 			if (pairfind(request->config_items, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY)) {
-				RWDEBUG("Config already contains \"known good\" password.  "
-					"Ignoring Password-With-Header");
+				RWDEBUG("Config already contains a \"known good\" password "
+					"(&control:Cleartext-Password).  Ignoring &config:Password-With-Header");
 				break;
 			}
 
+			new = normify_with_header(request, vp);
+			if (new) fr_cursor_insert(&cursor, new); /* inserts at the end of the list */
+
+			RDEBUG2("Removing &control:Password-With-Header");
+			vp = fr_cursor_remove(&cursor);	/* advances the cursor for us */
+			talloc_free(vp);
+
 			found_pw = true;
-		redo:
-			p = strchr(vp->vp_strvalue, '}');
-			if (!p) {
-				ssize_t decoded;
 
-				/*
-				 *	If it's binary, it may be
-				 *	base64 encoded.  Decode it,
-				 *	and re-write the attribute to
-				 *	have the decoded value.
-				 */
-				decoded = fr_base64_decode(digest, sizeof(digest), vp->vp_strvalue, vp->length);
-				if ((decoded > 0) &&
-				    (digest[0] == '{') &&
-				    (memchr(digest, '}', decoded) != NULL)) {
-					RDEBUG3("Decoded %s to %d bytes",
-						vp->vp_strvalue, (int) decoded);
-					pairmemcpy(vp, digest, decoded);
-					goto redo;
-				}
-
-			invalid_header:
-				if (RDEBUG_ENABLED3) {
-					RDEBUG3("No {...} in Password-With-Header = \"%s\", re-writing to "
-					       "Cleartext-Password", vp->vp_strvalue);
-				} else {
-					RDEBUG("No {...} in Password-With-Header, re-writing to "
-					       "Cleartext-Password");
-				}
-
-				data = vp->vp_strvalue;
-				new_vp = radius_paircreate(request, &request->config_items,
-							   PW_CLEARTEXT_PASSWORD, 0);
-				pairstrcpy(new_vp, data);
-
-			} else {
-				length = (p + 1) - vp->vp_strvalue;
-
-				if (length >= sizeof(charbuf)) break;
-
-				memcpy(charbuf, vp->vp_strvalue, length);
-				charbuf[length] = '\0';
-
-				attr = fr_str2int(header_names, charbuf, 0);
-				if (!attr) {
-					RWDEBUG2("Found unknown header {%s}: Not doing anything", charbuf);
-					goto invalid_header;
-				}
-
-				data = vp->vp_strvalue + length;
-				length = vp->length - length;
-
-				new_vp = radius_paircreate(request, &request->config_items, attr, 0);
-
-				/*
-				 *	The data after the '}' may be
-				 *	binary, so we copy it via
-				 *	memcpy.  BUT it might be a
-				 *	string, so we ensure that
-				 *	there's a trailing zero, too.
-				 */
-				if (new_vp->da->type == PW_TYPE_OCTETS) {
-					pairmemcpy(new_vp, (uint8_t const *) data, length + 1);
-					new_vp->length = length;
-				} else {
-					pairstrcpy(new_vp, data);
-				}
-			}
-
+			vp = fr_cursor_current(&cursor);
+			if (vp) goto next;
 		}
 			break;
 
@@ -339,7 +398,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 			 */
 			if ((vp->vp_integer == 254) ||
 			    (vp->vp_integer == 4)) {
-			    found_pw = 1;
+			    found_pw = true;
 			}
 			break;
 
@@ -382,7 +441,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 	 *	Don't touch existing Auth-Types.
 	 */
 	if (auth_type) {
-		RWDEBUG2("Auth-Type already set.  Not setting to PAP");
+		if (auth_type != inst->auth_type) RWDEBUG2("Auth-Type already set.  Not setting to PAP");
 		return RLM_MODULE_NOOP;
 	}
 
@@ -547,10 +606,10 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_ssha(rlm_pap_t *inst, REQUEST *requ
 	}
 
 	fr_sha1_init(&sha1_context);
-	fr_sha1_update(&sha1_context, request->password->vp_octets,
-		      request->password->length);
+	fr_sha1_update(&sha1_context, request->password->vp_octets, request->password->length);
+
 	fr_sha1_update(&sha1_context, &vp->vp_octets[20], vp->length - 20);
-	fr_sha1_final(digest,&sha1_context);
+	fr_sha1_final(digest, &sha1_context);
 
 	if (rad_digest_cmp(digest, vp->vp_octets, 20) != 0) {
 		REDEBUG("SSHA digest does not match \"known good\" digest");
