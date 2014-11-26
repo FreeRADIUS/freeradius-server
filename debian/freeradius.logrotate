@@ -2,7 +2,7 @@
         weekly
         rotate 52
         postrotate
-                radmin -r 'HUP main.log'
+                radmin -e 'hup main.log'
         endscript
         compress
         notifempty
