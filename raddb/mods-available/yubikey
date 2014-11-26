@@ -129,10 +129,6 @@ yubikey {
 			# NOTE: A setting of 0 means infinite (no timeout).
 			idle_timeout = 60
 
-			# Cycle over all connections in a pool instead of concentrating
-			# connection use on a few connections.
-			spread = yes
-
 			# NOTE: All configuration settings are enforced.  If a
 			# connection is closed because of "idle_timeout",
 			# "uses", or "lifetime", then the total number of
