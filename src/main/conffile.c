@@ -2236,7 +2236,9 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			 */
 			if (!cf_new_escape && !this->item.parent && value &&
 			    (strcmp(buf1, "correct_escapes") == 0) &&
-			    (strcmp(value, "true") == 0)) {
+			    ((strcmp(value, "true") == 0) ||
+			     (strcmp(value, "yes") == 0) ||
+			     (strcmp(value, "1") == 0))) {
 				cf_new_escape = true;
 			}
 
