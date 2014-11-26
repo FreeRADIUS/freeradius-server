@@ -115,7 +115,7 @@ authorize {
 
 	#
 	# Log all request attributes, plus TLS certificate details, to the
-	# detail auth_log. Again, this is just once per connection request, so
+	# auth_log file. Again, this is just once per connection request, so
 	# may be preferable than in the outer authorize section. It is
 	# suggested that 'auth_log' also be in the outer post-auth and
 	# Post-Auth REJECT sections to log reply packet details, too.

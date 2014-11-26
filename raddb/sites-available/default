@@ -279,8 +279,7 @@ authorize {
 
 	#
 	#  If you want to have a log of authentication requests,
-	#  un-comment the following line, and the 'detail auth_log'
-	#  section, above.
+	#  un-comment the following line.
 #	auth_log
 
 	#
