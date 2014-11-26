@@ -49,16 +49,19 @@ listen {
 	#  in an error message in the log file, and the connection is
 	#  closed.
 	#
+	#  As of version 3.0.6, the control socket is enabled by default,
+	#  BUT only "root" is allowed to use it.  We recommend changing
+	#  these defaults to a more restrictive set.
 
 	#
 	#  Name of user that is allowed to connect to the control socket.
 	#
-#	uid = radius
+	uid = 0
 
 	#
 	#  Name of group that is allowed to connect to the control socket.
 	#
-#	gid = radius
+	gid = 0
 
 	#
 	#  Access mode.
@@ -69,5 +72,5 @@ listen {
 	#	ro = read only access (default)
 	#	rw = read/write access.
 	#
-#	mode = rw
+	mode = rw
 }
