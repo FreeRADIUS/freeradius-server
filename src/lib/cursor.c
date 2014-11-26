@@ -185,7 +185,7 @@ VALUE_PAIR *fr_cursor_current(vp_cursor_t *cursor)
 	return cursor->current;
 }
 
-/** Insert a single VP
+/** Insert a single VP at the end of the list
  *
  * @todo don't use with pairdelete
  */
@@ -220,9 +220,7 @@ void fr_cursor_insert(vp_cursor_t *cursor, VALUE_PAIR *add)
 	 *
 	 *	Assume current is closer to the end of the list and use that if available.
 	 */
-	if (!cursor->last) {
-		cursor->last = cursor->current ? cursor->current : *cursor->first;
-	}
+	if (!cursor->last) cursor->last = cursor->current ? cursor->current : *cursor->first;
 
 	VERIFY_VP(cursor->last);
 
