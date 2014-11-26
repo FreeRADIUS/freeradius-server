@@ -192,7 +192,7 @@ static ssize_t condition_tokenize_string(TALLOC_CTX *ctx, char **out, char const
 				}
 
 			} else {
-				switch (*p) {
+				switch (p[1]) {
 				case 'r':
 					*q++ = '\r';
 					break;
@@ -203,7 +203,7 @@ static ssize_t condition_tokenize_string(TALLOC_CTX *ctx, char **out, char const
 					*q++ = '\t';
 					break;
 				default:
-					*q++ = *p;
+					*q++ = p[1];
 					break;
 				}
 				p++;
