@@ -2869,7 +2869,7 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 				}
 			}
 		} else {
-			RWDEBUG2("No information to cache: session caching will be disabled for session %s", buffer);
+			RDEBUG2("No information to cache: session caching will be disabled for session %s", buffer);
 			SSL_CTX_remove_session(ssn->ctx,
 					       ssn->ssl->session);
 		}
