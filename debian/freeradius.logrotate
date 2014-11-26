@@ -1,6 +1,9 @@
 /var/log/freeradius/*.log {
         weekly
         rotate 52
+        postrotate
+                radmin -e 'hup main.log'
+        endscript
         compress
         notifempty
 }

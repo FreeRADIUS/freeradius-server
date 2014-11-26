@@ -30,6 +30,9 @@
 	create
 	missingok
 	compress
+        postrotate
+                radmin -e 'hup main.log'
+        endscript
 }
 
 /var/log/radius/radutmp {
