@@ -965,7 +965,7 @@ int ascend_parse_filter(value_data_t *out, char const *value, size_t len)
 	/*
 	 *	Tokenize the input string in the VP.
 	 *
-	 *	Once the filter is *completelty* parsed, then we will
+	 *	Once the filter is *completely* parsed, then we will
 	 *	over-write it with the final binary filter.
 	 */
 	p = talloc_memdup(NULL, value, len+1);
